@@ -1597,24 +1597,7 @@ function MelloChat:OnEnable()
     local button = CreateFrame("Button", "MelloChatButton", UIParent)
     button:SetScript("OnClick", OpenMelloChat)
     
-    -- Bind R key for reply
-    SetOverrideBindingClick(melloChatFrame, true, "R", "MelloChatReplyButton")
-    local replyButton = CreateFrame("Button", "MelloChatReplyButton", UIParent)
-    replyButton:SetScript("OnClick", function()
-        local lastTell = ChatEdit_GetLastTellTarget()
-        if lastTell and lastTell ~= "" then
-            if melloChatFrame and melloChatFrame.inputBox then
-                melloChatFrame.inputBox.chatType = "WHISPER"
-                melloChatFrame.inputBox.chatTarget = lastTell
-                local lastTellWithoutRealm = string.match(lastTell, "([^%-]+)") or lastTell
-                melloChatFrame.channelLabel:SetText("[To " .. lastTellWithoutRealm .. "]")
-                melloChatFrame.channelLabel:SetTextColor(1, 0.5, 1)
-                local labelWidth = melloChatFrame.channelLabel:GetStringWidth() + 12
-                melloChatFrame.inputBox:SetTextInsets(labelWidth, 5, 3, 3)
-                melloChatFrame.inputBox:SetFocus()
-            end
-        end
-    end)
+    -- R key binding removed to avoid conflicts with game keybinds
 end
 
 function MelloChat:OnDisable()
