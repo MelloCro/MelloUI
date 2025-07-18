@@ -897,94 +897,51 @@ local function AddGameMenuButton()
             end
         end)
         
-        -- Add a glow border
-        local glow = menuButton:CreateTexture(nil, "BACKGROUND")
-        glow:SetPoint("TOPLEFT", menuButton, "TOPLEFT", -3, 3)
-        glow:SetPoint("BOTTOMRIGHT", menuButton, "BOTTOMRIGHT", 3, -3)
-        glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-        glow:SetVertexColor(1, 0.82, 0) -- Golden color
-        glow:SetBlendMode("ADD")
-        glow:SetAlpha(0.3)
-        menuButton.glow = glow
+        -- Color the button texture purple
+        local normalTexture = menuButton:GetNormalTexture()
+        if normalTexture then
+            normalTexture:SetVertexColor(0.6, 0.2, 0.8, 1) -- Purple color
+        end
         
-        -- Make the glow pulse
-        local animGroup = menuButton:CreateAnimationGroup()
-        local fadeIn = animGroup:CreateAnimation("Alpha")
-        fadeIn:SetFromAlpha(0.3)
-        fadeIn:SetToAlpha(0.6)
-        fadeIn:SetDuration(1)
-        fadeIn:SetOrder(1)
+        -- Also color the highlight texture
+        local highlightTexture = menuButton:GetHighlightTexture()
+        if highlightTexture then
+            highlightTexture:SetVertexColor(0.7, 0.3, 0.9, 1) -- Lighter purple for highlight
+        end
         
-        local fadeOut = animGroup:CreateAnimation("Alpha")
-        fadeOut:SetFromAlpha(0.6)
-        fadeOut:SetToAlpha(0.3)
-        fadeOut:SetDuration(1)
-        fadeOut:SetOrder(2)
-        
-        animGroup:SetLooping("REPEAT")
-        animGroup:Play()
-        
-        -- Apply the animation to the glow
-        fadeIn:SetTarget(glow)
-        fadeOut:SetTarget(glow)
+        -- Color the pushed texture
+        local pushedTexture = menuButton:GetPushedTexture()
+        if pushedTexture then
+            pushedTexture:SetVertexColor(0.5, 0.1, 0.7, 1) -- Darker purple when pressed
+        end
     end
     
-    local menuButton = GameMenuButtonMelloUI
-    
-    -- Only reposition buttons on first setup
-    if not gameMenuButtonAdded then
-        -- Store original button positions
-        local buttons = {}
+    -- Position the button with a delay
+    C_Timer.After(0.01, function()
+        if not GameMenuButtonMelloUI then return end
+        
+        -- Find Options button to match its size
+        local optionsButton = nil
         for _, child in ipairs({GameMenuFrame:GetChildren()}) do
-            if child:IsObjectType("Button") and child:GetText() and child ~= menuButton then
-                table.insert(buttons, child)
-                -- Store original position
-                if not originalButtonPositions[child] then
-                    originalButtonPositions[child] = {child:GetPoint()}
-                end
+            if child:IsObjectType("Button") and child:GetText() == OPTIONS then
+                optionsButton = child
+                break
             end
         end
         
-        -- Find the header
-        local header = GameMenuFrameHeader or GameMenuFrame.Header
-        local startY = -16
-        
-        if header then
-            startY = -(header:GetHeight() + 8)
+        if optionsButton then
+            -- Match the size of Options button
+            local width = optionsButton:GetWidth()
+            local height = optionsButton:GetHeight()
+            GameMenuButtonMelloUI:SetSize(width, height)
         end
         
-        -- Position MelloUI button at the top (moved up by 100 pixels total)
-        menuButton:ClearAllPoints()
-        menuButton:SetPoint("TOP", GameMenuFrame, "TOP", 0, startY + 100)
-        
-        -- Move all other buttons down
-        local previousButton = menuButton
-        for i, button in ipairs(buttons) do
-            button:ClearAllPoints()
-            button:SetPoint("TOP", previousButton, "BOTTOM", 0, -1)
-            previousButton = button
-        end
-        
-        -- Calculate and set frame height
-        local numButtons = #buttons + 1
-        local buttonHeight = menuButton:GetHeight() or 20
-        local spacing = 1
-        local headerSpace = math.abs(startY) + 8
-        local buttonsHeight = (numButtons * buttonHeight) + ((numButtons - 1) * spacing)
-        local bottomPadding = 20
-        local totalHeight = headerSpace + buttonsHeight + bottomPadding
-        
-        -- Store original height
-        if not GameMenuFrame.originalHeight then
-            GameMenuFrame.originalHeight = GameMenuFrame:GetHeight()
-        end
-        
-        GameMenuFrame:SetHeight(totalHeight)
-        gameMenuButtonAdded = true
-    end
-    
-    -- Always ensure our button is shown
-    menuButton:Show()
+        -- Position MelloUI button outside above the frame (10px higher than before)
+        GameMenuButtonMelloUI:ClearAllPoints()
+        GameMenuButtonMelloUI:SetPoint("BOTTOM", GameMenuFrame, "TOP", 0, 15)
+        GameMenuButtonMelloUI:SetFrameLevel(GameMenuFrame:GetFrameLevel() + 1)
+        GameMenuButtonMelloUI:Show()
+    end)
 end
 
 -- Hook to add button when game menu is first shown
