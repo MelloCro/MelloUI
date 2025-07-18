@@ -1,0 +1,26 @@
+## Interface: 110107
+## Title: MelloUI
+## Notes: UI reskin addon with addon suite profile installer
+## Author: Crusadon-Silvermoon
+## Version: 2.0
+## SavedVariables: MelloUISavedVars
+
+# Core Systems
+ModuleLoader.lua
+
+# Core Module
+modules/Core/Core.lua
+
+# Modules
+modules/AutoGraphicsSettings/AutoGraphicsSettings.lua
+modules/DPSMeter/DPSMeter.lua
+modules/Nameplates/Nameplates.lua
+modules/Tooltip/Tooltip.lua
+modules/EnhancedBags/EnhancedBags.lua
+modules/EnhancedCharacterFrame/EnhancedCharacterFrame.lua
+modules/DungeonTeleporter/DungeonTeleporter.lua
+modules/MelloChat/MelloChat.lua
+
+# UI
+ProfileInstaller.lua
+MelloUI.lua
