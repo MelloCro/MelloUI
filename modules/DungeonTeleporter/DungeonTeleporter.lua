@@ -108,12 +108,19 @@ local function CreateTeleportButton(index, spellID, parent)
     end
     
     -- IMPORTANT: Set up secure attributes FIRST before any other code
-    button:SetAttribute("type", "macro")
-    button:SetAttribute("macrotext", "/cast [@player] " .. spellID)
-    
-    -- Also try direct spell casting as backup
-    button:SetAttribute("type1", "spell")
-    button:SetAttribute("spell1", spellID)
+    -- Special handling for button 6 (MOTHERLODE/Azerite Refinery)
+    if index == 6 then
+        -- Try using the spell name instead of ID for this specific spell
+        button:SetAttribute("type", "spell")
+        button:SetAttribute("spell", "Path of the Azerite Refinery")
+    else
+        button:SetAttribute("type", "macro")
+        button:SetAttribute("macrotext", "/cast [@player] " .. spellID)
+        
+        -- Also try direct spell casting as backup
+        button:SetAttribute("type1", "spell")
+        button:SetAttribute("spell1", spellID)
+    end
     
     -- Enable mouse interaction
     button:EnableMouse(true)
@@ -222,26 +229,58 @@ local function CreateTeleportButton(index, spellID, parent)
     dungeonText:SetTextColor(1, 1, 1, 1) -- White text
     
     -- Check if spell is usable (account-wide teleports)
+    -- Initial check may fail on first login, will be updated later
     local spellInfo = C_Spell.GetSpellInfo(spellID)
     local isKnown = spellInfo and C_Spell.IsSpellUsable(spellID)
-    if not isKnown then
-        -- Desaturate the icon if spell is not known
-        button.icon:SetDesaturated(true)
-        button.icon:SetVertexColor(0.5, 0.5, 0.5)
+    
+    -- Create lock overlay (hidden by default)
+    local lock = button:CreateTexture(nil, "OVERLAY")
+    lock:SetSize(20, 20)
+    lock:SetPoint("CENTER", 3, -1)
+    lock:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-LOCK")
+    lock:Hide()
+    button.lockIcon = lock
+    
+    -- Store spell ID first
+    button.spellID = spellID
+    
+    -- Function to update button state
+    button.UpdateSpellState = function(self)
+        local spellInfo = C_Spell.GetSpellInfo(self.spellID)
+        local isUsable = spellInfo and C_Spell.IsSpellUsable(self.spellID)
+        self.isKnown = isUsable
         
-        -- Add lock overlay
-        local lock = button:CreateTexture(nil, "OVERLAY")
-        lock:SetSize(20, 20)
-        lock:SetPoint("CENTER", 3, -1)
-        lock:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-LOCK")
-        button.lockIcon = lock
+        if isUsable then
+            -- Spell is known
+            self.icon:SetDesaturated(false)
+            self.icon:SetVertexColor(1, 1, 1)
+            if self.lockIcon then
+                self.lockIcon:Hide()
+            end
+            if self.cooldownText then
+                self.cooldownText:Show()
+            end
+        else
+            -- Spell is not known
+            self.icon:SetDesaturated(true)
+            self.icon:SetVertexColor(0.5, 0.5, 0.5)
+            if self.lockIcon then
+                self.lockIcon:Show()
+            end
+            if self.cooldownText then
+                self.cooldownText:Hide()
+            end
+        end
     end
+    
+    -- Initial state update
+    button:UpdateSpellState()
     
     -- Tooltip and cooldown update
     button:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        if isKnown then
-            GameTooltip:SetSpellByID(spellID)
+        if self.isKnown then
+            GameTooltip:SetSpellByID(self.spellID)
         else
             GameTooltip:SetText("Teleport Locked", 1, 0.5, 0)
             GameTooltip:AddLine(" ")
@@ -262,14 +301,7 @@ local function CreateTeleportButton(index, spellID, parent)
     cooldownText:SetTextColor(1, 1, 0, 1) -- Yellow text
     button.cooldownText = cooldownText
     
-    -- Store spell ID for cooldown checking
-    button.spellID = spellID
-    button.isKnown = isKnown
-    
-    if not isKnown then
-        -- Hide cooldown text for unknown spells
-        cooldownText:Hide()
-    end
+    -- isKnown is already set by UpdateSpellState()
     
     return button
 end
@@ -407,6 +439,16 @@ local function HookPVEFrame()
     hooksApplied = true
 end
 
+-- Update all button states (called after spells are loaded)
+local function UpdateAllButtonStates()
+    for i = 1, 8 do
+        local button = teleportButtons[i]
+        if button and button.UpdateSpellState then
+            button:UpdateSpellState()
+        end
+    end
+end
+
 -- Cleanup function
 local function CleanupAddon()
     StopCooldownTimer()
@@ -439,9 +481,11 @@ function DungeonTeleporter:OnInitialize()
         end)
     end
     
-    -- Register for addon loaded event
+    -- Register for events
     self.eventFrame = CreateFrame("Frame")
     self.eventFrame:RegisterEvent("ADDON_LOADED")
+    self.eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self.eventFrame:RegisterEvent("SPELLS_CHANGED")
     self.eventFrame:SetScript("OnEvent", function(frame, event, arg1)
         if event == "ADDON_LOADED" then
             if arg1 == "Blizzard_LookingForGroupUI" or arg1 == "Blizzard_PVPUI" then
@@ -449,6 +493,12 @@ function DungeonTeleporter:OnInitialize()
                     HookPVEFrame()
                 end
             end
+        elseif event == "PLAYER_ENTERING_WORLD" then
+            -- Update button states after entering world (with delay for spell system)
+            C_Timer.After(1, UpdateAllButtonStates)
+        elseif event == "SPELLS_CHANGED" then
+            -- Update button states when spells change
+            UpdateAllButtonStates()
         end
     end)
     
