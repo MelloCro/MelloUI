@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.jpg" alt="MelloUI - World of Warcraft: Forever - NPC Voice Over and Smart Navigation" width="720"></p>
+
 # MelloUI
 
 Module based UI addon for **World of Warcraft: Forever** (beta 1.60.1, interface `16001`).
