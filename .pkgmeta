@@ -1,5 +1,8 @@
 package-as: MelloUI
 
+# The release notes come from CHANGELOG.md, not from the git log.
+manual-changelog: CHANGELOG.md
+
 # Everything the client does not need stays out of the addon zip.
 ignore:
   - Tools

@@ -72,6 +72,11 @@ def main():
 
     if git("tag", "--list", tag):
         sys.exit(f"tag {tag} already exists")
+    # The packager takes the release notes from CHANGELOG.md: the version needs its entry.
+    changelog = os.path.join(ROOT, "CHANGELOG.md")
+    with open(changelog, encoding="utf-8") as fh:
+        if f"## {version}" not in fh.read():
+            sys.exit(f"CHANGELOG.md has no '## {version}' section; add the version's bullets first")
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
     if branch != "main":
         sys.exit(f"releases are cut from main; you are on {branch}")
