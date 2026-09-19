@@ -1,0 +1,27 @@
+# Packages the addon and publishes it whenever a version tag is pushed:
+#   git tag v0.14.0 && git push --tags
+# The BigWigs packager builds the zip from the repository (minus what .pkgmeta
+# ignores), uploads it to CurseForge (project id from `## X-Curse-Project-ID`
+# in the TOC, token from the CF_API_KEY secret) and attaches it to the GitHub
+# release for the tag. The voice pack is uploaded separately (see README).
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Package and upload
+        uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

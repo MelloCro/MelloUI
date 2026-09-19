@@ -1,0 +1,11 @@
+package-as: MelloUI
+
+# Everything the client does not need stays out of the addon zip.
+ignore:
+  - Tools
+  - docs
+  - .github
+  - .gitignore
+  - .pkgmeta
+
+enable-nolib-creation: no

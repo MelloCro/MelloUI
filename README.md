@@ -412,6 +412,21 @@ not know) is remembered the first time you open its window and kept with the Rou
 learned paths. Options: the bar and its distance from the minimap, and the older round
 minimap button with a list menu (off by default). `/services <kind>` routes from chat.
 
+## Releasing
+
+A version tag builds and publishes the addon: bump `## Version` in `MelloUI.toc`, commit, then
+
+```
+git tag v0.14.0 && git push origin main --tags
+```
+
+The GitHub Action (`.github/workflows/release.yml`, BigWigs packager) zips the addon minus what
+`.pkgmeta` ignores, uploads it to CurseForge (project id from `## X-Curse-Project-ID` in the
+TOC, token from the `CF_API_KEY` repository secret) and attaches the same zip to the GitHub
+release for the tag. The voice pack is not part of that: when the lines changed, run
+`python Tools\merge_voice_packs.py --zip` and upload the zip to the release by hand, then
+update the direct links in the README and the CurseForge description.
+
 ## Forever client tables
 
 `Tools\build_quest_list.py` reads the client's own tables from `Tools\cache`. It prefers a
