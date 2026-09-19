@@ -1,0 +1,38 @@
+﻿## Interface: 16001
+## Title: |cff9b8cffMello|rUI
+## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
+## Author: Mello
+## Version: 0.13.0
+## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes
+## OptionalDeps: LibSharedMedia-3.0
+## X-Category: Interface Enhancements
+
+Core\Core.lua
+Core\Config.lua
+Core\Backup.lua
+
+Media\CustomFonts.lua
+Media\CustomTextures.lua
+Media\NPCVoiceData.lua
+Media\NPCVoiceOverrides.lua
+Media\QuestListData.lua
+Media\RouteData.lua
+Media\Profiles.lua
+
+Modules\DarkMode.lua
+Modules\BarTextures.lua
+Modules\BarText.lua
+Modules\Tweaks.lua
+Modules\Chat.lua
+Modules\Nameplates.lua
+Modules\Vendor.lua
+Modules\Fonts.lua
+Modules\Tooltip.lua
+Modules\CooldownText.lua
+Modules\Stats.lua
+Modules\UnitFrames.lua
+Modules\VoiceOver.lua
+Modules\QuestList.lua
+Modules\QuestListPins.xml
+Modules\Route.lua
+Modules\Services.lua

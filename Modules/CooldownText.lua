@@ -1,0 +1,394 @@
+--------------------------------------------------------------------------------
+-- MelloUI - Cooldown Timers
+--
+-- OmniCC style countdown text on cooldown swipes: large outlined numbers that
+-- change colour and size with the time left (red when about to finish, yellow
+-- under a minute, dim white for minutes, grey for hours). Covers the action
+-- bars (including pet, stance and flyout buttons) and the aura / crowd control
+-- icons on nameplates.
+--
+-- The Cooldown widget methods are hooked on their shared metatable, so every
+-- cooldown frame reports its start and duration here. The text is only drawn
+-- when those values are plain numbers; secret values (possible on enemy
+-- nameplate auras) leave Blizzard's own countdown numbers in place instead.
+--------------------------------------------------------------------------------
+
+local ADDON_NAME, ns = ...
+local MelloUI = ns.MelloUI
+
+local M = MelloUI:RegisterModule("CooldownText", {
+	title = "Cooldown Timers",
+	desc = "OmniCC style countdown numbers on action bar cooldowns and nameplate auras, coloured by time left.",
+	defaults = {
+		actionBars = true,
+		nameplates = true,
+		minDuration = 2,
+		fontRatio = 0.5,
+		tenths = false,
+		colorByTime = true,
+	},
+	options = {
+		{ type = "header", name = "Show On" },
+		{ type = "toggle", key = "actionBars", name = "Action Bars", desc = "Action, pet, stance and flyout buttons." },
+		{ type = "toggle", key = "nameplates", name = "Nameplate Auras", desc = "Buff, debuff and crowd control icons on nameplates." },
+		{ type = "header", name = "Timer" },
+		{ type = "slider", key = "minDuration", name = "Minimum Duration", min = 1, max = 10, step = 0.5,
+		  format = function(v) return string.format("%.1fs", v) end,
+		  desc = "Cooldowns shorter than this show no text (2 s skips the global cooldown)." },
+		{ type = "slider", key = "fontRatio", name = "Text Size", min = 0.3, max = 0.8, step = 0.05, percent = true,
+		  desc = "Text height relative to the icon size." },
+		{ type = "toggle", key = "tenths", name = "Show Tenths Below 5s", desc = "Show 4.3 instead of 5 when the cooldown is about to finish." },
+		{ type = "toggle", key = "colorByTime", name = "Colour By Time Left", desc = "Red under 5 s, yellow under a minute, dim white for minutes, grey for hours." },
+	},
+})
+
+--------------------------------------------------------------------------------
+-- Styles (OmniCC defaults)
+--------------------------------------------------------------------------------
+
+local SOON = 5
+local STYLES = {
+	soon    = { r = 1.0, g = 0.1, b = 0.1, scale = 1.3 },
+	seconds = { r = 1.0, g = 1.0, b = 0.1, scale = 1.0 },
+	minutes = { r = 0.8, g = 0.8, b = 0.9, scale = 0.8 },
+	hours   = { r = 0.7, g = 0.7, b = 0.7, scale = 0.75 },
+}
+local PLAIN = { r = 1, g = 1, b = 1, scale = 1 }
+
+local function Describe(remaining)
+	if remaining < SOON then
+		if M.db.tenths then
+			return string.format("%.1f", remaining), "soon"
+		end
+		return tostring(math.ceil(remaining)), "soon"
+	elseif remaining < 60 then
+		return tostring(math.ceil(remaining)), "seconds"
+	elseif remaining < 3600 then
+		return string.format("%dm", math.ceil(remaining / 60)), "minutes"
+	elseif remaining < 86400 then
+		return string.format("%dh", math.ceil(remaining / 3600)), "hours"
+	end
+	return string.format("%dd", math.ceil(remaining / 86400)), "hours"
+end
+
+--------------------------------------------------------------------------------
+-- Timer registry
+--------------------------------------------------------------------------------
+
+local timers = setmetatable({}, { __mode = "k" })     -- [cooldown] = timer
+local active = {}                                      -- [cooldown] = true while counting
+local pending = setmetatable({}, { __mode = "k" })    -- [cooldown] = { start, duration, modRate, tries }
+local requestedHidden = setmetatable({}, { __mode = "k" }) -- [cooldown] = what Blizzard last asked for
+local hidingNumbers = false
+local hooksInstalled = false
+
+local function IsPlainNumber(v)
+	if type(v) ~= "number" then
+		return false
+	end
+	if issecretvalue and issecretvalue(v) then
+		return false
+	end
+	return true
+end
+
+local function Category(cooldown)
+	if cooldown.noCooldownCount then
+		return nil
+	end
+	local parent = cooldown:GetParent()
+	if not parent then
+		return nil
+	end
+	if parent.cooldown == cooldown or parent.chargeCooldown == cooldown then
+		if parent.action ~= nil or parent.HotKey or parent.icon then
+			return "actionBars"
+		end
+	end
+	local frame = parent
+	for _ = 1, 8 do
+		if not frame then
+			break
+		end
+		local name = frame.GetName and frame:GetName()
+		if name and name:match("^NamePlate%d") then
+			return "nameplates"
+		end
+		frame = frame:GetParent()
+	end
+	return nil
+end
+
+local function SetNativeNumbersHidden(cooldown, hidden)
+	if cooldown.SetHideCountdownNumbers then
+		hidingNumbers = true
+		cooldown:SetHideCountdownNumbers(hidden)
+		hidingNumbers = false
+	end
+end
+
+local function GetTimer(cooldown)
+	local timer = timers[cooldown]
+	if not timer then
+		local fs = cooldown:CreateFontString(nil, "OVERLAY")
+		-- Always start with a valid font so SetText never runs on a bare string.
+		fs:SetFontObject(GameFontHighlightOutline or NumberFontNormal or GameFontNormal)
+		fs:SetPoint("CENTER", cooldown, "CENTER", 0, 0)
+		fs:SetJustifyH("CENTER")
+		timer = { text = fs, cooldown = cooldown, nativeHidden = nil }
+		timers[cooldown] = timer
+	end
+	return timer
+end
+
+local function StopTimer(cooldown, restoreNative)
+	local timer = timers[cooldown]
+	active[cooldown] = nil
+	pending[cooldown] = nil
+	if not timer then
+		return
+	end
+	timer.expires = nil
+	timer.text:SetText("")
+	timer.text:Hide()
+	if restoreNative and timer.nativeHidden ~= nil then
+		SetNativeNumbersHidden(cooldown, timer.nativeHidden)
+		timer.nativeHidden = nil
+	end
+end
+
+-- Nameplate aura icons can report a secret width (their layout is protected
+-- on enemy plates); fall back to the parent's size, then a fixed icon size.
+local FALLBACK_WIDTH = 20
+
+local function UsableWidth(cooldown)
+	local width = cooldown:GetWidth()
+	if IsPlainNumber(width) then
+		return width
+	end
+	local parent = cooldown:GetParent()
+	width = parent and parent:GetWidth()
+	if IsPlainNumber(width) then
+		return width
+	end
+	return FALLBACK_WIDTH
+end
+
+local function ApplyFont(timer, style)
+	local cooldown = timer.cooldown
+	local width = UsableWidth(cooldown)
+	if width < 12 then
+		return false
+	end
+	local base = math.floor(width * (tonumber(M.db.fontRatio) or 0.5) + 0.5)
+	local size = math.max(6, math.floor(base * style.scale + 0.5))
+	if timer.size ~= size or timer.fontPath == nil then
+		local object = GameFontHighlightOutline or NumberFontNormal
+		local path, _, flags = object:GetFont()
+		timer.fontPath = path
+		timer.size = size
+		timer.text:SetFont(path, size, "OUTLINE")
+	end
+	return true
+end
+
+local function UpdateTimer(cooldown, timer, now)
+	local remaining = timer.expires - now
+	if remaining <= 0 then
+		StopTimer(cooldown, true)
+		return
+	end
+	local text, styleName = Describe(remaining)
+	local style = M.db.colorByTime and STYLES[styleName] or PLAIN
+	if styleName ~= timer.styleName then
+		if not ApplyFont(timer, style) then
+			-- No usable size yet (hidden or collapsed button); try again later.
+			timer.styleName = nil
+			timer.lastText = nil
+			timer.text:Hide()
+			return
+		end
+		timer.styleName = styleName
+		timer.text:SetTextColor(style.r, style.g, style.b)
+	end
+	if not timer.fontPath then
+		return
+	end
+	if text ~= timer.lastText then
+		timer.lastText = text
+		timer.text:SetText(text)
+	end
+	timer.text:Show()
+end
+
+local function StartTimer(cooldown, start, duration, modRate)
+	if not M.isEnabled then
+		return
+	end
+	local category = Category(cooldown)
+	if not category then
+		-- Nameplate aura icons get their cooldown before Blizzard parents them
+		-- to the nameplate; look again on the next ticks.
+		local entry = pending[cooldown]
+		local tries = entry and entry.tries or 0
+		if tries < 5 then
+			pending[cooldown] = { start = start, duration = duration, modRate = modRate, tries = tries + 1 }
+		else
+			pending[cooldown] = nil
+		end
+		return
+	end
+	pending[cooldown] = nil
+	if not M.db[category] then
+		StopTimer(cooldown, true)
+		return
+	end
+	if not IsPlainNumber(start) or not IsPlainNumber(duration) then
+		-- Secret values: leave Blizzard's own numbers alone.
+		StopTimer(cooldown, true)
+		return
+	end
+	if modRate ~= nil and IsPlainNumber(modRate) and modRate > 0 and modRate ~= 1 then
+		duration = duration / modRate
+	end
+	if duration <= 0 or duration < (tonumber(M.db.minDuration) or 2) then
+		StopTimer(cooldown, true)
+		return
+	end
+	local timer = GetTimer(cooldown)
+	timer.expires = start + duration
+	timer.styleName = nil
+	timer.lastText = nil
+	if timer.nativeHidden == nil then
+		timer.nativeHidden = requestedHidden[cooldown] or false
+		SetNativeNumbersHidden(cooldown, true)
+	end
+	active[cooldown] = true
+	UpdateTimer(cooldown, timer, GetTime())
+end
+
+--------------------------------------------------------------------------------
+-- Update loop
+--------------------------------------------------------------------------------
+
+local driver = CreateFrame("Frame")
+local elapsedAcc = 0
+driver:SetScript("OnUpdate", function(_, elapsed)
+	elapsedAcc = elapsedAcc + elapsed
+	if elapsedAcc < 0.1 then
+		return
+	end
+	elapsedAcc = 0
+	local now = GetTime()
+	if next(pending) then
+		local retry = {}
+		for cooldown, entry in pairs(pending) do
+			retry[#retry + 1] = cooldown
+			retry[#retry + 1] = entry
+		end
+		for i = 1, #retry, 2 do
+			local cooldown, entry = retry[i], retry[i + 1]
+			StartTimer(cooldown, entry.start, entry.duration, entry.modRate)
+		end
+	end
+	for cooldown in pairs(active) do
+		local timer = timers[cooldown]
+		if timer and timer.expires then
+			UpdateTimer(cooldown, timer, now)
+		else
+			active[cooldown] = nil
+		end
+	end
+end)
+driver:Hide()
+
+--------------------------------------------------------------------------------
+-- Hooks (shared Cooldown metatable)
+--------------------------------------------------------------------------------
+
+local function InstallHooks()
+	if hooksInstalled then
+		return
+	end
+	local probe = CreateFrame("Cooldown", nil, UIParent, "CooldownFrameTemplate")
+	local meta = getmetatable(probe)
+	local index = meta and meta.__index
+	if type(index) ~= "table" then
+		return
+	end
+	hooksInstalled = true
+
+	hooksecurefunc(index, "SetCooldown", function(cooldown, start, duration, modRate)
+		StartTimer(cooldown, start, duration, modRate)
+	end)
+	if type(index.SetCooldownDuration) == "function" then
+		hooksecurefunc(index, "SetCooldownDuration", function(cooldown, duration, modRate)
+			StartTimer(cooldown, GetTime(), duration, modRate)
+		end)
+	end
+	if type(index.SetCooldownUNIX) == "function" then
+		hooksecurefunc(index, "SetCooldownUNIX", function(cooldown, start, duration, modRate)
+			if IsPlainNumber(start) then
+				StartTimer(cooldown, start - (GetServerTime() - GetTime()), duration, modRate)
+			end
+		end)
+	end
+	hooksecurefunc(index, "Clear", function(cooldown)
+		StopTimer(cooldown, true)
+	end)
+	hooksecurefunc(index, "SetHideCountdownNumbers", function(cooldown, hidden)
+		if hidingNumbers then
+			return
+		end
+		-- 'hidden' can derive from a secret aura duration; never let that raise.
+		pcall(function()
+			local wantsHidden = hidden and true or false
+			requestedHidden[cooldown] = wantsHidden
+			local timer = timers[cooldown]
+			if timer and active[cooldown] and not wantsHidden then
+				-- Blizzard wants its numbers back while ours are showing; keep ours.
+				timer.nativeHidden = false
+				SetNativeNumbersHidden(cooldown, true)
+			end
+		end)
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- Module lifecycle
+--------------------------------------------------------------------------------
+
+function M:OnInit(db)
+	self.db = db
+end
+
+function M:OnEnable(db)
+	self.db = db
+	InstallHooks()
+	driver:Show()
+end
+
+function M:OnDisable()
+	driver:Hide()
+	for cooldown in pairs(timers) do
+		StopTimer(cooldown, true)
+	end
+end
+
+function M:OnSettingChanged(key, value, db)
+	self.db = db
+	-- Force fonts and styles to be re-evaluated on the next tick.
+	for cooldown, timer in pairs(timers) do
+		timer.styleName = nil
+		timer.size = nil
+		if active[cooldown] then
+			local category = Category(cooldown)
+			if not category or not db[category] then
+				StopTimer(cooldown, true)
+			end
+		end
+	end
+end
+
+MelloUI:Profile("CooldownText", "timer tick (10/s)", driver)
+MelloUI:Profile("CooldownText", "cooldown hooks", StartTimer)
