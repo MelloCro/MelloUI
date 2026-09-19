@@ -678,6 +678,18 @@ local function ApplyMinimap()
 	CollectButtonStateTextures(AddonCompartmentFrame, list)
 	CollectButtonStateTextures(ExpansionLandingPageMinimapButton, list)
 
+	-- MelloUI's own minimap stand and the medallion rims of the services bar.
+	if MelloUIMinimapStand and MelloUIMinimapStand.tex then
+		list[#list + 1] = MelloUIMinimapStand.tex
+	end
+	if MelloUIServicesBar and MelloUIServicesBar.buttons then
+		for _, b in ipairs(MelloUIServicesBar.buttons) do
+			if b.rim then
+				list[#list + 1] = b.rim
+			end
+		end
+	end
+
 	ShadeAll("minimap", list)
 end
 
@@ -848,6 +860,14 @@ function M:OnEnable(db)
 		end
 	end
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+end
+
+-- Other modules call this after creating art that belongs to a component
+-- (the Services module's minimap stand), so it is shaded right away.
+function M:Reapply(component)
+	if Active(component) and appliers[component] then
+		appliers[component]()
+	end
 end
 
 function M:OnDisable()

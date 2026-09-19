@@ -21,6 +21,9 @@ local M = MelloUI:RegisterModule("Services", {
 	defaults = {
 		showBar = true,
 		barOffset = -26,
+		standArt = true,
+		standScale = 1,
+		roundIcons = true,
 		showButton = false,
 		angle = 205,
 	},
@@ -28,6 +31,12 @@ local M = MelloUI:RegisterModule("Services", {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
 		  desc = "Two rows of service icons under the minimap; it moves with the minimap in Edit Mode. Click an icon to route to the nearest one, right-click to stop the route." },
 		{ type = "slider", key = "barOffset", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2 },
+		{ type = "toggle", key = "standArt", name = "Minimap Stand",
+		  desc = "Bronze ring around the minimap with two ornate legs. The objective tracker hangs from the feet and moves with the minimap, and the icon bar fills the space between the map and the tracker." },
+		{ type = "slider", key = "standScale", name = "Stand Fit", min = 0.9, max = 1.15, step = 0.01, percent = true,
+		  desc = "Fine tunes the ring so it sits exactly on the edge of the map." },
+		{ type = "toggle", key = "roundIcons", name = "Round Icons",
+		  desc = "Show the service icons as round medallions with a bronze rim instead of squares." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
 		  desc = "Also show the round button on the minimap edge that opens the list. /services opens the same list." },
 	},
@@ -163,6 +172,59 @@ local function ProfessionStems()
 	return stems
 end
 
+-- Professions a trainer can teach, recognised from the trainer's subname
+-- ("Journeyman Blacksmith", "Herbalism Trainer", "Fisherman", ...).
+local PROFESSIONS = {
+	{ key = "alchemy",        label = "Alchemy",        match = { "alchem" } },
+	{ key = "blacksmithing",  label = "Blacksmithing",  match = { "blacksmith", "armorsmith", "weaponsmith", "armor crafter", "weapon crafter" } },
+	{ key = "enchanting",     label = "Enchanting",     match = { "enchant" } },
+	{ key = "engineering",    label = "Engineering",    match = { "engineer" } },
+	{ key = "herbalism",      label = "Herbalism",      match = { "herbal" } },
+	{ key = "leatherworking", label = "Leatherworking", match = { "leather" } },
+	{ key = "mining",         label = "Mining",         match = { "mining", "miner" } },
+	{ key = "skinning",       label = "Skinning",       match = { "skinn" } },
+	{ key = "tailoring",      label = "Tailoring",      match = { "tailor" } },
+	{ key = "cooking",        label = "Cooking",        match = { "cook", "butcher" } },
+	{ key = "fishing",        label = "Fishing",        match = { "fish" } },
+	{ key = "firstaid",       label = "First Aid",      match = { "first aid", "physician", "trauma surgeon" } },
+	{ key = "riding",         label = "Riding",         match = { "riding", "mechanostrider pilot" } },
+	{ key = "weapons",        label = "Weapon Skills",  match = { "weapon master" } },
+}
+
+local function ProfessionOf(sub)
+	sub = (sub or ""):lower()
+	if sub == "" then
+		return nil
+	end
+	for _, prof in ipairs(PROFESSIONS) do
+		for _, stem in ipairs(prof.match) do
+			if sub:find(stem, 1, true) then
+				return prof
+			end
+		end
+	end
+	return nil
+end
+
+-- Names of the professions the character knows, lower case.
+local function KnownProfessions()
+	local known = {}
+	if GetProfessions and GetProfessionInfo then
+		local ok, a, b, c, d, e, f = pcall(GetProfessions)
+		if ok then
+			for _, index in ipairs({ a, b, c, d, e, f }) do
+				if index then
+					local okI, name = pcall(GetProfessionInfo, index)
+					if okI and type(name) == "string" and not IsSecret(name) then
+						known[name:lower()] = true
+					end
+				end
+			end
+		end
+	end
+	return known
+end
+
 local function TrainerMatches(kind, sub)
 	sub = (sub or ""):lower()
 	if kind.trainer == "class" then
@@ -195,13 +257,20 @@ local function Learned()
 end
 
 -- Candidates of a kind: { name, sub, cont/wx/wy or mapID/x/y }.
-local function Candidates(kind)
+-- profession (optional): only trainers teaching that profession.
+local function Candidates(kind, profession)
 	local out = {}
 	local data = Data()
 	local side = PlayerSide()
+	local function Wanted(sub)
+		if profession then
+			return ProfessionOf(sub) == profession
+		end
+		return not kind.trainer or TrainerMatches(kind, sub)
+	end
 	if kind.data and type(data) == "table" and type(data.services) == "table" then
 		for _, row in ipairs(data.services) do
-			if row[1] == kind.data and (row[4] == 0 or row[4] == side) and (not kind.trainer or TrainerMatches(kind, row[3])) then
+			if row[1] == kind.data and (row[4] == 0 or row[4] == side) and Wanted(row[3]) then
 				out[#out + 1] = { name = row[2], sub = row[3], cont = row[5], wx = row[6], wy = row[7] }
 			end
 		end
@@ -215,7 +284,7 @@ local function Candidates(kind)
 		end
 	end
 	for _, l in pairs(Learned()) do
-		if l.kind == kind.key or (kind.data and l.kind == kind.data and (not kind.trainer or TrainerMatches(kind, l.sub))) then
+		if l.kind == kind.key or (kind.data and l.kind == kind.data and Wanted(l.sub)) then
 			out[#out + 1] = { name = l.name, sub = l.sub or "", mapID = l.mapID, x = l.x, y = l.y }
 		end
 	end
@@ -223,13 +292,13 @@ local function Candidates(kind)
 end
 
 -- The nearest few by straight line, with their distances.
-local function Nearest(kind, count)
+local function Nearest(kind, count, profession)
 	local R = Route()
 	if not R then
 		return {}
 	end
 	local list = {}
-	for _, c in ipairs(Candidates(kind)) do
+	for _, c in ipairs(Candidates(kind, profession)) do
 		local d = R:DistanceTo(c)
 		if d then
 			c.distance = d
@@ -260,24 +329,61 @@ local function CleanSub(sub)
 	return sub
 end
 
-local function GoTo(kind)
+local function GoTo(kind, profession)
 	local R = Route()
 	if not R then
 		Notify("The Route module is off; enable it under /mello.", "fail")
 		return
 	end
-	local near = Nearest(kind, 6)
+	local what = profession and (profession.label .. " trainer") or kind.label:lower()
+	local near = Nearest(kind, 6, profession)
 	if #near == 0 then
-		Notify("No " .. kind.label:lower() .. " known on this continent yet.", "fail")
+		Notify("No " .. what .. " known on this continent yet.", "fail")
 		return
 	end
 	local best = R:Cheapest(near) or 1
 	local c = near[best]
-	local sub = CleanSub(c.sub)
 	local icon = kind.icon and ("|T" .. kind.icon .. ":16:16|t ") or ""
-	local label = icon .. kind.label .. ": " .. c.name
+	local label = icon .. (profession and profession.label or kind.label) .. ": " .. c.name
 	local big = kind.icon and ("|T" .. kind.icon .. ":22:22|t  ") or ""
-	R:SetDestinationTo(c, label, true, string.format("%sTracking nearest %s, closest one {dist} away", big, kind.label:lower()))
+	R:SetDestinationTo(c, label, true, string.format("%sTracking nearest %s, closest one {dist} away", big, what))
+end
+
+-- The profession trainer button asks which profession: a menu of every
+-- profession with a known trainer, the character's own ones first.
+local function ProfessionMenu(owner, kind)
+	if not (MenuUtil and MenuUtil.CreateContextMenu) then
+		GoTo(kind)
+		return
+	end
+	local known = KnownProfessions()
+	local available = {}
+	for _, prof in ipairs(PROFESSIONS) do
+		if #Candidates(kind, prof) > 0 then
+			available[#available + 1] = prof
+		end
+	end
+	table.sort(available, function(a, b)
+		local ka, kb = known[a.label:lower()] or false, known[b.label:lower()] or false
+		if ka ~= kb then
+			return ka
+		end
+		return a.label < b.label
+	end)
+	MenuUtil.CreateContextMenu(owner, function(_, root)
+		root:CreateTitle("Profession Trainer")
+		for _, prof in ipairs(available) do
+			local text = prof.label
+			if known[prof.label:lower()] then
+				text = text .. "  |cff40ff40(yours)|r"
+			end
+			root:CreateButton(text, function() GoTo(kind, prof) end)
+		end
+		if #available > 0 then
+			root:CreateDivider()
+		end
+		root:CreateButton("Nearest of any", function() GoTo(kind) end)
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -495,6 +601,7 @@ end
 
 local bar = nil
 local ICON = 26
+local MAX_ICON = 28   -- with the stand, the grid grows to fill the gap but never past this
 local GAP = 5
 local PER_ROW = 5
 
@@ -529,7 +636,11 @@ local function BarTooltip(self)
 		local c = self.nearest
 		local sub = CleanSub(c.sub)
 		GameTooltip:AddLine(string.format("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", Yards(c.distance)), 1, 0.82, 0.25)
-		GameTooltip:AddLine("Click to route there by road. Right-click stops the route.", 0.7, 0.7, 0.7, true)
+		if self.kind.trainer == "profession" then
+			GameTooltip:AddLine("Click to pick a profession and route to its nearest trainer. Right-click stops the route.", 0.7, 0.7, 0.7, true)
+		else
+			GameTooltip:AddLine("Click to route there by road. Right-click stops the route.", 0.7, 0.7, 0.7, true)
+		end
 	elseif Route() then
 		GameTooltip:AddLine("None known on this continent yet; it is remembered the first time you use one.", 0.6, 0.6, 0.6, true)
 	else
@@ -545,8 +656,6 @@ local function CreateBar()
 	local rows = math.ceil(#KINDS / PER_ROW)
 	bar = CreateFrame("Frame", "MelloUIServicesBar", Minimap, "BackdropTemplate")
 	bar:SetSize(PER_ROW * ICON + (PER_ROW + 1) * GAP, rows * ICON + (rows + 1) * GAP)
-	bar:SetFrameStrata("MEDIUM")
-	bar:SetFrameLevel(Minimap:GetFrameLevel() + 3)
 	if bar.SetBackdrop then
 		bar:SetBackdrop({
 			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
@@ -572,6 +681,8 @@ local function CreateBar()
 		b:SetScript("OnClick", function(self, mouse)
 			if mouse == "RightButton" then
 				StopRoute()
+			elseif self.kind.trainer == "profession" then
+				ProfessionMenu(self, self.kind)
 			else
 				GoTo(self.kind)
 			end
@@ -597,18 +708,217 @@ local function CreateBar()
 	bar:SetScript("OnShow", RefreshBar)
 end
 
+--------------------------------------------------------------------------------
+-- Minimap stand: a bronze ring around the minimap with two ornate legs
+-- reaching down to the objective tracker (Media/Textures/MinimapStand.tga,
+-- 1024 x 1024). The ring's centre and inner radius on that canvas are known,
+-- so the art is scaled until the ring's inside matches the map and offset so
+-- the centres coincide. The legs end at the bottom of the canvas; the tracker is
+-- placed under them in Edit Mode.
+--------------------------------------------------------------------------------
+
+local STAND_TEXTURE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\MinimapStand.tga"
+local STAND_W, STAND_H = 1024, 1024
+local STAND_CX, STAND_CY = 508.5, 425.0    -- ring centre on the canvas (y from the top)
+local STAND_INNER_R = 323.5                -- ring inner radius on the canvas
+local stand = nil
+
+local function LayerBar()
+	if not (bar and Minimap) then
+		return
+	end
+	bar:SetFrameStrata(Minimap:GetFrameStrata())
+	bar:SetFrameLevel(Minimap:GetFrameLevel() + 3)
+	if stand then
+		stand:SetFrameStrata(Minimap:GetFrameStrata())
+		stand:SetFrameLevel(Minimap:GetFrameLevel() + 1)
+	end
+end
+
+local function ApplyStand()
+	if not Minimap then
+		return
+	end
+	if not stand then
+		stand = CreateFrame("Frame", "MelloUIMinimapStand", Minimap)
+		stand:SetPoint("CENTER", Minimap, "CENTER")
+		stand:SetSize(1, 1)
+		stand.tex = stand:CreateTexture(nil, "ARTWORK")
+		stand.tex:SetTexture(STAND_TEXTURE)
+	end
+	LayerBar()
+	if not (M.isEnabled and M.db.showBar and M.db.standArt) then
+		stand:Hide()
+		return
+	end
+	local radius = Minimap:GetWidth() / 2
+	local scale = radius / STAND_INNER_R * (tonumber(M.db.standScale) or 1)
+	stand.tex:SetSize(STAND_W * scale, STAND_H * scale)
+	stand.tex:ClearAllPoints()
+	stand.tex:SetPoint("CENTER", Minimap, "CENTER", (STAND_W / 2 - STAND_CX) * scale, (STAND_CY - STAND_H / 2) * scale)
+	-- where the feet end, measured down from the map's centre
+	stand.feetBelowCentre = (STAND_H - STAND_CY) * scale
+	stand.radius = radius
+	stand:Show()
+	-- Dark Mode shades the stand with the rest of the minimap art.
+	local dark = MelloUI:GetModule("DarkMode")
+	if dark and dark.isEnabled and dark.Reapply then
+		dark:Reapply("minimap")
+	end
+end
+
+-- The objective tracker hangs from the feet of the stand and follows the
+-- minimap. Edit Mode re-anchors the tracker whenever it lays out (or when it
+-- is dragged); a hook on SetPoint puts it back under the feet.
+local TRACKER_GAP = 0           -- pixels between the feet and the tracker's top line
+local chained = false
+local reanchoring = false
+local trackerHooked = false
+
+local function ReanchorTracker()
+	local tracker = ObjectiveTrackerFrame
+	if not (chained and tracker and stand and stand:IsShown()) or reanchoring then
+		return
+	end
+	reanchoring = true
+	tracker:ClearAllPoints()
+	tracker:SetPoint("TOP", stand.tex, "BOTTOM", 0, TRACKER_GAP)
+	reanchoring = false
+end
+
+local function ChainTracker(on)
+	chained = on and true or false
+	local tracker = ObjectiveTrackerFrame
+	if not tracker then
+		return
+	end
+	if chained then
+		if not trackerHooked then
+			trackerHooked = true
+			hooksecurefunc(tracker, "SetPoint", function()
+				if chained and not reanchoring then
+					C_Timer.After(0, ReanchorTracker)
+				end
+			end)
+			if EventRegistry and EventRegistry.RegisterCallback then
+				EventRegistry:RegisterCallback("EditMode.Exit", function() C_Timer.After(0, ReanchorTracker) end, M)
+			end
+		end
+		ReanchorTracker()
+	end
+end
+
+-- Bar layout. With the stand: no backdrop, and the icon grid is sized to
+-- fill the gap between the map's bottom and the feet, centred in it.
+-- Without: the fixed size and the tooltip style backdrop.
+local RIM_RATIO = 31 / 21   -- medallion outer diameter over icon diameter (rim art: 31 px ring, 21 px opening)
+local function LayoutBar()
+	if not bar then
+		return
+	end
+	local rows = math.ceil(#KINDS / PER_ROW)
+	local ring = M.db.roundIcons and RIM_RATIO or 1   -- a medallion needs room for its rim
+	local icon, gap = ICON, GAP
+	local withStand = M.db.standArt and stand and stand:IsShown() and stand.radius
+	if withStand then
+		local space = stand.feetBelowCentre - stand.radius   -- map bottom to the feet
+		local width = stand.radius * 1.75                    -- between the legs where the rows sit
+		gap = 2
+		local cell = math.min((space - (rows + 1) * gap) / rows, (width - (PER_ROW + 1) * gap) / PER_ROW, MAX_ICON * ring)
+		icon = math.max(16, math.floor(cell / ring))
+	end
+	local cell = icon * ring
+	local inset = (cell - icon) / 2
+	bar:SetSize(PER_ROW * cell + (PER_ROW + 1) * gap, rows * cell + (rows + 1) * gap)
+	for i, b in ipairs(bar.buttons) do
+		local col, row = (i - 1) % PER_ROW, math.floor((i - 1) / PER_ROW)
+		b:SetSize(icon, icon)
+		b:ClearAllPoints()
+		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(gap + row * (cell + gap) + inset))
+		if b.rim then
+			local k = icon / 21
+			b.rim:SetSize(53 * k, 53 * k)
+			b.rim:ClearAllPoints()
+			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
+		end
+	end
+	bar:ClearAllPoints()
+	if withStand then
+		local space = stand.feetBelowCentre - stand.radius
+		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, -(space - bar:GetHeight()) / 2)
+	else
+		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
+	end
+end
+
+-- Round medallion icons: the icon under a circular mask with the classic
+-- minimap tracking rim around it.
+local RIM_TEXTURE = "Interface\\Minimap\\MiniMap-TrackingBorder"
+local function ApplyIconShape()
+	if not bar then
+		return
+	end
+	local round = M.db.roundIcons and true or false
+	for _, b in ipairs(bar.buttons) do
+		if not b.mask then
+			b.mask = b:CreateMaskTexture()
+			b.mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			b.mask:SetAllPoints(b.icon)
+			b.rim = b:CreateTexture(nil, "OVERLAY")
+			b.rim:SetTexture(RIM_TEXTURE)
+			-- the rim art sits in the top left of its texture: 53 wide for a 21 wide opening
+			local k = b:GetWidth() / 21
+			b.rim:SetSize(53 * k, 53 * k)
+			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
+		end
+		if round then
+			b.icon:AddMaskTexture(b.mask)
+			b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+			b.rim:Show()
+		else
+			b.icon:RemoveMaskTexture(b.mask)
+			b.icon:SetTexCoord(0, 1, 0, 1)
+			b.rim:Hide()
+		end
+	end
+	if round then
+		-- Dark Mode shades the rims with the minimap art.
+		local dark = MelloUI:GetModule("DarkMode")
+		if dark and dark.isEnabled and dark.Reapply then
+			dark:Reapply("minimap")
+		end
+	end
+	if bar.SetBackdrop then
+		if M.db.standArt then
+			bar:SetBackdrop(nil)   -- the stand is the frame; nothing behind the medallions
+		else
+			bar:SetBackdrop({
+				bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+				edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+				tile = true, tileSize = 16, edgeSize = 12,
+				insets = { left = 3, right = 3, top = 3, bottom = 3 },
+			})
+			bar:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
+			bar:SetBackdropBorderColor(0.55, 0.45, 0.25, 1)
+		end
+	end
+end
+
 local function ApplyBar()
 	if M.db.showBar and M.isEnabled then
 		CreateBar()
 	end
 	if bar then
-		bar:ClearAllPoints()
-		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
+		LayerBar()
 		bar:SetShown(M.isEnabled and M.db.showBar and true or false)
 		if bar:IsShown() then
 			RefreshBar()
 		end
 	end
+	ApplyStand()
+	ApplyIconShape()
+	LayoutBar()
+	ChainTracker(M.isEnabled and M.db.showBar and M.db.standArt)
 end
 
 --------------------------------------------------------------------------------
@@ -739,8 +1049,24 @@ function M:OnInit(db)
 	self.db = db
 end
 
+local relayoutHooked = false
+local function HookRelayout()
+	if relayoutHooked then
+		return
+	end
+	relayoutHooked = true
+	-- the minimap can be resized or moved in Edit Mode: fit the stand and the bar again
+	if Minimap and Minimap.HookScript then
+		Minimap:HookScript("OnSizeChanged", function() C_Timer.After(0, ApplyBar) end)
+	end
+	if EventRegistry and EventRegistry.RegisterCallback then
+		EventRegistry:RegisterCallback("EditMode.Exit", function() C_Timer.After(0, ApplyBar) end, M)
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
+	HookRelayout()
 	ApplyButton()
 	ApplyBar()
 	for _, event in ipairs(EVENTS) do
@@ -759,6 +1085,8 @@ function M:OnDisable()
 	if menu then
 		menu:Hide()
 	end
+	ApplyStand()
+	ChainTracker(false)
 end
 
 function M:OnSettingChanged(key, value, db)

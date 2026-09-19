@@ -24,6 +24,8 @@ that learn the roads you walk, nearest-service routing, dark mode, bar textures,
 nameplate, tooltip and cooldown tweaks, and settings profiles. Every module can be switched
 off on its own.
 
+<p align="center"><img src="docs/update-0.13.2.jpg" alt="What is new in MelloUI 0.13.2" width="960"></p>
+
 Forever runs the retail (Midnight era, 12.1.x) API and the Dragonflight style HUD with
 Camelot specific overrides. This addon targets exactly that client; frame keys were taken
 from the `forever` branch of the Blizzard UI source.
@@ -36,8 +38,10 @@ Download the latest release (or clone this repository) and copy the `MelloUI` fo
 <World of Warcraft>\_classic_beta_\Interface\AddOns\MelloUI
 ```
 
-Then `/reload` in game. Type `/mello` to open the configuration panel. The first start applies
-the bundled default profile (see *Profiles*).
+Then `/reload` in game. The configuration window has its own **MelloUI** button in the game
+menu (Escape), or type `/mello`. It is a standalone WoW styled window with a page per module,
+not an entry under Options > AddOns. The first start applies the bundled default profile (see
+*Profiles*).
 
 ### Installing the voice pack (1.6 GB, optional but recommended)
 
@@ -83,8 +87,8 @@ values that differ from the defaults are stored, so a profile is a few hundred b
 
 | Command | Effect |
 | --- | --- |
-| `/mello` | open the MelloUI settings page |
-| `/mello <module>` | open a module's settings page |
+| `/mello` | open (or close) the MelloUI configuration window; also the MelloUI button in the game menu |
+| `/mello <module>` | open the window on that module's page |
 | `/mello list` | list modules and their on/off state |
 | `/mello enable <module>` | enable a module |
 | `/mello disable <module>` | disable a module |
@@ -144,6 +148,10 @@ nameplates have no quest icon), read from the unit tooltip data.
 
 - Hide the micro menu and/or the bag bar. They come back while Edit Mode is open so they can
   still be moved.
+- With the bag bar hidden, the bag slots dock under the open bag window (combined or separate
+  bags) so bags can still be equipped and removed. Off switch: "Bag Slots on Bag Window".
+- Hide the player coordinates the client writes under the minimap ("Hide Minimap
+  Coordinates", on by default).
 - World Text Scale slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
   numbers. Writes the `WorldTextScale` CVar.
 
@@ -325,13 +333,15 @@ zoom and pan with the map:
 - *Dungeon and raid entrances* on zone maps, with the game's Dungeon and Raid icons. Positions
   come from the vanilla database's entrance triggers (every door, Dire Maul's wings included).
   Hover for the level range and your quest progress in that instance, click to show its quests
-  in the panel. Entrances of Forever's new instances come from the client's own entrance list
-  and points of interest when this build has them, are learned the first time you walk in
-  (the last outdoor position before the loading screen), or are recorded by hand with
-  `/qlmap entrance <name>` while standing there. `/qlmap` lists what the client reports for
-  the map shown.
+  in the panel, Shift-click to route to the door. Entrances of Forever's new instances come
+  from the client's own entrance list and points of interest when this build has them, are
+  learned the first time you walk in (the last outdoor position before the loading screen)
+  or, when there was none, the first time you walk out (you appear at the door), or are
+  recorded by hand with `/qlmap entrance <name>` while standing there. `/qlmap` lists what
+  the client reports for the map shown.
 - *Boats and zeppelins*: docks and towers with the destination, in the taxi-node icons of
-  your faction; click to open the destination's map. The vanilla routes come from the
+  your faction; click to route to the dock, Shift-click to open the destination's map. The
+  vanilla routes come from the
   transport ships' paths; Forever's new routes (Stormwind Harbour, Southshore, Steamwheedle
   Port to Powderfuse Port) are recorded on the spot with `/qlmap dock Boat to Auberdine`
   (`| alliance` or `| horde` for a faction-only route) and linked to their destination with
@@ -339,6 +349,9 @@ zoom and pan with the map:
   manage the recorded pins. Recorded pins are kept with the Route module's learned paths
   (baked by `Tools\bake_routes.py`), not in the settings, so they never crowd the macro
   backup.
+- *Flight masters*: the client's own flight point pins; clicking one also routes to the flight
+  master. All of these go through the Route module when it is on (road route, arrow, notice)
+  and place a plain map waypoint when it is off.
 
 **Turn-ins.** Every quest also knows who takes it back (the vanilla database's involved
 relations, Wowhead's End NPC for Forever quests), placed by the client like the giver. The
@@ -409,12 +422,26 @@ come from the vanilla database with their faction, flight masters from the fligh
 (discovered ones only), class and profession trainers are filtered to your class and
 professions, and anything else (Forever's barbers and transmogrifiers, NPCs the database does
 not know) is remembered the first time you open its window and kept with the Route module's
-learned paths. Options: the bar and its distance from the minimap, and the older round
+learned paths. The profession trainer icon asks which profession first: a menu of every
+profession with a known trainer on the continent (your own ones first, marked), plus
+"Nearest of any". Options: the bar and its distance from the minimap, and the older round
 minimap button with a list menu (off by default). `/services <kind>` routes from chat.
+
+**Minimap stand.** With "Minimap Stand" on (the default), a bronze ring with two ornate legs
+(`Media\Textures\MinimapStand.tga`, built from `docs\minimap-stand.webp` by
+`Tools\extract_minimap_stand.py`) is fitted around the minimap at whatever size it has, the
+objective tracker hangs from the feet and moves with the minimap (Edit Mode cannot move it on
+its own while the stand is on), and the icon bar becomes round medallions with the classic
+tracking rim, sized to fill the space between the map and the tracker. "Stand Fit" nudges
+the ring onto the map's edge; "Round Icons" can be turned off. Dark Mode shades the stand and
+the rims with the rest of the minimap art.
 
 ## Releasing
 
-A version tag builds and publishes the addon: bump `## Version` in `MelloUI.toc`, commit, then
+A version tag builds and publishes the addon. `python Tools\release.py` bumps the patch
+version in `MelloUI.toc` (`minor`, `major` or an explicit `0.14.0` for other bumps), commits
+everything pending, tags and pushes; `--dry-run` shows what it would do. By hand it is: bump
+`## Version` in `MelloUI.toc`, commit, then
 
 ```
 git tag v0.14.0 && git push origin main --tags
@@ -426,6 +453,10 @@ TOC, token from the `CF_API_KEY` repository secret) and attaches the same zip to
 release for the tag. The voice pack is not part of that: when the lines changed, run
 `python Tools\merge_voice_packs.py --zip` and upload the zip to the release by hand, then
 update the direct links in the README and the CurseForge description.
+
+Generated media: `Tools\make_ui_sounds.py` synthesizes the configuration window's click sounds
+into `Media\Sounds`, `Tools\extract_minimap_stand.py` builds the minimap stand texture from
+the artwork in `docs` and prints the ring constants the Services module needs.
 
 ## Forever client tables
 

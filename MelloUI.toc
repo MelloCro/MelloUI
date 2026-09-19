@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
-## Version: 0.13.1
+## Version: 0.13.2
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements

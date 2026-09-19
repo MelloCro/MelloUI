@@ -695,6 +695,30 @@ local function SetWaypoint(row, atEnder)
 	return ok
 end
 
+-- Route to a point on a map (entrance, dock, flight master): the Route
+-- module when it is on, else a plain user waypoint.
+local function RouteToPoint(mapID, x, y, label, notice)
+	if not (mapID and x and y) then
+		return false
+	end
+	local R = MelloUI.Route
+	if R and R.isEnabled and R.SetDestinationTo then
+		return R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, notice) and true or false
+	end
+	if not (C_Map.SetUserWaypoint and UiMapPoint) then
+		return false
+	end
+	local okCan, can = pcall(C_Map.CanSetUserWaypointOnMap, mapID)
+	if okCan and can == false then
+		return false
+	end
+	local ok = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, x, y))
+	if ok and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+		pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
+	end
+	return ok
+end
+
 local function ClearWaypoint()
 	if C_Map.ClearUserWaypoint then
 		pcall(C_Map.ClearUserWaypoint)
@@ -1519,9 +1543,10 @@ function PinMethods:OnMouseEnter()
 			local done, total = DungeonProgress(data.dungeonID)
 			if total > 0 then
 				GameTooltip:AddLine(string.format("%d of %d quests completed", done, total), done >= total and 0.5 or 1, done >= total and 0.5 or 0.82, done >= total and 0.5 or 0)
-				GameTooltip:AddLine("Click to list its quests.", 0.6, 0.8, 1)
+				GameTooltip:AddLine("Click to list its quests. Shift-click to route there.", 0.6, 0.8, 1)
 			else
 				GameTooltip:AddLine("No quests known for it yet.", 0.6, 0.6, 0.6)
+				GameTooltip:AddLine("Shift-click to route there.", 0.6, 0.8, 1)
 			end
 		end
 		if data.source == "learned" then
@@ -1540,7 +1565,7 @@ function PinMethods:OnMouseEnter()
 			GameTooltip:AddLine("Neutral, both factions", 0.8, 0.8, 0.8)
 		end
 		if data.destMapID or data.destCont then
-			GameTooltip:AddLine("Click to open the destination's map.", 0.6, 0.8, 1)
+			GameTooltip:AddLine("Click to route to it. Shift-click to open the destination's map.", 0.6, 0.8, 1)
 		end
 		if data.learned then
 			GameTooltip:AddLine("Recorded with /qlmap dock. Remove with /qlmap remove.", 0.6, 0.6, 0.6)
@@ -1581,7 +1606,17 @@ function PinMethods:OnMouseClickAction(button)
 		Panel:Update()
 		RefreshPins()
 	elseif self.kind == "entrance" then
-		if data.dungeonID ~= 0 and byDungeon and byDungeon[data.dungeonID] then
+		if IsShiftKeyDown() then
+			-- Shift-click routes to the door; a plain click lists its quests.
+			local map = self:GetMap()
+			local mapID = map and Plain(map:GetMapID())
+			local icon = data.raid and "|A:Raid:16:16|a " or "|A:Dungeon:16:16|a "
+			local what = data.raid and "raid" or "dungeon"
+			if RouteToPoint(mapID, data.x, data.y, icon .. data.name,
+				string.format("%sTracking the %s entrance of %s, {dist} away", icon, what, data.name)) then
+				PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+			end
+		elseif data.dungeonID ~= 0 and byDungeon and byDungeon[data.dungeonID] then
 			-- Show the instance's quests: switch the panel and fold the others.
 			M.db.filter = data.raid and "raids" or "dungeons"
 			MelloUI:NotifySettingChanged(M.name, "filter", M.db.filter)
@@ -1589,6 +1624,15 @@ function PinMethods:OnMouseClickAction(button)
 				collapsed["dungeon" .. id] = (id ~= data.dungeonID) or nil
 			end
 			Panel:Update()
+		end
+	elseif self.kind == "transport" and not IsShiftKeyDown() then
+		local map = self:GetMap()
+		local mapID = map and Plain(map:GetMapID())
+		local what = data.kind == 2 and "zeppelin" or "boat"
+		local icon = "|A:TaxiNode_Neutral:16:16|a "
+		if RouteToPoint(mapID, data.x, data.y, icon .. data.label,
+			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label)) then
+			PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 		end
 	elseif self.kind == "transport" then
 		local map = self:GetMap()
@@ -1915,39 +1959,130 @@ local function RememberOutside()
 		return
 	end
 	local okP, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
-	local x, y = okP and pos and Plain(pos.x) or nil, okP and pos and Plain(pos.y) or nil
+	local x, y
+	if okP then
+		x, y = VectorXY(pos)   -- pos.x is a secret value on this client; VectorXY falls back to GetXY
+	end
 	if x and y and x > 0 and y > 0 then
 		lastOutside = { mapID = mapID, x = x, y = y, at = GetTime() }
 	end
 end
 
-local function LearnEntrance()
-	local okI, inInstance, kind = pcall(IsInInstance)
-	if not okI or not inInstance or (kind ~= "party" and kind ~= "raid") or not lastOutside then
+-- Zone events alone are too sparse (a fight in one subzone can last minutes),
+-- so the outdoor position is also refreshed on a slow ticker.
+local outsideTicker = nil
+local function StartOutsideTicker()
+	if outsideTicker or not C_Timer.NewTicker then
 		return
 	end
-	if GetTime() - lastOutside.at > 180 then
-		return
+	outsideTicker = C_Timer.NewTicker(3, RememberOutside)
+end
+
+local learnFailed = nil   -- instance name already reported this session
+local pendingExit = nil   -- { name, raid }: instance to learn from where the player exits it
+
+-- Returns true when done (learned, already known, or not applicable); false
+-- when the instance is not readable yet and a retry is worth it.
+local function LearnEntrance()
+	local okI, inInstance, kind = pcall(IsInInstance)
+	if not okI or not inInstance or (kind ~= "party" and kind ~= "raid") then
+		return true
 	end
 	local okN, name = pcall(GetInstanceInfo)
 	name = okN and Plain(name) or nil
 	if not name or name == "" then
-		return
+		return false
 	end
 	for _, e in ipairs(Data().entrances or {}) do
 		if e[2]:lower() == name:lower() then
-			return
+			return true
 		end
 	end
 	local learned = LearnedStore("entrances")
 	if learned[name] then
-		return
+		return true
+	end
+	if not lastOutside or GetTime() - lastOutside.at > 180 then
+		-- No position from before the loading screen (reloaded inside, for
+		-- instance). Leaving the instance puts the player at its door, so the
+		-- entrance is learned on the way out instead.
+		pendingExit = { name = name, raid = kind == "raid" }
+		if learnFailed ~= name then
+			learnFailed = name
+			MelloUI:Print("Quest List: the entrance of %s will be put on the map when you walk out of it.", name)
+		end
+		return true
 	end
 	learned[name] = { mapID = lastOutside.mapID, x = lastOutside.x, y = lastOutside.y, raid = kind == "raid" }
 	MelloUI:Print("Quest List: learned where the entrance of %s is; it is on the zone map now.", name)
+	RefreshPins()
+	return true
+end
+
+-- After leaving an instance whose entrance is unknown, the first readable
+-- outdoor position is the door. Polls for a few seconds because the position
+-- is not readable right after the loading screen.
+local function LearnEntranceOnExit(attempt)
+	local pending = pendingExit
+	if not pending then
+		return
+	end
+	local okI, inInstance = pcall(IsInInstance)
+	if not okI or inInstance then
+		return
+	end
+	local mapID, x, y = PlayerMapPoint()
+	if not mapID then
+		if (attempt or 1) < 10 then
+			C_Timer.After(1, function() LearnEntranceOnExit((attempt or 1) + 1) end)
+		end
+		return
+	end
+	pendingExit = nil
+	local learned = LearnedStore("entrances")
+	if learned[pending.name] then
+		return
+	end
+	learned[pending.name] = { mapID = mapID, x = x, y = y, raid = pending.raid }
+	MelloUI:Print("Quest List: learned where the entrance of %s is; it is on the zone map now.", pending.name)
+	RefreshPins()
 end
 
 local lastPinErrors, lastPinInfo = {}, nil
+
+-- Blizzard's flight point pins: a click also routes to the flight master.
+-- Each pin is hooked once, a frame after the map refreshed (its provider has
+-- made the pins for the map by then).
+local function FlightPinClicked(pin, button)
+	if button ~= "LeftButton" or IsShiftKeyDown() or not M.isEnabled then
+		return
+	end
+	local map = pin.GetMap and pin:GetMap()
+	local mapID = map and Plain(map:GetMapID())
+	local okP, x, y = pcall(pin.GetPosition, pin)
+	x, y = okP and Plain(x) or nil, okP and Plain(y) or nil
+	local info = pin.poiInfo
+	local name = info and Plain(info.name) or "Flight master"
+	if mapID and x and y then
+		local icon = "|T" .. "Interface/Minimap/Tracking/FlightMaster" .. ":16:16|t "
+		RouteToPoint(mapID, x, y, icon .. name, string.format("%sTracking the flight master at %s, {dist} away", icon, name))
+	end
+end
+
+local function HookFlightPins(map)
+	if map and map.EnumeratePinsByTemplate then
+		-- EnumeratePinsByTemplate hands back a generic-for triple (next, set, nil)
+		local ok, f, state, init = pcall(map.EnumeratePinsByTemplate, map, "FlightPointPinTemplate")
+		if ok and type(f) == "function" then
+			for pin in f, state, init do
+				if not pin.melloFlightHooked and pin.OnMouseClickAction then
+					pin.melloFlightHooked = true
+					hooksecurefunc(pin, "OnMouseClickAction", FlightPinClicked)
+				end
+			end
+		end
+	end
+end
 
 local function CreateProvider()
 	if Provider or not (MapCanvasDataProviderMixin and WorldMapFrame and WorldMapFrame.AddDataProvider) then
@@ -1966,6 +2101,7 @@ local function CreateProvider()
 			return
 		end
 		local map = self:GetMap()
+		C_Timer.After(0, function() HookFlightPins(map) end)
 		local mapID = Plain(map:GetMapID())
 		local okI, info = pcall(C_Map.GetMapInfo, mapID)
 		if not mapID or not okI or type(info) ~= "table" then
@@ -2077,13 +2213,26 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event)
+eventFrame:SetScript("OnEvent", function(_, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
 		-- Instance info and quest flags settle a moment after the load.
 		C_Timer.After(2, function()
-			LearnEntrance()
+			if not LearnEntrance() then
+				C_Timer.After(6, LearnEntrance)
+			end
 			DungeonSummary()
 		end)
+		if pendingExit then
+			C_Timer.After(1, LearnEntranceOnExit)
+		end
+	elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+		-- Hearthstone or Astral Recall out of the instance: the arrival point
+		-- is not the door.
+		local _, _, spellID = ...
+		spellID = Plain(spellID)
+		if spellID == 8690 or spellID == 556 then
+			pendingExit = nil
+		end
 	elseif event == "PLAYER_LEAVING_WORLD" or event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED_NEW_AREA" then
 		RememberOutside()
 	end
@@ -2133,7 +2282,13 @@ function M:OnEnable(db)
 		eventFrame:RegisterEvent("PLAYER_LEAVING_WORLD")
 		eventFrame:RegisterEvent("ZONE_CHANGED")
 		eventFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+		if eventFrame.RegisterUnitEvent then
+			eventFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+		else
+			eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		end
 	end
+	StartOutsideTicker()
 end
 
 function M:OnDisable()

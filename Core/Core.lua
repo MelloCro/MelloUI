@@ -312,12 +312,8 @@ function MelloUI:RestartModules()
 			SafeCall(module, "OnEnable", db)
 		end
 	end
-	for _, module in self:IterateModules() do
-		if module._enableSettings then
-			for _, setting in ipairs(module._enableSettings) do
-				pcall(setting.NotifyUpdate, setting)
-			end
-		end
+	if self.RefreshConfig then
+		self:RefreshConfig()
 	end
 end
 
@@ -409,10 +405,8 @@ function MelloUI:ApplySettingsText(text)
 			end
 		end
 		self:RestartModules()
-		for _, module in self:IterateModules() do
-			for _, setting in ipairs(module._settings or {}) do
-				pcall(setting.NotifyUpdate, setting)
-			end
+		if self.RefreshConfig then
+			self:RefreshConfig()
 		end
 		if self.ScheduleBackup then
 			self:ScheduleBackup("profile")
