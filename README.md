@@ -2,6 +2,10 @@
 
 Module based UI addon for **World of Warcraft: Forever** (beta 1.60.1, interface `16001`).
 
+**Download:** [MelloUI v0.13.0 (addon, 0.5 MB)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI-v0.13.0.zip)
+· [MelloUI VoiceOver Data (optional voice pack, 1.6 GB)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip)
+· [all releases](https://github.com/MelloCro/MelloUI/releases)
+
 Forever runs the retail (Midnight era, 12.1.x) API and the Dragonflight style HUD with
 Camelot specific overrides. This addon targets exactly that client; frame keys were taken
 from the `forever` branch of the Blizzard UI source.
