@@ -1,7 +1,8 @@
 package-as: MelloUI
 
-# The release notes come from CHANGELOG.md, not from the git log.
-manual-changelog: CHANGELOG.md
+# The release notes are the newest section of CHANGELOG.md, written to this
+# file by the Release workflow just before packaging (not from the git log).
+manual-changelog: CHANGELOG-release.md
 
 # Everything the client does not need stays out of the addon zip.
 ignore:
@@ -10,5 +11,6 @@ ignore:
   - .github
   - .gitignore
   - .pkgmeta
+  - CHANGELOG.md
 
 enable-nolib-creation: no

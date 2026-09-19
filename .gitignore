@@ -12,3 +12,4 @@ __pycache__/
 .elevenlabs*
 .claude/
 *.zip
+CHANGELOG-release.md

@@ -465,7 +465,9 @@ git tag v0.14.0 && git push origin main --tags
 ```
 
 The release notes are the version's section in `CHANGELOG.md`, which must be the newest one;
-`release.py` shows the bullets it is about to publish and refuses without them.
+`release.py` shows the bullets it is about to publish and refuses without them. The workflow
+writes that section to `CHANGELOG-release.md` and the packager publishes it as the notes on
+CurseForge and GitHub.
 
 The GitHub Action (`.github/workflows/release.yml`, BigWigs packager) zips the addon minus what
 `.pkgmeta` ignores, uploads it to CurseForge (project id from `## X-Curse-Project-ID` in the

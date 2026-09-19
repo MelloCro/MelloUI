@@ -39,6 +39,14 @@ jobs:
             echo "publish=yes" >> "$GITHUB_OUTPUT"
           fi
 
+      # The release notes are the newest section of CHANGELOG.md only, not the
+      # whole history; the packager publishes the file .pkgmeta names.
+      - name: Release notes from the newest changelog section
+        if: steps.guard.outputs.publish == 'yes'
+        run: |
+          awk '/^## /{n++} n==1' CHANGELOG.md | sed '1d' | sed '/./,$!d' > CHANGELOG-release.md
+          echo "release notes:"; cat CHANGELOG-release.md
+
       - name: Package and upload
         if: steps.guard.outputs.publish == 'yes'
         uses: BigWigsMods/packager@v2
