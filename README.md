@@ -4,7 +4,7 @@
 
 Module based UI addon for **World of Warcraft: Forever** (beta 1.60.1, interface `16001`).
 
-**Download:** [MelloUI v0.13.0 (addon, 0.5 MB)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI-v0.13.0.zip)
+**Download:** [MelloUI addon (latest release)](https://github.com/MelloCro/MelloUI/releases/latest) · [on CurseForge](https://www.curseforge.com/wow/addons/melloui)
 · [MelloUI VoiceOver Data (optional voice pack, 1.6 GB)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip)
 · [all releases](https://github.com/MelloCro/MelloUI/releases)
 
