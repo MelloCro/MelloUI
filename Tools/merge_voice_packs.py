@@ -161,14 +161,20 @@ def copy_sounds(pack_dir, out_dir, seen):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--vanilla", default=os.path.join(ADDONS, "AI_VoiceOverData_Vanilla"))
-    ap.add_argument("--forever", default=os.path.join(ADDONS, "AI_VoiceOverData_Forever"))
+    ap.add_argument("--vanilla", default=os.path.join(ADDONS, "AI_VoiceOverData_Vanilla"),
+                    help="the original vanilla pack; skipped when it is gone (its lines live in the merged pack then)")
+    ap.add_argument("--forever", default=os.path.join(ADDONS, "AI_VoiceOverData_Forever"),
+                    help="the Forever-only pack; when it is gone the installed merged pack is packaged instead")
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--zip", action="store_true", help="also write <out>.zip (stored, MP3s do not compress)")
     ap.add_argument("--install", action="store_true", help="also copy the pack into the game's AddOns folder")
     args = ap.parse_args()
 
     packs = [(args.vanilla, "AI_VoiceOverData_Vanilla"), (args.forever, "AI_VoiceOverData_Forever")]
+    installed = os.path.join(ADDONS, NAME)
+    if not os.path.isdir(args.forever) and os.path.isdir(installed) and os.path.abspath(args.out) != os.path.abspath(installed):
+        # Tools/build_voice_pack.py now builds straight into the merged pack.
+        packs.append((installed, NAME))
     tables = {}
     sources = []
     for pack_dir, global_name in packs:

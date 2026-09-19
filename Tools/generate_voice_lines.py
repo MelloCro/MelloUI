@@ -6,7 +6,7 @@ One command does the whole loop:
   1. export_voice_lines.py   collect the latest session, list lines needing audio
   2. ElevenLabs              generate each line with the voice named <race>-<gender>
                              in your account (the saved settings of that voice are used)
-  3. build_voice_pack.py     file the MP3s and rebuild AI_VoiceOverData_Forever
+  3. build_voice_pack.py     file the MP3s and add them to MelloUI_VoiceOverData
 
 API key: put it in  %USERPROFILE%\\.elevenlabs.key  (one line, nothing else) or set
 the ELEVENLABS_API_KEY environment variable. It is never stored in the project.

@@ -195,9 +195,10 @@ turns as the playback advances, so nothing is ever cut off. The overlay textures
 the VoiceOver addon (`Media\Textures\VoiceOver`, Unlicense).
 
 `Tools\merge_voice_packs.py` builds the `MelloUI_VoiceOverData` pack offered on the Releases
-page: it merges `AI_VoiceOverData_Vanilla` and `AI_VoiceOverData_Forever` into one addon with
-the Forever lines taking precedence (`--zip` for the release archive, `--install` to place it
-in the game's AddOns folder).
+page. The first time it merged `AI_VoiceOverData_Vanilla` and `AI_VoiceOverData_Forever` into
+one addon; since then `Tools\build_voice_pack.py` builds new Forever lines straight into the
+installed merged pack, keeping its other lines, and the merge tool simply packages that pack
+(`--zip` for the release archive, `--install` to place a build in the game's AddOns folder).
 
 If a VoiceOver data pack is installed and enabled in the addon list (`AI_VoiceOverData_Vanilla`,
 about 1.2 GB of recorded lines for every vanilla quest and greeting), the module loads it on
@@ -217,9 +218,9 @@ by spoken words, and the file name each MP3 should get. `/vo lines` shows what t
 collected so far. Generate the lines (the vanilla pack's voices were the author's own ElevenLabs
 clones; cloning a few of the pack's MP3s per race and gender gives matching voices), then
 `Tools\build_voice_pack.py assign <download.mp3> <file name>` files each MP3 under
-`Tools\pack_sources` and `Tools\build_voice_pack.py build` writes the
-`AI_VoiceOverData_Forever` addon into the game's AddOns folder with the lookup tables and
-sound lengths, at priority 200 so it wins over the vanilla pack.
+`Tools\pack_sources` and `Tools\build_voice_pack.py build` writes them into the
+`MelloUI_VoiceOverData` addon in the game's AddOns folder, adding to its lookup tables and
+sound lengths while keeping the vanilla lines it already holds.
 
 With an ElevenLabs API key in `%USERPROFILE%\.elevenlabs.key` (or the `ELEVENLABS_API_KEY`
 environment variable) and voices named `<race>-<gender>` in the account (human-male,

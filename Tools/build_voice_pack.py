@@ -7,7 +7,7 @@ Works with the manifest written by export_voice_lines.py
 name; the MP3s you generate are collected under Tools/pack_sources with those
 names, and `build` turns them into the addon
 
-    <AddOns>/AI_VoiceOverData_Forever
+    <AddOns>/MelloUI_VoiceOverData   (the merged pack; its other lines are kept)
 
 which the MelloUI Voice Over module loads ahead of the vanilla pack (it also
 works with the VoiceOver player addon, the layout and tables are the same).
@@ -25,7 +25,7 @@ Options:
   --sources   Tools/pack_sources          (assigned MP3s, kept out of the game folder)
   --downloads C:/Users/<you>/Downloads/VoiceOver_GossipQuest
   --addons    F:/World of Warcraft/_classic_beta_/Interface/AddOns
-  --name      AI_VoiceOverData_Forever
+  --name      MelloUI_VoiceOverData
   --priority  200                          (higher than the vanilla pack's 100)
 
 Only the Python standard library is needed; MP3 durations are read from the
@@ -215,6 +215,15 @@ def cmd_build(args, lines):
     os.makedirs(os.path.join(sounds, "quests"), exist_ok=True)
     os.makedirs(os.path.join(sounds, "gossip"), exist_ok=True)
 
+    # The pack may already hold other lines (the merged pack carries the
+    # vanilla ones): start from its tables and lay the Forever lines on top.
+    sys.path.insert(0, HERE)
+    from merge_voice_packs import load_tables, merge as merge_tables
+    existing = {}
+    if os.path.exists(os.path.join(gen, "sound_length_table.lua")):
+        existing = load_tables(root, name)
+        print(f"keeping {len(existing.get('SoundLengthLookupByFileName', {}))} lines already in {name}")
+
     lengths = {}
     gossip_by_id = {}
     gossip_by_name = {}
@@ -249,20 +258,30 @@ def cmd_build(args, lines):
                 if npc_id and row["kind"] == "accept":
                     npc_by_quest[quest_id] = npc_id
 
-    # Drop MP3s that no line refers to any more (e.g. a line whose text was
-    # re-keyed), so the pack folder holds only what the tables list.
-    for folder in ("quests", "gossip"):
-        for existing in glob.glob(os.path.join(sounds, folder, "*.mp3")):
-            if os.path.basename(existing)[:-4] not in lengths:
-                os.remove(existing)
-                print(f"removed stale {folder}/{os.path.basename(existing)}")
+    tables = merge_tables(existing, {
+        "SoundLengthLookupByFileName": lengths,
+        "GossipLookupByNPCID": gossip_by_id,
+        "GossipLookupByNPCName": gossip_by_name,
+        "NPCNameLookupByNPCID": npc_names,
+        "QuestIDLookup": quest_lookup,
+        "NPCIDLookupByQuestID": npc_by_quest,
+    })
 
-    write_lua(os.path.join(gen, "sound_length_table.lua"), name, "SoundLengthLookupByFileName", lengths)
-    write_lua(os.path.join(gen, "gossip_file_lookups.lua"), name, "GossipLookupByNPCID", gossip_by_id)
-    write_lua(os.path.join(gen, "npc_name_gossip_file_lookups.lua"), name, "GossipLookupByNPCName", gossip_by_name)
-    write_lua(os.path.join(gen, "npc_name_lookups.lua"), name, "NPCNameLookupByNPCID", npc_names)
-    write_lua(os.path.join(gen, "quest_id_lookups.lua"), name, "QuestIDLookup", quest_lookup)
-    write_lua(os.path.join(gen, "questlog_npc_lookups.lua"), name, "NPCIDLookupByQuestID", npc_by_quest)
+    # Drop MP3s that no table entry refers to any more (a line whose text was
+    # re-keyed), so the pack folder holds only what the tables list.
+    listed = tables["SoundLengthLookupByFileName"]
+    for folder in ("quests", "gossip"):
+        for path in glob.glob(os.path.join(sounds, folder, "*.mp3")):
+            if os.path.basename(path)[:-4] not in listed:
+                os.remove(path)
+                print(f"removed stale {folder}/{os.path.basename(path)}")
+
+    write_lua(os.path.join(gen, "sound_length_table.lua"), name, "SoundLengthLookupByFileName", tables["SoundLengthLookupByFileName"])
+    write_lua(os.path.join(gen, "gossip_file_lookups.lua"), name, "GossipLookupByNPCID", tables["GossipLookupByNPCID"])
+    write_lua(os.path.join(gen, "npc_name_gossip_file_lookups.lua"), name, "GossipLookupByNPCName", tables["GossipLookupByNPCName"])
+    write_lua(os.path.join(gen, "npc_name_lookups.lua"), name, "NPCNameLookupByNPCID", tables["NPCNameLookupByNPCID"])
+    write_lua(os.path.join(gen, "quest_id_lookups.lua"), name, "QuestIDLookup", tables["QuestIDLookup"])
+    write_lua(os.path.join(gen, "questlog_npc_lookups.lua"), name, "NPCIDLookupByQuestID", tables["NPCIDLookupByQuestID"])
 
     with open(os.path.join(root, "Module.lua"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(f"""{GUARD}
@@ -282,9 +301,9 @@ VoiceOver.DataModules:Register("{name}", {name})
 """)
     with open(os.path.join(root, f"{name}.toc"), "w", encoding="utf-8", newline="\r\n") as fh:
         fh.write(f"""## Interface: 16001
-## Title: VoiceOver Data - Forever
-## Notes: Recorded quest and greeting lines for World of Warcraft: Forever, built with MelloUI's Tools\\build_voice_pack.py.
-## Version: 0.1
+## Title: MelloUI VoiceOver Data
+## Notes: Recorded quest and greeting lines for World of Warcraft: Forever: the vanilla lines of the wow-voiceover project and MelloUI's Forever lines in one pack.
+## Version: 1.0
 ## LoadOnDemand: 1
 ## OptionalDeps: AI_VoiceOver_Continued, AI_VoiceOver, MelloUI
 ## X-Part-Of: VoiceOver
@@ -300,7 +319,7 @@ generated\\quest_id_lookups.lua
 generated\\questlog_npc_lookups.lua
 generated\\sound_length_table.lua
 """)
-    print(f"built {root}: {used} recorded lines ({len(gossip_by_id)} NPC greetings, {sum(len(v) for v in quest_lookup.values())} quest lines)")
+    print(f"built {root}: {used} Forever lines added or refreshed, {len(tables['SoundLengthLookupByFileName'])} lines in the pack")
     print("/reload in game to pick up the new files (tick the pack in the addon list the first time).")
 
 
@@ -319,8 +338,8 @@ def main():
     ap.add_argument("--sources", default=os.path.join(HERE, "pack_sources"))
     ap.add_argument("--downloads", default=os.path.join(os.path.expanduser("~"), "Downloads", "VoiceOver_GossipQuest"))
     ap.add_argument("--addons", default="F:/World of Warcraft/_classic_beta_/Interface/AddOns")
-    ap.add_argument("--name", default="AI_VoiceOverData_Forever")
-    ap.add_argument("--priority", type=int, default=200)
+    ap.add_argument("--name", default="MelloUI_VoiceOverData")
+    ap.add_argument("--priority", type=int, default=150)
     ap.add_argument("--store", default=os.path.join(HERE, "cache", "voice_lines.json"))
     args = ap.parse_args()
     # `pending` is about lines still needing audio (the manifest); everything
