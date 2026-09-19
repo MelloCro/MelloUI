@@ -11,7 +11,7 @@
 -- Bar Text this gives the flat "RougeUI" look.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("UnitFrames", {

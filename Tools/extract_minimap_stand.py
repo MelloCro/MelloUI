@@ -1,12 +1,19 @@
 """
 Turn docs/minimap-stand.webp (the ring-and-legs artwork, with alpha) into
-Media/Textures/MinimapStand.tga, a 1024 x 1024 texture, and print the ring's
-centre and inner radius on that canvas: the numbers STAND_CX, STAND_CY and
-STAND_INNER_R in Modules/Services.lua.
+Media/Textures/MinimapStand.tga, a 512 x 512 texture (or the size given as the
+first argument), and print the ring's centre and inner radius on that canvas:
+the numbers STAND_CX, STAND_CY and STAND_INNER_R in Modules/Services.lua.
 
-    python Tools\\extract_minimap_stand.py
+    python Tools\\extract_minimap_stand.py          # 512
+    python Tools\\extract_minimap_stand.py 1024
+
+The ring is measured by fitting a circle to the outer edge of its upper half
+(the legs hide the lower half). The constants that ship were set from the
+1024 canvas the artwork was first tuned on and halved, so a rebuild at 512
+changes nothing on screen; adjust them only if the artwork changes.
 """
 import os
+import sys
 import numpy as np
 from PIL import Image
 
@@ -14,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "minimap-stand.webp")
 OUT_TGA = os.path.join(HERE, "..", "Media", "Textures", "MinimapStand.tga")
 OUT_PREVIEW = os.path.join(HERE, "output", "minimap-stand-preview.png")
-CANVAS = 1024
+CANVAS = int(sys.argv[1]) if len(sys.argv) > 1 else 512
 
 im = Image.open(SRC).convert("RGBA")
 w, h = im.size
@@ -30,22 +37,26 @@ ox = (CANVAS - art.size[0]) // 2
 canvas.paste(art, (ox, 0))
 canvas.save(OUT_TGA)
 
-# --- measure the ring on the canvas
+# --- measure the ring: circle through the outer edge of its upper half
 mask = np.asarray(canvas)[:, :, 3] > 128
 H, W = mask.shape
-best = None
-for y in range(int(H * 0.05), int(art.size[1] * 0.6)):
+top = next(y for y in range(H) if mask[y].any())
+points = []
+for y in range(top, int(H * 0.45)):
     row = np.nonzero(mask[y])[0]
-    if len(row) == 0:
-        continue
-    width = row.max() - row.min()
-    if best is None or width > best[0]:
-        best = (width, y, row.min(), row.max())
-width, cy, xl, xr = best
-cx = (xl + xr) / 2
-r_out = width / 2
-x = xl
-while x < cx and mask[cy, x]:
+    if len(row):
+        points.append((row.min(), y))
+        points.append((row.max(), y))
+P = np.array(points, float)
+A = np.c_[P[:, 0], P[:, 1], np.ones(len(P))]
+b = -(P[:, 0] ** 2 + P[:, 1] ** 2)
+D, E, F = np.linalg.lstsq(A, b, rcond=None)[0]
+cx, cy = -D / 2, -E / 2
+r_out = float(np.sqrt(cx ** 2 + cy ** 2 - F))
+y0 = int(round(cy))
+row = np.nonzero(mask[y0])[0]
+x = xl = row.min()
+while mask[y0, x]:
     x += 1
 thickness = x - xl
 r_in = r_out - thickness

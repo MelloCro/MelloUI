@@ -16,7 +16,7 @@
 -- Media\RouteData.lua, which the addon loads like any other file.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("Route", {
@@ -118,8 +118,8 @@ local function ContinentOf(mapID)
 		return nil
 	end
 	local cached = contCache[mapID]
-	if cached ~= nil then
-		return cached or nil
+	if cached then
+		return cached
 	end
 	local id = mapID
 	for _ = 1, 6 do
@@ -136,7 +136,6 @@ local function ContinentOf(mapID)
 			break
 		end
 	end
-	contCache[mapID] = false
 	return nil
 end
 
@@ -146,10 +145,14 @@ local function RectOn(mapID, cont)
 	if r == nil then
 		local ok, minX, maxX, minY, maxY = pcall(C_Map.GetMapRectOnMap, mapID, cont)
 		minX, maxX, minY, maxY = Plain(minX), Plain(maxX), Plain(minY), Plain(maxY)
-		r = (ok and minX and maxX and minY and maxY and maxX > minX and maxY > minY) and { minX, maxX, minY, maxY } or false
-		rectCache[key] = r
+		if ok and minX and maxX and minY and maxY and maxX > minX and maxY > minY then
+			r = { minX, maxX, minY, maxY }
+			rectCache[key] = r
+		else
+			r = nil   -- not cached: the client may answer later
+		end
 	end
-	return r or nil
+	return r
 end
 
 local function WorldSize(cont)
@@ -292,7 +295,7 @@ local function EnsureNotice()
 end
 
 local function PlayNotice(kind)
-	if not (M.db.noticeSound and PlaySound and SOUNDKIT) then
+	if kind == "silent" or not (M.db.noticeSound and PlaySound and SOUNDKIT) then
 		return
 	end
 	for _, name in ipairs(SOUNDS[kind] or SOUNDS.track) do
@@ -306,7 +309,7 @@ local function PlayNotice(kind)
 	end
 end
 
--- kind: "track" (new destination), "arrive", "learn", "fail".
+-- kind: "track" (new destination), "arrive", "learn", "fail", "silent" (no chime).
 function M:Notify(text, kind)
 	if not M.db.notice then
 		return
@@ -321,9 +324,7 @@ end
 
 -- Distance to the current destination for the notices: the route's length
 -- when there is one, else the straight line.
-local function DestinationDistance()
-	return nil
-end
+local DestinationDistance -- defined with the route state below
 
 --------------------------------------------------------------------------------
 -- The graph
@@ -956,6 +957,7 @@ end
 local route = nil        -- { points = {...}, cost = seconds, length = yards, dest = { cont, x, y } }
 local destination = nil  -- { cont, x, y, mapID, mx, my, label }
 local lastPlan = 0
+local offRoute = false   -- the player is farther than OFF_ROUTE from the path (see the arrow)
 
 local function RouteLength(points)
 	local total = 0
@@ -1005,10 +1007,11 @@ local function Plan(force, announce, announceText)
 		return
 	end
 	local now = GetTime()
-	if not force and now - lastPlan < 3 then
+	if not force and now - lastPlan < (offRoute and 1 or 3) then
 		return
 	end
 	lastPlan = now
+	offRoute = false
 	local cont, x, y = PlayerYards()
 	if not cont then
 		route = nil
@@ -1385,18 +1388,23 @@ end
 
 local last = nil         -- last breadcrumb { cont, key, x, y }
 local taxiStart = nil    -- where the current flight began
+local recorded = 0       -- breadcrumbs this session, for /route
+local recordSkip = ""    -- why the last Record call recorded nothing, for /route
 
 local function Record()
 	if not (M.isEnabled and M.db.learn) then
+		recordSkip = "learning is off"
 		return
 	end
 	local okI, inInstance = pcall(IsInInstance)
 	if not okI or inInstance then
+		recordSkip = okI and "in an instance" or "IsInInstance failed"
 		last = nil
 		return
 	end
 	local okT, onTaxi = pcall(UnitOnTaxi, "player")
 	if okT and onTaxi then
+		recordSkip = "on a taxi"
 		if not taxiStart then
 			local cont, x, y = PlayerYards()
 			if cont then
@@ -1420,14 +1428,17 @@ local function Record()
 	end
 	local cont, x, y = PlayerYards()
 	if not cont then
+		recordSkip = "no player position"
 		last = nil
 		return
 	end
+	recordSkip = ""
 	if last and last.cont == cont then
 		local d = Dist(x, y, last.x, last.y)
 		if d < CELL * 0.7 then
 			return
 		end
+		recorded = recorded + 1
 		local key, node = AddNode(cont, x, y)
 		if key ~= last.key and d <= LINK then
 			local prev = live.graphs[cont][last.key]
@@ -1446,16 +1457,12 @@ end
 -- World map drawing
 --------------------------------------------------------------------------------
 
-local Provider = nil
-local mapPainter = nil
-local mapFrame = nil
-
 -- The taxi map's own look: a chain of small gems along the way. Gold for
--- paths you have walked, grey where the route is a straight guess, green
+-- paths you have walked, pale blue where the route is a straight guess, green
 -- for a flight, blue on the water.
 local STYLE = {
 	road = { texture = "Interface/Common/Indicator-Yellow", size = 1.0, gap = 1.6, alpha = 1 },
-	guess = { texture = "Interface/Common/Indicator-Gray", size = 0.8, gap = 2.4, alpha = 0.9 },
+	guess = { texture = "Interface/Common/Indicator-Gray", size = 1.0, gap = 2.2, alpha = 1, color = { 0.8, 0.92, 1 } },
 	flight = { texture = "Interface/Common/Indicator-Green", size = 0.9, gap = 3.0, alpha = 0.8 },
 	boat = { texture = "Interface/Common/Indicator-Gray", size = 0.7, gap = 3.0, alpha = 0.6 },
 }
@@ -1482,6 +1489,11 @@ local function NewPainter(frame)
 		if dot.styleTexture ~= style.texture then
 			dot:SetTexture(style.texture)
 			dot.styleTexture = style.texture
+		end
+		if dot.styleColor ~= style.color then
+			local c = style.color
+			dot:SetVertexColor(c and c[1] or 1, c and c[2] or 1, c and c[3] or 1)
+			dot.styleColor = style.color
 		end
 		dot:SetAlpha(style.alpha)
 		dot:SetSize(size, size)
@@ -1522,6 +1534,45 @@ local Provider = nil
 local mapPainter = nil
 local mapFrame = nil
 
+-- The route layer sits just above the map's own art layers (the tiles come
+-- from a pool and land on frame levels that differ from zone to zone) and
+-- below the lowest pin, so the dots show through and the pins stay clickable.
+-- Pins that are part of the map art rather than markers on it: the explored
+-- areas (drawn as a pin above the greyed base tiles), zone highlights, debug.
+local ART_PINS = {
+	PIN_FRAME_LEVEL_MAP_EXPLORATION = true, PIN_FRAME_LEVEL_MAP_HIGHLIGHT = true,
+	PIN_FRAME_LEVEL_DEBUG = true, PIN_FRAME_LEVEL_MAP_LINK = true,
+}
+local function LayerRouteFrame(canvas)
+	local tiles, pins = canvas:GetFrameLevel(), nil
+	for _, child in ipairs({ canvas:GetChildren() }) do
+		if child ~= mapFrame then
+			local lv = child:GetFrameLevel()
+			local kind = nil
+			if child.GetFrameLevelType then
+				local ok, k = pcall(child.GetFrameLevelType, child)
+				kind = ok and k or "pin"
+			elseif child.pinTemplate then
+				kind = "pin"
+			end
+			if kind and not ART_PINS[kind] then
+				if not pins or lv < pins then
+					pins = lv
+				end
+			elseif lv > tiles then
+				tiles = lv
+			end
+		end
+	end
+	local level = tiles + 1
+	if pins and pins > level then
+		level = math.min(level + 5, pins - 1)
+	end
+	if mapFrame:GetFrameLevel() ~= level then
+		mapFrame:SetFrameLevel(level)
+	end
+end
+
 local function DrawWorldMap()
 	if not (Provider and WorldMapFrame and WorldMapFrame:IsShown()) then
 		return
@@ -1533,7 +1584,9 @@ local function DrawWorldMap()
 		mapFrame:SetAllPoints(canvas)
 		mapFrame:SetFrameLevel(canvas:GetFrameLevel() + 5)
 		mapPainter = NewPainter(mapFrame)
+		mapFrame:SetScript("OnSizeChanged", function() C_Timer.After(0, DrawWorldMap) end)
 	end
+	LayerRouteFrame(map:GetCanvas())
 	mapPainter:Begin()
 	if not (route and M.isEnabled and M.db.worldMap) then
 		mapPainter:End()
@@ -1545,6 +1598,10 @@ local function DrawWorldMap()
 		return
 	end
 	local W, H = mapFrame:GetWidth(), mapFrame:GetHeight()
+	if W < 10 or H < 10 then
+		mapPainter:End()
+		return
+	end
 	local scale = map.GetCanvasScale and map:GetCanvasScale() or 1
 	local unit = 3.5 * (tonumber(M.db.lineWidth) or 3) / (scale > 0 and scale or 1)
 	local points = route.points
@@ -1579,6 +1636,7 @@ local function CreateProvider()
 		DrawWorldMap()
 	end
 	WorldMapFrame:AddDataProvider(Provider)
+	WorldMapFrame:HookScript("OnShow", function() C_Timer.After(0, DrawWorldMap) end)
 end
 
 --------------------------------------------------------------------------------
@@ -1587,7 +1645,6 @@ end
 
 local mm = nil
 local mmPainter = nil
-local mmMask = nil
 local OUTDOOR = { 466.67, 400, 333.33, 266.67, 200, 133.33 }
 local INDOOR = { 300, 240, 180, 120, 80, 50 }
 local indoors = false
@@ -1680,19 +1737,26 @@ end
 
 local arrow = nil
 
+-- Rotation for a target dx yards east, dy yards south of the player facing f.
+local function ArrowRotation(dx, dy, facing)
+	local sin, cos = math.sin(facing), math.cos(facing)
+	local rx, ry = dx * cos - dy * sin, dx * sin + dy * cos
+	return math.atan2(-rx, -ry)
+end
+
 local function EnsureArrow()
 	if arrow or not Minimap then
 		return
 	end
 	arrow = CreateFrame("Frame", "MelloUIRouteArrow", UIParent)
-	arrow:SetSize(96, 120)
+	arrow:SetSize(72, 96)
 	arrow:SetFrameStrata("MEDIUM")
 	arrow:SetClampedToScreen(true)
 	arrow:SetMovable(true)
 	arrow:EnableMouse(true)
 	arrow:RegisterForDrag("LeftButton")
 	arrow.icon = arrow:CreateTexture(nil, "ARTWORK")
-	arrow.icon:SetSize(72, 72)
+	arrow.icon:SetSize(54, 54)
 	arrow.icon:SetPoint("TOP", 0, -2)
 	-- The client's own high-resolution direction arrows, oldest fallback last.
 	local placed = false
@@ -1728,6 +1792,24 @@ local function EnsureArrow()
 		GameTooltip:Show()
 	end)
 	arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	arrow.frameAge = 0
+	arrow:SetScript("OnUpdate", function(self, elapsed)
+		self.frameAge = self.frameAge + elapsed
+		if self.frameAge < 1 / 60 or not self.targetX then
+			return
+		end
+		self.frameAge = 0
+		local cont, px, py = PlayerYards()
+		if not cont or cont ~= self.targetCont then
+			return
+		end
+		local facing = 0
+		if GetPlayerFacing then
+			local ok, f = pcall(GetPlayerFacing)
+			facing = ok and Plain(f) or 0
+		end
+		self.icon:SetRotation(ArrowRotation(self.targetX - px, self.targetY - py, facing))
+	end)
 	arrow:Hide()
 end
 
@@ -1744,11 +1826,107 @@ local function PlaceArrow()
 	arrow:SetScale(tonumber(M.db.arrowScale) or 1)
 end
 
--- Rotation for a target dx yards east, dy yards south of the player facing f.
-local function ArrowRotation(dx, dy, facing)
-	local sin, cos = math.sin(facing), math.cos(facing)
-	local rx, ry = dx * cos - dy * sin, dx * sin + dy * cos
-	return math.atan2(-rx, -ry)
+-- How the arrow follows the route: the player is projected onto the nearest
+-- part of the path (from the part last passed onward, so a path that loops
+-- back near itself does not pull the arrow back) and the arrow aims LOOKAHEAD
+-- yards further along it. Cutting a corner or running beside the road bends
+-- the arrow towards the path ahead instead of back to a missed point. Farther
+-- than OFF_ROUTE yards from the path, a new route is planned within a second.
+local LOOKAHEAD = 25
+local OFF_ROUTE = 20
+
+local function Walkable(a, b, cont)
+	return a[1] == cont and b[1] == cont and b[4] ~= "boat" and b[4] ~= "flight"
+end
+
+-- Projection of P onto the segment AB: parameter in [0, 1], distance, point.
+local function Project(px, py, ax, ay, bx, by)
+	local dx, dy = bx - ax, by - ay
+	local len2 = dx * dx + dy * dy
+	local t = 0
+	if len2 > 0 then
+		t = ((px - ax) * dx + (py - ay) * dy) / len2
+		if t < 0 then
+			t = 0
+		elseif t > 1 then
+			t = 1
+		end
+	end
+	local qx, qy = ax + dx * t, ay + dy * t
+	return t, Dist(px, py, qx, qy), qx, qy
+end
+
+-- Where on the route the player is: the segment (between points i and i + 1),
+-- the parameter along it, the distance to the path and the point on it.
+local function PlaceOnRoute(cont, px, py)
+	local points = route.points
+	local from = math.max(1, (route.progress or 1) - 2)
+	local best, bestT, bestD, bestX, bestY = nil, 0, math.huge, nil, nil
+	for i = from, #points - 1 do
+		local a, b = points[i], points[i + 1]
+		if Walkable(a, b, cont) then
+			local t, d, qx, qy = Project(px, py, a[2], a[3], b[2], b[3])
+			if d < bestD then
+				best, bestT, bestD, bestX, bestY = i, t, d, qx, qy
+			end
+		end
+	end
+	if not best then
+		-- a single point, or only boat and flight legs left: the nearest point
+		for i = from, #points do
+			local p = points[i]
+			if p[1] == cont then
+				local d = Dist(px, py, p[2], p[3])
+				if d < bestD then
+					best, bestT, bestD, bestX, bestY = i, 0, d, p[2], p[3]
+				end
+			end
+		end
+	end
+	return best, bestT, bestD, bestX, bestY
+end
+
+-- The point LOOKAHEAD yards along the route from the player's place on it,
+-- stopping at a dock or flight master (the walk ends there) and at the goal.
+-- A straight guess aims at its end. Also returns the yards left to walk.
+local function AimPoint(cont, i, qx, qy)
+	local points = route.points
+	local ax, ay = qx, qy
+	local tx, ty = qx, qy
+	local left = LOOKAHEAD
+	for j = i + 1, #points do
+		local b = points[j]
+		if not Walkable(points[j - 1], b, cont) then
+			break
+		end
+		if b[4] == "guess" then
+			tx, ty = b[2], b[3]
+			break
+		end
+		local seg = Dist(ax, ay, b[2], b[3])
+		if seg >= left then
+			local f = left / seg
+			tx, ty = ax + (b[2] - ax) * f, ay + (b[3] - ay) * f
+			break
+		end
+		tx, ty = b[2], b[3]
+		left = left - seg
+		ax, ay = b[2], b[3]
+	end
+	-- yards left to walk: from the player's place on the route to its end,
+	-- boat and flight legs not counted (as the planned length does it)
+	local remaining = 0
+	for j = i + 1, #points do
+		local a, b = points[j - 1], points[j]
+		if a[1] == b[1] and b[4] ~= "boat" and b[4] ~= "flight" then
+			if j == i + 1 then
+				remaining = remaining + Dist(qx, qy, b[2], b[3])
+			else
+				remaining = remaining + Dist(a[2], a[3], b[2], b[3])
+			end
+		end
+	end
+	return tx, ty, remaining
 end
 
 local function UpdateArrow(cont, px, py)
@@ -1758,31 +1936,28 @@ local function UpdateArrow(cont, px, py)
 		end
 		return false
 	end
-	-- Aim at the next route point beyond the player, else straight at the goal.
-	local tx, ty
+	local tx, ty, remaining
 	if route then
-		for i = 2, #route.points do
-			local p = route.points[i]
-			if p[1] == cont and Dist(px, py, p[2], p[3]) > 8 then
-				tx, ty = p[2], p[3]
-				break
-			end
+		local i, _, d, qx, qy = PlaceOnRoute(cont, px, py)
+		if i then
+			route.progress = i
+			offRoute = d > OFF_ROUTE
+			tx, ty, remaining = AimPoint(cont, i, qx, qy)
 		end
 	end
 	if not tx and destination.cont == cont then
 		tx, ty = destination.x, destination.y
 	end
 	if not tx then
+		arrow.targetX = nil
 		arrow:Hide()
 		return false
 	end
-	local facing = 0
-	if GetPlayerFacing then
-		local ok, f = pcall(GetPlayerFacing)
-		facing = ok and Plain(f) or 0
+	-- the OnUpdate above turns the icon towards this every frame
+	arrow.targetCont, arrow.targetX, arrow.targetY = cont, tx, ty
+	if not remaining or remaining <= 0 then
+		remaining = Dist(px, py, destination.x, destination.y)
 	end
-	arrow.icon:SetRotation(ArrowRotation(tx - px, ty - py, facing))
-	local remaining = route and route.length or Dist(px, py, destination.x, destination.y)
 	arrow.distance:SetText(Yards(remaining))
 	arrow.label:SetText(destination.label or "")
 	arrow:Show()
@@ -2021,6 +2196,40 @@ SlashCmdList.MELLOROUTE = function(msg)
 		if destination and destination.fromQuest then
 			print("   following the tracked quest: " .. tostring(destination.label))
 		end
+		print(string.format("   recorder: %d breadcrumbs this session, ticks %d%s", recorded, tickCount,
+			recordSkip ~= "" and (", last call skipped: " .. recordSkip) or ""))
+		if route and WorldMapFrame and WorldMapFrame:IsShown() then
+			local shown = Plain(WorldMapFrame:GetMapID())
+			local pts = route.points
+			local a, b = pts[1], pts[#pts]
+			local ax, ay = OnMap(shown, a[1], a[2], a[3])
+			local bx, by = OnMap(shown, b[1], b[2], b[3])
+			print(string.format("   shown map %s (continent %s): route start %s, end %s",
+				tostring(shown), tostring(ContinentOf(shown)),
+				ax and string.format("%.2f, %.2f", ax, ay) or "off this continent",
+				bx and string.format("%.2f, %.2f", bx, by) or "off this continent"))
+		end
+		if mapFrame and mapPainter and mapPainter.dots[1] then
+			local canvas = WorldMapFrame:GetCanvas()
+			local above, top = 0, 0
+			for _, child in ipairs({ canvas:GetChildren() }) do
+				local lv = child:GetFrameLevel()
+				if child ~= mapFrame and lv >= mapFrame:GetFrameLevel() and child:IsShown() then
+					above = above + 1
+				end
+				if lv > top then top = lv end
+			end
+			local dot = mapPainter.dots[1]
+			local cx, cy = dot:GetCenter()
+			print(string.format("   route layer level %d (canvas %d, %d shown children at or above, highest %d); dot 1 at %s, visible %s, size %.0f, alpha %.2f",
+				mapFrame:GetFrameLevel(), canvas:GetFrameLevel(), above, top,
+				cx and string.format("%.0f, %.0f", cx, cy) or "nowhere", tostring(dot:IsVisible()), dot:GetWidth(), dot:GetAlpha()))
+		end
+		print(string.format("   world map %s, route layer %s, dots drawn %d, provider %s   |   minimap route %s, arrow %s",
+			WorldMapFrame and WorldMapFrame:IsShown() and "open" or "closed",
+			mapFrame and string.format("%dx%d", mapFrame:GetWidth(), mapFrame:GetHeight()) or "not created",
+			mapPainter and mapPainter.used or 0, tostring(Provider ~= nil),
+			mmPainter and tostring(mmPainter.used) or "none", arrow and arrow:IsShown() and "shown" or "hidden"))
 		print("   /route clear   |   /route arrow reset   |   /route reset   |   the baker: python Tools/bake_routes.py --watch")
 	end
 end

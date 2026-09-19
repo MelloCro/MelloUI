@@ -50,6 +50,31 @@ function MelloUI:Print(msg, ...)
 	print(PREFIX .. tostring(msg))
 end
 
+-- Chat lines nobody asked for: something learned, settings restored late, a
+-- hint. Replies to slash commands use Print and always show; these can be
+-- turned off with Tweaks > Chat Notices.
+function MelloUI:Notice(msg, ...)
+	local tweaks = self.db and self.db.modules and self.db.modules.Tweaks
+	if tweaks and tweaks.chatNotices == false then
+		return
+	end
+	self:Print(msg, ...)
+end
+
+-- One-time hint after the update that moved the settings out of Options > AddOns.
+-- The flag lives in the Tweaks settings so the macro backup keeps it.
+function MelloUI:ShowMenuButtonTip()
+	local tweaks = self.db and self.db.modules and self.db.modules.Tweaks
+	if not tweaks or tweaks.menuTipShown then
+		return
+	end
+	tweaks.menuTipShown = true
+	if self.ScheduleBackup then
+		self:ScheduleBackup("menu tip")
+	end
+	self:Notice("The settings have their own window now: the MelloUI button in the game menu (Escape), or /mello.")
+end
+
 -- Fill missing keys of tbl from defaults (shallow, one nested level for tables).
 local function ApplyDefaults(tbl, defaults)
 	for k, v in pairs(defaults) do
@@ -472,7 +497,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 			self:RestoreFromBackup("PLAYER_LOGIN")
 		end
 		if self:ApplyDefaultProfileIfFresh() then
-			self:Print("No settings found; the default profile '%s' was applied.", tostring(self.db.activeProfile))
+			self:Notice("No settings found; the default profile '%s' was applied.", tostring(self.db.activeProfile))
 		end
 		self.initialized = true
 		for _, module in self:IterateModules() do
@@ -493,6 +518,10 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 		if self:AdoptSavedVariables("PLAYER_ENTERING_WORLD") then
 			self:RestartModules()
 		end
+		if not self.menuTipTimer then
+			-- a few seconds in, after the login spam and a possible late settings load
+			self.menuTipTimer = C_Timer.NewTimer(8, function() self:ShowMenuButtonTip() end)
+		end
 		-- Saved variables may still be on their way: keep checking for a while.
 		if self.dbIsTemporary and not self.adoptTicker then
 			local ticks = 0
@@ -505,7 +534,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 				end
 				if self:AdoptSavedVariables("late poll " .. ticks .. "s") then
 					self:RestartModules()
-					self:Print("Settings loaded late by the client and applied.")
+					self:Notice("Settings loaded late by the client and applied.")
 					ticker:Cancel()
 					self.adoptTicker = nil
 				elseif ticks >= 60 then

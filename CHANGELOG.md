@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.13.3
+
+- Chat notices (learned entrances, restored settings, hints) can be turned off: Tweaks > Chat Notices.
+- One-time hint at login about the MelloUI button in the game menu.
+- "Report a problem" link on the Help page; icon, website and license in the addon list.
+- Minimap stand texture at 512 px: a quarter of the memory, same look. Unused logo file removed.
+- Quest List code split into three files; no change in behaviour.
+- Release workflow skips a tag that already has a release; luacheck runs on every push.
+- Route arrow follows the path loosely: it aims a few yards ahead along the route, bends back gently after a cut corner, and a new route is planned within a second once you are off the path. The distance counts down as you walk.
+- Route on the world map is drawn as soon as the map opens and shows on every zone: the line was hidden under the map art in some zones. Straight guesses are pale blue instead of grey.
+- Clicking a dungeon or raid door on the map now answers: a page sound, a notice with the instance's quest count, and the panel scrolls to that instance with a gold pulse on its header.
+- Route arrow a quarter smaller and turning every frame.
+
 ## 0.13.2
 
 - Configuration window with its own button in the game menu; no Options > AddOns entry.

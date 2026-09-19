@@ -1,5 +1,5 @@
 # Packages the addon and publishes it whenever a version tag is pushed:
-#   git tag v0.14.0 && git push --tags
+#   python Tools/release.py        (or: git tag v0.14.0 && git push --tags)
 # The BigWigs packager builds the zip from the repository (minus what .pkgmeta
 # ignores), uploads it to CurseForge (project id from `## X-Curse-Project-ID`
 # in the TOC, token from the CF_API_KEY secret) and attaches it to the GitHub
@@ -24,7 +24,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      # A tag that already has a release was published before (for example a
+      # tag that was moved). Packaging it again would upload a duplicate file
+      # to CurseForge and overwrite the release notes, so stop here instead.
+      - name: Skip tags that already have a release
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "release ${GITHUB_REF_NAME} already exists; nothing to do"
+            echo "publish=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=yes" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Package and upload
+        if: steps.guard.outputs.publish == 'yes'
         uses: BigWigsMods/packager@v2
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}

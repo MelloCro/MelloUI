@@ -11,7 +11,7 @@
 -- health values and must stay untainted.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("Tooltip", {

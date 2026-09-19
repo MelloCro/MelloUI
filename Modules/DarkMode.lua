@@ -11,7 +11,7 @@
 -- which uses the retail (Dragonflight style) HUD with Camelot specific overrides.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("DarkMode", {

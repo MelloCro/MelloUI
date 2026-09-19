@@ -71,6 +71,20 @@ MelloUI therefore mirrors every non-default setting into a few hidden account ma
 Do not delete those macros. The regular saved-variables file is still written and used when
 the client does load it.
 
+## Known issues
+
+- The beta client does not reliably read saved variables back, so the settings live in the
+  macro backup described above. Deleting those macros returns the addon to the default profile.
+- Instances new to Forever have no entrance data in the client. Their doors appear on the map
+  after the first visit (learned on the way in or on the way out) or with `/qlmap entrance`.
+- Route draws a straight guess where no road has been learned yet. Walking the way once
+  teaches it, and `Tools\bake_routes.py` ships what was learned with the next release.
+- Voice Over lines without a recording are read by Windows text-to-speech, which needs a
+  voice installed in the Windows speech settings.
+- Dark Mode only recolours textures (the combat secret-values rules forbid the rest), so
+  frames drawn without textures keep their colours.
+- New files listed in the TOC need a full client restart; a `/reload` is not enough.
+
 ## Profiles
 
 The MelloUI settings have a **Profiles** page. "Save current as" stores every setting of every
@@ -152,6 +166,9 @@ nameplates have no quest icon), read from the unit tooltip data.
   bags) so bags can still be equipped and removed. Off switch: "Bag Slots on Bag Window".
 - Hide the player coordinates the client writes under the minimap ("Hide Minimap
   Coordinates", on by default).
+- "Chat Notices" (on by default) covers the lines MelloUI writes to chat on its own: a
+  learned dungeon entrance, settings restored from the backup, hints. Replies to slash
+  commands always show.
 - World Text Scale slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
   numbers. Writes the `WorldTextScale` CVar.
 
@@ -381,7 +398,7 @@ seconds, with straight legs to reach it; where nothing has been learned yet it i
 line. Routes may cross continents: walk to the dock, boat, walk.
 
 The route is drawn as a chain of small gems like the taxi map: gold along paths you have
-walked, grey where the route is a straight guess, green for a flight leg. On the minimap the
+walked, pale blue where the route is a straight guess, green for a flight leg. On the minimap the
 nearby part is drawn the same way, clipped to the minimap's shape. A direction arrow (the
 minimap's own player arrow at double resolution, top centre of the screen by default, drag to
 move, `/route arrow reset`) points along the next leg relative to where you face, with the
@@ -447,12 +464,21 @@ everything pending, tags and pushes; `--dry-run` shows what it would do. By hand
 git tag v0.14.0 && git push origin main --tags
 ```
 
+The release notes are the version's section in `CHANGELOG.md`, which must be the newest one;
+`release.py` shows the bullets it is about to publish and refuses without them.
+
 The GitHub Action (`.github/workflows/release.yml`, BigWigs packager) zips the addon minus what
 `.pkgmeta` ignores, uploads it to CurseForge (project id from `## X-Curse-Project-ID` in the
 TOC, token from the `CF_API_KEY` repository secret) and attaches the same zip to the GitHub
-release for the tag. The voice pack is not part of that: when the lines changed, run
-`python Tools\merge_voice_packs.py --zip` and upload the zip to the release by hand, then
-update the direct links in the README and the CurseForge description.
+release for the tag. A tag that already has a release is skipped, so a moved tag cannot upload
+a duplicate; a repository ruleset also forbids moving or deleting `v*` tags. The voice pack is
+not part of that: when the lines changed, run `python Tools\merge_voice_packs.py --zip` and
+upload the zip to the release by hand, then update the direct links in the README and the
+CurseForge description.
+
+Every push runs `luacheck Core Modules Media` (`.github/workflows/lint.yml`, options in
+`.luacheckrc`): syntax, unused locals and globals that are neither WoW API nor listed there.
+A new Blizzard global goes into the `read_globals` list of `.luacheckrc`.
 
 Generated media: `Tools\make_ui_sounds.py` synthesizes the configuration window's click sounds
 into `Media\Sounds`, `Tools\extract_minimap_stand.py` builds the minimap stand texture from

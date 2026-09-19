@@ -55,6 +55,24 @@ def bump(current, how):
     return tuple(int(x) for x in m.groups())
 
 
+def release_notes(version):
+    """The bullets of the version's CHANGELOG.md section, which the packager
+    publishes as the release notes. The section must exist and be the newest."""
+    changelog = os.path.join(ROOT, "CHANGELOG.md")
+    with open(changelog, encoding="utf-8") as fh:
+        text = fh.read()
+    sections = re.findall(r"^## (\S+)[ \t]*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+    if not sections:
+        sys.exit("CHANGELOG.md has no '## <version>' sections")
+    top, body = sections[0]
+    if top != version:
+        sys.exit(f"the newest CHANGELOG.md section is '{top}', not '{version}'; add the version's bullets on top first")
+    bullets = [line.rstrip() for line in body.splitlines() if line.strip()]
+    if not bullets:
+        sys.exit(f"the '## {version}' section of CHANGELOG.md is empty; add what changed")
+    return "\n".join(bullets)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("how", nargs="?", default="patch", help="major | minor | patch (default) | X.Y.Z")
@@ -72,17 +90,15 @@ def main():
 
     if git("tag", "--list", tag):
         sys.exit(f"tag {tag} already exists")
-    # The packager takes the release notes from CHANGELOG.md: the version needs its entry.
-    changelog = os.path.join(ROOT, "CHANGELOG.md")
-    with open(changelog, encoding="utf-8") as fh:
-        if f"## {version}" not in fh.read():
-            sys.exit(f"CHANGELOG.md has no '## {version}' section; add the version's bullets first")
+    notes = release_notes(version)
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
     if branch != "main":
         sys.exit(f"releases are cut from main; you are on {branch}")
     pending = git("status", "--short")
 
     print(f"{'.'.join(map(str, current))} -> {version}  (tag {tag}, branch {branch})")
+    print("release notes (CHANGELOG.md):")
+    print("  " + notes.replace("\n", "\n  "))
     if pending:
         print("pending changes that go into the release commit:")
         print("  " + pending.replace("\n", "\n  "))

@@ -6,6 +6,9 @@
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements
+## X-Website: https://github.com/MelloCro/MelloUI
+## X-License: MIT
+## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 ## X-Curse-Project-ID: 1702190
 
 Core\Core.lua
@@ -34,6 +37,8 @@ Modules\Stats.lua
 Modules\UnitFrames.lua
 Modules\VoiceOver.lua
 Modules\QuestList.lua
+Modules\QuestListPanel.lua
+Modules\QuestListMap.lua
 Modules\QuestListPins.xml
 Modules\Route.lua
 Modules\Services.lua

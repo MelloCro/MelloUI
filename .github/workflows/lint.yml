@@ -1,0 +1,19 @@
+# Static check of every Lua file on each push and pull request: syntax errors,
+# unused locals, globals that are neither WoW API nor listed in .luacheckrc.
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  luacheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: luacheck
+        uses: lunarmodules/luacheck@v1
+        with:
+          args: Core Modules Media --no-color

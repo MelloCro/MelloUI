@@ -29,11 +29,10 @@ local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
-local LOGO = TEXTURE_PATH .. "LogoIcon.tga"   -- the emblem alone; Logo.tga is the full picture
+local LOGO = TEXTURE_PATH .. "LogoIcon.tga"   -- the emblem cropped from docs/logo.jpg
 local ICON = "Interface\\Icons\\"
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROCK = "Interface\\FrameGeneral\\UI-Background-Rock"
-local KNOB_TEXTURE = "Interface\\COMMON\\Indicator-Gray"
 local SOUND_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Sounds\\"
 local ICON_FRAME = "UI-HUD-ActionBar-IconFrame"        -- the action button bevel
 local ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"    -- its rounded corners
@@ -55,6 +54,11 @@ local function Click(kind)
 	if not (ok and played) and sound.fallback then
 		PlaySound(sound.fallback)
 	end
+end
+
+-- The same sounds for other modules: "page", "tab", "check_on", "check_off".
+function MelloUI:PlayUISound(kind)
+	Click(kind)
 end
 
 local WINDOW_WIDTH, WINDOW_HEIGHT = 1000, 760
@@ -106,6 +110,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
 -- Shown on the Home page under "What's new".
 local CHANGELOG = {
+	{ version = "0.13.3", lines = {
+		"Chat notices can be turned off under Tweaks; replies to slash commands always show.",
+		"Report a problem link on this page; the addon list shows the MelloUI icon.",
+		"Lighter minimap stand texture; the Quest List code is in three files.",
+	} },
 	{ version = "0.13", lines = {
 		"Configuration window with its own button in the game menu.",
 		"Bag slots dock under the bag window while the bag bar is hidden.",
@@ -118,6 +127,7 @@ local CHANGELOG = {
 }
 local LINKS = {
 	{ "GitHub", "https://github.com/MelloCro/MelloUI" },
+	{ "Report a problem", "https://github.com/MelloCro/MelloUI/issues" },
 	{ "CurseForge", "https://www.curseforge.com/wow/addons/melloui" },
 	{ "Voice pack", "https://github.com/MelloCro/MelloUI/releases" },
 }

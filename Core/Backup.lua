@@ -14,7 +14,7 @@
 --   !Module=b1         module enabled flag
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local MACRO_PREFIX = "MelloUI"
@@ -310,7 +310,7 @@ frame:SetScript("OnEvent", function(_, event)
 		if MelloUI.initialized and MelloUI.dbIsTemporary and not MelloUI.restoredFromBackup then
 			if MelloUI:RestoreFromBackup("UPDATE_MACROS") then
 				MelloUI:RestartModules()
-				MelloUI:Print("Settings restored from the macro backup.")
+				MelloUI:Notice("Settings restored from the macro backup.")
 			end
 		end
 	end

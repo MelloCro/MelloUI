@@ -14,7 +14,7 @@
 -- itself is never touched, so secret chat payloads are safe.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("Chat", {

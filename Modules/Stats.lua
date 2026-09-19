@@ -94,7 +94,7 @@ text:SetJustifyH("RIGHT")
 
 local function ApplyFont()
 	local object = GameFontHighlightSmall or SystemFont_Shadow_Small
-	local path, _, flags = object:GetFont()
+	local path = object:GetFont()
 	if path then
 		text:SetFont(path, tonumber(M.db.fontSize) or 12, "OUTLINE")
 	end

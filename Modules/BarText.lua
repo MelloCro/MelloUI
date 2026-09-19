@@ -11,7 +11,7 @@
 -- mouseover text does not draw on top of ours.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("BarText", {

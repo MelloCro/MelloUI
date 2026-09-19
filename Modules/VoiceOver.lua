@@ -515,7 +515,7 @@ local function LoadSoundPacks()
 	end
 	table.sort(packs, function(a, b) return a.priority > b.priority end)
 	if #packs > 0 and (IsAddOnLoaded("AI_VoiceOver_Continued") or IsAddOnLoaded("AI_VoiceOver")) then
-		MelloUI:Print("Voice Over: the VoiceOver player addon is also enabled, so lines may play twice. Disable one of them.")
+		MelloUI:Notice("Voice Over: the VoiceOver player addon is also enabled, so lines may play twice. Disable one of them.")
 	end
 end
 
@@ -870,7 +870,7 @@ local function CollectLine(entry, questID)
 	if isNew and not rec.recorded then
 		unsavedLines = unsavedLines + 1
 		if unsavedLines % 5 == 0 then
-			MelloUI:Print("Voice Over: %d new lines without a recording collected. /reload writes them out for the generator.", unsavedLines)
+			MelloUI:Notice("Voice Over: %d new lines without a recording collected. /reload writes them out for the generator.", unsavedLines)
 		end
 	end
 end
@@ -1166,7 +1166,6 @@ local ATLAS = 512
 local ATLAS_BORDER = 416
 local ATLAS_VIEWPORT = 348
 local BORDER_SCALE = PORTRAIT_SIZE / ATLAS_VIEWPORT
-local BORDER_SIZE = ATLAS_BORDER * BORDER_SCALE
 local BORDER_OUTSET = 34 * BORDER_SCALE
 local LINE_WIDTH = 56 * BORDER_SCALE
 local MAX_LINES = 4

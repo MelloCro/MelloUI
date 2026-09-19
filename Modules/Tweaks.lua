@@ -12,7 +12,7 @@
 -- Mode is active they are shown again so their layout can still be changed.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("Tweaks", {
@@ -24,6 +24,8 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		bagSlotsOnBags = true,
 		hideMinimapCoords = true,
 		worldTextScale = 1,
+		chatNotices = true,
+		menuTipShown = false,
 	},
 	options = {
 		{ type = "header", name = "Hide Frames" },
@@ -35,6 +37,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Hide the player coordinates the client writes under the minimap." },
 		{ type = "toggle", key = "bagSlotsOnBags", name = "Bag Slots on Bag Window",
 		  desc = "While the bag bar is hidden, show the bag slots under the open bag window so bags can still be equipped and removed. Works with and without the Combine Bags option." },
+		{ type = "header", name = "Chat" },
+		{ type = "toggle", key = "chatNotices", name = "Chat Notices",
+		  desc = "Lines MelloUI writes to chat on its own: a learned dungeon entrance, settings restored from the backup, hints. Replies to slash commands always show." },
 		{ type = "header", name = "Combat Text" },
 		{ type = "slider", key = "worldTextScale", name = "World Text Scale", min = 0.5, max = 3, step = 0.1,
 		  format = function(v) return string.format("%.1fx", v) end,

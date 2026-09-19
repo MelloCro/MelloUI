@@ -11,7 +11,7 @@
 -- river is not "near" when the bridge is a long way round.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("Services", {
@@ -318,7 +318,7 @@ local function Notify(text, kind)
 	if R and R.Notify then
 		R:Notify(text, kind)
 	else
-		MelloUI:Print(text)
+		MelloUI:Notice(text)
 	end
 end
 
@@ -718,9 +718,9 @@ end
 --------------------------------------------------------------------------------
 
 local STAND_TEXTURE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\MinimapStand.tga"
-local STAND_W, STAND_H = 1024, 1024
-local STAND_CX, STAND_CY = 508.5, 425.0    -- ring centre on the canvas (y from the top)
-local STAND_INNER_R = 323.5                -- ring inner radius on the canvas
+local STAND_W, STAND_H = 512, 512
+local STAND_CX, STAND_CY = 254.25, 212.5    -- ring centre on the canvas (y from the top)
+local STAND_INNER_R = 161.75               -- ring inner radius on the canvas
 local stand = nil
 
 local function LayerBar()

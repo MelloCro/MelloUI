@@ -13,7 +13,7 @@
 -- nameplate auras) leave Blizzard's own countdown numbers in place instead.
 --------------------------------------------------------------------------------
 
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local MelloUI = ns.MelloUI
 
 local M = MelloUI:RegisterModule("CooldownText", {
@@ -184,7 +184,7 @@ local function ApplyFont(timer, style)
 	local size = math.max(6, math.floor(base * style.scale + 0.5))
 	if timer.size ~= size or timer.fontPath == nil then
 		local object = GameFontHighlightOutline or NumberFontNormal
-		local path, _, flags = object:GetFont()
+		local path = object:GetFont()
 		timer.fontPath = path
 		timer.size = size
 		timer.text:SetFont(path, size, "OUTLINE")
