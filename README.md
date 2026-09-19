@@ -222,18 +222,6 @@ clones; cloning a few of the pack's MP3s per race and gender gives matching voic
 `MelloUI_VoiceOverData` addon in the game's AddOns folder, adding to its lookup tables and
 sound lengths while keeping the vanilla lines it already holds.
 
-With an ElevenLabs API key in `%USERPROFILE%\.elevenlabs.key` (or the `ELEVENLABS_API_KEY`
-environment variable) and voices named `<race>-<gender>` in the account (human-male,
-goblin-male, undead-female, ...), `Tools\generate_voice_lines.py --player <name>` runs the whole
-loop: export, generate every pending line with the matching voice using that voice's saved
-settings, file the MP3s and rebuild the pack. Races without a voice fall back (night elf to elf,
-ogre to orc, anything else to human). `--dry-run` shows what would be generated and the
-character count, `--skip-progress` leaves quest progress lines out, `--list-voices` shows the
-voices found. `Tools\watch_voice_lines.py --player <name>` keeps that loop running while you
-play: it watches the saved-variables file and runs the loop after every `/reload` (the module
-reminds you to reload after every five new lines). A further `/reload` after a run finishes makes
-the new lines playable; no client restart is needed.
-
 Voice helpers: `Tools\clone_voices.py` creates any missing `<race>-<gender>` voice in the account by
 cloning a couple of minutes of the vanilla pack's own lines for that race; `Tools\design_voice.py`
 designs a voice from a description (previews saved locally, then `keep`); the ElevenLabs voice
