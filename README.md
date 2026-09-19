@@ -6,6 +6,22 @@ Module based UI addon for **World of Warcraft: Forever** (beta 1.60.1, interface
 · [MelloUI VoiceOver Data (optional voice pack, 1.6 GB)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip)
 · [all releases](https://github.com/MelloCro/MelloUI/releases)
 
+**Every quest giver in Azeroth talks to you.** MelloUI reads quest offers, progress and
+completion text and greetings aloud, in a voice that matches the NPC's race and gender:
+dwarves sound like dwarves, trolls like trolls, gnomes like gnomes. A portrait overlay shows
+the speaking NPC with its talk animation, the line being read, the queue of what comes next,
+and subtitles that page with the speech. With the **MelloUI VoiceOver Data** pack installed
+you get **11,503 recorded lines**: every vanilla quest and greeting, and Forever's own new
+quests, every one voiced. Without the pack the client's text-to-speech voices are used, still
+race and gender matched, so it works from the first minute. A Read button in the quest log
+reads any quest you accepted long ago, in its giver's voice, followed by the objectives with
+your current progress.
+
+Around that: a quest list on the map with givers, turn-ins, dungeon doors and docks, routes
+that learn the roads you walk, nearest-service routing, dark mode, bar textures, fonts, chat,
+nameplate, tooltip and cooldown tweaks, and settings profiles. Every module can be switched
+off on its own.
+
 Forever runs the retail (Midnight era, 12.1.x) API and the Dragonflight style HUD with
 Camelot specific overrides. This addon targets exactly that client; frame keys were taken
 from the `forever` branch of the Blizzard UI source.
@@ -21,12 +37,25 @@ Download the latest release (or clone this repository) and copy the `MelloUI` fo
 Then `/reload` in game. Type `/mello` to open the configuration panel. The first start applies
 the bundled default profile (see *Profiles*).
 
-**Voice pack (optional, 1.6 GB).** The Voice Over module reads recorded lines from a separate
-addon, `MelloUI_VoiceOverData`, available as a zip on the Releases page. It merges the vanilla
-lines of the wow-voiceover project with the lines generated for Forever's own quests. Unzip it
-next to MelloUI so you have `Interface\AddOns\MelloUI_VoiceOverData`, and enable it in the
-addon list. Without it the module falls back to the client's text-to-speech voices. If you
-already have `AI_VoiceOverData_Vanilla` installed, the merged pack replaces it.
+### Installing the voice pack (1.6 GB, optional but recommended)
+
+The recorded lines come as a separate addon, hosted on GitHub because of its size.
+
+**Direct download:** https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip
+
+1. Download the zip (1.6 GB).
+2. Unzip it. You get one folder named `MelloUI_VoiceOverData`.
+3. Move that folder into your AddOns folder, next to MelloUI:
+   `World of Warcraft\_classic_beta_\Interface\AddOns\MelloUI_VoiceOverData`
+   The folder must contain `MelloUI_VoiceOverData.toc` directly, not another folder inside.
+4. Start the game (restart it if it was running), open the AddOns list at the character
+   screen and tick **MelloUI VoiceOver Data**.
+5. In game, `/vo packs` lists the pack with 11,503 lines. Talk to any quest giver and you
+   will hear the recorded line.
+
+The pack merges the vanilla lines of the wow-voiceover project (Unlicense) with the lines
+generated for Forever's own quests. If you had `AI_VoiceOverData_Vanilla` installed before,
+remove it: the pack already contains all of its lines.
 
 ## Settings storage on the Forever beta
 
