@@ -59,6 +59,18 @@ local function Active(key)
 	return M.isEnabled and M.db and M.db[key]
 end
 
+-- The kit's chat skin covers the chat art (user rule, 2026-09-21): the three
+-- art-hiding toggles act only while it is off; the layout toggles (tabs on
+-- mouseover, input box on top, hidden buttons) and the channel options always.
+local function ArtCovered()
+	local Kit = MelloUI.Kit
+	return Kit and Kit:IsCovered("chat")
+end
+
+local function HideArt(key)
+	return M.db[key] and not ArtCovered()
+end
+
 local function NumWindows()
 	return NUM_CHAT_WINDOWS or 10
 end
@@ -157,19 +169,33 @@ end
 
 local TAB_ROW_HEIGHT = 24
 
+local editBoxSaved = {}   -- [editBox] = the game's anchors, taken before the first move
+
 local function SetEditBoxOnTop(top)
 	for i = 1, NumWindows() do
 		local frame = _G["ChatFrame" .. i]
 		local editBox = frame and (frame.editBox or _G["ChatFrame" .. i .. "EditBox"])
 		if frame and editBox then
-			local rightAnchor = frame.ScrollBar or frame
-			editBox:ClearAllPoints()
 			if top then
+				if not editBoxSaved[editBox] then
+					local points = {}
+					for p = 1, editBox:GetNumPoints() do
+						points[p] = { editBox:GetPoint(p) }
+					end
+					editBoxSaved[editBox] = points
+				end
+				editBox:ClearAllPoints()
 				editBox:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", -5, TAB_ROW_HEIGHT)
-			else
-				editBox:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", -5, -2)
+				editBox:SetPoint("RIGHT", frame.ScrollBar or frame, "RIGHT", 8, 0)
+			elseif editBoxSaved[editBox] then
+				-- the game's own anchors back, only when they were changed
+				-- (guessed offsets replaced them before, audit 2026-09-22)
+				editBox:ClearAllPoints()
+				for _, pt in ipairs(editBoxSaved[editBox]) do
+					editBox:SetPoint(unpack(pt))
+				end
+				editBoxSaved[editBox] = nil
 			end
-			editBox:SetPoint("RIGHT", rightAnchor, "RIGHT", 8, 0)
 		end
 	end
 end
@@ -422,11 +448,25 @@ end
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
+local function ApplyArt()
+	SetBackgroundShown(not HideArt("hideBackground"))
+	SetEditBoxArtShown(not HideArt("hideEditBox"))
+	SetTabArtShown(not HideArt("hideTabs"))
+end
+
+local coverWatched = false
+
 local function ApplyAll()
 	local db = M.db
-	SetBackgroundShown(not db.hideBackground)
-	SetEditBoxArtShown(not db.hideEditBox)
-	SetTabArtShown(not db.hideTabs)
+	if not coverWatched and MelloUI.Kit then
+		coverWatched = true
+		MelloUI.Kit:OnCover(function(group)
+			if group == "chat" and M.isEnabled then
+				ApplyArt()
+			end
+		end)
+	end
+	ApplyArt()
 	SetTabsOnMouseover(db.tabsOnMouseover)
 	SetEditBoxOnTop(db.editBoxTop)
 	SetButtonsHidden(db.hideButtons)
@@ -462,12 +502,8 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if key == "hideBackground" then
-		SetBackgroundShown(not value)
-	elseif key == "hideEditBox" then
-		SetEditBoxArtShown(not value)
-	elseif key == "hideTabs" then
-		SetTabArtShown(not value)
+	if key == "hideBackground" or key == "hideEditBox" or key == "hideTabs" then
+		ApplyArt()
 	elseif key == "tabsOnMouseover" then
 		SetTabsOnMouseover(value)
 	elseif key == "hideButtons" then

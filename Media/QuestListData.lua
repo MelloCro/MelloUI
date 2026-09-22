@@ -5,7 +5,9 @@ MelloUI_QuestListData = {
 	-- quest fields: id, title, level, required level, side (1 Alliance, 2 Horde, 3 both), class mask,
 	-- quest zone (area id), pick-up zone (area id), giver name, giver x, giver y, giver kind (1 NPC, 2 object),
 	-- event (key into events, 0 for none), chain (key into chains, 0 for none), dungeon (key into dungeons, 0 for none),
-	-- attunement (1 when the quest or its chain grants access to an instance)
+	-- attunement (1 when the quest or its chain grants access to an instance),
+	-- previous quest in the chain, giver continent, giver world x, giver world y, giver NPC entry,
+	-- turn-in name, turn-in NPC entry, turn-in zone (area id), turn-in continent, turn-in world x, turn-in world y
 	zones = {
 		[1] = "Dun Morogh",
 		[3] = "Badlands",

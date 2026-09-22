@@ -1,4 +1,8 @@
 """
+SUPERSEDED by Tools/make_minimap_frame.py, which builds MinimapStand.tga from
+docs/minimap-frame.webp with the ring, slot, zone bar and sun disc constants the
+modules now use. Running this script overwrites that texture with the old art.
+
 Turn docs/minimap-stand.webp (the ring-and-legs artwork, with alpha) into
 Media/Textures/MinimapStand.tga, a 512 x 512 texture (or the size given as the
 first argument), and print the ring's centre and inner radius on that canvas:

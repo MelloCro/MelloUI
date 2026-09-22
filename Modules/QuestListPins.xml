@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<!-- Map pin for the Quest List module: a quest giver icon on zone maps, or a
-	     "done/total" badge on continent maps. The mixin lives in QuestList.lua. -->
+	     "done/total" badge on continent maps. The mixin lives in QuestListMap.lua. -->
 	<Frame name="MelloUIQuestPinTemplate" mixin="MelloUI_QuestPinMixin" enableMouse="true" virtual="true">
 		<Size x="22" y="22"/>
 		<Layers>

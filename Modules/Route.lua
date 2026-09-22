@@ -105,6 +105,9 @@ local CELL = 10          -- yards; one graph node per cell
 local LINK = 50          -- link consecutive breadcrumbs closer than this
 local NEAR = 15          -- link a new node to existing nodes this close
 local OFFROAD = 250      -- how far a route may leave the graph at either end
+local JUMP = 300         -- yards; from the end of a path the route may cross open ground to another path
+local JUMP_COST = 1.5    -- relative to walking a road
+local STRAIGHT_COST = 2.2 -- the direct line from start to goal, so roads win unless they are a real detour
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
 -- Continent map sizes in yards, when C_Map.GetMapWorldSize is missing.
@@ -435,18 +438,32 @@ local function Merge(other)
 		local cont = tonumber(contKey)
 		if cont and type(g) == "table" then
 			local mine = Graph(cont)
+			-- the baker rounds coordinates, which can move a node into the
+			-- next cell: it goes under the key its coordinates give now, and
+			-- the links follow (audit, 2026-09-22)
+			local keyMap = {}
 			for key, node in pairs(g) do
 				if type(node) == "table" and type(node[1]) == "number" and type(node[2]) == "number" then
-					local target = mine[key]
-					if not target then
-						target = { node[1], node[2], {} }
-						mine[key] = target
+					local k = KeyOf(node[1], node[2])
+					keyMap[key] = k
+					if not mine[k] then
+						AddNode(cont, node[1], node[2])   -- links to the nodes near it
 						added = added + 1
-						graphVersion = graphVersion + 1
 					end
-					for k, cost in pairs(node[3] or {}) do
-						if type(cost) == "number" and (target[3][k] == nil or target[3][k] > cost) then
-							target[3][k] = cost
+				end
+			end
+			for key, node in pairs(g) do
+				local k = keyMap[key]
+				local target = k and mine[k]
+				if target then
+					for linked, cost in pairs(node[3] or {}) do
+						local ko = keyMap[linked] or linked
+						if ko ~= k and type(cost) == "number" and (target[3][ko] == nil or target[3][ko] > cost) then
+							target[3][ko] = cost
+							local back = mine[ko]
+							if back and (back[3][k] == nil or back[3][k] > cost) then
+								back[3][k] = cost
+							end
 						end
 					end
 				end
@@ -454,6 +471,81 @@ local function Merge(other)
 		end
 	end
 	return added
+end
+
+-- Roads traced from the map art (Media/RoadData.lua, Tools/trace_roads.py):
+-- folded in like baked data but scaled to the continent sizes this client
+-- reports, marked as traced so they are never written back into the saved
+-- variable, and linked to whatever was learned near them.
+local tracedNodes = 0
+
+local function MergeRoads(data)
+	if type(data) ~= "table" or type(data.graphs) ~= "table" then
+		return 0
+	end
+	local added = 0
+	for contKey, g in pairs(data.graphs) do
+		local cont = tonumber(contKey)
+		if cont and type(g) == "table" then
+			local w, h = WorldSize(cont)
+			local size = type(data.sizes) == "table" and data.sizes[cont]
+			local sx = (size and size[1] and size[1] > 0) and w / size[1] or 1
+			local sy = (size and size[2] and size[2] > 0) and h / size[2] or 1
+			local mine = Graph(cont)
+			local keyMap = {}
+			for key, node in pairs(g) do
+				if type(node) == "table" and type(node[1]) == "number" and type(node[2]) == "number" then
+					local x, y = node[1] * sx, node[2] * sy
+					local k = KeyOf(x, y)
+					keyMap[key] = k
+					if not mine[k] then
+						local _, created = AddNode(cont, x, y)
+						created[4] = true
+						added = added + 1
+					end
+				end
+			end
+			for key, node in pairs(g) do
+				local k = keyMap[key]
+				local target = k and mine[k]
+				if target then
+					for other, cost in pairs(node[3] or {}) do
+						local ko = keyMap[other]
+						if ko and mine[ko] and type(cost) == "number" and ko ~= k then
+							if target[3][ko] == nil or target[3][ko] > cost then
+								target[3][ko] = cost
+								mine[ko][3][k] = cost
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	tracedNodes = tracedNodes + added
+	return added
+end
+
+-- The learned part of the graph: what the saved variable and the baker keep.
+local function LearnedOnly()
+	local out = { graphs = {}, pins = live.pins }
+	for cont, g in pairs(live.graphs) do
+		local og = {}
+		for key, node in pairs(g) do
+			if not node[4] then
+				local links = {}
+				for other, cost in pairs(node[3]) do
+					local o = g[other]
+					if o and not o[4] then
+						links[other] = cost
+					end
+				end
+				og[key] = { node[1], node[2], links }
+			end
+		end
+		out.graphs[cont] = og
+	end
+	return out
 end
 
 --------------------------------------------------------------------------------
@@ -481,8 +573,7 @@ local function YardsOfWorld(wcont, wx, wy)
 	contMapID = ok and Plain(contMapID) or nil
 	local cx, cy = VectorXY(pos)
 	if not (contMapID and cx and cy) then
-		worldYards[key] = false
-		return nil
+		return nil   -- not cached: the client may answer later (as RectOn does)
 	end
 	local w, h = WorldSize(contMapID)
 	worldYards[key] = { contMapID, cx * w, cy * h }
@@ -802,7 +893,13 @@ end
 
 -- Route from (scont, sx, sy) to (gcont, gx, gy): a list of { cont, x, y, kind }
 -- points and the total cost in seconds, or nil.
-local function FindRoute(scont, sx, sy, gcont, gx, gy)
+-- A start link that points back the way the player is walking is priced
+-- BEHIND_COST times its length (user, 2026-09-22: the arrow sent the player
+-- back to the road behind them, "the checkpoint", after a shortcut): the
+-- planner then joins the road ahead unless going back is a real saving.
+local BEHIND_COST = 2.5
+
+local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 	-- Node ids: "c|key" graph nodes, "D<i>" docks, "S", "G".
 	local pos = {}     -- id -> { cont, x, y }
 	local extra = {}   -- id -> { otherId = cost } for virtual nodes and docks
@@ -817,7 +914,20 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy)
 	local function LinkPoint(id, cont, x, y, cached)
 		local near = cached and HubNear(id, cont, x, y) or NodesNear(cont, x, y, OFFROAD)
 		for key, d in pairs(near) do
-			AddExtra(id, cont .. "|" .. key, d / WALK * 1.3)
+			local cost = d / WALK * 1.3
+			if id == "S" and hx and d > 5 then
+				local node = live.graphs[cont] and live.graphs[cont][key]
+				if node then
+					-- the node's direction from the player against the heading
+					local dot = ((node[1] - x) * hx + (node[2] - y) * hy) / d
+					if dot < -0.3 then
+						cost = cost * BEHIND_COST
+					elseif dot < 0.3 then
+						cost = cost * (1 + (0.3 - dot) * (BEHIND_COST - 1) / 0.6)   -- sideways: in between
+					end
+				end
+			end
+			AddExtra(id, cont .. "|" .. key, cost)
 		end
 	end
 	LinkPoint("S", scont, sx, sy)
@@ -856,7 +966,7 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy)
 		end
 	end
 	if scont == gcont then
-		AddExtra("S", "G", Dist(sx, sy, gx, gy) / WALK * 1.3)
+		AddExtra("S", "G", Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
 	end
 	local function Position(id)
 		local p = pos[id]
@@ -911,8 +1021,19 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy)
 				local node = live.graphs[cont] and live.graphs[cont][key]
 				if node then
 					local prefix = cont .. "|"
+					local degree = 0
 					for k, cost in pairs(node[3]) do
 						Relax(prefix .. k, cost)
+						degree = degree + 1
+					end
+					if degree <= 1 then
+						-- the end of a path: cross open ground to any path nearby
+						local near = NodesNear(cont, node[1], node[2], JUMP)
+						for k, d in pairs(near) do
+							if k ~= key and node[3][k] == nil then
+								Relax(prefix .. k, d / WALK * JUMP_COST)
+							end
+						end
 					end
 				end
 			end
@@ -940,6 +1061,13 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy)
 			local isHubNow, isHubPrev = hubNow == "D" or hubNow == "T", hubPrev == "D" or hubPrev == "T"
 			if not prev or nid == "G" or prev == "S" or isHubNow or isHubPrev then
 				kind = "guess"
+			elseif prev then
+				local pc, pk = prev:match("^(%d+)|(.+)$")
+				local _, nk = nid:match("^(%d+)|(.+)$")
+				local pnode = pc and live.graphs[tonumber(pc)] and live.graphs[tonumber(pc)][pk]
+				if pnode and nk and pnode[3][nk] == nil then
+					kind = "guess"
+				end
 			end
 			if isHubPrev and isHubNow then
 				kind = hubPrev == "T" and "flight" or "boat"
@@ -958,6 +1086,44 @@ local route = nil        -- { points = {...}, cost = seconds, length = yards, de
 local destination = nil  -- { cont, x, y, mapID, mx, my, label }
 local lastPlan = 0
 local offRoute = false   -- the player is farther than OFF_ROUTE from the path (see the arrow)
+local offRouteSince = nil   -- when the player left the path (GetTime), nil while on it
+local OFF_ROUTE_SECONDS = 2    -- off the path this long before a new route is planned (the arrow's OFF_ROUTE yards)
+local REPLAN_SECONDS = 30      -- a followed route is refreshed this often at most
+
+-- The player's heading: the direction of the last few yards walked, nil
+-- while standing. Read by the planner (a start link that points back the
+-- way the player came costs more) and by the arrow.
+local headTrail = {}   -- the last positions { t, cont, x, y }
+local HEAD_YARDS = 4
+
+local function NoteHeading(cont, x, y)
+	local now = GetTime()
+	local n = #headTrail
+	if n == 0 or headTrail[n][2] ~= cont or Dist(headTrail[n][3], headTrail[n][4], x, y) >= 1 then
+		headTrail[n + 1] = { now, cont, x, y }
+	end
+	-- the last 3 seconds only
+	while #headTrail > 1 and now - headTrail[1][1] > 3 do
+		table.remove(headTrail, 1)
+	end
+end
+
+local function Heading(cont)
+	local n = #headTrail
+	if n < 2 then
+		return nil
+	end
+	local a, b = headTrail[1], headTrail[n]
+	if a[2] ~= cont or b[2] ~= cont or GetTime() - b[1] > 2 then
+		return nil   -- another continent, or standing for two seconds
+	end
+	local dx, dy = b[3] - a[3], b[4] - a[4]
+	local len = math.sqrt(dx * dx + dy * dy)
+	if len < HEAD_YARDS then
+		return nil
+	end
+	return dx / len, dy / len
+end
 
 local function RouteLength(points)
 	local total = 0
@@ -1007,11 +1173,24 @@ local function Plan(force, announce, announceText)
 		return
 	end
 	local now = GetTime()
-	if not force and now - lastPlan < (offRoute and 1 or 3) then
-		return
+	if not force then
+		-- (user, 2026-09-22: the arrow was too strict) a route being
+		-- followed is kept and only re-projected by the arrow; a new one is
+		-- planned when the player has been off it for OFF_ROUTE_SECONDS, or
+		-- every REPLAN_SECONDS as a refresh (a road learned meanwhile)
+		if route and not offRoute and now - lastPlan < REPLAN_SECONDS then
+			return
+		end
+		if route and offRoute and (not offRouteSince or now - offRouteSince < OFF_ROUTE_SECONDS) then
+			return
+		end
+		if not route and now - lastPlan < 3 then
+			return
+		end
 	end
 	lastPlan = now
 	offRoute = false
+	offRouteSince = nil
 	local cont, x, y = PlayerYards()
 	if not cont then
 		route = nil
@@ -1024,7 +1203,12 @@ local function Plan(force, announce, announceText)
 		Redraw()
 		return
 	end
-	local points, cost = FindRoute(cont, x, y, d.cont, d.x, d.y)
+	local hx, hy = Heading(cont)
+	local points, cost = FindRoute(cont, x, y, d.cont, d.x, d.y, hx, hy)
+	if points and #points == 2 and cont == d.cont then
+		-- the direct line won: its real walking time, not the price that made roads compete
+		cost = Dist(x, y, d.x, d.y) / WALK
+	end
 	if points and cont == d.cont then
 		-- A silly detour is worse than a straight guess.
 		local beeline = Dist(x, y, d.x, d.y)
@@ -1300,11 +1484,15 @@ function M:SetDestinationTo(candidate, label, pin, noticeText)
 	if not mapID then
 		mapID, mx, my = MapPointOfYards(cont, x, y)
 	end
-	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label, fromWaypoint = pin and true or nil }
+	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label }
 	if pin and mapID and C_Map.SetUserWaypoint and UiMapPoint then
 		local okCan, can = pcall(C_Map.CanSetUserWaypointOnMap, mapID)
 		if not (okCan and can == false) then
-			pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, mx, my))
+			local okSet = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, mx, my))
+			-- only a waypoint that is really there makes the destination its
+			-- own: otherwise the next tick saw no waypoint and dropped it
+			local okHas, has = pcall(C_Map.HasUserWaypoint)
+			destination.fromWaypoint = (okSet and (not C_Map.HasUserWaypoint or (okHas and has))) and true or nil
 			if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
 				pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
 			end
@@ -1460,11 +1648,14 @@ end
 -- The taxi map's own look: a chain of small gems along the way. Gold for
 -- paths you have walked, pale blue where the route is a straight guess, green
 -- for a flight, blue on the water.
+-- The dots are the kit's small gem (deco/gem_small; the user's pick I2,
+-- 2026-09-21) on the map and the minimap alike; the game's indicator dots
+-- are the fallback when the kit is not loaded. A style's tint colours the gem.
 local STYLE = {
-	road = { texture = "Interface/Common/Indicator-Yellow", size = 1.0, gap = 1.6, alpha = 1 },
-	guess = { texture = "Interface/Common/Indicator-Gray", size = 1.0, gap = 2.2, alpha = 1, color = { 0.8, 0.92, 1 } },
-	flight = { texture = "Interface/Common/Indicator-Green", size = 0.9, gap = 3.0, alpha = 0.8 },
-	boat = { texture = "Interface/Common/Indicator-Gray", size = 0.7, gap = 3.0, alpha = 0.6 },
+	road = { texture = "Interface/Common/Indicator-Yellow", piece = "deco/gem_small", size = 1.0, gap = 1.6, alpha = 1 },
+	guess = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 1.0, gap = 2.2, alpha = 1, color = { 0.8, 0.92, 1 } },
+	flight = { texture = "Interface/Common/Indicator-Green", piece = "deco/gem_small", size = 0.9, gap = 3.0, alpha = 0.8 },
+	boat = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 0.7, gap = 3.0, alpha = 0.6 },
 }
 local MAX_DOTS = 700
 
@@ -1486,8 +1677,17 @@ local function NewPainter(frame)
 			dot = self.frame:CreateTexture(nil, "OVERLAY")
 			self.dots[self.used] = dot
 		end
-		if dot.styleTexture ~= style.texture then
+		local Kit = MelloUI.Kit
+		local piece = style.piece and Kit and Kit:Piece(style.piece) and style.piece
+		if piece then
+			if dot.kitName ~= piece then
+				Kit:Apply(dot, piece)
+				dot.styleTexture = nil
+			end
+		elseif dot.styleTexture ~= style.texture then
 			dot:SetTexture(style.texture)
+			dot:SetTexCoord(0, 1, 0, 1)
+			dot.kitPiece, dot.kitName = nil, nil
 			dot.styleTexture = style.texture
 		end
 		if dot.styleColor ~= style.color then
@@ -1573,6 +1773,28 @@ local function LayerRouteFrame(canvas)
 	end
 end
 
+-- The part of the route still ahead: the segments from the player's place
+-- on the path (route.progress / atX / atY, set by the arrow) onward, the
+-- first one starting at that place. A route is kept while it is followed
+-- (user, 2026-09-22), so the part behind the player is not drawn.
+local function RouteAhead()
+	local points = route.points
+	local from = route.progress or 1
+	if from < 1 or from >= #points then
+		return points, 2
+	end
+	local list = {}
+	if route.atX then
+		list[1] = { points[from][1], route.atX, route.atY, points[from][4] }
+	else
+		list[1] = points[from]
+	end
+	for i = from + 1, #points do
+		list[#list + 1] = points[i]
+	end
+	return list, 2
+end
+
 local function DrawWorldMap()
 	if not (Provider and WorldMapFrame and WorldMapFrame:IsShown()) then
 		return
@@ -1604,7 +1826,7 @@ local function DrawWorldMap()
 	end
 	local scale = map.GetCanvasScale and map:GetCanvasScale() or 1
 	local unit = 3.5 * (tonumber(M.db.lineWidth) or 3) / (scale > 0 and scale or 1)
-	local points = route.points
+	local points = RouteAhead()
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
 		if a[1] == b[1] and b[4] ~= "boat" then
@@ -1832,8 +2054,9 @@ end
 -- yards further along it. Cutting a corner or running beside the road bends
 -- the arrow towards the path ahead instead of back to a missed point. Farther
 -- than OFF_ROUTE yards from the path, a new route is planned within a second.
-local LOOKAHEAD = 25
-local OFF_ROUTE = 20
+local LOOKAHEAD = 30
+local OFF_ROUTE = 45           -- yards beside the path before it counts as left (was 20)
+local ADVANCE_TOLERANCE = 15   -- yards: a later part of the path this much farther than the nearest still wins
 
 local function Walkable(a, b, cont)
 	return a[1] == cont and b[1] == cont and b[4] ~= "boat" and b[4] ~= "flight"
@@ -1871,6 +2094,21 @@ local function PlaceOnRoute(cont, px, py)
 			end
 		end
 	end
+	if best then
+		-- eager: the LATEST part of the path nearly as close as the nearest
+		-- one is where the player is (a corner cut, a loop passed) — the
+		-- arrow never turns back to a part already passed
+		for i = best + 1, #points - 1 do
+			local a, b = points[i], points[i + 1]
+			if Walkable(a, b, cont) then
+				local t, d, qx, qy = Project(px, py, a[2], a[3], b[2], b[3])
+				if d <= bestD + ADVANCE_TOLERANCE then
+					best, bestT, bestX, bestY = i, t, qx, qy
+					bestD = math.min(bestD, d)
+				end
+			end
+		end
+	end
 	if not best then
 		-- a single point, or only boat and flight legs left: the nearest point
 		for i = from, #points do
@@ -1889,11 +2127,14 @@ end
 -- The point LOOKAHEAD yards along the route from the player's place on it,
 -- stopping at a dock or flight master (the walk ends there) and at the goal.
 -- A straight guess aims at its end. Also returns the yards left to walk.
-local function AimPoint(cont, i, qx, qy)
+local function AimPoint(cont, i, qx, qy, offBy)
 	local points = route.points
 	local ax, ay = qx, qy
 	local tx, ty = qx, qy
-	local left = LOOKAHEAD
+	-- farther from the path, farther ahead along it: the arrow points where
+	-- the road is going rather than at the road's nearest point beside the
+	-- player (running parallel to it no longer reads as "turn around")
+	local left = math.min(90, math.max(LOOKAHEAD, (offBy or 0) * 1.5))
 	for j = i + 1, #points do
 		local b = points[j]
 		if not Walkable(points[j - 1], b, cont) then
@@ -1937,12 +2178,20 @@ local function UpdateArrow(cont, px, py)
 		return false
 	end
 	local tx, ty, remaining
+	NoteHeading(cont, px, py)
 	if route then
 		local i, _, d, qx, qy = PlaceOnRoute(cont, px, py)
 		if i then
 			route.progress = i
-			offRoute = d > OFF_ROUTE
-			tx, ty, remaining = AimPoint(cont, i, qx, qy)
+			route.atX, route.atY = qx, qy   -- the player's place on the path: the painters draw from here
+			local off = d > OFF_ROUTE
+			if off and not offRoute then
+				offRouteSince = GetTime()
+			elseif not off then
+				offRouteSince = nil
+			end
+			offRoute = off
+			tx, ty, remaining = AimPoint(cont, i, qx, qy, d)
 		end
 	end
 	if not tx and destination.cont == cont then
@@ -1996,7 +2245,7 @@ local function MinimapTick(_, elapsed)
 	local round = IsRoundMinimap()
 	local R = size / 2 - 1
 	local unit = 2.6 * (tonumber(M.db.lineWidth) or 3)
-	local points = route.points
+	local points = RouteAhead()
 	local function Offset(yx, yy)
 		local dx, dy = yx - px, yy - py
 		if rotate then
@@ -2063,6 +2312,9 @@ local function AdoptSaved()
 end
 
 local function LoadBaked()
+	if type(MelloUI_RoadData) == "table" then
+		MergeRoads(MelloUI_RoadData)
+	end
 	if type(MelloUI_RouteData) == "table" then
 		Merge(MelloUI_RouteData)
 	end
@@ -2076,9 +2328,18 @@ local eventFrame = CreateFrame("Frame")
 local ticker = nil
 local adoptTicker = nil
 
+-- Pins recorded by the quest list and the services (/qlmap dock, a service
+-- window) land in the store whether Route is on or off: the write at logout
+-- must not go with the module's events (audit, 2026-09-22).
+local logoutFrame = CreateFrame("Frame")
+logoutFrame:RegisterEvent("PLAYER_LOGOUT")
+logoutFrame:SetScript("OnEvent", function()
+	MelloUIRoutes = LearnedOnly()
+end)
+
 eventFrame:SetScript("OnEvent", function(_, event)
 	if event == "PLAYER_LOGOUT" then
-		MelloUIRoutes = live
+		MelloUIRoutes = LearnedOnly()
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		last = nil
 		taxiStart = nil
@@ -2109,24 +2370,61 @@ local function Tick()
 			CheckArrival()
 		end
 	end
+	if route and WorldMapFrame and WorldMapFrame:IsShown() then
+		DrawWorldMap()   -- the line on the open map starts at the player (the route is kept now)
+	end
 end
 
 SLASH_MELLOROUTE1 = "/route"
 SlashCmdList.MELLOROUTE = function(msg)
 	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-	if msg == "clear" then
+	if msg == "dots" then
+		-- what the painters draw (the kit gem or the game's dot), for the copy window
+		MelloUI:ClearLog()
+		for _, entry in ipairs({ { "map", mapPainter }, { "minimap", mmPainter } }) do
+			local painter = entry[2]
+			MelloUI:Print("%s painter: %s, used=%d, frame shown=%s alpha=%s", entry[1], painter and "yes" or "no", painter and painter.used or 0,
+				painter and tostring(painter.frame:IsShown()) or "-", painter and tostring(painter.frame:GetAlpha()) or "-")
+			for i = 1, math.min(3, painter and painter.used or 0) do
+				local dot = painter.dots[i]
+				local okT, tex = pcall(dot.GetTexture, dot)
+				local okC, u1, _, _, _, _, _, u2, v2 = pcall(dot.GetTexCoord, dot)
+				local r, g, b = dot:GetVertexColor()
+				MelloUI:Print("  dot %d: tex=%s piece=%s uv=%s..%s,%s size=%.1f alpha=%.2f rgb=%.2f %.2f %.2f shown=%s layer=%s", i,
+					okT and tostring(tex) or "?", tostring(dot.kitName), okC and string.format("%.2f", u1) or "?", okC and string.format("%.2f", u2) or "?",
+					okC and string.format("%.2f", v2) or "?", dot:GetWidth() or 0, dot:GetAlpha() or 0, r or 0, g or 0, b or 0, tostring(dot:IsShown()), tostring(dot:GetDrawLayer()))
+			end
+		end
+		MelloUI:Print("kit: %s, gem piece: %s", MelloUI.Kit and "yes" or "no", tostring(MelloUI.Kit and MelloUI.Kit:Piece("deco/gem_small") and "found" or "missing"))
+		MelloUI:Print("module enabled=%s worldMap=%s minimap=%s provider=%s destination=%s route=%s (%d points) map shown=%s",
+			tostring(M.isEnabled), tostring(M.db and M.db.worldMap), tostring(M.db and M.db.minimap), Provider and "yes" or "no",
+			destination and (destination.label or "map pin") or "none", route and "yes" or "no", route and #route.points or 0,
+			tostring(WorldMapFrame and WorldMapFrame:IsShown()))
+		local okH, has = pcall(C_Map.HasUserWaypoint)
+		MelloUI:Print("user waypoint=%s supertracking waypoint=%s", okH and tostring(has) or "?",
+			C_SuperTrack and C_SuperTrack.IsSuperTrackingUserWaypoint and tostring(C_SuperTrack.IsSuperTrackingUserWaypoint()) or "?")
+		MelloUI:ShowLog("route dots")
+	elseif msg == "clear" then
 		if C_Map.ClearUserWaypoint then
 			pcall(C_Map.ClearUserWaypoint)
 		end
 		M:Clear()
 		MelloUI:Print("Route cleared.")
 	elseif msg == "arrow reset" then
-		M.db.arrowX, M.db.arrowY = nil, nil
+		-- through the setting path, so the macro backup forgets the old spot
+		MelloUI:NotifySettingChanged(M.name, "arrowX", nil)
+		MelloUI:NotifySettingChanged(M.name, "arrowY", nil)
 		PlaceArrow()
 		MelloUI:Print("Arrow back at the top centre of the screen.")
 	elseif msg == "reset confirm" then
 		live = { graphs = {}, pins = live.pins }
 		MelloUIRoutes = live
+		-- the traced roads are not learned data: back in, counted afresh
+		tracedNodes = 0
+		graphVersion = graphVersion + 1
+		if type(MelloUI_RoadData) == "table" then
+			MergeRoads(MelloUI_RoadData)
+		end
 		M:Clear()
 		MelloUI:Print("Learned paths wiped for this session. Also delete Media\\RouteData.lua (or rerun the baker after the next /reload) to forget them for good.")
 	elseif msg == "quest" then
@@ -2169,7 +2467,8 @@ SlashCmdList.MELLOROUTE = function(msg)
 			taxiCount = taxiCount + 1
 			if TaxiUsable(id, t) then usable = usable + 1 end
 		end
-		MelloUI:Print("Route: %d learned points, %d links, %d docks, %d flight points (%d usable)%s.", nodes, edges, docks and #docks or 0,
+		MelloUI:Print("Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s.",
+			nodes - tracedNodes, tracedNodes, edges, docks and #docks or 0,
 			taxiCount, usable, mergedSaved and "" or " (saved variable not loaded by the client yet)")
 		if discovered then
 			local n, sample = 0, {}
@@ -2198,6 +2497,19 @@ SlashCmdList.MELLOROUTE = function(msg)
 		end
 		print(string.format("   recorder: %d breadcrumbs this session, ticks %d%s", recorded, tickCount,
 			recordSkip ~= "" and (", last call skipped: " .. recordSkip) or ""))
+		do
+			local cont, px, py = PlayerYards()
+			if cont then
+				local near, n = NodesNear(cont, px, py, OFFROAD)
+				local best = nil
+				for _, d in pairs(near) do
+					if not best or d < best then best = d end
+				end
+				local w, h = WorldSize(cont)
+				print(string.format("   you: continent %d at %.0f, %.0f yards (world size %.0f x %.0f); nearest path point %s, %d within %d yd",
+					cont, px, py, w, h, best and string.format("%.0f yd away", best) or "none", n, OFFROAD))
+			end
+		end
 		if route and WorldMapFrame and WorldMapFrame:IsShown() then
 			local shown = Plain(WorldMapFrame:GetMapID())
 			local pts = route.points
@@ -2230,7 +2542,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 			mapFrame and string.format("%dx%d", mapFrame:GetWidth(), mapFrame:GetHeight()) or "not created",
 			mapPainter and mapPainter.used or 0, tostring(Provider ~= nil),
 			mmPainter and tostring(mmPainter.used) or "none", arrow and arrow:IsShown() and "shown" or "hidden"))
-		print("   /route clear   |   /route arrow reset   |   /route reset   |   the baker: python Tools/bake_routes.py --watch")
+		print("   /route clear   |   /route arrow reset   |   /route reset   |   /route dots   |   the baker: python Tools/bake_routes.py --watch")
 	end
 end
 

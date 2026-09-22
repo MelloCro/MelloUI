@@ -20,6 +20,7 @@
 --     { type = "toggle", key = "unitframes", name = "Unit Frames", desc = "..." },
 --     { type = "slider", key = "shade", name = "Brightness", min = 0, max = 1, step = 0.05, percent = true },
 --     { type = "dropdown", key = "style", name = "Style", values = { {value="a", label="A"}, ... } },
+--     { type = "button", name = "Click, light", hint = "checkboxes, tabs", text = "Play", onClick = function(module, db) ... end },
 --   }
 -- A module may set `icon` (texture path) and `flavour` (one line) in
 -- RegisterModule; otherwise MODULE_META below supplies them.
@@ -50,6 +51,10 @@ local function Click(kind)
 	if not sound then
 		return
 	end
+	-- the Custom Sounds module, when it is on, plays its own click instead
+	if MelloUI.PlayCustomUISound and MelloUI:PlayCustomUISound(kind) then
+		return
+	end
 	local ok, played = pcall(PlaySoundFile, SOUND_PATH .. sound.file, "SFX")
 	if not (ok and played) and sound.fallback then
 		PlaySound(sound.fallback)
@@ -64,6 +69,9 @@ end
 local WINDOW_WIDTH, WINDOW_HEIGHT = 1000, 760
 local BAND_HEIGHT = 40
 local STRIP_HEIGHT = 74
+-- the icon strip on the kit (user, 2026-09-21): icons 1.5 x, packed with a
+-- small gap and centred, the strip grown to hold them
+local STRIP_ICON, STRIP_GAP, STRIP_HEIGHT_KIT = 66, 8, 118   -- the strip's icons at 1.15 x (user, 2026-09-22: 57 -> 66), the strip 10 taller for them
 local PAD = 22
 local ROW_HEIGHT = 34
 local SLIDER_ROW_HEIGHT = 40
@@ -86,7 +94,12 @@ local C = {
 }
 
 local MODULE_META = {
+	UIModifications = { icon = ICON .. "INV_Misc_Gem_Ruby_02",      flavour = "The painted reskin, area by area, and the quality-of-life tweaks on nameplates, tooltips, chat and unit frames. Start here." },
 	DarkMode     = { icon = ICON .. "Spell_Shadow_Twilight",       flavour = "Dim the gold and the glare. The interface steps back, the world steps forward." },
+	CharacterPanel = { icon = ICON .. "INV_Chest_Plate04",         flavour = "Stone, iron and a window on the world. Your character, framed the way it deserves." },
+	GameMenuPanel = { icon = ICON .. "INV_Misc_Key_10",             flavour = "Nine red plates under a gold header. The way out, in stone and iron." },
+	SpellBookPanel = { icon = ICON .. "INV_Misc_Book_09",            flavour = "The spell book in the painted kit, on the game's own layout." },
+	ProfessionsPanel = { icon = ICON .. "Trade_BlackSmithing",        flavour = "The professions window in the painted kit, on the game's own layout." },
 	BarTextures  = { icon = ICON .. "Spell_Holy_Renew",            flavour = "Health and mana bars in the finish you like: flat, smooth, glossy or minimalist." },
 	BarText      = { icon = ICON .. "INV_Misc_Note_02",            flavour = "Numbers where they belong. Health and power values, always in view." },
 	Tweaks       = { icon = ICON .. "INV_Misc_Wrench_01",          flavour = "Small knobs with a big effect. Hide what you never click, scale what you never see." },
@@ -102,6 +115,9 @@ local MODULE_META = {
 	QuestList    = { icon = ICON .. "INV_Misc_Map_01",             flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do." },
 	Route        = { icon = ICON .. "Ability_Tracking",            flavour = "A trail of gems from here to there, along the roads you have walked before." },
 	Services     = { icon = ICON .. "Ability_Repair",              flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap." },
+	PartyMarkers = { icon = ICON .. "INV_Misc_GroupNeedMore",      flavour = "A class medallion over every party member's head, ringed in their role's colour: the healer, found at a glance." },
+	CustomSounds = { icon = ICON .. "INV_Misc_Bell_01",            flavour = "Iron, leather, parchment and stone. Every click, page, pouch and buckle of the interface, re-recorded." },
+	ClassIcons   = { icon = ICON .. "INV_Misc_Rune_01",            flavour = "Painted medallions for every class, on the character sheet and on every portrait." },
 }
 local HOME_FLAVOUR = "Module based interface tweaks for World of Warcraft: Forever."
 local PROFILES_META = { icon = ICON .. "INV_Scroll_06", title = "Profiles",
@@ -110,6 +126,15 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
 -- Shown on the Home page under "What's new".
 local CHANGELOG = {
+	{ version = "0.13.4", lines = {
+		"The painted kit reskin: every window and the whole HUD dressed in the painted art, one switch and one toggle per area under UI Modifications.",
+		"Unlock the Windows: drag any window, the minimap, the tracker, the meter and the chat; the wheel scales; positions stay.",
+		"A guided tour of this window (the Tutorial button, /mello tutorial), offered on the first login; a fresh install starts with everything off (the built-in Everything Off profile).",
+		"Voice Over reads the right quest once the panel has settled, plays old recordings for renumbered quests, and lists the vanilla lines the pack never had.",
+		"Bar Textures: the game's own textures as a choice and a health colour that overrides threat; Fonts: one font per role; Dark Mode darkens the reskin.",
+		"Settings: a larger macro backup, window positions kept, profile names as typed; dozens of fixes from a full audit.",
+		"Custom Sounds, a new module (off until you turn it on): the interface's clicks, pages, pouches, buckles, coins, whispers and the group finder bell re-recorded in iron, leather, parchment and stone.",
+	} },
 	{ version = "0.13.3", lines = {
 		"Chat notices can be turned off under Tweaks; replies to slash commands always show.",
 		"Report a problem link on this page; the addon list shows the MelloUI icon.",
@@ -139,6 +164,8 @@ local COMMANDS = {
 	{ "/mello disable <module>", "turn a module off" },
 	{ "/mello profile ...", "save, load, delete or set the default profile" },
 	{ "/mello status", "where the settings came from" },
+	{ "/mello layout ...", "the Edit Mode layout the reskin is made for: apply, export" },
+	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/vo", "Voice Over commands" },
 	{ "/route", "route commands, /route clear to stop" },
 	{ "/services", "track the nearest service" },
@@ -243,11 +270,65 @@ end
 -- Grey at rest, gold when selected, white while hovered.
 local FRAME_GREY = { 0.72, 0.72, 0.74 }
 local FRAME_GOLD = { 1.0, 0.84, 0.36 }
-local function IconBox(parent, size, texture)
+--------------------------------------------------------------------------------
+-- The painted kit on the configurator itself (user, 2026-09-21; picks CT2 SI1
+-- from kit_raw/config_catalog.png): decided once, when the window is made,
+-- from the UI Modifications reskin switch (a change there shows after
+-- /reload). Every piece goes through Kit:Replace with the fixed looks' keys:
+-- the outer double rail, the title plate on it, the page stone, the header
+-- plate under the icon strip, R1 rims on the icons, TB6 tabs, L1 boxes
+-- around the sections, plate rows with a hover, the kit's check boxes, red
+-- buttons, D1 dropdowns, the kit slider, the kit's title face on the titles.
+--------------------------------------------------------------------------------
+
+local KIT = nil
+local kitSkin = { reps = {}, followers = {} }
+
+local function KitWanted()
+	local kit = MelloUI.Kit
+	if not (kit and kit.Replace) or not MelloUI:IsModuleEnabled("UIModifications") then
+		return nil
+	end
+	local db = MelloUI:GetModuleDB("UIModifications")
+	if db and db.reskin ~= false then
+		return kit
+	end
+	return nil
+end
+
+local function KitReplace(region, opts)
+	if not (KIT and region) then
+		return nil
+	end
+	local rep = KIT:Replace(region, opts)
+	if rep then
+		kitSkin.reps[#kitSkin.reps + 1] = rep
+		rep:Enable()
+	end
+	return rep
+end
+
+-- A region to hand to Kit:Replace where the configurator has none: an
+-- invisible solid on the frame, faded by the replacement like game art.
+local function KitAnchor(parent, layer)
+	local tex = parent:CreateTexture(nil, layer or "BACKGROUND")
+	tex:SetAllPoints(parent)
+	tex:SetColorTexture(0, 0, 0, 0)
+	return tex
+end
+
+local function IconBox(parent, size, texture, button)
 	local box = CreateFrame("Frame", nil, parent)
 	box:SetSize(size, size)
 	box.icon = box:CreateTexture(nil, "ARTWORK")
-	box.icon:SetAllPoints()
+	if KIT then
+		-- the icon at 0.9 of the box, centred: the rim (1.2 x the box) and
+		-- the glow keep their sizes (user, 2026-09-22)
+		box.icon:SetPoint("CENTER", box, "CENTER")
+		box.icon:SetSize(size * 0.9, size * 0.9)
+	else
+		box.icon:SetAllPoints()
+	end
 	box.icon:SetTexture(texture)
 	if texture ~= LOGO then
 		box.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
@@ -264,17 +345,45 @@ local function IconBox(parent, size, texture)
 	mask:SetAtlas(ICON_MASK)
 	local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(ICON_MASK)
 	if info and info.width and info.height then
-		mask:SetSize(info.width * k, info.height * k)
+		local ik = KIT and k * 0.9 or k   -- the corner mask at the icon's size
+		mask:SetSize(info.width * ik, info.height * ik)
 		mask:SetPoint("CENTER", box.icon, "CENTER")
 	else
 		mask:SetAllPoints(box.icon)
 	end
 	box.icon:AddMaskTexture(mask)
+	if KIT then
+		-- SI1: the square R1 rim in place of the action-button frame — as
+		-- regions of the BOX (the icon's own frame) so it draws over the
+		-- icon; the hover is handed on from the strip button (SetHovered).
+		-- The rim's rect is the box grown by 20 % about its centre (user,
+		-- 2026-09-22: at the box's size the icon spilled under the iron on
+		-- every side; the icon itself stays as it is).
+		local rimRect = CreateFrame("Frame", nil, box)
+		rimRect:SetPoint("CENTER", box, "CENTER")
+		rimRect:SetSize(size * 1.2, size * 1.2)
+		rimRect:EnableMouse(false)
+		-- the rim shows the box's states: gold (checked) for the current
+		-- page, pressed while the strip button is held, hover from the
+		-- button (user, 2026-09-22: no feedback on the strip but the text)
+		local rep = KitReplace(box.frame, { as = "UI-HUD-ActionBar-IconFrame", rect = rimRect, button = box,
+			checked = function() return box.selected end })
+		box.rim = rep and rep.object or nil
+	end
 	box.selected = false
 	function box:SetSelected(selected)
 		self.selected = selected and true or false
 		local c = self.selected and FRAME_GOLD or FRAME_GREY
 		self.frame:SetVertexColor(c[1], c[2], c[3], 1)
+		if self.rim and self.rim.Update then
+			self.rim:Update()
+		end
+	end
+	function box:SetPressed(pressed)
+		if self.rim and self.rim.Update then
+			self.rim.pressed = pressed and true or nil
+			self.rim:Update()
+		end
 	end
 	function box:SetHovered(hovered)
 		if hovered then
@@ -282,10 +391,46 @@ local function IconBox(parent, size, texture)
 		else
 			self:SetSelected(self.selected)
 		end
+		if self.rim and self.rim.Update then
+			self.rim.hover = hovered and true or nil
+			self.rim:Update()
+		end
 	end
 	function box:SetOn(on)
 		self.icon:SetDesaturated(not on)
 		self.icon:SetAlpha(on and 1 or 0.45)
+	end
+	-- a pulsing gold glow over the rim (the action button's proc glow,
+	-- additive light on top of the iron, not behind it — user, 2026-09-22),
+	-- for an important module
+	function box:SetGlow(on)
+		if on and not self.glow then
+			local glow = self:CreateTexture(nil, "OVERLAY", nil, 7)
+			glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+			glow:SetBlendMode("ADD")
+			glow:SetVertexColor(1, 0.82, 0)
+			-- centred on the BOX (the rim's centre; the icon sits inset in it)
+			-- and sized from the rim, so the light is symmetric around the
+			-- iron (user, 2026-09-22: the glow placed correctly)
+			local rimSize = KIT and size * 1.2 or size
+			glow:SetSize(rimSize * 1.45, rimSize * 1.45)
+			glow:SetPoint("CENTER", self, "CENTER", 0, 0)
+			local anim = glow:CreateAnimationGroup()
+			anim:SetLooping("BOUNCE")
+			local a = anim:CreateAnimation("Alpha")
+			a:SetFromAlpha(0.45)
+			a:SetToAlpha(1)
+			a:SetDuration(0.9)
+			anim:Play()
+			self.glow, self.glowAnim = glow, anim
+		elseif self.glow then
+			self.glow:SetShown(on and true or false)
+			if on then
+				self.glowAnim:Play()
+			else
+				self.glowAnim:Stop()
+			end
+		end
 	end
 	box:SetSelected(false)
 	return box
@@ -316,6 +461,9 @@ local function CreateSwitch(parent, onChange)
 		Click(value and "check_on" or "check_off")
 		self:SetValue(value)
 	end)
+	if KIT and KIT.SkinCheckButton then
+		KIT:SkinCheckButton(cb, KitReplace, "UI-CheckBox-Up")
+	end
 	return cb
 end
 
@@ -445,6 +593,25 @@ local function CreateSlider(parent, width, db, module, opt)
 		self:SetValue(db[opt.key] or min)
 		self.refreshing = false
 	end
+	if KIT and slider.Slider then
+		local track = slider.Slider
+		if track.Middle then
+			-- SL1: the track at the kit piece's own thickness (fitted to the
+			-- slider frame it came out as two fat stripes — user, 2026-09-21)
+			local layout = MelloUI_KitLayout and MelloUI_KitLayout.pieces and MelloUI_KitLayout.pieces["inputs/slider_mid"]
+			local natural = layout and layout.box and (layout.box[4] - layout.box[2]) * KIT.scale or nil
+			KitReplace(track.Middle, { as = "_Minimal_SliderBar_Middle", rect = track, fitHeight = natural, alsoFade = { track.Left, track.Right } })
+		end
+		if track.Thumb then
+			KitReplace(track.Thumb, { as = "Minimal_SliderBar_Button", rect = track.Thumb, button = track })
+		end
+		for _, entry in ipairs({ { slider.Back, "Minimal_SliderBar_Button_Left" }, { slider.Forward, "Minimal_SliderBar_Button_Right" } }) do
+			local b, key = entry[1], entry[2]
+			if b and b.GetNormalTexture and b:GetNormalTexture() then
+				KitReplace(b:GetNormalTexture(), { as = key, button = b, alsoFade = KIT:OtherTextures(b, b:GetNormalTexture()) })
+			end
+		end
+	end
 	return slider
 end
 
@@ -457,22 +624,28 @@ end
 
 local RefreshStrip, SelectPage  -- forward declarations
 
+local SEC_INSET = 10   -- the rows' margin inside a section's L1 box (kit)
+
 local function NewSection(page, name)
 	local sec = CreateFrame("Frame", nil, page)
 	sec.name = name
-	sec.y = 0
+	sec.y = KIT and SEC_INSET or 0
 	sec.rows = 0
 	sec.refreshers = {}
 	sec:SetWidth(page.width - PAD * 2)
 	sec:SetHeight(10)
 	sec:Hide()
+	if KIT then
+		-- L1: the single rail with the list-box stone around the section
+		KitReplace(KitAnchor(sec), { as = "Professions-background-summarylist", rect = sec, parent = sec, level = -1 })
+	end
 	function sec:Refresh()
 		for _, fn in ipairs(self.refreshers) do
 			fn()
 		end
 	end
 	function sec:Finish()
-		self:SetHeight(math.max(self.y, 10))
+		self:SetHeight(math.max(self.y + (KIT and SEC_INSET or 0), 10))
 	end
 	page.sections[#page.sections + 1] = sec
 	return sec
@@ -482,14 +655,31 @@ end
 local function Row(sec, height, label, hint, desc)
 	local row = CreateFrame("Frame", nil, sec)
 	row:SetHeight(height)
-	row:SetPoint("TOPLEFT", 0, -sec.y)
-	row:SetPoint("RIGHT", sec, "RIGHT", 0, 0)
-	local line = Solid(row, "BORDER", C.line, 0.6)
-	line:SetHeight(1)
-	line:SetPoint("BOTTOMLEFT")
-	line:SetPoint("BOTTOMRIGHT")
+	row:SetPoint("TOPLEFT", KIT and SEC_INSET or 0, -sec.y)
+	row:SetPoint("RIGHT", sec, "RIGHT", KIT and -SEC_INSET or 0, 0)
 	row:EnableMouse(true)
-	AttachHover(row)
+	if KIT then
+		-- CR4 (user, 2026-09-21): a faint band on every other row, the
+		-- plate's hover look on the row under the mouse only
+		if sec.rows % 2 == 0 then
+			row.band = row:CreateTexture(nil, "BACKGROUND")
+			row.band:SetAllPoints(row)
+			row.band:SetColorTexture(1, 1, 1, 0.06)
+		end
+		local hover = KitReplace(KitAnchor(row), { as = "FriendsRowHighlight", rect = row })
+		if hover and hover.object then
+			row.hover = hover.object
+			hover.object:Hide()
+			row:HookScript("OnEnter", function() if row.hover then hover.object:Show() end end)
+			row:HookScript("OnLeave", function() hover.object:Hide() end)
+		end
+	else
+		local line = Solid(row, "BORDER", C.line, 0.6)
+		line:SetHeight(1)
+		line:SetPoint("BOTTOMLEFT")
+		line:SetPoint("BOTTOMRIGHT")
+		AttachHover(row)
+	end
 	row.label = Text(row, "GameFontHighlight", label, C.text)
 	row.label:SetPoint("LEFT", 14, 0)
 	row.label:SetWordWrap(false)
@@ -508,7 +698,13 @@ local function Row(sec, height, label, hint, desc)
 end
 
 local function AddToggle(sec, module, db, opt)
-	local row = Row(sec, ROW_HEIGHT, opt.name, opt.hint, opt.desc)
+	local row = Row(sec, ROW_HEIGHT, opt.name, opt.important and "IMPORTANT" or opt.hint, opt.desc)
+	if opt.important then
+		Colour(row.label, { 1, 0.82, 0 })
+		if row.hint then
+			Colour(row.hint, { 1, 0.82, 0 })
+		end
+	end
 	local switch = CreateSwitch(row, function(value)
 		MelloUI:NotifySettingChanged(module.name, opt.key, value)
 	end)
@@ -534,10 +730,55 @@ local function AddDropdown(sec, module, db, opt)
 	sec.refreshers[#sec.refreshers + 1] = function() dd:Refresh() end
 end
 
+-- A row with a button on the right (user, 2026-09-22: "a preview button on
+-- each sound effect"): the label, a grey hint, and the kit's red plate
+-- button with `opt.text`; `opt.onClick(module, db)` on the click.
+local function AddButton(sec, module, db, opt)
+	local row = Row(sec, ROW_HEIGHT, opt.name, opt.hint, opt.desc)
+	local button = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+	button:SetSize(opt.width or 70, 22)
+	button:SetPoint("RIGHT", -12, 0)
+	button:SetText(opt.text or "Run")
+	button:SetScript("OnClick", function()
+		if opt.onClick then
+			opt.onClick(module, db)
+		end
+	end)
+	button:HookScript("OnEnter", function() if opt.desc then ShowTooltip(row, opt.name, opt.desc) end end)
+	button:HookScript("OnLeave", function() GameTooltip:Hide() end)
+	row.button = button
+end
+
+-- A heading inside a tab (a `header` opens a new tab; the reskin's
+-- "Windows" / "HUD" groups and a folded module's own headers stay inside
+-- their area's tab — user, 2026-09-21)
+local function AddSubheader(sec, module, db, opt)
+	local row = Row(sec, ROW_HEIGHT - 6, opt.name, nil, nil)
+	Colour(row.label, C.accent)
+	if KIT then
+		-- SH3 (user, 2026-09-21): the header plate, the text past its gem cap
+		-- (no band, no hover plate on a heading)
+		row:EnableMouse(false)
+		if row.band then
+			row.band:Hide()
+		end
+		row.hover = nil
+		KitReplace(KitAnchor(row), { as = "GuildFrame-Header", rect = row })
+		row.label:SetPoint("LEFT", 34, 0)
+		return
+	end
+	row.label:SetPoint("LEFT", 8, -4)
+	local line = Solid(row, "ARTWORK", C.line, 1)
+	line:SetPoint("BOTTOMLEFT", 8, 0)
+	line:SetPoint("BOTTOMRIGHT", -8, 0)
+end
+
 local builders = {
 	toggle = AddToggle,
 	slider = AddSlider,
 	dropdown = AddDropdown,
+	subheader = AddSubheader,
+	button = AddButton,
 }
 
 --------------------------------------------------------------------------------
@@ -596,6 +837,9 @@ local function NewPage(name, width)
 				end
 				tab:SetPoint("TOPLEFT", PAD + x, -rowY)
 				tab.section = sec
+				if KIT and KIT.SkinPanelTab then
+					KIT:SkinPanelTab(tab, KitReplace, kitSkin)
+				end
 				function tab:SetSelected(selected)
 					if selected then
 						PanelTemplates_SelectTab(self)
@@ -611,10 +855,12 @@ local function NewPage(name, width)
 				x = x + w - 6
 			end
 			y = rowY + artHeight - 1
-			local line = Solid(self, "ARTWORK", C.accent2, 1)
-			line:SetHeight(1)
-			line:SetPoint("TOPLEFT", PAD, -y)
-			line:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
+			if not KIT then
+				local line = Solid(self, "ARTWORK", C.accent2, 1)
+				line:SetHeight(1)
+				line:SetPoint("TOPLEFT", PAD, -y)
+				line:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
+			end
 			y = y + 12
 		end
 		self.headerHeight = y
@@ -637,14 +883,35 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 
 	local titleFS = Text(page, "GameFontNormalHuge", title, C.accent)
 	titleFS:SetPoint("TOPLEFT", box, "TOPRIGHT", 14, 0)
+	if KIT and KIT.TitleFont then
+		KIT:TitleFont(titleFS, true)
+	end
 
 	local rightWidth = module and 200 or 0
 	local flavourFS = Text(page, "GameFontHighlightSmall", nil, C.dim)
+	if KIT then
+		-- on the page stone the dim grey drowned (user, 2026-09-21): light
+		-- text with a thin outline
+		flavourFS:SetFontObject("GameFontHighlightSmallOutline")
+		Colour(flavourFS, C.text)
+	end
 	flavourFS:SetPoint("TOPLEFT", titleFS, "BOTTOMLEFT", 2, -6)
 	flavourFS:SetWidth(page.width - PAD * 2 - 64 - rightWidth)
 	flavourFS:SetWordWrap(true)
 	flavourFS:SetText(flavour)
 	page.flavour = flavourFS
+	if KIT then
+		-- a black backing fading out to the right under the title, the
+		-- flavour and the status line, so the text reads on the cracked
+		-- stone (user, 2026-09-22); a page region under everything else
+		local shade = page:CreateTexture(nil, "BACKGROUND", nil, 1)
+		shade:SetColorTexture(1, 1, 1, 1)
+		shade:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.7), CreateColor(0, 0, 0, 0))
+		shade:SetPoint("TOPLEFT", box, "TOPLEFT", -10, 10)
+		shade:SetPoint("RIGHT", flavourFS, "RIGHT", 60, 0)
+		shade:SetPoint("BOTTOM", flavourFS, "BOTTOM", 0, -24)   -- room for the Home page's status line
+		page.headerShade = shade
+	end
 
 	if module then
 		local lbl = Text(page, "GameFontNormal", "Enabled", C.text)
@@ -654,12 +921,22 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 		end)
 		switch:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
 		lbl:SetPoint("RIGHT", switch, "LEFT", -4, 0)
+		page.switch = switch
 		local defaults = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 		defaults:SetSize(90, 22)
 		defaults:SetPoint("TOPRIGHT", switch, "BOTTOMRIGHT", 0, -10)
 		defaults:SetText("Defaults")
 		defaults:SetScript("OnClick", function()
 			for key, value in pairs(module.defaults) do
+				if type(value) == "table" then
+					-- a copy: the live table must not BE the defaults table
+					-- (the window positions were written into it)
+					local copy = {}
+					for k, v in pairs(value) do
+						copy[k] = v
+					end
+					value = copy
+				end
 				MelloUI:NotifySettingChanged(module.name, key, value)
 			end
 			MelloUI:Print("%s: settings back to their defaults.", module.title)
@@ -670,9 +947,49 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 		page.refreshers[#page.refreshers + 1] = function()
 			switch:SetValue(MelloUI:IsModuleEnabled(module.name), true)
 		end
+		-- `module.headerToggle`: one of the module's toggles shown up here
+		-- under Defaults (UI Modifications' "Unlock the Windows")
+		local ht = module.headerToggle
+		if ht and ht.key then
+			local hlbl = Text(page, "GameFontNormal", ht.name or ht.key, C.text)
+			local hswitch = CreateSwitch(page, function(value)
+				MelloUI:NotifySettingChanged(module.name, ht.key, value)
+				MelloUI:RefreshConfig()
+			end)
+			hswitch:SetPoint("TOPRIGHT", defaults, "BOTTOMRIGHT", 0, -10)
+			hlbl:SetPoint("RIGHT", hswitch, "LEFT", -4, 0)
+			page.headerSwitch = hswitch
+			if ht.desc then
+				hswitch:HookScript("OnEnter", function() ShowTooltip(hswitch, ht.name or ht.key, ht.desc) end)
+				hswitch:HookScript("OnLeave", function() GameTooltip:Hide() end)
+			end
+			page.refreshers[#page.refreshers + 1] = function()
+				local db = MelloUI:GetModuleDB(module.name)
+				hswitch:SetValue(db[ht.key] and true or false, true)
+			end
+			-- `module.headerButton`: a button under that switch
+			-- (UI Modifications' "Reset positions")
+			local hb = module.headerButton
+			if hb and hb.onClick then
+				local button = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+				button:SetSize(110, 22)
+				button:SetPoint("TOPRIGHT", hswitch, "BOTTOMRIGHT", 0, -10)
+				button:SetText(hb.name or "Reset")
+				page.headerButton = button
+				button:SetScript("OnClick", function()
+					hb.onClick()
+					MelloUI:RefreshConfig()
+				end)
+				if hb.desc then
+					button:SetScript("OnEnter", function(self) ShowTooltip(self, hb.name or "Reset", hb.desc) end)
+					button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+				end
+			end
+		end
 	end
 
 	page.headerHeight = PAD + math.max(50, 26 + 6 + WrappedHeight(flavourFS, 14)) + 18
+		+ (module and module.headerToggle and 30 or 0) + (module and module.headerButton and 32 or 0)
 end
 
 local function BuildModulePage(module, width)
@@ -681,22 +998,46 @@ local function BuildModulePage(module, width)
 	BuildPageHeader(page, icon, module.title, flavour, module)
 	local db = MelloUI:GetModuleDB(module.name)
 	local sec = nil
+	-- an option may belong to ANOTHER module (`opt.module`: the folded
+	-- quality-of-life tweaks on the UI Modifications page): it is built
+	-- against that module and its settings, and `include` lays out a whole
+	-- module's options in place (its headers become sections here)
+	local function Build(owner, ownerDb, opt)
+		if not sec then
+			sec = NewSection(page, "General")
+		end
+		local builder = builders[opt.type]
+		if builder then
+			if opt.key and ownerDb[opt.key] == nil then
+				ownerDb[opt.key] = owner.defaults[opt.key]
+			end
+			builder(sec, owner, ownerDb, opt)
+		else
+			MelloUI:Print("Unknown option type '%s' in module %s", tostring(opt.type), owner.name)
+		end
+	end
 	for _, opt in ipairs(module.options) do
 		if opt.type == "header" then
 			sec = NewSection(page, opt.name)
-		else
-			if not sec then
-				sec = NewSection(page, "General")
-			end
-			local builder = builders[opt.type]
-			if builder then
-				if db[opt.key] == nil then
-					db[opt.key] = module.defaults[opt.key]
+		elseif opt.type == "include" then
+			local inc = MelloUI:GetModule(opt.module)
+			if inc then
+				local incDb = MelloUI:GetModuleDB(inc.name)
+				for _, sub in ipairs(inc.options) do
+					if sub.type == "header" then
+						Build(inc, incDb, { type = "subheader", name = sub.name })
+					else
+						Build(inc, incDb, sub)
+					end
 				end
-				builder(sec, module, db, opt)
-			else
-				MelloUI:Print("Unknown option type '%s' in module %s", tostring(opt.type), module.name)
 			end
+		elseif opt.module then
+			local owner = MelloUI:GetModule(opt.module)
+			if owner then
+				Build(owner, MelloUI:GetModuleDB(owner.name), opt)
+			end
+		else
+			Build(module, db, opt)
 		end
 	end
 	if #page.sections == 0 then
@@ -706,6 +1047,9 @@ local function BuildModulePage(module, width)
 		sec.y = 30
 	end
 	page:Finish()
+	if KIT and KIT.SweepControls then
+		KIT:SweepControls(page, KitReplace, kitSkin)
+	end
 	return page
 end
 
@@ -727,10 +1071,12 @@ end
 
 local function StatusLine()
 	local on, total = 0, 0
-	for name in MelloUI:IterateModules() do
-		total = total + 1
-		if MelloUI:IsModuleEnabled(name) then
-			on = on + 1
+	for name, module in MelloUI:IterateModules() do
+		if not module.hidden then
+			total = total + 1
+			if MelloUI:IsModuleEnabled(name) then
+				on = on + 1
+			end
 		end
 	end
 	local profile = MelloUI.db and MelloUI.db.activeProfile or nil
@@ -744,35 +1090,79 @@ local function BuildHomePage(width)
 	local page = NewPage("Home", width)
 	BuildPageHeader(page, LOGO, "MelloUI", HOME_FLAVOUR, nil)
 	local status = Text(page, "GameFontHighlightSmall", nil, C.dim)
+	if KIT then
+		status:SetFontObject("GameFontHighlightSmallOutline")
+		Colour(status, C.text)
+	end
 	status:SetPoint("TOPLEFT", page.flavour, "BOTTOMLEFT", 0, -4)
 	page.refreshers[#page.refreshers + 1] = function() status:SetText(StatusLine()) end
 	page.headerHeight = page.headerHeight + 16
 
+	-- the guided tour (Core/Tutorial.lua), where a module page has its switch
+	local tour = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+	tour:SetSize(110, 22)
+	tour:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
+	tour:SetText("Tutorial")
+	tour:SetScript("OnClick", function()
+		Click("page")
+		if MelloUI.Tutorial then
+			MelloUI.Tutorial:Start()
+		end
+	end)
+	tour:SetScript("OnEnter", function(self) ShowTooltip(self, "Tutorial", "A short tour of this window: where every feature lives, step by step, on the game's help tips. Also /mello tutorial.") end)
+	tour:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	page.tutorialButton = tour
+
 	-- Modules: a tile per module.
 	local tiles = NewSection(page, "Modules")
+	page.tiles = {}
 	local columns, gap = 4, 10
 	local tileWidth = (tiles:GetWidth() - gap * (columns - 1)) / columns
 	local tileHeight = 92
 	local i = 0
 	for _, module in MelloUI:IterateModules() do
+		if not module.hidden then
 		local col, row = i % columns, math.floor(i / columns)
 		local tile = CreateFrame("Frame", nil, tiles, "BackdropTemplate")
-		tile:SetBackdrop({
-			bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-			edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 },
-		})
-		tile:SetBackdropColor(0.07, 0.07, 0.08, 0.92)
-		tile:SetBackdropBorderColor(0.55, 0.47, 0.30, 1)
+		if KIT then
+			-- CT2: the L1 box (single rail + list-box stone)
+			-- (one level under the tile, so its own texts stay above the stone)
+			KitReplace(KitAnchor(tile), { as = "Professions-background-summarylist", rect = tile, parent = tile, level = -1 })
+		else
+			tile:SetBackdrop({
+				bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+				edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 },
+			})
+			tile:SetBackdropColor(0.07, 0.07, 0.08, 0.92)
+		end
+		-- an important module (the painted interface's one entry) keeps the
+		-- gold border at rest and wears a badge, so it stands out among the
+		-- tiles (user, 2026-09-21)
+		local restR, restG, restB = 0.55, 0.47, 0.30
+		if module.important then
+			restR, restG, restB = 1, 0.82, 0
+		end
+		if not KIT then
+			tile:SetBackdropBorderColor(restR, restG, restB, 1)
+		end
 		tile:SetSize(tileWidth, tileHeight)
 		tile:SetPoint("TOPLEFT", col * (tileWidth + gap), -(row * (tileHeight + gap)))
+		page.tiles[module.name] = tile
 		local icon, flavour = Meta(module)
 		local box = IconBox(tile, 42, icon)
 		box:SetPoint("TOPLEFT", 12, -12)
+		-- (no glow on the tile: the gold border and the badge mark the
+		-- important module — user, 2026-09-22)
 		local title = Text(tile, "GameFontNormal", module.title, C.text)
 		title:SetPoint("TOPLEFT", box, "TOPRIGHT", 12, -2)
 		title:SetPoint("RIGHT", tile, "RIGHT", -8, 0)
 		title:SetWordWrap(false)
+		if module.important then
+			local badge = Text(tile, "GameFontNormalSmall", "IMPORTANT", { 1, 0.82, 0 })
+			badge:SetPoint("TOPRIGHT", tile, "TOPRIGHT", -12, -12)
+			title:SetPoint("RIGHT", badge, "LEFT", -6, 0)
+		end
 		local state = Text(tile, "GameFontHighlightSmall", nil, C.dim)
 		state:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
 		local open = CreateFrame("Button", nil, tile)
@@ -789,11 +1179,19 @@ local function BuildHomePage(width)
 		tile:EnableMouse(true)
 		AttachHover(tile, 0.06)
 		tile:HookScript("OnEnter", function(self)
-			self:SetBackdropBorderColor(1, 0.82, 0, 1)
+			if not KIT then
+				if module.important then
+					self:SetBackdropBorderColor(1, 0.95, 0.6, 1)
+				else
+					self:SetBackdropBorderColor(1, 0.82, 0, 1)
+				end
+			end
 			ShowTooltip(self, module.title, flavour)
 		end)
 		tile:HookScript("OnLeave", function(self)
-			self:SetBackdropBorderColor(0.55, 0.47, 0.30, 1)
+			if not KIT then
+				self:SetBackdropBorderColor(restR, restG, restB, 1)
+			end
 			GameTooltip:Hide()
 		end)
 		local switch = CreateSwitch(tile, function(value)
@@ -815,6 +1213,7 @@ local function BuildHomePage(width)
 			end
 		end
 		i = i + 1
+		end
 	end
 	tiles.y = math.ceil(i / columns) * (tileHeight + gap)
 
@@ -838,6 +1237,7 @@ local function BuildHomePage(width)
 		y = y + 10
 	end
 	news.y = y
+	page.news = news   -- the tour points at it
 
 	-- Help: commands and links.
 	local help = NewSection(page, "Help")
@@ -878,8 +1278,12 @@ local function BuildHomePage(width)
 	note:SetText("Settings are mirrored into account macros because this client does not read its saved variables back; /mello status shows the state of that backup. The voice pack (MelloUI_VoiceOverData) is a separate download from the releases page and goes next to the MelloUI folder.")
 	y = y + WrappedHeight(note, 14) + 8
 	help.y = y
+	page.helpSection = help
 
 	page:Finish()
+	if KIT and KIT.SweepControls then
+		KIT:SweepControls(page, KitReplace, kitSkin)   -- the Tutorial button on the kit's plate
+	end
 	return page
 end
 
@@ -943,7 +1347,9 @@ local function RefreshProfilesPage()
 		row.name:SetText(name)
 		local isDefault = db.defaultProfile == name
 		row.default:SetText(isDefault and "Default  |cff40ff40*|r" or "Set default")
-		row.baked:SetText(MelloUI:IsProfileBaked(name) and "baked" or "not baked yet")
+		local builtIn = name == MelloUI.FRESH_PROFILE
+		row.baked:SetText(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "baked" or "not baked yet"))
+		row.delete:SetEnabled(not builtIn)
 		row.load:SetScript("OnClick", function()
 			if MelloUI:LoadProfile(name) then
 				MelloUI:Print("Profile '%s' loaded.", name)
@@ -1011,6 +1417,7 @@ local function BuildProfilesPage(width)
 		RefreshProfilesPage()
 	end
 	sec.save:SetScript("OnClick", Save)
+	page.saveButton = sec.save
 	sec.nameBox:SetScript("OnEnterPressed", Save)
 	sec.nameBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 	y = y + 22 + 14
@@ -1040,14 +1447,26 @@ end
 
 local function StripButton(name, icon, title, flavour)
 	local btn = CreateFrame("Button", nil, window.strip)
-	btn:SetSize(40, 40)
-	btn.box = IconBox(btn, 38, icon)
+	local size = KIT and STRIP_ICON or 38
+	btn:SetSize(size + 2, size + 2)
+	btn.box = IconBox(btn, size, icon, btn)
 	btn.box:SetPoint("TOP", 0, 0)
 	btn.box:EnableMouse(false)
+	local owner = MelloUI:GetModule(name)
+	btn.important = owner and owner.important or false   -- the glow, while its page is open only (user, 2026-09-22)
 	btn.label = Text(btn, "GameFontHighlightSmall", title, C.accent)
 	btn.label:SetPoint("TOP", btn.box, "BOTTOM", 0, -4)
 	btn.label:SetJustifyH("CENTER")
-	btn.label:Hide()
+	if KIT then
+		-- every icon carries its name (user, 2026-09-21); the current page's
+		-- in gold, the others dimmed
+		btn.label:SetWidth(STRIP_ICON + STRIP_GAP + 6)
+		btn.label:SetWordWrap(true)
+		btn.label:SetMaxLines(2)
+		Colour(btn.label, C.dim)
+	else
+		btn.label:Hide()
+	end
 	btn:SetScript("OnClick", function()
 		if currentPage ~= name then
 			Click("page")
@@ -1060,8 +1479,11 @@ local function StripButton(name, icon, title, flavour)
 	end)
 	btn:SetScript("OnLeave", function(self)
 		self.box:SetHovered(false)
+		self.box:SetPressed(false)
 		GameTooltip:Hide()
 	end)
+	btn:SetScript("OnMouseDown", function(self) self.box:SetPressed(true) end)
+	btn:SetScript("OnMouseUp", function(self) self.box:SetPressed(false) end)
 	stripButtons[name] = btn
 	return btn
 end
@@ -1070,6 +1492,7 @@ local function CreateWindow()
 	if window then
 		return
 	end
+	KIT = KitWanted()
 	window = CreateFrame("Frame", "MelloUIConfigFrame", UIParent, "BackdropTemplate")
 	window:SetSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 	window:SetPoint("CENTER")
@@ -1092,10 +1515,18 @@ local function CreateWindow()
 	local tint = Solid(window, "BACKGROUND", C.bg, 0.45)
 	tint:SetPoint("TOPLEFT", 6, -6)
 	tint:SetPoint("BOTTOMRIGHT", -6, 6)
+	if KIT then
+		-- the kit: the page stone in place of the rock (inside the outer
+		-- rail), the outer double rail with its gems grown outward
+		KitReplace(bg, { as = "UI-Background-Rock", parent = window, rect = window, inset = KIT:OuterRailInset(), alsoFade = { tint } })
+		-- (body = false: the page stone above is the window's one background;
+		-- the rail's own stone tile tied with it and won at random, user 2026-09-22)
+		KitReplace(KitAnchor(window, "BORDER"), { as = "NineSlicePanelTemplate", parent = window, rect = window, body = false })
+	end
 
 	-- Metal frame from the client's own nine-slice art, or a plain border.
-	local framed = false
-	if NineSliceUtil and NineSliceUtil.ApplyLayoutByName then
+	local framed = KIT and true or false
+	if not KIT and NineSliceUtil and NineSliceUtil.ApplyLayoutByName then
 		local nine = CreateFrame("Frame", nil, window, "NineSlicePanelTemplate")
 		nine:SetAllPoints()
 		local ok = pcall(NineSliceUtil.ApplyLayoutByName, nine, "GenericMetal")
@@ -1112,6 +1543,9 @@ local function CreateWindow()
 	innerLine:SetPoint("TOPLEFT", 7, -7)
 	innerLine:SetPoint("BOTTOMRIGHT", -7, 7)
 	innerLine:EnableMouse(false)
+	if KIT then
+		innerLine:Hide()
+	end
 
 	-- Title band, also the drag handle.
 	local band = CreateFrame("Frame", nil, window)
@@ -1126,6 +1560,15 @@ local function CreateWindow()
 	bandLine:SetPoint("BOTTOMRIGHT")
 	band.title = Text(band, "GameFontNormalLarge", "MelloUI", C.accent)
 	band.title:SetPoint("CENTER", 0, 0)
+	if KIT then
+		-- the title plate on the outer rail, the title on it (the TitleBar
+		-- look centres `TitleText`); the band's own paint goes
+		band.TitleText = band.title
+		-- fitted to a game window's 20 px title container, not to the band
+		-- (the plate came out at the band's full height — user, 2026-09-21)
+		band.title:SetFontObject("GameFontNormal")
+		KitReplace(bandBg, { as = "TitleBar", parent = band, rect = band, fitHeight = 20, alsoFade = { bandLine } })
+	end
 	band:EnableMouse(true)
 	band:RegisterForDrag("LeftButton")
 	band:SetScript("OnDragStart", function() window:StartMoving() end)
@@ -1135,31 +1578,50 @@ local function CreateWindow()
 	local close = CreateFrame("Button", nil, window, "UIPanelCloseButton")
 	close:SetPoint("TOPRIGHT", -10, -12)
 	close:SetScript("OnClick", function() window:Hide() end)
+	if KIT and close.GetNormalTexture and close:GetNormalTexture() then
+		KitReplace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = KIT:OtherTextures(close, close:GetNormalTexture()) })
+	end
 
 	-- Icon strip.
 	local strip = CreateFrame("Frame", nil, window)
 	strip:SetPoint("TOPLEFT", band, "BOTTOMLEFT", 0, 0)
 	strip:SetPoint("TOPRIGHT", band, "BOTTOMRIGHT", 0, 0)
-	strip:SetHeight(STRIP_HEIGHT)
+	strip:SetHeight(KIT and STRIP_HEIGHT_KIT or STRIP_HEIGHT)
 	local stripBg = Solid(strip, "BACKGROUND", C.band, 0.8)
 	stripBg:SetAllPoints()
 	local stripLine = Solid(strip, "BORDER", C.accent2, 1)
 	stripLine:SetHeight(1)
 	stripLine:SetPoint("BOTTOMLEFT")
 	stripLine:SetPoint("BOTTOMRIGHT")
+	if KIT then
+		-- ST5 (user, 2026-09-21): the L1 box (single rail + list-box stone)
+		-- under the icon strip, one level under the strip so the buttons
+		-- and their rims stay above it
+		-- (at the strip's own level: one under it tied with the window's page
+		-- stone and the box's dark body did not show — user, 2026-09-21)
+		KitReplace(stripBg, { as = "Professions-background-summarylist", rect = strip, parent = strip, level = 0, alsoFade = { stripLine } })
+	end
 	window.strip = strip
 
 	local entries = { { "Home", LOGO, "Home", HOME_FLAVOUR } }
 	for _, module in MelloUI:IterateModules() do
-		local icon, flavour = Meta(module)
-		entries[#entries + 1] = { module.name, icon, module.title, flavour }
+		if not module.hidden then
+			local icon, flavour = Meta(module)
+			entries[#entries + 1] = { module.name, icon, module.title, flavour }
+		end
 	end
 	entries[#entries + 1] = { "Profiles", PROFILES_META.icon, "Profiles", PROFILES_META.flavour }
 	local spacing = (WINDOW_WIDTH - 16 - PAD * 2) / #entries
+	local left = PAD
+	if KIT then
+		-- packed and centred: a button's width plus the gap per entry
+		spacing = STRIP_ICON + 2 + STRIP_GAP
+		left = (WINDOW_WIDTH - 16 - spacing * #entries) / 2
+	end
 	for i, e in ipairs(entries) do
 		local btn = StripButton(e[1], e[2], e[3], e[4])
-		btn:SetPoint("TOP", strip, "TOPLEFT", PAD + spacing * (i - 1) + spacing / 2, -8)
-		if i == 2 or i == #entries then
+		btn:SetPoint("TOP", strip, "TOPLEFT", left + spacing * (i - 1) + spacing / 2, -(KIT and 12 or 8))
+		if (i == 2 or i == #entries) and not KIT then
 			local sep = Solid(strip, "ARTWORK", C.line, 1)
 			sep:SetWidth(1)
 			sep:SetPoint("TOP", strip, "TOPLEFT", PAD + spacing * (i - 1), -14)
@@ -1211,7 +1673,15 @@ function RefreshStrip()
 	for name, btn in pairs(stripButtons) do
 		local selected = name == currentPage
 		btn.box:SetSelected(selected)
-		btn.label:SetShown(selected)
+		if btn.important then
+			btn.box:SetGlow(selected)
+		end
+		if KIT then
+			btn.label:Show()
+			Colour(btn.label, selected and C.accent or C.dim)
+		else
+			btn.label:SetShown(selected)
+		end
 		local module = MelloUI.modules[name]
 		if module then
 			btn.box:SetOn(MelloUI:IsModuleEnabled(name))
@@ -1275,6 +1745,34 @@ function MelloUI:CloseConfig()
 	if window then
 		window:Hide()
 	end
+end
+
+-- The window's parts for the guided tour (Core/Tutorial.lua): the frames
+-- its steps point at, page selection, and a scroll that brings a part of
+-- the current page into view.
+function MelloUI:ConfigTour()
+	CreateWindow()
+	return {
+		window = window,
+		band = window.band,
+		strip = window.strip,
+		stripButton = function(name) return stripButtons[name] end,
+		select = function(name) SelectPage(name) end,
+		page = function(name) return pages[name] end,
+		scrollTo = function(target)
+			local page = currentPage and pages[currentPage]
+			if not (page and target and target.GetTop and window.scroll) then
+				return
+			end
+			local pageTop, top = page:GetTop(), target:GetTop()
+			if not (pageTop and top) then
+				return
+			end
+			local offset = math.max(0, pageTop - top - 60)
+			local range = window.scroll:GetVerticalScrollRange() or 0
+			window.scroll:SetVerticalScroll(math.min(offset, range))
+		end,
+	}
 end
 
 --------------------------------------------------------------------------------
@@ -1344,8 +1842,12 @@ end
 SLASH_MELLOUI1 = "/mello"
 SLASH_MELLOUI2 = "/melloui"
 SlashCmdList.MELLOUI = function(msg)
-	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	local raw = (msg or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	msg = raw:lower()
 	local cmd, rest = msg:match("^(%S+)%s*(.-)$")
+	-- profile names keep their case (a name saved from the window is
+	-- stored as typed; lowercasing here found none of them)
+	local rawRest = raw:match("^%S+%s*(.-)$") or ""
 
 	if cmd == "list" then
 		MelloUI:Print("Modules:")
@@ -1364,6 +1866,9 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 	elseif cmd == "profile" or cmd == "profiles" then
 		local sub, name = rest:match("^(%S+)%s*(.-)$")
+		if sub then
+			name = rawRest:match("^%S+%s*(.-)$") or name
+		end
 		if sub == "save" and name ~= "" then
 			local ok, err = MelloUI:SaveProfile(name)
 			MelloUI:Print(ok and ("Profile '" .. name .. "' saved. /reload writes it out for the baker.") or err)
@@ -1388,6 +1893,26 @@ SlashCmdList.MELLOUI = function(msg)
 			MelloUI:Print("/mello profile save <name> | load <name> | delete <name> | default <name|none> | list")
 		end
 		MelloUI:RefreshConfig()
+	elseif cmd == "layout" then
+		if rest == "export" then
+			local text, name = MelloUI:ExportEditModeLayout()
+			if text then
+				MelloUI:ClearLog()
+				MelloUI:Print("Edit Mode layout '%s' (%d chars), the game's share string; paste it into Media/EditModeLayout.lua as `layout`:", tostring(name), #text)
+				MelloUI:Print("%s", text)
+				MelloUI:ShowLog("Edit Mode layout")
+			else
+				MelloUI:Print("Edit Mode layout: %s", tostring(name))
+			end
+		elseif rest == "apply" then
+			local ok, why = MelloUI:ApplyEditModeLayout()
+			if not ok then
+				MelloUI:Print("Edit Mode layout: %s", tostring(why))
+			end
+		else
+			MelloUI:Print("Edit Mode layout: %s", MelloUI:EditModeLayoutStatus())
+			MelloUI:Print("/mello layout export (the active layout's share string, for baking) | apply (the baked layout into Edit Mode, made active)")
+		end
 	elseif cmd == "cpu" then
 		if not (GetCVar and GetCVar("scriptProfile") == "1") then
 			MelloUI:Print("CPU profiling is off. Run  /console scriptProfile 1  then /reload, and /mello cpu again. Turn it off afterwards with  /console scriptProfile 0  (profiling itself costs a little performance).")
@@ -1422,15 +1947,38 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 		print("   Hooks and handlers not listed used less than half a millisecond. /mello cpu reset clears the counters.")
 	elseif cmd == "dump" then
+		-- printed through MelloUI:Print (kept for the copy window), nested
+		-- tables written out one level deep (the window positions), and the
+		-- copy window opened at the end (user, 2026-09-21)
+		MelloUI:ClearLog()
+		local function Value(v)
+			if type(v) == "table" then
+				local parts, keys = {}, {}
+				for k in pairs(v) do keys[#keys + 1] = tostring(k) end
+				table.sort(keys)
+				for _, k in ipairs(keys) do
+					local inner = v[k]
+					if type(inner) == "table" then
+						local fields = {}
+						for ik, iv in pairs(inner) do fields[#fields + 1] = tostring(ik) .. "=" .. tostring(iv) end
+						table.sort(fields)
+						inner = "{ " .. table.concat(fields, ", ") .. " }"
+					end
+					parts[#parts + 1] = k .. " = " .. tostring(inner)
+				end
+				return #parts > 0 and ("{ " .. table.concat(parts, "; ") .. " }") or "{}"
+			end
+			return tostring(v)
+		end
 		local function DumpModule(name, module)
 			local db = MelloUI:GetModuleDB(name)
-			local state = MelloUI:IsModuleEnabled(name) and "|cff40ff40on|r" or "|cffff4040off|r"
-			print(string.format("|cff9b8cff%s|r (%s)", module.title, state))
+			local state = MelloUI:IsModuleEnabled(name) and "on" or "off"
+			MelloUI:Print("%s (%s)", module.title, state)
 			local keys = {}
 			for k in pairs(db) do keys[#keys + 1] = tostring(k) end
 			table.sort(keys)
 			for _, k in ipairs(keys) do
-				print(string.format("   %s = %s", k, tostring(db[k])))
+				MelloUI:Print("   %s = %s", k, Value(db[k]))
 			end
 		end
 		local target = ModuleByName(rest)
@@ -1441,6 +1989,7 @@ SlashCmdList.MELLOUI = function(msg)
 				DumpModule(name, module)
 			end
 		end
+		MelloUI:ShowLog("dump " .. tostring(rest or ""))
 	elseif cmd == "status" then
 		local green, red, yellow = "|cff40ff40", "|cffff4040", "|cffffff00"
 		MelloUI:Print("Status (v%s):", tostring(MelloUI.version))
@@ -1461,11 +2010,13 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   Settings in use come from: " .. source)
 		if type(MelloUI.GetBackupStatus) == "function" then
 			local b = MelloUI:GetBackupStatus()
-			if not b.available then
+			if b.paused then
+				print("   Macro backup: " .. yellow .. "PAUSED in Core/Backup.lua (nothing read or written)|r")
+			elseif not b.available then
 				print("   Macro backup: " .. red .. "macro API not available|r")
 			else
 				local when = b.lastWrite and date("%H:%M:%S", b.lastWrite) or "not yet this session"
-				print(string.format("   Macro backup: %d macro(s), %d characters, %s", b.chunks, b.length,
+				print(string.format("   Macro backup: %d macro(s), %d of %d characters, %s", b.chunks, b.length, b.capacity or 0,
 					b.inSync and (green .. "in sync with current settings|r") or (yellow .. "differs from current settings|r")))
 				print(string.format("   Last write: %s%s%s", when,
 					b.lastReason and (" (" .. tostring(b.lastReason) .. ")") or "",
@@ -1475,6 +2026,10 @@ SlashCmdList.MELLOUI = function(msg)
 				end
 			end
 		end
+	elseif cmd == "tutorial" or cmd == "tour" then
+		if MelloUI.Tutorial then
+			MelloUI.Tutorial:Start()
+		end
 	elseif cmd == "help" then
 		MelloUI:Print("Commands:")
 		for _, c in ipairs(COMMANDS) do
@@ -1482,6 +2037,8 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 		print("   /mello dump [m]            print the stored settings of all modules or one module")
 		print("   /mello cpu                 CPU time per handler (needs scriptProfile)")
+	elseif cmd ~= "" and not ModuleByName(cmd) and cmd ~= "profiles" then
+		MelloUI:Print("Unknown command or module '%s'. /mello help lists the commands, /mello list the modules.", cmd)
 	else
 		MelloUI:OpenConfig(cmd ~= "" and cmd or nil)
 	end

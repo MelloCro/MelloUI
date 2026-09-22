@@ -1,0 +1,5 @@
+Enchanted Land (EnchantedLand.ttf)
+Copyright (c) Sharkshock 2016. All Rights Reserved. Version 1.00, March 11, 2016.
+The font file carries no licence text; Sharkshock fonts are published as free for personal use
+(a commercial licence is sold separately). Added to MelloUI on 2026-09-21 for the kit's window
+titles and headers only. Check the terms at sharkshock.net before redistributing.

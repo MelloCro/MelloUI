@@ -16,7 +16,8 @@
 -- If a VoiceOver data pack (AI_VoiceOverData_Vanilla) is installed, its
 -- recorded lines are played instead of text-to-speech whenever one exists.
 --
--- Commands: /vo stop, /vo pause, /vo skip, /vo test, /vo voices, /vo npc, /vo reset
+-- Commands: /vo stop, /vo pause, /vo skip, /vo read, /vo test, /vo voices, /vo npc,
+-- /vo packs (what loaded, the last lookups), /vo lines, /vo reset
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -444,7 +445,7 @@ local packs = {}            -- { name = addon, data = table, priority = number }
 local packsLoaded = false
 local packErrors = {}
 local lookupTrace = {}      -- last few lookup results, for /vo packs
-local MAX_TRACE = 4
+local MAX_TRACE = 8
 
 local function Trace(fmt, ...)
 	table.insert(lookupTrace, 1, string.format(fmt, ...))
@@ -549,8 +550,10 @@ local function Normalise(text)
 		local value, placeholder = pair[1], pair[2]
 		text = text:gsub(value:gsub("%p", "%%%0"), placeholder)
 	end
-	-- $N / $C / $R are the capitalised forms of the same placeholders.
+	-- $N / $C / $R are the capitalised forms of the same placeholders; $B is
+	-- a line break in the pack texts, plain whitespace in the live text.
 	text = text:gsub("%$g[^;]*;[^;]*;", " ")
+	text = text:gsub("%$b", " ")
 	text = text:gsub("[^%w%$%s]", " ")
 	return text
 end
@@ -590,14 +593,24 @@ end
 local function PackFile(pack, kind, fileName)
 	local lengths = pack.data.SoundLengthLookupByFileName
 	local folder = kind == "gossip" and "gossip" or "quests"
+	-- Lines whose words depend on the player's gender ($G) exist only as
+	-- m- / f- files (213 quest lines of the vanilla pack have no plain file):
+	-- the player's own gender first, the plain file, then either gendered
+	-- file rather than silence when UnitSex answers nothing on this client.
 	local sex = PlainNumber(select(2, pcall(UnitSex, "player")))
 	local prefix = sex == 2 and "m-" or (sex == 3 and "f-" or nil)
 	if prefix and lengths[prefix .. fileName] then
 		fileName = prefix .. fileName
 	elseif not lengths[fileName] then
-		return nil
+		if lengths["m-" .. fileName] then
+			fileName = "m-" .. fileName
+		elseif lengths["f-" .. fileName] then
+			fileName = "f-" .. fileName
+		else
+			return nil
+		end
 	end
-	return string.format("Interface\\AddOns\\%s\\generated\\sounds\\%s\\%s.mp3", pack.name, folder, fileName), lengths[fileName]
+	return string.format("Interface\\AddOns\\%s\\generated\\sounds\\%s\\%s.mp3", pack.name, folder, fileName), lengths[fileName], fileName
 end
 
 local function FirstWords(text, n)
@@ -623,8 +636,8 @@ end
 
 -- Quest ID from the client, or from the packs' title / NPC / text tables
 -- when the client reports none.
-local function ResolveQuestID(kind, npc, title, text)
-	if GetQuestID then
+local function ResolveQuestID(kind, npc, title, text, tablesOnly)
+	if GetQuestID and not tablesOnly then
 		local ok, id = pcall(GetQuestID)
 		id = ok and PlainNumber(id) or nil
 		if id and id > 0 then
@@ -663,10 +676,25 @@ local function PackQuestLine(kind, npc, title, text, questID)
 		return nil
 	end
 	for _, pack in ipairs(packs) do
-		local path, length = PackFile(pack, kind, questID .. "-" .. kind)
+		local path, length, name = PackFile(pack, kind, questID .. "-" .. kind)
 		if path then
 			Trace("%s %q: quest %d, recorded", kind, tostring(title), questID)
-			return path, length
+			return path, length, name
+		end
+	end
+	-- Forever gave some vanilla quests new IDs (Chief Engineer Scooty 2842 ->
+	-- 80133, the Zandalar enchant quests, ...) with the old words: look the
+	-- title / NPC / text up in the pack tables and take the old recording
+	-- when that names a different quest with a file. A Forever recording
+	-- under the new ID (above) always wins.
+	local old = ResolveQuestID(kind, npc, title, text, true)
+	if old and old ~= questID then
+		for _, pack in ipairs(packs) do
+			local path, length, name = PackFile(pack, kind, old .. "-" .. kind)
+			if path then
+				Trace("%s %q: quest %d has no file; recorded as quest %d (same title)", kind, tostring(title), questID, old)
+				return path, length, name
+			end
 		end
 	end
 	Trace("%s %q: quest %d has no %s recording in the pack", kind, tostring(title), questID, kind)
@@ -692,10 +720,10 @@ local function PackGossipLine(npc, text)
 			found = true
 			local hash, score = BestMatch(text, entries, 0.4)
 			if hash then
-				local path, length = PackFile(pack, "gossip", hash)
+				local path, length, name = PackFile(pack, "gossip", hash)
 				if path then
 					Trace("greeting from %s: matched %d%%, recorded", who, math.floor(score * 100 + 0.5))
-					return path, length
+					return path, length, nil, name
 				end
 				Trace("greeting from %s: matched %d%% but the file is missing", who, math.floor(score * 100 + 0.5))
 			else
@@ -706,10 +734,10 @@ local function PackGossipLine(npc, text)
 					count = count + 1
 				end
 				if M.db.preferRecordings and count == 1 then
-					local path, length = PackFile(pack, "gossip", onlyHash)
+					local path, length, name = PackFile(pack, "gossip", onlyHash)
 					if path then
 						Trace("greeting from %s: text differs (%d%% match) but Prefer Recordings plays the NPC's only recording", who, math.floor((best or 0) * 100 + 0.5))
-						return path, length, true
+						return path, length, true, name
 					end
 				end
 				Trace("greeting from %s: best match only %d%%, below the 40%% needed", who, math.floor((best or 0) * 100 + 0.5))
@@ -847,10 +875,14 @@ local function CollectLine(entry, questID)
 		text = text,
 		npc = npc and npc.name or nil,
 		npcID = npc and npc.id or nil,
-		-- "recorded" means a pack other than our own Forever pack has it; lines
-		-- served by AI_VoiceOverData_Forever stay re-generatable.
-		recorded = entry.file ~= nil and not entry.mismatch and not entry.file:find("AI_VoiceOverData_Forever", 1, true)
-			and not entry.file:find("MelloUI_VoiceOverData", 1, true),
+		-- A recording with the right words played, from any pack. (The merged
+		-- MelloUI_VoiceOverData pack carries the vanilla lines too, so the old
+		-- "not our own pack" rule marked every recorded line as missing and
+		-- nagged about new lines that had a recording.) "file" is the
+		-- recording's name, so Tools/export_voice_lines.py can tell a line
+		-- served by another quest's file (a renumbered quest) from a new one.
+		recorded = entry.file ~= nil and not entry.mismatch,
+		file = (entry.file ~= nil and not entry.mismatch) and entry.fileName or nil,
 		seen = date("%Y-%m-%d"),
 	}
 	local isNew
@@ -1060,7 +1092,9 @@ local function TogglePaused()
 end
 
 -- Queue a line. npc is a table from DescribeNPC (or nil), kind a KINDS key.
-local function Enqueue(text, npc, kind, title, questID)
+-- matchText, when given, is the text the pack lookups compare (the quest
+-- description alone when the objectives are read after it).
+local function Enqueue(text, npc, kind, title, questID, matchText)
 	if not HasTTS() then
 		return
 	end
@@ -1113,23 +1147,26 @@ local function Enqueue(text, npc, kind, title, questID)
 		title = title or info.label,
 		name = npc and npc.name or nil,
 	}
+	if M.db.soundPacks and not info.log then
+		-- The pack tables also resolve quest IDs the client does not give.
+		LoadSoundPacks()
+	end
+	matchText = matchText or text
 	if info.quest and not questID then
-		questID = ResolveQuestID(kind, npc, title, text)
+		questID = ResolveQuestID(kind, npc, title, matchText)
 	end
 	entry.questID = questID
-	if M.db.soundPacks and not info.log then
-		LoadSoundPacks()
-		if #packs > 0 then
-			local path, length, mismatch
-			if info.quest then
-				path, length = PackQuestLine(kind, npc, title, text, questID)
-			else
-				path, length, mismatch = PackGossipLine(npc, text)
-			end
-			entry.file = path
-			entry.length = length
-			entry.mismatch = mismatch or nil
+	if M.db.soundPacks and not info.log and #packs > 0 then
+		local path, length, mismatch, fileName
+		if info.quest then
+			path, length, fileName = PackQuestLine(kind, npc, title, matchText, questID)
+		else
+			path, length, mismatch, fileName = PackGossipLine(npc, text)
 		end
+		entry.file = path
+		entry.length = length
+		entry.mismatch = mismatch or nil
+		entry.fileName = fileName
 	end
 	if not info.log then
 		CollectLine(entry, questID)
@@ -1160,8 +1197,16 @@ end
 -- Layout and textures follow the VoiceOver addon (MIT licence).
 --------------------------------------------------------------------------------
 
-local PORTRAIT_SIZE = 120
-local FRAME_WIDTH_WITHOUT_PORTRAIT = 300
+-- The window is one picture (Media/Textures/VoiceOver/ScrollFrame.tga, made
+-- from docs/voiceover-frame.webp): a dark square on the left holding the
+-- model, a parchment scroll on the right holding the text. The areas were
+-- measured on the 2000 x 668 art and scaled to FRAME_W.
+local FRAME_W, FRAME_H = 600, 200
+local ART_SCALE = FRAME_W / 2000
+local TEX_BOTTOM = 342 / 512     -- the art fills the top 342 rows of the 1024 x 512 texture
+local PORTRAIT_X, PORTRAIT_Y = 118 * ART_SCALE, 78 * ART_SCALE
+local PORTRAIT_SIZE = (640 - 118) * ART_SCALE
+local PARCHMENT_LEFT, PARCHMENT_RIGHT = 720 * ART_SCALE, 1860 * ART_SCALE
 local ATLAS = 512
 local ATLAS_BORDER = 416
 local ATLAS_VIEWPORT = 348
@@ -1203,18 +1248,16 @@ local function EnsureFonts()
 	local path = GameFontNormal:GetFont()
 	nameFont = CreateFont("MelloUIVoiceOverNameFont")
 	nameFont:SetFont(path, 19, "")
-	nameFont:SetShadowColor(0, 0, 0)
+	nameFont:SetShadowColor(1, 0.95, 0.8, 0.35)
 	nameFont:SetShadowOffset(1, -1)
 	nameFont:SetJustifyH("LEFT")
 	lineFont = CreateFont("MelloUIVoiceOverLineFont")
 	lineFont:SetFont(path, 16, "")
-	lineFont:SetShadowColor(0, 0, 0)
-	lineFont:SetShadowOffset(1, -1)
+	lineFont:SetShadowOffset(0, 0)
 	lineFont:SetJustifyH("LEFT")
 	subtitleFont = CreateFont("MelloUIVoiceOverSubtitleFont")
 	subtitleFont:SetFont(path, 12, "")
-	subtitleFont:SetShadowColor(0, 0, 0)
-	subtitleFont:SetShadowOffset(1, -1)
+	subtitleFont:SetShadowOffset(0, 0)
 	subtitleFont:SetJustifyH("LEFT")
 	subtitleFont:SetJustifyV("TOP")
 end
@@ -1293,13 +1336,9 @@ end
 function Overlay:CreatePortrait()
 	local frame = self.frame
 	local portrait = CreateFrame("Frame", nil, frame)
-	portrait:SetPoint("TOPLEFT")
+	portrait:SetPoint("TOPLEFT", PORTRAIT_X, -PORTRAIT_Y)
 	portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE)
 	frame.portrait = portrait
-
-	portrait.background = portrait:CreateTexture(nil, "BACKGROUND")
-	portrait.background:SetAllPoints()
-	portrait.background:SetTexture(TexturePath("PortraitFrameBackground"))
 
 	local model = CreateFrame("DressUpModel", nil, portrait)
 	model:SetAllPoints()
@@ -1412,14 +1451,10 @@ function Overlay:CreatePortrait()
 	AttachDrag(pause)
 	portrait.pause = pause
 
-	-- Border drawn above the model.
+	-- The art draws the frame around the square; nothing above the model.
 	local border = CreateFrame("Frame", nil, portrait)
 	border:SetFrameLevel(pause:GetFrameLevel() + 1)
 	border:SetAllPoints()
-	border.texture = border:CreateTexture(nil, "BORDER")
-	border.texture:SetPoint("TOPLEFT", -BORDER_OUTSET, BORDER_OUTSET)
-	border.texture:SetPoint("BOTTOMRIGHT", BORDER_OUTSET, -BORDER_OUTSET)
-	SetAtlasTexture(border.texture, 0, ATLAS_BORDER, 0, ATLAS_BORDER)
 	portrait.border = border
 
 	-- Thin line and mini pause button used when the portrait is hidden.
@@ -1546,19 +1581,19 @@ function Overlay:CreateLine(index)
 		self.text:SetPoint("RIGHT")
 		if self.hovered then
 			self:SetAlpha(1)
-			self.text:SetTextColor(225 / 255, 20 / 255, 8 / 255)
+			self.text:SetTextColor(0.62, 0.10, 0.04)
 			self.icon:SetTexture(TexturePath("SoundQueueBulletDelete"))
 			self.icon:SetSize(14, 14)
 		elseif isCurrent then
 			if info.quest then
-				self.text:SetTextColor(245 / 255, 204 / 255, 24 / 255)
+				self.text:SetTextColor(0.55, 0.36, 0.03)
 			else
-				self.text:SetTextColor(1, 1, 1)
+				self.text:SetTextColor(0.22, 0.13, 0.05)
 			end
 			self.icon:SetTexture(TexturePath(info.bullet))
 			self.icon:SetSize(14, 14)
 		else
-			self.text:SetTextColor(123 / 255, 147 / 255, 167 / 255)
+			self.text:SetTextColor(0.45, 0.36, 0.26)
 			self.icon:SetTexture(TexturePath("SoundQueueBulletQueue"))
 			self.icon:SetSize(22, 22)
 		end
@@ -1574,7 +1609,7 @@ function Overlay:Create()
 	EnsureFonts()
 	local frame = CreateFrame("Frame", "MelloUIVoiceOverFrame", UIParent)
 	self.frame = frame
-	frame:SetSize(PORTRAIT_SIZE + FRAME_WIDTH_WITHOUT_PORTRAIT, PORTRAIT_SIZE)
+	frame:SetSize(FRAME_W, FRAME_H)
 	frame:SetFrameStrata("MEDIUM")
 	frame:SetMovable(true)
 	frame:SetClampedToScreen(true)
@@ -1593,20 +1628,21 @@ function Overlay:Create()
 	frame:Hide()
 
 	frame.background = frame:CreateTexture(nil, "BACKGROUND")
-	frame.background:SetPoint("RIGHT")
-	frame.background:SetTexture(TexturePath("BackgroundGradient"))
+	frame.background:SetAllPoints()
+	frame.background:SetTexture(TexturePath("ScrollFrame"))
+	frame.background:SetTexCoord(0, 1, 0, TEX_BOTTOM)
 
 	self:CreatePortrait()
 
 	local container = CreateFrame("Frame", nil, frame)
-	container:SetPoint("RIGHT")
+	container:SetPoint("LEFT", frame, "LEFT", PARCHMENT_LEFT, -1)
 	container.lines = {}
 	frame.container = container
 
 	container.name = container:CreateFontString(nil, "ARTWORK", "MelloUIVoiceOverNameFont")
 	container.name:SetPoint("TOPLEFT")
 	container.name:SetWordWrap(false)
-	container.name:SetTextColor(214 / 255, 214 / 255, 214 / 255)
+	container.name:SetTextColor(0.30, 0.17, 0.05)
 
 	-- Stop / skip button next to the name.
 	local stop = CreateFrame("Button", nil, container)
@@ -1641,8 +1677,9 @@ function Overlay:Create()
 
 	-- Padlock in the corner: locks and unlocks the window's position.
 	local lock = CreateFrame("Button", nil, frame)
-	lock:SetSize(18, 18)
-	lock:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
+	lock:SetSize(26, 26)
+	-- inside the parchment, top right
+	lock:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -(FRAME_W - PARCHMENT_RIGHT) - 2, -34)
 	lock:SetFrameLevel(frame:GetFrameLevel() + 5)
 	function lock:Refresh()
 		local locked = M.db.overlayLock
@@ -1674,7 +1711,7 @@ function Overlay:Create()
 	container.subtitle = container:CreateFontString(nil, "ARTWORK", "MelloUIVoiceOverSubtitleFont")
 	container.subtitle:SetWordWrap(true)
 	container.subtitle:SetMaxLines(3)
-	container.subtitle:SetTextColor(0.85, 0.85, 0.85)
+	container.subtitle:SetTextColor(0.24, 0.14, 0.05)
 	container.subtitle:Hide()
 	local pageAcc = 0
 	container:SetScript("OnUpdate", function(_, elapsed)
@@ -1699,29 +1736,13 @@ function Overlay:Apply()
 	if not frame then
 		return
 	end
-	local showPortrait = M.db.overlayPortrait
 	if frame.lock then
 		frame.lock:Refresh()
 	end
-	if showPortrait then
-		frame:SetWidth(PORTRAIT_SIZE + FRAME_WIDTH_WITHOUT_PORTRAIT)
-		frame.portraitLine:Hide()
-		frame.miniPause:Hide()
-		frame.portrait:Show()
-		frame.container:SetPoint("LEFT", frame.portrait, "RIGHT", 15, 0)
-		frame.background:SetPoint("TOPLEFT", frame.portrait, "TOPRIGHT")
-		frame.background:SetPoint("BOTTOMLEFT", frame.portrait, "BOTTOMRIGHT")
-	else
-		frame:SetWidth(FRAME_WIDTH_WITHOUT_PORTRAIT)
-		frame.portrait:Hide()
-		frame.portraitLine:Show()
-		frame.miniPause:Show()
-		frame.miniPause:ClearAllPoints()
-		frame.miniPause:SetPoint("CENTER", frame, "LEFT", 2, 0)
-		frame.container:SetPoint("LEFT", 20, 0)
-		frame.background:SetPoint("TOPLEFT")
-		frame.background:SetPoint("BOTTOMLEFT")
-	end
+	-- without the model the art's own emblem shows in the square
+	frame.portrait:SetShown(M.db.overlayPortrait and true or false)
+	frame.portraitLine:Hide()
+	frame.miniPause:Hide()
 	frame:SetScale(tonumber(M.db.overlayScale) or 1)
 	self:RestorePosition()
 	self:Update()
@@ -1842,7 +1863,7 @@ function Overlay:Update()
 		container.lines[i].entry = nil
 	end
 
-	local width = frame:GetWidth() - (M.db.overlayPortrait and PORTRAIT_SIZE + 15 or 20) - 10
+	local width = PARCHMENT_RIGHT - PARCHMENT_LEFT - 32   -- the padlock sits at the right edge
 	container:SetWidth(width)
 	container.name:SetWidth(0)
 	container.name:SetWidth(math.min(width - 26, container.name:GetStringWidth() + 1))
@@ -1909,15 +1930,75 @@ local function GossipText()
 	end
 end
 
-local function QuestDetailText()
-	local text = GetQuestText and GetQuestText() or nil
-	if M.db.questObjectives and GetObjectiveText then
+--------------------------------------------------------------------------------
+-- Quest panels: read once the client has filled them in
+--
+-- QUEST_DETAIL / QUEST_PROGRESS / QUEST_COMPLETE fire synchronously, and on
+-- the current Classic-line clients GetQuestID() can still answer 0, or the
+-- previous quest's globals can still be in place, at that moment: the line
+-- lost its recording or the wrong quest was read. The read is put off to
+-- the next frame and retried a few times until the ID, title and text are
+-- there, keyed so the same panel is not read twice when the event repeats.
+--------------------------------------------------------------------------------
+
+local QUEST_PANELS = { accept = "QuestFrameDetailPanel", progress = "QuestFrameProgressPanel", complete = "QuestFrameRewardPanel" }
+local QUEST_TEXT = {
+	accept = function() return GetQuestText and GetQuestText() or nil end,
+	progress = function() return GetProgressText and GetProgressText() or nil end,
+	complete = function() return GetRewardText and GetRewardText() or nil end,
+}
+local READ_TRIES, READ_STEP = 5, 0.1
+local lastRead = { key = nil, at = 0 }
+local readSerial = 0
+
+local function ClientQuestID()
+	if not GetQuestID then
+		return nil
+	end
+	local ok, id = pcall(GetQuestID)
+	id = ok and PlainNumber(id) or nil
+	return id and id > 0 and id or nil
+end
+
+local function QuestPanelShown(kind)
+	local panel = _G[QUEST_PANELS[kind]]
+	-- No such frame on this client: trust the event.
+	return not panel or panel:IsShown()
+end
+
+local function ReadQuestPanel(kind, serial, attempt)
+	if serial ~= readSerial or not M.isEnabled or not QuestPanelShown(kind) then
+		return
+	end
+	local questID = ClientQuestID()
+	local title = QuestTitle()
+	local text = QUEST_TEXT[kind]()
+	local plain = PlainString(text)
+	local ready = questID ~= nil and title ~= nil and (IsSecret(text) or (plain ~= nil and plain ~= ""))
+	if not ready and attempt < READ_TRIES then
+		C_Timer.After(READ_STEP, function() ReadQuestPanel(kind, serial, attempt + 1) end)
+		return
+	end
+	local key = kind .. ":" .. tostring(questID or 0) .. ":" .. tostring(title)
+	if key == lastRead.key and GetTime() - lastRead.at < 5 then
+		return
+	end
+	lastRead.key, lastRead.at = key, GetTime()
+	Trace("%s %q: client quest ID %s after %d read(s)", kind, tostring(title), tostring(questID or "none"), attempt)
+	local spoken = text
+	if kind == "accept" and M.db.questObjectives and GetObjectiveText and plain then
 		local objectives = GetObjectiveText()
-		if type(text) == "string" and type(objectives) == "string" and not IsSecret(text) and not IsSecret(objectives) and objectives ~= "" then
-			text = text .. " " .. objectives
+		if type(objectives) == "string" and not IsSecret(objectives) and objectives ~= "" then
+			spoken = plain .. " " .. objectives
 		end
 	end
-	return text
+	Enqueue(spoken, DescribeNPC(), kind, title, questID, text)
+end
+
+local function ScheduleQuestRead(kind)
+	readSerial = readSerial + 1
+	local serial = readSerial
+	C_Timer.After(0, function() ReadQuestPanel(kind, serial, 1) end)
 end
 
 local handlers = {
@@ -1933,17 +2014,17 @@ local handlers = {
 	end,
 	QUEST_DETAIL = function()
 		if M.db.questDetail then
-			Enqueue(QuestDetailText(), DescribeNPC(), "accept", QuestTitle())
+			ScheduleQuestRead("accept")
 		end
 	end,
 	QUEST_PROGRESS = function()
 		if M.db.questProgress and GetProgressText then
-			Enqueue(GetProgressText(), DescribeNPC(), "progress", QuestTitle())
+			ScheduleQuestRead("progress")
 		end
 	end,
 	QUEST_COMPLETE = function()
 		if M.db.questComplete and GetRewardText then
-			Enqueue(GetRewardText(), DescribeNPC(), "complete", QuestTitle())
+			ScheduleQuestRead("complete")
 		end
 	end,
 	GOSSIP_CLOSED = function()
@@ -2015,11 +2096,27 @@ local function GiverForQuest(questID)
 		BuildLookup()
 	end
 	local npcID = g and g.npcID ~= 0 and g.npcID or nil
+	local name = g and g.name or nil
+	if not npcID and M.db.soundPacks then
+		-- Not in the quest list data (or an item starts it): the pack's own
+		-- quest -> NPC table knows the vanilla givers.
+		LoadSoundPacks()
+		for _, pack in ipairs(packs) do
+			local byQuest = pack.data.NPCIDLookupByQuestID
+			local id = byQuest and byQuest[questID]
+			if type(id) == "number" then
+				npcID = id
+				local names = pack.data.NPCNameLookupByNPCID
+				name = name or (names and names[id]) or nil
+				break
+			end
+		end
+	end
 	local info = npcID and npcLookup[npcID] or nil
 	local gender = info and info.gender or "n"
 	return {
 		id = npcID,
-		name = g and g.name or nil,
+		name = name,
 		race = info and info.race or nil,
 		gender = gender,
 		female = gender == "f",

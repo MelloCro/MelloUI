@@ -20,6 +20,9 @@ Usage:
   python Tools/generate_voice_lines.py --player Warr --dry-run  show what would be generated and the cost
   python Tools/generate_voice_lines.py --player Warr --only 147-progress.mp3
   python Tools/generate_voice_lines.py --list-voices            show the voices found in the account
+  python Tools/generate_voice_lines.py --no-export --manifest Tools/output/vanilla_missing_lines.json
+                                                                the vanilla lines the pack never had
+                                                                (Tools/export_vanilla_lines.py lists them)
 
 Options:
   --model         eleven_multilingual_v2 (default)
@@ -316,7 +319,8 @@ def main():
         log(f"generated {done}, failed {failed}" if not args.dry_run else "dry run, nothing generated")
 
     if not args.no_build and not args.dry_run:
-        subprocess.run([python, os.path.join(HERE, "build_voice_pack.py"), "build"], check=True)
+        subprocess.run([python, os.path.join(HERE, "build_voice_pack.py"), "build",
+                        "--manifest", args.manifest, "--sources", args.sources], check=True)
 
 
 if __name__ == "__main__":

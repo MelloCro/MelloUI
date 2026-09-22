@@ -13,3 +13,8 @@ __pycache__/
 .claude/
 *.zip
 CHANGELOG-release.md
+# Third-party luacheck source used by Tools/lint/run_luacheck.py
+Tools/lint/luacheck/
+# Working notes for the assistant sessions (local paths, process notes): not for the public repository
+docs/HANDOVER.md
+docs/plans/

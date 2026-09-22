@@ -151,8 +151,14 @@ local function SlotButtons()
 	return list
 end
 
+-- Another module may take the bag slots over while a window of its own shows
+-- them (the Backpack panel's painted bag bar): ns.BagSlotOverride returns
+-- true when it has placed them itself.
 local function LayoutBagSlots()
 	if not (slotsAttached and holder) then
+		return
+	end
+	if ns.BagSlotOverride and ns.BagSlotOverride(SlotButtons(), holder) then
 		return
 	end
 	local previous, width = nil, 0
@@ -190,6 +196,10 @@ end
 
 local function PositionBagSlots()
 	if not holder then
+		return
+	end
+	if slotsAttached and ns.BagSlotOverride and ns.BagSlotOverride(SlotButtons(), holder) then
+		holder:Show()
 		return
 	end
 	local anchor = slotsAttached and FirstBagFrame()
@@ -305,13 +315,29 @@ end
 --------------------------------------------------------------------------------
 
 local WORLD_TEXT_CVAR = "WorldTextScale"
+local worldTextWarned = false
 
+-- The client accepts a cvar it knows and ignores the rest without a word
+-- (user, 2026-09-22: the slider did nothing, Config.wtf never got the
+-- entry): a name this build does not have is reported once.
 local function ApplyWorldTextScale(value)
 	if not C_CVar or not C_CVar.SetCVar then
 		return
 	end
+	local okG, current = pcall(C_CVar.GetCVar, WORLD_TEXT_CVAR)
+	if not okG or current == nil then
+		if not worldTextWarned then
+			worldTextWarned = true
+			MelloUI:Print("Tweaks: this client has no '%s' cvar; the World Text Scale slider cannot work on it.", WORLD_TEXT_CVAR)
+		end
+		return
+	end
 	value = tonumber(value) or 1
-	C_CVar.SetCVar(WORLD_TEXT_CVAR, string.format("%.2f", value))
+	local okS, done = pcall(C_CVar.SetCVar, WORLD_TEXT_CVAR, string.format("%.2f", value))
+	if not (okS and done) and not worldTextWarned then
+		worldTextWarned = true
+		MelloUI:Print("Tweaks: the client refused '%s'; the World Text Scale slider cannot work on it.", WORLD_TEXT_CVAR)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -329,12 +355,15 @@ function M:OnEnable(db)
 		editModeActive = EditModeManagerFrame:IsEditModeActive()
 	end
 	UpdateHiddenFrames()
+	if M.savedWorldTextScale == nil and C_CVar and C_CVar.GetCVar then
+		M.savedWorldTextScale = tonumber(C_CVar.GetCVar(WORLD_TEXT_CVAR)) or 1
+	end
 	ApplyWorldTextScale(db.worldTextScale)
 end
 
 function M:OnDisable()
 	UpdateHiddenFrames()
-	ApplyWorldTextScale(1)
+	ApplyWorldTextScale(M.savedWorldTextScale or 1)
 end
 
 function M:OnSettingChanged(key, value, db)

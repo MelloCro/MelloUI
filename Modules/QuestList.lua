@@ -582,8 +582,9 @@ local function MapIDForZoneName(name)
 		if okC and type(children) == "table" then
 			for _, info in ipairs(children) do
 				local n = QL.Plain(info.name)
-				if n and not mapIDByName[n:lower()] then
-					mapIDByName[n:lower()] = info.mapID
+				local id = QL.Plain(info.mapID)
+				if n and id and not mapIDByName[n:lower()] then
+					mapIDByName[n:lower()] = id
 				end
 			end
 		end
@@ -880,23 +881,27 @@ function M:OnEnable(db)
 		if WorldMapFrame.OnMapChanged then
 			hooksecurefunc(WorldMapFrame, "OnMapChanged", function() QL.Panel:Update() end)
 		end
-		eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
-		eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-		eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
-		eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-		eventFrame:RegisterEvent("PLAYER_LEAVING_WORLD")
-		eventFrame:RegisterEvent("ZONE_CHANGED")
-		eventFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
-		if eventFrame.RegisterUnitEvent then
-			eventFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-		else
-			eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-		end
+	end
+	-- the events go with the module's state (they ran on after a disable;
+	-- audit 2026-09-22)
+	eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
+	eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+	eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
+	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+	eventFrame:RegisterEvent("PLAYER_LEAVING_WORLD")
+	eventFrame:RegisterEvent("ZONE_CHANGED")
+	eventFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+	if eventFrame.RegisterUnitEvent then
+		eventFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+	else
+		eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 	end
 	QL.StartOutsideTicker()
 end
 
 function M:OnDisable()
+	eventFrame:UnregisterAllEvents()
+	QL.StopOutsideTicker()
 	if QL.Panel.frame then
 		QL.Panel.frame:Hide()
 	end
@@ -915,6 +920,10 @@ end
 SLASH_MELLOQUESTMAP1 = "/qlmap"
 SlashCmdList.MELLOQUESTMAP = function(msg)
 	local data = QL.Data()
+	if type(data) ~= "table" then
+		MelloUI:Print("Quest List: Media\\QuestListData.lua is missing; run Tools\\build_quest_list.py.")
+		return
+	end
 	msg = (msg or ""):gsub("^%s+", ""):gsub("%s+$", "")
 	local cmd, rest = msg:match("^(%S+)%s*(.-)$")
 	cmd = cmd and cmd:lower()

@@ -11,5 +11,6 @@
 
 MelloUI_CustomFonts = {
 	{ name = "Prototype", file = "Prototype.ttf" },
+	{ name = "Enchanted Land (Gothic)", file = "EnchantedLand.ttf" },
 	-- { name = "My Font", file = "MyFont.ttf" },
 }

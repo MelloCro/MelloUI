@@ -15,6 +15,14 @@
 --   OnEnable(db)     called when the module is switched on (and at login if enabled)
 --   OnDisable(db)    called when the module is switched off
 --   OnSettingChanged(key, value, db)  called when one of its options changes
+--   hidden           true: not listed in the configurator (driven by another
+--                    module: the kit panels by Painted UI); /mello list shows it
+--   important        true: the configurator's tile keeps a gold border, a glowing
+--                    icon and an IMPORTANT badge (the UI Modifications entry)
+--   options entries may carry `module = "<name>"` (the option belongs to that
+--   module: built against its settings) or be `{ type = "include", module = }`
+--   (that module's whole option list laid out in place); a toggle with
+--   `important = true` is drawn gold with an IMPORTANT hint
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -43,11 +51,112 @@ local DB_DEFAULTS = {
 
 local PREFIX = "|cff9b8cffMello|rUI: "
 
-function MelloUI:Print(msg, ...)
-	if select("#", ...) > 0 then
-		msg = string.format(msg, ...)
+-- Everything printed is also kept (the last LOG_MAX lines, colour codes
+-- stripped) for the copy window: /mellolog shows it in a text box that can
+-- be selected and copied, so a dump travels as text instead of screenshots.
+local LOG_MAX = 2000
+local log = {}
+
+-- A secret value (this client) prints as "[secret]": a format with one
+-- secret argument would make the whole message secret and unindexable.
+local function Plain(v)
+	if issecretvalue and issecretvalue(v) then
+		return "[secret]"
 	end
-	print(PREFIX .. tostring(msg))
+	return v
+end
+
+function MelloUI:Print(msg, ...)
+	local n = select("#", ...)
+	if n > 0 then
+		local args = { ... }
+		for i = 1, n do
+			args[i] = Plain(args[i])
+		end
+		local ok, formatted = pcall(string.format, Plain(msg), unpack(args, 1, n))
+		if ok then
+			msg = formatted
+		else
+			-- a "[secret]" where a number was expected: the pieces, joined
+			local parts = { tostring(Plain(msg)) }
+			for i = 1, n do
+				parts[#parts + 1] = tostring(args[i])
+			end
+			msg = table.concat(parts, " ")
+		end
+	end
+	msg = tostring(Plain(msg))
+	print(PREFIX .. msg)
+	log[#log + 1] = (msg:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+	if #log > LOG_MAX then
+		table.remove(log, 1)
+	end
+end
+
+function MelloUI:ClearLog()
+	wipe(log)
+end
+
+local copyFrame
+function MelloUI:ShowLog(title)
+	if not copyFrame then
+		local f = CreateFrame("Frame", "MelloUICopyFrame", UIParent, "BackdropTemplate")
+		f:SetSize(760, 480)
+		f:SetPoint("CENTER")
+		f:SetFrameStrata("DIALOG")
+		f:SetMovable(true)
+		f:EnableMouse(true)
+		f:RegisterForDrag("LeftButton")
+		f:SetScript("OnDragStart", f.StartMoving)
+		f:SetScript("OnDragStop", f.StopMovingOrSizing)
+		f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+		f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
+		f:SetBackdropBorderColor(0.4, 0.35, 0.25, 1)
+		f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		f.title:SetPoint("TOPLEFT", 12, -10)
+		f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		f.hint:SetPoint("TOPRIGHT", -40, -12)
+		f.hint:SetText("Ctrl+A, Ctrl+C to copy  -  Esc closes")
+		local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+		close:SetPoint("TOPRIGHT", 2, 2)
+		local scroll = CreateFrame("ScrollFrame", "MelloUICopyScroll", f, "UIPanelScrollFrameTemplate")
+		scroll:SetPoint("TOPLEFT", 12, -32)
+		scroll:SetPoint("BOTTOMRIGHT", -32, 12)
+		local edit = CreateFrame("EditBox", "MelloUICopyEdit", scroll)
+		edit:SetMultiLine(true)
+		edit:SetAutoFocus(false)
+		edit:SetFontObject(ChatFontNormal)
+		edit:SetWidth(700)
+		edit:SetScript("OnEscapePressed", function() f:Hide() end)
+		edit:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+		-- typing must not change the text: put it back
+		edit:SetScript("OnTextChanged", function(self, userInput)
+			if userInput then
+				self:SetText(f.text or "")
+				self:HighlightText()
+			end
+		end)
+		scroll:SetScrollChild(edit)
+		f.edit = edit
+		tinsert(UISpecialFrames, "MelloUICopyFrame")
+		copyFrame = f
+	end
+	copyFrame.title:SetText(PREFIX .. (title or "log") .. string.format("  (%d lines)", #log))
+	copyFrame.text = table.concat(log, "\n")
+	copyFrame.edit:SetText(copyFrame.text)
+	copyFrame:Show()
+	copyFrame.edit:SetFocus()
+	copyFrame.edit:HighlightText()
+end
+
+SLASH_MELLOLOG1 = "/mellolog"
+SlashCmdList.MELLOLOG = function(msg)
+	if msg == "clear" then
+		MelloUI:ClearLog()
+		MelloUI:Print("Log cleared.")
+		return
+	end
+	MelloUI:ShowLog("log")
 end
 
 -- Chat lines nobody asked for: something learned, settings restored late, a
@@ -343,6 +452,60 @@ function MelloUI:RestartModules()
 end
 
 --------------------------------------------------------------------------------
+-- Unit names on this client have a first name and a surname (user,
+-- 2026-09-22: "only show the character's first name, last name or both").
+-- The game's NameUtil (C side) gives the display name with or without the
+-- surname and the first name alone; the surname is the rest of the full
+-- name. A unit token or a name can be a secret value here (nameplates): a
+-- secret first or full name is still handed back (SetText takes it), only
+-- the surname needs string work and is nil when it cannot be done.
+-- mode: "first", "last", "both". nil when nothing could be read.
+local function PlainOrSecret(ok, value)
+	if not ok or value == nil then
+		return nil
+	end
+	return value
+end
+
+function MelloUI:UnitNameAs(unit, mode)
+	if not unit then
+		return nil
+	end
+	local util = NameUtil
+	local full, first
+	if type(util) == "table" and util.FormatUnitNameForDisplay then
+		full = PlainOrSecret(pcall(util.FormatUnitNameForDisplay, unit, true))
+		if util.GetUnitFirstName then
+			first = PlainOrSecret(pcall(util.GetUnitFirstName, unit))
+		end
+	end
+	if full == nil then
+		full = PlainOrSecret(pcall(UnitName, unit))
+	end
+	if full == nil then
+		return nil
+	end
+	local secretFull = issecretvalue and issecretvalue(full)
+	if first == nil and not secretFull then
+		first = full:match("^(%S+)") or full
+	end
+	if mode == "both" then
+		return full
+	elseif mode == "first" then
+		return first
+	elseif mode == "last" then
+		if secretFull or first == nil or (issecretvalue and issecretvalue(first)) then
+			return nil
+		end
+		local rest = full:sub(#first + 1):gsub("^%s+", "")
+		if rest == "" then
+			return full   -- no surname: the name as it is
+		end
+		return rest
+	end
+	return nil
+end
+
 -- Profiles
 --
 -- A profile is the settings serialised the way the macro backup does it
@@ -352,6 +515,37 @@ end
 -- and the one marked default is applied on a fresh install, that is when no
 -- setting differs from the defaults after login.
 --------------------------------------------------------------------------------
+
+-- The built-in profile with every module off (user, 2026-09-22: "when the
+-- addon is installed for the first time, everything should be off"): the
+-- default for a fresh install, made from the module list at every login so
+-- a module added later is off in it too. Not baked, not deletable, not
+-- overwritable.
+MelloUI.FRESH_PROFILE = "Everything Off"
+
+function MelloUI:FreshProfileText()
+	local parts = {}
+	for name, module in self:IterateModules() do
+		if module.enabledByDefault and not module.hidden then
+			parts[#parts + 1] = "!" .. name .. "=b0"
+		end
+		-- the tweak modules folded under UI Modifications follow its qol_
+		-- switches: those off too, so switching the umbrella on brings the
+		-- reskin alone (user, 2026-09-22: "it should only auto enable the
+		-- full reskin and the custom sounds")
+		local keys = {}
+		for key, value in pairs(module.defaults) do
+			if type(key) == "string" and key:sub(1, 4) == "qol_" and value == true then
+				keys[#keys + 1] = key
+			end
+		end
+		table.sort(keys)
+		for _, key in ipairs(keys) do
+			parts[#parts + 1] = name .. "." .. key .. "=b0"
+		end
+	end
+	return table.concat(parts, ";")
+end
 
 function MelloUI:Profiles()
 	self.db.profiles = self.db.profiles or {}
@@ -363,14 +557,18 @@ function MelloUI:Profiles()
 				end
 			end
 		end
-		if self.db.defaultProfile == nil and type(MelloUI_Profiles.default) == "string" and MelloUI_Profiles.default ~= "" then
-			self.db.defaultProfile = MelloUI_Profiles.default
-		end
+	end
+	self.db.profiles[self.FRESH_PROFILE] = self:FreshProfileText()
+	if self.db.defaultProfile == nil then
+		self.db.defaultProfile = self.FRESH_PROFILE
 	end
 	return self.db.profiles
 end
 
 function MelloUI:IsProfileBaked(name)
+	if name == self.FRESH_PROFILE then
+		return true
+	end
 	return type(MelloUI_Profiles) == "table" and type(MelloUI_Profiles.profiles) == "table"
 		and MelloUI_Profiles.profiles[name] == self:Profiles()[name]
 end
@@ -380,6 +578,9 @@ function MelloUI:SaveProfile(name)
 	if name == "" then
 		return false, "a profile needs a name"
 	end
+	if name == self.FRESH_PROFILE then
+		return false, "'" .. name .. "' is built in"
+	end
 	self:Profiles()[name] = self:SerializeSettings()
 	self.db.activeProfile = name
 	return true
@@ -387,7 +588,7 @@ end
 
 function MelloUI:DeleteProfile(name)
 	local profiles = self:Profiles()
-	if profiles[name] == nil then
+	if profiles[name] == nil or name == self.FRESH_PROFILE then
 		return false
 	end
 	profiles[name] = nil
@@ -404,7 +605,9 @@ function MelloUI:SetDefaultProfile(name)
 	if name ~= nil and self:Profiles()[name] == nil then
 		return false
 	end
-	self.db.defaultProfile = name
+	-- false, not nil: "none" chosen, as against never set (Profiles() makes
+	-- the built-in profile the default when nothing was chosen)
+	self.db.defaultProfile = name or false
 	return true
 end
 
@@ -493,16 +696,30 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 			self:InitDB()
 		end
 		self:AdoptSavedVariables("PLAYER_LOGIN")
-		if self.dbIsTemporary and self.RestoreFromBackup then
-			self:RestoreFromBackup("PLAYER_LOGIN")
+		if self.dbIsTemporary and self.RestoreFromBackup and self:RestoreFromBackup("PLAYER_LOGIN") then
+			-- the early hook ran on the defaults at ADDON_LOADED: once more
+			-- on the restored settings (the world fonts)
+			for _, module in self:IterateModules() do
+				module.db = nil
+				if self:IsModuleEnabled(module.name) and type(module.OnAddonLoaded) == "function" then
+					SafeCall(module, "OnAddonLoaded", self:GetModuleDB(module.name))
+				end
+			end
 		end
 		if self:ApplyDefaultProfileIfFresh() then
 			self:Notice("No settings found; the default profile '%s' was applied.", tostring(self.db.activeProfile))
 		end
 		self.initialized = true
+		-- the modules come up in TOC order; a module that drives others
+		-- (UI Modifications) must not pull them forward out of that order
+		-- during this pass (the unit frame panel read the bars' layers
+		-- before Bar Textures had set them, 2026-09-21): it sets their
+		-- flags and lets this loop enable them in their turn
+		self.initializingModules = true
 		for _, module in self:IterateModules() do
 			self:InitModule(module)
 		end
+		self.initializingModules = nil
 		if self.BuildConfig then
 			self:BuildConfig()
 		end

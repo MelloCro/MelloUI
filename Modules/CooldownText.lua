@@ -142,6 +142,9 @@ local function GetTimer(cooldown)
 end
 
 local function StopTimer(cooldown, restoreNative)
+	if cooldown.IsForbidden and cooldown:IsForbidden() then
+		return
+	end
 	local timer = timers[cooldown]
 	active[cooldown] = nil
 	pending[cooldown] = nil
@@ -222,7 +225,7 @@ local function UpdateTimer(cooldown, timer, now)
 end
 
 local function StartTimer(cooldown, start, duration, modRate)
-	if not M.isEnabled then
+	if not M.isEnabled or (cooldown.IsForbidden and cooldown:IsForbidden()) then
 		return
 	end
 	local category = Category(cooldown)

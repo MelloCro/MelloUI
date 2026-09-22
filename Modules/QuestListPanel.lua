@@ -242,6 +242,12 @@ local function InitRow(button, entry)
 	button:SetScript("OnLeave", Leave)
 	local row = entry.row
 	local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
+	-- the game's trivial grey (0.5) reads as near black over the list's
+	-- shade (user, 2026-09-22: "why are the quest names so dark"): the
+	-- panel lifts it; the colour still says trivial
+	if r == g and g == b and r <= 0.5 then
+		r, g, b = 0.72, 0.72, 0.72
+	end
 	local levelText = row[QL.F_LEVEL] > 0 and string.format(" (%d)", row[QL.F_LEVEL]) or ""
 	local stepText = entry.step and string.format("%d. ", entry.step) or ""
 	button.title:SetText(stepText .. row[QL.F_TITLE] .. levelText)
@@ -252,7 +258,7 @@ local function InitRow(button, entry)
 		button.check:SetAtlas("questlog-icon-checkmark-yellow")
 		button.check:SetDesaturated(true)
 		button.check:SetAlpha(0.7)
-		button.title:SetTextColor(0.5, 0.5, 0.5)
+		button.title:SetTextColor(0.6, 0.6, 0.6)   -- done: a step under the trivial grey
 	elseif entry.onQuest then
 		button.check:SetAtlas("QuestTurnin")
 		button.check:SetDesaturated(not entry.ready)
@@ -540,7 +546,8 @@ function QL.Panel:Update()
 	local db, data = M.db, QL.Data()
 	QL.SyncTracked()
 	for _, b in ipairs(frame.filters) do
-		b:SetAlpha(b.key == db.filter and 1 or 0.6)
+		-- on the kit (QuestLogPanel) the selection is a plate, not a dimming
+		b:SetAlpha((b.melloKitPlate or b.key == db.filter) and 1 or 0.6)
 	end
 	frame.hide:SetChecked(db.hideCompleted and true or false)
 

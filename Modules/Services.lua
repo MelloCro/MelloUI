@@ -21,20 +21,15 @@ local M = MelloUI:RegisterModule("Services", {
 	defaults = {
 		showBar = true,
 		barOffset = -26,
-		standArt = true,
-		standScale = 1,
 		roundIcons = true,
 		showButton = false,
 		angle = 205,
+		trackerNoticeShown = false,
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
 		  desc = "Two rows of service icons under the minimap; it moves with the minimap in Edit Mode. Click an icon to route to the nearest one, right-click to stop the route." },
 		{ type = "slider", key = "barOffset", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2 },
-		{ type = "toggle", key = "standArt", name = "Minimap Stand",
-		  desc = "Bronze ring around the minimap with two ornate legs. The objective tracker hangs from the feet and moves with the minimap, and the icon bar fills the space between the map and the tracker." },
-		{ type = "slider", key = "standScale", name = "Stand Fit", min = 0.9, max = 1.15, step = 0.01, percent = true,
-		  desc = "Fine tunes the ring so it sits exactly on the edge of the map." },
 		{ type = "toggle", key = "roundIcons", name = "Round Icons",
 		  desc = "Show the service icons as round medallions with a bronze rim instead of squares." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
@@ -410,6 +405,8 @@ local function Remember(kindKey, name, sub)
 	if R then
 		local here = R:DistanceTo(me) or 0
 		for _, kind in ipairs(KINDS) do
+			-- every kind of this data (the class trainer entry filters its
+			-- candidates by class; a profession trainer is in the next one)
 			if kind.key == kindKey or kind.data == kindKey then
 				for _, c in ipairs(Candidates(kind)) do
 					if not c.mapID then
@@ -419,7 +416,6 @@ local function Remember(kindKey, name, sub)
 						end
 					end
 				end
-				break
 			end
 		end
 	end
@@ -481,6 +477,8 @@ local EVENTS = { "MERCHANT_SHOW", "MAIL_SHOW", "GOSSIP_SHOW", "TAXIMAP_OPENED", 
 local menu = nil
 local ROW_HEIGHT = 20
 local MENU_WIDTH = 300
+
+local KitOn, SetKitBox   -- the kit look (below)
 
 local function CreateMenu()
 	if menu then
@@ -546,6 +544,9 @@ local function CreateMenu()
 	menu.hint:SetText("nearest by road")
 	menu:SetHeight(30 + #KINDS * ROW_HEIGHT + 34)
 	menu:Hide()
+	if KitOn() then
+		SetKitBox(menu, true)   -- SV1: the L1 box, as the bar
+	end
 	-- Close when clicking elsewhere.
 	menu:SetScript("OnUpdate", function(self)
 		if not self:IsMouseOver(20, -20, -20, 20) and not (M.button and M.button:IsMouseOver()) then
@@ -601,7 +602,6 @@ end
 
 local bar = nil
 local ICON = 26
-local MAX_ICON = 28   -- with the stand, the grid grows to fill the gap but never past this
 local GAP = 5
 local PER_ROW = 5
 
@@ -709,19 +709,10 @@ local function CreateBar()
 end
 
 --------------------------------------------------------------------------------
--- Minimap stand: a bronze ring around the minimap with two ornate legs
--- reaching down to the objective tracker (Media/Textures/MinimapStand.tga,
--- 1024 x 1024). The ring's centre and inner radius on that canvas are known,
--- so the art is scaled until the ring's inside matches the map and offset so
--- the centres coincide. The legs end at the bottom of the canvas; the tracker is
--- placed under them in Edit Mode.
+-- The painted minimap stand (ring, zone bar, scaffold with slots) was removed
+-- on 2026-09-21 with the restore-first rule: the minimap is the game's, the
+-- service icons sit on the plain bar below it.
 --------------------------------------------------------------------------------
-
-local STAND_TEXTURE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\MinimapStand.tga"
-local STAND_W, STAND_H = 512, 512
-local STAND_CX, STAND_CY = 254.25, 212.5    -- ring centre on the canvas (y from the top)
-local STAND_INNER_R = 161.75               -- ring inner radius on the canvas
-local stand = nil
 
 local function LayerBar()
 	if not (bar and Minimap) then
@@ -729,111 +720,110 @@ local function LayerBar()
 	end
 	bar:SetFrameStrata(Minimap:GetFrameStrata())
 	bar:SetFrameLevel(Minimap:GetFrameLevel() + 3)
-	if stand then
-		stand:SetFrameStrata(Minimap:GetFrameStrata())
-		stand:SetFrameLevel(Minimap:GetFrameLevel() + 1)
-	end
 end
 
 local function ApplyStand()
-	if not Minimap then
-		return
-	end
-	if not stand then
-		stand = CreateFrame("Frame", "MelloUIMinimapStand", Minimap)
-		stand:SetPoint("CENTER", Minimap, "CENTER")
-		stand:SetSize(1, 1)
-		stand.tex = stand:CreateTexture(nil, "ARTWORK")
-		stand.tex:SetTexture(STAND_TEXTURE)
-	end
 	LayerBar()
-	if not (M.isEnabled and M.db.showBar and M.db.standArt) then
-		stand:Hide()
-		return
-	end
-	local radius = Minimap:GetWidth() / 2
-	local scale = radius / STAND_INNER_R * (tonumber(M.db.standScale) or 1)
-	stand.tex:SetSize(STAND_W * scale, STAND_H * scale)
-	stand.tex:ClearAllPoints()
-	stand.tex:SetPoint("CENTER", Minimap, "CENTER", (STAND_W / 2 - STAND_CX) * scale, (STAND_CY - STAND_H / 2) * scale)
-	-- where the feet end, measured down from the map's centre
-	stand.feetBelowCentre = (STAND_H - STAND_CY) * scale
-	stand.radius = radius
-	stand:Show()
-	-- Dark Mode shades the stand with the rest of the minimap art.
-	local dark = MelloUI:GetModule("DarkMode")
-	if dark and dark.isEnabled and dark.Reapply then
-		dark:Reapply("minimap")
-	end
 end
 
--- The objective tracker hangs from the feet of the stand and follows the
--- minimap. Edit Mode re-anchors the tracker whenever it lays out (or when it
--- is dragged); a hook on SetPoint puts it back under the feet.
-local TRACKER_GAP = 0           -- pixels between the feet and the tracker's top line
-local chained = false
-local reanchoring = false
-local trackerHooked = false
-
-local function ReanchorTracker()
-	local tracker = ObjectiveTrackerFrame
-	if not (chained and tracker and stand and stand:IsShown()) or reanchoring then
-		return
-	end
-	reanchoring = true
-	tracker:ClearAllPoints()
-	tracker:SetPoint("TOP", stand.tex, "BOTTOM", 0, TRACKER_GAP)
-	reanchoring = false
+-- The objective tracker is an Edit Mode system: Edit Mode owns its position
+-- and its width, and nothing here ever moves it (an anchor set by addon code
+-- taints what Edit Mode reads back on exit and breaks its party frame reset).
+local function TrackerNotice()
 end
 
-local function ChainTracker(on)
-	chained = on and true or false
-	local tracker = ObjectiveTrackerFrame
-	if not tracker then
-		return
-	end
-	if chained then
-		if not trackerHooked then
-			trackerHooked = true
-			hooksecurefunc(tracker, "SetPoint", function()
-				if chained and not reanchoring then
-					C_Timer.After(0, ReanchorTracker)
-				end
-			end)
-			if EventRegistry and EventRegistry.RegisterCallback then
-				EventRegistry:RegisterCallback("EditMode.Exit", function() C_Timer.After(0, ReanchorTracker) end, M)
-			end
-		end
-		ReanchorTracker()
-	end
-end
-
--- Bar layout. With the stand: no backdrop, and the icon grid is sized to
--- fill the gap between the map's bottom and the feet, centred in it.
--- Without: the fixed size and the tooltip style backdrop.
+-- Bar layout: a grid of icons under the minimap (round medallions with a rim
+-- when roundIcons is on).
 local RIM_RATIO = 31 / 21   -- medallion outer diameter over icon diameter (rim art: 31 px ring, 21 px opening)
+local KIT_RIM_RATIO = 130 / 79   -- the kit's round rim (buttons/roundslot: 130 px, 79 px opening)
+
+local function WithStand()
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- The kit look (user's picks SV1 SR2, 2026-09-22, kit_raw/services_catalog.png):
+-- the bar and the nearest-service menu on the L1 box (single rail, list-box
+-- stone), the icons in the kit's round rims. It goes with the minimap area
+-- of the reskin (Kit:IsCovered("minimap")): on while the painted minimap
+-- is, the game's own backdrop and tracking rims otherwise. Square icons
+-- ("Round Icons" off) get the square R1 rim.
+--------------------------------------------------------------------------------
+
+KitOn = function()
+	local kit = MelloUI.Kit
+	return kit and kit.IsCovered and kit:IsCovered("minimap") and kit.Replace and true or false
+end
+
+-- An invisible region for Kit:Replace where the frame has none of its own.
+local function KitAnchor(frame)
+	local tex = frame:CreateTexture(nil, "BACKGROUND")
+	tex:SetAllPoints(frame)
+	tex:SetColorTexture(0, 0, 0, 0)
+	return tex
+end
+
+-- The L1 box on a frame of ours (the bar, the menu), one level under it.
+local function KitBox(frame)
+	if frame.kitBox ~= nil then
+		return frame.kitBox
+	end
+	local rep = MelloUI.Kit:Replace(KitAnchor(frame), { as = "Professions-background-summarylist", rect = frame, parent = frame, level = -1 })
+	frame.kitBox = rep or false
+	return frame.kitBox
+end
+
+SetKitBox = function(frame, on)
+	if not frame then
+		return
+	end
+	if on then
+		local rep = KitBox(frame)
+		if rep then
+			rep:Enable()
+			if frame.SetBackdrop then
+				frame:SetBackdrop(nil)
+			end
+			return true
+		end
+	elseif frame.kitBox then
+		frame.kitBox:Disable()
+	end
+	return false
+end
+
+-- A service button's kit rim (round or square), made once each, the icon
+-- fitted into the shown one's opening.
+local function KitRim(b, round)
+	local key = round and "kitRoundRim" or "kitSquareRim"
+	if not b[key] then
+		b[key] = MelloUI.Kit:Slot(b, { kind = round and "roundslot" or "slot" })
+		if MelloUI.Kit.RegisterTexture then
+			MelloUI.Kit:RegisterTexture(b[key])   -- Dark Mode's shade
+		end
+	end
+	return b[key]
+end
+
 local function LayoutBar()
 	if not bar then
 		return
 	end
 	local rows = math.ceil(#KINDS / PER_ROW)
-	local ring = M.db.roundIcons and RIM_RATIO or 1   -- a medallion needs room for its rim
+	local kit = KitOn()
+	-- a medallion needs room for its rim; on the kit every icon has one
+	-- (round or square), and the BUTTON is the rim: the icon is fitted
+	-- into its opening
+	local ring = kit and KIT_RIM_RATIO or (M.db.roundIcons and RIM_RATIO or 1)
 	local icon, gap = ICON, GAP
-	local withStand = M.db.standArt and stand and stand:IsShown() and stand.radius
-	if withStand then
-		local space = stand.feetBelowCentre - stand.radius   -- map bottom to the feet
-		local width = stand.radius * 1.75                    -- between the legs where the rows sit
-		gap = 2
-		local cell = math.min((space - (rows + 1) * gap) / rows, (width - (PER_ROW + 1) * gap) / PER_ROW, MAX_ICON * ring)
-		icon = math.max(16, math.floor(cell / ring))
-	end
 	local cell = icon * ring
-	local inset = (cell - icon) / 2
+	local inset = kit and 0 or (cell - icon) / 2
 	bar:SetSize(PER_ROW * cell + (PER_ROW + 1) * gap, rows * cell + (rows + 1) * gap)
 	for i, b in ipairs(bar.buttons) do
 		local col, row = (i - 1) % PER_ROW, math.floor((i - 1) / PER_ROW)
-		b:SetSize(icon, icon)
+		b:SetSize(kit and cell or icon, kit and cell or icon)
 		b:ClearAllPoints()
+		b:Show()
 		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(gap + row * (cell + gap) + inset))
 		if b.rim then
 			local k = icon / 21
@@ -843,12 +833,7 @@ local function LayoutBar()
 		end
 	end
 	bar:ClearAllPoints()
-	if withStand then
-		local space = stand.feetBelowCentre - stand.radius
-		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, -(space - bar:GetHeight()) / 2)
-	else
-		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
-	end
+	bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
 end
 
 -- Round medallion icons: the icon under a circular mask with the classic
@@ -858,7 +843,9 @@ local function ApplyIconShape()
 	if not bar then
 		return
 	end
-	local round = M.db.roundIcons and true or false
+	-- the painted slots are square, so the medallion rim stands down for them
+	local round = M.db.roundIcons and not WithStand() and true or false
+	local kit = KitOn()
 	for _, b in ipairs(bar.buttons) do
 		if not b.mask then
 			b.mask = b:CreateMaskTexture()
@@ -874,11 +861,31 @@ local function ApplyIconShape()
 		if round then
 			b.icon:AddMaskTexture(b.mask)
 			b.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
-			b.rim:Show()
+			b.rim:SetShown(not kit)
 		else
 			b.icon:RemoveMaskTexture(b.mask)
 			b.icon:SetTexCoord(0, 1, 0, 1)
 			b.rim:Hide()
+		end
+		-- the kit's rim (SR2 round; square for square icons), the icon in
+		-- its opening; the game's anchors back when the kit is off
+		if kit then
+			local want = KitRim(b, round)
+			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
+				if b[key] then
+					b[key]:SetShown(b[key] == want)
+				end
+			end
+			want.icon = b.icon
+			MelloUI.Kit:SlotPlaceIcon(want)
+		else
+			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
+				if b[key] then
+					b[key]:Hide()
+				end
+			end
+			b.icon:ClearAllPoints()
+			b.icon:SetAllPoints(b)
 		end
 	end
 	if round then
@@ -889,9 +896,9 @@ local function ApplyIconShape()
 		end
 	end
 	if bar.SetBackdrop then
-		if M.db.standArt then
+		if WithStand() then
 			bar:SetBackdrop(nil)   -- the stand is the frame; nothing behind the medallions
-		else
+		elseif not SetKitBox(bar, kit) then
 			bar:SetBackdrop({
 				bgFile = "Interface/Tooltips/UI-Tooltip-Background",
 				edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -901,6 +908,17 @@ local function ApplyIconShape()
 			bar:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
 			bar:SetBackdropBorderColor(0.55, 0.45, 0.25, 1)
 		end
+	end
+	-- the nearest-service menu on the same box (SV1)
+	if menu and menu.SetBackdrop and not SetKitBox(menu, kit) then
+		menu:SetBackdrop({
+			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+			tile = true, tileSize = 16, edgeSize = 16,
+			insets = { left = 4, right = 4, top = 4, bottom = 4 },
+		})
+		menu:SetBackdropColor(0.06, 0.06, 0.08, 0.95)
+		menu:SetBackdropBorderColor(0.6, 0.5, 0.3, 1)
 	end
 end
 
@@ -918,7 +936,16 @@ local function ApplyBar()
 	ApplyStand()
 	ApplyIconShape()
 	LayoutBar()
-	ChainTracker(M.isEnabled and M.db.showBar and M.db.standArt)
+	if M.isEnabled then
+		TrackerNotice()
+	end
+	-- the panels that dress the cluster and the tracker follow the stand
+	for _, name in ipairs({ "MinimapPanel", "TrackerPanel" }) do
+		local panel = MelloUI:GetModule(name)
+		if panel and panel.isEnabled and panel.Relayout then
+			panel:Relayout()
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -1064,11 +1091,21 @@ local function HookRelayout()
 	end
 end
 
+local coverWatched = false
+
 function M:OnEnable(db)
 	self.db = db
 	HookRelayout()
 	ApplyButton()
 	ApplyBar()
+	if not coverWatched and MelloUI.Kit and MelloUI.Kit.OnCover then
+		coverWatched = true
+		MelloUI.Kit:OnCover(function(group)
+			if group == "minimap" and M.isEnabled then
+				ApplyBar()   -- the bar's look goes with the painted minimap
+			end
+		end)
+	end
 	for _, event in ipairs(EVENTS) do
 		pcall(eventFrame.RegisterEvent, eventFrame, event)
 	end
@@ -1086,7 +1123,12 @@ function M:OnDisable()
 		menu:Hide()
 	end
 	ApplyStand()
-	ChainTracker(false)
+	for _, name in ipairs({ "MinimapPanel", "TrackerPanel" }) do
+		local panel = MelloUI:GetModule(name)
+		if panel and panel.isEnabled and panel.Relayout then
+			panel:Relayout()
+		end
+	end
 end
 
 function M:OnSettingChanged(key, value, db)

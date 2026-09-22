@@ -87,6 +87,13 @@ local function StyleBackdrop(tooltip)
 	if not M.isEnabled or not tooltip or not tooltip.NineSlice then
 		return
 	end
+	-- the kit's tooltip (TooltipPanel) stands in for the backdrop colouring
+	-- while it covers the group (user, 2026-09-21: tweaks apply only while
+	-- the kit module for the group is off)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.IsCovered and Kit:IsCovered("tooltip") then
+		return
+	end
 	local db = M.db
 	local nine = tooltip.NineSlice
 	if db.darkBackdrop and nine.SetCenterColor then
@@ -199,6 +206,9 @@ local function ApplyHealthBar()
 	if M.isEnabled and db.barTexture and MelloUI:IsModuleEnabled("BarTextures") then
 		local textures = MelloUI:GetModuleDB("BarTextures")
 		wanted = textures and textures.texture
+		if wanted == "default" then
+			wanted = nil   -- Bar Textures' "Default (Blizzard)": the game's own bar
+		end
 	end
 	if wanted then
 		bar:SetStatusBarTexture(wanted)

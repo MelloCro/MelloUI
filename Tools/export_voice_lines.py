@@ -15,15 +15,22 @@ Outputs (in Tools/output/):
   forever_voice_lines.json  manifest used by build_voice_pack.py to package the MP3s
 
 Only lines without a usable recording in the installed VoiceOver pack are
-listed. Each line has a status:
+listed (the merged MelloUI_VoiceOverData pack by default; the old
+AI_VoiceOverData_Vanilla when only that one is installed). Each line has a
+status:
   new-quest    quest ID unknown to the vanilla database
-  rewritten    vanilla quest exists but Forever changed the text
+  rewritten    vanilla quest exists but Forever changed the text (also a
+               renumbered quest the module voiced with the old recording
+               although Forever changed the words)
   unrecorded   same text as vanilla, the pack just has no file for it
   greeting     NPC greeting with no matching recording
 
+Vanilla lines the pack never had (whether or not you met them) are listed by
+Tools/export_vanilla_lines.py instead.
+
 Usage:
   python Tools/export_voice_lines.py [--wtf "F:/World of Warcraft/_classic_beta_/WTF"]
-        [--pack "F:/World of Warcraft/_classic_beta_/Interface/AddOns/AI_VoiceOverData_Vanilla"]
+        [--pack "F:/World of Warcraft/_classic_beta_/Interface/AddOns/MelloUI_VoiceOverData"]
         [--store Tools/cache/voice_lines.json] [--out Tools/output]
 
 Needs the lupa package (pip install lupa) to read the Lua files.
@@ -49,7 +56,9 @@ except ImportError:
     sys.exit("pip install lupa")
 
 DEFAULT_WTF = "F:/World of Warcraft/_classic_beta_/WTF"
-DEFAULT_PACK = "F:/World of Warcraft/_classic_beta_/Interface/AddOns/AI_VoiceOverData_Vanilla"
+ADDONS = "F:/World of Warcraft/_classic_beta_/Interface/AddOns"
+DEFAULT_PACK = next((os.path.join(ADDONS, name) for name in ("MelloUI_VoiceOverData", "AI_VoiceOverData_Vanilla")
+                     if os.path.isdir(os.path.join(ADDONS, name))), os.path.join(ADDONS, "MelloUI_VoiceOverData"))
 
 # How placeholders are spoken. $n is the player's name, $c class, $r race,
 # $g male;female; picks by player gender.
@@ -207,7 +216,7 @@ def placeholdered(text, player):
 
 def spoken_text(text, player=None):
     out = placeholdered(text, player)
-    out = re.sub(r"\$g([^;]*);([^;]*);", r"\1", out)
+    out = re.sub(r"\$[gG]([^;]*);([^;]*);", r"\1", out)
     for key, word in PLACEHOLDERS.items():
         out = out.replace(key, word)
     out = re.sub(r"\s+", " ", out).strip()
@@ -263,8 +272,17 @@ def main():
         for kind, rec in kinds.items():
             if kind.startswith("_"):
                 continue
-            if quest_id is not None and (f"{quest_id}-{kind}" in quest_files or f"m-{quest_id}-{kind}" in quest_files):
+            if quest_id is not None and (f"{quest_id}-{kind}" in quest_files or f"m-{quest_id}-{kind}" in quest_files
+                                         or f"f-{quest_id}-{kind}" in quest_files):
                 continue
+            # Voiced through another quest's file (Forever renumbered the
+            # quest): nothing to record while the words are the vanilla ones.
+            served = rec.get("file")
+            if served and served in quest_files:
+                m = re.match(r"^(?:[mf]-)?(\d+)-\w+$", served)
+                old = vanilla.get(int(m.group(1))) if m else None
+                if old and similarity(old.get(kind, "") or "", rec["text"]) >= 0.85:
+                    continue
             status = "new-quest"
             if quest_id in vanilla:
                 old = vanilla[quest_id].get(kind, "") or ""

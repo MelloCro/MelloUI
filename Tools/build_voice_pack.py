@@ -223,6 +223,7 @@ def cmd_build(args, lines):
     if os.path.exists(os.path.join(gen, "sound_length_table.lua")):
         existing = load_tables(root, name)
         print(f"keeping {len(existing.get('SoundLengthLookupByFileName', {}))} lines already in {name}")
+    existing_quests = existing.get("QuestIDLookup", {})
 
     lengths = {}
     gossip_by_id = {}
@@ -254,7 +255,11 @@ def cmd_build(args, lines):
         else:
             quest_id = int(row["questID"]) if str(row["questID"]).isdigit() else None
             if quest_id:
-                quest_lookup[row["kind"]][row["title"].replace('"', "'")] = quest_id
+                title = row["title"].replace('"', "'")
+                # A title the pack already resolves through NPC / text (a
+                # table) keeps that; a plain number would flatten it.
+                if not isinstance(existing_quests.get(row["kind"], {}).get(title), dict):
+                    quest_lookup[row["kind"]][title] = quest_id
                 if npc_id and row["kind"] == "accept":
                     npc_by_quest[quest_id] = npc_id
 

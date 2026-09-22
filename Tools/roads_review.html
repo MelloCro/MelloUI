@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MelloUI road review</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #16130f; color: #e8dcc0; font: 14px/1.4 "Segoe UI", Arial, sans-serif; }
+  header { display: flex; gap: 14px; align-items: center; padding: 10px 16px; background: #221c14; border-bottom: 1px solid #3a2f1f; position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+  header select, header button, header label { font: inherit; }
+  header button { background: #3a2f1f; color: #f0e2c0; border: 1px solid #6a5535; border-radius: 4px; padding: 5px 12px; cursor: pointer; }
+  header button.on { background: #7a4a12; }
+  #stage { position: relative; margin: 16px auto; width: 1002px; height: 668px; }
+  #stage img { position: absolute; left: 0; top: 0; width: 1002px; height: 668px; }
+  #stage svg { position: absolute; left: 0; top: 0; width: 1002px; height: 668px; }
+  polyline { fill: none; stroke: #ff3030; stroke-width: 3; cursor: pointer; }
+  polyline.removed { stroke: #3a3a3a; stroke-dasharray: 4 6; }
+  polyline.added { stroke: #40c0ff; }
+  polyline.draft { stroke: #ffe040; stroke-dasharray: 6 4; pointer-events: none; }
+  polyline:hover { stroke-width: 5; }
+  #hint { padding: 0 16px 16px; color: #b9a98a; max-width: 1002px; margin: 0 auto; }
+  .count { color: #b9a98a; }
+</style>
+</head>
+<body>
+<header>
+  <label>Zone <select id="zone"></select></label>
+  <span class="count" id="count"></span>
+  <button id="draw">Draw a road</button>
+  <button id="undo">Undo point</button>
+  <button id="load">Load review.json</button>
+  <input type="file" id="file" accept=".json" hidden>
+  <button id="save">Save review.json</button>
+  <span id="status" class="count"></span>
+</header>
+<div id="stage"><img id="map" alt=""><svg id="svg" viewBox="0 0 1002 668"></svg></div>
+<div id="hint">
+  Red lines are the traced roads; click one to drop it (grey, dashed), click again to keep it.
+  "Draw a road" then click along a missing road, double-click to finish (blue). Save writes
+  <code>review.json</code>: put it in <code>Tools/roads/</code> and run
+  <code>python Tools/trace_roads.py bake</code>. Load brings an earlier review back.
+  The page reads <code>Tools/roads/segments.json</code> and the zone images from
+  <code>Tools/cache/zonemaps/&lt;build&gt;/</code>; browsers refuse that from a plain file, so serve
+  the Tools folder: <code>python -m http.server 8765</code> in <code>Tools</code>, then open
+  <code>http://localhost:8765/roads_review.html</code>.
+</div>
+<script>
+(async function () {
+  const data = await fetch("roads/segments.json").then(r => r.json());
+  const zones = data.zones;
+  const review = { removed: new Set(), added: {} };
+  const zoneSel = document.getElementById("zone");
+  const svg = document.getElementById("svg");
+  const map = document.getElementById("map");
+  const status = document.getElementById("status");
+  let drawing = false, draft = [];
+
+  for (const id of Object.keys(zones).sort((a, b) => zones[a].name.localeCompare(zones[b].name))) {
+    const o = document.createElement("option");
+    o.value = id; o.textContent = `${zones[id].name} (${id})`;
+    zoneSel.appendChild(o);
+  }
+
+  function render() {
+    const id = zoneSel.value, z = zones[id];
+    map.src = `cache/zonemaps/${data.build}/${id}.png`;
+    svg.innerHTML = "";
+    let kept = 0;
+    for (const s of z.segments) {
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      p.setAttribute("points", s.points.map(q => q.join(",")).join(" "));
+      if (review.removed.has(s.id)) p.classList.add("removed"); else kept++;
+      p.addEventListener("click", ev => {
+        if (drawing) return;
+        ev.stopPropagation();
+        if (review.removed.has(s.id)) review.removed.delete(s.id); else review.removed.add(s.id);
+        render();
+      });
+      svg.appendChild(p);
+    }
+    for (const [i, a] of (review.added[id] || []).entries()) {
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      p.setAttribute("points", a.points.map(q => q.join(",")).join(" "));
+      p.classList.add("added");
+      p.addEventListener("click", ev => {
+        if (drawing) return;
+        ev.stopPropagation();
+        review.added[id].splice(i, 1);
+        render();
+      });
+      svg.appendChild(p);
+    }
+    if (draft.length) {
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      p.setAttribute("points", draft.map(q => q.join(",")).join(" "));
+      p.classList.add("draft");
+      svg.appendChild(p);
+    }
+    document.getElementById("count").textContent =
+      `${kept} of ${z.segments.length} traced segments kept, ${(review.added[id] || []).length} drawn`;
+  }
+
+  function point(ev) {
+    const r = svg.getBoundingClientRect();
+    return [Math.round((ev.clientX - r.left) * 10) / 10, Math.round((ev.clientY - r.top) * 10) / 10];
+  }
+
+  svg.addEventListener("click", ev => {
+    if (!drawing) return;
+    draft.push(point(ev));
+    render();
+  });
+  svg.addEventListener("dblclick", ev => {
+    if (!drawing) return;
+    if (draft.length >= 2) {
+      const id = zoneSel.value;
+      (review.added[id] = review.added[id] || []).push({ points: draft });
+    }
+    draft = [];
+    render();
+  });
+  document.getElementById("draw").addEventListener("click", function () {
+    drawing = !drawing; draft = [];
+    this.classList.toggle("on", drawing);
+    this.textContent = drawing ? "Drawing: click points, double-click to finish" : "Draw a road";
+    render();
+  });
+  document.getElementById("undo").addEventListener("click", () => { draft.pop(); render(); });
+  zoneSel.addEventListener("change", () => { draft = []; render(); });
+
+  document.getElementById("save").addEventListener("click", () => {
+    const out = { build: data.build, removed: [...review.removed].sort(), added: review.added };
+    const blob = new Blob([JSON.stringify(out, null, 1)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "review.json"; a.click();
+    status.textContent = "saved review.json (move it to Tools/roads/)";
+  });
+  document.getElementById("load").addEventListener("click", () => document.getElementById("file").click());
+  document.getElementById("file").addEventListener("change", async ev => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    const r = JSON.parse(await f.text());
+    review.removed = new Set(r.removed || []);
+    review.added = r.added || {};
+    status.textContent = `loaded ${f.name}`;
+    render();
+  });
+  // an existing review next to the segments loads on its own
+  try {
+    const r = await fetch("roads/review.json").then(x => x.ok ? x.json() : null);
+    if (r) { review.removed = new Set(r.removed || []); review.added = r.added || {}; status.textContent = "review.json loaded"; }
+  } catch (e) {}
+  render();
+})();
+</script>
+</body>
+</html>

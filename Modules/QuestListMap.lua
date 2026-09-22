@@ -650,6 +650,13 @@ function QL.StartOutsideTicker()
 	outsideTicker = C_Timer.NewTicker(3, QL.RememberOutside)
 end
 
+function QL.StopOutsideTicker()
+	if outsideTicker then
+		outsideTicker:Cancel()
+		outsideTicker = nil
+	end
+end
+
 local learnFailed = nil   -- instance name already reported this session
 QL.pendingExit = nil   -- { name, raid }: instance to learn from where the player exits it
 
@@ -733,8 +740,10 @@ local function FlightPinClicked(pin, button)
 	local mapID = map and QL.Plain(map:GetMapID())
 	local okP, x, y = pcall(pin.GetPosition, pin)
 	x, y = okP and QL.Plain(x) or nil, okP and QL.Plain(y) or nil
-	local info = pin.poiInfo
-	local name = info and QL.Plain(info.name) or "Flight master"
+	-- the flight point pin keeps its node as taxiNodeData (and name) on this
+	-- client's data provider; poiInfo was the older field
+	local info = pin.taxiNodeData or pin.poiInfo
+	local name = QL.Plain(pin.name) or (info and QL.Plain(info.name)) or "Flight master"
 	if mapID and x and y then
 		local icon = "|T" .. "Interface/Minimap/Tracking/FlightMaster" .. ":16:16|t "
 		QL.RouteToPoint(mapID, x, y, icon .. name, string.format("%sTracking the flight master at %s, {dist} away", icon, name))

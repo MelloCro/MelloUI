@@ -66,46 +66,101 @@ local function BuildFontList()
 	return list
 end
 
+-- The game draws its text with four faces; every font object descends from
+-- one of them, and each role gets its own choice here (user, 2026-09-21):
+--   text    Friz Quadrata  interface text: windows, buttons, tooltips, quest
+--                          log, nameplate names, character names in the world
+--   chat    Arial Narrow   chat windows and the numbers: bar values, cooldown
+--                          counts, stack counts, damage on unit frames
+--   title   Morpheus       window titles, quest and item names in dialogs,
+--                          mail and book text
+--   damage  Skurri         floating combat text in the world
+-- "Keep the game's" leaves a role on its own face. The world faces (names
+-- above characters, floating combat text) are read once at start-up: a
+-- change there shows after /reload.
+local ROLES = {
+	{ key = "fontText",   match = "frizqt",   name = "Interface text (Friz Quadrata)",
+	  desc = "Window text, buttons, tooltips, the quest log, nameplate names and the names above characters in the world (those after /reload)." },
+	{ key = "fontChat",   match = "arialn",   name = "Chat & numbers (Arial Narrow)",
+	  desc = "The chat windows and every number: bar values, cooldown counts, stack counts, damage on unit frames." },
+	{ key = "fontTitle",  match = "morpheus", name = "Titles & headers (Morpheus)",
+	  desc = "Window titles, quest and item names in dialogs, mail and book text, and the kit's title plates while the reskin is on. Enchanted Land unless you choose otherwise; Keep the game's puts Morpheus back everywhere, the plates included." },
+	{ key = "fontDamage", match = "skurri",   name = "Damage numbers (Skurri)",
+	  desc = "The floating combat text in the world (after /reload)." },
+}
+
+local KEEP = "default"
+
+local function RoleFor(path)
+	local lower = type(path) == "string" and path:lower() or ""
+	for _, role in ipairs(ROLES) do
+		if lower:find(role.match, 1, true) then
+			return role.key
+		end
+	end
+	return "fontText"
+end
+
+local function BuildRoleList()
+	local list = { { value = KEEP, label = "Keep the game's" } }
+	for _, entry in ipairs(BuildFontList()) do
+		list[#list + 1] = entry
+	end
+	return list
+end
+
+-- Each role has its own size slider (user, 2026-09-22); `scale`, the old
+-- single slider, is folded into them once and kept at 1.
+local SCALE_KEY = { fontText = "scaleText", fontChat = "scaleChat", fontTitle = "scaleTitle", fontDamage = "scaleDamage" }
+local SCALE_NAME = { fontText = "Interface text size", fontChat = "Chat & numbers size", fontTitle = "Titles & headers size", fontDamage = "Damage numbers size" }
+local SCALE_DESC = {
+	fontText = "Every font drawn with the interface face, relative to its normal size.",
+	fontChat = "The chat windows (on top of the game's own chat font size) and every number.",
+	fontTitle = "Titles, headers, dialog names, mail and book text, and the kit's own title face on the painted plates.",
+	fontDamage = "The numbers drawn with the damage face in the interface (the scrolling combat text over you). The floating numbers in the world keep the engine's size.",
+}
+-- The title role's default is the kit's face (user, 2026-09-22: "make it
+-- Enchanted Land as default"); the other roles keep the game's.
+local TITLE_DEFAULT = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\EnchantedLand.ttf"
+
+local defaults = { scale = 1, outline = "OUTLINE" }
+local options = {
+	{ type = "header", name = "Fonts" },
+}
+for _, role in ipairs(ROLES) do
+	defaults[role.key] = role.key == "fontTitle" and TITLE_DEFAULT or KEEP
+	defaults[SCALE_KEY[role.key]] = 1
+	options[#options + 1] = { type = "dropdown", key = role.key, name = role.name, values = BuildRoleList(), desc = role.desc }
+end
+options[#options + 1] = { type = "subheader", name = "Size and outline" }
+for _, role in ipairs(ROLES) do
+	options[#options + 1] = { type = "slider", key = SCALE_KEY[role.key], name = SCALE_NAME[role.key], min = 0.7, max = 1.5, step = 0.05, percent = true,
+		desc = SCALE_DESC[role.key] }
+end
+options[#options + 1] = { type = "dropdown", key = "outline", name = "Outline", values = {
+		{ value = "NONE", label = "Keep original" },
+		{ value = "OUTLINE", label = "Thin outline" },
+		{ value = "THICKOUTLINE", label = "Thick outline" },
+	},
+	desc = "Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look." }
+
 local M = MelloUI:RegisterModule("Fonts", {
 	title = "Fonts",
-	desc = "Change the font and font size used by the whole interface.",
-	enabledByDefault = false,
-	defaults = {
-		font = [[Interface\AddOns\]] .. ADDON_NAME .. [[\Media\Fonts\Prototype.ttf]],
-		scale = 1,
-		outline = "OUTLINE",
-		numbers = true,
-		chat = true,
-		nameplates = true,
-		worldNames = true,
-		worldDamage = false,
-	},
-	options = {
-		{ type = "header", name = "Font" },
-		{ type = "dropdown", key = "font", name = "Font", values = BuildFontList(),
-		  desc = "Font used for the interface. Custom .ttf files go into MelloUI\\Media\\Fonts and are listed in Media\\CustomFonts.lua." },
-		{ type = "slider", key = "scale", name = "Font Size", min = 0.7, max = 1.5, step = 0.05, percent = true,
-		  desc = "Scales every font relative to its normal size." },
-		{ type = "dropdown", key = "outline", name = "Outline", values = {
-			{ value = "NONE", label = "Keep original" },
-			{ value = "OUTLINE", label = "Thin outline" },
-			{ value = "THICKOUTLINE", label = "Thick outline" },
-		  },
-		  desc = "Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. Friz Quadrata with a thin outline is the look used by RougeUI." },
-		{ type = "header", name = "Apply To" },
-		{ type = "toggle", key = "numbers", name = "Number Fonts",
-		  desc = "Also replace the number fonts (cooldown timers, stack counts, damage on unit frames). Turn off to keep Arial Narrow for numbers." },
-		{ type = "toggle", key = "chat", name = "Chat Windows",
-		  desc = "Also replace the font of the chat windows." },
-		{ type = "toggle", key = "nameplates", name = "Nameplates",
-		  desc = "Also replace the nameplate name, level and cast bar fonts." },
-		{ type = "header", name = "World (needs /reload)" },
-		{ type = "toggle", key = "worldNames", name = "3D Character Names",
-		  desc = "Use the chosen font for the names floating above characters in the world. Takes effect after /reload." },
-		{ type = "toggle", key = "worldDamage", name = "Floating Combat Text",
-		  desc = "Use the chosen font for the damage and healing numbers in the world. Takes effect after /reload." },
-	},
+	desc = "One font per role: interface text, chat and numbers, titles, damage numbers; plus size and outline.",
+	enabledByDefault = true,   -- every role "default" changes nothing; UI Modifications drives the switch
+	defaults = defaults,
+	options = options,
 })
+
+-- The face chosen for a role, or nil to keep the game's.
+local function ChosenFont(roleKey)
+	local db = M.db
+	local value = db and db[roleKey]
+	if type(value) == "string" and value ~= "" and value ~= KEEP then
+		return value
+	end
+	return nil
+end
 
 --------------------------------------------------------------------------------
 -- Font object discovery
@@ -148,23 +203,13 @@ local function Remember(object)
 	return originals[object]
 end
 
-local function IsNumberFont(name)
-	return name:find("Number") ~= nil
-end
-
-local function IsNamePlateFont(name)
-	return name:find("NamePlate") ~= nil or name:find("Nameplate") ~= nil
-end
-
-local function ShouldTouch(name)
-	local db = M.db
-	if not db.numbers and IsNumberFont(name) then
-		return false
+-- The face for a font object: its role's choice, else its own.
+local function FontFor(object)
+	local original = Remember(object)
+	if not original then
+		return nil
 	end
-	if not db.nameplates and IsNamePlateFont(name) then
-		return false
-	end
-	return true
+	return ChosenFont(RoleFor(original.path)) or original.path
 end
 
 --------------------------------------------------------------------------------
@@ -195,13 +240,21 @@ local function EffectiveFlags(object, originalFlags)
 	return originalFlags
 end
 
-local function ApplyToObject(object, name, path, scale)
+-- The scale of a role, from its own slider.
+local function ScaleFor(roleKey)
+	local db = M.db
+	local value = db and tonumber(db[SCALE_KEY[roleKey] or ""])
+	return value or 1
+end
+
+local function ApplyToObject(object)
 	local original = Remember(object)
 	if not original then
 		return
 	end
+	local scale = ScaleFor(RoleFor(original.path))
 	local size = math.max(6, math.floor(original.size * scale + 0.5))
-	pcall(object.SetFont, object, path, size, EffectiveFlags(object, original.flags))
+	pcall(object.SetFont, object, FontFor(object), size, EffectiveFlags(object, original.flags))
 end
 
 local function RestoreObject(object)
@@ -338,24 +391,43 @@ end
 
 local chatHooked = false
 
-local function ApplyChatWindows(path, scale)
+-- The chat windows follow the chat role (their own face is Arial Narrow).
+-- A chat window's size is the game's own chat font size (its menu) times
+-- the chat role's slider; the game's size is remembered per window.
+local function ChatBaseSize(frame, original)
+	if frame.melloChatBase then
+		return frame.melloChatBase
+	end
+	return original and original.size or 14
+end
+
+local function ApplyChatWindow(frame)
+	local original = Remember(frame)
+	if not original then
+		return
+	end
+	local _, _, flags = frame:GetFont()
+	local size = math.max(6, math.floor(ChatBaseSize(frame, original) * ScaleFor("fontChat") + 0.5))
+	pcall(frame.SetFont, frame, ChosenFont("fontChat") or original.path, size, flags or original.flags)
+end
+
+local function ApplyChatWindows()
 	for i = 1, (NUM_CHAT_WINDOWS or 10) do
 		local frame = _G["ChatFrame" .. i]
 		if frame and frame.GetFont then
-			local original = Remember(frame)
-			if original then
-				-- Chat size is user configurable; keep Blizzard's size, only swap the face.
-				local _, currentSize, flags = frame:GetFont()
-				pcall(frame.SetFont, frame, path, currentSize or original.size, flags or original.flags)
-			end
+			ApplyChatWindow(frame)
 		end
 	end
 	if not chatHooked and type(FCF_SetChatWindowFontSize) == "function" then
 		chatHooked = true
 		hooksecurefunc("FCF_SetChatWindowFontSize", function(_, chatFrame, fontSize)
-			if M.isEnabled and M.db.chat and chatFrame and chatFrame.GetFont then
-				local _, size, flags = chatFrame:GetFont()
-				pcall(chatFrame.SetFont, chatFrame, M.db.font, fontSize or size, flags)
+			if chatFrame and chatFrame.GetFont then
+				if tonumber(fontSize) then
+					chatFrame.melloChatBase = tonumber(fontSize)   -- the game's size, chosen by the player
+				end
+				if M.isEnabled then
+					ApplyChatWindow(chatFrame)
+				end
 			end
 		end)
 	end
@@ -366,28 +438,42 @@ local function RestoreChatWindows()
 		local frame = _G["ChatFrame" .. i]
 		local original = frame and originals[frame]
 		if original then
-			local _, currentSize, flags = frame:GetFont()
-			pcall(frame.SetFont, frame, original.path, currentSize or original.size, flags or original.flags)
+			local _, _, flags = frame:GetFont()
+			pcall(frame.SetFont, frame, original.path, ChatBaseSize(frame, original), flags or original.flags)
 		end
 	end
 end
 
-local function ApplyAll()
-	local db = M.db
-	local path = db.font or DEFAULT_FONT
-	local scale = tonumber(db.scale) or 1
-	for _, entry in ipairs(DiscoverFontObjects()) do
-		if ShouldTouch(entry.name) then
-			ApplyToObject(entry.object, entry.name, path, scale)
-		else
-			RestoreObject(entry.object)
+-- The old single Font Size slider, folded into the four once.
+local function MigrateScale(db)
+	local old = tonumber(db.scale)
+	if not old or math.abs(old - 1) < 0.001 then
+		return
+	end
+	for _, key in pairs(SCALE_KEY) do
+		if math.abs((tonumber(db[key]) or 1) - 1) < 0.001 then
+			db[key] = old
 		end
 	end
-	if db.chat then
-		ApplyChatWindows(path, scale)
-	else
-		RestoreChatWindows()
+	db.scale = 1
+end
+
+local function ApplyAll()
+	MigrateScale(M.db)
+	for _, entry in ipairs(DiscoverFontObjects()) do
+		ApplyToObject(entry.object)
 	end
+	-- the kit's title plates follow the title role: its face (the game's
+	-- own for "Keep the game's") and its size slider (set per string, not
+	-- through a font object)
+	if MelloUI.Kit and MelloUI.Kit.SetTitleFace then
+		local value = M.db.fontTitle
+		MelloUI.Kit:SetTitleFace((type(value) == "string" and value ~= "" and value ~= KEEP) and value or false)
+	end
+	if MelloUI.Kit and MelloUI.Kit.SetTitleSizeFactor then
+		MelloUI.Kit:SetTitleSizeFactor(ScaleFor("fontTitle"))
+	end
+	ApplyChatWindows()
 	HookParchmentPanels()
 	ApplyParchmentPanels()
 end
@@ -395,6 +481,12 @@ end
 local function RestoreAll()
 	for _, entry in ipairs(DiscoverFontObjects()) do
 		RestoreObject(entry.object)
+	end
+	if MelloUI.Kit and MelloUI.Kit.SetTitleFace then
+		MelloUI.Kit:SetTitleFace(nil)   -- the kit's default face with the module off
+	end
+	if MelloUI.Kit and MelloUI.Kit.SetTitleSizeFactor then
+		MelloUI.Kit:SetTitleSizeFactor(1)
 	end
 	RestoreChatWindows()
 	RestoreParchmentStrings()
@@ -404,21 +496,25 @@ end
 -- World fonts (read by the client itself, so they must be set early)
 --------------------------------------------------------------------------------
 
+-- The world faces follow their roles: names above characters are interface
+-- text, the floating combat text is the damage face.
 local WORLD_FONT_GLOBALS = {
-	worldNames = { "UNIT_NAME_FONT", "NAMEPLATE_FONT" },
-	worldDamage = { "DAMAGE_TEXT_FONT" },
+	fontText = { "UNIT_NAME_FONT", "NAMEPLATE_FONT" },
+	fontDamage = { "DAMAGE_TEXT_FONT" },
 }
 
 local worldOriginals = {}
 
 local function ApplyWorldFonts(db)
-	for option, globals in pairs(WORLD_FONT_GLOBALS) do
+	for roleKey, globals in pairs(WORLD_FONT_GLOBALS) do
+		local value = db and db[roleKey]
+		local face = (type(value) == "string" and value ~= "" and value ~= KEEP) and value or nil
 		for _, name in ipairs(globals) do
 			if worldOriginals[name] == nil and type(_G[name]) == "string" then
 				worldOriginals[name] = _G[name]
 			end
-			if db[option] then
-				_G[name] = db.font or DEFAULT_FONT
+			if face then
+				_G[name] = face
 			elseif worldOriginals[name] then
 				_G[name] = worldOriginals[name]
 			end
@@ -459,9 +555,9 @@ end
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	ApplyAll()
-	if key == "font" or key == "worldNames" or key == "worldDamage" then
+	if key == "fontText" or key == "fontDamage" then
 		ApplyWorldFonts(db)
-		MelloUI:Print("World font changes take effect after /reload.")
+		MelloUI:Print("The names above characters and the floating combat text follow after /reload.")
 	end
 end
 

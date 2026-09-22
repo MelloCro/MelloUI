@@ -7,6 +7,11 @@
 -- frame textures. No frame layout is touched, so Edit Mode keeps working and
 -- nothing taints secure frames.
 --
+-- With the painted reskin on (user, 2026-09-21): the groups the kit covers are
+-- left to the kit, and the kit itself is darkened as one through
+-- Kit:SetShade with the "Reskin brightness" setting (its hue kept: the gems
+-- stay red); where the reskin is off, the default art is darkened as before.
+--
 -- Frame keys were taken from the World of Warcraft: Forever (Camelot) UI source,
 -- which uses the retail (Dragonflight style) HUD with Camelot specific overrides.
 --------------------------------------------------------------------------------
@@ -19,6 +24,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	desc = "Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars.",
 	defaults = {
 		shade = 0.25,        -- brightness of the darkened art (0 = black, 1 = untouched)
+		kitShade = 0.6,      -- brightness of the painted reskin's pieces (Kit:SetShade)
 		desaturate = true,   -- remove the gold / bronze tint
 		unitframes = true,
 		castbar = true,
@@ -41,6 +47,8 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "How bright the darkened artwork is. Lower values are darker." },
 		{ type = "toggle", key = "desaturate", name = "Desaturate",
 		  desc = "Remove the gold and bronze colours so the art becomes grey before it is darkened." },
+		{ type = "slider", key = "kitShade", name = "Reskin brightness", min = 0.2, max = 1, step = 0.05, percent = true,
+		  desc = "How bright the painted reskin is while Dark Mode is on: every kit piece (stone, iron, plates, brackets) is darkened by this much; the red gems keep their colour. The default art above is darkened where the reskin is off." },
 		{ type = "header", name = "Components" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",
 		  desc = "Player, target, focus, pet, party, boss and target-of-target frames." },
@@ -142,8 +150,15 @@ local function ReapplyGroup(group)
 	end
 end
 
+-- A kit module dressing the same group covers it (user rule, 2026-09-21:
+-- Dark Mode only applies while the modified appearance is off).
+local function Covered(group)
+	local Kit = MelloUI.Kit
+	return Kit and Kit:IsCovered(group)
+end
+
 local function Active(component)
-	return M.isEnabled and M.db and M.db[component]
+	return M.isEnabled and M.db and M.db[component] and not Covered(component)
 end
 
 -- Collect texture regions of a frame whose atlas matches (case-insensitive).
@@ -248,12 +263,16 @@ end
 
 local function ApplyUnitFrames()
 	local list = {}
-	CollectPlayerFrame(list)
-	for _, frame in ipairs(TargetLikeFrames()) do
-		CollectTargetLikeFrame(frame, list)
+	if not Covered("unitframes") then
+		CollectPlayerFrame(list)
+		for _, frame in ipairs(TargetLikeFrames()) do
+			CollectTargetLikeFrame(frame, list)
+		end
+		list[#list + 1] = PetFrameTexture
 	end
-	list[#list + 1] = PetFrameTexture
-	CollectPartyFrames(list)
+	if not Covered("partyframes") then
+		CollectPartyFrames(list)
+	end
 	ShadeAll("unitframes", list)
 end
 
@@ -413,11 +432,12 @@ local function ApplyPersonalResourceDisplay()
 		return
 	end
 	local list = {}
-	local bars = {
-		prd.HealthBarsContainer and prd.HealthBarsContainer.healthBar,
-		prd.PowerBar,
-		prd.AlternatePowerBar,
-	}
+	local bars = {}
+	for _, bar in ipairs({ prd.HealthBarsContainer and prd.HealthBarsContainer.healthBar or false, prd.PowerBar or false, prd.AlternatePowerBar or false }) do
+		if bar then
+			bars[#bars + 1] = bar   -- no holes: ipairs stopped at a missing health bar
+		end
+	end
 	for _, bar in ipairs(bars) do
 		CollectRegionsByAtlas(bar, "UI-HUD-CoolDownManager-Bar-BG", list)
 	end
@@ -842,20 +862,46 @@ local subOptions = {
 
 local function Rebuild(component)
 	RestoreGroup(component)
-	if M.db[component] then
+	if M.db[component] and not Covered(component) then
 		appliers[component]()
 	end
+end
+
+-- the kit's cover groups that share a Dark Mode component
+local COVER_COMPONENT = { partyframes = "unitframes", bagbar = "micromenu" }
+local coverWatched = false
+
+local function WatchCovers()
+	if coverWatched or not MelloUI.Kit then
+		return
+	end
+	coverWatched = true
+	MelloUI.Kit:OnCover(function(group)
+		local component = COVER_COMPONENT[group] or group
+		if M.isEnabled and appliers[component] then
+			Rebuild(component)
+		end
+	end)
 end
 
 function M:OnInit(db)
 	self.db = db
 end
 
+local function ShadeKit(db)
+	local kit = MelloUI.Kit
+	if kit and kit.SetShade then
+		kit:SetShade((M.isEnabled and db) and db.kitShade or 1)
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
+	WatchCovers()
+	ShadeKit(db)
 	for _, component in ipairs(COMPONENTS) do
-		if db[component] then
+		if db[component] and not Covered(component) then
 			appliers[component]()
 		end
 	end
@@ -875,12 +921,20 @@ function M:OnDisable()
 	for _, component in ipairs(COMPONENTS) do
 		RestoreGroup(component)
 	end
+	local kit = MelloUI.Kit
+	if kit and kit.SetShade then
+		kit:SetShade(1)
+	end
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "kitShade" then
+		ShadeKit(db)
+		return
+	end
 	if appliers[key] then
-		if value then
+		if value and not Covered(key) then
 			appliers[key]()
 		else
 			RestoreGroup(key)

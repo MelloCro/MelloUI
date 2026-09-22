@@ -38,6 +38,8 @@ local function BuildTextureList()
 			list[#list + 1] = { value = value, label = label or value }
 		end
 	end
+	-- the game's own bar art, kept as it is (the colour options still apply)
+	Add("default", "Default (Blizzard)")
 	for _, entry in ipairs(SHIPPED_TEXTURES) do
 		Add(entry.value, entry.label)
 	end
@@ -63,6 +65,7 @@ local M = MelloUI:RegisterModule("BarTextures", {
 	defaults = {
 		texture = MEDIA .. "Flat",
 		healthColor = "green",
+		overrideThreat = true,   -- the health colour wins over the game's threat / aggro recolouring
 		unitframes = true,
 		raidframes = true,
 		nameplates = true,
@@ -81,6 +84,8 @@ local M = MelloUI:RegisterModule("BarTextures", {
 			{ value = "reaction", label = "Class (players) / reaction (NPCs)" },
 		  },
 		  desc = "Colour of unit frame health bars. Blizzard bakes the green into its artwork, so the module has to colour flat textures itself." },
+		{ type = "toggle", key = "overrideThreat", name = "Colour Overrides Threat",
+		  desc = "The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show." },
 		{ type = "header", name = "Apply To" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",
 		  desc = "Health and power bars of the player, target, focus, pet, party, boss and target-of-target frames." },
@@ -139,15 +144,18 @@ local function StatusTrackingColorForAtlas(atlas)
 		return nil
 	end
 	local a = atlas:lower()
-	if a:find("rested") then return 0.0, 0.39, 0.88 end
-	if a:find("experience") then return 0.58, 0.0, 0.55 end
-	if a:find("honor") then return 1.0, 0.24, 0.0 end
+	-- the faction / reputation names first: the reputation bar's atlases are
+	-- named "...experiencebar-fill-faction-..." on this client and read as
+	-- experience purple otherwise (user, 2026-09-21: both bars purple)
 	if a:find("faction%-red") then return FactionColor(2) end
 	if a:find("faction%-orange") then return FactionColor(3) end
 	if a:find("faction%-yellow") then return FactionColor(4) end
 	if a:find("faction%-green") then return FactionColor(5) end
 	if a:find("faction%-blue") then return 0.2, 0.5, 1.0 end
 	if a:find("reputation") then return FactionColor(5) end
+	if a:find("rested") then return 0.0, 0.39, 0.88 end
+	if a:find("honor") then return 1.0, 0.24, 0.0 end
+	if a:find("experience") then return 0.58, 0.0, 0.55 end
 	return nil
 end
 
@@ -163,6 +171,7 @@ local masks = setmetatable({}, { __mode = "k" })     -- [bar] = MaskTexture shap
 local maskedTextures = setmetatable({}, { __mode = "k" }) -- [texture] = mask currently attached
 local applied = setmetatable({}, { __mode = "k" })   -- [bar] = true once our texture is on it
 local applying = false
+local healthBars                                     -- [bar] = true for every health bar seen (filled below)
 
 local function Active(group)
 	return M.isEnabled and M.db and M.db[group]
@@ -183,6 +192,14 @@ local function RememberOriginal(bar)
 			if IsPlainString(file) then
 				value = { file = file }
 			end
+		end
+	end
+	if value then
+		-- the colour as well: a restore that puts the atlas back under the
+		-- module's tint showed it twice coloured (audit, 2026-09-22)
+		local r, g, b, a = bar:GetStatusBarColor()
+		if IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
+			value.r, value.g, value.b, value.a = r, g, b, IsPlainNumber(a) and a or 1
 		end
 	end
 	originals[bar] = value
@@ -211,7 +228,9 @@ local function UpdateMask(bar)
 	if not tex or not tex.AddMaskTexture or not bar.CreateMaskTexture then
 		return
 	end
-	if not IsPlainString(atlas) then
+	-- a bar the kit brackets (UnitFramePanel) shows its fill on the whole
+	-- rect, the bracket's rails covering the edges: no shaped mask
+	if not IsPlainString(atlas) or bar.melloKitBracket then
 		RemoveMask(bar)
 		return
 	end
@@ -235,8 +254,20 @@ local function UpdateMask(bar)
 	end
 end
 
+local RestoreBar   -- below
+
 local function SetTexture(bar)
 	local r, g, b, a = bar:GetStatusBarColor()
+	-- "Default (Blizzard)": the game's own art stays (put back if a texture
+	-- was on the bar), the bar keeps its colour handling below (user,
+	-- 2026-09-21: the default textures as a choice)
+	if M.db.texture == "default" then
+		if applied[bar] then
+			RestoreBar(bar)
+		end
+		applied[bar] = true
+		return
+	end
 	applying = true
 	bar:SetStatusBarTexture(M.db.texture)
 	UpdateMask(bar)
@@ -334,7 +365,7 @@ end
 
 StatusTrackingColorForAtlasRef = StatusTrackingColorForAtlas
 
-local function RestoreBar(bar)
+function RestoreBar(bar)
 	local original = originals[bar]
 	if not original then
 		return
@@ -348,6 +379,14 @@ local function RestoreBar(bar)
 	end
 	applying = false
 	applied[bar] = nil
+	if original.r then
+		bar:SetStatusBarColor(original.r, original.g, original.b, original.a)
+	end
+	if healthBars[bar] then
+		-- the game compares against what it last set (healthBar.r/g/b) and
+		-- only recolours on a change: forget, so its next update colours
+		bar.r, bar.g, bar.b = nil, nil, nil
+	end
 end
 
 local function RestoreGroup(group)
@@ -379,12 +418,15 @@ local function TargetLikeFrames()
 	return frames
 end
 
-local healthBars = setmetatable({}, { __mode = "k" })
+healthBars = setmetatable({}, { __mode = "k" })
+
+local HookHealthColor   -- below, with the colour code
 
 local function AddHealth(list, bar)
 	if bar then
 		healthBars[bar] = true
 		list[#list + 1] = bar
+		HookHealthColor(bar)
 	end
 end
 
@@ -442,8 +484,23 @@ end
 
 -- Several Forever health bars lock their colour and rely on a green atlas, so a
 -- flat texture has to be coloured here.
+local function UnitOf(bar)
+	local frame = bar
+	for _ = 1, 3 do
+		if not frame then
+			return nil
+		end
+		local ok, unit = pcall(function() return frame.unit end)
+		if ok and type(unit) == "string" then
+			return unit
+		end
+		frame = frame.GetParent and frame:GetParent() or nil
+	end
+	return nil
+end
+
 local function HealthColorFor(bar)
-	local unit = bar.unit
+	local unit = UnitOf(bar)
 	if unit then
 		-- Blizzard greys only disconnected units (it stores the flag on the bar
 		-- before this runs); dead or ghost units keep their colour.
@@ -476,11 +533,38 @@ local function HealthColorFor(bar)
 	return 0.0, 1.0, 0.0
 end
 
+local recolouring = false
+
 local function RecolorHealthBar(bar)
-	if not bar or not healthBars[bar] or tracked[bar] ~= "unitframes" or not Active("unitframes") then
+	if not bar or not healthBars[bar] then
 		return
 	end
+	local group = tracked[bar]
+	if not (group == "unitframes" or group == "nameplates") or not Active(group) then
+		return
+	end
+	if group == "nameplates" and M.db.healthColor == "green" then
+		return   -- the game's own nameplate colouring stands
+	end
+	recolouring = true
 	bar:SetStatusBarColor(HealthColorFor(bar))
+	recolouring = false
+end
+
+-- The game recolours health bars itself (threat / aggro display, reaction
+-- on nameplates): with "Colour Overrides Threat" on, the module's colour is
+-- put back right after each of those calls (user, 2026-09-21).
+HookHealthColor = function(bar)
+	if not bar or bar.melloColorHook or type(bar.SetStatusBarColor) ~= "function" then
+		return
+	end
+	bar.melloColorHook = true
+	hooksecurefunc(bar, "SetStatusBarColor", function(self)
+		if recolouring or not M.isEnabled or not M.db.overrideThreat or M.db.healthColor == "green" then
+			return
+		end
+		pcall(RecolorHealthBar, self)
+	end)
 end
 
 local function RecolorAllHealthBars()
@@ -512,6 +596,9 @@ end
 local function RecolorManaBar(manaBar)
 	if not manaBar or tracked[manaBar] ~= "unitframes" or not Active("unitframes") then
 		return
+	end
+	if M.db.texture == "default" then
+		return   -- the game's power atlas is coloured already; it expects white
 	end
 	local info = manaBar.overrideInfo or (PowerBarColor and manaBar.powerToken and PowerBarColor[manaBar.powerToken])
 	if info and info.r then
@@ -617,13 +704,20 @@ end
 
 local hookedNamePlates = setmetatable({}, { __mode = "k" })
 
-local function ApplyNamePlateUnitFrame(unitFrame)
+local function ApplyNamePlateUnitFrame(unitFrame, relayout)
 	if not unitFrame or (unitFrame.IsForbidden and unitFrame:IsForbidden()) then
 		return
 	end
 	local healthBar = unitFrame.HealthBarsContainer and unitFrame.HealthBarsContainer.healthBar
 	if healthBar then
 		ApplyToBar(healthBar, "nameplates")
+		healthBars[healthBar] = true
+		HookHealthColor(healthBar)
+		-- on a relayout the game may just have set its threat colour: it
+		-- stands unless "Colour Overrides Threat" is on (audit, 2026-09-22)
+		if not relayout or M.db.overrideThreat then
+			pcall(RecolorHealthBar, healthBar)
+		end
 	end
 	local castBar = unitFrame.CastBarsContainer and unitFrame.CastBarsContainer.castBar
 	if castBar then
@@ -635,7 +729,7 @@ local function ApplyNamePlateUnitFrame(unitFrame)
 		-- SetStatusBarTexture, so re-apply here.
 		hooksecurefunc(unitFrame, "UpdateAnchors", function(self)
 			if Active("nameplates") then
-				ApplyNamePlateUnitFrame(self)
+				ApplyNamePlateUnitFrame(self, true)
 			end
 		end)
 	end
@@ -810,6 +904,13 @@ local function ApplyAll()
 	end
 end
 
+-- The kit modules call this after bracketing / releasing a bar.
+function M:RefreshMask(bar)
+	if bar and self.isEnabled then
+		pcall(UpdateMask, bar)
+	end
+end
+
 function M:OnInit(db)
 	self.db = db
 end
@@ -858,8 +959,16 @@ function M:OnSettingChanged(key, value, db)
 			end
 		end
 		RecolorAllHealthBars()
-	elseif key == "healthColor" then
+	elseif key == "healthColor" or key == "overrideThreat" then
 		RecolorAllHealthBars()
+		if key == "healthColor" and value == "green" then
+			-- the nameplates are the game's again: let its next update colour them
+			for bar in pairs(healthBars) do
+				if tracked[bar] == "nameplates" then
+					bar.r, bar.g, bar.b = nil, nil, nil
+				end
+			end
+		end
 	end
 end
 

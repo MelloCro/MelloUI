@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
-## Version: 0.13.3
+## Version: 0.13.4
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements
@@ -13,7 +13,9 @@
 
 Core\Core.lua
 Core\Config.lua
+Core\Tutorial.lua
 Core\Backup.lua
+Core\EditModeLayout.lua
 
 Media\CustomFonts.lua
 Media\CustomTextures.lua
@@ -21,24 +23,54 @@ Media\NPCVoiceData.lua
 Media\NPCVoiceOverrides.lua
 Media\QuestListData.lua
 Media\RouteData.lua
+Media\RoadData.lua
+Media\ClassIcons.lua
+Media\KitLayout.lua
 Media\Profiles.lua
+Media\EditModeLayout.lua
 
+Modules\Kit.lua
+Modules\UIModifications.lua
 Modules\DarkMode.lua
+Modules\Fonts.lua
+Modules\ClassIcons.lua
 Modules\BarTextures.lua
 Modules\BarText.lua
-Modules\Tweaks.lua
-Modules\Chat.lua
-Modules\Nameplates.lua
-Modules\Vendor.lua
-Modules\Fonts.lua
-Modules\Tooltip.lua
 Modules\CooldownText.lua
+Modules\Tweaks.lua
 Modules\Stats.lua
-Modules\UnitFrames.lua
-Modules\VoiceOver.lua
+Modules\Vendor.lua
 Modules\QuestList.lua
 Modules\QuestListPanel.lua
 Modules\QuestListMap.lua
 Modules\QuestListPins.xml
 Modules\Route.lua
 Modules\Services.lua
+Modules\PartyMarkers.lua
+Modules\CustomSounds.lua
+Modules\VoiceOver.lua
+Modules\Chat.lua
+Modules\Nameplates.lua
+Modules\Tooltip.lua
+Modules\UnitFrames.lua
+Modules\CharacterPanel.lua
+Modules\GameMenuPanel.lua
+Modules\ProfessionsPanel.lua
+Modules\SpellBookPanel.lua
+Modules\LegacyPanel.lua
+Modules\QuestLogPanel.lua
+Modules\GuildPanel.lua
+Modules\GroupFinderPanel.lua
+Modules\CollectionsPanel.lua
+Modules\UnitFramePanel.lua
+Modules\CastBarPanel.lua
+Modules\RaidFramePanel.lua
+Modules\ActionBarPanel.lua
+Modules\BackpackPanel.lua
+Modules\MinimapPanel.lua
+Modules\TrackerPanel.lua
+Modules\SocialPanel.lua
+Modules\ChatPanel.lua
+Modules\DamageMeterPanel.lua
+Modules\TooltipPanel.lua
+Modules\NameplatePanel.lua

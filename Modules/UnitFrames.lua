@@ -19,6 +19,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	desc = "Centred names, transparent name band, no combat flash and frame art opacity for player, target and focus.",
 	defaults = {
 		centerNames = true,
+		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		hideReputationColor = true,
 		hideCombatGlow = true,
 		hideStatusGlow = true,
@@ -39,6 +40,90 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "Opacity of the frame art around the bars and portraits. The bars themselves stay solid." },
 	},
 })
+
+--------------------------------------------------------------------------------
+-- The name's form (user, 2026-09-22): after the game has set a frame's name
+-- (UnitFrame_Update for the player, target, focus, pet and target-of-target
+-- frames; CompactUnitFrame_UpdateName for the party and raid frames), the
+-- text is set again in the chosen form. Nameplates are the Nameplates
+-- module's (their compact frames are skipped here). Post-hooks only.
+--------------------------------------------------------------------------------
+
+local function IsNamePlateFrame(frame)
+	local options = frame.optionTable
+	if options and (options == NamePlateEnemyFrameOptions or options == NamePlateFriendlyFrameOptions or options == NamePlatePlayerFrameOptions) then
+		return true
+	end
+	local parent = frame.GetParent and frame:GetParent()
+	local name = parent and parent.GetName and parent:GetName()
+	return type(name) == "string" and name:sub(1, 9) == "NamePlate"
+end
+
+local function ApplyNameFormat(frame, unit)
+	if not (M.isEnabled and M.db) or not frame or not frame.name or not unit then
+		return
+	end
+	local mode = M.db.nameFormat or "both"
+	if mode == "both" then
+		return   -- the game's own text (the full name)
+	end
+	local text = MelloUI:UnitNameAs(unit, mode)
+	if text ~= nil then
+		pcall(frame.name.SetText, frame.name, text)
+	end
+end
+
+local function OnUnitFrameUpdate(frame)
+	if frame and frame.name and not IsNamePlateFrame(frame) then
+		ApplyNameFormat(frame, frame.overrideName or frame.unit)
+	end
+end
+
+local function OnCompactName(frame)
+	if frame and frame.name and frame.unit and not IsNamePlateFrame(frame) then
+		ApplyNameFormat(frame, frame.unit)
+	end
+end
+
+local nameHooked = false
+local function InstallNameHooks()
+	if nameHooked then
+		return
+	end
+	nameHooked = true
+	if type(UnitFrame_Update) == "function" then
+		hooksecurefunc("UnitFrame_Update", OnUnitFrameUpdate)
+	end
+	if type(CompactUnitFrame_UpdateName) == "function" then
+		hooksecurefunc("CompactUnitFrame_UpdateName", OnCompactName)
+	end
+end
+
+-- Every frame again in the given form (a setting changed, the module
+-- off): the known unit frames and the compact party / raid members, the
+-- text set directly, no game code run.
+local function RefreshNames(mode)
+	local frames = { PlayerFrame, TargetFrame, FocusFrame, PetFrame, TargetFrameToT, FocusFrameToT }
+	for i = 1, 5 do
+		frames[#frames + 1] = _G["CompactPartyFrameMember" .. i]
+	end
+	for i = 1, 40 do
+		frames[#frames + 1] = _G["CompactRaidFrame" .. i]
+	end
+	for g = 1, 8 do
+		for i = 1, 5 do
+			frames[#frames + 1] = _G["CompactRaidGroup" .. g .. "Member" .. i]
+		end
+	end
+	for _, frame in ipairs(frames) do
+		if frame and frame.name and frame.unit then
+			local text = MelloUI:UnitNameAs(frame.overrideName or frame.unit, mode)
+			if text ~= nil then
+				pcall(frame.name.SetText, frame.name, text)
+			end
+		end
+	end
+end
 
 local hiddenParent = CreateFrame("Frame", "MelloUIUnitFramesHidden", UIParent)
 hiddenParent:Hide()
@@ -117,6 +202,11 @@ local function PlayerNameContainer()
 end
 
 local function ApplyNames()
+	-- the kit's unit frame skin owns the names while it covers the frames
+	-- (it centres them on its name plates): leave them to it
+	if MelloUI.Kit and MelloUI.Kit:IsCovered("unitframes") then
+		return
+	end
 	local on = M.isEnabled and M.db.centerNames
 	if PlayerName then
 		if on then
@@ -258,6 +348,16 @@ end
 -- Hooks
 --------------------------------------------------------------------------------
 
+-- The unit frames are protected: their regions are anchored out of combat
+-- only (a vehicle swap in a fight re-anchors the name; audit 2026-09-22).
+local function OutOfCombat(fn)
+	if MelloUI.Kit and MelloUI.Kit.WhenOutOfCombat then
+		MelloUI.Kit:WhenOutOfCombat(fn)
+	elseif not InCombatLockdown() then
+		fn()
+	end
+end
+
 local function InstallHooks()
 	if hooksInstalled then
 		return
@@ -267,8 +367,12 @@ local function InstallHooks()
 	if type(PlayerFrame_UpdatePlayerNameTextAnchor) == "function" then
 		hooksecurefunc("PlayerFrame_UpdatePlayerNameTextAnchor", function()
 			if M.isEnabled and M.db.centerNames and PlayerName then
-				originalNameLayout[PlayerName] = nil
-				CenterName(PlayerName, PlayerNameContainer())
+				OutOfCombat(function()
+					if M.isEnabled and M.db.centerNames and PlayerName then
+						originalNameLayout[PlayerName] = nil
+						CenterName(PlayerName, PlayerNameContainer())
+					end
+				end)
 			end
 		end)
 	end
@@ -277,8 +381,12 @@ local function InstallHooks()
 		if type(_G[name]) == "function" then
 			hooksecurefunc(name, function()
 				if M.isEnabled then
-					ApplyGlows()
-					ApplyFrameAlpha()
+					OutOfCombat(function()
+						if M.isEnabled then
+							ApplyGlows()
+							ApplyFrameAlpha()
+						end
+					end)
 				end
 			end)
 		end
@@ -290,27 +398,46 @@ end
 --------------------------------------------------------------------------------
 
 local function ApplyAll()
-	ApplyNames()
-	ApplyReputationColor()
-	ApplyGlows()
-	ApplyFrameAlpha()
+	OutOfCombat(function()
+		ApplyNames()
+		ApplyReputationColor()
+		ApplyGlows()
+		ApplyFrameAlpha()
+	end)
 end
 
 function M:OnInit(db)
 	self.db = db
 end
 
+local coverWatched = false
+
 function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
+	InstallNameHooks()
+	RefreshNames(db.nameFormat or "both")
+	if not coverWatched and MelloUI.Kit then
+		coverWatched = true
+		MelloUI.Kit:OnCover(function(group, covered)
+			if group == "unitframes" and not covered and M.isEnabled then
+				ApplyNames()
+			end
+		end)
+	end
 	ApplyAll()
 end
 
 function M:OnDisable()
 	ApplyAll()
+	RefreshNames("both")   -- the game's full names back
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "nameFormat" then
+		RefreshNames(value or "both")
+		return
+	end
 	ApplyAll()
 end

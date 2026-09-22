@@ -24,6 +24,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	title = "Nameplates",
 	desc = "Large crowd-control icon above the name and a quest marker on enemy nameplates.",
 	defaults = {
+		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		bigCC = true,
 		ccSize = 45,
 		ccGap = 4,
@@ -51,6 +52,69 @@ local M = MelloUI:RegisterModule("Nameplates", {
 
 local function Active()
 	return M.isEnabled and M.db and M.db.bigCC
+end
+
+--------------------------------------------------------------------------------
+-- The name's form on nameplates (user, 2026-09-22): after the game has set
+-- a plate's name (CompactUnitFrame_UpdateName, the plates' compact frames
+-- only), the text is set again in the chosen form. A post-hook; a secret
+-- name is left as the game shows it. The unit frames are Unit Frames'.
+--------------------------------------------------------------------------------
+
+local function IsNamePlateFrame(frame)
+	local options = frame.optionTable
+	if options and (options == NamePlateEnemyFrameOptions or options == NamePlateFriendlyFrameOptions or options == NamePlatePlayerFrameOptions) then
+		return true
+	end
+	local parent = frame.GetParent and frame:GetParent()
+	local name = parent and parent.GetName and parent:GetName()
+	return type(name) == "string" and name:sub(1, 9) == "NamePlate"
+end
+
+local function ApplyPlateName(frame, mode)
+	if not (frame and frame.name and frame.unit) then
+		return
+	end
+	local text = MelloUI:UnitNameAs(frame.unit, mode)
+	if text ~= nil then
+		pcall(frame.name.SetText, frame.name, text)
+	end
+end
+
+local function OnCompactName(frame)
+	if not (M.isEnabled and M.db) or not frame or not frame.name then
+		return
+	end
+	local mode = M.db.nameFormat or "both"
+	if mode == "both" or not IsNamePlateFrame(frame) then
+		return
+	end
+	ApplyPlateName(frame, mode)
+end
+
+local plateNameHooked = false
+local function InstallPlateNameHook()
+	if plateNameHooked then
+		return
+	end
+	plateNameHooked = true
+	if type(CompactUnitFrame_UpdateName) == "function" then
+		hooksecurefunc("CompactUnitFrame_UpdateName", OnCompactName)
+	end
+end
+
+-- Every plate again, in the given form (a setting changed, the module off).
+local function RefreshPlateNames(mode)
+	local ok, plates = pcall(C_NamePlate.GetNamePlates)
+	if not (ok and type(plates) == "table") then
+		return
+	end
+	for _, plate in ipairs(plates) do
+		local frame = plate.UnitFrame
+		if frame and not (frame.IsForbidden and frame:IsForbidden()) then
+			ApplyPlateName(frame, mode)
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -228,19 +292,20 @@ local function RestoreAll()
 		local unitFrame = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
 		local auras = unitFrame and unitFrame.AurasFrame
 		if auras then
+			local scale = IsPlainNumber(auras.auraItemScale) and auras.auraItemScale or 1
 			if auras.CrowdControlListFrame then
 				for _, item in ipairs({ auras.CrowdControlListFrame:GetChildren() }) do
-					item:SetScale(auras.auraItemScale or 1)
+					item:SetScale(scale)
 				end
 				if auras.CrowdControlListFrame.needsFixedHeight then
-					auras.CrowdControlListFrame.fixedHeight = (auras.auraItemScale or 1) * BASE_ITEM_SIZE
+					auras.CrowdControlListFrame.fixedHeight = scale * BASE_ITEM_SIZE
 				end
 				if type(auras.CrowdControlListFrame.Layout) == "function" then
 					auras.CrowdControlListFrame:Layout()
 				end
 			end
 			if auras.LossOfControlFrame then
-				auras.LossOfControlFrame:SetScale(auras.auraItemScale or 1)
+				auras.LossOfControlFrame:SetScale(scale)
 			end
 		end
 		if unitFrame and type(unitFrame.UpdateAnchors) == "function" then
@@ -447,6 +512,10 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(true)
+	InstallPlateNameHook()
+	if db.nameFormat and db.nameFormat ~= "both" then
+		RefreshPlateNames(db.nameFormat)
+	end
 	if db.bigCC then
 		ApplyAll()
 	end
@@ -455,16 +524,29 @@ function M:OnEnable(db)
 	end
 end
 
+local function OutOfCombat(fn)
+	if MelloUI.Kit and MelloUI.Kit.WhenOutOfCombat then
+		MelloUI.Kit:WhenOutOfCombat(fn)
+	elseif not InCombatLockdown() then
+		fn()
+	end
+end
+
 function M:OnDisable()
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(false)
-	RestoreAll()
+	OutOfCombat(RestoreAll)
 	HideAllQuestIcons()
+	RefreshPlateNames("both")
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "nameFormat" then
+		RefreshPlateNames(value or "both")
+		return
+	end
 	if key == "questIcon" or key == "questIconSize" then
 		if db.questIcon then
 			UpdateAllQuestIcons()
@@ -474,9 +556,9 @@ function M:OnSettingChanged(key, value, db)
 		return
 	end
 	if db.bigCC then
-		ApplyAll()
+		OutOfCombat(ApplyAll)
 	else
-		RestoreAll()
+		OutOfCombat(RestoreAll)
 	end
 end
 

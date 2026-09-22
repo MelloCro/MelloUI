@@ -1,0 +1,117 @@
+{
+ "_readme": "Icon numbers follow docs/class-icons.webp reading order (row by row, left to right; 4x4 grid, row 4 has one icon). Re-run Tools/extract_icons.py after editing this file to regenerate Media/Icons and docs/class-icons-contact.png. 'confirmed': true means the art is unambiguous; false means it is the orchestrator's best guess from the painted medallion and needs the user to look at docs/class-icons-contact.png and correct it here.",
+ "classes_in_client": {
+  "evidence": [
+   "Interface/AddOns/Blizzard_CharacterCreate/Camelot/Blizzard_CharacterCreate.lua lines 1105-1119: local classLayoutIndices = { WARRIOR=1, HUNTER=2, MAGE=3, ROGUE=4, PRIEST=5, WARLOCK=6, PALADIN=7, DRUID=8, SHAMAN=9, MONK=10, DEMONHUNTER=11, DEATHKNIGHT=12, EVOKER=13 } -- the actual class-selection button layout of THIS client's character creation screen (Camelot override, not the Mainline fallback). This is the strongest evidence: it is the exact set of buttons the player sees when making a character.",
+   "Interface/AddOns/Blizzard_SharedXML/ClassColors.lua lines 4-21: the engine's full class enumeration also lists ADVENTURER and TRAVELER besides the 13 above; neither appears in classLayoutIndices (Camelot char create) or in CLASS_ICON_TCOORDS below, so they are non-playable narrative classes, not selectable classes, and are excluded.",
+   "Interface/AddOns/Blizzard_SharedXML/SharedConstants.lua lines 27-42: CLASS_ICON_TCOORDS has exactly the same 13 classes plus a TRAVELER placeholder entry (reuses WARRIOR's coordinates) confirming TRAVELER is a placeholder, not a real class."
+  ],
+  "list": [
+   "WARRIOR",
+   "PALADIN",
+   "HUNTER",
+   "ROGUE",
+   "PRIEST",
+   "SHAMAN",
+   "MAGE",
+   "WARLOCK",
+   "MONK",
+   "DRUID",
+   "DEMONHUNTER",
+   "DEATHKNIGHT",
+   "EVOKER"
+  ]
+ },
+ "class_icons": {
+  "1": {
+   "label": "crossed axes with a skull badge",
+   "class": "DEATHKNIGHT",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "2": {
+   "label": "sword with a gold hilt and a red gem, on dark stone",
+   "class": "WARRIOR",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "3": {
+   "label": "purple/lavender glowing hand reaching out of a void",
+   "class": "WARLOCK",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "4": {
+   "label": "blue scaled/armoured clawed hand, fire behind it, green gem ring",
+   "class": "EVOKER",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "5": {
+   "label": "blue crystal/ice gauntlet built of geometric plates",
+   "class": "PRIEST",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "6": {
+   "label": "bloody skull on a rusted metal plate, blood dripping",
+   "class": "SHAMAN",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "7": {
+   "label": "bronze shield with two facing green serpents and a green orb",
+   "class": "MONK",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "8": {
+   "label": "bow and arrow",
+   "class": "HUNTER",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "9": {
+   "label": "clawed beast paw with fur",
+   "class": "DRUID",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "10": {
+   "label": "rune-etched stone warhammer",
+   "class": "PALADIN",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "11": {
+   "label": "bundled dried herbs and a green potion bottle",
+   "class": null,
+   "confirmed": false,
+   "note": "user: no idea; left unmapped (Demon Hunter has no icon)"
+  },
+  "12": {
+   "label": "crossed daggers wreathed in green flame",
+   "class": "ROGUE",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  },
+  "13": {
+   "label": "red crystal shard on a gold pedestal, engulfed in fire",
+   "class": "MAGE",
+   "confirmed": true,
+   "note": "confirmed by the user on 2026-09-20"
+  }
+ },
+ "faction_icons": {
+  "left": {
+   "label": "gold lion head on a blue background",
+   "faction": "Alliance",
+   "confirmed": true
+  },
+  "right": {
+   "label": "iron Horde emblem on a red/fire background",
+   "faction": "Horde",
+   "confirmed": true
+  }
+ }
+}
