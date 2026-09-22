@@ -20,7 +20,7 @@ Usage:
   python Tools/generate_voice_lines.py --player Warr --dry-run  show what would be generated and the cost
   python Tools/generate_voice_lines.py --player Warr --only 147-progress.mp3
   python Tools/generate_voice_lines.py --list-voices            show the voices found in the account
-  python Tools/generate_voice_lines.py --no-export --manifest Tools/output/vanilla_missing_lines.json
+  python Tools/generate_voice_lines.py --no-export --manifest MelloUI-BuildData/output/vanilla_missing_lines.json
                                                                 the vanilla lines the pack never had
                                                                 (Tools/export_vanilla_lines.py lists them)
 
@@ -42,6 +42,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 API = "https://api.elevenlabs.io/v1"
@@ -231,7 +232,7 @@ def generate(key, voice_id, text, model, settings, dest):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--player", default=None, help="your character name (passed to the export)")
-    ap.add_argument("--manifest", default=os.path.join(HERE, "output", "forever_voice_lines.json"))
+    ap.add_argument("--manifest", default=os.path.join(OUTPUT, "forever_voice_lines.json"))
     ap.add_argument("--sources", default=os.path.join(HERE, "pack_sources"))
     ap.add_argument("--model", default="eleven_multilingual_v2")
     ap.add_argument("--stability", type=float, default=None)

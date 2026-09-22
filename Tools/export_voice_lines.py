@@ -6,10 +6,10 @@ of lines that need recording for a WoW: Forever sound pack.
 The module stores what it sees in the MelloUIVoiceLines saved variable. On the
 Forever beta the client writes that file on /reload but never reads it back,
 so run this after every session (before restarting the client): it merges the
-session into Tools/cache/voice_lines.json and rebuilds the outputs from the
+session into MelloUI-BuildData/cache/voice_lines.json and rebuilds the outputs from the
 merged store.
 
-Outputs (in Tools/output/):
+Outputs (in MelloUI-BuildData/output/):
   forever_voice_lines.csv   one row per line to record, for review / spreadsheets
   forever_voice_lines.txt   the same grouped by NPC, ready to paste into ElevenLabs
   forever_voice_lines.json  manifest used by build_voice_pack.py to package the MP3s
@@ -31,7 +31,7 @@ Tools/export_vanilla_lines.py instead.
 Usage:
   python Tools/export_voice_lines.py [--wtf "F:/World of Warcraft/_classic_beta_/WTF"]
         [--pack "F:/World of Warcraft/_classic_beta_/Interface/AddOns/MelloUI_VoiceOverData"]
-        [--store Tools/cache/voice_lines.json] [--out Tools/output]
+        [--store MelloUI-BuildData/cache/voice_lines.json] [--out MelloUI-BuildData/output]
 
 Needs the lupa package (pip install lupa) to read the Lua files.
 """
@@ -49,6 +49,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
 from extract_npc_voices import parse_sql_values, fetch, CMANGOS_SQL  # noqa: E402
+from paths import OUTPUT, CACHE
 
 try:
     import lupa
@@ -232,8 +233,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--wtf", default=DEFAULT_WTF)
     ap.add_argument("--pack", default=DEFAULT_PACK)
-    ap.add_argument("--store", default=os.path.join(here, "cache", "voice_lines.json"))
-    ap.add_argument("--out", default=os.path.join(here, "output"))
+    ap.add_argument("--store", default=os.path.join(CACHE, "voice_lines.json"))
+    ap.add_argument("--out", default=OUTPUT)
     ap.add_argument("--player", default=None, help="your character name, replaced by $n before the text is spoken")
     ap.add_argument("--player-class", default=None, help="your class name as shown in game (Warrior), replaced by $c; newer sessions record it themselves")
     ap.add_argument("--player-race", default=None, help="your race name as shown in game (Human), replaced by $r")
@@ -262,7 +263,7 @@ def main():
     log(f"store: {len(store.get('quests', {}))} quests, {sum(len(v) for v in store.get('gossip', {}).values())} greetings, {len(store.get('npcs', {}))} NPCs")
 
     quest_files, gossip_by_id, gossip_by_name = load_pack(args.pack) if os.path.isdir(args.pack) else (set(), {}, {})
-    vanilla = load_vanilla_quests(os.path.join(here, "cache"))
+    vanilla = load_vanilla_quests(CACHE)
     npcs = store.get("npcs", {})
 
     rows = []

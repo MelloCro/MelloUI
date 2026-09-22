@@ -13,9 +13,9 @@ the pack already has, keeps the quests Forever actually has
 quest's starter for the offer, its ender for progress and turn-in; objects and
 items narrate) with race and gender from Media/NPCVoiceData.lua, and writes
 
-  Tools/output/vanilla_missing_lines.json   manifest for generate_voice_lines.py / build_voice_pack.py
-  Tools/output/vanilla_missing_lines.csv    the same, for review
-  Tools/output/vanilla_missing_lines.txt    grouped by NPC
+  MelloUI-BuildData/output/vanilla_missing_lines.json   manifest for generate_voice_lines.py / build_voice_pack.py
+  MelloUI-BuildData/output/vanilla_missing_lines.csv    the same, for review
+  MelloUI-BuildData/output/vanilla_missing_lines.txt    grouped by NPC
 
 Lines whose words depend on the player's gender ($G...:...;) become two
 files, m-<id>-<kind>.mp3 and f-<id>-<kind>.mp3, as in the vanilla pack.
@@ -27,8 +27,8 @@ Usage:
   python Tools/export_vanilla_lines.py --all             also quests Forever's list does not have
 
 then
-  python Tools/generate_voice_lines.py --no-export --manifest Tools/output/vanilla_missing_lines.json --dry-run
-  python Tools/generate_voice_lines.py --no-export --manifest Tools/output/vanilla_missing_lines.json
+  python Tools/generate_voice_lines.py --no-export --manifest MelloUI-BuildData/output/vanilla_missing_lines.json --dry-run
+  python Tools/generate_voice_lines.py --no-export --manifest MelloUI-BuildData/output/vanilla_missing_lines.json
 
 Needs lupa (pip install lupa) like export_voice_lines.py.
 """
@@ -46,6 +46,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from extract_npc_voices import parse_sql_values, fetch, CMANGOS_SQL  # noqa: E402
 from export_voice_lines import load_pack, log, PLACEHOLDERS  # noqa: E402
+from paths import OUTPUT, CACHE
 
 try:
     import lupa
@@ -130,7 +131,7 @@ def spoken(text, player_gender):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--pack", default=DEFAULT_PACK)
-    ap.add_argument("--out", default=os.path.join(HERE, "output"))
+    ap.add_argument("--out", default=OUTPUT)
     ap.add_argument("--skip-progress", action="store_true", help="leave the progress lines out")
     ap.add_argument("--max-level", type=int, default=0, help="only quests up to this level (0: all)")
     ap.add_argument("--all", action="store_true", help="every vanilla quest, not only those in Forever's quest list")
@@ -143,7 +144,7 @@ def main():
     quest_files, _, _ = load_pack(args.pack)
     log(f"pack: {len(quest_files)} recorded lines")
 
-    sql = fetch(CMANGOS_SQL, os.path.join(HERE, "cache", "ClassicDB.sql.gz"))
+    sql = fetch(CMANGOS_SQL, os.path.join(CACHE, "ClassicDB.sql.gz"))
     log("reading the cmangos quest texts, givers and NPC names")
     tables = read_tables(sql, TABLES)
     names = {int(r["Entry"]): r.get("Name", "") for r in tables["creature_template"]}

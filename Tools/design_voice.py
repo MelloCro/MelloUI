@@ -7,7 +7,7 @@ their Caribbean lilt, gravelly ogres, and so on).
 Two steps, because you should listen before committing a voice slot:
 
   1. preview   generates three candidate voices from the description and
-               saves them as MP3s under Tools/output/voice_designs/<name>-N.mp3
+               saves them as MP3s under MelloUI-BuildData/output/voice_designs/<name>-N.mp3
   2. keep      saves candidate N in the account under <name>; if a voice with
                that name already exists it is renamed to <name>-old first
 
@@ -30,8 +30,9 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from generate_voice_lines import api_key, fetch_voices, API  # noqa: E402
+from paths import OUTPUT
 
-OUT = os.path.join(HERE, "output", "voice_designs")
+OUT = os.path.join(OUTPUT, "voice_designs")
 
 PRESETS = {
     "troll-male": "A deep, laid-back male troll voice from World of Warcraft with a strong Jamaican accent: relaxed Caribbean rhythm, rolling vowels, gravelly and warm, a touch mischievous. Fantasy tribal warrior, not a modern speaker.",

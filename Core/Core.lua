@@ -14,6 +14,8 @@
 --   OnInit(db)       called once after saved variables are available
 --   OnEnable(db)     called when the module is switched on (and at login if enabled)
 --   OnDisable(db)    called when the module is switched off
+--   applyWhenDisabled  true: OnDisable is called at start-up too when the
+--                    module is off, for a module that drives others
 --   OnSettingChanged(key, value, db)  called when one of its options changes
 --   hidden           true: not listed in the configurator (driven by another
 --                    module: the kit panels by Painted UI); /mello list shows it
@@ -352,6 +354,13 @@ function MelloUI:InitModule(module)
 	if self:IsModuleEnabled(module.name) then
 		module.isEnabled = true
 		SafeCall(module, "OnEnable", db)
+	elseif module.applyWhenDisabled then
+		-- A module that DRIVES other modules has to be obeyed while it is off
+		-- as well. OnDisable otherwise only runs on the switch being thrown,
+		-- never at login, so what it drives came up from its own saved flags
+		-- and the screen disagreed with the switch (UI Modifications off with
+		-- the whole reskin still on screen, 2026-09-22).
+		SafeCall(module, "OnDisable", db)
 	end
 end
 
@@ -420,6 +429,36 @@ function MelloUI:AdoptSavedVariables(stage)
 		end
 		if self.db.activeProfile == nil then
 			self.db.activeProfile = temp.activeProfile
+		end
+		-- The kit editor writes straight into the db rather than through a
+		-- module, so it was not on this list and every edit made before the
+		-- client got round to loading its saved variables was thrown away
+		-- here (they load late on this client). What was edited THIS session
+		-- is the newer of the two, so it wins.
+		local function Graft(into, from)
+			for key, value in pairs(from) do
+				if type(value) ~= "table" then
+					into[key] = value
+				elseif value[1] ~= nil or type(into[key]) ~= "table" then
+					-- an array (a tint, a crop) is replaced whole, never
+					-- merged index by index
+					into[key] = value
+				else
+					Graft(into[key], value)
+				end
+			end
+		end
+		for _, key in ipairs({ "kitTuning", "kitEditor" }) do
+			if type(temp[key]) == "table" then
+				if type(self.db[key]) ~= "table" then
+					self.db[key] = temp[key]
+				else
+					Graft(self.db[key], temp[key])
+				end
+			end
+		end
+		if self.KitTuning then
+			self.KitTuning:Reload()
 		end
 		-- Modules that acted on the temporary table get a second pass.
 		for _, module in self:IterateModules() do

@@ -25,12 +25,13 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 import backpack_layout_data as D
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "backpack-frame.webp")
 OUT_TGA = os.path.join(HERE, "..", "Media", "Textures", "BackpackFrame.tga")
 OUT_LUA = os.path.join(HERE, "..", "Media", "BackpackLayout.lua")
-OUT_DIR = os.path.join(HERE, "output")
+OUT_DIR = OUTPUT
 
 
 def feathered_paste(img, patch, box, feather=4):
@@ -186,7 +187,7 @@ def main():
 
     for name, r in rects.items():
         print("  %-7s atlas px %s  (%d x %d)" % (name, r, r[2] - r[0], r[3] - r[1]))
-    print("-> %s\n-> %s\n   preview Tools/output/backpackframe-atlas.png" % (OUT_TGA, OUT_LUA))
+    print("-> %s\n-> %s\n   preview MelloUI-BuildData/output/backpackframe-atlas.png" % (OUT_TGA, OUT_LUA))
 
 
 if __name__ == "__main__":

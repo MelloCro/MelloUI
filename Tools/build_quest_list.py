@@ -10,7 +10,7 @@ Sources:
   cmangos classic-db        vanilla quest givers (creature/gameobject relations) and spawn points
   wago.tools DB2 (1.15.9)   UiMapAssignment bounds (world -> map coordinates), AreaTable names
   Wowhead quest/NPC pages   Forever quest givers and their zone (no coordinates on Wowhead)
-  Tools/cache/voice_lines.json   positions the Voice Over collector recorded in game
+  MelloUI-BuildData/cache/voice_lines.json   positions the Voice Over collector recorded in game
 
 Usage:
   python Tools/build_quest_list.py [--fetch-npcs] [--out Media/QuestListData.lua]
@@ -33,8 +33,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from extract_npc_voices import parse_sql_values, load_creature_template, fetch as fetch_file, CMANGOS_SQL  # noqa: E402
 from import_wowhead_quests import listing_data, parse_quest, fetch as fetch_page, BASE  # noqa: E402
+from paths import CACHE
 
-CACHE = os.path.join(HERE, "cache")
 WOWHEAD = os.path.join(CACHE, "wowhead")
 BUILD = "1.15.9.69722"          # Classic Era, from wago.tools (comma separated, vectors as Pos_0..)
 FOREVER = "1.60.1.69913"        # Forever, exported with wow.export (semicolon separated, vectors as "x,y,z")

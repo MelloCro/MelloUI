@@ -18,7 +18,7 @@ Usage:
   python Tools/import_wowhead_quests.py --ids 76240 83934
   python Tools/import_wowhead_quests.py --refresh   ignore cached pages
 
-Pages are cached under Tools/cache/wowhead so re-runs only fetch new quests.
+Pages are cached under MelloUI-BuildData/cache/wowhead so re-runs only fetch new quests.
 After importing, run generate_voice_lines.py (or let the watcher do it).
 """
 
@@ -31,6 +31,7 @@ import re
 import sys
 import time
 import urllib.request
+from paths import CACHE
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = "https://www.wowhead.com/forever"
@@ -161,7 +162,7 @@ def resolve_npcs(store, cache, refresh=False, only_unknown=True):
     creature display tables the NPC data was built from."""
     sys.path.insert(0, HERE)
     from extract_npc_voices import load_db2, load_listfile, classify, fetch as fetch_file, LISTFILE  # noqa: E402
-    data_cache = os.path.join(HERE, "cache")
+    data_cache = CACHE
     display, model_fdid, extra = load_db2(data_cache, "1.15.9.69722")
     r_display, r_model, r_extra = load_db2(data_cache, "12.1.0.69814")
     for k, v in r_display.items():
@@ -196,14 +197,14 @@ def resolve_npcs(store, cache, refresh=False, only_unknown=True):
         else:
             log(f"   {rec.get('name')}: display {display_id} is not in the display tables")
         if n % 25 == 0:
-            json.dump(store, open(os.path.join(HERE, "cache", "voice_lines.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+            json.dump(store, open(os.path.join(CACHE, "voice_lines.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     log(f"resolved {resolved} of {len(todo)} NPCs")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--store", default=os.path.join(HERE, "cache", "voice_lines.json"))
-    ap.add_argument("--cache", default=os.path.join(HERE, "cache", "wowhead"))
+    ap.add_argument("--store", default=os.path.join(CACHE, "voice_lines.json"))
+    ap.add_argument("--cache", default=os.path.join(CACHE, "wowhead"))
     ap.add_argument("--all", action="store_true", help="import every quest, not only the ones added by Forever")
     ap.add_argument("--min-id", type=int, default=60000,
                     help="lowest quest ID treated as Forever content; lower IDs missing from vanilla are cut vanilla quests")
@@ -240,7 +241,7 @@ def main():
         # "added in patch" flag is not usable: it marks vanilla 1.11 quests too.)
         sys.path.insert(0, HERE)
         from export_voice_lines import load_vanilla_quests  # noqa: E402
-        vanilla = load_vanilla_quests(os.path.join(HERE, "cache"))
+        vanilla = load_vanilla_quests(CACHE)
         junk = re.compile(r"^\s*[<\[]|UNUSED|\bTEST\b|\bNYI\b|DEPRECATED|\bDND\b|\bTXT\b|^zz|\(123\)|REUSE|Never used", re.I)
         wanted = []
         for q in quests.values():

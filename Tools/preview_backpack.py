@@ -6,7 +6,7 @@ Tools/backpack_layout_data.py), for any slot count and column count:
     python Tools\\preview_backpack.py --slots 36
     python Tools\\preview_backpack.py --slots 46 --columns 10
 
-Writes Tools/output/backpack-preview-<slots>.png (over a green background, at
+Writes MelloUI-BuildData/output/backpack-preview-<slots>.png (over a green background, at
 the art's own resolution) with the game's item buttons drawn as translucent
 boxes numbered in the game's order (1 = bottom right), the controls' boxes
 outlined, so the composed frame can be checked against docs/backpack-frame.webp.
@@ -18,10 +18,11 @@ import os
 from PIL import Image, ImageDraw
 
 import backpack_layout_data as D
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TGA = os.path.join(HERE, "..", "Media", "Textures", "BackpackFrame.tga")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 
 
 def piece(atlas, name):

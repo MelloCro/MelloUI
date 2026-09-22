@@ -23,11 +23,12 @@ import os
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "minimap-frame.webp")
 TEX = os.path.join(HERE, "..", "Media", "Textures")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 
 # ---- measured on the art (pixels of the 964 x 1631 picture) -------------------
 RING = (482.70, 356.85, 213.58)      # map disc centre and inner radius
@@ -267,4 +268,4 @@ for name in ("MinimapStand", "TrackerFrame"):
     bg = Image.new("RGBA", im.size, (0, 140, 0, 255))
     bg.alpha_composite(im)
     bg.convert("RGB").save(os.path.join(OUT, name.lower() + "-preview.png"))
-print("  previews in Tools/output")
+print("  previews in MelloUI-BuildData/output")

@@ -3,7 +3,7 @@
 Package generated MP3s into a VoiceOver data pack for WoW: Forever.
 
 Works with the manifest written by export_voice_lines.py
-(Tools/output/forever_voice_lines.json). Every line there has a target file
+(MelloUI-BuildData/output/forever_voice_lines.json). Every line there has a target file
 name; the MP3s you generate are collected under Tools/pack_sources with those
 names, and `build` turns them into the addon
 
@@ -21,7 +21,7 @@ Commands:
   status                  what is assigned, what is missing
 
 Options:
-  --manifest  Tools/output/forever_voice_lines.json
+  --manifest  MelloUI-BuildData/output/forever_voice_lines.json
   --sources   Tools/pack_sources          (assigned MP3s, kept out of the game folder)
   --downloads C:/Users/<you>/Downloads/VoiceOver_GossipQuest
   --addons    F:/World of Warcraft/_classic_beta_/Interface/AddOns
@@ -40,6 +40,7 @@ import os
 import shutil
 import struct
 import sys
+from paths import OUTPUT, CACHE
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GUARD = "if not VoiceOver or not VoiceOver.DataModules then return end"
@@ -339,13 +340,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["assign", "assign-latest", "pending", "build", "status"])
     ap.add_argument("params", nargs="*")
-    ap.add_argument("--manifest", default=os.path.join(HERE, "output", "forever_voice_lines.json"))
+    ap.add_argument("--manifest", default=os.path.join(OUTPUT, "forever_voice_lines.json"))
     ap.add_argument("--sources", default=os.path.join(HERE, "pack_sources"))
     ap.add_argument("--downloads", default=os.path.join(os.path.expanduser("~"), "Downloads", "VoiceOver_GossipQuest"))
     ap.add_argument("--addons", default="F:/World of Warcraft/_classic_beta_/Interface/AddOns")
     ap.add_argument("--name", default="MelloUI_VoiceOverData")
     ap.add_argument("--priority", type=int, default=150)
-    ap.add_argument("--store", default=os.path.join(HERE, "cache", "voice_lines.json"))
+    ap.add_argument("--store", default=os.path.join(CACHE, "voice_lines.json"))
     args = ap.parse_args()
     # `pending` is about lines still needing audio (the manifest); everything
     # else must see every line ever collected so recorded ones stay packaged.

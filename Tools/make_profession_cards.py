@@ -23,11 +23,12 @@ prints the UV table ProfessionsPanel.lua uses.
 import os
 from PIL import Image
 import numpy as np
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "profession-cards.png")
 OUT = os.path.join(HERE, "..", "Media", "Textures", "ProfessionCards.tga")
-PREVIEW = os.path.join(HERE, "output", "profession_cards_sheet.png")
+PREVIEW = os.path.join(OUTPUT, "profession_cards_sheet.png")
 
 SHEET = 1024
 CELL_W, CELL_H = 256, 288              # the pitch of a cell on the sheet

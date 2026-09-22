@@ -64,7 +64,7 @@ read_globals = {
 	"MainMenuBar", "MultiBarBottomLeft", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "MapQuestInfoRewardsFrame",
 	"MelloUIBackpackSkin", "MelloUIHiddenFrame", "MelloUIMinimapStand", "MelloUIServicesBar", "MelloUI_CustomFonts",
 	"MelloUI_CustomTextures", "MelloUI_NPCVoiceData", "MelloUI_NPCVoiceOverrides", "MelloUI_Profiles",
-	"MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_HudLayout", "MelloUI_ChatLayout", "MelloUI_BackpackLayout", "MelloUI_KitLayout", "MenuUtil", "MerchantFrame", "MicroMenu",
+	"MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_HudLayout", "MelloUI_ChatLayout", "MelloUI_BackpackLayout", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
 	"InputUtil", "IsAccountSecured", "GetScreenWidth", "GetScreenHeight",
 	"MicroMenuContainer", "MinimalSliderWithSteppersMixin", "Minimap", "MinimapCluster",
 	"MinimapCompassTexture", "MinimapCompassTextureUnderlay", "MinimapBackdrop", "MinimapZoneText",
@@ -99,6 +99,6 @@ read_globals = {
 files["Media"] = {
 	globals = {
 		"MelloUI_CustomFonts", "MelloUI_CustomTextures", "MelloUI_NPCVoiceData",
-		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_StoneParts", "MelloUI_ClassIcons", "MelloUI_HudLayout", "MelloUI_ChatLayout", "MelloUI_BackpackLayout", "MelloUI_KitLayout", "MelloUI_EditModeLayout",
+		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_StoneParts", "MelloUI_ClassIcons", "MelloUI_HudLayout", "MelloUI_ChatLayout", "MelloUI_BackpackLayout", "MelloUI_KitLayout", "MelloUI_KitTuning", "MelloUI_EditModeLayout",
 	},
 }

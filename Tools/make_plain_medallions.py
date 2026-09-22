@@ -13,6 +13,7 @@ the kit ring's rail (Modules/ClassIcons.lua, plain variant).
 import os, math
 import numpy as np
 from PIL import Image
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(os.path.dirname(HERE), "Media", "Icons", "Class")
@@ -63,7 +64,7 @@ def main():
     prev = Image.new("RGBA", (512, 256), (60, 60, 60, 255))
     prev.alpha_composite(Image.open(os.path.join(DIR, "WARRIOR.tga")).convert("RGBA").resize((256, 256)), (0, 0))
     prev.alpha_composite(Image.open(os.path.join(DIR, "WARRIOR_plain.tga")).convert("RGBA").resize((256, 256)), (256, 0))
-    prev.save(os.path.join(HERE, "output", "medallion_plain_preview.png")) if os.path.isdir(os.path.join(HERE, "output")) else prev.save(os.path.join(HERE, "..", "..", "medallion_plain_preview.png"))
+    prev.save(os.path.join(OUTPUT, "medallion_plain_preview.png")) if os.path.isdir(OUTPUT) else prev.save(os.path.join(HERE, "..", "..", "medallion_plain_preview.png"))
 
 
 if __name__ == "__main__":

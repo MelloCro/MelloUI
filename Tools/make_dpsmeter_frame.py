@@ -37,12 +37,13 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from scipy import ndimage
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STANDALONE = os.path.join(HERE, "..", "docs", "dpsmeter-frame.png")
 MOCKUP = os.path.join(HERE, "..", "docs", "topbar-vision.png")
 TEX = os.path.join(HERE, "..", "Media", "Textures")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 
 SHEET_W, SHEET_H = 1024, 512
 

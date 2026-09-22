@@ -12,7 +12,7 @@ came out 547 x 251 UI = 656 x 301 physical px).
 
     python Tools\\preview_chat.py [--chat-w 444 --chat-h 131 --ui-per-px 0.8333]
 
-Writes Tools/output/chat-preview-composed.png (in-game size),
+Writes MelloUI-BuildData/output/chat-preview-composed.png (in-game size),
 chat-preview-wide.png (1.5x chat width) and chat-preview-vs-art.png (the
 composed window under the art scaled to the same ART_SCALE * FIXED_SCALE).
 """
@@ -22,10 +22,11 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 from chat_layout_data import ANCHOR_BOX, ART_SCALE, DRAW_ORDER, FIXED_SCALE, GEOMETRY, PIECES, PLACEMENT, SIDE_PLATE, SKIN, SRC, STONE_TILE, STONE_TILE_PX
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 G = GEOMETRY
 PX_PER_ART = ART_SCALE * FIXED_SCALE      # physical px per art (file) px
 
@@ -253,11 +254,11 @@ def main():
 	print(f"  body {r['body']}  gem mark {'shown' if 'GEM_MARK' in r else 'hidden'}  scroll mid height {r['SCROLL_MID'][3] - r['SCROLL_MID'][1]:.0f} art")
 	composed = compose(r, labels=not a.no_labels, ui_per_px=a.ui_per_px)
 	composed.convert("RGB").save(os.path.join(OUT, "chat-preview-composed.png"))
-	print("  Tools/output/chat-preview-composed.png", composed.size)
+	print("  MelloUI-BuildData/output/chat-preview-composed.png", composed.size)
 
 	wide = compose(layout(a.chat_w * 1.5, a.chat_h, a.ui_per_px), labels=not a.no_labels, ui_per_px=a.ui_per_px)
 	wide.convert("RGB").save(os.path.join(OUT, "chat-preview-wide.png"))
-	print("  Tools/output/chat-preview-wide.png", wide.size)
+	print("  MelloUI-BuildData/output/chat-preview-wide.png", wide.size)
 
 	art = Image.open(os.path.join(ROOT, SRC)).convert("RGBA")
 	art_small = art.resize((int(art.width * PX_PER_ART), int(art.height * PX_PER_ART)), Image.LANCZOS)
@@ -267,7 +268,7 @@ def main():
 	pair.paste(bg.convert("RGB"), (0, 0))
 	pair.paste(composed.convert("RGB"), (0, bg.height + 10))
 	pair.save(os.path.join(OUT, "chat-preview-vs-art.png"))
-	print("  Tools/output/chat-preview-vs-art.png", pair.size)
+	print("  MelloUI-BuildData/output/chat-preview-vs-art.png", pair.size)
 
 	# the damage meter's composed preview (file px) brought to physical px
 	# (its module draws one file px as 0.75 * ART_TO_OLD px), beside ours
@@ -281,7 +282,7 @@ def main():
 		both.paste(plain, (0, 0))
 		both.paste(meter, (plain.width + 10, 0))
 		both.save(os.path.join(OUT, "chat-vs-meter.png"))
-		print("  Tools/output/chat-vs-meter.png", both.size, "(both at physical px)")
+		print("  MelloUI-BuildData/output/chat-vs-meter.png", both.size, "(both at physical px)")
 
 
 if __name__ == "__main__":

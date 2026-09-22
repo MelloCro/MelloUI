@@ -3,7 +3,7 @@
 # The BigWigs packager builds the zip from the repository (minus what .pkgmeta
 # ignores), uploads it to CurseForge (project id from `## X-Curse-Project-ID`
 # in the TOC, token from the CF_API_KEY secret) and attaches it to the GitHub
-# release for the tag. The voice pack is uploaded separately (see README).
+# release for the tag. The voice pack is uploaded separately (see docs/GUIDE.md, "Releasing").
 name: Release
 
 on:
@@ -53,3 +53,21 @@ jobs:
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+
+      # LAST, and it can never fail the release: by this point the addon is on
+      # CurseForge and attached to the GitHub release, so a Discord outage or a
+      # revoked webhook must not turn a finished release into a red build. The
+      # script exits 0 whatever happens and prints how to retry it by hand.
+      #
+      # Both settings are optional. Without DISCORD_WEBHOOK_URL the step says so
+      # and posts nothing; DISCORD_RELEASE_ROLE_ID is the @Release pings role,
+      # and without it the post simply mentions nobody.
+      #   Settings -> Secrets and variables -> Actions
+      #     secret    DISCORD_WEBHOOK_URL       the #releases channel webhook
+      #     variable  DISCORD_RELEASE_ROLE_ID   right-click the role -> Copy Role ID
+      - name: Announce in Discord
+        if: steps.guard.outputs.publish == 'yes'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_RELEASE_ROLE_ID: ${{ vars.DISCORD_RELEASE_ROLE_ID }}
+        run: python3 Tools/discord_announce.py

@@ -11,7 +11,7 @@ compared with the painted art) without burning a round of in-game screenshots.
 It reads the SAME numbers the Lua modules read -- Tools/hud_layout_data.py,
 from which Media/HudLayout.lua is generated -- and the SAME sprite sheet
 (Media/Textures/ActionBarParts.tga), so a mismatch here is a mismatch in the
-client. Writes into Tools/output/:
+client. Writes into MelloUI-BuildData/output/:
 
     preview_actionbar.png   two rows + the XP bar, composed from the sprites
     preview_overlay.png     the painted target art scaled to the same cell
@@ -30,11 +30,12 @@ import os
 from PIL import Image, ImageDraw
 
 import hud_layout_data as L
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, "..", "docs")
 TEX = os.path.join(HERE, "..", "Media", "Textures")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 
 BG = (36, 40, 48, 255)
 

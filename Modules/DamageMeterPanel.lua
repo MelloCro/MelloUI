@@ -435,21 +435,13 @@ local function SkinSession(win)
 		local body = container.Background and container.Background.melloRep
 		if Kit.RegisterShell and DamageMeter and DamageMeter.GetPrimarySessionWindow
 			and DamageMeter:GetPrimarySessionWindow() == win then
-			-- the meter is grabbed anywhere, as the chat is (user, 2026-09-21):
-			-- a grab frame over the whole window is its handle for the window
-			-- mover, taking the mouse only while the windows are unlocked
-			-- the grab is the list area: on the scroll box, at the box's own
-			-- level but made after it (so it takes the empty stone from the
-			-- box), under the rows, which are the box's children one level up
-			-- and keep their clicks; the header's buttons lie outside it
-			-- (user, 2026-09-21: the buttons could not be clicked / the meter
-			-- could not be dragged)
-			local box = container.ScrollBox or container
-			local grab = CreateFrame("Frame", nil, box)
-			grab:SetAllPoints(box)
-			grab:SetFrameLevel(box:GetFrameLevel() or 1)
-			grab:EnableMouse(false)
-			Kit:RegisterShell(DamageMeter, { title = grab, outer = body or nil })
+			-- only the lit rail is registered here. The meter is dragged by
+			-- its HEADER (user, 2026-09-22: "the damage meter should be
+			-- dragable by the windows header, not the Bar"), and the grab
+			-- for it -- the band between the header's own controls -- is
+			-- made by UI Modifications' sweep, with or without the reskin,
+			-- so there is one handle and one highlight rather than two.
+			Kit:RegisterShell(DamageMeter, { outer = body or nil })
 		end
 		if container.ScrollBox then
 			Kit:HookScrollBoxRows(container.ScrollBox, function(row)

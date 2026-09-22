@@ -19,11 +19,12 @@ character's setup) is the clean template: same border, no icon to paint out.
 import os
 
 from PIL import Image
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "bottombar-vision-4k.png")
 TEX = os.path.join(HERE, "..", "Media", "Textures")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 
 # ---- measured on the art (pixels of the 1935 x 812 picture) -----------------
 # the column runs from about y 387 to y 738 in six boxes; the sixth (bottom)
@@ -54,4 +55,4 @@ im = Image.open(os.path.join(TEX, "BackpackColumn.tga")).convert("RGBA")
 bg = Image.new("RGBA", im.size, (0, 140, 0, 255))
 bg.alpha_composite(im)
 bg.convert("RGB").save(os.path.join(OUT, "backpackcolumn-preview.png"))
-print("  preview in Tools/output/backpackcolumn-preview.png")
+print("  preview in MelloUI-BuildData/output/backpackcolumn-preview.png")

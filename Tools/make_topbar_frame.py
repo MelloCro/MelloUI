@@ -29,11 +29,12 @@ Nothing painted here is text or a number, so the pieces are plain crops.
 import os
 
 from PIL import Image
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "bottombar-frame.png")
 TEX = os.path.join(HERE, "..", "Media", "Textures")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 FLIP = True
 
 # ---- measured on the art (pixels of the 1939 x 811 picture) -----------------

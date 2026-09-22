@@ -30,6 +30,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 import hud_layout_data as L
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, "..", "docs")
@@ -163,7 +164,7 @@ def fit_to_canvas(art, canvas_w, canvas_h):
 
 
 def preview(img, name):
-    out = os.path.join(HERE, "output")
+    out = OUTPUT
     os.makedirs(out, exist_ok=True)
     bg = Image.new("RGBA", img.size, (20, 120, 20, 255))
     bg.alpha_composite(img)

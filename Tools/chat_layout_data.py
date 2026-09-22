@@ -7,7 +7,7 @@ Modules/ChatPanel.lua as MelloUI_ChatLayout); Tools/preview_chat.py composes
 the window from the SAME numbers into a PNG. Change numbers only here.
 
 Measured with PIL on docs/chat-frame.png (pixel columns/rows, see the
-zoomed grids in Tools/output/chat-cuts.png):
+zoomed grids in MelloUI-BuildData/output/chat-cuts.png):
 
   frame border box      x 104..1460, y 154..823 (this box IS the skin frame)
   left rail             x 104..133  (bronze stripe, body stone starts at 133)

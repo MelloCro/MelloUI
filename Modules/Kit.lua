@@ -1973,21 +1973,378 @@ end
 -- "ui-questtrackerbutton-collapse-all"), so a miss is retried ignoring case
 -- (an index built once from the table).
 local LOWER_RULES = nil
-function Kit:RuleFor(key)
-	if not key then
-		return nil
-	end
-	local rule = self.Replacements[key]
+local function BaseRule(key)
+	local rule = Kit.Replacements[key]
 	if rule then
 		return rule
 	end
 	if not LOWER_RULES then
 		LOWER_RULES = {}
-		for k, v in pairs(self.Replacements) do
+		for k, v in pairs(Kit.Replacements) do
 			LOWER_RULES[k:lower()] = v
 		end
 	end
 	return LOWER_RULES[key:lower()]
+end
+
+-- The rule an element key is drawn by, with the editing tools' overrides
+-- (Core\KitTuning.lua) merged on top. A tuned rule is built once per tuning
+-- change and cached; an untuned key hands back the library's own table.
+local tunedRules = { serial = -1 }
+
+function Kit:RuleFor(key)
+	if not key then
+		return nil
+	end
+	local base = BaseRule(key)
+	local KT = MelloUI.KitTuning
+	if not KT then
+		return base
+	end
+	if tunedRules.serial ~= KT.serial then
+		tunedRules = { serial = KT.serial }
+	end
+	local cached = tunedRules[key]
+	if cached ~= nil then
+		return cached or base
+	end
+	local over = KT:Rule(key)
+	if not over or not next(over) then
+		tunedRules[key] = false
+		return base
+	end
+	local merged = base and KT:Copy(base) or {}
+	KT:Merge(merged, over)
+	-- an override may INVENT a rule for an element the library never mapped,
+	-- but it has to say what kind of piece to draw
+	if not merged.kind then
+		tunedRules[key] = false
+		return base
+	end
+	merged.tuned = true
+	tunedRules[key] = merged
+	return merged
+end
+
+--------------------------------------------------------------------------------
+-- Tuning (the editing tools' overrides; see Core\KitTuning.lua)
+--
+-- Nothing here runs unless a tuning table carries something: with an empty
+-- one every function below is a no-op and the kit behaves as it always has.
+--------------------------------------------------------------------------------
+
+-- `liveEdit` is switched on by the companion editor addon while it is
+-- installed: every replacement then gets a proxy rectangle the editor can
+-- drag, instead of only those that already carry an offset.
+Kit.liveEdit = false
+
+local GONE = {}                 -- "this field did not exist before the override"
+local pieceBackup = {}          -- [piece name] = { field = original value }
+
+-- Globals and painted-piece geometry, applied to the kit itself. Called by
+-- MelloUI.KitTuning whenever the tuning changes.
+function Kit:ApplyTuning(KT)
+	local g = KT:Globals()
+	self.baseScale = self.baseScale or self.scale
+	self.baseFrameScale = self.baseFrameScale or self.frameScale
+	self.baseFramePrefix = self.baseFramePrefix or self.framePrefix
+	self.scale = tonumber(g.scale) or self.baseScale
+	self.frameScale = tonumber(g.frameScale) or self.baseFrameScale
+	self.framePrefix = g.framePrefix or self.baseFramePrefix
+
+	-- pieces that are not tuned any more go back to what build_kit.py wrote
+	for name, backup in pairs(pieceBackup) do
+		if not KT:Piece(name) then
+			local p = PIECES[name]
+			if p then
+				for field, value in pairs(backup) do
+					p[field] = value ~= GONE and value or nil
+				end
+			end
+			pieceBackup[name] = nil
+		end
+	end
+	for name, over in pairs(KT:Section("pieces")) do
+		local p = PIECES[name]
+		if not p then
+			p = { file = name:gsub("/", "\\") }
+			PIECES[name] = p
+		end
+		local backup = pieceBackup[name]
+		if not backup then
+			backup = {}
+			pieceBackup[name] = backup
+		end
+		for field, value in pairs(over) do
+			if backup[field] == nil then
+				backup[field] = p[field] == nil and GONE or p[field]
+			end
+			p[field] = value ~= KT.NIL and value or nil
+		end
+	end
+
+	LOWER_RULES = nil
+	tunedRules = { serial = -1 }
+	self:RefreshTuning()
+end
+
+-- Every painted texture inside a replacement, whatever kind it is.
+function Kit:Textures(rep)
+	local out, seen = {}, {}
+	local function add(tex)
+		if tex and not seen[tex] and tex.SetVertexColor then
+			seen[tex] = true
+			out[#out + 1] = tex
+		end
+	end
+	add(rep.tex)
+	if rep.skin then
+		for _, tex in ipairs(rep.skin.art or {}) do
+			add(tex)
+		end
+		add(rep.skin.body)
+	end
+	for _, strip in ipairs({ rep.strip, rep.vstrip }) do
+		if strip then
+			add(strip.capL)
+			add(strip.mid)
+			add(strip.capR)
+		end
+	end
+	local obj = rep.object
+	if obj and obj.GetRegions and obj.GetObjectType and obj:GetObjectType() ~= "Texture" then
+		local ok, regions = pcall(function() return { obj:GetRegions() } end)
+		if ok then
+			for _, region in ipairs(regions) do
+				if region.GetObjectType and region:GetObjectType() == "Texture" then
+					add(region)
+				end
+			end
+		end
+	end
+	return out
+end
+
+-- One texture's look. Only what `tune` actually names is touched; a field
+-- that was tuned and is not any more goes back to what the piece (or the
+-- module that tinted it) said, so clearing a box in the editor undoes it
+-- without a reload and without flattening a module's own colours.
+function Kit:TuneTexture(tex, tune)
+	tune = tune or {}
+	local had = tex.melloTuned or nil
+	local now = nil
+	local function mark(field)
+		now = now or {}
+		now[field] = true
+	end
+	local piece = tex.kitPiece
+
+	if tune.texture then
+		if tex.melloArt == nil then
+			tex.melloArt = (tex.GetTexture and tex:GetTexture()) or false
+		end
+		pcall(tex.SetTexture, tex, tune.texture)
+		mark("texture")
+	elseif tex.melloArt ~= nil then
+		if piece and tex.kitName then
+			self:Apply(tex, tex.kitName)
+		elseif tex.melloArt then
+			pcall(tex.SetTexture, tex, tex.melloArt)
+		end
+		tex.melloArt = nil
+	end
+
+	local t = tune.tint
+	if t then
+		pcall(tex.SetVertexColor, tex, t[1] or 1, t[2] or 1, t[3] or 1, t[4])
+		mark("tint")
+	elseif had and had.tint then
+		-- back to the tint whoever owns this texture last asked for
+		local base = tex.kitBase
+		pcall(tex.SetVertexColor, tex, base and base[1] or 1, base and base[2] or 1, base and base[3] or 1)
+	end
+
+	if tune.desat ~= nil then
+		if tex.SetDesaturated then
+			pcall(tex.SetDesaturated, tex, tune.desat and true or false)
+		end
+		mark("desat")
+	elseif had and had.desat and tex.SetDesaturated then
+		pcall(tex.SetDesaturated, tex, false)
+	end
+
+	if tune.blend then
+		pcall(tex.SetBlendMode, tex, tune.blend)
+		mark("blend")
+	elseif had and had.blend then
+		pcall(tex.SetBlendMode, tex, "BLEND")
+	end
+
+	if tune.layer then
+		pcall(tex.SetDrawLayer, tex, tune.layer, tune.sublevel or 0)
+		mark("layer")
+	end
+
+	if tune.texAlpha then
+		pcall(tex.SetAlpha, tex, tune.texAlpha)
+		mark("texAlpha")
+	elseif had and had.texAlpha then
+		pcall(tex.SetAlpha, tex, 1)
+	end
+
+	-- cropping and mirroring work on the piece's own uv window; a repeatable
+	-- piece re-computes its uv from its size, so it is left alone
+	if not (piece and piece.tile) then
+		local cropping = tune.coord or tune.flipH or tune.flipV
+		if cropping then
+			local u1, u2, v1, v2 = 0, 1, 0, 1
+			if piece and piece.uv then
+				u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
+			end
+			local c = tune.coord
+			if c then
+				local du, dv = u2 - u1, v2 - v1
+				u1, u2 = u1 + du * (c[1] or 0), u1 + du * (c[2] or 1)
+				v1, v2 = v1 + dv * (c[3] or 0), v1 + dv * (c[4] or 1)
+			end
+			if tune.flipH then
+				u1, u2 = u2, u1
+			end
+			if tune.flipV then
+				v1, v2 = v2, v1
+			end
+			pcall(tex.SetTexCoord, tex, u1, u2, v1, v2)
+			mark("coord")
+		elseif had and had.coord then
+			if piece and piece.uv then
+				pcall(tex.SetTexCoord, tex, piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4])
+			else
+				pcall(tex.SetTexCoord, tex, 0, 1, 0, 1)
+			end
+		end
+	end
+
+	tex.melloTuned = now
+end
+
+-- The whole replacement: its rectangle (through the proxy made in Replace),
+-- its alpha and every texture in it.
+function Kit:TuneObject(rep, tune)
+	local obj = rep.object
+	if not obj then
+		return
+	end
+	rep.tune = tune
+	if rep.proxy and rep.proxyOf then
+		local x, y = tune and tune.x or 0, tune and tune.y or 0
+		rep.proxy:ClearAllPoints()
+		rep.proxy:SetPoint("TOPLEFT", rep.proxyOf, "TOPLEFT", x - (tune and tune.padL or 0), y + (tune and tune.padT or 0))
+		rep.proxy:SetPoint("BOTTOMRIGHT", rep.proxyOf, "BOTTOMRIGHT", x + (tune and tune.padR or 0), y - (tune and tune.padB or 0))
+	end
+	if obj.SetAlpha then
+		pcall(obj.SetAlpha, obj, (tune and tune.alpha) or 1)
+	end
+	for _, tex in ipairs(self:Textures(rep)) do
+		self:TuneTexture(tex, tune)
+	end
+	if rep.Refit then
+		pcall(rep.Refit, rep)
+	end
+end
+
+-- Re-apply (or undo) the tuning of every replacement already on screen, so
+-- the editor's handles and sliders move the art immediately. Structural
+-- changes -- a different kind or a different painted piece -- still need
+-- the panels rebuilt, which the editor asks for with a reload.
+function Kit:RefreshTuning()
+	local KT = MelloUI.KitTuning
+	if not KT then
+		return
+	end
+	for _, rep in ipairs(self.repList) do
+		local tune = KT:Tune(rep.key)
+		if tune or rep.tune then
+			self:TuneObject(rep, tune)
+		end
+	end
+end
+
+-- Every replacement built this session, so the editor can list what is
+-- actually on screen instead of guessing from the library.
+Kit.repList = {}
+Kit.repByKey = {}
+
+function Kit:RegisterReplacement(rep)
+	if not rep or rep.registered then
+		return
+	end
+	rep.registered = true
+	self.repList[#self.repList + 1] = rep
+	local key = rep.key
+	if key then
+		local list = self.repByKey[key]
+		if not list then
+			list = {}
+			self.repByKey[key] = list
+		end
+		list[#list + 1] = rep
+	end
+end
+
+-- How the editor names one region of a frame: its global name, the key it
+-- sits under in the frame table, or the art it shows.
+function Kit:RegionKey(frame, region)
+	local ok, name = pcall(region.GetName, region)
+	if ok and type(name) == "string" and name ~= "" then
+		return name
+	end
+	for key, value in pairs(frame) do
+		if rawequal(value, region) and type(key) == "string" then
+			return key
+		end
+	end
+	return self:ArtKey(region)
+end
+
+-- Per-region tuning of a window the kit does not otherwise touch (the
+-- `regions` table of an element; MelloUI's own windows use this).
+function Kit:TuneRegions(frame, regions)
+	if not (frame and frame.GetRegions and regions) then
+		return
+	end
+	local ok, list = pcall(function() return { frame:GetRegions() } end)
+	if not ok then
+		return
+	end
+	for index, region in ipairs(list) do
+		if region.GetObjectType and region:GetObjectType() == "Texture" then
+			-- a texture with no name and no key is addressed by its position,
+			-- the same way the editor wrote it down
+			local key = self:RegionKey(frame, region)
+			local tune = (key and regions[key]) or regions["#" .. index]
+			if tune then
+				if tune.hidden then
+					region.melloHidden = true
+					pcall(region.Hide, region)
+				else
+					if region.melloHidden then
+						region.melloHidden = nil
+						pcall(region.Show, region)
+					end
+					self:TuneTexture(region, tune)
+				end
+			elseif region.melloTuned or region.melloHidden then
+				-- it was changed and is not listed any more: put it back.
+				-- Only ever a texture we touched, so the game's own tints and
+				-- hidden states are left alone.
+				if region.melloHidden then
+					region.melloHidden = nil
+					pcall(region.Show, region)
+				end
+				self:TuneTexture(region, nil)
+			end
+		end
+	end
 end
 
 function Kit:Replace(region, opts)
@@ -2000,10 +2357,33 @@ function Kit:Replace(region, opts)
 	local isFrame = region.GetObjectType and region:GetObjectType() ~= "Texture" and region.CreateTexture
 	local parent = opts.parent or (isFrame and region:GetParent()) or region:GetParent()
 	local rect = opts.rect or region
-	local level = opts.level or rule.level or -1
+	-- the editing tools' tuning for this element (Core\KitTuning.lua)
+	local KT = MelloUI.KitTuning
+	local tune = KT and KT:Tune(key) or nil
+	if tune and tune.hidden then
+		-- "leave this one alone": the game's own art stays, as if the library
+		-- had no rule for it
+		return nil, key
+	end
+	-- a proxy rectangle stands between the game's element and our piece so
+	-- the editor can move and resize the piece without touching the game's
+	-- layout; it is made whenever there is something to offset, and always
+	-- while the editor addon is installed (so a drag has something to move)
+	local proxy
+	if tune or self.liveEdit then
+		proxy = CreateFrame("Frame", nil, parent)
+		proxy:EnableMouse(false)
+		local x, y = tune and tune.x or 0, tune and tune.y or 0
+		proxy:SetPoint("TOPLEFT", rect, "TOPLEFT", x - (tune and tune.padL or 0), y + (tune and tune.padT or 0))
+		proxy:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", x + (tune and tune.padR or 0), y - (tune and tune.padB or 0))
+		proxy.melloProxyOf = rect
+		rect = proxy
+	end
+	local level = (tune and tune.level) or opts.level or rule.level or -1
 	-- fitHeight / fitWidth: the element's size as the template states it, used
 	-- where its rect reads SECRET (the target's spell bar) or is not laid out yet
 	local rep = Mixin({ kind = rule.kind, key = key, rule = rule, region = region, rect = rect, alsoFade = opts.alsoFade or {}, fitHeight = opts.fitHeight, fitWidth = opts.fitWidth, noFade = opts.noFade }, ReplacementMixin)
+	rep.proxy, rep.proxyOf, rep.tune = proxy, proxy and proxy.melloProxyOf or nil, tune
 
 	local function Holder(lvl)
 		local f = CreateFrame("Frame", nil, parent)
@@ -2736,6 +3116,11 @@ function Kit:Replace(region, opts)
 		if window and window ~= UIParent then
 			RegisterShell(window, { outer = rep })
 		end
+	end
+	rep.window = Window(parent)
+	self:RegisterReplacement(rep)
+	if tune then
+		self:TuneObject(rep, tune)
 	end
 	return rep
 end

@@ -32,6 +32,7 @@ import struct
 import sys
 import urllib.request
 from collections import Counter, defaultdict
+from paths import CACHE
 
 CMANGOS_SQL = "https://raw.githubusercontent.com/cmangos/classic-db/master/Full_DB/ClassicDB_1_12_1_z2815.sql.gz"
 LISTFILE = "https://github.com/wowdev/wow-listfile/releases/latest/download/verified-listfile.csv"
@@ -394,7 +395,7 @@ def write_lua(out_path, table):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--cache", default=os.path.join(os.path.dirname(__file__), "cache"))
+    ap.add_argument("--cache", default=CACHE)
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "Media", "NPCVoiceData.lua"))
     ap.add_argument("--build", default="1.15.9.69722", help="Classic Era build for the wago.tools DB2 exports")
     ap.add_argument("--retail-build", default="12.1.0.69814",

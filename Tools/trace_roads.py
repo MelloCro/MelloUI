@@ -4,7 +4,7 @@ Trace the roads drawn on the Forever zone maps into a road graph for the
 Route module, so routes follow roads everywhere from the first login instead
 of only where someone has walked.
 
-Stages (each one caches its result under Tools/cache):
+Stages (each one caches its result under MelloUI-BuildData/cache):
 
   python Tools/trace_roads.py fetch      download the zone map tiles of the build (wago.tools)
   python Tools/trace_roads.py assemble   stitch the tiles into one image per zone
@@ -43,12 +43,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from PIL import Image
+from paths import CACHE
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
-CACHE = os.path.join(HERE, "cache")
 BUILD = "1.60.1.69913"
 WAGO_CSV = "https://wago.tools/db2/{table}/csv?build={build}"
 WAGO_FILE = "https://wago.tools/api/casc/{fdid}?version={build}"

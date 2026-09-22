@@ -20,11 +20,12 @@ import os
 import sys
 import numpy as np
 from PIL import Image
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "minimap-stand.webp")
 OUT_TGA = os.path.join(HERE, "..", "Media", "Textures", "MinimapStand.tga")
-OUT_PREVIEW = os.path.join(HERE, "output", "minimap-stand-preview.png")
+OUT_PREVIEW = os.path.join(OUTPUT, "minimap-stand-preview.png")
 CANVAS = int(sys.argv[1]) if len(sys.argv) > 1 else 512
 
 im = Image.open(SRC).convert("RGBA")

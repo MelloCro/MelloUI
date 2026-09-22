@@ -15,6 +15,7 @@ Core\Core.lua
 Core\Config.lua
 Core\Tutorial.lua
 Core\Backup.lua
+Core\KitTuning.lua
 Core\EditModeLayout.lua
 
 Media\CustomFonts.lua
@@ -26,6 +27,7 @@ Media\RouteData.lua
 Media\RoadData.lua
 Media\ClassIcons.lua
 Media\KitLayout.lua
+Media\KitTuning.lua
 Media\Profiles.lua
 Media\EditModeLayout.lua
 

@@ -3,7 +3,7 @@
 Copy the race voices from one ElevenLabs workspace to another.
 
   export   with the source workspace's key: downloads every custom voice's
-           samples and settings to Tools/output/voice_export/<name>/, and notes
+           samples and settings to MelloUI-BuildData/output/voice_export/<name>/, and notes
            library voices (which are re-added from the library, not cloned).
   import   with the destination workspace's key (--key-file): recreates each
            exported voice under the same name, restores its settings, and adds
@@ -28,8 +28,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from generate_voice_lines import api_key, API  # noqa: E402
 from clone_voices import multipart  # noqa: E402
+from paths import OUTPUT
 
-OUT = os.path.join(HERE, "output", "voice_export")
+OUT = os.path.join(OUTPUT, "voice_export")
 
 
 def log(msg):

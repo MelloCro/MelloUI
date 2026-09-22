@@ -72,10 +72,29 @@ local TWEAKS = {
 -- welcomeAsked: the first-login question (take the tour) was asked
 -- (Core/Tutorial.lua); layoutApplied: the Edit Mode layout was put in place
 -- when the reskin came on (ReskinOn below); flags without option rows
+-- defined further down, next to the rest of the switching; declared here so
+-- the button on the page can reach them
+local Apply, RestoreAreas, NothingWanted
+
 local defaults, options = { reskin = true, unlock = false, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
 options[#options + 1] = { type = "header", name = "Reskin" }
 options[#options + 1] = { type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
 	desc = "The whole interface dressed in the painted kit. Off: every area below shows the game's own art; the quality-of-life tweaks keep working." }
+options[#options + 1] = { type = "button", name = "Switch every area on",
+	hint = "when the list below is all off and nothing is reskinned",
+	text = "Switch on",
+	onClick = function(_, db)
+		local count = RestoreAreas(db)
+		if count == 0 then
+			MelloUI:Print("Every area is on already.")
+			return
+		end
+		Apply(db, true)
+		MelloUI:Print("%d area%s switched back on.", count, count == 1 and "" or "s")
+		if MelloUI.RefreshConfig then
+			MelloUI:RefreshConfig()
+		end
+	end }
 for _, area in ipairs(PANELS) do
 	if area.sub then
 		options[#options + 1] = { type = "subheader", name = area.sub }
@@ -114,12 +133,15 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	desc = "The painted kit reskin, area by area, and the per-area quality-of-life tweaks: nameplates, tooltips, chat, unit frames.",
 	enabledByDefault = true,
 	important = true,
+	-- it drives every reskin panel and folded tweak, so its OFF state has to
+	-- be applied at start-up too, not only when the switch is thrown
+	applyWhenDisabled = true,
 	defaults = defaults,
 	options = options,
 	headerButton = { name = "Reset positions",
 		desc = "Forget every saved window position and scale: each window returns to the game's own place and size the next time it opens (open ones are closed now)." },
 	headerToggle = { key = "unlock", name = "Unlock the Windows",
-		desc = "Every window can be dragged by its title strip (the kit's title plate when the reskin is on), the minimap by its zone band, the tracker by its header, the damage meter and a chat window by grabbing them; the border lights up while it moves, a grid shows the screen's centre and the corner snaps lightly to it, and the mouse wheel while dragging scales it. Positions and scales stay, reloads included, and win over Edit Mode's for those elements. Works with the reskin off as well." },
+		desc = "Every window can be dragged by its title strip (the kit's title plate when the reskin is on), the minimap by its zone band, the tracker by its header, the damage meter by grabbing it and a chat window by a strip along its top edge (so its links and buttons keep working); the border lights up while it moves, a grid shows the screen's centre and the corner snaps lightly to it, and the mouse wheel while dragging scales it. Every drag area shows as a gold band while this is on, brighter under the mouse. Positions and scales stay, reloads included, and win over Edit Mode's for those elements. Works with the reskin off as well." },
 })
 
 --------------------------------------------------------------------------------
@@ -180,7 +202,14 @@ end
 local GLOW = 28
 local SNAP = 16   -- px: the light snap to the nearest grid line on release (each axis on its own)
 local SCALE_STEP, SCALE_MIN, SCALE_MAX = 0.05, 0.5, 2   -- the wheel while dragging
-local SHOW_HANDLES = false   -- a gold wash over every grab area while unlocked (for placing them)
+-- The grab areas SHOW while the windows are unlocked (user, 2026-09-22):
+-- nothing said where a window could be taken hold of, least of all now that
+-- a grab is a strip and not the whole window. Each one is a gold wash with a
+-- thin edge, brighter under the mouse. (The wash was hidden on 2026-09-21,
+-- when a grab covered a whole window and the wash covered it with it.)
+local WASH, WASH_LIT = 0.12, 0.25
+local EDGE, EDGE_LIT = 0.45, 0.9
+local STRIP = 22   -- px: the height of a grab that is only a strip along a window's top edge
 
 local function OuterGlow(frame, mover)
 	if mover.glow then
@@ -400,10 +429,15 @@ local function MakeMover(frame, shell)
 		AddHandle(existing, handle)
 		return
 	end
-	if not (handle and handle.EnableMouse and handle.SetScript) then
+	local usable = handle and handle.EnableMouse and handle.SetScript
+	if not usable and not shell.outer then
 		return
 	end
-	local mover = { handle = handle, shell = shell, handles = {}, washes = {}, frame = frame }
+	-- a shell may bring only its lit rail (`outer`) and leave the handle to
+	-- the plain grab that the sweep makes: the mover is still built, and
+	-- AddHandle below does nothing until there is one (user, 2026-09-22: the
+	-- damage meter is dragged by its header, which only the sweep knows)
+	local mover = { shell = shell, handles = {}, washes = {}, frame = frame }
 	movers[frame] = mover
 	-- the mouse wheel while dragging: the window's scale, 5 % a notch,
 	-- 50 % .. 200 % (user, 2026-09-21), saved with the position
@@ -550,12 +584,58 @@ local function MakeMover(frame, shell)
 			h:EnableMouseWheel(mover.unlocked)
 		end
 		for _, wash in ipairs(mover.washes) do
-			wash:SetShown((mover.unlocked and SHOW_HANDLES) and true or false)
+			wash:SetShown(mover.unlocked)
 		end
 	end
 	AddHandle(mover, handle)
 	mover.SetUnlocked(M.isEnabled and M.db and M.db.unlock)
 	PutBack(frame)
+end
+
+-- What a grab area looks like while the windows are unlocked: a gold wash
+-- inside a thin gold edge, both brighter while the mouse is on it. The
+-- textures are made once and shown with the unlocked state.
+local function HandleWash(mover, handle)
+	local fill = handle:CreateTexture(nil, "OVERLAY", nil, 7)
+	fill:SetAllPoints(handle)
+	fill:SetColorTexture(1, 0.82, 0, WASH)
+	local edges = {}
+	local function Edge(a, b, w, h)
+		local t = handle:CreateTexture(nil, "OVERLAY", nil, 7)
+		t:SetColorTexture(1, 0.82, 0, EDGE)
+		t:SetPoint(a, handle, a)
+		t:SetPoint(b, handle, b)
+		if w then
+			t:SetWidth(w)
+		end
+		if h then
+			t:SetHeight(h)
+		end
+		edges[#edges + 1] = t
+	end
+	Edge("TOPLEFT", "TOPRIGHT", nil, 1)
+	Edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1)
+	Edge("TOPLEFT", "BOTTOMLEFT", 1, nil)
+	Edge("TOPRIGHT", "BOTTOMRIGHT", 1, nil)
+	local function Lit(on)
+		fill:SetColorTexture(1, 0.82, 0, on and WASH_LIT or WASH)
+		for _, edge in ipairs(edges) do
+			edge:SetColorTexture(1, 0.82, 0, on and EDGE_LIT or EDGE)
+		end
+	end
+	-- hooked, not set: a handle that is a kit plate has its own scripts
+	pcall(handle.HookScript, handle, "OnEnter", function()
+		Lit(mover.unlocked)
+	end)
+	pcall(handle.HookScript, handle, "OnLeave", function()
+		Lit(false)
+	end)
+	fill:Hide()
+	mover.washes[#mover.washes + 1] = fill
+	for _, edge in ipairs(edges) do
+		edge:Hide()
+		mover.washes[#mover.washes + 1] = edge
+	end
 end
 
 -- A drag handle of a mover: the drag and wheel scripts on it, the mouse
@@ -581,17 +661,12 @@ AddHandle = function(mover, handle)
 	end)
 	handle:SetScript("OnDragStart", mover.DragStart)
 	handle:SetScript("OnDragStop", mover.DragStop)
-	-- (the gold wash that showed the grab areas while unlocked was for
-	-- placing them; hidden again on the user's word, 2026-09-21 — set
-	-- SHOW_HANDLES to see them)
-	local wash = handle:CreateTexture(nil, "OVERLAY", nil, 7)
-	wash:SetAllPoints(handle)
-	wash:SetColorTexture(1, 0.82, 0, 0.18)
-	wash:Hide()
-	mover.washes[#mover.washes + 1] = wash
+	HandleWash(mover, handle)
 	handle:EnableMouse(mover.unlocked and true or false)
 	handle:EnableMouseWheel(mover.unlocked and true or false)
-	wash:SetShown((mover.unlocked and SHOW_HANDLES) and true or false)
+	for _, wash in ipairs(mover.washes) do
+		wash:SetShown(mover.unlocked and true or false)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -610,21 +685,52 @@ local PLAIN_WINDOWS = {
 	"MerchantFrame", "GossipFrame", "QuestFrame", "MailFrame", "BankFrame", "TradeFrame", "MacroFrame", "TaxiFrame",
 	"MelloUIConfigFrame",
 }
--- HUD elements: the frame, and the region its grab covers
+-- HUD elements: the frame, the region its grab covers, a control to stop
+-- short of, and how the grab sits on the region ("strip" = the top edge only)
 local PLAIN_HUD = {
 	{ "MinimapCluster", function(f) return f.BorderTop or f end },
 	{ "ObjectiveTrackerFrame", function(f) return f.Header or f end, function(f) return f.Header and f.Header.MinimizeButton end },
+	-- the damage meter is dragged by its HEADER, not by its list (user,
+	-- 2026-09-22: "the damage meter should be dragable by the windows
+	-- header, not the Bar"). The header's controls sit at both ends of the
+	-- band -- the timer and the type dropdown on the left, the session
+	-- dropdown, the cog and the minimize button on the right -- so the grab
+	-- is the span BETWEEN them, over the title, and every control keeps its
+	-- clicks (2026-09-21).
 	{ "DamageMeter", function(f)
 		local win = f.GetPrimarySessionWindow and f:GetPrimarySessionWindow()
-		local container = win and win.MinimizeContainer
-		return container and (container.ScrollBox or container) or nil
-	end },
+		return win and win.Header or nil
+	end, function(f)
+		local win = f.GetPrimarySessionWindow and f:GetPrimarySessionWindow()
+		if not win then
+			return nil
+		end
+		return { left = win.DamageMeterTypeDropdown or win.SessionTimer,
+			right = win.SessionDropdown or win.SettingsDropdown or win.MinimizeButton }
+	end, "between" },
 }
 local plainGrabs = {}   -- [frame] = grab
 
 local function PlainGrab(frame, region, avoid, avoidSide)
 	local grab = CreateFrame("Frame", nil, frame)
-	if region and region ~= frame or (region == frame and avoid) then
+	if avoidSide == "between" and type(avoid) == "table" then
+		-- the span between two controls, over the region's full height: a
+		-- header band whose ends are buttons is grabbed in the middle
+		local band = region or frame
+		grab:SetPoint("TOP", band, "TOP")
+		grab:SetPoint("BOTTOM", band, "BOTTOM")
+		grab:SetPoint("LEFT", avoid.left or band, avoid.left and "RIGHT" or "LEFT", avoid.left and 2 or 0, 0)
+		grab:SetPoint("RIGHT", avoid.right or band, avoid.right and "LEFT" or "RIGHT", avoid.right and -2 or 0, 0)
+	elseif avoidSide == "strip" then
+		-- a strip along the top edge and nothing more: a grab over a whole
+		-- window body takes every click and wheel turn under it while the
+		-- windows are unlocked, and a chat window's links, scroll buttons and
+		-- wheel die with it (user, 2026-09-22; the wheel alone was forwarded
+		-- once before, the clicks could not be)
+		grab:SetPoint("TOPLEFT", region or frame, "TOPLEFT")
+		grab:SetPoint("TOPRIGHT", region or frame, "TOPRIGHT")
+		grab:SetHeight(STRIP)
+	elseif region and region ~= frame or (region == frame and avoid) then
 		grab:SetAllPoints(region)
 		if avoid then
 			-- a button on the region keeps its clicks while unlocked: the
@@ -677,14 +783,14 @@ local function SweepPlain()
 			local ok, region = pcall(entry[2], frame)
 			local okA, avoid = pcall(entry[3] or function() return nil end, frame)
 			if ok and region then
-				Attach(frame, region, okA and avoid or nil)
+				Attach(frame, region, okA and avoid or nil, entry[4])
 			end
 		end
 	end
 	for i = 1, (NUM_CHAT_WINDOWS or 10) do
 		local frame = _G["ChatFrame" .. i]
 		if frame then
-			Attach(frame, frame, frame.ScrollToBottomButton, "bottom")   -- a chat window is grabbed anywhere, short of its scroll arrow's strip
+			Attach(frame, frame, nil, "strip")   -- a chat window is grabbed by a strip along its top edge; the messages under it keep their links, buttons and wheel
 		end
 	end
 end
@@ -696,10 +802,71 @@ sweepFrame:SetScript("OnEvent", function()
 	SweepPlain()
 end)
 
-local function ApplyUnlock(on)
+--------------------------------------------------------------------------------
+-- The unlocked state has to say so (user, 2026-09-22): it is kept across
+-- sessions, nothing on screen showed it, and the grab areas take the mouse
+-- while it is on -- a UI that quietly stops answering the mouse in places.
+-- A plate at the top of the screen names the state and locks again when it
+-- is clicked.
+--------------------------------------------------------------------------------
+
+local ApplyUnlock   -- below
+local banner
+
+local function UnlockBanner(on)
+	if not on then
+		if banner then
+			banner:Hide()
+		end
+		return
+	end
+	if not banner then
+		banner = CreateFrame("Button", "MelloUIUnlockedNotice", UIParent)
+		banner:SetSize(420, 32)
+		banner:SetPoint("TOP", UIParent, "TOP", 0, -150)
+		banner:SetFrameStrata("DIALOG")
+		banner:SetClampedToScreen(true)
+		local back = banner:CreateTexture(nil, "BACKGROUND")
+		back:SetAllPoints(banner)
+		back:SetColorTexture(0, 0, 0, 0.75)
+		-- drawn from plain textures, never a backdrop: this sits over the HUD
+		local function Line(a, b, w, h)
+			local t = banner:CreateTexture(nil, "BORDER")
+			t:SetColorTexture(1, 0.82, 0, 0.5)
+			t:SetPoint(a, banner, a)
+			t:SetPoint(b, banner, b)
+			if w then
+				t:SetWidth(w)
+			end
+			if h then
+				t:SetHeight(h)
+			end
+		end
+		Line("TOPLEFT", "TOPRIGHT", nil, 1)
+		Line("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1)
+		Line("TOPLEFT", "BOTTOMLEFT", 1, nil)
+		Line("TOPRIGHT", "BOTTOMRIGHT", 1, nil)
+		local text = banner:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		text:SetPoint("CENTER", banner, "CENTER", 0, 0)
+		text:SetText("Windows unlocked: drag a gold band, wheel to scale.  |cffffd200Click here to lock them|r")
+		banner:SetScript("OnClick", function()
+			-- the setting itself is changed, so the configurator's toggle and
+			-- the grabs follow through OnSettingChanged
+			MelloUI:NotifySettingChanged(M.name, "unlock", false)
+			if MelloUI.RefreshConfig then
+				MelloUI:RefreshConfig()
+			end
+			MelloUI:Print("Windows locked.")
+		end)
+	end
+	banner:Show()
+end
+
+ApplyUnlock = function(on)
 	for _, mover in pairs(movers) do
 		mover.SetUnlocked(on)
 	end
+	UnlockBanner(on and M.isEnabled and true or false)
 end
 
 -- Reset positions (the header button): the saved places and scales are
@@ -775,7 +942,47 @@ local function Want(name, wanted)
 	end
 end
 
-local function Apply(db, on)
+-- Is there anything at all for the umbrella to do? Every area and every
+-- tweak switched off is a real choice (the window mover and the name format
+-- work without the reskin), so it is never undone behind your back -- but it
+-- is worth saying, because the switch then looks like it does nothing.
+function NothingWanted(db)
+	for _, area in ipairs(PANELS) do
+		if area[1] and db[area[1]] ~= false then
+			return false
+		end
+	end
+	for _, tweak in ipairs(TWEAKS) do
+		if db["qol_" .. tweak[1]] ~= false then
+			return false
+		end
+	end
+	return true
+end
+
+-- Put every area and tweak back on, for the button on the page. Returns how
+-- many were off.
+function RestoreAreas(db)
+	local count = 0
+	local function put(key)
+		if db[key] == false then
+			db[key] = true
+			count = count + 1
+			MelloUI:NotifySettingChanged(M.name, key, true)
+		end
+	end
+	for _, area in ipairs(PANELS) do
+		if area[1] then
+			put(area[1])
+		end
+	end
+	for _, tweak in ipairs(TWEAKS) do
+		put("qol_" .. tweak[1])
+	end
+	return count
+end
+
+function Apply(db, on)
 	local wanted = {}
 	for _, area in ipairs(PANELS) do
 		local name = area[1]
@@ -879,6 +1086,9 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	if db.reskin ~= false and NothingWanted(db) then
+		MelloUI:Notice("UI Modifications is on, but every area of the reskin is switched off, so the game's own art is what you see. Its page has a \"Switch every area on\" button.")
+	end
 	Apply(db, true)
 	SweepPlain()
 	ApplyUnlock(db.unlock)

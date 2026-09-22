@@ -15,8 +15,8 @@ re-run this script and Tools/preview_chat.py.
                                  mirror 2x2 -> central 1024 -> LANCZOS 512)
   Media/ChatLayout.lua           MelloUI_ChatLayout = { atlas, stone, fixedScale,
                                  geometry, sprites }
-  Tools/output/chat-cuts.png     every crop box drawn on the art
-  Tools/output/chatframe-atlas-preview.png   the atlas over green
+  MelloUI-BuildData/output/chat-cuts.png     every crop box drawn on the art
+  MelloUI-BuildData/output/chatframe-atlas-preview.png   the atlas over green
 
 Pieces that border the body carry a strip of the art's own stone whose alpha
 ramps to 0 (chat_layout_data.SHADOW_*): the painted vignette lies over the
@@ -31,13 +31,14 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from chat_layout_data import ANCHOR_BOX, ART_SCALE, BODY, DRAW_ORDER, FIXED_SCALE, GEOMETRY, PIECES, PLACEMENT, SIDE_CAP, SIDE_PLATE, SKIN, SRC, STONE_SRC, STONE_TILE, STONE_TILE_PX
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
 SRC_PATH = os.path.join(ROOT, SRC)
 TEX = os.path.join(ROOT, "Media", "Textures")
 MEDIA = os.path.join(ROOT, "Media")
-OUT = os.path.join(HERE, "output")
+OUT = OUTPUT
 
 SHEET_W, SHEET_H = 2048, 512
 
@@ -232,7 +233,7 @@ MelloUI_ChatLayout = {{
 	bg = Image.new("RGBA", sheet.size, (0, 140, 0, 255))
 	bg.alpha_composite(sheet)
 	bg.convert("RGB").save(os.path.join(OUT, "chatframe-atlas-preview.png"))
-	print("  Tools/output/chat-cuts.png and chatframe-atlas-preview.png written")
+	print("  MelloUI-BuildData/output/chat-cuts.png and chatframe-atlas-preview.png written")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ TOC fields the Voice Over module discovers packs by, and priority 150 so it
 sits between the two originals if someone keeps those installed as well.
 
 Usage:
-  python Tools/merge_voice_packs.py                      -> Tools/output/MelloUI_VoiceOverData
+  python Tools/merge_voice_packs.py                      -> MelloUI-BuildData/output/MelloUI_VoiceOverData
   python Tools/merge_voice_packs.py --zip                 also writes MelloUI_VoiceOverData.zip next to it
   python Tools/merge_voice_packs.py --install             also copies the pack into the game's AddOns
 """
@@ -25,10 +25,11 @@ import time
 import zipfile
 
 import lupa
+from paths import OUTPUT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADDONS = "F:/World of Warcraft/_classic_beta_/Interface/AddOns"
-OUT = os.path.join(HERE, "output", "MelloUI_VoiceOverData")
+OUT = os.path.join(OUTPUT, "MelloUI_VoiceOverData")
 NAME = "MelloUI_VoiceOverData"
 TABLES = {
     "gossip_file_lookups": "GossipLookupByNPCID",

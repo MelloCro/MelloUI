@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.5
+
+- A Discord for MelloUI: [discord.gg/gdpQ6ep7bW](https://discord.gg/gdpQ6ep7bW), for help, bug reports and every new release.
+- Unlock the Windows no longer takes the mouse away from a chat window. Its grab covered the whole chat body, so while the windows were unlocked the links, the scroll buttons and the wheel all stopped answering; it is now a strip along the window's top edge and everything under it is the chat's again. The damage meter is now dragged by its header instead of its bars: the grab is the band between the header's own controls, so the timer, the dropdowns, the cog and the minimize button all keep their clicks and the list is left alone entirely. While the windows are unlocked every drag area now shows as a gold band with a thin edge, brighter under the mouse, so it is clear what can be taken hold of and where. The unlocked state is kept across sessions and showed nothing on screen, so it now also puts a plate at the top of the screen that says the windows are unlocked and locks them again when it is clicked.
+- Settings written straight into the saved variables (the kit tuning and the kit editor's own) now survive the client handing its saved variables over late: they were carried across for modules and profiles but not for these, so anything changed in the first moments of a session was thrown away.
+- UI Modifications now says what it does. A module that drives others is told it is off at start-up as well (`applyWhenDisabled`), so the reskin no longer stays on screen while its tile reads off, and switching the tile on no longer looks like it turns the reskin off. When every area of the reskin is switched off while the reskin itself is on, its page says so and offers a Switch every area on button.
+- Kit tuning: the painted kit can be adjusted by hand. `Core\KitTuning.lua` is a small override layer over `Media\KitLayout.lua` and the replacement library: per element a nudge, a resize, a tint, a crop, a draw layer, a different painted piece or no kit art at all; per piece its measured geometry; per window (MelloUI's own included) position, size, scale, alpha and the look of each texture in it. Overrides come from `Media\KitTuning.lua` in the repository with `MelloUIDB.kitTuning` layered on top, and an empty tuning leaves the kit exactly as built. The editing tools themselves are development tools and are not part of the addon.
+
 ## 0.13.4
 
 - Cast bars (player, pet, target, focus) dressed in the kit: the gem-capped bracket around the game's bar, the name on a header plate, the glow effects silenced. /cbdump.
