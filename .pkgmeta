@@ -11,6 +11,7 @@ ignore:
   - .github
   - .gitignore
   - .pkgmeta
+  - .luacheckrc
   - CHANGELOG.md
 
 enable-nolib-creation: no

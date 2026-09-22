@@ -7,10 +7,10 @@
 --
 -- Two sources, layered in this order (later wins):
 --   1. Media\KitTuning.lua   MelloUI_KitTuning -- baked defaults, written by
---                            the desktop tool (tools\kitforge) into the repo
---   2. MelloUIDB.kitTuning   live edits made in the game by the companion
---                            editor addon (MelloUIKitEditor); saved by the
---                            client, so they survive the editor being removed
+--                            the kit editing tools into the repo
+--   2. MelloUIDB.kitTuning   live edits made in the game with the kit editing
+--                            tools; saved by the client, so they survive the
+--                            tools being removed
 --
 -- Schema (version 1). Every section is optional, every field inside is optional:
 --
@@ -628,11 +628,11 @@ local function Serialise(value, indent, out)
 end
 
 -- The live tuning as the text of Media\KitTuning.lua: paste it into the repo
--- (or let the desktop tool write it) and the edits ship as defaults.
+-- (or let the kit editing tools write it) and the edits ship as defaults.
 function KT:Export(what)
 	local source = what == "effective" and self.data or (self:Live() or {})
 	local out = {
-		"-- MelloUI kit tuning -- written by the kit editor (MelloUIKitEditor / tools\\kitforge).\n",
+		"-- MelloUI kit tuning -- written by the kit editing tools.\n",
 		"-- Overrides for Media\\KitLayout.lua and Modules\\Kit.lua; see Core\\KitTuning.lua for the schema.\n\n",
 		"MelloUI_KitTuning = ",
 	}
