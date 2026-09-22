@@ -1,109 +1,102 @@
-<p align="center"><img src="docs/logo.jpg" alt="MelloUI - World of Warcraft: Forever - NPC Voice Over and Smart Navigation" width="720"></p>
+<p align="center"><img src="docs/logo.jpg" alt="MelloUI - World of Warcraft: Forever - Voiced NPCs, Painted UI and Smart Map" width="720"></p>
 
-# MelloUI
+# MelloUI – Voiced NPCs, a Painted UI & a Map That Actually Helps
 
-Module based UI addon for **World of Warcraft: Forever** (beta 1.60.1, interface `16001`).
+**Download:** [latest release](https://github.com/MelloCro/MelloUI/releases/latest) · [on CurseForge](https://www.curseforge.com/wow/addons/melloui) · [voice pack (1.6 GB, optional)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip) · [all releases](https://github.com/MelloCro/MelloUI/releases) · [changelog](CHANGELOG.md)
 
-**Download:** [MelloUI addon (latest release)](https://github.com/MelloCro/MelloUI/releases/latest) · [on CurseForge](https://www.curseforge.com/wow/addons/melloui)
-· [MelloUI VoiceOver Data (optional voice pack, 1.6 GB)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip)
-· [all releases](https://github.com/MelloCro/MelloUI/releases)
+*Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Quest givers talk to you, the whole interface gets a hand-painted look, the map tells you where to go, and there's a pile of little things that make the game just... nicer. Everything is a switch. Turn on what you like, ignore the rest.*
 
-**Every quest giver in Azeroth talks to you.** MelloUI reads quest offers, progress and
-completion text and greetings aloud, in a voice that matches the NPC's race and gender:
-dwarves sound like dwarves, trolls like trolls, gnomes like gnomes. A portrait overlay shows
-the speaking NPC with its talk animation, the line being read, the queue of what comes next,
-and subtitles that page with the speech. With the **MelloUI VoiceOver Data** pack installed
-you get **11,521 recorded lines**: the vanilla quest offers and turn-ins of the wow-voiceover
-project (most of them: the progress lines, what a giver says when you come back unfinished,
-were largely never recorded), the vanilla greetings, and Forever's own new quests. Whatever has
-no recording is read by the client's text-to-speech voices, still race and gender matched, so
-it works from the first minute, and `Tools\export_vanilla_lines.py` lists every missing vanilla
-line for the generator. A Read button in the quest log
-reads any quest you accepted long ago, in its giver's voice, followed by the objectives with
-your current progress.
+**Fresh install? Nothing is on.** You log in, a little tour offers to show you around the settings window (Escape > MelloUI, or `/mello`), and you pick what you want. No surprises.
 
-Around that: a quest list on the map with givers, turn-ins, dungeon doors and docks, routes
-that learn the roads you walk, nearest-service routing, dark mode, bar textures, fonts, chat,
-nameplate, tooltip and cooldown tweaks, and settings profiles. Every module can be switched
-off on its own.
+<p align="center"><img src="docs/update-0.13.4.jpg" alt="What is new in MelloUI 0.13.4" width="960"></p>
 
-<p align="center"><img src="docs/update-0.13.2.jpg" alt="What is new in MelloUI 0.13.2" width="960"></p>
+## 🎨 Your whole UI, repainted
 
-Forever runs the retail (Midnight era, 12.1.x) API and the Dragonflight style HUD with
-Camelot specific overrides. This addon targets exactly that client; frame keys were taken
-from the `forever` branch of the Blizzard UI source.
+One switch and every window, every bar, the minimap, the nameplates, the chat, the tooltips, even the settings window itself gets the iron-and-stone look. Gems, rails, the works.
+
+- Don't like it? Flip it off. The game looks like the game again and everything else still works.
+- Turn it on and your action bars, side bars, unit frames and party frames snap into the layout it was drawn for. No fiddling.
+- Dark Mode darkens the painted look too, with a brightness slider, for the night owls.
+
+## 🖱️ Drag. Everything.
+
+Tick one box, then grab any window and drop it wherever you want. Minimap, quest tracker, chat, damage meter, all of it.
+
+- Scroll the mouse wheel while you're holding it to make it bigger or smaller.
+- It snaps to the middle if you get close, and it STAYS. Reload, restart, come back next week, still there.
+- Works with the paint job off as well.
+
+## 🔊 Every click has a new sound
+
+I re-recorded the whole interface. Clicks, pages, pouches, buckles, coins, whispers, the dungeon pop, the level-up jingle. Iron, leather, parchment and stone instead of the stock beeps.
+
+- Off by default, because taste is taste. Turn on the families you like, leave the rest.
+- There's a Preview tab with a Play button for every single sound. Listen first, decide after.
+
+## 🎙️ Quest givers talk to you
+
+Every quest offer, progress line, turn-in and greeting is read out loud in a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
+
+- A little overlay on a scroll shows who's talking, with subtitles.
+- 11,503 recorded lines for Vanilla and the Forever-only quests, with the free voice pack below.
+- No voice pack? The game's own text-to-speech kicks in (it needs a voice installed in the Windows speech settings). Works out of the box.
+- Forgot what a quest was about? Open your quest log, hit Read, done.
+
+**Get the voice pack (free, 1.6 GB, totally optional but so worth it):**
+
+1. Download it here: [MelloUI_VoiceOverData.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip)
+2. Unzip it. You get a folder called `MelloUI_VoiceOverData`.
+3. Drop that folder next to MelloUI in `World of Warcraft\_classic_beta_\Interface\AddOns` (the `.toc` file must be directly inside it, not in another folder).
+4. Start the game, tick **MelloUI VoiceOver Data** in the addon list at the character screen. That's it. `/vo packs` in game shows the pack is loaded.
+
+*(Had `AI_VoiceOverData_Vanilla` before? Delete it, everything in it is already in here. The pack merges the vanilla lines of the wow-voiceover project, Unlicense, with the lines made for Forever's own quests.)*
+
+## 🗺️ The map that actually helps
+
+- **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
+- **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock.
+- **Smart Route:** a trail of gems along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
+- **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
+
+## 👥 Small things you'll use every day
+
+- **Party Markers:** your group's class icons float over their heads, green ring for the healer. No more "who heals?" (Open world only, the game hides friendly nameplates in dungeons.)
+- **Names:** everyone in Forever has a surname now. Too much? Show first names only. Or last names. Frames, nameplates and your own head, one setting.
+- **Bars & fonts:** pick your health bar style, pick a font for text, chat, titles and damage numbers, and how big each one is.
+- **Chat:** short channel tags, class colours, input box on top if you want it.
+- **Auto-vendor:** sells your greys and repairs your gear the moment you talk to a merchant.
+- **And:** cooldown numbers on buttons, clean dark tooltips, CC and quest icons on nameplates, FPS and latency, hidden micro menu and bag bar, class medallions on portraits.
+
+## 💾 Your settings are safe
+
+The Forever client has a habit of forgetting saved variables. MelloUI keeps a backup of your settings in a few hidden account macros called `MelloUI1`, `MelloUI2`... Don't delete those and you're golden (deleting them returns you to the fresh-install profile). Profiles let you save and load whole setups too.
+
+## 🐛 Good to know
+
+- Not every Forever-only NPC is recorded yet; those lines use text-to-speech for now.
+- Instance doors new to Forever show up on the map after your first visit (or `/qlmap entrance`).
+- Where no road is known yet, the route draws a straight guess. Walk it once and it learns.
+- Dark Mode only recolours textures (the game's combat rules forbid the rest), so a frame drawn without textures keeps its colours.
+- After an update, restart the game once. `/reload` isn't enough for new files.
+- The tour uses the game's help tips, so they must be on (Options > Gameplay > Help).
 
 ## Install
 
-Download the latest release (or clone this repository) and copy the `MelloUI` folder to:
+Download the [latest release](https://github.com/MelloCro/MelloUI/releases/latest) (or clone this repository) and copy the `MelloUI` folder to:
 
 ```
 <World of Warcraft>\_classic_beta_\Interface\AddOns\MelloUI
 ```
 
-Then `/reload` in game. The configuration window has its own **MelloUI** button in the game
-menu (Escape), or type `/mello`. It is a standalone WoW styled window with a page per module,
-not an entry under Options > AddOns. The first start applies the bundled default profile (see
-*Profiles*).
+Start the game. The settings window has its own **MelloUI** button in the game menu (Escape), or type `/mello`; it is not an entry under Options > AddOns. Forever runs the retail (Midnight era, 12.1.x) API and the Dragonflight style HUD with Camelot specific overrides; this addon targets exactly that client (beta 1.60.1, interface `16001`).
 
-### Installing the voice pack (1.6 GB, optional but recommended)
+Have fun out there. Turn on only what you want.
 
-The recorded lines come as a separate addon, hosted on GitHub because of its size.
+---
 
-**Direct download:** https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip
+# Under the hood
 
-1. Download the zip (1.6 GB).
-2. Unzip it. You get one folder named `MelloUI_VoiceOverData`.
-3. Move that folder into your AddOns folder, next to MelloUI:
-   `World of Warcraft\_classic_beta_\Interface\AddOns\MelloUI_VoiceOverData`
-   The folder must contain `MelloUI_VoiceOverData.toc` directly, not another folder inside.
-4. Start the game (restart it if it was running), open the AddOns list at the character
-   screen and tick **MelloUI VoiceOver Data**.
-5. In game, `/vo packs` lists the pack with 11,521 lines and, after a dialog, how each line
-   was found. Talk to any quest giver and you will hear the recorded line.
-
-The pack merges the vanilla lines of the wow-voiceover project (Unlicense) with the lines
-generated for Forever's own quests. If you had `AI_VoiceOverData_Vanilla` installed before,
-remove it: the pack already contains all of its lines.
-
-## First login and the tour
-
-A fresh install starts with **every module off**: the built-in "Everything Off" profile is
-the default for an install with no settings (see *Profiles*), so nothing changes until you
-switch it on. Switching UI Modifications on (or its "Painted kit reskin" toggle) brings the full
-reskin, switches Custom Sounds on with it, and puts the Edit Mode layout the reskin is drawn for
-into Edit Mode as the account layout "MelloUI", made active (action bars, side bars, reputation
-bar, unit and party frames, the two end caps); the quality-of-life tweaks stay off until you
-want them. The first time you log in, one of the game's own dialogs says so and asks
-whether to take a short tour of the settings window. The tour runs on the game's help tips:
-sixteen steps, each pointing at the part of the window it is about, from the icon strip and
-the module tiles through UI Modifications, Unlock the Windows and the tweak tabs to Voice Over,
-Quest List, Route, Services, Party Markers, Custom Sounds and its Preview tab, Profiles and
-What's new. It is always there again as the Tutorial button on
-the window's Home page or `/mello tutorial`. (The game's help tips must be on: Options,
-Gameplay, Help.)
-
-## Settings storage on the Forever beta
-
-The beta client (build 1.60.1.69913) does not reliably load addon saved variables from disk.
-MelloUI therefore mirrors every non-default setting into a few hidden account macros named
-`MelloUI1`, `MelloUI2`, ... and restores from them whenever the saved variables are missing.
-Do not delete those macros. The regular saved-variables file is still written and used when
-the client does load it.
-
-## Known issues
-
-- The beta client does not reliably read saved variables back, so the settings live in the
-  macro backup described above. Deleting those macros returns the addon to the default profile.
-- Instances new to Forever have no entrance data in the client. Their doors appear on the map
-  after the first visit (learned on the way in or on the way out) or with `/qlmap entrance`.
-- Route draws a straight guess where no road has been learned yet. Walking the way once
-  teaches it, and `Tools\bake_routes.py` ships what was learned with the next release.
-- Voice Over lines without a recording are read by Windows text-to-speech, which needs a
-  voice installed in the Windows speech settings.
-- Dark Mode only recolours textures (the combat secret-values rules forbid the rest), so
-  frames drawn without textures keep their colours.
-- New files listed in the TOC need a full client restart; a `/reload` is not enough.
+Everything below is the detailed reference: profiles, every slash command, what each module does exactly, and how to build and release the addon.
 
 ## Profiles
 
@@ -508,7 +501,7 @@ destination stays. Options: the two drawings, the distance text, the arrow and i
 notice and its sound, marker size, arrival distance, and learning on or off.
 
 Learned paths live in the `MelloUIRoutes` saved variable, which this client writes at
-`/reload` but does not read back at a restart (see *Settings storage* above). The traced roads
+`/reload` but does not read back at a restart (see *Your settings are safe* above). The traced roads
 are not part of it, only what you walked. To keep them, run the baker while you play:
 
 ```
