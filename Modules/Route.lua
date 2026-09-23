@@ -1231,7 +1231,7 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 			if isHubPrev and isHubNow then
 				kind = hubPrev == "T" and "flight" or "boat"
 			end
-			points[#points + 1] = { cont, x, y, kind }
+			points[#points + 1] = { cont, x, y, kind, nid }
 		end
 	end
 	return points, gScore.G
@@ -1243,6 +1243,12 @@ end
 
 local route = nil        -- { points = {...}, cost = seconds, length = yards, dest = { cont, x, y } }
 local destination = nil  -- { cont, x, y, mapID, mx, my, label }
+-- The stand-in (see "Another continent"): the map pin on the dock where the
+-- route leaves the player's continent while the destination is on another.
+-- { cont, x, y, label, pin = { mapID, mx, my } given back, questID given back }
+local standIn = nil
+local crossContinent = false   -- the destination on another continent than the player
+local StandIn = {}             -- its functions (Update, IsPin, GiveBackSaved, Drop), below
 local lastPlan = 0
 local offRoute = false   -- the player is farther than OFF_ROUTE from the path (see the arrow)
 local offRouteSince = nil   -- when the player left the path (GetTime), nil while on it
@@ -1384,6 +1390,7 @@ local function Plan(force, announce, announceText)
 	else
 		route = nil
 	end
+	StandIn.Update()
 	Redraw()
 	if announce then
 		Announce(announceText)
@@ -1519,6 +1526,16 @@ local function TrackedQuestID()
 	elseif GetSuperTrackedQuestID then
 		local ok, id = pcall(GetSuperTrackedQuestID)
 		questID = ok and Plain(id) or nil
+	end
+	-- the stand-in pin on the dock took the game's tracking from the quest
+	if (not questID or questID == 0) and standIn and standIn.questID then
+		local okL, index = true, true
+		if C_QuestLog and C_QuestLog.GetLogIndexForQuestID then
+			okL, index = pcall(C_QuestLog.GetLogIndexForQuestID, standIn.questID)
+		end
+		if okL and index then
+			questID = standIn.questID
+		end
 	end
 	-- The first quest in the tracker only when asked for (or when this client
 	-- has no super-tracking at all); otherwise nothing tracked means no route.
@@ -1736,6 +1753,9 @@ local function ReadWaypoint()
 		ReadTrackedQuest()
 		return
 	end
+	if StandIn.GiveBackSaved() then
+		return   -- the pin given back is read on its USER_WAYPOINT_UPDATED
+	end
 	local okH, has = pcall(C_Map.HasUserWaypoint)
 	if not okH or not has then
 		if destination and destination.fromWaypoint then
@@ -1753,6 +1773,14 @@ local function ReadWaypoint()
 	local mapID = Plain(point.uiMapID)
 	local px, py = VectorXY(point.position)
 	if not (mapID and px and py) then
+		return
+	end
+	-- the stand-in on the dock: the destination stays the one beyond it
+	if StandIn.IsPin(mapID, px, py) then
+		if not (destination and destination.fromQuest) then
+			return
+		end
+		ReadTrackedQuest()
 		return
 	end
 	if destination and destination.mapID == mapID and destination.mx and destination.my
@@ -1811,6 +1839,213 @@ local function MapPointOfYards(cont, yx, yy)
 		end
 	end
 	return cont, cx, cy
+end
+
+--------------------------------------------------------------------------------
+-- Another continent (user, 2026-09-23: the beam and the World Marker "get
+-- stuck in the middle of the screen" while the tracked place is on another
+-- continent; "it should mark me the location to the boat in Booty Bay"). The
+-- game's navigation frame, which the marker hangs on, has no place on screen
+-- for a point on another continent. While the destination lies there, the
+-- map pin goes on the dock where the route leaves the player's continent (a
+-- stand-in, super-tracked, so the game's frame and the marker show the boat);
+-- what was there before -- the player's own pin, or the tracked quest -- is
+-- given back on reaching the destination's continent, or when the World
+-- Marker is switched off. Removing the stand-in pin ends it like any pin.
+-- Kept in the saved settings, so a reload on the way still gives it back.
+--------------------------------------------------------------------------------
+
+-- in a block: its helpers stay out of the main chunk's 200 locals
+do
+	local STAND_IN_MOVE = 30   -- yards: a new exit dock this far from the pin moves it
+
+	-- Beside the settings, not in them: a journey's state has no place in the
+	-- settings backup
+	local function SaveStandIn(value)
+		if type(MelloUI.db) == "table" then
+			MelloUI.db.routeStandIn = value
+		end
+	end
+
+	-- The map pin, as continent yards and as the map point it was set on
+	local function WaypointYards()
+		if not (C_Map.HasUserWaypoint and C_Map.GetUserWaypoint) then
+			return nil
+		end
+		local okH, has = pcall(C_Map.HasUserWaypoint)
+		if not (okH and Plain(has)) then
+			return nil
+		end
+		local ok, point = pcall(C_Map.GetUserWaypoint)
+		if not ok or type(point) ~= "table" then
+			return nil
+		end
+		local mapID = Plain(point.uiMapID)
+		local px, py = VectorXY(point.position)
+		if not (mapID and px and py) then
+			return nil
+		end
+		local cont, x, y = ToYards(mapID, px, py)
+		return cont, x, y, mapID, px, py
+	end
+
+	local function IsPlace(s, cont, x, y)
+		return s ~= nil and cont ~= nil and s.cont == cont and Dist(s.x, s.y, x, y) < 5
+	end
+
+	StandIn.IsPin = function(mapID, px, py)
+		if not standIn then
+			return false
+		end
+		local cont, x, y = ToYards(mapID, px, py)
+		return IsPlace(standIn, cont, x, y)
+	end
+
+	-- The map pin on a map point, super-tracked
+	local function SetPin(mapID, mx, my)
+		if not (mapID and mx and my and C_Map.SetUserWaypoint and UiMapPoint) then
+			return false
+		end
+		local okCan, can = pcall(C_Map.CanSetUserWaypointOnMap, mapID)
+		if okCan and can == false then
+			return false
+		end
+		local ok = pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(mapID, mx, my))
+		if ok and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+			pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
+		end
+		return ok
+	end
+
+	-- The dock where the route leaves the player's continent, and its label
+	local function ExitDock(cont)
+		local points = route and route.points
+		if not points then
+			return nil
+		end
+		for i = 1, #points - 1 do
+			local a, b = points[i], points[i + 1]
+			if a[1] == cont and b[1] ~= cont then
+				local index = type(a[5]) == "string" and tonumber(a[5]:match("^D(%d+)$"))
+				local dock = index and docks and docks[index]
+				return a, dock and dock.label
+			end
+		end
+		return nil
+	end
+
+	-- The stand-in off; with `giveBack`, the pin or the quest that was tracked
+	-- before is tracked again (only while the pin is still the stand-in)
+	local function EndStandIn(giveBack)
+		local s = standIn
+		standIn = nil
+		SaveStandIn(nil)
+		if not (s and giveBack) then
+			return
+		end
+		if not IsPlace(s, WaypointYards()) then
+			return
+		end
+		if s.pin then
+			SetPin(s.pin[1], s.pin[2], s.pin[3])
+			return
+		end
+		-- the quest first: with the pin cleared before, nothing would be tracked for a moment
+		if s.questID and C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
+			if securecallfunction then
+				securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, s.questID)
+			else
+				pcall(C_SuperTrack.SetSuperTrackedQuestID, s.questID)
+			end
+		end
+		if C_Map.ClearUserWaypoint then
+			pcall(C_Map.ClearUserWaypoint)
+		end
+	end
+
+	local function PlaceStandIn(dock, label)
+		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
+		local before = standIn
+		local s = { cont = dock[1], x = dock[2], y = dock[3],
+			label = "|A:Waypoint-MapPin-ChatIcon:16:16|a " .. (label or "the boat") }
+		if before then
+			s.pin, s.questID = before.pin, before.questID
+		else
+			-- what to give back: the pin there was (the player's own), the quest tracked
+			local cont, _, _, pm, px, py = WaypointYards()
+			if cont then
+				s.pin = { pm, px, py }
+			end
+			s.questID = destination.fromQuest and destination.questID or nil
+		end
+		-- known before the pin is set: its USER_WAYPOINT_UPDATED reads it
+		standIn = s
+		if not SetPin(mapID, mx, my) then
+			standIn = before
+			return
+		end
+		SaveStandIn({ cont = s.cont, x = s.x, y = s.y, pin = s.pin, questID = s.questID })
+	end
+
+	-- A stand-in left from before a reload: given back once the pins are known
+	StandIn.GiveBackSaved = function()
+		local saved = MelloUI.db and MelloUI.db.routeStandIn
+		if standIn or type(saved) ~= "table" then
+			return false
+		end
+		local cont, x, y = WaypointYards()
+		if not cont then
+			return false
+		end
+		if not IsPlace(saved, cont, x, y) then
+			SaveStandIn(nil)
+			return false
+		end
+		standIn = saved
+		EndStandIn(true)
+		return true
+	end
+
+	StandIn.Update = function()
+		local cont = PlayerYards()
+		if not cont then
+			return
+		end
+		local d = destination
+		crossContinent = d ~= nil and d.cont ~= cont
+		-- the stand-in pin removed or replaced (by the player): no longer ours
+		if standIn and not IsPlace(standIn, WaypointYards()) then
+			EndStandIn(false)
+		end
+		local want = crossContinent and M.isEnabled and M.db.worldMarker
+		local dock, label
+		if want and route and route.dest and route.dest[1] == d.cont and Dist(route.dest[2], route.dest[3], d.x, d.y) < 1 then
+			dock, label = ExitDock(cont)
+		end
+		if not dock then
+			-- on the destination's continent, or the marker off: the old pin back
+			-- (with no route yet the stand-in waits for one)
+			if standIn and not want then
+				EndStandIn(true)
+			end
+			return
+		end
+		if standIn and standIn.cont == dock[1] and Dist(standIn.x, standIn.y, dock[2], dock[3]) < STAND_IN_MOVE then
+			return
+		end
+		PlaceStandIn(dock, label)
+	end
+
+	-- The route cleared: the stand-in on the dock goes with it
+	StandIn.Drop = function()
+		local s = standIn
+		if s then
+			EndStandIn(false)
+			if IsPlace(s, WaypointYards()) and C_Map.ClearUserWaypoint then
+				pcall(C_Map.ClearUserWaypoint)
+			end
+		end
+	end
 end
 
 -- Route to a candidate; with `pin`, also place the map waypoint there so the
@@ -1891,6 +2126,7 @@ function M:HasDestination()
 end
 
 function M:Clear()
+	StandIn.Drop()
 	destination = nil
 	route = nil
 	Redraw()
@@ -2500,10 +2736,16 @@ local function NavIsOurs()
 	if not destination then
 		return false
 	end
+	if crossContinent and not standIn then
+		return false   -- nothing on this continent for the game to show: it sat in the screen's middle
+	end
 	if not C_SuperTrack then
 		return true
 	end
 	local quest, pin = SuperTrackState()
+	if standIn then
+		return pin ~= false
+	end
 	if destination.fromQuest then
 		return quest ~= nil and quest == destination.questID
 	end
@@ -2703,7 +2945,7 @@ UpdateMarker = function()
 	end
 	-- the tick places it: over the destination or on the ring round the character
 	marker.nav = nav
-	marker.label:SetText(destination.label or "")
+	marker.label:SetText((standIn and standIn.label) or destination.label or "")
 	if not marker:IsShown() then
 		marker.distanceText = nil
 		marker:Show()
@@ -3045,6 +3287,7 @@ local function Tick()
 			Plan(false)
 			CheckArrival()
 		end
+		StandIn.Update()
 	end
 	if route and WorldMapFrame and WorldMapFrame:IsShown() then
 		DrawWorldMap()   -- the line on the open map starts at the player (the route is kept now)
@@ -3292,12 +3535,16 @@ function M:OnDisable()
 		ticker = nil
 	end
 	route = nil
+	StandIn.Update()
 	Redraw()
 	UpdateMarker()
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "worldMarker" then
+		StandIn.Update()
+	end
 	PlaceArrow()
 	Redraw()
 	UpdateMarker()
