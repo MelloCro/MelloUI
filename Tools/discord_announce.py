@@ -50,6 +50,13 @@ RELEASES = f"https://github.com/{REPO}/releases"
 CURSEFORGE = "https://www.curseforge.com/wow/addons/melloui"
 ACCENT = 0x9B8CFF          # the TOC title colour, |cff9b8cff
 DESCRIPTION_LIMIT = 4096   # Discord's hard cap on embed.description
+# Opens every release post (user, 2026-09-23): CurseForge holds each new file
+# for review, so the update reaches the CurseForge app about an hour after the
+# post; the GitHub download is attached before this step runs.
+DISCLAIMER = (
+    "> **Heads up:** the update usually takes about an hour to show up on CurseForge, "
+    "while CurseForge verifies the new file. The GitHub download is available right away."
+)
 
 
 def read(path: str) -> str:
@@ -92,20 +99,22 @@ def section(version: str = "") -> tuple[str, str]:
 
 
 def describe(body: str, version: str) -> str:
-    """The changelog section as Discord will render it.
+    """The changelog section as Discord will render it, after the disclaimer.
 
     Markdown carries over unchanged -- Discord understands the bullets and the
     `code spans` the changelog already uses. Only the length is a problem, and
     an over-long description is a 400 for the whole message, so it is cut on a
     bullet boundary and sent with a link to the rest.
     """
-    if len(body) <= DESCRIPTION_LIMIT:
-        return body
+    head = DISCLAIMER + "\n\n"
+    limit = DESCRIPTION_LIMIT - len(head)
+    if len(body) <= limit:
+        return head + body
     tail = f"\n\n[Read the rest of the notes]({RELEASES}/tag/v{version})"
-    room = DESCRIPTION_LIMIT - len(tail)
+    room = limit - len(tail)
     cut = body[:room]
     at = cut.rfind("\n- ")
-    return (cut[:at] if at > room * 0.5 else cut).rstrip() + tail
+    return head + (cut[:at] if at > room * 0.5 else cut).rstrip() + tail
 
 
 def payload(version: str, body: str, role_id: str = "") -> dict:
