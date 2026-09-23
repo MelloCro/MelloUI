@@ -477,6 +477,51 @@ end
 
 -- Ink a surface's strings while it is on parchment, put them back when not.
 -- `quiet`: the periodic pass (only shown roots; strings made since, inked).
+-- One frame's strings inked or put back by the surface's rules
+local function WalkInk(def, frame)
+	Walk(frame, 0, function(fs)
+		local skip = false
+		if def.skip then
+			skip = def.skip(fs)
+			if skip == nil then
+				return   -- cannot tell yet: as it is, the next pass decides
+			end
+		end
+		if def.strings[fs] then
+			if skip then
+				-- now on a plate or bar (a row selected): its own colours
+				QI.PlainText(fs)
+				def.strings[fs] = nil
+			elseif not fs.melloInk then
+				QI.InkText(fs)
+			end
+		elseif not skip then
+			def.strings[fs] = true
+			QI.InkText(fs)
+		end
+	end)
+end
+
+-- A scrolling list among a surface's frames: each row inked the moment the
+-- list fills it (user, 2026-09-23: scrolling the stats showed their game
+-- colours until the next pass)
+local function HookRows(name, root)
+	local box = (root.ForEachFrame and root) or (root.ScrollBox and root.ScrollBox.ForEachFrame and root.ScrollBox) or nil
+	if not (box and ScrollUtil and ScrollUtil.AddInitializedFrameCallback) or (box.melloInkRows and box.melloInkRows[name]) then
+		return
+	end
+	box.melloInkRows = box.melloInkRows or {}
+	box.melloInkRows[name] = true
+	ScrollUtil.AddInitializedFrameCallback(box, function(_, frame)
+		local def = QI.surfaces[name]
+		if def and def.active and frame then
+			passPlates = VisiblePlates()
+			WalkInk(def, frame)
+			passPlates = nil
+		end
+	end, QI, false)
+end
+
 function QI.RefreshSurface(name, quiet)
 	local def = QI.surfaces[name]
 	if not def then
@@ -499,25 +544,14 @@ function QI.RefreshSurface(name, quiet)
 						QI.RefreshSurface(name)
 						if C_Timer and C_Timer.After then
 							C_Timer.After(0.05, function() QI.RefreshSurface(name, true) end)
+							C_Timer.After(0.15, function() QI.RefreshSurface(name, true) end)
 							C_Timer.After(0.3, function() QI.RefreshSurface(name, true) end)
 						end
 					end)
 				end
 				if def.roots and not def.noWalk then
-					Walk(root, 0, function(fs)
-						if def.strings[fs] then
-							if def.skip and def.skip(fs) then
-								-- now on a plate or bar (a row selected): its own colours
-								QI.PlainText(fs)
-								def.strings[fs] = nil
-							elseif not fs.melloInk then
-								QI.InkText(fs)
-							end
-						elseif not (def.skip and def.skip(fs)) then
-							def.strings[fs] = true
-							QI.InkText(fs)
-						end
-					end)
+					HookRows(name, root)
+					WalkInk(def, root)
 				end
 			end
 		end
@@ -581,7 +615,15 @@ local function GamePlate(region)
 	if not (rule and GAME_PLATE_KIND[rule.kind]) then
 		return false
 	end
-	return not tostring(rule.base or rule.prefix or ""):find("divider", 1, true)
+	-- the game's row bands (UI-Character-Info-Line-Bounce and the like) are
+	-- faint see-through stripes on the paper, not plates: the stats' every
+	-- other row kept its yellow (user, 2026-09-23: "changing colors from
+	-- Yellow to Black randomly")
+	local base = tostring(rule.base or rule.prefix or "")
+	if base:find("divider", 1, true) or base:find("^lists/plate") or base:find("^lists/row") then
+		return false
+	end
+	return true
 end
 
 local function IsPlate(rep)
@@ -659,7 +701,9 @@ function QI.DefaultSkip(fs)
 			local base = rawget(child, "base")
 			if base and rawget(child, "mid") and child:IsShown() and not tostring(base):find("divider", 1, true) then
 				local inside = Inside(fs, child)
-				if inside == nil or inside then
+				if inside == nil then
+					return nil   -- not laid out yet: undecided
+				elseif inside then
 					return true
 				end
 			end
@@ -672,7 +716,9 @@ function QI.DefaultSkip(fs)
 			local rep = RepOf(region)
 			if IsPlate(rep) and rep.object and rep.object.IsShown and rep.object:IsShown() then
 				local inside = Inside(fs, rep.object)
-				if inside == nil or inside then
+				if inside == nil then
+					return nil   -- not laid out yet: undecided
+				elseif inside then
 					return true
 				end
 			end
@@ -681,7 +727,9 @@ function QI.DefaultSkip(fs)
 			-- a shown texture whose atlas the kit knows as a plate
 			if GamePlate(region) then
 				local inside = Inside(fs, region)
-				if inside == nil or inside then
+				if inside == nil then
+					return nil   -- not laid out yet: undecided
+				elseif inside then
 					return true
 				end
 			end
@@ -693,7 +741,7 @@ function QI.DefaultSkip(fs)
 			local okF, fx, fy = pcall(fs.GetCenter, fs)
 			local okB, l, b, w, h = pcall(f.GetRect, f)
 			if not (okF and okB and fx and l and w) or (issecretvalue and (issecretvalue(fx) or issecretvalue(l))) then
-				return true   -- not laid out yet: left alone for now
+				return nil   -- not laid out yet: undecided
 			end
 			local k = fs:GetEffectiveScale() / f:GetEffectiveScale()
 			fx, fy = fx * k, fy * k
@@ -723,6 +771,9 @@ end
 -- covers part of its window only: the character window's lies on its right
 -- pane, and the Skills tab's rows beside it are on stone -- user, 2026-09-23:
 -- "i cant read the left side of the text like that")
+-- nil while it cannot tell yet (the string or the sheet not laid out, no
+-- sheet shown for the moment: a tab being switched -- user, 2026-09-23: the
+-- text went white for a moment on quick tab switches)
 function QI.OnSheet(fs, area)
 	local Kit = MelloUI.Kit
 	local list = Kit and Kit.parchmentSheets and Kit.parchmentSheets[area]
@@ -731,7 +782,16 @@ function QI.OnSheet(fs, area)
 	end
 	local okF, fx, fy = pcall(fs.GetCenter, fs)
 	if not (okF and fx and fy) or (issecretvalue and (issecretvalue(fx) or issecretvalue(fy))) then
-		return false
+		return nil
+	end
+	local anyShown = false
+	for _, entry in ipairs(list) do
+		if entry.sheet and entry.sheet:IsVisible() then
+			anyShown = true
+		end
+	end
+	if not anyShown then
+		return nil
 	end
 	local fe = fs:GetEffectiveScale()
 	for _, entry in ipairs(list) do

@@ -147,7 +147,7 @@ local function SkinContacts(frame)
 		skin.ignore = true
 		Kit:SkinWindowShell(ignore, Replace, skin, { noRing = true, bg = "UI-Background-Rock" })
 		if ignore.Inset then
-			Kit:SkinInset(ignore.Inset, Replace, ignore)
+			Kit:SkinInset(ignore.Inset, Replace, ignore, true)
 		end
 		if ignore.ScrollBox then
 			Kit:HookScrollBoxRows(ignore.ScrollBox, function(row)
@@ -225,8 +225,9 @@ local function Build()
 			end
 		end)
 	end
+	-- the lists (friends, recent allies, the raid) on the dark list stone
 	if ff.Inset then
-		Kit:SkinInset(ff.Inset, Replace, ff)
+		Kit:SkinInset(ff.Inset, Replace, ff, true)
 	end
 	SkinTabs(ff)
 	SkinContacts(ff)

@@ -61,6 +61,14 @@ RED = [(0.0, (0, 0, 0)), (0.18, P["selectedTab"] * 0.7), (0.30, P["selectedTab"]
 
 # pictures, the tiles already in the palette's warmth and the coloured quilts: left as painted
 SKIP = re.compile(r"^(backdrops|cards|icons)/|^tiles/(vellum|parchment|leather|quilt_|crackle)")
+# Page stones toned down (user, 2026-09-23: "tone down the concrete in Warm
+# iron and Bronze"; the social window's lists on it were not readable): the
+# tile's light remapped round a dark middle with little spread before the
+# ramp -- calm dark stone a step lighter than the list stone (window bodies,
+# ~0.10), its cracks a hint
+TONED = re.compile(r"^tiles/concrete")
+TONED_MID, TONED_SPREAD = 0.16, 0.09
+
 # each look: its folder beside Media/Kit and its ramp (Kit.colourLooks in Kit.lua)
 LOOKS = {"warm": ("KitWarm", WARM), "bronze": ("KitBronze", BRONZE)}
 
@@ -75,6 +83,18 @@ def recoloured(name):
     """Whether the piece `name` ("window/frame_t") is recoloured (else read
     from Media/Kit in every look)."""
     return not SKIP.search(name)
+
+
+def recolour_toned(a, look):
+    """A page stone in the look's colours, toned down (TONED)."""
+    rgb = a[..., :3].astype(float) / 255
+    lum = 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
+    p5, p50, p95 = np.percentile(lum, [5, 50, 95])
+    t = (lum - p50) / max(p95 - p5, 1e-6)
+    lum2 = np.clip(TONED_MID + t * TONED_SPREAD, 0, 1)
+    b = a.copy()
+    b[..., :3] = np.clip(np.round(_gradient(lum2, LOOKS[look][1])), 0, 255).astype(np.uint8)
+    return b
 
 
 def recolour(a, look):
@@ -110,7 +130,8 @@ def build_looks(kit=KIT):
                 dst = os.path.join(out_root, name.replace("/", os.sep) + ".tga")
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 a = np.array(Image.open(src).convert("RGBA"))
-                Image.fromarray(recolour(a, look)).save(dst)
+                out = recolour_toned(a, look) if TONED.search(name) else recolour(a, look)
+                Image.fromarray(out).save(dst)
                 wanted.add(os.path.normcase(dst))
                 total += os.path.getsize(dst)
         for dirpath, _, files in os.walk(out_root):

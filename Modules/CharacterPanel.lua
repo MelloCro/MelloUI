@@ -1212,13 +1212,20 @@ InkSurface = function()
 		-- sheet only under the right pane: a string elsewhere (the Skills
 		-- tab's rows beside it) keeps its colours
 		skip = function(fs)
-			if QI.DefaultSkip(fs) then
+			local plate = QI.DefaultSkip(fs)
+			if plate == nil then
+				return nil   -- not laid out yet: left as it is
+			elseif plate then
 				return true
 			end
 			if M.db and M.db.windowBackground == "parchment" then
 				return false
 			end
-			return not QI.OnSheet(fs, "character")
+			local on = QI.OnSheet(fs, "character")
+			if on == nil then
+				return nil   -- not laid out yet (a tab switching): left as it is
+			end
+			return not on
 		end,
 	})
 end

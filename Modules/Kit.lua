@@ -1710,31 +1710,31 @@ Kit.Replacements = {
 	-- still-life at the right on stone, user's sheets 2026-09-21), whole at the
 	-- card's height against its right edge (nothing of the still-life cut
 	-- off), the stone mirrored across the rest, the single rail over it
-	["Profession-overview-Card-Alchemy"]       = { kind = "picture", piece = "cards/alchemy", fit = "right", frame = true },
-	["Profession-background-card-Alchemy"]     = { kind = "picture", piece = "backdrops/profession_alchemy", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Blacksmithing"] = { kind = "picture", piece = "cards/blacksmithing", fit = "right", frame = true },
-	["Profession-background-card-Blacksmithing"]= { kind = "picture", piece = "backdrops/profession_blacksmithing", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Enchanting"]    = { kind = "picture", piece = "cards/enchanting", fit = "right", frame = true },
-	["Profession-background-card-Enchanting"]  = { kind = "picture", piece = "backdrops/profession_enchanting", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Engineering"]   = { kind = "picture", piece = "cards/engineering", fit = "right", frame = true },
-	["Profession-background-card-Engineering"] = { kind = "picture", piece = "backdrops/profession_engineering", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Herbalism"]     = { kind = "picture", piece = "cards/herbalism", fit = "right", frame = true },
-	["Profession-background-card-Herbalism"]   = { kind = "picture", piece = "backdrops/profession_herbalism", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Leatherworking"]= { kind = "picture", piece = "cards/leatherworking", fit = "right", frame = true },
-	["Profession-background-card-Leatherworking"]= { kind = "picture", piece = "backdrops/profession_leatherworking", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Mining"]        = { kind = "picture", piece = "cards/mining", fit = "right", frame = true },
-	["Profession-background-card-Mining"]      = { kind = "picture", piece = "backdrops/profession_mining", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Skinning"]      = { kind = "picture", piece = "cards/skinning", fit = "right", frame = true },
-	["Profession-background-card-Skinning"]    = { kind = "picture", piece = "backdrops/profession_skinning", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
-	["Profession-overview-Card-Tailoring"]     = { kind = "picture", piece = "cards/tailoring", fit = "right", frame = true },
-	["Profession-background-card-Tailoring"]   = { kind = "picture", piece = "backdrops/profession_tailoring", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Alchemy"]       = { kind = "picture", piece = "cards/alchemy", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Alchemy"]     = { kind = "picture", piece = "backdrops/profession_alchemy", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Blacksmithing"] = { kind = "picture", piece = "cards/blacksmithing", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Blacksmithing"]= { kind = "picture", piece = "backdrops/profession_blacksmithing", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Enchanting"]    = { kind = "picture", piece = "cards/enchanting", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Enchanting"]  = { kind = "picture", piece = "backdrops/profession_enchanting", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Engineering"]   = { kind = "picture", piece = "cards/engineering", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Engineering"] = { kind = "picture", piece = "backdrops/profession_engineering", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Herbalism"]     = { kind = "picture", piece = "cards/herbalism", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Herbalism"]   = { kind = "picture", piece = "backdrops/profession_herbalism", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Leatherworking"]= { kind = "picture", piece = "cards/leatherworking", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Leatherworking"]= { kind = "picture", piece = "backdrops/profession_leatherworking", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Mining"]        = { kind = "picture", piece = "cards/mining", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Mining"]      = { kind = "picture", piece = "backdrops/profession_mining", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Skinning"]      = { kind = "picture", piece = "cards/skinning", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Skinning"]    = { kind = "picture", piece = "backdrops/profession_skinning", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
+	["Profession-overview-Card-Tailoring"]     = { kind = "picture", piece = "cards/tailoring", fit = "right", frame = true, desaturate = 0.9 },
+	["Profession-background-card-Tailoring"]   = { kind = "picture", piece = "backdrops/profession_tailoring", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	-- the secondary professions' schematics: their own tall panels (user's sheet 3d259005, 2026-09-21), cut at the schematic's aspect on the band with the still-life
-	["Profession-background-card-Cooking"]    = { kind = "picture", piece = "backdrops/schematic_cooking", crop = "bottom", edge = "brush" },
-	["Profession-background-card-Fishing"]    = { kind = "picture", piece = "backdrops/schematic_fishing", crop = "bottom", edge = "brush" },
-	["Profession-background-card-FirstAid"]   = { kind = "picture", piece = "backdrops/schematic_firstaid", crop = "bottom", edge = "brush" },
-	["Profession-overview-card-generic-Cooking"]  = { kind = "picture", piece = "backdrops/profession_cooking", grey = "backdrops/profession_cooking_grey", crop = "bottom", frame = true },   -- a secondary card (F, crop 1): the still-life, grey while not learned, single rail over it
-	["Profession-overview-card-generic-Fishing"]  = { kind = "picture", piece = "backdrops/profession_fishing", grey = "backdrops/profession_fishing_grey", crop = "bottom", frame = true },
-	["Profession-overview-card-generic-FirstAid"] = { kind = "picture", piece = "backdrops/profession_firstaid", grey = "backdrops/profession_firstaid_grey", crop = "bottom", frame = true },
+	["Profession-background-card-Cooking"]    = { kind = "picture", piece = "backdrops/schematic_cooking", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },
+	["Profession-background-card-Fishing"]    = { kind = "picture", piece = "backdrops/schematic_fishing", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },
+	["Profession-background-card-FirstAid"]   = { kind = "picture", piece = "backdrops/schematic_firstaid", crop = "bottom", edge = "brush", desaturate = 0.9, dim = 0.42 },
+	["Profession-overview-card-generic-Cooking"]  = { kind = "picture", piece = "backdrops/profession_cooking", grey = "backdrops/profession_cooking_grey", crop = "bottom", frame = true, desaturate = 0.9 },   -- a secondary card (F, crop 1): the still-life, grey while not learned, single rail over it
+	["Profession-overview-card-generic-Fishing"]  = { kind = "picture", piece = "backdrops/profession_fishing", grey = "backdrops/profession_fishing_grey", crop = "bottom", frame = true, desaturate = 0.9 },
+	["Profession-overview-card-generic-FirstAid"] = { kind = "picture", piece = "backdrops/profession_firstaid", grey = "backdrops/profession_firstaid_grey", crop = "bottom", frame = true, desaturate = 0.9 },
 	["Profession-square-frame"]               = { kind = "slot", slot = "slot" },   -- the frame over a profession spell's icon: the rim over the icon, as the game's is
 	-- the crafting page (user's picks, 2026-09-21: S1 D1 B1 N1 R1 O1 K2 L1 T1)
 	["Profession-Background-Template2"]       = { kind = "picture", piece = "tiles/concrete", crop = "middle", level = -2, edge = "brush" },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
@@ -3719,6 +3719,18 @@ function Kit:Replace(region, opts)
 		tex.kitScale = self.scale
 		tex:SetAllPoints(inner)
 		rep.object, rep.tex, rep.inner, rep.grey = (rule.owner and not isFrame) and tex or f, tex, inner, opts.grey
+		-- `desaturate` (0..1): the picture's colour taken down that much (the
+		-- secondary professions' cards at 10 % saturation: 0.9; user,
+		-- 2026-09-24: "reduce the saturation of this Artwork to 10%")
+		if rule.desaturate and tex.SetDesaturation then
+			pcall(tex.SetDesaturation, tex, rule.desaturate)
+		end
+		-- `dim` (0..1): the picture darkened, a backdrop behind text (the
+		-- crafting page's schematics: the recipe's name and reagents read
+		-- over it -- user, 2026-09-24: "this is a bit hard to read")
+		if rule.dim then
+			tex:SetVertexColor(rule.dim, rule.dim, rule.dim)
+		end
 		-- `edge` = "brush": the picture ends in painted strokes on every side
 		-- (Kit:PaintedEdge); `edgeMirror` flips them for a left-hand page
 		if rule.edge then
@@ -3761,6 +3773,8 @@ function Kit:Replace(region, opts)
 				if name == Kit.parchmentPiece then
 					local t = Kit.parchmentTint
 					self.tex:SetVertexColor(t[1], t[2], t[3])
+				elseif rule.dim then
+					self.tex:SetVertexColor(rule.dim, rule.dim, rule.dim)
 				end
 			end
 			local p = PIECES[name]
@@ -3837,7 +3851,8 @@ function Kit:Replace(region, opts)
 			local piece = value and (Kit.buttonLooks.backgroundPiece[value] or (PIECES[value] and value))
 			self.pieceOverride = (value == "dark" and "dark") or piece or nil
 			if not self.pieceOverride then
-				self.tex:SetVertexColor(1, 1, 1, 1)
+				local k = rule.dim or 1
+				self.tex:SetVertexColor(k, k, k, 1)
 			end
 			self:Refit()
 		end
@@ -5084,7 +5099,11 @@ end
 -- An InsetFrameTemplate (a marble Bg, a NineSlice at the frame's own level):
 -- the single rail, edges only, on a holder at the inset's own level under
 -- `parent` (over any list rows the inset frames), the inset faded.
-function Kit:SkinInset(inset, replace, parent)
+-- `withBody`: the inset filled with the list-box stone (the palette's Inner
+-- Panel, a panel sunk into the window) instead of showing the page through it:
+-- a list whose text must read (user, 2026-09-23: the social window's lists on
+-- the page's cracked stone were "not readable")
+function Kit:SkinInset(inset, replace, parent, withBody)
 	if not inset or inset.melloRep ~= nil then
 		return
 	end
@@ -5101,7 +5120,7 @@ function Kit:SkinInset(inset, replace, parent)
 			end
 		end
 	end
-	inset.melloRep = replace(inset, { as = "common-insideframe", parent = parent, rect = inset, level = level, body = false, noFade = true, alsoFade = extra }) or false
+	inset.melloRep = replace(inset, { as = "common-insideframe", parent = parent, rect = inset, level = level, body = withBody and true or false, noFade = true, alsoFade = extra }) or false
 end
 
 -- The controls every window has, found by what they ARE under `root` (a

@@ -174,12 +174,46 @@ local function SkinRankBar(bar)
 			end
 		end
 	end
+	-- the rank text ("Blacksmithing 31/75") in the interface's text face, as
+	-- the labels round it (user, 2026-09-24: the bar text kept the numbers
+	-- face, the Font Styles' narrow one): GameFontHighlight, which the Fonts
+	-- module retargets, so a Font Style or size reaches it; the game's own
+	-- font object back when the skin is off
+	local rankTexts = {}
+	local function FindTexts(frame, depth)
+		for _, region in ipairs({ frame:GetRegions() }) do
+			if region.GetObjectType and region:GetObjectType() == "FontString" then
+				local okO, object = pcall(region.GetFontObject, region)
+				rankTexts[#rankTexts + 1] = { fs = region, object = okO and object or nil }
+			end
+		end
+		if depth < 2 then
+			for _, child in ipairs({ frame:GetChildren() }) do
+				FindTexts(child, depth + 1)
+			end
+		end
+	end
+	FindTexts(bar, 0)
+	local function TextFace(on)
+		for _, entry in ipairs(rankTexts) do
+			if on and _G.GameFontHighlight then
+				entry.fs:SetFontObject(_G.GameFontHighlight)
+			elseif entry.object then
+				entry.fs:SetFontObject(entry.object)
+			end
+		end
+	end
 	rep.onEnable = function()
 		rep:Refit()
 		Fit()
+		TextFace(true)
+	end
+	if active then
+		TextFace(true)
 	end
 	rep.onBarChanged = Fit   -- a new Progress Bar Border (every window's)
 	rep.onDisable = function()
+		TextFace(false)
 		RestorePoints(fill, savedFill)
 		if mask then
 			-- anchors only: the width is the game's progress, its height untouched
@@ -599,7 +633,7 @@ local function SkinCraftingPage(page)
 					extra[#extra + 1] = region
 				end
 			end
-			Replace(button.Center, { as = "_128-RedButton-Center", rect = button, button = button, alsoFade = extra, dropCap = drop })
+			button.melloPlate = Replace(button.Center, { as = "_128-RedButton-Center", rect = button, button = button, alsoFade = extra, dropCap = drop })
 		end
 	end
 	-- the quantity spinner: the box (two border sets: the search-border
@@ -702,6 +736,7 @@ local function SkinCraftingPage(page)
 			saved[b] = points
 		end
 		local function Bind()
+			skin.bindRuns = (skin.bindRuns or 0) + 1
 			if not active then
 				return
 			end
@@ -715,24 +750,54 @@ local function SkinCraftingPage(page)
 			all:SetPoint("RIGHT", spin.DecrementButton, "LEFT", 0, 0)
 			one:ClearAllPoints()
 			one:SetPoint("LEFT", spin.IncrementButton, "RIGHT", 0, 0)
-			-- the text centred on the red middle, which sits between the gem
-			-- cap and the plain end: nudged away from the gem by half a cap
-			for _, entry in ipairs({ { all, 1 }, { one, -1 } }) do
-				local b, dir = entry[1], entry[2]
+			-- the text centred on the plate's red middle (the run between the gem
+			-- cap and the plain end: its own texture), not on the button (user,
+			-- 2026-09-24: "create all text should be moved a bit on the right,
+			-- and create text a bit more to the left")
+			for _, b in ipairs({ all, one }) do
 				local fs = b.GetFontString and b:GetFontString()
+				if not fs and not b.melloTextRetry then
+					-- its label not made yet: once more a moment later
+					b.melloTextRetry = true
+					C_Timer.After(0.2, Bind)
+				end
 				if fs and b.melloTextShift == nil then
 					local ok, x, y = pcall(function() local _, _, _, px, py = fs:GetPoint(1); return px, py end)
 					b.melloTextShift = { ok and x or 0, ok and y or 0 }
+					b.melloTextJustify = fs:GetJustifyH()
 				end
-				if fs then
-					local shift = (b:GetHeight() * 89 / 111) * 0.35 * 0.5 * dir   -- half the cap's overhang past the end
+				-- the plate: the replacement's strip, or found among the button's
+				-- children (the sweep may have dressed the button first: the
+				-- replace here then made none -- user, 2026-09-24: "nothing
+				-- changed")
+				local strip = b.melloPlate and b.melloPlate.strip
+				if not strip then
+					for _, child in ipairs({ b:GetChildren() }) do
+						if rawget(child, "base") and rawget(child, "mid") and child:IsShown() then
+							strip = child
+							break
+						end
+					end
+				end
+				if fs and strip and strip.mid then
 					fs:ClearAllPoints()
-					fs:SetPoint("CENTER", b, "CENTER", shift + (b.melloTextShift[1] or 0), b.melloTextShift[2] or 0)
+					fs:SetPoint("CENTER", strip.mid, "CENTER", 0, b.melloTextShift[2] or 0)
+					fs:SetJustifyH("CENTER")
 				end
 			end
 		end
 		hooksecurefunc(page, "SetControlAnchors", Bind)
 		skin.bindCreate = Bind
+		-- the game lays the buttons out on its own schedule (SetControlAnchors
+		-- is not called on every path: the labels were never placed -- user,
+		-- 2026-09-24, /profdump create): again each time the page shows, a
+		-- frame after it has laid itself out
+		page:HookScript("OnShow", function()
+			C_Timer.After(0, Bind)
+		end)
+		if active then
+			C_Timer.After(0, Bind)
+		end
 		skin.unbindCreate = function()
 			for b, points in pairs(saved) do
 				b:ClearAllPoints()
@@ -743,6 +808,9 @@ local function SkinCraftingPage(page)
 				if fs and b.melloTextShift then
 					fs:ClearAllPoints()
 					fs:SetPoint("CENTER", b, "CENTER", b.melloTextShift[1] or 0, b.melloTextShift[2] or 0)
+					if b.melloTextJustify then
+						fs:SetJustifyH(b.melloTextJustify)
+					end
 				end
 			end
 			wipe(saved)
@@ -1242,6 +1310,32 @@ local function ProfDump(msg)
 		else
 			MelloUI:Print("%-40s (no rect) %s", label, extra or "")
 		end
+	end
+	-- /profdump create: the Create buttons' labels, their plates and anchors
+	if type(msg) == "string" and msg:lower():find("create", 1, true) then
+		local page = pf.CraftingPage
+		MelloUI:Print("active=%s bindRuns=%s bindCreate=%s", tostring(active), tostring(skin and skin.bindRuns), tostring(skin and skin.bindCreate ~= nil))
+		for _, key in ipairs({ "CreateAllButton", "CreateButton" }) do
+			local b = page and page[key]
+			if b then
+				Rect(key, b, "melloPlate=" .. tostring(b.melloPlate ~= nil) .. " shift=" .. tostring(b.melloTextShift ~= nil))
+				for _, child in ipairs({ b:GetChildren() }) do
+					Rect("  child " .. tostring(rawget(child, "base")), child, "shown=" .. tostring(child:IsShown()) .. " mid=" .. tostring(rawget(child, "mid") ~= nil))
+					if rawget(child, "mid") then
+						Rect("    mid", child.mid)
+					end
+				end
+				local fs = b.GetFontString and b:GetFontString()
+				if fs then
+					Rect("  text " .. tostring(fs:GetText()), fs, "justify=" .. tostring(fs:GetJustifyH()))
+					for i = 1, fs:GetNumPoints() do
+						local pt, rel, relPt, x, y = fs:GetPoint(i)
+						MelloUI:Print("    point %s -> %s %s %.1f %.1f", tostring(pt), tostring(rel and rel.GetDebugName and rel:GetDebugName()), tostring(relPt), x or 0, y or 0)
+					end
+				end
+			end
+		end
+		return
 	end
 	local function Name(obj)
 		return obj:GetName() or obj:GetDebugName()
