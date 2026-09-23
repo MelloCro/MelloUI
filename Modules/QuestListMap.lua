@@ -41,6 +41,9 @@ local TRANSPORT_ATLAS = {
 	[2] = { "taxinode_continent_horde_timed", "TaxiNode_Horde" },
 }
 
+-- A quest found only inside a dungeon or raid is pinned beside its entrance.
+local BESIDE_DOOR_X, BESIDE_DOOR_Y = 20, 10   -- pixels: off the entrance pin's own icon
+
 -- Not every atlas of the retail engine is in this client's art; try in turn.
 local function SetFirstAtlas(tex, list)
 	for _, atlas in ipairs(list) do
@@ -49,6 +52,7 @@ local function SetFirstAtlas(tex, list)
 		end
 	end
 	tex:SetTexture("Interface/Minimap/Tracking/None")
+	tex:SetTexCoord(0, 1, 0, 1)
 	return false
 end
 
@@ -101,12 +105,30 @@ end
 function PinMethods:OnAcquired(kind, data)
 	self.kind, self.data = kind, data
 	self.Label:ClearAllPoints()
+	self.Icon:ClearAllPoints()
+	self.Icon:SetAllPoints()
+	self:SetHitRectInsets(0, 0, 0, 0)
 	if kind == "giver" then
 		self.Bg:Hide()
 		self.Icon:Show()
 		self:SetSize(22, 22)
 		local state = data.state
-		if state == "done" then
+		if data.item == "dungeon" or data.item == "raid" then
+			-- the icon (and where it takes the mouse) moved beside the entrance's door
+			self.Icon:ClearAllPoints()
+			self.Icon:SetPoint("CENTER", BESIDE_DOOR_X, BESIDE_DOOR_Y)
+			self.Icon:SetSize(22, 22)
+			self:SetHitRectInsets(BESIDE_DOOR_X, -BESIDE_DOOR_X, -BESIDE_DOOR_Y, BESIDE_DOOR_Y)
+		end
+		if data.item then
+			-- a quest begun by an item or object: crossed swords where it drops
+			-- from creatures, a chest where it is picked up, the entrance icon
+			-- for an instance, instead of the "!"
+			self:SetSize(20, 20)
+			QL.SetStarterIcon(self.Icon, data.item)
+			self.Icon:SetDesaturated(state ~= "available")
+			self.Icon:SetAlpha(state == "available" and 1 or 0.75)
+		elseif state == "done" then
 			self.Icon:SetAtlas("questlog-icon-checkmark-yellow")
 			self.Icon:SetDesaturated(true)
 			self.Icon:SetAlpha(0.7)
@@ -119,7 +141,7 @@ function PinMethods:OnAcquired(kind, data)
 			self.Icon:SetDesaturated(state ~= "available")
 			self.Icon:SetAlpha(state == "available" and 1 or 0.75)
 		end
-		self.Label:SetPoint("TOP", self, "BOTTOM", 0, 2)
+		self.Label:SetPoint("TOP", self.Icon, "BOTTOM", 0, 2)
 		self.Label:SetText(data.tracked and data.giver or "")
 		self.Label:SetTextColor(0.6, 0.8, 1)
 		self.Label:SetShown(data.tracked)
@@ -173,11 +195,22 @@ function PinMethods:OnMouseEnter()
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	if self.kind == "giver" then
 		GameTooltip:SetText(data.giver ~= "" and data.giver or "Quest giver", 1, 0.82, 0)
+		if data.item == "drop" then
+			GameTooltip:AddLine("Item that begins a quest, dropped by the creatures around here", 0.8, 0.8, 0.8, true)
+		elseif data.item == "pickup" then
+			GameTooltip:AddLine("Item that begins a quest, picked up around here", 0.8, 0.8, 0.8, true)
+		elseif data.item then
+			GameTooltip:AddLine(string.format("Quests that begin with something found inside this %s:", data.item), 0.8, 0.8, 0.8, true)
+		end
 		for _, q in ipairs(data.quests) do
 			local row = q.row
 			local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
 			local text = STATE_TEXT[q.state]
 			GameTooltip:AddDoubleLine(string.format("%s (%d)", row[QL.F_TITLE], row[QL.F_LEVEL]), text[1], r, g, b, text[2], text[3], text[4])
+			if data.item == "dungeon" or data.item == "raid" then
+				local what = QL.IsItemStart(row) and "drops inside" or "is inside"
+				GameTooltip:AddLine(string.format("   %s %s", row[QL.F_GIVER], what), 0.6, 0.6, 0.6, true)
+			end
 			local step, total, nextRow = QL.ChainInfo(row)
 			if step then
 				local chain = QL.Data().chains[row[QL.F_CHAIN]] or "chain"
@@ -191,7 +224,9 @@ function PinMethods:OnMouseEnter()
 		if data.tracked then
 			GameTooltip:AddLine("Tracked. Click to remove the waypoint.", 0.6, 0.8, 1)
 		else
-			GameTooltip:AddLine("Click to set a waypoint on this giver.", 0.6, 0.8, 1)
+			local where = (data.item == "dungeon" or data.item == "raid") and ("Click to route to the " .. data.item .. " entrance.")
+				or data.item and "Click to set a waypoint here." or "Click to set a waypoint on this giver."
+			GameTooltip:AddLine(where, 0.6, 0.8, 1)
 		end
 	elseif self.kind == "entrance" then
 		GameTooltip:SetText(data.name, 1, 0.82, 0)
@@ -347,14 +382,32 @@ PreparePinMixin()
 
 QL.Provider = nil
 
+-- "drop" / "pickup" for a quest begun by an item, nil for an NPC or object giver.
+local function ItemKind(row)
+	local kind = row[QL.F_KIND]
+	return kind == QL.KIND_DROP and "drop" or kind == QL.KIND_PICKUP and "pickup" or nil
+end
+
+-- A quest begun by an item is pinned where the item is found only while it
+-- can still be picked up; once in the log that spot means nothing.
+local function ItemPinWanted(row, state)
+	return not QL.IsItemStart(row) or state == "available" or state == "locked"
+end
+
+-- The panel's "starts from" filter hides the pins of quests not taken yet;
+-- a quest in the log keeps its turn-in pin whatever it started from.
+local function StartWanted(row, state)
+	return QL.StartShown(row) or not (state == "available" or state == "locked")
+end
+
 local function AddGiverPins(map, mapID, mapName)
 	local level = QL.Plain(UnitLevel("player")) or 60
 	local groups, order = {}, {}
-	local function Consider(row, x, y, who, state)
-		local key = string.format("%s|%.3f|%.3f", who, x, y)
+	local function Consider(row, x, y, who, state, item)
+		local key = string.format("%s|%.3f|%.3f|%s", who, x, y, item or "")
 		local group = groups[key]
 		if not group then
-			group = { giver = who, x = x, y = y, quests = {}, state = "done", tracked = false }
+			group = { giver = who, x = x, y = y, quests = {}, state = "done", tracked = false, item = item }
 			groups[key] = group
 			order[#order + 1] = group
 		end
@@ -373,17 +426,20 @@ local function AddGiverPins(map, mapID, mapName)
 			return
 		end
 		local state = QuestState(row, level)
-		local x, y, who
+		if not StartWanted(row, state) then
+			return
+		end
+		local x, y, who, item
 		if state == "ready" and QL.resolvedEnd[row] then
 			x, y = QL.ProjectOnMap(QL.resolvedEnd[row], mapID)
 			who = row[QL.F_ENDER]
-		elseif not endOnly and QL.resolved[row] then
+		elseif not endOnly and QL.resolved[row] and ItemPinWanted(row, state) then
 			x, y = QL.ProjectOnMap(QL.resolved[row], mapID)
-			who = row[QL.F_GIVER]
+			who, item = row[QL.F_GIVER], ItemKind(row)
 		end
 		if x then
 			seen[row] = true
-			Consider(row, x, y, who, state)
+			Consider(row, x, y, who, state, item)
 		end
 	end
 	-- Rows the client placed on this map or on a city inside it.
@@ -407,9 +463,13 @@ local function AddGiverPins(map, mapID, mapName)
 	-- Givers with a map percentage only (collected in game on this zone).
 	local areaID = QL.zoneByName[mapName:lower()]
 	for _, row in ipairs(areaID and QL.byZone[areaID] or {}) do
-		if not seen[row] and not (QL.resolved and QL.resolved[row]) and (row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0) and QL.Eligible(row) then
-			seen[row] = true
-			Consider(row, row[QL.F_X] / 100, row[QL.F_Y] / 100, row[QL.F_GIVER], QuestState(row, level))
+		if not seen[row] and not (QL.resolved and QL.resolved[row]) and (row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0)
+			and QL.Eligible(row) then
+			local state = QuestState(row, level)
+			if ItemPinWanted(row, state) and StartWanted(row, state) then
+				seen[row] = true
+				Consider(row, row[QL.F_X] / 100, row[QL.F_Y] / 100, row[QL.F_GIVER], state, ItemKind(row))
+			end
 		end
 	end
 	for _, group in ipairs(order) do
@@ -572,6 +632,70 @@ local function AddEntrancePins(map, mapID, mapName)
 			names[poi.name:lower()] = true
 			local id = DungeonIDByName(poi.name)
 			map:AcquirePin(QL.PIN_TEMPLATE, "entrance", { dungeonID = id, name = poi.name, raid = (id ~= 0 and QL.Data().raids[id] == true) or poi.atlas:lower():find("raid") ~= nil, x = poi.x, y = poi.y, source = "client" })
+		end
+	end
+end
+
+-- Quests begun by an item or object found only inside a dungeon or raid: one
+-- pin per instance with the entrance's own icon, beside its door, while any
+-- of them can still be picked up. A click routes to the entrance.
+local function AddInstanceStartPins(map, mapID, mapName)
+	local level = QL.Plain(UnitLevel("player")) or 60
+	local groups = {}
+	local rows = {}
+	for id in pairs(QL.Data().dungeons or {}) do   -- such a quest is listed under its instance
+		for _, row in ipairs(QL.byZone[id] or {}) do
+			rows[#rows + 1] = row
+		end
+	end
+	for _, row in ipairs(rows) do
+		local id = QL.InstanceStart(row)
+		if id and QL.Eligible(row) and QL.StartShown(row) then
+			local state = QuestState(row, level)
+			if state == "available" or state == "locked" then
+				local group = groups[id]
+				if not group then
+					group = { quests = {}, state = "locked", tracked = false, dungeonID = id, giver = QL.Data().dungeons[id],
+						item = QL.IsRaid(id) and "raid" or "dungeon" }
+					groups[id] = group
+				end
+				group.quests[#group.quests + 1] = { row = row, state = state }
+				if state == "available" then
+					group.state = "available"
+				end
+				if QL.trackedQuestID == row[QL.F_ID] then
+					group.tracked = true
+				end
+			end
+		end
+	end
+	if not next(groups) then
+		return
+	end
+	local data = QL.Data()
+	local placed = {}
+	for _, e in ipairs(data.entrances or {}) do
+		local group = groups[e[1]]
+		if group and not placed[e[1]] then
+			local x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
+			if x then
+				placed[e[1]] = true
+				group.x, group.y = x, y
+			end
+		end
+	end
+	-- Entrances learned by walking in (Forever's new instances).
+	for name, l in pairs(QL.LearnedStore("entrances") or {}) do
+		local id = DungeonIDByName(name)
+		if groups[id] and not placed[id] and l.mapID == mapID then
+			placed[id] = true
+			groups[id].x, groups[id].y = l.x, l.y
+		end
+	end
+	for id, group in pairs(groups) do
+		if placed[id] then
+			table.sort(group.quests, function(a, b) return QL.ByLevel(a.row, b.row) end)
+			map:AcquirePin(QL.PIN_TEMPLATE, "giver", group)
 		end
 	end
 end
@@ -801,6 +925,7 @@ function QL.CreateProvider()
 		if mapType == MAP_ZONE and name then
 			if M.db.mapPins then
 				Try("quest givers", AddGiverPins, map, mapID, name)
+				Try("instance quest items", AddInstanceStartPins, map, mapID, name)
 			end
 			if M.db.entrancePins then
 				Try("entrances", AddEntrancePins, map, mapID, name)

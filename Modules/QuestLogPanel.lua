@@ -352,6 +352,9 @@ local function SkinQuestList()
 	hooksecurefunc(ql.Panel, "Update", RefreshFilters)
 	RefreshFilters()
 	Kit:SkinCheckButton(frame.hide, Replace, "UI-CheckBox-Up")
+	if frame.levelCheck then
+		Kit:SkinCheckButton(frame.levelCheck, Replace, "UI-CheckBox-Up")   -- the map's "5+ levels above" shortcut
+	end
 	Kit:HookScrollBoxRows(frame.scrollBox, SkinQuestListEntry, function() return active end, true)
 	Kit:SkinScrollBarsIn(frame, Replace)
 	-- (the shade under the list's text, 2026-09-22, is gone: the page is one

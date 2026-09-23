@@ -17,6 +17,8 @@ local M = QL.M
 QL.Panel = {}
 local ROW_HEIGHT = 36   -- a 13 px title over a 12 px line, as the quest log sets them
 local HEADER_HEIGHT = 24
+local LEVEL_SHORTCUT = 4   -- the level check box under the Filter button: hide quests more than 4 (so 5 or more) levels above
+local ICON_SIZE = 18   -- the row's quest icon ("!", "?", tick, swords, chest, door); 14 was too small
 local FILTERS = {
 	{ key = "all", label = "All" }, { key = "continent", label = "Continent" }, { key = "zone", label = "Zone" }, { key = "class", label = "Class" },
 	{ key = "dungeons", label = "Dungeons" }, { key = "raids", label = "Raids" }, { key = "attunements", label = "Attunements" }, { key = "events", label = "Events" },
@@ -47,6 +49,46 @@ local function RowClick(self)
 	end
 end
 
+-- The quest's icon in colour at the tooltip's top right (user, 2026-09-23):
+-- the dungeon or raid door for an instance quest, so the two tell apart at a
+-- glance, else what it starts from ("!", swords, chest). Our own frame on the
+-- tooltip, hidden again whenever the tooltip is cleared or hidden.
+local TIP_ICON_SIZE = 52
+local tipIcon
+
+local function HideTipIcon()
+	if tipIcon and tipIcon:IsShown() then
+		tipIcon:Hide()
+		if GameTooltip.SetPadding then
+			GameTooltip:SetPadding(0, 0)
+		end
+	end
+end
+
+local function ShowTipIcon(row)
+	if not tipIcon then
+		tipIcon = CreateFrame("Frame", nil, GameTooltip)
+		tipIcon:SetSize(TIP_ICON_SIZE, TIP_ICON_SIZE)
+		tipIcon:SetPoint("TOPRIGHT", -7, -7)
+		tipIcon.tex = tipIcon:CreateTexture(nil, "ARTWORK")
+		tipIcon.tex:SetAllPoints()
+		tipIcon:Hide()
+		GameTooltip:HookScript("OnHide", HideTipIcon)
+		GameTooltip:HookScript("OnTooltipCleared", HideTipIcon)
+	end
+	local dungeon = row[QL.F_DUNGEON]
+	local key = (dungeon ~= 0 and QL.Data().dungeons[dungeon]) and (QL.IsRaid(dungeon) and "raid" or "dungeon")
+		or QL.StarterKind(row)
+	if not (key and QL.SetStarterIcon(tipIcon.tex, key)) then
+		tipIcon.tex:SetAtlas("QuestNormal")
+	end
+	tipIcon.tex:SetDesaturated(false)
+	tipIcon:Show()
+	if GameTooltip.SetPadding then
+		GameTooltip:SetPadding(TIP_ICON_SIZE + 4, 0)   -- keep the lines clear of it
+	end
+end
+
 local function RowEnter(self)
 	local e = self.entry
 	if not e or not e.row then return end
@@ -56,7 +98,8 @@ local function RowEnter(self)
 	GameTooltip:SetText(row[QL.F_TITLE], r, g, b)
 	GameTooltip:AddLine(string.format("Level %d, requires level %d", row[QL.F_LEVEL], row[QL.F_REQ]), 0.8, 0.8, 0.8)
 	if row[QL.F_DUNGEON] ~= 0 and QL.Data().dungeons[row[QL.F_DUNGEON]] then
-		GameTooltip:AddLine("Dungeon quest: " .. QL.Data().dungeons[row[QL.F_DUNGEON]], 0.75, 0.61, 0)
+		local what = QL.IsRaid(row[QL.F_DUNGEON]) and "Raid quest: " or "Dungeon quest: "
+		GameTooltip:AddLine(what .. QL.Data().dungeons[row[QL.F_DUNGEON]], 0.75, 0.61, 0)
 	end
 	if row[QL.F_CHAIN] ~= 0 and QL.Data().chains[row[QL.F_CHAIN]] then
 		local step, total, nextRow = QL.ChainInfo(row)
@@ -67,7 +110,25 @@ local function RowEnter(self)
 	end
 	if row[QL.F_GIVER] ~= "" then
 		local giverZone = QL.Data().zones[QL.ZoneOf(row)]
-		GameTooltip:AddLine("From " .. row[QL.F_GIVER] .. (giverZone and (" in " .. giverZone) or ""), 0.8, 0.8, 0.8)
+		local instance = QL.InstanceStart(row)
+		if instance then
+			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
+			local name = QL.Data().dungeons[instance]
+			if QL.IsItemStart(row) then
+				GameTooltip:AddLine(string.format("Begins with the item %s, which drops inside the %s %s", row[QL.F_GIVER], kind, name), 0.8, 0.8, 0.8, true)
+			else
+				GameTooltip:AddLine(string.format("Begins at %s inside the %s %s", row[QL.F_GIVER], kind, name), 0.8, 0.8, 0.8, true)
+			end
+		elseif QL.IsItemStart(row) then
+			local how = row[QL.F_KIND] == QL.KIND_PICKUP and ", picked up in " or ", dropped by creatures in "
+			GameTooltip:AddLine("Begins with the item " .. row[QL.F_GIVER] .. (giverZone and (how .. giverZone) or ""), 0.8, 0.8, 0.8)
+		else
+			GameTooltip:AddLine("From " .. row[QL.F_GIVER] .. (giverZone and (" in " .. giverZone) or ""), 0.8, 0.8, 0.8)
+		end
+		local _, gx, gy = QL.GiverPoint(row)
+		if gx then
+			GameTooltip:AddLine(string.format("   at %.1f, %.1f", gx * 100, gy * 100), 0.6, 0.6, 0.6)
+		end
 	end
 	if (row[QL.F_ENDER] or "") ~= "" then
 		if QL.SameEnder(row) then
@@ -75,6 +136,10 @@ local function RowEnter(self)
 		else
 			local endZone = QL.EnderZoneName(row)
 			GameTooltip:AddLine("Turn in to " .. row[QL.F_ENDER] .. (endZone and (" in " .. endZone) or ""), 0.8, 0.8, 0.8)
+			local _, ex, ey = QL.EndPoint(row)
+			if ex then
+				GameTooltip:AddLine(string.format("   at %.1f, %.1f", ex * 100, ey * 100), 0.6, 0.6, 0.6)
+			end
 		end
 	end
 	if e.completed then
@@ -93,10 +158,15 @@ local function RowEnter(self)
 	elseif e.ready and QL.EndPoint(row) then
 		GameTooltip:AddLine("Click to place a map pin on the turn-in NPC.", 0.6, 0.8, 1)
 	elseif select(2, QL.GiverPoint(row)) then
-		GameTooltip:AddLine("Click to place a map pin on the quest giver.", 0.6, 0.8, 1)
+		local target = row[QL.F_KIND] == QL.KIND_DROP and "where the item drops most"
+			or row[QL.F_KIND] == QL.KIND_PICKUP and "where the item is picked up" or "on the quest giver"
+		GameTooltip:AddLine("Click to place a map pin " .. target .. ".", 0.6, 0.8, 1)
+	elseif QL.InstanceStart(row) and QL.EntrancePoint(QL.InstanceStart(row)) then
+		GameTooltip:AddLine(string.format("Click to route to the %s entrance.", QL.IsRaid(QL.InstanceStart(row)) and "raid" or "dungeon"), 0.6, 0.8, 1)
 	else
 		GameTooltip:AddLine("Location not known yet.", 0.6, 0.6, 0.6)
 	end
+	ShowTipIcon(row)
 	GameTooltip:Show()
 end
 
@@ -139,8 +209,8 @@ local function EnsureWidgets(button)
 	button.plus = button:CreateTexture(nil, "OVERLAY")
 	button.plus:SetPoint("RIGHT", -6, 0)
 	button.check = button:CreateTexture(nil, "ARTWORK")
-	button.check:SetSize(14, 14)
-	button.check:SetPoint("LEFT", 14, 0)
+	button.check:SetSize(ICON_SIZE, ICON_SIZE)
+	button.check:SetPoint("CENTER", button, "LEFT", 21, 0)   -- same middle as before, clear of the title at 34
 	button.title = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	button.title:SetPoint("TOPLEFT", 34, -3)
 	button.title:SetPoint("RIGHT", -8, 0)
@@ -254,13 +324,15 @@ local function InitRow(button, entry)
 	-- "where is the middle" -- hung by their right edge, the wider Classic
 	-- one sat left of the Forever one), the title stopping short of it
 	local right = tracked and -32 or -8
-	local LOGO_COLUMN, LOGO_BAND = 44, 10   -- the column's centre from the right edge; half the band's height
+	-- and its middle on the row's middle, level with the gem at the end of the
+	-- row's plate (user, 2026-09-23); both lines stop short of it
+	local LOGO_COLUMN = 44   -- the column's centre from the right edge
 	button.origin:ClearAllPoints()
-	button.origin:SetPoint("CENTER", button, "TOPRIGHT", right - LOGO_COLUMN, -3 - LOGO_BAND)
+	button.origin:SetPoint("CENTER", button, "RIGHT", right - LOGO_COLUMN, 0)
 	local logoWidth = MelloUI:ApplyQuestOriginLogo(button.origin, entry.row[QL.F_ID])
 	local tagRoom = logoWidth and (LOGO_COLUMN + logoWidth / 2 + 6) or 0
 	button.title:SetPoint("RIGHT", right - tagRoom, 0)
-	button.where:SetPoint("RIGHT", right, 0)
+	button.where:SetPoint("RIGHT", right - tagRoom, 0)
 	button:ClearNormalTexture()
 	button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
 	button:GetHighlightTexture():SetAlpha(0.6)
@@ -294,21 +366,20 @@ local function InitRow(button, entry)
 		button.check:SetAlpha(entry.ready and 1 or 0.6)
 		button.title:SetTextColor(r, g, b)
 	else
-		button.check:SetAtlas("QuestNormal")
+		-- not taken yet: the "!", or what the quest begins from (swords, chest, instance door)
+		local starter = QL.StarterKind(row)
+		if not (starter and QL.SetStarterIcon(button.check, starter)) then
+			button.check:SetAtlas("QuestNormal")
+		end
 		button.check:SetDesaturated(not entry.available)
 		button.check:SetAlpha(entry.available and 1 or 0.6)
 		button.title:SetTextColor(r, g, b)
 	end
 	local where
 	if entry.ready and (row[QL.F_ENDER] or "") ~= "" then
+		-- no coordinates on the row (they ran under the Classic / Forever logo);
+		-- the tooltip has them
 		where = "Turn in: " .. row[QL.F_ENDER]
-		local _, ex, ey = QL.EndPoint(row)
-		if not ex and QL.SameEnder(row) then
-			_, ex, ey = QL.GiverPoint(row)
-		end
-		if ex then
-			where = where .. string.format("   %.1f, %.1f", ex * 100, ey * 100)
-		end
 		if entry.showZone then
 			local endZone = QL.EnderZoneName(row) or QL.Data().zones[QL.ZoneOf(row)]
 			if endZone then
@@ -316,10 +387,9 @@ local function InitRow(button, entry)
 			end
 		end
 	elseif row[QL.F_GIVER] ~= "" then
-		where = row[QL.F_GIVER]
-		local _, gx, gy = QL.GiverPoint(row)
-		if gx then
-			where = where .. string.format("   %.1f, %.1f", gx * 100, gy * 100)
+		where = QL.GiverLabel(row)
+		if QL.InstanceStart(row) then
+			where = where .. " - found inside"
 		end
 		if entry.showZone then
 			local giverZone = QL.Data().zones[QL.ZoneOf(row)]
@@ -376,9 +446,94 @@ function QL.Panel:Create()
 		frame.bg:SetColorTexture(0.08, 0.06, 0.05, 1)
 	end
 
+	-- Filter by what a quest starts from (user, 2026-09-23): a quest giver, a
+	-- mob drop, an item picked up, or not known. Top right, beside the title.
+	local okF, filterButton = pcall(CreateFrame, "DropdownButton", nil, frame, "WowStyle1FilterDropdownTemplate")
+	if not okF then
+		filterButton = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		if filterButton.SetDefaultText then
+			filterButton:SetDefaultText("Filter")
+		end
+	end
+	filterButton:SetSize(94, 22)
+	filterButton:SetPoint("TOPRIGHT", -18, -34)
+	if filterButton.Text and filterButton.Text.SetText then
+		filterButton.Text:SetText("Filter")
+	end
+	filterButton:SetupMenu(function(_, root)
+		root:CreateTitle("Quests that start from")
+		for _, k in ipairs(QL.START_KINDS) do
+			root:CreateCheckbox(QL.StarterIconMarkup(k.key, 18) .. " " .. k.label,
+				function() return M.db[k.setting] ~= false end,
+				function()
+					MelloUI:NotifySettingChanged(M.name, k.setting, M.db[k.setting] == false)
+				end)
+		end
+	end)
+	-- the funnel button's reset (the red X) shows when any kind is hidden
+	if filterButton.SetIsDefaultCallback then
+		filterButton:SetIsDefaultCallback(function()
+			for _, k in ipairs(QL.START_KINDS) do
+				if M.db[k.setting] == false then
+					return false
+				end
+			end
+			return true
+		end)
+	end
+	if filterButton.SetDefaultCallback then
+		filterButton:SetDefaultCallback(function()
+			for _, k in ipairs(QL.START_KINDS) do
+				M.db[k.setting] = true
+			end
+			MelloUI:NotifySettingChanged(M.name, "startGiver", true)
+		end)
+	end
+	frame.filterButton = filterButton
+
+	-- Under the Filter button (user, 2026-09-23): a shortcut to the "Hide
+	-- Quests More Than N Levels Above Me" setting. Checked sets it to
+	-- LEVEL_SHORTCUT (hiding quests 5 or more levels above, the red ones);
+	-- unchecked puts it back to no limit. Any other value set in the settings
+	-- shows it unchecked.
+	local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+	check:SetSize(22, 22)
+	check:SetPoint("TOPRIGHT", filterButton, "BOTTOMRIGHT", 2, -2)
+	check.label = check:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	check.label:SetPoint("RIGHT", check, "LEFT", -1, 1)
+	check.label:SetText("Hide 5+ levels above me")
+	check:SetHitRectInsets(-(check.label:GetStringWidth() + 4), 0, 0, 0)
+	check:SetScript("OnClick", function(self)
+		MelloUI:NotifySettingChanged(M.name, "levelAbove", self:GetChecked() and LEVEL_SHORTCUT or 0)
+		PlaySound(self:GetChecked() and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+	end)
+	check:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:SetText("Hide quests 5+ levels above me", 1, 0.82, 0)
+		GameTooltip:AddLine("Leaves out the quests 5 or more levels above your character (the red ones) in the Quests list and on the map. "
+			.. "The same as Hide Quests More Than N Levels Above Me set to +4 in the settings; unchecked, no limit.", 0.9, 0.9, 0.9, true)
+		GameTooltip:Show()
+	end)
+	check:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	frame.levelCheck = check
+	-- and under it Hide completed (user, 2026-09-23: "should also be somewhere
+	-- there"; it sat under the filter buttons)
+	frame.hide = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+	frame.hide:SetSize(22, 22)
+	frame.hide:SetPoint("TOPRIGHT", check, "BOTTOMRIGHT", 0, 2)
+	frame.hide.text = frame.hide:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	frame.hide.text:SetPoint("RIGHT", frame.hide, "LEFT", -1, 1)
+	frame.hide.text:SetText("Hide completed")
+	frame.hide:SetHitRectInsets(-(frame.hide.text:GetStringWidth() + 4), 0, 0, 0)
+	frame.hide:SetScript("OnClick", function(self)
+		M.db.hideCompleted = self:GetChecked() and true or false
+		MelloUI:NotifySettingChanged(M.name, "hideCompleted", M.db.hideCompleted)
+		QL.Panel:Update()
+	end)
+
 	frame.zone = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
 	frame.zone:SetPoint("TOPLEFT", 18, -36)
-	frame.zone:SetPoint("RIGHT", -18, 0)
+	frame.zone:SetPoint("RIGHT", filterButton, "LEFT", -8, 0)
 	frame.zone:SetJustifyH("LEFT")
 	frame.zone:SetWordWrap(false)
 	frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -386,7 +541,9 @@ function QL.Panel:Create()
 	frame.count:SetJustifyH("LEFT")
 
 	frame.divider = frame:CreateTexture(nil, "ARTWORK")
-	frame.divider:SetPoint("TOPLEFT", frame.count, "BOTTOMLEFT", -6, -6)
+	-- below the count and the two check boxes under the Filter button
+	frame.divider:SetPoint("LEFT", 12, 0)
+	frame.divider:SetPoint("TOP", frame.hide, "BOTTOM", 0, -2)
 	frame.divider:SetPoint("RIGHT", -12, 0)
 	frame.divider:SetHeight(8)
 	if not pcall(frame.divider.SetAtlas, frame.divider, "QuestLog-frame-devider") then
@@ -437,23 +594,10 @@ function QL.Panel:Create()
 		end)
 		frame.filters[i] = b
 	end
-	frame.hide = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-	frame.hide:SetSize(22, 22)
-	-- Below the last row of buttons.
+	-- Virtualised list with headers and rows, below the last row of buttons.
 	local lastRowFirst = frame.filters[#frame.filters - ((#frame.filters - 1) % BUTTONS_PER_ROW)]
-	frame.hide:SetPoint("TOPLEFT", lastRowFirst, "BOTTOMLEFT", -4, -3)
-	frame.hide.text = frame.hide:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	frame.hide.text:SetPoint("LEFT", frame.hide, "RIGHT", 2, 0)
-	frame.hide.text:SetText("Hide completed")
-	frame.hide:SetScript("OnClick", function(self)
-		M.db.hideCompleted = self:GetChecked() and true or false
-		MelloUI:NotifySettingChanged(M.name, "hideCompleted", M.db.hideCompleted)
-		QL.Panel:Update()
-	end)
-
-	-- Virtualised list with headers and rows.
 	frame.scrollBox = CreateFrame("Frame", nil, frame, "WowScrollBoxList")
-	frame.scrollBox:SetPoint("TOPLEFT", frame.hide, "BOTTOMLEFT", 6, -4)
+	frame.scrollBox:SetPoint("TOPLEFT", lastRowFirst, "BOTTOMLEFT", 2, -6)
 	frame.scrollBox:SetPoint("BOTTOMRIGHT", -30, 14)
 	frame.scrollBar = CreateFrame("EventFrame", nil, frame, "MinimalScrollBar")
 	frame.scrollBar:SetPoint("TOPLEFT", frame.scrollBox, "TOPRIGHT", 6, 0)
@@ -476,6 +620,7 @@ function QL.Panel:Create()
 	frame.empty:Hide()
 
 	frame:SetScript("OnShow", function() QL.Panel:Update() end)
+
 end
 
 function QL.Panel:Apply()
@@ -484,6 +629,7 @@ function QL.Panel:Apply()
 	end
 	self.frame:SetWidth(tonumber(M.db.width) or 340)
 	self.frame:SetShown(M.isEnabled)
+	self.frame.levelCheck:SetChecked(tonumber(M.db.levelAbove) == LEVEL_SHORTCUT)
 	self:Update()
 end
 
@@ -495,7 +641,7 @@ local function BuildEntries(rows, groupOf, showZone)
 	local done, total = 0, 0
 	local level = QL.Plain(UnitLevel("player")) or 60
 	for _, row in ipairs(rows) do
-		if QL.Eligible(row) then
+		if QL.Eligible(row) and QL.StartShown(row) then
 			local completed = QL.IsCompleted(row[QL.F_ID])
 			total = total + 1
 			if completed then
@@ -580,6 +726,9 @@ function QL.Panel:Update()
 		b:SetAlpha((b.melloKitPlate or b.key == db.filter) and 1 or 0.6)
 	end
 	frame.hide:SetChecked(db.hideCompleted and true or false)
+	if frame.filterButton.ValidateResetState then
+		frame.filterButton:ValidateResetState()
+	end
 
 	local rows, title, groupOf, showZone
 	local term = frame.search and frame.search:GetText() or ""
@@ -689,7 +838,12 @@ function QL.Panel:Update()
 	frame.count:SetText(string.format("%d of %d completed", done, total))
 	frame.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
 	if #entries == 0 then
-		frame.empty:SetText(term ~= "" and "Nothing found." or (total == 0 and "No quests known for this zone." or "All completed."))
+		local filtered = false
+		for _, k in ipairs(QL.START_KINDS) do
+			filtered = filtered or db[k.setting] == false
+		end
+		frame.empty:SetText(term ~= "" and "Nothing found." or (total == 0 and (filtered and "No quests match the filter."
+			or "No quests known for this zone.") or "All completed."))
 		frame.empty:Show()
 	else
 		frame.empty:Hide()

@@ -29,6 +29,10 @@ local M = MelloUI:RegisterModule("QuestList", {
 	defaults = {
 		filter = "zone",
 		hideCompleted = false,
+		startGiver = true,
+		startDrop = true,
+		startPickup = true,
+		startUnknown = true,
 		otherFaction = false,
 		otherClass = false,
 		levelAbove = 0,
@@ -55,6 +59,14 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Which quests the panel lists. The buttons on the panel switch this as well." },
 		{ type = "toggle", key = "hideCompleted", name = "Hide Completed",
 		  desc = "Leave out quests you have already completed instead of greying them." },
+		{ type = "toggle", key = "startGiver", name = "Quests From a Quest Giver",
+		  desc = "List quests picked up from a quest giver or an object (the \"!\"). The Filter button on the panel switches these as well; they apply to the map pins too." },
+		{ type = "toggle", key = "startDrop", name = "Quests From a Mob Drop",
+		  desc = "List quests that begin with an item dropped by creatures (crossed swords)." },
+		{ type = "toggle", key = "startPickup", name = "Quests From an Item Picked Up",
+		  desc = "List quests that begin with an item picked up from the ground or a chest (treasure chest)." },
+		{ type = "toggle", key = "startUnknown", name = "Quests Starting Somewhere Unknown",
+		  desc = "List quests whose giver or starting item is not known yet." },
 		{ type = "toggle", key = "otherFaction", name = "Show Other Faction's Quests",
 		  desc = "Also list quests only the other faction can take." },
 		{ type = "toggle", key = "otherClass", name = "Show Other Classes' Quests",
@@ -377,6 +389,151 @@ function QL.ProjectOnMap(res, mapID)
 		return nil
 	end
 	return InRect(r, res.cx, res.cy)
+end
+
+-- Giver kinds: 1 NPC, 2 object, and an item that begins the quest: 3 dropped
+-- by creatures, 4 picked up from an object; items sit at their densest spot.
+QL.KIND_DROP, QL.KIND_PICKUP = 3, 4
+
+function QL.IsItemStart(row)
+	local kind = row[QL.F_KIND]
+	return kind == QL.KIND_DROP or kind == QL.KIND_PICKUP
+end
+
+-- The dungeon or raid a quest's item or object is found in, when it is found
+-- only inside one (no spot on the world map), or nil.
+function QL.InstanceStart(row)
+	if (row[QL.F_GIVER] or "") == "" or not (QL.IsItemStart(row) or row[QL.F_KIND] == 2) then
+		return nil
+	end
+	if row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0 or (row[QL.F_CONT] or -1) >= 0 then
+		return nil
+	end
+	local zone = row[QL.F_GIVERZONE]
+	return zone ~= 0 and QL.Data().dungeons[zone] and zone or nil
+end
+
+function QL.IsRaid(dungeonID)
+	return QL.Data().raids and QL.Data().raids[dungeonID] == true
+end
+
+-- How a quest begun by an item or object is marked instead of the "!" (user,
+-- 2026-09-23): crossed swords for an item killed for in the world, a chest
+-- for one picked up (ground, chest, object), the entrance icon for one found
+-- only inside a dungeon or raid; nil for an NPC giver.
+function QL.StarterKind(row)
+	local instance = QL.InstanceStart(row)
+	if instance then
+		return QL.IsRaid(instance) and "raid" or "dungeon"
+	end
+	local kind = row[QL.F_KIND]
+	return kind == QL.KIND_DROP and "drop" or kind == QL.KIND_PICKUP and "pickup" or nil
+end
+
+-- What a quest starts from, for the panel's filter: "giver" (an NPC or an
+-- object, the "!"), "drop", "pickup", or "unknown".
+QL.START_KINDS = {
+	{ key = "giver", setting = "startGiver", label = "Quest giver" },
+	{ key = "drop", setting = "startDrop", label = "Mob drop" },
+	{ key = "pickup", setting = "startPickup", label = "Picked up" },
+	{ key = "unknown", setting = "startUnknown", label = "Unknown" },
+}
+
+function QL.StartCategory(row)
+	if (row[QL.F_GIVER] or "") == "" then
+		return "unknown"
+	end
+	local kind = row[QL.F_KIND]
+	return kind == QL.KIND_DROP and "drop" or kind == QL.KIND_PICKUP and "pickup" or "giver"
+end
+
+function QL.StartShown(row)
+	local cat = QL.StartCategory(row)
+	for _, k in ipairs(QL.START_KINDS) do
+		if k.key == cat then
+			return M.db[k.setting] ~= false
+		end
+	end
+	return true
+end
+
+-- Atlases in the order tried (not every client has each), then a plain file.
+local STARTER_ICON = {
+	drop = { atlas = { "ui-hud-unitframe-player-combaticon" }, file = "Interface/CharacterFrame/UI-StateIcon", coords = { 0.5, 1, 0, 0.484375 } },
+	pickup = { atlas = { "VignetteLoot", "Mobile-TreasureIcon" }, file = "Interface/Cursor/Pickup" },
+	dungeon = { atlas = { "Dungeon", "DungeonSkull" }, file = "Interface/Minimap/Tracking/None" },
+	raid = { atlas = { "Raid", "DungeonSkull" }, file = "Interface/Minimap/Tracking/None" },
+}
+
+-- The same icons inline in text (menus): atlas markup, else the file's.
+function QL.StarterIconMarkup(key, size)
+	size = size or 14
+	if key == "giver" then
+		return string.format("|A:QuestNormal:%d:%d|a", size, size)
+	elseif key == "unknown" then
+		return string.format("|TInterface/Minimap/Tracking/None:%d:%d|t", size, size)
+	end
+	local icon = STARTER_ICON[key]
+	if not icon then
+		return ""
+	end
+	for _, atlas in ipairs(icon.atlas) do
+		if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
+			return string.format("|A:%s:%d:%d|a", atlas, size, size)
+		end
+	end
+	local c = icon.coords or { 0, 1, 0, 1 }
+	return string.format("|T%s:%d:%d:0:0:64:64:%d:%d:%d:%d|t", icon.file, size, size, c[1] * 64, c[2] * 64, c[3] * 64, c[4] * 64)
+end
+
+function QL.SetStarterIcon(tex, key)
+	local icon = STARTER_ICON[key]
+	if not icon then
+		return false
+	end
+	for _, atlas in ipairs(icon.atlas) do
+		if pcall(tex.SetAtlas, tex, atlas) and tex:GetAtlas() then
+			return true
+		end
+	end
+	tex:SetTexture(icon.file)
+	local c = icon.coords
+	if c then
+		tex:SetTexCoord(c[1], c[2], c[3], c[4])
+	else
+		tex:SetTexCoord(0, 1, 0, 1)
+	end
+	return true
+end
+
+-- An instance's door: uiMapID, x, y from the entrance data, else from an
+-- entrance learned by walking in.
+function QL.EntrancePoint(dungeonID)
+	local data = QL.Data()
+	for _, e in ipairs(data.entrances or {}) do
+		if e[1] == dungeonID then
+			local res = QL.ResolveWorld(e[3], e[4], e[5])
+			if res then
+				return res.mapID, res.x, res.y
+			end
+		end
+	end
+	local name = (data.dungeons[dungeonID] or ""):lower()
+	for learnedName, l in pairs(QL.LearnedStore("entrances") or {}) do
+		if learnedName:lower() == name and l.mapID and l.x then
+			return l.mapID, l.x, l.y
+		end
+	end
+	return nil
+end
+
+-- Who gives a quest, as the list shows it: the NPC or object, or the item.
+function QL.GiverLabel(row)
+	local giver = row[QL.F_GIVER] or ""
+	if giver ~= "" and QL.IsItemStart(row) then
+		return "Item: " .. giver
+	end
+	return giver
 end
 
 -- Where a quest giver is: uiMapID, x, y (0..1) from the client's placement,
@@ -782,6 +939,11 @@ function QL.SetWaypoint(row, atEnder)
 	if not x then
 		mapID, x, y = QL.GiverPoint(row)
 	end
+	-- An item found only inside a dungeon or raid: to its entrance.
+	local instance = not x and not atEnder and QL.InstanceStart(row)
+	if instance then
+		mapID, x, y = QL.EntrancePoint(instance)
+	end
 	if not x then
 		return false
 	end
@@ -802,8 +964,15 @@ function QL.SetWaypoint(row, atEnder)
 		local who = atEnder and (row[QL.F_ENDER] or "") ~= "" and row[QL.F_ENDER] or row[QL.F_GIVER]
 		local icon = atEnder and "|A:QuestTurnin:16:16|a " or "|A:QuestNormal:16:16|a "
 		local label = icon .. row[QL.F_TITLE] .. (who ~= "" and (" - " .. who) or "")
-		local what = atEnder and "turn-in" or "quest giver"
+		local what = atEnder and "turn-in" or QL.IsItemStart(row) and "item" or "quest giver"
 		local text = string.format("%sTracking %s %s for %s, {dist} away", icon, what, who ~= "" and who or "", row[QL.F_TITLE])
+		if instance then
+			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
+			icon = QL.IsRaid(instance) and "|A:Raid:16:16|a " or "|A:Dungeon:16:16|a "
+			label = icon .. row[QL.F_TITLE] .. " - " .. QL.Data().dungeons[instance]
+			text = string.format("%sTracking the %s entrance of %s for %s (%s is found inside), {dist} away", icon, kind,
+				QL.Data().dungeons[instance], row[QL.F_TITLE], who)
+		end
 		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, text) then
 			QL.trackedQuestID = row[QL.F_ID]
 			return true

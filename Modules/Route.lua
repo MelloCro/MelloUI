@@ -1472,6 +1472,45 @@ local function QuestObjectivePoint(questID)
 	return nil
 end
 
+-- What the game super-tracks: the quest ID (nil for none) and whether it is
+-- the map pin (nil when this client cannot say). The game tracks one at a
+-- time; its navigation frame (the world marker) follows only that one.
+local function SuperTrackState()
+	local quest, pin
+	if C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID then
+		local ok, id = pcall(C_SuperTrack.GetSuperTrackedQuestID)
+		quest = ok and Plain(id) or nil
+		if quest == 0 then
+			quest = nil
+		end
+	end
+	if C_SuperTrack and C_SuperTrack.IsSuperTrackingUserWaypoint then
+		local ok, on = pcall(C_SuperTrack.IsSuperTrackingUserWaypoint)
+		pin = ok and Plain(on)
+		if pin ~= nil then
+			pin = pin and true or false
+		end
+	end
+	return quest, pin
+end
+
+-- Choosing a quest to track while a map pin is set replaces the pin (user,
+-- 2026-09-23: the pin stayed, the route kept going to it, and once the quest
+-- was untracked again the arrow round the character froze on it).
+local function DropPinForTrackedQuest()
+	if not (C_Map.HasUserWaypoint and C_Map.ClearUserWaypoint) then
+		return
+	end
+	local okH, has = pcall(C_Map.HasUserWaypoint)
+	if not (okH and Plain(has)) then
+		return
+	end
+	local quest, pin = SuperTrackState()
+	if quest and pin == false then
+		pcall(C_Map.ClearUserWaypoint)
+	end
+end
+
 local function TrackedQuestID()
 	local questID
 	if C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID then
@@ -2453,6 +2492,24 @@ local function ScreenPlace(nav)
 	return off, fx, fy
 end
 
+-- The navigation frame follows whatever the game super-tracks; the marker
+-- hangs on it only while that is our destination: the map pin for a pin, the
+-- same quest for a quest. With nothing super-tracked the frame is left where
+-- it last was (the arrow froze there, user 2026-09-23).
+local function NavIsOurs()
+	if not destination then
+		return false
+	end
+	if not C_SuperTrack then
+		return true
+	end
+	local quest, pin = SuperTrackState()
+	if destination.fromQuest then
+		return quest ~= nil and quest == destination.questID
+	end
+	return pin ~= false
+end
+
 local UpdateMarker   -- below: the tick hides the marker through it
 
 local function MarkerTick(self, elapsed)
@@ -2466,7 +2523,7 @@ local function MarkerTick(self, elapsed)
 	-- navigation frame gone: away at once, whatever else still ticks
 	-- (user, 2026-09-23: the arrow stayed round the character after clearing)
 	local nav = self.nav
-	if not (nav and destination and M.isEnabled and M.db.worldMarker) or NavFrame() ~= nav then
+	if not (nav and destination and M.isEnabled and M.db.worldMarker) or NavFrame() ~= nav or not NavIsOurs() then
 		UpdateMarker()
 		return
 	end
@@ -2635,7 +2692,7 @@ UpdateMarker = function()
 	if not marker then
 		return
 	end
-	local nav = M.isEnabled and M.db.worldMarker and destination and NavFrame() or nil
+	local nav = M.isEnabled and M.db.worldMarker and destination and NavIsOurs() and NavFrame() or nil
 	if not nav then
 		if marker:IsShown() then
 			marker:Hide()
@@ -2960,6 +3017,9 @@ eventFrame:SetScript("OnEvent", function(_, event)
 		taxiStart = nil
 		C_Timer.After(1, function() ReadWaypoint() end)
 	elseif event == "USER_WAYPOINT_UPDATED" or event == "SUPER_TRACKING_CHANGED" then
+		if event == "SUPER_TRACKING_CHANGED" then
+			DropPinForTrackedQuest()
+		end
 		ReadWaypoint()
 	elseif event == "QUEST_POI_UPDATE" or event == "QUEST_LOG_UPDATE" then
 		if destination and destination.fromQuest then

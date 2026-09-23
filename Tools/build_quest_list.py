@@ -16,8 +16,14 @@ Sources:
 Usage:
   python Tools/build_quest_list.py [--fetch-npcs] [--refresh-npcs] [--out Media/QuestListData.lua]
 
+A quest no NPC gives is placed at what begins it: an item (classic-db's
+startquest and loot, or the Wowhead item page) or an object (the Forever
+quest page's Start).
+
 --fetch-npcs downloads the Wowhead NPC pages of Forever quest givers and
-turn-ins not yet cached, one every 2.5 s, to learn their zone and place.
+turn-ins not yet cached, one every 2.5 s, to learn their zone and place,
+and the item / NPC / object pages that place the items and objects
+quests begin from.
 --refresh-npcs also re-downloads cached NPC pages that have no coordinates
 (pages cached before Wowhead added them).
 """
@@ -25,6 +31,7 @@ turn-ins not yet cached, one every 2.5 s, to learn their zone and place.
 import argparse
 import glob
 import gzip
+import html
 import json
 import math
 import os
@@ -312,6 +319,269 @@ def place_on_map(zones, places, prefer_area=0):
     wy = z["y1"] - px / 100 * (z["y1"] - z["y0"])
     wx = z["x1"] - py / 100 * (z["x1"] - z["x0"])
     return area, round(px, 1), round(py, 1), z["mapID"], round(wx, 1), round(wy, 1)
+
+
+# ---------------------------------------------------------------------------
+# Quests begun by an item or an object (no NPC gives them)
+# ---------------------------------------------------------------------------
+
+MIN_DROP = 0.5       # percent: a rarer drop is no place to find the item
+
+
+def wh_places(page):
+    """Every point of a Wowhead page's map: [(areaID, uiMapID, x %, y %)]."""
+    m = MAPPER.search(page or "")
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(1))
+    except ValueError:
+        return []
+    out = []
+    for area, spots in data.items():
+        for spot in spots if isinstance(spots, list) else []:
+            for c in spot.get("coords") or []:
+                if spot.get("uiMapId") and len(c) >= 2:
+                    out.append((int(area), int(spot["uiMapId"]), float(c[0]), float(c[1])))
+    return out
+
+
+def wh_listview(page, lv_id):
+    """The data of one Listview of a Wowhead page (dropped-by, contained-in-object ...)."""
+    i = (page or "").find(f"id: '{lv_id}'")
+    j = page.find("data:", i) if i >= 0 else -1
+    end = page.find("new Listview(", i + 10) if i >= 0 else -1
+    if j < 0 or (0 <= end < j):
+        return []
+    seg = page[j + 5:].lstrip()
+    depth = 0
+    for n, ch in enumerate(seg):
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(seg[:n + 1])
+                except ValueError:
+                    return []
+    return []
+
+
+def read_cached(kind, i):
+    path = os.path.join(WOWHEAD, f"{kind}_{i}.html")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    return None
+
+
+def load_starters(sql, spawns, zones, quest_ids, fetch=False):
+    """Quests begun by an item or an object rather than an NPC (user,
+    2026-09-23: "quest giver unknown" on Furlbrow's Deed, which starts from
+    the Westfall Deed drop).
+
+    Items: classic-db's item_template.startquest, and the Wowhead item pages
+    cached for Forever ("This Item Begins a Quest"); where they come from is
+    classic-db's creature / chest loot for a Classic item, else the item
+    page's "dropped by" and "contained in" lists. Objects: the Start of a
+    Forever quest page, placed by classic-db's spawns or the object's Wowhead
+    map. Returns quest -> (kind 2 object, 3 item dropped by creatures, 4 item
+    picked up from an object, name, [(map, x, y)])."""
+    wanted = set(quest_ids)
+    out = {}
+    items = {}                                     # item -> (name, [quests])
+    for r in sql_rows(sql, "item_template"):
+        q = int(r.get("startquest") or 0)
+        if q in wanted:
+            items.setdefault(int(r["entry"]), (r["name"], []))[1].append(q)
+    classic_items = set(items)
+    for f in glob.glob(os.path.join(WOWHEAD, "item_*.html")):
+        page = open(f, encoding="utf-8").read()
+        m = re.search(r'/quest=(\d+)[^"]*" class="q1">This Item Begins a Quest', page)
+        if not m or int(m.group(1)) not in wanted:
+            continue
+        iid = int(os.path.basename(f)[5:-5])
+        if iid in items:
+            continue
+        n = re.search(r"<title>(.*?) - Item", page)
+        items[iid] = (html.unescape(n.group(1)) if n else "", [int(m.group(1))])
+    # Forever quest pages naming an object (or an item) as their start
+    objects = {}
+    for qid in quest_ids:
+        page = read_cached("quest", qid)
+        if not page:
+            continue
+        m = re.search(r"Start: (?:\[span[^\]]*\])?\[url=/forever/(object|item)=(\d+)/[^\]]*\]([^\[]*)\[/url\]",
+                      page.replace("\\/", "/"))
+        if m and m.group(1) == "object":
+            objects[qid] = (int(m.group(2)), html.unescape(m.group(3)))
+        elif m and int(m.group(2)) not in items:
+            items[int(m.group(2))] = (html.unescape(m.group(3)), [qid])
+
+    # classic-db loot of the Classic items
+    need = {i for i in items if i in classic_items}
+    loot_c, loot_o = defaultdict(list), defaultdict(list)
+    for r in sql_rows(sql, "creature_template"):
+        if int(r["LootId"] or 0):
+            loot_c[int(r["LootId"])].append(int(r["Entry"]))
+    for r in sql_rows(sql, "gameobject_template"):
+        if int(r["type"]) in (3, 25) and int(r["data1"] or 0):
+            loot_o[int(r["data1"])].append(int(r["entry"]))
+    # one step back: the container an item comes out of (a crate, a clam),
+    # and the shared loot tables ("references") a boss's loot points to
+    container_of = defaultdict(list)
+    for r in sql_rows(sql, "item_loot_template"):
+        if int(r["item"]) in need:
+            container_of[int(r["item"])].append(int(r["entry"]))
+    targets = need | {c for cs in container_of.values() for c in cs}
+    refs_of = defaultdict(list)
+    for r in sql_rows(sql, "reference_loot_template"):
+        if int(r["item"]) in targets:
+            refs_of[int(r["item"])].append(int(r["entry"]))
+    wanted_refs = {ref for rs in refs_of.values() for ref in rs}
+    direct = defaultdict(list)                     # item -> [("npc"|"object"|"vendor", entry)]
+    rare = defaultdict(list)                       # the same, from drops rarer than MIN_DROP
+    ref_users = defaultdict(list)                  # reference -> owners whose loot uses it
+    for table, owners, kind in (("creature_loot_template", loot_c, "npc"), ("gameobject_loot_template", loot_o, "object")):
+        for r in sql_rows(sql, table):
+            item, ref = int(r["item"]), int(r["mincountOrRef"] or 0)
+            if ref < 0:
+                if -ref in wanted_refs:
+                    ref_users[-ref] += [(kind, o) for o in owners.get(int(r["entry"]), ())]
+                continue
+            if item not in targets:
+                continue
+            chance = abs(float(r["ChanceOrQuestChance"] or 0))
+            for owner in owners.get(int(r["entry"]), ()):
+                (rare if chance and chance < MIN_DROP else direct)[item].append((kind, owner))
+
+    def found(item):
+        """Where an item comes from: its drops, else its rare drops (still the
+        only way to get it), else a boss's shared loot table (not a world drop
+        table used by many), else the creatures and objects of its container."""
+        if direct.get(item):
+            return direct[item]
+        if rare.get(item):
+            return rare[item]
+        users = [u for ref in refs_of.get(item, ()) for u in ref_users.get(ref, ()) if len(ref_users[ref]) <= 20]
+        if users:
+            return users
+        return [s for c in container_of.get(item, ()) for s in (direct.get(c) or rare.get(c) or [])]
+
+    sources = defaultdict(list)
+    for iid in need:
+        sources[iid] = found(iid)
+    vendor_of = defaultdict(list)                  # vendor template -> creature entries
+    for r in sql_rows(sql, "creature_template"):
+        if int(r.get("VendorTemplateId") or 0):
+            vendor_of[int(r["VendorTemplateId"])].append(int(r["Entry"]))
+    sold = defaultdict(list)
+    for r in sql_rows(sql, "npc_vendor"):
+        sold[int(r["item"])].append(("vendor", int(r["entry"])))
+    for r in sql_rows(sql, "npc_vendor_template"):
+        sold[int(r["item"])] += [("vendor", e) for e in vendor_of.get(int(r["entry"]), ())]
+    for iid in items:
+        if iid not in classic_items:
+            page = read_cached("item", iid)
+            sources[iid] += [("npc", int(d["id"])) for d in wh_listview(page, "dropped-by") if d.get("id")]
+            sources[iid] += [("object", int(d["id"])) for d in wh_listview(page, "contained-in-object") if d.get("id")]
+            if not sources[iid]:
+                sources[iid] = [("vendor", int(d["id"])) for d in wh_listview(page, "sold-by") if d.get("id")]
+        elif not sources.get(iid):
+            sources[iid] = sold.get(iid, [])
+
+    def missing():
+        miss = {("object", oid) for oid, _ in objects.values() if ("object", oid) not in spawns}
+        for iid in items:
+            if iid not in classic_items and read_cached("item", iid) is None:
+                miss.add(("item", iid))
+            for kind, e in sources.get(iid, ()):
+                kind = "npc" if kind == "vendor" else kind
+                if (kind, e) not in spawns:
+                    miss.add((kind, e))
+        return sorted(m for m in miss if read_cached(*m) is None)
+
+    if fetch:
+        todo = missing()
+        if todo:
+            log(f"fetching {len(todo)} Wowhead pages for quests begun by an item or object")
+        for n, (kind, i) in enumerate(todo, 1):
+            try:
+                fetch_page(f"{BASE}/{kind}={i}", os.path.join(WOWHEAD, f"{kind}_{i}.html"))
+            except Exception as exc:  # noqa: BLE001
+                log(f"   {kind} {i}: {exc}")
+            if n % 25 == 0:
+                log(f"   {n}/{len(todo)}")
+
+    def points(kind, e):
+        kind = "npc" if kind == "vendor" else kind
+        pts = spawns.get((kind, e))
+        if pts:
+            return pts
+        out_pts = []
+        for place in wh_places(read_cached(kind, e)):
+            p = place_on_map(zones, [place])
+            if p:
+                out_pts.append((p[3], p[4], p[5]))
+        return out_pts
+
+    for iid, (name, quests) in items.items():
+        dropped, picked = [], []
+        for kind, e in sources.get(iid, ()):
+            (dropped if kind == "npc" else picked).extend(points(kind, e))
+        # dropped by creatures (3) or picked up from an object or bought (4), by where most of it comes from
+        kind = 4 if len(picked) > len(dropped) else 3
+        for q in quests:
+            out.setdefault(q, (kind, name, dropped + picked))
+    for qid, (oid, name) in objects.items():
+        out.setdefault(qid, (2, name, points("object", oid)))
+    log(f"  {sum(1 for v in out.values() if v[0] == 3)} quests begun by a dropped item, "
+        f"{sum(1 for v in out.values() if v[0] == 4)} by an item picked up, "
+        f"{sum(1 for v in out.values() if v[0] == 2)} by an object")
+    return out
+
+
+CLUSTER = 150        # yards: the neighbourhood counted when looking for the densest spot
+QUEST_ZONE_SHARE = 0.25   # the quest's own zone wins when at least this share of the sources lie there
+
+
+def starter_place(zones, pts, quest_zone, map_area=None):
+    """Where a quest-starting item or object is found: (areaID, x %, y %, world).
+    The zone most sources lie in (the quest's own zone when a fair share do),
+    and in it the densest spot (user, 2026-09-23: the area where the mobs are,
+    not just the zone): the source with the most others within CLUSTER yards,
+    moved to the source nearest the middle of that group."""
+    located = []
+    for m, x, y in pts:
+        loc = locate(zones, m, x, y)
+        if loc:
+            located.append((loc, m, x, y))
+    if not located:
+        # found only inside an instance: no spot on the world map, but the
+        # instance as its zone (the quest is then filed under that dungeon)
+        maps = defaultdict(int)
+        for m, _, _ in pts:
+            maps[m] += 1
+        area = (map_area or {}).get(max(maps, key=maps.get), 0) if maps else 0
+        return area, 0, 0, (-1, 0, 0)
+    count = defaultdict(int)
+    for p in located:
+        count[p[0][0]["areaID"]] += 1
+    zone = max(count, key=count.get)
+    if quest_zone and count.get(quest_zone, 0) >= QUEST_ZONE_SHARE * len(located):
+        zone = quest_zone
+    pool = [p for p in located if p[0][0]["areaID"] == zone]
+    pool = list({(p[1], round(p[2]), round(p[3])): p for p in pool}.values())   # one per spawn spot
+
+    def near(a):
+        return [b for b in pool if b[1] == a[1] and math.hypot(b[2] - a[2], b[3] - a[3]) <= CLUSTER]
+    group = max((near(a) for a in pool), key=len)
+    cx = sum(p[2] for p in group) / len(group)
+    cy = sum(p[3] for p in group) / len(group)
+    best = min(group, key=lambda p: math.hypot(p[2] - cx, p[3] - cy))
+    (z, px, py), m0, x0, y0 = best
+    return zone, px, py, (m0, round(x0, 1), round(y0, 1))
 
 
 # ---------------------------------------------------------------------------
@@ -692,12 +962,30 @@ def main():
         if rec.get("npcID"):
             fgivers[int(qid)] = {"npcID": rec["npcID"], "name": rec.get("npc") or ""}
 
+    starters = load_starters(sql, spawns, zones, list(listing), args.fetch_npcs)
+
     chain_of, chain_names, prev_of = build_chains(sql, listing)
     wh_zones = load_wowhead_zones()
     for zid, (name, _, _) in wh_zones.items():
         areas.setdefault(zid, name)   # Forever's new zones and instances
     instances = {zid for zid, (_, kind, _) in wh_zones.items() if kind in (2, 3)}
     raids = {zid for zid, (_, kind, _) in wh_zones.items() if kind == 3}
+    # Instance map -> the instance's zone, for items found only inside one.
+    # Wowhead files some instances under another ID than the client's area
+    # (Blackrock Spire: the dungeon is 17804, 1583 the zone), matched by name;
+    # one it lists only as a zone (Onyxia's Lair) is an instance by the client's
+    # own map type.
+    instance_by_name = {wh_zones[z][0].lower(): z for z in instances}
+    map_area, unlisted = {}, {}                    # unlisted: area -> (name, raid), added when a starter is there
+    for r in db2("Map"):
+        itype, area = int(r.get("InstanceType") or 0), int(r.get("AreaTableID") or 0)
+        if itype not in (1, 2) or not area:
+            continue
+        if area not in instances:
+            area = instance_by_name.get((r.get("MapName_lang") or "").lower(), area)
+        if area not in instances:
+            unlisted[area] = (r.get("MapName_lang") or str(area), itype == 2)
+        map_area[int(r["ID"])] = area
     # Wowhead's instance pages list only quests already filed under the
     # instance, and Forever's new instances have no quest data there at all,
     # so there is nothing extra to learn from them; quests picked up inside an
@@ -766,6 +1054,17 @@ def main():
             else:
                 giver_zone = npc_zone.get(g["npcID"], 0)
                 stats["forever giver, zone only" if giver_zone else "forever giver, no zone"] += 1
+        elif qid in starters:
+            kind, giver_name, pts = starters[qid]
+            giver_zone, gx, gy, world = starter_place(zones, pts, quest_zone, map_area)
+            if giver_zone in unlisted and world[0] < 0:
+                name, is_raid = unlisted.pop(giver_zone)
+                instances.add(giver_zone)
+                areas.setdefault(giver_zone, name)
+                if is_raid:
+                    raids.add(giver_zone)
+            what = {2: "an object", 3: "a dropped item", 4: "an item picked up"}[kind]
+            stats[f"begun by {what}, " + ("placed" if world[0] >= 0 else "in an instance" if giver_zone else "no place")] += 1
         else:
             stats["no giver known"] += 1
         # Who takes the quest back, placed like the giver.
@@ -839,7 +1138,8 @@ def main():
         fh.write("-- Sources: Wowhead Forever listing, cmangos classic-db, wago.tools DB2 exports, in-game positions.\n\n")
         fh.write("MelloUI_QuestListData = {\n")
         fh.write("\t-- quest fields: id, title, level, required level, side (1 Alliance, 2 Horde, 3 both), class mask,\n")
-        fh.write("\t-- quest zone (area id), pick-up zone (area id), giver name, giver x, giver y, giver kind (1 NPC, 2 object),\n")
+        fh.write("\t-- quest zone (area id), pick-up zone (area id), giver name, giver x, giver y,\n")
+        fh.write("\t-- giver kind (1 NPC, 2 object, 3 item dropped by creatures, 4 item picked up; 3 and 4 at their densest spot),\n")
         fh.write("\t-- event (key into events, 0 for none), chain (key into chains, 0 for none), dungeon (key into dungeons, 0 for none),\n")
         fh.write("\t-- attunement (1 when the quest or its chain grants access to an instance),\n")
         fh.write("\t-- previous quest in the chain, giver continent, giver world x, giver world y, giver NPC entry,\n")
