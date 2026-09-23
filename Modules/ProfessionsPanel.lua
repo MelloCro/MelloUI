@@ -23,12 +23,33 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
 
+local LOOKS = Kit.buttonLooks
+
+-- The crafting page's backgrounds (user, 2026-09-23: "onto the Crafting Tab
+-- next"): the page behind everything (the cracked concrete by default) and
+-- the recipe list's box (its darker list stone by default), each one of the
+-- backgrounds the bars and windows offer (not None: the world would show)
+local PAGE_BACKGROUNDS, LIST_BACKGROUNDS = {}, { { value = "list", label = "List stone", piece = "window/single_body" } }
+for _, v in ipairs(LOOKS.backgrounds) do
+	if v.value ~= "none" then
+		PAGE_BACKGROUNDS[#PAGE_BACKGROUNDS + 1] = v
+		LIST_BACKGROUNDS[#LIST_BACKGROUNDS + 1] = v
+	end
+end
+
 local M = MelloUI:RegisterModule("ProfessionsPanel", {
 	title = "Professions Panel",
 	desc = "The professions window dressed in the painted kit on the game's own layout.",
 	enabledByDefault = true,
-	defaults = {},
-	options = {},
+	defaults = { pageBackground = "concrete", listBackground = "list", bookBackground = "concrete" },
+	options = {
+		{ type = "dropdown", key = "bookBackground", name = "Book Page Background", values = PAGE_BACKGROUNDS,
+		  desc = "What the professions' book page shows behind the profession cards: cracked concrete, stone, iron plate, parchment, leather or dark. The spells' rims wear UI Modifications' Button Border, the rank bars its Progress Bar Border." },
+		{ type = "dropdown", key = "pageBackground", name = "Crafting Page Background", values = PAGE_BACKGROUNDS,
+		  desc = "What the crafting page shows behind the recipe list and the recipe: cracked concrete, stone, iron plate, parchment, leather or dark." },
+		{ type = "dropdown", key = "listBackground", name = "Recipe List Background", values = LIST_BACKGROUNDS,
+		  desc = "What the recipe list shows behind its rows: its darker list stone, or one of the other backgrounds. Both are also in Dynamic UI Modification. The reagent slots wear UI Modifications' Button Border, the rank bar its Progress Bar Border, the finished item its Round Border (every window's)." },
+	},
 })
 
 local skin = nil        -- the registry of replacements, built once the window exists
@@ -157,6 +178,7 @@ local function SkinRankBar(bar)
 		rep:Refit()
 		Fit()
 	end
+	rep.onBarChanged = Fit   -- a new Progress Bar Border (every window's)
 	rep.onDisable = function()
 		RestorePoints(fill, savedFill)
 		if mask then
@@ -201,6 +223,29 @@ local function SkinRankBar(bar)
 	end
 end
 
+-- A reagent slot's or a profession spell's rim in every window's Button
+-- Border (a thin look hugging the icon, its edge 2 px under the rim's inner
+-- edge, as the spell book's), on the icon's centre
+local iconRims = {}
+local function FitIconRim(button)
+	local rep = button.melloRep
+	local rim = rep and rep.object
+	local icon = button.Icon or button.icon or button.IconTexture
+	if not (rim and rim.base and icon) then
+		return
+	end
+	local name = rim.base .. "_normal"
+	local p = Kit:Piece(name)
+	local l, r, t, b = Kit:Insets(name, 1)
+	local ok, iw, ih = pcall(icon.GetSize, icon)
+	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 then
+		return
+	end
+	rim:ClearAllPoints()
+	rim:SetPoint("CENTER", icon, "CENTER")
+	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
+end
+
 -- A profession card of the book page: its Background — a primary card's is
 -- re-atlased per profession in FormatProfession (-Blacksmithing, ...; the
 -- bare atlas when no profession is in the slot), so one replacement per
@@ -243,9 +288,16 @@ local function SkinCard(card)
 	end
 	card.melloReps = {}
 	RefreshCard(card)
+	-- the spells' rims: every window's Button Border, hugging the icon
+	-- (user, 2026-09-23: "onto the Professions Tab next")
 	for _, button in ipairs(card.spellButtons or {}) do
-		if button.IconTextureOverlay then
-			Replace(button.IconTextureOverlay, { as = "Profession-square-frame", button = button, parent = button })
+		if button.IconTextureOverlay and button.melloRep == nil then
+			button.melloRep = Replace(button.IconTextureOverlay, { as = "Profession-square-frame", button = button, parent = button }) or false
+			if button.melloRep then
+				iconRims[#iconRims + 1] = button
+				Kit:RegisterButtonRim(button)
+				FitIconRim(button)
+			end
 		end
 	end
 	SkinRankBar(card.StatusBar)
@@ -366,7 +418,18 @@ local function SkinReagentSlot(button)
 		return
 	end
 	button.melloRep = (button.IconBorder and Replace(button.IconBorder, { as = "Professions-Slot-Frame", button = button, parent = button })) or false
+	if button.melloRep then
+		iconRims[#iconRims + 1] = button
+		Kit:RegisterButtonRim(button)
+		FitIconRim(button)
+	end
 end
+
+Kit:OnBorderChanged("button", function()
+	for _, button in ipairs(iconRims) do
+		FitIconRim(button)
+	end
+end)
 
 local function SkinReagents(form)
 	if not (form and form.Reagents) then
@@ -406,13 +469,13 @@ local function SkinCraftingPage(page)
 	-- the page's backdrop: the page stone
 	local pageBg = FirstArt(page, "Profession-Background-Template2")
 	if pageBg then
-		Replace(pageBg, { as = "Profession-Background-Template2" })
+		skin.pageBg = Replace(pageBg, { as = "Profession-Background-Template2" })
 	end
 	-- the recipe list: its box, search box, filter dropdown, rows, scroll bar
 	local list = page.RecipeList
 	if list then
 		if list.Background then
-			Replace(list.Background, { as = "Professions-background-summarylist" })
+			skin.listBox = Replace(list.Background, { as = "Professions-background-summarylist" })
 		end
 		local search = list.SearchBox
 		if search and search.Middle then
@@ -846,7 +909,7 @@ local function BuildSkin()
 		end
 	end
 	if bg then
-		Replace(bg, { as = "Profession-Background-Overview" })
+		skin.bookBg = Replace(bg, { as = "Profession-Background-Overview" })
 	else
 		MelloUI:Notice("Professions panel: the page backdrop texture was not found")
 	end
@@ -969,6 +1032,35 @@ end
 -- Activation
 --------------------------------------------------------------------------------
 
+-- The crafting page's two backgrounds as chosen: the page picture's piece
+-- swapped (Kit's picture SetPiece), the list box's stone body re-applied
+local function ApplyBackgrounds()
+	if not skin then
+		return
+	end
+	if skin.pageBg and skin.pageBg.SetPiece then
+		skin.pageBg:SetPiece(M.db and M.db.pageBackground or "concrete")
+	end
+	if skin.bookBg and skin.bookBg.SetPiece then
+		skin.bookBg:SetPiece(M.db and M.db.bookBackground or "concrete")
+	end
+	local body = skin.listBox and skin.listBox.skin and skin.listBox.skin.body
+	if body then
+		local value = M.db and M.db.listBackground or "list"
+		local piece = value == "list" and "window/single_body" or LOOKS.backgroundPiece[value]
+		if piece then
+			if body.kitName ~= piece then
+				body:SetVertexColor(1, 1, 1, 1)
+				Kit:Apply(body, piece)
+			end
+			Kit:Retile(body)
+		elseif value == "dark" then
+			body:SetColorTexture(0.05, 0.045, 0.04, 0.95)
+			body.kitPiece, body.kitName = true, nil
+		end
+	end
+end
+
 local function Activate()
 	if active or not ProfessionsFrame then
 		return
@@ -983,6 +1075,7 @@ local function Activate()
 	M:RefreshTabs()
 	M:RefreshCards()
 	M:RefreshCrafting()
+	ApplyBackgrounds()
 	ApplyPortrait()
 	if skin.bindCreate then
 		skin.bindCreate()
@@ -1046,6 +1139,42 @@ eventFrame:SetScript("OnEvent", function(_, _, addon)
 		Sync()
 	end
 end)
+
+function M:OnSettingChanged(key, _, db)
+	self.db = db
+	if key == "pageBackground" or key == "listBackground" or key == "bookBackground" then
+		ApplyBackgrounds()
+	end
+end
+
+-- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the
+-- crafting page while it is open
+function M:PickerGroups()
+	return {
+		{ id = "crafting", title = "Crafting", hint = "Click to choose the crafting page's and the recipe list's backgrounds.", sections = {
+			{ key = "pageBackground", title = "Page Background", kind = "tile", choices = PAGE_BACKGROUNDS },
+			{ key = "listBackground", title = "Recipe List Background", kind = "tile", choices = LIST_BACKGROUNDS },
+		} },
+		{ id = "profbook", title = "Professions", hint = "Click to choose the book page's background.", sections = {
+			{ key = "bookBackground", title = "Book Page Background", kind = "tile", choices = PAGE_BACKGROUNDS },
+		} },
+	}
+end
+
+-- The window's outline for the group whose page is open
+function M:BarOutline(id)
+	local pf = ProfessionsFrame
+	local page = pf and (id == "profbook" and pf.BookPage or pf.CraftingPage)
+	if not (active and pf and pf:IsShown() and page and page:IsShown()) then
+		return nil
+	end
+	local ok, l, b, w, h = pcall(pf.GetRect, pf)
+	if not (ok and l and w) or Secret(l) or Secret(w) or w <= 0 then
+		return nil
+	end
+	local sc = pf:GetEffectiveScale()
+	return { { l * sc, b * sc, (l + w) * sc, (b + h) * sc } }
+end
 
 function M:OnEnable(db)
 	self.db = db

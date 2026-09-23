@@ -198,6 +198,9 @@ end
 local function Place()
 	frame:ClearAllPoints()
 	frame:SetScale(tonumber(M.db and M.db.scale) or 1)
+	if MelloUI.Kit and MelloUI.Kit.RetileBackgrounds then
+		MelloUI.Kit:RetileBackgrounds()   -- the UI's one background resolution, whatever the scale
+	end
 	local set = tonumber(M.db and M.db.width) or 0
 	local f = ObjectiveTrackerFrame
 	-- moved with Unlock the Windows: its own place, hung by its top-right
@@ -805,21 +808,9 @@ end
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Moving it: by its header while the windows are unlocked (UI Modifications'
--- Unlock the Windows -- user, 2026-09-23: "i cant move it when i unlock the
--- windows"); the header lights gold like the other drag areas meanwhile
+-- Moving it: by its header while the windows are unlocked, through UI
+-- Modifications' mover (MelloUI:RegisterMover, where the frame is built)
 --------------------------------------------------------------------------------
-
-local function Unlocked()
-	local um = MelloUI:GetModule("UIModifications")
-	return um and um.isEnabled and um.db and um.db.unlock and true or false
-end
-
-local function UpdateWash()
-	if header and header.wash then
-		header.wash:SetShown(Unlocked())
-	end
-end
 
 -- where it was dropped, as offsets of its top-right corner from the screen's
 -- top-right, in its own units (it hangs from that corner, growing downward)
@@ -1190,8 +1181,6 @@ local function Rebuild()
 	content:SetHeight(math.max(1, contentHeight))
 	local entries = #quests + #recipes
 
-	UpdateWash()
-
 	-- the frame's height: the header and the list, up to the height allowed
 	local collapsed = M.db.collapsed
 	clip:SetShown(not collapsed)
@@ -1261,40 +1250,29 @@ local function Build()
 	toggle:SetPoint("RIGHT", header, "RIGHT", -4, 0)
 	header.toggle, header.ToggleIcon = toggle, toggle.Refresh
 
-	-- the drag handle while the windows are unlocked, lit gold meanwhile
-	header.wash = textLayer:CreateTexture(nil, "BACKGROUND")
-	header.wash:SetAllPoints(header)
-	header.wash:SetColorTexture(1, 0.82, 0.3, 0.14)
-	header.wash:Hide()
-	header:RegisterForDrag("LeftButton")
-	header:SetScript("OnDragStart", function()
-		if not Unlocked() or InCombatLockdown() then
-			return
-		end
-		frame:SetMovable(true)
-		frame:StartMoving()
-		header.moving = true
-	end)
-	header:SetScript("OnDragStop", function()
-		if not header.moving then
-			return
-		end
-		header.moving = nil
-		frame:StopMovingOrSizing()
-		SavePosition()
-		Place()
-		MelloUI:NotifySettingChanged(M.name, "pos", M.db.pos)
-	end)
-	header:SetScript("OnEnter", UpdateWash)
-	-- UI Modifications tells its own module when the windows are (un)locked;
-	-- the header follows that call
-	if not header.unlockHooked then
-		header.unlockHooked = true
-		hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
-			if name == "UIModifications" and key == "unlock" then
-				UpdateWash()
-			end
-		end)
+	-- moved like every other window while the windows are unlocked (UI
+	-- Modifications' mover: the screen darkens with its grid, the border
+	-- lights, the corner snaps, the wheel scales it -- user, 2026-09-23: "does
+	-- not have the same darkening ... also the mousewheel does not increase
+	-- its scale"); it keeps its own place, hung by its top-right corner, and
+	-- the wheel's scale is its Scale setting
+	if MelloUI.RegisterMover then
+		MelloUI:RegisterMover(frame, header, {
+			min = 0.6, max = 1.6,   -- the Scale slider's range
+			save = function()
+				SavePosition()
+				M.db.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
+				Place()
+				MelloUI:NotifySettingChanged(M.name, "pos", M.db.pos)
+				MelloUI:NotifySettingChanged(M.name, "scale", M.db.scale)
+			end,
+			reset = function()
+				M.db.pos, M.db.scale = nil, 1
+				Place()
+				MelloUI:NotifySettingChanged(M.name, "pos", nil)
+				MelloUI:NotifySettingChanged(M.name, "scale", 1)
+			end,
+		})
 	end
 
 	clip = CreateFrame("Frame", nil, frame)

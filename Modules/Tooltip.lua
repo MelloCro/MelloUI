@@ -237,6 +237,9 @@ end
 local function ApplyScale()
 	if GameTooltip then
 		GameTooltip:SetScale(M.isEnabled and (tonumber(M.db.scale) or 1) or 1)
+		if MelloUI.Kit and MelloUI.Kit.RetileBackgrounds then
+			MelloUI.Kit:RetileBackgrounds()   -- the UI's one background resolution, whatever the scale
+		end
 	end
 end
 

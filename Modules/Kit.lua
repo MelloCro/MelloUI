@@ -154,7 +154,10 @@ end
 -- light, 112 against 191; pick B of kit_raw/parchment_tone_catalog.png, about
 -- 146: white chat and tracker text reads with its shadow, dark ink too).
 Kit.parchmentTint = { 0.80, 0.74, 0.64 }
-Kit.parchmentPiece = "backdrops/page_parchment"
+-- the parchment as a tile cut from the page's middle (tiles/vellum, as
+-- bright on average as the whole page was): a sheet of any size shows it at
+-- the UI's one background resolution, never a stretched picture
+Kit.parchmentPiece = "tiles/vellum"
 
 -- Each area's sheets on a switch of its own (user, 2026-09-23: "some people
 -- like it, some dont, off by default"): UI Modifications' parchment_<area>
@@ -193,11 +196,11 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		sheet:SetPoint("TOPLEFT", skin, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
 		sheet:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
 	end
-	local piece = PIECES["backdrops/page_parchment"]
-	if not (piece and self:Apply(sheet, "backdrops/page_parchment")) then
+	if not self:Apply(sheet, self.parchmentPiece) then
 		sheet:Hide()
 		return nil
 	end
+	sheet.kitAlign = "center"
 	local tint = opts.tint or self.parchmentTint
 	sheet:SetVertexColor(tint[1], tint[2], tint[3])
 	local edge = self:PaintedEdge(sheet, sheet, opts.mirror, opts.tight, opts.wide and "wide" or opts.fine)
@@ -206,16 +209,7 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		if not (ok and w and h) or Secret(w) or Secret(h) or w <= 0 or h <= 0 then
 			return
 		end
-		local u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
-		local pa, ra = piece.w / piece.h, w / h
-		if ra > pa then
-			local c, half = (v1 + v2) / 2, (v2 - v1) * (pa / ra) / 2
-			v1, v2 = c - half, c + half
-		else
-			local c, half = (u1 + u2) / 2, (u2 - u1) * (ra / pa) / 2
-			u1, u2 = c - half, c + half
-		end
-		sheet:SetTexCoord(u1, u2, v1, v2)
+		self:Retile(sheet)
 		if edge then
 			edge:Fit(w, h)
 		end
@@ -480,6 +474,23 @@ end
 
 -- Put a piece on an existing texture. Repeatable pieces get the REPEAT wrap
 -- mode; call Kit:Retile(tex) whenever their size changes.
+-- BACKGROUNDS keep one resolution across the whole UI (user, 2026-09-23:
+-- "Scaling something should not stretch the Background artwork, it should
+-- dynamically expand it and the background resolution should stay
+-- persistant across the whole UI"): a background piece (a tile, a window's
+-- stone body) repeats at Kit.scale UI units per piece px of the SCREEN
+-- (UIParent's scale), whatever the scale of the frame it is on and whatever
+-- scale its caller asked for. A bigger or scaled-up frame shows more of it,
+-- never a bigger copy. The page pictures were replaced by tiles cut from
+-- their middles (tiles/concrete, tiles/vellum) for this: a picture can only
+-- be fitted by stretching. `tex.kitOwnScale`: a texture that keeps its
+-- caller's scale (the picker's small previews).
+local BACKGROUNDS = setmetatable({}, { __mode = "k" })   -- every background texture, to lay again when scales change
+
+local function IsBackground(name)
+	return name:find("^tiles/") ~= nil or name:find("_body$") ~= nil
+end
+
 function Kit:Apply(tex, name)
 	local p = PIECES[name]
 	if not p then
@@ -494,6 +505,10 @@ function Kit:Apply(tex, name)
 	end
 	tex:SetTexCoord(p.uv[1], p.uv[2], p.uv[3], p.uv[4])
 	tex.kitPiece, tex.kitName = p, name
+	tex.kitBackground = (p.tile and IsBackground(name)) or nil
+	if tex.kitBackground then
+		BACKGROUNDS[tex] = true
+	end
 	self:RegisterTexture(tex)
 	if p.tile then
 		self:Retile(tex)
@@ -501,14 +516,29 @@ function Kit:Apply(tex, name)
 	return true
 end
 
+-- A background's scale in its own UI units per piece px: Kit.scale on the
+-- screen, whatever its frame's effective scale
+function Kit:BackgroundScale(tex)
+	local ok, s = pcall(tex.GetEffectiveScale, tex)
+	local us = UIParent and UIParent:GetEffectiveScale()
+	if not (ok and s and us) or Secret(s) or s <= 0 then
+		return self.scale
+	end
+	return self.scale * us / s
+end
+
 -- Texture coordinates of a repeatable piece for its current size, so the art
--- repeats at its native scale instead of stretching.
+-- repeats at its native scale instead of stretching. A background's phase
+-- (`tex.kitAlign`): from its top-left corner (nil), centred ("center"),
+-- centred across and from the top or bottom ("top" / "bottom"), or from the
+-- screen's origin ("screen": backdrops that meet show one surface).
 function Kit:Retile(tex)
 	local p = tex.kitPiece
-	if not p or not p.tile then
+	if type(p) ~= "table" or not p.tile then
 		return
 	end
-	local scale = tex.kitScale
+	local background = tex.kitBackground and not tex.kitOwnScale
+	local scale = background and self:BackgroundScale(tex) or tex.kitScale
 	if not scale or scale <= 0 then
 		scale = self.scale
 	end
@@ -518,14 +548,63 @@ function Kit:Retile(tex)
 		-- (set by whoever sized it) stands in, else the art stays as applied
 		w, h = tex.kitTileW or 0, tex.kitTileH or 0
 	end
+	local align = background and tex.kitAlign or nil
+	local left, top
+	if align == "screen" then
+		local okP, l, t = pcall(function() return tex:GetLeft(), tex:GetTop() end)
+		if okP and l and t and not Secret(l) and not Secret(t) then
+			left, top = l, t
+		else
+			align = nil
+		end
+	end
+	-- the share of one repeat the texture spans on an axis, and where it starts
+	local function Span(size, repeatSize, from, centred, far)
+		local f = size / repeatSize
+		if align == "screen" then
+			return f, (from % repeatSize) / repeatSize
+		elseif centred then
+			return f, (1 - f) / 2
+		elseif far then
+			return f, 1 - f
+		end
+		return f, 0
+	end
 	local u1, u2, v1, v2 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
+	local du, dv = u2 - u1, v2 - v1
 	if p.tile:find("x") and w > 0 then
-		u2 = u1 + (u2 - u1) * (w / (p.w * scale))
+		local f, o = Span(w, p.w * scale, left, align == "center" or align == "top" or align == "bottom")
+		u1 = u1 + du * o
+		u2 = u1 + du * f
 	end
 	if p.tile:find("y") and h > 0 then
-		v2 = v1 + (v2 - v1) * (h / (p.h * scale))
+		local f, o = Span(h, p.h * scale, top and -top, align == "center", align == "bottom")
+		v1 = v1 + dv * o
+		v2 = v1 + dv * f
 	end
 	tex:SetTexCoord(u1, u2, v1, v2)
+end
+
+-- Every background laid again (a frame scaled, the UI scale changed, Edit
+-- Mode closed): their repeat stays the same size on the screen
+function Kit:RetileBackgrounds()
+	for tex in pairs(BACKGROUNDS) do
+		if tex.kitBackground then
+			self:Retile(tex)
+		end
+	end
+end
+
+do
+	local ev = CreateFrame("Frame")
+	ev:RegisterEvent("UI_SCALE_CHANGED")
+	ev:RegisterEvent("DISPLAY_SIZE_CHANGED")
+	ev:SetScript("OnEvent", function()
+		Kit:RetileBackgrounds()
+	end)
+	if EventRegistry and EventRegistry.RegisterCallback then
+		EventRegistry:RegisterCallback("EditMode.Exit", function() Kit:RetileBackgrounds() end, Kit)
+	end
 end
 
 -- A new texture showing a piece at its natural size.
@@ -795,6 +874,22 @@ function StripMixin:SetState(state)
 	Kit:Apply(self.capL, StripName(self.base, self.endL and "end_l" or "cap_l", state))
 	Kit:Apply(self.mid, StripName(self.base, "mid", state))
 	Kit:Apply(self.capR, StripName(self.base, self.endR and "end_r" or "cap_r", state))
+end
+
+-- Another family of pieces for the strip (a bar's Bar Border), in its state
+-- where the family has it: the caps and the mid re-applied and re-sized
+function StripMixin:SetBase(base)
+	if base == self.base then
+		return
+	end
+	self.base = base
+	local state = self.state
+	self.state, self.applied = nil, nil
+	self.capless, self.noL, self.noR, self.endL, self.endR = nil, nil, nil, nil, nil
+	self:SetState(state)
+	local scale = self.scale
+	self.scale = 0          -- sized afresh for the new pieces
+	self:Rescale(scale)
 end
 
 -- Change the strip's scale (e.g. once the game element it replaces has its
@@ -1259,6 +1354,14 @@ function Kit:Slot(button, opts)
 	local rim = owner:CreateTexture(nil, opts.layer or (opts.under and "ARTWORK" or "OVERLAY"), nil, opts.sublevel or 3)
 	rim.owner = owner
 	rim.kitScale = scale
+	-- a round rim wears every window's Round Border (Kit.borderKinds)
+	if base == "buttons/roundslot" and self.roundRims then
+		self.roundRims[rim] = true
+		local look = self:BorderValue("round")
+		if look and PIECES["buttons/" .. look .. "_normal"] then
+			base = "buttons/" .. look
+		end
+	end
 	rim.button, rim.base = button, base
 	rim.isChecked = opts.checked           -- function(): true when the piece should show its checked state
 	rim:SetAllPoints(button)
@@ -1277,6 +1380,9 @@ end
 -- Anchor the rim's icon into the rim's opening (insets as fractions of the
 -- rim, so any button size works). Callers restore the icon's own points to undo.
 function Kit:SlotPlaceIcon(rim)
+	if rim.placingIcon then
+		return
+	end
 	local name = rim.base .. "_" .. (self:FirstStateOf(rim.base) or "normal")
 	local p = PIECES[name]
 	local icon = rim.icon
@@ -1285,9 +1391,45 @@ function Kit:SlotPlaceIcon(rim)
 	local rw, rh = rim:GetSize()
 	local l, r, t, b = self:Insets(name, 1)
 	if p and l and icon and rw > 0 and rh > 0 then
+		local il, ir, it, ib = rw * l / p.w, rw * r / p.w, rh * t / p.h, rh * b / p.h
+		-- rim.iconGrow: the icon that share larger than the opening, reaching
+		-- under the rim's inner bevel (the action bars' thin rims: the icons
+		-- looked smaller than their frames, user 2026-09-23)
+		local grow = rim.iconGrow
+		if grow and grow ~= 0 then
+			local gw, gh = (rw - il - ir) * grow / 2, (rh - it - ib) * grow / 2
+			il, ir, it, ib = il - gw, ir - gw, it - gh, ib - gh
+		end
+		-- rim.iconBleed: UI px the icon reaches under the rim's inner edge on
+		-- every side (the side tabs: "about 2px bigger than the inner border",
+		-- user 2026-09-23)
+		local bleed = rim.iconBleed
+		if bleed and bleed ~= 0 then
+			il, ir, it, ib = il - bleed, ir - bleed, it - bleed, ib - bleed
+		end
+		rim.placingIcon = true
 		icon:ClearAllPoints()
-		icon:SetPoint("TOPLEFT", rim, "TOPLEFT", rw * l / p.w, -rh * t / p.h)
-		icon:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -rw * r / p.w, rh * b / p.h)
+		icon:SetPoint("TOPLEFT", rim, "TOPLEFT", il, -it)
+		icon:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -ir, ib)
+		rim.placingIcon = nil
+	end
+end
+
+-- Swap a slot rim's art family live (Action Bars Kit's Button Border, the
+-- Dynamic UI Modification picker): the same states from another base, the
+-- icon fitted into the new opening, and whoever follows the rim told
+-- (rim.onBaseChanged: the empty slot's stone).
+function Kit:SetSlotBase(rim, base)
+	if not rim or rim.base == base or not PIECES[base .. "_normal"] then
+		return
+	end
+	rim.base, rim.state = base, nil
+	Slot_Update(rim)
+	if rim.icon then
+		self:SlotPlaceIcon(rim)
+	end
+	if rim.onBaseChanged then
+		rim.onBaseChanged()
 	end
 end
 
@@ -1388,10 +1530,19 @@ Kit.Replacements = {
 	-- inset frames and backdrops
 	["common-insideframe"]                    = { kind = "frame" },
 	["common-insideframe-2x"]                 = { kind = "frame" },
-	-- the two pane backdrops are plain pictures: stone only; the seam between
-	-- the panes is drawn by common-framedivider alone, as in the default
-	["UI-Character-Info-General-BG"]          = { kind = "tile", piece = "tiles/stone" },
-	["UI-Character-Info-Stat-BG"]             = { kind = "tile", piece = "tiles/stone" },
+	-- ONE stone per surface (user, 2026-09-23, the skills tab: "background 1
+	-- and 2 are basically the same, they are loading 2 times for no reason"):
+	-- a pane or backdrop picture that would look like the window's own stone
+	-- is faded, not replaced with a second stone on top (tiles/stone over
+	-- window/frame_body, each tiled from its own corner, showed its edge).
+	-- The window's body runs on under it as one surface. A second surface is
+	-- drawn only where it is meant to read as different (the darker list-box
+	-- stone of an inset, a page picture, the parchment).
+	-- The two pane backdrops: faded; the seam between the panes is drawn by
+	-- common-framedivider alone, as in the default. The right pane's holder
+	-- still carries its parchment sheet.
+	["UI-Character-Info-General-BG"]          = { kind = "fade" },
+	["UI-Character-Info-Stat-BG"]             = { kind = "fade" },
 	["UI-Character-Info-Stat-StoneBG"]        = { kind = "frame" },
 	["UI-Character-Info-Stat-StoneBG2"]       = { kind = "frame" },
 	["common-framedivider"]                   = { kind = "edge", piece = "window/single_l" },
@@ -1408,7 +1559,7 @@ Kit.Replacements = {
 	["common-button-list-collapseExpand"]     = { kind = "strip", base = "lists/catplate", state = "closed" },   -- the plain category plate: one texture, no chevron (the game's +/- glyph stays)
 	["charactercreate-customize-dropdown-linemouseover-middle"] = { kind = "strip", base = "lists/plate", state = "plain" },   -- the gemless plate: the gemmed row's gems overshoot a list row
 	-- backdrop pictures with no frame of their own
-	["ModelSceneBackground"]                  = { kind = "tile", piece = "tiles/stone" },   -- the race landscape behind the character
+	["ModelSceneBackground"]                  = { kind = "fade" },   -- the race landscape behind the character: faded, the window's stone runs on behind the model (one stone per surface)
 	-- the ONE addition the default window does not have (the user's decision, catalogue pick B1):
 	-- a single-rail iron frame around the character viewport, over its backdrop
 	["ViewportFrame"]                         = { kind = "frame", body = false, level = 1, open = "r" },   -- open where it meets the pane divider
@@ -1416,8 +1567,8 @@ Kit.Replacements = {
 	-- gemSpan: the gems' centre-to-centre span as a fraction of the piece; with
 	-- opts.pitch (the distance between neighbouring slots) the rim is sized so
 	-- neighbours share a gem, as the game's slot pictures share their diamonds
-	["UI-Character-Info-GearSlot"]            = { kind = "slot", slot = "slot", under = true, gemSpan = { 97 / 135, 92 / 130 } },
-	["common-sidetab"]                        = { kind = "slot", slot = "slot", rest = "checked", glow = true },   -- gold rim on every tab (the user's pick, I), additive glow when selected
+	["UI-Character-Info-GearSlot"]            = { kind = "fade" },   -- a gear slot's frame art (its BorderFrame's picture): faded, the slot wears the action bars' thin rim on the button itself (CharacterPanel, Item Border; user 2026-09-23: "onto the Character Pane next"). Was the gemmed slot sized so neighbours shared a gem
+	["common-sidetab"]                        = { kind = "slot", slot = "slot", rest = "checked", glow = true, sideTab = true, iconBleed = 2, keepIcon = true },   -- gold rim on every tab (the user's pick, I), additive glow when selected; `sideTab`: every window's at the Character window's size, in the one Side Tab Border (Kit:RegisterSideTab)
 	-- small controls
 	["checkbox-minimal"]                      = { kind = "state", base = "buttons/checkbox" },
 	-- scroll bars (user, 2026-09-21: T2 / H1 / S1 is THE scroll bar, the only
@@ -1444,8 +1595,13 @@ Kit.Replacements = {
 	["common-button-tertiary-normal"]         = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8, capOverhang = 0.35 },   -- New Set (a tertiary button re-atlased with its state): the red plate (B1), the game's + icon and text on top
 	-- the spell book (user's picks, 2026-09-21: P1 C1 H3 K1 T1); the talents
 	-- page stays the game's until the user's per-class art arrives
-	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", level = -1, edge = "brush" },   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
-	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", level = -1, edge = "brush", edgeMirror = true },   -- the left page's strokes flipped, so the two pages are not twins
+	-- The PAGES (user, 2026-09-23: backgrounds keep one resolution, never
+	-- stretched): the painted page pictures are gone from them; the stone
+	-- pages repeat tiles/concrete (the page stone's own middle), the paper
+	-- pages tiles/vellum (the parchment page's middle), from the rect's
+	-- middle or top (`crop`), their painted edges as before.
+	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, edge = "brush" },   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
+	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, edge = "brush", edgeMirror = true },   -- the left page's strokes flipped, so the two pages are not twins
 	["spellbook-Tab-Frame-C60"]               = { kind = "slot", slot = "slot" },   -- a category tab (C1): the slot rim over the icon, gold (checked) while the tab is selected
 	["spellbook-list-backplate"]              = { kind = "fade" },   -- the list header's backplate (H3: the text on the page)
 	["spellbook-divider"]                     = { kind = "strip", base = "window/divider" },   -- the line under the header (H3)
@@ -1464,7 +1620,7 @@ Kit.Replacements = {
 	-- the professions window (user's picks, 2026-09-21: A, F crop 1, K1)
 	-- the book page's backdrop: the user's own page painting (the kit's soft
 	-- stones, tiles/crackle and a plain grey were all tried before it)
-	["Profession-Background-Overview"]        = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", level = 1, edge = "brush" },   -- one ABOVE the window (the window's own skin is at its level: a tie there draws in an order the client may change between loads)   -- the user's grey stone page with gothic pilasters (2026-09-21), painted at the page's own aspect
+	["Profession-Background-Overview"]        = { kind = "picture", piece = "tiles/concrete", crop = "middle", level = 1, edge = "brush" },   -- one ABOVE the window (the window's own skin is at its level: a tie there draws in an order the client may change between loads)   -- the user's grey stone page with gothic pilasters (2026-09-21), painted at the page's own aspect
 	["Profession-overview-Card"]              = { kind = "frame" },   -- a primary card with no profession in it (A): single rail, stone body
 	-- a primary card with a profession: the game re-atlases its Background to
 	-- -<Profession> in FormatProfession; each gets its painted banner (the
@@ -1498,7 +1654,7 @@ Kit.Replacements = {
 	["Profession-overview-card-generic-FirstAid"] = { kind = "picture", piece = "backdrops/profession_firstaid", grey = "backdrops/profession_firstaid_grey", crop = "bottom", frame = true },
 	["Profession-square-frame"]               = { kind = "slot", slot = "slot" },   -- the frame over a profession spell's icon: the rim over the icon, as the game's is
 	-- the crafting page (user's picks, 2026-09-21: S1 D1 B1 N1 R1 O1 K2 L1 T1)
-	["Profession-Background-Template2"]       = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", level = -2, edge = "brush" },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
+	["Profession-Background-Template2"]       = { kind = "picture", piece = "tiles/concrete", crop = "middle", level = -2, edge = "brush" },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
 	["Professions-background-summarylist"]    = { kind = "frame" },   -- the recipe list box (L1): single rail, stone body
 	["common-search-border-middle"]           = { kind = "strip", base = "inputs/edit", state = "normal", owner = true },
 	["common-dropdown-b-button"]              = { kind = "frame", level = -1, hover = 1.25, pressed = 0.75, disabled = 0.6 },   -- the filter dropdown (B6, user 2026-09-21): the single-rail band with stone, its states by tint
@@ -1525,9 +1681,9 @@ Kit.Replacements = {
 	-- and tree pages; the tree's nodes are talent buttons and stay the game's,
 	-- as the talents page does). Picks pending the user's catalogue choice
 	-- for the cards (kit_raw/legacy_catalog.png); the rest are the fixed looks.
-	["Legacy-Rewards-Tracker-background"]     = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true, edge = "brush" },   -- a page's backdrop: the page stone as a REGION of the page in the backdrop's own layer (the pages sit at level 100 with children at 800: no holder, no tie), fitted to the WINDOW's rect so all three pages show the same picture in the same place
-	["Legacy-Challenge-BG"]                   = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true, edge = "brush" },
-	["Legacy-Tree-Frame-background"]          = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true, edge = "brush" },
+	["Legacy-Rewards-Tracker-background"]     = { kind = "picture", piece = "tiles/concrete", crop = "middle", owner = true, edge = "brush" },   -- a page's backdrop: the page stone as a REGION of the page in the backdrop's own layer (the pages sit at level 100 with children at 800: no holder, no tie), fitted to the WINDOW's rect so all three pages show the same picture in the same place
+	["Legacy-Challenge-BG"]                   = { kind = "picture", piece = "tiles/concrete", crop = "middle", owner = true, edge = "brush" },
+	["Legacy-Tree-Frame-background"]          = { kind = "picture", piece = "tiles/concrete", crop = "middle", owner = true, edge = "brush" },
 	["Legacy-Tree-Frame-divider-Vertical"]    = { kind = "edge", piece = "window/single_l" },   -- the pane divider (12 x 503): the single rail, as common-framedivider
 	["Legacy-Progressbar-Frame"]              = { kind = "bar", bar = "frame", layer = "ARTWORK", sublevel = 2 },   -- LegacyProgressBarTemplate (a StatusBar: the fill at ARTWORK 0, the bracket in OVERLAY, the text over it): P1, the bracket's caps at ARTWORK 2 and its middle at 1 over the fill, the StatusBar moved into the opening (Kit:SkinStatusBar)
 	["Legacy-Challenge-Left-Sub-Tab"]         = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a category list leaf (the button's normal texture, re-atlased with the selection): the plain plate ...
@@ -1554,9 +1710,9 @@ Kit.Replacements = {
 	["Legacy-Rewards-Tracker-Icons-Frame"]    = { kind = "slot", slot = "slot" },   -- a reward card's icon border (80 on a 64 square icon; re-atlased -Disable while unearned): the square rim (R1), one rep per atlas
 	["Legacy-Rewards-Tracker-Icons-Frame-Disable"] = { kind = "slot", slot = "slot" },
 	-- the quest log (QuestMapFrame in the world map window; 2026-09-21)
-	["QuestLog-main-background"]              = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
-	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "backdrops/page_parchment", crop = "top", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- a quest's details page: the same parchment
-	["MapTitleBand"]                          = { kind = "picture", piece = "backdrops/page_stone", crop = "top", level = 0 },   -- an agreed addition (user, 2026-09-21): a body-off window's title band (the map for its canvas; the collections and LFG pages, whose rock starts below the title) filled with the page stone, inside the outer rail, so it is not bare once the title plate stands on the rail
+	["QuestLog-main-background"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
+	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "tiles/vellum", crop = "top", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- a quest's details page: the same parchment
+	["MapTitleBand"]                          = { kind = "picture", piece = "tiles/concrete", crop = "top", level = 0 },   -- an agreed addition (user, 2026-09-21): a body-off window's title band (the map for its canvas; the collections and LFG pages, whose rock starts below the title) filled with the page stone, inside the outer rail, so it is not bare once the title plate stands on the rail
 	["questlog-frame"]                        = { kind = "frame", body = false },   -- the border around the list / details (QuestLogBorderFrameTemplate): the single rail, edges only
 	["QuestLog-frame-devider"]                = { kind = "strip", base = "window/divider" },   -- the line under a header
 	["questlog-icon-setting"]                 = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the list's settings button (a 15 x 16 gear glyph): the cog plate (K2), as the dropdown arrows
@@ -1564,7 +1720,7 @@ Kit.Replacements = {
 	["QuestListFilter"]                       = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- MelloUI's Quests panel filter buttons (F7, user 2026-09-21): the plain plate (hover from the button) ...
 	["QuestListFilter-Selected"]              = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... the selected plate on the active filter (from the panel's db.filter)
 	-- the guild and communities window (CommunitiesFrame; file art keyed by hand; 2026-09-21)
-	["UI-Background-Rock"]                    = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true },   -- ButtonFrameTemplate's rock background: the page stone as a region of the frame
+	["UI-Background-Rock"]                    = { kind = "picture", piece = "tiles/concrete", crop = "middle", owner = true },   -- ButtonFrameTemplate's rock background: the page stone as a region of the frame
 	["bluemenu-main"]                         = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a communities list entry's background (the sheet's blue plate): the plain plate
 	["bluemenu-main-selected"]                = { kind = "fade" },   -- ... its selection bar: faded, the card's iron lights instead
 	["CommunitiesListEntry"]                  = { kind = "frame", hover = 1.15, pressed = 0.9, checkedTint = { 1.45, 1.3, 0.85 } },   -- a communities list entry (68 px tall: a TALL row, R3 — the plate's rails got fat): the single-rail card with stone, its iron lit gold while the game shows its Selection
@@ -1586,7 +1742,7 @@ Kit.Replacements = {
 	["bluemenu-Ring"]                         = { kind = "slot", slot = "roundslot" },   -- a group button's ring on its masked icon (the dungeon finder's left column): the round rim
 	["bluemenu-shadowcovers"]                 = { kind = "fade" },   -- the shadow strips beside the left column: nothing stands in
 	["UI-LFG-BlueBG"]                         = { kind = "fade" },   -- the listing page's blue role band (file art, keyed by hand): faded — the window's one page picture runs under it; only the INSIDE of the inset rail is the darker stone (user, 2026-09-21)
-	["UI-LFG-BACKGROUND-QUESTPAPER"]          = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", owner = true },   -- the queue frame's paper (file art, keyed by hand): the parchment page, as the quest lists
+	["UI-LFG-BACKGROUND-QUESTPAPER"]          = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true },   -- the queue frame's paper (file art, keyed by hand): the parchment page, as the quest lists
 	["PetList-ButtonBackground"]              = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a mount / pet list row: the plain plate (hover from the button) ...
 	["PetList-ButtonSelect"]                  = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... and the selected plate, shown / hidden by the game
 	["WhiteIconFrame"]                        = { kind = "slot", slot = "slot" },   -- a list row's icon border (file art, keyed by hand): the square rim (R1) on the icon
@@ -1634,6 +1790,8 @@ Kit.Replacements = {
 	["UnitFramePortraitRing"]                 = { kind = "texture", piece = "window/portrait_ring", opening = true, owner = true },   -- R1: the ring's OPENING on the game's portrait rect, as a region in the faded picture's layer
 	["UnitFrameBar"]                          = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1 },   -- B3: the P1 bracket on the bar, ring side capless, the far cap grown outward; the trough under the BACKGROUND-0 fill
 	["UnitFrameBarMirrored"]                  = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1 },   -- ... the target's (ring on the right)
+	["UnitFrameHealthBar"]                    = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1, state = "red" },   -- a health bar: the same B3, its end gem kept red (user, 2026-09-23, painted on the player frame) where every other bracket's is iron
+	["UnitFrameHealthBarMirrored"]            = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1, state = "red" },
 	["UI-HUD-UnitFrame-SmallCircle"]          = { kind = "texture", piece = "buttons/orb_normal", square = true, owner = true },   -- L1: the level circle (and the PvP badge's circle): the orb plate under the frame's own text / faction icon
 	["UI-HUD-UnitFrame-Target-PortraitOn-Type"] = { kind = "fade" },   -- the target's reaction strip (the name band): faded, the plate below stands on its rect
 
@@ -1653,6 +1811,11 @@ Kit.Replacements = {
 
 	-- The HUD's action bars, micro menu, bag bar and status bars (ActionBarPanel; user's picks X2 M1 from
 	-- kit_raw/actionbar_catalog.png, 2026-09-21; the buttons R1 by the rule book, the bar art faded as it lies under the rims)
+	["ActionButtonRim"]                       = { kind = "slot", slot = "rim", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },   -- an action / stance / pet button on the action bars: the THIN rim on the button's own rect, no gems (user, 2026-09-23: the gems moved to one backdrop round the bar, ActionBarPanel); its states hover / pressed / checked as the slot's. Button Border "Thin iron"; the four below are its other looks (Tools/build_kit.py THIN_RIMS)
+	["ActionButtonRimHairline"]               = { kind = "slot", slot = "rimhair", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
+	["ActionButtonRimRounded"]                = { kind = "slot", slot = "rimround", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
+	["ActionButtonRimGold"]                   = { kind = "slot", slot = "rimgold", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
+	["ActionButtonRimSunk"]                   = { kind = "slot", slot = "rimsunk", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
 	["UI-HUD-ActionBar-IconFrame"]            = { kind = "slot", slot = "slot", gemSpan = { 97 / 135, 92 / 130 }, layer = "ARTWORK", sublevel = 2 },   -- an action / stance / pet / bag button's rim (its NormalTexture): R1 — the slot rim sized to the bar's pitch so neighbours share a gem, at the NormalTexture's ARTWORK under the OVERLAY name, count, keybind and highlights; the icon fitted into its opening (Kit:SkinActionButton)
 	["UI-HUD-ActionBar-IconFrame-Background"] = { kind = "tile", piece = "tiles/stone", owner = true, sublevel = -1 },   -- an empty slot's backing: the stone in the rim's opening, UNDER the icon (BACKGROUND -1), shown as the game shows the backing (empty slots only)
 	["ui-hud-actionbar-iconframe-slot"]       = { kind = "fade" },   -- the empty slot's ornament
@@ -1663,6 +1826,7 @@ Kit.Replacements = {
 	["ui-hud-actionbar-gryphon-right"]        = { kind = "texture", piece = "deco/rail_cap_r", fit = "height", anchor = "BOTTOMLEFT" },
 	["ui-hud-actionbar-pageuparrow-up"]       = { kind = "state", base = "buttons/arrow_up", natural = true },   -- the page arrows: the kit's arrows at their size
 	["ui-hud-actionbar-pagedownarrow-up"]     = { kind = "state", base = "buttons/arrow_down", natural = true },
+	["MicroButtonRim"]                        = { kind = "slot", slot = "rim", pitchSize = 1, layer = "OVERLAY", sublevel = 1 },   -- a micro button's plate -> the THIN rim, a square of the size ActionBarPanel gives it (SetPitch): the bag bar's slot size, the buttons spaced as the bag slots are (user, 2026-09-23: "make the microbar buttons match the bag button slots in size and have the same distance to borders"); the game's glyph fitted inside
 	["UI-HUD-MicroMenu-ButtonBG-Up"]          = { kind = "slot", slot = "slot", gemSpan = { 97 / 135, 92 / 130 }, layer = "OVERLAY", sublevel = 1 },   -- a micro button's plate → the R1 slot rim sized to the button's pitch (neighbours share a gem), the game's glyph inside it, nothing painted behind (user, 2026-09-22: the cog plates M1 were not wanted, the rim is)
 	["UI-HUD-MicroMenu-ButtonBG-Down"]        = { kind = "fade" },
 	["UI-HUD-ExperienceBar-Frame"]            = { kind = "bar", bar = "frame", capOut = true },   -- the XP / reputation / honour bar's frame: P1, the caps outside the bar so the fill keeps its width
@@ -1712,7 +1876,7 @@ Kit.Replacements = {
 	["Tooltip-NineSlice-CornerTopLeft"]       = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", edgeLayer = "BORDER" },   -- TT1: a tooltip's NineSlice (the TooltipDefaultLayout pieces, keyed on the top-left corner; the other eight faded) -> the single rail with the list-box stone as REGIONS of the NineSlice in its own layers (under the tooltip's texts as the game's pieces are)
 	["TooltipStatusBar"]                      = { kind = "bar", bar = "frame", capOut = true },   -- the unit tooltip's health bar (a StatusBar with no border art; an agreed addition, as the catalogue showed it): P1 with the caps outside, the bar set in by the arms
 	-- Nameplates (NameplatePanel, 2026-09-21; user's picks NP1 = P1, NC2 from kit_raw/nameplate_catalog.png)
-	["NamePlateHealthBarBG"]                  = { kind = "bar", bar = "frame", capOut = true },   -- NP1: the health bar's backing (UI-HUD-CoolDownManager-Bar-BG, keyed by hand) -> P1 as the bar's regions above the fill, the caps outside, the bar set in by the arms after the game's UpdateAnchors; the trough under the fill
+	["NamePlateHealthBarBG"]                  = { kind = "bar", bar = "frame", capOut = true, borderGroup = "nameplate" },   -- NP1: the health bar's backing (UI-HUD-CoolDownManager-Bar-BG, keyed by hand) -> P1 as the bar's regions above the fill, the caps outside, the bar set in by the arms after the game's UpdateAnchors; the trough under the fill
 	["NamePlateCastBarBackground"]            = { kind = "frame", scale = 0.8, owner = true, bodyLayer = "BACKGROUND", edgeLayer = "ARTWORK", edgeSub = 1, outset = 2 },   -- outset 2: the single rail's 2 px outer pad, so the painted line's outer edge is ON the bar's edge and the fill (which reaches that edge, a StatusBar's fill cannot be set in) ends under the line (user, 2026-09-22: "spilling on the bottom")   -- NC2: the cast bar's background (ui-castingbar-background on a nameplate, keyed by hand; its Border faded) -> the single rail at 0.8 with the stone body as the bar's regions: the stone under the ARTWORK fill, the rails one sublevel above it, under the OVERLAY text
 	["UI-HUD-Nameplates-Selected"]            = { kind = "fade" },   -- the target / focus outline around the health bar: faded; the bracket's iron shines gold while the game shows it (NameplatePanel)
 	["ui-hud-nameplates-levelindicator"]      = { kind = "texture", piece = "buttons/orb_normal", square = true, owner = true },
@@ -1877,11 +2041,19 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	if button.GetCheckedTexture then
 		extra[#extra + 1] = button:GetCheckedTexture()
 	end
-	local rep = replace(normal, { as = "UI-HUD-ActionBar-IconFrame", button = button, rect = button, pitch = pitch,
+	-- opts.as: another slot rule (the action bars' thin rim, "ActionButtonRim")
+	local rep = replace(normal, { as = opts.as or "UI-HUD-ActionBar-IconFrame", button = button, rect = button, pitch = pitch,
 		icon = button.icon, alsoFade = extra })
 	button.melloRep = rep or false
 	if not rep then
 		return nil
+	end
+	-- a thin rim follows the one Button Border of every window
+	for _, rule in pairs(self.buttonLooks.rimRule) do
+		if opts.as == rule then
+			self:RegisterButtonRim(button)
+			break
+		end
 	end
 	-- the icon's rounded mask off while the rim is on (its square opening)
 	local mask = button.IconMask or button.SquareMask
@@ -1908,11 +2080,11 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	-- on the button itself, replacing its NormalTexture's empty look)
 	if button.SlotBackground or opts.emptyStone then
 		local rim = rep.object
-		local name = "buttons/slot_normal"
-		local piece = PIECES[name]
 		local opening = CreateFrame("Frame", nil, button)
 		opening:EnableMouse(false)
 		local function Fit()
+			local name = (rim.base or "buttons/slot") .. "_normal"   -- the opening of the rim it is in (its art can change live)
+			local piece = PIECES[name]
 			local l, r, t, b = Kit:Insets(name, 1)
 			local okS, rw, rh = pcall(rim.GetSize, rim)
 			if piece and l and okS and rw and rh and not Secret(rw) and rw > 0 then
@@ -1924,15 +2096,54 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 			end
 		end
 		Fit()
+		rim.onBaseChanged = Fit
 		local stone = replace(button.SlotBackground or normal, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening,
 			noFade = not button.SlotBackground })
+		button.melloSlotStone = stone or nil   -- its texture (stone.tex) can be swapped: Action Bars Kit's Button Background
 		if stone then
 			-- the stone shows while the slot is EMPTY: the game hides the icon
 			-- then (its own backing shows only on a bar whose art is hidden —
-			-- on the main bar the faded frame art was the empty slot's look)
+			-- on the main bar the faded frame art was the empty slot's look).
+			-- An ITEM button (a bag window's slot, a bag bar slot) keeps its
+			-- icon shown when empty, painted with its empty-slot picture
+			-- (`emptyBackgroundAtlas` / `emptyBackgroundTexture`, put there by
+			-- SetItemButtonTexture(nil)): the Item Background never showed
+			-- (user, 2026-09-23). Its emptiness is read from that call; while
+			-- empty the icon (the game's picture) is see-through.
+			local itemButton = (button.emptyBackgroundAtlas or button.emptyBackgroundTexture) and button.SetItemButtonTexture
+			local function IsEmpty()
+				if not icon:IsShown() then
+					return true
+				end
+				if not itemButton then
+					return false
+				end
+				if button.melloEmpty ~= nil then
+					return button.melloEmpty
+				end
+				local ok, atlas = pcall(function() return icon.GetAtlas and icon:GetAtlas() end)
+				return ok and atlas ~= nil and atlas == button.emptyBackgroundAtlas
+			end
 			local function Sync()
 				if rep.object:IsShown() then
-					stone:SetShown(not icon:IsShown())
+					local empty = IsEmpty()
+					stone:SetShown(empty)
+					if itemButton then
+						icon:SetAlpha(empty and 0 or 1)
+					end
+				end
+			end
+			if itemButton then
+				hooksecurefunc(button, "SetItemButtonTexture", function(_, texture)
+					button.melloEmpty = texture == nil
+					Sync()
+				end)
+				local disable = rep.onDisable
+				rep.onDisable = function(...)
+					if disable then
+						disable(...)
+					end
+					icon:SetAlpha(1)
 				end
 			end
 			hooksecurefunc(icon, "Show", Sync)
@@ -2008,6 +2219,97 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 		rep.onEnable(rep)
 	end
 	return rep
+end
+
+--------------------------------------------------------------------------------
+-- The looks a button can take, shared by every panel that offers them (the
+-- action bars, micro menu and bag bar in Action Bars Kit, the bag windows'
+-- slots in Backpack Kit) and by the Dynamic UI picker's previews.
+--   borders:      Button Border (a dropdown's values; `piece` the preview)
+--   backgrounds:  Button / Backdrop Background ("dark" a flat fill, "none" nothing)
+--   rimRule / rimKind: a border's slot rule and its rim piece family
+--------------------------------------------------------------------------------
+
+Kit.buttonLooks = {
+	borders = {
+		{ value = "thin", label = "Thin iron", piece = "buttons/rim_normal" },
+		{ value = "hairline", label = "Hairline", piece = "buttons/rimhair_normal" },
+		{ value = "rounded", label = "Rounded corners", piece = "buttons/rimround_normal" },
+		{ value = "gold", label = "Iron with gold line", piece = "buttons/rimgold_normal" },
+		{ value = "sunk", label = "Sunk", piece = "buttons/rimsunk_normal" },
+	},
+	backgrounds = {
+		{ value = "stone", label = "Stone", piece = "tiles/stone" },
+		{ value = "concrete", label = "Cracked concrete", piece = "tiles/concrete" },
+		{ value = "ironplate", label = "Iron plate", piece = "tiles/ironplate" },
+		{ value = "parchment", label = "Parchment", piece = "tiles/parchment" },
+		{ value = "leather", label = "Leather", piece = "tiles/quilt_brown" },
+		{ value = "dark", label = "Dark" },
+		{ value = "none", label = "None" },
+	},
+	-- a progress bar's bracket (a bar replacement's `bar`): the ornate P1,
+	-- the cast bar's, or the thin rims made into bars (Tools/build_kit.py
+	-- thin_bar); `piece` the preview's middle
+	barBorders = {
+		{ value = "frame", label = "Ornate", bar = "frame" },
+		{ value = "castbar", label = "Cast bar", bar = "castbar" },
+		{ value = "rim", label = "Thin iron", bar = "rim" },
+		{ value = "rimhair", label = "Hairline", bar = "rimhair" },
+		{ value = "rimround", label = "Rounded", bar = "rimround" },
+		{ value = "rimgold", label = "Iron with gold line", bar = "rimgold" },
+		{ value = "rimsunk", label = "Sunk", bar = "rimsunk" },
+	},
+	rimRule = { thin = "ActionButtonRim", hairline = "ActionButtonRimHairline", rounded = "ActionButtonRimRounded",
+		gold = "ActionButtonRimGold", sunk = "ActionButtonRimSunk" },
+	rimKind = { thin = "rim", hairline = "rimhair", rounded = "rimround", gold = "rimgold", sunk = "rimsunk" },
+	borderDesc = "The rim on each button: a thin iron rim, a hairline, rounded corners, iron with a gold line round the icon, "
+		.. "or sunk (a soft shadow inside the rim). Each lights up under the mouse and turns gold when checked.",
+}
+Kit.buttonLooks.backgroundPiece = {}
+for _, v in ipairs(Kit.buttonLooks.backgrounds) do
+	Kit.buttonLooks.backgroundPiece[v.value] = v.piece
+end
+
+-- A Button Border's slot rule (for Kit:SkinActionButton's `as`); without a
+-- style, the one every window's buttons wear (UI Modifications' Button Border)
+function Kit:ButtonRimRule(style)
+	local looks = self.buttonLooks
+	style = style or (self.BorderValue and self:BorderValue("button"))
+	return looks.rimRule[style] or looks.rimRule.thin
+end
+
+-- A new Button Border on a skinned button (its rim's art swapped live)
+function Kit:SetButtonBorder(button, style)
+	local kind = self.buttonLooks.rimKind[style]
+	local rep = button and button.melloRep
+	if kind and rep and rep.object and rep.object.base then
+		self:SetSlotBase(rep.object, "buttons/" .. kind)
+	end
+end
+
+-- A button's background: the texture in its opening where it shows no icon
+-- (an action / bag / item slot's empty backing, melloSlotStone; a micro
+-- button's stone under its glyph, melloStone)
+function Kit:SetButtonBackground(button, value)
+	local tex = button and ((button.melloSlotStone and button.melloSlotStone.tex) or button.melloStone)
+	if not tex then
+		return
+	end
+	local piece = self.buttonLooks.backgroundPiece[value]
+	if piece then
+		if tex.kitName ~= piece then
+			self:Apply(tex, piece)
+		end
+		self:Retile(tex)
+		tex:SetAlpha(1)
+	elseif value == "dark" then
+		tex:SetColorTexture(0.05, 0.045, 0.04, 0.88)
+		-- still ours: a plain mark, no piece (as the solid kind's fill)
+		tex.kitPiece, tex.kitName = true, nil
+		tex:SetAlpha(1)
+	else
+		tex:SetAlpha(0)   -- none: the game shows it with the empty slot; it stays see-through
+	end
 end
 
 -- The layer above a status bar's fill for its bracket, and the one below it
@@ -2686,6 +2988,7 @@ function Kit:Replace(region, opts)
 	local proxy
 	if tune or self.liveEdit then
 		proxy = CreateFrame("Frame", nil, parent)
+		proxy.ignoreInLayout = true   -- never part of a layout frame's size (see Holder)
 		proxy:EnableMouse(false)
 		local x, y = tune and tune.x or 0, tune and tune.y or 0
 		proxy:SetPoint("TOPLEFT", rect, "TOPLEFT", x - (tune and tune.padL or 0), y + (tune and tune.padT or 0))
@@ -2701,10 +3004,21 @@ function Kit:Replace(region, opts)
 
 	local function Holder(lvl)
 		local f = CreateFrame("Frame", nil, parent)
+		-- never part of the parent's size: a layout frame (an action bar, a
+		-- ResizeLayoutFrame) grows round its shown children, and a holder on
+		-- a rect past its content would make it grow (user, 2026-09-23: Action
+		-- Bar 1 swelling in Edit Mode with the backdrop)
+		f.ignoreInLayout = true
 		-- opts.strata: a holder below everything at the parent's strata (the
 		-- main bar's end caps under every bar and the status bars)
 		if opts.strata then
 			f:SetFrameStrata(opts.strata)
+			-- kept there when its parent is raised (the game lifts the action
+			-- bars to TOOLTIP while a spell is dragged: a holder that followed
+			-- would come over the buttons)
+			if f.SetFixedFrameStrata then
+				f:SetFixedFrameStrata(true)
+			end
 		end
 		f:SetFrameLevel(math.max(parent:GetFrameLevel() + lvl, 0))
 		f:EnableMouse(false)
@@ -2921,6 +3235,8 @@ function Kit:Replace(region, opts)
 		local button = opts.button or parent
 		local rim = self:Slot(button, { kind = rule.slot or "slot", scale = self.scale, checked = opts.checked, under = rule.under,
 			layer = rule.layer, sublevel = rule.sublevel })
+		rim.iconGrow = rule.iconGrow
+		rim.iconBleed = rule.iconBleed
 		rim:ClearAllPoints()
 		rim:SetAllPoints(rect)
 		if opts.icon then
@@ -2955,19 +3271,48 @@ function Kit:Replace(region, opts)
 					end)
 				end
 			end
+			-- `keepIcon`: whoever anchors the icon afterwards (a side tab
+			-- centres it with an offset on press, release and selection, and
+			-- sizes it to its atlas: it spilled over the rim -- user,
+			-- 2026-09-23), it goes straight back into the opening
+			if rule.keepIcon then
+				hooksecurefunc(icon, "SetPoint", function()
+					if rep.object:IsShown() and not rim.placingIcon then
+						self:SlotPlaceIcon(rim)
+					end
+				end)
+			end
 		end
-		if rule.gemSpan and opts.pitch and opts.pitch[1] > 0 and opts.pitch[2] > 0 then
+		-- the rim's size from the pitch: gemSpan (neighbours share a gem: the
+		-- rim larger than the pitch), or pitchSize (a thin rim a little inside
+		-- the pitch: the micro buttons, taller than they are apart)
+		local function PitchSize(px, py)
+			if rule.gemSpan then
+				return px / rule.gemSpan[1], py / rule.gemSpan[2]
+			elseif rule.pitchSize then
+				return px * rule.pitchSize, py * rule.pitchSize
+			end
+		end
+		local pw, ph
+		if opts.pitch and opts.pitch[1] > 0 and opts.pitch[2] > 0 then
+			pw, ph = PitchSize(opts.pitch[1], opts.pitch[2])
+		end
+		if pw then
 			rim:ClearAllPoints()
 			rim:SetPoint("CENTER", rect, "CENTER")
-			rim:SetSize(opts.pitch[1] / rule.gemSpan[1], opts.pitch[2] / rule.gemSpan[2])
+			rim:SetSize(pw, ph)
 		end
 		-- SetPitch(x, y): re-size the rim to a new pitch (a bar re-laid by
 		-- Edit Mode) and fit the icon again
 		rep.SetPitch = function(self, px, py)
-			if rule.gemSpan and px and py and px > 0 and py > 0 then
+			local w, h
+			if px and py and px > 0 and py > 0 then
+				w, h = PitchSize(px, py)
+			end
+			if w then
 				rim:ClearAllPoints()
 				rim:SetPoint("CENTER", rect, "CENTER")
-				rim:SetSize(px / rule.gemSpan[1], py / rule.gemSpan[2])
+				rim:SetSize(w, h)
 				if rim.icon then
 					Kit:SlotPlaceIcon(rim)
 				end
@@ -2990,6 +3335,9 @@ function Kit:Replace(region, opts)
 		end
 		rim:Update()
 		rep.object = rim
+		if rule.sideTab then
+			self:RegisterSideTab(rep, button)
+		end
 	elseif rule.kind == "state" then
 		local button = opts.button or parent
 		local tex = self:StateTexture(button, rule.base, { scale = self.scale, layer = rule.layer or "OVERLAY", checked = opts.checked })
@@ -3055,7 +3403,21 @@ function Kit:Replace(region, opts)
 		-- opening, both as REGIONS of the rect's own frame: the trough in the
 		-- replaced background's layer, the bracket in BORDER above the game's
 		-- fill and below its ARTWORK text, so the rails cover the fill's edges
-		local base = "bars/" .. (rule.bar or "frame")
+		-- `opts.bar`: another bracket than the rule's (a panel's Bar Border
+		-- choice: "frame" the ornate P1, "castbar", or a thin rim look
+		-- "rim" / "rimhair" / "rimround" / "rimgold" / "rimsunk");
+		-- rep:SetBar(bar) swaps it live
+		-- a progress bar's bracket follows its group's border (every window's
+		-- Progress Bar Border; the nameplates' their own); a cast bar keeps its
+		local group = rule.bar ~= "castbar" and (rule.borderGroup or "bar") or nil
+		local base = "bars/" .. (opts.bar or (group and self:BorderValue(group)) or rule.bar or "frame")
+		if not PIECES[StripName(base, "mid")] then
+			base = "bars/" .. (rule.bar or "frame")
+		end
+		rep.base = base
+		if group then
+			self:RegisterBorderBar(group, rep)
+		end
 		-- the bracket goes in the layer just above the game's fill (`layer` /
 		-- `sublevel` on the rule: the caps at that sublevel, the middle ONE
 		-- BELOW it, so the sublevel must be at least the fill's + 2: BORDER 1
@@ -3064,7 +3426,10 @@ function Kit:Replace(region, opts)
 		-- opts.layer / sublevel / troughLayer / troughSub override the rule's
 		-- for a fill drawn elsewhere (a unit frame's power bar at ARTWORK: the
 		-- bracket at OVERLAY 0, the trough at BORDER)
-		local strip = self:Strip(parent, base, { scale = self.scale, owner = parent, layer = opts.layer or rule.layer or "BORDER", sublevel = opts.sublevel or rule.sublevel or 1 })
+		-- `state`: a variant of the caps ("red": the red end gems a health bar
+		-- keeps, while every other bracket's are iron -- Tools/kit_gems.py)
+		local strip = self:Strip(parent, base, { scale = self.scale, owner = parent, layer = opts.layer or rule.layer or "BORDER", sublevel = opts.sublevel or rule.sublevel or 1,
+			state = opts.state or rule.state })
 		strip:SetPoint("LEFT", rect, "LEFT")
 		strip:SetPoint("RIGHT", rect, "RIGHT")
 		-- `dropCap` ("l" / "r"): that end is capless, the rails running to the
@@ -3108,7 +3473,7 @@ function Kit:Replace(region, opts)
 		-- the caps' solid arms (from the piece's edge to its opening) in UI px
 		rep.GetArms = function(self)
 			local sc = self.strip.scale
-			local capL, capR = PIECES[StripName(base, "cap_l")], PIECES[StripName(base, "cap_r")]
+			local capL, capR = PIECES[StripName(self.base, "cap_l")], PIECES[StripName(self.base, "cap_r")]
 			local l = capL and capL.open and capL.open[1] * sc or self.strip.wl or 0
 			local r = capR and capR.open and (capR.w - capR.open[3]) * sc or self.strip.wr or 0
 			return l, r
@@ -3118,7 +3483,7 @@ function Kit:Replace(region, opts)
 		-- top / bottom most of the way into the rails, so the rails cover the edges
 		rep.GetOpening = function(self)
 			local sc = self.strip.scale
-			local mid = PIECES[StripName(base, "mid")]
+			local mid = PIECES[StripName(self.base, "mid")]
 			local under = (rule.underGem or 3) * sc
 			local armL, armR = self:GetArms()
 			-- a dropped or outward cap leaves the rect's whole width to the fill
@@ -3188,6 +3553,15 @@ function Kit:Replace(region, opts)
 			self.trough:SetPoint("TOPLEFT", self.rect, "TOPLEFT", l, -t)
 			self.trough:SetPoint("BOTTOMRIGHT", self.rect, "BOTTOMRIGHT", -r, b)
 			Kit:Retile(self.trough)
+		end
+		rep.SetBar = function(self, bar)
+			local b = "bars/" .. (bar or "frame")
+			if b == self.base or not PIECES[StripName(b, "mid")] then
+				return
+			end
+			self.base = b
+			self.strip:SetBase(b)
+			self:Refit()
 		end
 		rep:Refit()
 		local show, hide = strip.Show, strip.Hide
@@ -3267,7 +3641,14 @@ function Kit:Replace(region, opts)
 			end
 		end
 		rep.Refit = function(self)
-			local name = (self.grey and rule.grey and self.grey()) and rule.grey or rule.piece
+			-- rep:SetPiece(value): a panel's background choice in place of
+			-- the rule's piece ("dark": a flat fill)
+			if self.pieceOverride == "dark" then
+				self.tex:SetColorTexture(0.05, 0.045, 0.04, 0.95)
+				self.tex.kitPiece, self.tex.kitName = true, nil
+				return
+			end
+			local name = self.pieceOverride or ((self.grey and rule.grey and self.grey()) and rule.grey or rule.piece)
 			if self.tex.kitName ~= name then
 				Kit:Apply(self.tex, name)
 				-- the parchment in the kit's one parchment tone
@@ -3286,6 +3667,14 @@ function Kit:Replace(region, opts)
 			end
 			if self.backing then
 				Kit:Retile(self.backing)
+			end
+			if p.tile then
+				-- a background: repeated at the UI's one background
+				-- resolution, never fitted by stretching; `crop` says where
+				-- it starts (the middle, the top or the bottom of the rect)
+				self.tex.kitAlign = (rule.crop == "top" and "top") or (rule.crop == "bottom" and "bottom") or "center"
+				Kit:Retile(self.tex)
+				return
 			end
 			local u1, u2, v1, v2 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
 			local pa, ra = p.w / p.h, w / h
@@ -3337,6 +3726,14 @@ function Kit:Replace(region, opts)
 				u1, u2 = c - half, c + half
 			end
 			self.tex:SetTexCoord(u1, u2, v1, v2)
+		end
+		rep.SetPiece = function(self, value)
+			local piece = value and (Kit.buttonLooks.backgroundPiece[value] or (PIECES[value] and value))
+			self.pieceOverride = (value == "dark" and "dark") or piece or nil
+			if not self.pieceOverride then
+				self.tex:SetVertexColor(1, 1, 1, 1)
+			end
+			self:Refit()
 		end
 		inner:SetScript("OnSizeChanged", function() rep:Refit() end)
 		-- a page hidden while the skin is built has no size to fit to (the
@@ -3899,6 +4296,321 @@ function Kit:UnfitPortrait(portrait)
 		end
 		portrait:SetSize(saved.w, saved.h)
 		portrait.melloSaved = nil
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Side tabs (user, 2026-09-23: "all Category Side Tab Buttons should be
+-- mimicing the same size and appearence as the ones on the Character Pane and
+-- Vice Versa, setting the Character Pane as the Default"): every
+-- common-sidetab replacement is registered here. A tab of another window is
+-- given the Character window's tab size (the button itself, so it grows the
+-- way the game anchors it and its neighbours follow; the rim on it, the icon
+-- fitted again); every tab wears one Side Tab Border (UI Modifications'
+-- `sideTabBorder`: "slot" the Character window's gem slot, else a thin rim
+-- look), changed on all of them at once.
+--------------------------------------------------------------------------------
+
+Kit.sideTabLooks = {
+	{ value = "slot", label = "Gem slot", piece = "buttons/slot_checked" },
+	{ value = "rim", label = "Thin iron", piece = "buttons/rim_checked" },
+	{ value = "rimhair", label = "Hairline", piece = "buttons/rimhair_checked" },
+	{ value = "rimround", label = "Rounded corners", piece = "buttons/rimround_checked" },
+	{ value = "rimgold", label = "Iron with gold line", piece = "buttons/rimgold_checked" },
+	{ value = "rimsunk", label = "Sunk", piece = "buttons/rimsunk_checked" },
+}
+local SIDE_TAB_FALLBACK = 48       -- UI px, until the Character window's tab can be measured
+local SIDE_TAB_SCALE = 0.8         -- the rims 20 % smaller than the Character window's tab (user, 2026-09-23: "scale down their border by 20%"), the icons filling them
+local sideTabs = {}                -- { tab, rep, reference, saved = { w, h } }
+
+-- The Character window's side tab: its size is every side tab's
+local function IsReferenceTab(tab)
+	local name = tab and tab.GetName and tab:GetName()
+	return name and name:find("^CharacterFrameModeTab%d") ~= nil
+end
+
+function Kit:SideTabSize()
+	-- the size of the rim it shows: its Background's (the rim's rect there)
+	local tab = _G.CharacterFrameModeTab1
+	local ref = tab and (tab.Background or tab)
+	if ref then
+		local ok, w, h = pcall(ref.GetSize, ref)
+		if ok and w and h and not Secret(w) and not Secret(h) and w > 1 and h > 1 then
+			return w, h
+		end
+	end
+	return SIDE_TAB_FALLBACK, SIDE_TAB_FALLBACK
+end
+
+local function SideTabBase()
+	local um = MelloUI:GetModule("UIModifications")
+	local value = um and um.db and um.db.sideTabBorder or "slot"
+	for _, look in ipairs(Kit.sideTabLooks) do
+		if look.value == value then
+			return "buttons/" .. value
+		end
+	end
+	return "buttons/slot"
+end
+
+-- The look on one tab's rim (its glow is its checked look, drawn additively)
+local function SideTabLook(entry)
+	local rim = entry.rep and entry.rep.object
+	if not (rim and rim.base) then
+		return
+	end
+	local base = SideTabBase()
+	Kit:SetSlotBase(rim, base)
+	if rim.glow and PIECES[base .. "_checked"] then
+		Kit:Apply(rim.glow, base .. "_checked")
+	end
+end
+
+-- The side of its window a tab hangs on ("right" / "left")
+local function TabSide(tab)
+	local window = tab
+	while window:GetParent() and window:GetParent() ~= UIParent do
+		window = window:GetParent()
+	end
+	local ok, tx, wx = pcall(function() return (tab:GetCenter()), (window:GetCenter()) end)
+	if ok and tx and wx and not Secret(tx) and not Secret(wx) then
+		return tx >= wx and "right" or "left"
+	end
+	return "right"
+end
+
+-- A tab at the Character window's size (another window's button set to it,
+-- put back on disable), its rim SIDE_TAB_SCALE x that size, growing away
+-- from the window: its window-side edge on the tab's, centred up and down
+local function SideTabSize(entry, on)
+	local tab, rim = entry.tab, entry.rep and entry.rep.object
+	if not (tab and tab.SetSize and rim) then
+		return
+	end
+	local w, h = Kit:SideTabSize()
+	local anchor = entry.reference and (tab.Background or tab) or tab
+	if on then
+		if not entry.reference then
+			if not entry.saved then
+				local ok, sw, sh = pcall(tab.GetSize, tab)
+				if not (ok and sw and sh) or Secret(sw) or Secret(sh) then
+					return
+				end
+				entry.saved = { sw, sh }
+			end
+			tab:SetSize(w, h)
+		end
+		local side = TabSide(tab)
+		rim:ClearAllPoints()
+		if side == "right" then
+			rim:SetPoint("LEFT", anchor, "LEFT", 0, 0)
+		else
+			rim:SetPoint("RIGHT", anchor, "RIGHT", 0, 0)
+		end
+		rim:SetSize(w * SIDE_TAB_SCALE, h * SIDE_TAB_SCALE)
+	elseif entry.saved then
+		tab:SetSize(entry.saved[1], entry.saved[2])
+	end
+	if rim.icon then
+		Kit:SlotPlaceIcon(rim)
+	end
+end
+
+-- The Character window's painted side-tab icons (INV_SideTab_*_c60, tabs 2
+-- on) are drawn for the game's tab shape: a clipped corner and a transparent
+-- strip down their right side, which the game hides by nudging them left. In
+-- the square rim that strip showed the world through the opening (user,
+-- 2026-09-23, painted blue on a screenshot): cropped away, the art keeping
+-- its aspect (the top and bottom trimmed by the same share); measured on the
+-- reputation tab's icon, the art ends at 0.89 of its width, so the icon
+-- fills the rim to its inner edge (no backing behind it: user, 2026-09-23,
+-- "dont add a background, resize the buttons to fit the borders"). The
+-- game's own coordinates (UpdateIconInterior) come back on disable.
+local SIDE_TAB_ICON_CROP = { 0.03125, 0.866, 0.0828, 0.9172 }
+local SIDE_TAB_ICON_GAME = { 0.03125, 0.96875, 0.03125, 0.96875 }
+
+local function SideTabIcon(entry, on)
+	local rim = entry.rep and entry.rep.object
+	local icon = rim and rim.icon
+	if not icon then
+		return
+	end
+	if not entry.crop then
+		return
+	end
+	if not entry.cropHooked then
+		entry.cropHooked = true
+		hooksecurefunc(icon, "SetTexCoord", function(self)
+			if entry.cropping or not (entry.rep.object and entry.rep.object:IsShown()) then
+				return
+			end
+			entry.cropping = true
+			self:SetTexCoord(unpack(SIDE_TAB_ICON_CROP))
+			entry.cropping = nil
+		end)
+	end
+	entry.cropping = true
+	icon:SetTexCoord(unpack(on and SIDE_TAB_ICON_CROP or SIDE_TAB_ICON_GAME))
+	entry.cropping = nil
+end
+
+function Kit:RegisterSideTab(rep, tab)
+	if not (rep and tab) then
+		return
+	end
+	local entry = { tab = tab, rep = rep, reference = IsReferenceTab(tab) }
+	entry.crop = entry.reference and tab.GetID and tab:GetID() ~= 1   -- tab 1 is the character's portrait
+	sideTabs[#sideTabs + 1] = entry
+	local enable, disable = rep.Enable, rep.Disable
+	rep.Enable = function(self, ...)
+		enable(self, ...)
+		SideTabLook(entry)
+		SideTabSize(entry, true)
+		SideTabIcon(entry, true)
+	end
+	rep.Disable = function(self, ...)
+		disable(self, ...)
+		SideTabSize(entry, false)
+		SideTabIcon(entry, false)
+	end
+	SideTabLook(entry)
+	if rep.object and rep.object:IsShown() then
+		SideTabSize(entry, true)
+		SideTabIcon(entry, true)
+	end
+end
+
+-- Side Tab Border changed: every registered tab at once
+function Kit:SetSideTabBorder()
+	for _, entry in ipairs(sideTabs) do
+		SideTabLook(entry)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Borders for every window, one choice per kind (user, 2026-09-23: "Progress
+-- bar Borders, Nameplate Borders, ... should all be selectable from 1
+-- Dropdown menu and reflect on the connected action bars like the Character
+-- Side Panel Tab Borders"; one dropdown per kind). UI Modifications keeps
+-- the settings; every element of a kind is registered as it is skinned and
+-- takes the kind's look, and a new choice goes to all of them at once
+-- (Kit:ApplyBorder). Panels that fit something round a border (a bar's
+-- fill, the spell book's rims) listen with Kit:OnBorderChanged.
+--   button     the square rims of the action bars, micro menu, bag bar, bags,
+--              gear slots and spells (the thin looks)
+--   sidetab    every window's side tabs and the spell book's category tabs
+--   bar        every progress bar's bracket (character, professions, legacy,
+--              guild, experience, tracker, tooltip, damage meter, unit frames)
+--   nameplate  the nameplates' health bar bracket
+--------------------------------------------------------------------------------
+
+-- the round rims' looks (Tools/build_kit.py thin_ring; no rounded-corners
+-- ring: a ring is round already) and the auras' (the plain black edge they
+-- had, or a thin rim)
+Kit.roundLooks = {
+	{ value = "roundslot", label = "Gem ring", piece = "buttons/roundslot_normal" },
+	{ value = "roundrim", label = "Thin iron", piece = "buttons/roundrim_normal" },
+	{ value = "roundrimhair", label = "Hairline", piece = "buttons/roundrimhair_normal" },
+	{ value = "roundrimgold", label = "Iron with gold line", piece = "buttons/roundrimgold_normal" },
+	{ value = "roundrimsunk", label = "Sunk", piece = "buttons/roundrimsunk_normal" },
+}
+Kit.auraLooks = { { value = "black", label = "Plain black edge" } }
+for _, v in ipairs(Kit.buttonLooks.borders) do
+	Kit.auraLooks[#Kit.auraLooks + 1] = v
+end
+
+Kit.borderKinds = {
+	{ kind = "button", key = "buttonBorder", default = "thin", name = "Button Border", values = Kit.buttonLooks.borders, preview = "rim",
+	  desc = "The rim on every square button: the action bars, the micro menu, the bag bar, your bags, the equipment slots and the spell book's spells." },
+	{ kind = "sidetab", key = "sideTabBorder", default = "slot", name = "Side Tab Border", values = Kit.sideTabLooks, preview = "rim",
+	  desc = "The rim on every window's side tabs and the spell book's category tabs, all at the character window's size." },
+	{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.barBorders, preview = "bar",
+	  desc = "The frame round every progress bar: reputation and skills, the professions' ranks, legacy, guild, experience, the tracker's, the tooltip's, the damage meter's and the unit frames' bars." },
+	{ kind = "nameplate", key = "nameplateBorder", default = "frame", name = "Nameplate Border", values = Kit.buttonLooks.barBorders, preview = "bar",
+	  desc = "The frame round the nameplates' health bars." },
+	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",
+	  desc = "The rim round every round icon: passive spells, the legacy, guild and group finder windows' rings, the auction house's item, the Services bar's round buttons." },
+	{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
+	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon." },
+}
+local BORDER_KIND = {}
+for _, k in ipairs(Kit.borderKinds) do
+	BORDER_KIND[k.kind] = k
+end
+
+function Kit:BorderValue(kind)
+	local k = BORDER_KIND[kind]
+	if not k then
+		return nil
+	end
+	local um = MelloUI:GetModule("UIModifications")
+	local v = um and um.db and um.db[k.key]
+	return v or k.default
+end
+
+local buttonRims = setmetatable({}, { __mode = "k" })   -- [button] = true: a skinned button whose rim is a thin look
+local borderBars = { bar = setmetatable({}, { __mode = "k" }), nameplate = setmetatable({}, { __mode = "k" }) }
+local borderListeners = {}                                -- [kind] = { fn, ... }
+
+function Kit:RegisterButtonRim(button)
+	if button then
+		buttonRims[button] = true
+		self:SetButtonBorder(button, self:BorderValue("button"))
+	end
+end
+
+function Kit:RegisterBorderBar(group, rep)
+	if borderBars[group] and rep then
+		borderBars[group][rep] = true
+	end
+end
+
+function Kit:OnBorderChanged(kind, fn)
+	borderListeners[kind] = borderListeners[kind] or {}
+	table.insert(borderListeners[kind], fn)
+end
+
+-- every round rim (Kit:Slot with kind "roundslot"), for Round Border
+Kit.roundRims = setmetatable({}, { __mode = "k" })
+
+-- A round rim in a look (its glow, the lit look, too)
+local function RoundLook(rim, value)
+	local base = "buttons/" .. value
+	if not PIECES[base .. "_normal"] then
+		return
+	end
+	Kit:SetSlotBase(rim, base)
+	if rim.glow then
+		local look = rim.restState or (PIECES[base .. "_checked"] and "checked") or "hover"
+		Kit:Apply(rim.glow, base .. "_" .. look)
+	end
+end
+
+-- A kind's choice to every element of it
+function Kit:ApplyBorder(kind)
+	local value = self:BorderValue(kind)
+	if kind == "round" then
+		for rim in pairs(self.roundRims) do
+			RoundLook(rim, value)
+		end
+	elseif kind == "button" then
+		for button in pairs(buttonRims) do
+			self:SetButtonBorder(button, value)
+		end
+	elseif kind == "sidetab" then
+		self:SetSideTabBorder()
+	elseif borderBars[kind] then
+		for rep in pairs(borderBars[kind]) do
+			if rep.SetBar then
+				rep:SetBar(value)
+				if rep.onBarChanged then
+					pcall(rep.onBarChanged, rep)
+				end
+			end
+		end
+	end
+	for _, fn in ipairs(borderListeners[kind] or {}) do
+		pcall(fn, value)
 	end
 end
 
@@ -4468,7 +5180,8 @@ SlashCmdList.MELLOKITWHAT = function()
 					local level = parent and parent.GetFrameLevel and parent:GetFrameLevel() or 0
 					local order = ({ BACKGROUND = 0, LOW = 1, MEDIUM = 2, HIGH = 3, DIALOG = 4, FULLSCREEN = 5, FULLSCREEN_DIALOG = 6, TOOLTIP = 7 })[strata] or 0
 					local layerOrder = ({ BACKGROUND = 0, BORDER = 1, ARTWORK = 2, OVERLAY = 3, HIGHLIGHT = 4 })[okL and layer or ""] or 0
-					local pieceW, pieceH = tex.kitPiece and tex.kitPiece.w or 0, tex.kitPiece and tex.kitPiece.h or 0
+					local kp = type(tex.kitPiece) == "table" and tex.kitPiece or nil   -- (true: a flat colour of ours)
+					local pieceW, pieceH = kp and kp.w or 0, kp and kp.h or 0
 					local rimInfo = ""
 					if tex.button then
 						local bt = tex.button
@@ -4484,7 +5197,7 @@ SlashCmdList.MELLOKITWHAT = function()
 						key = order * 1e6 + level * 1e3 + layerOrder * 10 + (okL and sub or 0),
 						text = string.format("%-34s %4dx%-4d  uv %.3f..%.3f x %.3f..%.3f  (%s: %dx%d px shown on %dx%d)  tint %.2f %.2f %.2f a=%.2f  %s/%s  %s L%d %s  file=%s",
 							tostring(tex.kitName), w, h, u1 or 0, u2 or 0, v1 or 0, v2 or 0,
-							tex.kitPiece and tex.kitPiece.tile and "tile" or "picture", math.floor(pieceW * shownW + 0.5), math.floor(pieceH * ((v2 or 0) - (v1 or 0)) + 0.5), w, h,
+							kp and kp.tile and "tile" or "picture", math.floor(pieceW * shownW + 0.5), math.floor(pieceH * ((v2 or 0) - (v1 or 0)) + 0.5), w, h,
 							okV and r or 1, okV and g or 1, okV and bl or 1, tex:GetAlpha() or 1,
 							tostring(okL and layer or "?"), tostring(okL and sub or "?"), tostring(parent and parent:GetName() or (parent and parent:GetDebugName()) or "?"), level, strata,
 							tostring(file)) .. rimInfo,

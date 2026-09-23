@@ -93,6 +93,56 @@ local function SizeTexts(button, size)
 	Try(t.count.SetFont, t.count, face, math.max(8, math.floor(size * 0.4 + 0.5)), "OUTLINE")
 end
 
+-- Aura Border (user, 2026-09-23: one border per kind for every window, UI
+-- Modifications' Aura Border): the plain black edge the buttons had, or a
+-- thin rim the buttons wear round the icon (its edge 2 px under the rim's
+-- inner edge, as the side tabs'), the debuff colour above it at the icon's
+-- edge. Every button made is kept, so a new choice reaches all of them.
+local function AuraLook()
+	local Kit = MelloUI.Kit
+	return Kit and Kit.BorderValue and Kit:BorderValue("aura") or "black"
+end
+
+local function ApplyAuraLook(button)
+	local t = texts[button]
+	local Kit = MelloUI.Kit
+	if not (t and Kit and Kit.Slot) then
+		return
+	end
+	local look = AuraLook()
+	local kind = Kit.buttonLooks and Kit.buttonLooks.rimKind[look]
+	if not kind then
+		if t.rim then
+			t.rim:Hide()
+		end
+		t.edge:Show()
+		return
+	end
+	local base = "buttons/" .. kind
+	-- a plain texture in the look's normal state: the aura buttons are the
+	-- game's protected buttons, whose scripts may not be hooked (Kit:Slot
+	-- follows the button's hover and press through HookScript: "Cannot
+	-- assign script handler for 'onenter' (cannot replace a forbidden script
+	-- handler)", user 2026-09-23, and the rest of the button's set-up was
+	-- lost with it), so the rim does not light on hover
+	if not t.rim then
+		t.rim = button:CreateTexture(nil, "OVERLAY", nil, 3)
+		t.rim.kitScale = Kit.scale
+	end
+	if t.rim.kitName ~= base .. "_normal" then
+		Kit:Apply(t.rim, base .. "_normal")
+	end
+	local p = Kit:Piece(base .. "_normal")
+	local l, r = Kit:Insets(base .. "_normal", 1)
+	local share = (p and l) and (p.w - l - r) / p.w or 0.8
+	t.rim:ClearAllPoints()
+	t.rim:SetPoint("CENTER", button, "CENTER")
+	local side = (t.size - 4) / share
+	t.rim:SetSize(side, side)
+	t.rim:Show()
+	t.edge:Hide()
+end
+
 -- o: size, swipe (a cooldown spiral), durationBelow (the time under the
 -- icon, else in its middle), dispel (a dispel-coloured border on debuffs),
 -- cancel (right-click cancels), tooltip (anchor)
@@ -131,10 +181,11 @@ local function InitButton(button, o)
 		time:SetPoint("CENTER", button, "CENTER", 0, 0)
 	end
 	Try(button.SetDurationText, button, time, {})
-	texts[button] = { time = time, count = count, below = o.durationBelow }
+	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size }
 	SizeTexts(button, o.size)
+	ApplyAuraLook(button)
 	if o.dispel and button.AddDispelTypeTexture then
-		local border = button:CreateTexture(nil, "OVERLAY")
+		local border = button:CreateTexture(nil, "OVERLAY", nil, 5)   -- above an Aura Border rim
 		border:SetPoint("TOPLEFT", -1, 1)
 		border:SetPoint("BOTTOMRIGHT", 1, -1)
 		local style = Enum and Enum.CustomAuraButtonDispelTypeTextureStyle
@@ -153,6 +204,14 @@ end
 -- A container on `parent` for `unit`, its groups { key, filter, max } in order,
 -- each on a line of its own; o: the button look and the flow (anchor, gx, gy,
 -- line = the longest line, spacing)
+if MelloUI.Kit and MelloUI.Kit.OnBorderChanged then
+	MelloUI.Kit:OnBorderChanged("aura", function()
+		for button in pairs(texts) do
+			ApplyAuraLook(button)
+		end
+	end)
+end
+
 local function NewContainer(parent, unit, groups, o)
 	local c = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
 	c:SetSize(1, 1)
@@ -203,6 +262,10 @@ local function Resize(c, size, line)
 			if okF and b then
 				Try(b.SetSize, b, size, size)
 				SizeTexts(b, size)
+				if texts[b] then
+					texts[b].size = size
+					ApplyAuraLook(b)   -- the rim round the new size
+				end
 			end
 		end
 	end

@@ -20,7 +20,7 @@ globals = {
 
 -- WoW API, Blizzard frames and the addon's own data files and named frames.
 read_globals = {
-	"HelpTip", "StaticPopup_Show",
+	"HelpTip", "StaticPopup_Show", "GetActionTexture", "OpenAllBags", "CloseAllBags", "CVarCallbackRegistry",
 	"BagItemAutoSortButton", "BagItemSearchBox", "MainMenuBarBackpackButton",
 	"ADDONS", "EXIT_GAME", "GAMEMENU_ADDONS", "GAMEMENU_EDIT_MODE", "GAMEMENU_HELP", "GAMEMENU_OPTIONS", "GAMEMENU_SUPPORT", "HELP_LABEL", "HUD_EDIT_MODE_MENU", "LOGOUT", "MACROS", "OPTIONS", "QUIT", "RETURN_TO_GAME",
 	"EnumerateFrames",
@@ -50,7 +50,7 @@ read_globals = {
 	"GetPlayerFacing", "GetProfessionInfo", "GetProfessions", "GetProgressText",
 	"GetQuestDifficultyColor", "GetQuestID", "GetQuestLogQuestText", "GetQuestText",
 	"GetRepairAllCost", "GetRewardText", "GetServerTime", "GetSubZoneText", "GetSuperTrackedQuestID",
-	"GetTaxiMapID", "GetTime", "GetTitleText", "HideUIPanel", "InCombatLockdown", "IsInInstance",
+	"GetTaxiMapID", "GetTime", "GetTitleText", "HideUIPanel", "ShowUIPanel", "InCombatLockdown", "IsInInstance",
 	"IsMouseButtonDown", "IsShiftKeyDown", "KeyRingButton", "LOG_OUT", "LibStub", "MainActionBar",
 	"MainMenuBar", "MultiBarBottomLeft", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "MapQuestInfoRewardsFrame",
 	"MelloUIHiddenFrame", "MelloUIMinimapStand", "MelloUIServicesBar", "MelloUI_CustomFonts",

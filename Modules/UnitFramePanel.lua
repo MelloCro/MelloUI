@@ -100,12 +100,14 @@ end
 
 -- A bar's bracket (B3): regions of the bar itself in the layer over its
 -- fill, fitted to `rect`; Bar Textures told to drop its mask.
-local function SkinBar(bar, rect, picture, mirrored)
+local function SkinBar(bar, rect, picture, mirrored, health)
 	if not (bar and rect and picture) or bar.melloRep ~= nil then
 		return bar and bar.melloRep or nil
 	end
 	local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(bar)
-	local rep = Replace(picture, { as = mirrored and "UnitFrameBarMirrored" or "UnitFrameBar", parent = bar, rect = rect, noFade = true,
+	-- a health bar keeps its end gem red (UnitFrameHealthBar), the others are iron
+	local key = (health and "UnitFrameHealthBar" or "UnitFrameBar") .. (mirrored and "Mirrored" or "")
+	local rep = Replace(picture, { as = key, parent = bar, rect = rect, noFade = true,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub })
 	bar.melloRep = rep or false
 	if not rep then
@@ -523,7 +525,7 @@ local function SkinPlayer()
 	CenterName(PlayerName, band)
 	skin.playerRing = SkinRing(picture, container.PlayerPortrait, container.PlayerPortraitMask)
 	local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar
-	SkinBar(health, health, picture, false)
+	SkinBar(health, health, picture, false, true)
 	local mana = main.ManaBarArea and main.ManaBarArea.ManaBar
 	SkinBar(mana, mana, picture, false)
 	TuckBars(skin.playerRing, { health, mana }, false)
@@ -557,7 +559,7 @@ local function SkinTargetLike(frame)
 	end
 	local ring = SkinRing(picture, container.Portrait)   -- its mask follows the portrait's anchors
 	local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar
-	SkinBar(health, health, picture, true)
+	SkinBar(health, health, picture, true, true)
 	SkinBar(main.ManaBar, main.ManaBar, picture, true)
 	TuckBars(ring, { health, main.ManaBar }, true)
 	RingCover(ring, { health, main.ManaBar }, true, container)
@@ -617,7 +619,7 @@ local function SkinTargetLike(frame)
 			{ tot.FrameTexture, "UI-HUD-UnitFrame-TargetofTarget-PortraitOn" },
 		})
 		local totRing = SkinRing(tot.FrameTexture, tot.Portrait)
-		SkinBar(tot.HealthBar, tot.HealthBar, tot.FrameTexture, false)
+		SkinBar(tot.HealthBar, tot.HealthBar, tot.FrameTexture, false, true)
 		SkinBar(tot.ManaBar, tot.ManaBar, tot.FrameTexture, false)
 		TuckBars(totRing, { tot.HealthBar, tot.ManaBar }, false)
 		RingCover(totRing, { tot.HealthBar, tot.ManaBar }, false, tot)
@@ -636,7 +638,7 @@ local function SkinPet()
 		{ PetAttackModeTexture, "UI-HUD-UnitFrame-TargetofTarget-PortraitOn-Status" },
 	})
 	local petRing = SkinRing(PetFrameTexture, pf.Portrait)
-	SkinBar(PetFrameHealthBar, PetFrameHealthBar, PetFrameTexture, false)
+	SkinBar(PetFrameHealthBar, PetFrameHealthBar, PetFrameTexture, false, true)
 	SkinBar(PetFrameManaBar, PetFrameManaBar, PetFrameTexture, false)
 	TuckBars(petRing, { PetFrameHealthBar, PetFrameManaBar }, false)
 	RingCover(petRing, { PetFrameHealthBar, PetFrameManaBar }, false, pf)
@@ -733,7 +735,7 @@ local function SkinPartyMember(frame)
 		CenterName(frame.Name, band)
 	end
 	local ring = SkinRing(picture, portrait, nil, "UnitFramePortraitRingParty")
-	SkinBar(health, health, picture, false)
+	SkinBar(health, health, picture, false, true)
 	SkinBar(frame.ManaBar, frame.ManaBar, picture, false)
 	TuckBars(ring, { health, frame.ManaBar }, false)
 	RingCover(ring, { health, frame.ManaBar }, false, frame)
@@ -745,7 +747,7 @@ local function SkinPartyMember(frame)
 			{ pet.Flash, "UI-HUD-UnitFrame-Party-PortraitOn-InCombat" },
 		})
 		local petRing = SkinRing(pet.Texture, pet.Portrait, nil, "UnitFramePortraitRingParty")
-		SkinBar(pet.HealthBar, pet.HealthBar, pet.Texture, false)
+		SkinBar(pet.HealthBar, pet.HealthBar, pet.Texture, false, true)
 		TuckBars(petRing, { pet.HealthBar }, false)
 		RingCover(petRing, { pet.HealthBar }, false, pet)
 	end

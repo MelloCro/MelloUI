@@ -24,26 +24,28 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 
--- The reskin panels: { module name, toggle label, description }
+-- The reskin panels: { module name, toggle label, description }; `include`:
+-- the module's own options follow its switch on the page (the panel modules
+-- are hidden from the configurator's list, so this is where they show)
 local PANELS = {
 	{ sub = "Windows" },
-	{ "CharacterPanel",   "Character window",       "Equipment, stats, reputation and skills in the kit." },
+	{ "CharacterPanel",   "Character window",       "Equipment, stats, reputation and skills in the kit.", include = true },
 	{ "SpellBookPanel",   "Spell book",             "The spell book and its tabs in the kit." },
-	{ "ProfessionsPanel", "Professions",            "The profession book and crafting window in the kit." },
+	{ "ProfessionsPanel", "Professions",            "The profession book and crafting window in the kit.", include = true },
 	{ "LegacyPanel",      "Legacy window",          "Rewards, challenges and the tree in the kit." },
 	{ "QuestLogPanel",    "Quest log",              "The quest log in the world map window and MelloUI's quest list in the kit." },
 	{ "GuildPanel",       "Guild & communities",    "Chat, roster, info and settings in the kit." },
 	{ "GroupFinderPanel", "Looking for group",      "Listing, browse and who in the kit." },
 	{ "CollectionsPanel", "Appearances",            "The wardrobe in the kit." },
 	{ "SocialPanel",      "Social window",          "Contacts, raid and quick join in the kit." },
-	{ "BackpackPanel",    "Bags",                   "The backpack and bag windows in the kit." },
+	{ "BackpackPanel",    "Bags",                   "The backpack and bag windows in the kit.", include = true },
 	{ "GameMenuPanel",    "Game menu",              "The Escape menu on its painted plates." },
 	{ sub = "HUD" },
 	{ "UnitFramePanel",   "Unit frames",            "Player, target, focus, pet and party frames in the kit." },
 	{ "CastBarPanel",     "Cast bars",              "Player, pet, target and focus cast bars in the kit." },
 	{ "RaidFramePanel",   "Raid frames",            "Compact raid frames, group borders and totems in the kit." },
-	{ "ActionBarPanel",   "Action bars",            "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit." },
-	{ "MinimapPanel",     "Minimap",                "The minimap ring, zone band and buttons in the kit." },
+	{ "ActionBarPanel",   "Action bars",            "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit.", include = true },
+	{ "MinimapPanel",     "Minimap",                "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", include = true },
 	{ "TrackerPanel",     "Objective tracker",      "The tracker's headers and backdrop in the kit." },
 	{ "ChatPanel",        "Chat windows",           "Chat frames, tabs, edit box and buttons in the kit (no fade)." },
 	{ "DamageMeterPanel", "Damage meter",           "The damage meter and its breakdown window in the kit." },
@@ -79,7 +81,7 @@ local Apply, RestoreAreas, NothingWanted
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = false,
-	unlock = false, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
+	unlock = false, autoSnap = true, sideTabBorder = "slot", positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
 options[#options + 1] = { type = "header", name = "Reskin" }
 options[#options + 1] = { type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
 	desc = "The whole interface dressed in the painted kit. Off: every area below shows the game's own art; the quality-of-life tweaks keep working." }
@@ -120,12 +122,23 @@ options[#options + 1] = { type = "toggle", key = "parchment_meter", name = "Dama
 	desc = "A parchment sheet with a painted edge on the damage meter's stone backdrop. Off: the stone alone." }
 options[#options + 1] = { type = "toggle", key = "parchment_character", name = "Character Window",
 	desc = "A parchment sheet with a painted edge on the character window's stone backdrop. Off: the stone alone." }
+-- the borders of every window, one choice per kind (Kit.borderKinds: Button,
+-- Side Tab, Progress Bar, Nameplate; user, 2026-09-23)
+options[#options + 1] = { type = "subheader", name = "Borders (every window)" }
+for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
+	defaults[k.key] = k.default
+	options[#options + 1] = { type = "dropdown", key = k.key, name = k.name, values = k.values,
+		desc = k.desc .. " Also in Dynamic UI Modification's overview, at the top of the configurator." }
+end
 for _, area in ipairs(PANELS) do
 	if area.sub then
 		options[#options + 1] = { type = "subheader", name = area.sub }
 	else
 		defaults[area[1]] = true
 		options[#options + 1] = { type = "toggle", key = area[1], name = area[2], desc = area[3] }
+		if area.include then
+			options[#options + 1] = { type = "include", module = area[1], key = area[1] }
+		end
 	end
 end
 -- Names (user, 2026-09-22: "make that option global for all of the 3
@@ -163,11 +176,19 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	applyWhenDisabled = true,
 	defaults = defaults,
 	options = options,
-	headerButton = { name = "Reset positions",
-		desc = "Forget every saved window position and scale: each window returns to the game's own place and size the next time it opens (open ones are closed now)." },
-	headerToggle = { key = "unlock", name = "Unlock the Windows",
-		desc = "Every window can be dragged by its title strip (the kit's title plate when the reskin is on), the minimap by its zone band, the tracker by its header, the damage meter by grabbing it and a chat window by a strip along its top edge (so its links and buttons keep working); the border lights up while it moves, a grid shows the screen's centre and the corner snaps lightly to it, and the mouse wheel while dragging scales it. Every drag area shows as a gold band while this is on, brighter under the mouse. Positions and scales stay, reloads included, and win over Edit Mode's for those elements. Works with the reskin off as well." },
 })
+
+-- Unlock the Windows, Auto Snapping and Reset positions sit in the
+-- configurator's top bar (user, 2026-09-23: "should be placed along with as
+-- the main options on top of that window"): their texts, for its tooltips
+M.placementTexts = {
+	unlock = { name = "Unlock the Windows",
+		desc = "Every window can be dragged by its title strip (the kit's title plate when the reskin is on), the minimap by its zone band, the trackers by their headers, the damage meter by grabbing it and a chat window by a strip along its top edge (so its links and buttons keep working); the border lights up while it moves, the screen darkens with a grid on it, and the mouse wheel while dragging scales it. Every drag area shows as a gold band while this is on, brighter under the mouse. Positions and scales stay, reloads included, and win over Edit Mode's for those elements. Works with the reskin off as well." },
+	autoSnap = { name = "Auto Snapping",
+		desc = "While a window is dragged, the grid lines near its bottom-left corner light up, and on release the corner snaps onto them. Off: the window stays exactly where it is dropped." },
+	reset = { name = "Reset positions",
+		desc = "Forget every saved window position and scale: each window returns to the game's own place and size the next time it opens (open ones are closed now)." },
+}
 
 --------------------------------------------------------------------------------
 -- The window mover (user, 2026-09-21): while `unlock` is on, a kit window's
@@ -265,6 +286,7 @@ PutBack = function(frame)
 			if mover then
 				mover.scaling = nil
 			end
+			MelloUI.Kit:RetileBackgrounds()
 		end
 		Raw(frame, "ClearAllPoints")(frame)
 		-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry
@@ -447,7 +469,9 @@ local function Veil(frame, on)
 		end)
 		veil:SetScript("OnUpdate", function(self)
 			local dx, dy = CornerOffset(frame)
-			if not dx then
+			if not dx or not (M.db and M.db.autoSnap ~= false) then
+				self.hlX:Hide()
+				self.hlY:Hide()
 				return
 			end
 			local tx, ty = SnapTarget(dx), SnapTarget(dy)
@@ -512,6 +536,7 @@ local function MakeMover(frame, shell)
 		-- along), or the plain grab for a kit window — one mover, another
 		-- handle (user, 2026-09-22: the mover works with the reskin off)
 		existing.shell.outer = shell.outer or existing.shell.outer
+		existing.custom = existing.custom or shell.custom   -- a window keeping its own place, whichever came first
 		AddHandle(existing, handle)
 		return
 	end
@@ -523,7 +548,7 @@ local function MakeMover(frame, shell)
 	-- the plain grab that the sweep makes: the mover is still built, and
 	-- AddHandle below does nothing until there is one (user, 2026-09-22: the
 	-- damage meter is dragged by its header, which only the sweep knows)
-	local mover = { shell = shell, handles = {}, washes = {}, frame = frame }
+	local mover = { shell = shell, handles = {}, washes = {}, frame = frame, custom = shell.custom }
 	movers[frame] = mover
 	-- the mouse wheel while dragging: the window's scale, 5 % a notch,
 	-- 50 % .. 200 % (user, 2026-09-21), saved with the position
@@ -536,7 +561,8 @@ local function MakeMover(frame, shell)
 		if not ok or type(current) ~= "number" then
 			return
 		end
-		local scale = math.max(SCALE_MIN, math.min(SCALE_MAX, current + delta * SCALE_STEP))
+		local custom = mover.custom
+		local scale = math.max(custom and custom.min or SCALE_MIN, math.min(custom and custom.max or SCALE_MAX, current + delta * SCALE_STEP))
 		if math.abs(scale - current) < 0.001 then
 			return
 		end
@@ -563,6 +589,8 @@ local function MakeMover(frame, shell)
 		end
 		mover.scaling = nil
 		mover.scaled = scale
+		-- its backgrounds keep the UI's one resolution: more of them shows
+		MelloUI.Kit:RetileBackgrounds()
 	end
 	mover.Wheel = Wheel
 	mover.DragStart = function()
@@ -592,7 +620,7 @@ local function MakeMover(frame, shell)
 		-- of a screen centre line is put on that line (each axis on its own)
 		pcall(function()
 			local dx, dy, k = CornerOffset(frame)
-			if not dx then
+			if not dx or not (M.db and M.db.autoSnap ~= false) then
 				return
 			end
 			local tx, ty = SnapTarget(dx), SnapTarget(dy)
@@ -603,6 +631,18 @@ local function MakeMover(frame, shell)
 				Raw(frame, "SetPoint")(frame, "BOTTOMLEFT", UIParent, "CENTER", (tx or dx) * k, (ty or dy) * k)
 			end
 		end)
+		-- a window that keeps its own place (MelloUI's quest tracker): it
+		-- saves where it was dropped and at what scale, its own way
+		if mover.custom then
+			if mover.custom.save then
+				local ok, err = pcall(mover.custom.save, frame)
+				if not ok then
+					MelloUI:Notice("UI Modifications: %s", tostring(err))
+				end
+			end
+			mover.moving = nil
+			return
+		end
 		local _, name = SavedPosition(frame)
 		if name and M.db then
 			M.db.positions = M.db.positions or {}
@@ -981,11 +1021,32 @@ local function ResetPositions()
 			mover.placing = nil
 		end
 	end
+	for _, mover in pairs(movers) do
+		if mover.custom and mover.custom.reset then
+			pcall(mover.custom.reset)
+		end
+	end
 	M.db.positions = {}
 	MelloUI:NotifySettingChanged(M.name, "positions", M.db.positions)
 	MelloUI:Print("UI Modifications: window positions and scales reset.")
 end
-M.headerButton.onClick = ResetPositions
+M.ResetPositions = ResetPositions
+
+-- A window MelloUI draws itself, moved by the same mover (the darkened
+-- screen, the grid, the lit border, the snap and the wheel), which keeps its
+-- own place (user, 2026-09-23: the All Objectives tracker "does not have
+-- the same darkening ... also the mousewheel does not increase its scale").
+-- custom = { save = function(frame) (on release), reset = function() (Reset
+-- positions), min / max = its scale range for the wheel }.
+function MelloUI:RegisterMover(frame, handle, custom)
+	if not (frame and handle) then
+		return
+	end
+	local ok = pcall(MakeMover, frame, { title = handle, custom = custom or {} })
+	if ok and movers[frame] then
+		movers[frame].SetUnlocked(M.isEnabled and M.db and M.db.unlock)
+	end
+end
 
 local Kit = MelloUI.Kit
 if Kit and Kit.OnShell then
@@ -1258,6 +1319,20 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- the borders moved here from the panels (one choice per kind for every
+	-- window, 2026-09-23): the action bars' Button Border and the character
+	-- window's progress bar look carry over, once
+	if not db.bordersMigrated then
+		local ab = MelloUI:GetModuleDB("ActionBarPanel")
+		if ab and ab.buttonBorder then
+			db.buttonBorder = ab.buttonBorder
+		end
+		local cp = MelloUI:GetModuleDB("CharacterPanel")
+		if cp and cp.repBarBorder then
+			db.barBorder = cp.repBarBorder
+		end
+		db.bordersMigrated = true
+	end
 	ApplyMotion(db)
 	if db.reskin ~= false and NothingWanted(db) then
 		MelloUI:Notice("UI Modifications is on, but every area of the reskin is switched off, so the game's own art is what you see. Its page has a \"Switch every area on\" button.")
@@ -1295,7 +1370,15 @@ function M:OnSettingChanged(key, value, db)
 			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)
 		end
 		return
-	elseif key == "positions" or key == "layoutApplied" or key == "welcomeAsked" or key == "savedSurnameOwn" then
+	elseif MelloUI.Kit and MelloUI.Kit.borderKinds then
+		for _, k in ipairs(MelloUI.Kit.borderKinds) do
+			if key == k.key then
+				MelloUI.Kit:ApplyBorder(k.kind)
+				return
+			end
+		end
+	end
+	if key == "autoSnap" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked" or key == "savedSurnameOwn" then
 		return
 	elseif key == "nameFormat" then
 		ApplyNameFormat(db, true)

@@ -22,6 +22,19 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
 
+local LOOKS = Kit.buttonLooks
+
+-- Window Background: the window's own stone, or one of the button
+-- backgrounds over the whole window (not None: the world would show through)
+local WINDOW_BACKGROUNDS = { { value = "window", label = "Window stone", piece = "window/frame_body" } }
+for _, v in ipairs(LOOKS.backgrounds) do
+	if v.value ~= "none" then
+		WINDOW_BACKGROUNDS[#WINDOW_BACKGROUNDS + 1] = v
+	end
+end
+
+-- (movable and statRows have no switch on the page: dragging is UI
+-- Modifications' Unlock the Windows, the stat plates stay on)
 local M = MelloUI:RegisterModule("CharacterPanel", {
 	title = "Character Panel",
 	desc = "The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout.",
@@ -29,13 +42,13 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 	defaults = {
 		movable = false,
 		statRows = true,
+		slotBorder = "thin",     -- (read once by UI Modifications: the borders are every window's now)
+		windowBackground = "window",
+		repBarBorder = "frame",
 	},
 	options = {
-		{ type = "header", name = "Window" },
-		{ type = "toggle", key = "movable", name = "Unlocked",
-		  desc = "Drag the window anywhere by its frame." },
-		{ type = "toggle", key = "statRows", name = "Stat row plates",
-		  desc = "A painted plate where the game draws its row background (every other stat row)." },
+		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
+		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, parchment, leather or dark. The equipment slots, the progress bars and the side tabs wear UI Modifications' borders (every window's)." },
 	},
 })
 
@@ -169,7 +182,9 @@ local function BuildSkin()
 		Replace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = extra })
 	end
 
-	-- the panes' backdrop pictures and the divider between them
+	-- the panes' backdrop pictures and the divider between them: the
+	-- pictures are faded (Kit's one-stone-per-surface rule), the window's
+	-- own stone runs on under both panes
 	if cf.LeftPaneHost then
 		Replace(FirstTexture(cf.LeftPaneHost), { as = "UI-Character-Info-General-BG" })
 	end
@@ -178,7 +193,8 @@ local function BuildSkin()
 		local bg = FirstTexture(host)
 		if bg and bg ~= host.StoneBg then
 			local stone = Replace(bg, { as = "UI-Character-Info-Stat-BG" })
-			-- a parchment sheet on the right pane's stone, behind every tab
+			-- a parchment sheet on the right pane (on the window's stone; the
+			-- replacement's holder carries it), behind every tab
 			-- that shows there (stats, the reputation / skill / honor /
 			-- currency details, statistics), filling nearly the whole pane so
 			-- the text sits ON the parchment, its edge in the FINE strokes
@@ -259,8 +275,9 @@ local function BuildSkin()
 	end
 
 	-- the model's backdrop: four landscape quadrants (race pictures) under the
-	-- character. One stone tile stands in for all four, on their union, at the
-	-- scene's own level; the game's vignette overlay stays on top as it is.
+	-- character. All four are faded (their union the replacement's rect), so
+	-- the window's own stone runs on behind the model: one stone, no second
+	-- tile with its own seam; the game's vignette overlay stays on top.
 	local scene = CharacterModelScene
 	if scene and scene.BackgroundTopLeft and scene.BackgroundBotRight then
 		local union = CreateFrame("Frame", nil, scene)
@@ -274,30 +291,22 @@ local function BuildSkin()
 		Replace(scene, { as = "ViewportFrame", parent = scene, rect = scene, noFade = true })
 	end
 
-	-- every equipment slot: the gear-slot border picture inside its 1 x 1
-	-- BorderFrame. The game's pictures overlap so neighbouring slots share
-	-- their corner diamonds; the rim is sized to the slot pitch for the same.
-	local function Pitch(a, b, axis)
-		if not (a and b) then
-			return 0
-		end
-		local ok, d = pcall(function()
-			local ax, ay = a:GetCenter()
-			local bx, by = b:GetCenter()
-			return math.abs(axis == "x" and (ax - bx) or (ay - by))
-		end)
-		return (ok and d and not (issecretvalue and issecretvalue(d))) and d or 0
-	end
-	local pitch = { Pitch(_G.CharacterMainHandSlot, _G.CharacterSecondaryHandSlot, "x"), Pitch(_G.CharacterHeadSlot, _G.CharacterNeckSlot, "y") }
-	if pitch[1] <= 0 then
-		pitch[1] = pitch[2]
-	end
+	-- every equipment slot (its game frame art is a picture inside its 1 x 1
+	-- BorderFrame)
+	-- (user, 2026-09-23: "onto the Character Pane next"): the action bars'
+	-- thin rim on the slot button itself, in the look Item Border names, the
+	-- icon fitted into it, the game's frame art faded; an empty slot keeps
+	-- the game's silhouette of what goes there
+	skin.slots = {}
 	for _, name in ipairs(SLOT_NAMES) do
 		local slot = _G[name]
 		if slot and slot.BorderFrame then
 			local border = FirstTexture(slot.BorderFrame)
 			if border then
-				Replace(border, { as = "UI-Character-Info-GearSlot", button = slot, parent = slot, pitch = pitch })
+				Replace(border, { as = "UI-Character-Info-GearSlot" })
+			end
+			if Kit:SkinActionButton(slot, Replace, nil, { as = Kit:ButtonRimRule(), qualityBorder = slot.IconBorder }) then
+				skin.slots[#skin.slots + 1] = slot
 			end
 		end
 	end
@@ -358,7 +367,11 @@ local function BuildSkin()
 	end
 	for _, pane in pairs(sidePanes) do
 		-- the standing / rank bar of the reputation and skill detail panes
-		SkinProgressBar(pane.StandingBar or pane.RankBar)
+		if pane.StandingBar then
+			SkinProgressBar(pane.StandingBar, "rep")
+		else
+			SkinProgressBar(pane.RankBar, "skill")
+		end
 		SkinCheckboxes(pane)
 		if pane.Divider then
 			local rep = Replace(pane.Divider, { as = "UI-Character-Info-ScrollLine" })
@@ -684,7 +697,8 @@ end
 -- the fill's ends, the Text over it. The bracket replaces the background;
 -- the fill and its mask are moved INTO the bracket's opening (the opening is
 -- where the background's bar was), and put back when the skin is off.
-function SkinProgressBar(bar)
+-- `kind`: "rep" (a reputation bar) or "skill"; both wear Progress Bar Border
+function SkinProgressBar(bar, kind)
 	if not bar or bar.melloRep ~= nil then
 		return
 	end
@@ -695,6 +709,9 @@ function SkinProgressBar(bar)
 			break
 		end
 	end
+	-- the reputation and skill bars share one Progress Bar Border (user,
+	-- 2026-09-23: "Skills should reflect the Reputation Bar Changes as one");
+	-- the setting keeps its first key
 	local rep = bg and Replace(bg, { as = "common-stat-bar-BG", rect = bar })
 	bar.melloRep = rep or false
 	if not rep then
@@ -750,6 +767,8 @@ function SkinProgressBar(bar)
 		rep:Refit()
 		FitFill()
 	end
+	-- a new Progress Bar Border (every window's): the fill into the new opening
+	rep.onBarChanged = FitFill
 	rep.onDisable = function()
 		if savedFill then
 			RestorePoints(fill, savedFill)
@@ -824,7 +843,11 @@ local function SkinListFrame(frame)
 		rep.refresh()
 	end
 	if frame.Content then
-		SkinProgressBar(frame.Content.ReputationBar or frame.Content.SkillsBar)
+		if frame.Content.ReputationBar then
+			SkinProgressBar(frame.Content.ReputationBar, "rep")
+		else
+			SkinProgressBar(frame.Content.SkillsBar, "skill")
+		end
 	end
 end
 
@@ -1019,6 +1042,8 @@ end
 -- Turning the skin on and off
 --------------------------------------------------------------------------------
 
+local ApplyWindowBackground   -- below, with the settings
+
 local function Activate()
 	if active then
 		return
@@ -1037,6 +1062,7 @@ local function Activate()
 	if skin.toggleIcons then
 		skin.toggleIcons()
 	end
+	ApplyWindowBackground()
 end
 
 local function Deactivate()
@@ -1121,10 +1147,77 @@ function M:OnDisable()
 	Deactivate()
 end
 
+-- Window Background on the window's stone body (the frame skin's `body`,
+-- under both panes: one surface)
+ApplyWindowBackground = function()
+	local body = skin and skin.window and skin.window.skin and skin.window.skin.body
+	if not body then
+		return
+	end
+	local value = M.db and M.db.windowBackground or "window"
+	local piece = value == "window" and "window/frame_body" or LOOKS.backgroundPiece[value]
+	if piece then
+		if body.kitName ~= piece then
+			body:SetVertexColor(1, 1, 1, 1)
+			Kit:Apply(body, piece)
+		end
+		Kit:Retile(body)
+	elseif value == "dark" then
+		body:SetColorTexture(0.05, 0.045, 0.04, 0.95)
+		body.kitPiece, body.kitName = true, nil   -- still ours (a plain mark): never faded with the game's art
+	end
+end
+
 function M:OnSettingChanged(key)
 	if key == "statRows" then
 		self:RefreshStats()
+	elseif key == "windowBackground" then
+		ApplyWindowBackground()
 	end
+end
+
+--------------------------------------------------------------------------------
+-- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the
+-- character window is one group; the picker opens it while it runs when it
+-- is closed, and closes it again after.
+--------------------------------------------------------------------------------
+
+local openedForPicker = false
+
+function M:PickerGroups()
+	return { { id = "character", title = "Character", hint = "Click to choose the window's background.", sections = {
+		{ key = "windowBackground", title = "Window Background", kind = "tile", choices = WINDOW_BACKGROUNDS },
+	} } }
+end
+
+-- The character window's rect (screen px), nil while it is closed
+function M:BarOutline()
+	local cf = CharacterFrame
+	if not (active and cf and cf:IsShown()) then
+		return nil
+	end
+	local ok, l, b, w, h = pcall(cf.GetRect, cf)
+	if not (ok and l and w) or Secret(l) or Secret(w) or w <= 0 then
+		return nil
+	end
+	local sc = cf:GetEffectiveScale()
+	return { { l * sc, b * sc, (l + w) * sc, (b + h) * sc } }
+end
+
+function M:PickerStart()
+	openedForPicker = false
+	local cf = CharacterFrame
+	if cf and not cf:IsShown() and ShowUIPanel then
+		ShowUIPanel(cf)
+		openedForPicker = true
+	end
+end
+
+function M:PickerStop()
+	if openedForPicker and CharacterFrame and HideUIPanel then
+		HideUIPanel(CharacterFrame)
+	end
+	openedForPicker = false
 end
 
 --------------------------------------------------------------------------------

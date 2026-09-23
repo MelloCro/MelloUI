@@ -18,13 +18,50 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
 
+local LOOKS = Kit.buttonLooks
+
+
 local M = MelloUI:RegisterModule("SpellBookPanel", {
 	title = "Spell Book Panel",
 	desc = "The spell book dressed in the painted kit on the game's own layout.",
 	enabledByDefault = true,
 	defaults = {},
+	-- (the spells' rim is UI Modifications' Button Border, the category tabs'
+	-- its Side Tab Border: every window's)
 	options = {},
 })
+
+-- A look's rim piece family, and the share of the rim its opening takes.
+-- A look is named either way: as a Button Border style ("thin", "rounded"
+-- ...: Spell Border) or as its piece family ("rim", "rimround" ...: Side Tab
+-- Border) -- the second fell back to thin iron before (user, 2026-09-23:
+-- "it does not work with the SpellBook", Side Tab Border on Rounded)
+local function RimBase(value)
+	if value == "slot" then
+		return "buttons/slot"
+	end
+	if LOOKS.rimKind[value] then
+		return "buttons/" .. LOOKS.rimKind[value]
+	end
+	if type(value) == "string" and Kit:Piece("buttons/" .. value .. "_normal") then
+		return "buttons/" .. value
+	end
+	return "buttons/rim"
+end
+
+local function OpenShare(base)
+	local name = base .. "_normal"
+	local p = Kit:Piece(name)
+	local l, r, t, b = Kit:Insets(name, 1)
+	if not (p and l) then
+		return 0.8, 0.8
+	end
+	return (p.w - l - r) / p.w, (p.h - t - b) / p.h
+end
+
+local function SideTabLook()
+	return Kit:BorderValue("sidetab") or "slot"
+end
 
 local skin = nil
 local active = false
@@ -304,11 +341,36 @@ FitSquareRims = function(system)
 	if not pitch then
 		return
 	end
+	-- the look: Side Tab Border (UI Modifications, every window's tabs;
+	-- user, 2026-09-23). The gem slot as before; a thin look a square 4 px
+	-- narrower than the pitch (the neighbours never touch) with the icon
+	-- filling it, 2 px under its inner edge (as the side tabs')
+	local look = SideTabLook()
+	local base = RimBase(look)
 	local w = pitch / GEM_SPAN_X
+	local fw = OpenShare(base)
 	for _, tab in ipairs(system.tabs or {}) do
 		local square = squareRims[tab]
 		if square then
-			square:SetSize(w, w * SLOT_ASPECT)
+			for _, r in ipairs(skin and skin.reps or {}) do
+				if r.region == tab.SquareBackground and r.object and r.object.base then
+					Kit:SetSlotBase(r.object, base)
+				end
+			end
+			local icon = tab.Icon
+			if look == "slot" then
+				square:SetSize(w, w * SLOT_ASPECT)
+				if icon and icon.melloScaled then
+					icon:SetSize(icon.melloScaled[1] * 1.15, icon.melloScaled[2] * 1.15)
+				end
+			else
+				local side = pitch - 4
+				square:SetSize(side, side)
+				if icon and icon.melloScaled then
+					local size = side * fw + 4
+					icon:SetSize(size, size)
+				end
+			end
 		end
 	end
 end
@@ -329,6 +391,52 @@ end
 -- category headers, both rebuilt by the paged frame; skinned after its update.
 --------------------------------------------------------------------------------
 local SPELL_RIM_SCALE = 1.0   -- user, 2026-09-21: the spell rims on the game's 52 x 48 frame rect (1.15, then back down 15 %); the icons stay the game's 36 px (not fitted)
+local ACTIVE_FRAMES = { ["spellbook-item-iconframe"] = true, ["spellbook-item-iconframe-inactive"] = true }
+local SPELL_ICON = 36             -- the game's icon size (Blizzard_SpellBookItem.xml)
+local ROUND_ICON_SCALE = 1.20     -- the round (passive) icons 20 % larger, their rims as they are (user, 2026-09-23: 15 %, then "another 5%")
+
+-- A spell's icon at its size: a round one (a passive, the game's round frame
+-- or node circle on it) ROUND_ICON_SCALE x the game's, a square one the
+-- game's. The buttons are pooled and change spell, so this follows every
+-- refresh; the round mask is anchored to the icon and follows it.
+local function SizeSpellIcon(button, restore)
+	local icon = button and button.Icon
+	if not icon then
+		return
+	end
+	local key = not restore and button.Border and Kit:ArtKey(button.Border)
+	local round = key and (key:find("passive", 1, true) or key == "talents-node-circle-gray")
+	local size = round and SPELL_ICON * ROUND_ICON_SCALE or SPELL_ICON
+	icon:SetSize(size, size)
+end
+
+-- A spell's rim on the button's centre (the icon is anchored to the button:
+-- anchoring the rim to the icon would be a loop): the gem slot and the
+-- passives' round rim on the game's active frame rect (52 x 48), a thin
+-- look hugging the game's icon, its edge 2 px under the rim's inner edge
+-- (as the side tabs' icons)
+local function FitSpellRim(button, key, rep)
+	local rim = rep.object
+	rim:ClearAllPoints()
+	rim:SetPoint("CENTER", button, "CENTER")
+	local value = Kit:BorderValue("button") or "thin"   -- every window's Button Border
+	if not ACTIVE_FRAMES[key] then
+		rim:SetSize(52 * SPELL_RIM_SCALE, 48 * SPELL_RIM_SCALE)
+		return
+	end
+	local base = RimBase(value)
+	Kit:SetSlotBase(rim, base)
+	if value == "slot" then
+		rim:SetSize(52 * SPELL_RIM_SCALE, 48 * SPELL_RIM_SCALE)
+		return
+	end
+	-- from the game's icon size, never the icon's current one: the buttons
+	-- are pooled, and one that showed a passive still had the round icon's
+	-- larger size when it took an active spell -- its rim came out too big
+	-- (user, 2026-09-23: "some of them are too big")
+	local fw, fh = OpenShare(base)
+	rim:SetSize((SPELL_ICON - 4) / fw, (SPELL_ICON - 4) / fh)
+end
 
 local function SkinSpellItem(item)
 	if not item.Button then
@@ -343,18 +451,17 @@ local function SkinSpellItem(item)
 		-- one rim per atlas, each sized so the 36 px icon sits in its opening
 		-- (the game's passive frame is only 40 px; its square one 52 x 48)
 		Kit:StateIconReps(button, button.Border, button, Replace, { button.BorderShadow, button.IconHighlight })
-		-- every rim on the game's ACTIVE frame rect (52 x 48, the larger of
-		-- the two the game uses) scaled; the icon is left as the game sizes it
-		for _, rep in pairs(button.melloIcons or {}) do
-			if rep and rep.object and not rep.melloFitted then
-				rep.melloFitted = true
-				-- on the BUTTON's centre (the icon is then anchored to the rim:
-				-- anchoring the rim to the icon would be a loop)
-				local rim = rep.object
-				rim:ClearAllPoints()
-				rim:SetPoint("CENTER", button, "CENTER")
-				rim:SetSize(52 * SPELL_RIM_SCALE, 48 * SPELL_RIM_SCALE)
+		-- on every refresh (the buttons are pooled and change spell)
+		SizeSpellIcon(button)
+		for key, rep in pairs(button.melloIcons or {}) do
+			if rep and rep.object then
+				FitSpellRim(button, key, rep)
 			end
+		end
+		skin.spellButtons = skin.spellButtons or {}
+		if not button.melloListed then
+			button.melloListed = true
+			skin.spellButtons[#skin.spellButtons + 1] = button
 		end
 	end
 end
@@ -552,6 +659,10 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	-- the spells' icons back to the game's size
+	for _, button in ipairs(skin.spellButtons or {}) do
+		SizeSpellIcon(button, true)
+	end
 	-- the category tab icons back to the game's size
 	local sys = PlayerSpellsFrame and PlayerSpellsFrame.SpellBookFrame and PlayerSpellsFrame.SpellBookFrame.CategoryTabSystem
 	for _, tab in ipairs(sys and sys.tabs or {}) do
@@ -591,6 +702,30 @@ local function Hook()
 		hooksecurefunc(PlayerSpellsFrame, "SetMinimized", function() M:RefreshFollowers() end)
 	end
 end
+
+-- The category tabs, laid again for a new Side Tab Border (UI Modifications'
+-- setting, every window's tabs)
+local function CategorySystem()
+	local sb = PlayerSpellsFrame and PlayerSpellsFrame.SpellBookFrame
+	return sb and sb.CategoryTabSystem
+end
+
+-- a new border for every window: the spells' rims and the category tabs
+-- laid again
+Kit:OnBorderChanged("sidetab", function()
+	if active and CategorySystem() then
+		FitSquareRims(CategorySystem())
+	end
+end)
+Kit:OnBorderChanged("button", function()
+	for _, button in ipairs(skin and skin.spellButtons or {}) do
+		for k, rep in pairs(button.melloIcons or {}) do
+			if rep and rep.object then
+				FitSpellRim(button, k, rep)
+			end
+		end
+	end
+end)
 
 -- Blizzard_PlayerSpells is loaded on demand: wait for it.
 local eventFrame = CreateFrame("Frame")

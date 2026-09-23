@@ -70,6 +70,7 @@ Modules\UnitFramePanel.lua
 Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
 Modules\ActionBarPanel.lua
+Modules\DynamicUI.lua
 Modules\BackpackPanel.lua
 Modules\MinimapPanel.lua
 Modules\TrackerPanel.lua

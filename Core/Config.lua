@@ -1622,6 +1622,94 @@ local function CreateWindow()
 		KitReplace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = KIT:OtherTextures(close, close:GetNormalTexture()) })
 	end
 
+	-- Dynamic UI Modification (user, 2026-09-23): the action bars' button
+	-- border, backdrop and background picked on the bars themselves, with
+	-- previews (Modules/DynamicUI.lua); it closes this window
+	local dynamic = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
+	dynamic:SetSize(190, 22)
+	dynamic:SetPoint("RIGHT", close, "LEFT", -8, 0)
+	dynamic:SetFrameLevel(close:GetFrameLevel())
+	dynamic:SetText("Dynamic UI Modification")
+	dynamic:SetScript("OnClick", function()
+		if MelloUI.StartDynamicUI then
+			MelloUI:StartDynamicUI()
+		end
+	end)
+	dynamic:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+		GameTooltip:SetText("Dynamic UI Modification", 1, 0.82, 0)
+		GameTooltip:AddLine("Closes the configurator and lets you choose the looks of the action bars, the micro menu, the bag bar, "
+			.. "your bags and the character window on them directly, each choice shown as a picture and put on as you click it.", 0.9, 0.9, 0.9, true)
+		GameTooltip:Show()
+	end)
+	dynamic:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	if KIT and KIT.SkinRedButton then
+		pcall(KIT.SkinRedButton, KIT, dynamic, KitReplace)
+	end
+	window.dynamic = dynamic
+
+	-- Window placement (user, 2026-09-23: "Unlock the Window, Reset Position
+	-- and Turn off Auto Snapping should be placed along with as the main
+	-- options on top of that window"): on the band's left, as Dynamic UI
+	-- Modification is on its right. UI Modifications' settings.
+	local texts = (MelloUI:GetModule("UIModifications") or {}).placementTexts or {}
+	local function PlacementTip(owner, key)
+		local t = texts[key]
+		if t then
+			owner:HookScript("OnEnter", function(self) ShowTooltip(self, t.name, t.desc) end)
+			owner:HookScript("OnLeave", function() GameTooltip:Hide() end)
+		end
+	end
+	local function PlacementSwitch(key, label, anchor, gap)
+		local sw = CreateSwitch(window, function(value)
+			MelloUI:NotifySettingChanged("UIModifications", key, value)
+			MelloUI:RefreshConfig()
+		end)
+		sw:SetFrameLevel(close:GetFrameLevel())
+		if anchor then
+			sw:SetPoint("LEFT", anchor, "RIGHT", gap, 0)
+		else
+			sw:SetPoint("LEFT", band, "LEFT", 34, 0)   -- as far in from the left as Dynamic UI Modification is from the right
+		end
+		local text = Text(sw, "GameFontNormalSmall", label, C.text)
+		text:SetPoint("LEFT", sw, "RIGHT", 2, 0)
+		PlacementTip(sw, key)
+		return sw, text
+	end
+	local unlock, unlockText = PlacementSwitch("unlock", (texts.unlock and texts.unlock.name) or "Unlock the Windows")
+	local snap, snapText = PlacementSwitch("autoSnap", (texts.autoSnap and texts.autoSnap.name) or "Auto Snapping", unlockText, 12)
+	local reset = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
+	reset:SetSize(120, 22)
+	reset:SetPoint("LEFT", snapText, "RIGHT", 12, 0)
+	reset:SetFrameLevel(close:GetFrameLevel())
+	reset:SetText((texts.reset and texts.reset.name) or "Reset positions")
+	reset:SetScript("OnClick", function()
+		local um = MelloUI:GetModule("UIModifications")
+		if um and um.ResetPositions then
+			um.ResetPositions()
+		end
+		MelloUI:RefreshConfig()
+	end)
+	PlacementTip(reset, "reset")
+	if KIT and KIT.SkinRedButton then
+		pcall(KIT.SkinRedButton, KIT, reset, KitReplace)
+	end
+	-- the switches follow the settings, however they change (the unlock
+	-- banner's "click here to lock them" too)
+	local function RefreshPlacement()
+		local db = MelloUI:GetModuleDB("UIModifications")
+		unlock:SetValue(db and db.unlock and true or false, true)
+		snap:SetValue(not (db and db.autoSnap == false), true)
+	end
+	window.placementUnlock = unlock   -- the tour points at it
+	window:HookScript("OnShow", RefreshPlacement)
+	hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
+		if name == "UIModifications" and (key == "unlock" or key == "autoSnap") then
+			RefreshPlacement()
+		end
+	end)
+	RefreshPlacement()
+
 	-- Icon strip.
 	local strip = CreateFrame("Frame", nil, window)
 	strip:SetPoint("TOPLEFT", band, "BOTTOMLEFT", 0, 0)
