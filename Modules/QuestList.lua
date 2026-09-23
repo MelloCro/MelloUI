@@ -106,6 +106,101 @@ QL.F_ID, QL.F_TITLE, QL.F_LEVEL, QL.F_REQ, QL.F_SIDE, QL.F_CLASS, QL.F_ZONE, QL.
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
 -- giver NPC id; turn-in: name, NPC id, zone (build-time guess), continent, world x, world y
 QL.F_NPC, QL.F_ENDER, QL.F_ENDERNPC, QL.F_ENDERZONE, QL.F_ENDERCONT, QL.F_ENDERWX, QL.F_ENDERWY = 21, 22, 23, 24, 25, 26, 27
+-- origin: 1 Classic (classic-db has the quest), 2 Forever's own
+QL.F_ORIGIN = 28
+
+-- Classic or Forever (user, 2026-09-23: "use Classic on classic quests, and
+-- Forever on the Forever quests, so that i can know which ones are new"):
+-- the quest's origin from the data, and the small coloured tag for it. A
+-- lookup of its own, so the quest log has it with the Quests module off.
+local originByID = nil
+function MelloUI:QuestOrigin(questID)
+	if not originByID then
+		originByID = {}
+		local data = MelloUI_QuestListData
+		for _, row in ipairs(type(data) == "table" and data.quests or {}) do
+			originByID[row[1]] = row[QL.F_ORIGIN]
+		end
+	end
+	return questID and originByID[questID] or nil
+end
+
+-- the logos themselves (user, 2026-09-23: "instead of text, try to get the
+-- actual logo"), cut out of the user's pictures with a soft dark halo for
+-- the parchment: file, the logo's size in the file and the file's size
+local LOGO_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Quests\\"
+MelloUI.QUEST_ORIGIN_LOGOS = {
+	-- Classic: its letters set closer (user, 2026-09-23: "cut some of the
+	-- space between the letters so that the middle aligns")
+	[1] = { file = LOGO_DIR .. "tag_classic", w = 278, h = 32, fw = 512, fh = 32, height = 12 },
+	-- Forever: the user's white letters with a border of the logo's light blue
+	-- and a thin dark edge (user, 2026-09-23: "make a border around the white
+	-- letters and color it light blue ... scale it up a bit")
+	[2] = { file = LOGO_DIR .. "tag_forever", w = 255, h = 64, fw = 256, fh = 64, height = 20 },
+}
+
+-- The quest's logo on `tex`, `scale` times its usual height: its width, or
+-- nil (and hidden) for a quest the data does not know
+function MelloUI:ApplyQuestOriginLogo(tex, questID, scale)
+	local logo = self.QUEST_ORIGIN_LOGOS[self:QuestOrigin(questID) or 0]
+	if not logo then
+		tex:Hide()
+		return nil
+	end
+	local h = logo.height * (scale or 1)
+	local w = h * logo.w / logo.h
+	tex:SetTexture(logo.file)
+	tex:SetTexCoord(0, logo.w / logo.fw, 0, logo.h / logo.fh)
+	tex:SetSize(w, h)
+	tex:Show()
+	return w
+end
+
+-- The same logo beside the quest's name in the quest details: the quest
+-- log's and a quest giver's (QuestInfo_Display fills both). A texture of
+-- its own, after the name on a one-line title, over it when the title wraps.
+local detailTag = nil
+local function TagQuestDetails()
+	local title = QuestInfoTitleHeader
+	if not (title and title.GetParent) then
+		return
+	end
+	if not detailTag then
+		detailTag = title:GetParent():CreateTexture(nil, "OVERLAY")
+	end
+	local questID
+	if QuestInfoFrame and QuestInfoFrame.questLog and C_QuestLog and C_QuestLog.GetSelectedQuest then
+		local ok, id = pcall(C_QuestLog.GetSelectedQuest)
+		questID = ok and id or nil
+	elseif GetQuestID then
+		local ok, id = pcall(GetQuestID)
+		questID = ok and id or nil
+	end
+	if issecretvalue and issecretvalue(questID) then
+		questID = nil
+	end
+	local gw = questID and MelloUI:ApplyQuestOriginLogo(detailTag, questID, 1.15)
+	if not gw then
+		detailTag:Hide()
+		return
+	end
+	detailTag:ClearAllPoints()
+	local okW, sw = pcall(title.GetStringWidth, title)
+	local okT, tw = pcall(title.GetWidth, title)
+	local line = select(2, title:GetFont()) or 14
+	if okW and okT and type(sw) == "number" and type(tw) == "number"
+		and not (issecretvalue and (issecretvalue(sw) or issecretvalue(tw))) and sw + gw + 8 <= tw then
+		-- centred on the title's first line, after its last letter
+		detailTag:SetPoint("LEFT", title, "TOPLEFT", sw + 8, -line / 2)
+	else
+		detailTag:SetPoint("BOTTOMLEFT", title, "TOPLEFT", 0, 2)
+	end
+end
+if type(QuestInfo_Display) == "function" then
+	hooksecurefunc("QuestInfo_Display", function()
+		pcall(TagQuestDetails)
+	end)
+end
 
 QL.byZone = nil        -- [areaID] = { rows }   (pick-up zone, falling back to quest zone)
 QL.allRows = nil       -- every zone row, sorted by level once
@@ -546,6 +641,26 @@ function QL.IsReadyForTurnIn(questID)
 end
 
 -- Quest log colouring: grey trivial, green easy, yellow fair, orange hard, red very hard.
+-- The level the game colours a quest by: for a quest in the log its own
+-- difficulty level (C_QuestLog.GetInfo, which can sit under the level shown
+-- -- user, 2026-09-23: a quest green in the quest log was yellow in the
+-- list), else the level of the data
+function QL.ColourLevel(row)
+	local level = row[QL.F_LEVEL]
+	if C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetInfo then
+		local ok, index = pcall(C_QuestLog.GetLogIndexForQuestID, row[QL.F_ID])
+		index = ok and QL.Plain(index) or nil
+		if index then
+			local okI, info = pcall(C_QuestLog.GetInfo, index)
+			local d = okI and type(info) == "table" and (QL.Plain(info.difficultyLevel) or QL.Plain(info.level)) or nil
+			if type(d) == "number" and d > 0 then
+				level = d
+			end
+		end
+	end
+	return level
+end
+
 function QL.DifficultyColor(level)
 	if level <= 0 then
 		return 0.75, 0.61, 0

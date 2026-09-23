@@ -46,7 +46,7 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "minimap", name = "Route On The Minimap",
 		  desc = "Draw the nearby part of the route on the minimap." },
 		{ type = "toggle", key = "trackQuests", name = "Route To The Tracked Quest",
-		  desc = "When no map pin is set, route to the objective area of the quest you are tracking (the one with the arrow), and to its turn-in once it is complete." },
+		  desc = "When no map pin is set, route to the quest you are tracking (the one with the arrow): to the nearest place for an objective you have not finished yet (a creature to kill, an object to use, where the item drops or is sold, a place to explore), and to its turn-in once it is complete." },
 		{ type = "toggle", key = "trackFirstWatched", name = "Fall Back To The First Tracked Quest",
 		  desc = "When nothing is super-tracked, follow the first quest in the objective tracker instead of showing nothing." },
 		{ type = "toggle", key = "distanceText", name = "Distance Under The Minimap",
@@ -114,6 +114,9 @@ local NEAR = 15          -- link a new node to existing nodes this close
 local OFFROAD = 250      -- how far a route may leave the graph at either end
 local JUMP = 300         -- yards; from the end of a path the route may cross open ground to another path
 local JUMP_COST = 1.5    -- relative to walking a road
+local FAR_HUB_COST = 4   -- relative to walking: a straight leg to a dock or flight point past OFFROAD
+                         -- (user, 2026-09-23: a beeline to the boat across the hills beat the road
+                         -- at the old 1.3; the docks and flight points are on the roads themselves)
 local STRAIGHT_COST = 2.2 -- the direct line from start to goal, so roads win unless they are a real detour
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
@@ -696,15 +699,115 @@ local function RefreshDiscovered()
 	end
 end
 
-local function TaxiUsable(id, t)
-	if not discovered then
-		return true
+-- The flight points THIS character knows (user, 2026-09-23: the route sent
+-- a character to Booty Bay by air, a flight point it had never found --
+-- this client's world map lists no flight points, and "nothing known" was
+-- read as "everything usable"). A flight master's own map is the one place
+-- the client says which points are known: each time one opens, the known
+-- points (the current one and the reachable ones) are kept, per character,
+-- as a Route setting, so the macro backup carries them across restarts.
+local charFlights = nil   -- { [nodeID] = true }, read once from the setting
+
+local function CharFlightsKey()
+	local ok, guid = pcall(UnitGUID, "player")
+	guid = ok and Plain(guid) or nil
+	if type(guid) ~= "string" then
+		return nil
 	end
-	return discovered.ids[id] or discovered.names[t.name:lower()] or false
+	return "flights_" .. guid:gsub("[^%w]", "")
+end
+
+local function CharFlights()
+	if charFlights then
+		return charFlights
+	end
+	local key = CharFlightsKey()
+	if not key then
+		return {}   -- not yet: asked again later
+	end
+	charFlights = {}
+	local stored = M.db and M.db[key]
+	if type(stored) == "string" then
+		for id in stored:gmatch("%d+") do
+			charFlights[tonumber(id)] = true
+		end
+	end
+	return charFlights
+end
+
+local function RememberFlights(ids)
+	local key = CharFlightsKey()
+	if not (key and M.db) then
+		return
+	end
+	local set, changed = CharFlights(), false
+	for id in pairs(ids) do
+		if not set[id] then
+			set[id], changed = true, true
+		end
+	end
+	if changed then
+		local list = {}
+		for id in pairs(set) do
+			list[#list + 1] = id
+		end
+		table.sort(list)
+		M.db[key] = table.concat(list, ",")
+		if MelloUI.ScheduleBackup then
+			MelloUI:ScheduleBackup("flight points")
+		end
+		discoveredAt = 0
+	end
+end
+
+-- Usable: known to this character from a flight master's map; before any
+-- flight master was opened, what the world map lists; with neither, none
+-- (walking and boats until the first flight master is opened).
+local function TaxiUsable(id, t)
+	local mine = CharFlights()
+	if next(mine) then
+		return mine[id] or false
+	end
+	if discovered then
+		return discovered.ids[id] or discovered.names[t.name:lower()] or false
+	end
+	return false
+end
+
+-- A flight point this character may use within `reach` yards of a place
+-- (a learned flight link's ends lie on the flight master)
+local function UsableTaxiNear(cont, x, y, reach)
+	for id, t in pairs(taxis or {}) do
+		if t.cont == cont and Dist(t.x, t.y, x, y) <= reach and TaxiUsable(id, t) then
+			return true
+		end
+	end
+	return false
 end
 
 -- At a flight master: one graph link from here to every reachable point,
 -- costed by the real flight route.
+-- At a flight master: which flight points this character knows
+local function KnownFlightsHere()
+	if not (C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and GetTaxiMapID) then
+		return
+	end
+	local okM, mapID = pcall(GetTaxiMapID)
+	mapID = okM and Plain(mapID) or nil
+	local okN, list = pcall(C_TaxiMap.GetAllTaxiNodes, mapID)
+	if not (mapID and okN and type(list) == "table") then
+		return
+	end
+	local ids = {}
+	for _, info in ipairs(list) do
+		local state, id = Plain(info.state), Plain(info.nodeID)
+		if id and (state == FLIGHT_CURRENT or state == FLIGHT_REACHABLE) then
+			ids[id] = true
+		end
+	end
+	RememberFlights(ids)
+end
+
 local function LearnFlights()
 	if not (M.isEnabled and M.db.learn and C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and GetTaxiMapID) then
 		return
@@ -906,7 +1009,27 @@ end
 -- planner then joins the road ahead unless going back is a real saving.
 local BEHIND_COST = 2.5
 
+local FLIGHT_LINK_MIN = 200   -- yards: a shorter link is never taken for a flight
+local FLIGHT_END_REACH = 90   -- yards: a flight link's end lies this near its flight master
+
+-- Both ends of a flight link at a flight point this character may use,
+-- remembered for the search
+local flightEndCache = {}
+local function FlightEnds(cont, a, akey, b, bkey)
+	local function Ok(node, key)
+		local k = cont .. "|" .. key
+		local v = flightEndCache[k]
+		if v == nil then
+			v = UsableTaxiNear(cont, node[1], node[2], FLIGHT_END_REACH)
+			flightEndCache[k] = v
+		end
+		return v
+	end
+	return Ok(a, akey) and Ok(b, bkey)
+end
+
 local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
+	flightEndCache = {}
 	-- Node ids: "c|key" graph nodes, "D<i>" docks, "S", "G".
 	local pos = {}     -- id -> { cont, x, y }
 	local extra = {}   -- id -> { otherId = cost } for virtual nodes and docks
@@ -939,6 +1062,14 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 	end
 	LinkPoint("S", scont, sx, sy)
 	LinkPoint("G", gcont, gx, gy)
+	-- a straight leg from the start or to the goal to a dock / flight point:
+	-- a short hop as walking, a long one only as a last resort
+	local function HubLeg(d)
+		if d <= OFFROAD then
+			return d / WALK * 1.3
+		end
+		return d / WALK * FAR_HUB_COST
+	end
 	for i, d in ipairs(docks or {}) do
 		local id = "D" .. i
 		pos[id] = { d.cont, d.x, d.y }
@@ -947,10 +1078,10 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 			AddExtra(id, "D" .. d.pair, BOAT_COST)
 		end
 		if d.cont == scont then
-			AddExtra("S", id, Dist(d.x, d.y, sx, sy) / WALK * 1.3)
+			AddExtra("S", id, HubLeg(Dist(d.x, d.y, sx, sy)))
 		end
 		if d.cont == gcont then
-			AddExtra("G", id, Dist(d.x, d.y, gx, gy) / WALK * 1.3)
+			AddExtra("G", id, HubLeg(Dist(d.x, d.y, gx, gy)))
 		end
 	end
 	RefreshDiscovered()
@@ -965,10 +1096,10 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 				end
 			end
 			if t.cont == scont then
-				AddExtra("S", nid, Dist(t.x, t.y, sx, sy) / WALK * 1.3)
+				AddExtra("S", nid, HubLeg(Dist(t.x, t.y, sx, sy)))
 			end
 			if t.cont == gcont then
-				AddExtra("G", nid, Dist(t.x, t.y, gx, gy) / WALK * 1.3)
+				AddExtra("G", nid, HubLeg(Dist(t.x, t.y, gx, gy)))
 			end
 		end
 	end
@@ -988,12 +1119,22 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 		end
 		return nil
 	end
+	-- the estimate to the goal at the fastest way this character can travel:
+	-- flying only with a usable flight point on the goal's continent, else
+	-- walking (a far tighter estimate: the long road searches finish)
+	local speed = WALK
+	for tid, t in pairs(taxis or {}) do
+		if t.cont == gcont and TaxiUsable(tid, t) then
+			speed = FLIGHT
+			break
+		end
+	end
 	local function Heuristic(id)
 		local cont, x, y = Position(id)
 		if not cont or cont ~= gcont then
 			return 0
 		end
-		return Dist(x, y, gx, gy) / FLIGHT
+		return Dist(x, y, gx, gy) / speed
 	end
 	local gScore, from, closed = { S = 0 }, {}, {}
 	local heap = NewHeap()
@@ -1030,7 +1171,18 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 					local prefix = cont .. "|"
 					local degree = 0
 					for k, cost in pairs(node[3]) do
-						Relax(prefix .. k, cost)
+						-- a link far quicker than walking is a flight (learned at
+						-- a flight master, maybe by another character): only
+						-- between two flight points this character may use
+						local o = live.graphs[cont][k]
+						local flight = false
+						if o then
+							local d = Dist(node[1], node[2], o[1], o[2])
+							flight = d > FLIGHT_LINK_MIN and cost < d / WALK * 0.5
+						end
+						if not flight or FlightEnds(cont, node, key, o, k) then
+							Relax(prefix .. k, cost)
+						end
 						degree = degree + 1
 					end
 					if degree <= 1 then
@@ -1343,6 +1495,140 @@ local function TrackedQuestID()
 	return questID
 end
 
+--------------------------------------------------------------------------------
+-- The objectives themselves (user, 2026-09-23: "now start on the route to
+-- quest objectives"): Media/QuestObjectiveData.lua (Tools/build_quest_
+-- objectives.py, cmangos classic-db) knows where each objective of a Classic
+-- quest is done -- the creature to kill, the object to use, what drops the
+-- item or sells it, the place to explore. The tracked quest's unfinished
+-- objectives are matched to it by name; of their places the nearest few are
+-- priced by route and the cheapest is the destination. Re-chosen as the
+-- objectives change and every few seconds, so the route moves on to the
+-- next spawn as the player works through them. A complete quest, or one
+-- without data, keeps the game's own marker (the turn-in, the quest area).
+--------------------------------------------------------------------------------
+
+local OBJECTIVE_RECHECK = 8     -- seconds between choosing again
+local OBJECTIVE_PRICED = 3      -- the nearest this many places are priced by route
+local objectiveChoice = {}      -- [questID] = { sig, at, cont, x, y, name }
+
+-- The data's entries still to do: each { kind, name, points }, and a
+-- signature of the open objectives (a new choice when it changes)
+local function OpenObjectives(questID)
+	local data = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
+	if not data then
+		return nil
+	end
+	if C_QuestLog and C_QuestLog.IsComplete then
+		local ok, done = pcall(C_QuestLog.IsComplete, questID)
+		if ok and Plain(done) then
+			return nil   -- the turn-in: the game's marker has it
+		end
+	end
+	local texts, open = {}, {}
+	if C_QuestLog and C_QuestLog.GetQuestObjectives then
+		local ok, list = pcall(C_QuestLog.GetQuestObjectives, questID)
+		if ok and type(list) == "table" then
+			for _, o in ipairs(list) do
+				local text = Plain(o.text)
+				if text then
+					texts[#texts + 1] = { text:lower(), Plain(o.finished) and true or false }
+				end
+			end
+		end
+	end
+	local function Match(name)
+		if not name or name == "" then
+			return nil
+		end
+		name = name:lower()
+		for _, t in ipairs(texts) do
+			if t[1]:find(name, 1, true) then
+				return t
+			end
+		end
+		return nil
+	end
+	local anyMatched, sig = false, {}
+	for i, entry in ipairs(data) do
+		local kind = entry[1]
+		local t = Match(entry[2]) or Match(entry[3])
+		if t then
+			anyMatched = true
+			if not t[2] then
+				open[#open + 1] = entry
+				sig[#sig + 1] = i
+			end
+		elseif kind == 4 then
+			-- an exploration objective has no line of its own: open until
+			-- the quest is complete
+			open[#open + 1] = entry
+			sig[#sig + 1] = i
+		end
+	end
+	-- no line matched a name at all (another language, a renamed creature):
+	-- every place of the quest rather than none
+	if not anyMatched and #open == 0 and #texts > 0 then
+		for i, entry in ipairs(data) do
+			open[#open + 1] = entry
+			sig[#sig + 1] = i
+		end
+	end
+	if #open == 0 then
+		return nil
+	end
+	return open, table.concat(sig, ",")
+end
+
+-- The place to go for the quest's open objectives: continent yards and the
+-- objective's name, or nil
+local function ObjectiveSpot(questID)
+	local open, sig = OpenObjectives(questID)
+	if not open then
+		objectiveChoice[questID] = nil
+		return nil
+	end
+	local c = objectiveChoice[questID]
+	if c and c.sig == sig and GetTime() - c.at < OBJECTIVE_RECHECK then
+		return c.cont, c.x, c.y, c.name
+	end
+	local pcont, px, py = PlayerYards()
+	if not pcont then
+		return c and c.cont, c and c.x, c and c.y, c and c.name
+	end
+	-- every place on the player's continent, nearest first
+	local near = {}
+	for _, entry in ipairs(open) do
+		local wmap = entry[4]
+		for i = 5, #entry - 1, 2 do
+			local cont, x, y = YardsOfWorld(wmap, entry[i], entry[i + 1])
+			if cont == pcont then
+				near[#near + 1] = { d = Dist(px, py, x, y), cont = cont, x = x, y = y, wmap = wmap, wx = entry[i], wy = entry[i + 1],
+					name = (entry[2] ~= "" and entry[2]) or (entry[3] ~= "" and entry[3]) or nil }
+			end
+		end
+	end
+	if #near == 0 then
+		objectiveChoice[questID] = nil
+		return nil   -- all of it elsewhere: the game's marker leads the way
+	end
+	table.sort(near, function(a, b) return a.d < b.d end)
+	local pick = near[1]
+	-- the nearest few priced by route: the one past a river or a cliff loses
+	if #near > 1 then
+		local candidates = {}
+		for i = 1, math.min(OBJECTIVE_PRICED, #near) do
+			candidates[i] = { cont = near[i].wmap, wx = near[i].wx, wy = near[i].wy }
+		end
+		local ok, best = pcall(M.Cheapest, M, candidates)
+		if ok and best and near[best] then
+			pick = near[best]
+		end
+	end
+	objectiveChoice[questID] = { sig = sig, at = GetTime(), cont = pick.cont, x = pick.x, y = pick.y, name = pick.name }
+	return pick.cont, pick.x, pick.y, pick.name
+end
+
 local function ReadTrackedQuest()
 	if destination and not destination.fromQuest and not destination.fromWaypoint then
 		return
@@ -1357,6 +1643,24 @@ local function ReadTrackedQuest()
 			route = nil
 			Redraw()
 		end
+		return
+	end
+	-- the objective itself, when the data knows where it is done
+	local ocont, ox, oy, oname = ObjectiveSpot(questID)
+	if ocont then
+		local same = destination and destination.fromQuest and destination.questID == questID
+		if same and destination.cont == ocont and Dist(destination.x, destination.y, ox, oy) < 1 then
+			return
+		end
+		local title
+		if C_QuestLog and C_QuestLog.GetTitleForQuestID then
+			local ok, t = pcall(C_QuestLog.GetTitleForQuestID, questID)
+			title = ok and Plain(t) or nil
+		end
+		destination = { cont = ocont, x = ox, y = oy, fromQuest = true, questID = questID, objective = oname,
+			label = "|A:QuestNormal:16:16|a " .. (oname or title or "quest") }
+		-- announced once per quest, not at every next spawn
+		Plan(true, not same, "|A:QuestNormal:22:22|a  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
 		return
 	end
 	local mapID, px, py = QuestObjectivePoint(questID)
@@ -2664,6 +2968,7 @@ eventFrame:SetScript("OnEvent", function(_, event)
 	elseif event == "TAXIMAP_OPENED" then
 		-- The routes are known a moment after the map opens.
 		C_Timer.After(0.2, LearnFlights)
+		C_Timer.After(0.2, KnownFlightsHere)
 	end
 end)
 
@@ -2796,15 +3101,21 @@ SlashCmdList.MELLOROUTE = function(msg)
 		MelloUI:Print("Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s.",
 			nodes - tracedNodes, tracedNodes, edges, docks and #docks or 0,
 			taxiCount, usable, mergedSaved and "" or " (saved variable not loaded by the client yet)")
-		if discovered then
+		local mineCount = 0
+		for _ in pairs(CharFlights()) do
+			mineCount = mineCount + 1
+		end
+		if mineCount > 0 then
+			print(string.format("   flight points this character knows (from the flight masters' maps): %d", mineCount))
+		elseif discovered then
 			local n, sample = 0, {}
 			for name in pairs(discovered.names) do
 				n = n + 1
 				if #sample < 4 then sample[#sample + 1] = name end
 			end
-			print(string.format("   discovered flight points per the world map: %d (%s)", n, table.concat(sample, ", ")))
+			print(string.format("   no flight master opened yet; discovered flight points per the world map: %d (%s)", n, table.concat(sample, ", ")))
 		else
-			print("   the client lists no flight points for the maps, so every flight point counts as usable.")
+			print("   no flight master opened yet on this character and the world map lists none: routes walk and sail until one is opened.")
 		end
 		if route then
 			local roads = 0

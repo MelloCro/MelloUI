@@ -561,8 +561,7 @@ in combat. `/trdump` prints the tracker, its header, every module and every show
 ### Quest Tracker
 
 A quest tracker of MelloUI's own in the game's tracker's place (off by default), because the
-game's tracker on this client does not scroll. The mouse wheel scrolls the list; the ends fade
-while there is more that way. Each quest has the game's map button ("..." in progress, "?"
+game's tracker on this client does not scroll. The mouse wheel scrolls the list. Each quest has the game's map button ("..." in progress, "?"
 ready to turn in, lit while followed); click a quest to follow it, Shift-click to stop watching
 it, right-click to open it in the quest log. Quest items are used with a click out of combat.
 Tracked recipes show under Professions with their reagents, and Quests and Professions each
@@ -570,6 +569,13 @@ fold away on their own minus. An objective line glows briefly when it counts up.
 place and height from the game's tracker in Edit Mode, is moved by its header with Unlock the
 Windows, and a grip in its bottom-left corner sizes it; Height, Width, Scale, Text Size and
 Scroll Step are in its settings.
+
+### Buffs & Debuffs
+
+MelloUI's own aura rows (off by default), drawn by the game's aura container so they keep working
+in combat: your buffs and debuffs where the game's buff bar is (right-click cancels a buff; the
+game's bar comes back in Edit Mode), the target's debuffs and buffs under the target frame, and
+your debuffs on enemy nameplates. Each part has its own switch and icon size.
 
 ### Error Messages
 

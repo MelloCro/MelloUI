@@ -15,14 +15,13 @@ local M = QL.M
 --------------------------------------------------------------------------------
 
 QL.Panel = {}
-local ROW_HEIGHT = 34
+local ROW_HEIGHT = 36   -- a 13 px title over a 12 px line, as the quest log sets them
 local HEADER_HEIGHT = 24
 local FILTERS = {
 	{ key = "all", label = "All" }, { key = "continent", label = "Continent" }, { key = "zone", label = "Zone" }, { key = "class", label = "Class" },
 	{ key = "dungeons", label = "Dungeons" }, { key = "raids", label = "Raids" }, { key = "attunements", label = "Attunements" }, { key = "events", label = "Events" },
 }
 local BUTTONS_PER_ROW = 4
-local GOLD_DIM = { 0.55, 0.45, 0.18 }
 
 local function HeaderClick(self)
 	if self.entry and self.entry.header then
@@ -107,6 +106,21 @@ end
 
 -- One button pool serves headers and rows, so every widget is created once
 -- and each init sets up the button completely for the kind it shows.
+-- The quest log's look (user, 2026-09-23: "why is there a difference in
+-- text between the Default Quest log, and the MelloUI Quest Module"): the
+-- game's face and outline as the Fonts module sets them, the title and the
+-- line under it at the quest log's 12 (13 read larger than the log, user
+-- screenshot 2026-09-23). Set on every row, so a Fonts change reaches it.
+local TITLE_SIZE, LINE_SIZE = 12, 12   -- the quest log sets both lines the same size
+local function QuestLogFonts(button)
+	local object = GameFontNormal
+	local ok, path, _, flags = pcall(function() return object:GetFont() end)
+	if ok and path then
+		pcall(button.title.SetFont, button.title, path, TITLE_SIZE, flags or "")
+		pcall(button.where.SetFont, button.where, path, LINE_SIZE, flags or "")
+	end
+end
+
 local function EnsureWidgets(button)
 	if button.title then
 		return
@@ -137,6 +151,8 @@ local function EnsureWidgets(button)
 	button.where:SetPoint("RIGHT", -8, 0)
 	button.where:SetJustifyH("LEFT")
 	button.where:SetWordWrap(false)
+	-- Classic or Forever, top right (user, 2026-09-23)
+	button.origin = button:CreateTexture(nil, "OVERLAY")
 	button.pin = button:CreateTexture(nil, "OVERLAY")
 	button.pin:SetSize(20, 20)
 	button.pin:SetPoint("RIGHT", -6, 0)
@@ -204,6 +220,7 @@ local function InitHeader(button, entry)
 	button.count:Show()
 	button.plus:Show()
 	button.pin:Hide()
+	button.origin:Hide()
 	button:SetNormalAtlas("common-button-list-collapseExpand")
 	button:SetHighlightAtlas("common-button-list-collapseExpand", "ADD")
 	button:GetHighlightTexture():SetAlpha(0.4)
@@ -232,8 +249,18 @@ local function InitRow(button, entry)
 	button.where:Show()
 	local tracked = QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID
 	button.pin:SetShown(tracked)
-	button.title:SetPoint("RIGHT", tracked and -28 or -8, 0)
-	button.where:SetPoint("RIGHT", tracked and -28 or -8, 0)
+	-- the logo at the top right (left of the pin on the tracked quest), both
+	-- logos centred on one column whatever their widths (user, 2026-09-23:
+	-- "where is the middle" -- hung by their right edge, the wider Classic
+	-- one sat left of the Forever one), the title stopping short of it
+	local right = tracked and -32 or -8
+	local LOGO_COLUMN, LOGO_BAND = 44, 10   -- the column's centre from the right edge; half the band's height
+	button.origin:ClearAllPoints()
+	button.origin:SetPoint("CENTER", button, "TOPRIGHT", right - LOGO_COLUMN, -3 - LOGO_BAND)
+	local logoWidth = MelloUI:ApplyQuestOriginLogo(button.origin, entry.row[QL.F_ID])
+	local tagRoom = logoWidth and (LOGO_COLUMN + logoWidth / 2 + 6) or 0
+	button.title:SetPoint("RIGHT", right - tagRoom, 0)
+	button.where:SetPoint("RIGHT", right, 0)
 	button:ClearNormalTexture()
 	button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
 	button:GetHighlightTexture():SetAlpha(0.6)
@@ -241,16 +268,18 @@ local function InitRow(button, entry)
 	button:SetScript("OnEnter", RowEnter)
 	button:SetScript("OnLeave", Leave)
 	local row = entry.row
-	local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
+	local r, g, b = QL.DifficultyColor(QL.ColourLevel(row))
 	-- the game's trivial grey (0.5) reads as near black over the list's
 	-- shade (user, 2026-09-22: "why are the quest names so dark"): the
 	-- panel lifts it; the colour still says trivial
 	if r == g and g == b and r <= 0.5 then
 		r, g, b = 0.72, 0.72, 0.72
 	end
-	local levelText = row[QL.F_LEVEL] > 0 and string.format(" (%d)", row[QL.F_LEVEL]) or ""
+	-- "[12] Title", as the quest log writes it
+	QuestLogFonts(button)
+	local levelText = row[QL.F_LEVEL] > 0 and string.format("[%d] ", row[QL.F_LEVEL]) or ""
 	local stepText = entry.step and string.format("%d. ", entry.step) or ""
-	button.title:SetText(stepText .. row[QL.F_TITLE] .. levelText)
+	button.title:SetText(stepText .. levelText .. row[QL.F_TITLE])
 	-- Icon: tick = done before; yellow ? = in log and finished; grey ? = in log,
 	-- not finished; yellow ! = can be picked up; grey ! = not yet (level).
 	button.check:Show()
@@ -301,11 +330,12 @@ local function InitRow(button, entry)
 	else
 		where = entry.showZone and (QL.Data().zones[row[QL.F_ZONE]] or "") or "quest giver unknown"
 	end
-	button.where:SetText(where)
+	-- as a quest log objective line: a dash, white; grey once done
+	button.where:SetText("- " .. where)
 	if entry.completed then
-		button.where:SetTextColor(0.4, 0.4, 0.4)
+		button.where:SetTextColor(0.55, 0.55, 0.55)
 	else
-		button.where:SetTextColor(GOLD_DIM[1], GOLD_DIM[2], GOLD_DIM[3])
+		button.where:SetTextColor(0.95, 0.95, 0.95)
 	end
 end
 

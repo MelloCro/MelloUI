@@ -142,7 +142,8 @@ local function StoneBackground(cf, background, frame)
 	local sheet
 	if Kit.ParchmentSheet and frame == cf then
 		local layer, sub = rep.tex:GetDrawLayer()
-		sheet = Kit:ParchmentSheet(frame, frame, { rect = rect, margin = 4, wide = true, layer = layer, sublevel = math.min((sub or 0) + 1, 7) })
+		sheet = Kit:ParchmentSheet(frame, frame, { rect = rect, margin = 4, wide = true, layer = layer, sublevel = math.min((sub or 0) + 1, 7),
+			area = "chat", alive = function() return active end })
 		if sheet then
 			rep.sheet = sheet
 		end
@@ -163,7 +164,7 @@ local function StoneBackground(cf, background, frame)
 			enable(...)
 		end
 		if sheet then
-			sheet:Show()
+			sheet:SetShown(Kit:ParchmentOn("chat"))
 		end
 		Hold()
 	end

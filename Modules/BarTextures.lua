@@ -66,6 +66,8 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		texture = MEDIA .. "Flat",
 		healthColor = "green",
 		overrideThreat = true,   -- the health colour wins over the game's threat / aggro recolouring
+		executeRange = false,    -- a tint over an enemy's health bar below executeBelow percent
+		executeBelow = 20,
 		unitframes = true,
 		raidframes = true,
 		nameplates = true,
@@ -87,6 +89,11 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		  desc = "Colour of unit frame health bars. Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from green at full health through yellow at half to red when low, and keeps doing so in combat." },
 		{ type = "toggle", key = "overrideThreat", name = "Colour Overrides Threat",
 		  desc = "The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show." },
+		{ type = "toggle", key = "executeRange", name = "Execute Range",
+		  desc = "An enemy's health bar turns purple once its health is below the percentage set here, on the target and focus frames and on nameplates, so you see when finishing moves can be used. Works in combat, when the game hides the exact health, and with every health bar colour." },
+		{ type = "slider", key = "executeBelow", name = "Execute Below", min = 5, max = 50, step = 1,
+		  format = function(v) return math.floor(v + 0.5) .. "%" end,
+		  desc = "The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)." },
 		{ type = "header", name = "Apply To" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",
 		  desc = "Health and power bars of the player, target, focus, pet, party, boss and target-of-target frames." },
@@ -605,6 +612,170 @@ local function RecolorHealthBar(bar)
 	recolouring = false
 end
 
+-- Execute range (user, 2026-09-23, from the addon study: colours from
+-- curves that keep working in combat). A purple tint laid over the bar's
+-- fill, shown by the game itself: UnitHealthPercent evaluates a curve whose
+-- alpha is 1 below the threshold and 0 above it, and that alpha -- secret in
+-- combat -- goes straight into the tint's SetAlpha, which takes it. Nothing
+-- here reads or compares the health. The bar's own colour is never touched,
+-- so it works over every colour choice, the game's nameplate colours too.
+local EXECUTE_COLOR = { 0.72, 0.25, 1.0 }
+local executeTints = setmetatable({}, { __mode = "k" })   -- [bar] = the tint over its fill
+local executeCurve, executeCurveAt = nil, nil
+
+local function ExecuteCurve()
+	local at = math.max(1, math.min(99, tonumber(M.db.executeBelow) or 20)) / 100
+	if executeCurveAt ~= at then
+		executeCurveAt = at
+		executeCurve = false
+		if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor then
+			local ok, curve = pcall(function()
+				local c = C_CurveUtil.CreateColorCurve()
+				if Enum and Enum.LuaCurveType then
+					c:SetType(Enum.LuaCurveType.Linear)
+				end
+				-- a step made of two points a hair apart: on below, off from `at`
+				c:AddPoint(0, CreateColor(1, 1, 1, 1))
+				c:AddPoint(at - 0.0005, CreateColor(1, 1, 1, 1))
+				c:AddPoint(at, CreateColor(1, 1, 1, 0))
+				c:AddPoint(1, CreateColor(1, 1, 1, 0))
+				return c
+			end)
+			if ok and curve then
+				executeCurve = curve
+			end
+		end
+	end
+	return executeCurve or nil
+end
+
+local function ExecuteTint(bar)
+	local tint = executeTints[bar]
+	if tint then
+		return tint
+	end
+	local fill = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+	if not fill then
+		return nil
+	end
+	local okL, layer, sub = pcall(fill.GetDrawLayer, fill)
+	if not okL or type(layer) ~= "string" then
+		layer, sub = "ARTWORK", 0
+	end
+	tint = bar:CreateTexture(nil, layer, nil, math.min(7, (tonumber(sub) or 0) + 1))
+	tint:SetAllPoints(fill)
+	tint:SetColorTexture(EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3], 0.85)
+	tint:SetAlpha(0)
+	executeTints[bar] = tint
+	return tint
+end
+
+local function UpdateExecute(bar)
+	local tint = executeTints[bar]
+	local group = tracked[bar]
+	local on = M.isEnabled and M.db.executeRange and (group == "unitframes" or group == "nameplates") and Active(group)
+	local unit = on and UnitOf(bar) or nil
+	if on and unit and unit ~= "player" then
+		local okA, attackable = pcall(UnitCanAttack, "player", unit)
+		on = okA and not (issecretvalue and issecretvalue(attackable)) and attackable and true or false
+	else
+		on = false
+	end
+	local curve = on and ExecuteCurve()
+	local color
+	if curve and UnitHealthPercent then
+		local ok, c = pcall(UnitHealthPercent, unit, true, curve)
+		color = ok and c or nil
+	end
+	if not color then
+		if tint then
+			tint:Hide()
+		end
+		return
+	end
+	tint = tint or ExecuteTint(bar)
+	if not tint then
+		return
+	end
+	-- the fill's masks on the tint too (user, 2026-09-23: it spilled under
+	-- the border): Bar Textures' shaped mask and the kit's come and go with
+	-- the settings, so they are matched on every update
+	local fill = bar:GetStatusBarTexture()
+	-- one sublevel above the fill, wherever the fill is now: the kit moves a
+	-- bar's fill to another layer after the tint was made (the target frame,
+	-- /btdump exec 2026-09-23: the tint on BACKGROUND 1 under an ARTWORK fill)
+	if fill then
+		local okL, layer, sub = pcall(fill.GetDrawLayer, fill)
+		if okL and type(layer) == "string" then
+			local want = math.min(7, (tonumber(sub) or 0) + 1)
+			local _, tl, ts = pcall(tint.GetDrawLayer, tint)
+			if tl ~= layer or ts ~= want then
+				tint:SetDrawLayer(layer, want)
+			end
+		end
+	end
+	-- the fill's own picture and cut, coloured purple (user, 2026-09-23: a
+	-- flat colour still spilled under the border where the fill's texture
+	-- fades out; the status bar re-cuts its texture as the value changes)
+	if fill then
+		local okA, atlas = pcall(fill.GetAtlas, fill)
+		local okF, file = pcall(fill.GetTexture, fill)
+		atlas = okA and type(atlas) == "string" and atlas ~= "" and atlas or nil
+		file = okF and (type(file) == "string" or type(file) == "number") and file or nil
+		local art = atlas or file
+		if art and tint.melloArt ~= art then
+			tint.melloArt = art
+			if atlas then
+				tint:SetAtlas(atlas)
+			else
+				tint:SetTexture(file)
+			end
+			tint:SetVertexColor(EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3], 0.85)
+		end
+		local okC, a, b, c, d, e, f, g, h = pcall(fill.GetTexCoord, fill)
+		if okC and art and type(a) == "number" and type(h) == "number" then
+			tint:SetTexCoord(a, b, c, d, e, f, g, h)
+		end
+	end
+	if fill and fill.GetNumMaskTextures and tint.AddMaskTexture then
+		local want = {}
+		local okN, n = pcall(fill.GetNumMaskTextures, fill)
+		for i = 1, (okN and type(n) == "number" and n) or 0 do
+			local mask = fill:GetMaskTexture(i)
+			if mask then
+				want[mask] = true
+			end
+		end
+		tint.melloMasks = tint.melloMasks or {}
+		for mask in pairs(tint.melloMasks) do
+			if not want[mask] then
+				pcall(tint.RemoveMaskTexture, tint, mask)
+				tint.melloMasks[mask] = nil
+			end
+		end
+		for mask in pairs(want) do
+			if not tint.melloMasks[mask] and pcall(tint.AddMaskTexture, tint, mask) then
+				tint.melloMasks[mask] = true
+			end
+		end
+	end
+	local alpha = color.a
+	if alpha == nil and color.GetRGBA then
+		alpha = select(4, color:GetRGBA())
+	end
+	if pcall(tint.SetAlpha, tint, alpha) then
+		tint:Show()
+	else
+		tint:Hide()
+	end
+end
+
+local function UpdateAllExecute()
+	for bar in pairs(healthBars) do
+		pcall(UpdateExecute, bar)
+	end
+end
+
 -- The game recolours health bars itself (threat / aggro display, reaction
 -- on nameplates): with "Colour Overrides Threat" on, the module's colour is
 -- put back right after each of those calls (user, 2026-09-21).
@@ -618,6 +789,9 @@ HookHealthColor = function(bar)
 		bar:HookScript("OnValueChanged", function(self)
 			if M.isEnabled and M.db.healthColor == "health" then
 				pcall(RecolorHealthBar, self)
+			end
+			if M.isEnabled and (M.db.executeRange or executeTints[self]) then
+				pcall(UpdateExecute, self)
 			end
 		end)
 	end
@@ -634,6 +808,7 @@ local function RecolorAllHealthBars()
 		RecolorHealthBar(bar)
 	end
 end
+
 
 -- Bars that lock their colour expect white so their own green atlas shows.
 local function ResetHealthColors()
@@ -899,6 +1074,9 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
 			ApplyPersonal()
 		end
 	end
+	if M.db and M.db.executeRange then
+		UpdateAllExecute()
+	end
 end)
 
 local hooksInstalled = false
@@ -983,15 +1161,23 @@ function M:OnEnable(db)
 	ApplyAll()
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+	eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+	eventFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+	UpdateAllExecute()
 end
 
 function M:OnDisable()
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:UnregisterEvent("PLAYER_ENTERING_WORLD")
+	eventFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
+	eventFrame:UnregisterEvent("PLAYER_FOCUS_CHANGED")
 	for group in pairs(appliers) do
 		RestoreGroup(group)
 	end
 	ResetHealthColors()
+	for _, tint in pairs(executeTints) do
+		tint:Hide()
+	end
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -1021,6 +1207,8 @@ function M:OnSettingChanged(key, value, db)
 			end
 		end
 		RecolorAllHealthBars()
+	elseif key == "executeRange" or key == "executeBelow" then
+		UpdateAllExecute()
 	elseif key == "healthColor" or key == "overrideThreat" then
 		RecolorAllHealthBars()
 		if key == "healthColor" and value == "green" then
@@ -1038,3 +1226,86 @@ MelloUI:Profile("BarTextures", "nameplate events", eventFrame)
 MelloUI:Profile("BarTextures", "nameplate relayout", ApplyNamePlateUnitFrame)
 MelloUI:Profile("BarTextures", "texture (re)apply", SetTexture)
 MelloUI:Profile("BarTextures", "health recolour", RecolorHealthBar)
+
+--------------------------------------------------------------------------------
+-- /btdump exec: the execute tint on your target's health bars, step by step
+-- (user, 2026-09-23: "the execute range didnt work")
+--------------------------------------------------------------------------------
+SLASH_MELLOBTDUMP1 = "/btdump"
+SlashCmdList.MELLOBTDUMP = function()
+	MelloUI:ClearLog()
+	local function S(v)
+		if issecretvalue and issecretvalue(v) then
+			return "<secret>"
+		end
+		return tostring(v)
+	end
+	MelloUI:Print("Bar Textures on: %s   Execute Range: %s   below: %s%%   unit frames: %s   nameplates: %s",
+		S(M.isEnabled), S(M.db and M.db.executeRange), S(M.db and M.db.executeBelow), S(Active("unitframes")), S(Active("nameplates")))
+	local curve = ExecuteCurve()
+	MelloUI:Print("curve: %s   C_CurveUtil: %s   UnitHealthPercent: %s", S(curve), S(C_CurveUtil ~= nil), S(UnitHealthPercent ~= nil))
+	-- the curve on plain inputs: does it carry the alpha (1 below, 0 above)?
+	if curve then
+		local names = {}
+		local mt = getmetatable(curve)
+		local index = mt and mt.__index
+		if type(index) == "table" then
+			for k, v in pairs(index) do
+				if type(v) == "function" then
+					names[#names + 1] = k
+				end
+			end
+		end
+		table.sort(names)
+		MelloUI:Print("curve methods: %s", table.concat(names, ", "))
+		for _, x in ipairs({ 0.1, 0.5, 0.9 }) do
+			local ok, c = pcall(function() return curve:Evaluate(x) end)
+			if ok and c and c.GetRGBA then
+				local r, g, b, a = c:GetRGBA()
+				MelloUI:Print("   curve at %.1f: %s %s %s alpha %s", x, S(r), S(g), S(b), S(a))
+			else
+				MelloUI:Print("   curve at %.1f: %s", x, ok and S(c) or ("error: " .. S(c)))
+			end
+		end
+	end
+	local okP, php = pcall(UnitHealthPercent, "target", true)
+	MelloUI:Print("target's health percent (no curve): %s", okP and S(php) or ("error: " .. S(php)))
+	-- the target's nameplate bar, if it has one
+	local okN, plate = pcall(C_NamePlate.GetNamePlateForUnit, "target")
+	local uf = okN and plate and plate.UnitFrame
+	local targetPlateBar = uf and uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar
+	local found = 0
+	for bar in pairs(healthBars) do
+		local unit = UnitOf(bar)
+		if unit and (unit == "target" or bar == targetPlateBar) then
+			found = found + 1
+			local okA, attackable = pcall(UnitCanAttack, "player", unit)
+			MelloUI:Print("bar %d: unit %s, group %s, attackable %s", found, S(unit), S(tracked[bar]), okA and S(attackable) or "error")
+			local color
+			if curve then
+				local ok, c = pcall(UnitHealthPercent, unit, true, curve)
+				MelloUI:Print("   curve answer: %s (%s)", ok and S(c) or "error", ok and type(c) or S(c))
+				color = ok and c or nil
+			end
+			if color then
+				local a = color.a
+				local okR, r, g, b, a2 = pcall(function() return color:GetRGBA() end)
+				MelloUI:Print("   alpha field: %s   GetRGBA: %s %s %s %s", S(a), okR and S(r) or "error", S(g), S(b), S(a2))
+			end
+			local fill = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+			local okL, layer, sub = pcall(function() return fill:GetDrawLayer() end)
+			MelloUI:Print("   fill: %s, layer %s %s", S(fill ~= nil), okL and S(layer) or "?", S(sub))
+			local tint = executeTints[bar]
+			if tint then
+				local okT, tl, ts = pcall(tint.GetDrawLayer, tint)
+				MelloUI:Print("   tint: shown %s, alpha %s, layer %s %s, points %s", S(tint:IsShown()), S(tint:GetAlpha()), okT and S(tl) or "?", S(ts), S(tint:GetNumPoints()))
+			else
+				MelloUI:Print("   no tint made on this bar yet")
+			end
+		end
+	end
+	if found == 0 then
+		MelloUI:Print("No health bar of your target is known to Bar Textures (target something first).")
+	end
+	MelloUI:ShowLog("btdump exec")
+end

@@ -313,7 +313,7 @@ local function SkinBody(container, background, key, session)
 	-- (user, 2026-09-23: "lets make it on chat and dps meter aswell"); it
 	-- follows the body's opacity with it (a texture of the body's skin)
 	if rep and rep.skin and Kit.ParchmentSheet then
-		Kit:ParchmentSheet(rep.skin, rep.object)
+		Kit:ParchmentSheet(rep.skin, rep.object, { area = "meter" })
 	end
 	if not (rep and session and session.GetBackgroundAlpha) then
 		return

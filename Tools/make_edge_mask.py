@@ -1,5 +1,7 @@
 """Painted-edge masks for the kit (user's pick B of kit_raw/edge_mask_catalog.png,
-2026-09-23: "dry brush", on the spell book's parchment pages).
+2026-09-23: "dry brush", on the spell book's parchment pages; softened the same
+day to pick B2 of a second catalogue -- "its too spikey": longer, evener strokes
+whose ends ease into the next, no bristle streaks, a softer edge).
 
 A corner mask is opaque except along its LEFT and TOP sides, where bristle
 strokes of uneven length reach in from the edge. In the game two of them sit on
@@ -22,7 +24,7 @@ input box below).
 import os
 import random
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ADDON = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ADDON, "Media", "Textures", "Masks")
@@ -54,25 +56,43 @@ def fbm(n, octaves, seed, rough=0.55):
 
 
 def profile(seed, depth=EDGE):
-    """How far into the mask the paint starts, per row: strokes of uneven
-    length, a slow wander, the stroke ends softened into bristles."""
+    """How far into the mask the paint starts, per row: strokes of fairly
+    even length and reach, a slow wander, soft stroke ends."""
     n = DRAW
     slow = fbm(n, 3, seed, 0.5)
     rnd = random.Random(seed + 7)
     raw, stroke, length = [], 0, 0.0
     for i in range(n):
         if stroke <= 0:
-            stroke = rnd.randint(4, 12)
-            length = rnd.betavariate(1.3, 2.2)
+            stroke = rnd.randint(10, 26)
+            length = rnd.betavariate(2, 2)
         stroke -= 1
-        raw.append(depth * (0.12 + 0.8 * length) + depth * 0.12 * slow[i])
-    return [(raw[max(0, i - 1)] + 2 * raw[i] + raw[min(n - 1, i + 1)]) / 4 for i in range(n)]
+        raw.append(depth * (0.25 + 0.45 * length) + depth * 0.12 * slow[i])
+    # each stroke's end eased into the next over a few rows (a soft bite,
+    # not a tooth), then the whole line smoothed
+    out, i = raw[:], 0
+    while i < n:
+        j = i
+        while j + 1 < n and raw[j + 1] == raw[i]:
+            j += 1
+        if j + 1 < n:
+            a, b, w = raw[j], raw[j + 1], 6
+            for k in range(-w, w + 1):
+                t = (k + w) / (2 * w)
+                t = t * t * (3 - 2 * t)
+                if 0 <= j + k < n:
+                    out[j + k] = a + (b - a) * t
+        i = j + 1
+    raw = out
+    for _ in range(8):
+        raw = [(raw[max(0, i - 1)] + 2 * raw[i] + raw[min(n - 1, i + 1)]) / 4 for i in range(n)]
+    return raw
 
 
 def corner_mask(depth=EDGE, top_depth=None):
     top_depth = depth if top_depth is None else top_depth
     left, top = profile(SEED, depth), profile(SEED + 101, top_depth)
-    feather = 1.1
+    feather = 3.5
     img = Image.new("L", (DRAW, DRAW), 255)
     px = img.load()
     for y in range(DRAW):
@@ -82,22 +102,6 @@ def corner_mask(depth=EDGE, top_depth=None):
         for y in range(max(depth, top_depth) * 2):
             v = int(255 * max(0.0, min(1.0, 0.5 + (y - top[x]) / feather)))
             px[x, y] = min(px[x, y], v)
-    # bristle gaps: thin streaks running into the paint
-    rnd = random.Random(SEED + 11)
-    d = ImageDraw.Draw(img)
-    # the streaks' reach in step with the depth (the full pair: 6 to 22)
-    def reach(d):
-        return (6, 22) if d == EDGE else (max(1, round(6 * d / EDGE)), max(2, round(22 * d / EDGE)))
-    lo, hi = reach(depth)
-    tlo, thi = reach(top_depth)
-    for _ in range(26):
-        y = rnd.randint(0, DRAW - 1)
-        x0 = int(left[y])
-        d.line((x0, y, x0 + rnd.randint(lo, hi), y), fill=rnd.randint(40, 150), width=1)
-    for _ in range(26):
-        x = rnd.randint(0, DRAW - 1)
-        y0 = int(top[x])
-        d.line((x, y0, x, y0 + rnd.randint(tlo, thi)), fill=rnd.randint(40, 150), width=1)
     return img.resize((FILE, FILE), Image.LANCZOS)
 
 

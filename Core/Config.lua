@@ -113,6 +113,7 @@ local MODULE_META = {
 	UnitFrames   = { icon = ICON .. "INV_Misc_GroupLooking",       flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose." },
 	VoiceOver    = { icon = ICON .. "INV_Misc_Horn_01",            flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it." },
 	QuestList    = { icon = ICON .. "INV_Misc_Map_01",             flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do." },
+	Auras = { icon = ICON .. "Spell_Holy_WordFortitude",           flavour = "Buffs and debuffs in rows of your own, drawn by the game itself, so they never go dark in a fight." },
 	ErrorFilter = { icon = ICON .. "Spell_Holy_Silence",            flavour = "Quiet, please. The red shouts in the middle of the screen, a kind at a time." },
 	QuestTracker = { icon = ICON .. "INV_Misc_Book_08",            flavour = "Every watched quest within reach: the tracker scrolls when the list runs long." },
 	Route        = { icon = ICON .. "Ability_Tracking",            flavour = "A trail of gems from here to there, along the roads you have walked before." },
@@ -2078,6 +2079,129 @@ function MelloUI:SecretProbe()
 	self:ShowLog("mello secrets")
 end
 
+--------------------------------------------------------------------------------
+-- /mello auras: what this client's aura container offers (user, 2026-09-23:
+-- MelloUI's own buff / debuff rows on the target frame, enemy nameplates and
+-- the player's buffs, drawn by the game's AuraContainer so no aura data is
+-- ever read). The retail 12.1 API is the guide; this lists what Forever
+-- really has, and what the game's own aura frames are made of, before any
+-- of it is used.
+--------------------------------------------------------------------------------
+
+local AURA_CONTAINER_METHODS = {
+	"SetUnit", "GetUnit", "SetEnabled", "IsEnabled", "UpdateAllAuras",
+	"AddAuraGroup", "AddAuraSlot", "GetAuraGroupFrame", "GetAuraGroupFrameCount", "HasAuraGroup",
+	"SetAuraGroupFilterString", "SetAuraGroupLayout", "SetAuraGroupMaxFrameCount", "SetAuraGroupSortMethod",
+	"SetAuraGroupCandidateFilters", "SetAuraGroupEnabled", "AddItemEnchantment",
+	"SetFlowLayoutAnchorPoint", "SetFlowLayoutAxis", "SetFlowLayoutGrowthDirection",
+	"SetFlowLayoutMaximumLineSize", "SetFlowLayoutPadding", "ResetFlowLayoutOptions",
+	"SetAuraProcessingPolicy", "SetEditModePreviewEnabled",
+}
+local AURA_BUTTON_METHODS = {
+	"SetIcon", "SetDurationCooldown", "SetDurationText", "SetApplicationCount", "SetApplicationBar",
+	"AddDispelTypeTexture", "SetAuraBorder", "SetAuraSymbol", "SetCancelAuraButtons",
+	"SetTooltipAnchorPoint", "SetHideTooltipInCombat", "SetRadialPandemicIndicator",
+}
+local AURA_GLOBALS = {
+	"AuraContainerSortMethod", "AuraContainerSortDirection", "CustomAuraContainerAuraProcessingPolicy",
+	"Enum.CustomAuraButtonDispelTypeTextureStyle", "Enum.CustomAuraButtonDispelTypeStealableFilter",
+	"AnchorUtil.FlowLayoutAxis", "C_AuraContainerUtil", "GenerateClosure",
+}
+
+local function Keys(t, match)
+	local out = {}
+	if type(t) == "table" then
+		for k in pairs(t) do
+			if type(k) == "string" and (not match or k:lower():find(match, 1, true)) then
+				out[#out + 1] = k
+			end
+		end
+	end
+	table.sort(out)
+	return table.concat(out, ", ")
+end
+
+function MelloUI:AuraProbe()
+	self:ClearLog()
+	local P = function(...) self:Print(...) end
+	local okC, c = pcall(CreateFrame, "AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+	if not (okC and c) then
+		P("AuraContainer: cannot be created here (%s). Nothing else to probe.", tostring(c))
+		self:ShowLog("mello auras")
+		return
+	end
+	c:Hide()
+	local have, miss = {}, {}
+	for _, m in ipairs(AURA_CONTAINER_METHODS) do
+		if type(c[m]) == "function" then have[#have + 1] = m else miss[#miss + 1] = m end
+	end
+	P("Container methods present (%d): %s", #have, table.concat(have, ", "))
+	P("Container methods MISSING (%d): %s", #miss, #miss > 0 and table.concat(miss, ", ") or "none")
+	for _, g in ipairs(AURA_GLOBALS) do
+		local v = Lookup(g)
+		P("  %s: %s%s", g, type(v), type(v) == "table" and (" { " .. Keys(v) .. " }") or "")
+	end
+	-- a group on the player's auras: every button it makes is looked at
+	local buttons, initErr = {}, nil
+	local okG, errG = pcall(function()
+		c:SetSize(200, 40)
+		c:SetPoint("CENTER")
+		c:SetUnit("player")
+		c:AddAuraGroup("melloProbe", "HELPFUL", {
+			maxFrameCount = 4,
+			initializeFrame = function(button)
+				buttons[#buttons + 1] = button
+				local ok, e = pcall(function()
+					button:SetSize(24, 24)
+					local icon = button:CreateTexture(nil, "BORDER")
+					icon:SetAllPoints()
+					button:SetIcon(icon)
+				end)
+				if not ok then initErr = e end
+			end,
+		})
+		c:Show()
+		c:UpdateAllAuras()
+	end)
+	P("AddAuraGroup on your buffs: %s%s", okG and "ok" or "FAILED", okG and "" or (": " .. tostring(errG)))
+	local okN, n = pcall(c.GetAuraGroupFrameCount, c, "melloProbe")
+	P("  buttons in the group: %s (you have to have a buff for any)", tostring(okN and n or n))
+	if initErr then
+		P("  a button's set-up failed: %s", tostring(initErr))
+	end
+	local b = buttons[1]
+	if b then
+		P("  a button is a %s", tostring(b.GetObjectType and b:GetObjectType()))
+		local bh, bm = {}, {}
+		for _, m in ipairs(AURA_BUTTON_METHODS) do
+			if type(b[m]) == "function" then bh[#bh + 1] = m else bm[#bm + 1] = m end
+		end
+		P("Button methods present (%d): %s", #bh, table.concat(bh, ", "))
+		P("Button methods MISSING (%d): %s", #bm, #bm > 0 and table.concat(bm, ", ") or "none")
+	else
+		P("  no button was made: buff yourself (or have any buff) and run /mello auras again for the button methods.")
+	end
+	pcall(c.SetEnabled, c, false)
+	c:Hide()
+	-- the game's own aura frames: what they are made of on this client
+	local function Kind(f)
+		return f and f.GetObjectType and f:GetObjectType() or type(f)
+	end
+	P("Game's buff frame: BuffFrame %s, DebuffFrame %s; aura keys: %s", Kind(BuffFrame), Kind(DebuffFrame), Keys(BuffFrame, "aura"))
+	P("  BuffFrame.AuraContainer: %s", Kind(BuffFrame and BuffFrame.AuraContainer))
+	P("Game's target frame: aura keys %s", Keys(TargetFrame, "aura"))
+	P("  TargetFrame.auraPools: %s, TargetFrame.AurasContainer: %s", Kind(TargetFrame and TargetFrame.auraPools), Kind(TargetFrame and TargetFrame.AurasContainer))
+	local okP, plates = pcall(C_NamePlate.GetNamePlates)
+	local uf = okP and type(plates) == "table" and plates[1] and plates[1].UnitFrame
+	if uf then
+		P("A nameplate's unit frame: aura keys %s", Keys(uf, "aura"))
+		P("  UnitFrame.AurasFrame: %s; its keys: %s", Kind(uf.AurasFrame), Keys(uf.AurasFrame))
+	else
+		P("No nameplate on screen: stand near an enemy for the nameplate part.")
+	end
+	self:ShowLog("mello auras")
+end
+
 SLASH_MELLOUI1 = "/mello"
 SLASH_MELLOUI2 = "/melloui"
 SlashCmdList.MELLOUI = function(msg)
@@ -2205,6 +2329,8 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   Hooks and handlers not listed used less than half a millisecond. /mello cpu reset clears the counters.")
 	elseif cmd == "secrets" then
 		MelloUI:SecretProbe()
+	elseif cmd == "auras" then
+		MelloUI:AuraProbe()
 	elseif cmd == "preload" then
 		-- Preload Artwork (UI Modifications): how many files are held, and how
 		-- many the client says are in memory already
@@ -2313,6 +2439,7 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   /mello cpu                 CPU time per handler (needs scriptProfile)")
 		print("   /mello preload             how much of the artwork is preloaded")
 		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")
+		print("   /mello auras               what this client's aura container offers (for MelloUI's own aura rows)")
 	elseif cmd ~= "" and not ModuleByName(cmd) and cmd ~= "profiles" then
 		MelloUI:Print("Unknown command or module '%s'. /mello help lists the commands, /mello list the modules.", cmd)
 	else

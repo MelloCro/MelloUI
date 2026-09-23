@@ -299,7 +299,7 @@ local function Build()
 			-- how it was and the borders, but add the parchment layer on top
 			-- of that and mask it")
 			if rep.skin and Kit.ParchmentSheet then
-				Kit:ParchmentSheet(rep.skin, holder)
+				Kit:ParchmentSheet(rep.skin, holder, { area = "tracker" })
 			end
 			local function Opacity()
 				local ok, alpha = pcall(tracker.NineSlice.GetAlpha, tracker.NineSlice)

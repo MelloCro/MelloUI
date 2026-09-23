@@ -670,6 +670,9 @@ def main():
     area_by_name = {name.lower(): aid for aid, name in areas.items()}
     listing = load_listing()
     givers, spawns, names, venders = load_vanilla(sql)
+    # a quest classic-db has is Classic; the rest are Forever's own (user,
+    # 2026-09-23: "Classic" / "Forever" on each quest, to tell new from old)
+    classic_ids = {int(r["entry"]) for r in sql_rows(sql, "quest_template")}
     store = json.load(open(args.store, encoding="utf-8")) if os.path.exists(args.store) else {}
     learned = {int(k): v for k, v in store.get("npcs", {}).items() if v.get("x") is not None}
     forever_ids = [q for q in listing if q >= 60000]
@@ -821,7 +824,8 @@ def main():
         rows.append((qid, q["name"], q.get("level") or 0, q.get("reqlevel") or 0, q.get("side") or 0, q.get("reqclass") or 0,
                      quest_zone, giver_zone, giver_name, gx, gy, kind, event, chain_of.get(qid, 0), dungeon, attunement,
                      prev_of.get(qid, 0), world[0], world[1], world[2], giver_id,
-                     ender_name, ender_id, ender_zone, ender_world[0], ender_world[1], ender_world[2]))
+                     ender_name, ender_id, ender_zone, ender_world[0], ender_world[1], ender_world[2],
+                     1 if qid in classic_ids else 2))
 
     # Every instance Wowhead lists, so the panel can show the ones without quests too.
     for zid in instances:
@@ -839,7 +843,8 @@ def main():
         fh.write("\t-- event (key into events, 0 for none), chain (key into chains, 0 for none), dungeon (key into dungeons, 0 for none),\n")
         fh.write("\t-- attunement (1 when the quest or its chain grants access to an instance),\n")
         fh.write("\t-- previous quest in the chain, giver continent, giver world x, giver world y, giver NPC entry,\n")
-        fh.write("\t-- turn-in name, turn-in NPC entry, turn-in zone (area id), turn-in continent, turn-in world x, turn-in world y\n")
+        fh.write("\t-- turn-in name, turn-in NPC entry, turn-in zone (area id), turn-in continent, turn-in world x, turn-in world y,\n")
+        fh.write("\t-- origin (1 Classic: in classic-db, 2 Forever: Forever's own)\n")
         fh.write("\tzones = {\n")
         for aid in sorted(used_zones):
             fh.write(f"\t\t[{aid}] = {lua_str(areas.get(aid, str(aid)))},\n")
@@ -893,8 +898,8 @@ def main():
             fh.write(f"\t\t[{mask}] = {lua_str(cls)},\n")
         fh.write("\t},\n\tquests = {\n")
         for r in rows:
-            qid, title, level, req, side, cls, qz, gz, gname, gx, gy, kind, event, chain, dungeon, attunement, prev, wc, wx, wy, npc, ename, enpc, ezone, ec, ex, ey = r
-            fh.write(f"\t\t{{{qid},{lua_str(title)},{level},{req},{side},{cls},{qz},{gz},{lua_str(gname)},{gx},{gy},{kind},{event},{chain},{dungeon},{attunement},{prev},{wc},{wx},{wy},{npc},{lua_str(ename)},{enpc},{ezone},{ec},{ex},{ey}}},\n")
+            qid, title, level, req, side, cls, qz, gz, gname, gx, gy, kind, event, chain, dungeon, attunement, prev, wc, wx, wy, npc, ename, enpc, ezone, ec, ex, ey, origin = r
+            fh.write(f"\t\t{{{qid},{lua_str(title)},{level},{req},{side},{cls},{qz},{gz},{lua_str(gname)},{gx},{gy},{kind},{event},{chain},{dungeon},{attunement},{prev},{wc},{wx},{wy},{npc},{lua_str(ename)},{enpc},{ezone},{ec},{ex},{ey},{origin}}},\n")
         fh.write("\t},\n}\n")
     log("client tables: " + ", ".join(f"{name} {build}" for name, build in sorted(db2.used.items())))
     log(f"wrote {args.out}: {len(rows)} quests, {len(used_zones)} zones")

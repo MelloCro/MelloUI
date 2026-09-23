@@ -24,6 +24,7 @@ Media\CustomTextures.lua
 Media\NPCVoiceData.lua
 Media\NPCVoiceOverrides.lua
 Media\QuestListData.lua
+Media\QuestObjectiveData.lua
 Media\RouteData.lua
 Media\RoadData.lua
 Media\ClassIcons.lua
@@ -74,6 +75,7 @@ Modules\MinimapPanel.lua
 Modules\TrackerPanel.lua
 Modules\QuestTracker.lua
 Modules\ErrorFilter.lua
+Modules\Auras.lua
 Modules\SocialPanel.lua
 Modules\ChatPanel.lua
 Modules\DamageMeterPanel.lua

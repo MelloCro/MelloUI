@@ -76,7 +76,10 @@ local TWEAKS = {
 -- the button on the page can reach them
 local Apply, RestoreAreas, NothingWanted
 
-local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false, unlock = false, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
+local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
+	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
+	parchment_whisper = false, parchment_meter = false, parchment_character = false,
+	unlock = false, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
 options[#options + 1] = { type = "header", name = "Reskin" }
 options[#options + 1] = { type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
 	desc = "The whole interface dressed in the painted kit. Off: every area below shows the game's own art; the quality-of-life tweaks keep working." }
@@ -101,6 +104,22 @@ options[#options + 1] = { type = "toggle", key = "fadeWindows", name = "Windows 
 	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." }
 options[#options + 1] = { type = "toggle", key = "reduceMotion", name = "Reduce Motion",
 	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash. For anyone who finds moving interface parts distracting." }
+-- the parchment sheets, one switch per area, off by default (user,
+-- 2026-09-23: "some people like it, some dont"); the kit's own pages (the
+-- spell book, the quest log) are the game's parchment and stay
+options[#options + 1] = { type = "subheader", name = "Parchment" }
+options[#options + 1] = { type = "toggle", key = "parchment_tracker", name = "Objective Tracker",
+	desc = "A parchment sheet with a painted edge on the objective tracker's stone backdrop. Off: the stone alone." }
+options[#options + 1] = { type = "toggle", key = "parchment_questTracker", name = "Quest Tracker",
+	desc = "A parchment sheet with a painted edge on the quest tracker's stone backdrop. Off: the stone alone." }
+options[#options + 1] = { type = "toggle", key = "parchment_chat", name = "Chat",
+	desc = "A parchment sheet with a painted edge on the chat's stone backdrop. Off: the stone alone." }
+options[#options + 1] = { type = "toggle", key = "parchment_whisper", name = "Whisper Popup",
+	desc = "A parchment sheet with a painted edge on the whisper popup's stone backdrop. Off: the stone alone." }
+options[#options + 1] = { type = "toggle", key = "parchment_meter", name = "Damage Meter",
+	desc = "A parchment sheet with a painted edge on the damage meter's stone backdrop. Off: the stone alone." }
+options[#options + 1] = { type = "toggle", key = "parchment_character", name = "Character Window",
+	desc = "A parchment sheet with a painted edge on the character window's stone backdrop. Off: the stone alone." }
 for _, area in ipairs(PANELS) do
 	if area.sub then
 		options[#options + 1] = { type = "subheader", name = area.sub }
@@ -1270,6 +1289,11 @@ function M:OnSettingChanged(key, value, db)
 		return
 	elseif key == "reduceMotion" then
 		ApplyMotion(db)
+		return
+	elseif key:sub(1, 10) == "parchment_" then
+		if MelloUI.Kit and MelloUI.Kit.SetParchment then
+			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)
+		end
 		return
 	elseif key == "positions" or key == "layoutApplied" or key == "welcomeAsked" or key == "savedSurnameOwn" then
 		return

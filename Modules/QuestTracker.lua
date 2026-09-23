@@ -102,7 +102,6 @@ local TEXT_X = 28            -- the titles' left edge, past the map button's col
 local BULLET_X = 8           -- an objective's dash (and a turn-in line), from TEXT_X
 local LINE_X = 20            -- an objective's text, from TEXT_X: past the dash
 local ITEM_SIZE = 26         -- a quest item's button
-local FADE_H = 22            -- the list's faded ends
 local FALLBACK_W, FALLBACK_H = 260, 520
 
 --------------------------------------------------------------------------------
@@ -150,7 +149,6 @@ local blocks = {}            -- [questID] = block, kept across rebuilds
 local freeBlocks = {}
 local dirty = false
 local sizing = false          -- the grip is being dragged: no rebuild resizes the frame meanwhile
-local fadeTop, fadeBottom     -- the list's ends, faded into the page while there is more that way
 local lastProgress = {}       -- [questID or "r<recipe>"] = { [line] = count }: what each line last showed
 local lastComplete = {}       -- [questID] = true once it was ready to turn in
 local Scroll                  -- below
@@ -262,7 +260,7 @@ local function BuildKitLook()
 		return false
 	end
 	if skin and Kit.ParchmentSheet then
-		Kit:ParchmentSheet(skin, holder)
+		Kit:ParchmentSheet(skin, holder, { area = "questTracker" })
 	end
 	-- the title plate across the top, as on the game's tracker
 	local plateHolder = CreateFrame("Frame", nil, header)
@@ -322,30 +320,6 @@ local function OnGem(toggle, strip, gem, rel, x)
 	end
 end
 
--- The page's colour at the list's ends: the parchment's average (its art at
--- the kit's parchment tint, darkened by Dark Mode like the page) under the
--- kit, the plain panel's black without
-local PARCHMENT_MEAN = { 0.894, 0.740, 0.491 }
-local function ColourFades(kitOn)
-	if not (fadeTop and fadeTop.SetGradient and CreateColor) then
-		return
-	end
-	local r, g, b, a = 0, 0, 0, 0.45
-	local Kit = MelloUI.Kit
-	if kitOn then
-		local t = (Kit and Kit.parchmentTint) or { 1, 1, 1 }
-		local k = (Kit and Kit.shade) or 1
-		r, g, b, a = PARCHMENT_MEAN[1] * t[1] * k, PARCHMENT_MEAN[2] * t[2] * k, PARCHMENT_MEAN[3] * t[3] * k, 1
-	end
-	for _, tex in ipairs({ fadeTop, fadeBottom }) do
-		tex:SetColorTexture(1, 1, 1, 1)
-	end
-	-- VERTICAL runs bottom -> top: the top end solid at the top, the
-	-- bottom end solid at the bottom
-	fadeTop:SetGradient("VERTICAL", CreateColor(r, g, b, 0), CreateColor(r, g, b, a))
-	fadeBottom:SetGradient("VERTICAL", CreateColor(r, g, b, a), CreateColor(r, g, b, 0))
-end
-
 local function ApplyLook()
 	local kitOn = KitCovers() and BuildKitLook()
 	if kitOn then
@@ -368,7 +342,6 @@ local function ApplyLook()
 	if header and header.toggle then
 		OnGem(header.toggle, kitOn and kitOn.strip, TITLE_GEM, header, -4)
 	end
-	ColourFades(kitOn and true or false)
 end
 
 --------------------------------------------------------------------------------
@@ -890,33 +863,12 @@ local function UpdateThumb()
 	thumb:SetHeight(h)
 end
 
--- The list's ends fade into the page while there is more to scroll that way
--- (user, 2026-09-23, from the study: a scrolling list shows it goes on)
-local function UpdateFades()
-	if not fadeTop then
-		return
-	end
-	local max = MaxScroll()
-	local Anim = MelloUI.Anim
-	for tex, on in pairs({ [fadeTop] = scrollOffset > 0.5, [fadeBottom] = scrollOffset < max - 0.5 }) do
-		local want = on and 1 or 0
-		if Anim then
-			if (tex:GetAlpha() > 0.5) ~= on then
-				Anim:To(tex, "alpha", want, 0.15)
-			end
-		else
-			tex:SetAlpha(want)
-		end
-	end
-end
-
 local function SetOffset(offset)
 	scrollOffset = math.max(0, math.min(offset, MaxScroll()))
 	content:ClearAllPoints()
 	content:SetPoint("TOPLEFT", clip, "TOPLEFT", 0, scrollOffset)
 	content:SetWidth(ContentWidth())
 	UpdateThumb()
-	UpdateFades()
 	if itemOverlay and itemOverlay.over and not InCombatLockdown() then
 		-- the item the secure button lies over moved with the list
 		if not itemOverlay.over:IsMouseOver() then
@@ -1352,20 +1304,6 @@ local function Build()
 	clip:EnableMouseWheel(true)
 	clip:SetScript("OnMouseWheel", function(_, delta) Scroll(delta) end)
 	clip:SetScript("OnSizeChanged", function() SetOffset(scrollOffset) end)
-	local fades = CreateFrame("Frame", nil, frame)
-	fades:SetAllPoints(clip)
-	fades:SetFrameLevel(clip:GetFrameLevel() + 30)
-	fades:EnableMouse(false)
-	fadeTop = fades:CreateTexture(nil, "OVERLAY")
-	fadeTop:SetPoint("TOPLEFT", clip, "TOPLEFT", 0, 0)
-	fadeTop:SetPoint("TOPRIGHT", clip, "TOPRIGHT", 0, 0)
-	fadeTop:SetHeight(FADE_H)
-	fadeTop:SetAlpha(0)
-	fadeBottom = fades:CreateTexture(nil, "OVERLAY")
-	fadeBottom:SetPoint("BOTTOMLEFT", clip, "BOTTOMLEFT", 0, 0)
-	fadeBottom:SetPoint("BOTTOMRIGHT", clip, "BOTTOMRIGHT", 0, 0)
-	fadeBottom:SetHeight(FADE_H)
-	fadeBottom:SetAlpha(0)
 
 	-- the resize grip, bottom-left (the tracker hangs from its top-right
 	-- corner): dragging sets its width and the height it may grow to

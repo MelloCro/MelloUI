@@ -187,7 +187,7 @@ local function BuildSkin()
 			-- the stone's holder, one sublevel above the stone: it comes and
 			-- goes with the skin.
 			if stone and stone.object and stone.object ~= stone.tex and Kit.ParchmentSheet then
-				Kit:ParchmentSheet(stone.object, stone.object, { rect = stone.object, margin = 2, fine = true, sublevel = 1 })
+				Kit:ParchmentSheet(stone.object, stone.object, { rect = stone.object, margin = 2, fine = true, sublevel = 1, area = "character" })
 			end
 		end
 		if host.StoneBg then

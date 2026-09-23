@@ -19,6 +19,11 @@ shows every zone with its traced segments; click a segment to drop it, draw
 missing roads, and save the result as Tools/roads/review.json. The bake
 applies that review on top of the automatic trace (Tools/roads/segments.json).
 
+The bake then stitches each continent (stitch()): road ends of neighbouring
+zones that meet are joined, every traced dead end is carried on to the nearest
+road of another zone within BORDER_REACH, and the remaining pieces get the
+shortest bridges that connect them (STITCH_YARDS at most), priced as off-road.
+
 Sources: wago.tools DB2 tables UiMap, UiMapXMapArt, UiMapArt, UiMapArtStyleLayer,
 UiMapArtTile, WorldMapOverlay, WorldMapOverlayTile and UiMapAssignment for the
 build, and the textures by file id. The zone's world bounds (UiMapAssignment)
@@ -479,6 +484,100 @@ def load_review():
     return {"removed": r.get("removed", []), "added": r.get("added", {})}
 
 
+STITCH_YARDS = 600    # the longest bridge laid between two road pieces (512 yd joins northern and southern
+                      # Stranglethorn, where the jungle road was not traced)
+BRIDGE_COST = 1.5     # a bridge's price relative to walking a road (Route's JUMP_COST)
+
+
+BORDER_REACH = 350    # yards: a road's dead end is linked to another zone's road this near
+                      # (user, 2026-09-23: Westfall's road east of Sentinel Hill ends at the
+                      # river bridge, Duskwood's map paints no road on its side; 289 yd)
+
+
+def stitch(g, cont, zone_of=None):
+    """Join the continent's road pieces (user, 2026-09-23: the route to the
+    boat went straight across the hills -- the roads were joined only within
+    a zone, so no road crossed a zone border and Eastern Kingdoms fell into
+    828 pieces). First the road ends of neighbouring zones that meet
+    (JOIN_YARDS, as inside a zone), then the shortest bridges that connect
+    the pieces, each at most STITCH_YARDS, priced BRIDGE_COST x walking: a
+    spanning tree over the pieces, so only the bridges needed are laid."""
+    from scipy.spatial import cKDTree
+    keys = sorted(g)
+    if not keys:
+        return
+    pts = [(g[k][0], g[k][1]) for k in keys]
+    tree = cKDTree(pts)
+    parent = list(range(len(keys)))
+    index = {k: i for i, k in enumerate(keys)}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    def join(a, b, cost):
+        ka, kb = keys[a], keys[b]
+        cost = round(cost, 1)
+        if g[ka][2].get(kb) is None or g[ka][2][kb] > cost:
+            g[ka][2][kb] = cost
+            g[kb][2][ka] = cost
+
+    for i, k in enumerate(keys):
+        for o in g[k][2]:
+            if o in index:
+                parent[find(i)] = find(index[o])
+    before = len({find(i) for i in range(len(keys))})
+    # the dead ends as traced, before anything below links them (a bridge
+    # to its own zone's road made the Westfall end at the Duskwood bridge
+    # look like a through road, and it was never carried across)
+    dead_ends = [i for i, k in enumerate(keys) if len(g[k][2]) <= 1]
+    crossings = 0
+    for a, b in tree.query_pairs(JOIN_YARDS):
+        if find(a) != find(b) or keys[b] not in g[keys[a]][2]:
+            d = math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1])
+            if keys[b] not in g[keys[a]][2]:
+                crossings += 1
+            join(a, b, d / WALK)
+            parent[find(a)] = find(b)
+    # the shortest bridges between different pieces, shortest first (Kruskal)
+    pairs = tree.query_pairs(STITCH_YARDS, output_type="ndarray")
+    cand = []
+    for a, b in pairs:
+        if find(a) != find(b):
+            cand.append((math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1]), int(a), int(b)))
+    cand.sort()
+    bridges, longest = 0, 0.0
+    for d, a, b in cand:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            join(a, b, d / WALK * BRIDGE_COST)
+            parent[ra] = rb
+            bridges += 1
+            longest = max(longest, d)
+    after = len({find(i) for i in range(len(keys))})
+    # a road that ends near a zone border most often goes on in the next
+    # zone, whose map may not paint it: each dead end is linked to the
+    # nearest road of another zone, priced as a bridge (the planner takes it
+    # only where it is the shorter way)
+    ends = 0
+    if zone_of:
+        for i in dead_ends:
+            k = keys[i]
+            here = zone_of.get(k)
+            ds, ix = tree.query(pts[i], k=64, distance_upper_bound=BORDER_REACH)
+            for d, j in zip(ds, ix):
+                if j >= len(keys) or d == float("inf"):
+                    break
+                if zone_of.get(keys[j]) not in (None, here) and keys[j] not in g[k][2]:
+                    join(i, j, d / WALK * BRIDGE_COST)
+                    ends += 1
+                    break
+    log(f"  {CONTINENTS[cont]}: {before} road pieces -> {after} ({crossings} links across zone borders, "
+        f"{bridges} bridges, longest {longest:.0f} yd, {ends} road ends carried into the next zone)")
+
+
 def stage_bake(zones, conts):
     from scipy.spatial import cKDTree
     with open(SEGMENTS, encoding="utf-8") as fh:
@@ -486,6 +585,7 @@ def stage_bake(zones, conts):
     review = load_review()
     removed = set(review["removed"])
     graphs = {c: {} for c in CONTINENTS}
+    zone_of = {}   # node key -> the zone it was traced in (the first, where zones overlap)
     total_nodes, total_links = 0, 0
     for z in zones:
         entry = auto.get(str(z["id"]))
@@ -509,6 +609,7 @@ def stage_bake(zones, conts):
             k = f"{int(math.floor(yx / CELL))}:{int(math.floor(yy / CELL))}"
             if k not in g:
                 g[k] = [round(yx, 1), round(yy, 1), {}]
+                zone_of[k] = z["id"]
             nodes.append((yx, yy))
             keys.append(k)
             return k
@@ -558,6 +659,8 @@ def stage_bake(zones, conts):
                 link(keys[a], keys[b], d / WALK)
         total_nodes += len(set(keys))
         log(f"  {z['id']} {z['name']}: {len(lines)} segments, {len(set(keys))} nodes")
+    for c, g in graphs.items():
+        stitch(g, c, zone_of)
     with io.open(OUT, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/trace_roads.py from the zone map art of build " + BUILD + ". Do not edit by hand.\n")
         fh.write("-- Roads traced from the maps for the Route module, in continent yards of the sizes below;\n")

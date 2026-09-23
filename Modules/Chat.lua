@@ -647,7 +647,7 @@ local function DressPopup(f)
 			-- the parchment laid on the stone, inside the rails, its edge
 			-- painted (user, 2026-09-23: "same on the whisper window")
 			if skin and Kit.ParchmentSheet then
-				Kit:ParchmentSheet(skin, f, { tight = true })
+				Kit:ParchmentSheet(skin, f, { tight = true, area = "whisper" })
 			end
 			return true
 		end

@@ -156,6 +156,28 @@ end
 Kit.parchmentTint = { 0.80, 0.74, 0.64 }
 Kit.parchmentPiece = "backdrops/page_parchment"
 
+-- Each area's sheets on a switch of its own (user, 2026-09-23: "some people
+-- like it, some dont, off by default"): UI Modifications' parchment_<area>
+-- settings. opts.area names the area; opts.alive, when given, says whether
+-- the sheet's own frame is dressed at all (a sheet that is the chat window's
+-- region, not the skin's, shows only while the chat reskin is on).
+Kit.parchmentSheets = {}   -- [area] = { { sheet, alive }, ... }
+
+function Kit:ParchmentOn(area)
+	if not area then
+		return true
+	end
+	local um = MelloUI:GetModule("UIModifications")
+	local db = um and um.db
+	return (db and db["parchment_" .. area] == true) and true or false
+end
+
+function Kit:SetParchment(area, on)
+	for _, entry in ipairs(self.parchmentSheets[area] or {}) do
+		entry.sheet:SetShown((on and (not entry.alive or entry.alive())) and true or false)
+	end
+end
+
 function Kit:ParchmentSheet(skin, watch, opts)
 	opts = opts or {}
 	if not (skin and skin.CreateTexture) then
@@ -204,6 +226,12 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		watch:HookScript("OnShow", Fit)
 	end
 	Fit()
+	if opts.area then
+		local list = self.parchmentSheets[opts.area] or {}
+		self.parchmentSheets[opts.area] = list
+		list[#list + 1] = { sheet = sheet, alive = opts.alive }
+		sheet:SetShown((self:ParchmentOn(opts.area) and (not opts.alive or opts.alive())) and true or false)
+	end
 	return sheet, edge
 end
 

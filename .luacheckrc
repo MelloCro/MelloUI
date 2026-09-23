@@ -14,7 +14,7 @@ globals = {
 	"SLASH_MELLOSERVICES1", "SLASH_MELLOTRDUMP1", "SLASH_MELLOSBDUMP1", "SLASH_MELLOPROFDUMP1", "SLASH_MELLOLEGDUMP1", "SLASH_MELLOGFDUMP1", "SLASH_MELLOVOICEOVER1", "SLASH_MELLOVOICEOVER2", "SLASH_MELLOICONDUMP1",
 	"SLASH_MELLOABDUMP1", "SLASH_MELLOBAGDUMP1", "SLASH_MELLOMMDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOUFTEST1", "SLASH_MELLORFDUMP1", "SLASH_MELLOABDUMP1", "SLASH_MELLOCBDUMP1",
 	"SLASH_MELLOSOCDUMP1", "SLASH_MELLOTTDUMP1", "SLASH_MELLONPDUMP1",
-	"SLASH_MELLODMDUMP1", "SLASH_MELLOCHDUMP1", "SLASH_MELLOKITDEMO1", "SLASH_MELLOKITWHAT1", "SLASH_MELLOPMDUMP1", "SLASH_MELLOSFX1", "SLASH_MELLOSFXDUMP1", "SLASH_MELLOCPDUMP1", "SLASH_MELLOLOG1", "SLASH_MELLOQLDUMP1", "SLASH_MELLOGDUMP1", "SLASH_MELLOCOLDUMP1", "SLASH_MELLOUFDUMP1",
+	"SLASH_MELLODMDUMP1", "SLASH_MELLOCHDUMP1", "SLASH_MELLOKITDEMO1", "SLASH_MELLOKITWHAT1", "SLASH_MELLOPMDUMP1", "SLASH_MELLOSFX1", "SLASH_MELLOSFXDUMP1", "SLASH_MELLOCPDUMP1", "SLASH_MELLOLOG1", "SLASH_MELLOQLDUMP1", "SLASH_MELLOGDUMP1", "SLASH_MELLOCOLDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOBTDUMP1",
 	"ChatFrameUtil", "StaticPopupDialogs",
 }
 
@@ -55,7 +55,7 @@ read_globals = {
 	"MainMenuBar", "MultiBarBottomLeft", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "MapQuestInfoRewardsFrame",
 	"MelloUIHiddenFrame", "MelloUIMinimapStand", "MelloUIServicesBar", "MelloUI_CustomFonts",
 	"MelloUI_CustomTextures", "MelloUI_NPCVoiceData", "MelloUI_NPCVoiceOverrides", "MelloUI_Profiles",
-	"MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
+	"MelloUI_QuestListData", "MelloUI_QuestObjectiveData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
 	"MicroMenuContainer", "MinimalSliderWithSteppersMixin", "Minimap", "MinimapCluster",
 	"MinimapCompassTexture", "MinimapCompassTextureUnderlay", "MinimapBackdrop", "MinimapZoneText",
 	"Mixin", "NUM_BAG_SLOTS",
@@ -100,6 +100,8 @@ read_globals = {
 	"GetQuestLogSpecialItemInfo", "GetQuestLogSpecialItemCooldown", "GetQuestLogCompletionText", "QUESTS_LABEL",
 	"C_TradeSkillUI", "GetItemCount", "TRADE_SKILLS", "TRACKER_ALL_OBJECTIVES",
 	"POIButtonUtil", "UIErrorsFrame",
+	"AnchorUtil", "AuraContainerSortMethod", "AuraContainerSortDirection", "AuraContainerItemEnchantmentSlot",
+	"QuestInfo_Display", "QuestInfoTitleHeader", "QuestInfoFrame", "GetQuestID",
 	"UnitCanAttack", "UnitClass", "UnitCreatureType", "UnitExists", "UnitFactionGroup",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
 	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitRace", "UnitReaction",
@@ -112,6 +114,6 @@ read_globals = {
 files["Media"] = {
 	globals = {
 		"MelloUI_CustomFonts", "MelloUI_CustomTextures", "MelloUI_NPCVoiceData",
-		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MelloUI_EditModeLayout",
+		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_QuestObjectiveData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MelloUI_EditModeLayout",
 	},
 }
