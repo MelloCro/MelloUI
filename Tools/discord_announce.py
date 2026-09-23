@@ -1,33 +1,32 @@
 """
-Post a release into the Discord #releases channel.
+Post a release into the Discord #releases channel -- only text the user has
+read first.
 
-    DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/... python Tools/discord_announce.py
-    python Tools/discord_announce.py --dry-run          # print the payload, post nothing
-    python Tools/discord_announce.py --version 0.13.4   # announce an older release
+    python Tools/discord_announce.py --version 0.13.6 --dry-run   # show the post, send nothing
+    gh workflow run announce.yml -f version=0.13.6                 # send it (the Announce workflow)
 
-Called at the END of the Release workflow, after the packager has published —
-never before. A post linking to a release whose files are not attached yet is
-worse than a late post.
+The post is NOT the changelog (user, 2026-09-23: "avoid overcomplicating the
+release message, keep it interesting to read but condense and be on point ...
+before the discord releases it, i want to inspect the release text"). Each
+release gets its own short Discord text in docs/discord/<version>.md, written
+for the channel and read by the user; the Announce workflow, started by hand
+once they have approved it, posts exactly that. Without that file nothing is
+posted. The Release workflow no longer posts on its own.
 
-Three rules it follows deliberately:
+Every post opens with DISCLAIMER: CurseForge verifies each new file before it
+reaches the CurseForge app, which usually takes about an hour.
 
-  It never fails the release. By the time this runs the addon is on CurseForge
-  and attached to the GitHub release; a Discord outage, a revoked webhook or a
-  rate limit must not turn that into a red build. Every failure prints what
-  went wrong and how to retry it by hand, and exits 0.
+Two rules it follows deliberately:
 
-  The webhook URL is a credential and lives only in the environment. Anyone
-  holding it can post as the server, so it is never committed, never written
-  to a file, and never printed -- including on the failure paths, which is why
-  the retry hint names the variable instead of echoing the URL.
+  It never fails a run. A Discord outage, a revoked webhook or a rate limit
+  prints what went wrong and how to retry, and exits 0.
 
-  The notes are the changelog's newest section, the same text the release
-  itself carries (the workflow writes it to CHANGELOG-release.md, and this
-  falls back to cutting CHANGELOG.md the same way). One release, one set of
-  words, wherever you read them.
+  The webhook URL is a credential and lives only in the environment (the
+  repository secret). Anyone holding it can post as the server, so it is never
+  committed, never written to a file, and never printed -- including on the
+  failure paths, which is why the retry hint names the workflow instead.
 
-No dependencies: urllib, because Tools/ is plain Python and a release step is
-the wrong place to need a pip install.
+No dependencies: urllib, because Tools/ is plain Python.
 """
 from __future__ import annotations
 
@@ -42,8 +41,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOC = os.path.join(ROOT, "MelloUI.toc")
-CHANGELOG = os.path.join(ROOT, "CHANGELOG.md")
-CUT_NOTES = os.path.join(ROOT, "CHANGELOG-release.md")
+NOTES_DIR = os.path.join(ROOT, "docs", "discord")
 
 REPO = "MelloCro/MelloUI"
 RELEASES = f"https://github.com/{REPO}/releases"
@@ -52,10 +50,10 @@ ACCENT = 0x9B8CFF          # the TOC title colour, |cff9b8cff
 DESCRIPTION_LIMIT = 4096   # Discord's hard cap on embed.description
 # Opens every release post (user, 2026-09-23): CurseForge holds each new file
 # for review, so the update reaches the CurseForge app about an hour after the
-# post; the GitHub download is attached before this step runs.
+# post; the GitHub download is attached before the post goes out.
 DISCLAIMER = (
-    "> **Heads up:** the update usually takes about an hour to show up on CurseForge, "
-    "while CurseForge verifies the new file. The GitHub download is available right away."
+    "> **Heads up:** the update usually takes about an hour to show up on CurseForge "
+    "while they verify it. GitHub has it right away."
 )
 
 
@@ -69,52 +67,20 @@ def toc_version() -> str:
     return m.group(1).strip() if m else ""
 
 
-def section(version: str = "") -> tuple[str, str]:
-    """The changelog section to announce: (version, body).
-
-    With no version it is the newest, which is what a release cuts. The
-    workflow has usually already written that text to CHANGELOG-release.md --
-    it is used when it is there, so the post and the release notes cannot
-    differ even if the changelog is edited between the two steps.
-    """
-    if not version and os.path.isfile(CUT_NOTES):
-        body = read(CUT_NOTES).strip()
-        if body:
-            return toc_version(), body
-
-    want = version.lstrip("vV").strip()
-    current, body = "", []
-    for line in read(CHANGELOG).splitlines():
-        head = re.match(r"^##\s+(.+?)\s*$", line)
-        if head:
-            if current:                      # the section we were collecting ended
-                break
-            found = head.group(1).strip()
-            if not want or found.lstrip("vV").lower() == want.lower():
-                current = found
-            continue
-        if current:
-            body.append(line)
-    return current, "\n".join(body).strip()
+def reviewed_text(version: str) -> str:
+    """The Discord text the user approved for this release, or "" when none."""
+    path = os.path.join(NOTES_DIR, f"{version}.md")
+    return read(path).strip() if os.path.isfile(path) else ""
 
 
-def describe(body: str, version: str) -> str:
-    """The changelog section as Discord will render it, after the disclaimer.
-
-    Markdown carries over unchanged -- Discord understands the bullets and the
-    `code spans` the changelog already uses. Only the length is a problem, and
-    an over-long description is a 400 for the whole message, so it is cut on a
-    bullet boundary and sent with a link to the rest.
-    """
-    head = DISCLAIMER + "\n\n"
-    limit = DESCRIPTION_LIMIT - len(head)
-    if len(body) <= limit:
-        return head + body
-    tail = f"\n\n[Read the rest of the notes]({RELEASES}/tag/v{version})"
-    room = limit - len(tail)
-    cut = body[:room]
-    at = cut.rfind("\n- ")
-    return head + (cut[:at] if at > room * 0.5 else cut).rstrip() + tail
+def describe(body: str) -> str:
+    """The disclaimer, then the reviewed text. That text is written short; if it
+    still does not fit, refuse rather than cut a post the user approved."""
+    text = DISCLAIMER + "\n\n" + body
+    if len(text) > DESCRIPTION_LIMIT:
+        raise ValueError(f"the Discord text is {len(text)} characters with the disclaimer; "
+                         f"Discord takes {DESCRIPTION_LIMIT}. Shorten docs/discord/<version>.md.")
+    return text
 
 
 def payload(version: str, body: str, role_id: str = "") -> dict:
@@ -122,7 +88,7 @@ def payload(version: str, body: str, role_id: str = "") -> dict:
         "title": f"MelloUI {version}",
         "url": f"{RELEASES}/tag/v{version}",
         "color": ACCENT,
-        "description": describe(body, version),
+        "description": describe(body),
         "fields": [
             {
                 "name": "Get it",
@@ -134,16 +100,19 @@ def payload(version: str, body: str, role_id: str = "") -> dict:
                 "value": "Replace the `MelloUI` folder in `Interface\\AddOns`, then `/reload`.",
                 "inline": True,
             },
+            {
+                "name": "Everything that changed",
+                "value": f"[Full notes on GitHub]({RELEASES}/tag/v{version})",
+                "inline": False,
+            },
         ],
         "footer": {"text": "Your settings are kept. /mello status says where they came from."},
     }
     out = {
         "username": "MBot",
         "embeds": [embed],
-        # Nothing in the notes may ping anybody. Without this an @everyone that
-        # someone wrote into a changelog bullet would go out to the whole
-        # server -- with the role id below added back explicitly when there is
-        # one, which is the only mention this post is allowed to make.
+        # Nothing in the text may ping anybody, except the @Release pings role
+        # when one is given -- the only mention this post is allowed to make.
         "allowed_mentions": {"parse": [], "roles": [role_id] if role_id else []},
     }
     if role_id:
@@ -165,18 +134,24 @@ def post(url: str, body: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Post a MelloUI release into Discord.")
-    parser.add_argument("--version", default="", help="which release to announce (default: the newest)")
-    parser.add_argument("--dry-run", action="store_true", help="print the payload, post nothing")
+    parser.add_argument("--version", default="", help="which release to announce (default: the TOC's)")
+    parser.add_argument("--dry-run", action="store_true", help="print the post, send nothing")
+    parser.add_argument("--no-ping", action="store_true", help="leave out the @Release pings mention")
     args = parser.parse_args()
 
-    version, body = section(args.version)
-    version = (version or toc_version()).lstrip("vV")
-    if not version or not body:
-        print(f"no changelog section found for {args.version or 'the newest version'} -- nothing announced")
+    version = (args.version or toc_version()).lstrip("vV").strip()
+    body = reviewed_text(version) if version else ""
+    if not body:
+        print(f"no reviewed Discord text for {version or 'this release'} (docs/discord/{version}.md) -- nothing posted. "
+              "Write it, let it be read, then run the Announce workflow.")
         return 0
 
-    role_id = os.environ.get("DISCORD_RELEASE_ROLE_ID", "").strip()
-    data = payload(version, body, role_id)
+    role_id = "" if args.no_ping else os.environ.get("DISCORD_RELEASE_ROLE_ID", "").strip()
+    try:
+        data = payload(version, body, role_id)
+    except ValueError as e:
+        print(f"not posted: {e}")
+        return 0
 
     if args.dry_run:
         print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -185,8 +160,6 @@ def main() -> int:
 
     url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
     if not url:
-        # Not an error: the webhook is optional, and a repository without one
-        # should still release. Said out loud so it is not a silent no-op.
         print("DISCORD_WEBHOOK_URL is not set -- skipping the Discord post.")
         return 0
 
@@ -196,8 +169,7 @@ def main() -> int:
     except (urllib.error.URLError, urllib.error.HTTPError, RuntimeError, TimeoutError) as e:
         detail = getattr(e, "reason", None) or getattr(e, "code", None) or e
         print(f"could not post to Discord: {detail}")
-        print("The release itself is fine -- only the Discord post did not go out.")
-        print(f"Retry by hand:  DISCORD_WEBHOOK_URL=... python Tools/discord_announce.py --version {version}")
+        print(f"Retry:  gh workflow run announce.yml -f version={version}")
     return 0
 
 

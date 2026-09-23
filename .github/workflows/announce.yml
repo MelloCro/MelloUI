@@ -1,0 +1,44 @@
+name: Announce
+
+# Posts a release into the Discord #releases channel, started BY HAND once the
+# release's Discord text (docs/discord/<version>.md) has been read and approved.
+# The Release workflow does not post on its own any more.
+#
+#   gh workflow run announce.yml -f version=0.13.6
+#
+#   Settings -> Secrets and variables -> Actions
+#     secret    DISCORD_WEBHOOK_URL       the #releases channel webhook
+#     variable  DISCORD_RELEASE_ROLE_ID   the @Release pings role (optional)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release to announce, e.g. 0.13.6 (its text is docs/discord/<version>.md)"
+        required: true
+      ping:
+        description: "Mention the @Release pings role"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Announce in Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_RELEASE_ROLE_ID: ${{ vars.DISCORD_RELEASE_ROLE_ID }}
+          VERSION: ${{ inputs.version }}
+          PING: ${{ inputs.ping }}
+        run: |
+          if [ "$PING" = "true" ]; then
+            python3 Tools/discord_announce.py --version "$VERSION"
+          else
+            python3 Tools/discord_announce.py --version "$VERSION" --no-ping
+          fi
