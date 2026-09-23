@@ -272,6 +272,9 @@ local revealKey = nil     -- group header to pulse when it is laid out
 local revealUntil = 0
 
 local function InitHeader(button, entry)
+	if button.pips then
+		button.pips:SetTier(nil)
+	end
 	EnsureWidgets(button)
 	button.entry = entry
 	if revealKey == entry.key and GetTime() < revealUntil then
@@ -333,6 +336,7 @@ local function InitRow(button, entry)
 	local tagRoom = logoWidth and (LOGO_COLUMN + logoWidth / 2 + 6) or 0
 	button.title:SetPoint("RIGHT", right - tagRoom, 0)
 	button.where:SetPoint("RIGHT", right - tagRoom, 0)
+	button.titleRight = right - tagRoom   -- the title's right edge (the pips stand in front of it on parchment)
 	button:ClearNormalTexture()
 	button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
 	button:GetHighlightTexture():SetAlpha(0.6)
@@ -406,6 +410,32 @@ local function InitRow(button, entry)
 		button.where:SetTextColor(0.55, 0.55, 0.55)
 	else
 		button.where:SetTextColor(0.95, 0.95, 0.95)
+	end
+	-- on the reskin's parchment: both lines in ink, the difficulty in pips at
+	-- the title's right (QuestInk; user, 2026-09-23); a done quest faded, no pips
+	local QI = MelloUI.QuestInk
+	local titleRight = button.titleRight or -8
+	if QI and QI.onParchment then
+		local level = QL.ColourLevel(row)
+		local tier = nil
+		if not entry.completed and level > 0 then
+			tier = QI.TierForQuest(row[QL.F_ID], level) or QI.TierOfColour(QL.DifficultyColor(level))
+		end
+		button.pips = button.pips or QI.Pips(button, 10)
+		local pipsRoom = tier and (QI.PipsWidth(10) + 6) or 0
+		button.title:SetPoint("RIGHT", titleRight - pipsRoom, 0)
+		button.pips:ClearAllPoints()
+		button.pips:SetPoint("TOPLEFT", button, "TOPRIGHT", titleRight - pipsRoom + 4, -4)
+		button.pips:SetTier(tier)
+		local faded = entry.completed or tier == 1
+		QI.Ink(button.title, faded and "faded" or "title")
+		QI.Ink(button.where, faded and "faded" or "text")
+	elseif QI then
+		QI.Plain(button.title)
+		QI.Plain(button.where)
+		if button.pips then
+			button.pips:SetTier(nil)
+		end
 	end
 end
 
@@ -847,6 +877,22 @@ function QL.Panel:Update()
 		frame.empty:Show()
 	else
 		frame.empty:Hide()
+	end
+	-- the page's own texts in ink on the parchment too (user, 2026-09-23: the
+	-- zone, its count, the two check boxes, the empty list's line)
+	local QI = MelloUI.QuestInk
+	if QI then
+		local labels = { { frame.zone, "title" }, { frame.count, "text" }, { frame.empty, "text" },
+			{ frame.levelCheck and frame.levelCheck.label, "text" }, { frame.hide and frame.hide.text, "text" } }
+		for _, l in ipairs(labels) do
+			if l[1] then
+				if QI.onParchment then
+					QI.Ink(l[1], l[2])
+				else
+					QI.Plain(l[1], true)
+				end
+			end
+		end
 	end
 end
 

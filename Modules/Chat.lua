@@ -526,6 +526,108 @@ local function OnLineAdded(chatFrame, text)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Ink on parchment (QuestInk's rule, user 2026-09-23): with the chat's
+-- parchment sheet on, each line's colour and the colour codes in it (names,
+-- links, channel tags) are dark ink, a colour that means something as a dark
+-- shade of it; the line's own look is kept on it and put back when the sheet
+-- goes. The combat log is left as it is: it adds lines too fast to go over
+-- its history for each one.
+--------------------------------------------------------------------------------
+
+local function ChatInked()
+	local Kit = MelloUI.Kit
+	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
+		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
+end
+
+local function InkEntry(e)
+	local QI = MelloUI.QuestInk
+	if type(e) ~= "table" or e.melloPlain or type(e.message) ~= "string" or Secret(e.message) then
+		return e
+	end
+	e.melloPlain = { e.message, e.r, e.g, e.b }
+	e.message = QI.InkCodes(e.message)
+	if type(e.r) == "number" and type(e.g) == "number" and type(e.b) == "number" then
+		e.r, e.g, e.b = QI.InkOf(e.r, e.g, e.b)
+	end
+	return e
+end
+
+local function PlainEntry(e)
+	local p = type(e) == "table" and e.melloPlain
+	if p then
+		e.message, e.r, e.g, e.b = p[1], p[2], p[3], p[4]
+		e.melloPlain = nil
+	end
+	return e
+end
+
+local function NotInked(e)
+	return type(e) == "table" and not e.melloPlain and type(e.message) == "string" and not Secret(e.message)
+end
+
+local function Inked(e)
+	return type(e) == "table" and e.melloPlain ~= nil
+end
+
+local function OnLineInk(chatFrame)
+	if not ChatInked() or type(chatFrame.TransformMessages) ~= "function" then
+		return
+	end
+	pcall(chatFrame.TransformMessages, chatFrame, NotInked, function(e, ...) return InkEntry(e), ... end)
+end
+
+-- every chat window's history inked or put back (the sheet switched)
+-- A message frame's font without its outline and shadow while its lines are
+-- ink (a black outline round dark ink smudges it -- user, 2026-09-23, the
+-- whisper window); put back as it was after
+local function InkFrameFont(frame, on)
+	if not (frame and frame.GetFont) then
+		return
+	end
+	if on then
+		if not frame.melloInkFont then
+			local ok, path, size, flags = pcall(frame.GetFont, frame)
+			if not (ok and path and size) then
+				return
+			end
+			local sr, sg, sb, sa = frame:GetShadowColor()
+			frame.melloInkFont = { flags = flags or "", shadow = { sr, sg, sb, sa } }
+		end
+		local ok, path, size = pcall(frame.GetFont, frame)
+		if ok and path and size then
+			pcall(frame.SetFont, frame, path, size, "")
+		end
+		frame:SetShadowColor(0, 0, 0, 0)
+	elseif frame.melloInkFont then
+		local saved = frame.melloInkFont
+		local ok, path, size = pcall(frame.GetFont, frame)
+		if ok and path and size then
+			pcall(frame.SetFont, frame, path, size, saved.flags)
+		end
+		local sh = saved.shadow
+		if sh and sh[1] then
+			frame:SetShadowColor(sh[1], sh[2], sh[3], sh[4] or 1)
+		end
+		frame.melloInkFont = nil
+	end
+end
+
+local function InkAllChat(on)
+	for _, name in ipairs(ChatFrameNames()) do
+		local frame = _G[name]
+		if frame and frame ~= _G.COMBATLOG and type(frame.TransformMessages) == "function" then
+			InkFrameFont(frame, on)
+			if on then
+				pcall(frame.TransformMessages, frame, NotInked, function(e, ...) return InkEntry(e), ... end)
+			else
+				pcall(frame.TransformMessages, frame, Inked, function(e, ...) return PlainEntry(e), ... end)
+			end
+		end
+	end
+end
+
 -- The post-hook on every chat window but the combat log (its lines are never
 -- shortened, and it adds the most). hooksecurefunc: the game's AddMessage
 -- runs first and untainted; the hook cannot be taken off again, it only acts
@@ -538,7 +640,13 @@ local function HookLines()
 		if frame and not hookedWindows[frame] and frame ~= _G.COMBATLOG and frame.AddMessage then
 			hookedWindows[frame] = true
 			hooksecurefunc(frame, "AddMessage", OnLineAdded)
+			-- after the shortening: the ink goes on the finished line
+			hooksecurefunc(frame, "AddMessage", OnLineInk)
 		end
+	end
+	local QI = MelloUI.QuestInk
+	if QI and not QI.surfaces.chat then
+		QI.Surface("chat", { noWalk = true, on = ChatInked, onRefresh = InkAllChat })
 	end
 end
 
@@ -595,9 +703,109 @@ local WHISPER_EVENTS = {
 local POPUP_W, POPUP_H = 340, 210
 local HEADER_H = 24   -- the header band's opaque part
 local popups = {}        -- [conversation key] = window
+local WriteWhisperLine -- below (a conversation line, in ink or its colours)
+local popupFontHooked = false
+
+-- A whisper window's conversation and answer box in ink or their colours
+-- again (the whisper parchment switched): the lines written anew from their
+-- parts
+-- The whisper window in the chat's font (user, 2026-09-23: "the Font
+-- Decisions should take over the Whisper Window"): the main chat window's
+-- face, size and outline as the Fonts module and the chat's size menu set
+-- them, for the conversation and the answer box; on parchment the
+-- conversation without its outline and shadow (the answer box keeps them:
+-- it lies on its dark plate, not the paper)
+local function PopupFont(f)
+	local src = _G.ChatFrame1 or ChatFontNormal
+	if not (f and f.msgs and src and src.GetFont) then
+		return
+	end
+	local ok, path, size, flags = pcall(src.GetFont, src)
+	if not (ok and path and size) then
+		return
+	end
+	-- the chat's own outline, not the ink's (the chat on parchment has none)
+	flags = (src.melloInkFont and src.melloInkFont.flags) or flags or ""
+	if not f.msgs.melloShadow then
+		local sr, sg, sb, sa = f.msgs:GetShadowColor()
+		f.msgs.melloShadow = { sr, sg, sb, sa }
+	end
+	pcall(f.msgs.SetFont, f.msgs, path, size, f.inked and "" or flags)
+	if f.inked then
+		f.msgs:SetShadowColor(0, 0, 0, 0)
+	else
+		local sh = f.msgs.melloShadow
+		f.msgs:SetShadowColor(sh[1] or 0, sh[2] or 0, sh[3] or 0, sh[4] or 1)
+	end
+	if f.box and f.box.SetFont then
+		pcall(f.box.SetFont, f.box, path, size, flags)
+	end
+end
+
+local function InkPopup(f)
+	local QI = MelloUI.QuestInk
+	if not (QI and f) then
+		return
+	end
+	local ink = (f.kitDressed and QI.surfaces.whisper and QI.surfaces.whisper.active) and true or false
+	local changed = (f.inked or false) ~= ink
+	f.inked = ink
+	PopupFont(f)
+	if f.msgs and f.lineLog and changed then
+		f.msgs:Clear()
+		for _, e in ipairs(f.lineLog) do
+			WriteWhisperLine(f, e)
+		end
+	end
+	-- the chat's font changed (the Fonts module, the chat's size menu): every
+	-- whisper window follows
+	if not popupFontHooked and _G.ChatFrame1 and _G.ChatFrame1.SetFont then
+		popupFontHooked = true
+		hooksecurefunc(_G.ChatFrame1, "SetFont", function()
+			for _, w in pairs(popups) do
+				PopupFont(w)
+			end
+		end)
+	end
+end
 local popupCount = 0
 local popupOn = false
 local whisperEvents = CreateFrame("Frame")
+
+-- the whisper windows on their parchment sheet (the kit dressing them and
+-- the Whisper Popup parchment on)
+local function WhisperInked()
+	local Kit = MelloUI.Kit
+	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
+		and Kit.ParchmentOn and Kit:ParchmentOn("whisper")) and true or false
+end
+
+-- One conversation line, in ink on parchment, else in its colours
+WriteWhisperLine = function(f, e)
+	local QI = MelloUI.QuestInk
+	local ink = WhisperInked() and f.kitDressed
+	local stampHex, who, r, g, b = "ff8a8a8a", e.who, e.r, e.g, e.b
+	if ink then
+		local sr, sg, sb = QI.InkOf(0.54, 0.54, 0.54)
+		stampHex = string.format("ff%02x%02x%02x", math.floor(sr * 255 + 0.5), math.floor(sg * 255 + 0.5), math.floor(sb * 255 + 0.5))
+		who = QI.InkCodes(who)
+		r, g, b = QI.InkOf(r, g, b)
+	end
+	local line = ("|c%s%s|r %s: %s"):format(stampHex, e.stamp, who, e.text)
+	if not pcall(f.msgs.AddMessage, f.msgs, line, r, g, b) then
+		f.msgs:AddMessage(e.text, r, g, b)
+	end
+end
+
+-- the whisper windows follow their parchment (Kit:SetParchment("whisper"),
+-- the chat reskin switched: ChatPanel)
+if MelloUI.QuestInk then
+	MelloUI.QuestInk.Surface("whisper", { noWalk = true, on = WhisperInked, onRefresh = function()
+		for _, f in pairs(popups) do
+			InkPopup(f)
+		end
+	end })
+end
 
 local function PopupColor(kind, incoming)
 	local info = ChatTypeInfo and ChatTypeInfo[incoming and kind or (kind .. "_INFORM")]
@@ -694,6 +902,7 @@ local function CreatePopup(key, kind, target, title)
 	f:EnableMouse(true)
 	f.kind, f.target, f.key = kind, target, key
 	local dressed = DressPopup(f)
+	f.kitDressed = dressed and true or false
 
 	-- THE HEADER (user, 2026-09-23: the strip the window is dragged by is a
 	-- header and should look like one; pick B of
@@ -811,6 +1020,7 @@ local function CreatePopup(key, kind, target, title)
 		self:ClearFocus()
 	end)
 	f.box = box
+	InkPopup(f)
 
 	PlacePopup(f)
 	popups[key] = f
@@ -967,10 +1177,15 @@ local function OnWhisper(_, event, text, sender, ...)
 	-- (/mello secrets, 2026-09-23; user: "go ahead with the whisper popup").
 	-- Nothing here compares it. Should the frame ever refuse the joined line,
 	-- the text alone, as before.
-	local line = ("|cff8a8a8a%s|r %s: %s"):format(date("%H:%M"), who, text)
-	if not pcall(f.msgs.AddMessage, f.msgs, line, r, g, b) then
-		f.msgs:AddMessage(text, r, g, b)
+	-- the parts kept, so the conversation can be written again in ink or in
+	-- its colours when the parchment is switched (QuestInk's rule)
+	local entry = { stamp = date("%H:%M"), who = who, text = text, r = r, g = g, b = b }
+	f.lineLog = f.lineLog or {}
+	table.insert(f.lineLog, entry)
+	if #f.lineLog > 250 then
+		table.remove(f.lineLog, 1)
 	end
+	WriteWhisperLine(f, entry)
 	-- it rises into its place as it fades in (Core/Anim.lua); one fading out
 	-- when the whisper came is simply brought back, without the rise
 	local Anim = MelloUI.Anim

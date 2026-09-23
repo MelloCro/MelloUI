@@ -36,6 +36,47 @@ _G.MelloUI = MelloUI
 MelloUI.name = ADDON_NAME
 MelloUI.version = C_AddOns and C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "dev"
 MelloUI.modules = {}
+
+--------------------------------------------------------------------------------
+-- The palette (user, 2026-09-23: "a Color Palette that i would like us to hold
+-- as a rule in this UI"; the hex of each is the colour of its swatch -- "match
+-- the hex code with the actual color" -- not the label written under it).
+-- Every colour MelloUI draws itself -- fills, lines, text, selection, hover --
+-- comes from here; the painted kit art is tuned to sit with it. { r, g, b } in
+-- 0..1. Contrast on mainWindow: text 8.0:1, selectedTrim 5.1:1, mutedText
+-- 3.2:1 (large or bold labels only, never small body text).
+--   mainWindow    #1F1B16  a window's ground
+--   innerPanel    #11100D  a panel sunk into the window (lists, insets)
+--   raisedPanel   #2E1F14  a panel standing out of it (cards, plates)
+--   border        #3D342A  rules and plain borders
+--   trim          #8D642F  ornamental trim
+--   text          #C6AF85  body text
+--   mutedText     #7F6846  secondary text: labels, hints
+--   selectedTab   #4E1812  the selected tab or row
+--   selectedTrim  #AE8546  the selected tab's trim, gold highlights, headings
+--   hover         #5A3C24  what the pointer is over
+--------------------------------------------------------------------------------
+local function Hex(hex)
+	return { tonumber(hex:sub(2, 3), 16) / 255, tonumber(hex:sub(4, 5), 16) / 255, tonumber(hex:sub(6, 7), 16) / 255, hex = hex:sub(2) }
+end
+MelloUI.Palette = {
+	mainWindow   = Hex("#1F1B16"),
+	innerPanel   = Hex("#11100D"),
+	raisedPanel  = Hex("#2E1F14"),
+	border       = Hex("#3D342A"),
+	trim         = Hex("#8D642F"),
+	text         = Hex("#C6AF85"),
+	mutedText    = Hex("#7F6846"),
+	selectedTab  = Hex("#4E1812"),
+	selectedTrim = Hex("#AE8546"),
+	hover        = Hex("#5A3C24"),
+}
+
+-- A palette colour as a chat / font-string colour code: "|cffAE8546"
+function MelloUI:PaletteCode(role)
+	local c = self.Palette[role]
+	return "|cff" .. (c and c.hex or "FFFFFF")
+end
 MelloUI.moduleOrder = {}
 
 local DB_VERSION = 1

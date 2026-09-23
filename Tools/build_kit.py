@@ -26,6 +26,10 @@ the Lua stays as it is; only the uv is measured on the file.
 The decorative red gems are toned to iron studs on the way (Tools/kit_gems.py,
 user 2026-09-23: too many red diamonds); --red-gems builds the old art.
 
+Then the palette's two looks are made from it (Tools/kit_palette.py, user
+2026-09-23: Media/KitWarm and Media/KitBronze, chosen in game);
+--no-looks skips them.
+
 Run:  python Tools/build_kit.py            (then a full client restart)
 """
 import os, re, json, math, sys
@@ -33,6 +37,7 @@ import numpy as np
 from PIL import Image
 
 import kit_gems
+import kit_palette
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -472,6 +477,7 @@ def bar_join(a):
 
 def main():
     red_gems = "--red-gems" in sys.argv
+    no_looks = "--no-looks" in sys.argv
     man = json.load(open(os.path.join(SRC, "manifest.json")))
     pieces = {}
     toned = 0
@@ -647,7 +653,11 @@ def main():
         f.write("\n".join(lines))
     total = sum(os.path.getsize(os.path.join(dp, fn)) for dp, _, fns in os.walk(OUT) for fn in fns)
     print(f"{len(pieces)} pieces -> Media/Kit ({total / 1e6:.1f} MB), Media/KitLayout.lua"
-          + ("; red gems kept" if red_gems else f"; gems toned to iron in {toned}"))
+          + ("; red gems kept" if red_gems else f"; gems toned to iron in {toned}")
+          )
+    if not no_looks:
+        for look, (n, size) in kit_palette.build_looks(OUT).items():
+            print(f"  {look}: {n} pieces recoloured -> Media/{kit_palette.LOOKS[look][0]} ({size / 1e6:.1f} MB)")
     if "--report" in sys.argv:
         for name in sorted(pieces):
             p = pieces[name]

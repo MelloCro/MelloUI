@@ -77,20 +77,26 @@ local ROW_HEIGHT = 34
 local SLIDER_ROW_HEIGHT = 40
 
 -- Palette
+-- The configurator's colours, all from the palette (Core.lua, the user's
+-- rule of 2026-09-23). Small reading text (hints, tooltips, flavour) is in
+-- `text`, told apart from the labels by its size; muted text only marks what
+-- is switched off (the palette's muted is 3.2:1, too faint for small text).
+local PAL = MelloUI.Palette
 local C = {
-	bg      = { 0.14, 0.14, 0.15 },
-	band    = { 0.09, 0.09, 0.10 },
-	panel   = { 0.17, 0.17, 0.18 },
-	stripe  = { 0.19, 0.19, 0.20 },
-	line    = { 0.30, 0.29, 0.27 },
-	hover   = { 0.74, 0.63, 0.38 },
-	accent  = { 0.74, 0.63, 0.38 },
-	accent2 = { 0.47, 0.41, 0.26 },
-	text    = { 0.88, 0.87, 0.83 },
-	dim     = { 0.59, 0.58, 0.56 },
-	on      = { 0.33, 0.55, 0.50 },
-	off     = { 0.27, 0.27, 0.29 },
-	knob    = { 0.87, 0.84, 0.77 },
+	bg      = PAL.mainWindow,
+	band    = PAL.innerPanel,
+	panel   = PAL.raisedPanel,
+	stripe  = PAL.raisedPanel,
+	line    = PAL.border,
+	hover   = PAL.hover,
+	accent  = PAL.selectedTrim,
+	accent2 = PAL.trim,
+	text    = PAL.text,
+	sub     = PAL.text,
+	dim     = PAL.mutedText,
+	on      = PAL.selectedTrim,
+	off     = PAL.mutedText,
+	knob    = PAL.text,
 }
 
 local MODULE_META = {
@@ -262,17 +268,17 @@ end
 
 local function ShowTooltip(owner, title, body)
 	GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-	GameTooltip:SetText(title, 1, 1, 1)
+	GameTooltip:SetText(title, C.accent[1], C.accent[2], C.accent[3])
 	if body and body ~= "" then
-		GameTooltip:AddLine(body, C.dim[1], C.dim[2], C.dim[3], true)
+		GameTooltip:AddLine(body, C.sub[1], C.sub[2], C.sub[3], true)
 	end
 	GameTooltip:Show()
 end
 
 -- A framed icon: the client's action button bevel around a rounded icon.
 -- Grey at rest, gold when selected, white while hovered.
-local FRAME_GREY = { 0.72, 0.72, 0.74 }
-local FRAME_GOLD = { 1.0, 0.84, 0.36 }
+local FRAME_GREY = PAL.mutedText
+local FRAME_GOLD = PAL.selectedTrim
 --------------------------------------------------------------------------------
 -- The painted kit on the configurator itself (user, 2026-09-21; picks CT2 SI1
 -- from kit_raw/config_catalog.png): decided once, when the window is made,
@@ -411,7 +417,7 @@ local function IconBox(parent, size, texture, button)
 			local glow = self:CreateTexture(nil, "OVERLAY", nil, 7)
 			glow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
 			glow:SetBlendMode("ADD")
-			glow:SetVertexColor(1, 0.82, 0)
+			glow:SetVertexColor(C.accent[1], C.accent[2], C.accent[3])
 			-- centred on the BOX (the rim's centre; the icon sits inset in it)
 			-- and sized from the rim, so the light is symmetric around the
 			-- iron (user, 2026-09-22: the glow placed correctly)
@@ -474,7 +480,9 @@ end
 -- frame and out again after it leaves. Runs an OnUpdate only while animating.
 local HOVER_SPEED = 6   -- full fade in about 1/6 s
 local function AttachHover(frame, alphaMax)
-	alphaMax = alphaMax or 0.10
+	-- the palette's hover is a fill colour (dark bronze), not a light: it
+	-- shows at about half strength where the old gold wash showed at a tenth
+	alphaMax = (alphaMax or 0.10) * 5
 	local glow = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
 	glow:SetTexture(WHITE)
 	glow:SetAllPoints()
@@ -521,13 +529,13 @@ local function CreateDropdown(parent, width, db, module, opt)
 		dd.Text:SetPoint("RIGHT", -10, -1)
 		dd.Text:SetJustifyH("CENTER")
 		local function Gold()
-			dd.Text:SetTextColor(1, 0.82, 0)
+			Colour(dd.Text, C.accent)
 		end
 		Gold()
 		if dd.OnButtonStateChanged then
 			hooksecurefunc(dd, "OnButtonStateChanged", Gold)
 		end
-		dd:HookScript("OnEnter", function() dd.Text:SetTextColor(1, 1, 1) end)
+		dd:HookScript("OnEnter", function() Colour(dd.Text, C.text) end)
 		dd:HookScript("OnLeave", Gold)
 	end
 	if dd.SetDefaultText then
@@ -667,7 +675,7 @@ local function Row(sec, height, label, hint, desc)
 		if sec.rows % 2 == 0 then
 			row.band = row:CreateTexture(nil, "BACKGROUND")
 			row.band:SetAllPoints(row)
-			row.band:SetColorTexture(1, 1, 1, 0.06)
+			row.band:SetColorTexture(C.stripe[1], C.stripe[2], C.stripe[3], 0.35)
 		end
 		local hover = KitReplace(KitAnchor(row), { as = "FriendsRowHighlight", rect = row })
 		if hover and hover.object then
@@ -687,7 +695,7 @@ local function Row(sec, height, label, hint, desc)
 	row.label:SetPoint("LEFT", 14, 0)
 	row.label:SetWordWrap(false)
 	if hint and hint ~= "" then
-		row.hint = Text(row, "GameFontHighlightSmall", hint, C.dim)
+		row.hint = Text(row, "GameFontHighlightSmall", hint, C.sub)
 		row.hint:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
 		row.hint:SetWordWrap(false)
 	end
@@ -891,7 +899,7 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 	end
 
 	local rightWidth = module and 200 or 0
-	local flavourFS = Text(page, "GameFontHighlightSmall", nil, C.dim)
+	local flavourFS = Text(page, "GameFontHighlightSmall", nil, C.sub)
 	if KIT then
 		-- on the page stone the dim grey drowned (user, 2026-09-21): light
 		-- text with a thin outline
@@ -1092,7 +1100,7 @@ end
 local function BuildHomePage(width)
 	local page = NewPage("Home", width)
 	BuildPageHeader(page, LOGO, "MelloUI", HOME_FLAVOUR, nil)
-	local status = Text(page, "GameFontHighlightSmall", nil, C.dim)
+	local status = Text(page, "GameFontHighlightSmall", nil, C.sub)
 	if KIT then
 		status:SetFontObject("GameFontHighlightSmallOutline")
 		Colour(status, C.text)
@@ -1137,14 +1145,14 @@ local function BuildHomePage(width)
 				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 				edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 },
 			})
-			tile:SetBackdropColor(0.07, 0.07, 0.08, 0.92)
+			tile:SetBackdropColor(C.band[1], C.band[2], C.band[3], 0.92)
 		end
 		-- an important module (the painted interface's one entry) keeps the
 		-- gold border at rest and wears a badge, so it stands out among the
 		-- tiles (user, 2026-09-21)
-		local restR, restG, restB = 0.55, 0.47, 0.30
+		local restR, restG, restB = C.accent2[1], C.accent2[2], C.accent2[3]
 		if module.important then
-			restR, restG, restB = 1, 0.82, 0
+			restR, restG, restB = C.accent[1], C.accent[2], C.accent[3]
 		end
 		if not KIT then
 			tile:SetBackdropBorderColor(restR, restG, restB, 1)
@@ -1162,7 +1170,7 @@ local function BuildHomePage(width)
 		title:SetPoint("RIGHT", tile, "RIGHT", -8, 0)
 		title:SetWordWrap(false)
 		if module.important then
-			local badge = Text(tile, "GameFontNormalSmall", "IMPORTANT", { 1, 0.82, 0 })
+			local badge = Text(tile, "GameFontNormalSmall", "IMPORTANT", C.accent)
 			badge:SetPoint("TOPRIGHT", tile, "TOPRIGHT", -12, -12)
 			title:SetPoint("RIGHT", badge, "LEFT", -6, 0)
 		end
@@ -1184,9 +1192,9 @@ local function BuildHomePage(width)
 		tile:HookScript("OnEnter", function(self)
 			if not KIT then
 				if module.important then
-					self:SetBackdropBorderColor(1, 0.95, 0.6, 1)
+					self:SetBackdropBorderColor(C.text[1], C.text[2], C.text[3], 1)
 				else
-					self:SetBackdropBorderColor(1, 0.82, 0, 1)
+					self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 1)
 				end
 			end
 			ShowTooltip(self, module.title, flavour)
@@ -1251,7 +1259,7 @@ local function BuildHomePage(width)
 	for _, cmd in ipairs(COMMANDS) do
 		local c = Text(help, "GameFontHighlight", cmd[1], C.text)
 		c:SetPoint("TOPLEFT", 10, -y)
-		local what = Text(help, "GameFontHighlightSmall", cmd[2], C.dim)
+		local what = Text(help, "GameFontHighlightSmall", cmd[2], C.sub)
 		what:SetPoint("TOPLEFT", 230, -(y + 1))
 		y = y + 20
 	end
@@ -1274,7 +1282,7 @@ local function BuildHomePage(width)
 		y = y + 28
 	end
 	y = y + 10
-	local note = Text(help, "GameFontHighlightSmall", nil, C.dim)
+	local note = Text(help, "GameFontHighlightSmall", nil, C.sub)
 	note:SetPoint("TOPLEFT", 4, -y)
 	note:SetWidth(help:GetWidth() - 8)
 	note:SetWordWrap(true)
@@ -1311,8 +1319,9 @@ local function RefreshProfilesPage()
 		return
 	end
 	local db = MelloUI.db
-	local active = db.activeProfile and ("|cffffd200" .. db.activeProfile .. "|r") or "|cff888888none|r"
-	local default = db.defaultProfile and ("|cffffd200" .. db.defaultProfile .. "|r") or "|cff888888none|r"
+	local gold, muted = MelloUI:PaletteCode("selectedTrim"), MelloUI:PaletteCode("mutedText")
+	local active = db.activeProfile and (gold .. db.activeProfile .. "|r") or (muted .. "none|r")
+	local default = db.defaultProfile and (gold .. db.defaultProfile .. "|r") or (muted .. "none|r")
 	sec.status:SetText(string.format("Active: %s      Default on a fresh install: %s", active, default))
 	local names = ProfileNames()
 	for i, name in ipairs(names) do
@@ -1347,13 +1356,13 @@ local function RefreshProfilesPage()
 			row.share:SetSize(60, 22)
 			row.share:SetPoint("LEFT", row.delete, "RIGHT", 4, 0)
 			row.share:SetText("Share")
-			row.baked = Text(row, "GameFontHighlightSmall", nil, C.dim)
+			row.baked = Text(row, "GameFontHighlightSmall", nil, C.sub)
 			row.baked:SetPoint("LEFT", row.share, "RIGHT", 10, 0)
 			sec.rowFrames[i] = row
 		end
 		row.name:SetText(name)
 		local isDefault = db.defaultProfile == name
-		row.default:SetText(isDefault and "Default  |cff40ff40*|r" or "Set default")
+		row.default:SetText(isDefault and ("Default  " .. MelloUI:PaletteCode("selectedTrim") .. "*|r") or "Set default")
 		local builtIn = name == MelloUI.FRESH_PROFILE
 		row.baked:SetText(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "baked" or "not baked yet"))
 		row.delete:SetEnabled(not builtIn)
@@ -1403,7 +1412,7 @@ local function BuildProfilesPage(width)
 	profilesSection = sec
 	sec.rowFrames = {}
 
-	local desc = Text(sec, "GameFontHighlightSmall", nil, C.dim)
+	local desc = Text(sec, "GameFontHighlightSmall", nil, C.sub)
 	desc:SetPoint("TOPLEFT", 4, -4)
 	desc:SetWidth(sec:GetWidth() - 8)
 	desc:SetWordWrap(true)
@@ -1499,11 +1508,12 @@ local function StripButton(name, icon, title, flavour)
 	btn.label:SetJustifyH("CENTER")
 	if KIT then
 		-- every icon carries its name (user, 2026-09-21); the current page's
-		-- in gold, the others dimmed
+		-- in gold, the others in the full text colour (user, 2026-09-23: the
+		-- palette's muted text was too faint at this size)
 		btn.label:SetWidth(STRIP_ICON + STRIP_GAP + 6)
 		btn.label:SetWordWrap(true)
 		btn.label:SetMaxLines(2)
-		Colour(btn.label, C.dim)
+		Colour(btn.label, C.sub)
 	else
 		btn.label:Hide()
 	end
@@ -1551,7 +1561,7 @@ local function CreateWindow()
 	bg:SetVertTile(true)
 	bg:SetPoint("TOPLEFT", 6, -6)
 	bg:SetPoint("BOTTOMRIGHT", -6, 6)
-	bg:SetVertexColor(0.40, 0.40, 0.42)
+	bg:SetVertexColor(C.line[1], C.line[2], C.line[3])
 	local tint = Solid(window, "BACKGROUND", C.bg, 0.45)
 	tint:SetPoint("TOPLEFT", 6, -6)
 	tint:SetPoint("BOTTOMRIGHT", -6, 6)
@@ -1577,7 +1587,7 @@ local function CreateWindow()
 	end
 	if not framed then
 		window:SetBackdrop({ edgeFile = WHITE, edgeSize = 2 })
-		window:SetBackdropBorderColor(0.35, 0.35, 0.36, 1)
+		window:SetBackdropBorderColor(C.line[1], C.line[2], C.line[3], 1)
 	end
 	local innerLine = Box(window, C.bg, C.accent2, 0)
 	innerLine:SetPoint("TOPLEFT", 7, -7)
@@ -1637,7 +1647,7 @@ local function CreateWindow()
 	end)
 	dynamic:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-		GameTooltip:SetText("Dynamic UI Modification", 1, 0.82, 0)
+		GameTooltip:SetText("Dynamic UI Modification", C.accent[1], C.accent[2], C.accent[3])
 		GameTooltip:AddLine("Closes the configurator and lets you choose the looks of the action bars, the micro menu, the bag bar, "
 			.. "your bags and the character window on them directly, each choice shown as a picture and put on as you click it.", 0.9, 0.9, 0.9, true)
 		GameTooltip:Show()
@@ -1768,6 +1778,54 @@ local function CreateWindow()
 	end
 	window.pageWidth = WINDOW_WIDTH - 8 - 34
 
+	-- Smooth scrolling (user, 2026-09-23): the wheel moves a target and the
+	-- page glides to it, quick at first and easing in (each notch adds to
+	-- the target, so a fast spin runs on smoothly); a scroll set any other
+	-- way (the scroll bar dragged, a page opened, a jump) stops the glide
+	-- where it is. Reduce Motion (UI Modifications) jumps as before.
+	local scroll = window.scroll
+	local WHEEL_STEP = 80      -- UI px a notch
+	local GLIDE_RATE = 14      -- how fast the gap closes (per second, exponential)
+	local glider = CreateFrame("Frame", nil, scroll)
+	glider:Hide()
+	scroll.target = 0
+	local gliding = false
+	local function SetScroll(v)
+		gliding = true
+		scroll:SetVerticalScroll(v)
+		gliding = false
+	end
+	glider:SetScript("OnUpdate", function(self, elapsed)
+		local cur = scroll:GetVerticalScroll() or 0
+		local diff = scroll.target - cur
+		if math.abs(diff) < 0.5 then
+			SetScroll(scroll.target)
+			self:Hide()
+			return
+		end
+		SetScroll(cur + diff * math.min(1, elapsed * GLIDE_RATE))
+	end)
+	hooksecurefunc(scroll, "SetVerticalScroll", function(_, v)
+		if not gliding then
+			scroll.target = v or 0
+			glider:Hide()
+		end
+	end)
+	-- glide to an offset (the wheel, a jump to a section)
+	function scroll:GlideTo(offset)
+		local range = self:GetVerticalScrollRange() or 0
+		self.target = math.max(0, math.min(range, offset))
+		if MelloUI.Anim and MelloUI.Anim.reduceMotion then
+			self:SetVerticalScroll(self.target)
+			return
+		end
+		glider:Show()
+	end
+	scroll:SetScript("OnMouseWheel", function(self, delta)
+		local base = glider:IsShown() and self.target or (self:GetVerticalScroll() or 0)
+		self:GlideTo(base - delta * WHEEL_STEP)
+	end)
+
 	window:SetScript("OnShow", function()
 		PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
 		MelloUI:RefreshConfig()
@@ -1806,7 +1864,7 @@ function RefreshStrip()
 		end
 		if KIT then
 			btn.label:Show()
-			Colour(btn.label, selected and C.accent or C.dim)
+			Colour(btn.label, selected and C.accent or C.sub)
 		else
 			btn.label:SetShown(selected)
 		end
@@ -1891,8 +1949,7 @@ function MelloUI:ConfigTour()
 				return
 			end
 			local offset = math.max(0, pageTop - top - 60)
-			local range = window.scroll:GetVerticalScrollRange() or 0
-			window.scroll:SetVerticalScroll(math.min(offset, range))
+			window.scroll:GlideTo(offset)
 		end,
 	}
 end

@@ -1044,6 +1044,7 @@ end
 
 local ApplyWindowBackground   -- below, with the settings
 
+local InkSurface -- below
 local function Activate()
 	if active then
 		return
@@ -1063,6 +1064,9 @@ local function Activate()
 		skin.toggleIcons()
 	end
 	ApplyWindowBackground()
+	if InkSurface then
+		InkSurface()
+	end
 end
 
 local function Deactivate()
@@ -1079,6 +1083,9 @@ local function Deactivate()
 		for row in CharacterStatsPane.statsFramePool:EnumerateActive() do
 			Kit:Unfade(row.Background)
 		end
+	end
+	if InkSurface then
+		InkSurface()
 	end
 end
 
@@ -1168,11 +1175,60 @@ ApplyWindowBackground = function()
 	end
 end
 
+-- The right pane on parchment (its Parchment sheet, or Window Background
+-- Parchment): its texts in ink (QuestInk's rule, user 2026-09-23); the
+-- category and header plates, the bars and the icons as they are
+InkSurface = function()
+	local QI = MelloUI.QuestInk
+	if not QI then
+		return
+	end
+	if QI.surfaces.character then
+		QI.RefreshSurface("character")
+		return
+	end
+	QI.Surface("character", {
+		roots = function()
+			local rep, token = _G.ReputationFrame, _G.TokenFrame
+			-- the stats' rows live in their scroll boxes (user, 2026-09-23: the
+			-- stats stayed light while the reputation pane was inked)
+			-- the whole window: every pane and detail pane whatever this client
+			-- names them (the reputation's detail was missed, user 2026-09-23);
+			-- the skip below keeps what is not on the parchment as it is
+			return CharacterFrame, CharacterStatsPane, _G.CharacterStatsPaneScrollBox, _G.CharacterStatsPanePetScrollBox,
+				_G.ReputationDetailFrame,
+				rep, _G.SkillsFrame, _G.StatisticsFrame, token, _G.PVPRankFrame, _G.HonorFrame, _G.PVPFrame,
+				rep and rep.ReputationDetailFrame, token and token.DetailFrame,
+				_G.SkillsFrame and _G.SkillsFrame.DetailFrame, _G.SkillDetailFrame
+		end,
+		on = function()
+			if not (active and M.isEnabled) then
+				return false
+			end
+			local bg = M.db and M.db.windowBackground
+			return Kit:ParchmentOn("character") or bg == "parchment"
+		end,
+		-- a Parchment window background is under everything; the Parchment
+		-- sheet only under the right pane: a string elsewhere (the Skills
+		-- tab's rows beside it) keeps its colours
+		skip = function(fs)
+			if QI.DefaultSkip(fs) then
+				return true
+			end
+			if M.db and M.db.windowBackground == "parchment" then
+				return false
+			end
+			return not QI.OnSheet(fs, "character")
+		end,
+	})
+end
+
 function M:OnSettingChanged(key)
 	if key == "statRows" then
 		self:RefreshStats()
 	elseif key == "windowBackground" then
 		ApplyWindowBackground()
+		InkSurface()
 	end
 end
 

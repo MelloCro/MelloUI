@@ -123,14 +123,71 @@ local SCALE_DESC = {
 -- Enchanted Land as default"); the other roles keep the game's.
 local TITLE_DEFAULT = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\EnchantedLand.ttf"
 
-local defaults = { scale = 1, outline = "OUTLINE" }
+-- Font Styles (user, 2026-09-23: "make all 6 as presets in the Fonts
+-- options"): the six pairings of the font study (themed, readability first),
+-- each a face for the titles, the interface text and the chat and numbers,
+-- with sizes that give every body face the same x-height as the game's own
+-- and the titles a size like Enchanted Land's. The damage numbers keep their
+-- own choice. Choosing a style sets those six options; changing any of them
+-- afterwards shows Custom.
+local FONT_DIR = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\"
+local NUMBERS = "NotoSans\\NotoSans_Condensed-Bold.ttf"   -- narrow, clear figures, in every style
+local STYLES = {
+	{ value = "scriptorium", label = "Scriptorium", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
+	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Cinzel's carved capitals over Alegreya, a warm book face." },
+	{ value = "chronicle", label = "Chronicle", title = "AlegreyaSC\\AlegreyaSC-Bold.ttf", titleScale = 0.75,
+	  text = "SourceSerif4\\SourceSerif4-Regular.ttf", textScale = 1.05, desc = "Alegreya SC's small capitals over Source Serif 4, the most readable serif." },
+	{ value = "oldtome", label = "Old Tome", title = "IMFellEnglish\\IMFellEnglish-Regular.ttf", titleScale = 0.8,
+	  text = "Spectral\\Spectral-Regular.ttf", textScale = 1.2, desc = "IM Fell English's aged print over Spectral." },
+	{ value = "warband", label = "Warband", title = "PirataOne\\PirataOne-Regular.ttf", titleScale = 0.85,
+	  text = "CrimsonPro\\CrimsonPro-SemiBold.ttf", textScale = 1.25, desc = "Pirata One's blackletter over Crimson Pro SemiBold: the boldest look." },
+	{ value = "clarity", label = "Clarity", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
+	  text = "NotoSans\\NotoSans-Regular.ttf", textScale = 1, desc = "Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes." },
+	{ value = "gothic", label = "Gothic", title = "EnchantedLand.ttf", titleScale = 1,
+	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Enchanted Land's gothic titles kept, over Alegreya." },
+}
+local STYLE = {}
+local styleValues = { { value = "custom", label = "Custom" } }
+for _, s in ipairs(STYLES) do
+	STYLE[s.value] = s
+	styleValues[#styleValues + 1] = { value = s.value, label = s.label }
+end
+
+-- What a style sets: { key = value }
+local function StyleSettings(s)
+	return {
+		fontTitle = FONT_DIR .. s.title, scaleTitle = s.titleScale,
+		fontText = FONT_DIR .. s.text, scaleText = s.textScale,
+		fontChat = FONT_DIR .. NUMBERS, scaleChat = 1,
+		fontChatText = FONT_DIR .. s.text,
+	}
+end
+
+local defaults = { scale = 1, outline = "OUTLINE", style = "custom" }
+local styleDesc = { "One click for the titles, the interface text and the chat and numbers together, each pairing themed with readability first; fine-tune any of them below afterwards (the style then shows Custom). The damage numbers keep their own choice." }
+for _, s in ipairs(STYLES) do
+	styleDesc[#styleDesc + 1] = s.label .. ": " .. s.desc
+end
 local options = {
 	{ type = "header", name = "Fonts" },
+	{ type = "dropdown", key = "style", name = "Font Style", values = styleValues, desc = table.concat(styleDesc, "\n") },
 }
 for _, role in ipairs(ROLES) do
 	defaults[role.key] = role.key == "fontTitle" and TITLE_DEFAULT or KEEP
 	defaults[SCALE_KEY[role.key]] = 1
 	options[#options + 1] = { type = "dropdown", key = role.key, name = role.name, values = BuildRoleList(), desc = role.desc }
+end
+-- Chat text (user, 2026-09-23: the Font Decisions should take over the chat's
+-- messages and its input box): the chat windows, the chat's font objects
+-- (the input box) and the whisper windows (they copy the chat) in a face of
+-- their own; "the same as Chat & numbers" by default. A Font Style sets it to
+-- its reading face, the numbers keeping the narrow one.
+defaults.fontChatText = KEEP
+do
+	local values = BuildRoleList()
+	values[1] = { value = KEEP, label = "Same as Chat & numbers" }
+	options[#options + 1] = { type = "dropdown", key = "fontChatText", name = "Chat text", values = values,
+		desc = "The chat windows' messages, the chat's input box and the whisper windows. The same as Chat & numbers unless you choose otherwise; the Font Styles set it to their reading face." }
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
 for _, role in ipairs(ROLES) do
@@ -162,6 +219,11 @@ local function ChosenFont(roleKey)
 	return nil
 end
 
+-- The chat text's face (Chat text, else Chat & numbers), nil to keep the game's
+local function ChatTextFont()
+	return ChosenFont("fontChatText") or ChosenFont("fontChat")
+end
+
 --------------------------------------------------------------------------------
 -- Font object discovery
 --------------------------------------------------------------------------------
@@ -169,6 +231,7 @@ end
 -- [fontObject] = { path, size, flags } captured before the first change.
 local originals = setmetatable({}, { __mode = "k" })
 local fontObjects = nil  -- list of { object = Font, name = string }
+local chatObjects = setmetatable({}, { __mode = "k" })   -- the chat's own font objects (ChatFontNormal, ...): Chat text
 
 local function IsFontObject(value)
 	if type(value) ~= "table" or type(value.GetObjectType) ~= "function" or type(value.SetFont) ~= "function" then
@@ -192,6 +255,9 @@ local function DiscoverFontObjects()
 		-- wretched")
 		if type(name) == "string" and not name:find("^MelloUI") and IsFontObject(value) then
 			fontObjects[#fontObjects + 1] = { object = value, name = name }
+			if name:find("^ChatFont") then
+				chatObjects[value] = true
+			end
 		end
 	end
 	return fontObjects
@@ -214,6 +280,9 @@ local function FontFor(object)
 	local original = Remember(object)
 	if not original then
 		return nil
+	end
+	if chatObjects[object] then
+		return ChatTextFont() or original.path
 	end
 	return ChosenFont(RoleFor(original.path)) or original.path
 end
@@ -258,7 +327,7 @@ local function ApplyToObject(object)
 	if not original then
 		return
 	end
-	local scale = ScaleFor(RoleFor(original.path))
+	local scale = ScaleFor(chatObjects[object] and "fontChat" or RoleFor(original.path))
 	local size = math.max(6, math.floor(original.size * scale + 0.5))
 	pcall(object.SetFont, object, FontFor(object), size, EffectiveFlags(object, original.flags))
 end
@@ -414,7 +483,7 @@ local function ApplyChatWindow(frame)
 	end
 	local _, _, flags = frame:GetFont()
 	local size = math.max(6, math.floor(ChatBaseSize(frame, original) * ScaleFor("fontChat") + 0.5))
-	pcall(frame.SetFont, frame, ChosenFont("fontChat") or original.path, size, flags or original.flags)
+	pcall(frame.SetFont, frame, ChatTextFont() or original.path, size, flags or original.flags)
 end
 
 local function ApplyChatWindows()
@@ -560,6 +629,32 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "style" then
+		local s = STYLE[value]
+		if s then
+			for k, v in pairs(StyleSettings(s)) do
+				db[k] = v
+			end
+			ApplyAll()
+			ApplyWorldFonts(db)
+			MelloUI:Print("Font Style: %s. The names above characters follow after /reload.", s.label)
+			if MelloUI.RefreshConfig then
+				MelloUI:RefreshConfig()
+			end
+		end
+		return
+	end
+	-- a font or size changed by hand: the style no longer describes it
+	local s = STYLE[db.style]
+	if s then
+		local want = StyleSettings(s)[key]
+		if want ~= nil and want ~= db[key] then
+			db.style = "custom"
+			if MelloUI.RefreshConfig then
+				MelloUI:RefreshConfig()
+			end
+		end
+	end
 	ApplyAll()
 	if key == "fontText" or key == "fontDamage" then
 		ApplyWorldFonts(db)

@@ -1033,6 +1033,29 @@ end
 --------------------------------------------------------------------------------
 
 -- The crafting page's two backgrounds as chosen: the page picture's piece
+-- The recipe list on a Parchment list background: its recipes and
+-- categories in ink, a recipe's skill-up colour as a dark shade of it
+-- (QuestInk's rule, user 2026-09-23)
+local function InkSurface()
+	local QI = MelloUI.QuestInk
+	if not QI then
+		return
+	end
+	if QI.surfaces.professionsList then
+		QI.RefreshSurface("professionsList")
+		return
+	end
+	QI.Surface("professionsList", {
+		roots = function()
+			local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+			return page and page.RecipeList
+		end,
+		on = function()
+			return active and M.isEnabled and M.db and M.db.listBackground == "parchment"
+		end,
+	})
+end
+
 -- swapped (Kit's picture SetPiece), the list box's stone body re-applied
 local function ApplyBackgrounds()
 	if not skin then
@@ -1059,6 +1082,7 @@ local function ApplyBackgrounds()
 			body.kitPiece, body.kitName = true, nil
 		end
 	end
+	InkSurface()
 end
 
 local function Activate()
@@ -1095,6 +1119,7 @@ local function Deactivate()
 	if skin.unbindCreate then
 		skin.unbindCreate()
 	end
+	InkSurface()
 end
 
 local function Sync()

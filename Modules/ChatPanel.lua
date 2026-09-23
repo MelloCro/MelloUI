@@ -74,6 +74,20 @@ local BORDER_PIECES = { "TopLeftTexture", "TopRightTexture", "BottomLeftTexture"
 -- Every frame given here is held at full alpha while the module is on: a
 -- post-hook on its SetAlpha puts 1 back (the game's fades set alpha every
 -- frame through the same method). The rail itself never follows an alpha.
+-- The chat's and the whisper windows' ink follows the chat reskin and its
+-- parchment (QuestInk's rule, user 2026-09-23)
+local function InkFollows()
+	local QI = MelloUI.QuestInk
+	if not QI then
+		return
+	end
+	for _, name in ipairs({ "chat", "whisper" }) do
+		if QI.surfaces[name] then
+			QI.RefreshSurface(name)
+		end
+	end
+end
+
 local function NoFade(frame)
 	if not frame or frame.melloNoFade then
 		return
@@ -167,6 +181,7 @@ local function StoneBackground(cf, background, frame)
 			sheet:SetShown(Kit:ParchmentOn("chat"))
 		end
 		Hold()
+		InkFollows()
 	end
 	-- the sheet is the chat frame's own region, not the replacement's: it
 	-- goes and comes with the chat reskin by hand
@@ -177,6 +192,7 @@ local function StoneBackground(cf, background, frame)
 		if sheet then
 			sheet:Hide()
 		end
+		InkFollows()
 	end
 	if sheet and not active then
 		sheet:Hide()
@@ -554,6 +570,7 @@ local function Activate()
 		TabInFront(tab, cf)
 	end
 	Kit:Cover("chat")
+	InkFollows()
 end
 
 local function Deactivate()
@@ -574,6 +591,7 @@ local function Deactivate()
 		pcall(dock.scrollFrame.SetFrameStrata, dock.scrollFrame, dock:GetFrameStrata())
 	end
 	Kit:Uncover("chat")
+	InkFollows()
 end
 
 function M:OnEnable(db)

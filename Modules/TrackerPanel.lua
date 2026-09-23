@@ -388,6 +388,39 @@ local function Build()
 	Sweep()
 end
 
+-- The game's tracker on its parchment sheet: the quest headers and objective
+-- lines in ink (QuestInk's rule, user 2026-09-23); its title and the module
+-- headers stay on their plates, the bars and item buttons as they are
+local function InkSurface()
+	local QI = MelloUI.QuestInk
+	if not QI then
+		return
+	end
+	if not QI.surfaces.tracker then
+		QI.Surface("tracker", {
+			roots = function()
+				local tracker = _G.ObjectiveTrackerFrame
+				if tracker then
+					if tracker.Header then
+						tracker.Header.melloNoInk = true
+					end
+					for _, module in ipairs(tracker.modules or {}) do
+						if module.Header then
+							module.Header.melloNoInk = true
+						end
+					end
+				end
+				return tracker
+			end,
+			on = function()
+				return active and Kit:ParchmentOn("tracker")
+			end,
+		})
+	else
+		QI.RefreshSurface("tracker")
+	end
+end
+
 local function Activate()
 	if active then
 		return
@@ -399,6 +432,7 @@ local function Activate()
 	end
 	Sweep()
 	Kit:Cover("tracker")
+	InkSurface()
 end
 
 local function Deactivate()
@@ -410,6 +444,9 @@ local function Deactivate()
 		rep:Disable()
 	end
 	Kit:Uncover("tracker")
+	if MelloUI.QuestInk and MelloUI.QuestInk.surfaces.tracker then
+		MelloUI.QuestInk.RefreshSurface("tracker")
+	end
 end
 
 function M:OnEnable(db)

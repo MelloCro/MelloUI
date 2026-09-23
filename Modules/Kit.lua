@@ -25,6 +25,43 @@ local ROOT = LAYOUT and LAYOUT.root or "Interface\\AddOns\\MelloUI\\Media\\Kit\\
 local Kit = { scale = 0.375 }
 MelloUI.Kit = Kit
 
+-- The kit's colours (user, 2026-09-23: "We can make A and B and let the users
+-- select when in game"): the pieces as painted (Media\Kit) or recoloured to
+-- the palette by Tools/kit_palette.py, one folder per look holding the same
+-- files, so the layout is shared. Pictures and the tiles already warm are not
+-- recoloured: every look reads them from Media\Kit (kit_palette's SKIP).
+Kit.colourLooks = {
+	{ value = "warm", label = "Warm iron", folder = "KitWarm" },
+	{ value = "bronze", label = "Bronze", folder = "KitBronze" },
+	{ value = "painted", label = "Original (painted)" },
+}
+local LOOK_ROOT = {}
+for _, look in ipairs(Kit.colourLooks) do
+	LOOK_ROOT[look.value] = look.folder and (ROOT:gsub("Kit\\$", look.folder .. "\\")) or ROOT
+end
+local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
+local lookRoot = nil   -- the chosen look's folder, once the settings are there
+
+-- The folder a piece is read from in the chosen look
+local function PieceRoot(name)
+	if not lookRoot then
+		local um = MelloUI:GetModule("UIModifications")
+		if not (um and um.db and Kit.BorderValue) then
+			return LOOK_ROOT.warm   -- the default look, until the settings are loaded
+		end
+		lookRoot = LOOK_ROOT[Kit:BorderValue("colours")] or ROOT
+	end
+	if lookRoot == ROOT then
+		return ROOT
+	end
+	for _, pattern in ipairs(UNCOLOURED) do
+		if name:find(pattern) then
+			return ROOT
+		end
+	end
+	return lookRoot
+end
+
 local STATES = { "normal", "hover", "pressed", "checked", "disabled", "plain", "open", "closed", "selected", "focused", "off", "on", "title" }
 
 -- this client hands out secret numbers under unit frames: never compare one
@@ -238,11 +275,11 @@ function Kit:KitFiles()
 			files[#files + 1] = path
 		end
 	end
-	for _, p in pairs(PIECES) do
-		local file = p.file
+	for name, p in pairs(PIECES) do
+		local file = p.file and PieceRoot(name) .. p.file
 		if file and not seen[file] then
 			seen[file] = true
-			files[#files + 1] = ROOT .. file
+			files[#files + 1] = file
 		end
 	end
 	table.sort(files)
@@ -499,9 +536,9 @@ function Kit:Apply(tex, name)
 		return false
 	end
 	if p.tile then
-		tex:SetTexture(ROOT .. p.file, "REPEAT", "REPEAT")
+		tex:SetTexture(PieceRoot(name) .. p.file, "REPEAT", "REPEAT")
 	else
-		tex:SetTexture(ROOT .. p.file)
+		tex:SetTexture(PieceRoot(name) .. p.file)
 	end
 	tex:SetTexCoord(p.uv[1], p.uv[2], p.uv[3], p.uv[4])
 	tex.kitPiece, tex.kitName = p, name
@@ -514,6 +551,27 @@ function Kit:Apply(tex, name)
 		self:Retile(tex)
 	end
 	return true
+end
+
+-- Kit Colours changed: every kit texture shown again from the chosen look's
+-- folder, where it is (its texture coordinates -- a strip's tiling, a mirror,
+-- a crop -- kept as they are)
+function Kit:SetKitColours(value)
+	lookRoot = LOOK_ROOT[value] or ROOT
+	for tex in pairs(SHADED) do
+		local p, name = tex.kitPiece, tex.kitName
+		if p and name and p.file then
+			local coords = { tex:GetTexCoord() }
+			if p.tile then
+				tex:SetTexture(PieceRoot(name) .. p.file, "REPEAT", "REPEAT")
+			else
+				tex:SetTexture(PieceRoot(name) .. p.file)
+			end
+			if #coords == 8 then
+				tex:SetTexCoord(unpack(coords))
+			end
+		end
+	end
 end
 
 -- A background's scale in its own UI units per piece px: Kit.scale on the
@@ -817,6 +875,31 @@ function Kit:NineSlice(parent, opts)
 				tex:SetPoint(a[1], skin, a[1], sx * o, sy * o)
 				skin[c] = tex
 				table.insert(skin.art, tex)
+				skin.gemCorner = skin.gemCorner or {}
+				skin.gemCorner[c] = { tex = tex, point = a[1] }
+			end
+		end
+	end
+
+	-- The top gem corners give way to a title plate riding the top rail (its
+	-- caps' own gems sit there): plain corners in their place, made when first
+	-- needed. `on` false: plain; true: the gems again.
+	skin.SetTopGems = function(me, on)
+		for _, c in ipairs({ "tl", "tr" }) do
+			local gem = me.gemCorner and me.gemCorner[c]
+			if gem then
+				local plain = me.plainCorner and me.plainCorner[c]
+				if not on and not plain then
+					plain = self:Texture(host, prefix .. "_" .. c, edgeLayer, edgeSub + 1, scale)
+					plain:SetPoint(gem.point, me, gem.point)
+					me.plainCorner = me.plainCorner or {}
+					me.plainCorner[c] = plain
+					table.insert(me.art, plain)
+				end
+				gem.tex:SetShown(on and true or false)
+				if plain then
+					plain:SetShown(not on)
+				end
 			end
 		end
 	end
@@ -1523,7 +1606,7 @@ Kit.Replacements = {
 	-- (user: the wider border expands OUTSIDE the window, not into it: outset
 	-- = the rail band's 48 px less its 6 px inner bevel, which stays on the edge)
 	["NineSlicePanelTemplate"]                = { kind = "frame", level = 0, prefix = "window/frame", scale = 1.0, corners = "gem", outset = 42 },
-	["TitleBar"]                              = { kind = "strip", base = "tabs/top", state = "title", heightScale = 1.5, onRail = true },   -- rune caps, red plate (the user's pick H), red matched to buttons/redbtn (F); 1.5 x the bar's height, same width; `onRail`: standing on the OUTER rail across the whole window width, its bottom on the band's top edge, the title text with it (user, 2026-09-21: the header sits on top of the thick border of every window)
+	["TitleBar"]                              = { kind = "strip", base = "tabs/top", state = "open", heightScale = 1.5, onRail = true },   -- rune caps, red plate (the user's pick H), red matched to buttons/redbtn (F); 1.5 x the bar's height, same width; `onRail`: riding the OUTER rail across the whole window width, its caps' red gems on the rail's top corners in place of the frame's own gems (Kit:TitleOnRail), the title text with it (user, 2026-09-23: "combining B1 and having H3 as a header", layout C; was standing on the rail with the title caps, H1)
 	["_UI-Frame-TopTileStreaks"]              = { kind = "fade" },   -- the streak band under the title: a stone band there read as a second, different backdrop (user, 2026-09-21); the page shows through
 	["UI-Frame-PortraitMetal-CornerTopLeft"]  = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
 	["RedButton-Exit"]                        = { kind = "state", base = "window/close", rect = "normal" },
@@ -1954,7 +2037,18 @@ RegisterShell = function(frame, shell)
 	local known = Kit.shells[frame] or {}
 	known.outer = shell.outer or known.outer
 	known.title = shell.title or known.title
+	known.ring = shell.ring or known.ring
 	Kit.shells[frame] = known
+	-- the title plate rides the outer rail: its caps' gems take the corners,
+	-- and it runs behind the portrait ring
+	local onRail = known.title and known.title.rule and known.title.rule.onRail
+	local skin = known.outer and known.outer.skin
+	if onRail and skin and skin.SetTopGems then
+		skin:SetTopGems(false)
+	end
+	if onRail and known.ring then
+		Kit:TitleBehindRing(known.title, known.ring, known.outer)
+	end
 	for _, fn in ipairs(Kit.shellWatchers) do
 		fn(frame, known)
 	end
@@ -3172,20 +3266,32 @@ function Kit:Replace(region, opts)
 				if not window then
 					return
 				end
-				-- the plate spans the outer rail's WHOLE width (user, 2026-09-21),
-				-- its bottom on the rail's top edge: anchored to the window's
-				-- top corners, so no layout is needed
-				-- ... the whole width of the OUTER rail, which is grown outward
-				-- past the window's edges by the outset
-				local lift = Kit:OuterRailTop() + self.strip.height / 2
-				local out = Kit:OuterRailOutset()
+				-- the plate rides the OUTER rail across its whole width (user,
+				-- 2026-09-23, layout C): centred on the rail's middle line, its
+				-- caps' gems on the rail's top corners, where the frame's own
+				-- gems were (they give way: RegisterShell); anchored to the
+				-- window's top corners, so no layout is needed
+				local lift, reach = Kit:TitleOnRail(self.strip)
+				local out = Kit:OuterRailOutset() + reach
+				-- with a portrait ring on the corner the plate starts at the
+				-- ring's centre, its left cap left out: nothing of it shows
+				-- left of the ring, the rest runs into the ring's hole (user,
+				-- 2026-09-23: the cap past the ring "mask completely")
+				local left = -out
+				local ringX = self.behindRing and Kit:RingCentreX(self.behindRing, window)
+				self.strip.dropCap = ringX and "l" or nil
+				if ringX then
+					left = ringX
+				end
+				-- the title stays over the window's middle, not the shorter plate's
+				self.strip.textShift = -(left + out) / 2
 				self.strip:ClearAllPoints()
-				self.strip:SetPoint("LEFT", window, "TOPLEFT", -out, lift)
+				self.strip:SetPoint("LEFT", window, "TOPLEFT", left, lift)
 				self.strip:SetPoint("RIGHT", window, "TOPRIGHT", out, lift)
 				self.strip:SetHeight(self.strip.height)
 				local w = window:GetWidth()
 				if w and w > 0 and not (issecretvalue and issecretvalue(w)) then
-					self.strip:FitCaps(w + 2 * out)
+					self.strip:FitCaps(w + out - left)
 				end
 			end
 			if text then
@@ -3203,7 +3309,7 @@ function Kit:Replace(region, opts)
 						dy = (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (self.strip.scale or Kit.scale)
 					end
 					text:ClearAllPoints()
-					text:SetPoint("CENTER", self.strip, "CENTER", 0, dy)
+					text:SetPoint("CENTER", self.strip, "CENTER", self.strip.textShift or 0, dy)
 					Kit:TitleFont(text, true)
 				end
 				rep.onEnable = Centre
@@ -3890,6 +3996,11 @@ function Kit:Replace(region, opts)
 		if window and window ~= UIParent then
 			RegisterShell(window, { outer = rep })
 		end
+	elseif key == "UI-Frame-PortraitMetal-CornerTopLeft" and parent then
+		local window = Window(parent)
+		if window and window ~= UIParent then
+			RegisterShell(window, { ring = rep })
+		end
 	end
 	rep.window = Window(parent)
 	self:RegisterReplacement(rep)
@@ -4135,6 +4246,149 @@ function Kit:OuterRailTop()
 	local p = PIECES[prefix .. "_t"]
 	local boxTop = (p and p.box) and p.box[2] or 0
 	return ((rule and rule.outset or 0) - boxTop) * sc
+end
+
+-- The title plate riding the outer rail (the TitleBar rule's `onRail`):
+-- the lift of the plate's centre above the window's top edge and how far each
+-- end reaches past the rail's outer edge, so that its caps' gems sit where the
+-- rail's own corner gems were, their centres on the rail's middle line.
+local RAIL_GEM_IN = 20            -- the corner gems' centres, piece px in from the rail's outer corner (window/frame_gem_tl / _tr)
+local CAP_GEM = { x = 48, y = 50 } -- the gem's centre in a tabs/top cap's canvas, from its outer end and its top
+function Kit:TitleOnRail(strip)
+	local rule = self.Replacements["NineSlicePanelTemplate"]
+	local prefix = rule and rule.prefix or "window/frame"
+	local sc = self.scale * (rule and rule.scale or self.frameScale)
+	local rail = PIECES[prefix .. "_t"]
+	local top, bottom = 0, 0
+	if rail and rail.box then
+		top, bottom = rail.box[2], rail.box[4]
+	end
+	-- the rail's middle line, above the window's top edge (the band is grown
+	-- outward by `outset`, its box measured from the piece's top)
+	local middle = ((rule and rule.outset or 0) - (top + bottom) / 2) * sc
+	local ss = strip.scale or self.scale
+	local cap = PIECES[StripName(strip.base, "cap_l", strip.state)]
+	local capH = cap and cap.h or 0
+	-- the gem sits below the canvas's centre: the plate's centre goes that much higher
+	local lift = middle + (CAP_GEM.y - capH / 2) * ss
+	local reach = CAP_GEM.x * ss - RAIL_GEM_IN * sc
+	return lift, reach
+end
+
+-- The title plate and the outer rail run behind the portrait ring (user,
+-- 2026-09-23: "mask the overlapping header ... the header is actually going
+-- behind the Round border and icon and disappearing", then the rail's corner
+-- past the ring too): Masks/ring_corner hides a round hole under the ring, a
+-- little inside its body so its rim covers the cut, and the whole quarter
+-- above and left of its centre (CLAMP: its top row and left column repeat
+-- outward, so that quarter reaches on and all else stays shown). The ring is
+-- drawn above the plate, its top gem over it, and stands as the corner.
+local RING_HOLE = EDGE_ROOT .. "ring_corner"
+local RING_HOLE_FILL = 62 / 64   -- the hole's radius in the mask, as a share of its half-size (Tools/make_ring_corner_mask.py)
+local RING_HOLE_IN = 6           -- piece px: the cut this far inside the ring's body radius, under its rim
+
+function Kit:FitRingHole(title, ring)
+	local strip, tex = title.strip, ring.tex
+	local mask = strip and strip.ringHole
+	if not (mask and tex) then
+		return
+	end
+	local ok, w = pcall(tex.GetWidth, tex)
+	if not ok or Secret(w) or not (w and w > 0) then
+		return
+	end
+	local piece = PIECES[tex.kitName or "window/portrait_ring"]
+	local radius = ((piece and piece.radius) or 84) - RING_HOLE_IN
+	local hole = w * radius / ((piece and piece.w) or 197)
+	local size = 2 * hole / RING_HOLE_FILL
+	for _, m in ipairs({ mask, title.outerCut }) do
+		m:ClearAllPoints()
+		m:SetPoint("CENTER", tex, "CENTER")
+		m:SetSize(size, size)
+	end
+	-- the ring over the plate
+	local holder = ring.object
+	if holder and holder.SetFrameLevel and holder ~= tex then
+		local level = strip:GetFrameLevel()
+		if holder:GetFrameLevel() <= level then
+			holder:SetFrameLevel(level + 2)
+		end
+	end
+end
+
+-- The portrait ring's centre, in UI px right of the window's left edge (nil
+-- until both are laid out)
+function Kit:RingCentreX(ring, window)
+	local tex = ring and ring.tex
+	if not (tex and window) then
+		return nil
+	end
+	local okC, cx = pcall(tex.GetCenter, tex)
+	local okL, left = pcall(window.GetLeft, window)
+	if not (okC and okL and cx and left) or Secret(cx) or Secret(left) then
+		return nil
+	end
+	local k = tex:GetEffectiveScale() / window:GetEffectiveScale()
+	return cx * k - left
+end
+
+-- One cut of the ring's corner on a frame's textures (its own mask: a mask
+-- only works on textures of the frame that made it)
+local function RingCut(owner, textures)
+	local mask = owner:CreateMaskTexture()
+	mask:SetTexture(RING_HOLE, "CLAMP", "CLAMP")
+	local seen = {}
+	for _, t in ipairs(textures) do
+		if t and not seen[t] and t.AddMaskTexture and t:GetParent() == owner then
+			seen[t] = true
+			t:AddMaskTexture(mask)
+		end
+	end
+	return mask
+end
+
+function Kit:TitleBehindRing(title, ring, outer)
+	local strip = title and title.strip
+	if not (strip and ring and ring.tex and strip.CreateMaskTexture) then
+		return
+	end
+	-- the outer rail's corner past the ring (its top and left rails, the
+	-- corner, the stone under them)
+	local skin = outer and outer.skin
+	if skin and not title.outerCut and skin.CreateMaskTexture then
+		local list = {}
+		for _, t in ipairs(skin.all or {}) do
+			list[#list + 1] = t
+		end
+		for _, t in ipairs(skin.art or {}) do
+			list[#list + 1] = t
+		end
+		title.outerCut = RingCut(skin, list)
+	end
+	if not strip.ringHole then
+		local mask = strip:CreateMaskTexture()
+		mask:SetTexture(RING_HOLE, "CLAMP", "CLAMP")
+		for _, k in ipairs({ "capL", "mid", "capR", "endL", "endR" }) do
+			local t = strip[k]
+			if t and t.AddMaskTexture then
+				t:AddMaskTexture(mask)
+			end
+		end
+		strip.ringHole = mask
+		-- fitted again with the plate
+		local refit = title.Refit
+		title.Refit = function(me, ...)
+			refit(me, ...)
+			Kit:FitRingHole(me, ring)
+		end
+		-- the plate starts at the ring from now on (its Refit reads this)
+		title.behindRing = ring
+		if title.object and title.object:IsShown() then
+			title:Refit()
+			return
+		end
+	end
+	self:FitRingHole(title, ring)
 end
 
 -- How far the window's OUTER rail grows outward past the window's edge, in
@@ -4532,6 +4786,8 @@ Kit.borderKinds = {
 	  desc = "The rim round every round icon: passive spells, the legacy, guild and group finder windows' rings, the auction house's item, the Services bar's round buttons." },
 	{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
 	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon." },
+	{ kind = "colours", key = "kitColours", default = "warm", name = "Kit Colours", values = Kit.colourLooks,
+	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars) in the interface's palette: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. Pictures keep their own colours." },
 }
 local BORDER_KIND = {}
 for _, k in ipairs(Kit.borderKinds) do
@@ -4589,7 +4845,9 @@ end
 -- A kind's choice to every element of it
 function Kit:ApplyBorder(kind)
 	local value = self:BorderValue(kind)
-	if kind == "round" then
+	if kind == "colours" then
+		self:SetKitColours(value)
+	elseif kind == "round" then
 		for rim in pairs(self.roundRims) do
 			RoundLook(rim, value)
 		end

@@ -44,6 +44,7 @@ Modules\CooldownText.lua
 Modules\Tweaks.lua
 Modules\Stats.lua
 Modules\Vendor.lua
+Modules\QuestInk.lua
 Modules\QuestList.lua
 Modules\QuestListPanel.lua
 Modules\QuestListMap.lua

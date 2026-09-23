@@ -23,6 +23,15 @@
 -- corners, the single rail, the heavy backdrop frame with red or iron gems,
 -- or none). GetMinimapShape answers "SQUARE" meanwhile, for other addons'
 -- minimap buttons.
+-- Merge With Services (user, 2026-09-23: "merge the Header, Minimap and the
+-- Services window into 1 thing, but there needs to be a border separating the
+-- Minimap from the Services Window", example D): with the square shape and a
+-- rail border (the window frame or the single rail), one frame runs round the
+-- map and MelloUI's Services bar under it; a header plate named "Services"
+-- lies between the two, on the frame's stone; the zone band rides the frame's
+-- top rail as every window's title plate does (the red plate, its caps' gems
+-- on the frame's top corners, which give way), the tracking button and the
+-- calendar on its two caps. The game's anchors come back when it is off.
 -- Covers the Dark Mode group "minimap". /mmdump [frames|reps].
 --------------------------------------------------------------------------------
 
@@ -57,12 +66,14 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 	title = "Minimap Kit",
 	desc = "The minimap cluster dressed in the painted kit on the game's own layout.",
 	enabledByDefault = true,
-	defaults = { shape = "round", squareBorder = "window" },
+	defaults = { shape = "round", squareBorder = "window", servicesMerge = true },
 	options = {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
 		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border chosen below." },
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
 		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, or none. Both are also chosen with previews by Dynamic UI Modification, at the top of the configurator." },
+		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
+		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, a Services plate between the map and the service icons. For the square shape with the window frame or the single rail." },
 	},
 })
 
@@ -150,6 +161,7 @@ local function Build()
 		end
 		if first then
 			local rep = Replace(first, { as = "MinimapZoneBand", rect = band, alsoFade = extra })
+			skin.band = rep
 			if rep and MinimapCluster and Kit.RegisterShell then
 				-- the cluster's drag handle for the window mover: a grab frame
 				-- on the band's own rect (the plate is 1.4 x the band and its
@@ -245,7 +257,10 @@ local function BorderFrame()
 	if skin.square then
 		return skin.square
 	end
-	local f = CreateFrame("Frame", nil, MinimapCluster)
+	-- in the map's own container (Edit Mode's Size scales that, not the
+	-- cluster: a frame on the cluster kept its size while the map grew --
+	-- user, 2026-09-23: "using the Editmode scaling break the map size")
+	local f = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
 	f:SetFrameLevel(skin.ringLevel or (Minimap:GetFrameLevel() + 1))
 	f:EnableMouse(false)
 	f.parts = {}
@@ -311,6 +326,212 @@ local function CutFrame(f, piece, k)
 	return true
 end
 
+-- the merge's measures: the divider band's height (UI px); the cap gem, as
+-- Kit:TitleOnRail's (tabs/top caps: the gem's centre from the outer end)
+local DIVIDER_H = 26
+local CAP_GEM_X = 48
+
+-- Whether the Services bar joins the square map's frame (Services asks too)
+function M:WantsServices()
+	if not (active and M.db and M.db.shape == "square" and M.db.servicesMerge ~= false) then
+		return false
+	end
+	local b = BORDER[M.db.squareBorder or "window"]
+	return b and b.prefix ~= nil or false
+end
+
+function M:DividerHeight()
+	return DIVIDER_H
+end
+
+-- the stone of the frame's family, under the divider and the bar
+function M:BodyPiece()
+	local b = BORDER[M.db and M.db.squareBorder or "window"]
+	return (b and b.prefix or "window/frame") .. "_body"
+end
+
+local function ServicesBar()
+	local bar = _G.MelloUIServicesBar
+	if bar and bar:IsShown() then
+		return bar
+	end
+	return nil
+end
+
+-- The divider: the frame's stone across the map's width under it, a header
+-- plate on it with "Services" in the title face
+local function Divider(f)
+	if skin.divider then
+		return skin.divider
+	end
+	local d = CreateFrame("Frame", nil, f)
+	d:SetFrameLevel(f:GetFrameLevel() + 1)
+	d:EnableMouse(false)
+	d.stone = d:CreateTexture(nil, "BACKGROUND")
+	d.stone:SetAllPoints(d)
+	local ok, plate = pcall(Kit.Strip, Kit, d, "lists/header", { scale = Kit.scale })
+	d.plate = ok and plate or nil
+	-- the name on a layer above the plate (the plate is a child frame of the
+	-- divider and drew over the divider's own text)
+	d.textLayer = CreateFrame("Frame", nil, d)
+	d.textLayer:SetAllPoints(d)
+	d.textLayer:SetFrameLevel(d:GetFrameLevel() + 4)
+	d.text = d.textLayer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	d.text:SetText("Services")
+	d:Hide()
+	skin.divider = d
+	return d
+end
+
+local function LayoutDivider(f, b)
+	local d = Divider(f)
+	local map = Minimap
+	d:ClearAllPoints()
+	d:SetPoint("TOPLEFT", map, "BOTTOMLEFT", 0, 0)
+	d:SetPoint("TOPRIGHT", map, "BOTTOMRIGHT", 0, 0)
+	d:SetHeight(DIVIDER_H)
+	local piece = b.prefix .. "_body"
+	if d.stone.kitName ~= piece then
+		Kit:Apply(d.stone, piece)
+	end
+	Kit:Retile(d.stone)
+	local plate = d.plate
+	local dy = 0
+	if plate then
+		local h = DIVIDER_H - 4
+		local yoff = plate.FitBox and plate:FitBox(h) or 0
+		plate:ClearAllPoints()
+		plate:SetPoint("LEFT", d, "LEFT", 0, yoff)
+		plate:SetPoint("RIGHT", d, "RIGHT", 0, yoff)
+		plate:SetHeight(plate.height)
+		local okW, w = pcall(d.GetWidth, d)
+		if okW and w and not (issecretvalue and issecretvalue(w)) and w > 0 and plate.FitCaps then
+			plate:FitCaps(w)
+		end
+	end
+	d.text:ClearAllPoints()
+	d.text:SetPoint("CENTER", d, "CENTER", 0, dy)
+	Kit:TitleFont(d.text, true)
+	d:Show()
+end
+
+-- The zone band on the frame's top rail (merged) or back where the game put
+-- it, with the tracking button, the calendar and the zone text's width
+local function PlaceBand(merged, f, b)
+	local cluster = MinimapCluster
+	local band = cluster and cluster.BorderTop
+	local rep = skin.band
+	if not band then
+		return
+	end
+	local movers = { band, cluster.Tracking, _G.GameTimeFrame, _G.TimeManagerClockButton }
+	if merged then
+		if not skin.bandSaved then
+			local saved = {}
+			for i, frame in ipairs(movers) do
+				if frame then
+					local pts = {}
+					for j = 1, frame:GetNumPoints() do
+						pts[j] = { frame:GetPoint(j) }
+					end
+					saved[i] = { points = pts, w = frame:GetWidth(), scale = frame:GetScale(), level = frame:GetFrameLevel() }
+				end
+			end
+			saved.textWidth = MinimapZoneText and MinimapZoneText:GetWidth()
+			skin.bandSaved = saved
+		end
+		-- each at the frame's (the map's) scale, one after the other (a
+		-- button inside the band follows it; its own ratio is then 1)
+		for i, frame in ipairs(movers) do
+			if frame and skin.bandSaved[i] then
+				local okE, fe = pcall(f.GetEffectiveScale, f)
+				local okM, me = pcall(frame.GetEffectiveScale, frame)
+				if okE and okM and fe and me and me > 0 then
+					frame:SetScale(frame:GetScale() * fe / me)
+				end
+			end
+		end
+		local sc = Kit.scale * (b.scale or 1)
+		local rail = Kit:Piece(b.prefix .. "_t")
+		local middle = rail and rail.box and (rail.box[2] + rail.box[4]) / 2 * sc or 9
+		-- the plate is 1.4 x the band (MinimapZoneBand): the band sized so the
+		-- plate spans the frame, its caps' gems on the frame's top corners
+		local strip = rep and rep.strip
+		local ss = strip and strip.scale or Kit.scale
+		local okW, fw = pcall(f.GetWidth, f)
+		if not (okW and fw and not (issecretvalue and issecretvalue(fw)) and fw > 0) then
+			return
+		end
+		local reach = CAP_GEM_X * ss - 20 * sc
+		local plateW = fw + 2 * reach
+		local bandW = plateW / 1.4
+		band:ClearAllPoints()
+		band:SetPoint("CENTER", f, "TOP", 0, -middle)
+		band:SetWidth(bandW)
+		if strip and strip.SetState then
+			strip:SetState("open")
+		end
+		if rep and rep.Refit then
+			rep:Refit()
+		end
+		-- the tracking button and the calendar on the caps' gems
+		local over = bandW * 0.2
+		local tracking, clock = cluster.Tracking, _G.GameTimeFrame
+		if tracking then
+			tracking:ClearAllPoints()
+			tracking:SetPoint("CENTER", band, "LEFT", -over + CAP_GEM_X * ss, 0)
+		end
+		if clock then
+			clock:ClearAllPoints()
+			clock:SetPoint("CENTER", band, "RIGHT", over - CAP_GEM_X * ss, 0)
+		end
+		if MinimapZoneText then
+			MinimapZoneText:SetWidth(math.max(40, plateW - 2 * 70 * ss))
+		end
+		-- the clock on the Services plate's right end, clear of the header
+		local timeButton = _G.TimeManagerClockButton
+		local d = skin.divider
+		if timeButton and d then
+			timeButton:ClearAllPoints()
+			timeButton:SetPoint("RIGHT", d, "RIGHT", -DIVIDER_H * 1.6, 0)
+			timeButton:SetFrameLevel(d:GetFrameLevel() + 6)
+		end
+		skin.bandMerged = true
+	elseif skin.bandMerged then
+		local saved = skin.bandSaved or {}
+		for i, frame in ipairs(movers) do
+			local entry = saved[i]
+			if frame and entry then
+				frame:ClearAllPoints()
+				for _, pt in ipairs(entry.points) do
+					frame:SetPoint(unpack(pt))
+				end
+				if i == 1 and entry.w then
+					frame:SetWidth(entry.w)
+				end
+				if entry.scale then
+					frame:SetScale(entry.scale)
+				end
+				if entry.level then
+					frame:SetFrameLevel(entry.level)
+				end
+			end
+		end
+		if MinimapZoneText and saved.textWidth then
+			MinimapZoneText:SetWidth(saved.textWidth)
+		end
+		local strip = rep and rep.strip
+		if strip and strip.SetState then
+			strip:SetState("title")
+		end
+		if rep and rep.Refit then
+			rep:Refit()
+		end
+		skin.bandMerged = nil
+		skin.bandSaved = nil
+	end
+end
+
 local function LayoutSquare()
 	local square = active and M.db and M.db.shape == "square"
 	SetMask(square)
@@ -323,6 +544,13 @@ local function LayoutSquare()
 	end
 	local f = BorderFrame()
 	local b = BORDER[M.db and M.db.squareBorder or "window"] or BORDER.window
+	local merged = square and M:WantsServices() and ServicesBar() ~= nil
+	if not merged then
+		PlaceBand(false)
+		if skin.divider then
+			skin.divider:Hide()
+		end
+	end
 	if not square or b.value == "none" then
 		f:Hide()
 		return
@@ -340,13 +568,28 @@ local function LayoutSquare()
 		local sc = Kit.scale * b.scale
 		local l, r, t, bo = RailDepths(b.prefix, sc)
 		f:SetPoint("TOPLEFT", map, "TOPLEFT", -(l - over), t - over)
-		f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", r - over, -(bo - over))
+		if merged then
+			-- down round the Services bar (as wide as the map, under it)
+			f:SetPoint("BOTTOMRIGHT", ServicesBar(), "BOTTOMRIGHT", r - over, -(bo - over))
+		else
+			f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", r - over, -(bo - over))
+		end
 		local nine = f.nine[b.prefix]
 		if not nine then
 			nine = Kit:NineSlice(f, { prefix = b.prefix, scale = sc, gems = false, body = false, corners = b.gem and "gem" or nil })
 			f.nine[b.prefix] = nine
 		end
 		nine:Show()
+		-- merged: the zone band's caps take the top corners
+		if nine.SetTopGems then
+			nine:SetTopGems(not merged)
+		end
+		if merged then
+			LayoutDivider(f, b)
+			f:Show()
+			PlaceBand(true, f, b)
+			return
+		end
 	else
 		local p = Kit:Piece(b.piece)
 		local k = Kit.scale
@@ -375,6 +618,7 @@ local function Activate()
 	Kit:Cover("minimap")
 end
 
+
 local function Deactivate()
 	if not active then
 		return
@@ -393,6 +637,18 @@ local function Hook()
 		return
 	end
 	hooked = true
+	-- Edit Mode's Size scales the map's container: the merged frame's band,
+	-- buttons and clock follow it at once
+	local container = Minimap and Minimap:GetParent()
+	if container and container ~= MinimapCluster and container.SetScale then
+		hooksecurefunc(container, "SetScale", function()
+			C_Timer.After(0, function()
+				if active then
+					M:Relayout()
+				end
+			end)
+		end)
+	end
 	-- the game sets the round mask again when the minimap's rotation is
 	-- switched (UpdateMinimapConfig); the square one after it
 	if CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then
@@ -422,10 +678,24 @@ function M:OnEnable(db)
 	end
 end
 
+-- the Services bar joins or leaves the frame: it lays itself out first
+local function LayoutWithServices()
+	local services = MelloUI:GetModule("Services")
+	if services and services.isEnabled and services.LayoutForMinimap then
+		services:LayoutForMinimap()
+	end
+	LayoutSquare()
+end
+
+-- Services calls this after laying its bar out (Edit Mode, its settings)
+function M:Relayout()
+	LayoutSquare()
+end
+
 function M:OnSettingChanged(key, _, db)
 	self.db = db
-	if key == "shape" or key == "squareBorder" then
-		LayoutSquare()
+	if key == "shape" or key == "squareBorder" or key == "servicesMerge" then
+		LayoutWithServices()
 	end
 end
 

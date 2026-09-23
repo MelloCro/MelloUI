@@ -1,0 +1,127 @@
+"""
+Recolour the painted UI kit to the palette (MelloUI.Palette, Core/Core.lua):
+two looks the player chooses between in game (UI Modifications, Borders:
+Kit Colours; user, 2026-09-23: "We can make A and B and let the users select
+when in game"), beside the art in its painted colours.
+
+The kit was painted in cool blue-grey iron and stone with bright reds; the
+palette is warm dark brown, bronze-gold trim and a deep red. Each piece keeps
+its light and dark (a gradient map on its luminance), so the painting, its
+bevels and the rails' dark edge lines (kit-art-edge-shadows) stay; only the
+colour moves:
+
+  * warm   (A, warm iron): the metal stays metal, cool grey turned to the
+           palette's browns (innerPanel, mainWindow, border, a light warm
+           grey for its highlights);
+  * bronze (B): the same browns, the bright bevels gold (trim,
+           selectedTrim, text);
+  * in both, red wherever it is painted (a selected row, an open tab, the
+    title plate, the red button, a lit gem) becomes the palette's deep red
+    (selectedTab), its highlights kept brighter so a lit gem still glints.
+
+Not recoloured, and not copied (the game reads them from Media/Kit in every
+look): pictures (backdrops, cards, icons), the tiles already in the palette's
+warmth (parchment, vellum, leather) and the coloured quilts.
+
+build_kit.py runs this after writing Media/Kit; or on its own:
+    python Tools/kit_palette.py        (Media/Kit -> Media/KitWarm, Media/KitBronze)
+"""
+import os
+import re
+import sys
+
+import numpy as np
+from PIL import Image
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+KIT = os.path.join(os.path.dirname(HERE), "Media", "Kit")
+
+
+def _hex(h):
+    return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], float)
+
+
+# MelloUI.Palette (Core/Core.lua): the swatches' own colours
+P = {
+    "mainWindow": _hex("#1F1B16"), "innerPanel": _hex("#11100D"), "raisedPanel": _hex("#2E1F14"),
+    "border": _hex("#3D342A"), "trim": _hex("#8D642F"), "text": _hex("#C6AF85"),
+    "mutedText": _hex("#7F6846"), "selectedTab": _hex("#4E1812"), "selectedTrim": _hex("#AE8546"),
+    "hover": _hex("#5A3C24"),
+}
+
+# luminance (0..1) -> colour: the metal kept metal, turned warm
+WARM = [(0.0, (0, 0, 0)), (0.10, P["innerPanel"]), (0.16, P["mainWindow"]), (0.26, P["border"]),
+        (0.55, P["mutedText"] * 1.25), (1.0, (235, 226, 205))]
+# ... and the trim: its bright bevels gold
+BRONZE = [(0.0, (0, 0, 0)), (0.08, P["innerPanel"]), (0.15, P["mainWindow"]), (0.22, P["border"]),
+          (0.38, P["trim"]), (0.55, P["selectedTrim"]), (0.8, P["text"]), (1.0, (245, 235, 210))]
+# a red's own brightness -> the palette's deep red, its highlights kept
+RED = [(0.0, (0, 0, 0)), (0.18, P["selectedTab"] * 0.7), (0.30, P["selectedTab"]), (0.5, P["selectedTab"] * 1.6),
+       (1.0, (200, 120, 100))]
+
+# pictures, the tiles already in the palette's warmth and the coloured quilts: left as painted
+SKIP = re.compile(r"^(backdrops|cards|icons)/|^tiles/(vellum|parchment|leather|quilt_|crackle)")
+# each look: its folder beside Media/Kit and its ramp (Kit.colourLooks in Kit.lua)
+LOOKS = {"warm": ("KitWarm", WARM), "bronze": ("KitBronze", BRONZE)}
+
+
+def _gradient(v, stops):
+    xs = np.array([s[0] for s in stops])
+    cs = np.array([s[1] for s in stops], float)
+    return np.stack([np.interp(v, xs, cs[:, i]) for i in range(3)], -1)
+
+
+def recoloured(name):
+    """Whether the piece `name` ("window/frame_t") is recoloured (else read
+    from Media/Kit in every look)."""
+    return not SKIP.search(name)
+
+
+def recolour(a, look):
+    """An RGBA uint8 array in the look's colours."""
+    rgb = a[..., :3].astype(float) / 255
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    red = (sat > 0.45) & (rgb[..., 0] >= rgb[..., 1]) & (rgb[..., 0] >= rgb[..., 2])
+    lum = 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
+    lum_red = 0.6 * rgb[..., 0] + 0.3 * rgb[..., 1] + 0.1 * rgb[..., 2]
+    out = np.where(red[..., None], _gradient(lum_red, RED), _gradient(lum, LOOKS[look][1]))
+    b = a.copy()
+    b[..., :3] = np.clip(np.round(out), 0, 255).astype(np.uint8)
+    return b
+
+
+def build_looks(kit=KIT):
+    """Every recoloured piece of Media/Kit into each look's folder (files of a
+    look no longer in the kit removed). Returns { look: (files, bytes) }."""
+    done = {}
+    for look, (folder, _) in LOOKS.items():
+        out_root = os.path.join(os.path.dirname(kit), folder)
+        wanted = set()
+        total = 0
+        for dirpath, _, files in os.walk(kit):
+            for f in files:
+                if not f.lower().endswith(".tga"):
+                    continue
+                src = os.path.join(dirpath, f)
+                name = os.path.relpath(src, kit)[:-4].replace(os.sep, "/")
+                if not recoloured(name):
+                    continue
+                dst = os.path.join(out_root, name.replace("/", os.sep) + ".tga")
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                a = np.array(Image.open(src).convert("RGBA"))
+                Image.fromarray(recolour(a, look)).save(dst)
+                wanted.add(os.path.normcase(dst))
+                total += os.path.getsize(dst)
+        for dirpath, _, files in os.walk(out_root):
+            for f in files:
+                p = os.path.join(dirpath, f)
+                if os.path.normcase(p) not in wanted:
+                    os.remove(p)
+        done[look] = (len(wanted), total)
+    return done
+
+
+if __name__ == "__main__":
+    for look, (n, total) in build_looks().items():
+        print(f"{look}: {n} pieces -> Media/{LOOKS[look][0]} ({total / 1e6:.1f} MB)")

@@ -146,6 +146,85 @@ local function SkinHeader(button)
 	Kit:SkinCollapseButton(button.CollapseButton, Replace)
 end
 
+-- On the reskin's parchment the quest titles and objectives are dark ink,
+-- a quest's difficulty in pips left of its tracking box (QuestInk; user,
+-- 2026-09-23: black text, "D"). The game colours them on each update; the
+-- colour it gave an objective (grey once done) is watched, so inking again
+-- never mistakes our own ink for it. Off: the game's look back.
+local PIP_SIZE = 10
+
+local function QuestLevel(questID)
+	if not (questID and C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetInfo) then
+		return nil
+	end
+	local ok, index = pcall(C_QuestLog.GetLogIndexForQuestID, questID)
+	if not (ok and index) then
+		return nil
+	end
+	local okI, info = pcall(C_QuestLog.GetInfo, index)
+	if not (okI and type(info) == "table") then
+		return nil
+	end
+	local level = info.difficultyLevel or info.level
+	if issecretvalue and issecretvalue(level) then
+		return nil
+	end
+	return level
+end
+
+-- an objective's ink from the game's colour: grey once done
+local function ObjectiveRole(r)
+	return (r and r < 0.8) and "faded" or "text"
+end
+
+local function InkList()
+	local QI = MelloUI.QuestInk
+	local sf = QuestScrollFrame
+	if not (QI and sf and sf.titleFramePool) then
+		return
+	end
+	for title in sf.titleFramePool:EnumerateActive() do
+		local fs = title.Text
+		if fs then
+			if active then
+				local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
+				QI.Ink(fs, tier == 1 and "faded" or "title")
+				title.melloPips = title.melloPips or QI.Pips(title, PIP_SIZE)
+				title.melloPips:ClearAllPoints()
+				if title.Checkbox then
+					title.melloPips:SetPoint("RIGHT", title.Checkbox, "LEFT", -4, 0)
+				else
+					title.melloPips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
+				end
+				title.melloPips:SetTier(tier)
+			else
+				QI.Plain(fs)
+				if fs.melloColourWatched then
+					fs:SetTextColor(QI.GameColour(fs))
+				end
+				if title.melloPips then
+					title.melloPips:SetTier(nil)
+				end
+			end
+		end
+	end
+	if sf.objectiveFramePool then
+		for objective in sf.objectiveFramePool:EnumerateActive() do
+			local fs = objective.Text
+			if fs then
+				QI.WatchColour(fs, ObjectiveRole)
+				if active then
+					local r = QI.GameColour(fs)
+					QI.Ink(fs, r < 0.8 and "faded" or "text")
+				else
+					QI.Plain(fs)
+					fs:SetTextColor(QI.GameColour(fs))
+				end
+			end
+		end
+	end
+end
+
 local function SkinList()
 	local sf = QuestScrollFrame
 	if not (sf and sf.titleFramePool) then
@@ -153,9 +232,25 @@ local function SkinList()
 	end
 	for title in sf.titleFramePool:EnumerateActive() do
 		SkinTitle(title)
+		if title.Text then
+			MelloUI.QuestInk.WatchColour(title.Text)
+		end
 	end
 	for header in sf.headerFramePool:EnumerateActive() do
 		SkinHeader(header)
+	end
+	InkList()
+end
+
+-- The quest list window (MelloUI's) follows: its rows drawn again
+local function InkQuestListWindow()
+	local QI = MelloUI.QuestInk
+	if QI then
+		QI.onParchment = active
+	end
+	local ql = ns.QuestList
+	if ql and ql.Panel and ql.Panel.frame and ql.Panel.Update then
+		pcall(ql.Panel.Update, ql.Panel)
 	end
 end
 
@@ -486,6 +581,7 @@ local function Activate()
 	SkinList()
 	SkinExistingPins()
 	RefreshPins()
+	InkQuestListWindow()
 end
 
 local function Deactivate()
@@ -501,6 +597,11 @@ local function Deactivate()
 	RefreshPins()
 	if skin.questListDock then
 		skin.questListDock(2)
+	end
+	-- the quest log and the quest list in the game's colours again
+	InkList()
+	if MelloUI.QuestInk then
+		MelloUI.QuestInk.onParchment = false
 	end
 	local ql = ns.QuestList
 	local frame = ql and ql.Panel and ql.Panel.frame

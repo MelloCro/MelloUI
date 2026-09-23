@@ -804,6 +804,37 @@ local function KitRim(b, round)
 	return b[key]
 end
 
+-- Merged into the square minimap's frame (MinimapPanel's Merge With
+-- Services; user, 2026-09-23: the header, the minimap and the services "into
+-- 1 thing", a header plate between map and services, "D"): the bar spans the
+-- map's width under that plate, on the frame's stone instead of its own box.
+local function Merged()
+	local mp = MelloUI:GetModule("MinimapPanel")
+	return KitOn() and mp and mp.isEnabled and mp.WantsServices and mp:WantsServices() and true or false
+end
+
+-- the frame's stone under the merged bar
+local function BarStone(on)
+	if not bar then
+		return
+	end
+	if on and not bar.stone then
+		bar.stone = bar:CreateTexture(nil, "BACKGROUND", nil, -1)
+		bar.stone:SetAllPoints(bar)
+	end
+	if bar.stone then
+		if on then
+			local mp = MelloUI:GetModule("MinimapPanel")
+			local piece = mp and mp.BodyPiece and mp:BodyPiece() or "window/frame_body"
+			if bar.stone.kitName ~= piece then
+				MelloUI.Kit:Apply(bar.stone, piece)
+			end
+			MelloUI.Kit:Retile(bar.stone)
+		end
+		bar.stone:SetShown(on and true or false)
+	end
+end
+
 local function LayoutBar()
 	if not bar then
 		return
@@ -817,7 +848,26 @@ local function LayoutBar()
 	local icon, gap = ICON, GAP
 	local cell = icon * ring
 	local inset = kit and 0 or (cell - icon) / 2
-	bar:SetSize(PER_ROW * cell + (PER_ROW + 1) * gap, rows * cell + (rows + 1) * gap)
+	local merged = Merged()
+	local width = PER_ROW * cell + (PER_ROW + 1) * gap
+	if merged then
+		-- as wide as the map: the cells made smaller where five do not fit
+		-- (user, 2026-09-23: "the buttons are not quite fitting the borders"),
+		-- then spread evenly across it
+		local okW, mapW = pcall(Minimap.GetWidth, Minimap)
+		if okW and mapW and not IsSecret(mapW) and mapW > 0 then
+			width = mapW
+			local minGap = 4
+			local fit = (mapW - (PER_ROW + 1) * minGap) / PER_ROW
+			if cell > fit then
+				local k = fit / cell
+				cell, icon = fit, icon * k
+				inset = kit and 0 or (cell - icon) / 2
+			end
+			gap = (mapW - PER_ROW * cell) / (PER_ROW + 1)
+		end
+	end
+	bar:SetSize(width, rows * cell + (rows + 1) * gap)
 	for i, b in ipairs(bar.buttons) do
 		local col, row = (i - 1) % PER_ROW, math.floor((i - 1) / PER_ROW)
 		b:SetSize(kit and cell or icon, kit and cell or icon)
@@ -831,8 +881,23 @@ local function LayoutBar()
 			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
 	end
+	if kit then
+		for _, b in ipairs(bar.buttons) do
+			for _, key in ipairs({ "kitRoundRim", "kitSquareRim" }) do
+				local rim = b[key]
+				if rim and rim:IsShown() and rim.icon then
+					MelloUI.Kit:SlotPlaceIcon(rim)
+				end
+			end
+		end
+	end
 	bar:ClearAllPoints()
-	bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
+	if merged then
+		local mp = MelloUI:GetModule("MinimapPanel")
+		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, -(mp.DividerHeight and mp:DividerHeight() or 26))
+	else
+		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
+	end
 end
 
 -- Round medallion icons: the icon under a circular mask with the classic
@@ -894,9 +959,14 @@ local function ApplyIconShape()
 			dark:Reapply("minimap")
 		end
 	end
+	local merged = Merged()
+	BarStone(merged)
 	if bar.SetBackdrop then
 		if WithStand() then
 			bar:SetBackdrop(nil)   -- the stand is the frame; nothing behind the medallions
+		elseif merged then
+			SetKitBox(bar, false)   -- the minimap's frame is its border, its stone the ground
+			bar:SetBackdrop(nil)
 		elseif not SetKitBox(bar, kit) then
 			bar:SetBackdrop({
 				bgFile = "Interface/Tooltips/UI-Tooltip-Background",
@@ -1127,6 +1197,15 @@ function M:OnDisable()
 		if panel and panel.isEnabled and panel.Relayout then
 			panel:Relayout()
 		end
+	end
+end
+
+-- The minimap's frame changed (its shape, border, Merge With Services): the
+-- bar laid out again, without calling back (MinimapPanel lays itself out)
+function M:LayoutForMinimap()
+	if bar and M.isEnabled then
+		ApplyIconShape()
+		LayoutBar()
 	end
 end
 

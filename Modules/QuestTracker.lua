@@ -43,6 +43,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		width = 300,
 		scale = 1,
 		textSize = 13,
+		headerSize = 16,
 		scrollStep = 25,
 		itemButtons = true,
 		collapsed = false,
@@ -59,7 +60,10 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "The size of the whole tracker, text and frame together." },
 		{ type = "slider", key = "textSize", name = "Text Size", min = 10, max = 20, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the quest titles; the objectives are one size smaller." },
+		  desc = "The size of the quest titles and the section headers; the objectives are one size smaller." },
+		{ type = "slider", key = "headerSize", name = "Header Text Size", min = 10, max = 24, step = 1,
+		  format = function(v) return tostring(math.floor(v + 0.5)) end,
+		  desc = "The size of the tracker's title, All Objectives (in the Fonts module's title face while the reskin is on, which draws it larger)." },
 		{ type = "slider", key = "scrollStep", name = "Scroll Step", min = 10, max = 120, step = 5,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "How far one turn of the mouse wheel scrolls." },
@@ -102,6 +106,7 @@ local TEXT_X = 28            -- the titles' left edge, past the map button's col
 local BULLET_X = 8           -- an objective's dash (and a turn-in line), from TEXT_X
 local LINE_X = 20            -- an objective's text, from TEXT_X: past the dash
 local ITEM_SIZE = 26         -- a quest item's button
+local PIP_SIZE = 9           -- a difficulty pip on parchment (QuestInk)
 local FALLBACK_W, FALLBACK_H = 260, 520
 
 --------------------------------------------------------------------------------
@@ -323,6 +328,30 @@ local function OnGem(toggle, strip, gem, rel, x)
 	end
 end
 
+-- The text at the chosen size (user, 2026-09-23: "the text is too small" --
+-- the game's small fonts, 12 and 10): the game's own typeface and flags, so
+-- the Fonts module's face and outline still reach it
+local function StyleText(fs, size)
+	local object = GameFontNormal
+	if not (object and object.GetFont and fs.SetFont) then
+		return
+	end
+	local ok, path, _, flags = pcall(object.GetFont, object)
+	if ok and path then
+		pcall(fs.SetFont, fs, path, size, flags or "")
+	end
+end
+
+local function TitleSize()
+	return math.floor((tonumber(M.db and M.db.textSize) or 13) + 0.5)
+end
+
+-- All Objectives' size (user, 2026-09-23: it was the game font's large size,
+-- fixed, and could not be changed in the configurator)
+local function HeaderSize()
+	return math.floor((tonumber(M.db and M.db.headerSize) or 16) + 0.5)
+end
+
 local function ApplyLook()
 	local kitOn = KitCovers() and BuildKitLook()
 	if kitOn then
@@ -338,9 +367,31 @@ local function ApplyLook()
 			looks.kit.plate:Hide()
 		end
 	end
+	-- the title at Header Text Size: the base font first, then the title face
+	-- over it (the face keeps the size it was given, as the section headers)
 	local Kit = MelloUI.Kit
-	if Kit and Kit.TitleFont and header then
-		pcall(Kit.TitleFont, Kit, header.text, kitOn and true or false)
+	if header then
+		if Kit and Kit.TitleFont and header.text.melloFontSaved then
+			pcall(Kit.TitleFont, Kit, header.text, false)
+		end
+		StyleText(header.text, HeaderSize())
+		if kitOn and Kit and Kit.TitleFont then
+			pcall(Kit.TitleFont, Kit, header.text, true)
+		end
+		-- on the plate's painted band, not its canvas: the band sits lower in
+		-- the canvas, and the title rode high on it (user, 2026-09-23: "move
+		-- this All Objectives Text to be in the Middle of the Red Background")
+		local dy = 0
+		local strip = kitOn and kitOn.strip
+		local pieces = MelloUI_KitLayout and MelloUI_KitLayout.pieces
+		if strip and pieces and Kit.StripPieceName then
+			local mid = pieces[Kit:StripPieceName(strip.base, "mid", strip.state)]
+			if mid and mid.box then
+				dy = (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (strip.scale or Kit.scale or 1)
+			end
+		end
+		header.text:ClearAllPoints()
+		header.text:SetPoint("CENTER", header, "CENTER", 0, dy)
 	end
 	if header and header.toggle then
 		OnGem(header.toggle, kitOn and kitOn.strip, TITLE_GEM, header, -4)
@@ -584,22 +635,24 @@ local function ReleaseBlock(block)
 	freeBlocks[#freeBlocks + 1] = block
 end
 
--- The text at the chosen size (user, 2026-09-23: "the text is too small" --
--- the game's small fonts, 12 and 10): the game's own typeface and flags, so
--- the Fonts module's face and outline still reach it
-local function StyleText(fs, size)
-	local object = GameFontNormal
-	if not (object and object.GetFont and fs.SetFont) then
-		return
-	end
-	local ok, path, _, flags = pcall(object.GetFont, object)
-	if ok and path then
-		pcall(fs.SetFont, fs, path, size, flags or "")
-	end
+-- On the parchment sheet the text is dark ink and a quest's difficulty is
+-- in pips beside its title (QuestInk; user, 2026-09-23)
+local function Inked()
+	local Kit = MelloUI.Kit
+	return MelloUI.QuestInk ~= nil and KitCovers() and Kit and Kit.ParchmentOn and Kit:ParchmentOn("questTracker") or false
 end
 
-local function TitleSize()
-	return math.floor((tonumber(M.db and M.db.textSize) or 13) + 0.5)
+-- A line's colour on parchment: done or greyed lines faded, the rest ink
+local function InkLine(fs, ink, r)
+	local QI = MelloUI.QuestInk
+	if not QI then
+		return
+	end
+	if ink then
+		QI.Ink(fs, (r and r < 0.8) and "faded" or "text")
+	else
+		QI.Plain(fs)
+	end
 end
 
 local function Line(block, i)
@@ -630,6 +683,8 @@ local function PutLine(block, i, text, y, width, dash, r, g, b)
 	local x = TEXT_X + (dash and LINE_X or BULLET_X)
 	fs:SetText(text)
 	fs:SetTextColor(r, g, b)
+	InkLine(fs, block.ink, r)
+	InkLine(fs.dash, block.ink, r)
 	fs:ClearAllPoints()
 	fs:SetPoint("TOPLEFT", block, "TOPLEFT", x, -y)
 	fs:SetWidth(width - x)
@@ -766,9 +821,30 @@ local function FillBlock(block, questID, width, followedID)
 	StyleText(t, TitleSize())
 	t:ClearAllPoints()
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
-	t:SetWidth(textWidth - TEXT_X)
+	-- on parchment: the title in ink, the difficulty in pips at the right of
+	-- its first line (left of the item); else the game's difficulty colour
+	local QI = MelloUI.QuestInk
+	local ink = Inked()
+	block.ink = ink
+	local tier = ink and QI.TierForQuest(questID, level) or nil
+	local pipsRoom = 0
+	if tier then
+		block.pips = block.pips or QI.Pips(block, PIP_SIZE)
+		block.pips:ClearAllPoints()
+		block.pips:SetPoint("RIGHT", block, "TOPLEFT", textWidth, -TitleSize() / 2 - 1)
+		block.pips:SetTier(tier)
+		pipsRoom = QI.PipsWidth(PIP_SIZE) + 6
+	elseif block.pips then
+		block.pips:SetTier(nil)
+	end
+	t:SetWidth(textWidth - TEXT_X - pipsRoom)
 	t:SetText(level and string.format("[%d] %s", level, title) or title)
 	t:SetTextColor(DifficultyColor(level))
+	if ink then
+		QI.Ink(t, tier == 1 and "faded" or "title")
+	elseif QI then
+		QI.Plain(t)
+	end
 	local y = t:GetStringHeight() + TITLE_GAP
 
 	local n = 0
@@ -956,6 +1032,15 @@ local function FillRecipeBlock(block, entry, width)
 	t:SetWidth(width - TEXT_X)
 	t:SetText((name or ("Recipe " .. entry.id)) .. (entry.recraft and " (recraft)" or ""))
 	t:SetTextColor(1, 0.82, 0)
+	-- a recipe on parchment: its name in ink, no pips (no difficulty)
+	block.ink = Inked()
+	if block.pips then
+		block.pips:SetTier(nil)
+	end
+	InkLine(t, block.ink, 1)
+	if block.ink and MelloUI.QuestInk then
+		MelloUI.QuestInk.Ink(t, "title")
+	end
 	local y = t:GetStringHeight() + TITLE_GAP
 	local n = 0
 	local basic = Enum and Enum.CraftingReagentType and Enum.CraftingReagentType.Basic
@@ -1431,6 +1516,16 @@ function M:OnEnable(db)
 	end
 	ApplyLook()
 	frame:Show()
+	-- the parchment sheet switched on or off: ink or colour again
+	local Kit = MelloUI.Kit
+	if Kit and Kit.SetParchment and not M.parchmentHooked then
+		M.parchmentHooked = true
+		hooksecurefunc(Kit, "SetParchment", function(_, area)
+			if area == "questTracker" and M.isEnabled then
+				MarkDirty()
+			end
+		end)
+	end
 	MarkDirty()
 end
 
