@@ -1632,6 +1632,41 @@ function Overlay:Create()
 	frame.background:SetTexture(TexturePath("ScrollFrame"))
 	frame.background:SetTexCoord(0, 1, 0, TEX_BOTTOM)
 
+	-- The parchment as a sheet with painted edges (user, 2026-09-23: painted
+	-- edges in more places, the voice-over window among them). The picture's
+	-- own parchment is covered by a dark backing, and the same parchment,
+	-- cut from the picture, lies on it with dry-brush strokes on every side
+	-- (Kit:PaintedEdge), so the strokes show against the dark inside the iron
+	-- frame and its gold trim, which stay as painted.
+	local Kit = MelloUI.Kit
+	if Kit and Kit.PaintedEdge then
+		-- the parchment in the 1024 x 512 texture, and so in the window
+		local u1, u2, v1, v2 = 352 / 1024, 982 / 1024, 58 / 512, 292 / 512
+		local sx, sy = FRAME_W / 1024, FRAME_H / (TEX_BOTTOM * 512)
+		local left, right = 352 * sx, 982 * sx
+		local top, bottom = 58 * sy, 292 * sy
+		local backing = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+		backing:SetColorTexture(0.09, 0.07, 0.05, 1)
+		backing:SetPoint("TOPLEFT", frame, "TOPLEFT", left, -top)
+		backing:SetSize(right - left, bottom - top)
+		local sheet = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
+		sheet:SetTexture(TexturePath("ScrollFrame"))
+		sheet:SetTexCoord(u1, u2, v1, v2)
+		-- in the kit's one parchment tone, as every other parchment
+		local tint = Kit.parchmentTint
+		if tint then
+			sheet:SetVertexColor(tint[1], tint[2], tint[3])
+		end
+		sheet:SetAllPoints(backing)
+		local edge = Kit:PaintedEdge(sheet, sheet, false, true)
+		if edge then
+			edge:Fit(right - left, bottom - top)
+		else
+			backing:Hide()
+			sheet:Hide()
+		end
+	end
+
 	self:CreatePortrait()
 
 	local container = CreateFrame("Frame", nil, frame)
@@ -1713,10 +1748,20 @@ function Overlay:Create()
 	container.subtitle:SetMaxLines(3)
 	container.subtitle:SetTextColor(0.24, 0.14, 0.05)
 	container.subtitle:Hide()
+	-- each new page fades in (a quarter of a second, easing out) instead of
+	-- jumping in: the reading eye follows it
+	local fade = container.subtitle:CreateAnimationGroup()
+	local alpha = fade:CreateAnimation("Alpha")
+	alpha:SetFromAlpha(0)
+	alpha:SetToAlpha(1)
+	alpha:SetDuration(0.25)
+	alpha:SetSmoothing("OUT")
+	fade:SetToFinalAlpha(true)
+	container.subtitle.fade = fade
 	local pageAcc = 0
 	container:SetScript("OnUpdate", function(_, elapsed)
 		pageAcc = pageAcc + elapsed
-		if pageAcc < 0.25 then
+		if pageAcc < 0.1 then
 			return
 		end
 		pageAcc = 0
@@ -1798,26 +1843,47 @@ local function BuildPages(fs, text)
 	return #pages > 0 and pages or { text }
 end
 
--- Which page the playback is on, by share of characters spoken so far.
+-- How long a page takes to SAY, in letters: its own letters plus the pauses
+-- the voice makes at its punctuation -- about half a second at a full stop,
+-- a quarter at a comma, which at a speaking pace of some 14 letters a second
+-- are 7 and 3 letters (user, 2026-09-23: "go ahead with the subtitle
+-- pacing"). A page ending a sentence carries that sentence's pause, so the
+-- next page comes up when the voice starts it again, not during the pause.
+local STOP_PAUSE, COMMA_PAUSE = 7, 3
+
+local function SpokenWeight(text)
+	local _, stops = text:gsub("[%.!%?]+", "")
+	local _, commas = text:gsub("[,;:]", "")
+	return #text + stops * STOP_PAUSE + commas * COMMA_PAUSE
+end
+
+-- Which page the playback is on: the share of the clip played so far against
+-- the pages' spoken weights. The clip's own length where it is known (a
+-- recorded line), else the estimate the text-to-speech line was timed by.
 local function SubtitlePage(entry)
 	local pages = entry.pages
 	if not pages or #pages <= 1 then
 		return 1
 	end
-	local total = 0
-	for _, page in ipairs(pages) do
-		total = total + #page
+	if not entry.pageWeights then
+		local weights, total = {}, 0
+		for i, page in ipairs(pages) do
+			weights[i] = SpokenWeight(page)
+			total = total + weights[i]
+		end
+		entry.pageWeights, entry.pageTotal = weights, total
 	end
+	local length = entry.length or entry.expected
 	local progress = 0
-	if entry.expected and entry.expected > 0 and entry.startedAt and not paused then
-		progress = (GetTime() - entry.startedAt) / entry.expected
+	if length and length > 0 and entry.startedAt and not paused then
+		progress = (GetTime() - entry.startedAt) / length
 	end
 	local at, index = 0, 1
-	for i, page in ipairs(pages) do
-		if progress >= at / total then
+	for i, weight in ipairs(entry.pageWeights) do
+		if progress >= at / entry.pageTotal then
 			index = i
 		end
-		at = at + #page
+		at = at + weight
 	end
 	return math.min(index, #pages)
 end
@@ -1880,10 +1946,17 @@ function Overlay:Update()
 		if not current.pages or current.pagesWidth ~= width then
 			current.pages = BuildPages(container.subtitle, current.text)
 			current.pagesWidth = width
+			current.pageWeights = nil
 		end
 		current.page = SubtitlePage(current)
 		container.subtitle:SetText(current.pages[current.page] or current.text)
 		container.subtitle:Show()
+		-- a new line or a new page fades in; the same page redrawn stays put
+		if container.subtitle.shownEntry ~= current or container.subtitle.shownPage ~= current.page then
+			container.subtitle.shownEntry, container.subtitle.shownPage = current, current.page
+			container.subtitle.fade:Stop()
+			container.subtitle.fade:Play()
+		end
 		last = container.subtitle
 	else
 		container.subtitle:Hide()

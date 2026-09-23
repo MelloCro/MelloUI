@@ -24,7 +24,6 @@ local M = MelloUI:RegisterModule("Services", {
 		roundIcons = true,
 		showButton = false,
 		angle = 205,
-		trackerNoticeShown = false,
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
@@ -46,7 +45,7 @@ local function IsSecret(v)
 end
 
 local function Plain(v)
-	if v == nil or IsSecret(v) then
+	if IsSecret(v) or v == nil then
 		return nil
 	end
 	return v

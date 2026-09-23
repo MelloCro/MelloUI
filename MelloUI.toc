@@ -12,6 +12,7 @@
 ## X-Curse-Project-ID: 1702190
 
 Core\Core.lua
+Core\Anim.lua
 Core\Config.lua
 Core\Tutorial.lua
 Core\Backup.lua
@@ -71,6 +72,8 @@ Modules\ActionBarPanel.lua
 Modules\BackpackPanel.lua
 Modules\MinimapPanel.lua
 Modules\TrackerPanel.lua
+Modules\QuestTracker.lua
+Modules\ErrorFilter.lua
 Modules\SocialPanel.lua
 Modules\ChatPanel.lua
 Modules\DamageMeterPanel.lua

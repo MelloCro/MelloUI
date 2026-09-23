@@ -113,6 +113,8 @@ local MODULE_META = {
 	UnitFrames   = { icon = ICON .. "INV_Misc_GroupLooking",       flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose." },
 	VoiceOver    = { icon = ICON .. "INV_Misc_Horn_01",            flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it." },
 	QuestList    = { icon = ICON .. "INV_Misc_Map_01",             flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do." },
+	ErrorFilter = { icon = ICON .. "Spell_Holy_Silence",            flavour = "Quiet, please. The red shouts in the middle of the screen, a kind at a time." },
+	QuestTracker = { icon = ICON .. "INV_Misc_Book_08",            flavour = "Every watched quest within reach: the tracker scrolls when the list runs long." },
 	Route        = { icon = ICON .. "Ability_Tracking",            flavour = "A trail of gems from here to there, along the roads you have walked before." },
 	Services     = { icon = ICON .. "Ability_Repair",              flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap." },
 	PartyMarkers = { icon = ICON .. "INV_Misc_GroupNeedMore",      flavour = "A class medallion over every party member's head, ringed in their role's colour: the healer, found at a glance." },
@@ -1340,8 +1342,12 @@ local function RefreshProfilesPage()
 			row.delete:SetSize(60, 22)
 			row.delete:SetPoint("LEFT", row.default, "RIGHT", 4, 0)
 			row.delete:SetText("Delete")
+			row.share = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+			row.share:SetSize(60, 22)
+			row.share:SetPoint("LEFT", row.delete, "RIGHT", 4, 0)
+			row.share:SetText("Share")
 			row.baked = Text(row, "GameFontHighlightSmall", nil, C.dim)
-			row.baked:SetPoint("LEFT", row.delete, "RIGHT", 10, 0)
+			row.baked:SetPoint("LEFT", row.share, "RIGHT", 10, 0)
 			sec.rowFrames[i] = row
 		end
 		row.name:SetText(name)
@@ -1366,6 +1372,14 @@ local function RefreshProfilesPage()
 		row.delete:SetScript("OnClick", function()
 			MelloUI:DeleteProfile(name)
 			RefreshProfilesPage()
+		end)
+		row.share:SetScript("OnClick", function()
+			local str, err = MelloUI:ExportProfile(name)
+			if str then
+				MelloUI:ShowText(string.format("share string of '%s' (%d characters)", name, #str), str)
+			else
+				MelloUI:Print("Could not share '%s': %s.", name, err)
+			end
 		end)
 		row:Show()
 	end
@@ -1418,6 +1432,31 @@ local function BuildProfilesPage(width)
 	end
 	sec.save:SetScript("OnClick", Save)
 	page.saveButton = sec.save
+	-- a share string from someone else, stored under the name typed
+	sec.import = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
+	sec.import:SetSize(150, 22)
+	sec.import:SetPoint("LEFT", sec.save, "RIGHT", 6, 0)
+	sec.import:SetText("Import as")
+	sec.import:SetScript("OnClick", function()
+		local name = sec.nameBox:GetText():gsub("^%s+", ""):gsub("%s+$", "")
+		if name == "" then
+			MelloUI:Print("Type a name for the imported profile first, then click Import as.")
+			sec.nameBox:SetFocus()
+			return
+		end
+		MelloUI:ShowPaste(string.format("paste a MelloUI profile string for '%s'", name), function(text)
+			local ok, known, total = MelloUI:ImportProfile(name, text)
+			if not ok then
+				MelloUI:Print("Not imported: %s.", known)
+				return false
+			end
+			MelloUI:Print("Profile '%s' imported (%d settings). Load it from the list to use it.", name, total)
+			sec.nameBox:SetText("")
+			sec.nameBox:ClearFocus()
+			RefreshProfilesPage()
+			return true
+		end)
+	end)
 	sec.nameBox:SetScript("OnEnterPressed", Save)
 	sec.nameBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 	y = y + 22 + 14
@@ -1741,12 +1780,6 @@ function MelloUI:OpenConfig(moduleName)
 	SelectPage(target or currentPage or "Home")
 end
 
-function MelloUI:CloseConfig()
-	if window then
-		window:Hide()
-	end
-end
-
 -- The window's parts for the guided tour (Core/Tutorial.lua): the frames
 -- its steps point at, page selection, and a scroll that brings a part of
 -- the current page into view.
@@ -1839,6 +1872,212 @@ end
 -- Slash commands
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- /mello secrets: what this client offers for SECRET values (user, 2026-09-23:
+-- "test the secret value tools on the client first"). Part 1, at once: which
+-- of the secret-value APIs and widget methods exist. Part 2, armed until a
+-- secret shows up (fight something with a target): what the client allows
+-- with one -- concatenation, format, compare, arithmetic, SetText, SetAlpha,
+-- a status bar. Every test runs in pcall on MelloUI's own throwaway widgets;
+-- a secret is never printed, only "ok" / the error / whether the result is
+-- itself secret.
+--------------------------------------------------------------------------------
+
+local probe
+
+local function IsSecret(v)
+	return issecretvalue and issecretvalue(v) or false
+end
+
+local function Lookup(path)
+	local v = _G
+	for part in path:gmatch("[^%.]+") do
+		if type(v) ~= "table" then
+			return nil
+		end
+		v = v[part]
+	end
+	return v
+end
+
+-- "ok" (and whether the result is secret), or the error, first line only
+local function Try(fn, ...)
+	local ok, result = pcall(fn, ...)
+	if not ok then
+		local text = tostring(result):gsub("^[^:]*:%d+: ", ""):match("^[^\n]*") or "?"
+		return "|cffff6060error|r " .. text:sub(1, 110)
+	end
+	if IsSecret(result) then
+		return "|cff60ff60ok|r, result SECRET"
+	end
+	if result == nil then
+		return "|cff60ff60ok|r (nil)"
+	end
+	return "|cff60ff60ok|r, result plain"
+end
+
+local API = {
+	"issecretvalue", "canaccessvalue", "hasanysecretvalues", "issecrettable",
+	"C_Secrets.HasSecretRestrictions", "C_Secrets.ShouldAurasBeSecret", "C_Secrets.ShouldUnitIdentityBeSecret",
+	"C_Secrets.ShouldCooldownsBeSecret", "C_Secrets.GetSpellAuraSecrecy", "C_Secrets.CanCompareUnitTokens",
+	"C_RestrictedActions.IsAddOnRestrictionActive", "C_RestrictedActions.GetAddOnRestrictionState",
+	"C_CurveUtil.CreateCurve", "C_CurveUtil.CreateColorCurve", "C_CurveUtil.EvaluateColorValueFromBoolean",
+	"CurveConstants.ScaleTo100", "Enum.LuaCurveType",
+	"UnitHealthPercent", "UnitHealthMissing", "UnitGetDetailedHealPrediction", "CreateUnitHealPredictionCalculator",
+	"UnitCastingDuration", "UnitChannelDuration", "C_UnitAuras.GetAuraDuration", "C_UnitAuras.GetAuraDispelTypeColor",
+	"AbbreviateNumbers", "CreateAbbreviateConfig",
+	"C_StringUtil.TruncateWhenZero", "C_StringUtil.RoundToNearestString", "C_StringUtil.CreateNumericRuleFormatter",
+	"C_DurationUtil.CreateDurationTextBinding", "Enum.StatusBarInterpolation",
+	"C_EncodingUtil.SerializeCBOR", "C_EncodingUtil.CompressString", "C_EncodingUtil.EncodeBase64",
+	"C_Navigation.GetFrame", "C_Navigation.GetDistance", "C_SuperTrack.SetSuperTrackedUserWaypoint",
+}
+
+local function ProbeAPIs()
+	MelloUI:Print("Secret-value tools on this client (part 1 of 2):")
+	local have, missing = {}, {}
+	for _, path in ipairs(API) do
+		if Lookup(path) ~= nil then
+			have[#have + 1] = path
+		else
+			missing[#missing + 1] = path
+		end
+	end
+	MelloUI:Print("  present (%d): %s", #have, table.concat(have, ", "))
+	MelloUI:Print("  MISSING (%d): %s", #missing, #missing > 0 and table.concat(missing, ", ") or "none")
+
+	-- widget methods, on throwaway widgets of our own
+	local f = CreateFrame("Frame")
+	local sb = CreateFrame("StatusBar", nil, f)
+	local tex = f:CreateTexture()
+	local methods = {
+		{ "StatusBar:SetTimerDuration", sb.SetTimerDuration },
+		{ "Region:SetAlphaFromBoolean", tex.SetAlphaFromBoolean },
+		{ "Texture:SetVertexColorFromBoolean", tex.SetVertexColorFromBoolean },
+		{ "Region:SetShownFromBoolean", tex.SetShownFromBoolean },
+	}
+	for _, m in ipairs(methods) do
+		MelloUI:Print("  %s: %s", m[1], m[2] and "present" or "MISSING")
+	end
+	MelloUI:Print("  StatusBar:SetValue with smoothing: %s", Try(function()
+		sb:SetMinMaxValues(0, 10)
+		sb:SetValue(5, Enum.StatusBarInterpolation.ExponentialEaseOut)
+		return true
+	end))
+	MelloUI:Print("  AuraContainer frame type: %s",
+		Try(function() return CreateFrame("AuraContainer", nil, f, "CustomAuraContainerTemplate") end))
+	if C_EventUtils and C_EventUtils.IsEventValid then
+		MelloUI:Print("  event ADDON_RESTRICTION_STATE_CHANGED: %s",
+			C_EventUtils.IsEventValid("ADDON_RESTRICTION_STATE_CHANGED") and "present" or "MISSING")
+	end
+	if C_Secrets and C_Secrets.HasSecretRestrictions then
+		local ok, on = pcall(C_Secrets.HasSecretRestrictions)
+		MelloUI:Print("  secret restrictions active on this client: %s", ok and not IsSecret(on) and tostring(on) or "?")
+	end
+	-- a colour curve on the player's own health (the player's is never secret)
+	if C_CurveUtil and C_CurveUtil.CreateColorCurve and UnitHealthPercent then
+		MelloUI:Print("  colour curve through UnitHealthPercent: %s", Try(function()
+			local curve = C_CurveUtil.CreateColorCurve()
+			if Enum.LuaCurveType then
+				curve:SetType(Enum.LuaCurveType.Step)
+			end
+			curve:AddPoint(0, CreateColor(1, 0, 0, 1))
+			curve:AddPoint(0.5, CreateColor(0, 1, 0, 1))
+			local color = UnitHealthPercent("player", true, curve)
+			return color and color.GetRGB and select(2, color:GetRGB())
+		end))
+	end
+	f:Hide()
+end
+
+-- the first secret the game hands us: a health / power number of a unit in
+-- reach, or a name
+local UNITS = { "target", "focus", "mouseover", "nameplate1", "nameplate2", "nameplate3", "boss1", "party1" }
+local function FindSecret()
+	for _, unit in ipairs(UNITS) do
+		for _, fn in ipairs({ UnitHealth, UnitHealthMax, UnitPower }) do
+			local ok, v = pcall(fn, unit)
+			if ok and IsSecret(v) then
+				return v, unit, "number"
+			end
+		end
+	end
+	for _, unit in ipairs(UNITS) do
+		local ok, v = pcall(UnitName, unit)
+		if ok and IsSecret(v) then
+			return v, unit, "name"
+		end
+	end
+end
+
+local function ProbeSecret(v, unit, kind)
+	MelloUI:Print("Secret found (part 2 of 2): a %s of %s. What this client allows with it:", kind, unit)
+	local f = CreateFrame("Frame")
+	local fs = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	local tex = f:CreateTexture()
+	local sb = CreateFrame("StatusBar", nil, f)
+	local tests = {
+		{ "concatenate  \"x\" .. v", function() return "x" .. v end },
+		{ "string.format(\"%s\", v)", function() return string.format("%s", v) end },
+		{ "tostring(v)", function() return tostring(v) end },
+		{ "compare  v == v", function() return v == v end },
+		{ "boolean test  if v then", function() if v then return true end return false end },
+		{ "table key  t[v]", function() return rawset({}, v, 1) ~= nil end },
+		{ "fs:SetText(v)", function() fs:SetText(v); return fs:GetText() end },
+		{ "fs:SetText(\"x\" .. v)", function() fs:SetText("x" .. v); return fs:GetText() end },
+		{ "fs:SetFormattedText(\"%s\", v)", function() fs:SetFormattedText("%s", v); return fs:GetText() end },
+	}
+	if kind == "number" then
+		local numeric = {
+			{ "compare  v > 0", function() return v > 0 end },
+			{ "arithmetic  v + 1", function() return v + 1 end },
+			{ "string.format(\"%d\", v)", function() return string.format("%d", v) end },
+			{ "AbbreviateNumbers(v)", function() return AbbreviateNumbers(v) end },
+			{ "C_StringUtil.TruncateWhenZero(v)", function() return C_StringUtil.TruncateWhenZero(v) end },
+			{ "tex:SetAlpha(v)", function() tex:SetAlpha(v); return tex:GetAlpha() end },
+			{ "StatusBar SetMinMaxValues / SetValue", function() sb:SetMinMaxValues(0, UnitHealthMax(unit)); sb:SetValue(v); return true end },
+			{ "UnitHealthPercent(unit, true, ScaleTo100)", function() return UnitHealthPercent(unit, true, CurveConstants.ScaleTo100) end },
+		}
+		for _, t in ipairs(numeric) do
+			tests[#tests + 1] = t
+		end
+	end
+	for _, t in ipairs(tests) do
+		MelloUI:Print("  %-42s %s", t[1], Try(t[2]))
+	end
+	f:Hide()
+	MelloUI:ShowLog("mello secrets")
+end
+
+local function ArmProbe()
+	if not probe then
+		probe = CreateFrame("Frame")
+		probe:SetScript("OnEvent", function(self)
+			local v, unit, kind = FindSecret()
+			if IsSecret(v) then
+				self:UnregisterAllEvents()
+				ProbeSecret(v, unit, kind)
+			end
+		end)
+	end
+	probe:RegisterEvent("PLAYER_TARGET_CHANGED")
+	probe:RegisterEvent("PLAYER_REGEN_DISABLED")
+	probe:RegisterEvent("UNIT_HEALTH")
+	probe:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+end
+
+function MelloUI:SecretProbe()
+	self:ClearLog()
+	ProbeAPIs()
+	local v, unit, kind = FindSecret()
+	if IsSecret(v) then
+		ProbeSecret(v, unit, kind)
+		return
+	end
+	ArmProbe()
+	self:Print("No secret value in reach right now. Part 2 runs by itself as soon as the game hands one out: target an enemy and fight it. /mello secrets again re-runs part 1.")
+	self:ShowLog("mello secrets")
+end
+
 SLASH_MELLOUI1 = "/mello"
 SLASH_MELLOUI2 = "/melloui"
 SlashCmdList.MELLOUI = function(msg)
@@ -1883,6 +2122,24 @@ SlashCmdList.MELLOUI = function(msg)
 			else
 				MelloUI:Print(MelloUI:SetDefaultProfile(name) and ("'" .. name .. "' is applied on a fresh install.") or ("No profile '" .. name .. "'."))
 			end
+		elseif sub == "export" and name ~= "" then
+			local str, err = MelloUI:ExportProfile(name)
+			if str then
+				MelloUI:ShowText(string.format("share string of '%s' (%d characters)", name, #str), str)
+			else
+				MelloUI:Print("Could not share '%s': %s.", name, err)
+			end
+		elseif sub == "import" and name ~= "" then
+			MelloUI:ShowPaste(string.format("paste a MelloUI profile string for '%s'", name), function(text)
+				local ok, known, total = MelloUI:ImportProfile(name, text)
+				if not ok then
+					MelloUI:Print("Not imported: %s.", known)
+					return false
+				end
+				MelloUI:Print("Profile '%s' imported (%d settings). /mello profile load %s to use it.", name, total, name)
+				MelloUI:RefreshConfig()
+				return true
+			end)
 		elseif sub == "list" or sub == nil then
 			local names = ProfileNames()
 			MelloUI:Print("Profiles (%d). Active: %s, default: %s.", #names, tostring(MelloUI.db.activeProfile or "none"), tostring(MelloUI.db.defaultProfile or "none"))
@@ -1890,7 +2147,7 @@ SlashCmdList.MELLOUI = function(msg)
 				print("   " .. n .. (MelloUI:IsProfileBaked(n) and "" or "  (not baked yet)"))
 			end
 		else
-			MelloUI:Print("/mello profile save <name> | load <name> | delete <name> | default <name|none> | list")
+			MelloUI:Print("/mello profile save <name> | load <name> | delete <name> | default <name|none> | export <name> | import <name> | list")
 		end
 		MelloUI:RefreshConfig()
 	elseif cmd == "layout" then
@@ -1946,6 +2203,23 @@ SlashCmdList.MELLOUI = function(msg)
 			print(string.format("   %8.1f ms  %6d calls  %s: %s", row.ms, row.calls, row.module, row.label))
 		end
 		print("   Hooks and handlers not listed used less than half a millisecond. /mello cpu reset clears the counters.")
+	elseif cmd == "secrets" then
+		MelloUI:SecretProbe()
+	elseif cmd == "preload" then
+		-- Preload Artwork (UI Modifications): how many files are held, and how
+		-- many the client says are in memory already
+		local Kit = MelloUI.Kit
+		local held, loaded = 0, nil
+		if Kit and Kit.PreloadStatus then
+			held, loaded = Kit:PreloadStatus()
+		end
+		if held == 0 then
+			MelloUI:Print("Preload Artwork: nothing held (the option, the reskin or UI Modifications is off).")
+		elseif loaded then
+			MelloUI:Print("Preload Artwork: %d files held, %d of them loaded.", held, loaded)
+		else
+			MelloUI:Print("Preload Artwork: %d files held (this client does not report which are loaded).", held)
+		end
 	elseif cmd == "dump" then
 		-- printed through MelloUI:Print (kept for the copy window), nested
 		-- tables written out one level deep (the window positions), and the
@@ -2037,6 +2311,8 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 		print("   /mello dump [m]            print the stored settings of all modules or one module")
 		print("   /mello cpu                 CPU time per handler (needs scriptProfile)")
+		print("   /mello preload             how much of the artwork is preloaded")
+		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")
 	elseif cmd ~= "" and not ModuleByName(cmd) and cmd ~= "profiles" then
 		MelloUI:Print("Unknown command or module '%s'. /mello help lists the commands, /mello list the modules.", cmd)
 	else

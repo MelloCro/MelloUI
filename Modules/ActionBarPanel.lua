@@ -173,24 +173,64 @@ local function SkinBar(bar)
 	-- EndCaps frame's show / hide (Edit Mode's 'hide bar art')
 	if bar.EndCaps then
 		local caps = bar.EndCaps
-		local reps = {}
+		local reps = {}   -- { rep, cap }
 		local left, right = caps.LeftEndCap, caps.RightEndCap
 		if left and left.Texture then
-			reps[#reps + 1] = Replace(left.Texture, { as = "ui-hud-actionbar-gryphon-left", parent = bar, level = 0, strata = "BACKGROUND" })
+			local rep = Replace(left.Texture, { as = "ui-hud-actionbar-gryphon-left", parent = bar, level = 0, strata = "BACKGROUND" })
+			if rep then
+				reps[#reps + 1] = { rep = rep, cap = left }
+			end
 		end
 		if right and right.Texture then
-			reps[#reps + 1] = Replace(right.Texture, { as = "ui-hud-actionbar-gryphon-right", parent = bar, level = 0, strata = "BACKGROUND" })
+			local rep = Replace(right.Texture, { as = "ui-hud-actionbar-gryphon-right", parent = bar, level = 0, strata = "BACKGROUND" })
+			if rep then
+				reps[#reps + 1] = { rep = rep, cap = right }
+			end
+		end
+		-- each orb shows only while its gryphon would: the EndCaps frame, the
+		-- cap frame itself AND its texture (player report, 2026-09-23: "the
+		-- new gryphons Icons dont want to Hide in edit mode" -- Edit Mode's
+		-- Hide Bar Art did not only hide the EndCaps frame, so the orbs,
+		-- which followed that frame alone, stayed)
+		local function Wanted(cap)
+			if not caps:IsShown() then
+				return false
+			end
+			if cap.IsShown and not cap:IsShown() then
+				return false
+			end
+			if cap.Texture and cap.Texture.IsShown and not cap.Texture:IsShown() then
+				return false
+			end
+			return true
 		end
 		local function Sync()
 			if active then
-				for _, rep in ipairs(reps) do
-					rep:SetShown(caps:IsShown())
+				for _, entry in ipairs(reps) do
+					entry.rep:SetShown(Wanted(entry.cap))
 				end
 			end
 		end
-		hooksecurefunc(caps, "Show", Sync)
-		hooksecurefunc(caps, "Hide", Sync)
-		hooksecurefunc(caps, "SetShown", Sync)
+		local function Watch(obj)
+			if obj then
+				for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+					if type(obj[method]) == "function" then
+						hooksecurefunc(obj, method, Sync)
+					end
+				end
+			end
+		end
+		Watch(caps)
+		for _, entry in ipairs(reps) do
+			Watch(entry.cap)
+			Watch(entry.cap.Texture)
+		end
+		-- the bar's own updates of its art (Edit Mode's setting applied)
+		for _, method in ipairs({ "UpdateEndCaps", "UpdateSystemSettingHideBarArt" }) do
+			if type(bar[method]) == "function" then
+				hooksecurefunc(bar, method, Sync)
+			end
+		end
 		skin.capSync[#skin.capSync + 1] = Sync
 	end
 	local page = bar.ActionBarPageNumber
@@ -400,7 +440,6 @@ local function SkinBagBar()
 	for _, name in ipairs(BAG_BUTTONS) do
 		local button = _G[name]
 		if button and button.icon and button.GetNormalTexture then
-			button.NormalTexture = button.NormalTexture or button:GetNormalTexture()
 			local ok, w, h = pcall(button.GetSize, button)
 			local pitch = (ok and not Secret(w) and w and w > 0) and { w, h } or nil
 			Kit:SkinActionButton(button, Replace, pitch)

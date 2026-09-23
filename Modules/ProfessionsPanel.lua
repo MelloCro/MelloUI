@@ -1062,6 +1062,12 @@ function M:OnDisable()
 	Deactivate()
 end
 
+-- /mello cpu: what the window's first open and its tab switches cost
+MelloUI:Profile("ProfessionsPanel", "skin build (first open)", BuildSkin)
+MelloUI:Profile("ProfessionsPanel", "skin switch-on", Activate)
+MelloUI:Profile("ProfessionsPanel", "crafting page refresh", M.RefreshCrafting)
+MelloUI:Profile("ProfessionsPanel", "cards refresh", M.RefreshCards)
+
 --------------------------------------------------------------------------------
 -- /profdump: the window's art, for the mapping. Default: every visible game
 -- texture under the window (frame / region, rect, layer, alpha, art name).

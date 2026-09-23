@@ -100,55 +100,104 @@ function MelloUI:ClearLog()
 end
 
 local copyFrame
-function MelloUI:ShowLog(title)
-	if not copyFrame then
-		local f = CreateFrame("Frame", "MelloUICopyFrame", UIParent, "BackdropTemplate")
-		f:SetSize(760, 480)
-		f:SetPoint("CENTER")
-		f:SetFrameStrata("DIALOG")
-		f:SetMovable(true)
-		f:EnableMouse(true)
-		f:RegisterForDrag("LeftButton")
-		f:SetScript("OnDragStart", f.StartMoving)
-		f:SetScript("OnDragStop", f.StopMovingOrSizing)
-		f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-		f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
-		f:SetBackdropBorderColor(0.4, 0.35, 0.25, 1)
-		f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		f.title:SetPoint("TOPLEFT", 12, -10)
-		f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		f.hint:SetPoint("TOPRIGHT", -40, -12)
-		f.hint:SetText("Ctrl+A, Ctrl+C to copy  -  Esc closes")
-		local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-		close:SetPoint("TOPRIGHT", 2, 2)
-		local scroll = CreateFrame("ScrollFrame", "MelloUICopyScroll", f, "UIPanelScrollFrameTemplate")
-		scroll:SetPoint("TOPLEFT", 12, -32)
-		scroll:SetPoint("BOTTOMRIGHT", -32, 12)
-		local edit = CreateFrame("EditBox", "MelloUICopyEdit", scroll)
-		edit:SetMultiLine(true)
-		edit:SetAutoFocus(false)
-		edit:SetFontObject(ChatFontNormal)
-		edit:SetWidth(700)
-		edit:SetScript("OnEscapePressed", function() f:Hide() end)
-		edit:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-		-- typing must not change the text: put it back
-		edit:SetScript("OnTextChanged", function(self, userInput)
-			if userInput then
-				self:SetText(f.text or "")
-				self:HighlightText()
-			end
-		end)
-		scroll:SetScrollChild(edit)
-		f.edit = edit
-		tinsert(UISpecialFrames, "MelloUICopyFrame")
-		copyFrame = f
+
+-- The copy window: a large text box to select and copy from. In PASTE mode
+-- (MelloUI:ShowPaste) the box takes typing and an Import button hands the
+-- text on; otherwise whatever is typed is put back at once.
+local function CopyFrame()
+	if copyFrame then
+		return copyFrame
 	end
-	copyFrame.title:SetText(PREFIX .. (title or "log") .. string.format("  (%d lines)", #log))
-	copyFrame.text = table.concat(log, "\n")
-	copyFrame.edit:SetText(copyFrame.text)
-	copyFrame:Show()
-	copyFrame.edit:SetFocus()
-	copyFrame.edit:HighlightText()
+	local f = CreateFrame("Frame", "MelloUICopyFrame", UIParent, "BackdropTemplate")
+	f:SetSize(760, 480)
+	f:SetPoint("CENTER")
+	f:SetFrameStrata("DIALOG")
+	f:SetMovable(true)
+	f:EnableMouse(true)
+	f:RegisterForDrag("LeftButton")
+	f:SetScript("OnDragStart", f.StartMoving)
+	f:SetScript("OnDragStop", f.StopMovingOrSizing)
+	f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+	f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
+	f:SetBackdropBorderColor(0.4, 0.35, 0.25, 1)
+	f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	f.title:SetPoint("TOPLEFT", 12, -10)
+	f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	f.hint:SetPoint("TOPRIGHT", -40, -12)
+	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+	close:SetPoint("TOPRIGHT", 2, 2)
+	local scroll = CreateFrame("ScrollFrame", "MelloUICopyScroll", f, "UIPanelScrollFrameTemplate")
+	scroll:SetPoint("TOPLEFT", 12, -32)
+	scroll:SetPoint("BOTTOMRIGHT", -32, 12)
+	f.scroll = scroll
+	local edit = CreateFrame("EditBox", "MelloUICopyEdit", scroll)
+	edit:SetMultiLine(true)
+	edit:SetAutoFocus(false)
+	edit:SetFontObject(ChatFontNormal)
+	edit:SetWidth(700)
+	edit:SetScript("OnEscapePressed", function() f:Hide() end)
+	edit:SetScript("OnEditFocusGained", function(self)
+		if not f.onAccept then
+			self:HighlightText()
+		end
+	end)
+	-- typing must not change the text: put it back (not while pasting)
+	edit:SetScript("OnTextChanged", function(self, userInput)
+		if userInput and not f.onAccept then
+			self:SetText(f.text or "")
+			self:HighlightText()
+		end
+	end)
+	scroll:SetScrollChild(edit)
+	f.edit = edit
+	f.accept = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+	f.accept:SetSize(120, 24)
+	f.accept:SetPoint("BOTTOMRIGHT", -34, 10)
+	f.accept:SetText("Import")
+	f.accept:SetScript("OnClick", function()
+		local fn = f.onAccept
+		if fn and fn(f.edit:GetText()) then
+			f:Hide()
+		end
+	end)
+	f:SetScript("OnHide", function() f.onAccept = nil end)
+	tinsert(UISpecialFrames, "MelloUICopyFrame")
+	copyFrame = f
+	return f
+end
+
+-- Show `text` to be selected and copied.
+function MelloUI:ShowText(title, text)
+	local f = CopyFrame()
+	f.onAccept = nil
+	f.accept:Hide()
+	f.scroll:SetPoint("BOTTOMRIGHT", -32, 12)
+	f.hint:SetText("Ctrl+A, Ctrl+C to copy  -  Esc closes")
+	f.title:SetText(PREFIX .. (title or ""))
+	f.text = text or ""
+	f.edit:SetText(f.text)
+	f:Show()
+	f.edit:SetFocus()
+	f.edit:HighlightText()
+end
+
+-- An empty box to paste into; Import calls onAccept(text), and the window
+-- closes when it returns true.
+function MelloUI:ShowPaste(title, onAccept)
+	local f = CopyFrame()
+	f.onAccept = onAccept
+	f.accept:Show()
+	f.scroll:SetPoint("BOTTOMRIGHT", -32, 42)
+	f.hint:SetText("Ctrl+V to paste  -  Esc closes")
+	f.title:SetText(PREFIX .. (title or ""))
+	f.text = ""
+	f.edit:SetText("")
+	f:Show()
+	f.edit:SetFocus()
+end
+
+function MelloUI:ShowLog(title)
+	self:ShowText((title or "log") .. string.format("  (%d lines)", #log), table.concat(log, "\n"))
 end
 
 SLASH_MELLOLOG1 = "/mellolog"
@@ -318,14 +367,6 @@ function MelloUI:SetModuleEnabled(name, enabled)
 		module.isEnabled = false
 		SafeCall(module, "OnDisable", self:GetModuleDB(name))
 	end
-end
-
-function MelloUI:EnableModule(name)
-	self:SetModuleEnabled(name, true)
-end
-
-function MelloUI:DisableModule(name)
-	self:SetModuleEnabled(name, false)
 end
 
 -- Called by the config panel when a module setting changes.
@@ -680,6 +721,119 @@ function MelloUI:ApplySettingsText(text)
 		end
 	end
 	return applied
+end
+
+--------------------------------------------------------------------------------
+-- Share strings (user, 2026-09-23: "Profile share strings with the game's own
+-- encoders"). A profile is already its settings' differences from the
+-- defaults, as text; to share it, that text is compressed and turned into
+-- plain letters by the game's own encoders (C_EncodingUtil: Deflate, then
+-- Base64) behind a tag naming the format:
+--
+--   !MelloUI1!<base64 of the deflated profile text>
+--
+-- An import is decoded back and checked -- every entry "key=value", at least
+-- one for a module this addon has -- before it becomes a profile. It is only
+-- stored under the name given: nothing changes until it is loaded.
+--------------------------------------------------------------------------------
+
+local SHARE_TAG = "!MelloUI1!"
+
+local function Deflate()
+	return Enum and Enum.CompressionMethod and Enum.CompressionMethod.Deflate
+end
+
+function MelloUI:ExportProfile(name)
+	local text = self:Profiles()[name]
+	if type(text) ~= "string" then
+		return nil, "no profile '" .. tostring(name) .. "'"
+	end
+	local enc = C_EncodingUtil
+	if not (enc and enc.CompressString and enc.EncodeBase64) then
+		return nil, "this client cannot make share strings"
+	end
+	local method = Deflate()
+	local okC, packed
+	if method then
+		okC, packed = pcall(enc.CompressString, text, method)
+	else
+		okC, packed = pcall(enc.CompressString, text)
+	end
+	if not (okC and type(packed) == "string") then
+		return nil, "the profile could not be compressed"
+	end
+	local okB, letters = pcall(enc.EncodeBase64, packed)
+	if not (okB and type(letters) == "string") then
+		return nil, "the profile could not be encoded"
+	end
+	return SHARE_TAG .. letters
+end
+
+-- The profile text inside a share string, and how many of its entries are for
+-- modules this addon has; nil and the reason when it is not one.
+function MelloUI:DecodeProfileString(str)
+	if type(str) ~= "string" then
+		return nil, "nothing to import"
+	end
+	-- copied from a chat or a web page it may have gained spaces or line breaks
+	str = str:gsub("%s+", "")
+	if str:sub(1, #SHARE_TAG) ~= SHARE_TAG then
+		return nil, "not a MelloUI profile string (it starts with " .. SHARE_TAG .. ")"
+	end
+	local enc = C_EncodingUtil
+	if not (enc and enc.DecodeBase64 and enc.DecompressString) then
+		return nil, "this client cannot read share strings"
+	end
+	local okB, packed = pcall(enc.DecodeBase64, str:sub(#SHARE_TAG + 1))
+	if not (okB and type(packed) == "string" and packed ~= "") then
+		return nil, "the string is damaged (cut short while copying?)"
+	end
+	local method = Deflate()
+	local okD, text
+	if method then
+		okD, text = pcall(enc.DecompressString, packed, method)
+	else
+		okD, text = pcall(enc.DecompressString, packed)
+	end
+	if not (okD and type(text) == "string") then
+		return nil, "the string is damaged (cut short while copying?)"
+	end
+	local total, known = 0, 0
+	for entry in text:gmatch("[^;]+") do
+		total = total + 1
+		local key = entry:match("^([^=]+)=.")
+		if not key then
+			return nil, "the string holds something that is not a MelloUI setting"
+		end
+		local module = key:match("^!?([^.]+)")
+		if module and self.modules[module] then
+			known = known + 1
+		end
+	end
+	if text ~= "" and known == 0 then
+		return nil, "none of its settings belong to a MelloUI module"
+	end
+	return text, known, total
+end
+
+-- Store a share string as the profile `name` (replacing one of that name).
+function MelloUI:ImportProfile(name, str)
+	name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or ""
+	if name == "" then
+		return false, "type a name for the profile first"
+	end
+	if name == self.FRESH_PROFILE then
+		return false, "'" .. name .. "' is built in"
+	end
+	local text, known, total = self:DecodeProfileString(str)
+	if not text then
+		return false, known
+	end
+	self:Profiles()[name] = text
+	if self.ScheduleBackup then
+		self:ScheduleBackup("profile import")
+	end
+	return true, known, total
 end
 
 function MelloUI:LoadProfile(name)

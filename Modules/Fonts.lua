@@ -184,7 +184,13 @@ local function DiscoverFontObjects()
 	end
 	fontObjects = {}
 	for name, value in pairs(_G) do
-		if type(name) == "string" and IsFontObject(value) then
+		-- MelloUI's own font objects are left as they are made: the voice-over
+		-- window's are dark ink on parchment, coloured per line, and the font
+		-- object itself is white -- so the outline was forced onto them and
+		-- the letters came out as smudges (player report, 2026-09-23: "the
+		-- font shadow default on the overlay for voiceover looks absolutely
+		-- wretched")
+		if type(name) == "string" and not name:find("^MelloUI") and IsFontObject(value) then
 			fontObjects[#fontObjects + 1] = { object = value, name = name }
 		end
 	end

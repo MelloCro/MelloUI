@@ -70,7 +70,27 @@ def release_notes(version):
     bullets = [line.rstrip() for line in body.splitlines() if line.strip()]
     if not bullets:
         sys.exit(f"the '## {version}' section of CHANGELOG.md is empty; add what changed")
+    offending = [b for b in bullets if TOOL_TALK.search(b)]
+    if offending:
+        sys.exit("the release notes talk about the tools, not the addon -- CHANGELOG.md, and with it "
+                 "GitHub, CurseForge and the Discord post, only say what changed in MelloUI itself:\n"
+                 + "\n".join("  " + b[:160] for b in offending))
     return "\n".join(bullets)
+
+
+# The release notes describe the ADDON and nothing else (user, 2026-09-23:
+# "Changes to the tools, including /mkit and kitforge should be excluded from
+# the changelog and releases, discord bot and github and curseforge should only
+# state the changes in the MelloUI addon itself"). One CHANGELOG.md section
+# feeds all three, so the check sits here, before anything is tagged. It names
+# the tools that do not ship -- the kit editor and kitforge, MBot, the build
+# scripts in Tools/, the release plumbing -- and refuses the release if a
+# bullet mentions one; reword the bullet (or drop it) and run again.
+TOOL_TALK = re.compile(
+    r"/mkit|\bkitforge\b|MelloUIKitEditor|kit editor|editing tools?|development tools?|\bMBot\b"
+    r"|Tools[\\/]|\.py\b|release\.py|release workflow|luacheck|\blint\b",
+    re.I,
+)
 
 
 def main():

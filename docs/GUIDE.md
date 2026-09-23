@@ -102,7 +102,7 @@ kept in the saved variables, which this client writes at `/reload` but does not 
 `Tools\bake_routes.py --watch` (the same watcher that keeps the learned roads) bakes them into
 `Media\Profiles.lua` after each `/reload`; the page shows whether a profile is baked yet. Only
 values that differ from the defaults are stored, so a profile is a few hundred bytes.
-`/mello profile` does the same from chat.
+To share a profile, click **Share** on its row and copy the string; to use someone else's, type a name, click **Import as** and paste their string, then load it from the list. `/mello profile` does the same from chat.
 
 ## Slash commands
 
@@ -115,8 +115,9 @@ values that differ from the defaults are stored, so a profile is a few hundred b
 | `/mello disable <module>` | disable a module |
 | `/mello dump [module]` | print the stored settings |
 | `/mello status` | whether the client loaded the saved variables, where the settings in use came from, and the state of the macro backup |
-| `/mello profile ...` | `save <name>`, `load <name>`, `delete <name>`, `default <name>` or `default none`, `list` (see *Profiles*) |
+| `/mello profile ...` | `save <name>`, `load <name>`, `delete <name>`, `default <name>` or `default none`, `export <name>` (a share string to copy), `import <name>` (paste someone's string in as that profile), `list` (see *Profiles*) |
 | `/mello cpu` | CPU time per handler and hook of every module since login (needs `/console scriptProfile 1` and a `/reload`); `/mello cpu reset` zeroes the counters |
+| `/mello preload` | How many artwork files Preload Artwork holds, and how many the game has loaded |
 | `/mello help` | the command list in chat |
 | `/mello tutorial` | the guided tour of the settings window (also the Tutorial button on its Home page) |
 | `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` puts it into Edit Mode as the account layout "MelloUI" and makes it active (done once by itself when the reskin is switched on), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
@@ -127,7 +128,7 @@ values that differ from the defaults are stored, so a profile is a few hundred b
 | `/services [kind]` | Services: open the nearest-service menu, or route straight to the nearest `repair`, `mailbox`, `innkeeper`, `flight`, `auction`, `bank`, `class trainer`, `profession trainer`, `barber` or `transmog` |
 | `/sfx` | Custom Sounds: the state; `/sfx play <name>` auditions a sound, `/sfx list` names them, `/sfx log` prints every sound kit the game plays and what replaced it, `/sfx kit <id>` what a kit maps to; `/sfxdump` the last sound events in the copy window |
 | `/kitwhat` | every kit texture under the mouse cursor, back to front: the piece, its size, its crop, its tint, the frame it is on (for a background that is not the one expected) |
-| `/xxdump` | every reskinned window and HUD area has a dump command that logs its frames to the copy window: `/cpdump` (character), `/sbdump`, `/profdump`, `/legdump`, `/taldump`, `/mapdump`, `/gfdump`, `/gdump` (guild), `/coldump`, `/socdump`, `/ufdump`, `/cbdump`, `/rfdump`, `/abdump`, `/bagdump`, `/mmdump`, `/trdump`, `/chdump`, `/dmdump`, `/ttdump`, `/npdump`, `/huddump`, `/kitdemo` |
+| `/xxdump` | every reskinned window and HUD area has a dump command that logs its frames to the copy window: `/cpdump` (character), `/sbdump`, `/profdump`, `/legdump`, `/qldump` (quest log), `/gfdump`, `/gdump` (guild), `/coldump`, `/socdump`, `/ufdump`, `/cbdump`, `/rfdump`, `/abdump`, `/bagdump`, `/mmdump`, `/trdump`, `/chdump`, `/dmdump`, `/ttdump`, `/npdump`, `/pmdump` (party markers), `/icondump` (class icons), `/sfxdump` (custom sounds), `/kitdemo` |
 
 ## Modules
 
@@ -556,6 +557,26 @@ on the sections with centred titles, the kit's collapse glyphs, a stone backdrop
 that follows Edit Mode's opacity and retracts when collapsed, quest items in rims, progress
 bars in the bracket. Hooks only schedule work; nothing is laid out while Edit Mode is open or
 in combat. `/trdump` prints the tracker, its header, every module and every shown block.
+
+### Quest Tracker
+
+A quest tracker of MelloUI's own in the game's tracker's place (off by default), because the
+game's tracker on this client does not scroll. The mouse wheel scrolls the list; the ends fade
+while there is more that way. Each quest has the game's map button ("..." in progress, "?"
+ready to turn in, lit while followed); click a quest to follow it, Shift-click to stop watching
+it, right-click to open it in the quest log. Quest items are used with a click out of combat.
+Tracked recipes show under Professions with their reagents, and Quests and Professions each
+fold away on their own minus. An objective line glows briefly when it counts up. It takes its
+place and height from the game's tracker in Edit Mode, is moved by its header with Unlock the
+Windows, and a grip in its bottom-left corner sizes it; Height, Width, Scale, Text Size and
+Scroll Step are in its settings.
+
+### Error Messages
+
+Hides the red error messages you choose from the middle of the screen (off by default), a kind
+at a time: not enough resources, not ready yet, out of range, facing and target, busy or
+moving. MelloUI takes the error event from the game's error frame while a kind is hidden and
+hands every other message to the frame's own handler, so those show as always.
 
 ## Releasing
 

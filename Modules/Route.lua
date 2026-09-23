@@ -32,6 +32,8 @@ local M = MelloUI:RegisterModule("Route", {
 		trackFirstWatched = false,
 		arrow = true,
 		arrowScale = 1,
+		worldMarker = true,
+		routeBeam = true,
 		notice = true,
 		noticeSound = true,
 		lineWidth = 3,
@@ -52,6 +54,10 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
 		  desc = "An arrow that points along the route's next leg, with the distance and destination. Drag it to move it; /route arrow reset puts it back at the top centre." },
 		{ type = "slider", key = "arrowScale", name = "Arrow Size", min = 0.5, max = 2, step = 0.1 },
+		{ type = "toggle", key = "worldMarker", name = "World Marker",
+		  desc = "A gem over the destination itself, with the distance, that stays on it as you move the camera; when the place is off screen, an arrow at the screen's edge points the way to turn. Takes the place of the game's own destination marker while it is on." },
+		{ type = "toggle", key = "routeBeam", name = "Light Beam",
+		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away. It fades as you arrive and hides while the place is off screen. Part of the World Marker." },
 		{ type = "header", name = "Notice" },
 		{ type = "toggle", key = "notice", name = "Tracking Notice",
 		  desc = "A one-line notice in the upper third of the screen whenever something new is tracked, and when you arrive." },
@@ -78,7 +84,8 @@ local function IsSecret(v)
 end
 
 local function Plain(v)
-	if v == nil or IsSecret(v) then
+	-- asked first: comparing a secret, even with nil, is refused on this client
+	if IsSecret(v) or v == nil then
 		return nil
 	end
 	return v
@@ -1418,16 +1425,6 @@ local function ReadWaypoint()
 	Plan(true, true)
 end
 
-function M:SetDestination(mapID, x, y, label)
-	local cont, yx, yy = ToYards(mapID, x, y)
-	if not cont then
-		return false
-	end
-	destination = { cont = cont, x = yx, y = yy, mapID = mapID, mx = x, my = y, label = label }
-	Plan(true, true)
-	return true
-end
-
 -- A candidate is { mapID, x, y } (map fraction) or { cont, wx, wy } (world
 -- coordinates as the client tables give them). Returns continent-map yards.
 local function CandidateYards(c)
@@ -1739,10 +1736,39 @@ local mapFrame = nil
 -- below the lowest pin, so the dots show through and the pins stay clickable.
 -- Pins that are part of the map art rather than markers on it: the explored
 -- areas (drawn as a pin above the greyed base tiles), zone highlights, debug.
+-- The fog of war is art too (user, 2026-09-23: the route showed only where
+-- the map was explored): taken for a pin, it set the route's ceiling and the
+-- route was drawn under the fog. Any layer named for fog or exploration
+-- counts, whatever this client calls it.
 local ART_PINS = {
 	PIN_FRAME_LEVEL_MAP_EXPLORATION = true, PIN_FRAME_LEVEL_MAP_HIGHLIGHT = true,
 	PIN_FRAME_LEVEL_DEBUG = true, PIN_FRAME_LEVEL_MAP_LINK = true,
+	PIN_FRAME_LEVEL_FOG_OF_WAR = true,
 }
+local function IsArtLayer(kind)
+	if ART_PINS[kind] then
+		return true
+	end
+	return type(kind) == "string" and (kind:find("FOG", 1, true) or kind:find("EXPLOR", 1, true)) and true or false
+end
+
+-- What sits on the world map's canvas, by frame level (for /route layers)
+local function CanvasLayers(canvas)
+	local out = {}
+	for _, child in ipairs({ canvas:GetChildren() }) do
+		local kind = "tiles"
+		if child.GetFrameLevelType then
+			local ok, k = pcall(child.GetFrameLevelType, child)
+			kind = ok and tostring(k) or "pin"
+		elseif child.pinTemplate then
+			kind = "pin"
+		end
+		out[#out + 1] = { child:GetFrameLevel(), kind, child == mapFrame }
+	end
+	table.sort(out, function(a, b) return a[1] < b[1] end)
+	return out
+end
+
 local function LayerRouteFrame(canvas)
 	local tiles, pins = canvas:GetFrameLevel(), nil
 	for _, child in ipairs({ canvas:GetChildren() }) do
@@ -1755,7 +1781,7 @@ local function LayerRouteFrame(canvas)
 			elseif child.pinTemplate then
 				kind = "pin"
 			end
-			if kind and not ART_PINS[kind] then
+			if kind and not IsArtLayer(kind) then
 				if not pins or lv < pins then
 					pins = lv
 				end
@@ -2048,6 +2074,287 @@ local function PlaceArrow()
 	arrow:SetScale(tonumber(M.db.arrowScale) or 1)
 end
 
+--------------------------------------------------------------------------------
+-- World marker (user, 2026-09-23: "go ahead with the route arrow"). The game
+-- keeps a navigation frame over the super-tracked destination's real place on
+-- the screen (C_Navigation.GetFrame; it slides to the screen's edge while the
+-- place is beside or behind the camera). The marker hangs on it: the kit's
+-- gem with the distance over the destination itself, and at the screen's edge
+-- an arrow pointing the way to turn. The direction arrow above still follows
+-- the road; this one shows where the road ends. The game's own destination
+-- marker is only faded while ours shows -- never hidden, moved or written to.
+--------------------------------------------------------------------------------
+
+local marker = nil
+local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"
+local BEAM_W, BEAM_H = 48, 420
+local BEAM_RED = { 1, 0.16, 0.1 }
+local BEAM_SPAN = BEAM_H / (256 * BEAM_W / 64)   -- how many times the streak strip repeats up the beam
+local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
+-- off screen, the arrow goes round the character on this ring (UI units from
+-- the screen's centre, the character stands about there) instead of sitting
+-- at the screen's edge (user, 2026-09-23: "its too far off the character")
+local RING_X, RING_Y, RING_DY = 230, 170, -20
+local gameMarkerFaded = false
+local gameMarkerHooked = false
+local fadingGame = false        -- our own SetAlpha on the game's marker, so the hook lets it through
+
+local function NavFrame()
+	if C_Navigation and C_Navigation.GetFrame then
+		local ok, f = pcall(C_Navigation.GetFrame)
+		if ok and f then
+			return f
+		end
+	end
+	return nil
+end
+
+-- The game's own marker at alpha 0 while ours shows, back to 1 after. A
+-- post-hook keeps it at 0 when the game sets its alpha again.
+local function FadeGameMarker(on)
+	local f = _G.SuperTrackedFrame
+	if not (f and f.SetAlpha) or gameMarkerFaded == on then
+		return
+	end
+	gameMarkerFaded = on
+	if not gameMarkerHooked then
+		gameMarkerHooked = true
+		hooksecurefunc(f, "SetAlpha", function(self)
+			if gameMarkerFaded and not fadingGame then
+				fadingGame = true
+				self:SetAlpha(0)
+				fadingGame = false
+			end
+		end)
+	end
+	fadingGame = true
+	f:SetAlpha(on and 0 or 1)
+	fadingGame = false
+end
+
+-- Off screen: the navigation frame sits within EDGE_MARGIN of an edge. Also
+-- returns its place as a share of the screen, centre 0.5 / 0.5.
+local function ScreenPlace(nav)
+	local okC, x, y = pcall(nav.GetCenter, nav)
+	if not (okC and Plain(x) and Plain(y)) then
+		return nil
+	end
+	local scale = nav:GetEffectiveScale() / UIParent:GetEffectiveScale()
+	local w, h = UIParent:GetWidth(), UIParent:GetHeight()
+	if not (w and h and w > 0 and h > 0) then
+		return nil
+	end
+	local fx, fy = x * scale / w, y * scale / h
+	local off = fx < EDGE_MARGIN or fx > 1 - EDGE_MARGIN or fy < EDGE_MARGIN or fy > 1 - EDGE_MARGIN
+	return off, fx, fy
+end
+
+local UpdateMarker   -- below: the tick hides the marker through it
+
+local function MarkerTick(self, elapsed)
+	self.age = self.age + elapsed
+	if self.age < 1 / 60 then
+		return
+	end
+	local dt = self.age
+	self.age = 0
+	-- the destination cleared (a map pin removed, a quest untracked) or its
+	-- navigation frame gone: away at once, whatever else still ticks
+	-- (user, 2026-09-23: the arrow stayed round the character after clearing)
+	local nav = self.nav
+	if not (nav and destination and M.isEnabled and M.db.worldMarker) or NavFrame() ~= nav then
+		UpdateMarker()
+		return
+	end
+	local off, fx, fy = ScreenPlace(nav)
+	if off == nil then
+		return
+	end
+	-- on screen: over the destination (hung on the navigation frame); off
+	-- screen: on the ring round the character, in the destination's direction
+	if not off and (self.mode ~= "nav" or self.anchoredTo ~= nav) then
+		self.mode, self.anchoredTo = "nav", nav
+		self:ClearAllPoints()
+		self:SetPoint("CENTER", nav, "CENTER")
+	end
+	self.gem:SetShown(not off)
+	self.distance:SetShown(not off)
+	self.label:SetShown(not off)
+	self.edge:SetShown(off)
+	local beam = self.beam
+	beam:SetShown(not off and M.db.routeBeam and true or false)
+	if beam:IsShown() then
+		-- the streaks rise: the strip scrolls up the beam, round and round
+		beam.scroll = (beam.scroll + dt * 0.3) % 1
+		beam.streaks:SetTexCoord(0, 1, beam.scroll, beam.scroll + BEAM_SPAN)
+	end
+	if off then
+		-- the direction from the screen's centre to where the game puts the
+		-- place (in screen units, so a wide screen does not skew it); the
+		-- arrow slides round the ring the short way, eased so it does not jitter
+		local want = math.atan2((fy - 0.5) * UIParent:GetHeight(), (fx - 0.5) * UIParent:GetWidth())
+		local diff = (want - self.angle + math.pi) % (2 * math.pi) - math.pi
+		-- half the gap a frame at 60 fps: keeps up with a fast turn, still no jitter
+		-- (user, 2026-09-23: "kinda slow response when turning"; was dt * 12)
+		self.angle = self.angle + diff * math.min(1, dt * 30)
+		self.mode, self.anchoredTo = "ring", nil
+		self:ClearAllPoints()
+		self:SetPoint("CENTER", UIParent, "CENTER", math.cos(self.angle) * RING_X, math.sin(self.angle) * RING_Y + RING_DY)
+		self.edge:SetRotation(self.angle - math.pi / 2)
+	end
+	if C_Navigation and C_Navigation.GetDistance then
+		local okD, d = pcall(C_Navigation.GetDistance)
+		if okD and Plain(d) then
+			-- the beam fades over the last 50 yards and is gone within 10
+			local fade = math.max(0, math.min(1, (d - 10) / 40))
+			if fade ~= beam.fade then
+				beam.fade = fade
+				beam.glow:SetAlpha(0.85 * fade)
+				beam.streaks:SetAlpha(0.7 * fade)
+			end
+			local text = Yards(math.floor(d + 0.5))
+			if text ~= self.distanceText then
+				self.distanceText = text
+				self.distance:SetText(text)
+			end
+		end
+	end
+end
+
+local function EnsureMarker()
+	if marker then
+		return
+	end
+	marker = CreateFrame("Frame", "MelloUIRouteMarker", UIParent)
+	marker:SetSize(44, 44)
+	marker:SetFrameStrata("LOW")
+	marker:SetClampedToScreen(true)
+	marker:EnableMouse(false)
+	-- the light beam (user, 2026-09-23: "can you build that beam, but make it
+	-- red"): a glow column from its foot at the destination up into the sky,
+	-- light streaks rising inside it (masked by the column's own shape), both
+	-- added to what is behind them. Made by Tools/make_route_beam.py.
+	local beam = CreateFrame("Frame", nil, marker)
+	beam:SetSize(BEAM_W, BEAM_H)
+	beam:SetPoint("BOTTOM", marker, "CENTER", 0, -6)
+	beam:SetFrameLevel(marker:GetFrameLevel() + 1)
+	beam.glow = beam:CreateTexture(nil, "ARTWORK")
+	beam.glow:SetAllPoints()
+	beam.glow:SetTexture(BEAM_ROOT .. "beam_glow")
+	beam.glow:SetBlendMode("ADD")
+	beam.glow:SetVertexColor(BEAM_RED[1], BEAM_RED[2], BEAM_RED[3])
+	beam.streaks = beam:CreateTexture(nil, "ARTWORK", nil, 1)
+	beam.streaks:SetAllPoints()
+	beam.streaks:SetTexture(BEAM_ROOT .. "beam_streaks", "CLAMP", "REPEAT")
+	beam.streaks:SetBlendMode("ADD")
+	beam.streaks:SetVertexColor(BEAM_RED[1], BEAM_RED[2] + 0.1, BEAM_RED[3] + 0.05)
+	if beam.CreateMaskTexture and beam.streaks.AddMaskTexture then
+		local shape = beam:CreateMaskTexture()
+		shape:SetAllPoints()
+		shape:SetTexture(BEAM_ROOT .. "beam_glow", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		beam.streaks:AddMaskTexture(shape)
+	end
+	beam.glow:SetAlpha(0.85)
+	beam.streaks:SetAlpha(0.7)
+	beam.scroll, beam.fade = 0, 1
+	-- the flare when a destination is set: the column widens from a thread
+	-- to its full width, fast at the end (easing in), as it fades up
+	local flare = beam:CreateAnimationGroup()
+	local widen = flare:CreateAnimation("Scale")
+	widen:SetScaleFrom(0.05, 1)
+	widen:SetScaleTo(1, 1)
+	widen:SetOrigin("BOTTOM", 0, 0)
+	widen:SetDuration(0.45)
+	widen:SetSmoothing("IN")
+	local rise = flare:CreateAnimation("Alpha")
+	rise:SetFromAlpha(0)
+	rise:SetToAlpha(1)
+	rise:SetDuration(0.3)
+	flare:SetToFinalAlpha(true)
+	beam.flare = flare
+	beam:Hide()
+	marker.beam = beam
+	-- the gem, the texts and the edge arrow in front of the beam
+	local front = CreateFrame("Frame", nil, marker)
+	front:SetAllPoints()
+	front:SetFrameLevel(marker:GetFrameLevel() + 3)
+	marker.gem = front:CreateTexture(nil, "ARTWORK")
+	marker.gem:SetSize(26, 26)
+	marker.gem:SetPoint("CENTER")
+	local Kit = MelloUI.Kit
+	if not (Kit and Kit.Apply and Kit:Apply(marker.gem, "deco/gem_large")) then
+		marker.gem:SetTexture("Interface/Minimap/POIIcons")
+	end
+	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	marker.distance:SetPoint("TOP", marker.gem, "BOTTOM", 0, -2)
+	marker.distance:SetTextColor(1, 0.82, 0.25)
+	marker.label = front:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	marker.label:SetPoint("TOP", marker.distance, "BOTTOM", 0, -1)
+	marker.label:SetWidth(180)
+	marker.label:SetWordWrap(false)
+	marker.edge = front:CreateTexture(nil, "ARTWORK")
+	marker.edge:SetSize(40, 40)
+	marker.edge:SetPoint("CENTER")
+	local placed = false
+	for _, atlas in ipairs({ "ui-hud-minimap-arrow-player-2x", "ui-hud-minimap-arrow-player" }) do
+		if pcall(marker.edge.SetAtlas, marker.edge, atlas) and marker.edge:GetAtlas() then
+			placed = true
+			break
+		end
+	end
+	if not placed then
+		marker.edge:SetTexture("Interface/Minimap/MinimapArrow")
+	end
+	marker.edge:SetVertexColor(1, 0.82, 0.25)
+	marker.edge:Hide()
+	-- a small pop when the marker comes up: the gem grows in and settles
+	local pop = marker.gem:CreateAnimationGroup()
+	local grow = pop:CreateAnimation("Scale")
+	grow:SetScaleFrom(1.6, 1.6)
+	grow:SetScaleTo(1, 1)
+	grow:SetDuration(0.35)
+	grow:SetSmoothing("OUT")
+	local fade = pop:CreateAnimation("Alpha")
+	fade:SetFromAlpha(0)
+	fade:SetToAlpha(1)
+	fade:SetDuration(0.2)
+	pop:SetToFinalAlpha(true)
+	marker.pop = pop
+	marker.age, marker.angle = 0, math.pi / 2
+	marker:SetScript("OnUpdate", MarkerTick)
+	marker:Hide()
+end
+
+-- Shown while there is a destination and the game has a navigation frame
+-- for it; hung on that frame, which the client moves every frame.
+UpdateMarker = function()
+	if not marker then
+		return
+	end
+	local nav = M.isEnabled and M.db.worldMarker and destination and NavFrame() or nil
+	if not nav then
+		if marker:IsShown() then
+			marker:Hide()
+		end
+		marker.nav = nil
+		FadeGameMarker(false)
+		return
+	end
+	-- the tick places it: over the destination or on the ring round the character
+	marker.nav = nav
+	marker.label:SetText(destination.label or "")
+	if not marker:IsShown() then
+		marker.distanceText = nil
+		marker:Show()
+		marker.pop:Play()
+		if M.db.routeBeam then
+			marker.beam:Show()
+			marker.beam.flare:Play()
+		end
+	end
+	FadeGameMarker(true)
+end
+
 -- How the arrow follows the route: the player is projected onto the nearest
 -- part of the path (from the part last passed onward, so a path that loops
 -- back near itself does not pull the arrow back) and the arrow aims LOOKAHEAD
@@ -2223,6 +2530,7 @@ local function MinimapTick(_, elapsed)
 	mmPainter:Begin()
 	local cont, px, py = PlayerYards()
 	local arrowShown = cont and UpdateArrow(cont, px, py) or false
+	UpdateMarker()
 	if not (route and M.isEnabled and M.db.minimap) then
 		mmPainter:End()
 		mm.text:Hide()
@@ -2281,11 +2589,14 @@ end
 
 Redraw = function()
 	DrawWorldMap()
+	-- the marker follows the destination straight away; the minimap tick
+	-- that also updates it stops as soon as there is no destination
+	UpdateMarker()
 	if arrow and not (destination and M.isEnabled and M.db.arrow) then
 		arrow:Hide()
 	end
 	if mm then
-		mm:SetShown((route ~= nil or destination ~= nil) and M.isEnabled and (M.db.minimap or M.db.distanceText or M.db.arrow))
+		mm:SetShown((route ~= nil or destination ~= nil) and M.isEnabled and (M.db.minimap or M.db.distanceText or M.db.arrow or M.db.worldMarker))
 		if not route then
 			if mmPainter then
 				mmPainter:Clear()
@@ -2427,6 +2738,21 @@ SlashCmdList.MELLOROUTE = function(msg)
 		end
 		M:Clear()
 		MelloUI:Print("Learned paths wiped for this session. Also delete Media\\RouteData.lua (or rerun the baker after the next /reload) to forget them for good.")
+	elseif msg == "layers" then
+		-- the world map's layers, low to high, and where the route sits
+		local canvas = WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas and WorldMapFrame:GetCanvas()
+		if not canvas then
+			MelloUI:Print("Open the world map first.")
+		else
+			local seen = {}
+			for _, row in ipairs(CanvasLayers(canvas)) do
+				local key = row[1] .. " " .. row[2] .. (row[3] and "  <- the route" or "")
+				if not seen[key] then
+					seen[key] = true
+					print("   " .. key .. ((not row[3] and row[2] ~= "tiles" and IsArtLayer(row[2])) and "  (art: the route goes above)" or ""))
+				end
+			end
+		end
 	elseif msg == "quest" then
 		local questID = TrackedQuestID()
 		MelloUI:Print("Tracked quest: %s   (C_SuperTrack %s, GetSuperTrackedQuestID %s, watch index %s)", tostring(questID),
@@ -2560,6 +2886,7 @@ function M:OnEnable(db)
 	EnsureMinimapFrame()
 	EnsureArrow()
 	PlaceArrow()
+	EnsureMarker()
 	if mm and not mm.ticking then
 		mm.ticking = true
 		mm:SetScript("OnUpdate", MinimapTick)
@@ -2595,12 +2922,14 @@ function M:OnDisable()
 	end
 	route = nil
 	Redraw()
+	UpdateMarker()
 end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	PlaceArrow()
 	Redraw()
+	UpdateMarker()
 end
 
 MelloUI:Profile("Route", "breadcrumbs + planning tick", Tick)

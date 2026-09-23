@@ -131,7 +131,13 @@ local function CentreName(uf, hb, rep)
 	if not (capL and capR) then
 		return
 	end
-	local y = Option("healthBarToNameAboveSpacing", 2) - 10   -- 10 px closer to the bracket (user, 2026-09-22: -5, then -5 again)
+	-- the name stands on the mid's painted rail, not on the caps' canvas top:
+	-- the gems reach above the rail by a share of the bracket's scale, so a
+	-- fixed nudge (-10, user 2026-09-22) fitted one plate size only and sank
+	-- the name into the bar on the small ones (user, 2026-09-23: size 1)
+	local mid = Kit:Piece(Kit:StripPieceName(strip.base, "mid", strip.state))
+	local railTop = (mid and mid.box and mid.box[2] or 14) * (strip.scale or 1)
+	local y = Option("healthBarToNameAboveSpacing", 2) - railTop
 	name.melloCentred = style   -- what to put back (the style's own anchors)
 	-- the span the name is centred on: from the left cap to the level
 	-- orb's outer edge where the game shows the orb (it stands past the
@@ -188,6 +194,30 @@ local function UncentreName(uf)
 	end
 end
 
+-- The level circle as tall as the bracket, gem to gem (user, 2026-09-23:
+-- "cap the level circle to the bar height"): the game grows its level frame
+-- faster than the bar with each nameplate size, so the orb dwarfed the bar
+-- on the large sizes. Sized from the bracket's own height (a plain number,
+-- where a plate's frames read secret), across any scale between the bar and
+-- the level frame; again on each of the game's layouts.
+local function FitLevelOrb(uf)
+	local orb, bracket = uf.melloLevelOrb, uf.melloBracket
+	local strip = bracket and bracket.strip
+	local tex = orb and orb.tex
+	local h = strip and strip.height
+	if not (tex and type(h) == "number" and h > 0) then
+		return
+	end
+	local ratio = 1
+	local ok, sb, so = pcall(function()
+		return strip:GetEffectiveScale(), tex:GetParent():GetEffectiveScale()
+	end)
+	if ok and type(sb) == "number" and type(so) == "number" and not Secret(sb) and not Secret(so) and so > 0 then
+		ratio = sb / so
+	end
+	tex:SetSize(h * ratio, h * ratio)
+end
+
 local function SkinUnitFrame(uf)
 	if not uf or uf.melloKit then
 		return
@@ -205,6 +235,7 @@ local function SkinUnitFrame(uf)
 			layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub,
 			fitHeight = Option("healthBarHeight", 12), alsoFade = { hb.deselectedOverlay } })
 		if rep then
+			uf.melloBracket = rep
 			-- the target / focus highlight: the game's white outline around the
 			-- bar (selectedBorder) is faded, and the bracket's own iron shines
 			-- gold instead while the game shows it (user, 2026-09-21)
@@ -255,6 +286,7 @@ local function SkinUnitFrame(uf)
 				InsetHealthBar(hb, rep)
 				rep:Refit()
 				CentreName(uf, hb, rep)
+				FitLevelOrb(uf)
 			end)
 			local enable = rep.onEnable
 			rep.onEnable = function(...)
@@ -263,12 +295,16 @@ local function SkinUnitFrame(uf)
 				end
 				InsetHealthBar(hb, rep)
 				CentreName(uf, hb, rep)
+				-- the bracket's left edge, for what stands beside the bar (the
+				-- Nameplates module's quest icon goes left of the gem cap)
+				uf.melloBracketLeft = rep.strip and rep.strip.capL or nil
 			end
 			local disable = rep.onDisable
 			rep.onDisable = function(...)
 				if disable then
 					disable(...)
 				end
+				uf.melloBracketLeft = nil
 				UncentreName(uf)
 				local points = hb.melloInset
 				if points then
@@ -284,6 +320,7 @@ local function SkinUnitFrame(uf)
 			if active then
 				InsetHealthBar(hb, rep)
 				CentreName(uf, hb, rep)
+				uf.melloBracketLeft = rep.strip and rep.strip.capL or nil
 			end
 		end
 	end
@@ -293,7 +330,8 @@ local function SkinUnitFrame(uf)
 	end
 	local lf = uf.PlayerLevelDiffFrame
 	if lf and lf.playerLevelDiffIcon then
-		Replace(lf.playerLevelDiffIcon, { as = "ui-hud-nameplates-levelindicator", rect = lf.playerLevelDiffIcon })
+		uf.melloLevelOrb = Replace(lf.playerLevelDiffIcon, { as = "ui-hud-nameplates-levelindicator", rect = lf.playerLevelDiffIcon })
+		FitLevelOrb(uf)
 		-- the game's target ring around the level circle: faded (the bar's
 		-- gold iron is the highlight — user, 2026-09-21)
 		if lf.selectedBorder then

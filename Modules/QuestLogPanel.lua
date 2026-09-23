@@ -354,11 +354,8 @@ local function SkinQuestList()
 	Kit:SkinCheckButton(frame.hide, Replace, "UI-CheckBox-Up")
 	Kit:HookScrollBoxRows(frame.scrollBox, SkinQuestListEntry, function() return active end, true)
 	Kit:SkinScrollBarsIn(frame, Replace)
-	-- the shade under the list's text, as the tracker has it (user, 2026-09-22)
-	if not skin.listShade then
-		skin.listShade = Kit:CentreShade(frame, frame.scrollBox, { inset = 0 })
-		skin.listShade:SetShown(active)
-	end
+	-- (the shade under the list's text, 2026-09-22, is gone: the page is one
+	-- even parchment -- user, 2026-09-23: "remove it")
 end
 
 --------------------------------------------------------------------------------
@@ -415,11 +412,8 @@ local function BuildSkin()
 			if border and border.Border then
 				Replace(border.Border, { as = "questlog-frame", parent = border, rect = border, alsoFade = { border.TopDetail, border.Shadow } })
 			end
-			-- the shade under the quest text, as the tracker has it (user, 2026-09-22)
-			if not skin.questShade then
-				skin.questShade = Kit:CentreShade(sf, sf, { inset = 6 })
-				skin.questShade:SetShown(active)
-			end
+			-- (the shade under the quest text, 2026-09-22, is gone: the page is
+			-- one even parchment -- user, 2026-09-23: "remove it")
 			local contents = sf.Contents
 			if contents then
 				local sep = contents.Separator
@@ -485,11 +479,6 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
-	for _, key in ipairs({ "questShade", "listShade" }) do
-		if skin[key] then
-			skin[key]:Show()
-		end
-	end
 	M:RefreshFollowers()
 	SkinList()
 	SkinExistingPins()
@@ -504,11 +493,6 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
-	end
-	for _, key in ipairs({ "questShade", "listShade" }) do
-		if skin[key] then
-			skin[key]:Hide()
-		end
 	end
 	Kit:UnfitPortrait(Portrait())
 	RefreshPins()

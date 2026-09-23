@@ -177,7 +177,18 @@ local function BuildSkin()
 	if host then
 		local bg = FirstTexture(host)
 		if bg and bg ~= host.StoneBg then
-			Replace(bg, { as = "UI-Character-Info-Stat-BG" })
+			local stone = Replace(bg, { as = "UI-Character-Info-Stat-BG" })
+			-- a parchment sheet on the right pane's stone, behind every tab
+			-- that shows there (stats, the reputation / skill / honor /
+			-- currency details, statistics), filling nearly the whole pane so
+			-- the text sits ON the parchment, its edge in the FINE strokes
+			-- that end before the first letters (user, 2026-09-23: "make sure
+			-- that the text is inside of the parchment itself"). A region of
+			-- the stone's holder, one sublevel above the stone: it comes and
+			-- goes with the skin.
+			if stone and stone.object and stone.object ~= stone.tex and Kit.ParchmentSheet then
+				Kit:ParchmentSheet(stone.object, stone.object, { rect = stone.object, margin = 2, fine = true, sublevel = 1 })
+			end
 		end
 		if host.StoneBg then
 			-- shown by the game on the paper doll only
@@ -1176,6 +1187,47 @@ local function CpDump(msg)
 		end
 		walk(CharacterFrame, 0)
 		MelloUI:Print("%d visible game textures", n)
+		return
+	end
+	-- "bars": the skill / reputation bars' bracket, opening and fill, for the
+	-- first few visible rows (the fill spilling past the rails, 2026-09-23)
+	if msg == "bars" then
+		local n = 0
+		local function Bars(scrollBox)
+			if not (scrollBox and scrollBox.GetFrames) then
+				return
+			end
+			for _, row in ipairs(scrollBox:GetFrames()) do
+				local bar = row.Content and (row.Content.ReputationBar or row.Content.SkillsBar)
+				local rep = bar and bar.melloRep
+				if rep and n < 3 and bar:IsVisible() then
+					n = n + 1
+					local l, r, t, b = rep:GetOpening()
+					Rect(string.format("%d bar", n), bar, string.format("rect=%s proxy=%s active=%s", tostring(rep.rect == bar), tostring(rep.proxy ~= nil), tostring(active)))
+					Rect(string.format("%d rep.rect", n), rep.rect)
+					Rect(string.format("%d strip", n), rep.strip, string.format("scale=%.3f height=%.1f off=%.1f", rep.strip.scale or 0, rep.strip.height or 0, rep.stripOffset or 0))
+					Rect(string.format("%d trough", n), rep.trough)
+					MelloUI:Print("%d opening l=%.1f r=%.1f t=%.1f b=%.1f", n, l, r, t, b)
+					local fill, mask = bar.Fill, bar.Mask
+					if fill then
+						Rect(string.format("%d fill", n), fill, string.format("layer=%s points=%d atlas=%s", tostring(fill:GetDrawLayer()), fill:GetNumPoints(), tostring(fill.GetAtlas and fill:GetAtlas())))
+						for i = 1, fill:GetNumPoints() do
+							local p, rel, rp, x, y = fill:GetPoint(i)
+							MelloUI:Print("   fill point %s -> %s %s %.1f %.1f", tostring(p), rel == bar and "bar" or tostring(rel and (rel:GetName() or rel:GetDebugName())), tostring(rp), x or 0, y or 0)
+						end
+					end
+					Rect(string.format("%d mask", n), mask)
+					for _, region in ipairs({ bar:GetRegions() }) do
+						if region:GetObjectType() == "Texture" and region:IsShown() and region ~= fill then
+							Rect(string.format("   %s", region:GetDebugName()), region, string.format("layer=%s kit=%s art=%s", tostring(region:GetDrawLayer()), tostring(region.kitPiece ~= nil), tostring(Kit:ArtKey(region))))
+						end
+					end
+				end
+			end
+		end
+		Bars(_G.SkillsFrame and _G.SkillsFrame.ScrollBox)
+		Bars(_G.ReputationFrame and _G.ReputationFrame.ScrollBox)
+		MelloUI:Print("%d bars", n)
 		return
 	end
 	if msg == "joints" then

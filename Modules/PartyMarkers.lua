@@ -63,7 +63,7 @@ local function Secret(v)
 end
 
 local function Plain(v)
-	if v == nil or Secret(v) then
+	if Secret(v) or v == nil then
 		return nil
 	end
 	return v

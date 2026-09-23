@@ -128,6 +128,9 @@ end
 
 local texts = setmetatable({}, { __mode = "k" }) -- [bar] = FontString
 local hooked = setmetatable({}, { __mode = "k" })
+-- [bar] = { unit = "player" | "target" | "focus", power = true for a power bar }:
+-- a SECRET value is formatted through the unit (the percentage), not the bar
+local barUnit = setmetatable({}, { __mode = "k" })
 local fontHooked = false
 
 local function BarList()
@@ -137,8 +140,14 @@ local function BarList()
 		if not db[frameKey] then
 			return
 		end
-		if db.health and health then list[#list + 1] = health end
-		if db.power and power then list[#list + 1] = power end
+		if db.health and health then
+			list[#list + 1] = health
+			barUnit[health] = { unit = frameKey }
+		end
+		if db.power and power then
+			list[#list + 1] = power
+			barUnit[power] = { unit = frameKey, power = true }
+		end
 	end
 	if PlayerFrame and PlayerFrame.PlayerFrameContent then
 		local main = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
@@ -213,10 +222,90 @@ local function ApplyPosition(fs, bar)
 	fs:SetJustifyH(point)
 end
 
--- Runs under pcall: secret values raise inside the comparison / formatting.
+local function Secret(v)
+	return issecretvalue and issecretvalue(v) or false
+end
+
+-- A SECRET value in the chosen format. The client refuses to compare a secret
+-- or do arithmetic on it, but it lets one be joined into text, formatted and
+-- abbreviated, the result staying secret and still showable (/mello secrets on
+-- this client, 2026-09-23). So: AbbreviateNumbers for the short form, the
+-- game's own percentage of the unit for the percent, the pieces joined.
+-- Nothing here tests or compares the value.
+local function SecretPercent(bar)
+	local info = barUnit[bar]
+	if not (info and CurveConstants) then
+		return nil
+	end
+	local pct
+	if info.power then
+		if not UnitPowerPercent then
+			return nil
+		end
+		pct = UnitPowerPercent(info.unit, nil, true, CurveConstants.ScaleTo100)
+	else
+		if not UnitHealthPercent then
+			return nil
+		end
+		pct = UnitHealthPercent(info.unit, true, CurveConstants.ScaleTo100)
+	end
+	if C_StringUtil and C_StringUtil.RoundToNearestString then
+		local ok, rounded = pcall(C_StringUtil.RoundToNearestString, pct)
+		if ok and (Secret(rounded) or rounded) then
+			return rounded .. "%"
+		end
+	end
+	return string.format("%d%%", pct)
+end
+
+local function SecretNumber(n)
+	if M.db.format == "full" then
+		-- 8,234 where the client can group a secret, else 8234
+		local ok, text = pcall(BreakUpLargeNumbers, n)
+		if ok and (Secret(text) or text) then
+			return text
+		end
+		return string.format("%d", n)
+	end
+	return AbbreviateNumbers(n)
+end
+
+local function SecretText(bar, value, max)
+	local fmt = M.db.format
+	if fmt == "percent" then
+		-- a unit with no percentage to read (a power type the client does not
+		-- give one for): the short number rather than nothing
+		local okP, pct = pcall(SecretPercent, bar)
+		if okP and (Secret(pct) or pct) then
+			return pct
+		end
+		return AbbreviateNumbers(value)
+	end
+	local text = SecretNumber(value)
+	if M.db.showMax then
+		text = text .. " / " .. SecretNumber(max)
+	end
+	if fmt == "both" then
+		local okP, pct = pcall(SecretPercent, bar)
+		if okP and (Secret(pct) or pct) then
+			text = text .. " | " .. pct
+		end
+	end
+	return text
+end
+
+-- Runs under pcall for anything unexpected, but a SECRET value is asked about
+-- first and never compared: comparing one is blocked by the client and logged
+-- as taint every time (Logs/taint.log, ~88 a session from here until
+-- 2026-09-23), even though the pcall hid it. Secret: formatted by SecretText,
+-- which only joins and abbreviates (user, 2026-09-23: the text had fallen back
+-- to the raw number in every fight).
 local function ReadBar(bar)
 	local value = bar:GetValue()
 	local _, max = bar:GetMinMaxValues()
+	if Secret(value) or Secret(max) then
+		return SecretText(bar, value, max)
+	end
 	if not max or max <= 0 then
 		return nil
 	end
@@ -238,6 +327,13 @@ local function UpdateBar(bar)
 		return
 	end
 	local ok, text = pcall(ReadBar, bar)
+	-- a secret text is set as it is: comparing it with the last one is refused
+	if ok and Secret(text) then
+		fs.lastText = nil
+		fs:SetText(text)
+		fs:Show()
+		return
+	end
 	if ok and text then
 		if text ~= fs.lastText then
 			fs.lastText = text
@@ -246,8 +342,8 @@ local function UpdateBar(bar)
 		fs:Show()
 		return
 	end
-	-- Secret values cannot be formatted by addon code; show the raw value if
-	-- the client lets us, otherwise nothing.
+	-- Formatting failed (an API this client lacks): the raw value if the
+	-- client lets us show it, otherwise nothing.
 	fs.lastText = nil
 	local shown = pcall(SetRawValue, fs, bar)
 	if shown then

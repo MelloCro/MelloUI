@@ -315,20 +315,10 @@ function KT:ResetAll()
 	self:Changed()
 end
 
--- Something changed: re-merge, re-apply, and tell the listeners (the editor
--- refreshes its inspector from here).
-KT.listeners = {}
-
-function KT:OnChanged(fn)
-	self.listeners[#self.listeners + 1] = fn
-end
-
+-- Something changed: re-merge and re-apply.
 function KT:Changed()
 	self:Rebuild()
 	self:Apply()
-	for _, fn in ipairs(self.listeners) do
-		pcall(fn, self)
-	end
 	if MelloUI.ScheduleBackup then
 		MelloUI:ScheduleBackup("kit tuning")
 	end

@@ -294,6 +294,13 @@ local function Build()
 			-- while the tracker is collapsed (the game leaves the NineSlice's
 			-- bottom on the last module then) — user, 2026-09-21
 			local holder = rep.object
+			-- a parchment sheet on the stone, inside the rails, ending in the
+			-- kit's dry-brush strokes (user, 2026-09-23: "leave the background
+			-- how it was and the borders, but add the parchment layer on top
+			-- of that and mask it")
+			if rep.skin and Kit.ParchmentSheet then
+				Kit:ParchmentSheet(rep.skin, holder)
+			end
 			local function Opacity()
 				local ok, alpha = pcall(tracker.NineSlice.GetAlpha, tracker.NineSlice)
 				holder:SetAlpha(ok and alpha or 1)

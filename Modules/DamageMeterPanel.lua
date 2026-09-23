@@ -120,22 +120,59 @@ local function CondenseEntry(entry, rep)
 		savedBar[i] = { bar:GetPoint(i) }
 	end
 	entry.melloBarFresh = true
+	-- the game's own anchors for the current layout, read right after the game
+	-- set them (melloBarFresh) and kept: every fit is computed from these, so it
+	-- can be redone at any time — after SetBarHeight, which only resizes the
+	-- row — without shifting an already shifted bar a second time
+	local basePoints
 	local function ShiftBar()
-		if not entry.melloBarFresh then
-			return
-		end
-		local armL, armR = rep:GetArms()
-		local okN, n = pcall(bar.GetNumPoints, bar)
-		if not okN or Secret(n) or not n then
-			return
-		end
-		local points = {}
-		for i = 1, n do
-			local okP, point, rel, relPoint, x, y = pcall(bar.GetPoint, bar, i)
-			if not okP or Secret(point) or Secret(x) or Secret(y) or not point then
+		if entry.melloBarFresh or not basePoints then
+			local okN, n = pcall(bar.GetNumPoints, bar)
+			if not okN or Secret(n) or not n then
 				return
 			end
-			points[i] = { point, rel, relPoint, x or 0, y or 0 }
+			local read = {}
+			for i = 1, n do
+				local okP, point, rel, relPoint, x, y = pcall(bar.GetPoint, bar, i)
+				if not okP or Secret(point) or Secret(x) or Secret(y) or not point then
+					return
+				end
+				read[i] = { point, rel, relPoint, x or 0, y or 0 }
+			end
+			basePoints = read
+		end
+		local points = basePoints
+		local armL, armR = rep:GetArms()
+		-- the WHOLE bracket, its gem caps included, as tall as the row (user,
+		-- 2026-09-23: "scale down the artwork here on the DPS meter bars to
+		-- fit" — fitted to the bar, the caps stood out of the row and the right
+		-- one into the window's rail). The bracket follows the bar's height,
+		-- so the bar is what is shortened: to the opening the bracket has at
+		-- the scale where the whole strip is the row's height, which scales the
+		-- caps and their arms down with it. The arms below are taken at that
+		-- scale, not the current one, since the refit comes after.
+		local inset = 0
+		local okR, rowH = pcall(entry.GetHeight, entry)
+		local strip = rep.strip
+		if okR and rowH and not Secret(rowH) and rowH > 0 and strip and strip.FitWhole and strip.scale and strip.scale > 0 then
+			local fitScale, box = strip:FitWhole(rowH)
+			if fitScale then
+				local k = fitScale / strip.scale
+				armL, armR = armL * k, armR * k
+				-- the bar's height from its own top and bottom anchors on the row
+				-- (the game's default: TOP -1, BOTTOMRIGHT +1)
+				local topY, bottomY
+				for _, pt in ipairs(points) do
+					if pt[1]:find("^TOP") then
+						topY = pt[5]
+					elseif pt[1]:find("^BOTTOM") then
+						bottomY = pt[5]
+					end
+				end
+				if topY and bottomY then
+					inset = math.max(0, (rowH + topY - bottomY - box) / 2)
+				end
+			end
 		end
 		entry.melloBarFresh = nil
 		bar:ClearAllPoints()
@@ -145,6 +182,11 @@ local function CondenseEntry(entry, rep)
 				x = x + armL
 			elseif point == "RIGHT" or point == "TOPRIGHT" or point == "BOTTOMRIGHT" then
 				x = x - armR
+			end
+			if point:find("^TOP") then
+				y = y - inset
+			elseif point:find("^BOTTOM") then
+				y = y + inset
 			end
 			bar:SetPoint(point, rel, relPoint, x, y)
 		end
@@ -267,6 +309,12 @@ local function SkinBody(container, background, key, session)
 	-- 2026-09-21: the border covered the header artwork)
 	local rep = Replace(background, { as = key, parent = container, rect = background, level = -1 })
 	background.melloRep = rep or false
+	-- the parchment laid on the stone, inside the rails, its edge painted
+	-- (user, 2026-09-23: "lets make it on chat and dps meter aswell"); it
+	-- follows the body's opacity with it (a texture of the body's skin)
+	if rep and rep.skin and Kit.ParchmentSheet then
+		Kit:ParchmentSheet(rep.skin, rep.object)
+	end
 	if not (rep and session and session.GetBackgroundAlpha) then
 		return
 	end
@@ -454,9 +502,37 @@ local function SkinSession(win)
 		SkinSourceWindow(container.SourceWindow, win)
 	end
 	SkinToggle(win.MinimizeButton)
+	-- the settings button: the kit's cog IN PLACE of the game's gear, not under
+	-- it. It was laid under the glyph (noFade) and read as two gears stacked
+	-- (user, 2026-09-23: "has its reskined version under the default one"); the
+	-- other settings cogs of the kit (quest log, spell book) already fade theirs.
 	local settings = win.SettingsDropdown
 	if settings and settings.Icon and settings.melloRep == nil then
-		settings.melloRep = Replace(settings.Icon, { as = "DamageMeterSettingsIcon", button = settings, noFade = true }) or false
+		settings.melloRep = Replace(settings.Icon, { as = "DamageMeterSettingsIcon", button = settings }) or false
+	end
+	-- the session dropdown (current / overall segment): a WowStyle2Dropdown
+	-- (the compact common-dropdown-c-button) that the game sizes to 18 or 32 px
+	-- for a short name. The sweep below would dress it as a text dropdown with
+	-- the D1 plate, whose two caps alone are wider than the button, so it
+	-- collapsed into a stub of rail and gems (user, 2026-09-23: "looking
+	-- wierd"). It takes B6 instead, the single-rail band the user picked for the
+	-- c-button's sibling (common-dropdown-b-button), which holds at any width;
+	-- the c-button's hover arrow under it goes too. Claimed here, the sweep
+	-- skips it (melloRep).
+	local sessionDD = win.SessionDropdown
+	if sessionDD and sessionDD.Background and sessionDD.melloRep == nil then
+		sessionDD.melloRep = Replace(sessionDD.Background, { as = "common-dropdown-b-button", rect = sessionDD, button = sessionDD,
+			parent = sessionDD, alsoFade = { sessionDD.Arrow } }) or false
+	end
+	-- the type dropdown ("Damage Done", "Healing Done", ...): a
+	-- WowStyle1ArrowDropdownTemplate with hasShadow false, whose Arrow the game
+	-- re-atlases on every state change (the -shadowless set). The kit's down
+	-- arrow takes its place and follows the button's hover / press; the game's
+	-- arrow stays faded whatever atlas it is given. (The sweep below skips this
+	-- dropdown: it has no Background / Text, so nothing dresses it twice.)
+	local typeDD = win.DamageMeterTypeDropdown
+	if typeDD and typeDD.Arrow and typeDD.melloRep == nil then
+		typeDD.melloRep = Replace(typeDD.Arrow, { as = "common-dropdown-a-button-shadowless", button = typeDD, rect = typeDD.Arrow }) or false
 	end
 	Kit:SweepControls(win, Replace, skin)
 end

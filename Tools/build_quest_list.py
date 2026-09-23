@@ -9,14 +9,17 @@ Sources:
   Wowhead Forever listing (cached by import_wowhead_quests.py)   quest metadata + zone
   cmangos classic-db        vanilla quest givers (creature/gameobject relations) and spawn points
   wago.tools DB2 (1.15.9)   UiMapAssignment bounds (world -> map coordinates), AreaTable names
-  Wowhead quest/NPC pages   Forever quest givers and their zone (no coordinates on Wowhead)
+  Wowhead quest/NPC pages   Forever quest givers and turn-ins: zone, and map coordinates
+                            where Wowhead has them (its NPC pages carry them since 2026-09)
   MelloUI-BuildData/cache/voice_lines.json   positions the Voice Over collector recorded in game
 
 Usage:
-  python Tools/build_quest_list.py [--fetch-npcs] [--out Media/QuestListData.lua]
+  python Tools/build_quest_list.py [--fetch-npcs] [--refresh-npcs] [--out Media/QuestListData.lua]
 
---fetch-npcs downloads the Wowhead NPC pages of Forever quest givers not yet
-cached, one every 2.5 s, to learn their zone.
+--fetch-npcs downloads the Wowhead NPC pages of Forever quest givers and
+turn-ins not yet cached, one every 2.5 s, to learn their zone and place.
+--refresh-npcs also re-downloads cached NPC pages that have no coordinates
+(pages cached before Wowhead added them).
 """
 
 import argparse
@@ -219,11 +222,36 @@ def load_listing():
     return quests
 
 
-def forever_givers(quest_ids, fetch_npcs):
-    """Start NPC (id, name, zone areaID) for Forever quests from cached pages."""
+MAPPER = re.compile(r"g_mapperData\s*=\s*(\{.*?\});", re.S)
+
+
+def npc_places(page):
+    """Where Wowhead's map puts an NPC: [(areaID, uiMapID, x, y)] in map
+    percent, first point of each zone it stands in."""
+    m = MAPPER.search(page)
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(1))
+    except ValueError:
+        return []
+    out = []
+    for area, spots in data.items():
+        for spot in spots if isinstance(spots, list) else []:
+            coords = spot.get("coords") or []
+            if coords and spot.get("uiMapId"):
+                out.append((int(area), int(spot["uiMapId"]), float(coords[0][0]), float(coords[0][1])))
+                break
+    return out
+
+
+def forever_givers(quest_ids, fetch_npcs, refresh_npcs=False):
+    """Start / end NPC (id, name) for Forever quests from cached pages, with
+    each NPC's zone (areaID) and Wowhead map places."""
     givers = {}
     enders = {}
     npc_zone = {}
+    npc_pos = {}
     for qid in quest_ids:
         path = os.path.join(WOWHEAD, f"quest_{qid}.html")
         if not os.path.exists(path):
@@ -234,7 +262,15 @@ def forever_givers(quest_ids, fetch_npcs):
         if info.get("end"):
             enders[qid] = info["end"]
     npc_ids = sorted({g["npcID"] for g in givers.values()} | {e["npcID"] for e in enders.values()})
-    missing = [n for n in npc_ids if not os.path.exists(os.path.join(WOWHEAD, f"npc_{n}.html"))]
+    def cached(n):
+        return os.path.join(WOWHEAD, f"npc_{n}.html")
+    missing = [n for n in npc_ids if not os.path.exists(cached(n))]
+    if refresh_npcs:
+        stale = [n for n in npc_ids if os.path.exists(cached(n)) and not npc_places(open(cached(n), encoding="utf-8").read())]
+        log(f"  {len(stale)} cached NPC pages without coordinates, fetched again")
+        for n in stale:
+            os.replace(cached(n), cached(n) + ".old")
+        missing += stale
     if fetch_npcs and missing:
         log(f"fetching {len(missing)} NPC pages from Wowhead for their zone")
         for n, npc_id in enumerate(missing, 1):
@@ -247,11 +283,35 @@ def forever_givers(quest_ids, fetch_npcs):
     for npc_id in npc_ids:
         path = os.path.join(WOWHEAD, f"npc_{npc_id}.html")
         if os.path.exists(path):
-            m = re.search(r'"location":\[(\d+)', open(path, encoding="utf-8").read())
+            page = open(path, encoding="utf-8").read()
+            m = re.search(r'"location":\[(\d+)', page)
             if m:
                 npc_zone[npc_id] = int(m.group(1))
-    log(f"  {len(givers)} Forever quest givers, {len(enders)} turn-ins, zone known for {len(npc_zone)} NPCs")
-    return givers, npc_zone, enders
+            places = npc_places(page)
+            if places:
+                npc_pos[npc_id] = places
+        elif os.path.exists(path + ".old"):
+            os.replace(path + ".old", path)   # the re-fetch failed: keep the old page
+    log(f"  {len(givers)} Forever quest givers, {len(enders)} turn-ins, zone known for {len(npc_zone)} NPCs, "
+        f"placed on the map for {len(npc_pos)}")
+    return givers, npc_zone, enders, npc_pos
+
+
+def place_on_map(zones, places, prefer_area=0):
+    """A Wowhead map place -> (areaID, map x %, map y %, continent, world x, world y):
+    the inverse of locate(), on the zone map's full bounds. The place in the
+    quest's own zone when the NPC stands in several."""
+    if not places:
+        return None
+    pick = next((p for p in places if prefer_area and p[0] == prefer_area), places[0])
+    area, ui_map, px, py = pick
+    bounds = [z for z in zones if z["uiMapID"] == ui_map]
+    if not bounds:
+        return None
+    z = max(bounds, key=lambda b: b["area"])
+    wy = z["y1"] - px / 100 * (z["y1"] - z["y0"])
+    wx = z["x1"] - py / 100 * (z["x1"] - z["x0"])
+    return area, round(px, 1), round(py, 1), z["mapID"], round(wx, 1), round(wy, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -601,6 +661,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=os.path.join(HERE, "..", "Media", "QuestListData.lua"))
     ap.add_argument("--fetch-npcs", action="store_true")
+    ap.add_argument("--refresh-npcs", action="store_true")
     ap.add_argument("--store", default=os.path.join(CACHE, "voice_lines.json"))
     args = ap.parse_args()
 
@@ -612,7 +673,7 @@ def main():
     store = json.load(open(args.store, encoding="utf-8")) if os.path.exists(args.store) else {}
     learned = {int(k): v for k, v in store.get("npcs", {}).items() if v.get("x") is not None}
     forever_ids = [q for q in listing if q >= 60000]
-    fgivers, npc_zone, fenders = forever_givers(forever_ids, args.fetch_npcs)
+    fgivers, npc_zone, fenders, npc_pos = forever_givers(forever_ids, args.fetch_npcs or args.refresh_npcs, args.refresh_npcs)
 
     # Quests met in game that Wowhead does not list: title and giver from the
     # collector, level unknown (0), zone and position from where you stood.
@@ -690,10 +751,15 @@ def main():
             giver_name, kind = g["name"], 1
             giver_id = int(g.get("npcID") or 0)
             npc = learned.get(g["npcID"])
+            wh = place_on_map(zones, npc_pos.get(g["npcID"]), quest_zone)
             if npc and npc.get("mapName"):
                 giver_zone = area_by_name.get(npc["mapName"].lower(), 0)
                 gx, gy = npc["x"], npc["y"]
                 stats["forever giver placed from in-game position"] += 1
+            elif wh:
+                giver_zone, gx, gy = wh[0], wh[1], wh[2]
+                world = (wh[3], wh[4], wh[5])
+                stats["forever giver placed from Wowhead"] += 1
             else:
                 giver_zone = npc_zone.get(g["npcID"], 0)
                 stats["forever giver, zone only" if giver_zone else "forever giver, no zone"] += 1
@@ -722,8 +788,14 @@ def main():
         elif qid in fenders:
             e = fenders[qid]
             ender_name, ender_id = e["name"], int(e.get("npcID") or 0)
-            ender_zone = npc_zone.get(ender_id, 0)
-            stats["forever turn-in (zone %s)" % ("known" if ender_zone else "unknown")] += 1
+            wh = place_on_map(zones, npc_pos.get(ender_id), quest_zone)
+            if wh:
+                ender_zone = wh[0]
+                ender_world = (wh[3], wh[4], wh[5])
+                stats["forever turn-in placed from Wowhead"] += 1
+            else:
+                ender_zone = npc_zone.get(ender_id, 0)
+                stats["forever turn-in (zone %s)" % ("known" if ender_zone else "unknown")] += 1
         for aid in (quest_zone, giver_zone, ender_zone):
             if aid:
                 used_zones.add(aid)

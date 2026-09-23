@@ -82,8 +82,9 @@ local M = MelloUI:RegisterModule("BarTextures", {
 			{ value = "green", label = "Green (Blizzard)" },
 			{ value = "class", label = "Class colour for players" },
 			{ value = "reaction", label = "Class (players) / reaction (NPCs)" },
+			{ value = "health", label = "By health (green, yellow, red)" },
 		  },
-		  desc = "Colour of unit frame health bars. Blizzard bakes the green into its artwork, so the module has to colour flat textures itself." },
+		  desc = "Colour of unit frame health bars. Blizzard bakes the green into its artwork, so the module has to colour flat textures itself. By health shades the bar from green at full health through yellow at half to red when low, and keeps doing so in combat." },
 		{ type = "toggle", key = "overrideThreat", name = "Colour Overrides Threat",
 		  desc = "The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show." },
 		{ type = "header", name = "Apply To" },
@@ -499,6 +500,36 @@ local function UnitOf(bar)
 	return nil
 end
 
+-- By health (user, 2026-09-23: "Health colours that keep working in
+-- combat"): green at full, yellow at half, red when low. The game works the
+-- colour out itself from this curve and the unit's health percentage
+-- (UnitHealthPercent with a colour curve), so it works while the exact health
+-- is secret in combat -- the colour comes back secret too and goes straight
+-- into the bar, which accepts it; nothing here reads or compares it
+-- (/mello secrets on this client, 2026-09-23).
+local healthCurve   -- nil: not built yet; false: this client cannot
+local function HealthCurve()
+	if healthCurve == nil then
+		healthCurve = false
+		if C_CurveUtil and C_CurveUtil.CreateColorCurve and CreateColor then
+			local ok, curve = pcall(function()
+				local c = C_CurveUtil.CreateColorCurve()
+				if Enum and Enum.LuaCurveType then
+					c:SetType(Enum.LuaCurveType.Linear)
+				end
+				c:AddPoint(0, CreateColor(0.85, 0.1, 0.08, 1))
+				c:AddPoint(0.5, CreateColor(0.95, 0.78, 0.1, 1))
+				c:AddPoint(1, CreateColor(0.1, 0.8, 0.1, 1))
+				return c
+			end)
+			if ok and curve then
+				healthCurve = curve
+			end
+		end
+	end
+	return healthCurve or nil
+end
+
 local function HealthColorFor(bar)
 	local unit = UnitOf(bar)
 	if unit then
@@ -508,10 +539,29 @@ local function HealthColorFor(bar)
 			return 0.5, 0.5, 0.5
 		end
 		local mode = M.db.healthColor
+		if mode == "health" then
+			local curve = HealthCurve()
+			if curve and UnitHealthPercent then
+				local ok, color = pcall(UnitHealthPercent, unit, true, curve)
+				if ok and color and color.GetRGB then
+					return color:GetRGB()
+				end
+			end
+			return 0.0, 1.0, 0.0
+		end
 		if mode == "class" or mode == "reaction" then
 			local ok2, r, g, b = pcall(function()
 				if UnitIsPlayer(unit) then
 					local _, class = UnitClass(unit)
+					if issecretvalue and issecretvalue(class) then
+						-- a secret class cannot key the colour table; the
+						-- game's own lookup takes it and answers in kind
+						local color = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(class)
+						if color then
+							return color:GetRGB()
+						end
+						return nil
+					end
 					local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
 					if color then
 						return color.r, color.g, color.b
@@ -526,6 +576,10 @@ local function HealthColorFor(bar)
 				end
 			end)
 			if ok2 and IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
+				return r, g, b
+			end
+			-- a class colour from a secret class comes back secret: shown as it is
+			if ok2 and issecretvalue and (issecretvalue(r) or issecretvalue(g) or issecretvalue(b)) then
 				return r, g, b
 			end
 		end
@@ -559,6 +613,14 @@ HookHealthColor = function(bar)
 		return
 	end
 	bar.melloColorHook = true
+	-- By health follows every change of the value
+	if bar.HookScript then
+		bar:HookScript("OnValueChanged", function(self)
+			if M.isEnabled and M.db.healthColor == "health" then
+				pcall(RecolorHealthBar, self)
+			end
+		end)
+	end
 	hooksecurefunc(bar, "SetStatusBarColor", function(self)
 		if recolouring or not M.isEnabled or not M.db.overrideThreat or M.db.healthColor == "green" then
 			return

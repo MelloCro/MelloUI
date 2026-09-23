@@ -126,6 +126,37 @@ end
 -- when it is first seen in that mode.
 local SkinTab
 
+local squareRims = setmetatable({}, { __mode = "k" })   -- [category tab] = the frame its rim is fitted on
+local FitSquareRims   -- below, with the refresh
+
+-- The rims are fitted to the tabs' pitch once the tabs have their final
+-- places: a frame after the tab strip shows or lays itself out, and after a
+-- tab shows or changes size (the spell book's own refresh ran before the
+-- layout, and the rims kept the icon's size -- /sbdump tabs, 2026-09-23)
+local function FitSoon(system)
+	C_Timer.After(0, function()
+		if active and FitSquareRims then
+			FitSquareRims(system)
+		end
+	end)
+end
+
+local fitWatched = setmetatable({}, { __mode = "k" })
+local function WatchForFit(system, tab)
+	if not fitWatched[system] then
+		fitWatched[system] = true
+		system:HookScript("OnShow", function() FitSoon(system) end)
+		if type(system.Layout) == "function" then
+			hooksecurefunc(system, "Layout", function() FitSoon(system) end)
+		end
+	end
+	if tab and not fitWatched[tab] then
+		fitWatched[tab] = true
+		tab:HookScript("OnShow", function() FitSoon(system) end)
+		tab:HookScript("OnSizeChanged", function() FitSoon(system) end)
+	end
+end
+
 local function SkinTabSystem(system)
 	if not system then
 		return
@@ -137,13 +168,17 @@ local function SkinTabSystem(system)
 			hooksecurefunc(system, "AddTab", function(sys)
 				for _, tab in ipairs(sys.tabs or {}) do
 					SkinTab(tab)
+					WatchForFit(sys, tab)
 				end
+				FitSoon(sys)
 			end)
 		end
 	end
 	for _, tab in ipairs(system.tabs or {}) do
 		SkinTab(tab)
+		WatchForFit(system, tab)
 	end
+	FitSoon(system)
 end
 
 SkinTab = function(tab)
@@ -192,6 +227,7 @@ SkinTab = function(tab)
 			square:EnableMouse(false)
 			square:SetSize(48, 48)
 			square:SetPoint("CENTER", tab, "CENTER")
+			squareRims[tab] = square
 			-- the icon is the game's (36 x 35 on every tab, dump-checked) and
 			-- is not touched; the rim is a square around it, sized once from
 			-- that height by the slot piece's opening (never re-measured)
@@ -236,7 +272,49 @@ SkinTab = function(tab)
 	end
 end
 
+-- The category tabs' rims share their corner gems with their neighbours, as
+-- the action bars' do: each rim is sized to the tabs' pitch (the distance
+-- between two neighbours' centres) over the gems' span, so where two tabs
+-- meet their gems land on the same spot as one (player report, 2026-09-23:
+-- "class tabs in the spellbook violently overlap with the red diamond
+-- graphical elements" -- the rims were sized from the icon, about 62 px on
+-- tabs about 46 apart, and the gems of neighbours sat side by side).
+local GEM_SPAN_X = 97 / 135     -- the slot piece's gems, centre to centre, as a share of its width
+local SLOT_ASPECT = 130 / 135
+
+FitSquareRims = function(system)
+	local centres = {}
+	for _, tab in ipairs(system and system.tabs or {}) do
+		local square = squareRims[tab]
+		if square and tab:IsShown() then
+			local ok, x = pcall(tab.GetCenter, tab)
+			if ok and x and not (issecretvalue and issecretvalue(x)) then
+				centres[#centres + 1] = x
+			end
+		end
+	end
+	table.sort(centres)
+	local pitch
+	for i = 2, #centres do
+		local d = centres[i] - centres[i - 1]
+		if d > 1 and (not pitch or d < pitch) then
+			pitch = d
+		end
+	end
+	if not pitch then
+		return
+	end
+	local w = pitch / GEM_SPAN_X
+	for _, tab in ipairs(system.tabs or {}) do
+		local square = squareRims[tab]
+		if square then
+			square:SetSize(w, w * SLOT_ASPECT)
+		end
+	end
+end
+
 local function RefreshTabs(system)
+	FitSquareRims(system)
 	for _, tab in ipairs(system and system.tabs or {}) do
 		for _, rep in ipairs(skin.reps) do
 			if rep.region == tab.SquareBackground and rep.object and rep.object.Update then
@@ -622,8 +700,41 @@ end
 
 
 SLASH_MELLOSBDUMP1 = "/sbdump"
+-- /sbdump tabs: the category tabs, their centres and sizes, the rim frames
+-- and the pitch the rims are fitted to (the gems that did not meet, 2026-09-23)
+local function DumpCategoryTabs()
+	local sb = PlayerSpellsFrame and PlayerSpellsFrame.SpellBookFrame
+	local system = sb and sb.CategoryTabSystem
+	if not system then
+		MelloUI:Print("No category tab system.")
+		return
+	end
+	MelloUI:Print("category tabs: %d, skin active %s", #(system.tabs or {}), tostring(active))
+	for i, tab in ipairs(system.tabs or {}) do
+		local ok, x, y = pcall(tab.GetCenter, tab)
+		local square = squareRims[tab]
+		MelloUI:Print("  %d: shown %s, square mode %s, centre %s, size %.1f x %.1f, rim frame %s", i,
+			tostring(tab:IsShown()), tostring(tab.squareMode), ok and x and string.format("%.1f, %.1f", x, y) or "?",
+			tab:GetWidth(), tab:GetHeight(),
+			square and string.format("%.1f x %.1f", square:GetWidth(), square:GetHeight()) or "none")
+	end
+	FitSquareRims(system)
+	MelloUI:Print("after fitting now:")
+	for i, tab in ipairs(system.tabs or {}) do
+		local square = squareRims[tab]
+		if square then
+			MelloUI:Print("  %d: rim frame %.1f x %.1f", i, square:GetWidth(), square:GetHeight())
+		end
+	end
+end
+
 SlashCmdList.MELLOSBDUMP = function(msg)
 	MelloUI:ClearLog()
+	if (msg or ""):lower():find("tab") then
+		DumpCategoryTabs()
+		MelloUI:ShowLog("sbdump tabs")
+		return
+	end
 	SbDump(msg)
 	MelloUI:ShowLog("sbdump " .. (msg or ""))
 end

@@ -40,6 +40,244 @@ function Kit:Piece(name)
 	return PIECES[name]
 end
 
+--------------------------------------------------------------------------------
+-- Preload (user, 2026-09-23: "for a split it waits for the artwork to load in
+-- ... can we make it so that it load everything at the loading screen?").
+-- The client loads a texture file the first time something asks for it and
+-- draws nothing until it is in, so a window's first open after a reload (the
+-- professions' cards and parchment, above all) showed its art popping in. One
+-- holder texture per file, set during the loading screen and kept, has every
+-- file in memory before any window asks. The holder is shown but fully
+-- transparent and 1 px: nothing to see, nothing to click.
+--------------------------------------------------------------------------------
+
+local preload
+
+--------------------------------------------------------------------------------
+-- Painted edges (user, 2026-09-23: pick B "dry brush" of
+-- kit_raw/edge_mask_catalog.png, on the spell book's parchment pages). Two
+-- masks on one texture: the corner mask, rough along its left and top sides,
+-- at the texture's top-left, and its 180-degree twin at the bottom-right, so
+-- all four sides of the texture end in bristle strokes. Each mask is at least
+-- 512 UI units square (the file's size, the strokes 18 units deep) and grows
+-- with a larger texture. Made by Tools/make_edge_mask.py.
+--------------------------------------------------------------------------------
+
+local EDGE_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\"
+local EDGE_SIZE = 512
+Kit.edgeMasks = { EDGE_ROOT .. "edge_brush_tl", EDGE_ROOT .. "edge_brush_br" }
+-- the same strokes a third as deep, for a wide panel whose text runs close to
+-- its edge (the chat windows)
+Kit.edgeMasksFine = { EDGE_ROOT .. "edge_brush_fine_tl", EDGE_ROOT .. "edge_brush_fine_br" }
+-- deep strokes on the left and right, shallow ones top and bottom (a chat
+-- window's grown backdrop)
+Kit.edgeMasksWide = { EDGE_ROOT .. "edge_brush_wide_tl", EDGE_ROOT .. "edge_brush_wide_br" }
+
+local EdgeMixin = {}
+
+-- Size and place the two masks for a texture of w x h on `anchor`.
+function EdgeMixin:Fit(w, h)
+	local sizeX, sizeY = EDGE_SIZE, EDGE_SIZE
+	if w and h and not Secret(w) and not Secret(h) then
+		if self.tight then
+			-- `tight`: the masks at the texture's own size, so a small panel
+			-- gets shorter strokes in proportion (a 340-wide popup: about 12)
+			sizeX = math.max(w, h)
+			sizeY = sizeX
+		else
+			-- each way at least the texture's own length: a tall panel (the
+			-- objective tracker) stretches the masks up and down only, so its
+			-- side strokes keep their depth
+			sizeX, sizeY = math.max(EDGE_SIZE, w), math.max(EDGE_SIZE, h)
+		end
+	end
+	local tl, br = self.masks[1], self.masks[2]
+	tl:ClearAllPoints()
+	br:ClearAllPoints()
+	if self.mirror then
+		-- flipped left-right: rough on the top and right, then bottom and left
+		tl:SetPoint("TOPRIGHT", self.anchor, "TOPRIGHT")
+		br:SetPoint("BOTTOMLEFT", self.anchor, "BOTTOMLEFT")
+	else
+		tl:SetPoint("TOPLEFT", self.anchor, "TOPLEFT")
+		br:SetPoint("BOTTOMRIGHT", self.anchor, "BOTTOMRIGHT")
+	end
+	tl:SetSize(sizeX, sizeY)
+	br:SetSize(sizeX, sizeY)
+end
+
+-- Rough painted edges on `tex` (a texture filling `anchor`); `mirror` flips
+-- the strokes left-right (a left page, so it is not the right page's twin);
+-- `tight` scales the strokes with a panel smaller than the masks' 512 units;
+-- `fine` uses the shallow strokes (Kit.edgeMasksFine), or "wide" the deep-
+-- sided, shallow-topped ones (Kit.edgeMasksWide).
+-- Returns the edge (edge:Fit(w, h) once the size is known), or nil where the
+-- client has no masks.
+function Kit:PaintedEdge(tex, anchor, mirror, tight, fine)
+	local owner = tex and tex:GetParent()
+	if not (owner and owner.CreateMaskTexture and tex.AddMaskTexture) then
+		return nil
+	end
+	local edge = Mixin({ tex = tex, anchor = anchor or tex, mirror = mirror, tight = tight, masks = {} }, EdgeMixin)
+	local set = (fine == "wide" and self.edgeMasksWide) or (fine and self.edgeMasksFine) or self.edgeMasks
+	for i, path in ipairs(set) do
+		local m = owner:CreateMaskTexture()
+		m:SetTexture(path, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		if mirror then
+			pcall(m.SetTexCoord, m, 1, 0, 0, 1)
+		end
+		edge.masks[i] = m
+		tex:AddMaskTexture(m)
+	end
+	edge:Fit()
+	return edge
+end
+
+-- A parchment sheet laid on a railed panel's stone (a Kit:NineSlice skin),
+-- inside its rails, ending in the painted edge (user, 2026-09-23: the
+-- objective tracker, the whisper popup, the chat windows and the damage meter:
+-- "leave the background how it was and the borders, but add the parchment
+-- layer on top of that and mask it"). It lies in the skin's own layer stack
+-- between the stone (BACKGROUND 0) and the rails, a little stone showing
+-- between the rails and its strokes; darkened as aged paper, so white and
+-- yellow text stays readable on it; the picture cropped to the sheet's shape,
+-- never stretched, again whenever `watch` (the frame whose size the skin
+-- follows) changes size.
+--   opts: margin (6; less than 0 reaches out under the rails), tint
+--         { r, g, b }, tight / fine / wide (see PaintedEdge), layer
+--         ("BACKGROUND") and sublevel (3); rect: lay it on this instead of
+--         inside the skin's rails (a chat window, whose rails stand outside
+--         its body), `margin` in from each side
+-- ONE tone for every parchment in the kit (user, 2026-09-23: "a lot of
+-- inconsistencies in the brightness of the parchment background" -- the added
+-- sheets were tinted to 60 % as aged paper, the pages kept the picture's own
+-- light, 112 against 191; pick B of kit_raw/parchment_tone_catalog.png, about
+-- 146: white chat and tracker text reads with its shadow, dark ink too).
+Kit.parchmentTint = { 0.80, 0.74, 0.64 }
+Kit.parchmentPiece = "backdrops/page_parchment"
+
+function Kit:ParchmentSheet(skin, watch, opts)
+	opts = opts or {}
+	if not (skin and skin.CreateTexture) then
+		return nil
+	end
+	local margin = opts.margin or 6
+	local sheet = skin:CreateTexture(nil, opts.layer or "BACKGROUND", nil, opts.sublevel or 3)
+	if opts.rect then
+		sheet:SetPoint("TOPLEFT", opts.rect, "TOPLEFT", margin, -margin)
+		sheet:SetPoint("BOTTOMRIGHT", opts.rect, "BOTTOMRIGHT", -margin, margin)
+	else
+		local pre = self.framePrefix
+		sheet:SetPoint("TOPLEFT", skin, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
+		sheet:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
+	end
+	local piece = PIECES["backdrops/page_parchment"]
+	if not (piece and self:Apply(sheet, "backdrops/page_parchment")) then
+		sheet:Hide()
+		return nil
+	end
+	local tint = opts.tint or self.parchmentTint
+	sheet:SetVertexColor(tint[1], tint[2], tint[3])
+	local edge = self:PaintedEdge(sheet, sheet, opts.mirror, opts.tight, opts.wide and "wide" or opts.fine)
+	local function Fit()
+		local ok, w, h = pcall(sheet.GetSize, sheet)
+		if not (ok and w and h) or Secret(w) or Secret(h) or w <= 0 or h <= 0 then
+			return
+		end
+		local u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
+		local pa, ra = piece.w / piece.h, w / h
+		if ra > pa then
+			local c, half = (v1 + v2) / 2, (v2 - v1) * (pa / ra) / 2
+			v1, v2 = c - half, c + half
+		else
+			local c, half = (u1 + u2) / 2, (u2 - u1) * (ra / pa) / 2
+			u1, u2 = c - half, c + half
+		end
+		sheet:SetTexCoord(u1, u2, v1, v2)
+		if edge then
+			edge:Fit(w, h)
+		end
+	end
+	watch = watch or skin
+	if watch.HookScript then
+		watch:HookScript("OnSizeChanged", Fit)
+		watch:HookScript("OnShow", Fit)
+	end
+	Fit()
+	return sheet, edge
+end
+
+-- Every file the kit draws from, as full paths, each once (the painted-edge
+-- masks with them).
+function Kit:KitFiles()
+	local files, seen = {}, {}
+	for _, list in ipairs({ self.edgeMasks, self.edgeMasksFine, self.edgeMasksWide }) do
+		for _, path in ipairs(list) do
+			files[#files + 1] = path
+		end
+	end
+	for _, p in pairs(PIECES) do
+		local file = p.file
+		if file and not seen[file] then
+			seen[file] = true
+			files[#files + 1] = ROOT .. file
+		end
+	end
+	table.sort(files)
+	return files
+end
+
+-- Hold these files (full paths) in memory; nil or an empty list lets every
+-- one go again. Returns how many are held.
+function Kit:Preload(files)
+	files = files or {}
+	if #files == 0 and not preload then
+		return 0
+	end
+	if not preload then
+		preload = CreateFrame("Frame", nil, UIParent)
+		preload:SetSize(1, 1)
+		preload:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+		preload:SetAlpha(0)
+		preload:EnableMouse(false)
+		preload.textures = {}
+	end
+	for i, path in ipairs(files) do
+		local tex = preload.textures[i]
+		if not tex then
+			tex = preload:CreateTexture(nil, "BACKGROUND")
+			tex:SetAllPoints(preload)
+			preload.textures[i] = tex
+		end
+		tex:SetTexture(path)
+	end
+	for i = #files + 1, #preload.textures do
+		preload.textures[i]:SetTexture(nil)
+	end
+	preload.count = #files
+	preload:SetShown(#files > 0)
+	return #files
+end
+
+-- How many files are held, and how many the client reports as loaded (nil
+-- when this client cannot say).
+function Kit:PreloadStatus()
+	if not (preload and preload.count and preload.count > 0) then
+		return 0, nil
+	end
+	local loaded
+	for i = 1, preload.count do
+		local tex = preload.textures[i]
+		if tex.IsObjectLoaded then
+			local ok, yes = pcall(tex.IsObjectLoaded, tex)
+			if ok and not Secret(yes) then
+				loaded = (loaded or 0) + (yes and 1 or 0)
+			end
+		end
+	end
+	return preload.count, loaded
+end
+
 -- Size of a piece on screen, in UI units.
 function Kit:Size(name, scale)
 	local p = PIECES[name]
@@ -531,10 +769,6 @@ function StripMixin:SetState(state)
 	Kit:Apply(self.capR, StripName(self.base, self.endR and "end_r" or "cap_r", state))
 end
 
-function StripMixin:GetState()
-	return self.state
-end
-
 -- Change the strip's scale (e.g. once the game element it replaces has its
 -- real height): caps resize, the mid retiles, the frame keeps its anchors.
 function StripMixin:Rescale(scale)
@@ -589,26 +823,23 @@ function StripMixin:FitBox(height)
 	return (boxCentre - p.h / 2) * self.scale
 end
 
--- Switch to another strip family (lists/row <-> lists/header): the caps'
--- sizes follow the new pieces, the frame keeps its width.
-function StripMixin:SetBase(base, state)
-	state = state or Kit:FirstState(base, "mid")
-	if base == self.base and state == self.state then
-		return
+-- The scale at which the WHOLE strip, its caps included, is `height` tall,
+-- and the height its box (the opening) has at that scale. Both come from the
+-- art alone, never from the current layout, so a panel can size what sits in
+-- the opening before the strip has been refitted. For a bracket that must fit
+-- a row rather than hug its bar (the damage meter's rows, user 2026-09-23:
+-- "scale down the artwork ... to fit").
+function StripMixin:FitWhole(height)
+	if not height or height <= 0 then
+		return nil
 	end
-	self.base = base
-	self.state, self.applied = nil, nil
-	local wl, h = Kit:Size(StripName(base, "cap_l", state), self.scale)
-	local wr = Kit:Size(StripName(base, "cap_r", state), self.scale)
-	self.height = h
-	self.wl, self.wr = wl, wr
-	self.capL:SetSize(wl, h)
-	self.capR:SetSize(wr, h)
-	self.mid:ClearAllPoints()
-	self.mid:SetPoint("TOPLEFT", self, "TOPLEFT", wl, 0)
-	self.mid:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -wr, 0)
-	self:SetState(state)
-	Kit:Retile(self.mid)
+	local natural = select(2, Kit:Size(StripName(self.base, self.endL and "end_l" or "cap_l", self.state), 1))
+	local p = PIECES[StripName(self.base, "mid", self.state)]
+	if not (natural and natural > 0 and p and p.box) then
+		return nil
+	end
+	local scale = height / natural
+	return scale, (p.box[4] - p.box[2]) * scale
 end
 
 -- A rect narrower than the two caps shows the mid alone (the caps would
@@ -842,13 +1073,30 @@ end
 
 local function Slot_Update(rim)
 	local b = rim.button
-	local disabled = b.IsEnabled and b:IsEnabled() == false
-	local checked
-	if rim.isChecked then
-		checked = rim.isChecked()
-	else
-		checked = b.GetChecked and b:GetChecked()
+	-- secret-safe, as the sweep below: this runs from the button's own
+	-- OnEnter / OnMouseDown / SetChecked hooks, and an action button can
+	-- answer IsEnabled / GetChecked with a secret in combat; a secret keeps
+	-- the rim's last known value instead of being tested (user, 2026-09-23)
+	local disabled = rim.lastDisabled or false
+	if b.IsEnabled then
+		local okE, enabled = pcall(b.IsEnabled, b)
+		if okE and not Secret(enabled) then
+			disabled = enabled == false
+		end
 	end
+	local checked = rim.lastChecked
+	local okC, c
+	if rim.isChecked then
+		okC, c = pcall(rim.isChecked)
+	elseif b.GetChecked then
+		okC, c = pcall(b.GetChecked, b)
+	else
+		okC, c = true, nil
+	end
+	if okC and not Secret(c) then
+		checked = c
+	end
+	rim.lastDisabled = disabled
 	local state
 	if rim.restState then
 		-- a fixed look (the game's tab art is the same on every tab); the
@@ -899,24 +1147,41 @@ local allRims = setmetatable({}, { __mode = "k" })
 SweepRims = function()
 	for rim in pairs(allRims) do
 		local b = rim.button
-		if b and b.IsShown and b:IsShown() and not rim.restState then
+		-- EVERY read below can come back SECRET on this client (an action
+		-- button's mouse-over in combat: "attempt to perform boolean test on
+		-- local 'over' (a secret boolean value)", user 2026-09-23). A secret
+		-- answer means "cannot know right now": the rim keeps what it had and
+		-- is read again on the next sweep; nothing is tested or compared.
+		local okV, shown = false, nil
+		if b and b.IsShown then
+			okV, shown = pcall(b.IsShown, b)
+		end
+		if okV and not Secret(shown) and shown and not rim.restState then
 			local okO, over = pcall(b.IsMouseOver, b)
 			local okS, state = pcall(b.GetButtonState, b)
-			local hover = (okO and over) and true or nil
-			local pressed = (okS and state == "PUSHED") and true or nil
+			local hover = rim.hover
+			if okO and not Secret(over) then
+				hover = over and true or nil
+			end
+			local pressed = rim.pressed
+			if okS and not Secret(state) then
+				pressed = (state == "PUSHED") and true or nil
+			end
 			if b.GetButtonState == nil then
 				pressed = rim.pressed   -- no widget state to read: the latch stands
 			end
 			-- the checked flag as well: a check button flips it on the C side
 			-- when clicked, past the SetChecked hook (the action bars' rims
 			-- stayed "checked" with the button long unchecked, user 2026-09-22)
-			local checked
+			local okC, c
 			if rim.isChecked then
-				local okC, c = pcall(rim.isChecked)
-				checked = (okC and c) and true or false
+				okC, c = pcall(rim.isChecked)
 			else
-				local okC, c = pcall(b.GetChecked, b)
-				checked = (okC and c) and true or false
+				okC, c = pcall(b.GetChecked, b)
+			end
+			local checked = rim.lastChecked or false
+			if okC and not Secret(c) then
+				checked = c and true or false
 			end
 			if rim.hover ~= hover or rim.pressed ~= pressed or (rim.lastChecked or false) ~= checked then
 				rim.hover, rim.pressed = hover, pressed
@@ -1151,8 +1416,8 @@ Kit.Replacements = {
 	["common-button-tertiary-normal"]         = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8, capOverhang = 0.35 },   -- New Set (a tertiary button re-atlased with its state): the red plate (B1), the game's + icon and text on top
 	-- the spell book (user's picks, 2026-09-21: P1 C1 H3 K1 T1); the talents
 	-- page stays the game's until the user's per-class art arrives
-	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", level = -1 },   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
-	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", level = -1 },
+	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", level = -1, edge = "brush" },   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
+	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", level = -1, edge = "brush", edgeMirror = true },   -- the left page's strokes flipped, so the two pages are not twins
 	["spellbook-Tab-Frame-C60"]               = { kind = "slot", slot = "slot" },   -- a category tab (C1): the slot rim over the icon, gold (checked) while the tab is selected
 	["spellbook-list-backplate"]              = { kind = "fade" },   -- the list header's backplate (H3: the text on the page)
 	["spellbook-divider"]                     = { kind = "strip", base = "window/divider" },   -- the line under the header (H3)
@@ -1165,12 +1430,13 @@ Kit.Replacements = {
 	["uiframe-tab-left"]                      = { kind = "frame", level = 0, hover = 1.15 },   -- a window's bottom / top tab (TB6, user 2026-09-21; was T1, the tabs/top plate): the single rail with the stone card on the tab's rect, a holder at the tab's own level (its stone and rails under the tab's OVERLAY text, above the window's rail), brighter on hover
 	["uiframe-activetab-left"]                = { kind = "frame", level = 0, lit = { 1.45, 1.3, 0.85 } },   -- ... the open tab: the same card with its iron lit gold (as a selected R3 row); each on the tab's rect, the one the game shows
 	["common-dropdown-a-button"]              = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the small round dropdown arrow: the cog plate under the game's arrow (K2)
+	["common-dropdown-a-button-shadowless"]   = { kind = "state", base = "buttons/arrow_down", natural = true },   -- the same template with hasShadow false (WowStyle1ArrowDropdownTemplate; the damage meter's type dropdown, keyed by hand): the kit's down arrow in the arrow's place (user, 2026-09-23: A of kit_raw/meter_arrow_catalog.png) -- not K2, whose cog would stand beside the header's settings cog
 	["RedButton-Expand"]                      = { kind = "state", base = "buttons/arrow_up", natural = true, rect = "normal" },   -- the window's maximize / minimize
 	["RedButton-Condense"]                    = { kind = "state", base = "buttons/arrow_down", natural = true, rect = "normal" },
 	-- the professions window (user's picks, 2026-09-21: A, F crop 1, K1)
 	-- the book page's backdrop: the user's own page painting (the kit's soft
 	-- stones, tiles/crackle and a plain grey were all tried before it)
-	["Profession-Background-Overview"]        = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", level = 1 },   -- one ABOVE the window (the window's own skin is at its level: a tie there draws in an order the client may change between loads)   -- the user's grey stone page with gothic pilasters (2026-09-21), painted at the page's own aspect
+	["Profession-Background-Overview"]        = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", level = 1, edge = "brush" },   -- one ABOVE the window (the window's own skin is at its level: a tie there draws in an order the client may change between loads)   -- the user's grey stone page with gothic pilasters (2026-09-21), painted at the page's own aspect
 	["Profession-overview-Card"]              = { kind = "frame" },   -- a primary card with no profession in it (A): single rail, stone body
 	-- a primary card with a profession: the game re-atlases its Background to
 	-- -<Profession> in FormatProfession; each gets its painted banner (the
@@ -1178,33 +1444,33 @@ Kit.Replacements = {
 	-- card's height against its right edge (nothing of the still-life cut
 	-- off), the stone mirrored across the rest, the single rail over it
 	["Profession-overview-Card-Alchemy"]       = { kind = "picture", piece = "cards/alchemy", fit = "right", frame = true },
-	["Profession-background-card-Alchemy"]     = { kind = "picture", piece = "backdrops/profession_alchemy", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Alchemy"]     = { kind = "picture", piece = "backdrops/profession_alchemy", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Blacksmithing"] = { kind = "picture", piece = "cards/blacksmithing", fit = "right", frame = true },
-	["Profession-background-card-Blacksmithing"]= { kind = "picture", piece = "backdrops/profession_blacksmithing", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Blacksmithing"]= { kind = "picture", piece = "backdrops/profession_blacksmithing", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Enchanting"]    = { kind = "picture", piece = "cards/enchanting", fit = "right", frame = true },
-	["Profession-background-card-Enchanting"]  = { kind = "picture", piece = "backdrops/profession_enchanting", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Enchanting"]  = { kind = "picture", piece = "backdrops/profession_enchanting", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Engineering"]   = { kind = "picture", piece = "cards/engineering", fit = "right", frame = true },
-	["Profession-background-card-Engineering"] = { kind = "picture", piece = "backdrops/profession_engineering", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Engineering"] = { kind = "picture", piece = "backdrops/profession_engineering", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Herbalism"]     = { kind = "picture", piece = "cards/herbalism", fit = "right", frame = true },
-	["Profession-background-card-Herbalism"]   = { kind = "picture", piece = "backdrops/profession_herbalism", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Herbalism"]   = { kind = "picture", piece = "backdrops/profession_herbalism", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Leatherworking"]= { kind = "picture", piece = "cards/leatherworking", fit = "right", frame = true },
-	["Profession-background-card-Leatherworking"]= { kind = "picture", piece = "backdrops/profession_leatherworking", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Leatherworking"]= { kind = "picture", piece = "backdrops/profession_leatherworking", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Mining"]        = { kind = "picture", piece = "cards/mining", fit = "right", frame = true },
-	["Profession-background-card-Mining"]      = { kind = "picture", piece = "backdrops/profession_mining", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Mining"]      = { kind = "picture", piece = "backdrops/profession_mining", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Skinning"]      = { kind = "picture", piece = "cards/skinning", fit = "right", frame = true },
-	["Profession-background-card-Skinning"]    = { kind = "picture", piece = "backdrops/profession_skinning", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Skinning"]    = { kind = "picture", piece = "backdrops/profession_skinning", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	["Profession-overview-Card-Tailoring"]     = { kind = "picture", piece = "cards/tailoring", fit = "right", frame = true },
-	["Profession-background-card-Tailoring"]   = { kind = "picture", piece = "backdrops/profession_tailoring", crop = "bottom", frame = true },   -- the schematic backdrop (T1): the tall colour panel with the inset rail on the same holder (the form's own inset texture is faded with it)
+	["Profession-background-card-Tailoring"]   = { kind = "picture", piece = "backdrops/profession_tailoring", crop = "bottom", edge = "brush" },   -- the schematic backdrop (T1): the tall colour panel ending in dry-brush strokes (user, 2026-09-23: "crafting tabs aswell"; was the inset rail) on the same holder (the form's own inset texture is faded with it)
 	-- the secondary professions' schematics: their own tall panels (user's sheet 3d259005, 2026-09-21), cut at the schematic's aspect on the band with the still-life
-	["Profession-background-card-Cooking"]    = { kind = "picture", piece = "backdrops/schematic_cooking", crop = "bottom", frame = true },
-	["Profession-background-card-Fishing"]    = { kind = "picture", piece = "backdrops/schematic_fishing", crop = "bottom", frame = true },
-	["Profession-background-card-FirstAid"]   = { kind = "picture", piece = "backdrops/schematic_firstaid", crop = "bottom", frame = true },
+	["Profession-background-card-Cooking"]    = { kind = "picture", piece = "backdrops/schematic_cooking", crop = "bottom", edge = "brush" },
+	["Profession-background-card-Fishing"]    = { kind = "picture", piece = "backdrops/schematic_fishing", crop = "bottom", edge = "brush" },
+	["Profession-background-card-FirstAid"]   = { kind = "picture", piece = "backdrops/schematic_firstaid", crop = "bottom", edge = "brush" },
 	["Profession-overview-card-generic-Cooking"]  = { kind = "picture", piece = "backdrops/profession_cooking", grey = "backdrops/profession_cooking_grey", crop = "bottom", frame = true },   -- a secondary card (F, crop 1): the still-life, grey while not learned, single rail over it
 	["Profession-overview-card-generic-Fishing"]  = { kind = "picture", piece = "backdrops/profession_fishing", grey = "backdrops/profession_fishing_grey", crop = "bottom", frame = true },
 	["Profession-overview-card-generic-FirstAid"] = { kind = "picture", piece = "backdrops/profession_firstaid", grey = "backdrops/profession_firstaid_grey", crop = "bottom", frame = true },
 	["Profession-square-frame"]               = { kind = "slot", slot = "slot" },   -- the frame over a profession spell's icon: the rim over the icon, as the game's is
 	-- the crafting page (user's picks, 2026-09-21: S1 D1 B1 N1 R1 O1 K2 L1 T1)
-	["Profession-Background-Template2"]       = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", level = -2 },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
+	["Profession-Background-Template2"]       = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", level = -2, edge = "brush" },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
 	["Professions-background-summarylist"]    = { kind = "frame" },   -- the recipe list box (L1): single rail, stone body
 	["common-search-border-middle"]           = { kind = "strip", base = "inputs/edit", state = "normal", owner = true },
 	["common-dropdown-b-button"]              = { kind = "frame", level = -1, hover = 1.25, pressed = 0.75, disabled = 0.6 },   -- the filter dropdown (B6, user 2026-09-21): the single-rail band with stone, its states by tint
@@ -1231,9 +1497,9 @@ Kit.Replacements = {
 	-- and tree pages; the tree's nodes are talent buttons and stay the game's,
 	-- as the talents page does). Picks pending the user's catalogue choice
 	-- for the cards (kit_raw/legacy_catalog.png); the rest are the fixed looks.
-	["Legacy-Rewards-Tracker-background"]     = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true },   -- a page's backdrop: the page stone as a REGION of the page in the backdrop's own layer (the pages sit at level 100 with children at 800: no holder, no tie), fitted to the WINDOW's rect so all three pages show the same picture in the same place
-	["Legacy-Challenge-BG"]                   = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true },
-	["Legacy-Tree-Frame-background"]          = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true },
+	["Legacy-Rewards-Tracker-background"]     = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true, edge = "brush" },   -- a page's backdrop: the page stone as a REGION of the page in the backdrop's own layer (the pages sit at level 100 with children at 800: no holder, no tie), fitted to the WINDOW's rect so all three pages show the same picture in the same place
+	["Legacy-Challenge-BG"]                   = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true, edge = "brush" },
+	["Legacy-Tree-Frame-background"]          = { kind = "picture", piece = "backdrops/page_stone", crop = "middle", owner = true, edge = "brush" },
 	["Legacy-Tree-Frame-divider-Vertical"]    = { kind = "edge", piece = "window/single_l" },   -- the pane divider (12 x 503): the single rail, as common-framedivider
 	["Legacy-Progressbar-Frame"]              = { kind = "bar", bar = "frame", layer = "ARTWORK", sublevel = 2 },   -- LegacyProgressBarTemplate (a StatusBar: the fill at ARTWORK 0, the bracket in OVERLAY, the text over it): P1, the bracket's caps at ARTWORK 2 and its middle at 1 over the fill, the StatusBar moved into the opening (Kit:SkinStatusBar)
 	["Legacy-Challenge-Left-Sub-Tab"]         = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a category list leaf (the button's normal texture, re-atlased with the selection): the plain plate ...
@@ -1260,8 +1526,8 @@ Kit.Replacements = {
 	["Legacy-Rewards-Tracker-Icons-Frame"]    = { kind = "slot", slot = "slot" },   -- a reward card's icon border (80 on a 64 square icon; re-atlased -Disable while unearned): the square rim (R1), one rep per atlas
 	["Legacy-Rewards-Tracker-Icons-Frame-Disable"] = { kind = "slot", slot = "slot" },
 	-- the quest log (QuestMapFrame in the world map window; 2026-09-21)
-	["QuestLog-main-background"]              = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", owner = true },   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
-	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "backdrops/page_parchment", crop = "top", owner = true },   -- a quest's details page: the same parchment
+	["QuestLog-main-background"]              = { kind = "picture", piece = "backdrops/page_parchment", crop = "middle", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
+	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "backdrops/page_parchment", crop = "top", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- a quest's details page: the same parchment
 	["MapTitleBand"]                          = { kind = "picture", piece = "backdrops/page_stone", crop = "top", level = 0 },   -- an agreed addition (user, 2026-09-21): a body-off window's title band (the map for its canvas; the collections and LFG pages, whose rock starts below the title) filled with the page stone, inside the outer rail, so it is not bare once the title plate stands on the rail
 	["questlog-frame"]                        = { kind = "frame", body = false },   -- the border around the list / details (QuestLogBorderFrameTemplate): the single rail, edges only
 	["QuestLog-frame-devider"]                = { kind = "strip", base = "window/divider" },   -- the line under a header
@@ -1404,7 +1670,7 @@ Kit.Replacements = {
 	["ui-questtrackerbutton-secondary-collapse"] = { kind = "state", base = "buttons/minus", natural = true },
 	["ui-questtrackerbutton-secondary-expand"] = { kind = "state", base = "buttons/plus", natural = true },
 	["ui-questtrackerbutton-filter"]          = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the filter button: the cog plate under the game's glyph
-	["ObjectiveTrackerBackground"]            = { kind = "frame" },   -- Edit Mode's tracker backdrop (a NineSlicePanelTemplate child): L1, the single rail with stone, its child (follows the opacity)
+	["ObjectiveTrackerBackground"]            = { kind = "frame" },   -- Edit Mode's tracker backdrop (a NineSlicePanelTemplate child): L1, the single rail with stone, its child (follows the opacity); TrackerPanel lays the parchment sheet with the painted edge on its stone
 	["UI-Character-Skills-BarBorder"]         = { kind = "bar", bar = "frame" },   -- a tracker progress bar's border pieces (file art, keyed by hand): P1
 
 	-- MelloUI's own configurator (Core/Config.lua, 2026-09-21; user's picks CT2 SI1 from kit_raw/config_catalog.png): its
@@ -1437,7 +1703,7 @@ Kit.Replacements = {
 	["ui-damagemeters-header-bar"]            = { kind = "strip", base = "lists/header", owner = true },   -- a session window's header band: the header plate as its regions, the game's timer / dropdowns / buttons on it
 	["damagemeters-background"]               = { kind = "frame" },   -- a session window's body (MinimizeContainer.Background, alpha = the transparency setting): L1 as the container's child at its level, its alpha following the setting
 	["DamageMeterSourceBackground"]           = { kind = "frame" },   -- the source / spell breakdown window's Background (common-dropdown-bg, keyed by hand): L1 the same
-	["DamageMeterSettingsIcon"]               = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the settings dropdown button's glyph (an Icon set in Lua, keyed by hand): K2, the cog plate under it
+	["DamageMeterSettingsIcon"]               = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the settings dropdown button's glyph (an Icon set in Lua, keyed by hand): K2, the kit's cog in the glyph's place (the glyph faded since 2026-09-23: laid under it, the two gears read as one stacked on the other)
 
 	-- The social window (SocialPanel, 2026-09-21): fixed looks; the raid pane's group box per the user's G pick
 	["FriendsRowHighlight"]                   = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a friend / ignore / raid-info row's highlight (UI-QuestLogTitleHighlight file art, keyed by hand): the plate's hover look, shown on hover only
@@ -1556,21 +1822,6 @@ function Kit:WhenOutOfCombat(fn)
 	end
 end
 
--- After the game re-lays `frame` (its `method`, a post-hook on the instance),
--- run `fn` out of combat; also on the frame's size changes when `onSize`.
-function Kit:RefitOnLayout(frame, method, fn, onSize)
-	if method and type(frame[method]) == "function" then
-		hooksecurefunc(frame, method, function()
-			Kit:WhenOutOfCombat(fn)
-		end)
-	end
-	if onSize then
-		frame:HookScript("OnSizeChanged", function()
-			Kit:WhenOutOfCombat(fn)
-		end)
-	end
-end
-
 -- An action-style button (ActionButtonTemplate and its small kin: action,
 -- stance, pet, possess and bag slot buttons): the R1 rim on its NormalTexture
 -- sized to the bar's pitch { x, y } so neighbours share a gem, the icon fitted
@@ -1581,7 +1832,11 @@ end
 -- Returns the rim rep; rep:SetPitch(x, y) re-sizes it after a re-layout.
 function Kit:SkinActionButton(button, replace, pitch, opts)
 	opts = opts or {}
-	if not (button and button.NormalTexture and button.icon) or button.melloRep ~= nil then
+	-- the rim texture: the template's key, else the widget's own (a bag
+	-- button has no NormalTexture key; one is never written onto it -- the
+	-- game reads that key, 2026-09-23 audit)
+	local normal = button and (button.NormalTexture or (button.GetNormalTexture and button:GetNormalTexture()))
+	if not (button and normal and button.icon) or button.melloRep ~= nil then
 		return button and button.melloRep or nil
 	end
 	local extra = { button.PushedTexture, button.HighlightTexture, button.CheckedTexture }
@@ -1594,7 +1849,7 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	if button.GetCheckedTexture then
 		extra[#extra + 1] = button:GetCheckedTexture()
 	end
-	local rep = replace(button.NormalTexture, { as = "UI-HUD-ActionBar-IconFrame", button = button, rect = button, pitch = pitch,
+	local rep = replace(normal, { as = "UI-HUD-ActionBar-IconFrame", button = button, rect = button, pitch = pitch,
 		icon = button.icon, alsoFade = extra })
 	button.melloRep = rep or false
 	if not rep then
@@ -1641,7 +1896,7 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 			end
 		end
 		Fit()
-		local stone = replace(button.SlotBackground or button.NormalTexture, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening,
+		local stone = replace(button.SlotBackground or normal, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening,
 			noFade = not button.SlotBackground })
 		if stone then
 			-- the stone shows while the slot is EMPTY: the game hides the icon
@@ -1818,6 +2073,9 @@ function ReplacementMixin:Enable()
 		Kit:Fade(extra)
 	end
 	self.object:Show()
+	if self.backing then
+		self.backing:Show()
+	end
 	self:Refit()
 	if self.checked then
 		self:SetState()
@@ -1836,12 +2094,41 @@ function ReplacementMixin:Disable()
 		Kit:Unfade(extra)
 	end
 	self.object:Hide()
+	if self.backing then
+		self.backing:Hide()
+	end
 	if self.object.glow then
 		self.object.glow:Hide()
 	end
 	if self.onDisable then
 		self.onDisable(self)
 	end
+end
+
+-- The rect's height / width, or nil when unreadable (secret). With the editing
+-- tools' proxy in front of the element, measured from the ELEMENT plus the
+-- proxy's padding: a proxy made this frame reads 0 x 0 until the next layout
+-- pass, so a bar bracket and the fill fitted into its opening were sized from
+-- two different heights and the fill spilled past the rails (user, 2026-09-23:
+-- the skill / reputation bars, only while the editor addon was installed).
+function ReplacementMixin:RectSize(method)
+	local target, pad = self.rect, 0
+	if self.proxy and self.proxyOf then
+		target = self.proxyOf
+		local tune = self.tune
+		if tune then
+			if method == "GetHeight" then
+				pad = (tune.padT or 0) + (tune.padB or 0)
+			else
+				pad = (tune.padL or 0) + (tune.padR or 0)
+			end
+		end
+	end
+	local ok, v = pcall(target[method], target)
+	if not ok or Secret(v) or v == nil then
+		return nil
+	end
+	return v + pad
 end
 
 -- Re-fit to the rectangle (rows get their height after layout), or to the
@@ -1856,7 +2143,7 @@ function ReplacementMixin:Refit()
 		local mid = PIECES[StripName(self.strip.base, "mid", self.strip.state)]
 		local boxH = mid and mid.box and (mid.box[4] - mid.box[2]) or (mid and mid.h) or 0
 		local yoff = self.strip:FitBox(boxH * Kit.scale)
-		local w = self.rect:GetWidth() * (self.rule.widthFrac or 1)
+		local w = (self:RectSize("GetWidth") or 0) * (self.rule.widthFrac or 1)
 		self.strip:ClearAllPoints()
 		self.strip:SetPoint("CENTER", self.rect, "CENTER", 0, yoff)
 		self.strip:SetSize(math.max(w, 1), self.strip.height)
@@ -1864,9 +2151,8 @@ function ReplacementMixin:Refit()
 	end
 	local h = self.fitHeight
 	if not (h and h > 0) then
-		local ok
-		ok, h = pcall(self.rect.GetHeight, self.rect)
-		if not ok or Secret(h) then
+		h = self:RectSize("GetHeight")
+		if not h then
 			return
 		end
 	end
@@ -1886,8 +2172,8 @@ function ReplacementMixin:Refit()
 	-- `widthScale`: the plate wider than its rect by that factor, centred
 	-- (the minimap's zone band at 1.4 — user, 2026-09-21)
 	if self.rule.widthScale then
-		local okW0, w0 = pcall(self.rect.GetWidth, self.rect)
-		if okW0 and w0 and not Secret(w0) and w0 > 0 then
+		local w0 = self:RectSize("GetWidth")
+		if w0 and w0 > 0 then
 			over = over + w0 * (self.rule.widthScale - 1) / 2
 		end
 	end
@@ -1896,8 +2182,8 @@ function ReplacementMixin:Refit()
 	self.strip:SetPoint("LEFT", self.rect, "LEFT", -overL, yoff)
 	self.strip:SetPoint("RIGHT", self.rect, "RIGHT", overR, yoff)
 	self.strip:SetHeight(self.strip.height)
-	local okW, w = pcall(self.rect.GetWidth, self.rect)
-	if not okW or Secret(w) or not (w and w > 0) then
+	local w = self:RectSize("GetWidth")
+	if not (w and w > 0) then
 		w = self.fitWidth or 0
 	end
 	self.strip:FitCaps(w + overL + overR)
@@ -2442,7 +2728,15 @@ function Kit:Replace(region, opts)
 				end
 			end
 			local function Update()
-				local disabled = button.IsEnabled and button:IsEnabled() == false
+				-- secret-safe (Slot_Update's rule): a secret IsEnabled keeps the last answer
+				local disabled = rep.lastDisabled or false
+				if button.IsEnabled then
+					local okE, enabled = pcall(button.IsEnabled, button)
+					if okE and not Secret(enabled) then
+						disabled = enabled == false
+					end
+				end
+				rep.lastDisabled = disabled
 				Tint(disabled and (rule.disabled or 1) or rep.pressed and (rule.pressed or 1) or rep.hover and (rule.hover or 1) or 1)
 			end
 			rep.Update = Update
@@ -2815,8 +3109,8 @@ function Kit:Replace(region, opts)
 			-- the strip's canvas is centred on the rect's centre line, shifted
 			-- by yoff (FitBox), and is canvasH tall: a canvas row's distance
 			-- from the rect's top / bottom edge
-			local okH, rectH = pcall(self.rect.GetHeight, self.rect)
-			if not okH or Secret(rectH) or not rectH then
+			local rectH = self:RectSize("GetHeight")
+			if not (rectH and rectH > 0) then
 				rectH = self.fitHeight or 0
 			end
 			local canvasH = (mid and mid.h or 0) * sc
@@ -2826,8 +3120,8 @@ function Kit:Replace(region, opts)
 			return l, r, top, bottom
 		end
 		rep.Refit = function(self)
-			local okH, h = pcall(self.rect.GetHeight, self.rect)
-			if not okH or Secret(h) or not (h and h > 0) then
+			local h = self:RectSize("GetHeight")
+			if not (h and h > 0) then
 				h = self.fitHeight
 			end
 			if not (h and h > 0) then
@@ -2839,8 +3133,8 @@ function Kit:Replace(region, opts)
 			-- centred on it (the character pane's bars at 0.85 — user, 2026-09-21)
 			local yoff = self.strip:FitBox((h + (opts.thicken or rule.thicken or 0)) * (rule.heightScale or 1))
 			self.stripOffset = yoff
-			local okW, w = pcall(self.rect.GetWidth, self.rect)
-			if not okW or Secret(w) or not (w and w > 0) then
+			local w = self:RectSize("GetWidth")
+			if not (w and w > 0) then
 				w = self.fitWidth or 0
 			end
 			-- the caps: one dropped (the mid to that edge), the kept ones inside
@@ -2917,15 +3211,53 @@ function Kit:Replace(region, opts)
 		tex.kitScale = self.scale
 		tex:SetAllPoints(inner)
 		rep.object, rep.tex, rep.inner, rep.grey = (rule.owner and not isFrame) and tex or f, tex, inner, opts.grey
+		-- `edge` = "brush": the picture ends in painted strokes on every side
+		-- (Kit:PaintedEdge); `edgeMirror` flips them for a left-hand page
+		if rule.edge then
+			rep.edge = self:PaintedEdge(tex, inner, rule.edgeMirror)
+		end
+		-- `edgeBacking`: a tiled piece right under the picture, on the same
+		-- rect, so the gaps between the strokes show stone and not whatever
+		-- lies behind the window (user, 2026-09-23: the quest log over the
+		-- world map, MelloUI's quest list: "add the dark cracked concrete
+		-- behind")
+		if rule.edgeBacking then
+			local layer, sub = tex:GetDrawLayer()
+			sub = sub or 0
+			if sub <= -8 then
+				-- no sublevel left under the picture: the picture steps up one
+				sub = -7
+				tex:SetDrawLayer(layer, sub)
+			end
+			local backing = tex:GetParent():CreateTexture(nil, layer, nil, sub - 1)
+			backing:SetAllPoints(inner)
+			backing.kitScale = self.scale * self.frameScale
+			if self:Apply(backing, rule.edgeBacking) then
+				rep.backing = backing
+			else
+				backing:Hide()
+			end
+		end
 		rep.Refit = function(self)
 			local name = (self.grey and rule.grey and self.grey()) and rule.grey or rule.piece
 			if self.tex.kitName ~= name then
 				Kit:Apply(self.tex, name)
+				-- the parchment in the kit's one parchment tone
+				if name == Kit.parchmentPiece then
+					local t = Kit.parchmentTint
+					self.tex:SetVertexColor(t[1], t[2], t[3])
+				end
 			end
 			local p = PIECES[name]
 			local w, h = self.inner:GetSize()
 			if not (p and w and h and w > 0 and h > 0) then
 				return
+			end
+			if self.edge then
+				self.edge:Fit(w, h)
+			end
+			if self.backing then
+				Kit:Retile(self.backing)
 			end
 			local u1, u2, v1, v2 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
 			local pa, ra = p.w / p.h, w / h
@@ -3021,14 +3353,31 @@ function Kit:Replace(region, opts)
 		self:Apply(tex, rule.piece)
 		self:Retile(tex)
 		rep.object, rep.tex = (rule.owner and not isFrame) and tex or f, tex
+		-- `edge` = "brush": the tiled panel ends in painted strokes on every
+		-- side (Kit:PaintedEdge), fitted again whenever its size changes
+		local edge = rule.edge and self:PaintedEdge(tex, tex, rule.edgeMirror, rule.edgeTight) or nil
+		rep.edge = edge
+		local function Refit()
+			Kit:Retile(tex)
+			if edge then
+				local okS, w, h = pcall(tex.GetSize, tex)
+				if okS then
+					edge:Fit(w, h)
+				end
+			end
+		end
 		if rep.object == tex then
 			-- a region has no OnSizeChanged: re-tile on the rect's
 			local sizer = CreateFrame("Frame", nil, f)
 			sizer:EnableMouse(false)
 			sizer:SetAllPoints(rect)
-			sizer:SetScript("OnSizeChanged", function() Kit:Retile(tex) end)
-			sizer:HookScript("OnShow", function() Kit:Retile(tex) end)
+			sizer:SetScript("OnSizeChanged", Refit)
+			sizer:HookScript("OnShow", Refit)
+		elseif edge then
+			f:SetScript("OnSizeChanged", Refit)
+			f:HookScript("OnShow", Refit)
 		end
+		Refit()
 	elseif rule.kind == "texture" then
 		-- `owner`: the piece is a REGION of the replaced texture's frame in its
 		-- layer and sublevel (a level plate under the frame's own text); else
@@ -3276,15 +3625,6 @@ function Kit:OtherTextures(button, keep)
 	return extra
 end
 
--- A game texture of `frame` by its art key (atlas / file base name).
-function Kit:TextureByArt(frame, key)
-	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and self:ArtKey(region) == key then
-			return region
-		end
-	end
-end
-
 -- How far the window's OUTER rail (the NineSlicePanelTemplate rule, grown
 -- outward by `outset`) reaches INTO the window on each side, in UI px:
 -- { l, r, t, b }. A page picture inset by this stops at the rail's inner
@@ -3322,34 +3662,6 @@ local MEDALLION_DISC = 0.95
 -- `parent` / `sublevel` override the frame and BACKGROUND sublevel the disc is
 -- a region of, for a window whose portrait lives elsewhere (the guild window's
 -- PortraitOverlay at level 300, its portrait BACKGROUND 1: the disc at 0).
--- A black shade under a list's text: darkest down the middle, fading
--- out to both sides (user, 2026-09-22: the quest text on the stone and
--- the parchment). Two gradient halves on a holder at the parent's level
--- (over the parent's own picture, under its children), inset by `inset`
--- px from the rect. Returns the holder: show / hide it with the skin.
---   Kit:CentreShade(parent, rect, { strength = 0.6, inset = 4 })
-function Kit:CentreShade(parent, rect, opts)
-	opts = opts or {}
-	local strength, inset = opts.strength or 0.6, opts.inset or 4
-	local holder = CreateFrame("Frame", nil, parent)
-	holder:SetFrameLevel(parent:GetFrameLevel())
-	holder:EnableMouse(false)
-	holder:SetPoint("TOPLEFT", rect, "TOPLEFT", inset, -inset)
-	holder:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", -inset, inset)
-	local left = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
-	left:SetColorTexture(1, 1, 1, 1)
-	left:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, strength))
-	left:SetPoint("TOPLEFT")
-	left:SetPoint("BOTTOMRIGHT", holder, "BOTTOM")
-	local right = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
-	right:SetColorTexture(1, 1, 1, 1)
-	right:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, strength), CreateColor(0, 0, 0, 0))
-	right:SetPoint("TOPLEFT", holder, "TOP")
-	right:SetPoint("BOTTOMRIGHT")
-	holder.left, holder.right = left, right
-	return holder
-end
-
 function Kit:RingDisc(ring, color, parent, sublevel)
 	if not (ring and ring.tex and ring.object) then
 		return nil

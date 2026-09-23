@@ -176,8 +176,14 @@ local function AnchorCC(unitFrame)
 	local offset = ComputeOffset(unitFrame)
 	local cc = auras.CrowdControlListFrame
 	if cc then
+		-- the list is scaled (ResizeCCList): an offset on it is in its own,
+		-- scaled units, so it is given unscaled to land where it is meant to
+		local s = cc:GetScale()
+		if not IsPlainNumber(s) or s <= 0 then
+			s = 1
+		end
 		cc:ClearAllPoints()
-		cc:SetPoint("BOTTOM", unitFrame.HealthBarsContainer, "TOP", 0, offset)
+		cc:SetPoint("BOTTOM", unitFrame.HealthBarsContainer, "TOP", 0, offset / s)
 	end
 	local loc = auras.LossOfControlFrame
 	if loc then
@@ -186,21 +192,24 @@ local function AnchorCC(unitFrame)
 	end
 end
 
+-- The crowd-control icons at the chosen size: the whole LIST is scaled, not
+-- its icons. Sized icon by icon, the list's height had to be written into the
+-- game's own `fixedHeight` field and its Layout() called from here, so the
+-- game's nameplate layout then ran on a value MelloUI wrote -- the one field of
+-- ours the game reads (found 2026-09-23, after the study of how the careful
+-- addons stay out of taint). Scaling the list is a widget call: every field of
+-- the game's stays its own, and the game lays the list out itself.
 local function ResizeCCList(auras)
 	local cc = auras.CrowdControlListFrame
 	if not cc then
 		return
 	end
-	local scale = (M.db.ccSize or 45) / BASE_ITEM_SIZE
-	for _, item in ipairs({ cc:GetChildren() }) do
-		item:SetScale(scale)
+	-- the game draws the icons at its own item scale inside the list
+	local itemScale = auras.auraItemScale
+	if not IsPlainNumber(itemScale) or itemScale <= 0 then
+		itemScale = 1
 	end
-	if cc.needsFixedHeight then
-		cc.fixedHeight = M.db.ccSize or 45
-	end
-	if type(cc.Layout) == "function" then
-		cc:Layout()
-	end
+	cc:SetScale((M.db.ccSize or 45) / BASE_ITEM_SIZE / itemScale)
 end
 
 local function ResizeLossOfControl(auras)
@@ -294,15 +303,7 @@ local function RestoreAll()
 		if auras then
 			local scale = IsPlainNumber(auras.auraItemScale) and auras.auraItemScale or 1
 			if auras.CrowdControlListFrame then
-				for _, item in ipairs({ auras.CrowdControlListFrame:GetChildren() }) do
-					item:SetScale(scale)
-				end
-				if auras.CrowdControlListFrame.needsFixedHeight then
-					auras.CrowdControlListFrame.fixedHeight = scale * BASE_ITEM_SIZE
-				end
-				if type(auras.CrowdControlListFrame.Layout) == "function" then
-					auras.CrowdControlListFrame:Layout()
-				end
+				auras.CrowdControlListFrame:SetScale(1)
 			end
 			if auras.LossOfControlFrame then
 				auras.LossOfControlFrame:SetScale(scale)
@@ -379,7 +380,18 @@ end
 local function GetQuestIcon(unitFrame)
 	local icon = unitFrame.MelloUIQuestIcon
 	if not icon then
-		icon = unitFrame:CreateTexture(nil, "OVERLAY")
+		-- on a layer frame above the health bar: the unit frame's own regions
+		-- draw under its children, so the Nameplate Kit's gem cap (a region
+		-- of the bar, standing outside it) hid the icon (user, 2026-09-23)
+		local layer = CreateFrame("Frame", nil, unitFrame)
+		layer:SetAllPoints(unitFrame)
+		layer:EnableMouse(false)
+		local hb = unitFrame.HealthBarsContainer and unitFrame.HealthBarsContainer.healthBar
+		local ok, level = pcall(function() return (hb or unitFrame):GetFrameLevel() end)
+		if ok and IsPlainNumber(level) then
+			layer:SetFrameLevel(level + 5)
+		end
+		icon = layer:CreateTexture(nil, "OVERLAY")
 		icon:SetTexture(QUEST_ICON_TEXTURE)
 		icon:Hide()
 		unitFrame.MelloUIQuestIcon = icon
@@ -387,7 +399,9 @@ local function GetQuestIcon(unitFrame)
 	local size = M.db.questIconSize or 22
 	icon:SetSize(size, size)
 	icon:ClearAllPoints()
-	local anchor = unitFrame.RaidTargetFrame or unitFrame.HealthBarsContainer
+	-- beside the Nameplate Kit's left gem cap while it dresses the plate
+	-- (the cap stands outside the bar), else beside the raid mark / bar
+	local anchor = unitFrame.melloBracketLeft or unitFrame.RaidTargetFrame or unitFrame.HealthBarsContainer
 	if anchor then
 		icon:SetPoint("RIGHT", anchor, "LEFT", -2, 0)
 	end

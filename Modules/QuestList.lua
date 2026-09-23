@@ -95,7 +95,7 @@ local function IsSecret(v)
 end
 
 function QL.Plain(v)
-	if v == nil or IsSecret(v) then
+	if IsSecret(v) or v == nil then
 		return nil
 	end
 	return v

@@ -97,28 +97,88 @@ end
 -- `chatFrame.oldAlpha`, held there instead of brightening under the mouse
 -- (the game sets every chat texture's alpha by name; the stone reads the
 -- remembered value after each of those calls).
+-- The chat window's backdrop -- stone, rails and the parchment sheet -- lies
+-- on a rect GROWN past the window's body, so the painted edge of the sheet
+-- ends outside the text: the client lays every line out on the window's full
+-- width, so the text cannot be set in to fit the sheet (tried, the lines were
+-- cut) -- the sheet is fitted round the text instead (user, 2026-09-23: "grow
+-- the backdrop"). Much sideways, little up and down: the tabs sit right above
+-- the window and the input box right below, so the sheet takes the WIDE
+-- strokes, deep on the sides and shallow top and bottom. The window keeps
+-- Edit Mode's size and place; only its drawn backdrop reaches further.
+local GROW_SIDE, GROW_TOP, GROW_BOTTOM = 22, 5, 4
+local grown = setmetatable({}, { __mode = "k" })
+
+local function BackdropRect(cf, background)
+	local rect = grown[background]
+	if not rect then
+		rect = CreateFrame("Frame", nil, cf)
+		rect:EnableMouse(false)
+		rect:SetPoint("TOPLEFT", background, "TOPLEFT", -GROW_SIDE, GROW_TOP)
+		rect:SetPoint("BOTTOMRIGHT", background, "BOTTOMRIGHT", GROW_SIDE, -GROW_BOTTOM)
+		grown[background] = rect
+	end
+	return rect
+end
+
 local function StoneBackground(cf, background, frame)
 	if not background or background.melloRep ~= nil then
 		return
 	end
-	local rep = Replace(background, { as = "ChatFrameBody", rect = background, parent = frame })
+	local rect = frame == cf and BackdropRect(cf, background) or background
+	local rep = Replace(background, { as = "ChatFrameBody", rect = rect, parent = frame })
 	background.melloRep = rep or false
 	if not (rep and rep.tex) then
 		return
+	end
+	-- the parchment laid on the stone, just inside the body (the chat's rails
+	-- stand outside it), its edge painted (user, 2026-09-23: "lets make it on
+	-- chat and dps meter aswell"); one sublevel above the stone, and as
+	-- see-through as the stone at the alpha slider's value. The chat window's
+	-- own body only, not the button column beside it. (Setting the lines in
+	-- to fit the sheet was tried: this client lays every line out on the
+	-- window's full width and its text container only clips them -- the
+	-- lines were cut, user 2026-09-23.)
+	local sheet
+	if Kit.ParchmentSheet and frame == cf then
+		local layer, sub = rep.tex:GetDrawLayer()
+		sheet = Kit:ParchmentSheet(frame, frame, { rect = rect, margin = 4, wide = true, layer = layer, sublevel = math.min((sub or 0) + 1, 7) })
+		if sheet then
+			rep.sheet = sheet
+		end
 	end
 	local function Hold()
 		local wanted = cf.oldAlpha
 		if active and wanted and not Secret(wanted) then
 			rep.tex:SetAlpha(wanted)
+			if sheet then
+				sheet:SetAlpha(wanted)
+			end
 		end
 	end
 	hooksecurefunc(background, "SetAlpha", Hold)
-	local enable = rep.onEnable
+	local enable, disable = rep.onEnable, rep.onDisable
 	rep.onEnable = function(...)
 		if enable then
 			enable(...)
 		end
+		if sheet then
+			sheet:Show()
+		end
 		Hold()
+	end
+	-- the sheet is the chat frame's own region, not the replacement's: it
+	-- goes and comes with the chat reskin by hand
+	rep.onDisable = function(...)
+		if disable then
+			disable(...)
+		end
+		if sheet then
+			sheet:Hide()
+		end
+	end
+	if sheet and not active then
+		sheet:Hide()
 	end
 	-- the slider: FCF_SetWindowAlpha sets the textures first and remembers
 	-- the value after, so the hold is re-run once the value is known
@@ -128,6 +188,9 @@ local function StoneBackground(cf, background, frame)
 			local bg = f and _G[f:GetName() .. "Background"]
 			if bg and bg.melloRep and bg.melloRep.tex and active then
 				bg.melloRep.tex:SetAlpha(f.oldAlpha or 1)
+				if bg.melloRep.sheet then
+					bg.melloRep.sheet:SetAlpha(f.oldAlpha or 1)
+				end
 			end
 		end)
 	end
@@ -148,7 +211,7 @@ local function SkinBordered(frame, prefix, cf)
 	for i = 2, #BORDER_PIECES do
 		others[#others + 1] = _G[prefix .. BORDER_PIECES[i]]
 	end
-	local rep = Replace(corner, { as = "ChatFrameBorder", rect = background, parent = frame, alsoFade = others })
+	local rep = Replace(corner, { as = "ChatFrameBorder", rect = frame == cf and BackdropRect(cf, background) or background, parent = frame, alsoFade = others })
 	corner.melloRep = rep or false
 	if rep and Kit.RegisterShell and frame == cf then
 		-- a chat window has no header to hold: a strip along the top of its
@@ -172,6 +235,107 @@ end
 -- the plain card on the art's rows, the lit card while the active set
 -- shows, the text held centred on the card.
 local TAB_TOP_INSET = 8
+
+-- A chat window's tab in front of the window's backdrop: the backdrop now
+-- reaches up past the window's top (BackdropRect) and its top rail and stone
+-- drew over the tabs' feet (user, 2026-09-23: "adjust the tabs on the top to
+-- be infront of the background"). A higher frame level did not hold: the chat
+-- windows are top-level frames, and a click lifts the window over its tabs
+-- inside the client, past any hook ("didnt work", the same day). So the tab
+-- goes one STRATA above its window -- nothing on the window's strata can
+-- then come over it -- and is put back there whenever something sets its
+-- strata or level again. Neither is protected state: the game's tab code is
+-- left to itself.
+local STRATA_ORDER = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG", "TOOLTIP" }
+local STRATA = {}
+for i, name in ipairs(STRATA_ORDER) do
+	STRATA[name] = i
+end
+local tabsInFront = setmetatable({}, { __mode = "k" })
+local raisingTab = false
+
+-- The highest strata of any chat window: a docked window's tab (Loot, a new
+-- window) sits on the DOCK's selected window, not over its own frame, which
+-- can be a strata lower ("general and combat log work, but loot and any other
+-- created window do not", user 2026-09-23) -- so every tab goes above them all.
+local function ChatStrataTop()
+	local top = 0
+	for _, owner in pairs(tabsInFront) do
+		local ok, strata = pcall(owner.GetFrameStrata, owner)
+		if ok and STRATA[strata] and STRATA[strata] > top then
+			top = STRATA[strata]
+		end
+	end
+	local dock = GENERAL_CHAT_DOCK and GENERAL_CHAT_DOCK.primary
+	if dock and dock.GetFrameStrata then
+		local strata = dock:GetFrameStrata()
+		if STRATA[strata] and STRATA[strata] > top then
+			top = STRATA[strata]
+		end
+	end
+	return top > 0 and top or 2
+end
+
+-- The tabs of docked windows past the first ones (Loot, a new window) are
+-- children of the dock's SCROLL frame, the strip that scrolls tabs when there
+-- are many; what a scroll frame holds is drawn with the scroll frame itself,
+-- so their own strata did nothing (/chdump tabs: the scroll frame at LOW,
+-- level 2, under the chat window's LOW 5 -- user, 2026-09-23). The scroll
+-- frame goes above the chat windows with them; back with the reskin off.
+local dockHooked = false
+
+local function DockInFront(above)
+	local strip = GENERAL_CHAT_DOCK and GENERAL_CHAT_DOCK.scrollFrame
+	if not (strip and strip.SetFrameStrata) then
+		return
+	end
+	if not dockHooked then
+		dockHooked = true
+		hooksecurefunc(strip, "SetFrameStrata", function()
+			if active and not raisingTab then
+				raisingTab = true
+				pcall(strip.SetFrameStrata, strip, STRATA_ORDER[math.min(ChatStrataTop() + 1, #STRATA_ORDER)])
+				raisingTab = false
+			end
+		end)
+	end
+	if strip:GetFrameStrata() ~= above then
+		strip:SetFrameStrata(above)
+	end
+end
+
+local function TabInFront(tab, cf)
+	if raisingTab or not (active and tab and cf) then
+		return
+	end
+	raisingTab = true
+	pcall(function()
+		local above = STRATA_ORDER[math.min(ChatStrataTop() + 1, #STRATA_ORDER)]
+		if tab:GetFrameStrata() ~= above then
+			tab:SetFrameStrata(above)
+		end
+		DockInFront(above)
+	end)
+	raisingTab = false
+end
+
+local function KeepTabInFront(tab, cf)
+	if not (tab and cf) or tabsInFront[tab] then
+		return
+	end
+	tabsInFront[tab] = cf
+	-- a new window can raise the chat windows' top strata: every tab again
+	for other, owner in pairs(tabsInFront) do
+		if other ~= tab then
+			TabInFront(other, owner)
+		end
+	end
+	hooksecurefunc(tab, "SetFrameLevel", function(self) TabInFront(self, cf) end)
+	hooksecurefunc(tab, "SetFrameStrata", function(self) TabInFront(self, cf) end)
+	tab:HookScript("OnShow", function(self) TabInFront(self, cf) end)
+	cf:HookScript("OnShow", function() TabInFront(tab, cf) end)
+	TabInFront(tab, cf)
+end
 
 local function SkinTab(tab)
 	if not (tab and tab.Left and tab.Middle and tab.Right) or tab.melloRep ~= nil then
@@ -289,6 +453,7 @@ local function SkinChatFrame(cf)
 		NoFade(cf.buttonFrame)
 	end
 	SkinTab(_G[name .. "Tab"])
+	KeepTabInFront(_G[name .. "Tab"], cf)
 	NoFade(_G[name .. "Tab"])
 	SkinEditBox(cf.editBox)
 	NoFade(cf.editBox)
@@ -312,13 +477,32 @@ local function SkinMinimized(cf)
 	SkinIconButton(_G[min:GetName() .. "MaximizeButton"])
 end
 
-local function SkinAll()
-	for i = 1, (NUM_CHAT_WINDOWS or 10) do
-		local cf = _G["ChatFrame" .. i]
-		if cf then
-			SkinChatFrame(cf)
-			SkinMinimized(cf)
+-- Every chat window the game has: the whisper windows it opens on the fly are
+-- ChatFrame11, 12, ... and listed only in CHAT_FRAMES. The hooks below ran
+-- this for each new whisper window, but the loop stopped at NUM_CHAT_WINDOWS,
+-- so a whisper tab never got the kit (user, 2026-09-23). Read only.
+local function ChatFrames()
+	local list = {}
+	if type(CHAT_FRAMES) == "table" then
+		for _, name in pairs(CHAT_FRAMES) do
+			local cf = type(name) == "string" and _G[name]
+			if cf then
+				list[#list + 1] = cf
+			end
 		end
+	end
+	if #list == 0 then
+		for i = 1, (NUM_CHAT_WINDOWS or 10) do
+			list[#list + 1] = _G["ChatFrame" .. i]
+		end
+	end
+	return list
+end
+
+local function SkinAll()
+	for _, cf in ipairs(ChatFrames()) do
+		SkinChatFrame(cf)
+		SkinMinimized(cf)
 	end
 	for _, key in ipairs({ "ChatFrameMenuButton", "ChatFrameChannelButton", "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton" }) do
 		SkinIconButton(_G[key])
@@ -365,6 +549,9 @@ local function Activate()
 	for _, frame in ipairs(skin.noFade) do
 		frame:SetAlpha(1)
 	end
+	for tab, cf in pairs(tabsInFront) do
+		TabInFront(tab, cf)
+	end
 	Kit:Cover("chat")
 end
 
@@ -375,6 +562,15 @@ local function Deactivate()
 	active = false
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	-- the tabs back on their window's strata, the dock's tab strip on the
+	-- dock's (TabInFront stays off while inactive)
+	for tab, cf in pairs(tabsInFront) do
+		pcall(tab.SetFrameStrata, tab, cf:GetFrameStrata())
+	end
+	local dock = GENERAL_CHAT_DOCK
+	if dock and dock.scrollFrame and dock.GetFrameStrata then
+		pcall(dock.scrollFrame.SetFrameStrata, dock.scrollFrame, dock:GetFrameStrata())
 	end
 	Kit:Uncover("chat")
 end
@@ -395,8 +591,46 @@ end
 -- the copy window.
 --------------------------------------------------------------------------------
 SLASH_MELLOCHDUMP1 = "/chdump"
+-- /chdump tabs: every chat tab against its window and the dock -- parent,
+-- strata, level, shown -- for the tabs that stayed behind the backdrop
+local function DumpTabs()
+	local function Describe(label, f)
+		if not f then
+			MelloUI:Print("%s: none", label)
+			return
+		end
+		local parent = f.GetParent and f:GetParent()
+		local pname = parent and (parent:GetName() or parent:GetDebugName()) or "none"
+		MelloUI:Print("%s: parent %s, strata %s, level %d, shown %s, visible %s", label, tostring(pname),
+			tostring(f:GetFrameStrata()), f:GetFrameLevel(), tostring(f:IsShown()), tostring(f:IsVisible()))
+	end
+	local dock = GENERAL_CHAT_DOCK
+	Describe("dock", dock)
+	if dock then
+		Describe("dock primary", dock.primary)
+		Describe("dock scrollFrame", dock.scrollFrame)
+		Describe("dock scroll child", dock.scrollFrame and dock.scrollFrame.GetScrollChild and dock.scrollFrame:GetScrollChild())
+	end
+	MelloUI:Print("chat windows' top strata: %s, active %s", tostring(STRATA_ORDER[ChatStrataTop()]), tostring(active))
+	for _, name in ipairs(CHAT_FRAMES or {}) do
+		local cf = _G[name]
+		local tab = _G[name .. "Tab"]
+		if cf and tab then
+			Describe(name, cf)
+			Describe("   " .. name .. "Tab", tab)
+			MelloUI:Print("      kept in front: %s", tostring(tabsInFront[tab] ~= nil))
+		end
+	end
+end
+
 SlashCmdList.MELLOCHDUMP = function(msg)
-	msg = (msg or ""):lower()
+	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	if msg:find("^tab") then
+		MelloUI:ClearLog()
+		DumpTabs()
+		MelloUI:ShowLog("chdump tabs")
+		return
+	end
 	local n = tonumber(msg:match("^(%d+)")) or 1
 	local what = msg:match("%a+")
 	MelloUI:ClearLog()

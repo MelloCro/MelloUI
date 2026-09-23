@@ -76,7 +76,7 @@ local TWEAKS = {
 -- the button on the page can reach them
 local Apply, RestoreAreas, NothingWanted
 
-local defaults, options = { reskin = true, unlock = false, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
+local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false, unlock = false, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
 options[#options + 1] = { type = "header", name = "Reskin" }
 options[#options + 1] = { type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
 	desc = "The whole interface dressed in the painted kit. Off: every area below shows the game's own art; the quality-of-life tweaks keep working." }
@@ -95,6 +95,12 @@ options[#options + 1] = { type = "button", name = "Switch every area on",
 			MelloUI:RefreshConfig()
 		end
 	end }
+options[#options + 1] = { type = "toggle", key = "preloadArt", name = "Preload Artwork",
+	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 50 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." }
+options[#options + 1] = { type = "toggle", key = "fadeWindows", name = "Windows Fade In",
+	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." }
+options[#options + 1] = { type = "toggle", key = "reduceMotion", name = "Reduce Motion",
+	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash. For anyone who finds moving interface parts distracting." }
 for _, area in ipairs(PANELS) do
 	if area.sub then
 		options[#options + 1] = { type = "subheader", name = area.sub }
@@ -153,15 +159,76 @@ local M = MelloUI:RegisterModule("UIModifications", {
 
 local movers = {}   -- [frame] = mover
 
+-- Edit Mode replaces SetPoint / ClearAllPoints / SetScale (and Hide / Show /
+-- SetShown) on its system frames -- the damage meter, the minimap cluster, the
+-- objective tracker, the chat -- with Lua overrides that keep its own
+-- bookkeeping: frame snapping (self.snappedToFrame), OnEditModeSystemAnchorChanged,
+-- ManageFramePositions(), the tracker's Update(). Called from MelloUI they run
+-- tainted and leave tainted state behind, and Blizzard code reading it later
+-- runs tainted too: the damage meter's fight timer then failed on its secret
+-- combat duration on every refresh ("attempt to compare local 'durationSeconds'
+-- (a secret number value, while execution tainted by 'MelloUI')", user
+-- 2026-09-23). The mover's positions are MelloUI's own, not Edit Mode's, so it
+-- calls the plain methods Edit Mode kept aside as <Method>Base and leaves Edit
+-- Mode's state alone. A frame without the overrides answers with its own.
+local function Raw(frame, method)
+	return frame[method .. "Base"] or frame[method]
+end
+
 local function SavedPosition(frame)
 	local name = frame.GetName and frame:GetName()
 	local db = M.db
 	return name and db and db.positions and db.positions[name] or nil, name
 end
 
-local function PutBack(frame)
+-- A protected window in combat cannot be moved or scaled by an addon: the
+-- game refuses the call and says "ADDON BLOCKED" (player report, 2026-09-23:
+-- the talents window opened in combat laid the panels out again, and the
+-- mover put the chat window and the talents window back where they had been
+-- saved -- ChatFrame1:ClearAllPointsBase(), PlayerSpellsFrame:ClearAllPoints()
+-- and :SetScale(), all blocked). Such a put-back waits for the end of the
+-- fight; a drag or a wheel turn is simply refused until then.
+local function Locked(frame)
+	if not (InCombatLockdown and InCombatLockdown()) then
+		return false
+	end
+	local ok, protected = pcall(frame.IsProtected, frame)
+	return ok and protected and true or false
+end
+
+local afterCombat = {}          -- [frame] = true: put back once the fight is over
+local afterCombatFrame = CreateFrame("Frame")
+local PutBack
+afterCombatFrame:SetScript("OnEvent", function(self)
+	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	for frame in pairs(afterCombat) do
+		afterCombat[frame] = nil
+		if frame:IsShown() then
+			PutBack(frame)
+		end
+	end
+end)
+
+local combatNoticeShown = false
+local function RefuseInCombat(frame)
+	if not Locked(frame) then
+		return false
+	end
+	if not combatNoticeShown then
+		combatNoticeShown = true
+		MelloUI:Print("This window cannot be moved during combat; it can be again once the fight is over.")
+	end
+	return true
+end
+
+PutBack = function(frame)
 	local pos = SavedPosition(frame)
 	if not pos or not M.isEnabled then
+		return
+	end
+	if Locked(frame) then
+		afterCombat[frame] = true
+		afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 		return
 	end
 	local mover = movers[frame]
@@ -175,15 +242,15 @@ local function PutBack(frame)
 			if mover then
 				mover.scaling = true
 			end
-			frame:SetScale(pos.scale)
+			Raw(frame, "SetScale")(frame, pos.scale)
 			if mover then
 				mover.scaling = nil
 			end
 		end
-		frame:ClearAllPoints()
+		Raw(frame, "ClearAllPoints")(frame)
 		-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry
 		-- carries the anchor only when it differs
-		frame:SetPoint(pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", pos.x or 0, pos.y or 0)
+		Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", pos.x or 0, pos.y or 0)
 	end)
 	if mover then
 		mover.placing = was
@@ -442,7 +509,8 @@ local function MakeMover(frame, shell)
 	-- the mouse wheel while dragging: the window's scale, 5 % a notch,
 	-- 50 % .. 200 % (user, 2026-09-21), saved with the position
 	local function Wheel(delta)
-		if not mover.moving or not frame.SetScale then
+		-- a fight that starts in the middle of a drag: no scaling until it ends
+		if not mover.moving or not frame.SetScale or Locked(frame) then
 			return
 		end
 		local ok, current = pcall(frame.GetScale, frame)
@@ -464,22 +532,22 @@ local function MakeMover(frame, shell)
 		if okC and okR and cx and left and w and h and w > 0 and h > 0 and fs and fs > 0 then
 			local fx, fy = (cx / fs - left) / w, (cy / fs - bottom) / h
 			frame:StopMovingOrSizing()
-			frame:SetScale(scale)
+			Raw(frame, "SetScale")(frame, scale)
 			local fs2 = frame:GetEffectiveScale()
 			if fs2 and fs2 > 0 then
-				frame:ClearAllPoints()
-				frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", cx / fs2 - fx * w, cy / fs2 - fy * h)
+				Raw(frame, "ClearAllPoints")(frame)
+				Raw(frame, "SetPoint")(frame, "BOTTOMLEFT", UIParent, "BOTTOMLEFT", cx / fs2 - fx * w, cy / fs2 - fy * h)
 			end
 			frame:StartMoving()
 		else
-			frame:SetScale(scale)
+			Raw(frame, "SetScale")(frame, scale)
 		end
 		mover.scaling = nil
 		mover.scaled = scale
 	end
 	mover.Wheel = Wheel
 	mover.DragStart = function()
-		if not (M.isEnabled and M.db and M.db.unlock) then
+		if not (M.isEnabled and M.db and M.db.unlock) or RefuseInCombat(frame) then
 			return
 		end
 		frame:SetMovable(true)
@@ -512,8 +580,8 @@ local function MakeMover(frame, shell)
 			if tx or ty then
 				-- the corner onto the lit lines: anchored from the screen's
 				-- centre by the snapped offsets, in the window's own units
-				frame:ClearAllPoints()
-				frame:SetPoint("BOTTOMLEFT", UIParent, "CENTER", (tx or dx) * k, (ty or dy) * k)
+				Raw(frame, "ClearAllPoints")(frame)
+				Raw(frame, "SetPoint")(frame, "BOTTOMLEFT", UIParent, "CENTER", (tx or dx) * k, (ty or dy) * k)
 			end
 		end)
 		local _, name = SavedPosition(frame)
@@ -884,11 +952,11 @@ local function ResetPositions()
 			pcall(function()
 				if frame.SetScale then
 					mover.scaling = true
-					frame:SetScale(1)
+					Raw(frame, "SetScale")(frame, 1)
 					mover.scaling = nil
 				end
 				if frame:IsShown() then
-					frame:Hide()
+					Raw(frame, "Hide")(frame)
 				end
 			end)
 			mover.placing = nil
@@ -906,6 +974,59 @@ if Kit and Kit.OnShell then
 		MakeMover(frame, shell)
 	end)
 end
+
+-- Windows Fade In (user, 2026-09-23: "can we do that effect with all of the
+-- UI elements that open, the character tab, backpack, talents, professions
+-- tab etc?"): every window the game opens as a panel -- the ones it lists in
+-- UIPanelWindows: character, talents and spells, professions, social, guild,
+-- group finder, collections, map, game menu ... -- and every bag window fades
+-- in when it opens, reskin on or off (Core/Anim.lua). Windows of addons the
+-- game loads on demand join that list when they load, so the sweep runs again
+-- on every ADDON_LOADED, before such a window's first show. Only the window's
+-- alpha is touched, which the game allows on any window, in combat too; the
+-- hooks are post-hooks and nothing is written onto the windows.
+local fadeHooked = setmetatable({}, { __mode = "k" })
+local EXTRA_WINDOWS = { "ContainerFrameCombinedBags", "BankFrame", "SettingsPanel", "AddonList" }
+for i = 1, 13 do
+	EXTRA_WINDOWS[#EXTRA_WINDOWS + 1] = "ContainerFrame" .. i
+end
+
+local function FadeOnShow(self)
+	if M.isEnabled and M.db and M.db.fadeWindows and MelloUI.Anim
+		and not (self.IsForbidden and self:IsForbidden()) then
+		MelloUI.Anim:FadeIn(self, 0.2)
+	end
+end
+
+local function HookFade(frame)
+	if type(frame) ~= "table" or fadeHooked[frame] or not frame.HookScript then
+		return
+	end
+	if frame.IsForbidden and frame:IsForbidden() then
+		return
+	end
+	fadeHooked[frame] = true
+	frame:HookScript("OnShow", FadeOnShow)
+end
+
+local function SweepFade()
+	if type(UIPanelWindows) == "table" then
+		for name in pairs(UIPanelWindows) do
+			if type(name) == "string" then
+				HookFade(_G[name])
+			end
+		end
+	end
+	for _, name in ipairs(EXTRA_WINDOWS) do
+		HookFade(_G[name])
+	end
+end
+
+local fadeWatcher = CreateFrame("Frame")
+fadeWatcher:RegisterEvent("PLAYER_LOGIN")
+fadeWatcher:RegisterEvent("ADDON_LOADED")
+fadeWatcher:SetScript("OnEvent", SweepFade)
+
 -- the plain grabs first, so the kit's plate is the second handle and the
 -- plain one stays when the kit goes off
 -- the game lays its panels out again on every show / hide of one, and the
@@ -1056,6 +1177,31 @@ local function ApplyNameFormat(db, on)
 	end
 end
 
+-- Preload Artwork (Kit:Preload): the kit's files while the reskin is on, the
+-- class medallions with them; all let go when either is off or the module is.
+local function ApplyPreload(db, on)
+	if not (Kit and Kit.Preload) then
+		return
+	end
+	local files = {}
+	if on and db.preloadArt ~= false and db.reskin ~= false then
+		files = Kit:KitFiles()
+		local function Walk(t)
+			for _, v in pairs(t) do
+				if type(v) == "string" then
+					files[#files + 1] = v
+				elseif type(v) == "table" then
+					Walk(v)
+				end
+			end
+		end
+		if type(MelloUI_ClassIcons) == "table" then
+			Walk(MelloUI_ClassIcons)
+		end
+	end
+	Kit:Preload(files)
+end
+
 -- The reskin switched on by the user (the umbrella from its tile or the
 -- reskin toggle; not Core's start-up pass): Custom Sounds comes on with it,
 -- and the Edit Mode layout the reskin is drawn for is put in place once
@@ -1084,8 +1230,16 @@ local function ReskinOn(db)
 	end
 end
 
+-- Reduce Motion: the animation engine finishes every tween at once
+local function ApplyMotion(db)
+	if MelloUI.Anim then
+		MelloUI.Anim.reduceMotion = (M.isEnabled and db and db.reduceMotion) and true or false
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
+	ApplyMotion(db)
 	if db.reskin ~= false and NothingWanted(db) then
 		MelloUI:Notice("UI Modifications is on, but every area of the reskin is switched off, so the game's own art is what you see. Its page has a \"Switch every area on\" button.")
 	end
@@ -1096,14 +1250,17 @@ function M:OnEnable(db)
 		PutBack(frame)
 	end
 	ApplyNameFormat(db, true)
+	ApplyPreload(db, true)
 	ReskinOn(db)
 end
 
 function M:OnDisable(db)
 	db = db or self.db or {}
+	ApplyMotion(nil)
 	Apply(db, false)
 	ApplyUnlock(false)
 	ApplyNameFormat(db, false)
+	ApplyPreload(db, false)
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -1111,13 +1268,20 @@ function M:OnSettingChanged(key, value, db)
 	if key == "unlock" then
 		ApplyUnlock(value)
 		return
+	elseif key == "reduceMotion" then
+		ApplyMotion(db)
+		return
 	elseif key == "positions" or key == "layoutApplied" or key == "welcomeAsked" or key == "savedSurnameOwn" then
 		return
 	elseif key == "nameFormat" then
 		ApplyNameFormat(db, true)
 		return
+	elseif key == "preloadArt" then
+		ApplyPreload(db, true)
+		return
 	elseif key == "reskin" then
 		Apply(db, true)
+		ApplyPreload(db, true)
 		if value then
 			ReskinOn(db)
 		end

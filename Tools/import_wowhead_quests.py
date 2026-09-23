@@ -3,9 +3,11 @@
 Import quest dialog for WoW: Forever from Wowhead's Forever database into the
 voice line store, so the generator can voice quests before you meet them.
 
-Wowhead marks quests added by Forever as "Added in patch 2.0.0" (firstseenpatch
-20000 in its listing data); vanilla quests are already covered by the vanilla
-sound pack, so only the new ones are imported by default. Each quest page gives
+A quest the vanilla database never had (and with an ID of 60000 or more) is a
+Forever quest; vanilla quests are already covered by the vanilla sound pack, so
+only the new ones are imported by default. Wowhead's "added in patch" tag is
+not used: it has been re-tagged more than once (2.0.0, then 16001 for newer
+Forever quests and 1.13.x for vanilla ones, 2026-09-23). Each quest page gives
 the quest ID, the start and end NPC with their IDs, and the offer (description),
 progress and completion text with <name> / <class> / <race> placeholders.
 
@@ -51,11 +53,13 @@ HEADERS = {
 LEVEL_BANDS = [
     "min-level:1/max-level:10", "min-level:11/max-level:20", "min-level:21/max-level:30",
     "min-level:31/max-level:40", "min-level:41/max-level:50", "min-level:51/max-level:59",
-    "min-level:60/max-level:60/min-req-level:1/max-req-level:55",
+    # level 60 with a lower requirement outgrew one page (1,003 rows, 2026-09-23:
+    # Forever's Craftsman's Writs): split at required level 50
+    "min-level:60/max-level:60/min-req-level:1/max-req-level:50",
+    "min-level:60/max-level:60/min-req-level:51/max-req-level:55",
     "min-level:60/max-level:60/min-req-level:56/max-req-level:60",
     "min-level:61/max-level:99",
 ]
-FOREVER_PATCH = 20000
 PLACEHOLDERS = {"name": "$n", "class": "$c", "race": "$r"}
 
 
