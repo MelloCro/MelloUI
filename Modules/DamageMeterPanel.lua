@@ -315,6 +315,18 @@ local function SkinBody(container, background, key, session)
 	if rep and rep.skin and Kit.ParchmentSheet then
 		Kit:ParchmentSheet(rep.skin, rep.object, { area = "meter" })
 	end
+	-- no eye strain (user, 2026-09-24: "too much small text over a plain
+	-- brown border is just an eye strain" / "apply the eye strain rule to all
+	-- existing windows"; WINDOW-RULES 2e): the rows' names and numbers, the
+	-- gaps between the bars and the "not active" line lie on the body, so on
+	-- the stone look (the meter's parchment off) the stone inside the rails
+	-- lies under the palette's inner panel. A region of the body's skin
+	-- between the stone and the sheet (the bars, their fills and texts are
+	-- the game's frames above it), following the body's opacity with it;
+	-- Kit:SetParchment switches it against the sheet.
+	if rep and rep.skin and Kit.StoneDim then
+		Kit:StoneDim(rep.skin, { area = "meter" })
+	end
 	if not (rep and session and session.GetBackgroundAlpha) then
 		return
 	end

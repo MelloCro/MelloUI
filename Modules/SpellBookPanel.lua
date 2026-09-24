@@ -533,6 +533,11 @@ local function BuildSkin()
 				Fit()
 			end
 			skin.ring = ring
+			-- fitted again on every show (RefreshFollowers): a window not laid
+			-- out yet when the skin went on left the icon at the game's size,
+			-- and the ring must never stand empty or half-filled (user,
+			-- 2026-09-24, WINDOW-RULES 2c)
+			skin.fitPortrait = Fit
 		end
 	end
 	local tc = pf.TitleContainer
@@ -633,6 +638,9 @@ function M:RefreshFollowers()
 	end
 	for _, f in ipairs(skin.followers) do
 		f.rep:SetShown(f.region:IsShown())
+	end
+	if skin.fitPortrait then
+		skin.fitPortrait()
 	end
 end
 

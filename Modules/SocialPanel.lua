@@ -158,13 +158,20 @@ local function SkinContacts(frame)
 	end
 end
 
+-- A box lying on the dimmed inset (a raid group's five names) takes the main
+-- window's tone over its stone: a step lighter than the inner panel around
+-- it, as WINDOW-RULES 2e stripes rows (user, 2026-09-24: "too much small text
+-- over a plain brown border is just an eye strain").
+local BOX_TONE = MelloUI.Palette and MelloUI.Palette.mainWindow
+
 -- The raid pane: the group boxes (G) and the raid info popup.
 local function SkinRaid()
 	for i = 1, 8 do
 		local group = _G["RaidGroup" .. i]
 		if group and group.melloRep == nil then
 			local outline = Kit:FirstTexture(group)
-			group.melloRep = outline and Replace(outline, { as = "UI-RaidFrame-GroupOutline", rect = group }) or false
+			group.melloRep = outline and Replace(outline, { as = "UI-RaidFrame-GroupOutline", rect = group,
+				dim = BOX_TONE and 0.85 or nil, dimColor = BOX_TONE }) or false
 		end
 	end
 	local info = RaidInfoFrame
@@ -231,7 +238,10 @@ local function Build()
 			end
 		end)
 	end
-	-- the lists (friends, recent allies, the raid) on the dark list stone
+	-- the lists (friends, recent allies, quick join, the raid) on the dark
+	-- list stone, under the palette's inner panel (the inset rule's `dim`,
+	-- WINDOW-RULES 2e: nothing else here lays a panel over it, so it is not
+	-- doubled); the ignore list's inset the same (SkinContacts)
 	if ff.Inset then
 		Kit:SkinInset(ff.Inset, Replace, ff, true)
 	end

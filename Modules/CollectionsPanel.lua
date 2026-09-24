@@ -121,6 +121,28 @@ local function SkinIconsFrame(frame)
 	end
 end
 
+-- The eye-strain panel (WINDOW-RULES 2e; user, 2026-09-24: "too much small
+-- text over a plain brown border is just an eye strain" / "apply the eye
+-- strain rule to all existing windows"): the palette's inner panel inside the
+-- rail of an inset that holds text -- a list of names, a grid of named icons
+-- -- (Kit:StoneDim), as a REGION of the inset itself, over its stone (the
+-- page's, or the icon grid's tile at BACKGROUND 0) at BACKGROUND 2: where
+-- the game drew the inset's own marble, so the rows and slots the game draws
+-- over that are drawn over the panel too. A tint over the one stone, never a
+-- second stone; shown only while the skin is on. The wardrobe's grid of item
+-- models and the mount / pet / set pictures are picture areas and get none.
+local function EyePanel(host)
+	if not (host and Kit.StoneDim) or skin.eyePanels[host] ~= nil then
+		return
+	end
+	local tex = Kit:StoneDim(host)
+	skin.eyePanels[host] = tex or false
+	if tex then
+		tex.kitPiece = true            -- ours: never taken for the game's art
+		tex:SetShown(active)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Building the skin
 --------------------------------------------------------------------------------
@@ -135,6 +157,7 @@ local function BuildSkin()
 	skin:EnableMouse(false)
 	skin.reps = {}
 	skin.followers = {}
+	skin.eyePanels = setmetatable({}, { __mode = "k" })   -- [inset] = its inner panel (EyePanel)
 	skin.Replace = Replace
 
 	-- the body OFF (its holder sat over the wardrobe's slot buttons): the
@@ -149,10 +172,12 @@ local function BuildSkin()
 	if MountJournal and MountJournal.ScrollBox then
 		Kit:HookScrollBoxRows(MountJournal.ScrollBox, SkinMountRow, IsActive)
 	end
-	-- the icon grids' backdrops
+	-- the icon grids' backdrops; the toys' and heirlooms' names on the inner
+	-- panel (2e), the wardrobe's models not (a picture area)
 	for _, page in ipairs({ ToyBox, HeirloomsJournal }) do
 		if page then
 			SkinIconsFrame(page.iconsFrame)
+			EyePanel(page.iconsFrame)
 		end
 	end
 	if WardrobeCollectionFrame then
@@ -160,6 +185,12 @@ local function BuildSkin()
 		if WardrobeCollectionFrame.SetsCollectionFrame then
 			SkinIconsFrame(WardrobeCollectionFrame.SetsCollectionFrame.RightInset)
 		end
+	end
+	-- the lists of names (mounts, pets, the wardrobe's sets) on the inner
+	-- panel (2e): their insets' rails come from the sweep below, edges only
+	for _, inset in ipairs({ MountJournal and MountJournal.LeftInset, _G.PetJournal and _G.PetJournal.LeftInset,
+		WardrobeCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame and WardrobeCollectionFrame.SetsCollectionFrame.LeftInset }) do
+		EyePanel(inset)
 	end
 
 	-- every common control in the window
@@ -188,6 +219,11 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	for _, tex in pairs(skin.eyePanels) do
+		if tex then
+			tex:Show()
+		end
+	end
 	M:RefreshFollowers()
 end
 
@@ -199,6 +235,11 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, tex in pairs(skin.eyePanels) do
+		if tex then
+			tex:Hide()
+		end
 	end
 	Kit:UnfitPortrait(Portrait())
 end

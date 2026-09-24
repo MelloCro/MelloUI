@@ -142,6 +142,32 @@ local function SkinPageInset(page, inset, over)
 	inset.melloRep = Replace(inset, { as = "common-insideframe", parent = page, rect = inset, level = level, body = false, noFade = true, alsoFade = extra }) or false
 end
 
+-- The eye-strain panel (WINDOW-RULES 2e; user, 2026-09-24: "too much small
+-- text over a plain brown border is just an eye strain" / "apply the eye
+-- strain rule to all existing windows"): the palette's inner panel over the
+-- darker list stone of a page's list, inside its rail (Kit:StoneDim), as a
+-- REGION of the frame the stone itself is a region of, one sublevel above it:
+-- it lies exactly where the stone lies in the draw order, so whatever the
+-- game draws over the stone (the rows, the activity list, the comment box)
+-- is drawn over the panel too. A tint over the one stone, never a second
+-- stone; shown only while the skin is on.
+local function EyePanel(host, opts)
+	if not (host and Kit.StoneDim) or skin.eyePanels[host] ~= nil then
+		return
+	end
+	local tex = Kit:StoneDim(host, opts)
+	skin.eyePanels[host] = tex or false
+	if tex then
+		tex.kitPiece = true            -- ours: never taken for the game's art
+		tex:SetShown(active)
+	end
+end
+
+-- A card lying on a dimmed list (a browse result, a who row) takes the main
+-- window's tone over its stone: a row a step lighter than the panel around
+-- it, as 2e stripes rows.
+local CARD_TONE = MelloUI.Palette and MelloUI.Palette.mainWindow
+
 -- A page (LFGListingFrame / LFGBrowseFrame / LFGWhoListFrame, each a
 -- PortraitFrameTemplateNoCloseButton): its shell, the ring on the parent's eye.
 local function SkinPage(page)
@@ -191,7 +217,11 @@ local function SkinBrowseRow(row)
 	row.melloRep = false
 	local isHeader = row.ExpandIcon ~= nil
 	if row.ResultBG then
+		-- a result's card in the main window's tone (2e: the leader, the
+		-- activity and the comment must not lie on the plain stone; the
+		-- grouping header is a plate and takes no `dim`)
 		row.melloRep = Replace(row.ResultBG, { as = isHeader and "LFGBrowse-Grouping" or "LFGBrowse-Result", rect = row, button = row,
+			dim = (CARD_TONE and not isHeader) and 0.85 or nil, dimColor = CARD_TONE,
 			checked = function() return row.Selected and row.Selected:IsShown() or false end,
 			alsoFade = { row.Highlight, row.GetHighlightTexture and row:GetHighlightTexture() or nil } }) or false
 	end
@@ -214,7 +244,9 @@ local function SkinWhoRow(row)
 	end
 	row.melloRep = false
 	if row.Background then
+		-- the row's card in the main window's tone (2e), as the browse results
 		row.melloRep = Replace(row.Background, { as = "common-button-list-large", rect = row, button = row,
+			dim = CARD_TONE and 0.85 or nil, dimColor = CARD_TONE,
 			checked = function() return row.Selected and row.Selected:IsShown() or false end,
 			alsoFade = { row.GetHighlightTexture and row:GetHighlightTexture() or nil } }) or false
 	end
@@ -238,6 +270,7 @@ local function BuildSkin()
 	skin:EnableMouse(false)
 	skin.reps = {}
 	skin.followers = {}
+	skin.eyePanels = setmetatable({}, { __mode = "k" })   -- [list frame] = its inner panel (EyePanel)
 	skin.Replace = Replace
 
 	-- the parent's close button and side tabs
@@ -260,6 +293,10 @@ local function BuildSkin()
 		end
 		if listing.Inset and listing.Inset.CustomBG then
 			Replace(listing.Inset.CustomBG, { as = "groupfinder-background" })
+			-- the activity list, its comment box (and the category page's
+			-- banners, pictures over it) on the inner panel (2e): a region of
+			-- the inset over the stone (BACKGROUND 0), inside the rail
+			EyePanel(listing.Inset)
 		end
 		SkinPageInset(listing, listing.Inset, listing.CategoryView)
 		for _, holder in ipairs({ listing.SoloRoleButtons, listing.GroupRoleButtons }) do
@@ -309,6 +346,8 @@ local function BuildSkin()
 		end
 		if browse.Inset and browse.Inset.CustomBG then
 			Replace(browse.Inset.CustomBG, { as = "groupfinder-background" })
+			-- the results list on the inner panel (2e), as the listing's
+			EyePanel(browse.Inset)
 		end
 		SkinPageInset(browse, browse.Inset, browse.ScrollBox)
 		SkinOptionsButton(browse.OptionsButton)
@@ -337,6 +376,12 @@ local function BuildSkin()
 			Replace(who.insideFrame, { as = "common-insideframe", parent = who, rect = who.insideFrame, level = level, body = false })
 			-- ... and the darker list-box stone under the rows, as the other lists
 			Replace(who.insideFrame, { as = "WhoListBody", noFade = true })
+			-- ... under the inner panel (2e): a region of the page, one
+			-- sublevel over the stone (which takes the inside frame's layer
+			-- and sublevel), inside the rail
+			local layer, sub = who.insideFrame:GetDrawLayer()
+			EyePanel(who, { rect = who.insideFrame, margin = Kit:RailInset(Kit.framePrefix .. "_l", "l"),
+				layer = layer or "BACKGROUND", sublevel = math.min((sub or 0) + 1, 7) })
 		end
 		if who.EditBox and who.EditBox.Backdrop then
 			Replace(who.EditBox.Backdrop, { as = "glues-characterSelect-searchbar" })
@@ -375,6 +420,11 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	for _, tex in pairs(skin.eyePanels) do
+		if tex then
+			tex:Show()
+		end
+	end
 	M:RefreshFollowers()
 end
 
@@ -386,6 +436,11 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, tex in pairs(skin.eyePanels) do
+		if tex then
+			tex:Hide()
+		end
 	end
 	for _, entry in ipairs(skin.rings or {}) do
 		Kit:UnfitPortrait(entry.portrait)

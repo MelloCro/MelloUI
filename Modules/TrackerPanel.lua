@@ -12,7 +12,8 @@
 --   the atlas the game puts there; the filter button on the cog
 --   the tracker's backdrop → the single rail with stone on the game's
 --   NineSlice rect, at Edit Mode's opacity, retracting to the header while
---   the tracker is collapsed
+--   the tracker is collapsed; its stone under the palette's inner panel
+--   while the tracker's parchment is off (the eye strain rule, 2026-09-24)
 --   quest item buttons → R1 rims (Kit:SkinActionButton); progress bars → P1
 -- Blocks, item buttons and bars are pooled per module: swept after every
 -- container Update. Block hover is a text colour: nothing to replace.
@@ -351,23 +352,18 @@ local function Build()
 			if tracker.SetCollapsed then
 				hooksecurefunc(tracker, "SetCollapsed", Extent)
 			end
-			-- a black shade over the stone, under the text: darkest down the
-			-- middle, fading out to both sides (user, 2026-09-22: the quest
-			-- text reads better on it); two gradient halves on the holder,
-			-- above the box's body, under the rails; an agreed addition
-			if not holder.melloShade then
-				local strength = 0.6
-				local left = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
-				left:SetColorTexture(1, 1, 1, 1)
-				left:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, strength))
-				left:SetPoint("TOPLEFT", holder, "TOPLEFT", 4, -4)
-				left:SetPoint("BOTTOMRIGHT", holder, "BOTTOM", 0, 4)
-				local right = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
-				right:SetColorTexture(1, 1, 1, 1)
-				right:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, strength), CreateColor(0, 0, 0, 0))
-				right:SetPoint("TOPLEFT", holder, "TOP", 0, -4)
-				right:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", -4, 4)
-				holder.melloShade = { left, right }
+			-- no eye strain (user, 2026-09-24: "too much small text over a
+			-- plain brown border is just an eye strain" / "apply the eye
+			-- strain rule to all existing windows"; WINDOW-RULES 2e): the
+			-- tracker is a column of quest text, so on the stone look (its
+			-- parchment off) the stone inside the rails lies under the
+			-- palette's inner panel, a region of the box's skin between the
+			-- stone and the sheet, following the opacity with the holder.
+			-- It takes the place of the black shade that was darkest down
+			-- the middle (user, 2026-09-22): under the panel the shade only
+			-- blackened the middle further, and it left the sides brown.
+			if not holder.melloShade and rep.skin and Kit.StoneDim then
+				holder.melloShade = Kit:StoneDim(rep.skin, { area = "tracker" })
 			end
 			rep.onEnable = function()
 				Opacity()

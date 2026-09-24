@@ -304,7 +304,13 @@ local function RefreshCard(card)
 		local grey = (not card.isPrimary) and function()
 			return card.missingHeader and card.missingHeader:IsShown()
 		end or nil
-		card.melloReps[key] = Replace(card.Background, { as = key, rect = card, grey = grey }) or false
+		-- the empty primary card is no picture but the stone box, and it holds
+		-- only text (what is missing, where to learn it): that stone under the
+		-- palette's inner panel (user, 2026-09-24: "apply the eye strain rule
+		-- to all existing windows"; WINDOW-RULES 2e). The profession cards
+		-- are pictures and stay as they are.
+		local dim = (key == "Profession-overview-Card") and 0.8 or nil
+		card.melloReps[key] = Replace(card.Background, { as = key, rect = card, grey = grey, dim = dim }) or false
 	end
 	for k, rep in pairs(card.melloReps) do
 		if rep then
@@ -494,6 +500,13 @@ local function RefreshSchematic(form)
 			rep:SetShown(k == key and form.Background:IsShown())
 		end
 	end
+	-- no picture behind the recipe (the game hides it: the minimized view)
+	-- and the form's inset faded with the pictures: the recipe's text would
+	-- lie on the plain page stone, so the inset box with its dark panel
+	-- stands there instead (skin.schematicBox, SkinCraftingPage)
+	if skin and skin.schematicBox then
+		skin.schematicBox:SetShown(active and not form.Background:IsShown())
+	end
 end
 
 local function SkinCraftingPage(page)
@@ -561,6 +574,14 @@ local function SkinCraftingPage(page)
 	if form then
 		form.melloReps = {}
 		form.melloInset = FirstArt(form, "common-insideframe")   -- drawn by the picture's own rail
+		-- ... and, while the game shows no picture there, the inset box on
+		-- the inset's rect with the palette's inner panel over its stone (the
+		-- rule's `dim`; user, 2026-09-24: "apply the eye strain rule to all
+		-- existing windows"), one level under the form as the pictures are,
+		-- so the recipe's text and slots stay above it (RefreshSchematic)
+		if form.melloInset then
+			skin.schematicBox = Replace(form.melloInset, { as = "common-insideframe", level = -1 })
+		end
 		RefreshSchematic(form)
 		-- the game re-atlases the backdrop per profession and shows / hides it
 		-- (the minimized view): follow both directly
@@ -1148,6 +1169,13 @@ local function ApplyBackgrounds()
 		elseif value == "dark" then
 			body:SetColorTexture(0.05, 0.045, 0.04, 0.95)
 			body.kitPiece, body.kitName = true, nil
+		end
+		-- the list box's dark panel (its rule's `dim`, WINDOW-RULES 2e) lies
+		-- over any stone, never over the parchment: on paper the rows are in
+		-- dark ink (the parchment ink rule), a dark panel there would drown them
+		local fill = skin.listBox.skin.dimFill
+		if fill then
+			fill:SetShown(value ~= "parchment")
 		end
 	end
 	InkSurface()

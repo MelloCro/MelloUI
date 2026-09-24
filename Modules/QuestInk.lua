@@ -332,6 +332,10 @@ function QI.RoleColour(role, r, g, b, sheet)
 	if role == "auto" then
 		return QI.InkOf(r, g, b, sheet)
 	end
+	-- the body ink on a sheet is the darker title ink (4.7 : 1 there)
+	if sheet and role == "text" then
+		role = "title"
+	end
 	local c = QI.INK[role] or QI.INK.title
 	return c[1], c[2], c[3]
 end
@@ -537,7 +541,15 @@ local function WalkInk(def, frame)
 			if def.sheet then
 				QI.onSheet[fs] = true
 			end
-			QI.InkText(fs)
+			-- def.plainInk(fs): a text whose colour means nothing here (the
+			-- game's system blue on a notice) takes the body ink, not a
+			-- shade of its hue (user, 2026-09-24: "the text is blue")
+			if def.plainInk and def.plainInk(fs) then
+				QI.WatchColour(fs, function() return "text" end)
+				QI.Ink(fs, "text")
+			else
+				QI.InkText(fs)
+			end
 		end
 	end)
 end

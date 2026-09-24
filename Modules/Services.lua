@@ -763,11 +763,21 @@ local function KitAnchor(frame)
 end
 
 -- The L1 box on a frame of ours (the bar, the menu), one level under it.
+-- The box's rule lays the palette's inner panel over its stone (the eye
+-- strain rule, user 2026-09-24: "apply the eye strain rule to all existing
+-- windows"; WINDOW-RULES 2e): kept on the nearest-service menu, a list of
+-- text rows; left off the bar, a grid of icons in their rims with no text on
+-- the stone, which keeps the plain stone it was picked with (SV1).
 local function KitBox(frame)
 	if frame.kitBox ~= nil then
 		return frame.kitBox
 	end
-	local rep = MelloUI.Kit:Replace(KitAnchor(frame), { as = "Professions-background-summarylist", rect = frame, parent = frame, level = -1 })
+	-- nil: the rule's panel; false: none (an `and false or nil` would give nil)
+	local dim = nil
+	if frame ~= menu then
+		dim = false
+	end
+	local rep = MelloUI.Kit:Replace(KitAnchor(frame), { as = "Professions-background-summarylist", rect = frame, parent = frame, level = -1, dim = dim })
 	frame.kitBox = rep or false
 	return frame.kitBox
 end

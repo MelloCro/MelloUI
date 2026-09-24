@@ -75,6 +75,17 @@ local function Framed(f)
 		local bg = f:CreateTexture(nil, "BACKGROUND")
 		bg:SetAllPoints()
 		bg:SetColorTexture(0.06, 0.055, 0.05, 0.94)
+		return
+	end
+	-- its texts (the pickers' headings, current values and tile names, the
+	-- overview's introduction) lay on the plain brown: the palette's inner
+	-- panel over the stone inside the rail (user, 2026-09-24: "apply the eye
+	-- strain rule to all existing windows"; WINDOW-RULES 2e), a region of the
+	-- skin between its stone (BACKGROUND 0) and its rails (BORDER). The
+	-- previews are pictures on their own frames, above it.
+	local skin = f.kitSkin
+	if skin.body and Kit.StoneDim then
+		Kit:StoneDim(skin, { rect = skin, margin = (skin.thickness or 0) * 0.6, sublevel = 1 })
 	end
 end
 
@@ -261,7 +272,9 @@ local function RefreshMarks(panel)
 		for _, tile in ipairs(section.tiles) do
 			local on = tile.choice.value == current
 			tile.mark(on)
-			tile.label:SetTextColor(on and GOLD[1] or 0.85, on and GOLD[2] or 0.85, on and GOLD[3] or 0.85)
+			-- the palette's text, its gold on the chosen one (WINDOW-RULES 2e)
+			local c = MelloUI.Palette and (on and MelloUI.Palette.selectedTrim or MelloUI.Palette.text) or (on and GOLD or { 0.85, 0.85, 0.85 })
+			tile.label:SetTextColor(c[1], c[2], c[3])
 		end
 		local label = "?"
 		for _, tile in ipairs(section.tiles) do
@@ -335,6 +348,13 @@ local function BuildPanel(group)
 		head:SetText(section.title .. ":")
 		s.current = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		s.current:SetPoint("LEFT", head, "RIGHT", 6, 0)
+		-- the heading in the palette's gold, the current choice in its text
+		-- colour, on the dark panel (WINDOW-RULES 2e)
+		local pal = MelloUI.Palette
+		if pal then
+			head:SetTextColor(pal.selectedTrim[1], pal.selectedTrim[2], pal.selectedTrim[3])
+			s.current:SetTextColor(pal.text[1], pal.text[2], pal.text[3])
+		end
 		for i, choice in ipairs(section.choices or {}) do
 			local tile = CreateFrame("Button", nil, f)
 			tile:SetSize(TILE + 8, TILE + 8)
@@ -718,10 +738,8 @@ local function FillOverview(f)
 		anchor:SetAllPoints()
 		anchor:SetColorTexture(0, 0, 0, 0)
 		Replace(anchor, { as = "Professions-background-summarylist", rect = panel, parent = panel, level = -1 })
-		local fill = panel:CreateTexture(nil, "BACKGROUND", nil, -8)
-		fill:SetPoint("TOPLEFT", 5, -5)
-		fill:SetPoint("BOTTOMRIGHT", -5, 5)
-		fill:SetColorTexture(PAL.innerPanel[1], PAL.innerPanel[2], PAL.innerPanel[3], 0.82)
+		-- (the L1 box lays the palette's inner panel over its stone itself:
+		-- its rule's `dim`, WINDOW-RULES 2e)
 		for i, ry in ipairs(col.rows) do
 			if i % 2 == 1 then
 				local band = panel:CreateTexture(nil, "BACKGROUND", nil, -7)
@@ -755,6 +773,9 @@ local function BuildPopup()
 	text:SetText("The look of the whole reskin in one place. The borders and colours go on every window at once; "
 		.. "for the backgrounds, move the mouse over your action bars, micro menu, bag bar, bags, character window, "
 		.. "minimap or an open professions window and click it to pick with pictures.")
+	if PAL and PAL.text then
+		text:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])   -- on the dark panel (Framed), in the palette's text colour
+	end
 	local done = Button(f, "Done", 100)
 	done:SetPoint("BOTTOM", 0, 16)
 	done:SetScript("OnClick", function() D:Stop() end)

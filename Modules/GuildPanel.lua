@@ -99,6 +99,42 @@ local function LevelAbove(parent, frame)
 	return 5
 end
 
+-- The eye-strain panel (WINDOW-RULES 2e; user, 2026-09-24: "too much small
+-- text over a plain brown border is just an eye strain" / "apply the eye
+-- strain rule to all existing windows"): the palette's inner panel laid over
+-- the stone under an area that is mostly text (Kit:StoneDim), as a REGION of
+-- `host`, the frame that holds that text: under the host's own children (the
+-- rows, the messages) and above the window's page stone, which is a region of
+-- the window at a lower frame level. A frame of ours at the host's level
+-- would tie with the host's own regions (a header plate, a label) and could
+-- draw over them. A tint over the one stone, never a second stone; shown only
+-- while the skin is on.
+local function EyePanel(host, opts)
+	if not (host and Kit.StoneDim) or skin.eyePanels[host] ~= nil then
+		return
+	end
+	local tex = Kit:StoneDim(host, opts)
+	skin.eyePanels[host] = tex or false
+	if tex then
+		-- ours: never taken for the game's art (the info page's sheets are
+		-- found as its tall BACKGROUND textures and faded)
+		tex.kitPiece = true
+		tex:SetShown(active)
+	end
+end
+
+-- The distance from an inset rail's outer edge to its centre line: a panel
+-- inside a rail starts there, so the rail's inner half lies over its edge
+-- and no brown seam shows between them.
+local function RailMargin()
+	return Kit:RailInset(Kit.framePrefix .. "_l", "l")
+end
+
+-- A card lying on a dimmed list (the communities list's entries) takes the
+-- main window's tone over its stone: a row a step lighter than the panel
+-- around it, as 2e stripes rows.
+local CARD_TONE = MelloUI.Palette and MelloUI.Palette.mainWindow
+
 -- A text dropdown (WowStyle1DropdownTemplate: Background textholder, Arrow,
 -- Text): the dropdown plate (D1) on the button, its painted cap in place of
 -- the arrow, hover from the button.
@@ -120,7 +156,10 @@ local function SkinListEntry(entry)
 	if entry.Background then
 		-- a tall row (R3): the card, lit while the game shows the Selection
 		local highlight = entry.GetHighlightTexture and entry:GetHighlightTexture()
+		-- the card's stone in the main window's tone (2e: its name must not
+		-- lie on the plain stone; a step lighter than the dimmed list box)
 		entry.melloRep = Replace(entry.Background, { as = "CommunitiesListEntry", rect = entry, button = entry,
+			dim = CARD_TONE and 0.85 or nil, dimColor = CARD_TONE,
 			checked = function() return entry.Selection and entry.Selection:IsShown() or false end,
 			alsoFade = highlight and { highlight } or nil }) or false
 	end
@@ -243,6 +282,7 @@ local function BuildSkin()
 	skin:EnableMouse(false)
 	skin.reps = {}
 	skin.followers = {}
+	skin.eyePanels = setmetatable({}, { __mode = "k" })   -- [text area] = its inner panel (EyePanel)
 	skin.Replace = Replace
 
 	-- the window: outer rail, page stone on the rock, streaks, the ring on
@@ -251,9 +291,13 @@ local function BuildSkin()
 	-- the guild's tabard does not cover the ring's opening: the dark disc behind it (WINDOW-RULES 2b)
 	Kit:RingDisc(skin.ring, nil, cf.PortraitOverlay, 0)
 	-- the inset (ButtonFrameTemplate's InsetFrameTemplate): the single rail
-	-- under everything at the window's level
+	-- under everything at the window's level. Without the rule's inner panel
+	-- (2e, user 2026-09-24): its holder lies a level under the window, whose
+	-- page stone is a region of the window itself, so a panel there would
+	-- not be seen; each text area below gets its own (EyePanel) instead, and
+	-- one here would double them if it ever showed
 	if cf.Inset then
-		cf.Inset.melloRep = Replace(cf.Inset, { as = "common-insideframe", parent = cf, rect = cf.Inset, level = -1 }) or false
+		cf.Inset.melloRep = Replace(cf.Inset, { as = "common-insideframe", parent = cf, rect = cf.Inset, level = -1, dim = false }) or false
 	end
 	-- the side tabs (RightSideTabTemplate: the 64 px tab plate, the icon)
 	for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab" }) do
@@ -294,6 +338,10 @@ local function BuildSkin()
 		if list.InsetFrame then
 			list.InsetFrame.melloRep = Replace(list.InsetFrame, { as = "CommunitiesListBox", parent = list, rect = list.InsetFrame, level = LevelAbove(list, list.InsetFrame), alsoFade = extra }) or false
 		end
+		-- the list box's stone under the inner panel (2e): a region of the
+		-- list over its body tile (ARTWORK 1, the game's Bg sublevel) and
+		-- under its entries, inside the rail
+		EyePanel(list, { rect = list.InsetFrame or list, margin = RailMargin(), layer = "ARTWORK", sublevel = 2 })
 		Kit:HookScrollBoxRows(list.ScrollBox, SkinListEntry, IsActive)
 	end
 	SkinDropdown(cf.CommunitiesListDropdown)
@@ -310,6 +358,10 @@ local function BuildSkin()
 			-- only (the rule's stone body would cover them; the game's inset
 			-- has no body here either)
 			members.InsetFrame.melloRep = Replace(members.InsetFrame, { as = "common-insideframe", parent = members, rect = members.InsetFrame, level = LevelAbove(members, members.InsetFrame), body = false }) or false
+			-- ... so the inner panel (2e) is a region of the member list
+			-- itself, under its rows and watermark, inside that rail (the
+			-- roster's rows lay on the page's stone between their plates)
+			EyePanel(members, { rect = members.InsetFrame, margin = RailMargin() })
 		end
 		local columns = members.ColumnDisplay
 		if columns then
@@ -331,6 +383,10 @@ local function BuildSkin()
 	local chat = cf.Chat
 	if chat and chat.InsetFrame then
 		chat.InsetFrame.melloRep = Replace(chat.InsetFrame, { as = "common-insideframe", parent = chat, rect = chat.InsetFrame, level = LevelAbove(chat, chat.InsetFrame), body = false }) or false
+		-- the messages on the inner panel (2e), a region of the chat under
+		-- its message frame, on the inset's rect (which the game keeps round
+		-- the chat when it hides the inset in the minimized window)
+		EyePanel(chat, { rect = chat.InsetFrame, margin = RailMargin() })
 	end
 	-- the guild chat's input line: the edit plate's middle only (no search
 	-- glass — it is a chat line, not a search box; user, 2026-09-21)
@@ -404,6 +460,14 @@ local function BuildSkin()
 			Replace(details.InsetBorderRight, { as = "common-framedivider" })
 		end
 		local info = details.Info
+		-- the two columns' text (the message of the day, the guild's details,
+		-- the news) on the inner panel (2e) now that their sheets are faded:
+		-- a region of each column under everything the column holds, below
+		-- the header plates (BACKGROUND 2, owner strips) at sublevel -1; each
+		-- column's own rect, so the divider between them stays clear
+		for _, column in ipairs({ info, details.News }) do
+			EyePanel(column, { rect = column, sublevel = -1 })
+		end
 		if info then
 			local name = info:GetName() or ""
 			-- each horizontal bar is TWO textures (a left and a right piece):
@@ -483,6 +547,9 @@ local function BuildSkin()
 	-- box in the middle of their 64 px art, the arrow button faded), Apply buttons
 	local prefs = cf.GuildPreferredPlaySettingsFrame
 	if prefs then
+		-- a page of settings (title, labels, dropdowns) on the inner panel
+		-- (2e), a region of the page under its labels (ARTWORK) and controls
+		EyePanel(prefs, { rect = prefs })
 		for _, key in ipairs({ "LocaleDropdown", "DatacenterDropdown" }) do
 			local dd = prefs[key]
 			if dd and dd.melloRep == nil then
@@ -538,6 +605,11 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	for _, tex in pairs(skin.eyePanels) do
+		if tex then
+			tex:Show()
+		end
+	end
 	M:RefreshFollowers()
 end
 
@@ -549,6 +621,11 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, tex in pairs(skin.eyePanels) do
+		if tex then
+			tex:Hide()
+		end
 	end
 	for _, tex in ipairs(PortraitTextures()) do
 		Kit:UnfitPortrait(tex)

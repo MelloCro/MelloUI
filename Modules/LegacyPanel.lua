@@ -38,6 +38,34 @@ local function IsActive()
 	return active
 end
 
+-- The eye strain rule (user, 2026-09-24: "too much small text over a plain
+-- brown border is just an eye strain" / "apply the eye strain rule to all
+-- existing windows"; docs/WINDOW-RULES.md 2e): text lies on the palette's
+-- inner panel at this alpha over the page's stone, never on the bare stone.
+local DIM_ALPHA = 0.8
+
+-- The inner panel behind a list that has no card or inset of its own (the
+-- challenges' category list, the tree selection column): a region of the
+-- list's own frame, low in its BACKGROUND layer, so every row, text and
+-- control of the list (its children) is drawn over it and it goes wherever
+-- the list goes; on `rect` (the rows' area), `pad` px out from it. A tint
+-- over the page's stone, not a second stone (one stone per surface). Shown
+-- while the skin is on (Activate / Deactivate).
+local function ListDim(owner, rect, pad)
+	if not (owner and owner.CreateTexture and rect) then
+		return
+	end
+	pad = pad or 0
+	local tex = owner:CreateTexture(nil, "BACKGROUND", nil, 7)
+	tex:SetPoint("TOPLEFT", rect, "TOPLEFT", -pad, pad)
+	tex:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", pad, -pad)
+	local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+	tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
+	tex.kitPiece = true   -- ours: never faded with the game's art
+	tex:SetShown(active)
+	skin.dims[#skin.dims + 1] = tex
+end
+
 local function Replace(region, opts)
 	if not region then
 		return nil
@@ -169,7 +197,11 @@ local function SkinChallengeCard(card)
 	if card.melloRep == nil then
 		card.melloRep = false
 		if card.Background then
-			Replace(card.Background, { as = "Legacy-Challenge-Cards", rect = card,
+			-- `dim`: the card's text (its description, the criteria) on the
+			-- palette's inner panel inside its rail, not on the bare stone
+			-- (user, 2026-09-24: "apply the eye strain rule to all existing
+			-- windows", WINDOW-RULES 2e)
+			Replace(card.Background, { as = "Legacy-Challenge-Cards", rect = card, dim = DIM_ALPHA,
 				alsoFade = { card.BackgroundTop, card.BackgroundMiddle, card.BackgroundBottom } })
 		end
 		if card.TitleBar then
@@ -225,8 +257,10 @@ local function SkinRewardCard(card)
 			return
 		end
 		if c.RewardCardBG and c.melloBody == nil then
-			-- the card's body (LR1): the rail + stone, whatever the game atlases the BG to
-			c.melloBody = Replace(c.RewardCardBG, { as = "Legacy-Rewards-Tracker-Cards", rect = c }) or false
+			-- the card's body (LR1): the rail + stone, whatever the game atlases
+			-- the BG to; the reward's name and level on the inner panel over
+			-- that stone (WINDOW-RULES 2e, user 2026-09-24)
+			c.melloBody = Replace(c.RewardCardBG, { as = "Legacy-Rewards-Tracker-Cards", rect = c, dim = DIM_ALPHA }) or false
 		end
 		if c.IconBorder and c.Icon then
 			-- the rim's opening is the 64 px icon (the game's border is 80 on it)
@@ -310,6 +344,7 @@ local function BuildSkin()
 	skin:EnableMouse(false)
 	skin.reps = {}
 	skin.followers = {}
+	skin.dims = {}         -- the lists' inner panels (ListDim)
 	skin.Replace = Replace
 
 	-- the window: outer rail, streaks, the ring on the shield's corner, title, close
@@ -368,6 +403,8 @@ local function BuildSkin()
 			end
 			Kit:SkinSearchBox(list.SearchBox, Replace)
 			Kit:HookScrollBoxRows(list.ScrollBox, SkinCategoryRow, IsActive)
+			-- the category rows (a column of small names) on the inner panel
+			ListDim(list, list.ScrollBox, 4)
 		end
 		local detail = cp.DetailPane
 		if detail then
@@ -399,6 +436,10 @@ local function BuildSkin()
 		end
 		local sel = tp.LegacyTreeSelectionPanel
 		if sel then
+			-- the tree selection column (the trees' names and texts beside
+			-- their rings) on the inner panel; the trait panel beside it is
+			-- the talent tree itself, a picture of nodes, and keeps the stone
+			ListDim(sel, sel, 0)
 			SkinTreeCards(sel)
 			if sel.RefreshTreeButtons then
 				hooksecurefunc(sel, "RefreshTreeButtons", function(s)
@@ -458,6 +499,9 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	for _, tex in ipairs(skin.dims) do
+		tex:Show()
+	end
 	M:RefreshFollowers()
 end
 
@@ -469,6 +513,9 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, tex in ipairs(skin.dims) do
+		tex:Hide()
 	end
 	Kit:UnfitPortrait(Portrait())
 end

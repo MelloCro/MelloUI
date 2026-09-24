@@ -303,6 +303,15 @@ local function BuildKitLook()
 	if skin and Kit.ParchmentSheet then
 		Kit:ParchmentSheet(skin, holder, { area = "questTracker" })
 	end
+	-- no eye strain (user, 2026-09-24: "too much small text over a plain
+	-- brown border is just an eye strain" / "apply the eye strain rule to all
+	-- existing windows"; WINDOW-RULES 2e): the tracker is all quest text, so
+	-- on the stone look (its parchment off) the stone inside the rails lies
+	-- under the palette's inner panel; a region of the skin between the stone
+	-- and the sheet, switched against the sheet by Kit:SetParchment
+	if skin and Kit.StoneDim then
+		Kit:StoneDim(skin, { area = "questTracker" })
+	end
 	-- the title plate across the top, as on the game's tracker
 	local plateHolder = CreateFrame("Frame", nil, header)
 	plateHolder:SetAllPoints(header)
@@ -688,6 +697,25 @@ local function InkLine(fs, ink, r)
 	end
 end
 
+-- A line's colour on the stone look (user, 2026-09-24: the eye strain rule,
+-- WINDOW-RULES 2e -- text on the dark panel in the palette's colours): the
+-- plain white of a line to do becomes the palette's text, the gold of a
+-- recipe's name its gold; a done line's grey and a quest title's difficulty
+-- colour keep their meaning. On parchment the ink colours it; without the kit
+-- (the plain dark box) it keeps the game tracker's colours.
+local function StoneColour(block, r, g, b)
+	if block.ink or not KitCovers() then
+		return r, g, b
+	end
+	local P = MelloUI.Palette
+	if r == g and g == b and r >= 0.8 then
+		return P.text[1], P.text[2], P.text[3]
+	elseif r == 1 and g == 0.82 and b == 0 then
+		return P.selectedTrim[1], P.selectedTrim[2], P.selectedTrim[3]
+	end
+	return r, g, b
+end
+
 local function Line(block, i)
 	local fs = block.lines[i]
 	if not fs then
@@ -715,7 +743,10 @@ local function PutLine(block, i, text, y, width, dash, r, g, b)
 	local fs = Line(block, i)
 	local x = TEXT_X + (dash and LINE_X or BULLET_X)
 	fs:SetText(text)
-	fs:SetTextColor(r, g, b)
+	-- the palette's colour on the stone; the ink below still judges the
+	-- game's shade (`r`), done or not
+	local sr, sg, sb = StoneColour(block, r, g, b)
+	fs:SetTextColor(sr, sg, sb)
 	InkLine(fs, block.ink, r)
 	InkLine(fs.dash, block.ink, r)
 	fs:ClearAllPoints()
@@ -725,7 +756,7 @@ local function PutLine(block, i, text, y, width, dash, r, g, b)
 	if dash then
 		fs.dash:ClearAllPoints()
 		fs.dash:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + BULLET_X, -y)
-		fs.dash:SetTextColor(r, g, b)
+		fs.dash:SetTextColor(sr, sg, sb)
 		fs.dash:Show()
 	else
 		fs.dash:Hide()
@@ -1064,9 +1095,10 @@ local function FillRecipeBlock(block, entry, width)
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
 	t:SetWidth(width - TEXT_X)
 	t:SetText((name or ("Recipe " .. entry.id)) .. (entry.recraft and " (recraft)" or ""))
-	t:SetTextColor(1, 0.82, 0)
-	-- a recipe on parchment: its name in ink, no pips (no difficulty)
+	-- a recipe on parchment: its name in ink, no pips (no difficulty); on
+	-- the stone, the palette's gold
 	block.ink = Inked()
+	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
 	if block.pips then
 		block.pips:SetTier(nil)
 	end

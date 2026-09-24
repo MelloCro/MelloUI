@@ -673,8 +673,6 @@ local RefreshStrip, SelectPage  -- forward declarations
 
 local SEC_INSET = 10   -- the rows' margin inside a section's L1 box (kit)
 local INDENT = 22      -- a sub-option's label, per level, right of its parent's
-local SEC_FILL_INSET = 5     -- the section's dark panel, inside its rail (UI px)
-local SEC_FILL_ALPHA = 0.8   -- how much of the stone the dark panel covers
 
 local function NewSection(page, name)
 	local sec = CreateFrame("Frame", nil, page)
@@ -689,13 +687,9 @@ local function NewSection(page, name)
 		-- L1: the single rail with the list-box stone around the section
 		KitReplace(KitAnchor(sec), { as = "Professions-background-summarylist", rect = sec, parent = sec, level = -1 })
 		-- depth (user, 2026-09-24: "everything is just too brown ... add the
-		-- checkbox section a darker tone from our color palette, just makes
-		-- the section easier to read"): the palette's inner panel laid over
-		-- the stone inside the rail, the rows on that darker ground
-		local fill = sec:CreateTexture(nil, "BACKGROUND", nil, -8)
-		fill:SetPoint("TOPLEFT", sec, "TOPLEFT", SEC_FILL_INSET, -SEC_FILL_INSET)
-		fill:SetPoint("BOTTOMRIGHT", sec, "BOTTOMRIGHT", -SEC_FILL_INSET, SEC_FILL_INSET)
-		fill:SetColorTexture(PAL.innerPanel[1], PAL.innerPanel[2], PAL.innerPanel[3], SEC_FILL_ALPHA)
+		-- checkbox section a darker tone from our color palette"): the L1
+		-- box lays the palette's inner panel over its stone itself (its
+		-- rule's `dim`, WINDOW-RULES 2e), the rows on that darker ground
 	end
 	function sec:Refresh()
 		for _, fn in ipairs(self.refreshers) do
@@ -905,6 +899,10 @@ local function NewPage(name, width)
 	-- Lay out the tab row (if more than one section) and anchor the sections.
 	function page:Finish()
 		local y = self.headerHeight
+		if self.headerShade then
+			-- the header's panel down to just above the tabs / the first section
+			self.headerShade:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -(PAD - 10), -(y - 8))
+		end
 		if #self.sections > 1 then
 			self.tabs = {}
 			local x, rowY = 0, y
@@ -987,15 +985,17 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 	flavourFS:SetText(flavour)
 	page.flavour = flavourFS
 	if KIT then
-		-- a black backing fading out to the right under the title, the
-		-- flavour and the status line, so the text reads on the cracked
-		-- stone (user, 2026-09-22); a page region under everything else
+		-- the header on the palette's inner panel (user, 2026-09-24: "apply
+		-- the eye strain rule to all existing windows"; WINDOW-RULES 2e): the
+		-- title, the flavour, the status line AND the switches' labels on the
+		-- right ("Enabled", "Unlock the Windows") lay on the plain brown --
+		-- the black backing that faded out to the right (2026-09-22) left the
+		-- right-hand labels on the stone. A page region under everything
+		-- else, across the header's whole width; its bottom follows the
+		-- header's final height (page:Finish)
 		local shade = page:CreateTexture(nil, "BACKGROUND", nil, 1)
-		shade:SetColorTexture(1, 1, 1, 1)
-		shade:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.7), CreateColor(0, 0, 0, 0))
-		shade:SetPoint("TOPLEFT", box, "TOPLEFT", -10, 10)
-		shade:SetPoint("RIGHT", flavourFS, "RIGHT", 60, 0)
-		shade:SetPoint("BOTTOM", flavourFS, "BOTTOM", 0, -24)   -- room for the Home page's status line
+		shade:SetColorTexture(C.band[1], C.band[2], C.band[3], 0.8)
+		shade:SetPoint("TOPLEFT", page, "TOPLEFT", PAD - 10, -(PAD - 10))
 		page.headerShade = shade
 	end
 
@@ -1764,6 +1764,15 @@ local function CreateWindow()
 		-- (the plate came out at the band's full height — user, 2026-09-21)
 		band.title:SetFontObject("GameFontNormal")
 		KitReplace(bandBg, { as = "TitleBar", parent = band, rect = band, fitHeight = 20, alsoFade = { bandLine } })
+		-- the band itself (its paint gone with the title on the plate) holds
+		-- the placement switches' labels and the two buttons: the palette's
+		-- inner panel under them (user, 2026-09-24: "apply the eye strain
+		-- rule to all existing windows"; WINDOW-RULES 2e), a region of the
+		-- WINDOW over its page stone, so it can never tie with the band's
+		-- controls (frames above it) and the outer rail stays in front
+		if KIT.StoneDim then
+			KIT:StoneDim(window, { rect = band, layer = "BORDER", sublevel = 1 })
+		end
 	end
 	band:EnableMouse(true)
 	band:RegisterForDrag("LeftButton")

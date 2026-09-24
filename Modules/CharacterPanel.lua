@@ -138,6 +138,13 @@ local function LayClear(c)
 	frame:SetPoint("BOTTOMRIGHT", c.base, "BOTTOMRIGHT", -(br - r) / s, (b - bb) / s)
 end
 
+-- The eye strain rule (user, 2026-09-24: "too much small text over a plain
+-- brown border is just an eye strain" / "apply the eye strain rule to all
+-- existing windows"; docs/WINDOW-RULES.md 2e): a pane of text lies on the
+-- palette's inner panel at this alpha over the window's stone, never on the
+-- bare stone.
+local DIM_ALPHA = 0.8
+
 local SkinProgressBar     -- defined with the list code below; the detail panes use it in BuildSkin
 
 -- The first game texture of a frame (the picture a Blizzard frame paints).
@@ -314,11 +321,75 @@ local function BuildSkin()
 	end
 
 	-- the stats scroll boxes: their inset frame and the class picture under the stats
+	-- (the inset's rule lays the inner panel over its stone, WINDOW-RULES 2e;
+	-- kept in skin.insetDims so the panel stands down on parchment, RefreshDims)
+	skin.insetDims = {}
 	for _, box in ipairs({ CharacterStatsPaneScrollBox, CharacterStatsPanePetScrollBox }) do
 		if box and box.Border then
-			Replace(box.Border, { as = "common-insideframe", alsoFade = box.ClassBackground and { box.ClassBackground } or nil })
+			local inset = Replace(box.Border, { as = "common-insideframe", alsoFade = box.ClassBackground and { box.ClassBackground } or nil })
+			if inset then
+				skin.insetDims[#skin.insetDims + 1] = inset
+			end
 		end
 	end
+
+	-- The two panes' text on the palette's inner panel (WINDOW-RULES 2e; user,
+	-- 2026-09-24: "apply the eye strain rule to all existing windows"). On
+	-- every tab but the character's own, the left pane holds a list (the
+	-- reputations, the skills, the currencies, the honor ranks) and the right
+	-- pane its details or the statistics, all small text straight on the
+	-- window's stone, with no inset of the game's to dress. So each pane gets
+	-- the panel as a tint over that stone (never a second stone: one stone
+	-- per surface), laid on the part of the pane nothing painted covers, the
+	-- same way the parchment sheet is (LayClear: the rails, the title plate,
+	-- the divider). A frame of ours one level under the pane's host, as the
+	-- kit's holders and the right pane's parchment are, so the pane's rows
+	-- and texts stay above it; shown by RefreshDims. The character tab keeps
+	-- its stone: its left pane is the model (a picture), its right pane the
+	-- stats and the equipment manager, whose insets carry the panel already.
+	skin.dims, skin.dimClears = {}, {}
+	local function PaneDim(key, pane, covers)
+		if not pane then
+			return
+		end
+		local f = CreateFrame("Frame", nil, pane)
+		f:EnableMouse(false)
+		f:SetFrameLevel(math.max(pane:GetFrameLevel() - 1, 0))
+		f:SetAllPoints(pane)
+		local tex = f:CreateTexture(nil, "BACKGROUND")
+		-- a couple of px in from the rails and the divider, so their
+		-- painted edge shadows stay on the stone
+		tex:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -2)
+		tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
+		local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+		tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
+		tex.kitPiece = true   -- ours: never faded with the game's art
+		f:Hide()
+		skin.dims[key] = f
+		skin.dimClears[#skin.dimClears + 1] = { frame = f, base = pane, covers = covers }
+	end
+	local function Rails()
+		return skin.window and skin.window.skin or {}
+	end
+	-- (`or false` in the cover lists: a nil would end the list early)
+	PaneDim("left", cf.LeftPaneHost, function()
+		local rails = Rails()
+		return {
+			l = { rails.l or false },
+			r = { skin.divider and skin.divider.tex or false },
+			t = { rails.t or false, skin.title and skin.title.object or false },
+			b = { rails.b or false },
+		}
+	end)
+	PaneDim("right", host, function()
+		local rails = Rails()
+		return {
+			l = { skin.divider and skin.divider.tex or false },
+			r = { rails.r or false },
+			t = { rails.t or false, skin.title and skin.title.object or false },
+			b = { rails.b or false },
+		}
+	end)
 
 	-- the divider's junctions (an agreed addition, the user's pick K): where
 	-- it leaves the title plate, where the stats inset's top rail meets it,
@@ -503,7 +574,11 @@ end
 -- (The ring's gems start 0.356 out, the medallion's diamond tip is 0.438 in:
 -- the diamond would need medallion >= 0.813 x ring to reach the gem, which
 -- contradicts the rim constraint; closing that gap is an art change.)
--- The game's own (square) portrait keeps the game's size.
+-- The game's own portrait (the player's face, a spec icon: ClassIcons off)
+-- is brought to the same size (user, 2026-09-24, WINDOW-RULES 2b / 2c: the
+-- portrait in the ring is always at the medallion size, on every window --
+-- it kept the game's size here before); a round picture, it fills the
+-- ring's opening, so no disc behind it.
 --------------------------------------------------------------------------------
 
 local MEDALLION_TO_RING = 0.66 * 1.15   -- 0.759: the user's fit from the screenshot (+15 % over the rim-inside-opening size)
@@ -514,7 +589,7 @@ function M:FitPortrait()
 	if not (portrait and ring and ring.tex) then
 		return
 	end
-	if active and portrait.melloClassIcon then
+	if active then
 		if not portraitSaved then
 			local points = {}
 			for i = 1, portrait:GetNumPoints() do
@@ -1215,7 +1290,12 @@ local function SkinEquipmentManager()
 	end
 	pane.melloKitHooked = true
 	if pane.Border then
-		Replace(pane.Border, { as = "common-insideframe" })
+		-- the inset's inner panel stands down on parchment with the stats' (RefreshDims)
+		local inset = Replace(pane.Border, { as = "common-insideframe" })
+		if inset then
+			skin.insetDims[#skin.insetDims + 1] = inset
+			M:RefreshDims()
+		end
 	end
 	-- the set-icon picker and the equipment flyout: their icons in the
 	-- Button Border, like the set cards' (SkinIconRim above)
@@ -1346,6 +1426,7 @@ local function Activate()
 		skin.toggleIcons()
 	end
 	ApplyWindowBackground()
+	M:RefreshDims()
 	if InkSurface then
 		InkSurface()
 	end
@@ -1357,6 +1438,7 @@ local function Deactivate()
 	end
 	active = false
 	skin:Hide()
+	M:RefreshDims()
 	M:FitPortrait()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
@@ -1421,8 +1503,25 @@ local function Hook()
 		M:FitPortrait()
 		M:RefreshTabs()
 		M:RefreshStats()
+		M:RefreshDims()
 		M:LayParchment()
 	end)
+	-- the panes' inner panels come and go with the character tab (the paper
+	-- doll shown: the model and the stats; any other tab: a list and its
+	-- details), and with the right pane's Parchment sheet (UI Modifications'
+	-- switch, or a Parchment Window Background: both go through SetParchment)
+	local paper = _G.PaperDollFrame
+	if paper then
+		paper:HookScript("OnShow", function() M:RefreshDims() end)
+		paper:HookScript("OnHide", function() M:RefreshDims() end)
+	end
+	if Kit.SetParchment then
+		hooksecurefunc(Kit, "SetParchment", function(_, area)
+			if area == "character" then
+				M:RefreshDims()
+			end
+		end)
+	end
 	-- the parchment sheets' rects follow the window's size and the UI scale
 	-- (the rails and the divider keep their size in UI units; what they
 	-- cover is measured again)
@@ -1456,17 +1555,57 @@ function M:LayParchment()
 	if not (skin and CharacterFrame and CharacterFrame:IsVisible()) then
 		return
 	end
-	LayClear(skin.paneClear)
-	LayClear(skin.windowClear)
+	-- (the panes' inner panels on the same free rects, RefreshDims)
+	local function LayAll()
+		LayClear(skin.paneClear)
+		LayClear(skin.windowClear)
+		for _, c in ipairs(skin.dimClears or {}) do
+			LayClear(c)
+		end
+	end
+	LayAll()
 	if C_Timer and not skin.layPending then
 		skin.layPending = true
 		C_Timer.After(0, function()
 			skin.layPending = nil
 			if CharacterFrame:IsVisible() then
-				LayClear(skin.paneClear)
-				LayClear(skin.windowClear)
+				LayAll()
 			end
 		end)
+	end
+end
+
+-- The panes' inner panels (WINDOW-RULES 2e, BuildSkin's PaneDim) and the
+-- insets' own (the stats, the equipment manager), shown where their text
+-- lies on stone. Not on parchment (user, 2026-09-24: text on parchment
+-- follows the ink rule instead): the right pane's Parchment sheet takes the
+-- right pane's panel and the insets' with it (their texts are inked there);
+-- a Parchment Window Background takes both panes'. Not on a Dark Window
+-- Background either: that window is dark already. The panes' only off the
+-- character tab (the model and the stats' insets are there). The paper
+-- doll's own shown flag, not its visibility, so the answer holds while the
+-- window is closed.
+function M:RefreshDims()
+	if not (skin and skin.dims) then
+		return
+	end
+	local bg = M.db and M.db.windowBackground or "window"
+	local paper = _G.PaperDollFrame
+	local onDoll = paper and paper:IsShown() and true or false
+	local rightParchment = WindowParchment() or Kit:ParchmentOn("character")
+	local stone = active and bg ~= "parchment" and bg ~= "dark"
+	local show = { left = stone and not onDoll, right = stone and not onDoll and not rightParchment }
+	for key, f in pairs(skin.dims) do
+		f:SetShown(show[key] and true or false)
+	end
+	for _, rep in ipairs(skin.insetDims or {}) do
+		local fill = rep.skin and rep.skin.dimFill
+		if fill then
+			fill:SetShown(not rightParchment)
+		end
+	end
+	if show.left or show.right then
+		M:LayParchment()
 	end
 end
 

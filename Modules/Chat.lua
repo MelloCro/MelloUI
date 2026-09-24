@@ -1859,6 +1859,16 @@ local function DressPopup(f)
 			if skin and Kit.ParchmentSheet then
 				Kit:ParchmentSheet(skin, f, { tight = true, area = "whisper" })
 			end
+			-- no eye strain (user, 2026-09-24: "too much small text over a
+			-- plain brown border is just an eye strain" / "apply the eye
+			-- strain rule to all existing windows"; WINDOW-RULES 2e): on the
+			-- stone look (the whisper parchment off) the stone inside the
+			-- rails lies under the palette's inner panel, a region of the
+			-- skin between the stone and the sheet, switched against the
+			-- sheet by Kit:SetParchment
+			if skin and Kit.StoneDim then
+				Kit:StoneDim(skin, { area = "whisper" })
+			end
 			return true
 		end
 	end

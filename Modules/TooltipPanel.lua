@@ -17,6 +17,8 @@
 --   Modifications' parchment_tooltip, off by default): a sheet on the stone
 --   inside the rail of every dressed tooltip, its lines in dark ink while it
 --   shows (the parchment ink rule, Modules/QuestInk.lua).
+--   Without the parchment, the stone inside the rail lies under the palette's
+--   inner panel (user, 2026-09-24: the eye strain rule, WINDOW-RULES 2e).
 -- Tooltips are styled by the game on every show (SharedTooltip_SetBackdropStyle):
 -- that call is the hook that catches every tooltip the first time.
 -- Covers the group "tooltip": the Tooltip tweak module's backdrop colouring
@@ -50,6 +52,7 @@ local active = false
 local dressed = setmetatable({}, { __mode = "k" })   -- [tooltip] = true once SkinTooltip saw it
 local insets = setmetatable({}, { __mode = "k" })    -- [health bar] = the game's anchors while the bracket sets it in
 local sheets = setmetatable({}, { __mode = "k" })    -- [tooltip] = its parchment sheet
+local dims = setmetatable({}, { __mode = "k" })      -- [tooltip] = its eye-strain panel (the stone look's)
 
 local function Secret(v)
 	return issecretvalue and issecretvalue(v)
@@ -415,11 +418,17 @@ local function InkAll(on)
 	end
 end
 
--- The sheets shown while the reskin is on and the parchment chosen
+-- The sheets shown while the reskin is on and the parchment chosen; the dark
+-- panels while the reskin is on and the parchment is not
 local function ShowSheets()
-	local on = (active and Kit.ParchmentOn and Kit:ParchmentOn("tooltip")) and true or false
+	local paper = Kit.ParchmentOn and Kit:ParchmentOn("tooltip")
+	local on = (active and paper) and true or false
 	for _, sheet in pairs(sheets) do
 		sheet:SetShown(on)
+	end
+	local dark = (active and not paper) and true or false
+	for _, dim in pairs(dims) do
+		dim:SetShown(dark)
 	end
 end
 
@@ -431,7 +440,22 @@ end
 -- tooltip's size) changes size or shows, and the lines inked then too.
 local function AddSheet(tip, rep)
 	local nine = tip.NineSlice
-	if sheets[tip] or not (Kit.ParchmentSheet and rep and rep.skin and nine) then
+	if not (rep and rep.skin and nine) then
+		return
+	end
+	-- no eye strain (user, 2026-09-24: "too much small text over a plain
+	-- brown border is just an eye strain" / "apply the eye strain rule to all
+	-- existing windows"; WINDOW-RULES 2e): a tooltip is nothing but text, so
+	-- on the stone look (its parchment off) the stone inside the rail lies
+	-- under the palette's inner panel. A region of the NineSlice as the sheet
+	-- is (the tooltip's texts are drawn over the NineSlice's layers, a frame
+	-- of ours could come over them), in its stack between the stone
+	-- (BACKGROUND 0) and the sheet (BACKGROUND 3); Kit:SetParchment switches
+	-- it against the sheet, ShowSheets with the reskin.
+	if not dims[tip] and Kit.StoneDim then
+		dims[tip] = Kit:StoneDim(nine, { area = "tooltip", sublevel = 2, alive = function() return active end })
+	end
+	if sheets[tip] or not Kit.ParchmentSheet then
 		return
 	end
 	local sheet = Kit:ParchmentSheet(nine, rep.skin, { margin = SHEET_MARGIN, fine = true, area = "tooltip",

@@ -162,12 +162,32 @@ local function StoneBackground(cf, background, frame)
 			rep.sheet = sheet
 		end
 	end
+	-- no eye strain (user, 2026-09-24: "too much small text over a plain
+	-- brown border is just an eye strain" / "apply the eye strain rule to all
+	-- existing windows"; WINDOW-RULES 2e): on the stone look (the chat's
+	-- parchment off) the window's body lies under the palette's inner panel,
+	-- a region of the chat frame on the sheet's rect and sublevel (the two
+	-- never show together: Kit:SetParchment switches one against the other),
+	-- at the alpha slider's value as the stone. The chat window's own body
+	-- only; the button column beside it holds no text. The Chat module's
+	-- "Hide Window Background" acts only while this reskin is off, and the
+	-- panel is gone with the reskin, so the two never meet.
+	local dim
+	if Kit.StoneDim and frame == cf then
+		local layer, sub = rep.tex:GetDrawLayer()
+		dim = Kit:StoneDim(frame, { rect = rect, margin = 2, layer = layer, sublevel = math.min((sub or 0) + 1, 7),
+			area = "chat", alive = function() return active end })
+		rep.dim = dim
+	end
 	local function Hold()
 		local wanted = cf.oldAlpha
 		if active and wanted and not Secret(wanted) then
 			rep.tex:SetAlpha(wanted)
 			if sheet then
 				sheet:SetAlpha(wanted)
+			end
+			if dim then
+				dim:SetAlpha(wanted)
 			end
 		end
 	end
@@ -180,11 +200,14 @@ local function StoneBackground(cf, background, frame)
 		if sheet then
 			sheet:SetShown(Kit:ParchmentOn("chat"))
 		end
+		if dim then
+			dim:SetShown(not Kit:ParchmentOn("chat"))
+		end
 		Hold()
 		InkFollows()
 	end
-	-- the sheet is the chat frame's own region, not the replacement's: it
-	-- goes and comes with the chat reskin by hand
+	-- the sheet and the panel are the chat frame's own regions, not the
+	-- replacement's: they go and come with the chat reskin by hand
 	rep.onDisable = function(...)
 		if disable then
 			disable(...)
@@ -192,10 +215,16 @@ local function StoneBackground(cf, background, frame)
 		if sheet then
 			sheet:Hide()
 		end
+		if dim then
+			dim:Hide()
+		end
 		InkFollows()
 	end
 	if sheet and not active then
 		sheet:Hide()
+	end
+	if dim and not active then
+		dim:Hide()
 	end
 	-- the slider: FCF_SetWindowAlpha sets the textures first and remembers
 	-- the value after, so the hold is re-run once the value is known
@@ -207,6 +236,9 @@ local function StoneBackground(cf, background, frame)
 				bg.melloRep.tex:SetAlpha(f.oldAlpha or 1)
 				if bg.melloRep.sheet then
 					bg.melloRep.sheet:SetAlpha(f.oldAlpha or 1)
+				end
+				if bg.melloRep.dim then
+					bg.melloRep.dim:SetAlpha(f.oldAlpha or 1)
 				end
 			end
 		end)

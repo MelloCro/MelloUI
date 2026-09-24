@@ -216,6 +216,54 @@ function Kit:SetParchment(area, on)
 	for _, entry in ipairs(self.parchmentSheets[area] or {}) do
 		entry.sheet:SetShown((on and (not entry.alive or entry.alive())) and true or false)
 	end
+	-- the area's eye-strain panels (Kit:StoneDim) take the other turn: shown
+	-- while the paper is off
+	for _, entry in ipairs(self.parchmentDims[area] or {}) do
+		entry.tex:SetShown((not on and (not entry.alive or entry.alive())) and true or false)
+	end
+end
+
+-- The eye-strain panel of a HUD frame (user, 2026-09-24: "too much small text
+-- over a plain brown border is just an eye strain" / "apply the eye strain
+-- rule to all existing windows"; WINDOW-RULES 2e): the palette's inner panel
+-- laid over the frame's stone inside its rails, so its text does not lie on
+-- the plain brown. Only while that frame's parchment is OFF: with the sheet
+-- on, the text lies on paper in dark ink (the parchment ink rule) and a dark
+-- panel there would be wrong. A region of `host` (the skin, or the frame
+-- whose regions the stone is) between the stone and the sheet, so it is a
+-- tint over the one stone, never a second one; kept per area next to the
+-- sheets, and Kit:SetParchment switches it the other way round.
+--   opts: area, alive (as ParchmentSheet's; no area: always shown), alpha
+--         (0.8), layer ("BACKGROUND") and sublevel (2: over the stone at 0,
+--         under a sheet at 3); rect + margin (0) as ParchmentSheet's, else
+--         from the middle of the skin's rails (their inner half lies over the
+--         panel's edge, so no brown seam shows between them)
+Kit.parchmentDims = {}   -- [area] = { { tex, alive }, ... }
+
+function Kit:StoneDim(host, opts)
+	opts = opts or {}
+	if not (host and host.CreateTexture) then
+		return nil
+	end
+	local margin = opts.margin or 0
+	local tex = host:CreateTexture(nil, opts.layer or "BACKGROUND", nil, opts.sublevel or 2)
+	if opts.rect then
+		tex:SetPoint("TOPLEFT", opts.rect, "TOPLEFT", margin, -margin)
+		tex:SetPoint("BOTTOMRIGHT", opts.rect, "BOTTOMRIGHT", -margin, margin)
+	else
+		local pre = self.framePrefix
+		tex:SetPoint("TOPLEFT", host, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
+		tex:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
+	end
+	local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+	tex:SetColorTexture(c[1], c[2], c[3], opts.alpha or 0.8)
+	if opts.area then
+		local list = self.parchmentDims[opts.area] or {}
+		self.parchmentDims[opts.area] = list
+		list[#list + 1] = { tex = tex, alive = opts.alive }
+		tex:SetShown((not self:ParchmentOn(opts.area) and (not opts.alive or opts.alive())) and true or false)
+	end
+	return tex
 end
 
 function Kit:ParchmentSheet(skin, watch, opts)
@@ -1776,7 +1824,7 @@ Kit.Replacements = {
 	["UI-Frame-PortraitMetal-CornerTopLeft"]  = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
 	["RedButton-Exit"]                        = { kind = "state", base = "window/close", rect = "normal" },
 	-- inset frames and backdrops
-	["common-insideframe"]                    = { kind = "frame" },
+	["common-insideframe"]                    = { kind = "frame", dim = 0.8 },   -- an inset: single rail + stone, the stone under the palette's inner panel (no eye strain, WINDOW-RULES 2e)
 	["common-insideframe-2x"]                 = { kind = "frame" },
 	-- ONE stone per surface (user, 2026-09-23, the skills tab: "background 1
 	-- and 2 are basically the same, they are loading 2 times for no reason"):
@@ -1903,7 +1951,7 @@ Kit.Replacements = {
 	["Profession-square-frame"]               = { kind = "slot", slot = "slot" },   -- the frame over a profession spell's icon: the rim over the icon, as the game's is
 	-- the crafting page (user's picks, 2026-09-21: S1 D1 B1 N1 R1 O1 K2 L1 T1)
 	["Profession-Background-Template2"]       = { kind = "picture", piece = "tiles/concrete", crop = "middle", level = -2, edge = "brush" },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
-	["Professions-background-summarylist"]    = { kind = "frame" },   -- the recipe list box (L1): single rail, stone body
+	["Professions-background-summarylist"]    = { kind = "frame", dim = 0.8 },   -- the recipe list box (L1): single rail, stone body under the palette's inner panel (no eye strain, WINDOW-RULES 2e)
 	["common-search-border-middle"]           = { kind = "strip", base = "inputs/edit", state = "normal", owner = true },
 	["common-dropdown-b-button"]              = { kind = "frame", level = -1, hover = 1.25, pressed = 0.75, disabled = 0.6 },   -- the filter dropdown (B6, user 2026-09-21): the single-rail band with stone, its states by tint
 	["_128-RedButton-Center"]                 = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8, capOverhang = 0.35 },   -- B1: the plate at the button's height, its gem caps reaching past the button's ends (the game's Left / Right pieces sit outside its Center too)
@@ -1912,6 +1960,7 @@ Kit.Replacements = {
 	["UI-SpellbookIcon-NextPage-Up"]          = { kind = "state", base = "buttons/arrow_right", natural = true, fit = "height" },
 	["Professions-Slot-Frame"]                = { kind = "slot", slot = "slot" },   -- a reagent slot's frame over its icon (R1)
 	["auctionhouse-itemicon-border-white"]    = { kind = "slot", slot = "roundslot" },   -- the output icon's quality-coloured border (O2, user 2026-09-21): the round rim, tinted like the border
+	["AuctionHouseBackgroundTemplate"]        = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = 1, edgeLayer = "BORDER", dim = 0.8 },   -- an auction house box (a Background picture + an inset NineSlice at the box's level; keyed by hand, its atlas differs per box): L1, the single rail with the list-box stone under the inner panel (2e), as REGIONS of the box, so the stone always lies under the box's scroll box and rows (user, 2026-09-24)
 	["common-button-tertiary-square-normal"]  = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the link button's plate (K2), under the game's chain-link icon
 	["Professions_Recipe_Hover"]              = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a region of the row under its text (the game's translucent hover is HIGHLIGHT over it)
 	["Professions_Recipe_Active"]             = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },
@@ -1960,6 +2009,9 @@ Kit.Replacements = {
 	-- the quest log (QuestMapFrame in the world map window; 2026-09-21)
 	["QuestLog-main-background"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
 	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "tiles/vellum", crop = "top", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- a quest's details page: the same parchment
+	-- the quest giver's dialogs (QuestDialogPanel; user, 2026-09-24): an item / reward / spell button's name plate (file art, keyed by hand) -> the plain gemless plate under the name, as a list row's; the greeting's horizontal break -> the scroll line at its natural weight across most of the page
+	["UI-QuestItemNameFrame"]                 = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
+	["UI-HorizontalBreak"]                    = { kind = "strip", base = "window/divider", natural = true, widthFrac = 0.8 },
 	["MapTitleBand"]                          = { kind = "picture", piece = "tiles/concrete", crop = "top", level = 0 },   -- an agreed addition (user, 2026-09-21): a body-off window's title band (the map for its canvas; the collections and LFG pages, whose rock starts below the title) filled with the page stone, inside the outer rail, so it is not bare once the title plate stands on the rail
 	["questlog-frame"]                        = { kind = "frame", body = false },   -- the border around the list / details (QuestLogBorderFrameTemplate): the single rail, edges only
 	["QuestLog-frame-devider"]                = { kind = "strip", base = "window/divider" },   -- the line under a header
@@ -2153,6 +2205,7 @@ Kit.Replacements = {
 	["friendslist-invitebutton-default-normal"] = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the invite icon button: K2, the cog plate under the game's glyph
 	["UI-RaidFrame-GroupOutline"]             = { kind = "frame", scale = 0.8 },   -- a raid group box's outline (162 x 80 file picture): G3 (user, 2026-09-21), the single rail at the raid frames' small weight with the stone body
 	["UI-RaidInfo-Header"]                    = { kind = "fade" },   -- the raid info popup's header / footer bands: faded (the dialog's own border stands)
+	["CalendarBackground"]                    = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = 1, edgeLayer = "BORDER", edgeSub = 1, dim = 0.8 },   -- a calendar day (CalendarPanel, 2026-09-24; its NormalTexture, the CalendarBackground file keyed by hand): the single-rail card with stone under the inner panel (2e: the day's event text reads on dark), as REGIONS of the day button -- the stone and panel under its BORDER event picture, the rails one sublevel over it -- on the button's rect grown by the rail's centre inset, so neighbouring days share one rail
 
 	-- The HUD's cast bars (CastBarPanel; user's picks C1 T1 from kit_raw/castbar_catalog.png, 2026-09-21)
 	["ui-castingbar-frame"]                   = { kind = "bar", bar = "castbar", capOut = true },   -- C1: the cast bar bracket (gem-cluster caps) with the game's bar as its opening: the caps stand outside the bar, which the panel narrows by their arms so the whole reads the game's width
@@ -3310,6 +3363,32 @@ function Kit:Replace(region, opts)
 			owner = owner, bodyLayer = rule.bodyLayer, bodySub = rule.bodySub, edgeLayer = rule.edgeLayer, edgeSub = rule.edgeSub })
 		rep.checked = opts.checked
 		rep.object = owner and rep.skin or f
+		-- `dim` (rule or opts; user, 2026-09-24: "apply the eye strain rule to
+		-- all existing windows"): a box that holds text -- a list, an inset,
+		-- a section of options -- gets the palette's inner panel over its
+		-- stone inside the rail at that alpha (WINDOW-RULES 2e), a region of
+		-- the box's own host, shown and hidden with it
+		local dim = opts.dim
+		if dim == nil then
+			dim = rule.dim
+		end
+		if dim and body and rep.skin.body then
+			-- the fill on the frame the BODY is a region of (the skin frame, or
+			-- the owner): on the holder it tied with the skin frame at one level
+			-- and could draw under the stone, unseen
+			local host = owner or rep.skin
+			local inset = (rep.skin.thickness or 0) * 0.6
+			local fill = host:CreateTexture(nil, rule.bodyLayer or "BACKGROUND", nil, math.min((rule.bodySub or 0) + 1, 7))
+			fill:SetPoint("TOPLEFT", rep.skin, "TOPLEFT", inset, -inset)
+			fill:SetPoint("BOTTOMRIGHT", rep.skin, "BOTTOMRIGHT", -inset, inset)
+			-- opts.dimColor: another palette tone (a card or row lying ON a
+			-- dimmed list takes the main window's tone, a stripe lighter than
+			-- the panel around it, as WINDOW-RULES 2e has rows)
+			local c = opts.dimColor or (MelloUI.Palette and MelloUI.Palette.innerPanel) or { 0.067, 0.063, 0.051 }
+			fill:SetColorTexture(c[1], c[2], c[3], dim)
+			rep.skin.dimFill = fill
+			table.insert(rep.skin.all, fill)
+		end
 		if rule.lit then
 			rep.skin:SetTint(rule.lit[1], rule.lit[2], rule.lit[3])
 		end
@@ -5170,8 +5249,17 @@ function Kit:SkinCheckButton(cb, replace, key)
 		return cb and cb.melloRep or nil
 	end
 	local normal = cb:GetNormalTexture()
-	cb.melloRep = replace(normal, { as = key or "checkbox-minimal", button = cb, rect = normal,
-		alsoFade = { cb:GetPushedTexture(), cb:GetCheckedTexture(), cb:GetHighlightTexture(), cb:GetDisabledTexture() } }) or false
+	-- the states the button has, gap-free: a radio has no pushed texture, and
+	-- a nil in the list ended the fade at it (the checked / highlight /
+	-- disabled art stayed the game's)
+	local fade = {}
+	for _, getter in ipairs({ "GetPushedTexture", "GetCheckedTexture", "GetHighlightTexture", "GetDisabledTexture" }) do
+		local t = cb[getter] and cb[getter](cb)
+		if t then
+			fade[#fade + 1] = t
+		end
+	end
+	cb.melloRep = replace(normal, { as = key or "checkbox-minimal", button = cb, rect = normal, alsoFade = fade }) or false
 	return cb.melloRep or nil
 end
 

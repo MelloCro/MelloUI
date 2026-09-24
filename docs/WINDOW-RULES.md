@@ -123,6 +123,59 @@ way, by the rule itself — never per window:
 Check on every window: the plate's bottom touches the border's top, the caps
 reach the border's ends, the title sits on the plate.
 
+**And (user, 2026-09-24, the Macros window: "the text header is not on the
+header, probably not even following the Font Style application, that also
+needs to be a rule"):** the title TEXT itself must be found and moved onto
+the plate — whatever the window calls it (`TitleContainer.TitleText`,
+`TitleText`, `<Name>TitleText`, a `Title` string on the frame or its
+NineSlice) — and it must be in the kit's title face, `Kit:TitleFont(fs,
+true)`, which follows the Fonts options and the Font Style (the Titles &
+headers role); put back (`Kit:TitleFont(fs, false)`, its points) on
+disable. A title left at the game's position or in the game's font is a bug.
+Check on every window: is the title ON the plate, and does it change when
+the Font Style changes?
+
+The same goes for the window's PORTRAIT: when the window has a round
+portrait ring, the game's portrait icon must be shown in it (2b below) — an
+empty ring is a bug.
+
+## 2e. MANDATORY: no eye strain — text-dense areas on a dark panel (user, 2026-09-24)
+
+"too much small text over a plain brown border is just an eye strain" / "make
+that eye strain issue a rule to check". Check it on every window:
+
+- Any area that is mostly TEXT — a list (addons, friends, quests, recipes),
+  a section of options / check boxes / sliders, a settings page, a column of
+  dropdowns — never lies on the plain brown stone. It gets the palette's
+  **inner panel** (`MelloUI.Palette.innerPanel`, #11100D) laid over the stone
+  inside its rail, about **0.8** alpha, as a region of the kit's own frame
+  (so it comes and goes with the skin).
+- Rows on it are striped in the neutral **main window** tone (#1F1B16, about
+  0.85 alpha), never the reddish raised panel.
+- Labels at the interface's full size (GameFontHighlight), in the palette's
+  text colour (#C6AF85); headings in its gold (#AE8546). No small font for
+  rows of settings.
+- The mechanism: the kit's framed box has a `dim` option (rule field or
+  Kit:Replace opts) that lays the inner panel over its stone inside the rail;
+  the inset ("common-insideframe") and list box ("Professions-background-
+  summarylist", L1) rules carry `dim = 0.8`, so every inset / list box has
+  it. `opts.dimColor` gives cards on a dark list the main window tone. Frames
+  with a parchment option use `Kit:StoneDim` (the panel only while the
+  parchment is off).
+- Done (2026-09-24): every window and HUD text frame -- the configurator,
+  Dynamic UI Modification, the AddOn list, Macros, Edit Mode, Options, the
+  character window's panes, Legacy, Guild & Communities, Social, Group
+  Finder, Collections, Professions, tooltips, both trackers, chat, whisper,
+  damage meter, dialogs, the Services menu, the quest and gossip dialogs,
+  merchants, the auction house, trainers, the tabard vendor, the flight map
+  (its map is never dimmed), the mailbox, bank, guild bank, trade, loot,
+  books and letters, charters, inspect, dressing room, barber, socketing,
+  stable, PvP scoreboard, battlefield map, ready check, split stack,
+  colour picker, calendar, clock and stopwatch, channels, help. A NEW window is checked against
+  this before it is handed over.
+- Before handing a window over: look at it and ask "is there small text on
+  brown?" — if yes, it needs the panel.
+
 ## 2b. MANDATORY for a window's portrait icon (user, 2026-09-21)
 
 The portrait inside the ring is always brought to the class medallion's size
