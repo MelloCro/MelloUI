@@ -1080,7 +1080,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Hover ticks: the frame under the mouse, polled twenty times a second (a
--- ticker, not a script on every frame). GetMouseFoci makes a new list on
+-- timer, not a script on every frame). GetMouseFoci makes a new list on
 -- every call, so it is asked only when the frame found last has lost the
 -- mouse (the game says so without a list): the moment another frame comes
 -- under the cursor, moved or not (a list scrolled under a still cursor),
@@ -1094,15 +1094,27 @@ end
 -- A frame that comes under a resting cursor and passes the mouse on is then
 -- found within a second instead of a fifth; the moment the cursor moves, or
 -- the frame found last loses the mouse, it is asked as before.
+-- Over the world the looks stop altogether (user, 2026-09-24: no idle work):
+-- the world has no button, and the game tells the world frame when the mouse
+-- comes and goes (post-hooks on its OnEnter / OnLeave), so the looks start
+-- again the moment the mouse leaves it for the interface. That is trusted
+-- only once both have been seen: on a client where they never come, the looks
+-- go on over the world as before. The mouse crosses between the world and
+-- the interface all the time, so stopping and starting must cost nothing:
+-- one step made once, each look queueing the next (a one-shot timer, which
+-- makes nothing new), rather than a new ticker at every crossing.
 --------------------------------------------------------------------------------
 
 local HOVER_EVERY = 0.05    -- seconds between two looks
 local HOVER_KEPT = 4        -- looks between two asks while the frame found last keeps the mouse
 local HOVER_STILL = 20      -- looks between two asks while the cursor rests (a second)
-local hoverTicker = nil
+local hoverOn = false       -- the looks run
+local hoverQueued = false   -- the next look is waiting on its timer (never two at once)
 local hoverLast = nil
 local hoverLooks = 0        -- looks since the last ask
 local hoverX, hoverY = nil, nil   -- the cursor at the last ask (nil: unknown)
+local worldHooked = false         -- the world frame's hooks are in (once, when the ticks are first on)
+local worldEntered, worldLeft = false, false   -- the game has told the world frame each at least once
 
 -- the cursor, or nil where the game cannot say
 local function CursorAt()
@@ -1128,10 +1140,21 @@ local function KeepsMouse(f)
 	return focus == true
 end
 
+-- The mouse is over the world: the looks stop while the world frame's leave
+-- can be trusted to start them again.
+local function RestOverWorld()
+	if worldEntered and worldLeft then
+		hoverOn = false
+	end
+end
+
 local function HoverTick()
 	hoverLooks = hoverLooks + 1
 	local kept = hoverLast and KeepsMouse(hoverLast)
 	if kept and (hoverLast == WorldFrame or hoverLooks < HOVER_KEPT) then
+		if hoverLast == WorldFrame then
+			RestOverWorld()
+		end
 		return
 	end
 	-- a resting cursor waits a second between two asks; a frame found last
@@ -1143,6 +1166,9 @@ local function HoverTick()
 	hoverLooks = 0
 	hoverX, hoverY = x, y
 	local f = MouseFrame()
+	if f and f == WorldFrame then
+		RestOverWorld()
+	end
 	if f == hoverLast then
 		return
 	end
@@ -1164,16 +1190,57 @@ local function HoverTick()
 	Play("UI_Hover", "%s", FrameName(f) or "a button")
 end
 
+-- one look, the next queued first (as a ticker would: a look that fails
+-- does not end them); stopped, the look waiting finds that and queues nothing
+local function HoverStep()
+	hoverQueued = false
+	if not hoverOn then
+		return
+	end
+	hoverQueued = true
+	C_Timer.After(HOVER_EVERY, HoverStep)
+	HoverTick()
+end
+
+local function StartLooks()
+	hoverOn = true
+	if not hoverQueued then
+		hoverQueued = true
+		C_Timer.After(HOVER_EVERY, HoverStep)
+	end
+end
+
+-- the world frame's hooks: the mouse came (noted; the next look finds the
+-- world and rests) or went (the looks start again, the first a twentieth of
+-- a second later, as it would have come had they run on)
+local function WorldEntered()
+	worldEntered = true
+end
+
+local function WorldLeft()
+	worldLeft = true
+	if GroupOn("hover") then
+		StartLooks()
+	end
+end
+
+local function HookWorld()
+	if worldHooked or not WorldFrame then
+		return
+	end
+	worldHooked = true
+	if WorldFrame.HookScript then
+		pcall(Perf.HookScript, WorldFrame, "OnEnter", WorldEntered)
+		pcall(Perf.HookScript, WorldFrame, "OnLeave", WorldLeft)
+	end
+end
+
 local function ApplyHover()
 	if GroupOn("hover") then
-		if not hoverTicker then
-			hoverTicker = C_Timer.NewTicker(HOVER_EVERY, HoverTick)
-		end
+		HookWorld()
+		StartLooks()
 	else
-		if hoverTicker then
-			hoverTicker:Cancel()
-			hoverTicker = nil
-		end
+		hoverOn = false
 		hoverLast = nil
 		hoverLooks = 0
 		hoverX, hoverY = nil, nil

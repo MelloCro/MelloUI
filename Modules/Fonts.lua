@@ -230,6 +230,7 @@ local M = MelloUI:RegisterModule("Fonts", {
 	title = "Fonts",
 	desc = "One font per role: interface text, chat and numbers, titles, damage numbers; plus size and outline.",
 	enabledByDefault = true,   -- every role "default" changes nothing; UI Modifications drives the switch
+	keep = { "paperFollows" },   -- a one-time step that was done: never in a profile
 	defaults = defaults,
 	options = options,
 })

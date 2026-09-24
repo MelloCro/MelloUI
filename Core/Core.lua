@@ -21,6 +21,11 @@
 --                    module: the kit panels by Painted UI); /mello list shows it
 --   important        true: the configurator's tile keeps a gold border, a glowing
 --                    icon and an IMPORTANT badge (the UI Modifications entry)
+--   keep             the settings that are this player's own, not choices
+--                    (learned flight points, a borrowed game setting, a
+--                    one-time flag): exact keys, or Lua patterns starting
+--                    with ^. Profiles and share strings leave them out and
+--                    loading one never touches them (IsPersonalKey below)
 --   options entries may carry `module = "<name>"` (the option belongs to that
 --   module: built against its settings) or be `{ type = "include", module = }`
 --   (that module's whole option list laid out in place); a toggle with
@@ -324,6 +329,7 @@ function MelloUI:RegisterModule(name, module)
 	module.desc = module.desc or ""
 	module.defaults = module.defaults or {}
 	module.options = module.options or {}
+	assert(module.keep == nil or type(module.keep) == "table", "MelloUI module '" .. name .. "': keep must be a list of keys")
 	if module.enabledByDefault == nil then
 		module.enabledByDefault = true
 	end
@@ -699,6 +705,50 @@ function MelloUI:IsProfileBaked(name)
 		and MelloUI_Profiles.profiles[name] == self:Profiles()[name]
 end
 
+-- Personal keys (audit, 2026-09-24). Some settings are no choice at all but
+-- this player's own: the flight points a character has learned (Route's
+-- flights_<character>), a game setting MelloUI borrowed and must give back
+-- (Chat's savedWhisperMode), a one-time step that was done (UI
+-- Modifications' layoutApplied). A module names them in `keep` when it
+-- registers. A profile or a share string never carries them: a posted
+-- string held the sharer's character IDs, and a layoutApplied in it kept
+-- the importer's reskin from ever placing its layout. Loading a profile
+-- leaves them as they are: it used to wipe every character's flight points.
+-- The macro backup still writes them: it is what brings them back after a
+-- restart.
+function MelloUI:IsPersonalKey(moduleName, key)
+	local module = self.modules[moduleName]
+	local keep = module and module.keep
+	if not keep or type(key) ~= "string" then
+		return false
+	end
+	for i = 1, #keep do
+		local entry = keep[i]
+		if entry == key or (entry:sub(1, 1) == "^" and key:find(entry)) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Serialised settings without their personal entries ("Module.key=value",
+-- parsed as DeserializeSettings does); the text itself when it holds none.
+local function StripPersonal(self, text)
+	if type(text) ~= "string" or text == "" then
+		return text
+	end
+	local parts, dropped = {}, false
+	for entry in text:gmatch("[^;]+") do
+		local moduleName, key = entry:match("^([^=.]+)%.([^=]+)=")
+		if moduleName and self:IsPersonalKey(moduleName, key) then
+			dropped = true
+		else
+			parts[#parts + 1] = entry
+		end
+	end
+	return dropped and table.concat(parts, ";") or text
+end
+
 function MelloUI:SaveProfile(name)
 	name = type(name) == "string" and name:gsub("^%s+", ""):gsub("%s+$", "") or ""
 	if name == "" then
@@ -707,7 +757,7 @@ function MelloUI:SaveProfile(name)
 	if name == self.FRESH_PROFILE then
 		return false, "'" .. name .. "' is built in"
 	end
-	self:Profiles()[name] = self:SerializeSettings()
+	self:Profiles()[name] = StripPersonal(self, self:SerializeSettings())
 	self.db.activeProfile = name
 	return true
 end
@@ -738,19 +788,24 @@ function MelloUI:SetDefaultProfile(name)
 end
 
 -- Replace every setting with the serialised ones: defaults first, then the
--- profile, then the running modules pick the new values up.
+-- profile, then the running modules pick the new values up. The personal
+-- keys stay as they are, whatever the text holds (IsPersonalKey). The
+-- tables are emptied in place: a module holding its db (Route's cached
+-- flight points read from it) keeps reading the same one.
 function MelloUI:ApplySettingsText(text)
 	for name, module in self:IterateModules() do
 		local db = self:GetModuleDB(name)
 		for k in pairs(db) do
-			db[k] = nil
+			if not (module.keep and self:IsPersonalKey(name, k)) then
+				db[k] = nil
+			end
 		end
 		ApplyDefaults(db, module.defaults)
 	end
 	for name in pairs(self.db.enabled) do
 		self.db.enabled[name] = nil
 	end
-	local applied = self:DeserializeSettings(text)
+	local applied = self:DeserializeSettings(StripPersonal(self, text))
 	if self.initialized then
 		for name, module in self:IterateModules() do
 			local want = self:IsModuleEnabled(name)
@@ -794,6 +849,8 @@ function MelloUI:ExportProfile(name)
 	if type(text) ~= "string" then
 		return nil, "no profile '" .. tostring(name) .. "'"
 	end
+	-- a profile saved before they were left out may still hold personal keys
+	text = StripPersonal(self, text)
 	local enc = C_EncodingUtil
 	if not (enc and enc.CompressString and enc.EncodeBase64) then
 		return nil, "this client cannot make share strings"
@@ -844,6 +901,14 @@ function MelloUI:DecodeProfileString(str)
 	if not (okD and type(text) == "string") then
 		return nil, "the string is damaged (cut short while copying?)"
 	end
+	-- never taken in: another player's personal keys (their characters' flight
+	-- points, a game setting of theirs to give back, their one-time flags),
+	-- which strings posted before profiles left them out still carry
+	local stripped = StripPersonal(self, text)
+	if stripped == "" and text ~= "" then
+		return nil, "it holds no settings, only one player's own data, which profiles never carry"
+	end
+	text = stripped
 	local total, known = 0, 0
 	for entry in text:gmatch("[^;]+") do
 		total = total + 1
@@ -903,7 +968,9 @@ function MelloUI:ApplyDefaultProfileIfFresh()
 	if not name or type(profiles[name]) ~= "string" then
 		return false
 	end
-	self:DeserializeSettings(profiles[name])
+	-- as a loaded one: its personal keys never land (the baked 'MelloUI'
+	-- carries a borrowed chat setting that would stand in for the player's own)
+	self:DeserializeSettings(StripPersonal(self, profiles[name]))
 	self.db.activeProfile = name
 	self.profileAppliedAtLogin = name
 	return true

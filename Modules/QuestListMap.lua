@@ -744,16 +744,129 @@ end
 
 -- The last outdoor position seen before a loading screen: when the next map
 -- is a dungeon or raid the data has no entrance for, that is where it is.
+-- One table, its fields renewed on every look.
 local lastOutside = nil
 
+-- The position is taken on every zone change and when the world is left (the
+-- loading screen). That last look is the door, but the game cannot always
+-- say where the player is at that moment, so the position is also refreshed
+-- on a slow ticker; but only where it can matter (user, 2026-09-24: no idle
+-- work): after a zone change or a loading screen, while an instance door is
+-- within reach, and it stops once none is. A position is only trusted as the
+-- door when it came from the last look before the loading screen or from the
+-- ticker just before it; an older one (a zone change minutes back, before a
+-- long walk) is not, and that entrance is learned on the way out instead.
+-- The doors are every entrance the map pins know: the data's, the learned
+-- ones, the client's own list and its door points of interest.
+local OUTSIDE_EVERY = 3     -- seconds between two looks while a door is near
+local DOOR_REACH = 500      -- yards: a door this near keeps the looks going
+local DOOR_REACH_MAP = 0.12 -- the same as a share of the map, where the client cannot size the map
+local outsideTicker = nil
+local outsideOn = false     -- the module is on (the ticker may run)
+local outsideAskedAt = nil  -- the last outdoor look, whether it could read the position or not
+local doorMap = nil         -- the map the door list is for (nil: none made yet)
+local doorX, doorY, doorCount = {}, {}, 0
+local doorW, doorH = nil, nil   -- that map's size in yards (nil: unknown)
+-- the data's doors placed once a session (the client's maps do not change
+-- while playing, and a map change then costs no placing), by the data's own
+-- entry: the map, the continent position and the continent map; false where
+-- the client cannot place the door
+local BY_ENTRY = { __mode = "k" }
+local doorPlaced, doorCont = setmetatable({}, BY_ENTRY), setmetatable({}, BY_ENTRY)
+local doorCX, doorCY = setmetatable({}, BY_ENTRY), setmetatable({}, BY_ENTRY)
+
+local function AddDoor(x, y)
+	if x and y then
+		doorCount = doorCount + 1
+		doorX[doorCount], doorY[doorCount] = x, y
+	end
+end
+
+-- The doors on a map, made again only when the map changes (or a door is
+-- learned); the data's are placed as the map pins place them. The list is
+-- marked as made only once it is whole: one that failed halfway is made
+-- again on the next look.
+local function DoorsOn(mapID)
+	doorMap, doorCount = nil, 0
+	local okI, info = pcall(C_Map.GetMapInfo, mapID)
+	local mapName = (okI and type(info) == "table" and QL.Plain(info.name)) or ""
+	for _, e in ipairs(QL.Data().entrances or {}) do
+		if doorPlaced[e] == nil then
+			local placed, cx, cy, contMapID = QL.ResolveWorld(e[3], e[4], e[5])
+			doorPlaced[e], doorCX[e], doorCY[e], doorCont[e] = placed or false, cx, cy, contMapID
+		end
+		local placed = doorPlaced[e]
+		if placed then
+			AddDoor(QL.ProjectOnMap(mapID, placed, doorCX[e], doorCY[e], doorCont[e]))
+		elseif e[6] ~= 0 and QL.zoneByName and QL.zoneByName[mapName:lower()] == e[6] then
+			AddDoor(e[7] / 100, e[8] / 100)
+		end
+	end
+	for _, l in pairs(QL.LearnedStore("entrances")) do
+		if l.mapID == mapID then
+			AddDoor(l.x, l.y)
+		end
+	end
+	for _, e in ipairs(QL.ClientEntrances(mapID)) do
+		AddDoor(e.x, e.y)
+	end
+	for _, poi in ipairs(QL.ClientPOIs(mapID)) do
+		if QL.IsEntrancePOI(poi) then
+			AddDoor(poi.x, poi.y)
+		end
+	end
+	doorW, doorH = nil, nil
+	if C_Map.GetMapWorldSize then
+		local okS, w, h = pcall(C_Map.GetMapWorldSize, mapID)
+		w, h = okS and QL.Plain(w) or nil, okS and QL.Plain(h) or nil
+		if type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
+			doorW, doorH = w, h
+		end
+	end
+	doorMap = mapID
+end
+
+local function DoorNear(mapID, x, y)
+	if mapID ~= doorMap then
+		DoorsOn(mapID)
+	end
+	for i = 1, doorCount do
+		local dx, dy = doorX[i] - x, doorY[i] - y
+		if doorW then
+			dx, dy = dx * doorW, dy * doorH
+			if dx * dx + dy * dy <= DOOR_REACH * DOOR_REACH then
+				return true
+			end
+		elseif dx * dx + dy * dy <= DOOR_REACH_MAP * DOOR_REACH_MAP then
+			return true
+		end
+	end
+	return false
+end
+
+local function StopOutsideLooks()
+	if outsideTicker then
+		outsideTicker:Cancel()
+		outsideTicker = nil
+	end
+end
+
+-- Takes the outdoor position (the zone events, the ticker, a loading screen)
+-- and starts or stops the ticker by whether a door is near.
 function QL.RememberOutside()
 	local okI, inInstance = pcall(IsInInstance)
 	if not okI or inInstance then
+		StopOutsideLooks()
 		return
 	end
+	-- noted read or not: a look that cannot read the position (leaving the
+	-- world, say) leaves the one before it standing, and that one is then
+	-- no longer where the player went in
+	outsideAskedAt = GetTime()
 	local okM, mapID = pcall(C_Map.GetBestMapForUnit, "player")
 	mapID = okM and QL.Plain(mapID) or nil
 	if not mapID then
+		StopOutsideLooks()
 		return
 	end
 	local okP, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
@@ -761,26 +874,36 @@ function QL.RememberOutside()
 	if okP then
 		x, y = QL.VectorXY(pos)   -- pos.x is a secret value on this client; VectorXY falls back to GetXY
 	end
-	if x and y and x > 0 and y > 0 then
-		lastOutside = { mapID = mapID, x = x, y = y, at = GetTime() }
+	if not (x and y and x > 0 and y > 0) then
+		StopOutsideLooks()
+		return
+	end
+	lastOutside = lastOutside or {}
+	lastOutside.mapID, lastOutside.x, lastOutside.y, lastOutside.at = mapID, x, y, GetTime()
+	-- guarded: a door list that cannot be made means no ticker, never an
+	-- error in the zone events' handler
+	local okD, near = false, false
+	if outsideOn and C_Timer.NewTicker then
+		okD, near = pcall(DoorNear, mapID, x, y)
+	end
+	if okD and near then
+		if not outsideTicker then
+			outsideTicker = C_Timer.NewTicker(OUTSIDE_EVERY, QL.RememberOutside)
+		end
+	else
+		StopOutsideLooks()
 	end
 end
 
--- Zone events alone are too sparse (a fight in one subzone can last minutes),
--- so the outdoor position is also refreshed on a slow ticker.
-local outsideTicker = nil
+-- The module on: the looks may run from the next zone change or loading
+-- screen on (nothing is looked at here, at login).
 function QL.StartOutsideTicker()
-	if outsideTicker or not C_Timer.NewTicker then
-		return
-	end
-	outsideTicker = C_Timer.NewTicker(3, QL.RememberOutside)
+	outsideOn = true
 end
 
 function QL.StopOutsideTicker()
-	if outsideTicker then
-		outsideTicker:Cancel()
-		outsideTicker = nil
-	end
+	outsideOn = false
+	StopOutsideLooks()
 end
 
 local learnFailed = nil   -- instance name already reported this session
@@ -789,6 +912,10 @@ QL.pendingExit = nil   -- { name, raid }: instance to learn from where the playe
 -- Returns true when done (learned, already known, or not applicable); false
 -- when the instance is not readable yet and a retry is worth it.
 function QL.LearnEntrance()
+	-- asked after every loading screen (a /reload too, where no zone event
+	-- comes): outdoors that decides the ticker, inside it stops it (guarded:
+	-- the dungeon summary comes after this on the same timer)
+	pcall(QL.RememberOutside)
 	local okI, inInstance, kind = pcall(IsInInstance)
 	if not okI or not inInstance or (kind ~= "party" and kind ~= "raid") then
 		return true
@@ -807,10 +934,12 @@ function QL.LearnEntrance()
 	if learned[name] then
 		return true
 	end
-	if not lastOutside or GetTime() - lastOutside.at > 180 then
-		-- No position from before the loading screen (reloaded inside, for
-		-- instance). Leaving the instance puts the player at its door, so the
-		-- entrance is learned on the way out instead.
+	if not lastOutside or GetTime() - lastOutside.at > 180
+		or lastOutside.at < (outsideAskedAt or 0) - OUTSIDE_EVERY - 1 then
+		-- No position from just before the loading screen (reloaded inside,
+		-- or the last look before it could not read one and the position
+		-- kept is from further back). Leaving the instance puts the player
+		-- at its door, so the entrance is learned on the way out instead.
 		QL.pendingExit = { name = name, raid = kind == "raid" }
 		if learnFailed ~= name then
 			learnFailed = name
@@ -819,6 +948,7 @@ function QL.LearnEntrance()
 		return true
 	end
 	learned[name] = { mapID = lastOutside.mapID, x = lastOutside.x, y = lastOutside.y, raid = kind == "raid" }
+	doorMap = nil   -- a door more: the list is made again
 	MelloUI:Notice("Quest List: learned where the entrance of %s is; it is on the zone map now.", name)
 	QL.RefreshPins()
 	return true
@@ -849,6 +979,7 @@ function QL.LearnEntranceOnExit(attempt)
 		return
 	end
 	learned[pending.name] = { mapID = mapID, x = x, y = y, raid = pending.raid }
+	doorMap = nil   -- a door more: the list is made again
 	MelloUI:Notice("Quest List: learned where the entrance of %s is; it is on the zone map now.", pending.name)
 	QL.RefreshPins()
 end

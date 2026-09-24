@@ -125,7 +125,7 @@ local defaults = {
 	soundPacks = true,
 	preferRecordings = false,
 	soundChannel = "Master",
-	collectLines = true,
+	collectLines = false,   -- the voice work's recorder, off for players (user, 2026-09-24)
 	overlay = true,
 	overlayPortrait = true,
 	overlaySubtitles = false,
@@ -169,7 +169,7 @@ for _, group in ipairs(RACE_GROUPS) do
 end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use VoiceOver Sound Packs",
-	desc = "Play the recorded lines from an installed VoiceOver data pack (AI_VoiceOverData_Vanilla) when one exists for the quest or greeting, and use text-to-speech for everything else. Enable the pack in the addon list; it loads when needed." }
+	desc = "Play the recorded lines from an installed voice pack (MelloUI_VoiceOverData, a separate download) when one exists for the quest or greeting, and use text-to-speech for everything else. Enable the pack in the addon list; it loads when needed." }
 options[#options + 1] = { type = "toggle", key = "preferRecordings", parent = "soundPacks", name = "Prefer Recordings",
 	desc = "When an NPC's greeting text was changed but the pack has exactly one recorded greeting for that NPC, play the recording anyway instead of reading the new text aloud. The words will not match what is on screen." }
 options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound Channel", values = {
@@ -180,7 +180,7 @@ options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound
 	},
 	desc = "Channel the recorded lines play on; its volume slider in the game's sound settings controls them." }
 options[#options + 1] = { type = "toggle", key = "collectLines", name = "Record Dialog Lines",
-	desc = "Keep every greeting and quest line you see, with the NPC and whether a recording existed, so Tools\\export_voice_lines.py can list the lines Forever added or changed for a new sound pack. Written to the saved variables on /reload." }
+	desc = "For making new voice lines: keep every greeting and quest line you see, with the NPC and whether a recording existed, so the lines this client added or changed can be voiced for the pack. Saved on /reload and kept until the game restarts. Off by default." }
 options[#options + 1] = { type = "header", name = "Playback" }
 options[#options + 1] = { type = "toggle", key = "queueLines", name = "Queue Lines",
 	desc = "Read lines one after another: a greeting finishes before the quest offer that follows it. Off makes every new dialog interrupt the previous one." }
@@ -208,6 +208,7 @@ local M = MelloUI:RegisterModule("VoiceOver", {
 	title = "Voice Over",
 	desc = "Read NPC dialog and quest text aloud with the built in text-to-speech voices, shaped by the NPC's race and gender.",
 	enabledByDefault = true,
+	keep = { "collectLinesOffOnce" },   -- a one-time step that was done: never in a profile
 	defaults = defaults,
 	options = options,
 })
@@ -904,7 +905,7 @@ local function CollectLine(entry, questID)
 	if isNew and not rec.recorded then
 		unsavedLines = unsavedLines + 1
 		if unsavedLines % 5 == 0 then
-			MelloUI:Notice("Voice Over: %d new lines without a recording collected. /reload writes them out for the generator.", unsavedLines)
+			MelloUI:Notice("Voice Over: %d new lines without a recording collected (Record Dialog Lines). /reload saves them.", unsavedLines)
 		end
 	end
 end
@@ -2736,7 +2737,7 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 				end
 			end
 		end
-		print("   /reload writes them to the saved variables; then run Tools\\export_voice_lines.py before restarting the client.")
+		print("   /reload saves them; take them out before the game fully restarts, which drops them.")
 	elseif msg == "packs" then
 		LoadSoundPacks()
 		if #packs == 0 and not next(packErrors) then
@@ -2861,6 +2862,13 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- Record Dialog Lines went off by default (user, 2026-09-24): every
+	-- install had it on from the old default, so switch it off once; a
+	-- player who wants it turns it back on and it stays
+	if not db.collectLinesOffOnce then
+		db.collectLinesOffOnce = true
+		db.collectLines = false
+	end
 	RefreshVoices()
 	npcLookup = nil
 	if not HasTTS() then

@@ -9,6 +9,7 @@
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Stats")
+local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Stats", {
 	title = "FPS / Latency",
@@ -108,12 +109,18 @@ local function ApplyPosition()
 	frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", tonumber(M.db.offsetX) or -12, tonumber(M.db.offsetY) or 8)
 end
 
+-- the readout's pieces, one table for every refresh (a new one each interval
+-- before; user, 2026-09-24: no garbage on the hot paths)
+local parts = {}
+local SEPARATOR = LABEL .. "  |r"
+
 local function Refresh()
 	local db = M.db
-	local parts = {}
+	local n = 0
 	if db.showFps then
 		local fps = math.floor((GetFramerate() or 0) + 0.5)
-		parts[#parts + 1] = FpsColor(fps) .. fps .. "|r" .. LABEL .. " fps|r"
+		n = n + 1
+		parts[n] = FpsColor(fps) .. fps .. "|r" .. LABEL .. " fps|r"
 	end
 	if db.showLatency then
 		local _, _, home, world = GetNetStats()
@@ -122,22 +129,39 @@ local function Refresh()
 		if db.worldLatency then
 			latency = latency .. LABEL .. "/|r" .. LatencyColor(world) .. world .. "|r"
 		end
-		parts[#parts + 1] = latency .. LABEL .. " ms|r"
+		n = n + 1
+		parts[n] = latency .. LABEL .. " ms|r"
 	end
-	text:SetText(table.concat(parts, LABEL .. "  |r"))
+	text:SetText(table.concat(parts, SEPARATOR, 1, n))
 	local width = text:GetStringWidth() or 0
 	frame:SetWidth(math.max(20, width))
 	frame:SetHeight(math.max(10, text:GetStringHeight() or 10))
 end
 
-local elapsedAcc = 0
-Perf.SetScript(frame, "OnUpdate", function(_, elapsed)
-	elapsedAcc = elapsedAcc + elapsed
-	if elapsedAcc >= (tonumber(M.db.interval) or 1) then
-		elapsedAcc = 0
-		Refresh()
+-- The refresh rides a ticker at the chosen interval, running only while the
+-- readout shows (user, 2026-09-24: no idle work): an OnUpdate counted every
+-- frame up to the interval before. A new interval starts a new ticker.
+local ticker, tickerEvery = nil, nil
+
+local function StopTicker()
+	if ticker then
+		ticker:Cancel()
+		ticker, tickerEvery = nil, nil
 	end
-end)
+end
+
+local function StartTicker()
+	local every = tonumber(M.db and M.db.interval) or 1
+	if ticker and tickerEvery == every then
+		return
+	end
+	StopTicker()
+	ticker, tickerEvery = C_Timer.NewTicker(every, Refresh), every
+end
+
+-- hidden with its parent too (the interface hidden): the ticker goes with it
+Perf.SetScript(frame, "OnShow", StartTicker)
+Perf.SetScript(frame, "OnHide", StopTicker)
 
 Perf.SetScript(frame, "OnEnter", function(self)
 	if not GameTooltip then
@@ -177,8 +201,13 @@ local function ApplyAll()
 	ApplyFont()
 	ApplyPosition()
 	Refresh()
-	elapsedAcc = 0
 	frame:SetShown(M.isEnabled and (M.db.showFps or M.db.showLatency))
+	-- shown already, OnShow does not come again: a new interval is taken here
+	if frame:IsVisible() then
+		StartTicker()
+	else
+		StopTicker()
+	end
 end
 
 function M:OnInit(db)
@@ -192,6 +221,7 @@ end
 
 function M:OnDisable()
 	frame:Hide()
+	StopTicker()
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -199,4 +229,4 @@ function M:OnSettingChanged(key, value, db)
 	ApplyAll()
 end
 
-MelloUI:Profile("Stats", "fps/latency refresh", frame)
+MelloUI:Profile("Stats", "fps/latency refresh", Refresh)

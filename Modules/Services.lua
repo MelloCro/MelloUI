@@ -1,7 +1,8 @@
 --------------------------------------------------------------------------------
 -- MelloUI - Services
 --
--- A button on the minimap that leads you to the nearest repair, mailbox,
+-- Service icons under the minimap (and an optional minimap button that opens
+-- the list of them) that lead you to the nearest repair, mailbox,
 -- innkeeper, flight master, auction house, bank, trainer, barber or
 -- transmogrifier. Vanilla service NPCs and mailboxes come from the Quest
 -- List data (placed by the client), flight masters from the flight point
@@ -18,7 +19,8 @@ local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Services", {
 	title = "Services",
-	desc = "Minimap button that routes you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.",
+	keep = { "learned" },   -- services recorded by hand (when Route's store is missing): never in a profile
+	desc = "Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.",
 	enabledByDefault = true,
 	defaults = {
 		showBar = true,
@@ -29,12 +31,13 @@ local M = MelloUI:RegisterModule("Services", {
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
-		  desc = "Two rows of service icons under the minimap; it moves with the minimap in Edit Mode. Click an icon to route to the nearest one, right-click to stop the route." },
-		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2 },
+		  desc = "Two rows of service icons under the minimap; it moves with the minimap in Edit Mode. Click an icon to route to the nearest one by road, right-click to stop the route. A grey icon has none known on this continent yet. With the painted look, the square minimap in the Window frame or Single rail border, and \"Square minimap: merge with the Services bar\" on (Dynamic UI Modification), the icons sit inside the minimap's frame." },
+		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2,
+		  desc = "How far under the minimap the icons sit. Not used while they are merged into the square minimap's frame." },
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
-		  desc = "Show the service icons as round medallions with a bronze rim instead of squares." },
+		  desc = "Show the service icons as round medallions in a round rim instead of squares." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
-		  desc = "Also show the round button on the minimap edge that opens the list. /services opens the same list." },
+		  desc = "Also show a round button on the minimap's edge that opens the list of the nearest services; drag it to move it, right-click it to stop the route. /services opens the same list." },
 	},
 })
 
@@ -1622,7 +1625,7 @@ local function CreateButton()
 	Perf.SetScript(button, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Services", 1, 1, 1)
-		GameTooltip:AddLine("Click: route to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.", nil, nil, nil, true)
+		GameTooltip:AddLine("Click: the list of the nearest services.", nil, nil, nil, true)
 		GameTooltip:AddLine("Right-click: stop the route.  Drag: move the button.", 0.7, 0.7, 0.7, true)
 		GameTooltip:Show()
 	end)

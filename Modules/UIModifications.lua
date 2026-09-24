@@ -197,7 +197,7 @@ Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion",
 	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting." })
 Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
-	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 50 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
+	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
 -- Names (user, 2026-09-22: "make that option global for all of the 3
 -- things at the same time"): one dropdown for the unit frames, the
 -- nameplates and the name over your own head. Characters here have a first
@@ -281,6 +281,7 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	-- it drives every reskin panel and folded tweak, so its OFF state has to
 	-- be applied at start-up too, not only when the switch is thrown
 	applyWhenDisabled = true,
+	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded" },   -- a borrowed game setting and one-time steps: never in a profile
 	defaults = defaults,
 	options = options,
 })

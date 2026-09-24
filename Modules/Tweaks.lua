@@ -20,6 +20,7 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("Tweaks", {
 	title = "Tweaks",
 	desc = "Hide the micro menu and bag bar, and scale the floating combat text.",
+	keep = { "savedWorldTextScale", "menuTipShown" },   -- the player's own text scale to give back, a one-time tip: never in a profile
 	defaults = {
 		hideMicroMenu = false,
 		hideBagBar = false,
@@ -330,9 +331,9 @@ local worldTextWarned = false
 -- original already kept -- so a scale set in the game's options is not
 -- overwritten with 1.0 at every login. Written back and forgotten when the
 -- module goes off. This session's copy of it (`keptWorldTextScale`) is the
--- one written back when both are there: loading a profile clears every
--- setting before the module is restarted (Core's ApplySettingsText), which
--- would lose the saved one and leave MelloUI's value in the cvar for good.
+-- one written back when both are there. (Loading a profile once cleared the
+-- saved one too; it is a personal key now, kept by Core's ApplySettingsText,
+-- and the session copy stays as a second guard.)
 local keptWorldTextScale = nil
 
 local function ReadWorldTextScale()

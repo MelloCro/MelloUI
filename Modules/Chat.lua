@@ -26,6 +26,7 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("Chat", {
 	title = "Chat",
 	desc = "Clean chat: hidden background and input art, short coloured channel tags, class coloured names.",
+	keep = { "savedWhisperMode", "savedClassColorCVar" },   -- the player's own game settings, given back when off: never in a profile
 	defaults = {
 		hideBackground = true,
 		hideEditBox = true,
@@ -195,7 +196,7 @@ end
 
 local function TabAlphaWanted(tab, alpha)
 	local okI, id = pcall(tab.GetID, tab)
-	local frame = okI and id and not Secret(id) and _G["ChatFrame" .. id]
+	local frame = okI and not Secret(id) and id and _G["ChatFrame" .. id]
 	if not frame then
 		return alpha
 	end
@@ -242,7 +243,7 @@ end
 -- the game's own alpha for a tab now, for switching the option off
 local function GameTabAlpha(tab)
 	local okI, id = pcall(tab.GetID, tab)
-	local frame = okI and id and not Secret(id) and _G["ChatFrame" .. id]
+	local frame = okI and not Secret(id) and id and _G["ChatFrame" .. id]
 	if not (frame and ChatFrameUtil and ChatFrameUtil.GetTabAlphas) then
 		return 1
 	end
@@ -530,7 +531,8 @@ local function Initial(word)
 end
 
 local function ShortPerson(name, style)
-	if type(name) ~= "string" or style == nil or style == "full" then
+	-- a secret name (a Battle.net whisper's can be) cannot be cut: shown whole
+	if style == nil or style == "full" or Secret(name) or type(name) ~= "string" then
 		return name
 	end
 	local core, realm = name:match("^(.-)(%-[^%s]+)$")
@@ -579,14 +581,16 @@ local function OnLineAdded(chatFrame, text)
 	if transformFailed or not (short or style) then
 		return
 	end
-	if text == nil or Secret(text) or type(text) ~= "string" or type(chatFrame.TransformMessages) ~= "function" then
+	-- the secret test before any other: this client refuses even `text == nil`
+	-- on a secret (audit, 2026-09-24)
+	if Secret(text) or type(text) ~= "string" or type(chatFrame.TransformMessages) ~= "function" then
 		return
 	end
 	-- only this line (the newest with this exact text): the rest of the
 	-- history was shortened when it came in
 	local function IsIt(e)
 		local t = LineText(e)
-		return t ~= nil and not Secret(t) and t == text
+		return not Secret(t) and t == text
 	end
 	local function Rewritten(t)
 		if short then
@@ -785,11 +789,12 @@ end
 
 local function InkDrawnLine(line, on)
 	local okT, text = pcall(line.GetText, line)
-	if not okT or text == nil then
+	-- secret first: `text == nil` on a secret is refused (audit, 2026-09-24)
+	local secret = okT and Secret(text)
+	if not okT or (not secret and text == nil) then
 		return
 	end
 	local state = lineState[line]
-	local secret = Secret(text)
 	local okC, r, g, b = pcall(line.GetTextColor, line)
 	local rgbReadable = okC and Number(r) and Number(g) and Number(b)
 	if on then
@@ -1029,13 +1034,15 @@ local function ShadeLines(frame)
 				local state = lineState[line]
 				text = state and state.plain
 			else
+				-- a secret line has no bands: never read further
 				local okT, t = pcall(line.GetText, line)
-				text = okT and t or nil
+				text = (okT and not Secret(t)) and t or nil
 			end
-			if shown and type(text) == "string" and not Secret(text) and (justify == nil or justify == "LEFT") then
+			if shown and type(text) == "string" and (justify == nil or justify == "LEFT") then
 				local okW, rowWidth = pcall(line.GetWidth, line)
 				rowWidth = (okW and not Secret(rowWidth) and rowWidth) or 0
-				local alpha = SHADE_ALPHA * (line.GetAlpha and line:GetAlpha() or 1)
+				local lineAlpha = line.GetAlpha and line:GetAlpha()
+				local alpha = SHADE_ALPHA * (Number(lineAlpha) and lineAlpha or 1)
 				for k, piece in ipairs(BrightPieces(text)) do
 					if k > 9 then
 						break
@@ -1238,7 +1245,7 @@ do
 			return nil, "the first line has " .. tostring(Number(n) and n or "?") .. " anchors"
 		end
 		local point, rel, relPoint = line:GetPoint(1)
-		if Secret(point) or Secret(relPoint) or rel ~= frame or point ~= "BOTTOMLEFT" or relPoint ~= "BOTTOMLEFT" then
+		if Secret(point) or Secret(rel) or Secret(relPoint) or rel ~= frame or point ~= "BOTTOMLEFT" or relPoint ~= "BOTTOMLEFT" then
 			return nil, "the first line is anchored elsewhere"
 		end
 		return line
@@ -1656,7 +1663,7 @@ local function ApplyClassColors(enable)
 		if M.db.savedClassColorCVar == nil then
 			local current = C_CVar.GetCVar(CLASS_CVAR)
 			-- "0" is the value this module writes; fall back to Blizzard's per-type default.
-			M.db.savedClassColorCVar = (current and current ~= "0") and current or "-1"
+			M.db.savedClassColorCVar = (not Secret(current) and current and current ~= "0") and current or "-1"
 		end
 		C_CVar.SetCVar(CLASS_CVAR, "0") -- 0 = force class colours on for every chat type
 	else
@@ -1791,7 +1798,8 @@ WriteWhisperLine = function(f, e)
 	local r, g, b = e.r, e.g, e.b
 	local line = ("|cff8a8a8a%s|r %s: %s"):format(e.stamp, e.who, e.text)
 	if ink then
-		if not Secret(e.text) then
+		-- the joined line, not only the words: a secret name makes it secret too
+		if not Secret(line) then
 			line = InkLine(line, r, g, b)
 		end
 		r, g, b = ChatInk(r, g, b)
@@ -1838,7 +1846,7 @@ local function SavePopupPosition(f)
 	end
 	local okL, left = pcall(f.GetLeft, f)
 	local okB, bottom = pcall(f.GetBottom, f)
-	if okL and okB and left and bottom and not Secret(left) and not Secret(bottom) then
+	if okL and okB and not Secret(left) and not Secret(bottom) and left and bottom then
 		M.db.whisperPopupPos = { x = math.floor(left + 0.5), y = math.floor(bottom + 0.5) }
 	end
 end
@@ -2049,9 +2057,12 @@ end
 -- shown only when the game already knows it -- someone in the group, targeted
 -- or nearby (UnitTokenFromGUID), a friend, a guild member, a Battle.net friend
 -- playing WoW -- and otherwise left out (the user's choice over a /who lookup,
--- which would replace the game's Who list). Every read is secret-safe.
+-- which would replace the game's Who list). Every read is secret-safe: the
+-- secret test comes first, as this client refuses even comparing a secret
+-- with nil (audit, 2026-09-24: this compared first, so a whisper with a
+-- secret class, level or GUID would have stopped here with an error).
 local function Plain(v)
-	return v ~= nil and not Secret(v)
+	return not Secret(v) and v ~= nil
 end
 
 local function ClassHex(classFile)
@@ -2086,6 +2097,46 @@ local function PlainLevel(level)
 	return (Plain(level) and type(level) == "number" and level > 0) and level or nil
 end
 
+-- The guild's levels and classes, found by GUID or name (audit, 2026-09-24:
+-- each whisper from someone outside the group read the whole guild roster,
+-- up to a thousand calls in a big guild). Read once after each roster change
+-- (GUILD_ROSTER_UPDATE marks it stale), on the first whisper that needs it,
+-- into tables kept and wiped, never made anew: a whisper itself makes no
+-- garbage. Rows by roster index; the two finders point at them.
+local guildRoster = { stale = true, level = {}, class = {}, byName = {}, byGuid = {} }
+
+local function GuildRow(name, guid)
+	local g = guildRoster
+	if g.stale then
+		g.stale = false
+		wipe(g.byName)
+		wipe(g.byGuid)
+		local okN, total = pcall(GetNumGuildMembers)
+		if okN and not Secret(total) and type(total) == "number" then
+			for i = 1, total do
+				-- name, rank, rankIndex, level, ... the class file 11th, the GUID 17th
+				local ok, gName, _, _, gLevel, _, _, _, _, _, _, gClassFile, _, _, _, _, _, gGuid = pcall(GetGuildRosterInfo, i)
+				if ok then
+					g.level[i] = PlainLevel(gLevel)
+					g.class[i] = (not Secret(gClassFile) and type(gClassFile) == "string") and gClassFile or nil
+					-- a secret is never a key: its row is found by the other finder or not at all
+					if not Secret(gName) and type(gName) == "string" and not g.byName[gName] then
+						g.byName[gName] = i
+					end
+					if not Secret(gGuid) and type(gGuid) == "string" then
+						g.byGuid[gGuid] = i
+					end
+				end
+			end
+		end
+	end
+	local row = not Secret(guid) and type(guid) == "string" and g.byGuid[guid] or nil
+	if not row and not Secret(name) and type(name) == "string" then
+		row = g.byName[name]
+	end
+	return row
+end
+
 -- a character: class from the GUID, level from what the game already knows
 local function CharacterIdentity(name, guid)
 	local classFile, level
@@ -2109,17 +2160,10 @@ local function CharacterIdentity(name, guid)
 		end
 	end
 	if not level and IsInGuild and IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo then
-		local okN, total = pcall(GetNumGuildMembers)
-		if okN and Plain(total) and type(total) == "number" then
-			for i = 1, total do
-				-- name, rank, rankIndex, level, ... and the GUID 17th
-				local ok, gName, _, _, gLevel, _, _, _, _, _, _, gClassFile, _, _, _, _, _, gGuid = pcall(GetGuildRosterInfo, i)
-				if ok and ((Plain(gGuid) and Plain(guid) and gGuid == guid) or (Plain(gName) and gName == name)) then
-					level = PlainLevel(gLevel)
-					classFile = classFile or (Plain(gClassFile) and gClassFile or nil)
-					break
-				end
-			end
+		local row = GuildRow(name, guid)
+		if row then
+			level = guildRoster.level[row]
+			classFile = classFile or guildRoster.class[row]
 		end
 	end
 	return classFile, level
@@ -2156,6 +2200,10 @@ end
 -- One whisper event. Its arguments: text, the other person's name, ..., at 12
 -- their GUID and at 13 the Battle.net account id (the 10th and 11th of the rest).
 local function OnWhisper(_, event, text, sender, ...)
+	if event == "GUILD_ROSTER_UPDATE" then
+		guildRoster.stale = true   -- read again at the next whisper that needs it
+		return
+	end
 	local how = WHISPER_EVENTS[event]
 	if not (how and popupOn) then
 		return
@@ -2163,7 +2211,7 @@ local function OnWhisper(_, event, text, sender, ...)
 	local key, target, title, classFile, level
 	if how.kind == "BN_WHISPER" then
 		local bnID = select(11, ...)
-		if not bnID or Secret(bnID) then
+		if Secret(bnID) or not bnID then
 			return
 		end
 		key, target, title = "BN:" .. tostring(bnID), bnID, sender
@@ -2171,7 +2219,7 @@ local function OnWhisper(_, event, text, sender, ...)
 	else
 		-- the name keys the window, so a secret one cannot open one; the
 		-- whisper is still in the main chat
-		if not sender or Secret(sender) then
+		if Secret(sender) or not sender then
 			return
 		end
 		key, target = "W:" .. sender, sender
@@ -2229,7 +2277,7 @@ local function SetWhisperMode(on)
 	if on then
 		if db.savedWhisperMode == nil then
 			local ok, current = pcall(C_CVar.GetCVar, WHISPER_CVAR)
-			db.savedWhisperMode = (ok and current and not Secret(current)) and current or "popout"
+			db.savedWhisperMode = (ok and not Secret(current) and current) and current or "popout"
 		end
 		pcall(C_CVar.SetCVar, WHISPER_CVAR, "inline")
 	elseif db.savedWhisperMode ~= nil then
@@ -2244,6 +2292,10 @@ local function SetWhisperPopup(on)
 		for event in pairs(WHISPER_EVENTS) do
 			whisperEvents:RegisterEvent(event)
 		end
+		-- the guild lookup goes stale with the roster; unwatched while the
+		-- popups were off, so it is read again at the next whisper
+		whisperEvents:RegisterEvent("GUILD_ROSTER_UPDATE")
+		guildRoster.stale = true
 		Perf.SetScript(whisperEvents, "OnEvent", OnWhisper)
 	else
 		whisperEvents:UnregisterAllEvents()
@@ -2490,7 +2542,9 @@ end
 SLASH_MELLOCHATSCROLL1 = "/chatscroll"
 SlashCmdList.MELLOCHATSCROLL = function(msg)
 	local function Name(obj, frame)
-		if obj == nil then
+		if Secret(obj) then
+			return "protected"
+		elseif obj == nil then
 			return "none"
 		elseif obj == frame then
 			return "the window"

@@ -136,20 +136,20 @@ local PROFILES_META = { icon = ICON .. "INV_Scroll_06", title = "Profiles",
 	flavour = "Your whole setup under one name. Save it, load it, or make it the default for a fresh install." }
 local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
--- Shown on the Home page under "What's new".
+-- Shown on the Home page under "What's new". A short list in a player's
+-- words; CHANGELOG.md has the whole release.
 local CHANGELOG = {
 	{ version = "0.13.7", lines = {
-		"A simpler configurator: UI Modifications is switches and sliders on eight tabs (General, Windows, HUD, Combat, Unit Frames & Bars, Chat & Tooltips, Text, Dark Mode / Other); a feature's options sit under its switch and wake when it is on.",
-		"Dynamic UI Modification is the one place for the look: borders, Kit Colours, every background and backdrop, the parchment sheets and the minimap's shape, picked on the interface with pictures.",
-		"Buffs & Debuffs and Error Messages moved into UI Modifications' Combat tab, keeping whether they were on.",
-		"Kit Colours: Warm iron (the default), Bronze or the original painted grey, for every frame, the game menu included. A colour palette for the whole interface, the configurator first.",
-		"Borders, one choice per kind for every window: buttons, side tabs, progress bars, nameplates, round icons and auras. Thin rims on the action bars, bags, character slots, spells, professions and this window's icons.",
-		"Window headers ride the frame's top rail and slip behind the round portrait ring; fewer red gems, red kept where it means something.",
-		"Text on parchment is dark ink everywhere; quest difficulty shows as 1 to 5 diamonds beside the title.",
-		"Fonts: eleven new families with italics, six Font Styles in one click, and a Chat text face for the chat and the whisper windows.",
-		"Square minimap with a border of your choosing, merged with the Services bar in one frame.",
-		"Route: a destination on another continent leads to the boat or zeppelin that leaves yours.",
-		"Smooth scrolling here; quieter profession pictures; readable contacts lists; a Header Text Size for the Quest Tracker.",
+		"Lighter artwork: the textures now take 28 MB instead of 96 MB, and a look loads about 12.6 MB during the loading screen instead of 45.8 MB, so loading screens and first opens are quicker.",
+		"A new logo: the MelloUI emblem in the AddOn list and on this window, the whole logo on its home page.",
+		"No more stalls opening this window, the friends window, the group finder, parchment windows or a flight master. The bags and the spell book do less on their first open, and rarely used windows are dressed then, for a faster login.",
+		"Route's road data now lives in a second folder, MelloUI_Companion, loaded only when you route somewhere: copy both folders into AddOns and restart the game once. /route status says whether it is loaded.",
+		"Less memory and smoother play: hidden parts stay quiet, and the Services bar, custom sounds, cooldown numbers, tooltips, the Quest List and the bags rest while nothing changes. /melloperf shows what MelloUI costs.",
+		"Text on parchment no longer flickers white when something passes behind a window, and tooltips can have a parchment sheet too, their lines in dark ink.",
+		"The rest of the game's windows in the painted look, each with its own switch (UI Modifications, Windows): macros, Edit Mode, the AddOn list, quest dialogs, merchants, the auction house, mail, the bank, popup dialogs and more.",
+		"Easier on the eyes: text-heavy areas lie on a dark panel, every window's title sits on its plate, fewer red gems, and one colour palette with Kit Colours (Warm iron, Bronze, Original) for the whole interface.",
+		"A simpler configurator: switches and sliders on eight tabs, and Dynamic UI Modification as the one place for the look: borders, backgrounds, parchment sheets and the minimap's shape.",
+		"Also new: smooth scrolling in the chat and here, eleven fonts and six Font Styles, Names In Chat, a square minimap merged with the Services bar, and routes to another continent by boat or zeppelin.",
 	} },
 	{ version = "0.13.6", lines = {
 		"New modules, off until you switch them on: Quest Tracker (a scrolling tracker), Error Messages and Buffs & Debuffs.",
@@ -194,20 +194,35 @@ local LINKS = {
 	{ "CurseForge", "https://www.curseforge.com/wow/addons/melloui" },
 	{ "Voice pack", "https://github.com/MelloCro/MelloUI/releases" },
 }
+-- The commands a player uses. The dump and diagnostic commands for tuning
+-- the addon stay out of this list (/mello help prints a few of them below it).
 local COMMANDS = {
 	{ "/mello", "open or close this window" },
 	{ "/mello <module>", "open a module's page" },
 	{ "/mello list", "modules and their state" },
 	{ "/mello enable <module>", "turn a module on" },
 	{ "/mello disable <module>", "turn a module off" },
-	{ "/mello profile ...", "save, load, delete or set the default profile" },
-	{ "/mello status", "where the settings came from" },
-	{ "/mello layout ...", "the Edit Mode layout the reskin is made for: apply, export" },
+	{ "/mello profile ...", "save, load, share or delete profiles, set the default" },
+	{ "/mello status", "where your settings came from, and their backup" },
+	{ "/mello layout apply", "use the Edit Mode layout the reskin is made for" },
 	{ "/mello tutorial", "the guided tour of this window" },
-	{ "/vo", "Voice Over commands" },
-	{ "/route", "route commands, /route clear to stop" },
-	{ "/services", "track the nearest service" },
-	{ "/qlmap", "quest map diagnostics and manual pins" },
+	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },
+	{ "/melloperf record", "measure while you play (30 s, or /melloperf record 60)" },
+	{ "/melloperf report", "the last recording's report again, to copy" },
+	{ "/melloperf load", "how long each part took to load, and its memory" },
+	{ "/mellolog", "MelloUI's recent messages in a window to copy" },
+	{ "/sfx", "Custom Sounds: its state and the slowest sounds" },
+	{ "/sfx play <name>", "hear one custom sound (/sfx list names them)" },
+	{ "/vo stop | pause | skip", "stop, pause or skip the voice that is reading" },
+	{ "/vo read", "read the quest selected in the quest log aloud" },
+	{ "/vo test", "a test line in the targeted NPC's voice" },
+	{ "/vo packs", "which voice packs are installed" },
+	{ "/vo reset", "the Voice Over window back to its place" },
+	{ "/route status", "the route, its road data and your flight points" },
+	{ "/route clear", "stop the route" },
+	{ "/route arrow reset", "the direction arrow back to the top of the screen" },
+	{ "/services", "the list of the nearest services" },
+	{ "/services <service>", "route to the nearest one, e.g. /services repair" },
 }
 
 local function Meta(module)
@@ -1388,16 +1403,21 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 		defaults:SetText("Defaults")
 		Perf.SetScript(defaults, "OnClick", function()
 			for key, value in pairs(module.defaults) do
-				if type(value) == "table" then
-					-- a copy: the live table must not BE the defaults table
-					-- (the window positions were written into it)
-					local copy = {}
-					for k, v in pairs(value) do
-						copy[k] = v
+				-- a character's own data and one-time steps stay (the module's
+				-- keep list: flight points, borrowed game settings, "layout
+				-- already applied"); Defaults puts back settings only
+				if not MelloUI:IsPersonalKey(module.name, key) then
+					if type(value) == "table" then
+						-- a copy: the live table must not BE the defaults table
+						-- (the window positions were written into it)
+						local copy = {}
+						for k, v in pairs(value) do
+							copy[k] = v
+						end
+						value = copy
 					end
-					value = copy
+					MelloUI:NotifySettingChanged(module.name, key, value)
 				end
-				MelloUI:NotifySettingChanged(module.name, key, value)
 			end
 			MelloUI:Print("%s: settings back to their defaults.", module.title)
 			MelloUI:RefreshConfig()
@@ -1938,7 +1958,9 @@ local function RefreshProfilesPage()
 		local isDefault = db.defaultProfile == name
 		row.default:SetText(isDefault and ("Default  " .. MelloUI:PaletteCode("selectedTrim") .. "*|r") or "Set default")
 		local builtIn = name == MelloUI.FRESH_PROFILE
-		row.baked:SetText(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "baked" or "not baked yet"))
+		-- a profile saved here lives in the saved variables, which this client
+		-- drops at a full restart; one shipped in the addon's files comes back
+		row.baked:SetText(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "comes with MelloUI" or "kept until restart"))
 		row.delete:SetEnabled(not builtIn)
 		Perf.SetScript(row.load, "OnClick", function()
 			if MelloUI:LoadProfile(name) then
@@ -1991,7 +2013,9 @@ local function BuildProfilesPage(width)
 	desc:SetPoint("TOPLEFT", 4, -4)
 	desc:SetWidth(sec:GetWidth() - 8)
 	desc:SetWordWrap(true)
-	desc:SetText("A profile is a copy of every setting of every module. The one marked default is applied when the addon starts with no settings at all, such as on a fresh install. Profiles are baked into the addon's own files by Tools\\bake_routes.py after a /reload, which is what makes them survive this client's saved-variable handling.")
+	-- what is true for a player: saved profiles last until a full restart;
+	-- the settings in use are kept by the macro backup (Core/Backup.lua)
+	desc:SetText("A profile is a copy of every setting of every module. It leaves out what belongs to your characters: the flight points they know, game settings MelloUI borrowed, and steps done once; loading a profile never touches those. The one marked default is applied when MelloUI starts with no settings at all, such as on a fresh install. Profiles you save here are kept until the game fully restarts (a /reload keeps them): to keep one for longer, click Share, keep its string and bring it back with Import as. Your settings themselves are kept over restarts by a backup in hidden account macros (/mello status shows it), and the profiles that come with MelloUI are always here.")
 	local y = 4 + WrappedHeight(desc, 14) + 16
 
 	sec.nameBox = CreateFrame("EditBox", nil, sec, "InputBoxTemplate")
@@ -2007,7 +2031,7 @@ local function BuildProfilesPage(width)
 		local name = sec.nameBox:GetText()
 		local ok, err = MelloUI:SaveProfile(name)
 		if ok then
-			MelloUI:Print("Profile '%s' saved. /reload writes it out for the baker.", name:gsub("^%s+", ""):gsub("%s+$", ""))
+			MelloUI:Print("Profile '%s' saved. It is kept until the game fully restarts; its Share string keeps it for longer.", name:gsub("^%s+", ""):gsub("%s+$", ""))
 			sec.nameBox:SetText("")
 			sec.nameBox:ClearFocus()
 		else
@@ -3025,7 +3049,7 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 		if sub == "save" and name ~= "" then
 			local ok, err = MelloUI:SaveProfile(name)
-			MelloUI:Print(ok and ("Profile '" .. name .. "' saved. /reload writes it out for the baker.") or err)
+			MelloUI:Print(ok and ("Profile '" .. name .. "' saved. It is kept until the game fully restarts; /mello profile export " .. name .. " gives a string that keeps it for longer.") or err)
 		elseif sub == "load" and name ~= "" then
 			MelloUI:Print(MelloUI:LoadProfile(name) and ("Profile '" .. name .. "' loaded.") or ("No profile '" .. name .. "'."))
 		elseif sub == "delete" and name ~= "" then
@@ -3059,7 +3083,7 @@ SlashCmdList.MELLOUI = function(msg)
 			local names = ProfileNames()
 			MelloUI:Print("Profiles (%d). Active: %s, default: %s.", #names, tostring(MelloUI.db.activeProfile or "none"), tostring(MelloUI.db.defaultProfile or "none"))
 			for _, n in ipairs(names) do
-				print("   " .. n .. (MelloUI:IsProfileBaked(n) and "" or "  (not baked yet)"))
+				print("   " .. n .. (MelloUI:IsProfileBaked(n) and "" or "  (kept until the game restarts)"))
 			end
 		else
 			MelloUI:Print("/mello profile save <name> | load <name> | delete <name> | default <name|none> | export <name> | import <name> | list")
@@ -3070,7 +3094,7 @@ SlashCmdList.MELLOUI = function(msg)
 			local text, name = MelloUI:ExportEditModeLayout()
 			if text then
 				MelloUI:ClearLog()
-				MelloUI:Print("Edit Mode layout '%s' (%d chars), the game's share string; paste it into Media/EditModeLayout.lua as `layout`:", tostring(name), #text)
+				MelloUI:Print("Edit Mode layout '%s' (%d chars), the game's share string, ready to copy:", tostring(name), #text)
 				MelloUI:Print("%s", text)
 				MelloUI:ShowLog("Edit Mode layout")
 			else
@@ -3083,7 +3107,7 @@ SlashCmdList.MELLOUI = function(msg)
 			end
 		else
 			MelloUI:Print("Edit Mode layout: %s", MelloUI:EditModeLayoutStatus())
-			MelloUI:Print("/mello layout export (the active layout's share string, for baking) | apply (the baked layout into Edit Mode, made active)")
+			MelloUI:Print("/mello layout export (the active layout's share string, to copy) | apply (MelloUI's layout into Edit Mode, made active)")
 		end
 	elseif cmd == "perf" then
 		SlashCmdList.MELLOPERF(rest or "")
@@ -3228,8 +3252,8 @@ SlashCmdList.MELLOUI = function(msg)
 		for _, c in ipairs(COMMANDS) do
 			print(string.format("   %-26s %s", c[1], c[2]))
 		end
+		-- /melloperf is in COMMANDS now; these are the tuning ones
 		print("   /mello dump [m]            print the stored settings of all modules or one module")
-		print("   /mello perf  (/melloperf)  performance: the game's profiler, a recording per file and handler, load times")
 		print("   /mello cpu                 CPU time per handler (old; needs scriptProfile)")
 		print("   /mello preload             how much of the artwork is preloaded")
 		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")

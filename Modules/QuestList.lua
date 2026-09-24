@@ -27,6 +27,7 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("QuestList", {
 	title = "Quest List",
 	desc = "Panel next to the world map listing the quests of a zone, how many you have completed, and where each one is picked up.",
+	keep = { "learnedEntrances", "learnedTransports" },   -- pins recorded by hand (older versions kept them here): never in a profile
 	enabledByDefault = true,
 	defaults = {
 		filter = "zone",
@@ -1247,7 +1248,7 @@ end
 function M:OnEnable(db)
 	self.db = db
 	if type(MelloUI_QuestListData) ~= "table" then
-		MelloUI:Print("Quest List: Media\\QuestListData.lua is missing; run Tools\\build_quest_list.py.")
+		MelloUI:Print("Quest List: its quest data (Media\\QuestListData.lua) is missing, so the list stays off. Reinstall MelloUI from its download, copying every folder.")
 		return
 	end
 	if not WorldMapFrame then
@@ -1322,7 +1323,7 @@ SLASH_MELLOQUESTMAP1 = "/qlmap"
 SlashCmdList.MELLOQUESTMAP = function(msg)
 	local data = QL.Data()
 	if type(data) ~= "table" then
-		MelloUI:Print("Quest List: Media\\QuestListData.lua is missing; run Tools\\build_quest_list.py.")
+		MelloUI:Print("Quest List: its quest data (Media\\QuestListData.lua) is missing. Reinstall MelloUI from its download, copying every folder.")
 		return
 	end
 	msg = (msg or ""):gsub("^%s+", ""):gsub("%s+$", "")

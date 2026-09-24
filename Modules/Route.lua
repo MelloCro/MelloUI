@@ -29,6 +29,7 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("Route", {
 	title = "Route",
 	desc = "Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before.",
+	keep = { "^flights_" },   -- each character's own flight points (CharFlightsKey): never in a profile, never wiped by one
 	enabledByDefault = true,
 	defaults = {
 		worldMap = true,
@@ -76,7 +77,7 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "The route ends and the waypoint is cleared when you get this close." },
 		{ type = "header", name = "Learning" },
 		{ type = "toggle", key = "learn", name = "Learn Paths While Playing",
-		  desc = "Remember where you walk and fly so routes can follow real roads. /route shows how much has been learned." },
+		  desc = "Remember where you walk and fly so routes can follow real roads. What it learns is kept until you quit the game: this version of the game forgets it when it restarts (a /reload keeps it). /route shows how much has been learned." },
 	},
 })
 
@@ -230,21 +231,35 @@ local function OnMap(mapID, cont, yx, yy)
 	return (cx - r[1]) / (r[2] - r[1]), (cy - r[3]) / (r[4] - r[3])
 end
 
-local function PlayerYards()
-	local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
-	mapID = ok and Plain(mapID) or nil
-	if not mapID then
-		return nil
+-- The player's place: continent, yards east, yards south (nil when unknown).
+-- The game makes a new position table at every ask, and the arrow and the
+-- minimap each asked every frame they drew (user, 2026-09-24: no per-frame
+-- garbage). With `sameFrame`, the answer already asked this frame is given
+-- again (GetTime is the frame's own time, and the player does not move
+-- within a frame); the timers and the planner always ask afresh.
+local PlayerYards
+do
+	local askedAt, askedCont, askedX, askedY
+	PlayerYards = function(sameFrame)
+		local now = GetTime()
+		if sameFrame and now == askedAt then
+			return askedCont, askedX, askedY
+		end
+		local cont, x, y
+		local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+		mapID = ok and Plain(mapID) or nil
+		if mapID then
+			local okP, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
+			if okP then
+				local mx, my = VectorXY(pos)
+				if mx and my then
+					cont, x, y = ToYards(mapID, mx, my)
+				end
+			end
+		end
+		askedAt, askedCont, askedX, askedY = now, cont, x, y
+		return cont, x, y
 	end
-	local okP, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
-	if not okP then
-		return nil
-	end
-	local x, y = VectorXY(pos)
-	if not (x and y) then
-		return nil
-	end
-	return ToYards(mapID, x, y)
 end
 
 local function Dist(ax, ay, bx, by)
@@ -2780,7 +2795,7 @@ do
 		end
 		local okI, inInstance = pcall(IsInInstance)
 		if not okI or inInstance then
-			recordSkip = okI and "in an instance" or "IsInInstance failed"
+			recordSkip = okI and "in an instance" or "the game did not say whether you are in an instance"
 			last = nil
 			return
 		end
@@ -3239,7 +3254,7 @@ local function EnsureArrow()
 			return
 		end
 		self.frameAge = 0
-		local cont, px, py = PlayerYards()
+		local cont, px, py = PlayerYards(true)   -- the minimap's ask this frame, when it drew first
 		if not cont or cont ~= self.targetCont then
 			return
 		end
@@ -3746,7 +3761,7 @@ local function MinimapTick(_, elapsed)
 	end
 	mmElapsed = 0
 	mmPainter:Begin()
-	local cont, px, py = PlayerYards()
+	local cont, px, py = PlayerYards(true)   -- one ask a frame, shared with the arrow
 	local arrowShown = cont and UpdateArrow(cont, px, py) or false
 	UpdateMarker()
 	if not (route and M.isEnabled and M.db.minimap) then
@@ -4148,7 +4163,15 @@ local function Tick()
 			Plan(false)
 			CheckArrival()
 		end
-		StandIn.Update()
+		-- (user, 2026-09-24: nothing runs while nothing is routed) with no
+		-- destination and no stand-in pin its only work was to ask where the
+		-- player is, a new position table a second; what it would have
+		-- concluded is kept: not on another continent
+		if destination or standIn then
+			StandIn.Update()
+		else
+			crossContinent = false
+		end
 	end
 	if route and WorldMapFrame and WorldMapFrame:IsShown() then
 		DrawWorldMap()   -- the line on the open map starts at the player (the route is kept now)
@@ -4202,7 +4225,8 @@ SlashCmdList.MELLOROUTE = function(msg)
 		Build.Queue(ForgetLearned)
 		MelloUIRoutes = live
 		M:Clear()
-		MelloUI:Print("Learned paths wiped for this session. Also delete Media\\RouteData.lua (or rerun the baker after the next /reload) to forget them for good.")
+		-- (user, 2026-09-24: player words, no developer tools in what players read)
+		MelloUI:Print("Learned paths wiped. The paths that come with MelloUI itself come back at the next /reload.")
 	elseif msg == "layers" then
 		-- the world map's layers, low to high, and where the route sits
 		local canvas = WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas and WorldMapFrame:GetCanvas()
@@ -4258,9 +4282,14 @@ SlashCmdList.MELLOROUTE = function(msg)
 			taxiCount = taxiCount + 1
 			if TaxiUsable(id, t) then usable = usable + 1 end
 		end
+		-- No saved paths is the usual case after a restart (this client drops
+		-- them then), so say that, not "not loaded": only while the game may
+		-- still bring them (the first 90 s) is it "not yet"
 		MelloUI:Print("Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s.",
 			nodes - tracedNodes, tracedNodes, edges, docks and #docks or 0,
-			taxiCount, usable, mergedSaved and "" or " (saved variable not loaded by the client yet)")
+			taxiCount, usable, mergedSaved and ""
+				or adoptTicker and " (paths learned in earlier sessions: the game has not brought them yet)"
+				or " (none from earlier sessions: the game forgets learned paths when it restarts)")
 		if not Build.ready then
 			-- (user, 2026-09-24) built on the first route, not at login
 			print("   the road graph is built the first time a route is wanted: "
@@ -4300,8 +4329,13 @@ SlashCmdList.MELLOROUTE = function(msg)
 		if destination and destination.fromQuest then
 			print("   following the tracked quest: " .. tostring(destination.label))
 		end
-		print(string.format("   recorder: %d breadcrumbs this session, ticks %d%s", recorded, tickCount,
-			recordSkip ~= "" and (", last call skipped: " .. recordSkip) or ""))
+		-- what is learned lives in the saved variables, which this client
+		-- drops when the game restarts: said here as in the option's text
+		-- (the reason a step was skipped only with learning on: off, it is
+		-- always "learning is off", which the line already says)
+		print(string.format("   learning %s: %d steps recorded this session%s; what is learned is kept until you quit the game (a /reload keeps it)",
+			M.db.learn and "on" or "off", recorded,
+			M.db.learn and recordSkip ~= "" and (", the last one skipped: " .. recordSkip) or ""))
 		do
 			-- (not before the graph is whole: the search's index would be built
 			-- on half of it)
@@ -4349,7 +4383,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 			mapFrame and string.format("%dx%d", mapFrame:GetWidth(), mapFrame:GetHeight()) or "not created",
 			mapPainter and mapPainter.used or 0, tostring(Provider ~= nil),
 			mmPainter and tostring(mmPainter.used) or "none", arrow and arrow:IsShown() and "shown" or "hidden"))
-		print("   /route clear   |   /route arrow reset   |   /route reset   |   /route dots   |   the baker: python Tools/bake_routes.py --watch")
+		print("   /route clear   |   /route arrow reset   |   /route reset   |   /route dots")
 	end
 end
 
@@ -4368,6 +4402,12 @@ function M:OnEnable(db)
 	EnsureArrow()
 	PlaceArrow()
 	EnsureMarker()
+	-- (user, 2026-09-24: nothing runs while nothing is routed) the minimap
+	-- tick sleeps with its frame: mm is made hidden and shown by Redraw only
+	-- while there is a destination, and a hidden frame's OnUpdate never runs.
+	-- Every way a destination comes or goes (the map pin, the tracked quest,
+	-- SetDestinationTo for the Quest List, the Services bar and /services,
+	-- arrival, /route clear, switching Route off) ends in Redraw.
 	if mm and not mm.ticking then
 		mm.ticking = true
 		Perf.SetScript(mm, "OnUpdate", MinimapTick)
@@ -4393,6 +4433,13 @@ function M:OnEnable(db)
 		end)
 	end
 	ReadWaypoint()
+	-- A destination kept while Route was off (the same pin: ReadWaypoint has
+	-- nothing new to read) is drawn now; the minimap slept until the next
+	-- plan, a second or more. With none there is nothing to draw: skipped,
+	-- so an idle login does no extra work.
+	if destination then
+		Redraw()
+	end
 end
 
 function M:OnDisable()
