@@ -212,7 +212,24 @@ local function Place()
 	-- corner so it still grows downward
 	local pos = M.db and M.db.pos
 	if pos and pos.x and pos.y then
-		frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", pos.x, pos.y)
+		-- kept on the screen (user, 2026-09-24: "UI Scaling Break the UI"):
+		-- the offsets are in its own units, which grow with the UI scale
+		-- while the screen shrinks in them, so a tracker dropped near the
+		-- left or the bottom at a small UI scale hung off the screen at a
+		-- larger one. Pulled in so its width and its title plate stay on it;
+		-- the saved place itself is kept for the old scale.
+		local x, y = pos.x, pos.y
+		local okS, fs = pcall(frame.GetEffectiveScale, frame)
+		local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+		local okP, sw, sh = pcall(UIParent.GetSize, UIParent)
+		fs, us, sw, sh = okS and Plain(fs), okU and Plain(us), okP and Plain(sw), okP and Plain(sh)
+		if fs and us and sw and sh and fs > 0 and us > 0 then
+			local k = us / fs
+			local w = set > 0 and set or FrameWidth()
+			x = math.min(0, math.max(x, -(sw * k - w)))
+			y = math.min(0, math.max(y, -(sh * k - HEADER_H)))
+		end
+		frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y)
 		if set > 0 then
 			frame:SetWidth(set)
 		else
@@ -1474,6 +1491,24 @@ local function HookEditMode()
 		return
 	end
 	editHooked = true
+	-- the UI Scale changed (user, 2026-09-24: "UI Scaling Break the UI"):
+	-- placed again (a saved place kept on the new screen, the width and the
+	-- height taken from the game's tracker, which Edit Mode fits to the new
+	-- screen) and rebuilt at that height
+	local Kit = MelloUI.Kit
+	if Kit and Kit.OnUIScaleChanged then
+		Kit:OnUIScaleChanged(function(reason)
+			if reason == "uiscale" and M.isEnabled and frame then
+				-- out of combat: its quest item button is a secure frame on it
+				Kit:WhenOutOfCombat(function()
+					if M.isEnabled and not inEditMode and not sizing then
+						Place()
+						MarkDirty()
+					end
+				end)
+			end
+		end)
+	end
 	EventRegistry:RegisterCallback("EditMode.Enter", function()
 		inEditMode = true
 		if M.isEnabled then

@@ -96,7 +96,7 @@ local Apply, RestoreAreas, NothingWanted, TweakWanted
 -- the switch it needs (`parent` in the modules' options).
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
-	parchment_whisper = false, parchment_meter = false, parchment_character = false,
+	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false,
 	unlock = false, autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 	defaults[k.key] = k.default
@@ -334,6 +334,47 @@ local function RefuseInCombat(frame)
 	return true
 end
 
+-- A saved place kept on the screen (user, 2026-09-24: "UI Scaling Break the
+-- UI"). The offsets are in the window's own units from the screen's centre,
+-- so they grow with the UI scale while the screen, in those units, shrinks:
+-- a window saved near an edge at a small UI scale landed partly or wholly off
+-- the screen at a larger one (or after a change to a smaller resolution).
+-- The offsets are pulled in just enough for the window to fit, its top-left
+-- corner kept on the screen when it is larger than the screen; the saved
+-- entry itself is not changed, so the old place comes back with the old
+-- scale. Only the mover's own anchor (BOTTOMLEFT to the screen's CENTER);
+-- a frame whose size or scale cannot be read yet is left as saved.
+local function OnScreen(frame, x, y)
+	local okS, fs = pcall(frame.GetEffectiveScale, frame)
+	local okW, w, h = pcall(frame.GetSize, frame)
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	local okP, sw, sh = pcall(UIParent.GetSize, UIParent)
+	if not (okS and okW and okU and okP) then
+		return x, y
+	end
+	for _, v in ipairs({ fs, w, h, us, sw, sh }) do
+		if type(v) ~= "number" or (issecretvalue and issecretvalue(v)) or v <= 0 then
+			return x, y
+		end
+	end
+	-- half the screen in the window's own units
+	local k = us / fs
+	local halfW, halfH = sw / 2 * k, sh / 2 * k
+	if x + w > halfW then
+		x = halfW - w
+	end
+	if x < -halfW then
+		x = -halfW
+	end
+	if y < -halfH then
+		y = -halfH
+	end
+	if y + h > halfH then
+		y = halfH - h
+	end
+	return x, y
+end
+
 PutBack = function(frame)
 	local pos = SavedPosition(frame)
 	if not pos or not M.isEnabled then
@@ -361,10 +402,15 @@ PutBack = function(frame)
 			end
 			MelloUI.Kit:RetileBackgrounds()
 		end
-		Raw(frame, "ClearAllPoints")(frame)
 		-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry
-		-- carries the anchor only when it differs
-		Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", pos.x or 0, pos.y or 0)
+		-- carries the anchor only when it differs (measured before the
+		-- anchors go: a window sized by them reads 0 wide after)
+		local x, y = pos.x or 0, pos.y or 0
+		if not pos.point and not pos.relPoint then
+			x, y = OnScreen(frame, x, y)
+		end
+		Raw(frame, "ClearAllPoints")(frame)
+		Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", x, y)
 	end)
 	if mover then
 		mover.placing = was
@@ -440,14 +486,29 @@ local veil = nil
 -- the middle of the screen is").
 local GRID = 50
 
+-- The lines are pooled on the veil and the grid drawn again whenever the
+-- screen's size in UI units is no longer the one it was drawn for (user,
+-- 2026-09-24: "UI Scaling Break the UI" -- drawn once, the grid kept the
+-- old UI scale's screen: its centre lines off the centre, lines missing or
+-- running past the edge, and the lit snap lines too short).
 local function DrawGrid(parent)
 	local w, h = UIParent:GetWidth(), UIParent:GetHeight()
 	if not (w and h) or w <= 0 or h <= 0 then
 		return
 	end
+	parent.gridLines = parent.gridLines or {}
+	local pool, used = parent.gridLines, 0
+	parent.gridW, parent.gridH = w, h
 	local cx, cy = w / 2, h / 2
 	local function Line(vertical, offset, centre)
-		local tex = parent:CreateTexture(nil, "BORDER")
+		used = used + 1
+		local tex = pool[used]
+		if not tex then
+			tex = parent:CreateTexture(nil, "BORDER")
+			pool[used] = tex
+		end
+		tex:ClearAllPoints()
+		tex:Show()
 		if centre then
 			tex:SetColorTexture(1, 0.82, 0, 0.55)
 		else
@@ -475,6 +536,9 @@ local function DrawGrid(parent)
 	end
 	Line(true, 0, true)
 	Line(false, 0, true)
+	for i = used + 1, #pool do
+		pool[i]:Hide()
+	end
 end
 
 -- The window's centre relative to the screen's centre, in UIParent units
@@ -522,6 +586,14 @@ local function Veil(frame, on)
 			veil.hlY = veil:CreateTexture(nil, "ARTWORK")
 			veil.hlY:SetColorTexture(1, 0.9, 0.4, 0.9)
 			veil.hlY:SetSize(UIParent:GetWidth(), 3)
+		end
+		-- the screen is another size in UI units since the grid was drawn
+		-- (the UI scale or the resolution changed): drawn again for it
+		local screenW, screenH = UIParent:GetWidth(), UIParent:GetHeight()
+		if screenW and screenH and (math.abs(screenW - (veil.gridW or 0)) > 0.5 or math.abs(screenH - (veil.gridH or 0)) > 0.5) then
+			pcall(DrawGrid, veil)
+			veil.hlX:SetSize(3, screenH)
+			veil.hlY:SetSize(screenW, 3)
 		end
 		veil:SetFrameStrata(frame:GetFrameStrata() or "MEDIUM")
 		veil:SetFrameLevel(0)
@@ -598,6 +670,215 @@ local function Light(shell, on, frame, mover)
 	end
 end
 
+-- The size readout (user, 2026-09-24: "when i mouse scroll to resize it, it
+-- should show me at which % of the standard UI scale that window currently
+-- is, so that i know how to bring it back to normal"). While a window is
+-- dragged, a small plate above it says how big it is against its STANDARD
+-- size and how to get back there; it stays a moment after the release and
+-- then fades (just goes, with Reduce Motion). Hovering a grab while the
+-- windows are unlocked shows it as well, for a window that is not at 100 %.
+-- 100 % is the size the window has without a scale of MelloUI's: its own
+-- scale (GetScale, so the game's UI Scale does not count) divided by the scale
+-- the game gives it -- 1 for most, Edit Mode's Size for the HUD, the panel
+-- manager's fit on a small screen -- which the mover notes when it is made
+-- and whenever something other than the mover scales the window (mover.base).
+-- A window that keeps its own place (the quest tracker) is at 100 % at scale
+-- 1, or at its custom.base. The plate is anchored to the screen, never to
+-- the window: a frame anchored to a protected window becomes protected
+-- itself and could no longer be hidden in combat.
+local SizeTip = {}
+do
+	local HOLD, FADE = 1.2, 0.4   -- s: shown after the release, then the fade
+	local DETENT = 0.3            -- s: the wheel holds at 100 % for this long
+	local tip, owner, hold
+
+	local function Plain(v)
+		return type(v) == "number" and not (issecretvalue and issecretvalue(v))
+	end
+
+	-- the scale that is 100 % for this mover's window
+	function SizeTip.Base(mover)
+		local custom = mover.custom
+		local base = custom and custom.base or mover.base
+		return (Plain(base) and base > 0) and base or 1
+	end
+
+	-- the window's own scale, nil when it cannot be read
+	function SizeTip.Scale(frame)
+		local ok, scale = pcall(frame.GetScale, frame)
+		return (ok and Plain(scale) and scale > 0) and scale or nil
+	end
+
+	-- the next size for a wheel notch, in whole percent of the standard size:
+	-- always a multiple of the step (so 100 % is never stepped over), and a
+	-- wheel still spinning right after it landed on 100 % is held there a
+	-- moment (a detent), so a quick turn back stops on the standard size.
+	-- nil: the notch was held.
+	function SizeTip.Step(mover, percent, delta, step)
+		local now = GetTime and GetTime() or 0
+		if mover.detent and now < mover.detent and (delta > 0) == mover.detentUp then
+			return nil
+		end
+		local p = math.floor(percent + 0.5)
+		local nextP
+		if delta > 0 then
+			nextP = math.floor(p / step) * step + step
+		else
+			nextP = math.ceil(p / step) * step - step
+		end
+		mover.detent, mover.landed = nil, nil
+		if nextP == 100 and p ~= 100 then
+			mover.detent, mover.detentUp, mover.landed = now + DETENT, delta > 0, true
+		end
+		return nextP
+	end
+
+	local function Percent(mover)
+		local scale = SizeTip.Scale(mover.frame)
+		return scale and math.floor(scale / SizeTip.Base(mover) * 100 + 0.5) or nil
+	end
+
+	-- above the window, centred; below it where there is no room above, and
+	-- over its top when it fills the screen (the plate is clamped to the screen)
+	local function Place()
+		local f = owner and owner.frame
+		if not f then
+			return
+		end
+		local ok, left, bottom, w, h = pcall(f.GetRect, f)
+		local okS, fs = pcall(f.GetEffectiveScale, f)
+		local us, sh, th = UIParent:GetEffectiveScale(), UIParent:GetHeight(), tip:GetHeight()
+		if not (ok and okS) then
+			return
+		end
+		for _, v in ipairs({ left, bottom, w, h, fs, us, sh, th }) do
+			if not Plain(v) then
+				return
+			end
+		end
+		if us <= 0 then
+			return
+		end
+		local k = fs / us
+		local cx, top, low = (left + w / 2) * k, (bottom + h) * k, bottom * k
+		tip:ClearAllPoints()
+		if top + 8 + th <= sh then
+			tip:SetPoint("BOTTOM", UIParent, "BOTTOMLEFT", cx, top + 8)
+		elseif low - 8 - th >= 0 then
+			tip:SetPoint("TOP", UIParent, "BOTTOMLEFT", cx, low - 8)
+		else
+			tip:SetPoint("TOP", UIParent, "BOTTOMLEFT", cx, top - 30)
+		end
+	end
+
+	-- a plate in the palette: the window's ground, a trim edge (the selected
+	-- trim at exactly 100 %), the size in the kit's title face and gold, the
+	-- hint in body text; at the tooltip strata, over the darkened grid
+	local function Build()
+		local P = MelloUI.Palette
+		tip = CreateFrame("Frame", nil, UIParent)
+		tip:SetFrameStrata("TOOLTIP")
+		tip:SetClampedToScreen(true)
+		tip:EnableMouse(false)
+		tip:Hide()
+		local fill = tip:CreateTexture(nil, "BACKGROUND")
+		fill:SetAllPoints()
+		fill:SetColorTexture(P.mainWindow[1], P.mainWindow[2], P.mainWindow[3], 0.94)
+		tip.edges = {}
+		for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+			{ "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+			local t = tip:CreateTexture(nil, "BORDER")
+			t:SetPoint(e[1], tip, e[1])
+			t:SetPoint(e[2], tip, e[2])
+			if e[3] then
+				t:SetWidth(e[3])
+			end
+			if e[4] then
+				t:SetHeight(e[4])
+			end
+			tip.edges[#tip.edges + 1] = t
+		end
+		tip.value = tip:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+		tip.value:SetPoint("TOP", tip, "TOP", 0, -7)
+		tip.value:SetTextColor(P.selectedTrim[1], P.selectedTrim[2], P.selectedTrim[3])
+		if MelloUI.Kit and MelloUI.Kit.TitleFont then
+			pcall(MelloUI.Kit.TitleFont, MelloUI.Kit, tip.value, true)
+		end
+		tip.hint = tip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		tip.hint:SetPoint("TOP", tip.value, "BOTTOM", 0, -4)
+		tip.hint:SetTextColor(P.text[1], P.text[2], P.text[3])
+		-- a line of its own, so each is measured on its own for the width
+		tip.note = tip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		tip.note:SetPoint("TOP", tip.hint, "BOTTOM", 0, -2)
+		tip.note:SetTextColor(P.text[1], P.text[2], P.text[3])
+		tip:SetScript("OnUpdate", function(self, elapsed)
+			Place()
+			if hold then
+				hold = hold - elapsed
+				if hold <= 0 then
+					hold = nil
+					if MelloUI.Anim then
+						MelloUI.Anim:FadeOut(self, FADE)
+					else
+						self:Hide()
+					end
+				end
+			end
+		end)
+	end
+
+	local function Fill(mover, percent)
+		local P = MelloUI.Palette
+		local standard = percent == 100
+		tip.value:SetFormattedText("Size %d%%", percent)
+		local note = nil
+		if standard then
+			tip.hint:SetText("The standard size")
+		elseif mover.moving then
+			tip.hint:SetText("Wheel back to 100% for the standard size")
+			note = "Reset positions puts every window back"
+		else
+			tip.hint:SetText("Drag it and wheel back to 100% for the standard size")
+		end
+		tip.note:SetText(note or "")
+		tip.note:SetShown(note ~= nil)
+		local edge = standard and P.selectedTrim or P.trim
+		for _, t in ipairs(tip.edges) do
+			t:SetColorTexture(edge[1], edge[2], edge[3], 1)
+		end
+		local w = math.max(tip.value:GetStringWidth() or 0, tip.hint:GetStringWidth() or 0, note and tip.note:GetStringWidth() or 0)
+		local h = (tip.value:GetStringHeight() or 16) + (tip.hint:GetStringHeight() or 10) + (note and (tip.note:GetStringHeight() or 10) + 2 or 0)
+		tip:SetSize(math.ceil(w) + 24, math.ceil(h) + 18)
+	end
+
+	-- shows (or refreshes) the readout for this mover's window; `hover`: only
+	-- for a window that is not at its standard size
+	function SizeTip.Show(mover, hover)
+		local percent = Percent(mover)
+		if not percent or (hover and percent == 100) then
+			return
+		end
+		if not tip then
+			Build()
+		end
+		owner, hold = mover, nil
+		if MelloUI.Anim then
+			MelloUI.Anim:Stop(tip, "alpha")
+		end
+		tip:SetAlpha(1)
+		Fill(mover, percent)
+		Place()
+		tip:Show()
+	end
+
+	-- lets it go after `delay` s (then the fade); a drag in progress keeps it
+	function SizeTip.Release(mover, delay)
+		if tip and owner == mover and not mover.moving and tip:IsShown() and not hold then
+			hold = delay or HOLD
+		end
+	end
+end
+
 local AddHandle   -- below
 
 local function MakeMover(frame, shell)
@@ -623,6 +904,9 @@ local function MakeMover(frame, shell)
 	-- damage meter is dragged by its header, which only the sweep knows)
 	local mover = { shell = shell, handles = {}, washes = {}, frame = frame, custom = shell.custom }
 	movers[frame] = mover
+	-- the game's own scale for the window, before a saved one is put on it
+	-- (PutBack at the end): the size readout's 100 % (user, 2026-09-24)
+	mover.base = SizeTip.Scale(frame)
 	-- the mouse wheel while dragging: the window's scale, 5 % a notch,
 	-- 50 % .. 200 % (user, 2026-09-21), saved with the position
 	local function Wheel(delta)
@@ -630,13 +914,24 @@ local function MakeMover(frame, shell)
 		if not mover.moving or not frame.SetScale or Locked(frame) then
 			return
 		end
-		local ok, current = pcall(frame.GetScale, frame)
-		if not ok or type(current) ~= "number" then
+		local current = SizeTip.Scale(frame)
+		if not current then
 			return
 		end
+		-- (user, 2026-09-24: the size readout) a notch goes to the next
+		-- round percentage of the window's STANDARD size, not the raw scale
+		-- plus 5 %, so every step reads round and 100 % is always landed on
+		-- (with a short hold there); the range is 50 .. 200 % of the standard
+		-- size, or a custom window's own absolute range
 		local custom = mover.custom
-		local scale = math.max(custom and custom.min or SCALE_MIN, math.min(custom and custom.max or SCALE_MAX, current + delta * SCALE_STEP))
+		local base = SizeTip.Base(mover)
+		local percent = SizeTip.Step(mover, current / base * 100, delta, SCALE_STEP * 100)
+		if not percent then
+			return
+		end
+		local scale = math.max(custom and custom.min or SCALE_MIN * base, math.min(custom and custom.max or SCALE_MAX * base, base * percent / 100))
 		if math.abs(scale - current) < 0.001 then
+			mover.landed = nil
 			return
 		end
 		-- the window stays glued to the cursor (user, 2026-09-21): the
@@ -664,6 +959,13 @@ local function MakeMover(frame, shell)
 		mover.scaled = scale
 		-- its backgrounds keep the UI's one resolution: more of them shows
 		MelloUI.Kit:RetileBackgrounds()
+		-- the readout follows the new size; landing on the standard size
+		-- gives a soft tick (the chat's scroll click)
+		SizeTip.Show(mover)
+		if mover.landed and SOUNDKIT and SOUNDKIT.U_CHAT_SCROLL_BUTTON then
+			PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
+		end
+		mover.landed = nil
 	end
 	mover.Wheel = Wheel
 	mover.DragStart = function()
@@ -678,6 +980,7 @@ local function MakeMover(frame, shell)
 		if veil then
 			veil.onWheel = Wheel
 		end
+		SizeTip.Show(mover)
 	end
 	mover.DragStop = function()
 		if not mover.moving then
@@ -714,6 +1017,7 @@ local function MakeMover(frame, shell)
 				end
 			end
 			mover.moving = nil
+			SizeTip.Release(mover)
 			return
 		end
 		local _, name = SavedPosition(frame)
@@ -725,11 +1029,14 @@ local function MakeMover(frame, shell)
 				-- compact: the backup holds a few thousand characters for
 				-- everything and a raw float took a third of a window's entry.
 				-- A tenth of a pixel, the scale to a hundredth, the anchor
-				-- only when it is not the mover's own BOTTOMLEFT to CENTER
+				-- only when it is not the mover's own BOTTOMLEFT to CENTER.
+				-- No scale is kept for a window at its standard size (user,
+				-- 2026-09-24: the size readout's 100 %, the game's own scale
+				-- for it -- not always 1), so the game's scale stays its own
 				M.db.positions[name] = { point = point ~= "BOTTOMLEFT" and point or nil,
 					relPoint = relPoint ~= "CENTER" and relPoint or nil,
 					x = math.floor(x * 10 + 0.5) / 10, y = math.floor(y * 10 + 0.5) / 10,
-					scale = (okS and type(scale) == "number" and math.abs(scale - 1) > 0.001) and (math.floor(scale * 100 + 0.5) / 100) or nil }
+					scale = (okS and type(scale) == "number" and math.abs(scale - SizeTip.Base(mover)) > 0.001) and (math.floor(scale * 100 + 0.5) / 100) or nil }
 				-- the entries saved before this rounding, once
 				for _, pos in pairs(M.db.positions) do
 					if type(pos) == "table" then
@@ -747,6 +1054,7 @@ local function MakeMover(frame, shell)
 			end
 		end
 		mover.moving = nil
+		SizeTip.Release(mover)
 	end
 	frame:HookScript("OnShow", function()
 		PutBack(frame)
@@ -769,6 +1077,11 @@ local function MakeMover(frame, shell)
 			if mover.moving or mover.placing or mover.scaling then
 				return
 			end
+			-- someone else scaled it (Edit Mode's Size, the panel manager's
+			-- fit): that is the game's scale for it, the size readout's 100 %
+			if not mover.custom then
+				mover.base = SizeTip.Scale(frame) or mover.base
+			end
 			local pos = SavedPosition(frame)
 			if pos and pos.scale then
 				mover.placing = true
@@ -785,6 +1098,9 @@ local function MakeMover(frame, shell)
 		end
 		for _, wash in ipairs(mover.washes) do
 			wash:SetShown(mover.unlocked)
+		end
+		if not mover.unlocked then
+			SizeTip.Release(mover, 0)
 		end
 	end
 	AddHandle(mover, handle)
@@ -824,10 +1140,16 @@ local function HandleWash(mover, handle)
 		end
 	end
 	-- hooked, not set: a handle that is a kit plate has its own scripts
+	-- ... and the size readout while the mouse is on it, for a window that
+	-- is not at its standard size (user, 2026-09-24)
 	pcall(handle.HookScript, handle, "OnEnter", function()
 		Lit(mover.unlocked)
+		if mover.unlocked and not mover.moving then
+			SizeTip.Show(mover, true)
+		end
 	end)
 	pcall(handle.HookScript, handle, "OnLeave", function()
+		SizeTip.Release(mover, 0)
 		Lit(false)
 	end)
 	fill:Hide()
@@ -1070,8 +1392,9 @@ ApplyUnlock = function(on)
 end
 
 -- Reset positions (the header button): the saved places and scales are
--- forgotten, every moved window goes back to scale 1 and, if open, is
--- closed so the game lays it out afresh on its next show.
+-- forgotten, every moved window goes back to its standard scale (the game's
+-- own for it, the size readout's 100 % -- 1 for most; user, 2026-09-24) and,
+-- if open, is closed so the game lays it out afresh on its next show.
 local function ResetPositions()
 	if not M.db then
 		return
@@ -1084,7 +1407,7 @@ local function ResetPositions()
 			pcall(function()
 				if frame.SetScale then
 					mover.scaling = true
-					Raw(frame, "SetScale")(frame, 1)
+					Raw(frame, "SetScale")(frame, SizeTip.Base(mover))
 					mover.scaling = nil
 				end
 				if frame:IsShown() then
@@ -1110,7 +1433,8 @@ M.ResetPositions = ResetPositions
 -- own place (user, 2026-09-23: the All Objectives tracker "does not have
 -- the same darkening ... also the mousewheel does not increase its scale").
 -- custom = { save = function(frame) (on release), reset = function() (Reset
--- positions), min / max = its scale range for the wheel }.
+-- positions), min / max = its scale range for the wheel, base = its scale
+-- at 100 % in the size readout (1 when not given) }.
 function MelloUI:RegisterMover(frame, handle, custom)
 	if not (frame and handle) then
 		return
@@ -1125,6 +1449,25 @@ local Kit = MelloUI.Kit
 if Kit and Kit.OnShell then
 	Kit:OnShell(function(frame, shell)
 		MakeMover(frame, shell)
+	end)
+end
+
+-- The UI Scale or the resolution changed (user, 2026-09-24: "UI Scaling
+-- Break the UI"): every open window with a saved place is put back, so it is
+-- kept on the new screen (PutBack's OnScreen); a protected one in combat
+-- waits for the fight's end as always. A closed window is put back when it
+-- next opens. The drag grid redraws itself on the next drag.
+if Kit and Kit.OnUIScaleChanged then
+	Kit:OnUIScaleChanged(function(reason)
+		if reason ~= "uiscale" or not M.isEnabled then
+			return
+		end
+		for frame, mover in pairs(movers) do
+			local ok, shown = pcall(frame.IsShown, frame)
+			if ok and shown and not mover.moving and not mover.custom and SavedPosition(frame) then
+				PutBack(frame)
+			end
+		end
 	end)
 end
 

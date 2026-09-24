@@ -165,13 +165,16 @@ local function StyleSettings(s)
 end
 
 local defaults = { scale = 1, outline = "OUTLINE", style = "custom" }
-local styleDesc = { "One click for the titles, the interface text and the chat and numbers together, each pairing themed with readability first; fine-tune any of them below afterwards (the style then shows Custom). The damage numbers keep their own choice." }
+local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, with their sizes -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice." }
 for _, s in ipairs(STYLES) do
 	styleDesc[#styleDesc + 1] = s.label .. ": " .. s.desc
 end
 local options = {
 	{ type = "header", name = "Fonts" },
-	{ type = "dropdown", key = "style", name = "Font Style", values = styleValues, desc = table.concat(styleDesc, "\n") },
+	-- the row says it is a preset (user, 2026-09-24: "needs a comment to let
+	-- the user know that this is a Font Style Preset and changes everything
+	-- at once"): the grey hint beside its name, the tooltip in full
+	{ type = "dropdown", key = "style", name = "Font Style", hint = "preset: changes every font at once", values = styleValues, desc = table.concat(styleDesc, "\n") },
 }
 for _, role in ipairs(ROLES) do
 	defaults[role.key] = role.key == "fontTitle" and TITLE_DEFAULT or KEEP
@@ -626,6 +629,59 @@ local function MigrateScale(db)
 	db.scale = 1
 end
 
+--------------------------------------------------------------------------------
+-- For MelloUI's own strings
+--
+-- A string another module sizes itself (the Route's tracking notice, its
+-- arrow and marker texts) is not drawn through a game font object, so the
+-- retargeting above never reaches it (user, 2026-09-24: "The Tracking Notice
+-- and the Arrow Text should respect the Changes in Font Changing"). Such a
+-- module asks for a role's face, size factor and outline here and listens
+-- for changes; it keeps its own base size and look.
+--------------------------------------------------------------------------------
+
+local changeListeners = {}
+
+-- The face, size factor and flags for a string of the given role whose own
+-- face and flags (without this module) are fallbackPath and fallbackFlags.
+-- Off, or a role on "Keep the game's", gives the string's own face back; the
+-- size factor and the Outline apply as they do to the game's font objects.
+function M:FaceFor(roleKey, fallbackPath, fallbackFlags)
+	if not (self.isEnabled and self.db) then
+		return fallbackPath, 1, fallbackFlags
+	end
+	local outline = self.db.outline
+	local flags = (outline and outline ~= "NONE") and outline or fallbackFlags
+	return ChosenFont(roleKey) or fallbackPath, ScaleFor(roleKey), flags
+end
+
+-- A game font object's own face, size and flags, as they were before this
+-- module changed it: the base for a string that started from that object.
+function M:BaseFont(object)
+	local original = object and Remember(object)
+	if original then
+		return original.path, original.size, original.flags
+	end
+	return nil
+end
+
+-- fn() runs after every change of the fonts (a face, a size, the Outline, a
+-- Font Style) and when the module is switched on or off.
+function M:OnFontsChanged(fn)
+	if type(fn) == "function" then
+		changeListeners[#changeListeners + 1] = fn
+	end
+end
+
+local function FireFontsChanged()
+	for _, fn in ipairs(changeListeners) do
+		local ok, err = pcall(fn)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
+
 local function ApplyAll()
 	MigrateScale(M.db)
 	for _, entry in ipairs(DiscoverFontObjects()) do
@@ -644,6 +700,7 @@ local function ApplyAll()
 	ApplyChatWindows()
 	HookParchmentPanels()
 	ApplyParchmentPanels()
+	FireFontsChanged()
 end
 
 local function RestoreAll()
@@ -658,6 +715,7 @@ local function RestoreAll()
 	end
 	RestoreChatWindows()
 	RestoreParchmentStrings()
+	FireFontsChanged()   -- isEnabled is already false: the strings take their own fonts back
 end
 
 --------------------------------------------------------------------------------

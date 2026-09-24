@@ -1707,6 +1707,21 @@ local function Hook()
 	if EventRegistry and EventRegistry.RegisterCallback then
 		EventRegistry:RegisterCallback("EditMode.Exit", ScheduleBackdrop, M)
 	end
+	-- the UI Scale changed, or a bar's Size in Edit Mode (user, 2026-09-24:
+	-- "UI Scaling Break the UI"): the backdrops are measured from the
+	-- buttons' rects ON THE SCREEN, and a new UI scale moves the bars that
+	-- hang from different edges of the screen against each other (Edit Mode
+	-- also re-scales and re-places the right-hand bars to fit the new
+	-- height) without re-laying or re-sizing any bar, so none of the hooks
+	-- above fires: the backdrops, their tabs and joins stayed where the old
+	-- scale had put them. Laid out again, out of combat, like any change.
+	if Kit.OnUIScaleChanged then
+		Kit:OnUIScaleChanged(function()
+			if active then
+				ScheduleBackdrop()
+			end
+		end)
+	end
 	-- the status bars appear and stack at runtime (a reputation watched, a
 	-- level gained): skin whatever the manager lays out
 	if StatusTrackingBarManager then

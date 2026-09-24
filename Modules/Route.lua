@@ -253,6 +253,97 @@ local function Yards(d)
 end
 
 --------------------------------------------------------------------------------
+-- Fonts (user, 2026-09-24: "The Tracking Notice and the Arrow Text should
+-- respect the Changes in Font Changing")
+--
+-- The notice set its font once, by hand, from whatever face its font object
+-- had at that moment, so it never followed the Fonts module; the arrow's, the
+-- marker's and the minimap's texts rode on the game's font objects and so
+-- all took the interface face, the distances included. Each text now names
+-- its role and the game font object it starts from: the Fonts module gives
+-- the role's face, its size slider and the Outline, on top of the text's own
+-- base size and flags, and calls back whenever any of them changes. Off, or
+-- a role on "Keep the game's", a text keeps its own face exactly as before.
+-- A table, not more locals: this file's main chunk is near Lua's limit.
+--------------------------------------------------------------------------------
+
+local RouteFont = {}
+do
+	local styled = {}   -- [fontString] = { role, object, size, flags }
+	local listening = false
+
+	local function Fonts()
+		local fonts = MelloUI:GetModule("Fonts")
+		return (fonts and fonts.FaceFor) and fonts or nil
+	end
+
+	-- The face, size and flags a text has without the Fonts module: its game
+	-- font object's own, with the text's own size and flags where it sets them
+	local function Base(entry, fonts)
+		local path, size, flags
+		if fonts and fonts.BaseFont then
+			path, size, flags = fonts:BaseFont(entry.object)
+		end
+		if not path then
+			local ok, p, s, f = pcall(entry.object.GetFont, entry.object)
+			if ok then
+				path, size, flags = p, s, f
+			end
+		end
+		return path, entry.size or tonumber(Plain(size)), entry.flags or flags or ""
+	end
+
+	local function Apply(fs, entry)
+		local fonts = Fonts()
+		local basePath, baseSize, baseFlags = Base(entry, fonts)
+		if not (basePath and baseSize) then
+			return
+		end
+		local path, factor, flags = basePath, 1, baseFlags
+		if fonts then
+			path, factor, flags = fonts:FaceFor(entry.role, basePath, baseFlags)
+		end
+		factor = tonumber(factor) or 1
+		-- the base size as it is at 100%, so the module off changes nothing
+		local size = baseSize
+		if math.abs(factor - 1) > 0.001 then
+			size = math.max(6, math.floor(baseSize * factor + 0.5))
+		end
+		-- a face the client cannot load (a font file gone) leaves the text on its own
+		local ok, set = pcall(fs.SetFont, fs, path or basePath, size, flags or "")
+		if not ok or set == false then
+			pcall(fs.SetFont, fs, basePath, size, flags or "")
+		end
+	end
+
+	function RouteFont.Refresh()
+		for fs, entry in pairs(styled) do
+			Apply(fs, entry)
+		end
+	end
+
+	-- fs follows the Fonts module's role ("fontText", "fontChat", ...), from
+	-- the game font object it was made with; size and flags, when given,
+	-- replace the object's own as the text's base.
+	function RouteFont.Style(fs, role, object, size, flags)
+		if not (fs and object) then
+			return
+		end
+		styled[fs] = { role = role, object = object, size = size, flags = flags }
+		-- the Fonts module loads first (MelloUI.toc), but ask only now: the
+		-- texts are made on first use, and one listener serves them all
+		if not listening then
+			local fonts = Fonts()
+			if fonts and fonts.OnFontsChanged then
+				listening = true
+				fonts:OnFontsChanged(RouteFont.Refresh)
+			end
+		end
+		Apply(fs, styled[fs])
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Tracking notice
 --
 -- One line of large orange text in the upper third of the screen, held for a
@@ -281,10 +372,10 @@ local function EnsureNotice()
 	local font = _G.GameFont_Gigantic or _G.NumberFont_Outline_Huge or _G.GameFontNormalHuge3 or _G.GameFontNormalHuge
 	if font then
 		notice.text:SetFontObject(font)
-	end
-	local path = notice.text:GetFont()
-	if path then
-		notice.text:SetFont(path, 20, "OUTLINE")
+		-- its own look (20, outlined) in the interface text's face and size:
+		-- the base is the object's face and the sizes are in its terms, which
+		-- the title faces' factors are not (they are set against Morpheus)
+		RouteFont.Style(notice.text, "fontText", font, 20, "OUTLINE")
 	end
 	notice.text:SetPoint("CENTER")
 	notice.text:SetWidth(900)
@@ -2506,6 +2597,9 @@ local function EnsureMinimapFrame()
 	mm:SetFrameLevel(Minimap:GetFrameLevel() + 6)
 	mmPainter = NewPainter(mm)
 	mm.text = mm:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	-- the route's length (and the destination): the arrow's distance line
+	-- while the arrow is hidden, so the numbers' face like it
+	RouteFont.Style(mm.text, "fontChat", _G.GameFontNormalSmall)
 	mm.text:SetPoint("TOP", Minimap, "BOTTOM", 0, -2)
 	mm.text:SetTextColor(1, 0.82, 0.25)
 	mm.text:Hide()
@@ -2598,9 +2692,11 @@ local function EnsureArrow()
 	end
 	arrow.icon:SetVertexColor(1, 0.82, 0.25)
 	arrow.distance = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	RouteFont.Style(arrow.distance, "fontChat", _G.GameFontNormal)   -- a number
 	arrow.distance:SetPoint("TOP", arrow.icon, "BOTTOM", 0, -2)
 	arrow.distance:SetTextColor(1, 0.82, 0.25)
 	arrow.label = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	RouteFont.Style(arrow.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
 	arrow.label:SetPoint("TOP", arrow.distance, "BOTTOM", 0, -1)
 	arrow.label:SetWidth(180)
 	arrow.label:SetWordWrap(false)
@@ -2889,9 +2985,11 @@ local function EnsureMarker()
 		marker.gem:SetTexture("Interface/Minimap/POIIcons")
 	end
 	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	RouteFont.Style(marker.distance, "fontChat", _G.GameFontNormal)   -- a number
 	marker.distance:SetPoint("TOP", marker.gem, "BOTTOM", 0, -2)
 	marker.distance:SetTextColor(1, 0.82, 0.25)
 	marker.label = front:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	RouteFont.Style(marker.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
 	marker.label:SetPoint("TOP", marker.distance, "BOTTOM", 0, -1)
 	marker.label:SetWidth(180)
 	marker.label:SetWordWrap(false)

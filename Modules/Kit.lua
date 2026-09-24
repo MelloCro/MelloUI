@@ -184,7 +184,7 @@ end
 --         { r, g, b }, tight / fine / wide (see PaintedEdge), layer
 --         ("BACKGROUND") and sublevel (3); rect: lay it on this instead of
 --         inside the skin's rails (a chat window, whose rails stand outside
---         its body), `margin` in from each side
+--         its body), `margin` in from each side; piece (Kit.parchmentPiece)
 -- ONE tone for every parchment in the kit (user, 2026-09-23: "a lot of
 -- inconsistencies in the brightness of the parchment background" -- the added
 -- sheets were tinted to 60 % as aged paper, the pages kept the picture's own
@@ -233,7 +233,10 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		sheet:SetPoint("TOPLEFT", skin, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
 		sheet:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
 	end
-	if not self:Apply(sheet, self.parchmentPiece) then
+	-- opts.piece: another parchment tile than the kit's (the character
+	-- window's Window Background Parchment keeps the tile it was chosen as;
+	-- user, 2026-09-24)
+	if not self:Apply(sheet, opts.piece or self.parchmentPiece) then
 		sheet:Hide()
 		return nil
 	end
@@ -644,25 +647,185 @@ function Kit:Retile(tex)
 end
 
 -- Every background laid again (a frame scaled, the UI scale changed, Edit
--- Mode closed): their repeat stays the same size on the screen
+-- Mode closed): their repeat stays the same size on the screen. A texture
+-- whose size reads secret (under a unit frame, in combat) and that has no
+-- `kitTileW` standing in is left as it was last laid: Retile would otherwise
+-- fall back to one whole copy of the piece, the stretched look this rule
+-- exists to prevent. Returns how many were laid and how many left.
 function Kit:RetileBackgrounds()
+	local laid, left = 0, 0
 	for tex in pairs(BACKGROUNDS) do
 		if tex.kitBackground then
-			self:Retile(tex)
+			local ok, w, h = pcall(tex.GetSize, tex)
+			if (ok and w and h and not Secret(w) and not Secret(h)) or tex.kitTileW then
+				self:Retile(tex)
+				laid = laid + 1
+			else
+				left = left + 1
+			end
 		end
+	end
+	return laid, left
+end
+
+--------------------------------------------------------------------------------
+-- The UI scale watcher (user, 2026-09-24: "UI Scaling Break the UI"). One
+-- place that answers a change of the game's UI Scale (the uiScale /
+-- useUiScale settings), of the window's resolution, and of an Edit Mode
+-- setting (a system's Size): every background laid again at the screen's
+-- one density, then every panel that measured something on the screen told
+-- through Kit:OnUIScaleChanged(fn), fn(reason) with reason "uiscale" (the UI
+-- Scale or the resolution) or "editmode" (a setting in Edit Mode).
+-- The work waits a moment and runs once for a burst of changes: when the
+-- event comes the game has not yet re-laid everything for the new scale
+-- (Edit Mode re-scales and re-places the right-hand action bars and the
+-- panel manager moves its windows in their own handlers of the same events),
+-- and the settings' slider sends several changes in a row. What a listener
+-- does to a protected frame it puts through Kit:WhenOutOfCombat itself.
+-- Bars, rails, caps and pieces in general need nothing: they are sized in
+-- their frame's own units and follow any scale with it; only the
+-- backgrounds (measured on the screen) and what a panel laid out from
+-- screen positions (the action bar backdrops, the saved window places, the
+-- picker's catchers, the drag grid) go stale.
+--------------------------------------------------------------------------------
+Kit.scaleListeners = {}
+Kit.lastScaleRefit = nil   -- what the last refit did, for /uiscaledump
+
+function Kit:OnUIScaleChanged(fn)
+	if type(fn) == "function" then
+		self.scaleListeners[#self.scaleListeners + 1] = fn
 	end
 end
 
+-- The refit itself, at once (the watcher calls it a moment after a change;
+-- /uiscaledump refit calls it by hand)
+function Kit:RefitForScale(reason)
+	reason = reason or "uiscale"
+	local laid, left = self:RetileBackgrounds()
+	local told, failed, firstError = 0, 0, nil
+	for _, fn in ipairs(self.scaleListeners) do
+		local ok, err = pcall(fn, reason)
+		if ok then
+			told = told + 1
+		else
+			failed = failed + 1
+			firstError = firstError or tostring(err)
+		end
+	end
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	self.lastScaleRefit = {
+		reason = reason, when = GetTime and GetTime() or 0,
+		backgrounds = laid, skipped = left, listeners = told, failed = failed, error = firstError,
+		effectiveScale = (okU and not Secret(us)) and us or nil,
+	}
+	return laid, told
+end
+
 do
+	local pending, pendingReason = nil, nil
+	local function Run()
+		pending = nil
+		local reason = pendingReason
+		pendingReason = nil
+		Kit:RefitForScale(reason)
+	end
+	-- a change of the UI Scale outranks an Edit Mode one: its listeners do more
+	local function Schedule(reason)
+		if pendingReason ~= "uiscale" then
+			pendingReason = reason
+		end
+		if pending then
+			pending:Cancel()
+		end
+		pending = C_Timer.NewTimer(0.15, Run)
+	end
+	Kit.ScheduleScaleRefit = function(_, reason)
+		Schedule(reason or "uiscale")
+	end
 	local ev = CreateFrame("Frame")
 	ev:RegisterEvent("UI_SCALE_CHANGED")
 	ev:RegisterEvent("DISPLAY_SIZE_CHANGED")
 	ev:SetScript("OnEvent", function()
-		Kit:RetileBackgrounds()
+		Schedule("uiscale")
 	end)
-	if EventRegistry and EventRegistry.RegisterCallback then
-		EventRegistry:RegisterCallback("EditMode.Exit", function() Kit:RetileBackgrounds() end, Kit)
+	-- the settings themselves, for a client that changes the scale without
+	-- the event (it costs nothing twice: the timer runs once)
+	if CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then
+		for _, cvar in ipairs({ "uiScale", "useUiScale" }) do
+			CVarCallbackRegistry:RegisterCallback(cvar, function() Schedule("uiscale") end, Kit)
+		end
 	end
+	if EventRegistry and EventRegistry.RegisterCallback then
+		EventRegistry:RegisterCallback("EditMode.Exit", function() Schedule("editmode") end, Kit)
+	end
+	-- a system's Size (or any setting) changed in Edit Mode: laid again while
+	-- the window is still open, not only when it closes (a post-hook: Edit
+	-- Mode's own code runs untouched)
+	local manager = EditModeManagerFrame
+	if manager and type(manager.OnSystemSettingChange) == "function" then
+		hooksecurefunc(manager, "OnSystemSettingChange", function()
+			Schedule("editmode")
+		end)
+	end
+end
+
+-- /uiscaledump [refit]: the UI scale as the game and the kit see it, and what
+-- the last refit did (user, 2026-09-24: to check the UI Scale fix in game).
+-- "refit" runs a refit now first. Opens the copy window.
+SLASH_MELLOUISCALEDUMP1 = "/uiscaledump"
+SlashCmdList.MELLOUISCALEDUMP = function(msg)
+	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	if msg == "refit" then
+		Kit:RefitForScale("uiscale")
+	end
+	MelloUI:ClearLog()
+	local function Num(v, fmt)
+		if type(v) ~= "number" or Secret(v) then
+			return tostring(v)
+		end
+		return string.format(fmt or "%.4f", v)
+	end
+	local GetCVarFn = (C_CVar and C_CVar.GetCVar) or GetCVar
+	local okC, uiScale = pcall(GetCVarFn, "uiScale")
+	local okU, useUiScale = pcall(GetCVarFn, "useUiScale")
+	MelloUI:Print("cvar uiScale = %s, useUiScale = %s", okC and tostring(uiScale) or "?", okU and tostring(useUiScale) or "?")
+	local okS, s = pcall(UIParent.GetScale, UIParent)
+	local okE, es = pcall(UIParent.GetEffectiveScale, UIParent)
+	local okW, w, h = pcall(UIParent.GetSize, UIParent)
+	MelloUI:Print("UIParent scale = %s, effective = %s, size = %s x %s UI units", okS and Num(s) or "?", okE and Num(es) or "?",
+		okW and Num(w, "%.1f") or "?", okW and Num(h, "%.1f") or "?")
+	if GetPhysicalScreenSize then
+		local okP, pw, ph = pcall(GetPhysicalScreenSize)
+		if okP and type(ph) == "number" and not Secret(ph) and ph > 0 then
+			MelloUI:Print("physical screen = %s x %s px; a pixel-exact UI scale here would be %s", Num(pw, "%d"), Num(ph, "%d"), Num(768 / ph))
+			if okE and type(es) == "number" and not Secret(es) and es > 0 then
+				MelloUI:Print("one UI unit = %s screen px", Num(es * ph / 768, "%.3f"))
+			end
+		end
+	end
+	local backgrounds = 0
+	for tex in pairs(BACKGROUNDS) do
+		if tex.kitBackground then
+			backgrounds = backgrounds + 1
+		end
+	end
+	MelloUI:Print("Kit.scale = %s UI units per piece px; backgrounds registered = %d; scale listeners = %d", Num(Kit.scale, "%.3f"),
+		backgrounds, #Kit.scaleListeners)
+	local last = Kit.lastScaleRefit
+	if last then
+		local ago = GetTime and (GetTime() - (last.when or 0)) or 0
+		MelloUI:Print("last refit (%s, %.0f s ago, UIParent effective %s): %d backgrounds laid again, %d left (size unreadable), %d listeners told, %d failed",
+			tostring(last.reason), ago, Num(last.effectiveScale), last.backgrounds or 0, last.skipped or 0, last.listeners or 0, last.failed or 0)
+		if last.error then
+			MelloUI:Print("first listener error: %s", last.error)
+		end
+		if last.effectiveScale and okE and type(es) == "number" and not Secret(es) and math.abs(last.effectiveScale - es) > 0.0001 then
+			MelloUI:Print("the UI scale changed since the last refit and none ran: /uiscaledump refit")
+		end
+	else
+		MelloUI:Print("no refit since the last reload (the UI scale has not changed); /uiscaledump refit runs one")
+	end
+	MelloUI:ShowLog("uiscaledump")
 end
 
 -- A new texture showing a piece at its natural size.
@@ -1574,7 +1737,9 @@ end
 --           rect's height with the trough in its opening, both regions of the
 --           rect's frame (bracket in BORDER over the game's fill, under its
 --           text); `thicken` makes it that many px taller than the rect,
---           `into` how far the fill goes into the rails (1 = all the way);
+--           `into` how far the fill goes into the rails (1 = all the way),
+--           `artScale` (rule or opts) the border art at that fraction of its
+--           fitted scale, in every look (the opening shrinks with it);
 --           rep:GetOpening() gives the fill area's insets from the rect
 --   texture one piece (`piece`) sized to the rect (`square`: to its shorter side,
 --           `natural`: the kit size, centred on the rect or opts.center)
@@ -3630,7 +3795,16 @@ function Kit:Replace(region, opts)
 			-- centred on it (it overhangs the rect top and bottom)
 			-- `heightScale`: the bracket that fraction of the rect's height,
 			-- centred on it (the character pane's bars at 0.85 — user, 2026-09-21)
-			local yoff = self.strip:FitBox((h + (opts.thicken or rule.thicken or 0)) * (rule.heightScale or 1))
+			-- `artScale` (opts or rule): the border ART drawn at that fraction
+			-- of the scale the fit gives, in every Progress Bar Border look
+			-- (thinner rails, smaller caps and gems, the opening with them), for
+			-- one set of bars without touching the rule every window shares
+			-- (user, 2026-09-24: the Reputation and Skills tabs' bars at 0.85).
+			-- Every size below (arms, opening, caps) is read from the strip's
+			-- scale, so the fill and the trough follow; kept in `opts`, so a
+			-- live look swap (SetBar -> Refit) keeps it too
+			local artScale = opts.artScale or rule.artScale or 1
+			local yoff = self.strip:FitBox((h + (opts.thicken or rule.thicken or 0)) * (rule.heightScale or 1) * artScale)
 			self.stripOffset = yoff
 			local w = self:RectSize("GetWidth")
 			if not (w and w > 0) then
@@ -4534,8 +4708,10 @@ function Kit:FitPortrait(portrait, ring, mode)
 	local saved = portrait.melloSaved
 	local size = ring.tex:GetWidth() * MEDALLION_TO_RING
 	if type(mode) == "number" then
-		-- a factor on the medallion size: an icon painted with a wide
-		-- transparent margin (the social window's) reads small at 1
+		-- a factor on the medallion size. No window uses it: a window's
+		-- portrait stays at the medallion size, on the disc when it does not
+		-- cover the opening (WINDOW-RULES 2b; the social window's 1.3 x
+		-- outgrew its ring — user, 2026-09-24)
 		size = size * mode
 	elseif mode == "opening" then
 		-- the HUD's unit frames (user, 2026-09-21): the visible disc exactly

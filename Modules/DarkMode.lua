@@ -43,8 +43,8 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
-		{ type = "slider", key = "shade", name = "Brightness", min = 0, max = 1, step = 0.05, percent = true,
-		  desc = "How bright the darkened artwork is. Lower values are darker." },
+		{ type = "slider", key = "shade", name = "Default UI Brightness", min = 0, max = 1, step = 0.05, percent = true,
+		  desc = "How bright the game's own artwork is where Dark Mode darkens it (the parts the reskin does not cover, or everything with the reskin off). Lower values are darker. The reskin's own art has Reskin brightness below." },
 		{ type = "toggle", key = "desaturate", name = "Desaturate",
 		  desc = "Remove the gold and bronze colours so the art becomes grey before it is darkened." },
 		{ type = "slider", key = "kitShade", name = "Reskin brightness", min = 0.2, max = 1, step = 0.05, percent = true,

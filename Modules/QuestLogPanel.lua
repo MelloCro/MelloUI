@@ -75,6 +75,53 @@ local function Portrait()
 	return bf and bf.PortraitContainer and bf.PortraitContainer.portrait
 end
 
+-- A quest row's hover plate, one code path for the quest log's titles and
+-- the Quests panel's rows, so both show the very same border (user,
+-- 2026-09-24: "Quest List Module Mouseover Border resize" -- it must be the
+-- quest log's own): the plate's hover look (questlog-quest-glow-yellow ->
+-- lists/plate hover) as regions of the row, fitted to `rect` with its caps
+-- at the art's scale and only the middle tiled. Both lists pool their rows
+-- and a pooled row changes height (a header becomes a quest row, a quest
+-- with more objectives takes a title), while a strip refits on its rect's
+-- size only while it is shown -- and the plate is hidden until hovered. So a
+-- plate kept the size of whatever the row showed first (the 24 px header's
+-- border on a 36 px quest row) and a middle stretched across a width set
+-- while it was hidden (the Panel Width setting). It is refitted each time it
+-- is shown instead: it always fits the row the mouse is on.
+local function ShowPlate(rep, shown)
+	rep.object:SetShown(shown and true or false)
+	if shown then
+		rep:Refit()      -- shown first: a hidden strip's parts may read no size
+	end
+end
+
+local function HoverPlate(region, rect)
+	local rep = Replace(region, { as = "questlog-quest-glow-yellow", rect = rect })
+	if rep then
+		rep.SetShown = ShowPlate
+	end
+	return rep
+end
+
+-- The rows' Init sets their art again on every refresh (SetHighlightTexture,
+-- ClearNormalTexture + SetNormalAtlas); should the client hand back another
+-- texture object than the one replaced, that one is faded with the plate
+-- too, so the game's own highlight never shows beside ours.
+local function KeepFaded(rep, region)
+	if not (rep and region) or region == rep.region then
+		return
+	end
+	for _, r in ipairs(rep.alsoFade) do
+		if r == region then
+			return
+		end
+	end
+	rep.alsoFade[#rep.alsoFade + 1] = region
+	if active then
+		Kit:Fade(region)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- The list: pooled title rows and headers (QuestLogQuests_Update rebuilds
 -- them from pools under QuestScrollFrame.Contents).
@@ -90,7 +137,7 @@ local function SkinTitle(button)
 	end
 	button.melloRep = false
 	if button.HighlightTexture then
-		local rep = Replace(button.HighlightTexture, { as = "questlog-quest-glow-yellow", rect = button.HighlightTexture })
+		local rep = HoverPlate(button.HighlightTexture, button.HighlightTexture)
 		button.melloRep = rep or false
 		Follow(rep, button.HighlightTexture)
 	end
@@ -334,6 +381,38 @@ end
 -- MinimalScrollBar list whose one pool of buttons serves as headers AND
 -- rows). Skinned with the same rules as the game's quest log (user, 2026-09-21).
 --------------------------------------------------------------------------------
+local function MouseOver(b)
+	local ok, over = pcall(b.IsMouseOver, b)
+	return ok and over == true
+end
+
+-- The hover looks follow the mouse: a quest row's plate (the quest log's
+-- own, HoverPlate), a header's plate in its lighter hover state. A header
+-- the panel lights while it reveals a group (LockHighlight) keeps that look
+-- too: the game's highlight is faded under the kit, so the lock showed
+-- nothing but the pulse.
+local function QuestListHover(b, over)
+	if b.melloRow then
+		b.melloRow:SetShown(active and over and not b.melloIsHeader)
+	end
+	local h = b.melloHeader
+	if h and h.Update then
+		h.hover = (over or b.melloLocked) and true or nil
+		if not over then
+			h.pressed = nil
+		end
+		h.Update()
+	end
+end
+
+local function QuestListEnter(b)
+	QuestListHover(b, true)
+end
+
+local function QuestListLeave(b)
+	QuestListHover(b, false)
+end
+
 local function SkinQuestListEntry(button)
 	-- a header or a row: told apart after its Init by the normal texture
 	local normal = button:GetNormalTexture()
@@ -342,26 +421,41 @@ local function SkinQuestListEntry(button)
 	if isHeader and not button.melloHeader then
 		button.melloHeader = Replace(normal, { as = "common-button-list-collapseExpand", rect = button, button = button,
 			alsoFade = highlight and { highlight } or nil }) or false
+		if button.melloHeader then
+			-- refitted when shown, as the hover plate: a width set while the
+			-- button served as a quest row reaches the header's plate too
+			button.melloHeader.SetShown = ShowPlate
+		end
 	end
 	if not button.melloRow then
-		-- a row's hover: the plate's hover look, shown while the mouse is on it
-		button.melloRow = Replace(highlight, { as = "questlog-quest-glow-yellow", rect = button }) or false
+		-- a row's hover: the quest log's hover plate on the whole row (its
+		-- clickable width inside the list, left of the scroll bar, and its
+		-- height), shown while the mouse is on it
+		button.melloRow = HoverPlate(highlight, button) or false
 		if button.melloRow then
 			button.melloRow:SetShown(false)
 		end
 	end
-	if button.melloRow then
-		-- the panel's Init SETS the OnEnter / OnLeave scripts on every refresh,
-		-- which drops earlier hooks: hook again after each Init
-		button:HookScript("OnEnter", function(b)
-			if active and b.melloRow and not b.melloIsHeader then
-				b.melloRow:SetShown(true)
-			end
+	KeepFaded(button.melloRow, highlight)
+	if isHeader then
+		KeepFaded(button.melloHeader, normal)
+		KeepFaded(button.melloHeader, highlight)
+	end
+	-- the panel's Init SETS the OnEnter / OnLeave scripts on every refresh,
+	-- which drops earlier hooks -- the header plate's own hover hooks from
+	-- Kit:Replace among them (a header lit no more once re-used): hook again
+	-- after each Init
+	button:HookScript("OnEnter", QuestListEnter)
+	button:HookScript("OnLeave", QuestListLeave)
+	if not button.melloLockHooked then
+		button.melloLockHooked = true
+		hooksecurefunc(button, "LockHighlight", function(b)
+			b.melloLocked = true
+			QuestListHover(b, true)
 		end)
-		button:HookScript("OnLeave", function(b)
-			if b.melloRow then
-				b.melloRow:SetShown(false)
-			end
+		hooksecurefunc(button, "UnlockHighlight", function(b)
+			b.melloLocked = nil
+			QuestListHover(b, MouseOver(b))
 		end)
 	end
 	if button.pin then
@@ -371,9 +465,9 @@ local function SkinQuestListEntry(button)
 	if button.melloHeader then
 		button.melloHeader:SetShown(isHeader and true or false)
 	end
-	if button.melloRow and isHeader then
-		button.melloRow:SetShown(false)
-	end
+	-- a row re-used under the mouse keeps its plate (fitted to its new
+	-- height), a row re-used elsewhere drops it
+	QuestListHover(button, MouseOver(button))
 	if isHeader and button.plus then
 		Kit:StateIconReps(button, button.plus, button, Replace)
 	elseif button.melloIcons then
@@ -561,6 +655,19 @@ function M:RefreshFollowers()
 	SkinQuestList()
 	if skin.refreshFilters then
 		skin.refreshFilters()
+	end
+	-- the Quests panel's plates: Enable shows every rep, but a row's hover
+	-- plate belongs only on the row the mouse is on, a header's plate only
+	-- on a button that shows a header now
+	local ql = ns.QuestList
+	local sb = ql and ql.Panel and ql.Panel.frame and ql.Panel.frame.scrollBox
+	if sb and sb.ForEachFrame then
+		sb:ForEachFrame(function(b)
+			if b.melloHeader then
+				b.melloHeader:SetShown(b.melloIsHeader and true or false)
+			end
+			QuestListHover(b, MouseOver(b))
+		end)
 	end
 end
 

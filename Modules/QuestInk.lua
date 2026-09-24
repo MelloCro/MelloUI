@@ -80,13 +80,26 @@ local function Srgb(c)
 	return c <= 0.0031308 and c * 12.92 or 1.055 * c ^ (1 / 2.4) - 0.055
 end
 
-function QI.InkOf(r, g, b)
+-- The kit's parchment SHEETS (Kit:ParchmentSheet: the vellum at
+-- Kit.parchmentTint, about #AA824A, luminance 0.25) are darker than the
+-- vellum pages the inks above were set for (2026-09-24, measured: body ink
+-- 3.9 : 1, coloured inks about 3 : 1 on a sheet). `sheet`: the ink for
+-- text on such a sheet -- 4.5 : 1 for a colour that means something, the
+-- title ink (4.7 : 1) for light text, the text ink for grey.
+local SHEET_TARGET = 0.0167
+
+function QI.InkOf(r, g, b, sheet)
 	r, g, b = r or 1, g or 1, b or 1
 	local mx, mn = math.max(r, g, b), math.min(r, g, b)
 	local sat = mx > 0 and (mx - mn) / mx or 0
 	if sat < 0.25 then
 		-- neutral: light text is the text ink, grey the faded ink, dark kept
-		local c = (mx >= 0.8 and QI.INK.text) or (mx >= 0.4 and QI.INK.faded) or nil
+		local c
+		if sheet then
+			c = (mx >= 0.8 and QI.INK.title) or (mx >= 0.4 and QI.INK.text) or nil
+		else
+			c = (mx >= 0.8 and QI.INK.text) or (mx >= 0.4 and QI.INK.faded) or nil
+		end
 		if c then
 			return c[1], c[2], c[3]
 		end
@@ -100,26 +113,27 @@ function QI.InkOf(r, g, b)
 	-- a colour that means something: its own hue, dark enough to read
 	local R, G, B = Lin(r), Lin(g), Lin(b)
 	local L = 0.2126 * R + 0.7152 * G + 0.0722 * B
-	if L <= TARGET then
+	local target = sheet and SHEET_TARGET or TARGET
+	if L <= target then
 		return r, g, b
 	end
-	local k = TARGET / L
+	local k = target / L
 	return Srgb(R * k), Srgb(G * k), Srgb(B * k)
 end
 
 -- The |cAARRGGBB codes in a text inked alike (a chat line's names, links,
 -- channel colours)
-local function Code(r, g, b, a)
-	r, g, b = QI.InkOf(r, g, b)
+local function Code(r, g, b, a, sheet)
+	r, g, b = QI.InkOf(r, g, b, sheet)
 	return string.format("|c%s%02x%02x%02x", a or "ff", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 end
 
-function QI.InkCodes(text)
+function QI.InkCodes(text, sheet)
 	if type(text) ~= "string" or not text:find("|c", 1, true) then
 		return text
 	end
 	text = text:gsub("|c(%x%x)(%x%x)(%x%x)(%x%x)", function(a, rh, gh, bh)
-		return Code(tonumber(rh, 16) / 255, tonumber(gh, 16) / 255, tonumber(bh, 16) / 255, a)
+		return Code(tonumber(rh, 16) / 255, tonumber(gh, 16) / 255, tonumber(bh, 16) / 255, a, sheet)
 	end)
 	-- a named colour (|cnHIGHLIGHT_FONT_COLOR:...|r, this client's newer form;
 	-- user, 2026-09-23: the PvP tab's numbers stayed white): its colour inked
@@ -128,7 +142,7 @@ function QI.InkCodes(text)
 		if type(c) == "table" and c.GetRGB then
 			local ok, r, g, b = pcall(c.GetRGB, c)
 			if ok and r then
-				return Code(r, g, b)
+				return Code(r, g, b, nil, sheet)
 			end
 		end
 		-- an item's quality (|cnIQ4:, the links' form on this client; user,
@@ -137,19 +151,19 @@ function QI.InkCodes(text)
 		if quality then
 			local qc = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
 			if qc and qc.r then
-				return Code(qc.r, qc.g, qc.b)
+				return Code(qc.r, qc.g, qc.b, nil, sheet)
 			end
 			if C_Item and C_Item.GetItemQualityColor then
 				local ok, r, g, b = pcall(C_Item.GetItemQualityColor, quality)
 				if ok and type(r) == "number" then
-					return Code(r, g, b)
+					return Code(r, g, b, nil, sheet)
 				end
 			end
 		end
 		-- a colour this client names that is not known here: the text ink,
 		-- readable rather than bright on the paper
 		local ink = QI.INK.text
-		return Code(ink[1], ink[2], ink[3])
+		return Code(ink[1], ink[2], ink[3], nil, sheet)
 	end)
 	return text
 end

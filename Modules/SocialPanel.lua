@@ -205,11 +205,17 @@ local function Build()
 	skin.built = true
 	local ring = Kit:SkinWindowShell(ff, Replace, skin, { portrait = FriendsFrameIcon, bg = "UI-Background-Rock" })
 	if ring and FriendsFrameIcon then
-		-- the icons the game swaps in per tab (the two heads, the raid helm)
-		-- are painted with a wide margin: 1.3 x the medallion size (user,
-		-- 2026-09-21: they did not fill the ring), re-fitted on every swap
+		-- 2b: the icons the game swaps in per tab (the two heads, the raid
+		-- helm) at the class medallion's size, on the dark disc, as every
+		-- other window's portrait (the spell book, the bags, the guild, the
+		-- group finder); re-fitted on every swap. They were blown up to 1.3 x
+		-- the medallion (2026-09-21, the heads read small), which made this
+		-- the one window whose icon was 0.99 x the ring: wider than the ring's
+		-- metal itself, so it no longer sat in its opening (user, 2026-09-24:
+		-- "there is a rule for this on the size so that it fits"). An icon
+		-- that does not cover the opening sits on the disc, it is not grown.
 		local function Fit()
-			pcall(Kit.FitPortrait, Kit, FriendsFrameIcon, ring, 1.3)
+			pcall(Kit.FitPortrait, Kit, FriendsFrameIcon, ring)
 		end
 		ring.onEnable = Fit
 		ring.onDisable = function()

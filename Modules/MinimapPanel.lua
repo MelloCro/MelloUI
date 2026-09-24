@@ -649,6 +649,20 @@ local function Hook()
 			end)
 		end)
 	end
+	-- the UI Scale changed (user, 2026-09-24: "UI Scaling Break the UI"): the
+	-- merged band and its buttons were scaled to the frame's EFFECTIVE scale
+	-- (PlaceBand), measured at the old UI scale; laid out again with the rest
+	if Kit.OnUIScaleChanged then
+		Kit:OnUIScaleChanged(function(reason)
+			if reason == "uiscale" and active then
+				Kit:WhenOutOfCombat(function()
+					if active then
+						M:Relayout()
+					end
+				end)
+			end
+		end)
+	end
 	-- the game sets the round mask again when the minimap's rotation is
 	-- switched (UpdateMinimapConfig); the square one after it
 	if CVarCallbackRegistry and CVarCallbackRegistry.RegisterCallback then

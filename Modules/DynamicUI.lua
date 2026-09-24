@@ -562,6 +562,7 @@ local PARCHMENTS = {
 	{ "parchment_whisper", "Whisper Popup" },
 	{ "parchment_meter", "Damage Meter" },
 	{ "parchment_character", "Character Window" },
+	{ "parchment_tooltip", "Tooltips" },   -- (user, 2026-09-24: "Tooltip Parchment Option")
 }
 local LAYOUT = {
 	{ module = "ActionBarPanel", key = "hidePageArrows", label = "Action bars: hide the page arrows" },
@@ -625,6 +626,10 @@ local function FillOverview(f)
 		if i % 2 == 0 then
 			y = y - 26
 		end
+	end
+	-- an odd count leaves the last switch alone on its row: below it too
+	if #PARCHMENTS % 2 == 1 then
+		y = y - 26
 	end
 	local leftBottom = y
 	Heading("Backgrounds (or click a bar or window)", right, top)
@@ -810,3 +815,22 @@ events:SetScript("OnEvent", function()
 		MelloUI:Print("Dynamic UI Modification ended: combat.")
 	end
 end)
+
+-- The UI Scale changed while the picker runs (user, 2026-09-24: "UI Scaling
+-- Break the UI"): the catchers were placed from the groups' outlines in
+-- screen px at the old scale, and hung off the bars they should cover; they
+-- are measured and placed again (the kit's watcher calls this a moment
+-- after the change, the backdrops laid out by then)
+if Kit and Kit.OnUIScaleChanged then
+	Kit:OnUIScaleChanged(function()
+		if running then
+			ArmCatchers()
+			-- the backdrops re-lay themselves a beat after the kit's watcher
+			C_Timer.After(0.2, function()
+				if running then
+					ArmCatchers()
+				end
+			end)
+		end
+	end)
+end

@@ -13,10 +13,21 @@
 --   StatusBar with no border art of its own): the P1 bracket around it with
 --   the caps outside, the bar set in by the arms — an agreed addition, as the
 --   catalogue showed it.
+--   The parchment (user, 2026-09-24: "Tooltip Parchment Option"; UI
+--   Modifications' parchment_tooltip, off by default): a sheet on the stone
+--   inside the rail of every dressed tooltip, its lines in dark ink while it
+--   shows (the parchment ink rule, Modules/QuestInk.lua).
 -- Tooltips are styled by the game on every show (SharedTooltip_SetBackdropStyle):
 -- that call is the hook that catches every tooltip the first time.
 -- Covers the group "tooltip": the Tooltip tweak module's backdrop colouring
 -- acts only while this module is off. /ttdump [frames|reps].
+--
+-- Taint: the game's secure code reads and fills these tooltips, so nothing is
+-- ever written onto a tooltip, its NineSlice, its bar or its font strings (no
+-- fields, no SetScript, no method replaced). What this file remembers about
+-- them lives in side tables keyed by the frame; it follows them through
+-- HookScript, hooksecurefunc on global functions and the tooltip data post-
+-- calls only.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -33,6 +44,12 @@ local M = MelloUI:RegisterModule("TooltipPanel", {
 
 local skin = nil
 local active = false
+
+-- The side tables (weak keys: a tooltip made by someone else and dropped
+-- takes its entries with it)
+local dressed = setmetatable({}, { __mode = "k" })   -- [tooltip] = true once SkinTooltip saw it
+local insets = setmetatable({}, { __mode = "k" })    -- [health bar] = the game's anchors while the bracket sets it in
+local sheets = setmetatable({}, { __mode = "k" })    -- [tooltip] = its parchment sheet
 
 local function Secret(v)
 	return issecretvalue and issecretvalue(v)
@@ -61,7 +78,7 @@ local PIECES = { "TopRightCorner", "BottomLeftCorner", "BottomRightCorner", "Top
 -- The health bar set in from its anchors by the bracket's arms (a
 -- StatusBar's fill cannot be re-anchored): once per game layout.
 local function InsetBar(bar, rep)
-	if not (bar and rep and rep.GetArms) or bar.melloInset then
+	if not (bar and rep and rep.GetArms) or insets[bar] then
 		return
 	end
 	local okN, n = pcall(bar.GetNumPoints, bar)
@@ -76,7 +93,7 @@ local function InsetBar(bar, rep)
 		end
 		points[i] = { point, rel, relPoint, x or 0, y or 0 }
 	end
-	bar.melloInset = points
+	insets[bar] = points
 	local armL, armR = rep:GetArms()
 	bar:ClearAllPoints()
 	for _, pt in ipairs(points) do
@@ -91,22 +108,351 @@ local function InsetBar(bar, rep)
 end
 
 local function RestoreBar(bar)
-	local points = bar and bar.melloInset
+	local points = bar and insets[bar]
 	if not points then
 		return
 	end
-	bar.melloInset = nil
+	insets[bar] = nil
 	bar:ClearAllPoints()
 	for _, pt in ipairs(points) do
 		bar:SetPoint(unpack(pt))
 	end
 end
 
-local function SkinTooltip(tip)
-	if not (tip and tip.NineSlice) or tip.melloKit then
+--------------------------------------------------------------------------------
+-- Parchment (user, 2026-09-24: "Tooltip Parchment Option"). A sheet of the
+-- kit's one parchment on the stone, inside the rail, its edge in the fine
+-- brush strokes; and the tooltip's lines in dark ink on it by the parchment
+-- ink rule (Modules/QuestInk.lua): neutral text the body ink, a white or gold
+-- header the title ink, grey the faded ink, a colour that means something
+-- (an item's quality, the red of a requirement not met, the green of a use or
+-- a set bonus, a class or reputation colour) a dark shade of its own hue; no
+-- outline and no shadow on inked text. The money lines and the health bar
+-- keep their colours (their strings are not the tooltip's lines). Switched
+-- off, every line has the colour the game last gave it back at once.
+--------------------------------------------------------------------------------
+
+-- The sheet's margin in from the rail's middle: none. A tooltip's text runs
+-- about 10 units in from its edge; the rail ends 6.6 units in and the fine
+-- strokes are about 6 deep, so the sheet starting under the rail's middle
+-- (3.9 in) is solid paper by the first letter; any margin more would put the
+-- strokes under the text's first letters.
+local SHEET_MARGIN = 0
+-- the sweep that catches a colour the game gave a line without any call this
+-- file hears (a line recoloured in place): seconds between passes while an
+-- inked tooltip shows
+local POLL = 0.2
+
+local QI = MelloUI.QuestInk
+local lineState = setmetatable({}, { __mode = "k" })   -- [font string] = what its ink replaced (below)
+local pending = {}                                     -- [tooltip] = true: ink again on the next frame
+local inking = false                                   -- our own SetTextColor / SetText / SetFont at work
+local driver, pollIn = nil, 0
+
+local function InkOn()
+	return active and QI ~= nil and Kit.ParchmentOn ~= nil and Kit:ParchmentOn("tooltip")
+end
+
+-- The same colour, as read back from the string (the client keeps a colour
+-- to its own precision; the ink is stored as read back, so a match is exact
+-- in all but rounding)
+local function Same(c, r, g, b)
+	return c and math.abs(c[1] - r) < 0.002 and math.abs(c[2] - g) < 0.002 and math.abs(c[3] - b) < 0.002
+end
+
+-- The line's own outline and shadow back (the colour is left alone)
+local function RestoreLook(fs, state)
+	if state.flags and state.flags ~= "" then
+		local ok, path, size, flags = pcall(fs.GetFont, fs)
+		if ok and path and size and (flags == nil or flags == "") then
+			pcall(fs.SetFont, fs, path, size, state.flags)
+		end
+	end
+	local sh = state.shadow
+	if sh then
+		local _, _, _, sa = fs:GetShadowColor()
+		if sa ~= nil and not Secret(sa) and sa == 0 then
+			fs:SetShadowColor(sh[1], sh[2], sh[3], sh[4])
+		end
+	end
+end
+
+-- One line to its ink. State per string (a side table, never a field on the
+-- game's string): `game` the colour the game gave it, `ink` our colour as
+-- read back, `text` / `inkedText` the game's text and ours where its colour
+-- codes were inked, `flags` / `shadow` the outline and shadow the ink took
+-- off. The game refills and recolours its lines on every show: a colour or
+-- text that is not ours any more is the game's new one, inked afresh.
+local function InkLine(fs, header)
+	local state = lineState[fs]
+	local r, g, b, a = fs:GetTextColor()
+	local text = fs:GetText()
+	-- a secret colour or text (a unit's line in combat): never compared or
+	-- worked on; the line keeps what the game gave it, with its own outline
+	-- and shadow again if the ink had them
+	if Secret(r) or Secret(g) or Secret(b) or Secret(a) or Secret(text) then
+		if state then
+			lineState[fs] = nil
+			RestoreLook(fs, state)
+		end
 		return
 	end
-	tip.melloKit = true
+	if not state then
+		state = {}
+		lineState[fs] = state
+	end
+	if not (state.game and Same(state.ink, r, g, b)) then
+		state.game = { r, g, b }
+	end
+	local gr, gg, gb = state.game[1], state.game[2], state.game[3]
+	local ir, ig, ib
+	local mx, mn = math.max(gr, gg, gb), math.min(gr, gg, gb)
+	if header and mx >= 0.8 and (mx - mn) / mx < 0.25 then
+		-- a white header (a spell's or an ability's name): the title ink, as
+		-- the gold ones get
+		local c = QI.INK.title
+		ir, ig, ib = c[1], c[2], c[3]
+	else
+		-- the tooltip's sheet is the kit's darker parchment: its own inks
+		-- (4.5 : 1 there; user rule, readability first)
+		ir, ig, ib = QI.InkOf(gr, gg, gb, true)
+	end
+	if not (state.ink and Same(state.ink, ir, ig, ib) and Same(state.ink, r, g, b)) then
+		inking = true
+		fs:SetTextColor(ir, ig, ib, a)
+		inking = false
+		local kr, kg, kb = fs:GetTextColor()
+		state.ink = { kr, kg, kb }
+	end
+	-- colour codes in the text (a name in its class colour, an added line's
+	-- own colours): inked in a copy, the game's text kept to put back
+	if type(text) == "string" and text ~= state.inkedText then
+		state.text, state.inkedText = nil, nil
+		if text:find("|c", 1, true) then
+			local inked = QI.InkCodes(text, true)
+			if inked ~= text then
+				inking = true
+				fs:SetText(inked)
+				inking = false
+				state.text, state.inkedText = text, inked
+			end
+		end
+	end
+	-- no outline and no shadow (a black edge round dark ink smudges it); what
+	-- the game (or a font object set since) gave it kept to put back
+	local okF, path, size, flags = pcall(fs.GetFont, fs)
+	if okF and path and size and flags and not Secret(flags) and flags ~= "" then
+		state.flags = flags
+		inking = true
+		pcall(fs.SetFont, fs, path, size, "")
+		inking = false
+	end
+	local sr, sg, sb, sa = fs:GetShadowColor()
+	if sa ~= nil and not Secret(sa) and sa > 0 then
+		state.shadow = { sr, sg, sb, sa }
+		fs:SetShadowColor(0, 0, 0, 0)
+	end
+end
+
+-- One line back: the game's colour where our ink still shows (a colour the
+-- game gave it since is its own and stays), the game's text where ours still
+-- shows, its outline and shadow
+local function PlainLine(fs, state)
+	local r, g, b, a = fs:GetTextColor()
+	if state.game and not (Secret(r) or Secret(g) or Secret(b)) and Same(state.ink, r, g, b) then
+		inking = true
+		fs:SetTextColor(state.game[1], state.game[2], state.game[3], (not Secret(a)) and a or nil)
+		inking = false
+	end
+	if state.inkedText then
+		local text = fs:GetText()
+		if not Secret(text) and text == state.inkedText then
+			inking = true
+			fs:SetText(state.text)
+			inking = false
+		end
+	end
+	RestoreLook(fs, state)
+end
+
+-- The strings of one frame that are its lines (a tooltip's regions: its
+-- TextLeftN / TextRightN, made as the game needs them; a friends tooltip's
+-- labels)
+local function InkLines(frame)
+	local okN, name = pcall(frame.GetName, frame)
+	local header = okN and type(name) == "string" and _G[name .. "TextLeft1"] or nil
+	for _, region in ipairs({ frame:GetRegions() }) do
+		if region.GetObjectType and region:GetObjectType() == "FontString" and region:IsShown() then
+			local ok = pcall(InkLine, region, region == header)
+			if not ok then
+				inking = false
+			end
+		end
+	end
+end
+
+-- A tooltip's lines, and those of the tooltips inside it (an embedded item's
+-- tooltip lies on the same sheet). Other children are left: the money frames
+-- (their amounts keep their colours), the health bar and its text, a
+-- comparison header on its own plate, and the kit's own frames.
+local function InkTooltip(tip, depth)
+	depth = depth or 0
+	InkLines(tip)
+	if depth >= 3 then
+		return
+	end
+	for _, child in ipairs({ tip:GetChildren() }) do
+		local kind = child.GetObjectType and child:GetObjectType()
+		if child:IsShown() then
+			if kind == "GameTooltip" then
+				InkTooltip(child, depth + 1)
+			elseif kind == "Frame" then
+				-- a holder of tooltips (the embedded item's frame): only the
+				-- tooltips under it, never its own strings (the item's count)
+				for _, sub in ipairs({ child:GetChildren() }) do
+					if sub.GetObjectType and sub:GetObjectType() == "GameTooltip" and sub:IsShown() then
+						InkTooltip(sub, depth + 2)
+					end
+				end
+			end
+		end
+	end
+end
+MelloUI:Profile("TooltipPanel", "tooltip ink", InkTooltip)
+
+-- The dressed tooltip whose sheet a tooltip lies on (itself, or the tooltip
+-- an embedded one is part of). The post-calls hand us every tooltip the game
+-- fills, a forbidden one among them (the store's, the secure ones): only the
+-- side table is looked at before its methods, and they are called guarded.
+local function ParentOf(f)
+	return f:GetParent()
+end
+
+local function SheetOwner(tip)
+	local f = tip
+	for _ = 1, 4 do
+		if not f then
+			return nil
+		end
+		if sheets[f] then
+			return f
+		end
+		local ok, parent = pcall(ParentOf, f)
+		f = ok and parent or nil
+	end
+	return nil
+end
+
+-- The driver: the tooltips an event named inked again on the next frame (the
+-- game or another handler may colour a line after the call that told us),
+-- then every inked tooltip that shows swept now and then; it rests while no
+-- inked tooltip shows.
+local function Drive(self, elapsed)
+	if not InkOn() then
+		wipe(pending)
+		self:Hide()
+		return
+	end
+	for tip in pairs(pending) do
+		pending[tip] = nil
+		if tip:IsVisible() then
+			InkTooltip(tip)
+		end
+	end
+	pollIn = pollIn - elapsed
+	if pollIn > 0 then
+		return
+	end
+	pollIn = POLL
+	local any = false
+	for tip, sheet in pairs(sheets) do
+		if sheet:IsShown() and tip:IsVisible() then
+			any = true
+			InkTooltip(tip)
+		end
+	end
+	if not any then
+		self:Hide()
+	end
+end
+
+-- An event on a tooltip: ink it now and once more on the next frame
+local function Touch(tip)
+	if inking or not InkOn() then
+		return
+	end
+	local owner = SheetOwner(tip)
+	if not (owner and owner:IsVisible()) then
+		return
+	end
+	InkTooltip(owner)
+	pending[owner] = true
+	if not driver then
+		driver = CreateFrame("Frame")
+		driver:SetScript("OnUpdate", Drive)
+	end
+	driver:Show()
+end
+
+-- Every line inked (the parchment came) or put back (it went, or the
+-- reskin did)
+local function InkAll(on)
+	if on then
+		for tip, sheet in pairs(sheets) do
+			if sheet:IsShown() and tip:IsVisible() then
+				Touch(tip)
+			end
+		end
+	else
+		wipe(pending)
+		for fs, state in pairs(lineState) do
+			lineState[fs] = nil
+			local ok = pcall(PlainLine, fs, state)
+			if not ok then
+				inking = false
+			end
+		end
+	end
+end
+
+-- The sheets shown while the reskin is on and the parchment chosen
+local function ShowSheets()
+	local on = (active and Kit.ParchmentOn and Kit:ParchmentOn("tooltip")) and true or false
+	for _, sheet in pairs(sheets) do
+		sheet:SetShown(on)
+	end
+end
+
+-- The parchment on a dressed tooltip: a region of its NineSlice in the layer
+-- stack the kit's stone and rail live in (the stone BACKGROUND 0, the sheet
+-- BACKGROUND 3, the rail BORDER), under the tooltip's texts as the game's
+-- own pieces are. It follows the tooltip's every size by its anchors; the
+-- tile and the painted edge are laid again as the kit's skin (our frame, the
+-- tooltip's size) changes size or shows, and the lines inked then too.
+local function AddSheet(tip, rep)
+	local nine = tip.NineSlice
+	if sheets[tip] or not (Kit.ParchmentSheet and rep and rep.skin and nine) then
+		return
+	end
+	local sheet = Kit:ParchmentSheet(nine, rep.skin, { margin = SHEET_MARGIN, fine = true, area = "tooltip",
+		alive = function() return active end })
+	if not sheet then
+		return
+	end
+	sheets[tip] = sheet
+	rep.skin:HookScript("OnShow", function()
+		Touch(tip)
+	end)
+	rep.skin:HookScript("OnSizeChanged", function()
+		Touch(tip)
+	end)
+end
+
+local function SkinTooltip(tip)
+	if not (tip and tip.NineSlice) or dressed[tip] then
+		return
+	end
+	dressed[tip] = true
 	local nine = tip.NineSlice
 	local corner = nine.TopLeftCorner
 	if corner then
@@ -114,7 +460,8 @@ local function SkinTooltip(tip)
 		for _, key in ipairs(PIECES) do
 			others[#others + 1] = nine[key]
 		end
-		Replace(corner, { as = "Tooltip-NineSlice-CornerTopLeft", rect = nine, alsoFade = others })
+		local rep = Replace(corner, { as = "Tooltip-NineSlice-CornerTopLeft", rect = nine, alsoFade = others })
+		AddSheet(tip, rep)
 	end
 	local bar = tip.StatusBar
 	if bar and bar.GetStatusBarTexture then
@@ -172,6 +519,26 @@ local function Build()
 			end
 		end)
 	end
+	-- every tooltip the game fills from its data (items, units, spells ...)
+	-- inked once it is filled (a post-call runs after the game's lines)
+	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and TooltipDataProcessor.AllTypes then
+		TooltipDataProcessor.AddTooltipPostCall(TooltipDataProcessor.AllTypes, function(tip)
+			if tip and not inking and InkOn() then
+				Touch(tip)
+			end
+		end)
+	end
+	-- the ink's surface: switched with the parchment (Kit:SetParchment
+	-- refreshes the surface named after its area) and with the reskin
+	if QI and QI.Surface and not QI.surfaces.tooltip then
+		QI.Surface("tooltip", { noWalk = true, on = InkOn, onRefresh = InkAll })
+	end
+end
+
+local function RefreshInk()
+	if QI and QI.surfaces and QI.surfaces.tooltip then
+		QI.RefreshSurface("tooltip")
+	end
 end
 
 local function Activate()
@@ -183,7 +550,9 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	ShowSheets()
 	Kit:Cover("tooltip")
+	RefreshInk()
 end
 
 local function Deactivate()
@@ -194,7 +563,10 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	-- the sheets are the NineSlice's regions, not the skin's: hidden by hand
+	ShowSheets()
 	Kit:Uncover("tooltip")
+	RefreshInk()
 end
 
 function M:OnEnable(db)

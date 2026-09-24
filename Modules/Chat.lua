@@ -6,6 +6,7 @@
 --   * short, saturated channel tags:  G  Guild,  P  Party,  R  Raid,
 --     RW  Raid Warning,  W  Whisper,  G  General,  T  Trade, ...
 --   * class coloured player names in every chat type
+--   * smooth scrolling: the mouse wheel glides the text (Smooth Scrolling)
 --
 -- The short tags are written AFTER the game has added a line: a secure
 -- post-hook on each chat window's AddMessage rewrites that one line with the
@@ -36,6 +37,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		nameStyle = "full",
 		nameShade = true,
 		whisperPopup = false,
+		smoothScroll = true,
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
@@ -51,6 +53,8 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
 		{ type = "toggle", key = "hideButtons", name = "Hide Chat Buttons",
 		  desc = "Hide the buttons next to the chat: chat menu, channel and voice buttons, social button and the minimize button column." },
+		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
+		  desc = "The mouse wheel glides the chat text up and down instead of jumping a line at a time, in the chat windows and the whisper windows. Off, or with Reduce Motion on, it jumps as before." },
 		{ type = "header", name = "Channels" },
 		{ type = "toggle", key = "shortChannels", name = "Short Channel Tags",
 		  desc = "Replace [Guild], [Party], [1. General] and so on with short, saturated coloured tags." },
@@ -1132,6 +1136,432 @@ local function InkAllChat(on)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Smooth scrolling (user, 2026-09-24: "Chat Needs to have a smooth Scrolling
+-- effect"). The wheel glides the text as the configurator's page does (the
+-- same exponential ease, GLIDE_RATE 14; each notch adds to the target, so a
+-- fast spin runs on smoothly); Reduce Motion or the option off keeps the
+-- game's jumps.
+--
+-- How, without replacing anything of the game's: a message frame draws whole
+-- messages at a whole scroll offset, its lines stacked up from the first one,
+-- which alone is anchored (BOTTOMLEFT to the frame's BOTTOMLEFT), inside a
+-- child frame that clips them to the window. Between two offsets the text is
+-- drawn at the lower one with that first line let down by the part of its
+-- height already scrolled: the line below the window is clipped away, the
+-- window's spare line above fills the top, and the bands under names
+-- (anchored to the lines) come along.
+--
+-- Only moving the drawn lines after the game has scrolled (the first idea)
+-- was not enough: scrolling up, the lines that leave at the bottom are not
+-- drawn any more once the offset has changed, so the bottom went blank and
+-- then filled. So the offset follows the glide: post-hooks on the frame's
+-- scroll methods see the game's step (a relative step -- the wheel, the
+-- scroll buttons, a page -- becomes the glide's new target, and the offset is
+-- put back to where the glide is), then this module's own driver moves the
+-- offset one message at a time as the glide passes it. The offset is only
+-- ever set through the frame's SetScrollOffset, which the game offers addons
+-- as a secure call (its ScrollingMessageFrameSecureMixin runs untainted
+-- whoever calls it), so the chat's own code never reads a value MelloUI
+-- wrote; that is checked (issecurevariable) after every set, and should it
+-- ever fail the glide switches itself off on the game's windows (/chatscroll
+-- says so). A jump (to the bottom or the top, a long way, a hidden window)
+-- stays a jump; a message that comes in while scrolled up keeps the view
+-- still, as the game has it, the glide included.
+--------------------------------------------------------------------------------
+local Smooth = { frames = setmetatable({}, { __mode = "k" }), active = {}, tainted = nil }
+do
+	local GLIDE_RATE = 14   -- as the configurator's glide: how fast the gap closes (per second, exponential)
+	local SETTLE = 0.03     -- lines from the target that count as there (under half a pixel)
+	local MAX_TIME = 1.5    -- a glide still running this long after the last notch is finished at once
+	local MAX_SPEED = 60    -- messages a second at most: a page still glides, never outrunning the lines the window draws
+	local RELATIVE = { "ScrollByAmount", "ScrollUp", "ScrollDown", "PageUp", "PageDown" }
+	local driver = CreateFrame("Frame")
+	driver:Hide()
+
+	local function Wanted(st)
+		if st and st.game and Smooth.tainted then
+			return false
+		end
+		return M.isEnabled and M.db and M.db.smoothScroll ~= false
+			and not (MelloUI.Anim and MelloUI.Anim.reduceMotion) and true or false
+	end
+	Smooth.Wanted = Wanted
+
+	local function Offset(frame)
+		local ok, o = pcall(frame.GetScrollOffset, frame)
+		return (ok and Number(o)) and o or nil
+	end
+	Smooth.Offset = Offset
+
+	local function MaxRange(frame)
+		local ok, o = pcall(frame.GetMaxScrollRange, frame)
+		return (ok and Number(o)) and o or nil
+	end
+	Smooth.MaxRange = MaxRange
+
+	-- the message at `index` of the frame's history (1 = the newest), only
+	-- to tell one message from another; nil when it cannot be read
+	local function EntryAt(frame, index)
+		local buffer = frame.historyBuffer
+		if type(buffer) ~= "table" or type(buffer.GetEntryAtIndex) ~= "function" then
+			return nil
+		end
+		local ok, entry = pcall(buffer.GetEntryAtIndex, buffer, index)
+		return (ok and type(entry) == "table") and entry or nil
+	end
+	Smooth.EntryAt = EntryAt
+
+	-- the first drawn line, when it is anchored as the glide expects (one
+	-- anchor, its BOTTOMLEFT on the frame's BOTTOMLEFT); else nil and why
+	local function CheckFirstLine(frame)
+		local lines = frame.visibleLines
+		local line = type(lines) == "table" and lines[1] or nil
+		if not (line and line.GetPoint and line.SetPoint and line.GetNumPoints) then
+			return nil, "no drawn lines"
+		end
+		local n = line:GetNumPoints()
+		if not (Number(n) and n == 1) then
+			return nil, "the first line has " .. tostring(Number(n) and n or "?") .. " anchors"
+		end
+		local point, rel, relPoint = line:GetPoint(1)
+		if Secret(point) or Secret(relPoint) or rel ~= frame or point ~= "BOTTOMLEFT" or relPoint ~= "BOTTOMLEFT" then
+			return nil, "the first line is anchored elsewhere"
+		end
+		return line
+	end
+
+	local function FirstLine(frame)
+		local ok, line, why = pcall(CheckFirstLine, frame)
+		if not ok then
+			return nil, "unreadable (" .. tostring(line) .. ")"
+		end
+		return line, why
+	end
+	Smooth.FirstLine = FirstLine
+
+	-- how far the stack moves when this line scrolls out: its height (a
+	-- wrapped message is taller) and the gap to the next; a protected line's
+	-- height may be secret, so one row of its font stands in
+	local function LineStep(line)
+		local okH, h = pcall(line.GetHeight, line)
+		if not (okH and Number(h) and h > 0) then
+			local okL, lh = pcall(line.GetLineHeight, line)
+			h = (okL and Number(lh) and lh > 0) and lh or nil
+		end
+		if not h then
+			local okF, _, size = pcall(line.GetFont, line)
+			h = (okF and Number(size) and size > 0) and size or 14
+		end
+		local okS, gap = pcall(line.GetSpacing, line)
+		return h + ((okS and Number(gap)) and gap or 0)
+	end
+	Smooth.LineStep = LineStep
+
+	-- The drawn lines placed for the glide's position: `rel` is how far the
+	-- glide is past the offset the lines were drawn at, in messages. Past it
+	-- (up, older), the first line is let down by the steps of the lines that
+	-- have scrolled out and part of the next; short of it (a frame's redraw
+	-- still to come) the stack is raised by part of the first line's step.
+	-- 0 puts the first line back exactly where the game anchors it.
+	local function Shift(frame, st, rel)
+		local line = FirstLine(frame)
+		if not line then
+			return
+		end
+		rel = math.max(-1, math.min(2, rel or 0))
+		local y = 0
+		if rel > 0.001 then
+			local lines = frame.visibleLines
+			local whole = math.floor(rel)
+			for i = 1, whole do
+				if lines[i] then
+					y = y - LineStep(lines[i])
+				end
+			end
+			local part = lines[whole + 1]
+			if part then
+				y = y - (rel - whole) * LineStep(part)
+			end
+		elseif rel < -0.001 then
+			y = -rel * LineStep(line)
+		end
+		if pcall(line.SetPoint, line, "BOTTOMLEFT", frame, "BOTTOMLEFT", 0, y) then
+			st.shifted = y ~= 0
+		end
+	end
+
+	-- where the glide will be one step (`dt` seconds) on
+	local function Ahead(st, p, dt)
+		local move = (st.target - p) * math.min(1, dt * GLIDE_RATE)
+		local cap = MAX_SPEED * dt
+		local nextP = p + math.max(-cap, math.min(cap, move))
+		if math.abs(st.target - nextP) <= SETTLE then
+			return st.target
+		end
+		return nextP
+	end
+
+	-- the game's own chat windows: their offset must stay the game's (above).
+	-- Only a change this module's own set made counts: an offset some other
+	-- code had already tainted is not this module's doing.
+	local function IsSecureOffset(frame, st)
+		local isSecure = _G.issecurevariable
+		if not (st.game and isSecure) then
+			return nil
+		end
+		local ok, secure, by = pcall(isSecure, frame, "scrollOffset")
+		if ok then
+			return secure, by
+		end
+	end
+
+	-- the frame's real offset set to `o` (through the game's secure call),
+	-- and what this module knows of it brought up to date
+	local function SetReal(frame, st, o)
+		if Offset(frame) ~= o then
+			local before = IsSecureOffset(frame, st)
+			st.busy = true
+			pcall(frame.SetScrollOffset, frame, o)
+			st.busy = false
+			local after, by = IsSecureOffset(frame, st)
+			if before == true and after == false then
+				Smooth.tainted = tostring(by or "unknown")
+			end
+		end
+		st.lastKnown = Offset(frame) or o
+		st.anchor = EntryAt(frame, st.lastKnown + 1)
+	end
+
+	-- The offset the glide wants drawn. A frame redraws its lines in its own
+	-- OnUpdate, which the game may run before this module's driver or after
+	-- it (the order is the game's). After it, an offset set now is drawn this
+	-- same frame: the glide's own line. Before it, it is drawn only next frame,
+	-- so it is set one step early, where the glide will be then -- else every
+	-- line passed would stand still a frame (a stutter), or show a gap below.
+	-- Which it is, is learned at the first redraw after a set (AfterDraw).
+	-- A guess can miss (frames are not all equally long), so it leans to the
+	-- side that shows nothing missing: an offset a little lower, whose lines
+	-- reach up into the window's spare line, rather than one too high, which
+	-- would leave the bottom of the window empty for a frame.
+	local function WantedOffset(st, dt)
+		if st.redrawFirst == false then
+			return math.floor(st.p)
+		end
+		local nextP = Ahead(st, st.p, dt or 1 / 60)
+		local lean = nextP > st.p and 0.8 or 1.25
+		local guess = st.p + (nextP - st.p) * lean
+		-- never past the target (a glide ending would flip the offset twice)
+		guess = math.max(math.min(st.p, st.target), math.min(math.max(st.p, st.target), guess))
+		return math.floor(guess)
+	end
+
+	local function SetFromDriver(frame, st, o, now)
+		if Offset(frame) ~= o then
+			SetReal(frame, st, o)
+			st.setAt = now
+		end
+	end
+
+	-- a glide ended: the offset on the target, and the first line back in
+	-- place (at once when the target is drawn already; else the redraw puts
+	-- it back, and until then the old lines keep their place -- a glide cut
+	-- short a long way from its target just jumps there at that redraw)
+	local function Finish(frame, st, now)
+		Smooth.active[frame] = nil
+		st.p = st.target
+		SetFromDriver(frame, st, st.target, now)
+		local rel = st.p - (st.drawn or st.p)
+		if math.abs(rel) <= 1 then
+			Shift(frame, st, rel)
+		end
+	end
+
+	local function Step(frame, st, elapsed, now)
+		st.pending = nil
+		if not Wanted(st) or not frame:IsVisible() or now - (st.started or now) > MAX_TIME then
+			Finish(frame, st, now)
+			return
+		end
+		st.p = Ahead(st, st.p, elapsed)
+		st.dt = elapsed
+		if st.p == st.target then
+			Finish(frame, st, now)
+			return
+		end
+		SetFromDriver(frame, st, WantedOffset(st, elapsed), now)
+		Shift(frame, st, st.p - (st.drawn or st.p))
+	end
+
+	driver:SetScript("OnUpdate", function(self, elapsed)
+		local now = GetTime()
+		for frame, st in pairs(Smooth.active) do
+			if not pcall(Step, frame, st, elapsed, now) then
+				Smooth.active[frame] = nil
+			end
+		end
+		if next(Smooth.active) == nil then
+			self:Hide()
+		end
+	end)
+
+	-- SetScrollOffset, after the game: a message that came in while scrolled
+	-- up (the game moved the offset along with it, the view stays) moves the
+	-- glide along too; anything else is first taken as the jump it is -- a
+	-- relative step right behind it (OnRelative) turns it into a glide
+	local function OnSetOffset(frame)
+		local st = Smooth.frames[frame]
+		if not st or st.busy then
+			return
+		end
+		local o = Offset(frame)
+		if not o then
+			return
+		end
+		if o ~= st.lastKnown and st.anchor and st.lastKnown and EntryAt(frame, o + 1) == st.anchor then
+			local d = o - st.lastKnown
+			st.p, st.target, st.lastKnown = st.p + d, st.target + d, o
+			-- the lines drawn show the same messages, now `d` further back
+			st.drawn = st.drawn and st.drawn + d
+			st.pending = nil
+			return
+		end
+		st.pending = { p = st.p, target = st.target, from = st.lastKnown or o, to = o }
+		st.p, st.target, st.lastKnown = o, o, o
+		st.anchor = EntryAt(frame, o + 1)
+		if Smooth.active[frame] then
+			Smooth.active[frame] = nil
+			if st.drawn == o then
+				Shift(frame, st, 0)
+			end
+		end
+	end
+
+	-- ScrollByAmount, ScrollUp, ... after the game: the step just taken is
+	-- added to the glide's target and the offset put back where the glide is
+	local function OnRelative(frame)
+		local st = Smooth.frames[frame]
+		local pend = st and st.pending
+		if not pend or st.busy then
+			return
+		end
+		st.pending = nil
+		if not Wanted(st) or Offset(frame) ~= pend.to then
+			return
+		end
+		local max = MaxRange(frame)
+		if not max then
+			return
+		end
+		local target = math.max(0, math.min(max, pend.target + (pend.to - pend.from)))
+		local lines = frame.visibleLines
+		local limit = math.max(6, 2 * (type(lines) == "table" and #lines or 0))
+		local okS, selecting = pcall(frame.IsSelectingText, frame)
+		if math.abs(target - pend.p) > limit or not frame:IsVisible() or (okS and selecting == true) or not FirstLine(frame) then
+			-- a long way, or nothing to glide on: a jump, from where the glide was
+			st.p, st.target = target, target
+			SetReal(frame, st, target)
+			st.jumps = (st.jumps or 0) + 1
+			return
+		end
+		st.p, st.target = pend.p, target
+		st.started = GetTime()
+		-- the frame redraws before this frame is shown, whichever OnUpdate
+		-- runs first: when its own does, the offset of the glide's first step
+		SetReal(frame, st, WantedOffset(st, st.dt))
+		st.glides = (st.glides or 0) + 1
+		Smooth.active[frame] = st
+		driver:Show()
+	end
+
+	-- AddMessage, after the game: which message the bottom of the view shows
+	-- now (a new one at the bottom, or the same one when scrolled up)
+	local function OnAdded(frame)
+		local st = Smooth.frames[frame]
+		local o = st and Offset(frame)
+		if o then
+			st.anchor = EntryAt(frame, o + 1)
+			st.lastKnown = o
+			if not Smooth.active[frame] then
+				st.p, st.target = o, o
+			end
+		end
+	end
+
+	-- RefreshDisplay, after the game has drawn the lines: the glide's part of
+	-- a line put on the new first line, or the line put back once it is over
+	local function AfterDraw(frame)
+		local st = Smooth.frames[frame]
+		local o = st and Offset(frame)
+		if not o then
+			return
+		end
+		st.drawn = o
+		st.pending = nil
+		-- the first redraw after the driver set an offset: in the same frame
+		-- (the frame redraws after the driver) or a later one (before it)
+		if st.setAt then
+			st.redrawFirst = st.setAt ~= GetTime()
+			st.setAt = nil
+		end
+		if Smooth.active[frame] then
+			Shift(frame, st, st.p - o)
+		else
+			if st.shifted then
+				Shift(frame, st, 0)
+			end
+			st.p, st.target, st.lastKnown = o, o, o
+			st.anchor = EntryAt(frame, o + 1)
+		end
+	end
+
+	local function Guarded(fn)
+		return function(frame)
+			pcall(fn, frame)
+		end
+	end
+
+	-- a message frame glides from now on (`game`: one of the game's chat
+	-- windows). The hooks cannot be taken off; they only act while wanted.
+	function Smooth.Watch(frame, game)
+		if not frame or Smooth.frames[frame] then
+			return
+		end
+		for _, method in ipairs({ "SetScrollOffset", "GetScrollOffset", "GetMaxScrollRange", "RefreshDisplay" }) do
+			if type(frame[method]) ~= "function" then
+				return
+			end
+		end
+		local st = { game = game and true or false, hooks = {} }
+		Smooth.frames[frame] = st
+		local o = Offset(frame) or 0
+		st.p, st.target, st.lastKnown, st.drawn = o, o, o, o
+		st.anchor = EntryAt(frame, o + 1)
+		hooksecurefunc(frame, "SetScrollOffset", Guarded(OnSetOffset))
+		st.hooks[#st.hooks + 1] = "SetScrollOffset"
+		for _, method in ipairs(RELATIVE) do
+			if type(frame[method]) == "function" then
+				hooksecurefunc(frame, method, Guarded(OnRelative))
+				st.hooks[#st.hooks + 1] = method
+			end
+		end
+		if type(frame.AddMessage) == "function" then
+			hooksecurefunc(frame, "AddMessage", Guarded(OnAdded))
+		end
+		hooksecurefunc(frame, "RefreshDisplay", Guarded(AfterDraw))
+	end
+
+	-- every glide finished where it was going (the option or the module off)
+	function Smooth.StopAll()
+		local now = GetTime()
+		for frame, st in pairs(Smooth.active) do
+			pcall(Finish, frame, st, now)
+		end
+		wipe(Smooth.active)
+		driver:Hide()
+	end
+end
+
 -- The post-hook on every chat window but the combat log (its lines are never
 -- shortened, and it adds the most). hooksecurefunc: the game's AddMessage
 -- runs first and untainted; the hook cannot be taken off again, it only acts
@@ -1147,6 +1577,8 @@ local function HookLines()
 			-- the ink and the bands go on its lines as they are drawn
 			inkFrames[frame] = true
 			WatchShade(frame, ChatInked)
+			-- and the wheel glides on it (Smooth Scrolling)
+			Smooth.Watch(frame, true)
 		end
 	end
 	local QI = MelloUI.QuestInk
@@ -1511,6 +1943,8 @@ local function CreatePopup(key, kind, target, title)
 		end
 	end)
 	f.msgs = msgs
+	-- the wheel glides here as in the chat windows (Smooth Scrolling)
+	Smooth.Watch(msgs, false)
 
 	-- the answer: Enter sends, Escape lets go of the keyboard
 	local box = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
@@ -1832,6 +2266,7 @@ function M:OnDisable()
 	SetButtonsHidden(false)
 	ApplyClassColors(false)
 	SetWhisperPopup(false)
+	Smooth.StopAll()
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -1854,6 +2289,11 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "whisperPopup" then
 		SetWhisperPopup(value)
+	elseif key == "smoothScroll" then
+		-- off: a glide under way ends where it was going; on: the next notch glides
+		if not value then
+			Smooth.StopAll()
+		end
 	end
 end
 
@@ -1972,4 +2412,91 @@ SlashCmdList.MELLOCHATINK = function(msg)
 	-- into the copy window, selected: Ctrl+C copies it (an addon cannot
 	-- reach the system clipboard itself)
 	MelloUI:ShowLog("chatink")
+end
+
+--------------------------------------------------------------------------------
+-- /chatscroll [n | w]: how Smooth Scrolling found chat window n (1 by
+-- default) or, with "w", the open whisper windows: whether the glide is on
+-- and why not, the drawn lines' parent and whether it clips them, the first
+-- line's anchor (the one the glide lets down), a line's step, the offsets,
+-- and whether the chat's scroll offset is still the game's own (untainted).
+-- Scroll a few notches first: "glides" counts the notches that glided.
+--------------------------------------------------------------------------------
+SLASH_MELLOCHATSCROLL1 = "/chatscroll"
+SlashCmdList.MELLOCHATSCROLL = function(msg)
+	local function Name(obj, frame)
+		if obj == nil then
+			return "none"
+		elseif obj == frame then
+			return "the window"
+		elseif frame and obj == frame.FontStringContainer then
+			return "its FontStringContainer"
+		end
+		local ok, name = pcall(obj.GetName, obj)
+		return (ok and type(name) == "string" and not Secret(name)) and name or tostring(obj)
+	end
+	local function Report(label, frame)
+		local st = Smooth.frames[frame]
+		MelloUI:Print("%s: watched %s, gliding now %s, glides %d, jumps %d; hooks: %s", label, tostring(st ~= nil),
+			tostring(Smooth.active[frame] ~= nil), st and st.glides or 0, st and st.jumps or 0,
+			st and table.concat(st.hooks, ", ") or "none")
+		local lines = frame.visibleLines
+		local first = type(lines) == "table" and lines[1] or nil
+		local okN, count = pcall(frame.GetNumMessages, frame)
+		MelloUI:Print("  drawn lines %s, messages %s, history readable %s, offset %s of %s (glide at %s, to %s)",
+			type(lines) == "table" and tostring(#lines) or "none", okN and tostring(count) or "?",
+			tostring(Smooth.EntryAt(frame, 1) ~= nil), tostring(Smooth.Offset(frame)), tostring(Smooth.MaxRange(frame)),
+			st and string.format("%.2f", st.p or 0) or "-", st and tostring(st.target) or "-")
+		if not first then
+			MelloUI:Print("  no drawn line to look at")
+			return
+		end
+		local parent = first.GetParent and first:GetParent()
+		local okC, clips = false, nil
+		if parent and parent.DoesClipChildren then
+			okC, clips = pcall(parent.DoesClipChildren, parent)
+		end
+		MelloUI:Print("  lines' parent: %s, clips its children %s", Name(parent, frame), okC and tostring(clips) or "unknown")
+		local okP, point, rel, relPoint, x, y = pcall(first.GetPoint, first, 1)
+		local okNP, points = pcall(first.GetNumPoints, first)
+		MelloUI:Print("  first line: %s anchor(s), %s to %s %s (%s, %s)", okNP and tostring(points) or "?",
+			okP and tostring(point) or "?", okP and Name(rel, frame) or "?", okP and tostring(relPoint) or "?",
+			(okP and Number(x)) and string.format("%.1f", x) or "?", (okP and Number(y)) and string.format("%.1f", y) or "?")
+		local line, why = Smooth.FirstLine(frame)
+		MelloUI:Print("  glide can move it: %s; a line's step %.1f px", line and "yes" or ("no, " .. tostring(why)), Smooth.LineStep(first))
+	end
+	local anim = MelloUI.Anim
+	MelloUI:ClearLog()
+	MelloUI:Print("Smooth Scrolling: %s (option %s, Reduce Motion %s, Chat module %s)", Smooth.Wanted() and "on" or "off",
+		tostring(M.db and M.db.smoothScroll), tostring(anim and anim.reduceMotion), tostring(M.isEnabled))
+	if Smooth.tainted then
+		MelloUI:Print("  OFF on the game's chat windows: their scroll offset turned tainted (by %s) after MelloUI set it", Smooth.tainted)
+	end
+	if msg == "w" then
+		local any = false
+		for key, f in pairs(popups) do
+			if f.msgs then
+				any = true
+				Report("Whisper window " .. tostring(key), f.msgs)
+			end
+		end
+		if not any then
+			MelloUI:Print("No whisper window open (Whisper Popup Window makes them).")
+		end
+	else
+		local n = tonumber(msg) or 1
+		local frame = _G["ChatFrame" .. n]
+		if not frame then
+			MelloUI:Print("/chatscroll: no chat window %d.", n)
+			return
+		end
+		Report("ChatFrame" .. n .. (frame == _G.COMBATLOG and " (the combat log: never glides)" or ""), frame)
+		local isSecure = _G.issecurevariable
+		if isSecure then
+			local ok, secure, by = pcall(isSecure, frame, "scrollOffset")
+			MelloUI:Print("  scroll offset the game's own (untainted): %s%s", ok and tostring(secure) or "?",
+				(ok and not secure) and (" -- tainted by " .. tostring(by)) or "")
+		end
+	end
+	MelloUI:ShowLog("chatscroll")
 end

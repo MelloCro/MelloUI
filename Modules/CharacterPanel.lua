@@ -70,6 +70,74 @@ local function Secret(v)
 	return issecretvalue and issecretvalue(v)
 end
 
+-- Window Background Parchment chosen: the whole window on parchment, so the
+-- right pane's own Parchment sheet stands down (one parchment per surface).
+local function WindowParchment()
+	return (M.db and M.db.windowBackground == "parchment") and true or false
+end
+
+-- Where a frame or region lies on the screen (left, right, top, bottom in
+-- screen px), nil while it is hidden or has no usable rect yet.
+local function ScreenRect(obj)
+	if not (obj and obj.GetRect and obj.GetEffectiveScale) or (obj.IsShown and not obj:IsShown()) then
+		return nil
+	end
+	local ok, l, b, w, h = pcall(obj.GetRect, obj)
+	if not (ok and l and b and w and h) or Secret(l) or Secret(b) or Secret(w) or Secret(h) or w <= 0 or h <= 0 then
+		return nil
+	end
+	local s = obj:GetEffectiveScale()
+	return l * s, (l + w) * s, (b + h) * s, b * s
+end
+
+-- A parchment sheet's rect laid on the part of its base that nothing painted
+-- covers (user, 2026-09-24: "Character Pane parchment does not have the
+-- visible mask effect on it like the quest log has" -- the right pane's sheet
+-- lay on the pane's whole rect, and its painted edge ran under the divider,
+-- the window's rails and the title plate, where no stroke shows). `c.frame`
+-- is the rect (a child anchored inside `c.base`); c.covers() names, per side
+-- (l, r, t, b), what may lie over that side: each one that overlaps the base
+-- from that side pushes the side in to its own inner edge. Laid again when the
+-- window shows, resizes or the UI scale changes (the sheet then re-tiles and
+-- re-fits its masks on the rect's new size).
+local function LayClear(c)
+	local frame = c and c.frame
+	local bl, br, bt, bb = ScreenRect(c and c.base)
+	if not (frame and bl) then
+		return
+	end
+	local l, r, t, b = bl, br, bt, bb
+	local cx, cy = (bl + br) / 2, (bt + bb) / 2
+	local covers = c.covers() or {}
+	for _, side in ipairs({ "l", "r", "t", "b" }) do
+		for _, cover in ipairs(covers[side] or {}) do
+			local x1, x2, y1, y2 = ScreenRect(cover)   -- left, right, top, bottom
+			if x1 then
+				local across = y1 > b and y2 < t      -- overlaps the rect's height
+				local along = x2 > l and x1 < r      -- overlaps the rect's width
+				if side == "l" and across and (x1 + x2) / 2 < cx then
+					l = math.max(l, x2)
+				elseif side == "r" and across and (x1 + x2) / 2 > cx then
+					r = math.min(r, x1)
+				elseif side == "t" and along and (y1 + y2) / 2 > cy then
+					t = math.min(t, y2)
+				elseif side == "b" and along and (y1 + y2) / 2 < cy then
+					b = math.max(b, y1)
+				end
+			end
+		end
+	end
+	frame:ClearAllPoints()
+	if r - l < 8 or t - b < 8 then
+		frame:SetAllPoints(c.base)
+		return
+	end
+	-- offsets in the rect's own units
+	local s = frame:GetEffectiveScale()
+	frame:SetPoint("TOPLEFT", c.base, "TOPLEFT", (l - bl) / s, -(bt - t) / s)
+	frame:SetPoint("BOTTOMRIGHT", c.base, "BOTTOMRIGHT", -(br - r) / s, (b - bb) / s)
+end
+
 local SkinProgressBar     -- defined with the list code below; the detail panes use it in BuildSkin
 
 -- The first game texture of a frame (the picture a Blizzard frame paints).
@@ -201,8 +269,30 @@ local function BuildSkin()
 			-- that the text is inside of the parchment itself"). A region of
 			-- the stone's holder, one sublevel above the stone: it comes and
 			-- goes with the skin.
+			-- (user, 2026-09-24: "Character Pane parchment does not have the
+			-- visible mask effect on it like the quest log has"): the FINE
+			-- strokes, a few units deep, lay on the pane's whole rect, whose
+			-- edges run under the divider, the window's rails and the title
+			-- plate: nothing of them showed. The sheet now lies on the part of
+			-- the pane nothing covers (LayClear) and ends in the quest log's
+			-- own strokes; it stands down while the Window Background is
+			-- Parchment (that sheet covers the whole window, this pane with it).
 			if stone and stone.object and stone.object ~= stone.tex and Kit.ParchmentSheet then
-				Kit:ParchmentSheet(stone.object, stone.object, { rect = stone.object, margin = 2, fine = true, sublevel = 1, area = "character" })
+				local clear = CreateFrame("Frame", nil, stone.object)
+				clear:EnableMouse(false)
+				clear:SetAllPoints(stone.object)
+				skin.paneClear = { frame = clear, base = stone.object, covers = function()
+					-- (`or false`: a nil would end the list early)
+					local rails = skin.window and skin.window.skin or {}
+					return {
+						l = { skin.divider and skin.divider.tex or false },
+						r = { rails.r or false },
+						t = { rails.t or false, skin.title and skin.title.object or false },
+						b = { rails.b or false },
+					}
+				end }
+				Kit:ParchmentSheet(stone.object, clear, { rect = clear, margin = 1, sublevel = 1, area = "character",
+					alive = function() return not WindowParchment() end })
 			end
 		end
 		if host.StoneBg then
@@ -365,11 +455,14 @@ local function BuildSkin()
 		skin.toggleIcons = Icons
 	end
 	for _, pane in pairs(sidePanes) do
-		-- the standing / rank bar of the reputation and skill detail panes
+		-- the standing / rank bar of the reputation and skill detail panes;
+		-- only those two tabs' bars take the smaller border art (user,
+		-- 2026-09-24), a bar on another tab's pane (PvP, currency) keeps it
+		local tabBar = pane == sidePanes[1] or pane == sidePanes[2]
 		if pane.StandingBar then
-			SkinProgressBar(pane.StandingBar, "rep")
+			SkinProgressBar(pane.StandingBar, tabBar and "rep" or "pane")
 		else
-			SkinProgressBar(pane.RankBar, "skill")
+			SkinProgressBar(pane.RankBar, tabBar and "skill" or "pane")
 		end
 		SkinCheckboxes(pane)
 		if pane.Divider then
@@ -697,6 +790,9 @@ end
 -- the fill and its mask are moved INTO the bracket's opening (the opening is
 -- where the background's bar was), and put back when the skin is off.
 -- `kind`: "rep" (a reputation bar) or "skill"; both wear Progress Bar Border
+-- and draw its art smaller (TAB_BAR_ART); any other kind (a bar on another
+-- tab's detail pane) wears it at the default size
+local TAB_BAR_ART = 0.85
 function SkinProgressBar(bar, kind)
 	if not bar or bar.melloRep ~= nil then
 		return
@@ -711,7 +807,15 @@ function SkinProgressBar(bar, kind)
 	-- the reputation and skill bars share one Progress Bar Border (user,
 	-- 2026-09-23: "Skills should reflect the Reputation Bar Changes as one");
 	-- the setting keeps its first key
-	local rep = bg and Replace(bg, { as = "common-stat-bar-BG", rect = bar })
+	-- `artScale`: the Reputation and Skills tabs' bars (rows and detail
+	-- panes) draw the border art 15 % smaller than the fit gives, in every
+	-- Progress Bar Border look (user, 2026-09-24: "the Reputation and Skill
+	-- tab Progress bars Need to have their border textures scaled down by
+	-- 15%"), on top of the rule's heightScale 0.85 (2026-09-21), which every
+	-- look already honoured; per bar, so no other window's bars change. The
+	-- fill follows through rep:GetOpening (FitFill, the hooks below)
+	local artScale = (kind == "rep" or kind == "skill") and TAB_BAR_ART or nil
+	local rep = bg and Replace(bg, { as = "common-stat-bar-BG", rect = bar, artScale = artScale })
 	bar.melloRep = rep or false
 	if not rep then
 		return
@@ -893,6 +997,158 @@ local function HookList(scrollBox, rowSkin)
 	end
 end
 
+-- The equipment manager's icons (user, 2026-09-24: "Equipment Manager Border
+-- Slot Needs a Change"): every square icon there -- a set card's icon, the
+-- set-icon picker's grid and its current icon, the flyout's item and
+-- ignore-slot buttons -- wears every window's Button Border, as the
+-- equipment slots, the professions' and the configurator's icons do. The
+-- game's frame round the icon is faded; the rim hugs the icon (its edge
+-- 2 px under the rim's inner edge, on the icon's centre) and the icon stays
+-- where the game puts it, so the game's own layout of its pooled, re-used
+-- buttons is never fought. The rim lights with the button's hover and press
+-- and turns gold (its checked look) while the game shows the icon selected.
+-- A holder { melloRep = the rim, icon } stands for the icon in the Kit's
+-- rim registry, since a set card's own melloRep is its plate.
+local iconRims = {}
+local function FitIconRim(holder)
+	local rim = holder.melloRep and holder.melloRep.object
+	local icon = holder.icon
+	if not (rim and rim.base and icon) then
+		return
+	end
+	local name = rim.base .. "_normal"
+	local p = Kit:Piece(name)
+	local l, r, t, b = Kit:Insets(name, 1)
+	local ok, iw, ih = pcall(icon.GetSize, icon)
+	if not (p and l and ok and iw and ih) or Secret(iw) or Secret(ih) or iw <= 0 or ih <= 0 then
+		return
+	end
+	rim:ClearAllPoints()
+	rim:SetPoint("CENTER", icon, "CENTER")
+	rim:SetSize((iw - 4) * p.w / (p.w - l - r), (ih - 4) * p.h / (p.h - t - b))
+end
+
+-- a new Button Border has a new opening: every icon's rim fitted again
+Kit:OnBorderChanged("button", function()
+	for _, holder in ipairs(iconRims) do
+		FitIconRim(holder)
+	end
+end)
+
+-- The rim on `button` in place of `art` (the game's frame round `icon`);
+-- `checked`: function() -> true while the icon is the selected one;
+-- `extra`: the game's own hover / selection glows, which the rim replaces.
+local function SkinIconRim(button, art, icon, checked, extra)
+	local rep = Replace(art, { as = Kit:ButtonRimRule(), button = button, parent = button, checked = checked, alsoFade = extra })
+	if not rep then
+		return nil
+	end
+	local holder = { melloRep = rep, icon = icon }
+	iconRims[#iconRims + 1] = holder
+	Kit:RegisterButtonRim(holder)
+	FitIconRim(holder)
+	return holder
+end
+
+-- The texture the game shows / hides for the selection (a card's
+-- SelectedBar, a picker icon's SelectedTexture): the rim re-read with it,
+-- so the gold follows the game's own selection as soon as it changes.
+local function FollowSelection(holder, tex)
+	local function Update()
+		local rim = holder.melloRep.object
+		if active and rim and rim.Update then
+			rim:Update()
+		end
+	end
+	hooksecurefunc(tex, "Show", Update)
+	hooksecurefunc(tex, "Hide", Update)
+	hooksecurefunc(tex, "SetShown", Update)
+end
+
+-- An icon of the set-icon picker (GearManagerPopupFrame, an icon selector
+-- popup): a grid button (SelectorButtonTemplate, pooled by its scroll box)
+-- or the current icon beside the name box. Its frame is the unnamed
+-- BACKGROUND square (UI-EmptySlot-Disabled) behind the Icon; the hover
+-- square and, on a grid button, the selection glow (SelectedTexture) give
+-- way to the rim's hover and checked looks.
+local function SkinPickerIcon(button, selectable)
+	if not button or button.melloRep ~= nil then
+		return
+	end
+	button.melloRep = false
+	local icon = button.Icon
+	local back
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region ~= icon and region:GetObjectType() == "Texture" and not region.kitPiece and region:GetDrawLayer() == "BACKGROUND" then
+			back = region
+			break
+		end
+	end
+	if not (icon and back) then
+		return
+	end
+	local extra = {}
+	local glow = button.Highlight or (button.GetHighlightTexture and button:GetHighlightTexture())
+	if glow then
+		extra[#extra + 1] = glow
+	end
+	local sel = selectable and button.SelectedTexture or nil
+	local checked
+	if sel then
+		extra[#extra + 1] = sel
+		checked = function() return sel:IsShown() end
+	end
+	local holder = SkinIconRim(button, back, icon, checked, extra)
+	button.melloRep = holder and holder.melloRep or false
+	if holder and sel then
+		FollowSelection(holder, sel)
+	end
+end
+
+-- The picker's current icon now, its grid's buttons as the scroll box
+-- acquires them (the grid is laid out on the popup's first show: before
+-- that the scroll box has no view to walk).
+local function SkinIconPopup()
+	local popup = _G.GearManagerPopupFrame
+	if not popup or popup.melloKitHooked then
+		return
+	end
+	popup.melloKitHooked = true
+	local area = popup.BorderBox and popup.BorderBox.SelectedIconArea
+	SkinPickerIcon(area and area.SelectedIconButton, false)
+	local box = popup.IconSelector and popup.IconSelector.ScrollBox
+	if box and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback then
+		ScrollUtil.AddAcquiredFrameCallback(box, function(_, frame)
+			if active then
+				SkinPickerIcon(frame, true)
+			end
+		end, M, false)
+		if box.HasView and box:HasView() and box.ForEachFrame then
+			box:ForEachFrame(function(frame)
+				SkinPickerIcon(frame, true)
+			end)
+		end
+	end
+end
+
+-- The equipment flyout's buttons (EquipmentFlyoutFrame.buttons: the items
+-- that fit a slot, and while a set is edited the ignore / un-ignore /
+-- place-in-bags buttons): item buttons like the equipment slots, so the
+-- same rim on the button with the icon fitted into it. The game makes them
+-- as the flyout first needs them; each is skinned once, after the game's
+-- EquipmentFlyout_UpdateItems has laid them out.
+local function SkinFlyoutButtons()
+	local flyout = _G.EquipmentFlyoutFrame
+	if not (active and flyout and flyout.buttons) then
+		return
+	end
+	for _, button in ipairs(flyout.buttons) do
+		if button.melloRep == nil then
+			Kit:SkinActionButton(button, Replace, nil, { as = Kit:ButtonRimRule(), qualityBorder = button.IconBorder })
+		end
+	end
+end
+
 -- The equipment manager (PaperDollFrame.EquipmentManagerPane, shown on demand):
 -- its inset frame, the outfit cards (a plate; hover and selected bars the
 -- game shows / hides), Equip / Save (the 128-RedButton three-slice, as the
@@ -930,6 +1186,24 @@ local function SkinOutfitCard(card)
 			end
 		end
 	end
+	-- the set's icon: the Button Border in place of the game's icon frame
+	-- (UI-Character-Info-OutfitIcon-Frame), gold while the set is the
+	-- selected one (the SelectedBar the game shows / hides on re-use)
+	if card.icon then
+		local art
+		for _, region in ipairs({ card:GetRegions() }) do
+			if region:GetObjectType() == "Texture" and not region.kitPiece and Kit:ArtKey(region) == "UI-Character-Info-OutfitIcon-Frame" then
+				art = region
+				break
+			end
+		end
+		local sel = card.SelectedBar
+		local holder = art and SkinIconRim(card, art, card.icon, sel and function() return sel:IsShown() end or nil)
+		if holder and sel then
+			FollowSelection(holder, sel)
+		end
+		card.melloIconRim = holder or nil
+	end
 end
 
 local function SkinEquipmentManager()
@@ -941,6 +1215,13 @@ local function SkinEquipmentManager()
 	if pane.Border then
 		Replace(pane.Border, { as = "common-insideframe" })
 	end
+	-- the set-icon picker and the equipment flyout: their icons in the
+	-- Button Border, like the set cards' (SkinIconRim above)
+	SkinIconPopup()
+	if _G.EquipmentFlyout_UpdateItems then
+		hooksecurefunc("EquipmentFlyout_UpdateItems", SkinFlyoutButtons)
+	end
+	SkinFlyoutButtons()
 	for _, button in ipairs({ pane.EquipSet, pane.SaveSet }) do
 		if button and button.Center then
 			local extra = { button.Left, button.Right }
@@ -1138,6 +1419,19 @@ local function Hook()
 		M:FitPortrait()
 		M:RefreshTabs()
 		M:RefreshStats()
+		M:LayParchment()
+	end)
+	-- the parchment sheets' rects follow the window's size and the UI scale
+	-- (the rails and the divider keep their size in UI units; what they
+	-- cover is measured again)
+	CharacterFrame:HookScript("OnSizeChanged", function()
+		M:LayParchment()
+	end)
+	local scaleWatch = CreateFrame("Frame")
+	scaleWatch:RegisterEvent("UI_SCALE_CHANGED")
+	scaleWatch:RegisterEvent("DISPLAY_SIZE_CHANGED")
+	scaleWatch:SetScript("OnEvent", function()
+		M:LayParchment()
 	end)
 end
 
@@ -1153,15 +1447,91 @@ function M:OnDisable()
 	Deactivate()
 end
 
+-- The parchment sheets' rects laid again on what the rails, the divider and
+-- the title plate leave free: now, and once more a frame later (a window
+-- just shown lays itself out after its OnShow).
+function M:LayParchment()
+	if not (skin and CharacterFrame and CharacterFrame:IsVisible()) then
+		return
+	end
+	LayClear(skin.paneClear)
+	LayClear(skin.windowClear)
+	if C_Timer and not skin.layPending then
+		skin.layPending = true
+		C_Timer.After(0, function()
+			skin.layPending = nil
+			if CharacterFrame:IsVisible() then
+				LayClear(skin.paneClear)
+				LayClear(skin.windowClear)
+			end
+		end)
+	end
+end
+
+-- Window Background Parchment as a parchment SHEET on the window's stone,
+-- inside its rails, ending in the quest log's painted strokes on every side
+-- (user, 2026-09-24: the character window's parchment without the quest
+-- log's edge). The body under the rails stays the window's stone, so the
+-- gaps between the strokes show stone, as the quest log's do, and never a
+-- straight edge; the sheet shows the Parchment tile at its own tone and the
+-- UI's one background resolution (Kit:ParchmentSheet re-tiles it and re-fits
+-- its masks whenever its rect changes size). A region of the window's frame
+-- skin, one sublevel above the body: only the parchment is masked, never the
+-- model, the slots or the text. Made the first time it is needed.
+local function WindowSheet()
+	if skin.windowSheet ~= nil then
+		return skin.windowSheet
+	end
+	skin.windowSheet = false
+	local ws = skin.window and skin.window.skin
+	if not (ws and ws.CreateTexture and Kit.ParchmentSheet) then
+		return false
+	end
+	local clear = CreateFrame("Frame", nil, ws)
+	clear:EnableMouse(false)
+	clear:SetAllPoints(ws)
+	local sheet = Kit:ParchmentSheet(ws, clear, { rect = clear, margin = 2, sublevel = 1,
+		piece = LOOKS.backgroundPiece.parchment, tint = { 1, 1, 1 } })
+	if not sheet then
+		return false
+	end
+	-- the window skin reaches out past the window (the rails' outset): its
+	-- rails bound the sheet, the title plate standing on the top rail too.
+	-- The portrait ring is left over the sheet's top-left corner, as it
+	-- sits over the rails' corner: cutting the whole top or left side back
+	-- to clear it would leave a wide band of bare stone.
+	skin.windowClear = { frame = clear, base = ws, covers = function()
+		return {
+			l = { ws.l or false },
+			r = { ws.r or false },
+			t = { ws.t or false, skin.title and skin.title.object or false },
+			b = { ws.b or false },
+		}
+	end }
+	skin.windowSheet = sheet
+	return sheet
+end
+
 -- Window Background on the window's stone body (the frame skin's `body`,
--- under both panes: one surface)
+-- under both panes: one surface); Parchment as a sheet on that stone
+-- (WindowSheet)
 ApplyWindowBackground = function()
 	local body = skin and skin.window and skin.window.skin and skin.window.skin.body
 	if not body then
 		return
 	end
 	local value = M.db and M.db.windowBackground or "window"
-	local piece = value == "window" and "window/frame_body" or LOOKS.backgroundPiece[value]
+	local sheet = WindowSheet()
+	if sheet then
+		sheet:SetShown(value == "parchment")
+	end
+	local piece = (value == "window" or (value == "parchment" and sheet)) and "window/frame_body" or LOOKS.backgroundPiece[value]
+	-- the right pane's own Parchment sheet stands down under a parchment
+	-- window and comes back with any other background
+	if Kit.SetParchment then
+		Kit:SetParchment("character", Kit:ParchmentOn("character"))
+	end
+	M:LayParchment()
 	if piece then
 		if body.kitName ~= piece then
 			body:SetVertexColor(1, 1, 1, 1)

@@ -1965,7 +1965,40 @@ local function CreateWindow()
 		self:GlideTo(base - delta * WHEEL_STEP)
 	end)
 
-	window:SetScript("OnShow", function()
+	-- The window kept inside the screen (user, 2026-09-24: "UI Scaling Break
+	-- the UI"): it is 1000 x 760 UI units, and the screen is 768 / UI Scale
+	-- units tall, so from a UI Scale of about 1 up (or in a small game
+	-- window) its top and bottom ran off the screen, the tabs and the close
+	-- button out of reach. Scaled down to fit, never up; again whenever the
+	-- UI scale changes. A scale given with the window mover's wheel stands
+	-- (it is the user's), and the backgrounds keep the UI's one resolution.
+	window.FitToScreen = function(self)
+		local um = MelloUI:GetModuleDB("UIModifications")
+		local pos = um and um.positions and um.positions.MelloUIConfigFrame
+		if pos and pos.scale then
+			return
+		end
+		local ok, sw, sh = pcall(UIParent.GetSize, UIParent)
+		if not (ok and type(sw) == "number" and type(sh) == "number") or sw <= 0 or sh <= 0 then
+			return
+		end
+		local fit = math.min(1, (sw - 16) / WINDOW_WIDTH, (sh - 16) / WINDOW_HEIGHT)
+		if math.abs((self:GetScale() or 1) - fit) > 0.001 then
+			self:SetScale(fit)
+			if MelloUI.Kit and MelloUI.Kit.RetileBackgrounds then
+				MelloUI.Kit:RetileBackgrounds()
+			end
+		end
+	end
+	if MelloUI.Kit and MelloUI.Kit.OnUIScaleChanged then
+		MelloUI.Kit:OnUIScaleChanged(function(reason)
+			if reason == "uiscale" and window:IsShown() then
+				window:FitToScreen()
+			end
+		end)
+	end
+	window:SetScript("OnShow", function(self)
+		self:FitToScreen()
 		PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
 		MelloUI:RefreshConfig()
 	end)

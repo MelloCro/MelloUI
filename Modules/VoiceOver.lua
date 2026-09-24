@@ -1267,6 +1267,61 @@ local function SetAtlasTexture(texture, left, right, top, bottom)
 	texture:SetTexCoord(left / ATLAS, right / ATLAS, top / ATLAS, bottom / ATLAS)
 end
 
+--------------------------------------------------------------------------------
+-- The painted kit's dress (user, 2026-09-24: "VoiceOver Overlay Reskin with
+-- all 3 Presets"). While the reskin is on (UI Modifications, Painted kit
+-- reskin: the whole interface, as the configurator and Dynamic UI
+-- Modification read it -- the overlay is no window or HUD area of its own),
+-- the one picture gives way to the kit's pieces, like every other small kit
+-- window (the whisper popup, the Dynamic UI panels): the single rail with
+-- its stone, the portrait ring round the speaker's model, a parchment sheet
+-- with the painted edge on the stone for the lines, the speaker's name on a
+-- title plate riding the top rail, and the kit's close / arrow glyphs for
+-- stop / skip. Every piece goes through Kit:Apply, so Kit:SetKitColours
+-- re-points it when the player picks Warm iron, Bronze or Original: the
+-- three looks switch live, with nothing baked. With the reskin off the
+-- picture is shown exactly as before, laid out as before.
+--------------------------------------------------------------------------------
+
+local KIT_LAYOUT = {
+	ring = 190,                   -- the portrait ring's height: the window's 200 less a little, so it stands on the rails like a medallion
+	ringX = 100,                  -- the ring's centre, right of the window's left edge (its left rim over the left rail)
+	fill = 0.97,                  -- the model's square in the ring's opening: its corners stay under the ring's body
+	paper = { 196, 20, 14, 14 },  -- the parchment's rect: left, top, right, bottom in from the window's edges (the top clear of the plate)
+	plateBox = 26,                -- the name plate's painted box, UI px tall: a window title plate's height
+	plateL = 190, plateR = 8,     -- the plate's ends, in from the window's left and right edges (over the parchment, clear of the ring)
+	stop = { 23, 21 },            -- the stop / skip glyph's box (the close piece is 64 x 58)
+	stopW = 26,                   -- the room the stop button takes from the lines, beside the padlock's
+}
+
+-- The text's colours. On the painted picture, the warm browns it always had;
+-- in the kit, the parchment inks every other parchment in the UI uses
+-- (MelloUI.QuestInk: the body ink for the line being read and the subtitle,
+-- the faded ink for the queue, the skip red and the quest gold darkened to
+-- the ink's contrast), since the line is dark ink on parchment either way.
+local INKS = {
+	art = {
+		hover = { 0.62, 0.10, 0.04 }, quest = { 0.55, 0.36, 0.03 }, current = { 0.22, 0.13, 0.05 },
+		queued = { 0.45, 0.36, 0.26 }, subtitle = { 0.24, 0.14, 0.05 },
+	},
+}
+
+-- The kit when the reskin is on and the kit has what the dress needs, else nil.
+local function ReskinKit()
+	local Kit = MelloUI.Kit
+	if not (Kit and Kit.NineSlice and Kit.Strip and Kit.Texture and Kit.Piece and Kit.ParchmentSheet and Kit.StateTexture) then
+		return nil
+	end
+	if not (MelloUI.db and MelloUI:IsModuleEnabled("UIModifications")) then
+		return nil
+	end
+	local db = MelloUI:GetModuleDB("UIModifications")
+	if db and db.reskin ~= false then
+		return Kit
+	end
+	return nil
+end
+
 function Overlay:SavePosition()
 	local frame = self.frame
 	local point, _, relativePoint, x, y = frame:GetPoint(1)
@@ -1563,7 +1618,10 @@ function Overlay:CreateLine(index)
 		self:Show()
 		local info = KINDS[entry.kind] or KINDS.gossip
 		local isCurrent = entry == current
-		local anchor = self.index == 1 and container.name or container.lines[self.index - 1]
+		local ink = Overlay:Ink()
+		-- under the name on the picture; under the top of the parchment in the
+		-- kit, where the name is on the plate (Overlay:Dress)
+		local anchor = self.index == 1 and (container.head or container.name) or container.lines[self.index - 1]
 		self:ClearAllPoints()
 		if isCurrent then
 			self:SetAlpha(1)
@@ -1581,19 +1639,19 @@ function Overlay:CreateLine(index)
 		self.text:SetPoint("RIGHT")
 		if self.hovered then
 			self:SetAlpha(1)
-			self.text:SetTextColor(0.62, 0.10, 0.04)
+			self.text:SetTextColor(unpack(ink.hover))
 			self.icon:SetTexture(TexturePath("SoundQueueBulletDelete"))
 			self.icon:SetSize(14, 14)
 		elseif isCurrent then
 			if info.quest then
-				self.text:SetTextColor(0.55, 0.36, 0.03)
+				self.text:SetTextColor(unpack(ink.quest))
 			else
-				self.text:SetTextColor(0.22, 0.13, 0.05)
+				self.text:SetTextColor(unpack(ink.current))
 			end
 			self.icon:SetTexture(TexturePath(info.bullet))
 			self.icon:SetSize(14, 14)
 		else
-			self.text:SetTextColor(0.45, 0.36, 0.26)
+			self.text:SetTextColor(unpack(ink.queued))
 			self.icon:SetTexture(TexturePath("SoundQueueBulletQueue"))
 			self.icon:SetSize(22, 22)
 		end
@@ -1631,6 +1689,8 @@ function Overlay:Create()
 	frame.background:SetAllPoints()
 	frame.background:SetTexture(TexturePath("ScrollFrame"))
 	frame.background:SetTexCoord(0, 1, 0, TEX_BOTTOM)
+	-- the picture's parts, hidden while the kit dresses the window
+	frame.artParts = { frame.background }
 
 	-- The parchment as a sheet with painted edges (user, 2026-09-23: painted
 	-- edges in more places, the voice-over window among them). The picture's
@@ -1661,6 +1721,8 @@ function Overlay:Create()
 		local edge = Kit:PaintedEdge(sheet, sheet, false, true)
 		if edge then
 			edge:Fit(right - left, bottom - top)
+			frame.artParts[#frame.artParts + 1] = backing
+			frame.artParts[#frame.artParts + 1] = sheet
 		else
 			backing:Hide()
 			sheet:Hide()
@@ -1678,6 +1740,9 @@ function Overlay:Create()
 	container.name:SetPoint("TOPLEFT")
 	container.name:SetWordWrap(false)
 	container.name:SetTextColor(0.30, 0.17, 0.05)
+	-- what the first line hangs from: the name here, the parchment's top in
+	-- the kit (Overlay:Dress)
+	container.head = container.name
 
 	-- Stop / skip button next to the name.
 	local stop = CreateFrame("Button", nil, container)
@@ -1699,10 +1764,30 @@ function Overlay:Create()
 		end
 	end)
 	function stop:Refresh()
-		local texture = TexturePath(#queue > 0 and "StopGossipMore" or "StopGossip")
+		local dress = Overlay.kitOn and Overlay.dress
+		local more = #queue > 0
+		if dress then
+			-- the kit's glyphs: its close cross to stop, its arrow to skip on
+			-- to the next line; the picture's own textures kept but unseen
+			for _, get in ipairs({ self.GetNormalTexture, self.GetPushedTexture, self.GetHighlightTexture }) do
+				local tex = get(self)
+				if tex then
+					tex:SetAlpha(0)
+				end
+			end
+			dress.skip:SetShown(more)
+			dress.stopX:SetShown(not more)
+			return
+		end
+		if Overlay.dress then
+			Overlay.dress.skip:Hide()
+			Overlay.dress.stopX:Hide()
+		end
+		local texture = TexturePath(more and "StopGossipMore" or "StopGossip")
 		self:SetNormalTexture(texture)
 		self:SetPushedTexture(texture)
 		self:SetHighlightTexture(texture, "ADD")
+		self:GetNormalTexture():SetAlpha(1)
 		self:GetPushedTexture():SetAlpha(0.5)
 		self:GetHighlightTexture():SetAlpha(0.5)
 	end
@@ -1775,20 +1860,242 @@ function Overlay:Create()
 	self:Apply()
 end
 
+-- The text colours for the current dress (INKS above)
+function Overlay:Ink()
+	if not self.kitOn then
+		return INKS.art
+	end
+	if not INKS.kit then
+		local QI = MelloUI.QuestInk
+		local art = INKS.art
+		if QI and QI.INK and QI.InkOf then
+			INKS.kit = {
+				hover = { QI.InkOf(unpack(art.hover)) }, quest = { QI.InkOf(unpack(art.quest)) },
+				current = QI.INK.text, queued = QI.INK.faded, subtitle = QI.INK.text,
+			}
+		else
+			INKS.kit = art
+		end
+	end
+	return INKS.kit
+end
+
+-- Build the kit's pieces once into `dress`, hidden (Overlay:Dress shows
+-- them). Returns the dress, or nil when a piece it needs is missing.
+function Overlay:BuildDress(Kit, dress)
+	local frame, L = self.frame, KIT_LAYOUT
+	local ringPiece = Kit:Piece("window/portrait_ring")
+	if not (ringPiece and ringPiece.open and ringPiece.h and ringPiece.h > 0) then
+		return nil
+	end
+
+	-- the single rail and its stone over the whole window, as the whisper
+	-- popup and the Dynamic UI panels (no corner gems: on a window this
+	-- small they bunch up)
+	local skin = Kit:NineSlice(frame, { prefix = Kit.framePrefix, gems = false, scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
+	dress.skin = skin
+	dress.parts[#dress.parts + 1] = skin
+
+	-- the parchment the lines are read from, on the stone right of the ring,
+	-- ending in the painted edge (Kit:ParchmentSheet: the vellum tile at the
+	-- UI's one background density, in the kit's parchment tone, never
+	-- stretched). Always there, as the picture's scroll always was: the
+	-- overlay's text is written for parchment. A region of the skin, so it
+	-- comes and goes with it.
+	local paper = CreateFrame("Frame", nil, frame)
+	paper:EnableMouse(false)
+	paper:SetPoint("TOPLEFT", frame, "TOPLEFT", L.paper[1], -L.paper[2])
+	paper:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -L.paper[3], L.paper[4])
+	dress.paper = paper
+	dress.sheet, dress.edge = Kit:ParchmentSheet(skin, paper, { rect = paper, margin = 0, tight = true })
+
+	-- the portrait ring on the left, a dark disc in its opening under the
+	-- model (the palette's inner panel, round: the ring's body covers its
+	-- rim), the ring itself above the model and the pause button
+	local rscale = L.ring / ringPiece.h
+	local open = ringPiece.open
+	dress.portraitSize = (open[3] - open[1]) * rscale * L.fill
+	local disc = skin:CreateTexture(nil, "BACKGROUND", nil, 4)
+	local diameter = 2 * (ringPiece.radius or (ringPiece.w / 2)) * rscale
+	disc:SetSize(diameter, diameter)
+	disc:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
+	local inner = MelloUI.Palette.innerPanel
+	disc:SetColorTexture(inner[1], inner[2], inner[3], 1)
+	if skin.CreateMaskTexture and disc.AddMaskTexture then
+		local mask = skin:CreateMaskTexture()
+		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(disc)
+		disc:AddMaskTexture(mask)
+	end
+	-- with the 3D Portrait off, the book stands in the ring (the picture
+	-- shows its own emblem in the square)
+	local emblem = skin:CreateTexture(nil, "ARTWORK")
+	emblem:SetSize(dress.portraitSize * 0.8, dress.portraitSize * 0.8)
+	emblem:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
+	emblem:SetTexture(TexturePath("Book"))
+	emblem:SetTexCoord(8 / 256, 248 / 256, 8 / 256, 248 / 256)
+	dress.emblem = emblem
+	local holder = CreateFrame("Frame", nil, frame)
+	holder:EnableMouse(false)
+	holder:SetAllPoints(frame)
+	holder:SetFrameLevel(frame.portrait.border:GetFrameLevel() + 1)
+	local ring = Kit:Texture(holder, "window/portrait_ring", "ARTWORK", 0, rscale)
+	ring:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
+	dress.ring = ring
+	dress.parts[#dress.parts + 1] = holder
+
+	-- the speaker's name on a title plate riding the top rail over the
+	-- parchment, in the kit's title face, as every kit window's title (the
+	-- plate is the windows' TitleBar piece, the red plate with rune caps);
+	-- on the plate it keeps the font's own colour (the ink rule: text on a
+	-- plate is not inked)
+	local plate = Kit:Strip(frame, "tabs/top", { state = "open" })
+	local yoff = plate:FitBox(L.plateBox) or 0
+	local railMid = Kit.RailInset and Kit:RailInset(Kit.framePrefix .. "_t", "t") or 0
+	plate:ClearAllPoints()
+	plate:SetPoint("LEFT", frame, "TOPLEFT", L.plateL, -railMid + yoff)
+	plate:SetPoint("RIGHT", frame, "TOPRIGHT", -L.plateR, -railMid + yoff)
+	plate:SetHeight(plate.height)
+	plate:FitCaps(FRAME_W - L.plateL - L.plateR)
+	local name = plate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	-- centred on the plate's painted box (lower in its canvas than the
+	-- middle), clear of the caps' gems
+	name:SetPoint("LEFT", plate, "LEFT", (plate.wl or 0) * 0.6, -yoff)
+	name:SetPoint("RIGHT", plate, "RIGHT", -(plate.wr or 0) * 0.6, -yoff)
+	name:SetJustifyH("CENTER")
+	name:SetWordWrap(false)
+	if Kit.TitleFont then
+		pcall(Kit.TitleFont, Kit, name, true)
+	end
+	dress.plate, dress.plateName = plate, name
+	dress.parts[#dress.parts + 1] = plate
+
+	-- where the first line hangs from in the kit: the container's top
+	local head = CreateFrame("Frame", nil, frame.container)
+	head:SetPoint("TOPLEFT")
+	head:SetSize(1, 1)
+	dress.head = head
+
+	-- stop and skip in the kit's glyphs, following the button's hover and
+	-- press (Kit:StateTexture); shown by stop:Refresh
+	local stop = frame.container.stop
+	dress.stopX = Kit:StateTexture(stop, "window/close")
+	dress.skip = Kit:StateTexture(stop, "buttons/arrow_right")
+	dress.stopX:Hide()
+	dress.skip:Hide()
+
+	for _, part in ipairs(dress.parts) do
+		part:Hide()
+	end
+	return dress
+end
+
+-- The parchment and the stone laid again at the UI's one background density
+-- (a new overlay scale, the dress just shown)
+function Overlay:RetileDress()
+	local dress = self.kitOn and self.dress
+	if not dress then
+		return
+	end
+	local Kit = MelloUI.Kit
+	if Kit.RetileBackgrounds then
+		Kit:RetileBackgrounds()
+	end
+	if dress.edge then
+		local ok, w, h = pcall(dress.paper.GetSize, dress.paper)
+		if ok and w and h and not IsSecret(w) and not IsSecret(h) and w > 0 and h > 0 then
+			dress.edge:Fit(w, h)
+		end
+	end
+end
+
+-- Dress the window for the reskin's state: the kit's pieces while it is on,
+-- the picture while it is off. Returns true when the dress changed.
+function Overlay:Dress()
+	local frame = self.frame
+	if not frame then
+		return false
+	end
+	local Kit = ReskinKit()
+	if Kit and self.dress == nil then
+		local building = { parts = {} }
+		local ok, dress = pcall(self.BuildDress, self, Kit, building)
+		-- false: tried and failed, the picture stays (and whatever was made
+		-- before the failure is put away)
+		self.dress = (ok and dress) or false
+		if not self.dress then
+			for _, part in ipairs(building.parts) do
+				part:Hide()
+			end
+		end
+	end
+	local on = (Kit and self.dress) and true or false
+	if on == (self.kitOn or false) then
+		return false
+	end
+	self.kitOn = on
+	local dress = self.dress
+	for _, part in ipairs(frame.artParts or {}) do
+		part:SetShown(not on)
+	end
+	if dress then
+		for _, part in ipairs(dress.parts) do
+			part:SetShown(on)
+		end
+	end
+	local portrait, container = frame.portrait, frame.container
+	local stop = container.stop
+	portrait:ClearAllPoints()
+	container:ClearAllPoints()
+	stop:ClearAllPoints()
+	if on then
+		-- the model in the ring's opening; the lines from the parchment's
+		-- top, a little lower for the plate; stop beside the padlock
+		portrait:SetPoint("CENTER", frame, "LEFT", KIT_LAYOUT.ringX, 0)
+		portrait:SetSize(dress.portraitSize, dress.portraitSize)
+		container:SetPoint("LEFT", frame, "LEFT", PARCHMENT_LEFT, -4)
+		container.head = dress.head
+		container.name:Hide()
+		stop:SetPoint("RIGHT", frame.lock, "LEFT", -2, 0)
+		stop:SetSize(KIT_LAYOUT.stop[1], KIT_LAYOUT.stop[2])
+	else
+		-- as Create lays it out for the picture
+		portrait:SetPoint("TOPLEFT", PORTRAIT_X, -PORTRAIT_Y)
+		portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE)
+		container:SetPoint("LEFT", frame, "LEFT", PARCHMENT_LEFT, -1)
+		container.head = container.name
+		container.name:Show()
+		stop:SetPoint("BOTTOMLEFT", container.name, "RIGHT", -6, 0)
+		stop:SetSize(32, 32)
+	end
+	container.subtitle:SetTextColor(unpack(self:Ink().subtitle))
+	stop:Refresh()
+	self:RetileDress()
+	return true
+end
+
 -- Apply the overlay settings (portrait, lock, scale, position).
 function Overlay:Apply()
 	local frame = self.frame
 	if not frame then
 		return
 	end
+	self:Dress()
 	if frame.lock then
 		frame.lock:Refresh()
 	end
-	-- without the model the art's own emblem shows in the square
+	-- without the model the art's own emblem shows in the square (the book
+	-- in the ring in the kit)
 	frame.portrait:SetShown(M.db.overlayPortrait and true or false)
+	if self.dress then
+		self.dress.emblem:SetShown(not M.db.overlayPortrait)
+	end
 	frame.portraitLine:Hide()
 	frame.miniPause:Hide()
 	frame:SetScale(tonumber(M.db.overlayScale) or 1)
+	-- a new scale: the stone and the parchment repeat at the same density
+	-- on the screen, never a bigger copy
+	self:RetileDress()
 	self:RestorePosition()
 	self:Update()
 end
@@ -1907,6 +2214,9 @@ function Overlay:Update()
 	container:SetHeight(frame:GetHeight())
 	local head = current or queue[1]
 	container.name:SetText(head and (head.name or "Unknown") or "")
+	if self.dress then
+		self.dress.plateName:SetText(head and (head.name or "Unknown") or "")
+	end
 	container.stop:Refresh()
 
 	-- Lines: the current one first, then the queue.
@@ -1929,7 +2239,8 @@ function Overlay:Update()
 		container.lines[i].entry = nil
 	end
 
-	local width = PARCHMENT_RIGHT - PARCHMENT_LEFT - 32   -- the padlock sits at the right edge
+	-- the padlock sits at the right edge (in the kit the stop button beside it)
+	local width = PARCHMENT_RIGHT - PARCHMENT_LEFT - 32 - (self.kitOn and KIT_LAYOUT.stopW or 0)
 	container:SetWidth(width)
 	container.name:SetWidth(0)
 	container.name:SetWidth(math.min(width - 26, container.name:GetStringWidth() + 1))
@@ -1938,7 +2249,7 @@ function Overlay:Update()
 	end
 
 	-- Optional subtitle with the text being read, under the lines.
-	local last = container.lines[shown] or container.name
+	local last = container.lines[shown] or container.head or container.name
 	if M.db.overlaySubtitles and current and not current.secret then
 		container.subtitle:ClearAllPoints()
 		container.subtitle:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -6)
@@ -1955,7 +2266,12 @@ function Overlay:Update()
 		if container.subtitle.shownEntry ~= current or container.subtitle.shownPage ~= current.page then
 			container.subtitle.shownEntry, container.subtitle.shownPage = current, current.page
 			container.subtitle.fade:Stop()
-			container.subtitle.fade:Play()
+			-- Reduce Motion (UI Modifications): the page is simply there
+			if MelloUI.Anim and MelloUI.Anim.reduceMotion then
+				container.subtitle:SetAlpha(1)
+			else
+				container.subtitle.fade:Play()
+			end
 		end
 		last = container.subtitle
 	else
@@ -1963,7 +2279,7 @@ function Overlay:Update()
 	end
 
 	-- Centre the content vertically.
-	local top = container.name:GetTop()
+	local top = (container.head or container.name):GetTop()
 	local bottom = last:GetBottom()
 	if top and bottom then
 		container:SetHeight(math.max(20, top - bottom))
@@ -2507,6 +2823,28 @@ local EVENTS = {
 	"PLAYER_TARGET_CHANGED",
 	"VOICE_CHAT_TTS_VOICES_UPDATE", "VOICE_CHAT_TTS_PLAYBACK_FINISHED", "VOICE_CHAT_TTS_PLAYBACK_FAILED",
 }
+
+-- The reskin switched on or off (UI Modifications' Painted kit reskin, or the
+-- module itself): the overlay changes dress at once, not at the next line.
+-- The Kit Colours need nothing here: every kit piece is re-pointed by
+-- Kit:SetKitColours.
+do
+	local function Redress()
+		if M.isEnabled and Overlay.frame and Overlay:Dress() then
+			Overlay:Update()
+		end
+	end
+	hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
+		if name == "UIModifications" and key == "reskin" then
+			Redress()
+		end
+	end)
+	hooksecurefunc(MelloUI, "SetModuleEnabled", function(_, name)
+		if name == "UIModifications" then
+			Redress()
+		end
+	end)
+end
 
 function M:OnInit(db)
 	self.db = db
