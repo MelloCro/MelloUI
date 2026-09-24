@@ -60,6 +60,7 @@ Modules\Tooltip.lua
 Modules\UnitFrames.lua
 Modules\CharacterPanel.lua
 Modules\GameMenuPanel.lua
+Modules\DialogPanel.lua
 Modules\ProfessionsPanel.lua
 Modules\SpellBookPanel.lua
 Modules\LegacyPanel.lua

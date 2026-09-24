@@ -315,7 +315,8 @@ function QI.Ink(fs, role)
 	end
 	fs:SetShadowColor(0, 0, 0, 0)
 	fs.melloInkRole = role or "title"
-	local r, g, b = QI.RoleColour(fs.melloInkRole, QI.GameColour(fs))
+	local gr, gg, gb = QI.GameColour(fs)
+	local r, g, b = QI.RoleColour(fs.melloInkRole, gr, gg, gb, QI.onSheet[fs])
 	QI.inking = true
 	fs:SetTextColor(r, g, b)
 	QI.inking = false
@@ -323,9 +324,13 @@ function QI.Ink(fs, role)
 end
 
 -- A role's ink; "auto" inks the game's own colour (QI.InkOf)
-function QI.RoleColour(role, r, g, b)
+-- `sheet`: the string lies on a kit parchment SHEET (darker than the vellum
+-- pages; a surface's def.sheet): the inks set for it (QI.InkOf's `sheet`)
+QI.onSheet = setmetatable({}, { __mode = "k" })
+
+function QI.RoleColour(role, r, g, b, sheet)
 	if role == "auto" then
-		return QI.InkOf(r, g, b)
+		return QI.InkOf(r, g, b, sheet)
 	end
 	local c = QI.INK[role] or QI.INK.title
 	return c[1], c[2], c[3]
@@ -355,7 +360,7 @@ function QI.WatchColour(fs, roleOf)
 		if self.melloInk then
 			local role = self.melloInkRoleOf and self.melloInkRoleOf(cr, cg, cb) or self.melloInkRole
 			self.melloInkRole = role
-			local r, g, b = QI.RoleColour(role, cr, cg, cb)
+			local r, g, b = QI.RoleColour(role, cr, cg, cb, QI.onSheet[self])
 			QI.inking = true
 			self:SetTextColor(r, g, b)
 			QI.inking = false
@@ -410,7 +415,7 @@ local function InkTextCodes(fs)
 	if not ok or type(text) ~= "string" or (issecretvalue and issecretvalue(text)) or not text:find("|c", 1, true) then
 		return
 	end
-	local inked = QI.InkCodes(text)
+	local inked = QI.InkCodes(text, QI.onSheet[fs])
 	if inked ~= text then
 		fs.melloPlainText = text
 		QI.texting = true
@@ -529,6 +534,9 @@ local function WalkInk(def, frame)
 			end
 		elseif not skip then
 			def.strings[fs] = true
+			if def.sheet then
+				QI.onSheet[fs] = true
+			end
 			QI.InkText(fs)
 		end
 	end)

@@ -1169,7 +1169,18 @@ end
 -- stays a jump; a message that comes in while scrolled up keeps the view
 -- still, as the game has it, the glide included.
 --------------------------------------------------------------------------------
-local Smooth = { frames = setmetatable({}, { __mode = "k" }), active = {}, tainted = nil }
+local Smooth = { frames = setmetatable({}, { __mode = "k" }), active = {}, tainted = nil, trace = {} }
+-- the last glide's events, for /chatscroll (user, 2026-09-24: the wheel did
+-- not scroll the chat; 44 glides, no error): each hook, each offset set and
+-- what the frame reported back, each redraw
+function Smooth.Trace(fmt, ...)
+	local ok, line = pcall(string.format, fmt, ...)
+	local t = Smooth.trace
+	t[#t + 1] = string.format("%.3f ", GetTime() % 1000) .. (ok and line or fmt)
+	if #t > 40 then
+		table.remove(t, 1)
+	end
+end
 do
 	local GLIDE_RATE = 14   -- as the configurator's glide: how fast the gap closes (per second, exponential)
 	local SETTLE = 0.03     -- lines from the target that count as there (under half a pixel)
@@ -1180,7 +1191,7 @@ do
 	driver:Hide()
 
 	local function Wanted(st)
-		if st and st.game and Smooth.tainted then
+		if (st and st.game and Smooth.tainted) or Smooth.broken then
 			return false
 		end
 		return M.isEnabled and M.db and M.db.smoothScroll ~= false
@@ -1321,9 +1332,11 @@ do
 	local function SetReal(frame, st, o)
 		if Offset(frame) ~= o then
 			local before = IsSecureOffset(frame, st)
+			local was = Offset(frame)
 			st.busy = true
-			pcall(frame.SetScrollOffset, frame, o)
+			local okSet, errSet = pcall(frame.SetScrollOffset, frame, o)
 			st.busy = false
+			Smooth.Trace("set %s -> %s: now %s%s", tostring(was), tostring(o), tostring(Offset(frame)), okSet and "" or (" ERROR " .. tostring(errSet)))
 			local after, by = IsSecureOffset(frame, st)
 			if before == true and after == false then
 				Smooth.tainted = tostring(by or "unknown")
@@ -1368,6 +1381,7 @@ do
 	-- it back, and until then the old lines keep their place -- a glide cut
 	-- short a long way from its target just jumps there at that redraw)
 	local function Finish(frame, st, now)
+		Smooth.Trace("finish at %s (offset %s)", tostring(st.target), tostring(Offset(frame)))
 		Smooth.active[frame] = nil
 		st.p = st.target
 		SetFromDriver(frame, st, st.target, now)
@@ -1396,8 +1410,18 @@ do
 	driver:SetScript("OnUpdate", function(self, elapsed)
 		local now = GetTime()
 		for frame, st in pairs(Smooth.active) do
-			if not pcall(Step, frame, st, elapsed, now) then
+			local ok, err = pcall(Step, frame, st, elapsed, now)
+			if not ok then
+				-- a glide that fails must not hold the chat where it was put
+				-- back (user, 2026-09-24: "Cant Scroll the Chat with
+				-- mousewheel"): the offset jumps to where the wheel sent it,
+				-- and the glide stays off for the session (/chatscroll says why)
 				Smooth.active[frame] = nil
+				Smooth.broken = tostring(err)
+				st.busy = true
+				pcall(frame.SetScrollOffset, frame, st.target)
+				st.busy = false
+				pcall(Shift, frame, st, 0)
 			end
 		end
 		if next(Smooth.active) == nil then
@@ -1415,7 +1439,16 @@ do
 			return
 		end
 		local o = Offset(frame)
+		Smooth.Trace("game set offset %s (known %s, glide %.2f -> %s, active %s)", tostring(o), tostring(st.lastKnown),
+			st.p or -1, tostring(st.target), tostring(Smooth.active[frame] ~= nil))
 		if not o then
+			return
+		end
+		-- a set to the offset it already had is no jump: the game's wheel
+		-- sets the offset twice in one notch, the second time to the value
+		-- the glide had just put back (/chatscroll trace, 2026-09-24: taken
+		-- as a jump, it cancelled every glide and the wheel did nothing)
+		if o == st.lastKnown then
 			return
 		end
 		if o ~= st.lastKnown and st.anchor and st.lastKnown and EntryAt(frame, o + 1) == st.anchor then
@@ -1442,6 +1475,9 @@ do
 	local function OnRelative(frame)
 		local st = Smooth.frames[frame]
 		local pend = st and st.pending
+		if st then
+			Smooth.Trace("relative step: pending %s", pend and string.format("%s->%s (glide %.2f -> %s)", tostring(pend.from), tostring(pend.to), pend.p or -1, tostring(pend.target)) or "none")
+		end
 		if not pend or st.busy then
 			return
 		end
@@ -1472,6 +1508,20 @@ do
 		st.glides = (st.glides or 0) + 1
 		Smooth.active[frame] = st
 		driver:Show()
+		-- a watchdog: a glide the driver never moved (its OnUpdate not run)
+		-- would leave the chat where it was put back; past its longest time
+		-- it jumps where the wheel sent it and the glide stays off
+		local started = st.started
+		C_Timer.After(MAX_TIME + 0.5, function()
+			if Smooth.active[frame] == st and st.started == started then
+				Smooth.active[frame] = nil
+				Smooth.broken = Smooth.broken or "the glide never moved (no driver update)"
+				st.busy = true
+				pcall(frame.SetScrollOffset, frame, st.target)
+				st.busy = false
+				pcall(Shift, frame, st, 0)
+			end
+		end)
 	end
 
 	-- AddMessage, after the game: which message the bottom of the view shows
@@ -1495,6 +1545,9 @@ do
 		local o = st and Offset(frame)
 		if not o then
 			return
+		end
+		if Smooth.active[frame] or st.shifted or o ~= st.drawn then
+			Smooth.Trace("redraw at %s (glide %.2f -> %s, active %s)", tostring(o), st.p or -1, tostring(st.target), tostring(Smooth.active[frame] ~= nil))
 		end
 		st.drawn = o
 		st.pending = nil
@@ -2469,6 +2522,9 @@ SlashCmdList.MELLOCHATSCROLL = function(msg)
 	MelloUI:ClearLog()
 	MelloUI:Print("Smooth Scrolling: %s (option %s, Reduce Motion %s, Chat module %s)", Smooth.Wanted() and "on" or "off",
 		tostring(M.db and M.db.smoothScroll), tostring(anim and anim.reduceMotion), tostring(M.isEnabled))
+	if Smooth.broken then
+		MelloUI:Print("  OFF for this session: a glide failed (%s); the wheel scrolls as the game's", Smooth.broken)
+	end
 	if Smooth.tainted then
 		MelloUI:Print("  OFF on the game's chat windows: their scroll offset turned tainted (by %s) after MelloUI set it", Smooth.tainted)
 	end
@@ -2497,6 +2553,11 @@ SlashCmdList.MELLOCHATSCROLL = function(msg)
 			MelloUI:Print("  scroll offset the game's own (untainted): %s%s", ok and tostring(secure) or "?",
 				(ok and not secure) and (" -- tainted by " .. tostring(by)) or "")
 		end
+	end
+	MelloUI:Print("Last events (seconds, newest last):")
+	local events = { unpack(Smooth.trace) }   -- a copy: these lines themselves go to the chat
+	for _, line in ipairs(events) do
+		MelloUI:Print("  %s", line)
 	end
 	MelloUI:ShowLog("chatscroll")
 end

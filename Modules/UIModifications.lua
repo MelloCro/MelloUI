@@ -44,6 +44,7 @@ local PANELS = {
 	{ "SocialPanel",      "Social window",          "Contacts, raid and quick join in the kit.", tab = "Windows" },
 	{ "BackpackPanel",    "Bags",                   "The backpack and bag windows in the kit.", tab = "Windows" },
 	{ "GameMenuPanel",    "Game menu",              "The Escape menu on its painted plates.", tab = "Windows" },
+	{ "DialogPanel",      "Popup dialogs",          "The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons.", tab = "Windows" },
 	{ "UnitFramePanel",   "Unit frames",            "Player, target, focus, pet and party frames in the kit.", tab = "HUD" },
 	{ "CastBarPanel",     "Cast bars",              "Player, pet, target and focus cast bars in the kit.", tab = "HUD" },
 	{ "RaidFramePanel",   "Raid frames",            "Compact raid frames, group borders and totems in the kit.", tab = "HUD" },
@@ -96,7 +97,7 @@ local Apply, RestoreAreas, NothingWanted, TweakWanted
 -- the switch it needs (`parent` in the modules' options).
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
-	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false,
+	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false, parchment_dialog = false,
 	unlock = false, autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 	defaults[k.key] = k.default

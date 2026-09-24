@@ -158,7 +158,13 @@ local lastProgress = {}       -- [questID or "r<recipe>"] = { [line] = count }: 
 local lastComplete = {}       -- [questID] = true once it was ready to turn in
 local Scroll                  -- below
 
-local function MaxHeight()
+-- the height allowed: the set Height (else the game's tracker's), but never
+-- past the bottom of the screen (user, 2026-09-24: at a larger UI Scale the
+-- 500 of the Height ran off the screen) -- the room from the tracker's top
+-- down to the screen's edge, in its own units
+local SCREEN_MARGIN = 8
+
+local function SetOrGameHeight()
 	local h = tonumber(M.db and M.db.maxHeight) or 0
 	if h > 0 then
 		return h
@@ -170,6 +176,16 @@ local function MaxHeight()
 		return gh
 	end
 	return FALLBACK_H
+end
+
+local function MaxHeight()
+	local h = SetOrGameHeight()
+	local ok, top = pcall(function() return frame and frame:GetTop() end)
+	top = ok and Plain(top) or nil
+	if top and top > HEADER_H * 2 then
+		h = math.min(h, top - SCREEN_MARGIN)
+	end
+	return h
 end
 
 -- the tracker's OWN width: a set width, else what its two anchors on the

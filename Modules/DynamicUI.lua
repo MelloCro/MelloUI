@@ -499,9 +499,16 @@ end
 -- groups offered are the panels switched on).
 --------------------------------------------------------------------------------
 
-local OVERVIEW_W = 720
-local ROW_H = 30
-local DD_W = 180
+local OVERVIEW_W = 860
+local ROW_H = 32
+local DD_W = 200
+-- depth (user, 2026-09-24: "too much small text over a plain brown border
+-- is just an eye strain"): each column on a dark panel of the palette (the
+-- inner panel inside the kit's single rail), its rows striped, the text at
+-- the interface's full size in the palette's text colour
+local PAL = MelloUI.Palette
+local PANEL_M, PANEL_GAP, PANEL_PAD = 18, 16, 14   -- outer margin, gap between the columns, text inset in a panel
+local COL_W = (OVERVIEW_W - 2 * PANEL_M - PANEL_GAP) / 2
 
 local function Dropdown(parent, getValue, choices, onPick)
 	local dd = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
@@ -535,10 +542,13 @@ local function Check(parent, label, getValue, onPick)
 	if cb.Text then
 		cb.Text:Hide()
 	end
-	local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	fs:SetPoint("LEFT", cb, "RIGHT", 4, 0)
 	fs:SetJustifyH("LEFT")
 	fs:SetText(label)
+	if PAL and PAL.text then
+		fs:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])
+	end
 	cb:SetScript("OnClick", function(self)
 		onPick(self:GetChecked() and true or false)
 	end)
@@ -562,7 +572,8 @@ local PARCHMENTS = {
 	{ "parchment_whisper", "Whisper Popup" },
 	{ "parchment_meter", "Damage Meter" },
 	{ "parchment_character", "Character Window" },
-	{ "parchment_tooltip", "Tooltips" },   -- (user, 2026-09-24: "Tooltip Parchment Option")
+	{ "parchment_tooltip", "Tooltips" },
+	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")   -- (user, 2026-09-24: "Tooltip Parchment Option")
 }
 local LAYOUT = {
 	{ module = "ActionBarPanel", key = "hidePageArrows", label = "Action bars: hide the page arrows" },
@@ -578,29 +589,42 @@ local function FillOverview(f)
 	end
 	local body = CreateFrame("Frame", nil, f)
 	body:SetAllPoints()
+	-- the text and controls over the column panels (which sit over the
+	-- popup's own stone)
+	body:SetFrameLevel(f:GetFrameLevel() + 4)
 	rawset(f, "melloBody", body)
 	f.dropdowns = {}
+	local stripes = { left = {}, right = {} }
 	local function Heading(text, x, y)
 		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		fs:SetPoint("TOPLEFT", x, y)
 		fs:SetText(text)
+		if PAL and PAL.selectedTrim then
+			fs:SetTextColor(PAL.selectedTrim[1], PAL.selectedTrim[2], PAL.selectedTrim[3])
+		end
 		return fs
 	end
-	local function Row(label, x, y, getValue, choices, onPick)
-		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		fs:SetPoint("TOPLEFT", x, y - 7)
-		fs:SetWidth(OVERVIEW_W / 2 - DD_W - 40)
+	local function Row(label, x, y, getValue, choices, onPick, side)
+		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		fs:SetPoint("LEFT", body, "TOPLEFT", x, y - ROW_H / 2 + 3)
+		fs:SetWidth(COL_W - DD_W - PANEL_PAD * 2 - 8)
 		fs:SetJustifyH("LEFT")
 		fs:SetText(label)
+		if PAL and PAL.text then
+			fs:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])
+		end
 		local dd = Dropdown(body, getValue, choices, onPick)
-		dd:SetPoint("TOPLEFT", x + OVERVIEW_W / 2 - DD_W - 36, y)
+		dd:SetPoint("TOPLEFT", x + COL_W - DD_W - PANEL_PAD * 2, y - 2)
 		f.dropdowns[#f.dropdowns + 1] = dd
+		local list = stripes[side]
+		list[#list + 1] = y
 		return dd
 	end
-	local left, right = 24, OVERVIEW_W / 2 + 8
-	local top = -84
+	local leftPanel, rightPanel = PANEL_M, PANEL_M + COL_W + PANEL_GAP
+	local left, right = leftPanel + PANEL_PAD, rightPanel + PANEL_PAD
+	local top = -96
 	Heading("Borders (every window)", left, top)
-	local y = top - 22
+	local y = top - 24
 	for _, k in ipairs(Kit and Kit.borderKinds or {}) do
 		Row(k.name, left, y, function() return UMValue(k.key, k.default) end, k.values, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", k.key, v)
@@ -608,15 +632,15 @@ local function FillOverview(f)
 			if f.Refresh then
 				f:Refresh()
 			end
-		end)
+		end, "left")
 		y = y - ROW_H
 	end
 	-- the parchment sheets, two to a row
-	y = y - 10
+	y = y - 12
 	Heading("Parchment", left, y)
-	y = y - 24
+	y = y - 26
 	for i, entry in ipairs(PARCHMENTS) do
-		local x = left + ((i - 1) % 2) * (OVERVIEW_W / 4 - 4)
+		local x = left + ((i - 1) % 2) * ((COL_W - PANEL_PAD * 2) / 2)
 		local cb = Check(body, entry[2], function() return UMValue(entry[1], false) end, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", entry[1], v)
 			PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
@@ -624,16 +648,16 @@ local function FillOverview(f)
 		cb:SetPoint("TOPLEFT", x, y)
 		f.dropdowns[#f.dropdowns + 1] = cb
 		if i % 2 == 0 then
-			y = y - 26
+			y = y - 28
 		end
 	end
 	-- an odd count leaves the last switch alone on its row: below it too
 	if #PARCHMENTS % 2 == 1 then
-		y = y - 26
+		y = y - 28
 	end
 	local leftBottom = y
 	Heading("Backgrounds (or click a bar or window)", right, top)
-	y = top - 22
+	y = top - 24
 	for _, m in ipairs(Providers()) do
 		for _, g in ipairs(m:PickerGroups()) do
 			for _, s in ipairs(g.sections or {}) do
@@ -649,7 +673,7 @@ local function FillOverview(f)
 							ArmCatchers()
 						end
 					end)
-				end)
+				end, "right")
 				y = y - ROW_H
 			end
 		end
@@ -660,9 +684,9 @@ local function FillOverview(f)
 		local m = MelloUI:GetModule(entry.module)
 		if m and m.isEnabled then
 			if not shownLayout then
-				y = y - 10
+				y = y - 12
 				Heading("Layout", right, y)
-				y = y - 24
+				y = y - 26
 				shownLayout = true
 			end
 			local cb = Check(body, entry.label, function() return CurrentValue(entry.module, entry.key) end, function(v)
@@ -676,11 +700,39 @@ local function FillOverview(f)
 			end)
 			cb:SetPoint("TOPLEFT", right, y)
 			f.dropdowns[#f.dropdowns + 1] = cb
-			y = y - 26
+			y = y - 28
 		end
 	end
-	local bottom = math.min(leftBottom, y)
-	f:SetHeight(-bottom + 60)
+	local rightBottom = y
+	local bottom = math.min(leftBottom, rightBottom)
+	-- the two column panels, as tall as the taller column: the kit's single
+	-- rail round the palette's inner panel, the dropdown rows striped
+	local panelTop = top + 12
+	for _, col in ipairs({ { x = leftPanel, rows = stripes.left }, { x = rightPanel, rows = stripes.right } }) do
+		local panel = CreateFrame("Frame", nil, body)
+		panel:SetFrameLevel(f:GetFrameLevel() + 2)
+		panel:SetPoint("TOPLEFT", f, "TOPLEFT", col.x, panelTop)
+		panel:SetSize(COL_W, panelTop - bottom + 6)
+		panel:EnableMouse(false)
+		local anchor = panel:CreateTexture(nil, "BACKGROUND")
+		anchor:SetAllPoints()
+		anchor:SetColorTexture(0, 0, 0, 0)
+		Replace(anchor, { as = "Professions-background-summarylist", rect = panel, parent = panel, level = -1 })
+		local fill = panel:CreateTexture(nil, "BACKGROUND", nil, -8)
+		fill:SetPoint("TOPLEFT", 5, -5)
+		fill:SetPoint("BOTTOMRIGHT", -5, 5)
+		fill:SetColorTexture(PAL.innerPanel[1], PAL.innerPanel[2], PAL.innerPanel[3], 0.82)
+		for i, ry in ipairs(col.rows) do
+			if i % 2 == 1 then
+				local band = panel:CreateTexture(nil, "BACKGROUND", nil, -7)
+				band:SetPoint("TOPLEFT", panel, "TOPLEFT", 6, ry - panelTop)
+				band:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -6, ry - panelTop)
+				band:SetHeight(ROW_H)
+				band:SetColorTexture(PAL.mainWindow[1], PAL.mainWindow[2], PAL.mainWindow[3], 0.85)
+			end
+		end
+	end
+	f:SetHeight(-bottom + 64)
 end
 
 local function BuildPopup()

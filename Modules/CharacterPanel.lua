@@ -1166,24 +1166,27 @@ local function SkinOutfitCard(card)
 			break
 		end
 	end
+	-- the card behind the set's name: the single iron rail on dark stone
+	-- (user, 2026-09-24, option 4 of the set card looks; the gemless plate
+	-- read as a bad border there) -- the kit's tall list row card (the
+	-- communities list's, the group finder's results): brighter under the
+	-- mouse, its iron lit gold while the set is the selected one. The game's
+	-- hover and selected bars give way to those two looks.
+	local sel = card.SelectedBar
 	if bg then
-		card.melloRep = Replace(bg, { as = "UI-Character-Info-OutfitCard", rect = bg }) or false
-	end
-	for key, bar in pairs({ ["UI-Character-Info-OutfitCard-Hover"] = card.HighlightBar, ["UI-Character-Info-OutfitCard-Selected"] = card.SelectedBar }) do
-		if bar then
-			local rep = Replace(bar, { as = key, rect = bar })
-			if rep then
-				local function Follow()
-					if active then
-						rep:SetShown(bar:IsShown())
-					end
+		local rep = Replace(bg, { as = "CommunitiesListEntry", rect = bg, button = card,
+			checked = sel and function() return sel:IsShown() end or nil,
+			alsoFade = { card.HighlightBar, card.SelectedBar } })
+		card.melloRep = rep or false
+		if rep and sel then
+			local function Follow()
+				if active and rep.Update then
+					rep.Update()
 				end
-				hooksecurefunc(bar, "Show", Follow)
-				hooksecurefunc(bar, "Hide", Follow)
-				hooksecurefunc(bar, "SetShown", Follow)
-				skin.followers[#skin.followers + 1] = { rep = rep, region = bar }
-				Follow()
 			end
+			hooksecurefunc(sel, "Show", Follow)
+			hooksecurefunc(sel, "Hide", Follow)
+			hooksecurefunc(sel, "SetShown", Follow)
 		end
 	end
 	-- the set's icon: the Button Border in place of the game's icon frame
@@ -1197,7 +1200,6 @@ local function SkinOutfitCard(card)
 				break
 			end
 		end
-		local sel = card.SelectedBar
 		local holder = art and SkinIconRim(card, art, card.icon, sel and function() return sel:IsShown() end or nil)
 		if holder and sel then
 			FollowSelection(holder, sel)

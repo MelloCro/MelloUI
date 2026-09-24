@@ -86,7 +86,7 @@ local C = {
 	bg      = PAL.mainWindow,
 	band    = PAL.innerPanel,
 	panel   = PAL.raisedPanel,
-	stripe  = PAL.raisedPanel,
+	stripe  = PAL.mainWindow,   -- on the sections' dark inner panel (user, 2026-09-24: "everything is just too brown")
 	line    = PAL.border,
 	hover   = PAL.hover,
 	accent  = PAL.selectedTrim,
@@ -673,6 +673,8 @@ local RefreshStrip, SelectPage  -- forward declarations
 
 local SEC_INSET = 10   -- the rows' margin inside a section's L1 box (kit)
 local INDENT = 22      -- a sub-option's label, per level, right of its parent's
+local SEC_FILL_INSET = 5     -- the section's dark panel, inside its rail (UI px)
+local SEC_FILL_ALPHA = 0.8   -- how much of the stone the dark panel covers
 
 local function NewSection(page, name)
 	local sec = CreateFrame("Frame", nil, page)
@@ -686,6 +688,14 @@ local function NewSection(page, name)
 	if KIT then
 		-- L1: the single rail with the list-box stone around the section
 		KitReplace(KitAnchor(sec), { as = "Professions-background-summarylist", rect = sec, parent = sec, level = -1 })
+		-- depth (user, 2026-09-24: "everything is just too brown ... add the
+		-- checkbox section a darker tone from our color palette, just makes
+		-- the section easier to read"): the palette's inner panel laid over
+		-- the stone inside the rail, the rows on that darker ground
+		local fill = sec:CreateTexture(nil, "BACKGROUND", nil, -8)
+		fill:SetPoint("TOPLEFT", sec, "TOPLEFT", SEC_FILL_INSET, -SEC_FILL_INSET)
+		fill:SetPoint("BOTTOMRIGHT", sec, "BOTTOMRIGHT", -SEC_FILL_INSET, SEC_FILL_INSET)
+		fill:SetColorTexture(PAL.innerPanel[1], PAL.innerPanel[2], PAL.innerPanel[3], SEC_FILL_ALPHA)
 	end
 	function sec:Refresh()
 		for _, fn in ipairs(self.refreshers) do
@@ -712,7 +722,7 @@ local function Row(sec, height, label, hint, desc)
 		if sec.rows % 2 == 0 then
 			row.band = row:CreateTexture(nil, "BACKGROUND")
 			row.band:SetAllPoints(row)
-			row.band:SetColorTexture(C.stripe[1], C.stripe[2], C.stripe[3], 0.35)
+			row.band:SetColorTexture(C.stripe[1], C.stripe[2], C.stripe[3], 0.85)
 		end
 		local hover = KitReplace(KitAnchor(row), { as = "FriendsRowHighlight", rect = row })
 		if hover and hover.object then
