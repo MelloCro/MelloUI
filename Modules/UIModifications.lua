@@ -15,60 +15,67 @@
 -- options are shown on this page under its area (`include`), routed to that
 -- module's settings by the configurator.
 --
--- Folded in as well (user, 2026-09-21/22): Tweaks, Vendor, FPS / Latency,
--- Fonts, Bar Textures, Bar Text, Class Icons, Cooldown Timers and Dark
--- Mode, each a tab with its switch first. Only the feature modules (Quest
--- List, Route, Services, Voice Over) keep tiles of their own.
+-- Folded in as well (user, 2026-09-21/22/24): Tweaks, Vendor, FPS / Latency,
+-- Fonts, Bar Textures, Bar Text, Class Icons, Cooldown Timers, Dark Mode,
+-- Buffs & Debuffs and Error Messages. Only the feature modules (Quest List,
+-- Route, Services, Party Markers, Custom Sounds, Voice Over, Quest Tracker)
+-- keep tiles of their own.
+--
+-- The page (2026-09-24) is switches and sliders on eight tabs: General,
+-- Windows, HUD, Combat, Unit Frames & Bars, Chat & Tooltips, Text, Dark
+-- Mode / Other. The look is chosen in Dynamic UI Modification only.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
 
--- The reskin panels: { module name, toggle label, description }; `include`:
--- the module's own options follow its switch on the page (the panel modules
--- are hidden from the configurator's list, so this is where they show)
+-- The reskin panels: { module name, toggle label, description, tab }. The
+-- look of each (backgrounds, backdrops, the minimap's shape) is chosen in
+-- Dynamic UI Modification; here only whether the area is reskinned.
 local PANELS = {
-	{ sub = "Windows" },
-	{ "CharacterPanel",   "Character window",       "Equipment, stats, reputation and skills in the kit.", include = true },
-	{ "SpellBookPanel",   "Spell book",             "The spell book and its tabs in the kit." },
-	{ "ProfessionsPanel", "Professions",            "The profession book and crafting window in the kit.", include = true },
-	{ "LegacyPanel",      "Legacy window",          "Rewards, challenges and the tree in the kit." },
-	{ "QuestLogPanel",    "Quest log",              "The quest log in the world map window and MelloUI's quest list in the kit." },
-	{ "GuildPanel",       "Guild & communities",    "Chat, roster, info and settings in the kit." },
-	{ "GroupFinderPanel", "Looking for group",      "Listing, browse and who in the kit." },
-	{ "CollectionsPanel", "Appearances",            "The wardrobe in the kit." },
-	{ "SocialPanel",      "Social window",          "Contacts, raid and quick join in the kit." },
-	{ "BackpackPanel",    "Bags",                   "The backpack and bag windows in the kit.", include = true },
-	{ "GameMenuPanel",    "Game menu",              "The Escape menu on its painted plates." },
-	{ sub = "HUD" },
-	{ "UnitFramePanel",   "Unit frames",            "Player, target, focus, pet and party frames in the kit." },
-	{ "CastBarPanel",     "Cast bars",              "Player, pet, target and focus cast bars in the kit." },
-	{ "RaidFramePanel",   "Raid frames",            "Compact raid frames, group borders and totems in the kit." },
-	{ "ActionBarPanel",   "Action bars",            "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit.", include = true },
-	{ "MinimapPanel",     "Minimap",                "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", include = true },
-	{ "TrackerPanel",     "Objective tracker",      "The tracker's headers and backdrop in the kit." },
-	{ "ChatPanel",        "Chat windows",           "Chat frames, tabs, edit box and buttons in the kit (no fade)." },
-	{ "DamageMeterPanel", "Damage meter",           "The damage meter and its breakdown window in the kit." },
-	{ "TooltipPanel",     "Tooltips",               "Tooltips on the stone box with the single rail." },
-	{ "NameplatePanel",   "Nameplates",             "Nameplate health and cast bars in the kit." },
+	{ "CharacterPanel",   "Character window",       "Equipment, stats, reputation and skills in the kit.", tab = "Windows" },
+	{ "SpellBookPanel",   "Spell book",             "The spell book and its tabs in the kit.", tab = "Windows" },
+	{ "ProfessionsPanel", "Professions",            "The profession book and crafting window in the kit.", tab = "Windows" },
+	{ "LegacyPanel",      "Legacy window",          "Rewards, challenges and the tree in the kit.", tab = "Windows" },
+	{ "QuestLogPanel",    "Quest log",              "The quest log in the world map window and MelloUI's quest list in the kit.", tab = "Windows" },
+	{ "GuildPanel",       "Guild & communities",    "Chat, roster, info and settings in the kit.", tab = "Windows" },
+	{ "GroupFinderPanel", "Looking for group",      "Listing, browse and who in the kit.", tab = "Windows" },
+	{ "CollectionsPanel", "Appearances",            "The wardrobe in the kit.", tab = "Windows" },
+	{ "SocialPanel",      "Social window",          "Contacts, raid and quick join in the kit.", tab = "Windows" },
+	{ "BackpackPanel",    "Bags",                   "The backpack and bag windows in the kit.", tab = "Windows" },
+	{ "GameMenuPanel",    "Game menu",              "The Escape menu on its painted plates.", tab = "Windows" },
+	{ "UnitFramePanel",   "Unit frames",            "Player, target, focus, pet and party frames in the kit.", tab = "HUD" },
+	{ "CastBarPanel",     "Cast bars",              "Player, pet, target and focus cast bars in the kit.", tab = "HUD" },
+	{ "RaidFramePanel",   "Raid frames",            "Compact raid frames, group borders and totems in the kit.", tab = "HUD" },
+	{ "ActionBarPanel",   "Action bars",            "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit.", tab = "HUD" },
+	{ "MinimapPanel",     "Minimap",                "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", tab = "HUD" },
+	{ "TrackerPanel",     "Objective tracker",      "The tracker's headers and backdrop in the kit.", tab = "HUD" },
+	{ "ChatPanel",        "Chat windows",           "Chat frames, tabs, edit box and buttons in the kit (no fade).", tab = "HUD" },
+	{ "DamageMeterPanel", "Damage meter",           "The damage meter and its breakdown window in the kit.", tab = "HUD" },
+	{ "TooltipPanel",     "Tooltips",               "Tooltips on the stone box with the single rail.", tab = "HUD" },
+	{ "NameplatePanel",   "Nameplates",             "Nameplate health and cast bars in the kit.", tab = "HUD" },
 }
 
--- The folded quality-of-life tweak modules: { module name, area title,
--- switch label, description }. Their options follow the switch on the page.
+-- The folded feature modules: { module name, switch label, description },
+-- each switched by `qol_<name>` here (`off`: off until switched on, as the
+-- module was before it moved here; `always`: no switch, its rows each switch
+-- one thing and are spread over the tabs). Their rows are laid out below.
 local TWEAKS = {
-	{ "Nameplates", "Nameplates",  "Nameplate quality-of-life", "Large crowd-control icon above the name and a quest marker on enemies you still need. Works with or without the reskin." },
-	{ "Tooltip",    "Tooltips",    "Tooltip quality-of-life",   "Class / reaction coloured names and border, the bar-texture fill on the tooltip health bar, placement. The dark backdrop only applies while the tooltip reskin is off." },
-	{ "Chat",       "Chat",        "Chat quality-of-life",      "Short channel names, class-coloured names, timestamps, URL copy and the art-hiding toggles (which only apply while the chat reskin is off)." },
-	{ "UnitFrames", "Unit frames", "Unit frame quality-of-life", "Name and level tweaks on the unit frames (they step aside where the reskin covers them)." },
-	{ "Tweaks",     "Tweaks",      "Tweaks",                    "Hide the micro menu and bag bar, scale the floating combat text." },
-	{ "Vendor",     "Vendor",      "Vendor automation",         "Repair your gear and sell junk automatically at a merchant." },
-	{ "Stats",      "FPS / Latency", "FPS / latency readout",   "Small coloured FPS and latency readout in the bottom right corner." },
-	{ "Fonts",      "Fonts",       "Interface font",            "The font and font size used by the whole interface (titles and headers keep the kit's own face while the reskin is on)." },
-	{ "BarTextures", "Bar Textures", "Bar textures",            "The finish of health and mana bars (flat, smooth, glossy, minimalist) and their class colours; the fill under the kit's brackets." },
-	{ "BarText",     "Bar Text",     "Bar values",              "Health and power values always shown on the player, target and focus frames." },
-	{ "ClassIcons",  "Class Icons",  "Class medallions",        "The painted class medallions in place of the game's class icons and on player portraits." },
-	{ "CooldownText", "Cooldown Timers", "Cooldown numbers",    "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left." },
-	{ "DarkMode",    "Dark Mode",    "Dark Mode",               "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus." },
+	{ "Auras",        "Buffs & Debuffs",       "MelloUI's own rows of buffs and debuffs: yours in place of the game's buff bar, the target's under its frame, your debuffs on enemy nameplates.", off = true },
+	{ "ErrorFilter",  "Error Messages",        "Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen.", off = true },
+	{ "CooldownText", "Cooldown Timers",       "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left." },
+	{ "Nameplates",   "Nameplate Icons",       "A large crowd-control icon above the name and a quest marker on enemies you still need. Works with or without the reskin." },
+	{ "UnitFrames",   "Unit Frame Tweaks",     "Name and glow tweaks on the unit frames (they step aside where the reskin covers them)." },
+	{ "BarText",      "Bar Values",            "Health and power values always shown on the player, target and focus frames." },
+	{ "BarTextures",  "Bar Textures",          "The finish of health and mana bars (flat, smooth, glossy, minimalist) and their colours; the fill under the kit's brackets." },
+	{ "ClassIcons",   "Class Icons",           "The painted class medallions in place of the game's class icons and on player portraits." },
+	{ "Chat",         "Chat Tweaks",           "Short channel names, class-coloured names and the art-hiding switches (which only apply while the chat reskin is off)." },
+	{ "Tooltip",      "Tooltip Tweaks",        "Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off." },
+	{ "Fonts",        "Custom Fonts",          "The fonts and sizes used by the whole interface. Off: the game's own fonts." },
+	{ "DarkMode",     "Dark Mode",             "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus." },
+	{ "Vendor",       "Vendor Automation",     "Repair your gear and sell junk automatically at a merchant." },
+	{ "Stats",        "FPS / Latency",         "A small coloured FPS and latency readout in the bottom right corner." },
+	{ "Tweaks",       "Tweaks",                "", always = true },
 }
 
 -- welcomeAsked: the first-login question (take the tour) was asked
@@ -76,18 +83,104 @@ local TWEAKS = {
 -- when the reskin came on (ReskinOn below); flags without option rows
 -- defined further down, next to the rest of the switching; declared here so
 -- the button on the page can reach them
-local Apply, RestoreAreas, NothingWanted
+local Apply, RestoreAreas, NothingWanted, TweakWanted
 
+-- The page (user, 2026-09-24: "the Dynamic UI Modification is going to be
+-- the Main Tool people are going to use when configuring the Look of the UI
+-- ... the UI Modification Section is going to be mostly sliders checkboxes
+-- etc, we need to reconstruct it a bit and simplify the approach"): eight
+-- tabs of switches and sliders. The look (borders, Kit Colours, every
+-- background and backdrop, parchment, the minimap's shape) is only in
+-- Dynamic UI Modification; its keys stay in these settings. A feature's
+-- rows sit under its switch, dimmed while it is off; a sub-option under
+-- the switch it needs (`parent` in the modules' options).
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = false,
-	unlock = false, autoSnap = true, sideTabBorder = "slot", positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
-options[#options + 1] = { type = "header", name = "Reskin" }
-options[#options + 1] = { type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
-	desc = "The whole interface dressed in the painted kit. Off: every area below shows the game's own art; the quality-of-life tweaks keep working." }
-options[#options + 1] = { type = "button", name = "Switch every area on",
-	hint = "when the list below is all off and nothing is reskinned",
-	text = "Switch on",
+	unlock = false, autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
+for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
+	defaults[k.key] = k.default
+end
+for _, area in ipairs(PANELS) do
+	defaults[area[1]] = true
+end
+for _, tweak in ipairs(TWEAKS) do
+	if not tweak.off then
+		defaults["qol_" .. tweak[1]] = true
+	end
+end
+
+local function Add(opt)
+	options[#options + 1] = opt
+end
+local function Tab(name)
+	Add({ type = "header", name = name })
+end
+local function Sub(name)
+	Add({ type = "subheader", name = name })
+end
+-- a feature: its heading, its switch, then its rows (`keys`: which, in
+-- order; nil: all of them) under the switch
+local function Feature(name, keys, heading)
+	local tweak
+	for _, t in ipairs(TWEAKS) do
+		if t[1] == name then
+			tweak = t
+		end
+	end
+	if heading ~= false then
+		Sub(heading or tweak[2])
+	end
+	local area = nil
+	if not tweak.always then
+		area = "qol_" .. name
+		Add({ type = "toggle", key = area, name = tweak[2], desc = tweak[3] })
+	end
+	Add({ type = "include", module = name, area = area, keys = keys, flat = true })
+end
+local function Panels(tab)
+	for _, area in ipairs(PANELS) do
+		if area.tab == tab then
+			Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+		end
+	end
+end
+
+-- General
+Tab("General")
+Add({ type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
+	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art; the other tabs' features keep working." })
+Add({ type = "button", name = "Dynamic UI Modification", hint = "borders, colours, backgrounds, parchment",
+	text = "Open", width = 90, requires = "reskin",
+	desc = "Choose the look of the reskin on the interface itself: the borders of every window, the Kit Colours, the backgrounds and backdrops of the bars and windows, the parchment sheets and the minimap's shape, with previews.",
+	onClick = function()
+		if MelloUI.StartDynamicUI then
+			MelloUI:StartDynamicUI()
+		end
+	end })
+Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
+	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." })
+Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion",
+	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting." })
+Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
+	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 50 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
+-- Names (user, 2026-09-22: "make that option global for all of the 3
+-- things at the same time"): one dropdown for the unit frames, the
+-- nameplates and the name over your own head. Characters here have a first
+-- name and a surname. The unit frames and nameplates are re-set by their
+-- modules (their `nameFormat`, driven from here); the name the engine draws
+-- over heads has ONE setting, the client's `UnitSurnameOwn` cvar ("show
+-- player surname over head", the binary's only surname cvar): your own
+-- name follows, other players' overhead names are the engine's and have
+-- no setting (nameplates on shows them in the chosen form).
+Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", values = {
+	{ value = "first", label = "First name" },
+	{ value = "last", label = "Last name" },
+	{ value = "both", label = "First and last name" },
+}, desc = "Which part of a character's name is shown, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, and the name over your own head (the game's own setting for it; Last name shows both there). A character with no surname shows the name it has. Names over other players' heads without a nameplate are the engine's and have no setting." })
+Add({ type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",
+	text = "Switch on", requires = "reskin",
+	desc = "Every window and HUD area of the reskin back on, and every feature on these tabs that is on by default.",
 	onClick = function(_, db)
 		local count = RestoreAreas(db)
 		if count == 0 then
@@ -99,76 +192,56 @@ options[#options + 1] = { type = "button", name = "Switch every area on",
 		if MelloUI.RefreshConfig then
 			MelloUI:RefreshConfig()
 		end
-	end }
-options[#options + 1] = { type = "toggle", key = "preloadArt", name = "Preload Artwork",
-	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 50 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." }
-options[#options + 1] = { type = "toggle", key = "fadeWindows", name = "Windows Fade In",
-	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." }
-options[#options + 1] = { type = "toggle", key = "reduceMotion", name = "Reduce Motion",
-	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash. For anyone who finds moving interface parts distracting." }
--- the parchment sheets, one switch per area, off by default (user,
--- 2026-09-23: "some people like it, some dont"); the kit's own pages (the
--- spell book, the quest log) are the game's parchment and stay
-options[#options + 1] = { type = "subheader", name = "Parchment" }
-options[#options + 1] = { type = "toggle", key = "parchment_tracker", name = "Objective Tracker",
-	desc = "A parchment sheet with a painted edge on the objective tracker's stone backdrop. Off: the stone alone." }
-options[#options + 1] = { type = "toggle", key = "parchment_questTracker", name = "Quest Tracker",
-	desc = "A parchment sheet with a painted edge on the quest tracker's stone backdrop. Off: the stone alone." }
-options[#options + 1] = { type = "toggle", key = "parchment_chat", name = "Chat",
-	desc = "A parchment sheet with a painted edge on the chat's stone backdrop. Off: the stone alone." }
-options[#options + 1] = { type = "toggle", key = "parchment_whisper", name = "Whisper Popup",
-	desc = "A parchment sheet with a painted edge on the whisper popup's stone backdrop. Off: the stone alone." }
-options[#options + 1] = { type = "toggle", key = "parchment_meter", name = "Damage Meter",
-	desc = "A parchment sheet with a painted edge on the damage meter's stone backdrop. Off: the stone alone." }
-options[#options + 1] = { type = "toggle", key = "parchment_character", name = "Character Window",
-	desc = "A parchment sheet with a painted edge on the character window's stone backdrop. Off: the stone alone." }
--- the borders of every window, one choice per kind (Kit.borderKinds: Button,
--- Side Tab, Progress Bar, Nameplate; user, 2026-09-23)
-options[#options + 1] = { type = "subheader", name = "Borders (every window)" }
-for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
-	defaults[k.key] = k.default
-	options[#options + 1] = { type = "dropdown", key = k.key, name = k.name, values = k.values,
-		desc = k.desc .. " Also in Dynamic UI Modification's overview, at the top of the configurator." }
-end
-for _, area in ipairs(PANELS) do
-	if area.sub then
-		options[#options + 1] = { type = "subheader", name = area.sub }
-	else
-		defaults[area[1]] = true
-		options[#options + 1] = { type = "toggle", key = area[1], name = area[2], desc = area[3] }
-		if area.include then
-			options[#options + 1] = { type = "include", module = area[1], key = area[1] }
-		end
-	end
-end
--- Names (user, 2026-09-22: "make that option global for all of the 3
--- things at the same time"): one dropdown for the unit frames, the
--- nameplates and the name over your own head. Characters here have a first
--- name and a surname. The unit frames and nameplates are re-set by their
--- modules (their `nameFormat`, driven from here); the name the engine draws
--- over heads has ONE setting, the client's `UnitSurnameOwn` cvar ("show
--- player surname over head", the binary's only surname cvar): your own
--- name follows, other players' overhead names are the engine's and have
--- no setting (nameplates on shows them in the chosen form).
-options[#options + 1] = { type = "header", name = "Names" }
-options[#options + 1] = { type = "dropdown", key = "nameFormat", name = "Show Names As", values = {
-	{ value = "first", label = "First name" },
-	{ value = "last", label = "Last name" },
-	{ value = "both", label = "First and last name" },
-}, desc = "Which part of a character's name is shown, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, and the name over your own head (the game's own setting for it; Last name shows both there). A character with no surname shows the name it has. Other players' names drawn over their heads without a nameplate are the engine's and have no setting." }
-options[#options + 1] = { type = "subheader", name = "Names over other players' heads without a nameplate are the engine's: no setting reaches them" }
+	end })
 
-for _, tweak in ipairs(TWEAKS) do
-	local key = "qol_" .. tweak[1]
-	defaults[key] = true
-	options[#options + 1] = { type = "header", name = tweak[2] }
-	options[#options + 1] = { type = "toggle", key = key, name = tweak[3], desc = tweak[4] }
-	options[#options + 1] = { type = "include", module = tweak[1], key = key }
-end
+-- Windows: which windows the reskin dresses
+Tab("Windows")
+Panels("Windows")
+
+-- HUD: which parts of the HUD, and what to hide
+Tab("HUD")
+Panels("HUD")
+Sub("Hide")
+Feature("Tweaks", { "hideMicroMenu", "hideBagBar", "bagSlotsOnBags", "hideMinimapCoords" }, false)
+
+-- Combat
+Tab("Combat")
+Feature("Auras")
+Feature("ErrorFilter")
+Feature("CooldownText")
+Feature("Nameplates")
+Sub("Combat Text")
+Feature("Tweaks", { "worldTextScale" }, false)
+
+-- Unit frames and bars
+Tab("Unit Frames & Bars")
+Feature("UnitFrames")
+Feature("BarText")
+Feature("BarTextures")
+Feature("ClassIcons")
+
+-- Chat and tooltips
+Tab("Chat & Tooltips")
+Feature("Chat")
+Feature("Tweaks", { "chatNotices" }, false)
+Feature("Tooltip")
+
+-- Text: the style and sizes first, the single faces under Advanced
+Tab("Text")
+Feature("Fonts", { "style", "scaleText", "scaleChat", "scaleTitle", "scaleDamage", "outline",
+	{ type = "subheader", name = "Chat on parchment" }, "fontChatParchment", "scaleChatParchment",
+	{ type = "subheader", name = "Advanced: one face per role" },
+	"fontText", "fontChat", "fontChatText", "fontTitle", "fontDamage" }, false)
+
+-- Dark Mode and the rest
+Tab("Dark Mode / Other")
+Feature("DarkMode")
+Feature("Vendor")
+Feature("Stats")
 
 local M = MelloUI:RegisterModule("UIModifications", {
 	title = "UI Modifications",
-	desc = "The painted kit reskin, area by area, and the per-area quality-of-life tweaks: nameplates, tooltips, chat, unit frames.",
+	desc = "The painted kit reskin, area by area, and the interface's features: buffs and debuffs, error messages, cooldowns, unit frames, chat, tooltips, fonts, dark mode and more. The look itself is chosen in Dynamic UI Modification.",
 	enabledByDefault = true,
 	important = true,
 	-- it drives every reskin panel and folded tweak, so its OFF state has to
@@ -1143,18 +1216,31 @@ local function Want(name, wanted)
 	end
 end
 
+-- A folded feature's switch: on unless switched off (`off`: off unless
+-- switched on; `always`: no switch)
+function TweakWanted(db, tweak)
+	if tweak.always then
+		return true
+	end
+	local v = db["qol_" .. tweak[1]]
+	if tweak.off then
+		return v == true
+	end
+	return v ~= false
+end
+
 -- Is there anything at all for the umbrella to do? Every area and every
 -- tweak switched off is a real choice (the window mover and the name format
 -- work without the reskin), so it is never undone behind your back -- but it
 -- is worth saying, because the switch then looks like it does nothing.
 function NothingWanted(db)
 	for _, area in ipairs(PANELS) do
-		if area[1] and db[area[1]] ~= false then
+		if db[area[1]] ~= false then
 			return false
 		end
 	end
 	for _, tweak in ipairs(TWEAKS) do
-		if db["qol_" .. tweak[1]] ~= false then
+		if not tweak.always and TweakWanted(db, tweak) then
 			return false
 		end
 	end
@@ -1173,12 +1259,12 @@ function RestoreAreas(db)
 		end
 	end
 	for _, area in ipairs(PANELS) do
-		if area[1] then
-			put(area[1])
-		end
+		put(area[1])
 	end
 	for _, tweak in ipairs(TWEAKS) do
-		put("qol_" .. tweak[1])
+		if not (tweak.off or tweak.always) then
+			put("qol_" .. tweak[1])
+		end
 	end
 	return count
 end
@@ -1187,14 +1273,14 @@ function Apply(db, on)
 	local wanted = {}
 	for _, area in ipairs(PANELS) do
 		local name = area[1]
-		if name and MelloUI:GetModule(name) then
+		if MelloUI:GetModule(name) then
 			wanted[name] = on and PanelWanted(db, name) or false
 		end
 	end
 	for _, tweak in ipairs(TWEAKS) do
 		local name = tweak[1]
 		if MelloUI:GetModule(name) then
-			wanted[name] = on and db["qol_" .. name] ~= false
+			wanted[name] = on and TweakWanted(db, tweak) or false
 		end
 	end
 	-- in TOC order on every path (Bar Textures before the unit frame panel
@@ -1211,7 +1297,7 @@ end
 -- module is registered (this file loads before them, see the TOC).
 function M:OnInit()
 	for _, area in ipairs(PANELS) do
-		local module = area[1] and MelloUI:GetModule(area[1])
+		local module = MelloUI:GetModule(area[1])
 		if module then
 			module.hidden = true
 		end
@@ -1333,6 +1419,26 @@ function M:OnEnable(db)
 		end
 		db.bordersMigrated = true
 	end
+	-- Buffs & Debuffs and Error Messages moved here from pages of their own,
+	-- and Tweaks lost its switch (its rows each switch one thing; user,
+	-- 2026-09-24): each keeps the state it had, once
+	if not db.featuresFolded then
+		for _, tweak in ipairs(TWEAKS) do
+			local key = "qol_" .. tweak[1]
+			if tweak.off and db[key] == nil then
+				db[key] = MelloUI.db.enabled[tweak[1]] == true
+			end
+		end
+		if db.qol_Tweaks == false then
+			local tw = MelloUI:GetModuleDB("Tweaks")
+			if tw then
+				tw.hideMicroMenu, tw.hideBagBar, tw.hideMinimapCoords, tw.chatNotices = false, false, false, false
+				tw.worldTextScale = 1
+			end
+		end
+		db.qol_Tweaks = nil
+		db.featuresFolded = true
+	end
 	ApplyMotion(db)
 	if db.reskin ~= false and NothingWanted(db) then
 		MelloUI:Notice("UI Modifications is on, but every area of the reskin is switched off, so the game's own art is what you see. Its page has a \"Switch every area on\" button.")
@@ -1378,7 +1484,7 @@ function M:OnSettingChanged(key, value, db)
 			end
 		end
 	end
-	if key == "autoSnap" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked" or key == "savedSurnameOwn" then
+	if key == "autoSnap" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked" or key == "savedSurnameOwn" or key == "featuresFolded" then
 		return
 	elseif key == "nameFormat" then
 		ApplyNameFormat(db, true)

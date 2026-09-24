@@ -135,6 +135,32 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 
 -- Shown on the Home page under "What's new".
 local CHANGELOG = {
+	{ version = "0.13.7", lines = {
+		"A simpler configurator: UI Modifications is switches and sliders on eight tabs (General, Windows, HUD, Combat, Unit Frames & Bars, Chat & Tooltips, Text, Dark Mode / Other); a feature's options sit under its switch and wake when it is on.",
+		"Dynamic UI Modification is the one place for the look: borders, Kit Colours, every background and backdrop, the parchment sheets and the minimap's shape, picked on the interface with pictures.",
+		"Buffs & Debuffs and Error Messages moved into UI Modifications' Combat tab, keeping whether they were on.",
+		"Kit Colours: Warm iron (the default), Bronze or the original painted grey, for every frame, the game menu included. A colour palette for the whole interface, the configurator first.",
+		"Borders, one choice per kind for every window: buttons, side tabs, progress bars, nameplates, round icons and auras. Thin rims on the action bars, bags, character slots, spells, professions and this window's icons.",
+		"Window headers ride the frame's top rail and slip behind the round portrait ring; fewer red gems, red kept where it means something.",
+		"Text on parchment is dark ink everywhere; quest difficulty shows as 1 to 5 diamonds beside the title.",
+		"Fonts: eleven new families with italics, six Font Styles in one click, and a Chat text face for the chat and the whisper windows.",
+		"Square minimap with a border of your choosing, merged with the Services bar in one frame.",
+		"Route: a destination on another continent leads to the boat or zeppelin that leaves yours.",
+		"Smooth scrolling here; quieter profession pictures; readable contacts lists; a Header Text Size for the Quest Tracker.",
+	} },
+	{ version = "0.13.6", lines = {
+		"New modules, off until you switch them on: Quest Tracker (a scrolling tracker), Error Messages and Buffs & Debuffs.",
+		"Route: World Marker and Light Beam over the destination, routes to a quest's objectives themselves, roads across zone borders, only flight points you know.",
+		"Quests: the Classic or Forever logo on every quest, 5,882 quests, item and object starters with their own map icons, and filters by what a quest starts from.",
+		"Whisper Popup Window, Windows Fade In, Reduce Motion, Preload Artwork, and parchment sheets as a choice.",
+		"Profiles can be shared as a short string; Bar Textures gained By health colours and an Execute Range.",
+		"Painted brush-stroke edges on the parchment and stone pages; combat fixes for the damage meter and moved windows.",
+	} },
+	{ version = "0.13.5", lines = {
+		"A Discord for MelloUI: help, bug reports and every new release (the link is in the release notes).",
+		"Unlock the Windows leaves the chat and the damage meter clickable, shows every drag area as a gold band and puts a plate on screen while unlocked.",
+		"Settings changed in the first moments of a session are no longer lost; UI Modifications says when every area is off.",
+	} },
 	{ version = "0.13.4", lines = {
 		"The painted kit reskin: every window and the whole HUD dressed in the painted art, one switch and one toggle per area under UI Modifications.",
 		"Unlock the Windows: drag any window, the minimap, the tracker, the meter and the chat; the wheel scales; positions stay.",
@@ -326,13 +352,15 @@ local function KitAnchor(parent, layer)
 	return tex
 end
 
+local RIM_GROW = 1.1   -- the kit rim's rect: the icon box grown about its centre
+
 local function IconBox(parent, size, texture, button)
 	local box = CreateFrame("Frame", nil, parent)
 	box:SetSize(size, size)
 	box.icon = box:CreateTexture(nil, "ARTWORK")
 	if KIT then
-		-- the icon at 0.9 of the box, centred: the rim (1.2 x the box) and
-		-- the glow keep their sizes (user, 2026-09-22)
+		-- the icon at 0.9 of the box, centred, until the rim fits it into
+		-- its opening (below)
 		box.icon:SetPoint("CENTER", box, "CENTER")
 		box.icon:SetSize(size * 0.9, size * 0.9)
 	else
@@ -360,24 +388,32 @@ local function IconBox(parent, size, texture, button)
 	else
 		mask:SetAllPoints(box.icon)
 	end
-	box.icon:AddMaskTexture(mask)
+	if not KIT then
+		box.icon:AddMaskTexture(mask)
+	end
 	if KIT then
-		-- SI1: the square R1 rim in place of the action-button frame — as
-		-- regions of the BOX (the icon's own frame) so it draws over the
-		-- icon; the hover is handed on from the strip button (SetHovered).
-		-- The rim's rect is the box grown by 20 % about its centre (user,
-		-- 2026-09-22: at the box's size the icon spilled under the iron on
-		-- every side; the icon itself stays as it is).
+		-- the rim every window's buttons wear (user, 2026-09-24: the icons
+		-- follow the Dynamic UI Modification settings): UI Modifications'
+		-- Button Border (thin iron, hairline, rounded, gold line, sunk),
+		-- swapped live with it, in the Kit Colours look -- as regions of the
+		-- BOX (the icon's own frame) so it draws over the icon; the hover is
+		-- handed on from the strip button (SetHovered). The icon fills the
+		-- rim's square opening (no rounded mask), as on the action bars; the
+		-- rim's rect is the box grown by 10 % about its centre.
 		local rimRect = CreateFrame("Frame", nil, box)
 		rimRect:SetPoint("CENTER", box, "CENTER")
-		rimRect:SetSize(size * 1.2, size * 1.2)
+		rimRect:SetSize(size * RIM_GROW, size * RIM_GROW)
 		rimRect:EnableMouse(false)
 		-- the rim shows the box's states: gold (checked) for the current
 		-- page, pressed while the strip button is held, hover from the
 		-- button (user, 2026-09-22: no feedback on the strip but the text)
-		local rep = KitReplace(box.frame, { as = "UI-HUD-ActionBar-IconFrame", rect = rimRect, button = box,
+		local rep = KitReplace(box.frame, { as = KIT:ButtonRimRule(), rect = rimRect, button = box, icon = box.icon,
 			checked = function() return box.selected end })
 		box.rim = rep and rep.object or nil
+		if rep then
+			box.melloRep = rep
+			KIT:RegisterButtonRim(box)
+		end
 	end
 	box.selected = false
 	function box:SetSelected(selected)
@@ -421,7 +457,7 @@ local function IconBox(parent, size, texture, button)
 			-- centred on the BOX (the rim's centre; the icon sits inset in it)
 			-- and sized from the rim, so the light is symmetric around the
 			-- iron (user, 2026-09-22: the glow placed correctly)
-			local rimSize = KIT and size * 1.2 or size
+			local rimSize = KIT and size * RIM_GROW or size
 			glow:SetSize(rimSize * 1.45, rimSize * 1.45)
 			glow:SetPoint("CENTER", self, "CENTER", 0, 0)
 			local anim = glow:CreateAnimationGroup()
@@ -636,6 +672,7 @@ end
 local RefreshStrip, SelectPage  -- forward declarations
 
 local SEC_INSET = 10   -- the rows' margin inside a section's L1 box (kit)
+local INDENT = 22      -- a sub-option's label, per level, right of its parent's
 
 local function NewSection(page, name)
 	local sec = CreateFrame("Frame", nil, page)
@@ -692,7 +729,7 @@ local function Row(sec, height, label, hint, desc)
 		AttachHover(row)
 	end
 	row.label = Text(row, "GameFontHighlight", label, C.text)
-	row.label:SetPoint("LEFT", 14, 0)
+	row.label:SetPoint("LEFT", 14 + (sec.indent or 0) * INDENT, 0)
 	row.label:SetWordWrap(false)
 	if hint and hint ~= "" then
 		row.hint = Text(row, "GameFontHighlightSmall", hint, C.sub)
@@ -718,6 +755,8 @@ local function AddToggle(sec, module, db, opt)
 	end
 	local switch = CreateSwitch(row, function(value)
 		MelloUI:NotifySettingChanged(module.name, opt.key, value)
+		-- the rows that hang on this switch wake or grey at once
+		sec:Refresh()
 	end)
 	switch:SetPoint("RIGHT", -12, 0)
 	switch:HookScript("OnEnter", function() if opt.desc then ShowTooltip(row, opt.name, opt.desc) end end)
@@ -725,6 +764,7 @@ local function AddToggle(sec, module, db, opt)
 	sec.refreshers[#sec.refreshers + 1] = function()
 		switch:SetValue(db[opt.key] and true or false, true)
 	end
+	return row
 end
 
 local function AddSlider(sec, module, db, opt)
@@ -732,6 +772,7 @@ local function AddSlider(sec, module, db, opt)
 	local slider = CreateSlider(row, 200, db, module, opt)
 	slider:SetPoint("RIGHT", -70, 0)
 	sec.refreshers[#sec.refreshers + 1] = function() slider:Refresh() end
+	return row
 end
 
 local function AddDropdown(sec, module, db, opt)
@@ -739,6 +780,29 @@ local function AddDropdown(sec, module, db, opt)
 	local dd = CreateDropdown(row, 200, db, module, opt)
 	dd:SetPoint("RIGHT", -14, 0)
 	sec.refreshers[#sec.refreshers + 1] = function() dd:Refresh() end
+	return row
+end
+
+-- A row that only means something while a switch is on (user, 2026-09-24:
+-- "people will get overwhelmed by all the options"): `gate()` returns
+-- whether it is live and, when not, the switch to turn on. Off, the row is
+-- dimmed and a cover over it takes the clicks and says which switch wakes it.
+local function AddGate(sec, row, gate)
+	local cover = CreateFrame("Frame", nil, row)
+	cover:SetAllPoints(row)
+	cover:SetFrameLevel(row:GetFrameLevel() + 30)
+	cover:EnableMouse(true)
+	cover:SetScript("OnEnter", function(self)
+		local _, why = gate()
+		ShowTooltip(self, row.label and row.label:GetText() or "", why and ("Switch on \"" .. why .. "\" first.") or nil)
+	end)
+	cover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	cover:Hide()
+	sec.refreshers[#sec.refreshers + 1] = function()
+		local live = gate()
+		row:SetAlpha(live and 1 or 0.4)
+		cover:SetShown(not live)
+	end
 end
 
 -- A row with a button on the right (user, 2026-09-22: "a preview button on
@@ -758,6 +822,7 @@ local function AddButton(sec, module, db, opt)
 	button:HookScript("OnEnter", function() if opt.desc then ShowTooltip(row, opt.name, opt.desc) end end)
 	button:HookScript("OnLeave", function() GameTooltip:Hide() end)
 	row.button = button
+	return row
 end
 
 -- A heading inside a tab (a `header` opens a new tab; the reskin's
@@ -1009,11 +1074,60 @@ local function BuildModulePage(module, width)
 	BuildPageHeader(page, icon, module.title, flavour, module)
 	local db = MelloUI:GetModuleDB(module.name)
 	local sec = nil
-	-- an option may belong to ANOTHER module (`opt.module`: the folded
-	-- quality-of-life tweaks on the UI Modifications page): it is built
-	-- against that module and its settings, and `include` lays out a whole
-	-- module's options in place (its headers become sections here)
-	local function Build(owner, ownerDb, opt)
+	-- an option's row by its key, in a module's options
+	local function OptionOf(owner, key)
+		for _, o in ipairs(owner.options) do
+			if o.key == key then
+				return o
+			end
+		end
+		return nil
+	end
+	-- how deep an option hangs under its parents (`opt.parent`, a switch of
+	-- the same module): one indent per level
+	local function Depth(owner, opt)
+		local depth, seen = 0, {}
+		local p = opt.parent and OptionOf(owner, opt.parent)
+		while p and not seen[p] and depth < 4 do
+			seen[p] = true
+			depth = depth + 1
+			p = p.parent and OptionOf(owner, p.parent)
+		end
+		return depth
+	end
+	-- the switches a row hangs on, as one gate: `opt.parent` (indented under
+	-- it) and `opt.requires` (not indented), keys of the same module's
+	-- settings, and `area`: { db, key, name } of the tab's area switch
+	local function GateOf(owner, ownerDb, opt, area)
+		local needs = {}
+		for _, key in ipairs({ opt.parent, opt.requires }) do
+			if key then
+				local o = OptionOf(owner, key)
+				needs[#needs + 1] = { db = ownerDb, key = key, name = o and o.name or key }
+			end
+		end
+		if area then
+			table.insert(needs, 1, area)
+		end
+		if #needs == 0 then
+			return nil
+		end
+		return function()
+			for _, n in ipairs(needs) do
+				if not n.db[n.key] then
+					return false, n.name
+				end
+			end
+			return true
+		end
+	end
+	-- an option may belong to ANOTHER module (`opt.module`), built against
+	-- that module and its settings; `include` lays out another module's
+	-- options in place (all of them, its headers as subheaders, or only
+	-- `keys`, in their order, with inline rows between), under the tab's
+	-- area switch (`area`, a key of this page's module: the rows indented
+	-- one step and live only while it is on)
+	local function Build(owner, ownerDb, opt, area)
 		if not sec then
 			sec = NewSection(page, "General")
 		end
@@ -1022,7 +1136,13 @@ local function BuildModulePage(module, width)
 			if opt.key and ownerDb[opt.key] == nil then
 				ownerDb[opt.key] = owner.defaults[opt.key]
 			end
-			builder(sec, owner, ownerDb, opt)
+			sec.indent = opt.type ~= "subheader" and ((area and 1 or 0) + Depth(owner, opt)) or 0
+			local row = builder(sec, owner, ownerDb, opt)
+			sec.indent = 0
+			local gate = row and opt.type ~= "subheader" and GateOf(owner, ownerDb, opt, area)
+			if gate then
+				AddGate(sec, row, gate)
+			end
 		else
 			MelloUI:Print("Unknown option type '%s' in module %s", tostring(opt.type), owner.name)
 		end
@@ -1034,11 +1154,27 @@ local function BuildModulePage(module, width)
 			local inc = MelloUI:GetModule(opt.module)
 			if inc then
 				local incDb = MelloUI:GetModuleDB(inc.name)
-				for _, sub in ipairs(inc.options) do
-					if sub.type == "header" then
-						Build(inc, incDb, { type = "subheader", name = sub.name })
-					else
-						Build(inc, incDb, sub)
+				local area = nil
+				if opt.area then
+					local o = OptionOf(module, opt.area)
+					area = { db = db, key = opt.area, name = o and o.name or opt.area }
+				end
+				if opt.keys then
+					for _, entry in ipairs(opt.keys) do
+						local sub = type(entry) == "table" and entry or OptionOf(inc, entry)
+						if sub then
+							Build(inc, incDb, sub, sub.type ~= "subheader" and area or nil)
+						end
+					end
+				else
+					for _, sub in ipairs(inc.options) do
+						if sub.type == "header" then
+							if not opt.flat then
+								Build(inc, incDb, { type = "subheader", name = sub.name })
+							end
+						else
+							Build(inc, incDb, sub, area)
+						end
 					end
 				end
 			end
@@ -1632,14 +1768,16 @@ local function CreateWindow()
 		KitReplace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = KIT:OtherTextures(close, close:GetNormalTexture()) })
 	end
 
-	-- Dynamic UI Modification (user, 2026-09-23): the action bars' button
-	-- border, backdrop and background picked on the bars themselves, with
+	-- Dynamic UI Modification (user, 2026-09-23/24): the look of the whole
+	-- reskin, the one place it is chosen -- borders, Kit Colours, parchment,
+	-- every background and backdrop, picked on the interface itself with
 	-- previews (Modules/DynamicUI.lua); it closes this window
 	local dynamic = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
 	dynamic:SetSize(190, 22)
 	dynamic:SetPoint("RIGHT", close, "LEFT", -8, 0)
 	dynamic:SetFrameLevel(close:GetFrameLevel())
 	dynamic:SetText("Dynamic UI Modification")
+	window.dynamicButton = dynamic
 	dynamic:SetScript("OnClick", function()
 		if MelloUI.StartDynamicUI then
 			MelloUI:StartDynamicUI()
@@ -1648,8 +1786,9 @@ local function CreateWindow()
 	dynamic:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 		GameTooltip:SetText("Dynamic UI Modification", C.accent[1], C.accent[2], C.accent[3])
-		GameTooltip:AddLine("Closes the configurator and lets you choose the looks of the action bars, the micro menu, the bag bar, "
-			.. "your bags and the character window on them directly, each choice shown as a picture and put on as you click it.", 0.9, 0.9, 0.9, true)
+		GameTooltip:AddLine("The look of the reskin, all in one place: the borders and Kit Colours of every window, the parchment sheets, "
+			.. "and the backgrounds of the action bars, micro menu, bag bar, bags, character window, minimap and professions, "
+			.. "chosen on the interface itself with a picture of each choice. Closes the configurator while you pick.", C.text[1], C.text[2], C.text[3], true)
 		GameTooltip:Show()
 	end)
 	dynamic:SetScript("OnLeave", function() GameTooltip:Hide() end)

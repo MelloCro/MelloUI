@@ -28,8 +28,8 @@ local M = MelloUI:RegisterModule("Services", {
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
 		  desc = "Two rows of service icons under the minimap; it moves with the minimap in Edit Mode. Click an icon to route to the nearest one, right-click to stop the route." },
-		{ type = "slider", key = "barOffset", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2 },
-		{ type = "toggle", key = "roundIcons", name = "Round Icons",
+		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2 },
+		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
 		  desc = "Show the service icons as round medallions with a bronze rim instead of squares." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
 		  desc = "Also show the round button on the minimap edge that opens the list. /services opens the same list." },

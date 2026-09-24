@@ -40,7 +40,7 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 	title = "Backpack Kit",
 	desc = "The bag windows dressed in the painted kit on the game's own layout.",
 	enabledByDefault = true,
-	defaults = { itemBorder = "thin", itemBackground = "stone", windowBackground = "concrete" },
+	defaults = { itemBackground = "stone", windowBackground = "concrete" },
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
 		  desc = "What the bag windows show behind the items: cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
@@ -389,9 +389,7 @@ function M:OnSettingChanged(key, value, db)
 		return
 	end
 	for _, button in ipairs(skin.items) do
-		if key == "itemBorder" then
-			Kit:SetButtonBorder(button, value)
-		elseif key == "itemBackground" then
+		if key == "itemBackground" then
 			Kit:SetButtonBackground(button, value)
 		end
 	end

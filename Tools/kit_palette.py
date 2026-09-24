@@ -24,7 +24,8 @@ look): pictures (backdrops, cards, icons), the tiles already in the palette's
 warmth (parchment, vellum, leather) and the coloured quilts.
 
 build_kit.py runs this after writing Media/Kit; or on its own:
-    python Tools/kit_palette.py        (Media/Kit -> Media/KitWarm, Media/KitBronze)
+    python Tools/kit_palette.py        (Media/Kit -> Media/KitWarm, Media/KitBronze;
+                                        Media/Textures/GameMenuFrame -> _warm, _bronze)
 """
 import os
 import re
@@ -143,6 +144,54 @@ def build_looks(kit=KIT):
     return done
 
 
+# Whole painted frames outside the kit (Media/Textures), one file per look
+# beside the painted one ("GameMenuFrame_warm.tga"; user, 2026-09-24: the
+# Game Menu kept its painted colours in both looks). Their gold (the Game
+# Menu's header plate) stays gold in the palette's trim, not the red ramp.
+TEXTURES = ["GameMenuFrame"]
+GOLD = [(0.0, (0, 0, 0)), (0.12, P["raisedPanel"]), (0.30, P["trim"] * 0.75), (0.48, P["trim"]),
+        (0.65, P["selectedTrim"]), (0.85, P["text"]), (1.0, (245, 235, 210))]
+
+
+def recolour_picture(a, look):
+    """A whole frame in the look's colours: red to the deep red, gold to the
+    trim's gold, the rest (iron, stone) on the look's ramp."""
+    rgb = a[..., :3].astype(float) / 255
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    d = np.maximum(mx - mn, 1e-6)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    hue = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60
+    coloured = (sat > 0.35) & (mx > 0.2)
+    red = coloured & ((hue < 18) | (hue > 330))
+    gold = coloured & (hue >= 18) & (hue <= 65)
+    lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    lum_red = 0.6 * r + 0.3 * g + 0.1 * b
+    out = _gradient(lum, LOOKS[look][1])
+    out = np.where(gold[..., None], _gradient(lum, GOLD), out)
+    out = np.where(red[..., None], _gradient(lum_red, RED), out)
+    c = a.copy()
+    c[..., :3] = np.clip(np.round(out), 0, 255).astype(np.uint8)
+    return c
+
+
+def build_textures(textures=os.path.join(os.path.dirname(KIT), "Textures")):
+    """Each of TEXTURES in every look, beside it. Returns the files written."""
+    written = []
+    for base in TEXTURES:
+        src = os.path.join(textures, base + ".tga")
+        if not os.path.exists(src):
+            continue
+        a = np.array(Image.open(src).convert("RGBA"))
+        for look in LOOKS:
+            dst = os.path.join(textures, f"{base}_{look}.tga")
+            Image.fromarray(recolour_picture(a, look)).save(dst)
+            written.append(dst)
+    return written
+
+
 if __name__ == "__main__":
     for look, (n, total) in build_looks().items():
         print(f"{look}: {n} pieces -> Media/{LOOKS[look][0]} ({total / 1e6:.1f} MB)")
+    for dst in build_textures():
+        print("->", os.path.relpath(dst, os.path.dirname(HERE)))

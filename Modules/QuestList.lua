@@ -79,7 +79,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
 		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver." },
-		{ type = "toggle", key = "pinCompleted", name = "Include Givers You Are Done With",
+		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
 		  desc = "Also mark givers whose quests you have all completed, with a grey tick." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone." },

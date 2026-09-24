@@ -33,6 +33,8 @@ local M = MelloUI:RegisterModule("Chat", {
 		shortChannels = true,
 		hideBrackets = true,
 		classColors = true,
+		nameStyle = "full",
+		nameShade = true,
 		whisperPopup = false,
 	},
 	options = {
@@ -52,10 +54,19 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "header", name = "Channels" },
 		{ type = "toggle", key = "shortChannels", name = "Short Channel Tags",
 		  desc = "Replace [Guild], [Party], [1. General] and so on with short, saturated coloured tags." },
-		{ type = "toggle", key = "hideBrackets", name = "Hide Brackets",
+		{ type = "toggle", key = "hideBrackets", parent = "shortChannels", name = "Hide Brackets",
 		  desc = "Also remove the square brackets around the short channel tags." },
 		{ type = "toggle", key = "classColors", name = "Class Coloured Names",
 		  desc = "Colour player names by class in every chat type (sets the chatClassColorOverride CVar)." },
+		{ type = "dropdown", key = "nameStyle", name = "Names In Chat", values = {
+			{ value = "full", label = "Full name (Professor Skillybones)" },
+			{ value = "initial", label = "Initial and surname (P. Skillybones)" },
+			{ value = "firstinitial", label = "Name and initial (Professor S.)" },
+			{ value = "first", label = "First name (Professor)" },
+			{ value = "last", label = "Surname (Skillybones)" },
+		  }, desc = "How a player's name is written in the chat windows and the whisper windows. A name without a surname stays as it is; the name is still a link to the player." },
+		{ type = "toggle", key = "nameShade", name = "Shade Behind Names",
+		  desc = "On the parchment sheet, a soft dark band behind a line's channel tag and the player's name, so their bright class and channel colours read without an outline. The rest of the line is in dark ink." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
 		  desc = "A whisper opens a small window of its own, one per person, with the conversation and a box to answer in, instead of a new chat tab. Whispers still show in the main chat. Switching it off puts the game's own whisper setting back." },
@@ -500,8 +511,66 @@ local function LineText(e)
 	return e
 end
 
+--------------------------------------------------------------------------------
+-- Names In Chat (user, 2026-09-24: "Professor Skillybones goes either P.
+-- Skillybones or Professor S."): the name a player link shows, shortened;
+-- the link itself (who it is) is left as it is. Characters here have a
+-- first name and a surname; a name of one word stays whole.
+--------------------------------------------------------------------------------
+
+-- the first letter of a word (a UTF-8 character, not a byte)
+local function Initial(word)
+	return word:match("^[%z\1-\127\194-\244][\128-\191]*") or word:sub(1, 1)
+end
+
+local function ShortPerson(name, style)
+	if type(name) ~= "string" or style == nil or style == "full" then
+		return name
+	end
+	local core, realm = name:match("^(.-)(%-[^%s]+)$")
+	core, realm = core or name, realm or ""
+	local first, last = core:match("^(%S+)%s+(.+)$")
+	if not first then
+		return name
+	end
+	if style == "initial" then
+		return Initial(first) .. ". " .. last .. realm
+	elseif style == "firstinitial" then
+		return first .. " " .. Initial(last) .. "." .. realm
+	elseif style == "first" then
+		return first .. realm
+	elseif style == "last" then
+		return last .. realm
+	end
+	return name
+end
+
+local function NameStyle()
+	local style = Active("nameStyle")
+	return type(style) == "string" and style ~= "full" and style or nil
+end
+
+-- the shown name in each player link of a line: "[|cffc79c6eName|r]",
+-- "[Name]", "Name", with a hex or a named colour
+local function ShortNames(text, style)
+	return (text:gsub("(|Hplayer:[^|]*|h)(.-)(|h)", function(open, shown, close)
+		local pre, core, post = shown:match("^(%[?|c%x%x%x%x%x%x%x%x)(.-)(|r%]?)$")
+		if not pre then
+			pre, core, post = shown:match("^(%[?|cn[%w_]+:)(.-)(|r%]?)$")
+		end
+		if not pre then
+			pre, core, post = shown:match("^(%[?)(.-)(%]?)$")
+		end
+		if not core or core == "" then
+			return nil
+		end
+		return open .. pre .. ShortPerson(core, style) .. post .. close
+	end))
+end
+
 local function OnLineAdded(chatFrame, text)
-	if transformFailed or not Active("shortChannels") then
+	local short, style = Active("shortChannels"), NameStyle()
+	if transformFailed or not (short or style) then
 		return
 	end
 	if text == nil or Secret(text) or type(text) ~= "string" or type(chatFrame.TransformMessages) ~= "function" then
@@ -513,12 +582,21 @@ local function OnLineAdded(chatFrame, text)
 		local t = LineText(e)
 		return t ~= nil and not Secret(t) and t == text
 	end
+	local function Rewritten(t)
+		if short then
+			t = Shorten(t)
+		end
+		if style then
+			t = ShortNames(t, style)
+		end
+		return t
+	end
 	local function Rewrite(e, ...)
 		if type(e) == "table" then
-			e.message = Shorten(e.message)
+			e.message = Rewritten(e.message)
 			return e, ...
 		end
-		return Shorten(e), ...
+		return Rewritten(e), ...
 	end
 	local ok = pcall(chatFrame.TransformMessages, chatFrame, IsIt, Rewrite)
 	if not ok then
@@ -535,50 +613,466 @@ end
 -- its history for each one.
 --------------------------------------------------------------------------------
 
+-- The chat's inks (user, 2026-09-24: "match the Chat color when we have a
+-- Parchment behind it"): one designed dark ink per kind of chat, each at
+-- 5 : 1 or better on the vellum and apart from the others by its hue --
+-- say in the text ink, guild green, party blue, raid amber, whispers plum,
+-- Battle.net teal, channels rosewood, yells red, the system ochre. A line's
+-- kind is read back from its colour (ChatTypeInfo, the player's own colour
+-- choices included); a colour of no known kind gets QuestInk's ink of it.
+local CHAT_INKS = {
+	say      = { 0.227, 0.165, 0.110 },   -- #3A2A1C
+	emote    = { 0.403, 0.201, 0.053 },   -- #67330D
+	yell     = { 0.505, 0.091, 0.054 },   -- #81170E
+	party    = { 0.116, 0.238, 0.524 },   -- #1E3D86
+	raid     = { 0.391, 0.210, 0.014 },   -- #643504
+	warning  = { 0.485, 0.125, 0.000 },   -- #7C2000
+	instance = { 0.349, 0.232, 0.043 },   -- #593B0B
+	guild    = { 0.088, 0.295, 0.075 },   -- #164B13
+	officer  = { 0.197, 0.281, 0.064 },   -- #324810
+	whisper  = { 0.448, 0.108, 0.389 },   -- #721B63
+	bnet     = { 0.036, 0.284, 0.304 },   -- #09484D
+	channel  = { 0.416, 0.180, 0.165 },   -- #6A2E2A
+	system   = { 0.306, 0.251, 0.023 },   -- #4E4006
+	loot     = { 0.093, 0.294, 0.093 },   -- #184B18
+	money    = { 0.320, 0.245, 0.018 },   -- #523F05
+	skill    = { 0.164, 0.226, 0.539 },   -- #2A3A89
+	npc      = { 0.305, 0.250, 0.084 },   -- #4E4015
+}
+-- the chat types, in the order they win when two share a colour
+local CHAT_INK_TYPES = {
+	{ "SAY", "say" }, { "YELL", "yell" }, { "EMOTE", "emote" }, { "TEXT_EMOTE", "emote" },
+	{ "PARTY", "party" }, { "PARTY_LEADER", "party" }, { "RAID", "raid" }, { "RAID_LEADER", "raid" },
+	{ "RAID_WARNING", "warning" }, { "INSTANCE_CHAT", "instance" }, { "INSTANCE_CHAT_LEADER", "instance" },
+	{ "GUILD", "guild" }, { "OFFICER", "officer" }, { "WHISPER", "whisper" }, { "WHISPER_INFORM", "whisper" },
+	{ "BN_WHISPER", "bnet" }, { "BN_WHISPER_INFORM", "bnet" }, { "BN_INLINE_TOAST_ALERT", "bnet" },
+	{ "SYSTEM", "system" }, { "LOOT", "loot" }, { "CURRENCY", "loot" }, { "MONEY", "money" },
+	{ "SKILL", "skill" }, { "ACHIEVEMENT", "money" }, { "GUILD_ACHIEVEMENT", "money" },
+	{ "MONSTER_SAY", "npc" }, { "MONSTER_PARTY", "npc" }, { "MONSTER_WHISPER", "npc" },
+	{ "MONSTER_YELL", "yell" }, { "MONSTER_EMOTE", "emote" }, { "RAID_BOSS_EMOTE", "warning" }, { "RAID_BOSS_WHISPER", "warning" },
+	{ "CHANNEL", "channel" },
+}
+for i = 1, 20 do
+	CHAT_INK_TYPES[#CHAT_INK_TYPES + 1] = { "CHANNEL" .. i, "channel" }
+end
+
+local inkByColour = nil   -- "r,g,b" -> ink, from ChatTypeInfo; rebuilt when the chat's colours change
+
+local function ColourKey(r, g, b)
+	return string.format("%.2f,%.2f,%.2f", r, g, b)
+end
+
+local function ChatInk(r, g, b)
+	if not inkByColour then
+		inkByColour = {}
+		for _, entry in ipairs(CHAT_INK_TYPES) do
+			local info = ChatTypeInfo and ChatTypeInfo[entry[1]]
+			if info and type(info.r) == "number" and not Secret(info.r) then
+				local key = ColourKey(info.r, info.g, info.b)
+				inkByColour[key] = inkByColour[key] or CHAT_INKS[entry[2]]
+			end
+		end
+	end
+	local ink = inkByColour[ColourKey(r, g, b)]
+	if ink then
+		return ink[1], ink[2], ink[3]
+	end
+	return MelloUI.QuestInk.InkOf(r, g, b)
+end
+
+do
+	local watch = CreateFrame("Frame")
+	watch:RegisterEvent("UPDATE_CHAT_COLOR")
+	watch:SetScript("OnEvent", function()
+		inkByColour = nil
+	end)
+end
+
+local function Number(v)
+	return type(v) == "number" and not Secret(v)
+end
+
 local function ChatInked()
 	local Kit = MelloUI.Kit
 	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
 		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
 end
 
-local function InkEntry(e)
-	local QI = MelloUI.QuestInk
-	if type(e) ~= "table" or e.melloPlain or type(e.message) ~= "string" or Secret(e.message) then
-		return e
+-- Where the sender's part of a line ends (its channel tag and the player's
+-- name, or a coloured sender such as MelloUI's own prefix): the end of the
+-- first player link, else the colon after a coloured start; 0 for none
+local function SenderEnd(text)
+	local _, stop = text:find("|HB?N?player:[^|]*|h.-|h")
+	if stop then
+		return stop
 	end
-	e.melloPlain = { e.message, e.r, e.g, e.b }
-	e.message = QI.InkCodes(e.message)
-	if type(e.r) == "number" and type(e.g) == "number" and type(e.b) == "number" then
-		e.r, e.g, e.b = QI.InkOf(e.r, e.g, e.b)
+	local colon = text:find(": ", 1, true)
+	if colon and text:sub(1, colon):find("|c", 1, true) then
+		return colon - 1
 	end
-	return e
+	return 0
 end
 
-local function PlainEntry(e)
-	local p = type(e) == "table" and e.melloPlain
-	if p then
-		e.message, e.r, e.g, e.b = p[1], p[2], p[3], p[4]
-		e.melloPlain = nil
+-- The colour codes of a text in ink, its links left in their colours (the
+-- item's quality, a player's class: user, 2026-09-24, "we are going to keep
+-- Class Colored Names and links"): each link with the code before it put
+-- aside, the rest inked, the links put back
+local function InkKeepLinks(text)
+	local kept = {}
+	local function Keep(link)
+		kept[#kept + 1] = link
+		return "\1" .. #kept .. "\2"
 	end
-	return e
+	text = text:gsub("|c[^|]*|H.-|h.-|h", Keep)
+	text = text:gsub("|H.-|h.-|h", Keep)
+	text = MelloUI.QuestInk.InkCodes(text)
+	return (text:gsub("\1(%d+)\2", function(i) return kept[tonumber(i)] end))
 end
 
-local function NotInked(e)
-	return type(e) == "table" and not e.melloPlain and type(e.message) == "string" and not Secret(e.message)
+local function Hex(r, g, b)
+	return string.format("ff%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 end
 
-local function Inked(e)
-	return type(e) == "table" and e.melloPlain ~= nil
+-- A line on the paper (user, 2026-09-24): the sender's part -- channel tag
+-- and player name -- keeps its bright colours and lies on a soft dark band
+-- (ShadeLines below), its plain parts (brackets, the colon) held in the
+-- line's own colour so they read on the band too; the rest is dark ink,
+-- links kept.
+--
+-- The ink is written INTO the text as colour codes (/chatink, 2026-09-24:
+-- this client's chat hands TransformMessages a copy of each line and keeps
+-- only its text; a new colour or a mark on the copy was lost, so no line
+-- ever took its ink): the body opens in the chat kind's ink and every |r in
+-- it (after a link, a name) opens it again.
+local function InkLine(text, r, g, b)
+	local cut = SenderEnd(text)
+	local head, body = text:sub(1, cut), text:sub(cut + 1)
+	local readable = Number(r) and Number(g) and Number(b)
+	if cut > 0 and readable then
+		local hex = Hex(r, g, b)
+		head = "|c" .. hex .. head:gsub("|r", "|r|c" .. hex) .. "|r"
+	end
+	body = InkKeepLinks(body)
+	if readable then
+		local ink = Hex(ChatInk(r, g, b))
+		body = "|c" .. ink .. body:gsub("|r", "|r|c" .. ink) .. "|r"
+	end
+	return head .. body
 end
 
-local function OnLineInk(chatFrame)
-	if not ChatInked() or type(chatFrame.TransformMessages) ~= "function" then
+-- The ink goes on the lines as they are DRAWN (/chatink, 2026-09-24: this
+-- client's chat history cannot be rewritten for it -- TransformMessages
+-- hands out copies and reaches only a few lines -- so no line ever took its
+-- ink). After every redraw of a chat window (its RefreshDisplay, which sets
+-- each visible line from the history) each visible line's text is written
+-- again as InkLine has it and its colour set to the chat kind's ink; a
+-- protected (secret) line cannot be read, so only its colour takes the
+-- ink. The history is never touched: off, the next redraw -- or the put-back
+-- below, at once -- shows the game's own text. What was changed on a line is
+-- kept beside it (a weak side table), never on the game's font string.
+local lineState = setmetatable({}, { __mode = "k" })   -- [font string] = { inked, plain, rgb, ink }
+local inkFrames = setmetatable({}, { __mode = "k" })   -- [message frame] = true: its lines take the ink
+
+local function SameColour(r, g, b, c)
+	return c ~= nil and math.abs(r - c[1]) < 0.002 and math.abs(g - c[2]) < 0.002 and math.abs(b - c[3]) < 0.002
+end
+
+local function InkDrawnLine(line, on)
+	local okT, text = pcall(line.GetText, line)
+	if not okT or text == nil then
 		return
 	end
-	pcall(chatFrame.TransformMessages, chatFrame, NotInked, function(e, ...) return InkEntry(e), ... end)
+	local state = lineState[line]
+	local secret = Secret(text)
+	local okC, r, g, b = pcall(line.GetTextColor, line)
+	local rgbReadable = okC and Number(r) and Number(g) and Number(b)
+	if on then
+		-- still our ink from the last pass (no redraw since): left as it is
+		if state and (secret or text == state.inked) and (not rgbReadable or SameColour(r, g, b, state.ink)) then
+			return
+		end
+		state = { rgb = rgbReadable and { r, g, b } or nil }
+		if not secret and type(text) == "string" then
+			state.plain = text
+			state.inked = InkLine(text, r, g, b)
+			line:SetText(state.inked)
+		end
+		if rgbReadable then
+			local ir, ig, ib = ChatInk(r, g, b)
+			state.ink = { ir, ig, ib }
+			line:SetTextColor(ir, ig, ib)
+		end
+		lineState[line] = state
+	elseif state then
+		-- put back what is still ours (a redraw since has done it already)
+		if state.inked and not secret and text == state.inked then
+			line:SetText(state.plain)
+		end
+		if state.rgb and rgbReadable and SameColour(r, g, b, state.ink) then
+			line:SetTextColor(state.rgb[1], state.rgb[2], state.rgb[3])
+		end
+		lineState[line] = nil
+	end
 end
 
--- every chat window's history inked or put back (the sheet switched)
+-- The drawn lines in the face and size the Fonts module wants for this
+-- window (user, 2026-09-24: "the Chat font still refuses to change to the
+-- Font Style"): the Font Style's chat face on the stone, its parchment face
+-- on the paper, without an outline while in ink. Set on each line after
+-- every redraw, so whatever sets the lines' font behind it (the game, the
+-- chat's shared font object) is undone at the next one.
+local function FitLineFonts(frame)
+	local lines = frame and frame.visibleLines
+	local fonts = MelloUI:GetModule("Fonts")
+	if not (inkFrames[frame] and type(lines) == "table" and fonts and fonts.isEnabled and fonts.ChatWindowFont) then
+		return
+	end
+	local inked = ChatInked()
+	local okW, path, size = pcall(fonts.ChatWindowFont, fonts, frame, inked)
+	if not (okW and path and size) then
+		return
+	end
+	local okF, _, _, frameFlags = pcall(frame.GetFont, frame)
+	local flags = inked and "" or (okF and frameFlags) or ""
+	for _, line in ipairs(lines) do
+		local okL, lpath, lsize, lflags = pcall(line.GetFont, line)
+		if okL and (lpath ~= path or math.abs((lsize or 0) - size) > 0.05 or (lflags or "") ~= flags) then
+			pcall(line.SetFont, line, path, size, flags)
+		end
+	end
+end
+
+local function InkVisible(frame)
+	local lines = frame and frame.visibleLines
+	if not (inkFrames[frame] and type(lines) == "table") then
+		return
+	end
+	local on = ChatInked()
+	for _, line in ipairs(lines) do
+		pcall(InkDrawnLine, line, on)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The shade behind names (user, 2026-09-24: "the best way to be able to read
+-- it without having to use Outlines would be to place a soft darkening
+-- behind the Channel Name and the Players Name"): on the paper, a small soft
+-- band under each BRIGHT piece of a line's first row -- the channel tag,
+-- the player's name, a coloured sender (MelloUI's prefix, a whisper
+-- window's time and name), a link -- and nothing under the ink (user,
+-- 2026-09-24: one band from the line's start covered an NPC's speech,
+-- dark on dark). Each band is three pieces of one feathered texture (its
+-- ends kept at their shape, its middle stretched), measured on the line's
+-- own font, placed by the width of the text before it. The pieces are found
+-- in the text the game wrote (the ink only adds colour codes, which have no
+-- width); a protected line's text cannot be read, so it has none. Needs
+-- the message frame's visible lines (this client's Lua message frame:
+-- visibleLines, RefreshDisplay); without them nothing is drawn.
+--------------------------------------------------------------------------------
+
+local SHADE_FILE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Chat\\name_shade"
+local SHADE_ALPHA = 0.55
+local SHADE_COLOUR = { 0.180, 0.122, 0.078 }   -- the palette's raised panel, #2E1F14: a warm dark on the paper
+local SHADE_PAD = 3                             -- UI px the band reaches past its text on each side
+local shades = setmetatable({}, { __mode = "k" })       -- [message frame] = { [line * 10 + piece] = band }
+local shadeWanted = setmetatable({}, { __mode = "k" })  -- [message frame] = function() -> on?
+local measure = nil
+
+local function MeasureWidth(line, text)
+	if not measure then
+		local host = CreateFrame("Frame", nil, UIParent)
+		host:Hide()
+		measure = host:CreateFontString(nil, "ARTWORK")
+	end
+	local ok, path, size, flags = pcall(line.GetFont, line)
+	if not (ok and path and size) then
+		return nil
+	end
+	if text == "" then
+		return 0, size
+	end
+	measure:SetFont(path, size, flags or "")
+	measure:SetText(text)
+	local okW, w = pcall(measure.GetUnboundedStringWidth, measure)
+	if not okW or Secret(w) then
+		return nil
+	end
+	return w, size
+end
+
+-- The bright pieces of a line: { first, last } character spans in `text`,
+-- in order. The channel tag (its link, or a coloured tag at the start such
+-- as a whisper's), the player's name (its link), else a coloured sender
+-- before the first colon; then every other link.
+local function BrightPieces(text)
+	local pieces = {}
+	local taken = {}
+	local function Add(a, b)
+		if a and b and b >= a then
+			pieces[#pieces + 1] = { a, b }
+			for k = a, b do
+				taken[k] = true
+			end
+		end
+	end
+	local ca, cb = text:find("|Hchannel:[^|]*|h.-|h")
+	if ca and ca <= 12 then
+		Add(ca, cb)
+	else
+		Add(text:find("^%[?|c%x%x%x%x%x%x%x%x[^|]-|r%]?"))
+	end
+	local pa, pb = text:find("|HB?N?player:[^|]*|h.-|h")
+	if pa then
+		Add(pa, pb)
+	else
+		local cut = SenderEnd(text)
+		if cut > 0 then
+			local from = (#pieces > 0 and pieces[#pieces][2] + 1) or 1
+			Add(from, cut)
+		end
+	end
+	local at = 1
+	while true do
+		local la, lb, kind = text:find("|H(%a+):[^|]*|h.-|h", at)
+		if not la then
+			break
+		end
+		if kind ~= "channel" and kind ~= "player" and kind ~= "BNplayer" and not taken[la] then
+			-- the link's colour code just before it belongs to it
+			local code = text:sub(1, la - 1):match("()|c[^|]*$")
+			Add(code or la, lb)
+		end
+		at = lb + 1
+	end
+	table.sort(pieces, function(x, y) return x[1] < y[1] end)
+	-- pieces that touch are one band (MelloUI's two-coloured name)
+	local merged = {}
+	for _, piece in ipairs(pieces) do
+		local last = merged[#merged]
+		if last and piece[1] <= last[2] + 1 then
+			last[2] = math.max(last[2], piece[2])
+		else
+			merged[#merged + 1] = { piece[1], piece[2] }
+		end
+	end
+	return merged
+end
+
+-- the layer under a line's text, on the frame that draws it
+local UNDER = { OVERLAY = "ARTWORK", ARTWORK = "BORDER", BORDER = "BACKGROUND", BACKGROUND = "BACKGROUND" }
+
+local function Band(frame, line, key)
+	shades[frame] = shades[frame] or {}
+	local band = shades[frame][key]
+	if band then
+		return band
+	end
+	local owner = line:GetParent() or frame
+	local layer = UNDER[(line:GetDrawLayer())] or "BACKGROUND"
+	band = {}
+	for j, part in ipairs({ { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }) do
+		local t = owner:CreateTexture(nil, layer, nil, layer == "BACKGROUND" and -8 or 7)
+		t:SetTexture(SHADE_FILE)
+		t:SetTexCoord(part[1], part[2], 0, 1)
+		t:SetVertexColor(SHADE_COLOUR[1], SHADE_COLOUR[2], SHADE_COLOUR[3], 1)
+		t:Hide()
+		band[j] = t
+	end
+	shades[frame][key] = band
+	return band
+end
+
+local function HideBand(band)
+	for _, t in ipairs(band) do
+		t:Hide()
+	end
+end
+
+local function PlaceBand(band, line, x0, x1, size, alpha)
+	local h = size * 1.2
+	local cap = math.min(h * 0.45, (x1 - x0) / 2)
+	local y = (h - size) / 2 + 1
+	band[1]:ClearAllPoints()
+	band[1]:SetPoint("TOPLEFT", line, "TOPLEFT", x0, y)
+	band[1]:SetSize(cap, h)
+	band[2]:ClearAllPoints()
+	band[2]:SetPoint("TOPLEFT", line, "TOPLEFT", x0 + cap, y)
+	band[2]:SetSize(math.max(0.1, (x1 - x0) - 2 * cap), h)
+	band[3]:ClearAllPoints()
+	band[3]:SetPoint("TOPLEFT", line, "TOPLEFT", x1 - cap, y)
+	band[3]:SetSize(cap, h)
+	for _, t in ipairs(band) do
+		t:SetAlpha(alpha)
+		t:Show()
+	end
+end
+
+local function ShadeLines(frame)
+	local lines = frame and frame.visibleLines
+	local want = shadeWanted[frame]
+	local on = type(lines) == "table" and want and want() and Active("nameShade") ~= false
+	local used = {}
+	if on then
+		for i, line in ipairs(lines) do
+			local shown = line.IsShown and line:IsShown()
+			local justify = line.GetJustifyH and line:GetJustifyH()
+			-- a chat window's line: the text the game wrote, kept when it was
+			-- inked; a whisper window's: the line as it is
+			local text
+			if inkFrames[frame] then
+				local state = lineState[line]
+				text = state and state.plain
+			else
+				local okT, t = pcall(line.GetText, line)
+				text = okT and t or nil
+			end
+			if shown and type(text) == "string" and not Secret(text) and (justify == nil or justify == "LEFT") then
+				local okW, rowWidth = pcall(line.GetWidth, line)
+				rowWidth = (okW and not Secret(rowWidth) and rowWidth) or 0
+				local alpha = SHADE_ALPHA * (line.GetAlpha and line:GetAlpha() or 1)
+				for k, piece in ipairs(BrightPieces(text)) do
+					if k > 9 then
+						break
+					end
+					local before, size = MeasureWidth(line, text:sub(1, piece[1] - 1))
+					local width = before and MeasureWidth(line, text:sub(piece[1], piece[2]))
+					-- the first row only: a piece past its end may have wrapped
+					if before and width and width > 0 and size and (rowWidth <= 0 or before + width <= rowWidth - 4) then
+						local key = i * 10 + k
+						PlaceBand(Band(frame, line, key), line, before - SHADE_PAD, before + width + SHADE_PAD, size, alpha)
+						used[key] = true
+					end
+				end
+			end
+		end
+	end
+	for key, band in pairs(shades[frame] or {}) do
+		if not used[key] then
+			HideBand(band)
+		end
+	end
+end
+
+-- A message frame's lines get their shade while `wanted()` (the chat on its
+-- paper, a whisper window on its own), after every redraw of its lines
+local function WatchShade(frame, wanted)
+	if not frame or shadeWanted[frame] then
+		return
+	end
+	shadeWanted[frame] = wanted
+	local function AfterRedraw(f)
+		pcall(FitLineFonts, f)
+		InkVisible(f)
+		ShadeLines(f)
+	end
+	for _, method in ipairs({ "RefreshDisplay", "RefreshLayout" }) do
+		if type(frame[method]) == "function" then
+			hooksecurefunc(frame, method, AfterRedraw)
+		end
+	end
+	AfterRedraw(frame)
+end
+
 -- A message frame's font without its outline and shadow while its lines are
 -- ink (a black outline round dark ink smudges it -- user, 2026-09-23, the
 -- whisper window); put back as it was after
@@ -615,16 +1109,26 @@ local function InkFrameFont(frame, on)
 end
 
 local function InkAllChat(on)
+	-- the parchment's own chat face and size (Fonts) first when the sheet
+	-- comes, so the ink's font (no outline) is the last word; after the
+	-- outline is back when it goes
+	local fonts = MelloUI:GetModule("Fonts")
+	local refresh = fonts and fonts.isEnabled and fonts.RefreshChatWindows
+	if on and refresh then
+		pcall(fonts.RefreshChatWindows, fonts)
+	end
 	for _, name in ipairs(ChatFrameNames()) do
 		local frame = _G[name]
-		if frame and frame ~= _G.COMBATLOG and type(frame.TransformMessages) == "function" then
-			InkFrameFont(frame, on)
-			if on then
-				pcall(frame.TransformMessages, frame, NotInked, function(e, ...) return InkEntry(e), ... end)
-			else
-				pcall(frame.TransformMessages, frame, Inked, function(e, ...) return PlainEntry(e), ... end)
-			end
+		if frame and frame ~= _G.COMBATLOG then
+			pcall(InkFrameFont, frame, on)
+			-- the drawn lines in their font, inked or put back at once
+			pcall(FitLineFonts, frame)
+			pcall(InkVisible, frame)
+			pcall(ShadeLines, frame)
 		end
+	end
+	if not on and refresh then
+		pcall(fonts.RefreshChatWindows, fonts)
 	end
 end
 
@@ -640,8 +1144,9 @@ local function HookLines()
 		if frame and not hookedWindows[frame] and frame ~= _G.COMBATLOG and frame.AddMessage then
 			hookedWindows[frame] = true
 			hooksecurefunc(frame, "AddMessage", OnLineAdded)
-			-- after the shortening: the ink goes on the finished line
-			hooksecurefunc(frame, "AddMessage", OnLineInk)
+			-- the ink and the bands go on its lines as they are drawn
+			inkFrames[frame] = true
+			WatchShade(frame, ChatInked)
 		end
 	end
 	local QI = MelloUI.QuestInk
@@ -724,6 +1229,15 @@ local function PopupFont(f)
 	if not (ok and path and size) then
 		return
 	end
+	-- the face and size of the chat on the stone or on the paper, whichever
+	-- this window lies on (the chat window's own may be the other)
+	local fonts = MelloUI:GetModule("Fonts")
+	if fonts and fonts.isEnabled and fonts.ChatWindowFont then
+		local fpath, fsize = fonts:ChatWindowFont(src, f.inked)
+		if fpath and fsize then
+			path, size = fpath, fsize
+		end
+	end
 	-- the chat's own outline, not the ink's (the chat on parchment has none)
 	flags = (src.melloInkFont and src.melloInkFont.flags) or flags or ""
 	if not f.msgs.melloShadow then
@@ -751,6 +1265,7 @@ local function InkPopup(f)
 	local changed = (f.inked or false) ~= ink
 	f.inked = ink
 	PopupFont(f)
+	WatchShade(f.msgs, function() return f.inked end)
 	if f.msgs and f.lineLog and changed then
 		f.msgs:Clear()
 		for _, e in ipairs(f.lineLog) do
@@ -780,18 +1295,20 @@ local function WhisperInked()
 		and Kit.ParchmentOn and Kit:ParchmentOn("whisper")) and true or false
 end
 
--- One conversation line, in ink on parchment, else in its colours
+-- One conversation line, in ink on parchment, else in its colours: the
+-- main chat's rules (user, 2026-09-24: "the Whisper Popup Window follows the
+-- same rules as the main chat") -- the time and the name bright on their
+-- soft band, the words in the whisper's ink, links kept
 WriteWhisperLine = function(f, e)
-	local QI = MelloUI.QuestInk
 	local ink = WhisperInked() and f.kitDressed
-	local stampHex, who, r, g, b = "ff8a8a8a", e.who, e.r, e.g, e.b
+	local r, g, b = e.r, e.g, e.b
+	local line = ("|cff8a8a8a%s|r %s: %s"):format(e.stamp, e.who, e.text)
 	if ink then
-		local sr, sg, sb = QI.InkOf(0.54, 0.54, 0.54)
-		stampHex = string.format("ff%02x%02x%02x", math.floor(sr * 255 + 0.5), math.floor(sg * 255 + 0.5), math.floor(sb * 255 + 0.5))
-		who = QI.InkCodes(who)
-		r, g, b = QI.InkOf(r, g, b)
+		if not Secret(e.text) then
+			line = InkLine(line, r, g, b)
+		end
+		r, g, b = ChatInk(r, g, b)
 	end
-	local line = ("|c%s%s|r %s: %s"):format(stampHex, e.stamp, who, e.text)
 	if not pcall(f.msgs.AddMessage, f.msgs, line, r, g, b) then
 		f.msgs:AddMessage(e.text, r, g, b)
 	end
@@ -1168,7 +1685,7 @@ local function OnWhisper(_, event, text, sender, ...)
 	f.level = level or f.level
 	UpdateHeader(f)
 	local r, g, b = PopupColor(how.kind, how.incoming)
-	local who = how.incoming and f.titleText or (YOU or "You")
+	local who = how.incoming and ShortPerson(f.titleText, NameStyle()) or (YOU or "You")
 	if how.incoming and f.classHex then
 		who = "|c" .. f.classHex .. who .. "|r"
 	end
@@ -1331,7 +1848,128 @@ function M:OnSettingChanged(key, value, db)
 		HookLines()
 	elseif key == "classColors" then
 		ApplyClassColors(value)
+	elseif key == "nameShade" then
+		for frame in pairs(shadeWanted) do
+			pcall(ShadeLines, frame)
+		end
 	elseif key == "whisperPopup" then
 		SetWhisperPopup(value)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- /chatink [n]: how the ink took on chat window n (1 by default): its lines,
+-- the inked, the protected (secret) ones, the colours left bright in inked
+-- lines, and the game's chat filter hooks this client offers (for the names
+-- of protected lines)
+--------------------------------------------------------------------------------
+SLASH_MELLOCHATINK1 = "/chatink"
+SlashCmdList.MELLOCHATINK = function(msg)
+	local n = tonumber(msg) or 1
+	local frame = _G["ChatFrame" .. n]
+	if not frame then
+		MelloUI:Print("/chatink: no chat window %d.", n)
+		return
+	end
+	MelloUI:ClearLog()
+	local lines = frame.visibleLines
+	local shown, inked, secret, bright = 0, 0, 0, {}
+	for _, line in ipairs(type(lines) == "table" and lines or {}) do
+		if line:IsShown() then
+			shown = shown + 1
+			local okT, text = pcall(line.GetText, line)
+			local state = lineState[line]
+			if okT and Secret(text) then
+				secret = secret + 1
+			end
+			if state then
+				inked = inked + 1
+			end
+			if okT and type(text) == "string" and not Secret(text) and state and #bright < 6 then
+				-- the body only, its links left out: names and links stay bright by design
+				local body = text:sub(SenderEnd(text) + 1):gsub("|c[^|]*|H.-|h.-|h", ""):gsub("|H.-|h.-|h", "")
+				for code in body:gmatch("|c(%x%x%x%x%x%x%x%x)") do
+					local r, g, b = tonumber(code:sub(3, 4), 16) / 255, tonumber(code:sub(5, 6), 16) / 255, tonumber(code:sub(7, 8), 16) / 255
+					if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 then
+						bright[#bright + 1] = code .. " in: " .. text:sub(1, 90):gsub("|", "||")
+						break
+					end
+				end
+			end
+		end
+	end
+	MelloUI:Print("ChatFrame%d: %d lines drawn, %d inked, %d protected. Parchment ink %s.", n, shown, inked, secret, ChatInked() and "on" or "off")
+	local Kit, QI = MelloUI.Kit, MelloUI.QuestInk
+	local um = MelloUI:GetModule("UIModifications")
+	local surface = QI and QI.surfaces and QI.surfaces.chat
+	MelloUI:Print("  ink engine %s, chat reskin covered %s, parchment_chat %s, surface %s (active %s), ink on its lines %s, outline flags %q",
+		tostring(QI ~= nil), tostring(Kit and Kit.IsCovered and Kit:IsCovered("chat")),
+		tostring(um and um.db and um.db.parchment_chat), surface and "registered" or "missing",
+		tostring(surface and surface.active), tostring(inkFrames[frame] or false), tostring(select(3, frame:GetFont())))
+	local banded = 0
+	for _, band in pairs(shades[frame] or {}) do
+		if band[1]:IsShown() then
+			banded = banded + 1
+		end
+	end
+	MelloUI:Print("  name shade: visible lines %s, RefreshDisplay %s, bands shown %d",
+		type(lines) == "table" and tostring(#lines) or "none", tostring(type(frame.RefreshDisplay) == "function"), banded)
+	for _, line in ipairs(bright) do
+		MelloUI:Print("  still bright: %s", line)
+	end
+	-- the first drawn lines as they are now, codes shown
+	local listed = 0
+	for _, line in ipairs(type(lines) == "table" and lines or {}) do
+		local okT, text = pcall(line.GetText, line)
+		if listed < 4 and line:IsShown() and okT and type(text) == "string" and not Secret(text) then
+			listed = listed + 1
+			MelloUI:Print("  line: %s", (text:sub(1, 160):gsub("|", "||")))
+		end
+	end
+	local util = _G.ChatFrameUtil
+	local hooks = {}
+	if type(util) == "table" then
+		for k, v in pairs(util) do
+			if type(v) == "function" and (k:find("Filter") or k:find("Sender")) then
+				hooks[#hooks + 1] = k
+			end
+		end
+	end
+	table.sort(hooks)
+	MelloUI:Print("Chat hooks: %s", #hooks > 0 and table.concat(hooks, ", ") or "none found in ChatFrameUtil")
+	-- the fonts: what the Fonts module wants, and what each link of the
+	-- chain -- the window, its font object, a drawn line, the chat's shared
+	-- font object -- has now (the chat not following the Font Style)
+	local function FontOf(obj)
+		if not (obj and obj.GetFont) then
+			return "none"
+		end
+		local ok, path, size, flags = pcall(obj.GetFont, obj)
+		if not ok or not path then
+			return "unreadable"
+		end
+		return string.format("%s %s %q", tostring(path):match("[^\\/]+$") or tostring(path), tostring(size and math.floor(size * 10 + 0.5) / 10), tostring(flags))
+	end
+	local function ObjName(obj)
+		return obj and ((obj.GetName and obj:GetName()) or tostring(obj)) or "none"
+	end
+	local fonts = MelloUI:GetModule("Fonts")
+	local fdb = fonts and fonts.db
+	MelloUI:Print("Fonts: module %s, style %s", tostring(fonts and fonts.isEnabled), tostring(fdb and fdb.style))
+	MelloUI:Print("  chat %s | chat text %s | chat on parchment %s",
+		tostring(fdb and fdb.fontChat):match("[^\\/]+$") or "?", tostring(fdb and fdb.fontChatText):match("[^\\/]+$") or "?",
+		tostring(fdb and fdb.fontChatParchment):match("[^\\/]+$") or "?")
+	if fonts and fonts.ChatWindowFont then
+		local okW, path, size = pcall(fonts.ChatWindowFont, fonts, frame, ChatInked())
+		MelloUI:Print("  wanted on this window: %s %s", okW and tostring(path):match("[^\\/]+$") or "?", okW and tostring(size) or "?")
+	end
+	local fobj = frame.GetFontObject and frame:GetFontObject()
+	MelloUI:Print("  window: %s | its font object %s: %s", FontOf(frame), ObjName(fobj), FontOf(fobj))
+	local first = type(lines) == "table" and lines[1]
+	local lobj = first and first.GetFontObject and first:GetFontObject()
+	MelloUI:Print("  drawn line: %s | its font object %s: %s", FontOf(first), ObjName(lobj), FontOf(lobj))
+	MelloUI:Print("  ChatFontNormal: %s", FontOf(_G.ChatFontNormal))
+	-- into the copy window, selected: Ctrl+C copies it (an addon cannot
+	-- reach the system clipboard itself)
+	MelloUI:ShowLog("chatink")
 end

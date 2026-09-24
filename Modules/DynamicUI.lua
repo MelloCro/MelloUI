@@ -44,10 +44,6 @@ local catchers = {}   -- group id -> { catcher per outline rect }
 local panels = {}     -- group id -> its selector
 local openId = nil    -- the group whose selector is open
 
-local function Bars()
-	return MelloUI:GetModule("ActionBarPanel")
-end
-
 -- The panels whose looks are picked here, in the order their groups are offered
 local PROVIDERS = { "ActionBarPanel", "BackpackPanel", "CharacterPanel", "MinimapPanel", "ProfessionsPanel" }
 
@@ -532,7 +528,48 @@ local function UMValue(key, default)
 	return v
 end
 
--- The panel's rows: the borders on the left, the backgrounds on the right
+-- A switch row (a kit check box when the kit is there)
+local function Check(parent, label, getValue, onPick)
+	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+	cb:SetSize(24, 24)
+	if cb.Text then
+		cb.Text:Hide()
+	end
+	local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	fs:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+	fs:SetJustifyH("LEFT")
+	fs:SetText(label)
+	cb:SetScript("OnClick", function(self)
+		onPick(self:GetChecked() and true or false)
+	end)
+	if Kit and Kit.SkinCheckButton then
+		pcall(Kit.SkinCheckButton, Kit, cb, Replace, "UI-CheckBox-Up")
+	end
+	cb.Refresh = function(self)
+		self:SetChecked(getValue() and true or false)
+	end
+	cb:Refresh()
+	return cb, fs
+end
+
+-- The look's switches beside the dropdowns (user, 2026-09-24: the look is
+-- chosen here only): the parchment sheets (UI Modifications' keys), and the
+-- layout switches of the panels that are on
+local PARCHMENTS = {
+	{ "parchment_tracker", "Objective Tracker" },
+	{ "parchment_questTracker", "Quest Tracker" },
+	{ "parchment_chat", "Chat" },
+	{ "parchment_whisper", "Whisper Popup" },
+	{ "parchment_meter", "Damage Meter" },
+	{ "parchment_character", "Character Window" },
+}
+local LAYOUT = {
+	{ module = "ActionBarPanel", key = "hidePageArrows", label = "Action bars: hide the page arrows" },
+	{ module = "MinimapPanel", key = "servicesMerge", label = "Square minimap: merge with the Services bar" },
+}
+
+-- The panel's rows: the borders and parchment on the left, the backgrounds
+-- and the layout switches on the right
 local function FillOverview(f)
 	local old = rawget(f, "melloBody")   -- (a field of our own, never a method)
 	if old then
@@ -573,6 +610,22 @@ local function FillOverview(f)
 		end)
 		y = y - ROW_H
 	end
+	-- the parchment sheets, two to a row
+	y = y - 10
+	Heading("Parchment", left, y)
+	y = y - 24
+	for i, entry in ipairs(PARCHMENTS) do
+		local x = left + ((i - 1) % 2) * (OVERVIEW_W / 4 - 4)
+		local cb = Check(body, entry[2], function() return UMValue(entry[1], false) end, function(v)
+			MelloUI:NotifySettingChanged("UIModifications", entry[1], v)
+			PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		end)
+		cb:SetPoint("TOPLEFT", x, y)
+		f.dropdowns[#f.dropdowns + 1] = cb
+		if i % 2 == 0 then
+			y = y - 26
+		end
+	end
 	local leftBottom = y
 	Heading("Backgrounds (or click a bar or window)", right, top)
 	y = top - 22
@@ -596,6 +649,31 @@ local function FillOverview(f)
 			end
 		end
 	end
+	-- the layout switches of the panels that are on
+	local shownLayout = false
+	for _, entry in ipairs(LAYOUT) do
+		local m = MelloUI:GetModule(entry.module)
+		if m and m.isEnabled then
+			if not shownLayout then
+				y = y - 10
+				Heading("Layout", right, y)
+				y = y - 24
+				shownLayout = true
+			end
+			local cb = Check(body, entry.label, function() return CurrentValue(entry.module, entry.key) end, function(v)
+				MelloUI:NotifySettingChanged(entry.module, entry.key, v)
+				PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+				C_Timer.After(0.15, function()
+					if running then
+						ArmCatchers()
+					end
+				end)
+			end)
+			cb:SetPoint("TOPLEFT", right, y)
+			f.dropdowns[#f.dropdowns + 1] = cb
+			y = y - 26
+		end
+	end
 	local bottom = math.min(leftBottom, y)
 	f:SetHeight(-bottom + 60)
 end
@@ -617,8 +695,9 @@ local function BuildPopup()
 	local text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	text:SetPoint("TOP", title, "BOTTOM", 0, -8)
 	text:SetWidth(OVERVIEW_W - 60)
-	text:SetText("The borders go on every window at once. The backgrounds are here too, or move the mouse over your "
-		.. "action bars, micro menu, bag bar, bags, character window or minimap and click one to pick with pictures.")
+	text:SetText("The look of the whole reskin in one place. The borders and colours go on every window at once; "
+		.. "for the backgrounds, move the mouse over your action bars, micro menu, bag bar, bags, character window, "
+		.. "minimap or an open professions window and click it to pick with pictures.")
 	local done = Button(f, "Done", 100)
 	done:SetPoint("BOTTOM", 0, 16)
 	done:SetScript("OnClick", function() D:Stop() end)
@@ -651,9 +730,11 @@ function D:Start()
 		MelloUI:Print("Dynamic UI Modification: not in combat.")
 		return
 	end
-	local bars = Bars()
-	if not (bars and bars.isEnabled and bars.BarOutline and bars:BarOutline("bars")) then
-		MelloUI:Print("Dynamic UI Modification: the action bars reskin is off (UI Modifications, Action bars).")
+	-- the look is the reskin's: nothing to show without it (any one area is
+	-- enough; the action bars are no longer needed)
+	local um = MelloUI:GetModule("UIModifications")
+	if not (um and um.isEnabled and um.db and um.db.reskin ~= false) then
+		MelloUI:Print("Dynamic UI Modification: the reskin is off (UI Modifications, General, Painted kit reskin).")
 		return
 	end
 	for _, m in ipairs(Providers()) do

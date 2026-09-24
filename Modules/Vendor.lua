@@ -21,7 +21,7 @@ local M = MelloUI:RegisterModule("Vendor", {
 		{ type = "header", name = "Repair" },
 		{ type = "toggle", key = "autoRepair", name = "Auto Repair",
 		  desc = "Repair all equipped and carried items when a merchant that can repair is opened." },
-		{ type = "toggle", key = "guildRepair", name = "Use Guild Funds",
+		{ type = "toggle", key = "guildRepair", parent = "autoRepair", name = "Use Guild Funds",
 		  desc = "Pay repairs from the guild bank when allowed. Falls back to your own gold if the guild cannot cover the cost." },
 		{ type = "header", name = "Selling" },
 		{ type = "toggle", key = "autoSell", name = "Auto Sell Junk",

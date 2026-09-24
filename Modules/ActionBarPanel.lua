@@ -24,9 +24,8 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
 
--- The looks a group of buttons can take (action bars, micro menu, bag bar):
--- the button's own from the kit (shared with the bag windows' slots)
-local BORDER_VALUES = Kit.buttonLooks.borders
+-- The looks a group of buttons can take (action bars, micro menu, bag bar;
+-- the rims are UI Modifications' Button Border, every window's)
 local BACKDROP_VALUES = {
 	{ value = "red", label = "Red gems" },
 	{ value = "iron", label = "Iron gems" },
@@ -37,9 +36,9 @@ local BACKGROUND_VALUES = Kit.buttonLooks.backgrounds
 -- The groups (user, 2026-09-23: the action bars first, then "onto the micro
 -- bar and bag buttons next"): each its own four choices
 local GROUPS = {
-	{ id = "bars", title = "Action Bars", keys = { border = "buttonBorder", backdrop = "barBackdrop", background = "barBackground", buttonBackground = "buttonBackground" } },
-	{ id = "micro", title = "Micro Menu", keys = { border = "microBorder", backdrop = "microBackdrop", background = "microBackground", buttonBackground = "microButtonBackground" } },
-	{ id = "bags", title = "Bag Bar", keys = { border = "bagBorder", backdrop = "bagBackdrop", background = "bagBackground", buttonBackground = "bagButtonBackground" } },
+	{ id = "bars", title = "Action Bars", keys = { backdrop = "barBackdrop", background = "barBackground", buttonBackground = "buttonBackground" } },
+	{ id = "micro", title = "Micro Menu", keys = { backdrop = "microBackdrop", background = "microBackground", buttonBackground = "microButtonBackground" } },
+	{ id = "bags", title = "Bag Bar", keys = { backdrop = "bagBackdrop", background = "bagBackground", buttonBackground = "bagButtonBackground" } },
 }
 
 local defaults = { hidePageArrows = true }
@@ -48,7 +47,7 @@ local options = {
 	  desc = "Hide the main bar's page number and its up / down arrows (the bar still pages with the keybinds)." },
 }
 for _, g in ipairs(GROUPS) do
-	defaults[g.keys.border], defaults[g.keys.backdrop] = "thin", "red"
+	defaults[g.keys.backdrop] = "red"
 	defaults[g.keys.background], defaults[g.keys.buttonBackground] = "stone", "stone"
 	if g.id ~= "bars" then
 		options[#options + 1] = { type = "subheader", name = g.title }
@@ -187,17 +186,6 @@ local function ApplyButtonBackground(g, value)
 	end
 	for _, button in ipairs(GroupButtons(g)) do
 		Kit:SetButtonBackground(button, value)
-	end
-end
-
--- A new Button Border on every button of the group at once (the rims' art
--- swapped live, Kit:SetButtonBorder)
-local function ApplyRimStyle(g, style)
-	if not skin then
-		return
-	end
-	for _, button in ipairs(GroupButtons(g)) do
-		Kit:SetButtonBorder(button, style)
 	end
 end
 
@@ -364,7 +352,6 @@ local FRAME_PIECE = FRAME_PIECES.red
 -- The choices as the Configurator and the Dynamic UI Modification picker
 -- show them (label, and the piece a preview is drawn with)
 M.choices = {
-	buttonBorder = BORDER_VALUES,
 	barBackdrop = {
 		{ value = "red", label = "Red gems", piece = FRAME_PIECES.red },
 		{ value = "iron", label = "Iron gems", piece = FRAME_PIECES.iron },
@@ -1678,9 +1665,7 @@ function M:OnSettingChanged(key, value, db)
 		return
 	end
 	local g, role = owner.group, owner.role
-	if role == "border" then
-		ApplyRimStyle(g, value)   -- the rims' art swapped
-	elseif role == "buttonBackground" then
+	if role == "buttonBackground" then
 		ApplyButtonBackground(g, value)
 	elseif active then
 		LayoutAll()               -- the backdrop on, off, its gems or its background (and the joins with it)
@@ -1751,14 +1736,13 @@ function M:OnEnable(db)
 	-- the one Action Bar Border choice of earlier the same day, split in two
 	local old = db.border
 	if old ~= nil then
-		db.buttonBorder = "thin"
 		db.barBackdrop = (old == "backdrop" and "red") or (old == "backdrop_iron" and "iron") or "none"
 		db.border = nil
 	end
-	-- the gem slots of the first split are gone from the choices
-	if db.buttonBorder == "gems" or db.buttonBorder == "gems_red" then
-		db.buttonBorder = "thin"
-	end
+	-- the groups' own button borders gave way to UI Modifications' Button
+	-- Border, every window's (read from here once by its migration, which
+	-- runs first): the old keys go
+	db.buttonBorder, db.microBorder, db.bagBorder = nil, nil, nil
 	Hook()
 	Kit:WhenOutOfCombat(Activate)
 end

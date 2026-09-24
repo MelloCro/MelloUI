@@ -33,7 +33,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 	options = {
 		{ type = "header", name = "Backdrop" },
 		{ type = "toggle", key = "darkBackdrop", name = "Dark Backdrop", desc = "Flat, near-black tooltip background." },
-		{ type = "slider", key = "backdropAlpha", name = "Backdrop Opacity", min = 0.3, max = 1, step = 0.05, percent = true,
+		{ type = "slider", key = "backdropAlpha", parent = "darkBackdrop", name = "Backdrop Opacity", min = 0.3, max = 1, step = 0.05, percent = true,
 		  desc = "Opacity of the tooltip background." },
 		{ type = "toggle", key = "darkBorder", name = "Dark Border", desc = "Dark grey tooltip border instead of the gold one." },
 		{ type = "toggle", key = "classBorder", name = "Class / Reaction Border",

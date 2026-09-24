@@ -133,17 +133,17 @@ local TITLE_DEFAULT = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\En
 local FONT_DIR = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\"
 local NUMBERS = "NotoSans\\NotoSans_Condensed-Bold.ttf"   -- narrow, clear figures, in every style
 local STYLES = {
-	{ value = "scriptorium", label = "Scriptorium", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
+	{ value = "scriptorium", paper = "Alegreya\\Alegreya-SemiBold.ttf", label = "Scriptorium", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
 	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Cinzel's carved capitals over Alegreya, a warm book face." },
-	{ value = "chronicle", label = "Chronicle", title = "AlegreyaSC\\AlegreyaSC-Bold.ttf", titleScale = 0.75,
+	{ value = "chronicle", paper = "SourceSerif4\\SourceSerif4-SemiBold.ttf", label = "Chronicle", title = "AlegreyaSC\\AlegreyaSC-Bold.ttf", titleScale = 0.75,
 	  text = "SourceSerif4\\SourceSerif4-Regular.ttf", textScale = 1.05, desc = "Alegreya SC's small capitals over Source Serif 4, the most readable serif." },
-	{ value = "oldtome", label = "Old Tome", title = "IMFellEnglish\\IMFellEnglish-Regular.ttf", titleScale = 0.8,
+	{ value = "oldtome", paper = "Spectral\\Spectral-SemiBold.ttf", label = "Old Tome", title = "IMFellEnglish\\IMFellEnglish-Regular.ttf", titleScale = 0.8,
 	  text = "Spectral\\Spectral-Regular.ttf", textScale = 1.2, desc = "IM Fell English's aged print over Spectral." },
-	{ value = "warband", label = "Warband", title = "PirataOne\\PirataOne-Regular.ttf", titleScale = 0.85,
+	{ value = "warband", paper = "CrimsonPro\\CrimsonPro-SemiBold.ttf", label = "Warband", title = "PirataOne\\PirataOne-Regular.ttf", titleScale = 0.85,
 	  text = "CrimsonPro\\CrimsonPro-SemiBold.ttf", textScale = 1.25, desc = "Pirata One's blackletter over Crimson Pro SemiBold: the boldest look." },
-	{ value = "clarity", label = "Clarity", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
+	{ value = "clarity", paper = "NotoSans\\NotoSans-SemiBold.ttf", label = "Clarity", title = "Cinzel\\Cinzel-Bold.ttf", titleScale = 0.7,
 	  text = "NotoSans\\NotoSans-Regular.ttf", textScale = 1, desc = "Cinzel titles, Noto Sans everywhere else: the easiest to read at small sizes." },
-	{ value = "gothic", label = "Gothic", title = "EnchantedLand.ttf", titleScale = 1,
+	{ value = "gothic", paper = "Alegreya\\Alegreya-SemiBold.ttf", label = "Gothic", title = "EnchantedLand.ttf", titleScale = 1,
 	  text = "Alegreya\\Alegreya-Regular.ttf", textScale = 1.1, desc = "Enchanted Land's gothic titles kept, over Alegreya." },
 }
 local STYLE = {}
@@ -160,6 +160,7 @@ local function StyleSettings(s)
 		fontText = FONT_DIR .. s.text, scaleText = s.textScale,
 		fontChat = FONT_DIR .. NUMBERS, scaleChat = 1,
 		fontChatText = FONT_DIR .. s.text,
+		fontChatParchment = FONT_DIR .. s.paper,
 	}
 end
 
@@ -180,20 +181,39 @@ end
 -- Chat text (user, 2026-09-23: the Font Decisions should take over the chat's
 -- messages and its input box): the chat windows, the chat's font objects
 -- (the input box) and the whisper windows (they copy the chat) in a face of
--- their own; "the same as Chat & numbers" by default. A Font Style sets it to
--- its reading face, the numbers keeping the narrow one.
+-- their own. By default the interface text's face (user, 2026-09-24: the
+-- chat stayed in the numbers' narrow face under a Custom style, /chatink),
+-- else the chat & numbers one. A Font Style sets it to its reading face.
 defaults.fontChatText = KEEP
 do
 	local values = BuildRoleList()
-	values[1] = { value = KEEP, label = "Same as Chat & numbers" }
+	values[1] = { value = KEEP, label = "Same as Interface text" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatText", name = "Chat text", values = values,
-		desc = "The chat windows' messages, the chat's input box and the whisper windows. The same as Chat & numbers unless you choose otherwise; the Font Styles set it to their reading face." }
+		desc = "The chat windows' messages, the chat's input box and the whisper windows. The same face as the Interface text unless you choose otherwise (the Chat & numbers face while that is the game's), so the chat follows the Font Styles and your own choice of reading face." }
+end
+-- Chat on parchment (user, 2026-09-24: the chat's font did not fit the
+-- parchment): the chat windows and the whisper windows lying on their
+-- parchment sheet take a face of their own, a semibold serif by default --
+-- dark ink on the paper's grain reads best with some weight -- and a size
+-- of their own; back to the chat's the moment the sheet goes.
+-- (user, 2026-09-24: "make sure that the chat also respects the Font
+-- Changes and should be included into Font Style"): the same as Chat text
+-- until chosen; each Font Style sets its reading face's semibold cut
+defaults.fontChatParchment = KEEP
+defaults.scaleChatParchment = 1
+do
+	local values = BuildRoleList()
+	values[1] = { value = KEEP, label = "Chat text, semibold" }
+	options[#options + 1] = { type = "dropdown", key = "fontChatParchment", name = "Chat on parchment", values = values,
+		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Dynamic UI Modification, Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
 for _, role in ipairs(ROLES) do
 	options[#options + 1] = { type = "slider", key = SCALE_KEY[role.key], name = SCALE_NAME[role.key], min = 0.7, max = 1.5, step = 0.05, percent = true,
 		desc = SCALE_DESC[role.key] }
 end
+options[#options + 1] = { type = "slider", key = "scaleChatParchment", name = "Chat on parchment size", min = 0.7, max = 1.5, step = 0.05, percent = true,
+	desc = "The chat and whisper windows' text on their parchment sheet, relative to the chat's own size." }
 options[#options + 1] = { type = "dropdown", key = "outline", name = "Outline", values = {
 		{ value = "NONE", label = "Keep original" },
 		{ value = "OUTLINE", label = "Thin outline" },
@@ -220,8 +240,42 @@ local function ChosenFont(roleKey)
 end
 
 -- The chat text's face (Chat text, else Chat & numbers), nil to keep the game's
+local ScaleFor   -- (below)
+
+-- The chat text's face, nil to keep the game's, and the size factor that
+-- face needs: its own choice; else the interface text's face at the
+-- interface text's size factor (a Font Style sizes its reading face to the
+-- game's x-height with it); else the chat & numbers face
 local function ChatTextFont()
-	return ChosenFont("fontChatText") or ChosenFont("fontChat")
+	local own = ChosenFont("fontChatText")
+	if own then
+		return own, 1
+	end
+	local text = ChosenFont("fontText")
+	if text then
+		return text, ScaleFor("fontText")
+	end
+	return ChosenFont("fontChat"), 1
+end
+
+-- A face's semibold cut, when the font list has one ("...-Regular.ttf" ->
+-- "...-SemiBold.ttf"): the chat's face on the parchment by default
+local knownFonts = nil
+local function Semibold(path)
+	if type(path) ~= "string" then
+		return nil
+	end
+	local semi = path:gsub("%-Regular%.ttf$", "-SemiBold.ttf")
+	if semi == path then
+		return nil
+	end
+	if not knownFonts then
+		knownFonts = {}
+		for _, entry in ipairs(BuildFontList()) do
+			knownFonts[entry.value] = true
+		end
+	end
+	return knownFonts[semi] and semi or nil
 end
 
 --------------------------------------------------------------------------------
@@ -316,7 +370,7 @@ local function EffectiveFlags(object, originalFlags)
 end
 
 -- The scale of a role, from its own slider.
-local function ScaleFor(roleKey)
+function ScaleFor(roleKey)
 	local db = M.db
 	local value = db and tonumber(db[SCALE_KEY[roleKey] or ""])
 	return value or 1
@@ -476,14 +530,38 @@ local function ChatBaseSize(frame, original)
 	return original and original.size or 14
 end
 
+-- Is the chat on its parchment sheet (its lines in ink, Chat.lua)?
+local function ChatOnParchment()
+	local Kit = MelloUI.Kit
+	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
+		and Kit.ParchmentOn and Kit:ParchmentOn("chat")) and true or false
+end
+
+-- A chat window's face and size on the stone (the chat's) or on the paper
+-- (Chat on parchment and its size)
+local function ChatWindowFace(frame, original, onPaper)
+	local face, factor = ChatTextFont()
+	local size = ChatBaseSize(frame, original) * ScaleFor("fontChat") * (factor or 1)
+	if onPaper then
+		face = ChosenFont("fontChatParchment") or Semibold(face) or face
+		size = size * (tonumber(M.db and M.db.scaleChatParchment) or 1)
+	end
+	return face or original.path, math.max(6, math.floor(size + 0.5))
+end
+
 local function ApplyChatWindow(frame)
 	local original = Remember(frame)
 	if not original then
 		return
 	end
 	local _, _, flags = frame:GetFont()
-	local size = math.max(6, math.floor(ChatBaseSize(frame, original) * ScaleFor("fontChat") + 0.5))
-	pcall(frame.SetFont, frame, ChatTextFont() or original.path, size, flags or original.flags)
+	-- in ink on the paper (Chat.lua took its outline off): none, whatever
+	-- the frame reports
+	if frame.melloInkFont then
+		flags = ""
+	end
+	local face, size = ChatWindowFace(frame, original, frame ~= _G.COMBATLOG and ChatOnParchment())
+	pcall(frame.SetFont, frame, face, size, flags or original.flags)
 end
 
 local function ApplyChatWindows()
@@ -506,6 +584,21 @@ local function ApplyChatWindows()
 			end
 		end)
 	end
+end
+
+-- For Chat.lua: the chat windows again (the parchment switched), and the
+-- face and size a whisper window takes after a chat window, on the stone or
+-- on the paper
+function M:RefreshChatWindows()
+	ApplyChatWindows()
+end
+
+function M:ChatWindowFont(frame, onPaper)
+	local original = frame and Remember(frame)
+	if not original then
+		return nil
+	end
+	return ChatWindowFace(frame, original, onPaper)
 end
 
 local function RestoreChatWindows()
@@ -618,6 +711,16 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- Chat on parchment had its own fixed default for a day (Source Serif 4
+	-- SemiBold); it follows the chat's font and the Font Style now: the old
+	-- default, never chosen, gives way once
+	if not db.paperFollows then
+		if db.fontChatParchment == FONT_DIR .. "SourceSerif4\\SourceSerif4-SemiBold.ttf" then
+			local st = STYLE[db.style]
+			db.fontChatParchment = st and (FONT_DIR .. st.paper) or KEEP
+		end
+		db.paperFollows = true
+	end
 	ApplyWorldFonts(db)
 	ApplyAll()
 end

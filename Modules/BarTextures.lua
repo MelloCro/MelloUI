@@ -91,7 +91,7 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		  desc = "The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show." },
 		{ type = "toggle", key = "executeRange", name = "Execute Range",
 		  desc = "An enemy's health bar turns purple once its health is below the percentage set here, on the target and focus frames and on nameplates, so you see when finishing moves can be used. Works in combat, when the game hides the exact health, and with every health bar colour." },
-		{ type = "slider", key = "executeBelow", name = "Execute Below", min = 5, max = 50, step = 1,
+		{ type = "slider", key = "executeBelow", parent = "executeRange", name = "Execute Below", min = 5, max = 50, step = 1,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)." },
 		{ type = "header", name = "Apply To" },

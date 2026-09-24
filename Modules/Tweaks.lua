@@ -35,7 +35,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Hide the backpack and bag slot buttons. Still shown while Edit Mode is open. Bags can still be opened with their keybinds." },
 		{ type = "toggle", key = "hideMinimapCoords", name = "Hide Minimap Coordinates",
 		  desc = "Hide the player coordinates the client writes under the minimap." },
-		{ type = "toggle", key = "bagSlotsOnBags", name = "Bag Slots on Bag Window",
+		{ type = "toggle", key = "bagSlotsOnBags", parent = "hideBagBar", name = "Bag Slots on Bag Window",
 		  desc = "While the bag bar is hidden, show the bag slots under the open bag window so bags can still be equipped and removed. Works with and without the Combine Bags option." },
 		{ type = "header", name = "Chat" },
 		{ type = "toggle", key = "chatNotices", name = "Chat Notices",
@@ -326,7 +326,8 @@ local function ApplyWorldTextScale(value)
 	end
 	local okG, current = pcall(C_CVar.GetCVar, WORLD_TEXT_CVAR)
 	if not okG or current == nil then
-		if not worldTextWarned then
+		-- said once, and only to someone who moved the slider
+		if not worldTextWarned and math.abs((tonumber(value) or 1) - 1) > 0.001 then
 			worldTextWarned = true
 			MelloUI:Print("Tweaks: this client has no '%s' cvar; the World Text Scale slider cannot work on it.", WORLD_TEXT_CVAR)
 		end

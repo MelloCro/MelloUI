@@ -25,7 +25,7 @@ local M = MelloUI:RegisterModule("Stats", {
 		{ type = "header", name = "Values" },
 		{ type = "toggle", key = "showFps", name = "Show FPS", desc = "Frames per second." },
 		{ type = "toggle", key = "showLatency", name = "Show Latency", desc = "Home latency in milliseconds." },
-		{ type = "toggle", key = "worldLatency", name = "Show World Latency Too",
+		{ type = "toggle", key = "worldLatency", parent = "showLatency", name = "Show World Latency Too",
 		  desc = "Also show the world server latency next to the home latency." },
 		{ type = "header", name = "Look" },
 		{ type = "slider", key = "fontSize", name = "Font Size", min = 8, max = 20, step = 1,

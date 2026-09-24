@@ -131,7 +131,25 @@ function QI.InkCodes(text)
 				return Code(r, g, b)
 			end
 		end
-		return nil
+		-- an item's quality (|cnIQ4:, the links' form on this client; user,
+		-- 2026-09-24: the chat's links stayed bright on the parchment)
+		local quality = tonumber(name:match("^IQ(%d+)$"))
+		if quality then
+			local qc = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+			if qc and qc.r then
+				return Code(qc.r, qc.g, qc.b)
+			end
+			if C_Item and C_Item.GetItemQualityColor then
+				local ok, r, g, b = pcall(C_Item.GetItemQualityColor, quality)
+				if ok and type(r) == "number" then
+					return Code(r, g, b)
+				end
+			end
+		end
+		-- a colour this client names that is not known here: the text ink,
+		-- readable rather than bright on the paper
+		local ink = QI.INK.text
+		return Code(ink[1], ink[2], ink[3])
 	end)
 	return text
 end

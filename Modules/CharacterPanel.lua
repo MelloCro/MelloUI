@@ -42,7 +42,6 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 	defaults = {
 		movable = false,
 		statRows = true,
-		slotBorder = "thin",     -- (read once by UI Modifications: the borders are every window's now)
 		windowBackground = "window",
 		repBarBorder = "frame",
 	},

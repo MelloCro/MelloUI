@@ -136,7 +136,7 @@ local options = {
 	  desc = "The text an NPC greets you with when you talk to them." },
 	{ type = "toggle", key = "questDetail", name = "Quest Offers",
 	  desc = "The quest description when a quest is offered." },
-	{ type = "toggle", key = "questObjectives", name = "Include Objectives",
+	{ type = "toggle", key = "questObjectives", parent = "questDetail", name = "Include Objectives",
 	  desc = "Also read the objectives after the quest description." },
 	{ type = "toggle", key = "questProgress", name = "Quest Progress",
 	  desc = "What the NPC says when you return with an unfinished quest." },
@@ -156,7 +156,7 @@ local options = {
 	{ type = "header", name = "Race Character" },
 	{ type = "toggle", key = "raceProfiles", name = "Race Pitch & Speed",
 	  desc = "Shape the voice by the NPC's race: goblins and gnomes high and quick, ogres and tauren low and slow, and so on. NPCs not in the data are read with the plain voice." },
-	{ type = "slider", key = "profileStrength", name = "Profile Strength", min = 0, max = 2, step = 0.1, percent = true,
+	{ type = "slider", key = "profileStrength", parent = "raceProfiles", name = "Profile Strength", min = 0, max = 2, step = 0.1, percent = true,
 	  desc = "How strongly the race profile bends pitch and speed. 100% is the built in profile." },
 	{ type = "header", name = "Voice Per Race (optional)" },
 }
@@ -168,7 +168,7 @@ end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use VoiceOver Sound Packs",
 	desc = "Play the recorded lines from an installed VoiceOver data pack (AI_VoiceOverData_Vanilla) when one exists for the quest or greeting, and use text-to-speech for everything else. Enable the pack in the addon list; it loads when needed." }
-options[#options + 1] = { type = "toggle", key = "preferRecordings", name = "Prefer Recordings",
+options[#options + 1] = { type = "toggle", key = "preferRecordings", parent = "soundPacks", name = "Prefer Recordings",
 	desc = "When an NPC's greeting text was changed but the pack has exactly one recorded greeting for that NPC, play the recording anyway instead of reading the new text aloud. The words will not match what is on screen." }
 options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound Channel", values = {
 		{ value = "Master", label = "Master" },
@@ -193,13 +193,13 @@ options[#options + 1] = { type = "toggle", key = "stopOnMove", name = "Stop When
 options[#options + 1] = { type = "header", name = "Overlay" }
 options[#options + 1] = { type = "toggle", key = "overlay", name = "Show Overlay",
 	desc = "Show a frame with the speaking NPC, the line being read and the lines waiting. Drag it to move; /vo reset puts it back." }
-options[#options + 1] = { type = "toggle", key = "overlayPortrait", name = "3D Portrait",
+options[#options + 1] = { type = "toggle", key = "overlayPortrait", parent = "overlay", name = "3D Portrait",
 	desc = "Show the NPC's animated portrait. Off collapses the overlay to a thin bar with a pause button." }
-options[#options + 1] = { type = "toggle", key = "overlaySubtitles", name = "Subtitles",
+options[#options + 1] = { type = "toggle", key = "overlaySubtitles", parent = "overlay", name = "Subtitles",
 	desc = "Also show the text being read under the NPC name." }
-options[#options + 1] = { type = "toggle", key = "overlayLock", name = "Lock Position",
+options[#options + 1] = { type = "toggle", key = "overlayLock", parent = "overlay", name = "Lock Position",
 	desc = "Prevent the overlay from being dragged." }
-options[#options + 1] = { type = "slider", key = "overlayScale", name = "Overlay Scale", min = 0.6, max = 1.5, step = 0.05, percent = true,
+options[#options + 1] = { type = "slider", key = "overlayScale", parent = "overlay", name = "Overlay Scale", min = 0.6, max = 1.5, step = 0.05, percent = true,
 	desc = "Size of the overlay." }
 
 local M = MelloUI:RegisterModule("VoiceOver", {
