@@ -13,6 +13,9 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("UnitFrames")
+local hooksecurefunc = Perf.hooksecurefunc
+local Shared = Perf.Shared or function(_, fn) return fn end
 
 local M = MelloUI:RegisterModule("UnitFrames", {
 	title = "Unit Frames",
@@ -59,29 +62,44 @@ local function IsNamePlateFrame(frame)
 	return type(name) == "string" and name:sub(1, 9) == "NamePlate"
 end
 
-local function ApplyNameFormat(frame, unit)
-	if not (M.isEnabled and M.db) or not frame or not frame.name or not unit then
-		return
-	end
-	local mode = M.db.nameFormat or "both"
+-- The form the names are put in, or nil while the game's own text stands
+-- ("both", the default: the full name; or the module off)
+local function NameMode()
+	local db = M.isEnabled and M.db
+	local mode = db and db.nameFormat or "both"
 	if mode == "both" then
-		return   -- the game's own text (the full name)
+		return nil
 	end
+	return mode
+end
+
+local function ApplyNameFormat(frame, unit, mode)
 	local text = MelloUI:UnitNameAs(unit, mode)
 	if text ~= nil then
 		pcall(frame.name.SetText, frame.name, text)
 	end
 end
 
+-- The cheap tests first (the review, 2026-09-24): the target of target runs
+-- UnitFrame_Update on every frame (its OnUpdate, 41 a second in /melloperf)
+-- and at the default form there is nothing to do, so the form is asked
+-- before the nameplate test (a parent's name read and cut) -- as the
+-- Nameplates module's own name hook already does.
 local function OnUnitFrameUpdate(frame)
-	if frame and frame.name and not IsNamePlateFrame(frame) then
-		ApplyNameFormat(frame, frame.overrideName or frame.unit)
+	local mode = NameMode()
+	if not (mode and frame and frame.name) then
+		return
+	end
+	local unit = frame.overrideName or frame.unit
+	if unit and not IsNamePlateFrame(frame) then
+		ApplyNameFormat(frame, unit, mode)
 	end
 end
 
 local function OnCompactName(frame)
-	if frame and frame.name and frame.unit and not IsNamePlateFrame(frame) then
-		ApplyNameFormat(frame, frame.unit)
+	local mode = NameMode()
+	if mode and frame and frame.name and frame.unit and not IsNamePlateFrame(frame) then
+		ApplyNameFormat(frame, frame.unit, mode)
 	end
 end
 
@@ -301,6 +319,105 @@ local function ApplyGlows()
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The status glows kept HIDDEN, not only parked or faded (user, 2026-09-24:
+-- the game-side switch-offs that survived the adversarial review). The
+-- player's resting / combat glow and the pet's attack-mode glow pulse from
+-- their frames' OnUpdate for as long as the texture is SHOWN
+-- (PlayerFrame_OnUpdate, PetFrameMixin:OnUpdate: an IsShown() test, then a
+-- SetAlpha / SetVertexColor every frame), wherever it is parked and however
+-- faded, and every pulse went through the kit's fade hooks (/melloperf
+-- 2026-09-24: "MelloUIUnitFramesHidden.<child>:SetAlpha every frame", some
+-- 80 hook calls a second while resting or in combat). Hidden, the test fails
+-- and the pulse stops. Held while Hide Status Glow is on, or while the kit's
+-- unit frame skin covers the frames (it fades them anyway): a post-hook on
+-- the texture's Show / SetShown hides it again after the game shows it. Let
+-- go, it is shown as the game would have it (resting or in combat; the
+-- pet's while it attacks), so a kit switched off with Hide Status Glow off
+-- does not leave it hidden until the next rest / combat change (the review's
+-- restore gap). Texture regions only (never protected, Hide works in
+-- combat), post-hooks, no field of the game's written. The threat flashes
+-- are not held: the game recolours them on its threat timer whether they
+-- show or not, so hiding them would only add a call (the review).
+--------------------------------------------------------------------------------
+
+local glowHooked = setmetatable({}, { __mode = "k" })
+local glowHeld = false
+
+local function Plain(v)
+	if issecretvalue and issecretvalue(v) then
+		return nil
+	end
+	return v
+end
+
+local function GlowHeldWanted()
+	if M.isEnabled and M.db and M.db.hideStatusGlow then
+		return true
+	end
+	local Kit = MelloUI.Kit
+	return Kit and Kit.IsCovered and Kit:IsCovered("unitframes") or false
+end
+
+-- after the game's Show / SetShown: hidden again while held (one test when not)
+local OnGlowShown = Shared("Show / SetShown on the status glows", function(tex)
+	if glowHeld then
+		tex:Hide()
+	end
+end)
+
+-- Shown again as the game would show it now (PlayerFrame_UpdateStatus:
+-- resting or in combat; PetFrame: while the pet attacks). Read-only
+-- questions; a pet whose state cannot be asked waits for its next
+-- PET_ATTACK_START.
+local function ReleaseGlows()
+	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	local main = content and content.PlayerFrameContentMain
+	local status = main and main.StatusTexture
+	if status and status.SetShown then
+		local isResting = _G.IsResting
+		local resting = type(isResting) == "function" and Plain(isResting())
+		status:SetShown((resting or Plain(PlayerFrame.inCombat)) and true or false)
+	end
+	local petAttacking = _G.IsPetAttackActive
+	if PetAttackModeTexture and type(petAttacking) == "function" then
+		local ok, attacking = pcall(petAttacking)
+		if ok and Plain(attacking) then
+			PetAttackModeTexture:Show()
+		end
+	end
+end
+
+function M:HoldStatusGlows()
+	local hold = GlowHeldWanted()
+	local was = glowHeld
+	glowHeld = hold
+	if hold then
+		for _, tex in ipairs(StatusGlowTextures()) do
+			if tex and tex.Hide then
+				if not glowHooked[tex] then
+					glowHooked[tex] = true
+					hooksecurefunc(tex, "Show", OnGlowShown)
+					hooksecurefunc(tex, "SetShown", OnGlowShown)
+				end
+				tex:Hide()
+			end
+		end
+	elseif was then
+		ReleaseGlows()
+	end
+end
+
+-- the kit's unit frame skin coming on or going off (UnitFramePanel's
+-- Kit:Cover / Kit:Uncover) holds or lets go, the module on or off
+if MelloUI.Kit and MelloUI.Kit.OnCover then
+	MelloUI.Kit:OnCover(function(group)
+		if group == "unitframes" then
+			M:HoldStatusGlows()
+		end
+	end)
+end
+
 local function FrameArtTextures()
 	local list = {}
 	local container = PlayerFrame and PlayerFrame.PlayerFrameContainer
@@ -404,6 +521,7 @@ local function ApplyAll()
 		ApplyGlows()
 		ApplyFrameAlpha()
 	end)
+	M:HoldStatusGlows()   -- textures: at once, in combat too
 end
 
 function M:OnInit(db)

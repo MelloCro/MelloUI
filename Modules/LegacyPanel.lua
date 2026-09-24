@@ -20,6 +20,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("LegacyPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("LegacyPanel", {
@@ -520,8 +522,17 @@ local function Deactivate()
 	Kit:UnfitPortrait(Portrait())
 end
 
+-- Dressed on the window's first open (user, 2026-09-24: "dress rarely used
+-- windows on first open"): Blizzard_LegacySystem loads on demand (the micro
+-- button), and even once it is loaded nothing of the look is built while the
+-- window has never been shown. Its OnShow (Hook) builds it before the first
+-- frame is drawn, and it then stays built for the session, switched with the
+-- module. In combat too: the skin adds frames and textures of ours, fits the
+-- shield, sizes the side tabs and lays the progress bars into their
+-- brackets, none of it secure.
 local function Sync()
-	if M.isEnabled and LegacySystemFrame then
+	local lf = LegacySystemFrame
+	if M.isEnabled and lf and (skin or lf:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -533,12 +544,12 @@ local function Hook()
 		return
 	end
 	hooked = true
-	LegacySystemFrame:HookScript("OnShow", function()
+	Perf.HookScript(LegacySystemFrame, "OnShow", function()
 		Sync()
 		M:RefreshFollowers()
 	end)
 	for _, page in ipairs(LegacySystemFrame.Pages or {}) do
-		page:HookScript("OnShow", function()
+		Perf.HookScript(page, "OnShow", function()
 			M:RefreshFollowers()
 		end)
 	end
@@ -546,7 +557,7 @@ end
 
 -- Blizzard_LegacySystem is loaded on demand: wait for it.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_LegacySystem" and M.isEnabled then
 		Hook()
 		Sync()
@@ -579,6 +590,9 @@ SlashCmdList.MELLOLEGDUMP = function(msg)
 		return
 	end
 	MelloUI:ClearLog()
+	if not skin then
+		MelloUI:Print("Legacy window not dressed yet (it is dressed on its first open): the game's own art only.")
+	end
 	Kit:DumpWindow(LegacySystemFrame, skin, msg)
 	MelloUI:ShowLog("legdump " .. (msg or ""))
 end

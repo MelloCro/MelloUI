@@ -16,6 +16,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Backup")
+local C_Timer = Perf.C_Timer
 
 -- true pauses the store: nothing is read from or written to the macros, the
 -- settings run from the defaults / the baked profile and the macros keep what
@@ -421,7 +423,7 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("UPDATE_MACROS")
-frame:SetScript("OnEvent", function(_, event)
+Perf.SetScript(frame, "OnEvent", function(_, event)
 	if event == "PLAYER_REGEN_ENABLED" then
 		if writeDeferredForCombat then
 			writeDeferredForCombat = false

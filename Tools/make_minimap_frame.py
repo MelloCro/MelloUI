@@ -24,10 +24,11 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "minimap-frame.webp")
-TEX = os.path.join(HERE, "..", "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 OUT = OUTPUT
 
 # ---- measured on the art (pixels of the 964 x 1631 picture) -------------------

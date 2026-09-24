@@ -26,6 +26,8 @@ warmth (parchment, vellum, leather) and the coloured quilts.
 build_kit.py runs this after writing Media/Kit; or on its own:
     python Tools/kit_palette.py        (Media/Kit -> Media/KitWarm, Media/KitBronze;
                                         Media/Textures/GameMenuFrame -> _warm, _bronze)
+All of it in the MASTERS (Tools/paths.py: MelloUI-BuildData/masters/Media);
+`python Tools/texture_pack.py ship` then makes what the addon's Media ships.
 """
 import os
 import re
@@ -34,8 +36,9 @@ import sys
 import numpy as np
 from PIL import Image
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-KIT = os.path.join(os.path.dirname(HERE), "Media", "Kit")
+from paths import master
+
+KIT = master("Kit")
 
 
 def _hex(h):
@@ -192,6 +195,7 @@ def build_textures(textures=os.path.join(os.path.dirname(KIT), "Textures")):
 
 if __name__ == "__main__":
     for look, (n, total) in build_looks().items():
-        print(f"{look}: {n} pieces -> Media/{LOOKS[look][0]} ({total / 1e6:.1f} MB)")
+        print(f"{look}: {n} pieces -> masters Media/{LOOKS[look][0]} ({total / 1e6:.1f} MB)")
     for dst in build_textures():
-        print("->", os.path.relpath(dst, os.path.dirname(HERE)))
+        print("->", dst)
+    print("next: python Tools/texture_pack.py ship (the addon's Media)")

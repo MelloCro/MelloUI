@@ -37,6 +37,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("MinimapPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 -- Square Border: `prefix` a kit rail family laid as a nine-slice at `scale`
@@ -677,7 +679,7 @@ local function Hook()
 	-- a dungeon's own map, loaded on demand
 	local ev = CreateFrame("Frame")
 	ev:RegisterEvent("ADDON_LOADED")
-	ev:SetScript("OnEvent", function(_, _, name)
+	Perf.SetScript(ev, "OnEvent", function(_, _, name)
 		if name == "Blizzard_HybridMinimap" and active then
 			LayoutSquare()
 		end

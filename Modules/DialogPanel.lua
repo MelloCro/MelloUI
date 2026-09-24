@@ -25,6 +25,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("DialogPanel")
+local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("DialogPanel", {
@@ -366,7 +368,7 @@ end
 local hookedDialogs = setmetatable({}, { __mode = "k" })
 local HookDialogs
 local invites = CreateFrame("Frame")
-invites:SetScript("OnEvent", function()
+Perf.SetScript(invites, "OnEvent", function()
 	-- the invitation window is made (or shown) by the game now: hooked and
 	-- dressed a moment later, once it exists
 	C_Timer.After(0, function()
@@ -399,7 +401,7 @@ function HookDialogs()
 	for _, dialog in ipairs(Dialogs()) do
 		if not hookedDialogs[dialog] then
 			hookedDialogs[dialog] = true
-			dialog:HookScript("OnShow", function(self)
+			Perf.HookScript(dialog, "OnShow", function(self)
 				if not active then
 					return
 				end

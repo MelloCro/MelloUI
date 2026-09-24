@@ -15,3 +15,10 @@ ignore:
   - CHANGELOG.md
 
 enable-nolib-creation: no
+
+# The route data companion (MelloUI_Companion: the road network and the quest
+# objective places, loaded on demand) lives in the repository as a subfolder,
+# but the client finds an addon only at the top of Interface\AddOns: the zip
+# carries it as a folder of its own beside MelloUI, not inside it.
+move-folders:
+  MelloUI/MelloUI_Companion: MelloUI_Companion

@@ -7,10 +7,11 @@ Finder module reads the left 966 columns).
 """
 import os
 from PIL import Image
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "groupfinder-frame.webp")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "GroupFinderFrame.tga")
+OUT = master("Textures", "GroupFinderFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 
 art = Image.open(SRC).convert("RGBA")
 # the third checkbox is painted ticked: cover it with a copy of the first, empty one

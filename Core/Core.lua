@@ -298,7 +298,12 @@ local function SafeCall(module, method, ...)
 	if type(fn) ~= "function" then
 		return true
 	end
+	local perf = MelloUI.Perf
+	local t0, m0 = perf and debugprofilestop(), perf and collectgarbage("count")
 	local ok, err = pcall(fn, module, ...)
+	if perf then
+		perf:ModuleCall(module.name, method, debugprofilestop() - t0, collectgarbage("count") - m0)
+	end
 	if not ok then
 		MelloUI:Print("|cffff4040Error|r in module '%s' (%s): %s", module.name, method, tostring(err))
 	end

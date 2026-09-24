@@ -50,6 +50,9 @@
 -- of this window), and the social window (SocialPanel) has no channels pane
 -- on this client.
 --
+-- The window is dressed on its first show, not at login (user, 2026-09-24:
+-- "dress rarely used windows on first open"; see Sync).
+--
 -- Taint: nothing of the game's is replaced or re-scripted. The skin is made
 -- and kept from post-hooks (the list's Update / SetSelectedChannel, a row's
 -- SetIsSelectedChannel, the glyph's SetAtlas, HookScript on shows and on the
@@ -65,6 +68,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ChannelPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ChannelPanel", {
@@ -635,11 +640,11 @@ local function HoverAndSelect(row, info, selectable)
 	end
 	AfterEnable(info.hover, Sync)
 	AfterEnable(info.selected, Sync)
-	row:HookScript("OnEnter", function()
+	Perf.HookScript(row, "OnEnter", function()
 		hoverRows[row] = true
 		Sync()
 	end)
-	row:HookScript("OnLeave", function()
+	Perf.HookScript(row, "OnLeave", function()
 		hoverRows[row] = nil
 		Sync()
 	end)
@@ -1060,15 +1065,23 @@ local function Deactivate()
 	PlaceTitles(false)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the window's look is made while it has never been shown this session: it
+-- is dressed on its first show (the OnShow hook, before the first frame is
+-- drawn), or at once when it is up already, then kept for the session. The
+-- list's and the rows' hooks are made with the skin; the popup's show waits
+-- for the kit to be on.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or Shown(f)) then
 		Activate()
 	else
 		Deactivate()
 	end
 end
 
--- (geometry of the window's children changes here: out of combat only)
+-- (the switch and the addon's load: out of combat, as before; the first
+-- show is dressed at once, see Hook)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -1083,15 +1096,18 @@ local function Hook()
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	-- the first show dresses the window there and then, in combat too:
+	-- dressing makes frames of ours and moves only the game's portrait and
+	-- title strings, and nothing in this window is protected
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			Sync()
 		end
 		Refresh()
 	end)
 	local p = Popup()
 	if p then
-		p:HookScript("OnShow", function()
+		Perf.HookScript(p, "OnShow", function()
 			if active then
 				DressPopup()
 				ShowPopupSkin(true)
@@ -1100,10 +1116,11 @@ local function Hook()
 	end
 end
 
--- Blizzard_Channels is loaded on demand (the first time the window opens):
--- dressed as it loads, or at once when it already is (OnEnable).
+-- Blizzard_Channels is loaded on demand (the first time the window opens,
+-- unless other UI pulls it in sooner): hooked as it loads, or at once when
+-- it already is (OnEnable); dressed on the window's first show.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == ADDON then
 		Hook()
 		if M.isEnabled then
@@ -1206,6 +1223,9 @@ end
 local function DumpShell(f)
 	MelloUI:Print("ChannelFrame: shown %s, %s, level %s, strata %s, kit %s, reps %d, faded art %d", tostring(Shown(f)), RectText(f),
 		LevelText(f), tostring(f:GetFrameStrata()), active and "on" or "off", skin and #skin.reps or 0, #fadedArt)
+	if not (skin and skin.built) then
+		MelloUI:Print("  not dressed yet: the kit dresses the chat channels window the first time it opens (open it once for the kit's side)")
+	end
 	Found("outer rail (NineSlice)", f.NineSlice, f.NineSlice and (" layout " .. tostring(f.NineSlice.layoutType)) or " (no shell)")
 	local bgRep
 	for _, rep in ipairs(skin and skin.reps or {}) do
@@ -1339,11 +1359,16 @@ SlashCmdList.MELLOCHANNELDUMP = function(msg)
 		DumpParts(f)
 		MelloUI:Print("ChannelFrame's own regions and children:")
 		DumpOwn(f)
-	elseif msg == "popup" then
-		DumpPopup()
 	else
-		-- frames / reps / regions (the visible game textures): the Kit's dump
-		Kit:DumpWindow(f, skin, msg ~= "regions" and msg or nil)
+		if not (skin and skin.built) then
+			MelloUI:Print("/channeldump: the chat channels window is not dressed yet (the kit dresses it the first time it opens)")
+		end
+		if msg == "popup" then
+			DumpPopup()
+		else
+			-- frames / reps / regions (the visible game textures): the Kit's dump
+			Kit:DumpWindow(f, skin, msg ~= "regions" and msg or nil)
+		end
 	end
 	MelloUI:ShowLog("channeldump " .. msg)
 end

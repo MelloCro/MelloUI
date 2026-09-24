@@ -36,11 +36,12 @@ columns) and tiles it across, so the art's gradients carry through.
 import os
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 import numpy as np
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BOOK_SRC = os.path.join(HERE, "..", "docs", "professions-book-frame.webp")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "ProfessionsFrame.tga")
-PARTS_OUT = os.path.join(HERE, "..", "Media", "Textures", "ProfessionsParts.tga")
+OUT = master("Textures", "ProfessionsFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
+PARTS_OUT = master("Textures", "ProfessionsParts.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 
 DISC = (108, 80, 58)                    # the portrait disc: centre and radius
 TAB_COLUMN_X = 1112                     # the tab plates start here; they leave the art

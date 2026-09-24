@@ -22,6 +22,9 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ActionBarPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 -- The looks a group of buttons can take (action bars, micro menu, bag bar;
@@ -800,7 +803,7 @@ local function NewFrame(parent)
 		Kit:Apply(tex, FRAME_PIECE)
 		f.parts[key] = tex
 	end
-	f:SetScript("OnSizeChanged", function(self)
+	Perf.SetScript(f, "OnSizeChanged", function(self)
 		if self.screen then
 			AlignStone(self)
 		else
@@ -1243,12 +1246,39 @@ WatchForBackdrop = function(bar)
 		return
 	end
 	bar.melloBackdropWatch = true
-	bar:HookScript("OnShow", ScheduleBackdrop)
-	bar:HookScript("OnHide", ScheduleBackdrop)
-	bar:HookScript("OnSizeChanged", ScheduleBackdrop)
+	Perf.HookScript(bar, "OnShow", ScheduleBackdrop)
+	Perf.HookScript(bar, "OnHide", ScheduleBackdrop)
+	Perf.HookScript(bar, "OnSizeChanged", ScheduleBackdrop)
 	for _, method in ipairs({ "UpdateGridLayout", "Layout", "OnDragStop", "OnSystemPositionChange" }) do
 		if type(bar[method]) == "function" then
 			hooksecurefunc(bar, method, ScheduleBackdrop)
+		end
+	end
+end
+
+-- A micro button's glyph follow-ups while it cannot be seen (Tweaks' Hide
+-- Micro Menu parks the menu under a hidden frame, where IsShown() stays
+-- true): the game keeps re-setting the buttons' state atlases (every
+-- QUEST_LOG_UPDATE runs UpdateMicroButtons: SetNormal / SetPushed ->
+-- SetHighlightAtlas on each), and re-anchoring invisible textures was all
+-- that did (the 2026-09-24 review). [button] = its refit, run once when the
+-- button shows again (its OnShow: the menu moved back for Edit Mode or the
+-- option off; Edit Mode's opening as well, a frame later).
+local microStale = setmetatable({}, { __mode = "k" })
+
+local RefitStaleMicro = Shared("OnShow on micro buttons", function(button)
+	local refit = microStale[button]
+	if refit then
+		microStale[button] = nil
+		refit()
+	end
+end, "script")
+
+local function RefitStaleMicros()
+	for button, refit in pairs(microStale) do
+		if button:IsVisible() then
+			microStale[button] = nil
+			refit()
 		end
 	end
 end
@@ -1314,62 +1344,120 @@ local function SkinMicroMenu()
 				Kit:RegisterButtonRim(button)
 			end
 			if rep and glyph then
-				local others = {}
-				for _, tex in ipairs({ button.GetPushedTexture and button:GetPushedTexture(), button.GetHighlightTexture and button:GetHighlightTexture(),
-					button.GetDisabledTexture and button:GetDisabledTexture(), (not isPortrait) and button.Portrait or nil }) do
+				-- the state textures that follow the glyph, and which atlas
+				-- setter moves each
+				local others, states = {}, {}
+				for _, entry in ipairs({
+					{ "SetPushedAtlas", button.GetPushedTexture and button:GetPushedTexture() },
+					{ "SetHighlightAtlas", button.GetHighlightTexture and button:GetHighlightTexture() },
+					{ "SetDisabledAtlas", button.GetDisabledTexture and button:GetDisabledTexture() },
+					{ "portrait", (not isPortrait) and button.Portrait or nil },
+				}) do
+					local tex = entry[2]
 					if tex and tex ~= glyph then
 						others[#others + 1] = tex
+						states[entry[1]] = tex
 					end
+				end
+				-- Only what the game moved is anchored again (the 2026-09-24
+				-- review: each SetNormal / SetPushed re-sets the highlight
+				-- atlas alone, yet every state texture, the glyph and the
+				-- stone were re-anchored on some 13 buttons per quest log
+				-- update): a texture still on the glyph, a glyph still in the
+				-- rim's opening, is left as it is (its anchors read, not set)
+				local function OnGlyph(tex)
+					if tex:GetNumPoints() == 2 then
+						local _, rel1 = tex:GetPoint(1)
+						local _, rel2 = tex:GetPoint(2)
+						if rel1 == glyph and rel2 == glyph then
+							return
+						end
+					end
+					tex:ClearAllPoints()
+					tex:SetAllPoints(glyph)
 				end
 				local function Follow()
 					for _, tex in ipairs(others) do
-						tex:ClearAllPoints()
-						tex:SetAllPoints(glyph)
+						OnGlyph(tex)
 					end
+				end
+				-- the glyph in the rim's opening (Kit:SlotPlaceIcon anchors
+				-- it by two points to the rim)
+				local function Placed()
+					if glyph:GetNumPoints() ~= 2 then
+						return false
+					end
+					local _, rel1 = glyph:GetPoint(1)
+					local _, rel2 = glyph:GetPoint(2)
+					return rel1 == rep.object and rel2 == rep.object
 				end
 				Follow()
-				-- the character button re-anchors its portrait on press and
-				-- release (CharacterMicroButtonMixin:SetPushed / SetNormal):
-				-- back onto the glyph after each
-				for _, m in ipairs({ "SetPushed", "SetNormal" }) do
-					if type(button[m]) == "function" then
-						hooksecurefunc(button, m, function()
-							if active and rep.object and rep.object:IsShown() then
-								if isPortrait then
-									Kit:SlotPlaceIcon(rep.object)   -- the game just re-anchored the portrait
-								end
-								Follow()
-							end
-						end)
-					end
-				end
 				-- setting a button's state texture anchors it to fill the
 				-- button again, and the game sets the glyph atlas after load
 				-- (LoadMicroButtonTextures: the spellbook button on its
 				-- update, the guild one on a tabard change; the game menu
 				-- one on every net-stats tick): the glyph back into the rim's
-				-- opening after each (user, 2026-09-22: "they still don't fit")
-				local function Refit()
-					if not (active and rep.object and rep.object:IsShown()) then
+				-- opening after each (user, 2026-09-22: "they still don't
+				-- fit"). The character button re-anchors its portrait (its
+				-- glyph) on press and release (CharacterMicroButtonMixin:
+				-- SetPushed / SetNormal): the same, after those. A button
+				-- that cannot be seen is done once it shows (all of it).
+				local Refit
+				function Refit()
+					if not (active and rep.object) then
+						return
+					end
+					if not rep.object:IsVisible() then
+						microStale[button] = Refit
 						return
 					end
 					local current = button:GetNormalTexture()
+					local moved = false
 					if current and current ~= glyph then
 						glyph = current   -- a new texture object: the rim follows it
 						rep.object.icon = current
+						moved = true
 					end
-					Kit:SlotPlaceIcon(rep.object)
+					if moved or not Placed() then
+						Kit:SlotPlaceIcon(rep.object)
+					end
 					Follow()
-					if button.melloStone then
+					if moved and button.melloStone then
 						button.melloStone:ClearAllPoints()
-						button.melloStone:SetAllPoints(glyph)   -- the stone stays on the (possibly new) glyph
+						button.melloStone:SetAllPoints(glyph)   -- the stone stays on the new glyph
+					end
+				end
+				-- a pushed / highlight / disabled atlas set moves that texture
+				-- alone (the game's SetNormal / SetPushed set the highlight
+				-- atlas: the one texture a quest log update moves)
+				local function StateHook(tex)
+					return function()
+						if not (active and rep.object) then
+							return
+						end
+						if not rep.object:IsVisible() then
+							microStale[button] = Refit
+							return
+						end
+						OnGlyph(tex)
 					end
 				end
 				for _, m in ipairs({ "SetNormalAtlas", "SetNormalTexture", "SetPushedAtlas", "SetHighlightAtlas", "SetDisabledAtlas" }) do
 					if type(button[m]) == "function" then
-						hooksecurefunc(button, m, Refit)
+						hooksecurefunc(button, m, states[m] and StateHook(states[m]) or Refit)
 					end
 				end
+				-- only the character button's own SetPushed / SetNormal move a
+				-- texture of ours (its portrait); the others' only set the
+				-- highlight atlas, seen above
+				if isPortrait then
+					for _, m in ipairs({ "SetPushed", "SetNormal" }) do
+						if type(button[m]) == "function" then
+							hooksecurefunc(button, m, Refit)
+						end
+					end
+				end
+				Perf.HookScript(button, "OnShow", RefitStaleMicro)
 				button.melloRefitGlyph = Refit
 				-- the stone in the rim's opening under the glyph, as an empty
 				-- action slot has it (user, 2026-09-22: "a background to those
@@ -1507,7 +1595,7 @@ local function SkinStatusContainer(container)
 		if active then
 			Flag(true)
 		end
-		container:HookScript("OnSizeChanged", function()
+		Perf.HookScript(container, "OnSizeChanged", function()
 			if active then
 				Kit:WhenOutOfCombat(function() rep:Refit() end)
 			end
@@ -1706,6 +1794,13 @@ local function Hook()
 	-- Edit Mode closed: the bars may have been snapped together or apart
 	if EventRegistry and EventRegistry.RegisterCallback then
 		EventRegistry:RegisterCallback("EditMode.Exit", ScheduleBackdrop, M)
+		-- Edit Mode opened: Tweaks brings a hidden micro menu back for it;
+		-- its buttons' glyphs fitted once, a frame later (after that move)
+		EventRegistry:RegisterCallback("EditMode.Enter", function()
+			if active and next(microStale) then
+				C_Timer.After(0, RefitStaleMicros)
+			end
+		end, M)
 	end
 	-- the UI Scale changed, or a bar's Size in Edit Mode (user, 2026-09-24:
 	-- "UI Scaling Break the UI"): the backdrops are measured from the

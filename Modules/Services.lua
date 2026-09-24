@@ -13,6 +13,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Services")
+local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Services", {
 	title = "Services",
@@ -147,23 +149,48 @@ local function PlayerSide()
 	return UnitFactionGroup("player") == "Horde" and 2 or 1
 end
 
--- Lower-cased stems of the player's professions ("leat", "blac", "mini"...).
-local function ProfessionStems()
-	local stems = {}
+-- Lower-cased stems of the player's professions ("leat", "blac", "mini"...),
+-- into `stems` (emptied first: one table kept and filled again). The list
+-- ends at the first missing profession, as it always has. Each name's stem
+-- is kept (the bar's looks read them, and two new strings a look were
+-- garbage).
+local stemOf = {}
+local function ProfessionStems(stems)
+	wipe(stems)
 	if GetProfessions and GetProfessionInfo then
 		local ok, a, b, c, d, e, f = pcall(GetProfessions)
 		if ok then
-			for _, index in ipairs({ a, b, c, d, e, f }) do
-				if index then
-					local okI, name = pcall(GetProfessionInfo, index)
-					if okI and type(name) == "string" and not IsSecret(name) then
-						stems[#stems + 1] = name:lower():sub(1, 4)
+			for i = 1, 6 do
+				local index = select(i, a, b, c, d, e, f)
+				if not index then
+					break
+				end
+				local okI, name = pcall(GetProfessionInfo, index)
+				if okI and type(name) == "string" and not IsSecret(name) then
+					local stem = stemOf[name]
+					if not stem then
+						stem = name:lower():sub(1, 4)
+						stemOf[name] = stem
 					end
+					stems[#stems + 1] = stem
 				end
 			end
 		end
 	end
 	return stems
+end
+
+-- A subname in lower case, kept: every pass over the candidates reads each
+-- trainer's, and a fresh string per row was garbage.
+local lowerOf = {}
+local function Lower(s)
+	s = s or ""
+	local l = lowerOf[s]
+	if not l then
+		l = s:lower()
+		lowerOf[s] = l
+	end
+	return l
 end
 
 -- Professions a trainer can teach, recognised from the trainer's subname
@@ -219,18 +246,39 @@ local function KnownProfessions()
 	return known
 end
 
-local function TrainerMatches(kind, sub)
-	sub = (sub or ""):lower()
+-- What a trainer's subname is matched against, worked out once per pass
+-- over the candidates (per row it cost a professions lookup and two tables):
+-- the class trainer's "<class> trainer", the player's profession stems.
+local passNeedle = nil
+local passStems = {}
+local needleOf = {}   -- class name -> "<class> trainer", made once
+
+local function PreparePass(kind)
+	passNeedle = nil
 	if kind.trainer == "class" then
 		local class = UnitClass("player")
-		return type(class) == "string" and sub:find(class:lower() .. " trainer", 1, true) ~= nil
+		if type(class) == "string" and not IsSecret(class) then
+			passNeedle = needleOf[class]
+			if not passNeedle then
+				passNeedle = class:lower() .. " trainer"
+				needleOf[class] = passNeedle
+			end
+		end
+	elseif kind.trainer == "profession" then
+		ProfessionStems(passStems)
+	end
+end
+
+local function TrainerMatches(kind, sub)
+	sub = Lower(sub)
+	if kind.trainer == "class" then
+		return passNeedle ~= nil and sub:find(passNeedle, 1, true) ~= nil
 	end
 	-- Profession trainer: one of the player's professions, else any trade one.
-	local stems = ProfessionStems()
-	if #stems == 0 then
+	if #passStems == 0 then
 		return not sub:find(" trainer") or sub:find("journeyman") or sub:find("expert") or sub:find("artisan")
 	end
-	for _, stem in ipairs(stems) do
+	for _, stem in ipairs(passStems) do
 		if sub:find(stem, 1, true) then
 			return true
 		end
@@ -250,38 +298,178 @@ local function Learned()
 	return M.db.learned
 end
 
--- Candidates of a kind: { name, sub, cont/wx/wy or mapID/x/y }.
--- profession (optional): only trainers teaching that profession.
-local function Candidates(kind, profession)
-	local out = {}
+local function Wanted(kind, profession, sub)
+	if profession then
+		return ProfessionOf(sub) == profession
+	end
+	return not kind.trainer or TrainerMatches(kind, sub)
+end
+
+-- Flight points the character may use: the Route module's answer, kept per
+-- node (/melloperf, 2026-09-24: while the world map lists no flight points,
+-- each answer walked every zone of the world map again, one walk per node on
+-- every look at the flight masters). Forgotten when a flight master's map
+-- opens (the Route module learns the known points a moment later); an answer
+-- older than the Route module's own two minutes is asked again, one a pass,
+-- and when it has changed, every one is.
+--
+-- Asked again only on the way to a route (GoTo), never by a look: the bar's
+-- icons, the tooltip, the menu (/melloperf, the user's recording,
+-- 2026-09-24: the bar's timer was slow once, 20 ms, and made 37 KB/s of
+-- garbage). The flight icon's look every 15 s asked one old answer again,
+-- and the Route module answers every question after refreshing its list of
+-- the world map's flight points once that is two minutes old: a C_TaxiMap
+-- list for every zone of both continents, each point with its own position
+-- vector, 3.6 MB and 19 ms in one tick on a model of the client that gives
+-- the recording's figures. That list decides nothing for a character who
+-- has opened a flight master (its own points do), and the answers only
+-- change at a flight master, whose map forgets them here, so a look loses
+-- nothing by keeping the ones it has. Nor does the check at a flight
+-- master's window (Remember): with no look asking again, the Route module's
+-- list was always old by then, and every visit paid those 19 ms in the
+-- window's event for answers forgotten half a second later.
+local TAXI_KEEP = 120
+local taxiOk, taxiAt = {}, {}   -- node ID -> usable, and when it was asked
+local taxiRechecked = false     -- this pass has asked an old one again
+local taxiForgot = 0            -- how often the answers were forgotten (a look notices)
+
+local function ForgetTaxis()
+	wipe(taxiOk)
+	taxiForgot = taxiForgot + 1
+end
+
+-- Every flight point of the player's side not asked yet, asked at once when
+-- one is: that first question had the Route module's list made (or found it
+-- fresh), so the rest cost next to nothing. Asked one by one as the looks
+-- came to them, the first look on another continent (after a boat) set the
+-- list off again.
+local function AskAllTaxis(R)
+	local data = Data()
+	if type(data) ~= "table" or type(data.taxiNodes) ~= "table" then
+		return
+	end
+	local side, now = PlayerSide(), GetTime()
+	for id, n in pairs(data.taxiNodes) do
+		if taxiOk[id] == nil and (n[5] == 0 or n[5] == side) then
+			taxiOk[id], taxiAt[id] = R:IsTaxiUsable(id) and true or false, now
+		end
+	end
+end
+
+-- ask: also when not asked yet (else nil for that one); keep: an old answer
+-- as it is (a look, the check at a flight master's window)
+local function TaxiOk(R, id, ask, keep)
+	local ok = taxiOk[id]
+	if ok == nil then
+		if not ask then
+			return nil
+		end
+	elseif keep or taxiRechecked or GetTime() - taxiAt[id] < TAXI_KEEP then
+		return ok
+	else
+		taxiRechecked = true
+	end
+	local usable = R:IsTaxiUsable(id) and true or false
+	if ok ~= nil and usable ~= ok then
+		ForgetTaxis()
+	end
+	taxiOk[id], taxiAt[id] = usable, GetTime()
+	if usable ~= ok then
+		AskAllTaxis(R)   -- the first answer, or one that changed (the rest forgotten)
+	end
+	return usable
+end
+
+-- One pass over the candidates of a kind: visit(entry, name, sub, cont, wx,
+-- wy, mapID, x, y) for each, the database's and the flight points' by
+-- continent and world position, the learned ones by map and map position,
+-- until visit returns true. The entries in `skip` (optional) are passed over
+-- untested. profession (optional): only trainers teaching that profession.
+-- lazy (a look, not a route): a flight point not asked about yet is visited
+-- with its node ID last, for visit to ask once it has a distance (and that
+-- asks them all, AskAllTaxis); an old answer is kept (see TaxiOk).
+-- cur, stopAt (optional; the bar's looks): a pass that may stop part way.
+-- Once debugprofilestop() is past stopAt after a visit, where it got to is
+-- kept on cur (the service button) and true returned; the next pass with cur
+-- goes on from there, in the same order. The database's rows and the flight
+-- points can stop; the remembered ones, a handful that can change in
+-- between, are gone through in one go.
+-- keep (optional; not lazy): an old flight answer kept as it is, as a look
+-- keeps it; one not asked yet is still asked.
+local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, keep)
+	PreparePass(kind)   -- again on going on: another pass may have run since
+	local phase, pos = 1, 0
+	if cur and cur.scanPhase then
+		phase, pos = cur.scanPhase, cur.scanPos
+		cur.scanPhase = nil
+	else
+		taxiRechecked = false
+	end
 	local data = Data()
 	local side = PlayerSide()
-	local function Wanted(sub)
-		if profession then
-			return ProfessionOf(sub) == profession
-		end
-		return not kind.trainer or TrainerMatches(kind, sub)
-	end
-	if kind.data and type(data) == "table" and type(data.services) == "table" then
-		for _, row in ipairs(data.services) do
-			if row[1] == kind.data and (row[4] == 0 or row[4] == side) and Wanted(row[3]) then
-				out[#out + 1] = { name = row[2], sub = row[3], cont = row[5], wx = row[6], wy = row[7] }
+	if phase == 1 then
+		if kind.data and type(data) == "table" and type(data.services) == "table" then
+			local rows = data.services
+			local i = pos + 1
+			local row = rows[i]
+			while row ~= nil do
+				if row[1] == kind.data and (row[4] == 0 or row[4] == side) and not (skip and skip[row])
+					and Wanted(kind, profession, row[3]) then
+					if visit(row, row[2], row[3], row[5], row[6], row[7]) then
+						return false
+					end
+					if stopAt and debugprofilestop() > stopAt then
+						cur.scanPhase, cur.scanPos = 1, i
+						return true
+					end
+				end
+				i = i + 1
+				row = rows[i]
 			end
 		end
+		pos = nil
 	end
-	if kind.taxi and type(data) == "table" and type(data.taxiNodes) == "table" then
+	if phase <= 2 and kind.taxi and type(data) == "table" and type(data.taxiNodes) == "table" then
 		local R = Route()
-		for id, n in pairs(data.taxiNodes) do
-			if (n[5] == 0 or n[5] == side) and (not R or R:IsTaxiUsable(id)) then
-				out[#out + 1] = { name = n[1], sub = "", cont = n[2], wx = n[3], wy = n[4] }
+		local nodes = data.taxiNodes
+		local id, n = next(nodes, pos)
+		while id ~= nil do
+			if (n[5] == 0 or n[5] == side) and not (skip and skip[n]) then
+				local usable = not R or TaxiOk(R, id, not lazy, lazy or keep)
+				if usable ~= false then
+					if visit(n, n[1], "", n[2], n[3], n[4], nil, nil, nil, usable == nil and id or nil) then
+						return false
+					end
+					if stopAt and debugprofilestop() > stopAt then
+						cur.scanPhase, cur.scanPos = 2, id
+						return true
+					end
+				end
 			end
+			id, n = next(nodes, id)
 		end
 	end
 	for _, l in pairs(Learned()) do
-		if l.kind == kind.key or (kind.data and l.kind == kind.data and Wanted(l.sub)) then
-			out[#out + 1] = { name = l.name, sub = l.sub or "", mapID = l.mapID, x = l.x, y = l.y }
+		if (l.kind == kind.key or (kind.data and l.kind == kind.data and Wanted(kind, profession, l.sub))) and not (skip and skip[l])
+			and visit(l, l.name, l.sub or "", nil, nil, nil, l.mapID, l.x, l.y) then
+			return false
 		end
 	end
+	return false
+end
+
+-- Candidates of a kind: { name, sub, cont/wx/wy or mapID/x/y }.
+-- profession (optional): only trainers teaching that profession. keep
+-- (optional): the flight answers kept however old (EachCandidate).
+local function Candidates(kind, profession, keep)
+	local out = {}
+	EachCandidate(kind, profession, function(_, name, sub, cont, wx, wy, mapID, x, y)
+		if cont ~= nil then
+			out[#out + 1] = { name = name, sub = sub, cont = cont, wx = wx, wy = wy }
+		else
+			out[#out + 1] = { name = name, sub = sub, mapID = mapID, x = x, y = y }
+		end
+	end, nil, false, nil, nil, keep)
 	return out
 end
 
@@ -304,6 +492,127 @@ local function Nearest(kind, count, profession)
 		list[#list] = nil
 	end
 	return list
+end
+
+-- The bar's and the menu's look at a kind (/melloperf, 2026-09-24: the
+-- bar's refresh took 17 ms and made 1.7 MB of garbage every 15 s; every
+-- candidate of every kind got a table and a route distance, and each
+-- distance asks the client for the player's position). An icon only says
+-- whether one is known on this continent, and the first candidate with a
+-- distance answers that; the nearest, with its distance, is looked for when
+-- a tooltip or the menu shows it. Candidates found on another continent are
+-- kept per continent and passed over: their answer cannot change while the
+-- player is on it.
+local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
+local WEAK_KEYS = { __mode = "k" }
+local contOf = {}         -- the player's map -> the continent map above it
+local elsewhereOn = {}    -- continent -> { [entry] = true }: candidates on another one
+local probe = {}          -- the candidate handed to Route:DistanceTo, filled again each time
+local scanR, scanSkip, scanFirst, scanMap, scanPlayerOk = nil, nil, false, nil, nil
+local bestD, bestName, bestSub = nil, nil, nil
+
+-- The player's continent, found as the Route module finds it (the continent
+-- map above the player's map; the map itself while that is not known), and
+-- the player's map; nil without a map, when no candidate has a distance.
+-- A map with no continent above it is kept as its own (a map info table per
+-- level on every look was garbage); what is kept per continent only needs a
+-- key the map fixes, and the map does.
+local function PlayerContinent()
+	local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+	mapID = ok and Plain(mapID) or nil
+	if not mapID then
+		return nil
+	end
+	local cont = contOf[mapID]
+	if cont then
+		return cont, mapID
+	end
+	local id = mapID
+	for _ = 1, 6 do
+		local okI, info = pcall(C_Map.GetMapInfo, id)
+		if not okI or type(info) ~= "table" then
+			break
+		end
+		if Plain(info.mapType) == MAP_CONTINENT then
+			contOf[mapID] = id
+			return id, mapID
+		end
+		id = Plain(info.parentMapID)
+		if not id or id == 0 then
+			break
+		end
+	end
+	contOf[mapID] = mapID
+	return mapID, mapID
+end
+
+local function ScanVisit(entry, name, sub, cont, wx, wy, mapID, x, y, taxi)
+	probe.cont, probe.wx, probe.wy, probe.mapID, probe.x, probe.y = cont, wx, wy, mapID, x, y
+	local d, elsewhere = scanR:DistanceTo(probe)
+	if d then
+		scanPlayerOk = true
+		-- a flight point not asked about yet: asked now it is on this continent
+		if taxi and not TaxiOk(scanR, taxi, true) then
+			return false
+		end
+		if not bestD or d < bestD then
+			bestD, bestName, bestSub = d, name, sub
+		end
+		return scanFirst
+	end
+	if elsewhere then
+		scanPlayerOk = true
+		scanSkip[entry] = true
+		return false
+	end
+	-- no distance, not elsewhere: this one's place is not known, or the
+	-- player's is not (then none has a distance, and the pass ends); a point
+	-- on the player's own map tells which
+	if scanPlayerOk == nil then
+		probe.cont, probe.wx, probe.wy, probe.mapID, probe.x, probe.y = nil, nil, nil, scanMap, 0.5, 0.5
+		scanPlayerOk = scanR:DistanceTo(probe) ~= nil
+	end
+	return not scanPlayerOk
+end
+
+-- Distance to the nearest candidate of a kind with its name and subname
+-- (first: to the first one found, which is enough for an icon); nil when
+-- none has a distance. cur, stopAt: an icon's look (first) that may stop
+-- part way (EachCandidate); then nil, nil, nil, true, and the next call with
+-- cur goes on, where it stopped while the player is still on that map.
+local function ScanKind(kind, first, cur, stopAt)
+	local R = Route()
+	if not R then
+		return nil
+	end
+	local cont, mapID = PlayerContinent()
+	if not cont then
+		return nil
+	end
+	local skip = elsewhereOn[cont]
+	if not skip then
+		skip = setmetatable({}, WEAK_KEYS)
+		elsewhereOn[cont] = skip
+	end
+	local playerOk = nil
+	if cur and cur.scanPhase then
+		if cur.scanR == R and cur.scanMap == mapID then
+			playerOk = cur.scanOk
+		else
+			cur.scanPhase = nil
+		end
+	end
+	scanR, scanSkip, scanFirst, scanMap, scanPlayerOk = R, skip, first and true or false, mapID, playerOk
+	bestD, bestName, bestSub = nil, nil, nil
+	local stopped = EachCandidate(kind, nil, ScanVisit, scanSkip, true, cur, stopAt)
+	if stopped then
+		cur.scanR, cur.scanMap, cur.scanOk = R, mapID, scanPlayerOk
+	end
+	scanR, scanSkip = nil, nil
+	if stopped then
+		return nil, nil, nil, true
+	end
+	return bestD, bestName, bestSub
 end
 
 -- The Route module draws the tracking notice; chat when it is off.
@@ -335,8 +644,16 @@ local function GoTo(kind, profession)
 		Notify("No " .. what .. " known on this continent yet.", "fail")
 		return
 	end
-	local best = R:Cheapest(near) or 1
-	local c = near[best]
+	local best, _, later = R:Cheapest(near)
+	if later and R.WhenReady then
+		-- the first route of the session: Route's road graph is still being
+		-- built (user, 2026-09-24: built on the first route, not at login), so
+		-- the nearest is chosen once it is, by route as ever, not by straight
+		-- line (a flight master across the river is not near)
+		R:WhenReady(function() GoTo(kind, profession) end)
+		return
+	end
+	local c = near[best or 1]
 	local icon = kind.icon and ("|T" .. kind.icon .. ":16:16|t ") or ""
 	local label = icon .. (profession and profession.label or kind.label) .. ": " .. c.name
 	local big = kind.icon and ("|T" .. kind.icon .. ":22:22|t  ") or ""
@@ -407,7 +724,9 @@ local function Remember(kindKey, name, sub)
 			-- every kind of this data (the class trainer entry filters its
 			-- candidates by class; a profession trainer is in the next one)
 			if kind.key == kindKey or kind.data == kindKey then
-				for _, c in ipairs(Candidates(kind)) do
+				-- the flight answers as they are (TaxiOk): a flight master's
+				-- map forgets them half a second later
+				for _, c in ipairs(Candidates(kind, nil, true)) do
 					if not c.mapID then
 						local d = R:DistanceTo(c)
 						if d and math.abs(d - here) < 40 then
@@ -430,7 +749,7 @@ local function Remember(kindKey, name, sub)
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 	if event == "MERCHANT_SHOW" then
 		local ok, can = pcall(CanMerchantRepair)
 		if ok and can then
@@ -453,6 +772,8 @@ eventFrame:SetScript("OnEvent", function(_, event)
 		end
 	elseif event == "TAXIMAP_OPENED" then
 		Remember("flight", NPCName(), NPCSubName())
+		-- the Route module learns the known flight points 0.2 s in
+		C_Timer.After(0.5, ForgetTaxis)
 	elseif event == "AUCTION_HOUSE_SHOW" then
 		Remember("auction", NPCName(), NPCSubName())
 	elseif event == "BANKFRAME_OPENED" then
@@ -516,7 +837,7 @@ local function CreateMenu()
 		row.where:SetJustifyH("RIGHT")
 		row.where:SetWordWrap(false)
 		row.kind = kind
-		row:SetScript("OnClick", function(self)
+		Perf.SetScript(row, "OnClick", function(self)
 			menu:Hide()
 			GoTo(self.kind)
 		end)
@@ -526,7 +847,7 @@ local function CreateMenu()
 	menu.stop:SetSize(110, 20)
 	menu.stop:SetPoint("TOPLEFT", 12, -34 - #KINDS * ROW_HEIGHT)
 	menu.stop:SetText("Stop route")
-	menu.stop:SetScript("OnClick", function()
+	Perf.SetScript(menu.stop, "OnClick", function()
 		menu:Hide()
 		local R = MelloUI.Route
 		if R and R.Clear then
@@ -546,15 +867,32 @@ local function CreateMenu()
 	if KitOn() then
 		SetKitBox(menu, true)   -- SV1: the L1 box, as the bar
 	end
-	-- Close when clicking elsewhere.
-	menu:SetScript("OnUpdate", function(self)
-		if not self:IsMouseOver(20, -20, -20, 20) and not (M.button and M.button:IsMouseOver()) then
-			local down = IsMouseButtonDown and (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
-			if down then
+	-- Close when clicking elsewhere: a mouse press anywhere, listened for only
+	-- while the menu is open; a client without that event looks at the mouse
+	-- buttons every frame while it is open.
+	local function Away(self)
+		return not self:IsMouseOver(20, -20, -20, 20) and not (M.button and M.button:IsMouseOver())
+	end
+	local okEvent, registered = pcall(menu.RegisterEvent, menu, "GLOBAL_MOUSE_DOWN")
+	if okEvent and registered ~= false then
+		menu:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+		Perf.SetScript(menu, "OnEvent", function(self, _, button)
+			if (button == "LeftButton" or button == "RightButton") and Away(self) then
 				self:Hide()
 			end
-		end
-	end)
+		end)
+		Perf.HookScript(menu, "OnShow", function(self) self:RegisterEvent("GLOBAL_MOUSE_DOWN") end)
+		Perf.HookScript(menu, "OnHide", function(self) self:UnregisterEvent("GLOBAL_MOUSE_DOWN") end)
+	else
+		Perf.SetScript(menu, "OnUpdate", function(self)
+			if Away(self) then
+				local down = IsMouseButtonDown and (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
+				if down then
+					self:Hide()
+				end
+			end
+		end)
+	end
 	return menu
 end
 
@@ -562,10 +900,9 @@ local function FillMenu()
 	local R = Route()
 	local hasDest = R and R.HasDestination and R:HasDestination()
 	for _, row in ipairs(menu.rows) do
-		local near = Nearest(row.kind, 1)
-		if #near > 0 then
-			local c = near[1]
-			row.where:SetText(string.format("%s  |cffaaaaaa%s|r", c.name, Yards(c.distance)))
+		local d, name = ScanKind(row.kind, false)
+		if d then
+			row.where:SetText(string.format("%s  |cffaaaaaa%s|r", name, Yards(d)))
 			row.where:SetTextColor(1, 0.82, 0.25)
 			row:Enable()
 			row.label:SetTextColor(1, 1, 1)
@@ -614,18 +951,193 @@ local function StopRoute()
 	end
 end
 
+-- The icons: bright with one of the kind known on this continent, grey
+-- without. Each kind is looked at every 15 s while the bar is visible, one
+-- kind at a time on a ticker that stops while the bar is hidden; all of them
+-- when it shows or is set up again, a millisecond's worth a frame (the new
+-- bar's first pass whole, or an icon not looked at yet would show bright,
+-- then turn grey). The nearest one with its distance is looked for when its
+-- tooltip opens.
+--
+-- (/melloperf, the user's recording, 2026-09-24) A bright icon is not looked
+-- at again while nothing its answer hangs on has changed (SameLook): where
+-- the player stands on the continent does not change it, and each look
+-- asked the client for the player's position again, a new position vector
+-- every 1.5 s for the same answer. A grey one is looked at as ever (a place
+-- the client could not map yet may be mapped now); that costs next to
+-- nothing, the candidates elsewhere being passed over. A look stops after
+-- its share of the tick and goes on at the next one, the icon as it was
+-- meanwhile.
+local CHECK_EVERY = 15
+local SPREAD_MS = 1
+local TICK_MS = 1
+local ticker = nil
+
+local function ShowFound(b, found)
+	if found ~= b.found then
+		b.found = found
+		b.nearestAt = nil   -- the tooltip looks again
+	end
+	if not found then
+		b.nearest = nil
+	end
+	b.icon:SetDesaturated(not found)
+	b.icon:SetAlpha(found and 1 or 0.45)
+end
+
+-- What an icon's answer hangs on besides the candidates' own places: the
+-- Route module, the player's map (its continent, and whether the client
+-- gives a position there: none in an instance), the side, the class (class
+-- trainers), the professions (profession trainers), the flight answers
+-- (flight masters) and the remembered services. True while it is as it was
+-- at the button's last look; keep: taken as the new look's.
+local lookStems = {}
+
+local function SameLook(b, keep)
+	local kind = b.kind
+	local R = Route()
+	local _, mapID = PlayerContinent()
+	local store = Learned()
+	local count = 0
+	for _ in pairs(store) do
+		count = count + 1
+	end
+	local side = PlayerSide()
+	local class = kind.trainer == "class" and Plain(UnitClass("player")) or nil
+	local taxi = kind.taxi and taxiForgot or nil
+	local same = b.lookR == R and b.lookMap == mapID and b.lookSide == side and b.lookClass == class
+		and b.lookTaxi == taxi and b.lookStore == store and b.lookCount == count
+	if kind.trainer == "profession" then
+		ProfessionStems(lookStems)
+		local kept = b.lookStems
+		if not kept then
+			kept = {}
+			b.lookStems = kept
+			same = false
+		elseif #kept ~= #lookStems then
+			same = false
+		else
+			for i = 1, #kept do
+				if kept[i] ~= lookStems[i] then
+					same = false
+					break
+				end
+			end
+		end
+		if keep then
+			wipe(kept)
+			for i = 1, #lookStems do
+				kept[i] = lookStems[i]
+			end
+		end
+	end
+	if keep then
+		b.lookR, b.lookMap, b.lookSide, b.lookClass = R, mapID, side, class
+		b.lookTaxi, b.lookStore, b.lookCount = taxi, store, count
+	end
+	return same
+end
+
+-- A look at a button's kind; true once it is done. stopAt: it may stop there
+-- and go on at the next call (from the start again when what it hangs on
+-- has changed meanwhile). force: looked at even when bright and unchanged.
+local function CheckButton(b, stopAt, force)
+	if b.scanPhase and not SameLook(b) then
+		b.scanPhase = nil
+	end
+	if not b.scanPhase then
+		if not force and b.found and b.looked and SameLook(b) then
+			ShowFound(b, true)
+			return true
+		end
+		SameLook(b, true)
+		b.looked = false
+	end
+	local d, _, _, stopped = ScanKind(b.kind, true, b, stopAt)
+	if stopped then
+		return false
+	end
+	b.looked = true
+	ShowFound(b, d ~= nil)
+	return true
+end
+
+local function FindNearest(b)
+	b.scanPhase = nil   -- a whole look, in place of one under way
+	SameLook(b, true)
+	local d, name, sub = ScanKind(b.kind, false)
+	if d then
+		local c = b.near or {}
+		b.near = c
+		c.name, c.sub, c.distance = name, sub, d
+		b.nearest = c
+	end
+	b.looked = true
+	ShowFound(b, d ~= nil)
+	b.nearestAt = GetTime()
+end
+
+-- The kinds from bar.spread on, for about a millisecond (the first pass to
+-- its end: the last icon has no state until then); true while some are left
+-- for the next frames. A look that stops goes on in the next frame.
+local function Spread(self)
+	local t0 = debugprofilestop()
+	local last = self.buttons[#self.buttons]
+	while self.spread do
+		local b = self.buttons[self.spread]
+		if not b then
+			self.spread = nil
+		else
+			local i = self.spread
+			self.spread = i + 1
+			if not CheckButton(b, last.found ~= nil and t0 + SPREAD_MS or nil, true) then
+				self.spread = i   -- stopped part way: this one again
+			end
+			if last.found ~= nil and debugprofilestop() - t0 > SPREAD_MS then
+				break
+			end
+		end
+	end
+	if not self.spread and self.spreading then
+		self.spreading = nil
+		Perf.SetScript(self, "OnUpdate", nil)
+	end
+	return self.spread ~= nil
+end
+
 local function RefreshBar()
 	if not (bar and bar:IsShown()) then
 		return
 	end
-	local R = Route()
 	for _, b in ipairs(bar.buttons) do
-		local near = R and Nearest(b.kind, 1) or {}
-		b.nearest = near[1]
-		b.icon:SetDesaturated(b.nearest == nil)
-		b.icon:SetAlpha(b.nearest and 1 or 0.45)
+		b.scanPhase = nil   -- every one looked at again, from the start
 	end
-	bar.refreshed = GetTime()
+	bar.spread = 1
+	if Spread(bar) and not bar.spreading then
+		bar.spreading = true
+		Perf.SetScript(bar, "OnUpdate", Spread)
+	end
+end
+
+-- One kind a tick, TICK_MS of it; a look that stops keeps its turn
+local function Tick()
+	if not (bar and bar:IsVisible()) then
+		return
+	end
+	local i = bar.nextCheck or 1
+	bar.nextCheck = i % #bar.buttons + 1
+	if not CheckButton(bar.buttons[i], debugprofilestop() + TICK_MS) then
+		bar.nextCheck = i
+	end
+end
+
+local function WatchBar(on)
+	if on and not ticker then
+		ticker = C_Timer.NewTicker(CHECK_EVERY / #KINDS, Tick)
+	elseif not on and ticker then
+		ticker:Cancel()
+		ticker = nil
+	end
 end
 
 local function BarTooltip(self)
@@ -677,7 +1189,7 @@ local function CreateBar()
 		b.icon:SetTexture(kind.icon)
 		b:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square", "ADD")
 		b.kind = kind
-		b:SetScript("OnClick", function(self, mouse)
+		Perf.SetScript(b, "OnClick", function(self, mouse)
 			if mouse == "RightButton" then
 				StopRoute()
 			elseif self.kind.trainer == "profession" then
@@ -686,25 +1198,27 @@ local function CreateBar()
 				GoTo(self.kind)
 			end
 		end)
-		b:SetScript("OnEnter", function(self)
-			if not bar.refreshed or GetTime() - bar.refreshed > 5 then
-				RefreshBar()
+		Perf.SetScript(b, "OnEnter", function(self)
+			if not self.nearestAt or GetTime() - self.nearestAt > 5 then
+				FindNearest(self)
 			end
 			BarTooltip(self)
 		end)
-		b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		Perf.SetScript(b, "OnLeave", function() GameTooltip:Hide() end)
 		bar.buttons[i] = b
 	end
-	-- The nearest-known state refreshes now and then while the bar is visible.
-	local acc = 0
-	bar:SetScript("OnUpdate", function(_, elapsed)
-		acc = acc + elapsed
-		if acc > 15 then
-			acc = 0
-			RefreshBar()
+	-- The known-here state is looked at now and then while the bar is visible.
+	Perf.SetScript(bar, "OnShow", function()
+		RefreshBar()
+		WatchBar(true)
+	end)
+	Perf.SetScript(bar, "OnHide", function(self)
+		WatchBar(false)
+		if self.spreading then
+			self.spread, self.spreading = nil, nil
+			Perf.SetScript(self, "OnUpdate", nil)
 		end
 	end)
-	bar:SetScript("OnShow", RefreshBar)
 end
 
 --------------------------------------------------------------------------------
@@ -1011,6 +1525,7 @@ local function ApplyBar()
 		if bar:IsShown() then
 			RefreshBar()
 		end
+		WatchBar(bar:IsVisible())
 	end
 	ApplyStand()
 	ApplyIconShape()
@@ -1051,6 +1566,17 @@ local function UpdateButtonPosition()
 	button:SetPoint("CENTER", Minimap, "CENTER", x, y)
 end
 
+-- While the button is dragged (its OnUpdate is on only then): it follows the
+-- cursor round the minimap.
+local function FollowCursor()
+	local mx, my = Minimap:GetCenter()
+	local cx, cy = GetCursorPosition()
+	local scale = Minimap:GetEffectiveScale()
+	cx, cy = cx / scale, cy / scale
+	M.db.angle = math.deg(math.atan2(cy - my, cx - mx))
+	UpdateButtonPosition()
+end
+
 local function CreateButton()
 	if M.button or not Minimap then
 		return
@@ -1077,7 +1603,7 @@ local function CreateButton()
 	icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 	icon:SetPoint("TOPLEFT", 7, -6)
 	button.icon = icon
-	button:SetScript("OnClick", function(self, mouse)
+	Perf.SetScript(button, "OnClick", function(self, mouse)
 		if mouse == "RightButton" then
 			local R = MelloUI.Route
 			if R and R.Clear then
@@ -1093,29 +1619,22 @@ local function CreateButton()
 		end
 		ToggleMenu(self)
 	end)
-	button:SetScript("OnEnter", function(self)
+	Perf.SetScript(button, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Services", 1, 1, 1)
 		GameTooltip:AddLine("Click: route to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.", nil, nil, nil, true)
 		GameTooltip:AddLine("Right-click: stop the route.  Drag: move the button.", 0.7, 0.7, 0.7, true)
 		GameTooltip:Show()
 	end)
-	button:SetScript("OnLeave", function() GameTooltip:Hide() end)
-	button:SetScript("OnDragStart", function(self)
+	Perf.SetScript(button, "OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(button, "OnDragStart", function(self)
 		self.dragging = true
 		GameTooltip:Hide()
-		self:SetScript("OnUpdate", function(btn)
-			local mx, my = Minimap:GetCenter()
-			local cx, cy = GetCursorPosition()
-			local scale = Minimap:GetEffectiveScale()
-			cx, cy = cx / scale, cy / scale
-			M.db.angle = math.deg(math.atan2(cy - my, cx - mx))
-			UpdateButtonPosition()
-		end)
+		Perf.SetScript(self, "OnUpdate", FollowCursor)
 	end)
-	button:SetScript("OnDragStop", function(self)
+	Perf.SetScript(button, "OnDragStop", function(self)
 		self.dragging = nil
-		self:SetScript("OnUpdate", nil)
+		Perf.SetScript(self, "OnUpdate", nil)
 		MelloUI:NotifySettingChanged(M.name, "angle", M.db.angle)
 	end)
 	UpdateButtonPosition()
@@ -1163,7 +1682,7 @@ local function HookRelayout()
 	relayoutHooked = true
 	-- the minimap can be resized or moved in Edit Mode: fit the stand and the bar again
 	if Minimap and Minimap.HookScript then
-		Minimap:HookScript("OnSizeChanged", function() C_Timer.After(0, ApplyBar) end)
+		Perf.HookScript(Minimap, "OnSizeChanged", function() C_Timer.After(0, ApplyBar) end)
 	end
 	if EventRegistry and EventRegistry.RegisterCallback then
 		EventRegistry:RegisterCallback("EditMode.Exit", function() C_Timer.After(0, ApplyBar) end, M)
@@ -1174,6 +1693,7 @@ local coverWatched = false
 
 function M:OnEnable(db)
 	self.db = db
+	ForgetTaxis()
 	HookRelayout()
 	ApplyButton()
 	ApplyBar()

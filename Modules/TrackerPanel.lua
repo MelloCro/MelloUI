@@ -15,13 +15,16 @@
 --   the tracker is collapsed; its stone under the palette's inner panel
 --   while the tracker's parchment is off (the eye strain rule, 2026-09-24)
 --   quest item buttons → R1 rims (Kit:SkinActionButton); progress bars → P1
--- Blocks, item buttons and bars are pooled per module: swept after every
--- container Update. Block hover is a text colour: nothing to replace.
+-- Blocks, item buttons and bars are pooled per module: swept after the
+-- container's updates (once a frame, while it can be seen). Block hover is
+-- a text colour: nothing to replace.
 -- Covers the Dark Mode group "tracker". /trdump [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("TrackerPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("TrackerPanel", {
@@ -198,7 +201,7 @@ local function SilenceAddAnim(header, rep)
 			entry.anim:SetToAlpha(entry.to)
 		end
 	end
-	group:HookScript("OnFinished", function()
+	Perf.HookScript(group, "OnFinished", function()
 		if active then
 			header.Background:SetAlpha(0)
 		end
@@ -242,22 +245,131 @@ local function SkinRightEdge(frame)
 	end
 end
 
+-- A header's title in the kit's title font, left alone when it already
+-- shows that font and the same text (the 2026-09-24 review: every tracker
+-- update set the font again on each module's header). [fontString] = the
+-- face, size, flags and text it showed once dressed; a font object the game
+-- changes (the tracker's text size) or a new header text dresses it again.
+local dressed = setmetatable({}, { __mode = "k" })
+
+local function Readback(fs)
+	local ok, path, size, flags = pcall(fs.GetFont, fs)
+	local okT, text = pcall(fs.GetText, fs)
+	if not (ok and okT) or Secret(path) or Secret(size) or Secret(text) then
+		return nil
+	end
+	return path, size, flags, text
+end
+
+local function DressTitle(fs)
+	local was = dressed[fs]
+	if was then
+		local path, size, flags, text = Readback(fs)
+		if path ~= nil and path == was[1] and size == was[2] and flags == was[3] and text == was[4] then
+			return
+		end
+	end
+	Kit:TitleFont(fs, true)
+	-- kept only when the face took: one the client has not read yet (Kit
+	-- puts the game's back and counts a try) is tried again next sweep, as
+	-- every sweep always did
+	local path, size, flags, text
+	if not fs.melloFontTries then
+		path, size, flags, text = Readback(fs)
+	end
+	if path ~= nil then
+		if was then
+			was[1], was[2], was[3], was[4] = path, size, flags, text
+		else
+			dressed[fs] = { path, size, flags, text }
+		end
+	else
+		dressed[fs] = nil
+	end
+end
+
 local function Sweep()
 	local tracker = ObjectiveTrackerFrame
 	if not (active and tracker) then
 		return
 	end
 	if tracker.Header and tracker.Header.Text then
-		Kit:TitleFont(tracker.Header.Text, true)
+		DressTitle(tracker.Header.Text)
 	end
 	for _, module in ipairs(tracker.modules or {}) do
 		SkinHeader(module.Header, "UI-QuestTracker-Secondary-Objective-Header")
 		if module.Header and module.Header.Text and module.Header.melloRep then
-			Kit:TitleFont(module.Header.Text, true)
+			DressTitle(module.Header.Text)
 		end
 		for _, frame in pairs(module.usedRightEdgeFrames or {}) do
 			SkinRightEdge(frame)
 		end
+	end
+end
+
+-- After the game's tracker updates: swept once a frame, only while the
+-- tracker can be seen (the 2026-09-24 review: it ran after every update,
+-- also while MelloUI's Quest Tracker keeps the game's hidden). The first
+-- update of a frame sweeps at once (nothing is seen undressed); more in the
+-- same frame ask for one sweep on the next. One not seen is swept when the
+-- tracker is seen again (its OnShow: Edit Mode, the UI shown; its alpha
+-- back: Quest Tracker off or in Edit Mode).
+local sweptAt = nil
+local sweepPending = false
+local sweepStale = false
+
+-- Seen: shown, and not at alpha 0. MelloUI's Quest Tracker hides the game's
+-- with SetAlpha(0) and a hide state driver, and the game's Update ends in
+-- Show() whenever it has content (ObjectiveTrackerContainerMixin:Update):
+-- right after an update the tracker IS shown, at alpha 0, until the
+-- driver's next tick hides it, so a test of shown alone still swept after
+-- every update (the 2026-09-24 review, checked again). Nothing in the game
+-- sets the tracker's own alpha; a secret one counts as seen.
+local function Seen(tracker)
+	if not tracker:IsVisible() then
+		return false
+	end
+	local alpha = tracker:GetAlpha()
+	return Secret(alpha) or not alpha or alpha > 0
+end
+
+local function SweepQueued()
+	Kit:WhenOutOfCombat(Sweep, Sweep)
+end
+
+local function SweepNextFrame()
+	sweepPending = false
+	if active then
+		SweepQueued()
+	end
+end
+
+local function AfterTrackerUpdate()
+	if not active then
+		return
+	end
+	local tracker = ObjectiveTrackerFrame
+	if not Seen(tracker) then
+		sweepStale = true
+		return
+	end
+	local now = GetTime()
+	if sweptAt ~= now then
+		sweptAt = now
+		SweepQueued()
+	elseif not sweepPending then
+		sweepPending = true
+		C_Timer.After(0, SweepNextFrame)
+	end
+end
+
+-- its OnShow and its SetAlpha: the sweep it missed, once it is seen (the
+-- game's Update shows a tracker Quest Tracker keeps at alpha 0: not yet)
+local function OnTrackerShown()
+	if active and sweepStale and Seen(ObjectiveTrackerFrame) then
+		sweepStale = false
+		sweptAt = GetTime()
+		SweepQueued()
 	end
 end
 
@@ -375,11 +487,9 @@ local function Build()
 		end
 	end
 	if tracker.Update then
-		hooksecurefunc(tracker, "Update", function()
-			if active then
-				Kit:WhenOutOfCombat(Sweep)
-			end
-		end)
+		hooksecurefunc(tracker, "Update", AfterTrackerUpdate)
+		Perf.HookScript(tracker, "OnShow", OnTrackerShown)
+		hooksecurefunc(tracker, "SetAlpha", OnTrackerShown)
 	end
 	Sweep()
 end

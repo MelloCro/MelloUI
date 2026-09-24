@@ -24,6 +24,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("GuildPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("GuildPanel", {
@@ -632,8 +634,17 @@ local function Deactivate()
 	end
 end
 
+-- Dressed on the window's first open (user, 2026-09-24: "dress rarely used
+-- windows on first open"): Blizzard_Communities is loaded at login on this
+-- client (no LoadOnDemand in its TOC), but nothing of the look is built while
+-- the window has never been shown. Its OnShow (Hook) builds it before the
+-- first frame is drawn, and it then stays built for the session, switched
+-- with the module. In combat too: the skin adds frames and textures of ours,
+-- fits the portrait, sizes the side tabs and lays the reputation bar's fill
+-- into its bracket, none of it secure.
 local function Sync()
-	if M.isEnabled and CommunitiesFrame then
+	local cf = CommunitiesFrame
+	if M.isEnabled and cf and (skin or cf:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -645,7 +656,7 @@ local function Hook()
 		return
 	end
 	hooked = true
-	CommunitiesFrame:HookScript("OnShow", function()
+	Perf.HookScript(CommunitiesFrame, "OnShow", function()
 		Sync()
 		M:RefreshFollowers()
 	end)
@@ -657,9 +668,10 @@ local function Hook()
 	end
 end
 
--- Blizzard_Communities is loaded on demand: wait for it.
+-- Blizzard_Communities is loaded at login on this client; the event is the
+-- fallback should it ever come later.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_Communities" and M.isEnabled then
 		Hook()
 		Sync()
@@ -692,6 +704,9 @@ SlashCmdList.MELLOGDUMP = function(msg)
 		return
 	end
 	MelloUI:ClearLog()
+	if not skin then
+		MelloUI:Print("Guild window not dressed yet (it is dressed on its first open): the game's own art only.")
+	end
 	Kit:DumpWindow(CommunitiesFrame, skin, msg)
 	MelloUI:ShowLog("gdump " .. (msg or ""))
 end

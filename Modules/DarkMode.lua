@@ -18,6 +18,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("DarkMode")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("DarkMode", {
 	title = "Dark Mode",
@@ -415,7 +417,7 @@ local function ApplyNamePlates()
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "NAME_PLATE_UNIT_ADDED" and Active("nameplates") then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		StyleNamePlate(plate)

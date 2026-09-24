@@ -176,6 +176,37 @@ that eye strain issue a rule to check". Check it on every window:
 - Before handing a window over: look at it and ask "is there small text on
   brown?" — if yes, it needs the panel.
 
+## 2f. MANDATORY: rarely used windows dress on first open (user, 2026-09-24)
+
+"dress rarely used windows on first open". Building every window's look at
+login cost memory (2263 kit replacements right after login, 88 MB live) and
+the login frame (the addon profiler's peak 140 % of a frame). So:
+
+- A window the player does not open every session (shops, mail, bank,
+  trainers, books, charters, inspect, dressing room, barber, socketing,
+  stable, PvP, calendar, clock, channels, help, macros, Edit Mode, the AddOn
+  list, Options, group finder, collections, legacy, guild, professions,
+  social) builds NOTHING of its look while it has never been shown. Its
+  module's Sync builds only when the skin is already built or the window is
+  shown right now; the window's OnShow hook builds it synchronously, so the
+  first frame it draws is already dressed. Afterwards it stays built for the
+  session and switches on and off as before.
+- Kept dressed at login: the character window, bags, quest log, spell book,
+  the HUD (bars, unit frames, nameplates, chat, tooltips, trackers, minimap)
+  and the small popups that open in combat (loot, rolls, ready check,
+  dialogs, split stack).
+- The first build may run in combat when it only adds our own frames and
+  textures and moves only textures and strings; a window whose dress moves
+  protected children waits for combat to end.
+- Hooks may be installed early if they do nothing until the skin is built;
+  border / colour / scale callbacks and the /xxdump commands must cope with a
+  window that is not dressed yet ("not dressed yet").
+- A window that relied on the kit's shell for its Unlock-the-Windows mover is
+  listed in UIModifications' PLAIN_WINDOWS, so it is movable from login.
+- Check with /melloperf: a new window adds no kit pieces at login
+  (`/run print(#MelloUI.Kit.repList)` before and after), and no handler of it
+  runs while it is closed.
+
 ## 2b. MANDATORY for a window's portrait icon (user, 2026-09-21)
 
 The portrait inside the ring is always brought to the class medallion's size

@@ -9,7 +9,7 @@ Stages (each one caches its result under MelloUI-BuildData/cache):
   python Tools/trace_roads.py fetch      download the zone map tiles of the build (wago.tools)
   python Tools/trace_roads.py assemble   stitch the tiles into one image per zone
   python Tools/trace_roads.py trace      find the roads on every zone image; previews + segments
-  python Tools/trace_roads.py bake       write Media/RoadData.lua from the segments and the review
+  python Tools/trace_roads.py bake       write MelloUI_Companion/RoadData.lua from the segments and the review
   python Tools/trace_roads.py all        everything in order
   python Tools/trace_roads.py trace --zone 1429   one zone only (Elwynn Forest), for tuning
 
@@ -29,7 +29,8 @@ UiMapArtTile, WorldMapOverlay, WorldMapOverlayTile and UiMapAssignment for the
 build, and the textures by file id. The zone's world bounds (UiMapAssignment)
 place every pixel in the world; the continent's bounds turn that into the
 "continent yards" the Route module uses (what C_Map.GetMapWorldSize gives in
-game). Media/RoadData.lua carries the continent sizes it was traced with and
+game). MelloUI_Companion/RoadData.lua (in the route data companion, which
+MelloUI loads on demand) carries the continent sizes it was traced with and
 the module rescales if the client reports different ones.
 
 Output format (the Route module's graph): graphs[continent][cell] = { yards
@@ -63,7 +64,7 @@ TRACES = os.path.join(CACHE, "roadtraces", BUILD)
 ROADS = os.path.join(HERE, "roads")                   # committed: segments.json (auto), review.json (by hand)
 SEGMENTS = os.path.join(ROADS, "segments.json")
 REVIEW = os.path.join(ROADS, "review.json")
-OUT = os.path.join(ROOT, "Media", "RoadData.lua")
+OUT = os.path.join(ROOT, "MelloUI_Companion", "RoadData.lua")   # the route data companion (loaded on demand)
 
 CONTINENTS = {1414: "Kalimdor", 1415: "Eastern Kingdoms"}
 WALK = 7.0          # yards per second, as in Route.lua

@@ -17,6 +17,8 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Fonts")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF"
 

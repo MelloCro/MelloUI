@@ -14,10 +14,17 @@
 -- /reload and drops them at restart, but it does write the file. The graph
 -- is therefore saved as MelloUIRoutes and baked by Tools\bake_routes.py into
 -- Media\RouteData.lua, which the addon loads like any other file.
+--
+-- The traced roads and the quest objective places are the MelloUI_Companion
+-- addon's (loaded on demand, Core\Companions.lua), and the graph is built the
+-- first time a route is wanted, a couple of milliseconds a frame, not at
+-- login (user, 2026-09-24): see "Building the graph" below.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Route")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Route", {
 	title = "Route",
@@ -385,7 +392,7 @@ local function EnsureNotice()
 	notice.text:SetShadowOffset(2, -2)
 	notice.text:SetShadowColor(0, 0, 0, 0.9)
 	notice:Hide()
-	notice:SetScript("OnUpdate", function(self, elapsed)
+	Perf.SetScript(notice, "OnUpdate", function(self, elapsed)
 		self.age = (self.age or 0) + elapsed
 		if self.age <= NOTICE_HOLD then
 			self:SetAlpha(1)
@@ -438,7 +445,62 @@ local DestinationDistance -- defined with the route state below
 
 local live = { graphs = {}, pins = { entrances = {}, transports = {} } }
 local mergedSaved = false
-local graphVersion = 0   -- bumped when nodes are added; caches below key on it
+-- What a search can use, counted as it changes, so a search that found no
+-- way is not run again until something has changed (memory audit,
+-- 2026-09-24): nodes and links per continent, and the hubs (docks, flight
+-- points, the flight points this character may use).
+local edits = { all = 0, hubs = 0, conts = {} }
+local NodeAdded   -- (cont, key, node): keeps the search's indexes up to date; set under "Search"
+
+local function Edited(cont)
+	edits.all = edits.all + 1
+	edits.conts[cont] = (edits.conts[cont] or 0) + 1
+end
+
+-- The graph is built the first time a route is wanted (see "Building the
+-- graph" below). Until it is, what changes it -- a breadcrumb, a flight, the
+-- saved variable arriving, /route reset -- waits in `pending`, in order, and
+-- is made once the roads and the baked paths are in, as it always came after
+-- them: a breadcrumb on a road's cell still lands on the road.
+local Build = { ready = false, pending = {}, deadline = 0, count = 0, MAX_PENDING = 5000 }
+
+-- A breadcrumb or a flight: may land on a road's cell, so the roads must be
+-- in first
+function Build.Learn(fn, ...)
+	if Build.ready then
+		return fn(...)
+	end
+	local pending = Build.pending
+	pending[#pending + 1] = { fn = fn, n = select("#", ...), ... }
+	if #pending > Build.MAX_PENDING then
+		-- a long walk with nothing to route to: the waiting changes would
+		-- soon cost more than the graph itself
+		Build.Want()
+	end
+end
+
+-- Any other change to the graph (the saved variable, /route reset)
+function Build.Queue(fn, ...)
+	if Build.ready then
+		return fn(...)
+	end
+	local pending = Build.pending
+	pending[#pending + 1] = { fn = fn, n = select("#", ...), ... }
+end
+
+-- Inside the build's loops: every few nodes, the frame's share used up
+-- hands over to the next frame (only the build's own coroutine yields)
+function Build.Slice()
+	local n = Build.count + 1
+	if n < 16 then
+		Build.count = n
+		return
+	end
+	Build.count = 0
+	if debugprofilestop() >= Build.deadline and Build.job and coroutine.running() == Build.job then
+		coroutine.yield()
+	end
+end
 
 -- Pins the Quest List records by hand travel with the learned paths: the
 -- baker keeps both across sessions.
@@ -467,13 +529,39 @@ local function KeyOf(x, y)
 	return math.floor(x / CELL) .. ":" .. math.floor(y / CELL)
 end
 
-local function Link(a, akey, b, bkey, cost)
+-- A learned change to the link between two traced road nodes, with the
+-- road's own cost (false: none), so /route reset can put the roads back as
+-- traced without the road data, which is let go once merged (memory audit,
+-- 2026-09-24). A few entries: most learned links end on a learned node,
+-- and those go with it.
+local roadEdits = {}   -- [road node] = { [other key] = cost before }
+
+local function RoadEdit(node, key)
+	local e = roadEdits[node]
+	if not e then
+		e = {}
+		roadEdits[node] = e
+	end
+	if e[key] == nil then
+		e[key] = node[3][key] or false
+	end
+end
+
+local function Link(cont, a, akey, b, bkey, cost)
+	local roads = a[4] and b[4]
 	if a[3][bkey] == nil or a[3][bkey] > cost then
+		if roads then
+			RoadEdit(a, bkey)
+		end
 		a[3][bkey] = cost
 	end
 	if b[3][akey] == nil or b[3][akey] > cost then
+		if roads then
+			RoadEdit(b, akey)
+		end
 		b[3][akey] = cost
 	end
+	Edited(cont)
 end
 
 local function AddNode(cont, x, y)
@@ -483,7 +571,8 @@ local function AddNode(cont, x, y)
 	if not node then
 		node = { x, y, {} }
 		g[key] = node
-		graphVersion = graphVersion + 1
+		Edited(cont)
+		NodeAdded(cont, key, node)
 		local cx, cy = math.floor(x / CELL), math.floor(y / CELL)
 		for i = -2, 2 do
 			for j = -2, 2 do
@@ -492,7 +581,7 @@ local function AddNode(cont, x, y)
 				if o and k ~= key then
 					local d = Dist(x, y, o[1], o[2])
 					if d <= NEAR then
-						Link(node, key, o, k, d / WALK)
+						Link(cont, node, key, o, k, d / WALK)
 					end
 				end
 			end
@@ -514,27 +603,33 @@ local function CountNodes()
 	return nodes, edges / 2
 end
 
--- Fold another graph table (baked data or the saved variable) into live.
-local function Merge(other)
-	if type(other) ~= "table" then
-		return 0
+-- The pins another table recorded (baked data or the saved variable), folded
+-- into live at once: the Quest List and the services read them whether the
+-- graph is built or not.
+local function MergePins(other)
+	if type(other) ~= "table" or type(other.pins) ~= "table" then
+		return
 	end
-	local added = 0
-	if type(other.pins) == "table" then
-		local mine = PinStore()
-		for kind, list in pairs(other.pins) do
-			if (kind == "entrances" or kind == "transports" or kind == "services") and type(list) == "table" then
-				for name, v in pairs(list) do
-					if mine[kind][name] == nil and type(v) == "table" then
-						mine[kind][name] = v
-					end
+	local mine = PinStore()
+	for kind, list in pairs(other.pins) do
+		if (kind == "entrances" or kind == "transports" or kind == "services") and type(list) == "table" then
+			for name, v in pairs(list) do
+				if mine[kind][name] == nil and type(v) == "table" then
+					mine[kind][name] = v
 				end
 			end
 		end
 	end
-	if type(other.graphs) ~= "table" then
+end
+
+-- Fold another graph table (baked data or the saved variable) into live; its
+-- pins go in through MergePins.
+local function Merge(other)
+	if type(other) ~= "table" or type(other.graphs) ~= "table" then
 		return 0
 	end
+	local added = 0
+	local Slice = Build.Slice
 	for contKey, g in pairs(other.graphs) do
 		local cont = tonumber(contKey)
 		if cont and type(g) == "table" then
@@ -552,32 +647,43 @@ local function Merge(other)
 						added = added + 1
 					end
 				end
+				Slice()
 			end
 			for key, node in pairs(g) do
+				Slice()
 				local k = keyMap[key]
 				local target = k and mine[k]
 				if target then
 					for linked, cost in pairs(node[3] or {}) do
 						local ko = keyMap[linked] or linked
 						if ko ~= k and type(cost) == "number" and (target[3][ko] == nil or target[3][ko] > cost) then
-							target[3][ko] = cost
 							local back = mine[ko]
+							local roads = target[4] and back and back[4]
+							if roads then
+								RoadEdit(target, ko)
+							end
+							target[3][ko] = cost
 							if back and (back[3][k] == nil or back[3][k] > cost) then
+								if roads then
+									RoadEdit(back, k)
+								end
 								back[3][k] = cost
 							end
 						end
 					end
 				end
 			end
+			Edited(cont)
 		end
 	end
 	return added
 end
 
--- Roads traced from the map art (Media/RoadData.lua, Tools/trace_roads.py):
--- folded in like baked data but scaled to the continent sizes this client
--- reports, marked as traced so they are never written back into the saved
--- variable, and linked to whatever was learned near them.
+-- Roads traced from the map art (MelloUI_Companion/RoadData.lua,
+-- Tools/trace_roads.py): folded in like baked data but scaled to the
+-- continent sizes this client reports, marked as traced so they are never
+-- written back into the saved variable, and linked to whatever was learned
+-- near them.
 local tracedNodes = 0
 
 local function MergeRoads(data)
@@ -585,6 +691,7 @@ local function MergeRoads(data)
 		return 0
 	end
 	local added = 0
+	local Slice = Build.Slice
 	for contKey, g in pairs(data.graphs) do
 		local cont = tonumber(contKey)
 		if cont and type(g) == "table" then
@@ -605,8 +712,10 @@ local function MergeRoads(data)
 						added = added + 1
 					end
 				end
+				Slice()
 			end
 			for key, node in pairs(g) do
+				Slice()
 				local k = keyMap[key]
 				local target = k and mine[k]
 				if target then
@@ -621,6 +730,7 @@ local function MergeRoads(data)
 					end
 				end
 			end
+			Edited(cont)
 		end
 	end
 	tracedNodes = tracedNodes + added
@@ -687,6 +797,7 @@ end
 
 local function BuildDocks()
 	docks = {}
+	edits.hubs = edits.hubs + 1
 	local data = MelloUI_QuestListData
 	if type(data) ~= "table" or type(data.transports) ~= "table" then
 		return
@@ -731,6 +842,7 @@ local MAP_ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 
 local function BuildTaxis()
 	taxis = {}
+	edits.hubs = edits.hubs + 1
 	local data = MelloUI_QuestListData
 	if type(data) ~= "table" or type(data.taxiNodes) ~= "table" then
 		return
@@ -751,21 +863,44 @@ local function BuildTaxis()
 	end
 end
 
+-- The same keys in both sets
+local function SameKeys(a, b)
+	for k in pairs(a) do
+		if not b[k] then
+			return false
+		end
+	end
+	for k in pairs(b) do
+		if not a[k] then
+			return false
+		end
+	end
+	return true
+end
+
 -- Flight points the character can use, from the world map's own flight point
--- list of every zone. Cached for two minutes.
+-- list of every zone. Cached for two minutes, an empty list too (memory
+-- audit, 2026-09-24: this client's world map lists none, so every search --
+-- every three seconds while there is no route -- asked every zone again);
+-- a flight master's map resets it (RememberFlights, LearnFlights).
+-- Read only while it decides: once this character knows its own flight
+-- points (CharFlights), TaxiUsable goes by those alone, so the search and
+-- IsTaxiUsable leave the walk out (user, 2026-09-24, the /melloperf
+-- recording: see IsTaxiUsable).
 local function RefreshDiscovered()
 	if not (C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and C_Map.GetMapChildrenInfo) then
 		discovered = nil
 		return
 	end
-	if discovered and GetTime() - discoveredAt < 120 then
+	if discoveredAt > 0 and GetTime() - discoveredAt < 120 then
 		return
 	end
-	discoveredAt = GetTime()
 	local names, ids, conts = {}, {}, {}
 	for _, t in pairs(taxis or {}) do
 		conts[t.cont] = true
 	end
+	-- no flight points loaded yet: nothing asked, so nothing kept
+	discoveredAt = next(conts) and GetTime() or 0
 	for cont in pairs(conts) do
 		local ok, children = pcall(C_Map.GetMapChildrenInfo, cont, MAP_ZONE, true)
 		if ok and type(children) == "table" then
@@ -783,10 +918,16 @@ local function RefreshDiscovered()
 			end
 		end
 	end
+	local before = discovered
 	if next(names) or next(ids) then
 		discovered = { names = names, ids = ids }
 	else
 		discovered = nil
+	end
+	-- other flight points than before: a search that found no way may find one now
+	if (before == nil) ~= (discovered == nil)
+		or (before and not (SameKeys(before.names, names) and SameKeys(before.ids, ids))) then
+		edits.hubs = edits.hubs + 1
 	end
 end
 
@@ -817,6 +958,7 @@ local function CharFlights()
 		return {}   -- not yet: asked again later
 	end
 	charFlights = {}
+	edits.hubs = edits.hubs + 1
 	local stored = M.db and M.db[key]
 	if type(stored) == "string" then
 		for id in stored:gmatch("%d+") do
@@ -838,6 +980,7 @@ local function RememberFlights(ids)
 		end
 	end
 	if changed then
+		edits.hubs = edits.hubs + 1
 		local list = {}
 		for id in pairs(set) do
 			list[#list + 1] = id
@@ -899,304 +1042,324 @@ local function KnownFlightsHere()
 	RememberFlights(ids)
 end
 
-local function LearnFlights()
-	if not (M.isEnabled and M.db.learn and C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and GetTaxiMapID) then
-		return
-	end
-	local okM, mapID = pcall(GetTaxiMapID)
-	mapID = okM and Plain(mapID) or nil
-	if not mapID then
-		return
-	end
-	local okN, list = pcall(C_TaxiMap.GetAllTaxiNodes, mapID)
-	if not okN or type(list) ~= "table" then
-		return
-	end
-	local current
-	for _, info in ipairs(list) do
-		if Plain(info.state) == FLIGHT_CURRENT then
-			current = info
+local LearnFlights
+do
+	-- What one flight master's map taught, made in the graph: its node, and a
+	-- link to every reachable point of the continent at its flight time
+	local function FlightLinks(cont, x, y, legs)
+		local akey, a = AddNode(cont, x, y)
+		for _, leg in ipairs(legs) do
+			local bkey, b = AddNode(cont, leg[1], leg[2])
+			if bkey ~= akey then
+				Link(cont, a, akey, b, bkey, leg[3])
+			end
 		end
 	end
-	if not current then
-		return
-	end
-	local cx, cy = VectorXY(current.position)
-	if not cx then
-		return
-	end
-	local ccont, cyx, cyy = ToYards(mapID, cx, cy)
-	if not ccont then
-		return
-	end
-	local akey, a = AddNode(ccont, cyx, cyy)
-	local learned = 0
-	for _, info in ipairs(list) do
-		if Plain(info.state) == FLIGHT_REACHABLE then
-			local slot = Plain(info.slotIndex)
-			local px, py = VectorXY(info.position)
-			local dcont, dx, dy
-			if px then
-				dcont, dx, dy = ToYards(mapID, px, py)
+
+	LearnFlights = function()
+		if not (M.isEnabled and M.db.learn and C_TaxiMap and C_TaxiMap.GetAllTaxiNodes and GetTaxiMapID) then
+			return
+		end
+		local okM, mapID = pcall(GetTaxiMapID)
+		mapID = okM and Plain(mapID) or nil
+		if not mapID then
+			return
+		end
+		local okN, list = pcall(C_TaxiMap.GetAllTaxiNodes, mapID)
+		if not okN or type(list) ~= "table" then
+			return
+		end
+		local current
+		for _, info in ipairs(list) do
+			if Plain(info.state) == FLIGHT_CURRENT then
+				current = info
 			end
-			if dcont == ccont then
-				local length, lx, ly = 0, cyx, cyy
-				if slot and GetNumRoutes and TaxiGetDestX and TaxiGetDestY then
-					local okR, hops = pcall(GetNumRoutes, slot)
-					hops = okR and Plain(hops) or 0
-					for h = 1, hops do
-						local okX, hx = pcall(TaxiGetDestX, slot, h)
-						local okY, hy = pcall(TaxiGetDestY, slot, h)
-						hx, hy = okX and Plain(hx) or nil, okY and Plain(hy) or nil
-						if hx and hy then
-							local hc, hyx, hyy = ToYards(mapID, hx, hy)
-							if hc == ccont then
-								length = length + Dist(lx, ly, hyx, hyy)
-								lx, ly = hyx, hyy
+		end
+		if not current then
+			return
+		end
+		local cx, cy = VectorXY(current.position)
+		if not cx then
+			return
+		end
+		local ccont, cyx, cyy = ToYards(mapID, cx, cy)
+		if not ccont then
+			return
+		end
+		-- read now, while the map is open; made in the graph now, or once it
+		-- is built
+		local akey, legs, learned = KeyOf(cyx, cyy), {}, 0
+		for _, info in ipairs(list) do
+			if Plain(info.state) == FLIGHT_REACHABLE then
+				local slot = Plain(info.slotIndex)
+				local px, py = VectorXY(info.position)
+				local dcont, dx, dy
+				if px then
+					dcont, dx, dy = ToYards(mapID, px, py)
+				end
+				if dcont == ccont then
+					local length, lx, ly = 0, cyx, cyy
+					if slot and GetNumRoutes and TaxiGetDestX and TaxiGetDestY then
+						local okR, hops = pcall(GetNumRoutes, slot)
+						hops = okR and Plain(hops) or 0
+						for h = 1, hops do
+							local okX, hx = pcall(TaxiGetDestX, slot, h)
+							local okY, hy = pcall(TaxiGetDestY, slot, h)
+							hx, hy = okX and Plain(hx) or nil, okY and Plain(hy) or nil
+							if hx and hy then
+								local hc, hyx, hyy = ToYards(mapID, hx, hy)
+								if hc == ccont then
+									length = length + Dist(lx, ly, hyx, hyy)
+									lx, ly = hyx, hyy
+								end
 							end
 						end
 					end
-				end
-				if length <= 0 then
-					length = Dist(cyx, cyy, dx, dy)
-				end
-				local bkey, b = AddNode(dcont, dx, dy)
-				if bkey ~= akey then
-					Link(a, akey, b, bkey, length / FLIGHT + 5)
-					learned = learned + 1
+					if length <= 0 then
+						length = Dist(cyx, cyy, dx, dy)
+					end
+					legs[#legs + 1] = { dx, dy, length / FLIGHT + 5 }
+					if KeyOf(dx, dy) ~= akey then
+						learned = learned + 1
+					end
 				end
 			end
 		end
-	end
-	if learned > 0 then
-		discoveredAt = 0
+		Build.Learn(FlightLinks, ccont, cyx, cyy, legs)
+		if learned > 0 then
+			discoveredAt = 0
+		end
 	end
 end
 
 --------------------------------------------------------------------------------
 -- Search
+--
+-- (memory audit, 2026-09-24) A search made about 650 bytes of garbage for
+-- every node it looked at -- a "continent|cell" string per step, a new Relax
+-- function per node, a table per heap entry, new score tables every time --
+-- 8 to 11 MB for one that found no way, run again every three seconds while
+-- there was no route. Graph nodes now go by their own table, the working
+-- tables are kept from one search to the next, and the heap is three
+-- parallel arrays. Links are tried in the order they always were, so the
+-- routes come out the same (a node learned since is tried after the older
+-- ones near it, which can only choose between two routes of equal cost).
 --------------------------------------------------------------------------------
 
--- Small binary heap keyed by f.
-local function NewHeap()
-	local heap = { n = 0 }
-	function heap:push(id, f)
-		local n = self.n + 1
-		self.n = n
-		self[n] = { id, f }
-		while n > 1 do
-			local p = math.floor(n / 2)
-			if self[p][2] <= self[n][2] then
-				break
-			end
-			self[p], self[n] = self[n], self[p]
-			n = p
-		end
-	end
-	function heap:pop()
-		if self.n == 0 then
-			return nil
-		end
-		local top = self[1]
-		self[1] = self[self.n]
-		self[self.n] = nil
-		self.n = self.n - 1
-		local n, i = self.n, 1
-		while true do
-			local l, r, s = i * 2, i * 2 + 1, i
-			if l <= n and self[l][2] < self[s][2] then s = l end
-			if r <= n and self[r][2] < self[s][2] then s = r end
-			if s == i then
-				break
-			end
-			self[s], self[i] = self[i], self[s]
-			i = s
-		end
-		return top[1], top[2]
-	end
-	return heap
-end
+local NodesNear, FindRoute, ForgetLearned   -- in a block: its helpers stay out of the main chunk's 200 locals
 
--- Nodes grouped in 250-yard buckets per continent, rebuilt when the graph grew.
-local BUCKET = 250
-local buckets = { version = -1, conts = {} }
+do
+	-- Nodes grouped in 250-yard buckets per continent, built on first use and
+	-- then kept up to date as nodes are added (memory audit, 2026-09-24: it
+	-- was built anew after every new node, 617 KB each time on new ground).
+	local BUCKET = 250
+	local buckets = nil   -- [cont][bucket number] = { key, ... }
 
-local function Buckets(cont)
-	if buckets.version ~= graphVersion then
-		buckets.version = graphVersion
-		buckets.conts = {}
-		for c, g in pairs(live.graphs) do
-			local index = {}
-			for key, node in pairs(g) do
-				local bk = math.floor(node[1] / BUCKET) .. ":" .. math.floor(node[2] / BUCKET)
-				local list = index[bk]
-				if not list then
-					list = {}
-					index[bk] = list
+	local function BucketOf(x, y)
+		return math.floor(x / BUCKET) * 100000 + math.floor(y / BUCKET)
+	end
+
+	local function Buckets(cont)
+		if not buckets then
+			buckets = {}
+			for c, g in pairs(live.graphs) do
+				local index = {}
+				for key, node in pairs(g) do
+					local bk = BucketOf(node[1], node[2])
+					local list = index[bk]
+					if not list then
+						list = {}
+						index[bk] = list
+					end
+					list[#list + 1] = key
 				end
-				list[#list + 1] = key
+				buckets[c] = index
 			end
-			buckets.conts[c] = index
 		end
+		return buckets[cont]
 	end
-	return buckets.conts[cont]
-end
 
--- Graph nodes within `radius` yards of a point, as { key = distance }.
-local function NodesNear(cont, x, y, radius)
-	local g = live.graphs[cont]
-	local found = {}
-	if not g then
-		return found, 0
-	end
-	local index = Buckets(cont)
-	if not index then
-		return found, 0
-	end
-	local count = 0
-	local span = math.ceil(radius / BUCKET)
-	local bx, by = math.floor(x / BUCKET), math.floor(y / BUCKET)
-	for i = -span, span do
-		for j = -span, span do
-			local list = index[(bx + i) .. ":" .. (by + j)]
-			if list then
-				for _, key in ipairs(list) do
-					local node = g[key]
-					if node then
-						local d = Dist(x, y, node[1], node[2])
-						if d <= radius then
-							found[key] = d
-							count = count + 1
+	-- Graph nodes within `radius` yards of a point, as { key = distance }.
+	NodesNear = function(cont, x, y, radius)
+		local g = live.graphs[cont]
+		local found = {}
+		if not g then
+			return found, 0
+		end
+		local index = Buckets(cont)
+		if not index then
+			return found, 0
+		end
+		local count = 0
+		local span = math.ceil(radius / BUCKET)
+		local bx, by = math.floor(x / BUCKET), math.floor(y / BUCKET)
+		for i = -span, span do
+			for j = -span, span do
+				local list = index[(bx + i) * 100000 + by + j]
+				if list then
+					for _, key in ipairs(list) do
+						local node = g[key]
+						if node then
+							local d = Dist(x, y, node[1], node[2])
+							if d <= radius then
+								found[key] = d
+								count = count + 1
+							end
 						end
 					end
 				end
 			end
 		end
+		return found, count
 	end
-	return found, count
-end
 
--- Neighbourhood links of a fixed hub (dock, flight point), cached per graph version.
-local hubLinks = { version = -1, links = {} }
+	-- Neighbourhood links of a fixed hub (dock, flight point), kept until a
+	-- node is added near it (memory audit, 2026-09-24: every new node threw
+	-- all of them away)
+	local hubNear, hubAt = {}, {}   -- [id] = its NodesNear, [id] = { cont, x, y } it was taken at
+	-- A dead end's NodesNear at JUMP, kept only while big searches follow one
+	-- another (a player off a long route is routed again every two seconds)
+	-- and let go with the working tables below: [cont][node] = near
+	local jumpNear = {}
 
-local function HubNear(id, cont, x, y)
-	if hubLinks.version ~= graphVersion then
-		hubLinks.version = graphVersion
-		hubLinks.links = {}
-	end
-	local near = hubLinks.links[id]
-	if not near then
-		near = NodesNear(cont, x, y, OFFROAD)
-		hubLinks.links[id] = near
-	end
-	return near
-end
-
--- Route from (scont, sx, sy) to (gcont, gx, gy): a list of { cont, x, y, kind }
--- points and the total cost in seconds, or nil.
--- A start link that points back the way the player is walking is priced
--- BEHIND_COST times its length (user, 2026-09-22: the arrow sent the player
--- back to the road behind them, "the checkpoint", after a shortcut): the
--- planner then joins the road ahead unless going back is a real saving.
-local BEHIND_COST = 2.5
-
-local FLIGHT_LINK_MIN = 200   -- yards: a shorter link is never taken for a flight
-local FLIGHT_END_REACH = 90   -- yards: a flight link's end lies this near its flight master
-
--- Both ends of a flight link at a flight point this character may use,
--- remembered for the search
-local flightEndCache = {}
-local function FlightEnds(cont, a, akey, b, bkey)
-	local function Ok(node, key)
-		local k = cont .. "|" .. key
-		local v = flightEndCache[k]
-		if v == nil then
-			v = UsableTaxiNear(cont, node[1], node[2], FLIGHT_END_REACH)
-			flightEndCache[k] = v
+	local function HubNear(id, cont, x, y)
+		local near, at = hubNear[id], hubAt[id]
+		if not (near and at[1] == cont and at[2] == x and at[3] == y) then
+			near = NodesNear(cont, x, y, OFFROAD)
+			hubNear[id], hubAt[id] = near, { cont, x, y }
 		end
-		return v
+		return near
 	end
-	return Ok(a, akey) and Ok(b, bkey)
-end
 
-local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
-	flightEndCache = {}
-	-- Node ids: "c|key" graph nodes, "D<i>" docks, "S", "G".
-	local pos = {}     -- id -> { cont, x, y }
-	local extra = {}   -- id -> { otherId = cost } for virtual nodes and docks
-	local function AddExtra(a, b, cost)
-		extra[a] = extra[a] or {}
-		extra[b] = extra[b] or {}
-		if extra[a][b] == nil or extra[a][b] > cost then extra[a][b] = cost end
-		if extra[b][a] == nil or extra[b][a] > cost then extra[b][a] = cost end
-	end
-	pos.S = { scont, sx, sy }
-	pos.G = { gcont, gx, gy }
-	local function LinkPoint(id, cont, x, y, cached)
-		local near = cached and HubNear(id, cont, x, y) or NodesNear(cont, x, y, OFFROAD)
-		for key, d in pairs(near) do
-			local cost = d / WALK * 1.3
-			if id == "S" and hx and d > 5 then
-				local node = live.graphs[cont] and live.graphs[cont][key]
-				if node then
-					-- the node's direction from the player against the heading
-					local dot = ((node[1] - x) * hx + (node[2] - y) * hy) / d
-					if dot < -0.3 then
-						cost = cost * BEHIND_COST
-					elseif dot < 0.3 then
-						cost = cost * (1 + (0.3 - dot) * (BEHIND_COST - 1) / 0.6)   -- sideways: in between
-					end
+	NodeAdded = function(cont, key, node)
+		if buckets then
+			local index = buckets[cont]
+			if not index then
+				index = {}
+				buckets[cont] = index
+			end
+			local bk = BucketOf(node[1], node[2])
+			local list = index[bk]
+			if not list then
+				list = {}
+				index[bk] = list
+			end
+			list[#list + 1] = key
+		end
+		-- the hubs and dead ends that may see it (a yard to spare) look again
+		for id, at in pairs(hubAt) do
+			if at[1] == cont and Dist(at[2], at[3], node[1], node[2]) <= OFFROAD + 1 then
+				hubNear[id], hubAt[id] = nil, nil
+			end
+		end
+		local ends = jumpNear[cont]
+		if ends then
+			for n in pairs(ends) do
+				if Dist(n[1], n[2], node[1], node[2]) <= JUMP + 1 then
+					ends[n] = nil
 				end
 			end
-			AddExtra(id, cont .. "|" .. key, cost)
 		end
 	end
-	LinkPoint("S", scont, sx, sy)
-	LinkPoint("G", gcont, gx, gy)
-	-- a straight leg from the start or to the goal to a dock / flight point:
-	-- a short hop as walking, a long one only as a last resort
-	local function HubLeg(d)
-		if d <= OFFROAD then
-			return d / WALK * 1.3
-		end
-		return d / WALK * FAR_HUB_COST
+
+	-- A start link that points back the way the player is walking is priced
+	-- BEHIND_COST times its length (user, 2026-09-22: the arrow sent the player
+	-- back to the road behind them, "the checkpoint", after a shortcut): the
+	-- planner then joins the road ahead unless going back is a real saving.
+	local BEHIND_COST = 2.5
+
+	local FLIGHT_LINK_MIN = 200   -- yards: a shorter link is never taken for a flight
+	local FLIGHT_END_REACH = 90   -- yards: a flight link's end lies this near its flight master
+
+	-- A link far quicker than walking is a flight (learned at a flight master,
+	-- maybe by another character)
+	local function IsFlight(node, o, cost)
+		local d = Dist(node[1], node[2], o[1], o[2])
+		return d > FLIGHT_LINK_MIN and cost < d / WALK * 0.5
 	end
-	for i, d in ipairs(docks or {}) do
-		local id = "D" .. i
-		pos[id] = { d.cont, d.x, d.y }
-		LinkPoint(id, d.cont, d.x, d.y, true)
-		if d.pair then
-			AddExtra(id, "D" .. d.pair, BOAT_COST)
+
+	-- The working tables, kept from one search to the next and wiped. They
+	-- keep the size of the biggest search since, so they are let go once no
+	-- search has run for SCRATCH_IDLE seconds, or SCRATCH_IDLE_BIG after one
+	-- that expanded more than SCRATCH_KEEP nodes (2-4 MB for a road across a
+	-- continent): the memory is only held while it is saving garbage. Graph
+	-- nodes go by their own table; the start ("S"), the goal ("G"), docks
+	-- ("D<i>"), flight points ("T<id>") and a link to a cell with no node
+	-- ("c|key") by string.
+	local SCRATCH_KEEP, SCRATCH_IDLE, SCRATCH_IDLE_BIG = 500, 20, 4
+	local gScore, from, closed = {}, {}, {}   -- per node: cost so far, the node before, expanded
+	local heapId, heapF, heapCont, heapN = {}, {}, {}, 0   -- binary heap keyed by f
+	local extra, nodeExtra, pos = {}, {}, {}   -- id -> { otherId = cost }, graph node -> its extra, id -> { cont, x, y }
+	local flightEnds = {}   -- [node] = a flight point this character may use is at it
+	local sBase, sFrom          -- the node being expanded: its cost so far, itself
+	local sGoalCont, sGoalX, sGoalY, sSpeed, sHx, sHy   -- the goal, the estimate's speed, the heading
+	local lastSearch, releaseQueued, scratchBig = 0, false, false
+	-- [scont][gcont] = { hub edits, other continents' edits } of a search that found no way
+	local failed = {}
+
+	local function ReleaseIfIdle()
+		if GetTime() - lastSearch < (scratchBig and SCRATCH_IDLE_BIG or SCRATCH_IDLE) then
+			C_Timer.After(SCRATCH_IDLE_BIG, ReleaseIfIdle)
+			return
 		end
-		if d.cont == scont then
-			AddExtra("S", id, HubLeg(Dist(d.x, d.y, sx, sy)))
-		end
-		if d.cont == gcont then
-			AddExtra("G", id, HubLeg(Dist(d.x, d.y, gx, gy)))
-		end
+		releaseQueued, scratchBig = false, false
+		gScore, from, closed, extra, nodeExtra, pos, flightEnds = {}, {}, {}, {}, {}, {}, {}
+		heapId, heapF, heapCont, heapN = {}, {}, {}, 0
+		jumpNear = {}
 	end
-	RefreshDiscovered()
-	for id, t in pairs(taxis or {}) do
-		if TaxiUsable(id, t) then
-			local nid = "T" .. id
-			pos[nid] = { t.cont, t.x, t.y }
-			LinkPoint(nid, t.cont, t.x, t.y, true)
-			for other, secs in pairs(t.links) do
-				if taxis[other] and TaxiUsable(other, taxis[other]) then
-					AddExtra(nid, "T" .. other, secs)
-				end
+
+	-- Small binary heap keyed by f.
+	local function Push(id, f, cont)
+		local n = heapN + 1
+		heapN = n
+		heapId[n], heapF[n], heapCont[n] = id, f, cont
+		while n > 1 do
+			local p = math.floor(n / 2)
+			if heapF[p] <= heapF[n] then
+				break
 			end
-			if t.cont == scont then
-				AddExtra("S", nid, HubLeg(Dist(t.x, t.y, sx, sy)))
-			end
-			if t.cont == gcont then
-				AddExtra("G", nid, HubLeg(Dist(t.x, t.y, gx, gy)))
-			end
+			heapId[p], heapId[n] = heapId[n], heapId[p]
+			heapF[p], heapF[n] = heapF[n], heapF[p]
+			heapCont[p], heapCont[n] = heapCont[n], heapCont[p]
+			n = p
 		end
 	end
-	if scont == gcont then
-		AddExtra("S", "G", Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
+
+	local function Pop()
+		local n = heapN
+		if n == 0 then
+			return nil
+		end
+		local id, cont = heapId[1], heapCont[1]
+		heapId[1], heapF[1], heapCont[1] = heapId[n], heapF[n], heapCont[n]
+		heapId[n], heapF[n], heapCont[n] = nil, nil, nil
+		n = n - 1
+		heapN = n
+		local i = 1
+		while true do
+			local l, r, s = i * 2, i * 2 + 1, i
+			if l <= n and heapF[l] < heapF[s] then s = l end
+			if r <= n and heapF[r] < heapF[s] then s = r end
+			if s == i then
+				break
+			end
+			heapId[s], heapId[i] = heapId[i], heapId[s]
+			heapF[s], heapF[i] = heapF[i], heapF[s]
+			heapCont[s], heapCont[i] = heapCont[i], heapCont[s]
+			i = s
+		end
+		return id, cont
 	end
+
+	local function SetPos(id, cont, x, y)
+		local p = pos[id]
+		if not p then
+			p = {}
+			pos[id] = p
+		end
+		p[1], p[2], p[3] = cont, x, y
+	end
+
 	local function Position(id)
 		local p = pos[id]
 		if p then
@@ -1210,122 +1373,352 @@ local function FindRoute(scont, sx, sy, gcont, gx, gy, hx, hy)
 		end
 		return nil
 	end
-	-- the estimate to the goal at the fastest way this character can travel:
-	-- flying only with a usable flight point on the goal's continent, else
-	-- walking (a far tighter estimate: the long road searches finish)
-	local speed = WALK
-	for tid, t in pairs(taxis or {}) do
-		if t.cont == gcont and TaxiUsable(tid, t) then
-			speed = FLIGHT
-			break
+
+	-- the estimate to the goal at the fastest way this character can travel
+	local function Heuristic(id, cont)
+		local x, y
+		if type(id) == "table" then
+			x, y = id[1], id[2]
+		else
+			local p = pos[id]
+			if not p then
+				return 0   -- a link to a cell with no node
+			end
+			cont, x, y = p[1], p[2], p[3]
 		end
-	end
-	local function Heuristic(id)
-		local cont, x, y = Position(id)
-		if not cont or cont ~= gcont then
+		if cont ~= sGoalCont then
 			return 0
 		end
-		return Dist(x, y, gx, gy) / speed
+		return Dist(x, y, sGoalX, sGoalY) / sSpeed
 	end
-	local gScore, from, closed = { S = 0 }, {}, {}
-	local heap = NewHeap()
-	heap:push("S", Heuristic("S"))
-	local expanded = 0
-	while true do
-		local id = heap:pop()
-		if not id then
-			return nil
+
+	-- One link out of the node being expanded
+	local function Relax(other, cont, cost)
+		local tentative = sBase + cost
+		local old = gScore[other]
+		if old == nil or tentative < old then
+			gScore[other] = tentative
+			from[other] = sFrom
+			Push(other, tentative + Heuristic(other, cont), cont)
 		end
-		if id == "G" then
-			break
+	end
+
+	-- One link of the extra table, where graph nodes are "c|key"
+	local function RelaxId(other, cost)
+		local c, key = other:match("^(%d+)|(.+)$")
+		c = tonumber(c)
+		local g = c and live.graphs[c]
+		local node = g and g[key]
+		if node then
+			Relax(node, c, cost)
+		else
+			Relax(other, nil, cost)
 		end
-		if not closed[id] then
-			closed[id] = true
-			expanded = expanded + 1
-			if expanded > 60000 then
+	end
+
+	-- Both ends of a flight link at a flight point this character may use
+	local function FlightEnd(cont, node)
+		local v = flightEnds[node]
+		if v == nil then
+			v = UsableTaxiNear(cont, node[1], node[2], FLIGHT_END_REACH)
+			flightEnds[node] = v
+		end
+		return v
+	end
+
+	local function AddExtra(a, b, cost)
+		extra[a] = extra[a] or {}
+		extra[b] = extra[b] or {}
+		if extra[a][b] == nil or extra[a][b] > cost then extra[a][b] = cost end
+		if extra[b][a] == nil or extra[b][a] > cost then extra[b][a] = cost end
+	end
+
+	local function LinkPoint(id, cont, x, y, cached)
+		local near = cached and HubNear(id, cont, x, y) or NodesNear(cont, x, y, OFFROAD)
+		local g = live.graphs[cont]
+		for key, d in pairs(near) do
+			local cost = d / WALK * 1.3
+			local node = g and g[key]
+			if id == "S" and sHx and d > 5 and node then
+				-- the node's direction from the player against the heading
+				local dot = ((node[1] - x) * sHx + (node[2] - y) * sHy) / d
+				if dot < -0.3 then
+					cost = cost * BEHIND_COST
+				elseif dot < 0.3 then
+					cost = cost * (1 + (0.3 - dot) * (BEHIND_COST - 1) / 0.6)   -- sideways: in between
+				end
+			end
+			local nid = cont .. "|" .. key
+			AddExtra(id, nid, cost)
+			if node then
+				nodeExtra[node] = extra[nid]
+			end
+		end
+	end
+
+	-- a straight leg from the start or to the goal to a dock / flight point:
+	-- a short hop as walking, a long one only as a last resort
+	local function HubLeg(d)
+		if d <= OFFROAD then
+			return d / WALK * 1.3
+		end
+		return d / WALK * FAR_HUB_COST
+	end
+
+	-- The start, the goal, the docks and the flight points, linked to the
+	-- graph and to each other
+	local function Begin(scont, sx, sy, gcont, gx, gy, hx, hy)
+		wipe(gScore)
+		wipe(from)
+		wipe(closed)
+		wipe(extra)
+		wipe(nodeExtra)
+		wipe(flightEnds)
+		for i = heapN, 1, -1 do
+			heapId[i], heapF[i], heapCont[i] = nil, nil, nil
+		end
+		heapN = 0
+		sHx, sHy = hx, hy
+		SetPos("S", scont, sx, sy)
+		SetPos("G", gcont, gx, gy)
+		LinkPoint("S", scont, sx, sy)
+		LinkPoint("G", gcont, gx, gy)
+		for i, d in ipairs(docks or {}) do
+			local id = "D" .. i
+			SetPos(id, d.cont, d.x, d.y)
+			LinkPoint(id, d.cont, d.x, d.y, true)
+			if d.pair then
+				AddExtra(id, "D" .. d.pair, BOAT_COST)
+			end
+			if d.cont == scont then
+				AddExtra("S", id, HubLeg(Dist(d.x, d.y, sx, sy)))
+			end
+			if d.cont == gcont then
+				AddExtra("G", id, HubLeg(Dist(d.x, d.y, gx, gy)))
+			end
+		end
+		for id, t in pairs(taxis or {}) do
+			if TaxiUsable(id, t) then
+				local nid = "T" .. id
+				SetPos(nid, t.cont, t.x, t.y)
+				LinkPoint(nid, t.cont, t.x, t.y, true)
+				for other, secs in pairs(t.links) do
+					if taxis[other] and TaxiUsable(other, taxis[other]) then
+						AddExtra(nid, "T" .. other, secs)
+					end
+				end
+				if t.cont == scont then
+					AddExtra("S", nid, HubLeg(Dist(t.x, t.y, sx, sy)))
+				end
+				if t.cont == gcont then
+					AddExtra("G", nid, HubLeg(Dist(t.x, t.y, gx, gy)))
+				end
+			end
+		end
+		if scont == gcont then
+			AddExtra("S", "G", Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
+		end
+		-- the estimate at the fastest way this character can travel: flying
+		-- only with a usable flight point on the goal's continent, else walking
+		-- (a far tighter estimate: the long road searches finish)
+		local speed = WALK
+		for tid, t in pairs(taxis or {}) do
+			if t.cont == gcont and TaxiUsable(tid, t) then
+				speed = FLIGHT
+				break
+			end
+		end
+		sGoalCont, sGoalX, sGoalY, sSpeed = gcont, gx, gy, speed
+	end
+
+	-- The links out of one node
+	local function Expand(id, cont)
+		sBase, sFrom = gScore[id], id
+		local ex
+		if type(id) == "table" then
+			local g, links = live.graphs[cont], id[3]
+			local degree = 0
+			for k, cost in pairs(links) do
+				-- a flight only between two flight points this character may use
+				local o = g[k]
+				if not (o and IsFlight(id, o, cost)) or (FlightEnd(cont, id) and FlightEnd(cont, o)) then
+					Relax(o or (cont .. "|" .. k), cont, cost)
+				end
+				degree = degree + 1
+			end
+			if degree <= 1 then
+				-- the end of a path: cross open ground to any path nearby
+				local ends = scratchBig and jumpNear[cont]
+				local near = ends and ends[id]
+				if not near then
+					near = NodesNear(cont, id[1], id[2], JUMP)
+					if scratchBig then
+						ends = ends or {}
+						jumpNear[cont] = ends
+						ends[id] = near
+					end
+				end
+				for k, d in pairs(near) do
+					local o = g[k]
+					if o ~= id and links[k] == nil then
+						Relax(o, cont, d / WALK * JUMP_COST)
+					end
+				end
+			end
+			ex = nodeExtra[id]
+		else
+			ex = extra[id]
+		end
+		if ex then
+			for other, cost in pairs(ex) do
+				RelaxId(other, cost)
+			end
+		end
+	end
+
+	-- Walk back from the goal; graph nodes are "c|key" in the points, as ever.
+	local function Path()
+		local ids = {}
+		local id = "G"
+		while id do
+			if type(id) == "table" then
+				local key = KeyOf(id[1], id[2])
+				local name
+				for c, g in pairs(live.graphs) do
+					if g[key] == id then
+						name = c .. "|" .. key
+						break
+					end
+				end
+				ids[#ids + 1] = name or "?"
+			else
+				ids[#ids + 1] = id
+			end
+			id = from[id]
+		end
+		for i = 1, math.floor(#ids / 2) do
+			ids[i], ids[#ids + 1 - i] = ids[#ids + 1 - i], ids[i]
+		end
+		local points = {}
+		for i, nid in ipairs(ids) do
+			local cont, x, y = Position(nid)
+			if cont then
+				local prev = ids[i - 1]
+				local kind = "road"
+				local hubNow, hubPrev = nid:sub(1, 1), prev and prev:sub(1, 1)
+				local isHubNow, isHubPrev = hubNow == "D" or hubNow == "T", hubPrev == "D" or hubPrev == "T"
+				if not prev or nid == "G" or prev == "S" or isHubNow or isHubPrev then
+					kind = "guess"
+				elseif prev then
+					local pc, pk = prev:match("^(%d+)|(.+)$")
+					local _, nk = nid:match("^(%d+)|(.+)$")
+					local pnode = pc and live.graphs[tonumber(pc)] and live.graphs[tonumber(pc)][pk]
+					if pnode and nk and pnode[3][nk] == nil then
+						kind = "guess"
+					end
+				end
+				if isHubPrev and isHubNow then
+					kind = hubPrev == "T" and "flight" or "boat"
+				end
+				points[#points + 1] = { cont, x, y, kind, nid }
+			end
+		end
+		return points, gScore.G
+	end
+
+	-- Route from (scont, sx, sy) to (gcont, gx, gy): a list of { cont, x, y, kind }
+	-- points and the total cost in seconds, or nil.
+	FindRoute = function(scont, sx, sy, gcont, gx, gy, hx, hy)
+		-- the character's own flight points, read before the memo below (the
+		-- first read counts as a hub change); the world map's list only while
+		-- there are none, as in IsTaxiUsable
+		if not next(CharFlights()) then
+			RefreshDiscovered()
+		end
+		-- (memory audit, 2026-09-24) The start is linked to every dock and
+		-- flight point of its continent and the goal to every one of its own,
+		-- so whether another continent can be reached at all does not hang on
+		-- where the two ends are on them: a search that found no way is not
+		-- run again until the hubs or a third continent's paths change.
+		local others
+		if scont ~= gcont then
+			others = edits.all - (edits.conts[scont] or 0) - (edits.conts[gcont] or 0)
+			local memo = failed[scont] and failed[scont][gcont]
+			if memo and memo[1] == edits.hubs and memo[2] == others then
 				return nil
 			end
-			local base = gScore[id]
-			local function Relax(other, cost)
-				local tentative = base + cost
-				if gScore[other] == nil or tentative < gScore[other] then
-					gScore[other] = tentative
-					from[other] = id
-					heap:push(other, tentative + Heuristic(other))
+		end
+		lastSearch = GetTime()
+		if not releaseQueued then
+			releaseQueued = true
+			C_Timer.After(SCRATCH_IDLE_BIG, ReleaseIfIdle)
+		end
+		Begin(scont, sx, sy, gcont, gx, gy, hx, hy)
+		gScore.S = 0
+		Push("S", Heuristic("S"), scont)
+		local expanded = 0
+		while true do
+			local id, cont = Pop()
+			if not id then
+				scratchBig = scratchBig or expanded > SCRATCH_KEEP
+				if others then
+					failed[scont] = failed[scont] or {}
+					failed[scont][gcont] = { edits.hubs, others }
+				end
+				return nil
+			end
+			if id == "G" then
+				break
+			end
+			if not closed[id] then
+				closed[id] = true
+				expanded = expanded + 1
+				if expanded > 60000 then
+					scratchBig = true
+					return nil
+				end
+				Expand(id, cont)
+			end
+		end
+		scratchBig = scratchBig or expanded > SCRATCH_KEEP
+		return Path()
+	end
+
+	-- /route reset: the learned nodes go, with every link to them, and the
+	-- links learned between two roads get the road's own cost back; the
+	-- traced roads stay as they were merged (memory audit, 2026-09-24: the
+	-- road data is let go once merged, so it is no longer merged in afresh)
+	ForgetLearned = function()
+		for node, e in pairs(roadEdits) do
+			for key, cost in pairs(e) do
+				node[3][key] = cost or nil
+			end
+		end
+		roadEdits = {}
+		local roads = 0
+		for _, g in pairs(live.graphs) do
+			for key, node in pairs(g) do
+				if not node[4] then
+					g[key] = nil
 				end
 			end
-			local cont, key = id:match("^(%d+)|(.+)$")
-			if cont then
-				cont = tonumber(cont)
-				local node = live.graphs[cont] and live.graphs[cont][key]
-				if node then
-					local prefix = cont .. "|"
-					local degree = 0
-					for k, cost in pairs(node[3]) do
-						-- a link far quicker than walking is a flight (learned at
-						-- a flight master, maybe by another character): only
-						-- between two flight points this character may use
-						local o = live.graphs[cont][k]
-						local flight = false
-						if o then
-							local d = Dist(node[1], node[2], o[1], o[2])
-							flight = d > FLIGHT_LINK_MIN and cost < d / WALK * 0.5
-						end
-						if not flight or FlightEnds(cont, node, key, o, k) then
-							Relax(prefix .. k, cost)
-						end
-						degree = degree + 1
+			for _, node in pairs(g) do
+				roads = roads + 1
+				local links = node[3]
+				for other in pairs(links) do
+					if not g[other] then
+						links[other] = nil
 					end
-					if degree <= 1 then
-						-- the end of a path: cross open ground to any path nearby
-						local near = NodesNear(cont, node[1], node[2], JUMP)
-						for k, d in pairs(near) do
-							if k ~= key and node[3][k] == nil then
-								Relax(prefix .. k, d / WALK * JUMP_COST)
-							end
-						end
-					end
-				end
-			end
-			if extra[id] then
-				for other, cost in pairs(extra[id]) do
-					Relax(other, cost)
 				end
 			end
 		end
+		tracedNodes = roads
+		buckets = nil
+		wipe(hubNear)
+		wipe(hubAt)
+		wipe(failed)
+		jumpNear = {}
 	end
-	-- Walk back.
-	local ids = {}
-	local id = "G"
-	while id do
-		table.insert(ids, 1, id)
-		id = from[id]
-	end
-	local points = {}
-	for i, nid in ipairs(ids) do
-		local cont, x, y = Position(nid)
-		if cont then
-			local prev = ids[i - 1]
-			local kind = "road"
-			local hubNow, hubPrev = nid:sub(1, 1), prev and prev:sub(1, 1)
-			local isHubNow, isHubPrev = hubNow == "D" or hubNow == "T", hubPrev == "D" or hubPrev == "T"
-			if not prev or nid == "G" or prev == "S" or isHubNow or isHubPrev then
-				kind = "guess"
-			elseif prev then
-				local pc, pk = prev:match("^(%d+)|(.+)$")
-				local _, nk = nid:match("^(%d+)|(.+)$")
-				local pnode = pc and live.graphs[tonumber(pc)] and live.graphs[tonumber(pc)][pk]
-				if pnode and nk and pnode[3][nk] == nil then
-					kind = "guess"
-				end
-			end
-			if isHubPrev and isHubNow then
-				kind = hubPrev == "T" and "flight" or "boat"
-			end
-			points[#points + 1] = { cont, x, y, kind, nid }
-		end
-	end
-	return points, gScore.G
 end
 
 --------------------------------------------------------------------------------
@@ -1458,6 +1851,22 @@ local function Plan(force, announce, announceText)
 		route = nil
 		Redraw()
 		return
+	end
+	if not Build.Ready() then
+		-- the roads are still going in (the first route of the session, a
+		-- few frames): planned, and announced, the moment they are all in;
+		-- the arrow and the marker point straight at the place meanwhile
+		Build.Wait(announce, announceText)
+		Redraw()
+		return
+	end
+	local waited = Build.waiting
+	if waited then
+		-- a route asked for while the graph was being built: its notice now
+		Build.waiting = nil
+		if waited.announce and not announce then
+			announce, announceText = true, waited.text
+		end
 	end
 	local hx, hy = Heading(cont)
 	local points, cost = FindRoute(cont, x, y, d.cont, d.x, d.y, hx, hy)
@@ -1644,25 +2053,76 @@ end
 
 --------------------------------------------------------------------------------
 -- The objectives themselves (user, 2026-09-23: "now start on the route to
--- quest objectives"): Media/QuestObjectiveData.lua (Tools/build_quest_
--- objectives.py, cmangos classic-db) knows where each objective of a Classic
--- quest is done -- the creature to kill, the object to use, what drops the
--- item or sells it, the place to explore. The tracked quest's unfinished
--- objectives are matched to it by name; of their places the nearest few are
--- priced by route and the cheapest is the destination. Re-chosen as the
--- objectives change and every few seconds, so the route moves on to the
--- next spawn as the player works through them. A complete quest, or one
--- without data, keeps the game's own marker (the turn-in, the quest area).
+-- quest objectives"): MelloUI_Companion/QuestObjectiveData.lua (Tools/build_
+-- quest_objectives.py, cmangos classic-db) knows where each objective of a
+-- Classic quest is done -- the creature to kill, the object to use, what
+-- drops the item or sells it, the place to explore. The tracked quest's
+-- unfinished objectives are matched to it by name; of their places the
+-- nearest few are priced by route and the cheapest is the destination.
+-- Re-chosen as the objectives change and every few seconds, so the route
+-- moves on to the next spawn as the player works through them. A complete
+-- quest, or one without data, keeps the game's own marker (the turn-in, the
+-- quest area). The data is the companion's: loaded with the roads when a
+-- quest is first tracked, and read from its global when asked for (nil until
+-- then, or when the companion is missing: the game's marker then).
 --------------------------------------------------------------------------------
 
 local OBJECTIVE_RECHECK = 8     -- seconds between choosing again
 local OBJECTIVE_PRICED = 3      -- the nearest this many places are priced by route
 local objectiveChoice = {}      -- [questID] = { sig, at, cont, x, y, name }
 
+-- A quest's entries, { { kind, name, alt, map, x1, y1, x2, y2, ... }, ... },
+-- or nil. The data keeps each quest as one packed string (memory audit,
+-- 2026-09-24: as tables it held 1.7 MB, nearly all of it places of quests
+-- never tracked, and made as much again in garbage while loading); a quest's
+-- is decoded when it is asked for, and the last few are kept, as the tracked
+-- one is asked for again every few seconds.
+local ObjectivesOf
+do
+	local KEPT = 4                  -- decoded quests kept
+	local decoded, order = {}, {}   -- [questID] = its entries; the questIDs, oldest first
+	-- a coordinate is three characters, base 64 with the digits "0" (48) to
+	-- "o" (111), holding the value plus 131072 (Tools/build_quest_objectives.py)
+	local BIAS = (48 * 64 + 48) * 64 + 48 + 131072
+
+	-- "<kind><map><name>|<alt>|<x1><y1><x2><y2>...~" for each objective
+	local function Decode(packed)
+		local list = {}
+		for kind, wmap, name, alt, coords in packed:gmatch("(%d)(%d)([^|]*)|([^|]*)|([^~]*)~") do
+			local entry, n = { tonumber(kind), name, alt, tonumber(wmap) }, 4
+			for i = 1, #coords - 2, 3 do
+				local a, b, c = coords:byte(i, i + 2)
+				n = n + 1
+				entry[n] = (a * 64 + b) * 64 + c - BIAS
+			end
+			list[#list + 1] = entry
+		end
+		return list
+	end
+
+	function ObjectivesOf(questID)
+		local list = decoded[questID]
+		if list then
+			return list
+		end
+		local packed = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
+		if type(packed) ~= "string" then
+			return nil
+		end
+		list = Decode(packed)
+		decoded[questID] = list
+		order[#order + 1] = questID
+		if #order > KEPT then
+			decoded[table.remove(order, 1)] = nil
+		end
+		return list
+	end
+end
+
 -- The data's entries still to do: each { kind, name, points }, and a
 -- signature of the open objectives (a new choice when it changes)
 local function OpenObjectives(questID)
-	local data = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
+	local data = ObjectivesOf(questID)
 	if not data then
 		return nil
 	end
@@ -1728,7 +2188,8 @@ local function OpenObjectives(questID)
 end
 
 -- The place to go for the quest's open objectives: continent yards and the
--- objective's name, or nil
+-- objective's name, or nil; nil and then true while the places cannot be
+-- priced yet (the graph not built)
 local function ObjectiveSpot(questID)
 	local open, sig = OpenObjectives(questID)
 	if not open then
@@ -1767,7 +2228,12 @@ local function ObjectiveSpot(questID)
 		for i = 1, math.min(OBJECTIVE_PRICED, #near) do
 			candidates[i] = { cont = near[i].wmap, wx = near[i].wx, wy = near[i].wy }
 		end
-		local ok, best = pcall(M.Cheapest, M, candidates)
+		local ok, best, _, later = pcall(M.Cheapest, M, candidates)
+		if ok and later then
+			-- not priced yet (the roads are still going in): nothing chosen,
+			-- so the first choice is the cheapest one, as ever
+			return nil, nil, nil, nil, true
+		end
 		if ok and best and near[best] then
 			pick = near[best]
 		end
@@ -1792,8 +2258,13 @@ local function ReadTrackedQuest()
 		end
 		return
 	end
-	-- the objective itself, when the data knows where it is done
-	local ocont, ox, oy, oname = ObjectiveSpot(questID)
+	-- the objective itself, when the data knows where it is done (the
+	-- companion's data, loaded now if it is not yet, the roads with it)
+	Build.Want()
+	local ocont, ox, oy, oname, later = ObjectiveSpot(questID)
+	if later then
+		return   -- chosen by route once the roads are in; nothing changes until then
+	end
 	if ocont then
 		local same = destination and destination.fromQuest and destination.questID == questID
 		if same and destination.cont == ocont and Dist(destination.x, destination.y, ox, oy) < 1 then
@@ -2181,11 +2652,16 @@ function M:DistanceTo(candidate)
 	return Dist(px, py, x, y)
 end
 
--- Index and cost (seconds) of the candidate cheapest to reach by route.
+-- Index and cost (seconds) of the candidate cheapest to reach by route. While
+-- the graph is still being built (the first route of the session): nil, nil,
+-- true -- not priced yet; M:WhenReady makes the choice once it can be.
 function M:Cheapest(candidates)
 	local pcont, px, py = PlayerYards()
 	if not pcont then
 		return nil
+	end
+	if not Build.Ready() then
+		return nil, nil, true
 	end
 	local best, bestCost
 	for i, c in ipairs(candidates) do
@@ -2203,12 +2679,37 @@ function M:Cheapest(candidates)
 	return best, bestCost
 end
 
+-- fn run once routes can be priced: at once when the graph is built, else in
+-- the frame after it is (the build started now if it is not yet). For a
+-- choice Cheapest could not make yet (its third answer): made then, by route
+-- as ever, not by straight line. Dropped when Route is switched off meanwhile.
+function M:WhenReady(fn)
+	if Build.ready then
+		fn()
+		return
+	end
+	local list = Build.later or {}
+	Build.later = list
+	list[#list + 1] = fn
+	Build.Want()
+end
+
+-- The world map's list is walked only while it decides the answer (user,
+-- 2026-09-24, the /melloperf recording). A flight master's map starts that
+-- list over, and the next answer asked (the Services bar's flight icon, a
+-- few seconds after every visit) walked every zone of both continents for
+-- it: 18 ms and 3.6 MB in one call, for a list TaxiUsable does not read once
+-- the character knows its own points. Those are kept as the map opens
+-- (KnownFlightsHere), so a point learned there is usable at once; they are
+-- only ever added to, so once there is one the walk is not needed again.
 function M:IsTaxiUsable(id)
 	local t = taxis and taxis[id]
 	if not t then
 		return false
 	end
-	RefreshDiscovered()
+	if not next(CharFlights()) then
+		RefreshDiscovered()
+	end
 	return TaxiUsable(id, t)
 end
 
@@ -2246,65 +2747,81 @@ local taxiStart = nil    -- where the current flight began
 local recorded = 0       -- breadcrumbs this session, for /route
 local recordSkip = ""    -- why the last Record call recorded nothing, for /route
 
-local function Record()
-	if not (M.isEnabled and M.db.learn) then
-		recordSkip = "learning is off"
-		return
+local Record
+do
+	-- A flight landed: one edge from take-off to landing
+	local function Landing(cont, ax, ay, bx, by)
+		local akey, a = AddNode(cont, ax, ay)
+		local bkey, b = AddNode(cont, bx, by)
+		if akey ~= bkey then
+			Link(cont, a, akey, b, bkey, Dist(ax, ay, bx, by) / FLIGHT + 20)
+		end
 	end
-	local okI, inInstance = pcall(IsInInstance)
-	if not okI or inInstance then
-		recordSkip = okI and "in an instance" or "IsInInstance failed"
-		last = nil
-		return
-	end
-	local okT, onTaxi = pcall(UnitOnTaxi, "player")
-	if okT and onTaxi then
-		recordSkip = "on a taxi"
-		if not taxiStart then
-			local cont, x, y = PlayerYards()
-			if cont then
-				taxiStart = { cont, x, y }
+
+	-- A breadcrumb: its node, linked to the last one (`lastKey`, `d` yards
+	-- back) when that is near
+	local function Crumb(cont, x, y, lastKey, d)
+		local key, node = AddNode(cont, x, y)
+		if lastKey and key ~= lastKey and d <= LINK then
+			local prev = live.graphs[cont][lastKey]
+			if prev then
+				Link(cont, node, key, prev, lastKey, d / WALK)
 			end
 		end
-		last = nil
-		return
 	end
-	if taxiStart then
-		-- Landed: one edge from take-off to landing.
-		local cont, x, y = PlayerYards()
-		if cont and cont == taxiStart[1] then
-			local akey, a = AddNode(cont, taxiStart[2], taxiStart[3])
-			local bkey, b = AddNode(cont, x, y)
-			if akey ~= bkey then
-				Link(a, akey, b, bkey, Dist(taxiStart[2], taxiStart[3], x, y) / FLIGHT + 20)
-			end
-		end
-		taxiStart = nil
-	end
-	local cont, x, y = PlayerYards()
-	if not cont then
-		recordSkip = "no player position"
-		last = nil
-		return
-	end
-	recordSkip = ""
-	if last and last.cont == cont then
-		local d = Dist(x, y, last.x, last.y)
-		if d < CELL * 0.7 then
+
+	-- The graph changes go through Build.Learn: made now, or once the graph
+	-- is built; the recorder's own state (the last breadcrumb, the flight)
+	-- is kept here as ever, and a cell's key needs no graph
+	Record = function()
+		if not (M.isEnabled and M.db.learn) then
+			recordSkip = "learning is off"
 			return
 		end
-		recorded = recorded + 1
-		local key, node = AddNode(cont, x, y)
-		if key ~= last.key and d <= LINK then
-			local prev = live.graphs[cont][last.key]
-			if prev then
-				Link(node, key, prev, last.key, d / WALK)
-			end
+		local okI, inInstance = pcall(IsInInstance)
+		if not okI or inInstance then
+			recordSkip = okI and "in an instance" or "IsInInstance failed"
+			last = nil
+			return
 		end
-		last = { cont = cont, key = key, x = x, y = y }
-	else
-		local key = AddNode(cont, x, y)
-		last = { cont = cont, key = key, x = x, y = y }
+		local okT, onTaxi = pcall(UnitOnTaxi, "player")
+		if okT and onTaxi then
+			recordSkip = "on a taxi"
+			if not taxiStart then
+				local cont, x, y = PlayerYards()
+				if cont then
+					taxiStart = { cont, x, y }
+				end
+			end
+			last = nil
+			return
+		end
+		if taxiStart then
+			local cont, x, y = PlayerYards()
+			if cont and cont == taxiStart[1] then
+				Build.Learn(Landing, cont, taxiStart[2], taxiStart[3], x, y)
+			end
+			taxiStart = nil
+		end
+		local cont, x, y = PlayerYards()
+		if not cont then
+			recordSkip = "no player position"
+			last = nil
+			return
+		end
+		recordSkip = ""
+		if last and last.cont == cont then
+			local d = Dist(x, y, last.x, last.y)
+			if d < CELL * 0.7 then
+				return
+			end
+			recorded = recorded + 1
+			Build.Learn(Crumb, cont, x, y, last.key, d)
+			last = { cont = cont, key = KeyOf(x, y), x = x, y = y }
+		else
+			Build.Learn(Crumb, cont, x, y)
+			last = { cont = cont, key = KeyOf(x, y), x = x, y = y }
+		end
 	end
 end
 
@@ -2502,7 +3019,7 @@ local function DrawWorldMap()
 		mapFrame:SetAllPoints(canvas)
 		mapFrame:SetFrameLevel(canvas:GetFrameLevel() + 5)
 		mapPainter = NewPainter(mapFrame)
-		mapFrame:SetScript("OnSizeChanged", function() C_Timer.After(0, DrawWorldMap) end)
+		Perf.SetScript(mapFrame, "OnSizeChanged", function() C_Timer.After(0, DrawWorldMap) end)
 	end
 	LayerRouteFrame(map:GetCanvas())
 	mapPainter:Begin()
@@ -2554,7 +3071,7 @@ local function CreateProvider()
 		DrawWorldMap()
 	end
 	WorldMapFrame:AddDataProvider(Provider)
-	WorldMapFrame:HookScript("OnShow", function() C_Timer.After(0, DrawWorldMap) end)
+	Perf.HookScript(WorldMapFrame, "OnShow", function() C_Timer.After(0, DrawWorldMap) end)
 end
 
 --------------------------------------------------------------------------------
@@ -2700,23 +3217,23 @@ local function EnsureArrow()
 	arrow.label:SetPoint("TOP", arrow.distance, "BOTTOM", 0, -1)
 	arrow.label:SetWidth(180)
 	arrow.label:SetWordWrap(false)
-	arrow:SetScript("OnDragStart", function(self) self:StartMoving() end)
-	arrow:SetScript("OnDragStop", function(self)
+	Perf.SetScript(arrow, "OnDragStart", function(self) self:StartMoving() end)
+	Perf.SetScript(arrow, "OnDragStop", function(self)
 		self:StopMovingOrSizing()
 		local x, y = self:GetCenter()
 		local ux, uy = UIParent:GetCenter()
 		M.db.arrowX, M.db.arrowY = math.floor(x - ux + 0.5), math.floor(y - uy + 0.5)
 		MelloUI:NotifySettingChanged(M.name, "arrowX", M.db.arrowX)
 	end)
-	arrow:SetScript("OnEnter", function(self)
+	Perf.SetScript(arrow, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Route", 1, 1, 1)
 		GameTooltip:AddLine("Points along the next leg of the route. Drag to move.", nil, nil, nil, true)
 		GameTooltip:Show()
 	end)
-	arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(arrow, "OnLeave", function() GameTooltip:Hide() end)
 	arrow.frameAge = 0
-	arrow:SetScript("OnUpdate", function(self, elapsed)
+	Perf.SetScript(arrow, "OnUpdate", function(self, elapsed)
 		self.frameAge = self.frameAge + elapsed
 		if self.frameAge < 1 / 60 or not self.targetX then
 			return
@@ -3022,7 +3539,7 @@ local function EnsureMarker()
 	pop:SetToFinalAlpha(true)
 	marker.pop = pop
 	marker.age, marker.angle = 0, math.pi / 2
-	marker:SetScript("OnUpdate", MarkerTick)
+	Perf.SetScript(marker, "OnUpdate", MarkerTick)
 	marker:Hide()
 end
 
@@ -3311,24 +3828,269 @@ end
 -- Saved graph
 --------------------------------------------------------------------------------
 
+-- The saved variable's pins go in at once; its paths with the graph -- now,
+-- or once it is built, in their turn after what was learned before the
+-- client brought them
 local function AdoptSaved()
 	if type(MelloUIRoutes) == "table" and not mergedSaved then
 		mergedSaved = true
-		local added = Merge(MelloUIRoutes)
-		if added > 0 then
-			BuildDocks()
-		end
+		local saved = MelloUIRoutes
+		MergePins(saved)
+		Build.Queue(function()
+			if Merge(saved) > 0 then
+				BuildDocks()
+			end
+		end)
 		return true
 	end
 	return false
 end
 
+-- The data files are let go once folded in (memory audit, 2026-09-24: the
+-- roads stayed in memory twice, 7.5 MB as loaded beside the 7.2 MB graph).
+-- Nothing else reads them; /route reset keeps the roads in the graph itself.
+-- The graph stays across switching Route off and on, so a reset now holds
+-- until the next /reload (it used to bring the baked paths back with it).
+-- The baked paths (Media\RouteData.lua, a few KB) are taken off their global
+-- here and their pins merged, as ever; their paths wait for the build. The
+-- roads come from the companion when the build starts.
 local function LoadBaked()
-	if type(MelloUI_RoadData) == "table" then
-		MergeRoads(MelloUI_RoadData)
-	end
 	if type(MelloUI_RouteData) == "table" then
-		Merge(MelloUI_RouteData)
+		Build.baked = MelloUI_RouteData
+		_G.MelloUI_RouteData = nil
+		MergePins(Build.baked)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Building the graph
+--
+-- (user, 2026-09-24: the road graph is built on the first route request, a
+-- little each frame so no frame hitches, not at login) The traced
+-- roads are some 18,000 points, 7 MB as a graph, and were merged at every
+-- login with Route on, a quarter of a second, whether the session routed
+-- or not. Now the first thing that needs them -- a route to plan, places to
+-- price, a quest tracked (its objective places come in the same companion)
+-- -- loads MelloUI_Companion and starts the build: the roads, the baked
+-- paths, then what was learned meanwhile, in the order they always went in
+-- (so the graph comes out the same), BUDGET milliseconds a frame. Until it
+-- is whole no route is planned; the first one appears when it is, with its
+-- notice, and the arrow and the marker point straight at the place meanwhile.
+-- Without the companion the graph is built from the learned paths alone.
+--------------------------------------------------------------------------------
+
+do
+	local BUDGET = 2       -- ms of building a frame
+	local RETRY = 5        -- seconds before the companion is asked again after a load the game refused just then
+	local TRIES = 3        -- ... this often at most, out of combat and instances; then the graph is built without the roads
+	local builder = CreateFrame("Frame")   -- its OnUpdate builds, shown while it does
+	builder:Hide()
+	-- Where the build is (one table: the main chunk is near its 200 locals):
+	-- the part next (0 the roads, 1 the baked paths, 2 what was learned
+	-- meanwhile) and how many of Build.pending were made; the companion asked
+	-- how often, whether a new try is awaited (a timer or the end of a fight
+	-- asks again, nothing else), and whether LoadAddOn runs now (its
+	-- ADDON_LOADED runs other code first)
+	local at = { stage = 0, applied = 0, tries = 0, waiting = false, loading = false }
+
+	-- The try awaited: the graph is still wanted (a load is only tried when
+	-- it is), so the build goes on as if asked now; with Route switched off
+	-- meanwhile it waits for the next ask (Route off never loads the data)
+	at.Again = function()
+		builder:UnregisterAllEvents()
+		at.waiting = false
+		if M.isEnabled then
+			Build.Want()
+		end
+	end
+	Perf.SetScript(builder, "OnEvent", at.Again)
+
+	-- The companion's data, loaded once; false while a load the game refused
+	-- just then waits for another try
+	local function LoadData()
+		if Build.asked then
+			return true
+		elseif at.loading then
+			return false
+		end
+		if MelloUI.LoadCompanion then
+			at.loading = true
+			local ok, why, later = MelloUI:LoadCompanion()
+			at.loading = false
+			if not ok and later then
+				at.waiting = true
+				-- A fight or an instance is the likely reason the game said no
+				-- (review, 2026-09-24: three tries ten seconds apart ran out
+				-- inside one fight, and a /reload in combat then kept the
+				-- roads and the objective places away for the whole session).
+				-- Not counted: asked again once the fight is over, or the
+				-- zone changes (leaving the instance).
+				local okI, inInstance = pcall(IsInInstance)
+				inInstance = okI and Plain(inInstance) and true or false
+				if inInstance or (InCombatLockdown and InCombatLockdown()) then
+					builder:RegisterEvent("PLAYER_REGEN_ENABLED")
+					if inInstance then
+						builder:RegisterEvent("PLAYER_ENTERING_WORLD")
+					end
+					return false
+				end
+				at.tries = at.tries + 1
+				if at.tries < TRIES then
+					C_Timer.After(RETRY, at.Again)
+					return false
+				end
+				at.waiting = false
+				MelloUI:Notice("Route: the road data could not be loaded (%s); routes follow the paths you have walked until the next /reload.", why)
+			end
+			-- any other refusal the companion told in chat itself
+		end
+		Build.asked = true
+		return true
+	end
+
+	-- The build, in a coroutine: each part is marked done before it runs, so
+	-- one that fails is told in chat and the build goes on with the next
+	local function Body()
+		if at.stage == 0 then
+			at.stage = 1
+			-- the companion's table: its global let go now, the table itself
+			-- once merged
+			local roads = MelloUI_RoadData
+			_G.MelloUI_RoadData = nil
+			MergeRoads(roads)
+		end
+		if at.stage == 1 then
+			at.stage = 2
+			local baked = Build.baked
+			Build.baked = nil
+			Merge(baked)
+		end
+		local pending = Build.pending
+		while at.applied < #pending do
+			local i = at.applied + 1
+			at.applied = i
+			local op = pending[i]
+			pending[i] = false   -- let it go
+			op.fn(unpack(op, 1, op.n))
+			Build.Slice()
+		end
+		Build.pending = {}
+		Build.ready = true
+	end
+
+	local function Run(budget)
+		Build.deadline = debugprofilestop() + budget
+		local ok, err = coroutine.resume(Build.job)
+		if not ok then
+			MelloUI:Print("|cffff4040Error|r in module 'Route' (building the road graph): %s", tostring(err))
+			Build.job = coroutine.create(Body)   -- the rest, without the part that failed
+			return
+		end
+		if coroutine.status(Build.job) == "dead" then
+			Build.job = nil
+		end
+	end
+
+	-- A frame's share of the build. The frame after it plans what waited
+	-- (the first route's search gets a frame of its own): the tracked quest's
+	-- places priced, the route planned and announced, then what was put off
+	-- until routes could price it (M:WhenReady), in the order it was asked.
+	Perf.SetScript(builder, "OnUpdate", function()
+		if Build.job then
+			Run(BUDGET)
+			return
+		end
+		builder:Hide()
+		local later = Build.later
+		Build.later = nil
+		if Build.closing or not M.isEnabled then
+			Build.waiting = nil
+			return
+		end
+		ReadWaypoint()
+		if Build.waiting and destination then
+			Plan(true)
+		end
+		Build.waiting = nil
+		for i = 1, later and #later or 0 do
+			local ok, err = pcall(later[i])
+			if not ok then
+				MelloUI:Print("|cffff4040Error|r in module 'Route' (after the road graph was built): %s", tostring(err))
+			end
+		end
+	end)
+
+	-- The graph is wanted: the companion loaded (once) and the build started
+	function Build.Want()
+		if Build.ready or Build.job or at.waiting then
+			return
+		end
+		if not LoadData() then
+			return
+		end
+		Build.job = coroutine.create(Body)
+		builder:Show()
+	end
+
+	-- Whether routes can be planned; the first ask starts the build
+	function Build.Ready()
+		if Build.ready then
+			return true
+		end
+		Build.Want()
+		return false
+	end
+
+	-- A route asked for while the graph is built: planned once it is, with
+	-- the notice of the last one that wanted one
+	function Build.Wait(announce, text)
+		local w = Build.waiting
+		if not w then
+			w = {}
+			Build.waiting = w
+		end
+		if announce then
+			w.announce, w.text = true, text
+		end
+	end
+
+	-- PLAYER_LOGOUT: the saved variable is the learned part of the whole
+	-- graph, so a build under way is run to its end at once, and one never
+	-- started is run now, roads and all, when there is anything to keep: a
+	-- learned point on a road's cell is the road's and is not kept, so the
+	-- roads decide what is written. The logout is a loading screen; the
+	-- quarter second the login used to take goes there, and only in a session
+	-- that never routed. Without the companion: the learned paths alone.
+	function Build.Finish()
+		if Build.ready then
+			return
+		end
+		Build.closing = true
+		if not Build.job then
+			-- anything to keep: the baked paths, or a change other than a reset
+			local keeps = Build.baked ~= nil
+			for _, op in ipairs(Build.pending) do
+				if op and op.fn ~= ForgetLearned then
+					keeps = true
+				end
+			end
+			if not keeps then
+				return   -- nothing baked or learned (Route never on): the empty graph, as ever
+			end
+			builder:UnregisterAllEvents()
+			at.waiting = false
+			LoadData()
+			Build.job = coroutine.create(Body)
+		end
+		while Build.job do
+			Run(math.huge)
+		end
+		builder:Hide()
+	end
+
+	function Build.Save()
+		Build.Finish()
+		MelloUIRoutes = LearnedOnly()
 	end
 end
 
@@ -3343,15 +4105,16 @@ local adoptTicker = nil
 -- Pins recorded by the quest list and the services (/qlmap dock, a service
 -- window) land in the store whether Route is on or off: the write at logout
 -- must not go with the module's events (audit, 2026-09-22).
+-- (Build.Save: the learned part of the whole graph, built first if it is not)
 local logoutFrame = CreateFrame("Frame")
 logoutFrame:RegisterEvent("PLAYER_LOGOUT")
-logoutFrame:SetScript("OnEvent", function()
-	MelloUIRoutes = LearnedOnly()
+Perf.SetScript(logoutFrame, "OnEvent", function()
+	Build.Save()
 end)
 
-eventFrame:SetScript("OnEvent", function(_, event)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 	if event == "PLAYER_LOGOUT" then
-		MelloUIRoutes = LearnedOnly()
+		Build.Save()
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		last = nil
 		taxiStart = nil
@@ -3434,14 +4197,10 @@ SlashCmdList.MELLOROUTE = function(msg)
 		PlaceArrow()
 		MelloUI:Print("Arrow back at the top centre of the screen.")
 	elseif msg == "reset confirm" then
-		live = { graphs = {}, pins = live.pins }
+		-- the traced roads are not learned data: they stay, counted afresh
+		-- (before the graph is built: once it is, after what came before)
+		Build.Queue(ForgetLearned)
 		MelloUIRoutes = live
-		-- the traced roads are not learned data: back in, counted afresh
-		tracedNodes = 0
-		graphVersion = graphVersion + 1
-		if type(MelloUI_RoadData) == "table" then
-			MergeRoads(MelloUI_RoadData)
-		end
 		M:Clear()
 		MelloUI:Print("Learned paths wiped for this session. Also delete Media\\RouteData.lua (or rerun the baker after the next /reload) to forget them for good.")
 	elseif msg == "layers" then
@@ -3502,6 +4261,14 @@ SlashCmdList.MELLOROUTE = function(msg)
 		MelloUI:Print("Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s.",
 			nodes - tracedNodes, tracedNodes, edges, docks and #docks or 0,
 			taxiCount, usable, mergedSaved and "" or " (saved variable not loaded by the client yet)")
+		if not Build.ready then
+			-- (user, 2026-09-24) built on the first route, not at login
+			print("   the road graph is built the first time a route is wanted: "
+				.. (Build.job and "being built now" or string.format("not yet this session (%d learned changes waiting for it)", #Build.pending)))
+		end
+		if MelloUI.CompanionState then
+			print("   road and quest objective data (MelloUI_Companion): " .. MelloUI:CompanionState())
+		end
 		local mineCount = 0
 		for _ in pairs(CharFlights()) do
 			mineCount = mineCount + 1
@@ -3536,8 +4303,10 @@ SlashCmdList.MELLOROUTE = function(msg)
 		print(string.format("   recorder: %d breadcrumbs this session, ticks %d%s", recorded, tickCount,
 			recordSkip ~= "" and (", last call skipped: " .. recordSkip) or ""))
 		do
+			-- (not before the graph is whole: the search's index would be built
+			-- on half of it)
 			local cont, px, py = PlayerYards()
-			if cont then
+			if cont and Build.ready then
 				local near, n = NodesNear(cont, px, py, OFFROAD)
 				local best = nil
 				for _, d in pairs(near) do
@@ -3601,7 +4370,7 @@ function M:OnEnable(db)
 	EnsureMarker()
 	if mm and not mm.ticking then
 		mm.ticking = true
-		mm:SetScript("OnUpdate", MinimapTick)
+		Perf.SetScript(mm, "OnUpdate", MinimapTick)
 	end
 	eventFrame:RegisterEvent("PLAYER_LOGOUT")
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")

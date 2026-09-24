@@ -27,10 +27,11 @@ comment header for how the game's own frames are laid over what is left.
 import os
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "appearances-frame.webp")
-TEX = os.path.join(HERE, "..", "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 
 ART_W, ART_H = 1387, 1134
 

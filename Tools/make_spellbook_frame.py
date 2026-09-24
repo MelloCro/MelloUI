@@ -18,10 +18,11 @@ there are more tabs than the art has squares).
 import os
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "spellbook-frame.webp")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "SpellBookFrame.tga")
+OUT = master("Textures", "SpellBookFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 
 TITLE_TEXT = (532, 36, 700, 94)         # "Spellbook" in gold
 TITLE_CLEAN = (700, 36, 820, 94)        # plain bar right of it

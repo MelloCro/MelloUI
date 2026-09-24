@@ -118,8 +118,16 @@ rails, the stone body at the frame scale, the check box) went back up. `Media/Ki
 painted 2x numbers, so nothing in the Lua changes; only the uv is measured on the file.
 Result: 33 MB of uncompressed texture (58 before), of which the kit's plates, rails, rims and tiles are
 6 MB and the pictures (page, cards, panels, at ~1:1) 26 MB. `python Tools/build_kit.py --report` lists
-every piece's painted size and density. Blizzard's files are DXT-compressed BLP on top of that (4-8 x
-smaller again); a BLP writer would be the next step if memory ever matters.
+every piece's painted size and density.
+
+Shipped textures (2026-09-24): the TGA files `build_kit.py` and the other art tools write are MASTERS,
+kept outside the addon in `MelloUI-BuildData/masters/Media` (`Tools/paths.py`) and never shipped.
+`python Tools/texture_pack.py ship` makes the addon's `Media` from them. Files whose DXT compression
+passes its quality gate become DXT-compressed BLP, the way Blizzard's are. The small kit pieces go into
+atlas sheets, one per look (`<look>/atlas/...`). Files that fail the gate stay uncompressed TGA, and so do
+the bar fills and `LogoIcon.tga`. The ship also writes `Media/KitLayout.lua` (with each moved piece's
+old frame kept as `was`, see KIT-TUNING.md) and `Media/KitSlices.lua`. Build order:
+`build_kit.py`, `build_nineslice.py`, then `texture_pack.py ship`.
 
 ## 8b. Picture backdrops (delivered 2026-09-21)
 

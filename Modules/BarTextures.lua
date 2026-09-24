@@ -17,6 +17,8 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("BarTextures")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local MEDIA = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
 
@@ -185,6 +187,27 @@ local function Active(group)
 	return M.isEnabled and M.db and M.db[group]
 end
 
+-- What the game put on a bar, kept so disabling can restore it. The game
+-- re-sets the same art over and over on some bars (the target of target's
+-- power bar, 41 times a second in /melloperf 2026-09-24): noted only when it
+-- is new, and whether a name is an atlas asked once per name (the answer is
+-- a new table every time), so a repeat makes no garbage. A repeat still
+-- drops the colour RememberOriginal kept, as a new note always did.
+local atlasNames = {}   -- [name] = true (an atlas) / false (a file)
+
+local function NoteOriginal(bar, art)
+	local o = originals[bar]
+	if o and o.r == nil and (o.atlas == art or o.file == art) then
+		return
+	end
+	local isAtlas = atlasNames[art]
+	if isAtlas == nil then
+		isAtlas = (C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(art)) and true or false
+		atlasNames[art] = isAtlas
+	end
+	originals[bar] = isAtlas and { atlas = art } or { file = art }
+end
+
 local function RememberOriginal(bar)
 	if originals[bar] ~= nil then
 		return
@@ -264,13 +287,32 @@ end
 
 local RestoreBar   -- below
 
+-- The bar shows just what a restore would put back: the game's atlas, noted
+-- as it is on the bar, no colour kept to put back, none of our masks on it
+local function ShowsOriginal(bar)
+	local o = originals[bar]
+	if not (o and o.atlas) or o.r ~= nil then
+		return false
+	end
+	local tex = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+	if not tex or maskedTextures[tex] or not tex.GetAtlas then
+		return false
+	end
+	local ok, atlas = pcall(tex.GetAtlas, tex)
+	return ok and IsPlainString(atlas) and atlas == o.atlas
+end
+
 local function SetTexture(bar)
 	local r, g, b, a = bar:GetStatusBarColor()
 	-- "Default (Blizzard)": the game's own art stays (put back if a texture
 	-- was on the bar), the bar keeps its colour handling below (user,
 	-- 2026-09-21: the default textures as a choice)
 	if M.db.texture == "default" then
-		if applied[bar] then
+		-- the game's own re-sets land here too (dozens a second on some power
+		-- bars) with its art already on: a restore that would change nothing
+		-- is left out. A health bar is restored every time, as it always was
+		-- (the restore also has the game colour it again)
+		if applied[bar] and (healthBars[bar] or not ShowsOriginal(bar)) then
 			RestoreBar(bar)
 		end
 		applied[bar] = true
@@ -307,8 +349,7 @@ local function HookBarTexture(bar)
 			return
 		end
 		if IsPlainString(newTexture) then
-			originals[owner] = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(newTexture)
-				and { atlas = newTexture } or { file = newTexture }
+			NoteOriginal(owner, newTexture)
 		end
 		SetTexture(owner)
 		if grp == "statusbars" and StatusTrackingColorForAtlasRef then
@@ -357,8 +398,7 @@ local function ApplyToBar(bar, group)
 			end
 			-- Keep track of what Blizzard wanted so disabling can restore it.
 			if IsPlainString(newTexture) then
-				originals[self] = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(newTexture)
-					and { atlas = newTexture } or { file = newTexture }
+				NoteOriginal(self, newTexture)
 			end
 			SetTexture(self)
 			if grp == "statusbars" then
@@ -492,13 +532,19 @@ end
 
 -- Several Forever health bars lock their colour and rely on a green atlas, so a
 -- flat texture has to be coloured here.
+-- (the field read through a named function, not a closure made per read:
+-- this runs on every value change of a health bar)
+local function UnitField(frame)
+	return frame.unit
+end
+
 local function UnitOf(bar)
 	local frame = bar
 	for _ = 1, 3 do
 		if not frame then
 			return nil
 		end
-		local ok, unit = pcall(function() return frame.unit end)
+		local ok, unit = pcall(UnitField, frame)
 		if ok and type(unit) == "string" then
 			return unit
 		end
@@ -537,6 +583,34 @@ local function HealthCurve()
 	return healthCurve or nil
 end
 
+-- A player's class colour, or (mode "reaction") an NPC's reaction colour;
+-- nothing when there is none. Called through pcall.
+local function ClassOrReactionColor(unit, mode)
+	if UnitIsPlayer(unit) then
+		local _, class = UnitClass(unit)
+		if issecretvalue and issecretvalue(class) then
+			-- a secret class cannot key the colour table; the
+			-- game's own lookup takes it and answers in kind
+			local color = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(class)
+			if color then
+				return color:GetRGB()
+			end
+			return nil
+		end
+		local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+		if color then
+			return color.r, color.g, color.b
+		end
+	elseif mode == "reaction" then
+		-- Hostile red, unfriendly orange, neutral yellow, friendly green.
+		local reaction = UnitReaction(unit, "player")
+		local color = reaction and FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
+		if color then
+			return color.r, color.g, color.b
+		end
+	end
+end
+
 local function HealthColorFor(bar)
 	local unit = UnitOf(bar)
 	if unit then
@@ -557,31 +631,7 @@ local function HealthColorFor(bar)
 			return 0.0, 1.0, 0.0
 		end
 		if mode == "class" or mode == "reaction" then
-			local ok2, r, g, b = pcall(function()
-				if UnitIsPlayer(unit) then
-					local _, class = UnitClass(unit)
-					if issecretvalue and issecretvalue(class) then
-						-- a secret class cannot key the colour table; the
-						-- game's own lookup takes it and answers in kind
-						local color = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(class)
-						if color then
-							return color:GetRGB()
-						end
-						return nil
-					end
-					local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-					if color then
-						return color.r, color.g, color.b
-					end
-				elseif mode == "reaction" then
-					-- Hostile red, unfriendly orange, neutral yellow, friendly green.
-					local reaction = UnitReaction(unit, "player")
-					local color = reaction and FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
-					if color then
-						return color.r, color.g, color.b
-					end
-				end
-			end)
+			local ok2, r, g, b = pcall(ClassOrReactionColor, unit, mode)
 			if ok2 and IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
 				return r, g, b
 			end
@@ -621,6 +671,7 @@ end
 -- so it works over every colour choice, the game's nameplate colours too.
 local EXECUTE_COLOR = { 0.72, 0.25, 1.0 }
 local executeTints = setmetatable({}, { __mode = "k" })   -- [bar] = the tint over its fill
+local wantMasks = setmetatable({}, { __mode = "k" })      -- UpdateExecute's scratch: the fill's masks
 local executeCurve, executeCurveAt = nil, nil
 
 local function ExecuteCurve()
@@ -738,7 +789,11 @@ local function UpdateExecute(bar)
 		end
 	end
 	if fill and fill.GetNumMaskTextures and tint.AddMaskTexture then
-		local want = {}
+		-- one scratch set, emptied each time (this runs on every value change)
+		local want = wantMasks
+		for mask in pairs(want) do
+			want[mask] = nil
+		end
 		local okN, n = pcall(fill.GetNumMaskTextures, fill)
 		for i = 1, (okN and type(n) == "number" and n) or 0 do
 			local mask = fill:GetMaskTexture(i)
@@ -786,7 +841,7 @@ HookHealthColor = function(bar)
 	bar.melloColorHook = true
 	-- By health follows every change of the value
 	if bar.HookScript then
-		bar:HookScript("OnValueChanged", function(self)
+		Perf.HookScript(bar, "OnValueChanged", function(self)
 			if M.isEnabled and M.db.healthColor == "health" then
 				pcall(RecolorHealthBar, self)
 			end
@@ -1063,7 +1118,7 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "NAME_PLATE_UNIT_ADDED" and Active("nameplates") then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if plate and not (plate.IsForbidden and plate:IsForbidden()) then

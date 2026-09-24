@@ -14,6 +14,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Tweaks")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Tweaks", {
 	title = "Tweaks",
@@ -232,8 +234,8 @@ local function HookBagFrames()
 	end
 	for _, frame in ipairs(frames) do
 		if frame and frame.HookScript then
-			frame:HookScript("OnShow", ScheduleBagSlotUpdate)
-			frame:HookScript("OnHide", ScheduleBagSlotUpdate)
+			Perf.HookScript(frame, "OnShow", ScheduleBagSlotUpdate)
+			Perf.HookScript(frame, "OnHide", ScheduleBagSlotUpdate)
 		end
 	end
 	if BagsBar and BagsBar.Layout then
@@ -257,7 +259,7 @@ local function HookBagFrames()
 	local cursorFrame = CreateFrame("Frame")
 	cursorFrame:RegisterEvent("CURSOR_CHANGED")
 	cursorFrame:RegisterEvent("BAG_UPDATE_DELAYED")
-	cursorFrame:SetScript("OnEvent", Relayout)
+	Perf.SetScript(cursorFrame, "OnEvent", Relayout)
 end
 
 local function AttachBagSlots()
@@ -317,6 +319,33 @@ end
 local WORLD_TEXT_CVAR = "WorldTextScale"
 local worldTextWarned = false
 
+-- The player's own WorldTextScale is kept in the saved settings
+-- (db.savedWorldTextScale, as Chat keeps the class colour cvar), taken ONCE,
+-- just before this module first writes the cvar, and never taken again
+-- while it is kept: a reload or the next login find MelloUI's own value in
+-- the cvar and must not keep that as the player's (the 2026-09-24 review:
+-- the original was read once per session, so after a /reload switching the
+-- module off gave back MelloUI's value). The slider is written only once
+-- the player has moved it -- a value other than the default, or the
+-- original already kept -- so a scale set in the game's options is not
+-- overwritten with 1.0 at every login. Written back and forgotten when the
+-- module goes off. This session's copy of it (`keptWorldTextScale`) is the
+-- one written back when both are there: loading a profile clears every
+-- setting before the module is restarted (Core's ApplySettingsText), which
+-- would lose the saved one and leave MelloUI's value in the cvar for good.
+local keptWorldTextScale = nil
+
+local function ReadWorldTextScale()
+	if not (C_CVar and C_CVar.GetCVar) then
+		return nil
+	end
+	local ok, current = pcall(C_CVar.GetCVar, WORLD_TEXT_CVAR)
+	if not ok or type(current) ~= "string" or (issecretvalue and issecretvalue(current)) then
+		return nil
+	end
+	return current
+end
+
 -- The client accepts a cvar it knows and ignores the rest without a word
 -- (user, 2026-09-22: the slider did nothing, Config.wtf never got the
 -- entry): a name this build does not have is reported once.
@@ -324,8 +353,8 @@ local function ApplyWorldTextScale(value)
 	if not C_CVar or not C_CVar.SetCVar then
 		return
 	end
-	local okG, current = pcall(C_CVar.GetCVar, WORLD_TEXT_CVAR)
-	if not okG or current == nil then
+	local current = ReadWorldTextScale()
+	if current == nil then
 		-- said once, and only to someone who moved the slider
 		if not worldTextWarned and math.abs((tonumber(value) or 1) - 1) > 0.001 then
 			worldTextWarned = true
@@ -334,10 +363,39 @@ local function ApplyWorldTextScale(value)
 		return
 	end
 	value = tonumber(value) or 1
+	local db = M.db
+	if db and db.savedWorldTextScale == nil then
+		db.savedWorldTextScale = keptWorldTextScale or current   -- the player's own, before the first write
+	end
+	keptWorldTextScale = db and db.savedWorldTextScale or keptWorldTextScale
+	if math.abs((tonumber(current) or -1) - value) < 0.001 then
+		return   -- already so
+	end
 	local okS, done = pcall(C_CVar.SetCVar, WORLD_TEXT_CVAR, string.format("%.2f", value))
 	if not (okS and done) and not worldTextWarned then
 		worldTextWarned = true
 		MelloUI:Print("Tweaks: the client refused '%s'; the World Text Scale slider cannot work on it.", WORLD_TEXT_CVAR)
+	end
+end
+
+-- At login: the slider's value only once the player has moved it
+local function WorldTextScaleWanted(db)
+	if db.savedWorldTextScale ~= nil then
+		return true
+	end
+	return math.abs((tonumber(db.worldTextScale) or 1) - 1) > 0.001
+end
+
+-- The player's own value back (the module off)
+local function RestoreWorldTextScale()
+	local db = M.db
+	local saved = keptWorldTextScale or (db and db.savedWorldTextScale)
+	keptWorldTextScale = nil
+	if db then
+		db.savedWorldTextScale = nil
+	end
+	if saved ~= nil and C_CVar and C_CVar.SetCVar then
+		pcall(C_CVar.SetCVar, WORLD_TEXT_CVAR, saved)
 	end
 end
 
@@ -356,15 +414,14 @@ function M:OnEnable(db)
 		editModeActive = EditModeManagerFrame:IsEditModeActive()
 	end
 	UpdateHiddenFrames()
-	if M.savedWorldTextScale == nil and C_CVar and C_CVar.GetCVar then
-		M.savedWorldTextScale = tonumber(C_CVar.GetCVar(WORLD_TEXT_CVAR)) or 1
+	if WorldTextScaleWanted(db) then
+		ApplyWorldTextScale(db.worldTextScale)
 	end
-	ApplyWorldTextScale(db.worldTextScale)
 end
 
 function M:OnDisable()
 	UpdateHiddenFrames()
-	ApplyWorldTextScale(M.savedWorldTextScale or 1)
+	RestoreWorldTextScale()
 end
 
 function M:OnSettingChanged(key, value, db)

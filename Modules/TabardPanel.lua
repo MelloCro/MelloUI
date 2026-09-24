@@ -51,6 +51,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("TabardPanel")
+local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("TabardPanel", {
@@ -195,6 +197,12 @@ end
 
 local function Window()
 	return _G.TabardFrame
+end
+
+-- whether the window is shown right now (secret-safe: unreadable is "no")
+local function IsOpen(f)
+	local ok, shown = pcall(f.IsShown, f)
+	return ok and not Secret(shown) and shown and true or false
 end
 
 local function Model(f)
@@ -911,9 +919,21 @@ local function Deactivate()
 	PlaceTitles(false)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is made while the window has never been shown this session: its
+-- first show dresses it (the OnShow hook below), a window already open when
+-- the module comes on (a reload with it open) at once. Once made, the skin
+-- stays for the session and is only switched on and off.
+local function Built()
+	return skin ~= nil and skin.built == true
+end
+
 local function Sync()
-	if M.isEnabled and Window() then
-		Activate()
+	local f = Window()
+	if M.isEnabled and f then
+		if Built() or IsOpen(f) then
+			Activate()
+		end
 	else
 		Deactivate()
 	end
@@ -928,15 +948,29 @@ local function SyncSafe()
 	end
 end
 
+-- The module switch and a dressed window go through SyncSafe, as always; the
+-- first dress runs at once, in combat too, so the first frame the window
+-- draws is already dressed. The dress makes frames and textures of our own
+-- and moves only the game's textures and strings (the portrait, the name,
+-- the selector labels' font and layer), never a protected frame: nothing in
+-- it is refused in combat.
+local function SyncOrDress()
+	if Built() then
+		SyncSafe()
+	else
+		Sync()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			SyncOrDress()
 		end
 		Refresh()
 	end)
@@ -944,14 +978,15 @@ end
 
 -- The window is in the game's UI panels on this family of clients; a client
 -- that loads it on demand (Blizzard_TabardUI) makes it later: every addon
--- load is a chance, until it exists.
+-- load is a chance, until it exists. Either way it is dressed on its first
+-- show (the addon loads before the window opens: the hook is in place by then).
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self)
+Perf.SetScript(eventFrame, "OnEvent", function(self)
 	if Window() then
 		self:UnregisterEvent("ADDON_LOADED")
 		Hook()
 		if M.isEnabled then
-			SyncSafe()
+			SyncOrDress()
 		end
 	end
 end)
@@ -960,7 +995,7 @@ function M:OnEnable(db)
 	self.db = db
 	if Window() then
 		Hook()
-		SyncSafe()
+		SyncOrDress()
 	else
 		eventFrame:RegisterEvent("ADDON_LOADED")
 	end
@@ -1042,6 +1077,11 @@ SlashCmdList.MELLOTABARDDUMP = function(msg)
 	msg = ((msg or ""):lower()):match("^%s*(.-)%s*$")
 	local f = Window()
 	MelloUI:ClearLog()
+	if f and not Built() then
+		-- (dressed on its first open: until then the game's window as it is)
+		MelloUI:Print("/tabarddump: TabardFrame is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens this session: talk to a guild tabard vendor, then try again" or "the Tabard Kit is off")
+	end
 	if not f then
 		MelloUI:Print("/tabarddump: no TabardFrame yet (it may load with the first visit to a guild tabard vendor: talk to one, then try again)")
 	elseif msg == "" then

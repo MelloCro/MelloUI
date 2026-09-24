@@ -56,6 +56,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("SocketingPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("SocketingPanel", {
@@ -679,8 +681,14 @@ local function Deactivate()
 	PlaceTitles(false)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the window has never been shown this session: a
+-- skin already built is switched on (and off), else only a window open right
+-- now (a /reload with it open) is dressed at once; its first show dresses it
+-- (the OnShow hook below), in that same frame, so it never draws undressed.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -696,17 +704,33 @@ local function SyncSafe()
 	end
 end
 
+-- The first show in combat dresses at once all the same: the dressing adds
+-- frames, textures and masks of ours and moves or sizes only the window's
+-- own unprotected parts (the portrait, the title string), never a protected
+-- frame (the socketing window has none). A window the game protects waits
+-- for the fight's end, as before.
+local function DressOnShow()
+	local f = Window()
+	local ok, protected = pcall(f.IsProtected, f)
+	if InCombatLockdown() and ok and not Secret(protected) and not protected then
+		Sync()
+	else
+		SyncSafe()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			DressOnShow()     -- (Activate refreshes what it dressed)
+		else
+			Refresh()
 		end
-		Refresh()
 	end)
 	if type(_G.ItemSocketingFrame_Update) == "function" then
 		hooksecurefunc("ItemSocketingFrame_Update", Refresh)
@@ -714,9 +738,10 @@ local function Hook()
 end
 
 -- The window is load on demand (Blizzard_ItemSocketingUI, with the first
--- socketing): dressed when that addon loads, or at once if it already has.
+-- socketing): hooked when that addon loads, or at once if it already has,
+-- and dressed as it first shows.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self, _, name)
+Perf.SetScript(eventFrame, "OnEvent", function(self, _, name)
 	if (name == ADDON or Window()) and Window() then
 		self:UnregisterEvent("ADDON_LOADED")
 		Hook()
@@ -860,6 +885,9 @@ SlashCmdList.MELLOSOCKETDUMP = function(msg)
 	if not f then
 		MelloUI:Print("/socketdump: no ItemSocketingFrame yet: %s loads with the first socketing (open an item with sockets, then try "
 			.. "again). If it never appears, the window is not on this client.", ADDON)
+	elseif not skin then
+		MelloUI:Print("/socketdump: the socketing window is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: open an item with sockets, then try again" or "the Socketing Kit is off")
 	elseif msg == "" then
 		Summary(f)
 	else

@@ -4,6 +4,8 @@
 # ignores), uploads it to CurseForge (project id from `## X-Curse-Project-ID`
 # in the TOC, token from the CF_API_KEY secret) and attaches it to the GitHub
 # release for the tag. The voice pack is uploaded separately (see docs/GUIDE.md, "Releasing").
+# The zip holds MelloUI and its route data companion, MelloUI_Companion, as two
+# top-level folders: .pkgmeta's move-folders lifts the companion out of MelloUI.
 name: Release
 
 on:
@@ -46,6 +48,22 @@ jobs:
         run: |
           awk '/^## /{n++} n==1' CHANGELOG.md | sed '1d' | sed '/./,$!d' > CHANGELOG-release.md
           echo "release notes:"; cat CHANGELOG-release.md
+
+      # A companion folder (MelloUI_<x>/MelloUI_<x>.toc) left inside MelloUI/
+      # in the zip is never found by the client: .pkgmeta must move each one
+      # out, and every TOC must carry MelloUI.toc's version.
+      - name: Companion folders are lifted out of MelloUI
+        if: steps.guard.outputs.publish == 'yes'
+        run: |
+          version=$(sed '1s/^\xEF\xBB\xBF//' MelloUI.toc | sed -n 's/^## Version:[[:space:]]*//p' | tr -d '\r')
+          for toc in MelloUI_*/MelloUI_*.toc; do
+            [ -e "$toc" ] || continue
+            d="${toc%%/*}"
+            grep -Eq "^[[:space:]]+MelloUI/$d:[[:space:]]*$d[[:space:]]*$" .pkgmeta || { echo "::error::.pkgmeta does not move $d out of MelloUI"; exit 1; }
+            v=$(sed -n 's/^## Version:[[:space:]]*//p' "$toc" | tr -d '\r')
+            [ "$v" = "$version" ] || { echo "::error::$toc is version $v, MelloUI.toc is $version"; exit 1; }
+            echo "$d: moved out of MelloUI, version $v"
+          done
 
       - name: Package and upload
         if: steps.guard.outputs.publish == 'yes'

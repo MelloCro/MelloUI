@@ -9,10 +9,11 @@ plate across it.
 """
 import os
 from PIL import Image, ImageDraw, ImageFilter
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "gamemenu-frame.webp")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "GameMenuFrame.tga")
+OUT = master("Textures", "GameMenuFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 PLATES = [(258, 326), (394, 461), (523, 590), (653, 720), (782, 849), (977, 1043), (1154, 1220), (1281, 1347), (1452, 1525)]
 CLEAN = (165, 255)      # x range of plate with no lettering on any row
 COVER = (255, 745)      # x range that may hold lettering

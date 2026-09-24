@@ -22,6 +22,8 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("VoiceOver")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local AUTO_VOICE = -1
 
@@ -1197,10 +1199,10 @@ end
 -- Layout and textures follow the VoiceOver addon (MIT licence).
 --------------------------------------------------------------------------------
 
--- The window is one picture (Media/Textures/VoiceOver/ScrollFrame.tga, made
--- from docs/voiceover-frame.webp): a dark square on the left holding the
--- model, a parchment scroll on the right holding the text. The areas were
--- measured on the 2000 x 668 art and scaled to FRAME_W.
+-- The window is one picture (Media/Textures/VoiceOver/ScrollFrame, shipped
+-- as a BLP; made from docs/voiceover-frame.webp): a dark square on the left
+-- holding the model, a parchment scroll on the right holding the text. The
+-- areas were measured on the 2000 x 668 art and scaled to FRAME_W.
 local FRAME_W, FRAME_H = 600, 200
 local ART_SCALE = FRAME_W / 2000
 local TEX_BOTTOM = 342 / 512     -- the art fills the top 342 rows of the 1024 x 512 texture
@@ -1369,12 +1371,12 @@ end
 -- Let any widget of the overlay drag the whole frame.
 local function AttachDrag(widget)
 	widget:RegisterForDrag("LeftButton")
-	widget:SetScript("OnDragStart", function()
+	Perf.SetScript(widget, "OnDragStart", function()
 		if not M.db.overlayLock then
 			Overlay.frame:StartMoving()
 		end
 	end)
-	widget:SetScript("OnDragStop", function()
+	Perf.SetScript(widget, "OnDragStop", function()
 		Overlay.frame:StopMovingOrSizing()
 		Overlay:SavePosition()
 	end)
@@ -1399,7 +1401,7 @@ function Overlay:CreatePortrait()
 	model:SetAllPoints()
 	portrait.model = model
 	model.creatureID = nil
-	model:SetScript("OnHide", function(self)
+	Perf.SetScript(model, "OnHide", function(self)
 		pcall(self.ClearModel, self)
 		self.creatureID = nil
 		self.loaded = nil
@@ -1408,7 +1410,7 @@ function Overlay:CreatePortrait()
 		self.animation = nil
 		self.animStart = nil
 	end)
-	model:SetScript("OnUpdate", function(self, elapsed)
+	Perf.SetScript(model, "OnUpdate", function(self, elapsed)
 		if not self.creatureID then
 			return
 		end
@@ -1489,17 +1491,17 @@ function Overlay:CreatePortrait()
 			self:GetNormalTexture():SetAlpha(hovered and 1 or 0)
 		end
 	end
-	pause:SetScript("OnEnter", function(self)
+	Perf.SetScript(pause, "OnEnter", function(self)
 		self:GetNormalTexture():SetAlpha(1)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetText(paused and "Resume" or "Pause")
 		GameTooltip:Show()
 	end)
-	pause:SetScript("OnLeave", function(self)
+	Perf.SetScript(pause, "OnLeave", function(self)
 		self:GetNormalTexture():SetAlpha(paused and 0.75 or 0)
 		GameTooltip:Hide()
 	end)
-	pause:SetScript("OnClick", function()
+	Perf.SetScript(pause, "OnClick", function()
 		PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
 		TogglePaused()
 	end)
@@ -1542,9 +1544,9 @@ function Overlay:CreatePortrait()
 		end
 		self:GetNormalTexture():SetAlpha(self:IsMouseOver() and 1 or 0.75)
 	end
-	mini:SetScript("OnEnter", function(self) self:GetNormalTexture():SetAlpha(1) end)
-	mini:SetScript("OnLeave", function(self) self:GetNormalTexture():SetAlpha(0.75) end)
-	mini:SetScript("OnClick", function()
+	Perf.SetScript(mini, "OnEnter", function(self) self:GetNormalTexture():SetAlpha(1) end)
+	Perf.SetScript(mini, "OnLeave", function(self) self:GetNormalTexture():SetAlpha(0.75) end)
+	Perf.SetScript(mini, "OnClick", function()
 		PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
 		TogglePaused()
 	end)
@@ -1590,21 +1592,21 @@ function Overlay:CreateLine(index)
 	button.icon = button:CreateTexture(nil, "ARTWORK")
 	button.icon:SetSize(16, 16)
 	button.icon:SetPoint("CENTER", button, "LEFT", 8, 0)
-	button:SetScript("OnClick", function(self)
+	Perf.SetScript(button, "OnClick", function(self)
 		if self.entry then
 			PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
 			Skip(self.entry)
 		end
 	end)
 	AttachDrag(button)
-	button:SetScript("OnEnter", function(self)
+	Perf.SetScript(button, "OnEnter", function(self)
 		self.hovered = true
 		self:Refresh()
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetText(self.entry == current and "Skip this line" or "Remove from queue")
 		GameTooltip:Show()
 	end)
-	button:SetScript("OnLeave", function(self)
+	Perf.SetScript(button, "OnLeave", function(self)
 		self.hovered = false
 		self:Refresh()
 		GameTooltip:Hide()
@@ -1673,7 +1675,7 @@ function Overlay:Create()
 	frame:SetClampedToScreen(true)
 	frame:EnableMouse(true)
 	AttachDrag(frame)
-	frame:SetScript("OnEnter", function(self)
+	Perf.SetScript(frame, "OnEnter", function(self)
 		if M.db.overlayLock then
 			return
 		end
@@ -1682,7 +1684,7 @@ function Overlay:Create()
 		GameTooltip:AddLine("Drag to move. The padlock in the corner locks the position.", 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
-	frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(frame, "OnLeave", function() GameTooltip:Hide() end)
 	frame:Hide()
 
 	frame.background = frame:CreateTexture(nil, "BACKGROUND")
@@ -1748,14 +1750,14 @@ function Overlay:Create()
 	local stop = CreateFrame("Button", nil, container)
 	stop:SetSize(32, 32)
 	stop:SetPoint("BOTTOMLEFT", container.name, "RIGHT", -6, 0)
-	stop:SetScript("OnEnter", function(self)
+	Perf.SetScript(stop, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
 		GameTooltip:SetPoint("LEFT", self, "RIGHT")
 		GameTooltip:SetText(#queue > 0 and "Skip to next line" or "Stop")
 		GameTooltip:Show()
 	end)
-	stop:SetScript("OnLeave", function() GameTooltip:Hide() end)
-	stop:SetScript("OnClick", function()
+	Perf.SetScript(stop, "OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(stop, "OnClick", function()
 		PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
 		if current then
 			Skip(current)
@@ -1810,21 +1812,21 @@ function Overlay:Create()
 		self:GetHighlightTexture():SetAlpha(0.4)
 		self:SetAlpha(locked and 0.55 or 0.9)
 	end
-	lock:SetScript("OnClick", function(self)
+	Perf.SetScript(lock, "OnClick", function(self)
 		M.db.overlayLock = not M.db.overlayLock
 		MelloUI:NotifySettingChanged(M.name, "overlayLock", M.db.overlayLock)
 		PlaySound(M.db.overlayLock and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
 		self:Refresh()
 		GameTooltip:Hide()
 	end)
-	lock:SetScript("OnEnter", function(self)
+	Perf.SetScript(lock, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
 		GameTooltip:SetPoint("LEFT", self, "RIGHT", 4, 0)
 		GameTooltip:SetText(M.db.overlayLock and "Position locked" or "Position unlocked")
 		GameTooltip:AddLine(M.db.overlayLock and "Click to unlock and drag the window." or "Drag the window to move it. Click to lock it in place.", 1, 1, 1, true)
 		GameTooltip:Show()
 	end)
-	lock:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(lock, "OnLeave", function() GameTooltip:Hide() end)
 	lock:Refresh()
 	frame.lock = lock
 
@@ -1844,7 +1846,7 @@ function Overlay:Create()
 	fade:SetToFinalAlpha(true)
 	container.subtitle.fade = fade
 	local pageAcc = 0
-	container:SetScript("OnUpdate", function(_, elapsed)
+	Perf.SetScript(container, "OnUpdate", function(_, elapsed)
 		pageAcc = pageAcc + elapsed
 		if pageAcc < 0.1 then
 			return
@@ -2451,7 +2453,7 @@ local handlers = {
 }
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, ...)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 	local handler = handlers[event]
 	if handler then
 		handler(...)
@@ -2466,26 +2468,32 @@ end)
 -- it), then the objectives with their current counts.
 --------------------------------------------------------------------------------
 
-local questGiver = nil   -- [questID] = { name, npcID } from the Quest List data
-
-local function GiverForQuest(questID)
-	if not questGiver then
-		questGiver = {}
-		local data = MelloUI_QuestListData
-		if type(data) == "table" and type(data.quests) == "table" then
-			for _, row in ipairs(data.quests) do
-				if row[9] ~= "" then
-					questGiver[row[1]] = { name = row[9], npcID = row[21] or 0 }
-				end
-			end
+-- The quest's row in the Quest List data (row[9] the giver's name, row[21]
+-- the giver's NPC ID), found by walking the rows when a quest is read. Reading
+-- is a click, not a loop, so no table of every quest is kept for it: a
+-- { name, npcID } per quest held about a megabyte for a lookup made once per
+-- Read. A quest listed twice takes its later row.
+local function GiverRow(questID)
+	local data = MelloUI_QuestListData
+	if type(data) ~= "table" or type(data.quests) ~= "table" then
+		return nil
+	end
+	local found
+	for _, row in ipairs(data.quests) do
+		if row[1] == questID and row[9] ~= "" then
+			found = row
 		end
 	end
-	local g = questGiver[questID]
+	return found
+end
+
+local function GiverForQuest(questID)
+	local row = GiverRow(questID)
 	if not npcLookup then
 		BuildLookup()
 	end
-	local npcID = g and g.npcID ~= 0 and g.npcID or nil
-	local name = g and g.name or nil
+	local npcID = row and (row[21] or 0) ~= 0 and row[21] or nil
+	local name = row and row[9] or nil
 	if not npcID and M.db.soundPacks then
 		-- Not in the quest list data (or an item starts it): the pack's own
 		-- quest -> NPC table knows the vanilla givers.
@@ -2610,7 +2618,7 @@ local function CreateReadButton()
 	readButton:SetSize(72, 22)
 	readButton:SetPoint("RIGHT", frame, "RIGHT", -11, 4)
 	readButton:SetText("Read")
-	readButton:SetScript("OnClick", function()
+	Perf.SetScript(readButton, "OnClick", function()
 		if IsReadingLog() then
 			Stop()
 			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
@@ -2623,15 +2631,15 @@ local function CreateReadButton()
 			end
 		end
 	end)
-	readButton:SetScript("OnEnter", function(self)
+	Perf.SetScript(readButton, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetText("Read aloud", 1, 1, 1)
 		GameTooltip:AddLine("Reads the quest's description in the quest giver's voice, then the objectives with their progress.", nil, nil, nil, true)
 		GameTooltip:Show()
 	end)
-	readButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(readButton, "OnLeave", function() GameTooltip:Hide() end)
 	local acc = 0
-	readButton:SetScript("OnUpdate", function(self, elapsed)
+	Perf.SetScript(readButton, "OnUpdate", function(self, elapsed)
 		acc = acc + elapsed
 		if acc < 0.25 then
 			return

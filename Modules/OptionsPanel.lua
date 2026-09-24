@@ -29,6 +29,7 @@
 --   graphics quality box on the single rail with TB6 tabs, the scroll bar.
 -- Other addons' own panels (the canvases under the AddOns tab) are never
 -- walked into; a row of a template this file does not know stays the game's.
+-- Nothing is built before the window first shows (Activate).
 --
 -- TAINT (the settings write cvars, key bindings and protected options): the
 -- skin is purely visual. It only adds frames and textures of its own and
@@ -52,6 +53,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("OptionsPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("OptionsPanel", {
@@ -149,7 +152,7 @@ end
 
 local function HookScript(frame, script, fn)
 	if frame and frame.HookScript then
-		frame:HookScript(script, function(...)
+		Perf.HookScript(frame, script, function(...)
 			if active then
 				pcall(fn, ...)
 			end
@@ -913,7 +916,7 @@ local function Watch(SP)
 		return
 	end
 	watched[SP] = true
-	SP:HookScript("OnShow", function()
+	Perf.HookScript(SP, "OnShow", function()
 		if not active then
 			return
 		end
@@ -933,7 +936,16 @@ local function Activate()
 	local SP = _G.SettingsPanel
 	if SP then
 		Watch(SP)
-		pcall(Build, SP)
+		-- (user, 2026-09-24: "dress rarely used windows on first open") the
+		-- Options window is made with the interface, and most sessions never
+		-- open it: nothing of its look is built here while it has never been
+		-- shown. Its OnShow (Watch above) builds it before its first frame is
+		-- drawn, in combat too (only frames and textures of ours, the game's
+		-- art faded; nothing of the game's is moved), and one that is open
+		-- right now is built at once. Once built it stays for the session.
+		if Shown(SP) then
+			pcall(Build, SP)
+		end
 	end
 	active = true
 	for _, rep in ipairs(reps) do
@@ -977,13 +989,17 @@ end
 
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
-loader:SetScript("OnEvent", function()
+Perf.SetScript(loader, "OnEvent", function()
 	local SP = _G.SettingsPanel
 	if active and SP and not built then
 		Watch(SP)
-		pcall(Build, SP)
-		for _, fn in ipairs(syncs) do
-			pcall(fn)
+		-- (a window made later is dressed as it first shows: Watch; built here
+		-- only when it is open already)
+		if Shown(SP) then
+			pcall(Build, SP)
+			for _, fn in ipairs(syncs) do
+				pcall(fn)
+			end
 		end
 	end
 end)
@@ -1101,6 +1117,9 @@ SlashCmdList.MELLOOPTIONSDUMP = function(msg)
 		tostring(SP:IsShown()), (okR and w and not Secret(w)) and string.format("%.0f", w) or "?",
 		(okR and h and not Secret(h)) and string.format("%.0f", h) or "?", tostring(SP:GetFrameStrata()), SP:GetFrameLevel(),
 		active and "on" or "off", tostring(built), #reps, #syncs)
+	if not built then
+		MelloUI:Print("  not dressed yet: the Options window is dressed the first time it opens")
+	end
 	MelloUI:Print("Chrome:")
 	for _, part in ipairs({ "outer", "page", "title", "close", "search", "categoryBox", "pageBox", "divider" }) do
 		MelloUI:Print("  %-12s %s", part, RepMark(chrome[part]))

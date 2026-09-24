@@ -48,6 +48,8 @@
 -- dressing, transmog or link function is ever called. The portrait (brought
 -- to the medallion size) is put back on disable, the title's points and face
 -- with the plate; switching the module off gives back the stock window.
+-- Nothing is built at login: the window is dressed on its first open (user,
+-- 2026-09-24) and kept.
 --
 -- /dressupdump [frames | reps | regions]: what the window is made of on this
 -- client and what the skin found and dressed, in the copy window.
@@ -55,6 +57,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("DressUpPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("DressUpPanel", {
@@ -616,15 +620,16 @@ end
 --------------------------------------------------------------------------------
 -- Building, switching on and off
 --------------------------------------------------------------------------------
+-- (user, 2026-09-24: dress rarely used windows on first open): nothing is
+-- built while the window has never been shown this session; its first show
+-- builds it (the OnShow hook in Hook, below, before its first frame is drawn)
+-- and it is kept from then on.
 local function Build()
 	local f = Window()
-	if not f then
+	if not f or (skin and skin.built) or not f:IsShown() then
 		return
 	end
 	skin = skin or { reps = {}, followers = {} }
-	if skin.built then
-		return
-	end
 	skin.built = true
 
 	-- the shell: outer rail, one page stone, the ring on the player's
@@ -724,7 +729,7 @@ local function Sync()
 	end
 end
 
--- (geometry of the window's children changes here: out of combat only)
+-- (the module's switch: queued out of combat as the other windows' skins are)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -733,24 +738,33 @@ local function SyncSafe()
 	end
 end
 
+-- (listen-only until the window is built: every handler here does nothing
+-- while the kit is off)
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	-- the window's show: on its first, the look built and switched on there
+	-- and then (Activate), so the first frame it draws is dressed. Also in
+	-- combat: the build makes frames and textures of ours, and what of the
+	-- game's it moves or sizes are regions of this unprotected window (the
+	-- portrait, the title string) -- nothing protected -- so a first open in
+	-- a fight (an item previewed mid-combat) is dressed at once instead of
+	-- showing the stock window until it ends.
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			Sync()
 		end
 		Refresh()
 	end)
 	-- maximize / minimize (ConfigureSize) resizes the window
-	f:HookScript("OnSizeChanged", Refresh)
+	Perf.HookScript(f, "OnSizeChanged", Refresh)
 	-- the side panels come and go with the appearance-list toggle
 	for _, panel in ipairs({ f.CustomSetDetailsPanel or false, f.SetSelectionPanel or false }) do
 		if panel then
-			panel:HookScript("OnShow", Refresh)
+			Perf.HookScript(panel, "OnShow", Refresh)
 		end
 	end
 end
@@ -758,7 +772,7 @@ end
 -- The window is in the game's UI panels on this client; a client that makes
 -- it later is caught on the next addon load, until it exists.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self)
+Perf.SetScript(eventFrame, "OnEvent", function(self)
 	if Window() then
 		self:UnregisterEvent("ADDON_LOADED")
 		Hook()
@@ -932,6 +946,9 @@ end
 local function Summary(f)
 	MelloUI:Print("DressUpFrame: shown %s, level %s, kit %s, reps %d", tostring(Shown(f)), tostring(LevelOf(f) or "?"),
 		active and "on" or "off", skin and #skin.reps or 0)
+	if not (skin and skin.built) then
+		MelloUI:Print("DressUpFrame: not dressed yet (the kit dresses it on its first open this session)")
+	end
 	Line("shell", found.shell)
 	DumpPortrait(f)
 	DumpTitle(f)
@@ -950,6 +967,9 @@ SlashCmdList.MELLODRESSUPDUMP = function(msg)
 	elseif msg == "" then
 		Summary(f)
 	else
+		if not (skin and skin.built) then
+			MelloUI:Print("DressUpFrame: not dressed yet (the kit dresses it on its first open this session)")
+		end
 		-- frames / reps / regions (the visible game textures): the Kit's dump
 		Kit:DumpWindow(f, skin, msg ~= "regions" and msg or nil)
 	end

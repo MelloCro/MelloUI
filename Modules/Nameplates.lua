@@ -16,6 +16,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Nameplates")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local BASE_ITEM_SIZE = 25 -- NamePlateConstants.AURA_ITEM_HEIGHT
 local BASE_LOC_SIZE = 30  -- LossOfControlFrame size in XML
@@ -473,7 +475,7 @@ local QUEST_EVENTS = {
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if Active() then

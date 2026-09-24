@@ -1,5 +1,6 @@
 # Static check of every Lua file on each push and pull request: syntax errors,
 # unused locals, globals that are neither WoW API nor listed in .luacheckrc.
+# MelloUI_Companion is the route data companion that ships in the same zip.
 name: Lint
 
 on:
@@ -16,4 +17,4 @@ jobs:
       - name: luacheck
         uses: lunarmodules/luacheck@v1
         with:
-          args: Core Modules Media --no-color
+          args: Core Modules Media MelloUI_Companion --no-color

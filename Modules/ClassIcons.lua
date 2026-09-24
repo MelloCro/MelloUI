@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ClassIcons")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("ClassIcons", {
 	title = "Class Icons",
@@ -123,7 +125,9 @@ local function TryReplacePlayerPortrait(texture, unit)
 	if not (M.isEnabled and M.db and M.db.portraits) then
 		return false
 	end
-	if not (texture and unit and UnitExists(unit) and UnitIsPlayer(unit)) then
+	-- UnitIsPlayer first: it is false for an NPC and for no unit at all, so
+	-- an NPC's portrait costs one question
+	if not (texture and unit and UnitIsPlayer(unit) and UnitExists(unit)) then
 		return false
 	end
 	local _, classFile = UnitClass(unit)
@@ -142,6 +146,16 @@ end
 
 local hooksInstalled = false
 
+-- [portrait] = the frame time the SetPortraitTexture hook last looked at it.
+-- UnitFramePortrait_Update ends in SetPortraitTexture (its render branch),
+-- and its own hook below runs right after: for the same portrait in the
+-- same frame that second look would do the same again (the target of
+-- target does both on every frame, 41 a second in /melloperf 2026-09-24:
+-- twice the unit questions for an NPC, the medallion set twice for a
+-- player), so it is left at once. The class atlas branch never calls
+-- SetPortraitTexture, so its portrait is never stamped and is still seen.
+local looked = setmetatable({}, { __mode = "k" })
+
 local function InstallHooks()
 	if hooksInstalled then
 		return
@@ -150,9 +164,17 @@ local function InstallHooks()
 
 	-- Every portrait the game draws eventually calls this (CharacterPanel's
 	-- own "player" portrait, PortraitFrameMixin:SetPortraitToUnit, and the
-	-- unit frame portrait path below). One hook covers all of them.
+	-- unit frame portrait path below). One hook covers all of them. It runs
+	-- many times a second (the target of target's frame redraws its portrait
+	-- with each update, 24/s in a /melloperf recording, 2026-09-24): with the
+	-- toggle off, no texture or no unit token, it is left at once, before any
+	-- call into the game; an NPC's portrait is left at UnitIsPlayer.
 	if type(SetPortraitTexture) == "function" then
 		hooksecurefunc("SetPortraitTexture", function(texture, unit)
+			if not (texture and type(unit) == "string" and M.isEnabled and M.db and M.db.portraits) then
+				return
+			end
+			looked[texture] = GetTime()
 			pcall(TryReplacePlayerPortrait, texture, unit)
 		end)
 	end
@@ -161,12 +183,22 @@ local function InstallHooks()
 	-- share this update path (Blizzard_UnitFrame/Mainline/UnitFrame.lua):
 	-- it sometimes sets a plain class atlas instead of calling
 	-- SetPortraitTexture (UnitFrame_ShouldReplacePortrait branch, e.g. a
-	-- vehicle or mind-controlled unit), so it needs its own hook too.
+	-- vehicle or mind-controlled unit), so it needs its own hook too. The
+	-- stamp is used up here: seen once, then looked at again next time.
 	if type(UnitFramePortrait_Update) == "function" then
 		hooksecurefunc("UnitFramePortrait_Update", function(self)
-			if self and self.portrait then
-				pcall(TryReplacePlayerPortrait, self.portrait, self.unit)
+			local portrait = self and self.portrait
+			if not portrait then
+				return
 			end
+			local at = looked[portrait]
+			if at then
+				looked[portrait] = nil
+				if at == GetTime() then
+					return   -- its SetPortraitTexture was just seen, for this unit
+				end
+			end
+			pcall(TryReplacePlayerPortrait, portrait, self.unit)
 		end)
 	end
 

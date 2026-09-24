@@ -27,6 +27,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ChatPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ChatPanel", {
@@ -381,8 +383,8 @@ local function KeepTabInFront(tab, cf)
 	end
 	hooksecurefunc(tab, "SetFrameLevel", function(self) TabInFront(self, cf) end)
 	hooksecurefunc(tab, "SetFrameStrata", function(self) TabInFront(self, cf) end)
-	tab:HookScript("OnShow", function(self) TabInFront(self, cf) end)
-	cf:HookScript("OnShow", function() TabInFront(tab, cf) end)
+	Perf.HookScript(tab, "OnShow", function(self) TabInFront(self, cf) end)
+	Perf.HookScript(cf, "OnShow", function() TabInFront(tab, cf) end)
 	TabInFront(tab, cf)
 end
 

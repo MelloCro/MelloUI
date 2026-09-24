@@ -57,6 +57,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("AuctionHousePanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("AuctionHousePanel", {
@@ -620,7 +622,7 @@ local function HookHeaders(list)
 	end
 	local container = list.HeaderContainer
 	if type(container) == "table" and container.HookScript then
-		container:HookScript("OnShow", Again)
+		Perf.HookScript(container, "OnShow", Again)
 	end
 end
 
@@ -723,8 +725,8 @@ local function SkinRow(row, kind, box)
 				st.hover.onEnable = function()
 					SyncHover(row)
 				end
-				row:HookScript("OnEnter", RowEnterLeave)
-				row:HookScript("OnLeave", RowEnterLeave)
+				Perf.HookScript(row, "OnEnter", RowEnterLeave)
+				Perf.HookScript(row, "OnLeave", RowEnterLeave)
 			end
 		end
 		local sel = RowSelection(row)
@@ -963,8 +965,8 @@ local function SkinItemButton(button)
 	for _, method in ipairs({ "SetVertexColor", "Show", "Hide", "SetShown" }) do
 		hooksecurefunc(border, method, Tint)
 	end
-	button:HookScript("OnEnter", Tint)     -- after the rim's own state change
-	button:HookScript("OnLeave", Tint)
+	Perf.HookScript(button, "OnEnter", Tint)     -- after the rim's own state change
+	Perf.HookScript(button, "OnLeave", Tint)
 	local onEnable = rep.onEnable
 	rep.onEnable = function(r)
 		if onEnable then
@@ -1167,8 +1169,14 @@ local function Deactivate()
 	PlaceTitles(false)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the window has never been shown this session: a
+-- skin already built is switched on (and off), else only a window open right
+-- now (a /reload with it open) is dressed at once; its first show dresses it
+-- (the OnShow hook below), in that same frame, so it never draws undressed.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -1184,17 +1192,32 @@ local function SyncSafe()
 	end
 end
 
+-- The first show in combat dresses at once all the same: the dressing adds
+-- frames and textures of ours and moves only the window's own portrait and
+-- title strings, never a protected frame (the auction house has none). A
+-- window the game protects waits for the fight's end, as before.
+local function DressOnShow()
+	local f = Window()
+	local ok, protected = pcall(f.IsProtected, f)
+	if InCombatLockdown() and ok and not Secret(protected) and not protected then
+		Sync()
+	else
+		SyncSafe()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			DressOnShow()     -- (Activate refreshes what it dressed)
+		else
+			Refresh()
 		end
-		Refresh()
 	end)
 	-- Buy / Sell / Auctions and the item pages are display modes of the one
 	-- window: its pages come and go with them
@@ -1204,9 +1227,9 @@ local function Hook()
 end
 
 -- Blizzard_AuctionHouseUI is loaded on demand (the first talk to an
--- auctioneer): dressed as it loads.
+-- auctioneer): hooked as it loads, dressed as it first shows.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == ADDON then
 		Hook()
 		if M.isEnabled then
@@ -1409,6 +1432,9 @@ SlashCmdList.MELLOAUCTIONDUMP = function(msg)
 	MelloUI:ClearLog()
 	if not f then
 		MelloUI:Print("/auctiondump: the auction house is not loaded yet (it loads when you first talk to an auctioneer)")
+	elseif not skin then
+		MelloUI:Print("/auctiondump: the auction house is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: open it, then try again" or "the Auction House Kit is off")
 	elseif msg == "" then
 		Summary(f)
 	else

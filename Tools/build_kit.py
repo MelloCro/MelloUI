@@ -4,8 +4,14 @@ build_kit.py -- package the painted UI kit for the client.
 Reads  Tools/pack_sources/kit/v2_2x/   (the cut, repaired, 2x-normalised PNG
                                         pieces; git-ignored, rebuilt from the
                                         ChatGPT sheets by the UITest tools)
-Writes Media/Kit/<group>/<name>.tga     32-bit TGA, power-of-two canvas
-       Media/KitLayout.lua              MelloUI_KitLayout: uv, sizes, openings
+Writes the MASTERS (Tools/paths.py: MelloUI-BuildData/masters/Media, never
+shipped; user, 2026-09-24):
+       Media/Kit/<group>/<name>.tga     32-bit TGA, power-of-two canvas
+       Media/KitLayout.lua              MelloUI_KitLayout: uv, sizes, openings,
+                                        each piece in its own file
+The addon's Media is made from them afterwards (one command, below): BLP /
+DXT where the quality gate passes, the small pieces in atlas sheets, and its
+own Media/KitLayout.lua with the sheets' files and uvs.
 
 Piece kinds:
   * repeatable along an axis (window edges, body, cap/mid/cap middles, the bar
@@ -30,7 +36,10 @@ Then the palette's two looks are made from it (Tools/kit_palette.py, user
 2026-09-23: Media/KitWarm and Media/KitBronze, chosen in game);
 --no-looks skips them.
 
-Run:  python Tools/build_kit.py            (then a full client restart)
+Run:  python Tools/build_kit.py            the masters
+      python Tools/build_nineslice.py      the rail families' one-texture pictures (masters)
+      python Tools/texture_pack.py ship    the masters -> what the addon's Media ships
+      (then a full client restart; kitforge's Build kit runs all three)
 """
 import os, re, json, math, sys
 import numpy as np
@@ -38,12 +47,12 @@ from PIL import Image
 
 import kit_gems
 import kit_palette
+from paths import master
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
 SRC = os.path.join(HERE, "pack_sources", "kit", "v2_2x")
-OUT = os.path.join(ROOT, "Media", "Kit")
-LUA = os.path.join(ROOT, "Media", "KitLayout.lua")
+OUT = master("Kit")
+LUA = master("KitLayout.lua")
 
 MID = re.compile(r"_mid(_[a-z]+)?$")
 
@@ -652,16 +661,17 @@ def main():
     with open(LUA, "w", newline="\n") as f:
         f.write("\n".join(lines))
     total = sum(os.path.getsize(os.path.join(dp, fn)) for dp, _, fns in os.walk(OUT) for fn in fns)
-    print(f"{len(pieces)} pieces -> Media/Kit ({total / 1e6:.1f} MB), Media/KitLayout.lua"
+    print(f"{len(pieces)} pieces -> masters Media/Kit ({total / 1e6:.1f} MB), Media/KitLayout.lua  [{os.path.dirname(OUT)}]"
           + ("; red gems kept" if red_gems else f"; gems toned to iron in {toned}")
           )
     if not no_looks:
         for look, (n, size) in kit_palette.build_looks(OUT).items():
-            print(f"  {look}: {n} pieces recoloured -> Media/{kit_palette.LOOKS[look][0]} ({size / 1e6:.1f} MB)")
+            print(f"  {look}: {n} pieces recoloured -> masters Media/{kit_palette.LOOKS[look][0]} ({size / 1e6:.1f} MB)")
     if "--report" in sys.argv:
         for name in sorted(pieces):
             p = pieces[name]
             print(f"  {name:40} painted {p['w']}x{p['h']}  density {density(name)}")
+    print("next: python Tools/build_nineslice.py, then python Tools/texture_pack.py ship (the addon's Media)")
 
 
 if __name__ == "__main__":

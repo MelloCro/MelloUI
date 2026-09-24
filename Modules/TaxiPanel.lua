@@ -41,6 +41,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("TaxiPanel")
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("TaxiPanel", {
@@ -346,6 +347,20 @@ local function DisableSkin(s)
 	end
 end
 
+-- whether a window is shown right now (secret-safe: unreadable is "no")
+local function IsOpen(window)
+	local ok, shown = pcall(window.IsShown, window)
+	return ok and not Secret(shown) and shown and true or false
+end
+
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is made while a window has never been shown this session: its
+-- first show dresses it (OnShow below), a window already open when the kit
+-- goes on (a reload with it open) at once. Once made, a window's skin stays
+-- for the session and is only switched on and off. The dress makes frames
+-- and textures of our own and moves only the game's title string onto our
+-- band, never a protected frame, and never touches the map: it runs in
+-- combat too, so the first frame the window draws is already dressed.
 local function Activate()
 	if active then
 		return
@@ -356,7 +371,11 @@ local function Activate()
 	end
 	active = true
 	for _, window in ipairs(list) do
-		EnableSkin(Build(window))
+		if skins[window] then
+			EnableSkin(skins[window])
+		elseif IsOpen(window) then
+			EnableSkin(Build(window))
+		end
 	end
 end
 
@@ -370,8 +389,9 @@ local function Deactivate()
 	end
 end
 
--- A window shown: dressed if it came since (a load-on-demand flight map),
--- its plate and portrait fitted again (the window is laid out only now)
+-- A window shown: dressed on its first show (or if it came since: a
+-- load-on-demand flight map), else its plate and portrait fitted again (the
+-- window is laid out only now)
 local function OnShow(window)
 	if not active then
 		return
@@ -398,7 +418,7 @@ local function Hook()
 	for _, window in ipairs(Windows()) do
 		if not hooked[window] then
 			hooked[window] = true
-			window:HookScript("OnShow", OnShow)
+			Perf.HookScript(window, "OnShow", OnShow)
 		end
 	end
 end
@@ -408,10 +428,11 @@ local function Sync()
 	if M.isEnabled then
 		Activate()
 		-- a window that turned up after the kit went on (Blizzard_FlightMap
-		-- loaded on demand)
+		-- loaded on demand) and is open already; a closed one waits for its
+		-- first show like any other
 		if active then
 			for _, window in ipairs(Windows()) do
-				if not skins[window] then
+				if not skins[window] and IsOpen(window) then
 					EnableSkin(Build(window))
 				end
 			end
@@ -425,7 +446,7 @@ end
 -- load-on-demand addon (FlightMapFrame): looked for again whenever an addon
 -- loads, until both are known
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function()
+Perf.SetScript(watcher, "OnEvent", function()
 	if M.isEnabled then
 		Sync()
 	else
@@ -652,6 +673,11 @@ SlashCmdList.MELLOTAXIDUMP = function(msg)
 		MelloUI:Print("/taxidump: no TaxiFrame and no FlightMapFrame yet (Blizzard_FlightMap load on demand: %s); talk to a flight master once and try again", lod)
 	else
 		for _, window in ipairs(list) do
+			if not skins[window] then
+				-- (dressed on its first open: until then the game's window as it is)
+				MelloUI:Print("/taxidump: %s is not dressed yet (%s)", Describe(window), M.isEnabled
+					and "the kit dresses it the first time it opens this session: talk to a flight master, then try again" or "the Flight Map Kit is off")
+			end
 			if msg == "art" or msg == "frames" or msg == "reps" then
 				Kit:DumpWindow(window, skins[window], msg ~= "art" and msg or nil)
 			elseif window == _G.FlightMapFrame then

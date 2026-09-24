@@ -20,10 +20,11 @@ import os
 
 from PIL import Image
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "bottombar-vision-4k.png")
-TEX = os.path.join(HERE, "..", "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 OUT = OUTPUT
 
 # ---- measured on the art (pixels of the 1935 x 812 picture) -----------------

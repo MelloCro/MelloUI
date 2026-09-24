@@ -56,6 +56,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("BarberShopPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("BarberShopPanel", {
@@ -574,8 +576,15 @@ local function Deactivate()
 	end
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the barber shop has never been shown this session:
+-- a skin already built is switched on (and off), else only a barber shop open
+-- right now (a /reload in the chair) is dressed at once; its first show
+-- dresses it (the OnShow hook below), in that same frame, so it never draws
+-- undressed.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -591,17 +600,32 @@ local function SyncSafe()
 	end
 end
 
+-- A first show in combat (the game hardly allows the chair then) dresses at
+-- once all the same: the dressing adds frames and textures of ours and
+-- recolours the labels, never moving a frame of the game's, protected or not.
+-- A barber shop the game protects waits for the fight's end, as before.
+local function DressOnShow()
+	local f = Window()
+	local ok, protected = pcall(f.IsProtected, f)
+	if InCombatLockdown() and ok and not Secret(protected) and not protected then
+		Sync()
+	else
+		SyncSafe()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			DressOnShow()     -- (Activate refreshes what it dressed)
+		else
+			Refresh()
 		end
-		Refresh()
 	end)
 	if type(f.UpdateSex) == "function" then
 		hooksecurefunc(f, "UpdateSex", Refresh)
@@ -617,9 +641,10 @@ local function Hook()
 end
 
 -- The barber shop loads on demand (Blizzard_BarbershopUI, at the first
--- barber's chair): dressed when it loads, or at once if it already has.
+-- barber's chair): hooked when it loads, or at once if it already has, and
+-- dressed as it first shows.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self, _, name)
+Perf.SetScript(eventFrame, "OnEvent", function(self, _, name)
 	local mine = type(name) == "string" and name:lower() == ADDON
 	if (mine or Window()) and Window() then
 		self:UnregisterEvent("ADDON_LOADED")
@@ -763,6 +788,9 @@ SlashCmdList.MELLOBARBERDUMP = function(msg)
 	if not f then
 		MelloUI:Print("/barberdump: no BarberShopFrame yet: Blizzard_BarbershopUI loads at the first barber's chair (sit in one, then "
 			.. "try again). If it never appears, the barber shop is not on this client.")
+	elseif not skin then
+		MelloUI:Print("/barberdump: the barber shop is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: sit in a barber's chair, then try again" or "the Barber Shop Kit is off")
 	elseif msg == "" then
 		Summary(f)
 	else

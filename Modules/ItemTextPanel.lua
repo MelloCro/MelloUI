@@ -33,7 +33,9 @@
 --
 -- Nothing of the game's is replaced or re-scripted: hooks, regions and child
 -- frames of our own, faded game art and our own texture in the ring, all put
--- back when the switch (UI Modifications, Windows) is turned off.
+-- back when the switch (UI Modifications, Windows) is turned off. Nothing is
+-- built at login: the window is dressed on its first open (user, 2026-09-24)
+-- and kept.
 --
 -- /itemtextdump [frames|reps|regions]: what the window is made of and what
 -- was dressed.
@@ -41,6 +43,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ItemTextPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ItemTextPanel", {
@@ -691,6 +695,10 @@ local function OnShown()
 	end
 end
 
+-- (user, 2026-09-24: dress rarely used windows on first open): nothing is
+-- built while the window has never been shown this session; its first show
+-- builds it (the OnShow hook in Hook, below, before its first frame is drawn)
+-- and it is kept from then on.
 local function Build()
 	local frame = Window()
 	if not frame or not Kit then
@@ -698,6 +706,9 @@ local function Build()
 	end
 	if skin then
 		return true
+	end
+	if not frame:IsShown() then
+		return false
 	end
 	skin = { reps = {}, followers = {} }
 	local win = { frame = frame, followers = skin.followers, titleMoved = {}, titleFaded = {} }
@@ -745,26 +756,6 @@ local function Build()
 	Kit:SweepControls(frame, Replace, skin)
 	MarkRedButtons(frame, 0)
 	HookHtml()
-	frame:HookScript("OnShow", function()
-		if active then
-			OnShown()
-		end
-	end)
-	-- the game's own events: the colours are set when a text begins, the
-	-- page (material, size, arrows) when it is ready
-	frame:HookScript("OnEvent", function(_, event)
-		if not active then
-			return
-		end
-		if event == "ITEM_TEXT_BEGIN" then
-			if InkOn() then
-				InkTags(true)
-			end
-		elseif event == "ITEM_TEXT_READY" then
-			win.pageFitted = nil
-			Refresh()
-		end
-	end)
 	return true
 end
 
@@ -812,13 +803,51 @@ local function Deactivate()
 	InkTags(false)
 end
 
+-- The window's hooks, installed at enable and listen-only until it is built.
+-- Its first show dresses it there and then (Activate builds it), so the
+-- first frame it draws is dressed -- also in combat: the build makes frames
+-- and textures of ours and moves only the game's own title string, nothing
+-- protected (the window was never held back for combat).
+local hooked = false
+local function Hook()
+	local frame = Window()
+	if hooked or not frame then
+		return
+	end
+	hooked = true
+	Perf.HookScript(frame, "OnShow", function()
+		if M.isEnabled and not active then
+			Activate()
+		end
+		if active then
+			OnShown()
+		end
+	end)
+	-- the game's own events: the colours are set when a text begins, the
+	-- page (material, size, arrows) when it is ready
+	Perf.HookScript(frame, "OnEvent", function(_, event)
+		if not (active and skin) then
+			return
+		end
+		if event == "ITEM_TEXT_BEGIN" then
+			if InkOn() then
+				InkTags(true)
+			end
+		elseif event == "ITEM_TEXT_READY" then
+			skin.win.pageFitted = nil
+			Refresh()
+		end
+	end)
+end
+
 -- The window loads with the interface (Blizzard_UIPanels_Game); wait for it
 -- if not.
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+Perf.SetScript(events, "OnEvent", function(_, event)
 	if (event == "ADDON_LOADED" or event == "PLAYER_LOGIN") and M.isEnabled and not active and Window() then
 		events:UnregisterEvent("ADDON_LOADED")
 		events:UnregisterEvent("PLAYER_LOGIN")
+		Hook()
 		Activate()
 	end
 end)
@@ -826,6 +855,7 @@ end)
 function M:OnEnable(db)
 	self.db = db
 	if Window() then
+		Hook()
 		Activate()
 	else
 		events:RegisterEvent("ADDON_LOADED")
@@ -1067,6 +1097,9 @@ SlashCmdList.MELLOITEMTEXTDUMP = function(msg)
 		MelloUI:Print("/itemtextdump: ItemTextFrame is not on this client")
 	elseif msg == "" then
 		MelloUI:Print("Books & letters kit: module %s, dressed %s, built %s", tostring(M.isEnabled == true), tostring(active), tostring(skin ~= nil))
+		if not skin then
+			MelloUI:Print("ItemTextFrame: not dressed yet (the kit dresses it on its first open this session)")
+		end
 		DumpShell(f)
 		DumpPage(f)
 		DumpInk()
@@ -1090,6 +1123,9 @@ SlashCmdList.MELLOITEMTEXTDUMP = function(msg)
 				Shown(child), RepState(rawget(child, "melloRep")))
 		end
 	else
+		if not skin then
+			MelloUI:Print("ItemTextFrame: not dressed yet (the kit dresses it on its first open this session)")
+		end
 		-- frames / reps / regions (the visible game textures): the Kit's dump
 		Kit:DumpWindow(f, skin, msg ~= "regions" and msg or nil)
 	end

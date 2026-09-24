@@ -31,7 +31,8 @@
 -- Nothing of the game's is replaced or re-scripted: hooks, regions and child
 -- frames of our own, faded game art and our own texture in the ring, all put
 -- back when the switch (UI Modifications, Windows) is turned off. No charter
--- API is called.
+-- API is called. Nothing is built at login: each window is dressed on its
+-- first open (user, 2026-09-24) and kept.
 --
 -- /charterdump [registrar] [frames|reps|regions]: what a window is made of
 -- and what was dressed.
@@ -39,6 +40,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CharterPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("CharterPanel", {
@@ -725,15 +728,11 @@ local function BuildWindow(frame, def)
 	end
 	Kit:SweepControls(frame, Replace, skin)
 	MarkRedButtons(frame, 0)
-	frame:HookScript("OnShow", function()
-		if active then
-			OnWindowShown(frame)
-		end
-	end)
+	-- (the window's own OnShow is hooked at enable: Hook, below)
 	for _, name in ipairs(def.pages or {}) do
 		local page = _G[name]
 		if page then
-			page:HookScript("OnShow", function()
+			Perf.HookScript(page, "OnShow", function()
 				if active then
 					OnWindowShown(frame)
 				end
@@ -767,24 +766,23 @@ local function BuildWindow(frame, def)
 	end
 end
 
+-- (user, 2026-09-24: dress rarely used windows on first open): a window is
+-- built the first time it shows -- from its OnShow hook (Hook, below), before
+-- its first frame is drawn -- never at login; the charter and the registrar
+-- each on their own first show. What was built is kept for the session. True
+-- once anything is built.
 local function Build()
 	if not Kit then
 		return false
 	end
-	local any = false
 	for _, def in ipairs(WINDOWS) do
 		local frame = _G[def.frame]
-		if frame then
-			any = true
-			if not skin then
-				skin = { reps = {}, followers = {}, windows = {} }
-			end
-			if not skin.windows[frame] then
-				BuildWindow(frame, def)
-			end
+		if frame and not (skin and skin.windows[frame]) and frame:IsShown() then
+			skin = skin or { reps = {}, followers = {}, windows = {} }
+			BuildWindow(frame, def)
 		end
 	end
-	return any
+	return skin ~= nil
 end
 
 local function Activate()
@@ -833,12 +831,50 @@ local function AnyWindow()
 	return false
 end
 
+-- A window's show: dressed there and then on its first (Build makes only
+-- what shows; while the kit is on its pieces are enabled as they are made),
+-- so the first frame it draws is dressed -- also in combat: the build makes
+-- frames and textures of ours and moves (lends to the title container) only
+-- the game's own title string of these unprotected windows, nothing
+-- protected (they were never held back for combat). The hook is installed at
+-- enable and does nothing while the module is off.
+local hookedFrames = setmetatable({}, { __mode = "k" })   -- [frame] = true: its OnShow hooked
+local function Hook()
+	for _, def in ipairs(WINDOWS) do
+		local frame = _G[def.frame]
+		if frame and not hookedFrames[frame] then
+			hookedFrames[frame] = true
+			Perf.HookScript(frame, "OnShow", function()
+				if not M.isEnabled then
+					return
+				end
+				if not active then
+					Activate()
+				elseif not skin.windows[frame] then
+					-- built while the kit is on: its pieces were enabled as they
+					-- were made, before their own enable (the ring's picture,
+					-- its disc) was chained on -- enabled once more now
+					local first = #skin.reps + 1
+					Build()
+					for i = first, #skin.reps do
+						skin.reps[i]:Enable()
+					end
+				end
+				if active and skin.windows[frame] then
+					OnWindowShown(frame)
+				end
+			end)
+		end
+	end
+end
+
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+Perf.SetScript(events, "OnEvent", function(_, event)
 	if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
 		if M.isEnabled and not active and AnyWindow() then
 			events:UnregisterEvent("ADDON_LOADED")
 			events:UnregisterEvent("PLAYER_LOGIN")
+			Hook()
 			Activate()
 		end
 		return
@@ -857,6 +893,7 @@ pcall(events.RegisterEvent, events, "PORTRAITS_UPDATED")
 function M:OnEnable(db)
 	self.db = db
 	if AnyWindow() then
+		Hook()
 		Activate()
 	else
 		events:RegisterEvent("ADDON_LOADED")
@@ -1082,6 +1119,9 @@ SlashCmdList.MELLOCHARTERDUMP = function(msg)
 	elseif mode == "" then
 		local win = skin and skin.windows[f]
 		MelloUI:Print("Guild charter kit: module %s, dressed %s, built %s", tostring(M.isEnabled == true), tostring(active), tostring(win ~= nil))
+		if not win then
+			MelloUI:Print("%s: not dressed yet (the kit dresses it on its first open this session)", def.frame)
+		end
 		DumpShell(f, win, def.frame)
 		DumpParts(f, win, def)
 		DumpInk(f)
@@ -1091,6 +1131,9 @@ SlashCmdList.MELLOCHARTERDUMP = function(msg)
 			MelloUI:Print("(ArenaRegistrarFrame: not on this client)")
 		end
 	else
+		if not (skin and skin.windows[f]) then
+			MelloUI:Print("%s: not dressed yet (the kit dresses it on its first open this session)", def.frame)
+		end
 		-- frames / reps / regions (the visible game textures): the Kit's dump
 		Kit:DumpWindow(f, skin, mode ~= "regions" and mode or nil)
 	end

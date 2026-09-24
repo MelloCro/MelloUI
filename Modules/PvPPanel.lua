@@ -57,6 +57,9 @@
 --                      quality border kept on the icon), the honour /
 --                      conquest rings as the round rim
 --
+-- Each window is dressed on its first show, not at login (user, 2026-09-24:
+-- "dress rarely used windows on first open"; see DressOpen).
+--
 -- Taint: nothing of the game's is replaced or re-scripted; the skin is made
 -- and kept from post-hooks (the windows' Init / SetupArtwork / UpdateTable /
 -- DisplayRewards, HookScript, the scroll box's row callbacks, the regions'
@@ -72,6 +75,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("PvPPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("PvPPanel", {
@@ -978,14 +983,26 @@ local function OnWindowRefresh(f)
 	end
 end
 
+-- a window shown now (secret-safe)
+local function IsOpen(f)
+	local ok, shown = pcall(f.IsShown, f)
+	return ok and not Secret(shown) and shown == true
+end
+
+local Sync
+
 local function Hook()
 	for _, entry in ipairs(Present()) do
 		local f = entry.f
 		if not hooked[f] then
 			hooked[f] = true
-			f:HookScript("OnShow", function(self)
-				if active and not skins[self] then
-					EnableSkin(Build(self, entry.def))
+			-- its first show dresses a window there and then, in combat too
+			-- (the scoreboard is opened mid-fight): dressing makes frames of
+			-- ours and moves only the results' heading (lent to our band);
+			-- none of these windows or their controls is protected
+			Perf.HookScript(f, "OnShow", function(self)
+				if M.isEnabled and not (active and skins[self]) then
+					Sync()
 					return
 				end
 				OnWindowRefresh(self)
@@ -1001,17 +1018,31 @@ local function Hook()
 	end
 end
 
+-- The kit on: the windows dressed before come back on (the switch thrown
+-- again); the others wait for their first show (DressOpen)
 local function Activate()
 	if active then
 		return
 	end
-	local list = Present()
-	if #list == 0 then
+	if #Present() == 0 then
 		return
 	end
 	active = true
-	for _, entry in ipairs(list) do
-		EnableSkin(Build(entry.f, entry.def))
+	for _, s in pairs(skins) do
+		EnableSkin(s)
+	end
+end
+
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- a window's look is made while it has never been shown this session: each
+-- is dressed on its first show (its OnShow hook, before the first frame is
+-- drawn), or at once when it is up already (a /reload with it open), then
+-- kept for the session. The game's refreshes (Hook) only listen until then.
+local function DressOpen()
+	for _, entry in ipairs(Present()) do
+		if not skins[entry.f] and IsOpen(entry.f) then
+			EnableSkin(Build(entry.f, entry.def))
+		end
 	end
 end
 
@@ -1025,24 +1056,22 @@ local function Deactivate()
 	end
 end
 
-local function Sync()
+Sync = function()
 	Hook()
 	if M.isEnabled then
 		Activate()
-		-- a window that turned up after the kit went on (an addon loaded later)
+		-- the windows up now (a window that turned up after the kit went on,
+		-- an addon loaded later, is hooked above and dressed on its show)
 		if active then
-			for _, entry in ipairs(Present()) do
-				if not skins[entry.f] then
-					EnableSkin(Build(entry.f, entry.def))
-				end
-			end
+			DressOpen()
 		end
 	else
 		Deactivate()
 	end
 end
 
--- (frames of ours are made and the game's art faded: out of combat only)
+-- (the switch and an addon's load: out of combat, as before; a window's
+-- first show is dressed at once, see Hook)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -1052,9 +1081,11 @@ local function SyncSafe()
 end
 
 -- The windows come with Blizzard_PVPMatch (loaded with the interface here)
--- or another addon: looked for again whenever an addon loads
+-- or another addon: looked for again whenever an addon loads (hooked at
+-- once, even in a fight: the hooks only listen)
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function()
+Perf.SetScript(watcher, "OnEvent", function()
+	Hook()
 	SyncSafe()
 end)
 
@@ -1062,6 +1093,7 @@ function M:OnEnable(db)
 	self.db = db
 	watcher:RegisterEvent("ADDON_LOADED")
 	watcher:RegisterEvent("PLAYER_LOGIN")
+	Hook()
 	SyncSafe()
 end
 
@@ -1262,7 +1294,7 @@ local function DumpWindow(entry)
 	MelloUI:Print("%s (%s): shown %s, %s, strata %s, level %s; kit %s, pieces %d, faded art %d", def.name, def.label, Shown(f), RectText(f),
 		tostring(f:GetFrameStrata()), okLv and Num(lv) or "?", active and "on" or "off", s and #s.reps or 0, s and #s.faded or 0)
 	if not s then
-		MelloUI:Print("  not built yet")
+		MelloUI:Print("  not dressed yet: the kit dresses it the first time it opens (open it once for the kit's side)")
 		return
 	end
 	if def.kind == "match" then
@@ -1305,7 +1337,7 @@ SlashCmdList.MELLOPVPDUMP = function(msg)
 	end
 	for _, entry in ipairs(present) do
 		if msg == "frames" or msg == "reps" or msg == "regions" then
-			MelloUI:Print("%s:", entry.def.name)
+			MelloUI:Print("%s:%s", entry.def.name, skins[entry.f] and "" or " (not dressed yet: the kit dresses it the first time it opens)")
 			Kit:DumpWindow(entry.f, skins[entry.f], msg ~= "regions" and msg or nil)
 		else
 			DumpWindow(entry)

@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("DamageMeterPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("DamageMeterPanel", {
@@ -235,7 +237,7 @@ local function CondenseEntry(entry, rep)
 		Apply()
 	end)
 	hooksecurefunc(entry, "SetBarHeight", Apply)
-	bar:HookScript("OnSizeChanged", function()
+	Perf.HookScript(bar, "OnSizeChanged", function()
 		if active then
 			rep:Refit()
 		end
@@ -365,7 +367,7 @@ local function HandOnHover(row, window)
 		return
 	end
 	row.melloHoverHook = true
-	row:HookScript("OnEnter", function()
+	Perf.HookScript(row, "OnEnter", function()
 		if active and window.OnEnter and window:IsShown() then
 			window:OnEnter()
 		end
@@ -467,7 +469,7 @@ local function CondenseHeader(win, rep)
 		end
 		Restore()
 	end
-	win:HookScript("OnShow", function()
+	Perf.HookScript(win, "OnShow", function()
 		if active then
 			Condense()
 		end
@@ -607,7 +609,7 @@ local function Deactivate()
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_DamageMeter" and DamageMeter then
 		eventFrame:UnregisterAllEvents()
 		if M.db then

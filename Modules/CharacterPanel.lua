@@ -20,6 +20,10 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CharacterPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+-- one handler for every object it is hooked on, wrapped once
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local LOOKS = Kit.buttonLooks
@@ -60,6 +64,8 @@ local SLOT_NAMES = { "CharacterHeadSlot", "CharacterNeckSlot", "CharacterShoulde
 local skin = nil        -- our frame under the window (drag handle) and the registry of replacements
 local active = false
 local hooked = false
+local listsDirty = false  -- a tab picked while the window was closed: its OnShow re-reads the lists
+local layHeld = nil       -- GetTime() of the window's OnShow, which lays the parchment's rects once, at its end
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -100,6 +106,8 @@ end
 -- from that side pushes the side in to its own inner edge. Laid again when the
 -- window shows, resizes or the UI scale changes (the sheet then re-tiles and
 -- re-fits its masks on the rect's new size).
+local SIDES = { "l", "r", "t", "b" }
+local NONE = {}   -- an empty list, never written to
 local function LayClear(c)
 	local frame = c and c.frame
 	local bl, br, bt, bb = ScreenRect(c and c.base)
@@ -108,9 +116,17 @@ local function LayClear(c)
 	end
 	local l, r, t, b = bl, br, bt, bb
 	local cx, cy = (bl + br) / 2, (bt + bb) / 2
-	local covers = c.covers() or {}
-	for _, side in ipairs({ "l", "r", "t", "b" }) do
-		for _, cover in ipairs(covers[side] or {}) do
+	-- the rails, the divider and the title plate are the same objects for
+	-- good once the skin is built: their lists are made once, not on every lay
+	local covers = c.coverList
+	if not covers then
+		covers = c.covers() or NONE
+		if skin and skin.built then
+			c.coverList = covers
+		end
+	end
+	for _, side in ipairs(SIDES) do
+		for _, cover in ipairs(covers[side] or NONE) do
 			local x1, x2, y1, y2 = ScreenRect(cover)   -- left, right, top, bottom
 			if x1 then
 				local across = y1 > b and y2 < t      -- overlaps the rect's height
@@ -145,7 +161,7 @@ end
 -- bare stone.
 local DIM_ALPHA = 0.8
 
-local SkinProgressBar     -- defined with the list code below; the detail panes use it in BuildSkin
+local SkinProgressBar     -- defined with the list code below; the detail panes use it (SkinSidePanes)
 
 -- The first game texture of a frame (the picture a Blizzard frame paints).
 local function FirstTexture(frame)
@@ -191,32 +207,102 @@ end
 
 --------------------------------------------------------------------------------
 -- Building the skin
+--
+-- The skin is made of parts, made in this order (frame levels and draw order
+-- follow it). The window's first open used to make every one of them in its
+-- OnShow, one hitch of 63 ms (/melloperf, 2026-09-24); they are made ahead
+-- now, a few per frame while the game is idle after login (Building ahead),
+-- and whatever is left when the window first opens is made there at once, as
+-- before. Every part is made with the skin off, as it always was (Activate
+-- turns it on after building): nothing of it shows and no game art is faded
+-- until the window opens. Two are still made at that first open, not ahead
+-- (SkinOnParts): the divider's junctions and the side tabs.
 --------------------------------------------------------------------------------
 
-local function BuildSkin()
-	if skin then
-		return skin
+local PARTS = {}
+local function Part(fn)
+	PARTS[#PARTS + 1] = fn
+end
+
+local WindowSheet               -- below, with the settings; made ahead as the last part but one
+local ScrollBarsAt, BarsWalked  -- below, with the scroll bars; the last part walks them
+
+-- The detail panes of the reputation, skills, PvP and currency tabs and the
+-- PvP tab's line under the rank name, each made once: with the rest of the
+-- skin, and again as the skin comes on for any the game has made since (the
+-- skin is made ahead of the first open now; it was made at that open).
+local panesDone = setmetatable({}, { __mode = "k" })
+-- A side pane the game has laid out (every Refresh: a faction or skill
+-- picked, an update) or shown empty: its texts that carry no ink yet (a row
+-- the pane's pool made just now, its empty text) inked before it is drawn,
+-- not at the next pass (user, 2026-09-24: the Reputation, Skill and PvP
+-- text flickered). LayoutRows, not Refresh: the panes' selection callbacks
+-- hold Refresh as it was at load; Refresh always lays the rows
+local LOOK_CALLS = { "LayoutRows", "SetEmpty" }
+local LookPane = Shared("LayoutRows / SetEmpty on side panes", function(pane)
+	local QI = active and MelloUI.QuestInk
+	if QI and QI.LookRow then
+		QI.LookRow("character", pane)
 	end
-	local cf = CharacterFrame
-	skin = CreateFrame("Frame", "MelloUICharacterSkin", cf)
-	skin:SetAllPoints()
-	skin:SetFrameLevel(cf:GetFrameLevel())
-	skin.reps = {}         -- every replacement, for enable / disable
-	skin.followers = {}    -- replacements of art the game shows and hides itself: { rep, region }
+end)
 
-	-- drag handle for the unlocked window
-	skin:EnableMouse(true)
-	skin:RegisterForDrag("LeftButton")
-	skin:SetScript("OnDragStart", function()
-		if M.db.movable then
-			cf:StartMoving()
+local function SkinSidePanes()
+	-- the detail panes of the reputation, currency, skills and PvP tabs: their
+	-- divider line, hidden by the game when the pane is empty
+	local sidePanes = {
+		_G.ReputationFrame and _G.ReputationFrame.ReputationDetailFrame,
+		_G.SkillsFrame and _G.SkillsFrame.SkillDetailFrame,
+		_G.PVPRankFrame and _G.PVPRankFrame.DetailFrame,
+		_G.TokenFrame and _G.TokenFrame.DetailFrame,
+	}
+	for i = 1, 4 do
+		local pane = sidePanes[i]
+		if pane and not panesDone[pane] then
+			panesDone[pane] = true
+			-- the standing / rank bar of the reputation and skill detail panes;
+			-- only those two tabs' bars take the smaller border art (user,
+			-- 2026-09-24), a bar on another tab's pane (PvP, currency) keeps it
+			local tabBar = pane == sidePanes[1] or pane == sidePanes[2]
+			if pane.StandingBar then
+				SkinProgressBar(pane.StandingBar, tabBar and "rep" or "pane")
+			else
+				SkinProgressBar(pane.RankBar, tabBar and "skill" or "pane")
+			end
+			SkinCheckboxes(pane)
+			for _, method in ipairs(LOOK_CALLS) do
+				if pane[method] then
+					hooksecurefunc(pane, method, LookPane)
+				end
+			end
+			if pane.Divider then
+				local rep = Replace(pane.Divider, { as = "UI-Character-Info-ScrollLine" })
+				if rep then
+					skin.followers[#skin.followers + 1] = { rep = rep, region = pane.Divider }
+					for _, method in ipairs({ "SetEmpty", "ClearEmpty" }) do
+						if pane[method] then
+							hooksecurefunc(pane, method, function()
+								if active then
+									rep:SetShown(pane.Divider:IsShown())
+								end
+							end)
+						end
+					end
+				end
+			end
 		end
-	end)
-	skin:SetScript("OnDragStop", function()
-		cf:StopMovingOrSizing()
-	end)
+	end
 
-	-- the window: its nine-slice frame, plus the backdrop texture that frame draws
+	-- the PvP tab: the line under the rank name
+	local pvp = _G.PVPRankFrame
+	local line = pvp and pvp.MainInfoFrame and pvp.MainInfoFrame.Line
+	if line and not panesDone[line] then
+		panesDone[line] = true
+		Replace(line, { as = "UI-Character-Info-Honor-LevelBG" })
+	end
+end
+
+-- the window: its nine-slice frame, plus the backdrop texture that frame draws
+Part(function(cf)
 	if cf.NineSlice then
 		-- no gem corner at the top-left: the portrait ring is that corner
 		skin.window = Replace(cf.NineSlice, { as = "NineSlicePanelTemplate", parent = cf, rect = cf, alsoFade = { cf.Bg }, skip = "tl" })
@@ -224,15 +310,19 @@ local function BuildSkin()
 	if cf.TopTileStreaks then
 		Replace(cf.TopTileStreaks, { as = "_UI-Frame-TopTileStreaks", parent = cf })
 	end
+end)
 
-	-- the ring around the game's portrait (the nine-slice's portrait corner)
+-- the ring around the game's portrait (the nine-slice's portrait corner)
+Part(function(cf)
 	local portrait = cf.PortraitContainer and cf.PortraitContainer.portrait
 	local corner = cf.NineSlice and cf.NineSlice.TopLeftCorner
 	if portrait and corner then
 		skin.ring = Replace(corner, { as = "UI-Frame-PortraitMetal-CornerTopLeft", parent = cf.PortraitContainer, center = portrait })
 		skin.portrait = portrait
 	end
+end)
 
+Part(function(cf)
 	-- the title bar: in this client the container holds only the text (no
 	-- background art, /cpdump title), so the plate is an agreed addition on
 	-- the container's rectangle, under the text
@@ -255,10 +345,12 @@ local function BuildSkin()
 		end
 		Replace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = extra })
 	end
+end)
 
-	-- the panes' backdrop pictures and the divider between them: the
-	-- pictures are faded (Kit's one-stone-per-surface rule), the window's
-	-- own stone runs on under both panes
+-- the panes' backdrop pictures and the divider between them: the
+-- pictures are faded (Kit's one-stone-per-surface rule), the window's
+-- own stone runs on under both panes
+Part(function(cf)
 	if cf.LeftPaneHost then
 		Replace(FirstTexture(cf.LeftPaneHost), { as = "UI-Character-Info-General-BG" })
 	end
@@ -319,10 +411,12 @@ local function BuildSkin()
 			end
 		end
 	end
+end)
 
-	-- the stats scroll boxes: their inset frame and the class picture under the stats
-	-- (the inset's rule lays the inner panel over its stone, WINDOW-RULES 2e;
-	-- kept in skin.insetDims so the panel stands down on parchment, RefreshDims)
+-- the stats scroll boxes: their inset frame and the class picture under the stats
+-- (the inset's rule lays the inner panel over its stone, WINDOW-RULES 2e;
+-- kept in skin.insetDims so the panel stands down on parchment, RefreshDims)
+Part(function()
 	skin.insetDims = {}
 	for _, box in ipairs({ CharacterStatsPaneScrollBox, CharacterStatsPanePetScrollBox }) do
 		if box and box.Border then
@@ -332,21 +426,23 @@ local function BuildSkin()
 			end
 		end
 	end
+end)
 
-	-- The two panes' text on the palette's inner panel (WINDOW-RULES 2e; user,
-	-- 2026-09-24: "apply the eye strain rule to all existing windows"). On
-	-- every tab but the character's own, the left pane holds a list (the
-	-- reputations, the skills, the currencies, the honor ranks) and the right
-	-- pane its details or the statistics, all small text straight on the
-	-- window's stone, with no inset of the game's to dress. So each pane gets
-	-- the panel as a tint over that stone (never a second stone: one stone
-	-- per surface), laid on the part of the pane nothing painted covers, the
-	-- same way the parchment sheet is (LayClear: the rails, the title plate,
-	-- the divider). A frame of ours one level under the pane's host, as the
-	-- kit's holders and the right pane's parchment are, so the pane's rows
-	-- and texts stay above it; shown by RefreshDims. The character tab keeps
-	-- its stone: its left pane is the model (a picture), its right pane the
-	-- stats and the equipment manager, whose insets carry the panel already.
+-- The two panes' text on the palette's inner panel (WINDOW-RULES 2e; user,
+-- 2026-09-24: "apply the eye strain rule to all existing windows"). On
+-- every tab but the character's own, the left pane holds a list (the
+-- reputations, the skills, the currencies, the honor ranks) and the right
+-- pane its details or the statistics, all small text straight on the
+-- window's stone, with no inset of the game's to dress. So each pane gets
+-- the panel as a tint over that stone (never a second stone: one stone
+-- per surface), laid on the part of the pane nothing painted covers, the
+-- same way the parchment sheet is (LayClear: the rails, the title plate,
+-- the divider). A frame of ours one level under the pane's host, as the
+-- kit's holders and the right pane's parchment are, so the pane's rows
+-- and texts stay above it; shown by RefreshDims. The character tab keeps
+-- its stone: its left pane is the model (a picture), its right pane the
+-- stats and the equipment manager, whose insets carry the panel already.
+Part(function(cf)
 	skin.dims, skin.dimClears = {}, {}
 	local function PaneDim(key, pane, covers)
 		if not pane then
@@ -381,7 +477,7 @@ local function BuildSkin()
 			b = { rails.b or false },
 		}
 	end)
-	PaneDim("right", host, function()
+	PaneDim("right", cf.RightPaneHost, function()
 		local rails = Rails()
 		return {
 			l = { skin.divider and skin.divider.tex or false },
@@ -390,12 +486,19 @@ local function BuildSkin()
 			b = { rails.b or false },
 		}
 	end)
+end)
 
-	-- the divider's junctions (an agreed addition, the user's pick K): where
-	-- it leaves the title plate, where the stats inset's top rail meets it,
-	-- and where it ends on the window's bottom rail. The covers live on the
-	-- divider's frame (level 505 in the game's layout, above both panes) so
-	-- they go with it; the stats ones show with their box.
+-- the divider's junctions (an agreed addition, the user's pick K): where
+-- it leaves the title plate, where the stats inset's top rail meets it,
+-- and where it ends on the window's bottom rail. The covers live on the
+-- divider's frame (level 505 in the game's layout, above both panes) so
+-- they go with it; the stats ones show with their box.
+-- Made as the skin first comes on (SkinOnParts), not ahead: each cover
+-- takes its place across the divider from the divider's width, measured
+-- once, and a window never shown yet may have none to measure (the
+-- divider's width comes from its anchors): the covers would sit on the
+-- divider's left edge for good.
+local function SkinJoints()
 	if skin.divider and skin.dividerFrame then
 		local function Joint(opts)
 			local rep = Kit:Joint(skin.dividerFrame, opts)
@@ -428,7 +531,9 @@ local function BuildSkin()
 			Joint({ x = skin.divider, y = bottomRail, yPoint = "CENTER" })
 		end
 	end
+end
 
+Part(function()
 	-- the plate under "Level N Class"
 	if _G.CharacterLevelTextBackground then
 		Replace(_G.CharacterLevelTextBackground, { as = "UI-Character-Info-ItemLevel-Bounce" })
@@ -450,15 +555,16 @@ local function BuildSkin()
 		-- viewport, hugging the scene's rectangle, over the backdrop
 		Replace(scene, { as = "ViewportFrame", parent = scene, rect = scene, noFade = true })
 	end
+end)
 
-	-- every equipment slot (its game frame art is a picture inside its 1 x 1
-	-- BorderFrame)
-	-- (user, 2026-09-23: "onto the Character Pane next"): the action bars'
-	-- thin rim on the slot button itself, in the look Item Border names, the
-	-- icon fitted into it, the game's frame art faded; an empty slot keeps
-	-- the game's silhouette of what goes there
-	skin.slots = {}
-	for _, name in ipairs(SLOT_NAMES) do
+-- every equipment slot (its game frame art is a picture inside its 1 x 1
+-- BorderFrame), one part each
+-- (user, 2026-09-23: "onto the Character Pane next"): the action bars'
+-- thin rim on the slot button itself, in the look Item Border names, the
+-- icon fitted into it, the game's frame art faded; an empty slot keeps
+-- the game's silhouette of what goes there
+for _, name in ipairs(SLOT_NAMES) do
+	Part(function()
 		local slot = _G[name]
 		if slot and slot.BorderFrame then
 			local border = FirstTexture(slot.BorderFrame)
@@ -469,11 +575,17 @@ local function BuildSkin()
 				skin.slots[#skin.slots + 1] = slot
 			end
 		end
-	end
+	end)
+end
 
-	-- the side tabs: the tab's background, selected when the game's selectedTab is this one
+-- the side tabs: the tab's background, selected when the game's selectedTab is this one
+-- Made as the skin first comes on (SkinOnParts), not ahead: dressing a tab
+-- lights the selected one's glow (drawn on the game's tab itself) and, in
+-- a Side Tab Border other than the default, fits its icon into the rim at
+-- once; a skin made ahead and never turned on (the module switched off
+-- before the first open) would have left the game's tabs so.
+local function SkinSideTabs(cf)
 	local tabs = cf.ModeTabs and cf.ModeTabs.Tabs
-	skin.tabReps = {}
 	if tabs then
 		for _, tab in ipairs(tabs) do
 			if tab.Background then
@@ -487,18 +599,27 @@ local function BuildSkin()
 			end
 		end
 	end
+end
 
-	-- the detail panes of the reputation, currency, skills and PvP tabs: their
-	-- divider line, hidden by the game when the pane is empty
-	local sidePanes = {
-		_G.ReputationFrame and _G.ReputationFrame.ReputationDetailFrame,
-		_G.SkillsFrame and _G.SkillsFrame.SkillDetailFrame,
-		_G.PVPRankFrame and _G.PVPRankFrame.DetailFrame,
-		_G.TokenFrame and _G.TokenFrame.DetailFrame,
-	}
-	-- the button that folds the right pane away: the game swaps its arrow
-	-- with the state (UpdateRightPaneToggleButton: PrevPage open, NextPage
-	-- collapsed), so one replacement per texture, the current one shown
+-- The divider's junctions and the side tabs (above), each made once, as the
+-- skin first comes on (Activate: the game places the window just before it
+-- shows it, so it is laid out for the screen by then). They were made there
+-- before as well, with every other part.
+local function SkinOnParts(cf)
+	if not skin.jointsDone then
+		skin.jointsDone = true
+		SkinJoints()
+	end
+	if not skin.tabsDone then
+		skin.tabsDone = true
+		SkinSideTabs(cf)
+	end
+end
+
+-- the button that folds the right pane away: the game swaps its arrow
+-- with the state (UpdateRightPaneToggleButton: PrevPage open, NextPage
+-- collapsed), so one replacement per texture, the current one shown
+Part(function(cf)
 	local toggle = cf.RightPaneToggleButton
 	if toggle and toggle.GetNormalTexture and toggle:GetNormalTexture() then
 		-- file textures read back as numeric ids here, so the key comes from
@@ -525,41 +646,87 @@ local function BuildSkin()
 		end
 		skin.toggleIcons = Icons
 	end
-	for _, pane in pairs(sidePanes) do
-		-- the standing / rank bar of the reputation and skill detail panes;
-		-- only those two tabs' bars take the smaller border art (user,
-		-- 2026-09-24), a bar on another tab's pane (PvP, currency) keeps it
-		local tabBar = pane == sidePanes[1] or pane == sidePanes[2]
-		if pane.StandingBar then
-			SkinProgressBar(pane.StandingBar, tabBar and "rep" or "pane")
-		else
-			SkinProgressBar(pane.RankBar, tabBar and "skill" or "pane")
-		end
-		SkinCheckboxes(pane)
-		if pane.Divider then
-			local rep = Replace(pane.Divider, { as = "UI-Character-Info-ScrollLine" })
-			if rep then
-				skin.followers[#skin.followers + 1] = { rep = rep, region = pane.Divider }
-				for _, method in ipairs({ "SetEmpty", "ClearEmpty" }) do
-					if pane[method] then
-						hooksecurefunc(pane, method, function()
-							if active then
-								rep:SetShown(pane.Divider:IsShown())
-							end
-						end)
-					end
-				end
+end)
+
+-- the detail panes and the PvP tab's line (SkinSidePanes)
+Part(function()
+	SkinSidePanes()
+end)
+
+-- the Window Background's parchment sheet: made here with the rest (it
+-- was made on the skin's first coming on), shown by ApplyWindowBackground
+Part(function()
+	WindowSheet()
+end)
+
+-- every scroll bar in the window (M:RefreshScrollBars), the window's
+-- children one per run of this part: the walk down every frame of the
+-- window is the largest piece of the build
+Part(function(cf)
+	local roots = skin.barRoots
+	if not roots then
+		roots = { cf:GetChildren() }
+		skin.barRoots, skin.barNext = roots, 1
+	end
+	local child = roots[skin.barNext]
+	skin.barNext = skin.barNext + 1
+	if child then
+		ScrollBarsAt(child, 0)
+	end
+	if skin.barNext <= #roots then
+		return true   -- more of this part
+	end
+	skin.barRoots, skin.barNext = nil, nil
+	BarsWalked(cf, #roots)
+end)
+
+-- Makes the parts not made yet: all of them, or (`budget`, in ms) parts
+-- until that much time has gone, at least one; `skin.built` once every part
+-- is made. A part that raises is not tried again (a skin that failed half
+-- way stayed so before as well).
+local function BuildSkin(budget)
+	if skin and skin.built then
+		return skin
+	end
+	local cf = CharacterFrame
+	if not skin then
+		skin = CreateFrame("Frame", "MelloUICharacterSkin", cf)
+		skin:SetAllPoints()
+		skin:SetFrameLevel(cf:GetFrameLevel())
+		skin.reps = {}         -- every replacement, for enable / disable
+		skin.followers = {}    -- replacements of art the game shows and hides itself: { rep, region }
+		skin.slots = {}
+		skin.tabReps = {}      -- the side tabs' (SkinSideTabs, as the skin first comes on)
+		skin.offFrom = 1       -- the first replacement made while the skin is off and not put back since (Deactivate)
+
+		-- drag handle for the unlocked window
+		skin:EnableMouse(true)
+		skin:RegisterForDrag("LeftButton")
+		Perf.SetScript(skin, "OnDragStart", function()
+			if M.db.movable then
+				cf:StartMoving()
 			end
+		end)
+		Perf.SetScript(skin, "OnDragStop", function()
+			cf:StopMovingOrSizing()
+		end)
+		-- (hidden until the skin comes on, also while its parts are still
+		-- being made over several frames)
+		skin:Hide()
+		skin.part = 1
+	end
+	local t0 = budget and debugprofilestop()
+	while skin.part <= #PARTS do
+		local part = PARTS[skin.part]
+		skin.part = skin.part + 1
+		if part(cf) then
+			skin.part = skin.part - 1
+		end
+		if budget and debugprofilestop() - t0 >= budget then
+			break
 		end
 	end
-
-	-- the PvP tab: the line under the rank name
-	local pvp = _G.PVPRankFrame
-	if pvp and pvp.MainInfoFrame and pvp.MainInfoFrame.Line then
-		Replace(pvp.MainInfoFrame.Line, { as = "UI-Character-Info-Honor-LevelBG" })
-	end
-
-	skin:Hide()
+	skin.built = skin.part > #PARTS
 	return skin
 end
 
@@ -651,11 +818,19 @@ local function StatRep(frame, key)
 	if frame.melloRep == nil then
 		frame.melloRep = Replace(frame.Background, { as = key }) or false
 		if frame.melloRep and key == "UI-Character-Info-Line-Bounce" then
-			frame:HookScript("OnEnter", function(self) if active then self.melloRep:SetState("hover") end end)
-			frame:HookScript("OnLeave", function(self) if active then self.melloRep:SetState("plain") end end)
+			Perf.HookScript(frame, "OnEnter", function(self) if active then self.melloRep:SetState("hover") end end)
+			Perf.HookScript(frame, "OnLeave", function(self) if active then self.melloRep:SetState("plain") end end)
 		end
 	end
 	return frame.melloRep or nil
+end
+
+-- (run on every stats update of the game's while the paper doll is up: no
+-- table or function made per run)
+local STAT_CATEGORIES = { "ItemLevelCategory", "AttributesCategory", "EnhancementsCategory" }
+local statTops = {}
+local function Higher(a, b)
+	return a > b
 end
 
 function M:RefreshStats()
@@ -663,7 +838,7 @@ function M:RefreshStats()
 		return
 	end
 	local pane = CharacterStatsPane
-	for _, key in ipairs({ "ItemLevelCategory", "AttributesCategory", "EnhancementsCategory" }) do
+	for _, key in ipairs(STAT_CATEGORIES) do
 		local cat = pane[key]
 		if cat and cat.Background then
 			local rep = StatRep(cat, "UI-Character-Info-Title")
@@ -681,14 +856,14 @@ function M:RefreshStats()
 	if pane.statsFramePool then
 		-- the rows' pitch: the plates are fitted to it so stacked plates butt
 		-- exactly, with no gap and no overlap
-		local tops, pitch = {}, nil
+		local tops, pitch = wipe(statTops), nil
 		for row in pane.statsFramePool:EnumerateActive() do
 			local ok, top = pcall(row.GetTop, row)
 			if ok and top and not (issecretvalue and issecretvalue(top)) then
 				tops[#tops + 1] = top
 			end
 		end
-		table.sort(tops, function(a, b) return a > b end)
+		table.sort(tops, Higher)
 		for i = 2, #tops do
 			local d = tops[i - 1] - tops[i]
 			if d > 0 and (not pitch or d < pitch) then
@@ -775,9 +950,13 @@ local function ListEntryRep(frame)
 			return
 		end
 		rep:Refit()
-		-- the same conditions the game uses for its highlight
+		-- the same conditions the game uses for its highlight (no closure
+		-- per call: this runs on every hover of every row)
 		local okS, selected = pcall(frame.IsSelected, frame)
-		local okW, atWar = pcall(function() return frame.IsAtWar and frame:IsAtWar() end)
+		local okW, atWar = true, nil
+		if frame.IsAtWar then
+			okW, atWar = pcall(frame.IsAtWar, frame)
+		end
 		local over = frame:IsMouseOver()
 		selected = okS and selected
 		atWar = okW and atWar
@@ -818,7 +997,7 @@ local function SkinScrollBar(bar)
 		reps[#reps + 1] = Replace(bar.Forward.Texture, { as = "minimal-scrollbar-arrow-bottom", button = bar.Forward })
 	end
 	-- the thumb's height follows the content: refit when it changes
-	thumb:HookScript("OnSizeChanged", function()
+	Perf.HookScript(thumb, "OnSizeChanged", function()
 		if active then
 			for _, rep in ipairs(reps) do
 				if rep.vstrip then
@@ -835,18 +1014,52 @@ local function SkinScrollBar(bar)
 	end
 end
 
+-- The equipment manager's pane (PaperDollFrame's), dressed when it first
+-- shows (SkinEquipmentManager)
+local function EquipmentPane()
+	return _G.PaperDollFrame and _G.PaperDollFrame.EquipmentManagerPane
+end
+
 -- Every MinimalScrollBar under `root` (the stats boxes, the reputation,
 -- skills, currency and statistics lists, the side panes' description).
+-- The equipment manager's own is SkinEquipmentManager's, as it always was.
 local function ScrollBarsIn(root, depth)
 	depth = depth or 0
 	if depth > 7 or root == skin then
 		return
 	end
+	local pane = EquipmentPane()
+	if pane and root == pane and not pane.melloKitHooked then
+		return
+	end
 	for _, child in ipairs({ root:GetChildren() }) do
-		if child.Track and child.Track.Thumb and child.Back and child.Forward then
-			SkinScrollBar(child)
-		else
-			ScrollBarsIn(child, depth + 1)
+		ScrollBarsAt(child, depth)
+	end
+end
+
+-- one child of a frame `depth` below the window
+ScrollBarsAt = function(child, depth)
+	if child.Track and child.Track.Thumb and child.Back and child.Forward then
+		SkinScrollBar(child)
+	else
+		ScrollBarsIn(child, depth + 1)
+	end
+end
+
+-- The walk down every frame of the window was made on every tab switch and
+-- every open (/melloperf, 2026-09-24: ~1 ms and a table per frame walked);
+-- the bars are the game's, made with their windows. So the whole window is
+-- walked once (the build's last part), again only when the window has a
+-- child more or less than then, and a tab the game made after that walk is
+-- walked the first time it shows.
+local walkedTabs = setmetatable({}, { __mode = "k" })
+-- `count`: how many children the window had when the walk began
+BarsWalked = function(cf, count)
+	skin.barsWalked = count or cf:GetNumChildren()
+	for _, name in pairs(_G.CHARACTERFRAME_SUBFRAMES or NONE) do
+		local tab = type(name) == "string" and _G[name]
+		if tab then
+			walkedTabs[tab] = true
 		end
 	end
 end
@@ -855,7 +1068,24 @@ function M:RefreshScrollBars()
 	if not (skin and active) then
 		return
 	end
-	ScrollBarsIn(CharacterFrame)
+	local cf = CharacterFrame
+	if skin.barsWalked ~= cf:GetNumChildren() then
+		ScrollBarsIn(cf)
+		BarsWalked(cf)
+	end
+	local tab = type(cf.activeSubframe) == "string" and _G[cf.activeSubframe]
+	if tab and not walkedTabs[tab] and tab.GetParent then
+		walkedTabs[tab] = true
+		-- as deep as the whole window's walk reaches under it
+		local depth, f = 0, tab
+		while f and f ~= cf do
+			depth = depth + 1
+			f = f:GetParent()
+		end
+		if f == cf then
+			ScrollBarsIn(tab, depth)
+		end
+	end
 end
 
 -- A ColoredProgressBar (Blizzard_SharedXML/Camelot/ProgressBars): the
@@ -1043,16 +1273,31 @@ local function SkinScrollLines(scrollBox)
 	end
 end
 
+-- Each list's row plates that follow the game's state (their `refresh`), in
+-- the order they were made: RefreshLists re-reads the ones of the list on
+-- show, not every list's. [scrollBox] = { rep, ... }
+local listReps = setmetatable({}, { __mode = "k" })
+
 local function HookList(scrollBox, rowSkin)
 	if not (scrollBox and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or scrollBox.melloKitHooked then
 		return
 	end
 	scrollBox.melloKitHooked = true
 	rowSkin = rowSkin or SkinListFrame
+	local reps = {}
+	listReps[scrollBox] = reps
+	local function SkinRow(frame)
+		rowSkin(frame)
+		local rep = frame.melloRep
+		if rep and rep.refresh and not rep.melloListed then
+			rep.melloListed = true
+			reps[#reps + 1] = rep
+		end
+	end
 	SkinScrollLines(scrollBox)
 	ScrollUtil.AddAcquiredFrameCallback(scrollBox, function(_, frame)
 		if active then
-			rowSkin(frame)
+			SkinRow(frame)
 		end
 	end, M, false)
 	-- initialisation runs after the layout pass: the row has its height now
@@ -1066,7 +1311,7 @@ local function HookList(scrollBox, rowSkin)
 	if scrollBox.ForEachFrame then
 		scrollBox:ForEachFrame(function(frame)
 			if active then
-				rowSkin(frame)
+				SkinRow(frame)
 			end
 		end)
 	end
@@ -1283,8 +1528,13 @@ local function SkinOutfitCard(card)
 	end
 end
 
+-- Made when the pane first shows (RefreshLists: at once when it is up as
+-- the skin comes on, else from the pane's own OnShow, which runs before the
+-- frame is drawn, so it never shows undressed), not with the rest of the
+-- skin on the window's first open. The equipment flyout is the paper
+-- doll's as well (SkinFlyouts).
 local function SkinEquipmentManager()
-	local pane = _G.PaperDollFrame and _G.PaperDollFrame.EquipmentManagerPane
+	local pane = EquipmentPane()
 	if not pane or pane.melloKitHooked then
 		return
 	end
@@ -1297,13 +1547,9 @@ local function SkinEquipmentManager()
 			M:RefreshDims()
 		end
 	end
-	-- the set-icon picker and the equipment flyout: their icons in the
-	-- Button Border, like the set cards' (SkinIconRim above)
+	-- the set-icon picker: its icons in the Button Border, like the set
+	-- cards' (SkinIconRim above)
 	SkinIconPopup()
-	if _G.EquipmentFlyout_UpdateItems then
-		hooksecurefunc("EquipmentFlyout_UpdateItems", SkinFlyoutButtons)
-	end
-	SkinFlyoutButtons()
 	for _, button in ipairs({ pane.EquipSet, pane.SaveSet }) do
 		if button and button.Center then
 			local extra = { button.Left, button.Right }
@@ -1360,8 +1606,8 @@ local function SkinEquipmentManager()
 					label:SetPoint("LEFT", icon, "RIGHT", gap, 0)
 					label:SetJustifyH("LEFT")
 				end
-				new:HookScript("OnShow", Centre)
-				new:HookScript("OnSizeChanged", Centre)
+				Perf.HookScript(new, "OnShow", Centre)
+				Perf.HookScript(new, "OnSizeChanged", Centre)
 				rep.onEnable = function(...)
 					if enable then enable(...) end
 					Centre()
@@ -1382,20 +1628,80 @@ local function SkinEquipmentManager()
 	Kit:SkinScrollBarsIn(pane, Replace, skin)
 end
 
-function M:RefreshLists()
+-- The equipment flyout (the items that fit a slot, from the paper doll or
+-- the equipment manager): its icons in the Button Border, like the set
+-- cards'; hooked once, when the skin first comes on
+local flyoutsHooked = false
+local function SkinFlyouts()
+	if flyoutsHooked then
+		return
+	end
+	flyoutsHooked = true
+	if _G.EquipmentFlyout_UpdateItems then
+		hooksecurefunc("EquipmentFlyout_UpdateItems", SkinFlyoutButtons)
+	end
+	SkinFlyoutButtons()
+end
+
+-- `frame` and every frame above it up to the window shown, by their own
+-- flags (the answer holds while the window itself is still opening); a
+-- frame outside the window counts as shown when its own chain is
+local function ShownInWindow(frame)
+	local cf = CharacterFrame
+	while frame and frame ~= cf do
+		if not frame:IsShown() then
+			return false
+		end
+		frame = frame:GetParent()
+	end
+	return true
+end
+
+-- `all`: every row plate of every list re-read (the skin coming on); else
+-- only the rows of the list on show, as a tab switch or an open needs
+-- (/melloperf, 2026-09-24: every row of the four lists re-fitted on each)
+local managerHooked = false
+function M:RefreshLists(all)
 	if not (skin and active) then
 		return
 	end
+	listsDirty = false
 	HookList(_G.ReputationFrame and _G.ReputationFrame.ScrollBox)
 	HookList(_G.SkillsFrame and _G.SkillsFrame.ScrollBox)
 	HookList(_G.TokenFrame and _G.TokenFrame.ScrollBox)
 	HookList(_G.StatisticsFrame and _G.StatisticsFrame.ScrollBox)
-	SkinEquipmentManager()
+	SkinFlyouts()
+	local pane = EquipmentPane()
+	if pane then
+		if not managerHooked then
+			managerHooked = true
+			Perf.HookScript(pane, "OnShow", function()
+				if active then
+					SkinEquipmentManager()
+				end
+			end)
+		end
+		if pane:IsShown() then
+			SkinEquipmentManager()
+		end
+	end
 	M:RefreshScrollBars()
-	for _, rep in ipairs(skin.reps) do
-		if rep.refresh then
-			rep:Enable()
-			rep.refresh()
+	if all then
+		for _, rep in ipairs(skin.reps) do
+			if rep.refresh then
+				rep:Enable()
+				rep.refresh()
+			end
+		end
+		return
+	end
+	for box, reps in pairs(listReps) do
+		if ShownInWindow(box) then
+			for i = 1, #reps do
+				local rep = reps[i]
+				rep:Enable()
+				rep.refresh()
+			end
 		end
 	end
 end
@@ -1407,11 +1713,16 @@ end
 local ApplyWindowBackground   -- below, with the settings
 
 local InkSurface -- below
+-- (true when it turned the skin on)
 local function Activate()
 	if active then
-		return
+		return false
 	end
 	BuildSkin()
+	-- a detail pane the game has made since the skin was built (it is built
+	-- ahead of the first open now)
+	SkinSidePanes()
+	SkinOnParts(CharacterFrame)
 	active = true
 	skin:Show()
 	for _, rep in ipairs(skin.reps) do
@@ -1421,19 +1732,37 @@ local function Activate()
 	M:FitPortrait()
 	M:RefreshTabs()
 	M:RefreshStats()
-	M:RefreshLists()
+	M:RefreshLists(true)
 	if skin.toggleIcons then
 		skin.toggleIcons()
 	end
 	ApplyWindowBackground()
 	M:RefreshDims()
+	-- the parchment's rects laid before the ink reads what lies on the
+	-- parchment (the window's OnShow holds them until here: laid once)
+	if layHeld then
+		layHeld = nil
+		M:LayParchment()
+	end
 	if InkSurface then
 		InkSurface()
 	end
+	return true
 end
 
 local function Deactivate()
 	if not active then
+		-- a skin made ahead and never turned on (the module switched off
+		-- before the window's first open): its pieces put back as turning
+		-- the skin off puts them back, what they fitted of the game's own
+		-- art with them (a Button Border chosen since has fitted the slots'
+		-- icons into its rims)
+		if skin then
+			for i = skin.offFrom, #skin.reps do
+				skin.reps[i]:Disable()
+			end
+			skin.offFrom = #skin.reps + 1
+		end
 		return
 	end
 	active = false
@@ -1443,6 +1772,7 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	skin.offFrom = #skin.reps + 1
 	if CharacterStatsPane and CharacterStatsPane.statsFramePool then
 		for row in CharacterStatsPane.statsFramePool:EnumerateActive() do
 			Kit:Unfade(row.Background)
@@ -1453,13 +1783,74 @@ local function Deactivate()
 	end
 end
 
+-- (true when it turned the skin on)
 local function Sync()
 	if M.isEnabled and CharacterFrame then
-		Activate()
-	else
-		Deactivate()
+		return Activate()
 	end
+	Deactivate()
+	return false
 end
+
+--------------------------------------------------------------------------------
+-- Building ahead (/melloperf, 2026-09-24: the window's first open cost 63 ms,
+-- the whole skin made in its OnShow): a few seconds after login -- and again
+-- after a fight, or once the settings are in -- the skin's parts are made
+-- while the game is idle, a few ms of them per frame; never in a fight, and
+-- never while the window is open (its OnShow makes what is left at once, as
+-- it always did). The skin stays off while it is made (Activate turns it on
+-- as the window opens), so nothing of it shows and the game looks the same
+-- until then. The settings must be in first: the parts read some of them
+-- (the Button Border, the kit's tuning) as they are made, and they load late
+-- on this client (OnEnable comes again when they are).
+--------------------------------------------------------------------------------
+
+local PREBUILD_DELAY = 5     -- s: past the login's own burst of work
+local PREBUILD_BUDGET = 2    -- ms of parts per frame (one part may run past it)
+
+local prebuilder = CreateFrame("Frame")
+local prebuildQueued = false
+
+local function PrebuildTick()
+	local cf = CharacterFrame
+	if (skin and skin.built) or not M.isEnabled or not cf or cf:IsShown() then
+		Perf.SetScript(prebuilder, "OnUpdate", nil)
+		return
+	end
+	if InCombatLockdown() then
+		Perf.SetScript(prebuilder, "OnUpdate", nil)
+		prebuilder:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+	BuildSkin(PREBUILD_BUDGET)
+end
+
+local function StartPrebuild()
+	if (skin and skin.built) or not (M.isEnabled and CharacterFrame) then
+		return
+	end
+	if MelloUI.dbIsTemporary and not MelloUI.restoredFromBackup then
+		return
+	end
+	Perf.SetScript(prebuilder, "OnUpdate", PrebuildTick)
+end
+
+local function QueuePrebuild()
+	if prebuildQueued or (skin and skin.built) then
+		return
+	end
+	prebuildQueued = true
+	C_Timer.After(PREBUILD_DELAY, function()
+		prebuildQueued = false
+		StartPrebuild()
+	end)
+end
+
+-- a fight ended: on again a little later (not in the frame the fight ends in)
+Perf.SetScript(prebuilder, "OnEvent", function(self)
+	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	QueuePrebuild()
+end)
 
 local function Hook()
 	if hooked or not CharacterFrame then
@@ -1478,7 +1869,13 @@ local function Hook()
 			M:RefreshTabs()
 		end)
 	end
+	-- (the window opening: the game picks the tab before it shows the
+	-- window, and the window's OnShow below refreshes all of this then)
 	hooksecurefunc(CharacterFrame, "ShowSubFrame", function()
+		if not CharacterFrame:IsShown() then
+			listsDirty = true
+			return
+		end
 		M:RefreshTabs()
 		M:RefreshFollowers()
 		M:RefreshLists()
@@ -1497,14 +1894,25 @@ local function Hook()
 			M:FitPortrait()
 		end)
 	end
-	CharacterFrame:HookScript("OnShow", function()
-		Sync()
-		M:RefreshFollowers()
-		M:FitPortrait()
-		M:RefreshTabs()
-		M:RefreshStats()
-		M:RefreshDims()
-		M:LayParchment()
+	Perf.HookScript(CharacterFrame, "OnShow", function()
+		-- the parchment's rects laid once, at the end, on what all of this
+		-- has shown (each refresh below would lay them again: LayParchment)
+		layHeld = GetTime()
+		-- (a skin coming on now has had every refresh below, and the lay,
+		-- in Activate)
+		if active or not Sync() then
+			M:RefreshFollowers()
+			M:FitPortrait()
+			M:RefreshTabs()
+			M:RefreshStats()
+			if listsDirty then
+				M:RefreshLists()
+			end
+			M:RefreshDims()
+			layHeld = nil
+			M:LayParchment()
+		end
+		layHeld = nil
 	end)
 	-- the panes' inner panels come and go with the character tab (the paper
 	-- doll shown: the model and the stats; any other tab: a list and its
@@ -1512,8 +1920,8 @@ local function Hook()
 	-- switch, or a Parchment Window Background: both go through SetParchment)
 	local paper = _G.PaperDollFrame
 	if paper then
-		paper:HookScript("OnShow", function() M:RefreshDims() end)
-		paper:HookScript("OnHide", function() M:RefreshDims() end)
+		Perf.HookScript(paper, "OnShow", function() M:RefreshDims() end)
+		Perf.HookScript(paper, "OnHide", function() M:RefreshDims() end)
 	end
 	if Kit.SetParchment then
 		hooksecurefunc(Kit, "SetParchment", function(_, area)
@@ -1525,13 +1933,13 @@ local function Hook()
 	-- the parchment sheets' rects follow the window's size and the UI scale
 	-- (the rails and the divider keep their size in UI units; what they
 	-- cover is measured again)
-	CharacterFrame:HookScript("OnSizeChanged", function()
+	Perf.HookScript(CharacterFrame, "OnSizeChanged", function()
 		M:LayParchment()
 	end)
 	local scaleWatch = CreateFrame("Frame")
 	scaleWatch:RegisterEvent("UI_SCALE_CHANGED")
 	scaleWatch:RegisterEvent("DISPLAY_SIZE_CHANGED")
-	scaleWatch:SetScript("OnEvent", function()
+	Perf.SetScript(scaleWatch, "OnEvent", function()
 		M:LayParchment()
 	end)
 end
@@ -1542,6 +1950,7 @@ function M:OnEnable(db)
 	if CharacterFrame and CharacterFrame:IsShown() then
 		Sync()
 	end
+	QueuePrebuild()
 end
 
 function M:OnDisable()
@@ -1550,28 +1959,32 @@ end
 
 -- The parchment sheets' rects laid again on what the rails, the divider and
 -- the title plate leave free: now, and once more a frame later (a window
--- just shown lays itself out after its OnShow).
-function M:LayParchment()
-	if not (skin and CharacterFrame and CharacterFrame:IsVisible()) then
-		return
+-- just shown lays itself out after its OnShow). While the window's OnShow
+-- runs (`layHeld`) they are laid once, at its end.
+-- (the panes' inner panels on the same free rects, RefreshDims)
+local function LayAll()
+	LayClear(skin.paneClear)
+	LayClear(skin.windowClear)
+	for _, c in ipairs(skin.dimClears or NONE) do
+		LayClear(c)
 	end
-	-- (the panes' inner panels on the same free rects, RefreshDims)
-	local function LayAll()
-		LayClear(skin.paneClear)
-		LayClear(skin.windowClear)
-		for _, c in ipairs(skin.dimClears or {}) do
-			LayClear(c)
-		end
+end
+
+local function LayAgain()
+	skin.layPending = nil
+	if CharacterFrame:IsVisible() then
+		LayAll()
+	end
+end
+
+function M:LayParchment()
+	if not (skin and CharacterFrame and CharacterFrame:IsVisible()) or layHeld == GetTime() then
+		return
 	end
 	LayAll()
 	if C_Timer and not skin.layPending then
 		skin.layPending = true
-		C_Timer.After(0, function()
-			skin.layPending = nil
-			if CharacterFrame:IsVisible() then
-				LayAll()
-			end
-		end)
+		C_Timer.After(0, LayAgain)
 	end
 end
 
@@ -1594,9 +2007,9 @@ function M:RefreshDims()
 	local onDoll = paper and paper:IsShown() and true or false
 	local rightParchment = WindowParchment() or Kit:ParchmentOn("character")
 	local stone = active and bg ~= "parchment" and bg ~= "dark"
-	local show = { left = stone and not onDoll, right = stone and not onDoll and not rightParchment }
+	local left, right = stone and not onDoll, stone and not onDoll and not rightParchment
 	for key, f in pairs(skin.dims) do
-		f:SetShown(show[key] and true or false)
+		f:SetShown(((key == "left" and left) or (key == "right" and right)) and true or false)
 	end
 	for _, rep in ipairs(skin.insetDims or {}) do
 		local fill = rep.skin and rep.skin.dimFill
@@ -1604,7 +2017,7 @@ function M:RefreshDims()
 			fill:SetShown(not rightParchment)
 		end
 	end
-	if show.left or show.right then
+	if left or right then
 		M:LayParchment()
 	end
 end
@@ -1618,8 +2031,8 @@ end
 -- UI's one background resolution (Kit:ParchmentSheet re-tiles it and re-fits
 -- its masks whenever its rect changes size). A region of the window's frame
 -- skin, one sublevel above the body: only the parchment is masked, never the
--- model, the slots or the text. Made the first time it is needed.
-local function WindowSheet()
+-- model, the slots or the text. Made with the skin's parts (BuildSkin).
+WindowSheet = function()
 	if skin.windowSheet ~= nil then
 		return skin.windowSheet
 	end

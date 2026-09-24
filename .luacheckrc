@@ -1,5 +1,6 @@
 -- luacheck configuration (https://luacheck.readthedocs.io). Run locally with
--- `luacheck Core Modules Media`; the Lint workflow runs the same on every push.
+-- `luacheck Core Modules Media MelloUI_Companion`; the Lint workflow runs the
+-- same on every push.
 std = "lua51"
 max_line_length = false
 ignore = {
@@ -10,7 +11,7 @@ ignore = {
 -- Written by the addon: saved variables, slash command registration, the pin mixin the XML expects.
 globals = {
 	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines", "MelloUI_QuestPinMixin",
-	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
+	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
 	"SLASH_MELLOSERVICES1", "SLASH_MELLOTRDUMP1", "SLASH_MELLOSBDUMP1", "SLASH_MELLOPROFDUMP1", "SLASH_MELLOLEGDUMP1", "SLASH_MELLOGFDUMP1", "SLASH_MELLOVOICEOVER1", "SLASH_MELLOVOICEOVER2", "SLASH_MELLOICONDUMP1",
 	"SLASH_MELLOABDUMP1", "SLASH_MELLOINKWHY1", "SLASH_MELLODIALOGDUMP1", "SLASH_MELLOUISCALEDUMP1", "SLASH_MELLOCHATINK1", "SLASH_MELLOCHATSCROLL1", "SLASH_MELLOBAGDUMP1", "SLASH_MELLOMMDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOUFTEST1", "SLASH_MELLORFDUMP1", "SLASH_MELLOABDUMP1", "SLASH_MELLOCBDUMP1",
 	"SLASH_MELLOSOCDUMP1", "SLASH_MELLOTTDUMP1", "SLASH_MELLONPDUMP1", "SLASH_MELLOADDONLISTDUMP1",
@@ -124,7 +125,7 @@ read_globals = {
 	"UnitCanAttack", "UnitClass", "UnitCreatureType", "UnitExists", "UnitFactionGroup",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
 	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitRace", "UnitReaction",
-	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage",
+	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",
 	"UpdateContainerFrameAnchors", "WorldMapFrame", "date", "hooksecurefunc", "issecretvalue", "time",
 	"tinsert", "wipe",
 }
@@ -133,6 +134,14 @@ read_globals = {
 files["Media"] = {
 	globals = {
 		"MelloUI_CustomFonts", "MelloUI_CustomTextures", "MelloUI_NPCVoiceData",
-		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_QuestObjectiveData", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MelloUI_EditModeLayout",
+		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_RouteData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MelloUI_EditModeLayout",
+	},
+}
+
+-- The route data companion (MelloUI_Companion, loaded on demand): its data
+-- files only define their table too; Route reads them (read_globals above).
+files["MelloUI_Companion"] = {
+	globals = {
+		"MelloUI_RoadData", "MelloUI_QuestObjectiveData",
 	},
 }

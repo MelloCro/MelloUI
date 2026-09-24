@@ -13,6 +13,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("BarText")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("BarText", {
 	title = "Bar Text",
@@ -368,9 +370,9 @@ local function EnsureText(bar)
 	end
 	if not hooked[bar] then
 		hooked[bar] = true
-		bar:HookScript("OnValueChanged", function(self) UpdateBar(self) end)
-		bar:HookScript("OnMinMaxChanged", function(self) UpdateBar(self) end)
-		bar:HookScript("OnShow", function(self) UpdateBar(self) end)
+		Perf.HookScript(bar, "OnValueChanged", function(self) UpdateBar(self) end)
+		Perf.HookScript(bar, "OnMinMaxChanged", function(self) UpdateBar(self) end)
+		Perf.HookScript(bar, "OnShow", function(self) UpdateBar(self) end)
 	end
 	return fs
 end
@@ -430,7 +432,7 @@ end
 --------------------------------------------------------------------------------
 
 local frame = CreateFrame("Frame")
-frame:SetScript("OnEvent", function()
+Perf.SetScript(frame, "OnEvent", function()
 	if M.isEnabled then
 		RefreshAll()
 	end

@@ -25,6 +25,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Auras")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("Auras", {
 	title = "Buffs & Debuffs",
@@ -334,7 +336,7 @@ local function GameBars(hide)
 	gameBarsHidden = hide
 end
 
-combatWatcher:SetScript("OnEvent", function(self)
+Perf.SetScript(combatWatcher, "OnEvent", function(self)
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	if pendingBars ~= nil then
 		GameBars(pendingBars)
@@ -537,7 +539,7 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		local uf = PlateOf(unit)
 		if uf then

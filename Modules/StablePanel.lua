@@ -62,6 +62,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("StablePanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("StablePanel", {
@@ -535,9 +537,11 @@ local function SkinSlot(b)
 		local name = (rim.base or "buttons/rim") .. "_normal"
 		local piece = Kit:Piece(name)
 		local l, r, t, bt = Kit:Insets(name, 1)
-		local okS, rw, rh = pcall(rim.GetSize, rim)
+		-- measured as drawn: a rim not laid out yet reads as its whole atlas
+		-- sheet (Kit:DrawnSize; the bags' slots, user 2026-09-24)
+		local rw, rh = Kit:DrawnSize(rim)
 		opening:ClearAllPoints()
-		if piece and l and okS and rw and rh and not Secret(rw) and not Secret(rh) and rw > 0 and rh > 0 then
+		if piece and l and rw > 0 and rh > 0 then
 			opening:SetPoint("TOPLEFT", rim, "TOPLEFT", rw * l / piece.w, -rh * t / piece.h)
 			opening:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -rw * r / piece.w, rh * bt / piece.h)
 		else
@@ -714,8 +718,18 @@ local function Deactivate()
 	end
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the window has never been shown this session: a
+-- skin already built is switched on (and off), else only a window open right
+-- now (a /reload with it open) is dressed at once; its first show dresses it
+-- (the OnShow hook below), in that same frame, so it never draws undressed.
+-- The window's mover (UI Modifications) comes with the kit's shell, so it too
+-- first exists on that show (its saved place put back there); a stable the
+-- kit was switched off for before it ever opened has none, as with the kit
+-- off at login (the stable has no plain grab of its own).
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -731,17 +745,33 @@ local function SyncSafe()
 	end
 end
 
+-- The first show in combat dresses at once all the same: the dressing adds
+-- frames and textures of ours (the pet slots only get textures and frames
+-- added) and moves or sizes only the window's own portrait and title, never
+-- a protected frame (the stable has none). A window the game protects waits
+-- for the fight's end, as before.
+local function DressOnShow()
+	local f = Window()
+	local ok, protected = pcall(f.IsProtected, f)
+	if InCombatLockdown() and ok and not Secret(protected) and not protected then
+		Sync()
+	else
+		SyncSafe()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			DressOnShow()     -- (Activate refreshes what it dressed)
+		else
+			Refresh()
 		end
-		Refresh()
 	end)
 	-- the window's own refresh and pet selection (methods of its instance)
 	for _, method in ipairs({ "Update", "SelectPet" }) do
@@ -751,10 +781,11 @@ local function Hook()
 	end
 end
 
--- The stable may be load on demand (Blizzard_StableUI): dressed when that
--- addon loads, or at once if it already has.
+-- The stable may be load on demand (Blizzard_StableUI; this client loads it
+-- with the interface): hooked when that addon loads, or at once if it
+-- already has, and dressed as it first shows.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self, _, name)
+Perf.SetScript(eventFrame, "OnEvent", function(self, _, name)
 	if (name == ADDON or Window()) and Window() then
 		self:UnregisterEvent("ADDON_LOADED")
 		Hook()
@@ -900,6 +931,9 @@ SlashCmdList.MELLOSTABLEDUMP = function(msg)
 	if not f then
 		MelloUI:Print("/stabledump: no PetStableFrame or StableFrame: not on this client (or %s not loaded yet: visit a stable master, "
 			.. "then try again)", ADDON)
+	elseif not skin then
+		MelloUI:Print("/stabledump: the stable is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: visit a stable master, then try again" or "the Pet Stable Kit is off")
 	elseif msg == "" then
 		Summary(f)
 	else

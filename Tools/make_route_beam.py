@@ -21,9 +21,9 @@ import os
 import random
 
 from PIL import Image, ImageFilter
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
-ADDON = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ADDON, "Media", "Textures", "Route")
+OUT = master("Textures", "Route")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 SEED = 4711
 
 

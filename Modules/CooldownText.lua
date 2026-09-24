@@ -15,6 +15,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CooldownText")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("CooldownText", {
 	title = "Cooldown Timers",
@@ -82,6 +84,21 @@ local requestedHidden = setmetatable({}, { __mode = "k" }) -- [cooldown] = what 
 local hidingNumbers = false
 local hooksInstalled = false
 
+-- The 10/s tick (below) runs only while a timer counts or a cooldown waits
+-- for its nameplate; anything that starts either wakes it. A timer that
+-- sets itself again, not a script on every frame (a long cooldown kept one
+-- running for its whole length -- /melloperf, 2026-09-24).
+local TICK = 0.1
+local ticking = false
+local Tick   -- the tick itself, below
+
+local function Wake()
+	if not ticking then
+		ticking = true
+		C_Timer.After(TICK, Tick)
+	end
+end
+
 local function IsPlainNumber(v)
 	if type(v) ~= "number" then
 		return false
@@ -142,10 +159,16 @@ local function GetTimer(cooldown)
 end
 
 local function StopTimer(cooldown, restoreNative)
+	local timer = timers[cooldown]
+	-- nothing counting, nothing waiting and nothing to put back: the game
+	-- clears and re-sets cooldowns all the time (some on every frame), and a
+	-- timer already stopped needs no second stop
+	if pending[cooldown] == nil and not (timer and (timer.expires or timer.nativeHidden ~= nil)) then
+		return
+	end
 	if cooldown.IsForbidden and cooldown:IsForbidden() then
 		return
 	end
-	local timer = timers[cooldown]
 	active[cooldown] = nil
 	pending[cooldown] = nil
 	if not timer then
@@ -235,7 +258,14 @@ local function StartTimer(cooldown, start, duration, modRate)
 		local entry = pending[cooldown]
 		local tries = entry and entry.tries or 0
 		if tries < 5 then
-			pending[cooldown] = { start = start, duration = duration, modRate = modRate, tries = tries + 1 }
+			-- the entry kept and filled again (a cooldown can wait through
+			-- several SetCooldowns)
+			if not entry then
+				entry = {}
+				pending[cooldown] = entry
+			end
+			entry.start, entry.duration, entry.modRate, entry.tries = start, duration, modRate, tries + 1
+			Wake()
 		else
 			pending[cooldown] = nil
 		end
@@ -267,6 +297,7 @@ local function StartTimer(cooldown, start, duration, modRate)
 		SetNativeNumbersHidden(cooldown, true)
 	end
 	active[cooldown] = true
+	Wake()
 	UpdateTimer(cooldown, timer, GetTime())
 end
 
@@ -274,23 +305,23 @@ end
 -- Update loop
 --------------------------------------------------------------------------------
 
-local driver = CreateFrame("Frame")
-local elapsedAcc = 0
-driver:SetScript("OnUpdate", function(_, elapsed)
-	elapsedAcc = elapsedAcc + elapsed
-	if elapsedAcc < 0.1 then
+local retry = {}   -- the waiting cooldowns of one tick, the list kept from tick to tick
+Tick = function()
+	-- cleared first: a tick that fails is started again by the next cooldown
+	ticking = false
+	if not M.isEnabled then
 		return
 	end
-	elapsedAcc = 0
 	local now = GetTime()
 	if next(pending) then
-		local retry = {}
+		local n = 0
 		for cooldown, entry in pairs(pending) do
-			retry[#retry + 1] = cooldown
-			retry[#retry + 1] = entry
+			retry[n + 1], retry[n + 2] = cooldown, entry
+			n = n + 2
 		end
-		for i = 1, #retry, 2 do
+		for i = 1, n, 2 do
 			local cooldown, entry = retry[i], retry[i + 1]
+			retry[i], retry[i + 1] = nil, nil
 			StartTimer(cooldown, entry.start, entry.duration, entry.modRate)
 		end
 	end
@@ -302,12 +333,29 @@ driver:SetScript("OnUpdate", function(_, elapsed)
 			active[cooldown] = nil
 		end
 	end
-end)
-driver:Hide()
+	-- nothing counting and nothing waiting: rest until StartTimer wakes it
+	-- (a retry above that found its nameplate has set it again already)
+	if next(active) ~= nil or next(pending) ~= nil then
+		Wake()
+	end
+end
 
 --------------------------------------------------------------------------------
 -- Hooks (shared Cooldown metatable)
 --------------------------------------------------------------------------------
+
+-- Blizzard asked for its own numbers shown or hidden (called guarded: one
+-- function for every call, no closure made per call)
+local function NumbersRequested(cooldown, hidden)
+	local wantsHidden = hidden and true or false
+	requestedHidden[cooldown] = wantsHidden
+	local timer = timers[cooldown]
+	if timer and active[cooldown] and not wantsHidden then
+		-- Blizzard wants its numbers back while ours are showing; keep ours.
+		timer.nativeHidden = false
+		SetNativeNumbersHidden(cooldown, true)
+	end
+end
 
 local function InstallHooks()
 	if hooksInstalled then
@@ -336,6 +384,8 @@ local function InstallHooks()
 			end
 		end)
 	end
+	-- every cooldown in the game is cleared through here, some on every
+	-- frame: StopTimer returns at once for one that is not ours
 	hooksecurefunc(index, "Clear", function(cooldown)
 		StopTimer(cooldown, true)
 	end)
@@ -344,16 +394,7 @@ local function InstallHooks()
 			return
 		end
 		-- 'hidden' can derive from a secret aura duration; never let that raise.
-		pcall(function()
-			local wantsHidden = hidden and true or false
-			requestedHidden[cooldown] = wantsHidden
-			local timer = timers[cooldown]
-			if timer and active[cooldown] and not wantsHidden then
-				-- Blizzard wants its numbers back while ours are showing; keep ours.
-				timer.nativeHidden = false
-				SetNativeNumbersHidden(cooldown, true)
-			end
-		end)
+		pcall(NumbersRequested, cooldown, hidden)
 	end)
 end
 
@@ -368,11 +409,11 @@ end
 function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
-	driver:Show()
+	Wake()
 end
 
 function M:OnDisable()
-	driver:Hide()
+	-- the tick stops at its next turn (the module is off)
 	for cooldown in pairs(timers) do
 		StopTimer(cooldown, true)
 	end
@@ -393,5 +434,5 @@ function M:OnSettingChanged(key, value, db)
 	end
 end
 
-MelloUI:Profile("CooldownText", "timer tick (10/s)", driver)
+MelloUI:Profile("CooldownText", "timer tick (10/s)", Tick)
 MelloUI:Profile("CooldownText", "cooldown hooks", StartTimer)

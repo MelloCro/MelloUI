@@ -12,10 +12,11 @@ source at the same scale (see make_professions_frame.py: stone_tile()),
 """
 import os
 from PIL import Image
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "stone-dark-tile.png")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "StoneDarkTile.tga")
+OUT = master("Textures", "StoneDarkTile.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 TILE_W, TILE_H = 1024, 512
 
 tile = Image.open(SRC).convert("RGBA").resize((TILE_W, TILE_H), Image.LANCZOS)

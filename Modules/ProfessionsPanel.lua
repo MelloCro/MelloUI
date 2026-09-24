@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ProfessionsPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local LOOKS = Kit.buttonLooks
@@ -362,8 +364,8 @@ local function SkinRecipeRow(row)
 		local hover = Replace(row.HighlightOverlay, { as = "Professions_Recipe_Hover", rect = row.HighlightOverlay, level = -1 })
 		if hover then
 			hover:SetShown(false)
-			row:HookScript("OnEnter", function() if active then hover:SetShown(true) end end)
-			row:HookScript("OnLeave", function() if active then hover:SetShown(false) end end)
+			Perf.HookScript(row, "OnEnter", function() if active then hover:SetShown(true) end end)
+			Perf.HookScript(row, "OnLeave", function() if active then hover:SetShown(false) end end)
 			row.melloRep = hover
 		end
 	end
@@ -611,8 +613,8 @@ local function SkinCraftingPage(page)
 					end
 				end
 				hooksecurefunc(border, "SetVertexColor", Tint)
-				out:HookScript("OnEnter", Tint)      -- after the rim's own state change
-				out:HookScript("OnLeave", Tint)
+				Perf.HookScript(out, "OnEnter", Tint)      -- after the rim's own state change
+				Perf.HookScript(out, "OnLeave", Tint)
 				Tint()
 				-- the game shows the border for the item's quality and hides it otherwise
 				local function Follow()
@@ -721,7 +723,7 @@ local function SkinCraftingPage(page)
 							enable()
 							Bind()
 						end
-						spin:HookScript("OnShow", function()
+						Perf.HookScript(spin, "OnShow", function()
 							if active then
 								Bind()
 							end
@@ -813,7 +815,7 @@ local function SkinCraftingPage(page)
 		-- is not called on every path: the labels were never placed -- user,
 		-- 2026-09-24, /profdump create): again each time the page shows, a
 		-- frame after it has laid itself out
-		page:HookScript("OnShow", function()
+		Perf.HookScript(page, "OnShow", function()
 			C_Timer.After(0, Bind)
 		end)
 		if active then
@@ -1218,8 +1220,19 @@ local function Deactivate()
 	InkSurface()
 end
 
+-- Dressed on the window's first open (user, 2026-09-24: "dress rarely used
+-- windows on first open"): Blizzard_Professions loads on demand, but other
+-- UI can pull it in before the window opens (the tracker's recipes, a
+-- profession alert), and nothing of the look is built while the window has
+-- never been shown. Its OnShow (Hook) builds it before the first frame is
+-- drawn, and it then stays built for the session, switched with the module.
+-- In combat too: the skin adds frames and textures of ours, fits the
+-- portrait, the rank bars' fills and the side tabs, and re-anchors the create
+-- buttons and the count spinner's arrows, none of them secure; the book
+-- page's spell buttons (secure) only get a rim of ours, never moved.
 local function Sync()
-	if M.isEnabled and ProfessionsFrame then
+	local pf = ProfessionsFrame
+	if M.isEnabled and pf and (skin or pf:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -1231,7 +1244,7 @@ local function Hook()
 		return
 	end
 	hooked = true
-	ProfessionsFrame:HookScript("OnShow", function()
+	Perf.HookScript(ProfessionsFrame, "OnShow", function()
 		Sync()
 		M:RefreshFollowers()
 		M:RefreshTabs()
@@ -1254,7 +1267,7 @@ end
 
 -- Blizzard_Professions is loaded on demand: wait for it.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_Professions" and M.isEnabled then
 		Hook()
 		Sync()
@@ -1330,6 +1343,9 @@ local function ProfDump(msg)
 	if not pf then
 		MelloUI:Print("Professions window not loaded.")
 		return
+	end
+	if not skin then
+		MelloUI:Print("Professions window not dressed yet (it is dressed on its first open): the game's own art only.")
 	end
 	local function Rect(label, f, extra)
 		local ok, l, b, w, h = pcall(function() return f:GetRect() end)

@@ -11,12 +11,19 @@
 -- frame level, layer): check all of them before mapping. Not a module with settings; other
 -- modules use MelloUI.Kit. `/kitdemo [scale]` shows every block in one window.
 --
--- Files are 2x art; Kit.scale is how many UI units one file pixel covers
--- (0.375 = the "1x is 0.75 UI units" rule the painted bars use).
+-- Pieces are 2x art; Kit.scale is how many UI units one painted pixel covers
+-- (0.375 = the "1x is 0.75 UI units" rule the painted bars use). The files
+-- are BLP or TGA made from the TGA masters (outside the addon) by
+-- Tools/texture_pack.py ship, the small pieces packed into atlas sheets.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Kit")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+-- one handler for every object it is hooked on, wrapped once (user,
+-- 2026-09-24: the shared handlers, low-risk steps only)
+local Shared = Perf.Shared or function(_, fn) return fn end
 
 local LAYOUT = MelloUI_KitLayout
 local PIECES = LAYOUT and LAYOUT.pieces or {}
@@ -304,8 +311,8 @@ function Kit:ParchmentSheet(skin, watch, opts)
 	end
 	watch = watch or skin
 	if watch.HookScript then
-		watch:HookScript("OnSizeChanged", Fit)
-		watch:HookScript("OnShow", Fit)
+		Perf.HookScript(watch, "OnSizeChanged", Fit)
+		Perf.HookScript(watch, "OnShow", Fit)
 	end
 	Fit()
 	if opts.area then
@@ -318,7 +325,8 @@ function Kit:ParchmentSheet(skin, watch, opts)
 end
 
 -- Every file the kit draws from, as full paths, each once (the painted-edge
--- masks with them).
+-- masks with them). Pieces packed into one atlas sheet share its file, so
+-- a look holds about a third of the files it did as one file per piece.
 function Kit:KitFiles()
 	local files, seen = {}, {}
 	for _, list in ipairs({ self.edgeMasks, self.edgeMasksFine, self.edgeMasksWide }) do
@@ -331,6 +339,15 @@ function Kit:KitFiles()
 		if file and not seen[file] then
 			seen[file] = true
 			files[#files + 1] = file
+		end
+	end
+	-- the one-texture rails' pictures, while the rails are drawn so
+	if Kit.SliceFiles then
+		for _, file in ipairs(Kit:SliceFiles()) do
+			if not seen[file] then
+				seen[file] = true
+				files[#files + 1] = file
+			end
 		end
 	end
 	table.sort(files)
@@ -525,20 +542,31 @@ local function ShadeTexture(tex)
 	tex.kitShading = nil
 end
 
+-- The tint a module gives a kit texture, kept as its base and shaded. One
+-- handler for every kit texture: all it keeps is on the texture itself
+local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function(t, r, g, b)
+	if t.kitShading then
+		return
+	end
+	-- kept in the one table (a hover tints a whole skin's pieces: no new
+	-- table per piece per hover)
+	local base = t.kitBase
+	if base then
+		base[1], base[2], base[3] = r or 1, g or 1, b or 1
+	else
+		t.kitBase = { r or 1, g or 1, b or 1 }
+	end
+	if Kit.shade < 1 then
+		ShadeTexture(t)
+	end
+end)
+
 function Kit:RegisterTexture(tex)
 	if SHADED[tex] then
 		return
 	end
 	SHADED[tex] = true
-	hooksecurefunc(tex, "SetVertexColor", function(t, r, g, b)
-		if t.kitShading then
-			return
-		end
-		t.kitBase = { r or 1, g or 1, b or 1 }
-		if Kit.shade < 1 then
-			ShadeTexture(t)
-		end
-	end)
+	hooksecurefunc(tex, "SetVertexColor", OnKitVertexColour)
 	if self.shade < 1 then
 		ShadeTexture(tex)
 	end
@@ -561,7 +589,10 @@ function Kit:SetShade(shade)
 end
 
 -- Put a piece on an existing texture. Repeatable pieces get the REPEAT wrap
--- mode; call Kit:Retile(tex) whenever their size changes.
+-- mode; call Kit:Retile(tex) whenever their size changes. A small piece's
+-- file is an atlas sheet it shares with others (KitLayout.lua; see
+-- Kit:ApplyTuning): its uv is its rectangle there, so whatever crops or
+-- mirrors a piece works inside p.uv, never on 0..1 of the file.
 -- BACKGROUNDS keep one resolution across the whole UI (user, 2026-09-23:
 -- "Scaling something should not stretch the Background artwork, it should
 -- dynamically expand it and the background resolution should stay
@@ -579,7 +610,30 @@ local function IsBackground(name)
 	return name:find("^tiles/") ~= nil or name:find("_body$") ~= nil
 end
 
-function Kit:Apply(tex, name)
+-- The share of one repeat a tiled texture spans on an axis, and where it
+-- starts (Kit:Retile's, below; out here, not in it, so a retile makes no
+-- closure: every skin's, holder's and tile rect's show and resize runs it,
+-- and a tab click still made garbage -- review, 2026-09-24)
+local function RetileSpan(align, size, repeatSize, from, centred, far)
+	local f = size / repeatSize
+	if align == "screen" then
+		return f, (from % repeatSize) / repeatSize
+	elseif centred then
+		return f, (1 - f) / 2
+	elseif far then
+		return f, 1 - f
+	end
+	return f, 0
+end
+
+-- a texture's left and top edges (Kit:Retile's, for pcall without a closure)
+local function RetileTopLeft(tex)
+	return tex:GetLeft(), tex:GetTop()
+end
+
+-- `later`: the caller lays the repeat itself once the texture is placed (a
+-- nine-slice's body and rails, tiled together when the skin is done)
+function Kit:Apply(tex, name, later)
 	local p = PIECES[name]
 	if not p then
 		tex:SetTexture(nil)
@@ -598,11 +652,13 @@ function Kit:Apply(tex, name)
 		BACKGROUNDS[tex] = true
 	end
 	self:RegisterTexture(tex)
-	if p.tile then
+	if p.tile and not later then
 		self:Retile(tex)
 	end
 	return true
 end
+
+local ApplySlice   -- a one-texture nine-slice's picture on its texture (with the nine-slices, below)
 
 -- Kit Colours changed: every kit texture shown again from the chosen look's
 -- folder, where it is (its texture coordinates -- a strip's tiling, a mirror,
@@ -621,6 +677,9 @@ function Kit:SetKitColours(value)
 			if #coords == 8 then
 				tex:SetTexCoord(unpack(coords))
 			end
+		elseif type(p) == "table" and p.tile == "slice" then
+			-- a skin's rails as one texture: the look's picture, cut as before
+			ApplySlice(tex, p)
 		end
 	end
 end
@@ -660,34 +719,22 @@ function Kit:Retile(tex)
 	local align = background and tex.kitAlign or nil
 	local left, top
 	if align == "screen" then
-		local okP, l, t = pcall(function() return tex:GetLeft(), tex:GetTop() end)
+		local okP, l, t = pcall(RetileTopLeft, tex)
 		if okP and l and t and not Secret(l) and not Secret(t) then
 			left, top = l, t
 		else
 			align = nil
 		end
 	end
-	-- the share of one repeat the texture spans on an axis, and where it starts
-	local function Span(size, repeatSize, from, centred, far)
-		local f = size / repeatSize
-		if align == "screen" then
-			return f, (from % repeatSize) / repeatSize
-		elseif centred then
-			return f, (1 - f) / 2
-		elseif far then
-			return f, 1 - f
-		end
-		return f, 0
-	end
 	local u1, u2, v1, v2 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
 	local du, dv = u2 - u1, v2 - v1
 	if p.tile:find("x") and w > 0 then
-		local f, o = Span(w, p.w * scale, left, align == "center" or align == "top" or align == "bottom")
+		local f, o = RetileSpan(align, w, p.w * scale, left, align == "center" or align == "top" or align == "bottom")
 		u1 = u1 + du * o
 		u2 = u1 + du * f
 	end
 	if p.tile:find("y") and h > 0 then
-		local f, o = Span(h, p.h * scale, top and -top, align == "center", align == "bottom")
+		local f, o = RetileSpan(align, h, p.h * scale, top and -top, align == "center", align == "bottom")
 		v1 = v1 + dv * o
 		v2 = v1 + dv * f
 	end
@@ -793,7 +840,7 @@ do
 	local ev = CreateFrame("Frame")
 	ev:RegisterEvent("UI_SCALE_CHANGED")
 	ev:RegisterEvent("DISPLAY_SIZE_CHANGED")
-	ev:SetScript("OnEvent", function()
+	Perf.SetScript(ev, "OnEvent", function()
 		Schedule("uiscale")
 	end)
 	-- the settings themselves, for a client that changes the scale without
@@ -934,28 +981,63 @@ local FALLBACK = {
 }
 local REST = { "normal", "off", "plain", "closed" }
 
+-- What each condition shows in a family, looked up once per family: this
+-- runs on every hover, press and SetChecked of every rim and plate, and the
+-- lookups built names (garbage) each time. Emptied when the tuning changes
+-- the pieces (Kit:ApplyTuning).
+local resolved = {}   -- [base] = { disabled = , pressed = , checked = , hover = , rest = } (a state, or false)
+
+local function Resolution(base)
+	local r = resolved[base]
+	if r then
+		return r
+	end
+	r = {}
+	for want, list in pairs(FALLBACK) do
+		r[want] = false
+		for _, s in ipairs(list) do
+			if PIECES[base .. "_" .. s] then
+				r[want] = s
+				break
+			end
+		end
+	end
+	r.rest = false
+	for _, s in ipairs(REST) do
+		if PIECES[base .. "_" .. s] then
+			r.rest = s
+			break
+		end
+	end
+	if not r.rest then
+		r.rest = Kit:FirstStateOf(base) or false
+	end
+	resolved[base] = r
+	return r
+end
+
 function Kit:ResolveState(base, hover, pressed, checked, disabled)
 	-- in priority order, each condition only if a piece for it exists: a
 	-- family without a disabled piece shows a disabled AND checked button
 	-- as checked (the game disables the selected category tab; the slot
 	-- rim then lost its gold on a reload — user, 2026-09-22)
-	-- (`or false`: a nil flag would leave a hole in the list and ipairs
-	-- would stop there — every checked box showed as off, user 2026-09-22)
-	for _, want in ipairs({ disabled and "disabled" or false, pressed and "pressed" or false, checked and "checked" or false, hover and "hover" or false }) do
-		if want then
-			for _, s in ipairs(FALLBACK[want]) do
-				if PIECES[base .. "_" .. s] then
-					return s
-				end
-			end
-		end
+	-- (each flag tested on its own: a list of them once had a hole where a
+	-- flag was nil and ipairs stopped there — every checked box showed as
+	-- off, user 2026-09-22)
+	local r = Resolution(base)
+	if disabled and r.disabled then
+		return r.disabled
 	end
-	for _, s in ipairs(REST) do
-		if PIECES[base .. "_" .. s] then
-			return s
-		end
+	if pressed and r.pressed then
+		return r.pressed
 	end
-	return self:FirstStateOf(base)
+	if checked and r.checked then
+		return r.checked
+	end
+	if hover and r.hover then
+		return r.hover
+	end
+	return r.rest or nil
 end
 
 --------------------------------------------------------------------------------
@@ -972,12 +1054,17 @@ end
 -- corners to leave mitred (e.g. "tl" where a portrait ring is the corner).
 -- The skin fills `parent`; keep content inside Kit:NineSliceInset(skin).
 -- skin:SetTint(r, g, b) colours the edges.
+-- While `/mellokit slices` is on the edges and mitred corners are one texture
+-- (skin.slice; below): skin.t / .b / .l / .r are then not made, and
+-- Kit:RailAnchor(skin, side) stands in for them (`railAnchors = true` makes
+-- all four at once); `slices = true / false` overrides the switch.
 --------------------------------------------------------------------------------
 
+-- (tiled by NineSlice_Retile once the skin's textures are placed)
 local function Tiled(skin, name, layer, sublevel, scale)
 	local tex = skin:CreateTexture(nil, layer, nil, sublevel)
 	tex.kitScale = scale
-	Kit:Apply(tex, name)
+	Kit:Apply(tex, name, true)
 	return tex
 end
 
@@ -986,43 +1073,266 @@ local function NineSlice_Retile(self)
 		Kit:Retile(tex)
 	end
 end
+-- one handler for every skin's OnSizeChanged and OnShow (user, 2026-09-24:
+-- the shared handlers), the skin being the frame the script runs on
+local NineSlice_OnSize = Shared("OnSizeChanged on a kit nine-slice", NineSlice_Retile, "script")
+local NineSlice_OnShow = Shared("OnShow on a kit nine-slice", NineSlice_Retile, "script")
 
-function Kit:NineSlice(parent, opts)
-	opts = opts or {}
+--------------------------------------------------------------------------------
+-- One-texture nine-slices (user, 2026-09-24: stage 2 of the performance
+-- programme, behind a switch that is off by default; `/mellokit slices
+-- on|off`, `/mellokit slicetest` to compare). A rail family's eight pieces
+-- laid into ONE picture by Tools/build_nineslice.py (Media\<look>\slices\,
+-- described by Media\KitSlices.lua): the corners at the corners, whole
+-- repeats of each edge between them, an empty middle. The client cuts it by four
+-- margins (SetTextureSliceMargins: left, top, right, bottom, in the file's
+-- texels from the edges of the texture's crop) and repeats the edges itself
+-- (UITextureSliceMode.Tiled; taken as from the start of each edge, as
+-- Kit:Retile lays the pieces -- the test window shows it), so a skin's rails
+-- are one texture instead of eight and nothing re-tiles them when the skin
+-- changes size. The texture is scaled so a corner covers what the corner
+-- piece covers today (side x scale UI units). What stays its own texture:
+-- the body (a background, at the screen's one density), the gems and the
+-- ornament. A skin with a gem corner (a window's outer rail) stays in
+-- pieces altogether: under the gem the picture's corner would have to be
+-- empty, and the client's filtering then reads that emptiness at every
+-- repeat of the edge beside it -- a dark tick across the rail every repeat,
+-- and the gem corners are not solid enough over the joint to hide anything
+-- laid there instead (review, 2026-09-24). A family whose pieces were tuned
+-- or rebuilt since the pictures were made stays in pieces. Every texel is
+-- the pieces' own, so the rails' dark edge lines (their shadow) are as
+-- painted.
+--------------------------------------------------------------------------------
+
+local Slices = {
+	tiled = (Enum and Enum.UITextureSliceMode and Enum.UITextureSliceMode.Tiled) or 1,
+	families = {},   -- [prefix] = its MelloUI_KitSlices entry while its pieces are as built, or false; emptied by Kit:ApplyTuning
+	cuts = {},       -- [prefix .. open] = the picture as one skin shows it (a kitPiece for the texture)
+	api = nil,       -- whether this client's textures can be cut (known at the first try)
+	noted = nil,     -- the session's one notice given
+}
+
+-- The switch (MelloUI's own setting, off unless turned on)
+function Kit:SlicesOn()
+	local db = MelloUI.db
+	return (type(db) == "table" and db.kitSlices == true) or false
+end
+
+-- UI units one margin texel covers at texture scale 1 (taken as 1: the
+-- client drawing a slice's corner at its texel count in the texture's own
+-- units; /mellokit slicetest shows whether it does). A setting only so a
+-- client that measures otherwise can be matched without a new build:
+-- `/mellokit slices unit <n>`
+local function SliceUnit()
+	local db = MelloUI.db
+	local u = type(db) == "table" and tonumber(db.kitSliceUnit) or nil
+	return (u and u > 0) and u or 1
+end
+
+-- Media\KitSlices.lua's table (read when asked: nil while that file is not
+-- loaded, and the kit then draws in pieces)
+local function SliceData()
+	local data = _G.MelloUI_KitSlices
+	return type(data) == "table" and data or nil
+end
+
+-- The pictures' files in the chosen look while the switch is on (Preload
+-- Artwork holds them with the pieces); none while it is off
+function Kit:SliceFiles()
+	local files, data = {}, SliceData()
+	if data and self:SlicesOn() then
+		for prefix, entry in pairs(data) do
+			if entry.full then
+				files[#files + 1] = PieceRoot(prefix .. "_t") .. entry.full
+			end
+		end
+	end
+	return files
+end
+
+-- A family's entry, if its eight pieces still have the geometry the pictures
+-- were built from (a piece tuned in the kit editor, or rebuilt by build_kit
+-- without build_nineslice after it, keeps the family in pieces)
+local function SliceFamily(prefix)
+	local known = Slices.families[prefix]
+	if known ~= nil then
+		return known or nil
+	end
+	local data = SliceData()
+	local entry = data and data[prefix]
+	local ok = type(entry) == "table" and type(entry.pieces) == "table"
+	if ok then
+		for part, src in pairs(entry.pieces) do
+			local p = PIECES[prefix .. "_" .. part]
+			if not (p and p.file == src.file and p.w == src.w and p.h == src.h and type(p.uv) == "table") then
+				ok = false
+				break
+			end
+			for i = 1, 4 do
+				if math.abs((p.uv[i] or -1) - (src.uv[i] or -2)) > 1e-5 then
+					ok = false
+				end
+			end
+		end
+	end
+	Slices.families[prefix] = ok and entry or false
+	return ok and entry or nil
+end
+
+-- The picture as one skin shows it, cut down on the open sides (an open side
+-- has no edge and no corners; the edges then start at the rect's edge, as
+-- their pieces do there). Shared by every skin of that shape; `tile`
+-- "slice" keeps Kit:Retile and the tuning's crop off it.
+local function SliceCut(prefix, entry, oL, oR, oT, oB)
+	local key = prefix .. "|" .. (oL and "l" or "") .. (oR and "r" or "") .. (oT and "t" or "") .. (oB and "b" or "")
+	local cut = Slices.cuts[key]
+	if cut then
+		return cut
+	end
+	local file = entry.full
+	local c, gw, gh, fw, fh = entry.corner, entry.grid[1], entry.grid[2], entry.size[1], entry.size[2]
+	if not (file and c and gw and gh and fw and fh) then
+		return nil
+	end
+	local x1, x2 = oL and c or 0, oR and gw - c or gw
+	local y1, y2 = oT and c or 0, oB and gh - c or gh
+	local texel = entry.texel or 1
+	cut = {
+		prefix = prefix, file = file, texel = texel,
+		w = (x2 - x1) * texel, h = (y2 - y1) * texel,   -- painted px shown (/kitwhat)
+		uv = { x1 / fw, x2 / fw, y1 / fh, y2 / fh },
+		margins = { oL and 0 or c, oT and 0 or c, oR and 0 or c, oB and 0 or c },   -- left, top, right, bottom
+		open = (oL or oR or oT or oB) and ((oL and "l" or "") .. (oR and "r" or "") .. (oT and "t" or "") .. (oB and "b" or "")) or nil,
+		tile = "slice",
+	}
+	Slices.cuts[key] = cut
+	return cut
+end
+
+-- The picture on `tex`: file (in the chosen look), crop, margins, tiling
+function ApplySlice(tex, cut)
+	tex:SetTexture(PieceRoot(cut.prefix .. "_t") .. cut.file)
+	tex:SetTexCoord(cut.uv[1], cut.uv[2], cut.uv[3], cut.uv[4])
+	tex:SetTextureSliceMargins(cut.margins[1], cut.margins[2], cut.margins[3], cut.margins[4])
+	tex:SetTextureSliceMode(Slices.tiled)
+end
+
+-- The rails of `skin` as one texture, or nil (the switch off, a gem corner
+-- on the skin, the family not built or tuned, a client that cannot cut
+-- textures): the caller then lays the pieces. `force`: the test window's
+-- true / false over the switch. `was` / `unit`: the switch and the margin
+-- unit as they stood when a skin whose rails wait (NineSlice's `defer`) was
+-- made, so they are laid as they would have been then.
+local function NineSlice_Slice(skin, host, prefix, scale, layer, sub, gemCorners, skip, oL, oR, oT, oB, force, was, unit)
+	local want = force
+	if want == nil then
+		want = was
+	end
+	if want == nil then
+		want = Kit:SlicesOn()
+	end
+	if not want or Slices.api == false then
+		return nil
+	end
+	-- a gem corner standing in one of the corners: the skin stays in pieces
+	-- (above); a corner left mitred, or an open one, does not count
+	if gemCorners and ((not (oT or oL) and not skip:find("tl", 1, true)) or (not (oT or oR) and not skip:find("tr", 1, true))
+		or (not (oB or oL) and not skip:find("bl", 1, true)) or (not (oB or oR) and not skip:find("br", 1, true))) then
+		return nil
+	end
+	local entry = SliceFamily(prefix)
+	local cut = entry and SliceCut(prefix, entry, oL, oR, oT, oB)
+	if not cut then
+		if force == nil and not Slices.noted then
+			Slices.noted = true
+			MelloUI:Notice("Kit: no one-texture picture for %s (Media\\KitSlices.lua not loaded, or its pieces tuned): drawn in pieces.", tostring(prefix))
+		end
+		return nil
+	end
+	local tex = host:CreateTexture(nil, layer, nil, sub)
+	if Slices.api == nil then
+		Slices.api = (tex.SetTextureSliceMargins and tex.SetTextureSliceMode and tex.SetScale) and true or false
+		if not Slices.api then
+			tex:Hide()
+			MelloUI:Notice("Kit: this client cannot draw a texture as a nine-slice; the rails stay in pieces.")
+			return nil
+		end
+	end
+	ApplySlice(tex, cut)
+	tex:SetScale(scale * cut.texel / (unit or SliceUnit()))
+	tex:SetAllPoints(skin)
+	tex.kitPiece = cut
+	Kit:RegisterTexture(tex)
+	if force == nil and not Slices.noted then
+		Slices.noted = true
+		MelloUI:Notice("Kit: window rails drawn as one texture each (a test; /mellokit slices off goes back).")
+	end
+	return tex
+end
+
+-- The region along one side of a skin's rails ("t", "b", "l", "r"), to lay
+-- something by the rail's rect or centre line: the edge piece; on a skin
+-- drawn as one texture, an empty region where that edge would lie (made on
+-- first ask, drawn never), shown and hidden with the skin's textures. nil on
+-- an open side.
+function Kit:RailAnchor(skin, side)
+	if not skin then
+		return nil
+	end
+	local have = skin[side]
+	if have or not skin.slice then
+		return have
+	end
+	local cut = skin.slice.kitPiece
+	local open = type(cut) == "table" and cut.open or ""
+	if open:find(side, 1, true) then
+		return nil
+	end
+	local oL, oR, oT, oB = open:find("l") ~= nil, open:find("r") ~= nil, open:find("t") ~= nil, open:find("b") ~= nil
+	local T = skin.thickness or 0
+	local layer, sub = skin.slice:GetDrawLayer()
+	local anchor = skin.slice:GetParent():CreateTexture(nil, layer, nil, sub)
+	if side == "t" or side == "b" then
+		local point = side == "t" and "TOP" or "BOTTOM"
+		anchor:SetPoint(point .. "LEFT", skin, point .. "LEFT", oL and 0 or T, 0)
+		anchor:SetPoint(point .. "RIGHT", skin, point .. "RIGHT", oR and 0 or -T, 0)
+		anchor:SetHeight(T)
+	else
+		local point = side == "l" and "LEFT" or "RIGHT"
+		anchor:SetPoint("TOP" .. point, skin, "TOP" .. point, 0, oT and 0 or -T)
+		anchor:SetPoint("BOTTOM" .. point, skin, "BOTTOM" .. point, 0, oB and 0 or T)
+		anchor:SetWidth(T)
+	end
+	anchor.kitPiece = true   -- ours: never faded as the game's art
+	anchor:SetShown(skin.slice:IsShown())
+	skin[side] = anchor
+	table.insert(skin.all, anchor)
+	return anchor
+end
+
+-- a colour on the iron (the selected state of an attached tab). One function
+-- for every skin; a skin whose rails wait (`defer`, below) keeps the colour
+-- and its rails take it when they are laid
+local function NineSlice_SetTint(self, r, g, b)
+	if self.pendingArt then
+		self.tinted, self.tintR, self.tintG, self.tintB = true, r, g, b
+		return
+	end
+	for _, tex in ipairs(self.art) do
+		tex:SetVertexColor(r or 1, g or 1, b or 1)
+	end
+end
+
+-- The skin's textures (body, rails, corners, gems, ornament) and the scripts
+-- that tile them, from the options it was made with
+local function NineSlice_Art(skin, opts)
+	local self = Kit
 	local prefix = opts.prefix or "window/frame"
-	local scale = opts.scale or self.scale
-	local skin = CreateFrame("Frame", nil, parent)
-	skin:SetFrameStrata(parent:GetFrameStrata())
-	skin:SetFrameLevel(math.max(parent:GetFrameLevel() + (opts.level or 0), 0))
-	skin:EnableMouse(false)
-	skin:SetAllPoints(parent)
-	skin.melloSkin = true
-	skin.kitScale = scale
-	-- `owner`: the textures are REGIONS of that frame (drawn in ITS layer
-	-- stack: `bodyLayer` / `bodySub`, `edgeLayer` / `edgeSub`), the skin frame
-	-- only laying them out — a compact raid frame's rail above its fill and
-	-- under its icons. Show / Hide then toggle the regions.
+	local scale = skin.kitScale
 	local host = opts.owner or skin
 	local bodyLayer, bodySub = opts.bodyLayer or "BACKGROUND", opts.bodySub or 0
 	local edgeLayer, edgeSub = opts.edgeLayer or "BORDER", opts.edgeSub or 0
-	if opts.owner then
-		local show, hide = skin.Show, skin.Hide
-		skin.Show = function(self)
-			show(self)
-			for _, tex in ipairs(self.all) do tex:Show() end
-		end
-		skin.Hide = function(self)
-			hide(self)
-			for _, tex in ipairs(self.all) do tex:Hide() end
-		end
-		skin.SetShown = function(self, shown) if shown then self:Show() else self:Hide() end end
-	end
-	skin.all = {}
-
-	local T = self:Size(prefix .. "_tl", scale)   -- corner = edge thickness
-	skin.thickness = T
-	skin.tiled = {}
-	skin.art = {}
+	local T = skin.thickness
 	local open = opts.open or ""
 	local oL, oR, oT, oB = open:find("l") ~= nil, open:find("r") ~= nil, open:find("t") ~= nil, open:find("b") ~= nil
 
@@ -1042,6 +1352,17 @@ function Kit:NineSlice(parent, opts)
 		table.insert(skin.all, body)
 	end
 
+	-- the rails as one texture while the switch is on (opts.slices: the test
+	-- window's own choice): the edges and the mitred corners below are then
+	-- in it, in the edges' layer
+	local slice = NineSlice_Slice(skin, host, prefix, scale, edgeLayer, edgeSub, gemCorners, skip, oL, oR, oT, oB, opts.slices,
+		skin.slicesWas, skin.sliceUnit)
+	if slice then
+		skin.slice = slice
+		table.insert(skin.art, slice)
+		table.insert(skin.all, slice)
+	end
+
 	-- edges run to the rect's edge on an open side (no corner there)
 	local edges = {
 		t = { "TOPLEFT", oL and 0 or T, 0, "TOPRIGHT", oR and 0 or -T, 0, skip = oT },
@@ -1050,7 +1371,7 @@ function Kit:NineSlice(parent, opts)
 		r = { "TOPRIGHT", 0, oT and 0 or -T, "BOTTOMRIGHT", 0, oB and 0 or T, skip = oR },
 	}
 	for e, a in pairs(edges) do
-		if not a.skip then
+		if not a.skip and not slice then
 			local tex = Tiled(host, prefix .. "_" .. e, edgeLayer, edgeSub, scale)
 			tex:SetPoint(a[1], skin, a[1], a[2], a[3])
 			tex:SetPoint(a[4], skin, a[4], a[5], a[6])
@@ -1071,11 +1392,14 @@ function Kit:NineSlice(parent, opts)
 		if not a[2] then
 			local gem = gemCorners and not skip:find(c, 1, true)
 			if not gem then
-				local tex = self:Texture(host, prefix .. "_" .. c, edgeLayer, edgeSub + 1, scale)
-				tex:SetPoint(a[1], skin, a[1])
-				skin[c] = tex
-				table.insert(skin.art, tex)
-				table.insert(skin.all, tex)
+				-- (one texture: in the picture)
+				if not slice then
+					local tex = self:Texture(host, prefix .. "_" .. c, edgeLayer, edgeSub + 1, scale)
+					tex:SetPoint(a[1], skin, a[1])
+					skin[c] = tex
+					table.insert(skin.art, tex)
+					table.insert(skin.all, tex)
+				end
 			else
 				-- the painted corner, anchored past the frame's corner by its overhang
 				local name = prefix .. "_gem_" .. c
@@ -1091,6 +1415,99 @@ function Kit:NineSlice(parent, opts)
 			end
 		end
 	end
+	-- `railAnchors`: a region per side on one texture, for a skin whose
+	-- rails' rects are read as skin.t / .b / .l / .r (sheets and dims laid
+	-- clear of the rails, something riding a rail's centre line). The
+	-- window's outer rail, which the character window reads so, has gem
+	-- corners and stays in pieces.
+	if slice and opts.railAnchors then
+		for _, side in ipairs({ "t", "b", "l", "r" }) do
+			self:RailAnchor(skin, side)
+		end
+	end
+
+	if opts.gems ~= false and PIECES["deco/gem_large"] then
+		skin.gems = {}
+		for c, point in pairs(corners) do
+			local gem = self:Texture(skin, c == "tl" and "deco/gem_large" or "deco/gem_small", "ARTWORK", 1, scale)
+			local sx = (c == "tl" or c == "bl") and 1 or -1
+			local sy = (c == "tl" or c == "tr") and -1 or 1
+			gem:SetPoint("CENTER", skin, point, sx * T / 2, sy * T / 2)
+			skin.gems[c] = gem
+		end
+	end
+	local ornName = (prefix:gsub("frame$", "corner_ornament_tl"))
+	if opts.ornament and PIECES[ornName] then
+		local orn = self:Texture(skin, ornName, "ARTWORK", 2, scale)
+		orn:SetPoint("TOPLEFT", -4 * scale, 4 * scale)
+		skin.ornament = orn
+	end
+
+	Perf.SetScript(skin, "OnSizeChanged", NineSlice_OnSize)
+	-- a skin sized while hidden gets no OnSizeChanged on this client (the
+	-- configurator's sections behind the first tab: one tile stretched over
+	-- the box, "blurred" — user, 2026-09-22): tiled again when it shows
+	Perf.HookScript(skin, "OnShow", NineSlice_OnShow)
+	NineSlice_Retile(skin)
+end
+
+-- A skin whose rails wait (`defer`) laid now, with the colour given to it
+-- meanwhile. True when it was laid here.
+local function NineSlice_Lay(skin)
+	local opts = skin and skin.pendingArt
+	if not opts then
+		return false
+	end
+	skin.pendingArt = nil
+	NineSlice_Art(skin, opts)
+	if skin.tinted then
+		skin.tinted = nil
+		NineSlice_SetTint(skin, skin.tintR, skin.tintG, skin.tintB)
+	end
+	return true
+end
+
+-- `defer` (a panel tab's open card, Kit:SkinPanelTab): the skin frame is
+-- made at once, in its place among its siblings, but its textures and
+-- scripts wait for NineSlice_Lay, when the card is first shown (user,
+-- 2026-09-24: a tab's two cards were ~200 engine calls, and only one of
+-- them is ever seen at a time). Not for a skin whose textures are an
+-- owner's regions or that has gem corners (SetTopGems reads them).
+function Kit:NineSlice(parent, opts)
+	opts = opts or {}
+	local prefix = opts.prefix or "window/frame"
+	local scale = opts.scale or self.scale
+	local skin = CreateFrame("Frame", nil, parent)
+	skin:SetFrameStrata(parent:GetFrameStrata())
+	skin:SetFrameLevel(math.max(parent:GetFrameLevel() + (opts.level or 0), 0))
+	skin:EnableMouse(false)
+	skin:SetAllPoints(parent)
+	skin.melloSkin = true
+	skin.kitScale = scale
+	-- `owner`: the textures are REGIONS of that frame (drawn in ITS layer
+	-- stack: `bodyLayer` / `bodySub`, `edgeLayer` / `edgeSub`), the skin frame
+	-- only laying them out — a compact raid frame's rail above its fill and
+	-- under its icons. Show / Hide then toggle the regions.
+	local host = opts.owner or skin
+	local edgeLayer, edgeSub = opts.edgeLayer or "BORDER", opts.edgeSub or 0
+	if opts.owner then
+		local show, hide = skin.Show, skin.Hide
+		skin.Show = function(self)
+			show(self)
+			for _, tex in ipairs(self.all) do tex:Show() end
+		end
+		skin.Hide = function(self)
+			hide(self)
+			for _, tex in ipairs(self.all) do tex:Hide() end
+		end
+		skin.SetShown = function(self, shown) if shown then self:Show() else self:Hide() end end
+	end
+	skin.all = {}
+
+	local T = self:Size(prefix .. "_tl", scale)   -- corner = edge thickness
+	skin.thickness = T
+	skin.tiled = {}
+	skin.art = {}
 
 	-- The top gem corners give way to a title plate riding the top rail (its
 	-- caps' own gems sit there): plain corners in their place, made when first
@@ -1115,36 +1532,20 @@ function Kit:NineSlice(parent, opts)
 		end
 	end
 
-	-- a colour on the iron (the selected state of an attached tab)
-	skin.SetTint = function(self, r, g, b)
-		for _, tex in ipairs(self.art) do
-			tex:SetVertexColor(r or 1, g or 1, b or 1)
-		end
-	end
+	skin.SetTint = NineSlice_SetTint
 
-	if opts.gems ~= false and PIECES["deco/gem_large"] then
-		skin.gems = {}
-		for c, point in pairs(corners) do
-			local gem = self:Texture(skin, c == "tl" and "deco/gem_large" or "deco/gem_small", "ARTWORK", 1, scale)
-			local sx = (c == "tl" or c == "bl") and 1 or -1
-			local sy = (c == "tl" or c == "tr") and -1 or 1
-			gem:SetPoint("CENTER", skin, point, sx * T / 2, sy * T / 2)
-			skin.gems[c] = gem
+	if opts.defer and not opts.owner and opts.corners ~= "gem" then
+		-- the switch and its unit as they are now (read again later, they
+		-- could have come in with the saved settings meanwhile)
+		skin.slicesWas = opts.slices
+		if skin.slicesWas == nil then
+			skin.slicesWas = self:SlicesOn()
 		end
+		skin.sliceUnit = SliceUnit()
+		skin.pendingArt = opts
+		return skin
 	end
-	local ornName = (prefix:gsub("frame$", "corner_ornament_tl"))
-	if opts.ornament and PIECES[ornName] then
-		local orn = self:Texture(skin, ornName, "ARTWORK", 2, scale)
-		orn:SetPoint("TOPLEFT", -4 * scale, 4 * scale)
-		skin.ornament = orn
-	end
-
-	skin:SetScript("OnSizeChanged", NineSlice_Retile)
-	-- a skin sized while hidden gets no OnSizeChanged on this client (the
-	-- configurator's sections behind the first tab: one tile stretched over
-	-- the box, "blurred" — user, 2026-09-22): tiled again when it shows
-	skin:HookScript("OnShow", NineSlice_Retile)
-	NineSlice_Retile(skin)
+	NineSlice_Art(skin, opts)
 	return skin
 end
 
@@ -1353,7 +1754,7 @@ function Kit:Strip(parent, base, opts)
 	f.capR:SetSize(wr, h)
 	f.mid:SetPoint("TOPLEFT", f, "TOPLEFT", wl, 0)
 	f.mid:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -wr, 0)
-	f:SetScript("OnSizeChanged", function(self)
+	Perf.SetScript(f, "OnSizeChanged", function(self)
 		Kit:Retile(self.mid)
 	end)
 	f:SetState(state)
@@ -1432,7 +1833,7 @@ function Kit:VStrip(parent, base, opts)
 	f:SetSize(w, 3 * capH)
 	f.capT:SetPoint("TOPLEFT")
 	f.capB:SetPoint("BOTTOMLEFT")
-	f:SetScript("OnSizeChanged", function(self)
+	Perf.SetScript(f, "OnSizeChanged", function(self)
 		self:Layout()
 	end)
 	f:SetState(state)
@@ -1474,7 +1875,7 @@ function Kit:Bar(parent, opts)
 	trough:SetPoint("TOPLEFT", -2 * scale, 0)
 	trough:SetPoint("BOTTOMRIGHT", 2 * scale, 0)
 	strip.trough = trough
-	fill:SetScript("OnSizeChanged", function()
+	Perf.SetScript(fill, "OnSizeChanged", function()
 		Kit:Retile(trough)
 	end)
 	Kit:Retile(trough)
@@ -1488,7 +1889,12 @@ end
 -- The icon is anchored into the opening when given.
 --------------------------------------------------------------------------------
 
+-- the rims whose hover is set, for the re-read after a mouse release (below);
+-- kept here, as a panel may set a rim's hover itself before its Update
+local hoverRims = setmetatable({}, { __mode = "k" })
+
 local function Slot_Update(rim)
+	hoverRims[rim] = rim.hover and true or nil
 	local b = rim.button
 	-- secret-safe, as the sweep below: this runs from the button's own
 	-- OnEnter / OnMouseDown / SetChecked hooks, and an action button can
@@ -1539,97 +1945,204 @@ end
 -- left it before the release or a drag began, and its rim stayed pressed
 -- until the next click (user, 2026-09-22: action buttons stuck pressed).
 local pressedLatches = setmetatable({}, { __mode = "k" })   -- [rim or rep] = its Update
-local SweepRims   -- below
+
+-- ... and every rim is re-read from its button's live state once a second
+-- (mouse over it, the widget's own pushed state): whatever an event missed,
+-- the look is right again within a second (user, 2026-09-22: rims stuck).
+-- Only rims whose button can be seen: a closed window's rims are read the
+-- moment their button shows again (its OnShow, below), so nothing that
+-- changed while it was closed is shown stale. The sweep goes a tenth of
+-- the rims every tenth of a second (/melloperf 2026-09-24: the whole lot at
+-- once was 2.8 ms, every second).
+local allRims = setmetatable({}, { __mode = "k" })
+local rimList = {}           -- the same rims in the order they came, for the sweep in slices
+local SWEEP_SLICES = 10
+local sweepAt = 1
+
+-- One rim re-read from its button (the sweeps and the button's OnShow)
+local function ReadRim(rim)
+	local b = rim.button
+	if rim.restState or not b then
+		return
+	end
+	-- EVERY read below can come back SECRET on this client (an action
+	-- button's mouse-over in combat: "attempt to perform boolean test on
+	-- local 'over' (a secret boolean value)", user 2026-09-23). A secret
+	-- answer means "cannot know right now": the rim keeps what it had and
+	-- is read again on the next sweep; nothing is tested or compared.
+	local okV, visible = pcall(b.IsVisible, b)
+	if not okV or Secret(visible) or not visible then
+		return
+	end
+	local okO, over = pcall(b.IsMouseOver, b)
+	local okS, state = pcall(b.GetButtonState, b)
+	local hover = rim.hover
+	if okO and not Secret(over) then
+		hover = over and true or nil
+	end
+	local pressed = rim.pressed
+	if okS and not Secret(state) then
+		pressed = (state == "PUSHED") and true or nil
+	end
+	if b.GetButtonState == nil then
+		pressed = rim.pressed   -- no widget state to read: the latch stands
+	end
+	-- the checked flag as well: a check button flips it on the C side
+	-- when clicked, past the SetChecked hook (the action bars' rims
+	-- stayed "checked" with the button long unchecked, user 2026-09-22)
+	local okC, c
+	if rim.isChecked then
+		okC, c = pcall(rim.isChecked)
+	else
+		okC, c = pcall(b.GetChecked, b)
+	end
+	local checked = rim.lastChecked or false
+	if okC and not Secret(c) then
+		checked = c and true or false
+	end
+	if rim.hover ~= hover or rim.pressed ~= pressed or (rim.lastChecked or false) ~= checked then
+		rim.hover, rim.pressed = hover, pressed
+		pcall(Slot_Update, rim)
+	end
+end
+
+C_Timer.NewTicker(1 / SWEEP_SLICES, function()
+	local n = #rimList
+	for _ = 1, math.ceil(n / SWEEP_SLICES) do
+		if sweepAt > n then
+			sweepAt = 1
+		end
+		ReadRim(rimList[sweepAt])
+		sweepAt = sweepAt + 1
+	end
+end)
+
+-- the rims a release can have changed re-read right after it (the click's
+-- C-side toggle of a check button is in by now), once however many
+-- releases the frame had: the ones it ended a press on and the ones under
+-- the cursor. Any mouse release fires this (the camera's right button
+-- too), so not every rim: the sweep keeps the rest right
+local releaseRims = {}       -- [rim] = true, emptied by the re-read
+local releaseSweepQueued = false
+local function ReleaseSweep()
+	releaseSweepQueued = false
+	for rim in pairs(hoverRims) do
+		releaseRims[rim] = true
+	end
+	for rim in pairs(releaseRims) do
+		releaseRims[rim] = nil
+		ReadRim(rim)
+	end
+end
+
+-- the press latches end here (above), then the re-read
 local releaseFrame = CreateFrame("Frame")
 releaseFrame:RegisterEvent("GLOBAL_MOUSE_UP")
-releaseFrame:SetScript("OnEvent", function()
+Perf.SetScript(releaseFrame, "OnEvent", function()
 	for latch, update in pairs(pressedLatches) do
 		pressedLatches[latch] = nil
+		if allRims[latch] then
+			releaseRims[latch] = true
+		end
 		if latch.pressed then
 			latch.pressed = nil
 			update(latch)
 		end
 	end
-	-- and every rim re-read right after the release (the click's C-side
-	-- toggle of a check button is in by now)
-	if SweepRims then
-		C_Timer.After(0, SweepRims)
+	if not releaseSweepQueued and (next(releaseRims) or next(hoverRims)) then
+		releaseSweepQueued = true
+		C_Timer.After(0, ReleaseSweep)
 	end
 end)
 
--- ... and every rim is re-read from its button's live state once a second
--- (mouse over it, the widget's own pushed state): whatever an event missed,
--- the look is right again within a second (user, 2026-09-22: rims stuck).
-local allRims = setmetatable({}, { __mode = "k" })
-SweepRims = function()
-	for rim in pairs(allRims) do
-		local b = rim.button
-		-- EVERY read below can come back SECRET on this client (an action
-		-- button's mouse-over in combat: "attempt to perform boolean test on
-		-- local 'over' (a secret boolean value)", user 2026-09-23). A secret
-		-- answer means "cannot know right now": the rim keeps what it had and
-		-- is read again on the next sweep; nothing is tested or compared.
-		local okV, shown = false, nil
-		if b and b.IsShown then
-			okV, shown = pcall(b.IsShown, b)
-		end
-		if okV and not Secret(shown) and shown and not rim.restState then
-			local okO, over = pcall(b.IsMouseOver, b)
-			local okS, state = pcall(b.GetButtonState, b)
-			local hover = rim.hover
-			if okO and not Secret(over) then
-				hover = over and true or nil
-			end
-			local pressed = rim.pressed
-			if okS and not Secret(state) then
-				pressed = (state == "PUSHED") and true or nil
-			end
-			if b.GetButtonState == nil then
-				pressed = rim.pressed   -- no widget state to read: the latch stands
-			end
-			-- the checked flag as well: a check button flips it on the C side
-			-- when clicked, past the SetChecked hook (the action bars' rims
-			-- stayed "checked" with the button long unchecked, user 2026-09-22)
-			local okC, c
-			if rim.isChecked then
-				okC, c = pcall(rim.isChecked)
-			else
-				okC, c = pcall(b.GetChecked, b)
-			end
-			local checked = rim.lastChecked or false
-			if okC and not Secret(c) then
-				checked = c and true or false
-			end
-			if rim.hover ~= hover or rim.pressed ~= pressed or (rim.lastChecked or false) ~= checked then
-				rim.hover, rim.pressed = hover, pressed
-				pcall(Slot_Update, rim)
-			end
-		end
-	end
-end
-C_Timer.NewTicker(1, SweepRims)
+-- A rim follows its button through one handler per script and method for
+-- every rim (user, 2026-09-24: 16 hooks and their closures per bag slot):
+-- the rim is kept by its button. A second rim on a button that has one
+-- keeps handlers of its own, so every hook still runs where it did.
+local rimOf = setmetatable({}, { __mode = "k" })   -- [button] = its (first) rim
+
+local Rim_OnEnter = Shared("OnEnter on a kit rim's button", function(b)
+	local tex = rimOf[b]
+	tex.hover = true
+	Slot_Update(tex)
+end, "script")
+local Rim_OnLeave = Shared("OnLeave on a kit rim's button", function(b)
+	local tex = rimOf[b]
+	tex.hover = nil
+	tex.pressed = nil
+	Slot_Update(tex)
+end, "script")
+local Rim_OnMouseDown = Shared("OnMouseDown on a kit rim's button", function(b)
+	local tex = rimOf[b]
+	tex.pressed = true
+	pressedLatches[tex] = Slot_Update
+	Slot_Update(tex)
+end, "script")
+local Rim_OnMouseUp = Shared("OnMouseUp on a kit rim's button", function(b)
+	local tex = rimOf[b]
+	tex.pressed = nil
+	Slot_Update(tex)
+end, "script")
+local Rim_OnShow = Shared("OnShow on a kit rim's button", function(b)
+	ReadRim(rimOf[b])
+end, "script")
+local Rim_OnSetChecked = Shared("SetChecked on a kit rim's button", function(b)
+	Slot_Update(rimOf[b])
+end)
+local Rim_OnSetEnabled = Shared("SetEnabled on a kit rim's button", function(b)
+	Slot_Update(rimOf[b])
+end)
+local Rim_OnSetButtonState = Shared("SetButtonState on a kit rim's button", function(b, state)
+	local tex = rimOf[b]
+	tex.pressed = (state == "PUSHED") or nil
+	Slot_Update(tex)
+end)
 
 local function FollowButton(tex, button)
-	allRims[tex] = true
-	button:HookScript("OnEnter", function() tex.hover = true; Slot_Update(tex) end)
-	button:HookScript("OnLeave", function() tex.hover = nil; tex.pressed = nil; Slot_Update(tex) end)
-	button:HookScript("OnMouseDown", function() tex.pressed = true; pressedLatches[tex] = Slot_Update; Slot_Update(tex) end)
-	button:HookScript("OnMouseUp", function() tex.pressed = nil; Slot_Update(tex) end)
+	if not allRims[tex] then
+		allRims[tex] = true
+		rimList[#rimList + 1] = tex
+	end
+	tex.Update = Slot_Update
+	if rimOf[button] == nil then
+		rimOf[button] = tex
+		Perf.HookScript(button, "OnEnter", Rim_OnEnter)
+		Perf.HookScript(button, "OnLeave", Rim_OnLeave)
+		Perf.HookScript(button, "OnMouseDown", Rim_OnMouseDown)
+		Perf.HookScript(button, "OnMouseUp", Rim_OnMouseUp)
+		-- shown again (its window opened): read at once, the sweeps pass it by
+		-- while it cannot be seen
+		Perf.HookScript(button, "OnShow", Rim_OnShow)
+		if button.SetChecked then
+			hooksecurefunc(button, "SetChecked", Rim_OnSetChecked)
+		end
+		if button.SetEnabled then
+			hooksecurefunc(button, "SetEnabled", Rim_OnSetEnabled)
+		end
+		-- a keybind presses an action button through SetButtonState, not the
+		-- mouse: the pressed look follows that too
+		if button.SetButtonState then
+			hooksecurefunc(button, "SetButtonState", Rim_OnSetButtonState)
+		end
+		return
+	end
+	Perf.HookScript(button, "OnEnter", function() tex.hover = true; Slot_Update(tex) end)
+	Perf.HookScript(button, "OnLeave", function() tex.hover = nil; tex.pressed = nil; Slot_Update(tex) end)
+	Perf.HookScript(button, "OnMouseDown", function() tex.pressed = true; pressedLatches[tex] = Slot_Update; Slot_Update(tex) end)
+	Perf.HookScript(button, "OnMouseUp", function() tex.pressed = nil; Slot_Update(tex) end)
+	Perf.HookScript(button, "OnShow", function() ReadRim(tex) end)
 	if button.SetChecked then
 		hooksecurefunc(button, "SetChecked", function() Slot_Update(tex) end)
 	end
 	if button.SetEnabled then
 		hooksecurefunc(button, "SetEnabled", function() Slot_Update(tex) end)
 	end
-	-- a keybind presses an action button through SetButtonState, not the
-	-- mouse: the pressed look follows that too
 	if button.SetButtonState then
 		hooksecurefunc(button, "SetButtonState", function(b, state)
 			tex.pressed = (state == "PUSHED") or nil
 			Slot_Update(tex)
 		end)
 	end
-	tex.Update = Slot_Update
 end
 
 function Kit:Slot(button, opts)
@@ -1671,6 +2184,103 @@ function Kit:Slot(button, opts)
 	return rim
 end
 
+-- The frame a region covers whole (SetAllPoints: its two corners on the
+-- frame's, no offsets), or nil
+local function FilledFrame(region)
+	if region:GetNumPoints() ~= 2 then
+		return nil
+	end
+	local p1, rel1, rp1, x1, y1 = region:GetPoint(1)
+	local p2, rel2, rp2, x2, y2 = region:GetPoint(2)
+	if not (rel1 and rel1 == rel2 and rel1.GetSize and x1 == 0 and y1 == 0 and x2 == 0 and y2 == 0) then
+		return nil
+	end
+	if (p1 == "TOPLEFT" and rp1 == "TOPLEFT" and p2 == "BOTTOMRIGHT" and rp2 == "BOTTOMRIGHT")
+		or (p1 == "BOTTOMRIGHT" and rp1 == "BOTTOMRIGHT" and p2 == "TOPLEFT" and rp2 == "TOPLEFT") then
+		return rel1
+	end
+	return nil
+end
+
+local function DrawnSizeOf(region)
+	-- filling a frame: the frame's size (the same once laid out, and known
+	-- before)
+	local frame = FilledFrame(region)
+	if frame then
+		local w, h = frame:GetSize()
+		-- in the region's own units, where the frame is scaled otherwise
+		local parent = region:GetParent()
+		if parent and parent ~= frame and frame.GetEffectiveScale and parent.GetEffectiveScale then
+			local fs, ps = frame:GetEffectiveScale(), parent:GetEffectiveScale()
+			if ps > 0 and fs ~= ps then
+				w, h = w * fs / ps, h * fs / ps
+			end
+		end
+		return w, h
+	end
+	-- laid out: its own size
+	if region:GetRect() then
+		return region:GetSize()
+	end
+	-- one point or none: a size of its own (SetSize), else nothing known
+	if region:GetNumPoints() <= 1 then
+		return region:GetSize()
+	end
+	return 0, 0
+end
+
+-- A kit texture's size as it will be drawn. One not laid out yet (its frame
+-- not placed: a bag's slots before their first layout) answers GetSize with
+-- its FILE's size, and since the small pieces were packed into atlas sheets
+-- that is a whole sheet: a bag slot's rim read 512 x 256, its icon was fitted
+-- into that and crushed to nothing, the empty slot's stone with it (user,
+-- 2026-09-24). Such a texture is measured on the frame it fills (a frame's
+-- own size is known before it is placed); 0, 0 when nothing is known yet
+-- (callers fit nothing then) or the size reads secret.
+function Kit:DrawnSize(region)
+	local ok, w, h = pcall(DrawnSizeOf, region)
+	if not ok or Secret(w) or Secret(h) then
+		return 0, 0
+	end
+	return w or 0, h or 0
+end
+
+-- Rims whose size was not known yet when they were fitted (Kit:DrawnSize
+-- 0, 0): fitted again a frame later, a few times at most, all on one timer.
+-- Their icon and whatever follows the rim (rim.onBaseChanged: the empty
+-- slot's stone); a rim switched off meanwhile is left as it is
+local refitQueue, refitting = {}, {}
+local refitQueued = false
+
+local function RefitQueued()
+	refitQueued = false
+	refitQueue, refitting = refitting, refitQueue
+	for rim, tries in pairs(refitting) do
+		if rim:IsShown() then
+			rim.kitRefitTries = tries
+			if rim.icon then
+				Kit:SlotPlaceIcon(rim)
+			end
+			if rim.onBaseChanged then
+				rim.onBaseChanged()
+			end
+		end
+	end
+	wipe(refitting)
+end
+
+function Kit:RefitLater(rim)
+	local tries = (rim.kitRefitTries or 0) + 1
+	if tries > 4 or refitQueue[rim] then
+		return
+	end
+	refitQueue[rim] = tries
+	if not refitQueued then
+		refitQueued = true
+		C_Timer.After(0, RefitQueued)
+	end
+end
+
 -- Anchor the rim's icon into the rim's opening (insets as fractions of the
 -- rim, so any button size works). Callers restore the icon's own points to undo.
 function Kit:SlotPlaceIcon(rim)
@@ -1682,7 +2292,7 @@ function Kit:SlotPlaceIcon(rim)
 	local icon = rim.icon
 	-- the icon fills the rim's opening: measured on the RIM's own rect (the
 	-- rim may be a square on a rectangular button, or larger than the button)
-	local rw, rh = rim:GetSize()
+	local rw, rh = self:DrawnSize(rim)
 	local l, r, t, b = self:Insets(name, 1)
 	if p and l and icon and rw > 0 and rh > 0 then
 		local il, ir, it, ib = rw * l / p.w, rw * r / p.w, rh * t / p.h, rh * b / p.h
@@ -1706,6 +2316,10 @@ function Kit:SlotPlaceIcon(rim)
 		icon:SetPoint("TOPLEFT", rim, "TOPLEFT", il, -it)
 		icon:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -ir, ib)
 		rim.placingIcon = nil
+		rim.kitRefitTries = nil
+	elseif p and l and icon then
+		-- its size not known yet: the icon keeps the game's anchors meanwhile
+		self:RefitLater(rim)
 	end
 end
 
@@ -1719,7 +2333,11 @@ function Kit:SetSlotBase(rim, base)
 	end
 	rim.base, rim.state = base, nil
 	Slot_Update(rim)
-	if rim.icon then
+	-- the icon into the new opening while the rim is on; a rim switched off
+	-- leaves the game's icon where the game put it (its skin's enable fits
+	-- it again) -- a hidden round rim took a round-icon button's icon away
+	-- from the square rim shown (2026-09-24 sweep)
+	if rim.icon and rim:IsShown() then
 		self:SlotPlaceIcon(rim)
 	end
 	if rim.onBaseChanged then
@@ -2306,25 +2924,161 @@ end
 -- player is in combat; the HUD modules queue it here and it runs at
 -- PLAYER_REGEN_ENABLED (at once when out of combat). A refit hook on the
 -- game's own layout method goes through the same queue.
+-- A fight can leave a lot queued (/melloperf 2026-09-24: 16.8 ms in the
+-- frame the fight ended): it runs in order, a few ms of it per frame, and
+-- stops if a new fight starts before it is through (the rest waits for that
+-- one to end). The same work queued twice in a row runs once. Anything asked
+-- for out of combat while some is still waiting goes in behind it, in the
+-- same slices, so the order is kept and no frame pays for the lot; what a
+-- queued piece asks for runs at once, as it did.
+-- A caller can name its work: Kit:WhenOutOfCombat(fn, key), the key being
+-- the frame or rep it refits. Asked for again under the same key while the
+-- first is still waiting, the waiting one is dropped and the new one goes in
+-- at the end: a fight's many asks for one refit (a hook on every target
+-- change makes a new closure each time) run once, last, as the last of them
+-- did. Only for work that just re-reads the frame: an on / off pair must not
+-- share a key.
 --------------------------------------------------------------------------------
-local combatQueue = {}
+local combatQueue, queueAt = {}, 1   -- the queued work and the next piece to run
+local queueKeys = {}                 -- [index] = the key its piece was queued under
+local waitingKeys = {}               -- [key] = the index of that key's piece still waiting
+local QUEUE_BUDGET = 3               -- ms of queued work per frame after a fight
+local runningQueued = false
 local combatFrame = CreateFrame("Frame")
-combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-combatFrame:SetScript("OnEvent", function()
-	local queue = combatQueue
-	combatQueue = {}
-	for _, fn in ipairs(queue) do
-		fn()
+combatFrame:Hide()
+
+-- Runs what waits, in order; with a budget only until that many ms have
+-- gone (the frame's OnUpdate goes on with the rest). An error in one piece
+-- is reported and the rest still run. A dropped piece is a false.
+local function RunQueued(budget)
+	local t0 = budget and debugprofilestop()
+	while queueAt <= #combatQueue do
+		if InCombatLockdown() then
+			combatFrame:Hide()
+			return
+		end
+		local at = queueAt
+		local fn, key = combatQueue[at], queueKeys[at]
+		queueAt = at + 1
+		if key ~= nil and waitingKeys[key] == at then
+			waitingKeys[key] = nil
+		end
+		if fn then
+			runningQueued = true
+			local ok, err = pcall(fn)
+			runningQueued = false
+			if not ok then
+				geterrorhandler()(err)
+			end
+		end
+		if budget and queueAt <= #combatQueue and debugprofilestop() - t0 >= budget then
+			combatFrame:Show()
+			return
+		end
 	end
+	if queueAt > 1 then
+		combatQueue, queueKeys, queueAt = {}, {}, 1
+	end
+	combatFrame:Hide()
+end
+
+local function Enqueue(fn, key)
+	if key ~= nil then
+		local at = waitingKeys[key]
+		if at then
+			combatQueue[at] = false
+		end
+	elseif queueAt <= #combatQueue and combatQueue[#combatQueue] == fn then
+		return
+	end
+	local n = #combatQueue + 1
+	combatQueue[n], queueKeys[n] = fn, key
+	if key ~= nil then
+		waitingKeys[key] = n
+	end
+end
+
+combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+Perf.SetScript(combatFrame, "OnEvent", function()
+	RunQueued(QUEUE_BUDGET)
+end)
+Perf.SetScript(combatFrame, "OnUpdate", function()
+	RunQueued(QUEUE_BUDGET)
 end)
 
-function Kit:WhenOutOfCombat(fn)
+function Kit:WhenOutOfCombat(fn, key)
 	if InCombatLockdown() then
-		combatQueue[#combatQueue + 1] = fn
+		Enqueue(fn, key)
+	elseif not runningQueued and queueAt <= #combatQueue then
+		-- a fight's work is still being worked through: behind it
+		Enqueue(fn, key)
+		combatFrame:Show()
 	else
 		fn()
 	end
 end
+
+-- An action-style button's hooks, one handler each for every button (user,
+-- 2026-09-24: the bags' first open, 16 hooks per slot, each with closures of
+-- its own): the slot's state is kept by its button and its icon (slotOf), a
+-- border's rim rep by the border (borderOf).
+local slotOf = setmetatable({}, { __mode = "k" })     -- [button or icon] = { rep, stone, icon, button, itemButton }
+local borderOf = setmetatable({}, { __mode = "k" })   -- [border] = the rim rep
+
+-- the icon's atlas (a pcall with no closure made per call)
+local function IconAtlas(icon)
+	return icon.GetAtlas and icon:GetAtlas()
+end
+
+-- whether the slot is empty (an item button's by its SetItemButtonTexture,
+-- below in Kit:SkinActionButton)
+local function SlotEmpty(st)
+	local icon, button = st.icon, st.button
+	if not icon:IsShown() then
+		return true
+	end
+	if not st.itemButton then
+		return false
+	end
+	if button.melloEmpty ~= nil then
+		return button.melloEmpty
+	end
+	local ok, atlas = pcall(IconAtlas, icon)
+	return ok and atlas ~= nil and atlas == button.emptyBackgroundAtlas
+end
+
+-- the stone shown while the slot is empty, an item button's icon see-through
+local function SlotSync(st)
+	if st.rep.object:IsShown() then
+		local empty = SlotEmpty(st)
+		st.stone:SetShown(empty)
+		if st.itemButton then
+			st.icon:SetAlpha(empty and 0 or 1)
+		end
+	end
+end
+
+local Slot_OnItemTexture = Shared("SetItemButtonTexture on a kit slot", function(button, texture)
+	button.melloEmpty = texture == nil
+	SlotSync(slotOf[button])
+end)
+local Slot_OnIcon = Shared("Show / Hide on a kit slot's icon", function(icon)
+	SlotSync(slotOf[icon])
+end)
+
+-- the rim green while the game shows the equipped border
+local function BorderTint(rep, border)
+	if rep.object:IsShown() then
+		if border:IsShown() then
+			rep.object:SetVertexColor(0.5, 1, 0.5)
+		else
+			rep.object:SetVertexColor(1, 1, 1)
+		end
+	end
+end
+local Slot_OnBorder = Shared("Show / Hide on a kit slot's border", function(border)
+	BorderTint(borderOf[border], border)
+end)
 
 -- An action-style button (ActionButtonTemplate and its small kin: action,
 -- stance, pet, possess and bag slot buttons): the R1 rim on its NormalTexture
@@ -2398,19 +3152,23 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 			local name = (rim.base or "buttons/slot") .. "_normal"   -- the opening of the rim it is in (its art can change live)
 			local piece = PIECES[name]
 			local l, r, t, b = Kit:Insets(name, 1)
-			local okS, rw, rh = pcall(rim.GetSize, rim)
-			if piece and l and okS and rw and rh and not Secret(rw) and rw > 0 then
+			local rw, rh = Kit:DrawnSize(rim)   -- (not laid out yet it reads as its atlas sheet)
+			if piece and l and rw > 0 and rh > 0 then
 				opening:ClearAllPoints()
 				opening:SetPoint("TOPLEFT", rim, "TOPLEFT", rw * l / piece.w, -rh * t / piece.h)
 				opening:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -rw * r / piece.w, rh * b / piece.h)
 			else
+				opening:ClearAllPoints()
 				opening:SetAllPoints(button)
+				if piece and l then
+					Kit:RefitLater(rim)   -- the rim's size not known yet: fitted again a frame later
+				end
 			end
 		end
 		Fit()
 		rim.onBaseChanged = Fit
 		local stone = replace(button.SlotBackground or normal, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening,
-			noFade = not button.SlotBackground })
+			noFade = not button.SlotBackground, sizer = opening })
 		button.melloSlotStone = stone or nil   -- its texture (stone.tex) can be swapped: Action Bars Kit's Button Background
 		if stone then
 			-- the stone shows while the slot is EMPTY: the game hides the icon
@@ -2422,34 +3180,12 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 			-- SetItemButtonTexture(nil)): the Item Background never showed
 			-- (user, 2026-09-23). Its emptiness is read from that call; while
 			-- empty the icon (the game's picture) is see-through.
-			local itemButton = (button.emptyBackgroundAtlas or button.emptyBackgroundTexture) and button.SetItemButtonTexture
-			local function IsEmpty()
-				if not icon:IsShown() then
-					return true
-				end
-				if not itemButton then
-					return false
-				end
-				if button.melloEmpty ~= nil then
-					return button.melloEmpty
-				end
-				local ok, atlas = pcall(function() return icon.GetAtlas and icon:GetAtlas() end)
-				return ok and atlas ~= nil and atlas == button.emptyBackgroundAtlas
-			end
-			local function Sync()
-				if rep.object:IsShown() then
-					local empty = IsEmpty()
-					stone:SetShown(empty)
-					if itemButton then
-						icon:SetAlpha(empty and 0 or 1)
-					end
-				end
-			end
-			if itemButton then
-				hooksecurefunc(button, "SetItemButtonTexture", function(_, texture)
-					button.melloEmpty = texture == nil
-					Sync()
-				end)
+			-- (the slot's state for the shared handlers: SlotSync)
+			local st = { rep = rep, stone = stone, icon = icon, button = button,
+				itemButton = ((button.emptyBackgroundAtlas or button.emptyBackgroundTexture) and button.SetItemButtonTexture) and true or false }
+			slotOf[button], slotOf[icon] = st, st
+			if st.itemButton then
+				hooksecurefunc(button, "SetItemButtonTexture", Slot_OnItemTexture)
 				local disable = rep.onDisable
 				rep.onDisable = function(...)
 					if disable then
@@ -2458,15 +3194,15 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 					icon:SetAlpha(1)
 				end
 			end
-			hooksecurefunc(icon, "Show", Sync)
-			hooksecurefunc(icon, "Hide", Sync)
-			hooksecurefunc(icon, "SetShown", Sync)
+			hooksecurefunc(icon, "Show", Slot_OnIcon)
+			hooksecurefunc(icon, "Hide", Slot_OnIcon)
+			hooksecurefunc(icon, "SetShown", Slot_OnIcon)
 			local enable = stone.Enable
 			stone.Enable = function(self)
 				enable(self)
-				Sync()
+				SlotSync(st)
 			end
-			Sync()
+			SlotSync(st)
 		end
 		local setPitch = rep.SetPitch
 		rep.SetPitch = function(self, px, py)
@@ -2510,20 +3246,12 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	-- the equipped border: faded, the rim green while the game shows it
 	if button.Border then
 		replace(button.Border, { as = "UI-HUD-ActionBar-IconFrame-Border" })
-		local border, rim = button.Border, rep.object
-		local function Tint()
-			if rep.object:IsShown() then
-				if border:IsShown() then
-					rim:SetVertexColor(0.5, 1, 0.5)
-				else
-					rim:SetVertexColor(1, 1, 1)
-				end
-			end
-		end
-		hooksecurefunc(border, "Show", Tint)
-		hooksecurefunc(border, "Hide", Tint)
-		hooksecurefunc(border, "SetShown", Tint)
-		Tint()
+		local border = button.Border
+		borderOf[border] = rep
+		hooksecurefunc(border, "Show", Slot_OnBorder)
+		hooksecurefunc(border, "Hide", Slot_OnBorder)
+		hooksecurefunc(border, "SetShown", Slot_OnBorder)
+		BorderTint(rep, border)
 	end
 	-- a button skinned while the panel is already on was enabled by `replace`
 	-- before the hooks above existed: run them now
@@ -2631,9 +3359,18 @@ end
 -- `strict`: nil when the fill's layer cannot be read (a secret string on the
 -- target side's bars), for a caller that would rather leave things as they
 -- are than guess (the relayer).
+local function DrawLayerOf(tex)
+	return tex:GetDrawLayer()
+end
+
 function Kit:BracketLayers(bar, strict)
 	local tex = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
-	local ok, layer = pcall(function() return tex and tex:GetDrawLayer() end)
+	-- no closure per call: the relayer asks on every SetStatusBarTexture,
+	-- dozens of times a second on some bars
+	local ok, layer = false, nil
+	if tex then
+		ok, layer = pcall(DrawLayerOf, tex)
+	end
 	if not ok or type(layer) ~= "string" or Secret(layer) then
 		if strict then
 			return nil
@@ -2653,6 +3390,27 @@ end
 -- Alpha 0 that survives the game's own SetAlpha / Show calls (shared by the
 -- panel modules so one registry knows what is faded).
 Kit.faded = {}
+local FADED = Kit.faded
+
+-- The two hooks on every faded region, one handler each for all of them:
+-- whether a region is faded is read from Kit.faded when the game calls.
+-- Some faded art is re-set by the game every frame (the player frame's
+-- resting / combat glow pulses its alpha from the frame's OnUpdate while it
+-- is shown, wherever it is parked): kept to a lookup and one call. Our own
+-- SetAlpha(0) comes straight back through here and stops at the test; a
+-- secret alpha cannot be compared: faded again
+local Faded_OnSetAlpha = Shared("SetAlpha on faded art", function(o, a)
+	if FADED[o] and (Secret(a) or a ~= 0) then
+		o:SetAlpha(0)
+	end
+end)
+-- a vertex colour with an alpha (UnitSelectionColor's fourth value on a
+-- reaction band) resets the region's alpha on this client
+local Faded_OnSetVertexColor = Shared("SetVertexColor on faded art", function(o)
+	if FADED[o] then
+		o:SetAlpha(0)
+	end
+end)
 
 function Kit:Fade(obj)
 	if not obj or self.faded[obj] then
@@ -2662,20 +3420,9 @@ function Kit:Fade(obj)
 	obj:SetAlpha(0)
 	if not obj.kitFadeHook then
 		obj.kitFadeHook = true
-		local faded = self.faded
-		hooksecurefunc(obj, "SetAlpha", function(o, a)
-			if faded[o] and a ~= 0 then
-				o:SetAlpha(0)
-			end
-		end)
-		-- a vertex colour with an alpha (UnitSelectionColor's fourth value on
-		-- a reaction band) resets the region's alpha on this client
+		hooksecurefunc(obj, "SetAlpha", Faded_OnSetAlpha)
 		if obj.SetVertexColor then
-			hooksecurefunc(obj, "SetVertexColor", function(o)
-				if faded[o] then
-					o:SetAlpha(0)
-				end
-			end)
+			hooksecurefunc(obj, "SetVertexColor", Faded_OnSetVertexColor)
 		end
 	end
 end
@@ -2706,6 +3453,79 @@ end
 
 local ReplacementMixin = {}
 
+-- The holder frame a replacement is drawn on: on its rect, `lvl` levels over
+-- its parent's, never part of a layout frame's size. `strata`: Kit:Replace's
+-- opts.strata.
+local function MakeHolder(parent, rect, lvl, strata)
+	local f = CreateFrame("Frame", nil, parent)
+	-- never part of the parent's size: a layout frame (an action bar, a
+	-- ResizeLayoutFrame) grows round its shown children, and a holder on
+	-- a rect past its content would make it grow (user, 2026-09-23: Action
+	-- Bar 1 swelling in Edit Mode with the backdrop)
+	f.ignoreInLayout = true
+	-- opts.strata: a holder below everything at the parent's strata (the
+	-- main bar's end caps under every bar and the status bars)
+	if strata then
+		f:SetFrameStrata(strata)
+		-- kept there when its parent is raised (the game lifts the action
+		-- bars to TOOLTIP while a spell is dragged: a holder that followed
+		-- would come over the buttons)
+		if f.SetFixedFrameStrata then
+			f:SetFixedFrameStrata(true)
+		end
+	end
+	f:SetFrameLevel(math.max(parent:GetFrameLevel() + lvl, 0))
+	f:EnableMouse(false)
+	f:SetAllPoints(rect)
+	return f
+end
+
+-- A 'fade' draws nothing, and its holder was an empty frame per faded
+-- region (user, 2026-09-24: every bag slot's picture, every spell card's and
+-- header's backplate): its rep has no frame until something asks for
+-- rep.object (a panel hanging a parchment sheet on it, a dump). The holder is
+-- then made as Kit:Replace made it, shown or hidden as the rep is; until
+-- then the rep keeps that itself (`holderShown`).
+local BareRep = {
+	__index = function(rep, key)
+		if key ~= "object" then
+			return nil
+		end
+		local f = MakeHolder(rawget(rep, "holderParent"), rawget(rep, "rect"), rawget(rep, "holderLevel"), rawget(rep, "holderStrata"))
+		if not rawget(rep, "holderShown") then
+			f:Hide()
+		end
+		rawset(rep, "object", f)
+		return f
+	end,
+}
+
+-- A rep whose skin waits for its first show (a panel tab's open card, Kit:
+-- SkinPanelTab) laid now, the editor's tune on it as on every rep
+local function LayRep(rep)
+	local skin = rep.skin
+	if not (skin and skin.pendingArt) then
+		return
+	end
+	local holder = rawget(rep, "object")
+	if holder and holder.kitWaiting then
+		holder.kitWaiting = nil
+		Perf.SetScript(holder, "OnUpdate", nil)
+	end
+	NineSlice_Lay(skin)
+	if rep.tune then
+		Kit:TuneObject(rep, rep.tune)
+	end
+end
+
+-- ... and a waiting card whose holder is on screen without it (shown by an
+-- Enable that no sync to the game's art followed): laid in that frame's
+-- update, before it is drawn, as it would have shown. A hidden holder gets
+-- no OnUpdate, so the cards that wait cost nothing here.
+local Waiting_OnUpdate = Shared("OnUpdate on a waiting kit card", function(f)
+	LayRep(f.kitWaiting)
+end, "update")
+
 -- Fade the game art, show ours.
 function ReplacementMixin:Enable()
 	if not self.noFade then
@@ -2714,7 +3534,18 @@ function ReplacementMixin:Enable()
 	for _, extra in ipairs(self.alsoFade) do
 		Kit:Fade(extra)
 	end
-	self.object:Show()
+	-- (a fade's holder only once asked for; a waiting card laid when the
+	-- art it stands for is shown)
+	local object = rawget(self, "object")
+	if object then
+		local wait = self.layWith
+		if wait and self.skin.pendingArt and wait:IsShown() then
+			LayRep(self)
+		end
+		object:Show()
+	else
+		self.holderShown = true
+	end
 	if self.backing then
 		self.backing:Show()
 	end
@@ -2735,12 +3566,17 @@ function ReplacementMixin:Disable()
 	for _, extra in ipairs(self.alsoFade) do
 		Kit:Unfade(extra)
 	end
-	self.object:Hide()
+	local object = rawget(self, "object")
+	if object then
+		object:Hide()
+	else
+		self.holderShown = false
+	end
 	if self.backing then
 		self.backing:Hide()
 	end
-	if self.object.glow then
-		self.object.glow:Hide()
+	if object and object.glow then
+		object.glow:Hide()
 	end
 	if self.onDisable then
 		self.onDisable(self)
@@ -2859,13 +3695,24 @@ function ReplacementMixin:SetState(state)
 		else
 			self.skin:SetTint(1, 1, 1)
 		end
-	elseif self.object.Update then
-		self.object:Update()
+	else
+		local object = rawget(self, "object")
+		if object and object.Update then
+			object:Update()
+		end
 	end
 end
 
 function ReplacementMixin:SetShown(shown)
-	self.object:SetShown(shown)
+	local object = rawget(self, "object")
+	if not object then
+		self.holderShown = shown and true or false
+		return
+	end
+	if shown and self.skin and self.skin.pendingArt then
+		LayRep(self)
+	end
+	object:SetShown(shown)
 end
 
 -- Replace one game region (or frame) with the kit piece the library maps it
@@ -2968,9 +3815,160 @@ Kit.liveEdit = false
 
 local GONE = {}                 -- "this field did not exist before the override"
 local pieceBackup = {}          -- [piece name] = { field = original value }
+local invented = {}             -- [piece name] = true: a piece the layout lacks, made by the tuning
+local WHOLE = { 0, 1, 0, 1 }    -- a whole file, as a uv
+
+-- The shipped textures (user, 2026-09-24: "textures look good", option (d)):
+-- Tools/texture_pack.py ship packs the small pieces of each look into atlas
+-- sheets (Media\<look>\atlas\...) and gives some pieces a smaller file.
+-- KitLayout.lua then names the sheet as such a piece's `file`, its
+-- rectangle there as its `uv`, and keeps `was`: its uv in its own former
+-- file (file = its name), the frame build_kit.py wrote and the kit tools
+-- write a `pieces` uv or file override in. Everything that draws a piece
+-- reads file + uv (Kit:Apply) and crops or mirrors inside that uv, so it
+-- draws the piece's rectangle of the sheet; an override is mapped from the
+-- `was` frame into that rectangle here.
+local function InSheet(file)
+	return type(file) == "string" and file:find("^atlas\\") ~= nil
+end
+
+-- `uv` (left, right, top, bottom in the `was` frame) into `rect` (the
+-- piece's rectangle now); a value past the piece is held at its edge (in a
+-- sheet the neighbouring pieces lie there)
+local function MapInto(uv, was, rect)
+	local out = {}
+	for i = 1, 4 do
+		local lo, hi = (i <= 2) and 1 or 3, (i <= 2) and 2 or 4
+		local span = was[hi] - was[lo]
+		local f = span > 0 and (uv[i] - was[lo]) / span or 0
+		if f < 0 then
+			f = 0
+		elseif f > 1 then
+			f = 1
+		end
+		out[i] = rect[lo] + f * (rect[hi] - rect[lo])
+	end
+	return out
+end
+
+local LAYOUT_FIELDS = { "file", "uv", "was", "tile" }
+
+-- A piece's values as the layout has them, whatever tuning has put into
+-- PIECES since: a backed-up field's original, else the live field (one no
+-- override has touched is still the layout's)
+local function LayoutOf(name)
+	local p = PIECES[name]
+	if not p then
+		return nil
+	end
+	local backup, out = pieceBackup[name], {}
+	for _, field in ipairs(LAYOUT_FIELDS) do
+		local value = p[field]
+		if backup and backup[field] ~= nil then
+			value = backup[field]
+			if value == GONE then
+				value = nil
+			end
+		end
+		out[field] = value
+	end
+	return out
+end
+
+-- The piece a file override names ("buttons\\cog_hover"), also written in
+-- another case or with its old extension (the files it named were found so)
+local lowerNames = nil   -- [lower-case name] = the piece's name, made on a miss; emptied by Kit:ApplyTuning
+local function PieceNamed(file)
+	local name = file:gsub("\\", "/"):gsub("%.[Tt][Gg][Aa]$", ""):gsub("%.[Bb][Ll][Pp]$", "")
+	if PIECES[name] then
+		return name
+	end
+	if not lowerNames then
+		lowerNames = {}
+		for n in pairs(PIECES) do
+			lowerNames[n:lower()] = n
+		end
+	end
+	return lowerNames[name:lower()]
+end
+
+-- A tuned piece's uv / file override (copied into `p`) put where its art is
+-- now. `base`: the piece's layout values. Returns the fields it changed.
+local function RemapTunedPiece(p, over, base, NIL)
+	local changed = {}
+	local file = over.file ~= NIL and type(over.file) == "string" and over.file or nil
+	local uv = over.uv ~= NIL and type(over.uv) == "table" and over.uv or nil
+	-- the piece whose art the override means: the one its file names, else
+	-- this piece (as the layout has them)
+	local target = base
+	if file ~= nil then
+		local named = PieceNamed(file)
+		target = named and LayoutOf(named) or nil
+	end
+	if file ~= nil or uv ~= nil then
+		if target and target.was and target.uv then
+			-- the art the override means has moved: its file now, the uv
+			-- mapped from its former frame into its rectangle there
+			-- (a piece the tuning invents may bring no uv: the whole piece)
+			p.file = target.file
+			p.uv = MapInto(uv or base.was or base.uv or target.was, target.was, target.uv)
+			changed.file, changed.uv = true, true
+		else
+			if file ~= nil and target and file ~= target.file then
+				-- a piece's own file in another case or with an extension:
+				-- as the layout names it (it may ship as .blp or .tga)
+				p.file = target.file
+				changed.file = true
+			end
+			if file ~= nil and uv == nil and base.was then
+				-- a file that was not moved, named for a piece that was: the
+				-- piece's uv in its former file is what the override meant
+				p.uv = { base.was[1], base.was[2], base.was[3], base.was[4] }
+				changed.uv = true
+			end
+		end
+	end
+	-- a piece left without a uv (one the tuning invents, given only a file;
+	-- an override that removes the uv) is drawn whole: the target's
+	-- rectangle as the layout has it, else the whole file (Kit:Apply reads a
+	-- uv for every piece)
+	if p.uv == nil then
+		local whole = target and target.uv or WHOLE
+		p.uv = { whole[1], whole[2], whole[3], whole[4] }
+		changed.uv = true
+	end
+	-- one piece cannot repeat inside a sheet (the ship never puts a tiling
+	-- piece in one)
+	if p.tile and InSheet(p.file) then
+		p.tile = nil
+		changed.tile = true
+	end
+	return changed
+end
+
+-- The frame a `pieces` uv / file override is written in (above): the
+-- piece's own file (its name, for a piece the ship moved into a sheet) and
+-- its uv there, as the layout has them whatever tuning did since; and
+-- whether the piece is drawn from a sheet now (it cannot repeat there).
+-- nil for a piece the kit does not know. The kit editor shows these.
+function Kit:PieceFrame(name)
+	local base = LayoutOf(name)
+	if not base then
+		return nil
+	end
+	local inSheet = InSheet(PIECES[name].file)
+	if base.was then
+		return (name:gsub("/", "\\")), base.was, inSheet
+	end
+	return base.file, base.uv, inSheet
+end
 
 -- Globals and painted-piece geometry, applied to the kit itself. Called by
--- MelloUI.KitTuning whenever the tuning changes.
+-- MelloUI.KitTuning whenever the tuning changes: every pass starts each
+-- piece tuned so far from its layout values again (its backup) before the
+-- overrides go in, so the same tuning applied twice gives the same pieces
+-- (a remapped uv never feeds the next mapping) and a field an override
+-- stops carrying goes back to the layout's.
 function Kit:ApplyTuning(KT)
 	local g = KT:Globals()
 	self.baseScale = self.baseScale or self.scale
@@ -2980,39 +3978,63 @@ function Kit:ApplyTuning(KT)
 	self.frameScale = tonumber(g.frameScale) or self.baseFrameScale
 	self.framePrefix = g.framePrefix or self.baseFramePrefix
 
-	-- pieces that are not tuned any more go back to what build_kit.py wrote
+	-- every piece tuned before back to what the layout says; the ones not
+	-- tuned any more are done with (a piece the tuning made goes with it)
+	local section = KT:Section("pieces")
+	lowerNames = nil
 	for name, backup in pairs(pieceBackup) do
-		if not KT:Piece(name) then
-			local p = PIECES[name]
-			if p then
-				for field, value in pairs(backup) do
-					p[field] = value ~= GONE and value or nil
+		local p = PIECES[name]
+		if p then
+			for field, value in pairs(backup) do
+				if value == GONE then
+					p[field] = nil
+				else
+					p[field] = value
 				end
 			end
+		end
+		if not section[name] then
 			pieceBackup[name] = nil
+			if invented[name] then
+				PIECES[name], invented[name] = nil, nil
+			end
 		end
 	end
-	for name, over in pairs(KT:Section("pieces")) do
+	for name, over in pairs(section) do
 		local p = PIECES[name]
 		if not p then
-			p = { file = name:gsub("/", "\\") }
+			p = { file = (name:gsub("/", "\\")) }
 			PIECES[name] = p
+			invented[name] = true
 		end
 		local backup = pieceBackup[name]
 		if not backup then
 			backup = {}
 			pieceBackup[name] = backup
 		end
+		local base = LayoutOf(name)
 		for field, value in pairs(over) do
 			if backup[field] == nil then
 				backup[field] = p[field] == nil and GONE or p[field]
 			end
-			p[field] = value ~= KT.NIL and value or nil
+			if value == KT.NIL then
+				p[field] = nil
+			else
+				p[field] = value
+			end
+		end
+		for field in pairs(RemapTunedPiece(p, over, base, KT.NIL)) do
+			if backup[field] == nil then
+				backup[field] = base[field] == nil and GONE or base[field]
+			end
 		end
 	end
 
 	LOWER_RULES = nil
 	tunedRules = { serial = -1 }
+	resolved = {}
+	-- a tuned rail piece keeps its family's skins in pieces (checked again)
+	Slices.families, Slices.cuts = {}, {}
 	self:RefreshTuning()
 end
 
@@ -3065,13 +4087,24 @@ function Kit:TuneTexture(tex, tune)
 		now = now or {}
 		now[field] = true
 	end
-	local piece = tex.kitPiece
+	-- (kitPiece is `true` on a flat colour of ours: no piece to read)
+	local piece = type(tex.kitPiece) == "table" and tex.kitPiece or nil
+	-- the window of the file the art is cut from: the piece's uv, or under a
+	-- texture of the tuning's own the piece's uv in its own former file
+	-- (`was`: its rectangle in an atlas sheet means nothing on another file)
+	local window = piece and piece.uv
+	if tune.texture and piece and piece.was then
+		window = piece.was
+	end
 
 	if tune.texture then
 		if tex.melloArt == nil then
 			tex.melloArt = (tex.GetTexture and tex:GetTexture()) or false
 		end
 		pcall(tex.SetTexture, tex, tune.texture)
+		if piece and piece.was and not piece.tile then
+			pcall(tex.SetTexCoord, tex, window[1], window[2], window[3], window[4])
+		end
 		mark("texture")
 	elseif tex.melloArt ~= nil then
 		if piece and tex.kitName then
@@ -3126,14 +4159,22 @@ function Kit:TuneTexture(tex, tune)
 		local cropping = tune.coord or tune.flipH or tune.flipV
 		if cropping then
 			local u1, u2, v1, v2 = 0, 1, 0, 1
-			if piece and piece.uv then
-				u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
+			if window then
+				u1, u2, v1, v2 = window[1], window[2], window[3], window[4]
 			end
 			local c = tune.coord
 			if c then
+				local c1, c2, c3, c4 = c[1] or 0, c[2] or 1, c[3] or 0, c[4] or 1
+				-- a crop reaching past the piece (the editor allows -1..2) is
+				-- held at its edge in an atlas sheet: the neighbouring pieces
+				-- lie there
+				if piece and not tune.texture and InSheet(piece.file) then
+					c1, c2 = math.max(0, math.min(1, c1)), math.max(0, math.min(1, c2))
+					c3, c4 = math.max(0, math.min(1, c3)), math.max(0, math.min(1, c4))
+				end
 				local du, dv = u2 - u1, v2 - v1
-				u1, u2 = u1 + du * (c[1] or 0), u1 + du * (c[2] or 1)
-				v1, v2 = v1 + dv * (c[3] or 0), v1 + dv * (c[4] or 1)
+				u1, u2 = u1 + du * c1, u1 + du * c2
+				v1, v2 = v1 + dv * c3, v1 + dv * c4
 			end
 			if tune.flipH then
 				u1, u2 = u2, u1
@@ -3144,8 +4185,8 @@ function Kit:TuneTexture(tex, tune)
 			pcall(tex.SetTexCoord, tex, u1, u2, v1, v2)
 			mark("coord")
 		elseif had and had.coord then
-			if piece and piece.uv then
-				pcall(tex.SetTexCoord, tex, piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4])
+			if window then
+				pcall(tex.SetTexCoord, tex, window[1], window[2], window[3], window[4])
 			else
 				pcall(tex.SetTexCoord, tex, 0, 1, 0, 1)
 			end
@@ -3162,6 +4203,14 @@ function Kit:TuneObject(rep, tune)
 	if not obj then
 		return
 	end
+	-- a tune arriving for a tab's open card whose rails still wait (it was
+	-- untuned when dressed, the editor off): laid now, before the tune, so the
+	-- tune lands on its textures as on a card built at dressing, and a tune
+	-- taken off again later leaves it as it leaves every built card (review,
+	-- 2026-09-24)
+	if tune and rep.skin and rep.skin.pendingArt then
+		LayRep(rep)
+	end
 	rep.tune = tune
 	if rep.proxy and rep.proxyOf then
 		local x, y = tune and tune.x or 0, tune and tune.y or 0
@@ -3175,6 +4224,8 @@ function Kit:TuneObject(rep, tune)
 	for _, tex in ipairs(self:Textures(rep)) do
 		self:TuneTexture(tex, tune)
 	end
+	-- a tuned layer is the bar relayer's to follow again on the next fill change
+	rep.relayered = nil
 	if rep.Refit then
 		pcall(rep.Refit, rep)
 	end
@@ -3275,6 +4326,101 @@ function Kit:TuneRegions(frame, regions)
 	end
 end
 
+-- The frame kind under a button (a tab's card, a list row): its hover /
+-- pressed / disabled tint, one handler per script for every such button
+-- (user, 2026-09-24: shared handlers), the rep kept by its button
+local frameTints = setmetatable({}, { __mode = "k" })   -- [button] = the rep it tints
+-- the iron as painted: the one table the tint reads while nothing is checked
+-- (a new { 1, 1, 1 } on every hover, leave, press and Update before)
+local NO_TINT = { 1, 1, 1 }
+
+local function FrameTint(rep, k)
+	local t = (rep.checked and rep.checked() and rep.rule.checkedTint) or NO_TINT
+	for _, tex in ipairs(rep.skin.art) do
+		tex:SetVertexColor(math.min(t[1] * k, 1), math.min(t[2] * k, 1), math.min(t[3] * k, 1))
+	end
+	if rep.skin.body then
+		rep.skin.body:SetVertexColor(math.min(k, 1), math.min(k, 1), math.min(k, 1))
+	end
+end
+
+local FrameTint_OnEnter = Shared("OnEnter on a kit frame's button", function(b)
+	local rep = frameTints[b]
+	rep.hover = true
+	rep.Update()
+end, "script")
+local FrameTint_OnLeave = Shared("OnLeave on a kit frame's button", function(b)
+	local rep = frameTints[b]
+	rep.hover = nil
+	rep.pressed = nil
+	rep.Update()
+end, "script")
+local FrameTint_OnMouseDown = Shared("OnMouseDown on a kit frame's button", function(b)
+	local rep = frameTints[b]
+	rep.pressed = true
+	pressedLatches[rep] = rep.Update
+	rep.Update()
+end, "script")
+local FrameTint_OnMouseUp = Shared("OnMouseUp on a kit frame's button", function(b)
+	local rep = frameTints[b]
+	rep.pressed = nil
+	rep.Update()
+end, "script")
+local FrameTint_OnSetEnabled = Shared("SetEnabled on a kit frame's button", function(b)
+	frameTints[b].Update()
+end)
+
+-- A holder tiling one texture (the edge and tile kinds: holder.kitTile), and
+-- a sizer re-fitting a tile that is a region (sizer.kitRefit): one handler
+-- each for all of them
+local Holder_OnSize = Shared("OnSizeChanged on a kit holder", function(f)
+	Kit:Retile(f.kitTile)
+end, "script")
+local Holder_OnShow = Shared("OnShow on a kit holder", function(f)
+	Kit:Retile(f.kitTile)
+end, "script")
+local Sizer_OnSize = Shared("OnSizeChanged on a kit tile's rect", function(f)
+	f.kitRefit()
+end, "script")
+local Sizer_OnShow = Shared("OnShow on a kit tile's rect", function(f)
+	f.kitRefit()
+end, "script")
+
+-- A slot's icon fitted into its rim again after the game re-anchors it: one
+-- handler for every button's methods (slotIcons) and every kept icon's
+-- SetPoint (keptIcons)
+local ICON_METHODS = { "InitializeIconAnchoring", "UpdateIconInterior", "OnMouseDown", "OnMouseUp" }
+local slotIcons = setmetatable({}, { __mode = "k" })   -- [button] = its slot rep
+local keptIcons = setmetatable({}, { __mode = "k" })   -- [icon] = its slot rep
+local SlotIcon_Refit = Shared("icon anchoring on a kit slot's button", function(b)
+	local rep = slotIcons[b]
+	if rep.object:IsShown() then
+		Kit:SlotPlaceIcon(rep.object)
+	end
+end)
+local SlotIcon_Keep = Shared("SetPoint on a kit slot's kept icon", function(icon)
+	local rim = keptIcons[icon].object
+	if rim:IsShown() and not rim.placingIcon then
+		Kit:SlotPlaceIcon(rim)
+	end
+end)
+
+-- The WINDOW a replacement is in: the top frame under UIParent (a title
+-- container may sit in a page inside the window: the group finder's tabs
+-- stayed behind when only the page moved — user, 2026-09-21)
+local function WindowOf(frame)
+	local depth = 0
+	while frame and frame ~= UIParent and depth < 6 do
+		local up = frame.GetParent and frame:GetParent()
+		if not up or up == UIParent then
+			return frame
+		end
+		frame = up
+		depth = depth + 1
+	end
+	return frame
+end
+
 function Kit:Replace(region, opts)
 	opts = opts or {}
 	local key = opts.as or self:ArtKey(region)
@@ -3314,32 +4460,8 @@ function Kit:Replace(region, opts)
 	local rep = Mixin({ kind = rule.kind, key = key, rule = rule, region = region, rect = rect, alsoFade = opts.alsoFade or {}, fitHeight = opts.fitHeight, fitWidth = opts.fitWidth, noFade = opts.noFade }, ReplacementMixin)
 	rep.proxy, rep.proxyOf, rep.tune = proxy, proxy and proxy.melloProxyOf or nil, tune
 
-	local function Holder(lvl)
-		local f = CreateFrame("Frame", nil, parent)
-		-- never part of the parent's size: a layout frame (an action bar, a
-		-- ResizeLayoutFrame) grows round its shown children, and a holder on
-		-- a rect past its content would make it grow (user, 2026-09-23: Action
-		-- Bar 1 swelling in Edit Mode with the backdrop)
-		f.ignoreInLayout = true
-		-- opts.strata: a holder below everything at the parent's strata (the
-		-- main bar's end caps under every bar and the status bars)
-		if opts.strata then
-			f:SetFrameStrata(opts.strata)
-			-- kept there when its parent is raised (the game lifts the action
-			-- bars to TOOLTIP while a spell is dragged: a holder that followed
-			-- would come over the buttons)
-			if f.SetFixedFrameStrata then
-				f:SetFixedFrameStrata(true)
-			end
-		end
-		f:SetFrameLevel(math.max(parent:GetFrameLevel() + lvl, 0))
-		f:EnableMouse(false)
-		f:SetAllPoints(rect)
-		return f
-	end
-
 	if rule.kind == "frame" then
-		local f = Holder(level)
+		local f = MakeHolder(parent, rect, level, opts.strata)
 		local fscale = self.scale * (rule.scale or self.frameScale)
 		if rule.outset then
 			-- the frame grows OUTWARD from the rect by `outset` piece px: the
@@ -3358,11 +4480,6 @@ function Kit:Replace(region, opts)
 		-- rule.owner: the rails and body as regions of the replaced texture's
 		-- frame in the rule's layers (edgeLayer / edgeSub, bodyLayer / bodySub)
 		local owner = (rule.owner and not isFrame) and region:GetParent() or nil
-		rep.skin = self:NineSlice(f, { scale = fscale, gems = false, body = body, bodyScale = rule.bodyScale and self.scale * rule.bodyScale,
-			open = opts.open or rule.open, prefix = rule.prefix or self.framePrefix, corners = rule.corners, skip = opts.skip,
-			owner = owner, bodyLayer = rule.bodyLayer, bodySub = rule.bodySub, edgeLayer = rule.edgeLayer, edgeSub = rule.edgeSub })
-		rep.checked = opts.checked
-		rep.object = owner and rep.skin or f
 		-- `dim` (rule or opts; user, 2026-09-24: "apply the eye strain rule to
 		-- all existing windows"): a box that holds text -- a list, an inset,
 		-- a section of options -- gets the palette's inner panel over its
@@ -3372,6 +4489,24 @@ function Kit:Replace(region, opts)
 		if dim == nil then
 			dim = rule.dim
 		end
+		-- opts.layWith (Kit:SkinPanelTab's open card): the skin's textures wait
+		-- until the card is first to be seen, that is while this region (the
+		-- game's own open art) shows (NineSlice's `defer`). Never while the
+		-- editing tools are on or the element is tuned (their handles and
+		-- tints work on the textures), nor for a skin that tints itself
+		local defer = opts.layWith and not (tune or self.liveEdit or owner or dim or rule.corners)
+			and not (opts.button and (rule.hover or rule.pressed or rule.disabled)) or nil
+		rep.skin = self:NineSlice(f, { scale = fscale, gems = false, body = body, bodyScale = rule.bodyScale and self.scale * rule.bodyScale,
+			open = opts.open or rule.open, prefix = rule.prefix or self.framePrefix, corners = rule.corners, skip = opts.skip,
+			owner = owner, bodyLayer = rule.bodyLayer, bodySub = rule.bodySub, edgeLayer = rule.edgeLayer, edgeSub = rule.edgeSub,
+			defer = defer })
+		if rep.skin.pendingArt then
+			rep.layWith = opts.layWith
+			f.kitWaiting = rep
+			Perf.SetScript(f, "OnUpdate", Waiting_OnUpdate)
+		end
+		rep.checked = opts.checked
+		rep.object = owner and rep.skin or f
 		if dim and body and rep.skin.body then
 			-- the fill on the frame the BODY is a region of (the skin frame, or
 			-- the owner): on the holder it tied with the skin frame at one level
@@ -3398,15 +4533,7 @@ function Kit:Replace(region, opts)
 			-- skin (edges and body), hover lighter, pressed / disabled darker
 			-- the iron takes the rule's checkedTint while opts.checked() (a
 			-- selected row); the state factor multiplies both iron and body
-			local function Tint(k)
-				local t = (rep.checked and rep.checked() and rule.checkedTint) or { 1, 1, 1 }
-				for _, tex in ipairs(rep.skin.art) do
-					tex:SetVertexColor(math.min(t[1] * k, 1), math.min(t[2] * k, 1), math.min(t[3] * k, 1))
-				end
-				if rep.skin.body then
-					rep.skin.body:SetVertexColor(math.min(k, 1), math.min(k, 1), math.min(k, 1))
-				end
-			end
+			-- (FrameTint)
 			local function Update()
 				-- secret-safe (Slot_Update's rule): a secret IsEnabled keeps the last answer
 				local disabled = rep.lastDisabled or false
@@ -3417,26 +4544,41 @@ function Kit:Replace(region, opts)
 					end
 				end
 				rep.lastDisabled = disabled
-				Tint(disabled and (rule.disabled or 1) or rep.pressed and (rule.pressed or 1) or rep.hover and (rule.hover or 1) or 1)
+				FrameTint(rep, disabled and (rule.disabled or 1) or rep.pressed and (rule.pressed or 1) or rep.hover and (rule.hover or 1) or 1)
 			end
 			rep.Update = Update
-			button:HookScript("OnEnter", function() rep.hover = true; Update() end)
-			button:HookScript("OnLeave", function() rep.hover = nil; rep.pressed = nil; Update() end)
-			button:HookScript("OnMouseDown", function() rep.pressed = true; pressedLatches[rep] = Update; Update() end)
-			button:HookScript("OnMouseUp", function() rep.pressed = nil; Update() end)
-			if button.SetEnabled then
-				hooksecurefunc(button, "SetEnabled", Update)
+			if frameTints[button] == nil then
+				-- the shared handlers (FrameTint_*), the rep kept by its button
+				frameTints[button] = rep
+				Perf.HookScript(button, "OnEnter", FrameTint_OnEnter)
+				Perf.HookScript(button, "OnLeave", FrameTint_OnLeave)
+				Perf.HookScript(button, "OnMouseDown", FrameTint_OnMouseDown)
+				Perf.HookScript(button, "OnMouseUp", FrameTint_OnMouseUp)
+				if button.SetEnabled then
+					hooksecurefunc(button, "SetEnabled", FrameTint_OnSetEnabled)
+				end
+			else
+				-- a second tinted frame on this button: handlers of its own, so
+				-- every hook runs where it did
+				Perf.HookScript(button, "OnEnter", function() rep.hover = true; Update() end)
+				Perf.HookScript(button, "OnLeave", function() rep.hover = nil; rep.pressed = nil; Update() end)
+				Perf.HookScript(button, "OnMouseDown", function() rep.pressed = true; pressedLatches[rep] = Update; Update() end)
+				Perf.HookScript(button, "OnMouseUp", function() rep.pressed = nil; Update() end)
+				if button.SetEnabled then
+					hooksecurefunc(button, "SetEnabled", Update)
+				end
 			end
 			Update()
 		end
 	elseif rule.kind == "edge" then
-		local f = Holder(level)
+		local f = MakeHolder(parent, rect, level, opts.strata)
 		local tex = f:CreateTexture(nil, "OVERLAY")
 		tex.kitScale = self.scale * (rule.scale or self.frameScale)
-		self:Apply(tex, rule.piece)
+		self:Apply(tex, rule.piece, true)   -- (tiled below, once it is placed)
 		tex:SetAllPoints(f)
-		f:SetScript("OnSizeChanged", function() Kit:Retile(tex) end)
-		f:HookScript("OnShow", function() Kit:Retile(tex) end)
+		f.kitTile = tex
+		Perf.SetScript(f, "OnSizeChanged", Holder_OnSize)
+		Perf.HookScript(f, "OnShow", Holder_OnShow)
 		self:Retile(tex)
 		rep.object, rep.tex = f, tex
 	elseif rule.kind == "strip" then
@@ -3468,8 +4610,8 @@ function Kit:Replace(region, opts)
 					rep:Refit()
 				end
 			end
-			rect:HookScript("OnSizeChanged", Refit)
-			rect:HookScript("OnShow", Refit)   -- sized while hidden: no OnSizeChanged came
+			Perf.HookScript(rect, "OnSizeChanged", Refit)
+			Perf.HookScript(rect, "OnShow", Refit)   -- sized while hidden: no OnSizeChanged came
 		end
 		local button = opts.button
 		if button then
@@ -3480,10 +4622,10 @@ function Kit:Replace(region, opts)
 				-- a strip's states are painted on its parts: resolve on the mid
 				rep:SetState(Kit:ResolveState(rule.base .. "_mid", rep.hover, rep.pressed, nil, disabled))
 			end
-			button:HookScript("OnEnter", function() rep.hover = true; Update() end)
-			button:HookScript("OnLeave", function() rep.hover = nil; rep.pressed = nil; Update() end)
-			button:HookScript("OnMouseDown", function() rep.pressed = true; pressedLatches[rep] = Update; Update() end)
-			button:HookScript("OnMouseUp", function() rep.pressed = nil; Update() end)
+			Perf.HookScript(button, "OnEnter", function() rep.hover = true; Update() end)
+			Perf.HookScript(button, "OnLeave", function() rep.hover = nil; rep.pressed = nil; Update() end)
+			Perf.HookScript(button, "OnMouseDown", function() rep.pressed = true; pressedLatches[rep] = Update; Update() end)
+			Perf.HookScript(button, "OnMouseUp", function() rep.pressed = nil; Update() end)
 			if button.SetEnabled then
 				hooksecurefunc(button, "SetEnabled", Update)
 			end
@@ -3573,13 +4715,13 @@ function Kit:Replace(region, opts)
 				end
 			end
 			-- the window may be laid out only when shown: fit again then
-			strip:SetScript("OnShow", function() rep:Refit() end)
+			Perf.SetScript(strip, "OnShow", function() rep:Refit() end)
 		end
 		local edit = opts.edit
 		if edit then
 			-- a plate under an edit box: its focused look while it has focus
-			edit:HookScript("OnEditFocusGained", function() rep:SetState("focused") end)
-			edit:HookScript("OnEditFocusLost", function() rep:SetState(rule.state or Kit:FirstState(rule.base, "mid")) end)
+			Perf.HookScript(edit, "OnEditFocusGained", function() rep:SetState("focused") end)
+			Perf.HookScript(edit, "OnEditFocusLost", function() rep:SetState(rule.state or Kit:FirstState(rule.base, "mid")) end)
 		end
 	elseif rule.kind == "slot" then
 		local button = opts.button or parent
@@ -3611,10 +4753,15 @@ function Kit:Replace(region, opts)
 				icon:SetSize(saved.w, saved.h)
 			end
 			-- the game re-anchors the icon on press / release and on its own
-			-- layout: fit it again after each
-			for _, m in ipairs({ "InitializeIconAnchoring", "UpdateIconInterior", "OnMouseDown", "OnMouseUp" }) do
+			-- layout: fit it again after each (SlotIcon_Refit, the rep kept by
+			-- its button; a second slot on the button has handlers of its own)
+			local shared = slotIcons[button] == nil
+			if shared then
+				slotIcons[button] = rep
+			end
+			for _, m in ipairs(ICON_METHODS) do
 				if button[m] then
-					hooksecurefunc(button, m, function()
+					hooksecurefunc(button, m, shared and SlotIcon_Refit or function()
 						if rep.object:IsShown() then
 							self:SlotPlaceIcon(rim)
 						end
@@ -3626,11 +4773,16 @@ function Kit:Replace(region, opts)
 			-- sizes it to its atlas: it spilled over the rim -- user,
 			-- 2026-09-23), it goes straight back into the opening
 			if rule.keepIcon then
-				hooksecurefunc(icon, "SetPoint", function()
-					if rep.object:IsShown() and not rim.placingIcon then
-						self:SlotPlaceIcon(rim)
-					end
-				end)
+				if keptIcons[icon] == nil then
+					keptIcons[icon] = rep
+					hooksecurefunc(icon, "SetPoint", SlotIcon_Keep)
+				else
+					hooksecurefunc(icon, "SetPoint", function()
+						if rep.object:IsShown() and not rim.placingIcon then
+							self:SlotPlaceIcon(rim)
+						end
+					end)
+				end
 			end
 		end
 		-- the rim's size from the pitch: gemSpan (neighbours share a gem: the
@@ -3744,7 +4896,7 @@ function Kit:Replace(region, opts)
 			-- no state mixin: the over / down flags from the button's scripts
 			-- (FollowButton drives a slot rim, not a strip)
 			for _, script in ipairs({ "OnEnter", "OnLeave", "OnMouseDown", "OnMouseUp" }) do
-				button:HookScript(script, function() rep:SetState() end)
+				Perf.HookScript(button, script, function() rep:SetState() end)
 			end
 		end
 		rep:SetState()
@@ -3802,11 +4954,20 @@ function Kit:Replace(region, opts)
 		-- the fill's layer on every SetStatusBarTexture (user, 2026-09-21:
 		-- the unit frame fills came up over their brackets)
 		if opts.layer and parent.SetStatusBarTexture and parent.GetStatusBarTexture then
+			-- Some fills are re-set dozens of times a second (the target of
+			-- target's, 41 a second in /melloperf 2026-09-24: the game's own
+			-- updates, and Bar Textures putting its texture straight back):
+			-- the layers are set only when they change. `relayered` is
+			-- forgotten when the tuning touches the pieces (Kit:TuneObject).
 			rep.Relayer = function(self)
 				local layer, sub, tl, ts = Kit:BracketLayers(parent, true)
 				if not layer then
 					return   -- unreadable (secret) on this bar: the bracket stays where it was placed
 				end
+				if self.relayered == layer and self.relayeredSub == sub then
+					return
+				end
+				self.relayered, self.relayeredSub = layer, sub
 				self.strip.capL:SetDrawLayer(layer, sub)
 				self.strip.capR:SetDrawLayer(layer, sub)
 				self.strip.mid:SetDrawLayer(layer, sub - 1)
@@ -3949,7 +5110,7 @@ function Kit:Replace(region, opts)
 			inner:SetPoint("TOPLEFT", rect, "TOPLEFT", ins[1], -ins[3])
 			inner:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", -ins[2], ins[4])
 		else
-			f = Holder(level)
+			f = MakeHolder(parent, rect, level, opts.strata)
 			-- the picture stops at the rails' centre lines when a frame is over it
 			-- (the rails cover its edges; past them it would show outside the
 			-- frame): `inner` is the rect inset by each rail's centre
@@ -4080,7 +5241,13 @@ function Kit:Replace(region, opts)
 				self.filler:ClearAllPoints()
 				self.filler:SetPoint("TOPLEFT", self.inner, "TOPLEFT")
 				self.filler:SetPoint("BOTTOMRIGHT", self.tex, "BOTTOMLEFT")
-				self.filler:SetTexCoord(u1 + (u2 - u1) * ((w - picW) / picW), u1, v1, v2)
+				-- (in an atlas sheet never past the piece's own columns: a
+				-- rect over twice the picture's width shows them stretched)
+				local share = (w - picW) / picW
+				if share > 1 and InSheet(p.file) then
+					share = 1
+				end
+				self.filler:SetTexCoord(u1 + (u2 - u1) * share, u1, v1, v2)
 				self.filler:Show()
 				return
 			end
@@ -4109,21 +5276,27 @@ function Kit:Replace(region, opts)
 			end
 			self:Refit()
 		end
-		inner:SetScript("OnSizeChanged", function() rep:Refit() end)
+		Perf.SetScript(inner, "OnSizeChanged", function() rep:Refit() end)
 		-- a page hidden while the skin is built has no size to fit to (the
 		-- whole painting would stay stretched on it): fit again when it shows
-		inner:SetScript("OnShow", function() rep:Refit() end)
+		Perf.SetScript(inner, "OnShow", function() rep:Refit() end)
 		if rule.frame and rep.object == f then
 			rep.skin = self:NineSlice(f, { scale = self.scale * self.frameScale, gems = false, body = false, prefix = self.framePrefix })
 		end
 		rep:Refit()
 	elseif rule.kind == "fade" then
-		-- nothing stands in: the region is faded while the skin is on
-		local f = Holder(level)
-		rep.object = f
+		-- nothing stands in: the region is faded while the skin is on. Its
+		-- holder is made when something asks for rep.object (BareRep), or at
+		-- once where the editing tools want one to move (their proxy, a tune)
+		if tune or self.liveEdit then
+			rep.object = MakeHolder(parent, rect, level, opts.strata)
+		else
+			rep.holderParent, rep.holderLevel, rep.holderStrata, rep.holderShown = parent, level, opts.strata, true
+			setmetatable(rep, BareRep)
+		end
 	elseif rule.kind == "solid" then
 		-- a flat colour on the rect (`color` = { r, g, b, a })
-		local f = Holder(level)
+		local f = MakeHolder(parent, rect, level, opts.strata)
 		local tex = f:CreateTexture(nil, "BACKGROUND")
 		local c = rule.color or { 0.18, 0.18, 0.19, 1 }
 		tex:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
@@ -4142,15 +5315,16 @@ function Kit:Replace(region, opts)
 			tex = f:CreateTexture(nil, rule.layer or l or "BACKGROUND", nil, rule.sublevel or sl or 0)
 			tex:SetAllPoints(rect)
 		else
-			f = Holder(level)
+			f = MakeHolder(parent, rect, level, opts.strata)
 			tex = f:CreateTexture(nil, "BACKGROUND")
 			tex:SetAllPoints(f)
-			f:SetScript("OnSizeChanged", function() Kit:Retile(tex) end)
-			f:HookScript("OnShow", function() Kit:Retile(tex) end)
+			f.kitTile = tex
+			Perf.SetScript(f, "OnSizeChanged", Holder_OnSize)
+			Perf.HookScript(f, "OnShow", Holder_OnShow)
 		end
 		tex.kitScale = self.scale * (rule.scale or 1)
-		self:Apply(tex, rule.piece)
-		self:Retile(tex)
+		-- (tiled by Refit below, once the edge is on)
+		self:Apply(tex, rule.piece, true)
 		rep.object, rep.tex = (rule.owner and not isFrame) and tex or f, tex
 		-- `edge` = "brush": the tiled panel ends in painted strokes on every
 		-- side (Kit:PaintedEdge), fitted again whenever its size changes
@@ -4166,15 +5340,23 @@ function Kit:Replace(region, opts)
 			end
 		end
 		if rep.object == tex then
-			-- a region has no OnSizeChanged: re-tile on the rect's
-			local sizer = CreateFrame("Frame", nil, f)
-			sizer:EnableMouse(false)
-			sizer:SetAllPoints(rect)
-			sizer:SetScript("OnSizeChanged", Refit)
-			sizer:HookScript("OnShow", Refit)
+			-- a region has no OnSizeChanged: re-tile on the rect's. opts.sizer:
+			-- the rect itself when it is a frame of the caller's own (an action
+			-- slot's opening), whose scripts serve, where a frame was made for it
+			-- per slot (user, 2026-09-24: the bags' first open); not when the
+			-- editing tools' proxy stands in as the rect
+			local sizer = opts.sizer
+			if sizer ~= rect then
+				sizer = CreateFrame("Frame", nil, f)
+				sizer:EnableMouse(false)
+				sizer:SetAllPoints(rect)
+			end
+			sizer.kitRefit = Refit
+			Perf.SetScript(sizer, "OnSizeChanged", Sizer_OnSize)
+			Perf.HookScript(sizer, "OnShow", Sizer_OnShow)
 		elseif edge then
-			f:SetScript("OnSizeChanged", Refit)
-			f:HookScript("OnShow", Refit)
+			Perf.SetScript(f, "OnSizeChanged", Refit)
+			Perf.HookScript(f, "OnShow", Refit)
 		end
 		Refit()
 	elseif rule.kind == "texture" then
@@ -4191,7 +5373,7 @@ function Kit:Replace(region, opts)
 			tex.kitScale = self.scale
 			self:Apply(tex, rule.piece)
 		else
-			f = Holder(level)
+			f = MakeHolder(parent, rect, level, opts.strata)
 			tex = self:Texture(f, rule.piece, "OVERLAY", 1, self.scale)
 		end
 		if rule.natural then
@@ -4208,25 +5390,45 @@ function Kit:Replace(region, opts)
 			tex:SetSize(piece and h * piece.w / piece.h or h, h)
 			tex:SetPoint(rule.anchor or "CENTER", rect, rule.anchor or "CENTER")
 			if f ~= rect and f.SetScript then
-				f:SetScript("OnSizeChanged", function(_, _, nh)
+				Perf.SetScript(f, "OnSizeChanged", function(_, _, nh)
 					if nh and not Secret(nh) and nh > 0 then
 						tex:SetSize(piece and nh * piece.w / piece.h or nh, nh)
 					end
 				end)
 			end
 		elseif rule.square or rule.opening then
-			local okS, w, h = pcall(rect.GetSize, rect)
-			if not okS or Secret(w) or Secret(h) then
-				w, h = 0, 0
-			end
-			local size = math.min(w > 0 and w or h, h > 0 and h or w)
 			local piece = PIECES[rule.piece]
-			if rule.opening and piece and piece.open then
-				-- the rect is the OPENING: the canvas grows around it by the
-				-- piece's ratio (a ring around the game's own portrait);
-				-- `openingScale` shrinks that (the minimap's ring at 0.75, its
-				-- rim over the map's edge — user, 2026-09-21)
-				size = size * piece.w / (piece.open[3] - piece.open[1]) * (rule.openingScale or 1)
+			local function SquareSize(w, h)
+				if not (w and h) or Secret(w) or Secret(h) then
+					return 0
+				end
+				local size = math.min(w > 0 and w or h, h > 0 and h or w)
+				if size > 0 and rule.opening and piece and piece.open then
+					-- the rect is the OPENING: the canvas grows around it by the
+					-- piece's ratio (a ring around the game's own portrait);
+					-- `openingScale` shrinks that (the minimap's ring at 0.75, its
+					-- rim over the map's edge — user, 2026-09-21)
+					size = size * piece.w / (piece.open[3] - piece.open[1]) * (rule.openingScale or 1)
+				end
+				return size
+			end
+			local okS, w, h = pcall(rect.GetSize, rect)
+			local size = okS and SquareSize(w, h) or 0
+			if size <= 0 then
+				-- the rect gives no size yet (a proxy made this frame, a region
+				-- not laid out, a secret read): the piece at its own size
+				-- meanwhile -- never none, which draws it at its FILE's size, a
+				-- whole atlas sheet (1024 x 512) -- and fitted once the rect has one
+				size = (self:Size(rule.piece, self.scale))
+				local sizer = CreateFrame("Frame", nil, f)
+				sizer:EnableMouse(false)
+				sizer:SetAllPoints(rect)
+				Perf.SetScript(sizer, "OnSizeChanged", function(_, nw, nh)
+					local s = SquareSize(nw, nh)
+					if s > 0 then
+						tex:SetSize(s, s)
+					end
+				end)
 			end
 			tex:SetSize(size, size)
 			tex:SetPoint("CENTER", opts.center or rect, "CENTER")
@@ -4235,42 +5437,33 @@ function Kit:Replace(region, opts)
 		end
 		rep.object, rep.tex = (rule.owner and not isFrame) and tex or f, tex
 	end
-	rep.object:Hide()
+	local object = rawget(rep, "object")
+	if object then
+		object:Hide()
+	else
+		rep.holderShown = false
+	end
 	-- every window's outer rail and title plate are known to the window
 	-- mover (UI Modifications), whichever panel dressed the window: the
 	-- older panels replace these two by hand, not through SkinWindowShell
-	-- ... the WINDOW being the top frame under UIParent (a title container
-	-- may sit in a page inside the window: the group finder's tabs stayed
-	-- behind when only the page moved — user, 2026-09-21)
-	local function Window(frame)
-		local depth = 0
-		while frame and frame ~= UIParent and depth < 6 do
-			local up = frame.GetParent and frame:GetParent()
-			if not up or up == UIParent then
-				return frame
-			end
-			frame = up
-			depth = depth + 1
-		end
-		return frame
-	end
+	-- (the window: WindowOf)
 	if key == "TitleBar" and parent and parent.GetParent then
-		local window = Window(parent:GetParent())
+		local window = WindowOf(parent:GetParent())
 		if window and window ~= UIParent then
 			RegisterShell(window, { title = rep })
 		end
 	elseif key == "NineSlicePanelTemplate" and parent then
-		local window = Window(parent)
+		local window = WindowOf(parent)
 		if window and window ~= UIParent then
 			RegisterShell(window, { outer = rep })
 		end
 	elseif key == "UI-Frame-PortraitMetal-CornerTopLeft" and parent then
-		local window = Window(parent)
+		local window = WindowOf(parent)
 		if window and window ~= UIParent then
 			RegisterShell(window, { ring = rep })
 		end
 	end
-	rep.window = Window(parent)
+	rep.window = WindowOf(parent)
 	self:RegisterReplacement(rep)
 	if tune then
 		self:TuneObject(rep, tune)
@@ -4303,7 +5496,7 @@ function Kit:SkinScrollBar(bar, replace)
 		reps[#reps + 1] = replace(bar.Forward.Texture, { as = "minimal-scrollbar-arrow-bottom", button = bar.Forward })
 	end
 	-- the thumb's height follows the content: refit when it changes
-	thumb:HookScript("OnSizeChanged", function()
+	Perf.HookScript(thumb, "OnSizeChanged", function()
 		for _, rep in ipairs(reps) do
 			if rep.vstrip and rep.object:IsShown() then
 				rep:Refit()
@@ -4314,19 +5507,83 @@ function Kit:SkinScrollBar(bar, replace)
 	return reps
 end
 
+-- A frame's children without a table per frame (user, 2026-09-24: the
+-- walks below built { root:GetChildren() } at every frame they visited, ~0.16
+-- KB each, hundreds a walk): packed into a list kept per level of the walk
+-- and used again. A list still in use (a walk started from inside another,
+-- a walk an error left) is left to it, and that level gets a new one.
+local walkLists = {}   -- [depth] = { busy = , [1..n] = children }
+
+-- eight at a time: select() copies only what follows, never a table
+local function Fill(list, i, n, a, b, c, d, e, f, g, h, ...)
+	list[i], list[i + 1], list[i + 2], list[i + 3] = a, b, c, d
+	list[i + 4], list[i + 5], list[i + 6], list[i + 7] = e, f, g, h
+	if n > 8 then
+		return Fill(list, i + 8, n - 8, ...)
+	end
+end
+local function Pack(list, ...)
+	local n = select("#", ...)
+	if n > 0 then
+		Fill(list, 1, n, ...)
+	end
+	return n
+end
+
+-- the list of `frame`'s children for a walk at `depth`, and how many; hand
+-- it back with WalkDone when the walk is through it
+local function WalkChildren(frame, depth)
+	local list = walkLists[depth]
+	if not list or list.busy then
+		list = {}
+		walkLists[depth] = list
+	end
+	list.busy = true
+	return list, Pack(list, frame:GetChildren())
+end
+local function WalkDone(list)
+	list.busy = false
+end
+
 -- Every MinimalScrollBar under `root` (a frame with Track / Thumb / Back /
 -- Forward), skinned with `replace`; `skip` is a frame never walked into.
+-- The same walk asked for again in one frame (the same root, replace and
+-- skip) with no frame made anywhere since (GetNumFrames) has nothing new to
+-- find and is not walked again (user, 2026-09-24: the walk asked for twice
+-- and three times in the frame a window opened; the world map's and the quest
+-- map's shows both ask for it -- the spell book keeps its own once a frame).
+-- Only within the frame: a later show walks again, so a scroll bar moved in
+-- under the root since (a reparent makes no frame) is still found.
+local walked = setmetatable({}, { __mode = "k" })   -- [root] = { at, frames, replace, skip }
+local GetNumFrames = _G.GetNumFrames
+
 function Kit:SkinScrollBarsIn(root, replace, skip, depth)
+	local top = depth == nil
 	depth = depth or 0
 	if depth > 7 or root == skip then
 		return
 	end
-	for _, child in ipairs({ root:GetChildren() }) do
+	local last = top and GetNumFrames and walked[root]
+	if last and last.replace == replace and last.skip == skip and last.at == GetTime() and last.frames == GetNumFrames() then
+		return
+	end
+	local list, n = WalkChildren(root, depth)
+	for i = 1, n do
+		local child = list[i]
 		if child.Track and child.Track.Thumb and child.Back and child.Forward then
 			self:SkinScrollBar(child, replace)     -- `replace` enables the reps itself when the skin is active
 		else
 			self:SkinScrollBarsIn(child, replace, skip, depth + 1)
 		end
+	end
+	WalkDone(list)
+	if top and GetNumFrames then
+		last = walked[root]
+		if not last then
+			last = {}
+			walked[root] = last
+		end
+		last.at, last.frames, last.replace, last.skip = GetTime(), GetNumFrames(), replace, skip
 	end
 end
 
@@ -5299,38 +6556,84 @@ function Kit:SkinStatusBar(bar, frame, bg, replace, key)
 	return rep
 end
 
+-- Every skinned panel tab (Kit:SkinPanelTab), for the shared handlers below
+-- (user, 2026-09-24: one handler for all of them, the tab's own state kept
+-- here): its two cards, and which tab a hooked region belongs to
+local panelTabs = setmetatable({}, { __mode = "k" })     -- [tab] = { plain = rep, open = rep, rep = the one Steady reads, text = }
+local panelTabOf = setmetatable({}, { __mode = "k" })    -- [tab.Left / tab.LeftActive / tab.Text] = tab
+
+-- the cards shown with the game's art (the game hides the plain set and
+-- shows the active one on select)
+local function PanelTab_Follow(tab, st)
+	if st.plain then st.plain:SetShown(tab.Left:IsShown()) end
+	if st.open then st.open:SetShown(tab.LeftActive:IsShown()) end
+end
+local PanelTab_OnArt = Shared("Show / Hide on a panel tab's art", function(region)
+	local tab = panelTabOf[region]
+	PanelTab_Follow(tab, panelTabs[tab])
+end)
+
+-- the text held where the plate wants it (below)
+local function PanelTab_Steady(tab, st)
+	local rep, open, text = st.rep, st.open, st.text
+	if tab.melloSteadying or not (rep.object:IsShown() or (open and open.object:IsShown())) then
+		return
+	end
+	tab.melloSteadying = true
+	local dy = 0
+	if rep.strip then
+		local mid = PIECES[StripName(rep.strip.base, "mid", rep.strip.state)]
+		if mid and mid.box then
+			dy = (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (rep.strip.scale or Kit.scale)
+		end
+	end
+	local okP, _, _, _, x = pcall(text.GetPoint, text, 1)
+	text:SetPoint("CENTER", tab, "CENTER", (okP and x) or 0, dy)
+	tab.melloSteadying = nil
+end
+local PanelTab_OnTextPoint = Shared("SetPoint on a panel tab's text", function(text)
+	local tab = panelTabOf[text]
+	PanelTab_Steady(tab, panelTabs[tab])
+end)
+
 -- A PanelTabButtonTemplate / TabSystem tab (Left / Middle / Right plain,
 -- LeftActive / MiddleActive / RightActive open; the game shows one set):
 -- T1, one plate per set on the tab's rect, following the game's Show / Hide.
+-- The open card of a tab not selected now is laid when the tab is first
+-- selected (user, 2026-09-24: two cards per tab were the largest part of a
+-- tabbed window's first frame, ~200 engine calls a tab, and a tab shows only
+-- one): made now, in its place, its textures waiting (Kit:Replace's
+-- `layWith`). Only for a panel that follows its cards (skin.followers),
+-- syncing them with the game's art whenever it switches the kit on; a card
+-- left on screen without its art is laid in its first frame there
+-- (Waiting_OnUpdate).
 function Kit:SkinPanelTab(tab, replace, skin)
 	if not (tab and tab.Left and tab.LeftActive) or tab.melloRep ~= nil then
 		return
 	end
 	tab.melloRep = false
+	local follows = skin and skin.followers
 	local plain = replace(tab.Left, { as = "uiframe-tab-left", rect = tab, button = tab, alsoFade = { tab.Middle, tab.Right, tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight } })
-	local open = replace(tab.LeftActive, { as = "uiframe-activetab-left", rect = tab, alsoFade = { tab.MiddleActive, tab.RightActive } })
+	local open = replace(tab.LeftActive, { as = "uiframe-activetab-left", rect = tab, alsoFade = { tab.MiddleActive, tab.RightActive },
+		layWith = (follows and not tab.LeftActive:IsShown()) and tab.LeftActive or nil })
 	tab.melloRep = plain or open or false
-	if skin and skin.followers then
+	if follows then
 		if plain then
-			skin.followers[#skin.followers + 1] = { rep = plain, region = tab.Left }
+			follows[#follows + 1] = { rep = plain, region = tab.Left }
 		end
 		if open then
-			skin.followers[#skin.followers + 1] = { rep = open, region = tab.LeftActive }
+			follows[#follows + 1] = { rep = open, region = tab.LeftActive }
 		end
 	end
+	local st = { plain = plain, open = open }
+	panelTabs[tab] = st
+	panelTabOf[tab.Left], panelTabOf[tab.LeftActive] = tab, tab
 	-- the game hides the plain set and shows the active one on select
-	for _, region in ipairs({ tab.Left, tab.LeftActive }) do
-		hooksecurefunc(region, "Show", function()
-			if plain then plain:SetShown(tab.Left:IsShown()) end
-			if open then open:SetShown(tab.LeftActive:IsShown()) end
-		end)
-		hooksecurefunc(region, "Hide", function()
-			if plain then plain:SetShown(tab.Left:IsShown()) end
-			if open then open:SetShown(tab.LeftActive:IsShown()) end
-		end)
-	end
-	if plain then plain:SetShown(tab.Left:IsShown()) end
-	if open then open:SetShown(tab.LeftActive:IsShown()) end
+	hooksecurefunc(tab.Left, "Show", PanelTab_OnArt)
+	hooksecurefunc(tab.Left, "Hide", PanelTab_OnArt)
+	hooksecurefunc(tab.LeftActive, "Show", PanelTab_OnArt)
+	hooksecurefunc(tab.LeftActive, "Hide", PanelTab_OnArt)
+	PanelTab_Follow(tab, st)
 	-- the game bobs the tab's text on select / deselect (a few px up and
 	-- down, to sit on its own tab art); on the kit's plate it stays put,
 	-- centred on the plate's painted box (user, 2026-09-21). Re-applied
@@ -5339,24 +6642,10 @@ function Kit:SkinPanelTab(tab, replace, skin)
 	local text = tab.Text
 	local rep = plain or open
 	if text and rep then
-		local function Steady()
-			if tab.melloSteadying or not (rep.object:IsShown() or (open and open.object:IsShown())) then
-				return
-			end
-			tab.melloSteadying = true
-			local dy = 0
-			if rep.strip then
-				local mid = PIECES[StripName(rep.strip.base, "mid", rep.strip.state)]
-				if mid and mid.box then
-					dy = (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (rep.strip.scale or Kit.scale)
-				end
-			end
-			local okP, _, _, _, x = pcall(text.GetPoint, text, 1)
-			text:SetPoint("CENTER", tab, "CENTER", (okP and x) or 0, dy)
-			tab.melloSteadying = nil
-		end
-		hooksecurefunc(text, "SetPoint", Steady)
-		Steady()
+		st.rep, st.text = rep, text
+		panelTabOf[text] = tab
+		hooksecurefunc(text, "SetPoint", PanelTab_OnTextPoint)
+		PanelTab_Steady(tab, st)
 	end
 end
 
@@ -5391,12 +6680,18 @@ end
 -- window, a page): search boxes, red buttons, check boxes, dropdowns, panel
 -- tabs, insets, scroll bars — each to its fixed look. `skip` frames are not
 -- walked into (a map canvas). The game's own icons and pictures are left.
-function Kit:SweepControls(root, replace, skin, skip, depth)
+-- `shownOnly`: every child of a frame walked is looked at, but only the
+-- shown ones are walked into, a hidden page left for when it first shows
+-- (the walk some panels make themselves over a one-level sweep, in one call
+-- and one GetChildren a frame; user, 2026-09-24).
+function Kit:SweepControls(root, replace, skin, skip, depth, shownOnly)
 	depth = depth or 0
 	if not root or depth > 8 or root == skip or root == skin then
 		return
 	end
-	for _, child in ipairs({ root:GetChildren() }) do
+	local list, n = WalkChildren(root, depth)
+	for i = 1, n do
+		local child = list[i]
 		local kind = child:GetObjectType()
 		if child.Track and child.Track.Thumb and child.Back and child.Forward then
 			self:SkinScrollBar(child, replace)
@@ -5422,10 +6717,11 @@ function Kit:SweepControls(root, replace, skin, skip, depth)
 			or (child.NineSlice.TopLeftCorner and tostring(self:ArtKey(child.NineSlice.TopLeftCorner)):find("^UI%-Frame%-Inner"))) then
 			self:SkinInset(child, replace, root)
 		end
-		if not (child.Track and child.Track.Thumb) then
-			self:SweepControls(child, replace, skin, skip, depth + 1)
+		if not (child.Track and child.Track.Thumb) and not (shownOnly and not child:IsShown()) then
+			self:SweepControls(child, replace, skin, skip, depth + 1, shownOnly)
 		end
 	end
+	WalkDone(list)
 end
 
 -- A list's rows as they are acquired by a WowScrollBoxList (and the ones it
@@ -5573,8 +6869,8 @@ local function BuildDemo(scale)
 	f:SetMovable(true)
 	f:EnableMouse(true)
 	f:RegisterForDrag("LeftButton")
-	f:SetScript("OnDragStart", f.StartMoving)
-	f:SetScript("OnDragStop", f.StopMovingOrSizing)
+	Perf.SetScript(f, "OnDragStart", f.StartMoving)
+	Perf.SetScript(f, "OnDragStop", f.StopMovingOrSizing)
 	f:SetClampedToScreen(true)
 
 	local skin = Kit:NineSlice(f, { scale = scale, gems = true, ornament = true })
@@ -5596,7 +6892,7 @@ local function BuildDemo(scale)
 	close:SetSize(Kit:Size("window/close_normal", scale))
 	close:SetPoint("TOPRIGHT", -T * 0.4, -T * 0.4)
 	Kit:StateTexture(close, "window/close", { scale = scale })
-	close:SetScript("OnClick", function() f:Hide() end)
+	Perf.SetScript(close, "OnClick", function() f:Hide() end)
 
 	local ring = Kit:Texture(c, "window/portrait_ring", "ARTWORK", 3, scale)
 	ring:SetPoint("TOPLEFT", -T * 0.2, T * 0.2)
@@ -5733,12 +7029,25 @@ SlashCmdList.MELLOKITWHAT = function()
 							tex.isChecked and tostring(select(2, pcall(tex.isChecked))) or "-",
 							okCk and tostring(ck) or "err", okSt and tostring(st) or "err", tostring(bt.IsEnabled and bt:IsEnabled()))
 					end
+					-- the share of the piece's own uv shown (its rectangle in an
+					-- atlas sheet is a small part of the file)
 					local shownW = (okT and u2 and u1) and (u2 - u1) or 0
+					local shownH = (v2 or 0) - (v1 or 0)
+					if kp and type(kp.uv) == "table" and kp.tile ~= "slice" then
+						local du, dv = (kp.uv[2] or 1) - (kp.uv[1] or 0), (kp.uv[4] or 1) - (kp.uv[3] or 0)
+						shownW = du ~= 0 and shownW / du or 0
+						shownH = dv ~= 0 and shownH / dv or 0
+					end
+					-- a one-texture nine-slice: its family, and its w / h are the painted px it shows
+					local isSlice = kp and kp.tile == "slice"
+					if isSlice then
+						shownW, shownH = 1, 1
+					end
 					rows[#rows + 1] = {
 						key = order * 1e6 + level * 1e3 + layerOrder * 10 + (okL and sub or 0),
 						text = string.format("%-34s %4dx%-4d  uv %.3f..%.3f x %.3f..%.3f  (%s: %dx%d px shown on %dx%d)  tint %.2f %.2f %.2f a=%.2f  %s/%s  %s L%d %s  file=%s",
-							tostring(tex.kitName), w, h, u1 or 0, u2 or 0, v1 or 0, v2 or 0,
-							kp and kp.tile and "tile" or "picture", math.floor(pieceW * shownW + 0.5), math.floor(pieceH * ((v2 or 0) - (v1 or 0)) + 0.5), w, h,
+							tostring(tex.kitName or (isSlice and ("slice " .. tostring(kp.prefix)))), w, h, u1 or 0, u2 or 0, v1 or 0, v2 or 0,
+							isSlice and "nine-slice" or kp and kp.tile and "tile" or "picture", math.floor(pieceW * shownW + 0.5), math.floor(pieceH * shownH + 0.5), w, h,
 							okV and r or 1, okV and g or 1, okV and bl or 1, tex:GetAlpha() or 1,
 							tostring(okL and layer or "?"), tostring(okL and sub or "?"), tostring(parent and parent:GetName() or (parent and parent:GetDebugName()) or "?"), level, strata,
 							tostring(file)) .. rimInfo,
@@ -5773,4 +7082,390 @@ SlashCmdList.MELLOKITDEMO = function(msg)
 	end
 	demo = BuildDemo(scale)
 	demo:Show()
+end
+
+--------------------------------------------------------------------------------
+-- /mellokit: the one-texture nine-slices' switch and their test (user,
+-- 2026-09-24: stage 2 of the performance programme, off by default).
+--   /mellokit                   the switch, the data, the client's support
+--   /mellokit slices on | off   the switch (saved); the UI reloads, so the
+--                               whole kit is laid again the new way
+--   /mellokit slices unit <n>   UI units one margin texel covers (1): only if
+--                               the test shows the one-texture corners at
+--                               another size than the pieces' (then /reload)
+--   /mellokit slices count      every nine-slice built so far, per window: its
+--                               rail textures in pieces and as one texture
+--   /mellokit slicetest         today's rails beside the one-texture ones, at
+--                               three sizes per case, and a third copy that
+--                               blinks between the two (a difference jumps)
+--------------------------------------------------------------------------------
+
+do
+	-- the rail textures a skin needs in pieces and as one texture, from what
+	-- it holds (edges on the closed sides, each closed corner mitred or a gem).
+	-- A skin whose rails wait (NineSlice's `defer`: a tab's open card not yet
+	-- selected) is counted as it will be laid, from the options it keeps --
+	-- no gem corners there, one texture if the switch was on when it was made
+	-- (review, 2026-09-24: the count had them as skins of no pieces)
+	local function RailCounts(skin)
+		local wait = rawget(skin, "pendingArt")
+		local cut = skin.slice and skin.slice.kitPiece
+		local open = {}
+		for _, side in ipairs({ "t", "b", "l", "r" }) do
+			if cut then
+				open[side] = type(cut) == "table" and cut.open and cut.open:find(side, 1, true) ~= nil or false
+			elseif wait then
+				open[side] = (wait.open or ""):find(side, 1, true) ~= nil
+			else
+				open[side] = skin[side] == nil
+			end
+		end
+		if wait then
+			local want = wait.slices
+			if want == nil then
+				want = skin.slicesWas
+			end
+			local prefix = wait.prefix or "window/frame"
+			local entry = want and Slices.api ~= false and SliceFamily(prefix)
+			cut = entry and SliceCut(prefix, entry, open.l, open.r, open.t, open.b) or nil
+		end
+		local edges, mitred, gems = 0, 0, 0
+		for _, side in ipairs({ "t", "b", "l", "r" }) do
+			edges = edges + (open[side] and 0 or 1)
+		end
+		for _, c in ipairs({ "tl", "tr", "bl", "br" }) do
+			if not open[c:sub(1, 1)] and not open[c:sub(2, 2)] then
+				if skin.gemCorner and skin.gemCorner[c] then
+					gems = gems + 1
+				else
+					mitred = mitred + 1
+				end
+			end
+		end
+		-- (a skin with a gem corner stays in pieces either way)
+		return edges + mitred, (gems > 0) and (edges + mitred) or 1, cut and true or false
+	end
+
+	-- the window a frame is in: its last ancestor under UIParent
+	local function TopWindow(frame)
+		local f = frame
+		for _ = 1, 40 do
+			local p = f:GetParent()
+			if not p or p == UIParent then
+				break
+			end
+			f = p
+		end
+		local ok, name = pcall(f.GetName, f)
+		if not (ok and type(name) == "string") then
+			local okD, debugName = pcall(f.GetDebugName, f)
+			name = okD and tostring(debugName) or "?"
+		end
+		return name
+	end
+
+	local function Count()
+		local windows, order = {}, {}
+		local total = { skins = 0, shown = 0, pieces = 0, one = 0, now = 0 }
+		local f = EnumerateFrames()
+		while f do
+			if rawget(f, "melloSkin") and rawget(f, "all") then
+				local pieces, one, sliced = RailCounts(f)
+				local name = TopWindow(f)
+				local w = windows[name]
+				if not w then
+					w = { skins = 0, shown = 0, pieces = 0, one = 0, now = 0 }
+					windows[name] = w
+					order[#order + 1] = name
+				end
+				local okV, visible = pcall(f.IsVisible, f)
+				local shown = (okV and not Secret(visible) and visible) and 1 or 0
+				for _, t in ipairs({ w, total }) do
+					t.skins, t.shown = t.skins + 1, t.shown + shown
+					t.pieces, t.one = t.pieces + pieces, t.one + one
+					t.now = t.now + (sliced and one or pieces)
+				end
+			end
+			f = EnumerateFrames(f)
+		end
+		table.sort(order, function(a, b) return windows[a].pieces - windows[a].one > windows[b].pieces - windows[b].one end)
+		MelloUI:ClearLog()
+		MelloUI:Print("Nine-slice rails built so far (a window's are built when it first opens), per window:")
+		MelloUI:Print("%-44s %5s %5s %7s %9s %6s %4s", "window", "skins", "shown", "pieces", "one each", "saved", "now")
+		for _, name in ipairs(order) do
+			local w = windows[name]
+			MelloUI:Print("%-44s %5d %5d %7d %9d %6d %4d", name:sub(1, 44), w.skins, w.shown, w.pieces, w.one, w.pieces - w.one, w.now)
+		end
+		MelloUI:Print("%-44s %5d %5d %7d %9d %6d %4d", "all", total.skins, total.shown, total.pieces, total.one, total.pieces - total.one, total.now)
+		MelloUI:Print("pieces: rail textures as eight pieces; one each: as one texture (and a corner that stays its own); now: as the switch has them (%s)",
+			Kit:SlicesOn() and "on" or "off")
+		MelloUI:ShowLog("mellokit slices count")
+	end
+
+	local function Status()
+		local data = SliceData()
+		MelloUI:Print("One-texture nine-slices: %s (/mellokit slices on | off); a margin texel covers %s UI units.", Kit:SlicesOn() and "ON" or "off", tostring(SliceUnit()))
+		if not data then
+			MelloUI:Print("  Media\\KitSlices.lua is not loaded (not in MelloUI.toc?): everything stays in pieces.")
+		else
+			for prefix, entry in pairs(data) do
+				MelloUI:Print("  %s: picture %dx%d texels, corners %d texels, %s; %s", prefix, entry.grid[1], entry.grid[2], entry.corner,
+					PieceRoot(prefix .. "_t") .. tostring(entry.full), SliceFamily(prefix) and "ready" or "its pieces were tuned or rebuilt: stays in pieces")
+			end
+			MelloUI:Print("  a rail with gem corners (a window's outer rail) stays in pieces.")
+		end
+		if Slices.api == nil then
+			-- not tried yet this session: one hidden texture asked, once
+			local probe = UIParent:CreateTexture()
+			probe:Hide()
+			Slices.api = (probe.SetTextureSliceMargins and probe.SetTextureSliceMode and probe.SetScale) and true or false
+		end
+		MelloUI:Print("  this client %s cut a texture into a nine-slice.", Slices.api and "can" or "can NOT")
+	end
+
+	----------------------------------------------------------------------------
+	-- The test window: one page per case, three sizes; per size the rails in
+	-- pieces, as one texture, and a copy blinking between the two. The body
+	-- (the stone) is the same texture in all three.
+	----------------------------------------------------------------------------
+	local test
+
+	local function BuildTest()
+		local SIZES = { { 140, 110 }, { 200, 140 }, { 260, 170 } }
+		local COLUMN = 290
+
+		local function Cases()
+			-- (a window's outer rail, gem-cornered, stays in pieces: not a case)
+			local frameScale = Kit.scale * (Kit.frameScale or 1.6)
+			return {
+				{ label = "Frames, insets and lists (window/single at the frame scale)", prefix = "window/single", scale = frameScale },
+				{ label = "window/frame with its mitred corners", prefix = "window/frame", scale = Kit.scale },
+				{ label = "window/single open at the top (an attached box: no top rail, no top corners)", prefix = "window/single", scale = frameScale, open = "t" },
+				{ label = "window/single open on the right (the viewport, where it meets the pane divider)", prefix = "window/single", scale = frameScale, open = "r" },
+				{ label = "window/frame open on the right, mitred corners", prefix = "window/frame", scale = Kit.scale, open = "r" },
+			}
+		end
+
+		local function Label(parent, text, font)
+			local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+			local c = MelloUI.Palette and MelloUI.Palette.text
+			if c then
+				fs:SetTextColor(c[1], c[2], c[3])
+			end
+			fs:SetText(text)
+			return fs
+		end
+
+		-- what the page's one-texture skin is, and what a corner should cover
+		local function Notes(case, pieces, sliced)
+			local cut = sliced.slice and sliced.slice.kitPiece
+			local first
+			if cut then
+				local okS, texScale = pcall(sliced.slice.GetScale, sliced.slice)
+				texScale = (okS and type(texScale) == "number") and texScale or 0
+				local file = (PieceRoot(cut.prefix .. "_t") .. cut.file):gsub("^.-Media\\", "")
+				first = string.format("one texture: %s, %dx%d texels shown, margins %d/%d/%d/%d (l/t/r/b), texture scale %.3f: a corner covers %.2f UI units",
+					file, cut.w / cut.texel, cut.h / cut.texel,
+					cut.margins[1], cut.margins[2], cut.margins[3], cut.margins[4], texScale, (cut.margins[1] > 0 and cut.margins[1] or cut.margins[3]) * texScale * SliceUnit())
+			else
+				first = "one texture: NOT drawn (/mellokit says why): both columns are pieces"
+			end
+			local tl = Kit:Piece(case.prefix .. "_tl")
+			local second = string.format("pieces: a corner covers %.2f UI units (%d painted px x %.3f); rail textures per skin: %d in pieces, %d as one texture",
+				pieces.thickness or 0, tl and tl.w or 0, case.scale, #pieces.art, #sliced.art)
+			return first, second
+		end
+
+		local function BuildPage(parent, case, blinks)
+			local page = CreateFrame("Frame", nil, parent)
+			page:SetAllPoints(parent)
+			page:Hide()
+			for i, text in ipairs({ "Today (eight pieces)", "One texture", "Blinking between the two" }) do
+				local h = Label(page, text, "GameFontNormal")
+				h:SetPoint("TOPLEFT", page, "TOPLEFT", 90 + (i - 1) * COLUMN, -56)
+			end
+			local y = -84
+			local first, second
+			page.rows = {}
+			for _, size in ipairs(SIZES) do
+				local sizeLabel = Label(page, string.format("%d x %d", size[1], size[2]))
+				sizeLabel:SetPoint("TOPLEFT", page, "TOPLEFT", 16, y - 4)
+				local skins = {}
+				local row = { label = sizeLabel, size = size, cells = {} }
+				page.rows[#page.rows + 1] = row
+				for col = 1, 3 do
+					local cell = CreateFrame("Frame", nil, page)
+					cell:SetSize(size[1], size[2])
+					cell:SetPoint("TOPLEFT", page, "TOPLEFT", 90 + (col - 1) * COLUMN, y)
+					row.cells[col] = { frame = cell, x = 90 + (col - 1) * COLUMN, y = y }
+					local function Skin(sliced)
+						return Kit:NineSlice(cell, { prefix = case.prefix, scale = case.scale, corners = case.corners, skip = case.skip,
+							open = case.open, gems = false, body = true, slices = sliced })
+					end
+					if col < 3 then
+						skins[col] = Skin(col == 2)
+					else
+						local a, b = Skin(false), Skin(true)
+						b:Hide()
+						blinks[#blinks + 1] = { a, b }
+					end
+				end
+				if not first then
+					first, second = Notes(case, skins[1], skins[2])
+				end
+				y = y - size[2] - 28
+			end
+			local n1 = Label(page, first or "")
+			n1:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 16, 58)
+			local n2 = Label(page, second or "")
+			n2:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", 16, 42)
+			return page
+		end
+
+		-- Zoom x2: the first size alone, its cells at twice the scale (the
+		-- rails; the stone keeps the screen's one density), in the same
+		-- columns; the window, its notes and buttons stay as they are (the
+		-- whole window at x2 ran past the screen, its buttons with it --
+		-- review, 2026-09-24)
+		local function ZoomPage(page, on)
+			for i, row in ipairs(page.rows) do
+				local shown, s = not on or i == 1, (on and i == 1) and 2 or 1
+				row.label:SetShown(shown)
+				row.label:SetText(string.format("%d x %d%s", row.size[1], row.size[2], s > 1 and "\nat x2" or ""))
+				for _, cell in ipairs(row.cells) do
+					cell.frame:SetShown(shown)
+					cell.frame:SetScale(s)
+					cell.frame:ClearAllPoints()
+					cell.frame:SetPoint("TOPLEFT", page, "TOPLEFT", cell.x / s, cell.y / s)
+				end
+			end
+		end
+
+		local f = CreateFrame("Frame", "MelloUISliceTest", UIParent)
+		f:SetSize(960, 640)
+		f:SetPoint("CENTER")
+		f:SetFrameStrata("DIALOG")
+		f:SetMovable(true)
+		f:EnableMouse(true)
+		f:RegisterForDrag("LeftButton")
+		Perf.SetScript(f, "OnDragStart", f.StartMoving)
+		Perf.SetScript(f, "OnDragStop", f.StopMovingOrSizing)
+		f:SetClampedToScreen(true)
+		local bg = f:CreateTexture(nil, "BACKGROUND")
+		bg:SetAllPoints(f)
+		local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+		bg:SetColorTexture(c[1], c[2], c[3], 0.97)
+		local title = Label(f, "", "GameFontNormal")
+		title:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -14)
+		local caseLabel = Label(f, "")
+		caseLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -34)
+		local blinkLabel = Label(f, "")
+		blinkLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 90 + 2 * COLUMN, -40)
+
+		local cases, pages, blinks = Cases(), {}, {}
+		for i, case in ipairs(cases) do
+			blinks[i] = {}
+			pages[i] = BuildPage(f, case, blinks[i])
+		end
+		local index = 1
+		local function ShowPage(i)
+			index = ((i - 1) % #pages) + 1
+			for n, page in ipairs(pages) do
+				page:SetShown(n == index)
+			end
+			title:SetText(string.format("MelloUI one-texture nine-slices: case %d of %d (switch %s, Kit.scale %.3f)", index, #pages,
+				Kit:SlicesOn() and "ON" or "off", Kit.scale))
+			caseLabel:SetText(cases[index].label)
+		end
+		local function Button(text, x, fn)
+			local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+			b:SetSize(96, 22)
+			b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x, 10)
+			b:SetText(text)
+			Perf.SetScript(b, "OnClick", fn)
+			return b
+		end
+		Button("< Previous", 16, function() ShowPage(index - 1) end)
+		Button("Next >", 118, function() ShowPage(index + 1) end)
+		local zoomed = false
+		Button("Zoom x2", 220, function(self)
+			zoomed = not zoomed
+			for _, page in ipairs(pages) do
+				ZoomPage(page, zoomed)
+			end
+			self:SetText(zoomed and "Zoom x1" or "Zoom x2")
+			-- the stone repeats at the screen's one density again; the rails follow the scale
+			Kit:RetileBackgrounds()
+		end)
+		Button("Close", 960 - 112, function() f:Hide() end)
+
+		-- the blink: every 0.6 s the third copy swaps, while the window is open
+		local phase, ticker = false, nil
+		local function Blink()
+			phase = not phase
+			for _, pair in ipairs(blinks[index] or {}) do
+				pair[1]:SetShown(not phase)
+				pair[2]:SetShown(phase)
+			end
+			blinkLabel:SetText(phase and "showing: one texture" or "showing: pieces")
+		end
+		Perf.HookScript(f, "OnShow", function()
+			if not ticker then
+				ticker = C_Timer.NewTicker(0.6, Blink)
+			end
+		end)
+		Perf.HookScript(f, "OnHide", function()
+			if ticker then
+				ticker:Cancel()
+				ticker = nil
+			end
+		end)
+		ShowPage(1)
+		return f
+	end
+
+	-- luacheck: globals SLASH_MELLOKIT1, read globals ReloadUI
+	SLASH_MELLOKIT1 = "/mellokit"
+	SlashCmdList.MELLOKIT = function(msg)
+		local words = {}
+		for w in (msg or ""):lower():gmatch("%S+") do
+			words[#words + 1] = w
+		end
+		local cmd, arg, value = words[1], words[2], words[3]
+		if cmd == "slicetest" then
+			if test then
+				-- made afresh each time: the switch, the unit or the look may have changed
+				test:Hide()
+				test:SetParent(nil)
+				test = nil
+			end
+			if not LAYOUT then
+				MelloUI:Print("Kit layout missing (Media/KitLayout.lua).")
+				return
+			end
+			test = BuildTest()
+			test:Show()
+		elseif cmd == "slices" and (arg == "on" or arg == "off") then
+			local db = MelloUI.db
+			if type(db) ~= "table" then
+				MelloUI:Print("The settings are not loaded yet; try again in a moment.")
+				return
+			end
+			db.kitSlices = (arg == "on") or nil
+			MelloUI:Print("One-texture nine-slices %s: reloading the UI to lay the kit again.", arg)
+			ReloadUI()
+		elseif cmd == "slices" and arg == "unit" then
+			local db = MelloUI.db
+			local n = tonumber(value)
+			if type(db) == "table" then
+				db.kitSliceUnit = (n and n > 0 and n ~= 1) and n or nil
+			end
+			MelloUI:Print("A margin texel covers %s UI units at texture scale 1: /mellokit slicetest shows it; /reload for the rest of the UI.", tostring(SliceUnit()))
+		elseif cmd == "slices" and arg == "count" then
+			Count()
+		else
+			Status()
+			MelloUI:Print("  /mellokit slices on | off, /mellokit slicetest, /mellokit slices count, /mellokit slices unit <n>")
+		end
+	end
 end

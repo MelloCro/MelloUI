@@ -6,10 +6,10 @@ over it (an empty pip is the ring alone). Drawn 8x larger and scaled down, so
 the edges are smooth."""
 import os
 from PIL import Image, ImageDraw
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 SIZE, SS = 32, 8
-here = os.path.dirname(os.path.abspath(__file__))
-out = os.path.join(here, "..", "Media", "Textures", "Quests")
+out = master("Textures", "Quests")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 
 
 def diamond(inset):

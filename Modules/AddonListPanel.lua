@@ -22,10 +22,11 @@
 -- place (and the game's put back when the reskin is switched off).
 --
 -- The window may be made with the interface or only when the game first
--- opens it (a load-on-demand Blizzard_AddOnList): it is dressed whenever it
--- turns up (ADDON_LOADED / PLAYER_LOGIN), its pooled rows each time the list
--- initialises one. Nothing of the game's is replaced or re-scripted: post
--- hooks, HookScript and events only, our own state in weak side tables.
+-- opens it (a load-on-demand Blizzard_AddOnList): it is hooked whenever it
+-- turns up (ADDON_LOADED / PLAYER_LOGIN) and dressed the first time it shows
+-- (Sync), its pooled rows each time the list initialises one. Nothing of
+-- the game's is replaced or re-scripted: post hooks, HookScript and events
+-- only, our own state in weak side tables.
 -- Switched off, every piece is hidden and every faded region comes back; the
 -- header's font, the logo and the check boxes' grey tick are put back.
 --
@@ -35,6 +36,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("AddonListPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("AddonListPanel", {
@@ -234,8 +237,8 @@ local function SkinRowCheck(cb, st)
 		hooksecurefunc(cb, "SetCheckedAtlas", Checked)
 	end
 	-- the row's hover stays lit while the pointer is on its check box
-	cb:HookScript("OnEnter", RowEnterLeave)
-	cb:HookScript("OnLeave", RowEnterLeave)
+	Perf.HookScript(cb, "OnEnter", RowEnterLeave)
+	Perf.HookScript(cb, "OnLeave", RowEnterLeave)
 	-- what the game set before we came (its file path, where the client
 	-- still gives one; the next refresh passes through the hook above)
 	local tex = cb:GetCheckedTexture()
@@ -324,8 +327,8 @@ local function SkinRowToggle(button, st)
 			end)
 		end
 	end
-	button:HookScript("OnEnter", RowEnterLeave)
-	button:HookScript("OnLeave", RowEnterLeave)
+	Perf.HookScript(button, "OnEnter", RowEnterLeave)
+	Perf.HookScript(button, "OnLeave", RowEnterLeave)
 	SyncToggle(button)
 end
 
@@ -450,8 +453,8 @@ local function SkinRow(row, elementData)
 				SyncHover(row)
 			end
 			st.plate = plate
-			row:HookScript("OnEnter", RowEnterLeave)
-			row:HookScript("OnLeave", RowEnterLeave)
+			Perf.HookScript(row, "OnEnter", RowEnterLeave)
+			Perf.HookScript(row, "OnLeave", RowEnterLeave)
 		end
 	end
 	-- its controls (looked at on every init: a row may show a group's toggle
@@ -756,14 +759,21 @@ local function Deactivate()
 	RefreshRows()
 end
 
+local Sync
+
 local function Hook()
 	local al = Window()
 	if hooked or not al then
 		return
 	end
 	hooked = true
-	al:HookScript("OnShow", function(window)
+	Perf.HookScript(al, "OnShow", function(window)
 		if not active then
+			-- the first open: built and switched on here and now, before the
+			-- first frame is drawn (Build and Activate do all of the below)
+			if M.isEnabled then
+				Sync()
+			end
 			return
 		end
 		-- parts a client makes on first show (the list's rows, a dropdown)
@@ -775,10 +785,19 @@ local function Hook()
 	end)
 end
 
-local function Sync()
-	if M.isEnabled and Window() then
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of the
+-- look is built while the list has never been shown: its OnShow (Hook above)
+-- builds it before its first frame is drawn, in combat too (only frames and
+-- textures of ours, the game's art faded; the list has no protected part),
+-- or it is built at once when it is open now. Once built it stays for the
+-- session, switched on and off as before.
+Sync = function()
+	local al = Window()
+	if M.isEnabled and al then
 		Hook()
-		Activate()
+		if skin or al:IsShown() then
+			Activate()
+		end
 	else
 		Deactivate()
 	end
@@ -786,7 +805,7 @@ end
 
 -- The window comes with the interface or with its own load-on-demand addon
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function()
+Perf.SetScript(watcher, "OnEvent", function()
 	if Window() then
 		watcher:UnregisterAllEvents()
 		if M.isEnabled then
@@ -888,6 +907,9 @@ end
 local function DumpSummary(al)
 	MelloUI:Print("AddonList: %s, shown %s, size %s, level %s, strata %s; kit %s, pieces %d", Describe(al), tostring(al:IsShown()),
 		SizeText(al), LevelText(al), tostring(al:GetFrameStrata()), active and "on" or "off", skin and #skin.reps or 0)
+	if not skin then
+		MelloUI:Print("  not dressed yet: the AddOn list is dressed the first time it opens")
+	end
 	for _, key in ipairs({ "NineSlice", "Bg", "TopTileStreaks", "TitleContainer", "CloseButton", "PortraitContainer", "Inset", "ScrollBox",
 		"ScrollBar", "SearchBox", "Dropdown", "ForceLoad", "EnableAllButton", "DisableAllButton", "OkayButton", "CancelButton", "Performance" }) do
 		local obj = al[key]

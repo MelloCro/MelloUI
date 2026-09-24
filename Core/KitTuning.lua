@@ -24,6 +24,17 @@
 --                                     alpha, hidden,         a custom element
 --                                     regions = {...} } }
 --
+-- A piece's `uv` and `file` are written in the piece's own file as
+-- Tools/build_kit.py made it (file = its name, uv fractions of that file),
+-- also where the shipped textures moved the piece into an atlas sheet or
+-- gave it a smaller file: KitLayout.lua keeps that frame as the piece's
+-- `was`, and Kit:ApplyTuning maps the override into the piece's rectangle
+-- in its sheet, from the layout's values on every pass (the same tuning
+-- applied any number of times gives the same piece). `tile` cannot repeat
+-- a piece inside a sheet and is dropped there. A piece name the layout
+-- lacks is made by its override and goes with it; given only a file, it
+-- draws the whole piece that file names (else the whole file).
+--
 -- `rule` fields are merged straight onto Kit.Replacements[key] (piece, base,
 -- state, kind, scale, heightScale, widthScale, level, outset, ...), so the
 -- editor can re-point an element at another painted piece or resize it the
@@ -42,6 +53,7 @@
 --   layer, sublevel      draw layer of its textures
 --   level                frame level offset (same meaning as a rule's `level`)
 --   texture              an arbitrary texture path instead of the kit piece
+--                        (cut by the piece's uv in its own file, its `was`)
 --   hidden               true: do not replace at all, the game's art stays
 --
 -- A `regions` entry inside an element takes the same `tune` fields and is
@@ -58,6 +70,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("KitTuning")
 
 local SCHEMA = 1
 
@@ -708,7 +721,7 @@ watcher:RegisterEvent("ADDON_LOADED")
 watcher:RegisterEvent("VARIABLES_LOADED")
 watcher:RegisterEvent("PLAYER_LOGIN")
 watcher:RegisterEvent("PLAYER_ENTERING_WORLD")
-watcher:SetScript("OnEvent", function(_, event, arg1)
+Perf.SetScript(watcher, "OnEvent", function(_, event, arg1)
 	if event == "ADDON_LOADED" and arg1 ~= "MelloUI" then
 		return
 	end

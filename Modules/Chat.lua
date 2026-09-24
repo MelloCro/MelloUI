@@ -20,6 +20,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Chat")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Chat", {
 	title = "Chat",
@@ -687,7 +689,7 @@ end
 do
 	local watch = CreateFrame("Frame")
 	watch:RegisterEvent("UPDATE_CHAT_COLOR")
-	watch:SetScript("OnEvent", function()
+	Perf.SetScript(watch, "OnEvent", function()
 		inkByColour = nil
 	end)
 end
@@ -1407,7 +1409,7 @@ do
 		Shift(frame, st, st.p - (st.drawn or st.p))
 	end
 
-	driver:SetScript("OnUpdate", function(self, elapsed)
+	Perf.SetScript(driver, "OnUpdate", function(self, elapsed)
 		local now = GetTime()
 		for frame, st in pairs(Smooth.active) do
 			local ok, err = pcall(Step, frame, st, elapsed, now)
@@ -1927,10 +1929,10 @@ local function CreatePopup(key, kind, target, title)
 	head:SetHeight(HEADER_H)
 	head:EnableMouse(true)
 	head:RegisterForDrag("LeftButton")
-	head:SetScript("OnDragStart", function()
+	Perf.SetScript(head, "OnDragStart", function()
 		f:StartMoving()
 	end)
-	head:SetScript("OnDragStop", function()
+	Perf.SetScript(head, "OnDragStop", function()
 		f:StopMovingOrSizing()
 		SavePopupPosition(f)
 	end)
@@ -1976,7 +1978,7 @@ local function CreatePopup(key, kind, target, title)
 
 	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 	close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -2, -2)
-	close:SetScript("OnClick", function()
+	Perf.SetScript(close, "OnClick", function()
 		-- a short fade out (Core/Anim.lua), a plain hide without it
 		if MelloUI.Anim then
 			MelloUI.Anim:FadeOut(f, 0.12)
@@ -1994,11 +1996,11 @@ local function CreatePopup(key, kind, target, title)
 	msgs:SetFading(false)
 	msgs:SetMaxLines(250)
 	msgs:SetHyperlinksEnabled(true)
-	msgs:SetScript("OnHyperlinkClick", function(self, link, text, button)
+	Perf.SetScript(msgs, "OnHyperlinkClick", function(self, link, text, button)
 		SetItemRef(link, text, button, self)
 	end)
 	msgs:EnableMouseWheel(true)
-	msgs:SetScript("OnMouseWheel", function(self, delta)
+	Perf.SetScript(msgs, "OnMouseWheel", function(self, delta)
 		if delta > 0 then
 			self:ScrollUp()
 		else
@@ -2021,7 +2023,7 @@ local function CreatePopup(key, kind, target, title)
 	-- (or only spaces) lets go of it, as the game's chat box does (user,
 	-- 2026-09-23: "if i decide not to answer and press enter ... it should
 	-- automatically stop the editbox")
-	box:SetScript("OnEnterPressed", function(self)
+	Perf.SetScript(box, "OnEnterPressed", function(self)
 		local text = self:GetText()
 		self:SetText("")
 		if text and text:find("%S") then
@@ -2030,7 +2032,7 @@ local function CreatePopup(key, kind, target, title)
 			self:ClearFocus()
 		end
 	end)
-	box:SetScript("OnEscapePressed", function(self)
+	Perf.SetScript(box, "OnEscapePressed", function(self)
 		self:ClearFocus()
 	end)
 	f.box = box
@@ -2242,7 +2244,7 @@ local function SetWhisperPopup(on)
 		for event in pairs(WHISPER_EVENTS) do
 			whisperEvents:RegisterEvent(event)
 		end
-		whisperEvents:SetScript("OnEvent", OnWhisper)
+		Perf.SetScript(whisperEvents, "OnEvent", OnWhisper)
 	else
 		whisperEvents:UnregisterAllEvents()
 		for _, f in pairs(popups) do

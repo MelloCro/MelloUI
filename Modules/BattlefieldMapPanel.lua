@@ -34,7 +34,9 @@
 -- or changed. Nothing of the game's is replaced or re-scripted: post-hooks,
 -- HookScript and our own event frame; what we keep lives in weak side
 -- tables. Switched off, every piece is hidden, the border art comes back and
--- the tab's label is put back where, and in the font, it was.
+-- the tab's label is put back where, and in the font, it was. The frame is
+-- dressed on the map's first show, not at login (user, 2026-09-24: "dress
+-- rarely used windows on first open"; see Sync).
 --
 -- /bfmapdump [art | frames | reps]: what the battlefield map is made of on
 -- this client and what the skin made of it.
@@ -42,6 +44,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("BattlefieldMapPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("BattlefieldMapPanel", {
@@ -332,9 +336,24 @@ local function Deactivate()
 	HoldLabel(false)
 end
 
+-- the map shown now (secret-safe)
+local function IsOpen(f)
+	local ok, shown = pcall(f.IsShown, f)
+	return ok and not Secret(shown) and shown == true
+end
+
+local Sync
+
 -- The map or its tab shown (a zone with a battlefield map, the key binding):
--- the label held on the card again (the game's OnShow re-sizes the tab)
+-- dressed now if this is the map's first show; else the label held on the
+-- card again (the game's OnShow re-sizes the tab). Dressing makes frames of
+-- ours only and moves nothing of the game's but the tab's label (the map is
+-- no protected frame): at once, in combat too, as it always was here.
 local function OnShow()
+	if M.isEnabled and not active then
+		Sync()
+		return
+	end
 	if not active or not skin then
 		return
 	end
@@ -347,24 +366,31 @@ local function Hook()
 	for _, frame in ipairs({ Window() or false, Tab() or false }) do
 		if frame and not hooked[frame] then
 			hooked[frame] = true
-			frame:HookScript("OnShow", OnShow)
+			Perf.HookScript(frame, "OnShow", OnShow)
 		end
 	end
 end
 
-local function Sync()
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the skin is made while the map has never been shown this session: it is
+-- dressed on its first show (the OnShow hook, before the first frame is
+-- drawn), or at once when it is up already (a /reload with the map open, the
+-- game bringing it back as the zone loads), then kept for the session. The
+-- hooks above only listen until then.
+Sync = function()
 	Hook()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or IsOpen(f)) then
 		Activate()
 	else
 		Deactivate()
 	end
 end
 
--- The map comes with its own load-on-demand addon: dressed when it loads,
--- or at once when it is already in
+-- The map comes with its own load-on-demand addon: hooked when it loads, or
+-- at once when it is already in; dressed on its first show
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function(_, event, name)
+Perf.SetScript(watcher, "OnEvent", function(_, event, name)
 	if event == "ADDON_LOADED" and name ~= ADDON then
 		return
 	end
@@ -525,12 +551,17 @@ SlashCmdList.MELLOBFMAPDUMP = function(msg)
 		end
 		MelloUI:Print("/bfmapdump: no BattlefieldMapFrame yet (%s loaded %s, load on demand %s): open the battlefield map once (its key binding) and try again",
 			ADDON, tostring(Loaded()), lod)
-	elseif msg == "art" or msg == "frames" or msg == "reps" then
-		Kit:DumpWindow(f, skin, msg ~= "art" and msg or nil)
 	else
-		DumpMap(f)
-		DumpTab()
-		MelloUI:Print("  inked strings: none (no parchment on this frame)")
+		if not (skin and skin.built) then
+			MelloUI:Print("/bfmapdump: the battlefield map is not dressed yet (the kit dresses it the first time it shows: open it once for the kit's side)")
+		end
+		if msg == "art" or msg == "frames" or msg == "reps" then
+			Kit:DumpWindow(f, skin, msg ~= "art" and msg or nil)
+		else
+			DumpMap(f)
+			DumpTab()
+			MelloUI:Print("  inked strings: none (no parchment on this frame)")
+		end
 	end
 	MelloUI:ShowLog("bfmapdump " .. msg)
 end

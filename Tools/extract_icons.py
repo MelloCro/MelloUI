@@ -29,14 +29,15 @@ import os
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
 CLASS_SRC = os.path.join(ROOT, "docs", "class-icons.webp")
 FACTION_SRC = os.path.join(ROOT, "docs", "faction-icons.webp")
 MAPPING_PATH = os.path.join(HERE, "class_icons.json")
-CLASS_OUT_DIR = os.path.join(ROOT, "Media", "Icons", "Class")
-FACTION_OUT_DIR = os.path.join(ROOT, "Media", "Icons", "Faction")
+CLASS_OUT_DIR = master("Icons", "Class")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
+FACTION_OUT_DIR = master("Icons", "Faction")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 CONTACT_OUT = os.path.join(ROOT, "docs", "class-icons-contact.png")
 LUA_DATA_OUT = os.path.join(ROOT, "Media", "ClassIcons.lua")
 LUA_PATH_PREFIX = "Interface\\\\AddOns\\\\MelloUI\\\\Media\\\\Icons"

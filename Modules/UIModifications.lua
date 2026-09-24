@@ -28,6 +28,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("UIModifications")
+local hooksecurefunc = Perf.hooksecurefunc
 
 -- The reskin panels: { module name, toggle label, description, tab }. The
 -- look of each (backgrounds, backdrops, the minimap's shape) is chosen in
@@ -344,7 +346,7 @@ end
 local afterCombat = {}          -- [frame] = true: put back once the fight is over
 local afterCombatFrame = CreateFrame("Frame")
 local PutBack
-afterCombatFrame:SetScript("OnEvent", function(self)
+Perf.SetScript(afterCombatFrame, "OnEvent", function(self)
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
 	for frame in pairs(afterCombat) do
 		afterCombat[frame] = nil
@@ -639,12 +641,12 @@ local function Veil(frame, on)
 		-- button is held anyway, so no click is lost
 		veil:EnableMouse(true)
 		veil:EnableMouseWheel(true)
-		veil:SetScript("OnMouseWheel", function(_, delta)
+		Perf.SetScript(veil, "OnMouseWheel", function(_, delta)
 			if veil.onWheel then
 				veil.onWheel(delta)
 			end
 		end)
-		veil:SetScript("OnUpdate", function(self)
+		Perf.SetScript(veil, "OnUpdate", function(self)
 			local dx, dy = CornerOffset(frame)
 			if not dx or not (M.db and M.db.autoSnap ~= false) then
 				self.hlX:Hide()
@@ -670,7 +672,7 @@ local function Veil(frame, on)
 		end)
 		veil:Show()
 	elseif veil then
-		veil:SetScript("OnUpdate", nil)
+		Perf.SetScript(veil, "OnUpdate", nil)
 		veil:EnableMouseWheel(false)
 		veil:EnableMouse(false)
 		veil.onWheel = nil
@@ -843,7 +845,7 @@ do
 		tip.note = tip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		tip.note:SetPoint("TOP", tip.hint, "BOTTOM", 0, -2)
 		tip.note:SetTextColor(P.text[1], P.text[2], P.text[3])
-		tip:SetScript("OnUpdate", function(self, elapsed)
+		Perf.SetScript(tip, "OnUpdate", function(self, elapsed)
 			Place()
 			if hold then
 				hold = hold - elapsed
@@ -1088,7 +1090,7 @@ local function MakeMover(frame, shell)
 		mover.moving = nil
 		SizeTip.Release(mover)
 	end
-	frame:HookScript("OnShow", function()
+	Perf.HookScript(frame, "OnShow", function()
 		PutBack(frame)
 	end)
 	-- whoever re-anchors the window (the panel manager on show, the bag
@@ -1200,7 +1202,7 @@ AddHandle = function(mover, handle)
 	end
 	mover.handles[handle] = true
 	handle:RegisterForDrag("LeftButton")
-	handle:SetScript("OnMouseWheel", function(_, delta)
+	Perf.SetScript(handle, "OnMouseWheel", function(_, delta)
 		if mover.moving then
 			mover.Wheel(delta)
 			return
@@ -1213,8 +1215,8 @@ AddHandle = function(mover, handle)
 			pcall(script, target, delta)
 		end
 	end)
-	handle:SetScript("OnDragStart", mover.DragStart)
-	handle:SetScript("OnDragStop", mover.DragStop)
+	Perf.SetScript(handle, "OnDragStart", mover.DragStart)
+	Perf.SetScript(handle, "OnDragStop", mover.DragStop)
 	HandleWash(mover, handle)
 	handle:EnableMouse(mover.unlocked and true or false)
 	handle:EnableMouseWheel(mover.unlocked and true or false)
@@ -1237,6 +1239,11 @@ local PLAIN_WINDOWS = {
 	"CharacterFrame", "PlayerSpellsFrame", "ProfessionsFrame", "ProfessionsBookFrame", "CollectionsJournal",
 	"PVEFrame", "CommunitiesFrame", "FriendsFrame", "WorldMapFrame", "LegacySystemFrame", "ContainerFrameCombinedBags",
 	"MerchantFrame", "GossipFrame", "QuestFrame", "MailFrame", "BankFrame", "TradeFrame", "MacroFrame", "TaxiFrame",
+	-- these got their mover only from the kit's shell, which is now built on
+	-- the window's first show (user, 2026-09-24: "dress rarely used windows
+	-- on first open"), so their grab is plain from login like the others
+	"OpenMailFrame", "DressUpFrame", "ItemTextFrame", "PetitionFrame", "GuildRegistrarFrame", "TabardFrame",
+	"PetStableFrame", "StableFrame",
 	"MelloUIConfigFrame",
 }
 -- HUD elements: the frame, the region its grab covers, a control to stop
@@ -1315,36 +1322,46 @@ local function PlainGrab(frame, region, avoid, avoidSide)
 	return grab
 end
 
+-- (the sweep runs on every panel shown or hidden: user, 2026-09-24 -- the
+-- functions and names it made on each run are made once here)
+local function AttachPlain(frame, region, avoid, avoidSide)
+	if type(frame) == "table" and type(frame.GetObjectType) == "function" and not plainGrabs[frame]
+		and not (frame.IsForbidden and frame:IsForbidden()) then
+		local ok, grab = pcall(PlainGrab, frame, region, avoid, avoidSide)
+		if ok and grab then
+			MakeMover(frame, { title = grab })
+		end
+	end
+end
+local function NoAvoid()
+	return nil
+end
+local CHAT_FRAMES = {}
+for i = 1, (NUM_CHAT_WINDOWS or 10) do
+	CHAT_FRAMES[i] = "ChatFrame" .. i
+end
+
 local function SweepPlain()
 	if not M.isEnabled then
 		return
 	end
-	local function Attach(frame, region, avoid, avoidSide)
-		if type(frame) == "table" and type(frame.GetObjectType) == "function" and not plainGrabs[frame]
-			and not (frame.IsForbidden and frame:IsForbidden()) then
-			local ok, grab = pcall(PlainGrab, frame, region, avoid, avoidSide)
-			if ok and grab then
-				MakeMover(frame, { title = grab })
-			end
-		end
-	end
 	for _, name in ipairs(PLAIN_WINDOWS) do
-		Attach(_G[name], nil)
+		AttachPlain(_G[name], nil)
 	end
 	for _, entry in ipairs(PLAIN_HUD) do
 		local frame = _G[entry[1]]
-		if frame then
+		if frame and not plainGrabs[frame] then   -- (its region and controls looked up only until it has its grab)
 			local ok, region = pcall(entry[2], frame)
-			local okA, avoid = pcall(entry[3] or function() return nil end, frame)
+			local okA, avoid = pcall(entry[3] or NoAvoid, frame)
 			if ok and region then
-				Attach(frame, region, okA and avoid or nil, entry[4])
+				AttachPlain(frame, region, okA and avoid or nil, entry[4])
 			end
 		end
 	end
-	for i = 1, (NUM_CHAT_WINDOWS or 10) do
-		local frame = _G["ChatFrame" .. i]
+	for _, name in ipairs(CHAT_FRAMES) do
+		local frame = _G[name]
 		if frame then
-			Attach(frame, frame, nil, "strip")   -- a chat window is grabbed by a strip along its top edge; the messages under it keep their links, buttons and wheel
+			AttachPlain(frame, frame, nil, "strip")   -- a chat window is grabbed by a strip along its top edge; the messages under it keep their links, buttons and wheel
 		end
 	end
 end
@@ -1352,7 +1369,7 @@ end
 local sweepFrame = CreateFrame("Frame")
 sweepFrame:RegisterEvent("ADDON_LOADED")
 sweepFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-sweepFrame:SetScript("OnEvent", function()
+Perf.SetScript(sweepFrame, "OnEvent", function()
 	SweepPlain()
 end)
 
@@ -1403,7 +1420,7 @@ local function UnlockBanner(on)
 		local text = banner:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		text:SetPoint("CENTER", banner, "CENTER", 0, 0)
 		text:SetText("Windows unlocked: drag a gold band, wheel to scale.  |cffffd200Click here to lock them|r")
-		banner:SetScript("OnClick", function()
+		Perf.SetScript(banner, "OnClick", function()
 			-- the setting itself is changed, so the configurator's toggle and
 			-- the grabs follow through OnSettingChanged
 			MelloUI:NotifySettingChanged(M.name, "unlock", false)
@@ -1534,7 +1551,7 @@ local function HookFade(frame)
 		return
 	end
 	fadeHooked[frame] = true
-	frame:HookScript("OnShow", FadeOnShow)
+	Perf.HookScript(frame, "OnShow", FadeOnShow)
 end
 
 local function SweepFade()
@@ -1553,7 +1570,7 @@ end
 local fadeWatcher = CreateFrame("Frame")
 fadeWatcher:RegisterEvent("PLAYER_LOGIN")
 fadeWatcher:RegisterEvent("ADDON_LOADED")
-fadeWatcher:SetScript("OnEvent", SweepFade)
+Perf.SetScript(fadeWatcher, "OnEvent", SweepFade)
 
 -- the plain grabs first, so the kit's plate is the second handle and the
 -- plain one stays when the kit goes off

@@ -26,6 +26,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("UnitFramePanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("UnitFramePanel", {
@@ -130,13 +132,28 @@ local function SkinBar(bar, rect, picture, mirrored, health)
 		rep.onEnable()
 	end
 	-- the rect changes with the game's own re-layouts (the target's minus-mob bar)
-	rect:HookScript("OnSizeChanged", function()
+	Perf.HookScript(rect, "OnSizeChanged", function()
 		if active then
 			Kit:WhenOutOfCombat(function() rep:Refit() end)
 		end
 	end)
 	return rep
 end
+
+-- The ring's width and the portrait's size, as the client reads them back;
+-- nothing where one is secret on this client
+local function ReadFit(ring, portrait)
+	local rw = ring.tex:GetWidth()
+	local w, h = portrait:GetSize()
+	if Secret(rw) or Secret(w) or Secret(h) then
+		return nil
+	end
+	return rw, w, h
+end
+
+-- [portrait] = its refit, for the SetPortraitTexture hook (a side table: no
+-- field of the game's portrait written)
+local refits = setmetatable({}, { __mode = "k" })
 
 -- The ring (R1) as a region in the faded picture's layer, its opening on the
 -- portrait; the portrait (and a mask with its own anchors) then fitted to
@@ -152,12 +169,34 @@ local function SkinRing(picture, portrait, mask, key)
 	-- the portrait (and a mask with its own anchors: the player's) fitted to
 	-- the medallion size in the ring, 0.759 x the ring (rule 2b), the disc's
 	-- edge tucked under the bezel — the user's choice on sight (2026-09-21;
-	-- "the disc exactly the opening" was tried and put back)
+	-- "the disc exactly the opening" was tried and put back). What the fit
+	-- left is kept: the ring's width and the portrait's size as read back
+	-- (a read-back compared with a read-back is exact)
+	local fitRing, fitW, fitH
 	local function Fit()
 		pcall(Kit.FitPortrait, Kit, portrait, rep)
 		if mask then
 			pcall(Kit.FitPortrait, Kit, mask, rep)
 		end
+		fitRing, fitW, fitH = nil, nil, nil
+		if portrait.melloSaved then
+			local ok, rw, w, h = pcall(ReadFit, rep, portrait)
+			if ok and rw then
+				fitRing, fitW, fitH = rw, w, h
+			end
+		end
+	end
+	-- Still as the last fit left it: fitted (its mask too), the ring the
+	-- same width, the portrait the same size. The size alone depends on the
+	-- ring's width (Fit passes no mode: 0.759 x the ring whatever the
+	-- texture, a render or the medallion), and the game never re-anchors a
+	-- portrait (only its art swaps re-size it, which this sees)
+	local function Fitted()
+		if not (fitRing and portrait.melloSaved) or (mask and not mask.melloSaved) then
+			return false
+		end
+		local ok, rw, w, h = pcall(ReadFit, rep, portrait)
+		return ok and rw == fitRing and w == fitW and h == fitH
 	end
 	rep.onEnable = function()
 		portrait.melloKitRing = true
@@ -180,20 +219,30 @@ local function SkinRing(picture, portrait, mask, key)
 		rep.onEnable()
 	end
 	-- the game re-sizes the portrait with its art swaps and re-sets its
-	-- texture on every portrait update (a render or the medallion, whose
-	-- fitted size differs): fit it again
+	-- texture on every portrait update: fitted again when that moved it.
+	-- The target of target re-sets its portrait on EVERY frame (its
+	-- OnUpdate runs UnitFrame_Update, 41 a second in /melloperf 2026-09-24,
+	-- and Class Icons' medallion re-sets it once more): nothing is made per
+	-- call (one fit function per portrait, queued as it is in combat) and a
+	-- portrait still as its last fit left it costs three reads. `fitting`
+	-- covers the fit's own SetSize coming back through the hook, and a fit
+	-- already queued for the fight's end.
+	local fitting = false
+	local function RefitNow()
+		if active then
+			Fit()
+		end
+		fitting = false
+	end
 	local function Refit()
-		if active and not portrait.melloFitting then
-			portrait.melloFitting = true
-			Kit:WhenOutOfCombat(function()
-				Fit()
-				portrait.melloFitting = nil
-			end)
+		if active and not fitting and not Fitted() then
+			fitting = true
+			Kit:WhenOutOfCombat(RefitNow)
 		end
 	end
 	hooksecurefunc(portrait, "SetSize", Refit)
 	hooksecurefunc(portrait, "SetTexture", Refit)
-	portrait.melloRefit = Refit
+	refits[portrait] = Refit
 	return rep
 end
 
@@ -392,7 +441,7 @@ local function RingCover(ring, bars, mirrored, container)
 		end
 	end
 	for _, bar in ipairs(bars) do
-		bar:HookScript("OnSizeChanged", function()
+		Perf.HookScript(bar, "OnSizeChanged", function()
 			Kit:WhenOutOfCombat(Refit)
 		end)
 	end
@@ -601,7 +650,7 @@ local function SkinTargetLike(frame)
 			end)
 		end)
 	end
-	frame:HookScript("OnShow", function()
+	Perf.HookScript(frame, "OnShow", function()
 		Kit:WhenOutOfCombat(function()
 			RetuckAll()
 			for _, cover in ipairs(skin.covers) do
@@ -868,11 +917,13 @@ local function Hook()
 	end
 	hooked = true
 	-- a render put on a ringed portrait (the C-side SetPortraitTexture, which
-	-- the texture's own SetTexture hook does not see): fit it again
+	-- the texture's own SetTexture hook does not see): fit it again (a lookup
+	-- for any other portrait; the refit itself leaves a fitted one at once)
 	if type(SetPortraitTexture) == "function" then
 		hooksecurefunc("SetPortraitTexture", function(texture)
-			if texture and texture.melloRefit then
-				texture.melloRefit()
+			local refit = texture and refits[texture]
+			if refit then
+				refit()
 			end
 		end)
 	end
@@ -907,7 +958,7 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self, event)
+Perf.SetScript(eventFrame, "OnEvent", function(self, event)
 	if event == "PLAYER_ENTERING_WORLD" then
 		self:UnregisterEvent(event)
 		if M.isEnabled then

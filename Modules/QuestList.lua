@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("QuestList")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("QuestList", {
 	title = "Quest List",
@@ -121,25 +123,37 @@ QL.F_NPC, QL.F_ENDER, QL.F_ENDERNPC, QL.F_ENDERZONE, QL.F_ENDERCONT, QL.F_ENDERW
 -- origin: 1 Classic (classic-db has the quest), 2 Forever's own
 QL.F_ORIGIN = 28
 
--- Classic or Forever (user, 2026-09-23: "use Classic on classic quests, and
--- Forever on the Forever quests, so that i can know which ones are new"):
--- the quest's origin from the data, and the small coloured tag for it. A
--- lookup of its own, so the quest log has it with the Quests module off.
-local originByID = nil
-function MelloUI:QuestOrigin(questID)
-	if not originByID then
-		originByID = {}
+-- [questID] = row. Made the first time it is asked for, by the index below
+-- or by the quest origin, and kept: the data does not change.
+local rowByID = nil
+
+local function RowByID()
+	if not rowByID then
+		rowByID = {}
 		local data = MelloUI_QuestListData
 		for _, row in ipairs(type(data) == "table" and data.quests or {}) do
-			originByID[row[1]] = row[QL.F_ORIGIN]
+			rowByID[row[QL.F_ID]] = row
 		end
 	end
-	return questID and originByID[questID] or nil
+	return rowByID
+end
+
+-- Classic or Forever (user, 2026-09-23: "use Classic on classic quests, and
+-- Forever on the Forever quests, so that i can know which ones are new"):
+-- the quest's origin from the data, and the small coloured tag for it. Read
+-- through the quest list's own by-ID lookup, which is made here when the
+-- Quests module is off, so the quest log has it all the same (it had a table
+-- of its own, a second copy of that lookup; memory audit, 2026-09-24).
+function MelloUI:QuestOrigin(questID)
+	local row = questID and RowByID()[questID]
+	return row and row[QL.F_ORIGIN] or nil
 end
 
 -- the logos themselves (user, 2026-09-23: "instead of text, try to get the
 -- actual logo"), cut out of the user's pictures with a soft dark halo for
--- the parchment: file, the logo's size in the file and the file's size
+-- the parchment: file, the logo's size in the file and the file's size (in
+-- the master's pixels: the shipped file is half that size, and only their
+-- ratios are used)
 local LOGO_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Quests\\"
 MelloUI.QUEST_ORIGIN_LOGOS = {
 	-- Classic: its letters set closer (user, 2026-09-23: "cut some of the
@@ -216,8 +230,7 @@ end
 
 QL.byZone = nil        -- [areaID] = { rows }   (pick-up zone, falling back to quest zone)
 QL.allRows = nil       -- every zone row, sorted by level once
-QL.searchText = nil    -- [row] = lower-cased "title giver zone" for the search box
-local rowByID = nil       -- [questID] = row
+QL.searchText = nil    -- [row] = lower-cased "title giver zone" for the search box; filled on the first search (below)
 QL.byDungeon = nil     -- [dungeonID] = { rows }
 QL.chainStep = nil     -- [row] = position in its chain (1 = first)
 local chainTotal = nil    -- [chainID] = number of steps
@@ -253,11 +266,35 @@ function QL.LearnedStore(kind)
 	M.db[key] = M.db[key] or {}
 	return M.db[key]
 end
-QL.resolved = nil      -- [row] = { mapID, x, y, cx, cy, contMapID }: the client's placement of a giver's world position
+QL.resolved = nil      -- [row] = the client's placement of a giver's world position (a number for QL.Placement), false when it cannot place it
 local zoneOverride = nil  -- [row] = areaID when the client puts the giver in another zone than the build did
 QL.rowsByMap = nil     -- [uiMapID] = rows the client placed on that map
-QL.resolvedEnd = nil   -- [row] = placement of the turn-in NPC when it is not the giver
+QL.resolvedEnd = nil   -- [row] = placement of the turn-in NPC when it is not the giver, as in QL.resolved
 QL.endRowsByMap = nil  -- [uiMapID] = rows whose turn-in the client placed on that map
+
+-- The placements themselves, in four flat lists: the map, the position on
+-- the continent map and that continent map. A table with six named fields
+-- per placed giver and turn-in held 3.2 MB for about 7000 of them (memory
+-- audit, 2026-09-24); the position on the map itself is not kept, it comes
+-- again from the map's rectangle (cached), the very numbers it was made of.
+local placeMap, placeCX, placeCY, placeCont = {}, {}, {}, {}
+local placeCount = 0
+
+-- A world point ResolveWorld placed, kept: its number, or false for none.
+local function StorePlacement(mapID, cx, cy, contMapID)
+	if not mapID then
+		return false
+	end
+	placeCount = placeCount + 1
+	placeMap[placeCount], placeCX[placeCount], placeCY[placeCount], placeCont[placeCount] = mapID, cx, cy, contMapID
+	return placeCount
+end
+
+-- A placement from QL.resolved / QL.resolvedEnd as ResolveWorld gave it:
+-- mapID, cx, cy, contMapID.
+function QL.Placement(n)
+	return placeMap[n], placeCX[n], placeCY[n], placeCont[n]
+end
 
 function QL.Data()
 	return MelloUI_QuestListData
@@ -311,17 +348,22 @@ local function IsOnOrUnder(uiMapID, mapID)
 	return false
 end
 
-local rectCache = {}
+local rectCache = {}   -- [contMapID][mapID] = { minX, maxX, minY, maxY } or false
 
--- Rectangle of a map on its continent map, cached.
+-- Rectangle of a map on its continent map, cached. Keyed by the numbers
+-- (no string made per look-up: every placed pin asks for it).
 local function RectOn(mapID, contMapID)
-	local key = mapID .. ":" .. contMapID
-	local r = rectCache[key]
+	local onCont = rectCache[contMapID]
+	if not onCont then
+		onCont = {}
+		rectCache[contMapID] = onCont
+	end
+	local r = onCont[mapID]
 	if r == nil then
 		local ok, minX, maxX, minY, maxY = pcall(C_Map.GetMapRectOnMap, mapID, contMapID)
 		minX, maxX, minY, maxY = QL.Plain(minX), QL.Plain(maxX), QL.Plain(minY), QL.Plain(maxY)
 		r = (ok and minX and maxX and minY and maxY and maxX > minX and maxY > minY) and { minX, maxX, minY, maxY } or false
-		rectCache[key] = r
+		onCont[mapID] = r
 	end
 	return r or nil
 end
@@ -334,8 +376,9 @@ local function InRect(r, cx, cy)
 	return nil
 end
 
--- A world point as { mapID, x, y, cx, cy, contMapID }: the deepest map that
--- holds it (city before zone) and its position there, or nil.
+-- A world point as mapID, cx, cy, contMapID: the deepest map that holds it
+-- (city before zone), its position on the continent map and that map; or
+-- nil. QL.ProjectOnMap gives its position on a map (its own or another).
 function QL.ResolveWorld(cont, wx, wy)
 	if not (C_Map.GetMapPosFromWorldPos and CreateVector2D and C_Map.GetMapInfoAtPosition and C_Map.GetMapRectOnMap) then
 		return nil
@@ -364,31 +407,29 @@ function QL.ResolveWorld(cont, wx, wy)
 	local child = okC and type(cinfo) == "table" and QL.Plain(cinfo.mapID) or nil
 	if child and child ~= zone then
 		local r2 = RectOn(child, contMapID)
-		local x2, y2
-		if r2 then
-			x2, y2 = InRect(r2, cx, cy)
-		end
-		if x2 then
-			zone, x, y = child, x2, y2
+		if r2 and InRect(r2, cx, cy) then
+			zone = child
 		end
 	end
-	return { mapID = zone, x = x, y = y, cx = cx, cy = cy, contMapID = contMapID }
+	return zone, cx, cy, contMapID
 end
 
--- Position of a resolved point on the map shown (its own map, a parent, or a
--- child), or nil when the point is elsewhere.
-function QL.ProjectOnMap(res, mapID)
-	if res.mapID == mapID then
-		return res.x, res.y
-	end
-	if not (IsOnOrUnder(res.mapID, mapID) or IsOnOrUnder(mapID, res.mapID)) then
+-- Position on the map shown (`onMapID`) of a point ResolveWorld placed on
+-- `mapID`: on its own map, a parent or a child, or nil when it is elsewhere.
+-- On its own map that is the position ResolveWorld found it at: the same
+-- rectangle (cached) and the same continent position.
+function QL.ProjectOnMap(onMapID, mapID, cx, cy, contMapID)
+	if not mapID then
 		return nil
 	end
-	local r = RectOn(mapID, res.contMapID)
+	if mapID ~= onMapID and not (IsOnOrUnder(mapID, onMapID) or IsOnOrUnder(onMapID, mapID)) then
+		return nil
+	end
+	local r = RectOn(onMapID, contMapID)
 	if not r then
 		return nil
 	end
-	return InRect(r, res.cx, res.cy)
+	return InRect(r, cx, cy)
 end
 
 -- Giver kinds: 1 NPC, 2 object, and an item that begins the quest: 3 dropped
@@ -512,9 +553,9 @@ function QL.EntrancePoint(dungeonID)
 	local data = QL.Data()
 	for _, e in ipairs(data.entrances or {}) do
 		if e[1] == dungeonID then
-			local res = QL.ResolveWorld(e[3], e[4], e[5])
-			if res then
-				return res.mapID, res.x, res.y
+			local mapID, cx, cy, contMapID = QL.ResolveWorld(e[3], e[4], e[5])
+			if mapID then
+				return mapID, QL.ProjectOnMap(mapID, mapID, cx, cy, contMapID)
 			end
 		end
 	end
@@ -539,9 +580,10 @@ end
 -- Where a quest giver is: uiMapID, x, y (0..1) from the client's placement,
 -- else the build-time zone and map percentage.
 function QL.GiverPoint(row)
-	local res = QL.resolved and QL.resolved[row]
-	if res then
-		return res.mapID, res.x, res.y
+	local n = QL.resolved and QL.resolved[row]
+	if n then
+		local mapID = placeMap[n]
+		return mapID, QL.ProjectOnMap(mapID, QL.Placement(n))
 	end
 	if row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0 then
 		return nil, row[QL.F_X] / 100, row[QL.F_Y] / 100
@@ -564,18 +606,19 @@ end
 
 -- Where a quest is handed in: uiMapID, x, y from the client's placement, or nil.
 function QL.EndPoint(row)
-	local res = QL.resolvedEnd and QL.resolvedEnd[row]
-	if res then
-		return res.mapID, res.x, res.y
+	local n = QL.resolvedEnd and QL.resolvedEnd[row]
+	if n then
+		local mapID = placeMap[n]
+		return mapID, QL.ProjectOnMap(mapID, QL.Placement(n))
 	end
 	return nil
 end
 
 -- Zone name of the turn-in, from its placement or the build-time guess.
 function QL.EnderZoneName(row)
-	local res = QL.resolvedEnd and QL.resolvedEnd[row]
-	if res then
-		local ok, info = pcall(C_Map.GetMapInfo, res.mapID)
+	local n = QL.resolvedEnd and QL.resolvedEnd[row]
+	if n then
+		local ok, info = pcall(C_Map.GetMapInfo, placeMap[n])
 		local name = ok and type(info) == "table" and QL.Plain(info.name) or nil
 		if name then
 			return name
@@ -589,8 +632,71 @@ function QL.ByLevel(a, b)
 	return a[QL.F_TITLE] < b[QL.F_TITLE]
 end
 
+-- The search box's text for every quest, lower-cased "title giver zone":
+-- made on the first search rather than with the index, and let go a while
+-- after the panel hides with the box empty (memory audit, 2026-09-24: 0.8 MB
+-- held from login, whether the box is used or not). QuestListPanel reads
+-- QL.searchText[row]; the first read fills the whole table, from the zones
+-- as the index has them.
+local PanelHidden
+local searchTextMeta = {}
+function searchTextMeta.__index(t, row)
+	setmetatable(t, nil)   -- once: a row it has no text for stays nil
+	local data = QL.Data()
+	if type(data) ~= "table" then
+		return nil
+	end
+	local zones = data.zones or {}
+	for _, r in ipairs(data.quests or {}) do
+		t[r] = (r[QL.F_TITLE] .. " " .. r[QL.F_GIVER] .. " " .. (zones[QL.ZoneOf(r)] or "")):lower()
+	end
+	-- made while the map is closed (the panel lays itself out on a setting
+	-- change even then): no OnHide is coming, so the wait starts here
+	local frame = QL.Panel and QL.Panel.frame
+	if frame and not frame:IsVisible() then
+		PanelHidden()
+	end
+	return rawget(t, row)
+end
+
+local function ForgetSearchText()
+	QL.searchText = setmetatable({}, searchTextMeta)
+end
+
+-- A term in the panel's search box: the box keeps it when the map closes,
+-- and the panel searches it again as soon as it shows.
+local function Searching(frame)
+	local box = frame.search
+	local term = box and box.GetText and box:GetText()
+	return type(term) == "string" and term:find("%S") ~= nil
+end
+
+-- Let the text go once the panel has been hidden a while with the box empty
+-- (not at once: the map is opened and closed all the time; and not with a
+-- term left in the box, which every opening searches again -- it was made
+-- afresh, 1 MB, on each opening that way; review, 2026-09-24).
+local SEARCH_TEXT_KEEP = 30   -- seconds
+local panelHides = 0
+function PanelHidden()
+	panelHides = panelHides + 1
+	local hide = panelHides
+	C_Timer.After(SEARCH_TEXT_KEEP, function()
+		local frame = QL.Panel and QL.Panel.frame
+		if hide ~= panelHides or (frame and frame:IsVisible()) then
+			return
+		end
+		-- kept for a term in the box, unless the panel itself is off (the
+		-- module is): nothing searches until it is on again
+		if frame and frame:IsShown() and Searching(frame) then
+			return
+		end
+		ForgetSearchText()
+	end)
+end
+
 local function BuildIndex()
-	QL.byZone, QL.zoneByName, QL.eventRows, QL.allRows, QL.searchText = {}, {}, {}, {}, {}
+	QL.byZone, QL.zoneByName, QL.eventRows, QL.allRows = {}, {}, {}, {}
+	ForgetSearchText()
 	local data = QL.Data()
 	if type(data) ~= "table" then
 		return
@@ -607,30 +713,31 @@ local function BuildIndex()
 	QL.resolvedEnd = QL.resolvedEnd or {}
 	local mapArea = {}
 	for _, row in ipairs(data.quests or {}) do
-		local res = QL.resolved[row]
-		if res then
-			QL.rowsByMap[res.mapID] = QL.rowsByMap[res.mapID] or {}
-			table.insert(QL.rowsByMap[res.mapID], row)
-			local areaID = mapArea[res.mapID]
+		local n = QL.resolved[row]
+		if n then
+			local mapID = placeMap[n]
+			QL.rowsByMap[mapID] = QL.rowsByMap[mapID] or {}
+			table.insert(QL.rowsByMap[mapID], row)
+			local areaID = mapArea[mapID]
 			if areaID == nil then
-				local okI, info = pcall(C_Map.GetMapInfo, res.mapID)
+				local okI, info = pcall(C_Map.GetMapInfo, mapID)
 				local name = okI and type(info) == "table" and QL.Plain(info.name) or nil
 				areaID = name and QL.zoneByName[name:lower()] or false
-				mapArea[res.mapID] = areaID
+				mapArea[mapID] = areaID
 			end
 			if areaID and areaID ~= QL.ZoneOf(row) then
 				zoneOverride[row] = areaID
 			end
 		end
-		local ender = QL.resolvedEnd[row]
-		if ender then
-			QL.endRowsByMap[ender.mapID] = QL.endRowsByMap[ender.mapID] or {}
-			table.insert(QL.endRowsByMap[ender.mapID], row)
+		local e = QL.resolvedEnd[row]
+		if e then
+			local mapID = placeMap[e]
+			QL.endRowsByMap[mapID] = QL.endRowsByMap[mapID] or {}
+			table.insert(QL.endRowsByMap[mapID], row)
 		end
 	end
 	for _, row in ipairs(data.quests or {}) do
 		local zone = QL.ZoneOf(row)
-		QL.searchText[row] = (row[QL.F_TITLE] .. " " .. row[QL.F_GIVER] .. " " .. (zones[zone] or "")):lower()
 		if (row[QL.F_EVENT] or 0) ~= 0 then
 			table.insert(QL.eventRows, row)
 		elseif zone ~= 0 then
@@ -645,9 +752,9 @@ local function BuildIndex()
 		table.sort(rows, QL.ByLevel)
 	end
 	-- Chain steps: follow the "previous quest" links back to the chain start.
-	rowByID, QL.chainStep, chainTotal, nextInChain, QL.byDungeon = {}, {}, {}, {}, {}
+	QL.chainStep, chainTotal, nextInChain, QL.byDungeon = {}, {}, {}, {}
+	RowByID()   -- the by-ID lookup the steps below follow
 	for _, row in ipairs(data.quests or {}) do
-		rowByID[row[QL.F_ID]] = row
 		if row[QL.F_DUNGEON] ~= 0 then
 			QL.byDungeon[row[QL.F_DUNGEON]] = QL.byDungeon[row[QL.F_DUNGEON]] or {}
 			table.insert(QL.byDungeon[row[QL.F_DUNGEON]], row)
@@ -712,11 +819,11 @@ local function ResolveInChunks(onDone)
 		while i <= stop do
 			local row = rows[i]
 			if (row[QL.F_CONT] or -1) >= 0 and QL.resolved[row] == nil then
-				QL.resolved[row] = QL.ResolveWorld(row[QL.F_CONT], row[QL.F_WX], row[QL.F_WY]) or false
+				QL.resolved[row] = StorePlacement(QL.ResolveWorld(row[QL.F_CONT], row[QL.F_WX], row[QL.F_WY]))
 			end
 			if (row[QL.F_ENDERCONT] or -1) >= 0 and QL.resolvedEnd[row] == nil
 				and not (row[QL.F_ENDERCONT] == row[QL.F_CONT] and row[QL.F_ENDERWX] == row[QL.F_WX] and row[QL.F_ENDERWY] == row[QL.F_WY]) then
-				QL.resolvedEnd[row] = QL.ResolveWorld(row[QL.F_ENDERCONT], row[QL.F_ENDERWX], row[QL.F_ENDERWY]) or false
+				QL.resolvedEnd[row] = StorePlacement(QL.ResolveWorld(row[QL.F_ENDERCONT], row[QL.F_ENDERWX], row[QL.F_ENDERWY]))
 			end
 			i = i + 1
 		end
@@ -1103,7 +1210,7 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, ...)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
 		-- Instance info and quest flags settle a moment after the load.
 		C_Timer.After(2, function()
@@ -1165,6 +1272,11 @@ function M:OnEnable(db)
 		if WorldMapFrame.OnMapChanged then
 			hooksecurefunc(WorldMapFrame, "OnMapChanged", function() QL.Panel:Update() end)
 		end
+		-- the panel is the addon's own frame (a child of the map): its search
+		-- text goes a while after it hides
+		if QL.Panel.frame then
+			Perf.HookScript(QL.Panel.frame, "OnHide", PanelHidden)
+		end
 	end
 	-- the events go with the module's state (they ran on after a disable;
 	-- audit 2026-09-22)
@@ -1188,6 +1300,11 @@ function M:OnDisable()
 	QL.StopOutsideTicker()
 	if QL.Panel.frame then
 		QL.Panel.frame:Hide()
+	end
+	-- off with the map closed, the panel's OnHide never comes: the search
+	-- text goes now (the first search after an enable makes it again)
+	if QL.searchText then
+		ForgetSearchText()
 	end
 	if QL.Provider and WorldMapFrame then
 		QL.Provider:RemoveAllData()

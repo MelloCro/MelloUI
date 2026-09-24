@@ -21,10 +21,11 @@ import sys
 import numpy as np
 from PIL import Image
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "minimap-stand.webp")
-OUT_TGA = os.path.join(HERE, "..", "Media", "Textures", "MinimapStand.tga")
+OUT_TGA = master("Textures", "MinimapStand.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 OUT_PREVIEW = os.path.join(OUTPUT, "minimap-stand-preview.png")
 CANVAS = int(sys.argv[1]) if len(sys.argv) > 1 else 512
 

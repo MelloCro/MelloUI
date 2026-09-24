@@ -24,10 +24,11 @@ import os
 from PIL import Image
 import numpy as np
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "profession-cards.png")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "ProfessionCards.tga")
+OUT = master("Textures", "ProfessionCards.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 PREVIEW = os.path.join(OUTPUT, "profession_cards_sheet.png")
 
 SHEET = 1024

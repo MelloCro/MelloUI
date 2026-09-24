@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from chat_layout_data import ANCHOR_BOX, ART_SCALE, DRAW_ORDER, FIXED_SCALE, GEOMETRY, PIECES, PLACEMENT, SIDE_PLATE, SKIN, SRC, STONE_TILE, STONE_TILE_PX
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
@@ -164,7 +165,7 @@ def art_piece(name):
 def stone():
 	global _stone
 	if _stone is None:
-		_stone = Image.open(os.path.join(ROOT, STONE_TILE)).convert("RGBA")
+		_stone = Image.open(master(*STONE_TILE.split("/")[1:])).convert("RGBA")  # its TGA master
 	return _stone
 
 

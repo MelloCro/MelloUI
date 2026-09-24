@@ -5,8 +5,10 @@
 -- reskin"): The clock settings and the stopwatch in the kit.
 --
 -- Both windows come with the load-on-demand Blizzard_TimeManager (the
--- minimap loads it for its clock): dressed on its ADDON_LOADED, or at once
--- when it is in already. Dressed by the rule book (docs/WINDOW-RULES.md):
+-- minimap loads it for its clock): hooked on its ADDON_LOADED, or at once
+-- when it is in already, and each window dressed on its own first show
+-- (user, 2026-09-24: "dress rarely used windows on first open"; DressOpen).
+-- Dressed by the rule book (docs/WINDOW-RULES.md):
 -- every kit piece stands in for one of the game's art regions on that
 -- region's rectangle, the game's art faded in its place.
 --
@@ -60,6 +62,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ClockPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ClockPanel", {
@@ -525,9 +529,10 @@ end
 
 local function BuildStopwatch()
 	local sw = Stopwatch()
-	if not sw or skin.stopwatch then
+	if not sw or (skin and skin.stopwatch) then
 		return
 	end
+	skin = skin or { reps = {}, followers = {} }
 	local s = {}
 	skin.stopwatch = s
 	-- the timer bar: the small box on the two pieces' span
@@ -585,6 +590,9 @@ end
 --------------------------------------------------------------------------------
 -- Building, switching on and off
 --------------------------------------------------------------------------------
+
+-- The clock settings window (the stopwatch is dressed on its own, on ITS
+-- first show: BuildStopwatch)
 local function Build()
 	local f = Window()
 	if not f then
@@ -610,8 +618,31 @@ local function Build()
 	SkinEdit(_G.TimeManagerAlarmMessageEditBox)
 	Kit:SweepControls(f, Replace, skin)
 	CollectLabels()
+end
 
-	BuildStopwatch()
+-- a window shown now (secret-safe)
+local function IsOpen(frame)
+	local ok, shown = pcall(frame.IsShown, frame)
+	return ok and not Secret(shown) and shown == true
+end
+
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- either window's look is made while it has never been shown this session:
+-- each is dressed on its own first show (its OnShow hook, before the first
+-- frame is drawn), or at once when it is up already (a /reload with it
+-- open), then kept for the session. True when one was dressed just now.
+local function DressOpen()
+	local f, sw = Window(), Stopwatch()
+	local fresh = false
+	if f and not (skin and skin.built) and IsOpen(f) then
+		Build()
+		fresh = true
+	end
+	if sw and not (skin and skin.stopwatch) and IsOpen(sw) then
+		BuildStopwatch()
+		fresh = true
+	end
+	return fresh
 end
 
 -- After every show: what the game laid out since (the portrait's size, the
@@ -646,17 +677,24 @@ local function Refresh()
 	end)
 end
 
+-- Switched on, or one window dressed for the first time while the other is
+-- already on (its pieces came on as they were made: Replace): the labels,
+-- the play glyph and what the game laid out are set again
 local function Activate()
-	if active or not Window() then
+	if not Window() then
 		return
 	end
-	Build()
-	if not skin then
+	local fresh = DressOpen()
+	if not skin or (active and not fresh) then
+		-- neither window shown yet (each is dressed on its first show), or
+		-- nothing new to put on
 		return
 	end
-	active = true
-	for _, rep in ipairs(skin.reps) do
-		rep:Enable()
+	if not active then
+		active = true
+		for _, rep in ipairs(skin.reps) do
+			rep:Enable()
+		end
 	end
 	for _, entry in ipairs(labels) do
 		LabelOn(entry.fs, entry.heading)
@@ -691,7 +729,8 @@ local function Sync()
 	end
 end
 
--- (geometry of the windows' children changes here: out of combat only)
+-- (the switch and the addon's load: out of combat, as before; a window's
+-- first show is dressed at once, see Hook)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -700,13 +739,16 @@ local function SyncSafe()
 	end
 end
 
+-- A window's first show dresses it there and then, in combat too: dressing
+-- makes frames of ours and moves only the game's own title string and clock
+-- icon, and neither window nor any of their controls is protected
 local function Hook()
 	local f = Window()
 	if f and not hooked[f] then
 		hooked[f] = true
-		f:HookScript("OnShow", function()
-			if M.isEnabled and not active then
-				SyncSafe()
+		Perf.HookScript(f, "OnShow", function()
+			if M.isEnabled and not (active and skin.built) then
+				Sync()
 			end
 			Refresh()
 		end)
@@ -714,7 +756,12 @@ local function Hook()
 	local sw = Stopwatch()
 	if sw and not hooked[sw] then
 		hooked[sw] = true
-		sw:HookScript("OnShow", SyncPlay)
+		Perf.HookScript(sw, "OnShow", function()
+			if M.isEnabled and not (active and skin.stopwatch) then
+				Sync()
+			end
+			SyncPlay()
+		end)
 	end
 end
 
@@ -727,9 +774,10 @@ local function IsLoaded()
 	return ok and loaded and true or false
 end
 
--- The windows come with their load-on-demand addon: dressed when it loads
+-- The windows come with their load-on-demand addon: hooked when it loads
+-- (and dressed then only if one is up already)
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function(_, event, name)
+Perf.SetScript(watcher, "OnEvent", function(_, event, name)
 	if event == "ADDON_LOADED" and name ~= ADDON then
 		return
 	end
@@ -852,6 +900,9 @@ local function DumpClock(f)
 	local okLv, lv = pcall(f.GetFrameLevel, f)
 	MelloUI:Print("TimeManagerFrame: shown %s, level %s, %s, kit %s, reps %d", Shown(f), okLv and Num(lv) or "?",
 		RectText(f), active and "on" or "off", skin and #skin.reps or 0)
+	if not (skin and skin.built) then
+		MelloUI:Print("  not dressed yet: the kit dresses the clock settings the first time they open (open them once for the kit's side)")
+	end
 	Found("outer rail (NineSlice)", f.NineSlice, f.NineSlice and (" layout " .. tostring(f.NineSlice.layoutType)) or " (no NineSlice: no rail)")
 	Found("page stone (Bg)", f.Bg, f.Bg and (" " .. RectText(f.Bg) .. (Kit.faded[f.Bg] and ", faded under the stone" or "")) or nil)
 	-- the icon against the medallion: the ring's size, the medallion's
@@ -922,6 +973,9 @@ local function DumpStopwatch()
 	local okLv, lv = pcall(sw.GetFrameLevel, sw)
 	MelloUI:Print("StopwatchFrame: shown %s, level %s, strata %s, %s, kit %s", Shown(sw), okLv and Num(lv) or "?",
 		tostring(sw:GetFrameStrata()), RectText(sw), active and "on" or "off")
+	if not s then
+		MelloUI:Print("  not dressed yet: the kit dresses the stopwatch the first time it opens (/stopwatch once for the kit's side)")
+	end
 	local left, right = TimerPieces(sw)
 	Found("timer bar (left piece)", left, left and (" " .. RectText(left) .. (Kit.faded[left] and ", faded" or "")) or nil)
 	Found("timer bar (right piece)", right, right and (" " .. RectText(right) .. (Kit.faded[right] and ", faded" or "")) or nil)
@@ -968,6 +1022,9 @@ SlashCmdList.MELLOCLOCKDUMP = function(msg)
 			DumpOwn(Stopwatch())
 		end
 	else
+		if not skin then
+			MelloUI:Print("/clockdump: neither window is dressed yet (each is dressed the first time it opens)")
+		end
 		Kit:DumpWindow(f, skin, msg ~= "regions" and msg or nil)
 		-- (the reps list is the one skin's: both windows' pieces are in it)
 		if Stopwatch() and msg ~= "reps" then

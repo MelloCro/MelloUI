@@ -7,6 +7,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("QuestListPanel")
+local C_Timer = Perf.C_Timer
 local QL = ns.QuestList
 local M = QL.M
 
@@ -73,8 +75,8 @@ local function ShowTipIcon(row)
 		tipIcon.tex = tipIcon:CreateTexture(nil, "ARTWORK")
 		tipIcon.tex:SetAllPoints()
 		tipIcon:Hide()
-		GameTooltip:HookScript("OnHide", HideTipIcon)
-		GameTooltip:HookScript("OnTooltipCleared", HideTipIcon)
+		Perf.HookScript(GameTooltip, "OnHide", HideTipIcon)
+		Perf.HookScript(GameTooltip, "OnTooltipCleared", HideTipIcon)
 	end
 	local dungeon = row[QL.F_DUNGEON]
 	local key = (dungeon ~= 0 and QL.Data().dungeons[dungeon]) and (QL.IsRaid(dungeon) and "raid" or "dungeon")
@@ -184,7 +186,10 @@ end
 local TITLE_SIZE, LINE_SIZE = 12, 12   -- the quest log sets both lines the same size
 local function QuestLogFonts(button)
 	local object = GameFontNormal
-	local ok, path, _, flags = pcall(function() return object:GetFont() end)
+	if not (object and object.GetFont) then
+		return
+	end
+	local ok, path, _, flags = pcall(object.GetFont, object)
 	if ok and path then
 		pcall(button.title.SetFont, button.title, path, TITLE_SIZE, flags or "")
 		pcall(button.where.SetFont, button.where, path, LINE_SIZE, flags or "")
@@ -261,7 +266,7 @@ local function Pulse(owner, inset)
 		down:SetFromAlpha(0.55)
 		down:SetToAlpha(0)
 		down:SetDuration(0.9)
-		flash.anim:SetScript("OnFinished", function() flash:SetAlpha(0) end)
+		Perf.SetScript(flash.anim, "OnFinished", function() flash:SetAlpha(0) end)
 		owner.pulse = flash
 	end
 	flash.anim:Stop()
@@ -298,9 +303,9 @@ local function InitHeader(button, entry)
 	button:SetHighlightAtlas("common-button-list-collapseExpand", "ADD")
 	button:GetHighlightTexture():SetAlpha(0.4)
 	button.plus:SetAtlas(QL.collapsed[entry.key] and "common-button-list-plus" or "common-button-list-minus", true)
-	button:SetScript("OnClick", HeaderClick)
-	button:SetScript("OnEnter", nil)
-	button:SetScript("OnLeave", nil)
+	Perf.SetScript(button, "OnClick", HeaderClick)
+	Perf.SetScript(button, "OnEnter", nil)
+	Perf.SetScript(button, "OnLeave", nil)
 	button.label:SetText(entry.name)
 	button.label:SetTextColor(0.9, 0.9, 0.9)
 	button.count:SetText(string.format("%d/%d", entry.done, entry.total))
@@ -340,9 +345,9 @@ local function InitRow(button, entry)
 	button:ClearNormalTexture()
 	button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
 	button:GetHighlightTexture():SetAlpha(0.6)
-	button:SetScript("OnClick", RowClick)
-	button:SetScript("OnEnter", RowEnter)
-	button:SetScript("OnLeave", Leave)
+	Perf.SetScript(button, "OnClick", RowClick)
+	Perf.SetScript(button, "OnEnter", RowEnter)
+	Perf.SetScript(button, "OnLeave", Leave)
 	local row = entry.row
 	local r, g, b = QL.DifficultyColor(QL.ColourLevel(row))
 	-- the game's trivial grey (0.5) reads as near black over the list's
@@ -439,6 +444,204 @@ local function InitRow(button, entry)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Rebuilds asked for by events
+--
+-- QUEST_LOG_UPDATE arrives in bursts (a dozen times on a turn-in) and every
+-- keystroke in the search box counts too: fold them into one rebuild, made
+-- QUIET seconds after the last of them (MAX_WAIT at most after the first; a
+-- keystroke's at most QUIET after the first, so the list follows the typing
+-- as it always did).
+-- QuestList.lua asks on each of its events: on every spell the player casts
+-- (its hearthstone check) and on every QUEST_LOG_UPDATE, which comes for
+-- each kill and item towards an objective. Most of those change nothing the
+-- list or the map pins show, and a rebuild redrew every pin on the map
+-- (/melloperf, 2026-09-24). What both show of the quests is summed up below
+-- (in the log, ready, done; the level and the pinned quest): a rebuild asked
+-- for by the quest log and the casts alone (heard here too while the panel
+-- shows, the same events) lays the list out and redraws the pins only when
+-- those sums moved. Any other ask (a zone, a level, a loading screen, a
+-- quest handed in, whatever QuestList.lua asks on later) rebuilds both as
+-- before. The search text is the list's alone: the pins are not redrawn
+-- for it.
+--------------------------------------------------------------------------------
+
+local QUIET, MAX_WAIT = 0.15, 0.5
+local updatePending = false
+local firstAsked, lastAsked = 0, 0
+local asks = 0           -- rebuilds asked for since the last one
+local logAsks = 0        -- of them, by QUEST_LOG_UPDATE
+local casts = 0          -- of them, by the player's casts
+local searched = false   -- the search text changed since the last rebuild
+local handedIn = false   -- a quest handed in since the last rebuild
+
+-- What the list was last laid out from, for the quiet pass (Update below)
+local laid = {}
+
+-- The quest log's font (the Fonts module) as the rows take it
+local function ListFont()
+	if GameFontNormal and GameFontNormal.GetFont then
+		local ok, path, _, flags = pcall(GameFontNormal.GetFont, GameFontNormal)
+		if ok then
+			return path, flags
+		end
+	end
+	return nil, nil
+end
+
+-- The quests' sums. The log is walked (how many quests, their ids and their
+-- squares, the ready ones' ids: no list made), and every quest seen in it
+-- stays watched once it left until its done flag lands (that can come a
+-- moment after it left the log) or WATCH_WALKS walks have passed. When the
+-- log cannot be read whole (a folded header hides its quests, or no calls
+-- for it), the sums are unknown: every ask but a cast rebuilds, as before.
+local WATCH_WALKS = 40
+local walks = 0
+local watched = {}   -- [questID] = the walk it was last seen in the log on
+local landed = 0     -- watched quests found done
+local sums = {}      -- the sums of the last walk
+
+-- the log read by C_QuestLog (true), the older calls (false) or not at all (nil)
+local function LogCalls()
+	if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetQuestIDForLogIndex then
+		return true
+	elseif _G.GetNumQuestLogEntries and _G.GetQuestLogTitle then
+		return false
+	end
+	return nil
+end
+
+-- the log's lines (headers too) and quests, nil when it cannot be read
+local function LogSize(modern)
+	local ok, lines, quests
+	if modern then
+		ok, lines, quests = pcall(C_QuestLog.GetNumQuestLogEntries)
+	elseif modern == false then
+		ok, lines, quests = pcall(_G.GetNumQuestLogEntries)
+	end
+	if not ok then
+		return nil
+	end
+	lines, quests = QL.Plain(lines), QL.Plain(quests)
+	if type(lines) ~= "number" or type(quests) ~= "number" then
+		return nil
+	end
+	return lines, quests
+end
+
+-- the quest id on a log line, nil for a header
+local function LogQuestID(modern, i)
+	local ok, id
+	if modern then
+		ok, id = pcall(C_QuestLog.GetQuestIDForLogIndex, i)
+	else
+		local _, isHeader
+		ok, _, _, _, isHeader, _, _, _, id = pcall(_G.GetQuestLogTitle, i)
+		if ok and QL.Plain(isHeader) then
+			return nil
+		end
+	end
+	id = ok and QL.Plain(id) or nil
+	return (type(id) == "number" and id > 0) and id or nil
+end
+
+-- true when what the list and the pins show of the quests moved since the
+-- last walk (the new sums kept for the next); nil when the log could not be
+-- read whole and the level and the pinned quest are as they were
+local function QuestsMoved()
+	walks = walks + 1
+	local count, ids, squares, ready = 0, 0, 0, 0
+	local modern = LogCalls()
+	local lines, quests = LogSize(modern)
+	for i = 1, lines or 0 do
+		local id = LogQuestID(modern, i)
+		if id then
+			count, ids, squares = count + 1, ids + id, squares + id * id
+			if QL.IsReadyForTurnIn(id) then
+				ready = ready + id
+			end
+			watched[id] = walks
+		end
+	end
+	for id, walk in pairs(watched) do
+		if walk ~= walks then
+			if QL.IsCompleted(id) then
+				watched[id] = nil
+				landed = landed + 1
+			elseif walks - walk > WATCH_WALKS then
+				watched[id] = nil
+			end
+		end
+	end
+	local level = QL.Plain(UnitLevel("player"))
+	local known = lines ~= nil and count >= quests
+	local moved = level ~= sums.level or QL.trackedQuestID ~= sums.tracked
+		or (known and (count ~= sums.count or ids ~= sums.ids or squares ~= sums.squares or ready ~= sums.ready
+		or landed ~= sums.landed))
+	sums.count, sums.ids, sums.squares, sums.ready, sums.landed = count, ids, squares, ready, landed
+	sums.level, sums.tracked = level, QL.trackedQuestID
+	if not (known or moved) then
+		return nil
+	end
+	return moved
+end
+
+local watcher = CreateFrame("Frame")
+Perf.SetScript(watcher, "OnEvent", function(_, event, questID)
+	if event == "QUEST_TURNED_IN" then
+		-- drawn again, and its done flag watched (it may land after this)
+		handedIn = true
+		questID = QL.Plain(questID)
+		if type(questID) == "number" then
+			watched[questID] = walks
+		end
+	elseif event == "QUEST_LOG_UPDATE" then
+		logAsks = logAsks + 1
+	else
+		casts = casts + 1
+	end
+end)
+
+local function Rebuild()
+	local wait = math.min(lastAsked + QUIET, firstAsked + (searched and QUIET or MAX_WAIT)) - GetTime()
+	if wait > 0.01 then
+		C_Timer.After(wait, Rebuild)
+		return
+	end
+	updatePending = false
+	local pins = asks > logAsks + casts or handedIn
+	local list = searched
+	local logged = logAsks > 0
+	asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
+	-- the map pin removed on the map itself: the row's pin goes too (the
+	-- sums hold the pinned quest)
+	QL.SyncTracked()
+	local moved = QuestsMoved()
+	if moved or (moved == nil and logged) then
+		pins = true
+	end
+	local face, flags = ListFont()
+	if pins or face ~= laid.face or flags ~= laid.flags then
+		list = true
+	end
+	if list then
+		QL.Panel:Update(true)
+	end
+	if pins and QL.RefreshPins then
+		QL.RefreshPins()
+	end
+end
+
+local function Ask()
+	lastAsked = GetTime()
+	if updatePending then
+		return
+	end
+	updatePending = true
+	firstAsked = lastAsked
+	C_Timer.After(QUIET, Rebuild)
+end
+
 function QL.Panel:Create()
 	if self.frame then
 		return
@@ -533,18 +736,18 @@ function QL.Panel:Create()
 	check.label:SetPoint("RIGHT", check, "LEFT", -1, 1)
 	check.label:SetText("Hide 5+ levels above me")
 	check:SetHitRectInsets(-(check.label:GetStringWidth() + 4), 0, 0, 0)
-	check:SetScript("OnClick", function(self)
+	Perf.SetScript(check, "OnClick", function(self)
 		MelloUI:NotifySettingChanged(M.name, "levelAbove", self:GetChecked() and LEVEL_SHORTCUT or 0)
 		PlaySound(self:GetChecked() and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
 	end)
-	check:SetScript("OnEnter", function(self)
+	Perf.SetScript(check, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		GameTooltip:SetText("Hide quests 5+ levels above me", 1, 0.82, 0)
 		GameTooltip:AddLine("Leaves out the quests 5 or more levels above your character (the red ones) in the Quests list and on the map. "
 			.. "The same as Hide Quests More Than N Levels Above Me set to +4 in the settings; unchecked, no limit.", 0.9, 0.9, 0.9, true)
 		GameTooltip:Show()
 	end)
-	check:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(check, "OnLeave", function() GameTooltip:Hide() end)
 	frame.levelCheck = check
 	-- and under it Hide completed (user, 2026-09-23: "should also be somewhere
 	-- there"; it sat under the filter buttons)
@@ -555,7 +758,7 @@ function QL.Panel:Create()
 	frame.hide.text:SetPoint("RIGHT", frame.hide, "LEFT", -1, 1)
 	frame.hide.text:SetText("Hide completed")
 	frame.hide:SetHitRectInsets(-(frame.hide.text:GetStringWidth() + 4), 0, 0, 0)
-	frame.hide:SetScript("OnClick", function(self)
+	Perf.SetScript(frame.hide, "OnClick", function(self)
 		M.db.hideCompleted = self:GetChecked() and true or false
 		MelloUI:NotifySettingChanged(M.name, "hideCompleted", M.db.hideCompleted)
 		QL.Panel:Update()
@@ -590,12 +793,13 @@ function QL.Panel:Create()
 	if search.Instructions then
 		search.Instructions:SetText("Search quests")
 	end
-	search:HookScript("OnTextChanged", function(self, userInput)
+	Perf.HookScript(search, "OnTextChanged", function(self, userInput)
 		if userInput then
-			QL.Panel:Schedule()
+			searched = true
+			Ask()
 		end
 	end)
-	search:SetScript("OnEscapePressed", function(self)
+	Perf.SetScript(search, "OnEscapePressed", function(self)
 		self:SetText("")
 		self:ClearFocus()
 		QL.Panel:Update()
@@ -617,7 +821,7 @@ function QL.Panel:Create()
 		end
 		b:SetText(f.label)
 		b.key = f.key
-		b:SetScript("OnClick", function(self)
+		Perf.SetScript(b, "OnClick", function(self)
 			M.db.filter = self.key
 			MelloUI:NotifySettingChanged(M.name, "filter", self.key)
 			QL.Panel:Update()
@@ -649,7 +853,26 @@ function QL.Panel:Create()
 	frame.empty:SetWidth(240)
 	frame.empty:Hide()
 
-	frame:SetScript("OnShow", function() QL.Panel:Update() end)
+	-- the quest log's and the player's casts counted while the panel shows
+	-- (QuestList.lua asks only while the map shows, registered the same way);
+	-- laid out afresh each time it shows, the sums taken then (the map draws
+	-- its pins afresh on showing too)
+	Perf.SetScript(frame, "OnShow", function()
+		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
+		watcher:RegisterEvent("QUEST_LOG_UPDATE")
+		watcher:RegisterEvent("QUEST_TURNED_IN")
+		if watcher.RegisterUnitEvent then
+			watcher:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+		else
+			watcher:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		end
+		QuestsMoved()
+		QL.Panel:Update()
+	end)
+	Perf.HookScript(frame, "OnHide", function()
+		watcher:UnregisterAllEvents()
+		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
+	end)
 
 end
 
@@ -715,7 +938,8 @@ local function BuildEntries(rows, groupOf, showZone)
 	local entries = {}
 	for _, group in ipairs(order) do
 		if #group.rows > 0 or not db.hideCompleted then
-			entries[#entries + 1] = { header = true, key = group.key, name = group.name, done = group.done, total = group.total }
+			entries[#entries + 1] = { header = true, key = group.key, name = group.name, done = group.done, total = group.total,
+				collapsed = QL.collapsed[group.key] and true or false }
 			if not QL.collapsed[group.key] then
 				for _, e in ipairs(group.rows) do
 					entries[#entries + 1] = e
@@ -726,25 +950,40 @@ local function BuildEntries(rows, groupOf, showZone)
 	return entries, done, total
 end
 
-local updatePending = false
-
--- QUEST_LOG_UPDATE arrives in bursts (a dozen times on a turn-in) and every
--- keystroke in the search box counts too: fold them into one rebuild.
 function QL.Panel:Schedule()
-	if updatePending then
-		return
-	end
-	updatePending = true
-	C_Timer.After(0.15, function()
-		updatePending = false
-		QL.Panel:Update()
-		if QL.RefreshPins then
-			QL.RefreshPins()
-		end
-	end)
+	asks = asks + 1
+	Ask()
 end
 
-function QL.Panel:Update()
+-- Two lists hold the same when every header and row says the same (the
+-- rows' quest data are shared tables, so the same quest is the same table)
+local function SameEntries(a, b)
+	if not (a and b) or #a ~= #b then
+		return false
+	end
+	for i = 1, #a do
+		local x, y = a[i], b[i]
+		if x.header then
+			if not (y.header and x.key == y.key and x.name == y.name and x.done == y.done and x.total == y.total
+				and x.collapsed == y.collapsed) then
+				return false
+			end
+		elseif y.header or x.row ~= y.row or x.completed ~= y.completed or x.onQuest ~= y.onQuest or x.ready ~= y.ready
+			or x.available ~= y.available or x.showZone ~= y.showZone or x.step ~= y.step then
+			return false
+		end
+	end
+	return true
+end
+
+local inkLabels = nil   -- the page's own texts and their inks, listed once
+
+-- `quiet` (a rebuild an event asked for): the list is laid out again only
+-- when what it would show differs from what it shows (every row's button
+-- set up anew and the kit's rows skinned again, for the same list, was the
+-- bulk of a rebuild's time -- /melloperf, 2026-09-24). A click, a filter, a
+-- map change, a setting or showing the panel always lay it out.
+function QL.Panel:Update(quiet)
 	local frame = self.frame
 	if not frame or not frame:IsShown() or not QL.byZone then
 		return
@@ -864,6 +1103,20 @@ function QL.Panel:Update()
 	end
 
 	local entries, done, total = BuildEntries(rows, groupOf, showZone)
+	-- besides the entries, a row's look follows the tracked quest (its pin),
+	-- the level (the difficulty colours), the parchment (the ink) and the
+	-- quest log's font (the Fonts module)
+	local level = QL.Plain(UnitLevel("player"))
+	local QI = MelloUI.QuestInk
+	local paper = QI and QI.onParchment and true or false
+	local face, flags = ListFont()
+	if quiet and not (revealKey and GetTime() < revealUntil) and laid.title == title and laid.done == done
+		and laid.total == total and laid.tracked == QL.trackedQuestID and laid.level == level and laid.paper == paper
+		and laid.face == face and laid.flags == flags and SameEntries(laid.entries, entries) then
+		return
+	end
+	laid.entries, laid.title, laid.done, laid.total, laid.tracked = entries, title, done, total, QL.trackedQuestID
+	laid.level, laid.paper, laid.face, laid.flags = level, paper, face, flags
 	frame.zone:SetText(title)
 	frame.count:SetText(string.format("%d of %d completed", done, total))
 	frame.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
@@ -880,11 +1133,12 @@ function QL.Panel:Update()
 	end
 	-- the page's own texts in ink on the parchment too (user, 2026-09-23: the
 	-- zone, its count, the two check boxes, the empty list's line)
-	local QI = MelloUI.QuestInk
 	if QI then
-		local labels = { { frame.zone, "title" }, { frame.count, "text" }, { frame.empty, "text" },
-			{ frame.levelCheck and frame.levelCheck.label, "text" }, { frame.hide and frame.hide.text, "text" } }
-		for _, l in ipairs(labels) do
+		if not inkLabels then
+			inkLabels = { { frame.zone, "title" }, { frame.count, "text" }, { frame.empty, "text" },
+				{ frame.levelCheck and frame.levelCheck.label, "text" }, { frame.hide and frame.hide.text, "text" } }
+		end
+		for _, l in ipairs(inkLabels) do
 			if l[1] then
 				if QI.onParchment then
 					QI.Ink(l[1], l[2])

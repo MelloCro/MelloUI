@@ -60,7 +60,8 @@
 --     SkinScrollBar write `melloRep` onto it) are re-done here without the mark.
 -- Switching the module off hides every piece and gives the faded art back its
 -- alpha: the window looks exactly as the game draws it. The hooks stay (post-
--- hooks cannot be removed) but do nothing while the module is off.
+-- hooks cannot be removed) but do nothing while the module is off. Each
+-- window is dressed the first time it shows, never at login (Activate).
 --
 -- /editmodedump [manager | dialog | layout | import | unsaved | all]: what a
 -- window is made of (regions, children), what the kit made of it, and any
@@ -69,6 +70,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("EditModePanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("EditModePanel", {
@@ -379,7 +382,7 @@ local function SkinScrollBar(bar)
 	if bar.Forward and bar.Forward.Texture then
 		list[#list + 1] = Replace(bar.Forward.Texture, { as = "minimal-scrollbar-arrow-bottom", button = bar.Forward })
 	end
-	thumb:HookScript("OnSizeChanged", Guard(function()
+	Perf.HookScript(thumb, "OnSizeChanged", Guard(function()
 		for _, rep in ipairs(list) do
 			if rep.vstrip and rep.object:IsShown() then
 				rep:Refit()
@@ -654,7 +657,7 @@ local function BuildShell(window)
 	Kit:TitleFont(text, true)
 	shell.text = text
 	-- the window's size follows its layout (the settings dialog per element)
-	root:SetScript("OnSizeChanged", Guard(function()
+	Perf.SetScript(root, "OnSizeChanged", Guard(function()
 		if active then
 			FitTitle(shell)
 			SyncParts(shell)
@@ -662,7 +665,7 @@ local function BuildShell(window)
 	end))
 	-- the window's alpha (a fade-in) and scale, followed while it is open; and
 	-- a window that went away without its OnHide reaching us takes the shell
-	root:SetScript("OnUpdate", function(self)
+	Perf.SetScript(root, "OnUpdate", function(self)
 		if not IsShownNow(window) then
 			self:Hide()
 			return
@@ -955,6 +958,10 @@ local function OnDialogUpdate(dialog)
 	if not active then
 		return
 	end
+	-- (a dialog never shown yet is left for its first show: dressed there)
+	if skinned[dialog] == nil and not IsShownNow(dialog) then
+		return
+	end
 	DressDialog(dialog)
 	local shell = shells[dialog]
 	if shell then
@@ -971,14 +978,14 @@ local function Hook()
 	local manager = Manager()
 	if manager and not hooked[manager] then
 		hooked[manager] = true
-		manager:HookScript("OnShow", Guard(OnManagerShow))
-		manager:HookScript("OnHide", Guard(OnShellHide))
+		Perf.HookScript(manager, "OnShow", Guard(OnManagerShow))
+		Perf.HookScript(manager, "OnHide", Guard(OnShellHide))
 	end
 	local dialog = Dialog()
 	if dialog and not hooked[dialog] then
 		hooked[dialog] = true
-		dialog:HookScript("OnShow", Guard(OnDialogShow))
-		dialog:HookScript("OnHide", Guard(OnShellHide))
+		Perf.HookScript(dialog, "OnShow", Guard(OnDialogShow))
+		Perf.HookScript(dialog, "OnHide", Guard(OnShellHide))
 		if type(dialog.UpdateDialog) == "function" then
 			hooksecurefunc(dialog, "UpdateDialog", Guard(OnDialogUpdate))
 		end
@@ -987,7 +994,7 @@ local function Hook()
 		local d = _G[name]
 		if d and d.HookScript and not hooked[d] then
 			hooked[d] = true
-			d:HookScript("OnShow", Guard(ShowSmall))
+			Perf.HookScript(d, "OnShow", Guard(ShowSmall))
 		end
 	end
 end
@@ -998,11 +1005,17 @@ local function Activate()
 	end
 	active = true
 	Hook()
+	-- (user, 2026-09-24: "dress rarely used windows on first open") Edit Mode is
+	-- loaded with the interface and most sessions never open it: the manager
+	-- and the settings dialog are dressed the first time each shows (their
+	-- OnShow: OnManagerShow / OnDialogShow, before the first frame is drawn),
+	-- not here -- only one that is open right now is dressed at once. What
+	-- was dressed before is switched back on below as it always was.
 	local manager, dialog = Manager(), Dialog()
-	if manager then
+	if manager and IsShownNow(manager) then
 		DressManager(manager)
 	end
-	if dialog then
+	if dialog and IsShownNow(dialog) then
 		DressDialog(dialog)
 	end
 	for _, rep in ipairs(reps) do
@@ -1056,7 +1069,7 @@ end
 -- it later has its frames hooked when it arrives
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
-loader:SetScript("OnEvent", function(_, _, name)
+Perf.SetScript(loader, "OnEvent", function(_, _, name)
 	if name == "Blizzard_EditMode" and active then
 		local ok, err = pcall(Hook)
 		if not ok then

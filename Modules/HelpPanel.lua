@@ -45,7 +45,8 @@
 -- survey or browser function is ever called; post-hooks and HookScript
 -- only, our state in weak side tables. The windows are never moved or
 -- reparented. Switched off, every piece is hidden and the game's art faded
--- back in: the windows are the game's again.
+-- back in: the windows are the game's again. Each window is dressed the
+-- first time it shows, never at login (Activate).
 --
 -- /helpdump [frames | reps | regions | ticket]: what the windows are made of
 -- on this client and what the skin made of them, in the copy window.
@@ -53,6 +54,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("HelpPanel")
+local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("HelpPanel", {
@@ -510,12 +513,22 @@ local function Refresh()
 	end)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") the help window
+-- and the ticket status box are each built the first time they show -- their
+-- OnShow (Hook below), before the first frame is drawn -- never at login:
+-- most sessions open neither. One open right now is built at once; one built
+-- before is simply switched back on. Once built it stays for the session.
 local function Activate()
 	if active or not (Window() or _G.TicketStatusFrame) then
 		return
 	end
-	Build()
-	BuildTicket()
+	local f, ts = Window(), _G.TicketStatusFrame
+	if f and Shown(f) then
+		Build()
+	end
+	if ts and Shown(ts) then
+		BuildTicket()
+	end
 	active = true
 	for _, rep in ipairs(skin and skin.reps or {}) do
 		rep:Enable()
@@ -551,6 +564,7 @@ local function Sync()
 	end
 end
 
+-- (the switch and the addon's load: out of combat only, as they always were)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -559,23 +573,53 @@ local function SyncSafe()
 	end
 end
 
+-- The help window's first show while the kit is on: built now, the way
+-- Activate builds -- the pieces made first, then each enabled once, so a
+-- handler fixed on a piece after it was made (the portrait ring's help icon,
+-- a search box's text insets) runs on this first open too. Never for a module
+-- switched off whose Deactivate still waits for the end of combat.
+local function DressHelp()
+	local f = Window()
+	if not (active and M.isEnabled and f and Shown(f)) or (skin and skin.built) then
+		return
+	end
+	active = false      -- (Replace enables nothing while the dress is made)
+	Build()
+	active = true
+	for _, rep in ipairs(skin and skin.reps or {}) do
+		rep:Enable()
+	end
+	ShowBox(skin and skin.small, true)
+end
+
 local function Hook()
 	local f = Window()
 	if f and not hooked[f] then
 		hooked[f] = true
-		f:HookScript("OnShow", function()
+		Perf.HookScript(f, "OnShow", function()
+			-- dressed here and now on the first open, in combat too: the dress
+			-- adds frames and textures of ours and fades the game's art (the
+			-- portrait a window may have is fitted on every show already); the
+			-- help window has no secure or protected part, and nothing
+			-- protected is called
 			if M.isEnabled and not active then
-				SyncSafe()
+				Sync()      -- (Activate refreshes it)
+			else
+				DressHelp()
+				Refresh()
 			end
-			Refresh()
 		end)
 	end
 	local ts = _G.TicketStatusFrame
 	if ts and not hooked[ts] then
 		hooked[ts] = true
-		ts:HookScript("OnShow", function()
+		Perf.HookScript(ts, "OnShow", function()
 			if active then
-				BuildTicket()
+				-- (built only while switched on: not while a switch-off waits
+				-- for the end of combat)
+				if M.isEnabled then
+					BuildTicket()
+				end
 				RefreshTicket()
 			end
 		end)
@@ -583,22 +627,22 @@ local function Hook()
 end
 
 -- The help window comes with Blizzard_HelpFrame (loaded with the interface
--- or on demand, depending on the client): dressed as it loads, or at once
--- when it already is.
+-- or on demand, depending on the client): hooked as it loads, dressed as it
+-- first shows (or at once when it is open already).
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, addon)
 	if event == "PLAYER_LOGIN" or addon == ADDON then
 		Hook()
 		if M.isEnabled then
 			SyncSafe()
-			-- a window that came after the kit went on (its pieces are
-			-- enabled as they are made: Replace)
-			if active and Window() and not (skin and skin.built) then
-				Build()
-				ShowBox(skin and skin.small, true)
+			-- a window that came after the kit went on and is open already
+			local f = Window()
+			if active and f and Shown(f) and not (skin and skin.built) then
+				DressHelp()
 				Refresh()
 			end
-			if active and not ticket then
+			local ts = _G.TicketStatusFrame
+			if active and not ticket and ts and Shown(ts) then
 				BuildTicket()
 			end
 		end
@@ -737,6 +781,9 @@ end
 local function DumpHelp(f)
 	MelloUI:Print("HelpFrame: shown %s, %s, strata %s, level %s; kit %s, pieces %d", tostring(Shown(f)), RectText(f),
 		StrataOf(f), LevelText(f), active and "on" or "off", skin and #skin.reps or 0)
+	if not (skin and skin.built) then
+		MelloUI:Print("  not dressed yet: the help window is dressed the first time it opens")
+	end
 	MelloUI:Print("  template parts: NineSlice %s (layout %s), TitleContainer %s, PortraitContainer %s, CloseButton %s, Header %s; dress: %s",
 		tostring(f.NineSlice ~= nil), tostring(f.NineSlice and f.NineSlice.layoutType), tostring(f.TitleContainer ~= nil),
 		tostring(f.PortraitContainer ~= nil), tostring(f.CloseButton ~= nil), tostring(f.Header ~= nil),
@@ -824,6 +871,9 @@ local function DumpTicket()
 		tostring(Shown(ts)), RectText(ts), StrataOf(ts), LevelText(ts), Label(ticket and ticket.box or _G.TicketStatusFrameButton),
 		LevelText(ticket and ticket.box or _G.TicketStatusFrameButton), tostring(ticket ~= nil), ticket and LevelText(ticket.nine) or "-",
 		ticket and tostring(Shown(ticket.nine)) or "-", ticket and #ticket.art or 0)
+	if not ticket then
+		MelloUI:Print("  not dressed yet: the ticket status box is dressed the first time it shows")
+	end
 	for _, name in ipairs({ "TicketStatusTitleText", "TicketStatusTime" }) do
 		local fs = _G[name]
 		Found(name, fs, fs and string.format(" text %s, font %s", tostring(TextOf(fs)), FontText(fs)) or nil)

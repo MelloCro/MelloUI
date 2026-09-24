@@ -25,9 +25,9 @@ import os
 import random
 
 from PIL import Image
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
-ADDON = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ADDON, "Media", "Textures", "Masks")
+OUT = master("Textures", "Masks")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 DRAW = 1024      # drawn at twice the file's size, then halved: smoother bristles
 FILE = 512       # the file: 512 x 512, shown 1:1 (512 UI units)
 EDGE = 36        # how deep the strokes reach at DRAW size (18 UI units on screen)

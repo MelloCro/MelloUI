@@ -28,9 +28,12 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Config")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
-local LOGO = TEXTURE_PATH .. "LogoIcon.tga"   -- the emblem cropped from docs/logo.jpg
+local LOGO = TEXTURE_PATH .. "LogoIcon.tga"   -- the round emblem of the logo (user, 2026-09-24: new logo, "round_inner")
+local LOGO_FULL = TEXTURE_PATH .. "LogoFull.tga"   -- the whole logo, for the home page's header
 local ICON = "Interface\\Icons\\"
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROCK = "Interface\\FrameGeneral\\UI-Background-Rock"
@@ -301,6 +304,27 @@ local function ShowTooltip(owner, title, body)
 	GameTooltip:Show()
 end
 
+-- The handlers the pages' rows and controls share (user, 2026-09-24: a page
+-- of two hundred rows made a dozen functions per row, each wrapped and
+-- named by the profiler as it was set): one function each, wrapped once
+-- (Perf.Shared), reading what it shows from the frame it runs on.
+local Shared = Perf.Shared or function(_, fn) return fn end
+
+local TipLeave = Shared("OnLeave on the configurator's rows and controls", function()
+	GameTooltip:Hide()
+end, "script")
+-- a row's tooltip: its label and description (`tipTitle`, `tipBody`)
+local RowTipEnter = Shared("OnEnter on the configurator's rows (tooltip)", function(self)
+	ShowTooltip(self, self.tipTitle, self.tipBody)
+end, "script")
+-- a row's switch or button: the row's tooltip, on the row, when the option
+-- has a description
+local ControlTipEnter = Shared("OnEnter on the configurator's row controls", function(self)
+	if self.tipBody then
+		ShowTooltip(self.tipOwner, self.tipTitle, self.tipBody)
+	end
+end, "script")
+
 -- A framed icon: the client's action button bevel around a rounded icon.
 -- Grey at rest, gold when selected, white while hovered.
 local FRAME_GREY = PAL.mutedText
@@ -367,7 +391,7 @@ local function IconBox(parent, size, texture, button)
 		box.icon:SetAllPoints()
 	end
 	box.icon:SetTexture(texture)
-	if texture ~= LOGO then
+	if texture ~= LOGO and texture ~= LOGO_FULL then
 		box.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
 	end
 	-- Same construction as an action button (45 px icon, 46 x 45 bevel on
@@ -487,6 +511,26 @@ end
 
 -- On/off control: the standard WoW checkbox. SetValue(on, silent) sets it
 -- without (silent) or with the change callback.
+local function SwitchSetValue(self, on, silent)
+	on = on and true or false
+	-- a refresh that changes nothing leaves the box alone (the kit's check
+	-- box redraws on every SetChecked; a tab's refresh set every box on it
+	-- again -- user, 2026-09-24)
+	if silent and on == self.value and (self:GetChecked() and true or false) == on then
+		return
+	end
+	self.value = on
+	self:SetChecked(on)
+	if not silent and self.melloOnChange then
+		self.melloOnChange(on)
+	end
+end
+local SwitchClick = Shared("OnClick on the configurator's switches", function(self)
+	local value = self:GetChecked() and true or false
+	Click(value and "check_on" or "check_off")
+	self:SetValue(value)
+end, "script")
+
 local function CreateSwitch(parent, onChange)
 	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
 	cb:SetSize(26, 26)
@@ -494,18 +538,9 @@ local function CreateSwitch(parent, onChange)
 		cb.Text:Hide()
 	end
 	cb.value = false
-	function cb:SetValue(on, silent)
-		self.value = on and true or false
-		self:SetChecked(self.value)
-		if not silent and onChange then
-			onChange(self.value)
-		end
-	end
-	cb:SetScript("OnClick", function(self)
-		local value = self:GetChecked() and true or false
-		Click(value and "check_on" or "check_off")
-		self:SetValue(value)
-	end)
+	cb.melloOnChange = onChange
+	cb.SetValue = SwitchSetValue
+	Perf.SetScript(cb, "OnClick", SwitchClick)
 	if KIT and KIT.SkinCheckButton then
 		KIT:SkinCheckButton(cb, KitReplace, "UI-CheckBox-Up")
 	end
@@ -515,6 +550,9 @@ end
 -- Smooth hover glow: a bronze wash that fades in while the mouse is over the
 -- frame and out again after it leaves. Runs an OnUpdate only while animating.
 local HOVER_SPEED = 6   -- full fade in about 1/6 s
+local HoverEnter = Shared("OnEnter on the configurator's hover washes", function(self)
+	Perf.SetScript(self, "OnUpdate", self.hoverStep)
+end, "script")
 local function AttachHover(frame, alphaMax)
 	-- the palette's hover is a fill colour (dark bronze), not a light: it
 	-- shows at about half strength where the old gold wash showed at a tenth
@@ -542,13 +580,42 @@ local function AttachHover(frame, alphaMax)
 		glow:SetAlpha(level * alphaMax)
 		edge:SetAlpha(level)
 		if level == 0 then
-			self:SetScript("OnUpdate", nil)
+			Perf.SetScript(self, "OnUpdate", nil)
 		end
 	end
-	frame:HookScript("OnEnter", function(self)
-		self:SetScript("OnUpdate", Step)
-	end)
+	frame.hoverStep = Step
+	Perf.HookScript(frame, "OnEnter", HoverEnter)
 	frame.hoverGlow = glow
+end
+
+-- the dropdown's text: gold at rest, the text colour under the mouse
+local DropdownGold = Shared("OnButtonStateChanged / OnLeave on the configurator's dropdowns", function(self)
+	Colour(self.Text, C.accent)
+end, "hook")
+local DropdownLit = Shared("OnEnter on the configurator's dropdowns", function(self)
+	Colour(self.Text, C.text)
+end, "script")
+
+-- A dropdown's list as it stands: its length and its last entry (a list
+-- filled again makes new entries, so either differs)
+local function ListMark(values)
+	local count = values and #values or 0
+	return count, count > 0 and values[count] or nil
+end
+
+-- The text the box shows for `value` (nil when the list has no such entry:
+-- the box then shows its default text, and the menu is made again on every
+-- refresh, as before)
+local function ChoiceLabel(values, value)
+	if values then
+		for i = 1, #values do
+			local entry = values[i]
+			if entry.value == value then
+				return entry.label or tostring(entry.value)
+			end
+		end
+	end
+	return nil
 end
 
 local function CreateDropdown(parent, width, db, module, opt)
@@ -564,15 +631,12 @@ local function CreateDropdown(parent, width, db, module, opt)
 		dd.Text:SetPoint("LEFT", 10, -1)
 		dd.Text:SetPoint("RIGHT", -10, -1)
 		dd.Text:SetJustifyH("CENTER")
-		local function Gold()
-			Colour(dd.Text, C.accent)
-		end
-		Gold()
+		DropdownGold(dd)
 		if dd.OnButtonStateChanged then
-			hooksecurefunc(dd, "OnButtonStateChanged", Gold)
+			hooksecurefunc(dd, "OnButtonStateChanged", DropdownGold)
 		end
-		dd:HookScript("OnEnter", function() Colour(dd.Text, C.text) end)
-		dd:HookScript("OnLeave", Gold)
+		Perf.HookScript(dd, "OnEnter", DropdownLit)
+		Perf.HookScript(dd, "OnLeave", DropdownGold)
 	end
 	if dd.SetDefaultText then
 		dd:SetDefaultText(opt.name)
@@ -591,7 +655,25 @@ local function CreateDropdown(parent, width, db, module, opt)
 			end
 		end
 	end)
+	-- the menu is made again only when it is out of date (user, 2026-09-24:
+	-- a tab's refresh made every dropdown's menu again, the font lists'
+	-- dozens of entries each time -- 19 ms and a heap of garbage per click on
+	-- the Text tab): the box not naming the setting's choice, or the list
+	-- filled again since the menu was made (the Voice Over voices, listed
+	-- once the game has them, in the same table: the box must then name the
+	-- chosen voice and the menu hold them all)
+	dd.menuCount, dd.menuLast = ListMark(opt.values)
 	function dd:Refresh()
+		local values = opt.values
+		local count, last = ListMark(values)
+		if count == self.menuCount and last == self.menuLast then
+			local label = ChoiceLabel(values, db[opt.key])
+			local text = self.Text
+			if label and text and text:GetText() == label then
+				return
+			end
+		end
+		self.menuCount, self.menuLast = count, last
 		if self.GenerateMenu then
 			pcall(self.GenerateMenu, self)
 		end
@@ -674,34 +756,283 @@ local RefreshStrip, SelectPage  -- forward declarations
 local SEC_INSET = 10   -- the rows' margin inside a section's L1 box (kit)
 local INDENT = 22      -- a sub-option's label, per level, right of its parent's
 
-local function NewSection(page, name)
-	local sec = CreateFrame("Frame", nil, page)
-	sec.name = name
-	sec.y = KIT and SEC_INSET or 0
-	sec.rows = 0
-	sec.refreshers = {}
-	sec:SetWidth(page.width - PAD * 2)
-	sec:SetHeight(10)
-	sec:Hide()
-	if KIT then
-		-- L1: the single rail with the list-box stone around the section
+-- L1: the single rail with the list-box stone around a section. Made with
+-- the section's first rows (a tab not open yet costs nothing until its rows
+-- are made: user, 2026-09-24), or at once for a section made whole
+local function SectionBox(sec)
+	if sec.needsBox then
+		sec.needsBox = nil
 		KitReplace(KitAnchor(sec), { as = "Professions-background-summarylist", rect = sec, parent = sec, level = -1 })
 		-- depth (user, 2026-09-24: "everything is just too brown ... add the
 		-- checkbox section a darker tone from our color palette"): the L1
 		-- box lays the palette's inner panel over its stone itself (its
 		-- rule's `dim`, WINDOW-RULES 2e), the rows on that darker ground
 	end
+end
+
+local function NewSection(page, name)
+	local sec = CreateFrame("Frame", nil, page)
+	sec.name = name
+	sec.page = page
+	sec.y = KIT and SEC_INSET or 0
+	sec.rows = 0
+	sec.refreshers = {}
+	sec:SetWidth(page.width - PAD * 2)
+	sec:SetHeight(10)
+	sec:Hide()
+	sec.needsBox = KIT and true or nil   -- (SectionBox)
 	function sec:Refresh()
 		for _, fn in ipairs(self.refreshers) do
 			fn()
 		end
 	end
+	-- (as tall as its rows will be while some are still to be made, when
+	-- their heights are known: the scroll bar does not jump as they come)
 	function sec:Finish()
-		self:SetHeight(math.max(self.y + (KIT and SEC_INSET or 0), 10))
+		local y = (self.jobs and self.plannedY) or self.y
+		self:SetHeight(math.max(y + (KIT and SEC_INSET or 0), 10))
 	end
 	page.sections[#page.sections + 1] = sec
 	return sec
 end
+
+--------------------------------------------------------------------------------
+-- A page made a little at a time (user, 2026-09-24: "clean up the spikes";
+-- the first click on a module tile built its page in 170 ms in one frame):
+-- a section's rows are jobs, made in order. The rows that show at once --
+-- the open tab down to the bottom of the view -- are made with the page;
+-- the rest a few milliseconds a frame after it, the open tab first, then the
+-- other tabs in their order; a tab opened or a scroll that reaches rows not
+-- made yet makes them there and then, before they are drawn (only those in
+-- view when the rows above them are not made either). A section is
+-- as tall as its rows will be from the start. Built pages are kept, as
+-- before. The frames that make them belong to the window, so nothing is
+-- made while it is closed.
+--------------------------------------------------------------------------------
+
+local BUILD_BUDGET = 2.5   -- ms of rows a frame after the first (and the one row under way past it)
+-- a row's height by its option type (the builders below make them so)
+local ROW_HEIGHTS = { toggle = ROW_HEIGHT, slider = SLIDER_ROW_HEIGHT, dropdown = ROW_HEIGHT, button = ROW_HEIGHT, subheader = ROW_HEIGHT - 6 }
+
+local building = {}   -- pages with rows still to make, in the order they were opened
+local worker          -- the window's frame whose OnUpdate makes them
+
+-- A job for the section: `run(sec, job)` makes it; `height`, when given,
+-- is the row's height (one row; 0: none), added to the section's planned
+-- height, and where the row goes is kept with the job: a section whose jobs
+-- all have one can make the rows in view before those above them
+local function Queue(sec, job, run, height)
+	local jobs = sec.jobs
+	if not jobs then
+		jobs = {}
+		sec.jobs, sec.nextJob = jobs, 1
+		sec.jobY, sec.jobRow, sec.plannedRows, sec.unsized = {}, {}, sec.rows, nil
+	end
+	local n = #jobs + 1
+	jobs[n] = job
+	sec.runJob = run
+	if height then
+		local y = sec.plannedY or sec.y
+		sec.jobY[n], sec.jobRow[n] = y, sec.plannedRows
+		sec.plannedY = y + height
+		if height > 0 then
+			sec.plannedRows = sec.plannedRows + 1
+		end
+	else
+		sec.unsized = true
+	end
+end
+
+-- The rows in view made out of turn (user, 2026-09-24: a tab opened, or the
+-- scroll bar dragged, far down the page before the worker came to it made
+-- every row above the view as well -- 24 ms in one click): the jobs whose
+-- rows reach into [minY, maxY), each at its own place and zebra band; those
+-- above are left to the worker, which steps over the rows made here
+local function RunInView(sec, minY, maxY)
+	local jobs, ys, rowsAt = sec.jobs, sec.jobY, sec.jobRow
+	for n = sec.nextJob, #jobs do
+		local top = ys[n]
+		if top >= maxY then
+			break
+		end
+		local job = jobs[n]
+		if job and (ys[n + 1] or sec.plannedY) > minY then
+			jobs[n] = false
+			sec.y, sec.rows = top, rowsAt[n]
+			sec.runJob(sec, job)
+		end
+	end
+end
+local function MakeRowsInView(sec, minY, maxY)
+	-- (the section's cursor put back whatever happens: the worker goes on
+	-- from it; a scroll set while these rows are made leaves its view in
+	-- `viewMin` / `viewMax`, made after them)
+	local cursorY, cursorRows = sec.y, sec.rows
+	sec.outOfTurn = true
+	local ok, err
+	repeat
+		sec.viewMin, sec.viewMax = nil, nil
+		ok, err = pcall(RunInView, sec, minY, maxY)
+		minY, maxY = sec.viewMin, sec.viewMax
+	until not (ok and minY)
+	sec.y, sec.rows = cursorY, cursorRows
+	sec.outOfTurn, sec.viewMin, sec.viewMax = nil, nil, nil
+	if not ok then
+		error(err, 0)
+	end
+end
+
+-- Make the section's rows, in order: all of them, those above `maxY` (in
+-- the section's own units), or as many as fit before `deadline` (a
+-- debugprofilestop time; the row under way is finished). With `minY` (the
+-- top of the view) and the rows above it not made yet, only the rows in
+-- view are made (MakeRowsInView). True once the section is complete.
+local function MakeRows(sec, maxY, deadline, minY)
+	local jobs = sec.jobs
+	if not jobs then
+		return true
+	end
+	if sec.outOfTurn then
+		-- (a scroll set while the rows in view are made: its view is made
+		-- after them, MakeRowsInView)
+		if minY and maxY then
+			sec.viewMin, sec.viewMax = minY, maxY
+		end
+		return false
+	end
+	SectionBox(sec)
+	local page = sec.page
+	local refreshers = sec.refreshers
+	local first = #refreshers + 1
+	local count = #jobs
+	if minY and maxY and not sec.unsized and sec.y < minY then
+		MakeRowsInView(sec, minY, maxY)
+		maxY = sec.y   -- (only the made rows at the cursor stepped over below)
+	end
+	-- (the cursor is the section's own, read again for every row: a scroll
+	-- set while a row is made -- the game's scroll bar answering a new
+	-- range -- may make rows itself, or even finish the section)
+	while sec.jobs == jobs and sec.nextJob <= count do
+		local n = sec.nextJob
+		local job = jobs[n]
+		if not job then
+			-- made out of turn: the cursor steps over its place
+			sec.nextJob = n + 1
+			sec.y = sec.jobY[n + 1] or sec.plannedY or sec.y
+			sec.rows = sec.jobRow[n + 1] or sec.plannedRows or sec.rows
+		elseif maxY and sec.y >= maxY then
+			break
+		else
+			jobs[n] = false
+			sec.nextJob = n + 1
+			sec.runJob(sec, job)
+			if deadline and debugprofilestop() >= deadline then
+				break
+			end
+		end
+	end
+	-- rows made on the open tab take their values before they are drawn
+	-- (a tab's own refresh does the rest when it opens)
+	if page.current == sec then
+		for i = first, #refreshers do
+			refreshers[i]()
+		end
+	end
+	if sec.jobs ~= jobs then
+		return true
+	end
+	if sec.nextJob <= count then
+		return false
+	end
+	sec.jobs, sec.nextJob, sec.runJob, sec.jobY, sec.jobRow = nil, nil, nil, nil, nil
+	sec:Finish()
+	if page.current == sec then
+		page:SetHeight(page.headerHeight + sec:GetHeight() + PAD)
+	end
+	if page.onSectionDone then
+		page.onSectionDone(sec)
+	end
+	return true
+end
+
+-- The top and the bottom of the view in a tab's section units: the rows it
+-- needs before it is drawn (plus one above and one below), at the scroll it
+-- will show at (the game's scroll bar brings the offset down to the end of
+-- a tab shorter than the one before)
+local function ViewRange(page, sec)
+	local scroll = window.scroll
+	local height = scroll:GetHeight()
+	if not (type(height) == "number" and height > 0) then
+		height = WINDOW_HEIGHT
+	end
+	local offset = 0
+	if scroll:GetScrollChild() == page then
+		offset = scroll:GetVerticalScroll() or 0
+		local most = page.headerHeight + sec:GetHeight() + PAD - height
+		if offset > most then
+			offset = math.max(0, most)
+		end
+	end
+	local top = offset - page.headerHeight
+	return top - ROW_HEIGHT, top + height + ROW_HEIGHT
+end
+
+-- The next section to make rows for: the open page's open tab, its other
+-- tabs in their order, then the pages opened before it
+local function NextSection()
+	local page = currentPage and pages[currentPage]
+	if page then
+		if page.current and page.current.jobs then
+			return page.current
+		end
+		for _, sec in ipairs(page.sections) do
+			if sec.jobs then
+				return sec
+			end
+		end
+	end
+	for _, p in ipairs(building) do
+		for _, sec in ipairs(p.sections) do
+			if sec.jobs then
+				return sec
+			end
+		end
+	end
+	return nil
+end
+
+local function Work(self)
+	local deadline = debugprofilestop() + BUILD_BUDGET
+	repeat
+		local sec = NextSection()
+		if not sec then
+			for i = #building, 1, -1 do
+				building[i] = nil
+			end
+			self:Hide()
+			return
+		end
+		MakeRows(sec, nil, deadline)
+	until debugprofilestop() >= deadline
+end
+
+-- rows still to make: the worker on (it stops by itself when all are made)
+local function Kick()
+	if worker and not worker:IsShown() and NextSection() then
+		worker:Show()
+	end
+end
+
+-- the kit's hover plate of a row (`hoverPlate`), shown while the mouse is
+-- on it (not on a heading: its `hover` is taken away)
+local RowPlateEnter = Shared("OnEnter on the configurator's rows (plate)", function(self)
+	if self.hover then
+		self.hoverPlate:Show()
+	end
+end, "script")
+local RowPlateLeave = Shared("OnLeave on the configurator's rows (plate)", function(self)
+	self.hoverPlate:Hide()
+end, "script")
 
 -- A ledger row: stripe, label, optional grey hint, tooltip with the description.
 local function Row(sec, height, label, hint, desc)
@@ -720,10 +1051,10 @@ local function Row(sec, height, label, hint, desc)
 		end
 		local hover = KitReplace(KitAnchor(row), { as = "FriendsRowHighlight", rect = row })
 		if hover and hover.object then
-			row.hover = hover.object
+			row.hover, row.hoverPlate = hover.object, hover.object
 			hover.object:Hide()
-			row:HookScript("OnEnter", function() if row.hover then hover.object:Show() end end)
-			row:HookScript("OnLeave", function() hover.object:Hide() end)
+			Perf.HookScript(row, "OnEnter", RowPlateEnter)
+			Perf.HookScript(row, "OnLeave", RowPlateLeave)
 		end
 	else
 		local line = Solid(row, "BORDER", C.line, 0.6)
@@ -741,20 +1072,23 @@ local function Row(sec, height, label, hint, desc)
 		row.hint:SetWordWrap(false)
 	end
 	if desc and desc ~= "" then
-		row:HookScript("OnEnter", function(self) ShowTooltip(self, label, desc) end)
-		row:HookScript("OnLeave", function() GameTooltip:Hide() end)
+		row.tipTitle, row.tipBody = label, desc
+		Perf.HookScript(row, "OnEnter", RowTipEnter)
+		Perf.HookScript(row, "OnLeave", TipLeave)
 	end
 	sec.y = sec.y + height
 	sec.rows = sec.rows + 1
 	return row
 end
 
+local IMPORTANT_GOLD = { 1, 0.82, 0 }
+
 local function AddToggle(sec, module, db, opt)
 	local row = Row(sec, ROW_HEIGHT, opt.name, opt.important and "IMPORTANT" or opt.hint, opt.desc)
 	if opt.important then
-		Colour(row.label, { 1, 0.82, 0 })
+		Colour(row.label, IMPORTANT_GOLD)
 		if row.hint then
-			Colour(row.hint, { 1, 0.82, 0 })
+			Colour(row.hint, IMPORTANT_GOLD)
 		end
 	end
 	local switch = CreateSwitch(row, function(value)
@@ -763,8 +1097,9 @@ local function AddToggle(sec, module, db, opt)
 		sec:Refresh()
 	end)
 	switch:SetPoint("RIGHT", -12, 0)
-	switch:HookScript("OnEnter", function() if opt.desc then ShowTooltip(row, opt.name, opt.desc) end end)
-	switch:HookScript("OnLeave", function() GameTooltip:Hide() end)
+	switch.tipOwner, switch.tipTitle, switch.tipBody = row, opt.name, opt.desc
+	Perf.HookScript(switch, "OnEnter", ControlTipEnter)
+	Perf.HookScript(switch, "OnLeave", TipLeave)
 	sec.refreshers[#sec.refreshers + 1] = function()
 		switch:SetValue(db[opt.key] and true or false, true)
 	end
@@ -791,16 +1126,35 @@ end
 -- "people will get overwhelmed by all the options"): `gate()` returns
 -- whether it is live and, when not, the switch to turn on. Off, the row is
 -- dimmed and a cover over it takes the clicks and says which switch wakes it.
+-- the cover's tooltip: the row's label, and the switch that wakes it (the
+-- line per switch made once, not a new string per hover)
+local CoverEnter = Shared("OnEnter on the configurator's sleeping rows", function(self)
+	local _, why = self.gate()
+	local line = nil
+	if why then
+		local lines = self.gateLines
+		if not lines then
+			lines = {}
+			self.gateLines = lines
+		end
+		line = lines[why]
+		if not line then
+			line = "Switch on \"" .. why .. "\" first."
+			lines[why] = line
+		end
+	end
+	local row = self.gateRow
+	ShowTooltip(self, row.label and row.label:GetText() or "", line)
+end, "script")
+
 local function AddGate(sec, row, gate)
 	local cover = CreateFrame("Frame", nil, row)
 	cover:SetAllPoints(row)
 	cover:SetFrameLevel(row:GetFrameLevel() + 30)
 	cover:EnableMouse(true)
-	cover:SetScript("OnEnter", function(self)
-		local _, why = gate()
-		ShowTooltip(self, row.label and row.label:GetText() or "", why and ("Switch on \"" .. why .. "\" first.") or nil)
-	end)
-	cover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	cover.gate, cover.gateRow = gate, row
+	Perf.SetScript(cover, "OnEnter", CoverEnter)
+	Perf.SetScript(cover, "OnLeave", TipLeave)
 	cover:Hide()
 	sec.refreshers[#sec.refreshers + 1] = function()
 		local live = gate()
@@ -812,19 +1166,24 @@ end
 -- A row with a button on the right (user, 2026-09-22: "a preview button on
 -- each sound effect"): the label, a grey hint, and the kit's red plate
 -- button with `opt.text`; `opt.onClick(module, db)` on the click.
+local RowButtonClick = Shared("OnClick on the configurator's row buttons", function(self)
+	local opt = self.melloOpt
+	if opt.onClick then
+		opt.onClick(self.melloModule, self.melloDb)
+	end
+end, "script")
+
 local function AddButton(sec, module, db, opt)
 	local row = Row(sec, ROW_HEIGHT, opt.name, opt.hint, opt.desc)
 	local button = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	button:SetSize(opt.width or 70, 22)
 	button:SetPoint("RIGHT", -12, 0)
 	button:SetText(opt.text or "Run")
-	button:SetScript("OnClick", function()
-		if opt.onClick then
-			opt.onClick(module, db)
-		end
-	end)
-	button:HookScript("OnEnter", function() if opt.desc then ShowTooltip(row, opt.name, opt.desc) end end)
-	button:HookScript("OnLeave", function() GameTooltip:Hide() end)
+	button.melloOpt, button.melloModule, button.melloDb = opt, module, db
+	Perf.SetScript(button, "OnClick", RowButtonClick)
+	button.tipOwner, button.tipTitle, button.tipBody = row, opt.name, opt.desc
+	Perf.HookScript(button, "OnEnter", ControlTipEnter)
+	Perf.HookScript(button, "OnLeave", TipLeave)
 	row.button = button
 	return row
 end
@@ -865,6 +1224,19 @@ local builders = {
 -- Pages
 --------------------------------------------------------------------------------
 
+-- a page's tab: its section's page opens it
+local function TabSetSelected(self, selected)
+	if selected then
+		PanelTemplates_SelectTab(self)
+	else
+		PanelTemplates_DeselectTab(self)
+	end
+end
+local TabClick = Shared("OnClick on the configurator's tabs", function(self)
+	Click("tab")
+	self.section.page:Select(self.section)
+end, "script")
+
 local function NewPage(name, width)
 	local page = CreateFrame("Frame", nil, window.scroll)
 	page.name = name
@@ -874,6 +1246,7 @@ local function NewPage(name, width)
 	page.headerHeight = 0
 	page.current = nil
 	page:SetSize(width, 10)
+	building[#building + 1] = page   -- its rows still to make, if any (the worker drops it when none are)
 
 	function page:Refresh()
 		for _, fn in ipairs(self.refreshers) do
@@ -885,6 +1258,12 @@ local function NewPage(name, width)
 	end
 
 	function page:Select(sec)
+		-- the tab's rows down to the bottom of the view, made before it
+		-- shows; the rest follow a few a frame
+		if sec.jobs then
+			local top, bottom = ViewRange(self, sec)
+			MakeRows(sec, bottom, nil, top)
+		end
 		for _, other in ipairs(self.sections) do
 			other:SetShown(other == sec)
 		end
@@ -894,6 +1273,7 @@ local function NewPage(name, width)
 		end
 		sec:Refresh()
 		self:SetHeight(self.headerHeight + sec:GetHeight() + PAD)
+		Kick()
 	end
 
 	-- Lay out the tab row (if more than one section) and anchor the sections.
@@ -924,17 +1304,8 @@ local function NewPage(name, width)
 				if KIT and KIT.SkinPanelTab then
 					KIT:SkinPanelTab(tab, KitReplace, kitSkin)
 				end
-				function tab:SetSelected(selected)
-					if selected then
-						PanelTemplates_SelectTab(self)
-					else
-						PanelTemplates_DeselectTab(self)
-					end
-				end
-				tab:SetScript("OnClick", function(self)
-					Click("tab")
-					page:Select(self.section)
-				end)
+				tab.SetSelected = TabSetSelected
+				Perf.SetScript(tab, "OnClick", TabClick)
 				self.tabs[#self.tabs + 1] = tab
 				x = x + w - 6
 			end
@@ -953,6 +1324,9 @@ local function NewPage(name, width)
 			sec:SetPoint("TOPLEFT", PAD, -y)
 			sec:SetWidth(self.width - PAD * 2)
 			sec:Finish()
+			if not sec.jobs then
+				SectionBox(sec)   -- (a tab with no rows to make)
+			end
 		end
 		self:Select(self.sections[1])
 	end
@@ -1012,7 +1386,7 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 		defaults:SetSize(90, 22)
 		defaults:SetPoint("TOPRIGHT", switch, "BOTTOMRIGHT", 0, -10)
 		defaults:SetText("Defaults")
-		defaults:SetScript("OnClick", function()
+		Perf.SetScript(defaults, "OnClick", function()
 			for key, value in pairs(module.defaults) do
 				if type(value) == "table" then
 					-- a copy: the live table must not BE the defaults table
@@ -1028,8 +1402,8 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 			MelloUI:Print("%s: settings back to their defaults.", module.title)
 			MelloUI:RefreshConfig()
 		end)
-		defaults:SetScript("OnEnter", function(self) ShowTooltip(self, "Defaults", "Put every option of this module back to its default value. The module stays on or off as it is.") end)
-		defaults:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		Perf.SetScript(defaults, "OnEnter", function(self) ShowTooltip(self, "Defaults", "Put every option of this module back to its default value. The module stays on or off as it is.") end)
+		Perf.SetScript(defaults, "OnLeave", function() GameTooltip:Hide() end)
 		page.refreshers[#page.refreshers + 1] = function()
 			switch:SetValue(MelloUI:IsModuleEnabled(module.name), true)
 		end
@@ -1046,8 +1420,8 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 			hlbl:SetPoint("RIGHT", hswitch, "LEFT", -4, 0)
 			page.headerSwitch = hswitch
 			if ht.desc then
-				hswitch:HookScript("OnEnter", function() ShowTooltip(hswitch, ht.name or ht.key, ht.desc) end)
-				hswitch:HookScript("OnLeave", function() GameTooltip:Hide() end)
+				Perf.HookScript(hswitch, "OnEnter", function() ShowTooltip(hswitch, ht.name or ht.key, ht.desc) end)
+				Perf.HookScript(hswitch, "OnLeave", function() GameTooltip:Hide() end)
 			end
 			page.refreshers[#page.refreshers + 1] = function()
 				local db = MelloUI:GetModuleDB(module.name)
@@ -1062,13 +1436,13 @@ local function BuildPageHeader(page, icon, title, flavour, module)
 				button:SetPoint("TOPRIGHT", hswitch, "BOTTOMRIGHT", 0, -10)
 				button:SetText(hb.name or "Reset")
 				page.headerButton = button
-				button:SetScript("OnClick", function()
+				Perf.SetScript(button, "OnClick", function()
 					hb.onClick()
 					MelloUI:RefreshConfig()
 				end)
 				if hb.desc then
-					button:SetScript("OnEnter", function(self) ShowTooltip(self, hb.name or "Reset", hb.desc) end)
-					button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+					Perf.SetScript(button, "OnEnter", function(self) ShowTooltip(self, hb.name or "Reset", hb.desc) end)
+					Perf.SetScript(button, "OnLeave", function() GameTooltip:Hide() end)
 				end
 			end
 		end
@@ -1082,6 +1456,12 @@ local function BuildModulePage(module, width)
 	local page = NewPage(module.name, width)
 	local icon, flavour = Meta(module)
 	BuildPageHeader(page, icon, module.title, flavour, module)
+	-- the header's controls dressed now (Defaults and the like, red plates);
+	-- the tabs dress themselves and every row is dressed as it is made, so
+	-- the page is not walked whole afterwards
+	if KIT and KIT.SweepControls then
+		KIT:SweepControls(page, KitReplace, kitSkin)
+	end
 	local db = MelloUI:GetModuleDB(module.name)
 	local sec = nil
 	-- an option's row by its key, in a module's options
@@ -1131,31 +1511,41 @@ local function BuildModulePage(module, width)
 			return true
 		end
 	end
+	-- an option's row, made from its job: the builder, its indent, its gate,
+	-- and its controls dressed (dropdowns, red plate buttons)
+	local function MakeOption(s, job)
+		local owner, ownerDb, opt, area = job[1], job[2], job[3], job[4]
+		local builder = builders[opt.type]
+		if not builder then
+			MelloUI:Print("Unknown option type '%s' in module %s", tostring(opt.type), owner.name)
+			return
+		end
+		s.indent = opt.type ~= "subheader" and ((area and 1 or 0) + Depth(owner, opt)) or 0
+		local row = builder(s, owner, ownerDb, opt)
+		s.indent = 0
+		local gate = row and opt.type ~= "subheader" and GateOf(owner, ownerDb, opt, area)
+		if gate then
+			AddGate(s, row, gate)
+		end
+		if row and KIT and KIT.SweepControls then
+			KIT:SweepControls(row, KitReplace, kitSkin, nil, 2)   -- (at the depth a sweep of the page reaches a row)
+		end
+	end
 	-- an option may belong to ANOTHER module (`opt.module`), built against
 	-- that module and its settings; `include` lays out another module's
 	-- options in place (all of them, its headers as subheaders, or only
 	-- `keys`, in their order, with inline rows between), under the tab's
 	-- area switch (`area`, a key of this page's module: the rows indented
-	-- one step and live only while it is on)
+	-- one step and live only while it is on). Here the option's setting is
+	-- filled in and its row queued on the tab; MakeRows makes it.
 	local function Build(owner, ownerDb, opt, area)
 		if not sec then
 			sec = NewSection(page, "General")
 		end
-		local builder = builders[opt.type]
-		if builder then
-			if opt.key and ownerDb[opt.key] == nil then
-				ownerDb[opt.key] = owner.defaults[opt.key]
-			end
-			sec.indent = opt.type ~= "subheader" and ((area and 1 or 0) + Depth(owner, opt)) or 0
-			local row = builder(sec, owner, ownerDb, opt)
-			sec.indent = 0
-			local gate = row and opt.type ~= "subheader" and GateOf(owner, ownerDb, opt, area)
-			if gate then
-				AddGate(sec, row, gate)
-			end
-		else
-			MelloUI:Print("Unknown option type '%s' in module %s", tostring(opt.type), owner.name)
+		if builders[opt.type] and opt.key and ownerDb[opt.key] == nil then
+			ownerDb[opt.key] = owner.defaults[opt.key]
 		end
+		Queue(sec, { owner, ownerDb, opt, area }, MakeOption, ROW_HEIGHTS[opt.type] or 0)
 	end
 	for _, opt in ipairs(module.options) do
 		if opt.type == "header" then
@@ -1199,14 +1589,14 @@ local function BuildModulePage(module, width)
 	end
 	if #page.sections == 0 then
 		sec = NewSection(page, "Options")
+		SectionBox(sec)
 		local fs = Text(sec, "GameFontDisable", "This module has no options. The switch above is all there is to it.")
 		fs:SetPoint("TOPLEFT", 14, -8)
 		sec.y = 30
 	end
+	-- the tabs, and the first tab's rows down to the bottom of the view
+	-- (page:Select)
 	page:Finish()
-	if KIT and KIT.SweepControls then
-		KIT:SweepControls(page, KitReplace, kitSkin)
-	end
 	return page
 end
 
@@ -1243,9 +1633,38 @@ local function StatusLine()
 		VoicePackInstalled() and "installed" or "not installed")
 end
 
+-- a Home tile (`important`, `tipTitle`, `tipBody`, its border's rest colour)
+-- and its "Open page" link (`pageName`)
+local TileEnter = Shared("OnEnter on the configurator's Home tiles", function(self)
+	if not KIT then
+		if self.important then
+			self:SetBackdropBorderColor(C.text[1], C.text[2], C.text[3], 1)
+		else
+			self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 1)
+		end
+	end
+	ShowTooltip(self, self.tipTitle, self.tipBody)
+end, "script")
+local TileLeave = Shared("OnLeave on the configurator's Home tiles", function(self)
+	if not KIT then
+		self:SetBackdropBorderColor(self.restR, self.restG, self.restB, 1)
+	end
+	GameTooltip:Hide()
+end, "script")
+local TileOpenEnter = Shared("OnEnter on the configurator's Open page links", function(self)
+	Colour(self.label, C.accent)
+end, "script")
+local TileOpenLeave = Shared("OnLeave on the configurator's Open page links", function(self)
+	Colour(self.label, C.accent2)
+end, "script")
+local TileOpenClick = Shared("OnClick on the configurator's Open page links", function(self)
+	Click("page")
+	SelectPage(self.pageName)
+end, "script")
+
 local function BuildHomePage(width)
 	local page = NewPage("Home", width)
-	BuildPageHeader(page, LOGO, "MelloUI", HOME_FLAVOUR, nil)
+	BuildPageHeader(page, LOGO_FULL, "MelloUI", HOME_FLAVOUR, nil)
 	local status = Text(page, "GameFontHighlightSmall", nil, C.sub)
 	if KIT then
 		status:SetFontObject("GameFontHighlightSmallOutline")
@@ -1260,18 +1679,19 @@ local function BuildHomePage(width)
 	tour:SetSize(110, 22)
 	tour:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
 	tour:SetText("Tutorial")
-	tour:SetScript("OnClick", function()
+	Perf.SetScript(tour, "OnClick", function()
 		Click("page")
 		if MelloUI.Tutorial then
 			MelloUI.Tutorial:Start()
 		end
 	end)
-	tour:SetScript("OnEnter", function(self) ShowTooltip(self, "Tutorial", "A short tour of this window: where every feature lives, step by step, on the game's help tips. Also /mello tutorial.") end)
-	tour:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(tour, "OnEnter", function(self) ShowTooltip(self, "Tutorial", "A short tour of this window: where every feature lives, step by step, on the game's help tips. Also /mello tutorial.") end)
+	Perf.SetScript(tour, "OnLeave", function() GameTooltip:Hide() end)
 	page.tutorialButton = tour
 
 	-- Modules: a tile per module.
 	local tiles = NewSection(page, "Modules")
+	SectionBox(tiles)
 	page.tiles = {}
 	local columns, gap = 4, 10
 	local tileWidth = (tiles:GetWidth() - gap * (columns - 1)) / columns
@@ -1327,30 +1747,16 @@ local function BuildHomePage(width)
 		open:SetSize(90, 16)
 		open.label = Text(open, "GameFontHighlightSmall", "Open page  >", C.accent2)
 		open.label:SetPoint("LEFT")
-		open:SetScript("OnEnter", function(self) Colour(self.label, C.accent) end)
-		open:SetScript("OnLeave", function(self) Colour(self.label, C.accent2) end)
-		open:SetScript("OnClick", function()
-			Click("page")
-			SelectPage(module.name)
-		end)
+		open.pageName = module.name
+		Perf.SetScript(open, "OnEnter", TileOpenEnter)
+		Perf.SetScript(open, "OnLeave", TileOpenLeave)
+		Perf.SetScript(open, "OnClick", TileOpenClick)
 		tile:EnableMouse(true)
 		AttachHover(tile, 0.06)
-		tile:HookScript("OnEnter", function(self)
-			if not KIT then
-				if module.important then
-					self:SetBackdropBorderColor(C.text[1], C.text[2], C.text[3], 1)
-				else
-					self:SetBackdropBorderColor(C.accent[1], C.accent[2], C.accent[3], 1)
-				end
-			end
-			ShowTooltip(self, module.title, flavour)
-		end)
-		tile:HookScript("OnLeave", function(self)
-			if not KIT then
-				self:SetBackdropBorderColor(restR, restG, restB, 1)
-			end
-			GameTooltip:Hide()
-		end)
+		tile.important, tile.tipTitle, tile.tipBody = module.important, module.title, flavour
+		tile.restR, tile.restG, tile.restB = restR, restG, restB
+		Perf.HookScript(tile, "OnEnter", TileEnter)
+		Perf.HookScript(tile, "OnLeave", TileLeave)
 		local switch = CreateSwitch(tile, function(value)
 			MelloUI:SetModuleEnabled(module.name, value)
 			MelloUI:RefreshConfig()
@@ -1374,72 +1780,94 @@ local function BuildHomePage(width)
 	end
 	tiles.y = math.ceil(i / columns) * (tileHeight + gap)
 
-	-- What's new.
+	-- What's new and Help, tabs that are not open at first: their texts are
+	-- made after the tiles, a version or a block a job (MakeRows), when
+	-- their tab opens or a frame or two later, whichever comes first
 	local news = NewSection(page, "What's new")
-	local y = 6
-	for _, entry in ipairs(CHANGELOG) do
-		local head = Text(news, "GameFontNormal", "Version " .. entry.version, C.accent)
+	news.y = 6
+	local function Version(sec, entry)
+		local y = sec.y
+		local head = Text(sec, "GameFontNormal", "Version " .. entry.version, C.accent)
 		head:SetPoint("TOPLEFT", 4, -y)
 		y = y + 24
 		for _, line in ipairs(entry.lines) do
-			local dot = Solid(news, "ARTWORK", C.accent2, 1)
+			local dot = Solid(sec, "ARTWORK", C.accent2, 1)
 			dot:SetSize(6, 6)
 			dot:SetPoint("TOPLEFT", 10, -(y + 6))
-			local fs = Text(news, "GameFontHighlight", line, C.text)
+			local fs = Text(sec, "GameFontHighlight", line, C.text)
 			fs:SetPoint("TOPLEFT", 24, -y)
-			fs:SetWidth(news:GetWidth() - 30)
+			fs:SetWidth(sec:GetWidth() - 30)
 			fs:SetWordWrap(true)
 			y = y + WrappedHeight(fs, 14) + 8
 		end
-		y = y + 10
+		sec.y = y + 10
 	end
-	news.y = y
+	for _, entry in ipairs(CHANGELOG) do
+		Queue(news, entry, Version)
+	end
 	page.news = news   -- the tour points at it
 
 	-- Help: commands and links.
 	local help = NewSection(page, "Help")
-	y = 6
-	local head = Text(help, "GameFontNormal", "Slash commands", C.accent)
-	head:SetPoint("TOPLEFT", 4, -y)
-	y = y + 24
-	for _, cmd in ipairs(COMMANDS) do
-		local c = Text(help, "GameFontHighlight", cmd[1], C.text)
-		c:SetPoint("TOPLEFT", 10, -y)
-		local what = Text(help, "GameFontHighlightSmall", cmd[2], C.sub)
-		what:SetPoint("TOPLEFT", 230, -(y + 1))
-		y = y + 20
+	help.y = 6
+	local function HelpBlock(sec, block)
+		block(sec)
 	end
-	y = y + 10
-	local head2 = Text(help, "GameFontNormal", "Links (select the text and copy it)", C.accent)
-	head2:SetPoint("TOPLEFT", 4, -y)
-	y = y + 24
-	for _, link in ipairs(LINKS) do
-		local lbl = Text(help, "GameFontHighlight", link[1], C.text)
-		lbl:SetPoint("TOPLEFT", 10, -(y + 4))
-		local box = CreateFrame("EditBox", nil, help, "InputBoxTemplate")
-		box:SetSize(420, 22)
-		box:SetPoint("TOPLEFT", 130, -y)
-		box:SetAutoFocus(false)
-		box:SetText(link[2])
-		box:SetCursorPosition(0)
-		box:SetScript("OnTextChanged", function(self, user) if user then self:SetText(link[2]) end end)
-		box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-		box:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-		y = y + 28
-	end
-	y = y + 10
-	local note = Text(help, "GameFontHighlightSmall", nil, C.sub)
-	note:SetPoint("TOPLEFT", 4, -y)
-	note:SetWidth(help:GetWidth() - 8)
-	note:SetWordWrap(true)
-	note:SetText("Settings are mirrored into account macros because this client does not read its saved variables back; /mello status shows the state of that backup. The voice pack (MelloUI_VoiceOverData) is a separate download from the releases page and goes next to the MelloUI folder.")
-	y = y + WrappedHeight(note, 14) + 8
-	help.y = y
+	Queue(help, function(sec)
+		local y = sec.y
+		local head = Text(sec, "GameFontNormal", "Slash commands", C.accent)
+		head:SetPoint("TOPLEFT", 4, -y)
+		y = y + 24
+		for _, cmd in ipairs(COMMANDS) do
+			local c = Text(sec, "GameFontHighlight", cmd[1], C.text)
+			c:SetPoint("TOPLEFT", 10, -y)
+			local what = Text(sec, "GameFontHighlightSmall", cmd[2], C.sub)
+			what:SetPoint("TOPLEFT", 230, -(y + 1))
+			y = y + 20
+		end
+		sec.y = y + 10
+	end, HelpBlock)
+	Queue(help, function(sec)
+		local y = sec.y
+		local head2 = Text(sec, "GameFontNormal", "Links (select the text and copy it)", C.accent)
+		head2:SetPoint("TOPLEFT", 4, -y)
+		y = y + 24
+		for _, link in ipairs(LINKS) do
+			local lbl = Text(sec, "GameFontHighlight", link[1], C.text)
+			lbl:SetPoint("TOPLEFT", 10, -(y + 4))
+			local box = CreateFrame("EditBox", nil, sec, "InputBoxTemplate")
+			box:SetSize(420, 22)
+			box:SetPoint("TOPLEFT", 130, -y)
+			box:SetAutoFocus(false)
+			box:SetText(link[2])
+			box:SetCursorPosition(0)
+			Perf.SetScript(box, "OnTextChanged", function(self, user) if user then self:SetText(link[2]) end end)
+			Perf.SetScript(box, "OnEscapePressed", function(self) self:ClearFocus() end)
+			Perf.SetScript(box, "OnEditFocusGained", function(self) self:HighlightText() end)
+			y = y + 28
+		end
+		sec.y = y + 10
+	end, HelpBlock)
+	Queue(help, function(sec)
+		local y = sec.y
+		local note = Text(sec, "GameFontHighlightSmall", nil, C.sub)
+		note:SetPoint("TOPLEFT", 4, -y)
+		note:SetWidth(sec:GetWidth() - 8)
+		note:SetWordWrap(true)
+		note:SetText("Settings are mirrored into account macros because this client does not read its saved variables back; /mello status shows the state of that backup. The voice pack (MelloUI_VoiceOverData) is a separate download from the releases page and goes next to the MelloUI folder.")
+		sec.y = y + WrappedHeight(note, 14) + 8
+	end, HelpBlock)
 	page.helpSection = help
 
 	page:Finish()
 	if KIT and KIT.SweepControls then
 		KIT:SweepControls(page, KitReplace, kitSkin)   -- the Tutorial button on the kit's plate
+	end
+	-- a tab made later: what it holds dressed as the page's sweep would have
+	page.onSectionDone = function(sec)
+		if KIT and KIT.SweepControls then
+			KIT:SweepControls(sec, KitReplace, kitSkin, nil, 1)
+		end
 	end
 	return page
 end
@@ -1512,24 +1940,24 @@ local function RefreshProfilesPage()
 		local builtIn = name == MelloUI.FRESH_PROFILE
 		row.baked:SetText(builtIn and "built in" or (MelloUI:IsProfileBaked(name) and "baked" or "not baked yet"))
 		row.delete:SetEnabled(not builtIn)
-		row.load:SetScript("OnClick", function()
+		Perf.SetScript(row.load, "OnClick", function()
 			if MelloUI:LoadProfile(name) then
 				MelloUI:Print("Profile '%s' loaded.", name)
 			end
 			MelloUI:RefreshConfig()
 		end)
-		row.default:SetScript("OnClick", function()
+		Perf.SetScript(row.default, "OnClick", function()
 			MelloUI:SetDefaultProfile(isDefault and nil or name)
 			if MelloUI.ScheduleBackup then
 				MelloUI:ScheduleBackup("profile default")
 			end
 			RefreshProfilesPage()
 		end)
-		row.delete:SetScript("OnClick", function()
+		Perf.SetScript(row.delete, "OnClick", function()
 			MelloUI:DeleteProfile(name)
 			RefreshProfilesPage()
 		end)
-		row.share:SetScript("OnClick", function()
+		Perf.SetScript(row.share, "OnClick", function()
 			local str, err = MelloUI:ExportProfile(name)
 			if str then
 				MelloUI:ShowText(string.format("share string of '%s' (%d characters)", name, #str), str)
@@ -1555,6 +1983,7 @@ local function BuildProfilesPage(width)
 	local page = NewPage("Profiles", width)
 	BuildPageHeader(page, PROFILES_META.icon, PROFILES_META.title, PROFILES_META.flavour, nil)
 	local sec = NewSection(page, "Profiles")
+	SectionBox(sec)
 	profilesSection = sec
 	sec.rowFrames = {}
 
@@ -1586,14 +2015,14 @@ local function BuildProfilesPage(width)
 		end
 		RefreshProfilesPage()
 	end
-	sec.save:SetScript("OnClick", Save)
+	Perf.SetScript(sec.save, "OnClick", Save)
 	page.saveButton = sec.save
 	-- a share string from someone else, stored under the name typed
 	sec.import = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
 	sec.import:SetSize(150, 22)
 	sec.import:SetPoint("LEFT", sec.save, "RIGHT", 6, 0)
 	sec.import:SetText("Import as")
-	sec.import:SetScript("OnClick", function()
+	Perf.SetScript(sec.import, "OnClick", function()
 		local name = sec.nameBox:GetText():gsub("^%s+", ""):gsub("%s+$", "")
 		if name == "" then
 			MelloUI:Print("Type a name for the imported profile first, then click Import as.")
@@ -1613,8 +2042,8 @@ local function BuildProfilesPage(width)
 			return true
 		end)
 	end)
-	sec.nameBox:SetScript("OnEnterPressed", Save)
-	sec.nameBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+	Perf.SetScript(sec.nameBox, "OnEnterPressed", Save)
+	Perf.SetScript(sec.nameBox, "OnEscapePressed", function(self) self:ClearFocus() end)
 	y = y + 22 + 14
 
 	sec.status = Text(sec, "GameFontHighlight", nil, C.text)
@@ -1640,6 +2069,30 @@ end
 -- Window: band, strip, scroll area
 --------------------------------------------------------------------------------
 
+-- the strip's buttons (`pageName`, the icon `box`, the tooltip's `tipTitle`
+-- and `tipBody`)
+local StripClick = Shared("OnClick on the configurator's icon strip", function(self)
+	if currentPage ~= self.pageName then
+		Click("page")
+	end
+	SelectPage(self.pageName)
+end, "script")
+local StripEnter = Shared("OnEnter on the configurator's icon strip", function(self)
+	self.box:SetHovered(true)
+	ShowTooltip(self, self.tipTitle, self.tipBody)
+end, "script")
+local StripLeave = Shared("OnLeave on the configurator's icon strip", function(self)
+	self.box:SetHovered(false)
+	self.box:SetPressed(false)
+	GameTooltip:Hide()
+end, "script")
+local StripDown = Shared("OnMouseDown on the configurator's icon strip", function(self)
+	self.box:SetPressed(true)
+end, "script")
+local StripUp = Shared("OnMouseUp on the configurator's icon strip", function(self)
+	self.box:SetPressed(false)
+end, "script")
+
 local function StripButton(name, icon, title, flavour)
 	local btn = CreateFrame("Button", nil, window.strip)
 	local size = KIT and STRIP_ICON or 38
@@ -1663,23 +2116,12 @@ local function StripButton(name, icon, title, flavour)
 	else
 		btn.label:Hide()
 	end
-	btn:SetScript("OnClick", function()
-		if currentPage ~= name then
-			Click("page")
-		end
-		SelectPage(name)
-	end)
-	btn:SetScript("OnEnter", function(self)
-		self.box:SetHovered(true)
-		ShowTooltip(self, title, flavour)
-	end)
-	btn:SetScript("OnLeave", function(self)
-		self.box:SetHovered(false)
-		self.box:SetPressed(false)
-		GameTooltip:Hide()
-	end)
-	btn:SetScript("OnMouseDown", function(self) self.box:SetPressed(true) end)
-	btn:SetScript("OnMouseUp", function(self) self.box:SetPressed(false) end)
+	btn.pageName, btn.tipTitle, btn.tipBody = name, title, flavour
+	Perf.SetScript(btn, "OnClick", StripClick)
+	Perf.SetScript(btn, "OnEnter", StripEnter)
+	Perf.SetScript(btn, "OnLeave", StripLeave)
+	Perf.SetScript(btn, "OnMouseDown", StripDown)
+	Perf.SetScript(btn, "OnMouseUp", StripUp)
 	stripButtons[name] = btn
 	return btn
 end
@@ -1776,13 +2218,13 @@ local function CreateWindow()
 	end
 	band:EnableMouse(true)
 	band:RegisterForDrag("LeftButton")
-	band:SetScript("OnDragStart", function() window:StartMoving() end)
-	band:SetScript("OnDragStop", function() window:StopMovingOrSizing() end)
+	Perf.SetScript(band, "OnDragStart", function() window:StartMoving() end)
+	Perf.SetScript(band, "OnDragStop", function() window:StopMovingOrSizing() end)
 	window.band = band
 
 	local close = CreateFrame("Button", nil, window, "UIPanelCloseButton")
 	close:SetPoint("TOPRIGHT", -10, -12)
-	close:SetScript("OnClick", function() window:Hide() end)
+	Perf.SetScript(close, "OnClick", function() window:Hide() end)
 	if KIT and close.GetNormalTexture and close:GetNormalTexture() then
 		KitReplace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = KIT:OtherTextures(close, close:GetNormalTexture()) })
 	end
@@ -1797,12 +2239,12 @@ local function CreateWindow()
 	dynamic:SetFrameLevel(close:GetFrameLevel())
 	dynamic:SetText("Dynamic UI Modification")
 	window.dynamicButton = dynamic
-	dynamic:SetScript("OnClick", function()
+	Perf.SetScript(dynamic, "OnClick", function()
 		if MelloUI.StartDynamicUI then
 			MelloUI:StartDynamicUI()
 		end
 	end)
-	dynamic:SetScript("OnEnter", function(self)
+	Perf.SetScript(dynamic, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 		GameTooltip:SetText("Dynamic UI Modification", C.accent[1], C.accent[2], C.accent[3])
 		GameTooltip:AddLine("The look of the reskin, all in one place: the borders and Kit Colours of every window, the parchment sheets, "
@@ -1810,7 +2252,7 @@ local function CreateWindow()
 			.. "chosen on the interface itself with a picture of each choice. Closes the configurator while you pick.", C.text[1], C.text[2], C.text[3], true)
 		GameTooltip:Show()
 	end)
-	dynamic:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	Perf.SetScript(dynamic, "OnLeave", function() GameTooltip:Hide() end)
 	if KIT and KIT.SkinRedButton then
 		pcall(KIT.SkinRedButton, KIT, dynamic, KitReplace)
 	end
@@ -1824,8 +2266,8 @@ local function CreateWindow()
 	local function PlacementTip(owner, key)
 		local t = texts[key]
 		if t then
-			owner:HookScript("OnEnter", function(self) ShowTooltip(self, t.name, t.desc) end)
-			owner:HookScript("OnLeave", function() GameTooltip:Hide() end)
+			Perf.HookScript(owner, "OnEnter", function(self) ShowTooltip(self, t.name, t.desc) end)
+			Perf.HookScript(owner, "OnLeave", function() GameTooltip:Hide() end)
 		end
 	end
 	local function PlacementSwitch(key, label, anchor, gap)
@@ -1851,7 +2293,7 @@ local function CreateWindow()
 	reset:SetPoint("LEFT", snapText, "RIGHT", 12, 0)
 	reset:SetFrameLevel(close:GetFrameLevel())
 	reset:SetText((texts.reset and texts.reset.name) or "Reset positions")
-	reset:SetScript("OnClick", function()
+	Perf.SetScript(reset, "OnClick", function()
 		local um = MelloUI:GetModule("UIModifications")
 		if um and um.ResetPositions then
 			um.ResetPositions()
@@ -1870,7 +2312,7 @@ local function CreateWindow()
 		snap:SetValue(not (db and db.autoSnap == false), true)
 	end
 	window.placementUnlock = unlock   -- the tour points at it
-	window:HookScript("OnShow", RefreshPlacement)
+	Perf.HookScript(window, "OnShow", RefreshPlacement)
 	hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
 		if name == "UIModifications" and (key == "unlock" or key == "autoSnap") then
 			RefreshPlacement()
@@ -1936,6 +2378,11 @@ local function CreateWindow()
 	end
 	window.pageWidth = WINDOW_WIDTH - 8 - 34
 
+	-- the pages' rows still to make, a few a frame while the window is open
+	worker = CreateFrame("Frame", nil, window)
+	worker:Hide()
+	Perf.SetScript(worker, "OnUpdate", Work)
+
 	-- Smooth scrolling (user, 2026-09-23): the wheel moves a target and the
 	-- page glides to it, quick at first and easing in (each notch adds to
 	-- the target, so a fast spin runs on smoothly); a scroll set any other
@@ -1953,7 +2400,7 @@ local function CreateWindow()
 		scroll:SetVerticalScroll(v)
 		gliding = false
 	end
-	glider:SetScript("OnUpdate", function(self, elapsed)
+	Perf.SetScript(glider, "OnUpdate", function(self, elapsed)
 		local cur = scroll:GetVerticalScroll() or 0
 		local diff = scroll.target - cur
 		if math.abs(diff) < 0.5 then
@@ -1964,6 +2411,13 @@ local function CreateWindow()
 		SetScroll(cur + diff * math.min(1, elapsed * GLIDE_RATE))
 	end)
 	hooksecurefunc(scroll, "SetVerticalScroll", function(_, v)
+		-- rows scrolled into view before the worker came to them: made now
+		local page = currentPage and pages[currentPage]
+		local sec = page and page.current
+		if sec and sec.jobs and scroll:GetScrollChild() == page then
+			local top, bottom = ViewRange(page, sec)
+			MakeRows(sec, bottom, nil, top)
+		end
 		if not gliding then
 			scroll.target = v or 0
 			glider:Hide()
@@ -1979,7 +2433,7 @@ local function CreateWindow()
 		end
 		glider:Show()
 	end
-	scroll:SetScript("OnMouseWheel", function(self, delta)
+	Perf.SetScript(scroll, "OnMouseWheel", function(self, delta)
 		local base = glider:IsShown() and self.target or (self:GetVerticalScroll() or 0)
 		self:GlideTo(base - delta * WHEEL_STEP)
 	end)
@@ -2016,12 +2470,12 @@ local function CreateWindow()
 			end
 		end)
 	end
-	window:SetScript("OnShow", function(self)
+	Perf.SetScript(window, "OnShow", function(self)
 		self:FitToScreen()
 		PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
 		MelloUI:RefreshConfig()
 	end)
-	window:SetScript("OnHide", function()
+	Perf.SetScript(window, "OnHide", function()
 		PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
 	end)
 end
@@ -2085,6 +2539,7 @@ function SelectPage(name)
 	page:Show()
 	page:Refresh()
 	RefreshStrip()
+	Kick()
 end
 
 -- Bring every visible value in line with the settings (after a profile load,
@@ -2199,7 +2654,7 @@ HookGameMenu()
 if not gameMenuHooked then
 	local waiter = CreateFrame("Frame")
 	waiter:RegisterEvent("PLAYER_LOGIN")
-	waiter:SetScript("OnEvent", function(self)
+	Perf.SetScript(waiter, "OnEvent", function(self)
 		HookGameMenu()
 		self:UnregisterAllEvents()
 	end)
@@ -2388,7 +2843,7 @@ end
 local function ArmProbe()
 	if not probe then
 		probe = CreateFrame("Frame")
-		probe:SetScript("OnEvent", function(self)
+		Perf.SetScript(probe, "OnEvent", function(self)
 			local v, unit, kind = FindSecret()
 			if IsSecret(v) then
 				self:UnregisterAllEvents()
@@ -2630,6 +3085,8 @@ SlashCmdList.MELLOUI = function(msg)
 			MelloUI:Print("Edit Mode layout: %s", MelloUI:EditModeLayoutStatus())
 			MelloUI:Print("/mello layout export (the active layout's share string, for baking) | apply (the baked layout into Edit Mode, made active)")
 		end
+	elseif cmd == "perf" then
+		SlashCmdList.MELLOPERF(rest or "")
 	elseif cmd == "cpu" then
 		if not (GetCVar and GetCVar("scriptProfile") == "1") then
 			MelloUI:Print("CPU profiling is off. Run  /console scriptProfile 1  then /reload, and /mello cpu again. Turn it off afterwards with  /console scriptProfile 0  (profiling itself costs a little performance).")
@@ -2772,7 +3229,8 @@ SlashCmdList.MELLOUI = function(msg)
 			print(string.format("   %-26s %s", c[1], c[2]))
 		end
 		print("   /mello dump [m]            print the stored settings of all modules or one module")
-		print("   /mello cpu                 CPU time per handler (needs scriptProfile)")
+		print("   /mello perf  (/melloperf)  performance: the game's profiler, a recording per file and handler, load times")
+		print("   /mello cpu                 CPU time per handler (old; needs scriptProfile)")
 		print("   /mello preload             how much of the artwork is preloaded")
 		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")
 		print("   /mello auras               what this client's aura container offers (for MelloUI's own aura rows)")

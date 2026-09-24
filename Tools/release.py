@@ -13,6 +13,13 @@ CurseForge and the GitHub release (see .github/workflows/release.yml).
 
 Learned map pins and routes are already baked into Media/RouteData.lua by the
 baker, so they ship with whatever release comes next; nothing to do by hand.
+
+The companion addons ship in the same zip: every MelloUI_<x> folder at the
+repository root with its own MelloUI_<x>.toc (today MelloUI_Companion, Route's
+data). The bump writes MelloUI.toc's Version and Interface into every TOC, and
+the release is refused while a TOC lists a file that does not exist, a
+companion is not load-on-demand on MelloUI, or .pkgmeta does not lift it out
+of the MelloUI folder.
 """
 import argparse
 import os
@@ -23,6 +30,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 TOC = os.path.join(ROOT, "MelloUI.toc")
+PKGMETA = os.path.join(ROOT, ".pkgmeta")
 
 
 def git(*args, capture=True):
@@ -39,6 +47,78 @@ def read_version():
     if not m:
         sys.exit("no '## Version: X.Y.Z' line in MelloUI.toc")
     return text, tuple(int(x) for x in m.groups())
+
+
+def companions():
+    """The companion addons that ship beside MelloUI: (folder, path of its TOC)."""
+    out = []
+    for name in sorted(os.listdir(ROOT)):
+        toc = os.path.join(ROOT, name, name + ".toc")
+        if name.startswith("MelloUI_") and os.path.isfile(toc):
+            out.append((name, toc))
+    return out
+
+
+def toc_field(text, field):
+    """A '## Field: value' line's value (MelloUI.toc starts with a BOM), or None."""
+    m = re.search(r"^﻿?## " + re.escape(field) + r":[ \t]*(.*?)[ \t]*$", text, re.M)
+    return m.group(1) if m else None
+
+
+def toc_files(text):
+    """The files a TOC lists, with forward slashes."""
+    files = []
+    for line in text.splitlines():
+        line = line.strip().lstrip("﻿")
+        if line and not line.startswith("#"):
+            files.append(line.replace("\\", "/"))
+    return files
+
+
+def check_tocs(main_text):
+    """Every file a TOC lists exists, every companion is load-on-demand on MelloUI and is lifted
+    out of the MelloUI folder in the zip. Returns the companions and the problems found."""
+    problems = []
+    comps = companions()
+    names = {name for name, _ in comps}
+    for f in toc_files(main_text):
+        if f.split("/")[0] in names:
+            problems.append(f"MelloUI.toc lists {f}: {f.split('/')[0]} is an addon of its own, its files go in its own TOC")
+        elif not os.path.isfile(os.path.join(ROOT, f)):
+            problems.append(f"MelloUI.toc lists {f}, which does not exist")
+    for name, path in comps:
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for f in toc_files(text):
+            if not os.path.isfile(os.path.join(ROOT, name, f)):
+                problems.append(f"{name}.toc lists {f}, which does not exist")
+        for field, want in (("LoadOnDemand", "1"), ("Dependencies", "MelloUI")):
+            if toc_field(text, field) != want:
+                problems.append(f"{name}.toc needs '## {field}: {want}'")
+        for field in ("Version", "Interface"):
+            if toc_field(text, field) is None:
+                problems.append(f"{name}.toc has no '## {field}:' line to keep in step with MelloUI.toc")
+    with open(PKGMETA, encoding="utf-8") as fh:
+        meta = fh.read()
+    for name in sorted(names):
+        line = r"^[ \t]+MelloUI/" + re.escape(name) + r":[ \t]*" + re.escape(name) + r"[ \t]*$"
+        if not re.search(line, meta, re.M):
+            problems.append(f".pkgmeta does not move {name} out of MelloUI (move-folders: MelloUI/{name}: {name}); "
+                            "the zip would carry it inside the MelloUI folder, where the client never finds it")
+    for moved in re.findall(r"^[ \t]+MelloUI/(\S+?):", meta, re.M):
+        if moved not in names:
+            problems.append(f".pkgmeta moves MelloUI/{moved}, which is not a companion folder with its own TOC")
+    return comps, problems
+
+
+def write_tocs(edits, version, interface):
+    """The Version and Interface lines of every TOC in `edits` ((path, label, text) each)."""
+    for path, _, body in edits:
+        # MelloUI.toc's BOM stays: read and written as utf-8, it is the first character
+        body = re.sub(r"^(﻿?)## Version:.*$", lambda m: m.group(1) + "## Version: " + version, body, count=1, flags=re.M)
+        body = re.sub(r"^(﻿?)## Interface:.*$", lambda m: m.group(1) + "## Interface: " + interface, body, count=1, flags=re.M)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(body)
 
 
 def bump(current, how):
@@ -102,6 +182,10 @@ def main():
     a = ap.parse_args()
 
     text, current = read_version()
+    comps, problems = check_tocs(text)
+    if problems:
+        sys.exit("the TOCs are not ready for a release:\n" + "\n".join("  " + p for p in problems))
+    interface = toc_field(text, "Interface")
     new = bump(current, a.how)
     if new <= current:
         sys.exit(f"{'.'.join(map(str, new))} is not newer than the current {'.'.join(map(str, current))}")
@@ -124,13 +208,19 @@ def main():
         print("  " + pending.replace("\n", "\n  "))
     else:
         print("no pending changes; only the version bump is committed")
+    # every TOC carries MelloUI's Version and Interface (in game, a companion
+    # from another version is refused)
+    edits = [(TOC, "MelloUI.toc", text)]
+    for name, path in comps:
+        with open(path, encoding="utf-8") as fh:
+            edits.append((path, f"{name}/{name}.toc", fh.read()))
+    for _, label, body in edits:
+        print(f"{label}: Version {toc_field(body, 'Version')} -> {version}, Interface {toc_field(body, 'Interface')} -> {interface}")
     if a.dry_run:
         print("dry run: nothing changed")
         return
 
-    text = re.sub(r"^## Version:.*$", f"## Version: {version}", text, count=1, flags=re.M)
-    with open(TOC, "w", encoding="utf-8", newline="") as fh:
-        fh.write(text)
+    write_tocs(edits, version, interface)
 
     message = f"Release {version}"
     if a.message:

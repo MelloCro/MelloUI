@@ -17,6 +17,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ErrorFilter")
 
 -- The kinds, each the names of the game's strings it covers (a string this
 -- client lacks is skipped)
@@ -105,7 +106,7 @@ local function Take(on)
 	end
 end
 
-eventFrame:SetScript("OnEvent", function(_, event, messageType, message, ...)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, messageType, message, ...)
 	if message ~= nil and not Secret(message) and hidden[message] then
 		return
 	end

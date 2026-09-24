@@ -8,6 +8,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("QuestListMap")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local QL = ns.QuestList
 local M = QL.M
 
@@ -431,10 +433,10 @@ local function AddGiverPins(map, mapID, mapName)
 		end
 		local x, y, who, item
 		if state == "ready" and QL.resolvedEnd[row] then
-			x, y = QL.ProjectOnMap(QL.resolvedEnd[row], mapID)
+			x, y = QL.ProjectOnMap(mapID, QL.Placement(QL.resolvedEnd[row]))
 			who = row[QL.F_ENDER]
 		elseif not endOnly and QL.resolved[row] and ItemPinWanted(row, state) then
-			x, y = QL.ProjectOnMap(QL.resolved[row], mapID)
+			x, y = QL.ProjectOnMap(mapID, QL.Placement(QL.resolved[row]))
 			who, item = row[QL.F_GIVER], ItemKind(row)
 		end
 		if x then
@@ -531,9 +533,9 @@ end
 QL.lastPointTrace = {}
 
 local function WorldPointOnMap(mapID, mapName, cont, wx, wy, zoneArea, px, py)
-	local res = QL.ResolveWorld(cont, wx, wy)
-	if res then
-		local x, y = QL.ProjectOnMap(res, mapID)
+	local placedMap, cx, cy, contMapID = QL.ResolveWorld(cont, wx, wy)
+	if placedMap then
+		local x, y = QL.ProjectOnMap(mapID, placedMap, cx, cy, contMapID)
 		if x then
 			return x, y
 		end

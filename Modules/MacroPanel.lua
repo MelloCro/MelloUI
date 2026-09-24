@@ -38,6 +38,8 @@
 -- the game's own selection texture. Switching the module off disables
 -- every replacement (the game's art faded back in, ours hidden), un-fades
 -- the dividers and puts the portrait back: the window is the game's again.
+-- Nothing is built before the window first shows (Sync below): a session
+-- that never opens the macros never pays for their look.
 --
 -- /macrodump [frames | reps | regions | popup [frames | reps | regions]]:
 -- what the window (or the icon picker) is made of on this client and what
@@ -46,6 +48,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("MacroPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("MacroPanel", {
@@ -660,7 +664,7 @@ local function SkinPopup()
 		end
 		SkinIconButton(b, true)
 	end
-	popup:HookScript("OnShow", function(self)
+	Perf.HookScript(popup, "OnShow", function(self)
 		if active then
 			WalkBox(PopupBox(self), true)
 			Kit:SweepControls(self, Replace, skin, PopupBox(self))
@@ -1091,15 +1095,22 @@ local function Deactivate()
 	-- (the ring's onDisable put the portrait back)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of the
+-- look is built while the window has never been shown -- another addon may
+-- load Blizzard_MacroUI at login, and most sessions never open the macros:
+-- the skin is built the first time the window shows (its OnShow, Hook below,
+-- before its first frame is drawn) or at once when it is open now (a
+-- /reload with it open), then kept for the session as before.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
 	end
 end
 
--- (geometry of the window's children changes here: out of combat only)
+-- (the switch and the addon's load: out of combat only, as they always were)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -1114,18 +1125,23 @@ local function Hook()
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
+		-- the first open is dressed here and now, in combat too: the dress only
+		-- adds frames and textures of ours, fades the game's art and puts the
+		-- window's own title strings on the plate -- the macro window has no
+		-- secure or protected part, and nothing protected is called
 		if M.isEnabled and not active then
-			SyncSafe()
+			Sync()      -- (Activate refreshes it)
+		else
+			Refresh()
 		end
-		Refresh()
 	end)
 end
 
 -- Blizzard_MacroUI is loaded on demand (the first /macro, the game menu's
--- Macros): dressed as it loads.
+-- Macros): hooked as it loads, dressed as it first shows.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_MacroUI" then
 		Hook()
 		if M.isEnabled then
@@ -1246,6 +1262,9 @@ SlashCmdList.MELLOMACRODUMP = function(msg)
 		target, mode, label = Popup(), rest, "MacroPopupFrame"
 	end
 	MelloUI:ClearLog()
+	if target and not (skin and skin.built) then
+		MelloUI:Print("%s: not dressed yet (the macro window is dressed the first time it opens: /macro, then try again for the kit's side)", label)
+	end
 	if not target then
 		MelloUI:Print("/macrodump: no %s yet (the macro window loads with its first opening: /macro, then try again)", label)
 	elseif mode == "" then

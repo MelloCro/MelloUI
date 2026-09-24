@@ -12,6 +12,8 @@
 ## X-Curse-Project-ID: 1702190
 
 Core\Core.lua
+Core\Perf.lua
+Core\Companions.lua
 Core\Anim.lua
 Core\Config.lua
 Core\Tutorial.lua
@@ -24,11 +26,10 @@ Media\CustomTextures.lua
 Media\NPCVoiceData.lua
 Media\NPCVoiceOverrides.lua
 Media\QuestListData.lua
-Media\QuestObjectiveData.lua
 Media\RouteData.lua
-Media\RoadData.lua
 Media\ClassIcons.lua
 Media\KitLayout.lua
+Media\KitSlices.lua
 Media\KitTuning.lua
 Media\Profiles.lua
 Media\EditModeLayout.lua

@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("BackpackPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local LOOKS = Kit.buttonLooks
@@ -74,40 +76,122 @@ local function Replace(region, opts)
 	return rep
 end
 
+-- The lists a pass over a bag's buttons works in, kept and filled again (a
+-- bag lays out a hundred slots and more, several times on every open:
+-- nothing is made per slot -- /melloperf, 2026-09-24)
+local itemList, lefts, tops = {}, {}, {}
+
+-- the rim's pitch last set on each skinned button (a side table): a pass
+-- that measures the same pitch leaves the rim and its icon as they are
+local pitchX = setmetatable({}, { __mode = "k" })
+local pitchY = setmetatable({}, { __mode = "k" })
+
+-- a list's first n entries sorted, the rest cleared (table.sort reads #list)
+local function SortFirst(list, n)
+	for i = #list, n + 1, -1 do
+		list[i] = nil
+	end
+	table.sort(list)
+end
+
+local function SmallestGap(list, n, size)
+	SortFirst(list, n)
+	local best = nil
+	for i = 2, n do
+		local d = list[i] - list[i - 1]
+		if d > 1 and d < size * 2 and (not best or d < best) then
+			best = d
+		end
+	end
+	return best
+end
+
 -- The grid's pitch: the smallest gap between any two laid-out item
 -- buttons on each axis (the pool hands its buttons over in no order; the
 -- first two were often not neighbours, their gap was thrown out and the
 -- pitch fell back to the button's own size — gems doubled on the first
 -- open after a reload, user 2026-09-22). Else the button's own size.
-local function ItemPitch(buttons)
+local function ItemPitch(buttons, count)
 	local a = buttons[1]
 	local ok, w, h = pcall(a.GetSize, a)
 	if not ok or Secret(w) or not (w and w > 0) then
 		return nil
 	end
-	local lefts, tops = {}, {}
-	for _, b in ipairs(buttons) do
-		local okP, l, t = pcall(function() return b:GetLeft(), b:GetTop() end)
-		if okP and l and t and not Secret(l) and not Secret(t) then
-			lefts[#lefts + 1] = l
-			tops[#tops + 1] = t
+	local n = 0
+	for i = 1, count do
+		local b = buttons[i]
+		local okL, l = pcall(b.GetLeft, b)
+		local okT, t = pcall(b.GetTop, b)
+		if okL and okT and l and t and not Secret(l) and not Secret(t) then
+			n = n + 1
+			lefts[n], tops[n] = l, t
 		end
 	end
-	local function SmallestGap(list, size)
-		table.sort(list)
-		local best = nil
-		for i = 2, #list do
-			local d = list[i] - list[i - 1]
-			if d > 1 and d < size * 2 and (not best or d < best) then
-				best = d
-			end
-		end
-		return best
-	end
-	local pitch = { SmallestGap(lefts, w) or w, SmallestGap(tops, h) or h }
+	local px, py = SmallestGap(lefts, n, w) or w, SmallestGap(tops, n, h) or h
 	-- a grid: the same spacing on both axes
-	local pad = math.max(pitch[1] - w, pitch[2] - h, 0)
+	local pad = math.max(px - w, py - h, 0)
 	return { w + pad, h + pad }
+end
+
+-- the same pitch within rounding (the positions are read back as floats)
+local function SamePitch(a, b)
+	return a ~= nil and b ~= nil and math.abs(a - b) < 0.01
+end
+
+local skinning = false   -- a pass under way (one started inside it gets a list of its own)
+
+-- The kit's options for a slot, one table filled again for each (the kit
+-- reads them while it skins the button and keeps none of them): a bag's
+-- first open skins a hundred slots and more in one frame (/melloperf, user
+-- 2026-09-24: 19.1 ms), nothing made per slot that the slot does not keep
+local slotOpts = { emptyStone = true }
+
+-- A slot just skinned: its Item Background. The stone the kit just made
+-- already wears the default one (its tile, laid and shown): only another
+-- choice is put on
+local function NewSlotBackground(button)
+	local value = M.db and M.db.itemBackground or "stone"
+	local stone = button.melloSlotStone
+	local tex = stone and stone.tex
+	if tex and tex.kitName and tex.kitName == LOOKS.backgroundPiece[value] then
+		return
+	end
+	Kit:SetButtonBackground(button, value)
+end
+
+-- The combined bags' slot picture, faded while the skin is on (the Item
+-- Background stands in). Faded straight: its rule is a 'fade', and a
+-- replacement made for it is an empty holder frame and a table per slot, a
+-- hundred slots and more in the first open's layout (user, 2026-09-24:
+-- 19.1 ms). Through a replacement as before while the editing tools could
+-- list or tune it (they work on replacements), or its rule is tuned into
+-- another kind. `plain`: that answer, when the caller has it already.
+local SLOT_BG = "BagSlotBackground"
+
+local function PlainSlotFade()
+	if Kit.liveEdit then
+		return false
+	end
+	local rule = Kit:RuleFor(SLOT_BG)
+	if not (rule and rule.kind == "fade") then
+		return false
+	end
+	local KT = MelloUI.KitTuning
+	return not (KT and KT:Tune(SLOT_BG))
+end
+
+local function FadeSlotBackground(region, plain)
+	if plain == nil then
+		plain = PlainSlotFade()
+	end
+	if not plain then
+		Replace(region, { as = SLOT_BG })
+		return
+	end
+	skin.slotBgs[#skin.slotBgs + 1] = region
+	if active then
+		Kit:Fade(region)
+	end
 end
 
 local function SkinItems(frame)
@@ -115,32 +199,56 @@ local function SkinItems(frame)
 	if not pool then
 		return
 	end
-	local buttons = {}
+	local buttons, count = skinning and {} or itemList, 0
 	for button in pool:EnumerateActive() do
-		buttons[#buttons + 1] = button
+		count = count + 1
+		buttons[count] = button
 	end
-	if #buttons == 0 then
+	for i = #buttons, count + 1, -1 do
+		buttons[i] = nil
+	end
+	if count == 0 then
 		return
 	end
-	local pitch = ItemPitch(buttons)
-	for _, button in ipairs(buttons) do
+	local outer = not skinning
+	skinning = true
+	local pitch = ItemPitch(buttons, count)
+	local rimRule, plainFade = nil, nil
+	for i = 1, count do
+		local button = buttons[i]
 		if button.melloRep == nil then
-			local rep = Kit:SkinActionButton(button, Replace, pitch, { as = Kit:ButtonRimRule(),
-				emptyStone = true, qualityBorder = button.IconBorder })
+			rimRule = rimRule or Kit:ButtonRimRule()
+			slotOpts.as, slotOpts.qualityBorder = rimRule, button.IconBorder
+			local rep = Kit:SkinActionButton(button, Replace, pitch, slotOpts)
+			slotOpts.qualityBorder = nil
 			if rep then
 				skin.items[#skin.items + 1] = button
-				Kit:SetButtonBackground(button, M.db and M.db.itemBackground or "stone")
+				NewSlotBackground(button)
+				if pitch then
+					pitchX[button], pitchY[button] = pitch[1], pitch[2]
+				end
 			end
-		elseif button.melloRep and button.melloRep.SetPitch and pitch then
+		elseif button.melloRep and button.melloRep.SetPitch and pitch
+			and not (SamePitch(pitchX[button], pitch[1]) and SamePitch(pitchY[button], pitch[2])) then
+			-- re-laid on a new pitch only: the same pitch again (every open, the
+			-- beat after it, the size changes) would re-anchor every rim and icon
+			-- for nothing
 			button.melloRep:SetPitch(pitch[1], pitch[2])
+			pitchX[button], pitchY[button] = pitch[1], pitch[2]
 		end
 		-- the combined bags' slot picture is the BUTTON's (made by the game
 		-- when the button is set up for the combined bag, Initialize): faded,
 		-- the Item Background stands in (a second background under it before)
 		if button.ItemSlotBackground and not button.melloSlotBg then
 			button.melloSlotBg = true
-			Replace(button.ItemSlotBackground, { as = "BagSlotBackground" })
+			if plainFade == nil then
+				plainFade = PlainSlotFade()
+			end
+			FadeSlotBackground(button.ItemSlotBackground, plainFade)
 		end
+	end
+	if outer then
+		skinning = false
 	end
 end
 
@@ -210,8 +318,8 @@ local function WatchWindowBackground(frame)
 			Kit:Retile(alt)
 		end
 	end
-	picture.inner:HookScript("OnSizeChanged", Retile)
-	frame:HookScript("OnShow", Retile)
+	Perf.HookScript(picture.inner, "OnSizeChanged", Retile)
+	Perf.HookScript(frame, "OnShow", Retile)
 	if active then
 		ApplyWindowBackground(entry)
 	end
@@ -259,8 +367,10 @@ local function SkinBag(frame)
 	-- the bottom row's pitch-sized rims reach over it (user, 2026-09-21: the
 	-- slot borders covered the gold); put back on disable
 	local money = frame.MoneyFrame
+	local moneyRep = nil
 	if money and money.Border and money.Border.Middle then
 		local rep = Replace(money.Border.Middle, { as = "common-coinbox-center", rect = money.Border, alsoFade = { money.Border.Left, money.Border.Right } })
+		moneyRep = rep
 		if rep then
 			local saved = money:GetFrameLevel()
 			local function Raise()
@@ -283,21 +393,36 @@ local function SkinBag(frame)
 	-- its final size, and the pitch measured then was the slots' own size
 	-- (gems doubled between neighbours until the bag was reopened — user,
 	-- 2026-09-22): measured again on show, on the bag's size change, and
-	-- a beat after showing; SetPitch refits the rims already made
-	local function Remeasure(delay)
-		if C_Timer and C_Timer.After then
-			C_Timer.After(delay, function()
-				if active and frame:IsShown() then
-					SkinItems(frame)
-				end
-			end)
+	-- a beat after showing; SetPitch refits the rims already made (and only
+	-- those whose pitch changed, SkinItems)
+	local function Remeasured()
+		if active and frame:IsShown() then
+			SkinItems(frame)
 		end
 	end
-	frame:HookScript("OnShow", function()
+	-- the next frame's pass is one pass however many ask for it (an open asks
+	-- three times: the layout, the show, the size change)
+	local nextFrameAsked = false
+	local function NextFrame()
+		nextFrameAsked = false
+		Remeasured()
+	end
+	local function Remeasure(delay)
+		if not (C_Timer and C_Timer.After) then
+			return
+		end
+		if delay > 0 then
+			C_Timer.After(delay, Remeasured)
+		elseif not nextFrameAsked then
+			nextFrameAsked = true
+			C_Timer.After(0, NextFrame)
+		end
+	end
+	Perf.HookScript(frame, "OnShow", function()
 		Remeasure(0)
 		Remeasure(0.3)
 	end)
-	frame:HookScript("OnSizeChanged", function()
+	Perf.HookScript(frame, "OnSizeChanged", function()
 		Remeasure(0)
 	end)
 	-- the items, on every layout; the combined bags' slot picture once it exists
@@ -308,21 +433,15 @@ local function SkinBag(frame)
 				-- the first layout after a reload answers with the slots' old
 				-- rects (the pitch came out wrong until the bag was reopened
 				-- — user, 2026-09-21): measured again on the next frame
-				if C_Timer and C_Timer.After then
-					C_Timer.After(0, function()
-						if active and f:IsShown() then
-							SkinItems(f)
-						end
-					end)
-				end
-				for _, rep in ipairs(skin.reps) do
-					if rep.key == "common-coinbox-center" and rep.rect == (f.MoneyFrame and f.MoneyFrame.Border) and rep.onEnable then
-						rep.onEnable()
-					end
+				Remeasure(0)
+				-- the money frame raised over the slots again (this bag's strip,
+				-- kept from above rather than looked for among every rep)
+				if moneyRep and moneyRep.rect == (f.MoneyFrame and f.MoneyFrame.Border) and moneyRep.onEnable then
+					moneyRep.onEnable()
 				end
 				if f.ItemSlotBackground and not f.melloSlotBg then
 					f.melloSlotBg = true
-					Replace(f.ItemSlotBackground, { as = "BagSlotBackground" })
+					FadeSlotBackground(f.ItemSlotBackground)
 				end
 			end
 		end)
@@ -330,13 +449,13 @@ local function SkinBag(frame)
 	SkinItems(frame)
 	if frame.ItemSlotBackground then
 		frame.melloSlotBg = true
-		Replace(frame.ItemSlotBackground, { as = "BagSlotBackground" })
+		FadeSlotBackground(frame.ItemSlotBackground)
 	end
 end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, followers = {}, bags = {}, items = {}, windowBgs = {} }
+		skin = { reps = {}, followers = {}, bags = {}, items = {}, windowBgs = {}, slotBgs = {} }
 	end
 	SkinBag(ContainerFrameCombinedBags)
 	for i = 1, 7 do
@@ -360,6 +479,9 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	for _, region in ipairs(skin.slotBgs) do
+		Kit:Fade(region)
+	end
 	for _, entry in ipairs(skin.followers) do
 		entry.rep:SetShown(entry.region:IsShown())
 	end
@@ -373,6 +495,9 @@ local function Deactivate()
 	active = false
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, region in ipairs(skin.slotBgs) do
+		Kit:Unfade(region)
 	end
 	Kit:Uncover("backpack")
 end

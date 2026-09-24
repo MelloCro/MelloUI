@@ -65,6 +65,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("LootPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("LootPanel", {
@@ -910,7 +912,7 @@ local function Hook()
 	hooked = true
 	local f = Window()
 	if f then
-		f:HookScript("OnShow", function()
+		Perf.HookScript(f, "OnShow", function()
 			if M.isEnabled and not active then
 				SyncSafe()
 			end
@@ -921,7 +923,7 @@ local function Hook()
 	-- quality colours, the buttons, the timer's level) ran first (a HookScript
 	-- runs after the frame's own OnShow); ours after it
 	for _, rf in ipairs(RollFrames()) do
-		rf:HookScript("OnShow", function(self)
+		Perf.HookScript(rf, "OnShow", function(self)
 			if not active then
 				return
 			end

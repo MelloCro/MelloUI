@@ -25,6 +25,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("EditModeLayout")
 
 local function Data()
 	local data = MelloUI_EditModeLayout
@@ -89,7 +90,7 @@ end
 
 local pending = false
 local waiter = CreateFrame("Frame")
-waiter:SetScript("OnEvent", function(self)
+Perf.SetScript(waiter, "OnEvent", function(self)
 	self:UnregisterAllEvents()
 	if pending then
 		pending = false
@@ -179,3 +180,6 @@ function MelloUI:EditModeLayoutStatus()
 	return string.format("baked layout %s (%d chars); Edit Mode: %d presets + %d saved, active %s: %s", data and "'" .. data.name .. "'" or "none",
 		data and #data.layout or 0, presets or 0, full and (#full - (presets or 0)) or 0, active and tostring(active.layoutName) or "?", table.concat(names, " "))
 end
+
+-- the media data files load next: their time is counted from here
+MelloUI.Perf:Scope("Media data files")

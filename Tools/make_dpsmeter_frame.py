@@ -38,11 +38,12 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from scipy import ndimage
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STANDALONE = os.path.join(HERE, "..", "docs", "dpsmeter-frame.png")
 MOCKUP = os.path.join(HERE, "..", "docs", "topbar-vision.png")
-TEX = os.path.join(HERE, "..", "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 OUT = OUTPUT
 
 SHEET_W, SHEET_H = 1024, 512

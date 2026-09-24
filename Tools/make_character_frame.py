@@ -16,10 +16,11 @@ Prints the sprite coordinates the module needs (SPRITES in CharacterPanel.lua).
 """
 import os
 from PIL import Image, ImageDraw, ImageFilter
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "character-frame.webp")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "CharacterFrame.tga")
+OUT = master("Textures", "CharacterFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 TEX_W, TEX_H = 2048, 1024
 PLATE = (886, 285, 1327, 332)        # one stat plate on the art (all five are the same shape)
 BAR = (890, 573, 1322, 619)          # the bar with the gems
@@ -91,7 +92,7 @@ while y < fill.size[1]:
         x += step_x
     y += step_y
 feathered_paste(list_art, fill, (LEFT_PANE[0], LEFT_PANE[1]), feather=6)
-OUT_LIST = os.path.join(HERE, "..", "Media", "Textures", "CharacterFrameList.tga")
+OUT_LIST = master("Textures", "CharacterFrameList.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 list_scaled = list_art.resize((round(list_art.size[0] * TEX_H / list_art.size[1]), TEX_H), Image.LANCZOS)
 list_tex = Image.new("RGBA", (TEX_W, TEX_H), (0, 0, 0, 0))
 list_tex.paste(list_scaled, (0, 0))

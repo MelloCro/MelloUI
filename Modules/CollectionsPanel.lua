@@ -18,6 +18,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CollectionsPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("CollectionsPanel", {
@@ -244,8 +246,17 @@ local function Deactivate()
 	Kit:UnfitPortrait(Portrait())
 end
 
+-- Dressed on the window's first open (user, 2026-09-24: "dress rarely used
+-- windows on first open"): Blizzard_Collections loads on demand, but other
+-- UI can pull it in early (a transmog link, a toy or heirloom shortcut), and
+-- nothing of the look is built while the window has never been shown. Its
+-- OnShow (Hook) builds it before the first frame is drawn, and it then stays
+-- built for the session, switched with the module. In combat too: the skin
+-- adds frames and textures of ours, fits the portrait and sizes the side
+-- tabs; the toy and heirloom buttons (secure) are left alone.
 local function Sync()
-	if M.isEnabled and CollectionsJournal then
+	local cj = CollectionsJournal
+	if M.isEnabled and cj and (skin or cj:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -257,7 +268,7 @@ local function Hook()
 		return
 	end
 	hooked = true
-	CollectionsJournal:HookScript("OnShow", function()
+	Perf.HookScript(CollectionsJournal, "OnShow", function()
 		Sync()
 		M:RefreshFollowers()
 	end)
@@ -269,7 +280,7 @@ local function Hook()
 end
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_Collections" and M.isEnabled then
 		Hook()
 		Sync()
@@ -302,6 +313,9 @@ SlashCmdList.MELLOCOLDUMP = function(msg)
 		return
 	end
 	MelloUI:ClearLog()
+	if not skin then
+		MelloUI:Print("Collections window not dressed yet (it is dressed on its first open): the game's own art only.")
+	end
 	Kit:DumpWindow(CollectionsJournal, skin, msg)
 	MelloUI:ShowLog("coldump " .. (msg or ""))
 end

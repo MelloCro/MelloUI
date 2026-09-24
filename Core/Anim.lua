@@ -32,6 +32,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Anim")
 
 local Anim = { reduceMotion = false }
 MelloUI.Anim = Anim
@@ -144,7 +145,7 @@ local function Remove(frame, prop)
 end
 
 local finished = {}
-driver:SetScript("OnUpdate", function(_, elapsed)
+Perf.SetScript(driver, "OnUpdate", function(_, elapsed)
 	for frame, props in pairs(running) do
 		for prop, tw in pairs(props) do
 			tw.t = tw.t + elapsed

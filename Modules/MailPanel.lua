@@ -50,7 +50,8 @@
 -- tables; no mail function is ever called and MailFrame is never moved.
 -- Switching the module off disables every replacement (the game's art faded
 -- back in, ours hidden) and puts the portraits, titles, labels and text
--- colours back: the windows are the game's again.
+-- colours back: the windows are the game's again. Nothing is built at login:
+-- each window is dressed on its first open (user, 2026-09-24) and kept.
 --
 -- /maildump [rows | send | open | ink | reps | frames | regions] [open]: what
 -- the windows are made of on this client and what the skin dressed.
@@ -58,6 +59,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("MailPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("MailPanel", {
@@ -1151,10 +1154,10 @@ local function SkinItemSlot(button, row)
 				rim:Update()
 			end
 		end
-		button:HookScript("OnEnter", function() Set(true, nil) end)
-		button:HookScript("OnLeave", function() Set(nil, nil) end)
-		button:HookScript("OnMouseDown", function() Set(true, true) end)
-		button:HookScript("OnMouseUp", function() Set(true, nil) end)
+		Perf.HookScript(button, "OnEnter", function() Set(true, nil) end)
+		Perf.HookScript(button, "OnLeave", function() Set(nil, nil) end)
+		Perf.HookScript(button, "OnMouseDown", function() Set(true, true) end)
+		Perf.HookScript(button, "OnMouseUp", function() Set(true, nil) end)
 		if button.SetChecked then
 			hooksecurefunc(button, "SetChecked", function()
 				local rim = rep.object
@@ -1900,19 +1903,35 @@ local function BuildOpen(of)
 	FinishWindow(of)
 end
 
+-- (user, 2026-09-24: dress rarely used windows on first open): a mail window
+-- is built the first time it shows -- from its OnShow hook (Hook, below),
+-- before its first frame is drawn -- never at login; the letter window on its
+-- own first show, which may be long after the mailbox's or never. What was
+-- built is kept for the session. True once anything is built.
 local function Build()
 	local mf, of = Windows()
 	if not (mf or of) or not Kit then
 		return false
 	end
-	skin = skin or { reps = {}, followers = {}, windows = {} }
-	if mf and not skin.windows[mf] then
+	if mf and not (skin and skin.windows[mf]) and mf:IsShown() then
+		skin = skin or { reps = {}, followers = {}, windows = {} }
 		BuildMail(mf)
 	end
-	if of and not skin.windows[of] then
+	if of and not (skin and skin.windows[of]) and of:IsShown() then
+		skin = skin or { reps = {}, followers = {}, windows = {} }
 		BuildOpen(of)
 	end
-	return true
+	return skin ~= nil
+end
+
+-- a mail window shown that has not been built yet
+local function Unbuilt()
+	for _, frame in ipairs(List(Windows())) do
+		if frame:IsShown() and not (skin and skin.windows[frame]) then
+			return true
+		end
+	end
+	return false
 end
 
 --------------------------------------------------------------------------------
@@ -1964,8 +1983,11 @@ local function Pass()
 		entry.rep:SetShown(entry.region:IsShown())
 	end
 	GuardTabs()
+	-- (the mailbox's own parts only once the mailbox is built: the letter
+	-- window may have been dressed first)
 	local mf = _G.MailFrame
-	if mf and mf:IsShown() then
+	local mailBuilt = mf ~= nil and skin.windows[mf] ~= nil
+	if mailBuilt and mf:IsShown() then
 		FadePageStones(_G.InboxFrame, mf)
 		FadePageStones(_G.SendMailFrame, mf)
 	end
@@ -1974,8 +1996,10 @@ local function Pass()
 			RefreshWindow(win)
 		end
 	end
-	for _, row in ipairs(Rows()) do
-		SkinRow(row)
+	if mailBuilt then
+		for _, row in ipairs(Rows()) do
+			SkinRow(row)
+		end
 	end
 	for _, entry in ipairs(itemRims) do
 		FitItemRim(entry)
@@ -2083,8 +2107,8 @@ local function Sync()
 	end
 end
 
--- (the mail windows are not protected; queued out of combat as the other
--- windows' skins are)
+-- (the mail windows are not protected; the switch is queued out of combat as
+-- the other windows' skins are)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -2093,6 +2117,31 @@ local function SyncSafe()
 	end
 end
 
+-- A mail window's first show (user, 2026-09-24: dress rarely used windows on
+-- first open): its look built and switched on now, in its OnShow, so the
+-- first frame it draws is dressed. Also in combat: the build makes frames and
+-- textures of ours, and what of the game's it moves are regions of these
+-- unprotected windows (the portrait, the title and tab strings) -- nothing
+-- protected, and MailFrame is never moved -- so a first open in a fight is
+-- dressed at once instead of showing the stock window until it ends.
+local function Dress()
+	if not active then
+		Sync()
+		return
+	end
+	-- a window first shown while the kit is on (the letter after the
+	-- mailbox): its pieces were enabled as they were made, before their own
+	-- enable (the ring's portrait fit, its disc) was chained on -- enabled
+	-- once more now
+	local first = #skin.reps + 1
+	Build()
+	for i = first, #skin.reps do
+		skin.reps[i]:Enable()
+	end
+end
+
+-- (listen-only until a window is built: every handler here does nothing while
+-- the kit is off)
 local function Hook()
 	local mf, of = Windows()
 	if hooked or not (mf or of) then
@@ -2100,9 +2149,9 @@ local function Hook()
 	end
 	hooked = true
 	for _, frame in ipairs(List(mf, of, _G.InboxFrame, _G.SendMailFrame)) do
-		frame:HookScript("OnShow", function()
-			if M.isEnabled and not active then
-				SyncSafe()
+		Perf.HookScript(frame, "OnShow", function()
+			if M.isEnabled and (not active or Unbuilt()) then
+				Dress()
 			end
 			Refresh()
 		end)
@@ -2117,7 +2166,7 @@ local function Hook()
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function()
+Perf.SetScript(events, "OnEvent", function()
 	if M.isEnabled and not active and (_G.MailFrame or _G.OpenMailFrame) then
 		events:UnregisterAllEvents()
 		Hook()
@@ -2377,7 +2426,7 @@ local function DumpOpen()
 	local of = _G.OpenMailFrame
 	local win = of and skin and skin.windows[of]
 	if not win then
-		MelloUI:Print("OpenMailFrame: %s", of and "not dressed" or "not on this client")
+		MelloUI:Print("OpenMailFrame: %s", of and "not dressed yet (the kit dresses it the first time a letter is opened)" or "not on this client")
 		return
 	end
 	DumpShell(win)
@@ -2452,6 +2501,9 @@ SlashCmdList.MELLOMAILDUMP = function(msg)
 		MelloUI:Print("/maildump: no MailFrame on this client")
 	elseif mode == "reps" or mode == "frames" or mode == "regions" then
 		local root = (arg == "open") and of or mf
+		if root and not (skin and skin.windows[root]) then
+			MelloUI:Print("%s: not dressed yet (the kit dresses it on its first open this session)", Label(root))
+		end
 		if root then
 			Kit:DumpWindow(root, skin, mode ~= "regions" and mode or nil)
 		end
@@ -2465,7 +2517,7 @@ SlashCmdList.MELLOMAILDUMP = function(msg)
 		MelloUI:Print("Mailbox kit: module %s, dressed %s, built %s, paper %s, page now %s", tostring(M.isEnabled == true), tostring(active),
 			tostring(win ~= nil), tostring(skin and skin.paper or false), tostring(CurrentPage() or "none"))
 		if not win then
-			MelloUI:Print("MailFrame not dressed")
+			MelloUI:Print("MailFrame: not dressed yet (the kit dresses it on its first open this session)")
 		elseif mode == "rows" then
 			DumpRows()
 			DumpText(_G.InboxFrame or mf)

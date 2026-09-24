@@ -58,6 +58,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("InspectPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("InspectPanel", {
@@ -810,8 +812,8 @@ local function Discover(f)
 	for _, page in ipairs(Pages(f)) do
 		if not pageHooked[page] then
 			pageHooked[page] = true
-			page:HookScript("OnShow", RefreshDims)
-			page:HookScript("OnHide", RefreshDims)
+			Perf.HookScript(page, "OnShow", RefreshDims)
+			Perf.HookScript(page, "OnHide", RefreshDims)
 		end
 	end
 	SkinCharacterArt(f)
@@ -920,8 +922,14 @@ local function Deactivate()
 	PlaceTitles(false)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the window has never been shown this session: a
+-- skin already built is switched on (and off), else only a window open right
+-- now (a /reload with it open) is dressed at once; its first show dresses it
+-- (the OnShow hook below), in that same frame, so it never draws undressed.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -937,17 +945,34 @@ local function SyncSafe()
 	end
 end
 
+-- The first show in combat (a player inspected mid-fight) dresses at once
+-- all the same: the dressing adds frames and textures of ours and moves or
+-- sizes only the window's own unprotected parts (the portrait, the name
+-- strings, the slots' icons in their rims), never a protected frame (the
+-- inspect window has none). A window the game protects waits for the
+-- fight's end, as before.
+local function DressOnShow()
+	local f = Window()
+	local ok, protected = pcall(f.IsProtected, f)
+	if InCombatLockdown() and ok and not Secret(protected) and not protected then
+		Sync()
+	else
+		SyncSafe()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			DressOnShow()     -- (Activate refreshes what it dressed)
+		else
+			Refresh()
 		end
-		Refresh()
 	end)
 	-- a tab switch (the game's own tab helper; this window's only)
 	if type(_G.PanelTemplates_SetTab) == "function" then
@@ -959,11 +984,12 @@ local function Hook()
 	end
 end
 
--- The window comes with the load-on-demand inspect addon: dressed when that
--- loads, or at once when it already has; the inspected player's portrait and
--- name arrive with INSPECT_READY, after the window has shown.
+-- The window comes with the load-on-demand inspect addon: hooked when that
+-- loads, or at once when it already has, and dressed as it first shows; the
+-- inspected player's portrait and name arrive with INSPECT_READY, after the
+-- window has shown.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(self, event)
+Perf.SetScript(eventFrame, "OnEvent", function(self, event)
 	if event == "INSPECT_READY" then
 		if active then
 			Refresh()
@@ -1165,6 +1191,9 @@ SlashCmdList.MELLOINSPECTDUMP = function(msg)
 			end
 		end
 		MelloUI:Print("/inspectdump: no InspectFrame (%s; it loads with the first inspect: inspect a player, then try again)", state)
+	elseif not skin then
+		MelloUI:Print("/inspectdump: the inspect window is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: inspect a player, then try again" or "the Inspect Kit is off")
 	elseif msg == "" then
 		Summary(f)
 	else

@@ -21,6 +21,7 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("PartyMarkers")
 
 local defaults = {
 	who = "group",          -- "group": party and raid members; "friends": every friendly player
@@ -271,7 +272,7 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
 		if ok and plate then

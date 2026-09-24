@@ -13,6 +13,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Tooltip")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("Tooltip", {
 	title = "Tooltip",
@@ -64,6 +66,7 @@ local hooksInstalled = false
 local unitColor = nil            -- { r, g, b } of the unit currently shown, or nil
 local applyingBarColor = false
 local originalBarTexture = nil
+local barHidden = false          -- the health bar at alpha 0 (Hide Health Bar): nobody sees its colour
 
 local function TooltipList()
 	local list = {}
@@ -143,7 +146,7 @@ end
 
 local function ColorHealthBar()
 	local bar = GameTooltipStatusBar
-	if not bar or not unitColor or not M.db.classHealth then
+	if barHidden or not bar or not unitColor or not M.db.classHealth then
 		return
 	end
 	applyingBarColor = true
@@ -215,7 +218,13 @@ local function ApplyHealthBar()
 	elseif originalBarTexture then
 		bar:SetStatusBarTexture(originalBarTexture)
 	end
-	bar:SetAlpha((M.isEnabled and db.hideHealthBar) and 0 or 1)
+	local hide = (M.isEnabled and db.hideHealthBar) and true or false
+	local was = barHidden
+	barHidden = hide
+	bar:SetAlpha(hide and 0 or 1)
+	if was and not hide then
+		ColorHealthBar()   -- shown again: the unit's colour at once, not at its next health change
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -265,14 +274,19 @@ local function InstallHooks()
 		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnUnitTooltip)
 	end
 	if GameTooltip then
-		GameTooltip:HookScript("OnHide", OnTooltipHidden)
+		Perf.HookScript(GameTooltip, "OnHide", OnTooltipHidden)
 	end
 	if GameTooltipStatusBar then
 		-- Blizzard recolours the bar green on every value change; put the unit
 		-- colour back afterwards. Only the colour call is touched, never the
-		-- bar's fields.
+		-- bar's fields. While the bar is hidden (Hide Health Bar, the
+		-- default) it is left at once: a bar nobody sees is not recoloured
+		-- (the 2026-09-24 review); shown again, it is coloured then.
 		hooksecurefunc(GameTooltipStatusBar, "SetStatusBarColor", function()
-			if not applyingBarColor and M.isEnabled and unitColor and M.db.classHealth then
+			if barHidden or applyingBarColor then
+				return
+			end
+			if M.isEnabled and unitColor and M.db.classHealth then
 				ColorHealthBar()
 			end
 		end)

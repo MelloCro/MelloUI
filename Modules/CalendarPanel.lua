@@ -4,10 +4,12 @@
 -- (user, 2026-09-24: "do all of them, then we are done with the UI
 -- reskin"): The calendar and its event windows in the kit.
 --
--- The calendar is the load-on-demand Blizzard_Calendar: dressed on its
--- ADDON_LOADED, or at once when it is in already; a client without it gets
--- nothing done and /calendardump says so. CalendarFrame is no template
--- window: twelve loose file textures make its border and header band, the
+-- The calendar is the load-on-demand Blizzard_Calendar: hooked on its
+-- ADDON_LOADED, or at once when it is in already, and dressed on its first
+-- show (user, 2026-09-24: "dress rarely used windows on first open"); a
+-- client without it gets nothing done and /calendardump says so.
+-- CalendarFrame is no template window: twelve loose file textures make its
+-- border and header band, the
 -- 7 x 6 grid of CalendarDayButton1..42 (91 px squares, each painted with a
 -- piece of the CalendarBackground file) lies under a row of weekday
 -- headers, the month and year stand in their own small plates between the
@@ -73,6 +75,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CalendarPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("CalendarPanel", {
@@ -980,15 +984,29 @@ local function Deactivate()
 	LendTitle(false)
 end
 
+-- the calendar shown now (secret-safe)
+local function IsOpen(cf)
+	local ok, shown = pcall(cf.IsShown, cf)
+	return ok and not Secret(shown) and shown == true
+end
+
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the calendar's look is made while it has never been shown this session:
+-- it is dressed on its first show (the OnShow hook, before the first frame
+-- is drawn), or at once when it is up already, then kept for the session.
+-- The hooks below only listen until then (Refresh and the popups' shows
+-- wait for the kit to be on).
 local function Sync()
-	if M.isEnabled and Window() then
+	local cf = Window()
+	if M.isEnabled and cf and ((skin and skin.built) or IsOpen(cf)) then
 		Activate()
 	else
 		Deactivate()
 	end
 end
 
--- (geometry of the window's children changes here: out of combat only)
+-- (the switch and the addon's load: out of combat, as before; the first
+-- show is dressed at once, see Hook)
 local function SyncSafe()
 	if Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -1003,9 +1021,12 @@ local function Hook()
 		return
 	end
 	hooked[cf] = true
-	cf:HookScript("OnShow", function()
+	-- the first show dresses the calendar there and then, in combat too:
+	-- dressing makes frames of ours and moves only the game's own title
+	-- strings (lent to our band), and nothing in the calendar is protected
+	Perf.HookScript(cf, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			Sync()
 		end
 		Refresh()
 	end)
@@ -1018,7 +1039,7 @@ local function Hook()
 		local p = _G[pname]
 		if p and not hooked[p] then
 			hooked[p] = true
-			p:HookScript("OnShow", OnPopupShow)
+			Perf.HookScript(p, "OnShow", OnPopupShow)
 		end
 	end
 end
@@ -1032,9 +1053,10 @@ local function IsLoaded()
 	return ok and loaded and true or false
 end
 
--- The calendar comes with its load-on-demand addon: dressed when it loads
+-- The calendar comes with its load-on-demand addon: hooked when it loads
+-- (dressed then only if it is up already)
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function(_, event, name)
+Perf.SetScript(watcher, "OnEvent", function(_, event, name)
 	if event == "ADDON_LOADED" and name ~= ADDON then
 		return
 	end
@@ -1166,6 +1188,9 @@ local function DumpCalendar(cf)
 	local okLv, lv = pcall(cf.GetFrameLevel, cf)
 	MelloUI:Print("CalendarFrame: shown %s, level %s, strata %s, %s, kit %s, reps %d, faded art %d", Shown(cf), okLv and Num(lv) or "?",
 		tostring(cf:GetFrameStrata()), RectText(cf), active and "on" or "off", skin and #skin.reps or 0, #fadedArt)
+	if not (skin and skin.built) then
+		MelloUI:Print("  not dressed yet: the kit dresses the calendar the first time it opens (open it once for the kit's side)")
+	end
 	local art = skin and skin.borderArt or BorderArt(cf)
 	local fadedN = 0
 	for _, t in ipairs(art) do
@@ -1345,12 +1370,17 @@ SlashCmdList.MELLOCALENDARDUMP = function(msg)
 		DumpCalendar(cf)
 		MelloUI:Print("CalendarFrame's own regions and children:")
 		DumpOwn(cf)
-	elseif msg == "days" then
-		DumpDays()
-	elseif msg == "popups" then
-		DumpPopups()
 	else
-		Kit:DumpWindow(cf, skin, msg ~= "regions" and msg or nil)
+		if not (skin and skin.built) then
+			MelloUI:Print("/calendardump: the calendar is not dressed yet (the kit dresses it the first time it opens)")
+		end
+		if msg == "days" then
+			DumpDays()
+		elseif msg == "popups" then
+			DumpPopups()
+		else
+			Kit:DumpWindow(cf, skin, msg ~= "regions" and msg or nil)
+		end
 	end
 	MelloUI:ShowLog("calendardump " .. msg)
 end

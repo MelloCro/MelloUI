@@ -24,12 +24,14 @@
 -- on the stone and the picker's labels in dark ink while it is on, the
 -- palette's inner panel on the stone while it is off (WINDOW-RULES 2e).
 -- The picker's size, place and behaviour stay the game's; switching the
--- module off gives back the stock picker. /colorpickerdump [frames | reps |
--- regions].
+-- module off gives back the stock picker. Nothing is built before the picker
+-- first shows (Sync). /colorpickerdump [frames | reps | regions].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ColorPickerPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ColorPickerPanel", {
@@ -683,14 +685,21 @@ local function Deactivate()
 	end
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of the
+-- look is built while the picker has never been shown: its OnShow (Hook
+-- below) builds it before its first frame is drawn, or it is built at once
+-- when it is open now. Once built it stays for the session, switched on and
+-- off as before.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and (skin or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
 	end
 end
 
+-- (the switch and a late picker: out of combat only, as they always were)
 local function SyncSafe()
 	if Kit and Kit.WhenOutOfCombat then
 		Kit:WhenOutOfCombat(Sync)
@@ -705,24 +714,28 @@ local function Hook()
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
-		end
-		-- the game's own border and header may be laid again on show: faded again
-		if active then
+			-- the first open, dressed here and now, in combat too: the dress
+			-- adds frames and textures of ours, fades the game's box and puts
+			-- the header's own title on the plate -- the picker has no secure
+			-- or protected part, and nothing protected is called. Activate
+			-- fades, inks and fits it all.
+			Sync()
+		elseif active then
+			-- the game's own border and header may be laid again on show: faded again
 			for _, obj in ipairs(fadedArt) do
 				Kit:Fade(obj)
 			end
+			Refresh()
 		end
-		Refresh()
 		C_Timer.After(0, Refresh)
 	end)
 end
 
 -- a picker made by an addon the game loads later: hooked once it exists
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function()
+Perf.SetScript(watcher, "OnEvent", function()
 	if not hooked and Window() and M.isEnabled then
 		Hook()
 		SyncSafe()
@@ -839,6 +852,9 @@ local function DumpParts(f)
 	local okLv, lv = pcall(f.GetFrameLevel, f)
 	MelloUI:Print("ColorPickerFrame (%s): shown %s, %s, level %s, strata %s; kit %s, parchment %s", tostring(f:GetObjectType()), Shown(f), Rect(f),
 		okLv and Num(lv) or "?", tostring(f:GetFrameStrata()), active and "on" or "off", tostring(Kit.ParchmentOn and Kit:ParchmentOn(AREA)))
+	if not skin then
+		MelloUI:Print("  not dressed yet: the colour picker is dressed the first time it opens")
+	end
 	Found("kit rail + stone", skin and skin.nine, skin and string.format(" shown %s, sheet shown %s, inner panel shown %s", Shown(skin.nine),
 		skin.sheet and Shown(skin.sheet) or "-", skin.dim and Shown(skin.dim) or "-") or " (not built)")
 	for _, key in ipairs({ "Border", "NineSlice", "Bg", "Content", "Footer", "Header" }) do

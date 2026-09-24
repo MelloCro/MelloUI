@@ -35,6 +35,8 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CustomSounds")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local SOUND_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Sounds\\SFX\\"
 
@@ -377,12 +379,43 @@ end
 
 --------------------------------------------------------------------------------
 -- Playing, logging
+--
+-- Nothing on a sound's way makes garbage (user, 2026-09-24: "clean up the
+-- spikes"). Each file's path is made once. The log keeps its last events as
+-- they came, the format and its values in slots used round and round, and
+-- writes them out as lines only when someone reads them (/sfxdump, /sfx log):
+-- before, every sound wrote two or three strings for a log hardly ever read,
+-- and the first kit the game played turned the whole SOUNDKIT list round into
+-- a table of names (a few thousand entries at once) for one of those lines.
+-- The kit names are now looked up only when a line is written.
 --------------------------------------------------------------------------------
 
+-- each file's path, made once, and when it last played (false: not yet)
+local PATHS = {}
 local lastPlayed = {}
-local events = {}       -- the last sound events, for /sfxdump
+-- How long the game's own PlaySoundFile took, per file: its first call, its
+-- slowest and how many (/sfx). The one-off 8-58 ms calls of the 2026-09-24
+-- /melloperf recording (money looted, the first error, two kits) were the
+-- first play of a file each, as far as can be told outside the game: the Lua
+-- around it takes microseconds, the files are 5-31 KB and decode in under
+-- 3 ms. This shows the game's own share.
+local calls, firstMs, slowestMs = {}, {}, {}
+for name in pairs(SOUNDS) do
+	PATHS[name] = SOUND_PATH .. name .. ".ogg"
+	lastPlayed[name] = false
+	calls[name], firstMs[name], slowestMs[name] = 0, 0, 0
+end
+
 local EVENTS_MAX = 60
+-- the last sound events, for /sfxdump: { time, format, how many values, up
+-- to five values }, each slot made once and then reused
+local notes = {}
+local noteNext = 1      -- the slot the next event goes into
+local noteCount = 0
 local live = false      -- /sfx log: print each event as it happens
+
+-- stands among an event's values for the name of the kit just before it
+local KIT_NAME = {}
 
 local kitNames
 local function KitName(kit)
@@ -395,18 +428,41 @@ local function KitName(kit)
 	return kitNames[kit] or "?"
 end
 
-local function Note(fmt, ...)
-	local ok, line = pcall(string.format, fmt, ...)
-	if not ok then
-		line = fmt
+-- An event as the line it always was: its values into its format, the time
+-- in front.
+local lineValues = {}
+local function NoteLine(slot)
+	local n = math.min(slot[3], 5)
+	for i = 1, n do
+		local v = slot[i + 3]
+		if v == KIT_NAME then
+			v = KitName(slot[i + 2])
+		elseif type(v) ~= "string" and type(v) ~= "number" then
+			v = tostring(v)
+		end
+		lineValues[i] = v
 	end
-	line = string.format("%.1f %s", GetTime() % 1000, line)
-	events[#events + 1] = line
-	if #events > EVENTS_MAX then
-		table.remove(events, 1)
+	local ok, line = pcall(string.format, slot[2], unpack(lineValues, 1, n))
+	if not ok then
+		line = slot[2]
+	end
+	return string.format("%.1f %s", slot[1] % 1000, line)
+end
+
+local function Note(fmt, ...)
+	local slot = notes[noteNext]
+	if not slot then
+		slot = { 0, "", 0, false, false, false, false, false }
+		notes[noteNext] = slot
+	end
+	slot[1], slot[2], slot[3] = GetTime(), fmt, select("#", ...)
+	slot[4], slot[5], slot[6], slot[7], slot[8] = ...
+	noteNext = noteNext % EVENTS_MAX + 1
+	if noteCount < EVENTS_MAX then
+		noteCount = noteCount + 1
 	end
 	if live then
-		MelloUI:Print("SFX %s", line)
+		MelloUI:Print("SFX %s", NoteLine(slot))
 	end
 end
 
@@ -414,30 +470,70 @@ local function GroupOn(group)
 	return M.isEnabled and M.db and M.db[group] and true or false
 end
 
--- The named file, once per its gap; returns whether it started.
-local function Play(name, why)
+-- an event's format with the reason joined on, made once for each pair
+local joined = {}
+local function Joined(head, why)
+	local byWhy = joined[head]
+	if not byWhy then
+		byWhy = {}
+		joined[head] = byWhy
+	end
+	local fmt = byWhy[why]
+	if not fmt then
+		fmt = head .. why
+		byWhy[why] = fmt
+	end
+	return fmt
+end
+
+-- The game's PlaySoundFile for the named file, timed.
+local function PlayFile(name, channel)
+	local t0 = debugprofilestop()
+	local ok, willPlay = pcall(PlaySoundFile, PATHS[name] or (SOUND_PATH .. name .. ".ogg"), channel)
+	local ms = debugprofilestop() - t0
+	local n = calls[name]
+	if n then
+		if n == 0 then
+			firstMs[name] = ms
+		end
+		calls[name] = n + 1
+		if ms > slowestMs[name] then
+			slowestMs[name] = ms
+		end
+	end
+	return ok, willPlay
+end
+
+local PLAYED, SKIPPED, FAILED = "%s played ", "%s skipped (%.2fs after the last) ", "%s FAILED to play (%s) "
+
+-- The named file, once per its gap; returns whether it started. `why` says
+-- what set it off: a format for `a` and `b`, filled in only when the log is
+-- read.
+local function Play(name, why, a, b)
 	local gap = SOUNDS[name]
 	if not gap then
 		return false
 	end
+	why = why or ""
 	local now = GetTime()
-	if lastPlayed[name] and now - lastPlayed[name] < gap then
-		Note("%s skipped (%.2fs after the last) %s", name, now - lastPlayed[name], why or "")
+	local last = lastPlayed[name]
+	if last and now - last < gap then
+		Note(Joined(SKIPPED, why), name, now - last, a, b)
 		return false
 	end
-	local ok, willPlay = pcall(PlaySoundFile, SOUND_PATH .. name .. ".ogg", (M.db and M.db.channel) or "SFX")
+	local ok, willPlay = PlayFile(name, (M.db and M.db.channel) or "SFX")
 	if ok and willPlay then
 		lastPlayed[name] = now
-		Note("%s played %s", name, why or "")
+		Note(Joined(PLAYED, why), name, a, b)
 		return true
 	end
-	Note("%s FAILED to play (%s) %s", name, ok and "file missing?" or tostring(willPlay), why or "")
+	Note(Joined(FAILED, why), name, ok and "file missing?" or tostring(willPlay), a, b)
 	return false
 end
 
 -- The Preview tab's Play: the file as is, whatever is on or off.
 function M:Preview(name)
-	local ok, willPlay = pcall(PlaySoundFile, SOUND_PATH .. name .. ".ogg", (self.db and self.db.channel) or "SFX")
+	local ok, willPlay = PlayFile(name, (self.db and self.db.channel) or "SFX")
 	if not (ok and willPlay) then
 		MelloUI:Print("%s did not play (a new sound file needs a full client restart).", name)
 	end
@@ -487,19 +583,19 @@ local function OnPlaySound(kit)
 	end
 	if not entry then
 		if live then
-			Note("kit %d %s: not ours, the game's sound", kit, KitName(kit))
+			Note("kit %d %s: not ours, the game's sound", kit, KIT_NAME)
 		end
 		return
 	end
 	if not GroupOn(entry[2]) then
-		Note("kit %d %s: group %s off, the game's sound", kit, KitName(kit), entry[2])
+		Note("kit %d %s: group %s off, the game's sound", kit, KIT_NAME, entry[2])
 		return
 	end
 	if file and not muted[file] then
-		Note("kit %d %s: file %d not muted (MuteSoundFile missing?), the game's sound", kit, KitName(kit), file)
+		Note("kit %d %s: file %d not muted (MuteSoundFile missing?), the game's sound", kit, KIT_NAME, file)
 		return
 	end
-	Play(entry[1], string.format("for kit %d %s", kit, KitName(kit)))
+	Play(entry[1], "for kit %d %s", kit, KIT_NAME)
 end
 
 local function HookPlaySound()
@@ -604,7 +700,7 @@ local function CursorChanged(isDefault, newType, oldType)
 	holdingSpell = isSpell
 	if GroupOn("spells") then
 		if isSpell and not wasSpell then
-			Play("SpellIcon_Drag", "cursor type " .. tostring(newType))
+			Play("SpellIcon_Drag", "cursor type %s", newType)
 		elseif wasSpell and not isSpell then
 			Play("SpellIcon_Place", "cursor cleared")
 		end
@@ -690,16 +786,16 @@ local function EquipmentChanged(slot, hasCurrent)
 	end
 	if hasCurrent then
 		if WEAPON_SLOTS[slot] then
-			Play("Equip_Weapon", "slot " .. tostring(slot))
+			Play("Equip_Weapon", "slot %s", slot)
 		elseif ACCESSORY_SLOTS[slot] then
-			Play("Equip_Accessory", "slot " .. tostring(slot))
+			Play("Equip_Accessory", "slot %s", slot)
 		else
-			Play("Equip_Armor", "slot " .. tostring(slot))
+			Play("Equip_Armor", "slot %s", slot)
 		end
 	elseif GetTime() - pickedFromPaperDoll < 1 then
 		Note("Unequip_Armor skipped: the item was dragged off (Inventory played)")
 	else
-		Play("Unequip_Armor", "slot " .. tostring(slot))
+		Play("Unequip_Armor", "slot %s", slot)
 	end
 end
 
@@ -741,11 +837,11 @@ local function ApplicationChanged(_, newStatus)
 	elseif newStatus == "invited" then
 		Play("DungeonFinder_Ready", "invited from a listing")
 	elseif newStatus == "declined" or newStatus == "cancelled" or newStatus == "timedout" or newStatus == "failed" or newStatus == "declined_full" or newStatus == "declined_delisted" then
-		Play("DungeonFinder_QueueDropped", "application " .. tostring(newStatus))
+		Play("DungeonFinder_QueueDropped", "application %s", newStatus)
 	end
 end
 
-eventFrame:SetScript("OnEvent", function(_, event, ...)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 	if event == "CURSOR_CHANGED" then
 		CursorChanged(...)
 	elseif event == "CHAT_MSG_LOOT" then
@@ -841,11 +937,40 @@ end
 -- is nothing to mute and no kit to hook: every frame with an OnMouseWheel
 -- script gets a post-hook (EnumerateFrames, once at enable and every ten
 -- seconds for frames made since; a hook is a one-time thing per frame).
+-- The game adds a new frame at the end of its list and never drops one, so
+-- the ten-second look starts where the last walk ended and sees only the new
+-- frames; a walk over all of them (at enable, then once a minute, should a
+-- new frame ever turn up earlier in the list) is spread over frames, a
+-- millisecond at a time, instead of one long stall (6 ms every ten seconds
+-- before, 2026-09-24 /melloperf).
+-- Only the frames given the hook are remembered (user, 2026-09-24: "clean up
+-- the spikes"). The walk used to keep every frame it had looked at, the whole
+-- interface's, in a weak table: 1.3 MB at 20 000 frames, 2.5 MB at 40 000,
+-- doubling a megabyte and more at a time as windows made new frames (the
+-- likeliest source of the walk's memory in the 2026-09-24 recording), and
+-- gone through again in one go at the end of every garbage collection. A walk
+-- over every frame now counts its way to where the last walk ended instead:
+-- the same count there means no frame turned up earlier in the list, so every
+-- frame up to it was looked at before and only those after it are new;
+-- another count (never seen so far) looks at every frame again, the hooked
+-- ones apart.
 --------------------------------------------------------------------------------
 
-local wheelSeen = setmetatable({}, { __mode = "k" })
+local wheelHooked = setmetatable({}, { __mode = "k" })   -- the frames given the hook
 local wheelTicker = nil
 local wheelHooks = 0
+local WALK_BUDGET = 1       -- ms a walk may take per frame
+local WALK_CHECK = 64       -- frames looked at between two looks at the clock
+local FULL_EVERY = 6        -- ten-second looks between two walks over every frame
+local wheelCursor = nil     -- the frame the walk under way stopped at (nil: from the first)
+local wheelCount = 0        -- frames from the first up to wheelCursor
+local wheelTail = nil       -- the last frame the last finished walk reached
+local wheelTailCount = 0    -- frames from the first up to wheelTail
+local wheelKnown = nil      -- a walk from the first: the last walk's end, not reached yet
+local wheelKnownCount = 0
+local wheelWalking = false
+local wheelLooks = 0
+local wheelWalker = CreateFrame("Frame")
 
 local function OnWheel()
 	if GroupOn("scrollWheel") then
@@ -853,28 +978,99 @@ local function OnWheel()
 	end
 end
 
-local function HookWheels()
-	local f = EnumerateFrames()
+local function HookWheel(f)
+	local forbidden = f.IsForbidden and f:IsForbidden()
+	if not forbidden then
+		local ok, script = pcall(f.GetScript, f, "OnMouseWheel")
+		if ok and script and pcall(f.HookScript, f, "OnMouseWheel", OnWheel) then
+			wheelHooked[f] = true
+			wheelHooks = wheelHooks + 1
+		end
+	end
+end
+
+-- One stretch of the walk, up to the budget; true once the list's end is reached.
+local function WalkStep()
+	local stop = debugprofilestop() + WALK_BUDGET
+	local count = 0
+	local f = EnumerateFrames(wheelCursor)
 	while f do
-		if not wheelSeen[f] then
-			wheelSeen[f] = true
-			local forbidden = f.IsForbidden and f:IsForbidden()
-			if not forbidden then
-				local ok, script = pcall(f.GetScript, f, "OnMouseWheel")
-				if ok and script and pcall(f.HookScript, f, "OnMouseWheel", OnWheel) then
-					wheelHooks = wheelHooks + 1
-				end
+		wheelCount = wheelCount + 1
+		if not wheelKnown then
+			if not wheelHooked[f] then
+				HookWheel(f)
+			end
+		elseif f == wheelKnown then
+			-- the last walk's end: the frames after it are the new ones
+			wheelKnown = nil
+			if wheelCount ~= wheelKnownCount then
+				-- a frame turned up before it: every frame again, from the first
+				wheelCount = 0
+				f = nil
+			end
+		end
+		wheelCursor = f
+		count = count + 1
+		if count >= WALK_CHECK then
+			count = 0
+			if debugprofilestop() > stop then
+				return false
 			end
 		end
 		f = EnumerateFrames(f)
 	end
+	if wheelKnown then
+		-- the last walk's end never came: every frame again, from the first
+		wheelKnown, wheelCursor, wheelCount = nil, nil, 0
+		return false
+	end
+	wheelTail, wheelTailCount = wheelCursor, wheelCount
+	return true
+end
+
+local function Walking()
+	local ok, done = pcall(WalkStep)
+	if not ok then
+		-- the walk from the start again next time, every frame looked at
+		wheelCursor, wheelTail, wheelTailCount, wheelKnown = nil, nil, 0, nil
+	end
+	if not ok or done then
+		wheelWalking = false
+		Perf.SetScript(wheelWalker, "OnUpdate", nil)
+	end
+end
+
+-- A walk to the list's end: from where the last one ended (the frames made
+-- since), or with `full` from the first frame; one already under way goes on
+-- (it reaches the end too).
+local function Walk(full)
+	if wheelWalking then
+		return
+	end
+	if full or not wheelTail then
+		wheelCursor, wheelCount = nil, 0
+		wheelKnown, wheelKnownCount = wheelTail, wheelTailCount
+	else
+		wheelCursor, wheelCount = wheelTail, wheelTailCount
+		wheelKnown = nil
+	end
+	wheelWalking = true
+	Walking()
+	if wheelWalking then
+		Perf.SetScript(wheelWalker, "OnUpdate", Walking)
+	end
+end
+
+local function LookForWheels()
+	wheelLooks = wheelLooks + 1
+	Walk(not wheelTail or wheelLooks % FULL_EVERY == 0)
 end
 
 local function ApplyWheel()
 	if GroupOn("scrollWheel") then
-		HookWheels()
 		if not wheelTicker then
-			wheelTicker = C_Timer.NewTicker(10, HookWheels)
+			Walk(true)
+			wheelTicker = C_Timer.NewTicker(10, LookForWheels)
 		end
 	elseif wheelTicker then
 		wheelTicker:Cancel()
@@ -883,19 +1079,69 @@ local function ApplyWheel()
 end
 
 --------------------------------------------------------------------------------
--- Hover ticks: the frame under the mouse, polled
+-- Hover ticks: the frame under the mouse, polled twenty times a second (a
+-- ticker, not a script on every frame). GetMouseFoci makes a new list on
+-- every call, so it is asked only when the frame found last has lost the
+-- mouse (the game says so without a list): the moment another frame comes
+-- under the cursor, moved or not (a list scrolled under a still cursor),
+-- and at every fourth look besides (a frame on top can pass the mouse on to
+-- the one below, which then keeps it too). Over the world nothing is asked
+-- until the mouse leaves it. While the cursor rests, that fourth-look ask,
+-- and the ask on every look where nothing usable was found last (a forbidden
+-- frame, an empty list), come once a second only (user, 2026-09-24: "clean up
+-- the spikes"): a still cursor asked five times a second on a button and
+-- twenty over a forbidden frame, a new list each time, for the same answer.
+-- A frame that comes under a resting cursor and passes the mouse on is then
+-- found within a second instead of a fifth; the moment the cursor moves, or
+-- the frame found last loses the mouse, it is asked as before.
 --------------------------------------------------------------------------------
 
-local hoverFrame = CreateFrame("Frame")
+local HOVER_EVERY = 0.05    -- seconds between two looks
+local HOVER_KEPT = 4        -- looks between two asks while the frame found last keeps the mouse
+local HOVER_STILL = 20      -- looks between two asks while the cursor rests (a second)
+local hoverTicker = nil
 local hoverLast = nil
-local hoverElapsed = 0
+local hoverLooks = 0        -- looks since the last ask
+local hoverX, hoverY = nil, nil   -- the cursor at the last ask (nil: unknown)
 
-local function HoverTick(_, elapsed)
-	hoverElapsed = hoverElapsed + elapsed
-	if hoverElapsed < 0.05 then
+-- the cursor, or nil where the game cannot say
+local function CursorAt()
+	if not GetCursorPosition then
+		return nil, nil
+	end
+	local x, y = GetCursorPosition()
+	if issecretvalue and (issecretvalue(x) or issecretvalue(y)) then
+		return nil, nil
+	end
+	return x, y
+end
+
+-- the frame still has the mouse (false where the game cannot say)
+local function KeepsMouse(f)
+	if not (f and f.IsMouseMotionFocus) then
+		return false
+	end
+	local ok, focus = pcall(f.IsMouseMotionFocus, f)
+	if not ok or (issecretvalue and issecretvalue(focus)) then
+		return false
+	end
+	return focus == true
+end
+
+local function HoverTick()
+	hoverLooks = hoverLooks + 1
+	local kept = hoverLast and KeepsMouse(hoverLast)
+	if kept and (hoverLast == WorldFrame or hoverLooks < HOVER_KEPT) then
 		return
 	end
-	hoverElapsed = 0
+	-- a resting cursor waits a second between two asks; a frame found last
+	-- that lost the mouse is asked about at once, rested or not
+	local x, y = CursorAt()
+	if (kept or not hoverLast) and hoverLooks < HOVER_STILL and x and x == hoverX and y == hoverY then
+		return
+	end
+	hoverLooks = 0
+	hoverX, hoverY = x, y
 	local f = MouseFrame()
 	if f == hoverLast then
 		return
@@ -915,15 +1161,22 @@ local function HoverTick(_, elapsed)
 	if IsMouseButtonDown and IsMouseButtonDown() then
 		return
 	end
-	Play("UI_Hover", FrameName(f) or "a button")
+	Play("UI_Hover", "%s", FrameName(f) or "a button")
 end
 
 local function ApplyHover()
 	if GroupOn("hover") then
-		hoverFrame:SetScript("OnUpdate", HoverTick)
+		if not hoverTicker then
+			hoverTicker = C_Timer.NewTicker(HOVER_EVERY, HoverTick)
+		end
 	else
-		hoverFrame:SetScript("OnUpdate", nil)
+		if hoverTicker then
+			hoverTicker:Cancel()
+			hoverTicker = nil
+		end
 		hoverLast = nil
+		hoverLooks = 0
+		hoverX, hoverY = nil, nil
 	end
 end
 
@@ -938,7 +1191,7 @@ function MelloUI:PlayCustomUISound(kind)
 		return false
 	end
 	local name = CONFIG_SOUNDS[kind]
-	return name and Play(name, "configurator " .. kind) or false
+	return name and Play(name, "configurator %s", kind) or false
 end
 
 --------------------------------------------------------------------------------
@@ -999,6 +1252,20 @@ local function Status()
 		end
 	end
 	MelloUI:Print("Groups: %s", table.concat(groups, " "))
+	-- the game's own time to start each file, slowest first
+	local played = {}
+	for name, n in pairs(calls) do
+		if n > 0 then
+			played[#played + 1] = name
+		end
+	end
+	table.sort(played, function(a, b) return slowestMs[a] > slowestMs[b] end)
+	local parts = {}
+	for i = 1, math.min(#played, 6) do
+		local name = played[i]
+		parts[i] = string.format("%s %.1f ms (first %.1f ms, %d x)", name, slowestMs[name], firstMs[name], calls[name])
+	end
+	MelloUI:Print("PlaySoundFile, slowest: %s", #parts > 0 and table.concat(parts, ", ") or "nothing played yet")
 end
 
 SLASH_MELLOSFX1 = "/sfx"
@@ -1015,8 +1282,8 @@ SlashCmdList.MELLOSFX = function(msg)
 			end
 		end
 		if SOUNDS[name] then
-			lastPlayed[name] = nil
-			local ok, willPlay = pcall(PlaySoundFile, SOUND_PATH .. name .. ".ogg", (M.db and M.db.channel) or "SFX")
+			lastPlayed[name] = false
+			local ok, willPlay = PlayFile(name, (M.db and M.db.channel) or "SFX")
 			MelloUI:Print("%s: %s", name, (ok and willPlay) and "playing" or "did not play (a new file needs a full client restart)")
 		else
 			MelloUI:Print("No sound '%s'. /sfx list names them.", rest)
@@ -1046,9 +1313,11 @@ SLASH_MELLOSFXDUMP1 = "/sfxdump"
 SlashCmdList.MELLOSFXDUMP = function()
 	MelloUI:ClearLog()
 	Status()
-	MelloUI:Print("Last %d sound events (time within the hour, newest last):", #events)
-	for _, line in ipairs(events) do
-		MelloUI:Print("  %s", line)
+	MelloUI:Print("Last %d sound events (time within the hour, newest last):", noteCount)
+	-- oldest first: the slot the next event would take, once the ring is full
+	local first = noteCount < EVENTS_MAX and 1 or noteNext
+	for i = 0, noteCount - 1 do
+		MelloUI:Print("  %s", NoteLine(notes[(first - 1 + i) % EVENTS_MAX + 1]))
 	end
 	MelloUI:ShowLog("sfxdump")
 end

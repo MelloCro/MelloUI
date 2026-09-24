@@ -13,7 +13,9 @@ re-run this script and Tools/preview_chat.py.
   Media/Textures/StoneTile.tga   the shared repeatable stone body (built here
                                  only if no other builder has written it yet:
                                  mirror 2x2 -> central 1024 -> LANCZOS 512)
-  Media/ChatLayout.lua           MelloUI_ChatLayout = { atlas, stone, fixedScale,
+  (both are TGA masters under MelloUI-BuildData/masters/Media -- Tools/paths.py;
+  `python Tools/texture_pack.py ship` makes what Media ships from them)
+  Media/ChatLayout.lua          MelloUI_ChatLayout = { atlas, stone, fixedScale,
                                  geometry, sprites }
   MelloUI-BuildData/output/chat-cuts.png     every crop box drawn on the art
   MelloUI-BuildData/output/chatframe-atlas-preview.png   the atlas over green
@@ -32,11 +34,13 @@ from PIL import Image, ImageDraw
 
 from chat_layout_data import ANCHOR_BOX, ART_SCALE, BODY, DRAW_ORDER, FIXED_SCALE, GEOMETRY, PIECES, PLACEMENT, SIDE_CAP, SIDE_PLATE, SKIN, SRC, STONE_SRC, STONE_TILE, STONE_TILE_PX
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
 SRC_PATH = os.path.join(ROOT, SRC)
-TEX = os.path.join(ROOT, "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
+STONE_MASTER = master(*STONE_TILE.split("/")[1:])  # STONE_TILE is Media-relative: its TGA master
 MEDIA = os.path.join(ROOT, "Media")
 OUT = OUTPUT
 
@@ -130,7 +134,7 @@ def main():
 	pieces["SIDE_PLATE"] = compose_side_plate(pieces, SIDE_PLATE)
 
 	# ---- the shared stone body tile ----------------------------------------------
-	stone_path = os.path.join(ROOT, STONE_TILE)
+	stone_path = STONE_MASTER
 	if os.path.exists(stone_path):
 		print(f"  {STONE_TILE} already present, left as is")
 	else:
@@ -196,8 +200,8 @@ def main():
 -- artScale * scale option (fixedScale default) * (UI units per physical pixel).
 
 MelloUI_ChatLayout = {{
-	atlas = "Interface\\\\AddOns\\\\MelloUI\\\\{lua_path("Media/Textures/ChatFrame.tga")}",
-	stone = "Interface\\\\AddOns\\\\MelloUI\\\\{lua_path(STONE_TILE)}",
+	atlas = "Interface\\\\AddOns\\\\MelloUI\\\\{lua_path("Media/Textures/ChatFrame")}",
+	stone = "Interface\\\\AddOns\\\\MelloUI\\\\{lua_path(os.path.splitext(STONE_TILE)[0])}",
 	stonePx = {STONE_TILE_PX},
 	artScale = {ART_SCALE},
 	fixedScale = {FIXED_SCALE},

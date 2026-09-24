@@ -7,6 +7,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Vendor")
+local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("Vendor", {
 	title = "Vendor",
@@ -184,7 +186,7 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 	if event == "MERCHANT_SHOW" then
 		if M.db.autoRepair then
 			Repair()

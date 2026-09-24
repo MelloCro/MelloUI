@@ -50,7 +50,23 @@ Keyed by piece name (`window/frame_t`). Any field of a `MelloUI_KitLayout`
 entry — `w`, `h`, `uv`, `box`, `open`, `tile`, `overhang`, `radius`, `file` —
 merged over what `build_kit.py` measured. The original values are kept, so
 dropping the override restores them. A name the layout does not have is
-*created*, which is how a piece added by hand can be used before a rebuild.
+*created*, which is how a piece added by hand can be used before a rebuild;
+it goes again with its override. Given only a `file`, it draws the whole of
+the piece that file names (or the whole file).
+
+`uv` and `file` are written in the piece's own file, the frame `build_kit.py`
+cut it in, even where the shipped textures moved it. `texture_pack.py ship`
+packs small pieces into atlas sheets (`atlas\sheet_1`) and gives some a
+smaller file; `Media/KitLayout.lua` then names the new file and rectangle and
+keeps the old frame as `was` (its uv in its own file, whose name is the
+piece's). `Kit:ApplyTuning` maps an override from that frame into the
+piece's rectangle, so it means the same art as before. A value past the
+piece is held at its edge, since the neighbouring pieces sit there in a sheet.
+A `file` names a piece (`buttons\cog_hover`, in any case, with or without
+`.tga`), and the override takes that piece's art wherever it now is. A `tile`
+is ignored on a piece drawn from a sheet: one piece cannot repeat inside one.
+The ship keeps the pieces the baked tuning overrides out of the sheets.
+`Kit:PieceFrame(name)` returns the frame, which the kit editor shows.
 
 Arrays (`uv`, `box`, `open`) are replaced whole, never merged element by
 element: half a rectangle from each side is never what anyone wants.

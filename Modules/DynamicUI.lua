@@ -28,6 +28,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("DynamicUI")
+local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local D = {}
@@ -288,6 +290,14 @@ end
 
 local ArmCatchers   -- below
 
+-- the catchers placed again a moment after a pick, once the backdrop that
+-- changed has laid itself out (one function, not a new one per pick)
+local function RearmIfRunning()
+	if running then
+		ArmCatchers()
+	end
+end
+
 -- `module`: a section whose setting is another module's (the Character
 -- group's Side Tabs are UI Modifications')
 local function Pick(panel, key, value, module)
@@ -298,11 +308,7 @@ local function Pick(panel, key, value, module)
 		popup:Refresh()   -- the overview's dropdowns show the pick
 	end
 	-- the outline follows a backdrop that changed (after its layout settles)
-	C_Timer.After(0.15, function()
-		if running then
-			ArmCatchers()
-		end
-	end)
+	C_Timer.After(0.15, RearmIfRunning)
 end
 
 -- The group the picker offers under this id (a provider's PickerGroups),
@@ -378,18 +384,21 @@ local function BuildPanel(group)
 			tile.mark(false)
 			tile.hover(false)
 			DrawPreview(tile, section.kind, choice)
-			tile:SetScript("OnEnter", function(self)
+			-- the tooltip's texts made once, not on every hover
+			local tipTitle = section.title .. ": " .. choice.label
+			local tipLine = "Click to put it on the " .. group.title:lower() .. "."
+			Perf.SetScript(tile, "OnEnter", function(self)
 				self.hover(true)
 				GameTooltip:SetOwner(self, "ANCHOR_TOP")
-				GameTooltip:SetText(section.title .. ": " .. choice.label, 1, 0.82, 0)
-				GameTooltip:AddLine("Click to put it on the " .. group.title:lower() .. ".", 0.9, 0.9, 0.9)
+				GameTooltip:SetText(tipTitle, 1, 0.82, 0)
+				GameTooltip:AddLine(tipLine, 0.9, 0.9, 0.9)
 				GameTooltip:Show()
 			end)
-			tile:SetScript("OnLeave", function(self)
+			Perf.SetScript(tile, "OnLeave", function(self)
 				self.hover(false)
 				GameTooltip:Hide()
 			end)
-			tile:SetScript("OnClick", function()
+			Perf.SetScript(tile, "OnClick", function()
 				Pick(f, section.key, choice.value, section.module)
 			end)
 			s.tiles[#s.tiles + 1] = tile
@@ -399,7 +408,7 @@ local function BuildPanel(group)
 	end
 	local done = Button(f, "Done", 100)
 	done:SetPoint("BOTTOM", 0, 18)
-	done:SetScript("OnClick", function() D:Stop() end)
+	Perf.SetScript(done, "OnClick", function() D:Stop() end)
 	f:Hide()
 	return f
 end
@@ -464,19 +473,21 @@ local function Catcher(id, i)
 	c:RegisterForClicks("AnyUp")
 	c.lit = Outline(c, 2, 0.10)
 	c.lit(false)
-	c:SetScript("OnEnter", function(self)
+	Perf.SetScript(c, "OnEnter", function(self)
 		Light(id)
-		local group = GroupInfo(id)
+		-- the group's title and hint as the catcher was placed (ArmCatchers):
+		-- a hover no longer asks every panel for its groups
+		local group = rawget(self, "melloGroup") or GroupInfo(id)   -- (a field of our own, never a method)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText(group and group.title or "", 1, 0.82, 0)
 		GameTooltip:AddLine(group and group.hint or "Click to choose the button border, the backdrop and the backgrounds.", 0.9, 0.9, 0.9, true)
 		GameTooltip:Show()
 	end)
-	c:SetScript("OnLeave", function()
+	Perf.SetScript(c, "OnLeave", function()
 		Light(openId)   -- back to the group whose selector is open, if any
 		GameTooltip:Hide()
 	end)
-	c:SetScript("OnClick", function()
+	Perf.SetScript(c, "OnClick", function()
 		GameTooltip:Hide()
 		OpenPanel(id, catchers[id][1])
 	end)
@@ -497,6 +508,7 @@ ArmCatchers = function()
 			local rects = m:BarOutline(group.id)
 			for i, r in ipairs(rects or {}) do
 				local c = Catcher(group.id, i)
+				c.melloGroup = group
 				c:ClearAllPoints()
 				c:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", r[1] / us, r[2] / us)
 				c:SetSize((r[3] - r[1]) / us, (r[4] - r[2]) / us)
@@ -515,8 +527,9 @@ end
 -- bar, those functions should still exist"): one panel with every border
 -- (UI Modifications' one choice per kind, every window's) and every group's
 -- backgrounds as dropdowns; clicking a bar or a window still opens its
--- selector with pictures. Its content is laid again on every start (the
--- groups offered are the panels switched on).
+-- selector with pictures. Its content follows the panels switched on: laid
+-- the first time they are on offer, and kept for the next start with the
+-- same ones (user, 2026-09-24: every start laid a new copy of it).
 --------------------------------------------------------------------------------
 
 local OVERVIEW_W = 860
@@ -538,7 +551,28 @@ local function Dropdown(parent, getValue, choices, onPick)
 			root:CreateRadio(c.label or tostring(c.value), function() return getValue() == c.value end, function() onPick(c.value) end, c.value)
 		end
 	end)
+	-- the menu is made again only when the setting has changed since it was
+	-- last made (user, 2026-09-24: every refresh of the overview made all
+	-- sixteen menus again); made at SetupMenu when the box already names the
+	-- setting's choice, otherwise on the first refresh
+	dd.shownValue = dd   -- (the box itself: equal to no setting)
+	local text, current = dd.Text, getValue()
+	if type(text) == "table" and text.GetText then
+		for _, c in ipairs(choices or {}) do
+			if c.value == current then
+				if text:GetText() == (c.label or tostring(c.value)) then
+					dd.shownValue = current
+				end
+				break
+			end
+		end
+	end
 	dd.Refresh = function(self)
+		local value = getValue()
+		if value == self.shownValue then
+			return
+		end
+		self.shownValue = value
 		if self.GenerateMenu then
 			pcall(self.GenerateMenu, self)
 		end
@@ -569,7 +603,7 @@ local function Check(parent, label, getValue, onPick)
 	if PAL and PAL.text then
 		fs:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])
 	end
-	cb:SetScript("OnClick", function(self)
+	Perf.SetScript(cb, "OnClick", function(self)
 		onPick(self:GetChecked() and true or false)
 	end)
 	if Kit and Kit.SkinCheckButton then
@@ -600,20 +634,53 @@ local LAYOUT = {
 	{ module = "MinimapPanel", key = "servicesMerge", label = "Square minimap: merge with the Services bar" },
 }
 
--- The panel's rows: the borders and parchment on the left, the backgrounds
--- and the layout switches on the right
-local function FillOverview(f)
-	local old = rawget(f, "melloBody")   -- (a field of our own, never a method)
-	if old then
-		old:Hide()
+-- The overview laid a few milliseconds a frame (user, 2026-09-24: the
+-- Dynamic UI button took 44 ms in one frame): the laying runs as a coroutine
+-- that stops between two rows once the frame's time is spent (`deadline`,
+-- a debugprofilestop time) and goes on in the next.
+local STEP_BUDGET = 3   -- ms of the picker's start a frame (one row or one window past it at most: under the 5 ms of a slow call)
+local Now = debugprofilestop or function() return 0 end
+local deadline = nil
+local function Pause()
+	if deadline and Now() >= deadline then
+		coroutine.yield()
 	end
-	local body = CreateFrame("Frame", nil, f)
-	body:SetAllPoints()
-	-- the text and controls over the column panels (which sit over the
-	-- popup's own stone)
-	body:SetFrameLevel(f:GetFrameLevel() + 4)
-	rawset(f, "melloBody", body)
-	f.dropdowns = {}
+end
+
+-- What the overview offers this start, read once: the groups of the panels
+-- that are on and the layout switches of those that are on, and its
+-- signature -- the same panels, groups and choices as a start before find
+-- the content laid then (kept, one per signature), where every start laid
+-- a new one before
+local function Offer()
+	local groups, layout, parts = {}, {}, {}
+	for _, m in ipairs(Providers()) do
+		parts[#parts + 1] = m.name
+		for _, g in ipairs(m:PickerGroups()) do
+			groups[#groups + 1] = { m = m, g = g }
+			parts[#parts + 1] = tostring(g.id) .. "=" .. tostring(g.title)
+			for _, sct in ipairs(g.sections or {}) do
+				parts[#parts + 1] = tostring(sct.module) .. ":" .. tostring(sct.key) .. ":" .. tostring(sct.title)
+				for _, c in ipairs(sct.choices or {}) do
+					parts[#parts + 1] = tostring(c.value) .. "=" .. tostring(c.label)
+				end
+			end
+		end
+	end
+	for _, entry in ipairs(LAYOUT) do
+		local m = MelloUI:GetModule(entry.module)
+		if m and m.isEnabled then
+			layout[#layout + 1] = entry
+			parts[#parts + 1] = entry.module .. "." .. entry.key
+		end
+	end
+	return { groups = groups, layout = layout }, table.concat(parts, "|")
+end
+
+-- The panel's rows: the borders and parchment on the left, the backgrounds
+-- and the layout switches on the right, on `body` (the popup's content for
+-- this offer); run as the laying coroutine
+local function FillOverview(f, body, offer)
 	local stripes = { left = {}, right = {} }
 	local function Heading(text, x, y)
 		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -635,9 +702,10 @@ local function FillOverview(f)
 		end
 		local dd = Dropdown(body, getValue, choices, onPick)
 		dd:SetPoint("TOPLEFT", x + COL_W - DD_W - PANEL_PAD * 2, y - 2)
-		f.dropdowns[#f.dropdowns + 1] = dd
+		body.dropdowns[#body.dropdowns + 1] = dd
 		local list = stripes[side]
 		list[#list + 1] = y
+		Pause()
 		return dd
 	end
 	local leftPanel, rightPanel = PANEL_M, PANEL_M + COL_W + PANEL_GAP
@@ -666,10 +734,11 @@ local function FillOverview(f)
 			PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
 		end)
 		cb:SetPoint("TOPLEFT", x, y)
-		f.dropdowns[#f.dropdowns + 1] = cb
+		body.dropdowns[#body.dropdowns + 1] = cb
 		if i % 2 == 0 then
 			y = y - 28
 		end
+		Pause()
 	end
 	-- an odd count leaves the last switch alone on its row: below it too
 	if #PARCHMENTS % 2 == 1 then
@@ -678,50 +747,39 @@ local function FillOverview(f)
 	local leftBottom = y
 	Heading("Backgrounds (or click a bar or window)", right, top)
 	y = top - 24
-	for _, m in ipairs(Providers()) do
-		for _, g in ipairs(m:PickerGroups()) do
-			for _, s in ipairs(g.sections or {}) do
-				local module = s.module or m.name
-				Row(g.title .. ": " .. s.title, right, y, function() return CurrentValue(module, s.key) end, s.choices, function(v)
-					MelloUI:NotifySettingChanged(module, s.key, v)
-					PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-					if f.Refresh then
-						f:Refresh()
-					end
-					C_Timer.After(0.15, function()
-						if running then
-							ArmCatchers()
-						end
-					end)
-				end, "right")
-				y = y - ROW_H
-			end
+	for _, e in ipairs(offer.groups) do
+		local m, g = e.m, e.g
+		for _, s in ipairs(g.sections or {}) do
+			local module = s.module or m.name
+			Row(g.title .. ": " .. s.title, right, y, function() return CurrentValue(module, s.key) end, s.choices, function(v)
+				MelloUI:NotifySettingChanged(module, s.key, v)
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+				if f.Refresh then
+					f:Refresh()
+				end
+				C_Timer.After(0.15, RearmIfRunning)
+			end, "right")
+			y = y - ROW_H
 		end
 	end
 	-- the layout switches of the panels that are on
 	local shownLayout = false
-	for _, entry in ipairs(LAYOUT) do
-		local m = MelloUI:GetModule(entry.module)
-		if m and m.isEnabled then
-			if not shownLayout then
-				y = y - 12
-				Heading("Layout", right, y)
-				y = y - 26
-				shownLayout = true
-			end
-			local cb = Check(body, entry.label, function() return CurrentValue(entry.module, entry.key) end, function(v)
-				MelloUI:NotifySettingChanged(entry.module, entry.key, v)
-				PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
-				C_Timer.After(0.15, function()
-					if running then
-						ArmCatchers()
-					end
-				end)
-			end)
-			cb:SetPoint("TOPLEFT", right, y)
-			f.dropdowns[#f.dropdowns + 1] = cb
-			y = y - 28
+	for _, entry in ipairs(offer.layout) do
+		if not shownLayout then
+			y = y - 12
+			Heading("Layout", right, y)
+			y = y - 26
+			shownLayout = true
 		end
+		local cb = Check(body, entry.label, function() return CurrentValue(entry.module, entry.key) end, function(v)
+			MelloUI:NotifySettingChanged(entry.module, entry.key, v)
+			PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			C_Timer.After(0.15, RearmIfRunning)
+		end)
+		cb:SetPoint("TOPLEFT", right, y)
+		body.dropdowns[#body.dropdowns + 1] = cb
+		y = y - 28
+		Pause()
 	end
 	local rightBottom = y
 	local bottom = math.min(leftBottom, rightBottom)
@@ -749,8 +807,9 @@ local function FillOverview(f)
 				band:SetColorTexture(PAL.mainWindow[1], PAL.mainWindow[2], PAL.mainWindow[3], 0.85)
 			end
 		end
+		Pause()
 	end
-	f:SetHeight(-bottom + 64)
+	body.height = -bottom + 64
 end
 
 local function BuildPopup()
@@ -778,7 +837,7 @@ local function BuildPopup()
 	end
 	local done = Button(f, "Done", 100)
 	done:SetPoint("BOTTOM", 0, 16)
-	done:SetScript("OnClick", function() D:Stop() end)
+	Perf.SetScript(done, "OnClick", function() D:Stop() end)
 	f.Refresh = function(self)
 		for _, dd in ipairs(self.dropdowns or {}) do
 			dd:Refresh()
@@ -788,7 +847,7 @@ local function BuildPopup()
 	f:Hide()
 	-- Escape closes it (and with it the picker)
 	tinsert(UISpecialFrames, "MelloUIDynamicUIPopup")
-	f:SetScript("OnHide", function()
+	Perf.SetScript(f, "OnHide", function()
 		if running then
 			D:Stop()
 		end
@@ -799,6 +858,89 @@ end
 --------------------------------------------------------------------------------
 -- Start / stop
 --------------------------------------------------------------------------------
+
+-- A start in steps, one a frame (user, 2026-09-24: 44 ms in the click's
+-- frame): the configurator closes and the world darkens at once; the
+-- overview is laid (or found laid) and the popup shows once it is whole;
+-- then each window the picker opens (the bags, the character window) in a
+-- frame of its own, the catchers placed on them after the last and again
+-- once they have laid themselves out. A Stop (Done, Escape, a fight) ends
+-- the steps where they are; a half-laid overview goes on at the next start.
+local bodies = {}     -- offer signature -> the popup's content for it
+local starting = nil  -- the start under way: { body, offer, sig, opening = { providers }, n, shown, t0 }
+
+-- every window open: the catchers on them, and again once they have laid
+-- themselves out
+local function StartDone()
+	ArmCatchers()
+	C_Timer.After(0.2, RearmIfRunning)
+	return true
+end
+
+-- this frame's step of the start; true when it is complete
+local function Advance(st)
+	local body = st.body
+	local laying = rawget(body, "laying")   -- (fields of our own, never a method)
+	if laying then
+		local ok, err = coroutine.resume(laying, popup, body, st.offer)
+		if not ok then
+			body.laying = nil
+			bodies[st.sig] = nil
+			body:Hide()
+			error(err, 0)
+		end
+		if coroutine.status(laying) ~= "dead" then
+			return false
+		end
+		body.laying = nil
+	end
+	-- (the catchers once, when every window is open, in this frame when its
+	-- time is not spent, else in the next: each placing lays out the bars'
+	-- backdrops whole for every group it outlines)
+	if not st.shown then
+		st.shown = true
+		popup:SetHeight(rawget(body, "height"))
+		if st.reused then
+			popup:Refresh()   -- the overview's dropdowns show the settings as they are now
+		end
+		popup:Show()
+		if st.opening[1] ~= nil or Now() >= deadline then
+			return false
+		end
+		return StartDone()
+	end
+	local m = st.opening[st.n]
+	if m then
+		st.n = st.n + 1
+		pcall(m.PickerStart, m)
+		if st.opening[st.n] ~= nil or Now() >= deadline then
+			return false
+		end
+	end
+	return StartDone()
+end
+
+local function Step()
+	local st = starting
+	if not (st and running) then
+		return
+	end
+	deadline = (st.t0 or Now()) + STEP_BUDGET
+	st.t0 = nil
+	local ok, done = pcall(Advance, st)
+	deadline = nil
+	if not ok then
+		-- the picker ended, not left half-started under its veil
+		starting = nil
+		D:Stop()
+		error(done, 0)
+	end
+	if done then
+		starting = nil
+	else
+		C_Timer.After(0, Step)
+	end
+end
 
 function D:Start()
 	if running then
@@ -815,11 +957,7 @@ function D:Start()
 		MelloUI:Print("Dynamic UI Modification: the reskin is off (UI Modifications, General, Painted kit reskin).")
 		return
 	end
-	for _, m in ipairs(Providers()) do
-		if m.PickerStart then
-			pcall(m.PickerStart, m)
-		end
-	end
+	local t0 = Now()
 	local config = _G.MelloUIConfigFrame
 	if config and config:IsShown() then
 		config:Hide()
@@ -827,16 +965,40 @@ function D:Start()
 	running = true
 	ShowVeil(true)
 	popup = popup or BuildPopup()
-	FillOverview(popup)
-	popup:Show()
-	ArmCatchers()
-	-- a window opened for the picker (the bags) lays itself out a beat later
-	C_Timer.After(0.2, function()
-		if running then
-			ArmCatchers()
+	-- the content for what is on offer: laid before for the same offer, or
+	-- laid now (a new frame of our own, hidden with the popup)
+	local offer, sig = Offer()
+	local body = bodies[sig]
+	-- (one laid before, whole or half: a start stopped while it was being
+	-- laid left rows showing the settings as they were then)
+	local reused = body ~= nil
+	if not body then
+		body = CreateFrame("Frame", nil, popup)
+		body:SetAllPoints()
+		-- the text and controls over the column panels (which sit over the
+		-- popup's own stone)
+		body:SetFrameLevel(popup:GetFrameLevel() + 4)
+		body.dropdowns = {}
+		body.laying = coroutine.create(FillOverview)
+		bodies[sig] = body
+	end
+	for _, other in pairs(bodies) do
+		if other ~= body then
+			other:Hide()
 		end
-	end)
+	end
+	body:Show()
+	popup.dropdowns = body.dropdowns
+	-- the windows the picker opens (PickerStart), a frame each
+	local opening = {}
+	for _, m in ipairs(Providers()) do
+		if m.PickerStart then
+			opening[#opening + 1] = m
+		end
+	end
+	starting = { body = body, offer = offer, sig = sig, opening = opening, n = 1, t0 = t0, reused = reused }
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPEN)
+	Step()
 end
 
 function D:Stop()
@@ -844,6 +1006,7 @@ function D:Stop()
 		return
 	end
 	running = false
+	starting = nil
 	ShowVeil(false)
 	for _, list in pairs(catchers) do
 		for _, c in ipairs(list) do
@@ -882,7 +1045,7 @@ end
 -- A fight ends the picker (its catcher sits over the bars)
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_REGEN_DISABLED")
-events:SetScript("OnEvent", function()
+Perf.SetScript(events, "OnEvent", function()
 	if running then
 		D:Stop()
 		MelloUI:Print("Dynamic UI Modification ended: combat.")

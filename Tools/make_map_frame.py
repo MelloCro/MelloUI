@@ -18,10 +18,11 @@ completed label and its check, the scroll thumb.
 import os
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "map-frame.webp")
-TEX = os.path.join(HERE, "..", "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 SPLIT = 1493
 CANVAS = (46, 126, 996, 740)     # the frame's inner edge
 ORNAMENT_CORNERS = ((37, 740, 23),)     # the bottom-left diamond: centre and reach, it pokes into the hole

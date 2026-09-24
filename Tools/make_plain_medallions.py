@@ -14,9 +14,10 @@ import os, math
 import numpy as np
 from PIL import Image
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DIR = os.path.join(os.path.dirname(HERE), "Media", "Icons", "Class")
+DIR = master("Icons", "Class")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 RIM_OUTER = 0.478        # the rim's outer radius as a fraction of the size (measured 0.473)
 DIAMOND_IN = 0.30        # the diamonds reach this far in, as a fraction of the size
 HALF_ANGLE = 11          # degrees either side of each cardinal point

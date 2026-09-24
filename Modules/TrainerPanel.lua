@@ -35,6 +35,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("TrainerPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("TrainerPanel", {
@@ -126,7 +128,7 @@ end
 -- OnClick: HookScript would raise)
 local function HookScriptSafe(frame, script, fn)
 	if frame.HasScript and frame:HasScript(script) then
-		frame:HookScript(script, fn)
+		Perf.HookScript(frame, script, fn)
 		return true
 	end
 	return false
@@ -1417,7 +1419,7 @@ end
 -- them (a new trainer, a service learned, the filter). Registered through a
 -- pcall: an event this client does not have is refused, not an error.
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, arg)
+Perf.SetScript(events, "OnEvent", function(_, event, arg)
 	if event == "UNIT_PORTRAIT_UPDATE" then
 		if active and arg == "npc" then
 			PaintPortrait()
@@ -1436,15 +1438,28 @@ local function Hook()
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function(window)
+	Perf.HookScript(f, "OnShow", function(window)
 		if not active then
-			return
+			-- the first show dresses the window (see Sync below), in this
+			-- same frame: the build takes what the game made for it just now.
+			-- A show in combat too: the dressing adds frames of ours and moves
+			-- only the window's own title strings, never a protected frame
+			-- (it never waited for a fight's end at the trainer's first talk
+			-- either).
+			if not M.isEnabled then
+				return
+			end
+			Activate()
+			if not active then
+				return
+			end
+		else
+			-- parts a client makes on first show (the list's rows, a dropdown)
+			local list = FindList(window)
+			Kit:SweepControls(window, Replace, skin, list)
+			HookList(window)
+			KeepInsetUnder(window, list, StepButton(window))
 		end
-		-- parts a client makes on first show (the list's rows, a dropdown)
-		local list = FindList(window)
-		Kit:SweepControls(window, Replace, skin, list)
-		HookList(window)
-		KeepInsetUnder(window, list, StepButton(window))
 		AfterOpen()
 		RefreshSoon("show")
 	end)
@@ -1455,18 +1470,28 @@ local function Hook()
 	end
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the window has never been shown this session: the
+-- hooks go on (they wait for the skin), a skin already built is switched on,
+-- else only a window open right now (a /reload with it open) is dressed at
+-- once; its first show dresses it (the OnShow hook above), in that same
+-- frame, so it never draws undressed.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f then
 		Hook()
-		Activate()
+		if skin or f:IsShown() then
+			Activate()
+		end
 	else
 		Deactivate()
 	end
 end
 
--- Blizzard_TrainerUI is loaded on demand: dress it when it comes
+-- Blizzard_TrainerUI is loaded on demand: hook it when it comes (dressed as
+-- it first shows)
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function()
+Perf.SetScript(watcher, "OnEvent", function()
 	if Window() then
 		watcher:UnregisterAllEvents()
 		if M.isEnabled then
@@ -1666,6 +1691,9 @@ SlashCmdList.MELLOTRAINERDUMP = function(msg)
 			lod = ok and tostring(v) or "?"
 		end
 		MelloUI:Print("/trainerdump: no ClassTrainerFrame yet (Blizzard_TrainerUI load on demand: %s); talk to a trainer and try again", lod)
+	elseif not skin then
+		MelloUI:Print("/trainerdump: the trainer's window is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: talk to a trainer, then try again" or "the Trainer Kit is off")
 	elseif msg == "rows" then
 		local n = 0
 		ForEachRow(function(row)

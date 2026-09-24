@@ -26,10 +26,11 @@ from PIL import Image, ImageDraw, ImageFilter
 
 import backpack_layout_data as D
 from paths import OUTPUT
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "backpack-frame.webp")
-OUT_TGA = os.path.join(HERE, "..", "Media", "Textures", "BackpackFrame.tga")
+OUT_TGA = master("Textures", "BackpackFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 OUT_LUA = os.path.join(HERE, "..", "Media", "BackpackLayout.lua")
 OUT_DIR = OUTPUT
 

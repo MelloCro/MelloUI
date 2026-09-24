@@ -71,6 +71,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("BankPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("BankPanel", {
@@ -393,8 +395,8 @@ local function SkinBand(f)
 			strip:FitCaps(w)
 		end
 	end
-	strip:HookScript("OnSizeChanged", FitCaps)
-	strip:HookScript("OnShow", FitCaps)
+	Perf.HookScript(strip, "OnSizeChanged", FitCaps)
+	Perf.HookScript(strip, "OnShow", FitCaps)
 	FitCaps()
 	skin.band = { rect = rect, nine = nine, fill = fill, strip = strip, divider = divider }
 	nine:SetShown(active)
@@ -883,9 +885,21 @@ local function Deactivate()
 	GuardTabs()
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is made while the window has never been shown this session: its
+-- first show dresses it (the OnShow hook below), a window already open when
+-- the module comes on (a reload with it open) at once. Once made, the skin
+-- stays for the session and is only switched on and off.
+local function Built()
+	return skin ~= nil and skin.built == true
+end
+
 local function Sync()
-	if M.isEnabled and Window() then
-		Activate()
+	local f = Window()
+	if M.isEnabled and f then
+		if Built() or IsShownSafe(f) == true then
+			Activate()
+		end
 	else
 		Deactivate()
 	end
@@ -900,15 +914,29 @@ local function SyncSafe()
 	end
 end
 
+-- The module switch and a dressed window go through SyncSafe, as always; the
+-- first dress runs at once, in combat too, so the first frame the window
+-- draws is already dressed. The dress makes frames and textures of our own
+-- and moves only the game's textures and strings and the page tabs' size
+-- (plain buttons of the game's pool), never a protected frame: nothing in it
+-- is refused in combat.
+local function SyncOrDress()
+	if Built() then
+		SyncSafe()
+	else
+		Sync()
+	end
+end
+
 local function Hook()
 	local f = Window()
 	if hooked or not f then
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			SyncOrDress()
 		end
 		Refresh()
 	end)
@@ -946,7 +974,7 @@ function M:OnEnable(db)
 	self.db = db
 	if Window() then
 		Hook()
-		SyncSafe()
+		SyncOrDress()
 	end
 end
 
@@ -1222,6 +1250,11 @@ SlashCmdList.MELLOBANKDUMP = function(msg)
 	msg = ((msg or ""):lower()):match("^%s*(.-)%s*$")
 	local f = Window()
 	MelloUI:ClearLog()
+	if f and not Built() then
+		-- (dressed on its first open: until then the game's window as it is)
+		MelloUI:Print("/bankdump: BankFrame is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens this session: visit a banker, then try again" or "the Bank Kit is off")
+	end
 	if not f then
 		MelloUI:Print("/bankdump: no BankFrame on this client")
 	elseif msg == "" then

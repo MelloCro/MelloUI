@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("CastBarPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("CastBarPanel", {
@@ -204,7 +206,7 @@ local function SkinCastBar(bar, known)
 				end
 			end)
 		end
-		bar:HookScript("OnSizeChanged", function()
+		Perf.HookScript(bar, "OnSizeChanged", function()
 			if active and not bar.melloRefitting then
 				bar.melloRefitting = true
 				rep:Refit()
@@ -245,7 +247,7 @@ local function SkinCastBar(bar, known)
 	-- the bar is hidden at load and its regions have no rect until it first
 	-- shows: fit this bar's pieces again whenever it shows
 	local last = #skin.reps
-	bar:HookScript("OnShow", function()
+	Perf.HookScript(bar, "OnShow", function()
 		if active then
 			Kit:WhenOutOfCombat(function()
 				for i = first, last do

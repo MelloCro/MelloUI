@@ -27,13 +27,16 @@
 -- Nothing of the game's is replaced or re-scripted: the dress is hooks,
 -- regions and child frames of our own, faded game art and our own texture in
 -- the ring, all put back when the switch (UI Modifications, Windows: "Quest
--- dialogs") is turned off. No quest API is called.
+-- dialogs") is turned off. No quest API is called. Nothing is built at login:
+-- each dialog is dressed on its first open (user, 2026-09-24) and kept.
 --
 -- /questdialogdump [gossip]: what the window is made of and what was dressed.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("QuestDialogPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("QuestDialogPanel", {
@@ -610,7 +613,7 @@ local function SkinItemButton(button)
 	button.melloPlateRect = rect
 	button.melloPlate = Replace(nameFrame, { as = "UI-QuestItemNameFrame", rect = rect }) or false
 	FitNamePlate(button)
-	button:HookScript("OnShow", function(b)
+	Perf.HookScript(button, "OnShow", function(b)
 		if active then
 			FitIconRim(b)
 			FitNamePlate(b)
@@ -789,7 +792,7 @@ local function BuildQuest(qf)
 		if panel then
 			local bg = panel.Bg or _G[name .. "Bg"]
 			DressPage(win, bg, PanelArt(panel, bg))
-			panel:HookScript("OnShow", function()
+			Perf.HookScript(panel, "OnShow", function()
 				if active then
 					OnWindowShown(qf)
 				end
@@ -811,11 +814,7 @@ local function BuildQuest(qf)
 	end
 	Kit:SweepControls(qf, Replace, skin)
 	MarkRedButtons(qf, 0)
-	qf:HookScript("OnShow", function()
-		if active then
-			OnWindowShown(qf)
-		end
-	end)
+	-- (the window's own OnShow is hooked at enable: HookWindows, below)
 	if type(_G.QuestFrame_SetPortrait) == "function" then
 		hooksecurefunc("QuestFrame_SetPortrait", function()
 			if active then
@@ -837,11 +836,7 @@ local function BuildGossip(gf)
 	SkinTextButton(gp and gp.GoodbyeButton)
 	Kit:SweepControls(gf, Replace, skin)
 	MarkRedButtons(gf, 0)
-	gf:HookScript("OnShow", function()
-		if active then
-			OnWindowShown(gf)
-		end
-	end)
+	-- (the window's own OnShow is hooked at enable: HookWindows, below)
 	-- the game sets the portrait and the page's picture in its own update
 	-- after the window shows: follow them (post-hooks on the instance; the
 	-- update also runs on quest log changes, so only while it is shown)
@@ -871,9 +866,12 @@ local function Hook()
 			end
 			local qf = _G.QuestFrame
 			if qf and IsUnder(parentFrame, qf) then
-				SkinItemsIn(parentFrame)
-				if surfaceMade then
-					MelloUI.QuestInk.RefreshSurface(AREA)
+				-- (the dialog's parts only once the dialog itself is built)
+				if skin.windows[qf] then
+					SkinItemsIn(parentFrame)
+					if surfaceMade then
+						MelloUI.QuestInk.RefreshSurface(AREA)
+					end
 				end
 			else
 				PlainQuestInfo()
@@ -882,19 +880,26 @@ local function Hook()
 	end
 end
 
+-- (user, 2026-09-24: dress rarely used windows on first open): a dialog is
+-- built the first time it shows -- from its OnShow hook (HookWindows, below),
+-- before its first frame is drawn -- never at login; the quest frame and the
+-- gossip window each on their own first show. What was built is kept for the
+-- session. True once anything is built.
 local function Build()
 	local qf, gf = _G.QuestFrame, _G.GossipFrame
 	if not (qf or gf) or not Kit then
 		return false
 	end
-	if not skin then
-		skin = { reps = {}, followers = {}, windows = {} }
-	end
-	if qf and not skin.windows[qf] then
+	if qf and not (skin and skin.windows[qf]) and qf:IsShown() then
+		skin = skin or { reps = {}, followers = {}, windows = {} }
 		BuildQuest(qf)
 	end
-	if gf and not skin.windows[gf] then
+	if gf and not (skin and skin.windows[gf]) and gf:IsShown() then
+		skin = skin or { reps = {}, followers = {}, windows = {} }
 		BuildGossip(gf)
+	end
+	if not skin then
+		return false
 	end
 	Hook()
 	return true
@@ -939,14 +944,50 @@ local function Deactivate()
 	PlainQuestInfo()
 end
 
+-- A dialog's show: dressed there and then on its first (Build makes only
+-- what shows; while the kit is on its pieces are enabled as they are made),
+-- so the first frame it draws is dressed -- also in combat: the build makes
+-- frames and textures of ours and moves only the game's own title strings,
+-- nothing protected (the dialogs were never held back for combat). The hook
+-- is installed at enable and does nothing while the module is off.
+local hookedFrames = setmetatable({}, { __mode = "k" })   -- [frame] = true: its OnShow hooked
+local function HookWindows()
+	for _, frame in ipairs({ _G.QuestFrame or false, _G.GossipFrame or false }) do
+		if frame and not hookedFrames[frame] then
+			hookedFrames[frame] = true
+			Perf.HookScript(frame, "OnShow", function()
+				if not M.isEnabled then
+					return
+				end
+				if not active then
+					Activate()
+				elseif not skin.windows[frame] then
+					-- built while the kit is on: its pieces were enabled as they
+					-- were made, before their own enable (the ring's NPC, its
+					-- disc) was chained on -- enabled once more now
+					local first = #skin.reps + 1
+					Build()
+					for i = first, #skin.reps do
+						skin.reps[i]:Enable()
+					end
+				end
+				if active and skin.windows[frame] then
+					OnWindowShown(frame)
+				end
+			end)
+		end
+	end
+end
+
 -- The dialogs load with the interface; wait for them if not. The NPC's
 -- portrait is drawn again when the game's changes.
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+Perf.SetScript(events, "OnEvent", function(_, event)
 	if event == "ADDON_LOADED" or event == "PLAYER_LOGIN" then
 		if M.isEnabled and not active and (_G.QuestFrame or _G.GossipFrame) then
 			events:UnregisterEvent("ADDON_LOADED")
 			events:UnregisterEvent("PLAYER_LOGIN")
+			HookWindows()
 			Activate()
 		end
 		return
@@ -965,6 +1006,7 @@ pcall(events.RegisterEvent, events, "PORTRAITS_UPDATED")
 function M:OnEnable(db)
 	self.db = db
 	if _G.QuestFrame or _G.GossipFrame then
+		HookWindows()
 		Activate()
 	else
 		events:RegisterEvent("ADDON_LOADED")
@@ -1078,6 +1120,9 @@ SlashCmdList.MELLOQUESTDIALOGDUMP = function(msg)
 	local win = skin and skin.windows[frame]
 	MelloUI:Print("Quest dialogs kit: module %s, dressed %s, built %s, page on parchment %s", tostring(M.isEnabled == true),
 		tostring(active), tostring(win ~= nil), tostring(win and win.paper or false))
+	if not win then
+		MelloUI:Print("%s: not dressed yet (the kit dresses it on its first open this session)", label)
+	end
 	DumpFrame(label, frame)
 	if win then
 		MelloUI:Print("shell: ring %s, title plate %s, NPC portrait %s (unit %s)", RepState(win.ring), RepState(win.title),

@@ -30,6 +30,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("QuestTracker")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("QuestTracker", {
 	title = "Quest Tracker",
@@ -462,13 +464,13 @@ local function AttachOverlay(button)
 		itemOverlay = CreateFrame("Button", "MelloUIQuestTrackerItem", UIParent, "SecureActionButtonTemplate")
 		itemOverlay:SetAttribute("type", "item")
 		itemOverlay:RegisterForClicks("AnyUp", "AnyDown")
-		itemOverlay:SetScript("OnLeave", function(self)
+		Perf.SetScript(itemOverlay, "OnLeave", function(self)
 			GameTooltip:Hide()
 			if not self:IsMouseOver() then
 				DetachOverlay()
 			end
 		end)
-		itemOverlay:SetScript("OnEnter", function(self)
+		Perf.SetScript(itemOverlay, "OnEnter", function(self)
 			if self.over and self.over.itemLink then
 				GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 				pcall(GameTooltip.SetHyperlink, GameTooltip, self.over.itemLink)
@@ -476,7 +478,7 @@ local function AttachOverlay(button)
 			end
 		end)
 		itemOverlay:EnableMouseWheel(true)
-		itemOverlay:SetScript("OnMouseWheel", function(_, delta)
+		Perf.SetScript(itemOverlay, "OnMouseWheel", function(_, delta)
 			Scroll(delta)
 		end)
 	end
@@ -493,7 +495,7 @@ end
 -- (PLAYER_REGEN_DISABLED comes before the lockdown), so nothing secure hangs
 -- on the list while it scrolls in combat
 combatWatcher:RegisterEvent("PLAYER_REGEN_DISABLED")
-combatWatcher:SetScript("OnEvent", function(self, event)
+Perf.SetScript(combatWatcher, "OnEvent", function(self, event)
 	if event == "PLAYER_REGEN_DISABLED" then
 		DetachOverlay()
 	elseif event == "PLAYER_REGEN_ENABLED" then
@@ -600,11 +602,11 @@ local function NewBlock()
 	end
 	block = CreateFrame("Button", nil, content)
 	block:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	block:SetScript("OnClick", OnBlockClick)
-	block:SetScript("OnEnter", OnBlockEnter)
-	block:SetScript("OnLeave", OnBlockLeave)
+	Perf.SetScript(block, "OnClick", OnBlockClick)
+	Perf.SetScript(block, "OnEnter", OnBlockEnter)
+	Perf.SetScript(block, "OnLeave", OnBlockLeave)
 	block:EnableMouseWheel(true)
-	block:SetScript("OnMouseWheel", function(_, delta) Scroll(delta) end)
+	Perf.SetScript(block, "OnMouseWheel", function(_, delta) Scroll(delta) end)
 	block.highlight = block:CreateTexture(nil, "BACKGROUND")
 	block.highlight:SetAllPoints(block)
 	block.highlight:SetColorTexture(1, 0.85, 0.4, 0.08)
@@ -623,11 +625,11 @@ local function NewBlock()
 	local okP, poi = pcall(CreateFrame, "Button", nil, block, "POIButtonTemplate")
 	if okP and poi and poi.SetQuestID then
 		poi:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-		poi:SetScript("OnClick", function(_, button) OnBlockClick(block, button) end)
-		poi:SetScript("OnEnter", function() OnBlockEnter(block) end)
-		poi:SetScript("OnLeave", function() OnBlockLeave(block) end)
+		Perf.SetScript(poi, "OnClick", function(_, button) OnBlockClick(block, button) end)
+		Perf.SetScript(poi, "OnEnter", function() OnBlockEnter(block) end)
+		Perf.SetScript(poi, "OnLeave", function() OnBlockLeave(block) end)
 		poi:EnableMouseWheel(true)
-		poi:SetScript("OnMouseWheel", function(_, delta) Scroll(delta) end)
+		Perf.SetScript(poi, "OnMouseWheel", function(_, delta) Scroll(delta) end)
 		poi:Hide()
 		block.poi = poi
 	elseif okP and poi then
@@ -649,7 +651,7 @@ local function NewBlock()
 	end
 	item.cooldown = CreateFrame("Cooldown", nil, item, "CooldownFrameTemplate")
 	item.cooldown:SetAllPoints(item)
-	item:SetScript("OnEnter", function(self)
+	Perf.SetScript(item, "OnEnter", function(self)
 		AttachOverlay(self)
 		if InCombatLockdown() then
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -658,11 +660,11 @@ local function NewBlock()
 			GameTooltip:Show()
 		end
 	end)
-	item:SetScript("OnLeave", function()
+	Perf.SetScript(item, "OnLeave", function()
 		GameTooltip:Hide()
 	end)
 	item:EnableMouseWheel(true)
-	item:SetScript("OnMouseWheel", function(_, delta) Scroll(delta) end)
+	Perf.SetScript(item, "OnMouseWheel", function(_, delta) Scroll(delta) end)
 	block.item = item
 	return block
 end
@@ -1151,7 +1153,7 @@ local function MakeToggle(parent, size, IsCollapsed, OnClick)
 			toggle.icon:SetTexture(collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
 		end
 	end
-	toggle:SetScript("OnClick", OnClick)
+	Perf.SetScript(toggle, "OnClick", OnClick)
 	toggle.Refresh()
 	return toggle
 end
@@ -1351,7 +1353,7 @@ end
 local eventFrame = CreateFrame("Frame")
 
 local function Tick(self)
-	self:SetScript("OnUpdate", nil)
+	Perf.SetScript(self, "OnUpdate", nil)
 	if dirty then
 		Rebuild()
 	end
@@ -1359,7 +1361,7 @@ end
 
 local function MarkDirty()
 	dirty = true
-	eventFrame:SetScript("OnUpdate", Tick)
+	Perf.SetScript(eventFrame, "OnUpdate", Tick)
 end
 
 --------------------------------------------------------------------------------
@@ -1374,7 +1376,7 @@ local function Build()
 	frame:SetFrameStrata("LOW")
 	frame:SetClampedToScreen(true)
 	frame:EnableMouseWheel(true)
-	frame:SetScript("OnMouseWheel", function(_, delta) Scroll(delta) end)
+	Perf.SetScript(frame, "OnMouseWheel", function(_, delta) Scroll(delta) end)
 	Place()
 
 	header = CreateFrame("Button", nil, frame)
@@ -1430,8 +1432,8 @@ local function Build()
 	clip:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(INSET + THUMB_W + 4), INSET)
 	clip:SetClipsChildren(true)
 	clip:EnableMouseWheel(true)
-	clip:SetScript("OnMouseWheel", function(_, delta) Scroll(delta) end)
-	clip:SetScript("OnSizeChanged", function() SetOffset(scrollOffset) end)
+	Perf.SetScript(clip, "OnMouseWheel", function(_, delta) Scroll(delta) end)
+	Perf.SetScript(clip, "OnSizeChanged", function() SetOffset(scrollOffset) end)
 
 	-- the resize grip, bottom-left (the tracker hangs from its top-right
 	-- corner): dragging sets its width and the height it may grow to
@@ -1450,24 +1452,24 @@ local function Build()
 	gripTex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
 	gripTex:SetTexCoord(1, 0, 0, 1)   -- mirrored: it points to the bottom-left
 	grip:SetAlpha(0.35)
-	grip:SetScript("OnEnter", function(self)
+	Perf.SetScript(grip, "OnEnter", function(self)
 		self:SetAlpha(1)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Drag to size the tracker")
 		GameTooltip:Show()
 	end)
-	grip:SetScript("OnLeave", function(self)
+	Perf.SetScript(grip, "OnLeave", function(self)
 		self:SetAlpha(0.35)
 		GameTooltip:Hide()
 	end)
-	grip:SetScript("OnMouseDown", function(_, button)
+	Perf.SetScript(grip, "OnMouseDown", function(_, button)
 		if button ~= "LeftButton" then
 			return
 		end
 		sizing = true
 		frame:StartSizing("BOTTOMLEFT")
 	end)
-	grip:SetScript("OnMouseUp", function()
+	Perf.SetScript(grip, "OnMouseUp", function()
 		if not sizing then
 			return
 		end
@@ -1524,7 +1526,7 @@ local EVENTS = {
 	"TRACKED_RECIPE_UPDATE", "BAG_UPDATE_DELAYED",
 }
 
-eventFrame:SetScript("OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "UNIT_QUEST_LOG_CHANGED" and unit ~= "player" then
 		return
 	end

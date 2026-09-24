@@ -29,11 +29,19 @@
 -- fields, no SetScript, no method replaced). What this file remembers about
 -- them lives in side tables keyed by the frame; it follows them through
 -- HookScript, hooksecurefunc on global functions and the tooltip data post-
--- calls only.
+-- calls -- and one secure post-hook on Show of the game's own tooltips (the
+-- KNOWN list: lines refilled in place, with no event of their own, are inked
+-- in the call that coloured them; user, 2026-09-24, the flicker). A
+-- hooksecurefunc keeps Show secure for the game's callers; the handler runs
+-- after it, and nothing else is written.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("TooltipPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+-- one handler for every object it is hooked on, wrapped once
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("TooltipPanel", {
@@ -148,9 +156,10 @@ local POLL = 0.2
 
 local QI = MelloUI.QuestInk
 local lineState = setmetatable({}, { __mode = "k" })   -- [font string] = what its ink replaced (below)
+local headers = setmetatable({}, { __mode = "k" })     -- [frame] = its header line (TextLeft1), once found
 local pending = {}                                     -- [tooltip] = true: ink again on the next frame
 local inking = false                                   -- our own SetTextColor / SetText / SetFont at work
-local driver, pollIn = nil, 0
+local flushing, sweeping = false, false                -- the next-frame pass / the sweep armed
 
 local function InkOn()
 	return active and QI ~= nil and Kit.ParchmentOn ~= nil and Kit:ParchmentOn("tooltip")
@@ -204,8 +213,15 @@ local function InkLine(fs, header)
 		state = {}
 		lineState[fs] = state
 	end
+	-- (the colour tables are the string's own, filled again: a sweep over
+	-- lines that did not change makes nothing)
 	if not (state.game and Same(state.ink, r, g, b)) then
-		state.game = { r, g, b }
+		local c = state.game
+		if c then
+			c[1], c[2], c[3] = r, g, b
+		else
+			state.game = { r, g, b }
+		end
 	end
 	local gr, gg, gb = state.game[1], state.game[2], state.game[3]
 	local ir, ig, ib
@@ -225,7 +241,12 @@ local function InkLine(fs, header)
 		fs:SetTextColor(ir, ig, ib, a)
 		inking = false
 		local kr, kg, kb = fs:GetTextColor()
-		state.ink = { kr, kg, kb }
+		local c = state.ink
+		if c then
+			c[1], c[2], c[3] = kr, kg, kb
+		else
+			state.ink = { kr, kg, kb }
+		end
 	end
 	-- colour codes in the text (a name in its class colour, an added line's
 	-- own colours): inked in a copy, the game's text kept to put back
@@ -252,7 +273,12 @@ local function InkLine(fs, header)
 	end
 	local sr, sg, sb, sa = fs:GetShadowColor()
 	if sa ~= nil and not Secret(sa) and sa > 0 then
-		state.shadow = { sr, sg, sb, sa }
+		local sh = state.shadow
+		if sh then
+			sh[1], sh[2], sh[3], sh[4] = sr, sg, sb, sa
+		else
+			state.shadow = { sr, sg, sb, sa }
+		end
 		fs:SetShadowColor(0, 0, 0, 0)
 	end
 end
@@ -278,13 +304,43 @@ local function PlainLine(fs, state)
 	RestoreLook(fs, state)
 end
 
+-- The walk's lists: a frame's regions, its children, a holder's children,
+-- each kept and filled again (one per depth where the walk nests), so a
+-- sweep makes no garbage (user, 2026-09-24 /melloperf: garbage is stutter)
+local regionList = {}
+local childLists, subLists = {}, {}
+
+local function Fill(list, ...)
+	local n = select("#", ...)
+	for i = 1, n do
+		list[i] = (select(i, ...))
+	end
+	return n
+end
+
+local function ListAt(lists, depth)
+	local list = lists[depth]
+	if not list then
+		list = {}
+		lists[depth] = list
+	end
+	return list
+end
+
 -- The strings of one frame that are its lines (a tooltip's regions: its
 -- TextLeftN / TextRightN, made as the game needs them; a friends tooltip's
 -- labels)
 local function InkLines(frame)
-	local okN, name = pcall(frame.GetName, frame)
-	local header = okN and type(name) == "string" and _G[name .. "TextLeft1"] or nil
-	for _, region in ipairs({ frame:GetRegions() }) do
+	local header = headers[frame]
+	if not header then
+		local okN, name = pcall(frame.GetName, frame)
+		header = okN and type(name) == "string" and _G[name .. "TextLeft1"] or nil
+		headers[frame] = header
+	end
+	local n = Fill(regionList, frame:GetRegions())
+	for i = 1, n do
+		local region = regionList[i]
+		regionList[i] = nil
 		if region.GetObjectType and region:GetObjectType() == "FontString" and region:IsShown() then
 			local ok = pcall(InkLine, region, region == header)
 			if not ok then
@@ -304,7 +360,11 @@ local function InkTooltip(tip, depth)
 	if depth >= 3 then
 		return
 	end
-	for _, child in ipairs({ tip:GetChildren() }) do
+	local children = ListAt(childLists, depth)
+	local n = Fill(children, tip:GetChildren())
+	for i = 1, n do
+		local child = children[i]
+		children[i] = nil
 		local kind = child.GetObjectType and child:GetObjectType()
 		if child:IsShown() then
 			if kind == "GameTooltip" then
@@ -312,7 +372,11 @@ local function InkTooltip(tip, depth)
 			elseif kind == "Frame" then
 				-- a holder of tooltips (the embedded item's frame): only the
 				-- tooltips under it, never its own strings (the item's count)
-				for _, sub in ipairs({ child:GetChildren() }) do
+				local subs = ListAt(subLists, depth)
+				local m = Fill(subs, child:GetChildren())
+				for j = 1, m do
+					local sub = subs[j]
+					subs[j] = nil
 					if sub.GetObjectType and sub:GetObjectType() == "GameTooltip" and sub:IsShown() then
 						InkTooltip(sub, depth + 2)
 					end
@@ -346,41 +410,55 @@ local function SheetOwner(tip)
 	return nil
 end
 
--- The driver: the tooltips an event named inked again on the next frame (the
--- game or another handler may colour a line after the call that told us),
--- then every inked tooltip that shows swept now and then; it rests while no
--- inked tooltip shows.
-local function Drive(self, elapsed)
+-- The driver, two timers rather than a script on every frame: the tooltips
+-- an event named inked again on the next frame (the game or another handler
+-- may colour a line after the call that told us), and every inked tooltip
+-- that shows swept every POLL seconds; the sweep ends when no inked tooltip
+-- shows, and the next event on one starts it again.
+-- a walk guarded: it runs on every Show of the game's tooltips and from the
+-- timers, in combat too (one strange child raising would do so on every
+-- hover, twice a second)
+local function SafeInk(tip)
+	if not pcall(InkTooltip, tip) then
+		inking = false
+	end
+end
+
+local function Flush()
+	flushing = false
 	if not InkOn() then
 		wipe(pending)
-		self:Hide()
 		return
 	end
 	for tip in pairs(pending) do
 		pending[tip] = nil
 		if tip:IsVisible() then
-			InkTooltip(tip)
+			SafeInk(tip)
 		end
 	end
-	pollIn = pollIn - elapsed
-	if pollIn > 0 then
+end
+
+local function Sweep()
+	sweeping = false
+	if not InkOn() then
 		return
 	end
-	pollIn = POLL
 	local any = false
 	for tip, sheet in pairs(sheets) do
 		if sheet:IsShown() and tip:IsVisible() then
 			any = true
-			InkTooltip(tip)
+			SafeInk(tip)
 		end
 	end
-	if not any then
-		self:Hide()
+	if any then
+		sweeping = true
+		C_Timer.After(POLL, Sweep)
 	end
 end
 
 -- An event on a tooltip: ink it now and once more on the next frame
-local function Touch(tip)
+-- (`walk` false: only the next frame's -- the caller inked what changed)
+local function Touch(tip, walk)
 	if inking or not InkOn() then
 		return
 	end
@@ -388,14 +466,60 @@ local function Touch(tip)
 	if not (owner and owner:IsVisible()) then
 		return
 	end
-	InkTooltip(owner)
-	pending[owner] = true
-	if not driver then
-		driver = CreateFrame("Frame")
-		driver:SetScript("OnUpdate", Drive)
+	if walk ~= false then
+		SafeInk(owner)
 	end
-	driver:Show()
+	pending[owner] = true
+	if not flushing then
+		flushing = true
+		C_Timer.After(0, Flush)
+	end
+	if not sweeping then
+		sweeping = true
+		C_Timer.After(POLL, Sweep)
+	end
 end
+
+-- The game's own tooltips followed through Show (user, 2026-09-24: the lines
+-- flickered white, the Game Menu button's most of all): every builder ends
+-- with it -- the data's post-calls then Show, a Lua-built tooltip's AddLines
+-- then Show, the Game Menu's latency and framerate lines refilled each
+-- second while it is hovered (no OnShow: it already shows) -- so its lines
+-- are inked in the call that coloured them, before they are drawn; and once
+-- more on the next frame (a line coloured after Show). A secure post-hook:
+-- the game's calls to Show stay secure. Other addons' tooltips dressed
+-- through the backdrop hook are left to their events and the sweep
+local showHooked = setmetatable({}, { __mode = "k" })   -- [tooltip] = true: its Show followed
+local ShowInk = Shared("Show on the game's tooltips", function(tip)
+	Touch(tip)
+end)
+
+local function HookShow(tip)
+	if not tip or showHooked[tip] or not tip.Show then
+		return
+	end
+	local ok, forbidden = pcall(tip.IsForbidden, tip)
+	if ok and not forbidden then
+		showHooked[tip] = true
+		hooksecurefunc(tip, "Show", ShowInk)
+	end
+end
+
+-- A unit frame's tooltip (player, target, party ...) refreshed each 0.2 s
+-- while hovered: the game colours the name line after Show -- that line
+-- inked again (the Show hook walked the rest), the next frame still looks
+local unitHooked = false
+local UnitTooltipInk = Shared("UnitFrame_UpdateTooltip", function()
+	local tip = GameTooltip
+	if inking or not InkOn() or not (tip and sheets[tip] and tip:IsVisible()) then
+		return
+	end
+	local line = _G.GameTooltipTextLeft1
+	if line and line:IsShown() and not pcall(InkLine, line, true) then
+		inking = false
+	end
+	Touch(tip, false)
+end)
 
 -- Every line inked (the parchment came) or put back (it went, or the
 -- reskin did)
@@ -464,16 +588,22 @@ local function AddSheet(tip, rep)
 		return
 	end
 	sheets[tip] = sheet
-	rep.skin:HookScript("OnShow", function()
+	Perf.HookScript(rep.skin, "OnShow", function()
 		Touch(tip)
 	end)
-	rep.skin:HookScript("OnSizeChanged", function()
+	Perf.HookScript(rep.skin, "OnSizeChanged", function()
 		Touch(tip)
 	end)
 end
 
 local function SkinTooltip(tip)
 	if not (tip and tip.NineSlice) or dressed[tip] then
+		return
+	end
+	-- a forbidden tooltip (the store's, the secure ones) is never dressed:
+	-- every later look at it would raise
+	local okF, forbidden = pcall(tip.IsForbidden, tip)
+	if not okF or forbidden then
 		return
 	end
 	dressed[tip] = true
@@ -506,7 +636,7 @@ local function SkinTooltip(tip)
 				end
 				RestoreBar(bar)
 			end
-			bar:HookScript("OnShow", function()
+			Perf.HookScript(bar, "OnShow", function()
 				if active then
 					InsetBar(bar, rep)
 					rep:Refit()
@@ -531,10 +661,16 @@ local function Build()
 		local tip = _G[name]
 		if tip then
 			SkinTooltip(tip)
+			HookShow(tip)
 			if tip.Tooltip then
 				SkinTooltip(tip.Tooltip)
+				HookShow(tip.Tooltip)
 			end
 		end
+	end
+	if type(_G.UnitFrame_UpdateTooltip) == "function" then
+		hooksecurefunc("UnitFrame_UpdateTooltip", UnitTooltipInk)
+		unitHooked = true
 	end
 	if SharedTooltip_SetBackdropStyle then
 		hooksecurefunc("SharedTooltip_SetBackdropStyle", function(tip)
@@ -610,6 +746,12 @@ SLASH_MELLOTTDUMP1 = "/ttdump"
 SlashCmdList.MELLOTTDUMP = function(msg)
 	msg = (msg or ""):lower()
 	MelloUI:ClearLog()
+	-- the ink's hooks as they went in on this client
+	local shows = 0
+	for _ in pairs(showHooked) do
+		shows = shows + 1
+	end
+	MelloUI:Print("ink: Show followed on %d tooltips, unit frame refresh %s", shows, unitHooked and "followed" or "NOT followed")
 	if not GameTooltip then
 		MelloUI:Print("No tooltip.")
 	else

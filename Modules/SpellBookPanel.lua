@@ -16,6 +16,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("SpellBookPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local LOOKS = Kit.buttonLooks
@@ -83,10 +85,35 @@ local function Replace(region, opts)
 		return nil
 	end
 	skin.reps[#skin.reps + 1] = rep
-	if active then
+	-- (a part made while the skin is on enables its replacements after it
+	-- is made, as Activate does: MakePart)
+	if active and not skin.making then
 		rep:Enable()
 	end
 	return rep
+end
+
+-- A game picture nothing stands in for (its rule a 'fade': the spell cards'
+-- and the list headers' backplates), faded straight while the skin is on:
+-- a replacement made for one is an empty holder frame and a table, two dozen
+-- of them in the frame the book first opens (user, 2026-09-24). Through a
+-- replacement as before while the editing tools could list or tune it (they
+-- work on replacements), or its rule is tuned into another kind. Returns
+-- the replacement, true (faded straight), or nil.
+local function FadeOnly(region, key)
+	if not region then
+		return nil
+	end
+	local rule = not Kit.liveEdit and Kit:RuleFor(key)
+	local KT = MelloUI.KitTuning
+	if not (rule and rule.kind == "fade") or (KT and KT:Tune(key)) then
+		return Replace(region, { as = key })
+	end
+	skin.fades[#skin.fades + 1] = region
+	if active then
+		Kit:Fade(region)
+	end
+	return true
 end
 
 -- The first game texture of a frame.
@@ -164,6 +191,7 @@ end
 local SkinTab
 
 local squareRims = setmetatable({}, { __mode = "k" })   -- [category tab] = the frame its rim is fitted on
+local squareReps = setmetatable({}, { __mode = "k" })   -- [category tab] = its rim's replacement (not a scan of every rep, per tab, on every refresh)
 local FitSquareRims   -- below, with the refresh
 
 -- The rims are fitted to the tabs' pitch once the tabs have their final
@@ -182,15 +210,15 @@ local fitWatched = setmetatable({}, { __mode = "k" })
 local function WatchForFit(system, tab)
 	if not fitWatched[system] then
 		fitWatched[system] = true
-		system:HookScript("OnShow", function() FitSoon(system) end)
+		Perf.HookScript(system, "OnShow", function() FitSoon(system) end)
 		if type(system.Layout) == "function" then
 			hooksecurefunc(system, "Layout", function() FitSoon(system) end)
 		end
 	end
 	if tab and not fitWatched[tab] then
 		fitWatched[tab] = true
-		tab:HookScript("OnShow", function() FitSoon(system) end)
-		tab:HookScript("OnSizeChanged", function() FitSoon(system) end)
+		Perf.HookScript(tab, "OnShow", function() FitSoon(system) end)
+		Perf.HookScript(tab, "OnSizeChanged", function() FitSoon(system) end)
 	end
 end
 
@@ -231,10 +259,25 @@ SkinTab = function(tab)
 	do
 		if tab.Left and tab.LeftActive and not tab.squareMode and not tab.melloTextSkinned then
 			tab.melloTextSkinned = true
-			local plain = Replace(tab.Left, { as = "uiframe-tab-left", rect = tab, alsoFade = { tab.Middle, tab.Right, tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight } })
-			local open = Replace(tab.LeftActive, { as = "uiframe-activetab-left", rect = tab, alsoFade = { tab.MiddleActive, tab.RightActive } })
+			-- the plain plate and the open one, each made the first time the
+			-- tab shows it: the game hides a selected tab's plain pieces and
+			-- an unselected tab's open ones (TabSystemButtonArtMixin:
+			-- SetTabSelected), so half the plates of a tab strip were made for
+			-- nothing on the window's first open (user, 2026-09-24: 16.9 ms).
+			-- Made in the hook of the game's own SetTabSelected, before the
+			-- tab is drawn. The open plate fades the hover pieces too (the
+			-- plain one's before), so they are faded whichever came first.
+			local plain, open   -- nil: not made yet; false: no kit piece for it
 			local function Follow()
 				if active then
+					if tab.isSelected then
+						if open == nil then
+							open = Replace(tab.LeftActive, { as = "uiframe-activetab-left", rect = tab,
+								alsoFade = { tab.MiddleActive, tab.RightActive, tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight } }) or false
+						end
+					elseif plain == nil then
+						plain = Replace(tab.Left, { as = "uiframe-tab-left", rect = tab, alsoFade = { tab.Middle, tab.Right, tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight } }) or false
+					end
 					if plain then plain:SetShown(not tab.isSelected) end
 					if open then open:SetShown(tab.isSelected and true or false) end
 					-- the label centred on the plate's red middle (between the
@@ -251,7 +294,7 @@ SkinTab = function(tab)
 				end
 			end
 			hooksecurefunc(tab, "SetTabSelected", Follow)
-			tab:HookScript("OnShow", Follow)
+			Perf.HookScript(tab, "OnShow", Follow)
 			Follow()
 			skin.tabFollows = skin.tabFollows or {}
 			skin.tabFollows[#skin.tabFollows + 1] = Follow
@@ -294,6 +337,7 @@ SkinTab = function(tab)
 			local rep = Replace(tab.SquareBackground, { as = "spellbook-Tab-Frame-C60", button = tab, parent = tab, rect = square,
 				checked = function() return tab.isSelected and true or false end,
 				alsoFade = { tab.SquareBackgroundActive, tab.SquareBackgroundActiveGlow } })
+			squareReps[tab] = rep
 			-- the game shows its active pair on selection: keep them faded and
 			-- refresh the rim's gold state after each SetTabSelected
 			hooksecurefunc(tab, "SetTabSelected", function()
@@ -352,10 +396,9 @@ FitSquareRims = function(system)
 	for _, tab in ipairs(system.tabs or {}) do
 		local square = squareRims[tab]
 		if square then
-			for _, r in ipairs(skin and skin.reps or {}) do
-				if r.region == tab.SquareBackground and r.object and r.object.base then
-					Kit:SetSlotBase(r.object, base)
-				end
+			local r = squareReps[tab]
+			if r and r.object and r.object.base then
+				Kit:SetSlotBase(r.object, base)
 			end
 			local icon = tab.Icon
 			if look == "slot" then
@@ -378,10 +421,9 @@ end
 local function RefreshTabs(system)
 	FitSquareRims(system)
 	for _, tab in ipairs(system and system.tabs or {}) do
-		for _, rep in ipairs(skin.reps) do
-			if rep.region == tab.SquareBackground and rep.object and rep.object.Update then
-				rep.object:Update()
-			end
+		local rep = squareReps[tab]
+		if rep and rep.object and rep.object.Update then
+			rep.object:Update()
 		end
 	end
 end
@@ -443,7 +485,9 @@ local function SkinSpellItem(item)
 		return
 	end
 	if item.melloRep == nil then
-		item.melloRep = (item.Backplate and Replace(item.Backplate, { as = "spellbook-item-backplate" })) or false
+		-- (a done mark: false as well when faded straight)
+		local rep = FadeOnly(item.Backplate, "spellbook-item-backplate")
+		item.melloRep = rep ~= true and rep or false
 	end
 	local button = item.Button
 	if button.Border then
@@ -471,9 +515,7 @@ local function SkinHeader(header)
 		return
 	end
 	header.melloRep = false
-	if header.Backplate then
-		Replace(header.Backplate, { as = "spellbook-list-backplate" })
-	end
+	FadeOnly(header.Backplate, "spellbook-list-backplate")
 	if header.Border then
 		header.melloRep = Replace(header.Border, { as = "spellbook-divider", rect = header.Border }) or false
 	end
@@ -492,26 +534,39 @@ local function SkinPagedSpells(paged)
 	end
 end
 
-local function BuildSkin()
-	if skin then
-		return skin
-	end
-	local pf = PlayerSpellsFrame
-	skin = CreateFrame("Frame", "MelloUISpellBookSkin", pf)
-	skin:SetAllPoints()
-	skin:SetFrameLevel(pf:GetFrameLevel())
-	skin:EnableMouse(false)
-	skin.reps = {}
-	skin.followers = {}
-	skin.Replace = Replace
+--------------------------------------------------------------------------------
+-- Building the skin
+--
+-- The skin is made of parts, each for one page of the window or for the
+-- window itself (its shell and top tabs, seen on every page), made in this
+-- order. This client loads the spell book when the player first opens it
+-- and shows it in that same frame: the whole skin was made on its
+-- ADDON_LOADED then, one hitch of 16.9 ms (/melloperf, user 2026-09-24).
+-- The window's first OnShow makes the shell and the page shown now, as
+-- before; a page not shown is made later, a few ms of it per frame while the
+-- game is idle (Building ahead), or at once as that page first shows (its
+-- OnShow, before it is drawn). Every part is made with its replacements off
+-- and they are enabled after it, as Activate always did (MakePart).
+--------------------------------------------------------------------------------
 
-	-- the window
+local PARTS = {}
+-- `page`: the key of the window's page the part dresses (nil: the window)
+local function Part(page, fn)
+	PARTS[#PARTS + 1] = { page = page, fn = fn }
+end
+
+-- the window: its rail and streaks; its portrait ring, title, close and
+-- size buttons
+Part(nil, function(pf)
 	if pf.NineSlice then
 		Replace(pf.NineSlice, { as = "NineSlicePanelTemplate", parent = pf, rect = pf, skip = "tl" })
 	end
 	if pf.TopTileStreaks then
 		Replace(pf.TopTileStreaks, { as = "_UI-Frame-TopTileStreaks", parent = pf })
 	end
+end)
+
+Part(nil, function(pf)
 	local portrait = pf.PortraitContainer and pf.PortraitContainer.portrait
 	local corner = pf.NineSlice and pf.NineSlice.TopLeftCorner
 	if portrait and corner then
@@ -564,64 +619,170 @@ local function BuildSkin()
 			end
 		end
 	end
-	-- the top tab system (Spellbook / Specialization / Talents)
+end)
+
+-- the top tab system (Spellbook / Specialization / Talents)
+Part(nil, function(pf)
 	SkinTabSystem(pf.TabSystem)
+end)
 
-	-- the spellbook page
+-- the spellbook page: its book pages, category tabs, search box, settings,
+-- paging, and the spells on it
+Part("SpellBookFrame", function(pf)
 	local sb = pf.SpellBookFrame
-	if sb then
-		for _, key in ipairs({ "BookBGHalved", "BookBGLeft", "BookBGRight" }) do
-			local tex = sb[key]
-			if tex then
-				local rep = Replace(tex, { as = Kit:ArtKey(tex) or "spellbook-Page-Right-C60", rect = tex })
-				if rep then
-					skin.followers[#skin.followers + 1] = { rep = rep, region = tex }
-				end
+	for _, key in ipairs({ "BookBGHalved", "BookBGLeft", "BookBGRight" }) do
+		local tex = sb[key]
+		if tex then
+			local rep = Replace(tex, { as = Kit:ArtKey(tex) or "spellbook-Page-Right-C60", rect = tex })
+			if rep then
+				skin.followers[#skin.followers + 1] = { rep = rep, region = tex }
 			end
 		end
-		SkinTabSystem(sb.CategoryTabSystem)
-		SkinSearchBox(sb.SearchBox)
-		local dd = sb.SettingsDropdown
-		if dd and dd.Icon then
-			Replace(dd.Icon, { as = "common-dropdown-a-button", button = dd, rect = dd.Icon, alsoFade = OtherTextures(dd, dd.Icon) })
-		end
-		local paging = sb.PagedSpellsFrame and sb.PagedSpellsFrame.PagingControls
-		if paging then
-			for key, b in pairs({ ["UI-SpellbookIcon-PrevPage-Up"] = paging.PrevPageButton, ["UI-SpellbookIcon-NextPage-Up"] = paging.NextPageButton }) do
-				if b and b.GetNormalTexture and b:GetNormalTexture() then
-					Replace(b:GetNormalTexture(), { as = key, button = b, rect = b, alsoFade = OtherTextures(b, b:GetNormalTexture()) })
-				end
-			end
-		end
-		if sb.PagedSpellsFrame and sb.PagedSpellsFrame.RegisterCallback and PagedContentFrameBaseMixin then
-			sb.PagedSpellsFrame:RegisterCallback(PagedContentFrameBaseMixin.Event.OnUpdate, function()
-				if active then
-					SkinPagedSpells(sb.PagedSpellsFrame)
-				end
-			end, M)
-		end
-		SkinPagedSpells(sb.PagedSpellsFrame)
 	end
+end)
 
-	-- the talents page: only its shared controls (the page stays the game's)
-	local tf = pf.TalentsFrame
-	if tf then
-		SkinTabSystem(tf.TabSystem)
-		SkinSearchBox(tf.SearchBox)
-		local dd = tf.SearchOptionsDropdown
-		if dd and dd.Arrow then
-			Replace(dd.Arrow, { as = "common-dropdown-a-button", button = dd, rect = dd.Arrow })
+Part("SpellBookFrame", function(pf)
+	SkinTabSystem(pf.SpellBookFrame.CategoryTabSystem)
+end)
+
+Part("SpellBookFrame", function(pf)
+	local sb = pf.SpellBookFrame
+	SkinSearchBox(sb.SearchBox)
+	local dd = sb.SettingsDropdown
+	if dd and dd.Icon then
+		Replace(dd.Icon, { as = "common-dropdown-a-button", button = dd, rect = dd.Icon, alsoFade = OtherTextures(dd, dd.Icon) })
+	end
+	local paging = sb.PagedSpellsFrame and sb.PagedSpellsFrame.PagingControls
+	if paging then
+		for key, b in pairs({ ["UI-SpellbookIcon-PrevPage-Up"] = paging.PrevPageButton, ["UI-SpellbookIcon-NextPage-Up"] = paging.NextPageButton }) do
+			if b and b.GetNormalTexture and b:GetNormalTexture() then
+				Replace(b:GetNormalTexture(), { as = key, button = b, rect = b, alsoFade = OtherTextures(b, b:GetNormalTexture()) })
+			end
 		end
 	end
-	return skin
+end)
+
+Part("SpellBookFrame", function(pf)
+	local sb = pf.SpellBookFrame
+	if sb.PagedSpellsFrame and sb.PagedSpellsFrame.RegisterCallback and PagedContentFrameBaseMixin then
+		sb.PagedSpellsFrame:RegisterCallback(PagedContentFrameBaseMixin.Event.OnUpdate, function()
+			if active then
+				SkinPagedSpells(sb.PagedSpellsFrame)
+			end
+		end, M)
+	end
+	SkinPagedSpells(sb.PagedSpellsFrame)
+end)
+
+-- the talents page: only its shared controls (the page stays the game's)
+Part("TalentsFrame", function(pf)
+	local tf = pf.TalentsFrame
+	SkinTabSystem(tf.TabSystem)
+	SkinSearchBox(tf.SearchBox)
+	local dd = tf.SearchOptionsDropdown
+	if dd and dd.Arrow then
+		Replace(dd.Arrow, { as = "common-dropdown-a-button", button = dd, rect = dd.Arrow })
+	end
+end)
+
+-- a part's page is there and shown (IsShown: the window's first OnShow
+-- comes before the window counts as visible); the window's own parts always
+local function PageShown(page)
+	if not page then
+		return true
+	end
+	local f = PlayerSpellsFrame[page]
+	return f ~= nil and f:IsShown()
 end
 
-function M:RefreshSpellBook()
-	if not (skin and active) then
+-- One part. Made while the skin is on (a page made after the window first
+-- opened), its replacements are enabled after it, in the order made, as
+-- Activate enables the rest; its page's refresh follows (MakeParts). A part
+-- that raises is not tried again (a skin that failed half way stayed so
+-- before as well).
+local function MakePart(i)
+	local part = PARTS[i]
+	skin.partsDone[i] = true
+	local pf = PlayerSpellsFrame
+	if part.page and not pf[part.page] then
+		return
+	end
+	local from = #skin.reps + 1
+	skin.making = true
+	local ok, err = pcall(part.fn, pf)
+	skin.making = false
+	if not ok then
+		geterrorhandler()(err)
+	end
+	if active then
+		for n = from, #skin.reps do
+			skin.reps[n]:Enable()
+		end
+	end
+end
+
+-- The skin's frame and lists, made once (its parts are BuildSkin's)
+local function NewSkin()
+	if skin then
 		return
 	end
 	local pf = PlayerSpellsFrame
-	local sb = pf.SpellBookFrame
+	skin = CreateFrame("Frame", "MelloUISpellBookSkin", pf)
+	skin:SetAllPoints()
+	skin:SetFrameLevel(pf:GetFrameLevel())
+	skin:EnableMouse(false)
+	skin.reps = {}
+	skin.fades = {}     -- the pictures faded straight (FadeOnly)
+	skin.followers = {}
+	skin.Replace = Replace
+	skin.partsDone = {}
+end
+
+-- The skin's replacements on, in the order made, and the pictures it fades
+-- straight
+local function EnableAll()
+	for _, rep in ipairs(skin.reps) do
+		rep:Enable()
+	end
+	for _, region in ipairs(skin.fades) do
+		Kit:Fade(region)
+	end
+end
+
+-- Makes the parts not made yet: all of them, those of the pages shown now
+-- (`shownOnly`), or (`budget`, in ms) parts until that much time has gone, at
+-- least one. `skin.built` once every part is made. Returns how many it made.
+local function BuildSkin(budget, shownOnly)
+	NewSkin()
+	if skin.built then
+		return 0
+	end
+	local t0 = budget and debugprofilestop()
+	local made = 0
+	for i = 1, #PARTS do
+		if not skin.partsDone[i] and (not shownOnly or PageShown(PARTS[i].page)) then
+			if budget and made > 0 and debugprofilestop() - t0 >= budget then
+				break
+			end
+			MakePart(i)
+			made = made + 1
+		end
+	end
+	local built = true
+	for i = 1, #PARTS do
+		if not skin.partsDone[i] then
+			built = false
+			break
+		end
+	end
+	skin.built = built
+	return made
+end
+
+-- The pages' own refresh (the spells, the category tabs, the tab plates);
+-- the scroll bars' walk is RefreshSpellBook's
+local function RefreshPages()
+	local sb = PlayerSpellsFrame.SpellBookFrame
 	if sb then
 		SkinPagedSpells(sb.PagedSpellsFrame)
 		RefreshTabs(sb.CategoryTabSystem)
@@ -629,7 +790,37 @@ function M:RefreshSpellBook()
 	for _, follow in ipairs(skin.tabFollows or {}) do
 		follow()
 	end
-	Kit:SkinScrollBarsIn(pf, Replace, skin)
+end
+
+function M:RefreshSpellBook()
+	if not (skin and active) then
+		return
+	end
+	RefreshPages()
+	-- the scroll bars' walk (the whole window, every frame of it) once a
+	-- frame: the window's OnShow and a page's can both come in one, and
+	-- nothing with a scroll bar is made under the window in between (the
+	-- pages' templates carry none on this client)
+	local now = GetTime()
+	if skin.walkedAt ~= now then
+		skin.walkedAt = now
+		Kit:SkinScrollBarsIn(PlayerSpellsFrame, Replace, skin)
+	end
+end
+
+-- The spellbook page's own OnShow still to come in this frame. The window's
+-- OnShow comes before its shown page's, and the game updates that page in
+-- between (the page's own OnShow: UpdateAllSpellData): both refreshed the
+-- whole spell book, the same pass twice in the frame the window opened
+-- (/melloperf, user 2026-09-24: 16.9 ms in that frame). The window leaves
+-- the refresh to the page when the page is shown and has not had its OnShow
+-- in this frame yet; a page that had it first has refreshed already, or
+-- (the skin not on yet then) the window refreshes as before.
+local pageShownAt = nil   -- GetTime() of the spellbook page's last OnShow
+
+local function PageRefreshes()
+	local sb = PlayerSpellsFrame and PlayerSpellsFrame.SpellBookFrame
+	return (sb and sb:IsShown() and pageShownAt ~= GetTime()) and true or false
 end
 
 function M:RefreshFollowers()
@@ -644,18 +835,36 @@ function M:RefreshFollowers()
 	end
 end
 
-local function Activate()
+-- Parts made while the skin is on (a page not shown when the window first
+-- opened): their replacements are on (MakePart), their pages refreshed here
+-- as Activate refreshes (the scroll bars' walk is the window's, not theirs)
+local function MakeParts(budget, shownOnly)
+	if BuildSkin(budget, shownOnly) > 0 and active then
+		M:RefreshFollowers()
+		RefreshPages()
+	end
+end
+
+local QueuePrebuild   -- below, with Building ahead
+
+-- `fromShow`: in the window's OnShow (the page's may follow: PageRefreshes)
+local function Activate(fromShow)
 	if active or not PlayerSpellsFrame then
 		return
 	end
-	BuildSkin()
+	-- the shell and the page shown now; the pages not shown are made later
+	-- (Building ahead) or as they first show
+	BuildSkin(nil, true)
 	active = true
 	skin:Show()
-	for _, rep in ipairs(skin.reps) do
-		rep:Enable()
-	end
+	EnableAll()
 	M:RefreshFollowers()
-	M:RefreshSpellBook()
+	if not (fromShow and PageRefreshes()) then
+		M:RefreshSpellBook()
+	end
+	if not skin.built then
+		QueuePrebuild()
+	end
 end
 
 local function Deactivate()
@@ -666,6 +875,9 @@ local function Deactivate()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
+	end
+	for _, region in ipairs(skin.fades) do
+		Kit:Unfade(region)
 	end
 	-- the spells' icons back to the game's size
 	for _, button in ipairs(skin.spellButtons or {}) do
@@ -682,28 +894,122 @@ local function Deactivate()
 	end
 end
 
-local function Sync()
+local function Sync(fromShow)
 	if M.isEnabled and PlayerSpellsFrame then
-		Activate()
+		Activate(fromShow)
 	else
 		Deactivate()
 	end
 end
+
+--------------------------------------------------------------------------------
+-- Building ahead: the pages not made when the window first opened are made
+-- a few seconds later while the game is idle, a few ms of them per frame,
+-- never in a fight (a page shown before that is made in its own OnShow, at
+-- once). The same when the spell book was loaded before its first open
+-- (another addon or the tutorial asks for it early): the skin comes on
+-- while the window is closed, as the load had it, and its parts are made
+-- in that time, each coming on as it is made (MakePart); whatever is left
+-- when the window opens is made there. The settings must be in first: the
+-- parts read some of them (the Button Border, the kit's tuning) as they are
+-- made, and they load late on this client (OnEnable comes again when they
+-- are).
+--------------------------------------------------------------------------------
+
+local PREBUILD_DELAY = 5     -- s: past the open's (or the login's) own burst of work
+local PREBUILD_BUDGET = 2    -- ms of parts per frame (one part may run past it)
+
+local prebuilder = CreateFrame("Frame")
+local prebuildQueued = false
+
+local function PrebuildTick()
+	if not (M.isEnabled and PlayerSpellsFrame) or (skin and skin.built and active) then
+		Perf.SetScript(prebuilder, "OnUpdate", nil)
+		return
+	end
+	if InCombatLockdown() then
+		Perf.SetScript(prebuilder, "OnUpdate", nil)
+		prebuilder:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+	if not active then
+		-- loaded before the window was ever opened: the skin on now with
+		-- nothing made yet, as the load had it on (it made every part there
+		-- at once); the parts come on one by one below
+		NewSkin()
+		active = true
+		skin:Show()
+		EnableAll()
+	end
+	MakeParts(PREBUILD_BUDGET)
+end
+
+local function StartPrebuild()
+	if not (M.isEnabled and PlayerSpellsFrame) or (skin and skin.built and active) then
+		return
+	end
+	if MelloUI.dbIsTemporary and not MelloUI.restoredFromBackup then
+		return
+	end
+	Perf.SetScript(prebuilder, "OnUpdate", PrebuildTick)
+end
+
+QueuePrebuild = function()
+	if prebuildQueued or (skin and skin.built and active) then
+		return
+	end
+	prebuildQueued = true
+	C_Timer.After(PREBUILD_DELAY, function()
+		prebuildQueued = false
+		StartPrebuild()
+	end)
+end
+
+-- a fight ended: on again a little later (not in the frame the fight ends in)
+Perf.SetScript(prebuilder, "OnEvent", function(self)
+	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	QueuePrebuild()
+end)
 
 local function Hook()
 	if hooked or not PlayerSpellsFrame then
 		return
 	end
 	hooked = true
-	PlayerSpellsFrame:HookScript("OnShow", function()
-		Sync()
+	Perf.HookScript(PlayerSpellsFrame, "OnShow", function()
+		-- a skin coming on now has had both refreshes in Activate (or has
+		-- the page's to come)
+		if not active then
+			Sync(true)
+			if active then
+				return
+			end
+		elseif not skin.built then
+			-- a page shown now and not made yet (its own OnShow comes next)
+			BuildSkin(nil, true)
+		end
 		M:RefreshFollowers()
-		M:RefreshSpellBook()
+		if not PageRefreshes() then
+			M:RefreshSpellBook()
+		end
 	end)
 	if PlayerSpellsFrame.SpellBookFrame then
-		PlayerSpellsFrame.SpellBookFrame:HookScript("OnShow", function()
+		Perf.HookScript(PlayerSpellsFrame.SpellBookFrame, "OnShow", function()
+			pageShownAt = GetTime()
+			-- first shown after the window opened on another page: made now,
+			-- before it is drawn (refreshed just below)
+			if active and not skin.built then
+				BuildSkin(nil, true)
+			end
 			M:RefreshFollowers()
 			M:RefreshSpellBook()
+		end)
+	end
+	if PlayerSpellsFrame.TalentsFrame then
+		Perf.HookScript(PlayerSpellsFrame.TalentsFrame, "OnShow", function()
+			if active and not skin.built then
+				MakeParts(nil, true)
+			end
 		end)
 	end
 	if PlayerSpellsFrame.SetMinimized then
@@ -735,12 +1041,18 @@ Kit:OnBorderChanged("button", function()
 	end
 end)
 
--- Blizzard_PlayerSpells is loaded on demand: wait for it.
+-- Blizzard_PlayerSpells is loaded on demand: wait for it. It is loaded as
+-- the player opens the window, which shows right after this event: its
+-- OnShow dresses it (Activate); loaded early instead, it is made ahead
+-- (Building ahead).
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, _, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, _, addon)
 	if addon == "Blizzard_PlayerSpells" and M.isEnabled then
 		Hook()
-		Sync()
+		if PlayerSpellsFrame:IsShown() then
+			Sync()
+		end
+		QueuePrebuild()
 	end
 end)
 
@@ -748,7 +1060,12 @@ function M:OnEnable(db)
 	self.db = db
 	if PlayerSpellsFrame then
 		Hook()
-		Sync()
+		-- (a skin already made comes back on at once, as before; else the
+		-- window's OnShow or Building ahead makes it)
+		if skin or PlayerSpellsFrame:IsShown() then
+			Sync()
+		end
+		QueuePrebuild()
 	else
 		eventFrame:RegisterEvent("ADDON_LOADED")
 	end

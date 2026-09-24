@@ -71,6 +71,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("GuildBankPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("GuildBankPanel", {
@@ -1402,9 +1404,9 @@ local function SkinSideTab(tab)
 			Kit:SlotPlaceIcon(rim)
 		end
 	end
-	button:HookScript("OnMouseDown", Refit)
-	button:HookScript("OnMouseUp", Refit)
-	button:HookScript("OnShow", Refit)
+	Perf.HookScript(button, "OnMouseDown", Refit)
+	Perf.HookScript(button, "OnMouseUp", Refit)
+	Perf.HookScript(button, "OnShow", Refit)
 	-- the open tab's icon is the ring's fallback: read again as it changes
 	if button.SetChecked then
 		hooksecurefunc(button, "SetChecked", function()
@@ -1839,7 +1841,7 @@ local function SkinPopup()
 		end
 		SkinIconButton(b, true)
 	end
-	popup:HookScript("OnShow", function(self)
+	Perf.HookScript(popup, "OnShow", function(self)
 		if active then
 			WalkBox(PopupBox(self), true)
 			Kit:SweepControls(self, Replace, skin, PopupBox(self))
@@ -2060,8 +2062,14 @@ local function Deactivate()
 	PlaceExtraTitles(false)
 end
 
+-- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
+-- the look is built while the window has never been shown this session: a
+-- skin already built is switched on (and off), else only a window open right
+-- now (a /reload with it open) is dressed at once; its first show dresses it
+-- (the OnShow hook below), in that same frame, so it never draws undressed.
 local function Sync()
-	if M.isEnabled and Window() then
+	local f = Window()
+	if M.isEnabled and f and ((skin and skin.built) or f:IsShown()) then
 		Activate()
 	else
 		Deactivate()
@@ -2074,6 +2082,21 @@ local function SyncSafe()
 		Kit:WhenOutOfCombat(Sync)
 	else
 		Sync()
+	end
+end
+
+-- The first show in combat dresses at once all the same: the dressing adds
+-- frames and textures of ours and moves or sizes only the window's own
+-- unprotected parts (the portrait, the title and tab strings, the bank tabs
+-- at the side tab size), never a protected frame (the guild bank has none).
+-- A window the game protects waits for the fight's end, as before.
+local function DressOnShow()
+	local f = Window()
+	local ok, protected = pcall(f.IsProtected, f)
+	if InCombatLockdown() and ok and not Secret(protected) and not protected then
+		Sync()
+	else
+		SyncSafe()
 	end
 end
 
@@ -2090,10 +2113,12 @@ local function Hook()
 		return
 	end
 	hooked = true
-	f:HookScript("OnShow", function()
+	Perf.HookScript(f, "OnShow", function()
 		if M.isEnabled and not active then
-			SyncSafe()
+			DressOnShow()
 		end
+		-- (after a first dressing too: the grid measured again once the game
+		-- has laid the window out)
 		Refresh(true)
 	end)
 	for _, method in ipairs(METHODS) do
@@ -2112,7 +2137,7 @@ local function Hook()
 	for _, page in ipairs(List(logPage, infoPage, BuyInfo(f))) do
 		if page.HookScript and not pageHooked[page] then
 			pageHooked[page] = true
-			page:HookScript("OnShow", function()
+			Perf.HookScript(page, "OnShow", function()
 				Refresh()
 			end)
 		end
@@ -2120,12 +2145,13 @@ local function Hook()
 end
 
 -- Blizzard_GuildBankUI is loaded on demand (the first visit to a guild
--- vault): dressed as it loads; the bank's own events bring a refresh on the
--- next frame (registered one by one: a client without one refuses it)
+-- vault): hooked as it loads, dressed as it first shows; the bank's own
+-- events bring a refresh on the next frame (registered one by one: a client
+-- without one refuses it)
 local EVENTS = { "GUILDBANKBAGSLOTS_CHANGED", "GUILDBANK_UPDATE_TABS", "GUILDBANKLOG_UPDATE", "GUILDBANK_UPDATE_MONEY",
 	"GUILDBANK_UPDATE_WITHDRAWMONEY", "GUILDBANK_UPDATE_TEXT", "GUILDBANK_TEXT_CHANGED", "GUILDTABARD_UPDATE", "GUILDBANK_ITEM_LOCK_CHANGED" }
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function(_, event, addon)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, addon)
 	if event == "ADDON_LOADED" then
 		if addon == ADDON then
 			Hook()
@@ -2399,6 +2425,9 @@ SlashCmdList.MELLOGUILDBANKDUMP = function(msg)
 	MelloUI:ClearLog()
 	if not f then
 		MelloUI:Print("/guildbankdump: no GuildBankFrame yet (the guild bank loads with its first opening: visit a guild vault, then try again)")
+	elseif not skin then
+		MelloUI:Print("/guildbankdump: the guild bank is not dressed yet (%s)", M.isEnabled
+			and "the kit dresses it the first time it opens: open it, then try again" or "the Guild Bank Kit is off")
 	elseif msg == "" then
 		DumpSummary(f)
 		MelloUI:Print("GuildBankFrame's own regions and children:")

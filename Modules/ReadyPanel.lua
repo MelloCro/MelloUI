@@ -38,6 +38,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("ReadyPanel")
+local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ReadyPanel", {
@@ -632,12 +634,12 @@ local function HookPopups()
 	for _, popup in ipairs(Popups()) do
 		if not hookedPopups[popup] then
 			hookedPopups[popup] = true
-			popup:HookScript("OnShow", function(self)
+			Perf.HookScript(popup, "OnShow", function(self)
 				OnPopupShown(self)
 			end)
 			local body = Body(popup)
 			if body ~= popup then
-				body:HookScript("OnShow", function()
+				Perf.HookScript(body, "OnShow", function()
 					OnPopupShown(popup)
 				end)
 			end
@@ -651,7 +653,7 @@ end
 -- a popup made by an addon the game loads later (the dungeon finder, the
 -- battleground helper): watched and dressed once it exists
 local watcher = CreateFrame("Frame")
-watcher:SetScript("OnEvent", function()
+Perf.SetScript(watcher, "OnEvent", function()
 	C_Timer.After(0, function()
 		if M.isEnabled then
 			Safe(HookPopups)

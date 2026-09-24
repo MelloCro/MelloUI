@@ -76,11 +76,14 @@ The Forever client has a habit of forgetting saved variables. MelloUI keeps a ba
 
 ## Install
 
-Download the [latest release](https://github.com/MelloCro/MelloUI/releases/latest) (or clone this repository) and copy the `MelloUI` folder to:
+Download the [latest release](https://github.com/MelloCro/MelloUI/releases/latest) zip (not GitHub's "Source code" zip) and copy every folder in it, `MelloUI` and `MelloUI_Companion`, to:
 
 ```
 <World of Warcraft>\_classic_beta_\Interface\AddOns\MelloUI
+<World of Warcraft>\_classic_beta_\Interface\AddOns\MelloUI_Companion
 ```
+
+`MelloUI_Companion` holds the Route module's road network and quest objective places and only loads when a route needs them; keep it next to MelloUI and enabled. From a clone of this repository, `MelloUI_Companion` sits inside the `MelloUI` folder: copy it out into `AddOns` beside it. After installing or updating, restart the game fully once (a `/reload` does not find new folders or files).
 
 Start the game. The settings window has its own **MelloUI** button in the game menu (Escape), or type `/mello`; it is not an entry under Options > AddOns. Forever runs the retail (Midnight era, 12.1.x) API and the Dragonflight style HUD with Camelot specific overrides; this addon targets exactly that client (beta 1.60.1, interface `16001`).
 
@@ -471,7 +474,7 @@ and to its turn-in once it is complete, using the markers the client places for 
 your log ("Fall Back To The First Tracked Quest" follows the top of the tracker instead when
 nothing is super-tracked). The client has no road or terrain data
 for addons, so the roads come from two places: the ones traced from the zone maps' art
-(`Media\RoadData.lua`, see *Traced roads* below) and the ones the module learns from you: every
+(`MelloUI_Companion\RoadData.lua`, loaded when a route is needed; see *Traced roads* below) and the ones the module learns from you: every
 half second outdoors it drops a breadcrumb and links it to the previous one, flights you take become links, opening a flight
 master's map records the links from there to every reachable point, and the boats, zeppelins
 and the vanilla flight network from the Quest List data connect the rest (only flight points
@@ -506,7 +509,7 @@ follow roads from the first login: it downloads the build's map art and tables f
 (the base tiles and the explored overlays, with each zone's world bounds), stitches every zone
 of both continents, looks for the painted roads (a light line with a dark outline on both
 sides, joined along its direction, thinned, cleared of mountain meshes and short strokes) and
-writes them as a graph into `Media\RoadData.lua` in continent yards. The Route module folds
+writes them as a graph into `MelloUI_Companion\RoadData.lua` in continent yards. The Route module folds
 that graph in at login, scaled to the continent sizes the client reports, and never writes it
 back into the saved variable. Hand-painted art fools the tracing here and there: ridges, lake
 shores, labels and icons come out as roads and some real roads are missed. The tracing is a

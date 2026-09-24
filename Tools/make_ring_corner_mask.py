@@ -9,13 +9,13 @@ HOLE_R of the half-size, softened over 2 px."""
 import os
 import numpy as np
 from PIL import Image
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 SIZE = 128
 HOLE_R = 62 / 64      # the hole's radius as a share of the half-size (Kit's RING_HOLE_FILL)
 SOFT = 2.0            # px of soft edge
 
-here = os.path.dirname(os.path.abspath(__file__))
-out = os.path.join(here, "..", "Media", "Textures", "Masks", "ring_corner.tga")
+out = master("Textures", "Masks", "ring_corner.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 c = (SIZE - 1) / 2
 y, x = np.mgrid[0:SIZE, 0:SIZE]
 r = np.hypot(x - c, y - c)

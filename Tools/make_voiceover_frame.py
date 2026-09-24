@@ -9,10 +9,11 @@ plain frame to its left, so the top of the parchment stays free for text.
 """
 import os
 from PIL import Image
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "..", "docs", "voiceover-frame.webp")
-OUT = os.path.join(HERE, "..", "Media", "Textures", "VoiceOver", "ScrollFrame.tga")
+OUT = master("Textures", "VoiceOver", "ScrollFrame.tga")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 BUBBLE = (1090, 0, 1410, 250)      # where the bubble and its shadow sit on the art
 DONOR_X = 760                      # plain frame and parchment of the same rows, to the left
 

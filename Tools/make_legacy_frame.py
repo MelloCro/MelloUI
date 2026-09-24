@@ -22,10 +22,11 @@ get plate sprites.
 import os
 from PIL import Image, ImageDraw, ImageFilter
 import numpy as np
+from paths import master  # the TGA masters: MelloUI-BuildData/masters/Media
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, "..", "docs")
-TEX = os.path.join(HERE, "..", "Media", "Textures")
+TEX = master("Textures")  # the TGA master (Tools/paths.py); `texture_pack.py ship` makes what Media ships
 
 PARTS = {
     "tab": (0, 0),            # 88 x 90   side tab plate (from the tree page's first tab)

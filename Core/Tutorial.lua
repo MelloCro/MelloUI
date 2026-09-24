@@ -15,6 +15,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Tutorial")
+local C_Timer = Perf.C_Timer
 
 local SYSTEM = "MelloUITutorial"
 local ASK_DELAY = 12   -- seconds after entering the world (after the menu button tip)
@@ -182,7 +184,7 @@ function T:Start()
 	end
 	if not c.window.melloTourHooked then
 		c.window.melloTourHooked = true
-		c.window:HookScript("OnHide", function() T:Stop() end)
+		Perf.HookScript(c.window, "OnHide", function() T:Stop() end)
 	end
 	-- shown directly: OpenConfig without a page toggles an open window closed
 	c.window:Show()
@@ -217,7 +219,7 @@ end
 local asked = false
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-frame:SetScript("OnEvent", function(self)
+Perf.SetScript(frame, "OnEvent", function(self)
 	if asked then
 		return
 	end

@@ -21,6 +21,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("QuestLogPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("QuestLogPanel", {
@@ -224,49 +226,203 @@ local function ObjectiveRole(r)
 	return (r and r < 0.8) and "faded" or "text"
 end
 
-local function InkList()
+-- One title's ink and pips, one objective's ink (the game's look back while
+-- the skin is off)
+local function InkTitle(QI, title)
+	local fs = title.Text
+	if not fs then
+		return
+	end
+	if active then
+		local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
+		QI.Ink(fs, tier == 1 and "faded" or "title")
+		title.melloPips = title.melloPips or QI.Pips(title, PIP_SIZE)
+		title.melloPips:ClearAllPoints()
+		if title.Checkbox then
+			title.melloPips:SetPoint("RIGHT", title.Checkbox, "LEFT", -4, 0)
+		else
+			title.melloPips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
+		end
+		title.melloPips:SetTier(tier)
+	else
+		QI.Plain(fs)
+		if fs.melloColourWatched then
+			fs:SetTextColor(QI.GameColour(fs))
+		end
+		if title.melloPips then
+			title.melloPips:SetTier(nil)
+		end
+	end
+end
+
+local function InkObjective(QI, objective)
+	local fs = objective.Text
+	if fs then
+		QI.WatchColour(fs, ObjectiveRole)
+		if active then
+			local r = QI.GameColour(fs)
+			QI.Ink(fs, r < 0.8 and "faded" or "text")
+		else
+			QI.Plain(fs)
+			fs:SetTextColor(QI.GameColour(fs))
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Rows out of view (/melloperf, user 2026-09-24: the first map open dressed
+-- the whole quest log in one QuestLogQuests_Update -- every pooled row's
+-- plate and tick box made, its pips made, its text inked -- 8.8 ms). A row
+-- the list shows for the first time is dressed in the update only when it
+-- lies in the list's view (the scroll frame's rect); the rows below or
+-- above it wait, and are dressed a few ms per frame after, or at once as
+-- the list scrolls, changes size or shows, before they can be seen. A row
+-- dressed once is dressed and inked in every update, as before.
+--------------------------------------------------------------------------------
+
+local ROW_BUDGET = 2   -- ms of waiting rows per frame
+local waiting = {}     -- the rows waiting, in the list's order (a row no longer waiting is passed over)
+local waitingKind = setmetatable({}, { __mode = "k" })   -- [row] = "title" | "header" | "objective" while it waits
+local waitAt = 1
+local rowsFrame = CreateFrame("Frame")
+
+local function Secret(v)
+	return issecretvalue and issecretvalue(v) or false
+end
+
+-- The list's view: its top and bottom; false while it cannot be seen (every
+-- new row waits); nil when its rect cannot be read (every row counts as seen)
+local function ListView(sf)
+	if not sf:IsVisible() then
+		return false
+	end
+	local okT, top = pcall(sf.GetTop, sf)
+	local okB, bottom = pcall(sf.GetBottom, sf)
+	if okT and okB and top and bottom and not Secret(top) and not Secret(bottom) then
+		return top, bottom
+	end
+	return nil
+end
+
+local function InView(row, top, bottom)
+	if top == false then
+		return false
+	elseif top == nil then
+		return true
+	end
+	local okT, t = pcall(row.GetTop, row)
+	local okB, b = pcall(row.GetBottom, row)
+	if not (okT and okB and t and b) or Secret(t) or Secret(b) then
+		return true
+	end
+	return b < top and t > bottom
+end
+
+-- a row's whole dressing, as the list's update gives it
+local function DressRow(row, kind)
+	local QI = MelloUI.QuestInk
+	if kind == "title" then
+		SkinTitle(row)
+		if row.Text then
+			QI.WatchColour(row.Text)
+		end
+		InkTitle(QI, row)
+	elseif kind == "header" then
+		SkinHeader(row)
+	else
+		InkObjective(QI, row)
+	end
+end
+
+local DressWaiting   -- below
+local rowsTicking = false
+
+local function RowsTick()
+	DressWaiting(ROW_BUDGET)
+end
+
+local function Wait(row, kind)
+	if not waitingKind[row] then
+		waitingKind[row] = kind
+		waiting[#waiting + 1] = row
+		if not rowsTicking then
+			rowsTicking = true
+			Perf.SetScript(rowsFrame, "OnUpdate", RowsTick)
+		end
+	end
+end
+
+-- The waiting rows dressed: those in the list's view now (`inView`), or
+-- (`budget`, in ms) in order until that much time has gone, or all of them.
+-- A row the list no longer shows (released to its pool) is passed over:
+-- the update that shows it again decides for it.
+DressWaiting = function(budget, inView)
+	local top, bottom
+	if inView then
+		top, bottom = ListView(QuestScrollFrame)
+	end
+	local t0 = budget and debugprofilestop()
+	local i = inView and 1 or waitAt
+	while i <= #waiting do
+		local row = waiting[i]
+		local kind = waitingKind[row]
+		if not inView then
+			waitAt = i + 1
+		end
+		if kind and (not inView or InView(row, top, bottom)) then
+			waitingKind[row] = nil
+			if active and row:IsShown() then
+				DressRow(row, kind)
+			end
+		end
+		i = i + 1
+		if budget and debugprofilestop() - t0 >= budget then
+			break
+		end
+	end
+	if waitAt > #waiting then
+		for n = #waiting, 1, -1 do
+			waiting[n] = nil
+		end
+		waitAt = 1
+		rowsTicking = false
+		Perf.SetScript(rowsFrame, "OnUpdate", nil)
+	end
+end
+
+local function StopWaiting()
+	for n = #waiting, 1, -1 do
+		waitingKind[waiting[n]] = nil
+		waiting[n] = nil
+	end
+	waitAt = 1
+	rowsTicking = false
+	Perf.SetScript(rowsFrame, "OnUpdate", nil)
+end
+
+-- the list scrolled, sized or shown: the waiting rows it shows now, at once
+local function DressShown()
+	if waiting[waitAt] then
+		DressWaiting(nil, true)
+	end
+end
+
+-- `skipWaiting`: a row still waiting is inked when it is dressed
+local function InkList(skipWaiting)
 	local QI = MelloUI.QuestInk
 	local sf = QuestScrollFrame
 	if not (QI and sf and sf.titleFramePool) then
 		return
 	end
 	for title in sf.titleFramePool:EnumerateActive() do
-		local fs = title.Text
-		if fs then
-			if active then
-				local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
-				QI.Ink(fs, tier == 1 and "faded" or "title")
-				title.melloPips = title.melloPips or QI.Pips(title, PIP_SIZE)
-				title.melloPips:ClearAllPoints()
-				if title.Checkbox then
-					title.melloPips:SetPoint("RIGHT", title.Checkbox, "LEFT", -4, 0)
-				else
-					title.melloPips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
-				end
-				title.melloPips:SetTier(tier)
-			else
-				QI.Plain(fs)
-				if fs.melloColourWatched then
-					fs:SetTextColor(QI.GameColour(fs))
-				end
-				if title.melloPips then
-					title.melloPips:SetTier(nil)
-				end
-			end
+		if not (skipWaiting and waitingKind[title]) then
+			InkTitle(QI, title)
 		end
 	end
 	if sf.objectiveFramePool then
 		for objective in sf.objectiveFramePool:EnumerateActive() do
-			local fs = objective.Text
-			if fs then
-				QI.WatchColour(fs, ObjectiveRole)
-				if active then
-					local r = QI.GameColour(fs)
-					QI.Ink(fs, r < 0.8 and "faded" or "text")
-				else
-					QI.Plain(fs)
-					fs:SetTextColor(QI.GameColour(fs))
-				end
+			if not (skipWaiting and waitingKind[objective]) then
+				InkObjective(QI, objective)
 			end
 		end
 	end
@@ -277,16 +433,42 @@ local function SkinList()
 	if not (sf and sf.titleFramePool) then
 		return
 	end
+	-- (with the skin off nothing waits: the rows are made and left off, as before)
+	local top, bottom = true, nil
+	if active then
+		top, bottom = ListView(sf)
+	end
+	local QI = MelloUI.QuestInk
 	for title in sf.titleFramePool:EnumerateActive() do
-		SkinTitle(title)
-		if title.Text then
-			MelloUI.QuestInk.WatchColour(title.Text)
+		if top ~= true and (title.melloRep == nil or (title.Text and not title.melloPips)) and not InView(title, top, bottom) then
+			Wait(title, "title")
+		else
+			waitingKind[title] = nil
+			SkinTitle(title)
+			if title.Text then
+				QI.WatchColour(title.Text)
+			end
 		end
 	end
 	for header in sf.headerFramePool:EnumerateActive() do
-		SkinHeader(header)
+		if top ~= true and header.melloRep == nil and not InView(header, top, bottom) then
+			Wait(header, "header")
+		else
+			waitingKind[header] = nil
+			SkinHeader(header)
+		end
 	end
-	InkList()
+	if top ~= true and sf.objectiveFramePool then
+		for objective in sf.objectiveFramePool:EnumerateActive() do
+			local fs = objective.Text
+			if fs and not fs.melloColourWatched and not InView(objective, top, bottom) then
+				Wait(objective, "objective")
+			else
+				waitingKind[objective] = nil
+			end
+		end
+	end
+	InkList(true)
 end
 
 -- The quest list window (MelloUI's) follows: its rows drawn again
@@ -445,8 +627,8 @@ local function SkinQuestListEntry(button)
 	-- which drops earlier hooks -- the header plate's own hover hooks from
 	-- Kit:Replace among them (a header lit no more once re-used): hook again
 	-- after each Init
-	button:HookScript("OnEnter", QuestListEnter)
-	button:HookScript("OnLeave", QuestListLeave)
+	Perf.HookScript(button, "OnEnter", QuestListEnter)
+	Perf.HookScript(button, "OnLeave", QuestListLeave)
 	if not button.melloLockHooked then
 		button.melloLockHooked = true
 		hooksecurefunc(button, "LockHighlight", function(b)
@@ -696,6 +878,7 @@ local function Deactivate()
 		return
 	end
 	active = false
+	StopWaiting()
 	skin:Hide()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
@@ -733,11 +916,11 @@ local function Hook()
 		return
 	end
 	hooked = true
-	WorldMapFrame:HookScript("OnShow", function()
+	Perf.HookScript(WorldMapFrame, "OnShow", function()
 		Sync()
 		M:RefreshFollowers()
 	end)
-	QuestMapFrame:HookScript("OnShow", function()
+	Perf.HookScript(QuestMapFrame, "OnShow", function()
 		M:RefreshFollowers()
 		SkinList()
 	end)
@@ -747,6 +930,13 @@ local function Hook()
 				SkinList()
 			end
 		end)
+	end
+	-- rows waiting out of view come into it (Rows out of view)
+	local sf = QuestScrollFrame
+	if sf and sf.HookScript then
+		Perf.HookScript(sf, "OnVerticalScroll", DressShown)
+		Perf.HookScript(sf, "OnSizeChanged", DressShown)
+		Perf.HookScript(sf, "OnShow", DressShown)
 	end
 	-- MelloUI's quest list window is created on demand
 	if ns.QuestList and ns.QuestList.Panel and ns.QuestList.Panel.Create then
@@ -765,7 +955,7 @@ end
 
 -- The map and quest log frames load with the UI; wait for them if not.
 local eventFrame = CreateFrame("Frame")
-eventFrame:SetScript("OnEvent", function()
+Perf.SetScript(eventFrame, "OnEvent", function()
 	if WorldMapFrame and QuestMapFrame and M.isEnabled then
 		eventFrame:UnregisterAllEvents()
 		Hook()

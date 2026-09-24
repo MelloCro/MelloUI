@@ -2,7 +2,7 @@
 -- MelloUI - Game Menu Panel
 --
 -- Dresses the game menu (Escape) in one painted frame
--- (Media/Textures/GameMenuFrame.tga, from docs/gamemenu-frame.webp, and its
+-- (Media/Textures/GameMenuFrame, from docs/gamemenu-frame.webp, and its
 -- Kit Colours looks GameMenuFrame_warm / _bronze): the
 -- gold "Game Menu" header, nine red plates in an iron and stone frame. The
 -- game's own buttons are laid on the plates by their labels (Options, AddOns,
@@ -16,6 +16,8 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("GameMenuPanel")
+local hooksecurefunc = Perf.hooksecurefunc
 
 local M = MelloUI:RegisterModule("GameMenuPanel", {
 	title = "Game Menu Panel",
@@ -30,11 +32,15 @@ local TEXTURE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\GameMenuFrame"
 -- painted colours in Warm iron and Bronze; Tools/kit_palette.py recolours it)
 local LOOK_SUFFIX = { warm = "_warm", bronze = "_bronze" }
 
+-- No extension: the client takes the .blp or the .tga, whichever the look's
+-- file ships as (Tools/texture_pack.py ship)
 local function TextureFile()
 	local Kit = MelloUI.Kit
 	local look = Kit and Kit.BorderValue and Kit:BorderValue("colours")
-	return TEXTURE .. (LOOK_SUFFIX[look] or "") .. ".tga"
+	return TEXTURE .. (LOOK_SUFFIX[look] or "")
 end
+-- the art's size in the 1024 x 2048 master; the shipped files are half that,
+-- and the texture coordinates are fractions, which the halving keeps
 local ART_W, ART_H = 910, 1728
 local TEX_RIGHT, TEX_BOTTOM = ART_W / 1024, ART_H / 2048
 local FRAME_W = 340
@@ -368,7 +374,7 @@ local function Hook()
 	if GameMenuFrame.Layout then
 		hooksecurefunc(GameMenuFrame, "Layout", function() Arrange() end)
 	end
-	GameMenuFrame:HookScript("OnShow", function()
+	Perf.HookScript(GameMenuFrame, "OnShow", function()
 		if M.isEnabled then
 			Activate()
 			Arrange()

@@ -8,6 +8,7 @@
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
+local Perf = MelloUI.Perf:Scope("Stats")
 
 local M = MelloUI:RegisterModule("Stats", {
 	title = "FPS / Latency",
@@ -130,7 +131,7 @@ local function Refresh()
 end
 
 local elapsedAcc = 0
-frame:SetScript("OnUpdate", function(_, elapsed)
+Perf.SetScript(frame, "OnUpdate", function(_, elapsed)
 	elapsedAcc = elapsedAcc + elapsed
 	if elapsedAcc >= (tonumber(M.db.interval) or 1) then
 		elapsedAcc = 0
@@ -138,7 +139,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
 	end
 end)
 
-frame:SetScript("OnEnter", function(self)
+Perf.SetScript(frame, "OnEnter", function(self)
 	if not GameTooltip then
 		return
 	end
@@ -149,14 +150,20 @@ frame:SetScript("OnEnter", function(self)
 	GameTooltip:AddDoubleLine("Home latency", string.format("%d ms", home or 0), 1, 1, 1, Gradient(home or 0, 50, 300))
 	GameTooltip:AddDoubleLine("World latency", string.format("%d ms", world or 0), 1, 1, 1, Gradient(world or 0, 50, 300))
 	GameTooltip:AddDoubleLine("Bandwidth", string.format("%.1f KB/s in, %.1f KB/s out", bandwidthIn or 0, bandwidthOut or 0), 1, 1, 1, 0.8, 0.8, 0.8)
-	if UpdateAddOnMemoryUsage and GetAddOnMemoryUsage then
+	-- with the route data companion's once it is loaded (MelloUI:MemoryKB,
+	-- Core/Companions.lua): the data lives next door now, and MelloUI's own
+	-- figure alone would show a drop that is not there
+	local kb = MelloUI.MemoryKB and MelloUI:MemoryKB()
+	if not kb and UpdateAddOnMemoryUsage and GetAddOnMemoryUsage then
 		UpdateAddOnMemoryUsage()
-		local kb = GetAddOnMemoryUsage(ADDON_NAME) or 0
+		kb = GetAddOnMemoryUsage(ADDON_NAME) or 0
+	end
+	if kb then
 		GameTooltip:AddDoubleLine("MelloUI memory", string.format("%.1f MB", kb / 1024), 1, 1, 1, 0.8, 0.8, 0.8)
 	end
 	GameTooltip:Show()
 end)
-frame:SetScript("OnLeave", function()
+Perf.SetScript(frame, "OnLeave", function()
 	if GameTooltip then
 		GameTooltip:Hide()
 	end
