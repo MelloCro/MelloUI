@@ -39,12 +39,13 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("ReadyPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ReadyPanel", {
 	title = "Ready Check Kit",
 	desc = "The ready check and the dungeon / battleground ready popups in the kit.",
+	window = { label = "Ready checks", desc = "The ready check and the dungeon / battleground ready popups in the kit.", tab = "Windows" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -70,7 +71,7 @@ local popupButtons = setmetatable({}, { __mode = "k" })  -- [button] = "plate" /
 local hookedPopups = setmetatable({}, { __mode = "k" })  -- [popup] = true: its OnShow is watched
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	local rep = region and Kit and Kit.Replace and Kit:Replace(region, opts)
@@ -541,14 +542,14 @@ local function Surface()
 end
 
 -- the Dialogs' parchment switched: this module's strings follow (the ink
--- engine refreshes by itself only the surface named after the area)
-if Kit and Kit.SetParchment then
-	hooksecurefunc(Kit, "SetParchment", function(_, area)
-		if area == AREA and surfaceMade and MelloUI.QuestInk then
-			MelloUI.QuestInk.RefreshSurface(SURFACE)
-		end
-	end)
-end
+-- engine refreshes by itself only the surface named after the area). The
+-- bus's 'parchment', fired once the kit's sheets are switched, where the
+-- hook on Kit.SetParchment ran (audit 2026-09-24 rank 5)
+MelloUI:On("parchment", Perf.Shared("'parchment' on the bus", function(area)
+	if area == AREA and surfaceMade and MelloUI.QuestInk then
+		MelloUI.QuestInk.RefreshSurface(SURFACE)
+	end
+end), M)
 
 --------------------------------------------------------------------------------
 -- Switching on and off
@@ -599,12 +600,10 @@ local function Deactivate()
 	end
 end
 
+-- (Kit.lua loads before this file, so its combat queue is always there:
+-- audit 2026-09-24, a dead guard gone)
 local function Safe(fn)
-	if Kit and Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(fn)
-	else
-		fn()
-	end
+	Kit:WhenOutOfCombat(fn)
 end
 
 -- a popup shown: dressed (a client may make it late), its art faded again

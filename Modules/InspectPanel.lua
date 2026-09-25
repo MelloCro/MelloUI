@@ -68,6 +68,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("InspectPanel", {
 	title = "Inspect Kit",
 	desc = "The inspect window (another player's gear) in the kit.",
+	window = { label = "Inspect", desc = "The inspect window (another player's gear) in the kit.", tab = "Windows",
+		addon = "Blizzard_InspectUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -118,7 +120,7 @@ local known = {}                                        -- the character art dre
 local found = {}                                        -- [part] = a line for /inspectdump
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

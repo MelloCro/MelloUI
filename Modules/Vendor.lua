@@ -13,6 +13,10 @@ local C_Timer = Perf.C_Timer
 local M = MelloUI:RegisterModule("Vendor", {
 	title = "Vendor",
 	desc = "Automatically repair your gear and sell junk items when visiting a merchant.",
+	icon = "Interface\\Icons\\INV_Misc_Coin_02",
+	flavour = "Sell the grey, mend the steel. Every merchant visit handled before the window opens.",
+	group = "Quests and travel",
+	tweak = { label = "Vendor Automation", desc = "Repair your gear and sell junk automatically at a merchant.", order = 13 },
 	defaults = {
 		autoRepair = true,
 		guildRepair = false,

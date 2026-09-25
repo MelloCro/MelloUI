@@ -33,6 +33,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("UnitFramePanel", {
 	title = "Unit Frames Kit",
 	desc = "The player, target, focus and pet frames dressed in the painted kit on the game's own layout.",
+	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -53,7 +54,7 @@ local FRAMES = {
 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

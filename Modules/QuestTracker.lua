@@ -24,18 +24,28 @@
 --     under the mouse -- nothing secure lives in the list, so it scrolls and
 --     rebuilds in combat too
 --   * the painted kit's look (the single rail, the stone, a parchment sheet
---     and the title plate) while the reskin covers the tracker, a plain dark
---     panel otherwise
+--     and the title plate) while its look area is on (Kit:IsOn: the reskin
+--     and its own switch), a plain dark panel otherwise; a switch flips it
+--     live
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("QuestTracker")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("QuestTracker", {
 	title = "Quest Tracker",
 	desc = "A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached.",
+	icon = "Interface\\Icons\\INV_Misc_Book_08",
+	flavour = "Every watched quest within reach: the tracker scrolls when the list runs long.",
+	group = "Quests and travel",
+	-- its own kit switch on UI Modifications' Windows tab (a setting there,
+	-- not the Objective tracker's: audit, 2026-09-24, rank 1), read by
+	-- Kit:IsOn("questTracker")
+	window = { label = "Quest Tracker", desc = "MelloUI's scrollable quest tracker under the minimap in the kit. The Objective tracker row dresses the game's own tracker.", tab = "Windows", order = 6,
+		switch = "questTrackerKit" },
+	area = { key = "questTracker" },
 	enabledByDefault = false,
 	defaults = {
 		-- the user's settings, 2026-09-23 ("Height 500 by default, width 300,
@@ -81,11 +91,9 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 })
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
--- is v, or nil when v is secret (the stand-ins, the client's test and
--- Safe.Value's own body, are for a test world without Core)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
-local Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+-- is v, or nil when v is secret
+local Secret = MelloUI.Safe.IsSecret
+local Plain = MelloUI.Safe.Value
 
 --------------------------------------------------------------------------------
 -- Layout constants
@@ -224,8 +232,8 @@ end
 -- so a Place that stopped part way, or a frame put elsewhere or scaled by
 -- anything else, is laid again by the next setting, as before (review,
 -- 2026-09-24). A frame whose point cannot be read plainly is always laid.
--- scale, set, x, y, to, us, sw, sh, gw: the inputs it was laid by; p, rel,
--- rp, ax, ay, got: its first point and its scale, read back once laid
+-- scale, set, x, y, to, us, sw, sh, gw, drop: the inputs it was laid by; p,
+-- rel, rp, ax, ay, got: its first point and its scale, read back once laid
 local last = { valid = false }
 
 -- the frame's first point as the last Place read it back (a drag hangs it
@@ -236,6 +244,85 @@ local function SamePoint()
 		return false
 	end
 	return p == last.p and rel == last.rel and rp == last.rp and ax == last.ax and ay == last.ay
+end
+
+-- Under the minimap's column (audit, 2026-09-24, rank 18; user, 2026-09-25:
+-- "the Quest Tracker is the one sitting under the Minimap"). Only where
+-- nobody placed it: no place of its own, and the game's tracker on Edit
+-- Mode's default place and not moved by the window mover (or, without the
+-- game's tracker, the stand-in spot). There it is kept clear of the bottom
+-- of the column under the minimap (MinimapPanel's: the map, the Services
+-- bar, the Route line) when the column stands over it: hung COLUMN_GAP below
+-- it, never above the game's place. Placed by the user in any way (the
+-- user's own layout places the game's tracker in Edit Mode), it follows that
+-- exactly as before. The game's tracker is only read, never anchored (an
+-- Edit Mode system).
+local COLUMN_GAP = 8
+
+local function Unplaced(f)
+	if not f then
+		return true
+	end
+	local ok, default = pcall(f.IsInDefaultPosition, f)
+	if not ok or Secret(default) or default ~= true then
+		return false
+	end
+	local um = MelloUI:GetModule("UIModifications")
+	local positions = um and um.isEnabled and um.db and um.db.positions
+	return not (type(positions) == "table" and positions.ObjectiveTrackerFrame)
+end
+
+-- how far below its home (the game's tracker's top right, or the stand-in
+-- spot) it hangs for the column, in its own units at `scale`: 0 or less
+local function ColumnDrop(f, scale, set)
+	if not Unplaced(f) then
+		return 0
+	end
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if not (mp and mp.ColumnRect) then
+		return 0
+	end
+	local cl, cb, cr, ct = mp:ColumnRect()
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	us = okU and Plain(us) or nil
+	if not (cl and type(us) == "number" and us > 0) then
+		return 0
+	end
+	local s = us * scale   -- its effective scale once laid (UIParent's child)
+	-- its home's right edge and top, and its width, on the screen
+	local right, top, width
+	if f then
+		local ok, l, b, w, h = pcall(f.GetRect, f)
+		if not ok then
+			return 0
+		end
+		l, b, w, h = Plain(l), Plain(b), Plain(w), Plain(h)
+		local okF, fs = pcall(f.GetEffectiveScale, f)
+		fs = okF and Plain(fs) or nil
+		if not (type(l) == "number" and type(b) == "number" and type(w) == "number" and type(h) == "number"
+			and type(fs) == "number") then
+			return 0
+		end
+		right, top = (l + w) * fs, (b + h) * fs
+		width = set > 0 and set * s or w * fs
+	else
+		local ok, uw, uh = pcall(UIParent.GetSize, UIParent)
+		uw, uh = ok and Plain(uw) or nil, ok and Plain(uh) or nil
+		if not (type(uw) == "number" and type(uh) == "number") then
+			return 0
+		end
+		right, top = uw * us - 80 * s, uh * us - 260 * s
+		width = (set > 0 and set or FALLBACK_W) * s
+	end
+	-- the column stands over it: across its width, from above its top
+	if cr <= right - width or cl >= right or ct <= top then
+		return 0
+	end
+	local drop = cb - COLUMN_GAP * s - top
+	if drop >= 0 then
+		return 0
+	end
+	return drop / s
 end
 
 -- the frame sits where the game's tracker is, as wide as it, from its top
@@ -259,9 +346,14 @@ local function Place()
 			gw = okG and Plain(g) or nil
 		end
 	end
+	-- where nobody placed it: clear of the column under the minimap
+	local drop = 0
+	if not (px and py) then
+		drop = ColumnDrop(f, scale, set)
+	end
 	if last.valid and last.scale == scale and last.set == set and last.x == px and last.y == py and last.to == f
-		and last.us == us and last.sw == sw and last.sh == sh and last.gw == gw and frame:GetScale() == last.got
-		and SamePoint() then
+		and last.us == us and last.sw == sw and last.sh == sh and last.gw == gw and last.drop == drop
+		and frame:GetScale() == last.got and SamePoint() then
 		return
 	end
 	-- forgotten until this Place is through
@@ -284,6 +376,13 @@ local function Place()
 		-- larger one. Pulled in so its width and its title plate stay on it;
 		-- the saved place itself is kept for the old scale. (The screen's
 		-- size and scale and the game's tracker's width as read above.)
+		-- Not MelloUI:FitOnScreen (audit, 2026-09-24, rank 6, checked
+		-- 2026-09-25): that keeps the whole laid frame on the screen, this
+		-- keeps the title plate on it from the saved offsets, before the
+		-- frame is laid -- the list below grows and shrinks, and MaxHeight
+		-- keeps it above the screen's bottom -- and a frame wider than the
+		-- screen keeps its right edge on it. Moving onto it would move a
+		-- tracker saved low on the screen.
 		local x, y = px, py
 		local okS, fs = pcall(frame.GetEffectiveScale, frame)
 		fs = okS and Plain(fs)
@@ -301,15 +400,22 @@ local function Place()
 		end
 	elseif f then
 		-- the right edge stays on the game's tracker's (it sits by the
-		-- screen's right side); a set width grows to the left
-		frame:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+		-- screen's right side); a set width grows to the left; hung lower by
+		-- the column's drop where nobody placed it, else exactly on it
+		if drop < 0 then
+			frame:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, drop)
+		else
+			frame:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+		end
 		if set > 0 then
 			frame:SetWidth(set)
+		elseif drop < 0 then
+			frame:SetPoint("TOPLEFT", f, "TOPLEFT", 0, drop)
 		else
 			frame:SetPoint("TOPLEFT", f, "TOPLEFT")
 		end
 	else
-		frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -80, -260)
+		frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -80, -260 + drop)
 		frame:SetWidth(set > 0 and set or FALLBACK_W)
 	end
 	-- laid: kept, with its first point and its scale as the frame reads them
@@ -317,7 +423,7 @@ local function Place()
 	local ok, p, rel, rp, ax, ay = pcall(frame.GetPoint, frame, 1)
 	if ok and not (Secret(p) or Secret(rel) or Secret(rp) or Secret(ax) or Secret(ay)) then
 		last.scale, last.set, last.x, last.y, last.to = scale, set, px, py, f
-		last.us, last.sw, last.sh, last.gw = us, sw, sh, gw
+		last.us, last.sw, last.sh, last.gw, last.drop = us, sw, sh, gw, drop
 		last.p, last.rel, last.rp, last.ax, last.ay = p, rel, rp, ax, ay
 		last.got, last.valid = frame:GetScale(), true
 	end
@@ -329,9 +435,14 @@ end
 
 local looks = {}
 
+-- The kit's look for this tracker: its own look area, Kit:IsOn -- the reskin
+-- and the tracker's own switch -- read live wherever a look is drawn, and a
+-- switch told on the bus ('look:questTracker', below) so it flips at once
+-- (audit, 2026-09-24, rank 1: it read the game's tracker's kit module, never
+-- heard of a switch, and kept a mixed look until /reload)
 local function KitCovers()
 	local Kit = MelloUI.Kit
-	return Kit and Kit.IsCovered and Kit:IsCovered("tracker")
+	return Kit and Kit.IsOn and Kit:IsOn("questTracker") or false
 end
 
 local function BuildKitLook()
@@ -1588,10 +1699,11 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 end)
 
 -- Edit Mode: the game's tracker comes back to be moved and sized; ours
--- steps aside, then takes the new place and height
+-- steps aside, then takes the new place and height (told through the kit's
+-- one Edit Mode registration, the bus's 'editmode'; audit, 2026-09-24)
 local editHooked = false
 local function HookEditMode()
-	if editHooked or not (EventRegistry and EventRegistry.RegisterCallback) then
+	if editHooked then
 		return
 	end
 	editHooked = true
@@ -1613,25 +1725,75 @@ local function HookEditMode()
 			end
 		end)
 	end
-	EventRegistry:RegisterCallback("EditMode.Enter", function()
-		inEditMode = true
+	MelloUI:On("editmode", function(entering)
+		inEditMode = entering
 		if M.isEnabled then
-			SetGameTracker(false)
+			SetGameTracker(not entering)
 			if frame then
-				frame:Hide()
+				if entering then
+					frame:Hide()
+				else
+					Place()
+					MarkDirty()
+				end
 			end
 		end
 	end, M)
-	EventRegistry:RegisterCallback("EditMode.Exit", function()
-		inEditMode = false
-		if M.isEnabled then
-			SetGameTracker(true)
-			if frame then
-				Place()
-				MarkDirty()
-			end
+end
+
+-- The kit's look switched on or off for this tracker (the bus's
+-- 'look:questTracker', told on the frame after the reskin or the tracker's
+-- own switch changed): its frame's look at once, every line's ink and colour
+-- on the next rebuild -- the same as a tracker built in that look
+local function OnLook()
+	if M.isEnabled and frame then
+		ApplyLook()
+		MarkDirty()
+	end
+end
+
+-- its parchment sheet switched on or off: ink or colour again (the bus's
+-- 'parchment', fired at the end of Kit:SetParchment, where this hooked that
+-- function; audit, 2026-09-24, rank 5)
+local function OnParchment(area)
+	if area == "questTracker" and M.isEnabled then
+		MarkDirty()
+	end
+end
+
+-- the column under the minimap re-laid (the bus's 'column', MinimapPanel):
+-- where nobody placed it, it follows the column's bottom; placed, Place has
+-- the same inputs and leaves the frame as it is. Its height fitted again
+-- only when it moved. Out of combat: its quest item button is a secure
+-- frame on it.
+local function PlaceForColumn()
+	if M.isEnabled and frame and not inEditMode and not sizing then
+		local was = last.drop
+		Place()
+		if last.drop ~= was then
+			MarkDirty()
 		end
-	end, M)
+	end
+end
+
+local function OnColumn()
+	local Kit = MelloUI.Kit
+	if Kit and Kit.WhenOutOfCombat then
+		Kit:WhenOutOfCombat(PlaceForColumn, "Quest Tracker column")
+	else
+		PlaceForColumn()
+	end
+end
+
+local listening = false
+local function Listen()
+	if listening then
+		return
+	end
+	listening = true
+	MelloUI:On("look:questTracker", OnLook, M)
+	MelloUI:On("parchment", OnParchment, M)
+	MelloUI:On("column", OnColumn, M)
 end
 
 --------------------------------------------------------------------------------
@@ -1655,16 +1817,8 @@ function M:OnEnable(db)
 	end
 	ApplyLook()
 	frame:Show()
-	-- the parchment sheet switched on or off: ink or colour again
-	local Kit = MelloUI.Kit
-	if Kit and Kit.SetParchment and not M.parchmentHooked then
-		M.parchmentHooked = true
-		hooksecurefunc(Kit, "SetParchment", function(_, area)
-			if area == "questTracker" and M.isEnabled then
-				MarkDirty()
-			end
-		end)
-	end
+	-- the look and the parchment sheet switched: followed live
+	Listen()
 	MarkDirty()
 end
 

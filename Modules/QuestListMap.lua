@@ -299,9 +299,9 @@ function PinMethods:OnMouseClickAction(button)
 	if self.kind == "giver" then
 		if data.tracked then
 			QL.ClearWaypoint()
-			PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_REMOVE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			MelloUI:PlayUISound("waypoint_clear")
 		elseif QL.SetWaypoint(data.quests[1].row, data.quests[1].state == "ready") then
-			PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+			MelloUI:PlayUISound("waypoint_set")
 		end
 		QL.Panel:Update()
 		QL.RefreshPins()
@@ -314,7 +314,7 @@ function PinMethods:OnMouseClickAction(button)
 			local what = data.raid and "raid" or "dungeon"
 			if QL.RouteToPoint(mapID, data.x, data.y, icon .. data.name,
 				string.format("%sTracking the %s entrance of %s, {dist} away", icon, what, data.name)) then
-				PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+				MelloUI:PlayUISound("waypoint_set")
 			end
 		elseif data.dungeonID ~= 0 and QL.byDungeon and QL.byDungeon[data.dungeonID] then
 			-- Show the instance's quests: switch the panel, fold the others,
@@ -323,9 +323,7 @@ function PinMethods:OnMouseClickAction(button)
 				QL.collapsed["dungeon" .. id] = (id ~= data.dungeonID) or nil
 			end
 			QL.Panel:Reveal("dungeon" .. data.dungeonID, data.raid and "raids" or "dungeons")
-			if MelloUI.PlayUISound then
-				MelloUI:PlayUISound("page")
-			end
+			MelloUI:PlayUISound("page")
 			local done, total = DungeonProgress(data.dungeonID)
 			local icon = data.raid and "|A:Raid:18:18|a " or "|A:Dungeon:18:18|a "
 			local text = string.format("%s%s: %d quests listed, %d done", icon, data.name, total or 0, done or 0)
@@ -341,7 +339,7 @@ function PinMethods:OnMouseClickAction(button)
 		local icon = "|A:TaxiNode_Neutral:16:16|a "
 		if QL.RouteToPoint(mapID, data.x, data.y, icon .. data.label,
 			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label)) then
-			PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+			MelloUI:PlayUISound("waypoint_set")
 		end
 	elseif self.kind == "transport" then
 		local map = self:GetMap()

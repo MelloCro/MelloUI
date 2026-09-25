@@ -27,6 +27,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("LegacyPanel", {
 	title = "Legacy Panel",
 	desc = "The Legacy window dressed in the painted kit on the game's own layout.",
+	window = { label = "Legacy window", desc = "Rewards, challenges and the tree in the kit.", tab = "Windows", order = 4,
+		frames = { "LegacySystemFrame" }, plainGrab = true, addon = "Blizzard_LegacySystem", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -61,7 +63,7 @@ local function ListDim(owner, rect, pad)
 	local tex = owner:CreateTexture(nil, "BACKGROUND", nil, 7)
 	tex:SetPoint("TOPLEFT", rect, "TOPLEFT", -pad, pad)
 	tex:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", pad, -pad)
-	local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+	local c = MelloUI.Palette.innerPanel
 	tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
 	tex.kitPiece = true   -- ours: never faded with the game's art
 	tex:SetShown(active)

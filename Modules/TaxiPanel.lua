@@ -47,6 +47,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("TaxiPanel", {
 	title = "Flight Map Kit",
 	desc = "The flight map window in the kit.",
+	window = { label = "Flight map", desc = "The flight map window in the kit.", tab = "Windows",
+		frames = { "TaxiFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -60,7 +62,7 @@ local hooked = setmetatable({}, { __mode = "k" })        -- [window] = true once
 local titleHome = setmetatable({}, { __mode = "k" })     -- [title string] = the frame it belongs to, while it rides our plate's band
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- The flight map windows this client has (either may be missing; a client
 -- with both uses TaxiFrame for some maps and FlightMapFrame for others)

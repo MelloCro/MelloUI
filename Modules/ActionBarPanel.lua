@@ -69,6 +69,7 @@ end
 local M = MelloUI:RegisterModule("ActionBarPanel", {
 	title = "Action Bars Kit",
 	desc = "The action bars, micro menu, bag bar and experience bars dressed in the painted kit on the game's own layout.",
+	window = { label = "Action bars", desc = "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,
@@ -84,7 +85,7 @@ local BAG_BUTTONS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "Charact
 	"CharacterBag3Slot", "CharacterReagentBag0Slot", "KeyRingButton" }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then
@@ -1790,17 +1791,18 @@ local function Hook()
 		return
 	end
 	hooked = true
-	-- Edit Mode closed: the bars may have been snapped together or apart
-	if EventRegistry and EventRegistry.RegisterCallback then
-		EventRegistry:RegisterCallback("EditMode.Exit", ScheduleBackdrop, M)
-		-- Edit Mode opened: Tweaks brings a hidden micro menu back for it;
-		-- its buttons' glyphs fitted once, a frame later (after that move)
-		EventRegistry:RegisterCallback("EditMode.Enter", function()
-			if active and next(microStale) then
-				C_Timer.After(0, RefitStaleMicros)
-			end
-		end, M)
-	end
+	-- Edit Mode closed: the bars may have been snapped together or apart.
+	-- Edit Mode opened: Tweaks brings a hidden micro menu back for it; its
+	-- buttons' glyphs fitted once, a frame later (after that move). Told
+	-- through the kit's one Edit Mode registration (the bus's 'editmode',
+	-- audit 2026-09-24)
+	MelloUI:On("editmode", function(entering)
+		if not entering then
+			ScheduleBackdrop()
+		elseif active and next(microStale) then
+			C_Timer.After(0, RefitStaleMicros)
+		end
+	end, M)
 	-- the UI Scale changed, or a bar's Size in Edit Mode (user, 2026-09-24:
 	-- "UI Scaling Break the UI"): the backdrops are measured from the
 	-- buttons' rects ON THE SCREEN, and a new UI scale moves the bars that

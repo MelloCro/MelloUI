@@ -42,6 +42,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("TrainerPanel", {
 	title = "Trainer Kit",
 	desc = "The class and profession trainers' window in the kit.",
+	window = { label = "Trainers", desc = "The class and profession trainers' window in the kit.", tab = "Windows", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -69,7 +70,7 @@ local found = { hooks = {}, syncs = 0, triggers = {} } -- what the build found, 
 local listOwner = {}                                   -- our key in the list's callback registry
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Window()
 	return _G.ClassTrainerFrame

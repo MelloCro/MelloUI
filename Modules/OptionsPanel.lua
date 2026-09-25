@@ -60,6 +60,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("OptionsPanel", {
 	title = "Options Kit",
 	desc = "The game's Options window (every settings page) in the kit.",
+	window = { label = "Game options", desc = "The game's Options window (every settings page) in the kit.", tab = "Windows", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -96,7 +97,7 @@ local watched = setmetatable({}, { __mode = "k" })       -- [SettingsPanel] = tr
 local lists = {}            -- the two ScrollBoxes and their row functions, once found
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- the given values without the nils (a table literal with a nil in it stops
 -- ipairs there, and the art after it would never be faded)

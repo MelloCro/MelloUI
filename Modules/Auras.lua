@@ -31,6 +31,10 @@ local hooksecurefunc = Perf.hooksecurefunc
 local M = MelloUI:RegisterModule("Auras", {
 	title = "Buffs & Debuffs",
 	desc = "Your own buff and debuff rows on the target frame, enemy nameplates and at your buffs, drawn by the game so they keep working in combat.",
+	icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
+	flavour = "Buffs and debuffs in rows of your own, drawn by the game itself, so they never go dark in a fight.",
+	group = "Frames and bars",
+	tweak = { label = "Buffs & Debuffs", desc = "MelloUI's own rows of buffs and debuffs: yours in place of the game's buff bar, the target's under its frame, your debuffs on enemy nameplates.", order = 1, off = true },
 	enabledByDefault = false,
 	defaults = {
 		player = true,
@@ -67,7 +71,7 @@ local function Try(fn, ...)
 end
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Available()
 	return AnchorUtil and AnchorUtil.FlowLayoutAxis and AuraContainerSortMethod and AuraContainerSortDirection
@@ -561,21 +565,17 @@ end)
 
 local editHooked = false
 
+-- (through the kit's one Edit Mode registration, the bus's 'editmode';
+-- audit, 2026-09-24)
 local function WatchEditMode()
-	if editHooked or not (EventRegistry and EventRegistry.RegisterCallback) then
+	if editHooked then
 		return
 	end
 	editHooked = true
-	EventRegistry:RegisterCallback("EditMode.Enter", function()
-		inEditMode = true
+	MelloUI:On("editmode", function(entering)
+		inEditMode = entering
 		if M.isEnabled and M.db.player then
-			SetPlayer(false)
-		end
-	end, M)
-	EventRegistry:RegisterCallback("EditMode.Exit", function()
-		inEditMode = false
-		if M.isEnabled and M.db.player then
-			SetPlayer(true)
+			SetPlayer(not entering)
 		end
 	end, M)
 end

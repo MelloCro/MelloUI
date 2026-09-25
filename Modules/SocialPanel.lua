@@ -31,6 +31,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("SocialPanel", {
 	title = "Social Panel Kit",
 	desc = "The social window (contacts, raid, quick join) dressed in the painted kit on the game's own layout.",
+	window = { label = "Social window", desc = "Contacts, raid and quick join in the kit.", tab = "Windows", order = 10,
+		frames = { "FriendsFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

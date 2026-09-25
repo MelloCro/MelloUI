@@ -50,6 +50,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("ItemTextPanel", {
 	title = "Books & Letters Kit",
 	desc = "Books, plaques and letters you read (the item text window) in the kit, on parchment.",
+	window = { label = "Books and letters", desc = "Books, plaques and letters you read (the item text window) in the kit, on parchment.", tab = "Windows",
+		frames = { "ItemTextFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -84,7 +86,7 @@ local tagsInked = false
 local tagSetting = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not (region and skin) then

@@ -46,6 +46,11 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+-- Core.lua loads before Perf.lua: its /melloperf scope (the mover's shared
+-- handlers) is opened here, while the files still load, as a load of its
+-- own that Anim's scope closes at once. Asked for by Core after login it
+-- would open a file load that never closes (review, 2026-09-25).
+MelloUI.CorePerf = MelloUI.Perf:Scope("Core")
 local Perf = MelloUI.Perf:Scope("Anim")
 
 local Anim = { reduceMotion = false }
@@ -98,7 +103,7 @@ Anim.easing = {
 --------------------------------------------------------------------------------
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Read(frame, prop)
 	if prop == "alpha" then
@@ -367,25 +372,50 @@ function Anim:StopGroup(group)
 end
 
 -- The Reduce Motion switch. The running tweens end on the driver's next
--- frame; the groups here at once.
+-- frame; the groups here at once. The groups are listed first and acted on
+-- after (review, 2026-09-24): a settle, or a group's own OnPlay / OnFinished,
+-- may play another group through PlayGroup, and a key added to `groups`
+-- during its pairs() walk is undefined in Lua. The list is reused, filled
+-- above what a switch still running (from inside a settle) holds.
+local sweep, sweepTop = {}, 0
+
+local function Switch(group, settle, on)
+	if on then
+		if group:IsPlaying() then
+			Settle(group, settle)
+		end
+	elseif group:GetLooping() ~= "NONE" and not group:IsPlaying() then
+		group:Play()
+	end
+end
+
 function Anim:SetReduceMotion(on)
 	on = on and true or false
 	if on == self.reduceMotion then
 		return
 	end
 	self.reduceMotion = on
-	for group, settle in pairs(groups) do
-		if on then
-			if group:IsPlaying() then
-				local ok, err = pcall(Settle, group, settle)
-				if not ok then
-					geterrorhandler()(err)
-				end
+	local base = sweepTop
+	local top = base
+	for group in pairs(groups) do
+		top = top + 1
+		sweep[top] = group
+	end
+	sweepTop = top
+	for i = base + 1, top do
+		local group = sweep[i]
+		sweep[i] = nil
+		-- still listed (a settle before it may have stopped it), with its
+		-- settle as it is now
+		local settle = groups[group]
+		if settle ~= nil and self.reduceMotion == on then
+			local ok, err = pcall(Switch, group, settle, on)
+			if not ok then
+				geterrorhandler()(err)
 			end
-		elseif group:GetLooping() ~= "NONE" and not group:IsPlaying() then
-			group:Play()
 		end
 	end
+	sweepTop = base
 end
 
 MelloUI:Profile("Anim", "tween driver", driver)

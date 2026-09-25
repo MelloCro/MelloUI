@@ -49,7 +49,7 @@ local depth = 0
 local tChild, mChild = {}, {}
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 --------------------------------------------------------------------------------
 -- Measuring

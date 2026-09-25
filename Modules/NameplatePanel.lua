@@ -30,6 +30,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("NameplatePanel", {
 	title = "Nameplate Kit",
 	desc = "Nameplates dressed in the painted kit: the health bar in the bracket, the cast bar on the single rail, the level circle on the orb.",
+	window = { label = "Nameplates", desc = "Nameplate health and cast bars in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -39,7 +40,7 @@ local skin = nil
 local active = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

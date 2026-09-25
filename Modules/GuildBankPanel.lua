@@ -78,6 +78,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("GuildBankPanel", {
 	title = "Guild Bank Kit",
 	desc = "The guild bank (its tabs, slots, logs and money) in the kit.",
+	window = { label = "Guild bank", desc = "The guild bank (its tabs, slots, logs and money) in the kit.", tab = "Windows",
+		addon = "Blizzard_GuildBankUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -119,7 +121,7 @@ local pageRects = {}                        -- [page] = the page picture's rect 
 local stats = { items = 0, sideTabs = 0, tabs = 0, buttons = 0, plates = 0, icons = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- true when every value given is a plain number (no secret, no nil)
 local function PlainNumbers(...)
@@ -2164,12 +2166,14 @@ for _, ev in ipairs(EVENTS) do
 end
 
 -- the bags' Item Background changed (Backpack Kit's option, or Dynamic UI
--- Modification's picker): the guild bank's empty slots follow at once
-hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
+-- Modification's picker): the guild bank's empty slots follow at once (the
+-- bus's 'setting', fired at the end of NotifySettingChanged where the hook
+-- on it ran: audit 2026-09-24 rank 5)
+MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key)
 	if name == "BackpackPanel" and key == "itemBackground" and active then
 		ApplyItemBackground(true)
 	end
-end)
+end), M)
 
 function M:OnEnable(db)
 	self.db = db

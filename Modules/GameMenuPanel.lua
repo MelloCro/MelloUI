@@ -22,6 +22,9 @@ local hooksecurefunc = Perf.hooksecurefunc
 local M = MelloUI:RegisterModule("GameMenuPanel", {
 	title = "Game Menu Panel",
 	desc = "The Escape menu on a painted stone and iron frame with red plates for its buttons.",
+	icon = "Interface\\Icons\\INV_Misc_Key_10",
+	flavour = "Nine red plates under a gold header. The way out, in stone and iron.",
+	window = { label = "Game menu", desc = "The Escape menu on its painted plates.", tab = "Windows" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

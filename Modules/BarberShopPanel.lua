@@ -66,6 +66,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("BarberShopPanel", {
 	title = "Barber Shop Kit",
 	desc = "The barber shop in the kit.",
+	window = { label = "Barber shop", desc = "The barber shop in the kit.", tab = "Windows",
+		addon = "Blizzard_BarbershopUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -87,7 +89,7 @@ local found = {}                                         -- [part] = a line for 
 local stats = { rings = 0, dropdowns = 0, arrows = 0, checks = 0, sliders = 0, cogs = 0, boxes = 0, buttons = 0, labels = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

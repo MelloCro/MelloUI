@@ -21,6 +21,10 @@ local M = MelloUI:RegisterModule("Services", {
 	title = "Services",
 	keep = { "learned" },   -- services recorded by hand (when Route's store is missing): never in a profile
 	desc = "Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.",
+	icon = "Interface\\Icons\\Ability_Repair",
+	flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap.",
+	group = "Quests and travel",
+	area = { key = "services", follows = "MinimapPanel" },   -- the bar under the minimap: as the minimap
 	enabledByDefault = true,
 	defaults = {
 		showBar = true,
@@ -46,11 +50,9 @@ local M = MelloUI:RegisterModule("Services", {
 --------------------------------------------------------------------------------
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
--- is v, or nil when v is secret (the stand-ins, the client's test and
--- Safe.Value's own body, are for a test world without Core)
-local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
-local Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+-- is v, or nil when v is secret
+local IsSecret = MelloUI.Safe.IsSecret
+local Plain = MelloUI.Safe.Value
 
 local function VectorXY(pos)
 	if type(pos) ~= "table" then
@@ -1238,20 +1240,10 @@ local function ApplyStand()
 	LayerBar()
 end
 
--- The objective tracker is an Edit Mode system: Edit Mode owns its position
--- and its width, and nothing here ever moves it (an anchor set by addon code
--- taints what Edit Mode reads back on exit and breaks its party frame reset).
-local function TrackerNotice()
-end
-
 -- Bar layout: a grid of icons under the minimap (round medallions with a rim
 -- when roundIcons is on).
 local RIM_RATIO = 31 / 21   -- medallion outer diameter over icon diameter (rim art: 31 px ring, 21 px opening)
 local KIT_RIM_RATIO = 130 / 79   -- the kit's round rim (buttons/roundslot: 130 px, 79 px opening)
-
-local function WithStand()
-	return false
-end
 
 --------------------------------------------------------------------------------
 -- The kit look (user's picks SV1 SR2, 2026-09-22, kit_raw/services_catalog.png):
@@ -1414,12 +1406,36 @@ local function LayoutBar()
 			end
 		end
 	end
+	-- hung where the column under the minimap keeps it (MinimapPanel's
+	-- column: under the map by the bar's offset, or under the divider
+	-- merged; audit, 2026-09-24, rank 18)
 	bar:ClearAllPoints()
-	if merged then
-		local mp = MelloUI:GetModule("MinimapPanel")
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if mp and mp.ColumnSlot then
+		local rel, relPoint, x, y = mp:ColumnSlot("services")
+		bar:SetPoint("TOP", rel, relPoint, x, y)
+	elseif merged then
 		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, -(mp.DividerHeight and mp:DividerHeight() or 26))
 	else
 		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
+	end
+end
+
+-- The bar laid out, shown or hidden: the column under the minimap laid again
+-- (MinimapPanel lays its frame round the map and the bar first while it is
+-- on). The game's objective tracker is an Edit Mode system and nothing here
+-- ever moves it: an anchor set by addon code taints what Edit Mode reads
+-- back on exit. (The objective tracker's panel has no layout to call: the
+-- call the bar made to it did nothing; audit, 2026-09-24, rank 18.)
+local function TellColumn()
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if not mp then
+		return
+	end
+	if mp.isEnabled and mp.Relayout then
+		mp:Relayout()
+	elseif mp.LayColumn then
+		mp:LayColumn()
 	end
 end
 
@@ -1430,8 +1446,7 @@ local function ApplyIconShape()
 	if not bar then
 		return
 	end
-	-- the painted slots are square, so the medallion rim stands down for them
-	local round = M.db.roundIcons and not WithStand() and true or false
+	local round = M.db.roundIcons and true or false
 	local kit = KitOn()
 	for _, b in ipairs(bar.buttons) do
 		if not b.mask then
@@ -1485,9 +1500,7 @@ local function ApplyIconShape()
 	local merged = Merged()
 	BarStone(merged)
 	if bar.SetBackdrop then
-		if WithStand() then
-			bar:SetBackdrop(nil)   -- the stand is the frame; nothing behind the medallions
-		elseif merged then
+		if merged then
 			SetKitBox(bar, false)   -- the minimap's frame is its border, its stone the ground
 			bar:SetBackdrop(nil)
 		elseif not SetKitBox(bar, kit) then
@@ -1529,16 +1542,7 @@ local function ApplyBar()
 	ApplyStand()
 	ApplyIconShape()
 	LayoutBar()
-	if M.isEnabled then
-		TrackerNotice()
-	end
-	-- the panels that dress the cluster and the tracker follow the stand
-	for _, name in ipairs({ "MinimapPanel", "TrackerPanel" }) do
-		local panel = MelloUI:GetModule(name)
-		if panel and panel.isEnabled and panel.Relayout then
-			panel:Relayout()
-		end
-	end
+	TellColumn()
 end
 
 --------------------------------------------------------------------------------
@@ -1683,9 +1687,13 @@ local function HookRelayout()
 	if Minimap and Minimap.HookScript then
 		Perf.HookScript(Minimap, "OnSizeChanged", function() C_Timer.After(0, ApplyBar) end)
 	end
-	if EventRegistry and EventRegistry.RegisterCallback then
-		EventRegistry:RegisterCallback("EditMode.Exit", function() C_Timer.After(0, ApplyBar) end, M)
-	end
+	-- and when Edit Mode closes (the kit's one Edit Mode registration, the
+	-- bus's 'editmode'; audit, 2026-09-24)
+	MelloUI:On("editmode", function(entering)
+		if not entering then
+			C_Timer.After(0, ApplyBar)
+		end
+	end, M)
 end
 
 local coverWatched = false
@@ -1721,12 +1729,7 @@ function M:OnDisable()
 		menu:Hide()
 	end
 	ApplyStand()
-	for _, name in ipairs({ "MinimapPanel", "TrackerPanel" }) do
-		local panel = MelloUI:GetModule(name)
-		if panel and panel.isEnabled and panel.Relayout then
-			panel:Relayout()
-		end
-	end
+	TellColumn()
 end
 
 -- The minimap's frame changed (its shape, border, Merge With Services): the

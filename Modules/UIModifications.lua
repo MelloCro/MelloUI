@@ -31,86 +31,35 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("UIModifications")
 local hooksecurefunc = Perf.hooksecurefunc
 
--- The reskin panels: { module name, toggle label, description, tab }. The
--- look of each (backgrounds, backdrops, the minimap's shape) is chosen in
--- Dynamic UI Modification; here only whether the area is reskinned.
-local PANELS = {
-	{ "CharacterPanel",   "Character window",       "Equipment, stats, reputation and skills in the kit.", tab = "Windows" },
-	{ "SpellBookPanel",   "Spell book",             "The spell book and its tabs in the kit.", tab = "Windows" },
-	{ "ProfessionsPanel", "Professions",            "The profession book and crafting window in the kit.", tab = "Windows" },
-	{ "LegacyPanel",      "Legacy window",          "Rewards, challenges and the tree in the kit.", tab = "Windows" },
-	{ "QuestLogPanel",    "Quest log",              "The quest log in the world map window and MelloUI's quest list in the kit.", tab = "Windows" },
-	{ "GuildPanel",       "Guild & communities",    "Chat, roster, info and settings in the kit.", tab = "Windows" },
-	{ "GroupFinderPanel", "Looking for group",      "Listing, browse and who in the kit.", tab = "Windows" },
-	{ "CollectionsPanel", "Appearances",            "The wardrobe in the kit.", tab = "Windows" },
-	{ "SocialPanel",      "Social window",          "Contacts, raid and quick join in the kit.", tab = "Windows" },
-	{ "BackpackPanel",    "Bags",                   "The backpack and bag windows in the kit.", tab = "Windows" },
-	{ "GameMenuPanel",    "Game menu",              "The Escape menu on its painted plates.", tab = "Windows" },
-	{ "DialogPanel",      "Popup dialogs",          "The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons.", tab = "Windows" },
-	{ "MacroPanel",     "Macros",                "The macro window (general and character macros, the icon picker) in the kit.", tab = "Windows" },
-	{ "EditModePanel",  "Edit Mode window",      "Edit Mode's settings window and the layout dialogs in the kit.", tab = "Windows" },
-	{ "AddonListPanel",  "AddOn list",            "The AddOn list in the kit.", tab = "Windows" },
-	{ "OptionsPanel",   "Game options",          "The game's Options window (every settings page) in the kit.", tab = "Windows" },
-	{ "QuestDialogPanel", "Quest dialogs", "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.", tab = "Windows" },
-	{ "MerchantPanel", "Merchants", "The merchant window (items, buyback, repair) in the kit.", tab = "Windows" },
-	{ "AuctionHousePanel", "Auction house", "The auction house (buy, sell, your auctions) in the kit.", tab = "Windows" },
-	{ "TrainerPanel", "Trainers", "The class and profession trainers' window in the kit.", tab = "Windows" },
-	{ "TabardPanel", "Guild tabard vendor", "The guild tabard designer in the kit.", tab = "Windows" },
-	{ "TaxiPanel", "Flight map", "The flight map window in the kit.", tab = "Windows" },
-	{ "MailPanel", "Mailbox", "The mailbox (inbox, reading a letter, send mail) in the kit.", tab = "Windows" },
-	{ "BankPanel", "Bank", "The bank window (the bank's slots, bag slots, purchase) in the kit, in the bags' looks.", tab = "Windows" },
-	{ "GuildBankPanel", "Guild bank", "The guild bank (its tabs, slots, logs and money) in the kit.", tab = "Windows" },
-	{ "TradePanel", "Trade", "The trade window in the kit.", tab = "Windows" },
-	{ "LootPanel", "Loot windows", "The loot window and the group loot rolls in the kit.", tab = "Windows" },
-	{ "ItemTextPanel", "Books and letters", "Books, plaques and letters you read (the item text window) in the kit, on parchment.", tab = "Windows" },
-	{ "CharterPanel", "Guild charter", "The guild charter (petition) and the guild registrar in the kit.", tab = "Windows" },
-	{ "InspectPanel", "Inspect", "The inspect window (another player's gear) in the kit.", tab = "Windows" },
-	{ "DressUpPanel", "Dressing room", "The dressing room in the kit.", tab = "Windows" },
-	{ "BarberShopPanel", "Barber shop", "The barber shop in the kit.", tab = "Windows" },
-	{ "SocketingPanel", "Gem socketing", "The item socketing window in the kit.", tab = "Windows" },
-	{ "StablePanel", "Pet stable", "The hunter's pet stable in the kit.", tab = "Windows" },
-	{ "PvPPanel", "PvP windows", "The battleground and arena windows and the scoreboard in the kit.", tab = "Windows" },
-	{ "BattlefieldMapPanel", "Battlefield map", "The battlefield minimap's frame in the kit (the map itself untouched).", tab = "Windows" },
-	{ "ReadyPanel", "Ready checks", "The ready check and the dungeon / battleground ready popups in the kit.", tab = "Windows" },
-	{ "StackSplitPanel", "Split stack", "The split-stack box in the kit.", tab = "Windows" },
-	{ "ColorPickerPanel", "Colour picker", "The colour picker in the kit.", tab = "Windows" },
-	{ "CalendarPanel", "Calendar", "The calendar and its event windows in the kit.", tab = "Windows" },
-	{ "ClockPanel", "Clock and stopwatch", "The clock settings and the stopwatch in the kit.", tab = "Windows" },
-	{ "ChannelPanel", "Chat channels", "The chat channels window in the kit.", tab = "Windows" },
-	{ "HelpPanel", "Help window", "The help / customer support window in the kit.", tab = "Windows" },
-	{ "UnitFramePanel",   "Unit frames",            "Player, target, focus, pet and party frames in the kit.", tab = "HUD" },
-	{ "CastBarPanel",     "Cast bars",              "Player, pet, target and focus cast bars in the kit.", tab = "HUD" },
-	{ "RaidFramePanel",   "Raid frames",            "Compact raid frames, group borders and totems in the kit.", tab = "HUD" },
-	{ "ActionBarPanel",   "Action bars",            "Action bars, stance and pet bars, micro menu, bag bar, experience and reputation bars in the kit.", tab = "HUD" },
-	{ "MinimapPanel",     "Minimap",                "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", tab = "HUD" },
-	{ "TrackerPanel",     "Objective tracker",      "The tracker's headers and backdrop in the kit.", tab = "HUD" },
-	{ "ChatPanel",        "Chat windows",           "Chat frames, tabs, edit box and buttons in the kit (no fade).", tab = "HUD" },
-	{ "DamageMeterPanel", "Damage meter",           "The damage meter and its breakdown window in the kit.", tab = "HUD" },
-	{ "TooltipPanel",     "Tooltips",               "Tooltips on the stone box with the single rail.", tab = "HUD" },
-	{ "NameplatePanel",   "Nameplates",             "Nameplate health and cast bars in the kit.", tab = "HUD" },
-}
-
--- The folded feature modules: { module name, switch label, description },
--- each switched by `qol_<name>` here (`off`: off until switched on, as the
--- module was before it moved here; `always`: no switch, its rows each switch
--- one thing and are spread over the tabs). Their rows are laid out below.
-local TWEAKS = {
-	{ "Auras",        "Buffs & Debuffs",       "MelloUI's own rows of buffs and debuffs: yours in place of the game's buff bar, the target's under its frame, your debuffs on enemy nameplates.", off = true },
-	{ "ErrorFilter",  "Error Messages",        "Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen.", off = true },
-	{ "CooldownText", "Cooldown Timers",       "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left." },
-	{ "Nameplates",   "Nameplate Icons",       "A large crowd-control icon above the name and a quest marker on enemies you still need. Works with or without the reskin." },
-	{ "UnitFrames",   "Unit Frame Tweaks",     "Name and glow tweaks on the unit frames (they step aside where the reskin covers them)." },
-	{ "BarText",      "Bar Values",            "Health and power values always shown on the player, target and focus frames." },
-	{ "BarTextures",  "Bar Textures",          "The finish of health and mana bars (flat, smooth, glossy, minimalist) and their colours; the fill under the kit's brackets." },
-	{ "ClassIcons",   "Class Icons",           "The painted class medallions in place of the game's class icons and on player portraits." },
-	{ "Chat",         "Chat Tweaks",           "Short channel names, class-coloured names and the art-hiding switches (which only apply while the chat reskin is off)." },
-	{ "Tooltip",      "Tooltip Tweaks",        "Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off." },
-	{ "Fonts",        "Custom Fonts",          "The fonts and sizes used by the whole interface. Off: the game's own fonts." },
-	{ "DarkMode",     "Dark Mode",             "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus." },
-	{ "Vendor",       "Vendor Automation",     "Repair your gear and sell junk automatically at a merchant." },
-	{ "Stats",        "FPS / Latency",         "A small coloured FPS and latency readout in the bottom right corner." },
-	{ "Tweaks",       "Tweaks",                "", always = true },
-}
+-- The reskin's rows (the Windows and HUD tabs) and the folded features come
+-- from the module registry (audit, 2026-09-24, rank 4: they were hand lists
+-- here, beside PLAIN_WINDOWS below and the configurator's icons, and had
+-- drifted from the modules). Each kit panel gives its row as `window` in its
+-- RegisterModule, each folded feature as `tweak` (Core's header):
+--   window  { label, desc, tab = "Windows" | "HUD", order, switch, frames,
+--             plainGrab, addon, firstOpen }
+--   tweak   { label, desc, order, off, always }
+--   order   rows with one lead their list (their tab), lowest first; the
+--           rest follow in the TOC's order
+--   switch  the row is not a kit module's but the look switch of one of
+--           MelloUI's own windows: that setting of this module, which
+--           Kit:IsOn reads (the Quest Tracker's questTrackerKit; audit,
+--           2026-09-24, rank 1)
+-- Made into the lists the code below reads, in the order the user sees:
+--   PANELS  { module name (or the switch), label, description, tab =,
+--           setting = true for a switch: no module goes by that name, and
+--           the module paths below pass it by }
+--   TWEAKS  { module name, label, description, off =, always = }, each
+--           switched by `qol_<name>` here (`off`: off until switched on, as
+--           the module was before it moved here; `always`: no switch, its
+--           rows each switch one thing and are spread over the tabs)
+-- The look of each area (backgrounds, backdrops, the minimap's shape) is
+-- chosen in Dynamic UI Modification; here only whether it is reskinned.
+-- This file loads before those modules (see the TOC), so the lists, the
+-- switches' defaults and their rows on the page are made once every module
+-- is in: at the addon's own ADDON_LOADED, before the saved settings are
+-- read (Lists, by the plain windows' sweep below).
+local PANELS, TWEAKS = {}, {}
 
 -- welcomeAsked: the first-login question (take the tour) was asked
 -- (Core/Tutorial.lua); layoutApplied: the Edit Mode layout was put in place
@@ -135,14 +84,7 @@ local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 	defaults[k.key] = k.default
 end
-for _, area in ipairs(PANELS) do
-	defaults[area[1]] = true
-end
-for _, tweak in ipairs(TWEAKS) do
-	if not tweak.off then
-		defaults["qol_" .. tweak[1]] = true
-	end
-end
+-- (each area's and feature's switch is added to these by Lists, below)
 
 local function Add(opt)
 	options[#options + 1] = opt
@@ -153,31 +95,43 @@ end
 local function Sub(name)
 	Add({ type = "subheader", name = name })
 end
+-- rows made from the registry: a slot on the page for now, filled in its
+-- place by Lists once every module is in (`fill` adds that slot's rows)
+local function Slot(fill)
+	Add({ slot = fill })
+end
 -- a feature: its heading, its switch, then its rows (`keys`: which, in
 -- order; nil: all of them) under the switch
 local function Feature(name, keys, heading)
-	local tweak
-	for _, t in ipairs(TWEAKS) do
-		if t[1] == name then
-			tweak = t
+	Slot(function()
+		local tweak
+		for _, t in ipairs(TWEAKS) do
+			if t[1] == name then
+				tweak = t
+			end
 		end
-	end
-	if heading ~= false then
-		Sub(heading or tweak[2])
-	end
-	local area = nil
-	if not tweak.always then
-		area = "qol_" .. name
-		Add({ type = "toggle", key = area, name = tweak[2], desc = tweak[3] })
-	end
-	Add({ type = "include", module = name, area = area, keys = keys, flat = true })
+		if not tweak then
+			return   -- (its module is not there)
+		end
+		if heading ~= false then
+			Sub(heading or tweak[2])
+		end
+		local area = nil
+		if not tweak.always then
+			area = "qol_" .. name
+			Add({ type = "toggle", key = area, name = tweak[2], desc = tweak[3] })
+		end
+		Add({ type = "include", module = name, area = area, keys = keys, flat = true })
+	end)
 end
 local function Panels(tab)
-	for _, area in ipairs(PANELS) do
-		if area.tab == tab then
-			Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+	Slot(function()
+		for _, area in ipairs(PANELS) do
+			if area.tab == tab then
+				Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+			end
 		end
-	end
+	end)
 end
 
 -- General
@@ -284,6 +238,9 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded" },   -- a borrowed game setting and one-time steps: never in a profile
 	defaults = defaults,
 	options = options,
+	icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_02",
+	flavour = "The painted reskin, area by area, and the quality-of-life tweaks on nameplates, tooltips, chat and unit frames. Start here.",
+	group = "The look",
 })
 
 -- Unlock the Windows, Auto Snapping and Reset positions sit in the
@@ -295,7 +252,7 @@ M.placementTexts = {
 	autoSnap = { name = "Auto Snapping",
 		desc = "While a window is dragged, the grid lines near its bottom-left corner light up, and on release the corner snaps onto them. Off: the window stays exactly where it is dropped." },
 	reset = { name = "Reset positions",
-		desc = "Forget every saved window position and scale: each window returns to the game's own place and size the next time it opens (open ones are closed now)." },
+		desc = "Forget every saved window position and scale: each window returns to the game's own place and size the next time it opens (open ones are closed now), and MelloUI's own windows, such as the Quest Tracker, go back to their standard place and size." },
 }
 
 --------------------------------------------------------------------------------
@@ -303,6 +260,10 @@ M.placementTexts = {
 -- title plate is a drag handle; the outer rail is lit while it moves; the
 -- position is saved and put back on every show and after the game's own
 -- panel layout (UpdateUIPanelPositions), so it survives reloads.
+-- MelloUI's own windows register with Core (MelloUI:RegisterMover), which
+-- keeps their places; this module is the provider of that mover (below)
+-- and gives them the same drag while the module is on (audit, 2026-09-24,
+-- rank 6). A mover made for one of them carries its entry (mover.entry).
 --------------------------------------------------------------------------------
 
 local movers = {}   -- [frame] = mover
@@ -384,48 +345,58 @@ local function RefuseInCombat(frame)
 	return true
 end
 
--- A saved place kept on the screen (user, 2026-09-24: "UI Scaling Break the
--- UI"). The offsets are in the window's own units from the screen's centre,
--- so they grow with the UI scale while the screen, in those units, shrinks:
--- a window saved near an edge at a small UI scale landed partly or wholly off
--- the screen at a larger one (or after a change to a smaller resolution).
--- The offsets are pulled in just enough for the window to fit, its top-left
--- corner kept on the screen when it is larger than the screen; the saved
--- entry itself is not changed, so the old place comes back with the old
--- scale. Only the mover's own anchor (BOTTOMLEFT to the screen's CENTER);
--- a frame whose size or scale cannot be read yet is left as saved.
-local function OnScreen(frame, x, y)
-	local okS, fs = pcall(frame.GetEffectiveScale, frame)
-	local okW, w, h = pcall(frame.GetSize, frame)
-	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
-	local okP, sw, sh = pcall(UIParent.GetSize, UIParent)
-	if not (okS and okW and okU and okP) then
-		return x, y
-	end
-	for _, v in ipairs({ fs, w, h, us, sw, sh }) do
-		if type(v) ~= "number" or (issecretvalue and issecretvalue(v)) or v <= 0 then
-			return x, y
+-- A window that carries a neighbour of MelloUI's along: kept on the screen
+-- together with it (audit, 2026-09-24, rank 18: the Quest List docked to the
+-- world map's right edge went off the screen with a map placed at that
+-- edge, as only the map was measured). [window name] = the neighbour's name,
+-- looked up when needed (made on the map's first show).
+local COMPANIONS = { WorldMapFrame = "MelloUIQuestListPanel" }
+
+local function Companion(frame)
+	local name = COMPANIONS[frame:GetName() or ""]
+	return name and _G[name] or nil
+end
+
+-- The saved place and scale put on a window (PutBack, in a pcall). The
+-- place is kept on the screen (user, 2026-09-24: "UI Scaling Break the UI"):
+-- the offsets are in the window's own units from the screen's centre, so
+-- they grow with the UI scale while the screen, in those units, shrinks, and
+-- a window saved near an edge at a small UI scale landed partly or wholly
+-- off the screen at a larger one (or after a change to a smaller
+-- resolution). Core's MelloUI:FitOnScreen pulls it in just enough, its
+-- neighbour with it, the top-left corner kept on the screen when it is
+-- larger than the screen; the saved entry itself is not changed, so the old
+-- place comes back with the old scale. Only the mover's own anchor
+-- (BOTTOMLEFT to the screen's CENTER), and a window with a neighbour
+-- whatever its anchor (fitted with it on its drop as well); a frame whose
+-- rect or scale cannot be read is left as saved.
+local function PlaceSaved(frame, pos, mover)
+	if pos.scale and pos.scale > 0 and frame.SetScale then
+		if mover then
+			mover.scaling = true
+		end
+		ScaleFrame(frame, pos.scale)   -- (its backgrounds with it)
+		if mover then
+			mover.scaling = nil
 		end
 	end
-	-- half the screen in the window's own units
-	local k = us / fs
-	local halfW, halfH = sw / 2 * k, sh / 2 * k
-	if x + w > halfW then
-		x = halfW - w
+	-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry carries
+	-- the anchor only when it differs
+	Raw(frame, "ClearAllPoints")(frame)
+	Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", pos.x or 0, pos.y or 0)
+	local companion = Companion(frame)
+	if companion or (not pos.point and not pos.relPoint) then
+		MelloUI:FitOnScreen(frame, companion)
 	end
-	if x < -halfW then
-		x = -halfW
-	end
-	if y < -halfH then
-		y = -halfH
-	end
-	if y + h > halfH then
-		y = halfH - h
-	end
-	return x, y
 end
 
 PutBack = function(frame)
+	local mover = movers[frame]
+	-- a window registered with Core: its place is Core's (put back on its
+	-- show and after a UI Scale change there)
+	if mover and mover.entry then
+		return
+	end
 	local pos = SavedPosition(frame)
 	if not pos or not M.isEnabled then
 		return
@@ -435,32 +406,13 @@ PutBack = function(frame)
 		afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 		return
 	end
-	local mover = movers[frame]
 	local was = mover and mover.placing
 	if mover then
 		mover.placing = true
 	end
-	local ok = pcall(function()
-		if pos.scale and pos.scale > 0 and frame.SetScale then
-			mover = mover or movers[frame]
-			if mover then
-				mover.scaling = true
-			end
-			ScaleFrame(frame, pos.scale)   -- (its backgrounds with it)
-			if mover then
-				mover.scaling = nil
-			end
-		end
-		-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry
-		-- carries the anchor only when it differs (measured before the
-		-- anchors go: a window sized by them reads 0 wide after)
-		local x, y = pos.x or 0, pos.y or 0
-		if not pos.point and not pos.relPoint then
-			x, y = OnScreen(frame, x, y)
-		end
-		Raw(frame, "ClearAllPoints")(frame)
-		Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", x, y)
-	end)
+	-- (a function made once, not a closure per put-back: this runs on every
+	-- show and every panel layout)
+	local ok = pcall(PlaceSaved, frame, pos, mover)
 	if mover then
 		mover.placing = was
 	end
@@ -731,10 +683,12 @@ end
 -- the game gives it -- 1 for most, Edit Mode's Size for the HUD, the panel
 -- manager's fit on a small screen -- which the mover notes when it is made
 -- and whenever something other than the mover scales the window (mover.base).
--- A window that keeps its own place (the quest tracker) is at 100 % at scale
--- 1, or at its custom.base. The plate is anchored to the screen, never to
--- the window: a frame anchored to a protected window becomes protected
--- itself and could no longer be hidden in combat.
+-- A window registered with Core (MelloUI's own: the quest tracker) is at
+-- 100 % at scale 1, or at its entry's base (audit, 2026-09-25: read when its
+-- mover was made, the quest tracker's 100 % was whatever Scale it had then).
+-- The plate is anchored to the screen, never to the window: a frame
+-- anchored to a protected window becomes protected itself and could no
+-- longer be hidden in combat.
 local SizeTip = {}
 do
 	local HOLD, FADE = 1.2, 0.4   -- s: shown after the release, then the fade
@@ -742,20 +696,26 @@ do
 	local tip, owner, hold
 
 	-- v when it is a plain number, else nil: MelloUI.Safe (Core.lua), one set
-	-- for the addon (the stand-in is Safe.Number's own body, for a test world
-	-- without Core)
-	local PlainNumber = MelloUI.Safe and MelloUI.Safe.Number
-		or function(v)
-			if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then
-				return nil
-			end
-			return v
-		end
+	-- for the addon
+	local PlainNumber = MelloUI.Safe.Number
+
+	-- whether a registered window named its 100 % (its entry's base)
+	function SizeTip.HasBase(entry)
+		local base = entry.base
+		return (PlainNumber(base) and base > 0) and true or false
+	end
+
+	-- a registered window's 100 %: its entry's base, or 1
+	function SizeTip.EntryBase(entry)
+		return SizeTip.HasBase(entry) and entry.base or 1
+	end
 
 	-- the scale that is 100 % for this mover's window
 	function SizeTip.Base(mover)
-		local custom = mover.custom
-		local base = custom and custom.base or mover.base
+		if mover.entry then
+			return SizeTip.EntryBase(mover.entry)
+		end
+		local base = mover.base
 		return (PlainNumber(base) and base > 0) and base or 1
 	end
 
@@ -938,17 +898,51 @@ end
 
 local AddHandle   -- below
 
+-- A window registered with Core let go (the Quest Tracker's `save`: it keeps
+-- its own place and scale); one with a key in Core's store, which hangs it
+-- by its own anchor again, kept on the screen with its companions (Core's
+-- RestorePosition); one with neither stays where it was dropped.
+-- The store's scale is written only when the wheel scaled the window in
+-- this drag; otherwise the saved one stays, as Core's plain drag leaves it.
+-- It is dropped only at a 100 % the window named (its entry's base): one
+-- that named none may have a size of its own, laid before its place (the
+-- Route arrow's Arrow Size), and wheeled back to scale 1 and dropped it came
+-- back at that size and off its place (review, 2026-09-25).
+local function SaveEntry(mover, entry)
+	local frame = mover.frame
+	if entry.save then
+		local ok, err = pcall(entry.save, frame)
+		if not ok then
+			MelloUI:Notice("UI Modifications: %s", tostring(err))
+		end
+	elseif entry.key ~= nil then
+		-- (a scale that cannot be read leaves the saved one as it is: nil)
+		local scale = mover.scaled and SizeTip.Scale(frame) or nil
+		if scale and SizeTip.HasBase(entry) and math.abs(scale - entry.base) <= 0.001 then
+			scale = false
+		end
+		if MelloUI:SavePosition(entry.key, frame, scale) then
+			MelloUI:RestorePosition(entry.key, frame)
+		end
+	end
+end
+
+-- shell.entry: a window registered with Core (the provider's Attach), its
+-- handle shell.title
 local function MakeMover(frame, shell)
 	local handle = shell.title and (shell.title.object or shell.title)
+	local entry = shell.entry
 	local existing = movers[frame]
 	if existing then
 		-- a second registration for the window: the kit's shell for a
 		-- window that already has its plain grab (its lit rail comes
 		-- along), or the plain grab for a kit window — one mover, another
-		-- handle (user, 2026-09-22: the mover works with the reskin off)
+		-- handle (user, 2026-09-22: the mover works with the reskin off);
+		-- or Core's registration of a window that had a grab here: its
+		-- place is Core's from then on, and so is its handle's drag
 		existing.shell.outer = shell.outer or existing.shell.outer
-		existing.custom = existing.custom or shell.custom   -- a window keeping its own place, whichever came first
-		AddHandle(existing, handle)
+		existing.entry = existing.entry or entry
+		AddHandle(existing, handle, entry)
 		return
 	end
 	local usable = handle and handle.EnableMouse and handle.SetScript
@@ -959,11 +953,14 @@ local function MakeMover(frame, shell)
 	-- the plain grab that the sweep makes: the mover is still built, and
 	-- AddHandle below does nothing until there is one (user, 2026-09-22: the
 	-- damage meter is dragged by its header, which only the sweep knows)
-	local mover = { shell = shell, handles = {}, washes = {}, frame = frame, custom = shell.custom }
+	local mover = { shell = shell, handles = {}, washes = {}, frame = frame, entry = entry }
 	movers[frame] = mover
 	-- the game's own scale for the window, before a saved one is put on it
-	-- (PutBack at the end): the size readout's 100 % (user, 2026-09-24)
-	mover.base = SizeTip.Scale(frame)
+	-- (PutBack at the end): the size readout's 100 % (user, 2026-09-24); a
+	-- registered window's is its entry's (SizeTip.Base)
+	if not entry then
+		mover.base = SizeTip.Scale(frame)
+	end
 	-- the mouse wheel while dragging: the window's scale, 5 % a notch,
 	-- 50 % .. 200 % (user, 2026-09-21), saved with the position
 	local function Wheel(delta)
@@ -979,14 +976,15 @@ local function MakeMover(frame, shell)
 		-- round percentage of the window's STANDARD size, not the raw scale
 		-- plus 5 %, so every step reads round and 100 % is always landed on
 		-- (with a short hold there); the range is 50 .. 200 % of the standard
-		-- size, or a custom window's own absolute range
-		local custom = mover.custom
+		-- size, or a registered window's own absolute range (its entry's
+		-- min / max)
+		local range = mover.entry
 		local base = SizeTip.Base(mover)
 		local percent = SizeTip.Step(mover, current / base * 100, delta, SCALE_STEP * 100)
 		if not percent then
 			return
 		end
-		local scale = math.max(custom and custom.min or SCALE_MIN * base, math.min(custom and custom.max or SCALE_MAX * base, base * percent / 100))
+		local scale = math.max(range and range.min or SCALE_MIN * base, math.min(range and range.max or SCALE_MAX * base, base * percent / 100))
 		if math.abs(scale - current) < 0.001 then
 			mover.landed = nil
 			return
@@ -1015,29 +1013,31 @@ local function MakeMover(frame, shell)
 			ScaleFrame(frame, scale)
 		end
 		mover.scaling = nil
-		mover.scaled = scale
+		mover.scaled = scale   -- (this drag scaled it: SaveEntry)
 		-- the readout follows the new size; landing on the standard size
 		-- gives a soft tick (the chat's scroll click)
 		SizeTip.Show(mover)
-		if mover.landed and SOUNDKIT and SOUNDKIT.U_CHAT_SCROLL_BUTTON then
-			PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
+		if mover.landed then
+			MelloUI:PlayUISound("tick")
 		end
 		mover.landed = nil
 	end
 	mover.Wheel = Wheel
+	-- true: the drag is under way (the provider's answer to Core)
 	mover.DragStart = function()
 		if not (M.isEnabled and M.db and M.db.unlock) or RefuseInCombat(frame) then
-			return
+			return false
 		end
 		frame:SetMovable(true)
 		frame:SetClampedToScreen(true)
 		frame:StartMoving()
-		mover.moving = true
+		mover.moving, mover.scaled = true, nil
 		Light(shell, true, frame, mover)
 		if veil then
 			veil.onWheel = Wheel
 		end
 		SizeTip.Show(mover)
+		return true
 	end
 	mover.DragStop = function()
 		if not mover.moving then
@@ -1064,15 +1064,10 @@ local function MakeMover(frame, shell)
 				Raw(frame, "SetPoint")(frame, "BOTTOMLEFT", UIParent, "CENTER", (tx or dx) * k, (ty or dy) * k)
 			end
 		end)
-		-- a window that keeps its own place (MelloUI's quest tracker): it
-		-- saves where it was dropped and at what scale, its own way
-		if mover.custom then
-			if mover.custom.save then
-				local ok, err = pcall(mover.custom.save, frame)
-				if not ok then
-					MelloUI:Notice("UI Modifications: %s", tostring(err))
-				end
-			end
+		-- a window registered with Core (MelloUI's own): saved by itself or
+		-- in the store under its key (SaveEntry)
+		if mover.entry then
+			SaveEntry(mover, mover.entry)
 			mover.moving = nil
 			SizeTip.Release(mover)
 			return
@@ -1110,48 +1105,64 @@ local function MakeMover(frame, shell)
 				MelloUI:NotifySettingChanged(M.name, "positions", M.db.positions)
 			end
 		end
+		-- the world map with the Quest List beside it: the pair kept on the
+		-- screen from the drop on (the map alone is clamped while it moves);
+		-- the place saved is where it was dropped, as for the put-back
+		local companion = Companion(frame)
+		if companion then
+			MelloUI:FitOnScreen(frame, companion)
+		end
 		mover.moving = nil
 		SizeTip.Release(mover)
 	end
-	Perf.HookScript(frame, "OnShow", function()
-		PutBack(frame)
-	end)
-	-- whoever re-anchors the window (the panel manager on show, the bag
-	-- layout, a page's own code), it goes back where it was put — right
-	-- after that SetPoint, never during a drag or our own placing
-	hooksecurefunc(frame, "SetPoint", function()
-		if mover.moving or mover.placing then
-			return
-		end
-		if SavedPosition(frame) then
-			mover.placing = true
+	-- a registered window's place is Core's (its show, the UI Scale): the
+	-- put-back hooks are for the game's windows only
+	if not entry then
+		Perf.HookScript(frame, "OnShow", function()
 			PutBack(frame)
-			mover.placing = nil
-		end
-	end)
-	if frame.SetScale then
-		hooksecurefunc(frame, "SetScale", function()
-			if mover.moving or mover.placing or mover.scaling then
+		end)
+		-- whoever re-anchors the window (the panel manager on show, the bag
+		-- layout, a page's own code), it goes back where it was put — right
+		-- after that SetPoint, never during a drag or our own placing
+		hooksecurefunc(frame, "SetPoint", function()
+			if mover.moving or mover.placing then
 				return
 			end
-			-- someone else scaled it (Edit Mode's Size, the panel manager's
-			-- fit): that is the game's scale for it, the size readout's 100 %
-			if not mover.custom then
-				mover.base = SizeTip.Scale(frame) or mover.base
-			end
-			local pos = SavedPosition(frame)
-			if pos and pos.scale then
+			if SavedPosition(frame) then
 				mover.placing = true
 				PutBack(frame)
 				mover.placing = nil
 			end
 		end)
+		if frame.SetScale then
+			hooksecurefunc(frame, "SetScale", function()
+				if mover.moving or mover.placing or mover.scaling then
+					return
+				end
+				-- someone else scaled it (Edit Mode's Size, the panel manager's
+				-- fit): that is the game's scale for it, the size readout's 100 %
+				if not mover.entry then
+					mover.base = SizeTip.Scale(frame) or mover.base
+				end
+				local pos = SavedPosition(frame)
+				if pos and pos.scale then
+					mover.placing = true
+					PutBack(frame)
+					mover.placing = nil
+				end
+			end)
+		end
 	end
 	mover.SetUnlocked = function(on)
 		mover.unlocked = on and true or false
-		for h in pairs(mover.handles) do
-			h:EnableMouse(mover.unlocked)
-			h:EnableMouseWheel(mover.unlocked)
+		-- (what each handle switches with it: HANDLE_SWITCHES)
+		for h, switches in pairs(mover.handles) do
+			if switches.mouse then
+				h:EnableMouse(mover.unlocked)
+			end
+			if switches.wheel then
+				h:EnableMouseWheel(mover.unlocked)
+			end
 		end
 		for _, wash in ipairs(mover.washes) do
 			wash:SetShown(mover.unlocked)
@@ -1160,18 +1171,24 @@ local function MakeMover(frame, shell)
 			SizeTip.Release(mover, 0)
 		end
 	end
-	AddHandle(mover, handle)
+	AddHandle(mover, handle, entry)
 	mover.SetUnlocked(M.isEnabled and M.db and M.db.unlock)
 	PutBack(frame)
 end
 
 -- What a grab area looks like while the windows are unlocked: a gold wash
 -- inside a thin gold edge, both brighter while the mouse is on it. The
--- textures are made once and shown with the unlocked state.
+-- textures are made once and shown with the unlocked state. A handle that
+-- is the whole window (a registered window dragged by itself: the Voice Over
+-- overlay, the Route arrow) gets the edge alone: a wash over a whole window
+-- is what was taken away on 2026-09-21 (review, 2026-09-25).
 local function HandleWash(mover, handle)
-	local fill = handle:CreateTexture(nil, "OVERLAY", nil, 7)
-	fill:SetAllPoints(handle)
-	fill:SetColorTexture(1, 0.82, 0, WASH)
+	local fill
+	if handle ~= mover.frame then
+		fill = handle:CreateTexture(nil, "OVERLAY", nil, 7)
+		fill:SetAllPoints(handle)
+		fill:SetColorTexture(1, 0.82, 0, WASH)
+	end
 	local edges = {}
 	local function Edge(a, b, w, h)
 		local t = handle:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -1191,7 +1208,9 @@ local function HandleWash(mover, handle)
 	Edge("TOPLEFT", "BOTTOMLEFT", 1, nil)
 	Edge("TOPRIGHT", "BOTTOMRIGHT", 1, nil)
 	local function Lit(on)
-		fill:SetColorTexture(1, 0.82, 0, on and WASH_LIT or WASH)
+		if fill then
+			fill:SetColorTexture(1, 0.82, 0, on and WASH_LIT or WASH)
+		end
 		for _, edge in ipairs(edges) do
 			edge:SetColorTexture(1, 0.82, 0, on and EDGE_LIT or EDGE)
 		end
@@ -1209,42 +1228,108 @@ local function HandleWash(mover, handle)
 		SizeTip.Release(mover, 0)
 		Lit(false)
 	end)
-	fill:Hide()
-	mover.washes[#mover.washes + 1] = fill
+	if fill then
+		fill:Hide()
+		mover.washes[#mover.washes + 1] = fill
+	end
 	for _, edge in ipairs(edges) do
 		edge:Hide()
 		mover.washes[#mover.washes + 1] = edge
 	end
 end
 
+-- What a handle switches with the unlocked state (mover.handles[handle]):
+-- a grab of this module's takes the mouse and the wheel only while
+-- unlocked. A registered window's handle keeps the mouse when it was
+-- registered to be dragged at any time (KeepsMouse), and keeps the wheel
+-- when it has one of its own.
+local HANDLE_SWITCHES = {
+	both = { mouse = true, wheel = true },
+	mouse = { mouse = true },
+	wheel = { wheel = true },
+	none = {},
+}
+
+-- Whether a registered window's handle keeps its mouse: registered to be
+-- dragged at any time (plainDrag "always": Core turned its mouse on, and its
+-- clicks and tooltip live there). Read once, when Core first tells the
+-- provider of the entry -- at its registration, as the provider is set from
+-- this file's load on (below) -- and kept: a window may change its entry's
+-- plainDrag later (Voice Over's padlock), and read then, the whole overlay
+-- lost its mouse while the windows were locked (review, 2026-09-25).
+local KeepsMouse
+do
+	local keeps = setmetatable({}, { __mode = "k" })
+	KeepsMouse = function(entry)
+		local keep = keeps[entry]
+		if keep == nil then
+			keep = entry.plainDrag == "always"
+			keeps[entry] = keep
+		end
+		return keep
+	end
+end
+
+-- the wheel on a handle while its window is not dragged: the window's (a
+-- chat frame scrolls on it — user, 2026-09-22: could not scroll the chat
+-- while unlocked)
+local function WheelToWindow(target, delta)
+	local script = target and target.GetScript and target:GetScript("OnMouseWheel")
+	if script then
+		pcall(script, target, delta)
+	end
+end
+
 -- A drag handle of a mover: the drag and wheel scripts on it, the mouse
--- only while unlocked.
-AddHandle = function(mover, handle)
+-- only while unlocked. `entry`: the handle a window registered with Core
+-- (MelloUI:RegisterMover): its OnDragStart / OnDragStop are Core's, which
+-- hooks them and asks the provider first, so nothing is set on it; the
+-- wheel is hooked (the scale while it is dragged; otherwise handed to the
+-- window when the handle has no wheel of its own).
+AddHandle = function(mover, handle, entry)
 	if not (handle and handle.EnableMouse and handle.SetScript) or mover.handles[handle] then
 		return
 	end
-	mover.handles[handle] = true
 	handle:RegisterForDrag("LeftButton")
-	Perf.SetScript(handle, "OnMouseWheel", function(_, delta)
-		if mover.moving then
-			mover.Wheel(delta)
-			return
+	if entry then
+		local ownWheel = handle:GetScript("OnMouseWheel") ~= nil
+		if KeepsMouse(entry) then
+			mover.handles[handle] = ownWheel and HANDLE_SWITCHES.none or HANDLE_SWITCHES.wheel
+		else
+			mover.handles[handle] = ownWheel and HANDLE_SWITCHES.mouse or HANDLE_SWITCHES.both
 		end
-		-- not dragging: the wheel is the window's (a chat frame scrolls on
-		-- it — user, 2026-09-22: could not scroll the chat while unlocked)
-		local target = mover.frame
-		local script = target and target.GetScript and target:GetScript("OnMouseWheel")
-		if script then
-			pcall(script, target, delta)
-		end
-	end)
-	Perf.SetScript(handle, "OnDragStart", mover.DragStart)
-	Perf.SetScript(handle, "OnDragStop", mover.DragStop)
+		-- (a handle that is the window itself hands nothing on: to itself)
+		local target = not ownWheel and handle ~= mover.frame and mover.frame or nil
+		Perf.HookScript(handle, "OnMouseWheel", function(_, delta)
+			if mover.moving then
+				mover.Wheel(delta)
+			elseif target then
+				WheelToWindow(target, delta)
+			end
+		end)
+	else
+		mover.handles[handle] = HANDLE_SWITCHES.both
+		Perf.SetScript(handle, "OnMouseWheel", function(_, delta)
+			if mover.moving then
+				mover.Wheel(delta)
+				return
+			end
+			WheelToWindow(mover.frame, delta)
+		end)
+		Perf.SetScript(handle, "OnDragStart", mover.DragStart)
+		Perf.SetScript(handle, "OnDragStop", mover.DragStop)
+	end
 	HandleWash(mover, handle)
-	handle:EnableMouse(mover.unlocked and true or false)
-	handle:EnableMouseWheel(mover.unlocked and true or false)
+	local on = mover.unlocked and true or false
+	local switches = mover.handles[handle]
+	if switches.mouse then
+		handle:EnableMouse(on)
+	end
+	if switches.wheel then
+		handle:EnableMouseWheel(on)
+	end
 	for _, wash in ipairs(mover.washes) do
-		wash:SetShown(mover.unlocked and true or false)
+		wash:SetShown(on)
 	end
 end
 
@@ -1258,17 +1343,88 @@ end
 -- loaded on demand are picked up when the game lays its panels out.
 --------------------------------------------------------------------------------
 
-local PLAIN_WINDOWS = {
-	"CharacterFrame", "PlayerSpellsFrame", "ProfessionsFrame", "ProfessionsBookFrame", "CollectionsJournal",
-	"PVEFrame", "CommunitiesFrame", "FriendsFrame", "WorldMapFrame", "LegacySystemFrame", "ContainerFrameCombinedBags",
-	"MerchantFrame", "GossipFrame", "QuestFrame", "MailFrame", "BankFrame", "TradeFrame", "MacroFrame", "TaxiFrame",
-	-- these got their mover only from the kit's shell, which is now built on
-	-- the window's first show (user, 2026-09-24: "dress rarely used windows
-	-- on first open"), so their grab is plain from login like the others
-	"OpenMailFrame", "DressUpFrame", "ItemTextFrame", "PetitionFrame", "GuildRegistrarFrame", "TabardFrame",
-	"PetStableFrame", "StableFrame",
-	"MelloUIConfigFrame",
-}
+-- The windows with a plain grab: the frames a module's `window` names with
+-- `plainGrab` (the windows dressed on their first show got their mover only
+-- from the kit's shell before, so theirs is plain from login like the
+-- others -- user, 2026-09-24), then the windows no module registers: the
+-- configurator (Core/Config.lua is not a module). Made by Lists; the order
+-- is of no account (each window's grab is its own).
+local PLAIN_WINDOWS = {}
+local LOOSE_WINDOWS = { "MelloUIConfigFrame" }
+
+-- The lists made from the registry (PANELS and TWEAKS: see the top), the
+-- switches' defaults and their rows on the page, once: at the addon's own
+-- ADDON_LOADED, when every module is in (the sweep's event, below), so the
+-- defaults are complete before Core reads the saved settings against them
+-- at login; OnInit makes sure of it. The registry does not change after.
+local listed = false
+local TAB_RANK = { Windows = 1, HUD = 2 }
+
+local function InOrder(entries, into)
+	table.sort(entries, function(a, b)
+		if a.tab ~= b.tab then
+			return a.tab < b.tab
+		elseif a.order ~= b.order then
+			return a.order < b.order
+		end
+		return a.at < b.at
+	end)
+	for i, entry in ipairs(entries) do
+		into[i] = entry.row
+	end
+end
+
+local function Lists()
+	if listed then
+		return
+	end
+	listed = true
+	local panels, tweaks = {}, {}
+	for at, module in ipairs(MelloUI:ModulesInOrder()) do
+		local w, t = module.window, module.tweak
+		if w and w.label then
+			panels[#panels + 1] = { at = at, tab = TAB_RANK[w.tab] or 3, order = type(w.order) == "number" and w.order or math.huge,
+				row = { w.switch or module.name, w.label, w.desc or "", tab = w.tab, setting = w.switch and true or nil } }
+		end
+		if w and w.plainGrab and type(w.frames) == "table" then
+			for _, name in ipairs(w.frames) do
+				PLAIN_WINDOWS[#PLAIN_WINDOWS + 1] = name
+			end
+		end
+		if t and t.label then
+			tweaks[#tweaks + 1] = { at = at, tab = 0, order = type(t.order) == "number" and t.order or math.huge,
+				row = { module.name, t.label, t.desc or "", off = t.off and true or nil, always = t.always and true or nil } }
+		end
+	end
+	InOrder(panels, PANELS)
+	InOrder(tweaks, TWEAKS)
+	for _, name in ipairs(LOOSE_WINDOWS) do
+		PLAIN_WINDOWS[#PLAIN_WINDOWS + 1] = name
+	end
+	for _, area in ipairs(PANELS) do
+		defaults[area[1]] = true
+	end
+	for _, tweak in ipairs(TWEAKS) do
+		if not tweak.off then
+			defaults["qol_" .. tweak[1]] = true
+		end
+	end
+	-- the page's slots filled in their places (the same table the
+	-- configurator was given)
+	local page = {}
+	for i = #options, 1, -1 do
+		page[i] = options[i]
+		options[i] = nil
+	end
+	for _, opt in ipairs(page) do
+		if opt.slot then
+			opt.slot()
+		else
+			Add(opt)
+		end
+	end
+end
+
 -- HUD elements: the frame, the region its grab covers, a control to stop
 -- short of, and how the grab sits on the region ("strip" = the top edge only)
 local PLAIN_HUD = {
@@ -1392,7 +1548,10 @@ end
 local sweepFrame = CreateFrame("Frame")
 sweepFrame:RegisterEvent("ADDON_LOADED")
 sweepFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-Perf.SetScript(sweepFrame, "OnEvent", function()
+Perf.SetScript(sweepFrame, "OnEvent", function(_, event, addon)
+	if event == "ADDON_LOADED" and addon == MelloUI.name then
+		Lists()   -- every file of the addon has run: every module is in
+	end
 	SweepPlain()
 end)
 
@@ -1456,7 +1615,38 @@ local function UnlockBanner(on)
 	banner:Show()
 end
 
+local function Unlocked()
+	return (M.isEnabled and M.db and M.db.unlock) and true or false
+end
+
+-- A window registered with Core gets its mover (its grab's edge, its hooks)
+-- on the first need -- the windows unlocked, or registered while they are --
+-- never at its registration while they are locked: the Route arrow and the
+-- Voice Over overlay are made at login, and a mover for each was new work
+-- there (WINDOW-RULES 2f; review, 2026-09-25). Until then its handle is as
+-- a locked mover leaves it (LetGo, the provider's Attach). A window that has
+-- a grab here already takes the entry into that one mover.
+local function EntryMover(entry)
+	local frame = entry.frame
+	local mover = movers[frame]
+	if not (mover and mover.entry == entry) then
+		-- (one window's failure does not stop the others: said, as the save's)
+		local ok, err = pcall(MakeMover, frame, { title = entry.handle, entry = entry })
+		if not ok then
+			MelloUI:Notice("UI Modifications: %s", tostring(err))
+		end
+		mover = movers[frame]
+	end
+	return (mover and mover.entry == entry) and mover or nil
+end
+
 ApplyUnlock = function(on)
+	if on and M.isEnabled and MelloUI.MoverEntries then
+		local entries = MelloUI:MoverEntries()
+		for i = 1, #entries do
+			EntryMover(entries[i])
+		end
+	end
 	for _, mover in pairs(movers) do
 		mover.SetUnlocked(on)
 	end
@@ -1466,14 +1656,16 @@ end
 -- Reset positions (the header button): the saved places and scales are
 -- forgotten, every moved window goes back to its standard scale (the game's
 -- own for it, the size readout's 100 % -- 1 for most; user, 2026-09-24) and,
--- if open, is closed so the game lays it out afresh on its next show.
-local function ResetPositions()
-	if not M.db then
-		return
-	end
+-- if open, is closed so the game lays it out afresh on its next show. Every
+-- window registered with Core goes back too (audit, 2026-09-24, rank 6: the
+-- reset reached only the game's windows and the Quest Tracker), dragged here
+-- or by Core alone: a saved scale taken off, its place forgotten, then its
+-- own reset and default (MelloUI:ResetMover). In one Batch: one change of
+-- the positions on the bus and one backup, however many windows went back.
+local function ResetAll()
 	local positions = M.db.positions or {}
 	for frame, mover in pairs(movers) do
-		local name = frame.GetName and frame:GetName()
+		local name = not mover.entry and frame.GetName and frame:GetName()
 		if name and positions[name] then
 			mover.placing = true
 			pcall(function()
@@ -1489,32 +1681,109 @@ local function ResetPositions()
 			mover.placing = nil
 		end
 	end
-	for _, mover in pairs(movers) do
-		if mover.custom and mover.custom.reset then
-			pcall(mover.custom.reset)
+	local entries = MelloUI:MoverEntries()
+	for i = 1, #entries do
+		local entry = entries[i]
+		local frame = entry.frame
+		local pos = not entry.save and MelloUI:GetPosition(entry.key)
+		if pos and pos.scale and frame.SetScale and not Locked(frame) then
+			pcall(ScaleFrame, frame, SizeTip.EntryBase(entry))
 		end
+		MelloUI:ResetMover(entry)
 	end
 	M.db.positions = {}
 	MelloUI:NotifySettingChanged(M.name, "positions", M.db.positions)
+end
+
+local function ResetPositions()
+	if not M.db then
+		return
+	end
+	MelloUI:Batch(ResetAll)
 	MelloUI:Print("UI Modifications: window positions and scales reset.")
 end
 M.ResetPositions = ResetPositions
 
--- A window MelloUI draws itself, moved by the same mover (the darkened
--- screen, the grid, the lit border, the snap and the wheel), which keeps its
--- own place (user, 2026-09-23: the All Objectives tracker "does not have
--- the same darkening ... also the mousewheel does not increase its scale").
--- custom = { save = function(frame) (on release), reset = function() (Reset
--- positions), min / max = its scale range for the wheel, base = its scale
--- at 100 % in the size readout (1 when not given) }.
-function MelloUI:RegisterMover(frame, handle, custom)
-	if not (frame and handle) then
+--------------------------------------------------------------------------------
+-- The provider of Core's mover (audit, 2026-09-24, rank 6). Every window
+-- registered with MelloUI:RegisterMover -- the Quest Tracker, and MelloUI's
+-- other own windows as they register -- gets the drag the windows here get
+-- while they are unlocked (user, 2026-09-23: the All Objectives tracker
+-- "does not have the same darkening ... also the mousewheel does not
+-- increase its scale"): the darkened screen with its grid, the lit snap
+-- lines and the corner's snap, the glow, the wheel's scale with the size
+-- plate and its stop at 100 %, and its place saved on the drop (SaveEntry).
+-- Core keeps the registration, the handle's drag scripts and the saved
+-- places, and asks here first at each drag start. Set from this file's load
+-- on (below); with the module off it takes no drag and says the windows are
+-- locked, so Core's plain drag is all there is.
+--------------------------------------------------------------------------------
+local Provider = {}
+
+-- a registered window's handle with no mover made for it yet, as a locked
+-- mover leaves it: a handle whose mouse is the provider's (the Quest
+-- Tracker's header) lets the mouse go, so its strip does not take the
+-- clicks meant for the world under it -- the module on or off, as when the
+-- mover was made at once (review, 2026-09-25)
+local function LetGo(entry)
+	local handle = entry.handle
+	if KeepsMouse(entry) or type(handle) ~= "table" or not (handle.EnableMouse and handle.GetScript) then
 		return
 	end
-	local ok = pcall(MakeMover, frame, { title = handle, custom = custom or {} })
-	if ok and movers[frame] then
-		movers[frame].SetUnlocked(M.isEnabled and M.db and M.db.unlock)
+	handle:EnableMouse(false)
+	if handle.EnableMouseWheel and handle:GetScript("OnMouseWheel") == nil then
+		handle:EnableMouseWheel(false)
 	end
+end
+
+-- told of every entry, at its registration (and again should the provider
+-- be set again): its mover when the windows are unlocked or the window has
+-- a grab here, else its handle let go; a mover already made only follows
+-- the state
+function Provider:Attach(entry)
+	KeepsMouse(entry)   -- (its mode as registered, noted now)
+	if movers[entry.frame] or Unlocked() then
+		local mover = EntryMover(entry)
+		if mover then
+			mover.SetUnlocked(Unlocked())
+		end
+	else
+		LetGo(entry)
+	end
+end
+
+-- true takes the drag: while the windows are unlocked, out of combat for a
+-- protected window
+function Provider:DragStart(entry)
+	if not Unlocked() then
+		return false
+	end
+	local mover = EntryMover(entry)
+	if mover then
+		return mover.DragStart()
+	end
+	return false
+end
+
+-- the drop, or the window hidden while it was dragged (Core's OnHide)
+function Provider:DragStop(entry)
+	local mover = movers[entry.frame]
+	if mover and mover.entry == entry then
+		mover.DragStop()
+	end
+end
+
+function Provider:IsUnlocked()
+	return Unlocked()
+end
+
+-- Set once, from the load on, the module on or off (review, 2026-09-25):
+-- each window is then told to the provider at its registration, before it
+-- can change its entry (KeepsMouse), and the Quest Tracker's header is let
+-- go of the mouse with the module off as well. Off, the provider answers
+-- as if there were none (no drag taken, the windows locked).
+if MelloUI.SetMoverProvider then
+	MelloUI:SetMoverProvider(Provider)
 end
 
 local Kit = MelloUI.Kit
@@ -1526,9 +1795,10 @@ end
 
 -- The UI Scale or the resolution changed (user, 2026-09-24: "UI Scaling
 -- Break the UI"): every open window with a saved place is put back, so it is
--- kept on the new screen (PutBack's OnScreen); a protected one in combat
+-- kept on the new screen (PutBack's FitOnScreen); a protected one in combat
 -- waits for the fight's end as always. A closed window is put back when it
--- next opens. The drag grid redraws itself on the next drag.
+-- next opens. The drag grid redraws itself on the next drag. The windows
+-- registered with Core are put back by Core, UI Modifications on or off.
 if Kit and Kit.OnUIScaleChanged then
 	Kit:OnUIScaleChanged(function(reason)
 		if reason ~= "uiscale" or not M.isEnabled then
@@ -1536,7 +1806,7 @@ if Kit and Kit.OnUIScaleChanged then
 		end
 		for frame, mover in pairs(movers) do
 			local ok, shown = pcall(frame.IsShown, frame)
-			if ok and shown and not mover.moving and not mover.custom and SavedPosition(frame) then
+			if ok and shown and not mover.moving and not mover.entry and SavedPosition(frame) then
 				PutBack(frame)
 			end
 		end
@@ -1711,6 +1981,7 @@ end
 -- The driven modules are hidden from the configurator; done once every
 -- module is registered (this file loads before them, see the TOC).
 function M:OnInit()
+	Lists()   -- (made at the addon's ADDON_LOADED already)
 	for _, area in ipairs(PANELS) do
 		local module = MelloUI:GetModule(area[1])
 		if module then
@@ -1823,15 +2094,17 @@ local function ApplyMotion(db)
 	end
 end
 -- a change reaches OnSettingChanged, and a profile load OnEnable, only while
--- the module is on
-hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
+-- the module is on: the bus's 'setting' and 'restart' (fired at the end of
+-- NotifySettingChanged and RestartModules, where the hooks on them ran;
+-- audit, 2026-09-24, rank 5) reach it with the module off as well
+MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key)
 	if name == "UIModifications" and key == "reduceMotion" then
 		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
 	end
-end)
-hooksecurefunc(MelloUI, "RestartModules", function()
+end), M)
+MelloUI:On("restart", Perf.Shared("'restart' on the bus", function()
 	ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
-end)
+end), M)
 
 function M:OnEnable(db)
 	self.db = db
@@ -1869,12 +2142,25 @@ function M:OnEnable(db)
 		db.qol_Tweaks = nil
 		db.featuresFolded = true
 	end
+	-- MelloUI's Quest Tracker has a kit switch of its own now (audit,
+	-- 2026-09-24, rank 1); it wore the kit with the Objective tracker's until
+	-- then, so it starts as that one is set, once, and no look changes. The
+	-- flag is not a kept key but travels with the settings: loading a
+	-- profile saved before it clears it, and the restart after the load
+	-- takes that profile over the same way; one saved after carries both.
+	if not db.questTrackerKitMigrated then
+		db.questTrackerKit = db.TrackerPanel ~= false
+		db.questTrackerKitMigrated = true
+	end
 	ApplyMotion(db)
 	if db.reskin ~= false and NothingWanted(db) then
 		MelloUI:Notice("UI Modifications is on, but every area of the reskin is switched off, so the game's own art is what you see. Its page has a \"Switch every area on\" button.")
 	end
 	Apply(db, true)
 	SweepPlain()
+	-- (the windows registered with Core are dragged the way the windows here
+	-- are while the module is on: the provider, above, answers again, and
+	-- their movers are made here when the windows are unlocked)
 	ApplyUnlock(db.unlock)
 	for frame in pairs(movers) do
 		PutBack(frame)
@@ -1888,6 +2174,14 @@ function M:OnDisable(db)
 	db = db or self.db or {}
 	ApplyMotion(db)   -- kept: Reduce Motion is not the module's
 	Apply(db, false)
+	-- a drag of this module's still under way is let go where it is (the
+	-- veil off, the place saved); the registered windows are back to Core's
+	-- plain drag (the provider takes no drag while the module is off)
+	for _, mover in pairs(movers) do
+		if mover.moving then
+			pcall(mover.DragStop)
+		end
+	end
 	ApplyUnlock(false)
 	ApplyNameFormat(db, false)
 	ApplyPreload(db, false)
@@ -1899,7 +2193,11 @@ function M:OnSettingChanged(key, value, db)
 		ApplyUnlock(value)
 		return
 	elseif key == "reduceMotion" then
-		return   -- applied by the NotifySettingChanged hook, module on or off
+		return   -- applied from the bus's 'setting', module on or off
+	elseif key == "questTrackerKit" or key == "questTrackerKitMigrated" then
+		-- read live by Kit:IsOn("questTracker"), which looks again on the
+		-- bus's 'setting' of this module (and tells 'look:questTracker')
+		return
 	elseif key:sub(1, 10) == "parchment_" then
 		if MelloUI.Kit and MelloUI.Kit.SetParchment then
 			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)

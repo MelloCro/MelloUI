@@ -20,6 +20,10 @@ local Shared = Perf.Shared or function(_, fn) return fn end
 local M = MelloUI:RegisterModule("UnitFrames", {
 	title = "Unit Frames",
 	desc = "Centred names, transparent name band, no combat flash and frame art opacity for player, target and focus.",
+	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
+	flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose.",
+	group = "Frames and bars",
+	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames (they step aside where the reskin covers them).", order = 5 },
 	defaults = {
 		centerNames = true,
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
@@ -345,9 +349,7 @@ local glowHooked = setmetatable({}, { __mode = "k" })
 local glowHeld = false
 
 -- v, or nil when v is secret: MelloUI.Safe (Core.lua), one set for the addon
--- (the stand-in is Safe.Value's own body, for a test world without Core)
-local Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+local Plain = MelloUI.Safe.Value
 
 local function GlowHeldWanted()
 	if M.isEnabled and M.db and M.db.hideStatusGlow then
@@ -465,12 +467,10 @@ end
 
 -- The unit frames are protected: their regions are anchored out of combat
 -- only (a vehicle swap in a fight re-anchors the name; audit 2026-09-22).
+-- (Kit.lua loads before this file, so its combat queue is always there:
+-- audit 2026-09-24, a dead guard gone)
 local function OutOfCombat(fn)
-	if MelloUI.Kit and MelloUI.Kit.WhenOutOfCombat then
-		MelloUI.Kit:WhenOutOfCombat(fn)
-	elseif not InCombatLockdown() then
-		fn()
-	end
+	MelloUI.Kit:WhenOutOfCombat(fn)
 end
 
 local function InstallHooks()

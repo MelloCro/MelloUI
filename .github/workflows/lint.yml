@@ -1,6 +1,8 @@
 # Static check of every Lua file on each push and pull request: syntax errors,
 # unused locals, globals that are neither WoW API nor listed in .luacheckrc.
 # MelloUI_Companion is the route data companion that ships in the same zip.
+# The ratchet (Tools/lint/check_panels.py) fails when a copy of something a
+# shared system already does is added (one system per job); see its header.
 name: Lint
 
 on:
@@ -18,3 +20,12 @@ jobs:
         uses: lunarmodules/luacheck@v1
         with:
           args: Core Modules Media MelloUI_Companion --no-color
+
+  ratchet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: One system per job (duplication ratchet)
+        run: python3 Tools/lint/check_panels.py

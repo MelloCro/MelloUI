@@ -26,6 +26,10 @@ local LOOKS = Kit.buttonLooks
 local M = MelloUI:RegisterModule("SpellBookPanel", {
 	title = "Spell Book Panel",
 	desc = "The spell book dressed in the painted kit on the game's own layout.",
+	icon = "Interface\\Icons\\INV_Misc_Book_09",
+	flavour = "The spell book in the painted kit, on the game's own layout.",
+	window = { label = "Spell book", desc = "The spell book and its tabs in the kit.", tab = "Windows", order = 2,
+		frames = { "PlayerSpellsFrame" }, plainGrab = true, addon = "Blizzard_PlayerSpells" },
 	enabledByDefault = true,
 	defaults = {},
 	-- (the spells' rim is UI Modifications' Button Border, the category tabs'
@@ -70,7 +74,7 @@ local active = false
 local hooked = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

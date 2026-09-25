@@ -43,6 +43,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("AddonListPanel", {
 	title = "AddOn List Kit",
 	desc = "The AddOn list dressed in the painted kit on the game's own layout.",
+	window = { label = "AddOn list", desc = "The AddOn list in the kit.", tab = "Windows", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -67,7 +68,7 @@ local found = { dividers = {}, dropdowns = {} }         -- what the build found,
 local listOwner = {}                                    -- our own key in the list's callback registry
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Window()
 	return _G.AddonList

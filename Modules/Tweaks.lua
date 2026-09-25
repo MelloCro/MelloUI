@@ -20,6 +20,10 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("Tweaks", {
 	title = "Tweaks",
 	desc = "Hide the micro menu and bag bar, and scale the floating combat text.",
+	icon = "Interface\\Icons\\INV_Misc_Wrench_01",
+	flavour = "Small knobs with a big effect. Hide what you never click, scale what you never see.",
+	group = "Frames and bars",
+	tweak = { label = "Tweaks", desc = "", order = 15, always = true },
 	keep = { "savedWorldTextScale", "menuTipShown" },   -- the player's own text scale to give back, a one-time tip: never in a profile
 	defaults = {
 		hideMicroMenu = false,
@@ -101,17 +105,15 @@ end
 
 local callbacksRegistered = false
 
+-- (through the kit's one Edit Mode registration, the bus's 'editmode';
+-- audit, 2026-09-24)
 local function RegisterEditModeCallbacks()
-	if callbacksRegistered or not EventRegistry then
+	if callbacksRegistered then
 		return
 	end
 	callbacksRegistered = true
-	EventRegistry:RegisterCallback("EditMode.Enter", function()
-		editModeActive = true
-		UpdateHiddenFrames()
-	end, M)
-	EventRegistry:RegisterCallback("EditMode.Exit", function()
-		editModeActive = false
+	MelloUI:On("editmode", function(entering)
+		editModeActive = entering
 		UpdateHiddenFrames()
 	end, M)
 end

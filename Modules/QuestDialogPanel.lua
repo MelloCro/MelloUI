@@ -42,6 +42,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("QuestDialogPanel", {
 	title = "Quest Dialogs Kit",
 	desc = "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.",
+	window = { label = "Quest dialogs", desc = "The quest giver's dialogs (offer, progress, reward) and the gossip window in the kit.", tab = "Windows",
+		frames = { "GossipFrame", "QuestFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -77,7 +79,7 @@ local itemButtons = {}     -- every item button given a rim (refitted on a new B
 local labelLayers = setmetatable({}, { __mode = "k" })   -- [label] = { layer, sublevel }: a fallback plate's label, raised over it
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not (region and skin) then

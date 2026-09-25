@@ -75,6 +75,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("LootPanel", {
 	title = "Loot Kit",
 	desc = "The loot window and the group loot rolls in the kit.",
+	window = { label = "Loot windows", desc = "The loot window and the group loot rolls in the kit.", tab = "Windows" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -102,7 +103,7 @@ local arrows = {}                                       -- { rep, button }
 local stats = { rows = 0, cards = 0, rims = 0, rolls = 0, rollButtons = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows, registered in `into` (the window's skin or
 -- the rolls') so enable / disable reach it.
@@ -452,7 +453,7 @@ local function SkinPage(f)
 	panel.kitPiece = true
 	panel:SetPoint("TOPLEFT", f, "TOPLEFT", ins[1], -ins[3])
 	panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -ins[2], ins[4])
-	local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+	local c = MelloUI.Palette.innerPanel
 	panel:SetColorTexture(c[1], c[2], c[3], PANEL_ALPHA)
 	skin.panel = panel
 	PanelShown()

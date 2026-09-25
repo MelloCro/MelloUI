@@ -29,6 +29,9 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("Route", {
 	title = "Route",
 	desc = "Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before.",
+	icon = "Interface\\Icons\\Ability_Tracking",
+	flavour = "A trail of gems from here to there, along the roads you have walked before.",
+	group = "Quests and travel",
 	keep = { "^flights_" },   -- each character's own flight points (CharFlightsKey): never in a profile, never wiped by one
 	enabledByDefault = true,
 	defaults = {
@@ -89,10 +92,8 @@ MelloUI.Route = M
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
 -- is v, or nil when v is secret -- asked first: comparing a secret, even with
--- nil, is refused on this client (the stand-in is Safe.Value's own body, for
--- a test world without Core)
-local Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+-- nil, is refused on this client
+local Plain = MelloUI.Safe.Value
 
 local function VectorXY(pos)
 	if type(pos) ~= "table" then
@@ -3129,6 +3130,49 @@ local function IsRoundMinimap()
 	return true
 end
 
+-- The distance line's place in the column under the minimap (MinimapPanel:
+-- one contract for the map, the Services bar and this line; audit,
+-- 2026-09-24, rank 18): 2 px under the map as before (square and merged
+-- too), and under the Services bar only where a bar offset leaves it no
+-- room. Placed again whenever the column is re-laid (the bus's 'column'),
+-- only when its place moved.
+-- (Fields of M, not locals: this file's main chunk is near Lua's limit.)
+function M.PlaceDistanceLine()
+	local text = mm and mm.text
+	if not text then
+		return
+	end
+	local mp = MelloUI:GetModule("MinimapPanel")
+	local rel, relPoint, x, y
+	if mp and mp.ColumnSlot then
+		rel, relPoint, x, y = mp:ColumnSlot("route")
+	end
+	rel, relPoint, x, y = rel or Minimap, relPoint or "BOTTOM", x or 0, y or -2
+	local at = mm.lineAt
+	if at and at[1] == rel and at[2] == relPoint and at[3] == x and at[4] == y then
+		return
+	end
+	if not at then
+		at = {}
+		mm.lineAt = at
+	end
+	at[1], at[2], at[3], at[4] = rel, relPoint, x, y
+	text:ClearAllPoints()
+	text:SetPoint("TOP", rel, relPoint, x, y)
+end
+
+-- its height in the column while Route keeps the line (Route on, Distance
+-- Under The Minimap on): its face's size and a hair; nil otherwise
+function M:ColumnLine()
+	local text = mm and mm.text
+	if not (M.isEnabled and M.db and M.db.distanceText and text) then
+		return nil
+	end
+	local ok, _, size = pcall(text.GetFont, text)
+	size = ok and Plain(size) or nil
+	return (type(size) == "number" and size > 0) and math.ceil(size) + 2 or 12
+end
+
 local function EnsureMinimapFrame()
 	if mm or not Minimap then
 		return
@@ -3141,7 +3185,8 @@ local function EnsureMinimapFrame()
 	-- the route's length (and the destination): the arrow's distance line
 	-- while the arrow is hidden, so the numbers' face like it
 	RouteFont.Style(mm.text, "fontChat", _G.GameFontNormalSmall)
-	mm.text:SetPoint("TOP", Minimap, "BOTTOM", 0, -2)
+	M.PlaceDistanceLine()
+	MelloUI:On("column", M.PlaceDistanceLine, "Route distance line")
 	mm.text:SetTextColor(1, 0.82, 0.25)
 	mm.text:Hide()
 	mm:Hide()
@@ -3199,6 +3244,37 @@ end
 
 local arrow = nil
 
+-- Its place: MelloUI's one mover and place store (Core.lua; audit,
+-- 2026-09-24, rank 6: it dragged itself and kept arrowX / arrowY of its own,
+-- so Unlock the Windows, Reset positions and the UI-scale put-back never
+-- reached it). Dragged at any time, as always; saved by its centre from the
+-- screen's centre, as arrowX / arrowY were, in its own units. (Its parts in
+-- one table: the file is near Lua's limit of 200 locals.) key: its place in
+-- the store; size: the Arrow Size it was last laid at; resized: the slider
+-- moved since (a size the wheel kept gives way); entry: its mover, once it
+-- is on it (ArrowPlace.Mover: at its first show, not at login).
+local ArrowPlace = { key = "routeArrow", size = nil, resized = nil, entry = nil }
+
+-- the top centre of the screen: where it stands with no place saved (Reset
+-- positions and /route arrow reset put it back here)
+function ArrowPlace.Home(f)
+	f:SetScale(tonumber(M.db and M.db.arrowScale) or 1)
+	f:ClearAllPoints()
+	f:SetPoint("TOP", UIParent, "TOP", 0, -40)
+end
+
+-- an old place (arrowX / arrowY) not moved into the store yet let go, both
+-- keys at once and then through the setting path, so the macro backup
+-- forgets it too: /route arrow reset, and Reset positions (the mover's
+-- reset), or the next placing would move it back in (review, 2026-09-25)
+function ArrowPlace.Forget()
+	if M.db.arrowX ~= nil or M.db.arrowY ~= nil then
+		M.db.arrowX, M.db.arrowY = nil, nil
+		MelloUI:NotifySettingChanged(M.name, "arrowX", nil)
+		MelloUI:NotifySettingChanged(M.name, "arrowY", nil)
+	end
+end
+
 -- Rotation for a target dx yards east, dy yards south of the player facing f.
 local function ArrowRotation(dx, dy, facing)
 	local sin, cos = math.sin(facing), math.cos(facing)
@@ -3214,9 +3290,7 @@ local function EnsureArrow()
 	arrow:SetSize(72, 96)
 	arrow:SetFrameStrata("MEDIUM")
 	arrow:SetClampedToScreen(true)
-	arrow:SetMovable(true)
 	arrow:EnableMouse(true)
-	arrow:RegisterForDrag("LeftButton")
 	arrow.icon = arrow:CreateTexture(nil, "ARTWORK")
 	arrow.icon:SetSize(54, 54)
 	arrow.icon:SetPoint("TOP", 0, -2)
@@ -3241,14 +3315,6 @@ local function EnsureArrow()
 	arrow.label:SetPoint("TOP", arrow.distance, "BOTTOM", 0, -1)
 	arrow.label:SetWidth(180)
 	arrow.label:SetWordWrap(false)
-	Perf.SetScript(arrow, "OnDragStart", function(self) self:StartMoving() end)
-	Perf.SetScript(arrow, "OnDragStop", function(self)
-		self:StopMovingOrSizing()
-		local x, y = self:GetCenter()
-		local ux, uy = UIParent:GetCenter()
-		M.db.arrowX, M.db.arrowY = math.floor(x - ux + 0.5), math.floor(y - uy + 0.5)
-		MelloUI:NotifySettingChanged(M.name, "arrowX", M.db.arrowX)
-	end)
 	Perf.SetScript(arrow, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Route", 1, 1, 1)
@@ -3275,19 +3341,105 @@ local function EnsureArrow()
 		self.icon:SetRotation(ArrowRotation(self.targetX - px, self.targetY - py, facing))
 	end)
 	arrow:Hide()
+	-- (its drag and its place: ArrowPlace.Mover, when it is first shown)
+end
+
+-- The place it had before the store (arrowX / arrowY, its centre's offsets
+-- from the screen's centre in its own units), moved into the store once, so
+-- it stands exactly where it did: laid the old way at its size, then saved
+-- by the store's own measure; the old keys go. The data is the version:
+-- while the old keys are there the move has not happened. (A flag would not
+-- do: a late settings load carries plain values over from the table used
+-- before it, not tables, so the flag would come through without the
+-- store's entry.) A profile or backup from before brings its place along.
+-- A place the store already has (dragged since) wins; half a place is let
+-- go. Returns true while it still stands on the old place (the store could
+-- not measure it yet: tried again at the next placing).
+function ArrowPlace.Old()
+	local x, y = M.db.arrowX, M.db.arrowY
+	if x == nil and y == nil then
+		return false
+	end
+	x, y = tonumber(x), tonumber(y)
+	if x and y and not MelloUI:GetPosition(ArrowPlace.key) then
+		arrow:ClearAllPoints()
+		arrow:SetPoint("CENTER", UIParent, "CENTER", x, y)
+		-- (through the setting path: the macro backup takes the new place,
+		-- and with it the old keys gone)
+		if not MelloUI:SavePosition(ArrowPlace.key, arrow) then
+			return true
+		end
+	end
+	M.db.arrowX, M.db.arrowY = nil, nil
+	return false
 end
 
 local function PlaceArrow()
 	if not arrow then
 		return
 	end
-	arrow:ClearAllPoints()
-	if M.db.arrowX and M.db.arrowY then
-		arrow:SetPoint("CENTER", UIParent, "CENTER", M.db.arrowX, M.db.arrowY)
-	else
-		arrow:SetPoint("TOP", UIParent, "TOP", 0, -40)
+	local size = tonumber(M.db.arrowScale) or 1
+	-- one size, the Arrow Size slider's: a size the mover's wheel kept with
+	-- the place gives way when the slider moves (noted while the arrow is
+	-- not on the mover yet, done once it is)
+	if ArrowPlace.size and ArrowPlace.size ~= size then
+		ArrowPlace.resized = true
 	end
-	arrow:SetScale(tonumber(M.db.arrowScale) or 1)
+	ArrowPlace.size = size
+	local entry = ArrowPlace.entry
+	if not entry then
+		-- laid when it goes on the mover, at its first show (nothing made
+		-- or hooked at login: review, 2026-09-25, WINDOW-RULES 2f); at once
+		-- only while an old place waits to be moved in (the one login after
+		-- the update): the move needs the mover's anchor, and Reset
+		-- positions has to reach it
+		if M.db.arrowX ~= nil or M.db.arrowY ~= nil then
+			ArrowPlace.Mover()
+		end
+		return
+	end
+	if ArrowPlace.resized then
+		ArrowPlace.resized = nil
+		local pos = MelloUI:GetPosition(ArrowPlace.key)
+		if pos and pos.scale then
+			MelloUI:SavePosition(ArrowPlace.key, arrow, false)
+		end
+	end
+	-- the slider's size is its 100 % in the unlocked windows' size readout
+	-- and wheel (read from the entry each time: review, 2026-09-25)
+	entry.base = size
+	-- the size first: the saved offsets are in its own units
+	arrow:SetScale(size)
+	if not ArrowPlace.Old() and not MelloUI:RestorePosition(ArrowPlace.key, arrow) then
+		ArrowPlace.Home(arrow)
+	end
+end
+
+-- On the one mover: dragged through it, unlocked or not; the store's place
+-- put back on every show and after a UI Scale change, kept on the screen.
+-- At its first show (UpdateArrow), or at once while an old place waits
+-- (PlaceArrow). It sets no drag, show or hide script of its own (Core hooks
+-- those); registered at its size, which the saved offsets are in; the
+-- wheel's range while unlocked is the Arrow Size slider's.
+function ArrowPlace.Mover()
+	if ArrowPlace.entry or not arrow then
+		return
+	end
+	local size = tonumber(M.db.arrowScale) or 1
+	arrow:SetScale(size)
+	ArrowPlace.entry = MelloUI:RegisterMover(arrow, arrow, { key = ArrowPlace.key, anchor = "CENTER",
+		plainDrag = "always", min = 0.5, max = 2, base = size, reset = ArrowPlace.Forget, default = ArrowPlace.Home })
+	if ArrowPlace.entry then
+		PlaceArrow()
+	end
+end
+
+-- /route arrow reset: the saved place forgotten, an old one not moved yet
+-- too; laid now if it is on the mover, else at its first show
+function ArrowPlace.Reset()
+	ArrowPlace.Forget()
+	MelloUI:ForgetPosition(ArrowPlace.key)
+	PlaceArrow()
 end
 
 --------------------------------------------------------------------------------
@@ -3771,6 +3923,10 @@ local function UpdateArrow(cont, px, py)
 	end
 	arrow.distance:SetText(Yards(remaining))
 	arrow.label:SetText(destination.label or "")
+	-- on the one mover at its first show, not at login (ArrowPlace.Mover)
+	if not ArrowPlace.entry then
+		ArrowPlace.Mover()
+	end
 	arrow:Show()
 	return true
 end
@@ -4236,10 +4392,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 		M:Clear()
 		MelloUI:Print("Route cleared.")
 	elseif msg == "arrow reset" then
-		-- through the setting path, so the macro backup forgets the old spot
-		MelloUI:NotifySettingChanged(M.name, "arrowX", nil)
-		MelloUI:NotifySettingChanged(M.name, "arrowY", nil)
-		PlaceArrow()
+		ArrowPlace.Reset()
 		MelloUI:Print("Arrow back at the top centre of the screen.")
 	elseif msg == "reset confirm" then
 		-- the traced roads are not learned data: they stay, counted afresh

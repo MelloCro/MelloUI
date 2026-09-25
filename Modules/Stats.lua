@@ -14,6 +14,10 @@ local C_Timer = Perf.C_Timer
 local M = MelloUI:RegisterModule("Stats", {
 	title = "FPS / Latency",
 	desc = "Small coloured FPS and latency readout in the bottom right corner.",
+	icon = "Interface\\Icons\\Spell_Nature_Lightning",
+	flavour = "Frames per second and latency in the corner. Blame the server with confidence.",
+	group = "Frames and bars",
+	tweak = { label = "FPS / Latency", desc = "A small coloured FPS and latency readout in the bottom right corner.", order = 14 },
 	defaults = {
 		showFps = true,
 		showLatency = true,

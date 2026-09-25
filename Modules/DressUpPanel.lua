@@ -67,6 +67,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("DressUpPanel", {
 	title = "Dressing Room Kit",
 	desc = "The dressing room in the kit.",
+	window = { label = "Dressing room", desc = "The dressing room in the kit.", tab = "Windows",
+		frames = { "DressUpFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -87,7 +89,7 @@ local panels = {}                                       -- the side panels { lab
 local found = {}                                        -- [part] = a line for /dressupdump
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

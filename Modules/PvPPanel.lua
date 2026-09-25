@@ -85,6 +85,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("PvPPanel", {
 	title = "PvP Kit",
 	desc = "The battleground and arena windows and the scoreboard in the kit.",
+	window = { label = "PvP windows", desc = "The battleground and arena windows and the scoreboard in the kit.", tab = "Windows", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -118,7 +119,7 @@ local headers = setmetatable({}, { __mode = "k" })      -- [header] = { rep, tex
 local titleHome = setmetatable({}, { __mode = "k" })    -- [heading] = the frame it belongs to, while it rides our plate's band
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- the non-nil values given, as a list
 local function List(...)

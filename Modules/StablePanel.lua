@@ -72,6 +72,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("StablePanel", {
 	title = "Pet Stable Kit",
 	desc = "The hunter's pet stable in the kit.",
+	window = { label = "Pet stable", desc = "The hunter's pet stable in the kit.", tab = "Windows",
+		frames = { "PetStableFrame", "StableFrame" }, plainGrab = true, addon = "Blizzard_StableUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -89,13 +91,13 @@ local hooked = false
 
 -- what this module made or looked at, kept OFF the game's frames (weak keys)
 local done = setmetatable({}, { __mode = "k" })          -- [frame / region] = true: looked at once
-local slotStones = {}                                    -- { button, stone (rep), bg (the game's empty-slot picture) }
+local slotStones = {}                                    -- { button, stone (Kit:SlotStone's rep), bg (the game's empty-slot picture) }
 local panels = {}                                        -- our inner-panel textures
 local found = {}                                         -- [part] = a line for /stabledump
 local info = nil                                         -- the pet info band { rect, tex, strings }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -477,10 +479,10 @@ end
 -- quickslot square as the normal texture, pushed / highlight / checked
 -- looks). Every window's Button Border rim on the button (its states: the
 -- selected pet's slot is the checked one, gold), the icon fitted into its
--- opening; the stone in the opening under the icon in place of the
--- empty-slot picture, tinted as the game tints that picture. The Kit's own
--- marker is set on each slot (the sweep would take a 37 px check button for
--- a check box).
+-- opening; the kit's slot stone (Kit:SlotStone) in the opening under the
+-- icon in place of the empty-slot picture, always shown and tinted as the
+-- game tints that picture. The Kit's own marker is set on each slot (the
+-- sweep would take a 37 px check button for a check box).
 --------------------------------------------------------------------------------
 local function EmptyPicture(b)
 	if b.background then
@@ -493,18 +495,6 @@ local function EmptyPicture(b)
 				return region
 			end
 		end
-	end
-end
-
-local function Tint(entry)
-	local stone = entry.stone and entry.stone.tex
-	if not (stone and entry.bg) then
-		return
-	end
-	local ok, r, g, b = pcall(entry.bg.GetVertexColor, entry.bg)
-	if ok and type(r) == "number" and not Secret(r) and not Secret(g) and not Secret(b) then
-		stone:SetVertexColor(r, g, b)
-		entry.red = r > 0.5 and g < 0.5
 	end
 end
 
@@ -530,37 +520,15 @@ local function SkinSlot(b)
 	end
 	-- the one Button Border of every window, changed on all rims at once
 	Kit:RegisterButtonRim(b)
-	-- the stone in the rim's opening, in place of the empty-slot picture
+	-- the stone in the rim's opening, in place of the empty-slot picture: the
+	-- kit's one slot stone (audit, 2026-09-24: this window kept a copy of its
+	-- fit, which missed the kit's fixes), shown always -- not only while the
+	-- slot is empty, as on the action buttons -- and tinted from the picture
+	-- (red while the game tints it red: a slot not bought yet). Fitted again
+	-- by the kit whenever the rim changes or was not laid out yet.
 	local bg = EmptyPicture(b)
-	local rim = rep.object
-	local opening = CreateFrame("Frame", nil, b)
-	opening:EnableMouse(false)
-	local function Fit()
-		local name = (rim.base or "buttons/rim") .. "_normal"
-		local piece = Kit:Piece(name)
-		local l, r, t, bt = Kit:Insets(name, 1)
-		-- measured as drawn: a rim not laid out yet reads as its whole atlas
-		-- sheet (Kit:DrawnSize; the bags' slots, user 2026-09-24)
-		local rw, rh = Kit:DrawnSize(rim)
-		opening:ClearAllPoints()
-		if piece and l and rw > 0 and rh > 0 then
-			opening:SetPoint("TOPLEFT", rim, "TOPLEFT", rw * l / piece.w, -rh * t / piece.h)
-			opening:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -rw * r / piece.w, rh * bt / piece.h)
-		else
-			opening:SetAllPoints(b)
-		end
-	end
-	Fit()
-	rim.onBaseChanged = Fit
-	local stone = bg and Replace(bg, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening }) or nil
-	local entry = { button = b, stone = stone, bg = bg, fit = Fit }
-	slotStones[#slotStones + 1] = entry
-	if bg then
-		hooksecurefunc(bg, "SetVertexColor", function()
-			Tint(entry)
-		end)
-	end
-	Tint(entry)
+	local stone = Kit:SlotStone(rep, b, bg, { replace = Replace, base = "buttons/rim", showWhen = "always", tintFrom = bg, icon = icon })
+	slotStones[#slotStones + 1] = { button = b, stone = stone, bg = bg }
 end
 
 --------------------------------------------------------------------------------
@@ -650,16 +618,15 @@ end
 
 -- Refresh's pass a frame later, once the window is laid out (made once:
 -- Kit:NextFrame runs it once however often it was asked -- audit, 2026-09-24;
--- timed on this window's own /melloperf row, not the Kit's timer -- review)
+-- timed on this window's own /melloperf row, not the Kit's timer -- review).
+-- The slots' stones are the kit's to fit again (Kit:SlotStone: on a new rim
+-- art, and a frame later when a rim was not laid out yet).
 local RefreshLater = Shared("Refresh a frame later", function()
 	local f = Window()
 	if active and f and f:IsShown() then
 		FitPortrait()
 		PlaceTitle()
 		FitInfo()
-		for _, entry in ipairs(slotStones) do
-			entry.fit()
-		end
 	end
 end, "timer")
 
@@ -675,7 +642,7 @@ local function Refresh()
 	PlaceTitle()
 	FitInfo()
 	for _, entry in ipairs(slotStones) do
-		Tint(entry)
+		Kit:SyncSlotStone(entry.button)
 		local rep = entry.button.melloRep
 		local rim = rep and rep.object
 		if rim and rim.Update then
@@ -818,6 +785,13 @@ local function Line(label, text)
 	MelloUI:Print("  %-16s %s", label, text or "-- not looked at yet (the kit has not dressed the window)")
 end
 
+-- whether the game tints a slot's empty-slot picture red (a slot not bought
+-- yet: its stone wears that red)
+local function Locked(bg)
+	local ok, r, g = pcall(bg.GetVertexColor, bg)
+	return ok and not Secret(r) and not Secret(g) and type(r) == "number" and type(g) == "number" and r > 0.5 and g < 0.5
+end
+
 local function Rect(obj)
 	local ok, l, b, w, h = pcall(obj.GetRect, obj)
 	if ok and l and not Secret(l) and not Secret(b) and not Secret(w) and not Secret(h) then
@@ -907,7 +881,7 @@ local function Summary(f)
 		local rim = b.melloRep and b.melloRep.object
 		Line("  slot", string.format("%s shown %s, checked %s, rim %s (%s), stone %s, locked (red) %s", Label(b), Shown(b),
 			(okC and not Secret(checked)) and tostring(checked) or "?", tostring(rim ~= nil), rim and tostring(rim.base) or "-",
-			tostring(entry ~= nil and entry.stone ~= nil), entry and tostring(entry.red == true) or "-"))
+			tostring(entry ~= nil and entry.stone ~= nil), entry and tostring(entry.stone ~= nil and Locked(entry.bg)) or "-"))
 	end
 	Line("lower panel", found.lower)
 	Line("purchase", found.purchase)

@@ -275,7 +275,7 @@ local function RefreshMarks(panel)
 			local on = tile.choice.value == current
 			tile.mark(on)
 			-- the palette's text, its gold on the chosen one (WINDOW-RULES 2e)
-			local c = MelloUI.Palette and (on and MelloUI.Palette.selectedTrim or MelloUI.Palette.text) or (on and GOLD or { 0.85, 0.85, 0.85 })
+			local c = on and MelloUI.Palette.selectedTrim or MelloUI.Palette.text
 			tile.label:SetTextColor(c[1], c[2], c[3])
 		end
 		local label = "?"
@@ -302,7 +302,7 @@ end
 -- group's Side Tabs are UI Modifications')
 local function Pick(panel, key, value, module)
 	MelloUI:NotifySettingChanged(module or panel.group.module or "ActionBarPanel", key, value)
-	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+	MelloUI:PlayUISound("option_on")
 	RefreshMarks(panel)
 	if popup and popup.Refresh then
 		popup:Refresh()   -- the overview's dropdowns show the pick
@@ -716,7 +716,7 @@ local function FillOverview(f, body, offer)
 	for _, k in ipairs(Kit and Kit.borderKinds or {}) do
 		Row(k.name, left, y, function() return UMValue(k.key, k.default) end, k.values, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", k.key, v)
-			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+			MelloUI:PlayUISound("option_on")
 			if f.Refresh then
 				f:Refresh()
 			end
@@ -731,7 +731,7 @@ local function FillOverview(f, body, offer)
 		local x = left + ((i - 1) % 2) * ((COL_W - PANEL_PAD * 2) / 2)
 		local cb = Check(body, entry[2], function() return UMValue(entry[1], false) end, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", entry[1], v)
-			PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			MelloUI:PlayUISound(v and "option_on" or "option_off")
 		end)
 		cb:SetPoint("TOPLEFT", x, y)
 		body.dropdowns[#body.dropdowns + 1] = cb
@@ -753,7 +753,7 @@ local function FillOverview(f, body, offer)
 			local module = s.module or m.name
 			Row(g.title .. ": " .. s.title, right, y, function() return CurrentValue(module, s.key) end, s.choices, function(v)
 				MelloUI:NotifySettingChanged(module, s.key, v)
-				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+				MelloUI:PlayUISound("option_on")
 				if f.Refresh then
 					f:Refresh()
 				end
@@ -773,7 +773,7 @@ local function FillOverview(f, body, offer)
 		end
 		local cb = Check(body, entry.label, function() return CurrentValue(entry.module, entry.key) end, function(v)
 			MelloUI:NotifySettingChanged(entry.module, entry.key, v)
-			PlaySound(v and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			MelloUI:PlayUISound(v and "option_on" or "option_off")
 			C_Timer.After(0.15, RearmIfRunning)
 		end)
 		cb:SetPoint("TOPLEFT", right, y)
@@ -942,6 +942,26 @@ local function Step()
 	end
 end
 
+-- The picker's look switch: Kit:IsOn('dynamicui'), the reskin (the one
+-- answer every own window asks, audit 2026-09-24 rank 1; it read UI
+-- Modifications' reskin setting itself, and only when it opened)
+local LOOK_OWNER = "Dynamic UI picker"
+
+local function LookOn()
+	return (Kit and Kit.IsOn and Kit:IsOn("dynamicui")) and true or false
+end
+
+-- While it is open it follows that switch (the bus's 'look:dynamicui', the
+-- frame after a change): the look is the reskin's, so with the reskin gone
+-- (a profile, a slash command, UI Modifications switched off) the picker
+-- ends rather than stay over bars that no longer wear what it picks
+local function LookFollows(on)
+	if running and not on then
+		D:Stop()
+		MelloUI:Print("Dynamic UI Modification ended: the reskin is off.")
+	end
+end
+
 function D:Start()
 	if running then
 		return
@@ -952,8 +972,7 @@ function D:Start()
 	end
 	-- the look is the reskin's: nothing to show without it (any one area is
 	-- enough; the action bars are no longer needed)
-	local um = MelloUI:GetModule("UIModifications")
-	if not (um and um.isEnabled and um.db and um.db.reskin ~= false) then
+	if not LookOn() then
 		MelloUI:Print("Dynamic UI Modification: the reskin is off (UI Modifications, General, Painted kit reskin).")
 		return
 	end
@@ -963,6 +982,7 @@ function D:Start()
 		config:Hide()
 	end
 	running = true
+	MelloUI:On("look:dynamicui", LookFollows, LOOK_OWNER)
 	ShowVeil(true)
 	popup = popup or BuildPopup()
 	-- the content for what is on offer: laid before for the same offer, or
@@ -997,7 +1017,7 @@ function D:Start()
 		end
 	end
 	starting = { body = body, offer = offer, sig = sig, opening = opening, n = 1, t0 = t0, reused = reused }
-	PlaySound(SOUNDKIT.IG_MAINMENU_OPEN)
+	MelloUI:PlayUISound("menu_open")
 	Step()
 end
 
@@ -1007,6 +1027,7 @@ function D:Stop()
 	end
 	running = false
 	starting = nil
+	MelloUI:Off(LOOK_OWNER, "look:dynamicui")
 	ShowVeil(false)
 	for _, list in pairs(catchers) do
 		for _, c in ipairs(list) do
@@ -1031,7 +1052,7 @@ function D:Stop()
 	if MelloUI.RefreshConfig then
 		MelloUI:RefreshConfig()
 	end
-	PlaySound(SOUNDKIT.IG_MAINMENU_CLOSE)
+	MelloUI:PlayUISound("menu_close")
 end
 
 function D:IsRunning()

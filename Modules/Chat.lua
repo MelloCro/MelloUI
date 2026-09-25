@@ -26,6 +26,11 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local M = MelloUI:RegisterModule("Chat", {
 	title = "Chat",
 	desc = "Clean chat: hidden background and input art, short coloured channel tags, class coloured names.",
+	icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
+	flavour = "Less frame, more talk. Short channel tags and class colours keep the log readable.",
+	group = "Chat and sound",
+	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names and the art-hiding switches (which only apply while the chat reskin is off).", order = 9 },
+	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
 	keep = { "savedWhisperMode", "savedClassColorCVar" },   -- the player's own game settings, given back when off: never in a profile
 	defaults = {
 		hideBackground = true,
@@ -191,7 +196,7 @@ local tabsOnMouseover = false
 local hookedTabs = setmetatable({}, { __mode = "k" })
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function TabAlphaWanted(tab, alpha)
 	local okI, id = pcall(tab.GetID, tab)
@@ -1779,7 +1784,9 @@ local function InkPopup(f)
 	local changed = (f.inked or false) ~= ink
 	f.inked = ink
 	PopupFont(f)
-	WatchShade(f.msgs, function() return f.inked end)
+	-- (its test made once a window: this runs again at every look change)
+	f.wantShade = f.wantShade or function() return f.inked end
+	WatchShade(f.msgs, f.wantShade)
 	if f.msgs and f.lineLog and changed then
 		f.msgs:Clear()
 		for _, e in ipairs(f.lineLog) do
@@ -1801,11 +1808,12 @@ local popupCount = 0
 local popupOn = false
 local whisperEvents = CreateFrame("Frame")
 
--- the whisper windows on their parchment sheet (the kit dressing them and
--- the Whisper Popup parchment on)
+-- the whisper windows on their parchment sheet (the kit dressing them --
+-- their look switch, Kit:IsOn('whisper') -- and the Whisper Popup parchment
+-- on)
 local function WhisperInked()
 	local Kit = MelloUI.Kit
-	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsCovered and Kit:IsCovered("chat")
+	return (MelloUI.QuestInk ~= nil and Kit and Kit.IsOn and Kit:IsOn("whisper")
 		and Kit.ParchmentOn and Kit:ParchmentOn("whisper")) and true or false
 end
 
@@ -1847,64 +1855,139 @@ local function PopupColor(kind, incoming)
 	return 1, 0.5, 1
 end
 
--- where the next window opens: where the user last put one, each further one
--- stepped down and right so they do not stack exactly
+-- WHERE A WINDOW OPENS: where the user last put one, each further one
+-- stepped down and right so they do not stack exactly. That corner is the
+-- one mover's (audit, 2026-09-24, rank 6): kept in the one store under
+-- 'whisper' (UI Modifications' positions, so profiles, the backup and Reset
+-- positions reach it), written when a window is let go; each window keeps
+-- its own place after it opened.
+local WHISPER_PLACE = "whisper"
+local ANCHORS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
+	BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
+
+-- The old corner (Chat's whisperPopupPos: the window's bottom-left corner
+-- from the screen's, in whole units) moved into the store, as that same
+-- corner, so the windows open exactly where they did; the old key goes
+-- with the move. Written in the store's own form (as SavePosition writes
+-- it: point nil = BOTTOMLEFT, relPoint nil = CENTER) and told through the
+-- setting path, as the mover's own saves are. The old key itself is the
+-- version: nothing writes it any more, so it is there only from before, or
+-- from a profile, share string or backup written in the old form, and then
+-- it is the place wanted. A flag instead could be set on the stand-in
+-- settings Core uses until the saved ones arrive, be carried into those
+-- (Core's AdoptSavedVariables) and stop the move.
+local function MovePopupPlace()
+	local db = M.db
+	local old = db and db.whisperPopupPos
+	if old == nil then
+		return
+	end
+	local x = type(old) == "table" and tonumber(old.x)
+	local y = type(old) == "table" and tonumber(old.y)
+	if x and y then
+		local um = MelloUI:GetModuleDB("UIModifications")
+		if type(um) ~= "table" then
+			return   -- (no store: moved on a later try)
+		end
+		if type(um.positions) ~= "table" then
+			um.positions = {}
+		end
+		um.positions[WHISPER_PLACE] = { relPoint = "BOTTOMLEFT", x = x, y = y }
+		MelloUI:NotifySettingChanged("UIModifications", "positions", um.positions)
+	end
+	db.whisperPopupPos = nil
+end
+
+-- f laid where the window with its number opens (made, or put back by
+-- Reset positions)
 local function PlacePopup(f)
-	local pos = M.db and M.db.whisperPopupPos
-	local step = ((popupCount - 1) % 6) * 24
+	MovePopupPlace()
+	local pos = MelloUI:GetPosition(WHISPER_PLACE)
+	local point, relPoint = pos and (pos.point or "BOTTOMLEFT"), pos and (pos.relPoint or "CENTER")
+	local x, y = pos and tonumber(pos.x), pos and tonumber(pos.y)
+	local step = (((f.placeIndex or 1) - 1) % 6) * 24
 	f:ClearAllPoints()
-	if pos then
-		f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", pos.x + step, pos.y - step)
+	if x and y and ANCHORS[point] and ANCHORS[relPoint] then
+		f:SetPoint(point, UIParent, relPoint, x + step, y - step)
 	else
 		f:SetPoint("CENTER", UIParent, "CENTER", 260 + step, 80 - step)
 	end
 end
 
-local function SavePopupPosition(f)
-	if not M.db then
-		return
-	end
-	local okL, left = pcall(f.GetLeft, f)
-	local okB, bottom = pcall(f.GetBottom, f)
-	if okL and okB and not Secret(left) and not Secret(bottom) and left and bottom then
-		M.db.whisperPopupPos = { x = math.floor(left + 0.5), y = math.floor(bottom + 0.5) }
-	end
+-- let go after a drag: its corner is where the next window opens
+local function SavePopupPlace(f)
+	MelloUI:SavePosition(WHISPER_PLACE, f)
 end
 
--- the chat reskin's look when the kit dresses the chat (the single rail with
--- its stone, a parchment sheet with the painted edge on the stone), a plain
--- dark box with a thin edge otherwise. True when the kit dressed it, so the
--- header can match.
-local function DressPopup(f)
+local function ForgetPopupPlace()
+	MelloUI:ForgetPosition(WHISPER_PLACE)
+end
+
+-- every window's mover (one table: the mover copies what it needs): dragged
+-- by its header at any time, as it always was, locked windows or not;
+-- measured from its bottom-left corner, as the old place was; at its one
+-- size (min = max: the unlocked mover's wheel leaves it, the corner it
+-- saves is for the next window, which opens at that size)
+local POPUP_MOVER = { key = WHISPER_PLACE, anchor = "BOTTOMLEFT", plainDrag = "always",
+	save = SavePopupPlace, reset = ForgetPopupPlace, default = PlacePopup, min = 1, max = 1 }
+
+-- THE LOOK follows the chat's (Kit:IsOn('whisper'): the chat reskin), live
+-- (audit, 2026-09-24, rank 1: it was decided once, when a window was made,
+-- so a window made or kept from before a switch stayed in the other look).
+-- Each look's parts are made the first time a window wears it and only
+-- shown or hidden after that.
+local function WhisperKitOn()
 	local Kit = MelloUI.Kit
-	if Kit and Kit.NineSlice and Kit.IsCovered and Kit:IsCovered("chat") then
-		-- no corner gems: the chat windows have none, and on a window this
-		-- small the four of them bunched up in the middle of the stone (user
-		-- screenshot, 2026-09-23)
-		local ok, skin = pcall(Kit.NineSlice, Kit, f, { prefix = Kit.framePrefix, gems = false,
-			scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
-		if ok then
-			-- the parchment laid on the stone, inside the rails, its edge
-			-- painted (user, 2026-09-23: "same on the whisper window")
-			if skin and Kit.ParchmentSheet then
-				Kit:ParchmentSheet(skin, f, { tight = true, area = "whisper" })
-			end
-			-- no eye strain (user, 2026-09-24: "too much small text over a
-			-- plain brown border is just an eye strain" / "apply the eye
-			-- strain rule to all existing windows"; WINDOW-RULES 2e): on the
-			-- stone look (the whisper parchment off) the stone inside the
-			-- rails lies under the palette's inner panel, a region of the
-			-- skin between the stone and the sheet, switched against the
-			-- sheet by Kit:SetParchment
-			if skin and Kit.StoneDim then
-				Kit:StoneDim(skin, { area = "whisper" })
-			end
-			return true
-		end
+	return (Kit and Kit.IsOn and Kit:IsOn("whisper")) and true or false
+end
+
+-- (the whisper sheet and eye-strain panel, Kit:SetParchment's: shown only
+-- while the windows wear the kit; one function for every window's)
+local function WhisperAlive()
+	return WhisperKitOn()
+end
+
+-- the chat reskin's body (the single rail with its stone, a parchment sheet
+-- with the painted edge on the stone), made once: the skin, or false when
+-- the kit could not make it
+local function KitBody(f)
+	local Kit = MelloUI.Kit
+	if not (Kit and Kit.NineSlice) then
+		return false
 	end
+	-- no corner gems: the chat windows have none, and on a window this
+	-- small the four of them bunched up in the middle of the stone (user
+	-- screenshot, 2026-09-23)
+	local ok, skin = pcall(Kit.NineSlice, Kit, f, { prefix = Kit.framePrefix, gems = false,
+		scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
+	if not (ok and skin) then
+		return false
+	end
+	-- the parchment laid on the stone, inside the rails, its edge painted
+	-- (user, 2026-09-23: "same on the whisper window")
+	if Kit.ParchmentSheet then
+		Kit:ParchmentSheet(skin, f, { tight = true, area = "whisper", alive = WhisperAlive })
+	end
+	-- no eye strain (user, 2026-09-24: "too much small text over a plain
+	-- brown border is just an eye strain" / "apply the eye strain rule to
+	-- all existing windows"; WINDOW-RULES 2e): on the stone look (the
+	-- whisper parchment off) the stone inside the rails lies under the
+	-- palette's inner panel, a region of the skin between the stone and the
+	-- sheet, switched against the sheet by Kit:SetParchment
+	if Kit.StoneDim then
+		Kit:StoneDim(skin, { area = "whisper", alive = WhisperAlive })
+	end
+	return skin
+end
+
+-- without the kit: a plain dark box with a thin edge, made once (its
+-- textures)
+local function PlainBody(f)
+	local parts = {}
 	local bg = f:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints(f)
 	bg:SetColorTexture(0.04, 0.04, 0.05, 0.92)
+	parts[1] = bg
 	local edges = { { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
 		{ "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }
 	for _, e in ipairs(edges) do
@@ -1917,6 +2000,128 @@ local function DressPopup(f)
 		end
 		if e[4] then
 			t:SetHeight(e[4])
+		end
+		parts[#parts + 1] = t
+	end
+	return parts
+end
+
+-- The body in the look asked for: the kit's (when it could be made) or
+-- the plain box, the other hidden. True when the kit dresses it, so the
+-- header and the ink can match.
+local function DressBody(f, on)
+	if on and f.kitBody == nil then
+		f.kitBody = KitBody(f)
+	end
+	local dressed = (on and f.kitBody) and true or false
+	if not dressed and not f.plainBody then
+		f.plainBody = PlainBody(f)
+	end
+	if f.kitBody then
+		f.kitBody:SetShown(dressed)
+	end
+	-- (looped only when made: no empty table at each switch)
+	if f.plainBody then
+		for _, t in ipairs(f.plainBody) do
+			t:SetShown(not dressed)
+		end
+	end
+	return dressed
+end
+
+-- THE HEADER'S LOOK (user, 2026-09-23: the strip the window is dragged by
+-- is a header and should look like one; pick B of
+-- kit_raw/whisper_header_catalog.png): with the kit, its list header band
+-- across the top, as on the damage meter; without it, a darker band with
+-- an edge under it. Each made once; the plate, or nil when the band shows.
+local function DressHeader(f, dressed)
+	local head = f.head
+	local Kit = MelloUI.Kit
+	if dressed and f.plate == nil then
+		f.plate = false
+		if Kit and Kit.Strip then
+			local ok, strip = pcall(Kit.Strip, Kit, head, "lists/header", { scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
+			if ok and strip then
+				local yoff = strip:FitBox(HEADER_H) or 0
+				strip:ClearAllPoints()
+				strip:SetPoint("LEFT", head, "LEFT", 0, yoff)
+				strip:SetPoint("RIGHT", head, "RIGHT", 0, yoff)
+				strip:SetHeight(strip.height)
+				f.plate = strip
+			end
+		end
+	end
+	local plate = dressed and f.plate or nil
+	if not plate and not f.band then
+		local band = head:CreateTexture(nil, "BACKGROUND")
+		band:SetAllPoints(head)
+		band:SetColorTexture(0.1, 0.09, 0.08, 1)
+		local line = head:CreateTexture(nil, "BORDER")
+		line:SetColorTexture(0.45, 0.4, 0.3, 1)
+		line:SetPoint("BOTTOMLEFT", head, "BOTTOMLEFT")
+		line:SetPoint("BOTTOMRIGHT", head, "BOTTOMRIGHT")
+		line:SetHeight(1)
+		f.band = { band, line }
+	end
+	if f.plate then
+		f.plate:SetShown(plate ~= nil)
+	end
+	if f.band then
+		for _, t in ipairs(f.band) do
+			t:SetShown(not plate)
+		end
+	end
+	-- the text starts past the cap's gem (a quarter of the cap, as the
+	-- damage meter's header keeps its controls off the gems)
+	f.nameInset = plate and ((plate.wl or 0) * 0.3 + 4) or 8
+	return plate
+end
+
+-- the name across the header, in the kit's title face on its plate
+local function PlaceName(f)
+	local name, head, inset = f.header, f.head, f.nameInset
+	name:ClearAllPoints()
+	name:SetPoint("LEFT", head, "LEFT", inset, 0)
+	name:SetPoint("RIGHT", head, "RIGHT", -inset, 0)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.TitleFont and (f.kitDressed or name.melloFontSaved) then
+		pcall(Kit.TitleFont, Kit, name, f.kitDressed)
+	end
+end
+
+-- A window in the look asked for, made or kept (the chat reskin switched):
+-- its body, header and name, then its lines in ink or in their colours
+local function SetPopupLook(f, on)
+	on = on and true or false
+	if f.lookOn == on then
+		return
+	end
+	f.lookOn = on
+	f.kitDressed = DressBody(f, on)
+	local plate = DressHeader(f, f.kitDressed)
+	-- on the plate when there is one: a child frame draws over its
+	-- parent's regions, so a name on the header frame would sit under it
+	f.header:SetParent(plate or f.head)
+	PlaceName(f)
+	InkPopup(f)
+end
+
+-- every window there is, the open ones and those kept for their next
+-- whisper ('look:whisper', from the frame after the switch)
+local function PopupsFollowLook(on)
+	for _, f in pairs(popups) do
+		SetPopupLook(f, on)
+	end
+	-- back in the kit: the whisper parchment switched again, as the kit's
+	-- panels do when they come on (review, 2026-09-25: Kit:SetParchment
+	-- shows a sheet or an eye-strain panel only while its window wears the
+	-- kit, so a parchment switched while the chat look was off left both
+	-- hidden, and the lines in ink on bare stone). Its 'parchment' brings
+	-- the ink along.
+	if on then
+		local Kit = MelloUI.Kit
+		if Kit and Kit.SetParchment and Kit.ParchmentOn then
+			Kit:SetParchment("whisper", Kit:ParchmentOn("whisper"))
 		end
 	end
 end
@@ -1943,65 +2148,29 @@ local function CreatePopup(key, kind, target, title)
 	f:SetMovable(true)
 	f:EnableMouse(true)
 	f.kind, f.target, f.key = kind, target, key
-	local dressed = DressPopup(f)
-	f.kitDressed = dressed and true or false
+	f.placeIndex = popupCount
+	-- the look the chat wears now (made in this order, the body under all
+	-- the rest; SetPopupLook changes it later)
+	f.lookOn = WhisperKitOn()
+	f.kitDressed = DressBody(f, f.lookOn)
 
-	-- THE HEADER (user, 2026-09-23: the strip the window is dragged by is a
-	-- header and should look like one; pick B of
-	-- kit_raw/whisper_header_catalog.png): the kit's list header band across
-	-- the top, as on the damage meter, with the name in its class colour and
-	-- the level after it. Without the kit, a darker band with an edge under it.
+	-- THE HEADER, the strip the window is dragged by (the mover's handle,
+	-- below), with the name in its class colour and the level after it
 	local head = CreateFrame("Frame", nil, f)
 	head:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -6)
 	head:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -6)
 	head:SetHeight(HEADER_H)
 	head:EnableMouse(true)
 	head:RegisterForDrag("LeftButton")
-	Perf.SetScript(head, "OnDragStart", function()
-		f:StartMoving()
-	end)
-	Perf.SetScript(head, "OnDragStop", function()
-		f:StopMovingOrSizing()
-		SavePopupPosition(f)
-	end)
-	local Kit = MelloUI.Kit
-	local nameInset = 8
-	local plate
-	if dressed and Kit and Kit.Strip then
-		local ok, strip = pcall(Kit.Strip, Kit, head, "lists/header", { scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
-		if ok and strip then
-			plate = strip
-			local yoff = plate:FitBox(HEADER_H) or 0
-			plate:ClearAllPoints()
-			plate:SetPoint("LEFT", head, "LEFT", 0, yoff)
-			plate:SetPoint("RIGHT", head, "RIGHT", 0, yoff)
-			plate:SetHeight(plate.height)
-			-- the text starts past the cap's gem (a quarter of the cap, as the
-			-- damage meter's header keeps its controls off the gems)
-			nameInset = (plate.wl or 0) * 0.3 + 4
-		end
-	end
-	if not plate then
-		local band = head:CreateTexture(nil, "BACKGROUND")
-		band:SetAllPoints(head)
-		band:SetColorTexture(0.1, 0.09, 0.08, 1)
-		local line = head:CreateTexture(nil, "BORDER")
-		line:SetColorTexture(0.45, 0.4, 0.3, 1)
-		line:SetPoint("BOTTOMLEFT", head, "BOTTOMLEFT")
-		line:SetPoint("BOTTOMRIGHT", head, "BOTTOMRIGHT")
-		line:SetHeight(1)
-	end
+	f.head = head
+	local plate = DressHeader(f, f.kitDressed)
 	-- on the plate when there is one: a child frame draws over its parent's
 	-- regions, so a name on `head` would sit under the band
 	local name = (plate or head):CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	name:SetPoint("LEFT", head, "LEFT", nameInset, 0)
-	name:SetPoint("RIGHT", head, "RIGHT", -nameInset, 0)
 	name:SetJustifyH("LEFT")
 	name:SetWordWrap(false)
-	if dressed and Kit and Kit.TitleFont then
-		pcall(Kit.TitleFont, Kit, name, true)
-	end
 	f.header = name
+	PlaceName(f)
 	f.titleText = title   -- a character name or a Battle.net name; both display as they are
 
 	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
@@ -2068,6 +2237,11 @@ local function CreatePopup(key, kind, target, title)
 
 	PlacePopup(f)
 	popups[key] = f
+	-- the one mover (registered once its own scripts are set: the mover
+	-- hooks its hide); and from the first window on, every window follows
+	-- the chat's look (the same listener for all, told once however many)
+	MelloUI:RegisterMover(f, head, POPUP_MOVER)
+	MelloUI:On("look:whisper", PopupsFollowLook, "Chat whisper popups")
 	return f
 end
 
@@ -2392,6 +2566,10 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- the old corner into the store now, as the Route arrow and the Voice
+	-- Over overlay do at enable, so a Reset positions before the session's
+	-- first whisper reaches it (review, 2026-09-25); data only, builds nothing
+	MovePopupPlace()
 	ApplyAll()
 end
 

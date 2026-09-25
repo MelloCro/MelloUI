@@ -23,7 +23,7 @@
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("VoiceOver")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local C_Timer = Perf.C_Timer
 
 local AUTO_VOICE = -1
 
@@ -200,13 +200,17 @@ options[#options + 1] = { type = "toggle", key = "overlayPortrait", parent = "ov
 options[#options + 1] = { type = "toggle", key = "overlaySubtitles", parent = "overlay", name = "Subtitles",
 	desc = "Also show the text being read under the NPC name." }
 options[#options + 1] = { type = "toggle", key = "overlayLock", parent = "overlay", name = "Lock Position",
-	desc = "Prevent the overlay from being dragged." }
+	desc = "Prevent the overlay from being dragged. Unlock the Windows (UI Modifications) still moves it, as it moves every window." }
 options[#options + 1] = { type = "slider", key = "overlayScale", parent = "overlay", name = "Overlay Scale", min = 0.6, max = 1.5, step = 0.05, percent = true,
 	desc = "Size of the overlay." }
 
 local M = MelloUI:RegisterModule("VoiceOver", {
 	title = "Voice Over",
 	desc = "Read NPC dialog and quest text aloud with the built in text-to-speech voices, shaped by the NPC's race and gender.",
+	icon = "Interface\\Icons\\INV_Misc_Horn_01",
+	flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it.",
+	group = "Chat and sound",
+	area = { key = "voiceover" },   -- its overlay: the reskin's look
 	enabledByDefault = true,
 	keep = { "collectLinesOffOnce" },   -- a one-time step that was done: never in a profile
 	defaults = defaults,
@@ -218,7 +222,7 @@ local M = MelloUI:RegisterModule("VoiceOver", {
 --------------------------------------------------------------------------------
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local IsSecret = MelloUI.Safe.IsSecret
 
 local function IsPlainNumber(v)
 	return type(v) == "number" and not IsSecret(v)
@@ -1308,78 +1312,202 @@ local INKS = {
 	},
 }
 
--- The kit when the reskin is on and the kit has what the dress needs, else nil.
+-- The kit when the overlay's look switch is on (Kit:IsOn('voiceover'): the
+-- reskin, UI Modifications on with its Painted kit reskin -- the one answer
+-- every own window asks, audit 2026-09-24 rank 1) and the kit has what the
+-- dress needs, else nil.
 local function ReskinKit()
 	local Kit = MelloUI.Kit
 	if not (Kit and Kit.NineSlice and Kit.Strip and Kit.Texture and Kit.Piece and Kit.ParchmentSheet and Kit.StateTexture) then
 		return nil
 	end
-	if not (MelloUI.db and MelloUI:IsModuleEnabled("UIModifications")) then
-		return nil
-	end
-	local db = MelloUI:GetModuleDB("UIModifications")
-	if db and db.reskin ~= false then
+	if Kit.IsOn and Kit:IsOn("voiceover") then
 		return Kit
 	end
 	return nil
 end
 
-function Overlay:SavePosition()
-	local frame = self.frame
-	local point, _, relativePoint, x, y = frame:GetPoint(1)
-	if point then
-		M.db.overlayPoint = point
-		M.db.overlayRelativePoint = relativePoint
-		M.db.overlayX = math.floor(x + 0.5)
-		M.db.overlayY = math.floor(y + 0.5)
+--------------------------------------------------------------------------------
+-- The overlay's place is the one mover's (audit, 2026-09-24, rank 6): kept
+-- in the one store under 'voiceOverlay' (UI Modifications' positions, so
+-- profiles, the backup and Reset positions reach it), saved by its bottom
+-- edge's middle, where it first stands (over the action bars). Dragged
+-- while its padlock is open, as before; moved, and sized by the wheel,
+-- like every window while the windows are unlocked.
+--------------------------------------------------------------------------------
+
+local OVERLAY_PLACE = "voiceOverlay"
+
+local function DefaultPlace(frame)
+	frame:ClearAllPoints()
+	frame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
+end
+
+-- Settings can come back from the macro backup with stray whitespace;
+-- only a clean anchor name is taken.
+local function Anchor(value)
+	if type(value) ~= "string" then
+		return nil
 	end
+	value = value:gsub("%s+", ""):upper()
+	if VALID_POINTS[value] then
+		return value
+	end
+	return nil
+end
+
+-- The old place (overlayPoint, overlayRelativePoint, overlayX, overlayY:
+-- the overlay's point, the screen's point it hung from, the offsets in its
+-- own units) moved into the store, as exactly that, so it stays where it
+-- was; the old keys go with the move. Written in the store's own form (as
+-- SavePosition writes it: point nil = BOTTOMLEFT, relPoint nil = CENTER)
+-- and told through the setting path, as the mover's own saves are. The old
+-- keys themselves are the version: nothing writes them any more, so they
+-- are there only from before, or from a profile, share string or backup
+-- written in the old form (the built-in profile is), and then they are the
+-- place wanted. A flag instead could be set on the stand-in settings Core
+-- uses until the saved ones arrive, be carried into those (Core's
+-- AdoptSavedVariables) and stop the move.
+local function MoveOldPlace()
+	local db = M.db
+	if not db or (db.overlayPoint == nil and db.overlayRelativePoint == nil and db.overlayX == nil and db.overlayY == nil) then
+		return
+	end
+	local point = Anchor(db.overlayPoint)
+	if point then
+		local um = MelloUI:GetModuleDB("UIModifications")
+		if type(um) ~= "table" then
+			return   -- (no store: moved on a later try)
+		end
+		if type(um.positions) ~= "table" then
+			um.positions = {}
+		end
+		local relPoint = Anchor(db.overlayRelativePoint) or point
+		um.positions[OVERLAY_PLACE] = {
+			point = point ~= "BOTTOMLEFT" and point or nil,
+			relPoint = relPoint ~= "CENTER" and relPoint or nil,
+			x = tonumber(db.overlayX) or 0, y = tonumber(db.overlayY) or 0,
+		}
+		MelloUI:NotifySettingChanged("UIModifications", "positions", um.positions)
+	end
+	db.overlayPoint, db.overlayRelativePoint, db.overlayX, db.overlayY = nil, nil, nil, nil
+end
+
+-- Let go after a drag (the mover's plain drag, its buttons', or the mover
+-- of the unlocked windows): saved, and hung from its anchor again. The
+-- overlay keeps its place itself (the mover's `save`: laid by Apply, as it
+-- always was), and a scale the unlocked mover's wheel gave it is its
+-- Overlay Scale setting, as the Quest Tracker's wheel is its Scale (a
+-- scale in the store would undo the slider at every Apply).
+local function SaveOverlay(frame)
+	if not (frame and M.db) then
+		return
+	end
+	local ok, scaled = pcall(frame.GetScale, frame)
+	if MelloUI:SavePosition(OVERLAY_PLACE, frame, false) then
+		MelloUI:RestorePosition(OVERLAY_PLACE, frame)
+	end
+	if ok and IsPlainNumber(scaled) and math.abs(scaled - (tonumber(M.db.overlayScale) or 1)) > 0.001 then
+		M.db.overlayScale = math.floor(scaled * 100 + 0.5) / 100
+		MelloUI:NotifySettingChanged(M.name, "overlayScale", M.db.overlayScale)
+	end
+end
+
+function Overlay:SavePosition()
+	SaveOverlay(self.frame)
 end
 
 function Overlay:RestorePosition()
 	local frame = self.frame
-	frame:ClearAllPoints()
-	-- Settings can come back from the macro backup with stray whitespace;
-	-- only accept a clean anchor name.
-	local function Anchor(value)
-		if type(value) ~= "string" then
-			return nil
-		end
-		value = value:gsub("%s+", ""):upper()
-		if VALID_POINTS[value] then
-			return value
-		end
-		return nil
-	end
-	local point = Anchor(M.db.overlayPoint)
-	if point then
-		frame:SetPoint(point, UIParent, Anchor(M.db.overlayRelativePoint) or point, tonumber(M.db.overlayX) or 0, tonumber(M.db.overlayY) or 0)
-	else
-		frame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
+	MoveOldPlace()
+	if not MelloUI:RestorePosition(OVERLAY_PLACE, frame) then
+		DefaultPlace(frame)
 	end
 end
 
+-- the place forgotten, the old keys too (/vo reset)
+local function ForgetOverlayPlace()
+	if M.db then
+		M.db.overlayPoint, M.db.overlayRelativePoint, M.db.overlayX, M.db.overlayY = nil, nil, nil, nil
+	end
+	MelloUI:ForgetPosition(OVERLAY_PLACE)
+end
+
 function Overlay:ResetPosition()
-	M.db.overlayPoint = nil
-	M.db.overlayRelativePoint = nil
-	M.db.overlayX = nil
-	M.db.overlayY = nil
+	ForgetOverlayPlace()
 	if self.frame then
 		self:RestorePosition()
 	end
 end
 
--- Let any widget of the overlay drag the whole frame.
+-- Reset positions (UI Modifications): back where it first stands, at its
+-- standard size, as every window goes back (the Quest Tracker's scale too)
+local function ResetOverlay()
+	ForgetOverlayPlace()
+	if M.db and math.abs((tonumber(M.db.overlayScale) or 1) - 1) > 0.001 then
+		M.db.overlayScale = 1
+		MelloUI:NotifySettingChanged(M.name, "overlayScale", 1)
+	end
+end
+
+-- The mover drags by the overlay itself; its buttons (pause, stop, the
+-- lines) drag it too, so it is grabbed anywhere, as it always was. The
+-- mover takes one handle a window, so theirs start the same plain drag on
+-- the overlay -- only while its padlock is open -- and end it as the mover
+-- does (saved, hung from its anchor again). Marked as the mover's drag
+-- (entry.moving), so a hide mid-drag, the next drag or the next show ends
+-- it as any other. One pair of handlers for every button.
+local ButtonDragStart = Perf.Shared("OnDragStart on the Voice Over overlay's buttons", function()
+	local entry, frame = Overlay.mover, Overlay.frame
+	if not (entry and frame) or entry.moving or entry.plainDrag ~= "always" then
+		return
+	end
+	frame:StartMoving()
+	entry.moving = "plain"
+end, "script")
+
+local ButtonDragStop = Perf.Shared("OnDragStop on the Voice Over overlay's buttons", function()
+	local entry, frame = Overlay.mover, Overlay.frame
+	if not (entry and frame and entry.moving == "plain") then
+		return
+	end
+	entry.moving = nil
+	frame:StopMovingOrSizing()
+	Overlay:SavePosition()
+end, "script")
+
 local function AttachDrag(widget)
 	widget:RegisterForDrag("LeftButton")
-	Perf.SetScript(widget, "OnDragStart", function()
-		if not M.db.overlayLock then
-			Overlay.frame:StartMoving()
-		end
-	end)
-	Perf.SetScript(widget, "OnDragStop", function()
-		Overlay.frame:StopMovingOrSizing()
-		Overlay:SavePosition()
-	end)
+	Perf.SetScript(widget, "OnDragStart", ButtonDragStart)
+	Perf.SetScript(widget, "OnDragStop", ButtonDragStop)
+end
+
+-- the padlock's meaning for the mover: dragged at any time while it is
+-- open, never while it is shut (the unlocked windows' mover aside)
+local function FollowPadlock()
+	local entry = Overlay.mover
+	if entry and M.db then
+		entry.plainDrag = (not M.db.overlayLock) and "always" or false
+	end
+end
+
+-- The one mover, the overlay itself its handle, from its first show
+-- (WINDOW-RULES 2f: nothing made for it at login, and it is dragged only
+-- once shown). Registered as dragged at any time, so the unlocked windows'
+-- mover leaves its mouse on (its tooltip, its drag once the padlock
+-- opens), then told the padlock; the wheel's range is the Overlay Scale
+-- slider's. (false: the mover gave no entry; not asked again.)
+local OVERLAY_MOVER = { key = OVERLAY_PLACE, anchor = "BOTTOM", plainDrag = "always",
+	save = SaveOverlay, reset = ResetOverlay, default = DefaultPlace, min = 0.6, max = 1.5 }
+
+local function RegisterOverlayMover(frame)
+	-- laid from the store once more first: Reset positions before this
+	-- first show wiped the store but could not reach an overlay the mover
+	-- did not know yet, and with a `save` the mover lays nothing on show
+	-- (review, 2026-09-25); unchanged when nothing was reset
+	Overlay:RestorePosition()
+	Overlay.mover = MelloUI:RegisterMover(frame, frame, OVERLAY_MOVER) or false
+	FollowPadlock()
 end
 
 -- Frame the head and shoulders. The custom camera used by the VoiceOver
@@ -1502,7 +1630,7 @@ function Overlay:CreatePortrait()
 		GameTooltip:Hide()
 	end)
 	Perf.SetScript(pause, "OnClick", function()
-		PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
+		MelloUI:PlayUISound("tick")
 		TogglePaused()
 	end)
 	AttachDrag(pause)
@@ -1547,7 +1675,7 @@ function Overlay:CreatePortrait()
 	Perf.SetScript(mini, "OnEnter", function(self) self:GetNormalTexture():SetAlpha(1) end)
 	Perf.SetScript(mini, "OnLeave", function(self) self:GetNormalTexture():SetAlpha(0.75) end)
 	Perf.SetScript(mini, "OnClick", function()
-		PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
+		MelloUI:PlayUISound("tick")
 		TogglePaused()
 	end)
 	AttachDrag(mini)
@@ -1594,7 +1722,7 @@ function Overlay:CreateLine(index)
 	button.icon:SetPoint("CENTER", button, "LEFT", 8, 0)
 	Perf.SetScript(button, "OnClick", function(self)
 		if self.entry then
-			PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
+			MelloUI:PlayUISound("tick")
 			Skip(self.entry)
 		end
 	end)
@@ -1674,7 +1802,7 @@ function Overlay:Create()
 	frame:SetMovable(true)
 	frame:SetClampedToScreen(true)
 	frame:EnableMouse(true)
-	AttachDrag(frame)
+	frame:RegisterForDrag("LeftButton")
 	Perf.SetScript(frame, "OnEnter", function(self)
 		if M.db.overlayLock then
 			return
@@ -1686,6 +1814,7 @@ function Overlay:Create()
 	end)
 	Perf.SetScript(frame, "OnLeave", function() GameTooltip:Hide() end)
 	frame:Hide()
+	-- (its mover comes with its first show: Overlay:Update)
 
 	frame.background = frame:CreateTexture(nil, "BACKGROUND")
 	frame.background:SetAllPoints()
@@ -1758,7 +1887,7 @@ function Overlay:Create()
 	end)
 	Perf.SetScript(stop, "OnLeave", function() GameTooltip:Hide() end)
 	Perf.SetScript(stop, "OnClick", function()
-		PlaySound(SOUNDKIT.U_CHAT_SCROLL_BUTTON)
+		MelloUI:PlayUISound("tick")
 		if current then
 			Skip(current)
 		else
@@ -1815,7 +1944,7 @@ function Overlay:Create()
 	Perf.SetScript(lock, "OnClick", function(self)
 		M.db.overlayLock = not M.db.overlayLock
 		MelloUI:NotifySettingChanged(M.name, "overlayLock", M.db.overlayLock)
-		PlaySound(M.db.overlayLock and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		MelloUI:PlayUISound(M.db.overlayLock and "option_on" or "option_off")
 		self:Refresh()
 		GameTooltip:Hide()
 	end)
@@ -2093,6 +2222,7 @@ function Overlay:Apply()
 	if frame.lock then
 		frame.lock:Refresh()
 	end
+	FollowPadlock()
 	-- without the model the art's own emblem shows in the square (the book
 	-- in the ring in the kit)
 	frame.portrait:SetShown(M.db.overlayPortrait and true or false)
@@ -2222,6 +2352,9 @@ function Overlay:Update()
 	frame:SetShown(visible)
 	if not visible then
 		return
+	end
+	if self.mover == nil then
+		RegisterOverlayMover(frame)
 	end
 	frame.portrait.pause:Update()
 	frame.miniPause:Update()
@@ -2637,13 +2770,13 @@ local function CreateReadButton()
 	Perf.SetScript(readButton, "OnClick", function()
 		if IsReadingLog() then
 			Stop()
-			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			MelloUI:PlayUISound("option_off")
 		else
 			local questID = QuestMapFrame.DetailsFrame.questID
 			if not ReadQuest(questID) then
 				MelloUI:Print("Voice Over: nothing to read for this quest.")
 			else
-				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+				MelloUI:PlayUISound("option_on")
 			end
 		end
 	end)
@@ -2848,27 +2981,19 @@ local EVENTS = {
 	"VOICE_CHAT_TTS_VOICES_UPDATE", "VOICE_CHAT_TTS_PLAYBACK_FINISHED", "VOICE_CHAT_TTS_PLAYBACK_FAILED",
 }
 
--- The reskin switched on or off (UI Modifications' Painted kit reskin, or the
--- module itself): the overlay changes dress at once, not at the next line.
+-- The overlay's look switched (UI Modifications' Painted kit reskin, or the
+-- module itself, or a profile): it changes dress at once, not at the next
+-- line. Told by the bus's 'look:voiceover' on the frame after the switch
+-- (audit, 2026-09-24, ranks 1 and 5: it hooked NotifySettingChanged and
+-- SetModuleEnabled, both run for every setting and module and never let
+-- go; the kit's look pass listens to those and tells only a real change).
 -- The Kit Colours need nothing here: every kit piece is re-pointed by
 -- Kit:SetKitColours.
-do
-	local function Redress()
-		if M.isEnabled and Overlay.frame and Overlay:Dress() then
-			Overlay:Update()
-		end
+MelloUI:On("look:voiceover", function()
+	if M.isEnabled and Overlay.frame and Overlay:Dress() then
+		Overlay:Update()
 	end
-	hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
-		if name == "UIModifications" and key == "reskin" then
-			Redress()
-		end
-	end)
-	hooksecurefunc(MelloUI, "SetModuleEnabled", function(_, name)
-		if name == "UIModifications" then
-			Redress()
-		end
-	end)
-end
+end, "Voice Over overlay")
 
 function M:OnInit(db)
 	self.db = db

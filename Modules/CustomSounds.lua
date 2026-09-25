@@ -154,6 +154,9 @@ end
 local M = MelloUI:RegisterModule("CustomSounds", {
 	title = "Custom Sounds",
 	desc = "The interface's sounds replaced by the custom library: iron, leather, parchment and stone for clicks, windows, bags, gear, vendors, whispers and the group finder.",
+	icon = "Interface\\Icons\\INV_Misc_Bell_01",
+	flavour = "Iron, leather, parchment and stone. Every click, page, pouch and buckle of the interface, re-recorded.",
+	group = "Chat and sound",
 	enabledByDefault = false,
 	defaults = defaults,
 	options = options,

@@ -27,6 +27,10 @@ local hooksecurefunc = Perf.hooksecurefunc
 local M = MelloUI:RegisterModule("ClassIcons", {
 	title = "Class Icons",
 	desc = "High resolution painted class medallions in place of the default class icons, and on player portraits.",
+	icon = "Interface\\Icons\\INV_Misc_Rune_01",
+	flavour = "Painted medallions for every class, on the character sheet and on every portrait.",
+	group = "The look",
+	tweak = { label = "Class Icons", desc = "The painted class medallions in place of the game's class icons and on player portraits.", order = 8 },
 	enabledByDefault = true,
 	defaults = {
 		portraits = true,
@@ -59,10 +63,8 @@ local CLASSES_IN_CLIENT = {
 -- cannot be read or compared; skip rather than error. SafeValue(v) is v, or
 -- nil when v is secret: MelloUI.Safe (Core.lua), one set for the addon. The
 -- old copy compared v with nil before asking issecretvalue, which a secret
--- refuses (audit, 2026-09-24). The stand-in is Safe.Value's own body, for a
--- test world that loads this file without Core.
-local SafeValue = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+-- refuses (audit, 2026-09-24).
+local SafeValue = MelloUI.Safe.Value
 
 -- Returns the texture path (no extension) for a class file name (as
 -- select(2, UnitClass(unit)) returns it, e.g. "WARRIOR"), or nil when that

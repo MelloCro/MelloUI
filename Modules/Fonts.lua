@@ -229,6 +229,10 @@ options[#options + 1] = { type = "dropdown", key = "outline", name = "Outline", 
 local M = MelloUI:RegisterModule("Fonts", {
 	title = "Fonts",
 	desc = "One font per role: interface text, chat and numbers, titles, damage numbers; plus size and outline.",
+	icon = "Interface\\Icons\\INV_Scroll_03",
+	flavour = "One font for all of Azeroth. Pick it, scale it, outline it.",
+	group = "The look",
+	tweak = { label = "Custom Fonts", desc = "The fonts and sizes used by the whole interface. Off: the game's own fonts.", order = 11 },
 	enabledByDefault = true,   -- every role "default" changes nothing; UI Modifications drives the switch
 	keep = { "paperFollows" },   -- a one-time step that was done: never in a profile
 	defaults = defaults,
@@ -643,8 +647,6 @@ end
 -- for changes; it keeps its own base size and look.
 --------------------------------------------------------------------------------
 
-local changeListeners = {}
-
 -- The face, size factor and flags for a string of the given role whose own
 -- face and flags (without this module) are fallbackPath and fallbackFlags.
 -- Off, or a role on "Keep the game's", gives the string's own face back; the
@@ -669,20 +671,17 @@ function M:BaseFont(object)
 end
 
 -- fn() runs after every change of the fonts (a face, a size, the Outline, a
--- Font Style) and when the module is switched on or off.
+-- Font Style) and when the module is switched on or off: an alias of the
+-- bus's 'fonts' topic (audit, 2026-09-24, rank 5), fired once the fonts are
+-- applied; one that raises goes to the error handler, the others still run.
 function M:OnFontsChanged(fn)
 	if type(fn) == "function" then
-		changeListeners[#changeListeners + 1] = fn
+		MelloUI:On("fonts", fn)
 	end
 end
 
 local function FireFontsChanged()
-	for _, fn in ipairs(changeListeners) do
-		local ok, err = pcall(fn)
-		if not ok then
-			geterrorhandler()(err)
-		end
-	end
+	MelloUI:Fire("fonts")
 end
 
 local function ApplyAll()

@@ -78,6 +78,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("ChannelPanel", {
 	title = "Channels Kit",
 	desc = "The chat channels window in the kit.",
+	window = { label = "Chat channels", desc = "The chat channels window in the kit.", tab = "Windows",
+		addon = "Blizzard_Channels", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -105,7 +107,7 @@ local popupSkin = nil                                   -- the new channel popup
 local stats = { rows = 0, headers = 0, members = 0, icons = 0, edits = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function IsActive()
 	return active
@@ -622,7 +624,7 @@ local function Stripe(row)
 	local tex = row:CreateTexture(nil, "BACKGROUND", nil, -8)
 	tex.kitPiece = true
 	tex:SetAllPoints(row)
-	local c = MelloUI.Palette and MelloUI.Palette.mainWindow or { 0.12, 0.11, 0.09 }
+	local c = MelloUI.Palette.mainWindow
 	tex:SetColorTexture(c[1], c[2], c[3], STRIPE_ALPHA)
 	tex:Hide()
 	return tex

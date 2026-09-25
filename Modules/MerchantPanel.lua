@@ -66,6 +66,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("MerchantPanel", {
 	title = "Merchant Kit",
 	desc = "The merchant window (items, buyback, repair) in the kit.",
+	window = { label = "Merchants", desc = "The merchant window (items, buyback, repair) in the kit.", tab = "Windows",
+		frames = { "MerchantFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -88,7 +90,7 @@ local fadedArt = {}                                     -- game art faded with n
 local stats = { items = 0, cards = 0, tools = 0, tabs = 0, arrows = 0, plates = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

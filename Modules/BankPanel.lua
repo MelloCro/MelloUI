@@ -81,6 +81,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("BankPanel", {
 	title = "Bank Kit",
 	desc = "The bank window (the bank's slots, bag slots, purchase) in the kit, in the bags' looks.",
+	window = { label = "Bank", desc = "The bank window (the bank's slots, bag slots, purchase) in the kit, in the bags' looks.", tab = "Windows",
+		frames = { "BankFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -108,7 +110,7 @@ local seenPictures = {}                                 -- [bank type .. ":" .. 
 local stats = { items = 0, bags = 0, pageTabs = 0, bankTabs = 0, panelTabs = 0, prompts = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -379,7 +381,7 @@ local function SkinBand(f)
 	fill.kitPiece = true   -- ours: never faded as the game's art
 	fill:SetPoint("TOPLEFT", nine, "TOPLEFT", inset, 0)
 	fill:SetPoint("BOTTOMRIGHT", nine, "BOTTOMRIGHT", -inset, inset)
-	local c = (MelloUI.Palette and MelloUI.Palette.innerPanel) or { 0.067, 0.063, 0.051 }
+	local c = MelloUI.Palette.innerPanel
 	fill:SetColorTexture(c[1], c[2], c[3], DIM)
 	nine.dimFill = fill
 	table.insert(nine.all, fill)
@@ -956,7 +958,10 @@ end
 -- both through NotifySettingChanged, whether that module is on or off): the
 -- bank follows at once. The Button Border and the Side Tab Border reach the
 -- rims and tabs through the Kit's own registries.
-hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key, value)
+-- (the bus's 'setting', fired at the end of NotifySettingChanged where the
+-- hook on it ran: audit 2026-09-24 rank 5, that hook ran for every setting
+-- of every module and could never be taken off)
+MelloUI:On("setting", Shared("'setting' on the bus", function(name, key, value)
 	if name ~= "BackpackPanel" or not skin then
 		return
 	end
@@ -967,7 +972,7 @@ hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key, value)
 	elseif key == "windowBackground" then
 		ApplyWindowBackground()
 	end
-end)
+end), M)
 
 function M:OnEnable(db)
 	self.db = db

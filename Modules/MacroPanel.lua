@@ -55,6 +55,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("MacroPanel", {
 	title = "Macros Kit",
 	desc = "The macro window (general and character macros, the icon picker) in the kit.",
+	window = { label = "Macros", desc = "The macro window (general and character macros, the icon picker) in the kit.", tab = "Windows",
+		frames = { "MacroFrame" }, plainGrab = true, addon = "Blizzard_MacroUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -74,7 +76,7 @@ local fadedArt = {}                                     -- art faded with no pie
 local stats = { icons = 0, tabs = 0, bars = 0 }         -- for /macrodump
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

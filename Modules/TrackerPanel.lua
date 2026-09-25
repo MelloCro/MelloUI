@@ -18,7 +18,9 @@
 -- Blocks, item buttons and bars are pooled per module: swept after the
 -- container's updates (once a frame, while it can be seen). Block hover is
 -- a text colour: nothing to replace.
--- Covers the Dark Mode group "tracker". /trdump [frames|reps].
+-- Covers the Dark Mode group "tracker". While MelloUI's Quest Tracker keeps
+-- the game's tracker hidden, the skin waits until it can be seen again
+-- (Activate, below). /trdump [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -30,6 +32,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("TrackerPanel", {
 	title = "Objective Tracker Kit",
 	desc = "The objective tracker dressed in the painted kit on the game's own layout.",
+	window = { label = "Objective tracker", desc = "The tracker's headers and backdrop in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -39,7 +42,7 @@ local skin = nil
 local active = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then
@@ -289,7 +292,7 @@ end
 
 local function Sweep()
 	local tracker = ObjectiveTrackerFrame
-	if not (active and tracker) then
+	if not (active and skin and tracker) then
 		return
 	end
 	if tracker.Header and tracker.Header.Text then
@@ -526,11 +529,67 @@ local function InkSurface()
 	end
 end
 
+-- MelloUI's Quest Tracker stands in this tracker's place: while it is on it
+-- keeps the game's hidden (a state driver, QuestTracker.lua), out of Edit
+-- Mode. The skin is then not built at login, where nobody would see it
+-- (audit, 2026-09-24, rank 1; WINDOW-RULES 2f), but the moment the game's
+-- tracker can be seen again: Quest Tracker switched off (the bus's
+-- 'module'), or Edit Mode opened (its 'editmode'; the game's tracker comes
+-- back there to be moved and sized, dressed as it always was). This
+-- listener runs before Quest Tracker's, which shows it: dressed first.
+local inEditMode = false
+
+-- (not in combat: a /reload in a fight leaves the game's tracker in view
+-- until the fight ends, Quest Tracker's state driver being protected, so it
+-- is dressed at once as it always was; review, 2026-09-25)
+local function HeldByQuestTracker()
+	return not inEditMode and not InCombatLockdown() and MelloUI:IsModuleEnabled("QuestTracker")
+end
+
+-- the skin built and put on (the cover is already on): as Activate does
+local function DressLate()
+	if not active or skin or HeldByQuestTracker() then
+		return
+	end
+	Build()
+	for _, rep in ipairs(skin.reps) do
+		rep:Enable()
+	end
+	Sweep()
+	InkSurface()
+end
+
+-- (Edit Mode opens out of combat only; a switch in combat is done once the
+-- game's tracker is back, after the fight)
+local function DressWhenSeen()
+	if active and not skin then
+		Kit:WhenOutOfCombat(DressLate, DressLate)
+	end
+end
+
+MelloUI:On("module", function(name, enabled)
+	if name == "QuestTracker" and not enabled then
+		DressWhenSeen()
+	end
+end, M)
+MelloUI:On("editmode", function(entering)
+	inEditMode = entering
+	if entering then
+		DressWhenSeen()
+	end
+end, M)
+
 local function Activate()
 	if active then
 		return
 	end
 	active = true
+	-- the cover in any case: the tracker's art is the kit's while this is on
+	-- (Dark Mode leaves it alone by it, DarkMode.lua)
+	if not skin and HeldByQuestTracker() then
+		Kit:Cover("tracker")
+		return
+	end
 	Build()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
@@ -545,8 +604,10 @@ local function Deactivate()
 		return
 	end
 	active = false
-	for _, rep in ipairs(skin.reps) do
-		rep:Disable()
+	if skin then
+		for _, rep in ipairs(skin.reps) do
+			rep:Disable()
+		end
 	end
 	Kit:Uncover("tracker")
 	if MelloUI.QuestInk and MelloUI.QuestInk.surfaces.tracker then

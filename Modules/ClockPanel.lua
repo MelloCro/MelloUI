@@ -72,6 +72,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("ClockPanel", {
 	title = "Clock Kit",
 	desc = "The clock settings and the stopwatch in the kit.",
+	window = { label = "Clock and stopwatch", desc = "The clock settings and the stopwatch in the kit.", tab = "Windows",
+		addon = "Blizzard_TimeManager", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -96,7 +98,7 @@ local rims = {}                                        -- the icon rims { button
 local stats = { labels = 0, edits = 0, rims = 0, cogs = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

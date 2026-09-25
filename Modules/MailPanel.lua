@@ -69,6 +69,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("MailPanel", {
 	title = "Mailbox Kit",
 	desc = "The mailbox (inbox, reading a letter, send mail) in the kit.",
+	window = { label = "Mailbox", desc = "The mailbox (inbox, reading a letter, send mail) in the kit.", tab = "Windows",
+		frames = { "MailFrame", "OpenMailFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -122,7 +124,7 @@ local bodies = {}                                       -- { obj, kind, saved }:
 local stats = { rows = 0, rims = 0, edits = 0, radios = 0, buttons = 0, arrows = 0, tabs = 0, plates = 0, bars = 0, papers = 0, panels = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

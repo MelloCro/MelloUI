@@ -74,6 +74,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("TradePanel", {
 	title = "Trade Kit",
 	desc = "The trade window in the kit.",
+	window = { label = "Trade", desc = "The trade window in the kit.", tab = "Windows",
+		frames = { "TradeFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -105,7 +107,7 @@ local moneyNotes = {}                                   -- [side key] = how its 
 local stats = { items = 0, cards = 0, insets = 0, plates = 0, edits = 0, buttons = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

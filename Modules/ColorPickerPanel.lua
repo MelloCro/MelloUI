@@ -31,12 +31,13 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("ColorPickerPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ColorPickerPanel", {
 	title = "Colour Picker Kit",
 	desc = "The colour picker in the kit.",
+	window = { label = "Colour picker", desc = "The colour picker in the kit.", tab = "Windows", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -53,7 +54,7 @@ local fadedArt = {}              -- the game's art faded with no piece on its ow
 local rims = {}                  -- the swatch rims' holders { melloRep } (Kit:RegisterButtonRim keeps them weakly)
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Window()
 	local f = _G.ColorPickerFrame
@@ -622,14 +623,14 @@ local function Surface()
 	QI.Surface(SURFACE, { on = InkOn, sheet = true, skip = Skip, roots = function() return Window() end })
 end
 
--- the Dialogs' parchment switched: the picker's strings follow
-if Kit and Kit.SetParchment then
-	hooksecurefunc(Kit, "SetParchment", function(_, area)
-		if area == AREA and surfaceMade and MelloUI.QuestInk then
-			MelloUI.QuestInk.RefreshSurface(SURFACE)
-		end
-	end)
-end
+-- the Dialogs' parchment switched: the picker's strings follow (the bus's
+-- 'parchment', fired once the kit's sheets are switched, where the hook on
+-- Kit.SetParchment ran: audit 2026-09-24 rank 5)
+MelloUI:On("parchment", Perf.Shared("'parchment' on the bus", function(area)
+	if area == AREA and surfaceMade and MelloUI.QuestInk then
+		MelloUI.QuestInk.RefreshSurface(SURFACE)
+	end
+end), M)
 
 -- after every show: the title plate fitted to the title, the ink
 local function Refresh()
@@ -698,13 +699,11 @@ local function Sync()
 	end
 end
 
--- (the switch and a late picker: out of combat only, as they always were)
+-- (the switch and a late picker: out of combat only, as they always were;
+-- Kit.lua loads before this file, so its queue is always there: audit
+-- 2026-09-24, a dead guard gone)
 local function SyncSafe()
-	if Kit and Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 local function Hook()

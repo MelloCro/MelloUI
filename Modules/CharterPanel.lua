@@ -47,6 +47,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("CharterPanel", {
 	title = "Guild Charter Kit",
 	desc = "The guild charter (petition) and the guild registrar in the kit.",
+	window = { label = "Guild charter", desc = "The guild charter (petition) and the guild registrar in the kit.", tab = "Windows",
+		frames = { "PetitionFrame", "GuildRegistrarFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -95,7 +97,7 @@ local active = false
 local surfaceMade = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not (region and skin) then

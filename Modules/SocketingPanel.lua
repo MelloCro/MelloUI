@@ -66,6 +66,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("SocketingPanel", {
 	title = "Socketing Kit",
 	desc = "The item socketing window in the kit.",
+	window = { label = "Gem socketing", desc = "The item socketing window in the kit.", tab = "Windows",
+		addon = "Blizzard_ItemSocketingUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -89,7 +91,7 @@ local found = {}                                         -- [part] = a line for 
 local built = {}                                         -- [part] = true once made (the boxes)
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

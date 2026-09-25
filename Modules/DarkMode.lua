@@ -24,6 +24,10 @@ local hooksecurefunc = Perf.hooksecurefunc
 local M = MelloUI:RegisterModule("DarkMode", {
 	title = "Dark Mode",
 	desc = "Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars.",
+	icon = "Interface\\Icons\\Spell_Shadow_Twilight",
+	flavour = "Dim the gold and the glare. The interface steps back, the world steps forward.",
+	group = "The look",
+	tweak = { label = "Dark Mode", desc = "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus.", order = 12 },
 	defaults = {
 		shade = 0.25,        -- brightness of the darkened art (0 = black, 1 = untouched)
 		kitShade = 0.6,      -- brightness of the painted reskin's pieces (Kit:SetShade)

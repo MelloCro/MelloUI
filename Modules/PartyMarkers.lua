@@ -50,6 +50,9 @@ local options = {
 local M = MelloUI:RegisterModule("PartyMarkers", {
 	title = "Party Markers",
 	desc = "A class medallion above every party member's friendly nameplate, with a ring in their role's colour. In the open world; inside instances the game keeps friendly nameplates to itself.",
+	icon = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+	flavour = "A class medallion over every party member's head, ringed in their role's colour: the healer, found at a glance.",
+	group = "Frames and bars",
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,
@@ -60,11 +63,9 @@ local M = MelloUI:RegisterModule("PartyMarkers", {
 --------------------------------------------------------------------------------
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
--- is v, or nil when v is secret (the stand-ins, the client's test and
--- Safe.Value's own body, are for a test world without Core)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
-local Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+-- is v, or nil when v is secret
+local Secret = MelloUI.Safe.IsSecret
+local Plain = MelloUI.Safe.Value
 
 local function PlainCall(fn, ...)
 	local ok, a, b = pcall(fn, ...)

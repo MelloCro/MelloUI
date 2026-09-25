@@ -25,6 +25,10 @@ local BASE_LOC_SIZE = 30  -- LossOfControlFrame size in XML
 local M = MelloUI:RegisterModule("Nameplates", {
 	title = "Nameplates",
 	desc = "Large crowd-control icon above the name and a quest marker on enemy nameplates.",
+	icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
+	flavour = "Know who is stunned, who is your quest target, and who is about to be a problem.",
+	group = "Frames and bars",
+	tweak = { label = "Nameplate Icons", desc = "A large crowd-control icon above the name and a quest marker on enemies you still need. Works with or without the reskin.", order = 4 },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		bigCC = true,
@@ -540,12 +544,10 @@ function M:OnEnable(db)
 	end
 end
 
+-- (Kit.lua loads before this file, so its combat queue is always there:
+-- audit 2026-09-24, a dead guard gone)
 local function OutOfCombat(fn)
-	if MelloUI.Kit and MelloUI.Kit.WhenOutOfCombat then
-		MelloUI.Kit:WhenOutOfCombat(fn)
-	elseif not InCombatLockdown() then
-		fn()
-	end
+	MelloUI.Kit:WhenOutOfCombat(fn)
 end
 
 function M:OnDisable()

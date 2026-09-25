@@ -598,7 +598,7 @@ local function Pack(t, ...)
 end
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- obj's rect in screen space (its scale applied): left, bottom, right, top;
 -- nil while it is not laid out (or secret)
@@ -1703,19 +1703,14 @@ function QI.Surface(name, def)
 	return def
 end
 
--- a parchment sheet switched on or off: its surface follows
-function QI.HookParchment()
-	local Kit = MelloUI.Kit
-	if Kit and Kit.SetParchment and not QI.parchmentHooked then
-		QI.parchmentHooked = true
-		hooksecurefunc(Kit, "SetParchment", function(_, area)
-			if QI.surfaces[area] then
-				QI.RefreshSurface(area)
-			end
-		end)
+-- a parchment sheet switched on or off: its surface follows (the bus's
+-- 'parchment', fired once the kit's sheets are switched, where the hook on
+-- Kit.SetParchment ran: audit 2026-09-24 rank 5)
+MelloUI:On("parchment", Shared("'parchment' on the bus", function(area)
+	if QI.surfaces[area] then
+		QI.RefreshSurface(area)
 	end
-end
-QI.HookParchment()
+end), QI)
 
 --------------------------------------------------------------------------------
 -- /inkwhy: the strings under the mouse on the ink surfaces, and why each is

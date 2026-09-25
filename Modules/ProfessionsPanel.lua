@@ -42,6 +42,10 @@ end
 local M = MelloUI:RegisterModule("ProfessionsPanel", {
 	title = "Professions Panel",
 	desc = "The professions window dressed in the painted kit on the game's own layout.",
+	icon = "Interface\\Icons\\Trade_BlackSmithing",
+	flavour = "The professions window in the painted kit, on the game's own layout.",
+	window = { label = "Professions", desc = "The profession book and crafting window in the kit.", tab = "Windows", order = 3,
+		frames = { "ProfessionsFrame", "ProfessionsBookFrame" }, plainGrab = true, addon = "Blizzard_Professions", firstOpen = true },
 	enabledByDefault = true,
 	defaults = { pageBackground = "concrete", listBackground = "list", bookBackground = "concrete" },
 	options = {
@@ -64,7 +68,7 @@ local hooked = false
 
 -- A value the client hides from addons (secret): never do arithmetic on it.
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

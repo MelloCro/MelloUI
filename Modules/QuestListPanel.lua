@@ -30,7 +30,7 @@ local BUTTONS_PER_ROW = 4
 local function HeaderClick(self)
 	if self.entry and self.entry.header then
 		QL.collapsed[self.entry.key] = not QL.collapsed[self.entry.key] or nil
-		PlaySound(QL.collapsed[self.entry.key] and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		MelloUI:PlayUISound(QL.collapsed[self.entry.key] and "option_off" or "option_on")
 		QL.Panel:Update()
 	end
 end
@@ -41,9 +41,9 @@ local function RowClick(self)
 	end
 	if QL.trackedQuestID == self.entry.row[QL.F_ID] then
 		QL.ClearWaypoint()
-		PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_REMOVE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		MelloUI:PlayUISound("waypoint_clear")
 	elseif QL.SetWaypoint(self.entry.row, self.entry.ready) then
-		PlaySound(SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		MelloUI:PlayUISound("waypoint_set")
 	end
 	QL.Panel:Update()
 	if QL.RefreshPins then
@@ -176,8 +176,62 @@ local function Leave()
 	GameTooltip:Hide()
 end
 
--- One button pool serves headers and rows, so every widget is created once
--- and each init sets up the button completely for the kind it shows.
+-- The pool's buttons serve as headers and as rows. Their scripts are set
+-- once, when a button is first set up (EnsureWidgets), and look at what it
+-- shows now (audit, 2026-09-24, rank 18: each Init set them again, which
+-- dropped every hook on the button, and the quest log's dresser hooked them
+-- again after every Init). A dresser of the rows (QuestLogPanel, the kit) is
+-- told of the hover instead: QL.Panel.OnRowHover(button, over), for headers
+-- and rows alike, after the panel's own handling; nil while none listens.
+local function EntryClick(self)
+	local e = self.entry
+	if e and e.header then
+		HeaderClick(self)
+	else
+		RowClick(self)
+	end
+end
+
+local function EntryEnter(self)
+	local e = self.entry
+	if e and e.row then
+		RowEnter(self)
+	end
+	local hover = QL.Panel.OnRowHover
+	if hover then
+		hover(self, true)
+	end
+end
+
+local function EntryLeave(self)
+	local e = self.entry
+	if e and e.row then
+		Leave()
+	end
+	local hover = QL.Panel.OnRowHover
+	if hover then
+		hover(self, false)
+	end
+end
+
+-- A button's art for what it shows (a header's plate and its lit copy, a
+-- row's highlight): set when it turns from one to the other and when the
+-- list is laid out afresh (Update) -- not on every Init: a scroll inits the
+-- rows coming into view with the art they already have (audit, 2026-09-24,
+-- rank 18). A layout sets it again as before (a highlight the quest log's
+-- kit let go of comes back at full alpha; the next layout puts it back).
+local artLaid = 1   -- counts the layouts (Update)
+local function NewArt(button, kind)
+	if button.artKind == kind and button.artLaid == artLaid then
+		return false
+	end
+	button.artKind, button.artLaid = kind, artLaid
+	return true
+end
+
+-- One button pool serves headers and rows: its widgets and scripts are made
+-- once (EnsureWidgets), its art when it turns from header to row or back and
+-- on a fresh layout (NewArt), and everything else on each Init.
 -- The quest log's look (user, 2026-09-23: "why is there a difference in
 -- text between the Default Quest log, and the MelloUI Quest Module"): the
 -- game's face and outline as the Fonts module sets them, the title and the
@@ -243,6 +297,10 @@ local function EnsureWidgets(button)
 		button.pin:SetTexture([[Interface\MINIMAP\TRACKING\None]])
 	end
 	button.pin:Hide()
+	-- its scripts, once (EntryClick above)
+	Perf.SetScript(button, "OnClick", EntryClick)
+	Perf.SetScript(button, "OnEnter", EntryEnter)
+	Perf.SetScript(button, "OnLeave", EntryLeave)
 end
 
 -- A gold pulse over a frame: bright at once, gone within a second. Under
@@ -304,13 +362,12 @@ local function InitHeader(button, entry)
 	button.plus:Show()
 	button.pin:Hide()
 	button.origin:Hide()
-	button:SetNormalAtlas("common-button-list-collapseExpand")
-	button:SetHighlightAtlas("common-button-list-collapseExpand", "ADD")
-	button:GetHighlightTexture():SetAlpha(0.4)
+	if NewArt(button, "header") then
+		button:SetNormalAtlas("common-button-list-collapseExpand")
+		button:SetHighlightAtlas("common-button-list-collapseExpand", "ADD")
+		button:GetHighlightTexture():SetAlpha(0.4)
+	end
 	button.plus:SetAtlas(QL.collapsed[entry.key] and "common-button-list-plus" or "common-button-list-minus", true)
-	Perf.SetScript(button, "OnClick", HeaderClick)
-	Perf.SetScript(button, "OnEnter", nil)
-	Perf.SetScript(button, "OnLeave", nil)
 	button.label:SetText(entry.name)
 	button.label:SetTextColor(0.9, 0.9, 0.9)
 	button.count:SetText(string.format("%d/%d", entry.done, entry.total))
@@ -347,12 +404,11 @@ local function InitRow(button, entry)
 	button.title:SetPoint("RIGHT", right - tagRoom, 0)
 	button.where:SetPoint("RIGHT", right - tagRoom, 0)
 	button.titleRight = right - tagRoom   -- the title's right edge (the pips stand in front of it on parchment)
-	button:ClearNormalTexture()
-	button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
-	button:GetHighlightTexture():SetAlpha(0.6)
-	Perf.SetScript(button, "OnClick", RowClick)
-	Perf.SetScript(button, "OnEnter", RowEnter)
-	Perf.SetScript(button, "OnLeave", Leave)
+	if NewArt(button, "row") then
+		button:ClearNormalTexture()
+		button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
+		button:GetHighlightTexture():SetAlpha(0.6)
+	end
 	local row = entry.row
 	local r, g, b = QL.DifficultyColor(QL.ColourLevel(row))
 	-- the game's trivial grey (0.5) reads as near black over the list's
@@ -655,7 +711,7 @@ function QL.Panel:Create()
 	self.frame = frame
 	frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 2, 0)
 	frame:SetPoint("BOTTOMLEFT", WorldMapFrame, "BOTTOMRIGHT", 2, 0)
-	frame:SetWidth(tonumber(M.db.width) or 340)
+	frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
 	frame:SetFrameStrata(WorldMapFrame:GetFrameStrata())
 	frame:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 5)
 	frame:EnableMouse(true)
@@ -743,7 +799,7 @@ function QL.Panel:Create()
 	check:SetHitRectInsets(-(check.label:GetStringWidth() + 4), 0, 0, 0)
 	Perf.SetScript(check, "OnClick", function(self)
 		MelloUI:NotifySettingChanged(M.name, "levelAbove", self:GetChecked() and LEVEL_SHORTCUT or 0)
-		PlaySound(self:GetChecked() and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		MelloUI:PlayUISound(self:GetChecked() and "option_on" or "option_off")
 	end)
 	Perf.SetScript(check, "OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -885,7 +941,7 @@ function QL.Panel:Apply()
 	if not self.frame then
 		return
 	end
-	self.frame:SetWidth(tonumber(M.db.width) or 340)
+	self.frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
 	self.frame:SetShown(M.isEnabled)
 	self.frame.levelCheck:SetChecked(tonumber(M.db.levelAbove) == LEVEL_SHORTCUT)
 	self:Update()
@@ -1124,6 +1180,7 @@ function QL.Panel:Update(quiet)
 	laid.level, laid.paper, laid.face, laid.flags = level, paper, face, flags
 	frame.zone:SetText(title)
 	frame.count:SetText(string.format("%d of %d completed", done, total))
+	artLaid = artLaid + 1   -- (each row's art set again as it is laid: NewArt)
 	frame.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
 	if #entries == 0 then
 		local filtered = false

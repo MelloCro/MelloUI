@@ -32,6 +32,10 @@
 -- top rail as every window's title plate does (the red plate, its caps' gems
 -- on the frame's top corners, which give way), the tracking button and the
 -- calendar on its two caps. The game's anchors come back when it is off.
+-- The column under the minimap (the map, the Services bar, Route's distance
+-- line; the Quest Tracker below it where nobody placed it) is one contract
+-- kept here, on or off: M:ColumnSlot, M:ColumnRect, M:LayColumn and the
+-- bus's 'column' (below M:Relayout).
 -- Covers the Dark Mode group "minimap". /mmdump [frames|reps].
 --------------------------------------------------------------------------------
 
@@ -67,6 +71,7 @@ local HYBRID_ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local M = MelloUI:RegisterModule("MinimapPanel", {
 	title = "Minimap Kit",
 	desc = "The minimap cluster dressed in the painted kit on the game's own layout.",
+	window = { label = "Minimap", desc = "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = { shape = "round", squareBorder = "window", servicesMerge = true },
 	options = {
@@ -534,7 +539,7 @@ local function PlaceBand(merged, f, b)
 	end
 end
 
-local function LayoutSquare()
+local function LaySquare()
 	local square = active and M.db and M.db.shape == "square"
 	SetMask(square)
 	if not skin then
@@ -605,6 +610,13 @@ local function LayoutSquare()
 		end
 	end
 	f:Show()
+end
+
+-- the map's frame laid, then the column under it (below): what hangs from
+-- it follows on the next frame
+local function LayoutSquare()
+	LaySquare()
+	M:LayColumn()
 end
 
 local function Activate()
@@ -706,6 +718,194 @@ end
 -- Services calls this after laying its bar out (Edit Mode, its settings)
 function M:Relayout()
 	LayoutSquare()
+end
+
+--------------------------------------------------------------------------------
+-- The column under the minimap (audit, 2026-09-24, rank 18; user, 2026-09-25:
+-- "everything should be lined up and working flawlessly with one another").
+-- One contract for what stands under the map, top to bottom: the map's block
+-- (the map with its zone band; the square border round it, or the merged
+-- frame that runs round the Services bar too), the Services bar while it
+-- shows and is not merged into that frame, and Route's distance line. Kept
+-- here whether this module is on or not (the minimap's column either way):
+--   M:ColumnSlot(part)  where a part hangs its TOP from: region, its point,
+--                       x, y ("services": the bar, "route": the distance line)
+--   M:ColumnRect()      the stack on the screen, the distance line's slot
+--                       included while Route keeps the line: left, bottom,
+--                       right, top in screen pixels; nil when a rect cannot
+--                       be read plainly
+--   M:LayColumn()       something in it changed: the bus's 'column' goes out
+--                       on the next frame, once for everything of that frame
+-- Services hangs its bar and Route its line from it; the Quest Tracker hangs
+-- below its bottom only where nobody placed it (QuestTracker.lua). The places
+-- are the ones they had -- the bar under the map by its offset (by the
+-- divider's height merged), the line 2 px under the map (inside the square
+-- border and the merged frame too, as before) -- except that the line goes
+-- under the bar where a bar offset leaves it no room. The pairwise calls
+-- above (WantsServices, DividerHeight, BodyPiece, Relayout) stay as they were.
+--------------------------------------------------------------------------------
+
+local LINE_GAP = 2        -- the distance line under what it hangs from
+local LINE_H = 12         -- its height when Route cannot say
+
+local Num = MelloUI.Safe.Number
+
+-- a region's edges on the screen (pixels); nil when one cannot be read plainly
+local function ScreenRect(region)
+	if not region then
+		return nil
+	end
+	local ok, l, b, w, h = pcall(region.GetRect, region)
+	if not ok then
+		return nil
+	end
+	l, b, w, h = Num(l), Num(b), Num(w), Num(h)
+	local okS, s = pcall(region.GetEffectiveScale, region)
+	s = okS and Num(s) or nil
+	if not (l and b and w and h and s) then
+		return nil
+	end
+	return l * s, b * s, (l + w) * s, (b + h) * s
+end
+
+local Column = {}
+
+-- the Services bar merged into the square map's frame (Services asks the
+-- very same: the minimap's cover, this module on, and its WantsServices)
+function Column.Merged()
+	return Kit:IsCovered("minimap") and M.isEnabled and M:WantsServices() and true or false
+end
+
+-- the map's block: the square border's frame while it shows round the map
+-- (merged, it runs round the Services bar too), else the map
+function Column.Block()
+	local f = skin and skin.square
+	if active and f and f:IsShown() then
+		return f
+	end
+	return Minimap
+end
+
+-- the Services bar while it shows beside the block, not merged into it
+function Column.LooseBar()
+	local bar = ServicesBar()
+	if bar and not Column.Merged() then
+		return bar
+	end
+	return nil
+end
+
+-- the distance line's height while Route keeps it, else nil
+function Column.LineHeight()
+	local route = MelloUI:GetModule("Route")
+	return route and route.ColumnLine and route:ColumnLine() or nil
+end
+
+function M:ColumnSlot(part)
+	local map = Minimap
+	if part == "services" then
+		if Column.Merged() then
+			return map, "BOTTOM", 0, -DIVIDER_H
+		end
+		local services = MelloUI:GetModule("Services")
+		local db = services and services.db
+		return map, "BOTTOM", 0, tonumber(db and db.barOffset) or -26
+	end
+	-- the distance line: 2 px under the map as it always lay (square and
+	-- merged too: nothing moves for a user who changes nothing, user,
+	-- 2026-09-25), or under the bar where a bar offset leaves it no room there
+	-- (measured on the screen; under the map when that cannot be read)
+	local bar = Column.LooseBar()
+	if bar then
+		local _, bottom = ScreenRect(map)
+		local _, barBottom, _, barTop = ScreenRect(bar)
+		local okS, s = pcall(map.GetEffectiveScale, map)
+		s = okS and Num(s) or nil
+		if bottom and barBottom and s then
+			local top = bottom - LINE_GAP * s
+			local h = Column.LineHeight() or LINE_H
+			if top - h * s < barTop and top > barBottom then
+				return bar, "BOTTOM", 0, -LINE_GAP
+			end
+		end
+	end
+	return map, "BOTTOM", 0, -LINE_GAP
+end
+
+function M:ColumnRect()
+	local l, b, r, t = ScreenRect(Column.Block())
+	if not l then
+		return nil
+	end
+	local bar = Column.LooseBar()
+	if bar then
+		local bl, bb, br, bt = ScreenRect(bar)
+		if not bl then
+			return nil
+		end
+		l, b, r, t = math.min(l, bl), math.min(b, bb), math.max(r, br), math.max(t, bt)
+	end
+	local h = Column.LineHeight()
+	if h then
+		local rel, _, _, y = self:ColumnSlot("route")
+		local _, relBottom = ScreenRect(rel)
+		local okS, s = pcall(Minimap.GetEffectiveScale, Minimap)
+		s = okS and Num(s) or nil
+		if not (relBottom and s) then
+			return nil
+		end
+		b = math.min(b, relBottom + (y - h) * s)
+	end
+	return l, b, r, t
+end
+
+function Column.Fire()
+	MelloUI:Fire("column")
+end
+
+function M:LayColumn()
+	if Kit.NextFrame then
+		Kit:NextFrame("Minimap column", Column.Fire)
+	else
+		C_Timer.After(0, Column.Fire)
+	end
+end
+
+-- What moves the column without the map's frame being laid again: Route's
+-- line (or Route) switched, the minimap cluster dragged by the window mover
+-- (its place is a setting) or UI Modifications switched, Edit Mode closed
+-- (the map moved or sized there), the UI Scale, a Font Style (the line's
+-- height), a profile; and the world entered and Edit Mode's layout applied
+-- (at login the map and the game's tracker take their places then). Heard
+-- whether this module is on or not; each only asks for the next frame's
+-- 'column'.
+function Column.Lay()
+	M:LayColumn()
+end
+
+MelloUI:On("setting", function(module, key)
+	if (module == "Route" and key == "distanceText") or (module == "UIModifications" and key == "positions") then
+		M:LayColumn()
+	end
+end, "Minimap column")
+MelloUI:On("module", function(name)
+	if name == "Route" or name == "UIModifications" then
+		M:LayColumn()
+	end
+end, "Minimap column")
+MelloUI:On("editmode", function(entering)
+	if not entering then
+		M:LayColumn()
+	end
+end, "Minimap column")
+MelloUI:On("scale", Column.Lay, "Minimap column")
+MelloUI:On("fonts", Column.Lay, "Minimap column")
+MelloUI:On("restart", Column.Lay, "Minimap column")
+do
+	local ev = CreateFrame("Frame")
+	ev:RegisterEvent("PLAYER_ENTERING_WORLD")
+	pcall(ev.RegisterEvent, ev, "EDIT_MODE_LAYOUTS_UPDATED")
+	Perf.SetScript(ev, "OnEvent", Column.Lay)
 end
 
 function M:OnSettingChanged(key, _, db)

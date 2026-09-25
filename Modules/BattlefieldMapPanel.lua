@@ -51,6 +51,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("BattlefieldMapPanel", {
 	title = "Battlefield Map Kit",
 	desc = "The battlefield minimap's frame in the kit (the map itself untouched).",
+	window = { label = "Battlefield map", desc = "The battlefield minimap's frame in the kit (the map itself untouched).", tab = "Windows",
+		addon = "Blizzard_BattlefieldMap", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -66,7 +68,7 @@ local dressed = setmetatable({}, { __mode = "k" })      -- [tab] = true once its
 local textPoints = setmetatable({}, { __mode = "k" })   -- [label] = the game's anchors, while the kit holds it on the card
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Window()
 	local f = _G.BattlefieldMapFrame

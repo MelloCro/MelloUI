@@ -28,6 +28,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("CastBarPanel", {
 	title = "Cast Bars Kit",
 	desc = "The cast bars dressed in the painted kit on the game's own layout.",
+	window = { label = "Cast bars", desc = "Player, pet, target and focus cast bars in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -60,7 +61,7 @@ local ANIM_KEYS = { "FlashLoopingAnim", "FlashAnim", "StageFlash", "StageFinish"
 	"ChannelFinish", "InterruptGlowAnim" }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

@@ -22,8 +22,9 @@
 --     { type = "dropdown", key = "style", name = "Style", values = { {value="a", label="A"}, ... } },
 --     { type = "button", name = "Click, light", hint = "checkboxes, tabs", text = "Play", onClick = function(module, db) ... end },
 --   }
--- A module may set `icon` (texture path) and `flavour` (one line) in
--- RegisterModule; otherwise MODULE_META below supplies them.
+-- A module's tile shows the `icon` (texture path) and `flavour` (one line)
+-- it gives RegisterModule (the registry: audit, 2026-09-24, rank 4 -- they
+-- were a hand list here), else a question mark and its description.
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -37,36 +38,13 @@ local LOGO_FULL = TEXTURE_PATH .. "LogoFull.tga"   -- the whole logo, for the ho
 local ICON = "Interface\\Icons\\"
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROCK = "Interface\\FrameGeneral\\UI-Background-Rock"
-local SOUND_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Sounds\\"
 local ICON_FRAME = "UI-HUD-ActionBar-IconFrame"        -- the action button bevel
 local ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"    -- its rounded corners
 
--- Soft clicks made by Tools\make_ui_sounds.py; falls back to the game's own
--- sounds if a file is missing.
-local SOUNDS = {
-	check_on  = { file = "check_on.ogg",  fallback = SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON },
-	check_off = { file = "check_off.ogg", fallback = SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF },
-	tab       = { file = "tab.ogg",       fallback = SOUNDKIT.IG_CHARACTER_INFO_TAB },
-	page      = { file = "page.ogg",      fallback = SOUNDKIT.IG_MAINMENU_OPTION },
-}
+-- The soft clicks ("page", "tab", "check_on", "check_off"): MelloUI:PlayUISound,
+-- in Core.lua since the other windows share them (audit, 2026-09-24)
 local function Click(kind)
-	local sound = SOUNDS[kind]
-	if not sound then
-		return
-	end
-	-- the Custom Sounds module, when it is on, plays its own click instead
-	if MelloUI.PlayCustomUISound and MelloUI:PlayCustomUISound(kind) then
-		return
-	end
-	local ok, played = pcall(PlaySoundFile, SOUND_PATH .. sound.file, "SFX")
-	if not (ok and played) and sound.fallback then
-		PlaySound(sound.fallback)
-	end
-end
-
--- The same sounds for other modules: "page", "tab", "check_on", "check_off".
-function MelloUI:PlayUISound(kind)
-	Click(kind)
+	MelloUI:PlayUISound(kind)
 end
 
 local WINDOW_WIDTH, WINDOW_HEIGHT = 1000, 760
@@ -102,35 +80,6 @@ local C = {
 	knob    = PAL.text,
 }
 
-local MODULE_META = {
-	UIModifications = { icon = ICON .. "INV_Misc_Gem_Ruby_02",      flavour = "The painted reskin, area by area, and the quality-of-life tweaks on nameplates, tooltips, chat and unit frames. Start here." },
-	DarkMode     = { icon = ICON .. "Spell_Shadow_Twilight",       flavour = "Dim the gold and the glare. The interface steps back, the world steps forward." },
-	CharacterPanel = { icon = ICON .. "INV_Chest_Plate04",         flavour = "Stone, iron and a window on the world. Your character, framed the way it deserves." },
-	GameMenuPanel = { icon = ICON .. "INV_Misc_Key_10",             flavour = "Nine red plates under a gold header. The way out, in stone and iron." },
-	SpellBookPanel = { icon = ICON .. "INV_Misc_Book_09",            flavour = "The spell book in the painted kit, on the game's own layout." },
-	ProfessionsPanel = { icon = ICON .. "Trade_BlackSmithing",        flavour = "The professions window in the painted kit, on the game's own layout." },
-	BarTextures  = { icon = ICON .. "Spell_Holy_Renew",            flavour = "Health and mana bars in the finish you like: flat, smooth, glossy or minimalist." },
-	BarText      = { icon = ICON .. "INV_Misc_Note_02",            flavour = "Numbers where they belong. Health and power values, always in view." },
-	Tweaks       = { icon = ICON .. "INV_Misc_Wrench_01",          flavour = "Small knobs with a big effect. Hide what you never click, scale what you never see." },
-	Chat         = { icon = ICON .. "Ability_Warrior_BattleShout", flavour = "Less frame, more talk. Short channel tags and class colours keep the log readable." },
-	Nameplates   = { icon = ICON .. "Ability_Hunter_SniperShot",   flavour = "Know who is stunned, who is your quest target, and who is about to be a problem." },
-	Vendor       = { icon = ICON .. "INV_Misc_Coin_02",            flavour = "Sell the grey, mend the steel. Every merchant visit handled before the window opens." },
-	Fonts        = { icon = ICON .. "INV_Scroll_03",               flavour = "One font for all of Azeroth. Pick it, scale it, outline it." },
-	Tooltip      = { icon = ICON .. "INV_Misc_Book_09",            flavour = "Dark, flat and out of the way, with names in the colour of their class." },
-	CooldownText = { icon = ICON .. "Spell_Nature_TimeStop",       flavour = "Countdowns on every cooldown, coloured by how long you still have to wait." },
-	Stats        = { icon = ICON .. "Spell_Nature_Lightning",      flavour = "Frames per second and latency in the corner. Blame the server with confidence." },
-	UnitFrames   = { icon = ICON .. "INV_Misc_GroupLooking",       flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose." },
-	VoiceOver    = { icon = ICON .. "INV_Misc_Horn_01",            flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it." },
-	QuestList    = { icon = ICON .. "INV_Misc_Map_01",             flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do." },
-	Auras = { icon = ICON .. "Spell_Holy_WordFortitude",           flavour = "Buffs and debuffs in rows of your own, drawn by the game itself, so they never go dark in a fight." },
-	ErrorFilter = { icon = ICON .. "Spell_Holy_Silence",            flavour = "Quiet, please. The red shouts in the middle of the screen, a kind at a time." },
-	QuestTracker = { icon = ICON .. "INV_Misc_Book_08",            flavour = "Every watched quest within reach: the tracker scrolls when the list runs long." },
-	Route        = { icon = ICON .. "Ability_Tracking",            flavour = "A trail of gems from here to there, along the roads you have walked before." },
-	Services     = { icon = ICON .. "Ability_Repair",              flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap." },
-	PartyMarkers = { icon = ICON .. "INV_Misc_GroupNeedMore",      flavour = "A class medallion over every party member's head, ringed in their role's colour: the healer, found at a glance." },
-	CustomSounds = { icon = ICON .. "INV_Misc_Bell_01",            flavour = "Iron, leather, parchment and stone. Every click, page, pouch and buckle of the interface, re-recorded." },
-	ClassIcons   = { icon = ICON .. "INV_Misc_Rune_01",            flavour = "Painted medallions for every class, on the character sheet and on every portrait." },
-}
 local HOME_FLAVOUR = "Module based interface tweaks for World of Warcraft: Forever."
 local PROFILES_META = { icon = ICON .. "INV_Scroll_06", title = "Profiles",
 	flavour = "Your whole setup under one name. Save it, load it, or make it the default for a fresh install." }
@@ -226,8 +175,7 @@ local COMMANDS = {
 }
 
 local function Meta(module)
-	local meta = MODULE_META[module.name] or {}
-	return module.icon or meta.icon or DEFAULT_ICON, module.flavour or meta.flavour or module.desc or ""
+	return module.icon or DEFAULT_ICON, module.flavour or module.desc or ""
 end
 
 local window
@@ -346,25 +294,26 @@ local FRAME_GREY = PAL.mutedText
 local FRAME_GOLD = PAL.selectedTrim
 --------------------------------------------------------------------------------
 -- The painted kit on the configurator itself (user, 2026-09-21; picks CT2 SI1
--- from kit_raw/config_catalog.png): decided once, when the window is made,
--- from the UI Modifications reskin switch (a change there shows after
--- /reload). Every piece goes through Kit:Replace with the fixed looks' keys:
--- the outer double rail, the title plate on it, the page stone, the header
--- plate under the icon strip, R1 rims on the icons, TB6 tabs, L1 boxes
--- around the sections, plate rows with a hover, the kit's check boxes, red
--- buttons, D1 dropdowns, the kit slider, the kit's title face on the titles.
+-- from kit_raw/config_catalog.png): its look switch is Kit:IsOn('config')
+-- (the UI Modifications reskin), asked again at every show (audit,
+-- 2026-09-24, rank 1: it was asked once, when the window was made, so a
+-- change showed only after /reload). The look is built into the window, so
+-- each look has a window of its own, made on its first show in that look
+-- and shown again after (CreateWindow). Every piece goes through
+-- Kit:Replace with the fixed looks' keys: the outer double rail, the title
+-- plate on it, the page stone, the header plate under the icon strip, R1
+-- rims on the icons, TB6 tabs, L1 boxes around the sections, plate rows
+-- with a hover, the kit's check boxes, red buttons, D1 dropdowns, the kit
+-- slider, the kit's title face on the titles.
 --------------------------------------------------------------------------------
 
 local KIT = nil
 local kitSkin = { reps = {}, followers = {} }
 
+-- (the Kit looked up when asked: this file loads before Kit.lua)
 local function KitWanted()
 	local kit = MelloUI.Kit
-	if not (kit and kit.Replace) or not MelloUI:IsModuleEnabled("UIModifications") then
-		return nil
-	end
-	local db = MelloUI:GetModuleDB("UIModifications")
-	if db and db.reskin ~= false then
+	if kit and kit.Replace and kit.IsOn and kit:IsOn("config") then
 		return kit
 	end
 	return nil
@@ -2157,11 +2106,89 @@ local function StripButton(name, icon, title, flavour)
 	return btn
 end
 
-local function CreateWindow()
-	if window then
-		return
+-- Each look's window ([true] the kit's, [false] the plain one) and what
+-- belongs to it, kept while the other look's is the one in use: made on
+-- its first show in that look, shown again after, never made twice (audit,
+-- 2026-09-24, rank 1: the look is asked at every show; a window's parts are
+-- built once and only switched after)
+local looks = {}
+local windowsMade = 0
+
+local function PutLookAside()
+	local kept = looks[KIT ~= nil]
+	if not kept then
+		kept = {}
+		looks[KIT ~= nil] = kept
 	end
-	KIT = KitWanted()
+	kept.window, kept.pages, kept.stripButtons, kept.currentPage = window, pages, stripButtons, currentPage
+	kept.KIT, kept.kitSkin, kept.building, kept.worker = KIT, kitSkin, building, worker
+	kept.profilesSection = profilesSection
+end
+
+local function TakeLookUp(kept)
+	window, pages, stripButtons, currentPage = kept.window, kept.pages, kept.stripButtons, kept.currentPage
+	KIT, kitSkin, building, worker = kept.KIT, kept.kitSkin, kept.building, kept.worker
+	profilesSection = kept.profilesSection
+	-- (the name the game's Escape, the mover and Dynamic UI look it up by)
+	_G.MelloUIConfigFrame = window
+end
+
+-- the window coming in hangs where the one going out was, at its scale
+local function TakePlace(to, from)
+	local n = from:GetNumPoints() or 0
+	if n > 0 then
+		to:ClearAllPoints()
+		for i = 1, n do
+			local point, rel, relPoint, x, y = from:GetPoint(i)
+			if point then
+				to:SetPoint(point, rel, relPoint, x, y)
+			end
+		end
+	end
+	local scale = from:GetScale() or 1
+	if math.abs((to:GetScale() or 1) - scale) > 0.001 then
+		local Kit = MelloUI.Kit
+		if Kit and Kit.SetFrameScale then
+			Kit:SetFrameScale(to, scale)
+		else
+			to:SetScale(scale)
+		end
+	end
+end
+
+-- the open window's placement switches follow the settings, however they
+-- change (the unlock banner's "click here to lock them" too): the bus's
+-- 'setting' (audit, 2026-09-24, rank 5: this hooked NotifySettingChanged,
+-- run for every setting of every module and never let go)
+local function PlacementFollows(module, key)
+	if module == "UIModifications" and (key == "unlock" or key == "autoSnap") and window and window.RefreshPlacement then
+		window.RefreshPlacement()
+	end
+end
+
+local function CreateWindow()
+	local want = KitWanted()
+	local from
+	if window then
+		-- made for the look wanted, or open now (an open window keeps its
+		-- look until it is closed: the switch is usually flipped in it)
+		if (want ~= nil) == (KIT ~= nil) or window:IsShown() then
+			return
+		end
+		from = window
+		PutLookAside()
+		local kept = looks[want ~= nil]
+		if kept then
+			TakeLookUp(kept)
+			TakePlace(window, from)
+			return
+		end
+		-- the other look's first show: a window of its own
+		window, pages, stripButtons, currentPage = nil, {}, {}, nil
+		kitSkin, building, worker, profilesSection = { reps = {}, followers = {} }, {}, nil, nil
+	end
+	KIT = want
+	windowsMade = windowsMade + 1
 	window = CreateFrame("Frame", "MelloUIConfigFrame", UIParent, "BackdropTemplate")
 	window:SetSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 	window:SetPoint("CENTER")
@@ -2171,7 +2198,9 @@ local function CreateWindow()
 	window:EnableMouse(true)
 	window:SetClampedToScreen(true)
 	window:Hide()
-	tinsert(UISpecialFrames, "MelloUIConfigFrame")
+	if windowsMade == 1 then
+		tinsert(UISpecialFrames, "MelloUIConfigFrame")
+	end
 
 	-- Charcoal background: the rock texture tinted dark.
 	local bg = window:CreateTexture(nil, "BACKGROUND")
@@ -2343,12 +2372,9 @@ local function CreateWindow()
 		snap:SetValue(not (db and db.autoSnap == false), true)
 	end
 	window.placementUnlock = unlock   -- the tour points at it
+	window.RefreshPlacement = RefreshPlacement
 	Perf.HookScript(window, "OnShow", RefreshPlacement)
-	hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
-		if name == "UIModifications" and (key == "unlock" or key == "autoSnap") then
-			RefreshPlacement()
-		end
-	end)
+	MelloUI:On("setting", PlacementFollows, "Config placement")
 	RefreshPlacement()
 
 	-- Icon strip.
@@ -2398,8 +2424,11 @@ local function CreateWindow()
 		end
 	end
 
-	-- Scrolling page area.
-	window.scroll = CreateFrame("ScrollFrame", "MelloUIConfigScroll", window, "UIPanelScrollFrameTemplate")
+	-- Scrolling page area. (The other look's window, when there is one, has
+	-- a scroll frame of its own name: its template's parts are named after
+	-- it.)
+	window.scroll = CreateFrame("ScrollFrame", "MelloUIConfigScroll" .. (windowsMade > 1 and windowsMade or ""), window,
+		"UIPanelScrollFrameTemplate")
 	window.scroll:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -4)
 	window.scroll:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -34, 16)
 	if window.scroll.ScrollBar then
@@ -2498,7 +2527,9 @@ local function CreateWindow()
 			end
 		end
 	end
-	if MelloUI.Kit and MelloUI.Kit.OnUIScaleChanged then
+	-- (once, with the first window: it fits whichever window is in use,
+	-- so the other look's window adds none of its own -- review, 2026-09-25)
+	if windowsMade == 1 and MelloUI.Kit and MelloUI.Kit.OnUIScaleChanged then
 		MelloUI.Kit:OnUIScaleChanged(function(reason)
 			if reason == "uiscale" and window:IsShown() then
 				window:FitToScreen()
@@ -2507,12 +2538,15 @@ local function CreateWindow()
 	end
 	Perf.SetScript(window, "OnShow", function(self)
 		self:FitToScreen()
-		PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
+		MelloUI:PlayUISound("window_open")
 		MelloUI:RefreshConfig()
 	end)
 	Perf.SetScript(window, "OnHide", function()
-		PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
+		MelloUI:PlayUISound("window_close")
 	end)
+	if from then
+		TakePlace(window, from)
+	end
 end
 
 local function GetPage(name)
@@ -2643,7 +2677,7 @@ local gameMenuHooked = false
 
 local function AddGameMenuButton(menu)
 	local button = menu:AddButton("MelloUI", function()
-		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
+		MelloUI:PlayUISound("menu_button")
 		HideUIPanel(menu)
 		MelloUI:OpenConfig()
 	end)
@@ -2713,7 +2747,7 @@ end
 local probe
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local IsSecret = MelloUI.Safe.IsSecret
 
 local function Lookup(path)
 	local v = _G

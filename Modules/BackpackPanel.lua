@@ -41,6 +41,8 @@ end
 local M = MelloUI:RegisterModule("BackpackPanel", {
 	title = "Backpack Kit",
 	desc = "The bag windows dressed in the painted kit on the game's own layout.",
+	window = { label = "Bags", desc = "The backpack and bag windows in the kit.", tab = "Windows", order = 11,
+		frames = { "ContainerFrameCombinedBags" }, plainGrab = true },
 	enabledByDefault = true,
 	defaults = { itemBackground = "stone", windowBackground = "concrete" },
 	options = {
@@ -55,7 +57,7 @@ local skin = nil
 local active = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

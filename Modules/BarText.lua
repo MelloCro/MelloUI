@@ -19,6 +19,10 @@ local hooksecurefunc = Perf.hooksecurefunc
 local M = MelloUI:RegisterModule("BarText", {
 	title = "Bar Text",
 	desc = "Always show health and power values on the player, target and focus frames.",
+	icon = "Interface\\Icons\\INV_Misc_Note_02",
+	flavour = "Numbers where they belong. Health and power values, always in view.",
+	group = "Frames and bars",
+	tweak = { label = "Bar Values", desc = "Health and power values always shown on the player, target and focus frames.", order = 6 },
 	defaults = {
 		player = true,
 		target = true,
@@ -225,7 +229,7 @@ local function ApplyPosition(fs, bar)
 end
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A SECRET value in the chosen format. The client refuses to compare a secret
 -- or do arithmetic on it, but it lets one be joined into text, formatted and

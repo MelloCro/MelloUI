@@ -64,6 +64,10 @@ end
 local M = MelloUI:RegisterModule("BarTextures", {
 	title = "Bar Textures",
 	desc = "Change the fill texture of health, power, nameplate, experience, reputation, honor and cast bars.",
+	icon = "Interface\\Icons\\Spell_Holy_Renew",
+	flavour = "Health and mana bars in the finish you like: flat, smooth, glossy or minimalist.",
+	group = "Frames and bars",
+	tweak = { label = "Bar Textures", desc = "The finish of health and mana bars (flat, smooth, glossy, minimalist) and their colours; the fill under the kit's brackets.", order = 7 },
 	defaults = {
 		texture = MEDIA .. "Flat",
 		healthColor = "green",

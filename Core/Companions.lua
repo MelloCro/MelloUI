@@ -45,9 +45,7 @@ local function API(name)
 end
 
 -- v, or nil when v is secret: MelloUI.Safe (Core.lua), one set for the addon
--- (the stand-in is Safe.Value's own body, for a test world without Core)
-local Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+local Plain = MelloUI.Safe.Value
 
 -- How to put any of it right: one download, every folder, a full restart
 -- (a folder the client has not seen yet only shows up after one)

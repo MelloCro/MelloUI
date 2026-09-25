@@ -38,10 +38,17 @@ for _, v in ipairs(LOOKS.backgrounds) do
 end
 
 -- (movable and statRows have no switch on the page: dragging is UI
--- Modifications' Unlock the Windows, the stat plates stay on)
+-- Modifications' Unlock the Windows, the stat plates stay on. Nothing reads
+-- movable any more (audit 2026-09-24 rank 6); its default stays, so the
+-- false every saved profile holds still matches it and never lands in the
+-- settings backup)
 local M = MelloUI:RegisterModule("CharacterPanel", {
 	title = "Character Panel",
 	desc = "The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout.",
+	icon = "Interface\\Icons\\INV_Chest_Plate04",
+	flavour = "Stone, iron and a window on the world. Your character, framed the way it deserves.",
+	window = { label = "Character window", desc = "Equipment, stats, reputation and skills in the kit.", tab = "Windows", order = 1,
+		frames = { "CharacterFrame" }, plainGrab = true },
 	enabledByDefault = true,
 	defaults = {
 		movable = false,
@@ -73,7 +80,7 @@ local layHeld = nil       -- GetTime() of the window's OnShow, which lays the pa
 
 -- A value the client hides from addons (secret): never do arithmetic on it.
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- Window Background Parchment chosen: the whole window on parchment, so the
 -- right pane's own Parchment sheet stands down (one parchment per surface).
@@ -456,7 +463,7 @@ Part(function(cf)
 		-- painted edge shadows stay on the stone
 		tex:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -2)
 		tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
-		local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+		local c = MelloUI.Palette.innerPanel
 		tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
 		tex.kitPiece = true   -- ours: never faded with the game's art
 		f:Hide()
@@ -698,17 +705,11 @@ local function BuildSkin(budget)
 		skin.tabReps = {}      -- the side tabs' (SkinSideTabs, as the skin first comes on)
 		skin.offFrom = 1       -- the first replacement made while the skin is off and not put back since (Deactivate)
 
-		-- drag handle for the unlocked window
+		-- the skin takes the mouse over the window, as it always has. It no
+		-- longer drags the window: that drag only ran with db.movable, which
+		-- has no switch and is always false (audit 2026-09-24 rank 6: dead
+		-- code). Moving the window is UI Modifications' Unlock the Windows
 		skin:EnableMouse(true)
-		skin:RegisterForDrag("LeftButton")
-		Perf.SetScript(skin, "OnDragStart", function()
-			if M.db.movable then
-				cf:StartMoving()
-			end
-		end)
-		Perf.SetScript(skin, "OnDragStop", function()
-			cf:StopMovingOrSizing()
-		end)
 		-- (hidden until the skin comes on, also while its parts are still
 		-- being made over several frames)
 		skin:Hide()
@@ -1934,25 +1935,28 @@ local function Hook()
 		Perf.HookScript(paper, "OnShow", function() M:RefreshDims() end)
 		Perf.HookScript(paper, "OnHide", function() M:RefreshDims() end)
 	end
-	if Kit.SetParchment then
-		hooksecurefunc(Kit, "SetParchment", function(_, area)
-			if area == "character" then
-				M:RefreshDims()
-			end
-		end)
-	end
+	-- (the bus's 'parchment', fired once the kit's sheets are switched, where
+	-- the hook on Kit.SetParchment ran: audit 2026-09-24 rank 5)
+	MelloUI:On("parchment", Shared("'parchment' on the bus", function(area)
+		if area == "character" then
+			M:RefreshDims()
+		end
+	end), M)
 	-- the parchment sheets' rects follow the window's size and the UI scale
 	-- (the rails and the divider keep their size in UI units; what they
 	-- cover is measured again)
 	Perf.HookScript(CharacterFrame, "OnSizeChanged", function()
 		M:LayParchment()
 	end)
-	local scaleWatch = CreateFrame("Frame")
-	scaleWatch:RegisterEvent("UI_SCALE_CHANGED")
-	scaleWatch:RegisterEvent("DISPLAY_SIZE_CHANGED")
-	Perf.SetScript(scaleWatch, "OnEvent", function()
-		M:LayParchment()
-	end)
+	-- a new UI Scale or resolution: told once by the kit's watcher, a moment
+	-- after the burst of events and slider ticks (audit 2026-09-24 rank 5:
+	-- a frame of its own here laid them again on every event). Not on an
+	-- Edit Mode change, as before: it never moves this window
+	Kit:OnUIScaleChanged(Shared("'scale' on the bus", function(reason)
+		if reason == "uiscale" then
+			M:LayParchment()
+		end
+	end))
 end
 
 function M:OnEnable(db)

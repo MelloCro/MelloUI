@@ -31,6 +31,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("GuildPanel", {
 	title = "Guild Panel",
 	desc = "The guild and communities window dressed in the painted kit on the game's own layout.",
+	window = { label = "Guild & communities", desc = "Chat, roster, info and settings in the kit.", tab = "Windows", order = 7,
+		frames = { "CommunitiesFrame" }, plainGrab = true, addon = "Blizzard_Communities", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

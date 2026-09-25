@@ -73,7 +73,7 @@ local STATES = { "normal", "hover", "pressed", "checked", "disabled", "plain", "
 
 -- this client hands out secret numbers under unit frames: never compare one.
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 --------------------------------------------------------------------------------
 -- Pieces
@@ -227,6 +227,10 @@ function Kit:SetParchment(area, on)
 	for _, entry in ipairs(self.parchmentDims[area] or {}) do
 		entry.tex:SetShown((not on and (not entry.alive or entry.alive())) and true or false)
 	end
+	-- last, once the kit's own sheets and panels are switched (the bus's
+	-- 'parchment' topic, audit 2026-09-24 rank 5; the files that still hook
+	-- this function run after it, as before)
+	MelloUI:Fire("parchment", area, on)
 end
 
 -- The eye-strain panel of a HUD frame (user, 2026-09-24: "too much small text
@@ -261,7 +265,7 @@ function Kit:StoneDim(host, opts)
 		tex:SetPoint("TOPLEFT", host, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
 		tex:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
 	end
-	local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+	local c = MelloUI.Palette.innerPanel
 	tex:SetColorTexture(c[1], c[2], c[3], opts.alpha or 0.8)
 	if opts.area then
 		local list = self.parchmentDims[opts.area] or {}
@@ -859,7 +863,8 @@ end
 -- setting (a system's Size): every background laid again at the screen's
 -- one density, then every panel that measured something on the screen told
 -- through Kit:OnUIScaleChanged(fn), fn(reason) with reason "uiscale" (the UI
--- Scale or the resolution) or "editmode" (a setting in Edit Mode).
+-- Scale or the resolution) or "editmode" (a setting in Edit Mode): the bus's
+-- 'scale' topic (Core.lua), this watcher its one source.
 -- The work waits a moment and runs once for a burst of changes: when the
 -- event comes the game has not yet re-laid everything for the new scale
 -- (Edit Mode re-scales and re-places the right-hand action bars and the
@@ -872,12 +877,15 @@ end
 -- screen positions (the action bar backdrops, the saved window places, the
 -- picker's catchers, the drag grid) go stale.
 --------------------------------------------------------------------------------
-Kit.scaleListeners = {}
+Kit.scaleListenerCount = 0   -- how many came through Kit:OnUIScaleChanged, for /uiscaledump
 Kit.lastScaleRefit = nil   -- what the last refit did, for /uiscaledump
 
+-- (an alias of the bus's 'scale' topic, audit 2026-09-24 rank 5: a listener
+-- that raises goes to the error handler, the others still run)
 function Kit:OnUIScaleChanged(fn)
 	if type(fn) == "function" then
-		self.scaleListeners[#self.scaleListeners + 1] = fn
+		MelloUI:On("scale", fn)
+		self.scaleListenerCount = self.scaleListenerCount + 1
 	end
 end
 
@@ -886,23 +894,14 @@ end
 function Kit:RefitForScale(reason)
 	reason = reason or "uiscale"
 	local laid, left = self:RetileBackgrounds()
-	local told, failed, firstError = 0, 0, nil
-	for _, fn in ipairs(self.scaleListeners) do
-		local ok, err = pcall(fn, reason)
-		if ok then
-			told = told + 1
-		else
-			failed = failed + 1
-			firstError = firstError or tostring(err)
-		end
-	end
+	MelloUI:Fire("scale", reason)
 	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
 	self.lastScaleRefit = {
 		reason = reason, when = GetTime and GetTime() or 0,
-		backgrounds = laid, skipped = left, listeners = told, failed = failed, error = firstError,
+		backgrounds = laid, skipped = left,
 		effectiveScale = (okU and not Secret(us)) and us or nil,
 	}
-	return laid, told
+	return laid
 end
 
 do
@@ -939,8 +938,18 @@ do
 			CVarCallbackRegistry:RegisterCallback(cvar, function() Schedule("uiscale") end, Kit)
 		end
 	end
+	-- Edit Mode opened and closed: the addon's ONE registration (audit,
+	-- 2026-09-24, rank 5: six files each had their own), told on the bus as
+	-- 'editmode' (entering) from inside the game's event, as theirs were;
+	-- a close also lays the backgrounds again, here
 	if EventRegistry and EventRegistry.RegisterCallback then
-		EventRegistry:RegisterCallback("EditMode.Exit", function() Schedule("editmode") end, Kit)
+		EventRegistry:RegisterCallback("EditMode.Enter", function()
+			MelloUI:Fire("editmode", true)
+		end, Kit)
+		EventRegistry:RegisterCallback("EditMode.Exit", function()
+			MelloUI:Fire("editmode", false)
+			Schedule("editmode")
+		end, Kit)
 	end
 	-- a system's Size (or any setting) changed in Edit Mode: laid again while
 	-- the window is still open, not only when it closes (a post-hook: Edit
@@ -993,16 +1002,15 @@ SlashCmdList.MELLOUISCALEDUMP = function(msg)
 			backgrounds = backgrounds + 1
 		end
 	end
-	MelloUI:Print("Kit.scale = %s UI units per piece px; backgrounds registered = %d; scale listeners = %d", Num(Kit.scale, "%.3f"),
-		backgrounds, #Kit.scaleListeners)
+	-- (the listeners are the bus's 'scale' topic: one that raises goes to the
+	-- error handler when it runs)
+	MelloUI:Print("Kit.scale = %s UI units per piece px; backgrounds registered = %d; scale listeners through the kit = %d",
+		Num(Kit.scale, "%.3f"), backgrounds, Kit.scaleListenerCount)
 	local last = Kit.lastScaleRefit
 	if last then
 		local ago = GetTime and (GetTime() - (last.when or 0)) or 0
-		MelloUI:Print("last refit (%s, %.0f s ago, UIParent effective %s): %d backgrounds laid again, %d left (size unreadable), %d listeners told, %d failed",
-			tostring(last.reason), ago, Num(last.effectiveScale), last.backgrounds or 0, last.skipped or 0, last.listeners or 0, last.failed or 0)
-		if last.error then
-			MelloUI:Print("first listener error: %s", last.error)
-		end
+		MelloUI:Print("last refit (%s, %.0f s ago, UIParent effective %s): %d backgrounds laid again, %d left (size unreadable), the 'scale' listeners told",
+			tostring(last.reason), ago, Num(last.effectiveScale), last.backgrounds or 0, last.skipped or 0)
 		if last.effectiveScale and okE and type(es) == "number" and not Secret(es) and math.abs(last.effectiveScale - es) > 0.0001 then
 			MelloUI:Print("the UI scale changed since the last refit and none ran: /uiscaledump refit")
 		end
@@ -3254,20 +3262,23 @@ Kit.Replacements = {
 -- 2026-09-21: Dark Mode and the Chat module's art hiding act on a group ONLY
 -- while no kit module covers it). A kit module calls Kit:Cover(group) in
 -- OnEnable and Kit:Uncover(group) in OnDisable; the tweak modules ask
--- Kit:IsCovered(group) before every sweep and re-run it from Kit:OnCover.
+-- Kit:IsCovered(group) before every sweep and re-run it from Kit:OnCover
+-- (the bus's 'cover' topic: group, covered).
 -- Groups: unitframes, castbar, partyframes, raidframes, actionbars, micromenu,
--- bagbar, statusbars, backpack, minimap, tracker, social, chat, damagemeter.
+-- bagbar, statusbars, backpack, minimap, tracker, social, chat, damagemeter,
+-- tooltip, nameplates.
 --------------------------------------------------------------------------------
 Kit.covers = {}
 
 -- Every window dressed by Kit:SkinWindowShell: [frame] = { outer = rep,
--- title = rep }, and the watchers told of each new one (the window mover
--- in UI Modifications hangs its drag handle on the title plate).
+-- title = rep }, and the watchers told of each new one (the bus's 'shell'
+-- topic: frame, shell; the window mover in UI Modifications hangs its drag
+-- handle on the title plate). A watcher is told of the shells already
+-- there when it comes.
 Kit.shells = {}
-Kit.shellWatchers = {}
 
 function Kit:OnShell(fn)
-	self.shellWatchers[#self.shellWatchers + 1] = fn
+	MelloUI:On("shell", fn)
 	for frame, shell in pairs(self.shells) do
 		fn(frame, shell)
 	end
@@ -3299,38 +3310,193 @@ RegisterShell = function(frame, shell)
 	if onRail and known.ring then
 		Kit:TitleBehindRing(known.title, known.ring, known.outer)
 	end
-	for _, fn in ipairs(Kit.shellWatchers) do
-		fn(frame, known)
-	end
+	MelloUI:Fire("shell", frame, known)
 end
-Kit.coverWatchers = {}
 
 function Kit:IsCovered(group)
 	return self.covers[group] == true
 end
 
-local function NotifyCover(group, covered)
-	for _, fn in ipairs(Kit.coverWatchers) do
-		fn(group, covered)
-	end
-end
+--------------------------------------------------------------------------------
+-- Look areas (audit, 2026-09-24, rank 1: MelloUI's own windows answered "is
+-- the kit on for me?" seven ways, some only once, so a switch left them in a
+-- mixed look until /reload). Kit:IsOn(area), one answer per area:
+--   a HUD group above  while a kit module covers it (Kit:IsCovered)
+--   questTracker       MelloUI's Quest Tracker: the reskin and its own switch,
+--                      UI Modifications' questTrackerKit (on unless switched off)
+--   whisper            the whisper popups: as the chat windows ('chat')
+--   services           the Services bar: as the minimap ('minimap')
+--   questList          the Quest List beside the world map: while the quest
+--                      log's kit (QuestLogPanel) is on
+--   config, voiceover, dynamicui, copy
+--                      the configurator, the Voice Over overlay, Dynamic UI
+--                      Modification, the copy window: the reskin (UI
+--                      Modifications on, its reskin switch on)
+-- Kit.Areas[area] = { name, topic = "look:<area>", and cover | follows = area
+-- | module = name | reskin (+ switch = key) }; a name not listed is read as a
+-- cover group. The bus's 'look:<area>' (on) goes out when an area's answer
+-- changes: looked at again after a cover, a module switched ('module'), a UI
+-- Modifications setting ('setting') and a profile or late settings load
+-- ('restart') -- on the next frame, once for all that came together, so what
+-- is switched off and on again in one go (a restart takes every kit module's
+-- cover off and puts it back) tells nothing. From the frame after the world's
+-- first load on (its answers then, the late settings Core takes at that load
+-- included, are where it starts; nothing is told at login). Nothing polls; a
+-- Fire makes nothing.
+--------------------------------------------------------------------------------
+Kit.Areas = {}
 
-function Kit:Cover(group)
-	if not self.covers[group] then
-		self.covers[group] = true
-		NotifyCover(group, true)
+do
+	local SWITCHES = "UIModifications"   -- the module whose settings hold the reskin and the areas' switches
+	-- (in this order their changes go out)
+	local LIST = {
+		{ "unitframes", cover = true }, { "partyframes", cover = true }, { "castbar", cover = true },
+		{ "raidframes", cover = true }, { "actionbars", cover = true }, { "micromenu", cover = true },
+		{ "bagbar", cover = true }, { "statusbars", cover = true }, { "backpack", cover = true },
+		{ "minimap", cover = true }, { "tracker", cover = true }, { "social", cover = true },
+		{ "chat", cover = true }, { "damagemeter", cover = true }, { "tooltip", cover = true },
+		{ "nameplates", cover = true },
+		{ "questTracker", reskin = true, switch = "questTrackerKit" },
+		{ "whisper", follows = "chat" },
+		{ "services", follows = "minimap" },
+		{ "questList", module = "QuestLogPanel" },
+		{ "config", reskin = true }, { "voiceover", reskin = true }, { "dynamicui", reskin = true },
+		{ "copy", reskin = true },
+	}
+	for _, area in ipairs(LIST) do
+		area.name, area.topic = area[1], "look:" .. area[1]
+		Kit.Areas[area.name] = area
 	end
-end
 
-function Kit:Uncover(group)
-	if self.covers[group] then
-		self.covers[group] = nil
-		NotifyCover(group, false)
+	-- UI Modifications' settings as saved: read straight, no defaults laid
+	-- in (every switch read here is on by default, so a key not saved yet
+	-- reads as on)
+	local function Switches()
+		local db = MelloUI.db
+		local modules = db and db.modules
+		return modules and modules[SWITCHES]
 	end
-end
 
-function Kit:OnCover(fn)
-	self.coverWatchers[#self.coverWatchers + 1] = fn
+	-- the reskin: UI Modifications on (its switch, as the configurator reads
+	-- it) and its reskin switch on
+	local function Reskin()
+		if not (MelloUI.db and MelloUI:IsModuleEnabled(SWITCHES)) then
+			return false
+		end
+		local s = Switches()
+		return not (s and s.reskin == false)
+	end
+
+	-- read live for each area, the reskin too (review, 2026-09-25: read once
+	-- per pass, a listener that switched it left the later areas told from
+	-- before)
+	local function AreaOn(area)
+		if area.follows then
+			area = Kit.Areas[area.follows]
+		end
+		if area.cover then
+			return Kit.covers[area.name] == true
+		elseif area.module then
+			local module = MelloUI:GetModule(area.module)
+			return (module and module.isEnabled) and true or false
+		elseif area.reskin then
+			if not Reskin() then
+				return false
+			end
+			local s = area.switch and Switches()
+			return not (s and s[area.switch] == false)
+		end
+		return false
+	end
+
+	function Kit:IsOn(area)
+		local entry = self.Areas[area]
+		if not entry then
+			return self.covers[area] == true
+		end
+		return AreaOn(entry)
+	end
+
+	-- each area's answer as last told (nil until the first pass); watched
+	-- from the world's first load on
+	local told = {}
+	local watching, started = false, false
+	local KEY = "Kit look areas"   -- the bus owner and the Kit:NextFrame key
+
+	-- every area read again, a change told (in LIST's order); the first pass
+	-- only takes the answers down
+	local function Pass()
+		local tell = started
+		started = true
+		for i = 1, #LIST do
+			local area = LIST[i]
+			local on = AreaOn(area)
+			if told[area.name] ~= on then
+				told[area.name] = on
+				if tell then
+					MelloUI:Fire(area.topic, on)
+				end
+			end
+		end
+	end
+
+	-- something that can change an answer: the pass on the next frame, once
+	-- however often it was asked for (review, 2026-09-25: rechecked at once, a
+	-- restart -- every profile load, the late settings at login -- told each
+	-- covered area off and on again). What a look listener switches is looked
+	-- at on the frame after, so a pass never runs inside another.
+	local function Later()
+		if watching then
+			Kit:NextFrame(KEY, Pass)
+		end
+	end
+
+	-- a cover changed: its listeners at once, the areas it answers for on the
+	-- next frame
+	local function NotifyCover(group, covered)
+		MelloUI:Fire("cover", group, covered)
+		Later()
+	end
+
+	function Kit:Cover(group)
+		if not self.covers[group] then
+			self.covers[group] = true
+			NotifyCover(group, true)
+		end
+	end
+
+	function Kit:Uncover(group)
+		if self.covers[group] then
+			self.covers[group] = nil
+			NotifyCover(group, false)
+		end
+	end
+
+	-- (an alias of the bus's 'cover' topic, audit 2026-09-24 rank 5)
+	function Kit:OnCover(fn)
+		MelloUI:On("cover", fn)
+	end
+
+	-- the world's first load (PLAYER_ENTERING_WORLD: after Core's start-up
+	-- pass, before anyone can switch a thing): the changes watched, and the
+	-- answers taken down on the next frame, after Core's own handler of the
+	-- event (a late settings load and its restart) whichever of the two runs
+	-- first
+	local function OnSetting(module)
+		if module == SWITCHES then
+			Later()
+		end
+	end
+	local world = CreateFrame("Frame")
+	world:RegisterEvent("PLAYER_ENTERING_WORLD")
+	Perf.SetScript(world, "OnEvent", function(self)
+		self:UnregisterAllEvents()
+		watching = true
+		MelloUI:On("setting", OnSetting, KEY)
+		MelloUI:On("module", Later, KEY)
+		MelloUI:On("restart", Later, KEY)
+		Later()
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -3510,7 +3676,7 @@ end
 -- 2026-09-24: the bags' first open, 16 hooks per slot, each with closures of
 -- its own): the slot's state is kept by its button and its icon (slotOf), a
 -- border's rim rep by the border (borderOf).
-local slotOf = setmetatable({}, { __mode = "k" })     -- [button or icon] = { rep, stone, icon, button, itemButton }
+local slotOf = setmetatable({}, { __mode = "k" })     -- [button or icon] = the slot's state (Kit:SlotStone): { rep, stone, icon, button, itemButton, ... }
 local borderOf = setmetatable({}, { __mode = "k" })   -- [border] = the rim rep
 
 -- the icon's atlas (a pcall with no closure made per call)
@@ -3519,7 +3685,7 @@ local function IconAtlas(icon)
 end
 
 -- whether the slot is empty (an item button's by its SetItemButtonTexture,
--- below in Kit:SkinActionButton)
+-- below in Kit:SlotStone)
 local function SlotEmpty(st)
 	local icon, button = st.icon, st.button
 	if not icon:IsShown() then
@@ -3553,6 +3719,163 @@ end)
 local Slot_OnIcon = Shared("Show / Hide on a kit slot's icon", function(icon)
 	SlotSync(slotOf[icon])
 end)
+
+--------------------------------------------------------------------------------
+-- Kit:SlotStone(rep, button, bg, opts): the stone in a slot rim's opening,
+-- one for every slot that has one (audit, 2026-09-24: the pet stable kept a
+-- copy of the action buttons' fit and missed its fixes; the next slot fix
+-- lands here, once). The stone stands in for `bg` (the slot's own backing,
+-- faded) in the opening of the rim `rep` put on `button`, fitted into that
+-- opening again when the rim's art changes (rim.onBaseChanged: a Button
+-- Border), when it is re-pitched (rep:SetPitch), and a frame later when the
+-- rim's size was not known yet (Kit:DrawnSize 0, 0: Kit:RefitLater).
+--   replace    the panel's Replace: the stone is one of its reps (required)
+--   base       the rim's art family while it has none of its own
+--              (default "buttons/slot", the action buttons' R1)
+--   showWhen   "empty" (default): shown only while the slot is empty, an item
+--              button's picture see-through then (SlotSync); "always": shown
+--              whenever the kit is (the pet stable's slots)
+--   tintFrom   a region whose tint the stone wears, copied on each of its
+--              SetVertexColor (the stable's empty-slot picture: red for a slot
+--              not bought yet)
+--   noFade     `bg` left as the game's (a bag slot has no backing: the stone
+--              is put on the button itself)
+--   icon       the slot's icon (default the rim's, else button.icon)
+-- Returns the stone rep, or nil. Made once per slot; a refit makes nothing.
+-- Kit:SyncSlotStone(button) reads the game's state onto the stone again.
+--------------------------------------------------------------------------------
+do
+	local tintOf = setmetatable({}, { __mode = "k" })   -- [tintFrom region] = the slot's state
+
+	-- the stone's opening: the opening of the rim it is in (its art can change
+	-- live), measured as drawn (not laid out yet a rim reads as its atlas sheet)
+	local function SlotFit(st)
+		local rim, opening = st.rim, st.opening
+		local name = (rim.base or st.base) .. "_normal"
+		local piece = PIECES[name]
+		local l, r, t, b = Kit:Insets(name, 1)
+		local rw, rh = Kit:DrawnSize(rim)
+		opening:ClearAllPoints()
+		if piece and l and rw > 0 and rh > 0 then
+			opening:SetPoint("TOPLEFT", rim, "TOPLEFT", rw * l / piece.w, -rh * t / piece.h)
+			opening:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -rw * r / piece.w, rh * b / piece.h)
+		else
+			opening:SetAllPoints(st.button)
+			if piece and l then
+				Kit:RefitLater(rim)   -- the rim's size not known yet: fitted again a frame later
+			end
+		end
+	end
+
+	-- the stone in the tint the game gives the region it copies (secret-safe:
+	-- a secret colour leaves the stone as it is)
+	local function SlotTint(st)
+		local tex, from = st and st.stone and st.stone.tex, st and st.tintFrom
+		if not (tex and from) then
+			return
+		end
+		local ok, r, g, b = pcall(from.GetVertexColor, from)
+		if ok and not Secret(r) and not Secret(g) and not Secret(b) and type(r) == "number" then
+			tex:SetVertexColor(r, g, b)
+		end
+	end
+	local Slot_OnTint = Shared("SetVertexColor on a kit slot stone's tint", function(region)
+		SlotTint(tintOf[region])
+	end)
+
+	function Kit:SlotStone(rep, button, bg, opts)
+		opts = opts or {}
+		local rim = rep and rep.object
+		local replace = opts.replace
+		if not (rim and button and bg and replace) then
+			return nil
+		end
+		local opening = CreateFrame("Frame", nil, button)
+		opening:EnableMouse(false)
+		-- (the slot's state: the shared handlers and the refit read it)
+		local st = { rep = rep, rim = rim, button = button, opening = opening, base = opts.base or "buttons/slot",
+			icon = opts.icon or rim.icon or button.icon }
+		local function Fit()
+			SlotFit(st)
+		end
+		Fit()
+		rim.onBaseChanged = Fit
+		-- (the opening is the stone's own sizer: no frame made for it per slot)
+		local stone = replace(bg, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening, noFade = opts.noFade,
+			sizer = opening }) or nil
+		st.stone = stone
+		local icon = st.icon
+		if stone then
+			slotOf[button] = st
+			if opts.showWhen ~= "always" and icon then
+				-- the stone shows while the slot is EMPTY: the game hides the icon
+				-- then (its own backing shows only on a bar whose art is hidden —
+				-- on the main bar the faded frame art was the empty slot's look).
+				-- An ITEM button (a bag window's slot, a bag bar slot) keeps its
+				-- icon shown when empty, painted with its empty-slot picture
+				-- (`emptyBackgroundAtlas` / `emptyBackgroundTexture`, put there by
+				-- SetItemButtonTexture(nil)): the Item Background never showed
+				-- (user, 2026-09-23). Its emptiness is read from that call; while
+				-- empty the icon (the game's picture) is see-through.
+				st.whileEmpty = true
+				st.itemButton = ((button.emptyBackgroundAtlas or button.emptyBackgroundTexture) and button.SetItemButtonTexture) and true or false
+				slotOf[icon] = st
+				if st.itemButton then
+					hooksecurefunc(button, "SetItemButtonTexture", Slot_OnItemTexture)
+					local disable = rep.onDisable
+					rep.onDisable = function(...)
+						if disable then
+							disable(...)
+						end
+						icon:SetAlpha(1)
+					end
+				end
+				hooksecurefunc(icon, "Show", Slot_OnIcon)
+				hooksecurefunc(icon, "Hide", Slot_OnIcon)
+				hooksecurefunc(icon, "SetShown", Slot_OnIcon)
+				local enable = stone.Enable
+				stone.Enable = function(self)
+					enable(self)
+					SlotSync(st)
+				end
+				SlotSync(st)
+			end
+			-- tinted as the game tints the picture it stands for (one shared
+			-- handler for every slot, no closure of its own: audit, 2026-09-24)
+			local from = opts.tintFrom
+			if from and from.SetVertexColor then
+				st.tintFrom = from
+				tintOf[from] = st
+				hooksecurefunc(from, "SetVertexColor", Slot_OnTint)
+				SlotTint(st)
+			end
+		end
+		-- a rim re-sized to a new pitch: the opening fitted again
+		local setPitch = rep.SetPitch
+		rep.SetPitch = function(self, px, py)
+			if setPitch then
+				setPitch(self, px, py)
+			end
+			Fit()
+		end
+		return stone
+	end
+
+	-- The game's state onto a slot's stone again (a window's refresh): the tint
+	-- it copies and, for a stone shown while empty, whether it shows
+	function Kit:SyncSlotStone(button)
+		local st = button and slotOf[button]
+		if not st then
+			return
+		end
+		if st.tintFrom then
+			SlotTint(st)
+		end
+		if st.whileEmpty then
+			SlotSync(st)
+		end
+	end
+end
 
 -- the rim green while the game shows the equipped border
 local function BorderTint(rep, border)
@@ -3629,76 +3952,14 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 			pcall(icon.AddMaskTexture, icon, mask)
 		end
 	end
-	-- the empty slot's backing: stone in the rim's opening; its ornament faded
-	-- (a bag slot has no backing region: `opts.emptyStone` puts the stone
-	-- on the button itself, replacing its NormalTexture's empty look)
+	-- the empty slot's backing: the kit's slot stone in the rim's opening,
+	-- shown while the slot is empty (Kit:SlotStone); its ornament faded (a bag
+	-- slot has no backing region: `opts.emptyStone` puts the stone on the
+	-- button itself, replacing its NormalTexture's empty look)
 	if button.SlotBackground or opts.emptyStone then
-		local rim = rep.object
-		local opening = CreateFrame("Frame", nil, button)
-		opening:EnableMouse(false)
-		local function Fit()
-			local name = (rim.base or "buttons/slot") .. "_normal"   -- the opening of the rim it is in (its art can change live)
-			local piece = PIECES[name]
-			local l, r, t, b = Kit:Insets(name, 1)
-			local rw, rh = Kit:DrawnSize(rim)   -- (not laid out yet it reads as its atlas sheet)
-			if piece and l and rw > 0 and rh > 0 then
-				opening:ClearAllPoints()
-				opening:SetPoint("TOPLEFT", rim, "TOPLEFT", rw * l / piece.w, -rh * t / piece.h)
-				opening:SetPoint("BOTTOMRIGHT", rim, "BOTTOMRIGHT", -rw * r / piece.w, rh * b / piece.h)
-			else
-				opening:ClearAllPoints()
-				opening:SetAllPoints(button)
-				if piece and l then
-					Kit:RefitLater(rim)   -- the rim's size not known yet: fitted again a frame later
-				end
-			end
-		end
-		Fit()
-		rim.onBaseChanged = Fit
-		local stone = replace(button.SlotBackground or normal, { as = "UI-HUD-ActionBar-IconFrame-Background", rect = opening,
-			noFade = not button.SlotBackground, sizer = opening })
-		button.melloSlotStone = stone or nil   -- its texture (stone.tex) can be swapped: Action Bars Kit's Button Background
-		if stone then
-			-- the stone shows while the slot is EMPTY: the game hides the icon
-			-- then (its own backing shows only on a bar whose art is hidden —
-			-- on the main bar the faded frame art was the empty slot's look).
-			-- An ITEM button (a bag window's slot, a bag bar slot) keeps its
-			-- icon shown when empty, painted with its empty-slot picture
-			-- (`emptyBackgroundAtlas` / `emptyBackgroundTexture`, put there by
-			-- SetItemButtonTexture(nil)): the Item Background never showed
-			-- (user, 2026-09-23). Its emptiness is read from that call; while
-			-- empty the icon (the game's picture) is see-through.
-			-- (the slot's state for the shared handlers: SlotSync)
-			local st = { rep = rep, stone = stone, icon = icon, button = button,
-				itemButton = ((button.emptyBackgroundAtlas or button.emptyBackgroundTexture) and button.SetItemButtonTexture) and true or false }
-			slotOf[button], slotOf[icon] = st, st
-			if st.itemButton then
-				hooksecurefunc(button, "SetItemButtonTexture", Slot_OnItemTexture)
-				local disable = rep.onDisable
-				rep.onDisable = function(...)
-					if disable then
-						disable(...)
-					end
-					icon:SetAlpha(1)
-				end
-			end
-			hooksecurefunc(icon, "Show", Slot_OnIcon)
-			hooksecurefunc(icon, "Hide", Slot_OnIcon)
-			hooksecurefunc(icon, "SetShown", Slot_OnIcon)
-			local enable = stone.Enable
-			stone.Enable = function(self)
-				enable(self)
-				SlotSync(st)
-			end
-			SlotSync(st)
-		end
-		local setPitch = rep.SetPitch
-		rep.SetPitch = function(self, px, py)
-			if setPitch then
-				setPitch(self, px, py)
-			end
-			Fit()
-		end
+		local stone = self:SlotStone(rep, button, button.SlotBackground or normal, { replace = replace, base = "buttons/slot",
+			showWhen = "empty", noFade = not button.SlotBackground, icon = icon })
+		button.melloSlotStone = stone   -- its texture (stone.tex) can be swapped: Action Bars Kit's Button Background
 	end
 	if button.SlotArt then
 		replace(button.SlotArt, { as = "ui-hud-actionbar-iconframe-slot" })
@@ -5007,7 +5268,7 @@ function Kit:Replace(region, opts)
 			-- opts.dimColor: another palette tone (a card or row lying ON a
 			-- dimmed list takes the main window's tone, a stripe lighter than
 			-- the panel around it, as WINDOW-RULES 2e has rows)
-			local c = opts.dimColor or (MelloUI.Palette and MelloUI.Palette.innerPanel) or { 0.067, 0.063, 0.051 }
+			local c = opts.dimColor or MelloUI.Palette.innerPanel
 			fill:SetColorTexture(c[1], c[2], c[3], dim)
 			rep.skin.dimFill = fill
 			table.insert(rep.skin.all, fill)
@@ -6764,7 +7025,8 @@ end
 -- the settings; every element of a kind is registered as it is skinned and
 -- takes the kind's look, and a new choice goes to all of them at once
 -- (Kit:ApplyBorder). Panels that fit something round a border (a bar's
--- fill, the spell book's rims) listen with Kit:OnBorderChanged.
+-- fill, the spell book's rims) listen with Kit:OnBorderChanged (the bus's
+-- 'border' topic: kind, value).
 --   button     the square rims of the action bars, micro menu, bag bar, bags,
 --              gear slots and spells (the thin looks)
 --   sidetab    every window's side tabs and the spell book's category tabs
@@ -6821,7 +7083,6 @@ end
 
 local buttonRims = setmetatable({}, { __mode = "k" })   -- [button] = true: a skinned button whose rim is a thin look
 local borderBars = { bar = setmetatable({}, { __mode = "k" }), nameplate = setmetatable({}, { __mode = "k" }) }
-local borderListeners = {}                                -- [kind] = { fn, ... }
 
 function Kit:RegisterButtonRim(button)
 	if button then
@@ -6836,9 +7097,15 @@ function Kit:RegisterBorderBar(group, rep)
 	end
 end
 
+-- fn(value) after a new choice of `kind`: an alias of the bus's 'border'
+-- topic (audit, 2026-09-24, rank 5), through a small filter made once per
+-- listener (a Fire makes none); one that raises goes to the error handler
 function Kit:OnBorderChanged(kind, fn)
-	borderListeners[kind] = borderListeners[kind] or {}
-	table.insert(borderListeners[kind], fn)
+	MelloUI:On("border", function(changed, value)
+		if changed == kind then
+			fn(value)
+		end
+	end)
 end
 
 -- every round rim (Kit:Slot with kind "roundslot"), for Round Border
@@ -6882,8 +7149,11 @@ function Kit:ApplyBorder(kind)
 			end
 		end
 	end
-	for _, fn in ipairs(borderListeners[kind] or {}) do
-		pcall(fn, value)
+	MelloUI:Fire("border", kind, value)
+	if kind == "colours" then
+		-- the documented topic for the Kit Colours (Core's topic table,
+		-- WINDOW-RULES 6), heard by the configurator (review, 2026-09-25)
+		MelloUI:Fire("palette")
 	end
 end
 
@@ -7856,7 +8126,7 @@ do
 		f:SetClampedToScreen(true)
 		local bg = f:CreateTexture(nil, "BACKGROUND")
 		bg:SetAllPoints(f)
-		local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+		local c = MelloUI.Palette.innerPanel
 		bg:SetColorTexture(c[1], c[2], c[3], 0.97)
 		local title = Label(f, "", "GameFontNormal")
 		title:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -14)

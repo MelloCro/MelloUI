@@ -24,9 +24,18 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("QuestList")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
+-- the panel's width by default, one value: the setting's and the panel's
+-- own when none is set (it fell back to 340 there; audit, 2026-09-24,
+-- rank 18)
+local PANEL_WIDTH = 380
+
 local M = MelloUI:RegisterModule("QuestList", {
 	title = "Quest List",
 	desc = "Panel next to the world map listing the quests of a zone, how many you have completed, and where each one is picked up.",
+	icon = "Interface\\Icons\\INV_Misc_Map_01",
+	flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do.",
+	group = "Quests and travel",
+	area = { key = "questList", follows = "QuestLogPanel" },   -- the panel beside the map: as the quest log
 	keep = { "learnedEntrances", "learnedTransports" },   -- pins recorded by hand (older versions kept them here): never in a profile
 	enabledByDefault = true,
 	defaults = {
@@ -39,7 +48,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		otherFaction = false,
 		otherClass = false,
 		levelAbove = 0,
-		width = 380,
+		width = PANEL_WIDTH,
 		mapPins = true,
 		pinCompleted = false,
 		zoneBadges = true,
@@ -98,7 +107,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 
 -- Shared with QuestListPanel.lua and QuestListMap.lua: state and helpers the
 -- three files use together. Everything else stays local to its file.
-local QL = { M = M }
+local QL = { M = M, PANEL_WIDTH = PANEL_WIDTH }
 ns.QuestList = QL
 
 --------------------------------------------------------------------------------
@@ -106,11 +115,9 @@ ns.QuestList = QL
 --------------------------------------------------------------------------------
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); QL.Plain(v)
--- is v, or nil when v is secret (the stand-ins, the client's test and
--- Safe.Value's own body, are for a test world without Core)
-local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
-QL.Plain = MelloUI.Safe and MelloUI.Safe.Value
-	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
+-- is v, or nil when v is secret
+local IsSecret = MelloUI.Safe.IsSecret
+QL.Plain = MelloUI.Safe.Value
 
 -- Row fields in MelloUI_QuestListData.quests
 QL.F_ID, QL.F_TITLE, QL.F_LEVEL, QL.F_REQ, QL.F_SIDE, QL.F_CLASS, QL.F_ZONE, QL.F_GIVERZONE, QL.F_GIVER, QL.F_X, QL.F_Y, QL.F_KIND, QL.F_EVENT, QL.F_CHAIN, QL.F_DUNGEON, QL.F_ATTUNE, QL.F_PREV, QL.F_CONT, QL.F_WX, QL.F_WY =

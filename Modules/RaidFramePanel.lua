@@ -29,6 +29,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("RaidFramePanel", {
 	title = "Raid Frames Kit",
 	desc = "The compact raid and party frames and the totem bar dressed in the painted kit on the game's own layout.",
+	window = { label = "Raid frames", desc = "Compact raid frames, group borders and totems in the kit.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},

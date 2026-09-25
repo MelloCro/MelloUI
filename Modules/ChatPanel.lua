@@ -34,6 +34,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("ChatPanel", {
 	title = "Chat Panel Kit",
 	desc = "The chat windows (frame, tabs, edit box, buttons) dressed in the painted kit on the game's own layout.",
+	window = { label = "Chat windows", desc = "Chat frames, tabs, edit box and buttons in the kit (no fade).", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -43,7 +44,7 @@ local skin = nil
 local active = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

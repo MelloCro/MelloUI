@@ -47,6 +47,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("TooltipPanel", {
 	title = "Tooltip Kit",
 	desc = "Tooltips dressed in the painted kit: the stone box with the single rail, the unit health bar in the bracket.",
+	window = { label = "Tooltips", desc = "Tooltips on the stone box with the single rail.", tab = "HUD" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -63,7 +64,7 @@ local sheets = setmetatable({}, { __mode = "k" })    -- [tooltip] = its parchmen
 local dims = setmetatable({}, { __mode = "k" })      -- [tooltip] = its eye-strain panel (the stone look's)
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

@@ -34,6 +34,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("StackSplitPanel", {
 	title = "Split Stack Kit",
 	desc = "The split-stack box in the kit.",
+	window = { label = "Split stack", desc = "The split-stack box in the kit.", tab = "Windows" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -50,7 +51,7 @@ local raised = setmetatable({}, { __mode = "k" })   -- [font string] = { its own
 local fadedArt = {}            -- the game's art faded with no piece on its own rect
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Window()
 	local f = _G.StackSplitFrame
@@ -318,14 +319,14 @@ local function Surface()
 	QI.Surface(SURFACE, { on = InkOn, sheet = true, skip = Skip, roots = function() return Window() end })
 end
 
--- the Dialogs' parchment switched: this box's strings follow
-if Kit and Kit.SetParchment then
-	hooksecurefunc(Kit, "SetParchment", function(_, area)
-		if area == AREA and surfaceMade and MelloUI.QuestInk then
-			MelloUI.QuestInk.RefreshSurface(SURFACE)
-		end
-	end)
-end
+-- the Dialogs' parchment switched: this box's strings follow (the bus's
+-- 'parchment', fired once the kit's sheets are switched, where the hook on
+-- Kit.SetParchment ran: audit 2026-09-24 rank 5)
+MelloUI:On("parchment", Perf.Shared("'parchment' on the bus", function(area)
+	if area == AREA and surfaceMade and MelloUI.QuestInk then
+		MelloUI.QuestInk.RefreshSurface(SURFACE)
+	end
+end), M)
 
 -- after every show and every re-layout of the box (one item or stacks): the
 -- field on the amount's line, the arrows' looks, the ink
@@ -401,12 +402,10 @@ local function Sync()
 	end
 end
 
+-- (Kit.lua loads before this file, so its combat queue is always there:
+-- audit 2026-09-24, a dead guard gone)
 local function SyncSafe()
-	if Kit and Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 local function Hook()

@@ -28,6 +28,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("DamageMeterPanel", {
 	title = "Damage Meter Kit",
 	desc = "The game's damage meter (window, header, entry bars, breakdown windows) dressed in the painted kit on its own layout.",
+	window = { label = "Damage meter", desc = "The damage meter and its breakdown window in the kit.", tab = "HUD", addon = "Blizzard_DamageMeter" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -41,7 +42,7 @@ local function IsActive()
 end
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Replace(region, opts)
 	if not region then

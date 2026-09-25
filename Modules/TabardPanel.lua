@@ -58,6 +58,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("TabardPanel", {
 	title = "Tabard Kit",
 	desc = "The guild tabard designer in the kit.",
+	window = { label = "Guild tabard vendor", desc = "The guild tabard designer in the kit.", tab = "Windows",
+		frames = { "TabardFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -83,7 +85,7 @@ local BOX_TONE = PAL.mainWindow
 local BOX_DIM = 0.85
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

@@ -30,6 +30,34 @@
 --   module: built against its settings) or be `{ type = "include", module = }`
 --   (that module's whole option list laid out in place); a toggle with
 --   `important = true` is drawn gold with an IMPORTANT hint
+-- The registry's own fields (audit, 2026-09-24, rank 4: one place that says
+-- what a module is, for the configurator, the installer and UI
+-- Modifications). All optional, kept on the module as given. UI
+-- Modifications builds its rows, the plain grabs and the switches' defaults
+-- from `window` and `tweak` (UIModifications.lua's header); the
+-- configurator's tile reads `icon` and `flavour`; `group`, `area` and the
+-- window's `addon` and `firstOpen` are facts nothing reads yet:
+--   icon             texture path (or file id) of its tile
+--   flavour          one line under its title
+--   group            the configurator's section ("Home", "The look",
+--                    "Quests and travel", "Chat and sound", "Frames and bars")
+--   window           a window (or HUD part) the reskin dresses: { label, desc,
+--                    tab = "Windows" | "HUD", order = n (rows with one lead
+--                    their tab, lowest first), switch = "<UI Modifications
+--                    setting>" (the row is that setting, not a module switch:
+--                    the Quest Tracker's questTrackerKit), frames = { frame
+--                    names }, addon = "Blizzard_..." (loaded on demand),
+--                    plainGrab = true (a plain grab while the windows are
+--                    unlocked), firstOpen = true (dressed on its first show) }
+--   tweak            a feature folded under UI Modifications: { label, desc,
+--                    order = n (as window's), off = true (off until switched
+--                    on), always = true (no switch: its rows each switch one
+--                    thing) }
+--   area             an own window's look switch: { key = "questTracker",
+--                    follows = nil | "<module whose switch it follows>" }
+-- One of the wrong type goes to the error handler and is left off the
+-- module; the module itself still registers.
+-- MelloUI:ModulesInOrder() lists the modules in the order they registered.
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -102,12 +130,10 @@ local DB_DEFAULTS = {
 -- before any other test of the value. None of them makes a table.
 -- A file binds the ones it needs once, at load, as upvalues (a call costs
 -- what its own copy did):
---   local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
--- The `or`: a test world that loads one file without Core still has the
--- client's own test (a Value or Number binding carries Safe's own body as
--- its stand-in). In game Core is first in the TOC, so the `or` never runs;
--- every binding matches `MelloUI.Safe and MelloUI.Safe.` for the day the
--- test worlds carry Safe and the stand-ins go.
+--   local Secret = MelloUI.Safe.IsSecret
+-- Core is first in the TOC, so Safe is always there; a test world that loads
+-- a file without Core runs this block itself (wave 3, 2026-09-25: the
+-- `MelloUI.Safe and ... or <stand-in>` bindings went with that).
 --------------------------------------------------------------------------------
 
 local Safe = {}
@@ -213,6 +239,965 @@ function MelloUI:ClearLog()
 	wipe(log)
 end
 
+-- an error in a listener or a callback: to the game's error handler, and on
+local function Report(err)
+	local handler = geterrorhandler and geterrorhandler()
+	if type(handler) == "function" then
+		handler(err)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The settings bus (audit, 2026-09-24, rank 5): one path for "this changed",
+-- where files hooked MelloUI's own functions (NotifySettingChanged,
+-- SetModuleEnabled, Kit.SetParchment: a hook runs for every setting of every
+-- module and can never be taken off) or kept a listener list per subject.
+--
+--   MelloUI:On(topic, fn, owner)  fn(...) is called with what the topic is
+--                                 fired with (not the topic). One listener per
+--                                 owner and topic: On again with the same
+--                                 owner replaces its fn where it stands.
+--                                 owner defaults to fn. Listeners run in the
+--                                 order they came.
+--   MelloUI:Off(owner[, topic])   that owner's listeners, of one topic or all
+--   MelloUI:Fire(topic, ...)      every listener of the topic, each in its own
+--                                 pcall: one that raises goes to the error
+--                                 handler and the others still run. No table
+--                                 is made per Fire. One added during a Fire
+--                                 first runs on the next; one taken off
+--                                 during it is not called any more.
+--   MelloUI:Batch(fn, ...)        fn(...), with the 'setting' Fires raised
+--                                 meanwhile held and fired after it, one per
+--                                 module and key (its last value), in the
+--                                 order first raised; the settings backup is
+--                                 scheduled once at the end, not per setting
+--                                 (the installer's apply engine). Batches
+--                                 nest. fn's results are returned; an error
+--                                 in fn is raised again once the held Fires
+--                                 went out.
+-- Topics, with what they carry:
+--   "setting"      moduleName, key, value  end of NotifySettingChanged
+--   "module"       moduleName, enabled     end of SetModuleEnabled (not before
+--                                          login's start-up: the flag only)
+--   "restart"      -                       end of RestartModules
+--   "look:<area>"  on                      an area's kit look switched
+--   "cover"        area, on                Kit:Cover
+--   "parchment"    area, on                Kit:SetParchment
+--   "border"       kind                    a Button / window Border changed
+--   "fonts"        -                       the Font Style or a face changed
+--   "scale"        reason                  "uiscale" | "editmode" (Kit's watcher)
+--   "editmode"     entering                Edit Mode entered (true) / left
+--   "shell"        window                  a kit window shell was built
+--   "palette"      -                       the Kit Colours changed
+--   "column"       -                       the column under the minimap re-laid
+--------------------------------------------------------------------------------
+
+-- the settings backup through the bus's Batch: held there, scheduled once at
+-- its end (set below)
+local Backup
+
+do
+	local topics = {}   -- [topic] = { fn = {}, owner = {}, n = 0, depth = 0, dirty = false }
+	local batch = 0     -- Batch depth
+	local backupWanted = false
+
+	-- the slots taken off during a Fire are false until it ends: then the
+	-- list closes up, in order
+	local function Compact(t)
+		local fns, owners, j = t.fn, t.owner, 0
+		for i = 1, t.n do
+			local fn = fns[i]
+			if fn then
+				j = j + 1
+				fns[j], owners[j] = fn, owners[i]
+			end
+		end
+		for i = j + 1, t.n do
+			fns[i], owners[i] = nil, nil
+		end
+		t.n, t.dirty = j, false
+	end
+
+	function MelloUI:On(topic, fn, owner)
+		assert(topic ~= nil and type(fn) == "function", "MelloUI:On(topic, fn, owner) needs a topic and a function")
+		if owner == nil then
+			owner = fn
+		end
+		local t = topics[topic]
+		if not t then
+			t = { fn = {}, owner = {}, n = 0, depth = 0, dirty = false }
+			topics[topic] = t
+		end
+		local fns, owners = t.fn, t.owner
+		for i = 1, t.n do
+			if fns[i] and owners[i] == owner then
+				fns[i] = fn
+				return
+			end
+		end
+		local n = t.n + 1
+		t.n = n
+		fns[n], owners[n] = fn, owner
+	end
+
+	local function OffIn(t, owner)
+		local fns, owners = t.fn, t.owner
+		for i = 1, t.n do
+			if fns[i] and owners[i] == owner then
+				fns[i], owners[i] = false, false
+				t.dirty = true
+			end
+		end
+		if t.dirty and t.depth == 0 then
+			Compact(t)
+		end
+	end
+
+	function MelloUI:Off(owner, topic)
+		if owner == nil then
+			return
+		end
+		if topic ~= nil then
+			local t = topics[topic]
+			if t then
+				OffIn(t, owner)
+			end
+			return
+		end
+		for _, t in pairs(topics) do
+			OffIn(t, owner)
+		end
+	end
+
+	-- a Batch's held 'setting' Fires: parallel lists, and at[module][key] =
+	-- its slot. Two kept (one filling while the other goes out), their
+	-- tables reused from batch to batch.
+	local function NewHold()
+		return { n = 0, mod = {}, key = {}, val = {}, at = {} }
+	end
+	local held, spare = NewHold(), nil
+
+	local function Hold(module, key, value)
+		local h = held
+		local byKey
+		if module ~= nil and key ~= nil then
+			byKey = h.at[module]
+			if not byKey then
+				byKey = {}
+				h.at[module] = byKey
+			end
+			local i = byKey[key]
+			if i then
+				h.val[i] = value
+				return
+			end
+		end
+		local i = h.n + 1
+		h.n = i
+		h.mod[i], h.key[i], h.val[i] = module, key, value
+		if byKey then
+			byKey[key] = i
+		end
+	end
+
+	function MelloUI:Fire(topic, ...)
+		if batch > 0 and topic == "setting" then
+			Hold(...)
+			return
+		end
+		local t = topics[topic]
+		if not t or t.n == 0 then
+			return
+		end
+		t.depth = t.depth + 1
+		local fns = t.fn
+		for i = 1, t.n do   -- (the count as it was when the Fire began)
+			local fn = fns[i]
+			if fn then
+				local ok, err = pcall(fn, ...)
+				if not ok then
+					Report(err)
+				end
+			end
+		end
+		t.depth = t.depth - 1
+		if t.dirty and t.depth == 0 then
+			Compact(t)
+		end
+	end
+
+	local function Flush()
+		local h = held
+		if h.n == 0 then
+			return
+		end
+		-- a listener may start a Batch of its own: it fills the other list
+		held = spare or NewHold()
+		spare = nil
+		for i = 1, h.n do
+			local module, key, value = h.mod[i], h.key[i], h.val[i]
+			h.mod[i], h.key[i], h.val[i] = nil, nil, nil
+			MelloUI:Fire("setting", module, key, value)
+		end
+		h.n = 0
+		for _, byKey in pairs(h.at) do
+			wipe(byKey)
+		end
+		spare = h
+	end
+
+	local function EndBatch(ok, ...)
+		batch = batch - 1
+		if batch == 0 then
+			Flush()
+			if backupWanted then
+				backupWanted = false
+				if MelloUI.ScheduleBackup then
+					MelloUI:ScheduleBackup("batch")
+				end
+			end
+		end
+		if not ok then
+			error((...), 0)
+		end
+		return ...
+	end
+
+	function MelloUI:Batch(fn, ...)
+		batch = batch + 1
+		return EndBatch(pcall(fn, ...))
+	end
+
+	-- NotifySettingChanged, SetModuleEnabled and the profile loads ask for
+	-- the backup here: "setting <key>" as before, or once for a whole Batch
+	Backup = function(self, reason, detail)
+		if batch > 0 then
+			backupWanted = true
+			return
+		end
+		if self.ScheduleBackup then
+			self:ScheduleBackup(detail ~= nil and (reason .. tostring(detail)) or reason)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- UI sounds (moved from the configurator, audit 2026-09-24: its sounds are
+-- for every MelloUI window, and the configurator is being rebuilt). The soft
+-- clicks made by Tools\make_ui_sounds.py; the game's own sounds if a file is
+-- missing; the Custom Sounds module's own click when it is on.
+--   MelloUI:PlayUISound(kind)
+--     the soft clicks:  "page", "tab", "check_on", "check_off"
+--     the game's own:   "option_on", "option_off" (its checkbox clicks),
+--                       "menu_open", "menu_close", "menu_button" (the game
+--                       menu's), "window_open", "window_close", "tick" (the
+--                       chat's scroll button), "waypoint_set", "waypoint_clear"
+-- Every MelloUI window plays its UI sounds through here, never PlaySound
+-- itself (audit, 2026-09-24: Dynamic UI, Voice Over, the Quest List and the
+-- mover each called it directly; Tools/lint/check_panels.py holds it).
+--------------------------------------------------------------------------------
+
+do
+	local SOUND_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Sounds\\"
+	-- file: MelloUI's own click, played first. kit: the SOUNDKIT name (alt:
+	-- the one for a client without it), looked up when played -- played when
+	-- there is no file or the file is missing. A kit-only kind is the game's
+	-- sound the window played before, id for id; Custom Sounds' PlaySound hook
+	-- swaps it as it does any game click.
+	local SOUNDS = {
+		check_on  = { file = "check_on.ogg",  kit = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
+		check_off = { file = "check_off.ogg", kit = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
+		tab       = { file = "tab.ogg",       kit = "IG_CHARACTER_INFO_TAB" },
+		page      = { file = "page.ogg",      kit = "IG_MAINMENU_OPTION" },
+		option_on      = { kit = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
+		option_off     = { kit = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
+		menu_open      = { kit = "IG_MAINMENU_OPEN" },
+		menu_close     = { kit = "IG_MAINMENU_CLOSE" },
+		menu_button    = { kit = "IG_MAINMENU_OPTION" },
+		window_open    = { kit = "IG_CHARACTER_INFO_OPEN" },
+		window_close   = { kit = "IG_CHARACTER_INFO_CLOSE" },
+		tick           = { kit = "U_CHAT_SCROLL_BUTTON" },
+		waypoint_set   = { kit = "UI_MAP_WAYPOINT_CLICK_TO_PLACE", alt = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
+		waypoint_clear = { kit = "UI_MAP_WAYPOINT_REMOVE", alt = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
+	}
+	for _, sound in pairs(SOUNDS) do
+		if sound.file then
+			sound.path = SOUND_PATH .. sound.file
+		end
+	end
+
+	function MelloUI:PlayUISound(kind)
+		local sound = SOUNDS[kind]
+		if not sound then
+			return
+		end
+		-- the Custom Sounds module, when it is on, plays its own click instead
+		if self.PlayCustomUISound and self:PlayCustomUISound(kind) then
+			return
+		end
+		if sound.path then
+			local ok, played = pcall(PlaySoundFile, sound.path, "SFX")
+			if ok and played then
+				return
+			end
+		end
+		local kit = SOUNDKIT and (SOUNDKIT[sound.kit] or (sound.alt and SOUNDKIT[sound.alt]))
+		if kit then
+			PlaySound(kit)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Window places: one store, one mover registry and one keep-on-screen for
+-- every MelloUI window (audit, 2026-09-24, rank 6: the whisper popups, the
+-- Route arrow, the Voice Over overlay and the copy window each dragged
+-- themselves and kept their place their own way, and Unlock the Windows,
+-- Reset positions and the UI-scale put-back never reached them). Core keeps
+-- the registration and the store, so they work with UI Modifications off;
+-- UI Modifications brings the unlocked behaviour (the darkened screen, the
+-- grid, the snap, the wheel's scale) as the mover's provider.
+--
+--   MelloUI:RegisterMover(frame, handle, opts) -> entry
+--       handle (default: the frame) is what is dragged. opts, all optional:
+--         key        its place in the store (default: the frame's name; no
+--                    key, no saved place)
+--         anchor     the frame's point that is saved, held to the same point
+--                    of the screen ("TOPRIGHT": it grows down and left from
+--                    there); nil: BOTTOMLEFT to the screen's CENTER, the
+--                    mover's own
+--         default    function(frame): lays its default place (Reset)
+--         save       function(frame): a window that keeps its own place (the
+--                    Quest Tracker): called on release, the store untouched
+--         reset      function(): Reset positions, for such a window
+--         min, max   the wheel's scale range; base: its 100 %
+--         with       a frame, or a list of frames, kept on the screen with it
+--                    (they move with it: the world map and the Quest List)
+--         plainDrag  "always": dragged at any time, unlocked or not;
+--                    "unlocked": only while the windows are unlocked;
+--                    false (default): only through the provider
+--       The entry is { frame, handle, key, anchor, default, save, reset, min,
+--       max, base, with, plainDrag, moving }. A frame registered again gets
+--       its first entry back. A saved place is put back at once and on every
+--       show (not for a `save` window), and on a UI Scale change for the
+--       shown ones ("scale" topic, reason "uiscale").
+--   MelloUI:SavePosition(key, frame[, scale]) -> saved
+--       the frame's place under key, by its entry's anchor; scale: a number
+--       is kept with it (to a hundredth), false drops it, nil leaves it
+--   MelloUI:RestorePosition(key, frame) -> placed[, "combat"]
+--       the saved scale, then the place, kept on the screen; false when
+--       nothing is saved, or for a protected frame in combat
+--   MelloUI:ForgetPosition(key)
+--   MelloUI:GetPosition(key) -> { point, relPoint, x, y, scale } or nil
+--       point nil = BOTTOMLEFT, relPoint nil = CENTER; x, y in the frame's
+--       own units. Read only: change it through Save / Forget.
+--   MelloUI:ResetMover(entryOrFrame)   forgets its place, calls its reset,
+--                                      then its default
+--   MelloUI:MoverEntries()             the entries, in registration order
+--   MelloUI:SetMoverProvider(provider)
+--       provider:Attach(entry) is called for every entry, now and later. At
+--       a drag start on a handle, provider:DragStart(entry) is asked first:
+--       true takes that drag (provider:DragStop(entry) ends it, and the
+--       provider saves, through SavePosition or entry.save); otherwise the
+--       plain drag runs when entry.plainDrag allows it. The handle's
+--       OnDragStart / OnDragStop are Core's: a provider hooks them, never sets
+--       them, and leaves the mouse on for "always" handles. A window hidden
+--       mid-drag (no OnDragStop) ends its drag from Core's OnHide hook
+--       (DragStop for a provider's drag); the frame's own OnShow / OnHide
+--       are hooked too, so set them BEFORE registering (SetScript drops hooks).
+--       provider:IsUnlocked() says whether the windows are unlocked.
+--   MelloUI:FitOnScreen(frame, extraRects) -> moved, dx, dy
+--       a laid-out frame moved (its points shifted) just enough to be on
+--       the screen, together with extraRects (a frame or a list of frames
+--       that move with it; hidden ones do not count); one larger than the
+--       screen keeps its top-left corner on it. dx, dy in its own units.
+-- The store is UI Modifications' `positions` setting, which is in its
+-- settings whether the module is on or off, so profiles, share strings and
+-- the macro backup carry every place. Nothing is made or hooked until a
+-- window registers (the 'scale' listener aside: one entry on the bus).
+--------------------------------------------------------------------------------
+
+local RegisterEntry   -- the registration itself (MelloUI:RegisterMover); the copy window's
+
+do
+	local Num = Safe.Number
+	local Secret = Safe.IsSecret
+	local POSITIONS_MODULE = "UIModifications"
+
+	-- where a point sits on its frame: 0 left / bottom .. 1 right / top
+	local POINT_X = { TOPLEFT = 0, LEFT = 0, BOTTOMLEFT = 0, TOP = 0.5, CENTER = 0.5, BOTTOM = 0.5,
+		TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1 }
+	local POINT_Y = { TOPLEFT = 1, TOP = 1, TOPRIGHT = 1, LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
+		BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0 }
+
+	local entries = {}                 -- in registration order
+	local byFrame, byKey, byHandle = {}, {}, {}
+	local provider
+
+	-- the one table of places, looked up each time (a profile load or Reset
+	-- positions puts a new one there); create: made when missing
+	local function Positions(create)
+		local db = MelloUI.db
+		local modules = db and db.modules
+		if type(modules) ~= "table" then
+			return nil
+		end
+		local um = modules[POSITIONS_MODULE]
+		if type(um) ~= "table" then
+			if not create then
+				return nil
+			end
+			if MelloUI.modules[POSITIONS_MODULE] then
+				um = MelloUI:GetModuleDB(POSITIONS_MODULE)
+			else
+				um = {}
+				modules[POSITIONS_MODULE] = um
+			end
+		end
+		local positions = um.positions
+		if type(positions) ~= "table" then
+			if not create then
+				return nil
+			end
+			positions = {}
+			um.positions = positions
+		end
+		return positions
+	end
+
+	-- written through the setting path, so the backup this client's saved
+	-- variables rely on is written (as the mover always did)
+	local function Stored(positions)
+		MelloUI:NotifySettingChanged(POSITIONS_MODULE, "positions", positions)
+	end
+
+	-- Edit Mode's own SetPoint / ClearAllPoints / SetScale on its systems
+	-- leave tainted state behind when called from here; the plain methods it
+	-- kept aside (<Method>Base) are used where a frame has them (the mover's
+	-- rule, UIModifications.lua)
+	local function Raw(frame, method)
+		return frame[method .. "Base"] or frame[method]
+	end
+
+	-- a protected frame in combat cannot be moved or scaled by an addon
+	local function Locked(frame)
+		if not (InCombatLockdown and InCombatLockdown()) then
+			return false
+		end
+		local ok, protected = pcall(frame.IsProtected, frame)
+		return ok and not Secret(protected) and protected and true or false
+	end
+
+	-- left, bottom, width, height in the frame's own units; nil when any
+	-- reads secret or is missing
+	local function Rect(frame)
+		local ok, l, b, w, h = pcall(frame.GetRect, frame)
+		if not ok then
+			return nil
+		end
+		l, b, w, h = Num(l), Num(b), Num(w), Num(h)
+		if not (l and b and w and h) then
+			return nil
+		end
+		return l, b, w, h
+	end
+
+	local function Size(frame)
+		local ok, w, h = pcall(frame.GetSize, frame)
+		if not ok then
+			return nil
+		end
+		return Num(w), Num(h)
+	end
+
+	-- the frame's effective scale, and the screen's scale and size (in its
+	-- units); nil when any cannot be read plainly
+	local function Screen(frame)
+		local okS, fs = pcall(frame.GetEffectiveScale, frame)
+		local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+		local okP, sw, sh = pcall(UIParent.GetSize, UIParent)
+		fs, us = okS and Num(fs), okU and Num(us)
+		sw, sh = okP and Num(sw), okP and Num(sh)
+		if not (fs and us and sw and sh) or fs <= 0 or us <= 0 or sw <= 0 or sh <= 0 then
+			return nil
+		end
+		return fs, us, sw, sh
+	end
+
+	-- How far a box (in pixels) must move to be on a screen of sw x sh
+	-- pixels (UI Modifications' OnScreen, user 2026-09-24: "UI Scaling Break
+	-- the UI"): past the right or the bottom it comes in; one larger than
+	-- the screen keeps its left and top edges on it.
+	local function Pull(left, bottom, right, top, sw, sh)
+		local dx, dy = 0, 0
+		if right > sw then
+			dx = sw - right
+		end
+		if left + dx < 0 then
+			dx = -left
+		end
+		if bottom < 0 then
+			dy = -bottom
+		end
+		if top + dy > sh then
+			dy = sh - top
+		end
+		return dx, dy
+	end
+
+	-- a box (pixels) grown by a shown frame's rect
+	local function Grow(extra, left, bottom, right, top)
+		if type(extra) ~= "table" or not extra.GetRect then
+			return left, bottom, right, top
+		end
+		local okV, shown = pcall(extra.IsShown, extra)
+		if not okV or Secret(shown) or not shown then
+			return left, bottom, right, top
+		end
+		local okS, es = pcall(extra.GetEffectiveScale, extra)
+		es = okS and Num(es)
+		local l, b, w, h = Rect(extra)
+		if not (es and l) or es <= 0 or w <= 0 or h <= 0 then
+			return left, bottom, right, top
+		end
+		l, b = l * es, b * es
+		return math.min(left, l), math.min(bottom, b), math.max(right, l + w * es), math.max(top, b + h * es)
+	end
+
+	-- extras: a frame, or a list of frames
+	local function Union(extras, left, bottom, right, top)
+		if type(extras) ~= "table" then
+			return left, bottom, right, top
+		end
+		if extras.GetRect then
+			return Grow(extras, left, bottom, right, top)
+		end
+		for i = 1, #extras do
+			left, bottom, right, top = Grow(extras[i], left, bottom, right, top)
+		end
+		return left, bottom, right, top
+	end
+
+	-- The offsets that keep a frame of w x h (its own units) on the screen
+	-- when it is hung by `point` from the screen's `relPoint` at x, y. Its
+	-- extras are measured where they are now, against the frame where it is
+	-- now (they move with it), before its anchors go.
+	local function FitOffsets(frame, point, relPoint, x, y, w, h, extras)
+		local fs, us, sw, sh = Screen(frame)
+		if not fs or not w or not h or w <= 0 or h <= 0 then
+			return x, y
+		end
+		local SW, SH = sw * us, sh * us
+		local left = POINT_X[relPoint] * SW + (x - POINT_X[point] * w) * fs
+		local bottom = POINT_Y[relPoint] * SH + (y - POINT_Y[point] * h) * fs
+		local right, top = left + w * fs, bottom + h * fs
+		if extras ~= nil then
+			local l, b, cw, ch = Rect(frame)
+			if l and cw > 0 and ch > 0 then
+				local cl, cb = l * fs, b * fs
+				local cr, ct = cl + cw * fs, cb + ch * fs
+				local ul, ub, ur, ut = Union(extras, cl, cb, cr, ct)
+				left, bottom, right, top = left + (ul - cl), bottom + (ub - cb), right + (ur - cr), top + (ut - ct)
+			end
+		end
+		local dx, dy = Pull(left, bottom, right, top, SW, SH)
+		return x + dx / fs, y + dy / fs
+	end
+
+	-- every point of a frame moved by dx, dy (its own units), its anchoring
+	-- kept; the points read into these lists, emptied after
+	local sP, sRel, sRP, sX, sY = {}, {}, {}, {}, {}
+	local function Shift(frame, dx, dy)
+		local okN, n = pcall(frame.GetNumPoints, frame)
+		n = okN and Num(n)
+		if not n or n < 1 then
+			return false
+		end
+		local plain = true
+		for i = 1, n do
+			local ok, p, rel, rp, x, y = pcall(frame.GetPoint, frame, i)
+			if not ok or Secret(p) or Secret(rel) or Secret(rp) or Secret(x) or Secret(y) then
+				plain = false
+			else
+				sP[i], sRel[i], sRP[i], sX[i], sY[i] = p, rel, rp, Num(x) or 0, Num(y) or 0
+			end
+		end
+		local ok = false
+		if plain then
+			ok = pcall(Raw(frame, "ClearAllPoints"), frame)
+			if ok then
+				local set = Raw(frame, "SetPoint")
+				for i = 1, n do
+					pcall(set, frame, sP[i], sRel[i], sRP[i], sX[i] + dx, sY[i] + dy)
+				end
+			end
+		end
+		for i = 1, n do
+			sP[i], sRel[i], sRP[i], sX[i], sY[i] = nil, nil, nil, nil, nil
+		end
+		return ok
+	end
+
+	function MelloUI:FitOnScreen(frame, extraRects)
+		if type(frame) ~= "table" or not frame.GetRect then
+			return false
+		end
+		local fs, us, sw, sh = Screen(frame)
+		local l, b, w, h = Rect(frame)
+		if not (fs and l) or w <= 0 or h <= 0 then
+			return false
+		end
+		local left, bottom = l * fs, b * fs
+		local right, top
+		left, bottom, right, top = Union(extraRects, left, bottom, left + w * fs, bottom + h * fs)
+		local dx, dy = Pull(left, bottom, right, top, sw * us, sh * us)
+		if (dx == 0 and dy == 0) or Locked(frame) then
+			return false
+		end
+		dx, dy = dx / fs, dy / fs
+		return Shift(frame, dx, dy), dx, dy
+	end
+
+	local function Round(v, step)
+		return math.floor(v * step + 0.5) / step
+	end
+
+	function MelloUI:GetPosition(key)
+		local positions = key ~= nil and Positions(false)
+		local pos = positions and positions[key]
+		return type(pos) == "table" and pos or nil
+	end
+
+	function MelloUI:SavePosition(key, frame, scale)
+		if key == nil or type(frame) ~= "table" then
+			return false
+		end
+		local entry = byKey[key]
+		local anchor = entry and entry.anchor
+		local point, relPoint = anchor or "BOTTOMLEFT", anchor or "CENTER"
+		local fs, us, sw, sh = Screen(frame)
+		local l, b, w, h = Rect(frame)
+		if not (fs and l) then
+			return false
+		end
+		-- the screen in the frame's own units
+		local k = us / fs
+		local x = l + POINT_X[point] * w - POINT_X[relPoint] * sw * k
+		local y = b + POINT_Y[point] * h - POINT_Y[relPoint] * sh * k
+		local positions = Positions(true)
+		if not positions then
+			return false
+		end
+		local pos = positions[key]
+		if type(pos) ~= "table" then
+			pos = {}
+			positions[key] = pos
+		end
+		-- compact, as the mover's: a tenth of a unit, the scale to a
+		-- hundredth, the points only when not the mover's own
+		pos.point = point ~= "BOTTOMLEFT" and point or nil
+		pos.relPoint = relPoint ~= "CENTER" and relPoint or nil
+		pos.x, pos.y = Round(x, 10), Round(y, 10)
+		if scale == false then
+			pos.scale = nil
+		elseif Num(scale) and scale > 0 then
+			pos.scale = Round(scale, 100)
+		end
+		Stored(positions)
+		return true
+	end
+
+	function MelloUI:ForgetPosition(key)
+		local positions = key ~= nil and Positions(false)
+		if positions and positions[key] ~= nil then
+			positions[key] = nil
+			Stored(positions)
+		end
+	end
+
+	function MelloUI:RestorePosition(key, frame)
+		local pos = self:GetPosition(key)
+		if not pos or type(frame) ~= "table" then
+			return false
+		end
+		local point, relPoint = pos.point or "BOTTOMLEFT", pos.relPoint or "CENTER"
+		if not (POINT_X[point] and POINT_X[relPoint]) then
+			return false
+		end
+		if Locked(frame) then
+			return false, "combat"
+		end
+		local entry = byFrame[frame]
+		-- the scale first, while it still hangs where it was; its
+		-- backgrounds laid again only when its scale really changed
+		local scale = tonumber(pos.scale)
+		if scale and scale > 0 then
+			local Kit = self.Kit
+			if Kit and Kit.SetFrameScale then
+				Kit:SetFrameScale(frame, scale, Raw(frame, "SetScale"))
+			else
+				Raw(frame, "SetScale")(frame, scale)
+			end
+		end
+		-- measured before the anchors go: a window sized by them reads 0
+		-- wide after
+		local w, h = Size(frame)
+		local x, y = FitOffsets(frame, point, relPoint, tonumber(pos.x) or 0, tonumber(pos.y) or 0, w, h,
+			entry and entry.with)
+		Raw(frame, "ClearAllPoints")(frame)
+		Raw(frame, "SetPoint")(frame, point, UIParent, relPoint, x, y)
+		return true
+	end
+
+	-- Core's handlers go through a /melloperf scope of their own, one handler
+	-- for every handle (Shared). Core loads before Perf.lua, so its scope is
+	-- opened by Anim.lua while the files load (MelloUI.CorePerf): one asked
+	-- for here after login would open a file load that never closes
+	-- (review, 2026-09-25). Without it, plain hooks.
+	local wrapped = {}
+	local function Hook(frame, script, label, fn)
+		local scope = MelloUI.CorePerf
+		if scope and scope.Shared and scope.HookScript then
+			local w = wrapped[fn]
+			if not w then
+				w = scope.Shared(label, fn, "script")
+				wrapped[fn] = w
+			end
+			return scope.HookScript(frame, script, w)
+		end
+		return frame:HookScript(script, fn)
+	end
+
+	local function Unlocked()
+		if not (provider and provider.IsUnlocked) then
+			return false
+		end
+		local ok, on = pcall(provider.IsUnlocked, provider)
+		return ok and on and true or false
+	end
+
+	-- a plain drag let go: saved in the store (or by the window itself) and
+	-- hung by its own anchor again, kept on the screen
+	local function SaveEntry(entry)
+		local frame = entry.frame
+		if entry.save then
+			local ok, err = pcall(entry.save, frame)
+			if not ok then
+				Report(err)
+			end
+		elseif entry.key ~= nil and MelloUI:SavePosition(entry.key, frame) then
+			MelloUI:RestorePosition(entry.key, frame)
+		end
+	end
+
+	-- a drag over: the plain one let go (saved, hung by its anchor again;
+	-- stale: a drag left over from before a hide, only stopped), the
+	-- provider's handed back to it to end
+	local function EndDrag(entry, stale)
+		local how = entry.moving
+		entry.moving = nil
+		if how == "provider" then
+			if provider and provider.DragStop then
+				local ok, err = pcall(provider.DragStop, provider, entry)
+				if not ok then
+					Report(err)
+				end
+			end
+		elseif how == "plain" then
+			entry.frame:StopMovingOrSizing()
+			if not stale then
+				SaveEntry(entry)
+			end
+		end
+	end
+
+	local function DragStart(handle)
+		local entry = byHandle[handle]
+		if not entry then
+			return
+		end
+		-- a drag that never saw its OnDragStop (its window hidden while it
+		-- was held): ended first, or the window could never be dragged or
+		-- put back again (review, 2026-09-25); this drag saves its place
+		if entry.moving then
+			EndDrag(entry, true)
+		end
+		if provider and provider.DragStart then
+			local ok, took = pcall(provider.DragStart, provider, entry)
+			if not ok then
+				Report(took)
+			elseif took then
+				entry.moving = "provider"
+				return
+			end
+		end
+		local mode = entry.plainDrag
+		if not (mode == "always" or (mode == "unlocked" and Unlocked())) then
+			return
+		end
+		local frame = entry.frame
+		if Locked(frame) then
+			return
+		end
+		frame:SetMovable(true)
+		frame:StartMoving()
+		entry.moving = "plain"
+	end
+
+	local function DragStop(handle)
+		local entry = byHandle[handle]
+		if entry and entry.moving then
+			EndDrag(entry)
+		end
+	end
+
+	-- a window hidden while it is dragged (Esc, its close key) gets no
+	-- OnDragStop: its drag ends here, where it was let go
+	local function OnHide(frame)
+		local entry = byFrame[frame]
+		if entry and entry.moving then
+			EndDrag(entry)
+		end
+	end
+
+	-- a saved place put back on every show (the window may have been laid
+	-- elsewhere, or the screen changed, while it was hidden); a drag still
+	-- marked from before it was hidden is over, its place not taken
+	local function OnShow(frame)
+		local entry = byFrame[frame]
+		if not entry then
+			return
+		end
+		if entry.moving then
+			EndDrag(entry, true)
+		end
+		if not entry.save then
+			MelloUI:RestorePosition(entry.key, frame)
+		end
+	end
+
+	local function Attach(entry)
+		local ok, err = pcall(provider.Attach, provider, entry)
+		if not ok then
+			Report(err)
+		end
+	end
+
+	RegisterEntry = function(frame, handle, opts)
+		if type(frame) ~= "table" then
+			return nil
+		end
+		local entry = byFrame[frame]
+		if entry then
+			return entry
+		end
+		if type(opts) ~= "table" then
+			opts = {}
+		end
+		handle = type(handle) == "table" and handle or frame
+		local key = opts.key
+		if key == nil and frame.GetName then
+			local ok, name = pcall(frame.GetName, frame)
+			key = ok and Safe.Text(name) or nil
+		end
+		local anchor = opts.anchor
+		entry = {
+			frame = frame, handle = handle, key = key,
+			anchor = POINT_X[anchor] and anchor or nil,
+			default = opts.default, save = opts.save, reset = opts.reset,
+			min = opts.min, max = opts.max, base = opts.base, with = opts.with,
+			plainDrag = (opts.plainDrag == "always" or opts.plainDrag == "unlocked") and opts.plainDrag or false,
+		}
+		entries[#entries + 1] = entry
+		byFrame[frame] = entry
+		if key ~= nil and byKey[key] == nil then
+			byKey[key] = entry
+		end
+		-- the handle's drag is Core's: the plain drag, or the provider's
+		if not byHandle[handle] then
+			byHandle[handle] = entry
+			if handle.RegisterForDrag and entry.plainDrag then
+				handle:RegisterForDrag("LeftButton")
+			end
+			if entry.plainDrag == "always" and handle.EnableMouse then
+				handle:EnableMouse(true)
+			end
+			Hook(handle, "OnDragStart", "mover: drag start", DragStart)
+			Hook(handle, "OnDragStop", "mover: drag stop", DragStop)
+		end
+		Hook(frame, "OnHide", "mover: drag ended by a hide", OnHide)
+		if not entry.save and key ~= nil then
+			Hook(frame, "OnShow", "mover: saved place on show", OnShow)
+			MelloUI:RestorePosition(key, frame)
+		end
+		if provider and provider.Attach then
+			Attach(entry)
+		end
+		return entry
+	end
+
+	function MelloUI:RegisterMover(frame, handle, opts)
+		return RegisterEntry(frame, handle, opts)
+	end
+
+	function MelloUI:MoverEntries()
+		return entries
+	end
+
+	function MelloUI:ResetMover(target)
+		-- a registered frame, or its entry
+		local entry = byFrame[target]
+		if not entry and type(target) == "table" and target.frame ~= nil and byFrame[target.frame] == target then
+			entry = target
+		end
+		if not entry then
+			return
+		end
+		if entry.key ~= nil and not entry.save then
+			self:ForgetPosition(entry.key)
+		end
+		if entry.reset then
+			local ok, err = pcall(entry.reset)
+			if not ok then
+				Report(err)
+			end
+		end
+		if entry.default then
+			local ok, err = pcall(entry.default, entry.frame)
+			if not ok then
+				Report(err)
+			end
+		end
+	end
+
+	function MelloUI:SetMoverProvider(p)
+		provider = p
+		if p and p.Attach then
+			for i = 1, #entries do
+				Attach(entries[i])
+			end
+		end
+	end
+
+	-- a new UI Scale or resolution: the shown windows with a saved place put
+	-- back, so they stay on the new screen (the hidden ones on their next
+	-- show)
+	MelloUI:On("scale", function(reason)
+		if reason ~= "uiscale" then
+			return
+		end
+		for i = 1, #entries do
+			local entry = entries[i]
+			if not entry.save and not entry.moving and entry.key ~= nil then
+				local ok, shown = pcall(entry.frame.IsShown, entry.frame)
+				if ok and not Secret(shown) and shown then
+					MelloUI:RestorePosition(entry.key, entry.frame)
+				end
+			end
+		end
+	end, "Core mover")
+end
+
 local copyFrame
 
 -- The copy window: a large text box to select and copy from. In PASTE mode
@@ -228,9 +1213,6 @@ local function CopyFrame()
 	f:SetFrameStrata("DIALOG")
 	f:SetMovable(true)
 	f:EnableMouse(true)
-	f:RegisterForDrag("LeftButton")
-	f:SetScript("OnDragStart", f.StartMoving)
-	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 	f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
 	f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
 	f:SetBackdropBorderColor(0.4, 0.35, 0.25, 1)
@@ -275,6 +1257,14 @@ local function CopyFrame()
 		end
 	end)
 	f:SetScript("OnHide", function() f.onAccept = nil end)
+	-- dragged by the one mover (audit, 2026-09-24): at any time, as before,
+	-- and now kept where it was dropped (the store's 'copy'), back in the
+	-- middle with Reset positions. Registered after its own OnHide is set:
+	-- SetScript would drop the mover's hook (review, 2026-09-25)
+	RegisterEntry(f, f, { key = "copy", plainDrag = "always", default = function(self)
+		self:ClearAllPoints()
+		self:SetPoint("CENTER")
+	end })
 	tinsert(UISpecialFrames, "MelloUICopyFrame")
 	copyFrame = f
 	return f
@@ -343,9 +1333,7 @@ function MelloUI:ShowMenuButtonTip()
 		return
 	end
 	tweaks.menuTipShown = true
-	if self.ScheduleBackup then
-		self:ScheduleBackup("menu tip")
-	end
+	Backup(self, "menu tip")
 	self:Notice("The settings have their own window now: the MelloUI button in the game menu (Escape), or /mello.")
 end
 
@@ -387,6 +1375,11 @@ end
 -- Module registry
 --------------------------------------------------------------------------------
 
+-- the modules as registered (MelloUI:ModulesInOrder), and the types of the
+-- registry's own fields (see the header): checked, kept as given
+MelloUI.moduleList = {}
+local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table", tweak = "table", area = "table" }
+
 function MelloUI:RegisterModule(name, module)
 	assert(type(name) == "string" and name ~= "", "MelloUI:RegisterModule requires a name")
 	assert(not self.modules[name], "MelloUI module '" .. name .. "' is already registered")
@@ -398,6 +1391,20 @@ function MelloUI:RegisterModule(name, module)
 	module.defaults = module.defaults or {}
 	module.options = module.options or {}
 	assert(module.keep == nil or type(module.keep) == "table", "MelloUI module '" .. name .. "': keep must be a list of keys")
+	-- a registry field of the wrong type: reported and left off, so only the
+	-- tile or row that would read it goes without; an error here would take
+	-- the whole module (and the rest of its file) out (review, 2026-09-25)
+	local icon = module.icon
+	if icon ~= nil and type(icon) ~= "string" and type(icon) ~= "number" then
+		Report("MelloUI module '" .. name .. "': icon must be a texture path or a file id")
+		module.icon = nil
+	end
+	for field, kind in pairs(REGISTRY_FIELDS) do
+		if module[field] ~= nil and type(module[field]) ~= kind then
+			Report("MelloUI module '" .. name .. "': " .. field .. " must be a " .. kind)
+			module[field] = nil
+		end
+	end
 	if module.enabledByDefault == nil then
 		module.enabledByDefault = true
 	end
@@ -405,6 +1412,7 @@ function MelloUI:RegisterModule(name, module)
 
 	self.modules[name] = module
 	table.insert(self.moduleOrder, name)
+	self.moduleList[#self.moduleList + 1] = module
 
 	-- Late registration (after login) still gets initialised.
 	if self.initialized then
@@ -427,6 +1435,13 @@ function MelloUI:IterateModules()
 			return name, self.modules[name]
 		end
 	end
+end
+
+-- The modules in the order they registered (the TOC's): the list kept as
+-- they come, not a copy, so read it and do not change it (for the lists
+-- the configurator and the installer make from the registry's fields).
+function MelloUI:ModulesInOrder()
+	return self.moduleList
 end
 
 --------------------------------------------------------------------------------
@@ -476,9 +1491,7 @@ function MelloUI:SetModuleEnabled(name, enabled)
 	if not self.initialized then
 		return
 	end
-	if self.ScheduleBackup then
-		self:ScheduleBackup("module " .. name)
-	end
+	Backup(self, "module ", name)
 
 	if enabled and not module.isEnabled then
 		module.isEnabled = true
@@ -487,6 +1500,7 @@ function MelloUI:SetModuleEnabled(name, enabled)
 		module.isEnabled = false
 		SafeCall(module, "OnDisable", self:GetModuleDB(name))
 	end
+	self:Fire("module", name, enabled)
 end
 
 -- Called by the config panel when a module setting changes.
@@ -500,9 +1514,9 @@ function MelloUI:NotifySettingChanged(name, key, value)
 	if module.isEnabled then
 		SafeCall(module, "OnSettingChanged", key, value, db)
 	end
-	if self.ScheduleBackup then
-		self:ScheduleBackup("setting " .. tostring(key))
-	end
+	Backup(self, "setting ", key)
+	-- last, after everything above (held until the end of a Batch)
+	self:Fire("setting", name, key, value)
 end
 
 function MelloUI:InitModule(module)
@@ -649,6 +1663,7 @@ function MelloUI:RestartModules()
 	if self.RefreshConfig then
 		self:RefreshConfig()
 	end
+	self:Fire("restart")
 end
 
 --------------------------------------------------------------------------------
@@ -889,9 +1904,7 @@ function MelloUI:ApplySettingsText(text)
 		if self.RefreshConfig then
 			self:RefreshConfig()
 		end
-		if self.ScheduleBackup then
-			self:ScheduleBackup("profile")
-		end
+		Backup(self, "profile")
 	end
 	return applied
 end
@@ -1013,9 +2026,7 @@ function MelloUI:ImportProfile(name, str)
 		return false, known
 	end
 	self:Profiles()[name] = text
-	if self.ScheduleBackup then
-		self:ScheduleBackup("profile import")
-	end
+	Backup(self, "profile import")
 	return true, known, total
 end
 

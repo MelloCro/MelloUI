@@ -32,6 +32,7 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("DialogPanel", {
 	title = "Dialogs Kit",
 	desc = "The game's popup dialogs on the kit's stone and rail with red plate buttons, and a parchment sheet if you choose one.",
+	window = { label = "Popup dialogs", desc = "The game's popup dialogs (confirmations, the world refresh notice, Release spirit ...) on the kit's stone and rail, with red plate buttons.", tab = "Windows" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -419,13 +420,11 @@ function HookDialogs()
 	end
 end
 
+-- (Kit.lua loads before this file, so its combat queue is always there:
+-- audit 2026-09-24, a dead guard gone)
 function M:OnEnable()
 	Hook()
-	if Kit and Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Activate)
-	else
-		Activate()
-	end
+	Kit:WhenOutOfCombat(Activate)
 end
 
 function M:OnDisable()

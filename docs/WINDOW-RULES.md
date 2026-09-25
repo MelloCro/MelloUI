@@ -5,6 +5,9 @@ window MelloUI remakes from here on: the reputation, skills, PvP, currency and
 statistics tabs are done; the spellbook, quest log, bags, the options panels and
 the rest follow the same rules. `docs/KIT-MAPPING.md` is the mapping table itself,
 `Modules/Kit.lua` the library, `Modules/CharacterPanel.lua` the worked example.
+MelloUI's own windows (the configurator, the Quest List, the Quest Tracker, the
+whisper popups ...) follow the same rules plus section 6: one shared system per
+job, for the game's windows and ours alike.
 
 ## 0. Before anything: the default window
 
@@ -201,8 +204,11 @@ the login frame (the addon profiler's peak 140 % of a frame). So:
 - Hooks may be installed early if they do nothing until the skin is built;
   border / colour / scale callbacks and the /xxdump commands must cope with a
   window that is not dressed yet ("not dressed yet").
-- A window that relied on the kit's shell for its Unlock-the-Windows mover is
-  listed in UIModifications' PLAIN_WINDOWS, so it is movable from login.
+- A window that relied on the kit's shell for its Unlock-the-Windows mover
+  names its frames in its module's registry entry, `window = { frames = {
+  "FrameName" }, plainGrab = true }`, so it is movable from login (UI
+  Modifications builds its plain-grab list from the registry since wave 3;
+  nothing is added there by hand).
 - Check with /melloperf: a new window adds no kit pieces at login
   (`/run print(#MelloUI.Kit.repList)` before and after), and no handler of it
   runs while it is closed.
@@ -323,6 +329,11 @@ Frames tweak's name centring step aside for that group while it is covered
 
 ## 4. Library mechanics to reuse (do not reinvent)
 
+- One system per job (user, 2026-09-25): the look switch, the registry, the
+  mover and its store, the settings bus, motion, colours, sounds and secret
+  reads are shared by every window, the game's and MelloUI's own; section 6
+  lists them. A panel wires them up, it never carries its own copy, and
+  `Tools/lint/check_panels.py` fails when a copy comes back.
 - `Kit:Replace(region, opts)` with a rule key = the region's atlas; kinds:
   frame, edge, strip, vstrip, slot, state, texture, tile, bar. Register the
   returned rep in the panel's `skin.reps` so enable / disable reach it.
@@ -436,3 +447,93 @@ kit texture under the cursor (piece, rect, crop, tint, frame level) when a backg
   hidden for good. Strips on a frame rect now refit on its `OnSizeChanged`
   (Kit:Replace); `/xxdump reps` prints every strip's scale, cap widths and
   CAPLESS / drop flags with the caps' rects.
+
+## 6. Own windows: MelloUI's own frames (user, 2026-09-25)
+
+"that should include all of the windows, also our self created ones like the
+QuestList, the Custom Scrollable Quest Tracker, Custom Chat etc, so basically
+everything should be lined up and working flawlessly with one another". A
+window MelloUI makes itself (the configurator, the installer, Dynamic UI
+Modification, the Quest List beside the world map, the Quest Tracker under the
+minimap, the whisper popups, the Voice Over overlay, the Route arrow, the
+Services bar, the copy window) keeps every rule above and uses the SAME shared
+systems as the game's windows. It never carries its own copy of one; the
+ratchet (`python Tools/lint/check_panels.py`, run by the Lint workflow) fails
+when a copy is added and names the system to use.
+
+- **Its look switch: `Kit.Areas` and `Kit:IsOn(area)`.** The window's area is
+  one row of Kit.Areas' list (Kit.lua): `{ name, cover = true }` (a HUD
+  group), `follows = "<area>"` (the whisper popups follow `chat`, the Services
+  bar `minimap`), `module = "<Module>"` (the Quest List follows QuestLogPanel)
+  or `reskin = true` (+ `switch = "<UI Modifications key>"`, the Quest
+  Tracker's `questTrackerKit`). The window asks `Kit:IsOn(area)` when it
+  builds or shows (live, no table made) and switches an already built look on
+  the bus's `look:<area>` (`MelloUI:On("look:<area>", fn, owner)`, told on the
+  frame after a change, only when the answer really changed). It never reads
+  the reskin switch or another module's state by hand, and nothing polls. The
+  listener is idempotent: a window built between a change and the next frame
+  reads IsOn live and then gets the 'look' once.
+- **Its registry entry.** Its module's `MelloUI:RegisterModule` carries what
+  the configurator and UI Modifications show (Core.lua's header has the
+  shape): `window = { label, desc, tab = "Windows" | "HUD", order, switch,
+  frames, plainGrab, addon, firstOpen }` gives it a row on UI Modifications'
+  Windows or HUD tab with nothing edited there or in Config; `area = { key,
+  follows }`; `group` (one of "The look", "Quests and travel", "Chat and
+  sound", "Frames and bars"); `icon` and `flavour` for its configurator tile;
+  a feature folded under UI Modifications is `tweak = { label, desc, order,
+  off, always }`. A field of the wrong type is reported, never fatal.
+- **Its place: `MelloUI:RegisterMover` (Core).** `MelloUI:RegisterMover(frame,
+  handle, { key, anchor, default, save, reset, min, max, base, with,
+  plainDrag })`: one store (UI Modifications' `positions`, kept whether that
+  module is on or off, so profiles, share strings and the macro backup carry
+  it), and Unlock the Windows, Reset positions and the UI-scale put-back
+  reach the window. `plainDrag = "always"` drags it with UI Modifications
+  off. Set the frame's own OnShow / OnHide BEFORE registering, and never
+  SetScript OnDragStart / OnDragStop / OnShow / OnHide on a registered frame
+  (hook them). `MelloUI:FitOnScreen(frame, extraRects)` keeps it on the
+  screen. Never `StartMoving` of its own, nor an x / y in its own settings.
+  The one exception: the mover takes one handle a window, so a window whose
+  child controls must drag it too may start the entry's plain drag itself
+  and set `entry.moving = "plain"` (Core's OnHide or the next drag then ends
+  it), as the Voice Over overlay's buttons do; such a drag skips the grid
+  and the snap. The ratchet's `start-moving` ceiling counts it.
+- **What changed: the settings bus, never a self-hook.** `MelloUI:On(topic,
+  fn, owner)` / `MelloUI:Off(owner[, topic])` for "setting", "module",
+  "restart", "look:<area>", "cover", "parchment", "border", "fonts",
+  "scale", "editmode", "shell", "palette", "column" (Core.lua lists what each
+  carries). Never `hooksecurefunc(MelloUI, ...)` or `hooksecurefunc(Kit, ...)`
+  on MelloUI's own functions: such a hook runs for every setting of every
+  module and can never be taken off. Many settings at once go through
+  `MelloUI:Batch(fn)` (one Fire per key, one backup). A UI-scale change:
+  `Kit:OnUIScaleChanged(fn)`.
+- **Its text on parchment: `QI.Surface`.** A window with a parchment sheet
+  registers `QI.Surface(area, { on = fn, sheet = true, skip = fn, roots = fn
+  })` (`sheet = true`: the inks set for the kit's darker sheet);
+  `Kit:SetParchment(area)` refreshes it. Strings are never recoloured by hand
+  (the parchment ink rule).
+- **Motion: `MelloUI.Anim`.** `Anim:To / From / FadeIn / FadeOut / Pop` for a
+  tween, `Anim:PlayGroup(group, settle)` / `Anim:StopGroup(group)` for an
+  AnimationGroup, so Reduce Motion is honoured. Never a raw group's `:Play()`
+  or an OnUpdate tween of its own.
+- **Colours: the palette only.** `MelloUI.Palette.<role>` (Core.lua) and
+  `MelloUI:PaletteCode(role)` for text codes, read when drawn (more palettes
+  are planned). No number literals, and no `MelloUI.Palette and ... or { ...
+  }` fallback: the palette is defined in Core.lua, which loads first.
+- **Sounds: `MelloUI:PlayUISound(kind)` (Core).** Never call `PlaySound`
+  directly, whatever its argument. The soft clicks "page", "tab", "check_on", "check_off"; the game's
+  own "option_on", "option_off", "menu_open", "menu_close", "menu_button",
+  "window_open", "window_close", "tick", "waypoint_set", "waypoint_clear". A
+  new sound is one row of Core's SOUNDS table; Custom Sounds is asked first
+  and its PlaySound hook swaps a game kit as it does any game click.
+- **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =
+  MelloUI.Safe.IsSecret` (also Value, Number, Text, Call). No helper of its
+  own and no stand-in: a test world that loads a file without Core runs
+  Core's Safe block itself.
+- **Later, not a timer: `Kit:NextFrame(key, fn)`**, fn made once per key.
+- **Escape closes it:** its frame name in `UISpecialFrames` (the configurator,
+  the copy window and Dynamic UI do so today; the shared own-window shell,
+  audit rank 8, will own this).
+- **The window rules hold for it too:** the title ON the plate in
+  `Kit:TitleFont` (2c), the ring never empty, text-dense areas on the inner
+  panel (2e), nothing built at login if it is rarely opened (2f), one
+  background per surface.

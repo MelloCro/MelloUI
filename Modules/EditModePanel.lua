@@ -77,6 +77,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("EditModePanel", {
 	title = "Edit Mode Kit",
 	desc = "Edit Mode's settings window and the layout dialogs in the kit.",
+	window = { label = "Edit Mode window", desc = "Edit Mode's settings window and the layout dialogs in the kit.", tab = "Windows",
+		addon = "Blizzard_EditMode", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -128,7 +130,7 @@ local STRATA_BELOW = {
 local SMALL_DIALOGS = { "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeUnsavedChangesDialog", "EditModeImportLayoutLinkDialog" }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Note(err)
 	if #errors < MAX_ERRORS then
@@ -248,7 +250,7 @@ end
 local TOP_PAD_X, TOP_PAD_Y = 12, 30   -- the top controls' panel, in from the window's left and top edges (under the title plate)
 
 local function InnerPanel(owner, inset)
-	local pal = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.07, 0.06, 0.05 }
+	local pal = MelloUI.Palette.innerPanel
 	local fill = owner:CreateTexture(nil, "BACKGROUND", nil, 2)
 	fill.kitPiece = true
 	fill:SetPoint("TOPLEFT", owner, "TOPLEFT", inset, -inset)

@@ -28,6 +28,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("QuestLogPanel", {
 	title = "Quest Log Panel",
 	desc = "The quest log and its window dressed in the painted kit on the game's own layout.",
+	window = { label = "Quest log", desc = "The quest log in the world map window and MelloUI's quest list in the kit.", tab = "Windows", order = 5,
+		frames = { "WorldMapFrame" }, plainGrab = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -287,7 +289,7 @@ local waitAt = 1
 local rowsFrame = CreateFrame("Frame")
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- The list's view: its top and bottom; false while it cannot be seen (every
 -- new row waits); nil when its rect cannot be read (every row counts as seen)
@@ -586,13 +588,18 @@ local function QuestListHover(b, over)
 	end
 end
 
-local function QuestListEnter(b)
-	QuestListHover(b, true)
-end
-
-local function QuestListLeave(b)
-	QuestListHover(b, false)
-end
+-- The panel's buttons keep their scripts now (set once; audit, 2026-09-24,
+-- rank 18), so the header plate's own hover hooks from Kit:Replace stay on
+-- them and run after the panel's OnRowHover: a header lit while it reveals
+-- a group keeps that look when the mouse leaves it -- this runs after those
+-- hooks (hooked once, right after them, with the plate).
+local KeepLockLit = Perf.Shared("Quests panel: a revealed header kept lit", function(b)
+	local h = b.melloHeader
+	if b.melloLocked and h and h.Update then
+		h.hover = true
+		h.Update()
+	end
+end, "script")
 
 local function SkinQuestListEntry(button)
 	-- a header or a row: told apart after its Init by the normal texture
@@ -606,6 +613,7 @@ local function SkinQuestListEntry(button)
 			-- refitted when shown, as the hover plate: a width set while the
 			-- button served as a quest row reaches the header's plate too
 			button.melloHeader.SetShown = ShowPlate
+			Perf.HookScript(button, "OnLeave", KeepLockLit)
 		end
 	end
 	if not button.melloRow then
@@ -622,12 +630,7 @@ local function SkinQuestListEntry(button)
 		KeepFaded(button.melloHeader, normal)
 		KeepFaded(button.melloHeader, highlight)
 	end
-	-- the panel's Init SETS the OnEnter / OnLeave scripts on every refresh,
-	-- which drops earlier hooks -- the header plate's own hover hooks from
-	-- Kit:Replace among them (a header lit no more once re-used): hook again
-	-- after each Init
-	Perf.HookScript(button, "OnEnter", QuestListEnter)
-	Perf.HookScript(button, "OnLeave", QuestListLeave)
+	-- (the hover itself: the panel's OnRowHover, SkinQuestList below)
 	if not button.melloLockHooked then
 		button.melloLockHooked = true
 		hooksecurefunc(button, "LockHighlight", function(b)
@@ -725,6 +728,10 @@ local function SkinQuestList()
 	if frame.levelCheck then
 		Kit:SkinCheckButton(frame.levelCheck, Replace, "UI-CheckBox-Up")   -- the map's "5+ levels above" shortcut
 	end
+	-- the rows' hover, told by the panel (its buttons' scripts are set once
+	-- and call it; audit, 2026-09-24, rank 18: they were set on every Init,
+	-- and this hooked them again after each one)
+	ql.Panel.OnRowHover = QuestListHover
 	Kit:HookScrollBoxRows(frame.scrollBox, SkinQuestListEntry, function() return active end, true)
 	Kit:SkinScrollBarsIn(frame, Replace)
 	-- (the shade under the list's text, 2026-09-22, is gone: the page is one

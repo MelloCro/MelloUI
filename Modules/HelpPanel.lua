@@ -63,6 +63,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("HelpPanel", {
 	title = "Help Kit",
 	desc = "The help / customer support window in the kit.",
+	window = { label = "Help window", desc = "The help / customer support window in the kit.", tab = "Windows",
+		addon = "Blizzard_HelpFrame", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -79,7 +81,7 @@ local hooked = setmetatable({}, { __mode = "k" })       -- [frame] = true once i
 local portraitFilled = setmetatable({}, { __mode = "k" })   -- [texture] = { art = set by us }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

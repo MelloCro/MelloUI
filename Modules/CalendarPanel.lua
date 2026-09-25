@@ -82,6 +82,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("CalendarPanel", {
 	title = "Calendar Kit",
 	desc = "The calendar and its event windows in the kit.",
+	window = { label = "Calendar", desc = "The calendar and its event windows in the kit.", tab = "Windows",
+		addon = "Blizzard_Calendar", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -131,7 +133,7 @@ local lent = setmetatable({}, { __mode = "k" })        -- [fs] = { parent, point
 local stats = { days = 0, weekdays = 0, popups = 0, lists = 0, edits = 0, buttons = 0, dividers = 0, rims = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -732,7 +734,7 @@ local function SkinPopup(p)
 		dim.kitPiece = true
 		dim:SetPoint("TOPLEFT", p, "TOPLEFT", l, -t)
 		dim:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -r, b)
-		local c = MelloUI.Palette and MelloUI.Palette.innerPanel or { 0.067, 0.063, 0.051 }
+		local c = MelloUI.Palette.innerPanel
 		dim:SetColorTexture(c[1], c[2], c[3], 0.8)
 		entry.dim = dim
 		nine:SetShown(active)

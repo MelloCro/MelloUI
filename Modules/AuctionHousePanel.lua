@@ -64,6 +64,8 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("AuctionHousePanel", {
 	title = "Auction House Kit",
 	desc = "The auction house (buy, sell, your auctions) in the kit.",
+	window = { label = "Auction house", desc = "The auction house (buy, sell, your auctions) in the kit.", tab = "Windows",
+		addon = "Blizzard_AuctionHouseUI", firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -110,7 +112,7 @@ local found = { parts = {}, missing = {}, missed = setmetatable({}, { __mode = "
 local stats = { boxes = 0, rows = 0, headers = 0, edits = 0, squares = 0, items = 0, tabs = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
-local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Secret = MelloUI.Safe.IsSecret
 
 local function Window()
 	return _G.AuctionHouseFrame
