@@ -7486,23 +7486,37 @@ SlashCmdList.MELLOKITWHAT = function()
 	if not (okC and cx and cy) then
 		return
 	end
+	-- a read, or `d` when it is nil or secret (a piece on a frame whose
+	-- place or look the game hides reads secret, in a fight or on
+	-- nameplates: the secret test before anything else, 2026-09-25)
+	local function N(v, d)
+		if (Secret and Secret(v)) or v == nil then
+			return d
+		end
+		return v
+	end
 	local rows = {}
 	for tex in pairs(SHADED) do
 		local ok, visible = pcall(tex.IsVisible, tex)
-		if ok and visible then
+		if ok and N(visible, false) then
 			local okR, l, b, w, h = pcall(tex.GetRect, tex)
 			local okS, es = pcall(tex.GetEffectiveScale, tex)
-			if okR and l and w and okS and es and es > 0 and not (issecretvalue and (issecretvalue(l) or issecretvalue(w))) then
+			l, b, w, h, es = N(l), N(b), N(w), N(h), N(es)
+			if okR and l and b and w and h and okS and es and es > 0 then
 				local x, y = cx / es, cy / es
 				if x >= l and x <= l + w and y >= b and y <= b + h then
 					local parent = tex:GetParent()
 					-- GetTexCoord: UL x y, LL x y, UR x y, LR x y
 					local okT, u1, v1, _, _, _, _, u2, v2 = pcall(tex.GetTexCoord, tex)
+					u1, v1, u2, v2 = N(u1), N(v1), N(u2), N(v2)
 					local okV, r, g, bl = pcall(tex.GetVertexColor, tex)
+					r, g, bl = N(r, 1), N(g, 1), N(bl, 1)
 					local okL, layer, sub = pcall(tex.GetDrawLayer, tex)
+					layer, sub = N(layer), N(sub, 0)
 					local _, file = pcall(tex.GetTexture, tex)
-					local strata = parent and parent.GetFrameStrata and parent:GetFrameStrata() or "?"
-					local level = parent and parent.GetFrameLevel and parent:GetFrameLevel() or 0
+					file = N(file, "?")
+					local strata = N(parent and parent.GetFrameStrata and parent:GetFrameStrata(), "?")
+					local level = N(parent and parent.GetFrameLevel and parent:GetFrameLevel(), 0)
 					local order = ({ BACKGROUND = 0, LOW = 1, MEDIUM = 2, HIGH = 3, DIALOG = 4, FULLSCREEN = 5, FULLSCREEN_DIALOG = 6, TOOLTIP = 7 })[strata] or 0
 					local layerOrder = ({ BACKGROUND = 0, BORDER = 1, ARTWORK = 2, OVERLAY = 3, HIGHLIGHT = 4 })[okL and layer or ""] or 0
 					local kp = type(tex.kitPiece) == "table" and tex.kitPiece or nil   -- (true: a flat colour of ours)
@@ -7514,8 +7528,9 @@ SlashCmdList.MELLOKITWHAT = function()
 						local okSt, st = pcall(function() return bt.GetButtonState and bt:GetButtonState() end)
 						rimInfo = string.format("  RIM state=%s hover=%s pressed=%s lastChecked=%s isChecked=%s | button checked=%s state=%s enabled=%s",
 							tostring(tex.state), tostring(tex.hover), tostring(tex.pressed), tostring(tex.lastChecked),
-							tex.isChecked and tostring(select(2, pcall(tex.isChecked))) or "-",
-							okCk and tostring(ck) or "err", okSt and tostring(st) or "err", tostring(bt.IsEnabled and bt:IsEnabled()))
+							tex.isChecked and tostring(N(select(2, pcall(tex.isChecked)), "secret/nil")) or "-",
+							okCk and tostring(N(ck, "secret/nil")) or "err", okSt and tostring(N(st, "secret/nil")) or "err",
+							tostring(N(bt.IsEnabled and bt:IsEnabled(), "secret/nil")))
 					end
 					-- the share of the piece's own uv shown (its rectangle in an
 					-- atlas sheet is a small part of the file)
@@ -7536,7 +7551,7 @@ SlashCmdList.MELLOKITWHAT = function()
 						text = string.format("%-34s %4dx%-4d  uv %.3f..%.3f x %.3f..%.3f  (%s: %dx%d px shown on %dx%d)  tint %.2f %.2f %.2f a=%.2f  %s/%s  %s L%d %s  file=%s",
 							tostring(tex.kitName or (isSlice and ("slice " .. tostring(kp.prefix)))), w, h, u1 or 0, u2 or 0, v1 or 0, v2 or 0,
 							isSlice and "nine-slice" or kp and kp.tile and "tile" or "picture", math.floor(pieceW * shownW + 0.5), math.floor(pieceH * shownH + 0.5), w, h,
-							okV and r or 1, okV and g or 1, okV and bl or 1, tex:GetAlpha() or 1,
+							okV and r or 1, okV and g or 1, okV and bl or 1, N(tex:GetAlpha(), 1),
 							tostring(okL and layer or "?"), tostring(okL and sub or "?"), tostring(parent and parent:GetName() or (parent and parent:GetDebugName()) or "?"), level, strata,
 							tostring(file)) .. rimInfo,
 					}

@@ -682,6 +682,18 @@ function M:RefreshFollowers()
 	EnableFrom(n, f)
 	for _, entry in ipairs(skin.rings or {}) do
 		Kit:FitPortrait(entry.portrait, entry.ring)
+		-- the eye does not cover the ring's opening (its picture is clear
+		-- round the eye): the dark disc under it (WINDOW-RULES 2b; user,
+		-- 2026-09-25: "the Group Finder Icon does not have a background"),
+		-- made once the page's ring is laid out, as the portrait is fitted
+		local ring = entry.ring
+		-- (Kit:DrawnSize: an atlas piece not laid out yet reads as its sheet)
+		if ring.disc == nil and ring.tex and Kit.DrawnSize then
+			local w = Kit:DrawnSize(ring.tex)
+			if w and w > 0 then
+				Kit:RingDisc(ring)
+			end
+		end
 	end
 end
 
