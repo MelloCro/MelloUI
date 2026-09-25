@@ -124,6 +124,17 @@ function MelloUI:ApplyEditModeLayout(quiet)
 	local account, preset = LayoutType("Account"), LayoutType("Preset")
 	new.layoutType = account or new.layoutType
 	new.layoutName = data.name
+	-- the input style (client 1.60.1.70009 added it after the version: a
+	-- string exported before that is read with its record count as the
+	-- style, and SaveLayouts then refuses the whole list -- user,
+	-- 2026-09-25): mouse and keyboard unless the string gave a real one
+	local styles = Enum and Enum.InputDeviceInterfaceType
+	if styles then
+		local style = new.interfaceStyle
+		if style ~= styles.Mkb and style ~= styles.Gamepad then
+			new.interfaceStyle = styles.Mkb
+		end
+	end
 	local index, replaced
 	for i, layout in ipairs(full) do
 		if layout.layoutName == data.name and layout.layoutType ~= preset then

@@ -76,9 +76,8 @@ local surfaceMade = false
 local itemButtons = {}     -- every item button given a rim (refitted on a new Button Border)
 local labelLayers = setmetatable({}, { __mode = "k" })   -- [label] = { layer, sublevel }: a fallback plate's label, raised over it
 
-local function Secret(v)
-	return issecretvalue ~= nil and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	if not (region and skin) then
@@ -265,7 +264,7 @@ end
 local function PortraitArt(list)
 	for _, t in ipairs(list or {}) do
 		local ok, file = pcall(t.GetTexture, t)
-		if ok and file ~= nil and not Secret(file) and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
+		if ok and not Secret(file) and file ~= nil and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
 			return file
 		end
 	end

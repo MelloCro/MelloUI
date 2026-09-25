@@ -94,6 +94,74 @@ local DB_DEFAULTS = {
 }
 
 --------------------------------------------------------------------------------
+-- Secret-safe reads: one set for the whole addon (audit, 2026-09-24: 59 files
+-- carried their own Secret / IsSecret, in 4 bodies, and 11 their own Plain,
+-- with 6 meanings). This client hands some values over SECRET
+-- (issecretvalue): comparing one -- even with nil --, joining it into text or
+-- doing arithmetic on it is refused, so each helper asks issecretvalue FIRST,
+-- before any other test of the value. None of them makes a table.
+-- A file binds the ones it needs once, at load, as upvalues (a call costs
+-- what its own copy did):
+--   local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+-- The `or`: a test world that loads one file without Core still has the
+-- client's own test (a Value or Number binding carries Safe's own body as
+-- its stand-in). In game Core is first in the TOC, so the `or` never runs;
+-- every binding matches `MelloUI.Safe and MelloUI.Safe.` for the day the
+-- test worlds carry Safe and the stand-ins go.
+--------------------------------------------------------------------------------
+
+local Safe = {}
+MelloUI.Safe = Safe
+
+-- true when v is secret; always a boolean (false on a client without secrets)
+function Safe.IsSecret(v)
+	return issecretvalue and issecretvalue(v) or false
+end
+
+-- v, or nil when v is secret (or nil)
+function Safe.Value(v)
+	if issecretvalue and issecretvalue(v) then
+		return nil
+	end
+	return v
+end
+
+-- v when it is a plain number, else nil (secret, nil or not a number)
+function Safe.Number(v)
+	if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then
+		return nil
+	end
+	return v
+end
+
+-- v when it is a plain string, else nil (secret, nil or not a string)
+function Safe.Text(v)
+	if (issecretvalue and issecretvalue(v)) or type(v) ~= "string" then
+		return nil
+	end
+	return v
+end
+
+-- a pcall's results, or nil when it raised or its first result is secret
+local function Checked(ok, first, ...)
+	if not ok or (issecretvalue and issecretvalue(first)) then
+		return nil
+	end
+	return first, ...
+end
+
+-- obj:method(...) guarded: its results, or nil when obj has no such method,
+-- the call raised or the first result is secret. Only the first is tested;
+-- any further results are the caller's to test.
+function Safe.Call(obj, method, ...)
+	local fn = type(obj) == "table" and obj[method]
+	if type(fn) ~= "function" then
+		return nil
+	end
+	return Checked(pcall(fn, obj, ...))
+end
+
+--------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
 
@@ -107,8 +175,8 @@ local log = {}
 
 -- A secret value (this client) prints as "[secret]": a format with one
 -- secret argument would make the whole message secret and unindexable.
-local function Plain(v)
-	if issecretvalue and issecretvalue(v) then
+local function Printable(v)
+	if Safe.IsSecret(v) then
 		return "[secret]"
 	end
 	return v
@@ -119,21 +187,21 @@ function MelloUI:Print(msg, ...)
 	if n > 0 then
 		local args = { ... }
 		for i = 1, n do
-			args[i] = Plain(args[i])
+			args[i] = Printable(args[i])
 		end
-		local ok, formatted = pcall(string.format, Plain(msg), unpack(args, 1, n))
+		local ok, formatted = pcall(string.format, Printable(msg), unpack(args, 1, n))
 		if ok then
 			msg = formatted
 		else
 			-- a "[secret]" where a number was expected: the pieces, joined
-			local parts = { tostring(Plain(msg)) }
+			local parts = { tostring(Printable(msg)) }
 			for i = 1, n do
 				parts[#parts + 1] = tostring(args[i])
 			end
 			msg = table.concat(parts, " ")
 		end
 	end
-	msg = tostring(Plain(msg))
+	msg = tostring(Printable(msg))
 	print(PREFIX .. msg)
 	log[#log + 1] = (msg:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 	if #log > LOG_MAX then
@@ -592,8 +660,10 @@ end
 -- secret first or full name is still handed back (SetText takes it), only
 -- the surname needs string work and is nil when it cannot be done.
 -- mode: "first", "last", "both". nil when nothing could be read.
+-- A pcall's first result, secret or not; nil when it raised. The value is
+-- never compared: a secret refuses even the nil test (audit, 2026-09-24).
 local function PlainOrSecret(ok, value)
-	if not ok or value == nil then
+	if not ok then
 		return nil
 	end
 	return value
@@ -611,14 +681,16 @@ function MelloUI:UnitNameAs(unit, mode)
 			first = PlainOrSecret(pcall(util.GetUnitFirstName, unit))
 		end
 	end
-	if full == nil then
+	-- (each name asked for secret before its nil test)
+	if not Safe.IsSecret(full) and full == nil then
 		full = PlainOrSecret(pcall(UnitName, unit))
 	end
-	if full == nil then
+	local secretFull = Safe.IsSecret(full)
+	if not secretFull and full == nil then
 		return nil
 	end
-	local secretFull = issecretvalue and issecretvalue(full)
-	if first == nil and not secretFull then
+	local secretFirst = Safe.IsSecret(first)
+	if not (secretFull or secretFirst) and first == nil then
 		first = full:match("^(%S+)") or full
 	end
 	if mode == "both" then
@@ -626,7 +698,7 @@ function MelloUI:UnitNameAs(unit, mode)
 	elseif mode == "first" then
 		return first
 	elseif mode == "last" then
-		if secretFull or first == nil or (issecretvalue and issecretvalue(first)) then
+		if secretFull or secretFirst or first == nil then
 			return nil
 		end
 		local rest = full:sub(#first + 1):gsub("^%s+", "")

@@ -224,9 +224,8 @@ local function ApplyPosition(fs, bar)
 	fs:SetJustifyH(point)
 end
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A SECRET value in the chosen format. The client refuses to compare a secret
 -- or do arithmetic on it, but it lets one be joined into text, formatted and

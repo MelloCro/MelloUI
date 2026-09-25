@@ -130,9 +130,8 @@ local raised = setmetatable({}, { __mode = "k" })      -- [fs] = { layer, sublev
 local lent = setmetatable({}, { __mode = "k" })        -- [fs] = { parent, points, font }: a title string riding the plate
 local stats = { days = 0, weekdays = 0, popups = 0, lists = 0, edits = 0, buttons = 0, dividers = 0, rims = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -1008,11 +1007,7 @@ end
 -- (the switch and the addon's load: out of combat, as before; the first
 -- show is dressed at once, see Hook)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 local function Hook()

@@ -224,7 +224,7 @@ end
 function QI.TierForQuest(questID, level)
 	if questID and C_PlayerInfo and C_PlayerInfo.GetContentDifficultyQuestForPlayer then
 		local ok, v = pcall(C_PlayerInfo.GetContentDifficultyQuestForPlayer, questID)
-		if ok and v ~= nil and not (issecretvalue and issecretvalue(v)) then
+		if ok and not (issecretvalue and issecretvalue(v)) and v ~= nil then
 			local tier = RELATIVE[v] or (type(v) == "number" and v >= 0 and v <= 4 and v + 1) or nil
 			if tier then
 				return tier
@@ -597,9 +597,8 @@ local function Pack(t, ...)
 	return n
 end
 
-local function Secret(v)
-	return issecretvalue ~= nil and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- obj's rect in screen space (its scale applied): left, bottom, right, top;
 -- nil while it is not laid out (or secret)

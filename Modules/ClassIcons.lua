@@ -56,13 +56,13 @@ local CLASSES_IN_CLIENT = {
 --------------------------------------------------------------------------------
 
 -- Values this client keeps secret from addons (e.g. UnitClass on some units)
--- cannot be read or compared; skip rather than error.
-local function SafeValue(v)
-	if v == nil or (issecretvalue and issecretvalue(v)) then
-		return nil
-	end
-	return v
-end
+-- cannot be read or compared; skip rather than error. SafeValue(v) is v, or
+-- nil when v is secret: MelloUI.Safe (Core.lua), one set for the addon. The
+-- old copy compared v with nil before asking issecretvalue, which a secret
+-- refuses (audit, 2026-09-24). The stand-in is Safe.Value's own body, for a
+-- test world that loads this file without Core.
+local SafeValue = MelloUI.Safe and MelloUI.Safe.Value
+	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
 
 -- Returns the texture path (no extension) for a class file name (as
 -- select(2, UnitClass(unit)) returns it, e.g. "WARRIOR"), or nil when that

@@ -69,9 +69,8 @@ local skin = nil
 local active = false
 local hooked = false
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	if not region then
@@ -932,6 +931,14 @@ local function PrebuildTick()
 		prebuilder:RegisterEvent("PLAYER_REGEN_ENABLED")
 		return
 	end
+	-- the kit's queue still working through a fight's refits: never in the
+	-- same frames as its few ms (audit, 2026-09-24: the two budgets stacked
+	-- after a fight); on again a little after it is through
+	if Kit:IsQueueBusy() then
+		Perf.SetScript(prebuilder, "OnUpdate", nil)
+		Kit:WhenQueueIdle(QueuePrebuild)
+		return
+	end
 	if not active then
 		-- loaded before the window was ever opened: the skin on now with
 		-- nothing made yet, as the load had it on (it made every part there
@@ -954,21 +961,24 @@ local function StartPrebuild()
 	Perf.SetScript(prebuilder, "OnUpdate", PrebuildTick)
 end
 
+local function PrebuildDue()
+	prebuildQueued = false
+	StartPrebuild()
+end
+
 QueuePrebuild = function()
 	if prebuildQueued or (skin and skin.built and active) then
 		return
 	end
 	prebuildQueued = true
-	C_Timer.After(PREBUILD_DELAY, function()
-		prebuildQueued = false
-		StartPrebuild()
-	end)
+	C_Timer.After(PREBUILD_DELAY, PrebuildDue)
 end
 
--- a fight ended: on again a little later (not in the frame the fight ends in)
+-- a fight ended: on again a little later (not in the frame the fight ends
+-- in), counted from when the kit's queue is through with the fight's refits
 Perf.SetScript(prebuilder, "OnEvent", function(self)
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
-	QueuePrebuild()
+	Kit:WhenQueueIdle(QueuePrebuild)
 end)
 
 local function Hook()

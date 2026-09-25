@@ -80,16 +80,12 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 	},
 })
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
-
-local function Plain(v)
-	if Secret(v) or v == nil then
-		return nil
-	end
-	return v
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
+-- is v, or nil when v is secret (the stand-ins, the client's test and
+-- Safe.Value's own body, are for a test world without Core)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Plain = MelloUI.Safe and MelloUI.Safe.Value
+	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
 
 --------------------------------------------------------------------------------
 -- Layout constants
@@ -217,30 +213,80 @@ local function ContentWidth()
 	return FrameWidth() - INSET * 2 - THUMB_W - 4
 end
 
+-- What the last Place laid the frame by (audit, 2026-09-24: Place runs on
+-- every setting of the tracker -- a header's collapse, a section switched --
+-- and each time it laid every background in the UI again): asked for the
+-- same scale and the same place again, it leaves the frame as it is. A drag
+-- of the grip or of the mover leaves the frame's points to the game: the
+-- last one is forgotten then (last.valid = false), and the next Place lays
+-- the frame again. Kept only once a Place is through, and checked against
+-- the frame itself -- its first point and its scale as it reads them back --
+-- so a Place that stopped part way, or a frame put elsewhere or scaled by
+-- anything else, is laid again by the next setting, as before (review,
+-- 2026-09-24). A frame whose point cannot be read plainly is always laid.
+-- scale, set, x, y, to, us, sw, sh, gw: the inputs it was laid by; p, rel,
+-- rp, ax, ay, got: its first point and its scale, read back once laid
+local last = { valid = false }
+
+-- the frame's first point as the last Place read it back (a drag hangs it
+-- from the screen, by another corner)
+local function SamePoint()
+	local ok, p, rel, rp, ax, ay = pcall(frame.GetPoint, frame, 1)
+	if not ok or Secret(p) or Secret(rel) or Secret(rp) or Secret(ax) or Secret(ay) then
+		return false
+	end
+	return p == last.p and rel == last.rel and rp == last.rp and ax == last.ax and ay == last.ay
+end
+
 -- the frame sits where the game's tracker is, as wide as it, from its top
 local function Place()
-	frame:ClearAllPoints()
-	frame:SetScale(tonumber(M.db and M.db.scale) or 1)
-	if MelloUI.Kit and MelloUI.Kit.RetileBackgrounds then
-		MelloUI.Kit:RetileBackgrounds()   -- the UI's one background resolution, whatever the scale
-	end
+	local scale = tonumber(M.db and M.db.scale) or 1
 	local set = tonumber(M.db and M.db.width) or 0
 	local f = ObjectiveTrackerFrame
 	-- moved with Unlock the Windows: its own place, hung by its top-right
 	-- corner so it still grows downward
 	local pos = M.db and M.db.pos
-	if pos and pos.x and pos.y then
+	local px, py = pos and pos.x, pos and pos.y
+	-- a place of its own is kept on the screen by the screen's size and
+	-- scale, and takes the game's tracker's width when none is set
+	local us, sw, sh, gw
+	if px and py then
+		local okU, u = pcall(UIParent.GetEffectiveScale, UIParent)
+		local okP, w, h = pcall(UIParent.GetSize, UIParent)
+		us, sw, sh = okU and Plain(u) or nil, okP and Plain(w) or nil, okP and Plain(h) or nil
+		if set <= 0 and f then
+			local okG, g = pcall(f.GetWidth, f)
+			gw = okG and Plain(g) or nil
+		end
+	end
+	if last.valid and last.scale == scale and last.set == set and last.x == px and last.y == py and last.to == f
+		and last.us == us and last.sw == sw and last.sh == sh and last.gw == gw and frame:GetScale() == last.got
+		and SamePoint() then
+		return
+	end
+	-- forgotten until this Place is through
+	last.valid = false
+	-- the scale first, while it still hangs where it was: the backgrounds in
+	-- it are laid again at the UI's one resolution only when its scale on the
+	-- screen really changed
+	local Kit = MelloUI.Kit
+	if Kit and Kit.SetFrameScale then
+		Kit:SetFrameScale(frame, scale)
+	else
+		frame:SetScale(scale)
+	end
+	frame:ClearAllPoints()
+	if px and py then
 		-- kept on the screen (user, 2026-09-24: "UI Scaling Break the UI"):
 		-- the offsets are in its own units, which grow with the UI scale
 		-- while the screen shrinks in them, so a tracker dropped near the
 		-- left or the bottom at a small UI scale hung off the screen at a
 		-- larger one. Pulled in so its width and its title plate stay on it;
-		-- the saved place itself is kept for the old scale.
-		local x, y = pos.x, pos.y
+		-- the saved place itself is kept for the old scale. (The screen's
+		-- size and scale and the game's tracker's width as read above.)
+		local x, y = px, py
 		local okS, fs = pcall(frame.GetEffectiveScale, frame)
-		local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
-		local okP, sw, sh = pcall(UIParent.GetSize, UIParent)
-		fs, us, sw, sh = okS and Plain(fs), okU and Plain(us), okP and Plain(sw), okP and Plain(sh)
+		fs = okS and Plain(fs)
 		if fs and us and sw and sh and fs > 0 and us > 0 then
 			local k = us / fs
 			local w = set > 0 and set or FrameWidth()
@@ -251,13 +297,9 @@ local function Place()
 		if set > 0 then
 			frame:SetWidth(set)
 		else
-			local ok, gw = pcall(function() return f and f:GetWidth() end)
-			gw = ok and Plain(gw) or nil
 			frame:SetWidth((gw and gw > 100) and gw or FALLBACK_W)
 		end
-		return
-	end
-	if f then
+	elseif f then
 		-- the right edge stays on the game's tracker's (it sits by the
 		-- screen's right side); a set width grows to the left
 		frame:SetPoint("TOPRIGHT", f, "TOPRIGHT")
@@ -269,6 +311,15 @@ local function Place()
 	else
 		frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -80, -260)
 		frame:SetWidth(set > 0 and set or FALLBACK_W)
+	end
+	-- laid: kept, with its first point and its scale as the frame reads them
+	-- back (not kept when they cannot be read plainly)
+	local ok, p, rel, rp, ax, ay = pcall(frame.GetPoint, frame, 1)
+	if ok and not (Secret(p) or Secret(rel) or Secret(rp) or Secret(ax) or Secret(ay)) then
+		last.scale, last.set, last.x, last.y, last.to = scale, set, px, py, f
+		last.us, last.sw, last.sh, last.gw = us, sw, sh, gw
+		last.p, last.rel, last.rp, last.ax, last.ay = p, rel, rp, ax, ay
+		last.got, last.valid = frame:GetScale(), true
 	end
 end
 
@@ -860,7 +911,7 @@ local function FillBlock(block, questID, width, followedID)
 		local style = util and util.Style and (complete and util.Style.QuestComplete or util.Style.QuestInProgress)
 		if util and util.GetStyle then
 			local okG, st = pcall(util.GetStyle, questID)
-			if okG and st ~= nil and not Secret(st) then
+			if okG and not Secret(st) and st ~= nil then
 				style = st
 			end
 		end
@@ -1414,12 +1465,14 @@ local function Build()
 			save = function()
 				SavePosition()
 				M.db.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
+				last.valid = false   -- (dragged and scaled by the mover: laid again)
 				Place()
 				MelloUI:NotifySettingChanged(M.name, "pos", M.db.pos)
 				MelloUI:NotifySettingChanged(M.name, "scale", M.db.scale)
 			end,
 			reset = function()
 				M.db.pos, M.db.scale = nil, 1
+				last.valid = false
 				Place()
 				MelloUI:NotifySettingChanged(M.name, "pos", nil)
 				MelloUI:NotifySettingChanged(M.name, "scale", 1)
@@ -1467,6 +1520,7 @@ local function Build()
 			return
 		end
 		sizing = true
+		last.valid = false   -- (the game sizes it by its points now: laid again after)
 		frame:StartSizing("BOTTOMLEFT")
 	end)
 	Perf.SetScript(grip, "OnMouseUp", function()

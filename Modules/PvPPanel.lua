@@ -76,7 +76,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("PvPPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("PvPPanel", {
@@ -114,9 +117,8 @@ local rows = setmetatable({}, { __mode = "k" })         -- [row] = { tex, row, t
 local headers = setmetatable({}, { __mode = "k" })      -- [header] = { rep, text, colour = the game's }
 local titleHome = setmetatable({}, { __mode = "k" })    -- [heading] = the frame it belongs to, while it rides our plate's band
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- the non-nil values given, as a list
 local function List(...)
@@ -886,6 +888,22 @@ local function KeepLevels(s)
 	end
 end
 
+-- Refresh's pass a frame later for the window `s` dresses, once it is laid
+-- out (made once: Kit:NextFrame runs it once per window however often it was
+-- asked -- audit, 2026-09-24; timed on this file's own /melloperf row, not
+-- the Kit's timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function(s)
+	if active and s.window:IsShown() then
+		PlaceTitle(s)
+		for _, holder in ipairs(s.rimHolders) do
+			FitIconRim(holder)
+		end
+		if s.ring and s.portrait then
+			pcall(Kit.FitPortrait, Kit, s.portrait, s.ring)
+		end
+	end
+end, "timer")
+
 -- After every show and every game refresh (a match's layout, a tab switch, a
 -- score update, the rewards): what the game made or re-laid since
 local function Refresh(s)
@@ -911,22 +929,7 @@ local function Refresh(s)
 	end
 	-- once laid out (a frame after it shows): the title and the rims again,
 	-- one pass pending at a time (the scoreboard refreshes every score update)
-	if s.laterPending then
-		return
-	end
-	s.laterPending = true
-	C_Timer.After(0, function()
-		s.laterPending = nil
-		if active and s.window:IsShown() then
-			PlaceTitle(s)
-			for _, holder in ipairs(s.rimHolders) do
-				FitIconRim(holder)
-			end
-			if s.ring and s.portrait then
-				pcall(Kit.FitPortrait, Kit, s.portrait, s.ring)
-			end
-		end
-	end)
+	Kit:NextFrame(s, RefreshLater)
 end
 
 local function EnableSkin(s)
@@ -1073,11 +1076,7 @@ end
 -- (the switch and an addon's load: out of combat, as before; a window's
 -- first show is dressed at once, see Hook)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The windows come with Blizzard_PVPMatch (loaded with the interface here)

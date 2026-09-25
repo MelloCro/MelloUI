@@ -62,9 +62,8 @@ local insets = setmetatable({}, { __mode = "k" })    -- [health bar] = the game'
 local sheets = setmetatable({}, { __mode = "k" })    -- [tooltip] = its parchment sheet
 local dims = setmetatable({}, { __mode = "k" })      -- [tooltip] = its eye-strain panel (the stone look's)
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	if not region then
@@ -183,7 +182,7 @@ local function RestoreLook(fs, state)
 	local sh = state.shadow
 	if sh then
 		local _, _, _, sa = fs:GetShadowColor()
-		if sa ~= nil and not Secret(sa) and sa == 0 then
+		if not Secret(sa) and sa ~= nil and sa == 0 then
 			fs:SetShadowColor(sh[1], sh[2], sh[3], sh[4])
 		end
 	end
@@ -272,7 +271,7 @@ local function InkLine(fs, header)
 		inking = false
 	end
 	local sr, sg, sb, sa = fs:GetShadowColor()
-	if sa ~= nil and not Secret(sa) and sa > 0 then
+	if not Secret(sa) and sa ~= nil and sa > 0 then
 		local sh = state.shadow
 		if sh then
 			sh[1], sh[2], sh[3], sh[4] = sr, sg, sb, sa

@@ -55,7 +55,9 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("HelpPanel")
-local C_Timer = Perf.C_Timer
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("HelpPanel", {
@@ -76,9 +78,8 @@ local hooked = setmetatable({}, { __mode = "k" })       -- [frame] = true once i
 
 local portraitFilled = setmetatable({}, { __mode = "k" })   -- [texture] = { art = set by us }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -193,7 +194,7 @@ end
 --------------------------------------------------------------------------------
 local function PortraitArt(t)
 	local ok, file = pcall(t.GetTexture, t)
-	if ok and file ~= nil and not Secret(file) and (type(file) == "number" and file > 0 or type(file) == "string" and file ~= "") then
+	if ok and not Secret(file) and file ~= nil and (type(file) == "number" and file > 0 or type(file) == "string" and file ~= "") then
 		return file
 	end
 	return nil
@@ -486,6 +487,19 @@ local function Build()
 	end
 end
 
+-- Refresh's pass a frame later, once the window is laid out (made once:
+-- Kit:NextFrame runs it once however often it was asked -- audit, 2026-09-24;
+-- timed on this window's own /melloperf row, not the Kit's timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	local f = Window()
+	if active and skin and f and f:IsShown() then
+		if skin.ring and skin.portrait then
+			pcall(Kit.FitPortrait, Kit, skin.portrait, skin.ring)
+		end
+		PlaceTitle()
+	end
+end, "timer")
+
 local function Refresh()
 	local f = Window()
 	if not (active and skin and f) then
@@ -498,19 +512,7 @@ local function Refresh()
 		pcall(Kit.FitPortrait, Kit, skin.portrait, skin.ring)
 	end
 	PlaceTitle()
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active and f:IsShown() then
-			if skin.ring and skin.portrait then
-				pcall(Kit.FitPortrait, Kit, skin.portrait, skin.ring)
-			end
-			PlaceTitle()
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 -- (user, 2026-09-24: "dress rarely used windows on first open") the help window
@@ -566,11 +568,7 @@ end
 
 -- (the switch and the addon's load: out of combat only, as they always were)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The help window's first show while the kit is on: built now, the way

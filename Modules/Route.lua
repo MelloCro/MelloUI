@@ -87,17 +87,12 @@ MelloUI.Route = M
 -- Helpers
 --------------------------------------------------------------------------------
 
-local function IsSecret(v)
-	return issecretvalue and issecretvalue(v)
-end
-
-local function Plain(v)
-	-- asked first: comparing a secret, even with nil, is refused on this client
-	if IsSecret(v) or v == nil then
-		return nil
-	end
-	return v
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
+-- is v, or nil when v is secret -- asked first: comparing a secret, even with
+-- nil, is refused on this client (the stand-in is Safe.Value's own body, for
+-- a test world without Core)
+local Plain = MelloUI.Safe and MelloUI.Safe.Value
+	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
 
 local function VectorXY(pos)
 	if type(pos) ~= "table" then
@@ -407,17 +402,27 @@ local function EnsureNotice()
 	notice.text:SetShadowOffset(2, -2)
 	notice.text:SetShadowColor(0, 0, 0, 0.9)
 	notice:Hide()
-	Perf.SetScript(notice, "OnUpdate", function(self, elapsed)
-		self.age = (self.age or 0) + elapsed
-		if self.age <= NOTICE_HOLD then
-			self:SetAlpha(1)
-		elseif self.age < NOTICE_HOLD + NOTICE_FADE then
-			self:SetAlpha(1 - (self.age - NOTICE_HOLD) / NOTICE_FADE)
-		else
-			self:Hide()
-		end
-	end)
+	notice.holds = 0
 	return notice
+end
+
+-- Held by a timer, then faded out by the Anim engine, which ends the fade at
+-- once under Reduce Motion (audit, 2026-09-24: its own OnUpdate ran the whole
+-- five and a half seconds). Every notice starts one hold; the last one to
+-- run out fades what is shown then.
+local function NoticeHide(frame)
+	frame:Hide()
+end
+local function NoticeFade()
+	notice.holds = notice.holds - 1
+	if notice.holds > 0 or not notice:IsShown() then
+		return
+	end
+	if MelloUI.Anim then
+		MelloUI.Anim:To(notice, "alpha", 0, NOTICE_FADE, "linear", NoticeHide)
+	else
+		notice:Hide()
+	end
 end
 
 local function PlayNotice(kind)
@@ -442,9 +447,13 @@ function M:Notify(text, kind)
 	end
 	local frame = EnsureNotice()
 	frame.text:SetText(text)
-	frame.age = 0
+	if MelloUI.Anim then
+		MelloUI.Anim:Stop(frame, "alpha")   -- one fading out comes back
+	end
 	frame:SetAlpha(1)
 	frame:Show()
+	frame.holds = frame.holds + 1
+	C_Timer.After(NOTICE_HOLD, NoticeFade)
 	PlayNotice(kind or "track")
 end
 
@@ -3414,8 +3423,9 @@ local function MarkerTick(self, elapsed)
 	self.edge:SetShown(off)
 	local beam = self.beam
 	beam:SetShown(not off and M.db.routeBeam and true or false)
-	if beam:IsShown() then
-		-- the streaks rise: the strip scrolls up the beam, round and round
+	-- the streaks rise: the strip scrolls up the beam, round and round (they
+	-- stand still under Reduce Motion)
+	if beam:IsShown() and not (MelloUI.Anim and MelloUI.Anim.reduceMotion) then
 		beam.scroll = (beam.scroll + dt * 0.3) % 1
 		beam.streaks:SetTexCoord(0, 1, beam.scroll, beam.scroll + BEAM_SPAN)
 	end
@@ -3488,6 +3498,8 @@ local function EnsureMarker()
 	beam.glow:SetAlpha(0.85)
 	beam.streaks:SetAlpha(0.7)
 	beam.scroll, beam.fade = 0, 1
+	-- the strip's first window, where the streaks stand under Reduce Motion
+	beam.streaks:SetTexCoord(0, 1, 0, BEAM_SPAN)
 	-- the flare when a destination is set: the column widens from a thread
 	-- to its full width, fast at the end (easing in), as it fades up
 	local flare = beam:CreateAnimationGroup()
@@ -3579,10 +3591,20 @@ UpdateMarker = function()
 	if not marker:IsShown() then
 		marker.distanceText = nil
 		marker:Show()
-		marker.pop:Play()
+		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
+		local anim = MelloUI.Anim
+		if anim then
+			anim:PlayGroup(marker.pop)
+		else
+			marker.pop:Play()
+		end
 		if M.db.routeBeam then
 			marker.beam:Show()
-			marker.beam.flare:Play()
+			if anim then
+				anim:PlayGroup(marker.beam.flare)
+			else
+				marker.beam.flare:Play()
+			end
 		end
 	end
 	FadeGameMarker(true)

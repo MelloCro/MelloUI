@@ -344,12 +344,10 @@ end
 local glowHooked = setmetatable({}, { __mode = "k" })
 local glowHeld = false
 
-local function Plain(v)
-	if issecretvalue and issecretvalue(v) then
-		return nil
-	end
-	return v
-end
+-- v, or nil when v is secret: MelloUI.Safe (Core.lua), one set for the addon
+-- (the stand-in is Safe.Value's own body, for a test world without Core)
+local Plain = MelloUI.Safe and MelloUI.Safe.Value
+	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
 
 local function GlowHeldWanted()
 	if M.isEnabled and M.db and M.db.hideStatusGlow then

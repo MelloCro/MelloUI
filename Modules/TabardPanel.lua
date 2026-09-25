@@ -82,9 +82,8 @@ local PAL = MelloUI.Palette or {}
 local BOX_TONE = PAL.mainWindow
 local BOX_DIM = 0.85
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -941,11 +940,7 @@ end
 
 -- (geometry of the window's children changes here: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The module switch and a dressed window go through SyncSafe, as always; the

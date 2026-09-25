@@ -58,7 +58,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DressUpPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("DressUpPanel", {
@@ -83,9 +86,8 @@ local buttons = {}                                      -- the text buttons { la
 local panels = {}                                       -- the side panels { label, panel, rep }
 local found = {}                                        -- [part] = a line for /dressupdump
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -652,6 +654,22 @@ local function Build()
 	Kit:SweepControls(f, Replace, skin, Model(f))
 end
 
+-- Refresh's pass a frame later, once the game's own layout has run (made
+-- once: Kit:NextFrame runs it once however often it was asked -- audit,
+-- 2026-09-24; timed on this window's own /melloperf row, not the Kit's
+-- timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	local f = Window()
+	if active and f and f:IsShown() then
+		FitRing()
+		PlaceTitle()
+		KeepRailOverModel(f)
+		for _, holder in ipairs(rims) do
+			FitIconRim(holder)
+		end
+	end
+end, "timer")
+
 -- After every show and resize: what the game re-laid or re-showed since (the
 -- portrait's size, the title's plate, the page picture's crop, the rail over
 -- the model, the rows' rims), and once more a frame later, once the game's
@@ -675,21 +693,7 @@ local function Refresh()
 	RefreshSetRows(f)
 	FitRing()
 	PlaceTitle()
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active and f:IsShown() then
-			FitRing()
-			PlaceTitle()
-			KeepRailOverModel(f)
-			for _, holder in ipairs(rims) do
-				FitIconRim(holder)
-			end
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 local function Activate()
@@ -731,11 +735,7 @@ end
 
 -- (the module's switch: queued out of combat as the other windows' skins are)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- (listen-only until the window is built: every handler here does nothing

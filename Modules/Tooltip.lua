@@ -243,11 +243,17 @@ local function OnDefaultAnchor(tooltip, parent)
 	end
 end
 
+-- (its backgrounds laid again at the UI's one resolution whatever the scale:
+-- those in the tooltip, and only when its scale really changed -- audit,
+-- 2026-09-24: each setting of this module laid every background in the UI)
 local function ApplyScale()
 	if GameTooltip then
-		GameTooltip:SetScale(M.isEnabled and (tonumber(M.db.scale) or 1) or 1)
-		if MelloUI.Kit and MelloUI.Kit.RetileBackgrounds then
-			MelloUI.Kit:RetileBackgrounds()   -- the UI's one background resolution, whatever the scale
+		local scale = M.isEnabled and (tonumber(M.db.scale) or 1) or 1
+		local Kit = MelloUI.Kit
+		if Kit and Kit.SetFrameScale then
+			Kit:SetFrameScale(GameTooltip, scale)
+		else
+			GameTooltip:SetScale(scale)
 		end
 	end
 end

@@ -95,9 +95,8 @@ local hookedBoxes = setmetatable({}, { __mode = "k" })   -- [ScrollBox] = true
 local watched = setmetatable({}, { __mode = "k" })       -- [SettingsPanel] = true
 local lists = {}            -- the two ScrollBoxes and their row functions, once found
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- the given values without the nils (a table literal with a nil in it stops
 -- ipairs there, and the art after it would never be faded)
@@ -1043,7 +1042,7 @@ local function Text(fs)
 		return nil
 	end
 	local ok, text = pcall(fs.GetText, fs)
-	if ok and text ~= nil and not Secret(text) then
+	if ok and not Secret(text) and text ~= nil then
 		return tostring(text)
 	end
 	return nil

@@ -66,9 +66,8 @@ local hidden = {}         -- [message text] = true, from the kinds switched on
 local took = false        -- the error event is ours (taken from the game's frame)
 local eventFrame = CreateFrame("Frame")
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Rebuild(db)
 	hidden = {}
@@ -107,7 +106,8 @@ local function Take(on)
 end
 
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, messageType, message, ...)
-	if message ~= nil and not Secret(message) and hidden[message] then
+	-- the secret test first: a secret refuses even the nil test (audit, 2026-09-24)
+	if not Secret(message) and message ~= nil and hidden[message] then
 		return
 	end
 	-- not hidden: to the game's frame, as if it had the event itself

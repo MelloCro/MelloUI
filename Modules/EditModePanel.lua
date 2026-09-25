@@ -127,9 +127,8 @@ local STRATA_BELOW = {
 -- commented out in this client's XML and dressed only if a client has it
 local SMALL_DIALOGS = { "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeUnsavedChangesDialog", "EditModeImportLayoutLinkDialog" }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Note(err)
 	if #errors < MAX_ERRORS then

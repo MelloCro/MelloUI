@@ -52,9 +52,8 @@ local skin = nil                 -- { nine, sheet, dim, reps = {}, title, hex, s
 local fadedArt = {}              -- the game's art faded with no piece on its own rect
 local rims = {}                  -- the swatch rims' holders { melloRep } (Kit:RegisterButtonRim keeps them weakly)
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Window()
 	local f = _G.ColorPickerFrame

@@ -69,7 +69,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("ChannelPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("ChannelPanel", {
@@ -101,9 +104,8 @@ local boxes = {}                                        -- the list boxes { rep,
 local popupSkin = nil                                   -- the new channel popup: { nine, dim, art, header, title }
 local stats = { rows = 0, headers = 0, members = 0, icons = 0, edits = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function IsActive()
 	return active
@@ -231,7 +233,7 @@ local portraitFilled = setmetatable({}, { __mode = "k" })   -- [texture] = { art
 
 local function PortraitArt(t)
 	local ok, file = pcall(t.GetTexture, t)
-	if ok and file ~= nil and not Secret(file) and (type(file) == "number" and file > 0 or type(file) == "string" and file ~= "") then
+	if ok and not Secret(file) and file ~= nil and (type(file) == "number" and file > 0 or type(file) == "string" and file ~= "") then
 		return file
 	end
 	return nil
@@ -990,6 +992,20 @@ local function Build()
 	DressPopup()
 end
 
+-- Refresh's pass a frame later, once the window is laid out (made once:
+-- Kit:NextFrame runs it once however often it was asked -- audit, 2026-09-24;
+-- timed on this window's own /melloperf row, not the Kit's timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	local f = Window()
+	if active and f and f:IsShown() then
+		FitPortrait()
+		PlaceTitles(true)
+		ListPass()
+		RosterPass()
+		KeepBoxesUnder()
+	end
+end, "timer")
+
 -- After every show and every game refresh: what the game re-laid or made
 -- since (the portrait's size, the title's plate, the rows, the boxes' level).
 local function Refresh()
@@ -1005,20 +1021,7 @@ local function Refresh()
 	KeepBoxesUnder()
 	-- once laid out (a frame after it shows): the portrait, title and rows
 	-- again, one pass pending at a time
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active and f:IsShown() then
-			FitPortrait()
-			PlaceTitles(true)
-			ListPass()
-			RosterPass()
-			KeepBoxesUnder()
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 local function Activate()
@@ -1083,11 +1086,7 @@ end
 -- (the switch and the addon's load: out of combat, as before; the first
 -- show is dressed at once, see Hook)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 local function Hook()

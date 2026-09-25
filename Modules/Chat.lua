@@ -190,9 +190,8 @@ end
 local tabsOnMouseover = false
 local hookedTabs = setmetatable({}, { __mode = "k" })
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function TabAlphaWanted(tab, alpha)
 	local okI, id = pcall(tab.GetID, tab)
@@ -559,21 +558,60 @@ local function NameStyle()
 end
 
 -- the shown name in each player link of a line: "[|cffc79c6eName|r]",
--- "[Name]", "Name", with a hex or a named colour
+-- "[Name]", "Name", with a hex or a named colour. The style rides in
+-- linkStyle for the one gsub under way, so no function is made per line.
+local linkStyle = nil
+
+local function ShortLink(open, shown, close)
+	local pre, core, post = shown:match("^(%[?|c%x%x%x%x%x%x%x%x)(.-)(|r%]?)$")
+	if not pre then
+		pre, core, post = shown:match("^(%[?|cn[%w_]+:)(.-)(|r%]?)$")
+	end
+	if not pre then
+		pre, core, post = shown:match("^(%[?)(.-)(%]?)$")
+	end
+	if not core or core == "" then
+		return nil
+	end
+	return open .. pre .. ShortPerson(core, linkStyle) .. post .. close
+end
+
 local function ShortNames(text, style)
-	return (text:gsub("(|Hplayer:[^|]*|h)(.-)(|h)", function(open, shown, close)
-		local pre, core, post = shown:match("^(%[?|c%x%x%x%x%x%x%x%x)(.-)(|r%]?)$")
-		if not pre then
-			pre, core, post = shown:match("^(%[?|cn[%w_]+:)(.-)(|r%]?)$")
-		end
-		if not pre then
-			pre, core, post = shown:match("^(%[?)(.-)(%]?)$")
-		end
-		if not core or core == "" then
-			return nil
-		end
-		return open .. pre .. ShortPerson(core, style) .. post .. close
-	end))
+	local outer = linkStyle
+	linkStyle = style
+	local out = text:gsub("(|Hplayer:[^|]*|h)(.-)(|h)", ShortLink)
+	linkStyle = outer
+	return out
+end
+
+-- The line being rewritten and how, for the two functions the game's
+-- history walk calls. Made once at load and fed through these upvalues
+-- (audit, 2026-09-24: three new functions for every chat line before).
+local lineText, lineShort, lineStyle = nil, nil, nil
+
+-- only this line (the newest with this exact text): the rest of the
+-- history was shortened when it came in
+local function IsThisLine(e)
+	local t = LineText(e)
+	return not Secret(t) and t == lineText
+end
+
+local function Rewritten(t)
+	if lineShort then
+		t = Shorten(t)
+	end
+	if lineStyle then
+		t = ShortNames(t, lineStyle)
+	end
+	return t
+end
+
+local function Rewrite(e, ...)
+	if type(e) == "table" then
+		e.message = Rewritten(e.message)
+		return e, ...
+	end
+	return Rewritten(e), ...
 end
 
 local function OnLineAdded(chatFrame, text)
@@ -586,29 +624,11 @@ local function OnLineAdded(chatFrame, text)
 	if Secret(text) or type(text) ~= "string" or type(chatFrame.TransformMessages) ~= "function" then
 		return
 	end
-	-- only this line (the newest with this exact text): the rest of the
-	-- history was shortened when it came in
-	local function IsIt(e)
-		local t = LineText(e)
-		return not Secret(t) and t == text
-	end
-	local function Rewritten(t)
-		if short then
-			t = Shorten(t)
-		end
-		if style then
-			t = ShortNames(t, style)
-		end
-		return t
-	end
-	local function Rewrite(e, ...)
-		if type(e) == "table" then
-			e.message = Rewritten(e.message)
-			return e, ...
-		end
-		return Rewritten(e), ...
-	end
-	local ok = pcall(chatFrame.TransformMessages, chatFrame, IsIt, Rewrite)
+	-- the outer line's state kept, should a line ever be added during the walk
+	local outerText, outerShort, outerStyle = lineText, lineShort, lineStyle
+	lineText, lineShort, lineStyle = text, short, style
+	local ok = pcall(chatFrame.TransformMessages, chatFrame, IsThisLine, Rewrite)
+	lineText, lineShort, lineStyle = outerText, outerShort, outerStyle
 	if not ok then
 		transformFailed = true
 	end
@@ -2061,12 +2081,13 @@ end
 -- secret test comes first, as this client refuses even comparing a secret
 -- with nil (audit, 2026-09-24: this compared first, so a whisper with a
 -- secret class, level or GUID would have stopped here with an error).
-local function Plain(v)
+-- Known(v): v is there and plain (a boolean; false counts as there).
+local function Known(v)
 	return not Secret(v) and v ~= nil
 end
 
 local function ClassHex(classFile)
-	if not Plain(classFile) then
+	if not Known(classFile) then
 		return nil
 	end
 	local color = C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classFile)
@@ -2078,7 +2099,7 @@ local function ClassHex(classFile)
 end
 
 local function ClassFileFromLocalized(localized)
-	if not Plain(localized) then
+	if not Known(localized) then
 		return nil
 	end
 	for _, map in ipairs({ LOCALIZED_CLASS_NAMES_MALE, LOCALIZED_CLASS_NAMES_FEMALE }) do
@@ -2094,7 +2115,7 @@ local function ClassFileFromLocalized(localized)
 end
 
 local function PlainLevel(level)
-	return (Plain(level) and type(level) == "number" and level > 0) and level or nil
+	return (Known(level) and type(level) == "number" and level > 0) and level or nil
 end
 
 -- The guild's levels and classes, found by GUID or name (audit, 2026-09-24:
@@ -2140,15 +2161,15 @@ end
 -- a character: class from the GUID, level from what the game already knows
 local function CharacterIdentity(name, guid)
 	local classFile, level
-	if Plain(guid) and GetPlayerInfoByGUID then
+	if Known(guid) and GetPlayerInfoByGUID then
 		local ok, _, file = pcall(GetPlayerInfoByGUID, guid)
-		if ok and Plain(file) then
+		if ok and Known(file) then
 			classFile = file
 		end
 	end
-	if Plain(guid) and UnitTokenFromGUID then
+	if Known(guid) and UnitTokenFromGUID then
 		local ok, unit = pcall(UnitTokenFromGUID, guid)
-		if ok and Plain(unit) and unit then
+		if ok and Known(unit) and unit then
 			local okL, lvl = pcall(UnitLevel, unit)
 			level = okL and PlainLevel(lvl) or nil
 		end
@@ -2186,7 +2207,7 @@ end
 -- not known), the level after it in gold when it is
 local function UpdateHeader(f)
 	local name = f.titleText
-	if not Plain(name) then
+	if not Known(name) then
 		f.header:SetText(name)
 		return
 	end

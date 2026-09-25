@@ -69,9 +69,8 @@ local fadedArt = setmetatable({}, { __mode = "k" })      -- [popup] = { [the gam
 local popupButtons = setmetatable({}, { __mode = "k" })  -- [button] = "plate" / "close" / "none"
 local hookedPopups = setmetatable({}, { __mode = "k" })  -- [popup] = true: its OnShow is watched
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	local rep = region and Kit and Kit.Replace and Kit:Replace(region, opts)

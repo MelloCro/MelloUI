@@ -63,9 +63,8 @@ local hooked = false
 --------------------------------------------------------------------------------
 
 -- A value the client hides from addons (secret): never do arithmetic on it.
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- The test is MelloUI.Safe's (Core.lua), one set for the addon.
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)

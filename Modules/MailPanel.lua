@@ -60,7 +60,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("MailPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("MailPanel", {
@@ -118,9 +121,8 @@ local titleOwned = setmetatable({}, { __mode = "k" })   -- [fs] = true: a title 
 local bodies = {}                                       -- { obj, kind, saved }: the typed letter and the read letter
 local stats = { rows = 0, rims = 0, edits = 0, radios = 0, buttons = 0, arrows = 0, tabs = 0, plates = 0, bars = 0, papers = 0, panels = 0 }
 
-local function Secret(v)
-	return issecretvalue ~= nil and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -284,7 +286,7 @@ local function ArtOf(tex)
 		return nil
 	end
 	local ok, file = pcall(tex.GetTexture, tex)
-	if ok and file ~= nil and not Secret(file) and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
+	if ok and not Secret(file) and file ~= nil and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
 		return file
 	end
 	local okA, atlas = pcall(tex.GetAtlas, tex)
@@ -2021,25 +2023,26 @@ local function Pass()
 	end
 end
 
+-- Refresh's pass a frame later, and the mailbox page's stone noted (made
+-- once: Kit:NextFrame runs it once however often it was asked -- audit,
+-- 2026-09-24; timed on this window's own /melloperf row, not the Kit's
+-- timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	Pass()
+	local mf = _G.MailFrame
+	local win = mf and skin and skin.windows[mf]
+	local page = CurrentPage()
+	if active and win and page and mf:IsShown() then
+		NoteStone(win, page)
+	end
+end, "timer")
+
 local function Refresh()
 	if not (active and skin) then
 		return
 	end
 	Pass()
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		Pass()
-		local mf = _G.MailFrame
-		local win = mf and skin.windows[mf]
-		local page = CurrentPage()
-		if active and win and page and mf:IsShown() then
-			NoteStone(win, page)
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 --------------------------------------------------------------------------------
@@ -2110,11 +2113,7 @@ end
 -- (the mail windows are not protected; the switch is queued out of combat as
 -- the other windows' skins are)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- A mail window's first show (user, 2026-09-24: dress rarely used windows on

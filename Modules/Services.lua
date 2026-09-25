@@ -45,16 +45,12 @@ local M = MelloUI:RegisterModule("Services", {
 -- Helpers
 --------------------------------------------------------------------------------
 
-local function IsSecret(v)
-	return issecretvalue and issecretvalue(v)
-end
-
-local function Plain(v)
-	if IsSecret(v) or v == nil then
-		return nil
-	end
-	return v
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
+-- is v, or nil when v is secret (the stand-ins, the client's test and
+-- Safe.Value's own body, are for a test world without Core)
+local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Plain = MelloUI.Safe and MelloUI.Safe.Value
+	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
 
 local function VectorXY(pos)
 	if type(pos) ~= "table" then

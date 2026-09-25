@@ -65,9 +65,8 @@ local hooked = setmetatable({}, { __mode = "k" })       -- [frame] = true once i
 local dressed = setmetatable({}, { __mode = "k" })      -- [tab] = true once its card is made
 local textPoints = setmetatable({}, { __mode = "k" })   -- [label] = the game's anchors, while the kit holds it on the card
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Window()
 	local f = _G.BattlefieldMapFrame

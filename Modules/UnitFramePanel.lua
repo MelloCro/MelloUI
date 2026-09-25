@@ -52,9 +52,8 @@ local FRAMES = {
 	party1 = function() return PartyFrame and PartyFrame.GetPartyMemberFrame and PartyFrame:GetPartyMemberFrame(1) end,
 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	if not region then

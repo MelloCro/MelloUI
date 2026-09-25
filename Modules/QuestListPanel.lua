@@ -245,7 +245,8 @@ local function EnsureWidgets(button)
 	button.pin:Hide()
 end
 
--- A gold pulse over a frame: bright at once, gone within a second.
+-- A gold pulse over a frame: bright at once, gone within a second. Under
+-- Reduce Motion it ends at once: no flash (Anim:PlayGroup; audit, 2026-09-24).
 local function Pulse(owner, inset)
 	local flash = owner.pulse
 	if not flash then
@@ -270,7 +271,11 @@ local function Pulse(owner, inset)
 		owner.pulse = flash
 	end
 	flash.anim:Stop()
-	flash.anim:Play()
+	if MelloUI.Anim then
+		MelloUI.Anim:PlayGroup(flash.anim)
+	else
+		flash.anim:Play()
+	end
 end
 
 local revealKey = nil     -- group header to pulse when it is laid out

@@ -48,9 +48,8 @@ local rows = {}              -- key -> { scope, kind, label, calls, time, max, m
 local depth = 0
 local tChild, mChild = {}, {}
 
-local function Secret(v)
-	return issecretvalue ~= nil and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 --------------------------------------------------------------------------------
 -- Measuring
@@ -196,8 +195,10 @@ end
 -- wrapper, so the walk up the parents costs nothing while playing.
 --------------------------------------------------------------------------------
 
-local function Plain(v)
-	return type(v) == "string" and v ~= "" and not Secret(v)
+-- a plain, non-empty string (a boolean). The secret test first: comparing
+-- a secret string with "" is refused (audit, 2026-09-24: it came last).
+local function Named(v)
+	return not Secret(v) and type(v) == "string" and v ~= ""
 end
 
 local function CallMethod(obj, method)
@@ -234,7 +235,7 @@ local function NamedAncestor(obj)
 			return nil
 		end
 		local name = Ask(p, "GetName")
-		if Plain(name) then
+		if Named(name) then
 			return Group(name)
 		end
 	end
@@ -244,7 +245,7 @@ end
 -- an anonymous frame without a key; true when the label names the scope
 local function Anonymous(obj, scope)
 	local kind = Ask(obj, "GetObjectType")
-	kind = Plain(kind) and kind or "Frame"
+	kind = Named(kind) and kind or "Frame"
 	local named = NamedAncestor(obj)
 	if named then
 		return kind .. " child of " .. named
@@ -266,7 +267,7 @@ local function TableName(t)
 		return "MelloUI"
 	end
 	local n = rawget(t, "name")
-	if Plain(n) and type(MelloUI.modules) == "table" and rawequal(MelloUI.modules[n], t) then
+	if Named(n) and type(MelloUI.modules) == "table" and rawequal(MelloUI.modules[n], t) then
 		return n
 	end
 	for k, v in pairs(MelloUI) do
@@ -302,7 +303,7 @@ local function FrameLabel(obj, scope)
 		return label
 	end
 	local byScope
-	if not Plain(Ask(obj, "GetObjectType")) then
+	if not Named(Ask(obj, "GetObjectType")) then
 		label = TableName(obj)
 		if not label then
 			local id = tableIds[obj]
@@ -316,14 +317,14 @@ local function FrameLabel(obj, scope)
 		end
 	else
 		local name = Ask(obj, "GetName")
-		if Plain(name) then
+		if Named(name) then
 			label = Group(name)
 		else
 			-- the debug name: the keys after its last address, and whether
 			-- there was any address at all
 			local debug = Ask(obj, "GetDebugName")
 			local tail, levels, clean, parts = nil, 0, true, 0
-			if Plain(debug) then
+			if Named(debug) then
 				for part in debug:gmatch("[^.]+") do
 					parts = parts + 1
 					if IsAddress(part) then

@@ -57,7 +57,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("BarberShopPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("BarberShopPanel", {
@@ -83,9 +86,8 @@ local arrowReps = {}                                     -- { rep, button }
 local found = {}                                         -- [part] = a line for /barberdump
 local stats = { rings = 0, dropdowns = 0, arrows = 0, checks = 0, sliders = 0, cogs = 0, boxes = 0, buttons = 0, labels = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -517,6 +519,19 @@ local function Build()
 	SkinDynamic()
 end
 
+-- Refresh's pass a frame later, once the pools have laid out their buttons
+-- (made once: Kit:NextFrame runs it once however often it was asked --
+-- audit, 2026-09-24; timed on this window's own /melloperf row, not the
+-- Kit's timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	if active then
+		SkinDynamic()
+		for fs in pairs(labels) do
+			LabelOn(fs)
+		end
+	end
+end, "timer")
+
 -- After every show and every refresh of the customisation: what it acquired
 -- since, the arrows' looks, the labels' colour; once more a frame later
 -- (the pools lay out their buttons after the refresh).
@@ -531,19 +546,7 @@ local function Refresh()
 	for fs in pairs(labels) do
 		LabelOn(fs)
 	end
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active then
-			SkinDynamic()
-			for fs in pairs(labels) do
-				LabelOn(fs)
-			end
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 local function Activate()
@@ -593,11 +596,7 @@ end
 
 -- (geometry of the frames' children changes here: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- A first show in combat (the game hardly allows the chair then) dresses at

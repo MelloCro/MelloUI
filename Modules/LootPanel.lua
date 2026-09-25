@@ -66,7 +66,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("LootPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("LootPanel", {
@@ -98,9 +101,8 @@ local fadedArt = {}                                     -- game art faded with n
 local arrows = {}                                       -- { rep, button }
 local stats = { rows = 0, cards = 0, rims = 0, rolls = 0, rollButtons = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows, registered in `into` (the window's skin or
 -- the rolls') so enable / disable reach it.
@@ -563,6 +565,20 @@ local function SkinExistingRows()
 	end
 end
 
+-- RefreshWindow's pass a frame later, once the window is laid out (made
+-- once: Kit:NextFrame runs it once however often it was asked -- audit,
+-- 2026-09-24; timed on this window's own /melloperf row, not the Kit's
+-- timer -- review)
+local RefreshWindowLater = Shared("RefreshWindow a frame later", function()
+	local f = Window()
+	if active and f and f:IsShown() then
+		PlaceTitle()
+		for _, entry in ipairs(rims) do
+			FitIconRim(entry)
+		end
+	end
+end, "timer")
+
 local function RefreshWindow()
 	local f = Window()
 	if not (active and skin and f) then
@@ -581,19 +597,7 @@ local function RefreshWindow()
 		pcall(Kit.FitPortrait, Kit, Portrait(f), skin.ring)
 	end
 	PlaceTitle()
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active and f:IsShown() then
-			PlaceTitle()
-			for _, entry in ipairs(rims) do
-				FitIconRim(entry)
-			end
-		end
-	end)
+	Kit:NextFrame(skin, RefreshWindowLater)
 end
 
 --------------------------------------------------------------------------------
@@ -898,11 +902,7 @@ end
 
 -- (geometry of the windows' children changes here: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 local function Hook()

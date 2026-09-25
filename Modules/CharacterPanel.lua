@@ -72,9 +72,8 @@ local layHeld = nil       -- GetTime() of the window's OnShow, which lays the pa
 --------------------------------------------------------------------------------
 
 -- A value the client hides from addons (secret): never do arithmetic on it.
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- The test is MelloUI.Safe's (Core.lua), one set for the addon.
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- Window Background Parchment chosen: the whole window on parchment, so the
 -- right pane's own Parchment sheet stands down (one parchment per surface).
@@ -1810,6 +1809,7 @@ local PREBUILD_BUDGET = 2    -- ms of parts per frame (one part may run past it)
 
 local prebuilder = CreateFrame("Frame")
 local prebuildQueued = false
+local QueuePrebuild   -- below
 
 local function PrebuildTick()
 	local cf = CharacterFrame
@@ -1820,6 +1820,14 @@ local function PrebuildTick()
 	if InCombatLockdown() then
 		Perf.SetScript(prebuilder, "OnUpdate", nil)
 		prebuilder:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+	-- the kit's queue still working through a fight's refits: never in the
+	-- same frames as its few ms (audit, 2026-09-24: the two budgets stacked
+	-- after a fight); on again a little after it is through
+	if Kit:IsQueueBusy() then
+		Perf.SetScript(prebuilder, "OnUpdate", nil)
+		Kit:WhenQueueIdle(QueuePrebuild)
 		return
 	end
 	BuildSkin(PREBUILD_BUDGET)
@@ -1835,21 +1843,24 @@ local function StartPrebuild()
 	Perf.SetScript(prebuilder, "OnUpdate", PrebuildTick)
 end
 
-local function QueuePrebuild()
+local function PrebuildDue()
+	prebuildQueued = false
+	StartPrebuild()
+end
+
+QueuePrebuild = function()
 	if prebuildQueued or (skin and skin.built) then
 		return
 	end
 	prebuildQueued = true
-	C_Timer.After(PREBUILD_DELAY, function()
-		prebuildQueued = false
-		StartPrebuild()
-	end)
+	C_Timer.After(PREBUILD_DELAY, PrebuildDue)
 end
 
--- a fight ended: on again a little later (not in the frame the fight ends in)
+-- a fight ended: on again a little later (not in the frame the fight ends
+-- in), counted from when the kit's queue is through with the fight's refits
 Perf.SetScript(prebuilder, "OnEvent", function(self)
 	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
-	QueuePrebuild()
+	Kit:WhenQueueIdle(QueuePrebuild)
 end)
 
 local function Hook()

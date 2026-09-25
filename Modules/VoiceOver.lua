@@ -217,9 +217,8 @@ local M = MelloUI:RegisterModule("VoiceOver", {
 -- Helpers
 --------------------------------------------------------------------------------
 
-local function IsSecret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function IsPlainNumber(v)
 	return type(v) == "number" and not IsSecret(v)
@@ -1837,7 +1836,8 @@ function Overlay:Create()
 	container.subtitle:SetTextColor(0.24, 0.14, 0.05)
 	container.subtitle:Hide()
 	-- each new page fades in (a quarter of a second, easing out) instead of
-	-- jumping in: the reading eye follows it
+	-- jumping in: the reading eye follows it (played through Anim:PlayGroup,
+	-- which ends it at once under Reduce Motion)
 	local fade = container.subtitle:CreateAnimationGroup()
 	local alpha = fade:CreateAnimation("Alpha")
 	alpha:SetFromAlpha(0)
@@ -2004,7 +2004,13 @@ function Overlay:RetileDress()
 	if Kit.RetileBackgrounds then
 		Kit:RetileBackgrounds()
 	end
-	if dress.edge then
+	self:FitEdge()
+end
+
+-- the parchment's painted edge fitted to the paper's size
+function Overlay:FitEdge()
+	local dress = self.kitOn and self.dress
+	if dress and dress.edge then
 		local ok, w, h = pcall(dress.paper.GetSize, dress.paper)
 		if ok and w and h and not IsSecret(w) and not IsSecret(h) and w > 0 and h > 0 then
 			dress.edge:Fit(w, h)
@@ -2095,10 +2101,18 @@ function Overlay:Apply()
 	end
 	frame.portraitLine:Hide()
 	frame.miniPause:Hide()
-	frame:SetScale(tonumber(M.db.overlayScale) or 1)
 	-- a new scale: the stone and the parchment repeat at the same density
-	-- on the screen, never a bigger copy
-	self:RetileDress()
+	-- on the screen, never a bigger copy -- those in the overlay, laid again
+	-- only when its scale really changed (audit, 2026-09-24: each Apply laid
+	-- every background in the UI)
+	local scale, Kit = tonumber(M.db.overlayScale) or 1, MelloUI.Kit
+	if self.kitOn and self.dress and Kit.SetFrameScale then
+		Kit:SetFrameScale(frame, scale)
+		self:FitEdge()
+	else
+		frame:SetScale(scale)
+		self:RetileDress()
+	end
 	self:RestorePosition()
 	self:Update()
 end
@@ -2269,9 +2283,10 @@ function Overlay:Update()
 		if container.subtitle.shownEntry ~= current or container.subtitle.shownPage ~= current.page then
 			container.subtitle.shownEntry, container.subtitle.shownPage = current, current.page
 			container.subtitle.fade:Stop()
-			-- Reduce Motion (UI Modifications): the page is simply there
-			if MelloUI.Anim and MelloUI.Anim.reduceMotion then
-				container.subtitle:SetAlpha(1)
+			-- Reduce Motion: the page is simply there (the group ends at its
+			-- final alpha, 1)
+			if MelloUI.Anim then
+				MelloUI.Anim:PlayGroup(container.subtitle.fade)
 			else
 				container.subtitle.fade:Play()
 			end

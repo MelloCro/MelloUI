@@ -195,7 +195,7 @@ Add({ type = "button", name = "Dynamic UI Modification", hint = "borders, colour
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
 	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." })
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion",
-	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting." })
+	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well." })
 Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
 	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
 -- Names (user, 2026-09-22: "make that option global for all of the 3
@@ -323,6 +323,21 @@ local function Raw(frame, method)
 	return frame[method .. "Base"] or frame[method]
 end
 
+-- A window's scale set with its plain SetScale (Raw), its backgrounds kept at
+-- the UI's one resolution: those in it, laid again only when its scale really
+-- changed (Kit:SetFrameScale -- audit, 2026-09-24: each put-back and each
+-- turn of the wheel laid every background in the UI). A kit without it (a
+-- stand-in) lays them all, as before.
+local function ScaleFrame(frame, scale)
+	local Kit = MelloUI.Kit
+	if Kit.SetFrameScale then
+		Kit:SetFrameScale(frame, scale, Raw(frame, "SetScale"))
+	else
+		Raw(frame, "SetScale")(frame, scale)
+		Kit:RetileBackgrounds()
+	end
+end
+
 local function SavedPosition(frame)
 	local name = frame.GetName and frame:GetName()
 	local db = M.db
@@ -431,11 +446,10 @@ PutBack = function(frame)
 			if mover then
 				mover.scaling = true
 			end
-			Raw(frame, "SetScale")(frame, pos.scale)
+			ScaleFrame(frame, pos.scale)   -- (its backgrounds with it)
 			if mover then
 				mover.scaling = nil
 			end
-			MelloUI.Kit:RetileBackgrounds()
 		end
 		-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry
 		-- carries the anchor only when it differs (measured before the
@@ -727,21 +741,28 @@ do
 	local DETENT = 0.3            -- s: the wheel holds at 100 % for this long
 	local tip, owner, hold
 
-	local function Plain(v)
-		return type(v) == "number" and not (issecretvalue and issecretvalue(v))
-	end
+	-- v when it is a plain number, else nil: MelloUI.Safe (Core.lua), one set
+	-- for the addon (the stand-in is Safe.Number's own body, for a test world
+	-- without Core)
+	local PlainNumber = MelloUI.Safe and MelloUI.Safe.Number
+		or function(v)
+			if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then
+				return nil
+			end
+			return v
+		end
 
 	-- the scale that is 100 % for this mover's window
 	function SizeTip.Base(mover)
 		local custom = mover.custom
 		local base = custom and custom.base or mover.base
-		return (Plain(base) and base > 0) and base or 1
+		return (PlainNumber(base) and base > 0) and base or 1
 	end
 
 	-- the window's own scale, nil when it cannot be read
 	function SizeTip.Scale(frame)
 		local ok, scale = pcall(frame.GetScale, frame)
-		return (ok and Plain(scale) and scale > 0) and scale or nil
+		return (ok and PlainNumber(scale) and scale > 0) and scale or nil
 	end
 
 	-- the next size for a wheel notch, in whole percent of the standard size:
@@ -786,10 +807,11 @@ do
 		if not (ok and okS) then
 			return
 		end
-		for _, v in ipairs({ left, bottom, w, h, fs, us, sh, th }) do
-			if not Plain(v) then
-				return
-			end
+		-- each asked in turn (a list of them stopped at the first nil, so a
+		-- window not laid out yet reached the sums below; audit, 2026-09-24)
+		local N = PlainNumber
+		if not (N(left) and N(bottom) and N(w) and N(h) and N(fs) and N(us) and N(sh) and N(th)) then
+			return
 		end
 		if us <= 0 then
 			return
@@ -977,10 +999,12 @@ local function MakeMover(frame, shell)
 		local okR, left, bottom, w, h = pcall(frame.GetRect, frame)
 		local fs = frame:GetEffectiveScale()
 		mover.scaling = true
+		-- (its backgrounds keep the UI's one resolution as it is scaled: more
+		-- of them shows -- ScaleFrame)
 		if okC and okR and cx and left and w and h and w > 0 and h > 0 and fs and fs > 0 then
 			local fx, fy = (cx / fs - left) / w, (cy / fs - bottom) / h
 			frame:StopMovingOrSizing()
-			Raw(frame, "SetScale")(frame, scale)
+			ScaleFrame(frame, scale)
 			local fs2 = frame:GetEffectiveScale()
 			if fs2 and fs2 > 0 then
 				Raw(frame, "ClearAllPoints")(frame)
@@ -988,12 +1012,10 @@ local function MakeMover(frame, shell)
 			end
 			frame:StartMoving()
 		else
-			Raw(frame, "SetScale")(frame, scale)
+			ScaleFrame(frame, scale)
 		end
 		mover.scaling = nil
 		mover.scaled = scale
-		-- its backgrounds keep the UI's one resolution: more of them shows
-		MelloUI.Kit:RetileBackgrounds()
 		-- the readout follows the new size; landing on the standard size
 		-- gives a soft tick (the chat's scroll click)
 		SizeTip.Show(mover)
@@ -1789,12 +1811,27 @@ local function ReskinOn(db)
 	end
 end
 
--- Reduce Motion: the animation engine finishes every tween at once
+-- Reduce Motion: the animation engine finishes every tween and group at once.
+-- An accessibility switch for the whole addon, not part of the reskin: it
+-- follows the saved setting with this module on or off (Chat's smooth scroll
+-- reads it, and the Fresh start profile turns this module off; audit,
+-- 2026-09-24). Read at start-up (OnEnable, or OnDisable for a module that is
+-- off), on a change and after a profile load; the switch stays on this page.
 local function ApplyMotion(db)
-	if MelloUI.Anim then
-		MelloUI.Anim.reduceMotion = (M.isEnabled and db and db.reduceMotion) and true or false
+	if MelloUI.Anim and db then
+		MelloUI.Anim:SetReduceMotion(db.reduceMotion)
 	end
 end
+-- a change reaches OnSettingChanged, and a profile load OnEnable, only while
+-- the module is on
+hooksecurefunc(MelloUI, "NotifySettingChanged", function(_, name, key)
+	if name == "UIModifications" and key == "reduceMotion" then
+		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
+	end
+end)
+hooksecurefunc(MelloUI, "RestartModules", function()
+	ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
+end)
 
 function M:OnEnable(db)
 	self.db = db
@@ -1849,7 +1886,7 @@ end
 
 function M:OnDisable(db)
 	db = db or self.db or {}
-	ApplyMotion(nil)
+	ApplyMotion(db)   -- kept: Reduce Motion is not the module's
 	Apply(db, false)
 	ApplyUnlock(false)
 	ApplyNameFormat(db, false)
@@ -1862,8 +1899,7 @@ function M:OnSettingChanged(key, value, db)
 		ApplyUnlock(value)
 		return
 	elseif key == "reduceMotion" then
-		ApplyMotion(db)
-		return
+		return   -- applied by the NotifySettingChanged hook, module on or off
 	elseif key:sub(1, 10) == "parchment_" then
 		if MelloUI.Kit and MelloUI.Kit.SetParchment then
 			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)

@@ -72,7 +72,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("BankPanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("BankPanel", {
@@ -104,9 +107,8 @@ local tabReps = {}                                      -- a TabSystem's cards {
 local seenPictures = {}                                 -- [bank type .. ":" .. page] = the page picture's rect seen there (2a)
 local stats = { items = 0, bags = 0, pageTabs = 0, bankTabs = 0, panelTabs = 0, prompts = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -801,6 +803,18 @@ local function Build()
 	Kit:SweepControls(f, Replace, skin, P and P.TabSettingsMenu)
 end
 
+-- Refresh's pass a frame later, once the window is laid out (made once:
+-- Kit:NextFrame runs it once however often it was asked -- audit, 2026-09-24;
+-- timed on this window's own /melloperf row, not the Kit's timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	local f = Window()
+	if active and f and f:IsShown() then
+		FitPortrait()
+		PlaceTitle()
+		RecordPicture()
+	end
+end, "timer")
+
 -- After every show and every game refresh (a page or bank type switch, the
 -- bag slots laid again): what the game made or re-laid since (new pooled
 -- slots and tabs, the portrait's size, the title's plate, the followers).
@@ -819,18 +833,7 @@ local function Refresh()
 	-- once laid out (a frame after it shows): the portrait and the title
 	-- again, and the page picture's rect noted for this page (2a); one pass
 	-- pending at a time (the game refreshes on every bag change)
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active and f:IsShown() then
-			FitPortrait()
-			PlaceTitle()
-			RecordPicture()
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 local function Activate()
@@ -907,11 +910,7 @@ end
 
 -- (geometry of the window's children changes here: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The module switch and a dressed window go through SyncSafe, as always; the

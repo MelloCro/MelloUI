@@ -59,9 +59,8 @@ local skins = setmetatable({}, { __mode = "k" })         -- [window] = { reps = 
 local hooked = setmetatable({}, { __mode = "k" })        -- [window] = true once its OnShow is hooked
 local titleHome = setmetatable({}, { __mode = "k" })     -- [title string] = the frame it belongs to, while it rides our plate's band
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- The flight map windows this client has (either may be missing; a client
 -- with both uses TaxiFrame for some maps and FlightMapFrame for others)
@@ -527,7 +526,7 @@ local function ArtText(region)
 		return key
 	end
 	local ok, tex = pcall(region.GetTexture, region)
-	if ok and tex ~= nil and not Secret(tex) then
+	if ok and not Secret(tex) and tex ~= nil then
 		return "file " .. tostring(tex)
 	end
 	return "?"

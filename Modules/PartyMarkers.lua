@@ -59,16 +59,12 @@ local M = MelloUI:RegisterModule("PartyMarkers", {
 -- Helpers
 --------------------------------------------------------------------------------
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
-
-local function Plain(v)
-	if Secret(v) or v == nil then
-		return nil
-	end
-	return v
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua); Plain(v)
+-- is v, or nil when v is secret (the stand-ins, the client's test and
+-- Safe.Value's own body, are for a test world without Core)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
+local Plain = MelloUI.Safe and MelloUI.Safe.Value
+	or function(v) if issecretvalue and issecretvalue(v) then return nil end return v end
 
 local function PlainCall(fn, ...)
 	local ok, a, b = pcall(fn, ...)

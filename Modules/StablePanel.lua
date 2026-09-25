@@ -63,7 +63,10 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("StablePanel")
-local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local hooksecurefunc = Perf.hooksecurefunc
+-- a handler made once and run for many asks, wrapped once: its time stays
+-- on this file's own /melloperf row (review, 2026-09-24)
+local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 local M = MelloUI:RegisterModule("StablePanel", {
@@ -91,9 +94,8 @@ local panels = {}                                        -- our inner-panel text
 local found = {}                                         -- [part] = a line for /stabledump
 local info = nil                                         -- the pet info band { rect, tex, strings }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -646,6 +648,21 @@ local function Build()
 	Kit:SweepControls(f, Replace, skin, ModelScene(f))
 end
 
+-- Refresh's pass a frame later, once the window is laid out (made once:
+-- Kit:NextFrame runs it once however often it was asked -- audit, 2026-09-24;
+-- timed on this window's own /melloperf row, not the Kit's timer -- review)
+local RefreshLater = Shared("Refresh a frame later", function()
+	local f = Window()
+	if active and f and f:IsShown() then
+		FitPortrait()
+		PlaceTitle()
+		FitInfo()
+		for _, entry in ipairs(slotStones) do
+			entry.fit()
+		end
+	end
+end, "timer")
+
 -- After every show and every game update (a pet selected, swapped, a slot
 -- bought): the portrait, the title, the band, the slots' tints and the
 -- rims; once more a frame later, when the window is laid out.
@@ -665,21 +682,7 @@ local function Refresh()
 			rim:Update()
 		end
 	end
-	if skin.laterPending then
-		return
-	end
-	skin.laterPending = true
-	C_Timer.After(0, function()
-		skin.laterPending = nil
-		if active and f:IsShown() then
-			FitPortrait()
-			PlaceTitle()
-			FitInfo()
-			for _, entry in ipairs(slotStones) do
-				entry.fit()
-			end
-		end
-	end)
+	Kit:NextFrame(skin, RefreshLater)
 end
 
 local function Activate()
@@ -738,11 +741,7 @@ end
 
 -- (geometry of the window's children changes here: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The first show in combat dresses at once all the same: the dressing adds

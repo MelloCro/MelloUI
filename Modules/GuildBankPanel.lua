@@ -118,15 +118,14 @@ local titleMoved = {}                       -- [fs] = { points } extra title str
 local pageRects = {}                        -- [page] = the page picture's rect seen there (2a)
 local stats = { items = 0, sideTabs = 0, tabs = 0, buttons = 0, plates = 0, icons = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
--- plain numbers only (no secret, no nil)
-local function Plain(...)
+-- true when every value given is a plain number (no secret, no nil)
+local function PlainNumbers(...)
 	for i = 1, select("#", ...) do
 		local v = select(i, ...)
-		if type(v) ~= "number" or Secret(v) then
+		if Secret(v) or type(v) ~= "number" then
 			return false
 		end
 	end
@@ -294,7 +293,7 @@ local function RectText(obj)
 		return "-"
 	end
 	local ok, l, b, w, h = pcall(obj.GetRect, obj)
-	if ok and Plain(l, b, w, h) then
+	if ok and PlainNumbers(l, b, w, h) then
 		return string.format("x=%.0f y=%.0f w=%.0f h=%.0f", l, b, w, h)
 	end
 	return "(no rect)"
@@ -303,7 +302,7 @@ end
 -- a size the template states (readable before the window is laid out)
 local function ExplicitSize(obj)
 	local ok, w, h = pcall(obj.GetSize, obj)
-	if ok and Plain(w, h) and w > 0 and h > 0 then
+	if ok and PlainNumbers(w, h) and w > 0 and h > 0 then
 		return w, h
 	end
 end
@@ -540,7 +539,7 @@ local function TabardInfo()
 		return nil
 	end
 	local ok, info = pcall(gi.GetGuildTabardInfo, "player")
-	if ok and type(info) == "table" and info.emblemFileID ~= nil and not Secret(info.emblemFileID) then
+	if ok and type(info) == "table" and not Secret(info.emblemFileID) and info.emblemFileID ~= nil then
 		return info
 	end
 	return nil
@@ -559,7 +558,7 @@ local function SelectedTabIcon()
 	for _, entry in ipairs(sideTabs) do
 		if entry.icon and TabChecked(entry.button) then
 			local ok, file = pcall(entry.icon.GetTexture, entry.icon)
-			if ok and file ~= nil and not Secret(file) and file ~= "" and file ~= 0 then
+			if ok and not Secret(file) and file ~= nil and file ~= "" and file ~= 0 then
 				return file
 			end
 		end
@@ -573,7 +572,7 @@ local function UpdatePortraitArt()
 		return
 	end
 	local okD, dw = pcall(p.disc.GetWidth, p.disc)
-	local size = (okD and Plain(dw) and dw > 0) and dw or nil
+	local size = (okD and PlainNumbers(dw) and dw > 0) and dw or nil
 	local info = TabardInfo()
 	local setter = _G.SetLargeGuildTabardTextures
 	if info and type(setter) == "function" and size then
@@ -643,7 +642,7 @@ end
 -- the window's TOPLEFT, near it): the ring then IS that corner
 local function OnTopLeft(obj, f)
 	local ok, point, rel, relPoint, x, y = pcall(obj.GetPoint, obj, 1)
-	if not ok or not point or not Plain(x or 0, y or 0) then
+	if not ok or not point or not PlainNumbers(x or 0, y or 0) then
 		return false
 	end
 	rel = rel or f
@@ -859,7 +858,7 @@ local function ItemPitch(buttons)
 	local lefts, tops = {}, {}
 	for _, b in ipairs(buttons) do
 		local okP, l, t = pcall(function() return b:GetLeft(), b:GetTop() end)
-		if okP and Plain(l, t) then
+		if okP and PlainNumbers(l, t) then
 			lefts[#lefts + 1] = l
 			tops[#tops + 1] = t
 		end
@@ -1112,12 +1111,12 @@ local function MakeReadable(obj, label)
 	local okO, fo = pcall(obj.GetFontObject, obj)
 	saved.object = okO and fo or nil
 	local okF, face, size, flags = pcall(obj.GetFont, obj)
-	if okF and type(face) == "string" and not Secret(face) and Plain(size) then
+	if okF and type(face) == "string" and not Secret(face) and PlainNumbers(size) then
 		saved.font = { face, size, flags or "" }
 	end
 	local okC, r, g, b, a = pcall(obj.GetTextColor, obj)
-	if okC and Plain(r, g, b) then
-		saved.colour = { r, g, b, Plain(a) and a or 1 }
+	if okC and PlainNumbers(r, g, b) then
+		saved.colour = { r, g, b, PlainNumbers(a) and a or 1 }
 	end
 	readable[#readable + 1] = { obj = obj, saved = saved, label = label }
 end
@@ -1128,13 +1127,13 @@ local function ApplyReadable(entry, on)
 		local fo = _G[TEXT_FONT]
 		local okT, _, target = pcall(function() return fo:GetFont() end)
 		local okS, _, size = pcall(obj.GetFont, obj)
-		if fo and okT and okS and Plain(target, size) and size < target - 0.5 then
+		if fo and okT and okS and PlainNumbers(target, size) and size < target - 0.5 then
 			pcall(obj.SetFontObject, obj, fo)
 			entry.grown = true
 		end
 		local c = MelloUI.Palette.text
 		local okR, r, g, b = pcall(obj.GetTextColor, obj)
-		local same = okR and Plain(r, g, b) and math.abs(r - c[1]) < 0.01 and math.abs(g - c[2]) < 0.01 and math.abs(b - c[3]) < 0.01
+		local same = okR and PlainNumbers(r, g, b) and math.abs(r - c[1]) < 0.01 and math.abs(g - c[2]) < 0.01 and math.abs(b - c[3]) < 0.01
 		if not same then
 			pcall(obj.SetTextColor, obj, c[1], c[2], c[3])
 		end
@@ -1218,7 +1217,7 @@ local function FitBand(f)
 	end
 	local okA, ab = pcall(area.GetBottom, area)
 	local okF, fb = pcall(f.GetBottom, f)
-	if not (okA and okF and Plain(ab, fb)) then
+	if not (okA and okF and PlainNumbers(ab, fb)) then
 		band:Hide()
 		return
 	end
@@ -1500,7 +1499,7 @@ local function SkinTab(tab)
 				entry.steadying = true
 				local okP, _, _, _, x = pcall(text.GetPoint, text, 1)
 				text:ClearAllPoints()
-				text:SetPoint("CENTER", tab, "CENTER", (okP and Plain(x)) and x or 0, 0)
+				text:SetPoint("CENTER", tab, "CENTER", (okP and PlainNumbers(x)) and x or 0, 0)
 				entry.steadying = nil
 			end
 			hooksecurefunc(text, "SetPoint", Steady)
@@ -1542,7 +1541,7 @@ end
 -- whose open look shows
 local function OpenBottomTab(f)
 	local sel = f.selectedTab
-	if Plain(sel) then
+	if PlainNumbers(sel) then
 		local tab = _G["GuildBankFrameTab" .. sel] or (type(f.Tabs) == "table" and f.Tabs[sel]) or nil
 		return sel, tab
 	end
@@ -1627,7 +1626,7 @@ local function FitIconRim(holder)
 	local p = Kit:Piece(name)
 	local l, r, t, b = Kit:Insets(name, 1)
 	local ok, iw, ih = pcall(icon.GetSize, icon)
-	if not (p and l and ok and Plain(iw, ih)) or iw <= 0 or ih <= 0 then
+	if not (p and l and ok and PlainNumbers(iw, ih)) or iw <= 0 or ih <= 0 then
 		return
 	end
 	rim:ClearAllPoints()
@@ -1778,7 +1777,7 @@ local function SkinPopupEdit(popup)
 		local best = 0
 		for _, tex in ipairs(textures) do
 			local ok, w = pcall(tex.GetWidth, tex)
-			if ok and Plain(w) and w > best then
+			if ok and PlainNumbers(w) and w > best then
 				mid, best = tex, w
 			end
 		end
@@ -1796,7 +1795,7 @@ local function SkinPopupEdit(popup)
 	local reach = 0
 	if left then
 		local ok, _, _, _, x = pcall(left.GetPoint, left, 1)
-		if ok and Plain(x) and x < 0 then
+		if ok and PlainNumbers(x) and x < 0 then
 			reach = -x
 		end
 	end
@@ -2078,11 +2077,7 @@ end
 
 -- (geometry of the window's children changes here: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The first show in combat dresses at once all the same: the dressing adds
@@ -2229,14 +2224,14 @@ local function Dressed(obj)
 end
 
 local function Num(v)
-	return Plain(v) and string.format("%.0f", v) or "?"
+	return PlainNumbers(v) and string.format("%.0f", v) or "?"
 end
 
 local function ArtOf(region)
 	local key = Kit:ArtKey(region)
 	if key == nil then
 		local ok, file = pcall(region.GetTexture, region)
-		key = (ok and file ~= nil and not Secret(file)) and tostring(file) or "?"
+		key = (ok and not Secret(file) and file ~= nil) and tostring(file) or "?"
 	end
 	return tostring(key)
 end
@@ -2255,7 +2250,7 @@ local function DumpOwn(frame)
 		end
 		local okA, alpha = pcall(region.GetAlpha, region)
 		MelloUI:Print("  region %s %s [%s] %s %s %s alpha %s shown %s %s", kind, Label(region), tostring(KeyOf(frame, region) or "-"),
-			okL and tostring(layer) or "?", okL and tostring(sub) or "", art, (okA and Plain(alpha)) and string.format("%.2f", alpha) or "?",
+			okL and tostring(layer) or "?", okL and tostring(sub) or "", art, (okA and PlainNumbers(alpha)) and string.format("%.2f", alpha) or "?",
 			Shown(region), RectText(region))
 	end
 	for _, child in ipairs({ frame:GetChildren() }) do
@@ -2365,12 +2360,12 @@ local function DumpTabs(f)
 		local art = "-"
 		if entry.icon then
 			local ok, file = pcall(entry.icon.GetTexture, entry.icon)
-			art = (ok and file ~= nil and not Secret(file)) and tostring(file) or "?"
+			art = (ok and not Secret(file) and file ~= nil) and tostring(file) or "?"
 		end
 		MelloUI:Print("  %d %s shown %s button %s icon %s", i, Label(entry.tab), Shown(entry.tab), Label(entry.button), art)
 		MelloUI:Print("     dressed as %s, rim shown %s (%s), selected %s, glow %s, rim %s, icon %s%s",
 			entry.rep and "common-sidetab (gold slot rim)" or "nothing", rim and Shown(rim) or "-", rim and tostring(rim.base) or "-",
-			tostring(TabChecked(entry.button)), (okG and Plain(ga)) and string.format("%.2f", ga) or "-", RectText(rim), RectText(entry.icon),
+			tostring(TabChecked(entry.button)), (okG and PlainNumbers(ga)) and string.format("%.2f", ga) or "-", RectText(rim), RectText(entry.icon),
 			entry.why and (" (" .. entry.why .. ")") or "")
 	end
 	local idx = OpenBottomTab(f)

@@ -486,7 +486,8 @@ local function IconBox(parent, size, texture, button)
 	end
 	-- a pulsing gold glow over the rim (the action button's proc glow,
 	-- additive light on top of the iron, not behind it — user, 2026-09-22),
-	-- for an important module
+	-- for an important module; under Reduce Motion a still glow at full
+	-- strength, the pulse's end (Anim:PlayGroup; audit, 2026-09-24)
 	function box:SetGlow(on)
 		if on and not self.glow then
 			local glow = self:CreateTexture(nil, "OVERLAY", nil, 7)
@@ -505,14 +506,14 @@ local function IconBox(parent, size, texture, button)
 			a:SetFromAlpha(0.45)
 			a:SetToAlpha(1)
 			a:SetDuration(0.9)
-			anim:Play()
+			MelloUI.Anim:PlayGroup(anim)
 			self.glow, self.glowAnim = glow, anim
 		elseif self.glow then
 			self.glow:SetShown(on and true or false)
 			if on then
-				self.glowAnim:Play()
+				MelloUI.Anim:PlayGroup(self.glowAnim)
 			else
-				self.glowAnim:Stop()
+				MelloUI.Anim:StopGroup(self.glowAnim)   -- not played again when Reduce Motion goes off
 			end
 		end
 	end
@@ -564,9 +565,14 @@ end
 
 -- Smooth hover glow: a bronze wash that fades in while the mouse is over the
 -- frame and out again after it leaves. Runs an OnUpdate only while animating.
+-- Under Reduce Motion it is there at once and gone on the frame the mouse
+-- leaves, its OnUpdate with it (audit, 2026-09-24: it faded regardless).
 local HOVER_SPEED = 6   -- full fade in about 1/6 s
 local HoverEnter = Shared("OnEnter on the configurator's hover washes", function(self)
 	Perf.SetScript(self, "OnUpdate", self.hoverStep)
+	if MelloUI.Anim.reduceMotion then
+		self.hoverStep(self, 0)
+	end
 end, "script")
 local function AttachHover(frame, alphaMax)
 	-- the palette's hover is a fill colour (dark bronze), not a light: it
@@ -587,10 +593,11 @@ local function AttachHover(frame, alphaMax)
 	local level = 0
 	local function Step(self, dt)
 		local target = self:IsMouseOver() and 1 or 0
+		local move = MelloUI.Anim.reduceMotion and 1 or dt * HOVER_SPEED
 		if level < target then
-			level = math.min(1, level + dt * HOVER_SPEED)
+			level = math.min(1, level + move)
 		elseif level > target then
-			level = math.max(0, level - dt * HOVER_SPEED)
+			level = math.max(0, level - move)
 		end
 		glow:SetAlpha(level * alphaMax)
 		edge:SetAlpha(level)
@@ -2481,9 +2488,13 @@ local function CreateWindow()
 		end
 		local fit = math.min(1, (sw - 16) / WINDOW_WIDTH, (sh - 16) / WINDOW_HEIGHT)
 		if math.abs((self:GetScale() or 1) - fit) > 0.001 then
-			self:SetScale(fit)
-			if MelloUI.Kit and MelloUI.Kit.RetileBackgrounds then
-				MelloUI.Kit:RetileBackgrounds()
+			-- (the backgrounds in the window laid again, not every one in the
+			-- UI -- audit, 2026-09-24)
+			local Kit = MelloUI.Kit
+			if Kit and Kit.SetFrameScale then
+				Kit:SetFrameScale(self, fit)
+			else
+				self:SetScale(fit)
 			end
 		end
 	end
@@ -2701,9 +2712,8 @@ end
 
 local probe
 
-local function IsSecret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local IsSecret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Lookup(path)
 	local v = _G

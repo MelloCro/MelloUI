@@ -71,10 +71,9 @@ end
 
 local STATES = { "normal", "hover", "pressed", "checked", "disabled", "plain", "open", "closed", "selected", "focused", "off", "on", "title" }
 
--- this client hands out secret numbers under unit frames: never compare one
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- this client hands out secret numbers under unit frames: never compare one.
+-- The test is MelloUI.Safe's (Core.lua), one set for the addon.
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 --------------------------------------------------------------------------------
 -- Pieces
@@ -746,13 +745,15 @@ end
 -- whose size reads secret (under a unit frame, in combat) and that has no
 -- `kitTileW` standing in is left as it was last laid: Retile would otherwise
 -- fall back to one whole copy of the piece, the stretched look this rule
--- exists to prevent. Returns how many were laid and how many left.
+-- exists to prevent. Returns how many were laid and how many left. (The
+-- secret test comes before any other on the size: a boolean test on a
+-- secret is refused too -- audit, 2026-09-24.)
 function Kit:RetileBackgrounds()
 	local laid, left = 0, 0
 	for tex in pairs(BACKGROUNDS) do
 		if tex.kitBackground then
 			local ok, w, h = pcall(tex.GetSize, tex)
-			if (ok and w and h and not Secret(w) and not Secret(h)) or tex.kitTileW then
+			if (ok and not Secret(w) and not Secret(h) and w and h) or tex.kitTileW then
 				self:Retile(tex)
 				laid = laid + 1
 			else
@@ -761,6 +762,94 @@ function Kit:RetileBackgrounds()
 		end
 	end
 	return laid, left
+end
+
+do
+	-- A texture in `frame` or under it (its parents up to the top), the
+	-- frames seen on the way kept for the rest of one retile: the backgrounds
+	-- of one window share most of them, so no frame is asked twice
+	local underOf, trail = {}, {}   -- [frame] = in it or not; the frames of one walk
+
+	local function InFrame(tex, frame)
+		local f, n, answer = tex:GetParent(), 0, false
+		while f do
+			if f == frame then
+				answer = true
+				break
+			end
+			local known = underOf[f]
+			if known ~= nil then
+				answer = known
+				break
+			end
+			n = n + 1
+			trail[n] = f
+			if n > 64 then
+				break
+			end
+			f = f:GetParent()
+		end
+		for i = 1, n do
+			underOf[trail[i]] = answer
+			trail[i] = nil
+		end
+		return answer
+	end
+
+	-- The backgrounds in `frame` (or under it) laid again, the rest left as
+	-- they are (RetileBackgrounds' rule for each). Returns how many were laid
+	-- and how many left (size unreadable).
+	function Kit:RetileBackgroundsIn(frame)
+		local laid, left = 0, 0
+		if not frame then
+			return laid, left
+		end
+		for tex in pairs(BACKGROUNDS) do
+			if tex.kitBackground then
+				local okU, inFrame = pcall(InFrame, tex, frame)
+				if okU and inFrame then
+					local ok, w, h = pcall(tex.GetSize, tex)
+					if (ok and not Secret(w) and not Secret(h) and w and h) or tex.kitTileW then
+						self:Retile(tex)
+						laid = laid + 1
+					else
+						left = left + 1
+					end
+				end
+			end
+		end
+		wipe(underOf)
+		wipe(trail)   -- (a walk an error cut short)
+		return laid, left
+	end
+end
+
+-- Kit:SetFrameScale(frame, scale, setScale): the frame's scale set (through
+-- setScale(frame, scale) when given: a caller's own unhooked SetScale) and
+-- the backgrounds in it laid again -- only those, and only when the frame's
+-- scale on the screen really changed (audit, 2026-09-24: six places set a
+-- scale and then laid every background in the UI again, the Quest Tracker
+-- on each of its settings, a header's collapse too). A scale that reads
+-- secret counts as changed. Returns true when it changed, and how many were
+-- laid. A protected frame's scale is the caller's to keep out of combat.
+-- A background that only hangs off the frame by its anchors (its holder
+-- parented elsewhere) changes size, not scale: the holder's OnSizeChanged
+-- lays it, as it always has.
+function Kit:SetFrameScale(frame, scale, setScale)
+	if not frame then
+		return false, 0
+	end
+	local okB, before = pcall(frame.GetEffectiveScale, frame)
+	if setScale then
+		setScale(frame, scale)
+	else
+		frame:SetScale(scale)
+	end
+	local okA, after = pcall(frame.GetEffectiveScale, frame)
+	if okB and okA and not Secret(before) and not Secret(after) and before == after then
+		return false, 0
+	end
+	return true, (self:RetileBackgroundsIn(frame))
 end
 
 --------------------------------------------------------------------------------
@@ -1892,11 +1981,15 @@ end
 -- the rims whose hover is set, for the re-read after a mouse release (below);
 -- kept here, as a panel may set a rim's hover itself before its Update
 local hoverRims = setmetatable({}, { __mode = "k" })
+-- LitWatch(rim, lit): a rim lit (hovered or pressed) is read again a second
+-- on, and on while it stays lit (the readers below)
+local LitWatch
 
 local function Slot_Update(rim)
 	hoverRims[rim] = rim.hover and true or nil
+	LitWatch(rim, rim.hover or rim.pressed)
 	local b = rim.button
-	-- secret-safe, as the sweep below: this runs from the button's own
+	-- secret-safe, as the reads below: this runs from the button's own
 	-- OnEnter / OnMouseDown / SetChecked hooks, and an action button can
 	-- answer IsEnabled / GetChecked with a secret in combat; a secret keeps
 	-- the rim's last known value instead of being tested (user, 2026-09-23)
@@ -1928,7 +2021,7 @@ local function Slot_Update(rim)
 	else
 		state = Kit:ResolveState(rim.base, rim.hover, rim.pressed, checked, disabled)
 	end
-	rim.lastChecked = checked and true or false   -- for the sweep below
+	rim.lastChecked = checked and true or false   -- for the reads below
 	if rim.glow then
 		local a = checked and 0.7 or rim.hover and 0.35 or 0
 		rim.glow:SetAlpha(a)
@@ -1946,55 +2039,89 @@ end
 -- until the next click (user, 2026-09-22: action buttons stuck pressed).
 local pressedLatches = setmetatable({}, { __mode = "k" })   -- [rim or rep] = its Update
 
--- ... and every rim is re-read from its button's live state once a second
--- (mouse over it, the widget's own pushed state): whatever an event missed,
--- the look is right again within a second (user, 2026-09-22: rims stuck).
--- Only rims whose button can be seen: a closed window's rims are read the
--- moment their button shows again (its OnShow, below), so nothing that
--- changed while it was closed is shown stale. The sweep goes a tenth of
--- the rims every tenth of a second (/melloperf 2026-09-24: the whole lot at
--- once was 2.8 ms, every second).
+-- A rim is read again from its button's live state (the mouse over it, the
+-- widget's own pushed state, the checked flag) when something can have
+-- changed what the hooks below do not hear, and a clock runs only while a
+-- rim is lit (audit, 2026-09-24: a sweep of every rim ten times a second
+-- woke from load to logout, with the kit off and nothing dressed too). The
+-- rims stuck pressed, hovered and checked (user, 2026-09-22 and 09-23) each
+-- have their reader here:
+--   its button shown (a window opened)        that rim, at once
+--   any mouse release                         the latched and hovered rims, the rim under
+--                                             the mouse when the release ended no rim's
+--                                             press, and every shown rim on a panel's
+--                                             selection test (a click elsewhere moves a
+--                                             selection; a right-click ends the merchant's
+--                                             repair mode), next frame
+--   the mouse entering a rim's button         any other rim still marked hovered (its
+--                                             OnLeave was missed), next frame
+--   a rim lit (hovered or pressed)            that rim a second on, and on each second
+--                                             while it stays lit: a missed OnLeave or
+--                                             release, or a hover read off the button's
+--                                             place, is right within a second (nothing
+--                                             lit: no timer)
+--   a click on a check button (mouse, key     that rim, next frame: the client flips a
+--   binding, /click)                          CheckButton's flag itself, past SetChecked
+--   the bars' state events                    every shown check button's flag, next frame,
+--                                             at most every FLAG_GAP s (FLAG_GAP_COMBAT
+--                                             in a fight)
+--   the end of a fight                        every shown rim, a tenth of them a frame: a
+--                                             read in combat can come back secret, and the
+--                                             rim keeps its last look until then
+-- "Next frame": the game's own handlers of the moment have run by then, and
+-- a rim asked for many times in one frame is read once. A rim whose button
+-- cannot be seen is left alone; it is read the moment it shows.
 local allRims = setmetatable({}, { __mode = "k" })
-local rimList = {}           -- the same rims in the order they came, for the sweep in slices
-local SWEEP_SLICES = 10
-local sweepAt = 1
+local rimList = {}           -- the same rims in the order they came, for the pass after a fight
 
--- One rim re-read from its button (the sweeps and the button's OnShow)
-local function ReadRim(rim)
+-- One rim re-read from its button; `flagOnly`: the checked flag alone (the
+-- hover and press have their scripts). Returns false when the rim has
+-- nothing to read or its button cannot be seen (a pass drops it then).
+local function ReadRim(rim, flagOnly)
 	local b = rim.button
 	if rim.restState or not b then
-		return
+		return false
 	end
 	-- EVERY read below can come back SECRET on this client (an action
 	-- button's mouse-over in combat: "attempt to perform boolean test on
 	-- local 'over' (a secret boolean value)", user 2026-09-23). A secret
 	-- answer means "cannot know right now": the rim keeps what it had and
-	-- is read again on the next sweep; nothing is tested or compared.
+	-- is read again on the next occasion; nothing is tested or compared.
 	local okV, visible = pcall(b.IsVisible, b)
-	if not okV or Secret(visible) or not visible then
-		return
+	if not okV then
+		return false
 	end
-	local okO, over = pcall(b.IsMouseOver, b)
-	local okS, state = pcall(b.GetButtonState, b)
-	local hover = rim.hover
-	if okO and not Secret(over) then
-		hover = over and true or nil
+	if Secret(visible) then
+		if rim.hover or rim.pressed then
+			LitWatch(rim, true)   -- (cannot know: a lit one stays watched)
+		end
+		return true
 	end
-	local pressed = rim.pressed
-	if okS and not Secret(state) then
-		pressed = (state == "PUSHED") and true or nil
+	if not visible then
+		return false
 	end
-	if b.GetButtonState == nil then
-		pressed = rim.pressed   -- no widget state to read: the latch stands
+	local hover, pressed = rim.hover, rim.pressed
+	if not flagOnly then
+		local okO, over = pcall(b.IsMouseOver, b)
+		if okO and not Secret(over) then
+			hover = over and true or nil
+		end
+		-- (no widget state to read on a plain frame: the latch stands)
+		if b.GetButtonState then
+			local okS, state = pcall(b.GetButtonState, b)
+			if okS and not Secret(state) then
+				pressed = (state == "PUSHED") and true or nil
+			end
+		end
 	end
 	-- the checked flag as well: a check button flips it on the C side
 	-- when clicked, past the SetChecked hook (the action bars' rims
 	-- stayed "checked" with the button long unchecked, user 2026-09-22)
-	local okC, c
+	local okC, c = false, nil
 	if rim.isChecked then
 		okC, c = pcall(rim.isChecked)
-	else
-		okC, c = pcall(b.GetChecked, b)
+	elseif b.GetChecked then
+		okC, c = pcall(b.GetChecked, b)   -- (none on a plain button: no error string made)
 	end
 	local checked = rim.lastChecked or false
 	if okC and not Secret(c) then
@@ -2004,67 +2131,285 @@ local function ReadRim(rim)
 		rim.hover, rim.pressed = hover, pressed
 		pcall(Slot_Update, rim)
 	end
+	-- still lit (a hover found here, the mouse resting, a secret answer):
+	-- read again a second on
+	if rim.hover or rim.pressed then
+		LitWatch(rim, true)
+	end
+	return true
 end
-
-C_Timer.NewTicker(1 / SWEEP_SLICES, function()
-	local n = #rimList
-	for _ = 1, math.ceil(n / SWEEP_SLICES) do
-		if sweepAt > n then
-			sweepAt = 1
-		end
-		ReadRim(rimList[sweepAt])
-		sweepAt = sweepAt + 1
-	end
-end)
-
--- the rims a release can have changed re-read right after it (the click's
--- C-side toggle of a check button is in by now), once however many
--- releases the frame had: the ones it ended a press on and the ones under
--- the cursor. Any mouse release fires this (the camera's right button
--- too), so not every rim: the sweep keeps the rest right
-local releaseRims = {}       -- [rim] = true, emptied by the re-read
-local releaseSweepQueued = false
-local function ReleaseSweep()
-	releaseSweepQueued = false
-	for rim in pairs(hoverRims) do
-		releaseRims[rim] = true
-	end
-	for rim in pairs(releaseRims) do
-		releaseRims[rim] = nil
-		ReadRim(rim)
-	end
-end
-
--- the press latches end here (above), then the re-read
-local releaseFrame = CreateFrame("Frame")
-releaseFrame:RegisterEvent("GLOBAL_MOUSE_UP")
-Perf.SetScript(releaseFrame, "OnEvent", function()
-	for latch, update in pairs(pressedLatches) do
-		pressedLatches[latch] = nil
-		if allRims[latch] then
-			releaseRims[latch] = true
-		end
-		if latch.pressed then
-			latch.pressed = nil
-			update(latch)
-		end
-	end
-	if not releaseSweepQueued and (next(releaseRims) or next(hoverRims)) then
-		releaseSweepQueued = true
-		C_Timer.After(0, ReleaseSweep)
-	end
-end)
 
 -- A rim follows its button through one handler per script and method for
 -- every rim (user, 2026-09-24: 16 hooks and their closures per bag slot):
 -- the rim is kept by its button. A second rim on a button that has one
--- keeps handlers of its own, so every hook still runs where it did.
+-- keeps handlers of its own, so every hook still runs where it did. (Here,
+-- above the readers: a release reads the rim under the mouse by it.)
 local rimOf = setmetatable({}, { __mode = "k" })   -- [button] = its (first) rim
+
+-- The readers, in a block of their own (the file's main chunk nears Lua's
+-- 200 locals): ReadNext(rim) reads it on the next frame, RimJoin(rim) puts
+-- it in the passes that read it (as it is made and as its button shows),
+-- StaleHover(rim), LitWatch(rim) and RimEventsFor(onCheckButton) are below
+local ReadNext, RimJoin, StaleHover, RimEventsFor
+do
+	-- The shown rims whose look hangs on a flag nothing calls a method to
+	-- change: a check button's (checkRims) and a panel's selection test
+	-- (selectRims, rim.isChecked). A rim joins as its button shows and
+	-- leaves at the first pass that finds it hidden, so a pass reads only
+	-- what can be seen.
+	local checkRims = setmetatable({}, { __mode = "k" })
+	local selectRims = setmetatable({}, { __mode = "k" })
+
+	-- The next frame's reads, however many asked for them in this one:
+	-- `readRims` the rims asked for by name, `readHover` every rim marked
+	-- hovered, `readSelect` every shown rim on a selection test. Two sets in
+	-- turn, so a rim asked for while they run waits for the frame after.
+	local readRims, readSpare = {}, {}   -- [rim] = true
+	local readQueued, readHover, readSelect = false, false, false
+
+	local function ReadQueued()
+		readQueued = false
+		local list = readRims
+		readRims, readSpare = readSpare, list
+		if readHover then
+			readHover = false
+			for rim in pairs(hoverRims) do
+				list[rim] = true
+			end
+		end
+		for rim in pairs(list) do
+			ReadRim(rim)
+		end
+		if readSelect then
+			-- (their flag alone, as the old release pass: hover and press
+			-- have their scripts, and these are neither hovered nor latched)
+			readSelect = false
+			for rim in pairs(selectRims) do
+				if not list[rim] and not ReadRim(rim, true) then
+					selectRims[rim] = nil
+				end
+			end
+		end
+		wipe(list)
+	end
+
+	local function QueueRead()
+		if not readQueued then
+			readQueued = true
+			C_Timer.After(0, ReadQueued)
+		end
+	end
+
+	function ReadNext(rim)
+		readRims[rim] = true
+		QueueRead()
+	end
+
+	function RimJoin(rim)
+		if rim.isChecked then
+			selectRims[rim] = true
+		elseif rim.onCheckButton then
+			checkRims[rim] = true
+		end
+	end
+
+	-- The mouse entering a rim's button while another rim is still marked
+	-- hovered: that one's OnLeave was missed (its button hidden or moved
+	-- from under the cursor); every hovered rim is read on the next frame
+	function StaleHover(rim)
+		for other in pairs(hoverRims) do
+			if other.button ~= rim.button then
+				readHover = true
+				QueueRead()
+				return
+			end
+		end
+	end
+
+	-- The lit rims (hovered or pressed), each read again a second after it
+	-- lit and on each second while it stays lit: an OnLeave or release that
+	-- never came (a button hidden or moved from under the cursor, the game
+	-- setting a button's scripts anew, a key's release the client took
+	-- itself) and a hover read off the button's place (after a fight, on
+	-- show; a bag over the bar) are right within a second, as under the old
+	-- sweep (review, 2026-09-24). Nothing lit: no timer. A rim hidden or on a
+	-- fixed look leaves the watch (its OnShow reads it). Two sets in turn: a
+	-- read that re-watches a rim fills the other one (plain tables: a rim
+	-- stays in one a second at most after it goes out).
+	local LIT_GAP = 1
+	local litRims, litSpare = {}, {}   -- [rim] = true
+	local litQueued = false
+
+	local function LitPass()
+		litQueued = false
+		local list = litRims
+		litRims, litSpare = litSpare, list
+		for rim in pairs(list) do
+			ReadRim(rim)   -- (watches it again while it stays lit)
+		end
+		wipe(list)
+	end
+
+	-- LitWatch(rim, lit): watched while lit; out of the watch at once when a
+	-- script or hook put it out (nothing left to read then)
+	function LitWatch(rim, lit)
+		if not lit then
+			if litRims[rim] then
+				litRims[rim] = nil
+			end
+			return
+		end
+		litRims[rim] = true
+		if not litQueued then
+			litQueued = true
+			C_Timer.After(LIT_GAP, LitPass)
+		end
+	end
+
+	-- The rim of the frame under the mouse, or nil: a release that ended no
+	-- rim's press reads it too, so a click is seen on a button whose scripts
+	-- the game set anew since it was dressed (the kit's hooks went with
+	-- them). The client makes a new list on every ask, so none over the
+	-- world (the camera's drags), where there is no rim.
+	local function RimUnderMouse()
+		local world = WorldFrame
+		if world and world.IsMouseMotionFocus then
+			local ok, onWorld = pcall(world.IsMouseMotionFocus, world)
+			if ok and not Secret(onWorld) and onWorld then
+				return nil
+			end
+		end
+		local ok, f
+		if GetMouseFoci then
+			local list
+			ok, list = pcall(GetMouseFoci)
+			if ok and not Secret(list) and type(list) == "table" then
+				f = list[1]
+			end
+		elseif GetMouseFocus then
+			ok, f = pcall(GetMouseFocus)
+		end
+		if not ok or Secret(f) or f == nil then
+			return nil
+		end
+		return rimOf[f]
+	end
+
+	-- The press latches end on any release (above), then the rims it can
+	-- have changed are read: the ones it ended a press on, the ones under the
+	-- cursor (the click's C-side toggle of a check button is in by then) and
+	-- the shown selection rims. Any mouse release fires this (the camera's
+	-- right button too), so only those: a bare release with none of them
+	-- reads nothing.
+	local releaseFrame = CreateFrame("Frame")
+	releaseFrame:RegisterEvent("GLOBAL_MOUSE_UP")
+	Perf.SetScript(releaseFrame, "OnEvent", function()
+		local latched = false
+		for latch, update in pairs(pressedLatches) do
+			pressedLatches[latch] = nil
+			if allRims[latch] then
+				readRims[latch] = true
+				latched = true
+			end
+			if latch.pressed then
+				latch.pressed = nil
+				update(latch)
+			end
+		end
+		if not latched and next(allRims) then   -- (no rim dressed: nothing to find)
+			local rim = RimUnderMouse()
+			if rim then
+				readRims[rim] = true
+			end
+		end
+		if next(readRims) or next(hoverRims) or next(selectRims) then
+			readHover, readSelect = true, true
+			QueueRead()
+		end
+	end)
+
+	-- The check buttons' flags after the bars' state events (the action,
+	-- stance and pet bars check their buttons in their own handlers of
+	-- these), one pass for a burst, at most one every FLAG_GAP s. The flag
+	-- alone: hover and press have their scripts. ACTIONBAR_UPDATE_USABLE is
+	-- not among them: being usable colours the icon and never moves the flag.
+	-- In a fight at most one a second (review, 2026-09-24): every cast's
+	-- start and stop sends ACTIONBAR_UPDATE_STATE, the action buttons' flags
+	-- mostly read secret then, and the pass after the fight reads them all;
+	-- a flag that does read is still right within a second, as under the
+	-- old sweep.
+	local BAR_EVENTS = { "ACTIONBAR_UPDATE_STATE", "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS", "PET_BAR_UPDATE" }
+	local FLAG_GAP, FLAG_GAP_COMBAT = 0.2, 1
+	local flagQueued, flagAt = false, nil
+
+	local function FlagPass()
+		flagQueued = false
+		flagAt = GetTime()
+		for rim in pairs(checkRims) do
+			if not ReadRim(rim, true) then
+				checkRims[rim] = nil
+			end
+		end
+	end
+
+	-- After a fight every rim that can be seen, a tenth of them a frame (the
+	-- whole lot in one frame was 2.8 ms, /melloperf 2026-09-24), from the
+	-- top again if another fight ends before it is through
+	local REGEN_SLICES = 10
+	local regenAt, regenRunning = 1, false
+
+	local function RegenPass()
+		local n = #rimList
+		local last = math.min(regenAt + math.ceil(n / REGEN_SLICES) - 1, n)
+		for i = regenAt, last do
+			ReadRim(rimList[i])
+		end
+		regenAt = last + 1
+		if regenAt <= n then
+			C_Timer.After(0, RegenPass)
+		else
+			regenRunning = false
+		end
+	end
+
+	local function RimEvents_OnEvent(_, event)
+		if event == "PLAYER_REGEN_ENABLED" then
+			regenAt = 1
+			if not regenRunning then
+				regenRunning = true
+				C_Timer.After(0, RegenPass)
+			end
+		elseif not flagQueued and next(checkRims) then
+			flagQueued = true
+			local gap = InCombatLockdown() and FLAG_GAP_COMBAT or FLAG_GAP
+			local wait = flagAt and (flagAt + gap - GetTime()) or 0
+			C_Timer.After(wait > 0 and wait or 0, FlagPass)
+		end
+	end
+
+	-- The events' frame, made with the first rim; the bars' events with the
+	-- first rim on a check button (the kit off or nothing dressed: none)
+	local rimEvents, barEventsOn = nil, false
+	function RimEventsFor(onCheckButton)
+		if not rimEvents then
+			rimEvents = CreateFrame("Frame")
+			rimEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+			Perf.SetScript(rimEvents, "OnEvent", RimEvents_OnEvent)
+		end
+		if onCheckButton and not barEventsOn then
+			barEventsOn = true
+			for _, event in ipairs(BAR_EVENTS) do
+				pcall(rimEvents.RegisterEvent, rimEvents, event)   -- (a client without one of them)
+			end
+		end
+	end
+end
 
 local Rim_OnEnter = Shared("OnEnter on a kit rim's button", function(b)
 	local tex = rimOf[b]
 	tex.hover = true
 	Slot_Update(tex)
+	StaleHover(tex)
 end, "script")
 local Rim_OnLeave = Shared("OnLeave on a kit rim's button", function(b)
 	local tex = rimOf[b]
@@ -2084,7 +2429,14 @@ local Rim_OnMouseUp = Shared("OnMouseUp on a kit rim's button", function(b)
 	Slot_Update(tex)
 end, "script")
 local Rim_OnShow = Shared("OnShow on a kit rim's button", function(b)
-	ReadRim(rimOf[b])
+	local tex = rimOf[b]
+	RimJoin(tex)
+	ReadRim(tex)
+end, "script")
+-- a check button's flag flipped by the click itself: read on the next frame
+-- (PostClick's own SetChecked, if any, is in by then)
+local Rim_OnClick = Shared("OnClick on a kit rim's check button", function(b)
+	ReadNext(rimOf[b])
 end, "script")
 local Rim_OnSetChecked = Shared("SetChecked on a kit rim's button", function(b)
 	Slot_Update(rimOf[b])
@@ -2104,15 +2456,24 @@ local function FollowButton(tex, button)
 		rimList[#rimList + 1] = tex
 	end
 	tex.Update = Slot_Update
+	-- a CheckButton flips its own flag when clicked (read after each click)
+	local okT, objectType = pcall(button.GetObjectType, button)
+	local onCheck = okT and not Secret(objectType) and objectType == "CheckButton"
+	tex.onCheckButton = onCheck or nil
+	RimEventsFor(onCheck)
+	RimJoin(tex)
 	if rimOf[button] == nil then
 		rimOf[button] = tex
 		Perf.HookScript(button, "OnEnter", Rim_OnEnter)
 		Perf.HookScript(button, "OnLeave", Rim_OnLeave)
 		Perf.HookScript(button, "OnMouseDown", Rim_OnMouseDown)
 		Perf.HookScript(button, "OnMouseUp", Rim_OnMouseUp)
-		-- shown again (its window opened): read at once, the sweeps pass it by
-		-- while it cannot be seen
+		-- shown again (its window opened): read at once, the passes leave it
+		-- alone while it cannot be seen
 		Perf.HookScript(button, "OnShow", Rim_OnShow)
+		if onCheck then
+			Perf.HookScript(button, "OnClick", Rim_OnClick)
+		end
 		if button.SetChecked then
 			hooksecurefunc(button, "SetChecked", Rim_OnSetChecked)
 		end
@@ -2126,11 +2487,14 @@ local function FollowButton(tex, button)
 		end
 		return
 	end
-	Perf.HookScript(button, "OnEnter", function() tex.hover = true; Slot_Update(tex) end)
+	Perf.HookScript(button, "OnEnter", function() tex.hover = true; Slot_Update(tex); StaleHover(tex) end)
 	Perf.HookScript(button, "OnLeave", function() tex.hover = nil; tex.pressed = nil; Slot_Update(tex) end)
 	Perf.HookScript(button, "OnMouseDown", function() tex.pressed = true; pressedLatches[tex] = Slot_Update; Slot_Update(tex) end)
 	Perf.HookScript(button, "OnMouseUp", function() tex.pressed = nil; Slot_Update(tex) end)
-	Perf.HookScript(button, "OnShow", function() ReadRim(tex) end)
+	Perf.HookScript(button, "OnShow", function() RimJoin(tex); ReadRim(tex) end)
+	if onCheck then
+		Perf.HookScript(button, "OnClick", function() ReadNext(tex) end)
+	end
 	if button.SetChecked then
 		hooksecurefunc(button, "SetChecked", function() Slot_Update(tex) end)
 	end
@@ -2278,6 +2642,56 @@ function Kit:RefitLater(rim)
 	if not refitQueued then
 		refitQueued = true
 		C_Timer.After(0, RefitQueued)
+	end
+end
+
+-- Kit:NextFrame(key, fn): fn(key) once on the next frame, however often it
+-- was asked for before then (audit, 2026-09-24: panels kept a pending flag
+-- each and made a new closure for C_Timer.After(0) on every ask). One timer
+-- a frame for every key. A key asked for again before it ran runs once, in
+-- the place it was first asked for, with the fn given last. `fn` is made
+-- once by the caller -- a file's own function, handed the key (the skin or
+-- frame it works on) -- so an ask makes no closure. An error in one is
+-- reported and the rest still run. A key asked for while they run (from
+-- inside one of them) waits for the frame after once it has run; one still
+-- waiting further on in the same run runs there only, with the fn given last
+-- (review, 2026-09-24: it ran twice, then and on the next frame).
+do
+	local nextKeys, nextFns = {}, {}   -- the keys in the order asked, [key] = its fn
+	local runKeys, runFns = {}, {}     -- the same two, emptied as they run
+	local nextQueued = false
+
+	local function RunNextFrame()
+		nextQueued = false
+		local keys, fns = nextKeys, nextFns
+		nextKeys, nextFns, runKeys, runFns = runKeys, runFns, keys, fns
+		for i = 1, #keys do
+			local key = keys[i]
+			local fn = fns[key]
+			keys[i], fns[key] = nil, nil
+			local ok, err = pcall(fn, key)
+			if not ok then
+				geterrorhandler()(err)
+			end
+		end
+	end
+
+	function Kit:NextFrame(key, fn)
+		if key == nil or type(fn) ~= "function" then
+			return
+		end
+		if runFns[key] ~= nil then
+			runFns[key] = fn   -- (still waiting in the run under way)
+			return
+		end
+		if nextFns[key] == nil then
+			nextKeys[#nextKeys + 1] = key
+		end
+		nextFns[key] = fn
+		if not nextQueued then
+			nextQueued = true
+			C_Timer.After(0, RunNextFrame)
+		end
 	end
 end
 
@@ -2947,6 +3361,78 @@ local runningQueued = false
 local combatFrame = CreateFrame("Frame")
 combatFrame:Hide()
 
+-- Kit:WhenQueueIdle(fn): fn() once the queue is through, for work that can
+-- wait and must not add to the frames the queue works in (the windows built
+-- ahead in idle turns). On the next frame when out of combat with nothing
+-- waiting; else on the frame after the last queued piece ran, after the
+-- fight's end (a new fight before then keeps it waiting). Never at once, so
+-- an fn that asks again goes on a frame later, not inside itself. The same
+-- fn asked for again while it waits runs once (still waiting further on in
+-- a run under way: there only). An error in one is reported and the rest
+-- still run. Kit:IsQueueBusy(): in combat, or queued work still waiting.
+-- QueueIdleWaiters(): the queue's end hands on to them.
+local QueueIdleWaiters
+do
+	local idleWaiters, idleRunning = {}, {}   -- the fns in the order asked; the same, being run
+	local idleQueued = false
+	local runFrom, runTo = 1, 0               -- idleRunning[runFrom..runTo]: yet to run in this one
+
+	local function QueueBusy()
+		return InCombatLockdown() or queueAt <= #combatQueue
+	end
+
+	local function RunIdleWaiters()
+		idleQueued = false
+		if QueueBusy() then
+			return   -- a new fight or new work since: they wait for that to be through
+		end
+		local list = idleWaiters
+		idleWaiters, idleRunning = idleRunning, list
+		runTo = #list
+		for i = 1, runTo do
+			runFrom = i + 1
+			local fn = list[i]
+			list[i] = nil
+			local ok, err = pcall(fn)
+			if not ok then
+				geterrorhandler()(err)
+			end
+		end
+		runFrom, runTo = 1, 0
+	end
+
+	function QueueIdleWaiters()
+		if not idleQueued and idleWaiters[1] ~= nil then
+			idleQueued = true
+			C_Timer.After(0, RunIdleWaiters)
+		end
+	end
+
+	function Kit:WhenQueueIdle(fn)
+		if type(fn) ~= "function" then
+			return
+		end
+		for i = runFrom, runTo do
+			if idleRunning[i] == fn then
+				return
+			end
+		end
+		for i = 1, #idleWaiters do
+			if idleWaiters[i] == fn then
+				return
+			end
+		end
+		idleWaiters[#idleWaiters + 1] = fn
+		if not QueueBusy() then
+			QueueIdleWaiters()
+		end
+	end
+
+	function Kit:IsQueueBusy()
+		return QueueBusy()
+	end
+end
+
 -- Runs what waits, in order; with a budget only until that many ms have
 -- gone (the frame's OnUpdate goes on with the rest). An error in one piece
 -- is reported and the rest still run. A dropped piece is a false.
@@ -2980,6 +3466,8 @@ local function RunQueued(budget)
 		combatQueue, queueKeys, queueAt = {}, {}, 1
 	end
 	combatFrame:Hide()
+	-- through: what waited for that goes on, on the next frame
+	QueueIdleWaiters()
 end
 
 local function Enqueue(fn, key)

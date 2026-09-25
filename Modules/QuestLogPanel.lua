@@ -286,9 +286,8 @@ local waitingKind = setmetatable({}, { __mode = "k" })   -- [row] = "title" | "h
 local waitAt = 1
 local rowsFrame = CreateFrame("Frame")
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- The list's view: its top and bottom; false while it cannot be seen (every
 -- new row waits); nil when its rect cannot be read (every row counts as seen)

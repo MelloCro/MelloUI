@@ -59,9 +59,8 @@ local FX_KEYS = { "InterruptGlow", "ChargeGlow", "EnergyGlow", "Flakes01", "Flak
 local ANIM_KEYS = { "FlashLoopingAnim", "FlashAnim", "StageFlash", "StageFinish", "StandardFinish", "CraftingFinish",
 	"ChannelFinish", "InterruptGlowAnim" }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	if not region then

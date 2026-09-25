@@ -68,9 +68,8 @@ local hookedOnce = setmetatable({}, { __mode = "k" })  -- [object] = true once o
 local found = { hooks = {}, syncs = 0, triggers = {} } -- what the build found, for the dump
 local listOwner = {}                                   -- our key in the list's callback registry
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Window()
 	return _G.ClassTrainerFrame
@@ -873,7 +872,7 @@ local function PaintPortrait()
 	end
 	for _, t in ipairs(skin.portraits or {}) do
 		local ok, file = pcall(t.GetTexture, t)
-		if ok and file ~= nil and not Secret(file) and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
+		if ok and not Secret(file) and file ~= nil and ((type(file) == "number" and file > 0) or (type(file) == "string" and file ~= "")) then
 			icon:SetTexture(file)
 			skin.portraitSource = "game portrait"
 			return

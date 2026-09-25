@@ -22,10 +22,24 @@
 --   MelloUI.Anim:FadeOut(frame, duration)     fades to 0, then hides it
 --   MelloUI.Anim:Pop(frame, duration, rise)   fades in while rising `rise`
 --                                             (8) units into its place
+--   MelloUI.Anim:PlayGroup(group, settle)
+--       plays an AnimationGroup (one already playing goes on: Stop it first
+--       to restart it) and returns true. Under Reduce Motion it is not
+--       played but stopped in its end state at once, nothing left running,
+--       and false returned: its regions at their own alpha, size and place
+--       (as when it finishes), for a group SetToFinalAlpha each Alpha
+--       animation's target at its last ToAlpha, then settle(group) when
+--       given, for what else its OnFinished does (pass a shared function, not
+--       a new closure per call). A looping group has no end: it stops on that
+--       still picture and plays again when Reduce Motion is switched off.
+--   MelloUI.Anim:StopGroup(group)   stops it; a looping one stays stopped
+--   MelloUI.Anim:SetReduceMotion(on)
 --
 -- A new tween on the same frame and prop replaces the running one, from the
 -- value it had reached, so a window opened twice in a row never jumps.
--- Anim.reduceMotion (set by the caller) makes every tween finish at once.
+-- Anim.reduceMotion (read it, set it through SetReduceMotion) makes every
+-- tween finish at once and every group end at once. UI Modifications' Reduce
+-- Motion switch sets it, whether that module is on or off.
 -- Nothing here writes a field onto the frames it moves: the running tweens
 -- live in the engine's own table.
 --------------------------------------------------------------------------------
@@ -83,9 +97,8 @@ Anim.easing = {
 -- Reading and writing a prop
 --------------------------------------------------------------------------------
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Read(frame, prop)
 	if prop == "alpha" then
@@ -283,6 +296,95 @@ function Anim:Pop(frame, duration, rise)
 	local y = Read(frame, "y")
 	if y and not Secret(y) then
 		self:From(frame, "y", y - (rise or 8), duration, "outCubic")
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Animation groups (audit, 2026-09-24: MelloUI's own AnimationGroups played
+-- on under Reduce Motion, or checked it by hand)
+--------------------------------------------------------------------------------
+
+-- [group] = settle or true, for each group played through PlayGroup: when
+-- Reduce Motion comes on, the ones still playing end at once; when it goes
+-- off, the looping ones play again. Weak keys: being here keeps none alive.
+local groups = setmetatable({}, { __mode = "k" })
+
+local function Target(anim, group)
+	return anim.GetTarget and anim:GetTarget() or group:GetParent()
+end
+
+-- a target's last Alpha animation (the highest order; of equal orders, the
+-- later one) leaves it at its ToAlpha
+local function FinalAlpha(group, ...)
+	local n = select("#", ...)
+	for i = 1, n do
+		local a = select(i, ...)
+		if a:GetObjectType() == "Alpha" then
+			local target, last = Target(a, group), true
+			for j = 1, n do
+				local b = select(j, ...)
+				if j ~= i and b:GetObjectType() == "Alpha" and Target(b, group) == target
+					and (b:GetOrder() > a:GetOrder() or (b:GetOrder() == a:GetOrder() and j > i)) then
+					last = false
+					break
+				end
+			end
+			if last and target and target.SetAlpha then
+				target:SetAlpha(a:GetToAlpha())
+			end
+		end
+	end
+end
+
+local function Settle(group, settle)
+	group:Stop()
+	if group.IsSetToFinalAlpha and group:IsSetToFinalAlpha() then
+		FinalAlpha(group, group:GetAnimations())
+	end
+	if type(settle) == "function" then
+		settle(group)
+	end
+end
+
+function Anim:PlayGroup(group, settle)
+	if not group then
+		return false
+	end
+	groups[group] = settle or true
+	if self.reduceMotion then
+		Settle(group, settle)
+		return false
+	end
+	group:Play()
+	return true
+end
+
+function Anim:StopGroup(group)
+	if group then
+		groups[group] = nil
+		group:Stop()
+	end
+end
+
+-- The Reduce Motion switch. The running tweens end on the driver's next
+-- frame; the groups here at once.
+function Anim:SetReduceMotion(on)
+	on = on and true or false
+	if on == self.reduceMotion then
+		return
+	end
+	self.reduceMotion = on
+	for group, settle in pairs(groups) do
+		if on then
+			if group:IsPlaying() then
+				local ok, err = pcall(Settle, group, settle)
+				if not ok then
+					geterrorhandler()(err)
+				end
+			end
+		elseif group:GetLooping() ~= "NONE" and not group:IsPlaying() then
+			group:Play()
+		end
 	end
 end
 

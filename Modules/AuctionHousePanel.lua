@@ -109,9 +109,8 @@ local listOwner = {}      -- our own key in the lists' callback registries (neve
 local found = { parts = {}, missing = {}, missed = setmetatable({}, { __mode = "k" }) }
 local stats = { boxes = 0, rows = 0, headers = 0, edits = 0, squares = 0, items = 0, tabs = 0 }
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v) or false
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Window()
 	return _G.AuctionHouseFrame
@@ -1185,11 +1184,7 @@ end
 
 -- (the portrait and title strings are moved: out of combat only)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 -- The first show in combat dresses at once all the same: the dressing adds

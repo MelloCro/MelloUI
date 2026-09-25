@@ -42,9 +42,8 @@ local M = MelloUI:RegisterModule("ChatPanel", {
 local skin = nil
 local active = false
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 local function Replace(region, opts)
 	if not region then

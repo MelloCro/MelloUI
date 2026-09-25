@@ -73,9 +73,8 @@ local tabReps = {}                                      -- the tabs' cards { rep
 local fadedArt = {}                                     -- art faded with no piece standing in (the button bar's dividers)
 local stats = { icons = 0, tabs = 0, bars = 0 }         -- for /macrodump
 
-local function Secret(v)
-	return issecretvalue and issecretvalue(v)
-end
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe and MelloUI.Safe.IsSecret or issecretvalue
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -704,7 +703,7 @@ end
 local function PortraitArt(list)
 	for _, t in ipairs(list) do
 		local ok, file = pcall(t.GetTexture, t)
-		if ok and file ~= nil and not Secret(file) and (type(file) == "number" and file > 0 or type(file) == "string" and file ~= "") then
+		if ok and not Secret(file) and file ~= nil and (type(file) == "number" and file > 0 or type(file) == "string" and file ~= "") then
 			return file
 		end
 	end
@@ -1112,11 +1111,7 @@ end
 
 -- (the switch and the addon's load: out of combat only, as they always were)
 local function SyncSafe()
-	if Kit.WhenOutOfCombat then
-		Kit:WhenOutOfCombat(Sync)
-	else
-		Sync()
-	end
+	Kit:WhenOutOfCombat(Sync)
 end
 
 local function Hook()
