@@ -1024,11 +1024,16 @@ local function NewPage(name, width)
 		if not at then
 			return false
 		end
-		if self.current ~= at.sec then
-			self:Select(at.sec, animate)
-		end
-		self.pager:ScrollTo(math.max(0, self.headerHeight + at.y - 8), instant)
+		self:RevealAt(at.sec, at.y, instant, animate)
 		return true
+	end
+	-- (the same for a place known by its tab and its y: the search's jump to
+	-- any option's row, page.optSec / page.optY)
+	function page:RevealAt(sec, y, instant, animate)
+		if self.current ~= sec then
+			self:Select(sec, animate)
+		end
+		self.pager:ScrollTo(math.max(0, self.headerHeight + y - 8), instant)
 	end
 
 	-- The header's panel down to just above the tabs / the first section, the
@@ -1287,8 +1292,10 @@ local function BuildModulePage(module, width)
 	local page = NewPage(module.name, width)
 	page.important = module.important and true or false
 	-- where each option's row will lie: its section and its planned y (a
-	-- deep link's target, page:Reveal)
+	-- deep link's target, page:Reveal); and by the option itself, whoever
+	-- owns it, with its row once made (the search's jump: page:RevealAt)
 	page.anchors = {}
+	page.optSec, page.optY, page.optRow = {}, {}, {}
 	local icon, flavour = Meta(module)
 	BuildPageHeader(page, icon, module.title, flavour, module)
 	-- the header's controls dressed now (Defaults and the like, red plates);
@@ -1352,6 +1359,9 @@ local function BuildModulePage(module, width)
 		s.gate = not sub and GateOf(owner, ownerDb, opt, area) or nil
 		local row = builder(s, owner, ownerDb, opt)
 		s.indent, s.gate = 0, nil
+		if row then
+			page.optRow[opt] = row   -- (the search's jump lights it: W.Flash)
+		end
 		-- (a row whose setting also changes from outside: kept, FollowRows)
 		local follow = FOLLOW[owner.name]
 		if row and follow and follow[opt.key] then
@@ -1395,6 +1405,9 @@ local function BuildModulePage(module, width)
 		if opt.key and owner == module and not page.anchors[opt.key] then
 			page.anchors[opt.key] = { sec = sec, y = sec.plannedY or sec.y }
 		end
+		if not page.optSec[opt] then
+			page.optSec[opt], page.optY[opt] = sec, sec.plannedY or sec.y
+		end
 		if opt.new ~= nil and MelloUI:IsNew(opt.new) then
 			sec.hasNew = true
 		end
@@ -1428,7 +1441,7 @@ end
 
 -- (what the rest of the file uses of it; the block keeps its helpers to
 -- itself: the file is near Lua's limit of 200 locals in one function)
-local BuildHomePage, ConfirmLoadProfile, FillProfileNames, DynamicClick, InstallClick, HomeNew
+local BuildHomePage, ConfirmLoadProfile, FillProfileNames, DynamicClick, InstallClick, HomeNew, HomeSearch, HomePart
 do
 local HOME_GAP = 10       -- between the two cards, and above Help
 local CARD_PAD = 12       -- a card's texts inside its box
@@ -2234,6 +2247,59 @@ function BuildHomePage(width)
 	RowsDoneThisFrame()
 	return page
 end
+
+-- Home for the configurator's search (below): Your setup's rows by their
+-- labels (the installer's by its two buttons) and the two cards, each with
+-- what its tooltip says; `add(part, name, tip, new, when)`. A row Your setup
+-- shows only at times (Fit to this screen; the installer's buttons) is found
+-- only then (`when(turn)`, asked of a match once a search, not per
+-- keystroke: the search keeps its answer until the box is emptied).
+local SEARCH_TIPS = {
+	news = "This update's changes, and the ones before it under Earlier versions.",
+	help = "The slash commands, the links, and where your settings are kept.",
+	screen = "Your screen's size and shape, as the installer fits MelloUI's layout to it.",
+	mello = "The version running and how many of its modules are on.",
+	voice = "Whether the voice pack for Voice Over is installed.",
+}
+local function FitWanted()
+	return type(MelloUI.OpenInstaller) == "function" and FitDue() and true or false
+end
+local function InstallWanted()
+	return type(MelloUI.OpenInstaller) == "function"
+end
+local function RevertWanted()
+	local I = MelloUI.Installer
+	return InstallerState() ~= nil and type(I) == "table" and type(I.Revert) == "function"
+end
+function HomeSearch(add)
+	add("news", "What's new", SEARCH_TIPS.news)
+	add("profile", SETUP_LABELS.profile, HOME_TIPS.profile, PROFILE_DD.new)
+	add("palette", SETUP_LABELS.palette, HOME_TIPS.palette, PALETTE_DD.new)
+	add("colours", SETUP_LABELS.colours, HOME_TIPS.change)
+	add("screen", SETUP_LABELS.screen, SEARCH_TIPS.screen)
+	add("fit", "Fit to this screen", HOME_TIPS.fit, nil, FitWanted)
+	add("mello", SETUP_LABELS.mello, SEARCH_TIPS.mello)
+	add("voice", SETUP_LABELS.voice, SEARCH_TIPS.voice)
+	add("installer", "Install again", HOME_TIPS.install, nil, InstallWanted)
+	add("installer", "Revert", HOME_TIPS.revert, nil, RevertWanted)
+	add("help", "Help", SEARCH_TIPS.help)
+end
+-- the frame a search's jump lights on Home: a Your setup row on show, or a
+-- card (Help made now when the worker has not come to it)
+function HomePart(page, key)
+	if key == "news" then
+		return page.news
+	end
+	if key == "help" then
+		local sec = page.homeSection
+		if not page.helpSection and sec and sec.jobs then
+			MakeRows(sec)
+		end
+		return page.helpSection
+	end
+	local row = page.setup and page.setup.rows[key]
+	return row and row.wanted and row or nil
+end
 end   -- (the Home block)
 
 --------------------------------------------------------------------------------
@@ -2638,7 +2704,7 @@ local function ProfileNames()
 end
 
 -- (what the rest of the file uses of the Profiles block)
-local RefreshProfilesPage, BuildProfilesPage, ProfilesNew
+local RefreshProfilesPage, BuildProfilesPage, ProfilesNew, ProfilesSearch, ProfilesPart
 do
 -- The four buttons of a profile's row: one shared handler each, reading the
 -- row's `profileName` (set as the list is filled), so a refresh makes no
@@ -3028,6 +3094,54 @@ function BuildProfilesPage(width)
 	page:Finish()
 	return page
 end
+
+-- the Profiles page for the configurator's search: Macro Backup's rows, the
+-- two that show only while there is a copy found only then (`add` as
+-- HomeSearch's, with the section's heading last). Their gates read the
+-- copy's facts (every macro of it, the settings written out to compare) ONCE
+-- a search, shared by the two: `turn` is the search's own count (review of
+-- the search box, 2026-09-26: read per keystroke it made 2.7-36 KB each)
+local gateTurn, gateStatus
+local function StatusFor(turn)
+	if gateTurn ~= turn then
+		gateTurn, gateStatus = turn, BackupUI.Status()
+	end
+	return gateStatus
+end
+local function CanRestoreNow(turn)
+	return BackupUI.CanRestore(StatusFor(turn)) and true or false
+end
+local function CanDeleteNow(turn)
+	return BackupUI.CanDelete(StatusFor(turn)) and true or false
+end
+function ProfilesSearch(add)
+	if not BackupUI.Ready() then
+		return
+	end
+	local T = BackupUI.TEXT
+	add("backup", T.switch, T.switchDesc, BACKUP_TAG.new, nil, T.heading)
+	add("restore", T.restore, T.restoreDesc, BACKUP_TAG.new, CanRestoreNow, T.heading)
+	add("delete", T.delete, T.deleteDesc, BACKUP_TAG.new, CanDeleteNow, T.heading)
+end
+-- the row a search's jump lights: Macro Backup's part made now when the
+-- page's next frame has not made it yet, then laid with the list
+function ProfilesPart(page, key)
+	local sec = page and page.section
+	if not sec then
+		return nil
+	end
+	if not sec.backup and sec.backupWidth then
+		BuildBackup(sec, sec.backupWidth)
+		if not sec.backup then
+			sec.backupWidth = nil
+		end
+		RefreshProfilesPage()
+	end
+	local blk = sec.backup
+	local row = blk and ((key == "backup" and blk.switchRow) or (key == "restore" and blk.restoreRow)
+		or (key == "delete" and blk.deleteRow))
+	return row and row:IsShown() and row or nil
+end
 end   -- (the Profiles block)
 
 --------------------------------------------------------------------------------
@@ -3276,6 +3390,608 @@ local function NavClick(_, key, entry)
 	SelectPage(key)
 end
 
+--------------------------------------------------------------------------------
+-- Search (0.14.0; user, 2026-09-26: "search box in the next build"): the box
+-- at the top of the side list, in the kit's search box look (S1, the bags'
+-- and the Quest List's: one look for the addon). From two letters on, the
+-- side list gives its place to the options that match (W.NavRail's
+-- results): one a row, the page and the tab over the option's name, found by
+-- the option's name, its description and hint, the page's title and the
+-- names of its tab and section (any case, colour codes left out), the best
+-- first -- a name that is the word, then a name that starts with it, then a
+-- name with a word that starts with it, then a name holding it, then where
+-- it lies, then its description; within each, pages, shortcuts and the
+-- opener of Dynamic UI Modification before tabs, tabs before options (the
+-- likeliest place first) -- the New ones with their tag. A click, or Enter on
+-- the one selected (the first; Up and Down move), opens its page or tab,
+-- makes its row when the page has not made it yet (a page makes its rows a
+-- few a frame), scrolls it under the top of the view and lights it a moment
+-- (W.Flash). Escape or an empty box gives the side list back. A fight that
+-- starts while the box has the keyboard gives the keyboard back to the game
+-- (the text and the results stay).
+--
+-- What it finds, its index: the side list's own walk -- its pages and
+-- shortcuts in their order, each page's tabs and options as the page lays
+-- them (EachOption, the New tags' walk) -- then Home's Your setup rows and
+-- cards and the Profiles page's Macro Backup rows (their blocks name them:
+-- HomeSearch, ProfilesSearch), the top bar's Layout controls, and Dynamic UI
+-- Modification as ONE result that opens it ("Top bar > Dynamic UI
+-- Modification"): its choices live in its own window, made as it opens and
+-- closing this one, which has no way to open at a row; the words of its
+-- description (borders, Kit Colours, parchment, backgrounds) find it. Made on
+-- the first search (nothing at login, nothing at the window's first open but
+-- the box), kept, and made again at the next search after a module was
+-- switched on or off, a profile load's switches too (the 'module' topic,
+-- Config_OnModule; results on show stay as they are, the one selected and
+-- the list's scroll too; the index's time is counted in the frame's one
+-- budget of rows, W.RowBudget, which the new result rows keep to). A row
+-- found only at times (`when`) is asked once a search (`turn`), not per
+-- keystroke. Once the rail's result rows are made (at most 30, reused by
+-- every search after) a keystroke makes no frame and no table (the matches go
+-- in one list, sorted in place); nothing runs while nobody types.
+--------------------------------------------------------------------------------
+
+local Search = {}
+do
+-- the box's update (its New tag, W.Badge on its top edge)
+local SEARCH_TAG = { new = "0.14.0" }
+local HEAD, TOP, HEIGHT = 32, 4, 22   -- the box's strip over the side list (the rail's head), the box in it
+-- (its New tag's plate kept clear of the template's clear button: 17 wide,
+-- 3 in from the box's right, and a gap)
+local CLEAR_ROOM = 24
+local PROMPT = "Search options"
+local MIN_LETTERS = 2    -- the side list turns into results from this many letters
+local MAX_SHOWN = 30     -- results shown (the rest counted in the quiet line)
+local JUMP_MARGIN = 8    -- a jump's row under the top of the view (page:Reveal's)
+local TEXT = {
+	none = "Nothing found. Try another word.",
+	more = "%d more. Type more letters to narrow it down.",
+	layout = "Layout",
+	bar = "Top bar",
+}
+-- within a tier: what a result opens, the likeliest target first (a page, a
+-- shortcut, the Dynamic UI Modification window; then a tab; then a row)
+local RANK = { page = 0, shortcut = 0, dynamic = 0, tab = 1 }
+local ROW_RANK = 2
+local Secret = MelloUI.Safe.IsSecret
+local find, lower, byte = string.find, string.lower, string.byte
+
+local index          -- the entries (Build), nil until the first search and after a change
+local found = {}     -- a search's matches, best first (filled in place)
+local nFound = 0
+local words = {}     -- the query's words, when it has more than one
+local moreLines = {} -- [n] = the quiet line for n more, made once per n
+local turn = 0       -- a search's own count: a `when` is asked once in it
+
+-- a text as a player reads it: colour codes, textures and line breaks out
+-- (most texts have none: returned as they are)
+local function Bare(s)
+	if type(s) ~= "string" or Secret(s) then
+		return nil
+	end
+	if not find(s, "|", 1, true) then
+		return s
+	end
+	s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|n", " ")
+	return s
+end
+
+-- One entry of the index: what the result row shows (`name`, `path`: the
+-- rail keeps its end when the row is too narrow for it), its tooltip
+-- (`full`, `section`, `tip`), what a search looks in (`lname`; `lplace`: its
+-- path and section; `ldesc`: its description and hint), what it opens
+-- (`rank`, RANK), its place in the index (`order`, ties keep the side list's
+-- order), and a search's `tier` and `score`; `when` (a row found only at
+-- times) with the answer of its search (`gateTurn`, `gateOk`)
+local function Entry(e, name, path, tip, place, hint)
+	name = Bare(name) or ""
+	tip = Bare(tip)
+	place = Bare(place)
+	e.name, e.path, e.tip, e.section = name, path, tip, place
+	e.full = path and (path .. " > " .. name) or name
+	e.lname = lower(name)
+	e.lplace = lower((path or "") .. " " .. (place or ""))
+	e.ldesc = lower((tip or "") .. " " .. (Bare(hint) or ""))
+	e.rank = RANK[e.kind] or ROW_RANK
+	e.tier, e.score = 0, 0
+	local n = #index + 1
+	e.order = n
+	index[n] = e
+end
+
+-- a page's walk (EachOption), in two passes: its tabs as the page makes them
+-- (a header opens one; a row before any opens "General"), then its options
+-- under "Page > Tab" (the page's title alone on a page of one tab), a
+-- sub-option under its parent's name too ("... > Target Frame": the three
+-- Icon Size rows of Buffs & Debuffs told apart)
+local walk = { tabs = {}, tabNew = {}, paths = {} }
+local function TabVisit(w, owner, opt)
+	if not owner or not w.open then
+		w.n, w.open = w.n + 1, true
+		w.tabs[w.n] = not owner and (Bare(opt.name) or "") or "General"
+		w.tabNew[w.n] = false
+		if not owner then
+			return
+		end
+	end
+	if opt.new ~= nil and MelloUI:IsNew(opt.new) then
+		w.tabNew[w.n] = true
+	end
+end
+local function OptionVisit(w, owner, opt)
+	if not owner or not w.open then
+		w.n, w.open, w.section = w.n + 1, true, nil
+		if not owner then
+			return
+		end
+	end
+	if opt.type == "subheader" then
+		w.section = opt.name
+		return
+	end
+	if not (ROW_HEIGHTS[opt.type] and type(opt.name) == "string") then
+		return
+	end
+	local new = opt.new ~= nil and MelloUI:IsNew(opt.new) or nil
+	local path = w.count > 1 and w.paths[w.n] or w.title
+	local parent = opt.parent and OptionOf(owner, opt.parent)
+	if parent and type(parent.name) == "string" then
+		path = path .. " > " .. (Bare(parent.name) or "")
+	end
+	Entry({ kind = "option", key = w.key, opt = opt, new = new }, opt.name, path, opt.desc, w.section, opt.hint)
+end
+local function AddPage(module, nav, group)
+	local title = module.title
+	Entry({ kind = "page", key = module.name, new = nav.new and true or nil }, title, group, nav.tip)
+	local w = walk
+	w.n, w.open = 0, false
+	EachOption(module, TabVisit, w)
+	w.count, w.title, w.key = w.n, title, module.name
+	if w.count > 1 then
+		for i = 1, w.count do
+			w.paths[i] = title .. " > " .. w.tabs[i]
+			Entry({ kind = "tab", key = module.name, tab = i, new = w.tabNew[i] or nil }, w.tabs[i], title)
+		end
+	end
+	w.n, w.open, w.section = 0, false, nil
+	EachOption(module, OptionVisit, w)
+end
+
+-- Home's and the Profiles page's own rows (their blocks' HomeSearch and
+-- ProfilesSearch hand them over)
+local function AddHome(part, name, tip, new, when)
+	Entry({ kind = "part", key = "Home", part = part, when = when, new = new ~= nil and MelloUI:IsNew(new) or nil },
+		name, "Home", tip)
+end
+local function AddProfiles(part, name, tip, new, when, section)
+	Entry({ kind = "part", key = "Profiles", part = part, when = when, new = new ~= nil and MelloUI:IsNew(new) or nil },
+		name, "Profiles", tip, section)
+end
+
+local function Build()
+	index = {}
+	for _, g in ipairs(window.navGroups) do
+		for _, nav in ipairs(g.entries) do
+			local new = nav.new and true or nil
+			if nav.shortcut then
+				Entry({ kind = "shortcut", key = nav.key, new = new }, nav.text, g.title, nav.tip)
+			elseif nav.key == "Home" then
+				Entry({ kind = "page", key = "Home", new = new }, nav.text, nil, nav.tip)
+				HomeSearch(AddHome)
+			elseif nav.key == "Profiles" then
+				Entry({ kind = "page", key = "Profiles", new = new }, nav.text, nil, nav.tip)
+				ProfilesSearch(AddProfiles)
+			else
+				local module = MelloUI.modules[nav.key]
+				if module then
+					AddPage(module, nav, g.title)
+				end
+			end
+		end
+	end
+	-- the top bar: the Layout group's controls (their tooltips' texts), and
+	-- Dynamic UI Modification
+	local parts = window.parts
+	for _, key in ipairs({ "unlock", "snap", "reset" }) do
+		local c = parts[key]
+		Entry({ kind = "bar" }, c.melloTipTitle, TEXT.layout, c.melloTipBody)
+	end
+	local d = parts.dynamic
+	Entry({ kind = "dynamic", new = window.dynamicNew or nil }, d.melloTipTitle, TEXT.bar, d.melloTipBody)
+end
+
+-- 1: `s` starts with `q`; 2: a word in it does; 3: it holds `q` (lower case)
+local function NameTier(s, q)
+	local at = find(s, q, 1, true)
+	if not at then
+		return nil
+	end
+	if at == 1 then
+		return 1
+	end
+	repeat
+		local b = byte(s, at - 1)
+		if not ((b >= 48 and b <= 57) or (b >= 97 and b <= 122)) then
+			return 2
+		end
+		at = find(s, q, at + 1, true)
+	until not at
+	return 3
+end
+
+-- An entry's tier for the query (lower is better), nil when it does not
+-- match: its name is the query (0), else its name (NameTier), where it lies
+-- (4), its description (5). A query of more words: the whole of it in the
+-- name first, else every word somewhere (the worst place any of them is
+-- found)
+local function Tier(e, q, nWords)
+	if e.lname == q then
+		return 0
+	end
+	local t = NameTier(e.lname, q)
+	if t then
+		return t
+	end
+	if nWords <= 1 then
+		if find(e.lplace, q, 1, true) then
+			return 4
+		end
+		return find(e.ldesc, q, 1, true) and 5 or nil
+	end
+	t = 3
+	for i = 1, nWords do
+		local w = words[i]
+		if not find(e.lname, w, 1, true) then
+			if find(e.lplace, w, 1, true) then
+				if t < 4 then
+					t = 4
+				end
+			elseif find(e.ldesc, w, 1, true) then
+				t = 5
+			else
+				return nil
+			end
+		end
+	end
+	return t
+end
+
+local function ByScore(a, b)
+	return a.score < b.score
+end
+
+-- a row found only at times: asked once a search (`turn`), its answer kept
+-- for the search's other keystrokes
+local function Gate(e)
+	local when = e.when
+	if when == nil then
+		return true
+	end
+	if e.gateTurn ~= turn then
+		e.gateTurn, e.gateOk = turn, when(turn) and true or false
+	end
+	return e.gateOk
+end
+
+-- The matches, best first, into `found` (in place); how many. The score: the
+-- tier, then what it opens (RANK), then the index's order (fewer than 10000
+-- entries)
+local function Match(q, nWords)
+	local n = 0
+	for i = 1, #index do
+		local e = index[i]
+		local t = Tier(e, q, nWords)
+		if t and Gate(e) then
+			e.tier = t
+			e.score = (t * 4 + e.rank) * 10000 + e.order
+			n = n + 1
+			found[n] = e
+		end
+	end
+	for i = n + 1, nFound do
+		found[i] = nil
+	end
+	nFound = n
+	if n > 1 then
+		table.sort(found, ByScore)
+	end
+	return n
+end
+
+-- the query: the box's text in lower case, trimmed, and its words when it
+-- has more than one; nil under MIN_LETTERS
+local function Query(text)
+	if Secret(text) or type(text) ~= "string" then
+		return nil, 0
+	end
+	local q = lower(text):match("^%s*(.-)%s*$")
+	if #q < MIN_LETTERS then
+		return nil, 0
+	end
+	local n = 0
+	if find(q, " ", 1, true) then
+		for w in q:gmatch("%S+") do
+			n = n + 1
+			words[n] = w
+		end
+	end
+	for i = n + 1, #words do
+		words[i] = nil
+	end
+	return q, n
+end
+
+-- the result rows the frame's budget left, on the next frames
+local function MoreRows(rail)
+	if rail:MoreResults() then
+		MelloUI.Kit:NextFrame(rail, MoreRows)
+	end
+end
+
+-- the quiet line under the results: nothing found, or how many more
+local function NoteFor(n)
+	if n == 0 then
+		return TEXT.none
+	end
+	if n <= MAX_SHOWN then
+		return nil
+	end
+	local more = n - MAX_SHOWN
+	local line = moreLines[more]
+	if not line then
+		line = string.format(TEXT.more, more)
+		moreLines[more] = line
+	end
+	return line
+end
+
+function Search.Run(text)
+	local rail = window and window.rail
+	if not rail then
+		return
+	end
+	local q, nWords = Query(text)
+	if not q then
+		if rail.resultsShown then
+			rail:HideResults()
+		end
+		return
+	end
+	if not rail.resultsShown then
+		turn = turn + 1   -- (a new search: its gates asked again)
+	end
+	if not index then
+		-- (the index is this frame's work too: the new result rows get what
+		-- it leaves of the frame's one budget of rows)
+		local t = debugprofilestop()
+		Build()
+		W.RowBudget.Spent(debugprofilestop() - t)
+	end
+	local n = Match(q, nWords)
+	if rail:ShowResults(found, math.min(n, MAX_SHOWN), NoteFor(n)) then
+		MelloUI.Kit:NextFrame(rail, MoreRows)
+	end
+end
+
+-- the index made again at the next search (a module switched on or off, by
+-- hand or by a profile load); results on show stay as they are, the one
+-- selected and the list's scroll too (review of the search box, 2026-09-26:
+-- searched again, a switch flipped from a result sent the marker back to the
+-- first), their entries still good for a click
+function Search.Stale()
+	index = nil
+	turn = turn + 1
+end
+-- the gates asked again at the next keystroke ('backup': the copy written,
+-- removed or brought back)
+function Search.Recheck()
+	turn = turn + 1
+end
+
+-- the box emptied and the side list back at once (the window shown again,
+-- the tour)
+function Search.Clear()
+	local box = window and window.search
+	if not box then
+		return
+	end
+	box:ClearFocus()
+	if window.rail.resultsShown then
+		window.rail:HideResults(true)
+	end
+	local text = box:GetText()
+	if Secret(text) or (text ~= nil and text ~= "") then
+		box:SetText("")
+	end
+end
+
+-- The page named, on show: the page on show already (true), or put on show
+-- (made on its first open) as its side-list entry does
+local function ShowPage(name)
+	local page = pages[name]
+	if page and window.pager:Current() == page then
+		return page, true
+	end
+	window.shortcut = nil
+	SelectPage(name)
+	return pages[name], false
+end
+
+-- An option's row: its tab opened, the page scrolled so the row sits under
+-- the top of the view (a glide on a page already on show, else at once: the
+-- page's own fade is the motion), the row made when the page has not made it
+-- yet (that one row, out of the pages' turn: page:Select and the scroll made
+-- those in view within the frame's budget), and lit
+local function RevealOption(page, opt, onShow)
+	local sec, y = page.optSec and page.optSec[opt], page.optY and page.optY[opt]
+	if not sec then
+		return
+	end
+	page:RevealAt(sec, y, not onShow, onShow)
+	if sec.jobs and not page.optRow[opt] then
+		MakeRows(sec, y + 1, nil, y)
+	end
+	W.Flash(page.optRow[opt])
+end
+
+-- where a frame of the page lies under the page's top, from its anchors (each
+-- a top point on its parent's top: Home's cards and rows, the Profiles
+-- page's parts), nil when they do not say
+local function TopIn(page, f)
+	local y = 0
+	for _ = 1, 12 do
+		if f == page then
+			return y
+		end
+		local point, rel, relPoint, _, oy = f:GetPoint(1)
+		oy = Num(oy)
+		if not (oy and rel and rel == f:GetParent() and type(point) == "string" and type(relPoint) == "string"
+			and point:find("^TOP") and relPoint:find("^TOP")) then
+			return nil
+		end
+		y = y - oy
+		f = rel
+	end
+	return nil
+end
+
+-- a result chosen: the page (or tab, or row) opened and brought into view
+local function Jump(e)
+	local kind = e.kind
+	if kind == "dynamic" then
+		DynamicClick()
+		return
+	end
+	MelloUI:PlayUISound("page")
+	if kind == "bar" then
+		W.Flash(window.parts.layout)
+		return
+	end
+	if kind == "shortcut" then
+		-- (UI Modifications on the tab holding its switch, the switch's row lit)
+		local nav = window.navEntries[e.key]
+		local um = MelloUI.modules.UIModifications
+		local page, onShow = ShowPage("UIModifications")
+		window.shortcut = e.key
+		local opt = nav and um and OptionOf(um, nav.shortcut)
+		if page and opt then
+			RevealOption(page, opt, onShow)
+		end
+		NavFollow(false)
+		return
+	end
+	local page, onShow = ShowPage(e.key)
+	if not page then
+		return
+	end
+	if kind == "tab" then
+		local sec = page.sections[e.tab]
+		if sec and page.current ~= sec then
+			page:Select(sec, onShow)
+		end
+		page.pager:ScrollTo(0, not onShow)
+		NavFollow(true)
+	elseif kind == "option" then
+		RevealOption(page, e.opt, onShow)
+		NavFollow(true)
+	elseif kind == "part" then
+		local part = (e.key == "Home" and HomePart or ProfilesPart)(page, e.part)
+		if part then
+			local y = TopIn(page, part)
+			if y then
+				page.pager:ScrollTo(math.max(0, y - JUMP_MARGIN), not onShow)
+			end
+			W.Flash(part)
+		end
+	elseif onShow then
+		page.pager:ScrollTo(0, false)
+	end
+end
+
+-- the box's and the results' handlers (one function each)
+Search.Changed = Shared("OnTextChanged on the configurator's search box", function(self)
+	Search.Run(self:GetText())
+end, "script")
+Search.Enter = Shared("OnEnterPressed on the configurator's search box", function(self)
+	self:ClearFocus()
+	local e = window.rail:Result()
+	if e then
+		Jump(e)
+	end
+end, "script")
+Search.Escape = Shared("OnEscapePressed on the configurator's search box", function(self)
+	self:ClearFocus()
+	local text = self:GetText()
+	if Secret(text) or (text ~= nil and text ~= "") then
+		self:SetText("")   -- (its OnTextChanged gives the side list back)
+	end
+end, "script")
+Search.Arrow = Shared("OnArrowPressed on the configurator's search box", function(_, key)
+	if key == "UP" then
+		window.rail:MoveResult(-1)
+	elseif key == "DOWN" then
+		window.rail:MoveResult(1)
+	end
+end, "script")
+-- A fight that starts while the box has the keyboard: the keyboard given back
+-- to the game at once (moving, casting), the text and the results left as
+-- they are. The box takes the event only while it has the keyboard (its
+-- focus scripts): nothing waits on it otherwise (review of the search box,
+-- 2026-09-26)
+Search.Focus = Shared("OnEditFocusGained on the configurator's search box", function(self)
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+end, "script")
+Search.Unfocus = Shared("OnEditFocusLost on the configurator's search box", function(self)
+	self:UnregisterEvent("PLAYER_REGEN_DISABLED")
+end, "script")
+Search.Fight = Shared("OnEvent on the configurator's search box (a fight starts)", function(self)
+	self:ClearFocus()
+end, "script")
+-- a result clicked (the rail's onResult)
+function Search.Pick(_, e)
+	if window.search then
+		window.search:ClearFocus()
+	end
+	Jump(e)
+end
+-- (tests: the index as it stands, nil before the first search)
+function Search.Index()
+	return index
+end
+
+-- The box, made with the side list (CreateWindow: the rail's head strip,
+-- Search.HEAD tall): the game's search box, dressed in the kit's S1 by the
+-- sweep of its strip (the bags' and the Quest List's look), its New tag on
+-- its top edge, clear of its clear button. Nothing else of the search is made
+-- then: the index at the first search, the result rows with the first
+-- results.
+Search.HEAD = HEAD
+function Search.MakeBox(rail, skin)
+	local search = CreateFrame("EditBox", nil, rail.head, "SearchBoxTemplate")
+	search:SetPoint("TOPLEFT", rail.head, "TOPLEFT", 6, -TOP)
+	search:SetPoint("TOPRIGHT", rail.head, "TOPRIGHT", -2, -TOP)
+	search:SetHeight(HEIGHT)
+	search:SetAutoFocus(false)
+	search:SetMaxLetters(40)
+	W.Paint(search, C.text, "text")   -- (what is typed, in the palette's text colour)
+	if search.Instructions then
+		search.Instructions:SetText(PROMPT)
+	end
+	Perf.HookScript(search, "OnTextChanged", Search.Changed)
+	Perf.SetScript(search, "OnEnterPressed", Search.Enter)
+	Perf.SetScript(search, "OnEscapePressed", Search.Escape)
+	Perf.SetScript(search, "OnArrowPressed", Search.Arrow)
+	-- (the template's own focus scripts kept: hooked)
+	Perf.HookScript(search, "OnEditFocusGained", Search.Focus)
+	Perf.HookScript(search, "OnEditFocusLost", Search.Unfocus)
+	Perf.SetScript(search, "OnEvent", Search.Fight)
+	search.newTag = W.Badge(search, SEARCH_TAG.new, CLEAR_ROOM)
+	W.Dress(rail.head, skin)
+	window.search = search
+	return search
+end
+end   -- (the Search block)
+
 -- the top bar's tooltips (one handler; its texts read from the control:
 -- `melloTipTitle`, `melloTipBody`, and `melloGated` for the Layout group,
 -- whose tooltip says what wakes it while it sleeps), painted by the widgets'
@@ -3316,6 +4032,8 @@ end, "script")
 -- in line by SelectPage, which every open calls. (Its own script, set before
 -- the shell's hooks: the shell's look check, fit and sound come after it.)
 local Window_OnShow = Shared("OnShow on the configurator", function()
+	-- (a search left in the box when it closed: the side list back, at once)
+	Search.Clear()
 	if window.navStale then
 		RefreshNav()
 	end
@@ -3414,6 +4132,7 @@ local BackupFollow = Shared("the configurator's Macro Backup part following the 
 	end
 end)
 local function Config_OnBackup()
+	Search.Recheck()   -- (Restore and Delete are found only while there is a copy)
 	if window:IsShown() and currentPage == "Profiles" then
 		local K = MelloUI.Kit
 		if K and K.NextFrame then
@@ -3424,6 +4143,7 @@ local function Config_OnBackup()
 	end
 end
 local function Config_OnModule(name, enabled)
+	Search.Stale()   -- (the search's index made again at its next search)
 	if not window:IsShown() then
 		window.navStale = true
 		return
@@ -3467,6 +4187,9 @@ end
 -- made with the window (MelloUI:ConfigTour)
 local function TourSelect(name)
 	SelectPage(name, true)
+	-- (the tour shows the side list, never a search's results: every step
+	-- comes through here, the side list's own step too)
+	Search.Clear()
 end
 local function TourPage(name)
 	return pages[name]
@@ -3475,6 +4198,7 @@ local function TourPart(name)
 	return window.parts[name]
 end
 local function TourNav(key)
+	Search.Clear()   -- (the side list, not a search's results)
 	return window.rail:Reveal(key)
 end
 -- a part of the page on show brought into view: the page JUMPS so the part
@@ -3587,18 +4311,27 @@ local function CreateWindow()
 		.. "Closes the configurator while it runs.")
 
 	-- The side list (W.NavRail, from the registry): the pages and the
-	-- shortcuts by group, the page on show marked. Its rows count against
-	-- the frame's one budget of rows: the page's rows in view made in the
-	-- same frame get what it leaves (BeginRows / EndRows). Rows 29 high: the
-	-- 17 entries and 4 headers of 0.14.0 (Reminders added) stand 610 tall in
-	-- the list's 612 with every group open, so no scroll is needed
-	local rail = W.NavRail(window, { width = NAV_WIDTH, rowHeight = 29, iconMaker = NavIcon, onSelect = NavClick, skin = shell })
+	-- shortcuts by group, the page on show marked, the search box over them
+	-- (the rail's head strip; its results take the list's place). Its rows
+	-- count against the frame's one budget of rows: the page's rows in view
+	-- made in the same frame get what it leaves (BeginRows / EndRows). Rows
+	-- 26 high and headers 22: the 18 entries and 4 headers of 0.14.0
+	-- (Reminders and Gains added) stand 578 tall in the 580 the list keeps
+	-- under the box with every group open, so no scroll is needed (rows 29
+	-- and headers 24 before the box: 17 entries, 610 in 612)
+	local rail = W.NavRail(window, { width = NAV_WIDTH, rowHeight = 26, headerHeight = 22, iconMaker = NavIcon, onSelect = NavClick,
+		skin = shell, head = Search.HEAD, onResult = Search.Pick })
 	rail.box:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BODY_TOP)
 	rail.box:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", EDGE, EDGE)
 	window.rail = rail
+	-- the search box on its strip (nothing else of the search now)
+	Search.MakeBox(rail, shell)
 	local groups, anyNew = NavGroups()
 	-- (What's new's line about the New tags: while any shows)
 	window.anyNew = anyNew or dynamicNew
+	-- (the search's index walks the list as it stands, and names Dynamic UI
+	-- Modification's tag)
+	window.navGroups, window.dynamicNew = groups, dynamicNew
 	-- (each page's place in the list: the side a page slides in from)
 	window.navEntries, window.pageOrder = {}, {}
 	local n = 0
@@ -3650,7 +4383,7 @@ local function CreateWindow()
 	window.parts = { title = shell.title, plate = shell.plate, crest = shell.crest, topBar = bar, layout = layout,
 		unlock = unlock, snap = snap, reset = reset, install = install, dynamic = dynamic, close = close, nav = rail.box }
 	window.tour = { window = window, pager = pager, select = TourSelect, page = TourPage, part = TourPart, navEntry = TourNav,
-		scrollTo = TourScrollTo }
+		scrollTo = TourScrollTo, search = Search }
 
 	-- the look switched with the window open (the shell's 'look:config')
 	shell:OnKit(Config_OnKit)
@@ -3831,6 +4564,9 @@ end
 --                     to it
 --   c.scrollTo(part)  the page on show jumped so the part sits 60 below its
 --                     top; a part outside it moves nothing
+--   c.search          the search box's side: Run(text) (what typing does),
+--                     Clear() (the box emptied, the side list back), Index()
+--                     (its entries, nil before the first search)
 function MelloUI:ConfigTour()
 	CreateWindow()
 	return window.tour

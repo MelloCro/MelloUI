@@ -594,10 +594,16 @@ when a copy is added and names the system to use.
   them; `opts.gate` dims a row and says "Switch on "X" first." in its hint
   slot, so no row changes height), `W.RowPlate` (one hover for a row, the
   palette wash or the kit's plate, faded through Anim, none on the selected
-  row; `W.RowPlateChild` for a control on it), `W.Card` (a choice card),
+  row; `W.RowPlateChild` for a control on it; `W.Flash(row)` lights a row's
+  hover a moment, held by a one-shot timer: the row a jump brought into
+  view), `W.Card` (a choice card),
   `W.NavRail` (a side list or a numbered steps rail: groups that fold, one
   marker that glides, `Reveal`, rows from a pool; a name too long for the
-  row is clipped and shown whole in its tooltip), `W.Pager` (pages in one
+  row is clipped and shown whole in its tooltip; `spec.head` a strip over
+  the list for a control, and a search's results in the list's place:
+  `ShowResults` / `HideResults` / `MoveResult` / `Result`, two-line rows
+  from a pool of their own, as tall as their fonts want, a path too wide
+  for the row kept to its end, the same marker), `W.Pager` (pages in one
   scroll frame, switched with a cross-fade and a shield over the page area
   while it runs; `SetPageHeight` is the only height setter),
   `W.RowBudget` (ONE budget of rows a frame for every own window's pages:
@@ -642,7 +648,9 @@ when a copy is added and names the system to use.
   - the one tag is `W.Tag` (the installer card's "Recommended" plate):
     `W.NewTag` right after the row's label (the hint after the tag, dimmed
     with a sleeping row), `W.Badge` on a tab's top edge (UI Modifications'
-    tabs), `W.ButtonTag` inside a text button at its right (the top bar's
+    tabs; its `inset` keeps it clear of a control at the frame's right: the
+    configurator's search box and its clear button), `W.ButtonTag` inside a
+    text button at its right (the top bar's
     Dynamic UI Modification, widened by the tag, its label keeping its own
     width), and snug near the right edge of the side list's entry and of a
     folded group's header (`W.NavRail` entries' `new`: a page by its own
@@ -660,6 +668,22 @@ when a copy is added and names the system to use.
     out of the files: table fields, a `x.new = "..."` line and a version
     handed by position; anything else it names for a hand, and a file that
     would not compile after it is put back.
+- **The configurator's search box (0.14.0) finds every option by itself.**
+  It walks what the side list and the pages walk (the side list's groups,
+  `EachOption` for each page: its tabs, sections and options, a sub-option
+  under its parent's name), so a schema option needs nothing more. A row
+  built by hand on Home or the Profiles page is named in its block's
+  `HomeSearch` / `ProfilesSearch` (its label, what its tooltip says, its
+  `new`, and `when` if it shows only at times: asked once a search, never
+  per keystroke, so a `when` may read the game) and found by
+  `HomePart` / `ProfilesPart` for the jump; a control that is not a row
+  (the top bar's) is added in the Search block's `Build`. Dynamic UI
+  Modification's choices are not in it (they live in its own window, made
+  as it opens): ONE result, "Top bar > Dynamic UI Modification", opens
+  that window. The best first: a name that is the word, then one that
+  starts with it, has a word starting with it, holds it, then the place
+  it lies, then its description; within each, a page or shortcut before a
+  tab, a tab before a row.
 - **Its registry entry.** Its module's `MelloUI:RegisterModule` carries what
   the configurator, UI Modifications and the installer show; nothing is
   listed by hand anywhere else (UI Modifications makes its PANELS, TWEAKS

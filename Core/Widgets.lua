@@ -27,9 +27,11 @@
 --   W.TrayBox(parent, opts)            a small list's box beside a window (the
 --                                      kit's list box, or a plain fill and edge)
 --   W.RowPlate(row, opts)              W.RowPlateOff(row), W.RowPlateChild(row, child)
+--   W.Flash(row, hold)                 a row's hover look lit for a moment (a
+--                                      jump's target: the configurator's search)
 --   W.Tag(parent, text, snug)          ONE small gold word on a plate (a card's
 --                                      "Recommended", an option's "New"), and
---     W.NewTag(parent, after, new, room), W.Badge(frame, new),
+--     W.NewTag(parent, after, new, room), W.Badge(frame, new, inset),
 --     W.ButtonTag(button, new): an option's New tag while its update runs
 --     (MelloUI:IsNew); W.TagShown, W.TagAlpha
 --   W.Row(parent, y, height, label, hint, desc, opts) and the typed rows
@@ -40,7 +42,8 @@
 --     W.PaletteValues(), W.PaletteName(id), W.PaletteFill(tex, id, role):
 --     the one palette picker's parts
 --   W.Dress(root, skin, depth)         the kit's control sweep over a root
---   W.NavRail(parent, spec)            a side list / a steps rail
+--   W.NavRail(parent, spec)            a side list / a steps rail (and a
+--                                      search's results in its place)
 --   W.Pager(parent, opts)              pages that cross-fade in one scroll
 --   W.RowBudget                        ONE budget of rows a frame for every
 --                                      own window: Begin(ms), End(), Spent(ms)
@@ -64,6 +67,7 @@ local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Widgets")
 local Shared = Perf.Shared
+local C_Timer = Perf.C_Timer   -- (a flash's hold: W.Flash)
 local Secret = MelloUI.Safe.IsSecret   -- (Core.lua's, one set for the addon)
 local Num = MelloUI.Safe.Number
 local Finite = MelloUI.Safe.Finite
@@ -1396,6 +1400,29 @@ local PlateChildLeave = Shared("OnLeave on the controls of MelloUI's rows (hover
 	PlateOut(row)
 end, "script")
 
+-- the palette's wash on a row (under its texts), resting at alpha 0, and its
+-- 2 px gold edge unless `edge` is false: the plain hover look (and a
+-- flash's, W.Flash)
+local function Wash(row, strength, edge)
+	local region = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+	region:SetTexture(WHITE)
+	region:SetAllPoints()
+	W.Paint(region, "hover", "vertex", 1)
+	region:SetAlpha(0)
+	strengthOf[row] = strength or 0.5
+	if edge ~= false then
+		local e = row:CreateTexture(nil, "BACKGROUND", nil, 2)
+		e:SetTexture(WHITE)
+		e:SetWidth(2)
+		e:SetPoint("TOPLEFT")
+		e:SetPoint("BOTTOMLEFT")
+		W.Paint(e, "selectedTrim", "vertex", 1)
+		e:SetAlpha(0)
+		edgeOf[row] = e
+	end
+	return region
+end
+
 function W.RowPlate(row, opts)
 	opts = opts or {}
 	local skin = opts.skin
@@ -1411,22 +1438,7 @@ function W.RowPlate(row, opts)
 		end
 	end
 	if not region then
-		region = row:CreateTexture(nil, "BACKGROUND", nil, 1)
-		region:SetTexture(WHITE)
-		region:SetAllPoints()
-		W.Paint(region, "hover", "vertex", 1)
-		region:SetAlpha(0)
-		strengthOf[row] = opts.strength or 0.5
-		if opts.edge ~= false then
-			local e = row:CreateTexture(nil, "BACKGROUND", nil, 2)
-			e:SetTexture(WHITE)
-			e:SetWidth(2)
-			e:SetPoint("TOPLEFT")
-			e:SetPoint("BOTTOMLEFT")
-			W.Paint(e, "selectedTrim", "vertex", 1)
-			e:SetAlpha(0)
-			edgeOf[row] = e
-		end
+		region = Wash(row, opts.strength, opts.edge)
 	end
 	plateOf[row] = region
 	faderOf[row] = kit and FaderOf(region) or region
@@ -1468,6 +1480,68 @@ function W.RowPlateOff(row)
 end
 
 --------------------------------------------------------------------------------
+-- Flash: a row's hover look lit for a moment, so the eye finds the row a
+-- jump brought into view (the configurator's search, 0.14.0). The row's own
+-- RowPlate when it has one (the kit's plate or the palette's wash); a frame
+-- without one (a Your setup row, a card, the top bar's Layout group) gets
+-- the palette's wash and gold edge at its first flash, lit only by flashes
+-- (no hover of its own). Faded in and out through Anim, held by a one-shot
+-- timer: nothing runs between flashes. Reduce Motion: on and off at once,
+-- still held. A new flash puts the one before out at once; a row the
+-- pointer is on keeps its hover when the flash ends.
+--   W.Flash(row[, hold])   `hold` in seconds (W.FLASH_HOLD, 1.2)
+--   W.Flashing()           the row a flash holds now, or nil
+--------------------------------------------------------------------------------
+
+W.FLASH_HOLD = 1.2
+local flashOnly = setmetatable({}, weakKeys)   -- [frame] = true: its wash is a flash's only
+local flash = { row = nil, holds = 0 }
+
+local function FlashOver()
+	flash.holds = flash.holds - 1
+	if flash.holds > 0 then
+		return
+	end
+	flash.holds = 0
+	local row = flash.row
+	flash.row = nil
+	if row and (flashOnly[row] or not OverRow(row)) then
+		PlateOut(row)
+	end
+end
+
+function W.Flash(row, hold)
+	if not row then
+		return
+	end
+	local was = flash.row
+	if was and was ~= row then
+		W.RowPlateOff(was)
+	end
+	if not faderOf[row] then
+		local region = Wash(row, 0.5, true)
+		plateOf[row], faderOf[row], flashOnly[row] = region, region, true
+	end
+	flash.row = row
+	local p = faderOf[row]
+	if hiddenOf[row] then
+		MelloUI.Anim:FadeIn(p, FADE_IN, "outQuad")
+	else
+		In(p, strengthOf[row])
+		local e = edgeOf[row]
+		if e then
+			In(e, 1)
+		end
+	end
+	flash.holds = flash.holds + 1
+	C_Timer.After(tonumber(hold) or W.FLASH_HOLD, FlashOver)
+end
+
+function W.Flashing()
+	return flash.row
+end
+
+--------------------------------------------------------------------------------
 -- Tag: ONE small plate with a short gold word for every place that marks a
 -- thing -- the installer card's "Recommended" (W.Card's spec.tag, the
 -- approved look) and an option's "New" (the user's rule, 2026-09-26: every
@@ -1487,9 +1561,12 @@ end
 --       `after` (a label); `room`: the width `after` and the tag may take
 --       together (a label of a fixed width is narrowed to its text, and cut
 --       when the tag would not fit)
---   W.Badge(frame, new) -> tag | nil   on a frame's top edge at its right (a
---       tab): half over it, well inside its sides. `new` true: shown (the
---       caller has asked MelloUI:IsNew of what the frame leads to)
+--   W.Badge(frame, new, inset) -> tag | nil   on a frame's top edge at its
+--       right (a tab): half over it, well inside its sides. `new` true: shown
+--       (the caller has asked MelloUI:IsNew of what the frame leads to).
+--       `inset`: its plate's right side that far in from the frame's (a
+--       control at the frame's right kept clear: the search box's clear
+--       button); BADGE_IN when nil
 --   W.ButtonTag(button, new) -> tag | nil   INSIDE a text button, at its
 --       right and centred on its height (a badge would lie on its label): the
 --       button made wider by the tag's room, its label centred in the width
@@ -1567,13 +1644,13 @@ local function Shows(new)
 	return new == true or (new ~= nil and new ~= false and MelloUI:IsNew(new))
 end
 
-function W.Badge(frame, new)
+function W.Badge(frame, new, inset)
 	if not Shows(new) then
 		return nil
 	end
 	local tag = W.Tag(frame, W.NEW)
 	-- (the word's middle on the frame's top edge)
-	tag:SetPoint("RIGHT", frame, "TOPRIGHT", -(BADGE_IN + TAG_PAD_X), 0)
+	tag:SetPoint("RIGHT", frame, "TOPRIGHT", -((tonumber(inset) or BADGE_IN) + TAG_PAD_X), 0)
 	return tag
 end
 
@@ -2158,6 +2235,38 @@ end
 --                      ONCE (a help tip's target); returns the row
 --   rail.rows[key], rail.selected, rail.box, rail.content, rail.scroll,
 --   rail.glide, rail.marker
+-- A search's results in the same list (0.14.0, the configurator's search
+-- box; user, 2026-09-26: "search box in the next build"):
+--   spec.head (0: none)   a strip that tall at the top of the box, over the
+--                         list (rail.head: the caller's control goes there,
+--                         the box's search field); the list starts under it
+--   spec.resultHeight (38: the least a result row is; taller while the
+--                         fonts are: its two lines' sizes and their room,
+--                         read at each search, rail.resultHeight),
+--                         spec.onResult (a shared fn(rail, entry): a result
+--                         clicked)
+--   rail:ShowResults(list, n, note)   the groups swapped for list[1..n] (the
+--       caller's entries, read as they are laid: `name`, `path` (the small
+--       line over it, "Page > Tab"; nil: the name alone; too wide for the
+--       row, its first parts are left out -- " > " -- so its end, the part
+--       that tells two results apart, stays: measured once per entry for the
+--       row's room and font, kept in the entry as `pathShown`), `new` (true:
+--       its snug New tag), `full`, `section` and `tip` (the tooltip: the
+--       whole path)), one row
+--       each from a pool of their own (made once, reused by every search;
+--       new ones within the frame's one budget of rows), `note` a quiet line
+--       under them (nothing found, how many more); the first one selected
+--       (the marker), the list at its top. True when rows are still owed
+--       (the budget spent): the caller asks rail:MoreResults() on a later
+--       frame (Kit:NextFrame), again while it returns true
+--   rail:HideResults(instant)   the groups back as they were (folds, the
+--       marker on the selected entry, the list's own scroll)
+--   rail:MoveResult(delta)   the marker to the next / previous result, kept
+--       in view; rail:SelectResult(i); rail:Result() the selected result's
+--       entry (nil: none); rail.resultsShown, rail.resultRows,
+--       rail.resultCount, rail.resultIndex, rail.note
+-- While results show, Select / SetState / Fold only record (the marker
+-- stays on the result); nothing of them runs per frame.
 -- Look (the approved sketch, kit or not): entries in the text colour (the
 -- palette's muted text is 3.2:1, for large or bold labels only), the
 -- selected one in gold on a `raisedPanel` marker with a 2 px gold edge;
@@ -2320,8 +2429,11 @@ function W.NavRail(parent, spec)
 	spec.gap = spec.gap or 1
 	spec.inset = spec.inset or 10
 	spec.iconSize = spec.iconSize or 22
+	spec.head = spec.head or 0
+	spec.resultHeight = spec.resultHeight or 38
 	local rail = setmetatable({ spec = spec, rows = {}, headers = {}, order = {}, folded = {}, groupOf = {},
-		state = {}, rowPool = {}, headerPool = {}, selected = nil }, Rail)
+		state = {}, rowPool = {}, headerPool = {}, selected = nil, resultRows = {}, resultCount = 0,
+		resultsShown = false, resultHeight = spec.resultHeight }, Rail)
 	local skin = spec.skin
 	local box = CreateFrame("Frame", nil, parent)
 	box:SetWidth(spec.width)
@@ -2340,9 +2452,17 @@ function W.NavRail(parent, spec)
 		end
 	end
 	rail.width = spec.width - 2 * spec.inset   -- the rows' width
+	-- (the caller's strip over the list: the configurator's search box)
+	local top = spec.inset + spec.head
+	if spec.head > 0 then
+		rail.head = CreateFrame("Frame", nil, box)
+		rail.head:SetPoint("TOPLEFT", spec.inset, -spec.inset)
+		rail.head:SetPoint("TOPRIGHT", -spec.inset, -spec.inset)
+		rail.head:SetHeight(spec.head)
+	end
 	if spec.scroll ~= false then
 		local scroll = CreateFrame("ScrollFrame", nil, box)
-		scroll:SetPoint("TOPLEFT", spec.inset, -spec.inset)
+		scroll:SetPoint("TOPLEFT", spec.inset, -top)
 		scroll:SetPoint("BOTTOMRIGHT", -spec.inset, spec.inset)
 		rail.content = CreateFrame("Frame", nil, scroll)
 		rail.content:SetWidth(rail.width)
@@ -2351,7 +2471,7 @@ function W.NavRail(parent, spec)
 		rail.glide = MelloUI.Anim:Glide(scroll, { step = 68 })
 	else
 		rail.content = CreateFrame("Frame", nil, box)
-		rail.content:SetPoint("TOPLEFT", spec.inset, -spec.inset)
+		rail.content:SetPoint("TOPLEFT", spec.inset, -top)
 		rail.content:SetWidth(rail.width)
 	end
 	-- the one marker, at the content's level; the rows one above it, so their
@@ -2359,6 +2479,7 @@ function W.NavRail(parent, spec)
 	local marker = CreateFrame("Frame", nil, rail.content)
 	marker:SetFrameLevel(rail.content:GetFrameLevel())
 	marker:SetHeight(spec.rowHeight)
+	rail.markerHeight = spec.rowHeight
 	marker.fill = marker:CreateTexture(nil, "BACKGROUND")
 	marker.fill:SetAllPoints(marker)
 	W.Paint(marker.fill, "raisedPanel", "fill", 1)
@@ -2385,6 +2506,10 @@ end
 
 function Rail:SetGroups(groups)
 	local spec = self.spec
+	-- (a search's results give the list back first: the groups are laid anew)
+	if self.resultsShown then
+		self:HideResults(true)
+	end
 	-- every row and header back to the pools, then taken again in order
 	for key, row in pairs(self.rows) do
 		row:Hide()
@@ -2489,6 +2614,11 @@ end
 -- fold is not a move). Each is held by ONE anchor, its top left, at the
 -- content's width (the marker's glide moves that one anchor).
 function Rail:Layout(instant)
+	-- (while a search's results show, the groups stay hidden: HideResults
+	-- lays them again)
+	if self.resultsShown then
+		return
+	end
 	local spec = self.spec
 	local content = self.content
 	local y = 0
@@ -2511,29 +2641,42 @@ function Rail:Layout(instant)
 	end
 	content:SetHeight(math.max(y, 1))
 	if not self.scroll then
-		self.box:SetHeight(math.max(y, 1) + 2 * spec.inset)
+		self.box:SetHeight(math.max(y, 1) + 2 * spec.inset + spec.head)
 	end
 	self:PlaceMarker(true)
 end
 
-function Rail:PlaceMarker(instant)
-	local marker = self.marker
-	local row = self.selected and self.rows[self.selected]
+-- the one marker on `row` (an entry's, or a search result's: its height),
+-- gliding there unless `instant`; hidden when there is none on show
+local function MarkRow(rail, row, height, instant)
+	local marker = rail.marker
 	local Anim = MelloUI.Anim
 	if not (row and row:IsShown()) then
 		Anim:Stop(marker)
 		marker:Hide()
 		return
 	end
+	if rail.markerHeight ~= height then
+		rail.markerHeight = height
+		marker:SetHeight(height)
+	end
 	local y = -row.y
 	if instant or not marker:IsShown() then
 		Anim:Stop(marker, "y")
 		marker:ClearAllPoints()
-		marker:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, y)
+		marker:SetPoint("TOPLEFT", rail.content, "TOPLEFT", 0, y)
 		marker:Show()
 	else
 		Anim:To(marker, "y", y, 0.15, "outCubic")
 	end
+end
+
+function Rail:PlaceMarker(instant)
+	if self.resultsShown then
+		MarkRow(self, self.resultIndex and self.resultRows[self.resultIndex], self.resultHeight, instant)
+		return
+	end
+	MarkRow(self, self.selected and self.rows[self.selected], self.spec.rowHeight, instant)
 end
 
 -- the texts, icons, glyphs as the state is: gold on the selected entry, every
@@ -2578,6 +2721,12 @@ function Rail:Paint()
 		local kitOpen = h.collapsible and skin and skin.kit and true or false
 		RepShown(h.plusRep, kitOpen and folded)
 		RepShown(h.minusRep, kitOpen and not folded)
+	end
+	if self.resultsShown then
+		for i = 1, self.resultCount do
+			local row = self.resultRows[i]
+			W.Paint(row.label, i == self.resultIndex and "selectedTrim" or "text", "text")
+		end
 	end
 end
 
@@ -2630,6 +2779,320 @@ function Rail:Reveal(key)
 		end
 	end
 	return row
+end
+
+-- The search results' rows (see the NavRail header): two lines each -- the
+-- small path over the name in full size, both in the text colour on the
+-- list's inner panel (2e), the selected one's name in gold on the marker --
+-- the palette's hover wash, a snug New tag at the right. A pool of their
+-- own, each made whole the first time a search needs it: a keystroke after
+-- makes no frame or region.
+local RESULT_X, RESULT_PAD = 8, 5   -- the texts' inset and their room over and under
+local RESULT_LINE_GAP = 6           -- between the two lines (10 and 12 high: the least height, 38)
+local PATH_SEP = " > "              -- a path's parts (the caller's "Page > Tab")
+
+-- A result row's height: the least (spec.resultHeight), or taller while its
+-- two lines' fonts are (the Fonts module's sizes, up to 150 %: the path's
+-- descenders never on the name's capitals), read from the pool's first row
+-- (review of the search box, 2026-09-26). No table, no string: asked at each
+-- search
+local function ResultHeight(rail)
+	local h = rail.spec.resultHeight
+	local row = rail.resultRows[1]
+	if row then
+		local _, a = row.path:GetFont()
+		local _, b = row.label:GetFont()
+		a, b = Num(a), Num(b)
+		if a and b then
+			h = math.max(h, math.ceil(a + b + 2 * RESULT_PAD + RESULT_LINE_GAP))
+		end
+	end
+	return h
+end
+
+-- The path as the row has room for it: whole when it fits, else its first
+-- parts left out, so its end -- the tab, the parent: what tells two results
+-- apart -- stays (review of the search box, 2026-09-26: "UI Modifications >
+-- Combat > Y..." for three Icon Size rows). Measured once per entry for the
+-- room and the font, the answer kept in the entry (`pathShown`, and what it
+-- was measured for); a keystroke after measures nothing and makes no string.
+local function FitPath(fs, e, room)
+	local path = e.path
+	local file, size = fs:GetFont()
+	size = Num(size)
+	if e.pathShown and e.pathRoom == room and e.pathSize == size and e.pathFont == file then
+		return e.pathShown
+	end
+	local shown, at = path, 1
+	fs:SetText(path)
+	while (TextWidth(fs) or 0) > room do
+		local _, stop = string.find(path, PATH_SEP, at, true)
+		if not stop then
+			break   -- (its last part alone and still too wide: cut at the row's edge)
+		end
+		at = stop + 1
+		shown = path:sub(at)
+		fs:SetText(shown)
+	end
+	e.pathShown, e.pathRoom, e.pathSize, e.pathFont = shown, room, size, file
+	return shown
+end
+
+local function IsResultSelected(row)
+	local rail = railOf[row]
+	return rail ~= nil and rail.resultsShown and rail.resultIndex == row.index
+end
+-- (one options table for every result row's hover)
+local RESULT_PLATE = { look = "palette", strength = 0.5, edge = false, selected = IsResultSelected }
+
+local ResultClick = Shared("OnClick on a NavRail search result", function(row)
+	local rail = railOf[row]
+	if not (rail and rail.resultsShown and row.entry) then
+		return
+	end
+	rail:SelectResult(row.index)
+	if rail.spec.onResult then
+		rail.spec.onResult(rail, row.entry)
+	end
+end, "script")
+
+-- the result's tooltip: the whole of where it is (a path cut at the row's
+-- edge too), the section it lies in, and what it does
+local ResultTipEnter = Shared("OnEnter on a NavRail search result (tooltip)", function(row)
+	local e = row.entry
+	if e then
+		W.ShowTooltip(row, e.full or e.name or "", e.tip, e.section)
+	end
+end, "script")
+
+local function NewResultRow(rail, i)
+	local row = CreateFrame("Button", nil, rail.content)
+	row:SetHeight(rail.resultHeight)
+	row.height = rail.resultHeight
+	row:SetFrameLevel(rail.content:GetFrameLevel() + 1)
+	row.path = W.Text(row, "GameFontHighlightSmall", nil, "text")
+	row.path:SetWordWrap(false)
+	row.label = W.Text(row, "GameFontHighlight", nil, "text")
+	row.label:SetWordWrap(false)
+	-- (its New tag made with it, shown when a result needs it: a keystroke
+	-- makes no region either)
+	row.newTag = W.Tag(row, W.NEW, true)
+	row.newTag:SetPoint("RIGHT", row, "RIGHT", -(RAIL_TAG_IN + TAG_SNUG_X), 0)
+	W.TagShown(row.newTag, false)
+	W.RowPlate(row, RESULT_PLATE)
+	Perf.HookScript(row, "OnEnter", ResultTipEnter)
+	Perf.HookScript(row, "OnLeave", TipLeave)
+	Perf.SetScript(row, "OnClick", ResultClick)
+	row.index = i
+	railOf[row] = rail
+	rail.resultRows[i] = row
+	return row
+end
+
+-- a result laid on its row at `y`: its texts (the caller's strings, the
+-- path kept to its end when it is too wide: FitPath), its tag, the texts
+-- ending before the tag, the row as tall as its fonts want (ResultHeight)
+local function LayResult(rail, row, e, y)
+	row.entry = e
+	local path = e.path
+	local hasPath = path ~= nil and path ~= ""
+	local tagged = Shows(e.new)
+	W.TagShown(row.newTag, tagged)
+	local right = 6
+	if tagged then
+		right = RAIL_TAG_IN + (TextWidth(row.newTag) or 20) + 2 * TAG_SNUG_X + RAIL_TAG_GAP
+	end
+	row.path:SetText(hasPath and FitPath(row.path, e, rail.width - RESULT_X - right) or "")
+	row.path:SetShown(hasPath)
+	row.label:SetText(e.name or "")
+	if row.height ~= rail.resultHeight then
+		row.height = rail.resultHeight
+		row:SetHeight(row.height)
+	end
+	row.path:ClearAllPoints()
+	row.path:SetPoint("TOPLEFT", RESULT_X, -RESULT_PAD)
+	row.path:SetPoint("TOPRIGHT", -right, -RESULT_PAD)
+	row.label:ClearAllPoints()
+	if hasPath then
+		row.label:SetPoint("BOTTOMLEFT", RESULT_X, RESULT_PAD)
+		row.label:SetPoint("BOTTOMRIGHT", -right, RESULT_PAD)
+	else
+		row.label:SetPoint("LEFT", RESULT_X, 0)
+		row.label:SetPoint("RIGHT", -right, 0)
+	end
+	row:ClearAllPoints()
+	row:SetPoint("TOPLEFT", rail.content, "TOPLEFT", 0, -y)
+	row:SetWidth(rail.width)
+	row.y = y
+	row:Show()
+end
+
+local function PaintResult(rail, i)
+	local row = i and rail.resultRows[i]
+	if row then
+		W.Paint(row.label, i == rail.resultIndex and "selectedTrim" or "text", "text")
+	end
+end
+
+local function PutAway(row)
+	row:Hide()
+	row.entry = nil
+	W.RowPlateOff(row)
+end
+
+-- New result rows keep to the frame's one budget of rows (W.RowBudget, as
+-- the pages' rows): those the budget leaves are owed, made by the caller's
+-- rail:MoreResults() on a later frame (the top ones first); the first
+-- searches make the pool
+local RESULT_BUDGET = 3   -- ms of new result rows in the frame of a keystroke
+
+function Rail:ShowResults(list, n, note, more)
+	local spec = self.spec
+	if not self.resultsShown then
+		-- the groups put away, their folds and the list's scroll kept for
+		-- HideResults
+		-- (a row still fading back in from a fold lands at its end: it comes
+		-- back whole)
+		local Anim = MelloUI.Anim
+		for _, f in ipairs(self.order) do
+			Anim:Land(f, "alpha")
+			f:Hide()
+		end
+		self.listScroll = self.glide and self.glide.pos or 0
+		self.resultsShown = true
+	end
+	self.resultList, self.resultWanted, self.resultNote = list, n, note
+	self.resultHeight = ResultHeight(self)
+	local step = self.resultHeight + spec.gap
+	local y, laid = 0, 0
+	local deadline, begun = nil, false
+	for i = 1, n do
+		local row = self.resultRows[i]
+		if not row then
+			if not begun then
+				begun = true
+				deadline = W.RowBudget.Begin(RESULT_BUDGET)   -- (nil: this frame's rows are made)
+			end
+			if not (deadline and debugprofilestop() < deadline) then
+				break
+			end
+			row = NewResultRow(self, i)
+			if i == 1 then
+				-- (the pool's first row: its fonts give the height from now on)
+				self.resultHeight = ResultHeight(self)
+				step = self.resultHeight + spec.gap
+			end
+		end
+		LayResult(self, row, list[i], y)
+		y = y + step
+		laid = i
+	end
+	if begun then
+		W.RowBudget.End()
+	end
+	for i = laid + 1, #self.resultRows do
+		PutAway(self.resultRows[i])
+	end
+	self.resultsOwed = laid < n
+	-- the quiet line under them, once they are all laid (full size:
+	-- WINDOW-RULES 2e)
+	local line = self.note
+	if note and note ~= "" and not self.resultsOwed then
+		if not line then
+			line = W.Text(self.content, "GameFontHighlight", nil, "text")
+			line:SetWordWrap(true)
+			self.note = line
+		end
+		line:SetWidth(self.width - 2 * RESULT_X)
+		line:ClearAllPoints()
+		line:SetPoint("TOPLEFT", self.content, "TOPLEFT", RESULT_X, -(y + 6))
+		line:SetText(note)
+		line:Show()
+		y = y + 12 + (Num(line:GetStringHeight()) or 14)
+	elseif line then
+		line:Hide()
+	end
+	self.resultCount = laid
+	if not more or not self.resultIndex then
+		-- a new search: its first result selected, the list at its top
+		self.resultIndex = laid > 0 and 1 or nil
+	end
+	self.content:SetHeight(math.max(y, 1))
+	if self.glide and not more then
+		self.glide:Jump(0)
+	end
+	self:PlaceMarker(not more)
+	for i = 1, laid do
+		PaintResult(self, i)
+	end
+	return self.resultsOwed
+end
+
+-- the rows a search still owes, laid now (within the frame's budget); true
+-- while some are still owed after
+function Rail:MoreResults()
+	if self.resultsShown and self.resultsOwed then
+		return self:ShowResults(self.resultList, self.resultWanted, self.resultNote, true)
+	end
+	return false
+end
+
+function Rail:HideResults(instant)
+	if not self.resultsShown then
+		return
+	end
+	self.resultsShown = false
+	for i = 1, #self.resultRows do
+		PutAway(self.resultRows[i])
+	end
+	if self.note then
+		self.note:Hide()
+	end
+	self.resultCount, self.resultIndex, self.resultsOwed, self.resultList = 0, nil, false, nil
+	-- (the rows fade back in unless `instant`; the marker on the selected entry)
+	self:Layout(instant)
+	self:Paint()
+	if self.glide then
+		self.glide:Jump(self.listScroll or 0)
+	end
+end
+
+function Rail:SelectResult(i)
+	if not (self.resultsShown and i and i >= 1 and i <= self.resultCount) or i == self.resultIndex then
+		return
+	end
+	local was = self.resultIndex
+	self.resultIndex = i
+	W.RowPlateOff(self.resultRows[i])   -- (no wash on the selected one)
+	self:PlaceMarker(false)
+	PaintResult(self, was)
+	PaintResult(self, i)
+end
+
+function Rail:MoveResult(delta)
+	if not (self.resultsShown and self.resultCount > 0) then
+		return nil
+	end
+	local i = math.max(1, math.min(self.resultCount, (self.resultIndex or 0) + delta))
+	self:SelectResult(i)
+	local row = self.resultRows[i]
+	if self.glide and self.scroll then
+		-- (kept in view: the list glides by the least it must)
+		local top, h = row.y, self.resultHeight
+		local height = Num(self.scroll:GetHeight()) or 0
+		local offset = self.glide.pos or 0
+		if top < offset then
+			self.glide:To(top)
+		elseif height > 0 and top + h > offset + height then
+			self.glide:To(top + h - height)
+		end
+	end
+	return row.entry
+end
+
+function Rail:Result()
+	local row = self.resultsShown and self.resultIndex and self.resultRows[self.resultIndex]
+	return row and row.entry or nil
 end
 
 --------------------------------------------------------------------------------
