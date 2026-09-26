@@ -822,7 +822,7 @@ the bus topic `reminder` (key, active, up).
 Keeps drink, food, ammunition and reagents in your bags (its rows are on the Reminders page).
 Each character has its own list, which profiles never carry or wipe; a new one starts with
 suggestions for its class: drink for the classes that use mana, food for everyone, 1000 arrows
-for a hunter (bullets with a gun), and class reagents at the levels they are used. Older,
+for a hunter (bullets with a gun), all from level 5, and class reagents at the levels they are used. Older,
 lower-level stock counts toward a line. **Remind Below** (50 %): a line that drops below that
 share of its amount brings up the reminder, and a click routes you to the nearest vendor that
 sells it (shops you have opened are remembered; the innkeeper for drink and food when none is

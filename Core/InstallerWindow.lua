@@ -105,11 +105,13 @@ local EMPTY = {}
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"
--- the approved banner (900 x 491) in a 1024 x 512 file: loaded when the
--- Setup page shows, released when the window closes (about 2 MB: the
--- texture build's quality gate keeps it a TGA, its DXT at 29.4 dB)
+-- the approved banner (450 x 245.5 of a 512 x 256 file, half the drawn
+-- art's pixels: shown at 460 x 251 it looks the same, a quarter of the
+-- size; user, 2026-09-26): loaded when the Setup page shows, released when
+-- the window closes (512 KB TGA: the texture build's quality gate keeps it
+-- a TGA)
 local BANNER = TEXTURE_PATH .. "InstallerBanner.tga"
-local BANNER_U, BANNER_V = 900 / 1024, 491 / 512
+local BANNER_U, BANNER_V = 450 / 512, 245.5 / 256
 local TICK = "Interface\\RaidFrame\\ReadyCheck-Ready"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local NAME = "MelloUIInstallerFrame"   -- (named: the shell's Escape)

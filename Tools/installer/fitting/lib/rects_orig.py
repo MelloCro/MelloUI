@@ -38,20 +38,20 @@ def disp(rec, name):
 # size is Edit Mode's since the flip). MinimapCluster is a ResizeLayoutFrame
 # (Blizzard_SharedXML/LayoutFrame.lua ResizeLayoutMixin:Layout; widthPadding
 # 20, Blizzard_Minimap/Mainline/Minimap.xml) sized round its shown children:
-# the MinimapContainer (215 x 226, the frame art's size, Camelot/Skin.lua),
+# the MinimapContainer (215 x 253, measured in game at Size 150%),
 # scaled by k, its TOP 10 right and 30 down of the cluster's top middle in the
 # cluster's own units at any Size (SetHeaderUnderneath lays it again at
 # offset / scale, Minimap.lua ResetFramePoints); the zone band (175 x 16, TOP
 # 15 right, 4 down) with the tracking button (17 + 2) on its left and the
 # calendar (1 + 19) on its right. The map (198 x 198) in the container's middle.
-BOX_W, BOX_H, BOX_X, BOX_Y = 215.0, 226.0, 10.0, 30.0
+BOX_W, BOX_H, BOX_X, BOX_Y = 215.0, 253.0, 10.0, 30.0   # 253: measured in game (Size 150%: 379.5), not the art's 226
 MAP_PX = 198.0
 
 
 def cluster_size(k):
     lo = min(BOX_X - BOX_W / 2 * k, -91.5)
     hi = max(BOX_X + BOX_W / 2 * k, 122.5)
-    return hi - lo + 20, BOX_Y + BOX_H * k - 4
+    return hi - lo + 20, BOX_Y + BOX_H * k - 3   # (the container ends 3 below the cluster, measured)
 
 
 def map_rect(rr, k):

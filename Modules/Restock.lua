@@ -394,13 +394,17 @@ local function Suggested()
 	local class = PlayerClass() or ""
 	local level = Level()
 	local parts = {}
-	if DRINKERS[class] then
-		parts[#parts + 1] = "d:" .. FAMILY.d.amount
-	end
-	parts[#parts + 1] = "f:" .. FAMILY.f.amount
-	if class == "HUNTER" then
-		local ammo = HunterAmmo()
-		parts[#parts + 1] = ammo .. ":" .. FAMILY[ammo].amount
+	-- no food, drink or ammo before level 5 (user, 2026-09-26): a new
+	-- character has no gold yet, so it would only be nagged in its first inn
+	if (tonumber(level) or 0) >= 5 then
+		if DRINKERS[class] then
+			parts[#parts + 1] = "d:" .. FAMILY.d.amount
+		end
+		parts[#parts + 1] = "f:" .. FAMILY.f.amount
+		if class == "HUNTER" then
+			local ammo = HunterAmmo()
+			parts[#parts + 1] = ammo .. ":" .. FAMILY[ammo].amount
+		end
 	end
 	for _, r in ipairs(REAGENTS[class] or {}) do
 		if r[3] == nil or level <= r[3] then

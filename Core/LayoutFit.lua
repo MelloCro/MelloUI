@@ -397,8 +397,9 @@ local DESIGN_INPUTS = { tracker = { width = 300, maxHeight = 440, scale = 1 }, q
 -- is at Lua's limit of top-level locals. Its functions are below the rects.
 --   the minimap cluster (Blizzard_Minimap/Mainline/Minimap.xml): a
 --   ResizeLayoutFrame (Blizzard_SharedXML/LayoutFrame.lua, widthPadding 20)
---   sized round its shown children -- the map's container (the frame art,
---   215 x 226, Camelot/Skin.lua) scaled by the Size, its TOP 10 right and 30
+--   sized round its shown children -- the map's container (215 x 253, measured
+--   in game at Size 150%: 379.5 tall, its bottom 3 below the cluster's; the
+--   frame art's 226 is not its height) scaled by the Size, its TOP 10 right and 30
 --   down of the cluster's top middle in the cluster's own units at any Size
 --   (SetHeaderUnderneath lays it at offset / scale); the zone band (175 x 16,
 --   15 right, 4 down) with the tracking button (17 + 2) left of it and the
@@ -962,7 +963,7 @@ local function SizeOf(f, s, m)
 		local k = (Disp(f, s, "Size") or 100) / 100
 		local lo = min(10 - 215 / 2 * k, -91.5)
 		local hi = max(10 + 215 / 2 * k, 122.5)
-		return hi - lo + 20, 30 + 226 * k - 4
+		return hi - lo + 20, 30 + 253 * k - 3
 	elseif name == "UnitFrame" then
 		local k = Setting(f, s, "FrameSize") ~= nil and Disp(f, s, "FrameSize") / 100 or 1
 		if idx == 1 or idx == 2 then
@@ -1192,7 +1193,7 @@ end
 -- the map (198 x 198 at the Size k) in the cluster's rect
 function Column.MapRect(l, t, r, k)
 	local cx = l + (r - l) / 2 + 10
-	local cy = t + 30 + 226 * k / 2
+	local cy = t + 30 + 253 * k / 2
 	local half = 198 / 2 * k
 	return cx - half, cy - half, cx + half, cy + half
 end
