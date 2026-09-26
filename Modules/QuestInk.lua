@@ -18,6 +18,9 @@
 --                             client has one, else from the level
 --   QI.TierOfColour(r, g, b)  the same from the game's difficulty colour
 --   QI.Pips(parent, size)     a row of five pips: pips:SetTier(tier)
+--   QI.Gem(parent, size)      one pip as a gem in a meaning colour before a
+--                             name on a parchment sheet: gem:SetColour(r, g, b);
+--                             QI.GemLead(fontSize) the lead it sits in
 --   QI.Ink(fs, role)          ink on a font string: "title", "text", "faded"
 --   QI.Plain(fs)              back to the font string's own font and colour
 --   QI.WatchColour(fs)        remember the colours others (the game) give fs:
@@ -33,6 +36,7 @@
 --                             interface gold -> heading ink, grey -> faded, a
 --                             colour that means something (quality, class,
 --                             channel, red / green) -> a dark shade of its hue
+--                             (`sheet`: the inks for the kit's darker sheet)
 --   QI.InkCodes(text)         the same for the |c colour codes in a text
 --   QI.InkText(fs)            ink on a string by its own colour ("auto"), kept
 --                             as the game recolours it; QI.PlainText(fs) back
@@ -86,12 +90,25 @@ local function Srgb(c)
 end
 
 -- The kit's parchment SHEETS (Kit:ParchmentSheet: the vellum at
--- Kit.parchmentTint, about #AA824A, luminance 0.25) are darker than the
--- vellum pages the inks above were set for (2026-09-24, measured: body ink
--- 3.9 : 1, coloured inks about 3 : 1 on a sheet). `sheet`: the ink for
--- text on such a sheet -- 4.5 : 1 for a colour that means something, the
--- title ink (4.7 : 1) for light text, the text ink for grey.
-local SHEET_TARGET = 0.0167
+-- Kit.parchmentTint) are darker than the vellum pages the inks above were
+-- set for. Measured on the SHIPPED tile (Media/Kit/tiles/vellum.blp at the
+-- tint, 2026-09-26): mean #A48048, luminance 0.238 -- about 4 % darker than
+-- the master the first target (0.0167) was set on, which gave 4.3 : 1 in
+-- game, not 4.5 : 1. The sheet is too dark for any lighter ink to reach
+-- 4.5 : 1 on it: every sheet ink sits at about that floor (luminance 0.0133
+-- to 0.0138), and they tell themselves apart by their hue. `sheet`: the ink
+-- for text on such a sheet --
+--   light text and gold: SHEET_TITLE, the title ink one step darker
+--     (#291C11, 4.54 : 1; the vellum's #2A1D12 is 4.49 : 1 there);
+--   a colour that means something: its hue at SHEET_TARGET, 4.55 : 1
+--     (4.53 : 1 or better once the client rounds it to 8 bits);
+--   grey: SHEET_GREY, a neutral grey at the floor (#1F1F1F, 4.52 : 1), a
+--     hair lighter than the title ink, never darker than the body text (the
+--     text ink was 3.8 : 1, the faded ink 2.7 : 1).
+local SHEET_TARGET = 0.0133
+QI.SHEET_TITLE = { 0.161, 0.110, 0.067 }   -- #291C11
+QI.SHEET_GREY = { 0.122, 0.122, 0.122 }    -- #1F1F1F
+local SHEET_GREY_L = Lin(QI.SHEET_GREY[1])
 
 function QI.InkOf(r, g, b, sheet)
 	r, g, b = r or 1, g or 1, b or 1
@@ -99,9 +116,14 @@ function QI.InkOf(r, g, b, sheet)
 	local sat = mx > 0 and (mx - mn) / mx or 0
 	if sat < 0.25 then
 		-- neutral: light text is the text ink, grey the faded ink, dark kept
+		-- (on a sheet: the sheet's title ink, and its grey for any grey
+		-- lighter than that grey)
 		local c
 		if sheet then
-			c = (mx >= 0.8 and QI.INK.title) or (mx >= 0.4 and QI.INK.text) or nil
+			c = (mx >= 0.8 and QI.SHEET_TITLE) or nil
+			if not c and 0.2126 * Lin(r) + 0.7152 * Lin(g) + 0.0722 * Lin(b) > SHEET_GREY_L then
+				c = QI.SHEET_GREY
+			end
 		else
 			c = (mx >= 0.8 and QI.INK.text) or (mx >= 0.4 and QI.INK.faded) or nil
 		end
@@ -112,7 +134,7 @@ function QI.InkOf(r, g, b, sheet)
 	end
 	-- the interface's gold (headings, the normal font's colour): heading ink
 	if r >= 0.8 and g >= 0.6 and b <= 0.35 and g / r > 0.65 and g / r <= 0.9 then
-		local c = QI.INK.title
+		local c = sheet and QI.SHEET_TITLE or QI.INK.title
 		return c[1], c[2], c[3]
 	end
 	-- a colour that means something: its own hue, dark enough to read
@@ -274,6 +296,17 @@ function QI.PipsWidth(size)
 	return 5 * size + 4 * math.floor(size * 0.18 + 0.5)
 end
 
+-- One pip's art on `f`: the fill (white, tinted by its vertex colour) and
+-- the dark ring over it (the pips and the gems below)
+local function PipArt(f)
+	local fill = f:CreateTexture(nil, "ARTWORK", nil, 1)
+	fill:SetTexture(ROOT .. "pip_fill")
+	local ring = f:CreateTexture(nil, "ARTWORK", nil, 2)
+	ring:SetTexture(ROOT .. "pip_ring")
+	ring:SetAllPoints(fill)
+	return fill, ring
+end
+
 function QI.Pips(parent, size)
 	size = size or 11
 	local gap = math.floor(size * 0.18 + 0.5)
@@ -283,13 +316,9 @@ function QI.Pips(parent, size)
 	Mixin(f, PipsMixin)
 	f.pips = {}
 	for i = 1, 5 do
-		local fill = f:CreateTexture(nil, "ARTWORK", nil, 1)
-		fill:SetTexture(ROOT .. "pip_fill")
+		local fill, ring = PipArt(f)
 		fill:SetSize(size, size)
 		fill:SetPoint("LEFT", f, "LEFT", (i - 1) * (size + gap), 0)
-		local ring = f:CreateTexture(nil, "ARTWORK", nil, 2)
-		ring:SetTexture(ROOT .. "pip_ring")
-		ring:SetAllPoints(fill)
 		f.pips[i] = { fill = fill, ring = ring }
 	end
 	-- the words for the count, on hover (the one tooltip look: the title in
@@ -305,6 +334,73 @@ function QI.Pips(parent, size)
 	end)
 	f:Hide()
 	return f
+end
+
+--------------------------------------------------------------------------------
+-- Gems (user, 2026-09-26, RC4: "tooltips with parchments are very hard to
+-- distinguish between the Items/Class colors"; option B of the tooltip ink
+-- mockup, "ink plus gems"). On the kit's darker sheet the dark shades of the
+-- meaning colours all read as one near-black brown. A name there is written
+-- in the title ink, and a small gem in the game's TRUE colour sits before it
+-- (an item's quality, a player's class): the pips' art, the fill tinted and
+-- the dark ring over it so it stands on the paper, about the text's cap
+-- height. The gem's colour is the game's own meaning colour, never an ink.
+--   QI.Gem(parent, size)    a gem, hidden: gem:SetColour(r, g, b) shows it
+--                           in that colour, gem:SetGemSize(size) sizes it
+--   QI.GemLead(fontSize)    the lead a gem sits in before a string's text (an
+--                           invisible inline texture as wide as the gem and
+--                           its gap), the gem's size and its drop from the
+--                           string's top; made once per font size
+--------------------------------------------------------------------------------
+
+local GemMixin = {}
+
+function GemMixin:SetColour(r, g, b)
+	if r ~= self.r or g ~= self.g or b ~= self.b then
+		self.r, self.g, self.b = r, g, b
+		self.fill:SetVertexColor(r, g, b)
+	end
+	self:Show()
+end
+
+function GemMixin:SetGemSize(size)
+	if size and size ~= self.size then
+		self.size = size
+		self:SetSize(size, size)
+	end
+end
+
+function QI.Gem(parent, size)
+	local f = CreateFrame("Frame", nil, parent)
+	Mixin(f, GemMixin)
+	f:EnableMouse(false)
+	f.fill, f.ring = PipArt(f)
+	f.fill:SetAllPoints(f)
+	f:SetGemSize(size or 9)
+	f:Hide()
+	return f
+end
+
+-- of the font size: the gem (the mockup's 13 px beside a 22 px line), the
+-- gap after it, and where its centre lies below the line's top (the middle
+-- of the lower-case letters)
+local GEM_SIZE, GEM_GAP, GEM_MIDDLE = 0.6, 0.25, 0.55
+local leads = {}   -- [whole font size] = { lead, gem size, drop }
+
+function QI.GemLead(fontSize)
+	local key = math.floor((tonumber(fontSize) or 12) + 0.5)
+	key = math.min(64, math.max(6, key))
+	local lead = leads[key]
+	if not lead then
+		local size = math.floor(key * GEM_SIZE + 0.5)
+		local width = size + math.max(2, math.floor(key * GEM_GAP + 0.5))
+		-- the pip file's transparent corner (texels 0 .. 1 of 16), as wide
+		-- as the gem and its gap: the text begins after it
+		lead = { string.format("|T%spip_fill:%d:%d:0:0:16:16:0:1:0:1|t", ROOT, size, width), size,
+			math.max(0, math.floor(key * GEM_MIDDLE - size / 2 + 0.5)) }
+		leads[key] = lead
+	end
+	return lead[1], lead[2], lead[3]
 end
 
 --------------------------------------------------------------------------------
@@ -348,9 +444,12 @@ function QI.RoleColour(role, r, g, b, sheet)
 	if role == "auto" then
 		return QI.InkOf(r, g, b, sheet)
 	end
-	-- the body ink on a sheet is the darker title ink (4.7 : 1 there)
-	if sheet and role == "text" then
-		role = "title"
+	-- on a sheet the body and the title are the sheet's title ink (4.54 : 1
+	-- there) and the faded ink the sheet's grey (4.52 : 1; the faded ink was
+	-- 2.7 : 1)
+	if sheet then
+		local c = role == "faded" and QI.SHEET_GREY or QI.SHEET_TITLE
+		return c[1], c[2], c[3]
 	end
 	local c = QI.INK[role] or QI.INK.title
 	return c[1], c[2], c[3]
