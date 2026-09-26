@@ -71,10 +71,10 @@ local PANELS, TWEAKS = {}, {}
 -- installer's login check, Core/Installer.lua); seenVersion, the version
 -- whose one What's new line was given; layoutApplied, the Edit Mode layout
 -- was put in place once when the reskin came on (ReskinOn below) or the
--- installer answered for it; layoutFitFor and layoutAsked_<character>, the
--- installer's own facts. The switching functions are defined further down,
--- next to the rest of the switching; declared here so the button on the
--- page can reach them.
+-- installer answered for it; layoutFitFor, layoutFitRev and
+-- layoutAsked_<character>, the installer's own facts. The switching
+-- functions are defined further down, next to the rest of the switching;
+-- declared here so the button on the page can reach them.
 local Apply, RestoreAreas, NothingWanted, TweakWanted
 
 -- The page (user, 2026-09-24: "the Dynamic UI Modification is going to be
@@ -188,7 +188,7 @@ do
 	local shade = Kit and Kit.shadeSettings
 	if type(shade) == "table" and type(shade.master) == "string" and type(shade.strength) == "string" then
 		Add({ type = "toggle", key = shade.master, name = "UI Shade",
-			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand off the world: windows, action and cast bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates on Whole plate. Each area has its own switch in Dynamic UI Modification." })
+			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand out from the world. Each area has its own switch in Dynamic UI Modification." })
 		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master,
 			min = shade.min, max = shade.max, step = shade.step, percent = true,
 			desc = "How dark the shade round the kit's outlines is. The nameplates use their own strength (HUD tab)." })
@@ -293,7 +293,7 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	-- in a profile; and Dark Mode's switch, the player's own preference
 	-- (user, 2026-09-26: no profile carries it)
 	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded", "questTrackerKitMigrated",
-		"seenVersion", "^layoutAsked_", "layoutFitFor", "qol_DarkMode" },
+		"seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "qol_DarkMode" },
 	defaults = defaults,
 	options = options,
 	icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_02",

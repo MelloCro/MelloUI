@@ -12,6 +12,14 @@ One switch and every window, every bar, the minimap, the nameplates, the chat, t
 - Turn it on and your action bars, side bars, unit frames and party frames snap into the layout it was drawn for, fitted to your screen. No fiddling.
 - Dark Mode darkens the reskin too, with a brightness slider, for the night owls.
 
+## 🎨 Seven palettes and a soft shade
+
+Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidian** (black glass and pewter), **Royal Azure** (deep navy and gold) and **Fel Ember** (charred black, fel green and void purple), each with a brighter **Vibrant** version. Every palette comes with its own painted kit, so the rails, gems and plates change colour with it, and every MelloUI window, text and highlight follows.
+
+- Pick one on Home > Your setup (Palette), in Dynamic UI Modification, or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember: Warm iron, Bronze or the Original).
+- A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade and Shade Strength are on UI Modifications' General tab; Dynamic UI Modification has a switch per area.
+- Items you can't use and spells you can't learn stay on dark red in every palette.
+
 ## 🖱️ Drag. Everything.
 
 Switch on Unlock the Windows at the top of the settings window, then grab any window and drop it wherever you want. Minimap, quest tracker, chat, damage meter, all of it.
@@ -51,6 +59,9 @@ Every quest offer, progress line, turn-in and greeting is read out loud in a voi
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock.
 - **Smart Route:** a trail of gems along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
 - **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
+- **Nearest quest first:** MelloUI's Quest Tracker sorts your quests by distance, shows how far each one is and who takes a finished quest back.
+- **Quest tooltips:** an item your quest needs shows your progress; an NPC says "Turn in here" when your quest is ready for them.
+- **Flights:** the flight map shows where your route flies and how long it takes, and the arrow counts down to your landing.
 
 ## 👥 Small things you'll use every day
 
@@ -61,14 +72,22 @@ Every quest offer, progress line, turn-in and greeting is read out loud in a voi
 - **Auto-vendor:** sells your greys and repairs your gear the moment you talk to a merchant.
 - **And:** cooldown numbers on buttons, clean dark tooltips, CC and quest icons on nameplates, FPS and latency, hidden micro menu and bag bar, class medallions on portraits.
 
+## 🧺 Errands, handled
+
+A small round button beside your portrait taps you on the shoulder, then tucks itself away: drink or food running low, new mail, gear wearing out, a trainer with something new. Several at once? One button with a count; point at it and the others slide out. Click one and the arrow takes you to the nearest place for it; close to the NPC, a click targets them. Right-click says "not now".
+
+- **Restock** keeps a list per character (drink, food, arrows or bullets, reagents) and reminds you before you run dry. In an inn or a city it stays up until you restock or leave.
+- At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
+- It all lives on the **Reminders** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
+
 ## 🧭 Set up in a minute
 
 The first time you log in with MelloUI, a few seconds in, the installer asks how you want to start:
 
-- **Full experience** (recommended): Mello's own setup. The reskin, the features and Mello's Edit Mode layout, fitted to your screen.
+- **Full experience** (recommended): Mello's own setup. The reskin in the Ember palette, the features and Mello's Edit Mode layout, fitted to your screen.
 - **No reskin, features on:** the game's look stays and MelloUI's features come on. No Edit Mode change.
 - **Reskin only:** the painted look and Mello's layout; the features stay off.
-- **Fresh start:** everything off, then one step at a time: the look (the reskin, Kit Colours, the button borders, class icons), the minimap (Round or Square), parchment and dark mode, fonts, the features, your screen, chat and the windows. Each step's choices start at Mello's own, and nothing changes until you install. On the Features step every feature starts off: switch on the ones you want, or all of them with **All features**. Each one you switch on comes with Mello's own settings for it; the rest wait in `/mello`.
+- **Fresh start:** everything off, then one step at a time: the look (the reskin, the palette, Kit Colours, the button borders, class icons), the minimap (Round or Square), parchment and dark mode, fonts, the features, your screen, chat and the windows. Each step's choices start at Mello's own, and nothing changes until you install. On the Features step every feature starts off: switch on the ones you want, or all of them with **All features**. Each one you switch on comes with Mello's own settings for it; the rest wait in `/mello`.
 
 Dark Mode is yours: no setup changes it and no profile carries it. Fresh start's dark mode row starts at your own choice (off on a new character).
 
@@ -79,7 +98,7 @@ Then:
 - **Install:** your current setup is saved as the profile **Before install** first. Then you have 15 seconds: **Keep** the new setup, or **Revert** to go back at once; if you don't answer, it goes back by itself. A fight or Edit Mode pauses the countdown, and a `/reload` in the middle brings it back with 15 seconds. Before install stays on the Profiles page, so you can load it later too.
 - **Done:** take the tour, open MelloUI, or reload once if the fonts over characters' heads changed.
 
-Close it without installing and nothing changes. Run it again any time: **Install…** at the top of `/mello`, **Install again** on its Home page, or `/mello install`. Updating from an earlier version? No installer, just one line in chat. The game keeps the Edit Mode layout per character: on another character, `/mello layout apply` makes Mello's layout the active one there too.
+Close it without installing and nothing changes. Run it again any time: **Install…** at the top of `/mello`, **Install again** on its Home page, or `/mello install`. Updating from an earlier version? No installer, just one line in chat. If you put Mello's layout in with 0.13.x, press **Fit to this screen** once on Home > Your setup (or type `/mello layout apply`): the Services row under the minimap is shorter since 0.14.0, and the fit closes the gap under it. The game keeps the Edit Mode layout per character: on another character, `/mello layout apply` makes Mello's layout the active one there too.
 
 ## ⚙️ The settings window
 
@@ -88,12 +107,14 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 - **Top bar:** the Layout group on the left: Unlock the Windows, Auto Snapping and Reset positions (dimmed while UI Modifications is off; switch that on first). On the right: **Install…** (the installer), **Dynamic UI Modification** (the look of the reskin, picked on the interface itself) and close.
 - **Side list:** Home, then the modules by group (The look, Quests and travel, Chat and sound, Frames and bars), then Profiles. Click a group's name to fold it away. Dark Mode, Fonts, Chat, Unit Frames, Nameplates and Tooltip live on UI Modifications' tabs: their entries open that tab right at their switch. A module that is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** a module's page has its switch and Defaults at the top and its options on tabs. An option that needs another switch is dimmed and says which one. Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (UI Modifications, General) makes all of it instant.
-- **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; your Kit Colours, with Change… to Dynamic UI Modification; your screen; Install again) and Help with every command.
+- **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette; your Kit Colours, with Change… to Dynamic UI Modification; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
 - Drag the window by its top edge: it stays where you put it. Escape closes it. At a large Font Style it is a little wider, so UI Modifications' tabs keep to one row.
 
 ## 💾 Your settings are safe
 
-The game saves your settings like any addon's, so they're still there after a restart. As a safety net, MelloUI also keeps a copy in a few hidden account macros called `MelloUI1`, `MelloUI2`...: if the saved settings ever go missing (a new PC, a wiped `WTF` folder), that copy brings them back. Keep those macros and you're golden. Profiles let you save and load whole setups too.
+The game saves your settings like any addon's, so they're still there after a restart. Profiles let you save and load whole setups too.
+
+Want an extra copy? **Macro Backup** on the Profiles page (off unless you turn it on) keeps one in your account macros, which the game keeps for your whole account: handy for a new PC or a wiped `WTF` folder. The copy is only ever brought back when you ask: **Restore…** on the Profiles page, or `/mello backup restore`. Turn it off and its macros are removed. The `MelloUI1`, `MelloUI2`... macros earlier versions kept are removed by themselves once your settings have loaded normally, so their slots are free again.
 
 ## 🐛 Good to know
 
@@ -129,15 +150,14 @@ The MelloUI settings have a **Profiles** page. "Save current as" stores every se
 module under a name; Load replaces all settings with a profile (it asks first, as the profile
 list under Your setup on the Home page does; `/mello profile load <name>` loads at once);
 "Set default" marks the one
-that is applied when the addon starts with no settings at all, such as on a fresh install or
-when neither the saved variables nor the macro backup brought anything back; out of the box
+that is applied when the addon starts with no settings at all, such as on a fresh install; out of the box
 that is the built-in **Everything Off** profile (every module off, made from the module list
 at each login, so it cannot be deleted or overwritten), and the installer opens a few seconds
 later (*Set up in a minute* above). The installer adds two more: the shipped **MelloUI**
 profile is its Full experience, and **Before install** is the setup you had before you last
 installed. Profiles are
 kept in the saved variables with the rest of the settings, so they stay from one session to the
-next. On a development copy, `Tools\bake_routes.py --watch` (the same watcher that bakes the
+next. The Profiles page also holds **Macro Backup** (see *Your settings are safe* above). On a development copy, `Tools\bake_routes.py --watch` (the same watcher that bakes the
 learned roads) also bakes your own into `Media\Profiles.lua` after each `/reload`. The
 watcher never writes the shipped **MelloUI** profile (the Full experience the installer applies,
 baked from a saved setup by `Tools\installer\bake_full.py --write`) or Everything Off, and
@@ -161,7 +181,8 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello enable <module>` | enable a module |
 | `/mello disable <module>` | disable a module |
 | `/mello dump [module]` | print the stored settings |
-| `/mello status` | whether the client loaded the saved variables, where the settings in use came from, and the state of the macro backup |
+| `/mello status` | whether the client loaded the saved variables, where the settings in use came from, and the state of Macro Backup |
+| `/mello backup ...` | Macro Backup: `on`, `off`, `restore` (asks first) or `delete` (at once); with no word it says how the copy stands |
 | `/mello profile ...` | `save <name>`, `load <name>`, `delete <name>`, `default <name>` or `default none`, `export <name>` (a share string to copy), `import <name>` (paste someone's string in as that profile), `list` (see *Profiles*) |
 | `/mello cpu` | CPU time per handler and hook of every module since login (needs `/console scriptProfile 1` and a `/reload`); `/mello cpu reset` zeroes the counters |
 | `/mello preload` | How many artwork files Preload Artwork holds, and how many the game has loaded |
@@ -172,13 +193,45 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mellolog [clear]` | the copy window with what the dump commands logged (`clear` empties it) |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
 | `/qlmap` | Quest List map pins: diagnostics, and `dock`, `zeppelin`, `arrive`, `entrance`, `remove`, `list` to record pins by hand (see Quest List) |
-| `/route` | Route: how much has been learned and the current route; `/route quest` (what the client reports for the tracked quest), `/route clear`, `/route arrow reset`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
+| `/route` | Route: how much has been learned, the current route, your map and how Route places you on it, and how many flight times it has learned; `/route quest` (what the client reports for the tracked quest), `/route clear`, `/route arrow reset`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
 | `/services [kind]` | Services: open the nearest-service menu, or route straight to the nearest `repair`, `mailbox`, `innkeeper`, `flight`, `auction`, `bank`, `class trainer`, `profession trainer`, `barber` or `transmog` |
+| `/restock` | Restock: your Restock List window (what this character keeps in its bags) |
 | `/sfx` | Custom Sounds: the state; `/sfx play <name>` auditions a sound, `/sfx list` names them, `/sfx log` prints every sound kit the game plays and what replaced it, `/sfx kit <id>` what a kit maps to; `/sfxdump` the last sound events in the copy window |
 | `/kitwhat` | every kit texture under the mouse cursor, back to front: the piece, its size, its crop, its tint, the frame it is on (for a background that is not the one expected) |
 | `/xxdump` | every reskinned window and HUD area has a dump command that logs its frames to the copy window: `/cpdump` (character), `/sbdump`, `/profdump`, `/legdump`, `/qldump` (quest log), `/gfdump`, `/gdump` (guild), `/coldump`, `/socdump`, `/ufdump`, `/cbdump`, `/rfdump`, `/abdump`, `/bagdump`, `/mmdump`, `/trdump`, `/chdump`, `/dmdump`, `/ttdump`, `/npdump`, `/pmdump` (party markers), `/icondump` (class icons), `/sfxdump` (custom sounds), `/kitdemo` |
 
 ## Modules
+
+### Palettes and the UI Shade (UI Modifications)
+
+**Palette** (UI Modifications, set on Home > Your setup, in Dynamic UI Modification above Kit
+Colours, or on the installer's Look step): Ember (the default), Obsidian, Obsidian Vibrant,
+Royal Azure, Royal Azure Vibrant, Fel Ember and Fel Ember Vibrant. A palette is ten colours
+(the window, the inner panel, raised panels, borders, trim, text, muted text, the selected tab,
+its gold trim, the hover), and everything MelloUI draws takes its colours from the one in use:
+its windows, texts, highlights, the notice, Route's lines, the shades. Each palette but Ember
+has its own painted kit (`Media\Kit<Name>`); **Kit Colours** then offers that kit or the
+Original, and under Ember Warm iron, Bronze and the Original as before. A switch changes
+everything at once, with no `/reload`, and works with UI Modifications off too. The installer's
+Full experience and Reskin only put in Ember; No reskin and Fit to this screen keep yours. A few
+colours carry a meaning and stay the same in every palette: the chat channels, Voice Over's
+states, Route's straight-guess blue and beam red, the map's quest-giver blue, and the dark red
+of what you can't use or learn (merchants, trade, trainers).
+
+**UI Shade** (on) and **Shade Strength** (70 %, 30-90 %) on UI Modifications' General tab, and
+the same two in Dynamic UI Modification's Shade section with a switch per area: Windows, Action
+Bars, Cast Bars, Unit Frames, Chat (the whisper popups too), Bags, Minimap (and the Services
+bar), Tracker (the objective tracker and the Quest Tracker), Buffs, Event Widgets and
+Nameplates. Every outline piece of the painted kit gets a soft dark shade of its own shape,
+laid under it so it never darkens the window's own stone: the outer rails, title plates, rings
+and crests of the windows, the bars' backdrops and end caps (and the rims of bars with no
+backdrop), the brackets and plates of the cast bars, the rings, name plates, bar brackets and
+orbs of the unit and party frames, the chat rail, tabs, minimized card and input box, the
+minimap's ring or square frame and zone plate, the tracker's rail and title plate, each aura's
+rim, the battleground and event widgets' bars (and a soft band behind their score and timer
+lines), and the nameplates on Whole plate. A window gets its shade on its first show; nothing
+is made at login for what you have not opened. The shade takes the palette's darkest tone and
+needs the reskin (each area follows its own part of it).
 
 ### Dark Mode
 
@@ -248,9 +301,10 @@ nameplates have no quest icon), read from the unit tooltip data.
 With the reskin's Nameplate Kit on, the name above each health bar sits on a soft dark band, as long
 as the name, that fades out at its ends (Name Shade: Name, the default). Whole plate adds a soft shadow that follows
 the plate's own shape: round the level circle, round each end gem and along the bar, in every
-Nameplate Border look. Off: no shade. Shade Strength sets how dark it is. Both sit on UI
-Modifications' HUD tab, under the Nameplates switch. The shapes come in a new texture file, so
-restart the game once after updating.
+Nameplate Border look; this needs the UI Shade on (UI Modifications, General) and its
+Nameplates switch in Dynamic UI Modification. Off: no shade. Shade Strength sets how dark it is
+(the nameplates' own, apart from the UI Shade's). Both sit on UI Modifications' HUD tab, under
+the Nameplates switch.
 
 ### Tweaks
 
@@ -261,7 +315,7 @@ restart the game once after updating.
 - Hide the player coordinates the client writes under the minimap ("Hide Minimap
   Coordinates", on by default).
 - "Chat Notices" (on by default) covers the lines MelloUI writes to chat on its own: a
-  learned dungeon entrance, settings restored from the backup, hints. Replies to slash
+  learned dungeon entrance, a note about the macro backup's copy, hints. Replies to slash
   commands always show.
 - "On-screen Notices" (on by default): MelloUI's one on-screen notice, the short line in the
   upper third of the screen that Route, the Services bar and the Quest List use (a route set
@@ -276,9 +330,15 @@ restart the game once after updating.
   in the notice's look: each line on the same soft dark shade, without the outline (Outlined
   Text brings it back for both), in the game's own colours and sizes, fading as the game fades
   it. Off: the game's own look.
-- "Outlined Text" (off), after Zone Text Shade: draws the notice's and the zone text's lines
-  with an outline. It is not under On-screen Notices, so it also sets the zone text's outline
-  with the notices off.
+- "Centre Text Shade" (on by default), after Zone Text Shade: the game's messages in the middle
+  of the screen -- the red errors ("Not enough energy"), the yellow info lines such as quest
+  progress, raid warnings and boss emotes -- in the notice's look: each line on the same soft
+  dark shade, fading as the game fades the line, without the outline (Outlined Text brings it
+  back), in the game's own colours. Private boss emotes keep the game's look. Off: the game's
+  own look.
+- "Outlined Text" (off), after Centre Text Shade: draws the notice's lines, the zone text and
+  the game's centre messages with an outline. It is not under On-screen Notices, so it also
+  sets the zone text's outline with the notices off.
 - World Text Scale slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
   numbers. Writes the `WorldTextScale` CVar.
 
@@ -538,6 +598,21 @@ there.
 log, and the ones you have not picked up with giver and zone, plus where to hand in the ones
 that are ready.
 
+**Tooltips** (Quest List, Tooltips; both on by default). An item one of your quests asks for
+shows the quest and your progress ("Quest: Red Linen Goods (4/6)", muted once that objective is
+done; left out where the game shows its own quest line). An NPC who takes one of your quests
+back says "Turn in here: <quest>" once it is ready, and a quieter "Quest ends here: <quest>"
+while it is in progress, ready ones first, at most five and then "and N more of your quests".
+Only the quests in your log are looked at, and only when a tooltip shows after the log changed,
+so nothing runs while nothing is hovered. For other modules: `MelloUI:QuestTurnIn(questID)`
+gives the turn-in NPC's name, id, continent, world position and zone, also with the Quest List
+off (the Quest Tracker's turn-in line uses it).
+
+**Zephras Isle and neutral characters.** The isle's map has no continent above it, so the Quest
+List takes the isle as its own continent: its givers and turn-ins land on its map and the
+Current Continent view lists its quests. A character that has not chosen a faction yet sees the
+quests open to both factions.
+
 ### Route
 
 Following: the arrow projects you onto the route and aims a stretch ahead along it (farther ahead
@@ -592,6 +667,26 @@ as wide as its text, a soft shadow of the gem's own shape behind the marker's ge
 soft shade behind the direction arrow and the marker's edge arrow. The distance under the
 minimap has no shade. Off, the name line is 180 wide again, a longer name cut.
 
+**Flights** (Route, Flights; both on by default). *Flight Map Help:* when a flight master's map
+opens, the route is planned again from the flight points you know, and the map's title band
+says where it flies and about how long it takes ("Route: fly to Sentinel Hill · about 1:16"),
+in the palette's gold on the soft text shade; a small gem pulses on that flight point's button,
+never on the picture. Pointing at a flight point adds its flight time to the tooltip ("Flight
+time: about 1:16"), and "Your route flies here" on the wanted one. *Landing Countdown:* once you
+take off, Route Announces says "Flying to Sentinel Hill, about 1:16", and the Direction Arrow
+(when it is on) points at the landing, also with no route set, counting down ("Landing at
+Sentinel Hill in about 0:52", then "soon"); on landing it says "Landed at Sentinel Hill (1:22)"
+and the arrow goes back to the route. Flight times come from your own timed flights first
+(learned per pair of flight points, kept with the learned paths), then the flight path data,
+then a straight line at flying speed.
+
+**Where Route can't place you.** Some maps have no continent above them (Zephras Isle, the
+Skyborne start): Route takes such a map as its own continent, so you are placed, routed and
+served there like anywhere else. Where the game gives no position at all, Route says "Route
+can't place you on this map (<name>), so there is no route from here." once per map and
+session (not in instances or on flights, and only with Route Announces on), and `/route`
+names your map and why.
+
 Learned paths live in the `MelloUIRoutes` saved variable, which the game saves at logout and on
 `/reload` and brings back at login, so what you learn stays from one session to the next. The
 traced roads are not part of it, only what you walked. To bake what you walked into the addon
@@ -632,7 +727,12 @@ game saves what was learned at logout and on every `/reload`; the baker picks it
 the counts, `/route quest` what the client reports for the tracked quest, `/route clear`
 drops the route and the pin, `/route reset confirm` wipes the learned paths. Other modules
 route through `MelloUI.Route`: `SetDestinationTo`, `DistanceTo`, `Cheapest` and `Notify`
-(Route's own lines, under Route Announces). A line of any module's own goes to the on-screen
+(Route's own lines, under Route Announces); `Where` and `WantWhere` with the bus topic `where`
+(where the player is, every 2 seconds while someone wants it and only after 10 yards of
+movement: the Quest Tracker's distances and the reminders' reach), `WorldYards`,
+`ObjectivePlaces`, `FollowedRemaining` (the way left along the route followed), `YardsText`,
+`PlaceNear` (a named town, camp, flight point or sub-zone near a point), `ContinentOf` and
+`PlayerSide` / `SideOpen` (a neutral character's rows are the ones open to both factions). A line of any module's own goes to the on-screen
 notice with `MelloUI:Announce(text, kind)` (Core/Notice.lua), which works with Route off; the
 soft band behind its text is the shared `MelloUI.Shade:Band` (Core/Shade.lua).
 
@@ -656,9 +756,11 @@ profession with a known trainer on the continent (your own ones first, marked), 
 "Nearest of any". Options: the bar and its distance from the minimap, and the older round
 minimap button with a list menu (off by default). `/services <kind>` routes from chat.
 
-Button Layout picks how the bar stands. Groups (the default): one row of five group buttons
+Button Layout picks how the bar stands. Groups (the default): one row of six group buttons
 as wide as the map (Travel: flight master, innkeeper; Trade: auction house, bank, mailbox;
-Repair; Trainers: class and profession trainer; Looks: barber, transmogrifier). Hover a group
+Repair; Trainers: class and profession trainer; Looks: barber, transmogrifier; Errands:
+Restock, Mail, Repair Gear and Trainer, each with its reminder's line, gold while it is up, or
+the nearest place's distance, a click going where that reminder sends you). Hover a group
 for each of its services with the distance to the nearest one; click it for a small list
 beside the minimap column, toward the middle of the screen, with the same distances, and
 click a service there to route to it (the profession trainer asks which profession first).
@@ -669,8 +771,72 @@ square minimap's frame, the row sits under the divider rail with its gem caps an
 "Services" name (centred; at the rail's left end while Route's distance line stands at its
 right end) and the clock moves beside the zone name. All Buttons: the two rows of an icon per
 service, as before. The minimap button keeps to the map's edge at any Edit Mode size, round
-or square. For modules: `Services:ColumnRow()` answers whether the row of groups stands
-under the map and its height (MinimapPanel's column asks it).
+or square. On a map where you can't be placed, a click says "Can't place you on this map, so no
+route to the nearest ..." instead of claiming none is known on your continent; a character that
+has not chosen a faction sees the services open to both. The service data also holds the
+vendors and what they sell (food and drink, arrows and bullets, class reagents), which Restock
+uses, and Zephras Isle's innkeeper, trainers, repairer and vendors. For modules:
+`Services:ColumnRow()` answers whether the row of groups stands under the map and its height
+(MinimapPanel's column asks it); `Services:GoTo(kind, opts)` routes to the nearest of a kind
+(true, or false and why: "unknown", "off", "noplace", "none"), `Services:Nearest(kind, opts)`
+gives its yards, name and sub-name, and `Services:Learn` remembers a place met in game (the
+Reminders and Restock go through these).
+
+### Reminders
+
+One small round button beside your portrait for errands, each with its own switch on the page
+(the module is on for players who update to 0.14.0; a fresh install starts with it off, as with
+every module):
+
+- **Restock** (Restock's rows sit under it, see below): something on your restock list is low.
+- **New Mail:** mail is waiting. It goes once you open a mailbox and comes back only for mail
+  that arrives after.
+- **Repair Gear:** your most worn piece is down to **Remind At** (30 %); broken gear goes first.
+- **Trainer:** **Class Spells** (you reached a level with new spells: each visit to your class
+  trainer tells MelloUI when the next ones come, kept per character; before the first visit it
+  goes by the levels trainers teach at) and **Profession Ranks** (a profession can learn
+  Journeyman, Expert or Artisan).
+
+A new reminder comes up with a short line beside the button and goes after **Show For** (8 s,
+4-20; held while the pointer is on it). Only Restock stays up, in an inn or a city, until you
+restock or leave. Several at once show as one button with a count, the most urgent on it
+(broken gear, Restock, Repair Gear, New Mail, Trainer); the tooltip lists them all, and pointing at the
+button softly slides the others out of it, each a button of its own (at once with Reduce
+Motion). Left-click: the way to the nearest place for it, through the Services. Within about
+40 yards of that NPC the glow brightens, the tooltip says "Click: target <name>" and a click
+targets them (never a mailbox; set up out of combat only). Right-click: **Not now** (Restock's
+lasts until you next enter a rest area, across a `/reload` too). **Glow:** a gentle gold pulse
+for a few seconds, then steady (Pulse, then steady), always steady, or off. **Place:** left of,
+above or right of the portrait; with the player frame hidden the button keeps a place of its
+own, which Unlock the Windows lets you drag (a sample shows there). Nothing is checked before
+the first moments after login or during a fight, and nothing runs while nothing changes.
+
+For modules: `MelloUI.Reminders` (Core/Reminders.lua) is the one widget. `Rem:Register(spec)`
+with a key, `check(key, why) -> active[, reach]`, an icon, `text`, `urgency`, the events that
+matter (`when`), `onClick`, `persistent`, a Services `kind` for the reach and the target;
+`Rem:Refresh(key[, raise])`, `Rem:Dismiss(key, untilWhat)`, `Rem:State(key)`, `Rem:Act(key)`;
+the bus topic `reminder` (key, active, up).
+
+### Restock
+
+Keeps drink, food, ammunition and reagents in your bags (its rows are on the Reminders page).
+Each character has its own list, which profiles never carry or wipe; a new one starts with
+suggestions for its class: drink for the classes that use mana, food for everyone, 1000 arrows
+for a hunter (bullets with a gun), and class reagents at the levels they are used. Older,
+lower-level stock counts toward a line. **Remind Below** (50 %): a line that drops below that
+share of its amount brings up the reminder, and a click routes you to the nearest vendor that
+sells it (shops you have opened are remembered; the innkeeper for drink and food when none is
+known). **Stay Up In Rest Areas** (on): in an inn or a city the reminder stays until you
+restock or leave. **Shopping List At The Shop** (on): at a merchant who sells what you are low
+on, a small list beside the shop window shows each item, "+20 (have 3)", the price, the total
+and the gold left, with **Buy**, **Not now** and **Edit list**. It picks the best item you can
+use from the merchant's own list, in whole purchases, limited by the stock, your bag space
+(quiver and ammo pouch first) and your gold. Nothing is bought without the Buy click; the
+purchases go one at a time and stop when the shop closes or the game refuses one, and Vendor's
+Report In Chat says what was bought. **Restock List** (Edit, or `/restock`): a window with a
+slider per line and Remove, Add a line, Suggested (click twice) to go back to the class
+suggestions, and it takes items dropped from your bags or from a shop. Counting runs just after
+your bags change, never in combat.
 
 ### Minimap Panel
 
@@ -718,6 +884,17 @@ the screen as the minimap above it: the round map, or the square map's frame, so
 up. Make the minimap bigger or smaller in Edit Mode (Minimap, Size) and the tracker follows
 when you leave Edit Mode; the grip then sizes only its height. Off, it takes its own Width.
 
+"Nearest Quest First" (on by default, needs Route) puts the nearest quest on top, the one you
+follow above it, and quests with no known place after them in watch order; a quest only moves
+past another when its distance really changed, so the list does not twitch as you walk. The
+arrow on the left of the tracker's title switches it too. "Distances" (on) shows how far each
+quest is at the end of its title line ("240 yd", "1.2 km"): its open objectives, or the one who
+takes it back once it is done; the quest you follow shows the way left along its route, as the
+arrow does. "Turn-in Line" (on) makes a finished quest say who takes it and where ("Turn in:
+Gryan Stoutmantle, Sentinel Hill"). Inside an instance, with no position, or with Route off,
+the tracker keeps the watch order without distances. It asks Route for positions only while it
+is shown and its Quests section is open.
+
 The tracker stands in front of the minimap column (MEDIUM strata over the column's LOW), so a
 click on the minimap, which raises the whole cluster, never brings the map or the Services row
 over it; the Services group lists still open above it. While it stands where the game or the
@@ -741,12 +918,17 @@ minimap on the left half of the screen they sit on its right and grow rightwards
 minimap when it moves or changes size (a change during a fight waits for its end). Off, they
 stand where the game's buff bar is.
 
+With the reskin and the UI Shade on, each of your and the target's aura buttons casts a soft
+shade inside the gap between icons: the thin rim's own shape, or a soft square round the icon in
+the black-edge look (Dynamic UI Modification, Shade: Buffs). Nameplate auras get none.
+
 ### Error Messages
 
 Hides the red error messages you choose from the middle of the screen (off by default), a kind
 at a time: not enough resources, not ready yet, out of range, facing and target, busy or
 moving. MelloUI takes the error event from the game's error frame while a kind is hidden and
-hands every other message to the frame's own handler, so those show as always.
+hands every other message to the frame's own handler, so those show as always. The messages
+it lets through get Centre Text Shade's soft shade (Tweaks) like any other.
 
 ## Releasing
 
@@ -787,8 +969,15 @@ Services, Minimap Panel and Tracker Panel modules need. `Tools\make_soft_shade.p
 `Media\Textures\SoftShade.tga`, the soft band behind text (`MelloUI.Shade`, Core/Shade.lua: the
 notice, the zone text, nameplate names, Route's Text Shade), and `Tools\make_kit_shadows.py`
 builds `Media\Textures\KitShadows.tga`, a blurred copy of a kit piece's own shape laid under it
-(`Kit:Shadow`: the nameplates' Whole plate shade, the World Marker's gem `deco/gem_large`). Both
-are white with a soft alpha, tinted in game with a palette colour (innerPanel by default).
+(`Kit:Shadow`: the UI Shade's partners for every outline piece, as pieces, nine-slices of the
+rails and the synthetic square, round and capsule shapes; the nameplates' Whole plate shade,
+the World Marker's gem `deco/gem_large`). `Tools\make_soft_glow.py` builds
+`Media\Textures\SoftGlowRound.tga`, the round soft glow laid round a round button
+(`MelloUI.Shade:Glow`: the Reminder widget). All three are white with a soft alpha, tinted in
+game with a palette colour (innerPanel for the shades, selectedTrim for the glow, added as
+light). `Tools\kit_palette.py` recolours the painted kit for each palette of `Tools\palettes.json`
+(the same colours as Core.lua's `MelloUI.Palettes`) into its own `Media\Kit<Name>` folder;
+`texture_pack.py ship` then packs it like the other looks.
 
 ## Forever client tables
 
@@ -860,4 +1049,8 @@ tabs). A window the reskin dresses gives `window = { label, desc, tab = "Windows
   files only need a `/reload`.
 - Saved variables are saved and loaded as usual, but can arrive a few seconds after
   `PLAYER_LOGIN`: Core and Route keep checking for them for a while and adopt them when they
-  come. The macro backup (`Core\Backup.lua`) restores the settings only when they are missing.
+  come. Macro Backup (`Core\Backup.lua`) is off unless the player turns it on, and its copy is
+  brought back only when the player asks (`/mello backup restore`), never by itself.
+- Some maps have no continent above them (Zephras Isle, UiMap 2521, sits right under the world
+  map): `C_Map` gives no continent for them, so Route's `ContinentOf` takes such a map as its own
+  continent. A map kind or parent that reads secret gives no continent.

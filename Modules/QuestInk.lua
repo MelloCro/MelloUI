@@ -292,13 +292,12 @@ function QI.Pips(parent, size)
 		ring:SetAllPoints(fill)
 		f.pips[i] = { fill = fill, ring = ring }
 	end
-	-- the words for the count, on hover
+	-- the words for the count, on hover (the one tooltip look: the title in
+	-- the palette's gold, the line in its text)
 	Perf.SetScript(f, "OnEnter", function(self)
 		if self.tier then
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-			GameTooltip:SetText(QI.TIER_NAME[self.tier] .. " (" .. self.tier .. " of 5)", 1, 1, 1)
-			GameTooltip:AddLine("How hard the quest is for your level.", 0.8, 0.8, 0.8, true)
-			GameTooltip:Show()
+			MelloUI.Widgets.ShowTooltip(self, QI.TIER_NAME[self.tier] .. " (" .. self.tier .. " of 5)",
+				"How hard the quest is for your level.")
 		end
 	end)
 	Perf.SetScript(f, "OnLeave", function()

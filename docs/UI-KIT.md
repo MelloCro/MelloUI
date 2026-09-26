@@ -144,6 +144,49 @@ Round profession ICONS (a 4 x 3 + 4 grid on transparency and one big crossed pic
 The secondary professions' schematic panels came as three 362 x 1448 strips (`backdrops/schematic_<name>`, the
 band at the schematic's aspect with the still-life, chosen by colour).
 
+## 8c. One kit per palette (0.14.0)
+
+MelloUI has seven palettes (Core.lua `MelloUI.Palettes`; `Tools/palettes.json` holds the same colours for the art
+tools). Ember keeps its three looks as before: Warm iron (`Media/KitWarm`, the default), Bronze (`Media/KitBronze`) and
+the Original (`Media/Kit`, the painted one). Every other palette has ONE recoloured kit of its own, `Media/Kit<Id>`
+(`KitObsidian`, `KitObsidianVibrant`, `KitRoyalAzure`, `KitRoyalAzureVibrant`, `KitFelEmber`, `KitFelEmberVibrant`),
+plus the Original, and a Game Menu picture `GameMenuFrame_<id>`. `Tools/kit_palette.py` makes them from the painted
+masters (the same 74 pieces as KitWarm; the uncoloured groups, backdrops, cards, icons and the vellum, parchment,
+leather, quilt and crackle tiles, are always read from `Media/Kit`), then `texture_pack.py ship` packs each like the
+other looks. The atlas layout shared by every look is set by the painted kit and Ember's two looks, so Ember's files stay
+byte-identical; a palette look whose saturated colours fail the DXT gate on a sheet ships that sheet as TGA with the
+same uv. In the Lua: `Kit:LookFolder(paletteId, kitColours)`, `Kit:ColourLooks([paletteId])` (the Kit Colours choices
+under a palette), `Kit:ColourLookShown()`, `Kit:LookRoot([look][, piece][, paletteId])`. A switch walks the kit's
+textures once and fires `palette`; Preload Artwork holds only the look in use.
+
+## 8d. The shade sheet and the shade API (0.14.0)
+
+`Media/Textures/KitShadows.tga` (+ `Media/KitShadows.lua`), made by `Tools/make_kit_shadows.py`: version 2, one
+512 x 512 sheet. For every OUTLINE piece (bar brackets, orbs, the marker gem, the window and single rails, gem corners,
+title plates, the portrait ring, the action bars' frames, joins and end caps, square and round rims and slots, header
+plates, edit and cog plates) a blurred copy of its own shape: 119 pieces (80 own, 39 sharing one), four nine-slice
+families (`window/frame`, `window/single`, `deco/barframe_red|iron`: four corners and a 4-texel profile per edge, alpha
+0 inward of the rail's middle line) and three synthetic shapes (`shade/square`, `shade/round`, `shade/capsule`).
+Openings (rims, slots, the ring) are cleared inward so nothing darkens an icon. White with a soft alpha: the game
+tints it with the palette's `innerPanel`. `Tools/make_soft_glow.py` makes `Media/Textures/SoftGlowRound.tga`, the
+round glow (clear in the middle, brightest just outside a ring, tinted `selectedTrim`, added as light).
+
+The Lua (Modules/Kit.lua, Modules/KitShade.lua):
+- `Kit:ShadeOn(area)`, `Kit:ShadeStrength()` (0.3-0.9, 0.7 by default); `Kit.shadeAreas` (windows, actionbars,
+  castbars, unitframes, chat, bags, minimap, tracker, buffs, widgets, nameplates), `Kit.shadeSettings`.
+- `Kit:ShadeElement(root, area, opts)` -> element (one shade frame, a child of `root` one level below it; opts `host`,
+  `level`, `strata`, `mask`); `element:Add(obj, opts)` for a rep, a strip, a skin, a kit texture or a plain frame with
+  `opts.shape` (opts `scale`, `drawn`, `cut`, `shape`, `mask`, `family`, `open`, `host`, `ringCut`); `element:Host()`.
+  At most 24 partner textures a frame, the rest on the next frames.
+- Underneath, for the system only: `Kit:Shadow(tex, opts)` (a partner of one piece: `host`, `cut`, `shape`, `area`,
+  `rep`, `mask`), `Kit:ShadowNine(host, rect, family, opts)` (eight parts, `skip`, open sides, `follow`),
+  `Kit:ShadowCut`, `Kit:ShadowRefit`, `Kit:ShadowLike`, `Kit:ShadowMask`, `Kit:ShadowShape(name)`,
+  `Kit:ShadowAreaSet`, `Kit:ShadowRepOn`, and `Kit:CutNine` (one nine cut into parts, each with its cut of the shadow:
+  the minimap's square frames and the action bars' backdrops). A module calls `Kit:ShadeElement`, never these
+  (WINDOW-RULES 2g).
+- `Kit:Paint(region, key, how, alpha)` / `Kit:Unpaint(region[, how])`: a region painted by palette key, repainted on
+  `palette`.
+
 ## 9. Per-window layout map (with the kit, this is the only per-window file)
 
 A copy of your mockup for that window with coloured rectangles and a legend, for example:

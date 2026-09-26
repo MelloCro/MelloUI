@@ -116,7 +116,7 @@ end
 local function ItemPitch(buttons, count)
 	local a = buttons[1]
 	local ok, w, h = pcall(a.GetSize, a)
-	if not ok or Secret(w) or not (w and w > 0) then
+	if not ok or Secret(w) or Secret(h) or not (w and w > 0 and h and h > 0) then
 		return nil
 	end
 	local n = 0
@@ -124,7 +124,8 @@ local function ItemPitch(buttons, count)
 		local b = buttons[i]
 		local okL, l = pcall(b.GetLeft, b)
 		local okT, t = pcall(b.GetTop, b)
-		if okL and okT and l and t and not Secret(l) and not Secret(t) then
+		-- (secret first: a secret is never tested for truth)
+		if okL and okT and not Secret(l) and not Secret(t) and l and t then
 			n = n + 1
 			lefts[n], tops[n] = l, t
 		end

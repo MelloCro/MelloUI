@@ -818,15 +818,15 @@ do
 		return Plain(mapID), x, y
 	end
 
+	-- (kept by number, [wcont][wx][wy] = { cont, x, y }: a key made of text
+	-- made a string per candidate, found or not -- the reach checks' walks)
 	YardsOfWorld = function(wcont, wx, wy, fresh)
-		local key
-		if not fresh then
-			key = wcont .. ":" .. wx .. ":" .. wy
-			local c = worldYards[key]
+		local keep = not fresh and wcont ~= nil and wx == wx and wy == wy   -- (nil and NaN are no key)
+		if keep then
+			local byX = worldYards[wcont]
+			local byY = byX and byX[wx]
+			local c = byY and byY[wy]
 			if c then
-				if c == false then
-					return nil
-				end
 				return c[1], c[2], c[3]
 			end
 		end
@@ -850,8 +850,18 @@ do
 		if not cont then
 			return nil
 		end
-		if key then
-			worldYards[key] = { cont, x, y }
+		if keep then
+			local byX = worldYards[wcont]
+			if not byX then
+				byX = {}
+				worldYards[wcont] = byX
+			end
+			local byY = byX[wx]
+			if not byY then
+				byY = {}
+				byX[wx] = byY
+			end
+			byY[wy] = { cont, x, y }
 		end
 		return cont, x, y
 	end
@@ -5554,6 +5564,12 @@ do
 		end
 		if type(_G.TaxiNodeOnButtonEnter) == "function" then
 			hooksecurefunc("TaxiNodeOnButtonEnter", F.OnEnter)
+		end
+		-- the map closed: the line and the gem down, and the gem's pulse
+		-- stopped (hidden with its button it would still count as playing)
+		local tf = _G.TaxiFrame
+		if type(tf) == "table" and tf.HookScript then
+			Perf.HookScript(tf, "OnHide", F.HideHint)
 		end
 	end
 

@@ -1192,7 +1192,8 @@ function SkinProgressBar(bar, kind)
 			if active and not fill.melloFitting then
 				local _, _, t, b = rep:GetOpening()
 				local h = bar:GetHeight()
-				if h and h > 0 and not Secret(h) then
+				-- (secret first: a secret is never tested for truth or compared)
+				if not Secret(h) and h and h > 0 then
 					fill:SetHeight(h - t - b)
 					if mask then
 						mask:SetHeight(h - t - b)
@@ -1209,7 +1210,7 @@ function SkinProgressBar(bar, kind)
 			if active and fill and not fill.melloFitting then
 				local l, r = rep:GetOpening()
 				local w = self:GetWidth()
-				if w and w > 0 and not Secret(width) then
+				if not Secret(w) and not Secret(width) and w and w > 0 and width then
 					fill.melloFitting = true
 					fill:SetWidth(math.max(width / w * (w - l - r), 0.001))
 					fill.melloFitting = nil

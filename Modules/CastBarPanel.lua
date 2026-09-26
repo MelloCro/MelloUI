@@ -145,14 +145,16 @@ end
 -- world, their shadows on the bar's shade frame one level under the bar
 -- (under its fill, trough and icon). Made the first time the bar shows (a bar
 -- nobody has cast with adds nothing), once; they follow the pieces' Enable /
--- Disable and show / hide from then on.
+-- Disable and show / hide from then on. The shade frame lies on the bracket's
+-- trough (ours), never on the bar: the player's cast bar is an Edit Mode system.
 local function Shade(bar)
 	local list = skin.shade[bar]
 	if not list or list.made then
 		return
 	end
 	list.made = true
-	local el = Kit:ShadeElement(bar, "castbars")
+	local rep = bar.melloRep
+	local el = Kit:ShadeElement(bar, "castbars", { anchor = rep and rawget(rep, "trough") or nil })
 	for i = 1, #list do
 		el:Add(list[i])
 	end

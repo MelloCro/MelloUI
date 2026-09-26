@@ -554,6 +554,43 @@ The hover effect (the resize grip and the scroll bar fading in) starts from each
 landing on a row never fires (the rows take the mouse; the main window's poll only runs while a session timer is
 live): every row's `OnEnter` hands it on to its window (`HandOnHover`).
 
+## The whole UI's shade (Modules/KitShade.lua, 0.14.0)
+
+Not a replacement: an agreed addition for every element (user, 2026-09-26: "on by default, strength 70% (slider
+30-90%), outline pieces only"; WINDOW-RULES 2g). Each OUTLINE piece of a mapping above gets a shade partner from the
+shadow sheet (`Media/Textures/KitShadows.tga`, UI-KIT 8d), painted `innerPanel` at the UI Shade's strength and drawn
+under the element by its shade frame (`Kit:ShadeElement`), so nothing lands on a window's stone or an icon.
+
+| element | its partners (area) |
+|---|---|
+| a window on a shell (`NineSlicePanelTemplate`) | the outer rail's nine (outside only, the ring's corner cut), the gem corners, the `TitleBar` plate, the portrait ring, the configurator's crest and short plate (windows; bags for `ContainerFrame`s) |
+| action bars, micro menu, bag bar, status bars | each backdrop's eight nine-parts with their own cut (a part a join hides takes its shade along), the opened rails' segments, the end caps at their drawn scale, the XP / status bracket; with Backdrop None the bars' own rims; one shade frame per group at BACKGROUND level 0 (actionbars) |
+| cast bars | the bracket and the text plate, on the bar's first show (castbars) |
+| unit frames (player, pet, target, focus, targets of target, party members and pets, the party backdrop) | the portrait ring and orbs at their drawn size, the name band plate, the bar brackets (the capless ring side fades out softly), the party backdrop's rail; never the trough, the ring cover or the faded pictures (unitframes) |
+| chat windows, tabs, the minimized card, the input box, whisper popups | the rail's nine (outside only), the tab card's nine with its foot open, the whole card, the edit plate cut to its free side, the popup's rail (chat) |
+| the minimap column | round: the ring, the zone plate, the tracking rim; square: the window / single rails' nine with the gem corners apart, red and iron through `Kit:CutNine`; the Services bar's box (hidden while merged) (minimap) |
+| the objective tracker, MelloUI's Quest Tracker | the backdrop's rails and title plate (under MelloUI's own holder, never on the game's tracker); the single rail's nine and the title plate (tracker) |
+| aura buttons (player, target) | the thin rim's own shadow at its drawn size, or `shade/square` fitted to the icon in the black-edge look, drawn by the button at BACKGROUND -8 (buffs); nameplate auras none |
+| event widgets (capture, status, double and power bars, tug of war; score and timer lines) | `shade/capsule` cut as a nine round each bar, the soft text band behind each line, on frames of MelloUI's own (widgets) |
+| nameplates on Whole plate | the plate's own shapes: the level circle, the end gems, along the bar (nameplates) |
+| the Reminder widget | each `W.RoundIcon`'s round rim, drawn by the button itself (the unit frames' area) |
+
+## MelloUI's own reminder widget, Restock and the palette parts (0.14.0)
+
+Not game windows. The Reminder widget (Core/Reminders.lua) follows the kit's unit frames (`look:unitframes`): kit on, its
+round buttons wear the kit's round rim; off, the minimap's tracking rim.
+
+| part | kit piece (key) |
+|---|---|
+| a reminder button, the ones that slide out of it | `W.RoundIcon`: the icon round-masked, `Kit:Slot` kind `roundslot` (the SR2 rim, as the Services icons) fitted round it; plain look: `MiniMap-TrackingBorder`. The count on a small dark `innerPanel` disc at its lower right |
+| its glow | `SoftGlowRound.tga` (`MelloUI.Shade:Glow`, agreed addition): round, `selectedTrim`, added as light, pulsing then steady; never a square |
+| Restock's shop list, beside the merchant | `W.TrayBox`: the L1 box (`Professions-background-summarylist`, dim) with its buttons on B1 plates, Buy with the gold trim |
+| the Restock List window | `Kit:OwnWindow` (the standard corner ring and the plate on the rail), its rows on the dark body, B1 / D1 / SL1 as the configurator's |
+| the Services' Errands group | a sixth cell of the row of groups (SV1 box, SR2 rims), its tray a list like the other groups' |
+| the Quest Tracker's nearest-first switch | `buttons/arrow_up_normal` / `_hover` on the title plate's left gem, dimmed while off |
+| the flight map's wanted flight point | `deco/gem_small`, 10 units on the point's 16-unit button, pulsing through `Anim:Pulse`; shown only while the map shows that button |
+| the palette pickers (Home's Your setup, Dynamic UI, the installer's Look step) | `W.PaletteSwatch` (a strip of a palette's colours) beside a D1 dropdown; the installer's `W.Card`s in the palette look |
+
 ## MelloUI's own services bar (Modules/Services.lua, 2026-09-22)
 
 Not a game frame either: the bar under the minimap and its nearest-service menu. User's picks **SV1 SR2**

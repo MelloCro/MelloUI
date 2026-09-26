@@ -28,7 +28,7 @@ Core, Backup and every TOC file of the working tree:
      places) and the anchors of the other two;
   5. MelloUI:SaveProfile("MelloUI") (StripPersonal with the current keep
      lists), then the installer's own personal rules for keep entries not in
-     the modules yet: seenVersion, ^layoutAsked_, layoutFitFor and any
+     the modules yet: seenVersion, ^layoutAsked_, layoutFitFor, layoutFitRev and any
      one-time flag by its name (...Migrated, Folded, Once, Asked, Shown,
      Applied, Version, Done).
 
@@ -94,7 +94,7 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)
-EXTRA_PERSONAL = {"UIModifications": ["seenVersion", "^layoutAsked_", "layoutFitFor", "questTrackerKitMigrated"]}
+EXTRA_PERSONAL = {"UIModifications": ["seenVersion", "^layoutAsked_", "layoutFitFor", "layoutFitRev", "questTrackerKitMigrated"]}
 ONE_TIME = re.compile(r"(Migrated|Folded|Once|Asked|Shown|Applied|Version|Done)$")
 LEGACY_PLACES = ["VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "VoiceOver.overlayX", "VoiceOver.overlayY",
                  "Chat.whisperPopupPos", "Route.arrowX", "Route.arrowY"]

@@ -9766,8 +9766,7 @@ do
 		f:SetClampedToScreen(true)
 		local bg = f:CreateTexture(nil, "BACKGROUND")
 		bg:SetAllPoints(f)
-		local c = MelloUI.Palette.innerPanel
-		bg:SetColorTexture(c[1], c[2], c[3], 0.97)
+		Kit:Paint(bg, "innerPanel", "fill", 0.97)   -- (follows a palette switch)
 		local title = Label(f, "", "GameFontNormal")
 		title:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -14)
 		local caseLabel = Label(f, "")

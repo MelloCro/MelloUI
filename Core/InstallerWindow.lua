@@ -2678,11 +2678,32 @@ local function WizardSteps()
 	end
 	IW.FeatureLabel = FeatureLabel   -- (the Review line; the tests)
 
+	-- a feature that needs another for part of its work: switched on, it
+	-- switches that one on too (Restock's reminder is the Reminders widget's;
+	-- its shop list works without it, so Reminders off leaves Restock be)
+	local NEEDS = { Restock = "Reminders" }
+
+	-- a feature's switch as a row (KeyRow's, plus what it needs)
+	local function FeatureToggle(page, label, desc, name, opts)
+		local key = I.SwitchKey(MelloUI:GetModule(name))
+		local need = NEEDS[name] and I.SwitchKey(MelloUI:GetModule(NEEDS[name]))
+		local function Get()
+			return Wizard()[key] == true
+		end
+		local function Set(on)
+			if on and need then
+				Wizard()[need] = true
+			end
+			Put(key, on and true or false)
+		end
+		return (W.ToggleRow(page, 0, label, nil, desc, Get, Set, opts))
+	end
+
 	-- a feature's row in its column, in its place (made within the page's
 	-- budget of rows, as every other row)
 	local function FeatureRow(spec)
 		local m = MelloUI:GetModule(spec.name)
-		local row = KeyRow(spec.col, FeatureLabel(m), nil, TweakDesc(spec.name) or m.desc, I.SwitchKey(m), false,
+		local row = FeatureToggle(spec.col, FeatureLabel(m), TweakDesc(spec.name) or m.desc, spec.name,
 			RowOpts(spec.i % 2 == 1))
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", spec.col, "TOPLEFT", 0, -(HEADING_H + 4 + (spec.i - 1) * W.ROW_HEIGHT))

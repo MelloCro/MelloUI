@@ -882,11 +882,13 @@ function M:OnEnable(db)
 end
 
 -- Off: the events gone and the three taken back from the widget. A restart
--- (a profile load, the settings adopted late: OnDisable then OnEnable) keeps
--- them registered, so a reminder's Not now and its place in the widget stay.
+-- (a profile load, the settings adopted late: OnDisable then OnEnable, the
+-- module still on) keeps them registered, so a reminder's Not now and its
+-- place in the widget stay; a profile that switches Reminders off is a real
+-- off (isEnabled false then)
 function M:OnDisable()
 	Listen()
-	if not MelloUI.restartingModules then
+	if not (MelloUI.restartingModules and M.isEnabled) then
 		Register(false)
 	end
 	for _, key in ipairs(ORDER) do

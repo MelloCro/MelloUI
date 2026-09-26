@@ -881,7 +881,8 @@ local function OnBlockEnter(block)
 		if not (link and pcall(GameTooltip.SetHyperlink, GameTooltip, link)) then
 			GameTooltip:SetText(block.title:GetText() or "")
 		end
-		GameTooltip:AddLine("Click: open the recipe  -  Shift-click: stop tracking", 0.7, 0.7, 0.7, true)
+		local c = MelloUI.Palette.text   -- (a hint: small text is never mutedText)
+		GameTooltip:AddLine("Click: open the recipe  -  Shift-click: stop tracking", c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		if block.highlight then
 			block.highlight:Show()
@@ -895,7 +896,8 @@ local function OnBlockEnter(block)
 	if not pcall(GameTooltip.SetHyperlink, GameTooltip, "quest:" .. block.questID) then
 		GameTooltip:SetText(block.title:GetText() or "")
 	end
-	GameTooltip:AddLine("Click: follow  -  Shift-click: stop watching  -  Right-click: quest log", 0.7, 0.7, 0.7, true)
+	local c = MelloUI.Palette.text
+	GameTooltip:AddLine("Click: follow  -  Shift-click: stop watching  -  Right-click: quest log", c[1], c[2], c[3], true)
 	GameTooltip:Show()
 	if block.highlight then
 		block.highlight:Show()
@@ -970,7 +972,8 @@ local function NewBlock()
 		if InCombatLockdown() then
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			pcall(GameTooltip.SetHyperlink, GameTooltip, self.itemLink)
-			GameTooltip:AddLine("Out of combat, a click uses it.", 0.7, 0.7, 0.7, true)
+			local c = MelloUI.Palette.text
+			GameTooltip:AddLine("Out of combat, a click uses it.", c[1], c[2], c[3], true)
 			GameTooltip:Show()
 		end
 	end)
@@ -1084,6 +1087,7 @@ Near.key = {}                          -- [questID] = the distance it is sorted 
 Near.turnIn = {}                       -- [questID] = its turn-in line, or false
 Near.filled = {}                       -- [questID] = -1 done, else its objectives finished, as last drawn
 Near.stamp = 0                         -- bumped when the player's map or the quest log changed
+Near.DIST_ALPHA = 0.75                 -- a distance on the plain look: the body text a step down
 
 do
 	local Num = MelloUI.Safe.Number
@@ -1485,7 +1489,7 @@ do
 	end
 
 	-- A block's distance laid while it is filled: right-aligned on its
-	-- title's first line ending at `right`, in the muted colour (on
+	-- title's first line ending at `right`, in the body text a step down (on
 	-- parchment the ink's faded shade); returns the room it takes from the
 	-- title (never less than SAMPLE's, so a distance a digit longer fits)
 	function Near.Lay(block, id, right, ink)
@@ -1513,9 +1517,11 @@ do
 			if QI then
 				QI.Plain(fs)
 			end
-			-- (read when drawn: a palette switch rebuilds)
-			local c = MelloUI.Palette.mutedText
-			fs:SetTextColor(c[1], c[2], c[3])
+			-- the body text a step down (small text is never mutedText, the
+			-- palette rule; as the Quest List's done rows). Read when drawn:
+			-- a palette switch rebuilds
+			local c = MelloUI.Palette.text
+			fs:SetTextColor(c[1], c[2], c[3], Near.DIST_ALPHA)
 		end
 		fs:ClearAllPoints()
 		fs:SetPoint("RIGHT", block, "TOPLEFT", right, -TitleSize() / 2 - 1)

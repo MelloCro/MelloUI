@@ -12,10 +12,12 @@
 
 ## What's in it
 
-- **UI Reskin:** every window and bar in an Old-School RPG Look.
+- **UI Reskin:** every window and bar in an Old-School RPG Look, with a soft shade round it.
+- **Seven palettes:** Ember, Obsidian, Royal Azure and Fel Ember (plus Vibrant ones), each with its own painted kit.
 - **Move anything:** drag and resize any window.
 - **Voiced quest givers:** quests read out loud, with subtitles.
-- **A map that helps:** quest list, pins and a route arrow.
+- **A map that helps:** quest list, pins, a route arrow and the nearest quest first in the tracker.
+- **Reminders:** low supplies, new mail, worn gear, new training. One click shows the way; Restock refills your bags when you say Buy.
 - **New UI sounds:** optional, with a preview for each.
 - **And more:** party markers, names, bar textures, fonts, chat tweaks, auto-vendor, cooldown numbers, dark mode.
 
@@ -27,7 +29,7 @@ Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) 
 
 ## Good to know
 
-- Your settings are backed up in hidden account macros (`MelloUI1`, `MelloUI2`…). Keep those.
+- The game keeps your settings. Want an extra copy? Macro Backup on the Profiles page keeps one in account macros, brought back only when you ask.
 - After an update, restart the game once. `/reload` isn't enough for new files.
 
 ## Links

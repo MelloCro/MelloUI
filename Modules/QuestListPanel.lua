@@ -99,19 +99,23 @@ local function RowEnter(self)
 	local e = self.entry
 	if not e or not e.row then return end
 	local row = e.row
-	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
+	-- List's fixed meaning colours; the title in the quest's difficulty
+	-- colour, as the quest log shows it)
+	local tip, Line = GameTooltip, QL.TipLine
+	tip:SetOwner(self, "ANCHOR_LEFT")
 	local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
-	GameTooltip:SetText(row[QL.F_TITLE], r, g, b)
-	GameTooltip:AddLine(string.format("Level %d, requires level %d", row[QL.F_LEVEL], row[QL.F_REQ]), 0.8, 0.8, 0.8)
+	tip:SetText(row[QL.F_TITLE], r, g, b)
+	Line(tip, string.format("Level %d, requires level %d", row[QL.F_LEVEL], row[QL.F_REQ]), "text")
 	if row[QL.F_DUNGEON] ~= 0 and QL.Data().dungeons[row[QL.F_DUNGEON]] then
 		local what = QL.IsRaid(row[QL.F_DUNGEON]) and "Raid quest: " or "Dungeon quest: "
-		GameTooltip:AddLine(what .. QL.Data().dungeons[row[QL.F_DUNGEON]], 0.75, 0.61, 0)
+		Line(tip, what .. QL.Data().dungeons[row[QL.F_DUNGEON]], "selectedTrim")
 	end
 	if row[QL.F_CHAIN] ~= 0 and QL.Data().chains[row[QL.F_CHAIN]] then
 		local step, total, nextRow = QL.ChainInfo(row)
-		GameTooltip:AddLine(string.format("Step %d of %d in the chain: %s", step, total, QL.Data().chains[row[QL.F_CHAIN]]), 0.75, 0.61, 0)
+		Line(tip, string.format("Step %d of %d in the chain: %s", step, total, QL.Data().chains[row[QL.F_CHAIN]]), "selectedTrim")
 		if nextRow then
-			GameTooltip:AddLine("Next: " .. nextRow[QL.F_TITLE], 0.6, 0.6, 0.6)
+			Line(tip, "Next: " .. nextRow[QL.F_TITLE], "text")
 		end
 	end
 	if row[QL.F_GIVER] ~= "" then
@@ -121,59 +125,59 @@ local function RowEnter(self)
 			local kind = QL.IsRaid(instance) and "raid" or "dungeon"
 			local name = QL.Data().dungeons[instance]
 			if QL.IsItemStart(row) then
-				GameTooltip:AddLine(string.format("Begins with the item %s, which drops inside the %s %s", row[QL.F_GIVER], kind, name), 0.8, 0.8, 0.8, true)
+				Line(tip, string.format("Begins with the item %s, which drops inside the %s %s", row[QL.F_GIVER], kind, name), "text", true)
 			else
-				GameTooltip:AddLine(string.format("Begins at %s inside the %s %s", row[QL.F_GIVER], kind, name), 0.8, 0.8, 0.8, true)
+				Line(tip, string.format("Begins at %s inside the %s %s", row[QL.F_GIVER], kind, name), "text", true)
 			end
 		elseif QL.IsItemStart(row) then
 			local how = row[QL.F_KIND] == QL.KIND_PICKUP and ", picked up in " or ", dropped by creatures in "
-			GameTooltip:AddLine("Begins with the item " .. row[QL.F_GIVER] .. (giverZone and (how .. giverZone) or ""), 0.8, 0.8, 0.8)
+			Line(tip, "Begins with the item " .. row[QL.F_GIVER] .. (giverZone and (how .. giverZone) or ""), "text")
 		else
-			GameTooltip:AddLine("From " .. row[QL.F_GIVER] .. (giverZone and (" in " .. giverZone) or ""), 0.8, 0.8, 0.8)
+			Line(tip, "From " .. row[QL.F_GIVER] .. (giverZone and (" in " .. giverZone) or ""), "text")
 		end
 		local _, gx, gy = QL.GiverPoint(row)
 		if gx then
-			GameTooltip:AddLine(string.format("   at %.1f, %.1f", gx * 100, gy * 100), 0.6, 0.6, 0.6)
+			Line(tip, string.format("   at %.1f, %.1f", gx * 100, gy * 100), "text")
 		end
 	end
 	if (row[QL.F_ENDER] or "") ~= "" then
 		if QL.SameEnder(row) then
-			GameTooltip:AddLine("Turn in to the same NPC", 0.6, 0.6, 0.6)
+			Line(tip, "Turn in to the same NPC", "text")
 		else
 			local endZone = QL.EnderZoneName(row)
-			GameTooltip:AddLine("Turn in to " .. row[QL.F_ENDER] .. (endZone and (" in " .. endZone) or ""), 0.8, 0.8, 0.8)
+			Line(tip, "Turn in to " .. row[QL.F_ENDER] .. (endZone and (" in " .. endZone) or ""), "text")
 			local _, ex, ey = QL.EndPoint(row)
 			if ex then
-				GameTooltip:AddLine(string.format("   at %.1f, %.1f", ex * 100, ey * 100), 0.6, 0.6, 0.6)
+				Line(tip, string.format("   at %.1f, %.1f", ex * 100, ey * 100), "text")
 			end
 		end
 	end
 	if e.completed then
-		GameTooltip:AddLine("Completed", 0.5, 0.5, 0.5)
+		Line(tip, "Completed", "text")
 	elseif e.onQuest and e.ready then
-		GameTooltip:AddLine("In your quest log, ready to turn in", 1, 0.82, 0)
+		Line(tip, "In your quest log, ready to turn in", "questGold")
 	elseif e.onQuest then
-		GameTooltip:AddLine("In your quest log, objectives not done", 0.7, 0.7, 0.7)
+		Line(tip, "In your quest log, objectives not done", "text")
 	elseif e.available then
-		GameTooltip:AddLine("Available to pick up", 1, 0.82, 0)
+		Line(tip, "Available to pick up", "questGold")
 	else
-		GameTooltip:AddLine(string.format("Needs level %d", row[QL.F_REQ]), 0.7, 0.7, 0.7)
+		Line(tip, string.format("Needs level %d", row[QL.F_REQ]), "text")
 	end
 	if QL.trackedQuestID == row[QL.F_ID] then
-		GameTooltip:AddLine("Map pin set on this quest giver. Click to remove it.", 0.6, 0.8, 1)
+		Line(tip, "Map pin set on this quest giver. Click to remove it.", "pinHint")
 	elseif e.ready and QL.EndPoint(row) then
-		GameTooltip:AddLine("Click to place a map pin on the turn-in NPC.", 0.6, 0.8, 1)
+		Line(tip, "Click to place a map pin on the turn-in NPC.", "pinHint")
 	elseif select(2, QL.GiverPoint(row)) then
 		local target = row[QL.F_KIND] == QL.KIND_DROP and "where the item drops most"
 			or row[QL.F_KIND] == QL.KIND_PICKUP and "where the item is picked up" or "on the quest giver"
-		GameTooltip:AddLine("Click to place a map pin " .. target .. ".", 0.6, 0.8, 1)
+		Line(tip, "Click to place a map pin " .. target .. ".", "pinHint")
 	elseif QL.InstanceStart(row) and QL.EntrancePoint(QL.InstanceStart(row)) then
-		GameTooltip:AddLine(string.format("Click to route to the %s entrance.", QL.IsRaid(QL.InstanceStart(row)) and "raid" or "dungeon"), 0.6, 0.8, 1)
+		Line(tip, string.format("Click to route to the %s entrance.", QL.IsRaid(QL.InstanceStart(row)) and "raid" or "dungeon"), "pinHint")
 	else
-		GameTooltip:AddLine("Location not known yet.", 0.6, 0.6, 0.6)
+		Line(tip, "Location not known yet.", "text")
 	end
 	ShowTipIcon(row)
-	GameTooltip:Show()
+	tip:Show()
 end
 
 local function Leave()

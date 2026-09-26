@@ -175,9 +175,10 @@ local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true 
 -- the installer's own facts about this machine and character, and a
 -- one-time flag: the player's own like the keep lists' keys (never carried
 -- by a setup, never taken back by one). Exact keys, or patterns with ^.
-local OWN = { [UMB] = { seenVersion = true, layoutFitFor = true, layoutApplied = true, questTrackerKitMigrated = true, "^layoutAsked_" } }
+local OWN = { [UMB] = { seenVersion = true, layoutFitFor = true, layoutFitRev = true, layoutApplied = true, questTrackerKitMigrated = true,
+	"^layoutAsked_" } }
 -- of those, what an install that puts the layout in writes, and a revert puts back
-local LAYOUT_OWN = { "layoutFitFor", "layoutApplied" }
+local LAYOUT_OWN = { "layoutFitFor", "layoutFitRev", "layoutApplied" }
 
 -- "No reskin": Chat's and Tweaks' art-hiding rows act while the reskin is
 -- off, so they are neutral there (the chat buttons and background stay, and
@@ -1848,12 +1849,13 @@ function I:InstallBlocked(option, draft, fit, fresh)
 end
 
 -- The setup, its layout and its facts, in one Batch (one backup), then the
--- windows re-placed. The layout facts: layoutFitFor only when the fitted
--- layout really went in; layoutApplied whenever the layout went in or the
--- setup leaves the reskin on (the installer answered the layout question:
--- a later hand switch of the reskin never puts the raw layout over the
--- player's "my own layout stays"). Both noted on the restore point before
--- they are written, so a revert, or a fault half way, puts them back.
+-- windows re-placed. The layout facts: layoutFitFor (and the model's
+-- layoutFitRev) only when the fitted layout really went in; layoutApplied
+-- whenever the layout went in or the setup leaves the reskin on (the
+-- installer answered the layout question: a later hand switch of the reskin
+-- never puts the raw layout over the player's "my own layout stays"). All
+-- noted on the restore point before they are written, so a revert, or a
+-- fault half way, puts them back.
 local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 	-- the restore point on the Profiles page (it sets the active profile:
 	-- after the capture, and the revert puts the old name back); its text is
@@ -1872,6 +1874,9 @@ local function DoInstall(self, rp, option, target, fit, layoutOn, out)
 			rp.layoutFlags = true
 			if rp.layoutPut then
 				SetOwn("layoutFitFor", fit.places and fit.places.layoutFitFor or nil)
+				-- (the model's revision: an older one's fit is offered the refit)
+				local LF = MelloUI.LayoutFit
+				SetOwn("layoutFitRev", type(LF) == "table" and LF.FIT_REV or nil)
 			end
 			SetOwn("layoutApplied", true)
 		end

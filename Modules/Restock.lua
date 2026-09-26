@@ -82,7 +82,7 @@ local type, pcall, tonumber, tostring = type, pcall, tonumber, tostring
 
 local M = MelloUI:RegisterModule("Restock", {
 	title = "Restock",
-	desc = "Keeps drink, food, ammunition and reagents in your bags: a reminder when one runs low, and at a shop a list of what to buy, bought only when you click Buy.",
+	desc = "Keeps drink, food, ammunition and reagents in your bags: a reminder when one runs low (with Reminders on), and at a shop a list of what to buy, bought only when you click Buy.",
 	icon = "Interface\\Icons\\INV_Drink_07",
 	flavour = "Water, bread and arrows, topped up before they run out.",
 	role = "feature",
@@ -98,7 +98,7 @@ local M = MelloUI:RegisterModule("Restock", {
 	-- lays these rows under its "Restock" switch, remind_restock)
 	options = {
 		{ type = "slider", key = "below", name = "Remind Below", min = 0.25, max = 0.75, step = 0.05, percent = true,
-		  desc = "How low a line of your list may run before you are reminded: below half of 20 water is 9 or fewer. At a shop it is bought back up to the full amount." },
+		  desc = "You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount." },
 		{ type = "toggle", key = "stayResting", name = "Stay Up In Rest Areas",
 		  desc = "In an inn or a city the reminder stays until you restock or leave. Not now hides it until you next enter a rest area." },
 		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
@@ -517,7 +517,7 @@ local function CountFamilies(level)
 	end
 end
 
-local Changed, ShopCounted, ListCounted   -- (below)
+local Changed, ShopCounted, ListCounted, ReachOpts   -- (below)
 
 local function Count()
 	state.dirty = false
@@ -717,40 +717,18 @@ end
 
 -- (one table: the widget keeps it, its fields change in place). The widget's
 -- contract (Core/Reminders.lua): the reach is measured by it through
--- Services:Nearest("vendor", { letters }): `letters` follows the low lines.
--- No `enabled`: the widget's own remind_restock is the switch
+-- Services:Nearest("vendor", { letters, skip, extra }), which follow the low
+-- lines as the click's route does (ReachOpts). No `enabled`: the widget's
+-- own remind_restock is the switch
 local SPEC = {
 	key = REM_KEY, label = "Restock", icon = ICON, text = RemText, urgency = URGENCY, check = RemActive,
 	when = {},   -- (Core's moments: login, a rest area, a zone; this module tells it of every change of its own)
 	onClick = RemClick, persistent = RemPersistent, tooltip = RemTooltip,
 	dismiss = "rest",   -- Not now: until a rest area is entered again (the user's pick)
 	hint = "Click: the way to the nearest shop that sells it",
-	kind = "vendor", letters = nil,
+	kind = "vendor", letters = nil, skip = nil, extra = nil,
 }
 M.SPEC = SPEC   -- (read only: the tests, a dump)
-
--- the families of the low lines (a class reagent item as "r"), for the
--- widget's reach; nil when none (any shop of the goods)
-local function LowLetters()
-	local F = Families()
-	local d, f, a, b, r = false, false, false, false, false
-	for i = 1, list.n do
-		if state.low[i] then
-			local key = list.key[i]
-			local letter = type(key) == "number" and F.of[key] or key
-			if letter == "d" then d = true
-			elseif letter == "f" then f = true
-			elseif letter == "a" then a = true
-			elseif letter == "b" then b = true
-			elseif letter == "r" then r = true
-			end
-		end
-	end
-	if not (d or f or a or b or r) then
-		return nil
-	end
-	return (d and "d" or "") .. (f and "f" or "") .. (a and "a" or "") .. (b and "b" or "") .. (r and "r" or "")
-end
 
 -- the widget told when what check() or text() says changed
 Changed = function()
@@ -759,7 +737,7 @@ Changed = function()
 		return
 	end
 	state.toldActive, state.told = active, text
-	SPEC.letters = active and LowLetters() or nil
+	ReachOpts(active)
 	local rem = Reminders()
 	if state.registered and rem and type(rem.Refresh) == "function" then
 		rem:Refresh(REM_KEY)
@@ -994,6 +972,21 @@ local function RouteOpts(keys, n)
 		end
 	end
 	return route
+end
+
+-- The widget's reach as the click's route goes (the widget measures it with
+-- the spec's letters, skip and extra): the low lines' families, the shops
+-- seen passed over by name, the shops seen that sell a line's own item --
+-- letters "" when no family is low, so no shop of other goods counts.
+-- Nothing while none is low. Made at Changed()'s edges and when a shop is
+-- recorded, never per check (the route's tables, filled in place)
+ReachOpts = function(active)
+	if not active then
+		SPEC.letters, SPEC.skip, SPEC.extra = nil, nil, nil
+		return
+	end
+	local opts = RouteOpts(LowKeys())
+	SPEC.letters, SPEC.skip, SPEC.extra = opts.letters, opts.skip, opts.extra
 end
 
 -- (lines no family covers: letters "", which Services reads as no shipped
@@ -1403,6 +1396,7 @@ local function LearnLater()
 	if shop.open and not shop.learned then
 		shop.learned = true
 		LearnShop()
+		ReachOpts(state.toldActive)   -- (the reminder's reach as the route now goes)
 	end
 end
 
@@ -1569,7 +1563,7 @@ BuyStart = function()
 	end
 	local f = shop.frame
 	if f then
-		f.buy:SetText("Buying...")
+		f.buy:SetText("Buying…")
 		f.buy:SetEnabled(false)
 	end
 	if state.frame then
@@ -2110,7 +2104,16 @@ function M:OnEnable(db)
 	end
 end
 
+-- Off: the events, the shop and the spec taken back. A restart (a profile
+-- load or the settings adopted late: OnDisable then OnEnable, the module
+-- still on) keeps the shop as it is and the spec registered, so the reminder
+-- is not raised again and its Not now stays (as Modules/Reminders.lua); a
+-- profile that switches Restock off is a real off (isEnabled false then)
 function M:OnDisable()
+	if MelloUI.restartingModules and M.isEnabled then
+		Listen()
+		return
+	end
 	local f = state.frame
 	if f then
 		f:UnregisterEvent("MERCHANT_SHOW")

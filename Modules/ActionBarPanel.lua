@@ -132,13 +132,19 @@ local SHADE_OPTS = { strata = "BACKGROUND", level = -10000 }
 local CAP_OPTS = { drawn = true }   -- the end caps: drawn to the gryphon's height, not at their kitScale
 
 -- the roots whose shade frame draws shadows (a group's anchor bar, the bar
--- with the end caps, a status bar's container): kept at level 0
+-- with the end caps, a status bar's container): kept at level 0. `anchor`: a
+-- frame of ours the shade frame lies on (the backdrop, a cap's holder, the
+-- trough's holder), read when the root's element is made (its first call):
+-- never the bar itself, an Edit Mode system
 local shadeRoots = {}
-local function Shade(root, drawsHere)
+local function Shade(root, drawsHere, anchor)
 	if drawsHere then
 		shadeRoots[root] = true
 	end
-	return Kit:ShadeElement(root, SHADE_AREA, SHADE_OPTS)
+	SHADE_OPTS.anchor = anchor
+	local el = Kit:ShadeElement(root, SHADE_AREA, SHADE_OPTS)
+	SHADE_OPTS.anchor = nil
+	return el
 end
 
 -- a shade frame of ours at level 0 and kept there (a frame the game
@@ -193,7 +199,7 @@ local function ShadeParts(f, name, p, c)
 		return
 	end
 	f.melloShaded = true
-	local el = Shade(f:GetParent(), true)
+	local el = Shade(f:GetParent(), true, f)
 	local cuts = PartCuts(name, p, c)
 	for _, key in ipairs(Kit.nineParts) do
 		el:Add(f.parts[key], cuts[key])
@@ -285,10 +291,15 @@ local function ShadeRims(root, buttons)
 		if host.SetFixedFrameStrata then
 			host:SetFixedFrameStrata(true)
 		end
-		host:SetAllPoints(root)
+		-- (on the first button's rim, never on the bar, an Edit Mode system;
+		-- only its level counts: the partners lie on their rims)
+		local first = buttons[1]
+		local firstRep = first.melloRep
+		local at = firstRep and rawget(firstRep, "object")
+		host:SetAllPoints((type(at) == "table" and at.GetObjectType) and at or first)
 		rs = { host = host, opts = { host = host, drawn = true } }
 		skin.rims[root] = rs
-		local el = Shade(root)
+		local el = Shade(root, nil, host)
 		for _, button in ipairs(buttons) do
 			if button.melloRep then
 				el:Add(button.melloRep, rs.opts)
@@ -511,7 +522,7 @@ local function SkinBar(bar)
 		skin.capSync[#skin.capSync + 1] = Sync
 		-- the caps stand against the world at the bar's ends: their shadows
 		-- on the bar's shade frame, under them and the backdrop
-		local el = Shade(bar, true)
+		local el = Shade(bar, true, reps[1] and rawget(reps[1].rep, "object"))
 		for _, entry in ipairs(reps) do
 			el:Add(entry.rep, CAP_OPTS)
 		end
@@ -993,7 +1004,7 @@ end
 local function NewFrame(parent)
 	local f = CreateFrame("Frame", nil, parent)
 	-- its rails' shadows on the group's shade frame (ShadeParts, ShadeSegs)
-	f.melloShade = Shade(parent)
+	f.melloShade = Shade(parent, nil, f)
 	-- not part of the bar's size: an action bar is a layout frame that grows
 	-- round its shown children, so the backdrop (a child reaching past the
 	-- buttons) made it grow, which grew the backdrop ... until a relog (user,
@@ -1849,7 +1860,7 @@ local function SkinStatusContainer(container)
 		-- the bracket's shadow on the container's shade frame (BACKGROUND,
 		-- level 0: under the trough, the fill and the action bars' backdrops,
 		-- over the world)
-		Shade(container, true):Add(rep)
+		Shade(container, true, under):Add(rep)
 	end
 	for _, bar in pairs(container.bars or {}) do
 		if bar.StatusBar and bar.StatusBar.Background then

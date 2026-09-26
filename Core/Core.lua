@@ -1859,6 +1859,53 @@ function MelloUI:InitModule(module)
 end
 
 --------------------------------------------------------------------------------
+-- The login's own frames (0.14.0): from PLAYER_LOGIN (the modules dress the
+-- HUD there) until LOGIN_SETTLE seconds after the first PLAYER_ENTERING_WORLD
+-- (a /reload's too). Work that can wait for them waits, so the login makes no
+-- more than 0.13.7's did (Modules/KitShade.lua: the UI shade's partners of
+-- the HUD, whose first show is the login).
+--   MelloUI:LoggingIn() -> true while they last
+--   MelloUI:AfterLogin(fn)  fn() once they are over (at once outside them);
+--                           each fn once however often asked, in the order
+--                           they came, each in its own pcall
+-- One timer (C_Timer.After) per session; nothing polls.
+--------------------------------------------------------------------------------
+
+local LOGIN_SETTLE = 3
+local login = { going = false, timed = false, waiting = {} }
+
+function MelloUI:LoggingIn()
+	return login.going
+end
+
+function MelloUI:AfterLogin(fn)
+	if not login.going then
+		fn()
+		return
+	end
+	local waiting = login.waiting
+	for i = 1, #waiting do
+		if waiting[i] == fn then
+			return
+		end
+	end
+	waiting[#waiting + 1] = fn
+end
+
+local function LoginSettled()
+	login.going = false
+	local waiting = login.waiting
+	for i = 1, #waiting do
+		local fn = waiting[i]
+		waiting[i] = nil
+		local ok, err = pcall(fn)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Events
 --------------------------------------------------------------------------------
 
@@ -1939,12 +1986,12 @@ function MelloUI:AdoptSavedVariables(stage)
 			self.db.activeProfile = temp.activeProfile
 		end
 		-- the macro backup's own state (Core/Backup.lua: top-level keys, in
-		-- no profile): switched on, or a copy found, before these came in
+		-- no profile): switched on before these came in. A copy 'found'
+		-- meanwhile is not carried: the real settings came, so nothing was
+		-- found (the mark would keep the switch refused and the old macros
+		-- for good)
 		if temp.macroBackup == true then
 			self.db.macroBackup = true
-		end
-		if temp.macroBackupFound == true then
-			self.db.macroBackupFound = true
 		end
 		-- The kit editor writes straight into the db rather than through a
 		-- module, so it was not on this list and every edit made before the
@@ -2568,6 +2615,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 		self:AdoptSavedVariables("VARIABLES_LOADED")
 	elseif event == "PLAYER_LOGIN" then
 		self:UnregisterEvent("PLAYER_LOGIN")
+		login.going = true   -- (the login's frames: MelloUI:LoggingIn)
 		if not self.db then
 			self:InitDB()
 		end
@@ -2605,8 +2653,17 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 			self:WriteBackup("logout")
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
+		-- (first: the login's frames end LOGIN_SETTLE s from now, whatever
+		-- the rest of this does)
+		if login.going and not login.timed then
+			login.timed = true
+			C_Timer.After(LOGIN_SETTLE, LoginSettled)
+		end
 		if self:AdoptSavedVariables("PLAYER_ENTERING_WORLD") then
 			self:RestartModules()
+			if self.BackupAfterAdopt then
+				self:BackupAfterAdopt()
+			end
 		end
 		if not self.menuTipTimer then
 			-- a few seconds in, after the login spam and a possible late settings load
@@ -2627,11 +2684,17 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 					self:Notice("Settings loaded late by the client and applied.")
 					ticker:Cancel()
 					self.adoptTicker = nil
+					if self.BackupAfterAdopt then
+						self:BackupAfterAdopt()
+					end
 				elseif ticks >= 60 then
 					ticker:Cancel()
 					self.adoptTicker = nil
 					-- none came: a fresh start (/mello status says so)
 					self.savedVariablesNone = true
+					if self.BackupAfterAdopt then
+						self:BackupAfterAdopt()
+					end
 				end
 			end)
 		end

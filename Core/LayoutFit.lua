@@ -121,6 +121,11 @@ local DESIGN_H = 768 / 0.64
 local DESIGN_W = DESIGN_H * 3440 / 1440
 local DESIGN_ASPECT = DESIGN_W / DESIGN_H
 LayoutFit.DESIGN_W, LayoutFit.DESIGN_H = DESIGN_W, DESIGN_H
+-- the model's revision, kept beside the fit's screen (UIModifications
+-- .layoutFitRev, Core/Installer.lua): a layout fitted by an older one is
+-- offered the refit (Home's Fit to this screen). 2: 0.14.0, the Services
+-- row's six groups (a shorter row under the minimap)
+LayoutFit.FIT_REV = 2
 LayoutFit.TOO_SMALL = "Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."
 LayoutFit.SETTINGS_FAIL = "Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."
 -- a screen inside this (UI units) is too small whatever fails; a FAIL on a

@@ -56,6 +56,8 @@
 --       available, chunks (= macros), lastWrite, lastReason, lastError,
 --       pending, deferredForCombat
 --   MelloUI:SettingsSettled()   below
+--   MelloUI:BackupAfterAdopt()  Core's: its look for late saved variables
+--       is over (a copy is looked for only then)
 -- The bus topic 'backup' (no arguments) goes out after the engine changed
 -- the copy or its state by itself: a delayed write, a write or delete held
 -- for a fight's end, the login's look (a found copy, old macros armed or
@@ -511,13 +513,19 @@ end
 -- the macros are in: one there is from before, maybe from another PC; it is
 -- said once and kept safe (the found mark), never taken in by itself. Run
 -- from Look (the macros in, after the login) or first by SetMacroBackup(true)
--- (the switch never goes on over a copy not looked for yet).
-local function LookForCopy()
+-- (`now`: the switch never goes on over a copy not looked for yet). Look's
+-- waits while Core still looks for late saved variables (up to a minute
+-- after the login: an existing player's may yet come, and theirs is no
+-- copy to tell of); it looks once that is over (BackupAfterAdopt).
+local function LookForCopy(now)
 	if session.foundLooked then
 		return
 	end
-	session.foundLooked = true
 	local M = MelloUI
+	if not now and M.dbIsTemporary and not M.savedVariablesNone and not M.restoredFromBackup then
+		return
+	end
+	session.foundLooked = true
 	local db = M.db
 	if M.dbIsTemporary and not M.restoredFromBackup and not db.macroBackupFound then
 		local text = Copy()
@@ -650,7 +658,7 @@ function MelloUI:SetMacroBackup(on)
 	if not (MacrosAvailable() and MacrosIn()) then
 		return false, "unavailable"   -- (the macros not in yet: whether a copy is there is not known)
 	end
-	LookForCopy()
+	LookForCopy(true)
 	if FoundStands(db) then
 		return false, "found"   -- (the copy found must be brought back or removed first)
 	end
@@ -844,8 +852,12 @@ local function Look()
 	if not settled then
 		M:SettingsSettled()
 	end
-	local changed = not session.foundLooked or session.writeWaits
+	local looked = session.foundLooked
+	local changed = session.writeWaits
 	LookForCopy()
+	if session.foundLooked ~= looked then
+		changed = true
+	end
 	if session.writeWaits then
 		session.writeWaits = false
 		M:WriteBackup("macros in")
@@ -861,6 +873,12 @@ local function Look()
 	if changed then
 		M:Fire("backup")   -- (once per step taken: an open Profiles page follows)
 	end
+end
+
+-- Core's look for late saved variables is over (they came, or none came
+-- in its minute: MelloUI.savedVariablesNone): the macros' look goes on
+function MelloUI:BackupAfterAdopt()
+	Look()
 end
 
 -- the fight ended: a delete first (the player's, or the old macros'), then a write

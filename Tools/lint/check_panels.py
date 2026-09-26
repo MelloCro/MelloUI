@@ -29,7 +29,8 @@ DIRS = ("Core", "Modules")
 # the own-window shell and the widget set of the configurator build,
 # 2026-09-26, start at 0; 0.14.0's round 3: the hand-made shade partners, the
 # screen-rect copies, Core/Shade.lua and the round's new files, and the
-# meaning colours counted apart). Lower one when the script says so; never
+# meaning colours counted apart; the final round: Backup, CentreText and
+# KitShade at 0). Lower one when the script says so; never
 # raise one to make a copy pass.
 CEILINGS = {
     "replace-fn": 51,
@@ -58,10 +59,13 @@ CEILINGS = {
     "direct-shadow": 2,
     "screen-rect-copy": 7,
     "colour:Core/Core.lua": 1,
+    "colour:Core/Backup.lua": 0,
+    "colour:Core/CentreText.lua": 0,
     "colour:Core/Config.lua": 0,
     "colour:Core/Widgets.lua": 0,
     "colour:Core/Shade.lua": 0,
     "colour:Core/Reminders.lua": 0,
+    "colour:Modules/KitShade.lua": 0,
     "colour:Modules/KitWindow.lua": 0,
     "colour:Modules/ActionBarPanel.lua": 0,
     "colour:Modules/CastBarPanel.lua": 0,
@@ -69,7 +73,7 @@ CEILINGS = {
     "colour:Core/InstallerWindow.lua": 0,
     "colour:Modules/Chat.lua": 0,
     "colour:Modules/DynamicUI.lua": 0,
-    "colour:Modules/QuestListMap.lua": 1,
+    "colour:Modules/QuestListMap.lua": 0,
     "colour:Modules/QuestListPanel.lua": 0,
     "colour:Modules/QuestListTips.lua": 0,
     "colour:Modules/QuestTracker.lua": 0,

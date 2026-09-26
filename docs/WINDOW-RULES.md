@@ -191,6 +191,9 @@ that eye strain issue a rule to check". Check it on every window:
   checked against this before it is handed over.
 - Before handing a window over: look at it and ask "is there small text on
   brown?" — if yes, it needs the panel.
+- The hex values above are Ember's. Since 0.14.0 there are seven palettes
+  (section 6, Colours): the code paints by KEY (`innerPanel`, `mainWindow`,
+  `text`, `selectedTrim`), never by these numbers, so the rule holds in each.
 
 ## 2f. MANDATORY: rarely used windows dress on first open (user, 2026-09-24)
 
@@ -225,6 +228,69 @@ the login frame (the addon profiler's peak 140 % of a frame). So:
 - Check with /melloperf: a new window adds no kit pieces at login
   (`/run print(#MelloUI.Kit.repList)` before and after), and no handler of it
   runs while it is closed.
+
+## 2g. MANDATORY: the soft shade follows the outline (user, 2026-09-26)
+
+"on by default, strength 70% (slider 30-90%), outline pieces only"; one
+stone per surface and "never a rectangle on round art" (the ui-shade plan).
+Every kit element casts a soft dark shade of its OWN shape against the world:
+
+- **Outline pieces only.** A shade partner goes under the pieces that form an
+  element's edge against the world: a window's outer rail (outside only), its
+  title plate, gem corners, ring or crest; a bar's backdrop rails and end
+  caps; a unit frame's ring, name plate, bar brackets and orbs; a rim. Never
+  under an inner piece (a row plate, a section band, a scroll thumb, a slot
+  inside a window): that only darkens the window's own stone.
+- **Its own shape.** Pieces take their baked partner from
+  `Media/Textures/KitShadows.tga` (the piece's shape blurred), rails a
+  nine-slice of it, round art the round shape, a bar with no piece the
+  synthetic `shade/capsule` or `shade/square`. No rectangle on round art.
+- **Under the element, over the world.** The partners are drawn by ONE shade
+  frame per element, a child of its root one level below it (or a `host` of
+  the element's own); the inward half of a plate's or ring's shade lies under
+  the window's stone, never on it. A window's rail draws its own (outside
+  only, the ring's corner cut).
+- **Through the one system, never by hand.** Windows need nothing: every shell
+  (`SkinWindowShell`, the hand-made shells, `Kit:OwnWindow`) is shaded by
+  Modules/KitShade.lua on the bus's `shell`, on its first show. A HUD module
+  calls `local el = Kit:ShadeElement(root, "<area>"[, opts])` once and
+  `el:Add(rep)` per outline piece when it dresses the element; it never calls
+  `Kit:Shadow` / `Kit:ShadowNine` itself (the ratchet's `direct-shadow`
+  ceiling counts the two old callers) and needs no `shade` or `setting`
+  listener of its own.
+- **Its switches.** UI Shade (UI Modifications `uiShade`, on) and Shade
+  Strength (`uiShadeStrength`, 0.7, 0.3-0.9), and a switch per area
+  (`shade_<area>`, on): windows, actionbars, castbars, unitframes, chat,
+  bags, minimap, tracker, buffs, widgets, nameplates (`Kit.shadeAreas`). They
+  are on the General tab (the two main ones) and in Dynamic UI Modification's
+  Shade section (all). An area follows its part of the reskin too.
+- **Cost.** Nothing at login (a rare window adds nothing until it is shown,
+  2f; the HUD's parts, added while logging in, wait until the login's frames
+  are over: `MelloUI:LoggingIn()` / `MelloUI:AfterLogin(fn)`, Core.lua, 3 s
+  after the first PLAYER_ENTERING_WORLD, the one service for work that can
+  wait for the login); at most 24 partner textures a frame (the rest on the next frames); a
+  switch or a strength walks the made partners once and makes no garbage;
+  the partners are static (nothing for Reduce Motion) and take the palette's
+  `innerPanel` (repainted on `palette`).
+- **The chat's rules.** The chat window's rail is a nine, outside only; a
+  tab's nine leaves its foot open (it stands on the window); the minimized
+  card is whole; the input box's plate is cut to its free side (it follows
+  Input Box On Top); the button column's rail is shaded with its side toward
+  the window open, cut at the window rail's outer edge, and the window's side
+  shade stays whole under it. The Background Opacity moves only the stone,
+  so the rail and its shade stay at full strength; a whisper popup's shade
+  fades with the popup. Each chat element is made on its frame's first show
+  while the reskin is on (a window never opened adds nothing).
+- **Event widgets.** The game's widget containers lay out every child frame
+  and region: nothing is added to a game widget. The shade stands on frames
+  of MelloUI's own, one root per container at its strata and level, one frame
+  per widget, shown and faded with it.
+- **Protected and Edit Mode frames.** A shade frame is never anchored on an
+  Edit Mode system frame itself: `Kit:ShadeElement`'s `opts.anchor` lays it on
+  a frame or region of MelloUI's own (a bar's backdrop, a cap's holder, the
+  XP bar's trough holder, the cast bar's trough, a window's rail skin), and
+  the pet frame gets a host of its own, anchored on its texture; a protected
+  root waits for the end of combat.
 
 ## 2b. MANDATORY for a window's portrait icon (user, 2026-09-21)
 
@@ -537,7 +603,14 @@ when a copy is added and names the system to use.
   `W.RowBudget` (ONE budget of rows a frame for every own window's pages:
   `Begin(ms)` gives the time to stop at or nil, `End()` counts what was
   made, `Spent(ms)` books a first open's own work; never a budget of its
-  own) and `W.ShowTooltip`. Each builder takes `skin` (the window's shell, or nil for
+  own), `W.RoundIcon` (a round button: the icon round-masked in the
+  minimap's tracking rim, the kit's round rim while `b:SetKit(Kit)`, and
+  with `opts.shade` a shade partner of that area on the rim: the Reminder
+  widget's buttons), `W.TrayBox` (a small box of the L1 list-box look, the
+  inner panel over the stone: Restock's shop list), the palette parts
+  `W.PaletteSwatch`, `W.PaletteValues` and `W.PaletteName` (the Home row,
+  the installer's cards and Dynamic UI's row: a picture of one palette, or
+  the one in use painted by key) and `W.ShowTooltip`. Each builder takes `skin` (the window's shell, or nil for
   the plain look) and asks it for the kit (`skin:Kit`, `skin.replace`,
   `skin:Anchor`); it never reaches for `MelloUI.Kit` itself. Kit and Fonts
   load after Widgets.lua and Config.lua: nothing of theirs is bound at file
@@ -571,6 +644,11 @@ when a copy is added and names the system to use.
     look); `area = { key, follows }`; a feature folded under UI
     Modifications is `tweak = { label, desc, order, off, always }` (`order`
     as window's).
+  - `keep = { patterns }`: the module's settings that are one character's
+    or one PC's own, which no profile, share string or copy carries and a
+    profile load never wipes (Route's `flights_<GUID>`, Restock's
+    `list_<GUID>`, the Reminders' `trainer_<GUID>` and
+    `notnow_<GUID>_<key>`).
   A field of the wrong type (or an unknown role) is reported, never fatal.
 - **Its place: `MelloUI:RegisterMover` (Core).** `MelloUI:RegisterMover(frame,
   handle, { key, anchor, default, save, reset, min, max, base, with,
@@ -621,7 +699,20 @@ when a copy is added and names the system to use.
     make (the scroll bar dragged, a jump) stops it where it lands;
   - a looping glow: `Anim:Pulse(region)` (a still picture under Reduce
     Motion); an AnimationGroup: `Anim:PlayGroup(group, settle)` /
-    `Anim:StopGroup(group)`.
+    `Anim:StopGroup(group)`;
+  - regions that slide softly out of a button and back:
+    `Anim:Expand` / `Anim:Collapse` (after a grace, so the pointer can
+    travel onto them) / `Anim:Retract` / `Anim:IsExpanded`: two reused
+    AnimationGroups a region, no OnUpdate, at once under Reduce Motion (the
+    Reminder widget);
+  - a band that copies the game's own fade of a line: `Anim:Mirror` /
+    `Anim:StopMirror` (the centre texts' shade; it follows the game, so it
+    plays under Reduce Motion too);
+  - the round soft glow round a round button: `MelloUI.Shade:Glow(parent,
+    opts)` (Core/Shade.lua: one texture in the palette's gold, added as
+    light, hung by anchors only; `Settle()` pulses three breaths then holds,
+    `Still()`, `SetStrength("near" | "reach" | n)`; stopped while hidden,
+    steady under Reduce Motion).
   Never a raw group's `:Play()` or an OnUpdate tween of its own. Never tween
   the scale of anything with a background (the fixed-resolution rule).
 - **Colours: the palette only, by KEY.** `W.Paint(region, key, how, alpha)`
@@ -639,6 +730,23 @@ when a copy is added and names the system to use.
   the older windows at ceilings that only go down), and no `MelloUI.Palette
   and ... or { ... }` fallback: the palette is defined in Core.lua, which
   loads first.
+  - **The palettes (0.14.0).** `MelloUI.Palettes` holds the seven (`order`:
+    ember, obsidian, obsidianVibrant, royalAzure, royalAzureVibrant, felEmber,
+    felEmberVibrant), each ten roles; `MelloUI.Palette` is the one in use;
+    `MelloUI:PaletteId()`, `MelloUI:SetPalette(id)` (the setting
+    UIModifications.palette; a switch fires `border`, then exactly one
+    `palette`). **`MelloUI:KnownPalette(id)` is the one palette-id rule**
+    (a registry id, anything else Ember): Core, the Kit, Dynamic UI, the
+    widgets and the installer ask it, never a check of their own. The
+    kit's folder follows the palette AND Kit Colours: `Kit:LookFolder`,
+    `Kit:ColourLooks`, `Kit:ColourLookShown`, `Kit:LookRoot`.
+  - **Meaning colours** stay the same under every palette, and only these:
+    the chat channel inks, Voice Over's state colours, Route's straight-guess
+    blue and beam red, the map's quest-giver blue, and `MelloUI.Meaning`
+    (Core.lua: `cannotUse`, #4E1812, what the player cannot use or learn:
+    the merchant's and trade's red cards, the trainer's rows; read when
+    drawing). Each such line in a file carries the marker `(meaning colour)`;
+    the ratchet counts them apart (`meaning:<file>` ceilings).
 - **Sounds: `MelloUI:PlayUISound(kind)` (Core).** Never call `PlaySound`
   directly, whatever its argument. The soft clicks "page", "tab", "check_on", "check_off"; the game's
   own "option_on", "option_off", "menu_open", "menu_close", "menu_button",
@@ -648,10 +756,34 @@ when a copy is added and names the system to use.
   table; Custom Sounds is asked first and its PlaySound hook swaps a game
   kit as it does any game click.
 - **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =
-  MelloUI.Safe.IsSecret` (also Value, Number, Text, Call). No helper of its
-  own and no stand-in: a test world that loads a file without Core runs
-  Core's Safe block itself.
+  MelloUI.Safe.IsSecret` (also Value, Number, Text, Call, and ScreenRect: a
+  frame's rect on the screen, left, bottom, right, top in pixels, or nil
+  when any of it cannot be read plainly; the one reader, no copy of it). No
+  helper of its own and no stand-in: a test world that loads a file without
+  Core runs Core's Safe block itself.
 - **Later, not a timer: `Kit:NextFrame(key, fn)`**, fn made once per key.
+- **Its shade: section 2g.** A window on a shell is shaded by KitShade with
+  nothing to do; an own HUD element calls `Kit:ShadeElement(root, area)` and
+  `:Add` for its outline pieces, never `Kit:Shadow` directly.
+- **A reminder: `MelloUI.Reminders` (Core/Reminders.lua), THE reminder
+  widget.** One round button beside the player's portrait ring
+  (`UnitFramePanel:ReminderAnchor()`, the ring or the game's portrait; Place
+  left, above or right), with a count and a tooltip listing every reminder
+  that is up; hover slides the others out (`Anim:Expand`), the glow is
+  `Shade:Glow`, the rims `W.RoundIcon` in the unit frames' shade. A module
+  never makes a nudge of its own: it registers
+  `Rem:Register{ key, check, icon, text, label, urgency, when, onClick,
+  persistent, target, kind, hint, enabled, dismiss, tooltip }` and calls
+  `Rem:Refresh(key[, raise])`; `Rem:Dismiss(key, untilWhat)` is Not now,
+  `Rem:State` / `Rem:Each` / `Rem:Act` / `Rem:Text` / `Rem:Icon` /
+  `Rem:Label` read it (the Services' Errands rows do), and the bus topic
+  `reminder` (key, active, up) says a change. Its users: Restock, New Mail,
+  Repair Gear, Trainer (Modules/Reminders.lua, Modules/Restock.lua). The
+  widget is built on first use, never before its login moment (8 s into
+  the world) and nothing is checked in combat; with the player frame hidden
+  it has its own place, Core's mover key `reminders` (Unlock the Windows
+  shows a sample). The secure target button is set up only out of combat.
+  Per-character state is a `keep` key (the registry entry above).
 - **Escape closes it:** the shell's `escape = true` puts its frame name in
   `UISpecialFrames` (the configurator and the installer); the copy window
   and Dynamic UI still do it by hand until they move onto the shell.

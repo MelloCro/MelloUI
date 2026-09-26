@@ -215,11 +215,8 @@ MelloUI:Profile("QuestList", "quest tooltips: the items index", IndexItems)
 --------------------------------------------------------------------------------
 
 -- a line in a palette colour, read as it is added (a palette switch shows
--- on the next tooltip)
-local function AddLine(tip, text, role)
-	local c = MelloUI.Palette[role]
-	tip:AddLine(text, c[1], c[2], c[3])
-end
+-- on the next tooltip): the Quest List's one tooltip-line helper (QuestList.lua)
+local AddLine = QL.TipLine
 
 -- Does the game's data already carry a quest's lines?
 local function HasQuestLines(data)

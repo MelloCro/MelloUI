@@ -120,6 +120,20 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- lines: Home shows the newest version in a card one column wide, beside
 -- Your setup and above Help.
 local CHANGELOG = {
+	{ version = "0.14.0", lines = {
+		"Six new palettes, each with its own painted kit: Obsidian, Royal Azure and Fel Ember, each with a Vibrant version. Pick one on Your setup here or in Dynamic UI Modification.",
+		"A soft shade round the painted kit: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs and event widgets. UI Shade and its strength: UI Modifications, General.",
+		"Centre Text Shade: red errors, yellow quest lines, raid warnings and boss emotes on the zone text's soft shade, in the game's colours (Tweaks).",
+		"Reminders: one round button beside your portrait for low supplies, new mail, worn gear and new training. Hover for all of them, click to go there, right-click for Not now.",
+		"Restock: a list per character of drink, food, ammunition and reagents. At a shop it shows what to buy; nothing is bought until you click Buy.",
+		"The Services bar has a sixth group, Errands, with your reminders, and it now says when it can't place you instead of saying none are known.",
+		"The Quest Tracker puts the nearest quest first (the arrow on its title switches it), with a distance on each and who takes a finished quest back.",
+		"Quest tooltips: your progress on the items a quest needs, and Turn in here or Quest ends here on the NPCs who take your quests back.",
+		"Flights: the flight map shows where your route flies and how long it takes; while you fly, the arrow counts down to the landing.",
+		"Zephras Isle: routes, the Services bar and the Quest List work there now, and characters without a faction see what is open to both.",
+		"Macro Backup is a switch on the Profiles page now, off unless you turn it on; a copy comes back only when you ask. The old MelloUI1… macros are removed by themselves.",
+		"Using Mello's layout from before? Press Fit to this screen once on Your setup, or type /mello layout apply. New files: restart the game once after updating.",
+	} },
 	{ version = "0.13.7", lines = {
 		"Two folders now: Route's road data lives in MelloUI_Companion, loaded only when you route somewhere. Copy both folders into AddOns and restart the game once.",
 		"An installer sets MelloUI up fitted to your screen: Install… at the top or /mello install. Fresh start asks Round or Square minimap and which features you want, each with Mello's settings.",
@@ -207,6 +221,7 @@ local COMMANDS = {
 	{ "/route arrow reset", "the direction arrow back to the top of the screen" },
 	{ "/services", "the list of the nearest services" },
 	{ "/services <service>", "route to the nearest one, e.g. /services repair" },
+	{ "/restock", "your Restock List: what to keep in your bags" },
 }
 
 local function Meta(module)
@@ -1397,7 +1412,7 @@ local HOME_TIPS = {
 	palette = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Your choice applies at once, with the reskin on or off.",
 	change = "Dynamic UI Modification: the Kit Colours and the rest of the reskin's look, chosen on the interface itself. Closes this window while you pick.",
 	changeOff = "Switch on the painted kit reskin first (UI Modifications, General): the Kit Colours are the reskin's.",
-	fit = "Mello's Edit Mode layout was fitted to another screen size or UI scale. The installer fits it to this one, and you can go back right after.",
+	fit = "Mello's Edit Mode layout was fitted to another screen size or UI scale, or by an older MelloUI. The installer fits it to this one, and you can go back right after.",
 	install = "The installer: a setup for the whole interface in a few steps, fitted to this screen. Closes this window while it runs.",
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
 }
@@ -1466,12 +1481,18 @@ end
 
 -- Fit to this screen is offered when Mello's layout went in fitted to a size
 -- (UI units, UIModifications.layoutFitFor, written by the installer) the
--- screen no longer has: another resolution or UI scale
+-- screen no longer has: another resolution or UI scale; or fitted by an
+-- older model (layoutFitRev short of LayoutFit.FIT_REV: 0.14.0's shorter
+-- Services row)
 local function FitDue()
 	local db = MelloUI:GetModuleDB("UIModifications")
 	local fitFor = db and db.layoutFitFor
 	if type(fitFor) ~= "string" then
 		return false
+	end
+	local rev = MelloUI.LayoutFit and MelloUI.LayoutFit.FIT_REV
+	if rev and db.layoutFitRev ~= rev then
+		return true
 	end
 	local ok, w, h = pcall(UIParent.GetSize, UIParent)
 	w, h = ok and Num(w) or nil, ok and Num(h) or nil
@@ -2029,6 +2050,7 @@ local function BuildSetup(page, sec, width, x)
 	HomeTip(change, "Kit Colours", HOME_TIPS.change)
 	card.change = change
 	-- the screen, and Fit to this screen when the layout was fitted to another
+	-- (or by an older model: FitDue)
 	local fit = W.Button(rows.fit, "Fit to this screen", 150, SKIN, { onClick = FitClick })
 	fit:SetPoint("LEFT", SETUP_VALUE, 0)
 	HomeTip(fit, "Fit to this screen", HOME_TIPS.fit)
@@ -2188,7 +2210,7 @@ local TEXT = {
 	found = "Macro Backup stays off while a copy of earlier settings is in your account macros: /mello backup restore brings it back, /mello backup delete removes it.",
 	noCopy = "There is no copy of your settings in your account macros.",
 	combat = "Not during a fight: try again when it ends.",
-	installer = "Not while the installer is open or waiting for Keep or Go back.",
+	installer = "Not while the installer is open or waiting for Keep or Revert.",
 	notNow = "That is not possible right now.",
 	restored = "Settings brought back from the copy in your account macros (%s). /reload brings back the fonts over names and damage numbers as well.",
 	deleted = "The copy was removed from your account macros: %s free again.",

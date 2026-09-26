@@ -29,12 +29,14 @@ local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 
 
 -- Priority of what a giver offers, highest wins the icon.
 local STATE_RANK = { ready = 5, available = 4, progress = 3, locked = 2, done = 1 }
+-- (a state's words, and its colour's name for QL.TipColour: the quest gold
+-- for what can be done now, the body text for the rest)
 local STATE_TEXT = {
-	ready = { "Ready to turn in", 1, 0.82, 0 },
-	available = { "Available", 1, 0.82, 0 },
-	progress = { "In progress", 0.7, 0.7, 0.7 },
-	locked = { "Level too low", 0.6, 0.6, 0.6 },
-	done = { "Completed", 0.5, 0.5, 0.5 },
+	ready = { "Ready to turn in", "questGold" },
+	available = { "Available", "questGold" },
+	progress = { "In progress", "text" },
+	locked = { "Level too low", "text" },
+	done = { "Completed", "text" },
 }
 
 local TRANSPORT_ATLAS = {
@@ -145,9 +147,9 @@ function PinMethods:OnAcquired(kind, data)
 		end
 		self.Label:SetPoint("TOP", self.Icon, "BOTTOM", 0, 2)
 		self.Label:SetText(data.tracked and data.giver or "")
-		-- the tracked giver's pale blue, as its tooltip hint: fixed whatever the
-		-- palette until the user says whether it is a meaning colour (0.14.0)
-		self.Label:SetTextColor(0.6, 0.8, 1)   -- (fixed colour, for the user to confirm)
+		-- the tracked giver's pale blue, as its tooltip hint: the map's
+		-- quest-giver blue, a fixed meaning colour (QL.MEANING)
+		self.Label:SetTextColor(QL.TipColour("pinHint"))
 		self.Label:SetShown(data.tracked)
 	elseif kind == "entrance" or kind == "transport" then
 		self.Bg:Hide()
@@ -201,24 +203,28 @@ function PinMethods:OnMouseEnter()
 	if not data then
 		return
 	end
-	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
+	-- List's fixed meaning colours)
+	local tip, Line = GameTooltip, QL.TipLine
+	tip:SetOwner(self, "ANCHOR_RIGHT")
 	if self.kind == "giver" then
-		GameTooltip:SetText(data.giver ~= "" and data.giver or "Quest giver", 1, 0.82, 0)
+		QL.TipTitle(tip, data.giver ~= "" and data.giver or "Quest giver")
 		if data.item == "drop" then
-			GameTooltip:AddLine("Item that begins a quest, dropped by the creatures around here", 0.8, 0.8, 0.8, true)
+			Line(tip, "Item that begins a quest, dropped by the creatures around here", "text", true)
 		elseif data.item == "pickup" then
-			GameTooltip:AddLine("Item that begins a quest, picked up around here", 0.8, 0.8, 0.8, true)
+			Line(tip, "Item that begins a quest, picked up around here", "text", true)
 		elseif data.item then
-			GameTooltip:AddLine(string.format("Quests that begin with something found inside this %s:", data.item), 0.8, 0.8, 0.8, true)
+			Line(tip, string.format("Quests that begin with something found inside this %s:", data.item), "text", true)
 		end
 		for _, q in ipairs(data.quests) do
 			local row = q.row
 			local r, g, b = QL.DifficultyColor(row[QL.F_LEVEL])
 			local text = STATE_TEXT[q.state]
-			GameTooltip:AddDoubleLine(string.format("%s (%d)", row[QL.F_TITLE], row[QL.F_LEVEL]), text[1], r, g, b, text[2], text[3], text[4])
+			local sr, sg, sb = QL.TipColour(text[2])
+			tip:AddDoubleLine(string.format("%s (%d)", row[QL.F_TITLE], row[QL.F_LEVEL]), text[1], r, g, b, sr, sg, sb)
 			if data.item == "dungeon" or data.item == "raid" then
 				local what = QL.IsItemStart(row) and "drops inside" or "is inside"
-				GameTooltip:AddLine(string.format("   %s %s", row[QL.F_GIVER], what), 0.6, 0.6, 0.6, true)
+				Line(tip, string.format("   %s %s", row[QL.F_GIVER], what), "text", true)
 			end
 			local step, total, nextRow = QL.ChainInfo(row)
 			if step then
@@ -227,71 +233,72 @@ function PinMethods:OnMouseEnter()
 				if nextRow and q.state ~= "done" then
 					line = line .. ", next: " .. nextRow[QL.F_TITLE]
 				end
-				GameTooltip:AddLine(line, 0.6, 0.6, 0.6, true)
+				Line(tip, line, "text", true)
 			end
 		end
 		if data.tracked then
-			GameTooltip:AddLine("Tracked. Click to remove the waypoint.", 0.6, 0.8, 1)
+			Line(tip, "Tracked. Click to remove the waypoint.", "pinHint")
 		else
 			local where = (data.item == "dungeon" or data.item == "raid") and ("Click to route to the " .. data.item .. " entrance.")
 				or data.item and "Click to set a waypoint here." or "Click to set a waypoint on this giver."
-			GameTooltip:AddLine(where, 0.6, 0.8, 1)
+			Line(tip, where, "pinHint")
 		end
 	elseif self.kind == "entrance" then
-		GameTooltip:SetText(data.name, 1, 0.82, 0)
+		QL.TipTitle(tip, data.name)
 		local lv = data.dungeonID ~= 0 and QL.Data().dungeonLevel and QL.Data().dungeonLevel[data.dungeonID]
 		local what = data.raid and "Raid" or "Dungeon"
 		if lv and lv[1] > 0 then
-			GameTooltip:AddLine(string.format("%s, level %d to %d", what, lv[1], lv[2] > 0 and lv[2] or lv[1]), 0.8, 0.8, 0.8)
+			Line(tip, string.format("%s, level %d to %d", what, lv[1], lv[2] > 0 and lv[2] or lv[1]), "text")
 		else
-			GameTooltip:AddLine(what, 0.8, 0.8, 0.8)
+			Line(tip, what, "text")
 		end
 		if data.dungeonID ~= 0 then
 			local done, total = DungeonProgress(data.dungeonID)
 			if total > 0 then
-				GameTooltip:AddLine(string.format("%d of %d quests completed", done, total), done >= total and 0.5 or 1, done >= total and 0.5 or 0.82, done >= total and 0.5 or 0)
-				GameTooltip:AddLine("Click to list its quests. Shift-click to route there.", 0.6, 0.8, 1)
+				-- (the count in gold, in the body text once all are done: as the zone badge)
+				Line(tip, string.format("%d of %d quests completed", done, total), done >= total and "text" or "selectedTrim")
+				Line(tip, "Click to list its quests. Shift-click to route there.", "pinHint")
 			else
-				GameTooltip:AddLine("No quests known for it yet.", 0.6, 0.6, 0.6)
-				GameTooltip:AddLine("Shift-click to route there.", 0.6, 0.8, 1)
+				Line(tip, "No quests known for it yet.", "text")
+				Line(tip, "Shift-click to route there.", "pinHint")
 			end
 		end
 		if data.source == "learned" then
-			GameTooltip:AddLine("Position learned when you walked in.", 0.6, 0.6, 0.6)
+			Line(tip, "Position learned when you walked in.", "text")
 		elseif data.source == "client" then
-			GameTooltip:AddLine("Position from the client's own entrance list.", 0.6, 0.6, 0.6)
+			Line(tip, "Position from the client's own entrance list.", "text")
 		end
 	elseif self.kind == "transport" then
-		GameTooltip:SetText(data.label, 1, 0.82, 0)
-		GameTooltip:AddLine((data.kind == 2 and "Zeppelin tower" or "Dock") .. " at " .. data.dock, 0.8, 0.8, 0.8)
+		QL.TipTitle(tip, data.label)
+		Line(tip, (data.kind == 2 and "Zeppelin tower" or "Dock") .. " at " .. data.dock, "text")
 		if data.faction == 1 then
-			GameTooltip:AddLine("Alliance", 0.3, 0.6, 1)
+			Line(tip, "Alliance", "alliance")
 		elseif data.faction == 2 then
-			GameTooltip:AddLine("Horde", 1, 0.3, 0.3)
+			Line(tip, "Horde", "horde")
 		else
-			GameTooltip:AddLine("Neutral, both factions", 0.8, 0.8, 0.8)
+			Line(tip, "Neutral, both factions", "text")
 		end
 		if data.destMapID or data.destCont then
-			GameTooltip:AddLine("Click to route to it. Shift-click to open the destination's map.", 0.6, 0.8, 1)
+			Line(tip, "Click to route to it. Shift-click to open the destination's map.", "pinHint")
 		end
 		if data.learned then
-			GameTooltip:AddLine("Recorded with /qlmap dock. Remove with /qlmap remove.", 0.6, 0.6, 0.6)
+			Line(tip, "Recorded with /qlmap dock. Remove with /qlmap remove.", "text")
 		end
 	else
-		GameTooltip:SetText(data.name, 1, 0.82, 0)
-		GameTooltip:AddLine(string.format("%d of %d quests completed", data.done, data.total), 0.9, 0.9, 0.9)
+		QL.TipTitle(tip, data.name)
+		Line(tip, string.format("%d of %d quests completed", data.done, data.total), "text")
 		if data.lo > 0 then
-			GameTooltip:AddLine(string.format("Quest levels %d to %d", data.lo, data.hi), 0.8, 0.8, 0.8)
+			Line(tip, string.format("Quest levels %d to %d", data.lo, data.hi), "text")
 		end
 		if data.available > 0 then
-			GameTooltip:AddLine(string.format("%d you could pick up now", data.available), 1, 0.82, 0)
+			Line(tip, string.format("%d you could pick up now", data.available), "questGold")
 		end
 		if data.inLog > 0 then
-			GameTooltip:AddLine(string.format("%d in your quest log", data.inLog), 0.7, 0.7, 0.7)
+			Line(tip, string.format("%d in your quest log", data.inLog), "text")
 		end
-		GameTooltip:AddLine("Click to open the zone map.", 0.6, 0.8, 1)
+		Line(tip, "Click to open the zone map.", "pinHint")
 	end
-	GameTooltip:Show()
+	tip:Show()
 end
 
 function PinMethods:OnMouseLeave()

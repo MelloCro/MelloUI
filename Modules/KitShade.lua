@@ -32,6 +32,10 @@
 --                the action bars' backdrops, which the game lifts while a
 --                spell is dragged)
 --         mask   a mask of the host put on every partner
+--         anchor a frame or region of ours the shade frame lies on instead
+--                of root (a root that is an Edit Mode system: nothing is
+--                anchored on one; only the frame's level counts, the
+--                partners lie on their pieces)
 --   element:Add(obj[, opts]) -> element
 --       the partners of one outline part, made at once while the frame's
 --       budget lasts and the area is on, else on a later frame (the rest of a
@@ -70,7 +74,10 @@
 -- frame one level under it, so the inward half of their shadow lies under
 -- the window's stone, never on it. The bags are the bags' area, every other
 -- window the windows'.
--- Nothing is made at login (no frame, no texture: listeners only); nothing
+-- Nothing is made at login (no frame, no texture: listeners only): the HUD,
+-- whose first show is the login, adds its parts then, and they wait until the
+-- login's frames are over (MelloUI:AfterLogin, Core.lua: 3 s after the first
+-- PLAYER_ENTERING_WORLD), then are made at the frame's budget. Nothing
 -- polls; a switch or a strength goes over the made partners in one pass and
 -- allocates nothing; the partners are static (nothing for Reduce Motion) and
 -- take the palette's colour (Kit.lua repaints them on 'palette').
@@ -516,7 +523,29 @@ local function PumpAreas()
 	end
 end
 
+-- the login's frames make none: what is added meanwhile waits in its queue
+-- until they are over (MelloUI:AfterLogin), once for all
+local held = false
+local Resume = Shared("after the login: the UI shade's partners", function()
+	held = false
+	Pump()
+end)
+local function Held()
+	if held then
+		return true
+	end
+	if MelloUI.LoggingIn and MelloUI:LoggingIn() then
+		held = true
+		MelloUI:AfterLogin(Resume)
+		return true
+	end
+	return false
+end
+
 Pump = function()
+	if Held() then
+		return
+	end
 	if pumping then
 		Kit:NextFrame(PUMP_KEY, PumpSoon)
 		return
@@ -553,7 +582,7 @@ function Element:Host()
 	end
 	host:SetFrameLevel(math.max(root:GetFrameLevel() + self.level, 0))
 	host:EnableMouse(false)
-	host:SetAllPoints(root)
+	host:SetAllPoints(self.anchor or root)
 	host.ignoreInLayout = true   -- (never part of a layout frame's size, as the kit's holders)
 	host.kitShadeHost = true
 	self.host = host
@@ -594,7 +623,12 @@ function Kit:ShadeElement(root, area, opts)
 		elements[root] = byArea
 	end
 	opts = opts or {}
-	el = setmetatable({ root = root, area = area, level = Num(opts.level) or -1, strata = opts.strata, mask = opts.mask }, Element)
+	local anchor = opts.anchor
+	if not (type(anchor) == "table" and type(anchor.GetObjectType) == "function") then
+		anchor = nil
+	end
+	el = setmetatable({ root = root, area = area, level = Num(opts.level) or -1, strata = opts.strata, mask = opts.mask,
+		anchor = anchor }, Element)
 	local host = opts.host
 	if type(host) == "table" and host.CreateTexture then
 		el.host = host
@@ -663,7 +697,9 @@ end
 -- (outside only, it never darkens the page inside the rails)
 local function Live(rec)
 	rec.live = true
-	local el = Kit:ShadeElement(rec.root, rec.area)
+	-- (its shade frame on the rail's skin, ours: a window can be an Edit
+	-- Mode system, the loot window)
+	local el = Kit:ShadeElement(rec.root, rec.area, { anchor = rec.skin })
 	rec.el = el
 	el.cutRep = rec.cutRep
 	el:Add(rec.outer, rec.rail)

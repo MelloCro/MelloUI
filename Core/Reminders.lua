@@ -59,9 +59,10 @@
 --     target      fn(key) -> the name of the NPC a click targets while in reach
 --     kind        a Services kind its click goes to ("mailbox", "repair",
 --                 "classtrainer", "proftrainer", "vendor", ...), with
---                 profession / letters as Services:Nearest takes them (read
---                 when measured: they may change in place). While check()
---                 gives no reach, the reach is measured here -- the nearest
+--                 profession / letters / skip / extra as Services:Nearest
+--                 takes them (read when measured: they may change in place;
+--                 as the click's route has them, so the two agree). While
+--                 check() gives no reach, the reach is measured here -- the nearest
 --                 one within 40 yd, on the frames after a raise, when the
 --                 player stops and on Route's 'where', only while it is up,
 --                 at most two walks of the rows a frame -- and a click in
@@ -584,9 +585,9 @@ local function TargetName(key)
 end
 
 -- Reach, for a reminder that names where its click goes (spec.kind, a
--- Services kind, with spec.profession / spec.letters) and gives no reach of
--- its own: the nearest one of that kind within REACH_YARDS, measured at a
--- raise, when the player stops, and on Route's 'where' -- never per event
+-- Services kind, with spec.profession / letters / skip / extra) and gives
+-- no reach of its own: the nearest one of that kind within REACH_YARDS,
+-- measured at a raise, when the player stops, and on Route's 'where' -- never per event
 -- (a walk of the service rows). Its NPC's name is what a click targets
 -- (never a mailbox's: an object is no target).
 local REACH_YARDS = 40
@@ -601,9 +602,9 @@ local function Measure(key)
 	local fn = type(services) == "table" and services.Nearest
 	local yards, name
 	if type(fn) == "function" then
-		local profession, letters = spec.profession, spec.letters
-		NEAR_OPTS.profession, NEAR_OPTS.letters = profession, letters
-		local ok, d, n = pcall(fn, services, spec.kind, (profession or letters) and NEAR_OPTS or nil)
+		local profession, letters, skip, extra = spec.profession, spec.letters, spec.skip, spec.extra
+		NEAR_OPTS.profession, NEAR_OPTS.letters, NEAR_OPTS.skip, NEAR_OPTS.extra = profession, letters, skip, extra
+		local ok, d, n = pcall(fn, services, spec.kind, (profession or letters or skip or extra) and NEAR_OPTS or nil)
 		if ok then
 			yards, name = Num(d), n
 		else
@@ -1141,8 +1142,10 @@ Tip = function(self)
 		end
 		return
 	end
+	-- (the title in gold, the lines and the hints in the body text: small
+	-- text is never mutedText, the palette rule)
 	local P = MelloUI.Palette
-	local gold, text, muted = P.selectedTrim, P.text, P.mutedText
+	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, PLACES[ui.place].tip)
 	if not key then
 		GameTooltip:SetText(TEXT.title, gold[1], gold[2], gold[3])
@@ -1168,16 +1171,16 @@ Tip = function(self)
 	end
 	local name = self.isMain and TargetName(key)
 	if name and ui.overlay and ui.overlay:IsShown() then
-		GameTooltip:AddLine(TEXT.target:format(name), muted[1], muted[2], muted[3], true)
+		GameTooltip:AddLine(TEXT.target:format(name), text[1], text[2], text[3], true)
 		local bind = _G.GetBindingKey and _G.GetBindingKey("INTERACTTARGET")
 		if type(bind) == "string" and not Secret(bind) then
-			GameTooltip:AddLine(TEXT.interact:format(bind), muted[1], muted[2], muted[3], true)
+			GameTooltip:AddLine(TEXT.interact:format(bind), text[1], text[2], text[3], true)
 		end
 	else
 		local hint = spec.hint
-		GameTooltip:AddLine(type(hint) == "string" and hint or TEXT.go, muted[1], muted[2], muted[3], true)
+		GameTooltip:AddLine(type(hint) == "string" and hint or TEXT.go, text[1], text[2], text[3], true)
 	end
-	GameTooltip:AddLine(TEXT.notNow, muted[1], muted[2], muted[3], true)
+	GameTooltip:AddLine(TEXT.notNow, text[1], text[2], text[3], true)
 	GameTooltip:Show()
 end
 
