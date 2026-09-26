@@ -267,6 +267,16 @@ function Safe.Number(v)
 	return v
 end
 
+-- v when it is a plain, finite number, else nil (secret, not a number, NaN
+-- or infinite): for anything that becomes a size, a place, a scale or a
+-- loop's step (a player's game froze opening the map, 2026-09-26)
+function Safe.Finite(v)
+	if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then
+		return nil
+	end
+	return v
+end
+
 -- v when it is a plain string, else nil (secret, nil or not a string)
 function Safe.Text(v)
 	if (issecretvalue and issecretvalue(v)) or type(v) ~= "string" then

@@ -4,11 +4,13 @@
 -- (user, 2026-09-26: the reminders come and go, "without having them stay on
 -- screen the whole time, except when you are in a safe zone, then the Restock
 -- should be shown the whole time until the player either restocks or leaves
--- the safe area")
+-- the safe area"; after RC4 the same for all four: in a safe zone each
+-- stays until done or the player leaves)
 --
 -- The page of the one reminder widget (Core/Reminders.lua, MelloUI.Reminders:
 -- the round button beside the player ring, its count, glow, hover and place;
--- the settings it reads are this module's: remind_<key>, place, glow, hold)
+-- the settings it reads are this module's: remind_<key>, place, glow, hold,
+-- stayResting)
 -- and three of its four users. Restock is the fourth (Modules/Restock.lua):
 -- while it has no page of its own, its rows are on this page under its
 -- switch (M:OnInit): remind_restock, as every reminder's is remind_<key>.
@@ -44,9 +46,18 @@
 -- The widget's contract (MelloUI.Reminders:Register): key, label, icon,
 -- text, urgency (higher first: broken gear 100, Repair 40, Mail 20, Trainer
 -- 10), check(key, why) -> active (no reach: the widget's, by `kind`), kind
--- (+ profession), onClick, and no persistent (these three come and go:
--- only Restock stays up in a rest area; their Not now lasts until their
--- next moment, dismiss "moment"). When a reminder shows, for how long and
+-- (+ profession), onClick and persistent. Outside a rest area these three
+-- come and go, and their Not now lasts until their next moment. In a rest
+-- area (the user, after RC4: "Didnt i say that i wanted the widget the be
+-- running when something needs to be restocked or learned or have an email
+-- when you are in a safe zones?") each stays up, as Restock does, until it
+-- is done (the mailbox opened, the gear repaired, the spells learned or the
+-- rank learned) or the player leaves: persistent() is "wanted, and the
+-- widget's StayUp()" (Stay Up In Rest Areas, this page's stayResting: ONE
+-- switch for all four, Restock's too; switched on while resting, the widget
+-- brings the wanted ones up again at once), and a Not now there lasts until a
+-- rest area is entered again (the widget's default dismiss: "rest" while
+-- persistent() says so, else "moment"). When a reminder shows, for how long and
 -- where is the widget's; so are its moments (login, rest, zone) and its
 -- login delay. Nothing is read in the login frames: the state is read at
 -- the widget's login moment (a check at "login", "rest" or "zone" reads it
@@ -104,6 +115,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		remind_trainer = true,
 		trainerClass = true,
 		trainerProfession = true,
+		stayResting = true,   -- (the widget reads it: Rem:StayUp; Restock's own until RC4, carried over: CarryRestock)
 		place = "left",
 		glow = "pulse",
 		hold = 8,
@@ -120,9 +132,11 @@ local M = MelloUI:RegisterModule("Reminders", {
 		{ type = "toggle", key = "remind_trainer", name = "Trainer",
 		  desc = "Remind you when a trainer has something new for you." },
 		{ type = "toggle", key = "trainerClass", parent = "remind_trainer", name = "Class Spells",
-		  desc = "When you reach a level with new spells at your class trainer. Each visit to your class trainer tells MelloUI when the next ones come; before your first visit it goes by the levels trainers teach at." },
+		  desc = "When you reach a level with new spells at your class trainer. It stays until you have learned them; each visit to your class trainer tells MelloUI when the next ones come, and before your first visit it goes by the levels trainers teach at." },
 		{ type = "toggle", key = "trainerProfession", parent = "remind_trainer", name = "Profession Ranks",
 		  desc = "When one of your professions can learn its next rank at a trainer: Journeyman, Expert or Artisan." },
+		{ type = "toggle", key = "stayResting", name = "Stay Up In Rest Areas",
+		  desc = "In an inn or a city every reminder stays until it is done (restocked, a mailbox opened, gear repaired, the spells or the rank learned) or you leave, and Not now there hides it until you next enter one. Off: they come and go there too." },
 		{ type = "header", name = "Widget" },
 		{ type = "dropdown", key = "place", name = "Place", values = PLACES,
 		  desc = "Where the reminder button sits beside your portrait. With the player frame hidden it keeps a place of its own, which you can move while the windows are unlocked." },
@@ -370,26 +384,32 @@ local function ClassFrom(level)
 	return at
 end
 
--- the lowest level among the open trainer's spells not available yet, above
--- `level` (nil: none listed, or the list hides them)
-local function LowestLocked(level)
+-- the open trainer's list, read once: whether it lists a spell the
+-- character can learn now (its level reached; what it costs is not asked),
+-- and the lowest level among its spells not available yet above `level`
+-- (nil: none listed, or the list hides them)
+local function ReadServices(level)
 	local count = Num((Ask(_G.GetNumTrainerServices)))
 	local info, req = _G.GetTrainerServiceInfo, _G.GetTrainerServiceLevelReq
-	if not count or type(info) ~= "function" or type(req) ~= "function" then
-		return nil
+	if not count or type(info) ~= "function" then
+		return false, nil
 	end
-	local low = nil
+	local any, low = false, nil
 	for i = 1, count do
 		local ok, _, _, category = pcall(info, i)
-		if ok and not Secret(category) and category == "unavailable" then
-			local okR, at = pcall(req, i)
-			at = okR and Num(at) or nil
-			if at and at > level and (not low or at < low) then
-				low = at
+		if ok and not Secret(category) then
+			if category == "available" then
+				any = true
+			elseif category == "unavailable" and type(req) == "function" then
+				local okR, at = pcall(req, i)
+				at = okR and Num(at) or nil
+				if at and at > level and (not low or at < low) then
+					low = at
+				end
 			end
 		end
 	end
-	return low
+	return any, low
 end
 
 -- what the open trainer teaches: "class" (the player's own class trainer),
@@ -493,15 +513,19 @@ local function ReadTrainer()
 	end
 end
 
--- (event) a trainer's window opened: the class trainer says when its next
--- spells come
+-- (event) a trainer's window opened or its list changed (a spell learned):
+-- the class trainer says when its next spells come. While it still lists a
+-- spell to learn now they are due, so the reminder stays until they are
+-- learned (user, 2026-09-26: done is "When learned", not the window opened;
+-- one skipped on purpose is a Not now)
 local function TrainerShown()
 	if TrainerKind() ~= "class" then
 		return
 	end
 	local level, key = PlayerLevel(), TrainerKey()
 	if level and key and M.db then
-		M.db[key] = LowestLocked(level) or NextLevel(level) or 0
+		local any, low = ReadServices(level)
+		M.db[key] = any and level or low or NextLevel(level) or 0
 	end
 end
 
@@ -672,11 +696,22 @@ local function Icon(key)
 	return ICON[key]
 end
 
+-- up the whole time in a rest area, as Restock: while wanted (what the
+-- widget was last told, or a change since: the same answer as check()'s)
+-- and the widget's StayUp() says so (the one switch, the player resting);
+-- asked at the end of a hold and at a Not now, never per event
+local function Persistent(key)
+	local rem = MelloUI.Reminders
+	return ACTIVE[key]() and type(rem) == "table" and type(rem.StayUp) == "function" and rem:StayUp() or false
+end
+
+-- (no dismiss: the widget's default, "rest" while persistent() says it
+-- stays up -- until a rest area is entered again -- else "moment")
 local LABEL = { mail = "New Mail", repair = "Repair Gear", trainer = "Trainer" }
 for _, key in ipairs(ORDER) do
 	local kind, profession = Where(key)
 	SPECS[key] = { key = key, label = LABEL[key], icon = Icon, text = Line, urgency = Urgency, check = Check,
-		kind = kind, profession = profession, onClick = Click, dismiss = "moment" }
+		kind = kind, profession = profession, onClick = Click, persistent = Persistent }
 end
 M.SPECS = SPECS   -- (read only: the tests, a dump)
 
@@ -747,7 +782,7 @@ end
 local EVENTS = {
 	mail = { "UPDATE_PENDING_MAIL", "MAIL_SHOW", "MAIL_CLOSED" },
 	repair = { "UPDATE_INVENTORY_DURABILITY", "PLAYER_EQUIPMENT_CHANGED" },
-	trainer = { "PLAYER_LEVEL_UP", "TRAINER_SHOW", "TRAINER_CLOSED", "SKILL_LINES_CHANGED" },
+	trainer = { "PLAYER_LEVEL_UP", "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "SKILL_LINES_CHANGED" },
 }
 
 -- (a passive event of a user not read yet is left alone: its first check
@@ -769,7 +804,7 @@ local function OnEvent(_, event, arg1)
 	elseif event == "MAIL_CLOSED" then
 		MailClosed()
 		Changed("mail")
-	elseif event == "TRAINER_SHOW" then
+	elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
 		TrainerShown()
 		if trainer.looked then
 			ReadTrainer()
@@ -816,10 +851,46 @@ end
 
 -- Restock's rows that belong to its reminder (live only while its switch is
 -- on); its shop list and its list window live with the reminder off too
-local REMINDER_ROWS = { below = true, stayResting = true }
+-- (Stay Up In Rest Areas is no longer one of them: it is this page's own,
+-- every reminder's)
+local REMINDER_ROWS = { below = true }
+
+-- Stay Up In Rest Areas was Restock's own setting (stayResting) until RC4;
+-- now it is this module's, one switch for all four. An old Restock one is
+-- carried here and dropped there: a saved one at login (OnInit, the module
+-- on or off), one a settings text brought back (a profile, a share string,
+-- a backup brought back, the settings adopted late: all end in
+-- RestartModules' 'restart'; the widget's own listener asks every reminder
+-- again on the next frame, after this). Only an off is carried (a saved on
+-- is the default here too); read and written only at those moments, never
+-- per event. RestartModules draws the configurator again BEFORE 'restart',
+-- and only a profile or text load draws it once more after: an off carried
+-- here draws it again itself (nothing while it is closed), so an open
+-- Reminders page never shows the switch on while it is off.
+local function CarryRestock()
+	local all = MelloUI.db and MelloUI.db.modules
+	local old = type(all) == "table" and all.Restock
+	if type(old) ~= "table" or old.stayResting == nil then
+		return
+	end
+	local off = old.stayResting == false
+	old.stayResting = nil
+	if off then
+		local db = MelloUI:GetModuleDB("Reminders")
+		if db then
+			db.stayResting = false
+		end
+		if type(MelloUI.RefreshConfig) == "function" then
+			MelloUI:RefreshConfig()
+		end
+	end
+end
 
 function M:OnInit(db)
 	self.db = db
+	-- Restock's old Stay Up In Rest Areas: now, and after each settings load
+	CarryRestock()
+	MelloUI:On("restart", CarryRestock, "Reminders: Restock's stayResting")
 	-- Restock's rows (Modules/Restock.lua registers after this file), while
 	-- it is a module with no page of its own: laid out first, every one of
 	-- them. With a switch of its own for its reminder (`remind`), all as it
@@ -896,7 +967,8 @@ function M:OnDisable()
 	end
 end
 
--- (the widget reads remind_<key>, place, glow and hold itself, on 'setting')
+-- (the widget reads remind_<key>, place, glow, hold and stayResting itself,
+-- on 'setting')
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "remind_mail" or key == "remind_repair" or key == "remind_trainer" then

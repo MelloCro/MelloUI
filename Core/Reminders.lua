@@ -17,8 +17,14 @@
 --
 -- A reminder is transient: it comes up, stays a short while (8 s; held while
 -- the pointer is on it, then 2 s more) and goes. Only one that says it
--- persists stays after that, until it is done or its reason ends (Restock
--- while resting: until restocked or out of the rest area). Left click: the
+-- persists stays after that, until it is done or its reason ends. In a rest
+-- area all four do (the user, after RC4: "the widget the be running when
+-- something needs to be restocked or learned or have an email when you are
+-- in a safe zones"): with Stay Up In Rest Areas on (Rem:StayUp) each stays
+-- until it is done (restocked, a mailbox opened, the gear repaired, the
+-- class spells learned or the profession's rank learned: each user's own
+-- "wanted" ending) or until the player leaves the rest area; switched on
+-- there, the ones wanted come up again at once. Left click: the
 -- reminder's own action (the way there, through the Services); in reach of
 -- the NPC with a name to target, a secure button targets him instead (the
 -- player's own click). Right click: Not now.
@@ -55,7 +61,8 @@
 --                 moment nor brought up with another one it raises. A game
 --                 event of Core's own (PLAYER_REGEN_ENABLED ...) works too.
 --     onClick     fn(key, mouseButton): its action (Services:GoTo ...)
---     persistent  fn(key) -> true while it stays up after its hold
+--     persistent  fn(key) -> true while it stays up after its hold (the four
+--                 users: while wanted and Rem:StayUp())
 --     target      fn(key) -> the name of the NPC a click targets while in reach
 --     kind        a Services kind its click goes to ("mailbox", "repair",
 --                 "classtrainer", "proftrainer", "vendor", ...), with
@@ -72,7 +79,7 @@
 --                 Reminders setting remind_<key> (on while not saved)
 --     dismiss     what its right click's Not now lasts (Dismiss's untilWhat;
 --                 default "moment", or "rest" while persistent() says it
---                 stays up: Restock in a rest area)
+--                 stays up: any of the four in a rest area)
 --     tooltip     fn(key, tooltip): more lines in its tooltip
 --   Rem:Unregister(key)
 --   Rem:Refresh([key][, raise])   checked again on the next frame (no key:
@@ -89,6 +96,10 @@
 --       "session" the next login or reload
 --       seconds   that many seconds (then raised again while wanted)
 --   Rem:State(key) -> active, up, reach, dismissed (false when not)
+--   Rem:StayUp() -> true while Stay Up In Rest Areas is on (the Reminders
+--       setting stayResting, the one switch of all four) and the player
+--       rests now (IsResting; a secret or missing answer is no): what the
+--       users' persistent() asks, with their own "still wanted"
 --   Rem:Each(fn)   fn(key, active, up) for each registered one, in rank order
 --   Rem:Act(key[, mouseButton])   what a left click on it does (a tray row)
 --   Rem:Text(key), Rem:Icon(key), Rem:Label(key)
@@ -99,7 +110,8 @@
 -- its default, so they hold with that module off): place ("left" of the
 -- ring, "above" or "right"; not saved: the side the ring's anchor names,
 -- else left), glow ("pulse": about 10 s, then steady; "still"; "off"), hold
--- (4-20 s, 8) and remind_<key> (on). Reduce Motion stills the glow and lands
+-- (4-20 s, 8), stayResting (on: Rem:StayUp) and remind_<key> (on). Reduce
+-- Motion stills the glow and lands
 -- every move at once (MelloUI.Anim, MelloUI.Shade:Glow).
 --
 -- Where it sits: on the player's portrait ring, UnitFramePanel:ReminderAnchor()
@@ -167,7 +179,7 @@ Rem.TEXT = {
 }
 local TEXT = Rem.TEXT
 
-local DEFAULTS = { glow = "pulse", hold = HOLD }
+local DEFAULTS = { glow = "pulse", hold = HOLD, stayResting = true }
 local GLOWS = { pulse = true, still = true, off = true }
 local SIDES = { LEFT = "left", RIGHT = "right", TOP = "above", left = "left", right = "right", above = "above" }
 -- each place: the widget's point on the ring's, the way out of the button
@@ -306,8 +318,9 @@ local function Tell(key)
 end
 
 -- A "rest" Not now kept over a reload (the user's pick: Not now hides
--- Restock until the player leaves a rest area and enters one again, and a
--- reload in the inn is no leaving): one flag per character and reminder in
+-- Restock -- and, in a rest area, any of the four -- until the player leaves
+-- a rest area and enters one again, and a reload in the inn is no leaving):
+-- one flag per character and reminder in
 -- the Reminders settings, notnow_<GUID>_<key> (a keep key of that module:
 -- never in a profile). Set by Dismiss, dropped at the next rest entry, by
 -- another Not now, and at the login moment outside a rest area. Nothing is
@@ -476,13 +489,19 @@ local function OverlayPlace(o)
 	local okE, bs = pcall(b.GetEffectiveScale, b)
 	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
 	if not (okC and okS and okE and okU) or Secret(cx) or Secret(cy) or Secret(w) or Secret(h)
-		or Secret(bs) or Secret(us) or not (cx and cy and w and h and bs and us) or us <= 0 then
+		or Secret(bs) or Secret(us) or not (cx and cy and w and h and bs and us) then
 		return false
 	end
 	local k = bs / us
+	local x, y, sw, sh = cx * k, cy * k, w * k, h * k
+	-- finite only (NaN passes a "<= 0" test): never handed to the secure button
+	if not (k > 0 and k < math.huge and x > -math.huge and x < math.huge and y > -math.huge and y < math.huge
+		and sw >= 0 and sw < math.huge and sh >= 0 and sh < math.huge) then
+		return false
+	end
 	o:ClearAllPoints()
-	o:SetSize(w * k, h * k)
-	o:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx * k, cy * k)
+	o:SetSize(sw, sh)
+	o:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
 	return true
 end
 
@@ -1597,6 +1616,16 @@ local function OnSetting(module, key)
 			Preview()
 		elseif key == "glow" then
 			ApplyGlows()
+		elseif key == "stayResting" then
+			-- (no check() changes: every one asked again, so one held up in a
+			-- rest area goes after its hold once the switch is off; switched on
+			-- while the player rests, the ones wanted come up again now and
+			-- stay, a Not now still holding left as it is. One pass per click.)
+			local raise = Rem:StayUp()
+			for i = 1, #order do
+				local k = order[i]
+				Queue(k, "setting", raise and not Dismissed(states[k]))
+			end
 		elseif type(key) == "string" and key:sub(1, 7) == "remind_" then
 			Queue(key:sub(8), "setting")
 		end
@@ -1779,8 +1808,8 @@ function Rem:Dismiss(key, untilWhat)
 	end
 	local d = untilWhat
 	if d == nil then
-		-- (one staying up now, as Restock in a rest area: until the player
-		-- leaves one and comes back)
+		-- (one staying up now, as any of the four in a rest area: until the
+		-- player leaves one and comes back)
 		d = spec.dismiss or (Yes(spec.persistent, key) and "rest" or "moment")
 	end
 	if type(d) == "number" and not Secret(d) then
@@ -1812,6 +1841,24 @@ function Rem:State(key)
 		return false, false, false, false
 	end
 	return st.active and true or false, st.up, st.reach, st.dismissed
+end
+
+-- Stay Up In Rest Areas: the one switch (on while not saved) and the player
+-- resting now, read when asked (at the end of a hold, a Not now): nothing
+-- kept, nothing made
+function Rem:StayUp()
+	if Setting("stayResting") == false then
+		return false
+	end
+	local fn = _G.IsResting
+	if type(fn) ~= "function" then
+		return false
+	end
+	local ok, resting = pcall(fn)
+	if not ok or Secret(resting) then
+		return false
+	end
+	return resting and true or false
 end
 
 do

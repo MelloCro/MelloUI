@@ -183,7 +183,15 @@ function PinMethods:OnAcquired(kind, data)
 		self.Label:Show()
 		self:SetSize((self.Label:GetStringWidth() or 30) + 10, 15)
 	end
-	self:SetPosition(data.x, data.y)
+	-- a finite place only (a learned or badge place read from saved data is
+	-- never handed to the map as NaN or endless)
+	local Finite = MelloUI.Safe.Finite
+	local x, y = Finite(data.x), Finite(data.y)
+	if x and y then
+		self:SetPosition(x, y)
+	else
+		self:Hide()
+	end
 end
 
 function PinMethods:OnReleased()

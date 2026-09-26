@@ -26,8 +26,10 @@
 --   Low          a line below Remind Below (half, the user's pick) of its
 --                amount. The reminder (MelloUI.Reminders, Core/Reminders.lua)
 --                says which; in a rest area it stays until restocked or the
---                rest area is left, and Not now hides it until a rest area is
---                entered again. Its click routes to the nearest shop that
+--                rest area is left (while the Reminders page's Stay Up In Rest
+--                Areas is on: the one switch of all four reminders, the
+--                widget's Rem:StayUp), and Not now hides it until a rest area
+--                is entered again. Its click routes to the nearest shop that
 --                sells what is low (Services:GoTo "vendor": the shipped
 --                vendor rows, the shops seen here, the innkeeper when none is
 --                known for drink or food).
@@ -91,7 +93,6 @@ local M = MelloUI:RegisterModule("Restock", {
 	enabledByDefault = true,
 	defaults = {
 		below = 0.5,
-		stayResting = true,
 		shopPanel = true,
 	},
 	-- (no header and no switch of its own for the reminder: the Reminders page
@@ -99,8 +100,6 @@ local M = MelloUI:RegisterModule("Restock", {
 	options = {
 		{ type = "slider", key = "below", name = "Remind Below", min = 0.25, max = 0.75, step = 0.05, percent = true,
 		  desc = "You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount." },
-		{ type = "toggle", key = "stayResting", name = "Stay Up In Rest Areas",
-		  desc = "In an inn or a city the reminder stays until you restock or leave. Not now hides it until you next enter a rest area." },
 		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
 		  desc = "At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy." },
 		{ type = "button", name = "Restock List", text = "Edit",
@@ -188,14 +187,6 @@ end
 
 local function Money()
 	return Num((Ask(GetMoney)))
-end
-
-local function Resting()
-	local v = Ask(_G.IsResting)
-	if IsSecret(v) then
-		return false
-	end
-	return v and true or false
 end
 
 local function InCombat()
@@ -693,9 +684,12 @@ local function RemText()
 end
 
 -- up the whole time in a rest area (the user's rule), until restocked or
--- the rest area is left
+-- the rest area is left: while low and the widget's StayUp() (Stay Up In
+-- Rest Areas, the Reminders page's one switch of all four, and the player
+-- resting)
 local function RemPersistent()
-	return M.db ~= nil and M.db.stayResting == true and RemActive() and Resting()
+	local rem = Reminders()
+	return RemActive() and rem ~= nil and type(rem.StayUp) == "function" and rem:StayUp() or false
 end
 
 local function RemClick()
@@ -742,15 +736,6 @@ Changed = function()
 	end
 	state.toldActive, state.told = active, text
 	ReachOpts(active)
-	local rem = Reminders()
-	if state.registered and rem and type(rem.Refresh) == "function" then
-		rem:Refresh(REM_KEY)
-	end
-end
-
--- the widget asked again now, past Changed()'s edges (a setting that only
--- persistent() reads: Stay Up In Rest Areas)
-local function Recheck()
 	local rem = Reminders()
 	if state.registered and rem and type(rem.Refresh) == "function" then
 		rem:Refresh(REM_KEY)
@@ -2143,10 +2128,6 @@ function M:OnSettingChanged(key, value, db)
 		else
 			ShopRefresh()
 		end
-	elseif key == "stayResting" then
-		-- (neither check() nor text() changes: the widget asked again, so
-		-- one held up in a rest area goes after its hold)
-		Recheck()
 	elseif key == "below" then
 		Dirty()
 		if not state.ready then

@@ -430,11 +430,13 @@ end
 -- whatever its anchor (fitted with it on its drop as well); a frame whose
 -- rect or scale cannot be read is left as saved.
 local function PlaceSaved(frame, pos, mover)
-	if pos.scale and pos.scale > 0 and frame.SetScale then
+	local Finite = MelloUI.Safe.Finite
+	local scale = Finite(pos.scale)
+	if scale and scale > 0 and frame.SetScale then
 		if mover then
 			mover.scaling = true
 		end
-		ScaleFrame(frame, pos.scale)   -- (its backgrounds with it)
+		ScaleFrame(frame, scale)   -- (its backgrounds with it)
 		if mover then
 			mover.scaling = nil
 		end
@@ -442,7 +444,8 @@ local function PlaceSaved(frame, pos, mover)
 	-- the mover anchors BOTTOMLEFT to the screen's CENTRE; an entry carries
 	-- the anchor only when it differs
 	Raw(frame, "ClearAllPoints")(frame)
-	Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", pos.x or 0, pos.y or 0)
+	-- (a saved place that is not a finite number is 0: never handed on)
+	Raw(frame, "SetPoint")(frame, pos.point or "BOTTOMLEFT", UIParent, pos.relPoint or "CENTER", Finite(pos.x) or 0, Finite(pos.y) or 0)
 	local companion = Companion(frame)
 	if companion or (not pos.point and not pos.relPoint) then
 		MelloUI:FitOnScreen(frame, companion)

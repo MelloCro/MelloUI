@@ -232,6 +232,12 @@ local function RectOn(mapID, cont)
 	return r
 end
 
+-- a continent's size in yards that can be used: finite and at least 100
+-- (NaN fails every test; a tiny one made every map place huge)
+local function Sized(w, h)
+	return type(w) == "number" and type(h) == "number" and w >= 100 and h >= 100 and w < math.huge and h < math.huge
+end
+
 local function WorldSize(cont)
 	local s = sizeCache[cont]
 	if not s then
@@ -243,10 +249,10 @@ local function WorldSize(cont)
 			end
 		end
 		local f = WORLD_SIZE[cont]
-		if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) and f and not f.newMap then
+		if not Sized(w, h) and f and not f.newMap then
 			w, h = f[1], f[2]   -- the two continents, as always
 		end
-		if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) and C_Map.GetWorldPosFromMapPos and CreateVector2D then
+		if not Sized(w, h) and C_Map.GetWorldPosFromMapPos and CreateVector2D then
 			-- (0.14.0, new maps such as Zephras Isle) the map's corners in the
 			-- world: across the map is the world's y, down it the world's x
 			local ok1, _, p1 = pcall(C_Map.GetWorldPosFromMapPos, cont, CreateVector2D(0, 0))
@@ -257,7 +263,7 @@ local function WorldSize(cont)
 				w, h = math.abs(y1 - y2), math.abs(x1 - x2)
 			end
 		end
-		if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) then
+		if not Sized(w, h) then
 			w, h = f and f[1] or 40000, f and f[2] or 27000
 		end
 		s = { w, h }
@@ -3354,6 +3360,9 @@ local function NewPainter(frame)
 		if self.used >= MAX_DOTS then
 			return
 		end
+		if not (x > -math.huge and x < math.huge and y > -math.huge and y < math.huge and size > 0 and size < math.huge) then
+			return   -- (a NaN or endless place or size: nothing to draw)
+		end
 		self.used = self.used + 1
 		local dot = self.dots[self.used]
 		if not dot then
@@ -3388,14 +3397,28 @@ local function NewPainter(frame)
 	function painter:Segment(ax, ay, bx, by, style, unit, anchor)
 		local dx, dy = bx - ax, by - ay
 		local len = math.sqrt(dx * dx + dy * dy)
-		if len <= 0 then
+		-- finite, positive numbers only (NaN fails every test below): a step of
+		-- 0 or a map zoomed very far in never ended this loop -- the game froze
+		-- opening the map (a player in gamepad mode, 2026-09-26)
+		if not (len > 0 and len < math.huge) then
 			return
 		end
 		local size = unit * style.size
 		local step = size * style.gap
+		if not (size > 0 and size < math.huge and step > 0 and step < math.huge) then
+			return
+		end
 		local ux, uy = dx / len, dy / len
 		local at = self.carry
+		if not (at >= 0 and at < math.huge) then
+			at = 0
+		end
 		while at <= len do
+			if self.used >= MAX_DOTS then
+				-- (every dot drawn: nothing more to walk this pass)
+				self.carry = 0
+				return
+			end
 			self:Dot(ax + ux * at, ay + uy * at, size, style, anchor)
 			at = at + step
 		end
@@ -3531,13 +3554,18 @@ local function DrawWorldMap()
 		mapPainter:End()
 		return
 	end
-	local W, H = mapFrame:GetWidth(), mapFrame:GetHeight()
-	if W < 10 or H < 10 then
+	-- finite sizes and scale only (NaN fails every test): an endless canvas
+	-- scale made the dots' spacing 0 (the map froze in gamepad mode, 2026-09-26)
+	local W, H = Plain(mapFrame:GetWidth()), Plain(mapFrame:GetHeight())
+	if not (W and H and W >= 10 and H >= 10 and W < math.huge and H < math.huge) then
 		mapPainter:End()
 		return
 	end
-	local scale = map.GetCanvasScale and map:GetCanvasScale() or 1
-	local unit = 3.5 * (tonumber(M.db.lineWidth) or 3) / (scale > 0 and scale or 1)
+	local scale = map.GetCanvasScale and Plain(map:GetCanvasScale())
+	if not (scale and scale > 0 and scale < math.huge) then
+		scale = 1
+	end
+	local unit = 3.5 * (tonumber(M.db.lineWidth) or 3) / scale
 	local points = RouteAhead()
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
@@ -4196,6 +4224,9 @@ local function ScreenPlace(nav)
 		return nil
 	end
 	local fx, fy = x * scale / w, y * scale / h
+	if not (fx > -math.huge and fx < math.huge and fy > -math.huge and fy < math.huge) then
+		return nil   -- (NaN or endless: no place; the marker waits for a real one)
+	end
 	local off = fx < EDGE_MARGIN or fx > 1 - EDGE_MARGIN or fy < EDGE_MARGIN or fy > 1 - EDGE_MARGIN
 	return off, fx, fy
 end
@@ -4276,6 +4307,9 @@ local function MarkerTick(self, elapsed)
 		-- place (in screen units, so a wide screen does not skew it); the
 		-- arrow slides round the ring the short way, eased so it does not jitter
 		local want = math.atan2((fy - 0.5) * UIParent:GetHeight(), (fx - 0.5) * UIParent:GetWidth())
+		if not (self.angle > -math.huge and self.angle < math.huge) then
+			self.angle = want   -- (never stuck on a NaN: it would be set every tick after)
+		end
 		local diff = (want - self.angle + math.pi) % (2 * math.pi) - math.pi
 		-- half the gap a frame at 60 fps: keeps up with a fast turn, still no jitter
 		-- (user, 2026-09-23: "kinda slow response when turning"; was dt * 12)

@@ -1943,7 +1943,8 @@ end
 function Kit:BackgroundScale(tex)
 	local ok, s = pcall(tex.GetEffectiveScale, tex)
 	local us = UIParent and UIParent:GetEffectiveScale()
-	if not (ok and s and us) or Secret(s) or s <= 0 then
+	-- (finite and above 0 only: NaN passed "s <= 0" and reached SetTexCoord)
+	if not (ok and s and us) or Secret(s) or Secret(us) or not (s > 0 and s < math.huge and us > 0 and us < math.huge) then
 		return self.scale
 	end
 	return self.scale * us / s

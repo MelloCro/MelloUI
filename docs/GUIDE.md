@@ -76,7 +76,8 @@ Every quest offer, progress line, turn-in and greeting is read out loud in a voi
 
 A small round button beside your portrait taps you on the shoulder, then tucks itself away: drink or food running low, new mail, gear wearing out, a trainer with something new. Several at once? One button with a count; point at it and the others slide out. Click one and the arrow takes you to the nearest place for it; close to the NPC, a click targets them. Right-click says "not now".
 
-- **Restock** keeps a list per character (drink, food, arrows or bullets, reagents) and reminds you before you run dry. In an inn or a city it stays up until you restock or leave.
+- **Restock** keeps a list per character (drink, food, arrows or bullets, reagents) and reminds you before you run dry.
+- In an inn or a city every reminder stays up until it is done (restocked, a mailbox opened, gear repaired, your new spells or a profession's next rank learned) or you leave.
 - At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
 - It all lives on the **Reminders** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
 
@@ -792,20 +793,26 @@ every module):
 - **New Mail:** mail is waiting. It goes once you open a mailbox and comes back only for mail
   that arrives after.
 - **Repair Gear:** your most worn piece is down to **Remind At** (30 %); broken gear goes first.
-- **Trainer:** **Class Spells** (you reached a level with new spells: each visit to your class
-  trainer tells MelloUI when the next ones come, kept per character; before the first visit it
-  goes by the levels trainers teach at) and **Profession Ranks** (a profession can learn
+- **Trainer:** **Class Spells** (you reached a level with new spells; it stays until you have
+  learned them, and each visit to your class trainer tells MelloUI when the next ones come, kept
+  per character; before the first visit it goes by the levels trainers teach at) and **Profession Ranks** (a profession can learn
   Journeyman, Expert or Artisan).
 
 A new reminder comes up with a short line beside the button and goes after **Show For** (8 s,
-4-20; held while the pointer is on it). Only Restock stays up, in an inn or a city, until you
-restock or leave. Several at once show as one button with a count, the most urgent on it
+4-20; held while the pointer is on it). **Stay Up In Rest Areas** (on, one switch for all four):
+in an inn or a city every reminder stays up until it is done (restocked, a mailbox opened, gear
+repaired, your new spells or the profession's rank learned) or you leave; switched on
+there, the ones waiting come back at once; off, they come and go there too. Several at once
+show as one button with a count, the most urgent on it
 (broken gear, Restock, Repair Gear, New Mail, Trainer); the tooltip lists them all, and pointing at the
 button softly slides the others out of it, each a button of its own (at once with Reduce
 Motion). Left-click: the way to the nearest place for it, through the Services. Within about
 40 yards of that NPC the glow brightens, the tooltip says "Click: target <name>" and a click
-targets them (never a mailbox; set up out of combat only). Right-click: **Not now** (Restock's
-lasts until you next enter a rest area, across a `/reload` too). **Glow:** a gentle gold pulse
+targets them (never a mailbox; set up out of combat only). Right-click: **Not now** (in an inn
+or a city while Stay Up In Rest Areas is on, and always for Restock, it lasts until you next enter
+a rest area, across a `/reload` too; otherwise only until it comes up again by itself: a new zone,
+an inn, your next login).
+**Glow:** a gentle gold pulse
 for a few seconds, then steady (Pulse, then steady), always steady, or off. **Place:** left of,
 above or right of the portrait; with the player frame hidden the button keeps a place of its
 own, which Unlock the Windows lets you drag (a sample shows there). Nothing is checked before
@@ -826,8 +833,8 @@ for a hunter (bullets with a gun), all from level 5, and class reagents at the l
 lower-level stock counts toward a line. **Remind Below** (50 %): a line that drops below that
 share of its amount brings up the reminder, and a click routes you to the nearest vendor that
 sells it (shops you have opened are remembered; the innkeeper for drink and food when none is
-known). **Stay Up In Rest Areas** (on): in an inn or a city the reminder stays until you
-restock or leave. **Shopping List At The Shop** (on): at a merchant who sells what you are low
+known). In an inn or a city the reminder stays until you restock or leave (the Reminders page's
+**Stay Up In Rest Areas**, every reminder's). **Shopping List At The Shop** (on): at a merchant who sells what you are low
 on, a small list beside the shop window shows each item, "+20 (have 3)", the price, the total
 and the gold left, with **Buy**, **Not now** and **Edit list**. It picks the best item you can
 use from the merchant's own list, in whole purchases, limited by the stock, your bag space
