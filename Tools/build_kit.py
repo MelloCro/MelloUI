@@ -32,8 +32,9 @@ the Lua stays as it is; only the uv is measured on the file.
 The decorative red gems are toned to iron studs on the way (Tools/kit_gems.py,
 user 2026-09-23: too many red diamonds); --red-gems builds the old art.
 
-Then the palette's two looks are made from it (Tools/kit_palette.py, user
-2026-09-23: Media/KitWarm and Media/KitBronze, chosen in game);
+Then the palettes' looks are made from it (Tools/kit_palette.py: Ember's
+Media/KitWarm and Media/KitBronze, user 2026-09-23, chosen in game; each
+other palette's Media/Kit<Id>, user 2026-09-26; Tools/palettes.json);
 --no-looks skips them. Last, the pieces' shadow partners (Kit:Shadow) are
 made again from the new shapes (Tools/make_kit_shadows.py; the addon's sheet
 and Media/KitShadows.lua too, but only from the default masters folder);
@@ -669,7 +670,7 @@ def main():
           )
     if not no_looks:
         for look, (n, size) in kit_palette.build_looks(OUT).items():
-            print(f"  {look}: {n} pieces recoloured -> masters Media/{kit_palette.LOOKS[look][0]} ({size / 1e6:.1f} MB)")
+            print(f"  {look}: {n} pieces recoloured -> masters Media/{kit_palette.LOOKS[look].folder} ({size / 1e6:.1f} MB)")
     # the shadow partners follow the pieces' shapes (Tools/make_kit_shadows.py:
     # its sheet's master and, from the default masters only, the addon's copy
     # and Media/KitShadows.lua)

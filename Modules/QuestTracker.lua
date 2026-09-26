@@ -525,6 +525,20 @@ end
 
 local looks = {}
 
+-- Its own colours are the palette's, by key (the colour palette rule; 0.14.0
+-- palettes): through the addon's one paint registry, Kit:Paint, which looks
+-- the key up when it paints and paints it again on the bus's 'palette' (a
+-- palette switch is a new table). The arguments are Kit:Paint's and
+-- W.Paint's (region, key, how, alpha), the same guard as the Quest List's and
+-- the chat's PaintKey. The lines' colours are read when a rebuild draws them
+-- (StoneColour): a palette switch rebuilds (Listen).
+local function PaintKey(region, key, how, alpha)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.Paint then
+		Kit:Paint(region, key, how, alpha)
+	end
+end
+
 -- The kit's look for this tracker: its own look area, Kit:IsOn -- the reskin
 -- and the tracker's own switch -- read live wherever a look is drawn, and a
 -- switch told on the bus ('look:questTracker', below) so it flips at once
@@ -594,11 +608,12 @@ local function BuildPlainLook()
 	holder:SetAllPoints(frame)
 	holder:SetFrameLevel(frame:GetFrameLevel())
 	holder:EnableMouse(false)
+	-- the plain dark box (the list sunk into it) and a trim line under the title
 	local bg = holder:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints(holder)
-	bg:SetColorTexture(0, 0, 0, 0.45)
+	PaintKey(bg, "innerPanel", "fill", 0.45)
 	local line = holder:CreateTexture(nil, "BORDER")
-	line:SetColorTexture(0.8, 0.65, 0.3, 0.8)
+	PaintKey(line, "trim", "fill", 0.8)
 	line:SetHeight(1)
 	line:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -1)
 	line:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, -1)
@@ -861,13 +876,13 @@ local function NewBlock()
 	Perf.SetScript(block, "OnMouseWheel", function(_, delta) Scroll(delta) end)
 	block.highlight = block:CreateTexture(nil, "BACKGROUND")
 	block.highlight:SetAllPoints(block)
-	block.highlight:SetColorTexture(1, 0.85, 0.4, 0.08)
+	PaintKey(block.highlight, "selectedTrim", "fill", 0.08)   -- (a faint gold wash under the pointer)
 	block.highlight:Hide()
 	block.followed = block:CreateTexture(nil, "ARTWORK")
 	block.followed:SetSize(10, 10)
 	local Kit = MelloUI.Kit
 	if not (Kit and Kit.Apply and Kit:Apply(block.followed, "deco/gem_small")) then
-		block.followed:SetColorTexture(1, 0.8, 0.2, 1)
+		PaintKey(block.followed, "selectedTrim", "fill", 1)
 	end
 	-- the quest's map button, the game's own (POIButtonTemplate, as on the
 	-- game's tracker: "..." in progress, "?" ready to turn in, lit while
@@ -899,7 +914,7 @@ local function NewBlock()
 	item.border:SetPoint("TOPLEFT", -2, 2)
 	item.border:SetPoint("BOTTOMRIGHT", 2, -2)
 	if not (Kit and Kit.Apply and Kit:Apply(item.border, "buttons/slot_normal")) then
-		item.border:SetColorTexture(0, 0, 0, 0)
+		item.border:Hide()   -- (no kit slot: no border at all)
 	end
 	item.cooldown = CreateFrame("Cooldown", nil, item, "CooldownFrameTemplate")
 	item.cooldown:SetAllPoints(item)
@@ -956,16 +971,17 @@ end
 -- plain white of a line to do becomes the palette's text, the gold of a
 -- recipe's name its gold; a done line's grey and a quest title's difficulty
 -- colour keep their meaning. On parchment the ink colours it; without the kit
--- (the plain dark box) it keeps the game tracker's colours.
+-- (the plain dark box) the white stays the game tracker's, the gold is the
+-- palette's there too (a heading, as the title and section names above it).
 local function StoneColour(block, r, g, b)
-	if block.ink or not KitCovers() then
+	if block.ink then
 		return r, g, b
 	end
 	local P = MelloUI.Palette
-	if r == g and g == b and r >= 0.8 then
-		return P.text[1], P.text[2], P.text[3]
-	elseif r == 1 and g == 0.82 and b == 0 then
+	if r == 1 and g == 0.82 and b == 0 then
 		return P.selectedTrim[1], P.selectedTrim[2], P.selectedTrim[3]
+	elseif r == g and g == b and r >= 0.8 and KitCovers() then
+		return P.text[1], P.text[2], P.text[3]
 	end
 	return r, g, b
 end
@@ -981,7 +997,7 @@ local function Line(block, i)
 		-- a gold glow behind the line when it counts up (user, 2026-09-23:
 		-- the study's progress flash), at rest fully clear
 		fs.flash = block:CreateTexture(nil, "BACKGROUND", nil, 1)
-		fs.flash:SetColorTexture(1, 0.82, 0.3, 1)
+		PaintKey(fs.flash, "selectedTrim", "fill", 1)
 		fs.flash:SetAlpha(0)
 		block.lines[i] = fs
 	end
@@ -1442,7 +1458,7 @@ local function Section(key, label)
 			end
 		end
 		row.line = row:CreateTexture(nil, "ARTWORK")
-		row.line:SetColorTexture(0.8, 0.65, 0.3, 0.8)
+		PaintKey(row.line, "trim", "fill", 0.8)
 		row.line:SetHeight(1)
 		row.line:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 1)
 		row.line:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 1)
@@ -1453,6 +1469,8 @@ local function Section(key, label)
 		-- centred as All Objectives is (user, 2026-09-23)
 		row.text = layer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		row.text:SetPoint("CENTER", row, "CENTER", 0, 0)
+		-- (a heading: the palette's gold, kept by the paint registry)
+		PaintKey(row.text, "selectedTrim", "text")
 		row.toggle = MakeToggle(layer, 14, function() return SectionCollapsed(key) end, function()
 			local c = type(M.db.collapsedSections) == "table" and M.db.collapsedSections or {}
 			M.db.collapsedSections = c
@@ -1480,7 +1498,6 @@ local function Section(key, label)
 	row.toggle.Refresh()
 	OnGem(row.toggle, kit and row.plate, HEADER_GEM, row, -6)
 	row.text:SetText(label)
-	row.text:SetTextColor(1, 0.82, 0)
 	return row
 end
 
@@ -1652,6 +1669,9 @@ local function Build()
 	header.text = textLayer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	header.text:SetPoint("CENTER", header, "CENTER", 0, 0)
 	header.text:SetText(TRACKER_ALL_OBJECTIVES or "All Objectives")
+	-- (the title: the palette's gold, as the section names under it and every
+	-- kit window's title; kept by the paint registry)
+	PaintKey(header.text, "selectedTrim", "text")
 	-- the collapse toggle, the kit's minus / plus, on the title plate's
 	-- right gem (placed by ApplyLook)
 	local toggle = MakeToggle(textLayer, 16, function() return M.db.collapsed end, function()
@@ -1763,7 +1783,7 @@ local function Build()
 
 	-- the scroll thumb: the kit's, or a plain bar, beside the list
 	track = frame:CreateTexture(nil, "ARTWORK")
-	track:SetColorTexture(0, 0, 0, 0.35)
+	PaintKey(track, "innerPanel", "fill", 0.35)
 	track:SetWidth(3)
 	track:SetPoint("TOP", clip, "TOPRIGHT", THUMB_W / 2 + 3, 0)
 	track:SetPoint("BOTTOM", clip, "BOTTOMRIGHT", THUMB_W / 2 + 3, 0)
@@ -1780,7 +1800,7 @@ local function Build()
 		thumb:SetWidth(THUMB_W - 2)
 		local t = thumb:CreateTexture(nil, "ARTWORK")
 		t:SetAllPoints(thumb)
-		t:SetColorTexture(0.85, 0.7, 0.35, 0.8)
+		PaintKey(t, "selectedTrim", "fill", 0.8)
 	end
 	thumb:SetFrameLevel(frame:GetFrameLevel() + 6)
 	thumb:Hide()
@@ -1940,6 +1960,14 @@ end
 -- record it replaced stays as long as the installer's restore point does
 -- (Revert stays possible after Keep, until the next install): a revert puts
 -- it back; an install that did not put the layout in has nothing to put back.
+-- Every other layout MelloUI puts in or makes active records the same way
+-- (the bus's 'editmodelayout', Core/EditModeLayout.lua; backlog B1, 0.14.0):
+-- /mello layout apply and the reskin switch's one-time layout (fitted, then
+-- put in frames later), an alt's answer (made active), and an install's
+-- layout that waited for the fight or Edit Mode. The installer's own put
+-- comes in the same frame as its 'installed', before it: one read on the
+-- next frame under the one key, and 'installed' still keeps the record from
+-- before (fitAnchorWas) -- the read has not run yet.
 do
 	local pendingName = nil   -- the fitted layout's name, its tracker read on the next frame
 
@@ -1958,6 +1986,25 @@ do
 		end
 	end
 
+	-- that layout's tracker read on the next frame (a put and an install in
+	-- one frame: one read; without the kit's NextFrame a one-frame timer, the
+	-- read after the first a no-op, pendingName gone)
+	local function RecordLater(name)
+		pendingName = name
+		local Kit = MelloUI.Kit
+		if Kit and Kit.NextFrame then
+			Kit:NextFrame("Quest Tracker fit place", Record)
+		else
+			C_Timer.After(0, Record)
+		end
+	end
+
+	MelloUI:On("editmodelayout", function(_, name)
+		if type(name) == "string" then
+			RecordLater(name)
+		end
+	end, "Quest Tracker fit place")
+
 	MelloUI:On("installer", function(what)
 		local db = MelloUI:GetModuleDB(M.name)
 		if type(db) ~= "table" then
@@ -1965,15 +2012,15 @@ do
 		end
 		if what == "installed" then
 			local rp = MelloUI.db and MelloUI.db.installer
-			if type(rp) == "table" and rp.layoutPut and type(rp.layout) == "table" and type(rp.layout.name) == "string" then
+			local named = type(rp) == "table" and type(rp.layout) == "table" and type(rp.layout.name) == "string"
+			if named and rp.layoutPut then
 				db.fitAnchorWas = db.fitAnchor or false
-				pendingName = rp.layout.name
-				local Kit = MelloUI.Kit
-				if Kit and Kit.NextFrame then
-					Kit:NextFrame("Quest Tracker fit place", Record)
-				else
-					Record()
-				end
+				RecordLater(rp.layout.name)
+			elseif named and rp.layoutWritten then
+				-- handed to Edit Mode but waiting (the fight, Edit Mode open):
+				-- its 'put' records it when it goes in; a revert puts back
+				-- the record from before
+				db.fitAnchorWas = db.fitAnchor or false
 			else
 				pendingName = nil
 				db.fitAnchorWas = nil
@@ -1997,6 +2044,22 @@ local function Listen()
 	MelloUI:On("look:questTracker", OnLook, M)
 	MelloUI:On("parchment", OnParchment, M)
 	MelloUI:On("column", OnColumn, M)
+	-- a palette switch: what PaintKey painted follows by itself; the lines'
+	-- colours are read when drawn (StoneColour), so one rebuild. Only for a
+	-- new table: the same one (the Kit Colours' Fire) changed no line, as the
+	-- paint registry skips it too. Switched off, the switch-on's rebuild
+	-- draws the palette in use.
+	local drawnFrom = MelloUI.Palette
+	MelloUI:On("palette", function()
+		local P = MelloUI.Palette
+		if P == drawnFrom then
+			return
+		end
+		drawnFrom = P
+		if M.isEnabled and frame then
+			MarkDirty()
+		end
+	end, M)
 end
 
 --------------------------------------------------------------------------------

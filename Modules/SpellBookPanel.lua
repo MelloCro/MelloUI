@@ -959,7 +959,9 @@ local function StartPrebuild()
 	if not (M.isEnabled and PlayerSpellsFrame) or (skin and skin.built and active) then
 		return
 	end
-	if MelloUI.dbIsTemporary and not MelloUI.restoredFromBackup then
+	-- (not before the real settings are in place: Core/Backup.lua's one
+	-- answer for that, which a copy in the macros no longer holds up)
+	if MelloUI.SettingsSettled and not MelloUI:SettingsSettled() then
 		return
 	end
 	Perf.SetScript(prebuilder, "OnUpdate", PrebuildTick)

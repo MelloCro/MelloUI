@@ -463,8 +463,7 @@ Part(function(cf)
 		-- painted edge shadows stay on the stone
 		tex:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -2)
 		tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
-		local c = MelloUI.Palette.innerPanel
-		tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
+		Kit:Paint(tex, "innerPanel", "fill", DIM_ALPHA)   -- (by its key: a new palette paints it again)
 		tex.kitPiece = true   -- ours: never faded with the game's art
 		f:Hide()
 		skin.dims[key] = f
@@ -1838,7 +1837,12 @@ local function StartPrebuild()
 	if (skin and skin.built) or not (M.isEnabled and CharacterFrame) then
 		return
 	end
-	if MelloUI.dbIsTemporary and not MelloUI.restoredFromBackup then
+	-- not before the real settings are in place (the saved variables, or a
+	-- fresh start the game's macros show to be one: Backup.lua); on a fresh
+	-- start whose macros come later, again once they are in (the saved
+	-- variables adopted late run OnEnable, which queues it again)
+	if not MelloUI:SettingsSettled() then
+		prebuilder:RegisterEvent("UPDATE_MACROS")
 		return
 	end
 	Perf.SetScript(prebuilder, "OnUpdate", PrebuildTick)
@@ -1857,10 +1861,11 @@ QueuePrebuild = function()
 	C_Timer.After(PREBUILD_DELAY, PrebuildDue)
 end
 
--- a fight ended: on again a little later (not in the frame the fight ends
--- in), counted from when the kit's queue is through with the fight's refits
-Perf.SetScript(prebuilder, "OnEvent", function(self)
-	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+-- a fight ended, or the macros came in (the settings settled): on again a
+-- little later (not in the frame the event comes in), counted from when the
+-- kit's queue is through with a fight's refits; each event heard once
+Perf.SetScript(prebuilder, "OnEvent", function(self, event)
+	self:UnregisterEvent(event)
 	Kit:WhenQueueIdle(QueuePrebuild)
 end)
 
@@ -1940,6 +1945,13 @@ local function Hook()
 	MelloUI:On("parchment", Shared("'parchment' on the bus", function(area)
 		if area == "character" then
 			M:RefreshDims()
+		end
+	end), M)
+	-- a new palette (the bus's 'palette'): the Dark window background in its
+	-- inner panel (the panes' panels are painted by their key, Kit:Paint)
+	MelloUI:On("palette", Shared("'palette' on the bus", function()
+		if active then
+			M:PaintDarkBackground()
 		end
 	end), M)
 	-- the parchment sheets' rects follow the window's size and the UI scale
@@ -2108,9 +2120,22 @@ ApplyWindowBackground = function()
 		end
 		Kit:Retile(body)
 	elseif value == "dark" then
-		body:SetColorTexture(0.05, 0.045, 0.04, 0.95)
-		body.kitPiece, body.kitName = true, nil   -- still ours (a plain mark): never faded with the game's art
+		M:PaintDarkBackground()
 	end
+end
+
+-- The Dark window background: a flat fill in the palette's inner panel, read
+-- now (not by key through Kit:Paint: the same texture wears a kit piece for
+-- every other choice); a new palette lays it again (the 'palette' listener
+-- in Hook)
+function M:PaintDarkBackground()
+	local body = skin and skin.window and skin.window.skin and skin.window.skin.body
+	if not (body and self.db and self.db.windowBackground == "dark") then
+		return
+	end
+	local c = MelloUI.Palette.innerPanel
+	body:SetColorTexture(c[1], c[2], c[3], 0.95)
+	body.kitPiece, body.kitName = true, nil   -- still ours (a plain mark): never faded with the game's art
 end
 
 -- The right pane on parchment (its Parchment sheet, or Window Background

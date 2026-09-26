@@ -734,8 +734,7 @@ local function SkinPopup(p)
 		dim.kitPiece = true
 		dim:SetPoint("TOPLEFT", p, "TOPLEFT", l, -t)
 		dim:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -r, b)
-		local c = MelloUI.Palette.innerPanel
-		dim:SetColorTexture(c[1], c[2], c[3], 0.8)
+		Kit:Paint(dim, "innerPanel", "fill", 0.8)   -- (by its key: a new palette paints it again)
 		entry.dim = dim
 		nine:SetShown(active)
 		dim:SetShown(active)

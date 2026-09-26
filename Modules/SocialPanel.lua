@@ -527,8 +527,10 @@ end
 -- A box lying on the dimmed inset (a raid group's five names) takes the main
 -- window's tone over its stone: a step lighter than the inner panel around
 -- it, as WINDOW-RULES 2e stripes rows (user, 2026-09-24: "too much small text
--- over a plain brown border is just an eye strain").
-local BOX_TONE = MelloUI.Palette and MelloUI.Palette.mainWindow
+-- over a plain brown border is just an eye strain"). Its palette KEY (the
+-- kit paints it by the key, and again for a new palette; a table taken at
+-- load would be out of date).
+local BOX_TONE = "mainWindow"
 
 -- The raid pane: the group boxes (G), made again on every show (the raid UI
 -- makes them when it loads, in a raid)
@@ -538,7 +540,7 @@ local function SkinRaidGroups()
 		if group and group.melloRep == nil then
 			local outline = Kit:FirstTexture(group)
 			group.melloRep = outline and Replace(outline, { as = "UI-RaidFrame-GroupOutline", rect = group,
-				dim = BOX_TONE and 0.85 or nil, dimColor = BOX_TONE }) or false
+				dim = 0.85, dimColor = BOX_TONE }) or false
 		end
 	end
 end

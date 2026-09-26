@@ -624,8 +624,7 @@ local function Stripe(row)
 	local tex = row:CreateTexture(nil, "BACKGROUND", nil, -8)
 	tex.kitPiece = true
 	tex:SetAllPoints(row)
-	local c = MelloUI.Palette.mainWindow
-	tex:SetColorTexture(c[1], c[2], c[3], STRIPE_ALPHA)
+	Kit:Paint(tex, "mainWindow", "fill", STRIPE_ALPHA)   -- (by its key: a new palette paints it again)
 	tex:Hide()
 	return tex
 end

@@ -106,22 +106,84 @@ MelloUI.modules = {}
 --   selectedTab   #4E1812  the selected tab or row
 --   selectedTrim  #AE8546  the selected tab's trim, gold highlights, headings
 --   hover         #5A3C24  what the pointer is over
+-- Those are Ember's, the palette MelloUI shipped with and the default. Six
+-- more came with 0.14.0 (user, 2026-09-26: "Obsidian, Royal Azure and Fel
+-- Ember, each with a Vibrant version"; their colours from
+-- MelloUI-BuildData/palette/additions_0.14.0/palettes_0.14.0.json, the same
+-- values as Tools/palettes.json, which the art tools read):
+--   MelloUI.Palettes      { [id] = { id, name, blurb, roles = { [role] =
+--                         { r, g, b, hex = "RRGGBB" } } }, order = { ids } }
+--                         ids: ember, obsidian, obsidianVibrant, royalAzure,
+--                         royalAzureVibrant, felEmber, felEmberVibrant
+--   MelloUI.Palette       THE palette in use: one palette's roles table, so
+--                         a switch always puts another table there (read it
+--                         when painting, never hold it from load)
+--   MelloUI:PaletteId()   the id of the palette in use ("ember" for any
+--                         table that is none of these)
+--   MelloUI:SetPalette(id) (below, with the settings) the setting
+--                         UIModifications.palette; nil or unknown: ember
+-- Every palette passes the palette's hard rules: text on mainWindow 8:1 or
+-- more, text on hover 4.65:1 or more (Ember's 4.69 is the lowest), so muted
+-- text never sits on hover.
 --------------------------------------------------------------------------------
 local function Hex(hex)
 	return { tonumber(hex:sub(2, 3), 16) / 255, tonumber(hex:sub(4, 5), 16) / 255, tonumber(hex:sub(6, 7), 16) / 255, hex = hex:sub(2) }
 end
-MelloUI.Palette = {
-	mainWindow   = Hex("#1F1B16"),
-	innerPanel   = Hex("#11100D"),
-	raisedPanel  = Hex("#2E1F14"),
-	border       = Hex("#3D342A"),
-	trim         = Hex("#8D642F"),
-	text         = Hex("#C6AF85"),
-	mutedText    = Hex("#7F6846"),
-	selectedTab  = Hex("#4E1812"),
-	selectedTrim = Hex("#AE8546"),
-	hover        = Hex("#5A3C24"),
-}
+MelloUI.Palettes = { order = {} }
+do
+	-- each palette's ten swatches in this order
+	local ROLES = { "mainWindow", "innerPanel", "raisedPanel", "border", "trim", "text", "mutedText", "selectedTab",
+		"selectedTrim", "hover" }
+	local function Add(id, name, blurb, hexes)
+		local roles = {}
+		for i = 1, #ROLES do
+			roles[ROLES[i]] = Hex(hexes[i])
+		end
+		local palettes = MelloUI.Palettes
+		palettes[id] = { id = id, name = name, blurb = blurb, roles = roles }
+		palettes.order[#palettes.order + 1] = id
+	end
+	--   id, name, blurb, { mainWindow, innerPanel, raisedPanel, border, trim, text, mutedText, selectedTab, selectedTrim, hover }
+	Add("ember", "Ember", "MelloUI's first palette: warm dark brown, bronze-gold trim, a deep red for the selection.",
+		{ "#1F1B16", "#11100D", "#2E1F14", "#3D342A", "#8D642F", "#C6AF85", "#7F6846", "#4E1812", "#AE8546", "#5A3C24" })
+	Add("obsidian", "Obsidian",
+		"Neutral black glass and pewter, cold white text, one crimson accent. The calmest, highest-contrast base.",
+		{ "#18191B", "#0D0E10", "#212326", "#353739", "#72767D", "#BEC1C5", "#75797E", "#54040A", "#9A9FA5", "#3B3F44" })
+	Add("obsidianVibrant", "Obsidian Vibrant",
+		"Black glass, deeper and crisper: blued-steel trim, silver titles, ice-white text, a jewel crimson for the selection.",
+		{ "#121418", "#07090C", "#21252A", "#3B4047", "#5481C3", "#E8EDF4", "#8E99A9", "#9E0018", "#ACCFFC", "#3D444F" })
+	Add("royalAzure", "Royal Azure", "Throne room: deep navy, polished gold trim, cream text, royal blue selection.",
+		{ "#0F1A2A", "#050E1E", "#10233E", "#27374F", "#90712B", "#CBC0A4", "#867852", "#012169", "#BF9840", "#28405E" })
+	Add("royalAzureVibrant", "Royal Azure Vibrant",
+		"Throne room, lit: deep sapphire navy, polished gold trim, crisp cream text, a jewel-blue royal selection.",
+		{ "#011942", "#000D2C", "#02275D", "#1B3E6F", "#B8871B", "#F1E7D0", "#B29859", "#022988", "#ECB33C", "#174885" })
+	Add("felEmber", "Fel Ember", "Fel and void: charred black, fel-green trim and titles, void purple for the selection.",
+		{ "#1E1815", "#130D0A", "#2B201B", "#3E3430", "#59843F", "#C4C1B3", "#797A6A", "#361851", "#7AB146", "#384232" })
+	Add("felEmberVibrant", "Fel Ember Vibrant",
+		"Fel and void, stronger: ember-charred black, vivid fel-green trim and titles, deep void purple for the selection.",
+		{ "#1C0F08", "#0F0704", "#301C13", "#422F27", "#58982A", "#E7E3D2", "#8E916F", "#400568", "#85C545", "#254804" })
+end
+MelloUI.Palette = MelloUI.Palettes.ember.roles
+
+-- the id of the palette in use, found by its table (worked out again only
+-- when MelloUI.Palette is another table: no table made, a loop per switch)
+do
+	local seen, seenId = nil, "ember"
+	function MelloUI:PaletteId()
+		local current = self.Palette
+		if current ~= seen then
+			seen, seenId = current, "ember"
+			local palettes = self.Palettes
+			for _, id in ipairs(palettes.order) do
+				if palettes[id].roles == current then
+					seenId = id
+					break
+				end
+			end
+		end
+		return seenId
+	end
+end
 
 -- A palette colour as a chat / font-string colour code: "|cffAE8546"
 function MelloUI:PaletteCode(role)
@@ -397,6 +459,8 @@ end
 --                                 nest. fn's results are returned; an error
 --                                 in fn is raised again once the held Fires
 --                                 went out.
+--   MelloUI:InBatch()             true while a Batch runs (its 'setting'
+--                                 Fires held)
 -- Topics, with what they carry:
 --   "setting"      moduleName, key, value  end of NotifySettingChanged
 --   "module"       moduleName, enabled     end of SetModuleEnabled (not before
@@ -412,8 +476,19 @@ end
 --   "shell"        window                  a kit window shell was built
 --   "palette"      -                       MelloUI.Palette or the Kit Colours changed
 --                                          (fired after both are in place; a new
---                                          palette is a new table)
+--                                          palette is a new table; a palette
+--                                          switch fires it once, after 'border':
+--                                          MelloUI:SetPalette)
 --   "column"       -                       the column under the minimap re-laid
+--   "editmodelayout" what, name            a layout went into Edit Mode
+--                                          (Core/EditModeLayout.lua): "put",
+--                                          name (put in, made active) /
+--                                          "active", name (a saved one made
+--                                          active)
+--   "backup"       -                       the macro backup changed by itself
+--                                          (Core/Backup.lua: a delayed or
+--                                          held write or delete, the login's
+--                                          look at the macros)
 --   "installer"    what, ...               the installer (Core/Installer.lua):
 --                    "installed", setupKey, needsReload   a setup went in
 --                    "countdown", seconds, paused, why    the Keep countdown
@@ -601,6 +676,10 @@ do
 		return EndBatch(pcall(fn, ...))
 	end
 
+	function MelloUI:InBatch()
+		return batch > 0
+	end
+
 	-- NotifySettingChanged, SetModuleEnabled and the profile loads ask for
 	-- the backup here: "setting <key>" as before, or once for a whole Batch
 	Backup = function(self, reason, detail)
@@ -758,7 +837,7 @@ end
 --       screen keeps its top-left corner on it. dx, dy in its own units.
 -- The store is UI Modifications' `positions` setting, which is in its
 -- settings whether the module is on or off, so profiles, share strings and
--- the macro backup carry every place. Nothing is made or hooked until a
+-- the macro backup (when on) carry every place. Nothing is made or hooked until a
 -- window registers (the 'scale' listener aside: one entry on the bus).
 --------------------------------------------------------------------------------
 
@@ -810,8 +889,8 @@ do
 		return positions
 	end
 
-	-- written through the setting path, so the backup this client's saved
-	-- variables rely on is written (as the mover always did)
+	-- written through the setting path, as every setting (the macro backup,
+	-- when on, is written from there; as the mover always did)
 	local function Stored(positions)
 		MelloUI:NotifySettingChanged(POSITIONS_MODULE, "positions", positions)
 	end
@@ -1363,8 +1442,13 @@ local function CopyFrame()
 	f:SetMovable(true)
 	f:EnableMouse(true)
 	f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-	f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
-	f:SetBackdropBorderColor(0.4, 0.35, 0.25, 1)
+	-- the palette's by key (the kit's paint registry repaints them on a
+	-- palette switch): the sunk panel's dark, a plain border's line
+	local W = MelloUI.Widgets
+	if W and W.Paint then
+		W.Paint(f, "innerPanel", "backdrop", 0.97)
+		W.Paint(f, "border", "border", 1)
+	end
 	f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	f.title:SetPoint("TOPLEFT", 12, -10)
 	f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1475,7 +1559,8 @@ function MelloUI:Notice(msg, ...)
 end
 
 -- One-time hint after the update that moved the settings out of Options > AddOns.
--- The flag lives in the Tweaks settings so the macro backup keeps it. It
+-- The flag lives in the Tweaks settings (a personal key: kept by the saved
+-- variables, never by a profile). It
 -- yields to the installer (its window shows, its countdown runs, or its
 -- first-login check has not decided yet): the installer marks the tip shown
 -- when it opens, and its Done page says where the settings live.
@@ -1738,7 +1823,8 @@ function MelloUI:AdoptSavedVariables(stage)
 		self.dbIsTemporary = false
 		self.savedVariablesStage = stage or "late"
 		-- Carry over anything changed while the temporary table was in use
-		-- (this includes values restored from the macro backup).
+		-- (this includes values the player brought back from the macro
+		-- backup: RestoreMacroBackup, Core/Backup.lua).
 		for name, values in pairs(temp.modules or {}) do
 			local module = self.modules[name]
 			if module then
@@ -1779,6 +1865,14 @@ function MelloUI:AdoptSavedVariables(stage)
 		end
 		if self.db.activeProfile == nil then
 			self.db.activeProfile = temp.activeProfile
+		end
+		-- the macro backup's own state (Core/Backup.lua: top-level keys, in
+		-- no profile): switched on, or a copy found, before these came in
+		if temp.macroBackup == true then
+			self.db.macroBackup = true
+		end
+		if temp.macroBackupFound == true then
+			self.db.macroBackupFound = true
 		end
 		-- The kit editor writes straight into the db rather than through a
 		-- module, so it was not on this list and every edit made before the
@@ -1825,6 +1919,90 @@ function MelloUI:AdoptSavedVariables(stage)
 	return false
 end
 
+--------------------------------------------------------------------------------
+-- The palette switch (0.14.0). The setting is UI Modifications' `palette`
+-- (an id of MelloUI.Palettes; nil or an unknown one is Ember): profiles,
+-- share strings and the installer's setups carry it; it is no personal key.
+-- Applied at login (after the default profile, before the modules start:
+-- nothing is drawn yet, so only the table is put in place), when the
+-- settings are replaced (RestartModules: a profile load, a late settings
+-- load; before the modules restart and before its 'restart'. A profile
+-- load puts the table in place before it switches modules on or off, so
+-- those start in the new palette, and holds the kit's walk for its
+-- RestartModules: the one walk then reads the loaded Kit Colours through
+-- the umbrella's settings, bound by then) and when the setting changes
+-- (UI Modifications hands its bus 'setting' to SetPalette, the module on
+-- or off). A switch, in this order: MelloUI.Palette becomes
+-- the palette's table; the kit's art follows (Kit:ApplyBorder("colours"):
+-- the folder for this palette and the Kit Colours, one walk over the kit's
+-- textures), which fires 'border', then exactly one 'palette'. Without the
+-- kit (a test world) the one 'palette' goes out from here.
+--   MelloUI:SetPalette(id) -> switched
+--       the palette in use, and the setting written when it names another
+--       (its 'setting' comes back here and finds the palette in place);
+--       the palette already in use: nothing at all
+--------------------------------------------------------------------------------
+-- (self, switch): the palette the settings name, put in place. switch:
+-- false, only the table (the login); "hold", the table now and the kit's
+-- walk held for the next switch (a profile load, before its module
+-- switches); true, the whole switch (or the walk that was held)
+local ApplyStoredPalette
+do
+	local walkHeld = false
+
+	local function Known(id)
+		local palettes = MelloUI.Palettes
+		if type(id) == "string" and id ~= "order" and type(palettes[id]) == "table" then
+			return id
+		end
+		return "ember"
+	end
+
+	local function Put(id, switch)
+		local roles = MelloUI.Palettes[id].roles
+		if MelloUI.Palette ~= roles then
+			MelloUI.Palette = roles
+			if switch == "hold" then
+				walkHeld = true
+			end
+		elseif not (switch == true and walkHeld) then
+			return
+		end
+		if switch ~= true then
+			return
+		end
+		walkHeld = false
+		local Kit = MelloUI.Kit
+		if type(Kit) == "table" and type(Kit.ApplyBorder) == "function" then
+			Kit:ApplyBorder("colours")   -- (fires 'border', then the one 'palette')
+		else
+			MelloUI:Fire("palette")
+		end
+	end
+
+	-- the palette the settings name, read as stored (the module's defaults
+	-- not laid on, so a world without UI Modifications reads Ember)
+	local function Stored(self)
+		local modules = self.db and self.db.modules
+		local um = type(modules) == "table" and modules.UIModifications
+		return Known(type(um) == "table" and um.palette or nil)
+	end
+
+	ApplyStoredPalette = function(self, switch)
+		Put(Stored(self), switch)
+	end
+
+	function MelloUI:SetPalette(id)
+		id = Known(id)
+		local before = self.Palette
+		if self.db and self.modules.UIModifications and Stored(self) ~= id then
+			self:NotifySettingChanged("UIModifications", "palette", id)
+		end
+		Put(id, true)
+		return self.Palette ~= before
+	end
+end
+
 -- Runs fn(self) with restartingModules set, and puts the outer value back
 -- even when fn raises (the error goes on after it): a flag left set would
 -- keep the reskin's own reactions out for the rest of the session.
@@ -1854,6 +2032,10 @@ end
 -- UI Modifications' reskin bringing Custom Sounds and the Edit Mode layout --
 -- is the player's switch only, never a restart's or a profile load's)
 function MelloUI:RestartModules()
+	-- the palette the settings now name first (or a profile load's held
+	-- walk): the modules come back up in it, and the kit's own look check
+	-- on 'restart' finds its art in place
+	ApplyStoredPalette(self, true)
 	WhileRestarting(self, RestartEach)
 	if self.RefreshConfig then
 		self:RefreshConfig()
@@ -2017,8 +2199,8 @@ end
 -- string held the sharer's character IDs, and a layoutApplied in it kept
 -- the importer's reskin from ever placing its layout. Loading a profile
 -- leaves them as they are: it used to wipe every character's flight points.
--- The macro backup still writes them: it brings them back, with the rest,
--- should the saved variables ever be missing.
+-- The macro backup, when it is switched on, still writes them, and a copy
+-- brought back (/mello backup restore) brings them back with the rest.
 function MelloUI:IsPersonalKey(moduleName, key)
 	local module = self.modules[moduleName]
 	local keep = module and module.keep
@@ -2117,7 +2299,10 @@ local function SwitchForProfile(self)
 	self:RestartModules()
 end
 
-function MelloUI:ApplySettingsText(text)
+-- withPersonal: the text's personal keys are taken in as well (the player's
+-- own copy brought back: MelloUI:RestoreMacroBackup, Core/Backup.lua); a
+-- personal key the text does not hold stays as it is either way.
+function MelloUI:ApplySettingsText(text, withPersonal)
 	for name, module in self:IterateModules() do
 		local db = self:GetModuleDB(name)
 		for k in pairs(db) do
@@ -2130,8 +2315,11 @@ function MelloUI:ApplySettingsText(text)
 	for name in pairs(self.db.enabled) do
 		self.db.enabled[name] = nil
 	end
-	local applied = self:DeserializeSettings(StripPersonal(self, text))
+	local applied = self:DeserializeSettings(withPersonal and text or StripPersonal(self, text))
 	if self.initialized then
+		-- the loaded palette's table before any module is switched on or off
+		-- (they start in it); the kit's one walk in RestartModules, below
+		ApplyStoredPalette(self, "hold")
 		-- (a module's switch here is the profile's, not the player's: the
 		-- reskin's own reactions stay out, as in RestartModules)
 		WhileRestarting(self, SwitchForProfile)
@@ -2274,8 +2462,9 @@ function MelloUI:LoadProfile(name)
 	return true
 end
 
--- Nothing configured at all (a fresh install, or the saved variables missing
--- and the macro backup empty): apply the default profile.
+-- Nothing configured at all (a fresh install, or the saved variables missing:
+-- a copy in the macro backup is never read back by itself): apply the
+-- default profile.
 function MelloUI:ApplyDefaultProfileIfFresh()
 	if self:SerializeSettings() ~= "" then
 		return false
@@ -2319,19 +2508,16 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 			self:InitDB()
 		end
 		self:AdoptSavedVariables("PLAYER_LOGIN")
-		if self.dbIsTemporary and self.RestoreFromBackup and self:RestoreFromBackup("PLAYER_LOGIN") then
-			-- the early hook ran on the defaults at ADDON_LOADED: once more
-			-- on the restored settings (the world fonts)
-			for _, module in self:IterateModules() do
-				module.db = nil
-				if self:IsModuleEnabled(module.name) and type(module.OnAddonLoaded) == "function" then
-					SafeCall(module, "OnAddonLoaded", self:GetModuleDB(module.name))
-				end
-			end
-		end
+		-- (saved variables still missing here: the settings are a new
+		-- player's. The macro backup is never read back by itself any more
+		-- (0.14.0): a copy found there is said once and brought back only
+		-- when the player asks, /mello backup restore; Core/Backup.lua)
 		-- (no line for it: a new player gets the installer a few seconds in,
 		-- Core/Installer.lua's one login check)
 		self:ApplyDefaultProfileIfFresh()
+		-- the palette the settings name, before any module draws (only the
+		-- table: nothing is on the screen to repaint yet)
+		ApplyStoredPalette(self, false)
 		self.initialized = true
 		-- the modules come up in TOC order; a module that drives others
 		-- (UI Modifications) must not pull them forward out of that order
@@ -2380,6 +2566,8 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 				elseif ticks >= 60 then
 					ticker:Cancel()
 					self.adoptTicker = nil
+					-- none came: a fresh start (/mello status says so)
+					self.savedVariablesNone = true
 				end
 			end)
 		end

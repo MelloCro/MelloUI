@@ -89,7 +89,10 @@ local Apply, RestoreAreas, NothingWanted, TweakWanted
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false, parchment_dialog = false,
-	unlock = false, autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both" }, {}
+	unlock = false, autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both",
+	-- the palette (0.14.0): an id of MelloUI.Palettes, applied by Core
+	-- (MelloUI:SetPalette; this module on or off); a choice, not personal
+	palette = "ember" }, {}
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 	defaults[k.key] = k.default
 end
@@ -270,7 +273,7 @@ local M = MelloUI:RegisterModule("UIModifications", {
 -- the main options on top of that window"): their texts, for its tooltips
 M.placementTexts = {
 	unlock = { name = "Unlock the Windows",
-		desc = "Every window can be dragged by its title strip (the kit's title plate when the reskin is on), the minimap by its zone band, the trackers by their headers, the damage meter by grabbing it and a chat window by a strip along its top edge (so its links and buttons keep working); the border lights up while it moves, the screen darkens with a grid on it, and the mouse wheel while dragging scales it. Every drag area shows as a gold band while this is on, brighter under the mouse. Positions and scales stay, reloads included, and win over Edit Mode's for those elements. Works with the reskin off as well." },
+		desc = "Every window can be dragged by its title strip (the kit's title plate when the reskin is on), the minimap by its zone band, the trackers by their headers, the damage meter by grabbing it and a chat window by a strip along its top edge (so its links and buttons keep working); the border lights up while it moves, the screen darkens with a grid on it, and the mouse wheel while dragging scales it. Every drag area shows as a lit band while this is on, brighter under the mouse. Positions and scales stay, reloads included, and win over Edit Mode's for those elements. Works with the reskin off as well." },
 	autoSnap = { name = "Auto Snapping",
 		desc = "While a window is dragged, the grid lines near its bottom-left corner light up, and on release the corner snaps onto them. Off: the window stays exactly where it is dropped." },
 	reset = { name = "Reset positions",
@@ -447,7 +450,7 @@ end
 -- drawn ADDITIVELY while the window moves (the art adds its own light
 -- to what is under it: a real glow, gold) — user, 2026-09-21: "500 %"
 -- ... and an outer glow around the window while it moves (user,
--- 2026-09-21): four additive gold bands outside the window's edges, each
+-- 2026-09-21): four additive lit bands outside the window's edges, each
 -- fading out away from it. Made once per window, shown only while dragging.
 local GLOW = 28
 local SNAP = 16   -- px: the light snap to the nearest grid line on release (each axis on its own)
@@ -461,6 +464,71 @@ local WASH, WASH_LIT = 0.12, 0.25
 local EDGE, EDGE_LIT = 0.45, 0.9
 local STRIP = 22   -- px: the height of a grab that is only a strip along a window's top edge
 
+-- The unlocked state's colours are the palette's (0.14.0; they were the
+-- game's own gold and black): every gold is the selected trim at full
+-- brightness (Tint.Lit: its brightest channel at 1 -- the glow and the lit
+-- rail ADD their light, the washes and lines are faint, so they keep the
+-- strength they had and take the palette's hue), every dark veil the sunk
+-- panel's dark. A plain palette colour (a veil's dark, the plates' ground
+-- and words) is painted by its key through the addon's one registry
+-- (Tint.Paint: Kit:Paint, which paints it again on the bus's 'palette');
+-- the lit golds and the glows' gradients are derived, so they are painted
+-- here when made and again on 'palette' (Tint.Repaint, the listener at the
+-- end of this file).
+--   Tint.washes   each grab's repaint (HandleWash), in the order made
+--   Tint.glows    each window's outer glow (OuterGlow)
+--   Tint.inner, Tint.outer   the glows' two gradient colours (made once,
+--                            set again for each glow: SetGradient reads them)
+--   Tint.paintedFrom         the palette the lit pieces were last painted from
+local Tint = { washes = {}, glows = {} }
+
+-- a plain palette colour by its key (MelloUI.Widgets.Paint -> Kit:Paint);
+-- how: "fill" or "text". Without the kit's registry it is painted once.
+function Tint.Paint(region, key, how, alpha)
+	local W, K = MelloUI.Widgets, MelloUI.Kit
+	if W and W.Paint and K and K.Paint then
+		W.Paint(region, key, how, alpha)
+		return
+	end
+	local c = MelloUI.Palette[key]
+	if how == "text" then
+		region:SetTextColor(c[1], c[2], c[3], alpha or 1)
+	else
+		region:SetColorTexture(c[1], c[2], c[3], alpha or 1)
+	end
+end
+
+-- a palette colour at full brightness: r, g, b, the brightest of them 1
+function Tint.Lit(key)
+	local c = MelloUI.Palette[key]
+	local m = math.max(c[1], c[2], c[3])
+	if m <= 0 then
+		return 1, 1, 1
+	end
+	return c[1] / m, c[2] / m, c[3] / m
+end
+
+-- an outer glow's four bands, each fading out away from the window
+function Tint.Glow(glow)
+	local r, g, b = Tint.Lit("selectedTrim")
+	local inner, outer = Tint.inner, Tint.outer
+	if not inner then
+		inner, outer = CreateColor(r, g, b, 0.7), CreateColor(r, g, b, 0)
+		Tint.inner, Tint.outer = inner, outer
+	else
+		-- (a ColorMixin's own fields, as its SetRGBA sets them)
+		inner.r, inner.g, inner.b, inner.a = r, g, b, 0.7
+		outer.r, outer.g, outer.b, outer.a = r, g, b, 0
+	end
+	for _, band in ipairs(glow.bands) do
+		if band.fromInner then
+			band.tex:SetGradient(band.orientation, inner, outer)
+		else
+			band.tex:SetGradient(band.orientation, outer, inner)
+		end
+	end
+end
+
 local function OuterGlow(frame, mover)
 	if mover.glow then
 		return mover.glow
@@ -471,19 +539,14 @@ local function OuterGlow(frame, mover)
 	glow:SetPoint("TOPLEFT", frame, "TOPLEFT", -GLOW, GLOW)
 	glow:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", GLOW, -GLOW)
 	glow:EnableMouse(false)
-	local inner = CreateColor(1, 0.8, 0.3, 0.7)
-	local outer = CreateColor(1, 0.8, 0.3, 0)
+	glow.bands = {}
 	local function Band(point1, point2, orientation, fromInner)
 		local tex = glow:CreateTexture(nil, "BACKGROUND")
 		tex:SetColorTexture(1, 1, 1, 1)
 		tex:SetBlendMode("ADD")
 		tex:SetPoint(point1[1], frame, point1[2], point1[3], point1[4])
 		tex:SetPoint(point2[1], frame, point2[2], point2[3], point2[4])
-		if fromInner then
-			tex:SetGradient(orientation, inner, outer)
-		else
-			tex:SetGradient(orientation, outer, inner)
-		end
+		glow.bands[#glow.bands + 1] = { tex = tex, orientation = orientation, fromInner = fromInner }
 		return tex
 	end
 	-- top: from the window's top edge upward (VERTICAL runs bottom -> top)
@@ -494,8 +557,10 @@ local function OuterGlow(frame, mover)
 	Band({ "TOPRIGHT", "TOPLEFT", 0, 0 }, { "BOTTOMLEFT", "BOTTOMLEFT", -GLOW, 0 }, "HORIZONTAL", false)
 	-- right: rightward
 	Band({ "TOPLEFT", "TOPRIGHT", 0, 0 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", GLOW, 0 }, "HORIZONTAL", true)
+	Tint.Glow(glow)
 	glow:Hide()
 	mover.glow = glow
+	Tint.glows[#Tint.glows + 1] = glow
 	return glow
 end
 
@@ -523,6 +588,7 @@ local function DrawGrid(parent)
 	local pool, used = parent.gridLines, 0
 	parent.gridW, parent.gridH = w, h
 	local cx, cy = w / 2, h / 2
+	local r, g, b = Tint.Lit("selectedTrim")   -- (the centre lines)
 	local function Line(vertical, offset, centre)
 		used = used + 1
 		local tex = pool[used]
@@ -533,7 +599,13 @@ local function DrawGrid(parent)
 		tex:ClearAllPoints()
 		tex:Show()
 		if centre then
-			tex:SetColorTexture(1, 0.82, 0, 0.55)
+			tex:SetColorTexture(r, g, b, 0.55)
+			-- (kept: a new palette recolours these two, Tint.Veil)
+			if vertical then
+				parent.centreV = tex
+			else
+				parent.centreH = tex
+			end
 		else
 			tex:SetColorTexture(1, 1, 1, 0.08)
 		end
@@ -592,23 +664,39 @@ local function SnapTarget(offset)
 	return nil
 end
 
+-- the veil's snap lines and the grid's two centre lines, lit (its dark is
+-- the sunk panel's, by key: Tint.Paint when it is made)
+function Tint.Veil()
+	if not veil then
+		return
+	end
+	local r, g, b = Tint.Lit("selectedTrim")
+	veil.hlX:SetColorTexture(r, g, b, 0.9)
+	veil.hlY:SetColorTexture(r, g, b, 0.9)
+	if veil.centreV then
+		veil.centreV:SetColorTexture(r, g, b, 0.55)
+	end
+	if veil.centreH then
+		veil.centreH:SetColorTexture(r, g, b, 0.55)
+	end
+end
+
 local function Veil(frame, on)
 	if on then
 		if not veil then
 			veil = CreateFrame("Frame", nil, UIParent)
 			veil:SetAllPoints(UIParent)
 			veil:EnableMouse(false)
-			local tex = veil:CreateTexture(nil, "BACKGROUND")
-			tex:SetAllPoints()
-			tex:SetColorTexture(0, 0, 0, 0.6)
+			veil.scrim = veil:CreateTexture(nil, "BACKGROUND")
+			veil.scrim:SetAllPoints()
+			Tint.Paint(veil.scrim, "innerPanel", "fill", 0.6)
 			pcall(DrawGrid, veil)
 			-- the lines the window would snap to, lit while it is near them
 			veil.hlX = veil:CreateTexture(nil, "ARTWORK")
-			veil.hlX:SetColorTexture(1, 0.9, 0.4, 0.9)
 			veil.hlX:SetSize(3, UIParent:GetHeight())
 			veil.hlY = veil:CreateTexture(nil, "ARTWORK")
-			veil.hlY:SetColorTexture(1, 0.9, 0.4, 0.9)
 			veil.hlY:SetSize(UIParent:GetWidth(), 3)
+			Tint.Veil()
 		end
 		-- the screen is another size in UI units since the grid was drawn
 		-- (the UI scale or the resolution changed): drawn again for it
@@ -675,10 +763,11 @@ local function Light(shell, on, frame, mover)
 	end
 	local outer = shell.outer
 	if outer and outer.skin and outer.skin.art then
+		local r, g, b = Tint.Lit("selectedTrim")
 		for _, tex in ipairs(outer.skin.art) do
 			if on then
 				tex:SetBlendMode("ADD")
-				tex:SetVertexColor(1, 0.85, 0.35)
+				tex:SetVertexColor(r, g, b)
 			else
 				tex:SetBlendMode("BLEND")
 				tex:SetVertexColor(1, 1, 1)
@@ -812,17 +901,18 @@ do
 
 	-- a plate in the palette: the window's ground, a trim edge (the selected
 	-- trim at exactly 100 %), the size in the kit's title face and gold, the
-	-- hint in body text; at the tooltip strata, over the darkened grid
+	-- hint in body text; at the tooltip strata, over the darkened grid.
+	-- Every colour by its key (Tint.Paint: a new palette paints them again;
+	-- 0.14.0: it kept the colours of the palette it was made in), the
+	-- edges' key chosen at every show (Fill)
 	local function Build()
-		local P = MelloUI.Palette
 		tip = CreateFrame("Frame", nil, UIParent)
 		tip:SetFrameStrata("TOOLTIP")
 		tip:SetClampedToScreen(true)
 		tip:EnableMouse(false)
 		tip:Hide()
-		local fill = tip:CreateTexture(nil, "BACKGROUND")
-		fill:SetAllPoints()
-		fill:SetColorTexture(P.mainWindow[1], P.mainWindow[2], P.mainWindow[3], 0.94)
+		tip.fill = tip:CreateTexture(nil, "BACKGROUND")
+		tip.fill:SetAllPoints()
 		tip.edges = {}
 		for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
 			{ "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
@@ -839,17 +929,18 @@ do
 		end
 		tip.value = tip:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 		tip.value:SetPoint("TOP", tip, "TOP", 0, -7)
-		tip.value:SetTextColor(P.selectedTrim[1], P.selectedTrim[2], P.selectedTrim[3])
 		if MelloUI.Kit and MelloUI.Kit.TitleFont then
 			pcall(MelloUI.Kit.TitleFont, MelloUI.Kit, tip.value, true)
 		end
 		tip.hint = tip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		tip.hint:SetPoint("TOP", tip.value, "BOTTOM", 0, -4)
-		tip.hint:SetTextColor(P.text[1], P.text[2], P.text[3])
 		-- a line of its own, so each is measured on its own for the width
 		tip.note = tip:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		tip.note:SetPoint("TOP", tip.hint, "BOTTOM", 0, -2)
-		tip.note:SetTextColor(P.text[1], P.text[2], P.text[3])
+		Tint.Paint(tip.fill, "mainWindow", "fill", 0.94)
+		Tint.Paint(tip.value, "selectedTrim", "text")
+		Tint.Paint(tip.hint, "text", "text")
+		Tint.Paint(tip.note, "text", "text")
 		Perf.SetScript(tip, "OnUpdate", function(self, elapsed)
 			Place()
 			if hold then
@@ -867,7 +958,6 @@ do
 	end
 
 	local function Fill(mover, percent)
-		local P = MelloUI.Palette
 		local standard = percent == 100
 		tip.value:SetFormattedText("Size %d%%", percent)
 		local note = nil
@@ -881,9 +971,9 @@ do
 		end
 		tip.note:SetText(note or "")
 		tip.note:SetShown(note ~= nil)
-		local edge = standard and P.selectedTrim or P.trim
+		local edge = standard and "selectedTrim" or "trim"
 		for _, t in ipairs(tip.edges) do
-			t:SetColorTexture(edge[1], edge[2], edge[3], 1)
+			Tint.Paint(t, edge, "fill", 1)
 		end
 		local w = math.max(tip.value:GetStringWidth() or 0, tip.hint:GetStringWidth() or 0, note and tip.note:GetStringWidth() or 0)
 		local h = (tip.value:GetStringHeight() or 16) + (tip.hint:GetStringHeight() or 10) + (note and (tip.note:GetStringHeight() or 10) + 2 or 0)
@@ -1209,12 +1299,10 @@ local function HandleWash(mover, handle)
 	if handle ~= mover.frame then
 		fill = handle:CreateTexture(nil, "OVERLAY", nil, 7)
 		fill:SetAllPoints(handle)
-		fill:SetColorTexture(1, 0.82, 0, WASH)
 	end
 	local edges = {}
 	local function Edge(a, b, w, h)
 		local t = handle:CreateTexture(nil, "OVERLAY", nil, 7)
-		t:SetColorTexture(1, 0.82, 0, EDGE)
 		t:SetPoint(a, handle, a)
 		t:SetPoint(b, handle, b)
 		if w then
@@ -1230,13 +1318,16 @@ local function HandleWash(mover, handle)
 	Edge("TOPLEFT", "BOTTOMLEFT", 1, nil)
 	Edge("TOPRIGHT", "BOTTOMRIGHT", 1, nil)
 	local function Lit(on)
+		local r, g, b = Tint.Lit("selectedTrim")
 		if fill then
-			fill:SetColorTexture(1, 0.82, 0, on and WASH_LIT or WASH)
+			fill:SetColorTexture(r, g, b, on and WASH_LIT or WASH)
 		end
 		for _, edge in ipairs(edges) do
-			edge:SetColorTexture(1, 0.82, 0, on and EDGE_LIT or EDGE)
+			edge:SetColorTexture(r, g, b, on and EDGE_LIT or EDGE)
 		end
 	end
+	Lit(false)
+	Tint.washes[#Tint.washes + 1] = Lit
 	-- hooked, not set: a handle that is a kit plate has its own scripts
 	-- ... and the size readout while the mouse is on it, for a window that
 	-- is not at its standard size (user, 2026-09-24)
@@ -1591,6 +1682,18 @@ end)
 local ApplyUnlock   -- below
 local banner
 
+-- the plate's lines, lit (its dark and its words are painted by key when
+-- it is made: Tint.Paint)
+function Tint.Banner()
+	if not banner then
+		return
+	end
+	local r, g, b = Tint.Lit("selectedTrim")
+	for _, t in ipairs(banner.lines) do
+		t:SetColorTexture(r, g, b, 0.5)
+	end
+end
+
 local function UnlockBanner(on)
 	if not on then
 		if banner then
@@ -1604,13 +1707,12 @@ local function UnlockBanner(on)
 		banner:SetPoint("TOP", UIParent, "TOP", 0, -150)
 		banner:SetFrameStrata("DIALOG")
 		banner:SetClampedToScreen(true)
-		local back = banner:CreateTexture(nil, "BACKGROUND")
-		back:SetAllPoints(banner)
-		back:SetColorTexture(0, 0, 0, 0.75)
+		banner.back = banner:CreateTexture(nil, "BACKGROUND")
+		banner.back:SetAllPoints(banner)
 		-- drawn from plain textures, never a backdrop: this sits over the HUD
+		banner.lines = {}
 		local function Line(a, b, w, h)
 			local t = banner:CreateTexture(nil, "BORDER")
-			t:SetColorTexture(1, 0.82, 0, 0.5)
 			t:SetPoint(a, banner, a)
 			t:SetPoint(b, banner, b)
 			if w then
@@ -1619,6 +1721,7 @@ local function UnlockBanner(on)
 			if h then
 				t:SetHeight(h)
 			end
+			banner.lines[#banner.lines + 1] = t
 		end
 		Line("TOPLEFT", "TOPRIGHT", nil, 1)
 		Line("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1)
@@ -1626,7 +1729,12 @@ local function UnlockBanner(on)
 		Line("TOPRIGHT", "BOTTOMRIGHT", 1, nil)
 		local text = banner:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		text:SetPoint("CENTER", banner, "CENTER", 0, 0)
-		text:SetText("Windows unlocked: drag a gold band, wheel to scale.  |cffffd200Click here to lock them|r")
+		text:SetText("Windows unlocked: drag a lit band, wheel to scale.  Click here to lock them")
+		banner.text = text
+		-- (its dark and its words, one colour as the game's gold was)
+		Tint.Paint(banner.back, "innerPanel", "fill", 0.75)
+		Tint.Paint(text, "selectedTrim", "text")
+		Tint.Banner()
 		Perf.SetScript(banner, "OnClick", function()
 			-- the setting itself is changed, so the configurator's toggle and
 			-- the grabs follow through OnSettingChanged
@@ -2087,7 +2195,11 @@ local function ApplyPreload(db, on)
 		return
 	end
 	local files = {}
+	-- (the look held: the palette and the Kit Colours it was preloaded for)
+	Tint.preloaded, Tint.preloadedColours = nil, nil
 	if on and db.preloadArt ~= false and db.reskin ~= false then
+		Tint.preloaded = MelloUI:PaletteId()
+		Tint.preloadedColours = Kit.BorderValue and Kit:BorderValue("colours")
 		files = Kit:KitFiles()
 		local function Walk(t)
 			for _, v in pairs(t) do
@@ -2198,6 +2310,25 @@ local function StoreReplaced(store)
 	end
 end
 
+-- every lit piece of the unlocked state made so far, in the palette as it
+-- is now (the ones painted by key follow through Kit:Paint's own listener);
+-- nothing made per piece; nothing at all while the palette is the one they
+-- were painted from (a Kit Colours change fires 'palette' too)
+function Tint.Repaint()
+	if MelloUI.Palette == Tint.paintedFrom then
+		return
+	end
+	Tint.paintedFrom = MelloUI.Palette
+	for i = 1, #Tint.washes do
+		Tint.washes[i](false)
+	end
+	for i = 1, #Tint.glows do
+		Tint.Glow(Tint.glows[i])
+	end
+	Tint.Veil()
+	Tint.Banner()
+end
+
 -- a change reaches OnSettingChanged, and a profile load OnEnable, only while
 -- the module is on: the bus's 'setting' and 'restart' (fired at the end of
 -- NotifySettingChanged and RestartModules, where the hooks on them ran;
@@ -2209,6 +2340,60 @@ MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key, va
 		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
 	elseif key == "positions" then
 		StoreReplaced(value)
+	elseif key == "palette" then
+		-- (Core swaps the palette, the kit's art follows: 'border', then
+		-- the one 'palette')
+		MelloUI:SetPalette(value)
+	elseif key == "kitColours" and M.isEnabled then
+		Tint.KitColours()
+	end
+end), M)
+-- The Kit Colours set inside a Batch (the installer's Install or Revert)
+-- are applied here, once its held 'setting' goes out (OnSettingChanged
+-- leaves them while it runs): with a palette held in the same Batch the
+-- one switch takes both (MelloUI:SetPalette: one walk over the kit's
+-- textures, one 'palette'), whichever of the two was set first. Outside a
+-- Batch OnSettingChanged has applied them already: nothing is left here.
+function Tint.KitColours()
+	if not (Kit and Kit.ApplyBorder and Kit.BorderValue) then
+		return
+	end
+	local stored = M.db and M.db.palette
+	if MelloUI.Palettes[stored] == nil or stored == "order" then
+		stored = "ember"
+	end
+	if stored ~= MelloUI:PaletteId() then
+		MelloUI:SetPalette(stored)   -- (its walk reads the new Kit Colours as well)
+		return
+	end
+	local applied = type(Kit.borderApplied) == "table" and Kit.borderApplied.colours or nil
+	if applied ~= Kit:BorderValue("colours") then
+		Kit:ApplyBorder("colours")
+	end
+end
+-- The palette switched (or the Kit Colours): the unlocked state's pieces
+-- made so far painted again (Tint), and the preloaded art held for the look
+-- now drawn (0.14.0: the last look's files stayed held, and the new look's
+-- first draw came in late) -- only while the preload is on and the look
+-- is another one than the one preloaded.
+-- (a frame after the switch: the kit's own walk over its textures has the
+-- switch's frame; asked again then, as a restart in between -- a profile
+-- load's, whose OnEnable preloads -- may have made it for this look)
+function Tint.LookMoved()
+	if not (M.isEnabled and M.db and Tint.preloaded and Kit and Kit.BorderValue) then
+		return false
+	end
+	return MelloUI:PaletteId() ~= Tint.preloaded or Kit:BorderValue("colours") ~= Tint.preloadedColours
+end
+function Tint.PreloadAgain()
+	if Tint.LookMoved() then
+		ApplyPreload(M.db, true)
+	end
+end
+MelloUI:On("palette", Perf.Shared("'palette' on the bus", function()
+	Tint.Repaint()
+	if Tint.LookMoved() then
+		Kit:NextFrame("UIModifications preload", Tint.PreloadAgain)
 	end
 end), M)
 MelloUI:On("restart", Perf.Shared("'restart' on the bus", function()
@@ -2313,6 +2498,8 @@ function M:OnSettingChanged(key, value, db)
 		-- read live by Kit:IsOn("questTracker"), which looks again on the
 		-- bus's 'setting' of this module (and tells 'look:questTracker')
 		return
+	elseif key == "palette" then
+		return   -- applied from the bus's 'setting', module on or off (MelloUI:SetPalette)
 	elseif key:sub(1, 10) == "parchment_" then
 		if MelloUI.Kit and MelloUI.Kit.SetParchment then
 			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)
@@ -2321,7 +2508,11 @@ function M:OnSettingChanged(key, value, db)
 	elseif MelloUI.Kit and MelloUI.Kit.borderKinds then
 		for _, k in ipairs(MelloUI.Kit.borderKinds) do
 			if key == k.key then
-				MelloUI.Kit:ApplyBorder(k.kind)
+				-- (the Kit Colours in a Batch: at its end, with a palette
+				-- set in it, Tint.KitColours)
+				if not (k.kind == "colours" and MelloUI.InBatch and MelloUI:InBatch()) then
+					MelloUI.Kit:ApplyBorder(k.kind)
+				end
 				return
 			end
 		end

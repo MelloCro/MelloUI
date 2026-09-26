@@ -741,27 +741,28 @@ local function FullSize()
 	return 12
 end
 
-local function Tone(key, fallback)
-	local P = MelloUI.Palette
-	local c = P and P[key] or fallback
+-- (read from the palette as it is now; a new palette puts every look on
+-- again, OnPalette below)
+local function Tone(key)
+	local c = MelloUI.Palette[key]
 	return c[1], c[2], c[3]
 end
 
 local function LookColour(role, r, g, b)
 	if role == "heading" then
-		return Tone("selectedTrim", { 0.68, 0.52, 0.27 })
+		return Tone("selectedTrim")
 	end
 	local mx, mn = math.max(r, g, b), math.min(r, g, b)
 	local sat = mx > 0 and (mx - mn) / mx or 0
 	if sat < 0.25 then
 		if mx < 0.65 then
-			return Tone("mutedText", { 0.5, 0.41, 0.27 })   -- a greyed, disabled label
+			return Tone("mutedText")   -- a greyed, disabled label
 		end
-		return Tone("text", { 0.78, 0.69, 0.52 })
+		return Tone("text")
 	end
 	-- the interface's gold on a label: the text colour
 	if r >= 0.8 and g >= 0.6 and b <= 0.35 and g / r > 0.65 and g / r <= 0.9 then
-		return Tone("text", { 0.78, 0.69, 0.52 })
+		return Tone("text")
 	end
 	return r, g, b
 end
@@ -2056,11 +2057,26 @@ end
 --------------------------------------------------------------------------------
 -- Switching on and off
 --------------------------------------------------------------------------------
+
+-- A new palette (the bus's 'palette'): every label's look in its colours
+local function OnPalette()
+	if not active then
+		return
+	end
+	for fs, e in pairs(looks) do
+		if e.on then
+			ApplyLook(fs, e)
+		end
+	end
+end
+
 local function Activate()
 	if active or not Build() then
 		return
 	end
 	active = true
+	-- (heard from the first dressing on: nothing is listened to before)
+	MelloUI:On("palette", OnPalette, "Mail Kit palette")
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end

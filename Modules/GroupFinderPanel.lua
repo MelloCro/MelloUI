@@ -417,8 +417,9 @@ end
 
 -- A card lying on a dimmed list (a browse result, a who row) takes the main
 -- window's tone over its stone: a row a step lighter than the panel around
--- it, as 2e stripes rows.
-local CARD_TONE = MelloUI.Palette and MelloUI.Palette.mainWindow
+-- it, as 2e stripes rows. Its palette KEY (the kit paints it by the key, and
+-- again for a new palette; a table taken at load would be out of date).
+local CARD_TONE = "mainWindow"
 
 -- A page (LFGListingFrame / LFGBrowseFrame / LFGWhoListFrame, each a
 -- PortraitFrameTemplateNoCloseButton): its shell, the ring on the parent's eye.
@@ -473,7 +474,7 @@ local function SkinBrowseRow(row)
 		-- activity and the comment must not lie on the plain stone; the
 		-- grouping header is a plate and takes no `dim`)
 		row.melloRep = Replace(row.ResultBG, { as = isHeader and "LFGBrowse-Grouping" or "LFGBrowse-Result", rect = row, button = row,
-			dim = (CARD_TONE and not isHeader) and 0.85 or nil, dimColor = CARD_TONE,
+			dim = (not isHeader) and 0.85 or nil, dimColor = CARD_TONE,
 			checked = function() return row.Selected and row.Selected:IsShown() or false end,
 			alsoFade = { row.Highlight, row.GetHighlightTexture and row:GetHighlightTexture() or nil } }) or false
 	end
@@ -498,7 +499,7 @@ local function SkinWhoRow(row)
 	if row.Background then
 		-- the row's card in the main window's tone (2e), as the browse results
 		row.melloRep = Replace(row.Background, { as = "common-button-list-large", rect = row, button = row,
-			dim = CARD_TONE and 0.85 or nil, dimColor = CARD_TONE,
+			dim = 0.85, dimColor = CARD_TONE,
 			checked = function() return row.Selected and row.Selected:IsShown() or false end,
 			alsoFade = { row.GetHighlightTexture and row:GetHighlightTexture() or nil } }) or false
 	end

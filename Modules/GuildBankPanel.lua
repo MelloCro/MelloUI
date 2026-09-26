@@ -1203,8 +1203,7 @@ local function SkinTextAreas(f)
 	if area and not skin.band then
 		local tex = f:CreateTexture(nil, "BACKGROUND", nil, 2)
 		tex.kitPiece = true
-		local c = MelloUI.Palette.innerPanel
-		tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
+		Kit:Paint(tex, "innerPanel", "fill", DIM_ALPHA)   -- (by its key: a new palette paints it again)
 		tex:Hide()
 		skin.band = tex
 		dims[#dims + 1] = { tex = tex, label = "bottom band (limit line, money)", host = f, band = true }
@@ -2012,6 +2011,17 @@ local function Refresh(full)
 	end)
 end
 
+-- A new palette (the bus's 'palette'): the text made readable in its text
+-- colour (the panels are painted by their key, Kit:Paint)
+local function OnPalette()
+	if not active then
+		return
+	end
+	for _, entry in ipairs(readable) do
+		ApplyReadable(entry, true)
+	end
+end
+
 local function Activate()
 	if active or not Window() then
 		return
@@ -2021,6 +2031,8 @@ local function Activate()
 		return
 	end
 	active = true
+	-- (heard from the first dressing on: nothing is listened to before)
+	MelloUI:On("palette", OnPalette, "Guild Bank Kit palette")
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end

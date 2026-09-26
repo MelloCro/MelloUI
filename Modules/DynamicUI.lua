@@ -31,13 +31,17 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DynamicUI")
 local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
+-- every colour it draws by its palette key (W.Paint: a new palette paints it
+-- again), the tooltips from the palette when shown (W.ShowTooltip); Core's
+-- widget set, loaded before the modules
+local W = MelloUI.Widgets
 
 local D = {}
 MelloUI.DynamicUI = D
 
-local GOLD = { 1, 0.82, 0 }
 local TILE = 52            -- a preview tile's picture, UI px
 local TILE_STEP = 78       -- tile to tile
+local NONE_DIM = 0.45      -- the "None" tile's stone, darkened to this much of its light
 local SAMPLE_ICON = "Interface\\Icons\\INV_Sword_04"
 
 local running = false
@@ -74,9 +78,10 @@ local function Framed(f)
 		f.kitSkin = Kit:NineSlice(f, { prefix = "window/single", scale = Kit.scale * (Kit.frameScale or 1.6), gems = false, body = true })
 	end)
 	if not (ok and f.kitSkin) then
+		-- (the palette's inner panel, as the kit's path lays over its stone)
 		local bg = f:CreateTexture(nil, "BACKGROUND")
 		bg:SetAllPoints()
-		bg:SetColorTexture(0.06, 0.055, 0.05, 0.94)
+		W.Paint(bg, "innerPanel", "fill", 0.94)
 		return
 	end
 	-- its texts (the pickers' headings, current values and tile names, the
@@ -101,12 +106,13 @@ local function Button(parent, text, width)
 	return b
 end
 
--- A gold outline (and a faint gold fill) on a frame, shown on demand
+-- A gold outline (and a faint gold fill) on a frame, shown on demand: the
+-- palette's gold (its selected trim)
 local function Outline(f, thickness, fill)
 	local o = {}
 	local function Edge(a, b, w, h)
 		local t = f:CreateTexture(nil, "OVERLAY", nil, 7)
-		t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.95)
+		W.Paint(t, "selectedTrim", "fill", 0.95)
 		t:SetPoint(a, f, a)
 		t:SetPoint(b, f, b)
 		if w then t:SetWidth(w) end
@@ -120,7 +126,7 @@ local function Outline(f, thickness, fill)
 	if fill then
 		local t = f:CreateTexture(nil, "OVERLAY", nil, 6)
 		t:SetAllPoints()
-		t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], fill)
+		W.Paint(t, "selectedTrim", "fill", fill)
 		o[#o + 1] = t
 	end
 	return function(shown)
@@ -131,8 +137,9 @@ local function Outline(f, thickness, fill)
 end
 
 --------------------------------------------------------------------------------
--- The veil: the world darkens (a black sheet at the very bottom of the UI:
--- every window and bar stays bright over it), as while a window is dragged
+-- The veil: the world darkens (a dark sheet at the very bottom of the UI:
+-- every window and bar stays bright over it), as while a window is dragged;
+-- the palette's darkest tone (its inner panel)
 --------------------------------------------------------------------------------
 
 local function ShowVeil(on)
@@ -144,7 +151,7 @@ local function ShowVeil(on)
 		veil:EnableMouse(false)
 		local tex = veil:CreateTexture(nil, "BACKGROUND")
 		tex:SetAllPoints()
-		tex:SetColorTexture(0, 0, 0, 0.6)
+		W.Paint(tex, "innerPanel", "fill", 0.6)
 	end
 	if veil then
 		veil:SetShown(on and true or false)
@@ -225,11 +232,12 @@ local function DrawPreview(tile, kind, choice)
 		strip:SetHeight(strip.height)
 		strip:FitCaps(TILE - 4)
 		strip:Show()
+		-- (the fill in the palette's gold: a sample, not a bar's meaning)
 		local fill = Layer(2, 1)
 		fill:ClearAllPoints()
 		fill:SetPoint("LEFT", tile.pic, "LEFT", 4, 0)
 		fill:SetSize((TILE - 8) * 0.66, TILE * 0.36 * 0.5)
-		fill:SetColorTexture(0.16, 0.6, 0.24, 1)
+		W.Paint(fill, "selectedTrim", "fill", 1)
 	elseif kind == "frame" then
 		-- the border piece itself: its corner gems and rim round the stone
 		local back = Layer(1, 0)
@@ -246,7 +254,9 @@ local function DrawPreview(tile, kind, choice)
 		elseif choice.piece then
 			Kit:Apply(Layer(2, 2), choice.piece)
 		else
-			back:SetVertexColor(0.45, 0.45, 0.45)
+			-- no border: the stone darkened (a dim of the art's light, as the
+			-- kit's `dim`; the recoloured stone keeps its palette's hue)
+			back:SetVertexColor(NONE_DIM, NONE_DIM, NONE_DIM)
 			tile.none:Show()
 		end
 	else
@@ -257,7 +267,8 @@ local function DrawPreview(tile, kind, choice)
 			Kit:Apply(back, choice.piece)
 			Kit:Retile(back)
 		elseif choice.value == "dark" then
-			back:SetColorTexture(0.05, 0.045, 0.04, 0.88)
+			-- the Dark background: the palette's inner panel
+			W.Paint(back, "innerPanel", "fill", 0.88)
 		else
 			back:Hide()
 			tile.none:Show()
@@ -274,9 +285,9 @@ local function RefreshMarks(panel)
 		for _, tile in ipairs(section.tiles) do
 			local on = tile.choice.value == current
 			tile.mark(on)
-			-- the palette's text, its gold on the chosen one (WINDOW-RULES 2e)
-			local c = on and MelloUI.Palette.selectedTrim or MelloUI.Palette.text
-			tile.label:SetTextColor(c[1], c[2], c[3])
+			-- the palette's text, its gold on the chosen one (WINDOW-RULES 2e),
+			-- by key: a new palette paints it again
+			W.Paint(tile.label, on and "selectedTrim" or "text", "text")
 		end
 		local label = "?"
 		for _, tile in ipairs(section.tiles) do
@@ -356,11 +367,8 @@ local function BuildPanel(group)
 		s.current:SetPoint("LEFT", head, "RIGHT", 6, 0)
 		-- the heading in the palette's gold, the current choice in its text
 		-- colour, on the dark panel (WINDOW-RULES 2e)
-		local pal = MelloUI.Palette
-		if pal then
-			head:SetTextColor(pal.selectedTrim[1], pal.selectedTrim[2], pal.selectedTrim[3])
-			s.current:SetTextColor(pal.text[1], pal.text[2], pal.text[3])
-		end
+		W.Paint(head, "selectedTrim", "text")
+		W.Paint(s.current, "text", "text")
 		for i, choice in ipairs(section.choices or {}) do
 			local tile = CreateFrame("Button", nil, f)
 			tile:SetSize(TILE + 8, TILE + 8)
@@ -372,7 +380,7 @@ local function BuildPanel(group)
 			tile.none = tile.pic:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 			tile.none:SetPoint("CENTER")
 			tile.none:SetText("None")
-			tile.none:SetTextColor(0.7, 0.7, 0.7)
+			W.Paint(tile.none, "text", "text")
 			tile.choice = choice
 			tile.label = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 			tile.label:SetPoint("TOP", tile, "BOTTOM", 0, -1)
@@ -389,10 +397,7 @@ local function BuildPanel(group)
 			local tipLine = "Click to put it on the " .. group.title:lower() .. "."
 			Perf.SetScript(tile, "OnEnter", function(self)
 				self.hover(true)
-				GameTooltip:SetOwner(self, "ANCHOR_TOP")
-				GameTooltip:SetText(tipTitle, 1, 0.82, 0)
-				GameTooltip:AddLine(tipLine, 0.9, 0.9, 0.9)
-				GameTooltip:Show()
+				W.ShowTooltip(self, tipTitle, tipLine, nil, "ANCHOR_TOP")
 			end)
 			Perf.SetScript(tile, "OnLeave", function(self)
 				self.hover(false)
@@ -478,10 +483,8 @@ local function Catcher(id, i)
 		-- the group's title and hint as the catcher was placed (ArmCatchers):
 		-- a hover no longer asks every panel for its groups
 		local group = rawget(self, "melloGroup") or GroupInfo(id)   -- (a field of our own, never a method)
-		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText(group and group.title or "", 1, 0.82, 0)
-		GameTooltip:AddLine(group and group.hint or "Click to choose the button border, the backdrop and the backgrounds.", 0.9, 0.9, 0.9, true)
-		GameTooltip:Show()
+		W.ShowTooltip(self, group and group.title or "", group and group.hint or "Click to choose the button border, the backdrop and the backgrounds.",
+			nil, "ANCHOR_TOP")
 	end)
 	Perf.SetScript(c, "OnLeave", function()
 		Light(openId)   -- back to the group whose selector is open, if any
@@ -538,8 +541,9 @@ local DD_W = 200
 -- depth (user, 2026-09-24: "too much small text over a plain brown border
 -- is just an eye strain"): each column on a dark panel of the palette (the
 -- inner panel inside the kit's single rail), its rows striped, the text at
--- the interface's full size in the palette's text colour
-local PAL = MelloUI.Palette
+-- the interface's full size in the palette's text colour (every colour by
+-- its key, W.Paint: never a copy of the palette taken when the file loads,
+-- which a palette chosen in the settings would find out of date)
 local PANEL_M, PANEL_GAP, PANEL_PAD = 18, 16, 14   -- outer margin, gap between the columns, text inset in a panel
 local COL_W = (OVERVIEW_W - 2 * PANEL_M - PANEL_GAP) / 2
 
@@ -589,6 +593,34 @@ local function UMValue(key, default)
 	return v
 end
 
+-- The Kit Colours row: its choices are the palette in use's (Kit.colourLooks,
+-- the kit fills the same table again on a switch). A stored choice the
+-- palette does not offer (a Bronze kept from Ember, under another palette)
+-- shows as the choice drawn from the same folder (Kit:ColourLookShown, the
+-- kit's one answer): that palette's own kit.
+local function ColoursShown(k)
+	local value = Kit:BorderValue(k.kind)   -- (the kit's reading: its choices put in place for the palette)
+	local look = Kit:ColourLookShown()
+	return look and look.value or value
+end
+
+-- Its boxes (one per overview laid) make their menu again for a new
+-- palette, whose choices have other names: at the next start after one,
+-- and at once while the picker runs (the bus's 'palette', taken with the
+-- picker's other listener). `palette` the table they were made for
+-- (MelloUI.Palette is a new table on every switch).
+local looks = { boxes = {}, palette = nil }
+local function LooksFollow()
+	if looks.palette == MelloUI.Palette then
+		return
+	end
+	looks.palette = MelloUI.Palette
+	for _, dd in ipairs(looks.boxes) do
+		dd.shownValue = dd   -- (equal to no setting: the next refresh makes it)
+		dd:Refresh()
+	end
+end
+
 -- A switch row (a kit check box when the kit is there)
 local function Check(parent, label, getValue, onPick)
 	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
@@ -600,9 +632,7 @@ local function Check(parent, label, getValue, onPick)
 	fs:SetPoint("LEFT", cb, "RIGHT", 4, 0)
 	fs:SetJustifyH("LEFT")
 	fs:SetText(label)
-	if PAL and PAL.text then
-		fs:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])
-	end
+	W.Paint(fs, "text", "text")
 	Perf.SetScript(cb, "OnClick", function(self)
 		onPick(self:GetChecked() and true or false)
 	end)
@@ -687,9 +717,7 @@ local function FillOverview(f, body, offer)
 		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		fs:SetPoint("TOPLEFT", x, y)
 		fs:SetText(text)
-		if PAL and PAL.selectedTrim then
-			fs:SetTextColor(PAL.selectedTrim[1], PAL.selectedTrim[2], PAL.selectedTrim[3])
-		end
+		W.Paint(fs, "selectedTrim", "text")
 		return fs
 	end
 	local function Row(label, x, y, getValue, choices, onPick, side)
@@ -698,9 +726,7 @@ local function FillOverview(f, body, offer)
 		fs:SetWidth(COL_W - DD_W - PANEL_PAD * 2 - 8)
 		fs:SetJustifyH("LEFT")
 		fs:SetText(label)
-		if PAL and PAL.text then
-			fs:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])
-		end
+		W.Paint(fs, "text", "text")
 		local dd = Dropdown(body, getValue, choices, onPick)
 		dd:SetPoint("TOPLEFT", x + COL_W - DD_W - PANEL_PAD * 2, y - 2)
 		body.dropdowns[#body.dropdowns + 1] = dd
@@ -715,13 +741,18 @@ local function FillOverview(f, body, offer)
 	Heading("Borders (every window)", left, top)
 	local y = top - 24
 	for _, k in ipairs(Kit and Kit.borderKinds or {}) do
-		Row(k.name, left, y, function() return UMValue(k.key, k.default) end, k.values, function(v)
+		local colours = k.kind == "colours"
+		local dd = Row(k.name, left, y, colours and function() return ColoursShown(k) end or function() return UMValue(k.key, k.default) end,
+			k.values, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", k.key, v)
 			MelloUI:PlayUISound("option_on")
 			if f.Refresh then
 				f:Refresh()
 			end
 		end, "left")
+		if colours then
+			looks.boxes[#looks.boxes + 1] = dd
+		end
 		y = y - ROW_H
 	end
 	-- the parchment sheets, two to a row
@@ -793,10 +824,9 @@ local function FillOverview(f, body, offer)
 		panel:SetPoint("TOPLEFT", f, "TOPLEFT", col.x, panelTop)
 		panel:SetSize(COL_W, panelTop - bottom + 6)
 		panel:EnableMouse(false)
-		local anchor = panel:CreateTexture(nil, "BACKGROUND")
-		anchor:SetAllPoints()
-		anchor:SetColorTexture(0, 0, 0, 0)
-		Replace(anchor, { as = "Professions-background-summarylist", rect = panel, parent = panel, level = -1 })
+		-- the box on the panel itself, standing in for nothing (the kit's
+		-- noFade: no invisible anchor needed)
+		Replace(panel, { as = "Professions-background-summarylist", rect = panel, parent = panel, level = -1, noFade = true })
 		-- (the L1 box lays the palette's inner panel over its stone itself:
 		-- its rule's `dim`, WINDOW-RULES 2e)
 		for i, ry in ipairs(col.rows) do
@@ -805,7 +835,7 @@ local function FillOverview(f, body, offer)
 				band:SetPoint("TOPLEFT", panel, "TOPLEFT", 6, ry - panelTop)
 				band:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -6, ry - panelTop)
 				band:SetHeight(ROW_H)
-				band:SetColorTexture(PAL.mainWindow[1], PAL.mainWindow[2], PAL.mainWindow[3], 0.85)
+				W.Paint(band, "mainWindow", "fill", 0.85)
 			end
 		end
 		Pause()
@@ -833,9 +863,7 @@ local function BuildPopup()
 	text:SetText("The look of the whole reskin in one place. The borders and colours go on every window at once; "
 		.. "for the backgrounds, move the mouse over your action bars, micro menu, bag bar, bags, character window, "
 		.. "minimap or an open professions window and click it to pick with pictures.")
-	if PAL and PAL.text then
-		text:SetTextColor(PAL.text[1], PAL.text[2], PAL.text[3])   -- on the dark panel (Framed), in the palette's text colour
-	end
+	W.Paint(text, "text", "text")   -- on the dark panel (Framed), in the palette's text colour
 	local done = Button(f, "Done", 100)
 	done:SetPoint("BOTTOM", 0, 16)
 	Perf.SetScript(done, "OnClick", function() D:Stop() end)
@@ -984,6 +1012,8 @@ function D:Start()
 	end
 	running = true
 	MelloUI:On("look:dynamicui", LookFollows, LOOK_OWNER)
+	MelloUI:On("palette", LooksFollow, LOOK_OWNER)
+	LooksFollow()   -- (a palette chosen since the last start; nothing when none was)
 	ShowVeil(true)
 	popup = popup or BuildPopup()
 	-- the content for what is on offer: laid before for the same offer, or
@@ -1029,6 +1059,7 @@ function D:Stop()
 	running = false
 	starting = nil
 	MelloUI:Off(LOOK_OWNER, "look:dynamicui")
+	MelloUI:Off(LOOK_OWNER, "palette")
 	ShowVeil(false)
 	for _, list in pairs(catchers) do
 		for _, c in ipairs(list) do

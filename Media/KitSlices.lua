@@ -2,8 +2,8 @@
 --
 -- One picture per rail family for the one-texture nine-slices (Kit:NineSlice while
 -- /mellokit slices is on): the four corners at the corners, whole repeats of each edge
--- between them, an empty middle. The same files in every look (Media\Kit,
--- Media\KitWarm, Media\KitBronze), each made from that look's own pieces.
+-- between them, an empty middle. The same files in every look (Media\Kit and each
+-- look's folder: KitWarm, KitBronze, Kit<Palette>), each made from that look's own pieces.
 --   texel   painted piece px per file texel (the pieces' 1 / density)
 --   corner  a corner's side in texels: all four margins
 --   grid    the picture's size in texels, at the top-left of its file

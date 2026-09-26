@@ -136,8 +136,10 @@ end
 
 -- A card lying on a dimmed list (the communities list's entries) takes the
 -- main window's tone over its stone: a row a step lighter than the panel
--- around it, as 2e stripes rows.
-local CARD_TONE = MelloUI.Palette and MelloUI.Palette.mainWindow
+-- around it, as 2e stripes rows. Its palette KEY (the kit paints it by the
+-- key, and again for a new palette; a table taken at load would be out of
+-- date).
+local CARD_TONE = "mainWindow"
 
 -- A text dropdown (WowStyle1DropdownTemplate: Background textholder, Arrow,
 -- Text): the dropdown plate (D1) on the button, its painted cap in place of
@@ -163,7 +165,7 @@ local function SkinListEntry(entry)
 		-- the card's stone in the main window's tone (2e: its name must not
 		-- lie on the plain stone; a step lighter than the dimmed list box)
 		entry.melloRep = Replace(entry.Background, { as = "CommunitiesListEntry", rect = entry, button = entry,
-			dim = CARD_TONE and 0.85 or nil, dimColor = CARD_TONE,
+			dim = 0.85, dimColor = CARD_TONE,
 			checked = function() return entry.Selection and entry.Selection:IsShown() or false end,
 			alsoFade = highlight and { highlight } or nil }) or false
 	end

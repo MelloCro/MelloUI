@@ -444,16 +444,28 @@ local function IsUnavailable(row, st)
 	return false
 end
 
--- The red of an unavailable row: the palette's selected-row red laid over
+-- The red of an unavailable row: the palette's selected-row colour laid over
 -- the plate as a hue (every colour MelloUI draws comes from the palette),
--- three quarters of the way, so the plate's own light and dark stay readable
+-- three quarters of the way, so the plate's own light and dark stay readable.
+-- Its brightest channel stays whole, so a blue or purple selection tints the
+-- way the red one does. Worked out from the palette as it is now (not once
+-- at load: a palette chosen in the settings comes later), into one table,
+-- again only for a new palette (a new palette is a new table)
 local WHITE = { 1, 1, 1 }
-local UNAVAILABLE_TINT = { 1, 0.5, 0.45 }
-do
-	local c = MelloUI.Palette and MelloUI.Palette.selectedTab
-	if c and c[1] and c[1] > 0 then
-		UNAVAILABLE_TINT = { 1, 1 - 0.75 * (1 - c[2] / c[1]), 1 - 0.75 * (1 - c[3] / c[1]) }
+local unavailableTint = { 1, 1, 1 }
+local tintFrom = nil   -- the palette table unavailableTint was worked out from
+
+local function UnavailableTint()
+	local palette = MelloUI.Palette
+	if palette ~= tintFrom then
+		tintFrom = palette
+		local c = palette.selectedTab
+		local top = math.max(c[1], c[2], c[3])
+		for i = 1, 3 do
+			unavailableTint[i] = top > 0 and 1 - 0.75 * (1 - c[i] / top) or 1
+		end
 	end
+	return unavailableTint
 end
 
 local function TintPlate(rep, red)
@@ -461,7 +473,7 @@ local function TintPlate(rep, red)
 	if not strip then
 		return
 	end
-	local t = red and UNAVAILABLE_TINT or WHITE
+	local t = red and UnavailableTint() or WHITE
 	for _, tex in ipairs({ strip.capL, strip.mid, strip.capR }) do
 		tex:SetVertexColor(t[1], t[2], t[3])
 	end
@@ -1371,6 +1383,18 @@ local function Build()
 	return skin
 end
 
+-- A new palette (the bus's 'palette'): the unavailable rows in its tint
+local function OnPalette()
+	if not active then
+		return
+	end
+	for _, st in pairs(rows) do
+		if st.unavailable then
+			TintPlate(st.plate, true)
+		end
+	end
+end
+
 local function Activate()
 	if active or not Window() then
 		return
@@ -1380,6 +1404,8 @@ local function Activate()
 		return
 	end
 	active = true
+	-- (heard from the first dressing on: nothing is listened to before)
+	MelloUI:On("palette", OnPalette, "Trainer Kit palette")
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end

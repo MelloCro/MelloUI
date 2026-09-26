@@ -381,8 +381,7 @@ local function SkinBand(f)
 	fill.kitPiece = true   -- ours: never faded as the game's art
 	fill:SetPoint("TOPLEFT", nine, "TOPLEFT", inset, 0)
 	fill:SetPoint("BOTTOMRIGHT", nine, "BOTTOMRIGHT", -inset, inset)
-	local c = MelloUI.Palette.innerPanel
-	fill:SetColorTexture(c[1], c[2], c[3], DIM)
+	Kit:Paint(fill, "innerPanel", "fill", DIM)   -- (by its key: a new palette paints it again)
 	nine.dimFill = fill
 	table.insert(nine.all, fill)
 	-- the divider on the band's open top, its ends on the side rails' centre lines
@@ -434,8 +433,8 @@ local function InkLabels(on)
 						labelSaved[fs] = { r, g, b, a or 1 }
 					end
 				end
-				local col = P and P[role]
-				if col and labelSaved[fs] then
+				local col = P[role]
+				if labelSaved[fs] then
 					fs:SetTextColor(col[1], col[2], col[3], 1)
 				end
 			elseif labelSaved[fs] then
@@ -838,6 +837,13 @@ local function Refresh()
 	Kit:NextFrame(skin, RefreshLater)
 end
 
+-- A new palette (the bus's 'palette'): the band's labels in its colours
+local function OnPalette()
+	if active then
+		InkLabels(true)
+	end
+end
+
 local function Activate()
 	if active or not Window() then
 		return
@@ -847,6 +853,8 @@ local function Activate()
 		return
 	end
 	active = true
+	-- (heard from the first dressing on: nothing is listened to before)
+	MelloUI:On("palette", OnPalette, "Bank Kit palette")
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end

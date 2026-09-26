@@ -590,9 +590,10 @@ when a copy is added and names the system to use.
 - **What changed: the settings bus, never a self-hook.** `MelloUI:On(topic,
   fn, owner)` / `MelloUI:Off(owner[, topic])` for "setting", "module",
   "restart", "look:<area>", "cover", "parchment", "border", "fonts",
-  "scale", "editmode", "shell", "palette", "column", "installer" (Core.lua
-  lists what each carries). A window takes its listeners when it is built,
-  never at file load, and each returns at once while the window is closed
+  "scale", "editmode", "shell", "palette", "column", "installer",
+  "editmodelayout", "backup" (Core.lua lists what each carries). A window
+  takes its listeners when it is built, never at file load, and each
+  returns at once while the window is closed
   (at most marking what its next show brings in line). Never
   `hooksecurefunc(MelloUI, ...)` or `hooksecurefunc(Kit, ...)` on MelloUI's
   own functions: such a hook runs for every setting of every module and can

@@ -47,7 +47,8 @@ Writes Media/<look>/slices/<family>.tga          the picture (32-bit TGA, power-
                                                  and the geometry each was built from
                                                  (the kit falls back to pieces when a
                                                  piece's geometry is tuned or rebuilt)
-Looks: Media/Kit (painted), Media/KitWarm, Media/KitBronze (Kit.colourLooks).
+Looks: Media/Kit (painted) and every recoloured look's folder (KitWarm,
+KitBronze, Kit<Id>: Tools/kit_palette.py's LOOKS).
 `python Tools/texture_pack.py ship` then puts the pictures (BLP where the
 quality gate passes) and KitSlices.lua into the addon's Media; it keeps the
 eight pieces of each family in their own files, as recorded here.
@@ -64,12 +65,13 @@ import sys
 import numpy as np
 from PIL import Image
 
+import kit_palette
 from paths import MASTER_MEDIA
 
 MEDIA = MASTER_MEDIA
 LAYOUT = os.path.join(MEDIA, "KitLayout.lua")
 LUA = os.path.join(MEDIA, "KitSlices.lua")
-LOOKS = ("Kit", "KitWarm", "KitBronze")   # Kit.colourLooks' folders (Kit = the painted one)
+LOOKS = ("Kit",) + kit_palette.FOLDERS   # the painted kit and each look's folder (kit_palette.LOOKS)
 PARTS = ("tl", "t", "tr", "l", "r", "bl", "b", "br")
 CORNERS = ("tl", "tr", "bl", "br")
 
@@ -215,8 +217,8 @@ def lua_text(plans):
         "--",
         "-- One picture per rail family for the one-texture nine-slices (Kit:NineSlice while",
         "-- /mellokit slices is on): the four corners at the corners, whole repeats of each edge",
-        "-- between them, an empty middle. The same files in every look (Media\\Kit,",
-        "-- Media\\KitWarm, Media\\KitBronze), each made from that look's own pieces.",
+        "-- between them, an empty middle. The same files in every look (Media\\Kit and each",
+        "-- look's folder: KitWarm, KitBronze, Kit<Palette>), each made from that look's own pieces.",
         "--   texel   painted piece px per file texel (the pieces' 1 / density)",
         "--   corner  a corner's side in texels: all four margins",
         "--   grid    the picture's size in texels, at the top-left of its file",

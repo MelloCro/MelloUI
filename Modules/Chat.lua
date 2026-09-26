@@ -829,24 +829,27 @@ end
 -- Battle.net teal, channels rosewood, yells red, the system ochre. A line's
 -- kind is read back from its colour (ChatTypeInfo, the player's own colour
 -- choices included); a colour of no known kind gets QuestInk's ink of it.
+-- The channel tints are MEANING colours: fixed, whatever the palette (user,
+-- 2026-09-26: "Chat channel colours ... stay fixed meaning colours"), each
+-- line marked so for the palette ratchet (Tools/lint/check_panels.py).
 local CHAT_INKS = {
-	say      = { 0.227, 0.165, 0.110 },   -- #3A2A1C
-	emote    = { 0.403, 0.201, 0.053 },   -- #67330D
-	yell     = { 0.505, 0.091, 0.054 },   -- #81170E
-	party    = { 0.116, 0.238, 0.524 },   -- #1E3D86
-	raid     = { 0.391, 0.210, 0.014 },   -- #643504
-	warning  = { 0.485, 0.125, 0.000 },   -- #7C2000
-	instance = { 0.349, 0.232, 0.043 },   -- #593B0B
-	guild    = { 0.088, 0.295, 0.075 },   -- #164B13
-	officer  = { 0.197, 0.281, 0.064 },   -- #324810
-	whisper  = { 0.448, 0.108, 0.389 },   -- #721B63
-	bnet     = { 0.036, 0.284, 0.304 },   -- #09484D
-	channel  = { 0.416, 0.180, 0.165 },   -- #6A2E2A
-	system   = { 0.306, 0.251, 0.023 },   -- #4E4006
-	loot     = { 0.093, 0.294, 0.093 },   -- #184B18
-	money    = { 0.320, 0.245, 0.018 },   -- #523F05
-	skill    = { 0.164, 0.226, 0.539 },   -- #2A3A89
-	npc      = { 0.305, 0.250, 0.084 },   -- #4E4015
+	say      = { 0.227, 0.165, 0.110 },   -- #3A2A1C (meaning colour)
+	emote    = { 0.403, 0.201, 0.053 },   -- #67330D (meaning colour)
+	yell     = { 0.505, 0.091, 0.054 },   -- #81170E (meaning colour)
+	party    = { 0.116, 0.238, 0.524 },   -- #1E3D86 (meaning colour)
+	raid     = { 0.391, 0.210, 0.014 },   -- #643504 (meaning colour)
+	warning  = { 0.485, 0.125, 0.000 },   -- #7C2000 (meaning colour)
+	instance = { 0.349, 0.232, 0.043 },   -- #593B0B (meaning colour)
+	guild    = { 0.088, 0.295, 0.075 },   -- #164B13 (meaning colour)
+	officer  = { 0.197, 0.281, 0.064 },   -- #324810 (meaning colour)
+	whisper  = { 0.448, 0.108, 0.389 },   -- #721B63 (meaning colour)
+	bnet     = { 0.036, 0.284, 0.304 },   -- #09484D (meaning colour)
+	channel  = { 0.416, 0.180, 0.165 },   -- #6A2E2A (meaning colour)
+	system   = { 0.306, 0.251, 0.023 },   -- #4E4006 (meaning colour)
+	loot     = { 0.093, 0.294, 0.093 },   -- #184B18 (meaning colour)
+	money    = { 0.320, 0.245, 0.018 },   -- #523F05 (meaning colour)
+	skill    = { 0.164, 0.226, 0.539 },   -- #2A3A89 (meaning colour)
+	npc      = { 0.305, 0.250, 0.084 },   -- #4E4015 (meaning colour)
 }
 -- the chat types, in the order they win when two share a colour
 local CHAT_INK_TYPES = {
@@ -1080,9 +1083,12 @@ end
 -- visibleLines, RefreshDisplay); without them nothing is drawn.
 --------------------------------------------------------------------------------
 
+-- (the chat's own regions take their palette colours by key through Core's
+-- W.Paint -- MelloUI.Widgets.Paint, the kit's one registry, which paints
+-- them again on 'palette'; 0.14.0: the palettes)
 local SHADE_FILE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Chat\\name_shade"
 local SHADE_ALPHA = 0.55
-local SHADE_COLOUR = { 0.180, 0.122, 0.078 }   -- the palette's raised panel, #2E1F14: a warm dark on the paper
+local SHADE_KEY = "raisedPanel"                 -- the palette's raised panel (Ember's #2E1F14): a warm dark on the paper
 local SHADE_PAD = 3                             -- UI px the band reaches past its text on each side
 local shades = setmetatable({}, { __mode = "k" })       -- [message frame] = { [line * 10 + piece] = band }
 local shadeWanted = setmetatable({}, { __mode = "k" })  -- [message frame] = function() -> on?
@@ -1184,7 +1190,7 @@ local function Band(frame, line, key)
 		local t = owner:CreateTexture(nil, layer, nil, layer == "BACKGROUND" and -8 or 7)
 		t:SetTexture(SHADE_FILE)
 		t:SetTexCoord(part[1], part[2], 0, 1)
-		t:SetVertexColor(SHADE_COLOUR[1], SHADE_COLOUR[2], SHADE_COLOUR[3], 1)
+		MelloUI.Widgets.Paint(t, SHADE_KEY, "vertex", 1)
 		t:Hide()
 		band[j] = t
 	end
@@ -1305,7 +1311,9 @@ local function InkFrameFont(frame, on)
 		if ok and path and size then
 			pcall(frame.SetFont, frame, path, size, "")
 		end
-		frame:SetShadowColor(0, 0, 0, 0)
+		-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
+		local none = MelloUI.Palette.innerPanel
+		frame:SetShadowColor(none[1], none[2], none[3], 0)
 	elseif frame.melloInkFont then
 		local saved = frame.melloInkFont
 		local ok, path, size = pcall(frame.GetFont, frame)
@@ -1902,7 +1910,19 @@ local POPUP_W, POPUP_H = 340, 210
 local HEADER_H = 24   -- the header band's opaque part
 local popups = {}        -- [conversation key] = window
 local WriteWhisperLine -- below (a conversation line, in ink or its colours)
+local PopupsFollowPalette -- below (every window's header and lines in a new palette)
 local popupFontHooked = false
+
+-- A window's conversation written again from its kept parts (its ink or
+-- its palette changed)
+local function RewritePopup(f)
+	if f.msgs and f.lineLog then
+		f.msgs:Clear()
+		for _, e in ipairs(f.lineLog) do
+			WriteWhisperLine(f, e)
+		end
+	end
+end
 
 -- A whisper window's conversation and answer box in ink or their colours
 -- again (the whisper parchment switched): the lines written anew from their
@@ -1939,7 +1959,9 @@ local function PopupFont(f)
 	end
 	pcall(f.msgs.SetFont, f.msgs, path, size, f.inked and "" or flags)
 	if f.inked then
-		f.msgs:SetShadowColor(0, 0, 0, 0)
+		-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
+		local none = MelloUI.Palette.innerPanel
+		f.msgs:SetShadowColor(none[1], none[2], none[3], 0)
 	else
 		local sh = f.msgs.melloShadow
 		f.msgs:SetShadowColor(sh[1] or 0, sh[2] or 0, sh[3] or 0, sh[4] or 1)
@@ -1961,11 +1983,8 @@ local function InkPopup(f)
 	-- (its test made once a window: this runs again at every look change)
 	f.wantShade = f.wantShade or function() return f.inked end
 	WatchShade(f.msgs, f.wantShade)
-	if f.msgs and f.lineLog and changed then
-		f.msgs:Clear()
-		for _, e in ipairs(f.lineLog) do
-			WriteWhisperLine(f, e)
-		end
+	if changed then
+		RewritePopup(f)
 	end
 	-- the chat's font changed (the Fonts module, the chat's size menu): every
 	-- whisper window follows
@@ -1994,11 +2013,14 @@ end
 -- One conversation line, in ink on parchment, else in its colours: the
 -- main chat's rules (user, 2026-09-24: "the Whisper Popup Window follows the
 -- same rules as the main chat") -- the time and the name bright on their
--- soft band, the words in the whisper's ink, links kept
+-- soft band, the words in the whisper's ink, links kept. The time in the
+-- palette's text colour (0.14.0: the palettes; a grey of its own before),
+-- as the palette is when the line is written: a new palette writes every
+-- line again (PopupsFollowPalette)
 WriteWhisperLine = function(f, e)
 	local ink = WhisperInked() and f.kitDressed
 	local r, g, b = e.r, e.g, e.b
-	local line = ("|cff8a8a8a%s|r %s: %s"):format(e.stamp, e.who, e.text)
+	local line = ("%s%s|r %s: %s"):format(MelloUI:PaletteCode("text"), e.stamp, e.who, e.text)
 	if ink then
 		-- the joined line, not only the words: a secret name makes it secret too
 		if not Secret(line) then
@@ -2155,18 +2177,18 @@ local function KitBody(f)
 end
 
 -- without the kit: a plain dark box with a thin edge, made once (its
--- textures)
+-- textures), in the palette's inner panel and trim
 local function PlainBody(f)
 	local parts = {}
 	local bg = f:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints(f)
-	bg:SetColorTexture(0.04, 0.04, 0.05, 0.92)
+	MelloUI.Widgets.Paint(bg, "innerPanel", "fill", 0.92)
 	parts[1] = bg
 	local edges = { { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
 		{ "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }
 	for _, e in ipairs(edges) do
 		local t = f:CreateTexture(nil, "BORDER")
-		t:SetColorTexture(0.45, 0.4, 0.3, 1)
+		MelloUI.Widgets.Paint(t, "trim", "fill", 1)
 		t:SetPoint(e[1], f, e[1])
 		t:SetPoint(e[2], f, e[2])
 		if e[3] then
@@ -2229,9 +2251,9 @@ local function DressHeader(f, dressed)
 	if not plate and not f.band then
 		local band = head:CreateTexture(nil, "BACKGROUND")
 		band:SetAllPoints(head)
-		band:SetColorTexture(0.1, 0.09, 0.08, 1)
+		MelloUI.Widgets.Paint(band, "mainWindow", "fill", 1)
 		local line = head:CreateTexture(nil, "BORDER")
-		line:SetColorTexture(0.45, 0.4, 0.3, 1)
+		MelloUI.Widgets.Paint(line, "trim", "fill", 1)
 		line:SetPoint("BOTTOMLEFT", head, "BOTTOMLEFT")
 		line:SetPoint("BOTTOMRIGHT", head, "BOTTOMRIGHT")
 		line:SetHeight(1)
@@ -2411,11 +2433,14 @@ local function CreatePopup(key, kind, target, title)
 
 	PlacePopup(f)
 	popups[key] = f
+	f.palette = MelloUI.Palette   -- the palette its header and lines are written in
 	-- the one mover (registered once its own scripts are set: the mover
 	-- hooks its hide); and from the first window on, every window follows
-	-- the chat's look (the same listener for all, told once however many)
+	-- the chat's look and the palette (the same listeners for all, told
+	-- once however many)
 	MelloUI:RegisterMover(f, head, POPUP_MOVER)
 	MelloUI:On("look:whisper", PopupsFollowLook, "Chat whisper popups")
+	MelloUI:On("palette", PopupsFollowPalette, "Chat whisper palette")
 	return f
 end
 
@@ -2551,19 +2576,36 @@ local function BattleNetIdentity(bnID)
 	return ClassFileFromLocalized(game.className), PlainLevel(game.characterLevel)
 end
 
--- the header: the name in its class colour (the game's gold when the class is
--- not known), the level after it in gold when it is
+-- the header: the name in its class colour (the palette's gold when the class
+-- is not known; the game's gold before 0.14.0), the level after it in that
+-- gold when it is
 local function UpdateHeader(f)
 	local name = f.titleText
 	if not Known(name) then
 		f.header:SetText(name)
 		return
 	end
-	local text = "|c" .. (f.classHex or "ffffd100") .. tostring(name) .. "|r"
+	local gold = MelloUI:PaletteCode("selectedTrim")
+	local text = (f.classHex and ("|c" .. f.classHex) or gold) .. tostring(name) .. "|r"
 	if f.level then
-		text = text .. "  |cffffd100" .. f.level .. "|r"
+		text = text .. "  " .. gold .. f.level .. "|r"
 	end
 	f.header:SetText(text)
+end
+
+-- A new palette: each window's header and conversation written again in it
+-- (the time's colour, the gold; the regions painted by key follow the kit's
+-- registry by themselves). Only a window written in another palette table:
+-- 'palette' goes out for a Kit Colours change too, the palette unchanged.
+PopupsFollowPalette = function()
+	local palette = MelloUI.Palette
+	for _, f in pairs(popups) do
+		if f.palette ~= palette then
+			f.palette = palette
+			UpdateHeader(f)
+			RewritePopup(f)
+		end
+	end
 end
 
 -- One whisper event. Its arguments: text, the other person's name, ..., at 12

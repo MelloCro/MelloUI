@@ -3,7 +3,7 @@
 -- One entry per painted kit piece (naming per docs/UI-KIT.md):
 --   file  path under Media\Kit (no extension: a BLP, or a TGA where DXT failed the quality gate);
 --         atlas\<sheet>_<n> for the small pieces packed into one sheet per look (the same uv in
---         Media\Kit, Media\KitWarm and Media\KitBronze)
+--         Media\Kit and every look's folder: KitWarm, KitBronze, Kit<Palette>)
 --   w, h  size of the piece as painted (2x px); the file holds it at a lower density, the uv accounts for that
 --   uv    left, right, top, bottom of the piece inside its file (its sheet)
 --   was   where the ship moved the piece into a sheet or right-sized its file: its uv in its own

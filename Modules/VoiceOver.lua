@@ -1267,6 +1267,33 @@ local TALK_DURATION = {
 
 Overlay = { lines = {} }
 
+-- The text's colours; the text lies on parchment in either look, so it is
+-- dark ink (the parchment ink rule).
+-- The lines' STATES (the line being read, a quest's line being read, a line
+-- waiting, a queued line under the pointer: skip) are MEANING colours: fixed,
+-- whatever the palette (user, 2026-09-26: "Voice Over state colours stay
+-- fixed meaning colours"), each line marked so for the palette ratchet
+-- (Tools/lint/check_panels.py). On the painted picture they are the warm
+-- browns they always were; in the kit, QuestInk's (the body ink for the line
+-- being read, the faded ink for the queue, the skip red and the quest gold
+-- darkened to the ink's contrast).
+-- The speaker's name and the subtitle take QuestInk's inks in both looks
+-- (the heading ink, the body ink: MelloUI.QuestInk, as every other
+-- parchment in the UI; 0.14.0 -- the picture had browns of its own before).
+-- All of them are put together once, in Overlay:Ink.
+-- The name's pale shadow is not ink but the painted picture's own light, a
+-- part of that fixed picture (picture art, not a palette role).
+local INKS = {
+	art = {
+		hover   = { 0.62, 0.10, 0.04 },   -- a queued line under the pointer: skip (meaning colour)
+		quest   = { 0.55, 0.36, 0.03 },   -- the line being read, a quest's (meaning colour)
+		current = { 0.22, 0.13, 0.05 },   -- the line being read (meaning colour)
+		queued  = { 0.45, 0.36, 0.26 },   -- a line waiting (meaning colour)
+	},
+	nameShadow = { 1, 0.95, 0.8 },   -- the name's pale shadow, at NAME_SHADOW_ALPHA (picture art)
+}
+local NAME_SHADOW_ALPHA = 0.35
+
 local nameFont, lineFont, subtitleFont
 
 local function EnsureFonts()
@@ -1276,7 +1303,8 @@ local function EnsureFonts()
 	local path = GameFontNormal:GetFont()
 	nameFont = CreateFont("MelloUIVoiceOverNameFont")
 	nameFont:SetFont(path, 19, "")
-	nameFont:SetShadowColor(1, 0.95, 0.8, 0.35)
+	local shadow = INKS.nameShadow
+	nameFont:SetShadowColor(shadow[1], shadow[2], shadow[3], NAME_SHADOW_ALPHA)
 	nameFont:SetShadowOffset(1, -1)
 	nameFont:SetJustifyH("LEFT")
 	lineFont = CreateFont("MelloUIVoiceOverLineFont")
@@ -1320,18 +1348,6 @@ local KIT_LAYOUT = {
 	plateL = 190, plateR = 8,     -- the plate's ends, in from the window's left and right edges (over the parchment, clear of the ring)
 	stop = { 23, 21 },            -- the stop / skip glyph's box (the close piece is 64 x 58)
 	stopW = 26,                   -- the room the stop button takes from the lines, beside the padlock's
-}
-
--- The text's colours. On the painted picture, the warm browns it always had;
--- in the kit, the parchment inks every other parchment in the UI uses
--- (MelloUI.QuestInk: the body ink for the line being read and the subtitle,
--- the faded ink for the queue, the skip red and the quest gold darkened to
--- the ink's contrast), since the line is dark ink on parchment either way.
-local INKS = {
-	art = {
-		hover = { 0.62, 0.10, 0.04 }, quest = { 0.55, 0.36, 0.03 }, current = { 0.22, 0.13, 0.05 },
-		queued = { 0.45, 0.36, 0.26 }, subtitle = { 0.24, 0.14, 0.05 },
-	},
 }
 
 -- The kit when the overlay's look switch is on (Kit:IsOn('voiceover'): the
@@ -1829,10 +1845,8 @@ function Overlay:Create()
 		if M.db.overlayLock then
 			return
 		end
-		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("Voice Over")
-		GameTooltip:AddLine("Drag to move. The padlock in the corner locks the position.", 1, 1, 1, true)
-		GameTooltip:Show()
+		-- (MelloUI's one tooltip: the palette's gold and text)
+		MelloUI.Widgets.ShowTooltip(self, "Voice Over", "Drag to move. The padlock in the corner locks the position.", nil, "ANCHOR_TOP")
 	end)
 	Perf.SetScript(frame, "OnLeave", function() GameTooltip:Hide() end)
 	frame:Hide()
@@ -1859,7 +1873,9 @@ function Overlay:Create()
 		local left, right = 352 * sx, 982 * sx
 		local top, bottom = 58 * sy, 292 * sy
 		local backing = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-		backing:SetColorTexture(0.09, 0.07, 0.05, 1)
+		-- the palette's inner panel, painted again on 'palette' (Core's
+		-- W.Paint: the kit's one registry)
+		MelloUI.Widgets.Paint(backing, "innerPanel", "fill", 1)
 		backing:SetPoint("TOPLEFT", frame, "TOPLEFT", left, -top)
 		backing:SetSize(right - left, bottom - top)
 		local sheet = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
@@ -1892,7 +1908,7 @@ function Overlay:Create()
 	container.name = container:CreateFontString(nil, "ARTWORK", "MelloUIVoiceOverNameFont")
 	container.name:SetPoint("TOPLEFT")
 	container.name:SetWordWrap(false)
-	container.name:SetTextColor(0.30, 0.17, 0.05)
+	container.name:SetTextColor(unpack(Overlay:Ink().name))
 	-- what the first line hangs from: the name here, the parchment's top in
 	-- the kit (Overlay:Dress)
 	container.head = container.name
@@ -1971,10 +1987,15 @@ function Overlay:Create()
 		GameTooltip:Hide()
 	end)
 	Perf.SetScript(lock, "OnEnter", function(self)
+		-- (beside the padlock; the palette's gold and text, as MelloUI's one
+		-- tooltip, W.ShowTooltip)
+		local P = MelloUI.Palette
+		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
 		GameTooltip:SetPoint("LEFT", self, "RIGHT", 4, 0)
-		GameTooltip:SetText(M.db.overlayLock and "Position locked" or "Position unlocked")
-		GameTooltip:AddLine(M.db.overlayLock and "Click to unlock and drag the window." or "Drag the window to move it. Click to lock it in place.", 1, 1, 1, true)
+		GameTooltip:SetText(M.db.overlayLock and "Position locked" or "Position unlocked", gold[1], gold[2], gold[3])
+		GameTooltip:AddLine(M.db.overlayLock and "Click to unlock and drag the window." or "Drag the window to move it. Click to lock it in place.",
+			text[1], text[2], text[3], true)
 		GameTooltip:Show()
 	end)
 	Perf.SetScript(lock, "OnLeave", function() GameTooltip:Hide() end)
@@ -1984,7 +2005,7 @@ function Overlay:Create()
 	container.subtitle = container:CreateFontString(nil, "ARTWORK", "MelloUIVoiceOverSubtitleFont")
 	container.subtitle:SetWordWrap(true)
 	container.subtitle:SetMaxLines(3)
-	container.subtitle:SetTextColor(0.24, 0.14, 0.05)
+	container.subtitle:SetTextColor(unpack(Overlay:Ink().subtitle))
 	container.subtitle:Hide()
 	-- each new page fades in (a quarter of a second, easing out) instead of
 	-- jumping in: the reading eye follows it (played through Anim:PlayGroup,
@@ -2014,24 +2035,21 @@ function Overlay:Create()
 	self:Apply()
 end
 
--- The text colours for the current dress (INKS above)
+-- The text colours for the current dress (INKS above), both sets put
+-- together once (QuestInk.lua loads before this file)
 function Overlay:Ink()
-	if not self.kitOn then
-		return INKS.art
+	if not INKS.picture then
+		local QI, art = MelloUI.QuestInk, INKS.art
+		INKS.picture = {
+			hover = art.hover, quest = art.quest, current = art.current, queued = art.queued,
+			name = QI.INK.title, subtitle = QI.INK.text,
+		}
+		INKS.kit = {
+			hover = { QI.InkOf(unpack(art.hover)) }, quest = { QI.InkOf(unpack(art.quest)) },
+			current = QI.INK.text, queued = QI.INK.faded, name = QI.INK.title, subtitle = QI.INK.text,
+		}
 	end
-	if not INKS.kit then
-		local QI = MelloUI.QuestInk
-		local art = INKS.art
-		if QI and QI.INK and QI.InkOf then
-			INKS.kit = {
-				hover = { QI.InkOf(unpack(art.hover)) }, quest = { QI.InkOf(unpack(art.quest)) },
-				current = QI.INK.text, queued = QI.INK.faded, subtitle = QI.INK.text,
-			}
-		else
-			INKS.kit = art
-		end
-	end
-	return INKS.kit
+	return self.kitOn and INKS.kit or INKS.picture
 end
 
 -- Build the kit's pieces once into `dress`, hidden (Overlay:Dress shows
@@ -2073,8 +2091,9 @@ function Overlay:BuildDress(Kit, dress)
 	local diameter = 2 * (ringPiece.radius or (ringPiece.w / 2)) * rscale
 	disc:SetSize(diameter, diameter)
 	disc:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
-	local inner = MelloUI.Palette.innerPanel
-	disc:SetColorTexture(inner[1], inner[2], inner[3], 1)
+	-- (by its key: painted again on 'palette', Core's W.Paint -- the kit's
+	-- one registry)
+	MelloUI.Widgets.Paint(disc, "innerPanel", "fill", 1)
 	if skin.CreateMaskTexture and disc.AddMaskTexture then
 		local mask = skin:CreateMaskTexture()
 		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -2803,10 +2822,8 @@ local function CreateReadButton()
 		end
 	end)
 	Perf.SetScript(readButton, "OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText("Read aloud", 1, 1, 1)
-		GameTooltip:AddLine("Reads the quest's description in the quest giver's voice, then the objectives with their progress.", nil, nil, nil, true)
-		GameTooltip:Show()
+		MelloUI.Widgets.ShowTooltip(self, "Read aloud",
+			"Reads the quest's description in the quest giver's voice, then the objectives with their progress.", nil, "ANCHOR_RIGHT")
 	end)
 	Perf.SetScript(readButton, "OnLeave", function() GameTooltip:Hide() end)
 	local acc = 0

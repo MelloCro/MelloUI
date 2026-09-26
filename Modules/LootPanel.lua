@@ -228,9 +228,7 @@ local function SkinCard(host, plate, rect, extra)
 	local tex = host:CreateTexture(nil, "BACKGROUND", nil, -2)
 	tex.kitPiece = true   -- ours: never faded as the game's art
 	tex:SetAllPoints(rect or host)
-	local P = MelloUI.Palette
-	local c = P and P.mainWindow or { 0.12, 0.11, 0.09 }
-	tex:SetColorTexture(c[1], c[2], c[3], CARD_ALPHA)
+	Kit:Paint(tex, "mainWindow", "fill", CARD_ALPHA)   -- (by its key: a new palette paints it again)
 	tex:SetShown(active)
 	cards[#cards + 1] = { tex = tex, source = plate, host = host }
 	-- faded while the card stands in (Kit:Fade re-fades after each
@@ -453,8 +451,7 @@ local function SkinPage(f)
 	panel.kitPiece = true
 	panel:SetPoint("TOPLEFT", f, "TOPLEFT", ins[1], -ins[3])
 	panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -ins[2], ins[4])
-	local c = MelloUI.Palette.innerPanel
-	panel:SetColorTexture(c[1], c[2], c[3], PANEL_ALPHA)
+	Kit:Paint(panel, "innerPanel", "fill", PANEL_ALPHA)   -- (by its key: a new palette paints it again)
 	skin.panel = panel
 	PanelShown()
 end

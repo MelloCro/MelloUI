@@ -1511,22 +1511,30 @@ local function WatchBar(on)
 	end
 end
 
+-- A service button's tooltip (All Buttons): palette colours, as the group
+-- button's below -- the service's name and the nearest one in the gold, the
+-- hints in the text colour (0.14.0: the palettes; greys of its own before)
 local function BarTooltip(self)
+	local P = MelloUI.Palette
+	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-	GameTooltip:SetText(self.kind.label, 1, 1, 1)
+	GameTooltip:SetText(self.kind.label, gold[1], gold[2], gold[3])
 	local c = self.slot.nearest
 	if c then
 		local sub = CleanSub(c.sub)
-		GameTooltip:AddLine(string.format("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", Yards(c.distance)), 1, 0.82, 0.25)
+		GameTooltip:AddLine(string.format("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", Yards(c.distance)),
+			gold[1], gold[2], gold[3])
 		if self.kind.trainer == "profession" then
-			GameTooltip:AddLine("Click to pick a profession and route to its nearest trainer. Right-click stops the route.", 0.7, 0.7, 0.7, true)
+			GameTooltip:AddLine("Click to pick a profession and route to its nearest trainer. Right-click stops the route.",
+				text[1], text[2], text[3], true)
 		else
-			GameTooltip:AddLine("Click to route there by road. Right-click stops the route.", 0.7, 0.7, 0.7, true)
+			GameTooltip:AddLine("Click to route there by road. Right-click stops the route.", text[1], text[2], text[3], true)
 		end
 	elseif Route() then
-		GameTooltip:AddLine("None known on this continent yet; it is remembered the first time you use one.", 0.6, 0.6, 0.6, true)
+		GameTooltip:AddLine("None known on this continent yet; it is remembered the first time you use one.",
+			text[1], text[2], text[3], true)
 	else
-		GameTooltip:AddLine("The Route module is off.", 0.6, 0.6, 0.6)
+		GameTooltip:AddLine("The Route module is off.", text[1], text[2], text[3])
 	end
 	GameTooltip:Show()
 end
@@ -1710,11 +1718,12 @@ local function BarHidden(self)
 end
 
 -- The bar's own box while neither the kit's box nor the square frame holds
--- it (plain: true). All Buttons keeps 0.13.6's colours exactly (its OFF
--- state is today's look); the Groups row's are palette keys, painted through
--- the kit's one registry, which paints them again on 'palette'. The registry
--- paints `barPaint`, which hands the colours to the bar only while the Groups
--- row wears this box, so All Buttons never takes them.
+-- it (plain: true), in palette keys, Groups row and All Buttons alike (0.14.0:
+-- the palettes; All Buttons kept 0.13.6's literal colours before), painted
+-- through the kit's one registry, which paints them again on 'palette'. The
+-- registry paints `barPaint`, which hands the colours to the bar only while
+-- the bar wears this box, so the kit's box and the square frame never take
+-- them.
 local barPaint = {}
 function barPaint:SetBackdropColor(r, g, b, a)
 	if self.on and bar then
@@ -1728,8 +1737,7 @@ function barPaint:SetBackdropBorderColor(r, g, b, a)
 end
 
 local function PlainBarBox(plain)
-	local W = MelloUI.Widgets   -- (Core's; a world without it keeps 0.13.6's colours)
-	barPaint.on = plain and GroupsOn() and W and true or false
+	barPaint.on = plain and true or false
 	if not plain then
 		return
 	end
@@ -1739,13 +1747,9 @@ local function PlainBarBox(plain)
 		tile = true, tileSize = 16, edgeSize = 12,
 		insets = { left = 3, right = 3, top = 3, bottom = 3 },
 	})
-	if barPaint.on then
-		W.Paint(barPaint, "innerPanel", "backdrop", 0.85)
-		W.Paint(barPaint, "trim", "border", 1)
-	else
-		bar:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
-		bar:SetBackdropBorderColor(0.55, 0.45, 0.25, 1)
-	end
+	local W = MelloUI.Widgets   -- (Core's)
+	W.Paint(barPaint, "innerPanel", "backdrop", 0.85)
+	W.Paint(barPaint, "trim", "border", 1)
 end
 
 local function CreateBar()
@@ -1804,11 +1808,13 @@ KitOn = function()
 	return kit and kit.IsCovered and kit:IsCovered("minimap") and kit.Replace and true or false
 end
 
--- An invisible region for Kit:Replace where the frame has none of its own.
+-- An invisible region for Kit:Replace where the frame has none of its own
+-- (alpha 0: in the palette's inner panel, no colour of its own)
 local function KitAnchor(frame)
 	local tex = frame:CreateTexture(nil, "BACKGROUND")
 	tex:SetAllPoints(frame)
-	tex:SetColorTexture(0, 0, 0, 0)
+	local none = MelloUI.Palette.innerPanel
+	tex:SetColorTexture(none[1], none[2], none[3], 0)
 	return tex
 end
 
@@ -2202,10 +2208,13 @@ local function CreateButton()
 		ToggleMenu(self)
 	end)
 	Perf.SetScript(button, "OnEnter", function(self)
+		-- (the palette's gold and text, as MelloUI's one tooltip)
+		local P = MelloUI.Palette
+		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		GameTooltip:SetText("Services", 1, 1, 1)
-		GameTooltip:AddLine("Click: the list of the nearest services.", nil, nil, nil, true)
-		GameTooltip:AddLine("Right-click: stop the route.  Drag: move the button.", 0.7, 0.7, 0.7, true)
+		GameTooltip:SetText("Services", gold[1], gold[2], gold[3])
+		GameTooltip:AddLine("Click: the list of the nearest services.", text[1], text[2], text[3], true)
+		GameTooltip:AddLine("Right-click: stop the route.  Drag: move the button.", text[1], text[2], text[3], true)
 		GameTooltip:Show()
 	end)
 	Perf.SetScript(button, "OnLeave", function() GameTooltip:Hide() end)

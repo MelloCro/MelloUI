@@ -37,26 +37,195 @@ MelloUI.Kit = Kit
 -- the palette by Tools/kit_palette.py, one folder per look holding the same
 -- files, so the layout is shared. Pictures and the tiles already warm are not
 -- recoloured: every look reads them from Media\Kit (kit_palette's SKIP).
+-- The palettes (0.14.0, user 2026-09-26: one recoloured kit per palette for
+-- all six, and the Original): the folder is chosen from the palette in use
+-- (MelloUI:PaletteId(), the one MelloUI.Palette is) AND the Kit Colours
+-- setting, which stays the palette's own choice:
+--   Kit:LookFolder(paletteId, kitColours) -> the folder's path, its name
+--       Ember (nil, or an id without kit art, is Ember): today's three looks,
+--       Warm iron (warm, the default), Bronze, the Original (painted).
+--       Any other palette: "painted" is the Original (Media\Kit), anything
+--       else (warm, bronze, nil) that palette's own kit, Media\Kit<Id>.
+--   Kit:ColourLooks([paletteId]) -> the Kit Colours choices under a palette
+--       (nil: the one in use): Ember's three; another palette's own kit
+--       (value "warm", its name, its folder) and the Original
+--   Kit.colourLooks: the choices under the palette in use (the Kit Colours
+--       row's values), the same table kept and filled again on a switch
+--   Kit:ColourLookShown() -> the entry of Kit.colourLooks the kit draws:
+--       the stored Kit Colours, or the choice read from the same folder (a
+--       Bronze kept from Ember is that palette's own kit elsewhere); nil if none
+--   Kit:LookRoot([look][, piece][, paletteId]) -> the folder a piece is read
+--       from: look a Kit Colours value or one of the choices above (its own
+--       folder), nil the one in use; piece: an uncoloured piece is always
+--       read from Media\Kit; paletteId nil: the one in use
 Kit.colourLooks = {
 	{ value = "warm", label = "Warm iron", folder = "KitWarm" },
 	{ value = "bronze", label = "Bronze", folder = "KitBronze" },
 	{ value = "painted", label = "Original (painted)" },
 }
-local LOOK_ROOT = {}
-for _, look in ipairs(Kit.colourLooks) do
-	LOOK_ROOT[look.value] = look.folder and (ROOT:gsub("Kit\\$", look.folder .. "\\")) or ROOT
-end
 local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
 local lookRoot = nil   -- the chosen look's folder, once the settings are there
+-- LOOK.PaletteId(): the palette in use (its id, "ember" for one with no art
+-- of its own); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
+-- palette's Kit Colours choices (one table: Kit.lua has few locals to spare)
+local LOOK = {}
+
+do
+	-- the palettes with kit art of their own (Media\Kit<Id>, Tools/kit_palette.py)
+	local ART = { obsidian = true, obsidianVibrant = true, royalAzure = true, royalAzureVibrant = true,
+		felEmber = true, felEmberVibrant = true }
+	local EMBER, EMBER_ROOT = {}, {}
+	for i, look in ipairs(Kit.colourLooks) do
+		EMBER[i] = look
+		EMBER_ROOT[look.value] = look.folder and (ROOT:gsub("Kit\\$", look.folder .. "\\")) or ROOT
+	end
+	local PAINTED = EMBER[3]
+	local roots, folders, looks = {}, {}, { ember = EMBER }   -- per palette id, made once
+	local byFolder = {}                                          -- [folder name] = its path
+	local shownFor = "ember"                                     -- the palette Kit.colourLooks holds the choices of
+
+	local function Known(id)
+		if type(id) == "string" and ART[id] then
+			return id
+		end
+		return "ember"
+	end
+
+	function LOOK.PaletteId()
+		local fn = MelloUI.PaletteId
+		if type(fn) == "function" then
+			local ok, id = pcall(fn, MelloUI)
+			if ok then
+				return Known(id)
+			end
+		end
+		return "ember"
+	end
+
+	local function RootOf(folder)
+		local root = byFolder[folder]
+		if not root then
+			root = (ROOT:gsub("Kit\\$", folder .. "\\"))
+			byFolder[folder] = root
+		end
+		return root
+	end
+
+	function Kit:LookFolder(paletteId, kitColours)
+		local id = Known(paletteId)
+		if id == "ember" then
+			if kitColours == nil then
+				kitColours = "warm"
+			end
+			local root = EMBER_ROOT[kitColours] or ROOT
+			for _, look in ipairs(EMBER) do
+				if look.value == kitColours then
+					return root, look.folder or "Kit"
+				end
+			end
+			return root, "Kit"
+		end
+		if kitColours == "painted" then
+			return ROOT, "Kit"
+		end
+		local root = roots[id]
+		if not root then
+			folders[id] = "Kit" .. id:sub(1, 1):upper() .. id:sub(2)
+			root = RootOf(folders[id])
+			roots[id] = root
+		end
+		return root, folders[id]
+	end
+
+	function Kit:ColourLooks(paletteId)
+		local id = paletteId == nil and LOOK.PaletteId() or Known(paletteId)
+		local list = looks[id]
+		if not list then
+			local reg = MelloUI.Palettes
+			local entry = type(reg) == "table" and reg[id]
+			local name = type(entry) == "table" and type(entry.name) == "string" and entry.name
+				or (id:sub(1, 1):upper() .. id:sub(2)):gsub("(%l)(%u)", "%1 %2")
+			local _, folder = self:LookFolder(id, "warm")
+			list = { { value = "warm", label = name, folder = folder }, PAINTED }
+			looks[id] = list
+		end
+		return list
+	end
+
+	-- The Kit Colours choice the kit draws under the palette in use: the
+	-- stored one when the palette offers it, else the choice read from the
+	-- same folder (a Bronze kept from Ember shows, under another palette, as
+	-- that palette's own kit); nil when none is (the configurator's label,
+	-- Dynamic UI's row and the installer read it here)
+	function Kit:ColourLookShown()
+		local value = self:BorderValue("colours")
+		local live = Kit.colourLooks
+		for _, look in ipairs(live) do
+			if look.value == value then
+				return look
+			end
+		end
+		local id = LOOK.PaletteId()
+		local _, folder = self:LookFolder(id, value)
+		for _, look in ipairs(live) do
+			local _, f = self:LookFolder(id, look.value)
+			if f == folder then
+				return look
+			end
+		end
+		return nil
+	end
+
+	function LOOK.ShowChoices(id)
+		if id == shownFor then
+			return
+		end
+		shownFor = id
+		local list, live = Kit:ColourLooks(id), Kit.colourLooks
+		for i = #live, 1, -1 do
+			live[i] = nil
+		end
+		for i, look in ipairs(list) do
+			live[i] = look
+		end
+	end
+
+	function Kit:LookRoot(look, piece, paletteId)
+		local root
+		if type(look) == "table" then
+			root = look.folder and RootOf(look.folder) or ROOT
+		else
+			if look == nil then
+				look = self:BorderValue("colours")
+			end
+			root = self:LookFolder(paletteId == nil and LOOK.PaletteId() or paletteId, look)
+		end
+		if type(piece) == "string" and root ~= ROOT then
+			for _, pattern in ipairs(UNCOLOURED) do
+				if piece:find(pattern) then
+					return ROOT
+				end
+			end
+		end
+		return root
+	end
+end
 
 -- The folder a piece is read from in the chosen look
 local function PieceRoot(name)
 	if not lookRoot then
 		local um = MelloUI:GetModule("UIModifications")
 		if not (um and um.db and Kit.BorderValue) then
-			return LOOK_ROOT.warm   -- the default look, until the settings are loaded
+			-- the default look, until the settings are loaded (Kit.colourLooks
+			-- already the palette's choices: a reader of the Kit Colours' values
+			-- need not read the setting first)
+			local id = LOOK.PaletteId()
+			LOOK.ShowChoices(id)
+			return (Kit:LookFolder(id))
 		end
-		lookRoot = LOOK_ROOT[Kit:BorderValue("colours")] or ROOT
+		local id = LOOK.PaletteId()
+		LOOK.ShowChoices(id)
+		lookRoot = Kit:LookFolder(id, Kit:BorderValue("colours"))
 	end
 	if lookRoot == ROOT then
 		return ROOT
@@ -795,9 +964,13 @@ local ApplySlice   -- a one-texture nine-slice's picture on its texture (with th
 -- folder, where it is (its texture coordinates -- a strip's tiling, a mirror,
 -- a crop -- kept as they are, read into eight locals: no table per texture,
 -- configurator build 2026-09-25). The bus's 'palette' goes out after it, from
--- Kit:ApplyBorder, once every texture is in the new look.
+-- Kit:ApplyBorder, once every texture is in the new look. The folder is the
+-- palette in use's (Kit:LookFolder): a palette switch comes this way too
+-- (Core swaps MelloUI.Palette, then Kit:ApplyBorder("colours")).
 function Kit:SetKitColours(value)
-	lookRoot = LOOK_ROOT[value] or ROOT
+	local id = LOOK.PaletteId()
+	LOOK.ShowChoices(id)
+	lookRoot = self:LookFolder(id, value)
 	for tex in pairs(SHADED) do
 		local p, name = tex.kitPiece, tex.kitName
 		if p and name and p.file then
@@ -822,21 +995,26 @@ end
 -- of ApplyBorder: once they are in (the bus's 'restart', at the end of
 -- Core's RestartModules) the chosen look is read again, and the textures
 -- follow only when it is not the folder they are drawn from. The look is
--- read as PieceRoot reads it, through the umbrella's bound settings. While
+-- read as PieceRoot reads it, through the umbrella's bound settings (and the
+-- palette in use: Core applies a loaded profile's palette through
+-- Kit:ApplyBorder("colours") itself, and then nothing is left here). While
 -- those are not bound (UI Modifications off since the login) a folder can
 -- still be cached (the installer binds them for its look refresh), so the
 -- same check runs again when UI Modifications is switched on (the bus's
--- 'module', after its OnEnable bound them).
+-- 'module', after its OnEnable bound them) by the player: a profile load's
+-- switch (MelloUI.restartingModules) comes before its palette is in place,
+-- and always ends in the 'restart' that checks with the new palette (one
+-- walk, one 'palette').
 do
 	local function Recheck()
 		local um = lookRoot ~= nil and MelloUI:GetModule("UIModifications")
-		if um and um.db and (LOOK_ROOT[Kit:BorderValue("colours")] or ROOT) ~= lookRoot then
+		if um and um.db and (Kit:LookFolder(LOOK.PaletteId(), Kit:BorderValue("colours"))) ~= lookRoot then
 			Kit:ApplyBorder("colours")
 		end
 	end
 	local RestartColours = Shared("'restart' on the bus: the Kit Colours", Recheck)
 	local UmbrellaOn = Shared("'module' on the bus: the Kit Colours", function(name, enabled)
-		if enabled and name == "UIModifications" then
+		if enabled and name == "UIModifications" and not MelloUI.restartingModules then
 			Recheck()
 		end
 	end)
@@ -898,32 +1076,132 @@ end
 --       made once per kit texture (asked again: the same one); opts, read
 --       once and not kept: colour (a MelloUI.Palette key, "innerPanel"),
 --       alpha (its strength 0..1, 0.7), scale (UI units per painted px, for
---       a texture drawn at another scale than its tex.kitScale)
+--       a texture drawn at another scale than its tex.kitScale), and (v2):
+--         host   the frame the partner is a region of, instead of the
+--                piece's own (an element's shade frame, one level under
+--                everything the element draws); its reach is then converted
+--                by the two frames' effective scales, again on the bus's
+--                'scale' and a Kit:SetFrameScale
+--         cut    { x0, x1, y0, y1 [, sides = "lt..."] }: the part of the
+--                piece (piece px) the texture shows (a picture cut into
+--                nine): the partner shows that part of the shadow, reaching
+--                past the texture only on the piece's own outer sides (or
+--                the `sides` given); Kit:ShadowCut changes it
+--         shape  another shadow than the piece's own (a synthetic
+--                "shade/square", "shade/round", "shade/capsule")
+--         area   the look area it belongs to (Kit:ShadowAreaSet)
+--         rep    the replacement the piece stands in: hidden with its
+--                Disable and SetShown(false) (a partner on another frame no
+--                longer hides with the holder)
+--         mask   a mask texture of the host (the ring's corner cut,
+--                Kit:TitleBehindRing's title.outerCut), put on the partner
+--         ends   true: a strip mid's partner takes the sheet's soft ends
+--                where the mid runs to the strip's end with no cap
+--                (StripMixin:FitCaps); left out, it stays whole there (the
+--                nameplates' brackets, capless under a plate's secret width,
+--                keep their 0.13.7 cost)
+--       The partner is flagged `kitPiece` and `kitPartner` (a region walker
+--       takes it for ours, never for the game's art) and never registered
+--       with Dark Mode or the Kit Colours (Kit:RegisterTexture): its colour
+--       is the palette's.
 --   Kit:ShadowFit(tex[, scale])   its shape and reach again, after the
 --       piece's scale changed. Kit:Apply calls it when the piece changes and
 --       a strip's Rescale (StripMixin) for its three parts; any other change
 --       of a piece's scale (its kitScale, or a partner's own scale) needs
---       this call from whoever made it
+--       this call from whoever made it. A nine (below): its scale and open
+--       sides, Kit:ShadowFit(nine[, scale][, open])
 --   Kit:ShadowSet(tex, wanted[, alpha])   shown with its piece, or not at
---       all; its strength
+--       all; its strength (a nine: all its parts)
+--   Kit:ShadowCut(tex, x0, x1, y0, y1[, sides])   the part of the piece the
+--       texture shows (nil: all of it)
+--   Kit:ShadowNine(host, rect, family, opts) -> nine, or nil (no nine of that
+--       family in the sheet): a rail family's outline (window/frame,
+--       window/single, deco/barframe_red ...) round `rect` as eight regions
+--       of `host` cut from the family's one shadow (four corners, four edges
+--       stretched between them, nothing inside: the profile is dark only
+--       outside the rails); or a synthetic shape cut as a nine, its middle
+--       filled (shade/square; shade/capsule, at a scale that makes the rect's
+--       height its two corners). opts: scale (UI units per painted px, rect's
+--       kitScale or Kit.scale), open (sides with no rail: "b" ..., no reach
+--       there), follow (a frame whose Show / Hide the parts follow), and
+--       colour, alpha, area, rep, mask as Kit:Shadow's (any number of nines
+--       may follow one frame)
+--   Kit:ShadowAreaSet(area, wanted[, alpha]) -> how many: every partner of
+--       an area at once
+--   Kit:ShadowRefit([soon])   every partner drawn by another frame fitted
+--       again where its frames' scales changed (a nine re-laid only then);
+--       soon: once on the next frame for any number of asks
+--       (Kit:SetFrameScale's, a mouse wheel's burst)
 -- It follows its piece's Show, Hide, SetShown and SetAlpha (one shared
 -- handler each, hooked on the piece: our own texture), shows only while its
 -- piece has a shape in the sheet, and repaints on the bus's 'palette'. A
--- change of piece, scale, strength or colour allocates nothing.
+-- change of piece, scale, strength, colour, cut or a strip's open end
+-- allocates nothing.
+-- Media\KitShadows.lua, version 2 (a version 1 file, pieces only, still
+-- works): file, size, texel (painted px per sheet texel, 4), pieces (as
+-- before; a strip mid's entry may carry endL / endR = { uv, pad [, w] }: the
+-- soft end its shadow (made with opts.ends) takes where the mid runs to the
+-- strip's end with no cap there, just past the mid's end, pad[1] / pad[3] px wide (`w`: painted
+-- px it also covers of the mid, none when left out)), nines = { [family] =
+-- { uv, pad (the reach past the rails' outer edge: left, top, right,
+-- bottom), corner (the rails' corner, painted px), margins (painted px from
+-- the picture's left, top, right and bottom to where the corners end; pad +
+-- corner when left out), size (the picture's painted width and height; else
+-- from uv) } }, shapes = { [name] = { uv, pad [, corner, margins, size] } }:
+-- one with margins is cut as a nine with its middle filled (shade/square,
+-- shade/capsule: Kit:ShadowNine(host, rect, "shade/square", ...)), one
+-- without is stretched whole (shade/round: Kit:Shadow's opts.shape).
 --------------------------------------------------------------------------------
 do
 	local data = _G.MelloUI_KitShadows
-	local SHAPES = type(data) == "table" and type(data.pieces) == "table" and data.pieces or {}
-	local SHEET = type(data) == "table" and type(data.file) == "string" and data.file or nil
 	local Num = MelloUI.Safe.Number
+	local SHAPES = type(data) == "table" and type(data.pieces) == "table" and data.pieces or {}
+	local NINES = type(data) == "table" and type(data.nines) == "table" and data.nines or {}
+	local SYNTH = type(data) == "table" and type(data.shapes) == "table" and data.shapes or {}
+	local SHEET = type(data) == "table" and type(data.file) == "string" and data.file or nil
+	local SIZE = type(data) == "table" and type(data.size) == "table" and data.size or {}
+	local SHEET_W, SHEET_H = Num(SIZE[1]) or 0, Num(SIZE[2]) or 0
+	local TEXEL = type(data) == "table" and Num(data.texel) or 4
 	local NO_OPTIONS = {}
-	local partners = setmetatable({}, { __mode = "k" })   -- every partner, for the repaint
-	local listening = false
+	local WEAK = { __mode = "k" }
+	local partners = setmetatable({}, WEAK)   -- every partner (a nine's parts too), for the repaint
+	local hosted = setmetatable({}, WEAK)     -- [piece or nine] = true: drawn by another frame (fitted again on a scale change)
+	local followers = setmetatable({}, WEAK)  -- [frame] = { the nines that follow it }
+	local areas = {}                          -- [area] = { [partner] = true } (weak)
+	local listening, scaleListening = false, false
+	local NINE_PARTS = { "tl", "tr", "bl", "br", "t", "b", "l", "r", "c" }   -- (the middle, c: a filled shape's only)
 
+	-- a name's shadow: a piece's (a piece of the same shape followed once: a
+	-- red end gem's cap), or a synthetic shape; nil when the sheet has none
+	local function ShapeOf(name)
+		if name == nil then
+			return nil
+		end
+		local e = SHAPES[name]
+		if e == nil then
+			e = SYNTH[name]
+		end
+		if type(e) == "string" then
+			e = SHAPES[e] or SYNTH[e]
+		end
+		if type(e) ~= "table" or type(e.uv) ~= "table" or type(e.pad) ~= "table" then
+			return nil
+		end
+		return e
+	end
+
+	-- (a partner's strip ends with it)
 	local function Paint(sh)
 		local palette = MelloUI.Palette
 		local c = palette[sh.kitColour] or palette.innerPanel
 		sh:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
+		local l, r = sh.kitEndL, sh.kitEndR
+		if l then
+			l:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
+		end
+		if r then
+			r:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
+		end
 	end
 
 	local function Repaint()
@@ -933,30 +1211,251 @@ do
 	end
 
 	local function Sync(sh)
-		sh:SetShown((sh.kitWanted and sh.kitShape and sh.kitPieceShown) and true or false)
+		local on = (sh.kitWanted and sh.kitShape and sh.kitPieceShown and sh.kitRepOn ~= false) and true or false
+		sh:SetShown(on)
+		local l, r = sh.kitEndL, sh.kitEndR
+		if l then
+			l:SetShown(on and l.kitShape ~= nil and sh.kitOpenL == true)
+		end
+		if r then
+			r:SetShown(on and r.kitShape ~= nil and sh.kitOpenR == true)
+		end
 	end
 
-	-- the piece's shape and the reach at its scale (set again only when one changed)
+	-- the host's units per the piece's (1 on the piece's own frame; an
+	-- effective scale that reads secret or not at all counts as 1)
+	local function Ratio(region, host)
+		if not host or host == region then
+			return 1
+		end
+		local okA, a = pcall(region.GetEffectiveScale, region)
+		local okB, b = pcall(host.GetEffectiveScale, host)
+		a, b = okA and Num(a), okB and Num(b)
+		if a and b and a > 0 and b > 0 then
+			return a / b
+		end
+		return 1
+	end
+
+	-- a mask of the partner's own frame put on it (a mask only works on the
+	-- textures of the frame that made it)
+	local function AddMask(sh, mask)
+		if type(mask) ~= "table" or type(sh.AddMaskTexture) ~= "function" or type(mask.GetParent) ~= "function" then
+			return
+		end
+		local okM, owner = pcall(mask.GetParent, mask)
+		local okS, host = pcall(sh.GetParent, sh)
+		if okM and okS and owner ~= nil and owner == host then
+			pcall(sh.AddMaskTexture, sh, mask)
+		end
+	end
+
+	local function JoinArea(sh, area)
+		sh.kitArea = area
+		local set = areas[area]
+		if not set then
+			set = setmetatable({}, WEAK)
+			areas[area] = set
+		end
+		set[sh] = true
+	end
+
+	local function JoinRep(sh, rep)
+		local list = rep.kitShadows
+		if not list then
+			list = {}
+			rep.kitShadows = list
+		end
+		list[#list + 1] = sh
+		sh.kitRep = rep
+		-- shown as the rep's holder is now (its own frame: a plain answer)
+		local object = rawget(rep, "object")
+		if object then
+			local ok, shown = pcall(object.IsShown, object)
+			sh.kitRepOn = not ok or Secret(shown) or (shown and true or false)
+		else
+			sh.kitRepOn = rep.holderShown ~= false
+		end
+	end
+
+	-- a region of `host` for a partner, painted, not yet placed
+	local function NewPartner(host, colour, strength)
+		local sh = host:CreateTexture(nil, "BACKGROUND", nil, -8)
+		sh:SetTexture(SHEET)
+		sh.kitPiece, sh.kitPartner = true, true
+		sh.kitColour, sh.kitStrength = colour, strength
+		sh.kitWanted, sh.kitPieceShown = true, true
+		return sh
+	end
+
+	-- painted px of a picture `texels` wide in the sheet (whole texels: the uv
+	-- are written rounded)
+	local function Painted(span, sheet)
+		return math.floor(span * sheet + 0.5) * TEXEL
+	end
+
+	-- a shadow picture's painted width and height (its `size`, else from its uv)
+	local function PictureSize(e)
+		local size, uv = e.size, e.uv
+		local w = type(size) == "table" and Num(size[1])
+		local h = type(size) == "table" and Num(size[2])
+		return w or Painted(uv[2] - uv[1], SHEET_W), h or Painted(uv[4] - uv[3], SHEET_H)
+	end
+
+	-- how much of the mid a soft end covers inward, painted px (its `w`, else
+	-- its picture's width less its reach: none when it lies just past the end)
+	local function EndWidth(en)
+		local w = Num(en.w)
+		if w then
+			return w
+		end
+		local pad = en.pad
+		return (PictureSize(en)) - (Num(pad[1]) or 0) - (Num(pad[3]) or 0)
+	end
+
+	-- a strip mid's soft end (StripMixin:FitCaps opened it), made when first
+	-- needed: a region of the partner's frame beside the partner
+	local function EndPartner(sh, key)
+		local part = sh[key]
+		if not part then
+			part = NewPartner(sh:GetParent(), sh.kitColour, sh.kitStrength)
+			part.kitEndOf = sh
+			sh[key] = part
+			if sh.kitMask then
+				AddMask(part, sh.kitMask)
+			end
+			local okA, a = pcall(sh.GetAlpha, sh)
+			a = okA and Num(a)
+			if a then
+				part:SetAlpha(a)
+			end
+			Paint(sh)
+		end
+		return part
+	end
+
+	-- the piece's shape and the reach at its scale (set again only when one
+	-- changed): whole, cut (sh.kitCutX0 ...), or a strip mid with a soft end
+	-- where it runs to the strip's end (tex.kitOpenL / kitOpenR; only for a
+	-- partner made with opts.ends)
 	local function Fit(tex, sh)
-		local name = tex.kitName
-		local e = name and SHAPES[name]
-		if type(e) == "string" then
-			e = SHAPES[e]   -- a piece of the same shape (a red end gem's cap)
-		end
-		if type(e) ~= "table" then
-			e = nil
-		end
+		local e = ShapeOf(sh.kitShapeName or tex.kitName)
 		local scale = sh.kitOwnScale or Num(tex.kitScale) or Kit.scale
-		if e and (e ~= sh.kitShape or scale ~= sh.kitFitScale) then
+		if sh.kitHost then
+			scale = scale * Ratio(tex, sh.kitHost)
+		end
+		local ends = sh.kitEnds == true
+		local openL, openR = ends and tex.kitOpenL == true, ends and tex.kitOpenR == true
+		if e and (e ~= sh.kitShape or scale ~= sh.kitFitScale or sh.kitRefit or openL ~= sh.kitOpenL or openR ~= sh.kitOpenR) then
 			local pad, uv = e.pad, e.uv
+			local p = sh.kitCutX0 and PIECES[tex.kitName]
+			local el = not p and openL and e.endL
+			local er = not p and openR and e.endR
+			el = type(el) == "table" and type(el.uv) == "table" and type(el.pad) == "table" and el or nil
+			er = type(er) == "table" and type(er.uv) == "table" and type(er.pad) == "table" and er or nil
 			sh:ClearAllPoints()
-			sh:SetPoint("TOPLEFT", tex, "TOPLEFT", -pad[1] * scale, pad[2] * scale)
-			sh:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", pad[3] * scale, -pad[4] * scale)
-			sh:SetTexCoord(uv[1], uv[2], uv[3], uv[4])
-			sh.kitFitScale = scale
+			if p then
+				-- the part of the piece the texture shows: its reach past the
+				-- piece's own outer sides only (or the sides given)
+				local x0, x1, y0, y1, sides = sh.kitCutX0, sh.kitCutX1, sh.kitCutY0, sh.kitCutY1, sh.kitCutSides
+				local L = ((sides and sides:find("l", 1, true)) or (not sides and x0 <= 0)) and pad[1] or 0
+				local T = ((sides and sides:find("t", 1, true)) or (not sides and y0 <= 0)) and pad[2] or 0
+				local R = ((sides and sides:find("r", 1, true)) or (not sides and x1 >= p.w)) and pad[3] or 0
+				local B = ((sides and sides:find("b", 1, true)) or (not sides and y1 >= p.h)) and pad[4] or 0
+				local W, H = pad[1] + p.w + pad[3], pad[2] + p.h + pad[4]
+				local du, dv = uv[2] - uv[1], uv[4] - uv[3]
+				sh:SetPoint("TOPLEFT", tex, "TOPLEFT", -L * scale, T * scale)
+				sh:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", R * scale, -B * scale)
+				sh:SetTexCoord(uv[1] + (x0 - L + pad[1]) / W * du, uv[1] + (x1 + R + pad[1]) / W * du,
+					uv[3] + (y0 - T + pad[2]) / H * dv, uv[3] + (y1 + B + pad[2]) / H * dv)
+			elseif el or er then
+				-- the profile from the soft ends' inner edges; the ends beside it
+				local wl, wr = el and EndWidth(el), er and EndWidth(er)
+				sh:SetPoint("TOPLEFT", tex, "TOPLEFT", el and wl * scale or -pad[1] * scale, pad[2] * scale)
+				sh:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", er and -wr * scale or pad[3] * scale, -pad[4] * scale)
+				sh:SetTexCoord(uv[1], uv[2], uv[3], uv[4])
+				if el then
+					local part = EndPartner(sh, "kitEndL")
+					part:ClearAllPoints()
+					part:SetPoint("TOPLEFT", tex, "TOPLEFT", -el.pad[1] * scale, el.pad[2] * scale)
+					part:SetPoint("BOTTOMRIGHT", tex, "BOTTOMLEFT", wl * scale, -el.pad[4] * scale)
+					part:SetTexCoord(el.uv[1], el.uv[2], el.uv[3], el.uv[4])
+				end
+				if er then
+					local part = EndPartner(sh, "kitEndR")
+					part:ClearAllPoints()
+					part:SetPoint("TOPRIGHT", tex, "TOPRIGHT", er.pad[3] * scale, er.pad[2] * scale)
+					part:SetPoint("BOTTOMLEFT", tex, "BOTTOMRIGHT", -wr * scale, -er.pad[4] * scale)
+					part:SetTexCoord(er.uv[1], er.uv[2], er.uv[3], er.uv[4])
+				end
+			else
+				sh:SetPoint("TOPLEFT", tex, "TOPLEFT", -pad[1] * scale, pad[2] * scale)
+				sh:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", pad[3] * scale, -pad[4] * scale)
+				sh:SetTexCoord(uv[1], uv[2], uv[3], uv[4])
+			end
+			if sh.kitEndL then
+				sh.kitEndL.kitShape = el
+			end
+			if sh.kitEndR then
+				sh.kitEndR.kitShape = er
+			end
+			sh.kitFitScale, sh.kitRefit = scale, nil
+			sh.kitOpenL, sh.kitOpenR = openL, openR
 		end
 		sh.kitShape = e
 		Sync(sh)
+	end
+
+	-- one part of a nine: used or not, its two points on `rect`, its crop
+	local function NinePart(sh, used, e, rect, pa, ra, xa, ya, pb, rb, xb, yb, l, r, t, b)
+		if used then
+			sh:ClearAllPoints()
+			sh:SetPoint(pa, rect, ra, xa, ya)
+			sh:SetPoint(pb, rect, rb, xb, yb)
+			sh:SetTexCoord(l, r, t, b)
+			sh.kitShape = e
+		else
+			sh.kitShape = nil
+		end
+		Sync(sh)
+	end
+
+	-- a nine's parts laid round its rect at its scale, its open sides left
+	-- out (the edges beside one run to the rect's edge there); a picture with
+	-- no middle columns or rows (a capsule's height) has no edges there, and
+	-- a filled shape's middle (nine.c) is laid between the corners
+	local function LayNine(nine)
+		local e, rect = nine.entry, nine.rect
+		local s = nine.scale * nine.ratio
+		local pad, uv, m = e.pad, e.uv, e.margins
+		local PW, PH = PictureSize(e)
+		local c = Num(e.corner) or 0
+		local mL = type(m) == "table" and Num(m[1]) or pad[1] + c
+		local mT = type(m) == "table" and Num(m[2]) or pad[2] + c
+		local mR = type(m) == "table" and Num(m[3]) or pad[3] + c
+		local mB = type(m) == "table" and Num(m[4]) or pad[4] + c
+		local wide, tall = mL + mR < PW - 0.5, mT + mB < PH - 0.5
+		local open = nine.open
+		local oL, oR = open:find("l", 1, true) ~= nil, open:find("r", 1, true) ~= nil
+		local oT, oB = open:find("t", 1, true) ~= nil, open:find("b", 1, true) ~= nil
+		-- the reach past the rect, and how far the corners and edges come in
+		local pL, pT, pR, pB = pad[1] * s, pad[2] * s, pad[3] * s, pad[4] * s
+		local iL, iT, iR, iB = (mL - pad[1]) * s, (mT - pad[2]) * s, (mR - pad[3]) * s, (mB - pad[4]) * s
+		local u0, u1, v0, v1 = uv[1], uv[2], uv[3], uv[4]
+		local uL, uR = u0 + mL / PW * (u1 - u0), u1 - mR / PW * (u1 - u0)
+		local vT, vB = v0 + mT / PH * (v1 - v0), v1 - mB / PH * (v1 - v0)
+		NinePart(nine.tl, not (oL or oT), e, rect, "TOPLEFT", "TOPLEFT", -pL, pT, "BOTTOMRIGHT", "TOPLEFT", iL, -iT, u0, uL, v0, vT)
+		NinePart(nine.tr, not (oR or oT), e, rect, "TOPRIGHT", "TOPRIGHT", pR, pT, "BOTTOMLEFT", "TOPRIGHT", -iR, -iT, uR, u1, v0, vT)
+		NinePart(nine.bl, not (oL or oB), e, rect, "BOTTOMLEFT", "BOTTOMLEFT", -pL, -pB, "TOPRIGHT", "BOTTOMLEFT", iL, iB, u0, uL, vB, v1)
+		NinePart(nine.br, not (oR or oB), e, rect, "BOTTOMRIGHT", "BOTTOMRIGHT", pR, -pB, "TOPLEFT", "BOTTOMRIGHT", -iR, iB, uR, u1, vB, v1)
+		NinePart(nine.t, wide and not oT, e, rect, "TOPLEFT", "TOPLEFT", oL and 0 or iL, pT, "BOTTOMRIGHT", "TOPRIGHT", oR and 0 or -iR, -iT, uL, uR, v0, vT)
+		NinePart(nine.b, wide and not oB, e, rect, "BOTTOMLEFT", "BOTTOMLEFT", oL and 0 or iL, -pB, "TOPRIGHT", "BOTTOMRIGHT", oR and 0 or -iR, iB, uL, uR, vB, v1)
+		NinePart(nine.l, tall and not oL, e, rect, "TOPLEFT", "TOPLEFT", -pL, oT and 0 or -iT, "BOTTOMRIGHT", "BOTTOMLEFT", iL, oB and 0 or iB, u0, uL, vT, vB)
+		NinePart(nine.r, tall and not oR, e, rect, "TOPRIGHT", "TOPRIGHT", pR, oT and 0 or -iT, "BOTTOMLEFT", "BOTTOMRIGHT", -iR, oB and 0 or iB, uR, u1, vT, vB)
+		if nine.c then
+			NinePart(nine.c, wide and tall, e, rect, "TOPLEFT", "TOPLEFT", oL and 0 or iL, oT and 0 or -iT, "BOTTOMRIGHT", "BOTTOMRIGHT",
+				oR and 0 or -iR, oB and 0 or iB, uL, uR, vT, vB)
+		end
 	end
 
 	local OnShow = Shared("Show on a kit piece with a shadow", function(tex)
@@ -986,8 +1485,91 @@ do
 		alpha = Num(alpha)
 		if sh and alpha then
 			sh:SetAlpha(alpha)
+			if sh.kitEndL then
+				sh.kitEndL:SetAlpha(alpha)
+			end
+			if sh.kitEndR then
+				sh.kitEndR:SetAlpha(alpha)
+			end
 		end
 	end)
+
+	-- a frame a nine follows shown or hidden: its parts with it
+	local function NineShown(nine, shown)
+		local parts = nine.kitParts
+		for i = 1, #parts do
+			local sh = parts[i]
+			sh.kitPieceShown = shown
+			Sync(sh)
+		end
+	end
+	local FollowShow = Shared("OnShow on a frame a kit nine shadow follows", function(f)
+		local list = followers[f]
+		if list then
+			for i = 1, #list do
+				NineShown(list[i], true)
+			end
+		end
+	end, "script")
+	local FollowHide = Shared("OnHide on a frame a kit nine shadow follows", function(f)
+		local list = followers[f]
+		if list then
+			for i = 1, #list do
+				NineShown(list[i], false)
+			end
+		end
+	end, "script")
+
+	-- every partner drawn by another frame fitted again where the two
+	-- frames' scales changed (its reach in that frame's units: the 'scale'
+	-- bus, Kit:SetFrameScale): a nine re-laid only when its ratio moved, a
+	-- piece's partner only when its scale did (Fit). A scale change of one
+	-- frame reads each hosted entry's two effective scales, no more: finding
+	-- whether an entry lies under that frame costs as many reads.
+	local function Refit()
+		for obj in pairs(hosted) do
+			if obj.kitParts then
+				local r = Ratio(obj.rect, obj.host)
+				if r ~= obj.ratio then
+					obj.ratio = r
+					LayNine(obj)
+				end
+			elseif obj.kitShadow then
+				Fit(obj, obj.kitShadow)
+			end
+		end
+	end
+	local OnScale = Shared("'scale' on the bus: the kit's shadows on other frames", Refit)
+	local REFIT_KEY = "Kit shadows on other frames"   -- (Kit:NextFrame: one pass a frame)
+	local RefitSoon = Shared("next frame: the kit's shadows on other frames", Refit)
+
+	local function Listen(hostedToo)
+		if not MelloUI.On then
+			return
+		end
+		if not listening then
+			listening = true
+			MelloUI:On("palette", Repaint, "Kit shadows")
+		end
+		if hostedToo and not scaleListening then
+			scaleListening = true
+			MelloUI:On("scale", OnScale, "Kit shadows")
+		end
+	end
+
+	-- one partner shown or not, at a strength (unchanged: not painted again)
+	local function SetOne(sh, wanted, alpha)
+		sh.kitWanted = wanted and true or false
+		alpha = Num(alpha)
+		if alpha then
+			alpha = alpha < 0 and 0 or alpha > 1 and 1 or alpha
+			if alpha ~= sh.kitStrength then
+				sh.kitStrength = alpha
+				Paint(sh)
+			end
+		end
+		Sync(sh)
+	end
 
 	function Kit:Shadow(tex, opts)
 		if type(tex) ~= "table" then
@@ -997,21 +1579,44 @@ do
 		if sh or not SHEET then
 			return sh
 		end
-		local ok, host = pcall(tex.GetParent, tex)
-		if not ok or type(host) ~= "table" or not host.CreateTexture then
-			return nil
-		end
 		if type(opts) ~= "table" then
 			opts = NO_OPTIONS
 		end
-		sh = host:CreateTexture(nil, "BACKGROUND", nil, -8)
-		sh:SetTexture(SHEET)
-		sh.kitColour = type(opts.colour) == "string" and opts.colour or "innerPanel"
+		local ok, parent = pcall(tex.GetParent, tex)
+		local host = opts.host
+		if type(host) ~= "table" or not host.CreateTexture then
+			host = nil
+			if not ok or type(parent) ~= "table" or not parent.CreateTexture then
+				return nil
+			end
+		end
 		local a = Num(opts.alpha) or 0.7
-		sh.kitStrength = a < 0 and 0 or a > 1 and 1 or a
+		sh = NewPartner(host or parent, type(opts.colour) == "string" and opts.colour or "innerPanel", a < 0 and 0 or a > 1 and 1 or a)
+		if host and host ~= parent then
+			sh.kitHost = host
+		end
 		local s = Num(opts.scale)
 		sh.kitOwnScale = s and s > 0 and s or nil
-		sh.kitWanted = true
+		sh.kitShapeName = type(opts.shape) == "string" and opts.shape or nil
+		sh.kitEnds = opts.ends == true or nil
+		local cut = opts.cut
+		if type(cut) == "table" then
+			local x0, x1, y0, y1 = Num(cut[1]), Num(cut[2]), Num(cut[3]), Num(cut[4])
+			if x0 and x1 and y0 and y1 then
+				sh.kitCutX0, sh.kitCutX1, sh.kitCutY0, sh.kitCutY1 = x0, x1, y0, y1
+				sh.kitCutSides = type(cut.sides) == "string" and cut.sides or nil
+			end
+		end
+		if opts.mask then
+			sh.kitMask = opts.mask
+			AddMask(sh, opts.mask)
+		end
+		if type(opts.area) == "string" then
+			JoinArea(sh, opts.area)
+		end
+		if type(opts.rep) == "table" then
+			JoinRep(sh, opts.rep)
+		end
 		-- where the piece is now (our own texture: its answers are plain; a
 		-- refused or secret one counts as shown, at full alpha)
 		local okS, shown = pcall(tex.IsShown, tex)
@@ -1023,21 +1628,55 @@ do
 		end
 		tex.kitShadow = sh
 		partners[sh] = true
+		if sh.kitHost then
+			hosted[tex] = true
+		end
 		hooksecurefunc(tex, "Show", OnShow)
 		hooksecurefunc(tex, "Hide", OnHide)
 		hooksecurefunc(tex, "SetShown", OnSetShown)
 		hooksecurefunc(tex, "SetAlpha", OnSetAlpha)
 		Paint(sh)
 		Fit(tex, sh)
-		if not listening and MelloUI.On then
-			listening = true
-			MelloUI:On("palette", Repaint, "Kit shadows")
+		Listen(sh.kitHost ~= nil)
+		return sh
+	end
+
+	-- A partner for `tex` made as `from`'s was (a top corner's plain twin,
+	-- StripMixin / NineSlice's SetTopGems), shown as that one is wanted
+	function Kit:ShadowLike(tex, from)
+		local was = type(from) == "table" and from.kitShadow
+		if not was or type(tex) ~= "table" then
+			return nil
+		end
+		if tex.kitShadow then
+			return tex.kitShadow
+		end
+		local sh = self:Shadow(tex, { host = was.kitHost, colour = was.kitColour, alpha = was.kitStrength, scale = was.kitOwnScale,
+			shape = was.kitShapeName, area = was.kitArea, rep = was.kitRep, mask = was.kitMask, ends = was.kitEnds })
+		if sh then
+			sh.kitWanted = was.kitWanted
+			Sync(sh)
 		end
 		return sh
 	end
 
-	function Kit:ShadowFit(tex, scale)
-		local sh = type(tex) == "table" and tex.kitShadow
+	function Kit:ShadowFit(tex, scale, open)
+		if type(tex) ~= "table" then
+			return
+		end
+		if tex.kitParts then
+			scale = Num(scale)
+			if scale and scale > 0 then
+				tex.scale = scale
+			end
+			if type(open) == "string" then
+				tex.open = open
+			end
+			tex.ratio = tex.host == tex.rect and 1 or Ratio(tex.rect, tex.host)
+			LayNine(tex)
+			return
+		end
+		local sh = tex.kitShadow
 		if not sh then
 			return
 		end
@@ -1048,21 +1687,151 @@ do
 		Fit(tex, sh)
 	end
 
-	function Kit:ShadowSet(tex, wanted, alpha)
+	function Kit:ShadowCut(tex, x0, x1, y0, y1, sides)
 		local sh = type(tex) == "table" and tex.kitShadow
 		if not sh then
 			return
 		end
-		sh.kitWanted = wanted and true or false
-		alpha = Num(alpha)
-		if alpha then
-			alpha = alpha < 0 and 0 or alpha > 1 and 1 or alpha
-			if alpha ~= sh.kitStrength then
-				sh.kitStrength = alpha
-				Paint(sh)
+		x0, x1, y0, y1 = Num(x0), Num(x1), Num(y0), Num(y1)
+		if not (x0 and x1 and y0 and y1) then
+			x0, x1, y0, y1 = nil, nil, nil, nil
+		end
+		sides = type(sides) == "string" and sides or nil
+		if x0 ~= sh.kitCutX0 or x1 ~= sh.kitCutX1 or y0 ~= sh.kitCutY0 or y1 ~= sh.kitCutY1 or sides ~= sh.kitCutSides then
+			sh.kitCutX0, sh.kitCutX1, sh.kitCutY0, sh.kitCutY1, sh.kitCutSides = x0, x1, y0, y1, sides
+			sh.kitRefit = true
+		end
+		Fit(tex, sh)
+	end
+
+	function Kit:ShadowNine(host, rect, family, opts)
+		local e = type(family) == "string" and NINES[family]
+		local filled = false
+		if e == nil and type(family) == "string" then
+			-- a synthetic shape cut as a nine (shade/square, shade/capsule): its middle filled
+			e = SYNTH[family]
+			filled = type(e) == "table" and e.margins ~= nil
+			if not filled then
+				e = nil
 			end
 		end
-		Sync(sh)
+		if not (SHEET and type(e) == "table" and type(e.uv) == "table" and type(e.pad) == "table") then
+			return nil
+		end
+		if type(host) ~= "table" or not host.CreateTexture or type(rect) ~= "table" then
+			return nil
+		end
+		if type(opts) ~= "table" then
+			opts = NO_OPTIONS
+		end
+		local a = Num(opts.alpha) or 0.7
+		a = a < 0 and 0 or a > 1 and 1 or a
+		local colour = type(opts.colour) == "string" and opts.colour or "innerPanel"
+		local s = Num(opts.scale) or Num(rect.kitScale) or Kit.scale
+		local nine = { kitParts = {}, kitNine = true, host = host, rect = rect, family = family, entry = e,
+			scale = s > 0 and s or Kit.scale, open = type(opts.open) == "string" and opts.open or "" }
+		nine.ratio = host == rect and 1 or Ratio(rect, host)
+		local follow = opts.follow
+		local shown = true
+		if type(follow) == "table" and follow.HookScript then
+			local okS, isShown = pcall(follow.IsShown, follow)
+			shown = not okS or Secret(isShown) or (isShown and true or false)
+		end
+		for i, key in ipairs(NINE_PARTS) do
+			if key == "c" and not filled then
+				break
+			end
+			local sh = NewPartner(host, colour, a)
+			sh.kitNinePart = key
+			sh.kitPieceShown = shown
+			nine.kitParts[i], nine[key] = sh, sh
+			partners[sh] = true
+			if opts.mask then
+				sh.kitMask = opts.mask
+				AddMask(sh, opts.mask)
+			end
+			if type(opts.area) == "string" then
+				JoinArea(sh, opts.area)
+			end
+			if type(opts.rep) == "table" then
+				JoinRep(sh, opts.rep)
+			end
+			Paint(sh)
+		end
+		if type(follow) == "table" and follow.HookScript then
+			-- (the frame's two hooks once; each nine that follows it on its list)
+			local list = followers[follow]
+			if list == nil then
+				list = {}
+				followers[follow] = list
+				Perf.HookScript(follow, "OnShow", FollowShow)
+				Perf.HookScript(follow, "OnHide", FollowHide)
+			end
+			list[#list + 1] = nine
+		end
+		-- (laid on another frame than its host: fitted again when the scales change)
+		if host ~= rect then
+			hosted[nine] = true
+		end
+		LayNine(nine)
+		Listen(hosted[nine] == true)
+		return nine
+	end
+
+	function Kit:ShadowAreaSet(area, wanted, alpha)
+		local set = areas[area]
+		if not set then
+			return 0
+		end
+		local n = 0
+		for sh in pairs(set) do
+			SetOne(sh, wanted, alpha)
+			n = n + 1
+		end
+		return n
+	end
+
+	-- a replacement enabled or disabled (ReplacementMixin): its partners on
+	-- other frames with it
+	function Kit:ShadowRepOn(rep, on)
+		local list = rep.kitShadows
+		if not list then
+			return
+		end
+		on = on and true or false
+		for i = 1, #list do
+			local sh = list[i]
+			sh.kitRepOn = on
+			Sync(sh)
+		end
+	end
+
+	function Kit:ShadowRefit(soon)
+		if next(hosted) == nil then
+			return
+		end
+		if soon then
+			self:NextFrame(REFIT_KEY, RefitSoon)
+		else
+			Refit()
+		end
+	end
+
+	function Kit:ShadowSet(tex, wanted, alpha)
+		if type(tex) ~= "table" then
+			return
+		end
+		local parts = tex.kitParts
+		if parts then
+			for i = 1, #parts do
+				SetOne(parts[i], wanted, alpha)
+			end
+			return
+		end
+		local sh = tex.kitShadow
+		if sh then
+			SetOne(sh, wanted, alpha)
+		end
 	end
 end
 
@@ -1232,6 +2001,11 @@ function Kit:SetFrameScale(frame, scale, setScale)
 	if okB and okA and not Secret(before) and not Secret(after) and before == after then
 		return false, 0
 	end
+	-- (a shadow partner drawn by another frame than its piece's reaches in
+	-- that frame's units: fitted again on the next frame, once for a burst --
+	-- a mouse wheel's turns, the saved frames' scales at login -- and only
+	-- where the scales changed)
+	self:ShadowRefit(true)
 	return true, (self:RetileBackgroundsIn(frame))
 end
 
@@ -2000,6 +2774,11 @@ function Kit:NineSlice(parent, opts)
 					me.plainCorner[c] = plain
 					table.insert(me.art, plain)
 				end
+				-- a gem with a shadow partner: its plain twin gets one the same
+				-- (each follows its own piece's Show / Hide below)
+				if plain and gem.tex.kitShadow and not plain.kitShadow then
+					self:ShadowLike(plain, gem.tex)
+				end
 				gem.tex:SetShown(on and true or false)
 				if plain then
 					plain:SetShown(not on)
@@ -2027,6 +2806,80 @@ end
 
 function Kit:NineSliceInset(skin)
 	return skin.thickness
+end
+
+-- A frame picture cut into nine on `f` (0.14.0: the action bars' backdrop and
+-- the minimap's square frame each had a copy): `parts` = { tl, tr, bl, br, t,
+-- b, l, r }, textures on f; `piece` the picture, `k` UI units per piece px,
+-- `corner` the corner square (piece px). The corners at f's corners, the
+-- edges stretched between them (the picture is even along them). A part
+-- showing another piece gets this one (Kit:Apply); `show` shows every part.
+-- A part with a shadow partner (Kit:Shadow) shows the same part of the
+-- piece's shadow, reaching past the picture's outer sides only
+-- (Kit:ShadowCut). f.railTC: the four rails' coordinates in the file (top,
+-- bottom, left, right: left, right, top, bottom each), filled in place.
+-- False when the kit has no such piece.
+Kit.nineParts = { "tl", "tr", "bl", "br", "t", "b", "l", "r" }
+
+function Kit:CutNine(f, parts, piece, k, corner, show)
+	local p = PIECES[piece]
+	if not p then
+		return false
+	end
+	local c, w, h = corner, p.w, p.h
+	local u0, u1, v0, v1 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
+	-- (the picture's lines as file coordinates, as u0 + (u1 - u0) * x / w)
+	local ua, ub, uc, ud = u0 + (u1 - u0) * 0 / w, u0 + (u1 - u0) * c / w, u0 + (u1 - u0) * (w - c) / w, u0 + (u1 - u0) * w / w
+	local va, vb, vc, vd = v0 + (v1 - v0) * 0 / h, v0 + (v1 - v0) * c / h, v0 + (v1 - v0) * (h - c) / h, v0 + (v1 - v0) * h / h
+	local cs = c * k
+	for _, key in ipairs(self.nineParts) do
+		local tex = parts[key]
+		if tex.kitName ~= piece then
+			self:Apply(tex, piece)
+		end
+		tex.kitScale = k   -- (drawn at k: a shadow partner reaches as far)
+		tex:ClearAllPoints()
+		if show then
+			tex:Show()
+		end
+	end
+	local tl, tr, bl, br = parts.tl, parts.tr, parts.bl, parts.br
+	tl:SetPoint("TOPLEFT", f, "TOPLEFT"); tl:SetSize(cs, cs); tl:SetTexCoord(ua, ub, va, vb)
+	tr:SetPoint("TOPRIGHT", f, "TOPRIGHT"); tr:SetSize(cs, cs); tr:SetTexCoord(uc, ud, va, vb)
+	bl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT"); bl:SetSize(cs, cs); bl:SetTexCoord(ua, ub, vc, vd)
+	br:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT"); br:SetSize(cs, cs); br:SetTexCoord(uc, ud, vc, vd)
+	local t, b, l, r = parts.t, parts.b, parts.l, parts.r
+	t:SetPoint("TOPLEFT", f, "TOPLEFT", cs, 0)
+	t:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", -cs, -cs)
+	t:SetTexCoord(ub, uc, va, vb)
+	b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", cs, 0)
+	b:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", -cs, cs)
+	b:SetTexCoord(ub, uc, vc, vd)
+	l:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -cs)
+	l:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", cs, cs)
+	l:SetTexCoord(ua, ub, vb, vc)
+	r:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -cs)
+	r:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", -cs, cs)
+	r:SetTexCoord(uc, ud, vb, vc)
+	local tc = f.railTC
+	if not tc then
+		tc = { top = {}, bottom = {}, left = {}, right = {} }
+		f.railTC = tc
+	end
+	tc.top[1], tc.top[2], tc.top[3], tc.top[4] = ub, uc, va, vb
+	tc.bottom[1], tc.bottom[2], tc.bottom[3], tc.bottom[4] = ub, uc, vc, vd
+	tc.left[1], tc.left[2], tc.left[3], tc.left[4] = ua, ub, vb, vc
+	tc.right[1], tc.right[2], tc.right[3], tc.right[4] = uc, ud, vb, vc
+	-- the parts' shadow partners: the same cut of the piece's shadow
+	if tl.kitShadow then self:ShadowCut(tl, 0, c, 0, c) end
+	if tr.kitShadow then self:ShadowCut(tr, w - c, w, 0, c) end
+	if bl.kitShadow then self:ShadowCut(bl, 0, c, h - c, h) end
+	if br.kitShadow then self:ShadowCut(br, w - c, w, h - c, h) end
+	if t.kitShadow then self:ShadowCut(t, c, w - c, 0, c) end
+	if b.kitShadow then self:ShadowCut(b, c, w - c, h - c, h) end
+	if l.kitShadow then self:ShadowCut(l, 0, c, c, h - c) end
+	if r.kitShadow then self:ShadowCut(r, w - c, w, c, h - c) end
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -2160,6 +3013,9 @@ function StripMixin:FitCaps(width)
 		end
 		return
 	end
+	-- (the caps' shadow partners follow their Show / Hide; the mid's, made
+	-- with opts.ends, takes a soft end where it now runs to the strip's end,
+	-- below)
 	self.capless, self.noL, self.noR = capless, noL, noR
 	-- a dropped cap closes with the family's gemless end piece
 	-- (<base>_end_l/r_<state>, made by Tools/make_plain_plate.py) when it has one
@@ -2189,6 +3045,14 @@ function StripMixin:FitCaps(width)
 		self.mid.kitTileH = self.height
 	end
 	Kit:Retile(self.mid)
+	-- the mid's ends with no cap and no end piece: its shadow partner (one
+	-- made with opts.ends) fades out softly there instead of stopping square
+	-- (Kit:Shadow)
+	self.mid.kitOpenL = (noL and not endL) and true or false
+	self.mid.kitOpenR = (noR and not endR) and true or false
+	if self.mid.kitShadow then
+		Kit:ShadowFit(self.mid)
+	end
 end
 
 -- Insets of the mid's opening (left cap, right cap, top, bottom), for content.
@@ -2292,6 +3156,12 @@ function VStripMixin:FitWidth(width)
 	self.capH = capH * scale
 	self:SetWidth(width)
 	self:Layout()
+	-- the parts' shadow partners reach as far at the new scale (as a Strip's)
+	if self.capT.kitShadow or self.mid.kitShadow or self.capB.kitShadow then
+		Kit:ShadowFit(self.capT)
+		Kit:ShadowFit(self.mid)
+		Kit:ShadowFit(self.capB)
+	end
 end
 
 function Kit:VStrip(parent, base, opts)
@@ -2843,62 +3713,145 @@ local Rim_OnSetButtonState = Shared("SetButtonState on a kit rim's button", func
 	Slot_Update(tex)
 end)
 
-local function FollowButton(tex, button)
-	if not allRims[tex] then
-		allRims[tex] = true
-		rimList[#rimList + 1] = tex
+-- The mouse a rim's hooks leave on a frame that is no button (0.14.0: a
+-- mouse script set or hooked on a frame turns that input on, so a plain
+-- holder over the colour picker's wheel and a mail item's icon took their
+-- clicks; those two callers put it back themselves). What FollowButton
+-- found OFF on such a frame is turned off again after its hooks: clicks and
+-- motion each (the client's own IsMouseClickEnabled / IsMouseMotionEnabled,
+-- or the one IsMouseEnabled where those are missing). A Button or a
+-- CheckButton keeps what the hooks give it: its rim's hover and press are
+-- the point. A protected frame in combat waits for the fight's end. Each
+-- frame so kept is listed (Kit.mouseKept, weak: [frame] = what was put
+-- back) for /mellokit mouse: the in-game audit of who relied on it.
+Kit.mouseKept = setmetatable({}, { __mode = "k" })
+local FollowButton
+do
+	local function Flag(frame, method)
+		local fn = frame[method]
+		if type(fn) ~= "function" then
+			return nil
+		end
+		local ok, on = pcall(fn, frame)
+		if not ok or Secret(on) then
+			return nil
+		end
+		return on and true or false
 	end
-	tex.Update = Slot_Update
-	-- a CheckButton flips its own flag when clicked (read after each click)
-	local okT, objectType = pcall(button.GetObjectType, button)
-	local onCheck = okT and not Secret(objectType) and objectType == "CheckButton"
-	tex.onCheckButton = onCheck or nil
-	RimEventsFor(onCheck)
-	RimJoin(tex)
-	if rimOf[button] == nil then
-		rimOf[button] = tex
-		Perf.HookScript(button, "OnEnter", Rim_OnEnter)
-		Perf.HookScript(button, "OnLeave", Rim_OnLeave)
-		Perf.HookScript(button, "OnMouseDown", Rim_OnMouseDown)
-		Perf.HookScript(button, "OnMouseUp", Rim_OnMouseUp)
-		-- shown again (its window opened): read at once, the passes leave it
-		-- alone while it cannot be seen
-		Perf.HookScript(button, "OnShow", Rim_OnShow)
+
+	-- click, motion (nil: unknown), and whether the frame answers them apart
+	local function MouseWas(frame, objectType)
+		if objectType == "Button" or objectType == "CheckButton" or objectType == "ItemButton" then
+			return nil, nil, nil
+		end
+		if type(frame.IsObjectType) == "function" then
+			local ok, isButton = pcall(frame.IsObjectType, frame, "Button")
+			if ok and not Secret(isButton) and isButton then
+				return nil, nil, nil
+			end
+		end
+		local click, motion = Flag(frame, "IsMouseClickEnabled"), Flag(frame, "IsMouseMotionEnabled")
+		if click ~= nil and motion ~= nil then
+			return click, motion, true
+		end
+		local any = Flag(frame, "IsMouseEnabled")
+		return any, any, false
+	end
+
+	local function PutBack(frame, click, motion, apart)
+		local kept = nil
+		if apart then
+			if click == false and Flag(frame, "IsMouseClickEnabled") then
+				pcall(frame.SetMouseClickEnabled, frame, false)
+				kept = "clicks"
+			end
+			if motion == false and Flag(frame, "IsMouseMotionEnabled") then
+				pcall(frame.SetMouseMotionEnabled, frame, false)
+				kept = kept and "clicks and motion" or "motion"
+			end
+		elseif click == false and Flag(frame, "IsMouseEnabled") then
+			pcall(frame.EnableMouse, frame, false)
+			kept = "mouse"
+		end
+		if kept then
+			Kit.mouseKept[frame] = kept
+		end
+	end
+
+	local function MouseBack(frame, click, motion, apart)
+		if click ~= false and motion ~= false then
+			return
+		end
+		if InCombatLockdown() and Flag(frame, "IsProtected") then
+			Kit:WhenOutOfCombat(function()
+				PutBack(frame, click, motion, apart)
+			end)
+			return
+		end
+		PutBack(frame, click, motion, apart)
+	end
+
+	function FollowButton(tex, button)
+		if not allRims[tex] then
+			allRims[tex] = true
+			rimList[#rimList + 1] = tex
+		end
+		tex.Update = Slot_Update
+		-- a CheckButton flips its own flag when clicked (read after each click)
+		local okT, objectType = pcall(button.GetObjectType, button)
+		local onCheck = okT and not Secret(objectType) and objectType == "CheckButton"
+		tex.onCheckButton = onCheck or nil
+		RimEventsFor(onCheck)
+		RimJoin(tex)
+		-- (the mouse as it was, on a frame that is no button: put back after the hooks)
+		local click, motion, apart = MouseWas(button, (okT and not Secret(objectType)) and objectType or nil)
+		if rimOf[button] == nil then
+			rimOf[button] = tex
+			Perf.HookScript(button, "OnEnter", Rim_OnEnter)
+			Perf.HookScript(button, "OnLeave", Rim_OnLeave)
+			Perf.HookScript(button, "OnMouseDown", Rim_OnMouseDown)
+			Perf.HookScript(button, "OnMouseUp", Rim_OnMouseUp)
+			-- shown again (its window opened): read at once, the passes leave it
+			-- alone while it cannot be seen
+			Perf.HookScript(button, "OnShow", Rim_OnShow)
+			if onCheck then
+				Perf.HookScript(button, "OnClick", Rim_OnClick)
+			end
+			if button.SetChecked then
+				hooksecurefunc(button, "SetChecked", Rim_OnSetChecked)
+			end
+			if button.SetEnabled then
+				hooksecurefunc(button, "SetEnabled", Rim_OnSetEnabled)
+			end
+			-- a keybind presses an action button through SetButtonState, not the
+			-- mouse: the pressed look follows that too
+			if button.SetButtonState then
+				hooksecurefunc(button, "SetButtonState", Rim_OnSetButtonState)
+			end
+			MouseBack(button, click, motion, apart)
+			return
+		end
+		Perf.HookScript(button, "OnEnter", function() tex.hover = true; Slot_Update(tex); StaleHover(tex) end)
+		Perf.HookScript(button, "OnLeave", function() tex.hover = nil; tex.pressed = nil; Slot_Update(tex) end)
+		Perf.HookScript(button, "OnMouseDown", function() tex.pressed = true; pressedLatches[tex] = Slot_Update; Slot_Update(tex) end)
+		Perf.HookScript(button, "OnMouseUp", function() tex.pressed = nil; Slot_Update(tex) end)
+		Perf.HookScript(button, "OnShow", function() RimJoin(tex); ReadRim(tex) end)
 		if onCheck then
-			Perf.HookScript(button, "OnClick", Rim_OnClick)
+			Perf.HookScript(button, "OnClick", function() ReadNext(tex) end)
 		end
 		if button.SetChecked then
-			hooksecurefunc(button, "SetChecked", Rim_OnSetChecked)
+			hooksecurefunc(button, "SetChecked", function() Slot_Update(tex) end)
 		end
 		if button.SetEnabled then
-			hooksecurefunc(button, "SetEnabled", Rim_OnSetEnabled)
+			hooksecurefunc(button, "SetEnabled", function() Slot_Update(tex) end)
 		end
-		-- a keybind presses an action button through SetButtonState, not the
-		-- mouse: the pressed look follows that too
 		if button.SetButtonState then
-			hooksecurefunc(button, "SetButtonState", Rim_OnSetButtonState)
+			hooksecurefunc(button, "SetButtonState", function(b, state)
+				tex.pressed = (state == "PUSHED") or nil
+				Slot_Update(tex)
+			end)
 		end
-		return
-	end
-	Perf.HookScript(button, "OnEnter", function() tex.hover = true; Slot_Update(tex); StaleHover(tex) end)
-	Perf.HookScript(button, "OnLeave", function() tex.hover = nil; tex.pressed = nil; Slot_Update(tex) end)
-	Perf.HookScript(button, "OnMouseDown", function() tex.pressed = true; pressedLatches[tex] = Slot_Update; Slot_Update(tex) end)
-	Perf.HookScript(button, "OnMouseUp", function() tex.pressed = nil; Slot_Update(tex) end)
-	Perf.HookScript(button, "OnShow", function() RimJoin(tex); ReadRim(tex) end)
-	if onCheck then
-		Perf.HookScript(button, "OnClick", function() ReadNext(tex) end)
-	end
-	if button.SetChecked then
-		hooksecurefunc(button, "SetChecked", function() Slot_Update(tex) end)
-	end
-	if button.SetEnabled then
-		hooksecurefunc(button, "SetEnabled", function() Slot_Update(tex) end)
-	end
-	if button.SetButtonState then
-		hooksecurefunc(button, "SetButtonState", function(b, state)
-			tex.pressed = (state == "PUSHED") or nil
-			Slot_Update(tex)
-		end)
+		MouseBack(button, click, motion, apart)
 	end
 end
 
@@ -4698,6 +5651,8 @@ function ReplacementMixin:Enable()
 	if self.backing then
 		self.backing:Show()
 	end
+	-- its shadow partners drawn by another frame (Kit:Shadow's rep)
+	Kit:ShadowRepOn(self, true)
 	self:Refit()
 	if self.checked then
 		self:SetState()
@@ -4727,6 +5682,7 @@ function ReplacementMixin:Disable()
 	if object and object.glow then
 		object.glow:Hide()
 	end
+	Kit:ShadowRepOn(self, false)
 	if self.onDisable then
 		self.onDisable(self)
 	end
@@ -4853,6 +5809,8 @@ function ReplacementMixin:SetState(state)
 end
 
 function ReplacementMixin:SetShown(shown)
+	-- (its shadow partners on other frames with its holder)
+	Kit:ShadowRepOn(self, shown)
 	local object = rawget(self, "object")
 	if not object then
 		self.holderShown = shown and true or false
@@ -7492,12 +8450,18 @@ Kit.borderKinds = {
 	{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
 	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon." },
 	{ kind = "colours", key = "kitColours", default = "warm", name = "Kit Colours", values = Kit.colourLooks,
-	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars) in the interface's palette: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. Pictures keep their own colours." },
+	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember palette: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours." },
 }
 local BORDER_KIND = {}
 for _, k in ipairs(Kit.borderKinds) do
 	BORDER_KIND[k.kind] = k
 end
+
+-- [kind] = the look its elements were last given: Kit:ApplyBorder's value,
+-- or what the first read answered (the look the first elements were made
+-- in). A profile load writes the settings past UI Modifications'
+-- OnSettingChanged: the bus's 'restart' compares (below, Kit:ApplyBorder).
+Kit.borderApplied = {}
 
 function Kit:BorderValue(kind)
 	local k = BORDER_KIND[kind]
@@ -7506,7 +8470,17 @@ function Kit:BorderValue(kind)
 	end
 	local um = MelloUI:GetModule("UIModifications")
 	local v = um and um.db and um.db[k.key]
-	return v or k.default
+	v = v or k.default
+	if Kit.borderApplied[kind] == nil then
+		Kit.borderApplied[kind] = v
+	end
+	if kind == "colours" then
+		-- (whoever reads the Kit Colours finds Kit.colourLooks holding the
+		-- choices of the palette in use: Core puts a login's palette in place
+		-- before anything is drawn, without a switch)
+		LOOK.ShowChoices(LOOK.PaletteId())
+	end
+	return v
 end
 
 local buttonRims = setmetatable({}, { __mode = "k" })   -- [button] = true: a skinned button whose rim is a thin look
@@ -7555,6 +8529,7 @@ end
 -- A kind's choice to every element of it
 function Kit:ApplyBorder(kind)
 	local value = self:BorderValue(kind)
+	self.borderApplied[kind] = value
 	if kind == "colours" then
 		self:SetKitColours(value)
 	elseif kind == "round" then
@@ -7582,6 +8557,84 @@ function Kit:ApplyBorder(kind)
 		-- the documented topic for the Kit Colours (Core's topic table,
 		-- WINDOW-RULES 6), heard by the configurator (review, 2026-09-25)
 		MelloUI:Fire("palette")
+	end
+end
+
+-- The other looks after a profile load (0.14.0: a profile loaded from the
+-- configurator, a share string, the macro backup or /mello profile load
+-- left the elements in the old Button Border, Round Border ... until a
+-- /reload): on the bus's 'restart', and when UI Modifications is switched
+-- on ('module'), every kind but the Kit Colours (their own recheck, above)
+-- whose setting is not the look its elements were last given
+-- (Kit.borderApplied) is applied again, ONE kind a frame (a kind's pass
+-- walks every element of it). A kind no element has read yet is left alone,
+-- and nothing is done while UI Modifications is off or its settings are not
+-- bound. The installer's look refresh applies through ApplyBorder, so the
+-- restart after it finds nothing left to do; a kind set again meanwhile (the
+-- configurator) is not applied a second time.
+do
+	local KEY = "Kit borders after a restart"   -- the bus owner and the Kit:NextFrame key
+	local due, at, count = {}, 1, 0             -- the kinds to apply, in order (reused), the next, the last
+
+	local function Differs(kind)
+		local was = Kit.borderApplied[kind]
+		return was ~= nil and Kit:BorderValue(kind) ~= was
+	end
+
+	-- one kind applied (those no longer different skipped), the next on the
+	-- next frame
+	local function Step()
+		while at <= count do
+			local kind = due[at]
+			due[at] = nil
+			at = at + 1
+			if Differs(kind) then
+				Kit:ApplyBorder(kind)
+				if at <= count then
+					Kit:NextFrame(KEY, Step)
+					return
+				end
+			end
+		end
+		at, count = 1, 0
+	end
+
+	local function Look()
+		local um = MelloUI:GetModule("UIModifications")
+		if not (um and um.db and um.isEnabled) then
+			return
+		end
+		for _, k in ipairs(Kit.borderKinds) do
+			local kind = k.kind
+			if kind ~= "colours" and Differs(kind) then
+				local queued = false
+				for i = at, count do
+					if due[i] == kind then
+						queued = true
+						break
+					end
+				end
+				if not queued then
+					count = count + 1
+					due[count] = kind
+				end
+			end
+		end
+		if at <= count then
+			Kit:NextFrame(KEY, Step)
+		end
+	end
+
+	local RestartBorders = Shared("'restart' on the bus: the border looks", Look)
+	-- (a profile load's switch, MelloUI.restartingModules: its 'restart' follows)
+	local UmbrellaBorders = Shared("'module' on the bus: the border looks", function(name, enabled)
+		if enabled and name == "UIModifications" and not MelloUI.restartingModules then
+			Look()
+		end
+	end)
+	if MelloUI.On then
+		MelloUI:On("restart", RestartBorders, "Kit borders")
+		MelloUI:On("module", UmbrellaBorders, "Kit borders")
 	end
 end
 
@@ -8664,9 +9717,24 @@ do
 			MelloUI:Print("A margin texel covers %s UI units at texture scale 1: /mellokit slicetest shows it; /reload for the rest of the UI.", tostring(SliceUnit()))
 		elseif cmd == "slices" and arg == "count" then
 			Count()
+		elseif cmd == "mouse" then
+			-- the frames that are no button whose mouse a rim's hooks would have
+			-- turned on (FollowButton put it back: Kit.mouseKept), by name
+			local rows = 0
+			MelloUI:ClearLog()
+			for frame, kept in pairs(Kit.mouseKept) do
+				rows = rows + 1
+				local ok, name = pcall(frame.GetDebugName, frame)
+				if not ok or Secret(name) or type(name) ~= "string" then
+					name = "?"
+				end
+				MelloUI:Print("  %s: %s left off", name, kept)
+			end
+			MelloUI:Print("Frames under a rim that kept their mouse off: %d (open windows add to it).", rows)
+			MelloUI:ShowLog("mellokit mouse")
 		else
 			Status()
-			MelloUI:Print("  /mellokit slices on | off, /mellokit slicetest, /mellokit slices count, /mellokit slices unit <n>")
+			MelloUI:Print("  /mellokit slices on | off, /mellokit slicetest, /mellokit slices count, /mellokit slices unit <n>, /mellokit mouse")
 		end
 	end
 end

@@ -41,7 +41,7 @@ tex.paste(art, (0, 0))
 tex.save(OUT)
 print(f"{art.size[0]}x{art.size[1]} art in a {tex.size[0]}x{tex.size[1]} texture -> {OUT}")
 
-# the Kit Colours looks (GameMenuFrame_warm / _bronze beside it)
+# every look's picture beside it (GameMenuFrame_warm / _bronze, GameMenuFrame_<palette id>)
 import sys  # noqa: E402
 sys.path.insert(0, HERE)
 from kit_palette import build_textures  # noqa: E402

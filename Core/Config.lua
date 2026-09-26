@@ -186,6 +186,7 @@ local COMMANDS = {
 	{ "/mello disable <module>", "turn a module off" },
 	{ "/mello profile ...", "save, load, share or delete profiles, set the default" },
 	{ "/mello status", "where your settings came from, and their backup" },
+	{ "/mello backup ...", "Macro Backup: on, off, restore or delete the copy" },
 	{ "/mello install", "set MelloUI up: a setup, your screen, keep or go back" },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
 	{ "/mello tutorial", "the guided tour of this window" },
@@ -840,6 +841,15 @@ local builders = {
 	button = AddButton,
 }
 
+-- The settings that also change from outside the configurator while it is
+-- open, by module and key: the game's own Background slider of a chat window
+-- sets Chat's opacity (Modules/Chat.lua). Their rows are kept on their page
+-- as they are made (page.follow) and brought in line on the frame after such
+-- a change, those rows only (FollowRows): the configurator's own slider
+-- drags fire the same topic, and a whole tab refreshed for each would be work
+-- for nothing.
+local FOLLOW = { Chat = { windowAlpha = true, windowAlphaOn = true } }
+
 --------------------------------------------------------------------------------
 -- Pages
 --
@@ -1269,8 +1279,14 @@ local function BuildModulePage(module, width)
 		local sub = opt.type == "subheader"
 		s.indent = not sub and ((area and 1 or 0) + Depth(owner, opt)) or 0
 		s.gate = not sub and GateOf(owner, ownerDb, opt, area) or nil
-		builder(s, owner, ownerDb, opt)
+		local row = builder(s, owner, ownerDb, opt)
 		s.indent, s.gate = 0, nil
+		-- (a row whose setting also changes from outside: kept, FollowRows)
+		local follow = FOLLOW[owner.name]
+		if row and follow and follow[opt.key] then
+			page.follow = page.follow or {}
+			page.follow[#page.follow + 1] = row
+		end
 	end
 	-- an option may belong to ANOTHER module (`opt.module`), built against
 	-- that module and its settings; `include` lays out another module's
@@ -1382,7 +1398,7 @@ local HOME_TIPS = {
 	install = "The installer: a setup for the whole interface in a few steps, fitted to this screen. Closes this window while it runs.",
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
 }
-local HELP_NOTE = "A copy of your settings is kept in hidden account macros and brings them back if the saved settings ever go missing; /mello status shows both. The voice pack (MelloUI_VoiceOverData) is a separate download from the releases page and goes next to the MelloUI folder."
+local HELP_NOTE = "The game keeps your settings. Macro Backup on the Profiles page can also keep a copy in account macros, brought back only when you ask; /mello status shows both. The voice pack (MelloUI_VoiceOverData) is a separate download from the releases page and goes next to the MelloUI folder."
 
 -- This frame's rows counted as spent: a page's first open whose own parts
 -- are this frame's work (Home's header and cards), so the worker starts on
@@ -1424,12 +1440,18 @@ local function KitColoursLabel()
 		return "-"
 	end
 	local value = K:BorderValue("colours")
-	for _, look in ipairs(K.colourLooks) do
-		if look.value == value then
-			return look.label or tostring(value)
+	-- (the choice the kit draws: a Bronze kept from Ember is, under another
+	-- palette, that palette's own kit)
+	local look = K.ColourLookShown and K:ColourLookShown()
+	if not look then
+		for _, l in ipairs(K.colourLooks) do
+			if l.value == value then
+				look = l
+				break
+			end
 		end
 	end
-	return tostring(value)
+	return look and (look.label or tostring(look.value)) or tostring(value)
 end
 
 -- "3440 × 1440 (21:9)": Core's one formatter (MelloUI:ScreenText, shared
@@ -2086,6 +2108,398 @@ end
 end   -- (the Home block)
 
 --------------------------------------------------------------------------------
+-- Macro Backup (0.14.0): the configurator's side of the backup engine
+-- (Core/Backup.lua: MacroBackupOn, SetMacroBackup, RestoreMacroBackup,
+-- DeleteMacroBackup, GetBackupStatus). The copy in account macros is a
+-- player's choice, off unless switched on, and it is only ever brought back
+-- when asked: Restore asks first. The Profiles page shows the switch, the
+-- copy's state and, while there is a copy, Restore and Delete; /mello backup
+-- and /mello status say the same in chat. The replies are said here, once
+-- (the engine answers with what it did, or why not).
+--------------------------------------------------------------------------------
+
+local BackupUI = {}
+do
+local B = BackupUI
+-- the texts (in-game words: short and plain, no tool or other addon named)
+local TEXT = {
+	heading = "Macro Backup",
+	switch = "Keep a copy in account macros",
+	switchHint = "off unless you turn it on",
+	switchDesc = "A copy of your settings in account macros, which the game keeps for your whole account. It is written a few seconds after a change and brought back only when you ask: Restore, or /mello backup restore. Turned off, the copy is removed and its macro slots are free again.",
+	restore = "Bring back the copy",
+	restoreHint = "replaces your current settings",
+	restoreDesc = "Your settings as the copy in account macros has them. Asks first; save your settings as a profile first to keep them.",
+	restoreButton = "Restore…",
+	delete = "Remove the copy",
+	deleteHint = "frees its macro slots",
+	deleteDesc = "Removes the copy from your account macros, which the game keeps for your whole account: it is gone on every computer. Asks first.",
+	deleteButton = "Delete",
+	-- the copy's state, on the page (full sentences)
+	unavailable = "Account macros are not available here, so no copy can be kept.",
+	onCopy = "On. The copy fills %s (%d of %d characters)",
+	onSync = ", the same as your settings.",
+	onSoon = ", updated in a few seconds.",
+	onCombat = ", updated when the fight ends.",
+	onDiffers = ", not the same as your settings yet.",
+	onEmpty = "On. The copy is written a few seconds after a change.",
+	onFailed = " The last write failed: %s.",
+	offFound = "Off. A copy of earlier settings was found in %s: Restore brings it back, Delete removes it. The switch stays off until one of them is done.",
+	offArmed = "Off. Your old copy in %s is removed at your next login, now that the game keeps your settings.",
+	offOld = "Off. An old copy is still in %s.",
+	offFreed = "Off. The old copy was removed: %s free again.",
+	offFreedSome = "Off. The old copy was removed and its macro slots are free again.",
+	offCombat = "Off. The copy is removed from your account macros when the fight ends.",
+	offNone = "Off. MelloUI uses no account macros: the game keeps your settings, and profiles are copies of your own.",
+	restoredNote = " Brought back by you this session (%s).",
+	-- the replies
+	missing = "Macro Backup is not available.",
+	loading = "Your account macros are still loading: try again in a moment.",
+	nowOn = "Macro Backup is on: a copy of your settings is kept in account macros, written a few seconds after a change.",
+	nowOnCombat = "Macro Backup is on: a copy of your settings is written to account macros when the fight ends.",
+	nowOnFailed = "Macro Backup is on, but the copy could not be written: %s. It is tried again after your next change.",
+	nowOff = "Macro Backup is off: its account macros are removed.",
+	nowOffCombat = "Macro Backup is off: its account macros are removed when the fight ends.",
+	nowOffNone = "Macro Backup is off: MelloUI uses no account macros.",
+	alreadyOn = "Macro Backup is already on.",
+	alreadyOff = "Macro Backup is already off.",
+	found = "Macro Backup stays off while a copy of earlier settings is in your account macros: /mello backup restore brings it back, /mello backup delete removes it.",
+	noCopy = "There is no copy of your settings in your account macros.",
+	combat = "Not during a fight: try again when it ends.",
+	installer = "Not while the installer is open or waiting for Keep or Go back.",
+	notNow = "That is not possible right now.",
+	restored = "Settings brought back from the copy in your account macros (%s). /reload brings back the fonts over names and damage numbers as well.",
+	deleted = "The copy was removed from your account macros: %s free again.",
+	deletedOff = "Macro Backup is off and its copy was removed from your account macros: %s free again.",
+	deletedCombat = "The copy is removed from your account macros when the fight ends.",
+	deletedOffCombat = "Macro Backup is off and its copy is removed from your account macros when the fight ends.",
+	deletedNone = "No copy was left in your account macros to remove.",
+	deletedOffNone = "Macro Backup is off; no copy was left in your account macros to remove.",
+	usage = "/mello backup on | off | restore | delete",
+	askRestore = "Bring back your settings from the copy in your account macros? Your current settings are replaced; save them as a profile first to keep them.",
+	askDelete = "Remove the copy of your settings from your account macros? The game keeps those for your whole account, so it is gone on every computer.",
+	-- the chat lines (/mello status, /mello backup)
+	lineHead = "   Macro Backup: ",
+	lineUnavailable = "account macros not available",
+	lineOn = "on|r, %s, %d of %d characters, %s",
+	lineSync = "in sync with your settings",
+	lineDiffers = "not in sync with your settings yet",
+	lineWrite = "   Last write: %s%s%s",
+	lineError = "   Last error: %s",
+	lineFound = "off|r; a copy of earlier settings is in %s: /mello backup restore brings it back, /mello backup delete removes it",
+	lineArmed = "off|r; the old copy in %s is removed at your next login",
+	lineOld = "off|r; an old copy is in %s (/mello backup delete removes it)",
+	lineFreed = "off|r; the old copy was removed (%s free again)",
+	lineFreedSome = "off|r; the old copy was removed",
+	lineCombat = "off|r; the copy is removed when the fight ends",
+	lineNone = "off|r, no account macros used",
+}
+B.TEXT = TEXT
+
+-- a refusal's words: the engine's reason by its name, or its own sentence
+local REFUSED = { combat = TEXT.combat, installer = TEXT.installer, busy = TEXT.installer, pending = TEXT.installer,
+	found = TEXT.found, none = TEXT.noCopy, empty = TEXT.noCopy, nocopy = TEXT.noCopy, unavailable = TEXT.unavailable }
+local function Refusal(why, fallback)
+	if type(why) == "string" and why ~= "" then
+		if why == "unavailable" and type(MelloUI.GetBackupStatus) == "function" then
+			-- (the macro API is there: the account's macros have not come in yet,
+			-- a moment after the login)
+			local s = MelloUI:GetBackupStatus()
+			if type(s) == "table" and s.available then
+				return TEXT.loading
+			end
+		end
+		return REFUSED[why] or why
+	end
+	return fallback or TEXT.notNow
+end
+
+-- the engine is there whole (Core/Backup.lua)
+function B.Ready()
+	return type(MelloUI.GetBackupStatus) == "function" and type(MelloUI.SetMacroBackup) == "function"
+		and type(MelloUI.MacroBackupOn) == "function"
+end
+
+-- the copy's facts, or nil
+function B.Status()
+	if not B.Ready() then
+		return nil
+	end
+	local s = MelloUI:GetBackupStatus()
+	return type(s) == "table" and s or nil
+end
+
+-- how many MelloUI macros there are, and how many characters the copy holds
+local function Count(s)
+	return s and (tonumber(s.macros) or tonumber(s.chunks)) or 0
+end
+local function Length(s)
+	return s and tonumber(s.length) or 0
+end
+local function Available(s)
+	return s ~= nil and s.available ~= false
+end
+local function Macros(n)
+	return n == 1 and "1 account macro" or string.format("%d account macros", n)
+end
+local function Slots(n)
+	return n == 1 and "1 macro slot" or string.format("%d macro slots", n)
+end
+function B.Settings(n)
+	return n == 1 and "1 setting" or string.format("%d settings", n)
+end
+-- the old macros freed on this PC: how many (a number over 0), true, or nil
+local function Freed(s)
+	local freed = s and s.freed
+	if freed == true then
+		return true
+	end
+	freed = tonumber(freed)
+	return freed and freed > 0 and freed or nil
+end
+
+-- Restore is offered while the copy holds settings other than the ones in
+-- use, not while the copy is about to catch up with them (on, a write due in
+-- a few seconds and the last one fine) nor while a write or a delete waits
+-- for a fight to end; Delete while the switch is off and MelloUI macros are
+-- there (the switch turned off removes them itself), not while a delete
+-- waits for a fight to end
+function B.CanRestore(s)
+	return Available(s) and Length(s) > 0 and not s.inSync and not s.deferredForCombat
+		and not (s.on and s.pending and not s.lastError)
+end
+function B.CanDelete(s)
+	return Available(s) and not s.on and Count(s) > 0 and not s.deferredForCombat
+end
+
+-- the copy's state as a sentence (the Profiles page)
+function B.StateText(s)
+	local text
+	if not Available(s) then
+		return TEXT.unavailable
+	elseif s.on then
+		if Length(s) > 0 then
+			local tail = TEXT.onDiffers
+			if s.inSync then
+				tail = TEXT.onSync
+			elseif s.deferredForCombat then
+				tail = TEXT.onCombat
+			elseif s.pending then
+				tail = TEXT.onSoon
+			end
+			text = string.format(TEXT.onCopy, Macros(Count(s)), Length(s), tonumber(s.capacity) or 0) .. tail
+		else
+			text = TEXT.onEmpty
+		end
+		if s.lastError then
+			text = text .. string.format(TEXT.onFailed, tostring(s.lastError))
+		end
+	elseif s.deferredForCombat and Count(s) > 0 then
+		text = TEXT.offCombat
+	elseif s.found and Count(s) > 0 then
+		text = string.format(TEXT.offFound, Macros(Count(s)))
+	elseif s.armed and Count(s) > 0 then
+		text = string.format(TEXT.offArmed, Macros(Count(s)))
+	elseif Count(s) > 0 then
+		text = string.format(TEXT.offOld, Macros(Count(s)))
+	elseif Freed(s) then
+		local n = Freed(s)
+		text = n ~= true and string.format(TEXT.offFreed, Slots(n)) or TEXT.offFreedSome
+	else
+		text = TEXT.offNone
+	end
+	if MelloUI.restoredFromBackup then
+		text = text .. string.format(TEXT.restoredNote, B.Settings(tonumber(MelloUI.backupRestoredCount) or 0))
+	end
+	return text
+end
+
+-- the chat lines: the state, and while on its last write and error
+function B.PrintLines(s)
+	local gold, muted = MelloUI:PaletteCode("selectedTrim"), MelloUI:PaletteCode("mutedText")
+	if not Available(s) then
+		print(TEXT.lineHead .. muted .. TEXT.lineUnavailable .. "|r")
+		return
+	end
+	local n = Count(s)
+	if s.on then
+		print(TEXT.lineHead .. gold .. string.format(TEXT.lineOn, Macros(n), Length(s), tonumber(s.capacity) or 0,
+			s.inSync and TEXT.lineSync or TEXT.lineDiffers))
+		local when = s.lastWrite and date("%H:%M:%S", s.lastWrite) or "not yet this session"
+		print(string.format(TEXT.lineWrite, when, s.lastReason and (" (" .. tostring(s.lastReason) .. ")") or "",
+			s.pending and ", write scheduled" or (s.deferredForCombat and ", waiting for the fight to end" or "")))
+		if s.lastError then
+			print(string.format(TEXT.lineError, tostring(s.lastError)))
+		end
+		return
+	end
+	local line
+	if s.deferredForCombat and n > 0 then
+		line = TEXT.lineCombat
+	elseif s.found and n > 0 then
+		line = string.format(TEXT.lineFound, Macros(n))
+	elseif s.armed and n > 0 then
+		line = string.format(TEXT.lineArmed, Macros(n))
+	elseif n > 0 then
+		line = string.format(TEXT.lineOld, Macros(n))
+	elseif Freed(s) then
+		local freed = Freed(s)
+		line = freed ~= true and string.format(TEXT.lineFreed, Slots(freed)) or TEXT.lineFreedSome
+	else
+		line = TEXT.lineNone
+	end
+	print(TEXT.lineHead .. muted .. line)
+end
+
+-- /mello backup with no word: the state and the words it takes
+function B.PrintStatus()
+	if not B.Ready() then
+		MelloUI:Print(TEXT.missing)
+		return
+	end
+	MelloUI:Print(TEXT.heading .. ":")
+	B.PrintLines(B.Status())
+	print("   " .. TEXT.usage)
+end
+
+-- The switch (the Profiles page's row, /mello backup on | off): the reply
+-- from what the switch is after the call; refused, the engine's reason
+function B.Switch(on)
+	on = on and true or false
+	if not B.Ready() then
+		MelloUI:Print(TEXT.missing)
+		return false
+	end
+	if (MelloUI:MacroBackupOn() and true or false) == on then
+		MelloUI:Print(on and TEXT.alreadyOn or TEXT.alreadyOff)
+		MelloUI:RefreshConfig()
+		return true
+	end
+	local before = Count(B.Status())
+	local _, why = MelloUI:SetMacroBackup(on)
+	local now = MelloUI:MacroBackupOn() and true or false
+	if now ~= on then
+		local s = on and B.Status()
+		MelloUI:Print(Refusal(why, s and s.found and TEXT.found or nil))
+	elseif on and MelloUI.InCombat() then
+		MelloUI:Print(TEXT.nowOnCombat)
+	elseif on then
+		-- (the switch writes the copy at once: said as it went)
+		local s = B.Status()
+		if s and s.lastError then
+			MelloUI:Print(TEXT.nowOnFailed, tostring(s.lastError))
+		else
+			MelloUI:Print(TEXT.nowOn)
+		end
+	elseif before == 0 then
+		MelloUI:Print(TEXT.nowOffNone)
+	else
+		MelloUI:Print(MelloUI.InCombat() and TEXT.nowOffCombat or TEXT.nowOff)
+	end
+	MelloUI:RefreshConfig()
+	return now == on
+end
+
+-- Restore, asked first (the Profiles page's Restore…, /mello backup
+-- restore): the question only when there is something to bring back
+local function RestoreAccepted()
+	if not B.Ready() then
+		return
+	end
+	local ok, why = MelloUI:RestoreMacroBackup()
+	if ok then
+		MelloUI:Print(TEXT.restored, B.Settings(type(why) == "number" and why or tonumber(MelloUI.backupRestoredCount) or 0))
+	else
+		MelloUI:Print(Refusal(why))
+	end
+	MelloUI:RefreshConfig()
+end
+function B.AskRestore()
+	local s = B.Status()
+	if not s then
+		MelloUI:Print(TEXT.missing)
+		return
+	end
+	if not (Available(s) and Length(s) > 0) then
+		MelloUI:Print(TEXT.noCopy)
+		return
+	end
+	if MelloUI.InCombat() then
+		MelloUI:Print(TEXT.combat)
+		return
+	end
+	if type(StaticPopupDialogs) ~= "table" then
+		return
+	end
+	if not StaticPopupDialogs.MELLOUI_RESTORE_BACKUP then
+		StaticPopupDialogs.MELLOUI_RESTORE_BACKUP = {
+			text = TEXT.askRestore,
+			button1 = "Restore",
+			button2 = "Cancel",
+			OnAccept = RestoreAccepted,
+			timeout = 0,
+			whileDead = true,
+			hideOnEscape = true,
+			preferredIndex = 3,
+		}
+	end
+	StaticPopup_Show("MELLOUI_RESTORE_BACKUP")
+end
+
+-- Delete: the typed /mello backup delete at once, the page's Delete asked
+-- first (the page offers it while the switch is off; typed while it is on,
+-- the engine turns the switch off with it). In a fight the engine holds the
+-- delete for the fight's end ("combat").
+function B.Delete(reason)
+	local s = B.Status()
+	if not s then
+		MelloUI:Print(TEXT.missing)
+		return false
+	end
+	local n = Count(s)
+	if n == 0 then
+		MelloUI:Print(TEXT.noCopy)
+		return false
+	end
+	local removed, why = MelloUI:DeleteMacroBackup(reason or "command")
+	if removed == false and why == "combat" then
+		MelloUI:Print(s.on and TEXT.deletedOffCombat or TEXT.deletedCombat)
+	elseif removed == false then
+		MelloUI:Print(Refusal(why))
+	elseif type(removed) == "number" and removed <= 0 then
+		MelloUI:Print(s.on and TEXT.deletedOffNone or TEXT.deletedNone)
+	else
+		-- (the engine's count; one that gives none, the macros looked at)
+		n = type(removed) == "number" and removed or n
+		MelloUI:Print(s.on and TEXT.deletedOff or TEXT.deleted, Slots(n))
+	end
+	MelloUI:RefreshConfig()
+	return removed ~= false
+end
+local function DeleteAccepted()
+	B.Delete("button")
+end
+function B.AskDelete()
+	if type(StaticPopupDialogs) ~= "table" then
+		return
+	end
+	if not StaticPopupDialogs.MELLOUI_DELETE_BACKUP then
+		StaticPopupDialogs.MELLOUI_DELETE_BACKUP = {
+			text = TEXT.askDelete,
+			button1 = "Delete",
+			button2 = "Cancel",
+			OnAccept = DeleteAccepted,
+			timeout = 0,
+			whileDead = true,
+			hideOnEscape = true,
+			preferredIndex = 3,
+		}
+	end
+	StaticPopup_Show("MELLOUI_DELETE_BACKUP")
+end
+end   -- (the Macro Backup block)
+
+--------------------------------------------------------------------------------
 -- Profiles page
 --------------------------------------------------------------------------------
 
@@ -2197,6 +2611,111 @@ local function MoreProfileRows()
 	end
 end
 
+-- Macro Backup's part of the page, under the list (BackupUI): its heading,
+-- the switch, the copy's state in full-size text, and the rows that bring
+-- the copy back or remove it, shown only while there is one. Made when the
+-- engine is there, on the frame after the page's first show (that frame's
+-- work is the page's own: MakeBackupPart); laid by RefreshProfilesPage
+-- under the list, which it follows as the list grows or shrinks, and brought
+-- in line again when the engine writes or removes the copy by itself (the
+-- 'backup' topic, BackupFollow).
+local function BackupGet()
+	return MelloUI:MacroBackupOn() and true or false
+end
+local function BackupSet(value)
+	BackupUI.Switch(value)
+end
+local BackupRestoreClick = Shared("OnClick on the configurator's Macro Backup Restore", function()
+	BackupUI.AskRestore()
+end, "script")
+local BackupDeleteClick = Shared("OnClick on the configurator's Macro Backup Delete", function()
+	BackupUI.AskDelete()
+end, "script")
+local BACKUP_HEAD = { name = BackupUI.TEXT.heading }
+
+-- a row of the part at `y` (under the copy's state, which wraps)
+local function PlaceBackupRow(blk, row, y)
+	row:ClearAllPoints()
+	row:SetPoint("TOPLEFT", blk.inset, -y)
+	row:SetPoint("RIGHT", blk, "RIGHT", -blk.inset, 0)
+end
+
+local function BuildBackup(sec, width)
+	if not BackupUI.Ready() then
+		return
+	end
+	local T = BackupUI.TEXT
+	local blk = CreateFrame("Frame", nil, sec)
+	blk:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, -sec.y)
+	blk:SetPoint("RIGHT", sec, "RIGHT", 0, 0)
+	blk:SetHeight(10)
+	blk.y, blk.rows = 0, 0
+	blk.inset = KIT and SEC_INSET or 0
+	AddSubheader(blk, nil, nil, BACKUP_HEAD)
+	local row = W.ToggleRow(blk, blk.y, T.switch, T.switchHint, T.switchDesc, BackupGet, BackupSet, RowOpts(blk))
+	blk.switchRow = Placed(blk, row, ROW_HEIGHT)
+	blk.stateTop = blk.y + 8
+	blk.state = Text(blk, "GameFontHighlight", nil, C.text)
+	blk.state:SetPoint("TOPLEFT", blk.inset + 14, -blk.stateTop)
+	blk.state:SetWidth(width - PAD * 2 - (blk.inset + 14) * 2)
+	blk.state:SetWordWrap(true)
+	local o = RowOpts(blk)
+	o.width = 90
+	blk.restoreRow = W.ButtonRow(blk, 0, T.restore, T.restoreHint, T.restoreDesc, T.restoreButton, BackupRestoreClick, o)
+	blk.rows = blk.rows + 1
+	o = RowOpts(blk)
+	o.width = 90
+	blk.deleteRow = W.ButtonRow(blk, 0, T.delete, T.deleteHint, T.deleteDesc, T.deleteButton, BackupDeleteClick, o)
+	o.width = nil
+	blk.restoreRow:Hide()
+	blk.deleteRow:Hide()
+	sec.backup = blk
+end
+
+-- the part brought in line with the copy's facts; its height
+local function RefreshBackup(blk)
+	local s = BackupUI.Status()
+	blk.switchRow:Refresh()
+	blk.state:SetText(BackupUI.StateText(s))
+	local y = blk.stateTop + WrappedHeight(blk.state, 14) + 10
+	local restore, delete = BackupUI.CanRestore(s), BackupUI.CanDelete(s)
+	if restore then
+		PlaceBackupRow(blk, blk.restoreRow, y)
+		y = y + ROW_HEIGHT
+	end
+	if delete then
+		PlaceBackupRow(blk, blk.deleteRow, y)
+		y = y + ROW_HEIGHT
+	end
+	blk.restoreRow:SetShown(restore)
+	blk.deleteRow:SetShown(delete)
+	blk:SetHeight(y)
+	return y
+end
+
+-- the part made within the frame's one budget of rows, while the page shows
+-- (a page hidden meanwhile: its next show's refresh asks again), then laid
+local function MakeBackupPart()
+	local page = pages.Profiles
+	local sec = page and page.section
+	if not (sec and sec.backupWidth and not sec.backup and window and window:IsShown() and sec:IsVisible()) then
+		return
+	end
+	local deadline = BeginRows(FIRST_BUDGET)
+	if deadline then
+		BuildBackup(sec, sec.backupWidth)
+		if not sec.backup then
+			sec.backupWidth = nil   -- (no engine after all: no part, never asked again)
+		end
+	end
+	EndRows()
+	if sec.backup then
+		RefreshProfilesPage()
+	elseif sec.backupWidth then
+		MelloUI.Kit:NextFrame("Config backup part", MakeBackupPart)   -- (this frame's rows are made)
+	end
+end
+
 -- (the Profiles page of the look in use: each look has its own, pagesBy)
 local pageNames = {}   -- (the list's names, filled again in place)
 function RefreshProfilesPage()
@@ -2258,6 +2777,20 @@ function RefreshProfilesPage()
 	end
 	sec.empty:SetShown(#names == 0)
 	sec.y = sec.listTop + math.max(#names, 1) * 32 + 10
+	-- Macro Backup's part under the list (not made yet: on the next frame)
+	local blk = sec.backup
+	if not blk and sec.backupWidth then
+		if later then
+			Kit:NextFrame("Config backup part", MakeBackupPart)
+		else
+			BuildBackup(sec, sec.backupWidth)
+			blk = sec.backup
+		end
+	end
+	if blk then
+		blk:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, -sec.y)
+		sec.y = sec.y + RefreshBackup(blk)
+	end
 	sec:Finish()
 	if page.current == sec then
 		PageHeight(page, sec)
@@ -2349,6 +2882,13 @@ function BuildProfilesPage(width)
 
 	sec.refreshers[#sec.refreshers + 1] = RefreshProfilesPage
 	sec.y = y + 42
+	-- Macro Backup under the list (made the frame after this one, then
+	-- filled and laid with the list by the refresh every show runs; after a
+	-- font change too, its state line wrapping anew: page:LayTabs)
+	if BackupUI.Ready() then
+		sec.backupWidth = width
+		page.relay = RefreshProfilesPage
+	end
 	page:Finish()
 	return page
 end
@@ -2653,9 +3193,47 @@ end
 
 -- the bus, taken at the first open (owner "Config"): each returns at once
 -- while the window is closed, after marking what its next show brings in line
+-- (the rows of FOLLOW's settings on UI Modifications' page on show, taken
+-- again: one pass a frame however many changes came in it)
+local FollowRows = Shared("the configurator's rows following an outside setting", function()
+	local page = pages.UIModifications
+	if not (window:IsShown() and page and page.follow and window.pager:Current() == page) then
+		return
+	end
+	for i = 1, #page.follow do
+		page.follow[i]:Refresh()
+	end
+end)
 local function Config_OnSetting(module, key)
 	if module == "UIModifications" and (key == "unlock" or key == "autoSnap") and window:IsShown() then
 		RefreshLayout()
+	elseif FOLLOW[module] and FOLLOW[module][key] and window:IsShown() and currentPage == "UIModifications" then
+		local K = MelloUI.Kit
+		if K and K.NextFrame then
+			K:NextFrame("Config outside setting", FollowRows)
+		else
+			FollowRows()
+		end
+	end
+end
+-- 'backup' (the engine wrote, removed or brought back the copy by itself: a
+-- write a few seconds after a change, one held for a fight's end): the
+-- Profiles page on show brought in line on the next frame, once however
+-- many came; hidden, its next show does it
+local BackupFollow = Shared("the configurator's Macro Backup part following the engine", function()
+	local page = pages.Profiles
+	if window:IsShown() and page and page.section and page.section.backup and window.pager:Current() == page then
+		RefreshProfilesPage()
+	end
+end)
+local function Config_OnBackup()
+	if window:IsShown() and currentPage == "Profiles" then
+		local K = MelloUI.Kit
+		if K and K.NextFrame then
+			K:NextFrame("Config backup", BackupFollow)
+		else
+			BackupFollow()
+		end
 	end
 end
 local function Config_OnModule(name, enabled)
@@ -2883,11 +3461,13 @@ local function CreateWindow()
 	-- they change (the unlock banner's "click here to lock them" too); the
 	-- side list's states and the Layout group's gate follow the modules; the
 	-- palette's colour codes and the Kit Colours' label follow the palette;
-	-- the tab rows follow the fonts
+	-- the tab rows follow the fonts; the Profiles page's Macro Backup part
+	-- follows the engine's own writes and removals
 	MelloUI:On("setting", Config_OnSetting, "Config")
 	MelloUI:On("module", Config_OnModule, "Config")
 	MelloUI:On("palette", Config_OnPalette, "Config")
 	MelloUI:On("fonts", Config_OnFonts, "Config")
+	MelloUI:On("backup", Config_OnBackup, "Config")
 end
 
 local function GetPage(name)
@@ -3652,41 +4232,49 @@ SlashCmdList.MELLOUI = function(msg)
 			end
 		end
 		MelloUI:ShowLog("dump " .. tostring(rest or ""))
-	elseif cmd == "status" then
-		local green, red, yellow = "|cff40ff40", "|cffff4040", "|cffffff00"
-		MelloUI:Print("Status (v%s):", tostring(MelloUI.version))
-		if not MelloUI.dbIsTemporary then
-			print(string.format("   Saved variables: %sloaded by the client|r (at %s)", green, tostring(MelloUI.savedVariablesStage or "?")))
+	elseif cmd == "backup" then
+		-- Macro Backup (BackupUI): the switch, Restore (asks first, as the
+		-- Profiles page's), Delete (typed: at once), else its state
+		local word = rest:match("^(%S+)")
+		if word == "on" or word == "off" then
+			BackupUI.Switch(word == "on")
+		elseif word == "restore" then
+			BackupUI.AskRestore()
+		elseif word == "delete" then
+			BackupUI.Delete("command")
 		else
-			print(string.format("   Saved variables: %snot loaded yet|r (still waiting)", red))
+			BackupUI.PrintStatus()
+		end
+	elseif cmd == "status" then
+		-- (the palette's colours: gold for what is in place, muted for what
+		-- is not)
+		local gold, muted = MelloUI:PaletteCode("selectedTrim"), MelloUI:PaletteCode("mutedText")
+		MelloUI:Print("Status (v%s):", tostring(MelloUI.version))
+		-- (the client's late load is looked for a minute after login: a
+		-- fresh start only once that look is over)
+		local none = MelloUI.savedVariablesNone or (MelloUI.initialized and not MelloUI.adoptTicker)
+		if not MelloUI.dbIsTemporary then
+			print(string.format("   Saved variables: %sloaded by the client|r (at %s)", gold, tostring(MelloUI.savedVariablesStage or "?")))
+		elseif none then
+			print(string.format("   Saved variables: %snone found|r (a fresh start)", muted))
+		else
+			print(string.format("   Saved variables: %snot loaded yet|r (still looking)", muted))
 		end
 		local source
 		if MelloUI.restoredFromBackup then
-			source = string.format("%smacro backup|r (%d values restored at %s)", yellow,
-				tonumber(MelloUI.backupRestoredCount) or 0, tostring(MelloUI.backupRestoredStage or "?"))
+			local stage = MelloUI.backupRestoredStage
+			source = string.format("%sthe macro copy|r (%s, %s)", gold, BackupUI.Settings(tonumber(MelloUI.backupRestoredCount) or 0),
+				(stage == nil or stage == "by you") and "brought back by you" or ("at " .. tostring(stage)))
 		elseif not MelloUI.dbIsTemporary then
-			source = green .. "saved variables|r"
+			source = gold .. "saved variables|r"
+		elseif none then
+			source = muted .. "defaults|r (a fresh start)"
 		else
-			source = red .. "defaults|r (nothing to restore from)"
+			source = muted .. "defaults|r (for now, while the saved settings are looked for)"
 		end
 		print("   Settings in use come from: " .. source)
-		if type(MelloUI.GetBackupStatus) == "function" then
-			local b = MelloUI:GetBackupStatus()
-			if b.paused then
-				print("   Macro backup: " .. yellow .. "PAUSED in Core/Backup.lua (nothing read or written)|r")
-			elseif not b.available then
-				print("   Macro backup: " .. red .. "macro API not available|r")
-			else
-				local when = b.lastWrite and date("%H:%M:%S", b.lastWrite) or "not yet this session"
-				print(string.format("   Macro backup: %d macro(s), %d of %d characters, %s", b.chunks, b.length, b.capacity or 0,
-					b.inSync and (green .. "in sync with current settings|r") or (yellow .. "differs from current settings|r")))
-				print(string.format("   Last write: %s%s%s", when,
-					b.lastReason and (" (" .. tostring(b.lastReason) .. ")") or "",
-					b.pending and ", write scheduled" or (b.deferredForCombat and ", waiting for combat to end" or "")))
-				if b.lastError then
-					print("   Last error: " .. red .. tostring(b.lastError) .. "|r")
-				end
-			end
+		if BackupUI.Ready() then
+			BackupUI.PrintLines(BackupUI.Status())
 		end
 	elseif cmd == "tutorial" or cmd == "tour" then
 		if MelloUI.Tutorial then

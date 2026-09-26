@@ -1,0 +1,118 @@
+{
+ "note": "MelloUI's colour palettes, the one source the tools read (Tools/kit_palette.py and what uses it). The same colours as MelloUI.Palettes in Core/Core.lua: Ember is the palette MelloUI shipped with (the default), the six others come from MelloUI-BuildData/palette/additions_0.14.0/palettes_0.14.0.json. Each id's kit is Media/Kit<Id> (Id = the id with its first letter in capitals) and its Game Menu picture Media/Textures/GameMenuFrame_<id>; Ember keeps its two looks, Media/KitWarm and Media/KitBronze, and GameMenuFrame_warm / _bronze. Roles: the ten swatches, #RRGGBB.",
+ "order": ["ember", "obsidian", "obsidianVibrant", "royalAzure", "royalAzureVibrant", "felEmber", "felEmberVibrant"],
+ "palettes": {
+  "ember": {
+   "name": "Ember",
+   "blurb": "MelloUI's first palette: warm dark brown, bronze-gold trim, a deep red for the selection.",
+   "roles": {
+    "mainWindow": "#1F1B16",
+    "innerPanel": "#11100D",
+    "raisedPanel": "#2E1F14",
+    "border": "#3D342A",
+    "trim": "#8D642F",
+    "text": "#C6AF85",
+    "mutedText": "#7F6846",
+    "selectedTab": "#4E1812",
+    "selectedTrim": "#AE8546",
+    "hover": "#5A3C24"
+   }
+  },
+  "obsidian": {
+   "name": "Obsidian",
+   "blurb": "Neutral black glass and pewter, cold white text, one crimson accent. The calmest, highest-contrast base.",
+   "roles": {
+    "mainWindow": "#18191B",
+    "innerPanel": "#0D0E10",
+    "raisedPanel": "#212326",
+    "border": "#353739",
+    "trim": "#72767D",
+    "text": "#BEC1C5",
+    "mutedText": "#75797E",
+    "selectedTab": "#54040A",
+    "selectedTrim": "#9A9FA5",
+    "hover": "#3B3F44"
+   }
+  },
+  "obsidianVibrant": {
+   "name": "Obsidian Vibrant",
+   "blurb": "Black glass, deeper and crisper: blued-steel trim, silver titles, ice-white text, a jewel crimson for the selection.",
+   "roles": {
+    "mainWindow": "#121418",
+    "innerPanel": "#07090C",
+    "raisedPanel": "#21252A",
+    "border": "#3B4047",
+    "trim": "#5481C3",
+    "text": "#E8EDF4",
+    "mutedText": "#8E99A9",
+    "selectedTab": "#9E0018",
+    "selectedTrim": "#ACCFFC",
+    "hover": "#3D444F"
+   }
+  },
+  "royalAzure": {
+   "name": "Royal Azure",
+   "blurb": "Throne room: deep navy, polished gold trim, cream text, royal blue selection.",
+   "roles": {
+    "mainWindow": "#0F1A2A",
+    "innerPanel": "#050E1E",
+    "raisedPanel": "#10233E",
+    "border": "#27374F",
+    "trim": "#90712B",
+    "text": "#CBC0A4",
+    "mutedText": "#867852",
+    "selectedTab": "#012169",
+    "selectedTrim": "#BF9840",
+    "hover": "#28405E"
+   }
+  },
+  "royalAzureVibrant": {
+   "name": "Royal Azure Vibrant",
+   "blurb": "Throne room, lit: deep sapphire navy, polished gold trim, crisp cream text, a jewel-blue royal selection.",
+   "roles": {
+    "mainWindow": "#011942",
+    "innerPanel": "#000D2C",
+    "raisedPanel": "#02275D",
+    "border": "#1B3E6F",
+    "trim": "#B8871B",
+    "text": "#F1E7D0",
+    "mutedText": "#B29859",
+    "selectedTab": "#022988",
+    "selectedTrim": "#ECB33C",
+    "hover": "#174885"
+   }
+  },
+  "felEmber": {
+   "name": "Fel Ember",
+   "blurb": "Fel and void: charred black, fel-green trim and titles, void purple for the selection.",
+   "roles": {
+    "mainWindow": "#1E1815",
+    "innerPanel": "#130D0A",
+    "raisedPanel": "#2B201B",
+    "border": "#3E3430",
+    "trim": "#59843F",
+    "text": "#C4C1B3",
+    "mutedText": "#797A6A",
+    "selectedTab": "#361851",
+    "selectedTrim": "#7AB146",
+    "hover": "#384232"
+   }
+  },
+  "felEmberVibrant": {
+   "name": "Fel Ember Vibrant",
+   "blurb": "Fel and void, stronger: ember-charred black, vivid fel-green trim and titles, deep void purple for the selection.",
+   "roles": {
+    "mainWindow": "#1C0F08",
+    "innerPanel": "#0F0704",
+    "raisedPanel": "#301C13",
+    "border": "#422F27",
+    "trim": "#58982A",
+    "text": "#E7E3D2",
+    "mutedText": "#8E916F",
+    "selectedTab": "#400568",
+    "selectedTrim": "#85C545",
+    "hover": "#254804"
+   }
+  }
+ }
+}

@@ -63,8 +63,7 @@ local function ListDim(owner, rect, pad)
 	local tex = owner:CreateTexture(nil, "BACKGROUND", nil, 7)
 	tex:SetPoint("TOPLEFT", rect, "TOPLEFT", -pad, pad)
 	tex:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", pad, -pad)
-	local c = MelloUI.Palette.innerPanel
-	tex:SetColorTexture(c[1], c[2], c[3], DIM_ALPHA)
+	Kit:Paint(tex, "innerPanel", "fill", DIM_ALPHA)   -- (by its key: a new palette paints it again)
 	tex.kitPiece = true   -- ours: never faded with the game's art
 	tex:SetShown(active)
 	skin.dims[#skin.dims + 1] = tex

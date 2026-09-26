@@ -2479,8 +2479,8 @@ local function OnLoginEvent(frame, event)
 		end
 	elseif event == "UPDATE_MACROS" then
 		frame:UnregisterEvent("UPDATE_MACROS")
-		-- (a frame later: Backup.lua's own handler, which restores and
-		-- settles, has run by then)
+		-- (a frame later: Backup.lua's own handler, which settles the
+		-- settings, has run by then)
 		C_Timer.After(0, Early)
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		frame:UnregisterEvent("PLAYER_REGEN_ENABLED")

@@ -35,6 +35,9 @@ was made on):
   python Tools/texture_pack.py verify --out DIR       every file under DIR re-read (Pillow and blp_dxt)
   python Tools/texture_pack.py samples --out DIR      PNG side-by-sides (original / BLP / difference)
   python Tools/texture_pack.py probe --out DIR        diagnostic BLPs for the in-game test
+  python Tools/texture_pack.py banner [--out DIR]     the installer banner as DXT5 and at 512 x 256 beside
+                                                      the TGA it ships as, for judging by eye (never shipped;
+                                                      default MelloUI-BuildData/output/banner_samples)
 Options: --jobs N (processes), --effort 0..3 (encoder search; 2 default),
          --only REGEX (Media-relative paths, for a quick run; not for ship),
          --src DIR (the TGA tree to read; default the masters),
@@ -54,6 +57,12 @@ What stays TGA in option d (and so in Media):
   the gate   a file, or an atlas piece in its sheet, whose DXT fails the
              quality gate below: a TGA at its right size (the pieces in
              uncompressed sheets, <look>/atlas/sheethq_*, pictureshq_*)
+  a look's   the sheets' layout is shared by every look and set by the
+  sheet      BASE_LOOKS' gate (the painted kit and Ember's two looks, which
+             stay byte for byte as they shipped); a DXT sheet that fails the
+             gate in another look (a palette's own kit) is that look's TGA,
+             the same pixels at the same uv; a DXT sheet of any look still
+             holding a piece that fails the gate stops the ship
 Media/CustomTextures.lua's user files are not masters: never touched.
 NOT_SHIPPED masters (nothing in the addon names them) are not shipped at
 all; a copy shipped before is removed.
@@ -136,6 +145,7 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import blp_dxt  # noqa: E402
+import kit_palette  # noqa: E402
 from paths import ADDON_MEDIA, MASTER_MEDIA, OUTPUT  # noqa: E402
 
 ROOT = os.path.dirname(HERE)
@@ -144,7 +154,18 @@ LAYOUT_LUA = os.path.join(MEDIA, "KitLayout.lua")     # build_kit.py's: each pie
 TUNING_LUA = os.path.join(ADDON_MEDIA, "KitTuning.lua")   # the shipped tuning (kitforge writes it)
 SLICES_LUA = os.path.join(MEDIA, "KitSlices.lua")     # build_nineslice.py's
 SHIP_DIR = os.path.join(OUTPUT, "texture_ship")       # ship's staging tree, report and record
-LOOKS = ("Kit", "KitWarm", "KitBronze")
+# the painted kit and every recoloured look's folder (Tools/kit_palette.py:
+# Ember's KitWarm and KitBronze, each other palette's Kit<Id>)
+LOOKS = ("Kit",) + kit_palette.FOLDERS
+# the looks whose gate sets the atlas sheets' layout (which pieces go into
+# the uncompressed sheets), shared by every look: the painted kit and
+# Ember's, which stay byte for byte as they shipped (user, 2026-09-26). A
+# DXT sheet that fails the gate in any other look ships as a TGA in that
+# look alone, the same pixels at the same uv.
+BASE_LOOKS = ("Kit",) + kit_palette.EMBER_FOLDERS
+# the Game Menu picture's endings, one per look (GameMenuPanel.lua names the
+# file without them: "GameMenuFrame" is the painted one)
+GAMEMENU_ENDINGS = ("",) + tuple(lk.suffix for lk in kit_palette.LOOKS.values())
 SKIP_DIRS = ("Fonts", "Sounds")
 
 # screen px per UI unit
@@ -243,8 +264,11 @@ STAY_TGA = [
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)\.tga$", "bar fills: 4-8 KB, stretched along bars (565 banding), paths saved in profiles"),
     (r"^Textures/LogoIcon\.tga$", "addressed as LogoIcon.tga by Core/Config.lua and the TOC's IconTexture; 256 KB, loaded once"),
     (r"^Textures/SoftShade\.tga$", "the soft shade (Core/Shade.lua): a 32 KB smooth alpha gradient stretched behind text; DXT bands it"),
-    (r"^Textures/KitShadows\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
-                                    "DXT5 bands them (make_kit_shadows.py --gate: 14 levels off, its limit 4)"),
+    (r"^Textures/KitShadows\w*\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
+                                       "DXT5 bands them (make_kit_shadows.py --gate: 17 levels off, its limit 4)"),
+    (r"^Textures/InstallerBanner\.tga$", "addressed as InstallerBanner.tga by Core/InstallerWindow.lua; its DXT5 fails "
+                                         "the gate (32.3 dB, p99.9 50); a DXT5 or a 512 x 256 copy waits for the "
+                                         "user's eye (texture_pack.py banner)"),
 ]
 # Media paths the Lua builds at run time, which lua_refs cannot follow: the
 # file it is in, the known start of the path (Media-relative, no extension)
@@ -253,7 +277,9 @@ STAY_TGA = [
 # meets (they are checked by hand), and stops the ship at a '.tga' it can
 # not account for.
 DYNAMIC_PATHS = {
-    ("Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): ("", "_warm", "_bronze"),   # TextureFile(): LOOK_SUFFIX[look]
+    # TextureFile(): the painted picture, or the look's ("_warm", "_bronze", "_<palette id>")
+    ("Modules/GameMenuPanel.lua", "Textures/GameMenuFrame"): GAMEMENU_ENDINGS,
+    ("Modules/GameMenuPanel.lua", "Textures/GameMenuFrame_"): tuple(e[1:] for e in GAMEMENU_ENDINGS if e),
 }
 # Paths the Lua finishes at run time from a table's values: (the file the
 # values are written in, a pattern for a value's Media-relative path) -> the
@@ -1156,8 +1182,8 @@ def atlas_candidates(plans, layout, keep_out):
 
 
 def atlas_specs(cand, hq, sheet=ATLAS_SHEET):
-    """Pack the candidates: recoloured pieces in sheets shared by Kit,
-    KitWarm and KitBronze (the same uv in every look), the pieces every look
+    """Pack the candidates: recoloured pieces in sheets shared by Kit and
+    every look (LOOKS; the same uv in every look), the pieces every look
     reads from Media/Kit (kit_palette.SKIP) in Kit-only sheets; `hq` pieces
     apart, in sheets kept uncompressed. A DXT sheet starts each piece
     BLOCK px into its rectangle, so the piece's blocks are its own (the
@@ -1307,7 +1333,7 @@ SHIP_HEADER = [
     "-- One entry per painted kit piece (naming per docs/UI-KIT.md):",
     "--   file  path under Media\\Kit (no extension: a BLP, or a TGA where DXT failed the quality gate);",
     "--         atlas\\<sheet>_<n> for the small pieces packed into one sheet per look (the same uv in",
-    "--         Media\\Kit, Media\\KitWarm and Media\\KitBronze)",
+    "--         Media\\Kit and every look's folder: KitWarm, KitBronze, Kit<Palette>)",
     "--   w, h  size of the piece as painted (2x px); the file holds it at a lower density, the uv accounts for that",
     "--   uv    left, right, top, bottom of the piece inside its file (its sheet)",
     "--   was   where the ship moved the piece into a sheet or right-sized its file: its uv in its own",
@@ -1417,6 +1443,7 @@ MelloUI.Perf = { Scope = function() return { hooksecurefunc = hooksecurefunc, C_
 MelloUI.modules = { UIModifications = { db = {} } }
 function MelloUI:GetModule(name) return self.modules[name] end
 MelloUI.Print, MelloUI.Notice = Noop, Noop
+MelloUI.Safe = { IsSecret = function() return false end, Number = function(v) return v end }
 '''
 
 # One game session on the loaded Kit.lua: s.apply(section) is one
@@ -2221,6 +2248,86 @@ def contact_sheet(made, comps, path, cell=288, per_row=2):
     return path
 
 
+# ---------------------------------------------------------------- the installer banner (never shipped)
+
+BANNER = "Textures/InstallerBanner.tga"
+BANNER_DRAWN = (900, 491)        # InstallerWindow.lua: BANNER_U, BANNER_V of its 1024 x 512 file
+BANNER_UNITS = (460, 251)        # ... drawn at BANNER_W x BANNER_H UI units
+
+
+def make_banner_samples(out):
+    """The installer banner three ways beside the TGA it ships as, for the
+    user to judge (backlog B6): DXT5 at its size, the TGA at half its size
+    (512 x 256; the texcoords are fractions, so the Lua would keep them), and
+    that half size as DXT5. Writes the files (never into Media), panels at
+    the sizes the screen draws the banner and at file px, and banner.json
+    with the sizes, the dB and option d's gate verdict. Returns the json."""
+    os.makedirs(out, exist_ok=True)
+    src = load_rgba(os.path.join(MEDIA, BANNER.replace("/", os.sep)))
+    H, W = src.shape[:2]
+    upp = BANNER_UNITS[0] / BANNER_DRAWN[0]
+    half = np.asarray(Image.fromarray(src).resize((W // 2, H // 2), Image.LANCZOS))
+    cw, ch = BANNER_DRAWN
+    made = {}
+
+    def dxt(img, name, drawn, u):
+        mips = wants_mips(u, False)
+        levels, bled = blp_dxt.mip_chain(img, "dxt5", mips)
+        data = blp_dxt.encode_blp(img, "dxt5", mips=mips, effort=2, level_images=levels)
+        path = os.path.join(out, name)
+        with open(path, "wb") as fh:
+            fh.write(data)
+        dec = [blp_dxt.decode_blp(data, "gpu", level=i) for i in range(len(levels))]
+        r = measure(levels, dec, (0, 0) + drawn, (1 / u) / TARGET, (False, False), mips, img if bled else None)
+        made[name] = {"bytes": len(data), "size": [img.shape[1], img.shape[0]], "mips": mips,
+                      "psnr_on_screen": round(r["disp_psnr_rgb"], 1), "gate": gate_fail(r) or "passes"}
+        return dec, mips
+
+    def tga(img, name):
+        path = os.path.join(out, name)
+        Image.fromarray(img).save(path)
+        made[name] = {"bytes": os.path.getsize(path), "size": [img.shape[1], img.shape[0]]}
+
+    tga(src, "InstallerBanner.tga")
+    tga(half, "InstallerBanner_512.tga")
+    dec_full, m_full = dxt(src, "InstallerBanner_dxt5.blp", (cw, ch), upp)
+    half_drawn = (round(cw / 2), round(ch / 2))
+    dec_half, m_half = dxt(half, "InstallerBanner_512_dxt5.blp", half_drawn, upp * 2)
+    chain, _ = blp_dxt.mip_chain(src, "dxt5", True)
+    chain = [src] + chain[1:]
+    today = "TGA as shipped, %dx%d" % (W, H)
+    sizes = []
+    for dk, _, px in (DISPLAYS[0], DISPLAYS[2], DISPLAYS[3]):
+        sizes.append(("%s: %dx%d screen px" % (dk, round(BANNER_UNITS[0] * px), round(BANNER_UNITS[1] * px)),
+                      (round(BANNER_UNITS[0] * px), round(BANNER_UNITS[1] * px))))
+    notes = ["Reference: the %dx%d TGA ideally filtered. The banner is drawn %dx%d UI units from its %dx%d texels "
+             "(Core/InstallerWindow.lua)." % (W, H, BANNER_UNITS[0], BANNER_UNITS[1], cw, ch),
+             "Sizes on disk: " + ", ".join("%s %.0f KB" % (k, v["bytes"] / 1024) for k, v in made.items())]
+    scores = {}
+    scores["dxt5"] = display_compare(
+        "Installer banner: DXT5 at 1024 x 512 against the TGA", notes,
+        [("TGA ideally filtered", chain, True, (cw, ch)), (today, [src], False, (cw, ch)),
+         ("DXT5 1024x512%s" % (" + mips" if m_full else ""), dec_full, m_full, (cw, ch))],
+        sizes, os.path.join(out, "banner_dxt5.png"), ref=0, diff=2)
+    scores["half"] = display_compare(
+        "Installer banner: 512 x 256 (TGA and DXT5) against the TGA", notes,
+        [("TGA ideally filtered", chain, True, (cw, ch)), (today, [src], False, (cw, ch)),
+         ("TGA 512x256", [half], False, half_drawn),
+         ("DXT5 512x256%s" % (" + mips" if m_half else ""), dec_half, m_half, half_drawn)],
+        sizes, os.path.join(out, "banner_512.png"), ref=0, diff=2)
+    title_f, info_f = _font(24, True), _font(18)
+    head = [("Installer banner, DXT5 at file px: its worst area (the TGA | the DXT5 | difference x 8)", title_f, INK),
+            ("option d's gate: %s" % made["InstallerBanner_dxt5.blp"]["gate"], info_f, WARN_INK)]
+    sample_panel(head, _on_dark(src[:ch, :cw].astype(np.float32)), _on_dark(dec_full[0][:ch, :cw].astype(np.float32)),
+                 os.path.join(out, "banner_dxt5_file_px.png"))
+    result = {"files": made, "on_screen_db": scores,
+              "panels": ["banner_dxt5.png", "banner_512.png", "banner_dxt5_file_px.png"],
+              "note": "never shipped: Media keeps the TGA until the user picks one (the Lua names it with '.tga')"}
+    with open(os.path.join(out, "banner.json"), "w", encoding="utf-8") as fh:
+        json.dump(result, fh, indent=1)
+    return result
+
+
 # ---------------------------------------------------------------- probe
 
 def make_probe(out):
@@ -2514,7 +2621,7 @@ def kit_uncoloured(kit_lua=None):
 
 def check_colour_rule(names, kit_lua=None):
     """Kit.lua (UNCOLOURED, where it reads a piece from) and kit_palette
-    (SKIP, which pieces get a recoloured file in KitWarm / KitBronze) must
+    (SKIP, which pieces get a recoloured file in each look's folder) must
     agree on every piece: the ship lays out the looks' sheets by
     kit_palette's rule, the client reads them by Kit.lua's. Returns problems."""
     import kit_palette
@@ -2793,7 +2900,7 @@ def main():
     global MEDIA, LAYOUT_LUA, TUNING_LUA, SLICES_LUA, GATE_PSNR, GATE_P999
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("cmd", choices=["ship", "all", "convert", "rightsize", "atlas", "recommended", "verify", "samples",
-                                    "probe"])
+                                    "probe", "banner"])
     ap.add_argument("--out", default=None, help="where the files go (ship: its staging folder, default %s)" % SHIP_DIR)
     ap.add_argument("--check", action="store_true", help="ship: build and compare only; exit 1 if Media is out of date")
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
@@ -2813,8 +2920,18 @@ def main():
             sys.exit("ship takes no --only, --src, --sheet or --gate-*: Media is made from every master at the set gate")
         if not os.path.exists(LAYOUT_LUA):
             sys.exit("ship: no masters at %s (Tools/paths.py; build_kit.py writes them)" % MEDIA)
+    elif args.cmd == "banner":
+        out = os.path.abspath(args.out or os.path.join(OUTPUT, "banner_samples"))
+        for tree, what in ((MEDIA, "the TGA tree it reads"), (ADDON_MEDIA, "the addon's Media")):
+            if _inside(out, tree):
+                sys.exit("--out must not be inside %s (%s)" % (what, tree))
+        res = make_banner_samples(out)
+        for name, r in res["files"].items():
+            print("  %-30s %6.0f KB  %s" % (name, r["bytes"] / 1024, r.get("gate", "")))
+        print("banner samples ->", out)
+        return
     elif not args.out:
-        sys.exit("--out is required (every command but ship writes only there)")
+        sys.exit("--out is required (every command but ship and banner writes only there)")
     # the gate is applied here, in the main process (the pool's workers
     # import the module afresh and hold the defaults)
     GATE_PSNR, GATE_P999 = args.gate_psnr, args.gate_p999
@@ -2914,8 +3031,8 @@ def main():
             hq, hq_why = set(), {}
             if option == "d":
                 # start from the pieces whose own right-sized file fails in
-                # any look; the sheets then have the final word
-                for look in LOOKS:
+                # any base look; the sheets then have the final word
+                for look in BASE_LOOKS:
                     for n in cand:
                         r = brec.get(look + "/" + n + ".tga")
                         if r and r["gate"]:
@@ -2933,9 +3050,10 @@ def main():
                 pieces = [pc for _, pcs in sres for pc in pcs]
                 for pc in pieces:
                     pc["gate"] = gate_fail(pc) if pc["fmt"] != "tga" else ""
-                fails = {pc["name"] for pc in pieces if pc["gate"]}
+                # the layout answers to the base looks alone (BASE_LOOKS)
+                fails = {pc["name"] for pc in pieces if pc["gate"] and pc["look"] in BASE_LOOKS}
                 for pc in pieces:
-                    if pc["gate"]:
+                    if pc["gate"] and pc["look"] in BASE_LOOKS:
                         hq_why.setdefault(pc["name"], "in look %s, in its DXT sheet: %s" % (pc["look"], pc["gate"]))
                 rounds.append({"round": rnd + 1, "hq": len(hq), "failed_in_sheet": sorted(fails)})
                 if option != "d" or not fails:
@@ -2944,6 +3062,27 @@ def main():
             else:
                 if option == "d":
                     sys.exit("option d: pieces still fail in their sheets after %d rounds" % GATE_ROUNDS)
+            if option == "d":
+                # any other look keeps that layout: its DXT sheet with a piece
+                # failing the gate ships as a TGA in that look alone (the same
+                # pixels at the same uv; the client finds the .tga)
+                late = {}
+                for pc in pieces:
+                    if pc["gate"] and pc["look"] not in BASE_LOOKS:
+                        late.setdefault(pc["sheet"], []).append("%s: %s" % (pc["name"], pc["gate"]))
+                if late:
+                    redo = [sj for sj in sjobs if sj["rel"] in late]
+                    for sj in redo:
+                        if os.path.exists(sj["dst"]):
+                            os.remove(sj["dst"])
+                        sj.update(raw=True, dst=sj["dst"][:-4] + ".tga")
+                    rres = run_pool(sheet_job, redo, args.jobs)
+                    srecs = [s for s in srecs if s["rel"] not in late] + [s for s, _ in rres]
+                    pieces = [pc for pc in pieces if pc["sheet"] not in late] + [pc for _, pcs in rres for pc in pcs]
+                    for pc in pieces:
+                        if pc["sheet"] in late:
+                            pc["why"] = "in look %s, its DXT sheet fails the gate (%s)" % (pc["look"], late[pc["sheet"]][0])
+                report["look_tga_sheets_d"] = {rel: sorted(v) for rel, v in sorted(late.items())}
             for pc in pieces:
                 if pc["fmt"] == "tga" and pc["name"] in hq_why:
                     pc["why"] = hq_why[pc["name"]]
@@ -3003,6 +3142,13 @@ def main():
                 # pieces keep their files and uvs (check_slices below)
                 shutil.copyfile(SLICES_LUA, os.path.join(odir, "KitSlices.lua"))
             report["atlas_check_" + option] = check_atlas(os.path.join(odir, "KitLayout.lua"), sjobs, uvmap, plans, out, option)
+            if option == "d":
+                # no look ships a DXT sheet holding a piece that fails the
+                # gate (the base looks by the layout, the others by their TGA
+                # sheets above): a stop, so the ship never writes one
+                report["atlas_check_d"] = list(report["atlas_check_d"]) + [
+                    "%s in %s: its DXT sheet fails the gate (%s)" % (pc["name"], pc["sheet"], pc["gate"])
+                    for pc in pieces if pc["fmt"] != "tga" and pc.get("gate")]
             report["slices_check_" + option] = check_slices(os.path.join(odir, "KitLayout.lua"), slices, out, option)
             print("slices %s check:" % option, report["slices_check_" + option][:5] or
                   "every KitSlices.lua piece keeps its file, size and uv; every picture present once in every look")
@@ -3060,7 +3206,7 @@ def main():
                               "tga_bytes", "tga_gpu")
     stems_tga = {p["rel"][:-4]: (p["tga_bytes"], p["tga_gpu"]) for p in plans}
     report["preload_tga"] = preload_stats(layout, stems_tga)
-    report["gamemenu_tga"] = {k: stems_tga.get("Textures/GameMenuFrame" + k) for k in ("", "_warm", "_bronze")}
+    report["gamemenu_tga"] = {k: stems_tga.get("Textures/GameMenuFrame" + k) for k in GAMEMENU_ENDINGS}
     for o, (_, rows, pieces) in results.items():
         vres = verified[o]
         report["option_" + o] = summarise(rows, "bytes", "gpu")
@@ -3096,9 +3242,9 @@ def main():
         stems = {r["rel"][:-4]: (r["bytes"], r["gpu"]) for r in rows}
         lay_o = layout if o == "a" else load_layout(os.path.join(out, o, "KitLayout.lua"))
         report["preload_" + o] = preload_stats(lay_o, stems)
-        report["gamemenu_" + o] = {k: stems.get("Textures/GameMenuFrame" + k) for k in ("", "_warm", "_bronze")}
+        report["gamemenu_" + o] = {k: stems.get("Textures/GameMenuFrame" + k) for k in GAMEMENU_ENDINGS}
         report["gamemenu_fmt_" + o] = {k: next((r["fmt"] for r in rows if r["rel"] == "Textures/GameMenuFrame%s.tga" % k), None)
-                                       for k in ("", "_warm", "_bronze")}
+                                       for k in GAMEMENU_ENDINGS}
         if o in ("b", "c", "d"):
             # Modules/Kit.lua's own remap on this layout: a failure stops the ship
             # (a live override would draw the wrong art); stubs that no longer

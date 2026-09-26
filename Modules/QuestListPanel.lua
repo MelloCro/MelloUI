@@ -307,13 +307,34 @@ local function EnsureWidgets(button)
 	Perf.SetScript(button, "OnLeave", EntryLeave)
 end
 
+-- The palette's colours (0.14.0: the palettes). A region painted once by its
+-- key goes through Core's W.Paint (MelloUI.Widgets.Paint: the kit's one
+-- registry, which paints it again on 'palette'); a string whose colour
+-- follows its row (a header's, a quest's) takes the palette as it is when the
+-- row is laid, and the list is laid again on a new palette (QL.Panel:Create).
+-- A done quest's text (its title and line, a finished count; on the map a
+-- finished zone's badge) is the text colour a step down, at DONE_ALPHA: small
+-- text is never the muted text (the palette rule), and at 0.75 the text
+-- colour still reads at about 5.4 : 1 on the inner panel (Ember).
+QL.DONE_ALPHA = 0.75
+
+local function KeyColour(fs, key, alpha)
+	local c = MelloUI.Palette[key]
+	fs:SetTextColor(c[1], c[2], c[3], alpha or 1)
+end
+
 -- A gold pulse over a frame: bright at once, gone within a second. Under
 -- Reduce Motion it ends at once: no flash (Anim:PlayGroup; audit, 2026-09-24).
 local function Pulse(owner, inset)
 	local flash = owner.pulse
 	if not flash then
 		flash = owner:CreateTexture(nil, "OVERLAY", nil, 7)
-		flash:SetColorTexture(1, 0.82, 0.2, 1)
+		-- the palette's gold, by its key (W.Paint; the pulse stands on its
+		-- own: a world without Core's widgets leaves it unpainted)
+		local W = MelloUI.Widgets
+		if W then
+			W.Paint(flash, "selectedTrim", "fill", 1)
+		end
 		flash:SetBlendMode("ADD")
 		flash:SetPoint("TOPLEFT", inset or 0, -(inset or 0))
 		flash:SetPoint("BOTTOMRIGHT", -(inset or 0), inset or 0)
@@ -373,13 +394,9 @@ local function InitHeader(button, entry)
 	end
 	button.plus:SetAtlas(QL.collapsed[entry.key] and "common-button-list-plus" or "common-button-list-minus", true)
 	button.label:SetText(entry.name)
-	button.label:SetTextColor(0.9, 0.9, 0.9)
+	KeyColour(button.label, "text")
 	button.count:SetText(string.format("%d/%d", entry.done, entry.total))
-	if entry.done == entry.total and entry.total > 0 then
-		button.count:SetTextColor(0.5, 0.5, 0.5)
-	else
-		button.count:SetTextColor(1, 1, 1)
-	end
+	KeyColour(button.count, "text", (entry.done == entry.total and entry.total > 0) and QL.DONE_ALPHA or 1)
 end
 
 local function InitRow(button, entry)
@@ -433,12 +450,12 @@ local function InitRow(button, entry)
 		button.check:SetAtlas("questlog-icon-checkmark-yellow")
 		button.check:SetDesaturated(true)
 		button.check:SetAlpha(0.7)
-		button.title:SetTextColor(0.6, 0.6, 0.6)   -- done: a step under the trivial grey
+		KeyColour(button.title, "text", QL.DONE_ALPHA)   -- done: the text colour a step down
 	elseif entry.onQuest then
 		button.check:SetAtlas("QuestTurnin")
 		button.check:SetDesaturated(not entry.ready)
 		button.check:SetAlpha(entry.ready and 1 or 0.6)
-		button.title:SetTextColor(r, g, b)
+		button.title:SetTextColor(r, g, b, 1)   -- (a row laid done before comes back to full)
 	else
 		-- not taken yet: the "!", or what the quest begins from (swords, chest, instance door)
 		local starter = QL.StarterKind(row)
@@ -447,7 +464,7 @@ local function InitRow(button, entry)
 		end
 		button.check:SetDesaturated(not entry.available)
 		button.check:SetAlpha(entry.available and 1 or 0.6)
-		button.title:SetTextColor(r, g, b)
+		button.title:SetTextColor(r, g, b, 1)
 	end
 	local where
 	if entry.ready and (row[QL.F_ENDER] or "") ~= "" then
@@ -474,13 +491,10 @@ local function InitRow(button, entry)
 	else
 		where = entry.showZone and (QL.Data().zones[row[QL.F_ZONE]] or "") or "quest giver unknown"
 	end
-	-- as a quest log objective line: a dash, white; grey once done
+	-- as a quest log objective line: a dash, in the text colour; a step down
+	-- once done
 	button.where:SetText("- " .. where)
-	if entry.completed then
-		button.where:SetTextColor(0.55, 0.55, 0.55)
-	else
-		button.where:SetTextColor(0.95, 0.95, 0.95)
-	end
+	KeyColour(button.where, "text", entry.completed and QL.DONE_ALPHA or 1)
 	-- on the reskin's parchment: both lines in ink, the difficulty in pips at
 	-- the title's right (QuestInk; user, 2026-09-23); a done quest faded, no pips
 	local QI = MelloUI.QuestInk
@@ -741,7 +755,7 @@ function QL.Panel:Create()
 	frame.bg:SetPoint("TOPLEFT", 8, -26)
 	frame.bg:SetPoint("BOTTOMRIGHT", -8, 8)
 	if not pcall(frame.bg.SetAtlas, frame.bg, "QuestLog-main-background") then
-		frame.bg:SetColorTexture(0.08, 0.06, 0.05, 1)
+		MelloUI.Widgets.Paint(frame.bg, "innerPanel", "fill", 1)
 	end
 
 	-- Filter by what a quest starts from (user, 2026-09-23): a quest giver, a
@@ -806,11 +820,10 @@ function QL.Panel:Create()
 		MelloUI:PlayUISound(self:GetChecked() and "option_on" or "option_off")
 	end)
 	Perf.SetScript(check, "OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText("Hide quests 5+ levels above me", 1, 0.82, 0)
-		GameTooltip:AddLine("Leaves out the quests 5 or more levels above your character (the red ones) in the Quests list and on the map. "
-			.. "The same as Hide Quests More Than N Levels Above Me set to +4 in the settings; unchecked, no limit.", 0.9, 0.9, 0.9, true)
-		GameTooltip:Show()
+		-- (MelloUI's one tooltip: the palette's gold and text)
+		MelloUI.Widgets.ShowTooltip(self, "Hide quests 5+ levels above me",
+			"Leaves out the quests 5 or more levels above your character (the red ones) in the Quests list and on the map. "
+			.. "The same as Hide Quests More Than N Levels Above Me set to +4 in the settings; unchecked, no limit.", nil, "ANCHOR_RIGHT")
 	end)
 	Perf.SetScript(check, "OnLeave", function() GameTooltip:Hide() end)
 	frame.levelCheck = check
@@ -845,7 +858,7 @@ function QL.Panel:Create()
 	frame.divider:SetPoint("RIGHT", -12, 0)
 	frame.divider:SetHeight(8)
 	if not pcall(frame.divider.SetAtlas, frame.divider, "QuestLog-frame-devider") then
-		frame.divider:SetColorTexture(0.4, 0.32, 0.12, 0.6)
+		MelloUI.Widgets.Paint(frame.divider, "trim", "fill", 0.6)
 		frame.divider:SetHeight(1)
 	end
 
@@ -938,7 +951,15 @@ function QL.Panel:Create()
 		watcher:UnregisterAllEvents()
 		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
 	end)
-
+	-- a new palette: the rows laid again in it while the panel shows (a
+	-- hidden panel is laid afresh on its next show). Only a palette TABLE
+	-- the list was not laid in: 'palette' goes out for a Kit Colours change
+	-- too, the palette unchanged
+	MelloUI:On("palette", function()
+		if laid.palette ~= MelloUI.Palette then
+			QL.Panel:Update()
+		end
+	end, "Quest List panel")
 end
 
 function QL.Panel:Apply()
@@ -1082,7 +1103,9 @@ function QL.Panel:Update(quiet)
 		local name = data.dungeons[id] or "Dungeon"
 		local lv = data.dungeonLevel and data.dungeonLevel[id]
 		if lv and lv[1] > 0 then
-			name = string.format("%s |cff888888(%d-%d)|r", name, lv[1], lv[2] > 0 and lv[2] or lv[1])
+			-- the level range in the header's own colour (a grey code of its
+			-- own before 0.14.0: small text is never the muted text)
+			name = string.format("%s (%d-%d)", name, lv[1], lv[2] > 0 and lv[2] or lv[1])
 		end
 		return name
 	end
@@ -1175,13 +1198,15 @@ function QL.Panel:Update(quiet)
 	local QI = MelloUI.QuestInk
 	local paper = QI and QI.onParchment and true or false
 	local face, flags = ListFont()
+	-- and the palette (the text colours: a pass after a switch lays it again)
+	local palette = MelloUI.Palette
 	if quiet and not (revealKey and GetTime() < revealUntil) and laid.title == title and laid.done == done
 		and laid.total == total and laid.tracked == QL.trackedQuestID and laid.level == level and laid.paper == paper
-		and laid.face == face and laid.flags == flags and SameEntries(laid.entries, entries) then
+		and laid.face == face and laid.flags == flags and laid.palette == palette and SameEntries(laid.entries, entries) then
 		return
 	end
 	laid.entries, laid.title, laid.done, laid.total, laid.tracked = entries, title, done, total, QL.trackedQuestID
-	laid.level, laid.paper, laid.face, laid.flags = level, paper, face, flags
+	laid.level, laid.paper, laid.face, laid.flags, laid.palette = level, paper, face, flags, palette
 	frame.zone:SetText(title)
 	frame.count:SetText(string.format("%d of %d completed", done, total))
 	artLaid = artLaid + 1   -- (each row's art set again as it is laid: NewArt)

@@ -226,15 +226,10 @@ end
 -- tone -- a stripe a step lighter than the inner panel round it; the palette's
 -- red (#4E1812) while the game paints the plate red.
 --------------------------------------------------------------------------------
-local function CardColour(red)
-	local P = MelloUI.Palette
-	local c = P and (red and P.selectedTab or P.mainWindow) or (red and { 0.31, 0.09, 0.07 } or { 0.12, 0.11, 0.09 })
-	return c[1], c[2], c[3]
-end
-
+-- (by its palette key, Kit:Paint: a new palette paints it again; painting
+-- the same card again reuses its entry)
 local function PaintCard(entry)
-	local r, g, b = CardColour(entry.red)
-	entry.tex:SetColorTexture(r, g, b, CARD_ALPHA)
+	Kit:Paint(entry.tex, entry.red and "selectedTab" or "mainWindow", "fill", CARD_ALPHA)
 end
 
 -- red while the game's plate is clearly red ((0.9, 0, 0) on this window);

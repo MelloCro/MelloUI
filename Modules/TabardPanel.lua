@@ -79,9 +79,11 @@ local panels = {}                                      -- our inner-panel textur
 local found = {}                                       -- [part] = a line for /tabarddump
 
 -- the palette's tones (WINDOW-RULES 2e): a box ON the dimmed inset takes the
--- main window's tone, a step lighter than the panel round it
-local PAL = MelloUI.Palette or {}
-local BOX_TONE = PAL.mainWindow
+-- main window's tone, a step lighter than the panel round it. Handed to the
+-- kit by its KEY (Kit:Paint paints it by that key, and a new palette paints
+-- it again; a copy of the palette's table taken when this file loads would
+-- be out of date once a palette is chosen)
+local BOX_TONE = "mainWindow"
 local BOX_DIM = 0.85
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)

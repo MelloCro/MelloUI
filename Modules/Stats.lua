@@ -86,7 +86,21 @@ end
 -- Frame
 --------------------------------------------------------------------------------
 
-local LABEL = "|cff9b8cff"
+-- The labels (fps, ms, the separators) in the palette's text colour, as a
+-- colour code: made again when the palette is a new table (0.14.0: the
+-- palettes; the numbers keep their good -> bad gradient, a meaning colour)
+local label = { from = nil, code = nil, gap = nil }
+
+local function Label()
+	local palette = MelloUI.Palette
+	if label.from ~= palette then
+		label.from = palette
+		label.code = MelloUI:PaletteCode("text")
+		label.gap = label.code .. "  |r"
+	end
+	return label.code
+end
+
 local frame = CreateFrame("Frame", "MelloUIStatsFrame", UIParent)
 frame:SetSize(120, 16)
 frame:SetFrameStrata("LOW")
@@ -105,7 +119,10 @@ local function ApplyFont()
 		text:SetFont(path, tonumber(M.db.fontSize) or 12, "OUTLINE")
 	end
 	text:SetShadowOffset(1, -1)
-	text:SetShadowColor(0, 0, 0, 0.8)
+	-- the palette's inner panel as the shadow (read when applied; again on
+	-- 'palette')
+	local shadow = MelloUI.Palette.innerPanel
+	text:SetShadowColor(shadow[1], shadow[2], shadow[3], 0.8)
 end
 
 local function ApplyPosition()
@@ -116,11 +133,11 @@ end
 -- the readout's pieces, one table for every refresh (a new one each interval
 -- before; user, 2026-09-24: no garbage on the hot paths)
 local parts = {}
-local SEPARATOR = LABEL .. "  |r"
 
 local function Refresh()
 	local db = M.db
 	local n = 0
+	local LABEL = Label()
 	if db.showFps then
 		local fps = math.floor((GetFramerate() or 0) + 0.5)
 		n = n + 1
@@ -136,7 +153,7 @@ local function Refresh()
 		n = n + 1
 		parts[n] = latency .. LABEL .. " ms|r"
 	end
-	text:SetText(table.concat(parts, SEPARATOR, 1, n))
+	text:SetText(table.concat(parts, label.gap, 1, n))
 	local width = text:GetStringWidth() or 0
 	frame:SetWidth(math.max(20, width))
 	frame:SetHeight(math.max(10, text:GetStringHeight() or 10))
@@ -173,11 +190,16 @@ Perf.SetScript(frame, "OnEnter", function(self)
 	end
 	GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
 	local bandwidthIn, bandwidthOut, home, world = GetNetStats()
-	GameTooltip:AddLine("MelloUI Stats")
-	GameTooltip:AddDoubleLine("FPS", string.format("%d", math.floor((GetFramerate() or 0) + 0.5)), 1, 1, 1, Gradient(GetFramerate() or 0, 60, 20))
-	GameTooltip:AddDoubleLine("Home latency", string.format("%d ms", home or 0), 1, 1, 1, Gradient(home or 0, 50, 300))
-	GameTooltip:AddDoubleLine("World latency", string.format("%d ms", world or 0), 1, 1, 1, Gradient(world or 0, 50, 300))
-	GameTooltip:AddDoubleLine("Bandwidth", string.format("%.1f KB/s in, %.1f KB/s out", bandwidthIn or 0, bandwidthOut or 0), 1, 1, 1, 0.8, 0.8, 0.8)
+	-- the palette's gold and text, as MelloUI's one tooltip (W.ShowTooltip);
+	-- the FPS and latency figures keep their good -> bad gradient
+	local P = MelloUI.Palette
+	local gold, ink = P.selectedTrim, P.text
+	GameTooltip:AddLine("MelloUI Stats", gold[1], gold[2], gold[3])
+	GameTooltip:AddDoubleLine("FPS", string.format("%d", math.floor((GetFramerate() or 0) + 0.5)), ink[1], ink[2], ink[3], Gradient(GetFramerate() or 0, 60, 20))
+	GameTooltip:AddDoubleLine("Home latency", string.format("%d ms", home or 0), ink[1], ink[2], ink[3], Gradient(home or 0, 50, 300))
+	GameTooltip:AddDoubleLine("World latency", string.format("%d ms", world or 0), ink[1], ink[2], ink[3], Gradient(world or 0, 50, 300))
+	GameTooltip:AddDoubleLine("Bandwidth", string.format("%.1f KB/s in, %.1f KB/s out", bandwidthIn or 0, bandwidthOut or 0),
+		ink[1], ink[2], ink[3], ink[1], ink[2], ink[3])
 	-- with the route data companion's once it is loaded (MelloUI:MemoryKB,
 	-- Core/Companions.lua): the data lives next door now, and MelloUI's own
 	-- figure alone would show a drop that is not there
@@ -187,7 +209,7 @@ Perf.SetScript(frame, "OnEnter", function(self)
 		kb = GetAddOnMemoryUsage(ADDON_NAME) or 0
 	end
 	if kb then
-		GameTooltip:AddDoubleLine("MelloUI memory", string.format("%.1f MB", kb / 1024), 1, 1, 1, 0.8, 0.8, 0.8)
+		GameTooltip:AddDoubleLine("MelloUI memory", string.format("%.1f MB", kb / 1024), ink[1], ink[2], ink[3], ink[1], ink[2], ink[3])
 	end
 	GameTooltip:Show()
 end)
@@ -214,12 +236,28 @@ local function ApplyAll()
 	end
 end
 
+-- A new palette: the shadow and the labels in it at once (the ticker would
+-- bring the labels only at its next beat). Only a palette TABLE the readout
+-- was not drawn in: 'palette' goes out for a Kit Colours change too, the
+-- palette unchanged
+local function OnPalette()
+	if M.isEnabled and M.db and label.from ~= MelloUI.Palette then
+		ApplyFont()
+		Label()
+		if frame:IsShown() then
+			Refresh()
+		end
+	end
+end
+
 function M:OnInit(db)
 	self.db = db
 end
 
 function M:OnEnable(db)
 	self.db = db
+	-- (one listener: On again with the same owner keeps it)
+	MelloUI:On("palette", OnPalette, "Stats")
 	ApplyAll()
 end
 

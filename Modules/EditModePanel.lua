@@ -250,12 +250,11 @@ end
 local TOP_PAD_X, TOP_PAD_Y = 12, 30   -- the top controls' panel, in from the window's left and top edges (under the title plate)
 
 local function InnerPanel(owner, inset)
-	local pal = MelloUI.Palette.innerPanel
 	local fill = owner:CreateTexture(nil, "BACKGROUND", nil, 2)
 	fill.kitPiece = true
 	fill:SetPoint("TOPLEFT", owner, "TOPLEFT", inset, -inset)
 	fill:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", -inset, inset)
-	fill:SetColorTexture(pal[1], pal[2], pal[3], PANEL_ALPHA)
+	Kit:Paint(fill, "innerPanel", "fill", PANEL_ALPHA)   -- (by its key: a new palette paints it again)
 	return fill
 end
 

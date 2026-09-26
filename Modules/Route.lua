@@ -3086,10 +3086,13 @@ end
 -- for a flight, blue on the water.
 -- The dots are the kit's small gem (deco/gem_small; the user's pick I2,
 -- 2026-09-21) on the map and the minimap alike; the game's indicator dots
--- are the fallback when the kit is not loaded. A style's tint colours the gem.
+-- are the fallback when the kit is not loaded. A style's tint colours the gem:
+-- the guess's pale blue tells a guessed stretch from a walked one. It stays
+-- fixed whatever the palette until the user says whether it is a meaning
+-- colour (0.14.0; the ratchet, Tools/lint/check_panels.py, counts it).
 local STYLE = {
 	road = { texture = "Interface/Common/Indicator-Yellow", piece = "deco/gem_small", size = 1.0, gap = 1.6, alpha = 1 },
-	guess = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 1.0, gap = 2.2, alpha = 1, color = { 0.8, 0.92, 1 } },
+	guess = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 1.0, gap = 2.2, alpha = 1, color = { 0.8, 0.92, 1 } },   -- (fixed colour, for the user to confirm)
 	flight = { texture = "Interface/Common/Indicator-Green", piece = "deco/gem_small", size = 0.9, gap = 3.0, alpha = 0.8 },
 	boat = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 0.7, gap = 3.0, alpha = 0.6 },
 }
@@ -3575,10 +3578,8 @@ local function EnsureArrow()
 	arrow.label:SetWidth(180)
 	arrow.label:SetWordWrap(false)
 	Perf.SetScript(arrow, "OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		GameTooltip:SetText("Route", 1, 1, 1)
-		GameTooltip:AddLine("Points along the next leg of the route. Drag to move.", nil, nil, nil, true)
-		GameTooltip:Show()
+		-- (MelloUI's one tooltip: the palette's gold and text)
+		MelloUI.Widgets.ShowTooltip(self, "Route", "Points along the next leg of the route. Drag to move.", nil, "ANCHOR_LEFT")
 	end)
 	Perf.SetScript(arrow, "OnLeave", function() GameTooltip:Hide() end)
 	arrow.frameAge = 0
@@ -3715,7 +3716,7 @@ end
 local marker = nil
 local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"
 local BEAM_W, BEAM_H = 48, 420
-local BEAM_RED = { 1, 0.16, 0.1 }
+local BEAM_RED = { 1, 0.16, 0.1 }   -- the user's red (2026-09-23), whatever the palette (fixed colour, for the user to confirm)
 local BEAM_SPAN = BEAM_H / (256 * BEAM_W / 64)   -- how many times the streak strip repeats up the beam
 local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
 -- off screen, the arrow goes round the character on this ring (UI units from

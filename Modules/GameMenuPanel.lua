@@ -2,8 +2,9 @@
 -- MelloUI - Game Menu Panel
 --
 -- Dresses the game menu (Escape) in one painted frame
--- (Media/Textures/GameMenuFrame, from docs/gamemenu-frame.webp, and its
--- Kit Colours looks GameMenuFrame_warm / _bronze): the
+-- (Media/Textures/GameMenuFrame, from docs/gamemenu-frame.webp, its Kit
+-- Colours looks GameMenuFrame_warm / _bronze and each palette's own
+-- GameMenuFrame_<palette id>): the
 -- gold "Game Menu" header, nine red plates in an iron and stone frame. The
 -- game's own buttons are laid on the plates by their labels (Options, AddOns,
 -- Edit Mode, Support, Macros, MelloUI, Log Out, Exit Game, Return to Game),
@@ -31,16 +32,35 @@ local M = MelloUI:RegisterModule("GameMenuPanel", {
 })
 
 local TEXTURE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\GameMenuFrame"
--- the art in each Kit Colours look (user, 2026-09-24: the menu kept its
--- painted colours in Warm iron and Bronze; Tools/kit_palette.py recolours it)
-local LOOK_SUFFIX = { warm = "_warm", bronze = "_bronze" }
 
--- No extension: the client takes the .blp or the .tga, whichever the look's
--- file ships as (Tools/texture_pack.py ship)
+-- The art in the look the kit is drawn in (user, 2026-09-24: the menu kept
+-- its painted colours in Warm iron and Bronze; Tools/kit_palette.py
+-- recolours it): the kit's one answer for the palette and the Kit Colours,
+-- Kit:LookFolder's folder, names the file. Media\Kit is the painted art,
+-- GameMenuFrame; KitWarm and KitBronze (Ember's looks) _warm and _bronze;
+-- a palette's own Kit<Id> that palette's recoloured menu,
+-- GameMenuFrame_<palette id>. No extension: the client takes the .blp or
+-- the .tga, whichever the file ships as (Tools/texture_pack.py ship).
+-- [folder] = the file, made once per folder
+local fileOf = {
+	Kit = TEXTURE,
+	KitWarm = TEXTURE .. "_warm",
+	KitBronze = TEXTURE .. "_bronze",
+}
+
 local function TextureFile()
 	local Kit = MelloUI.Kit
-	local look = Kit and Kit.BorderValue and Kit:BorderValue("colours")
-	return TEXTURE .. (LOOK_SUFFIX[look] or "")
+	local _, folder = Kit:LookFolder(MelloUI:PaletteId(), Kit:BorderValue("colours"))
+	if type(folder) ~= "string" then
+		return TEXTURE
+	end
+	local file = fileOf[folder]
+	if not file then
+		-- Kit<Id>: the id with its first letter small again (KitRoyalAzure: royalAzure)
+		file = TEXTURE .. "_" .. folder:sub(4, 4):lower() .. folder:sub(5)
+		fileOf[folder] = file
+	end
+	return file
 end
 -- the art's size in the 1024 x 2048 master; the shipped files are half that,
 -- and the texture coordinates are fractions, which the halving keeps
@@ -106,6 +126,17 @@ local function Unfade()
 		obj:SetAlpha(1)
 	end
 	wipe(faded)
+end
+
+-- The buttons' hover wash: the palette's gold, faint (a highlight adds its
+-- light: at this alpha the gold adds about what the old warm gold did at 0.12)
+local HOVER_ALPHA = 0.18
+local function HoverWash(button)
+	local hl = button:GetHighlightTexture()
+	if hl then
+		local c = MelloUI.Palette.selectedTrim
+		hl:SetVertexColor(c[1], c[2], c[3], HOVER_ALPHA)
+	end
 end
 
 local function SaveSize(frame)
@@ -180,7 +211,7 @@ local function DressButton(button)
 		end
 	end
 	button:SetHighlightTexture("Interface\\Buttons\\WHITE8x8")
-	button:GetHighlightTexture():SetVertexColor(1, 0.85, 0.4, 0.12)
+	HoverWash(button)
 	button:GetHighlightTexture():ClearAllPoints()
 	button:GetHighlightTexture():SetPoint("TOPLEFT", 4, -4)
 	button:GetHighlightTexture():SetPoint("BOTTOMRIGHT", -4, 4)
@@ -291,6 +322,31 @@ local function Arrange()
 	end
 end
 
+-- the art for the palette and Kit Colours as they are now (set again only
+-- when the file changes)
+local function SetArt()
+	local file = TextureFile()
+	if skin.file ~= file then
+		skin.file = file
+		skin.art:SetTexture(file)
+		skin.art:SetTexCoord(0, TEX_RIGHT, 0, TEX_BOTTOM)
+	end
+end
+
+-- A new palette or Kit Colours (the bus's 'palette', fired once both are in
+-- place; a Kit Colours switch fires it after its 'border'): the art, and the
+-- dressed buttons' hover wash. Nothing while the skin is off: Activate sets
+-- the art and DressButton the wash when it comes back on
+local function OnPalette()
+	if not (skin and active) then
+		return
+	end
+	SetArt()
+	for button in pairs(dressed) do
+		HoverWash(button)
+	end
+end
+
 local function BuildSkin()
 	if skin then
 		return skin
@@ -304,15 +360,8 @@ local function BuildSkin()
 	skin:EnableMouse(false)
 	skin.art = skin:CreateTexture(nil, "BACKGROUND")
 	skin.art:SetAllPoints()
-	skin.art:SetTexture(TextureFile())
-	skin.art:SetTexCoord(0, TEX_RIGHT, 0, TEX_BOTTOM)
-	local Kit = MelloUI.Kit
-	if Kit and Kit.OnBorderChanged then
-		Kit:OnBorderChanged("colours", function()
-			skin.art:SetTexture(TextureFile())
-			skin.art:SetTexCoord(0, TEX_RIGHT, 0, TEX_BOTTOM)
-		end)
-	end
+	SetArt()
+	MelloUI:On("palette", OnPalette, "Game Menu art")
 	return skin
 end
 
@@ -339,7 +388,7 @@ local function Activate()
 			end
 		end
 	end
-	skin.art:SetTexture(TextureFile())
+	SetArt()
 	skin:Show()
 	Arrange()
 end

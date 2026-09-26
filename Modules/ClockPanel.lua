@@ -336,10 +336,8 @@ local function LabelOn(fs, heading)
 		pcall(fs.SetFontObject, fs, font)
 	end
 	local P = MelloUI.Palette
-	local c = P and (heading and P.selectedTrim or P.text)
-	if c then
-		pcall(fs.SetTextColor, fs, c[1], c[2], c[3], 1)
-	end
+	local c = heading and P.selectedTrim or P.text
+	pcall(fs.SetTextColor, fs, c[1], c[2], c[3], 1)
 end
 
 local function LabelOff(fs)
@@ -682,6 +680,16 @@ local function Refresh()
 	Kit:NextFrame(skin, RefreshLater)
 end
 
+-- A new palette (the bus's 'palette'): the labels in its colours
+local function OnPalette()
+	if not active then
+		return
+	end
+	for _, entry in ipairs(labels) do
+		LabelOn(entry.fs, entry.heading)
+	end
+end
+
 -- Switched on, or one window dressed for the first time while the other is
 -- already on (its pieces came on as they were made: Replace): the labels,
 -- the play glyph and what the game laid out are set again
@@ -697,6 +705,8 @@ local function Activate()
 	end
 	if not active then
 		active = true
+		-- (heard from the first dressing on: nothing is listened to before)
+		MelloUI:On("palette", OnPalette, "Clock Kit palette")
 		for _, rep in ipairs(skin.reps) do
 			rep:Enable()
 		end

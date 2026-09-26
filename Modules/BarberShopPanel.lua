@@ -196,10 +196,8 @@ local function LabelOn(fs)
 		end
 		labels[fs] = { r, g, b, (type(a) == "number" and not Secret(a)) and a or 1 }
 	end
-	local c = MelloUI.Palette and MelloUI.Palette.text
-	if c then
-		fs:SetTextColor(c[1], c[2], c[3])
-	end
+	local c = MelloUI.Palette.text
+	fs:SetTextColor(c[1], c[2], c[3])
 end
 
 local function LabelOff(fs)
@@ -551,6 +549,16 @@ local function Refresh()
 	Kit:NextFrame(skin, RefreshLater)
 end
 
+-- A new palette (the bus's 'palette'): the labels in its text colour
+local function OnPalette()
+	if not active then
+		return
+	end
+	for fs in pairs(labels) do
+		LabelOn(fs)
+	end
+end
+
 local function Activate()
 	if active or not Window() then
 		return
@@ -560,6 +568,8 @@ local function Activate()
 		return
 	end
 	active = true
+	-- (heard from the first dressing on: nothing is listened to before)
+	MelloUI:On("palette", OnPalette, "Barber Shop Kit palette")
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end

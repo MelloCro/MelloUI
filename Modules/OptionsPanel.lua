@@ -66,8 +66,6 @@ local M = MelloUI:RegisterModule("OptionsPanel", {
 	options = {},
 })
 
-local PAL = MelloUI.Palette
-
 -- Additions to what the game draws, as the configurator has them (user,
 -- 2026-09-24: the Options window should feel like MelloUI's configurator):
 -- the row stripes (CR4) and a plate under a page's section headers (the game
@@ -508,15 +506,15 @@ local function Underlay(row)
 end
 
 -- CR4's faint band (WINDOW-RULES 2e: the main window tone on the inner
--- panel), shown on every other row by the list pass
+-- panel), shown on every other row by the list pass; painted by its palette
+-- key (Kit:Paint: a new palette paints it again)
 local function Band(u, row)
 	if not ADD_STRIPES then
 		return nil
 	end
 	local band = u:CreateTexture(nil, "BACKGROUND", nil, -8)
 	band:SetAllPoints(row)
-	local c = PAL.mainWindow
-	band:SetColorTexture(c[1], c[2], c[3], STRIPE_ALPHA)
+	Kit:Paint(band, "mainWindow", "fill", STRIPE_ALPHA)
 	band.kitPiece = true
 	band:Hide()
 	return band
@@ -791,8 +789,7 @@ local function InnerPanel(rep)
 	local fill = skin:CreateTexture(nil, "BACKGROUND", nil, 1)
 	fill:SetPoint("TOPLEFT", skin, "TOPLEFT", FILL_INSET, -FILL_INSET)
 	fill:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -FILL_INSET, FILL_INSET)
-	local c = PAL.innerPanel
-	fill:SetColorTexture(c[1], c[2], c[3], FILL_ALPHA)
+	Kit:Paint(fill, "innerPanel", "fill", FILL_ALPHA)   -- (by its key: a new palette paints it again)
 	fill.kitPiece = true
 end
 

@@ -145,7 +145,9 @@ function PinMethods:OnAcquired(kind, data)
 		end
 		self.Label:SetPoint("TOP", self.Icon, "BOTTOM", 0, 2)
 		self.Label:SetText(data.tracked and data.giver or "")
-		self.Label:SetTextColor(0.6, 0.8, 1)
+		-- the tracked giver's pale blue, as its tooltip hint: fixed whatever the
+		-- palette until the user says whether it is a meaning colour (0.14.0)
+		self.Label:SetTextColor(0.6, 0.8, 1)   -- (fixed colour, for the user to confirm)
 		self.Label:SetShown(data.tracked)
 	elseif kind == "entrance" or kind == "transport" then
 		self.Bg:Hide()
@@ -161,16 +163,21 @@ function PinMethods:OnAcquired(kind, data)
 			SetFirstAtlas(self.Icon, TRANSPORT_ATLAS[data.faction] or TRANSPORT_ATLAS[0])
 		end
 	else
+		-- a zone's badge in the palette as it is now (the pins are laid
+		-- again on a new palette: QL.CreateProvider): its inner panel under
+		-- the count, the count in its gold; once all are done, in its text
+		-- colour a step down (QL.DONE_ALPHA, as the list's done quests:
+		-- small text is never muted text)
+		local palette = MelloUI.Palette
+		local ground = palette.innerPanel
+		local done = data.done >= data.total
+		local ink = done and palette.text or palette.selectedTrim
 		self.Icon:Hide()
 		self.Bg:Show()
-		self.Bg:SetColorTexture(0, 0, 0, 0.7)
+		self.Bg:SetColorTexture(ground[1], ground[2], ground[3], 0.7)
 		self.Label:SetPoint("CENTER")
 		self.Label:SetText(string.format("%d/%d", data.done, data.total))
-		if data.done >= data.total then
-			self.Label:SetTextColor(0.55, 0.55, 0.55)
-		else
-			self.Label:SetTextColor(1, 0.82, 0)
-		end
+		self.Label:SetTextColor(ink[1], ink[2], ink[3], done and QL.DONE_ALPHA or 1)
 		self.Label:Show()
 		self:SetSize((self.Label:GetStringWidth() or 30) + 10, 15)
 	end
@@ -1037,6 +1044,7 @@ function QL.CreateProvider()
 	end
 	function QL.Provider:RefreshAllData()
 		self:RemoveAllData()
+		self.palette = MelloUI.Palette   -- the palette the pins are laid in
 		if not (M.isEnabled and QL.byZone) then
 			return
 		end
@@ -1073,6 +1081,14 @@ function QL.CreateProvider()
 		end
 	end
 	WorldMapFrame:AddDataProvider(QL.Provider)
+	-- a new palette: the pins laid again while the map shows (a hidden map
+	-- lays them on its next show). Only a new palette TABLE: 'palette' goes
+	-- out for a Kit Colours change too, the palette unchanged
+	MelloUI:On("palette", function()
+		if QL.Provider.palette ~= MelloUI.Palette then
+			QL.RefreshPins()
+		end
+	end, "Quest List pins")
 end
 
 QL.RefreshPins = function()

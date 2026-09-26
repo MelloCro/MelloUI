@@ -61,6 +61,17 @@
 --       shift); one SaveLayouts. An apply still waiting or fitting is
 --       dropped. In combat or while Edit Mode is open: when that ends.
 --   MelloUI:ExportEditModeLayout(), MelloUI:EditModeLayoutStatus()
+--
+-- Told on the bus once a layout went in (Core.lua's topic table):
+--   "editmodelayout", "put", name     put into Edit Mode and made active
+--                                     (every path: the installer's fitted
+--                                     layout, /mello layout apply, the
+--                                     reskin switch's one-time layout, a
+--                                     wait that ended)
+--   "editmodelayout", "active", name  a saved layout made active (an alt's
+--                                     answer, now or once the wait ended)
+-- Never for a FAIL, a refusal, a dropped wait or a restore. The Quest
+-- Tracker records there where the layout hangs the game's tracker.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -360,6 +371,9 @@ local function Put(quiet, source)
 	elseif C_EditMode.SetActiveLayout then
 		pcall(C_EditMode.SetActiveLayout, index)
 	end
+	-- (told on the bus: the Quest Tracker records where it hangs the game's
+	-- tracker, whichever path put it in)
+	MelloUI:Fire("editmodelayout", "put", new.layoutName)
 	if not quiet then
 		MelloUI:Print("Edit Mode layout '%s' %s and made active.", new.layoutName, replaced and "updated" or "added")
 	end
@@ -467,6 +481,7 @@ local function Activate(name)
 			return false, tostring(err), false
 		end
 	end
+	MelloUI:Fire("editmodelayout", "active", name)
 	return true, nil, false
 end
 

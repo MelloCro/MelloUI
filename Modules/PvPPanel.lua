@@ -356,8 +356,7 @@ end
 -- stripes and Alliance / Horde rows still tell apart.
 --------------------------------------------------------------------------------
 local function PaintRow(entry)
-	local P = MelloUI.Palette
-	local base = P and P.mainWindow or { 0.12, 0.11, 0.09 }
+	local base = MelloUI.Palette.mainWindow
 	local r, g, b = base[1], base[2], base[3]
 	local t = entry.tint
 	if t then
@@ -456,8 +455,7 @@ end
 -- region of ours, the plate's pieces regions of the button under its text.
 --------------------------------------------------------------------------------
 local function Gold()
-	local P = MelloUI.Palette
-	local c = P and P.selectedTrim or { 0.68, 0.52, 0.27 }
+	local c = MelloUI.Palette.selectedTrim
 	return c[1], c[2], c[3]
 end
 
@@ -933,7 +931,29 @@ local function Refresh(s)
 	Kit:NextFrame(s, RefreshLater)
 end
 
+-- A new palette (the bus's 'palette'): every dressed window's rows in its
+-- main window tone and its column headings in its gold
+local function OnPalette()
+	if not active then
+		return
+	end
+	for _, s in pairs(skins) do
+		if s.rowList then
+			for _, entry in ipairs(s.rowList) do
+				PaintRow(entry)
+			end
+		end
+		if s.headerList then
+			for _, header in ipairs(s.headerList) do
+				HeaderColour(headers[header], true)
+			end
+		end
+	end
+end
+
 local function EnableSkin(s)
+	-- (heard from the first dressing on: nothing is listened to before)
+	MelloUI:On("palette", OnPalette, "PvP Kit palette")
 	for _, rep in ipairs(s.reps) do
 		rep:Enable()
 	end
