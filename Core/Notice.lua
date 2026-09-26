@@ -29,6 +29,9 @@
 --   noticeSounds    Notice Sounds (on)
 --   zoneTextShade   Zone Text Shade (on): the game's zone text in the same
 --                   look (the "Zone text" section below)
+--   centreTextShade Centre Text Shade (on): the game's errors, info lines,
+--                   raid warnings and boss emotes in the same look
+--                   (Core/CentreText.lua, on the zone text's look core)
 --
 -- The look: the text in the interface face at about 20 (MelloUI:StyleFont,
 -- so Font Style and the size slider apply), not outlined, with a soft shadow,
@@ -64,10 +67,12 @@ local KEY = "notice"            -- its place in the store
 local HOLD, FADE = 4, 1.5       -- seconds held at full, then fading
 local SIZE = 20                 -- the text's base size, in its font object's terms
 local HEIGHT = 48               -- the frame's height (the mover's grab)
-local PAD_X, PAD_Y = 10, 12     -- the shade's full part past the text
-local FEATHER = 36              -- the shade's soft ends
-local SHADE_ALPHA = 0.7
-local SHADOW_ALPHA = 0.85
+-- the look every soft-shaded text shares (MelloUI.Shade.TEXT: the band's
+-- colour, strength, soft ends and padding, the text's shadow)
+local TEXT = MelloUI.Shade.TEXT
+local PAD_X, PAD_Y = TEXT.padX, TEXT.padY   -- the shade's full part past the text (10, 12)
+local FEATHER = TEXT.feather                -- the shade's soft ends (36)
+local SHADOW_ALPHA = TEXT.shadow            -- innerPanel at 0.85
 local MAX_TEXT = 1100           -- a longer line is cut ("...")
 local MIN_WIDTH = 120
 local GUESS_WIDTH = 400         -- a width that cannot be read (a secret text)
@@ -83,7 +88,7 @@ local SOUND = { track = "notice_track", arrive = "notice_arrive", learn = "notic
 	info = "notice_learn" }
 
 local DEFAULTS = { noticeOnScreen = true, noticeToChat = false, noticeOutline = false, noticeSounds = true,
-	zoneTextShade = true }
+	zoneTextShade = true, centreTextShade = true }
 
 -- a setting of the notice (Tweaks' db, as MelloUI:Notice reads Chat Notices)
 local function Setting(key)
@@ -191,9 +196,9 @@ local function Build()
 	text:SetPoint("CENTER")
 	text:SetJustifyH("CENTER")
 	text:SetWordWrap(false)
-	text:SetShadowOffset(1, -1)
-	frame.shade = MelloUI.Shade:Band(frame, { colour = "innerPanel", alpha = SHADE_ALPHA, feather = FEATHER,
-		layer = "BACKGROUND", region = text, padX = PAD_X, padY = PAD_Y })
+	text:SetShadowOffset(TEXT.shadowX, TEXT.shadowY)
+	frame.shade = MelloUI.Shade:Band(frame, TEXT)
+	frame.shade:Anchor(text, PAD_X, PAD_Y)
 	Style()
 	Paint()
 	Home(frame)
@@ -344,15 +349,41 @@ do
 	local ZONE_OWNER = "Zone text"
 	local ZONE_WIDTH = 512   -- the lines' width in the game's ZoneText.xml (1.60.1): given back with Off
 	-- the lines, top to bottom: the string, its zone frame, the font object
-	-- it inherits, the band's padding above and below
+	-- it inherits and that object's size in the game's fonts (GameFonts.xml);
+	-- the band's padding above and below is Shade:LinePadY of that size (the
+	-- stacked lines' rule, as the centre texts': 13, 9, 10, 9)
 	local LINES = {
-		{ name = "ZoneTextString", frame = "ZoneTextFrame", font = "ZoneTextFont", padY = 13 },
-		{ name = "PVPInfoTextString", frame = "ZoneTextFrame", font = "PVPInfoTextFont", padY = 9 },
-		{ name = "SubZoneTextString", frame = "SubZoneTextFrame", font = "SubZoneTextFont", padY = 10 },
-		{ name = "PVPArenaTextString", frame = "SubZoneTextFrame", font = "PVPInfoTextFont", padY = 9 },
+		{ name = "ZoneTextString", frame = "ZoneTextFrame", font = "ZoneTextFont", size = 32 },
+		{ name = "PVPInfoTextString", frame = "ZoneTextFrame", font = "PVPInfoTextFont", size = 22 },
+		{ name = "SubZoneTextString", frame = "SubZoneTextFrame", font = "SubZoneTextFont", size = 26 },
+		{ name = "PVPArenaTextString", frame = "SubZoneTextFrame", font = "PVPInfoTextFont", size = 22 },
 	}
+	for i = 1, #LINES do
+		LINES[i].padY = math.floor(MelloUI.Shade:LinePadY(LINES[i].size) + 0.5)
+	end
 	local zoneFrame, subFrame = _G.ZoneTextFrame, _G.SubZoneTextFrame
 	local built, styled = false, false
+
+	-- The look core, shared with the centre texts (Core/CentreText.lua: the
+	-- error lines, raid warnings and boss emotes), so every big text in the
+	-- middle of the screen takes the notice's look the same way. `rec` is
+	-- the caller's own record of one text (a table it keeps), `fs` the text:
+	-- a FontString, or the error frame itself (a MessageFrame takes the same
+	-- font calls for all its lines). Nothing is written onto the game's
+	-- objects; secret values are never compared or written back.
+	--   Look.Keep(rec, fs, object)   what the game gave it, before the first
+	--       change: its font object (`object` when none can be read), its
+	--       shadow and the shadow's offset
+	--   Look.On(rec, fs)   the notice's look: MelloUI:StyleFont from its own
+	--       font object (the game's face and size, Font Style applying), no
+	--       outline unless Outlined Text is on, the soft shadow
+	--   Look.Off(rec, fs)  the game's own look again: back on its font object
+	--       with its own colour kept, its shadow as it was
+	--   Look.Shadow(fs)    the soft shadow's colour from the palette as it is
+	--   Look.Setting(key)  a setting of the notice's (Tweaks' db, defaults
+	--       when missing)
+	local Look = { Setting = Setting }
+	MelloUI.CentreLook = Look
 
 	-- the line has text; a secret one is asked about first (even comparing it
 	-- is refused) and counts as text
@@ -379,15 +410,19 @@ do
 	end
 
 	-- the soft shadow's colour, from the palette as it is now
+	function Look.Shadow(fs)
+		local s = MelloUI.Palette.innerPanel
+		fs:SetShadowColor(s[1], s[2], s[3], SHADOW_ALPHA)
+	end
+
 	local function ZonePaint()
 		if not styled then
 			return
 		end
-		local s = MelloUI.Palette.innerPanel
 		for i = 1, #LINES do
 			local fs = LINES[i].fs
 			if fs then
-				fs:SetShadowColor(s[1], s[2], s[3], SHADOW_ALPHA)
+				Look.Shadow(fs)
 			end
 		end
 	end
@@ -413,51 +448,82 @@ do
 					holders[parent] = holder
 				end
 				line.fs = fs
-				line.band = MelloUI.Shade:Band(holder, { colour = "innerPanel", alpha = SHADE_ALPHA, feather = FEATHER,
-					layer = "BACKGROUND", region = fs, padX = PAD_X, padY = line.padY })
+				line.band = MelloUI.Shade:Band(holder, TEXT)
+				line.band:Anchor(fs, PAD_X, line.padY)
 				line.band:SetShown(false)
 			end
 		end
 		MelloUI:On("palette", ZonePaint, ZONE_OWNER)
 	end
 
-	-- what the game gave a line, kept before it is first changed: its font
+	-- what the game gave a text, kept before it is first changed: its font
 	-- object and its shadow (read secret-safe; a shadow that cannot be read
-	-- is left to the font object). Its width is the XML's (ZONE_WIDTH): no
-	-- size is read
-	local function Keep(line, fs)
-		if line.object ~= nil then
+	-- is left to the font object). No size is read (a zone line's width is
+	-- the XML's, ZONE_WIDTH)
+	function Look.Keep(rec, fs, object)
+		if rec.object ~= nil then
 			return
 		end
-		local object = Call(fs, "GetFontObject")
-		if type(object) ~= "table" then
-			object = _G[line.font]
+		local own = Call(fs, "GetFontObject")
+		if type(own) == "table" then
+			object = own
 		end
-		line.object = type(object) == "table" and object or false
+		rec.object = type(object) == "table" and object or false
 		local r, g, b, a = Call(fs, "GetShadowColor")
 		r, g, b, a = Num(r), Num(g), Num(b), Num(a)
 		if r and g and b then
-			line.shadow = { r, g, b, a or 1 }
+			rec.shadow = { r, g, b, a or 1 }
 		end
 		local x, y = Call(fs, "GetShadowOffset")
-		line.sx, line.sy = Num(x), Num(y)
+		rec.sx, rec.sy = Num(x), Num(y)
+	end
+
+	-- the notice's look on a text (again: the outline may have changed)
+	function Look.On(rec, fs)
+		if rec.object and MelloUI.StyleFont then
+			MelloUI:StyleFont(fs, nil, rec.object, nil, nil, Setting("noticeOutline"))
+		end
+		fs:SetShadowOffset(TEXT.shadowX, TEXT.shadowY)
+		Look.Shadow(fs)
+	end
+
+	-- the game's own look again (a text never styled is left as it is)
+	function Look.Off(rec, fs)
+		if rec.object == nil then
+			return
+		end
+		if MelloUI.StyleFont then
+			MelloUI:StyleFont(fs)   -- out of Font Style's list
+		end
+		-- back on its font object; that puts the object's colour on the text
+		-- too, and the text's own colour is the game's (a zone line's PvP
+		-- status, a message's kind): kept across
+		local r, g, b, a = Call(fs, "GetTextColor")
+		r, g, b, a = Num(r), Num(g), Num(b), Num(a)
+		if rec.object then
+			fs:SetFontObject(rec.object)
+		end
+		if r and g and b then
+			fs:SetTextColor(r, g, b, a or 1)
+		end
+		local sh = rec.shadow
+		if sh then
+			fs:SetShadowColor(sh[1], sh[2], sh[3], sh[4])
+		end
+		if rec.sx and rec.sy then
+			fs:SetShadowOffset(rec.sx, rec.sy)
+		end
 	end
 
 	-- the notice's look on every line (again: the outline may have changed)
 	local function ZoneOn()
-		local outline = Setting("noticeOutline")
-		local s = MelloUI.Palette.innerPanel
 		for i = 1, #LINES do
 			local line = LINES[i]
 			local fs = line.fs
 			if fs then
-				Keep(line, fs)
+				Look.Keep(line, fs, _G[line.font])
 				fs:SetWidth(0)
-				if line.object and MelloUI.StyleFont then
-					MelloUI:StyleFont(fs, nil, line.object, nil, nil, outline)
-				end
-				fs:SetShadowOffset(1, -1)
-				fs:SetShadowColor(s[1], s[2], s[3], SHADOW_ALPHA)
+				Look.On(line, fs)
 			end
 		end
 		styled = true
@@ -471,27 +537,7 @@ do
 			local line = LINES[i]
 			local fs = line.fs
 			if fs and line.object ~= nil then
-				if MelloUI.StyleFont then
-					MelloUI:StyleFont(fs)   -- out of Font Style's list
-				end
-				-- back on its font object; that puts the object's colour on
-				-- the line too, and the line's own colour is the game's (its
-				-- PvP status): kept across
-				local r, g, b, a = Call(fs, "GetTextColor")
-				r, g, b, a = Num(r), Num(g), Num(b), Num(a)
-				if line.object then
-					fs:SetFontObject(line.object)
-				end
-				if r and g and b then
-					fs:SetTextColor(r, g, b, a or 1)
-				end
-				local sh = line.shadow
-				if sh then
-					fs:SetShadowColor(sh[1], sh[2], sh[3], sh[4])
-				end
-				if line.sx and line.sy then
-					fs:SetShadowOffset(line.sx, line.sy)
-				end
+				Look.Off(line, fs)
 				fs:SetWidth(ZONE_WIDTH)
 			end
 		end

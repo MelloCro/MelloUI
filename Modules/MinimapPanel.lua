@@ -919,7 +919,9 @@ end
 --                       the screen's centre: Services' tray, the Auras rows
 --   M:ScreenRect(region) a region's edges on the screen (pixels): left,
 --                       bottom, right, top; nil when one cannot be read
---                       plainly (the column's one reader; Services' too)
+--                       plainly. MelloUI.Safe.ScreenRect (Core.lua), the
+--                       addon's one reader, kept here under its old name
+--                       for the modules that ask this one (Services)
 -- Services hangs its bar and Route its line from it; the Quest Tracker hangs
 -- below its bottom only where nobody placed it, and takes its width
 -- (QuestTracker.lua). MelloUI never sizes the map for it. The places
@@ -937,24 +939,11 @@ local LINE_H = 12         -- its height when Route cannot say
 
 local Num = MelloUI.Safe.Number
 
--- a region's edges on the screen (pixels); nil when one cannot be read plainly
-local function ScreenRect(region)
-	if not region then
-		return nil
-	end
-	local ok, l, b, w, h = pcall(region.GetRect, region)
-	if not ok then
-		return nil
-	end
-	l, b, w, h = Num(l), Num(b), Num(w), Num(h)
-	local okS, s = pcall(region.GetEffectiveScale, region)
-	s = okS and Num(s) or nil
-	if not (l and b and w and h and s) then
-		return nil
-	end
-	return l * s, b * s, (l + w) * s, (b + h) * s
-end
+-- a region's edges on the screen (pixels); nil when one cannot be read
+-- plainly: the addon's one reader (MelloUI.Safe.ScreenRect, Core.lua)
+local ScreenRect = MelloUI.Safe.ScreenRect
 
+-- (kept for the modules that ask this one: the same reader)
 function M:ScreenRect(region)
 	return ScreenRect(region)
 end
@@ -1353,12 +1342,11 @@ function M:BarOutline()
 	if not (active and map and map:IsShown()) then
 		return nil
 	end
-	local ok, l, b, w, h = pcall(map.GetRect, map)
-	if not (ok and l and w) or (issecretvalue and (issecretvalue(l) or issecretvalue(w))) or w <= 0 then
+	local l, b, r, t = ScreenRect(map)
+	if not (l and r > l) then
 		return nil
 	end
-	local sc = map:GetEffectiveScale()
-	return { { l * sc, b * sc, (l + w) * sc, (b + h) * sc } }
+	return { { l, b, r, t } }
 end
 
 function M:OnDisable()

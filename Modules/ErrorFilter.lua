@@ -12,7 +12,9 @@
 -- as always, sound included. Off: the event goes back to the frame. The
 -- messages are told apart by the game's own strings (ERR_OUT_OF_ENERGY and
 -- the rest), so the filter follows the client's language; a secret message
--- is always passed on.
+-- is always passed on. What it lets through still reaches the frame's own
+-- AddMessage, so the centre texts' shade (Core/CentreText.lua, Centre Text
+-- Shade) dresses those lines as it does with this module off.
 --------------------------------------------------------------------------------
 
 local _, ns = ...

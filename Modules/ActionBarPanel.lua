@@ -86,6 +86,7 @@ local BAG_BUTTONS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "Charact
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local SafeScreenRect = MelloUI.Safe.ScreenRect
 
 local function Replace(region, opts)
 	if not region then
@@ -369,14 +370,17 @@ local FRAME_GAP = 0.12       -- of a button's size: stone between the buttons' r
 local SNAP_GAP = 0.35        -- of a button's size: a bar this close to the group counts as snapped
 local FULL_WIDTH = 0.85      -- a snapped bar at least this share of the backdrop's width widens it (else a tab)
 
--- A frame's rect in screen px (l, b, r, t), secret-safe.
+-- A frame's rect in screen px (l, b, r, t), nil while it has no size: the
+-- addon's one reader (MelloUI.Safe.ScreenRect, Core.lua: secret-safe) with
+-- the size the backdrops need. Four numbers, no table: the rects below are
+-- joined as numbers, one table for the rect they return (0.14.0: it was two
+-- tables per button)
 local function ScreenRect(f)
-	local ok, l, b, w, h = pcall(f.GetRect, f)
-	if not ok or Secret(l) or Secret(b) or Secret(w) or Secret(h) or not (l and w and w > 0 and h and h > 0) then
-		return nil
+	local l, b, r, t = SafeScreenRect(f)
+	if l and r > l and t > b then
+		return l, b, r, t
 	end
-	local s = f:GetEffectiveScale()
-	return { l * s, b * s, (l + w) * s, (b + h) * s }
+	return nil
 end
 
 -- The buttons' rect of a bar (the ones its layout shows, in screen px), and
@@ -391,17 +395,24 @@ local function ButtonsRect(bar)
 	-- character does not have, hidden: only the shown ones count there (an
 	-- action bar's empty buttons hide too, so its layout's count is used)
 	local shownOnly = bar == _G.StanceBar or bar == _G.PetActionBar or bar == _G.PossessActionBar
-	local rect, size
+	local rl, rb, rr, rt, size
 	for i, button in ipairs(entry.buttons) do
 		if i <= count and (not shownOnly or button:IsShown()) then
-			local r = ScreenRect(button)
-			if r then
-				size = size or (r[3] - r[1])
-				rect = rect and { math.min(rect[1], r[1]), math.min(rect[2], r[2]), math.max(rect[3], r[3]), math.max(rect[4], r[4]) } or r
+			local l, b, r, t = ScreenRect(button)
+			if l then
+				size = size or (r - l)
+				if rl then
+					rl, rb, rr, rt = math.min(rl, l), math.min(rb, b), math.max(rr, r), math.max(rt, t)
+				else
+					rl, rb, rr, rt = l, b, r, t
+				end
 			end
 		end
 	end
-	return rect, size
+	if not rl then
+		return nil, size
+	end
+	return { rl, rb, rr, rt }, size
 end
 
 -- The gap between two rects (0 when they touch or overlap) and whether they
@@ -895,17 +906,17 @@ local function PlaceFrame(f, anchor, r, k, level, show, g, bd)
 	end
 	local open = p.open or { 29, 28, 106, 102 }
 	local s = anchor:GetEffectiveScale()
-	local base = ScreenRect(anchor)
-	if not base then
+	local baseL, baseB = ScreenRect(anchor)
+	if not baseL then
 		return false
 	end
 	local gap = FRAME_GAP * (bd.size or 0) / s
 	-- in the anchor's units: the rect, grown by the frame's rim and the gap
-	local l = (r[1] - base[1]) / s - open[1] * k - gap
-	local b = (r[2] - base[2]) / s - (p.h - open[4]) * k - gap
-	local rr = (r[3] - base[1]) / s + (p.w - open[3]) * k + gap
-	local t = (r[4] - base[2]) / s + open[2] * k + gap
-	bd.rects[#bd.rects + 1] = { base[1] + l * s, base[2] + b * s, base[1] + rr * s, base[2] + t * s }
+	local l = (r[1] - baseL) / s - open[1] * k - gap
+	local b = (r[2] - baseB) / s - (p.h - open[4]) * k - gap
+	local rr = (r[3] - baseL) / s + (p.w - open[3]) * k + gap
+	local t = (r[4] - baseB) / s + open[2] * k + gap
+	bd.rects[#bd.rects + 1] = { baseL + l * s, baseB + b * s, baseL + rr * s, baseB + t * s }
 	if not show then
 		f.screen = nil
 		f:Hide()
@@ -935,22 +946,35 @@ end
 -- The rect of a set of buttons (the shown ones, screen px) and the size of
 -- the smallest one's shorter side.
 local function ShownRect(buttons)
-	local rect, size
+	local rl, rb, rr, rt, size
 	for _, button in ipairs(buttons) do
 		if button:IsShown() then
 			-- the rim's rect where it has one (a micro button's rim is a
 			-- square on a taller button: the backdrop keeps the same distance
 			-- to the rims on every bar)
 			local rim = button.melloRep and button.melloRep.object
-			local r = (rim and rim.IsShown and rim:IsShown() and ScreenRect(rim)) or ScreenRect(button)
-			if r then
-				local side = math.min(r[3] - r[1], r[4] - r[2])
+			local l, b, r, t
+			if rim and rim.IsShown and rim:IsShown() then
+				l, b, r, t = ScreenRect(rim)
+			end
+			if not l then
+				l, b, r, t = ScreenRect(button)
+			end
+			if l then
+				local side = math.min(r - l, t - b)
 				size = size and math.min(size, side) or side
-				rect = rect and { math.min(rect[1], r[1]), math.min(rect[2], r[2]), math.max(rect[3], r[3]), math.max(rect[4], r[4]) } or r
+				if rl then
+					rl, rb, rr, rt = math.min(rl, l), math.min(rb, b), math.max(rr, r), math.max(rt, t)
+				else
+					rl, rb, rr, rt = l, b, r, t
+				end
 			end
 		end
 	end
-	return rect, size
+	if not rl then
+		return nil, size
+	end
+	return { rl, rb, rr, rt }, size
 end
 
 -- Action Bar 1 and the bars snapped to it: the backdrop's rect, the button

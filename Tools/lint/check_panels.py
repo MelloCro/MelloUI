@@ -52,7 +52,7 @@ CEILINGS = {
     "addon-loaded": 33,
     "window-single": 10,
     "direct-sound": 0,
-    "palette-guard": 1,
+    "palette-guard": 0,
     "colour:Core/Core.lua": 0,
     "colour:Core/Config.lua": 0,
     "colour:Core/Widgets.lua": 0,

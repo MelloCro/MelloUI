@@ -1364,8 +1364,10 @@ end
 -- Home page (the approved sketch of 2026-09-24): the header with the whole
 -- logo and the Tutorial button; one section in two columns -- What's new on
 -- the left (this version's changes, the older ones behind Earlier versions),
--- Your setup on the right (the profile, Kit Colours, the screen, MelloUI's
--- state, the installer) -- and Help under both, full width. The header and
+-- Your setup on the right (the profile, the palette, Kit Colours, the
+-- screen, MelloUI's state, the installer) -- and Help under both, full
+-- width. The palette is chosen right there (0.14.0: it colours MelloUI's own
+-- windows with the reskin off too, so it is not Dynamic UI's). The header and
 -- both cards are made in the click frame; Help is one job for the worker
 -- from the next frame on, its height planned so the page does not jump.
 --------------------------------------------------------------------------------
@@ -1392,6 +1394,7 @@ local EARLIER_BY_WORKER = true
 local HOME_TIPS = {
 	tutorial = "A short tour of this window: where every feature lives, step by step, on the game's help tips. Also /mello tutorial.",
 	profile = "Choose a profile to load it: every setting of every module. It asks first. The Profiles page saves, shares and deletes them.",
+	palette = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Your choice applies at once, with the reskin on or off.",
 	change = "Dynamic UI Modification: the Kit Colours and the rest of the reskin's look, chosen on the interface itself. Closes this window while you pick.",
 	changeOff = "Switch on the painted kit reskin first (UI Modifications, General): the Kit Colours are the reskin's.",
 	fit = "Mello's Edit Mode layout was fitted to another screen size or UI scale. The installer fits it to this one, and you can go back right after.",
@@ -1673,6 +1676,15 @@ local function ProfileSet(name)
 	ConfirmLoadProfile(name)
 end
 local PROFILE_DD = { default = "None loaded", tooltip = HOME_TIPS.profile }
+-- the palette in use (Core's MelloUI:SetPalette: the palette and the kit's
+-- art switch at once, the reskin on or off -- no Change... to Dynamic UI)
+local function PaletteGet()
+	return MelloUI:PaletteId()
+end
+local function PaletteSet(id)
+	MelloUI:SetPalette(id)
+end
+local PALETTE_DD = { default = "Palette", tooltip = HOME_TIPS.palette }
 
 -- a Home card: the L1 box with the kit (CT2: single rail and list-box stone,
 -- its rule laying the palette's inner panel over the stone, 2e), a palette
@@ -1944,8 +1956,8 @@ end
 -- Your setup (right): a row each, shown in this order (a row not wanted
 -- now -- Fit to this screen while the layout fits, the installer's row
 -- without the installer -- leaves no gap)
-local SETUP_ROWS = { "profile", "colours", "screen", "fit", "mello", "voice", "installer" }
-local SETUP_LABELS = { profile = "Profile", colours = "Kit Colours", screen = "Screen", mello = "MelloUI",
+local SETUP_ROWS = { "profile", "palette", "colours", "screen", "fit", "mello", "voice", "installer" }
+local SETUP_LABELS = { profile = "Profile", palette = "Palette", colours = "Kit Colours", screen = "Screen", mello = "MelloUI",
 	voice = "Voice pack", installer = "Installer" }
 local SETUP_VALUES = { "colours", "screen", "mello", "voice" }
 
@@ -2002,6 +2014,14 @@ local function BuildSetup(page, sec, width, x)
 	dd:SetPoint("RIGHT", -CARD_PAD, 0)
 	dd.melloTipTitle = "Profile"
 	card.profile = dd
+	-- the palette (0.14.0), live: its swatch (the palette in use, painted by
+	-- key) and the widget set's palette list; the reskin on or off
+	local swatch = W.PaletteSwatch(rows.palette, { width = 50, height = 14 })
+	swatch:SetPoint("LEFT", SETUP_VALUE, 0)
+	local pal = W.Dropdown(rows.palette, 160, PaletteGet, PaletteSet, W.PaletteValues(), PALETTE_DD)
+	pal:SetPoint("RIGHT", -CARD_PAD, 0)
+	pal.melloTipTitle = "Palette"
+	card.palette, card.swatch = pal, swatch
 	-- the Kit Colours, read only, and Change... to Dynamic UI (the one place to change them)
 	local change = W.Button(rows.colours, "Change…", 90, SKIN, { onClick = DynamicClick })
 	change:SetPoint("RIGHT", -CARD_PAD, 0)
@@ -2028,7 +2048,8 @@ end
 
 -- Your setup as things are now: the profiles' list refilled in place (new
 -- entries only when the names changed: the dropdown makes its menu again
--- only then), the Kit Colours' label and whether Dynamic UI can open, the
+-- only then), the palette's name, the Kit Colours' label and whether
+-- Dynamic UI can open, the
 -- screen, the modules on, the voice pack, the installer's buttons. True
 -- when the card's height changed (a row came or went).
 local profileNames = {}
@@ -2052,6 +2073,7 @@ local function RefreshSetup(page)
 		end
 	end
 	card.profile:Refresh()
+	card.palette:Refresh()
 	rows.colours.value:SetText(KitColoursLabel())
 	local K = MelloUI.Kit
 	local canChange = (K and K.IsOn and K:IsOn("dynamicui")) and true or false

@@ -81,11 +81,12 @@ local Apply, RestoreAreas, NothingWanted, TweakWanted
 -- the Main Tool people are going to use when configuring the Look of the UI
 -- ... the UI Modification Section is going to be mostly sliders checkboxes
 -- etc, we need to reconstruct it a bit and simplify the approach"): eight
--- tabs of switches and sliders. The look (borders, Kit Colours, every
--- background and backdrop, parchment, the minimap's shape) is only in
--- Dynamic UI Modification; its keys stay in these settings. A feature's
--- rows sit under its switch, dimmed while it is off; a sub-option under
--- the switch it needs (`parent` in the modules' options).
+-- tabs of switches and sliders. The look (borders, the palette and the Kit
+-- Colours, every background and backdrop, parchment, the UI shade, the
+-- minimap's shape) is only in Dynamic UI Modification; its keys stay in
+-- these settings. A feature's rows sit under its switch, dimmed while it is
+-- off; a sub-option under the switch it needs (`parent` in the modules'
+-- options).
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false, parchment_dialog = false,
@@ -95,6 +96,22 @@ local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true
 	palette = "ember" }, {}
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 	defaults[k.key] = k.default
+end
+-- the UI shade (0.14.0, Modules/KitShade.lua, which loads before this file
+-- and switches it from the bus's 'setting'): on at 70 %, every area on
+-- (user, 2026-09-26); chosen in Dynamic UI Modification
+do
+	local Kit = MelloUI.Kit
+	local shade, areas = Kit and Kit.shadeSettings, Kit and Kit.shadeAreas
+	if type(shade) == "table" and type(areas) == "table" and type(shade.master) == "string" then
+		defaults[shade.master], defaults[shade.strength] = true, shade.default
+		for _, a in ipairs(areas) do
+			if type(a.key) ~= "string" then
+				break
+			end
+			defaults[a.key] = true
+		end
+	end
 end
 -- (each area's and feature's switch is added to these by Lists, below)
 
@@ -153,9 +170,9 @@ end
 Tab("General")
 Add({ type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
 	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art; the other tabs' features keep working." })
-Add({ type = "button", name = "Dynamic UI Modification", hint = "borders, colours, backgrounds, parchment",
+Add({ type = "button", name = "Dynamic UI Modification", hint = "borders, colours, backgrounds, parchment, shade",
 	text = "Open", width = 90, requires = "reskin",
-	desc = "Choose the look of the reskin on the interface itself: the borders of every window, the Kit Colours, the backgrounds and backdrops of the bars and windows, the parchment sheets and the minimap's shape, with previews.",
+	desc = "Choose the look of the reskin on the interface itself: the borders of every window, the palette and the Kit Colours, the backgrounds and backdrops of the bars and windows, the parchment sheets, the soft shade round the kit and the minimap's shape, with previews.",
 	onClick = function()
 		if MelloUI.StartDynamicUI then
 			MelloUI:StartDynamicUI()
@@ -227,9 +244,10 @@ Feature("ClassIcons")
 Tab("Chat & Tooltips")
 Feature("Chat")
 Feature("Tweaks", { "chatNotices", "noticeOnScreen", "noticeToChat", "noticeSounds" }, false)
--- the game's zone text in the notice's look (Core/Notice.lua); Outlined Text
--- after it, ungated: it sets both texts' outline
-Feature("Tweaks", { "zoneTextShade", "noticeOutline" }, false)
+-- the game's zone text in the notice's look (Core/Notice.lua), the centre
+-- texts (errors, info lines, raid warnings, boss emotes: Core/CentreText.lua)
+-- the same; Outlined Text after them, ungated: it sets every one's outline
+Feature("Tweaks", { "zoneTextShade", "centreTextShade", "noticeOutline" }, false)
 Feature("Tooltip")
 
 -- Text: the style and sizes first, the single faces under Advanced
@@ -2500,6 +2518,8 @@ function M:OnSettingChanged(key, value, db)
 		return
 	elseif key == "palette" then
 		return   -- applied from the bus's 'setting', module on or off (MelloUI:SetPalette)
+	elseif key == "uiShade" or key == "uiShadeStrength" or key:sub(1, 6) == "shade_" then
+		return   -- the UI shade: applied from the bus's 'setting', module on or off (Modules/KitShade.lua)
 	elseif key:sub(1, 10) == "parchment_" then
 		if MelloUI.Kit and MelloUI.Kit.SetParchment then
 			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)

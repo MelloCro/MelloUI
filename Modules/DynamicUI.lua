@@ -42,6 +42,7 @@ MelloUI.DynamicUI = D
 local TILE = 52            -- a preview tile's picture, UI px
 local TILE_STEP = 78       -- tile to tile
 local NONE_DIM = 0.45      -- the "None" tile's stone, darkened to this much of its light
+local SHADE_OFF_ALPHA = 0.45   -- an area's shade switch while the UI Shade is off (dimmed, still working)
 local SAMPLE_ICON = "Interface\\Icons\\INV_Sword_04"
 
 local running = false
@@ -621,6 +622,19 @@ local function LooksFollow()
 	end
 end
 
+-- The palette's row, right before the Kit Colours (0.14.0, the user's picker
+-- places: the configurator's Home, the installer and here): the widget set's
+-- one palette picker's parts (W.PaletteValues: every palette by its name;
+-- W.PaletteSwatch: the palette in use by its colours), the one in use
+-- marked; a pick goes to UI Modifications' setting, which Core applies
+-- (MelloUI:SetPalette), and the Kit Colours row's choices follow it
+-- (LooksFollow). Made when the overview is laid.
+-- (the setting as chosen; an id with no palette is Ember, as Core applies it)
+local function PaletteShown()
+	local id = UMValue("palette", "ember")
+	return (MelloUI.Palettes and MelloUI.Palettes[id] and id ~= "order") and id or "ember"
+end
+
 -- A switch row (a kit check box when the kit is there)
 local function Check(parent, label, getValue, onPick)
 	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
@@ -708,9 +722,10 @@ local function Offer()
 	return { groups = groups, layout = layout }, table.concat(parts, "|")
 end
 
--- The panel's rows: the borders and parchment on the left, the backgrounds
--- and the layout switches on the right, on `body` (the popup's content for
--- this offer); run as the laying coroutine
+-- The panel's rows: the borders (the palette right before the Kit Colours)
+-- and parchment on the left, the backgrounds and the layout switches on the
+-- right, the UI shade under the shorter of the two, on `body` (the popup's
+-- content for this offer); run as the laying coroutine
 local function FillOverview(f, body, offer)
 	local stripes = { left = {}, right = {} }
 	local function Heading(text, x, y)
@@ -742,6 +757,21 @@ local function FillOverview(f, body, offer)
 	local y = top - 24
 	for _, k in ipairs(Kit and Kit.borderKinds or {}) do
 		local colours = k.kind == "colours"
+		if colours and MelloUI.Palettes then
+			-- the palette first: the Kit Colours' choices are its own (its names
+			-- never change: the popup's Refresh marks the one chosen); its
+			-- swatch left of the box, painted by key (a new palette paints it)
+			local pd = Row("Palette", left, y, PaletteShown, W.PaletteValues(), function(v)
+				MelloUI:NotifySettingChanged("UIModifications", "palette", v)
+				MelloUI:PlayUISound("option_on")
+				if f.Refresh then
+					f:Refresh()
+				end
+			end, "left")
+			local swatch = W.PaletteSwatch(body, { width = 60, height = 14 })
+			swatch:SetPoint("RIGHT", pd, "LEFT", -8, 0)
+			y = y - ROW_H
+		end
 		local dd = Row(k.name, left, y, colours and function() return ColoursShown(k) end or function() return UMValue(k.key, k.default) end,
 			k.values, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", k.key, v)
@@ -814,6 +844,77 @@ local function FillOverview(f, body, offer)
 		Pause()
 	end
 	local rightBottom = y
+	-- the UI shade under the shorter column (0.14.0; Modules/KitShade.lua):
+	-- its switch, its strength and a switch per area, two to a row, the
+	-- areas' dimmed while the shade is off
+	local shade = Kit and Kit.shadeSettings
+	if type(shade) == "table" and type(Kit.shadeAreas) == "table" then
+		local side = rightBottom > leftBottom and "right" or "left"
+		local x = side == "right" and right or left
+		y = (side == "right" and rightBottom or leftBottom) - 12
+		Heading("Shade", x, y)
+		y = y - 26
+		local function MasterOn()
+			return UMValue(shade.master, true) ~= false
+		end
+		local master = Check(body, "UI Shade: a soft shade round the kit's edges", MasterOn, function(v)
+			MelloUI:NotifySettingChanged("UIModifications", shade.master, v)
+			MelloUI:PlayUISound(v and "option_on" or "option_off")
+			if f.Refresh then
+				f:Refresh()
+			end
+		end)
+		master:SetPoint("TOPLEFT", x, y)
+		body.dropdowns[#body.dropdowns + 1] = master
+		y = y - 28
+		-- the strength: the widget set's slider in a dropdown's place
+		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		fs:SetPoint("LEFT", body, "TOPLEFT", x, y - ROW_H / 2 + 3)
+		fs:SetJustifyH("LEFT")
+		fs:SetText("Shade Strength")
+		W.Paint(fs, "text", "text")
+		local slider = W.Slider(body, DD_W, function()
+			return UMValue(shade.strength, shade.default)
+		end, function(v)
+			MelloUI:NotifySettingChanged("UIModifications", shade.strength, v)
+		end, { min = shade.min, max = shade.max, step = shade.step, percent = true })
+		slider:SetPoint("TOPLEFT", x + COL_W - DD_W - PANEL_PAD * 2, y - 4)
+		body.dropdowns[#body.dropdowns + 1] = slider
+		local list = stripes[side]
+		list[#list + 1] = y
+		y = y - ROW_H
+		Pause()
+		for i, a in ipairs(Kit.shadeAreas) do
+			local ax = x + ((i - 1) % 2) * ((COL_W - PANEL_PAD * 2) / 2)
+			local cb, label = Check(body, a.label, function() return UMValue(a.key, true) ~= false end, function(v)
+				MelloUI:NotifySettingChanged("UIModifications", a.key, v)
+				MelloUI:PlayUISound(v and "option_on" or "option_off")
+			end)
+			cb:SetPoint("TOPLEFT", ax, y)
+			-- (dimmed while the shade is off: its switch still works)
+			local refresh = cb.Refresh
+			cb.Refresh = function(self)
+				refresh(self)
+				local alpha = MasterOn() and 1 or SHADE_OFF_ALPHA
+				self:SetAlpha(alpha)
+				label:SetAlpha(alpha)
+			end
+			cb:Refresh()
+			body.dropdowns[#body.dropdowns + 1] = cb
+			if i % 2 == 0 then
+				y = y - 28
+			end
+			Pause()
+		end
+		if #Kit.shadeAreas % 2 == 1 then
+			y = y - 28
+		end
+		if side == "right" then
+			rightBottom = y
+		else
+			leftBottom = y
+		end
+	end
 	local bottom = math.min(leftBottom, rightBottom)
 	-- the two column panels, as tall as the taller column: the kit's single
 	-- rail round the palette's inner panel, the dropdown rows striped

@@ -38,6 +38,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		noticeOutline = false,
 		noticeSounds = true,
 		zoneTextShade = true,   -- the game's zone text in the notice's look (Core/Notice.lua too)
+		centreTextShade = true,   -- the game's errors, raid warnings and boss emotes in it (Core/CentreText.lua)
 		menuTipShown = false,
 	},
 	options = {
@@ -62,10 +63,12 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "A short chime with each notice: the map's tracking sound for a new destination, a softer one when you arrive." },
 		{ type = "toggle", key = "zoneTextShade", name = "Zone Text Shade",
 		  desc = "The zone name the game shows when you enter a new area, with its subzone and PvP lines, in the notice's look: a soft dark shade behind each line and no outline (Outlined Text adds it back). The game's colours and sizes stay. Off: the game's own look." },
-		-- (not under On-screen Notices: it sets the zone text's outline too,
-		-- which shows with the notices off)
+		{ type = "toggle", key = "centreTextShade", name = "Centre Text Shade",
+		  desc = "The game's messages in the middle of the screen in the notice's look: red errors, yellow quest progress, raid warnings and boss emotes, each line with a soft dark shade behind it that fades with it, and no outline (Outlined Text adds it back). The game's colours stay. Off: the game's own look." },
+		-- (not under On-screen Notices: it sets the zone text's and the
+		-- centre texts' outline too, which show with the notices off)
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",
-		  desc = "Draw the on-screen notice's and the zone text's lines with an outline. Off: soft text on a dark shade." },
+		  desc = "Draw the on-screen notice's lines, the zone text and the game's messages in the middle of the screen with an outline. Off: soft text on a dark shade." },
 		{ type = "header", name = "Combat Text" },
 		{ type = "slider", key = "worldTextScale", name = "World Text Scale", min = 0.5, max = 3, step = 0.1,
 		  format = function(v) return string.format("%.1fx", v) end,

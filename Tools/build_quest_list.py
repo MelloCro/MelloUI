@@ -20,6 +20,14 @@ A quest no NPC gives is placed at what begins it: an item (classic-db's
 startquest and loot, or the Wowhead item page) or an object (the Forever
 quest page's Start).
 
+The services list (the Services module's "nearest ...") also carries the
+vendors of restock goods (food, drink, ammunition, class reagents; classic-db
+and the cached Wowhead NPC pages' "sells") with the families they sell, and
+Forever's own innkeepers, repairers, trainers and vendors from the cached
+Wowhead NPC pages, placed by their Wowhead map on any open-world map
+(Zephras Isle included). restockItems lists each family's goods and
+trainerLevels the levels at which each class has new spells.
+
 --fetch-npcs downloads the Wowhead NPC pages of Forever quest givers and
 turn-ins not yet cached, one every 2.5 s, to learn their zone and place,
 and the item / NPC / object pages that place the items and objects
@@ -891,10 +899,7 @@ def build_services(sql, spawns):
     spawned repairer, innkeeper, auctioneer, banker and trainer, plus every
     mailbox. side: 0 both factions, 1 Alliance only, 2 Horde only."""
     import csv
-    side_of = {}
-    for r in db2("FactionTemplate"):
-        enemies = int(r["EnemyGroup"] or 0)
-        side_of[int(r["ID"])] = 1 if enemies & 4 else (2 if enemies & 2 else 0)
+    side_of = faction_sides()
     rows, stats = [], defaultdict(int)
     for r in sql_rows(sql, "creature_template"):
         flags = int(r.get("NpcFlags") or 0)
@@ -921,6 +926,406 @@ def build_services(sql, spawns):
                 stats["mailbox"] += 1
     log("  services: " + ", ".join(f"{k} {v}" for k, v in sorted(stats.items())))
     return rows
+
+
+# ---------------------------------------------------------------------------
+# Restock goods, Forever's own service NPCs, class trainer levels (0.14.0)
+# ---------------------------------------------------------------------------
+#
+# A vendor row is ("vendor", name, subname, side, continent, world x, world y,
+# letters): the restock families it sells, in FAMILIES order ("df" food and
+# drink, "ab" ammunition, "r" class reagents). Only vendors that sell one of
+# them get a row; event vendors (Winter Veil, Darkmoon Faire ...) are left
+# out and goods that need a reputation give no letter. restockItems lists
+# every item of each family (the sold ones with their bundle, the rest with
+# bundle 0: the player's stock that counts); trainerLevels the levels at which
+# each class has new spells.
+
+FAMILIES = "dfabr"          # drink, food, arrows, bullets, reagents
+FAMILY_STACK = {"d": 20, "f": 20, "a": 200, "b": 200, "r": 20}   # stack size when no table says
+# Class reagents, by item: the classes that use them (CLASSES masks).
+REAGENTS = {
+    5140: 8,        # Flash Powder: rogue (Vanish)
+    5565: 256,      # Infernal Stone: warlock (Inferno)
+    16583: 256,     # Demonic Figurine: warlock (Ritual of Doom)
+    17020: 128,     # Arcane Powder: mage (Arcane Brilliance)
+    17021: 1024,    # Wild Berries: druid (Gift of the Wild)
+    17026: 1024,    # Wild Thornroot: druid (Gift of the Wild)
+    17028: 16,      # Holy Candle: priest (Prayer of Fortitude)
+    17029: 16,      # Sacred Candle: priest (the prayers)
+    17030: 64,      # Ankh: shaman (Reincarnation)
+    17031: 128,     # Rune of Teleportation: mage
+    17032: 128,     # Rune of Portals: mage
+    17033: 2,       # Symbol of Divinity: paladin (Divine Intervention)
+    17034: 1024,    # Maple Seed: druid (Rebirth)
+    17035: 1024,    # Stranglethorn Seed
+    17036: 1024,    # Ashwood Seed
+    17037: 1024,    # Hornbeam Seed
+    17038: 1024,    # Ironwood Seed
+    17056: 144,     # Light Feather: priest (Levitate), mage (Slow Fall)
+    17057: 64,      # Shiny Fish Scales: shaman (Water Breathing)
+    17058: 64,      # Fish Oil: shaman (Water Walking)
+    21177: 2,       # Symbol of Kings: paladin (the greater blessings)
+}
+EVENT_SHARE = 0.5           # a vendor subname this share of whose vendors stand only at an event is an event's
+REPAIR_SHARE = 0.8          # a subname this share of whose Classic NPCs repair marks a Forever NPC as a repairer
+# ... and the smiths, whatever their count: in classic-db the plain "Blacksmith", "Armorer" and "Weaponsmith"
+# repair (1/1, 8/8, 23/24), the ranked trainers ("Journeyman Blacksmith" 0/10) do not, hence whole subnames.
+# Selling flux is no sign: 19 of the 101 Classic NPCs that sell it repair (Mining Supplier 0/6).
+SMITH_SUBS = ("blacksmith", "armorer", "armorsmith", "weaponsmith")
+TRAINER_CLASSES = {1: "WARRIOR", 2: "PALADIN", 3: "HUNTER", 4: "ROGUE", 5: "PRIEST", 7: "SHAMAN", 8: "MAGE",
+                   9: "WARLOCK", 11: "DRUID"}
+# A profession trainer whose subname does not say "Trainer" ("Cook", "Tailor",
+# Zephras Isle's "Medic"), recognised as the Services module does.
+PROFESSION_STEMS = ("alchem", "blacksmith", "armorsmith", "weaponsmith", "enchant", "engineer", "herbal",
+                    "leather", "mining", "miner", "skinn", "tailor", "cook", "butcher", "fish", "first aid",
+                    "physician", "trauma surgeon", "medic")
+NOT_GOODS = re.compile(r"^(Depricated|Monster - )|DEBUG", re.I)   # item-table leftovers JUNK does not catch
+FOREVER_PATCH = "1.60"      # Wowhead's "Added in patch" of Forever's own NPCs
+CLASSIC_PATCH = "1.13"      # ... and of the Classic ones
+
+
+def sql_tables(path, tables):
+    """Rows of several tables of the cmangos dump in one pass: {table: [dict rows]}."""
+    want = set(tables)
+    out = {t: [] for t in tables}
+    columns, cur = {}, None
+    with gzip.open(path, "rt", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if line.startswith("CREATE TABLE `"):
+                name = line[len("CREATE TABLE `"):line.index("`", len("CREATE TABLE `"))]
+                cur = name if name in want else None
+                if cur:
+                    columns[cur] = []
+                continue
+            if cur:
+                m = re.match(r"\s*`(\w+)`", line)
+                if m:
+                    columns[cur].append(m.group(1))
+                elif line.startswith(")"):
+                    cur = None
+                continue
+            if line.startswith("INSERT INTO `"):
+                name = line[len("INSERT INTO `"):line.index("`", len("INSERT INTO `"))]
+                if name in want:
+                    for row in parse_sql_values(line[line.index("VALUES") + 6:]):
+                        out[name].append(dict(zip(columns[name], row)))
+    return out
+
+
+def item_family(it):
+    """A cmangos item row -> its restock family letter, or None."""
+    entry = int(it["entry"])
+    if entry in REAGENTS:
+        return "r"
+    cls, sub, cat = it["class"], it["subclass"], it["spellcategory_1"]
+    if cls == "0" and cat in ("59", "11") and int(it.get("stackable") or 0) > 1:
+        # food and drink stack; a single one is a quest's (Special Chicken Feed)
+        return "d" if cat == "59" else "f"
+    if cls == "6" and sub == "2":
+        return "a"
+    if cls == "6" and sub == "3":
+        return "b"
+    return None
+
+
+def faction_sides():
+    """FactionTemplate -> 0 both factions, 1 Alliance only, 2 Horde only."""
+    side_of = {}
+    for r in db2("FactionTemplate"):
+        enemies = int(r["EnemyGroup"] or 0)
+        side_of[int(r["ID"])] = 1 if enemies & 4 else (2 if enemies & 2 else 0)
+    return side_of
+
+
+GATHERER_ITEMS = re.compile(r"WH\.Gatherer\.addData\(3, \d+, ")
+
+
+def npc_page_facts(page):
+    """What a cached Wowhead NPC page says: name, tag (subname), react,
+    patch ("1.60", "1.13", ...), places, repair, listviews, sells, taught
+    abilities, and the page's item data (jsonequip by item id)."""
+    m = re.search(r"\$\.extend\(g_npcs\[\d+\], (\{.*?\})\);", page)
+    if not m:
+        return None
+    try:
+        info = json.loads(m.group(1))
+    except ValueError:
+        return None
+    patch = re.search(r'Added in patch \[acronym=\\"(\d+\.\d+)', page)
+    lvs = re.findall(r"new Listview\(\{template: '\w+', id: '([\w-]+)'", page)
+    items = {}
+    for g in GATHERER_ITEMS.finditer(page):
+        try:
+            data, _ = json.JSONDecoder().raw_decode(page, g.end())
+        except ValueError:
+            continue
+        for iid, d in data.items():
+            if iid.isdigit() and isinstance(d, dict):
+                items.setdefault(int(iid), d.get("jsonequip") or {})
+    return {
+        "id": int(info.get("id") or 0), "name": info.get("name") or "", "tag": (info.get("tag") or "").strip(),
+        "react": info.get("react"), "patch": patch.group(1) if patch else "",
+        "places": npc_places(page), "repair": "[li]Can repair[\\/li]" in page, "listviews": lvs,
+        "sells": wh_listview(page, "sells") if "sells" in lvs else [],
+        "abilities": wh_listview(page, "teaches-ability") if "teaches-ability" in lvs else [],
+        "items": items,
+    }
+
+
+def load_npc_pages():
+    """Facts of every cached Wowhead NPC page, by NPC id."""
+    pages = {}
+    for f in glob.glob(os.path.join(WOWHEAD, "npc_*.html")):
+        m = re.match(r"npc_(\d+)\.html$", os.path.basename(f))
+        if not m:
+            continue
+        with open(f, encoding="utf-8") as fh:
+            facts = npc_page_facts(fh.read())
+        if facts:
+            pages[int(m.group(1))] = facts
+    return dict(sorted(pages.items()))
+
+
+def react_side(react):
+    """Wowhead's react [Alliance, Horde] (1 friendly, 0 neutral, -1 hostile,
+    None unknown) -> side 0 / 1 / 2, or None when no side may use the NPC."""
+    if not isinstance(react, list) or len(react) < 2:
+        return 0
+    a, h = react[0], react[1]
+    if a is None and h is None:
+        return 0
+    ok_a, ok_h = a is not None and a >= 0, h is not None and h >= 0
+    if ok_a and ok_h:
+        return 0
+    return 1 if ok_a else (2 if ok_h else None)
+
+
+def wowhead_family(d, jsonequip):
+    """A Wowhead 'sells' row of an item classic-db does not know -> family letter or None."""
+    iid, cls, sub = int(d.get("id") or 0), d.get("classs"), d.get("subclass")
+    if iid in REAGENTS:
+        return "r"
+    if cls == 0 and sub == 5:
+        return "d" if (jsonequip or {}).get("manargn") else "f"
+    if cls == 6 and sub == 2:
+        return "a"
+    if cls == 6 and sub == 3:
+        return "b"
+    return None
+
+
+def build_restock(sql, zones, pages):
+    """Vendor rows, Forever's own service rows (from the Wowhead pages), the
+    restock goods and the class trainers' levels.
+    Returns (vendor rows, forever rows, {family: [(id, level, stack, bundle, classes)]}, {class: [levels]})."""
+    t = sql_tables(sql, ("item_template", "npc_vendor", "npc_vendor_template", "creature_template", "creature",
+                         "game_event_creature", "npc_trainer", "npc_trainer_template"))
+    items = {int(r["entry"]): r for r in t["item_template"]}
+    templates = {int(r["Entry"]): r for r in t["creature_template"]}
+    side_of = faction_sides()
+    event_guids = {int(r["guid"]) for r in t["game_event_creature"]}
+    spawns = defaultdict(list)                         # entry -> [(guid, map, x, y)]
+    for r in t["creature"]:
+        spawns[int(r["id"])].append((int(r["guid"]), int(r["map"]), float(r["position_x"]), float(r["position_y"])))
+    on_world = {e for e, sp in spawns.items() if any(m in (0, 1) for _, m, _, _ in sp)}
+
+    # What each creature sells: its own list and its vendor template's.
+    by_template = defaultdict(list)
+    for e, r in templates.items():
+        if int(r.get("VendorTemplateId") or 0):
+            by_template[int(r["VendorTemplateId"])].append(e)
+    sells = defaultdict(set)
+    for r in t["npc_vendor"]:
+        sells[int(r["entry"])].add(int(r["item"]))
+    for r in t["npc_vendor_template"]:
+        for e in by_template.get(int(r["entry"]), ()):
+            sells[e].add(int(r["item"]))
+
+    def buyable(iid):
+        it = items.get(iid)
+        return it is not None and not int(it.get("RequiredReputationFaction") or 0)
+
+    # Forever's inventories from the cached pages (Classic and Forever NPCs
+    # alike): the goods classic-db does not know, and what each NPC sells.
+    wh_sells = defaultdict(set)
+    wh_goods = {}                                      # item -> (family, level, bundle) from Wowhead
+    for nid, p in pages.items():
+        if p["patch"] not in (FOREVER_PATCH, CLASSIC_PATCH):
+            continue
+        for d in p["sells"]:
+            iid = int(d.get("id") or 0)
+            if not iid:
+                continue
+            if iid in items:
+                fam = item_family(items[iid]) if buyable(iid) else None
+            else:
+                fam = wowhead_family(d, p["items"].get(iid))
+            if not fam:
+                continue
+            wh_sells[nid].add(iid)
+            if iid not in wh_goods:
+                eq = p["items"].get(iid) or {}
+                stack = d.get("stack") if isinstance(d.get("stack"), list) and d.get("stack") else [0]
+                wh_goods[iid] = (fam, eq.get("reqlevel"), int(stack[0] or 0))
+
+    def letters_of(iids):
+        fams = set()
+        for iid in iids:
+            if iid in items:
+                if buyable(iid):
+                    fams.add(item_family(items[iid]))
+            elif iid in wh_goods:
+                fams.add(wh_goods[iid][0])
+        return "".join(f for f in FAMILIES if f in fams)
+
+    # Event vendors: spawns tied to a game event, and every vendor sharing a
+    # subname mostly made of those (the Winter Veil vendors that stand all year in classic-db).
+    event_only, per_sub = set(), defaultdict(lambda: [0, 0])
+    for e, iids in sells.items():
+        sp = [s for s in spawns.get(e, ()) if s[1] in (0, 1)]
+        if not sp or not letters_of(iids):
+            continue
+        only = all(g in event_guids for g, _, _, _ in sp)
+        if only:
+            event_only.add(e)
+        sub = (templates.get(e, {}).get("SubName") or "").strip()
+        per_sub[sub][0] += only
+        per_sub[sub][1] += 1
+    event_subs = {s for s, (n, total) in per_sub.items() if s and n and n >= EVENT_SHARE * total}
+
+    stats = defaultdict(int)
+    vendor_rows = []
+    for e in sorted(set(sells) | {n for n in wh_sells if n in templates}):
+        r = templates.get(e)
+        if not r or JUNK.search(r["Name"] or ""):
+            continue
+        letters = letters_of(sells.get(e, set()) | wh_sells.get(e, set()))
+        if not letters:
+            continue
+        sub = (r.get("SubName") or "").strip()
+        if sub.upper() == "NULL":
+            sub = ""
+        if e in event_only or sub in event_subs:
+            stats["event vendors left out"] += 1
+            continue
+        side = side_of.get(int(r.get("Faction") or 0), 0)
+        placed = []
+        for guid, map_id, wx, wy in spawns.get(e, ()):
+            if map_id not in (0, 1) or guid in event_guids or \
+                    any(p[0] == map_id and math.hypot(p[1] - wx, p[2] - wy) < 50 for p in placed):
+                continue
+            placed.append((map_id, wx, wy))
+            vendor_rows.append(("vendor", r["Name"], sub, side, map_id, round(wx, 1), round(wy, 1), letters))
+            for f in letters:
+                stats[f"vendor rows selling {f}"] += 1
+        if not placed:
+            stats["vendors with no spawn in the open world"] += 1
+    stats["vendor rows"] = len(vendor_rows)
+
+    # Forever's own service NPCs, placed by their Wowhead map (Zephras Isle
+    # and the new trainers in the old zones), which classic-db cannot know.
+    tot, rep = defaultdict(int), defaultdict(int)
+    for e in on_world:
+        r = templates.get(e)
+        sub = (r.get("SubName") or "").strip() if r else ""
+        if not sub or sub.upper() == "NULL":
+            continue
+        tot[sub] += 1
+        if int(r.get("NpcFlags") or 0) & NPC_FLAGS["repair"]:
+            rep[sub] += 1
+    repair_subs = {s.lower() for s in tot if tot[s] >= 2 and rep[s] >= REPAIR_SHARE * tot[s]} | set(SMITH_SUBS)
+    open_world = {int(r["ID"]) for r in db2("Map") if (r.get("InstanceType") or "0") == "0"}
+    forever_rows = []
+    for nid, p in pages.items():
+        if p["patch"] != FOREVER_PATCH or nid in on_world or JUNK.search(p["name"]):
+            continue
+        tag, low = p["tag"], p["tag"].lower()
+        kinds = []
+        if low == "innkeeper":
+            kinds.append("innkeeper")
+        if p["repair"] or low in repair_subs:
+            kinds.append("repair")
+        if low.endswith("trainer") or ("teaches-recipe" in p["listviews"] and any(s in low for s in PROFESSION_STEMS)):
+            kinds.append("trainer")
+        letters = letters_of(wh_sells.get(nid, ()))
+        if letters:
+            kinds.append("vendor")
+        side = react_side(p["react"])
+        if not kinds or side is None:
+            continue
+        done = []
+        for place in p["places"]:
+            at = place_on_map(zones, [place])
+            # the open world only: a dungeon's own map would make a continent of an instance
+            if not at or at[3] not in open_world or any(d[0] == at[3] and math.hypot(d[1] - at[4], d[2] - at[5]) < 50 for d in done):
+                continue
+            done.append((at[3], at[4], at[5]))
+            for kind in kinds:
+                row = (kind, p["name"], tag, side, at[3], at[4], at[5])
+                forever_rows.append(row + (letters,) if kind == "vendor" else row)
+                stats[f"Forever {kind} rows"] += 1
+                if at[3] not in (0, 1):
+                    stats[f"Forever rows on map {at[3]}"] += 1
+
+    # The goods of each family: every item of it the item table knows, and
+    # Forever's own from its vendors' pages. A vendor's goods carry their
+    # bundle; the rest (crafted, conjured, quest rewards) carry bundle 0: the
+    # player's stock that counts, never bought. A bundle only says that some
+    # vendor sells it, an event's, a reputation's or one in an instance
+    # included: what to buy comes from the open merchant's own list.
+    goods = defaultdict(list)
+    sold = {i for e, iids in sells.items() if spawns.get(e) for i in iids} | set(wh_goods)   # by a vendor that stands somewhere
+    family = {iid for iid, it in items.items() if item_family(it) and not JUNK.search(it["name"] or "")
+              and not NOT_GOODS.search(it["name"] or "")}
+    for iid in sorted(family | set(wh_goods)):
+        it = items.get(iid)
+        if it is not None:
+            fam = item_family(it)
+            level = int(it.get("RequiredLevel") or 0)
+            stack = int(it.get("stackable") or 0) or FAMILY_STACK[fam]
+            bundle = (int(it.get("BuyCount") or 0) or 1) if iid in sold else 0
+            if iid in wh_goods and wh_goods[iid][2] and wh_goods[iid][2] != bundle:
+                stats[f"bundle from Forever's vendors, not classic-db: {it['name']} {wh_goods[iid][2]} (was {bundle})"] += 1
+                bundle = wh_goods[iid][2]
+        else:
+            fam, level, bundle = wh_goods[iid]
+            level = int(level or 0)
+            stack = FAMILY_STACK[fam]
+            bundle = bundle or 1
+        goods[fam].append((iid, level, stack, bundle, REAGENTS.get(iid, 0)))
+    for fam in goods:
+        goods[fam].sort(key=lambda g: (g[1], g[0]))
+        stats[f"restock goods {fam}"] = len(goods[fam])
+        stats[f"restock goods {fam} sold"] = sum(1 for g in goods[fam] if g[3])
+
+    # Class trainers: the levels at which each class has new spells, from
+    # classic-db's trainers and the cached Wowhead trainer pages (Forever's included).
+    by_trainer = defaultdict(list)
+    for r in t["npc_trainer"]:
+        by_trainer[("npc", int(r["entry"]))].append(int(r["reqlevel"] or 0))
+    for r in t["npc_trainer_template"]:
+        by_trainer[("template", int(r["entry"]))].append(int(r["reqlevel"] or 0))
+    levels = defaultdict(set)
+    for e, r in templates.items():
+        cls = TRAINER_CLASSES.get(int(r.get("TrainerClass") or 0))
+        if not cls or r.get("TrainerType") != "0" or not int(r.get("NpcFlags") or 0) & NPC_FLAGS["trainer"] \
+                or e not in on_world:
+            continue
+        for lv in by_trainer.get(("npc", e), []) + by_trainer.get(("template", int(r.get("TrainerTemplateId") or 0)), []):
+            levels[cls].add(max(1, lv))
+    names = {v.lower(): v for v in TRAINER_CLASSES.values()}
+    for p in pages.values():
+        m = re.match(r"^(\w+) Trainer$", p["tag"])
+        cls = names.get(m.group(1).lower()) if m else None
+        if cls and p["patch"] in (FOREVER_PATCH, CLASSIC_PATCH):
+            for d in p["abilities"]:
+                if isinstance(d.get("level"), int) and d["level"] > 0:
+                    levels[cls].add(d["level"])
+    trainer_levels = {cls: sorted(v) for cls, v in sorted(levels.items())}
+
+    log("  restock: " + ", ".join(f"{k} {v}" for k, v in sorted(stats.items())))
+    return vendor_rows, forever_rows, dict(goods), trainer_levels
 
 
 def lua_str(s):
@@ -993,9 +1398,19 @@ def main():
     instance_quests = {}
     import csv as _csv
     continent_of = {int(r["ID"]): int(r["ContinentID"] or 0) for r in db2("AreaTable")}
+    # A zone on an open-world map of its own (Forever's Zephras Isle, map 2991,
+    # with no continent above it) keeps that map as its continent, named by
+    # the Map table, so the Quest List's Continent filter finds it there.
+    world_maps = {int(r["ID"]): r["MapName_lang"] for r in db2("Map") if (r.get("InstanceType") or "0") == "0"}
+    continent_names = {0: "Eastern Kingdoms", 1: "Kalimdor"}
+    quest_zones = {q.get("category") for q in listing.values()}
     for zid, (_, _, cat) in wh_zones.items():
         if continent_of.get(zid) not in (0, 1):
-            continent_of[zid] = cat if cat in (0, 1) else -1
+            own = continent_of.get(zid)
+            if cat not in (0, 1) and own in world_maps and zid in quest_zones:
+                continent_names[own] = world_maps[own]
+            else:
+                continent_of[zid] = cat if cat in (0, 1) else -1
     # Attunement chains: any chain holding an attunement quest, plus lone ones.
     attune_chains = set()
     attune_quests = set()
@@ -1132,6 +1547,8 @@ def main():
     entrances, transports = build_map_points(sql, zones, used_dungeons, raids)
     taxi_nodes, taxi_paths = build_taxi()
     services = build_services(sql, spawns)
+    vendor_rows, forever_rows, restock_items, trainer_levels = build_restock(sql, zones, load_npc_pages())
+    services += vendor_rows + forever_rows
 
     with open(os.path.abspath(args.out), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/build_quest_list.py. Do not edit by hand.\n")
@@ -1148,10 +1565,11 @@ def main():
         fh.write("\tzones = {\n")
         for aid in sorted(used_zones):
             fh.write(f"\t\t[{aid}] = {lua_str(areas.get(aid, str(aid)))},\n")
-        fh.write("\t},\n\t-- zone -> continent: 0 Eastern Kingdoms, 1 Kalimdor, -1 elsewhere\n\tzoneContinent = {\n")
+        fh.write("\t},\n\t-- zone -> continent: 0 Eastern Kingdoms, 1 Kalimdor, an open-world map of its own\n")
+        fh.write("\t-- (2991 Zephras Isle, named in continentNames), -1 elsewhere\n\tzoneContinent = {\n")
         for aid in sorted(used_zones):
             fh.write(f"\t\t[{aid}] = {continent_of.get(aid, -1)},\n")
-        fh.write("\t},\n\tcontinentNames = { [0] = \"Eastern Kingdoms\", [1] = \"Kalimdor\" },\n")
+        fh.write("\t},\n\tcontinentNames = { " + ", ".join(f"[{c}] = {lua_str(n)}" for c, n in sorted(continent_names.items())) + " },\n")
         fh.write("\t-- instance -> { min level, max level } from Wowhead's zone list, for sorting dungeons by their level\n\tdungeonLevel = {\n")
         for did in sorted(used_dungeons):
             lo, hi = load_wowhead_zones.levels.get(did, (0, 0))
@@ -1183,10 +1601,27 @@ def main():
         for nid in sorted(taxi_nodes):
             name, cont, wx, wy, faction = taxi_nodes[nid]
             fh.write(f"\t\t[{nid}] = {{{lua_str(name)},{cont},{wx},{wy},{faction}}},\n")
-        fh.write("\t},\n\t-- services: kind (repair, mailbox, innkeeper, auction, banker, trainer), name, subname,\n")
-        fh.write("\t-- side (0 both, 1 Alliance, 2 Horde), continent, world x, world y\n\tservices = {\n")
-        for kind, name, sub, side, cont, wx, wy in services:
-            fh.write(f"\t\t{{{lua_str(kind)},{lua_str(name)},{lua_str(sub)},{side},{cont},{wx},{wy}}},\n")
+        fh.write("\t},\n\t-- services: kind (repair, mailbox, innkeeper, auction, banker, trainer, vendor), name, subname,\n")
+        fh.write("\t-- side (0 both, 1 Alliance, 2 Horde), continent (world map id), world x, world y;\n")
+        fh.write("\t-- a vendor row adds the restock families it sells (d drink, f food, a arrows, b bullets, r class reagents)\n")
+        fh.write("\tservices = {\n")
+        for row in services:
+            kind, name, sub, side, cont, wx, wy = row[:7]
+            extra = "".join("," + lua_str(v) for v in row[7:])
+            fh.write(f"\t\t{{{lua_str(kind)},{lua_str(name)},{lua_str(sub)},{side},{cont},{wx},{wy}{extra}}},\n")
+        fh.write("\t},\n\t-- restock goods by family (d drink, f food, a arrows, b bullets, r class reagents):\n")
+        fh.write("\t-- { item id, required level (0 none), stack size, bundle (items per purchase; 0 when no vendor sells it:\n")
+        fh.write("\t-- stock that counts, never bought), classes (class mask as in classes, 0 any) }, by required level;\n")
+        fh.write("\t-- a bundle only says some vendor sells it (maybe an event's or a reputation's): buy from the merchant's list\n")
+        fh.write("\trestockItems = {\n")
+        for fam in FAMILIES:
+            fh.write(f"\t\t{fam} = {{\n")
+            for iid, level, stack, bundle, classes in restock_items.get(fam, []):
+                fh.write(f"\t\t\t{{{iid},{level},{stack},{bundle},{classes}}},\n")
+            fh.write("\t\t},\n")
+        fh.write("\t},\n\t-- class trainers: [class] = { the levels at which a class trainer has new spells }\n\ttrainerLevels = {\n")
+        for cls, lvls in trainer_levels.items():
+            fh.write(f"\t\t{cls} = {{ {','.join(str(v) for v in lvls)} }},\n")
         fh.write("\t},\n\t-- flight links: from id, to id, seconds in the air\n\ttaxiPaths = {\n")
         for a, b, secs in taxi_paths:
             fh.write(f"\t\t{{{a},{b},{secs}}},\n")

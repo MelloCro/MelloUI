@@ -227,6 +227,7 @@ TEX_SHOWN = [
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)", 4.0, False, "bar fills: stretched along the bars"),
     (r"^Textures/Chat/", 4.0, False, "chat name band: stretched behind a name"),
     (r"^Textures/SoftShade", 4.0, False, "soft shade band (Core/Shade.lua): stretched behind text"),
+    (r"^Textures/SoftGlowRound", 60 / 128, False, "round soft glow (Core/Shade.lua Shade:Glow): 128 px art around a 36-unit ring, 60 units wide"),
     (r"^Textures/KitShadows", 4 * 26 / 64, False, "kit shadow partners (Kit:Shadow): a texel is 4 painted px, brackets shown at 26 per 64"),
     (r"^Textures/Route/", None, True, "route beam: any world map zoom"),
     (r"^Textures/Stone", None, False, "not referenced by any Lua file"),
@@ -264,6 +265,7 @@ STAY_TGA = [
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)\.tga$", "bar fills: 4-8 KB, stretched along bars (565 banding), paths saved in profiles"),
     (r"^Textures/LogoIcon\.tga$", "addressed as LogoIcon.tga by Core/Config.lua and the TOC's IconTexture; 256 KB, loaded once"),
     (r"^Textures/SoftShade\.tga$", "the soft shade (Core/Shade.lua): a 32 KB smooth alpha gradient stretched behind text; DXT bands it"),
+    (r"^Textures/SoftGlowRound\.tga$", "the round soft glow (Core/Shade.lua Shade:Glow): a 64 KB smooth radial alpha ramp, shipped as its master's bytes like SoftShade"),
     (r"^Textures/KitShadows\w*\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
                                        "DXT5 bands them (make_kit_shadows.py --gate: 17 levels off, its limit 4)"),
     (r"^Textures/InstallerBanner\.tga$", "addressed as InstallerBanner.tga by Core/InstallerWindow.lua; its DXT5 fails "

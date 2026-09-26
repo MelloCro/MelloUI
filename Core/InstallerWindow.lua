@@ -46,8 +46,11 @@
 -- A change there drops the setup's fit (the fitter reads the reskin, The
 -- HUD and Tweaks): Review fits again and Install waits for it. Pictures,
 -- never a live preview (user, 2026-09-25: a Kit Colours switch walks every
--- kit texture): a colour card shows the kit's window frame from that look's
--- own folder, a font card its own faces.
+-- kit texture): a palette card shows that palette's swatch (0.14.0: the
+-- Look step's seven, above the Kit Colours), a colour card the kit's window
+-- frame from that look's own folder under the drafted palette (the kit's
+-- Kit:ColourLooks and Kit:LookRoot), a font card its own faces. The Review
+-- step names the palette the setup puts in (I:PaletteOf).
 --
 --   MelloUI:OpenInstaller(from)    the entry (the configurator's Install...,
 --                                  Install again and Fit to this screen,
@@ -175,6 +178,7 @@ local TEXT = {
 	keepQuestion = "Keep this setup?",
 	keepLine = "If you don't answer, MelloUI goes back to 'Before install' when the timer runs out.",
 	doneTitle = "MelloUI is set up.",
+	doneRefit = "Your layout was fitted to this screen.",   -- (Fit to this screen: nothing was installed)
 	doneReload = "The names above characters use the new font after a reload.",
 	doneWhere = "Every setting lives in /mello, and in the MelloUI button of the game menu.",
 	doneFresh = "Features are off: switch them on in /mello.",
@@ -188,11 +192,13 @@ local TEXT = {
 	continue = "Continue", back = "Back", install = "Install", keep = "Keep", revert = "Revert",
 	reload = "Reload now", tour = "Take the tour", open = "Open MelloUI", again = "Choose again", close = "Close",
 	-- Fresh start's wizard
-	lookLead = "The painted kit and its colours. The pictures show each look; nothing changes until you install.",
+	lookLead = "Your palette, the painted kit and its colours. Nothing changes until you install.",
+	palette = "Palette",
 	reskin = "Painted kit reskin",
 	reskinDesc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art; the features you switch on keep working.",
 	colours = "Kit Colours",
 	colourLine = { warm = "Iron in warm browns", bronze = "Browns with gold bevels", painted = "Grey iron, bright red" },
+	colourOwn = "Iron in the palette's own colours",   -- (a palette's own kit, under any palette but Ember)
 	classIcons = "Class icons in portraits",
 	parchmentLead = "Parchment behind text, in dark ink. Each area has its own sheet.",
 	parchment = "Parchment",
@@ -229,23 +235,41 @@ local TEXT = {
 	featuresNone = "Features stay off; switch them on in /mello any time",
 	featuresRow = "Features on: %s",
 	featuresMore = "%s and %d more",
+	paletteRow = "Palette: %s",
 }
 IW.TEXT = TEXT
 
+-- the Review step's palette line: the palette the setup puts in (the
+-- engine's I:PaletteOf), its line made once per palette
+local PaletteLine
+do
+	local lines = {}
+	PaletteLine = function(option, draft)
+		local id = I:PaletteOf(option, draft)
+		local line = lines[id]
+		if not line then
+			line = TEXT.paletteRow:format(W.PaletteName(id))
+			lines[id] = line
+		end
+		return line
+	end
+end
+
 -- What the Review step lists per setup; true: the Edit Mode layout's line,
 -- as the fit and the Screen step's switch make it; a function: fn(option,
--- draft) -> the line (Fresh start's Minimap and Features lines, set with
--- the wizard's pages below)
+-- draft) -> the line (the palette's; Fresh start's Minimap and Features
+-- lines, set with the wizard's pages below). No reskin and the refit keep
+-- the player's palette: no line.
 local REVIEW = {
-	full = { "Mello's modules and their settings", "The painted look and the Dynamic UI looks", true, TEXT.scaleRow },
+	full = { "Mello's modules and their settings", "The painted look and the Dynamic UI looks", PaletteLine, true, TEXT.scaleRow },
 	noReskin = { "MelloUI's features and their settings", "The painted reskin is switched off; your bars and layout stay as they are",
 		"No Edit Mode change", TEXT.scaleRow },
-	reskinOnly = { "The painted look and the Dynamic UI looks", true,
+	reskinOnly = { "The painted look and the Dynamic UI looks", PaletteLine, true,
 		"Features stay off; chat on parchment needs Chat tweaks, so it stays off", TEXT.scaleRow },
-	fresh = { TEXT.reviewChoices, true, TEXT.scaleRow },
+	fresh = { TEXT.reviewChoices, PaletteLine, true, TEXT.scaleRow },
 	fit = { true, "Window places fitted to this screen", "Your other settings stay as they are", TEXT.scaleRow },
 }
-local REVIEW_ROWS = 5
+local REVIEW_ROWS = 6
 
 -- The steps: each one's plate title and rail label, and its page's builder
 -- and refresh (IW:Step: the Fresh start wizard's pages come that way)
@@ -1437,7 +1461,7 @@ ShowDone = function()
 	local option = Option()
 	local lines = {}
 	if kept then
-		done.title:SetText(TEXT.doneTitle)
+		done.title:SetText(option.refit and TEXT.doneRefit or TEXT.doneTitle)
 		if state.needsReload then
 			lines[#lines + 1] = TEXT.doneReload
 		end
@@ -1517,12 +1541,13 @@ end
 -- switch is off sleeps, dimmed, and says which switch wakes it (W.Gate;
 -- indented under a switch on its own page). UI Modifications itself is on
 -- while anything the draft asks for runs under it. Pictures, never a live
--- preview (user, 2026-09-25: a Kit Colours switch walks every kit texture): a colour
--- card shows the kit's window frame as that look's folder holds it, a font
--- card its own faces. Each page is made on its first show, its rows (and
--- the font cards' faces) within one budget a frame; a click changes the
--- draft, drops the setup's fit and lays the page on show again (its
--- gates), nothing more.
+-- preview (user, 2026-09-25: a Kit Colours switch walks every kit texture): a
+-- palette card shows its swatch, a colour card the kit's window frame as
+-- that look's folder holds it (the drafted palette's), a map card its piece
+-- in the drafted look, a font card its own faces. Each page is made on its
+-- first show, its rows (and the font cards' faces, the palette cards)
+-- within one budget a frame; a click changes the draft, drops the setup's
+-- fit and lays the page on show again (its gates), nothing more.
 --------------------------------------------------------------------------------
 
 -- (a function's own scope: the file's main chunk is close to Lua's 200
@@ -1532,6 +1557,7 @@ local function WizardSteps()
 	local UMBRELLA_ON = "!UIModifications"
 	local RESKIN = "UIModifications.reskin"
 	local COLOURS_KEY, BORDER_KEY = "UIModifications.kitColours", "UIModifications.buttonBorder"
+	local PALETTE_KEY = "UIModifications.palette"
 	local ICONS_ON, PORTRAITS = "UIModifications.qol_ClassIcons", "ClassIcons.portraits"
 	local DARK_ON, SHADE = "UIModifications.qol_DarkMode", "DarkMode.shade"
 	local FONTS_ON, FONT_STYLE = "UIModifications.qol_Fonts", "Fonts.style"
@@ -1549,6 +1575,9 @@ local function WizardSteps()
 	local COLOUR_W = floor((PAGE_W - 2 * COLOUR_GAP) / 3)
 	local COLOUR_H = 120
 	local FRAME_PIC_H = 64        -- a colour card's picture: the kit's window frame on its body
+	-- a palette's card, its swatch, between the two lines (small: the page
+	-- fits the body with the reskin off too, the Kit Colours' line shown)
+	local PALETTE_H, PALETTE_PIC, PALETTE_GAP_Y = 40, 10, 4
 	local FONT_H = 70
 	local TITLE_BASE, TEXT_BASE = 20, 13   -- a font card's samples before their faces' size factors (Morpheus-, Friz-sized)
 	local GAME_TITLE, GAME_TEXT = "Fonts\\MORPHEUS.TTF", "Fonts\\FRIZQT__.TTF"   -- (when the game's objects read nothing)
@@ -1861,8 +1890,9 @@ local function WizardSteps()
 	end
 
 	--------------------------------------------------------------------------------
-	-- Look: the reskin, the Kit Colours (a picture each), Button Border, the
-	-- class icons
+	-- Look: the palette (a card each, its swatch: W.Card's palette card), the
+	-- reskin, the Kit Colours (a picture each: the drafted palette's
+	-- choices, from their own folders), Button Border, the class icons
 	--------------------------------------------------------------------------------
 
 	local function BorderKind(key)
@@ -1886,23 +1916,72 @@ local function WizardSteps()
 		return nil
 	end
 
-	-- the folder a look's pieces are read from (the kit's own rule: the painted
-	-- pieces in Media\Kit, each recoloured look's in a folder of the same files)
-	local function LookRoot(look)
-		local layout = MelloUI_KitLayout
-		local root = type(layout) == "table" and layout.root
-		if type(root) ~= "string" then
+	-- the drafted palette: its card's id (the engine's reading, as Install
+	-- puts it in: an unknown one is Ember)
+	local function DraftPalette()
+		return I:PaletteOf(FRESH, Wizard())
+	end
+
+	-- the drafted Kit Colours (the kit's default while the draft has none)
+	local function DraftColours()
+		local chosen = Wizard()[COLOURS_KEY]
+		if chosen == nil then
+			local kind = BorderKind("kitColours")
+			chosen = kind and kind.default
+		end
+		return chosen
+	end
+
+	-- The kit's own rules for the drafted look (B9: Kit.lua's, never a copy
+	-- here): the Kit Colours choices under the drafted palette
+	-- (Kit:ColourLooks: Ember's three, another palette's own kit and the
+	-- Original), and the folder a piece is read from (Kit:LookRoot: a choice
+	-- in its own folder; a piece by the drafted palette and Kit Colours, an
+	-- uncoloured one from Media\Kit). Nothing without the kit.
+	local function DraftLooks()
+		local Kit = MelloUI.Kit
+		return Kit and Kit.ColourLooks and Kit:ColourLooks(DraftPalette()) or EMPTY
+	end
+
+	local function DraftRoot(look, piece)
+		local Kit = MelloUI.Kit
+		if not (Kit and Kit.LookRoot) then
 			return nil
 		end
-		return look.folder and (root:gsub("Kit\\$", look.folder .. "\\")) or root
+		if type(look) == "table" then
+			return Kit:LookRoot(look, piece)
+		end
+		return Kit:LookRoot(DraftColours(), piece, DraftPalette())
+	end
+
+	-- the card the drafted Kit Colours draws under the drafted palette: the
+	-- choice itself, or the one read from the same folder (a Bronze kept
+	-- from Ember is, under another palette, that palette's own kit): the
+	-- kit's own rule, Kit:ColourLookShown, asked for the drafted pair
+	local function ColourShown()
+		local Kit = MelloUI.Kit
+		local look = Kit and Kit.ColourLookShown and Kit:ColourLookShown(DraftPalette(), DraftColours())
+		return look and look.value or DraftColours()
+	end
+
+	-- a colour card's line: Ember's looks by name; under another palette its
+	-- own kit, and the Original
+	local function ColourLine(look, looks)
+		local Kit = MelloUI.Kit
+		if look.value ~= "painted" and Kit and Kit.ColourLooks and looks ~= Kit:ColourLooks("ember") then
+			return TEXT.colourOwn
+		end
+		return TEXT.colourLine[look.value]
 	end
 
 	-- A colour card's picture: the kit's window frame on the frame's own body,
 	-- both from that look's folder, at the frame's own shape. Not kit
-	-- textures, so the kit's colour switch never repaints them.
+	-- textures, so the kit's colour switch never repaints them. Laid again
+	-- when the drafted palette changes (the body made once).
 	local function ColourPicture(card, root, slice)
 		local gw, gh = slice.grid[1], slice.grid[2]
 		local pic = card.picture
+		pic:SetTexture(root .. slice.full)
 		pic:ClearAllPoints()
 		pic:SetPoint("TOP", card, "TOP", 0, -8)
 		pic:SetSize(floor(FRAME_PIC_H * gw / gh + 0.5), FRAME_PIC_H)
@@ -1914,12 +1993,80 @@ local function WizardSteps()
 			local u, v = min(1, gw * texel / body.w), min(1, gh * texel / body.h)
 			local uv = type(body.uv) == "table" and body.uv or nil
 			local l, r, t, b = uv and uv[1] or 0, uv and uv[2] or 1, uv and uv[3] or 0, uv and uv[4] or 1
-			local tex = card:CreateTexture(nil, "ARTWORK", nil, -1)
-			tex:SetAllPoints(pic)
+			local tex = card.body
+			if not tex then
+				tex = card:CreateTexture(nil, "ARTWORK", nil, -1)
+				tex:SetAllPoints(pic)
+				card.body = tex
+			end
 			tex:SetTexture(root .. body.file)
 			tex:SetTexCoord(l, l + (r - l) * u, t, t + (b - t) * v)
-			card.body = tex
 		end
+	end
+
+	-- the Kit Colours cards as the drafted palette has them: its choices'
+	-- names, lines and pictures (a card more than it offers hidden); laid
+	-- again only when the drafted palette changed (the kit's list per palette
+	-- is one table)
+	local function LayColours(page)
+		local looks = DraftLooks()
+		if page.coloursOf == looks then
+			return
+		end
+		page.coloursOf = looks
+		local slice = FrameSlice()
+		for i, card in ipairs(page.colours) do
+			local look = looks[i]
+			card:SetShown(look ~= nil)
+			if look then
+				card.key = look.value
+				card:SetTexts(look.label, ColourLine(look, looks))
+				local root = slice and card.picture and DraftRoot(look)
+				if root then
+					ColourPicture(card, root, slice)
+				end
+			end
+		end
+	end
+
+	-- the palettes' cards: a column per palette, its Vibrant under it (an id
+	-- "<palette>Vibrant"), in the registry's order -> each card's { column,
+	-- line }, the columns, the lines
+	local function PalettePlaces()
+		local places, colOf, cols, lines = {}, {}, 0, 1
+		for i, id in ipairs(MelloUI.Palettes.order) do
+			local base = id:match("^(.+)Vibrant$")
+			local col = base and colOf[base]
+			if col then
+				places[i], lines = { col, 2 }, 2
+			else
+				cols = cols + 1
+				colOf[id] = cols
+				places[i] = { cols, 1 }
+			end
+		end
+		return places, cols, lines
+	end
+
+	-- a palette card: the draft only (the palette goes in with Install;
+	-- nothing is recoloured now)
+	local function PalettePick(card)
+		Put(PALETTE_KEY, card.key)
+	end
+
+	-- A palette card, made as the page's owed work (the frame's one budget
+	-- of rows: seven swatch cards and the rest of the page are too much for
+	-- the click's frame), in its place on the grid, whose room is kept from
+	-- the start: nothing moves when it comes. `spot`: { page, grid, id, w,
+	-- x, y }, made with the page.
+	local function MakePaletteCard(spot)
+		local card = W.Card(spot.grid, { width = spot.w, height = PALETTE_H, palette = spot.id, pictureHeight = PALETTE_PIC,
+			onClick = PalettePick }, win.shell)
+		card:SetPoint("TOPLEFT", spot.grid, "TOPLEFT", spot.x, spot.y)
+		Tip(card, card.title:GetText(), MelloUI.Palettes[spot.id].blurb)
+		card:SetSelected(card.key == DraftPalette())
+		local list = spot.page.palettes
+		list[#list + 1] = card
 	end
 
 	local function ColourPick(card)
@@ -1964,27 +2111,50 @@ local function WizardSteps()
 	end
 
 	local function BuildLook(page)
+		local t0 = Clock()
 		Wizard()
 		local flow = {}
-		page.flow, page.rows, page.colours = flow, {}, {}
+		page.flow, page.rows, page.colours, page.palettes = flow, {}, {}, {}
 		Part(flow, Lead(page, TEXT.lookLead), PAD, nil, 10)
+		-- the palette (0.14.0): a card each (its swatch and name; its blurb in
+		-- the tooltip), a family to a column; never asleep: the palette
+		-- colours MelloUI's own windows with the reskin off too. The cards are
+		-- the page's first owed work (MakePaletteCard).
+		Part(flow, Heading(page, TEXT.palette), 0, HEADING_H, 8, true)
+		local places, cols, lines = PalettePlaces()
+		local pw = floor((PAGE_W - (cols - 1) * COLOUR_GAP) / cols)
+		local pgrid = Grid(page, cols * lines, cols, PALETTE_H, PALETTE_GAP_Y)
+		for i, id in ipairs(MelloUI.Palettes.order) do
+			local at = places[i]
+			LaterWork(page, MakePaletteCard, { page = page, grid = pgrid, id = id, w = pw,
+				x = (at[1] - 1) * (pw + COLOUR_GAP), y = -(at[2] - 1) * (PALETTE_H + PALETTE_GAP_Y) })
+		end
+		Part(flow, pgrid, 0, pgrid.melloH, 8, true)
 		LaterRow(page, ReskinRow, W.ROW_HEIGHT, 10)
-		-- the Kit Colours: a card each, three to a line, with its picture
+		-- the Kit Colours: a card each, three to a line, with its picture; as
+		-- many cards as the palette with the most choices, laid by the drafted
+		-- palette (LayColours)
 		local heading = Part(flow, Heading(page, TEXT.colours), 0, HEADING_H, 8, true)
-		local kind = BorderKind("kitColours")
-		local looks = kind and type(kind.values) == "table" and kind.values or EMPTY
-		local grid = Grid(page, #looks, 3, COLOUR_H, COLOUR_GAP)
-		local slice = FrameSlice()
-		for i, look in ipairs(looks) do
-			local root = slice and LookRoot(look)
-			local card = W.Card(grid, { width = COLOUR_W, height = COLOUR_H, title = look.label, text = TEXT.colourLine[look.value],
-				key = look.value, picture = root and (root .. slice.full) or nil, pictureHeight = FRAME_PIC_H, onClick = ColourPick }, win.shell)
-			card:SetPoint("TOPLEFT", grid, "TOPLEFT", ((i - 1) % 3) * (COLOUR_W + COLOUR_GAP), -floor((i - 1) / 3) * (COLOUR_H + COLOUR_GAP))
-			if root then
-				ColourPicture(card, root, slice)
+		local Kit, most = MelloUI.Kit, 0
+		for _, id in ipairs(MelloUI.Palettes.order) do
+			local n = Kit and Kit.ColourLooks and #Kit:ColourLooks(id) or 0
+			if n > most then
+				most = n
 			end
+		end
+		local looks = DraftLooks()
+		local grid = Grid(page, most, 3, COLOUR_H, COLOUR_GAP)
+		local slice = FrameSlice()
+		for i = 1, most do
+			local look = looks[i] or looks[#looks]   -- (laid by LayColours, hidden if the drafted palette has fewer)
+			local root = slice and look and DraftRoot(look)
+			local card = W.Card(grid, { width = COLOUR_W, height = COLOUR_H, title = look and look.label,
+				key = look and look.value, picture = root and (root .. slice.full) or nil, pictureHeight = FRAME_PIC_H, onClick = ColourPick }, win.shell)
+			card:SetPoint("TOPLEFT", grid, "TOPLEFT", ((i - 1) % 3) * (COLOUR_W + COLOUR_GAP), -floor((i - 1) / 3) * (COLOUR_H + COLOUR_GAP))
 			page.colours[i] = card
 		end
+		page.coloursOf = nil
+		LayColours(page)
 		Part(flow, grid, 0, grid.melloH, 6, true)
 		-- asleep with the reskin off as a row is (W.Gate: dimmed, its cover
 		-- taking the clicks with the tooltip; its line under the cards, on the
@@ -1999,17 +2169,26 @@ local function WizardSteps()
 			LaterRow(page, BorderRow, W.ROW_HEIGHT, 0)
 		end
 		LaterRow(page, IconsRow, W.ROW_HEIGHT, 0)
+		-- (the page's own parts -- the headings, the colour cards and their
+		-- pictures -- are this frame's work too: counted in the frame's one
+		-- budget of rows, so the owed cards and rows keep the click's frame
+		-- within it and come on the next frames)
+		W.RowBudget.Spent(Clock() - t0)
 		return 1
 	end
 
 	local function RefreshLook(page)
-		local chosen = Wizard()[COLOURS_KEY]
-		if chosen == nil then
-			local kind = BorderKind("kitColours")
-			chosen = kind and kind.default
-		end
+		LayColours(page)
+		local chosen = ColourShown()
 		for _, card in ipairs(page.colours) do
-			local on = card.key == chosen
+			local on = card:IsShown() and card.key == chosen
+			if card:IsSelected() ~= on then
+				card:SetSelected(on)
+			end
+		end
+		local palette = DraftPalette()
+		for _, card in ipairs(page.palettes) do
+			local on = card.key == palette
 			if card:IsSelected() ~= on then
 				card:SetSelected(on)
 			end
@@ -2121,9 +2300,13 @@ local function WizardSteps()
 		Put(MAP_SHAPE, card.key)
 	end
 
-	-- A shape card's picture: the kit piece itself from the kit's own folder,
-	-- at its own shape, the map's place in it (the piece's opening) in the
-	-- window's colour. Not a kit texture: the kit never repaints it.
+	-- A shape card's picture: the kit piece itself from the folder the
+	-- drafted look reads it from (Kit:LookRoot: the drafted palette and Kit
+	-- Colours; B9 -- it was always the painted grey), at its own shape, the
+	-- map's place in it (the piece's opening) in the drafted palette's window
+	-- colour (W.PaletteFill: one picture of one look, never the palette in
+	-- use round another's ring). Not a kit texture: the kit never repaints
+	-- it. RefreshMap does both again when the drafted look changed.
 	local function MapPicture(card, name)
 		local layout = MelloUI_KitLayout
 		local pieces = type(layout) == "table" and layout.pieces
@@ -2131,6 +2314,7 @@ local function WizardSteps()
 		if not (type(p) == "table" and type(p.file) == "string" and Num(p.w) and Num(p.h) and card.picture) then
 			return
 		end
+		card.piece = name
 		local pic = card.picture
 		pic:ClearAllPoints()
 		pic:SetPoint("TOP", card, "TOP", 0, -8)
@@ -2143,7 +2327,7 @@ local function WizardSteps()
 			local inside = card:CreateTexture(nil, "ARTWORK", nil, -1)
 			inside:SetPoint("TOPLEFT", pic, "TOPLEFT", p.open[1] * s, -p.open[2] * s)
 			inside:SetPoint("BOTTOMRIGHT", pic, "TOPLEFT", p.open[3] * s, -p.open[4] * s)
-			W.Paint(inside, "mainWindow", "fill", 1)
+			W.PaletteFill(inside, DraftPalette(), "mainWindow")
 			card.inside = inside
 		end
 	end
@@ -2176,12 +2360,13 @@ local function WizardSteps()
 		local choices, title = MapChoices()
 		local heading = Part(flow, Heading(page, title or STEPS.map.title), 0, HEADING_H, 8, true)
 		local layout = MelloUI_KitLayout
-		local root = type(layout) == "table" and type(layout.root) == "string" and layout.root or nil
 		local pieces = type(layout) == "table" and type(layout.pieces) == "table" and layout.pieces or EMPTY
 		local grid = Grid(page, #choices, 2, MAP_H, CARD_GAP_Y)
+		page.mapPalette, page.mapColours = DraftPalette(), DraftColours()
 		for i, choice in ipairs(choices) do
 			local p = choice.piece and pieces[choice.piece]
-			local file = root and type(p) == "table" and type(p.file) == "string" and (root .. p.file) or nil
+			local root = type(p) == "table" and type(p.file) == "string" and DraftRoot(nil, choice.piece)
+			local file = root and (root .. p.file) or nil
 			local card = W.Card(grid, { width = CARD_W, height = MAP_H, title = choice.label, text = TEXT.mapLine[choice.value],
 				key = choice.value, picture = file, pictureHeight = MAP_PIC, onClick = MapPick }, win.shell)
 			card:SetPoint("TOPLEFT", grid, "TOPLEFT", ((i - 1) % 2) * (CARD_W + CARD_GAP_X), -floor((i - 1) / 2) * (MAP_H + CARD_GAP_Y))
@@ -2202,6 +2387,21 @@ local function WizardSteps()
 	end
 
 	local function RefreshMap(page)
+		-- (the drafted look changed since: the pictures from its folder)
+		local palette, colours = DraftPalette(), DraftColours()
+		if page.mapPalette ~= palette or page.mapColours ~= colours then
+			page.mapPalette, page.mapColours = palette, colours
+			local pieces = MelloUI_KitLayout.pieces
+			for _, card in ipairs(page.shapes) do
+				local root = card.piece and DraftRoot(nil, card.piece)
+				if root and card.picture then
+					card.picture:SetTexture(root .. pieces[card.piece].file)
+				end
+				if card.inside then
+					W.PaletteFill(card.inside, palette, "mainWindow")
+				end
+			end
+		end
 		local shape = MapShape()
 		for _, card in ipairs(page.shapes) do
 			local on = card.key == shape
@@ -2709,7 +2909,7 @@ local function WizardSteps()
 		return text
 	end
 
-	REVIEW.fresh = { TEXT.reviewChoices, MapLine, FeaturesLine, true, TEXT.scaleRow }
+	REVIEW.fresh = { TEXT.reviewChoices, PaletteLine, MapLine, FeaturesLine, true, TEXT.scaleRow }
 end
 WizardSteps()
 

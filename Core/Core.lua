@@ -267,6 +267,41 @@ function Safe.Call(obj, method, ...)
 	return Checked(pcall(fn, obj, ...))
 end
 
+-- Where a frame or region lies on the screen, in pixels (its effective scale
+-- applied): left, bottom, right, top -- or nil when it cannot be read
+-- plainly: no GetRect or GetEffectiveScale, either one raised (not laid out
+-- yet, a restricted region), a value secret or not a number, or an edge that
+-- comes out not a number (NaN). The one screen-rect reader (0.14.0: four
+-- copies with four return shapes went); a caller that needs a size tests
+-- r > l and t > b itself. Makes no table.
+function Safe.ScreenRect(region)
+	if type(region) ~= "table" then
+		return nil
+	end
+	local getRect, getScale = region.GetRect, region.GetEffectiveScale
+	if type(getRect) ~= "function" or type(getScale) ~= "function" then
+		return nil
+	end
+	local ok, l, b, w, h = pcall(getRect, region)
+	if not ok then
+		return nil
+	end
+	local okS, s = pcall(getScale, region)
+	if not okS then
+		return nil
+	end
+	local Num = Safe.Number
+	l, b, w, h, s = Num(l), Num(b), Num(w), Num(h), Num(s)
+	if not (l and b and w and h and s) then
+		return nil
+	end
+	local left, bottom, right, top = l * s, b * s, (l + w) * s, (b + h) * s
+	if left ~= left or bottom ~= bottom or right ~= right or top ~= top then
+		return nil   -- (not a number: no place on the screen)
+	end
+	return left, bottom, right, top
+end
+
 -- The screen as a player names it: its size in pixels and its aspect ratio
 -- ("32:9", "21:9", "16:9", "16:10", "3:2", "4:3", "5:4": the nearest one,
 -- and no label when none is within 4 %, as a triple screen or a 32:10), from
@@ -479,7 +514,10 @@ end
 --                                          palette is a new table; a palette
 --                                          switch fires it once, after 'border':
 --                                          MelloUI:SetPalette)
---   "column"       -                       the column under the minimap re-laid
+--   "shade"        area, on, strength      an area's UI Shade switched or its
+--                                          strength changed (Modules/KitShade.lua),
+--                                          once its partners follow
+--   "column"       -                     the column under the minimap re-laid
 --   "editmodelayout" what, name            a layout went into Edit Mode
 --                                          (Core/EditModeLayout.lua): "put",
 --                                          name (put in, made active) /

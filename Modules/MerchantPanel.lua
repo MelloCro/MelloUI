@@ -22,9 +22,10 @@
 --                        stone under the palette's inner panel (2e)
 --   the item cards       each slot's label plate (UI-Merchant-LabelSlots) ->
 --                        a card in the main window's tone, a step lighter
---                        than the panel (2e's row stripe); the card turns the
---                        palette's dark red while the game paints the plate
---                        red (an item the player cannot use)
+--                        than the panel (2e's row stripe); the card turns a
+--                        fixed dark red (a meaning colour, under every
+--                        palette) while the game paints the plate red (an
+--                        item the player cannot use)
 --   the item buttons     every window's Button Border rim (Kit:SkinActionButton:
 --                        the icon in its opening, the quality border kept on
 --                        the icon); the game's empty-slot square faded
@@ -82,7 +83,7 @@ local hooked = false
 
 -- what this module made or looked at, kept OFF the game's frames (weak keys)
 local done = setmetatable({}, { __mode = "k" })         -- [frame / region] = true: looked at once
-local cards = {}                                        -- { tex, source (the game's label plate), item, red }
+local cards = {}                                        -- { tex (the plain face, painted mainWindow), source (the game's label plate), item, red, redTex (the fixed-red face, made on first red) }
 local toolRims = {}                                     -- the repair / junk buttons' rim holders { melloRep, icon, button }
 local arrowReps = {}                                    -- the page arrows { rep, button }
 local tabReps = {}                                      -- the tabs' cards { rep, region } (kept hidden while the kit is off)
@@ -196,13 +197,33 @@ end
 -- the name's sublevel; the list box's panel is on a holder under the slot's
 -- frame), in the palette's main window tone -- a stripe a step lighter than
 -- the inner panel round it. The red is kept readable: while the game paints
--- the plate red, the card takes the palette's red (#4E1812, the selected
--- tab's), dark enough for the item's quality colour to read on it.
+-- the plate red, the card turns a dark red (#4E1812), dark enough for the
+-- item's quality colour to read on it. That red is a FIXED meaning colour,
+-- the same under every palette, as the game's own "can't use" red is (user,
+-- 2026-09-26: meaning colours stay fixed).
 --------------------------------------------------------------------------------
--- (by its palette key, Kit:Paint: a new palette paints it again; painting
--- the same card again reuses its entry)
+local CANNOT_USE = { 0.306, 0.094, 0.071 }   -- #4E1812, an item the player cannot use (meaning colour)
+
+-- The card's two faces over the slot's rect: the plain one painted by its
+-- palette key once (Kit:Paint: a new palette paints it again), the red one
+-- in the fixed red, made the first time the slot turns red. One of the two
+-- shows while the kit is on, none while it is off. (Two faces rather than
+-- one texture moved between Kit:Paint and Kit:Unpaint: a change between red
+-- and plain then costs nothing and leaves the Paint lists alone.)
 local function PaintCard(entry)
-	Kit:Paint(entry.tex, entry.red and "selectedTab" or "mainWindow", "fill", CARD_ALPHA)
+	local red = entry.red
+	local fixed = entry.redTex
+	if red and not fixed then
+		fixed = entry.item:CreateTexture(nil, "BACKGROUND", nil, -2)
+		fixed.kitPiece = true   -- ours: never faded as the game's art
+		fixed:SetAllPoints(entry.item)
+		fixed:SetColorTexture(CANNOT_USE[1], CANNOT_USE[2], CANNOT_USE[3], CARD_ALPHA)
+		entry.redTex = fixed
+	end
+	entry.tex:SetShown(active and not red)
+	if fixed then
+		fixed:SetShown(active and red)
+	end
 end
 
 -- red while the game's plate is clearly red: (1, 0, 0) or (0.5, 0, 0); the
@@ -232,7 +253,8 @@ local function SkinCard(item, plate)
 	local tex = item:CreateTexture(nil, "BACKGROUND", nil, -2)
 	tex.kitPiece = true   -- ours: never faded as the game's art
 	tex:SetAllPoints(item)
-	tex:SetShown(active)
+	Kit:Paint(tex, "mainWindow", "fill", CARD_ALPHA)
+	-- (shown or not by PaintCard, from ReadTint just below)
 	local entry = { tex = tex, source = plate, item = item, red = false }
 	cards[#cards + 1] = entry
 	ReadTint(entry)
@@ -878,7 +900,7 @@ local function Activate()
 		Kit:Fade(obj)
 	end
 	for _, entry in ipairs(cards) do
-		entry.tex:Show()
+		PaintCard(entry)
 	end
 	Refresh()
 end
@@ -897,7 +919,7 @@ local function Deactivate()
 		Kit:Unfade(obj)
 	end
 	for _, entry in ipairs(cards) do
-		entry.tex:Hide()
+		PaintCard(entry)   -- (off: both faces hidden)
 	end
 	-- the tabs' cards hidden for good while off, the divider with them (the
 	-- ring's onDisable put the portrait back, the title plate's the title's

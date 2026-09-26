@@ -22,7 +22,11 @@
 --   W.RowPlate(row, opts)              W.RowPlateOff(row), W.RowPlateChild(row, child)
 --   W.Row(parent, y, height, label, hint, desc, opts) and the typed rows
 --     W.ToggleRow / SliderRow / DropdownRow / ButtonRow, W.Gate, W.ClipRow
---   W.Card(parent, spec, skin)         a choice card (the installer's setups)
+--   W.Card(parent, spec, skin)         a choice card (the installer's setups;
+--                                      spec.palette: a palette's card)
+--   W.PaletteSwatch(parent, spec)      a palette shown by its colours, and
+--     W.PaletteValues(), W.PaletteName(id), W.PaletteFill(tex, id, role):
+--     the one palette picker's parts
 --   W.Dress(root, skin, depth)         the kit's control sweep over a root
 --   W.NavRail(parent, spec)            a side list / a steps rail
 --   W.Pager(parent, opts)              pages that cross-fade in one scroll
@@ -35,7 +39,9 @@
 -- is on, else at its first switch on), hands skin.replace / skin.skin to the
 -- kit's helpers, and takes the region to replace, where a widget has none,
 -- from skin:Anchor(parent, layer) -- this file makes no invisible anchor and
--- holds no numeric colour. Colours go only through W.Paint, sounds only
+-- holds no numeric colour. Colours go only through W.Paint (a picture of
+-- ANOTHER palette -- W.PaletteFill: a swatch's chips -- reads that palette's
+-- own colours from Core's registry, as a card's picture reads its file), sounds only
 -- through MelloUI:PlayUISound, motion only through MelloUI.Anim (Reduce Motion
 -- honoured by every helper). Kit and Fonts load after this file (the TOC):
 -- nothing of theirs is bound here, everything is looked up when a builder
@@ -1328,9 +1334,14 @@ end
 --         path) with pictureHeight (40), titleFont ("GameFontNormal"),
 --         textFont ("GameFontHighlight"), key (the caller's value: card.key),
 --         onClick (a shared fn(card): the caller's pick; the card plays the
---         "tab" sound itself)
+--         "tab" sound itself), palette (a palette's id: a palette's card --
+--         that palette's swatch where a picture goes, pictureHeight 12 high,
+--         the palette's name for a title not given, the id for a key not
+--         given, the texts 8 px in from the sides, as the swatch; the
+--         installer's Look step)
 --   card:SetSelected(on)   card:IsSelected()   card:SetTexts(title, text)
---   card.title, card.text, card.picture, card.tag (the plate's FontString)
+--   card.title, card.text, card.picture, card.tag (the plate's FontString),
+--   card.swatch (a palette's card)
 -- A frame of the caller's laid on a card that takes the mouse is handed to
 -- W.RowPlateChild(card, frame). `skin` keeps the widget set's signature: the
 -- approved card is the palette look in both looks, so the kit dresses none of
@@ -1393,16 +1404,26 @@ local CARD_PLATE = { look = "palette", edge = true, selected = CardSelected }
 function W.Card(parent, spec, skin)
 	spec = spec or NO_OPTS
 	local card = CreateFrame("Button", nil, parent)
-	card:SetSize(spec.width or 279, spec.height or 72)
-	card.key, card.melloClick = spec.key, spec.onClick
+	local width = spec.width or 279
+	card:SetSize(width, spec.height or 72)
+	local palette = spec.palette
+	card.key, card.melloClick = spec.key == nil and palette or spec.key, spec.onClick
 	card.fill = card:CreateTexture(nil, "BACKGROUND", nil, 0)
 	card.fill:SetAllPoints(card)
 	card.edges = {}
 	for i = 1, 4 do
 		card.edges[i] = card:CreateTexture(nil, "BORDER")
 	end
-	local top = -10
-	if spec.picture then
+	local top, inset = -10, 12
+	if palette then
+		-- a palette's card: its swatch (a picture of that palette) where a
+		-- picture goes, its name under it at the swatch's own 8 px sides (a
+		-- small card: "Royal Azure Vibrant" needs 116 of a 136 card's 120)
+		local h = spec.pictureHeight or 12
+		card.swatch = W.PaletteSwatch(card, { id = palette, width = width - 16, height = h })
+		card.swatch:SetPoint("TOPLEFT", card, "TOPLEFT", 8, -8)
+		top, inset = -8 - h - 4, 8
+	elseif spec.picture then
 		local h = spec.pictureHeight or 40
 		card.picture = card:CreateTexture(nil, "ARTWORK")
 		card.picture:SetTexture(spec.picture)
@@ -1411,9 +1432,9 @@ function W.Card(parent, spec, skin)
 		card.picture:SetHeight(h)
 		top = -8 - h - 6
 	end
-	card.title = W.Text(card, spec.titleFont or "GameFontNormal", spec.title)
+	card.title = W.Text(card, spec.titleFont or "GameFontNormal", spec.title or (palette and W.PaletteName(palette)))
 	card.title:SetWordWrap(false)
-	card.title:SetPoint("TOPLEFT", card, "TOPLEFT", 12, top)
+	card.title:SetPoint("TOPLEFT", card, "TOPLEFT", inset, top)
 	if spec.tag then
 		-- the plate: selectedTab behind a short gold word, laid on the word
 		-- itself (no width to measure)
@@ -1427,17 +1448,125 @@ function W.Card(parent, spec, skin)
 		card.tagPlate = plate
 		card.title:SetPoint("RIGHT", plate, "LEFT", -8, 0)
 	else
-		card.title:SetPoint("RIGHT", card, "RIGHT", -12, 0)
+		card.title:SetPoint("RIGHT", card, "RIGHT", -inset, 0)
 	end
 	card.text = W.Text(card, spec.textFont or "GameFontHighlight", spec.text, "text")
 	card.text:SetPoint("TOPLEFT", card.title, "BOTTOMLEFT", 0, -5)
-	card.text:SetPoint("RIGHT", card, "RIGHT", -12, 0)
+	card.text:SetPoint("RIGHT", card, "RIGHT", -inset, 0)
 	card.text:SetWordWrap(true)
 	card.SetSelected, card.IsSelected, card.SetTexts = Card_SetSelected, Card_IsSelected, Card_SetTexts
 	W.RowPlate(card, CARD_PLATE)
 	Perf.SetScript(card, "OnClick", CardClick)
 	card:SetSelected(false)
 	return card
+end
+
+--------------------------------------------------------------------------------
+-- Palettes (0.14.0, user 2026-09-26: "A palette picker"): ONE set of parts
+-- for every place a palette is chosen -- the configurator's Home row, the
+-- installer's Look step, Dynamic UI's row -- over Core's registry
+-- (MelloUI.Palettes, MelloUI:PaletteId, MelloUI:SetPalette, which applies it).
+--   W.PaletteSwatch(parent, spec) -> swatch   a frame: a strip of chips, one
+--       per role of W.SWATCH_ROLES left to right, inside a 1 px `border`
+--       edge (swatch.back, painted by key: it follows a switch)
+--     spec: width (60), height (14), id (a palette's id: a PICTURE of that
+--       palette, its own colours, which no switch repaints -- the installer's
+--       cards, a list of palettes; nil: the palette in use, its chips painted
+--       by key, so a switch paints them again -- the Home row)
+--     swatch:SetPalette(id)   a picture shows another palette (nil or an
+--       unknown id: Ember); the palette in use's swatch is left as it is
+--     swatch.chips, swatch.back, swatch.id (nil: the palette in use)
+--   W.PaletteValues() -> values   the palettes in their order as a
+--       dropdown's values ({ value = id, label = name, tooltip = blurb }),
+--       made the first time it is asked for, the same table after
+--   W.PaletteName(id) -> name     (Ember's for nil or an unknown id)
+--   W.PaletteFill(texture, id, role)   a texture in that palette's colour
+--       for `role`: a picture, never repainted (a swatch's chips; the
+--       installer's picture of a drafted look)
+--   W.Card(parent, { palette = id, ... }, skin)   a palette's card (Card)
+-- Nothing is made at load; a swatch makes its textures once, and showing
+-- another palette makes nothing.
+--------------------------------------------------------------------------------
+
+W.SWATCH_ROLES = { "mainWindow", "selectedTab", "trim", "selectedTrim", "text" }
+
+-- a palette's entry in Core's registry (Ember's for nil or an unknown id)
+local function PaletteEntry(id)
+	local palettes = MelloUI.Palettes
+	local entry = type(id) == "string" and id ~= "order" and palettes[id]
+	if type(entry) ~= "table" then
+		entry = palettes.ember
+	end
+	return entry
+end
+
+function W.PaletteName(id)
+	return PaletteEntry(id).name
+end
+
+-- a texture in one role's colour of a NAMED palette (a picture of that
+-- palette -- a swatch's chip, a picture of a drafted look -- which no switch
+-- repaints; nil or an unknown id: Ember). Never on a region painted by key.
+function W.PaletteFill(region, id, role)
+	local c = PaletteEntry(id).roles[role]
+	region:SetColorTexture(c[1], c[2], c[3], 1)
+end
+
+do
+	local values = nil
+	function W.PaletteValues()
+		if not values then
+			values = {}
+			for i, id in ipairs(MelloUI.Palettes.order) do
+				local entry = MelloUI.Palettes[id]
+				values[i] = { value = id, label = entry.name, tooltip = entry.blurb }
+			end
+		end
+		return values
+	end
+end
+
+local function Swatch_SetPalette(swatch, id)
+	if swatch.id == nil then
+		return   -- (the palette in use: its chips are painted by key)
+	end
+	local entry = PaletteEntry(id)
+	swatch.id = entry.id
+	local chips = swatch.chips
+	for i = 1, #chips do
+		W.PaletteFill(chips[i], entry.id, W.SWATCH_ROLES[i])
+	end
+end
+
+function W.PaletteSwatch(parent, spec)
+	spec = spec or NO_OPTS
+	local width, height = spec.width or 60, spec.height or 14
+	local swatch = CreateFrame("Frame", nil, parent)
+	swatch:SetSize(width, height)
+	local roles = W.SWATCH_ROLES
+	local n = #roles
+	local w = (width - 2) / n
+	-- the edge: the swatch's ground in `border`, the chips 1 px inside it
+	-- (one texture, not four: a Look step lays seven swatches)
+	swatch.back = swatch:CreateTexture(nil, "BACKGROUND")
+	swatch.back:SetAllPoints(swatch)
+	W.Paint(swatch.back, "border", "fill", 1)
+	swatch.chips = {}
+	for i = 1, n do
+		local chip = swatch:CreateTexture(nil, "ARTWORK")
+		chip:SetPoint("TOPLEFT", swatch, "TOPLEFT", 1 + (i - 1) * w, -1)
+		chip:SetSize(w, height - 2)
+		swatch.chips[i] = chip
+		if spec.id == nil then
+			W.Paint(chip, roles[i], "fill", 1)
+		end
+	end
+	swatch.SetPalette = Swatch_SetPalette
+	if spec.id ~= nil then
+		swatch.id = false   -- (a picture: SetPalette fills it)
+		swatch:SetPalette(spec.id)
+	end
+	return swatch
 end
 
 --------------------------------------------------------------------------------

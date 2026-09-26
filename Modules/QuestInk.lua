@@ -601,19 +601,9 @@ end
 local Secret = MelloUI.Safe.IsSecret
 
 -- obj's rect in screen space (its scale applied): left, bottom, right, top;
--- nil while it is not laid out (or secret)
-local function ScreenRect(obj)
-	local ok, l, b, w, h = pcall(obj.GetRect, obj)
-	if not (ok and l and b and w and h) or Secret(l) or Secret(b) or Secret(w) or Secret(h) then
-		return nil
-	end
-	local s = obj:GetEffectiveScale()
-	l, b, w, h = l * s, b * s, w * s, h * s
-	if l ~= l or b ~= b or w ~= w or h ~= h then
-		return nil   -- (not a number: no cell of the grid holds it)
-	end
-	return l, b, l + w, b + h
-end
+-- nil while it is not laid out, secret or not a number (no cell of the grid
+-- holds it). The addon's one reader (MelloUI.Safe.ScreenRect, Core.lua)
+local ScreenRect = MelloUI.Safe.ScreenRect
 
 -- a string's centre in screen space (nil while it is not laid out), the
 -- last string's kept for its stamp (the skip and the sheet ask alike)

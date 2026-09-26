@@ -86,7 +86,10 @@ end
 
 -- The health bar set in by the bracket's arms from the anchors the game
 -- just gave it (UpdateAnchors runs on every acquire and option change, in
--- combat too — it is not a protected frame).
+-- combat too — it is not a protected frame). The game's anchors are kept in
+-- one list per bar (melloPoints: made on the first layout, its rows filled
+-- again on each one; points.n of them are the game's now), so the game's
+-- every layout of a plate costs no garbage (0.14.0, backlog B11).
 local function InsetHealthBar(hb, rep)
 	-- once per game layout: melloInset holds the game's anchors until the
 	-- game's next UpdateAnchors clears it (a second pass inset the bar twice)
@@ -97,26 +100,37 @@ local function InsetHealthBar(hb, rep)
 	if not okN or Secret(n) or not n or n == 0 then
 		return
 	end
-	local points = {}
+	local points = hb.melloPoints
+	if not points then
+		points = { n = 0 }
+		hb.melloPoints = points
+	end
 	for i = 1, n do
 		local ok, point, rel, relPoint, x, y = pcall(hb.GetPoint, hb, i)
 		if not ok or Secret(point) or Secret(x) or Secret(y) or not point then
 			return
 		end
-		points[i] = { point, rel, relPoint, x or 0, y or 0 }
+		local pt = points[i]
+		if not pt then
+			pt = {}
+			points[i] = pt
+		end
+		pt[1], pt[2], pt[3], pt[4], pt[5] = point, rel, relPoint, x or 0, y or 0
 	end
+	points.n = n
 	hb.melloInset = points
 	local armL, armR = rep:GetArms()
 	hb.melloInsetting = true
 	hb:ClearAllPoints()
-	for _, pt in ipairs(points) do
-		local point, rel, relPoint, x, y = unpack(pt)
+	for i = 1, n do
+		local pt = points[i]
+		local point, x = pt[1], pt[4]
 		if point:find("LEFT") then
 			x = x + armL
 		elseif point:find("RIGHT") then
 			x = x - armR
 		end
-		hb:SetPoint(point, rel, relPoint, x, y)
+		hb:SetPoint(point, pt[2], pt[3], x, pt[5])
 	end
 	hb.melloInsetting = nil
 end
@@ -216,7 +230,8 @@ end
 -- faster than the bar with each nameplate size, so the orb dwarfed the bar
 -- on the large sizes. Sized from the bracket's own height (a plain number,
 -- where a plate's frames read secret), across any scale between the bar and
--- the level frame; again on each of the game's layouts.
+-- the level frame; again on each of the game's layouts (each scale read on
+-- its own pcall, no closure: no garbage per layout, backlog B11).
 local function FitLevelOrb(uf)
 	local orb, bracket = uf.melloLevelOrb, uf.melloBracket
 	local strip = bracket and bracket.strip
@@ -226,10 +241,13 @@ local function FitLevelOrb(uf)
 		return
 	end
 	local ratio = 1
-	local ok, sb, so = pcall(function()
-		return strip:GetEffectiveScale(), tex:GetParent():GetEffectiveScale()
-	end)
-	if ok and type(sb) == "number" and type(so) == "number" and not Secret(sb) and not Secret(so) and so > 0 then
+	local okB, sb = pcall(strip.GetEffectiveScale, strip)
+	local okP, parent = pcall(tex.GetParent, tex)
+	local okO, so = false, nil
+	if okP and type(parent) == "table" then
+		okO, so = pcall(parent.GetEffectiveScale, parent)
+	end
+	if okB and okO and not Secret(sb) and not Secret(so) and type(sb) == "number" and type(so) == "number" and so > 0 then
 		ratio = sb / so
 	end
 	tex:SetSize(h * ratio, h * ratio)
@@ -618,19 +636,22 @@ local function SkinUnitFrame(uf)
 			local sel = hb.selectedBorder
 			if sel then
 				Replace(sel, { as = "UI-HUD-Nameplates-Selected" })
+				-- (run on every Show / Hide / SetShown of every plate's highlight:
+				-- the three pieces coloured directly, no list made per call;
+				-- a shown state that reads secret counts as not shown)
 				local function Shine()
 					local strip = rep.strip
 					if not strip then
 						return
 					end
-					local on = active and sel:IsShown()
+					local shown = sel:IsShown()
 					local r, g, b = 1, 1, 1
-					if on then
+					if active and not Secret(shown) and shown then
 						r, g, b = 1, 0.5, 0   -- the full orange-gold the iron can take (user, 2026-09-21: "increase it more", twice)
 					end
-					for _, tex in ipairs({ strip.capL, strip.mid, strip.capR }) do
-						tex:SetVertexColor(r, g, b)
-					end
+					strip.capL:SetVertexColor(r, g, b)
+					strip.mid:SetVertexColor(r, g, b)
+					strip.capR:SetVertexColor(r, g, b)
 				end
 				hooksecurefunc(sel, "Show", Shine)
 				hooksecurefunc(sel, "Hide", Shine)
@@ -648,9 +669,9 @@ local function SkinUnitFrame(uf)
 					end
 					local strip = rep.strip
 					if strip then
-						for _, tex in ipairs({ strip.capL, strip.mid, strip.capR }) do
-							tex:SetVertexColor(1, 1, 1)
-						end
+						strip.capL:SetVertexColor(1, 1, 1)
+						strip.mid:SetVertexColor(1, 1, 1)
+						strip.capR:SetVertexColor(1, 1, 1)
 					end
 				end
 			end
@@ -685,13 +706,15 @@ local function SkinUnitFrame(uf)
 				uf.melloBracketLeft = nil
 				UncentreName(uf)
 				SyncBand(uf)
+				-- the game's anchors back (the first points.n rows of the bar's list)
 				local points = hb.melloInset
 				if points then
 					hb.melloInset = nil
 					hb.melloInsetting = true
 					hb:ClearAllPoints()
-					for _, pt in ipairs(points) do
-						hb:SetPoint(unpack(pt, 1, 5))
+					for i = 1, points.n do
+						local pt = points[i]
+						hb:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5])
 					end
 					hb.melloInsetting = nil
 				end

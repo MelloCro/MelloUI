@@ -29,7 +29,17 @@
 --   MelloUI.Anim:CrossFade(old, new, opts)    one frame for another (pages,
 --                                             tabs, steps; below)
 --   MelloUI.Anim:Glide(target, opts) -> g     the one smooth scroll (below)
---   MelloUI.Anim:Pulse(region, from, to, period) -> group   a looping glow
+--   MelloUI.Anim:Pulse(region, from, to, period[, still][, hold]) -> group
+--                                             a looping glow; with a hold it
+--                                             pulses that long, then stays
+--                                             still (below)
+--   MelloUI.Anim:Expand(regions, from, opts) / :Collapse(regions, from, opts)
+--                                             the soft expand: regions ease
+--                                             out of one point and back in
+--                                             (below; :Retract, :IsExpanded)
+--   MelloUI.Anim:Mirror(frame, fadeIn, hold, fadeOut, smoothing) -> group
+--   MelloUI.Anim:StopMirror(frame)            a fade the game runs on a line,
+--                                             copied onto our frame (below)
 --   MelloUI.Anim:Busy() -> tweens, glides     what runs (tests, /melloperf)
 --   MelloUI.Anim:PlayGroup(group, settle)
 --       plays an AnimationGroup (one already playing goes on: Stop it first
@@ -47,8 +57,9 @@
 -- A new tween on the same frame and prop replaces the running one, from the
 -- value it had reached, so a window opened twice in a row never jumps.
 -- Anim.reduceMotion (read it, set it through SetReduceMotion) makes every
--- tween finish at once and every group end at once. UI Modifications' Reduce
--- Motion switch sets it, whether that module is on or off.
+-- tween finish at once and every group end at once (the one exception is
+-- Mirror, which follows a fade the game runs anyway). UI Modifications'
+-- Reduce Motion switch sets it, whether that module is on or off.
 -- Nothing here writes a field onto the frames it moves: the running tweens
 -- live in the engine's own table. Nothing is made per move once warm: the
 -- tween tables are reused (configurator build, 2026-09-25).
@@ -720,6 +731,11 @@ end
 -- [group] = settle or true, for each group played through PlayGroup: when
 -- Reduce Motion comes on, the ones still playing end at once; when it goes
 -- off, the looping ones play again. Weak keys: being here keeps none alive.
+-- A stopped group is false, not nil: its key stays, so playing it again
+-- after a collection finds it (a nil-valued key is marked dead by the
+-- collection and inserted anew, which rehashes the table when its slot was
+-- taken by a colliding key: work, though no garbage, as the old node array
+-- is freed at once)
 local groups = setmetatable({}, { __mode = "k" })
 
 local function Target(anim, group)
@@ -774,7 +790,7 @@ end
 
 function Anim:StopGroup(group)
 	if group then
-		groups[group] = nil
+		groups[group] = false
 		group:Stop()
 	end
 end
@@ -785,9 +801,27 @@ end
 -- through PlayGroup (under Reduce Motion a still picture at `to`). Asked
 -- again, it plays the region's group again. Returns the group: StopGroup it
 -- as any other (a stopped one stays stopped through a Reduce Motion switch).
---   MelloUI.Anim:Pulse(region, from (0.45), to (1), period (0.9 s))
+--   MelloUI.Anim:Pulse(region, from (0.45), to (1), period (0.9 s)[, still][, hold])
+--     still   the alpha it rests at when still: under Reduce Motion, and
+--             after a hold (left out: the `to` given in the same ask, else
+--             the one it had)
+--     hold    left out (nil or false): it pulses for as long as it plays
+--             (the BOUNCE group above). Seconds: it breathes about that long
+--             (whole breaths, eased in and out), then eases down to `still`
+--             and stays there, its group ended (0.14.0, the round glow's
+--             Settle: the user's
+--             "pulse for about 10 s, then a steady glow"). That is a second
+--             group of the region's own, made on the first ask with a hold;
+--             asked again it starts again from its first breath, with the
+--             from, to and period given (their defaults when left out).
+--   Asking for one kind stops the other. The looping group takes the values
+--   given again (one left out keeps its own). Nothing is made per ask once
+--   the region's groups are made.
 local pulseOf = setmetatable({}, { __mode = "k" })   -- [region] = group
 local pulseTo = setmetatable({}, { __mode = "k" })   -- [group] = its still alpha
+local breathOf = setmetatable({}, { __mode = "k" })  -- [region] = its breathing group (a hold)
+local breathParts = setmetatable({}, { __mode = "k" })   -- [breathing group] = its Alpha animations, in order
+local MAX_BREATHS = 8
 
 local function PulseStill(group)
 	local region = group:GetParent()
@@ -796,7 +830,72 @@ local function PulseStill(group)
 	end
 end
 
-function Anim:Pulse(region, from, to, period)
+-- the breathing group's animations for a hold: up and down in turn, the
+-- last one down to `still` (FinalAlpha leaves the region there). Ones made
+-- for a longer hold asked before come last, empty, at `still`.
+local function Breaths(group, from, to, period, still, hold)
+	local list = breathParts[group]
+	local n = math.floor(hold / (2 * period) + 0.5)
+	if n < 1 then
+		n = 1
+	elseif n > MAX_BREATHS then
+		n = MAX_BREATHS
+	end
+	local need = 2 * n
+	for i = #list + 1, need do
+		local a = group:CreateAnimation("Alpha")
+		a:SetSmoothing("IN_OUT")
+		list[i] = a
+	end
+	for i = 1, #list do
+		local a = list[i]
+		a:SetOrder(i)
+		if i > need then
+			a:SetFromAlpha(still)
+			a:SetToAlpha(still)
+			a:SetDuration(0)
+		elseif i % 2 == 1 then
+			a:SetFromAlpha(from)
+			a:SetToAlpha(to)
+			a:SetDuration(period)
+		else
+			a:SetFromAlpha(to)
+			a:SetToAlpha(i == need and still or from)
+			a:SetDuration(period)
+		end
+	end
+end
+
+-- a number to use: a plain one above 0, else the default
+local function Positive(v, default)
+	if type(v) ~= "number" or Secret(v) or v <= 0 then
+		return default
+	end
+	return v
+end
+
+function Anim:Pulse(region, from, to, period, still, hold)
+	if hold then
+		hold = Positive(hold, 0.9)
+		from, to, period = from or 0.45, to or 1, Positive(period, 0.9)
+		still = still or to
+		local group = breathOf[region]
+		if not group then
+			group = region:CreateAnimationGroup()
+			group:SetToFinalAlpha(true)
+			breathParts[group] = {}
+			breathOf[region] = group
+		end
+		local loop = pulseOf[region]
+		if loop then
+			self:StopGroup(loop)
+		end
+		group:Stop()
+		Breaths(group, from, to, period, still, hold)
+		pulseTo[group] = still
+		self:PlayGroup(group)   -- under Reduce Motion: stopped at once at `still`
+		return group
+	end
 	local group = pulseOf[region]
 	if not group then
 		group = region:CreateAnimationGroup()
@@ -805,11 +904,413 @@ function Anim:Pulse(region, from, to, period)
 		a:SetFromAlpha(from or 0.45)
 		a:SetToAlpha(to or 1)
 		a:SetDuration(period or 0.9)
-		pulseTo[group] = to or 1
+		pulseTo[group] = still or to or 1
 		pulseOf[region] = group
+	elseif from or to or period or still then
+		local a = group:GetAnimations()
+		if from then
+			a:SetFromAlpha(from)
+		end
+		if to then
+			a:SetToAlpha(to)
+		end
+		if period then
+			a:SetDuration(period)
+		end
+		if still then
+			pulseTo[group] = still
+		elseif to then
+			pulseTo[group] = to   -- (still left out: the new `to`)
+		end
+	end
+	local breath = breathOf[region]
+	if breath then
+		self:StopGroup(breath)
 	end
 	self:PlayGroup(group, PulseStill)
 	return group
+end
+
+--------------------------------------------------------------------------------
+-- The soft expand (0.14.0, the Reminder widget's hover: the user, 2026-09-26:
+-- "when hovering over the Widget, the expanding of other unread
+-- notifications is animated, with a soft expanding animation"). A few
+-- regions ease out of one point to their places while fading in, and ease
+-- back in again, run by the engine: no Lua per frame and no timer.
+--   MelloUI.Anim:Expand(regions, from, opts)
+--   MelloUI.Anim:Collapse(regions, from, opts)
+--     regions  a list of OUR regions (kept by the caller: no table per
+--              call), each laid where it rests by its FIRST anchor on
+--              `from` (CENTER on from's CENTER at (0, 40 * i), say): it
+--              comes out of that anchor's point on `from` and goes back
+--              into it. One whose first anchor is not on `from`, or cannot
+--              be read, only fades. Not protected: a secure button, or a
+--              frame one sits on, cannot be shown or hidden in combat (see
+--              "In combat" below)
+--     from     the region they come out of (the widget's button)
+--     opts     optional, one table per caller, its fields read per call:
+--              count    how many of `regions` take part (default #regions)
+--              time     the way out, Expand's (0.22 s)
+--              backTime the way back in, Collapse's (0.16 s)
+--              stagger  from one region to the next (0.03 s; the way in
+--                       takes them last first)
+--              travel   the share of the way they slide (1: from the point
+--                       itself; 0: a fade only)
+--              grace    the wait before they go in (0.35 s), so the mouse
+--                       can travel onto one: an Expand meanwhile keeps them
+--                       out
+-- Expand: each hidden region is shown and eased out; one on its way in is
+-- called back (at its place at full at once); one out, or on its way out,
+-- is left as it is. Collapse: after the grace each shown region eases back
+-- in and fades, then hides (its alpha back to 1); one still on its way out
+-- goes in once it is out. Reduce Motion (as it is when asked): Expand shows
+-- them at their places at once, Collapse hides them at once when the grace
+-- is over (the grace is no motion: the mouse still needs it).
+--   MelloUI.Anim:Retract(regions[, opts])   all in and hidden at once (no
+--       motion, no grace: the widget hidden in combat, say)
+--   MelloUI.Anim:IsExpanded(region)         shown and not going in
+-- In combat: a protected region (asked with IsProtected, a secret answer
+-- counting as protected) is never shown or hidden here while the lockdown
+-- lasts (the game would block it): Expand leaves it hidden, Collapse and
+-- Retract leave it out at its place at full, and a way in whose end comes
+-- in combat stops there, out at full. So Retract them at
+-- PLAYER_REGEN_DISABLED (it fires before the lockdown) and Collapse again
+-- after it; better, keep secure buttons out of `regions`.
+-- Per region two AnimationGroups, made on its first Expand and reused (their
+-- offsets and times set again per call): nothing is made per hover. They
+-- are played directly, not through PlayGroup, so each end is sure to come:
+-- the only Lua that runs is that end (one call per region and move).
+--------------------------------------------------------------------------------
+
+do
+	local outOf = setmetatable({}, { __mode = "k" })    -- [region] = its way-out group
+	local inOf = setmetatable({}, { __mode = "k" })     -- [region] = its way-in group
+	local partsOf = setmetatable({}, { __mode = "k" })  -- [group] = { jump, slide, fade }
+	local goIn = setmetatable({}, { __mode = "k" })     -- [region] = true: in once it is out (false, never nil: no dead key to rehash)
+	local ExpandDone, CollapseDone   -- the groups' one end each, made with the first group
+
+	-- a protected region (a secure button, or a frame one sits on): in the
+	-- combat lockdown the game will not let us show or hide it. Asked only
+	-- in combat (`InCombatLockdown() and Protected(region)`), so out of it no
+	-- Lua runs for this; a secret answer counts as protected
+	local function Protected(region)
+		local isProtected = region.IsProtected
+		if type(isProtected) ~= "function" then
+			return false
+		end
+		local protected = isProtected(region)
+		return Secret(protected) or (protected and true or false)
+	end
+
+	local function OutDone(group)
+		local region = group:GetParent()
+		if region and goIn[region] then
+			goIn[region] = false
+			local back = inOf[region]
+			if back and not (InCombatLockdown() and Protected(region)) then
+				back:Play()
+			end
+		end
+	end
+
+	local function InDone(group)
+		local region = group:GetParent()
+		if region then
+			if not (InCombatLockdown() and Protected(region)) then
+				region:Hide()
+			end
+			region:SetAlpha(1)   -- (protected in combat: left out at its place, at full)
+		end
+	end
+
+	-- a region's group: a jump (where it starts, at once), a slide and a fade
+	local function Group(region, byRegion, done)
+		local group = byRegion[region]
+		if group then
+			return group
+		end
+		if not ExpandDone then
+			ExpandDone = Perf.Shared("OnFinished of a soft expand (a pending way in)", OutDone, "script")
+			CollapseDone = Perf.Shared("OnFinished of a soft collapse (hides its region)", InDone, "script")
+		end
+		group = region:CreateAnimationGroup()
+		local jump = group:CreateAnimation("Translation")
+		jump:SetOrder(1)
+		jump:SetDuration(0)
+		local slide = group:CreateAnimation("Translation")
+		slide:SetOrder(1)
+		local fade = group:CreateAnimation("Alpha")
+		fade:SetOrder(1)
+		group:SetToFinalAlpha(true)
+		Perf.SetScript(group, "OnFinished", done == "out" and ExpandDone or CollapseDone)
+		partsOf[group] = { jump, slide, fade }
+		byRegion[region] = group
+		return group
+	end
+
+	-- the way from its place back to the point it comes out of: its first
+	-- anchor's offset on `from`, turned round (0, 0 for anything else)
+	local function Back(region, from, travel)
+		local ok, _, rel, _, x, y = pcall(region.GetPoint, region, 1)
+		if not ok or Secret(rel) or rel ~= from or Secret(x) or Secret(y)
+			or type(x) ~= "number" or type(y) ~= "number" then
+			return 0, 0
+		end
+		return -x * travel, -y * travel
+	end
+
+	-- a time from opts: a plain number from 0 up, else the default
+	local function Opt(opts, key, default)
+		local v = opts[key]
+		if type(v) ~= "number" or Secret(v) or v < 0 then
+			return default
+		end
+		return v
+	end
+
+	local function Travel(opts)
+		local t = opts.travel
+		if type(t) ~= "number" or Secret(t) then
+			return 1
+		end
+		return t < 0 and 0 or (t > 1 and 1 or t)
+	end
+
+	local function Count(regions, opts)
+		local n = opts.count
+		if type(n) ~= "number" or Secret(n) or n > #regions then
+			return #regions
+		end
+		return n
+	end
+
+	function Anim:Expand(regions, from, opts)
+		if type(regions) ~= "table" then
+			return
+		end
+		opts = opts or NO_OPTS
+		local n = Count(regions, opts)
+		local time, stagger = Opt(opts, "time", 0.22), Opt(opts, "stagger", 0.03)
+		local travel = Travel(opts)
+		local combat = InCombatLockdown()
+		for i = 1, n do
+			local region = regions[i]
+			if region then
+				goIn[region] = false
+				local back = inOf[region]
+				if back and back:IsPlaying() then
+					-- on its way in (or waiting to go): called back, at its place at full
+					back:Stop()
+					region:SetAlpha(1)
+				elseif not region:IsShown() and not (combat and Protected(region)) then
+					if self.reduceMotion then
+						region:SetAlpha(1)
+						region:Show()
+					else
+						local group = Group(region, outOf, "out")
+						local parts = partsOf[group]
+						local dx, dy = Back(region, from, travel)
+						local delay = (i - 1) * stagger
+						parts[1]:SetOffset(dx, dy)
+						local slide, fade = parts[2], parts[3]
+						slide:SetOffset(-dx, -dy)
+						slide:SetDuration(time)
+						slide:SetStartDelay(delay)
+						slide:SetSmoothing("OUT")
+						fade:SetFromAlpha(0)
+						fade:SetToAlpha(1)
+						fade:SetDuration(time)
+						fade:SetStartDelay(delay)
+						fade:SetSmoothing("OUT")
+						group:Stop()
+						region:SetAlpha(0)
+						region:Show()
+						group:Play()
+					end
+				end
+			end
+		end
+	end
+
+	function Anim:Collapse(regions, from, opts)
+		if type(regions) ~= "table" then
+			return
+		end
+		opts = opts or NO_OPTS
+		local n = Count(regions, opts)
+		local time, stagger = Opt(opts, "backTime", 0.16), Opt(opts, "stagger", 0.03)
+		local grace, travel = Opt(opts, "grace", 0.35), Travel(opts)
+		local still = self.reduceMotion
+		if still then
+			stagger = 0   -- all at once when the grace is over
+		end
+		local combat = InCombatLockdown()
+		for i = 1, n do
+			local region = regions[i]
+			if region and region:IsShown() and not (combat and Protected(region)) then
+				local group = Group(region, inOf, "in")
+				if not group:IsPlaying() then
+					local parts = partsOf[group]
+					local dx, dy = 0, 0
+					if not still then
+						dx, dy = Back(region, from, travel)
+					end
+					local delay = grace + (n - i) * stagger
+					local length = still and 0 or time
+					parts[1]:SetOffset(0, 0)
+					local slide, fade = parts[2], parts[3]
+					slide:SetOffset(dx, dy)
+					slide:SetDuration(length)
+					slide:SetStartDelay(delay)
+					slide:SetSmoothing("IN")
+					fade:SetFromAlpha(1)
+					fade:SetToAlpha(0)
+					fade:SetDuration(length)
+					fade:SetStartDelay(delay)
+					fade:SetSmoothing("IN")
+					local out = outOf[region]
+					if out and out:IsPlaying() then
+						goIn[region] = true   -- once it is out (OutDone)
+					else
+						group:Play()
+					end
+				end
+			elseif region then
+				goIn[region] = false
+			end
+		end
+	end
+
+	-- is a region out (shown, not on its way in)? For the tests and a
+	-- caller's hover logic
+	function Anim:IsExpanded(region)
+		if not region or not region:IsShown() then
+			return false
+		end
+		local back = inOf[region]
+		return not (back and back:IsPlaying()) and not goIn[region]
+	end
+
+	-- all in at once, with no motion and no grace (the widget hidden in
+	-- combat, say): both groups stopped, each region hidden, its alpha back
+	-- to 1 (a protected one in combat: left out, at full). opts.count as for
+	-- Expand.
+	function Anim:Retract(regions, opts)
+		if type(regions) ~= "table" then
+			return
+		end
+		local n = Count(regions, opts or NO_OPTS)
+		local combat = InCombatLockdown()
+		for i = 1, n do
+			local region = regions[i]
+			if region then
+				goIn[region] = false
+				local group = outOf[region]
+				if group then
+					group:Stop()
+				end
+				group = inOf[region]
+				if group then
+					group:Stop()
+				end
+				if not (combat and Protected(region)) then
+					region:Hide()
+				end
+				region:SetAlpha(1)
+			end
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The mirror (0.14.0, the centre texts' shade): the game's own fade of a
+-- line, copied onto a frame of ours (the band under an error line or a raid
+-- warning, which the game fades per line, where a texture cannot follow).
+--   MelloUI.Anim:Mirror(frame, fadeIn, hold, fadeOut, smoothing) -> group
+--       shows the frame, then 0 -> 1 over fadeIn, held `hold`, 1 -> 0 over
+--       fadeOut (smoothing "NONE" (default), "IN", "OUT" or "IN_OUT"), then
+--       hides it (its alpha left at 0; the next Mirror starts it from 0).
+--       Asked again (a line whose fade the game started again) it starts
+--       again from the beginning with the times given. A time that is not a
+--       plain number (nil, secret, below 0) counts as 0. Engine-driven: one
+--       AnimationGroup per frame, made on its first Mirror, its times set
+--       again per call (no garbage); the only Lua is its end, which hides
+--       the frame. NOT stopped or shortened by Reduce Motion: it follows a
+--       fade the game runs anyway (the text keeps fading). Three Alpha
+--       animations in turn, none with a start delay: in, the hold (1 -> 1)
+--       and out, so an animation always sets the alpha while it plays and
+--       nothing rests on the frame's own alpha (0 after a Mirror ended).
+--   MelloUI.Anim:StopMirror(frame)   stops it and hides the frame
+--------------------------------------------------------------------------------
+
+do
+	local mirrorOf = setmetatable({}, { __mode = "k" })     -- [frame] = its group
+	local mirrorParts = setmetatable({}, { __mode = "k" })  -- [group] = { fadeIn, held, fadeOut }
+	local SMOOTHING = { NONE = true, IN = true, OUT = true, IN_OUT = true }
+	local MirrorDone   -- the groups' one end, made with the first
+
+	local function Hidden(group)
+		local frame = group:GetParent()
+		if frame then
+			frame:Hide()
+		end
+	end
+
+	local function Seconds(v)
+		if type(v) ~= "number" or Secret(v) or v < 0 then
+			return 0
+		end
+		return v
+	end
+
+	function Anim:Mirror(frame, fadeIn, hold, fadeOut, smoothing)
+		if type(frame) ~= "table" or not frame.CreateAnimationGroup then
+			return nil
+		end
+		local group = mirrorOf[frame]
+		if not group then
+			if not MirrorDone then
+				MirrorDone = Perf.Shared("OnFinished of a mirrored fade (hides its frame)", Hidden, "script")
+			end
+			group = frame:CreateAnimationGroup()
+			local a = group:CreateAnimation("Alpha")
+			a:SetOrder(1)
+			a:SetFromAlpha(0)
+			a:SetToAlpha(1)
+			local b = group:CreateAnimation("Alpha")
+			b:SetOrder(2)
+			b:SetFromAlpha(1)
+			b:SetToAlpha(1)
+			local c = group:CreateAnimation("Alpha")
+			c:SetOrder(3)
+			c:SetFromAlpha(1)
+			c:SetToAlpha(0)
+			group:SetToFinalAlpha(true)
+			Perf.SetScript(group, "OnFinished", MirrorDone)
+			mirrorParts[group] = { a, b, c }
+			mirrorOf[frame] = group
+		end
+		local parts = mirrorParts[group]
+		parts[1]:SetDuration(Seconds(fadeIn))
+		parts[2]:SetDuration(Seconds(hold))
+		local out = parts[3]
+		out:SetDuration(Seconds(fadeOut))
+		out:SetSmoothing(type(smoothing) == "string" and SMOOTHING[smoothing] and smoothing or "NONE")
+		group:Stop()
+		frame:Show()
+		group:Play()
+		return group
+	end
+
+	function Anim:StopMirror(frame)
+		local group = frame and mirrorOf[frame]
+		if group then
+			group:Stop()
+		end
+		if frame and frame.Hide then
+			frame:Hide()
+		end
+	end
 end
 
 -- The Reduce Motion switch. The running tweens end on the driver's next
@@ -838,9 +1339,11 @@ function Anim:SetReduceMotion(on)
 	self.reduceMotion = on
 	local base = sweepTop
 	local top = base
-	for group in pairs(groups) do
-		top = top + 1
-		sweep[top] = group
+	for group, listed in pairs(groups) do
+		if listed then   -- (false: stopped through StopGroup)
+			top = top + 1
+			sweep[top] = group
+		end
 	end
 	sweepTop = top
 	for i = base + 1, top do
@@ -849,7 +1352,7 @@ function Anim:SetReduceMotion(on)
 		-- still listed (a settle before it may have stopped it), with its
 		-- settle as it is now
 		local settle = groups[group]
-		if settle ~= nil and self.reduceMotion == on then
+		if settle and self.reduceMotion == on then
 			local ok, err = pcall(Switch, group, settle, on)
 			if not ok then
 				geterrorhandler()(err)

@@ -39,6 +39,8 @@
 --                                       (personal) and NEVER keys = cur's
 --   I:Draft(state, draft) -> state      a Fresh start draft laid on
 --   I:DefaultDraft([full]) -> draft     the wizard's controls at Full's values
+--   I:PaletteOf(option, draft) -> id    the palette the setup puts in (the
+--                                       Review step names it)
 --   I:TargetFor(option, draft, fit[, cur]) -> state
 --   I:EffectiveOn(state, module)        its running state under that state
 --   I:LayoutOn(option, draft, fit)      the fitted Edit Mode layout goes in
@@ -91,6 +93,9 @@
 --   I:Open([page]) -> shown; I:Busy() -> busy   the entry every caller
 --                                       shares, and the first-login check
 --                                       (the end of this file)
+--   I.TEXT.installed / I.TEXT.refitted  the chat line after Install (Fit to
+--                                       this screen: the layout was fitted,
+--                                       nothing "installed")
 -- The bus topic "installer" tells the window what happened:
 --   ("installed", optionKey, needsReload)   ("countdown", seconds, paused, why)
 --   ("kept", needsReload)                   ("reverted", reason, reloadOwed)
@@ -153,8 +158,21 @@ local ROLE = {
 -- and the border kinds' keys are found at call time: the registry and
 -- Kit.borderKinds), and the one preference Full and Fresh start carry.
 -- qol_<Module> follows that module's role; the rest is never set by a role.
-local U_LOOK = { reskin = true, questTrackerKit = true, preloadArt = true, fadeWindows = true, positions = true, autoSnap = true }
+-- The palette (0.14.0) is a look: Full experience and Reskin only put
+-- Full's in (Mello's own look), No reskin keeps the player's, Fresh start
+-- takes the Look step's card (the draft); the Review step names it.
+local U_LOOK = { reskin = true, questTrackerKit = true, preloadArt = true, fadeWindows = true, positions = true, autoSnap = true,
+	palette = true }
 local U_PREFERENCE = { nameFormat = true }
+
+-- a palette's id as Core reads the setting: one of MelloUI.Palettes, any
+-- other value Ember
+local function KnownPalette(id)
+	if type(id) ~= "string" or id == "order" or type(MelloUI.Palettes[id]) ~= "table" then
+		return "ember"
+	end
+	return id
+end
 
 -- keys no setup ever sets: the player's accessibility choice, a passing
 -- mode, the switch Tweaks lost (its one-time fold resets rows reading false)
@@ -293,6 +311,8 @@ I.TEXT = {
 	revertCombat = "Revert waits until you are out of combat; try again then.",   -- (the configurator's Revert...)
 	pausedEditMode = "Paused while Edit Mode is open.",
 	installed = "%s installed. Keep it, or MelloUI goes back to 'Before install' when the timer runs out.",
+	-- (Fit to this screen: nothing is installed, the layout is fitted)
+	refitted = "Your layout was fitted to this screen. Keep it, or MelloUI goes back to 'Before install' when the timer runs out.",
 	reverted = "Back to 'Before install'.",
 	failed = "Something went wrong while installing, so MelloUI went back to 'Before install'.",
 	failedStuck = "Something went wrong while installing. Use Revert to go back to 'Before install'.",
@@ -641,7 +661,7 @@ end
 -- steps), every feature off (the Features step), and Dark Mode as the
 -- player has it now (their own preference: no profile carries it; off for a
 -- new player)
-local DRAFT_UM = { reskin = true, kitColours = true, buttonBorder = true, qol_ClassIcons = true,
+local DRAFT_UM = { reskin = true, palette = true, kitColours = true, buttonBorder = true, qol_ClassIcons = true,
 	qol_Fonts = true, qol_Chat = true }
 local DRAFT_MAP = { "shape", "squareBorder", "servicesMerge" }
 function I:DefaultDraft(full)
@@ -682,6 +702,37 @@ function I:DefaultDraft(full)
 		d["DarkMode.shade"] = DeepCopy(MelloUI:GetModuleDB("DarkMode").shade)
 	end
 	return d
+end
+
+-- The palette a setup puts in (the Review step names it): Fresh start's
+-- Look step card (its draft), Full's own for a setup that takes Full's
+-- look (Full experience, Reskin only), else the one in use (No reskin and
+-- the refit keep the player's). An id of MelloUI.Palettes (an unknown one
+-- is Ember, as Core reads it). Full's is read from Full's text once: the
+-- shipped text never changes in a session.
+do
+	local NO_STATE = { modules = {}, enabled = {} }   -- (Full's alone: no player's keys laid over it)
+	local fullPalette = nil
+	local function FullPalette(self)
+		if fullPalette == nil then
+			local ok, t = pcall(self.TargetFromText, self, self:FullText(), NO_STATE)
+			local um = ok and type(t) == "table" and t.modules[UMB]
+			fullPalette = type(um) == "table" and um.palette or false
+		end
+		return fullPalette or nil
+	end
+
+	function I:PaletteOf(option, draft)
+		option = self:Option(option)
+		if not option then
+			return "ember"
+		elseif option.base == "fresh" then
+			return KnownPalette(type(draft) == "table" and draft[UMB .. ".palette"] or FullPalette(self))
+		elseif option.whole or (option.roles or EMPTY)[UKeyRole("palette")] == "full" then
+			return KnownPalette(FullPalette(self))
+		end
+		return MelloUI:PaletteId()
+	end
 end
 
 -- a draft's personal keys ("Module.key" the module keeps as the player's
@@ -1137,7 +1188,18 @@ end
 -- (its OnSettingChanged, the only caller of ApplyBorder / SetParchment, did
 -- not run): one call each, only when the value really changed. The Kit
 -- reads the umbrella's bound settings (its db, set in its OnEnable), which
--- a new player's never had: bound for the refresh only.
+-- a new player's never had: bound for the refresh only. The palette (0.14.0)
+-- written while it was off is switched here first, the settings bound
+-- (MelloUI:SetPalette: one walk over the kit's textures that reads the new
+-- Kit Colours too, 'border' then one 'palette'), so the Kit Colours are not
+-- walked again, the kit's own check when UI Modifications comes on finds
+-- its art in place, and the held 'setting' finds the palette there: one
+-- walk, one 'palette' for the whole apply. (With it on, the palette goes
+-- in from that 'setting' as the Batch ends, the Kit Colours with it.)
+local function PaletteMoves(umNow)
+	return KnownPalette(umNow.palette) ~= MelloUI:PaletteId()
+end
+
 local function LookRefresh(pending, umStart, log)
 	if next(pending) == nil then
 		return
@@ -1149,11 +1211,23 @@ local function LookRefresh(pending, umStart, log)
 	if um and bound == nil then
 		um.db = umNow
 	end
+	local palette = pending.palette and PaletteMoves(umNow)
+	pending.palette = nil
+	if palette then
+		local ok, err = pcall(MelloUI.SetPalette, MelloUI, umNow.palette)
+		if not ok then
+			Report(err)
+		end
+		log[#log + 1] = "palette"
+	end
 	for _, key in ipairs(SortedUnion(pending)) do
 		pending[key] = nil
 		if not Equal(umNow[key], umStart[key]) and type(Kit) == "table" then
 			local how, what = LookKind(key)
 			local ok, err = true, nil
+			if how == "border" and what == "colours" and palette then
+				how = nil   -- (the palette's switch walked them)
+			end
 			if how == "border" and Kit.ApplyBorder then
 				ok, err = pcall(Kit.ApplyBorder, Kit, what)
 			elseif how == "parchment" and Kit.SetParchment then
@@ -1229,7 +1303,7 @@ local function DoApply(self, target, exact, out)
 	local umModule = Module(UMB)
 	local function Set(name, key, value)
 		out.changed = out.changed + 1
-		if name == UMB and not (umModule and umModule.isEnabled) and LookKind(key) then
+		if name == UMB and not (umModule and umModule.isEnabled) and (LookKind(key) or key == "palette") then
 			lookPending[key] = true
 		end
 		MelloUI:NotifySettingChanged(name, key, DeepCopy(value))
@@ -1881,7 +1955,11 @@ function I:Install(option, draft, fit)
 	local changed, needsReload = out.changed, out.needsReload
 	-- 7. the answer the countdown waits for
 	rp.pending = { option = option.key, needsReload = needsReload and true or false, reloadedSince = false }
-	MelloUI:Print(TEXT.installed, option.title)
+	if option.refit then
+		MelloUI:Print(TEXT.refitted)
+	else
+		MelloUI:Print(TEXT.installed, option.title)
+	end
 	self:StartCountdown(KEEP_SECONDS)
 	MelloUI:Fire("installer", "installed", option.key, rp.pending.needsReload)
 	NoteCost("install", "Install", t0)   -- (the window's Keep page drawn on the Fire included)

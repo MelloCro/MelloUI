@@ -156,16 +156,20 @@ do
 	-- stored one when the palette offers it, else the choice read from the
 	-- same folder (a Bronze kept from Ember shows, under another palette, as
 	-- that palette's own kit); nil when none is (the configurator's label,
-	-- Dynamic UI's row and the installer read it here)
-	function Kit:ColourLookShown()
-		local value = self:BorderValue("colours")
-		local live = Kit.colourLooks
+	-- Dynamic UI's row and the installer read it here). With a palette id
+	-- and a Kit Colours value (the installer's draft), the same rule for
+	-- that pair instead of the stored one.
+	function Kit:ColourLookShown(paletteId, value)
+		if value == nil then
+			value = self:BorderValue("colours")
+		end
+		local live = paletteId == nil and Kit.colourLooks or self:ColourLooks(paletteId)
 		for _, look in ipairs(live) do
 			if look.value == value then
 				return look
 			end
 		end
-		local id = LOOK.PaletteId()
+		local id = paletteId == nil and LOOK.PaletteId() or Known(paletteId)
 		local _, folder = self:LookFolder(id, value)
 		for _, look in ipairs(live) do
 			local _, f = self:LookFolder(id, look.value)
@@ -425,6 +429,8 @@ end
 --            backdrop and its border are kept apart, so one frame has both
 --     alpha  the colour's alpha (1)
 --   Kit:PaletteKeyOf(colour) -> the role a palette colour table is, or nil
+--   Kit:Unpaint(region[, how])   the region out of the lists again (a flat
+--     fill that gave way to a kit piece: a new palette leaves the piece)
 -- 'palette' also goes out for a Kit Colours change (the topic's contract,
 -- Core.lua: after both are in place; a new palette is always a NEW table):
 -- while MelloUI.Palette is the table last painted from, nothing is painted.
@@ -498,6 +504,16 @@ do
 			paintedFrom = MelloUI.Palette
 			MelloUI:On("palette", OnPalette, "Kit palette")
 		end
+	end
+
+	-- a region that no longer shows a palette fill (a kit piece put on it
+	-- again): out of the lists, so a new palette leaves it as it is
+	function Kit:Unpaint(region, how)
+		if region == nil then
+			return
+		end
+		local list = lists[how or "fill"] or lists.main
+		list[region] = nil
 	end
 
 	function Kit:PaletteKeyOf(colour)
@@ -1100,6 +1116,10 @@ end
 --                (StripMixin:FitCaps); left out, it stays whole there (the
 --                nameplates' brackets, capless under a plate's secret width,
 --                keep their 0.13.7 cost)
+--         follow a frame the partner is shown and hidden with too (drawn
+--                by another frame, it no longer hides with the piece's
+--                own: a strip, a skin, a holder); its own flag, so a piece
+--                hidden by itself (a gem under a title plate) stays so
 --       The partner is flagged `kitPiece` and `kitPartner` (a region walker
 --       takes it for ours, never for the game's art) and never registered
 --       with Dark Mode or the Kit Colours (Kit:RegisterTexture): its colour
@@ -1123,11 +1143,17 @@ end
 --       filled (shade/square; shade/capsule, at a scale that makes the rect's
 --       height its two corners). opts: scale (UI units per painted px, rect's
 --       kitScale or Kit.scale), open (sides with no rail: "b" ..., no reach
---       there), follow (a frame whose Show / Hide the parts follow), and
---       colour, alpha, area, rep, mask as Kit:Shadow's (any number of nines
---       may follow one frame)
+--       there), skip (corners left out: "tl" ...; a gem corner that has a
+--       partner of its own), follow (a frame whose Show / Hide the parts
+--       follow), and colour, alpha, area, rep, mask as Kit:Shadow's (any
+--       number of nines may follow one frame)
 --   Kit:ShadowAreaSet(area, wanted[, alpha]) -> how many: every partner of
 --       an area at once
+--   Kit:ShadowMask(tex or nine, mask)   a mask of the partner's own frame
+--       put on it (and on a nine's parts, a mid's soft ends) after it was
+--       made: the ring's corner cut, made once the ring came
+--   Kit:ShadowShape(name) -> the sheet's entry for a piece or a synthetic
+--       shape, or nil (no shadow for it: nothing to make)
 --   Kit:ShadowRefit([soon])   every partner drawn by another frame fitted
 --       again where its frames' scales changed (a nine re-laid only then);
 --       soon: once on the next frame for any number of asks
@@ -1166,7 +1192,7 @@ do
 	local WEAK = { __mode = "k" }
 	local partners = setmetatable({}, WEAK)   -- every partner (a nine's parts too), for the repaint
 	local hosted = setmetatable({}, WEAK)     -- [piece or nine] = true: drawn by another frame (fitted again on a scale change)
-	local followers = setmetatable({}, WEAK)  -- [frame] = { the nines that follow it }
+	local followers = setmetatable({}, WEAK)  -- [frame] = { the nines and partners that follow it }
 	local areas = {}                          -- [area] = { [partner] = true } (weak)
 	local listening, scaleListening = false, false
 	local NINE_PARTS = { "tl", "tr", "bl", "br", "t", "b", "l", "r", "c" }   -- (the middle, c: a filled shape's only)
@@ -1211,7 +1237,7 @@ do
 	end
 
 	local function Sync(sh)
-		local on = (sh.kitWanted and sh.kitShape and sh.kitPieceShown and sh.kitRepOn ~= false) and true or false
+		local on = (sh.kitWanted and sh.kitShape and sh.kitPieceShown and sh.kitRepOn ~= false and sh.kitFollowShown ~= false) and true or false
 		sh:SetShown(on)
 		local l, r = sh.kitEndL, sh.kitEndR
 		if l then
@@ -1435,19 +1461,22 @@ do
 		local mR = type(m) == "table" and Num(m[3]) or pad[3] + c
 		local mB = type(m) == "table" and Num(m[4]) or pad[4] + c
 		local wide, tall = mL + mR < PW - 0.5, mT + mB < PH - 0.5
-		local open = nine.open
+		local open, skip = nine.open, nine.skip
 		local oL, oR = open:find("l", 1, true) ~= nil, open:find("r", 1, true) ~= nil
 		local oT, oB = open:find("t", 1, true) ~= nil, open:find("b", 1, true) ~= nil
+		-- (a corner left out: a gem corner with its own partner)
+		local sTL, sTR = skip:find("tl", 1, true) ~= nil, skip:find("tr", 1, true) ~= nil
+		local sBL, sBR = skip:find("bl", 1, true) ~= nil, skip:find("br", 1, true) ~= nil
 		-- the reach past the rect, and how far the corners and edges come in
 		local pL, pT, pR, pB = pad[1] * s, pad[2] * s, pad[3] * s, pad[4] * s
 		local iL, iT, iR, iB = (mL - pad[1]) * s, (mT - pad[2]) * s, (mR - pad[3]) * s, (mB - pad[4]) * s
 		local u0, u1, v0, v1 = uv[1], uv[2], uv[3], uv[4]
 		local uL, uR = u0 + mL / PW * (u1 - u0), u1 - mR / PW * (u1 - u0)
 		local vT, vB = v0 + mT / PH * (v1 - v0), v1 - mB / PH * (v1 - v0)
-		NinePart(nine.tl, not (oL or oT), e, rect, "TOPLEFT", "TOPLEFT", -pL, pT, "BOTTOMRIGHT", "TOPLEFT", iL, -iT, u0, uL, v0, vT)
-		NinePart(nine.tr, not (oR or oT), e, rect, "TOPRIGHT", "TOPRIGHT", pR, pT, "BOTTOMLEFT", "TOPRIGHT", -iR, -iT, uR, u1, v0, vT)
-		NinePart(nine.bl, not (oL or oB), e, rect, "BOTTOMLEFT", "BOTTOMLEFT", -pL, -pB, "TOPRIGHT", "BOTTOMLEFT", iL, iB, u0, uL, vB, v1)
-		NinePart(nine.br, not (oR or oB), e, rect, "BOTTOMRIGHT", "BOTTOMRIGHT", pR, -pB, "TOPLEFT", "BOTTOMRIGHT", -iR, iB, uR, u1, vB, v1)
+		NinePart(nine.tl, not (oL or oT or sTL), e, rect, "TOPLEFT", "TOPLEFT", -pL, pT, "BOTTOMRIGHT", "TOPLEFT", iL, -iT, u0, uL, v0, vT)
+		NinePart(nine.tr, not (oR or oT or sTR), e, rect, "TOPRIGHT", "TOPRIGHT", pR, pT, "BOTTOMLEFT", "TOPRIGHT", -iR, -iT, uR, u1, v0, vT)
+		NinePart(nine.bl, not (oL or oB or sBL), e, rect, "BOTTOMLEFT", "BOTTOMLEFT", -pL, -pB, "TOPRIGHT", "BOTTOMLEFT", iL, iB, u0, uL, vB, v1)
+		NinePart(nine.br, not (oR or oB or sBR), e, rect, "BOTTOMRIGHT", "BOTTOMRIGHT", pR, -pB, "TOPLEFT", "BOTTOMRIGHT", -iR, iB, uR, u1, vB, v1)
 		NinePart(nine.t, wide and not oT, e, rect, "TOPLEFT", "TOPLEFT", oL and 0 or iL, pT, "BOTTOMRIGHT", "TOPRIGHT", oR and 0 or -iR, -iT, uL, uR, v0, vT)
 		NinePart(nine.b, wide and not oB, e, rect, "BOTTOMLEFT", "BOTTOMLEFT", oL and 0 or iL, -pB, "TOPRIGHT", "BOTTOMRIGHT", oR and 0 or -iR, iB, uL, uR, vB, v1)
 		NinePart(nine.l, tall and not oL, e, rect, "TOPLEFT", "TOPLEFT", -pL, oT and 0 or -iT, "BOTTOMRIGHT", "BOTTOMLEFT", iL, oB and 0 or iB, u0, uL, vT, vB)
@@ -1494,31 +1523,59 @@ do
 		end
 	end)
 
-	-- a frame a nine follows shown or hidden: its parts with it
-	local function NineShown(nine, shown)
-		local parts = nine.kitParts
+	-- a frame a nine or a partner follows shown or hidden: its parts with it
+	-- (a partner's own flag: its piece's Show / Hide stays its own)
+	local function Followed(entry, shown)
+		local parts = entry.kitParts
+		if not parts then
+			entry.kitFollowShown = shown
+			Sync(entry)
+			return
+		end
 		for i = 1, #parts do
 			local sh = parts[i]
 			sh.kitPieceShown = shown
 			Sync(sh)
 		end
 	end
-	local FollowShow = Shared("OnShow on a frame a kit nine shadow follows", function(f)
+	local FollowShow = Shared("OnShow on a frame a kit shadow follows", function(f)
 		local list = followers[f]
 		if list then
 			for i = 1, #list do
-				NineShown(list[i], true)
+				Followed(list[i], true)
 			end
 		end
 	end, "script")
-	local FollowHide = Shared("OnHide on a frame a kit nine shadow follows", function(f)
+	local FollowHide = Shared("OnHide on a frame a kit shadow follows", function(f)
 		local list = followers[f]
 		if list then
 			for i = 1, #list do
-				NineShown(list[i], false)
+				Followed(list[i], false)
 			end
 		end
 	end, "script")
+
+	-- a frame to follow: seen now (IsVisible: a frame shown under a hidden
+	-- parent is not, and its OnShow comes when that parent shows; a refused
+	-- or secret answer counts as seen), and `entry` put on its list (the
+	-- frame's two hooks once)
+	local function Follow(follow, entry)
+		local list = followers[follow]
+		if list == nil then
+			list = {}
+			followers[follow] = list
+			Perf.HookScript(follow, "OnShow", FollowShow)
+			Perf.HookScript(follow, "OnHide", FollowHide)
+		end
+		list[#list + 1] = entry
+	end
+	local function Seen(f)
+		local ok, v = pcall(f.IsVisible, f)
+		return not ok or Secret(v) or (v and true or false)
+	end
+	local function CanFollow(f)
+		return type(f) == "table" and type(f.HookScript) == "function" and type(f.IsVisible) == "function"
+	end
 
 	-- every partner drawn by another frame fitted again where the two
 	-- frames' scales changed (its reach in that frame's units: the 'scale'
@@ -1617,6 +1674,11 @@ do
 		if type(opts.rep) == "table" then
 			JoinRep(sh, opts.rep)
 		end
+		local follow = opts.follow
+		if CanFollow(follow) then
+			sh.kitFollow, sh.kitFollowShown = follow, Seen(follow)
+			Follow(follow, sh)
+		end
 		-- where the piece is now (our own texture: its answers are plain; a
 		-- refused or secret one counts as shown, at full alpha)
 		local okS, shown = pcall(tex.IsShown, tex)
@@ -1652,7 +1714,7 @@ do
 			return tex.kitShadow
 		end
 		local sh = self:Shadow(tex, { host = was.kitHost, colour = was.kitColour, alpha = was.kitStrength, scale = was.kitOwnScale,
-			shape = was.kitShapeName, area = was.kitArea, rep = was.kitRep, mask = was.kitMask, ends = was.kitEnds })
+			shape = was.kitShapeName, area = was.kitArea, rep = was.kitRep, mask = was.kitMask, ends = was.kitEnds, follow = was.kitFollow })
 		if sh then
 			sh.kitWanted = was.kitWanted
 			Sync(sh)
@@ -1729,14 +1791,14 @@ do
 		local colour = type(opts.colour) == "string" and opts.colour or "innerPanel"
 		local s = Num(opts.scale) or Num(rect.kitScale) or Kit.scale
 		local nine = { kitParts = {}, kitNine = true, host = host, rect = rect, family = family, entry = e,
-			scale = s > 0 and s or Kit.scale, open = type(opts.open) == "string" and opts.open or "" }
+			scale = s > 0 and s or Kit.scale, open = type(opts.open) == "string" and opts.open or "",
+			skip = type(opts.skip) == "string" and opts.skip or "" }
 		nine.ratio = host == rect and 1 or Ratio(rect, host)
 		local follow = opts.follow
-		local shown = true
-		if type(follow) == "table" and follow.HookScript then
-			local okS, isShown = pcall(follow.IsShown, follow)
-			shown = not okS or Secret(isShown) or (isShown and true or false)
+		if not CanFollow(follow) then
+			follow = nil
 		end
+		local shown = not follow or Seen(follow)
 		for i, key in ipairs(NINE_PARTS) do
 			if key == "c" and not filled then
 				break
@@ -1758,16 +1820,9 @@ do
 			end
 			Paint(sh)
 		end
-		if type(follow) == "table" and follow.HookScript then
+		if follow then
 			-- (the frame's two hooks once; each nine that follows it on its list)
-			local list = followers[follow]
-			if list == nil then
-				list = {}
-				followers[follow] = list
-				Perf.HookScript(follow, "OnShow", FollowShow)
-				Perf.HookScript(follow, "OnHide", FollowHide)
-			end
-			list[#list + 1] = nine
+			Follow(follow, nine)
 		end
 		-- (laid on another frame than its host: fitted again when the scales change)
 		if host ~= rect then
@@ -1789,6 +1844,46 @@ do
 			n = n + 1
 		end
 		return n
+	end
+
+	-- a mask put on a partner made before it (the ring's corner cut, made when
+	-- the ring came after the rail's shadow): once per mask
+	local function MaskOne(sh, mask)
+		if sh.kitMask == mask then
+			return
+		end
+		sh.kitMask = mask
+		AddMask(sh, mask)
+		if sh.kitEndL then
+			AddMask(sh.kitEndL, mask)
+		end
+		if sh.kitEndR then
+			AddMask(sh.kitEndR, mask)
+		end
+	end
+
+	function Kit:ShadowMask(obj, mask)
+		if type(obj) ~= "table" or type(mask) ~= "table" then
+			return
+		end
+		local parts = obj.kitParts
+		if parts then
+			for i = 1, #parts do
+				MaskOne(parts[i], mask)
+			end
+			return
+		end
+		local sh = obj.kitShadow
+		if sh then
+			MaskOne(sh, mask)
+		end
+	end
+
+	function Kit:ShadowShape(name)
+		if not SHEET then
+			return nil
+		end
+		return ShapeOf(name) or (type(name) == "string" and type(NINES[name]) == "table" and NINES[name]) or nil
 	end
 
 	-- a replacement enabled or disabled (ReplacementMixin): its partners on
@@ -2734,6 +2829,9 @@ function Kit:NineSlice(parent, opts)
 	skin:SetAllPoints(parent)
 	skin.melloSkin = true
 	skin.kitScale = scale
+	-- its rail family and open sides, as made (the shade system lays the
+	-- family's shadow round it: Modules/KitShade.lua)
+	skin.kitPrefix, skin.kitOpen = prefix, opts.open or ""
 	-- `owner`: the textures are REGIONS of that frame (drawn in ITS layer
 	-- stack: `bodyLayer` / `bodySub`, `edgeLayer` / `edgeSub`), the skin frame
 	-- only laying them out — a compact raid frame's rail above its fill and
@@ -4204,8 +4302,9 @@ Kit.Replacements = {
 	-- 2026-09-24; Kit:OwnWindow, Modules/KitWindow.lua): the portrait ring
 	-- centred on the top rail's middle line with the emblem on its disc, and
 	-- the title plate without `onRail`. Keys of their own, so neither is taken
-	-- for a window's corner ring or title plate (no Kit.shells entry, nothing
-	-- cut by TitleBehindRing)
+	-- for a window's corner ring or title plate (Kit.shells keeps them as
+	-- crest / plate, for their shade only: never a drag handle, nothing cut
+	-- by TitleBehindRing)
 	["MelloUI-Crest"]                         = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
 	["MelloUI-TitlePlate"]                    = { kind = "strip", base = "tabs/top", state = "open", heightScale = 1.5 },
 	["RedButton-Exit"]                        = { kind = "state", base = "window/close", rect = "normal" },
@@ -4617,10 +4716,11 @@ Kit.Replacements = {
 Kit.covers = {}
 
 -- Every window dressed by Kit:SkinWindowShell: [frame] = { outer = rep,
--- title = rep }, and the watchers told of each new one (the bus's 'shell'
--- topic: frame, shell; the window mover in UI Modifications hangs its drag
--- handle on the title plate). A watcher is told of the shells already
--- there when it comes.
+-- title = rep, ring = rep, crest = rep, plate = rep }, and the watchers told of each new
+-- one (the bus's 'shell' topic: frame, shell; the window mover in UI
+-- Modifications hangs its drag handle on the title plate, the shade system
+-- lays every window's shade, Modules/KitShade.lua). A watcher is told of the
+-- shells already there when it comes.
 Kit.shells = {}
 
 function Kit:OnShell(fn)
@@ -4645,6 +4745,10 @@ RegisterShell = function(frame, shell)
 	known.outer = shell.outer or known.outer
 	known.title = shell.title or known.title
 	known.ring = shell.ring or known.ring
+	-- (an own window's crest on the top rail and its short plate: their
+	-- shade, Modules/KitShade.lua; never a corner ring or a drag handle)
+	known.crest = shell.crest or known.crest
+	known.plate = shell.plate or known.plate
 	Kit.shells[frame] = known
 	-- the title plate rides the outer rail: its caps' gems take the corners,
 	-- and it runs behind the portrait ring
@@ -5440,12 +5544,14 @@ function Kit:SetButtonBackground(button, value)
 	local piece = self.buttonLooks.backgroundPiece[value]
 	if piece then
 		if tex.kitName ~= piece then
+			self:Unpaint(tex)   -- (the dark fill's palette colour no longer on it)
 			self:Apply(tex, piece)
 		end
 		self:Retile(tex)
 		tex:SetAlpha(1)
 	elseif value == "dark" then
-		tex:SetColorTexture(0.05, 0.045, 0.04, 0.88)
+		-- the palette's inner panel, by its key (a new palette paints it again)
+		self:Paint(tex, "innerPanel", "fill", 0.88)
 		-- still ours: a plain mark, no piece (as the solid kind's fill)
 		tex.kitPiece, tex.kitName = true, nil
 		tex:SetAlpha(1)
@@ -6566,6 +6672,9 @@ function Kit:Replace(region, opts)
 	-- where its rect reads SECRET (the target's spell bar) or is not laid out yet
 	local rep = Mixin({ kind = rule.kind, key = key, rule = rule, region = region, rect = rect, alsoFade = opts.alsoFade or {}, fitHeight = opts.fitHeight, fitWidth = opts.fitWidth, noFade = opts.noFade }, ReplacementMixin)
 	rep.proxy, rep.proxyOf, rep.tune = proxy, proxy and proxy.melloProxyOf or nil, tune
+	-- (the frame it is dressed on: a bag, a page of a window, a window -- each
+	-- rail's shade its own, Modules/KitShade.lua)
+	rep.kitParent = parent
 
 	if rule.kind == "frame" then
 		local f = MakeHolder(parent, rect, level, opts.strata)
@@ -7285,12 +7394,15 @@ function Kit:Replace(region, opts)
 			-- rep:SetPiece(value): a panel's background choice in place of
 			-- the rule's piece ("dark": a flat fill)
 			if self.pieceOverride == "dark" then
-				self.tex:SetColorTexture(0.05, 0.045, 0.04, 0.95)
+				-- the palette's inner panel, by its key: a new palette paints
+				-- it again (Kit:Paint)
+				Kit:Paint(self.tex, "innerPanel", "fill", 0.95)
 				self.tex.kitPiece, self.tex.kitName = true, nil
 				return
 			end
 			local name = self.pieceOverride or ((self.grey and rule.grey and self.grey()) and rule.grey or rule.piece)
 			if self.tex.kitName ~= name then
+				Kit:Unpaint(self.tex)   -- (a dark fill before: the piece stays when the palette changes)
 				Kit:Apply(self.tex, name)
 				-- the parchment in the kit's one parchment tone
 				if name == Kit.parchmentPiece then
@@ -7570,6 +7682,15 @@ function Kit:Replace(region, opts)
 		local window = WindowOf(parent)
 		if window and window ~= UIParent then
 			RegisterShell(window, { ring = rep })
+		end
+	elseif (key == "MelloUI-Crest" or key == "MelloUI-TitlePlate") and parent then
+		-- an own window's crest and the short plate under it (Kit:OwnWindow:
+		-- their frames the window's own children): known for their shade,
+		-- never a drag handle or a ring. A crest inside a page (the
+		-- installer's Keep ring) is no part of the window's outline.
+		local window = WindowOf(parent)
+		if window and window ~= UIParent and parent:GetParent() == window then
+			RegisterShell(window, key == "MelloUI-Crest" and { crest = rep } or { plate = rep })
 		end
 	end
 	rep.window = WindowOf(parent)
@@ -9502,10 +9623,7 @@ do
 
 		local function Label(parent, text, font)
 			local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
-			local c = MelloUI.Palette and MelloUI.Palette.text
-			if c then
-				fs:SetTextColor(c[1], c[2], c[3])
-			end
+			Kit:Paint(fs, "text", "text")   -- (by its key: a new palette paints it again)
 			fs:SetText(text)
 			return fs
 		end

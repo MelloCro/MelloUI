@@ -89,17 +89,18 @@ local function WindowParchment()
 end
 
 -- Where a frame or region lies on the screen (left, right, top, bottom in
--- screen px), nil while it is hidden or has no usable rect yet.
+-- screen px), nil while it is hidden or has no usable rect yet: the addon's
+-- one reader (MelloUI.Safe.ScreenRect, Core.lua), in this file's order.
+local SafeScreenRect = MelloUI.Safe.ScreenRect
 local function ScreenRect(obj)
-	if not (obj and obj.GetRect and obj.GetEffectiveScale) or (obj.IsShown and not obj:IsShown()) then
+	if type(obj) ~= "table" or (obj.IsShown and not obj:IsShown()) then
 		return nil
 	end
-	local ok, l, b, w, h = pcall(obj.GetRect, obj)
-	if not (ok and l and b and w and h) or Secret(l) or Secret(b) or Secret(w) or Secret(h) or w <= 0 or h <= 0 then
+	local l, b, r, t = SafeScreenRect(obj)
+	if not (l and r > l and t > b) then
 		return nil
 	end
-	local s = obj:GetEffectiveScale()
-	return l * s, (l + w) * s, (b + h) * s, b * s
+	return l, r, t, b
 end
 
 -- A parchment sheet's rect laid on the part of its base that nothing painted
@@ -2222,12 +2223,11 @@ function M:BarOutline()
 	if not (active and cf and cf:IsShown()) then
 		return nil
 	end
-	local ok, l, b, w, h = pcall(cf.GetRect, cf)
-	if not (ok and l and w) or Secret(l) or Secret(w) or w <= 0 then
+	local l, b, r, t = SafeScreenRect(cf)
+	if not (l and r > l) then
 		return nil
 	end
-	local sc = cf:GetEffectiveScale()
-	return { { l * sc, b * sc, (l + w) * sc, (b + h) * sc } }
+	return { { l, b, r, t } }
 end
 
 function M:PickerStart()

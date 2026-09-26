@@ -18,6 +18,7 @@ Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua
 Core\Notice.lua
+Core\CentreText.lua
 Core\Config.lua
 Core\Tutorial.lua
 Core\Backup.lua
@@ -33,6 +34,7 @@ Media\NPCVoiceData.lua
 Media\NPCVoiceOverrides.lua
 Media\QuestListData.lua
 Media\RouteData.lua
+Media\PlaceData.lua
 Media\ClassIcons.lua
 Media\KitLayout.lua
 Media\KitSlices.lua
@@ -43,6 +45,7 @@ Media\EditModeLayout.lua
 
 Modules\Kit.lua
 Modules\KitWindow.lua
+Modules\KitShade.lua
 Modules\UIModifications.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua
