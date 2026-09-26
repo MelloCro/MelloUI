@@ -414,7 +414,10 @@ Out Of Combat:
   while your health is below full, while your mana is below full (only while your power bar
   shows mana, so it stays up while you drink after a fight; rage and energy never keep it), when
   you are dead or a ghost, when you point at where it sits, and while the windows are unlocked
-  or Edit Mode is open. It fades out slowly a moment after the last of these ends and comes back
+  or Edit Mode is open (this client keeps your health, and usually your mana, hidden from addons, so
+  MelloUI goes by the game's own updates: the frame stays while your health or mana is still
+  changing, from regeneration, a drink or damage, and after a spell's mana cost it waits out the
+  five-second pause). It fades out slowly a moment after the last of these ends and comes back
   quickly; Reduce Motion makes both instant. The reminder button beside the portrait and your
   cast bar (also when Edit Mode locks it to the player frame) stay in full view while the frame
   is faded.

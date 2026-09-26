@@ -483,9 +483,12 @@ end
 -- holds, and stay:
 --   * combat (PLAYER_REGEN_DISABLED: back at once, never faded in a fight)
 --   * a target
---   * the player's health below full (a secret or refused answer: not full)
+--   * the player's health below full
 --   * mana below full while the power bar shows mana (the drink after a
 --     fight); rage, energy and the rest never count, they rest empty or full
+--     (a health or mana this client hands over secret -- the health always,
+--     out of combat too -- is never compared: a change of it heard lately
+--     stands for "below full", FADE_RECENT below)
 --   * dead or a ghost
 --   * the pointer on the frame (or on the pet's, while it follows)
 --   * the windows unlocked for placing (Unlock the Windows), Edit Mode open
@@ -522,11 +525,28 @@ end
 -- cannot be taken off) are inert then. No ticker, no OnUpdate: the hold is a
 -- timer (looked at again only while the pointer rests on a bar or button of
 -- the frame after the frame heard it leave: none of the frame's own leaves
--- comes when it goes), the fades are Anim's.
+-- comes when it goes), the end of a secret health's or mana's window is one
+-- more (one pending at most), the fades are Anim's.
 --   M.fadeState   the state (read only; the tests')
 --------------------------------------------------------------------------------
 
 local FADE_IN, FADE_OUT, FADE_HOLD = 0.2, 0.6, 1.5
+-- A secret health or mana (user, 2026-09-26, RC5: "The Fade of Unitframes is
+-- not working" -- issecretvalue(UnitHealth("player")) true out of combat;
+-- the game's API documentation: UnitHealth SecretReturns, always; UnitPower
+-- secret for every power type not flagged never-secret) is never compared.
+-- The game's own events answer instead: each change of the health fires
+-- UNIT_HEALTH, of the mana UNIT_POWER_UPDATE (what its own bars redraw on);
+-- while it fills out of combat the regen ticks every 2 s (a drink or food
+-- adds its own ticks), at full they stop. So a change within FADE_RECENT --
+-- one tick's 2 s and a half-second margin for the server's and the frame's
+-- lag -- is "below full"; after the last tick the frame waits FADE_RECENT,
+-- then the hold, then fades (it goes 4 s after the last change).
+-- FADE_CAST: a spell's mana cost stops the mana's regen for five seconds,
+-- then the next 2-s tick comes (up to 7 s with no event): a cost (a cast and
+-- a power event within FADE_PAIR of each other) keeps the mana's window open
+-- that long, with the same margin.
+local FADE_RECENT, FADE_CAST, FADE_PAIR = 2.5, 7.5, 0.5
 local FADE_MAX = 0.5                           -- Faded Opacity's top
 local FADE_OWNER = "UnitFrames: fade"          -- the bus owner
 local OWN_ALPHA_KEY = "UnitFrames: the pet frame's and cast bar's own alpha"   -- (Kit:WhenOutOfCombat's keys)
@@ -534,7 +554,7 @@ local HOOK_KEY = "UnitFrames: the fade's pointer hooks"
 local FADE_EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_TARGET_CHANGED", "PLAYER_DEAD",
 	"PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD" }
 local HEALTH_EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH" }
-local POWER_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }
+local POWER_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_SPELLCAST_SUCCEEDED" }
 local Secret = MelloUI.Safe.IsSecret
 local Finite = MelloUI.Safe.Finite
 
@@ -545,9 +565,12 @@ local Finite = MelloUI.Safe.Finite
 -- leave of the frame comes when it goes, so the hold looks again);
 -- state[frame] = "shown" / "faded" (nil: not touched); kept[frame]: the pet
 -- frame's and the cast bar's own ignore-parent-alpha before the fade (nil:
--- not set)
+-- not set); hpUntil, manaUntil, petUntil: the GetTime a secret health's /
+-- mana's / pet health's "below full" window ends; manaAt, castAt: the last
+-- power event and cast (FADE_PAIR); armed: the windows' timer pending
 local Fade = { on = false, pet = false, mana = false, combat = false, editMode = false, holding = false,
-	holdDue = 0, lost = false, state = {}, kept = {}, events = nil, hooked = false }
+	holdDue = 0, lost = false, state = {}, kept = {}, events = nil, hooked = false,
+	hpUntil = 0, manaUntil = 0, petUntil = 0, manaAt = -math.huge, castAt = -math.huge, armed = false }
 M.fadeState = Fade
 
 local function FadeWanted()
@@ -560,31 +583,56 @@ local function FadedAlpha()
 	return a < 0 and 0 or a > FADE_MAX and FADE_MAX or a
 end
 
--- a yes / no question about a unit (a secret answer counts as yes: shown)
+-- a yes / no question about a unit (a target, dead, a pet, in a fight). A
+-- secret answer is no: none of these is ever secret by the game's API
+-- documentation, and as yes it would hold the frame for good (nothing asks
+-- again until the next event -- the RC5 bug); a fight still shows it
+-- (PLAYER_REGEN_DISABLED, InCombatLockdown)
 local function Yes(fn, unit)
 	if type(fn) ~= "function" then
 		return false
 	end
 	local ok, v = pcall(fn, unit)
-	if not ok then
+	if not ok or Secret(v) then
 		return false
-	end
-	if Secret(v) then
-		return true
 	end
 	return v and true or false
 end
 
--- cur below max (health, or power of `kind`); a secret or refused answer is
--- below: the frame is shown
-local function Below(curFn, maxFn, unit, kind)
+local RecentTimer   -- (below)
+
+-- a secret value's window (hpUntil ...) still open: not full; the one timer
+-- armed to look again when it ends, FADE_RECENT ahead at most. One pending
+-- at most (C_Timer.After cannot be taken back), and every window opened
+-- after the arm runs FADE_RECENT or more from its event: none ends before
+-- the armed look, whichever window still counts by then. (Review of the RC5
+-- fix: armed for a cost's whole 7.5 s, a druid gone to cat form -- the mana
+-- no longer counts -- whose health's window, opened after, ended first got
+-- no look of its own: the fade came 5 s late.) A cost's long window just
+-- gets two or three looks.
+local function Open(untilAt)
+	local now = GetTime()
+	if now >= untilAt then
+		return false
+	end
+	if not Fade.armed then
+		Fade.armed = true
+		local wait = untilAt - now
+		C_Timer.After(wait < FADE_RECENT and wait or FADE_RECENT, RecentTimer)
+	end
+	return true
+end
+
+-- cur below max (health, or power of `kind`). A secret or refused answer is
+-- never compared: its window answers (`untilAt`, a change heard lately)
+local function Below(curFn, maxFn, unit, kind, untilAt)
 	if type(curFn) ~= "function" or type(maxFn) ~= "function" then
 		return false
 	end
 	local okC, cur = pcall(curFn, unit, kind)
 	local okM, max = pcall(maxFn, unit, kind)
 	if not (okC and okM) or Secret(cur) or Secret(max) then
-		return true
+		return Open(untilAt)
 	end
 	cur, max = tonumber(cur), tonumber(max)
 	if not (cur and max) or max <= 0 then
@@ -639,10 +687,10 @@ local function PlayerNeeded()
 	if Yes(UnitExists, "target") or Yes(_G.UnitIsDeadOrGhost, "player") then
 		return true
 	end
-	if Below(UnitHealth, UnitHealthMax, "player") then
+	if Below(UnitHealth, UnitHealthMax, "player", nil, Fade.hpUntil) then
 		return true
 	end
-	if Fade.mana and Below(UnitPower, _G.UnitPowerMax, "player", ManaType()) then
+	if Fade.mana and Below(UnitPower, _G.UnitPowerMax, "player", ManaType(), Fade.manaUntil) then
 		return true
 	end
 	if Fade.editMode or Hovered() then
@@ -652,7 +700,7 @@ local function PlayerNeeded()
 end
 
 local function PetNeeded()
-	return Yes(UnitExists, "pet") and Below(UnitHealth, UnitHealthMax, "pet")
+	return Yes(UnitExists, "pet") and Below(UnitHealth, UnitHealthMax, "pet", nil, Fade.petUntil)
 end
 
 -- seen: a secret answer counts as seen (the move is only a tween)
@@ -754,6 +802,72 @@ HoldTimer = Shared("the fade's hold: the unit frames", function()
 	Evaluate(true)
 end)
 
+-- a secret value's window ran out, or the armed look came (a window still
+-- open: Evaluate arms again); then the hold, then the fade
+RecentTimer = Shared("the fade's secret health / mana window: the unit frames", function()
+	Fade.armed = false
+	Evaluate()
+end)
+
+-- the mana's window open until `t` at least (a cost's window runs longer)
+local function ManaUntil(t)
+	if t > Fade.manaUntil then
+		Fade.manaUntil = t
+	end
+end
+
+-- a change heard: its window opened from now. False: nothing for the fade to
+-- look at (a cast only widens the mana's window; the pet's health while Pet
+-- Frame Too is off; another power of the player's, a combo point or a rune).
+-- A max's change (UNIT_MAXHEALTH, UNIT_MAXPOWER) opens none: it says nothing
+-- of the value (a higher max: the regen's own ticks follow)
+local function Stamp(event, unit, kind)
+	local now = GetTime()
+	if event == "UNIT_HEALTH" then
+		if not Secret(unit) and unit == "pet" then
+			if not Fade.pet then
+				return false
+			end
+			Fade.petUntil = now + FADE_RECENT
+		else
+			Fade.hpUntil = now + FADE_RECENT
+		end
+	elseif event == "UNIT_POWER_UPDATE" then
+		if not Secret(kind) and kind ~= nil and kind ~= "MANA" then
+			return false
+		end
+		Fade.manaAt = now
+		ManaUntil(now + FADE_RECENT)
+		if now - Fade.castAt <= FADE_PAIR then
+			ManaUntil(Fade.castAt + FADE_CAST)
+		end
+	else   -- UNIT_SPELLCAST_SUCCEEDED
+		Fade.castAt = now
+		if now - Fade.manaAt <= FADE_PAIR then
+			ManaUntil(now + FADE_CAST)
+		end
+		return false
+	end
+	return true
+end
+
+-- the values not known yet (switched on, the world entered, a fight over,
+-- back alive): the windows of a frame not faded open for FADE_RECENT, so it
+-- stays until the regen's first tick has had its time (no fade and straight
+-- back); a faded frame is left faded (a tick brings it when it is needed)
+local function Seed()
+	local t = GetTime() + FADE_RECENT
+	if Fade.state[PlayerFrame] ~= "faded" then
+		if t > Fade.hpUntil then
+			Fade.hpUntil = t
+		end
+		ManaUntil(t)
+	end
+	if Fade.state[PetFrame] ~= "faded" and t > Fade.petUntil then
+		Fade.petUntil = t
+	end
+end
+
 -- a frame under the player frame that keeps its own alpha while the fade is
 -- on: it ignores its parent's (its own old setting back after)
 local function OwnAlpha(frame)
@@ -804,20 +918,28 @@ local function RegisterUnits()
 	end
 end
 
-local Fade_OnEvent = function(_, event, unit)
+local Fade_OnEvent = function(_, event, unit, kind)
 	if not Fade.on then
 		return
 	end
-	if event == "PLAYER_REGEN_DISABLED" then
+	if event == "UNIT_HEALTH" or event == "UNIT_POWER_UPDATE" or event == "UNIT_SPELLCAST_SUCCEEDED" then
+		if not Stamp(event, unit, kind) then
+			return
+		end
+	elseif event == "PLAYER_REGEN_DISABLED" then
 		Fade.combat = true
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		Fade.combat = false
+		Seed()
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		-- (a loading screen: no fight goes on through one)
 		Fade.combat = InCombatLockdown() or Yes(_G.UnitAffectingCombat, "player")
+		Seed()
+	elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+		Seed()
 	elseif event == "UNIT_DISPLAYPOWER" then
 		RegisterUnits()
-	elseif (event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH") and unit == "pet" and not Fade.pet then
+	elseif event == "UNIT_MAXHEALTH" and not Fade.pet and not Secret(unit) and unit == "pet" then
 		return
 	end
 	Evaluate()
@@ -889,6 +1011,7 @@ local function FadeOn()
 	Fade.combat = InCombatLockdown() or Yes(_G.UnitAffectingCombat, "player")
 	Fade.editMode = MelloUI.EditModeOpen and MelloUI.EditModeOpen() or false
 	Fade.holding, Fade.lost = false, false
+	Seed()
 	SyncOwnAlpha()
 	Evaluate()
 end
