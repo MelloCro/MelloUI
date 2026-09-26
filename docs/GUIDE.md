@@ -384,6 +384,22 @@ flash on player / target / focus / pet / party frames, no resting / combat statu
 player frame, and a frame art opacity slider. Together with Dark Mode, Bar Textures set to the
 "Class (players) / reaction (NPCs)" health colour and Bar Text this gives the flat RougeUI look.
 
+Out Of Combat:
+
+- "Fade Out Of Combat" (off by default): the player frame fades away while nothing needs it. It
+  comes back at once in combat and stays for the whole fight; it also comes back with a target,
+  while your health is below full, while your mana is below full (only while your power bar
+  shows mana, so it stays up while you drink after a fight; rage and energy never keep it), when
+  you are dead or a ghost, when you point at where it sits, and while the windows are unlocked
+  or Edit Mode is open. It fades out slowly a moment after the last of these ends and comes back
+  quickly; Reduce Motion makes both instant. The reminder button beside the portrait and your
+  cast bar (also when Edit Mode locks it to the player frame) stay in full view while the frame
+  is faded.
+- "Faded Opacity" (0-50 %, 0 by default), under it: how much of the frame stays while it is
+  faded. At 0 % it is gone until it is needed.
+- "Pet Frame Too" (on), under it: your pet's frame fades and comes back with the player frame,
+  and also comes back while your pet is hurt. Off: the pet frame always stays.
+
 ### Fonts
 
 The "Titles & headers" role is Enchanted Land by default and drives the kit's title plates as well
