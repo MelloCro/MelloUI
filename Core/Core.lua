@@ -29,7 +29,10 @@
 --   options entries may carry `module = "<name>"` (the option belongs to that
 --   module: built against its settings) or be `{ type = "include", module = }`
 --   (that module's whole option list laid out in place); a toggle with
---   `important = true` is drawn gold with an IMPORTANT hint
+--   `important = true` is drawn gold with an IMPORTANT hint; every entry
+--   with a control (toggle, slider, dropdown, button, any kind) names the
+--   update it came with, `new = "<version>"`: its New tag while that update
+--   runs (MelloUI:IsNew below; the user's rule of 2026-09-26)
 -- The registry's own fields (audit, 2026-09-24, rank 4: one place that says
 -- what a module is, for the configurator, the installer and UI
 -- Modifications). All optional, kept on the module as given. UI
@@ -49,6 +52,9 @@
 --                    feature is found on UI Modifications' tabs only)
 --   navOrder         a number: its place in that group, 1 first; entries
 --                    without one come after, in the order they registered
+--   new              a brand-new module or page: the update it came with
+--                    ("<version>"), its side-list entry and page title tagged
+--                    New while that update runs (its options carry their own)
 --   window           a window (or HUD part) the reskin dresses: { label, desc,
 --                    tab = "Windows" | "HUD", order = n (rows with one lead
 --                    their tab, lowest first), switch = "<UI Modifications
@@ -87,6 +93,48 @@ _G.MelloUI = MelloUI
 MelloUI.name = ADDON_NAME
 MelloUI.version = C_AddOns and C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "dev"
 MelloUI.modules = {}
+
+--------------------------------------------------------------------------------
+-- New tags (the user's rule, 2026-09-26: "every new Dropdown menu, every new
+-- slider, every new checkbox etc needs to get a "New" tag ... every next
+-- update, the old "New" tags are being removed and reapplied to the new
+-- stuff"). An option names the update it came with -- `new` on its schema
+-- entry, the same in a hand-built row's options (WINDOW-RULES 6) -- and its
+-- tag shows only while that update is the one running, so the next update
+-- hides it by itself. The release check (Tools/lint/check_new_tags.py) fails
+-- on a new option without one and takes the old ones out of the files.
+--   MelloUI:ReleaseVersion() -> "0.14.0"   the running update: the TOC's
+--       Version as three numbers (a test build's "0.14.0-rc5" or "0.14.0
+--       RC5" is 0.14.0); nil when it names none ("dev")
+--   MelloUI:IsNew(v) -> true while `v` names the running update ("0.14" is
+--       0.14.0); false for nil or anything else
+--------------------------------------------------------------------------------
+
+do
+	local seen = {}   -- [a version as written] = its three numbers, or false
+	local function ThreeNumbers(v)
+		if type(v) ~= "string" then
+			return nil
+		end
+		local known = seen[v]
+		if known == nil then
+			local a, b, c = v:match("^%s*[vV]?(%d+)%.(%d+)%.?(%d*)")
+			known = a and string.format("%d.%d.%d", tonumber(a), tonumber(b), tonumber(c) or 0) or false
+			seen[v] = known
+		end
+		return known or nil
+	end
+	function MelloUI:ReleaseVersion()
+		return ThreeNumbers(self.version)
+	end
+	function MelloUI:IsNew(v)
+		if v == nil then
+			return false
+		end
+		local running = ThreeNumbers(self.version)
+		return running ~= nil and ThreeNumbers(v) == running
+	end
+end
 
 --------------------------------------------------------------------------------
 -- The palette (user, 2026-09-23: "a Color Palette that i would like us to hold
@@ -1715,6 +1763,7 @@ end
 MelloUI.moduleList = {}
 local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table", tweak = "table", area = "table",
 	role = "string", navOrder = "number" }
+REGISTRY_FIELDS.new = "string"   -- (0.14.0: a new module's New tag, the update it came with)
 local ROLES = { core = true, look = true, feature = true, adds = true, replaces = true }
 
 function MelloUI:RegisterModule(name, module)

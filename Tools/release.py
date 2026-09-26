@@ -26,6 +26,13 @@ which the installer applies) must be exactly what Tools/installer/bake_full.py
 makes from its snapshot through the current code, and the file must hold no
 other profile (the saved-profiles watcher keeps a player's own ones there):
 the release runs `bake_full.py --check` and is refused otherwise.
+
+Every option new since the previous release carries the release's New tag (the user's rule, 2026-09-26: every
+new dropdown, slider, check box ... gets a "New" tag for its update, the old ones go): the release runs
+`Tools/lint/check_new_tags.py --version <version>` and is refused on a new option without `new = "<version>"` or
+an older one tagged so (and when it cannot check: a file or a module's OnInit that fails in its world, or a --fix
+that would leave a file that does not compile -- every file is then put back); the tags of older versions are taken
+out of the files (its --fix; a dry run only lists them), and go into the release commit.
 """
 import argparse
 import os
@@ -38,6 +45,7 @@ ROOT = os.path.abspath(os.path.join(HERE, ".."))
 TOC = os.path.join(ROOT, "MelloUI.toc")
 PKGMETA = os.path.join(ROOT, ".pkgmeta")
 FULL_BAKE = os.path.join(HERE, "installer", "bake_full.py")
+NEW_TAGS = os.path.join(HERE, "lint", "check_new_tags.py")
 
 
 def git(*args, capture=True):
@@ -135,6 +143,25 @@ def check_full():
     return True, [now[0].replace("Full baked now:", "").strip() if now else "up to date"]
 
 
+def check_new_tags(version, fix):
+    """Every option new since the previous release tagged new = version, no older one tagged so
+    (Tools/lint/check_new_tags.py --version <version>, with --fix: the older versions' tags taken out of the
+    files first). Returns (ok, lines): on success its summary and what it took out, else its problems."""
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    cmd = [sys.executable, NEW_TAGS, "--version", version] + (["--fix"] if fix else [])
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=900)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, [f"the check did not run: {exc}"]
+    lines = [line.rstrip() for line in ((r.stdout or "") + (r.stderr or "")).splitlines() if line.strip()]
+    keep = [line for line in lines if line.startswith(("FAIL", "stale", "gone", "--fix", "problems by file", "new tags:",
+                                                        "check_new_tags could not check", "  "))]
+    if r.returncode != 0:
+        return False, keep or lines[-30:] or [f"check_new_tags.py exited {r.returncode}"]
+    return True, keep or lines[-1:]
+
+
 def write_tocs(edits, version, interface):
     """The Version and Interface lines of every TOC in `edits` ((path, label, text) each)."""
     for path, _, body in edits:
@@ -226,6 +253,11 @@ def main():
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
     if branch != "main":
         sys.exit(f"releases are cut from main; you are on {branch}")
+    # the New tags: this version's on every new option, the older ones taken out (not in a dry run)
+    tags_ok, tags_lines = check_new_tags(version, fix=not a.dry_run)
+    if not tags_ok:
+        sys.exit(f"the New tags are not ready for {version} (python Tools/lint/check_new_tags.py --version "
+                 f"{version}):\n" + "\n".join("  " + line for line in tags_lines))
     pending = git("status", "--short")
 
     print(f"{'.'.join(map(str, current))} -> {version}  (tag {tag}, branch {branch})")
@@ -245,6 +277,7 @@ def main():
     for _, label, body in edits:
         print(f"{label}: Version {toc_field(body, 'Version')} -> {version}, Interface {toc_field(body, 'Interface')} -> {interface}")
     print(f"Full experience (Media/Profiles.lua \"MelloUI\"): the current bake, {full_lines[0]}")
+    print("New tags: " + "\n  ".join(tags_lines))
     if a.dry_run:
         print("dry run: nothing changed")
         return

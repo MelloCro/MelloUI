@@ -15,6 +15,9 @@
 --   W.ShowTooltip(owner, title, body, line, anchor)   W.TipLeave (a shared OnLeave)
 --   W.Switch(parent, get, set, opts)
 --   W.Dropdown(parent, width, get, set, values, opts)
+--   W.DropdownMenu(dd, get, set, values)   the one menu of MelloUI's dropdowns,
+--                                      on a box made elsewhere (a long list
+--                                      capped and scrolled)
 --   W.Slider(parent, width, get, set, opts)
 --   W.Button(parent, text, width, skin, opts)
 --   W.CloseButton(parent, skin)
@@ -24,6 +27,11 @@
 --   W.TrayBox(parent, opts)            a small list's box beside a window (the
 --                                      kit's list box, or a plain fill and edge)
 --   W.RowPlate(row, opts)              W.RowPlateOff(row), W.RowPlateChild(row, child)
+--   W.Tag(parent, text, snug)          ONE small gold word on a plate (a card's
+--                                      "Recommended", an option's "New"), and
+--     W.NewTag(parent, after, new, room), W.Badge(frame, new),
+--     W.ButtonTag(button, new): an option's New tag while its update runs
+--     (MelloUI:IsNew); W.TagShown, W.TagAlpha
 --   W.Row(parent, y, height, label, hint, desc, opts) and the typed rows
 --     W.ToggleRow / SliderRow / DropdownRow / ButtonRow, W.Gate, W.ClipRow
 --   W.Card(parent, spec, skin)         a choice card (the installer's setups;
@@ -57,6 +65,8 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Widgets")
 local Shared = Perf.Shared
 local Secret = MelloUI.Safe.IsSecret   -- (Core.lua's, one set for the addon)
+local Num = MelloUI.Safe.Number
+local Finite = MelloUI.Safe.Finite
 
 local W = {}
 MelloUI.Widgets = W
@@ -281,9 +291,14 @@ end
 -- The kit's control sweep over `root` (Kit:SweepControls: red plates, check
 -- boxes, dropdowns, tabs, found by what they are): the one way a window's
 -- controls the kit knows are dressed. `depth`: where the sweep starts (the
--- configurator's rows at 2, as a sweep of the page reaches them).
+-- configurator's rows at 2, as a sweep of the page reaches them). The skin
+-- is remembered for the root: a dropdown under it dresses its long list's
+-- menu with the same look (MenuSkin, below).
+local dressedBy = setmetatable({}, weakKeys)   -- [root] = the skin W.Dress dressed it with
+
 function W.Dress(root, skin, depth)
 	if skin and root then
+		dressedBy[root] = skin
 		skin:Kit(DressSweep, root, skin, depth)
 	end
 end
@@ -388,6 +403,27 @@ end
 --   (the box's own tooltip body; its title is `default`)
 -- The kit dresses it through its control sweep (W.Dress of its row: the
 -- typed row does it).
+--   W.DropdownMenu(dd, get, set, values) -> dd
+--     the menu W.Dropdown gives its box, on a DropdownButton made elsewhere
+--     (Dynamic UI's boxes, in the game's own look): a radio per entry, made
+--     again only when out of date (dd:Refresh(); dd:Refresh(true) at once,
+--     a list whose names changed in place), a long list capped and scrolled
+-- A long list (user, 2026-09-26: "the list does not have a slider option
+-- and is way too big" -- the Fonts dropdown's sixty faces ran off the
+-- screen) takes the game's own scroll mode (Blizzard_Menu: the root's
+-- SetScrollMode(extent); past `extent` px of entries the menu shows that
+-- much in its scroll box, with the game's MinimalScrollBar and mouse wheel):
+-- at most MENU_ROWS entries and never taller than MENU_SCREEN of the screen
+-- (the top-level parent's height in its own units: the menu takes that
+-- parent's scale, so the UI scale is in both). A short list is left as it
+-- was. The chosen entry is scrolled into view as the menu opens (the box's
+-- OnMenuOpened, hooked on its first long list). The scroll bar wears THE
+-- scroll bar's look (Kit:SkinScrollBar) while the box's window is in the
+-- kit's look (the skin W.Dress remembered): the game pools its menu frames
+-- and lends them to every menu, its own too, so the pieces are made once
+-- per menu frame, on while our menu shows and off when it is released
+-- (the root's menu-acquired and -released callbacks). Nothing is made
+-- until a long list opens.
 --------------------------------------------------------------------------------
 
 local DropdownGold = Shared("OnButtonStateChanged / OnLeave on MelloUI's dropdowns", function(self)
@@ -407,23 +443,178 @@ local function ListMark(values)
 	return count, count > 0 and values[count] or nil
 end
 
--- The text the box shows for `value` (nil when the list has no such entry:
--- the box then shows its default text, and the menu is made again on every
--- refresh, as before)
-local function ChoiceLabel(values, value)
+-- Where `value` stands in the list (nil when it has no such entry): its
+-- radio's place in the menu too, one radio per entry
+local function ChoiceIndex(values, value)
 	if values then
 		for i = 1, #values do
-			local entry = values[i]
-			if entry.value == value then
-				return entry.label or tostring(entry.value)
+			if values[i].value == value then
+				return i
 			end
 		end
 	end
 	return nil
 end
 
+-- The text the box shows for `value` (nil when the list has no such entry:
+-- the box then shows its default text, and the menu is made again on every
+-- refresh, as before)
+local function ChoiceLabel(values, value)
+	local i = ChoiceIndex(values, value)
+	if i then
+		local entry = values[i]
+		return entry.label or tostring(entry.value)
+	end
+	return nil
+end
+
+-- A long list's menu (the section's head). The game's menu, as the Forever
+-- client's Blizzard_Menu lays it: a radio is a line 20 high (MenuVariants.
+-- CreateRadio: its text set 20 high whatever the font, the tick centred on
+-- it), and the menu adds its inset over and under the entries
+-- (MenuStyle1Mixin:GetInset: 8 and 15).
+local MENU_ROW_H = 20      -- a radio's line in the game's menu
+local MENU_INSET = 23      -- the menu's inset over and under its entries
+local MENU_ROWS = 18       -- a long list shows this many entries, and scrolls
+local MENU_MIN_ROWS = 6    -- however small the screen
+local MENU_SCREEN = 0.5    -- and the menu is never taller than this share of the screen
+
+-- The scroll box's height for a list of `count` entries, nil for a list
+-- short enough to show whole. The menu takes the top-level parent's scale
+-- (Blizzard_Menu's AcquireMenu), so that parent's height in its own units
+-- is the screen in the menu's.
+local function MenuExtent(count)
+	if count <= MENU_MIN_ROWS then
+		return nil
+	end
+	local rows = MENU_ROWS
+	local TopParent = _G.GetAppropriateTopLevelParent
+	local top = TopParent and TopParent() or UIParent
+	local height = top and Finite(top:GetHeight())
+	if height then
+		local fit = math.floor((height * MENU_SCREEN - MENU_INSET) / MENU_ROW_H)
+		if fit < rows then
+			rows = math.max(fit, MENU_MIN_ROWS)
+		end
+	end
+	if count <= rows then
+		return nil
+	end
+	return rows * MENU_ROW_H
+end
+
+-- The skin of the window a box is in: the one W.Dress dressed a root above
+-- it with (nil: the plain look, or a box the kit never dresses)
+local function MenuSkin(frame)
+	for _ = 1, 12 do
+		if not frame then
+			return nil
+		end
+		local skin = dressedBy[frame]
+		if skin then
+			return skin
+		end
+		frame = frame.GetParent and frame:GetParent()
+	end
+	return nil
+end
+
+-- The menu frame's scroll bar in the kit's look: its pieces made once per
+-- scroll bar (the game keeps its menu frames and lends them again), shown
+-- while one of our long lists is open on it
+local menuBars = setmetatable({}, weakKeys)    -- [the menu's ScrollBar] = its kit pieces (false: none to make)
+local menuBarOn = setmetatable({}, weakKeys)   -- [ScrollBar] = true while they show
+local menuKit = nil                             -- the kit, as skin:Kit hands it (MenuReplace's)
+
+local function MenuReplace(region, opts)
+	return menuKit:Replace(region, opts)
+end
+
+local function DressMenuBar(K, bar)
+	local reps = menuBars[bar]
+	if reps == nil then
+		menuKit = K
+		reps = K:SkinScrollBar(bar, MenuReplace) or false
+		menuBars[bar] = reps
+	end
+	if reps and not menuBarOn[bar] then
+		menuBarOn[bar] = true
+		for i = 1, #reps do
+			reps[i]:Enable()
+		end
+	end
+end
+
+-- the game's scroll bar again (for the next menu, whoever's it is)
+local function MenuBarOff(bar)
+	if menuBarOn[bar] then
+		menuBarOn[bar] = nil
+		local reps = menuBars[bar]
+		for i = 1, #reps do
+			reps[i]:Disable()
+		end
+	end
+end
+
+-- the root's callbacks: `menu` is the menu frame (its ScrollBox and
+-- ScrollBar made once, with it), `menu:GetOwnerRegion()` the box
+local MenuAcquired = Shared("a long list's menu acquired (its scroll bar's look)", function(menu)
+	local bar = menu and menu.ScrollBar
+	if not bar then
+		return
+	end
+	local owner = menu.GetOwnerRegion and menu:GetOwnerRegion()
+	local skin = owner and MenuSkin(owner)
+	if skin and skin.kit then
+		skin:Kit(DressMenuBar, bar)
+	else
+		MenuBarOff(bar)
+	end
+end)
+local MenuReleased = Shared("a long list's menu released (the game's scroll bar back)", function(menu)
+	local bar = menu and menu.ScrollBar
+	if bar then
+		MenuBarOff(bar)
+	end
+end)
+
+-- the menu open and laid out: the chosen entry in view (the game opens a
+-- scroll box at its top)
+local DropdownOpened = Shared("OnMenuOpened on MelloUI's dropdowns (a long list's choice in view)", function(self, menu)
+	local box = menu and menu.ScrollBox
+	if not (box and box.ScrollToElementDataIndex and box:IsShown()) then
+		return
+	end
+	local index = ChoiceIndex(self.melloValues, self.melloGet and self.melloGet())
+	if index then
+		local C = ScrollBoxConstants
+		box:ScrollToElementDataIndex(index, C and C.AlignCenter, 0, true)
+	end
+end, "hook")
+
+local scrollHooked = setmetatable({}, weakKeys)   -- [dd] = true: its OnMenuOpened brings the choice into view
+
+-- a menu of `count` entries: the scroll mode when the list is long (the
+-- root is made new each time the game makes the menu, so its callbacks go
+-- with it)
+local function LongMenu(dd, root, count)
+	local extent = MenuExtent(count)
+	if not (extent and root.SetScrollMode) then
+		return
+	end
+	root:SetScrollMode(extent)
+	if root.AddMenuAcquiredCallback and root.AddMenuReleasedCallback then
+		root:AddMenuAcquiredCallback(MenuAcquired)
+		root:AddMenuReleasedCallback(MenuReleased)
+	end
+	if not scrollHooked[dd] and dd.OnMenuOpened then
+		scrollHooked[dd] = true
+		Perf.hooksecurefunc(dd, "OnMenuOpened", DropdownOpened)
+	end
+end
+
 -- the menu, made by the game when the box opens or GenerateMenu is called
-local function DropdownMenu(dd, root)
+local function DropdownEntries(dd, root)
 	local values, get, set = dd.melloValues, dd.melloGet, dd.melloSet
 	if not values then
 		return
@@ -441,6 +632,7 @@ local function DropdownMenu(dd, root)
 			end)
 		end
 	end
+	LongMenu(dd, root, #values)
 end
 
 -- the menu is made again only when it is out of date (user, 2026-09-24: a
@@ -449,11 +641,12 @@ end
 -- tab): the box not naming the choice, or the list filled again since the
 -- menu was made (the Voice Over voices, listed once the game has them, in
 -- the same table: the box must then name the chosen voice and the menu hold
--- them all)
-local function DropdownRefresh(self)
+-- them all). `force`: made again at once (a list whose entries were renamed
+-- in place: Dynamic UI's Kit Colours under a new palette)
+local function DropdownRefresh(self, force)
 	local values = self.melloValues
 	local count, last = ListMark(values)
-	if count == self.menuCount and last == self.menuLast then
+	if not force and count == self.menuCount and last == self.menuLast then
 		local label = ChoiceLabel(values, self.melloGet())
 		local text = self.Text
 		if label and text and text:GetText() == label then
@@ -464,6 +657,16 @@ local function DropdownRefresh(self)
 	if self.GenerateMenu then
 		pcall(self.GenerateMenu, self)
 	end
+end
+
+-- the one menu of MelloUI's dropdowns, on a box made by W.Dropdown or its
+-- caller (the section's head)
+function W.DropdownMenu(dd, get, set, values)
+	dd.melloGet, dd.melloSet, dd.melloValues = get, set, values
+	dd.Refresh = DropdownRefresh
+	dd:SetupMenu(DropdownEntries)
+	dd.menuCount, dd.menuLast = ListMark(values)
+	return dd
 end
 
 function W.Dropdown(parent, width, get, set, values, opts)
@@ -488,10 +691,7 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	if dd.SetDefaultText and opts and opts.default then
 		dd:SetDefaultText(opts.default)
 	end
-	dd.melloGet, dd.melloSet, dd.melloValues = get, set, values
-	dd.Refresh = DropdownRefresh
-	dd:SetupMenu(DropdownMenu)
-	dd.menuCount, dd.menuLast = ListMark(values)
+	W.DropdownMenu(dd, get, set, values)
 	if opts and opts.tooltip then
 		dd.melloTipTitle, dd.melloTip = opts.default, opts.tooltip
 		Perf.HookScript(dd, "OnEnter", DropdownTip)
@@ -1268,6 +1468,139 @@ function W.RowPlateOff(row)
 end
 
 --------------------------------------------------------------------------------
+-- Tag: ONE small plate with a short gold word for every place that marks a
+-- thing -- the installer card's "Recommended" (W.Card's spec.tag, the
+-- approved look) and an option's "New" (the user's rule, 2026-09-26: every
+-- new dropdown, slider, check box ... carries a New tag for its update, so
+-- players find it and try it). The selected tab's colour behind the word,
+-- laid on the word itself (no width to measure), both painted by key (a new
+-- palette paints them again). Two regions of `parent`, made when asked.
+--   local tag = W.Tag(parent, text, snug) -> the word (a FontString),
+--       tag.plate (the caller places the word, the plate follows it: W.TAG_PAD
+--       round it; `snug`: W.TAG_SNUG, where room is scarce -- the side list)
+--   W.TagShown(tag, shown)    W.TagAlpha(tag, alpha)    (the word and its plate)
+-- New tags: an option names the update it came with (`new`); its tag is made
+-- and shown only while that update runs (Core's MelloUI:IsNew), so the next
+-- update's configurator makes none of the old ones.
+--   W.NEW    the word ("New")
+--   W.NewTag(parent, after, new, room) -> tag | nil   right after the region
+--       `after` (a label); `room`: the width `after` and the tag may take
+--       together (a label of a fixed width is narrowed to its text, and cut
+--       when the tag would not fit)
+--   W.Badge(frame, new) -> tag | nil   on a frame's top edge at its right (a
+--       tab): half over it, well inside its sides. `new` true: shown (the
+--       caller has asked MelloUI:IsNew of what the frame leads to)
+--   W.ButtonTag(button, new) -> tag | nil   INSIDE a text button, at its
+--       right and centred on its height (a badge would lie on its label): the
+--       button made wider by the tag's room, its label centred in the width
+--       it had
+--------------------------------------------------------------------------------
+
+local TAG_PAD_X, TAG_PAD_Y = 6, 3   -- the plate round the word
+local TAG_SNUG_X = 4                -- a snug plate's sides (the side list)
+local TAG_GAP = 6                   -- a label to its tag's plate
+local BADGE_IN = 12                 -- a badge's plate inside its frame's right side
+local BUTTON_TAG_IN = 8             -- a button's tag plate inside its right side (clear of its end cap)
+local LABEL_SLACK = 2               -- a label narrowed to its text keeps this much more (never cut at an odd scale)
+W.TAG_PAD = TAG_PAD_X
+W.TAG_SNUG = TAG_SNUG_X
+W.NEW = "New"
+
+function W.Tag(parent, text, snug)
+	local tag = W.Text(parent, "GameFontHighlightSmall", text, "selectedTrim")
+	tag:SetWordWrap(false)
+	local pad = snug and TAG_SNUG_X or TAG_PAD_X
+	local plate = parent:CreateTexture(nil, "ARTWORK")
+	plate:SetPoint("TOPLEFT", tag, "TOPLEFT", -pad, TAG_PAD_Y)
+	plate:SetPoint("BOTTOMRIGHT", tag, "BOTTOMRIGHT", pad, -TAG_PAD_Y)
+	W.Paint(plate, "selectedTab", "fill", 1)
+	tag.plate, tag.padX = plate, pad
+	return tag
+end
+
+function W.TagShown(tag, shown)
+	if tag then
+		shown = shown and true or false
+		tag:SetShown(shown)
+		tag.plate:SetShown(shown)
+	end
+end
+
+function W.TagAlpha(tag, alpha)
+	if tag then
+		tag:SetAlpha(alpha)
+		tag.plate:SetAlpha(alpha)
+	end
+end
+
+-- a text's width as written (not cut by a width set on it)
+local function TextWidth(fs)
+	local get = fs.GetUnboundedStringWidth or fs.GetStringWidth
+	return Num(get(fs))
+end
+
+-- the room a tag takes after a label: its plate and the gap before it
+local function TagSpan(tag)
+	local w = TextWidth(tag)
+	return w and (w + 2 * TAG_PAD_X + TAG_GAP) or nil
+end
+
+function W.NewTag(parent, after, new, room)
+	if not (new and after and MelloUI:IsNew(new)) then
+		return nil
+	end
+	local tag = W.Tag(parent, W.NEW)
+	tag:SetPoint("LEFT", after, "RIGHT", TAG_GAP + TAG_PAD_X, 0)
+	if room then
+		local w, span = TextWidth(after), TagSpan(tag)
+		if w and span then
+			-- (its text's width and a little more: a text set exactly as wide
+			-- as it measures can be cut at an odd UI scale)
+			after:SetWidth(math.max(1, math.min(w + LABEL_SLACK, room - span)))
+		end
+	end
+	return tag
+end
+
+-- (`new` true: the caller asked MelloUI:IsNew of what the frame leads to)
+local function Shows(new)
+	return new == true or (new ~= nil and new ~= false and MelloUI:IsNew(new))
+end
+
+function W.Badge(frame, new)
+	if not Shows(new) then
+		return nil
+	end
+	local tag = W.Tag(frame, W.NEW)
+	-- (the word's middle on the frame's top edge)
+	tag:SetPoint("RIGHT", frame, "TOPRIGHT", -(BADGE_IN + TAG_PAD_X), 0)
+	return tag
+end
+
+function W.ButtonTag(button, new)
+	if not Shows(new) then
+		return nil
+	end
+	local tag = W.Tag(button, W.NEW)
+	tag:SetPoint("RIGHT", button, "RIGHT", -(BUTTON_TAG_IN + TAG_PAD_X), 0)
+	local width, word = Num(button:GetWidth()), TextWidth(tag)
+	if width and word then
+		-- the tag's room added at the right (its plate, and the cap's inset
+		-- past it); the label stays centred in the width it had, so it never
+		-- reaches under the tag
+		local extra = word + 2 * TAG_PAD_X + BUTTON_TAG_IN
+		button:SetWidth(width + extra)
+		local fs = button.GetFontString and button:GetFontString()
+		if fs then
+			local _, _, _, x, y = fs:GetPoint(1)
+			fs:ClearAllPoints()
+			fs:SetPoint("CENTER", button, "CENTER", (Num(x) or 0) - extra / 2, Num(y) or 0)
+		end
+	end
+	return tag
+end
+
+--------------------------------------------------------------------------------
 -- Rows: a ledger row with its label on the left, an optional hint after it,
 -- the description in its tooltip, a control on the right.
 --   W.Row(parent, y, height, label, hint, desc, opts) -> row
@@ -1284,6 +1617,11 @@ end
 --                  "why" first." (the row keeps its height)
 --     opts.clip    (true, typed rows) the label and hint end 10 px left of
 --                  the control, cut there, the full text in the tooltip
+--     opts.new     the update the option came with: its New tag right after
+--                  the label while that update runs (W.NewTag; the hint after
+--                  the tag), dimmed with the row while it sleeps; a label with
+--                  a tag and no hint keeps its text's width, cut only where
+--                  the two would reach the control (row.newTag)
 --   row:Refresh()  the row's control (get again) and its gate
 -- The typed rows (a row and its control, which takes get / set; the row's
 -- controls dressed by the kit's sweep with a skin):
@@ -1371,7 +1709,7 @@ function W.Gate(row, gate, opts)
 		cover.note = true
 		if not row.hint then
 			row.hint = W.Text(row, "GameFontHighlightSmall", nil, "text")
-			row.hint:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
+			row.hint:SetPoint("LEFT", row.newTag or row.label, "RIGHT", row.newTag and (10 + TAG_PAD_X) or 10, 0)
 			row.hint:SetWordWrap(false)
 			local control = controlOf[row]
 			if clipped[row] and control then
@@ -1384,15 +1722,37 @@ function W.Gate(row, gate, opts)
 	return cover
 end
 
+-- A label with a New tag and no hint: its text's width, the tag right after
+-- it; narrowed (cut, the whole text in the tooltip) only where the two would
+-- reach 10 px short of the control. `span`: the control's left edge from the
+-- row's right one (the typed rows know it); the row as wide as its parent
+-- less the row's margins (a section's set width). Unknown: left as it is.
+local function FitLabel(row, span)
+	local label, parent = row.label, row:GetParent()
+	local width = span and parent and Num(parent:GetWidth())
+	local text, tag = TextWidth(label), TagSpan(row.newTag)
+	if not (width and width > 0 and text and tag) then
+		return
+	end
+	local room = width - 2 * (row.rowInset or 0) - (row.labelX or 14) - span - 10 - tag
+	if text > room then
+		label:SetWidth(math.max(20, room))
+	end
+end
+
 -- The label and hint kept left of the control: the last of them ends 10 px
 -- left of it (word wrap off: the game cuts it there), the full text in the
--- row's tooltip when cut
-function W.ClipRow(row, control)
+-- row's tooltip when cut; a label with a New tag and no hint: FitLabel
+function W.ClipRow(row, control, span)
 	local last = row.hint or row.label
 	if not (last and control) then
 		return
 	end
-	last:SetPoint("RIGHT", control, "LEFT", -10, 0)
+	if last == row.label and row.newTag then
+		FitLabel(row, span)
+	else
+		last:SetPoint("RIGHT", control, "LEFT", -10, 0)
+	end
 	clipped[row] = true
 	if not row.tipTitle then
 		row.tipTitle = row.label and row.label:GetText() or ""
@@ -1438,11 +1798,14 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 		end
 	end
 	row.label = W.Text(row, "GameFontHighlight", label, opts.labelKey or "text")
-	row.label:SetPoint("LEFT", 14 + (opts.indent or 0), 0)
+	row.labelX, row.rowInset = 14 + (opts.indent or 0), inset
+	row.label:SetPoint("LEFT", row.labelX, 0)
 	row.label:SetWordWrap(false)
+	-- (the option's New tag: made only while its update runs)
+	row.newTag = opts.new and W.NewTag(row, row.label, opts.new) or nil
 	if hint and hint ~= "" then
 		row.hint = W.Text(row, "GameFontHighlightSmall", hint, opts.hintKey or "text")
-		row.hint:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
+		row.hint:SetPoint("LEFT", row.newTag or row.label, "RIGHT", row.newTag and (10 + TAG_PAD_X) or 10, 0)
 		row.hint:SetWordWrap(false)
 	end
 	if desc and desc ~= "" then
@@ -1458,8 +1821,9 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 end
 
 -- a typed row's control in place: known to the row, the texts cut at it,
--- the row's controls dressed by the kit's sweep
-local function Finish(row, control, opts)
+-- the row's controls dressed by the kit's sweep. `span`: the control's left
+-- edge from the row's right one (where a New tag's label may end: ClipRow)
+local function Finish(row, control, opts, span)
 	controlOf[row] = control
 	-- the control's frames that take the mouse keep the row's wash lit (a
 	-- slider's are its bar and its two steppers)
@@ -1468,7 +1832,7 @@ local function Finish(row, control, opts)
 	W.RowPlateChild(row, control.Back)
 	W.RowPlateChild(row, control.Forward)
 	if opts.clip ~= false then
-		W.ClipRow(row, control)
+		W.ClipRow(row, control, span)
 	end
 	W.Dress(row, opts.skin, 2)
 	return row, control
@@ -1480,15 +1844,16 @@ function W.ToggleRow(parent, y, label, hint, desc, get, set, opts)
 	local switch = W.Switch(row, get, set, opts)
 	switch:SetPoint("RIGHT", -12, 0)
 	ControlTip(switch, row, label, desc)
-	return Finish(row, switch, opts)
+	return Finish(row, switch, opts, 12 + 26)
 end
 
 function W.SliderRow(parent, y, label, hint, desc, get, set, opts)
 	opts = opts or NO_OPTS
 	local row = W.Row(parent, y, W.SLIDER_ROW_HEIGHT, label, hint, desc, opts)
-	local slider = W.Slider(row, opts.width or 200, get, set, opts)
+	local width = opts.width or 200
+	local slider = W.Slider(row, width, get, set, opts)
 	slider:SetPoint("RIGHT", -70, 0)
-	return Finish(row, slider, opts)
+	return Finish(row, slider, opts, 70 + width)
 end
 
 -- (the dropdown's own options: its default text is the row's label)
@@ -1498,29 +1863,31 @@ function W.DropdownRow(parent, y, label, hint, desc, get, set, values, opts)
 	opts = opts or NO_OPTS
 	local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
 	DROPDOWN_OPTS.default, DROPDOWN_OPTS.tooltip = label, nil
-	local dd = W.Dropdown(row, opts.width or 200, get, set, values, DROPDOWN_OPTS)
+	local width = opts.width or 200
+	local dd = W.Dropdown(row, width, get, set, values, DROPDOWN_OPTS)
 	dd:SetPoint("RIGHT", -14, 0)
-	return Finish(row, dd, opts)
+	return Finish(row, dd, opts, 14 + width)
 end
 
 -- (the button is dressed with the row, by the kit's sweep)
 function W.ButtonRow(parent, y, label, hint, desc, text, onClick, opts)
 	opts = opts or NO_OPTS
 	local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
-	local button = W.Button(row, text or "Run", opts.width or 70, nil)
+	local width = opts.width or 70
+	local button = W.Button(row, text or "Run", width, nil)
 	button:SetPoint("RIGHT", -12, 0)
 	if onClick then
 		Perf.SetScript(button, "OnClick", onClick)
 	end
 	ControlTip(button, row, label, desc)
 	row.button = button
-	return Finish(row, button, opts)
+	return Finish(row, button, opts, 12 + width)
 end
 
 --------------------------------------------------------------------------------
 -- Card: one choice among a few, shown whole (the installer's four setups; the
 -- Fresh start wizard's Kit Colours and Font Styles): a box with a title, a
--- line under it, a tag plate at its top right ("Recommended") and a picture
+-- line under it, a tag at its top right (W.Tag: "Recommended") and a picture
 -- above the texts when given. ONE "selected" look for the addon, the NavRail
 -- marker's: the raised panel's fill, a 2 px selectedTrim edge, the title in
 -- gold. At rest the main window's tone at 0.85 (a stripe on the dark inner
@@ -1635,17 +2002,11 @@ function W.Card(parent, spec, skin)
 	card.title:SetWordWrap(false)
 	card.title:SetPoint("TOPLEFT", card, "TOPLEFT", inset, top)
 	if spec.tag then
-		-- the plate: selectedTab behind a short gold word, laid on the word
-		-- itself (no width to measure)
-		card.tag = W.Text(card, "GameFontHighlightSmall", spec.tag, "selectedTrim")
-		card.tag:SetWordWrap(false)
+		-- the tag (W.Tag, the one plate: an option's New tag is the same)
+		card.tag = W.Tag(card, spec.tag)
 		card.tag:SetPoint("TOPRIGHT", card, "TOPRIGHT", -14, top - 1)
-		local plate = card:CreateTexture(nil, "ARTWORK")
-		plate:SetPoint("TOPLEFT", card.tag, "TOPLEFT", -6, 3)
-		plate:SetPoint("BOTTOMRIGHT", card.tag, "BOTTOMRIGHT", 6, -3)
-		W.Paint(plate, "selectedTab", "fill", 1)
-		card.tagPlate = plate
-		card.title:SetPoint("RIGHT", plate, "LEFT", -8, 0)
+		card.tagPlate = card.tag.plate
+		card.title:SetPoint("RIGHT", card.tagPlate, "LEFT", -8, 0)
 	else
 		card.title:SetPoint("RIGHT", card, "RIGHT", -inset, 0)
 	end
@@ -1780,8 +2141,14 @@ end
 --         done step's name)
 --   rail:SetGroups(groups)   groups = { { key, title (nil: no header),
 --                            collapsible, entries = { { key, text, icon,
---                            tip } } } }; rows and headers come from a pool
---                            (switching the installer's paths makes no frames)
+--                            tip, new } } } }; rows and headers come from a pool
+--                            (switching the installer's paths makes no frames).
+--                            `new`: true (the caller asked MelloUI:IsNew of
+--                            what the entry leads to) or an update's version:
+--                            a snug New tag (W.Tag) near the row's right edge,
+--                            and on its group's header while the group is
+--                            folded; made with the first row or header that
+--                            needs one
 --   rail:Select(key, instant)   the one marker glides there (0.15 s); the
 --                               same key again does nothing
 --   rail:SetState(key, state)   nil | "off" (icon dimmed, name kept in the
@@ -1804,6 +2171,8 @@ Rail.__index = Rail
 local railOf = setmetatable({}, weakKeys)   -- [row or header] = its rail
 local PLUS = "Interface\\Buttons\\UI-PlusButton-Up"
 local MINUS = "Interface\\Buttons\\UI-MinusButton-Up"
+local RAIL_TAG_IN = 2    -- a New tag's (snug) plate inside the row's right edge
+local RAIL_TAG_GAP = 3   -- a name to its New tag's plate
 
 local function IsSelected(row)
 	local rail = railOf[row]
@@ -2047,6 +2416,7 @@ function Rail:SetGroups(groups)
 			self.headers[gkey] = h
 			self.order[#self.order + 1] = h
 		end
+		local groupNew = false
 		for _, e in ipairs(g.entries) do
 			n = n + 1
 			local row = table.remove(self.rowPool) or NewRow(self)
@@ -2079,12 +2449,35 @@ function Rail:SetGroups(groups)
 				row.icon:Hide()
 			end
 			row.text:SetPoint("LEFT", x, 0)
-			row.text:SetPoint("RIGHT", right, 0)
+			-- a New tag at the right (snug, near the row's edge: the name
+			-- keeps its room -- "UI Modifications" whole at the largest Font
+			-- Style), the name cut before it only when it must be
+			local tagged = Shows(e.new)
+			if tagged and not row.newTag then
+				row.newTag = W.Tag(row, W.NEW, true)
+				row.newTag:SetPoint("RIGHT", row, "RIGHT", (spec.doneGlyph and right or -RAIL_TAG_IN) - TAG_SNUG_X, 0)
+			end
+			W.TagShown(row.newTag, tagged)
+			if tagged then
+				row.text:SetPoint("RIGHT", row.newTag.plate, "LEFT", -RAIL_TAG_GAP, 0)
+				groupNew = true
+			else
+				row.text:SetPoint("RIGHT", right, 0)
+			end
 			local click = spec.clickable == nil or spec.clickable(self, e.key, e)
 			row:EnableMouse(click and true or false)
 			self.rows[e.key] = row
 			self.groupOf[e.key] = gkey
 			self.order[#self.order + 1] = row
+		end
+		local h = self.headers[gkey]
+		if h then
+			h.holdsNew = groupNew
+			if groupNew and not h.newTag then
+				h.newTag = W.Tag(h, W.NEW, true)
+				h.newTag:SetPoint("RIGHT", h, "RIGHT", -(RAIL_TAG_IN + TAG_SNUG_X), 0)
+				W.TagShown(h.newTag, false)
+			end
 		end
 	end
 	self:Layout(true)
@@ -2172,6 +2565,14 @@ function Rail:Paint()
 		local folded = self.folded[gkey] and true or false
 		local holds = folded and self.selected ~= nil and self.groupOf[self.selected] == gkey
 		W.Paint(h.text, (holds or not folded) and "selectedTrim" or "text", "text")
+		-- a folded group holding a New entry: its tag on the header, the
+		-- title cut before it (only when that changes)
+		local tagShown = folded and h.holdsNew and true or false
+		if h.newTag and h.tagShown ~= tagShown then
+			h.tagShown = tagShown
+			W.TagShown(h.newTag, tagShown)
+			h.text:SetPoint("RIGHT", tagShown and h.newTag.plate or h, tagShown and "LEFT" or "RIGHT", tagShown and -RAIL_TAG_GAP or -6, 0)
+		end
 		h.glyph:SetTexture(folded and PLUS or MINUS)
 		-- (the kit's glyphs only while its look is on: a switch off disabled them)
 		local kitOpen = h.collapsible and skin and skin.kit and true or false

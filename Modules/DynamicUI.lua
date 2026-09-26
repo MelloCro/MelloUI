@@ -548,41 +548,15 @@ local DD_W = 200
 local PANEL_M, PANEL_GAP, PANEL_PAD = 18, 16, 14   -- outer margin, gap between the columns, text inset in a panel
 local COL_W = (OVERVIEW_W - 2 * PANEL_M - PANEL_GAP) / 2
 
+-- A box in the game's own dropdown look; its menu the widget set's one
+-- (W.DropdownMenu, the same as every MelloUI dropdown's: a radio per choice,
+-- a long list capped and scrolled with the choice in view, made again only
+-- when out of date -- user, 2026-09-24: every refresh of the overview made
+-- all sixteen menus again)
 local function Dropdown(parent, getValue, choices, onPick)
 	local dd = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
 	dd:SetSize(DD_W, 25)
-	dd:SetupMenu(function(_, root)
-		for _, c in ipairs(choices or {}) do
-			root:CreateRadio(c.label or tostring(c.value), function() return getValue() == c.value end, function() onPick(c.value) end, c.value)
-		end
-	end)
-	-- the menu is made again only when the setting has changed since it was
-	-- last made (user, 2026-09-24: every refresh of the overview made all
-	-- sixteen menus again); made at SetupMenu when the box already names the
-	-- setting's choice, otherwise on the first refresh
-	dd.shownValue = dd   -- (the box itself: equal to no setting)
-	local text, current = dd.Text, getValue()
-	if type(text) == "table" and text.GetText then
-		for _, c in ipairs(choices or {}) do
-			if c.value == current then
-				if text:GetText() == (c.label or tostring(c.value)) then
-					dd.shownValue = current
-				end
-				break
-			end
-		end
-	end
-	dd.Refresh = function(self)
-		local value = getValue()
-		if value == self.shownValue then
-			return
-		end
-		self.shownValue = value
-		if self.GenerateMenu then
-			pcall(self.GenerateMenu, self)
-		end
-	end
-	return dd
+	return W.DropdownMenu(dd, getValue, onPick, choices)
 end
 
 local function UMValue(key, default)
@@ -617,8 +591,7 @@ local function LooksFollow()
 	end
 	looks.palette = MelloUI.Palette
 	for _, dd in ipairs(looks.boxes) do
-		dd.shownValue = dd   -- (equal to no setting: the next refresh makes it)
-		dd:Refresh()
+		dd:Refresh(true)   -- (made again: the same list, its choices renamed)
 	end
 end
 
@@ -635,8 +608,20 @@ local function PaletteShown()
 	return MelloUI:KnownPalette(UMValue("palette", "ember"))
 end
 
--- A switch row (a kit check box when the kit is there)
-local function Check(parent, label, getValue, onPick)
+-- The New tags of its rows (the user's rule, 2026-09-26: every new option
+-- carries a New tag for its update): each row names the update it came with
+-- in a table's `new` -- these for the rows of one kind; a PARCHMENTS or
+-- LAYOUT entry, a border kind (Kit.borderKinds), a shade area or a
+-- background section (a panel's PickerGroups) its own -- and its tag shows
+-- after the label while that update runs (W.NewTag, MelloUI:IsNew).
+-- D:HasNew() tells the configurator's top bar (its Dynamic UI Modification
+-- button's tag); nothing is made for it.
+local PALETTE_TAG = { new = "0.14.0" }   -- the palette's row
+local SHADE_TAG = { new = "0.14.0" }     -- the UI shade's rows (its switch, strength and areas)
+
+-- A switch row (a kit check box when the kit is there); `tag`: a table whose
+-- `new` names the update the row came with (its New tag, cb.newTag)
+local function Check(parent, label, getValue, onPick, tag)
 	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
 	cb:SetSize(24, 24)
 	if cb.Text then
@@ -647,6 +632,7 @@ local function Check(parent, label, getValue, onPick)
 	fs:SetJustifyH("LEFT")
 	fs:SetText(label)
 	W.Paint(fs, "text", "text")
+	cb.newTag = tag and W.NewTag(parent, fs, tag.new) or nil
 	Perf.SetScript(cb, "OnClick", function(self)
 		onPick(self:GetChecked() and true or false)
 	end)
@@ -735,13 +721,17 @@ local function FillOverview(f, body, offer)
 		W.Paint(fs, "selectedTrim", "text")
 		return fs
 	end
-	local function Row(label, x, y, getValue, choices, onPick, side)
+	local function Row(label, x, y, getValue, choices, onPick, side, tag)
 		local fs = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 		fs:SetPoint("LEFT", body, "TOPLEFT", x, y - ROW_H / 2 + 3)
 		fs:SetWidth(COL_W - DD_W - PANEL_PAD * 2 - 8)
 		fs:SetJustifyH("LEFT")
 		fs:SetText(label)
 		W.Paint(fs, "text", "text")
+		-- (its New tag right after the text, within the label's room)
+		if tag then
+			W.NewTag(body, fs, tag.new, COL_W - DD_W - PANEL_PAD * 2 - 8)
+		end
 		local dd = Dropdown(body, getValue, choices, onPick)
 		dd:SetPoint("TOPLEFT", x + COL_W - DD_W - PANEL_PAD * 2, y - 2)
 		body.dropdowns[#body.dropdowns + 1] = dd
@@ -767,7 +757,7 @@ local function FillOverview(f, body, offer)
 				if f.Refresh then
 					f:Refresh()
 				end
-			end, "left")
+			end, "left", PALETTE_TAG)
 			local swatch = W.PaletteSwatch(body, { width = 60, height = 14 })
 			swatch:SetPoint("RIGHT", pd, "LEFT", -8, 0)
 			y = y - ROW_H
@@ -779,7 +769,7 @@ local function FillOverview(f, body, offer)
 			if f.Refresh then
 				f:Refresh()
 			end
-		end, "left")
+		end, "left", k.new and k or nil)   -- (a border kind's own `new`: Kit.borderKinds)
 		if colours then
 			looks.boxes[#looks.boxes + 1] = dd
 		end
@@ -794,7 +784,7 @@ local function FillOverview(f, body, offer)
 		local cb = Check(body, entry[2], function() return UMValue(entry[1], false) end, function(v)
 			MelloUI:NotifySettingChanged("UIModifications", entry[1], v)
 			MelloUI:PlayUISound(v and "option_on" or "option_off")
-		end)
+		end, entry)
 		cb:SetPoint("TOPLEFT", x, y)
 		body.dropdowns[#body.dropdowns + 1] = cb
 		if i % 2 == 0 then
@@ -820,7 +810,7 @@ local function FillOverview(f, body, offer)
 					f:Refresh()
 				end
 				C_Timer.After(0.15, RearmIfRunning)
-			end, "right")
+			end, "right", s.new and s or nil)   -- (a background section's own `new`: its panel's PickerGroups)
 			y = y - ROW_H
 		end
 	end
@@ -837,7 +827,7 @@ local function FillOverview(f, body, offer)
 			MelloUI:NotifySettingChanged(entry.module, entry.key, v)
 			MelloUI:PlayUISound(v and "option_on" or "option_off")
 			C_Timer.After(0.15, RearmIfRunning)
-		end)
+		end, entry)
 		cb:SetPoint("TOPLEFT", right, y)
 		body.dropdowns[#body.dropdowns + 1] = cb
 		y = y - 28
@@ -863,7 +853,7 @@ local function FillOverview(f, body, offer)
 			if f.Refresh then
 				f:Refresh()
 			end
-		end)
+		end, SHADE_TAG)
 		master:SetPoint("TOPLEFT", x, y)
 		body.dropdowns[#body.dropdowns + 1] = master
 		y = y - 28
@@ -873,6 +863,7 @@ local function FillOverview(f, body, offer)
 		fs:SetJustifyH("LEFT")
 		fs:SetText("Shade Strength")
 		W.Paint(fs, "text", "text")
+		W.NewTag(body, fs, SHADE_TAG.new)
 		local slider = W.Slider(body, DD_W, function()
 			return UMValue(shade.strength, shade.default)
 		end, function(v)
@@ -889,15 +880,17 @@ local function FillOverview(f, body, offer)
 			local cb, label = Check(body, a.label, function() return UMValue(a.key, true) ~= false end, function(v)
 				MelloUI:NotifySettingChanged("UIModifications", a.key, v)
 				MelloUI:PlayUISound(v and "option_on" or "option_off")
-			end)
+			end, a.new and a or SHADE_TAG)
 			cb:SetPoint("TOPLEFT", ax, y)
-			-- (dimmed while the shade is off: its switch still works)
+			-- (dimmed while the shade is off: its switch still works; its New
+			-- tag with it)
 			local refresh = cb.Refresh
 			cb.Refresh = function(self)
 				refresh(self)
 				local alpha = MasterOn() and 1 or SHADE_OFF_ALPHA
 				self:SetAlpha(alpha)
 				label:SetAlpha(alpha)
+				W.TagAlpha(self.newTag, alpha)
 			end
 			cb:Refresh()
 			body.dropdowns[#body.dropdowns + 1] = cb
@@ -1190,6 +1183,30 @@ end
 
 function D:IsRunning()
 	return running
+end
+
+-- Whether a row it lays is new in the running update (its New tag): the
+-- palette's row, the shade's rows, a parchment or layout switch or a border
+-- kind whose entry says so (a background section's own is on its panel's
+-- groups, which only the overview asks for: its row is tagged, the top bar
+-- not). Read from the same tables the rows are laid from; nothing made.
+local function AnyNew(list)
+	for _, entry in ipairs(list) do
+		if entry.new ~= nil and MelloUI:IsNew(entry.new) then
+			return true
+		end
+	end
+	return false
+end
+function D:HasNew()
+	if MelloUI.Palettes and MelloUI:IsNew(PALETTE_TAG.new) then
+		return true
+	end
+	local shade = Kit and Kit.shadeSettings
+	if type(shade) == "table" and type(Kit.shadeAreas) == "table" and (MelloUI:IsNew(SHADE_TAG.new) or AnyNew(Kit.shadeAreas)) then
+		return true
+	end
+	return AnyNew(PARCHMENTS) or AnyNew(LAYOUT) or AnyNew(Kit and Kit.borderKinds or {})
 end
 
 function MelloUI:StartDynamicUI()

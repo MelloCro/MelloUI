@@ -98,11 +98,11 @@ local M = MelloUI:RegisterModule("Restock", {
 	-- (no header and no switch of its own for the reminder: the Reminders page
 	-- lays these rows under its "Restock" switch, remind_restock)
 	options = {
-		{ type = "slider", key = "below", name = "Remind Below", min = 0.25, max = 0.75, step = 0.05, percent = true,
+		{ type = "slider", key = "below", name = "Remind Below", new = "0.14.0", min = 0.25, max = 0.75, step = 0.05, percent = true,
 		  desc = "You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount." },
-		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
+		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop", new = "0.14.0",
 		  desc = "At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy." },
-		{ type = "button", name = "Restock List", text = "Edit",
+		{ type = "button", name = "Restock List", text = "Edit", new = "0.14.0",
 		  desc = "What to keep in your bags and how many. Each character has its own list; a new one starts with suggestions for its class. Also /restock.",
 		  onClick = function(module) module:OpenList() end },
 	},

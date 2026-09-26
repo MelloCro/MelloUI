@@ -84,7 +84,7 @@ files are removed (they are rebuilt by their tools if ever wanted).
 | picture cards (a card whose background is a painting) | `picture` kind: the painted panel cropped to the card's aspect (crop 1 = bottom), its `_grey` twin while the game marks it missing / inactive, the single rail 1.6 over it (pick F) |
 | cards without a painting | single rail 1.6 + stone body (pick A) |
 | search / edit boxes | `inputs/edit` plate (S1), focused while typing; too narrow for its caps = middle only |
-| dropdowns | `inputs/dropdown` plate (D1), hover from the button |
+| dropdowns | `inputs/dropdown` plate (D1), hover from the button; a long list's menu (user, 2026-09-26: the Fonts list ran off the screen) in the game's own scroll mode, at most 18 entries and half the screen, the choice scrolled into view, its scroll bar THE scroll bar while the box's window wears the kit -- one builder for every MelloUI dropdown, `W.DropdownMenu` (Core/Widgets.lua) |
 | text buttons (Create, OK, …) | `buttons/redbtn` (B1) with the game's four states, slightly under the button's height |
 | numeric spinners | the edit plate's middle + `buttons/arrow_left` / `_right` (N1) |
 | item / reagent slots, icon borders | `buttons/slot` rim over a square icon (R1), `buttons/roundslot` over a round one (O2); a quality-coloured border tints the rim the same |
@@ -615,6 +615,51 @@ when a copy is added and names the system to use.
   `skin:Anchor`); it never reaches for `MelloUI.Kit` itself. Kit and Fonts
   load after Widgets.lua and Config.lua: nothing of theirs is bound at file
   scope, everything is looked up when a builder runs.
+- **New tags: every new option says its update (user, 2026-09-26).** "every
+  new Dropdown menu, every new slider, every new checkbox etc needs to get a
+  "New" tag for people to easly navigate to that option to test it out in
+  the Configurator, every next update, the old "New" tags are being removed
+  and reapplied to the new stuff". So:
+  - an option added in an update carries that update's version: `new =
+    "<version>"` on its schema entry (every kind: toggle, slider, dropdown,
+    button ...), in the opts of a row built by hand (`W.ToggleRow` and the
+    other typed rows, `W.Row`: `opts.new`; in the configurator
+    `RowOpts(sec, new)`, `new` a named table's field, as
+    `RowOpts(blk, BACKUP_TAG.new)`), or in a table the hand-built control
+    names (Home's `PALETTE_DD`, the Profiles page's `BACKUP_TAG`, Dynamic UI's
+    `PALETTE_TAG` / `SHADE_TAG`; a `PARCHMENTS` or `LAYOUT` entry, a border
+    kind, a shade area or a background section its own `new`); a bare
+    control (`W.Button`, a `CreateFrame` button, check box or edit box) by a
+    tag call after it that names it (`W.NewTag(row, row.rename,
+    RENAME_TAG.new)`, `W.ButtonTag(button, ...)`). A new module
+    with a page and no option of its own tagged adds `new` to its
+    RegisterModule (its page title and side-list entry). A row generated from
+    the registry (UI Modifications' window and tweak rows) takes it from the
+    generator;
+  - it shows ONLY while `MelloUI:IsNew(new)` (Core: the TOC's Version; a
+    test build's "0.14.0-rc5" counts as 0.14.0), so the next update shows
+    none of the old ones and nobody removes them by hand;
+  - the one tag is `W.Tag` (the installer card's "Recommended" plate):
+    `W.NewTag` right after the row's label (the hint after the tag, dimmed
+    with a sleeping row), `W.Badge` on a tab's top edge (UI Modifications'
+    tabs), `W.ButtonTag` inside a text button at its right (the top bar's
+    Dynamic UI Modification, widened by the tag, its label keeping its own
+    width), and snug near the right edge of the side list's entry and of a
+    folded group's header (`W.NavRail` entries' `new`: a page by its own
+    options, a shortcut by the UI Modifications tab it opens), and one line
+    in Home's What's new. All of it is read from the schemas once, when the
+    configurator is made (made with its rows, never at login);
+  - `python Tools/lint/check_new_tags.py` (run by `Tools/release.py` before
+    anything is tagged) compares every option with the previous release, by
+    module and key (a key whose kind changed, a switch become a dropdown, is
+    new): it fails on a new option without the current version, on an old
+    option tagged with it, on a new page with nothing tagged, and on a file
+    that builds controls it does not know (its `OWN_FILES`, the
+    configurator's, or `NOT_CONFIGURATOR`); it stops (exit 2) when a file or
+    a module's OnInit fails in its world. `--fix` takes older versions' tags
+    out of the files: table fields, a `x.new = "..."` line and a version
+    handed by position; anything else it names for a hand, and a file that
+    would not compile after it is put back.
 - **Its registry entry.** Its module's `MelloUI:RegisterModule` carries what
   the configurator, UI Modifications and the installer show; nothing is
   listed by hand anywhere else (UI Modifications makes its PANELS, TWEAKS
@@ -643,7 +688,9 @@ when a copy is added and names the system to use.
     installer's setups do with it (a hidden kit panel with a `window` is
     look); `area = { key, follows }`; a feature folded under UI
     Modifications is `tweak = { label, desc, order, off, always }` (`order`
-    as window's).
+    as window's); `new = "<version>"` for a brand-new module's page (its
+    side-list entry and page title tagged New while that update runs: New
+    tags above).
   - `keep = { patterns }`: the module's settings that are one character's
     or one PC's own, which no profile, share string or copy carries and a
     profile load never wipes (Route's `flights_<GUID>`, Restock's

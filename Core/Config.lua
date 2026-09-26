@@ -727,8 +727,12 @@ end
 -- which switch wakes it, so it keeps its height. The section keeps where the
 -- next row goes (`y`) and how many it holds (`rows`).
 local ROW = {}   -- the rows' options (one table, filled per row)
-local function RowOpts(sec)
+-- `new`: the update the row's option came with (its New tag, W.Row's
+-- opts.new): the schema's `opt.new`, or a hand-built row's (a named table's
+-- `new`, as the Profiles page's BACKUP_TAG.new)
+local function RowOpts(sec, new)
 	ROW.skin = SKIN
+	ROW.new = new
 	ROW.inset = KIT and SEC_INSET or 0
 	ROW.indent = (sec.indent or 0) * INDENT
 	ROW.zebra = (KIT and sec.rows % 2 == 0) and true or false
@@ -762,7 +766,7 @@ end
 -- and its IMPORTANT hint in the palette's gold.
 local function AddToggle(sec, module, db, opt)
 	local key = opt.key
-	local o = RowOpts(sec)
+	local o = RowOpts(sec, opt.new)
 	if opt.important then
 		o.labelKey, o.hintKey = C.accent, C.accent
 	end
@@ -781,7 +785,7 @@ end
 
 local function AddSlider(sec, module, db, opt)
 	local key = opt.key
-	local o = RowOpts(sec)
+	local o = RowOpts(sec, opt.new)
 	o.min, o.max, o.step, o.percent, o.format = opt.min, opt.max, opt.step, opt.percent, opt.format
 	local row = W.SliderRow(sec, sec.y, opt.name, opt.hint, opt.desc,
 		function() return db[key] end,
@@ -794,10 +798,11 @@ end
 
 local function AddDropdown(sec, module, db, opt)
 	local key = opt.key
+	local o = RowOpts(sec, opt.new)
 	local row = W.DropdownRow(sec, sec.y, opt.name, opt.hint, opt.desc,
 		function() return db[key] end,
 		function(value) MelloUI:NotifySettingChanged(module.name, key, value) end,
-		opt.values, RowOpts(sec))
+		opt.values, o)
 	Refreshes(sec, row)
 	return Placed(sec, row, ROW_HEIGHT)
 end
@@ -813,7 +818,7 @@ local RowButtonClick = Shared("OnClick on the configurator's row buttons", funct
 end, "script")
 
 local function AddButton(sec, module, db, opt)
-	local o = RowOpts(sec)
+	local o = RowOpts(sec, opt.new)
 	o.width = opt.width
 	local row, button = W.ButtonRow(sec, sec.y, opt.name, opt.hint, opt.desc, opt.text or "Run", RowButtonClick, o)
 	o.width = nil
@@ -1096,6 +1101,9 @@ local function NewPage(name, width)
 				end
 				tab.SetSelected = TabSetSelected
 				Perf.SetScript(tab, "OnClick", TabClick)
+				-- a tab holding an option new in the running update: its New
+				-- tag on the tab's top edge (W.Badge)
+				tab.newTag = sec.hasNew and W.Badge(tab, true) or nil
 				self.tabs[#self.tabs + 1] = tab
 			end
 			if not KIT then
@@ -1141,6 +1149,8 @@ local function BuildPageHeader(page, icon, title, flavour, module, right)
 		KIT:TitleFont(titleFS, true)
 	end
 	page.titleText = titleFS
+	-- a brand-new module's page (its registry `new`): its New tag after the title
+	page.titleTag = module and module.new and W.NewTag(page, titleFS, module.new) or nil
 
 	local rightWidth = right or (module and 200 or 0)
 	local flavourFS = Text(page, "GameFontHighlightSmall", nil, C.sub)
@@ -1218,6 +1228,61 @@ local function BuildPageHeader(page, icon, title, flavour, module, right)
 	page.headerHeight = HeaderHeight(page)
 end
 
+-- an option by its key, in a module's options
+local function OptionOf(owner, key)
+	for _, o in ipairs(owner.options) do
+		if o.key == key then
+			return o
+		end
+	end
+	return nil
+end
+
+-- Every entry a module's page lays, in its order: visit(arg, owner, opt,
+-- area) -- `owner` nil for a header (a tab), else the module whose setting
+-- the row is (an option may belong to ANOTHER module, `opt.module`; an
+-- `include` lays out another module's options in place: all of them, its
+-- headers as subheaders unless `flat`, or only `keys`, in their order, with
+-- inline rows between), `area` the key of this module's switch the included
+-- rows hang on. The page's build and the side list's New tags walk the same
+-- (NavGroups).
+local function EachOption(module, visit, arg)
+	for _, opt in ipairs(module.options) do
+		if opt.type == "header" then
+			visit(arg, nil, opt)
+		elseif opt.type == "include" then
+			local inc = MelloUI:GetModule(opt.module)
+			if inc then
+				if opt.keys then
+					for _, entry in ipairs(opt.keys) do
+						local sub = type(entry) == "table" and entry or OptionOf(inc, entry)
+						if sub then
+							visit(arg, inc, sub, sub.type ~= "subheader" and opt.area or nil)
+						end
+					end
+				else
+					for _, sub in ipairs(inc.options) do
+						if sub.type == "header" then
+							if not opt.flat then
+								visit(arg, inc, { type = "subheader", name = sub.name })
+							end
+						else
+							visit(arg, inc, sub, opt.area)
+						end
+					end
+				end
+			end
+		elseif opt.module then
+			local owner = MelloUI:GetModule(opt.module)
+			if owner then
+				visit(arg, owner, opt)
+			end
+		else
+			visit(arg, module, opt)
+		end
+	end
+end
+
 local function BuildModulePage(module, width)
 	local page = NewPage(module.name, width)
 	page.important = module.important and true or false
@@ -1232,15 +1297,6 @@ local function BuildModulePage(module, width)
 	W.Dress(page, SKIN)
 	local db = MelloUI:GetModuleDB(module.name)
 	local sec = nil
-	-- an option's row by its key, in a module's options
-	local function OptionOf(owner, key)
-		for _, o in ipairs(owner.options) do
-			if o.key == key then
-				return o
-			end
-		end
-		return nil
-	end
 	-- how deep an option hangs under its parents (`opt.parent`, a switch of
 	-- the same module): one indent per level
 	local function Depth(owner, opt)
@@ -1303,16 +1359,35 @@ local function BuildModulePage(module, width)
 			page.follow[#page.follow + 1] = row
 		end
 	end
-	-- an option may belong to ANOTHER module (`opt.module`), built against
-	-- that module and its settings; `include` lays out another module's
-	-- options in place (all of them, its headers as subheaders, or only
-	-- `keys`, in their order, with inline rows between), under the tab's
-	-- area switch (`area`, a key of this page's module: the rows indented
-	-- one step and live only while it is on). Here the option's setting is
-	-- filled in and its row queued on the tab; MakeRows makes it.
-	local function Build(owner, ownerDb, opt, area)
+	-- each entry (EachOption) built against its owner and its settings,
+	-- under the tab's area switch (`area`, a key of this page's module: the
+	-- rows indented one step and live only while it is on). Here the
+	-- option's setting is filled in and its row queued on the tab; MakeRows
+	-- makes it. A tab holding an option new in the running update is marked
+	-- (its New tag: page:Finish).
+	local areas = {}   -- [area key] = { db, key, name } (the gate's)
+	local dbs = { [module] = db }   -- [owner] = its settings
+	local function Build(_, owner, opt, areaKey)
+		if not owner then
+			sec = NewSection(page, opt.name)
+			return
+		end
 		if not sec then
 			sec = NewSection(page, "General")
+		end
+		local ownerDb = dbs[owner]
+		if not ownerDb then
+			ownerDb = MelloUI:GetModuleDB(owner.name)
+			dbs[owner] = ownerDb
+		end
+		local area = nil
+		if areaKey then
+			area = areas[areaKey]
+			if not area then
+				local o = OptionOf(module, areaKey)
+				area = { db = db, key = areaKey, name = o and o.name or areaKey }
+				areas[areaKey] = area
+			end
 		end
 		if builders[opt.type] and opt.key and ownerDb[opt.key] == nil then
 			ownerDb[opt.key] = owner.defaults[opt.key]
@@ -1320,48 +1395,12 @@ local function BuildModulePage(module, width)
 		if opt.key and owner == module and not page.anchors[opt.key] then
 			page.anchors[opt.key] = { sec = sec, y = sec.plannedY or sec.y }
 		end
+		if opt.new ~= nil and MelloUI:IsNew(opt.new) then
+			sec.hasNew = true
+		end
 		Queue(sec, { owner, ownerDb, opt, area }, MakeOption, ROW_HEIGHTS[opt.type] or 0)
 	end
-	for _, opt in ipairs(module.options) do
-		if opt.type == "header" then
-			sec = NewSection(page, opt.name)
-		elseif opt.type == "include" then
-			local inc = MelloUI:GetModule(opt.module)
-			if inc then
-				local incDb = MelloUI:GetModuleDB(inc.name)
-				local area = nil
-				if opt.area then
-					local o = OptionOf(module, opt.area)
-					area = { db = db, key = opt.area, name = o and o.name or opt.area }
-				end
-				if opt.keys then
-					for _, entry in ipairs(opt.keys) do
-						local sub = type(entry) == "table" and entry or OptionOf(inc, entry)
-						if sub then
-							Build(inc, incDb, sub, sub.type ~= "subheader" and area or nil)
-						end
-					end
-				else
-					for _, sub in ipairs(inc.options) do
-						if sub.type == "header" then
-							if not opt.flat then
-								Build(inc, incDb, { type = "subheader", name = sub.name })
-							end
-						else
-							Build(inc, incDb, sub, area)
-						end
-					end
-				end
-			end
-		elseif opt.module then
-			local owner = MelloUI:GetModule(opt.module)
-			if owner then
-				Build(owner, MelloUI:GetModuleDB(owner.name), opt)
-			end
-		else
-			Build(module, db, opt)
-		end
-	end
+	EachOption(module, Build)
 	if #page.sections == 0 then
 		sec = NewSection(page, "Options")
 		SectionBox(sec)
@@ -1389,7 +1428,7 @@ end
 
 -- (what the rest of the file uses of it; the block keeps its helpers to
 -- itself: the file is near Lua's limit of 200 locals in one function)
-local BuildHomePage, ConfirmLoadProfile, FillProfileNames, DynamicClick, InstallClick
+local BuildHomePage, ConfirmLoadProfile, FillProfileNames, DynamicClick, InstallClick, HomeNew
 do
 local HOME_GAP = 10       -- between the two cards, and above Help
 local CARD_PAD = 12       -- a card's texts inside its box
@@ -1705,7 +1744,23 @@ end
 local function PaletteSet(id)
 	MelloUI:SetPalette(id)
 end
-local PALETTE_DD = { default = "Palette", tooltip = HOME_TIPS.palette }
+-- (`new`: the update the palette row came with, its New tag after the label)
+local PALETTE_DD = { default = "Palette", tooltip = HOME_TIPS.palette, new = "0.14.0" }
+-- Home's own options (Your setup's controls), each with the update it came
+-- with in `new`: the side list's Home entry is tagged New while one of them
+-- is new (HomeNew; a new control of Home's goes in this list)
+local HOME_OPTIONS = { PROFILE_DD, PALETTE_DD }
+function HomeNew()
+	for _, o in ipairs(HOME_OPTIONS) do
+		if o.new ~= nil and MelloUI:IsNew(o.new) then
+			return true
+		end
+	end
+	return false
+end
+-- What's new's first line while New tags show: the tag itself, and where to
+-- look for it (in-game words)
+local NEW_LINE = "Look for this tag on the side list, the tabs and the options: it marks everything this update added."
 
 -- a Home card: the L1 box with the kit (CT2: single rail and list-box stone,
 -- its rule laying the palette's inner panel over the stone, 2e), a palette
@@ -1748,14 +1803,30 @@ end
 
 -- one version's changes in the What's new card from `y` down, at the card's
 -- own width: its number, then a line per change; the y under it. Each text
--- is kept in order in `card.items` (a line with its dot, `melloDot`), so a
--- font change can place them again (NewsLay).
+-- is kept in order in `card.items` (a line with its dot, `melloDot`; the
+-- New tags' line with its tag, `melloTag`), so a font change can place them
+-- again (NewsLay). `card.lead`: a first line after the tag (W.Tag), the
+-- running update's while its options show New tags (taken once).
 local function AddVersion(card, entry, y)
+	local lead = card.lead
+	card.lead = nil
 	local items = card.items
 	local head = Text(card, "GameFontNormal", "Version " .. entry.version, C.accent)
 	head:SetPoint("TOPLEFT", CARD_PAD, -y)
 	items[#items + 1] = head
 	y = y + 22
+	if lead then
+		local tag = W.Tag(card, W.NEW)
+		tag:SetPoint("TOPLEFT", CARD_PAD + W.TAG_PAD, -(y + 1))
+		local indent = (Num(tag:GetStringWidth()) or 24) + W.TAG_PAD * 2 + 8
+		local fs = Text(card, "GameFontHighlight", lead, C.text)
+		fs:SetPoint("TOPLEFT", CARD_PAD + indent, -y)
+		fs:SetWidth(card.w - CARD_PAD * 2 - indent)
+		fs:SetWordWrap(true)
+		fs.melloTag, fs.melloIndent = tag, indent
+		items[#items + 1] = fs
+		y = y + WrappedHeight(fs, 14) + 6
+	end
 	local textWidth = card.w - CARD_PAD * 2 - 16
 	for _, line in ipairs(entry.lines) do
 		local dot = Solid(card, "ARTWORK", C.accent2, 1)
@@ -1798,6 +1869,10 @@ local function NewsLay(card)
 		if dot then
 			dot:SetPoint("TOPLEFT", CARD_PAD + 4, -(y + 5))
 			fs:SetPoint("TOPLEFT", CARD_PAD + 16, -y)
+			y = y + WrappedHeight(fs, 14) + 6
+		elseif fs.melloTag then
+			fs.melloTag:SetPoint("TOPLEFT", CARD_PAD + W.TAG_PAD, -(y + 1))
+			fs:SetPoint("TOPLEFT", CARD_PAD + fs.melloIndent, -y)
 			y = y + WrappedHeight(fs, 14) + 6
 		else
 			if i > 1 then
@@ -1963,7 +2038,10 @@ local function BuildNews(page, sec, width)
 	card:SetPoint("TOPLEFT", sec, "TOPLEFT", 0, 0)
 	CardHeading(card, "What's new")
 	card.items = {}
-	card.textY = AddVersion(card, CHANGELOG[1], CARD_HEAD)
+	-- (the line about the New tags: while this version's options show them)
+	local latest = CHANGELOG[1]
+	card.lead = window.anyNew and MelloUI:IsNew(latest.version) and NEW_LINE or nil
+	card.textY = AddVersion(card, latest, CARD_HEAD)
 	card.shownVersions = 1
 	if #CHANGELOG > 1 then
 		local more = W.Button(card, "Earlier versions", 150, SKIN, { onClick = EarlierClick })
@@ -2038,7 +2116,14 @@ local function BuildSetup(page, sec, width, x)
 	-- the palette (0.14.0), live: its swatch (the palette in use, painted by
 	-- key) and the widget set's palette list; the reskin on or off
 	local swatch = W.PaletteSwatch(rows.palette, { width = 50, height = 14 })
-	swatch:SetPoint("LEFT", SETUP_VALUE, 0)
+	-- (new in its update: the New tag after the label, the swatch after it)
+	local tag = W.NewTag(rows.palette, rows.palette.label, PALETTE_DD.new)
+	if tag then
+		swatch:SetPoint("LEFT", tag.plate, "RIGHT", 8, 0)
+	else
+		swatch:SetPoint("LEFT", SETUP_VALUE, 0)
+	end
+	rows.palette.newTag = tag
 	local pal = W.Dropdown(rows.palette, 160, PaletteGet, PaletteSet, W.PaletteValues(), PALETTE_DD)
 	pal:SetPoint("RIGHT", -CARD_PAD, 0)
 	pal.melloTipTitle = "Palette"
@@ -2553,7 +2638,7 @@ local function ProfileNames()
 end
 
 -- (what the rest of the file uses of the Profiles block)
-local RefreshProfilesPage, BuildProfilesPage
+local RefreshProfilesPage, BuildProfilesPage, ProfilesNew
 do
 -- The four buttons of a profile's row: one shared handler each, reading the
 -- row's `profileName` (set as the list is filled), so a refresh makes no
@@ -2676,6 +2761,12 @@ local BackupDeleteClick = Shared("OnClick on the configurator's Macro Backup Del
 	BackupUI.AskDelete()
 end, "script")
 local BACKUP_HEAD = { name = BackupUI.TEXT.heading }
+-- the update Macro Backup's rows came with (their New tags; the side list's
+-- Profiles entry is tagged while they are new: ProfilesNew)
+local BACKUP_TAG = { new = "0.14.0" }
+function ProfilesNew()
+	return BackupUI.Ready() and MelloUI:IsNew(BACKUP_TAG.new) or false
+end
 
 -- a row of the part at `y` (under the copy's state, which wraps)
 local function PlaceBackupRow(blk, row, y)
@@ -2696,18 +2787,19 @@ local function BuildBackup(sec, width)
 	blk.y, blk.rows = 0, 0
 	blk.inset = KIT and SEC_INSET or 0
 	AddSubheader(blk, nil, nil, BACKUP_HEAD)
-	local row = W.ToggleRow(blk, blk.y, T.switch, T.switchHint, T.switchDesc, BackupGet, BackupSet, RowOpts(blk))
+	local o = RowOpts(blk, BACKUP_TAG.new)
+	local row = W.ToggleRow(blk, blk.y, T.switch, T.switchHint, T.switchDesc, BackupGet, BackupSet, o)
 	blk.switchRow = Placed(blk, row, ROW_HEIGHT)
 	blk.stateTop = blk.y + 8
 	blk.state = Text(blk, "GameFontHighlight", nil, C.text)
 	blk.state:SetPoint("TOPLEFT", blk.inset + 14, -blk.stateTop)
 	blk.state:SetWidth(width - PAD * 2 - (blk.inset + 14) * 2)
 	blk.state:SetWordWrap(true)
-	local o = RowOpts(blk)
+	o = RowOpts(blk, BACKUP_TAG.new)
 	o.width = 90
 	blk.restoreRow = W.ButtonRow(blk, 0, T.restore, T.restoreHint, T.restoreDesc, T.restoreButton, BackupRestoreClick, o)
 	blk.rows = blk.rows + 1
-	o = RowOpts(blk)
+	o = RowOpts(blk, BACKUP_TAG.new)
 	o.width = 90
 	blk.deleteRow = W.ButtonRow(blk, 0, T.delete, T.deleteHint, T.deleteDesc, T.deleteButton, BackupDeleteClick, o)
 	o.width = nil
@@ -3001,7 +3093,34 @@ local function NavOrder(a, b)
 	return a.at < b.at
 end
 
--- The side list's groups from the registry (made once, at the first open)
+-- The side list's New tags (the user's rule, 2026-09-26: "for people to
+-- easily navigate to that option"): an entry is tagged while its page lays
+-- an option new in the running update (MelloUI:IsNew) or its module is new
+-- itself (the registry's `new`); a shortcut while the tab of UI
+-- Modifications it opens -- the one holding its qol_ switch -- holds one
+-- (that tab wears the badge); Home and Profiles by their own rows (HomeNew,
+-- ProfilesNew). Read from the schemas once, as the list is made, through the
+-- pages' own walk (EachOption), with the tabs as the page makes them (a
+-- header opens one; a row before any header opens "General").
+local function NewVisit(acc, owner, opt)
+	if not owner then
+		acc.tab, acc.open = acc.tab + 1, true   -- (a header: the next tab)
+		return
+	end
+	if not acc.open then
+		acc.tab, acc.open = acc.tab + 1, true
+	end
+	if owner == acc.module and opt.key ~= nil and acc.tabOf[opt.key] == nil then
+		acc.tabOf[opt.key] = acc.tab
+	end
+	if opt.new ~= nil and MelloUI:IsNew(opt.new) then
+		acc.any = true
+		acc.tabNew[acc.tab] = true
+	end
+end
+
+-- The side list's groups from the registry (made once, at the first open),
+-- and whether any of its entries is tagged New
 local function NavGroups()
 	local switches = {}
 	local um = MelloUI.modules.UIModifications
@@ -3012,7 +3131,20 @@ local function NavGroups()
 			end
 		end
 	end
+	-- (the pages' New options first: a shortcut's tab is on UI Modifications)
+	local pageNew, umTabs = {}, nil
+	for _, module in ipairs(MelloUI:ModulesInOrder()) do
+		if module.group and not module.hidden then
+			local acc = { module = module, any = false, tab = 0, open = false, tabOf = {}, tabNew = {} }
+			EachOption(module, NewVisit, acc)
+			pageNew[module] = acc.any or MelloUI:IsNew(module.new)
+			if module.name == "UIModifications" then
+				umTabs = acc
+			end
+		end
+	end
 	local byGroup = {}
+	local anyNew = false
 	for i, module in ipairs(MelloUI:ModulesInOrder()) do
 		local group = module.group
 		local shortcut = module.hidden and switches["qol_" .. module.name] and ("qol_" .. module.name) or nil
@@ -3020,11 +3152,22 @@ local function NavGroups()
 			local icon, flavour = Meta(module)
 			local list = byGroup[group] or {}
 			byGroup[group] = list
+			local new
+			if shortcut then
+				local tab = umTabs and umTabs.tabOf[shortcut]
+				new = (tab ~= nil and umTabs.tabNew[tab]) or MelloUI:IsNew(module.new)
+			else
+				new = pageNew[module]
+			end
+			anyNew = anyNew or new
 			list[#list + 1] = { key = module.name, text = module.title, icon = icon, tip = flavour, module = true,
-				shortcut = shortcut, order = tonumber(module.navOrder) or math.huge, at = i }
+				shortcut = shortcut, order = tonumber(module.navOrder) or math.huge, at = i, new = new or nil }
 		end
 	end
-	local groups = { { key = "Home", entries = { { key = "Home", text = "Home", icon = LOGO, tip = HOME_FLAVOUR } } } }
+	local homeNew, profilesNew = HomeNew(), ProfilesNew()
+	anyNew = anyNew or homeNew or profilesNew
+	local groups = { { key = "Home", entries = { { key = "Home", text = "Home", icon = LOGO, tip = HOME_FLAVOUR,
+		new = homeNew or nil } } } }
 	for _, name in ipairs(NAV_GROUPS) do
 		local list = byGroup[name]
 		if list then
@@ -3033,8 +3176,8 @@ local function NavGroups()
 		end
 	end
 	groups[#groups + 1] = { key = "Profiles", entries = { { key = "Profiles", text = "Profiles", icon = PROFILES_META.icon,
-		tip = PROFILES_META.flavour } } }
-	return groups
+		tip = PROFILES_META.flavour, new = profilesNew or nil } } }
+	return groups, anyNew and true or false
 end
 
 -- the side list's icon: the widgets' framed icon, with the kit the rim every
@@ -3425,6 +3568,12 @@ local function CreateWindow()
 	Perf.SetScript(close, "OnClick", CloseClick)
 	local dynamic = W.Button(bar, "Dynamic UI Modification", 190, shell, { onClick = DynamicClick })
 	dynamic:SetPoint("RIGHT", close, "LEFT", -8, 0)
+	-- (a New tag inside it, at its right, while Dynamic UI Modification
+	-- offers a new option: the button grows by the tag's room, its label
+	-- keeps its own, and Install... moves along)
+	local D = MelloUI.DynamicUI
+	local dynamicNew = D and D.HasNew and D:HasNew() and true or false
+	dynamic.newTag = W.ButtonTag(dynamic, dynamicNew)
 	BarTip(dynamic, "Dynamic UI Modification", "The look of the reskin, all in one place: the borders and Kit Colours of every "
 		.. "window, the parchment sheets, and the backgrounds of the action bars, micro menu, bag bar, bags, character window, "
 		.. "minimap and professions, chosen on the interface itself with a picture of each choice. Closes the configurator "
@@ -3447,7 +3596,9 @@ local function CreateWindow()
 	rail.box:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BODY_TOP)
 	rail.box:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", EDGE, EDGE)
 	window.rail = rail
-	local groups = NavGroups()
+	local groups, anyNew = NavGroups()
+	-- (What's new's line about the New tags: while any shows)
+	window.anyNew = anyNew or dynamicNew
 	-- (each page's place in the list: the side a page slides in from)
 	window.navEntries, window.pageOrder = {}, {}
 	local n = 0
