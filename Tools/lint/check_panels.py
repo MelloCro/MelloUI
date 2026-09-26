@@ -58,6 +58,7 @@ CEILINGS = {
     "palette-guard": 0,
     "direct-shadow": 2,
     "screen-rect-copy": 7,
+    "window-createframe": 0,
     "colour:Core/Core.lua": 1,
     "colour:Core/Backup.lua": 0,
     "colour:Core/CentreText.lua": 0,
@@ -96,6 +97,7 @@ KIT_DEMO = ("Modules/Kit.lua", "-- /kitdemo [scale]: one window with every block
 # name: (pattern, where, instead). where: None (every file), or a dict with
 #   only  a list of files, or a regex the path must match
 #   skip  files left out
+#   unless  regexes: a file whose code (comments out) matches one is left out
 #   demo  True: Kit.lua's demo region left out
 CHECKS = {
     "replace-fn": (r"^local function Replace\(", None,
@@ -160,6 +162,18 @@ CHECKS = {
     "screen-rect-copy": (r"pcall\((\w+)\.GetRect, \1\)(?:[^\n]*\n){0,4}?[^\n]*\b\1[:.]GetEffectiveScale", None,
                          "a screen rect read by hand: MelloUI.Safe.ScreenRect(region) (Core.lua), the one "
                          "screen-rect reader (left, bottom, right, top, or nil)"),
+    # the game's CreateFrame called by a file that dresses a game window
+    # (0.14.0: with the Gamepad UI on, the game's navigation walks a whole
+    # open window for each frame made in it, in MelloUI's script time). A
+    # file that binds Core's maker once is passed over; so is a HUD panel
+    # (its registry entry's tab = "HUD": no window the navigation opens)
+    "window-createframe": (r"\bCreateFrame\(",
+                           {"only": r"^Modules/(\w+Panel|Kit|KitShade|QuestInk|QuestListMap|Route|VoiceOver"
+                                    r"|UIModifications)\.lua$",
+                            "unless": [r"^local CreateFrame = MelloUI\.Safe\.CreateFrame\b", r'\btab = "HUD"']},
+                           "the game's CreateFrame in a file that dresses a window: bind Core's maker once at the "
+                           "top, `local CreateFrame = MelloUI.Safe.CreateFrame` (Core.lua), which makes a frame "
+                           "inside an open window without the game's gamepad navigation walking that window"),
 }
 
 # Own windows: MelloUI's windows, whose colours come from the palette only
@@ -253,6 +267,10 @@ def applies(where, src):
     only = where.get("only")
     if only and not re.search(only, src.path):
         return False
+    # a file whose source holds one of these is passed over whole
+    for rx in where.get("unless", ()):
+        if re.search(rx, src.code, re.M):
+            return False
     return src.path not in where.get("skip", ())
 
 

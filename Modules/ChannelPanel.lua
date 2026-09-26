@@ -68,6 +68,9 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+-- frames made in a game window: Core's maker, so the game's gamepad
+-- navigation never walks an open window for each one (MelloUI.Safe.CreateFrame)
+local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("ChannelPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 -- a handler made once and run for many asks, wrapped once: its time stays

@@ -753,7 +753,17 @@ when a copy is added and names the system to use.
   registers `QI.Surface(area, { on = fn, sheet = true, skip = fn, roots = fn
   })` (`sheet = true`: the inks set for the kit's darker sheet);
   `Kit:SetParchment(area)` refreshes it. Strings are never recoloured by hand
-  (the parchment ink rule).
+  (the parchment ink rule). A character's name on parchment is in the title
+  ink with the ONE gem in its class's true colour before it: `QI.Gem(parent,
+  size)` where MelloUI owns the region (the tooltips), `QI.GemCode(r, g, b,
+  fontSize)` inline where it is text (the chat's and the whisper windows'
+  names); the class from the GUID (`QI.ClassColour(classFile)`), never from a
+  colour, and no gem when the class is unknown or secret. An item's name gets
+  the quality gem where MelloUI writes the name (the tooltips); the chat's
+  item links stay bright on their soft band (the user's choice, 2026-09-24).
+  The bag, bank and guild bank slots wear the same `QI.Gem` on the item
+  button (not a name on parchment). The combat log is never inked (it adds
+  lines too fast), so its names keep the game's colours.
 - **Motion: `MelloUI.Anim`.** Reduce Motion is honoured by every helper:
   - a tween: `Anim:To / From / FadeIn (onDone) / FadeOut / Pop`,
     `Anim:Land(frame[, prop])` (a running move jumps to its end) and
@@ -832,6 +842,18 @@ when a copy is added and names the system to use.
   when any of it cannot be read plainly; the one reader, no copy of it). No
   helper of its own and no stand-in: a test world that loads a file without
   Core runs Core's Safe block itself.
+- **Frames in a window: `local CreateFrame = MelloUI.Safe.CreateFrame`**
+  (0.14.0; a player's game froze opening the world map with a gamepad).
+  While the game's Gamepad UI is on, its navigation walks a whole open
+  window again (every frame in it) for each frame made in it, and that
+  walk counts against MelloUI's script time. Every file that dresses a
+  window binds Core's maker once at the top: a frame whose parent lies in an
+  open window is made with no parent and put on it at once (the Gamepad UI
+  off: the game's call, as before). The ratchet's `window-createframe`
+  check holds it. What the game's pools make for MelloUI inside a window (a
+  map's pins, an own list's rows) is made inside the window's own Show,
+  while `Safe.WarmNow(frame)`: `Safe.WarmPins`, `Safe.WarmList`; an own
+  list's view takes `Safe.QuietList(view)` (Core.lua has the details).
 - **Later, not a timer: `Kit:NextFrame(key, fn)`**, fn made once per key.
 - **Its shade: section 2g.** A window on a shell is shaded by KitShade with
   nothing to do; an own HUD element calls `Kit:ShadeElement(root, area)` and

@@ -21,6 +21,9 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+-- frames made in a game window: Core's maker, so the game's gamepad
+-- navigation never walks an open window for each one (MelloUI.Safe.CreateFrame)
+local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("SocialPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 -- one handler for every frame it is hooked on, wrapped once (user,

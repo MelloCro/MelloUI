@@ -387,6 +387,177 @@ function Safe.ScreenRect(region)
 	return left, bottom, right, top
 end
 
+--------------------------------------------------------------------------------
+-- Frames made in a game window while the game's Gamepad UI is on (0.14.0
+-- RC6: a player's game froze opening the world map with a gamepad, "insecure
+-- scripts exceeded execution limit for addon MelloUI", 2026-09-26).
+-- The game's gamepad navigation (Blizzard_GamepadSmartNavigation) hooks
+-- CreateFrame: for every frame made with a parent that lies in a window it
+-- has open (SmartNavigation.activePanels: a window opened by ShowUIPanel --
+-- the world map, the character window, the spell book ... --, a bag, a menu;
+-- only while the Gamepad UI is on) it walks that WHOLE window again, every
+-- frame in it, hidden ones too, looking for its buttons. The walk runs in the
+-- maker's own run, so its time counts against the maker's script time, which
+-- the engine limits per addon: K frames made one by one in the open map (a
+-- row dressed a frame, a pin, a list's row) are K walks of the whole map.
+-- The hook passes over a frame made with no parent, and SetParent is not
+-- hooked. So:
+--   Safe.CreateFrame(frameType, name, parent, ...) -> the frame: the game's
+--       CreateFrame itself, unless `parent` lies in a window the navigation
+--       has open: then it is made with no parent and put on `parent` at once,
+--       at its parent's strata and one level over it, where CreateFrame puts
+--       a child. With the Gamepad UI off no window is ever open for the
+--       navigation: always the game's call, as before (a length read more).
+--       Every file that dresses a window binds it once, in the game's place:
+--           local CreateFrame = MelloUI.Safe.CreateFrame
+--       (the ratchet's window-createframe check holds that)
+--   Safe.UnderOpenWindow(frame) -> true when a frame made in `frame` would
+--       make the navigation walk a window (the climb its hook does)
+--   Safe.GamepadUI() -> true while the game's Gamepad UI is on
+--   Safe.WarmNow(frame) -> true while the Gamepad UI is on and `frame` lies
+--       in no window the navigation has open: inside a window's own Show
+--       (its OnShow scripts run before the game opens it for the
+--       navigation), the moment where frames the game's pools make for
+--       MelloUI later cost no walk
+--   Safe.WarmList(scrollBox, frameType, count) -> made: an own list's rows
+--       made now in its view's own pool, where its layouts take them from
+--   Safe.WarmPins(map, template, count) -> made: a map's pins of MelloUI's
+--       template made now in the map's own pool (the pin's OnAcquired gets
+--       no data then and lays nothing)
+--   Safe.QuietList(view): an own list's view never asks the navigation to
+--       walk its window again. The game's list view does after each layout
+--       in the Gamepad UI (RefreshSmartNav: two walks a scroll step or a new
+--       list), in MelloUI's run; the rows are made while the window shows
+--       (WarmList), so the window's own walks know them
+--------------------------------------------------------------------------------
+
+function Safe.GamepadUI()
+	local util = InputUtil
+	local fn = type(util) == "table" and util.IsGamepadUIEnabled
+	if type(fn) ~= "function" then
+		return false
+	end
+	local ok, on = pcall(fn)
+	if not ok or (issecretvalue and issecretvalue(on)) then
+		return false
+	end
+	return on == true
+end
+
+do
+	-- (the navigation's own climb: the parent and each of its parents up to
+	-- UIParent, against every window it has open)
+	local function InOpenWindow(frame, panels, n)
+		local top = UIParent
+		local f = frame
+		for _ = 1, 200 do
+			if f == nil or f == top then
+				return false
+			end
+			for i = 1, n do
+				local info = panels[i]
+				if type(info) == "table" and info.frame == f then
+					return true
+				end
+			end
+			f = f:GetParent()
+		end
+		return false
+	end
+
+	function Safe.UnderOpenWindow(frame)
+		if type(frame) ~= "table" then
+			return false
+		end
+		local nav = SmartNavigation
+		if type(nav) ~= "table" then
+			return false
+		end
+		local panels = nav.activePanels
+		if type(panels) ~= "table" then
+			-- (a build that keeps its open windows elsewhere: in the Gamepad UI
+			-- every parent counts)
+			return Safe.GamepadUI()
+		end
+		local n = #panels
+		if n == 0 then
+			return false
+		end
+		local ok, under = pcall(InOpenWindow, frame, panels, n)
+		return ok and under or false
+	end
+end
+
+function Safe.CreateFrame(frameType, name, parent, ...)
+	if parent == nil or not Safe.UnderOpenWindow(parent) then
+		return CreateFrame(frameType, name, parent, ...)
+	end
+	local frame = CreateFrame(frameType, name, nil, ...)
+	frame:SetParent(parent)
+	local strata = parent:GetFrameStrata()
+	if frame:GetFrameStrata() ~= strata then
+		frame:SetFrameStrata(strata)
+	end
+	local level = math.min(parent:GetFrameLevel() + 1, 10000)
+	if frame:GetFrameLevel() ~= level then
+		frame:SetFrameLevel(level)
+	end
+	return frame
+end
+
+function Safe.WarmNow(frame)
+	return Safe.GamepadUI() and not Safe.UnderOpenWindow(frame)
+end
+
+function Safe.WarmList(scrollBox, frameType, count)
+	local view = Safe.Call(scrollBox, "GetView")
+	local target = view and Safe.Call(scrollBox, "GetScrollTarget")
+	local factory = type(view) == "table" and view.frameFactory
+	if not (target and type(factory) == "table" and type(factory.Create) == "function"
+		and type(factory.Release) == "function") then
+		return 0
+	end
+	local made = {}
+	for i = 1, count do
+		local ok, frame = pcall(factory.Create, factory, target, frameType, view.frameFactoryResetter)
+		if not ok or type(frame) ~= "table" then
+			break
+		end
+		made[i] = frame
+	end
+	for i = 1, #made do
+		pcall(factory.Release, factory, made[i])
+	end
+	return #made
+end
+
+function Safe.WarmPins(map, template, count)
+	if type(map) ~= "table" or type(map.AcquirePin) ~= "function" or type(map.RemovePin) ~= "function" then
+		return 0
+	end
+	local made = {}
+	for i = 1, count do
+		local ok, pin = pcall(map.AcquirePin, map, template)
+		if not ok or type(pin) ~= "table" then
+			break
+		end
+		made[i] = pin
+	end
+	for i = 1, #made do
+		pcall(map.RemovePin, map, made[i])
+	end
+	return #made
+end
+
+do
+	local function NoWalk() end
+	function Safe.QuietList(view)
+		if type(view) == "table" then
+			view.RefreshSmartNav = NoWalk
+		end
+	end
+end
+
 -- The screen as a player names it: its size in pixels and its aspect ratio
 -- ("32:9", "21:9", "16:9", "16:10", "3:2", "4:3", "5:4": the nearest one,
 -- and no label when none is within 4 %, as a triple screen or a 32:10), from

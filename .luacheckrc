@@ -100,6 +100,8 @@ read_globals = {
 	"CHAT_FRAMES", "CHAT_FRAME_TAB_NORMAL_MOUSEOVER_ALPHA", "CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA",
 	"FCFDock_GetSelectedWindow", "FCF_OpenTemporaryWindow", "GENERAL_CHAT_DOCK", "ChatTypeInfo",
 	"Ambiguate", "C_BattleNet", "C_ChatInfo", "SetItemRef", "YOU",
+	-- a community channel line's author (the chat's class gems on parchment, 0.14.0)
+	"C_Club",
 	"C_ClassColor", "C_FriendList", "GetGuildRosterInfo", "GetNumGuildMembers", "GetPlayerInfoByGUID",
 	"IsInGuild", "LOCALIZED_CLASS_NAMES_FEMALE", "LOCALIZED_CLASS_NAMES_MALE",
 	-- /mello secrets: the secret-value tools it probes for (2026-09-23)
@@ -128,6 +130,8 @@ read_globals = {
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",
 	"UpdateContainerFrameAnchors", "WorldMapFrame", "date", "hooksecurefunc", "issecretvalue", "time",
 	"tinsert", "wipe",
+	-- the game's gamepad navigation, read by Core's MelloUI.Safe.CreateFrame (0.14.0)
+	"InputUtil", "SmartNavigation",
 }
 
 -- The generated data files only define their table.

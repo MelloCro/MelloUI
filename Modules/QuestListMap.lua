@@ -26,6 +26,12 @@ local Finite = MelloUI.Safe.Finite
 --------------------------------------------------------------------------------
 
 QL.PIN_TEMPLATE = "MelloUIQuestPinTemplate"
+-- the pins made ahead in the map's pool in the Gamepad UI, inside the map's
+-- first Show (Safe.WarmPins): a pin the pool makes later, while the map is
+-- open, costs a walk of the whole map. More than one map lays at once (the
+-- data's busiest zone about 90)
+local PIN_WARM = 128
+local pinsWarm = false
 local MAP_ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
@@ -110,6 +116,11 @@ end
 
 function PinMethods:OnAcquired(kind, data)
 	self.kind, self.data = kind, data
+	if kind == nil then
+		-- a pin made ahead in the map's pool (Safe.WarmPins): nothing to lay
+		self:Hide()
+		return
+	end
 	self.Label:ClearAllPoints()
 	self.Icon:ClearAllPoints()
 	self.Icon:SetAllPoints()
@@ -1065,6 +1076,12 @@ function QL.CreateProvider()
 			return
 		end
 		local map = self:GetMap()
+		-- the map showing, not open for the game's gamepad navigation yet
+		-- (its own Show): the pins made ahead, once
+		if not pinsWarm and MelloUI.Safe.Call(map, "IsShown") and MelloUI.Safe.WarmNow(map) then
+			pinsWarm = true
+			MelloUI.Safe.WarmPins(map, QL.PIN_TEMPLATE, PIN_WARM)
+		end
 		C_Timer.After(0, function() HookFlightPins(map) end)
 		local mapID = QL.Plain(map:GetMapID())
 		local okI, info = pcall(C_Map.GetMapInfo, mapID)

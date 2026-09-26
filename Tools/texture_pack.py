@@ -1445,7 +1445,7 @@ MelloUI.Perf = { Scope = function() return { hooksecurefunc = hooksecurefunc, C_
 MelloUI.modules = { UIModifications = { db = {} } }
 function MelloUI:GetModule(name) return self.modules[name] end
 MelloUI.Print, MelloUI.Notice = Noop, Noop
-MelloUI.Safe = { IsSecret = function() return false end, Number = function(v) return v end }
+MelloUI.Safe = { CreateFrame = function(...) return CreateFrame(...) end, IsSecret = function() return false end, Number = function(v) return v end }
 '''
 
 # One game session on the loaded Kit.lua: s.apply(section) is one

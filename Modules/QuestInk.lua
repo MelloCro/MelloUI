@@ -21,6 +21,9 @@
 --   QI.Gem(parent, size)      one pip as a gem in a meaning colour before a
 --                             name on a parchment sheet: gem:SetColour(r, g, b);
 --                             QI.GemLead(fontSize) the lead it sits in
+--   QI.GemCode(r, g, b, fontSize) the same gem inside a line of text (the
+--                             chat's names): an inline texture escape
+--   QI.ClassColour(classFile) a class's true colour (the game's own)
 --   QI.Ink(fs, role)          ink on a font string: "title", "text", "faded"
 --   QI.Plain(fs)              back to the font string's own font and colour
 --   QI.WatchColour(fs)        remember the colours others (the game) give fs:
@@ -50,6 +53,9 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+-- frames made in a game window: Core's maker, so the game's gamepad
+-- navigation never walks an open window for each one (MelloUI.Safe.CreateFrame)
+local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("QuestInk")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 -- one handler for every string it is hooked on, wrapped once (user,
@@ -387,13 +393,19 @@ end
 local GEM_SIZE, GEM_GAP, GEM_MIDDLE = 0.6, 0.25, 0.55
 local leads = {}   -- [whole font size] = { lead, gem size, drop }
 
-function QI.GemLead(fontSize)
+-- a font size as the gems take it (whole, 6 .. 64), the gem's size and the
+-- gap after it: the tooltip's lead and the inline gem alike
+local function GemMetrics(fontSize)
 	local key = math.floor((tonumber(fontSize) or 12) + 0.5)
 	key = math.min(64, math.max(6, key))
+	return key, math.floor(key * GEM_SIZE + 0.5), math.max(2, math.floor(key * GEM_GAP + 0.5))
+end
+
+function QI.GemLead(fontSize)
+	local key, size, gap = GemMetrics(fontSize)
 	local lead = leads[key]
 	if not lead then
-		local size = math.floor(key * GEM_SIZE + 0.5)
-		local width = size + math.max(2, math.floor(key * GEM_GAP + 0.5))
+		local width = size + gap
 		-- the pip file's transparent corner (texels 0 .. 1 of 16), as wide
 		-- as the gem and its gap: the text begins after it
 		lead = { string.format("|T%spip_fill:%d:%d:0:0:16:16:0:1:0:1|t", ROOT, size, width), size,
@@ -401,6 +413,71 @@ function QI.GemLead(fontSize)
 		leads[key] = lead
 	end
 	return lead[1], lead[2], lead[3]
+end
+
+--------------------------------------------------------------------------------
+-- The inline gem (user, 2026-09-26, RC5: "but where are the gems in Chat?, i
+-- was under the impressions that you are going to make the Character names
+-- on Parchments Black but place a Gem Next to its name to identify its
+-- class"). The same gem where the name is TEXT (a chat line, a whisper
+-- window's line): an inline texture escape before the name. An escape draws
+-- one picture, so the gem is baked into one (Textures/Quests/pip_gem, made
+-- with the pips by Tools/make_quest_pips.py): the pip's fill in white with
+-- its dark ring over it. The escape's colour tints the whole picture: the
+-- fill takes the true colour, the ring stays dark. The gem lies in the left
+-- half of a canvas twice as wide as tall, the right half empty: the escape
+-- takes the gap after the gem from it, so the name begins where the
+-- tooltip's does (GemMetrics: the tooltip gem's size for the font).
+--   QI.GemCode(r, g, b, fontSize)  the escape in that colour (0 .. 1), made
+--                                  once per colour and size (a line gets the
+--                                  one string: nothing made per line); nil
+--                                  for a colour that is not a plain number
+--   QI.ClassColour(classFile)      a class's TRUE colour, the game's own
+--                                  (RAID_CLASS_COLORS); nil when the class or
+--                                  its colour is unknown or secret
+--------------------------------------------------------------------------------
+
+local GEM_FILE = ROOT .. "pip_gem"
+local gemCodes = {}   -- [font size, red, green, blue as one number] = the escape
+local GemSecret = MelloUI.Safe.IsSecret
+
+local function Byte(v)
+	return math.min(255, math.max(0, math.floor(v * 255 + 0.5)))
+end
+
+function QI.GemCode(r, g, b, fontSize)
+	if GemSecret(r) or GemSecret(g) or GemSecret(b) or type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then
+		return nil
+	end
+	local key, size, gap = GemMetrics(not GemSecret(fontSize) and fontSize or nil)
+	local R, G, B = Byte(r), Byte(g), Byte(b)
+	local id = ((key * 256 + R) * 256 + G) * 256 + B
+	local code = gemCodes[id]
+	if not code then
+		local width = size + gap
+		-- the texels drawn: the gem's 32 and as many of the empty half as
+		-- the gap takes, so the gem keeps its shape
+		local right = math.min(64, math.floor(32 * width / size + 0.5))
+		code = string.format("|T%s:%d:%d:0:0:64:32:0:%d:0:32:%d:%d:%d|t", GEM_FILE, size, width, right, R, G, B)
+		gemCodes[id] = code
+	end
+	return code
+end
+
+function QI.ClassColour(classFile)
+	if GemSecret(classFile) or type(classFile) ~= "string" then
+		return nil
+	end
+	local list = RAID_CLASS_COLORS
+	local c = type(list) == "table" and list[classFile]
+	if type(c) ~= "table" then
+		return nil
+	end
+	local r, g, b = c.r, c.g, c.b
+	if GemSecret(r) or GemSecret(g) or GemSecret(b) or type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then
+		return nil
+	end
+	return r, g, b
 end
 
 --------------------------------------------------------------------------------

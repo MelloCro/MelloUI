@@ -7,6 +7,9 @@
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
+-- frames made in a game window: Core's maker, so the game's gamepad
+-- navigation never walks an open window for each one (MelloUI.Safe.CreateFrame)
+local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("QuestListPanel")
 local C_Timer = Perf.C_Timer
 local QL = ns.QuestList
@@ -685,6 +688,16 @@ local function Ask()
 	C_Timer.After(QUIET, Rebuild)
 end
 
+-- The rows one layout can show, made ahead in the Gamepad UI (the panel's
+-- OnShow): the panel is as tall as the map, never taller than the screen,
+-- and a header is the shortest row; two more for the rows cut at the ends
+local rowsWarm = false
+local function RowsToWarm()
+	local h = MelloUI.Safe.Finite(MelloUI.Safe.Call(UIParent, "GetHeight"))
+	local n = h and h > 0 and math.ceil(h / HEADER_HEIGHT) + 2 or 48
+	return math.max(16, math.min(n, 64))
+end
+
 function QL.Panel:Create()
 	if self.frame then
 		return
@@ -890,6 +903,9 @@ function QL.Panel:Create()
 		end
 	end)
 	ScrollUtil.InitScrollBoxListWithScrollBar(frame.scrollBox, frame.scrollBar, view)
+	-- the list's layouts never make the game's gamepad navigation walk the
+	-- whole map again (its rows are made as the map shows: OnShow below)
+	MelloUI.Safe.QuietList(view)
 	frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
 	frame.empty:SetPoint("CENTER", frame.scrollBox, "CENTER")
 	frame.empty:SetWidth(240)
@@ -900,6 +916,13 @@ function QL.Panel:Create()
 	-- laid out afresh each time it shows, the sums taken then (the map draws
 	-- its pins afresh on showing too)
 	Perf.SetScript(frame, "OnShow", function()
+		-- in the Gamepad UI the list's rows are made now, inside the map's own
+		-- Show, before the game opens the map for its navigation: made later,
+		-- each new row would cost a walk of the whole map (Safe.WarmNow)
+		if not rowsWarm and MelloUI.Safe.WarmNow(frame) then
+			rowsWarm = true
+			MelloUI.Safe.WarmList(frame.scrollBox, "Button", RowsToWarm())
+		end
 		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
 		watcher:RegisterEvent("QUEST_LOG_UPDATE")
 		watcher:RegisterEvent("QUEST_TURNED_IN")
