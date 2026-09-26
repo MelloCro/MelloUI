@@ -12,6 +12,8 @@ local Perf = MelloUI.Perf:Scope("QuestListMap")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local QL = ns.QuestList
 local M = QL.M
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Finite = MelloUI.Safe.Finite
 
 --------------------------------------------------------------------------------
 -- Map pins
@@ -185,7 +187,6 @@ function PinMethods:OnAcquired(kind, data)
 	end
 	-- a finite place only (a learned or badge place read from saved data is
 	-- never handed to the map as NaN or endless)
-	local Finite = MelloUI.Safe.Finite
 	local x, y = Finite(data.x), Finite(data.y)
 	if x and y then
 		self:SetPosition(x, y)
