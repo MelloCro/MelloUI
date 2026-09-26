@@ -461,6 +461,31 @@ local function AnchorLabel()
 	label:SetJustifyH(p.justify)
 end
 
+-- The secure target button (a protected frame) laid over the round button by
+-- measure, on UIParent: the widget hangs from the player portrait, a region,
+-- and the game refuses a protected frame anchored to a chain that ends on a
+-- region (user, 2026-09-26: "Cannot anchor protected frames to regions").
+-- Out of combat only (a protected frame); false when a read is secret.
+local function OverlayPlace(o)
+	local b = ui and ui.button
+	if not (o and b) or InCombatLockdown() then
+		return false
+	end
+	local okC, cx, cy = pcall(b.GetCenter, b)
+	local okS, w, h = pcall(b.GetSize, b)
+	local okE, bs = pcall(b.GetEffectiveScale, b)
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	if not (okC and okS and okE and okU) or Secret(cx) or Secret(cy) or Secret(w) or Secret(h)
+		or Secret(bs) or Secret(us) or not (cx and cy and w and h and bs and us) or us <= 0 then
+		return false
+	end
+	local k = bs / us
+	o:ClearAllPoints()
+	o:SetSize(w * k, h * k)
+	o:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx * k, cy * k)
+	return true
+end
+
 local function Place()
 	if not ui then
 		return
@@ -493,6 +518,11 @@ local function Place()
 		if not MelloUI:RestorePosition(MOVER_KEY, holder) then
 			Home(holder)
 		end
+	end
+	-- the secure target button follows the widget (placed by measure)
+	local o = ui.overlay
+	if o and o:IsShown() and not OverlayPlace(o) and not InCombatLockdown() then
+		o:Hide()
 	end
 end
 
@@ -664,8 +694,10 @@ local function Attach(key)
 	o.key = key
 	o:SetFrameStrata(ui.holder:GetFrameStrata())
 	o:SetFrameLevel(ui.button:GetFrameLevel() + 5)
-	o:ClearAllPoints()
-	o:SetAllPoints(ui.button)
+	if not OverlayPlace(o) then
+		o:Hide()   -- (no measure: the button's own click routes instead)
+		return
+	end
 	o:Show()
 end
 
