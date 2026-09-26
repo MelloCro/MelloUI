@@ -883,6 +883,17 @@ slider per line and Remove, Add a line, Suggested (click twice) to go back to th
 suggestions, and it takes items dropped from your bags or from a shop. Counting runs just after
 your bags change, never in combat.
 
+### Gains
+
+Short lines beside your character (right of the screen's centre, a little below) show what you just gained, each on the on-screen notice's soft dark shade, without an outline unless the notice's **Outlined Text** is on. It is on by default (the installer's Fresh start begins with every feature off):
+
+- **Skill Ups:** "+1 Defense 57 / 80" when a skill goes up: weapon skills, Defense, professions, secondary skills and languages (the lines the Skills tab lists, a folded heading's too). A newly learned skill is no "+1", and a new rank from a trainer (or a riding rank) only changes the numbers a line shows. **Show Skill Values** (on): the value and the cap after the name.
+- **Looted & Received Items:** "+3 Linen Cloth" for each item that comes into your bags: loot, quest rewards, crafted items, mail and trades. The small gem before the name is the item's quality colour, the same gem as in the bags and the tooltips. Moving items between your bags, the bank and your gear never counts. When one loot brings more than five items, the best of them are shown.
+- **Bought Items:** the same line with a quiet "bought" after it, for what you buy from a merchant, buybacks too. A sale is no line, and money is never one.
+- **Junk Items** (on): grey items too.
+
+The count is in gold and the name in the palette's text colour; the value and "bought" are smaller and a little fainter. A very long name ends in "...". The newest line is on top and at most five show; gaining the same skill or item again while its line shows adds to it ("+2 Defense") and brings it back to the top. Each line fades after **Show For** (5 s, 2-15), so the oldest go first; with Reduce Motion the lines do not slide, they only fade. Unlock the Windows shows three sample lines to drag the feed; Reset positions puts it back, and profiles carry the place. Nothing is read in the first moments after login; a skill point or item the game keeps hidden during a fight shows as soon as the fight is over.
+
 ### Minimap Panel
 
 The minimap cluster in the kit (part of the reskin in UI Modifications): the iron ring
