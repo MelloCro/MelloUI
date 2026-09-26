@@ -38,7 +38,8 @@
 -- hooksecurefunc keeps Show secure for the game's callers; the handler runs
 -- after it, and nothing else is written. A name's gem is a frame of ours on
 -- the tooltip (made the first time a parchment tooltip shows a name), hidden
--- through a HookScript on its OnTooltipCleared.
+-- -- and the tooltip's clears counted -- through a HookScript on its
+-- OnTooltipCleared.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -70,6 +71,12 @@ local dims = setmetatable({}, { __mode = "k" })      -- [tooltip] = its eye-stra
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+
+-- a yes / no the client may hand over secret (a region's shown state): a
+-- plain yes only, never tested as a boolean while it may be secret
+local function Yes(v)
+	return not Secret(v) and v == true
+end
 
 local function Replace(region, opts)
 	if not region then
@@ -144,8 +151,10 @@ end
 -- (an item's quality, the red of a requirement not met, the green of a use or
 -- a set bonus, a class or reputation colour) a dark shade of its own hue; no
 -- outline and no shadow on inked text. The money lines and the health bar
--- keep their colours (their strings are not the tooltip's lines). Switched
--- off, every line has the colour the game last gave it back at once.
+-- keep their colours (their strings are not the tooltip's lines). A colour
+-- or a text the client hands over secret (in combat) is never read and
+-- inked all the same (InkLine; user, 2026-09-26). Switched off, every line
+-- has the colour the game last gave it back at once.
 --------------------------------------------------------------------------------
 
 -- The sheet's margin in from the rail's middle: none. A tooltip's text runs
@@ -215,6 +224,9 @@ end
 --     the name;
 --   a unit whose GUID the client hid: a class colour its name shows (never
 --     plain white), in that colour.
+-- A name whose colour the client hands over secret (in combat) is in the
+-- title ink; a player's still has its class gem from the GUID, any other
+-- none (its colour is never read). A name whose text reads secret has none.
 -- An NPC's name keeps the ink of its reaction colour and has no gem. Every
 -- other coloured line keeps its inked shade.
 -- The text makes room: an invisible lead as wide as the gem before the
@@ -392,11 +404,21 @@ end
 
 -- The gem of the name line of `tip`, with the game's text `own` and colour
 -- r, g, b: the gem's colour, and whether the name itself shows it (then it
--- is written in the title ink); nil: no gem
+-- is written in the title ink); nil: no gem. A colour that reads secret
+-- comes as nil (it is never read): a player's gem still, told by its GUID;
+-- an item's quality or a class told only by the name's colour cannot be known
 local function GemFor(tip, own, r, g, b)
 	local note = notes[tip]
 	local kind = note and note.kind
 	if not kind or kind == "npc" or note.text ~= own then
+		return nil
+	end
+	-- a player whose class the game told: its gem whatever its name shows
+	if kind == "player" and note.cr then
+		local cr, cg, cb = note.cr, note.cg, note.cb
+		return cr, cg, cb, r ~= nil and Near(r, g, b, cr, cg, cb)
+	end
+	if r == nil then
 		return nil
 	end
 	if kind == "item" then
@@ -404,11 +426,6 @@ local function GemFor(tip, own, r, g, b)
 			return r, g, b, true
 		end
 		return nil
-	end
-	-- a player whose class the game told: its gem whatever its name shows
-	if kind == "player" and note.cr then
-		local cr, cg, cb = note.cr, note.cg, note.cb
-		return cr, cg, cb, Near(r, g, b, cr, cg, cb)
 	end
 	if IsClassColour(r, g, b) then
 		return r, g, b, true
@@ -424,14 +441,37 @@ local function HideGem(tip)
 end
 
 -- a tooltip cleared (the game fills it anew): its gem goes until the ink
--- says again, and what its data was is forgotten
-local GemCleared = Shared("OnTooltipCleared on tooltips with a gem", function(tip)
+-- says again, what its data was is forgotten, and the clear is counted (a
+-- colour held as a secret is the game's only until the next clear:
+-- HoldColour). Followed from the first time a parchment tooltip needs it --
+-- a name's gem, a line whose colour is secret -- through one HookScript
+local clears = setmetatable({}, { __mode = "k" })   -- [tooltip] = its clears counted since followed; false: none to follow
+local GemCleared = Shared("OnTooltipCleared on inked tooltips", function(tip)
+	local n = clears[tip]
+	if n then
+		clears[tip] = n + 1
+	end
 	local note = notes[tip]
 	if note then
 		note.kind, note.text = false, false
 	end
 	HideGem(tip)
 end)
+
+-- a tooltip's clears followed (once): their count so far, or false
+local function FollowClears(tip)
+	local n = clears[tip]
+	if n == nil then
+		n = false
+		local ok, has = pcall(tip.HasScript, tip, "OnTooltipCleared")
+		if ok and has then
+			n = 0
+			Perf.HookScript(tip, "OnTooltipCleared", GemCleared)
+		end
+		clears[tip] = n
+	end
+	return n
+end
 
 -- The gem before a name: made once per tooltip (the first name it shows on
 -- the parchment), then moved and tinted
@@ -440,10 +480,7 @@ local function ShowGem(tip, fs, size, drop, r, g, b)
 	if not gem then
 		gem = QI.Gem(tip, size)
 		gems[tip] = gem
-		local ok, has = pcall(tip.HasScript, tip, "OnTooltipCleared")
-		if ok and has then
-			Perf.HookScript(tip, "OnTooltipCleared", GemCleared)
-		end
+		FollowClears(tip)
 	end
 	gem:SetGemSize(size)
 	if gem.anchor ~= fs or gem.drop ~= drop then
@@ -454,6 +491,41 @@ local function ShowGem(tip, fs, size, drop, r, g, b)
 	gem:SetColour(r, g, b)
 end
 
+-- A colour the client hands over secret, kept to put back when the
+-- parchment goes: it is the game's for certain only on the first pass after
+-- the tooltip was cleared and filled anew (later passes meet our ink there).
+-- Kept as the secret it is -- never read, only passed back to the game
+-- (PlainLine). A tooltip whose clears cannot be followed keeps none: its
+-- lines keep the ink until the game fills them again.
+local function HoldColour(fs, state, r, g, b, a)
+	local owner = fs:GetParent()
+	local n = false
+	if not Secret(owner) and owner then
+		n = FollowClears(owner)
+	end
+	if not n then
+		state.held = false
+		return
+	end
+	if not (state.held and state.heldOf == owner and state.heldAt == n) then
+		state.held, state.heldOf, state.heldAt = true, owner, n
+		state.sr, state.sg, state.sb, state.sa = r, g, b, a
+	end
+end
+
+-- A line's own colour codes set aside (a secret text: they cannot be
+-- rewritten -- a fixed colour shows the whole line in the string's colour,
+-- as the game's own light-text quest titles do) or let back (a readable
+-- text's codes are inked in its copy)
+local function Fixed(fs, state, on)
+	if (state.fixed or false) ~= on and fs.SetFixedColor then
+		inking = true
+		fs:SetFixedColor(on)
+		inking = false
+		state.fixed = on
+	end
+end
+
 -- One line to its ink. State per string (a side table, never a field on the
 -- game's string): `game` the colour the game gave it, `ink` our colour as
 -- read back, `text` / `inkedText` the game's text and ours where its colour
@@ -462,45 +534,55 @@ end
 -- `shadow` the outline and shadow the ink took off. The game refills and
 -- recolours its lines on every show: a colour or text that is not ours any
 -- more is the game's new one, inked afresh. `tip`: the tooltip whose name
--- line this is (a header line), for its gem.
+-- line this is (a header line), for its gem. `held` / `heldOf` / `heldAt` and
+-- `sr` .. `sa`: a secret colour kept to put back (HoldColour); `fixed`: the
+-- line's own colour codes set aside (Fixed).
 local function InkLine(fs, header, tip)
 	local state = lineState[fs]
 	local r, g, b, a = fs:GetTextColor()
 	local text = fs:GetText()
-	-- a secret colour or text (a unit's line in combat): never compared or
-	-- worked on; the line keeps what the game gave it (its text back where
-	-- our copy still shows), with its own outline and shadow again if the
-	-- ink had them, and no gem
-	if Secret(r) or Secret(g) or Secret(b) or Secret(a) or Secret(text) then
-		if state then
-			lineState[fs] = nil
-			if not Secret(text) and state.inkedText ~= nil and text == state.inkedText then
-				inking = true
-				fs:SetText(state.text)
-				inking = false
-			end
-			RestoreLook(fs, state)
-		end
-		if tip then
-			HideGem(tip)
-		end
-		return
+	-- A colour or a text the client hands over secret (in combat: a line of
+	-- an action's tooltip on cooldown, a unit's, an aura's; and a string once
+	-- given a secret reads back secret from then on, whatever it shows -- the
+	-- client's secret aspects): never read, compared or worked on, and inked
+	-- all the same (user, 2026-09-26: a spell's tooltip on cooldown in combat
+	-- stayed in the game's bright colours on the parchment) --
+	--   a secret colour: the ink the sheet gives light text, set over it on
+	--     every pass (setting a colour of ours reads nothing; whether the game
+	--     coloured it again since cannot be told); the game's colour held, as
+	--     the secret it is, to put back (HoldColour);
+	--   a secret text: its colour inked, its own colour codes set aside
+	--     (Fixed: they cannot be rewritten);
+	-- a secret text has no gem (what the name is cannot be known); a secret
+	-- colour only a player's, from its GUID (GemFor: the colour never read).
+	local hidden = Secret(r) or Secret(g) or Secret(b) or Secret(a)
+	local secretText = Secret(text)
+	if secretText then
+		text = nil
 	end
 	if not state then
 		state = {}
 		lineState[fs] = state
 	end
-	-- (the colour tables are the string's own, filled again: a sweep over
-	-- lines that did not change makes nothing)
-	if not (state.game and Same(state.ink, r, g, b)) then
-		local c = state.game
-		if c then
-			c[1], c[2], c[3] = r, g, b
-		else
-			state.game = { r, g, b }
+	local gr, gg, gb
+	if hidden then
+		HoldColour(fs, state, r, g, b, a)
+	else
+		if state.held then
+			state.held, state.sr, state.sg, state.sb, state.sa = false, nil, nil, nil, nil
 		end
+		-- (the colour tables are the string's own, filled again: a sweep over
+		-- lines that did not change makes nothing)
+		if not (state.game and Same(state.ink, r, g, b)) then
+			local c = state.game
+			if c then
+				c[1], c[2], c[3] = r, g, b
+			else
+				state.game = { r, g, b }
+			end
+		end
+		gr, gg, gb = state.game[1], state.game[2], state.game[3]
 	end
-	local gr, gg, gb = state.game[1], state.game[2], state.game[3]
 	-- the game's own text (ours is the game's with its colour codes inked
 	-- and a gem's lead before it)
 	local own = text
@@ -513,6 +595,7 @@ local function InkLine(fs, header, tip)
 		okF = false
 	end
 	-- a name (an item's, a player's): a gem in the game's own colour before it
+	-- (`gr` nil where the colour reads secret: GemFor never reads it)
 	local lead, gemSize, drop, er, eg, eb, titled
 	if tip and okF and type(size) == "number" and size > 0 and type(own) == "string" then
 		er, eg, eb, titled = GemFor(tip, own, gr, gg, gb)
@@ -528,33 +611,46 @@ local function InkLine(fs, header, tip)
 		end
 	end
 	local ir, ig, ib
-	local mx, mn = math.max(gr, gg, gb), math.min(gr, gg, gb)
-	if (lead and titled) or (header and mx >= 0.8 and (mx - mn) / mx < 0.25) then
-		-- a name in the colour its gem shows, or a white header (a spell's or
-		-- an ability's name): the sheet's title ink, as the gold ones get
-		local c = QI.SHEET_TITLE or QI.INK.title
-		ir, ig, ib = c[1], c[2], c[3]
-	else
-		-- the tooltip's sheet is the kit's darker parchment: its own inks
-		-- (4.5 : 1 there; user rule, readability first)
-		ir, ig, ib = QI.InkOf(gr, gg, gb, true)
-	end
-	if not (state.ink and Same(state.ink, ir, ig, ib) and Same(state.ink, r, g, b)) then
+	if hidden then
+		-- the ink the sheet gives light text (its title ink), on every pass
+		ir, ig, ib = QI.InkOf(1, 1, 1, true)
 		inking = true
-		fs:SetTextColor(ir, ig, ib, a)
+		fs:SetTextColor(ir, ig, ib)
 		inking = false
-		local kr, kg, kb = fs:GetTextColor()
-		local c = state.ink
-		if c then
-			c[1], c[2], c[3] = kr, kg, kb
+		state.ink = nil
+	else
+		local mx, mn = math.max(gr, gg, gb), math.min(gr, gg, gb)
+		if (lead and titled) or (header and mx >= 0.8 and (mx - mn) / mx < 0.25) then
+			-- a name in the colour its gem shows, or a white header (a spell's or
+			-- an ability's name): the sheet's title ink, as the gold ones get
+			local c = QI.SHEET_TITLE or QI.INK.title
+			ir, ig, ib = c[1], c[2], c[3]
 		else
-			state.ink = { kr, kg, kb }
+			-- the tooltip's sheet is the kit's darker parchment: its own inks
+			-- (4.5 : 1 there; user rule, readability first)
+			ir, ig, ib = QI.InkOf(gr, gg, gb, true)
+		end
+		if not (state.ink and Same(state.ink, ir, ig, ib) and Same(state.ink, r, g, b)) then
+			inking = true
+			fs:SetTextColor(ir, ig, ib, a)
+			inking = false
+			local kr, kg, kb = fs:GetTextColor()
+			local c = state.ink
+			if Secret(kr) or Secret(kg) or Secret(kb) then
+				state.ink = nil
+			elseif c then
+				c[1], c[2], c[3] = kr, kg, kb
+			else
+				state.ink = { kr, kg, kb }
+			end
 		end
 	end
 	-- colour codes in the text (a name in its class colour, an added line's
 	-- own colours) and a name's lead: in a copy, the game's text kept to put
-	-- back
-	if type(text) == "string" and (text ~= state.inkedText or lead ~= state.lead) then
+	-- back. A secret text is the game's (ours never is): our copy is gone
+	if secretText then
+		state.text, state.inkedText, state.lead = nil, nil, nil
+	elseif type(text) == "string" and (text ~= state.inkedText or lead ~= state.lead) then
 		-- (each copy kept with the text it was made from: the game writing
 		-- the same text again -- a tooltip refilled while it is hovered, a
 		-- player's name losing and taking its lead on each refresh -- makes
@@ -587,6 +683,8 @@ local function InkLine(fs, header, tip)
 			state.text, state.inkedText = nil, nil
 		end
 	end
+	-- a secret text's own colour codes set aside, a readable one's let back
+	Fixed(fs, state, secretText)
 	-- no outline and no shadow (a black edge round dark ink smudges it); what
 	-- the game (or a font object set since) gave it kept to put back
 	if okF and path and size and flags and flags ~= "" then
@@ -618,12 +716,21 @@ end
 
 -- One line back: the game's colour where our ink still shows (a colour the
 -- game gave it since is its own and stays), the game's text where ours still
--- shows, its outline and shadow
+-- shows, its own colour codes, its outline and shadow. A colour that reads
+-- secret: the one held for it passed back while no clear came since (then
+-- our ink is what shows)
 local function PlainLine(fs, state)
 	local r, g, b, a = fs:GetTextColor()
-	if state.game and not (Secret(r) or Secret(g) or Secret(b)) and Same(state.ink, r, g, b) then
+	if Secret(r) or Secret(g) or Secret(b) or Secret(a) then
+		local owner = state.held and state.heldOf
+		if owner and clears[owner] == state.heldAt then
+			inking = true
+			fs:SetTextColor(state.sr, state.sg, state.sb, state.sa)
+			inking = false
+		end
+	elseif state.game and Same(state.ink, r, g, b) then
 		inking = true
-		fs:SetTextColor(state.game[1], state.game[2], state.game[3], (not Secret(a)) and a or nil)
+		fs:SetTextColor(state.game[1], state.game[2], state.game[3], a)
 		inking = false
 	end
 	if state.inkedText then
@@ -634,6 +741,7 @@ local function PlainLine(fs, state)
 			inking = false
 		end
 	end
+	Fixed(fs, state, false)
 	RestoreLook(fs, state)
 end
 
@@ -662,14 +770,16 @@ end
 
 -- The strings of one frame that are its lines (a tooltip's regions: its
 -- TextLeftN / TextRightN, made as the game needs them; a friends tooltip's
--- labels)
+-- labels). A region's type or shown state read secret is no line: the walk
+-- goes on with the next (one could otherwise stop it for all the others)
 local function InkLines(frame)
 	local header = HeaderOf(frame)
 	local n = Fill(regionList, frame:GetRegions())
 	for i = 1, n do
 		local region = regionList[i]
 		regionList[i] = nil
-		if region.GetObjectType and region:GetObjectType() == "FontString" and region:IsShown() then
+		local kind = region.GetObjectType and region:GetObjectType()
+		if not Secret(kind) and kind == "FontString" and Yes(region:IsShown()) then
 			local isHeader = region == header
 			local ok = pcall(InkLine, region, isHeader, isHeader and frame or nil)
 			if not ok then
@@ -695,7 +805,7 @@ local function InkTooltip(tip, depth)
 		local child = children[i]
 		children[i] = nil
 		local kind = child.GetObjectType and child:GetObjectType()
-		if child:IsShown() then
+		if not Secret(kind) and Yes(child:IsShown()) then
 			if kind == "GameTooltip" then
 				InkTooltip(child, depth + 1)
 			elseif kind == "Frame" then
@@ -706,7 +816,8 @@ local function InkTooltip(tip, depth)
 				for j = 1, m do
 					local sub = subs[j]
 					subs[j] = nil
-					if sub.GetObjectType and sub:GetObjectType() == "GameTooltip" and sub:IsShown() then
+					local subKind = sub.GetObjectType and sub:GetObjectType()
+					if not Secret(subKind) and subKind == "GameTooltip" and Yes(sub:IsShown()) then
 						InkTooltip(sub, depth + 2)
 					end
 				end
@@ -761,7 +872,7 @@ local function Flush()
 	end
 	for tip in pairs(pending) do
 		pending[tip] = nil
-		if tip:IsVisible() then
+		if Yes(tip:IsVisible()) then
 			SafeInk(tip)
 		end
 	end
@@ -774,7 +885,7 @@ local function Sweep()
 	end
 	local any = false
 	for tip, sheet in pairs(sheets) do
-		if sheet:IsShown() and tip:IsVisible() then
+		if sheet:IsShown() and Yes(tip:IsVisible()) then
 			any = true
 			SafeInk(tip)
 		end
@@ -792,7 +903,7 @@ local function Touch(tip, walk)
 		return
 	end
 	local owner = SheetOwner(tip)
-	if not (owner and owner:IsVisible()) then
+	if not (owner and Yes(owner:IsVisible())) then
 		return
 	end
 	if walk ~= false then
@@ -815,7 +926,7 @@ end
 -- and Touch waits for its Show), so the name is not left to the walk.
 local function InkName(tip)
 	local fs = HeaderOf(tip)
-	if fs and fs:IsShown() then
+	if fs and Yes(fs:IsShown()) then
 		prelayout = true
 		if not pcall(InkLine, fs, true, tip) then
 			inking = false
@@ -879,11 +990,11 @@ end
 local unitHooked = false
 local UnitTooltipInk = Shared("UnitFrame_UpdateTooltip", function()
 	local tip = GameTooltip
-	if inking or not InkOn() or not (tip and sheets[tip] and tip:IsVisible()) then
+	if inking or not InkOn() or not (tip and sheets[tip] and Yes(tip:IsVisible())) then
 		return
 	end
 	local line = _G.GameTooltipTextLeft1
-	if line and line:IsShown() and not pcall(InkLine, line, true, tip) then
+	if line and Yes(line:IsShown()) and not pcall(InkLine, line, true, tip) then
 		inking = false
 	end
 	Touch(tip, false)
@@ -894,7 +1005,7 @@ end)
 local function InkAll(on)
 	if on then
 		for tip, sheet in pairs(sheets) do
-			if sheet:IsShown() and tip:IsVisible() then
+			if sheet:IsShown() and Yes(tip:IsVisible()) then
 				Touch(tip)
 			end
 		end
@@ -1134,6 +1245,28 @@ SlashCmdList.MELLOTTDUMP = function(msg)
 		local note = notes[tip]
 		MelloUI:Print("gem on %s: %s, data %s", tostring(okN and name or "?"), gem:IsShown() and "shown" or "hidden",
 			tostring(note and note.kind))
+	end
+	-- the lines the client hands over secret (a spell's on cooldown in
+	-- combat): counted, never read -- the ink sets its own colour over them
+	local okL, lines = false, nil
+	if GameTooltip then
+		okL, lines = pcall(GameTooltip.NumLines, GameTooltip)
+	end
+	if okL and not Secret(lines) and type(lines) == "number" then
+		local colours, texts = 0, 0
+		for i = 1, lines do
+			local fs = _G["GameTooltipTextLeft" .. i]
+			if fs then
+				local r = fs:GetTextColor()
+				if Secret(r) then
+					colours = colours + 1
+				end
+				if Secret(fs:GetText()) then
+					texts = texts + 1
+				end
+			end
+		end
+		MelloUI:Print("ink: %d of the tooltip's %d lines read a secret colour, %d a secret text", colours, lines, texts)
 	end
 	if not GameTooltip then
 		MelloUI:Print("No tooltip.")
