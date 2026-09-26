@@ -61,7 +61,7 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 		{ type = "dropdown", key = "itemBackground", name = "Item Background", values = LOOKS.backgrounds,
 		  desc = "What an empty bag slot shows inside its rim. Both are also chosen with previews by Dynamic UI Modification, at the top of the configurator. The slots' rim is UI Modifications' Button Border (every window's)." },
 		{ type = "toggle", key = "qualityGems", name = "Quality Gems", new = "0.14.0",
-		  desc = "A small gem in the top-left corner of every item in your bags, the bank and the guild bank, in the colour of the item's quality: grey for junk, white for common, then green, blue, purple and orange. Junk and better items stand out at a glance. While the game shows its own mark in that corner (the junk coin at a merchant, the upgrade arrow, the exclamation mark on an item that starts a quest, the quality badge on a crafting reagent), the gem moves to the top-right corner. One switch for all three windows: it can be changed while Bags is on, and the bank and the guild bank follow it either way." },
+		  desc = "A small gem in the top-left corner of every item in your bags, the bank and the guild bank, in the colour of the item's quality: grey for junk, white for common, then green, blue, purple and orange. Junk and better items stand out at a glance. While the game shows its own mark in that corner (the junk coin at a merchant, the upgrade arrow, the exclamation mark on an item that starts a quest, the quality badge on a crafting reagent), the gem moves to the top-right corner. One switch for all three windows." },
 	},
 })
 

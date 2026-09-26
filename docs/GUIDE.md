@@ -70,6 +70,7 @@ Every quest offer, progress line, turn-in and greeting is read out loud in a voi
 - **Bars & fonts:** pick your health bar style, pick a font for text, chat, titles and damage numbers, and how big each one is.
 - **Chat:** short channel tags, class colours, input box on top if you want it, one background opacity for every chat window.
 - **Auto-vendor:** sells your greys and repairs your gear the moment you talk to a merchant.
+- **Quality Gems:** every item in your bags, the bank and the guild bank wears a small gem in its quality's colour (grey junk, white common, then green, blue, purple, orange), so junk and loot worth keeping jump out at a glance. UI Modifications, Windows tab, Item Slots.
 - **And:** cooldown numbers on buttons, clean dark tooltips, CC and quest icons on nameplates, FPS and latency, hidden micro menu and bag bar, class medallions on portraits.
 
 ## 🧺 Errands, handled
@@ -109,6 +110,8 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 - **Side list:** Home, then the modules by group (The look, Quests and travel, Chat and sound, Frames and bars), then Profiles. Click a group's name to fold it away. Dark Mode, Fonts, Chat, Unit Frames, Nameplates and Tooltip live on UI Modifications' tabs: their entries open that tab right at their switch. A module that is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** a module's page has its switch and Defaults at the top and its options on tabs. An option that needs another switch is dimmed and says which one. Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (UI Modifications, General) makes all of it instant.
 - **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette; your Kit Colours, with Change… to Dynamic UI Modification; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
+- **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it and on the shortcuts that open that tab, inside the **Dynamic UI Modification** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
+- **Long lists:** a dropdown with many choices (the fonts) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
 - Drag the window by its top edge: it stays where you put it. Escape closes it. At a large Font Style it is a little wider, so UI Modifications' tabs keep to one row.
 
 ## 💾 Your settings are safe
@@ -234,6 +237,23 @@ lines), and the nameplates on Whole plate. A window gets its shade on its first 
 is made at login for what you have not opened. The shade takes the palette's darkest tone and
 needs the reskin (each area follows its own part of it).
 
+### Quality Gems (Backpack Kit)
+
+**Quality Gems** (on; UI Modifications, Windows tab, Item Slots): every item in the bag windows,
+the bank and the guild bank shows a small gem in the top-left corner of its slot, in the game's
+own colour for its quality: grey for junk, white for common, green, blue, purple, orange, and the
+artifact and heirloom colours. It is the gem the parchment tooltips put before item names, about
+a third of the slot's size, 2 px in from the icon's corner; the stack count keeps its corner.
+While the game shows its own mark in the top-left corner (the junk coin at a merchant, the
+upgrade arrow, the "!" on an item that starts a quest, the quality badge on a crafting reagent,
+which crafted gear wears while the Professions window is open) the gem moves to the top-right
+corner, and a slot the search box dims has its gem dimmed too. An empty slot shows none, and
+neither do the bank's bag slots (they hold bags). The gems belong to the painted slots: a window
+whose reskin is off (Bags, Bank or Guild bank on the Windows tab, or the reskin itself) shows
+none. The one switch covers all three windows and has a row of its own, so it can be changed
+while the Bags row is off. Nothing is made at login: a slot's gem is made the first time it holds
+an item, and the game's own updates of the slot recolour it.
+
 ### Dark Mode
 
 Darkens the Blizzard artwork by desaturating and tinting the frame textures. No layout is
@@ -358,6 +378,8 @@ class coloured player names, the tooltip health bar hidden by default (or shown 
 Textures fill and class / reaction colour), optional hiding of unit tooltips in combat, anchoring
 at or right of the cursor, and a tooltip scale. Blizzard's tooltip health bar fields are never written, since
 its update path compares secret health values and must stay untainted.
+
+With Tooltip Parchment on, a gem before an item's name shows its quality, and one before a player's name shows their class. The name is in dark ink, or in a dark shade of its reaction colour where the game shows one (unit frames, Class Coloured Names off). NPC names keep a dark shade of their reaction colour and have no gem.
 
 ### Cooldown Timers
 
@@ -968,6 +990,8 @@ The release notes are the version's section in `CHANGELOG.md`, which must be the
 `release.py` shows the bullets it is about to publish and refuses without them. The workflow
 writes that section to `CHANGELOG-release.md` and the packager publishes it as the notes on
 CurseForge and GitHub.
+
+Every option a release adds names that release: `new = "0.14.0"` on its schema entry, `RowOpts(sec, TABLE.new)` or `opts.new` for a hand-built row, or a `W.NewTag` / `W.ButtonTag` call that names a bare control (`docs/WINDOW-RULES.md`, section 6). A new page with nothing on it tagged puts `new` on its RegisterModule. The settings window tags an option New only while that version runs. `release.py` runs `python Tools/lint/check_new_tags.py --version <version>` before it commits or tags: it compares every option with the previous release tag (a key whose kind changed counts as new) and refuses the release when a new option lacks that version's tag, an older option is tagged with it, a new page has nothing tagged, or a file builds controls the check does not know. It stops without checking when a file or a module's OnInit fails in its world, then takes the older versions' tags out of the files (`--fix`; with `--dry-run` it only lists them); its removals go into the release commit.
 
 The GitHub Action (`.github/workflows/release.yml`, BigWigs packager) zips the addon minus what
 `.pkgmeta` ignores, uploads it to CurseForge (project id from `## X-Curse-Project-ID` in the
