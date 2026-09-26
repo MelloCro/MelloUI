@@ -67,6 +67,7 @@ Modules\Route.lua
 Modules\Services.lua
 Modules\Reminders.lua
 Modules\Restock.lua
+Modules\Gains.lua
 Modules\PartyMarkers.lua
 Modules\CustomSounds.lua
 Modules\VoiceOver.lua

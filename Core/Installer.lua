@@ -286,10 +286,10 @@ I.WINDOW_GROUPS = {
 -- Tweaks has no switch). Each starts off; one switched on takes Full's
 -- settings for that module. (0.14.0: the reminder widget's page, Reminders,
 -- and Restock, its fourth user with a module of its own; both say their
--- role themselves.)
+-- role themselves. Gains, the feed of skill ups and items, after them.)
 I.FEATURE_GROUPS = {
 	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Services",
-		"Reminders", "Restock", "PartyMarkers", "VoiceOver", "Vendor" } },
+		"Reminders", "Restock", "Gains", "PartyMarkers", "VoiceOver", "Vendor" } },
 	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",
 		"UnitFrames", "BarText", "Tooltip", "Stats" } },
 }
