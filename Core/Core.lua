@@ -1426,6 +1426,18 @@ do
 			Hook(frame, "OnShow", "mover: saved place on show", OnShow)
 			MelloUI:RestorePosition(key, frame)
 		end
+		-- no saved place and no anchor of its own: its default place (the game
+		-- draws nothing for a frame with no anchor; user, 2026-09-26: the new
+		-- Restock List never showed until it had been placed once)
+		if entry.default and frame.GetNumPoints and not Locked(frame) then
+			local okN, n = pcall(frame.GetNumPoints, frame)
+			if okN and not Safe.IsSecret(n) and n == 0 then
+				local okD, err = pcall(entry.default, frame)
+				if not okD then
+					Report(err)
+				end
+			end
+		end
 		if provider and provider.Attach then
 			Attach(entry)
 		end
