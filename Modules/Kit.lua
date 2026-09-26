@@ -5397,7 +5397,11 @@ end)
 -- the empty-slot backing on stone, the pushed / highlight / checked textures
 -- faded (the rim carries the states), the equipped border faded and the rim
 -- tinted green while the game shows it. `replace` is the panel's Replace.
--- Returns the rim rep; rep:SetPitch(x, y) re-sizes it after a re-layout.
+-- opts.qualityGem: an item slot of the bag windows, the bank or the guild
+-- bank wears its item's quality gem (Kit:ItemGem; the value is the window's
+-- reader of the slot's quality, for a slot the game filled before it was
+-- dressed). Returns the rim rep; rep:SetPitch(x, y) re-sizes it after a
+-- re-layout.
 function Kit:SkinActionButton(button, replace, pitch, opts)
 	opts = opts or {}
 	-- the rim texture: the template's key, else the widget's own (a bag
@@ -5491,6 +5495,11 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 			end
 		end
 	end
+	-- the item's quality as a gem in the slot's corner (a bag window's, the
+	-- bank's or the guild bank's slot: `opts.qualityGem`, Kit:ItemGem below)
+	if opts.qualityGem then
+		self:ItemGem(button, rep, opts.qualityGem)
+	end
 	-- the equipped border: faded, the rim green while the game shows it
 	if button.Border then
 		replace(button.Border, { as = "UI-HUD-ActionBar-IconFrame-Border" })
@@ -5507,6 +5516,370 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 		rep.onEnable(rep)
 	end
 	return rep
+end
+
+--------------------------------------------------------------------------------
+-- Quality gems on item slots (user, 2026-09-26: "can we also add those
+-- tooltip gems onto the items in the backpack themselves, to easy as a glance
+-- separate normal items from Junk Items etc"; option A of the bag gems
+-- mockup). Every item in a slot of the bag windows, the bank and the guild
+-- bank shows a small gem in its quality's TRUE colour, the game's own
+-- (ITEM_QUALITY_COLORS: junk grey, common white, uncommon green, rare blue,
+-- epic purple, legendary orange, artifact and heirloom in theirs): the
+-- tooltip's gem, MelloUI.QuestInk's QI.Gem (one gem for the interface). An
+-- empty slot, and a quality the game hands over secret, not at all or one
+-- ITEM_QUALITY_COLORS has no colour for, shows none.
+--   where       the slot's top-left corner, 2 px in from the icon's corner
+--               (the icon in the rim's opening), about 37 % of the button's
+--               size (14 px on the 37 px slot; the mockup's 15 on 40); a
+--               child of the button, so it scales with it
+--   layering    over the button's own art (the icon, the quality border, the
+--               stack count's layer) and over its cooldown child, two levels
+--               up: a level of its own (WINDOW-RULES: never tie with the
+--               game's frame; between the button and its cooldown, one level
+--               apart, there is none). The diamond keeps to its corner: the
+--               count stays in the bottom-right one, the cooldown's time in
+--               the middle
+--   the corner  the game's own marks there: the merchant's junk coin
+--               (JunkIcon), the upgrade arrow (UpgradeIcon), a quest
+--               starter's "!" (IconQuestTexture set to TEXTURE_ITEM_QUEST_BANG,
+--               its "!" down the icon's left side) and a crafting reagent's
+--               quality badge (ProfessionQualityOverlay: the game makes it
+--               the first time the slot holds one, TOPLEFT -3, 2, its atlas
+--               33 x 28; crafted gear wears it only while the Professions
+--               window is open). While one shows, the gem steps over to the
+--               top-right corner, and back when it goes: both stay readable
+--               (the badge's box reaches past the middle of a 37 px slot, so
+--               no corner is clear of the box itself; the top-right one is
+--               the furthest from its picture, which hangs off the top-left)
+--   dimmed      a slot the game dims (the search box, or an item that does
+--               not fit what an open window wants: its ItemContextOverlay
+--               in the game's dim mode, ItemButtonConstants.ContextMatch
+--               .Standard; an older client's searchOverlay) dims its gem as
+--               well. The same overlay as the runeforge glow round an item
+--               the game highlights is not a dim: the gem stays bright
+--   when        from the game's own update of the slot, post-hooked on the
+--               button at its first dress: SetItemButtonQuality (the bags,
+--               the bank and the guild bank all call it with the quality,
+--               poor and common too; the game's own border is none for
+--               poor, grey for common, the quality's colour from uncommon
+--               up), UpdateItemContextOverlay (the search's shade; each
+--               window's update of a slot ends with it, the junk coin, the
+--               quest mark and the reagent's badge set by then), the quest
+--               texture's SetTexture (the "!" or the plain border), and the
+--               reagent badge's SetShown (hooked when the gem first meets
+--               it: the Professions window shows and hides crafted gear's
+--               badge on its own). A gem is made the first time its slot
+--               has an item to show with the switch on (nothing at login,
+--               none for an empty slot), kept with the pooled button and
+--               recoloured on those updates; no OnUpdate, no timer
+--   the switch  one for the three windows: Quality Gems, with the bags' looks
+--               that the bank and the guild bank wear (Backpack Kit's
+--               `qualityGems`, on; its row under Bags on UI Modifications'
+--               Windows tab, so it is changed while Bags is on, as the Item
+--               Background is picked on the bag windows). Off: every gem
+--               hidden at once, none made. Heard on the bus's 'setting' and,
+--               after a profile load, its 'restart'
+--   kit off     a slot whose kit is off (its window's module, or the reskin)
+--               shows none: the gem belongs to the dressed slot
+--   Kit:ItemGem(button, rep, read)  from Kit:SkinActionButton's
+--               opts.qualityGem; `read(button)` -> the slot's quality and
+--               whether it starts a quest, the game's record of a slot it
+--               filled before the dress (the bank fills its slots as it makes
+--               them, the guild bank in its own OnShow, before the kit's)
+--   Kit:SyncItemGems()  every slot again (the switch)
+--   Kit:ItemGemCounts() -> slots dressed, gems made, gems shown
+--------------------------------------------------------------------------------
+do
+	local SIZE, INSET, DIM = 0.37, 2, 0.25   -- of the button's width; px in from the icon's corner; a dimmed slot's gem
+	local SWITCH_MODULE, SWITCH_KEY = "BackpackPanel", "qualityGems"
+	local Num, Finite, Text = MelloUI.Safe.Number, MelloUI.Safe.Finite, MelloUI.Safe.Text
+	local slots = {}                                     -- every slot that wears one, in the order dressed
+	local gemOf = setmetatable({}, { __mode = "k" })     -- [button] = its slot's state
+	local gemOfArt = setmetatable({}, { __mode = "k" })  -- [quest texture] = its slot's state
+	local gemOfBadge = setmetatable({}, { __mode = "k" }) -- [reagent quality badge] = its slot's state
+	local wanted = nil                                   -- the switch as last read (nil: read it again)
+	local made = 0
+
+	local function Wanted()
+		if wanted == nil then
+			if not MelloUI.db then
+				return true   -- (the settings not bound yet: read again next time)
+			end
+			local db = MelloUI:GetModuleDB(SWITCH_MODULE)
+			wanted = not (db and db[SWITCH_KEY] == false)
+		end
+		return wanted
+	end
+
+	-- the game's own colour of an item quality (`q` a plain number); nil when
+	-- it has none plainly. ITEM_QUALITY_COLORS is the game's (its colour
+	-- manager fills it for every quality there is, 0 .. NumValues - 1): a
+	-- quality it lacks is unknown, no gem. Only a client without that table
+	-- asks C_Item, for a quality in range (it answers a colour for any number)
+	local function Colour(q)
+		local list = ITEM_QUALITY_COLORS
+		local r, g, b
+		if type(list) == "table" then
+			local c = list[q]
+			if type(c) ~= "table" then
+				return nil
+			end
+			r, g, b = c.r, c.g, c.b
+		else
+			local meta = Enum and Enum.ItemQualityMeta
+			local count = meta and Num(meta.NumValues) or 9
+			if not (C_Item and C_Item.GetItemQualityColor) or q < 0 or q >= count or q ~= math.floor(q) then
+				return nil
+			end
+			local ok
+			ok, r, g, b = pcall(C_Item.GetItemQualityColor, q)
+			if not ok then
+				return nil
+			end
+		end
+		r, g, b = Num(r), Num(g), Num(b)
+		if r and g and b then
+			return r, g, b
+		end
+		return nil
+	end
+
+	-- a region of the game's shown (a secret reads as not shown)
+	local function Shown(region)
+		if not region then
+			return false
+		end
+		local ok, shown = pcall(region.IsShown, region)
+		return ok and not Secret(shown) and shown == true
+	end
+
+	-- one of the game's own marks in the top-left corner (the reagent's
+	-- badge read from the button each time: the game makes it late)
+	local function CornerTaken(st)
+		local b = st.button
+		return Shown(b.JunkIcon) or Shown(b.UpgradeIcon) or (st.bang and Shown(b.IconQuestTexture))
+			or Shown(b.ProfessionQualityOverlay) or false
+	end
+
+	-- a slot the game dims: its context overlay shown in the dim mode (the
+	-- search box, an item that does not fit the open window), not as the
+	-- glow round an item it highlights (runeforging); the game's own reader
+	-- of the mode, where there is one. An older client's searchOverlay
+	local function Dimmed(button)
+		if Shown(button.ItemContextOverlay) then
+			local read = button.GetItemContextOverlayMode
+			local match = _G.ItemButtonConstants and _G.ItemButtonConstants.ContextMatch
+			local standard = match and match.Standard
+			if type(read) ~= "function" or standard == nil then
+				return true   -- (no mode on this client: the overlay is the dim)
+			end
+			local ok, mode = pcall(read, button)
+			return ok and not Secret(mode) and mode == standard
+		end
+		return Shown(button.searchOverlay)
+	end
+
+	-- its size (of the button's) and level (over the button's children):
+	-- when made, when the slot's kit comes on and when the switch does (the
+	-- button keeps both for the session: not read again on every update)
+	local function Fit(st, gem)
+		local b = st.button
+		local okW, w = pcall(b.GetWidth, b)
+		w = okW and Finite(w) or nil
+		gem:SetGemSize(w and w > 0 and math.floor(w * SIZE + 0.5) or 14)
+		local okL, level = pcall(b.GetFrameLevel, b)
+		level = okL and Num(level) or nil
+		if level and level + 2 ~= st.level then
+			st.level = level + 2
+			gem:SetFrameLevel(level + 2)
+		end
+	end
+
+	-- the reagent badge's own shows and hides (the Professions window's, for
+	-- crafted gear): a gem shown moved (below, with the other hooks)
+	local Gem_OnBadge
+
+	-- its corner (the top-right one while the game's own mark takes the
+	-- top-left) and its alpha (a slot the game dims)
+	local function Marks(st, gem)
+		local button = st.button
+		-- the reagent's badge, heard from the first time the gem meets it
+		local badge = button.ProfessionQualityOverlay
+		if badge and not gemOfBadge[badge] and badge.SetShown then
+			gemOfBadge[badge] = st
+			hooksecurefunc(badge, "SetShown", Gem_OnBadge)
+		end
+		local aside = CornerTaken(st)
+		if aside ~= st.aside then
+			st.aside = aside
+			local icon = st.icon or button
+			gem:ClearAllPoints()
+			if aside then
+				gem:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -INSET, -INSET)
+			else
+				gem:SetPoint("TOPLEFT", icon, "TOPLEFT", INSET, -INSET)
+			end
+		end
+		local dim = Dimmed(button)
+		if dim ~= st.dim then
+			st.dim = dim
+			gem:SetAlpha(dim and DIM or 1)
+		end
+	end
+
+	-- the slot's gem as the game's slot now is: shown in its quality's colour
+	-- (made the first time), or hidden; `refit`: its size and level again
+	local function Sync(st, refit)
+		local q = st.on and st.q or nil
+		local r, g, b = nil, nil, nil
+		if q and Wanted() then
+			r, g, b = Colour(q)
+		end
+		local gem = st.gem
+		if not r then
+			if gem then
+				gem:Hide()
+			end
+			return
+		end
+		if not gem then
+			local QI = MelloUI.QuestInk
+			if not (QI and QI.Gem) then
+				return
+			end
+			gem = QI.Gem(st.button)
+			st.gem = gem
+			made = made + 1
+			refit = true
+		end
+		if refit then
+			Fit(st, gem)
+		end
+		Marks(st, gem)
+		gem:SetColour(r, g, b)
+	end
+
+	-- the game's own updates of a dressed slot (one handler each for every
+	-- slot, no closure of their own)
+	local Gem_OnQuality = Shared("SetItemButtonQuality on a kit item slot", function(button, quality)
+		local st = gemOf[button]
+		if st then
+			st.q = Num(quality)
+			Sync(st)
+		end
+	end)
+	-- the corner's marks and the search's shade: a gem shown moved or dimmed
+	-- (none shown: nothing to do; the next quality update places it)
+	local Gem_OnMarks = Shared("the corner and search marks on a kit item slot", function(button)
+		local st = gemOf[button]
+		local gem = st and st.gem
+		if gem and gem:IsShown() then
+			Marks(st, gem)
+		end
+	end)
+	Gem_OnBadge = Shared("SetShown on a kit item slot's reagent quality badge", function(region)
+		local st = gemOfBadge[region]
+		local gem = st and st.gem
+		if gem and gem:IsShown() then
+			Marks(st, gem)
+		end
+	end)
+	local Gem_OnQuestArt = Shared("SetTexture on a kit item slot's quest mark", function(region, art)
+		local st = gemOfArt[region]
+		if st then
+			local bang = _G.TEXTURE_ITEM_QUEST_BANG
+			st.bang = bang ~= nil and Text(art) == bang
+		end
+	end)
+
+	function Kit:ItemGem(button, rep, read)
+		if not (button and rep and button.SetItemButtonQuality) or gemOf[button] then
+			return
+		end
+		local st = { button = button, icon = button.icon, on = false }
+		gemOf[button] = st
+		slots[#slots + 1] = st
+		hooksecurefunc(button, "SetItemButtonQuality", Gem_OnQuality)
+		-- (the search's shade, called last in each window's update of a slot:
+		-- the corner's marks are set by then)
+		local dim = (button.UpdateItemContextOverlay and "UpdateItemContextOverlay") or (button.SetMatchesSearch and "SetMatchesSearch")
+		if dim then
+			hooksecurefunc(button, dim, Gem_OnMarks)
+		end
+		local quest = button.IconQuestTexture
+		if quest and quest.SetTexture then
+			gemOfArt[quest] = st
+			hooksecurefunc(quest, "SetTexture", Gem_OnQuestArt)
+		end
+		-- what the game gave the slot before it was dressed
+		if type(read) == "function" then
+			local ok, q, bang = pcall(read, button)
+			if ok then
+				st.q = Num(q)
+				st.bang = not Secret(bang) and bang == true
+			end
+		end
+		-- shown with the slot's kit only
+		local enable, disable = rep.onEnable, rep.onDisable
+		rep.onEnable = function(...)
+			if enable then
+				enable(...)
+			end
+			st.on = true
+			Sync(st, true)
+		end
+		rep.onDisable = function(...)
+			if disable then
+				disable(...)
+			end
+			st.on = false
+			Sync(st)
+		end
+	end
+
+	-- the switch read again (Quality Gems changed, a profile loaded): every
+	-- slot at once, nothing made while it is off
+	function Kit:SyncItemGems()
+		wanted = nil
+		local on = Wanted()
+		for i = 1, #slots do
+			local st = slots[i]
+			if on then
+				Sync(st, true)
+			elseif st.gem then
+				st.gem:Hide()
+			end
+		end
+	end
+
+	function Kit:ItemGemCounts()
+		local shown = 0
+		for i = 1, #slots do
+			local gem = slots[i].gem
+			if gem and gem:IsShown() then
+				shown = shown + 1
+			end
+		end
+		return #slots, made, shown
+	end
+
+	-- (a profile load writes the settings past 'setting', then says
+	-- 'restart'; nothing read yet: nothing to follow)
+	local OnSetting = Shared("'setting' on the bus: the quality gems", function(name, key)
+		if name == SWITCH_MODULE and key == SWITCH_KEY then
+			Kit:SyncItemGems()
+		end
+	end)
+	local OnRestart = Shared("'restart' on the bus: the quality gems", function()
+		if wanted ~= nil then
+			Kit:SyncItemGems()
+		end
+	end)
+	if MelloUI.On then
+		MelloUI:On("setting", OnSetting, "Kit quality gems")
+		MelloUI:On("restart", OnRestart, "Kit quality gems")
+	end
 end
 
 --------------------------------------------------------------------------------
