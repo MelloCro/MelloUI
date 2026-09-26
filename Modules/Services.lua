@@ -16,6 +16,17 @@
 -- or All Buttons, the two rows of an icon per service as before. The tray is
 -- the nearest-service list's own frame (one menu for both). What MinimapPanel
 -- asks of the row: M:ColumnRow().
+-- 0.14.0: a sixth group, Errands (the user named it, 2026-09-26; its cells a
+-- little smaller): Restock, Mail, Repair Gear and Trainer, each routed as its
+-- reminder routes (Core/Reminders.lua), with the reminder's own line in the
+-- tray. The routing is public for the reminders and their users:
+--   M:GoTo(kind[, opts]) -> true | false, why   route to the nearest one
+--   M:Nearest(kind[, opts]) -> yards, name, subname | nil, why
+-- (kind: a key of KINDS or HIDDEN below; opts and why: at M:GoTo). The side
+-- is Route's shared rule (a Neutral character gets the rows open to both),
+-- the player's continent Route's one answer (Route.ContinentOf: a map with no
+-- continent above it, as Zephras Isle, is its own). The bar's box and the
+-- tray's wear the kit's shade (Kit:ShadeElement, the minimap's area).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -49,7 +60,7 @@ local M = MelloUI:RegisterModule("Services", {
 			{ value = "groups", label = "Groups" },
 			{ value = "all", label = "All Buttons" },
 		  },
-		  desc = "Groups: one row of five buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. All Buttons: two rows with an icon for every service." },
+		  desc = "Groups: one row of six buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks, Errands). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. Errands lists your reminders (Restock, Mail, Repair Gear, Trainer) and how each stands; click one to route to the nearest place for it. All Buttons: two rows with an icon for every service." },
 		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2,
 		  desc = "How far under the minimap the buttons sit. Not used while they are merged into the square minimap's frame." },
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
@@ -161,39 +172,94 @@ local KINDS = {
 	{ key = "transmog", label = "Transmogrifier", event = "TRANSMOGRIFY_OPEN", icon = "Interface/Minimap/Tracking/Transmogrifier" },
 }
 
+-- Kinds the bar never shows, reached by key through M:GoTo and M:Nearest (the
+-- Errands group, the reminders): a vendor of the restock goods, from the
+-- data's vendor rows, each with the families it sells (its 8th field, in the
+-- order "dfabr": drink, food, arrows, bullets, class reagents; opts.letters
+-- picks them)
+local HIDDEN = {
+	{ key = "vendor", label = "Vendor", data = "vendor", icon = "Interface/Minimap/Tracking/Food" },
+}
+
+-- The Errands group's entries (0.14.0; the user named the group, 2026-09-26):
+-- each is routed as its reminder routes (Rem:Act, Core/Reminders.lua, by its
+-- `reminder` key), or, with no reminder to ask, to the nearest `service`
+-- (M:GoTo with `opts`). Its tray row shows the reminder's own line (Rem:Text)
+-- where it has one, else the nearest one's distance.
+local ERRANDS = {
+	{ key = "restock", label = "Restock", reminder = "restock", service = "vendor", icon = "Interface/Minimap/Tracking/Food",
+	  opts = { letters = "df", fallback = "innkeeper", what = "vendor with food and drink", label = "Restock" } },
+	{ key = "mail", label = "Mail", reminder = "mail", service = "mailbox", icon = "Interface/Minimap/Tracking/Mailbox" },
+	{ key = "repairgear", label = "Repair Gear", reminder = "repair", service = "repair", icon = "Interface/Minimap/Tracking/Repair" },
+	{ key = "trainer", label = "Trainer", reminder = "trainer", service = "classtrainer", icon = "Interface/Minimap/Tracking/Class" },
+}
+
 -- The groups of Button Layout's Groups, in the row's order (layout E, 2026-09-25:
--- the user did not object to these). `members`: KINDS keys, the first one's
--- icon is the group's. A new group (0.14.0's Route group) is one entry.
+-- the user did not object to these). `members`: KINDS keys (an `errands`
+-- group's: ERRANDS keys), the first one's icon is the group's unless it has
+-- its own. A new group is one entry; LayoutFit's Column.ROW_GROUPS models the
+-- row's height (Core/LayoutFit.lua: change it with the count).
 local GROUPS = {
 	{ key = "travel", label = "Travel", members = { "flight", "innkeeper" } },
 	{ key = "trade", label = "Trade", members = { "auction", "banker", "mailbox" } },
 	{ key = "repair", label = "Repair", members = { "repair" } },
 	{ key = "trainers", label = "Trainers", members = { "classtrainer", "proftrainer" } },
 	{ key = "looks", label = "Looks", members = { "barber", "transmog" } },
+	{ key = "errands", label = "Errands", errands = true, icon = "Interface/Icons/INV_Misc_Note_01",
+	  members = { "restock", "mail", "repairgear", "trainer" } },
 }
 
 -- Each kind's look (found on this continent, its nearest, how far a look got):
 -- one plain table per kind, whichever buttons show it (All Buttons' icon,
 -- the group's button, a row of the tray). slot.button: its All Buttons icon,
--- slot.groupButton: its group's button, once made.
-local slots, slotOf = {}, {}
+-- slot.groupButton: its group's button, once made. KIND[key]: every kind,
+-- shown or not (the public calls take keys).
+local slots, slotOf, KIND = {}, {}, {}
 do
-	local kindOf = {}
 	for i, kind in ipairs(KINDS) do
 		local s = { kind = kind }
-		slots[i], slotOf[kind], kindOf[kind.key] = s, s, kind
+		slots[i], slotOf[kind], KIND[kind.key] = s, s, kind
+	end
+	for _, kind in ipairs(HIDDEN) do
+		KIND[kind.key] = kind
+	end
+	local errandOf = {}
+	for _, e in ipairs(ERRANDS) do
+		e.errand = true
+		errandOf[e.key] = e
+		-- (its letters as the candidates' filter, made once: EachCandidate)
+		local letters = e.opts and e.opts.letters
+		if letters then
+			e.opts.filter = { pattern = "[" .. letters .. "]" }
+		end
 	end
 	for _, group in ipairs(GROUPS) do
 		group.kinds = {}
 		for _, key in ipairs(group.members) do
-			group.kinds[#group.kinds + 1] = kindOf[key]
+			group.kinds[#group.kinds + 1] = group.errands and errandOf[key] or KIND[key]
 		end
-		group.icon = group.kinds[1].icon
+		group.icon = group.icon or group.kinds[1].icon
 	end
 end
 
+-- The player's side as the rows' side field has it: 1 Alliance, 2 Horde, 0 a
+-- Neutral character (one who has not picked a faction yet, as on Zephras
+-- Isle), who gets only the rows open to both (a row passes when its side is
+-- 0 or this one: Route.SideOpen's rule, asked once per pass here). The one
+-- shared helper, Route.PlayerSide (Modules/Route.lua, defined at its load,
+-- the module on or off; the docks and flight points go by the same; a
+-- faction that reads secret is Neutral there); no second copy of the rule
+-- here: without an answer, the rows open to both.
 local function PlayerSide()
-	return UnitFactionGroup("player") == "Horde" and 2 or 1
+	local R = MelloUI.Route
+	local shared = R and R.PlayerSide
+	if type(shared) == "function" then
+		local ok, side = pcall(shared)
+		if ok and (side == 1 or side == 2) then
+			return side
+		end
+	end
+	return 0
 end
 
 -- Lower-cased stems of the player's professions ("leat", "blac", "mini"...),
@@ -254,10 +320,18 @@ local PROFESSIONS = {
 	{ key = "tailoring",      label = "Tailoring",      match = { "tailor" } },
 	{ key = "cooking",        label = "Cooking",        match = { "cook", "butcher" } },
 	{ key = "fishing",        label = "Fishing",        match = { "fish" } },
-	{ key = "firstaid",       label = "First Aid",      match = { "first aid", "physician", "trauma surgeon" } },
+	-- ("medic": Forever's first aid trainers, round 2's data)
+	{ key = "firstaid",       label = "First Aid",      match = { "first aid", "physician", "trauma surgeon", "medic" } },
 	{ key = "riding",         label = "Riding",         match = { "riding", "mechanostrider pilot" } },
 	{ key = "weapons",        label = "Weapon Skills",  match = { "weapon master" } },
 }
+-- (by key, for M:GoTo's opts.profession; by the stem of its name, the stems
+-- the player's professions give: a "Medic" teaches First Aid, "firs")
+PROFESSIONS.byKey, PROFESSIONS.byStem = {}, {}
+for _, prof in ipairs(PROFESSIONS) do
+	PROFESSIONS.byKey[prof.key] = prof
+	PROFESSIONS.byStem[prof.label:lower():sub(1, 4)] = prof
+end
 
 local function ProfessionOf(sub)
 	sub = (sub or ""):lower()
@@ -329,6 +403,15 @@ local function TrainerMatches(kind, sub)
 		if sub:find(stem, 1, true) then
 			return true
 		end
+		-- (a trainer named by another word for it: "Medic", "Fisherman")
+		local prof = PROFESSIONS.byStem[stem]
+		if prof then
+			for _, word in ipairs(prof.match) do
+				if sub:find(word, 1, true) then
+					return true
+				end
+			end
+		end
 	end
 	return false
 end
@@ -341,8 +424,12 @@ local function Learned()
 		store.services = store.services or {}
 		return store.services
 	end
-	M.db.learned = M.db.learned or {}
-	return M.db.learned
+	local db = M.db
+	if not db then
+		return {}   -- (asked through the public calls before the module's settings were read)
+	end
+	db.learned = db.learned or {}
+	return db.learned
 end
 
 local function Wanted(kind, profession, sub)
@@ -443,7 +530,14 @@ end
 -- between, are gone through in one go.
 -- keep (optional; not lazy): an old flight answer kept as it is, as a look
 -- keeps it; one not asked yet is still asked.
-local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, keep)
+-- filter (optional; the public calls, never the bar's looks): { pattern: a
+-- vendor row's families must match it ("[df]"), skip: { [NPC name] = true }
+-- shipped rows passed over (a learned inventory says otherwise), extra: a
+-- list of candidates { name, sub, cont, wx, wy } or { name, sub, mapID, x,
+-- y } visited after the remembered ones }. The side (Route's shared rule, 0
+-- for a Neutral character) and the continent are the player's; 1,322 rows
+-- since 0.14.0's vendors, each tested for its kind first.
+local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, keep, filter)
 	PreparePass(kind)   -- again on going on: another pass may have run since
 	local phase, pos = 1, 0
 	if cur and cur.scanPhase then
@@ -454,6 +548,7 @@ local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, k
 	end
 	local data = Data()
 	local side = PlayerSide()
+	local pattern, names = filter and filter.pattern, filter and filter.skip
 	if phase == 1 then
 		if kind.data and type(data) == "table" and type(data.services) == "table" then
 			local rows = data.services
@@ -461,6 +556,7 @@ local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, k
 			local row = rows[i]
 			while row ~= nil do
 				if row[1] == kind.data and (row[4] == 0 or row[4] == side) and not (skip and skip[row])
+					and not (names and names[row[2]]) and (not pattern or (type(row[8]) == "string" and row[8]:find(pattern)))
 					and Wanted(kind, profession, row[3]) then
 					if visit(row, row[2], row[3], row[5], row[6], row[7]) then
 						return false
@@ -498,8 +594,18 @@ local function EachCandidate(kind, profession, visit, skip, lazy, cur, stopAt, k
 	end
 	for _, l in pairs(Learned()) do
 		if (l.kind == kind.key or (kind.data and l.kind == kind.data and Wanted(kind, profession, l.sub))) and not (skip and skip[l])
+			and (not pattern or (type(l.sells) == "string" and l.sells:find(pattern)))
 			and visit(l, l.name, l.sub or "", nil, nil, nil, l.mapID, l.x, l.y) then
 			return false
+		end
+	end
+	local extra = filter and filter.extra
+	if type(extra) == "table" then
+		for _, c in ipairs(extra) do
+			if type(c) == "table" and not (skip and skip[c])
+				and visit(c, c.name or "", c.sub or "", c.cont, c.wx, c.wy, c.mapID, c.x, c.y) then
+				return false
+			end
 		end
 	end
 	return false
@@ -507,8 +613,9 @@ end
 
 -- Candidates of a kind: { name, sub, cont/wx/wy or mapID/x/y }.
 -- profession (optional): only trainers teaching that profession. keep
--- (optional): the flight answers kept however old (EachCandidate).
-local function Candidates(kind, profession, keep)
+-- (optional): the flight answers kept however old (EachCandidate). filter
+-- (optional): EachCandidate's.
+local function Candidates(kind, profession, keep, filter)
 	local out = {}
 	EachCandidate(kind, profession, function(_, name, sub, cont, wx, wy, mapID, x, y)
 		if cont ~= nil then
@@ -516,19 +623,20 @@ local function Candidates(kind, profession, keep)
 		else
 			out[#out + 1] = { name = name, sub = sub, mapID = mapID, x = x, y = y }
 		end
-	end, nil, false, nil, nil, keep)
+	end, nil, false, nil, nil, keep, filter)
 	return out
 end
 
--- The nearest few by straight line, with their distances.
-local function Nearest(kind, count, profession)
+-- The nearest few by straight line, with their distances (the player's
+-- place read once for them all: Route's DistanceTo with sameFrame).
+local function Nearest(kind, count, profession, filter)
 	local R = Route()
 	if not R then
 		return {}
 	end
 	local list = {}
-	for _, c in ipairs(Candidates(kind, profession)) do
-		local d = R:DistanceTo(c)
+	for _, c in ipairs(Candidates(kind, profession, nil, filter)) do
+		local d = R:DistanceTo(c, true)
 		if d then
 			c.distance = d
 			list[#list + 1] = c
@@ -550,7 +658,6 @@ end
 -- a tooltip or the menu shows it. Candidates found on another continent are
 -- kept per continent and passed over: their answer cannot change while the
 -- player is on it.
-local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 local WEAK_KEYS = { __mode = "k" }
 local contOf = {}         -- the player's map -> the continent map above it
 local elsewhereOn = {}    -- continent -> { [entry] = true }: candidates on another one
@@ -558,12 +665,12 @@ local probe = {}          -- the candidate handed to Route:DistanceTo, filled ag
 local scanR, scanSkip, scanFirst, scanMap, scanPlayerOk = nil, nil, false, nil, nil
 local bestD, bestName, bestSub = nil, nil, nil
 
--- The player's continent, found as the Route module finds it (the continent
--- map above the player's map; the map itself while that is not known), and
--- the player's map; nil without a map, when no candidate has a distance.
--- A map with no continent above it is kept as its own (a map info table per
--- level on every look was garbage); what is kept per continent only needs a
--- key the map fixes, and the map does.
+-- The player's continent and map; nil without a map. The continent is the
+-- Route module's one answer (Route.ContinentOf, Modules/Route.lua: the
+-- continent map above the player's map, else the highest map under the
+-- world -- Zephras Isle, 2521, is its own), kept per map here (a map info
+-- table per level on every look was garbage); the map itself while Route
+-- gives none. What is kept per continent only needs a key the map fixes.
 local function PlayerContinent()
 	local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
 	mapID = ok and Plain(mapID) or nil
@@ -574,28 +681,33 @@ local function PlayerContinent()
 	if cont then
 		return cont, mapID
 	end
-	local id = mapID
-	for _ = 1, 6 do
-		local okI, info = pcall(C_Map.GetMapInfo, id)
-		if not okI or type(info) ~= "table" then
-			break
-		end
-		if Plain(info.mapType) == MAP_CONTINENT then
-			contOf[mapID] = id
-			return id, mapID
-		end
-		id = Plain(info.parentMapID)
-		if not id or id == 0 then
-			break
-		end
+	local R = MelloUI.Route
+	local of = R and R.ContinentOf
+	if type(of) == "function" then
+		local okC, c = pcall(of, mapID)   -- (Route.ContinentOf(mapID): its function, not a method)
+		cont = okC and type(c) == "number" and c or nil
 	end
-	contOf[mapID] = mapID
-	return mapID, mapID
+	cont = cont or mapID
+	contOf[mapID] = cont
+	return cont, mapID
 end
 
+-- Whether the player has a place on the map now (a point on the player's own
+-- map has a distance): "none known" and "can't place you" told apart
+local function Placed(R)
+	local _, mapID = PlayerContinent()
+	if not mapID then
+		return false
+	end
+	probe.cont, probe.wx, probe.wy, probe.mapID, probe.x, probe.y = nil, nil, nil, mapID, 0.5, 0.5
+	return R:DistanceTo(probe, true) ~= nil
+end
+
+-- (every distance of a pass is asked with sameFrame: the player's place read
+-- once a frame, not once a candidate; Route's DistanceTo(c, sameFrame))
 local function ScanVisit(entry, name, sub, cont, wx, wy, mapID, x, y, taxi)
 	probe.cont, probe.wx, probe.wy, probe.mapID, probe.x, probe.y = cont, wx, wy, mapID, x, y
-	local d, elsewhere = scanR:DistanceTo(probe)
+	local d, elsewhere = scanR:DistanceTo(probe, true)
 	if d then
 		scanPlayerOk = true
 		-- a flight point not asked about yet: asked now it is on this continent
@@ -617,7 +729,7 @@ local function ScanVisit(entry, name, sub, cont, wx, wy, mapID, x, y, taxi)
 	-- on the player's own map tells which
 	if scanPlayerOk == nil then
 		probe.cont, probe.wx, probe.wy, probe.mapID, probe.x, probe.y = nil, nil, nil, scanMap, 0.5, 0.5
-		scanPlayerOk = scanR:DistanceTo(probe) ~= nil
+		scanPlayerOk = scanR:DistanceTo(probe, true) ~= nil
 	end
 	return not scanPlayerOk
 end
@@ -627,7 +739,8 @@ end
 -- none has a distance. cur, stopAt: an icon's look (first) that may stop
 -- part way (EachCandidate); then nil, nil, nil, true, and the next call with
 -- cur goes on, where it stopped while the player is still on that map.
-local function ScanKind(kind, first, cur, stopAt)
+-- profession, filter (the public M:Nearest; never with cur): EachCandidate's.
+local function ScanKind(kind, first, cur, stopAt, profession, filter)
 	local R = Route()
 	if not R then
 		return nil
@@ -651,7 +764,7 @@ local function ScanKind(kind, first, cur, stopAt)
 	end
 	scanR, scanSkip, scanFirst, scanMap, scanPlayerOk = R, skip, first and true or false, mapID, playerOk
 	bestD, bestName, bestSub = nil, nil, nil
-	local stopped = EachCandidate(kind, nil, ScanVisit, scanSkip, true, cur, stopAt)
+	local stopped = EachCandidate(kind, profession, ScanVisit, scanSkip, true, cur, stopAt, nil, filter)
 	if stopped then
 		cur.scanR, cur.scanMap, cur.scanOk = R, mapID, scanPlayerOk
 	end
@@ -674,17 +787,82 @@ local function CleanSub(sub)
 	return sub
 end
 
-local function GoTo(kind, profession)
+-- The public calls' options, read once per call (a click or a reminder's
+-- moment, never a look): the profession (a PROFESSIONS key or entry) and the
+-- candidates' filter (EachCandidate: letters -> a pattern of the restock
+-- families "dfabr", skip, extra); nil where there is nothing to filter
+local function Profession(opts)
+	local p = opts and opts.profession
+	if type(p) == "string" then
+		return PROFESSIONS.byKey[p]
+	end
+	return type(p) == "table" and p.match and p or nil
+end
+
+-- (one filter table, filled per call: a filter is used only during the pass
+-- that asked for it, so a reminder's check makes no table)
+local Filter
+do
+	local scratch = {}
+	Filter = function(opts)
+		if type(opts) ~= "table" then
+			return nil
+		end
+		if opts.filter then
+			return opts.filter   -- (made before: an errand's)
+		end
+		local given = type(opts.letters) == "string"
+		local letters = given and opts.letters:gsub("[^dfabr]", "") or ""
+		local skip = type(opts.skip) == "table" and opts.skip or nil
+		local extra = type(opts.extra) == "table" and opts.extra or nil
+		if not given and not skip and not extra then
+			return nil
+		end
+		-- (letters of no family match no row: "%z", a character no row's letters hold)
+		scratch.pattern = letters ~= "" and ("[" .. letters .. "]") or (given and "%z" or nil)
+		scratch.skip, scratch.extra = skip, extra
+		return scratch
+	end
+end
+
+-- A kind by its key (KINDS or HIDDEN), or the kind itself
+local function KindOf(kind)
+	if type(kind) == "string" then
+		return KIND[kind]
+	end
+	return type(kind) == "table" and kind.key and KIND[kind.key] == kind and kind or nil
+end
+
+-- Route to the nearest one of a kind (by road among the nearest six by
+-- straight line). opts (optional): profession, letters / skip / extra
+-- (Filter), what (the notice's name for it: "vendor with food and drink"),
+-- label (the route's name before the NPC's), fallback (a kind key routed to
+-- when none is known: the innkeeper for restock goods). -> true (routed, or
+-- once Route's roads are built), or false and why: "off" (the Route module
+-- is off), "noplace" (the player has no place on this map: an instance, a
+-- map the client does not place), "none" (none known on this continent)
+local function GoTo(kind, opts)
 	local R = Route()
 	if not R then
 		Notify("The Route module is off; enable it under /mello.", "fail")
-		return
+		return false, "off"
 	end
-	local what = profession and (profession.label .. " trainer") or kind.label:lower()
-	local near = Nearest(kind, 6, profession)
+	local profession = Profession(opts)
+	local what = (opts and type(opts.what) == "string" and opts.what) or (profession and (profession.label .. " trainer")) or kind.label:lower()
+	local near = Nearest(kind, 6, profession, Filter(opts))
 	if #near == 0 then
+		-- (Zephras Isle before 0.14.0 said "none known on this continent" when
+		-- the player had no place there)
+		if not Placed(R) then
+			Notify("Can't place you on this map, so no route to the nearest " .. what .. ".", "fail")
+			return false, "noplace"
+		end
+		local fallback = opts and KIND[opts.fallback]
+		if fallback and fallback ~= kind then
+			return GoTo(fallback)
+		end
 		Notify("No " .. what .. " known on this continent yet.", "fail")
-		return
+		return false, "none"
 	end
 	local best, _, later = R:Cheapest(near)
 	if later and R.WhenReady then
@@ -692,14 +870,16 @@ local function GoTo(kind, profession)
 		-- built (user, 2026-09-24: built on the first route, not at login), so
 		-- the nearest is chosen once it is, by route as ever, not by straight
 		-- line (a flight master across the river is not near)
-		R:WhenReady(function() GoTo(kind, profession) end)
-		return
+		R:WhenReady(function() GoTo(kind, opts) end)
+		return true
 	end
 	local c = near[best or 1]
 	local icon = kind.icon and ("|T" .. kind.icon .. ":16:16|t ") or ""
-	local label = icon .. (profession and profession.label or kind.label) .. ": " .. c.name
+	local name = (opts and type(opts.label) == "string" and opts.label) or (profession and profession.label) or kind.label
+	local label = icon .. name .. ": " .. c.name
 	local big = kind.icon and ("|T" .. kind.icon .. ":22:22|t  ") or ""
 	R:SetDestinationTo(c, label, true, string.format("%sTracking nearest %s, closest one {dist} away", big, what))
+	return true
 end
 
 -- The profession trainer button asks which profession: a menu of every
@@ -730,7 +910,7 @@ local function ProfessionMenu(owner, kind)
 			if known[prof.label:lower()] then
 				text = text .. "  |cff40ff40(yours)|r"
 			end
-			root:CreateButton(text, function() GoTo(kind, prof) end)
+			root:CreateButton(text, function() GoTo(kind, { profession = prof }) end)
 		end
 		if #available > 0 then
 			root:CreateDivider()
@@ -748,6 +928,64 @@ local function KindClick(owner, kind)
 	else
 		GoTo(kind)
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Errands (the sixth group, 0.14.0): the reminders' errands (Core/
+-- Reminders.lua, MelloUI.Reminders; Modules/Reminders.lua and Modules/
+-- Restock.lua register them under the keys "restock", "mail", "repair" and
+-- "trainer"). What is asked of the reminders, the one system: Rem:Label(key)
+-- (nil: none registered), Rem:State(key) (up now), Rem:Text(key) (its line)
+-- and Rem:Act(key, button) (what a click on it does: its way there). With no
+-- reminder registered (the reminders off, their module off) an errand routes
+-- to the nearest place that sees to it, and its row shows that one's distance.
+--------------------------------------------------------------------------------
+
+local Errand = {}
+
+-- the errand's reminder: registered, and up now; nil when none is there
+function Errand.Reminder(e)
+	local Rem = MelloUI.Reminders
+	if type(Rem) ~= "table" or type(Rem.Label) ~= "function" then
+		return nil
+	end
+	local ok, label = pcall(Rem.Label, Rem, e.reminder)
+	if not ok or label == nil then
+		return nil
+	end
+	local active = false
+	if type(Rem.State) == "function" then
+		local okS, up = pcall(Rem.State, Rem, e.reminder)
+		active = okS and up == true
+	end
+	return Rem, active, label
+end
+
+-- the reminder's own line, when it gives a plain one of its own (not its
+-- name again, nor a secret)
+function Errand.Line(Rem, e, label)
+	if type(Rem.Text) ~= "function" then
+		return nil
+	end
+	local ok, line = pcall(Rem.Text, Rem, e.reminder)
+	if ok and type(line) == "string" and not IsSecret(line) and line ~= "" and line ~= label then
+		return line
+	end
+	return nil
+end
+
+-- A click: the reminder's own action (Rem:Act, its way there), else the
+-- nearest one
+function Errand.Click(e)
+	local Rem = Errand.Reminder(e)
+	if Rem and type(Rem.Act) == "function" then
+		local ok, err = pcall(Rem.Act, Rem, e.reminder, "LeftButton")
+		if not ok then
+			geterrorhandler()(err)
+		end
+		return
+	end
+	GoTo(KIND[e.service], e.opts)
 end
 
 local function StopRoute()
@@ -791,7 +1029,7 @@ local function Remember(kindKey, name, sub)
 				-- map forgets them half a second later
 				for _, c in ipairs(Candidates(kind, nil, true)) do
 					if not c.mapID then
-						local d = R:DistanceTo(c)
+						local d = R:DistanceTo(c, true)   -- (the player's place read once)
 						if d and math.abs(d - here) < 40 then
 							return
 						end
@@ -945,13 +1183,70 @@ local function NearestLine(s)
 	return s.tip
 end
 
+-- An errand's row and tooltip line: its reminder's own line (in the gold
+-- while the reminder is up, muted while not), else the nearest place that
+-- sees to it (the bar's look, kept NEAREST_KEEP s; the restock vendors,
+-- which the bar never looks at, looked for now), else the one its click
+-- falls back to ("Innkeeper 120 yd": the row never says none while a click
+-- goes somewhere) -> text, palette key. The strings are made again only
+-- when they changed.
+function Errand.Status(e)
+	local Rem, active, label = Errand.Reminder(e)
+	local line = Rem and Errand.Line(Rem, e, label)
+	if line then
+		return line, active and "selectedTrim" or "mutedText"
+	end
+	if not Route() then
+		return "Route module off", "mutedText"
+	end
+	local kind = KIND[e.service]
+	local s = slotOf[kind]
+	if s then
+		if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
+			FindNearest(s)
+		end
+		if s.nearest then
+			return DistanceText(s), "selectedTrim"
+		end
+	else
+		local d = ScanKind(kind, false, nil, nil, nil, e.opts and e.opts.filter)
+		if d then
+			if e.yardsD ~= d then
+				e.yardsD, e.yards = d, Yards(d)
+			end
+			return e.yards, "selectedTrim"
+		end
+	end
+	-- none of those: where its click goes instead (GoTo's fallback, the
+	-- innkeeper for restock goods), named, from that kind's kept look
+	local fb = e.opts and KIND[e.opts.fallback]
+	local fs = fb and slotOf[fb]
+	if fs then
+		if not fs.nearestAt or GetTime() - fs.nearestAt > NEAREST_KEEP then
+			FindNearest(fs)
+		end
+		if fs.nearest then
+			local yards = DistanceText(fs)
+			if e.fallYards ~= yards then
+				e.fallYards, e.fallText = yards, fb.label .. " " .. yards
+			end
+			return e.fallText, "selectedTrim"
+		end
+	end
+	return "none known here", "mutedText"
+end
+
+Errand.HINT = "Click to route there by road."
+
 -- the shared handlers of the menu's rows and the menu itself (one function
 -- each, not one per row)
 local function RowClick(row)
 	local kind, tray, owner = row.kind, menu.group ~= nil, menu.owner
 	menu.quiet = true   -- the route's notice has its own chime
 	menu:Hide()
-	if tray then
+	if kind.errand then
+		Errand.Click(kind)
+	elseif tray then
 		KindClick(owner or row, kind)
 	else
 		GoTo(kind)
@@ -960,21 +1255,25 @@ end
 
 local function RowEnter(row)
 	local kind = row.kind
-	local s = kind and slotOf[kind]
-	if not s then
-		return
-	end
-	local line
-	if s.nearest then
-		line = NearestLine(s)
-	elseif Route() then
-		line = "None known on this continent yet; it is remembered the first time you use one."
+	if kind and kind.errand then
+		MelloUI.Widgets.ShowTooltip(row, kind.label, Errand.HINT, (Errand.Status(kind)))
 	else
-		line = "The Route module is off."
+		local s = kind and slotOf[kind]
+		if not s then
+			return
+		end
+		local line
+		if s.nearest then
+			line = NearestLine(s)
+		elseif Route() then
+			line = "None known on this continent yet; it is remembered the first time you use one."
+		else
+			line = "The Route module is off."
+		end
+		local body = (menu.group and kind.trainer == "profession") and "Click to pick a profession and route to its nearest trainer."
+			or "Click to route there by road."
+		MelloUI.Widgets.ShowTooltip(row, kind.label, body, line)
 	end
-	local body = (menu.group and kind.trainer == "profession") and "Click to pick a profession and route to its nearest trainer."
-		or "Click to route there by road."
-	MelloUI.Widgets.ShowTooltip(row, kind.label, body, line)
 	if menu.group and menu.leftOfColumn then
 		-- off the tray's far side, not over the minimap column
 		GameTooltip:ClearAllPoints()
@@ -1155,12 +1454,29 @@ local function FillRow(row, kind, tray)
 	row:Show()
 end
 
+-- An errand's row: its icon, name and how it stands (Errand.Status)
+function Errand.Fill(row, e)
+	local W = MelloUI.Widgets
+	row.kind = e
+	row.icon:SetTexture(e.icon)
+	row.label:SetText(e.label)
+	local text, key = Errand.Status(e)
+	row.where:SetText(text)
+	W.Paint(row.label, "text", "text")
+	W.Paint(row.where, key, "text")
+	row.icon:SetDesaturated(false)
+	row.icon:SetAlpha(1)
+	row:Show()
+end
+
 -- group: a group's tray; nil: the list of every service
 local function FillMenu(group)
 	local kinds = group and group.kinds or KINDS
 	for i, row in ipairs(menu.rows) do
 		local kind = kinds[i]
-		if kind then
+		if kind and kind.errand then
+			Errand.Fill(row, kind)
+		elseif kind then
 			FillRow(row, kind, group ~= nil)
 		else
 			row:Hide()
@@ -1322,11 +1638,13 @@ local SPREAD_MS = 1
 local TICK_MS = 1
 local ticker = nil
 
--- a group's button bright while one of its kinds is known (or not looked at)
+-- a group's button bright while one of its kinds is known (or not looked at);
+-- Errands always (its rows say how each errand stands)
 local function GroupLook(gb)
 	local found = false
 	for _, kind in ipairs(gb.group.kinds) do
-		if slotOf[kind].found ~= false then
+		local s = slotOf[kind]
+		if not s or s.found ~= false then
 			found = true
 			break
 		end
@@ -1550,20 +1868,28 @@ local function GroupTooltip(self)
 	local R = Route()
 	for _, kind in ipairs(group.kinds) do
 		local s = slotOf[kind]
-		if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
-			FindNearest(s)
-		end
-		local c = s.nearest
-		if c then
-			GameTooltip:AddDoubleLine(kind.label, DistanceText(s), text[1], text[2], text[3], gold[1], gold[2], gold[3])
+		if kind.errand then
+			local line, key = Errand.Status(kind)
+			local c = P[key] or muted
+			GameTooltip:AddDoubleLine(kind.label, line, text[1], text[2], text[3], c[1], c[2], c[3])
 		else
-			GameTooltip:AddDoubleLine(kind.label, R and "none known here" or "Route module off",
-				muted[1], muted[2], muted[3], muted[1], muted[2], muted[3])
+			if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
+				FindNearest(s)
+			end
+			local c = s.nearest
+			if c then
+				GameTooltip:AddDoubleLine(kind.label, DistanceText(s), text[1], text[2], text[3], gold[1], gold[2], gold[3])
+			else
+				GameTooltip:AddDoubleLine(kind.label, R and "none known here" or "Route module off",
+					muted[1], muted[2], muted[3], muted[1], muted[2], muted[3])
+			end
 		end
 	end
 	local only = #group.kinds == 1 and group.kinds[1] or nil
 	local hint
-	if only and only.trainer == "profession" then
+	if group.errands then
+		hint = "Click for your errands, each with how it stands. Right-click stops the route."
+	elseif only and only.trainer == "profession" then
 		hint = "Click to pick a profession and route to its nearest trainer. Right-click stops the route."
 	elseif only then
 		hint = "Click to route to the nearest one by road. Right-click stops the route."
@@ -1666,7 +1992,10 @@ local function GroupButtons()
 		Perf.SetScript(b, "OnEnter", GroupTooltip)
 		Perf.SetScript(b, "OnLeave", TipHide)
 		for _, kind in ipairs(group.kinds) do
-			slotOf[kind].groupButton = b
+			local s = slotOf[kind]
+			if s then
+				s.groupButton = b
+			end
 		end
 		GroupLook(b)
 		list[i] = b
@@ -1835,6 +2164,24 @@ local function KitBox(frame)
 	end
 	local rep = MelloUI.Kit:Replace(KitAnchor(frame), { as = "Professions-background-summarylist", rect = frame, parent = frame, level = -1, dim = dim })
 	frame.kitBox = rep or false
+	-- its shade (0.14.0, the UI shade's minimap area: Kit:ShadeElement): the
+	-- bar's with the minimap column's one element (drawn under the map and
+	-- everything of the column, over the world); the menu, a box of its own
+	-- in the dialog strata, drawn by its box's rail (its nine, outside only,
+	-- as a window's). Shown and hidden with the box (Enable / Disable: merged,
+	-- the bar has none); made when the area is on.
+	local K = MelloUI.Kit
+	if rep and rep.skin and K.ShadeElement and Minimap then
+		local ok, el
+		if frame == menu then
+			ok, el = pcall(K.ShadeElement, K, frame, "minimap", { host = rep.skin })
+		else
+			ok, el = pcall(K.ShadeElement, K, Minimap, "minimap")
+		end
+		if ok and type(el) == "table" and type(el.Add) == "function" then
+			el:Add(rep)
+		end
+	end
 	return frame.kitBox
 end
 
@@ -2354,6 +2701,90 @@ function M:ColumnRow()
 	end
 	local _, cell = GroupRow()
 	return true, cell + 2 * GAP
+end
+
+-- The public routing (0.14.0: the reminders, the Errands group). `kind`: a
+-- key -- "repair", "mailbox", "innkeeper", "flight", "auction", "banker",
+-- "classtrainer", "proftrainer", "barber", "transmog" or "vendor" -- or a kind
+-- of this file's. Asked at the caller's moments (a click, a reminder's
+-- check), never per frame; the Services module on or off (Route must be on).
+--
+-- M:GoTo(kind[, opts]) -> true, or false and why ("unknown", "off",
+-- "noplace", "none"): routes to the nearest one by road, with Route's notice,
+-- or says why not ("Can't place you on this map ..." / "No ... known on this
+-- continent yet."). opts: profession (a PROFESSIONS key such as "cooking",
+-- the proftrainer's), letters (a vendor's restock families: "df" food and
+-- drink, "ab" ammunition, "r" reagents), skip ({ [NPC name] = true }: the
+-- shipped rows of those NPCs passed over), extra (a list of candidates { name,
+-- sub, cont, wx, wy } or { name, sub, mapID, x, y }: learned ones), what (the
+-- notice's name for it), label (the route's name), fallback (a kind key for
+-- when none is known: "innkeeper"). For a click only: it makes a table per
+-- candidate on the player's continent (the nearest six chosen by road), so
+-- a check asks M:Nearest, which makes none.
+function M:GoTo(kind, opts)
+	kind = KindOf(kind)
+	if not kind then
+		return false, "unknown"
+	end
+	return GoTo(kind, type(opts) == "table" and opts or nil)
+end
+
+-- M:Nearest(kind[, opts]) -> yards, name, subname: the nearest one by
+-- straight line on the player's continent, read now (the player's place read
+-- once); or nil and why ("unknown", "off", "noplace", "none"). opts:
+-- profession, letters, skip, extra (as M:GoTo). Makes no table, with or
+-- without them (the filter is one kept table): the call for a check.
+function M:Nearest(kind, opts)
+	kind = KindOf(kind)
+	if not kind then
+		return nil, "unknown"
+	end
+	local R = Route()
+	if not R then
+		return nil, "off"
+	end
+	if type(opts) ~= "table" then
+		opts = nil
+	end
+	local d, name, sub = ScanKind(kind, false, nil, nil, Profession(opts), Filter(opts))
+	if d then
+		return d, name, sub
+	end
+	return nil, Placed(R) and "none" or "noplace"
+end
+
+-- M:LearnedPlaces() -> the places recorded in game, { ["kind|name|mapID"] =
+-- { kind, name, sub, mapID, x, y, ... } }: Route's store, or this module's
+-- own while Route's is missing. Read it; record through M:Learn.
+function M:LearnedPlaces()
+	return Learned()
+end
+
+-- M:Learn(kindKey, name, sub, create) -> the recorded place of that NPC on
+-- the player's map, made at the player's place unless create is false, and
+-- the NPC's name (name nil: the NPC whose window is open). nil (and the
+-- name) when the player has no place on this map, or when none is kept and
+-- create is false. Its user may keep fields of its own on the entry
+-- (Restock: sells, items).
+function M:Learn(kindKey, name, sub, create)
+	if name == nil then
+		name = NPCName()
+	end
+	if type(kindKey) ~= "string" or type(name) ~= "string" or name == "" then
+		return nil, nil
+	end
+	local mapID, x, y = PlayerMapPoint()
+	if not mapID then
+		return nil, name
+	end
+	local learned = Learned()
+	local key = kindKey .. "|" .. name .. "|" .. mapID
+	local e = learned[key]
+	if not e and create ~= false then
+		e = { kind = kindKey, name = name, sub = sub or "", mapID = mapID, x = x, y = y }
+		learned[key] = e
+	end
+	return e, name
 end
 
 function M:OnSettingChanged(key, value, db)

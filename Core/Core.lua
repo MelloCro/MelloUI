@@ -120,8 +120,20 @@ MelloUI.modules = {}
 --                         when painting, never hold it from load)
 --   MelloUI:PaletteId()   the id of the palette in use ("ember" for any
 --                         table that is none of these)
+--   MelloUI:KnownPalette(id) -> id   a palette id as the setting is read:
+--                         one of the registry's, any other value (nil, "order",
+--                         a number, an unknown name) "ember". The one rule for
+--                         it: the switch below, the kit's folders, Dynamic UI,
+--                         UI Modifications' Kit Colours, the widgets and the
+--                         installer ask here
 --   MelloUI:SetPalette(id) (below, with the settings) the setting
 --                         UIModifications.palette; nil or unknown: ember
+--   MelloUI.Meaning       the few FIXED meaning colours, the same under every
+--                         palette (a 0.14.0 build decision, like the game's
+--                         own can't-use red): cannotUse, #4E1812, what the
+--                         player cannot use or learn (the merchant's and
+--                         trade's red cards, the trainer's unlearnable rows).
+--                         Read when drawing.
 -- Every palette passes the palette's hard rules: text on mainWindow 8:1 or
 -- more, text on hover 4.65:1 or more (Ember's 4.69 is the lowest), so muted
 -- text never sits on hover.
@@ -185,11 +197,26 @@ do
 	end
 end
 
+-- a palette id as the setting is read (the registry's `order` list is no
+-- palette; a table read by self, so a test world's own registry answers)
+function MelloUI:KnownPalette(id)
+	local palettes = self.Palettes
+	if type(id) == "string" and id ~= "order" and type(palettes) == "table" and type(palettes[id]) == "table" then
+		return id
+	end
+	return "ember"
+end
+
 -- A palette colour as a chat / font-string colour code: "|cffAE8546"
 function MelloUI:PaletteCode(role)
 	local c = self.Palette[role]
 	return "|cff" .. (c and c.hex or "FFFFFF")
 end
+
+-- the fixed meaning colours (the header above): { r, g, b } in 0..1
+MelloUI.Meaning = {
+	cannotUse = { 0.306, 0.094, 0.071 },   -- #4E1812, an item the player cannot use, a spell not to be learned (meaning colour)
+}
 MelloUI.moduleOrder = {}
 
 local DB_VERSION = 1
@@ -518,6 +545,13 @@ end
 --                                          strength changed (Modules/KitShade.lua),
 --                                          once its partners follow
 --   "column"       -                     the column under the minimap re-laid
+--   "where"        cont, x, y              the player's place for Route:WantWhere's
+--                                          owners, from Route's tick every 2 s while
+--                                          wanted, after 10 yd moved or a continent
+--                                          change (all nil when lost)
+--   "reminder"     key, active, up         a reminder's state changed
+--                                          (Core/Reminders.lua): active =
+--                                          wanted now, up = on the widget
 --   "editmodelayout" what, name            a layout went into Edit Mode
 --                                          (Core/EditModeLayout.lua): "put",
 --                                          name (put in, made active) /
@@ -1988,14 +2022,6 @@ local ApplyStoredPalette
 do
 	local walkHeld = false
 
-	local function Known(id)
-		local palettes = MelloUI.Palettes
-		if type(id) == "string" and id ~= "order" and type(palettes[id]) == "table" then
-			return id
-		end
-		return "ember"
-	end
-
 	local function Put(id, switch)
 		local roles = MelloUI.Palettes[id].roles
 		if MelloUI.Palette ~= roles then
@@ -2023,7 +2049,7 @@ do
 	local function Stored(self)
 		local modules = self.db and self.db.modules
 		local um = type(modules) == "table" and modules.UIModifications
-		return Known(type(um) == "table" and um.palette or nil)
+		return self:KnownPalette(type(um) == "table" and um.palette or nil)
 	end
 
 	ApplyStoredPalette = function(self, switch)
@@ -2031,7 +2057,7 @@ do
 	end
 
 	function MelloUI:SetPalette(id)
-		id = Known(id)
+		id = self:KnownPalette(id)
 		local before = self.Palette
 		if self.db and self.modules.UIModifications and Stored(self) ~= id then
 			self:NotifySettingChanged("UIModifications", "palette", id)

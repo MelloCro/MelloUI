@@ -19,6 +19,7 @@ Core\Widgets.lua
 Core\Shade.lua
 Core\Notice.lua
 Core\CentreText.lua
+Core\Reminders.lua
 Core\Config.lua
 Core\Tutorial.lua
 Core\Backup.lua
@@ -61,8 +62,11 @@ Modules\QuestList.lua
 Modules\QuestListPanel.lua
 Modules\QuestListMap.lua
 Modules\QuestListPins.xml
+Modules\QuestListTips.lua
 Modules\Route.lua
 Modules\Services.lua
+Modules\Reminders.lua
+Modules\Restock.lua
 Modules\PartyMarkers.lua
 Modules\CustomSounds.lua
 Modules\VoiceOver.lua
@@ -127,3 +131,4 @@ Modules\ChatPanel.lua
 Modules\DamageMeterPanel.lua
 Modules\TooltipPanel.lua
 Modules\NameplatePanel.lua
+Modules\WidgetPanel.lua

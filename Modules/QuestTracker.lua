@@ -68,6 +68,12 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		scrollStep = 25,
 		itemButtons = true,
 		collapsed = false,
+		-- nearest first (0.14.0; user, 2026-09-26: "Nearest-first is on by
+		-- default, with the followed quest staying on top; there is a toggle
+		-- on the tracker plate"): Nearest, below
+		nearestFirst = true,
+		showDistance = true,
+		turnInLine = true,
 	},
 	options = {
 		{ type = "header", name = "Tracker" },
@@ -92,6 +98,13 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "How far one turn of the mouse wheel scrolls." },
 		{ type = "toggle", key = "itemButtons", name = "Quest Items",
 		  desc = "Show a quest's usable item beside it. A click uses it out of combat." },
+		{ type = "header", name = "Nearest First" },
+		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
+		  desc = "The nearest quest on top, the one you follow above it; quests with no place known after them. The arrow at the left of the tracker's title switches it too. Needs Route." },
+		{ type = "toggle", key = "showDistance", name = "Distances",
+		  desc = "How far each quest is, beside its name: its objectives, or the one who takes it once it is done. The quest you follow shows the way along its route. Needs Route." },
+		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
+		  desc = "A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill." },
 		{ type = "button", name = "Reset Position", text = "Reset",
 		  hint = "back on the game's tracker's place",
 		  onClick = function(_, db)
@@ -525,6 +538,10 @@ end
 
 local looks = {}
 
+-- Nearest first (0.14.0): its state and functions, filled below (the section
+-- "Nearest first"); one table, not more locals
+local Near = {}
+
 -- Its own colours are the palette's, by key (the colour palette rule; 0.14.0
 -- palettes): through the addon's one paint registry, Kit:Paint, which looks
 -- the key up when it paints and paints it again on the bus's 'palette' (a
@@ -596,6 +613,25 @@ local function BuildKitLook()
 			end
 		end
 	end
+	-- the UI shade (0.14.0; the ui-shade-plan memory: a soft dark shade that
+	-- follows the element's outline; the Tracker area in Dynamic UI): the
+	-- rails' outline and the title plate, drawn by the tracker's shade frame
+	-- one level under it. The rails' shadow is outside only and the plate's
+	-- inward half lies under the stone, so nothing darkens the stone or the
+	-- parchment sheet. The list's own pieces (the section bands, the thumb,
+	-- the item slots) lie inside the rails: inner pieces, no shade (user,
+	-- 2026-09-26: outline pieces only). Shown and hidden with this look (the
+	-- partners follow the skin and the plate's strip), made at the shade's
+	-- pace (Kit:ShadeElement, Modules/KitShade.lua).
+	if Kit.ShadeElement then
+		local el = Kit:ShadeElement(frame, "tracker")
+		if skin then
+			el:Add(skin)
+		end
+		if okP and plate then
+			el:Add(plate)
+		end
+	end
 	looks.kit = { holder = holder, plate = plateHolder, strip = okP and plate or nil }
 	return looks.kit
 end
@@ -628,12 +664,18 @@ end
 -- caps carry no gem box); without the kit, at `rel`'s right edge by `x`.
 local TITLE_GEM = { 0.47, 0.50 }     -- tabs/top_cap_r_title
 local HEADER_GEM = { 0.61, 0.56 }    -- lists/header_cap_r
-local function OnGem(toggle, strip, gem, rel, x)
+-- `left`: the same spot mirrored on the left cap (the caps are each other's
+-- mirror: Nearest First's arrow, 0.14.0); without the kit at `rel`'s left
+-- edge by `x`
+local function OnGem(toggle, strip, gem, rel, x, left)
 	toggle:ClearAllPoints()
-	local cap = strip and strip.capR
-	local w, h = strip and strip.wr, strip and strip.height
-	if cap and not strip.noR and type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
-		toggle:SetPoint("CENTER", cap, "TOPLEFT", w * gem[1], -h * gem[2])
+	local cap = strip and (left and strip.capL or strip.capR)
+	local w, h = strip and (left and strip.wl or strip.wr), strip and strip.height
+	local dropped = strip and (left and strip.noL or not left and strip.noR)
+	if cap and not dropped and type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
+		toggle:SetPoint("CENTER", cap, "TOPLEFT", left and w * (1 - gem[1]) or w * gem[1], -h * gem[2])
+	elseif left then
+		toggle:SetPoint("LEFT", rel, "LEFT", x, 0)
 	else
 		toggle:SetPoint("RIGHT", rel, "RIGHT", x, 0)
 	end
@@ -706,6 +748,11 @@ local function ApplyLook()
 	end
 	if header and header.toggle then
 		OnGem(header.toggle, kitOn and kitOn.strip, TITLE_GEM, header, -4)
+	end
+	-- Nearest First's arrow, the same spot on the left cap
+	if header and header.nearest then
+		OnGem(header.nearest, kitOn and kitOn.strip, TITLE_GEM, header, 4, true)
+		Near.RefreshToggle()
 	end
 end
 
@@ -986,6 +1033,699 @@ local function StoneColour(block, r, g, b)
 	return r, g, b
 end
 
+--------------------------------------------------------------------------------
+-- Nearest first (0.14.0; user, 2026-09-26: "Nearest-first is on by default,
+-- with the followed quest staying on top; there is a toggle on the tracker
+-- plate"): the watched quests in order of how far they are, each with its
+-- distance beside its name, and a quest ready to turn in says who takes it
+-- and where. Every place is Route's (one system per job):
+--   Route:Where() -> cont, x, y      the player's place in Route's yards
+--   'where' (cont, x, y) on the bus  fired from Route's own tick, only while
+--                                    someone wants it (Route:WantWhere) and
+--                                    only after the player moved: this has
+--                                    no ticker and no OnUpdate of its own
+--   Route:WorldYards(wc, wx, wy)     a turn-in's world position in yards
+--   Route:ObjectivePlaces(questID)   its open objectives' places, a flat
+--                                    { cont, x, y, ... } and how many; only
+--                                    while Route's objective data is loaded
+--                                    (the tracker never loads it)
+--   Route:DistanceTo(c, true)        a point on the player's map (the game's
+--                                    quest map), yards from the player
+--   Route:FollowedRemaining(questID) the followed quest's way along its
+--                                    route: the tracker and the arrow agree
+--   Route:YardsText(d)               the distance's words
+--   Route:PlaceNear(wc, wx, wy, r)   a place's name near a world position
+-- and the turn-in NPC is the Quest List's (MelloUI:QuestTurnIn).
+--   * a quest's places are kept in yards and looked up again only when it
+--     changes (done, an objective finished: the next rebuild), when it is
+--     first listed, or -- a quest with no places of its own (a point on the
+--     player's map, or none yet) -- once the player's map or the quest log
+--     changed (Route's count of the log's changes, M.logGen: one quest-map
+--     read then; a bag or a follow rebuilds with the places kept)
+--   * the order: the followed quest on top, then the nearest, the quests
+--     with no place known after them in the watch order. A quest's sort
+--     distance moves only once its distance changed by 15% and 20 yd, so two
+--     quests about as far never swap back and forth as the player walks; the
+--     order is a stable insertion pass over the last order (never
+--     table.sort: an order function with a tolerance is not one). A 'where'
+--     that changes the order asks one rebuild; one that does not only sets
+--     the distances whose words changed (rounded to 10 yd, and to 0.1 km from
+--     1 km: no text is made otherwise)
+--   * no place known (an instance, a secret position): the followed quest
+--     still on top, the rest in the watch order, no distances; Route off or
+--     Nearest First off: the watch order, as before
+--------------------------------------------------------------------------------
+
+Near.OWNER = "Quest Tracker nearest"   -- (Route:WantWhere's owner; the bus's)
+Near.n = 0                             -- the quests in Near.order
+Near.order = {}                        -- the quest IDs as laid, top to bottom
+Near.dist = {}                         -- [questID] = yards from the player now, or nil
+Near.key = {}                          -- [questID] = the distance it is sorted by
+Near.turnIn = {}                       -- [questID] = its turn-in line, or false
+Near.filled = {}                       -- [questID] = -1 done, else its objectives finished, as last drawn
+Near.stamp = 0                         -- bumped when the player's map or the quest log changed
+
+do
+	local Num = MelloUI.Safe.Number
+	local order, dist, key = Near.order, Near.dist, Near.key
+	local work, scratch, listed = {}, {}, {}
+	local pts = {}        -- [questID] = { n = 3 * count, cont, x, y, ... }: its places in Route's yards
+	local cand = {}       -- [questID] = { mapID, x, y }: its point on the player's map
+	local kind = {}       -- [questID] = "pts" | "cand" | false (no place)
+	local sig = {}        -- [questID] = Near.filled as its places were found (true: the next fill's)
+	local zone = {}       -- [questID] = the turn-in's zone name (a done quest with no distance)
+	local found = {}      -- [questID] = Near.stamp as its places were found
+	local poiX, poiY = {}, {}   -- the player's map's quest map (Near.poiFor), read when a quest needs it
+	local sampleW = {}    -- [text size] = the width of SAMPLE
+	local pcont, px, py = nil, nil, nil   -- the player's place, Route's yards
+	local poiRead = false -- the quest map read for Near.poiFor / Near.poiGen
+	local SHARE, GAP = 0.15, 20           -- a sort distance moves by both
+	local DIST_GAP = 6                    -- between a title and its distance
+	local PLACE_REACH = 300               -- a turn-in's place: a named one this near
+	local SAMPLE = "000 yd"               -- the room a distance keeps
+	local TURN_IN, TURN_IN_AT = "Turn in: %s", "Turn in: %s, %s"
+
+	local function Wipe(t)
+		for k in pairs(t) do
+			t[k] = nil
+		end
+	end
+
+	function Near.On()
+		return not (M.db and M.db.nearestFirst == false)
+	end
+
+	function Near.ShowDist()
+		return not (M.db and M.db.showDistance == false)
+	end
+
+	-- Route while it is on and has what this needs, else nil
+	local function Route()
+		local R = MelloUI:GetModule("Route")
+		if R and R.isEnabled and type(R.WantWhere) == "function" and type(R.Where) == "function" then
+			return R
+		end
+		return nil
+	end
+
+	-- (a secret, missing or odd part: no place)
+	local function SetPlace(c, x, y)
+		c, x, y = Num(c), Num(x), Num(y)
+		if c and x and y then
+			pcont, px, py = c, x, y
+		else
+			pcont, px, py = nil, nil, nil
+		end
+	end
+
+	local function Where(R)
+		local ok, c, x, y = pcall(R.Where, R)
+		if ok then
+			SetPlace(c, x, y)
+		else
+			SetPlace()
+		end
+	end
+
+	local function Add(t, c, x, y)
+		c, x, y = Num(c), Num(x), Num(y)
+		if c and x and y then
+			local n = t.n
+			t[n + 1], t[n + 2], t[n + 3] = c, x, y
+			t.n = n + 3
+		end
+	end
+
+	-- the open objectives' places: Route's flat { cont, x, y, ... } and how
+	-- many (Route's own list, read only: copied). true when Route put the
+	-- quest off to a later frame (its budget of new places spent this frame)
+	local function Objectives(R, id, t)
+		if type(R.ObjectivePlaces) ~= "function" then
+			return
+		end
+		local ok, list, count, later = pcall(R.ObjectivePlaces, R, id)
+		if ok and later == true then
+			return true
+		end
+		count = ok and Num(count)
+		if not (count and type(list) == "table") then
+			return
+		end
+		for i = 1, count * 3 - 2, 3 do
+			Add(t, list[i], list[i + 1], list[i + 2])
+		end
+	end
+
+	-- the player's map now (nil: none, an instance with no map)
+	local function PlayerMap()
+		if not (C_Map and C_Map.GetBestMapForUnit) then
+			return nil
+		end
+		local ok, map = pcall(C_Map.GetBestMapForUnit, "player")
+		return ok and Num(map) or nil
+	end
+
+	-- the game's quest map of the player's map (Near.poiFor): read when a
+	-- quest needs it, once per map and quest log (Near.Order)
+	local function ReadMap()
+		poiRead = true
+		Wipe(poiX)
+		Wipe(poiY)
+		Near.poiMap = nil
+		local map = Near.poiFor
+		if not (map and C_QuestLog.GetQuestsOnMap) then
+			return
+		end
+		local okQ, list = pcall(C_QuestLog.GetQuestsOnMap, map)
+		if not okQ or Secret(list) or type(list) ~= "table" then
+			return
+		end
+		Near.poiMap = map
+		for i = 1, #list do
+			local q = list[i]
+			local qid = type(q) == "table" and Num(q.questID)
+			if qid then
+				poiX[qid], poiY[qid] = Num(q.x), Num(q.y)
+			end
+		end
+	end
+
+	-- a quest's places found: the turn-in once it is done, else its open
+	-- objectives, else its point on the player's map, else none
+	local function Find(R, id)
+		local t = pts[id]
+		if not t then
+			t = { n = 0 }
+			pts[id] = t
+		end
+		t.n = 0
+		-- (a quest no longer done keeps no turn-in zone)
+		zone[id] = nil
+		found[id] = Near.stamp
+		local okC, complete = pcall(C_QuestLog.IsComplete, id)
+		if okC and Plain(complete) then
+			local TurnIn = MelloUI.QuestTurnIn
+			if type(TurnIn) == "function" then
+				local ok, _, _, wc, wx, wy, zoneName = pcall(TurnIn, MelloUI, id)
+				if ok and type(R.WorldYards) == "function" and Num(wc) and Num(wx) and Num(wy) then
+					local okY, c, x, y = pcall(R.WorldYards, R, wc, wx, wy)
+					if okY then
+						Add(t, c, x, y)
+					end
+				end
+				zoneName = ok and Plain(zoneName)
+				zone[id] = type(zoneName) == "string" and zoneName ~= "" and zoneName or nil
+			end
+		elseif Objectives(R, id, t) then
+			-- (put off by Route: the game's map point meanwhile, found again
+			-- at the next frame's rebuild)
+			found[id] = nil
+			Near.MarkDirty()
+		end
+		if t.n > 0 then
+			kind[id] = "pts"
+			return
+		end
+		if not poiRead then
+			ReadMap()
+		end
+		local x, y = poiX[id], poiY[id]
+		if x and y and Near.poiMap then
+			local c = cand[id]
+			if not c then
+				c = {}
+				cand[id] = c
+			end
+			c.mapID, c.x, c.y = Near.poiMap, x, y
+			kind[id] = "cand"
+			return
+		end
+		kind[id] = false
+	end
+
+	-- yards from the player (nil: none known, or on another continent)
+	local function Measure(R, id)
+		local k = kind[id]
+		if not pcont then
+			return nil
+		end
+		if k == "pts" then
+			local t, best = pts[id], nil
+			for i = 1, t.n, 3 do
+				if t[i] == pcont then
+					local dx, dy = t[i + 1] - px, t[i + 2] - py
+					local d2 = dx * dx + dy * dy
+					if best == nil or d2 < best then
+						best = d2
+					end
+				end
+			end
+			return best and math.sqrt(best) or nil
+		elseif k == "cand" and type(R.DistanceTo) == "function" then
+			local ok, d = pcall(R.DistanceTo, R, cand[id], true)
+			return ok and Num(d) or nil
+		end
+		return nil
+	end
+
+	-- the distance now, and the one it is sorted by: moved only by 15% and
+	-- 20 yd (none known: after the known ones)
+	local function Settle(id, d)
+		dist[id] = d
+		local k = key[id]
+		if d == nil then
+			key[id] = nil
+		elseif k == nil or math.abs(d - k) >= math.max(GAP, k * SHARE) then
+			key[id] = d
+		end
+	end
+
+	-- a goes above b
+	local function Before(a, b)
+		local ka, kb = key[a], key[b]
+		if ka == nil then
+			return false
+		end
+		return kb == nil or ka < kb
+	end
+
+	-- the stable insertion pass, from `lo` (2: the followed quest stays on
+	-- top) to n
+	local function Pass(list, lo, n)
+		for i = lo + 1, n do
+			local j = i
+			while j > lo and Before(list[j], list[j - 1]) do
+				list[j], list[j - 1] = list[j - 1], list[j]
+				j = j - 1
+			end
+		end
+	end
+
+	-- A rebuild's order: `list` (the watch order, the rebuild's own table)
+	-- put in order in place, and kept as Near.order
+	function Near.Order(list, followedID, open)
+		Near.followed, Near.open = followedID, open
+		local R = Route()
+		-- (the Quests section folded: nothing laid, nothing to measure)
+		local live = open and R ~= nil and (Near.On() or Near.ShowDist()) or false
+		Near.live = live
+		if live then
+			Where(R)
+			-- the quest map and the places of the quests with none of their own
+			-- kept until the player's map or the quest log changed (Route's count
+			-- of QUEST_LOG_UPDATE; a Route without it: read each rebuild)
+			local map, gen = PlayerMap(), Num(R.logGen)
+			if gen == nil or map ~= Near.poiFor or gen ~= Near.poiGen then
+				Near.poiFor, Near.poiGen = map, gen
+				Near.stamp = Near.stamp + 1
+				poiRead = false
+			end
+		else
+			SetPlace()
+		end
+		local n = #list
+		if live then
+			for i = 1, n do
+				local id = list[i]
+				-- found once, again when it changed (Near.AfterFill); one with no
+				-- places of its own again once the map or the log changed
+				if sig[id] == nil or (kind[id] ~= "pts" and found[id] ~= Near.stamp) then
+					Find(R, id)
+					if sig[id] == nil then
+						sig[id] = true
+					end
+				end
+				Settle(id, Measure(R, id))
+			end
+		end
+		Near.hadPlace = pcont ~= nil
+		local m = n
+		if live and pcont and Near.On() then
+			-- the followed quest; the ones with a distance in the last order,
+			-- then the new ones; the ones with none after them in the watch
+			-- order (they never move up); then the pass
+			m = 0
+			for i = 1, n do
+				listed[list[i]] = true
+			end
+			if followedID and listed[followedID] then
+				m = 1
+				work[1] = followedID
+				listed[followedID] = false
+			end
+			for i = 1, Near.n do
+				local id = order[i]
+				if listed[id] and key[id] then
+					m = m + 1
+					work[m] = id
+					listed[id] = false
+				end
+			end
+			for i = 1, n do
+				local id = list[i]
+				if listed[id] and key[id] then
+					m = m + 1
+					work[m] = id
+					listed[id] = false
+				end
+			end
+			for i = 1, n do
+				local id = list[i]
+				if listed[id] then
+					m = m + 1
+					work[m] = id
+				end
+				listed[id] = nil
+			end
+			Pass(work, (followedID and work[1] == followedID) and 2 or 1, m)
+			for i = 1, m do
+				list[i], order[i] = work[i], work[i]
+			end
+		else
+			-- no place known (an instance, a secret or lost place) while Nearest
+			-- First is on: the followed quest still on top (user, 2026-09-26),
+			-- the rest in the watch order; off, or Route off: the watch order
+			local at = nil
+			if live and followedID and Near.On() then
+				for i = 1, n do
+					if list[i] == followedID then
+						at = i
+						break
+					end
+				end
+			end
+			if at then
+				for i = at, 2, -1 do
+					list[i] = list[i - 1]
+				end
+				list[1] = followedID
+			end
+			for i = 1, n do
+				order[i] = list[i]
+			end
+		end
+		for i = m + 1, Near.n do
+			order[i] = nil
+		end
+		Near.n = m
+	end
+
+	-- the rounded distance its words are made from
+	local function Rounded(d)
+		if d < 1000 then
+			return math.max(10, math.floor(d / 10 + 0.5) * 10)
+		end
+		return math.floor(d / 100 + 0.5) * 100
+	end
+
+	-- a block's distance words, set only when they changed; true when they
+	-- no longer fit the room its title left (a rebuild lays it again)
+	local function Label(R, block, id)
+		local fs = block.dist
+		local d = dist[id]
+		-- the followed quest: Route's figure whenever it routes it, even to a
+		-- place this does not know (off the player's map, across the sea), so
+		-- the tracker and the arrow agree
+		if id == Near.followed and pcont and type(R.FollowedRemaining) == "function" then
+			local ok, r = pcall(R.FollowedRemaining, R, id)
+			r = ok and Num(r)
+			if r then
+				d = r
+			end
+		end
+		local v = d and Rounded(d) or -1
+		local text
+		if v >= 0 then
+			if v == block.distValue then
+				return false
+			end
+			if type(R.YardsText) == "function" then
+				local ok, s = pcall(R.YardsText, R, v)
+				text = ok and Plain(s) or nil
+			end
+		else
+			text = zone[id]
+			if block.distValue == -1 and text == block.distLabel then
+				return false
+			end
+		end
+		block.distValue = v
+		if type(text) ~= "string" or text == "" then
+			fs:Hide()
+			block.distLabel = nil
+			return false
+		end
+		if text ~= block.distLabel then
+			fs:SetText(text)
+			block.distLabel = text
+		end
+		fs:Show()
+		local w = Num(fs:GetStringWidth()) or 0
+		return w + DIST_GAP > (block.distRoom or 0)
+	end
+
+	-- A block's distance laid while it is filled: right-aligned on its
+	-- title's first line ending at `right`, in the muted colour (on
+	-- parchment the ink's faded shade); returns the room it takes from the
+	-- title (never less than SAMPLE's, so a distance a digit longer fits)
+	function Near.Lay(block, id, right, ink)
+		local fs = block.dist
+		local R = Near.live and Near.ShowDist() and Route()
+		if not R then
+			if fs then
+				fs:Hide()
+			end
+			block.distValue, block.distLabel, block.distRoom = nil, nil, 0
+			return 0
+		end
+		if not fs then
+			fs = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+			fs:SetJustifyH("RIGHT")
+			fs:SetWordWrap(false)
+			block.dist = fs
+		end
+		local size = TitleSize() - 1
+		StyleText(fs, size)
+		local QI = MelloUI.QuestInk
+		if ink and QI then
+			QI.Ink(fs, "faded")
+		else
+			if QI then
+				QI.Plain(fs)
+			end
+			-- (read when drawn: a palette switch rebuilds)
+			local c = MelloUI.Palette.mutedText
+			fs:SetTextColor(c[1], c[2], c[3])
+		end
+		fs:ClearAllPoints()
+		fs:SetPoint("RIGHT", block, "TOPLEFT", right, -TitleSize() / 2 - 1)
+		local sw = sampleW[size]
+		if not sw then
+			fs:SetText(SAMPLE)
+			sw = Num(fs:GetStringWidth()) or 0
+			sampleW[size] = sw
+			block.distLabel = nil
+		end
+		block.distValue, block.distRoom = nil, 0
+		Label(R, block, id)
+		if not block.distLabel then
+			return 0
+		end
+		local room = math.max(Num(fs:GetStringWidth()) or 0, sw) + DIST_GAP
+		block.distRoom = room
+		return room
+	end
+
+	-- the shown blocks' distances; one that no longer fits asks a rebuild
+	local function Texts(R)
+		if not Near.ShowDist() then
+			return
+		end
+		for i = 1, Near.n do
+			local id = order[i]
+			local block = blocks[id]
+			if block and block.dist and block.questID == id and block:IsShown() and Label(R, block, id) then
+				Near.MarkDirty()
+				return
+			end
+		end
+	end
+
+	-- the distances moved: a new order asks a rebuild, else the words only
+	local function Follow(R)
+		if pcont and Near.On() then
+			local n = Near.n
+			for i = 1, n do
+				scratch[i] = order[i]
+			end
+			local f = Near.followed
+			Pass(scratch, (f and scratch[1] == f) and 2 or 1, n)
+			for i = 1, n do
+				if scratch[i] ~= order[i] then
+					Near.MarkDirty()
+					return
+				end
+			end
+		end
+		Texts(R)
+	end
+
+	-- After a rebuild drew the blocks: a quest done or with an objective
+	-- finished since its places were found has them found again
+	function Near.AfterFill()
+		local R = Near.live and Route()
+		if not R then
+			return
+		end
+		local changed = false
+		for i = 1, Near.n do
+			local id = order[i]
+			local s, f = sig[id], Near.filled[id]
+			if s == true then
+				sig[id] = f
+			elseif f ~= nil and s ~= f then
+				sig[id] = f
+				Find(R, id)
+				Settle(id, Measure(R, id))
+				changed = true
+			end
+		end
+		if changed then
+			Follow(R)
+		end
+	end
+
+	-- The bus's 'where' (Route's tick, while wanted and the player moved)
+	function Near.OnWhere(c, x, y)
+		if not (Near.live and M.isEnabled and frame and frame:IsShown()) then
+			return
+		end
+		local R = Route()
+		if not R then
+			return
+		end
+		if c == nil and x == nil and y == nil then
+			Where(R)
+		else
+			SetPlace(c, x, y)
+		end
+		local had = Near.hadPlace
+		Near.hadPlace = pcont ~= nil
+		if had ~= Near.hadPlace then
+			-- known <-> unknown: the order and the distances laid again
+			Near.MarkDirty()
+			return
+		end
+		if not pcont then
+			return
+		end
+		for i = 1, Near.n do
+			local id = order[i]
+			Settle(id, Measure(R, id))
+		end
+		Follow(R)
+	end
+
+	-- Route's 'where' asked for while the tracker can use it: on, shown,
+	-- open, not in Edit Mode, a quest listed, the order or the distances on
+	-- (told to Route only when that changes); `off`: not any more
+	function Near.Want(off)
+		local R = MelloUI:GetModule("Route")
+		local can = R and R.isEnabled and type(R.WantWhere) == "function"
+		local want = (not off and can and Near.live and Near.open and M.isEnabled and frame and frame:IsShown()
+			and not (M.db and M.db.collapsed) and not inEditMode and Near.n > 0) and true or false
+		if want ~= Near.wanting and R and type(R.WantWhere) == "function" then
+			Near.wanting = want
+			pcall(R.WantWhere, R, Near.OWNER, want)
+		end
+	end
+
+	-- A done quest's line: "Turn in: <who>, <where>" (the nearest named
+	-- place, else its zone), nil when the Quest List does not know who (the
+	-- game's line then) or the option is off. Made once per quest.
+	function Near.TurnInLine(id)
+		if M.db and M.db.turnInLine == false then
+			return nil
+		end
+		local line = Near.turnIn[id]
+		if line ~= nil then
+			return line or nil
+		end
+		line = false
+		local TurnIn = MelloUI.QuestTurnIn
+		if type(TurnIn) == "function" then
+			local ok, name, _, wc, wx, wy, zoneName = pcall(TurnIn, MelloUI, id)
+			name = ok and Plain(name)
+			if type(name) == "string" and name ~= "" then
+				local place
+				local R = MelloUI:GetModule("Route")
+				if R and type(R.PlaceNear) == "function" and Num(wc) and Num(wx) and Num(wy) then
+					local okP, p = pcall(R.PlaceNear, R, wc, wx, wy, PLACE_REACH)
+					place = okP and Plain(p) or nil
+				end
+				zoneName = Plain(zoneName)
+				if not (type(place) == "string" and place ~= "") then
+					place = type(zoneName) == "string" and zoneName ~= "" and zoneName or nil
+				end
+				line = place and string.format(TURN_IN_AT, name, place) or string.format(TURN_IN, name)
+			end
+		end
+		Near.turnIn[id] = line
+		return line or nil
+	end
+
+	-- the plate's arrow: lit while on (the kit's arrow, else the game's
+	-- quest arrow), dim while off
+	function Near.RefreshToggle()
+		local button = header and header.nearest
+		if not button then
+			return
+		end
+		local Kit = MelloUI.Kit
+		if not (Kit and Kit.Apply and Kit:Apply(button.icon, "buttons/arrow_up_normal")) then
+			button.icon:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")
+		end
+		button.icon:SetAlpha(Near.On() and 1 or 0.4)
+	end
+
+	Near.TIP = "Nearest Quest First"
+	Near.TIP_ON = "On: the nearest quest on top, the one you follow above it. Click for the watch order."
+	Near.TIP_OFF = "Off: the quests in the order you watch them. Click to put the nearest on top."
+	Near.TIP_ROUTE = "Needs Route, which is off."
+
+	function Near.OnToggleEnter(button)
+		-- (the kit's arrow lit under the pointer)
+		local Kit = MelloUI.Kit
+		if Kit and Kit.Apply then
+			Kit:Apply(button.icon, "buttons/arrow_up_hover")
+		end
+		local body = Near.On() and Near.TIP_ON or Near.TIP_OFF
+		local line = not Route() and Near.TIP_ROUTE or nil
+		local W = MelloUI.Widgets
+		if W and W.ShowTooltip then
+			W.ShowTooltip(button, Near.TIP, body, line, "ANCHOR_LEFT")
+			return
+		end
+		GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+		GameTooltip:SetText(Near.TIP)
+		if line then
+			GameTooltip:AddLine(line, nil, nil, nil, true)
+		end
+		GameTooltip:AddLine(body, nil, nil, nil, true)
+		GameTooltip:Show()
+	end
+
+	function Near.OnToggleLeave()
+		GameTooltip:Hide()
+		Near.RefreshToggle()
+	end
+
+	function Near.OnToggleClick()
+		M.db.nearestFirst = not Near.On()
+		MelloUI:NotifySettingChanged(M.name, "nearestFirst", M.db.nearestFirst)
+	end
+end
+
 local function Line(block, i)
 	local fs = block.lines[i]
 	if not fs then
@@ -1171,7 +1911,9 @@ local function FillBlock(block, questID, width, followedID)
 	elseif block.pips then
 		block.pips:SetTier(nil)
 	end
-	t:SetWidth(textWidth - TEXT_X - pipsRoom)
+	-- its distance left of the pips (Nearest first, above; 0 when none shows)
+	local distRoom = Near.Lay(block, questID, textWidth - pipsRoom, ink)
+	t:SetWidth(textWidth - TEXT_X - pipsRoom - distRoom)
 	t:SetText(level and string.format("[%d] %s", level, title) or title)
 	t:SetTextColor(DifficultyColor(level))
 	if ink then
@@ -1184,17 +1926,24 @@ local function FillBlock(block, questID, width, followedID)
 	local n = 0
 	local objectives = C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(questID) or {}
 	if complete then
-		-- what to do now, white under the title (the game's turn-in line)
+		-- what to do now, white under the title: who takes it and where (the
+		-- Turn-in Line, Nearest first above), else the game's turn-in line
 		n = n + 1
-		local text = logIndex and GetQuestLogCompletionText and GetQuestLogCompletionText(logIndex)
+		local text = Near.TurnInLine(questID)
+		if not text then
+			text = logIndex and GetQuestLogCompletionText and GetQuestLogCompletionText(logIndex)
+			text = Plain(text) or "Ready for turn-in"
+		end
 		local fs
-		y, fs = PutLine(block, n, Plain(text) or "Ready for turn-in", y, textWidth, false, 0.95, 0.95, 0.95)
+		y, fs = PutLine(block, n, text, y, textWidth, false, 0.95, 0.95, 0.95)
 		if lastComplete[questID] == false and MelloUI.Anim then
 			MelloUI.Anim:From(fs.flash, "alpha", 0.45, 0.9, "outQuad")
 		end
 		lastComplete[questID] = true
+		Near.filled[questID] = -1
 	else
 		lastComplete[questID] = false
+		local finished = 0
 		for i, obj in ipairs(objectives) do
 			local text = Plain(obj.text)
 			if text and text ~= "" then
@@ -1204,7 +1953,12 @@ local function FillBlock(block, questID, width, followedID)
 				y, fs = PutLine(block, n, text, y, textWidth, true, shade, shade, shade)
 				Progress(questID, i, Plain(obj.numFulfilled), fs)
 			end
+			if Plain(obj.finished) then
+				finished = finished + 1
+			end
 		end
+		-- (what its places were found for: found again when it changes)
+		Near.filled[questID] = finished
 	end
 	HideLines(block, n + 1)
 	local h = math.max(y, link and ITEM_SIZE + 4 or 0, poi and 22 or 0)
@@ -1343,6 +2097,11 @@ local function FillRecipeBlock(block, entry, width)
 	block.item.itemLink = nil
 	block.item:Hide()
 	block.followed:Hide()
+	if block.dist then
+		-- (a quest's block before: no distance on a recipe)
+		block.dist:Hide()
+		block.distValue, block.distLabel, block.distRoom = nil, nil, 0
+	end
 	if block.poi then
 		block.poi:Hide()
 	end
@@ -1545,6 +2304,9 @@ local function Rebuild()
 	-- a folded section keeps its header only: its blocks are let go
 	local questsOpen = not SectionCollapsed("quests")
 	local recipesOpen = not SectionCollapsed("professions")
+	-- the followed quest on top, then the nearest (Nearest first, above; the
+	-- watch order while it is off or no place is known)
+	Near.Order(quests, followedID, questsOpen)
 	local keep = {}
 	for _, id in ipairs(quests) do
 		keep[id] = questsOpen or nil
@@ -1614,6 +2376,10 @@ local function Rebuild()
 	-- the view stays where it was (clamped to the new length), or at the
 	-- end when it was there
 	SetOffset(atEnd and math.huge or scrollOffset)
+	-- a quest done or further on since its places were found: found again;
+	-- Route's 'where' asked for while the tracker shows quests (Nearest first)
+	Near.AfterFill()
+	Near.Want()
 end
 
 -- One rebuild a frame at most, whatever number of events came. Driven from
@@ -1632,6 +2398,7 @@ local function MarkDirty()
 	dirty = true
 	Perf.SetScript(eventFrame, "OnUpdate", Tick)
 end
+Near.MarkDirty = MarkDirty
 
 --------------------------------------------------------------------------------
 -- Building the frame
@@ -1680,6 +2447,18 @@ local function Build()
 	end)
 	toggle:SetPoint("RIGHT", header, "RIGHT", -4, 0)
 	header.toggle, header.ToggleIcon = toggle, toggle.Refresh
+	-- Nearest First on the plate's left gem (user, 2026-09-26: "there is a
+	-- toggle on the tracker plate"): the kit's arrow, lit while on (placed by
+	-- ApplyLook, its icon by Near.RefreshToggle)
+	local nearest = CreateFrame("Button", nil, textLayer)
+	nearest:SetSize(16, 16)
+	nearest:SetPoint("LEFT", header, "LEFT", 4, 0)
+	nearest.icon = nearest:CreateTexture(nil, "ARTWORK")
+	nearest.icon:SetAllPoints(nearest)
+	Perf.SetScript(nearest, "OnClick", Near.OnToggleClick)
+	Perf.SetScript(nearest, "OnEnter", Near.OnToggleEnter)
+	Perf.SetScript(nearest, "OnLeave", Near.OnToggleLeave)
+	header.nearest = nearest
 
 	-- moved like every other window while the windows are unlocked (UI
 	-- Modifications' mover: the screen darkens with its grid, the border
@@ -1862,6 +2641,7 @@ local function HookEditMode()
 			if frame then
 				if entering then
 					frame:Hide()
+					Near.Want()
 				else
 					Place()
 					MarkDirty()
@@ -2060,6 +2840,20 @@ local function Listen()
 			MarkDirty()
 		end
 	end, M)
+	-- Nearest first: the player moved (Route's 'where', only while asked
+	-- for); Route switched on or off (its 'where' asked again, the order and
+	-- the distances laid again)
+	MelloUI:On("where", Near.OnWhere, Near.OWNER)
+	MelloUI:On("module", function(name)
+		if name == "Route" then
+			Near.wanting = nil
+			-- (the quests with no places of their own looked at again)
+			Near.poiFor, Near.poiGen = nil, nil
+			if M.isEnabled and frame then
+				MarkDirty()
+			end
+		end
+	end, Near.OWNER)
 end
 
 --------------------------------------------------------------------------------
@@ -2102,6 +2896,7 @@ function M:OnDisable()
 	if frame then
 		frame:Hide()
 	end
+	Near.Want(true)
 	SetGameTracker(false)
 end
 

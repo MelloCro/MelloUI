@@ -42,7 +42,8 @@ MelloUI.Kit = Kit
 -- (MelloUI:PaletteId(), the one MelloUI.Palette is) AND the Kit Colours
 -- setting, which stays the palette's own choice:
 --   Kit:LookFolder(paletteId, kitColours) -> the folder's path, its name
---       Ember (nil, or an id without kit art, is Ember): today's three looks,
+--       Ember (nil, or an id MelloUI:KnownPalette does not know, is Ember):
+--       today's three looks,
 --       Warm iron (warm, the default), Bronze, the Original (painted).
 --       Any other palette: "painted" is the Original (Media\Kit), anything
 --       else (warm, bronze, nil) that palette's own kit, Media\Kit<Id>.
@@ -65,15 +66,15 @@ Kit.colourLooks = {
 }
 local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
 local lookRoot = nil   -- the chosen look's folder, once the settings are there
--- LOOK.PaletteId(): the palette in use (its id, "ember" for one with no art
--- of its own); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
+-- LOOK.PaletteId(): the palette in use (its id, "ember" for one Core does not
+-- know); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
 -- palette's Kit Colours choices (one table: Kit.lua has few locals to spare)
 local LOOK = {}
 
 do
-	-- the palettes with kit art of their own (Media\Kit<Id>, Tools/kit_palette.py)
-	local ART = { obsidian = true, obsidianVibrant = true, royalAzure = true, royalAzureVibrant = true,
-		felEmber = true, felEmberVibrant = true }
+	-- every palette of Core's registry but Ember has kit art of its own
+	-- (Media\Kit<Id>, made for each by Tools/kit_palette.py from the same
+	-- palettes.json): the registry is the one list
 	local EMBER, EMBER_ROOT = {}, {}
 	for i, look in ipairs(Kit.colourLooks) do
 		EMBER[i] = look
@@ -84,9 +85,16 @@ do
 	local byFolder = {}                                          -- [folder name] = its path
 	local shownFor = "ember"                                     -- the palette Kit.colourLooks holds the choices of
 
+	-- a palette id as Core reads the setting (MelloUI:KnownPalette, the one
+	-- rule: a registry id, anything else Ember); a core without that answer
+	-- (a test world) reads Ember, as LOOK.PaletteId without MelloUI:PaletteId
 	local function Known(id)
-		if type(id) == "string" and ART[id] then
-			return id
+		local fn = MelloUI.KnownPalette
+		if type(fn) == "function" then
+			local ok, known = pcall(fn, MelloUI, id)
+			if ok and type(known) == "string" then
+				return known
+			end
 		end
 		return "ember"
 	end
@@ -4668,7 +4676,7 @@ Kit.Replacements = {
 	["ui-hud-nameplates-levelindicator-selected"] = { kind = "fade" },   -- the target ring around the level circle: faded (the bar's gold iron is the highlight)   -- the level indicator's circle: the orb, as the unit frames' level circle (the -selected ring and the skull stay the game's)
 
 	-- The chat windows (ChatPanel, 2026-09-21; user's picks CH1 CT2 from kit_raw/chat_catalog.png)
-	["ChatFrameBorder"]                       = { kind = "frame", body = false, owner = true, edgeLayer = "BORDER", outset = 8 },   -- CH1: a FloatingBorderedFrame's eight border pieces (UI-ChatFrame-BorderCorner / -BorderTop / -BorderLeft file art, keyed by hand on the top-left corner) -> the single rail as regions of the chat frame in the pieces' BORDER layer, centred on the Background's edge (the pieces reach 4 px past it); the Background stays the game's, the rail's alpha follows it
+	["ChatFrameBorder"]                       = { kind = "frame", body = false, owner = true, edgeLayer = "BORDER", outset = 8 },   -- CH1: a FloatingBorderedFrame's eight border pieces (UI-ChatFrame-BorderCorner / -BorderTop / -BorderLeft file art, keyed by hand on the top-left corner) -> the single rail as regions of the chat frame in the pieces' BORDER layer, centred on the Background's edge (the pieces reach 4 px past it); the Background stays the game's, the rail stays at full alpha (the Background Opacity moves the stone only), and so does its shade
 	["ChatFrameBody"]                         = { kind = "tile", piece = "window/single_body", owner = true },   -- the window's Background (ChatFrameBackground file art, the translucent black at the alpha slider; keyed by hand): the list-box stone as a region in its place, at the slider's alpha (user, 2026-09-21: the dark cracked stone, not a flat colour)
 	["ChatIconButton"]                        = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the menu / channel / voice / minimize / maximize icon buttons (UI-ChatIcon-* file art, keyed by hand): K2, the cog plate under the game's glyph
 	["chatframe-button-up"]                   = { kind = "state", base = "buttons/cog" },   -- the channel / voice buttons' own round plate (27 x 26, the glyph on their Icon): K2, the cog plate on its rect
@@ -4740,27 +4748,60 @@ function Kit:RegisterShell(frame, shell)
 	RegisterShell(frame, shell)
 end
 
-RegisterShell = function(frame, shell)
-	local known = Kit.shells[frame] or {}
-	known.outer = shell.outer or known.outer
-	known.title = shell.title or known.title
-	known.ring = shell.ring or known.ring
-	-- (an own window's crest on the top rail and its short plate: their
-	-- shade, Modules/KitShade.lua; never a corner ring or a drag handle)
-	known.crest = shell.crest or known.crest
-	known.plate = shell.plate or known.plate
-	Kit.shells[frame] = known
-	-- the title plate rides the outer rail: its caps' gems take the corners,
-	-- and it runs behind the portrait ring
-	local onRail = known.title and known.title.rule and known.title.rule.onRail
-	local skin = known.outer and known.outer.skin
-	if onRail and skin and skin.SetTopGems then
-		skin:SetTopGems(false)
+do
+	-- every outer rail by the frame it was dressed on (rep.kitParent: a
+	-- window, each bag's ContainerFrameN, a group finder page, the ignore
+	-- list), as the shade keeps them (Modules/KitShade.lua): Kit.shells keeps
+	-- only a window's last outer, which need not be the title's
+	local rails = setmetatable({}, { __mode = "k" })
+
+	-- the rail the title plate rides: the first one up the title's own frames,
+	-- else the top window's own, else its last (a window with one rail)
+	local function RailOf(frame, known)
+		local f = known.title and known.title.kitParent
+		for _ = 1, 16 do
+			if type(f) ~= "table" or f == UIParent then
+				break
+			end
+			local rail = rails[f]
+			if rail then
+				return rail
+			end
+			f = type(f.GetParent) == "function" and f:GetParent() or nil
+		end
+		return rails[frame] or known.outer
 	end
-	if onRail and known.ring then
-		Kit:TitleBehindRing(known.title, known.ring, known.outer)
+
+	RegisterShell = function(frame, shell)
+		local known = Kit.shells[frame] or {}
+		known.outer = shell.outer or known.outer
+		known.title = shell.title or known.title
+		known.ring = shell.ring or known.ring
+		-- (an own window's crest on the top rail and its short plate: their
+		-- shade, Modules/KitShade.lua; never a corner ring or a drag handle)
+		known.crest = shell.crest or known.crest
+		known.plate = shell.plate or known.plate
+		Kit.shells[frame] = known
+		local outer = shell.outer
+		if type(outer) == "table" then
+			rails[outer.kitParent or frame] = outer
+		end
+		-- the title plate rides its outer rail (the rail dressed on the title's
+		-- own frame, not the window's last): its caps' gems take the corners,
+		-- and it runs behind the portrait ring
+		local onRail = known.title and known.title.rule and known.title.rule.onRail
+		if onRail then
+			local rail = RailOf(frame, known)
+			local skin = rail and rail.skin
+			if skin and skin.SetTopGems then
+				skin:SetTopGems(false)
+			end
+			if known.ring then
+				Kit:TitleBehindRing(known.title, known.ring, rail)
+			end
+		end
+		MelloUI:Fire("shell", frame, known)
 	end
-	MelloUI:Fire("shell", frame, known)
 end
 
 function Kit:IsCovered(group)

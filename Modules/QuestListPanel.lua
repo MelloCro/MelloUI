@@ -580,49 +580,9 @@ local watched = {}   -- [questID] = the walk it was last seen in the log on
 local landed = 0     -- watched quests found done
 local sums = {}      -- the sums of the last walk
 
--- the log read by C_QuestLog (true), the older calls (false) or not at all (nil)
-local function LogCalls()
-	if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetQuestIDForLogIndex then
-		return true
-	elseif _G.GetNumQuestLogEntries and _G.GetQuestLogTitle then
-		return false
-	end
-	return nil
-end
-
--- the log's lines (headers too) and quests, nil when it cannot be read
-local function LogSize(modern)
-	local ok, lines, quests
-	if modern then
-		ok, lines, quests = pcall(C_QuestLog.GetNumQuestLogEntries)
-	elseif modern == false then
-		ok, lines, quests = pcall(_G.GetNumQuestLogEntries)
-	end
-	if not ok then
-		return nil
-	end
-	lines, quests = QL.Plain(lines), QL.Plain(quests)
-	if type(lines) ~= "number" or type(quests) ~= "number" then
-		return nil
-	end
-	return lines, quests
-end
-
--- the quest id on a log line, nil for a header
-local function LogQuestID(modern, i)
-	local ok, id
-	if modern then
-		ok, id = pcall(C_QuestLog.GetQuestIDForLogIndex, i)
-	else
-		local _, isHeader
-		ok, _, _, _, isHeader, _, _, _, id = pcall(_G.GetQuestLogTitle, i)
-		if ok and QL.Plain(isHeader) then
-			return nil
-		end
-	end
-	id = ok and QL.Plain(id) or nil
-	return (type(id) == "number" and id > 0) and id or nil
-end
+-- the log read by C_QuestLog, its size and a line's quest id: the Quest
+-- List's one log walk (QuestList.lua, 0.14.0)
+local LogCalls, LogSize, LogQuestID = QL.LogCalls, QL.LogSize, QL.LogQuestID
 
 -- true when what the list and the pins show of the quests moved since the
 -- last walk (the new sums kept for the next); nil when the log could not be

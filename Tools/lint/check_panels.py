@@ -27,8 +27,10 @@ DIRS = ("Core", "Modules")
 
 # The ceilings: today's counts (wave 3 of the hardening release, 2026-09-25;
 # the own-window shell and the widget set of the configurator build,
-# 2026-09-26, start at 0). Lower one when the script says so; never raise
-# one to make a copy pass.
+# 2026-09-26, start at 0; 0.14.0's round 3: the hand-made shade partners, the
+# screen-rect copies, Core/Shade.lua and the round's new files, and the
+# meaning colours counted apart). Lower one when the script says so; never
+# raise one to make a copy pass.
 CEILINGS = {
     "replace-fn": 51,
     "follow-fn": 15,
@@ -53,22 +55,34 @@ CEILINGS = {
     "window-single": 10,
     "direct-sound": 0,
     "palette-guard": 0,
-    "colour:Core/Core.lua": 0,
+    "direct-shadow": 2,
+    "screen-rect-copy": 7,
+    "colour:Core/Core.lua": 1,
     "colour:Core/Config.lua": 0,
     "colour:Core/Widgets.lua": 0,
+    "colour:Core/Shade.lua": 0,
+    "colour:Core/Reminders.lua": 0,
     "colour:Modules/KitWindow.lua": 0,
+    "colour:Modules/ActionBarPanel.lua": 0,
+    "colour:Modules/CastBarPanel.lua": 0,
     "colour:Core/Installer.lua": 0,
     "colour:Core/InstallerWindow.lua": 0,
-    "colour:Modules/Chat.lua": 17,
+    "colour:Modules/Chat.lua": 0,
     "colour:Modules/DynamicUI.lua": 0,
     "colour:Modules/QuestListMap.lua": 1,
     "colour:Modules/QuestListPanel.lua": 0,
+    "colour:Modules/QuestListTips.lua": 0,
     "colour:Modules/QuestTracker.lua": 0,
+    "colour:Modules/Reminders.lua": 0,
+    "colour:Modules/Restock.lua": 0,
     "colour:Modules/Route.lua": 2,
     "colour:Modules/Services.lua": 0,
     "colour:Modules/Stats.lua": 0,
     "colour:Modules/UIModifications.lua": 0,
-    "colour:Modules/VoiceOver.lua": 5,
+    "colour:Modules/VoiceOver.lua": 1,
+    "colour:Modules/WidgetPanel.lua": 0,
+    "meaning:Modules/Chat.lua": 17,
+    "meaning:Modules/VoiceOver.lua": 4,
 }
 
 # Kit.lua from this line on is the kit demo and the slice test (/kitdemo,
@@ -131,6 +145,17 @@ CHECKS = {
     # the guard, and a literal fallback behind a palette colour
     "palette-guard": (r"MelloUI\.Palette and |Palette\.\w+\s+or\s*\{", None,
                       "a guard or a fallback on MelloUI.Palette: it is defined in Core.lua, which loads first"),
+    # a shade partner made by hand, outside the kit and its shade system
+    # (0.14.0: the nameplates' and the Route arrow's are the two left)
+    "direct-shadow": (r"Kit:Shadow(?:Nine)?\(", {"skip": ["Modules/Kit.lua", "Modules/KitShade.lua"]},
+                      "a partner made by hand: Kit:ShadeElement(root, area):Add(...) (Modules/KitShade.lua), which "
+                      "keeps the area switches, the strength and the per-frame budget"),
+    # a screen rect read by hand: GetRect in a pcall, then the same region's
+    # effective scale within the next few lines (0.14.0: the hit tests and
+    # the other sums that read the two are what is left)
+    "screen-rect-copy": (r"pcall\((\w+)\.GetRect, \1\)(?:[^\n]*\n){0,4}?[^\n]*\b\1[:.]GetEffectiveScale", None,
+                         "a screen rect read by hand: MelloUI.Safe.ScreenRect(region) (Core.lua), the one "
+                         "screen-rect reader (left, bottom, right, top, or nil)"),
 }
 
 # Own windows: MelloUI's windows, whose colours come from the palette only
@@ -154,6 +179,16 @@ def exempt_line(src):
         return None
     marked = [i + 1 for i, text in enumerate(src.raw.split("\n")) if marker in text]
     return marked[0] if len(marked) == 1 else None
+
+
+# The user's meaning colours (2026-09-26: the chat channels' tints and the
+# Voice Over picture's state colours stay fixed under every palette). In an
+# own window that has a `meaning:<file>` ceiling, a literal on a line marked
+# with MEANING_MARK counts there instead of under `colour:<file>`: the two
+# are held apart, so a new palette colour cannot hide among the meaning
+# ones, and one more meaning colour raises its own count (the user's word
+# first). In a file with no `meaning:` ceiling the mark changes nothing.
+MEANING_MARK = "(meaning colour)"
 NUM = r"(-?\d*\.?\d+)"
 COLOUR_CALL = re.compile(r"\b(?:SetColorTexture|SetTextColor|SetVertexColor|SetBackdropColor|SetBackdropBorderColor"
                          r"|SetShadowColor|SetStatusBarColor|CreateColor)\(\s*" + NUM + r"\s*,\s*" + NUM + r"\s*,\s*" + NUM)
@@ -220,8 +255,8 @@ def applies(where, src):
 def matches(name, sources):
     """[(path, line)] of every match of one check"""
     found = []
-    if name.startswith("colour:"):
-        path = name.split(":", 1)[1]
+    if name.startswith("colour:") or name.startswith("meaning:"):
+        kind, path = name.split(":", 1)
         src = sources.get(path)
         if src is None:
             return found
@@ -233,7 +268,11 @@ def matches(name, sources):
             vals = [float(v) for v in m.groups()]
             if all(0 <= v <= 1 for v in vals) and any(v != int(v) for v in vals):
                 found.append((path, src.line_of(m.start())))
-        return sorted(hit for hit in found if hit[1] != skip)
+        found = sorted(hit for hit in found if hit[1] != skip)
+        if "meaning:" + path not in CEILINGS:
+            return found if kind == "colour" else []
+        lines = src.raw.split("\n")
+        return [hit for hit in found if (MEANING_MARK in lines[hit[1] - 1]) == (kind == "meaning")]
     pattern, where = CHECKS[name][0], CHECKS[name][1]
     rx = re.compile(pattern, re.M)
     for src in sources.values():
@@ -251,6 +290,10 @@ def instead(name):
     if name.startswith("colour:"):
         return ("a colour literal in an own window: MelloUI.Palette (Core.lua), a key painted with W.Paint / "
                 "Kit:Paint; an invisible anchor is shell:Anchor (Modules/KitWindow.lua)")
+    if name.startswith("meaning:"):
+        return ("one more fixed meaning colour (a line marked %s): only with the user's word (the chat "
+                "channels' tints and the Voice Over states stay fixed); any other colour is a MelloUI.Palette key"
+                % MEANING_MARK)
     return CHECKS[name][2]
 
 

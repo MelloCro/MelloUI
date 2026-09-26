@@ -227,9 +227,10 @@ end
 -- tone -- a stripe a step lighter than the inner panel round it; a dark red
 -- (#4E1812) while the game paints the plate red. That red is a FIXED meaning
 -- colour, the same under every palette, as the game's own "can't use" red is
--- (user, 2026-09-26: meaning colours stay fixed).
+-- (a 0.14.0 build decision): Core's
+-- MelloUI.Meaning.cannotUse, the one the merchant and the trainer read too.
 --------------------------------------------------------------------------------
-local CANNOT_USE = { 0.306, 0.094, 0.071 }   -- #4E1812, an item the player cannot use (meaning colour)
+local CANNOT_USE = MelloUI.Meaning.cannotUse   -- #4E1812, an item the player cannot use
 
 -- The card's two faces over the row's rect: the plain one painted by its
 -- palette key once (Kit:Paint: a new palette paints it again), the red one

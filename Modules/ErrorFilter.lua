@@ -12,9 +12,11 @@
 -- as always, sound included. Off: the event goes back to the frame. The
 -- messages are told apart by the game's own strings (ERR_OUT_OF_ENERGY and
 -- the rest), so the filter follows the client's language; a secret message
--- is always passed on. What it lets through still reaches the frame's own
--- AddMessage, so the centre texts' shade (Core/CentreText.lua, Centre Text
--- Shade) dresses those lines as it does with this module off.
+-- is always passed on, never raising (the handler in a pcall: the frame's
+-- AddMessage may refuse a secret from an addon's frame). What it lets through
+-- still reaches the frame's own AddMessage, so the centre texts' shade
+-- (Core/CentreText.lua, Centre Text Shade) dresses those lines as it does
+-- with this module off.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -113,15 +115,26 @@ end
 
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, messageType, message, ...)
 	-- the secret test first: a secret refuses even the nil test (audit, 2026-09-24)
-	if not Secret(message) and message ~= nil and hidden[message] then
+	local secret = Secret(message)
+	if not secret and message ~= nil and hidden[message] then
 		return
 	end
 	-- not hidden: to the game's frame, as if it had the event itself
 	local ef = UIErrorsFrame
 	local handler = ef and ef:GetScript("OnEvent")
-	if handler then
-		handler(ef, event, messageType, message, ...)
+	if not handler then
+		return
 	end
+	if secret or Secret(messageType) then
+		-- a secret text (or kind) cannot be told apart, so it is passed on;
+		-- but the frame's AddMessage may take a secret only from the game's
+		-- own code, and this frame is MelloUI's: the handler runs in a pcall, so
+		-- a secret error text never raises (0.14.0; at worst that one line
+		-- does not show)
+		pcall(handler, ef, event, messageType, message, ...)
+		return
+	end
+	handler(ef, event, messageType, message, ...)
 end)
 
 local function Apply(db)

@@ -94,6 +94,93 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 local skin = nil
 local active = false
 
+-- The column's shade (0.14.0, the UI shade's minimap area: Kit:ShadeElement,
+-- Modules/KitShade.lua; user, 2026-09-26: outline pieces only). ONE element
+-- for the whole column, rooted on the map: its shade frame, a child of the
+-- map one level under it, draws every partner under the map, the ring, the
+-- square frame, the band, the tracking button and the Services bar, and over
+-- the world -- so a piece's inward shadow lies under the map or its rails
+-- and only the outline's shade shows. The pieces: the ring (drawn at its own
+-- size, not its kitScale), or the square border of each look (its rails'
+-- nine with the gem corners; the heavy frames' eight cut parts, each the
+-- same cut of the frame's shadow; None: the map's own square edge), the zone
+-- band's plate and the tracking button's rim; never the divider rail or the
+-- stones inside the frame.
+-- Services adds its bar's box to the same element (Kit:ShadeElement(Minimap,
+-- "minimap")). Made as the pieces are dressed; the switches, the strength
+-- and the palette are KitShade's and Kit's. Partners drawn by another frame
+-- are fitted again where the scales part (the merged band's SetScale, Edit
+-- Mode's Size on the map's container): Kit:ShadowRefit, once a frame.
+local Shade = { DRAWN = { drawn = true } }
+
+function Shade.Element()
+	if Shade.el == nil then
+		local ok, el = false, nil
+		if Kit.ShadeElement and Minimap then
+			ok, el = pcall(Kit.ShadeElement, Kit, Minimap, "minimap")
+		end
+		Shade.el = (ok and type(el) == "table" and type(el.Add) == "function") and el or false
+	end
+	return Shade.el or nil
+end
+
+function Shade.Add(obj, opts)
+	local el = obj and Shade.Element()
+	if el then
+		el:Add(obj, opts)
+	end
+end
+
+-- a heavy frame's eight parts (Kit:CutNine's), each with the same cut of the
+-- frame's shadow (piece px; its reach past the picture's outer sides only),
+-- once: CutNine cuts them again at every lay
+function Shade.Cut(parts, piece)
+	local p = Kit:Piece(piece)
+	if Shade.cut or not (p and p.w and p.h) then
+		return
+	end
+	Shade.cut = true
+	local c, w, h = CORNER, p.w, p.h
+	local cuts = { tl = { 0, c, 0, c }, tr = { w - c, w, 0, c }, bl = { 0, c, h - c, h }, br = { w - c, w, h - c, h },
+		t = { c, w - c, 0, c }, b = { c, w - c, h - c, h }, l = { 0, c, c, h - c }, r = { w - c, w, c, h - c } }
+	for key, cut in pairs(cuts) do
+		Shade.Add(parts[key], { cut = cut })
+	end
+end
+
+-- the square map with no border ("None"): the map's own edge shaded, KitShade's
+-- synthetic square on a plain frame over the map (in the map's container, as
+-- the border frame), its partners shown and hidden with it; made the first
+-- time that look shows
+function Shade.Bare(show)
+	local bare = skin and skin.bare
+	if not show then
+		if bare then
+			bare:Hide()
+		end
+		return
+	end
+	if not bare then
+		if not (skin and Shade.Element()) then
+			return
+		end
+		bare = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
+		bare:EnableMouse(false)
+		bare:SetAllPoints(Minimap)
+		skin.bare = bare
+		Shade.Add(bare, { shape = "shade/square" })
+	end
+	bare:Show()
+end
+
+-- the partners drawn by the shade frame fitted again next frame, where their
+-- frames' scales parted
+function Shade.Refit()
+	if Shade.el and Kit.ShadowRefit then
+		Kit:ShadowRefit(true)
+	end
+end
+
 local function Replace(region, opts)
 	if not region then
 		return nil
@@ -137,6 +224,7 @@ local function Build()
 		local rep = Replace(MinimapCompassTexture, { as = "UI-HUD-Minimap-Frame", parent = cluster, rect = map, level = ringLevel - cluster:GetFrameLevel(),
 			alsoFade = { MinimapCompassTextureUnderlay } })
 		skin.ring = rep
+		Shade.Add(rep, Shade.DRAWN)   -- (hidden with its holder: the square shape)
 		if rep then
 			local raised = {}
 			for _, key in ipairs({ "BorderTop", "ZoneTextButton", "Tracking", "IndicatorFrame" }) do
@@ -181,6 +269,7 @@ local function Build()
 		if first then
 			local rep = Replace(first, { as = "MinimapZoneBand", rect = band, alsoFade = extra })
 			skin.band = rep
+			Shade.Add(rep)
 			if rep and MinimapCluster and Kit.RegisterShell then
 				-- the cluster's drag handle for the window mover: a grab frame
 				-- on the band's own rect (the plate is 1.4 x the band and its
@@ -229,7 +318,8 @@ local function Build()
 	-- the tracking button's plate, the zoom buttons
 	local tracking = cluster.Tracking
 	if tracking and tracking.Background then
-		Replace(tracking.Background, { as = "ui-hud-minimap-button" })
+		-- (its rim drawn square to the button's plate, not at its kitScale)
+		Shade.Add(Replace(tracking.Background, { as = "ui-hud-minimap-button" }), Shade.DRAWN)
 	end
 	for _, entry in ipairs({ { map.ZoomIn, "ui-hud-minimap-zoom-in" }, { map.ZoomOut, "ui-hud-minimap-zoom-out" } }) do
 		local button, key = entry[1], entry[2]
@@ -321,44 +411,9 @@ local function GemReach(prefix, sc)
 	return reach * sc
 end
 
--- A frame picture cut into nine on f (the corners CORNER piece px, the
--- edges stretched between them), k UI units per piece px
-local function CutFrame(f, piece, k)
-	local p = Kit:Piece(piece)
-	if not p then
-		return false
-	end
-	local c = CORNER
-	local u0, u1, v0, v1 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
-	local function U(x) return u0 + (u1 - u0) * x / p.w end
-	local function V(y) return v0 + (v1 - v0) * y / p.h end
-	local cs = c * k
-	local parts = f.parts
-	for _, tex in pairs(parts) do
-		if tex.kitName ~= piece then
-			Kit:Apply(tex, piece)
-		end
-		tex:ClearAllPoints()
-		tex:Show()
-	end
-	parts.tl:SetPoint("TOPLEFT"); parts.tl:SetSize(cs, cs); parts.tl:SetTexCoord(U(0), U(c), V(0), V(c))
-	parts.tr:SetPoint("TOPRIGHT"); parts.tr:SetSize(cs, cs); parts.tr:SetTexCoord(U(p.w - c), U(p.w), V(0), V(c))
-	parts.bl:SetPoint("BOTTOMLEFT"); parts.bl:SetSize(cs, cs); parts.bl:SetTexCoord(U(0), U(c), V(p.h - c), V(p.h))
-	parts.br:SetPoint("BOTTOMRIGHT"); parts.br:SetSize(cs, cs); parts.br:SetTexCoord(U(p.w - c), U(p.w), V(p.h - c), V(p.h))
-	parts.t:SetPoint("TOPLEFT", f, "TOPLEFT", cs, 0)
-	parts.t:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", -cs, -cs)
-	parts.t:SetTexCoord(U(c), U(p.w - c), V(0), V(c))
-	parts.b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", cs, 0)
-	parts.b:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", -cs, cs)
-	parts.b:SetTexCoord(U(c), U(p.w - c), V(p.h - c), V(p.h))
-	parts.l:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -cs)
-	parts.l:SetPoint("BOTTOMRIGHT", f, "BOTTOMLEFT", cs, cs)
-	parts.l:SetTexCoord(U(0), U(c), V(c), V(p.h - c))
-	parts.r:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -cs)
-	parts.r:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", -cs, cs)
-	parts.r:SetTexCoord(U(p.w - c), U(p.w), V(c), V(p.h - c))
-	return true
-end
+-- (a frame picture cut into nine on the square frame: the kit's one cutter,
+-- Kit:CutNine, since 0.14.0 -- this file and the action bars had a copy each;
+-- it also cuts the parts' shade partners)
 
 -- the merge's measures: the divider band's height (UI px: the header rail
 -- stands in it, its opaque part 4 less, its gem caps a hair over the map's
@@ -680,6 +735,8 @@ local function LaySquare()
 			skin.divider:Hide()
 		end
 	end
+	-- (no border: the map's own edge takes the shade, Shade.Bare)
+	Shade.Bare(square and b.value == "none")
 	if not square or b.value == "none" then
 		f:Hide()
 		return
@@ -707,6 +764,7 @@ local function LaySquare()
 		if not nine then
 			nine = Kit:NineSlice(f, { prefix = b.prefix, scale = sc, gems = false, body = false, corners = b.gem and "gem" or nil })
 			f.nine[b.prefix] = nine
+			Shade.Add(nine)   -- (its rails' nine and gem corners; hidden with it)
 		end
 		nine:Show()
 		f.gemReach = b.gem and GemReach(b.prefix, sc) or 0
@@ -731,10 +789,11 @@ local function LaySquare()
 		f:SetPoint("TOPLEFT", map, "TOPLEFT", -(open[1] * k - over), open[2] * k - over)
 		f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", (w - open[3]) * k - over, -((h - open[4]) * k - over))
 		f.gemReach = 0   -- (the picture fills the frame)
-		if not CutFrame(f, b.piece, k) then
+		if not p or Kit:CutNine(f, f.parts, b.piece, k, CORNER, true) == false then
 			f:Hide()
 			return
 		end
+		Shade.Cut(f.parts, b.piece)
 	end
 	f:Show()
 end
@@ -751,6 +810,7 @@ end
 -- it follows on the next frame
 local function LayoutSquare()
 	LaySquare()
+	Shade.Refit()
 	M:LayColumn()
 end
 

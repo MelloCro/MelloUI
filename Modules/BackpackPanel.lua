@@ -58,6 +58,7 @@ local active = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local SafeScreenRect = MelloUI.Safe.ScreenRect   -- a frame's rect on the screen (nil: secret or unreadable)
 
 local function Replace(region, opts)
 	if not region then
@@ -552,10 +553,9 @@ function M:BarOutline()
 	local rects = {}
 	for _, f in ipairs(BagWindows()) do
 		if f and f:IsShown() then
-			local ok, l, b, w, h = pcall(f.GetRect, f)
-			if ok and l and w and not Secret(l) and not Secret(w) and w > 0 then
-				local sc = f:GetEffectiveScale()
-				rects[#rects + 1] = { l * sc, b * sc, (l + w) * sc, (b + h) * sc }
+			local l, b, r, t = SafeScreenRect(f)
+			if l and r > l then
+				rects[#rects + 1] = { l, b, r, t }
 			end
 		end
 	end

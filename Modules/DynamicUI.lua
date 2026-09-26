@@ -629,10 +629,10 @@ end
 -- marked; a pick goes to UI Modifications' setting, which Core applies
 -- (MelloUI:SetPalette), and the Kit Colours row's choices follow it
 -- (LooksFollow). Made when the overview is laid.
--- (the setting as chosen; an id with no palette is Ember, as Core applies it)
+-- (the setting as chosen, read by Core's one rule: an id with no palette is
+-- Ember, as Core applies it)
 local function PaletteShown()
-	local id = UMValue("palette", "ember")
-	return (MelloUI.Palettes and MelloUI.Palettes[id] and id ~= "order") and id or "ember"
+	return MelloUI:KnownPalette(UMValue("palette", "ember"))
 end
 
 -- A switch row (a kit check box when the kit is there)

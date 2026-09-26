@@ -908,6 +908,11 @@ local function HookMerchant()
 	end
 	merchantHooked = true
 	local function Bought()
+		-- (Restock's Buy sends several purchases: one buy sound for all of it)
+		local restock = MelloUI.Restock
+		if restock and restock.buyingQuiet then
+			return
+		end
 		if GroupOn("vendor") then
 			Play("Vendor_Buy", "bought")
 		end

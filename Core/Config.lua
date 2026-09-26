@@ -3418,8 +3418,10 @@ local function CreateWindow()
 	-- The side list (W.NavRail, from the registry): the pages and the
 	-- shortcuts by group, the page on show marked. Its rows count against
 	-- the frame's one budget of rows: the page's rows in view made in the
-	-- same frame get what it leaves (BeginRows / EndRows)
-	local rail = W.NavRail(window, { width = NAV_WIDTH, iconMaker = NavIcon, onSelect = NavClick, skin = shell })
+	-- same frame get what it leaves (BeginRows / EndRows). Rows 29 high: the
+	-- 17 entries and 4 headers of 0.14.0 (Reminders added) stand 610 tall in
+	-- the list's 612 with every group open, so no scroll is needed
+	local rail = W.NavRail(window, { width = NAV_WIDTH, rowHeight = 29, iconMaker = NavIcon, onSelect = NavClick, skin = shell })
 	rail.box:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BODY_TOP)
 	rail.box:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", EDGE, EDGE)
 	window.rail = rail

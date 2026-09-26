@@ -591,7 +591,7 @@ when a copy is added and names the system to use.
   fn, owner)` / `MelloUI:Off(owner[, topic])` for "setting", "module",
   "restart", "look:<area>", "cover", "parchment", "border", "fonts",
   "scale", "editmode", "shell", "palette", "column", "installer",
-  "editmodelayout", "backup", "shade" (Core.lua lists what each carries). A window
+  "editmodelayout", "backup", "shade", "where", "reminder" (Core.lua lists what each carries). A window
   takes its listeners when it is built, never at file load, and each
   returns at once while the window is closed
   (at most marking what its next show brings in line). Never

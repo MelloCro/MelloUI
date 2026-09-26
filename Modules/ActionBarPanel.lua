@@ -16,8 +16,10 @@
 --       the fill behind it on the whole width
 -- Bars are re-laid by Edit Mode (UpdateGridLayout): the rims re-size to the
 -- new pitch from that post-hook, out of combat. Covers the Dark Mode groups
--- "actionbars", "micromenu", "bagbar" and "statusbars". /abdump [bar|micro|
--- bags|xp] [frames|reps].
+-- "actionbars", "micromenu", "bagbar" and "statusbars". The UI shade's Action
+-- Bars area (0.14.0): the backdrops' outline, the end caps, the status bars'
+-- brackets, and the rims where no backdrop covers a bar (below Replace).
+-- /abdump [bar|micro|bags|xp|icons] [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -107,6 +109,197 @@ local function Replace(region, opts)
 end
 
 --------------------------------------------------------------------------------
+-- The shade (0.14.0: the whole UI's soft shade, Modules/KitShade.lua, the
+-- Action Bars area). What stands against the world casts it: each backdrop's
+-- rails (every part of its nine its own part of the piece's shadow, so a part
+-- a join hides takes its shadow along, and the pieces of an opened rail cast
+-- theirs), the end caps, the status bars' brackets, and where no backdrop
+-- covers a bar (Backdrop None, a bar standing apart) its buttons' rims. A
+-- group's shadows lie on its shade frame: BACKGROUND strata, kept there (the
+-- game lifts the bars to TOOLTIP while a spell is dragged), level 0 whatever
+-- its bar's, under the end caps and every backdrop (the status bars' too: no
+-- shadow of this area falls on another bar's art). Rims' shadows lie on a
+-- frame of the bar's own like it, shown only while no backdrop covers the
+-- bar. Made as the parts are dressed (the bars show from the login), the
+-- rims' the first time they are wanted (a bar shown only in a fight: while
+-- it is hidden), never in a fight: a layout there runs again after it.
+--------------------------------------------------------------------------------
+
+local SHADE_AREA = "actionbars"
+-- (level: KitShade lays the shade frame at the root's level plus this, never
+-- under 0: so at 0, whatever the bar's level)
+local SHADE_OPTS = { strata = "BACKGROUND", level = -10000 }
+local CAP_OPTS = { drawn = true }   -- the end caps: drawn to the gryphon's height, not at their kitScale
+
+-- the roots whose shade frame draws shadows (a group's anchor bar, the bar
+-- with the end caps, a status bar's container): kept at level 0
+local shadeRoots = {}
+local function Shade(root, drawsHere)
+	if drawsHere then
+		shadeRoots[root] = true
+	end
+	return Kit:ShadeElement(root, SHADE_AREA, SHADE_OPTS)
+end
+
+-- a shade frame of ours at level 0 and kept there (a frame the game
+-- re-levels takes its children's levels along; fixed where the client can)
+local function KeepLow(f)
+	if f:GetFrameLevel() ~= 0 then
+		f:SetFrameLevel(0)
+	end
+	if not f.melloLevelFixed and f.SetFixedFrameLevel then
+		f.melloLevelFixed = true
+		f:SetFixedFrameLevel(true)
+	end
+end
+
+-- every shade frame that draws shadows back at level 0, after a layout (one
+-- made here with its first shadow: never while the area is off, and only out
+-- of combat, a bar being protected). One the shade makes as the area is
+-- switched on lies at level 0 already, fixed there from the next layout.
+local function KeepShadesLow()
+	if not Kit:ShadeOn(SHADE_AREA) or InCombatLockdown() then
+		return
+	end
+	for root in pairs(shadeRoots) do
+		KeepLow(Shade(root):Host())
+	end
+end
+
+-- The part of the backdrop's piece each part of its nine shows (Kit:CutNine,
+-- piece px), as the options its partner is made with: that part of the
+-- piece's shadow, reaching past the piece's outer sides only. Made once per
+-- piece (red and iron gems: one geometry today, each its own all the same).
+local partCut = {}   -- [piece name] = { [part key] = { cut = { x0, x1, y0, y1 } } }
+local function PartCuts(name, p, c)
+	local cuts = partCut[name]
+	if not cuts then
+		local w, h = p.w, p.h
+		cuts = {
+			tl = { cut = { 0, c, 0, c } }, tr = { cut = { w - c, w, 0, c } },
+			bl = { cut = { 0, c, h - c, h } }, br = { cut = { w - c, w, h - c, h } },
+			t = { cut = { c, w - c, 0, c } }, b = { cut = { c, w - c, h - c, h } },
+			l = { cut = { 0, c, c, h - c } }, r = { cut = { w - c, w, c, h - c } },
+		}
+		partCut[name] = cuts
+	end
+	return cuts
+end
+
+-- A backdrop's nine, shaded once (its partners follow the frame's show and
+-- hide, each part's own, and Kit:CutNine's cut and scale from then on)
+local function ShadeParts(f, name, p, c)
+	if f.melloShaded or not f.melloShade then
+		return
+	end
+	f.melloShaded = true
+	local el = Shade(f:GetParent(), true)
+	local cuts = PartCuts(name, p, c)
+	for _, key in ipairs(Kit.nineParts) do
+		el:Add(f.parts[key], cuts[key])
+	end
+end
+
+-- The pieces of an opened rail (OpenRail / OpenSideRail's segs, each marked
+-- with its side): the rail's part of the shadow, at the frame's scale. A piece
+-- still waiting for its partner takes the side it shows now (its options are
+-- read when it is made).
+local SEG_PART = { top = "t", bottom = "b", left = "l", right = "r" }
+local function ShadeSegs(f, c)
+	local el, pool = f.melloShade, f.segs
+	local p = pool and (pool.used or 0) > 0 and Kit:Piece(f.piece)
+	if not (el and p) then
+		return
+	end
+	local cuts = PartCuts(f.piece, p, c)
+	for i = 1, pool.used do
+		local tex = pool[i]
+		local cut = cuts[SEG_PART[tex.melloRail] or "t"].cut
+		tex.kitScale = f.k
+		if tex.kitShadow then
+			Kit:ShadowCut(tex, cut[1], cut[2], cut[3], cut[4])
+		else
+			local o = tex.melloShadeOpts
+			if o then
+				local oc = o.cut
+				oc[1], oc[2], oc[3], oc[4] = cut[1], cut[2], cut[3], cut[4]
+			else
+				tex.melloShadeOpts = { cut = { cut[1], cut[2], cut[3], cut[4] } }
+				el:Add(tex, tex.melloShadeOpts)
+			end
+		end
+	end
+end
+
+-- [root] = true while a shown backdrop covers that bar (Action Bar 1 and the
+-- bars snapped to it, the micro menu, the bag bar): filled by each layout
+local covered = {}
+
+-- A rim drawn at another size than its partner was made at (a micro
+-- button's, sized to the bag slots; an action button's at Edit Mode's new
+-- Icon Size or Padding): its shadow reaches as far (UI units per painted px;
+-- the fit reads its button's scale against the rim frame's again)
+local function RimRefit(rep)
+	local rim = rep and rep.object
+	if not (rim and rim.kitShadow and rim.kitName) then
+		return
+	end
+	local w = MelloUI.Safe.Call(rim, "GetWidth")
+	local pw = Kit:Size(rim.kitName, 1)
+	if type(w) == "number" and w > 0 and pw and pw > 0 then
+		Kit:ShadowFit(rim, w / pw)
+	end
+end
+
+-- A bar Edit Mode shows only in a fight (Bar Visible: In Combat): hidden at
+-- every layout, which all run out of combat, so its rims are shaded while it
+-- is hidden (any other hidden bar -- the unused ones, the pet bar with no
+-- pet -- the first time it shows)
+local function ShowsInCombat(bar)
+	local v = bar.visibility
+	return not Secret(v) and v == "InCombat"
+end
+
+-- A bar's (the micro menu's, the bag bar's) rims as its outline: their
+-- shadows on a frame of the bar's own at BACKGROUND level 0, shown while no
+-- backdrop covers it (and hidden with the bar, its child); made the first
+-- time the bar is shown or wanted in a fight, out of combat (a bar can be
+-- protected: a layout in a fight is run again after it, LayoutAll), its
+-- rims' partners with it
+local function ShadeRims(root, buttons)
+	local rs = skin.rims[root]
+	if not (active and not covered[root] and #buttons > 0) then
+		if rs then
+			rs.host:Hide()
+		end
+		return
+	end
+	if not rs then
+		if InCombatLockdown() or not (root:IsShown() or ShowsInCombat(root)) then
+			return
+		end
+		local host = CreateFrame("Frame", nil, root)
+		host.ignoreInLayout = true   -- (never part of the bar's size: see NewFrame)
+		host:EnableMouse(false)
+		host:SetFrameStrata("BACKGROUND")
+		if host.SetFixedFrameStrata then
+			host:SetFixedFrameStrata(true)
+		end
+		host:SetAllPoints(root)
+		rs = { host = host, opts = { host = host, drawn = true } }
+		skin.rims[root] = rs
+		local el = Shade(root)
+		for _, button in ipairs(buttons) do
+			if button.melloRep then
+				el:Add(button.melloRep, rs.opts)
+			end
+		end
+	end
+	KeepLow(rs.host)
+	rs.host:Show()
+end
+
+--------------------------------------------------------------------------------
 -- Action bars
 --------------------------------------------------------------------------------
 
@@ -152,6 +345,7 @@ local function RefitBar(bar)
 			local rep = button.melloRep
 			if rep and rep.SetPitch then
 				rep:SetPitch(pitch[1], pitch[2])
+				RimRefit(rep)   -- (a shaded rim's shadow at its new size and its button's scale)
 			end
 		end
 	end
@@ -315,6 +509,12 @@ local function SkinBar(bar)
 			end
 		end
 		skin.capSync[#skin.capSync + 1] = Sync
+		-- the caps stand against the world at the bar's ends: their shadows
+		-- on the bar's shade frame, under them and the backdrop
+		local el = Shade(bar, true)
+		for _, entry in ipairs(reps) do
+			el:Add(entry.rep, CAP_OPTS)
+		end
 	end
 	local page = bar.ActionBarPageNumber
 	if page then
@@ -568,6 +768,7 @@ local function OpenRail(w, side)
 	local u0, u1, v0, v1 = unpack(w.railTC[side])
 	for _, seg in ipairs(pieces) do
 		local tex = Pooled(w, "segs", w.piece, "ARTWORK", 0)
+		tex.melloRail = side   -- (its shadow the rail's: ShadeSegs)
 		local lx = (seg[1] - W[1]) / w.s
 		if top then
 			tex:SetPoint("TOPLEFT", w, "TOPLEFT", lx, 0)
@@ -670,6 +871,7 @@ local function OpenSideRail(w, side)
 	local u0, u1, v0, v1 = unpack(w.railTC[side])
 	for _, seg in ipairs(pieces) do
 		local tex = Pooled(w, "segs", w.piece, "ARTWORK", 0)
+		tex.melloRail = side   -- (its shadow the rail's: ShadeSegs)
 		local ly = (seg[1] - W[2]) / w.s
 		if left then
 			tex:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT", 0, ly)
@@ -784,11 +986,14 @@ local function JoinFrames()
 		OpenSideRail(f, "left")
 		OpenSideRail(f, "right")
 		AlignStone(f)
+		ShadeSegs(f, FRAME_CORNER)
 	end
 end
 
 local function NewFrame(parent)
 	local f = CreateFrame("Frame", nil, parent)
+	-- its rails' shadows on the group's shade frame (ShadeParts, ShadeSegs)
+	f.melloShade = Shade(parent)
 	-- not part of the bar's size: an action bar is a layout frame that grows
 	-- round its shown children, so the backdrop (a child reaching past the
 	-- buttons) made it grow, which grew the backdrop ... until a relog (user,
@@ -837,43 +1042,20 @@ local function LayoutFrame(f, k, g)
 		return
 	end
 	ResetJoins(f)
-	if f.piece ~= name then
-		f.piece = name
-		for _, tex in pairs(f.parts) do
-			Kit:Apply(tex, name)
-		end
-	end
-	local c = FRAME_CORNER
-	local u0, u1, v0, v1 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
-	local function U(x) return u0 + (u1 - u0) * x / p.w end
-	local function V(y) return v0 + (v1 - v0) * y / p.h end
-	local cs = c * k
-	local parts = f.parts
-	local function Place(tex, pa, pb, xa, ya, xb, yb, l, r, t, b)
-		tex:ClearAllPoints()
-		tex:SetPoint(pa[1], f, pa[2], xa, ya)
-		tex:SetPoint(pb[1], f, pb[2], xb, yb)
-		tex:SetTexCoord(U(l), U(r), V(t), V(b))
-	end
-	-- corners (the gems)
-	parts.tl:ClearAllPoints(); parts.tl:SetPoint("TOPLEFT"); parts.tl:SetSize(cs, cs); parts.tl:SetTexCoord(U(0), U(c), V(0), V(c))
-	parts.tr:ClearAllPoints(); parts.tr:SetPoint("TOPRIGHT"); parts.tr:SetSize(cs, cs); parts.tr:SetTexCoord(U(p.w - c), U(p.w), V(0), V(c))
-	parts.bl:ClearAllPoints(); parts.bl:SetPoint("BOTTOMLEFT"); parts.bl:SetSize(cs, cs); parts.bl:SetTexCoord(U(0), U(c), V(p.h - c), V(p.h))
-	parts.br:ClearAllPoints(); parts.br:SetPoint("BOTTOMRIGHT"); parts.br:SetSize(cs, cs); parts.br:SetTexCoord(U(p.w - c), U(p.w), V(p.h - c), V(p.h))
-	-- edges, stretched between the corners (the rim is even along them)
-	Place(parts.t, { "TOPLEFT", "TOPLEFT" }, { "BOTTOMRIGHT", "TOPRIGHT" }, cs, 0, -cs, -cs, c, p.w - c, 0, c)
-	Place(parts.b, { "BOTTOMLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" }, cs, 0, -cs, cs, c, p.w - c, p.h - c, p.h)
-	-- the rails' coordinates, for the pieces a joined rail is cut into (a
-	-- texture's own GetTexCoord answers with its four corners, eight numbers)
-	f.railTC = { top = { U(c), U(p.w - c), V(0), V(c) }, bottom = { U(c), U(p.w - c), V(p.h - c), V(p.h) },
-		left = { U(0), U(c), V(c), V(p.h - c) }, right = { U(p.w - c), U(p.w), V(c), V(p.h - c) } }
-	Place(parts.l, { "TOPLEFT", "TOPLEFT" }, { "BOTTOMRIGHT", "BOTTOMLEFT" }, 0, -cs, cs, cs, 0, c, c, p.h - c)
-	Place(parts.r, { "TOPRIGHT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" }, 0, -cs, -cs, cs, p.w - c, p.w, c, p.h - c)
+	f.piece = name
+	-- the nine (the kit's one cut, Kit:CutNine): the corners (the gems) at f's
+	-- corners, the edges stretched between them (the rim is even along them),
+	-- the rails' coordinates in f.railTC for the pieces a joined rail is cut
+	-- into (a texture's own GetTexCoord answers with its four corners, eight
+	-- numbers); each part drawn at k, its shadow cut and scaled with it
+	Kit:CutNine(f, f.parts, name, k, FRAME_CORNER)
+	ShadeParts(f, name, p, FRAME_CORNER)
 	-- the background (stone by default) reaches just under the rim's inner edge
 	local choice = Setting(g, "background") or "stone"
 	local bg = BACKGROUND_PIECES[choice]
 	if bg then
 		if f.stone.kitName ~= bg then
+			Kit:Unpaint(f.stone)   -- (the dark fill's palette colour no longer on it)
 			Kit:Apply(f.stone, bg)
 		end
 		f.stone:SetVertexColor(1, 1, 1)
@@ -881,7 +1063,9 @@ local function LayoutFrame(f, k, g)
 		f.stone:Show()
 	elseif choice == "dark" then
 		if f.stone.kitName ~= nil or not f.stone.darkFill then
-			f.stone:SetColorTexture(0.05, 0.045, 0.04, 0.88)
+			-- the palette's inner panel, by its key (a new palette paints it again),
+			-- as the buttons' Dark background (Kit:SetButtonBackground)
+			Kit:Paint(f.stone, "innerPanel", "fill", 0.88)
 			f.stone.kitPiece, f.stone.kitName, f.stone.darkFill = true, nil, true   -- still ours (a plain mark): never faded with the game's art
 		end
 		f.stone:Show()
@@ -1030,7 +1214,7 @@ local function BarsGeometry(main)
 	for _, bar in ipairs(pending) do
 		tabs[#tabs + 1] = members[bar]
 	end
-	return rect, size, tabs
+	return rect, size, tabs, members
 end
 
 -- Where each group's backdrop hangs
@@ -1053,13 +1237,13 @@ local function LayoutGroup(g, ks)
 		HideGroup(bd)
 		return
 	end
-	local rect, size, tabs
+	local rect, size, tabs, members
 	if g.id == "bars" then
 		if not skin.bars[anchor] then
 			HideGroup(bd)
 			return
 		end
-		rect, size, tabs = BarsGeometry(anchor)
+		rect, size, tabs, members = BarsGeometry(anchor)
 	else
 		rect, size = ShownRect(GroupButtons(g))
 		tabs = {}
@@ -1079,7 +1263,7 @@ local function LayoutGroup(g, ks)
 	-- 2026-09-23: the bag bar's rails, on its larger buttons, came out
 	-- thicker than the micro menu's where the two joined)
 	local k = (ks or size / 97) / s
-	PlaceFrame(bd.main, anchor, rect, k, 3, show, g, bd)
+	local placed = PlaceFrame(bd.main, anchor, rect, k, 3, show, g, bd)
 	-- the narrower snapped bars: a tab each, joined to the backdrop where
 	-- they meet (JoinFrames: one shape, an L joint at each step)
 	for i, r in ipairs(tabs) do
@@ -1088,6 +1272,16 @@ local function LayoutGroup(g, ks)
 	end
 	for i = #tabs + 1, #bd.tabs do
 		bd.tabs[i]:Hide()
+	end
+	-- the bars this backdrop covers: their rims cast no shadow of their own
+	-- (ShadeRims)
+	if show and placed then
+		covered[anchor] = true
+		if members then
+			for bar in pairs(members) do
+				covered[bar] = true
+			end
+		end
 	end
 end
 
@@ -1182,6 +1376,7 @@ local function MatchMicroToBags()
 		local rep = button.melloRep
 		if rep and rep.SetPitch then
 			rep:SetPitch(S, S)
+			RimRefit(rep)   -- (a shaded rim's shadow reaches as far at its new size)
 		end
 		if not bw then
 			local ok, w, h = pcall(button.GetSize, button)
@@ -1229,7 +1424,24 @@ local function RestoreMicroSpacing()
 	end)
 end
 
+-- Every bar's rims shaded or not (ShadeRims): after a layout, which says
+-- what the backdrops cover
+local RIM_GROUPS = { "micro", "bags" }   -- (the action bars: each bar its own)
+local function SyncRims()
+	for bar, entry in pairs(skin.bars) do
+		ShadeRims(bar, entry.buttons)
+	end
+	for _, id in ipairs(RIM_GROUPS) do
+		local root = ANCHORS[id]()
+		if root and skin[id] then
+			ShadeRims(root, GroupButtons(GROUP[id]))
+		end
+	end
+end
+
+local LAYOUT_KEY = "Action bars: layout"   -- (Kit:WhenOutOfCombat's key: one layout waits at a time)
 local function LayoutAll()
+	wipe(covered)
 	MatchMicroToBags()
 	local ks = RailScale()
 	for _, g in ipairs(GROUPS) do
@@ -1237,6 +1449,13 @@ local function LayoutAll()
 	end
 	if active and skin then
 		JoinFrames()   -- backdrops that meet become one shape
+		SyncRims()
+		KeepShadesLow()
+		-- in a fight (a setting changed, the picker's outline): laid out again
+		-- after it, for the rims a bar could not get and the shade frames' level
+		if InCombatLockdown() then
+			Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
+		end
 	end
 end
 
@@ -1246,6 +1465,9 @@ local function HideAll()
 	end
 	for _, g in ipairs(GROUPS) do
 		HideGroup(skin.groups[g.id].backdrop)
+	end
+	for _, rs in pairs(skin.rims) do
+		rs.host:Hide()
 	end
 end
 
@@ -1259,7 +1481,7 @@ local function ScheduleBackdrop()
 	backdropPending = true
 	C_Timer.After(0.1, function()
 		backdropPending = false
-		Kit:WhenOutOfCombat(LayoutAll)
+		Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
 	end)
 end
 
@@ -1624,6 +1846,10 @@ local function SkinStatusContainer(container)
 				Kit:WhenOutOfCombat(function() rep:Refit() end)
 			end
 		end)
+		-- the bracket's shadow on the container's shade frame (BACKGROUND,
+		-- level 0: under the trough, the fill and the action bars' backdrops,
+		-- over the world)
+		Shade(container, true):Add(rep)
 	end
 	for _, bar in pairs(container.bars or {}) do
 		if bar.StatusBar and bar.StatusBar.Background then
@@ -1680,7 +1906,7 @@ end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, bars = {}, status = {}, capSync = {}, groups = {} }
+		skin = { reps = {}, bars = {}, status = {}, capSync = {}, groups = {}, rims = {} }
 		for _, g in ipairs(GROUPS) do
 			skin.groups[g.id] = { buttons = {}, backdrop = { tabs = {}, rects = {} } }
 		end
@@ -1936,6 +2162,15 @@ SlashCmdList.MELLOABDUMP = function(msg)
 					MelloUI:Print("backdrop %s: shown=%s %s L%d", g.id, tostring(f:IsShown()), f:GetFrameStrata(), f:GetFrameLevel())
 				end
 			end
+			-- its shade frame (made with its first shadow): under every backdrop
+			local main = bd and bd.main
+			if main and main.melloShaded then
+				local host = main.melloShade:Host()
+				MelloUI:Print("shade %s: shown=%s %s L%d", g.id, tostring(host:IsVisible()), host:GetFrameStrata(), host:GetFrameLevel())
+			end
+		end
+		for root, rs in pairs(skin and skin.rims or {}) do
+			MelloUI:Print("rim shade %s: shown=%s %s L%d", root:GetName() or "?", tostring(rs.host:IsVisible()), rs.host:GetFrameStrata(), rs.host:GetFrameLevel())
 		end
 		MelloUI:ShowLog("abdump icons")
 		return

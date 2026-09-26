@@ -3,12 +3,24 @@
 --
 -- Automatically repairs all gear and sells grey (junk) items whenever a
 -- merchant window is opened.
+--
+-- What other modules use of it (Restock's shop panel, 0.14.0):
+--   M:IsSelling()         true while the junk sale runs (money still changes)
+--   M:AfterSelling(fn)    fn() now when no sale runs, else once it is over
+--                         (the same fn asked twice runs once)
+--   M:Report(fmt, ...)    a line in chat when Report In Chat is on
+--   M.CoinText(copper)    the gold / silver / copper text with coin icons
+-- Every value the client hands over is read secret-safe (MelloUI.Safe: the
+-- secret test first): a secret cost, money or item quality is never compared.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Vendor")
 local C_Timer = Perf.C_Timer
+local IsSecret = MelloUI.Safe.IsSecret
+local Plain = MelloUI.Safe.Value
+local Num = MelloUI.Safe.Number
 
 local M = MelloUI:RegisterModule("Vendor", {
 	title = "Vendor",
@@ -34,7 +46,7 @@ local M = MelloUI:RegisterModule("Vendor", {
 		  desc = "Sell all grey quality items in your bags when a merchant is opened." },
 		{ type = "header", name = "Chat" },
 		{ type = "toggle", key = "report", name = "Report In Chat",
-		  desc = "Print the repair cost and the gold gained from selling junk." },
+		  desc = "Print the repair cost, the gold gained from selling junk and what Restock bought for you." },
 	},
 })
 
@@ -57,6 +69,31 @@ local function Report(msg, ...)
 	end
 end
 
+-- (for Restock's line: "Restocked: 20 Melon Juice ... for 1g 20s")
+function M:Report(msg, ...)
+	Report(msg, ...)
+end
+M.CoinText = CoinText
+
+-- The player's money, or nil when the client hands it over secret
+local function Money()
+	local ok, money = pcall(GetMoney)
+	return ok and Num(money) or nil
+end
+
+-- fn() guarded: its first result, or nil when it is missing, raised or
+-- answered secret
+local function Ask(fn, ...)
+	if type(fn) ~= "function" then
+		return nil
+	end
+	local ok, v = pcall(fn, ...)
+	if not ok then
+		return nil
+	end
+	return Plain(v)
+end
+
 local POOR_QUALITY = (Enum and Enum.ItemQuality and Enum.ItemQuality.Poor) or 0
 
 --------------------------------------------------------------------------------
@@ -64,24 +101,37 @@ local POOR_QUALITY = (Enum and Enum.ItemQuality and Enum.ItemQuality.Poor) or 0
 --------------------------------------------------------------------------------
 
 local function Repair()
-	if not CanMerchantRepair or not CanMerchantRepair() then
+	if not Ask(CanMerchantRepair) then
 		return
 	end
-	local cost, canRepair = GetRepairAllCost()
-	if not canRepair or not cost or cost <= 0 then
+	local okCost, cost, canRepair = pcall(GetRepairAllCost)
+	if not okCost then
+		return
+	end
+	cost = Num(cost)
+	if not (cost and cost > 0) or IsSecret(canRepair) or not canRepair then
 		return
 	end
 
-	if M.db.guildRepair and CanGuildBankRepair and CanGuildBankRepair() then
-		local guildFunds = GetGuildBankWithdrawMoney and GetGuildBankWithdrawMoney() or -1
-		if guildFunds == -1 or guildFunds >= cost then
+	if M.db.guildRepair and Ask(CanGuildBankRepair) then
+		-- -1: the guild pays whatever it costs (also when the client does not
+		-- say how much may be taken)
+		local guildFunds = -1
+		if GetGuildBankWithdrawMoney then
+			guildFunds = Num(Ask(GetGuildBankWithdrawMoney))
+		end
+		if guildFunds and (guildFunds == -1 or guildFunds >= cost) then
 			RepairAllItems(true)
 			Report("Repaired for %s (guild funds).", CoinText(cost))
 			return
 		end
 	end
 
-	if GetMoney() >= cost then
+	local money = Money()
+	if not money then
+		return   -- (the money unreadable: nothing is spent on a guess)
+	end
+	if money >= cost then
 		RepairAllItems(false)
 		Report("Repaired for %s.", CoinText(cost))
 	else
@@ -94,14 +144,44 @@ end
 --------------------------------------------------------------------------------
 
 local selling = false
-local sellQueue = {}
-local moneyBefore = 0
+-- the junk found, by position: its bag and slot (two lists kept and filled
+-- again, no table per slot), gone through from queuePos on
+local queueBag, queueSlot = {}, {}
+local queueLen, queuePos = 0, 0
+local moneyBefore = nil
 local itemsSold = 0
+local afterSelling = {}   -- fns run once the sale is over (M:AfterSelling)
+
+-- a grey item that sells: every field read secret-safe (the secret test
+-- first); one that cannot be read is left alone
+local function IsJunk(bag, slot)
+	local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+	if not ok or type(info) ~= "table" then
+		return false
+	end
+	local noValue, locked = info.hasNoValue, info.isLocked
+	if IsSecret(noValue) or IsSecret(locked) then
+		return false
+	end
+	return Num(info.quality) == POOR_QUALITY and not noValue and not locked
+end
+
+local function RunAfterSelling()
+	for i = 1, #afterSelling do
+		local fn = afterSelling[i]
+		afterSelling[i] = nil
+		local ok, err = pcall(fn)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
 
 local function FinishSelling()
 	selling = false
-	sellQueue = {}
-	local gained = GetMoney() - moneyBefore
+	queueLen, queuePos = 0, 0
+	local now = Money()
+	local gained = (now and moneyBefore) and (now - moneyBefore) or 0
 	if itemsSold > 0 then
 		if gained > 0 then
 			Report("Sold %d junk item%s for %s.", itemsSold, itemsSold == 1 and "" or "s", CoinText(gained))
@@ -110,13 +190,66 @@ local function FinishSelling()
 		end
 	end
 	itemsSold = 0
+	RunAfterSelling()
+end
+
+function M:IsSelling()
+	return selling
+end
+
+function M:AfterSelling(fn)
+	if type(fn) ~= "function" then
+		return
+	end
+	if not selling then
+		fn()
+		return
+	end
+	for i = 1, #afterSelling do
+		if afterSelling[i] == fn then
+			return
+		end
+	end
+	afterSelling[#afterSelling + 1] = fn
 end
 
 local SELL_BATCH = 6
 local SELL_DELAY = 0.25
 
-local function SellNextBatch()
-	if not selling then
+-- The sale's timers, one shared function each (no closure per sale), with
+-- how many of each are still waiting: a timer left from a sale that ended
+-- early (the shop closed and opened again within the second) finds a later
+-- one asked after it and does nothing, so it never ends the next sale early
+-- nor runs a second batch alongside it
+local finishPending, batchPending = 0, 0
+local bulkSale = false   -- the sale under way is the game's own bulk sale (no batches)
+local SellNextBatch
+
+local function FinishTimer()
+	finishPending = finishPending - 1
+	if finishPending <= 0 then
+		finishPending = 0
+		if selling then
+			FinishSelling()
+		end
+	end
+end
+
+local function BatchTimer()
+	batchPending = batchPending - 1
+	if batchPending <= 0 then
+		batchPending = 0
+		SellNextBatch()
+	end
+end
+
+local function FinishLater(delay)
+	finishPending = finishPending + 1
+	C_Timer.After(delay, FinishTimer)
+end
+
+SellNextBatch = function()
+	if not selling or bulkSale then
 		return
 	end
 	if not MerchantFrame or not MerchantFrame:IsShown() then
@@ -124,64 +257,69 @@ local function SellNextBatch()
 		return
 	end
 	local count = 0
-	while #sellQueue > 0 and count < SELL_BATCH do
-		local entry = table.remove(sellQueue, 1)
-		local info = C_Container.GetContainerItemInfo(entry.bag, entry.slot)
-		if info and info.quality == POOR_QUALITY and not info.hasNoValue and not info.isLocked then
-			C_Container.UseContainerItem(entry.bag, entry.slot)
+	while queuePos < queueLen and count < SELL_BATCH do
+		queuePos = queuePos + 1
+		local bag, slot = queueBag[queuePos], queueSlot[queuePos]
+		if IsJunk(bag, slot) then
+			C_Container.UseContainerItem(bag, slot)
 			itemsSold = itemsSold + 1
 			count = count + 1
 		end
 	end
-	if #sellQueue > 0 then
-		C_Timer.After(SELL_DELAY, SellNextBatch)
+	if queuePos < queueLen then
+		batchPending = batchPending + 1
+		C_Timer.After(SELL_DELAY, BatchTimer)
 	else
 		-- Give the server a moment to deliver the gold before reporting.
-		C_Timer.After(0.5, FinishSelling)
+		FinishLater(0.5)
 	end
 end
 
+-- the junk in the bags into the queue; how many
 local function CollectJunk()
-	local queue = {}
+	queueLen, queuePos = 0, 0
 	local lastBag = (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4)
 	for bag = 0, lastBag do
-		local numSlots = C_Container.GetContainerNumSlots(bag) or 0
+		local numSlots = Num(Ask(C_Container.GetContainerNumSlots, bag)) or 0
 		for slot = 1, numSlots do
-			local info = C_Container.GetContainerItemInfo(bag, slot)
-			if info and info.quality == POOR_QUALITY and not info.hasNoValue and not info.isLocked then
-				queue[#queue + 1] = { bag = bag, slot = slot }
+			if IsJunk(bag, slot) then
+				queueLen = queueLen + 1
+				queueBag[queueLen], queueSlot[queueLen] = bag, slot
 			end
 		end
 	end
-	return queue
+	return queueLen
 end
 
 local function SellJunk()
 	if selling then
 		return
 	end
-	moneyBefore = GetMoney()
+	moneyBefore = Money()
 	itemsSold = 0
 
 	-- Preferred: Blizzard's own bulk sell, which handles everything server side.
-	if C_MerchantFrame and C_MerchantFrame.SellAllJunkItems and C_MerchantFrame.IsSellAllJunkEnabled
-	   and C_MerchantFrame.IsSellAllJunkEnabled() then
-		local numJunk = C_MerchantFrame.GetNumJunkItems and C_MerchantFrame.GetNumJunkItems() or #CollectJunk()
+	if C_MerchantFrame and C_MerchantFrame.SellAllJunkItems and Ask(C_MerchantFrame.IsSellAllJunkEnabled) then
+		local numJunk
+		if C_MerchantFrame.GetNumJunkItems then
+			numJunk = Num(Ask(C_MerchantFrame.GetNumJunkItems)) or 0
+		else
+			numJunk = CollectJunk()
+		end
 		if numJunk > 0 then
-			selling = true
+			selling, bulkSale = true, true
 			itemsSold = numJunk
 			C_MerchantFrame.SellAllJunkItems()
-			C_Timer.After(1.0, FinishSelling)
+			FinishLater(1.0)
 		end
 		return
 	end
 
 	-- Fallback: sell item by item in small batches.
-	sellQueue = CollectJunk()
-	if #sellQueue == 0 then
+	if CollectJunk() == 0 then
 		return
 	end
-	selling = true
+	selling, bulkSale = true, false
 	SellNextBatch()
 end
 

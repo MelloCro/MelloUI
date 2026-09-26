@@ -20,7 +20,8 @@
 -- are fitted from NamePlateSetupOptions, never from the frames.
 -- Name Shade (0.13.7): a soft dark band behind the name (MelloUI.Shade), as
 -- long as the name itself, or on "Whole plate" also a shadow partner under
--- each piece (Kit:Shadow).
+-- each piece (Kit:Shadow) while the UI Shade's Nameplates area is on
+-- (0.14.0: Kit:ShadeOn("nameplates"), Dynamic UI Modification).
 -- Covers the group "nameplates". /npdump [frames|reps] (the target's plate).
 --------------------------------------------------------------------------------
 
@@ -44,7 +45,7 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 			{ value = "name", label = "Name" },
 			{ value = "plate", label = "Whole plate" },
 			{ value = "off", label = "Off" },
-		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar. Off: no shade." },
+		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar; this needs the UI Shade on (General tab) and its Nameplates switch in Dynamic UI Modification. Off: no shade." },
 		{ type = "slider", key = "shadeStrength", name = "Shade Strength", min = 0.3, max = 0.9, step = 0.05, percent = true,
 		  desc = "How dark the shade behind the names (and the plates) is." },
 	},
@@ -339,24 +340,13 @@ local OnNameSetShown = Perf.Shared("SetShown on a nameplate's name (its shade)",
 	NameShown(name, Secret(shown) or (shown and true or false))
 end)
 
--- The measure's font as the name's: its font object, then its face, size
--- and flags and its text scale (the game sets the name's height per plate
--- size). Values are handed on as they come; a secret or refused one leaves
--- the font object's
-local function CopyFont(name, measure)
-	local okO, object = pcall(name.GetFontObject, name)
-	if okO and not Secret(object) and type(object) == "table" then
-		pcall(measure.SetFontObject, measure, object)
-	end
-	local okF, face, size, flags = pcall(name.GetFont, name)
-	if okF and not Secret(face) and type(face) == "string" then
-		pcall(measure.SetFont, measure, face, size, flags)
-	end
-	local okS, scale = pcall(name.GetTextScale, name)
-	if okS and not Secret(scale) and type(scale) == "number" then
-		pcall(measure.SetTextScale, measure, scale)
-	end
-end
+-- The name's measure is the shared one (MelloUI.Shade:Measure, Core/Shade.lua:
+-- the centre texts' too; 0.14.0): an unseen font string in the name's font
+-- (its font object, face, size, flags and text scale, each handed on as it
+-- comes; a secret or refused one left as it was), again after each of the
+-- game's layouts (FitShade) and, one frame after a new font (Font Style, the
+-- faces), for every measure at once (Shade's one 'fonts' listener)
+local Shade = MelloUI.Shade
 
 -- the band on the measure (true: it holds the name's text) or on the name's
 -- whole span (false: it refused the name); re-anchored on a change only
@@ -380,52 +370,16 @@ local OnNameText = Perf.Shared("SetText on a nameplate's name (its shade's measu
 	local uf = name.melloShadeOf
 	local measure = uf and uf.melloNameMeasure
 	if measure then
-		HangBand(uf, (pcall(measure.SetText, measure, text)))
+		HangBand(uf, Shade:MeasureText(measure, text))
 	end
 end)
 local OnNameFormatted = Perf.Shared("SetFormattedText on a nameplate's name (its shade's measure)", function(name, ...)
 	local uf = name.melloShadeOf
 	local measure = uf and uf.melloNameMeasure
 	if measure then
-		HangBand(uf, (pcall(measure.SetFormattedText, measure, ...)))
+		HangBand(uf, Shade:MeasureFormatted(measure, ...))
 	end
 end)
-
--- a new font (Font Style, the faces): each measure takes its name's again
--- (one listener, taken with the first measure)
-local fontsHeard = false
-local function RefontAll()
-	if not skin then
-		return
-	end
-	for _, uf in ipairs(skin.plates) do
-		local measure = uf.melloNameMeasure
-		if measure then
-			CopyFont(uf.name, measure)
-		end
-	end
-end
-
--- the name's measure: an unseen font string with no width of its own, on
--- one point at the name's centre (the name is centred on the span while the
--- band shows), sized by the engine to the text (none where the name's frame
--- makes no text: the band then lies on the span)
-local function MakeMeasure(uf, host, name)
-	if type(host.CreateFontString) ~= "function" then
-		return nil
-	end
-	local measure = host:CreateFontString(nil, "BACKGROUND")
-	measure:SetAlpha(0)
-	measure:SetWordWrap(false)
-	measure:SetPoint("CENTER", name, "CENTER", 0, 0)
-	CopyFont(name, measure)
-	uf.melloNameMeasure = measure
-	if not fontsHeard then
-		fontsHeard = true
-		MelloUI:On("fonts", RefontAll, "Nameplate name shade")
-	end
-	return measure
-end
 
 local function MakeBand(uf)
 	local name = uf.name
@@ -438,14 +392,19 @@ local function MakeBand(uf)
 		host = uf
 	end
 	BAND.alpha = ShadeStrength()
-	local band = MelloUI.Shade:Band(host, BAND)
+	local band = Shade:Band(host, BAND)
 	if not band then
 		return nil
 	end
 	uf.melloNameShade = band
-	local measure = MakeMeasure(uf, host, name)
+	-- the name's measure: no width of its own, on one point at the name's
+	-- centre (the name is centred on the span while the band shows), sized by
+	-- the engine to the text (none where the name's frame makes no text: the
+	-- band then lies on the span)
+	local measure = Shade:Measure(host, name, "CENTER")
+	uf.melloNameMeasure = measure
 	local okT, text = pcall(name.GetText, name)
-	HangBand(uf, measure and okT and (pcall(measure.SetText, measure, text)) or false)
+	HangBand(uf, measure and okT and Shade:MeasureText(measure, text) or false)
 	local okS, shown = pcall(name.IsShown, name)
 	name.melloNameShown = not okS or Secret(shown) or (shown and true or false)
 	name.melloShadeOf = uf
@@ -476,7 +435,7 @@ local function Lacks(uf, mode)
 	if uf.name and not uf.melloNameShade then
 		return true
 	end
-	if mode ~= "plate" then
+	if mode ~= "plate" or not Kit:ShadeOn("nameplates") then
 		return false
 	end
 	local capL, mid, capR, orb = PlatePieces(uf)
@@ -548,7 +507,8 @@ local function ShadePlate(uf, strength)
 		MakeBand(uf)
 	end
 	SyncBand(uf)
-	local plate = mode == "plate"
+	-- the partners: Whole plate, and the UI Shade's Nameplates area on
+	local plate = mode == "plate" and Kit:ShadeOn("nameplates")
 	local capL, mid, capR, orb = PlatePieces(uf)
 	ShadePiece(capL, plate, strength, make)
 	ShadePiece(mid, plate, strength, make)
@@ -589,7 +549,7 @@ local function FitShade(uf)
 	end
 	local measure = uf.melloNameMeasure
 	if measure then
-		CopyFont(uf.name, measure)
+		Shade:MeasureFont(measure)
 	end
 	SyncBand(uf)
 end
@@ -761,11 +721,22 @@ local function SkinAll()
 	end
 end
 
+-- the UI Shade's Nameplates area (or UI Shade itself) switched: the bus's
+-- 'shade' (Modules/KitShade.lua). The Whole plate partners follow it; the
+-- name's band and the strength stay the Name Shade's own
+local function OnShade(area)
+	if area == "nameplates" and active then
+		ShadeAll(nil)
+	end
+end
+
 local function Build()
 	if skin then
 		return
 	end
 	skin = { reps = {}, followers = {}, plates = {} }
+	-- (taken with the first dressing, once)
+	MelloUI:On("shade", OnShade, "Nameplate Kit shade")
 	SkinAll()
 	if NamePlateDriverFrame then
 		hooksecurefunc(NamePlateDriverFrame, "OnNamePlateAdded", function(driver, unit)

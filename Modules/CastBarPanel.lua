@@ -15,7 +15,8 @@
 --       the game's width (208 / 150). The spell icon moves out past the cap.
 --   T1  lists/header on the 12 px under the bar (the text box's lower part).
 -- Rules: docs/WINDOW-RULES.md 2d, docs/plans/hud_kit_plan.md section 1.
--- Covers the Dark Mode group "castbar" while on. /cbdump [player|pet|target|
+-- Covers the Dark Mode group "castbar" while on; the UI shade's Cast Bars area
+-- (0.14.0: the bracket's and plate's shadows, from the bar's first show). /cbdump [player|pet|target|
 -- focus|overlay] [frames|reps] prints a bar's art into the copy window.
 --------------------------------------------------------------------------------
 
@@ -139,6 +140,24 @@ local function Narrow(bar, rep, known)
 	end)
 end
 
+-- The shade (0.14.0: the whole UI's soft shade, Modules/KitShade.lua, the
+-- Cast Bars area): the bracket and the text box's plate stand against the
+-- world, their shadows on the bar's shade frame one level under the bar
+-- (under its fill, trough and icon). Made the first time the bar shows (a bar
+-- nobody has cast with adds nothing), once; they follow the pieces' Enable /
+-- Disable and show / hide from then on.
+local function Shade(bar)
+	local list = skin.shade[bar]
+	if not list or list.made then
+		return
+	end
+	list.made = true
+	local el = Kit:ShadeElement(bar, "castbars")
+	for i = 1, #list do
+		el:Add(list[i])
+	end
+end
+
 local function Widen(bar)
 	local saved = bar.melloNarrow
 	if not saved then
@@ -174,7 +193,10 @@ local function SkinCastBar(bar, known)
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub,
 		fitHeight = known and known.h, fitWidth = known and known.w })
 	bar.melloRep = rep or false
+	local shade = {}   -- the outline's pieces (Shade: on the bar's first show)
+	skin.shade[bar] = shade
 	if rep then
+		shade[#shade + 1] = rep
 		local textures = MelloUI:GetModule("BarTextures")
 		rep.onEnable = function()
 			bar.melloKitBracket = true
@@ -243,12 +265,17 @@ local function SkinCastBar(bar, known)
 		local plate = Replace(bar.TextBorder, { as = "ui-castingbar-textbox", rect = sizer,
 			fitHeight = known and known.box, fitWidth = known and known.w })
 		Follow(plate, bar.TextBorder)
+		if plate then
+			shade[#shade + 1] = plate
+		end
 	end
 	-- the bar is hidden at load and its regions have no rect until it first
-	-- shows: fit this bar's pieces again whenever it shows
+	-- shows: fit this bar's pieces again whenever it shows (its shade made
+	-- the first time)
 	local last = #skin.reps
 	Perf.HookScript(bar, "OnShow", function()
 		if active then
+			Shade(bar)
 			Kit:WhenOutOfCombat(function()
 				for i = first, last do
 					local piece = skin.reps[i]
@@ -263,7 +290,7 @@ end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, followers = {}, bars = {} }
+		skin = { reps = {}, followers = {}, bars = {}, shade = {} }
 	end
 	for key, getter in pairs(BARS) do
 		SkinCastBar(getter(), KNOWN[key])
@@ -281,6 +308,12 @@ local function Activate()
 	end
 	for _, entry in ipairs(skin.followers) do
 		entry.rep:SetShown(entry.region:IsShown())
+	end
+	-- a bar already up (a cast going on as the skin comes on): its shade now
+	for bar in pairs(skin.shade) do
+		if bar:IsVisible() then
+			Shade(bar)
+		end
 	end
 	Kit:Cover("castbar")
 end

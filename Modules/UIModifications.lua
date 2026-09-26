@@ -83,10 +83,11 @@ local Apply, RestoreAreas, NothingWanted, TweakWanted
 -- etc, we need to reconstruct it a bit and simplify the approach"): eight
 -- tabs of switches and sliders. The look (borders, the palette and the Kit
 -- Colours, every background and backdrop, parchment, the UI shade, the
--- minimap's shape) is only in Dynamic UI Modification; its keys stay in
--- these settings. A feature's rows sit under its switch, dimmed while it is
--- off; a sub-option under the switch it needs (`parent` in the modules'
--- options).
+-- minimap's shape) is chosen in Dynamic UI Modification; its keys stay in
+-- these settings. The UI shade's main switch and strength are on the
+-- General tab as well (a 0.14.0 build decision). A feature's rows sit under
+-- its switch, dimmed while it is off; a sub-option under the switch it
+-- needs (`parent` in the modules' options).
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false, parchment_dialog = false,
@@ -178,6 +179,21 @@ Add({ type = "button", name = "Dynamic UI Modification", hint = "borders, colour
 			MelloUI:StartDynamicUI()
 		end
 	end })
+-- the UI shade's main switch and its strength (0.14.0, Modules/KitShade.lua;
+-- a 0.14.0 build decision, so the main switch is findable here): the same
+-- two settings as Dynamic UI Modification's Shade rows, where each area's
+-- own switch stays. Applied from the bus's 'setting' (KitShade)
+do
+	local Kit = MelloUI.Kit
+	local shade = Kit and Kit.shadeSettings
+	if type(shade) == "table" and type(shade.master) == "string" and type(shade.strength) == "string" then
+		Add({ type = "toggle", key = shade.master, name = "UI Shade",
+			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand off the world: windows, action and cast bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates on Whole plate. Each area has its own switch in Dynamic UI Modification." })
+		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master,
+			min = shade.min, max = shade.max, step = shade.step, percent = true,
+			desc = "How dark the shade round the kit's outlines is. The nameplates use their own strength (HUD tab)." })
+	end
+end
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
 	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." })
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion",
@@ -2376,10 +2392,7 @@ function Tint.KitColours()
 	if not (Kit and Kit.ApplyBorder and Kit.BorderValue) then
 		return
 	end
-	local stored = M.db and M.db.palette
-	if MelloUI.Palettes[stored] == nil or stored == "order" then
-		stored = "ember"
-	end
+	local stored = MelloUI:KnownPalette(M.db and M.db.palette)
 	if stored ~= MelloUI:PaletteId() then
 		MelloUI:SetPalette(stored)   -- (its walk reads the new Kit Colours as well)
 		return

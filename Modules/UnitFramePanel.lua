@@ -20,6 +20,10 @@
 -- silver instead. Bar Textures drops its shaped mask on a bracketed bar
 -- (`melloKitBracket`) so the flat fill spans the rect under the rails.
 -- Covers the Dark Mode group "unitframes" while on (Kit:Cover).
+-- The UI shade (0.14.0, Modules/KitShade.lua, its area "unitframes"): each
+-- unit frame is one element whose shade lies under the whole frame (below).
+-- M:ReminderAnchor() -> region, side, reach, far | nil: where the Reminder
+-- widget (Core/Reminders.lua) hangs, beside the player's portrait ring (below).
 -- /ufdump [player|target|focus|pet|tot|party|party1] [frames|reps] prints a frame's
 -- art into the copy window.
 --------------------------------------------------------------------------------
@@ -55,6 +59,240 @@ local FRAMES = {
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
+
+--------------------------------------------------------------------------------
+-- The UI shade (0.14.0; the one shade system, Modules/KitShade.lua, its area
+-- "unitframes"; user, 2026-09-26: on by default, outline pieces only). Each
+-- unit frame is ONE element -- the player, the pet, the target, the focus,
+-- the target of target, each party member with its pet -- drawn by a
+-- shade frame one level under the frame the unit's art stands on: every
+-- partner lies under the whole frame (a health bar's under the name band and
+-- the ring, which are regions of frames below the bar's), over the world.
+-- The shade frame is never anchored on an Edit Mode system: the player's,
+-- target's and focus's element is rooted on their container (the frame
+-- under their content, one level above the unit's button), the party
+-- backdrop's on the backdrop; the pet frame (a system with no container,
+-- its art on its own button; Edit Mode may move it off the player frame,
+-- to UIParent) gets a shade frame of its own (KitShade's opts.host), its
+-- child one level under it, anchored on its picture. The target of target
+-- stands five levels over its target frame (the game's) and over that
+-- frame's bottom edge, under its ring: its shade frame sits at the target
+-- frame's own level, so its shade never lies on the target's art. Only the
+-- pieces on the frame's outline get one: the portrait ring, the name band's
+-- plate, the bars' brackets (a bracket running capless into the ring fades
+-- out softly on that side: the left on the player's, the right on the
+-- mirrored target's), the level / PvP orbs, and the party backdrop's rail.
+-- Never the trough, the ring's cover over the bars' ends (a crop) or a faded
+-- picture. The party members lie on that backdrop's stone while Edit Mode
+-- shows it: their own shade is put away then (never a dark halo on a
+-- surface). Each unit's shade is made on its frame's FIRST SHOW, never
+-- before (nothing built at login for a frame nobody sees: a focus never
+-- set, the party pool's hidden members -- the game keeps four --, the
+-- backdrop Edit Mode shows only when asked); its parts wait in order.
+--------------------------------------------------------------------------------
+local SHADE_AREA = "unitframes"
+local DUE_KEY = "Unit frames: shade on first show"   -- (Kit:WhenOutOfCombat's key)
+-- a square piece drawn at its rect's size, not at its kit scale (the ring
+-- round its portrait, the orb on its circle): KitShade reads its shade's
+-- scale from the width it is drawn at (one table for every such part)
+local DRAWN = { drawn = true }
+
+-- the unit frame's element (nil where the shade system is not loaded);
+-- opts: KitShade's (read once, on the element's first ask)
+local function ShadeOf(root, opts)
+	if not (root and Kit.ShadeElement) then
+		return nil
+	end
+	local ok, el = pcall(Kit.ShadeElement, Kit, root, SHADE_AREA, opts)
+	return ok and el or nil
+end
+
+-- the pet frame's element: its own shade frame, a child of the pet's button
+-- one level under it (hidden, scaled and moved with it wherever Edit Mode
+-- puts it), anchored on its picture -- never on the pet frame itself (made
+-- once, out of combat: MakeUnit's)
+local function PetShade(pf, picture)
+	if not (Kit.ShadeElement and pf and picture) then
+		return nil
+	end
+	local host = CreateFrame("Frame", nil, pf)
+	host:SetFrameLevel(math.max(pf:GetFrameLevel() - 1, 0))
+	host:EnableMouse(false)
+	host:SetAllPoints(picture)
+	host.ignoreInLayout = true
+	host.kitShadeHost = true
+	return ShadeOf(pf, { host = host })
+end
+
+-- a drawn piece re-sized (a rect laid out after the piece was made, its
+-- sizer): its shade reaches as far at the new size -- from the size set, no
+-- read; nothing when the size is the same (Kit:ShadowFit). KitShade's
+-- DrawnScale's measure (the piece's painted width, Kit:Size)
+local Drawn_OnSetSize = Perf.Shared("SetSize on a unit frame's ring or orb: its shade", function(tex, w)
+	w = Num(w)
+	local pw = w and w > 0 and tex.kitShadow and tex.kitName and Kit:Size(tex.kitName, 1)
+	if pw and pw > 0 then
+		Kit:ShadowFit(tex, w / pw)
+	end
+end)
+
+-- one outline part added to a made element
+local function AddPart(el, rep, drawn)
+	if not el then
+		return
+	end
+	if drawn then
+		local tex = rawget(rep, "tex")
+		if tex and not tex.melloShadeSized then
+			tex.melloShadeSized = true
+			hooksecurefunc(tex, "SetSize", Drawn_OnSetSize)
+		end
+		el:Add(rep, DRAWN)
+	else
+		el:Add(rep)
+	end
+end
+
+-- A unit: its shade's element and parts, made on its frame's first show.
+--   { watch = the frame whose first show makes it, root = the element's
+--     root, picture = (the pet) its own shade frame's anchor, party = (a
+--     party member) its shade frame put away with the backdrop, under = (a
+--     target of target) the frame whose level its shade frame takes, el =
+--     the element once made, made, due, n, [2i - 1] = rep, [2i] = drawn }
+local function Unit(watch, root)
+	if not (watch and root) then
+		return nil
+	end
+	return { watch = watch, root = root, n = 0 }
+end
+
+-- one outline part of the unit: a rep (its strip, skin or texture);
+-- `drawn` for a square piece fitted to its rect. Kept until the unit is made
+local function Shade(u, rep, drawn)
+	if not (u and rep) then
+		return
+	end
+	if u.made then
+		AddPart(u.el, rep, drawn)
+		return
+	end
+	local n = u.n + 2
+	u[n - 1], u[n], u.n = rep, drawn and true or false, n
+end
+
+-- The party backdrop (Edit Mode's "Show Party Frame Background") shown: the
+-- members lie on its stone, so their shade frames are hidden and the
+-- backdrop's rail carries the group's shade; hidden: each member's own.
+-- Shade frames are ours (never protected): shown and hidden in a fight too.
+local function PartyShadeSync()
+	local bg = PartyFrame and PartyFrame.Background
+	if not (skin and bg) then
+		return
+	end
+	-- (a secret or refused answer: the backdrop counted as hidden, each
+	-- member keeping its shade)
+	local ok, shown = pcall(bg.IsShown, bg)
+	local own = not (ok and not Secret(shown) and shown)
+	for _, u in pairs(skin.party) do
+		local el = u.el
+		local host = el and el.host
+		if host then
+			host:SetShown(own)
+		end
+	end
+end
+
+-- the unit's element made and its parts added, in order (out of combat: a
+-- shade frame is a unit frame's child)
+local function MakeUnit(u)
+	if u.made then
+		return
+	end
+	u.made = true
+	local el
+	if u.picture then
+		el = PetShade(u.root, u.picture)
+	else
+		local opts = nil
+		local under = u.under
+		if under then
+			local okU, lu = pcall(under.GetFrameLevel, under)
+			local okR, lr = pcall(u.root.GetFrameLevel, u.root)
+			lu, lr = okU and Num(lu), okR and Num(lr)
+			if lu and lr and lu - lr < -1 then
+				opts = { level = lu - lr }
+			end
+		end
+		el = ShadeOf(u.root, opts)
+	end
+	u.el = el
+	-- (a member's shade frame first, so the backdrop's state reaches it
+	-- before its parts are made)
+	if el and u.party then
+		el:Host()
+	end
+	for i = 1, u.n, 2 do
+		AddPart(el, u[i], u[i + 1])
+		u[i], u[i + 1] = nil, nil
+	end
+	u.n = 0
+	if u.party then
+		PartyShadeSync()
+	end
+end
+
+-- the units shown for the first time, made (out of combat)
+local function MakeDue()
+	local list = skin and skin.due
+	if not list then
+		return
+	end
+	-- (each on its own: one unit's error never strands the rest)
+	for i = 1, #list do
+		local u = list[i]
+		list[i] = nil
+		local ok, err = pcall(MakeUnit, u)
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+end
+
+local function Due(u)
+	if u.made or u.due then
+		return
+	end
+	u.due = true
+	local list = skin.due
+	list[#list + 1] = u
+	Kit:WhenOutOfCombat(MakeDue, DUE_KEY)
+end
+
+-- a watched frame's show: its unit made the first time (after it, a lookup)
+local Unit_OnShow = Perf.Shared("OnShow on a unit frame: its shade, the first time", function(frame)
+	local u = skin and skin.units[frame]
+	if u then
+		skin.units[frame] = nil
+		Due(u)
+	end
+end, "script")
+
+-- the unit made now when its frame is seen (a secret or refused answer
+-- too), else on its first show
+local function Watch(u)
+	if not u then
+		return
+	end
+	local watch = u.watch
+	local ok, seen = pcall(watch.IsVisible, watch)
+	if ok and not Secret(seen) and not seen then
+		skin.units[watch] = u
+		Perf.HookScript(watch, "OnShow", Unit_OnShow)
+	else
+		Due(u)
+	end
+end
 
 local function Replace(region, opts)
 	if not region then
@@ -263,12 +501,9 @@ local TUCK = 2
 local tucked = {}          -- bars with saved anchors (re-anchored at least once)
 local tuckable = {}        -- every bar registered (a hidden frame's bars get their first tuck later)
 
-local function TuckBar(bar, ring, mirrored)
-	local tex = ring and ring.tex
-	if not (bar and tex) then
-		return
-	end
-	local ok = pcall(function()
+-- (one function for every bar, called protected: nothing made per call)
+local function TuckBarNow(bar, tex, mirrored)
+	do
 		local rl, rb, rw, rh = tex:GetRect()
 		local piece = tex.kitPiece
 		if not (rl and piece and piece.box) then
@@ -318,7 +553,15 @@ local function TuckBar(bar, ring, mirrored)
 		bar:ClearAllPoints()
 		bar:SetPoint("TOPLEFT", rel, "TOPLEFT", left - pl, -(top - (b + h)))
 		bar:SetPoint("BOTTOMRIGHT", rel, "TOPLEFT", right - pl, -(top - b))
-	end)
+	end
+end
+
+local function TuckBar(bar, ring, mirrored)
+	local tex = ring and ring.tex
+	if not (bar and tex) then
+		return
+	end
+	local ok = pcall(TuckBarNow, bar, tex, mirrored)
 	return ok
 end
 
@@ -389,53 +632,55 @@ local function RingCover(ring, bars, mirrored, container)
 	cover.kitPiece = true
 	Kit:Apply(cover, tex.kitName)
 	cover:SetAllPoints(holder)
+	-- (laid protected: one function per cover, nothing made per call)
+	local function Lay()
+		local level = 0
+		for _, bar in ipairs(bars) do
+			level = math.max(level, bar:GetFrameLevel())
+		end
+		holder:SetFrameLevel(level + 1)
+		local rl, rb, rw, rh = tex:GetRect()
+		local top, bottom, edge
+		for _, bar in ipairs(bars) do
+			local l, b, w, h = bar:GetRect()
+			top = math.max(top or -math.huge, b + h)
+			bottom = math.min(bottom or math.huge, b)
+			local e = mirrored and (l + w) or l
+			if edge == nil then
+				edge = e
+			else
+				edge = mirrored and math.max(edge, e) or math.min(edge, e)
+			end
+		end
+		local cl, cr
+		if mirrored then
+			cl, cr = rl, math.min(edge, rl + rw)
+		else
+			cl, cr = math.max(edge, rl), rl + rw
+		end
+		local ct, cb = math.min(top, rb + rh), math.max(bottom, rb)
+		if cr <= cl or ct <= cb then
+			holder:Hide()
+			return
+		end
+		holder:ClearAllPoints()
+		holder:SetPoint("TOPLEFT", tex, "TOPLEFT", cl - rl, -(rb + rh - ct))
+		holder:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", -(rl + rw - cr), cb - rb)
+		local piece = tex.kitPiece
+		local u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
+		local fx0, fx1 = (cl - rl) / rw, (cr - rl) / rw
+		local fy0, fy1 = (rb + rh - ct) / rh, (rb + rh - cb) / rh
+		cover:SetTexCoord(u1 + (u2 - u1) * fx0, u1 + (u2 - u1) * fx1, v1 + (v2 - v1) * fy0, v1 + (v2 - v1) * fy1)
+		local r, g, b = tex:GetVertexColor()
+		cover:SetVertexColor(r or 1, g or 1, b or 1)
+		holder:Show()
+	end
 	local function Refit()
 		if not (active and tex:IsShown()) then
 			holder:Hide()
 			return
 		end
-		local ok = pcall(function()
-			local level = 0
-			for _, bar in ipairs(bars) do
-				level = math.max(level, bar:GetFrameLevel())
-			end
-			holder:SetFrameLevel(level + 1)
-			local rl, rb, rw, rh = tex:GetRect()
-			local top, bottom, edge
-			for _, bar in ipairs(bars) do
-				local l, b, w, h = bar:GetRect()
-				top = math.max(top or -math.huge, b + h)
-				bottom = math.min(bottom or math.huge, b)
-				local e = mirrored and (l + w) or l
-				if edge == nil then
-					edge = e
-				else
-					edge = mirrored and math.max(edge, e) or math.min(edge, e)
-				end
-			end
-			local cl, cr
-			if mirrored then
-				cl, cr = rl, math.min(edge, rl + rw)
-			else
-				cl, cr = math.max(edge, rl), rl + rw
-			end
-			local ct, cb = math.min(top, rb + rh), math.max(bottom, rb)
-			if cr <= cl or ct <= cb then
-				holder:Hide()
-				return
-			end
-			holder:ClearAllPoints()
-			holder:SetPoint("TOPLEFT", tex, "TOPLEFT", cl - rl, -(rb + rh - ct))
-			holder:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", -(rl + rw - cr), cb - rb)
-			local piece = tex.kitPiece
-			local u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
-			local fx0, fx1 = (cl - rl) / rw, (cr - rl) / rw
-			local fy0, fy1 = (rb + rh - ct) / rh, (rb + rh - cb) / rh
-			cover:SetTexCoord(u1 + (u2 - u1) * fx0, u1 + (u2 - u1) * fx1, v1 + (v2 - v1) * fy0, v1 + (v2 - v1) * fy1)
-			local r, g, b = tex:GetVertexColor()
-			cover:SetVertexColor(r or 1, g or 1, b or 1)
-			holder:Show()
-		end)
+		local ok = pcall(Lay)
 		if not ok then
 			holder:Hide()
 		end
@@ -445,12 +690,13 @@ local function RingCover(ring, bars, mirrored, container)
 			Kit:WhenOutOfCombat(Refit)
 		end)
 	end
+	local function Paint()
+		local r, g, b = tex:GetVertexColor()
+		cover:SetVertexColor(r or 1, g or 1, b or 1)
+	end
 	hooksecurefunc(tex, "SetVertexColor", function()
 		if holder:IsShown() then
-			pcall(function()
-				local r, g, b = tex:GetVertexColor()
-				cover:SetVertexColor(r or 1, g or 1, b or 1)
-			end)
+			pcall(Paint)
 		end
 	end)
 	ring.cover = { holder = holder, Refit = Refit }
@@ -512,12 +758,14 @@ local function SkinBand(picture, rect)
 end
 
 -- The level / PvP circle (L1): the orb under the frame's own text, following
--- the game's show / hide.
+-- the game's show / hide. Returns the rep.
 local function SkinCircle(circle)
 	if not circle then
-		return
+		return nil
 	end
-	Follow(Replace(circle, { as = "UI-HUD-UnitFrame-SmallCircle" }), circle)
+	local rep = Replace(circle, { as = "UI-HUD-UnitFrame-SmallCircle" })
+	Follow(rep, circle)
+	return rep
 end
 
 -- The player's name band rect: the target's reaction strip mirrored (same
@@ -568,19 +816,23 @@ local function SkinPlayer()
 		{ main.StatusTexture, "UI-HUD-UnitFrame-Player-PortraitOn-Status" },
 		{ contextual and contextual.PlayerPortraitCornerIcon, "UI-HUD-UnitFrame-Player-PortraitOn-CornerEmbellishment" },
 	})
+	-- (its shade: the outline's parts, under the whole frame)
+	local u = Unit(pf, container)
 	-- the band before the ring: both in the picture's layer, the ring over it
 	local band = PlayerBandRect(container)
-	SkinBand(picture, band)
+	Shade(u, SkinBand(picture, band))
 	CenterName(PlayerName, band)
 	skin.playerRing = SkinRing(picture, container.PlayerPortrait, container.PlayerPortraitMask)
+	Shade(u, skin.playerRing, true)
 	local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar
-	SkinBar(health, health, picture, false, true)
+	Shade(u, SkinBar(health, health, picture, false, true))
 	local mana = main.ManaBarArea and main.ManaBarArea.ManaBar
-	SkinBar(mana, mana, picture, false)
+	Shade(u, SkinBar(mana, mana, picture, false))
 	TuckBars(skin.playerRing, { health, mana }, false)
 	RingCover(skin.playerRing, { health, mana }, false, container)
-	SkinCircle(main.LevelBackgroundCircle)
-	SkinCircle(main.PvpBackgroundCircle)
+	Shade(u, SkinCircle(main.LevelBackgroundCircle), true)
+	Shade(u, SkinCircle(main.PvpBackgroundCircle), true)
+	Watch(u)
 end
 
 -- A target-style frame (TargetFrame, FocusFrame): mirrored, the reaction
@@ -601,19 +853,24 @@ local function SkinTargetLike(frame)
 		{ container.Flash, "UI-HUD-UnitFrame-Target-PortraitOn-InCombat" },
 		{ container.BossPortraitFrameTexture, "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Gold" },
 	})
+	-- (its shade: the outline's parts, under the whole frame; the brackets'
+	-- soft ends on the right, the ring's side)
+	local u = Unit(frame, container)
 	if main.ReputationColor then
 		Replace(main.ReputationColor, { as = "UI-HUD-UnitFrame-Target-PortraitOn-Type" })
-		SkinBand(picture, main.ReputationColor)
+		Shade(u, SkinBand(picture, main.ReputationColor))
 		CenterName(main.Name, main.ReputationColor)
 	end
 	local ring = SkinRing(picture, container.Portrait)   -- its mask follows the portrait's anchors
+	Shade(u, ring, true)
 	local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar
-	SkinBar(health, health, picture, true, true)
-	SkinBar(main.ManaBar, main.ManaBar, picture, true)
+	Shade(u, SkinBar(health, health, picture, true, true))
+	Shade(u, SkinBar(main.ManaBar, main.ManaBar, picture, true))
 	TuckBars(ring, { health, main.ManaBar }, true)
 	RingCover(ring, { health, main.ManaBar }, true, container)
-	SkinCircle(main.LevelBackgroundCircle)
-	SkinCircle(contextual and contextual.PvpBackgroundCircle)
+	Shade(u, SkinCircle(main.LevelBackgroundCircle), true)
+	Shade(u, SkinCircle(contextual and contextual.PvpBackgroundCircle), true)
+	Watch(u)
 	skin.targets[frame] = { ring = ring, boss = container.BossPortraitFrameTexture }
 	-- the boss ring's atlas (gold / silver) tints the kit ring; plain otherwise
 	local function Tint()
@@ -634,29 +891,32 @@ local function SkinTargetLike(frame)
 	-- the game re-anchors the health container and re-atlases the art on
 	-- every target change (CheckClassification): re-tint, re-fit the
 	-- brackets and re-lay the ring cover (the bars' positions moved)
+	-- (each made once: nothing made per target change)
+	local function Reclassify()
+		Tint()
+		RetuckAll()
+		for _, rep in ipairs(skin.reps) do
+			if rep.kind == "bar" and rep.object:GetParent() and rep.rect and rep.object:GetParent():IsShown() then
+				rep:Refit()
+			end
+		end
+		for _, cover in ipairs(skin.covers) do
+			cover.Refit()
+		end
+	end
+	local function Relay()
+		RetuckAll()
+		for _, cover in ipairs(skin.covers) do
+			cover.Refit()
+		end
+	end
 	if frame.CheckClassification then
 		hooksecurefunc(frame, "CheckClassification", function()
-			Kit:WhenOutOfCombat(function()
-				Tint()
-				RetuckAll()
-				for _, rep in ipairs(skin.reps) do
-					if rep.kind == "bar" and rep.object:GetParent() and rep.rect and rep.object:GetParent():IsShown() then
-						rep:Refit()
-					end
-				end
-				for _, cover in ipairs(skin.covers) do
-					cover.Refit()
-				end
-			end)
+			Kit:WhenOutOfCombat(Reclassify)
 		end)
 	end
 	Perf.HookScript(frame, "OnShow", function()
-		Kit:WhenOutOfCombat(function()
-			RetuckAll()
-			for _, cover in ipairs(skin.covers) do
-				cover.Refit()
-			end
-		end)
+		Kit:WhenOutOfCombat(Relay)
 	end)
 	Tint()
 	skin.targets[frame].tint = Tint
@@ -667,11 +927,16 @@ local function SkinTargetLike(frame)
 		FadeArt({
 			{ tot.FrameTexture, "UI-HUD-UnitFrame-TargetofTarget-PortraitOn" },
 		})
+		-- (its shade frame at the target frame's level: under that whole frame)
+		local totU = Unit(tot, tot)
+		totU.under = frame
 		local totRing = SkinRing(tot.FrameTexture, tot.Portrait)
-		SkinBar(tot.HealthBar, tot.HealthBar, tot.FrameTexture, false, true)
-		SkinBar(tot.ManaBar, tot.ManaBar, tot.FrameTexture, false)
+		Shade(totU, totRing, true)
+		Shade(totU, SkinBar(tot.HealthBar, tot.HealthBar, tot.FrameTexture, false, true))
+		Shade(totU, SkinBar(tot.ManaBar, tot.ManaBar, tot.FrameTexture, false))
 		TuckBars(totRing, { tot.HealthBar, tot.ManaBar }, false)
 		RingCover(totRing, { tot.HealthBar, tot.ManaBar }, false, tot)
+		Watch(totU)
 	end
 end
 
@@ -686,11 +951,16 @@ local function SkinPet()
 		{ PetFrameFlash, "UI-HUD-UnitFrame-TargetofTarget-PortraitOn-InCombat" },
 		{ PetAttackModeTexture, "UI-HUD-UnitFrame-TargetofTarget-PortraitOn-Status" },
 	})
+	-- (its shade: a shade frame of its own, anchored on its picture)
+	local u = Unit(pf, pf)
+	u.picture = PetFrameTexture
 	local petRing = SkinRing(PetFrameTexture, pf.Portrait)
-	SkinBar(PetFrameHealthBar, PetFrameHealthBar, PetFrameTexture, false, true)
-	SkinBar(PetFrameManaBar, PetFrameManaBar, PetFrameTexture, false)
+	Shade(u, petRing, true)
+	Shade(u, SkinBar(PetFrameHealthBar, PetFrameHealthBar, PetFrameTexture, false, true))
+	Shade(u, SkinBar(PetFrameManaBar, PetFrameManaBar, PetFrameTexture, false))
 	TuckBars(petRing, { PetFrameHealthBar, PetFrameManaBar }, false)
 	RingCover(petRing, { PetFrameHealthBar, PetFrameManaBar }, false, pf)
+	Watch(u)
 end
 
 --------------------------------------------------------------------------------
@@ -760,6 +1030,29 @@ local function NameBandRect(frame, name, health)
 	return f
 end
 
+-- the party backdrop shown or hidden: the members' shade frames put away or
+-- back (PartyShadeSync, above)
+local PartyBackdrop_OnShowHide = Perf.Shared("OnShow / OnHide on the party backdrop: the members' shade", function()
+	PartyShadeSync()
+end, "script")
+
+-- a member's name re-anchored or its art swapped: every name re-centred,
+-- the bars re-tucked, the covers re-laid (made once: nothing per call)
+local function RelayParty()
+	RetuckAll()
+	for _, entry in ipairs(skin.names) do
+		entry.place()
+	end
+	for _, cover in ipairs(skin.covers) do
+		cover.Refit()
+	end
+end
+local Party_Relayout = Perf.Shared("UpdateNameTextAnchors / UpdateArt on a party member: the kit re-laid", function()
+	if active then
+		Kit:WhenOutOfCombat(RelayParty)
+	end
+end)
+
 local function SkinPartyMember(frame)
 	if not frame or skin.party[frame] then
 		return
@@ -769,7 +1062,12 @@ local function SkinPartyMember(frame)
 	if not (picture and portrait and frame.HealthBarContainer and frame.ManaBar) then
 		return
 	end
-	skin.party[frame] = true
+	-- (its shade: the member and its pet one element, under the member's
+	-- frame, made on its first show -- the pool keeps four members, the
+	-- empty ones hidden; skin.party keeps it for the backdrop's switch)
+	local u = Unit(frame, frame)
+	u.party = true
+	skin.party[frame] = u
 	local overlay = frame.PartyMemberOverlay
 	FadeArt({
 		{ picture, "UI-HUD-UnitFrame-Party-PortraitOn" },
@@ -780,12 +1078,13 @@ local function SkinPartyMember(frame)
 	local health = frame.HealthBarContainer.HealthBar
 	local band = frame.Name and NameBandRect(frame, frame.Name, frame.HealthBarContainer)
 	if band then
-		SkinBand(picture, band)
+		Shade(u, SkinBand(picture, band))
 		CenterName(frame.Name, band)
 	end
 	local ring = SkinRing(picture, portrait, nil, "UnitFramePortraitRingParty")
-	SkinBar(health, health, picture, false, true)
-	SkinBar(frame.ManaBar, frame.ManaBar, picture, false)
+	Shade(u, ring, true)
+	Shade(u, SkinBar(health, health, picture, false, true))
+	Shade(u, SkinBar(frame.ManaBar, frame.ManaBar, picture, false))
 	TuckBars(ring, { health, frame.ManaBar }, false)
 	RingCover(ring, { health, frame.ManaBar }, false, frame)
 	-- the member's pet: the same at half size (no name plate: its name has no band)
@@ -796,30 +1095,21 @@ local function SkinPartyMember(frame)
 			{ pet.Flash, "UI-HUD-UnitFrame-Party-PortraitOn-InCombat" },
 		})
 		local petRing = SkinRing(pet.Texture, pet.Portrait, nil, "UnitFramePortraitRingParty")
-		SkinBar(pet.HealthBar, pet.HealthBar, pet.Texture, false, true)
+		Shade(u, petRing, true)
+		Shade(u, SkinBar(pet.HealthBar, pet.HealthBar, pet.Texture, false, true))
 		TuckBars(petRing, { pet.HealthBar }, false)
 		RingCover(petRing, { pet.HealthBar }, false, pet)
 	end
+	-- (made on its first show: its shade frame first, put away while the
+	-- party backdrop stands -- MakeUnit)
+	Watch(u)
 	-- the game re-anchors the name and swaps the art (player / vehicle):
-	-- re-centre, re-tuck, re-fit
-	local function Relayout()
-		if active then
-			Kit:WhenOutOfCombat(function()
-				RetuckAll()
-				for _, entry in ipairs(skin.names) do
-					entry.place()
-				end
-				for _, cover in ipairs(skin.covers) do
-					cover.Refit()
-				end
-			end)
-		end
-	end
+	-- re-centre, re-tuck, re-fit (one handler for every member)
 	if frame.UpdateNameTextAnchors then
-		hooksecurefunc(frame, "UpdateNameTextAnchors", Relayout)
+		hooksecurefunc(frame, "UpdateNameTextAnchors", Party_Relayout)
 	end
 	if frame.UpdateArt then
-		hooksecurefunc(frame, "UpdateArt", Relayout)
+		hooksecurefunc(frame, "UpdateArt", Party_Relayout)
 	end
 end
 
@@ -843,7 +1133,17 @@ local function SkinParty()
 			end
 		end
 		-- its child, so it shows, hides and fades with it (the opacity slider)
-		Replace(bg, { as = "PartyFrameBackground", parent = bg, rect = bg, level = 0, noFade = true, alsoFade = extra })
+		local rep = Replace(bg, { as = "PartyFrameBackground", parent = bg, rect = bg, level = 0, noFade = true, alsoFade = extra })
+		-- its rail's shade (outside only) under the whole party, hidden with
+		-- it (its own element: the party frame is an Edit Mode system), made
+		-- on its first show (Edit Mode's setting is off by default); the
+		-- members' own shade put away while it shows (PartyShadeSync)
+		local u = Unit(bg, bg)
+		Shade(u, rep)
+		Perf.HookScript(bg, "OnShow", PartyBackdrop_OnShowHide)
+		Perf.HookScript(bg, "OnHide", PartyBackdrop_OnShowHide)
+		Watch(u)
+		PartyShadeSync()
 	end
 	if not skin.partyHooked and pf.InitializePartyMemberFrames then
 		skin.partyHooked = true
@@ -857,7 +1157,9 @@ end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {} }
+		-- (units / due: the shade's units waiting for a first show, and those
+		-- shown, made out of combat)
+		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {} }
 	end
 	SkinPlayer()
 	SkinTargetLike(TargetFrame)
@@ -928,29 +1230,112 @@ local function Hook()
 		end)
 	end
 	-- the player's art swaps (vehicle / class resource) re-anchor its bars
-	-- and its name: refit the brackets, re-centre the names
-	for _, fname in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt", "PlayerFrame_UpdateArt", "PlayerFrame_UpdatePlayerNameTextAnchor" }) do
-		if type(_G[fname]) == "function" then
-			hooksecurefunc(fname, function()
-				if active then
-					Kit:WhenOutOfCombat(function()
-						RetuckAll()
-						for _, rep in ipairs(skin.reps) do
-							if rep.kind == "bar" then
-								rep:Refit()
-							end
-						end
-						for _, entry in ipairs(skin.names) do
-							entry.place()
-						end
-						for _, cover in ipairs(skin.covers) do
-							cover.Refit()
-						end
-					end)
-				end
-			end)
+	-- and its name: refit the brackets, re-centre the names (made once:
+	-- nothing per call)
+	local function RelayPlayer()
+		RetuckAll()
+		for _, rep in ipairs(skin.reps) do
+			if rep.kind == "bar" then
+				rep:Refit()
+			end
+		end
+		for _, entry in ipairs(skin.names) do
+			entry.place()
+		end
+		for _, cover in ipairs(skin.covers) do
+			cover.Refit()
 		end
 	end
+	local function ArtSwapped()
+		if active then
+			Kit:WhenOutOfCombat(RelayPlayer)
+		end
+	end
+	for _, fname in ipairs({ "PlayerFrame_ToPlayerArt", "PlayerFrame_ToVehicleArt", "PlayerFrame_UpdateArt", "PlayerFrame_UpdatePlayerNameTextAnchor" }) do
+		if type(_G[fname]) == "function" then
+			hooksecurefunc(fname, ArtSwapped)
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The Reminder widget's anchor (Core/Reminders.lua: its one round button
+-- hangs beside the player's portrait ring; user, 2026-09-26: "left of the
+-- player ring", Above and Right as options, its own mover when the player
+-- frame is hidden).
+--   M:ReminderAnchor() -> region, side, reach, far | nil
+--     region  what to hang from: the kit's portrait ring while the unit
+--             frames wear the kit (a texture whose rect is the ring's whole
+--             outline, the compass gems on its edges), else the game's own
+--             portrait (PlayerFrame.PlayerFrameContainer.PlayerPortrait)
+--     side    the ring's free side, away from the frame's bars and name band
+--             (the widget's default place, the approved sketch's): "LEFT",
+--             the player frame's portrait standing at its left end
+--     reach   how far the frame's art stands past `region`'s edges, in UI
+--             units of region's scale: 0 on the kit ring (its rect is the
+--             whole ring; the kit's PvP orb stands about 4 px past its
+--             left edge, inside the widget's 6 px gap), 4 on
+--             the game's portrait (its own ring round it), 13 there while
+--             the game's PvP badge shows (its circle over the ring's left
+--             rim); add it to the gap. Read at each call (ask again at each
+--             raise)
+--     far     the frame's other end, for the "Right" place (right of the
+--             ring lie the name band and the bars): the health bar's kit
+--             bracket while it is on (its rect reaches the far cap's gem),
+--             else the game's health bar; nil when there is none
+--   nil while the player frame is hidden (none, or not shown): the widget
+--   takes its own mover then. The kit coming or going is told on the bus's
+--   'cover' (area "unitframes", Kit:Cover / Kit:Uncover): anchor again then.
+--   Reads no size and makes nothing (no garbage per call).
+--------------------------------------------------------------------------------
+local GAME_RING_REACH = 4    -- the game's ring round its 60 px portrait, past the portrait's edges
+local GAME_BADGE_REACH = 13  -- the game's PvP badge circle (26 px, its top at the portrait's left edge) past it
+
+-- the player frame's health bar, or the kit's bracket on it while shown
+local function FarEnd(main)
+	local bars = main and main.HealthBarsContainer
+	local health = bars and bars.HealthBar or nil
+	local rep = active and health and health.melloRep
+	local strip = rep and rawget(rep, "strip")
+	if strip and strip:IsShown() then
+		return strip
+	end
+	return health
+end
+
+function M:ReminderAnchor()
+	local pf = PlayerFrame
+	if not pf then
+		return nil
+	end
+	-- (a secret or refused answer counts as shown)
+	local ok, shown = pcall(pf.IsShown, pf)
+	if ok and not Secret(shown) and not shown then
+		return nil
+	end
+	local content = pf.PlayerFrameContent
+	local main = content and content.PlayerFrameContentMain
+	local ring = active and skin and skin.playerRing
+	local tex = ring and ring.tex
+	if tex and tex.kitPiece and tex:IsShown() then
+		return tex, "LEFT", 0, FarEnd(main)
+	end
+	local container = pf.PlayerFrameContainer
+	local portrait = container and container.PlayerPortrait
+	if not portrait then
+		return nil
+	end
+	-- the game's PvP badge over the ring's left rim: the widget clears it
+	-- (a secret or refused answer: the ring's reach)
+	local reach = GAME_RING_REACH
+	local badge = main and main.PvpBackgroundCircle
+	if badge then
+		local okB, on = pcall(badge.IsShown, badge)
+		if okB and not Secret(on) and on then
+			reach = GAME_BADGE_REACH
+		end
+	end
+	return portrait, "LEFT", reach, FarEnd(main)
 end
 
 --------------------------------------------------------------------------------

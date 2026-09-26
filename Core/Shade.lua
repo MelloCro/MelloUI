@@ -292,8 +292,8 @@ end
 -- 'fonts' listener for all, owner "Shade measures", taken with the first
 -- measure; run on the next frame, so the lines' own restyle comes first).
 -- Nothing is written onto the source, and no size is read anywhere. (The
--- nameplates' name shade still has its own copy of this: it is to move
--- onto these calls, so there is one measure and one 'fonts' listener.)
+-- nameplates' name shade uses these calls too, since 0.14.0: one measure,
+-- one 'fonts' listener.)
 --------------------------------------------------------------------------------
 
 do

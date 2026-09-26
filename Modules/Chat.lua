@@ -333,9 +333,9 @@ end
 -- Blizzard toggles the focus textures with SetShown, so alpha is used for them.
 local function SetEditBoxArtShown(shown)
 	for _, name in ipairs(ChatFrameNames()) do
-		local editBox = _G[name .. "EditBox"]
+		local editName = name .. "EditBox"
+		local editBox = _G[editName]
 		if editBox then
-			local editName = editBox:GetName()
 			for _, suffix in ipairs({ "Left", "Mid", "Right" }) do
 				local tex = _G[editName .. suffix]
 				if tex then
@@ -488,6 +488,12 @@ local function SetEditBoxOnTop(top)
 				editBoxSaved[editBox] = nil
 			end
 		end
+	end
+	-- the chat reskin's shade of the edit box plates reaches away from the
+	-- window, so it follows the side they are on (ChatPanel)
+	local panel = MelloUI:GetModule("ChatPanel")
+	if panel and panel.EditBoxSide then
+		panel.EditBoxSide(top)
 	end
 end
 
@@ -2172,6 +2178,14 @@ local function KitBody(f)
 	-- sheet, switched against the sheet by Kit:SetParchment
 	if Kit.StoneDim then
 		Kit:StoneDim(skin, { area = "whisper", alive = WhisperAlive })
+	end
+	-- the whole UI's soft shade round the rails (0.14.0, Modules/KitShade.lua;
+	-- the chat's area, which covers these windows): the rail family's shadow,
+	-- outside only, drawn by a frame of the window's one level under it, so
+	-- the window's fades (its pop, fade in and out) take the shade along, and
+	-- hidden with the skin in the plain look
+	if Kit.ShadeElement then
+		Kit:ShadeElement(f, "chat"):Add(skin)
 	end
 	return skin
 end

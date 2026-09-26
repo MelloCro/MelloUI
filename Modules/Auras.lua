@@ -112,6 +112,91 @@ local function AuraLook()
 	return Kit and Kit.BorderValue and Kit:BorderValue("aura") or "black"
 end
 
+-- The UI shade (0.14.0; the ui-shade-plan memory: a soft dark shade that
+-- follows each element's shape; the Buffs area in Dynamic UI) on your rows
+-- and the target's: each button is its own element, drawn by the button
+-- itself at BACKGROUND -8, under its edge and its icon -- the rim's own
+-- shadow, or a soft square round the black edge (the square's body
+-- stretched to the icon and its edge), made for the look in use only. The
+-- buttons are the game's protected aura buttons: only our own textures on
+-- them are hooked (a partner follows its piece's Show / Hide), never a
+-- script of the button (a shade frame of their own would follow the
+-- button's). Not on the nameplates' rows (a plate's sizes read secret, and
+-- the plates have their own shade). Made once per button at the shade's
+-- pace (Kit:ShadeElement), fitted again when the size or the look changes.
+-- The reach stays inside the row's gap: a row's buttons are siblings at one
+-- frame level, and draw layers order regions only inside one frame, so a
+-- partner reaching past the gap would lie over its neighbour's rim and icon
+-- (review, 2026-09-26). The room is the gap less how far this button's
+-- piece stands past the button, less how far the neighbour's does (at least
+-- 1: its black edge, or the dispel border over a rim), less 1; a piece's
+-- own reach is cut to it, and no partner is made with less than MIN_REACH
+-- (the target's close rows, a rim that fills the gap).
+local SQUARE = "shade/square"
+local MIN_REACH = 1   -- UI units
+
+-- the widest reach of a shadow shape, painted px (nil: none in the sheet)
+local function PadOf(Kit, name)
+	local e = Kit:ShadowShape(name)
+	local pad = e and e.pad
+	if type(pad) ~= "table" then
+		return nil, e
+	end
+	local m = math.max(tonumber(pad[1]) or 0, tonumber(pad[2]) or 0, tonumber(pad[3]) or 0, tonumber(pad[4]) or 0)
+	return m > 0 and m or nil, e
+end
+
+-- a partner's scale: the piece's own, its reach cut to the room (a made one
+-- with no room left keeps a hair's reach: a scale of 0 is no scale to
+-- Kit:ShadowFit); made once it has a reach worth having, fitted again
+-- whenever the scale changed (one still to make takes it then)
+local NO_ROOM = 0.05  -- UI units
+local function FitPartner(Kit, so, key, tex, natural, pad, over, gap)
+	local room = gap - over - math.max(over, 1) - 1
+	local s = natural
+	if natural * pad > room then
+		s = math.max(room, NO_ROOM) / pad
+	end
+	local o = so[key]
+	if o.scale ~= s then
+		o.scale = s
+		Kit:ShadowFit(tex, s)
+	end
+	if not o.added and s * pad >= MIN_REACH then
+		o.added = true
+		so.el:Add(tex, o)
+	end
+end
+
+-- `rimSide`, `piece`: the rim drawn at that side (its piece), else the black
+-- edge
+local function ShadeButton(button, t, rimSide, piece)
+	local Kit = MelloUI.Kit
+	if not (t.shade and Kit.ShadeElement and Kit.ShadowShape) then
+		return
+	end
+	local so = t.shadeOpts
+	if not so then
+		so = { el = Kit:ShadeElement(button, "buffs", { host = button }), edge = { shape = SQUARE }, rim = {} }
+		t.shadeOpts = so
+	end
+	local gap = t.gap or 0
+	if rimSide then
+		local pad = PadOf(Kit, t.rim.kitName)
+		if pad and piece and piece.w > 0 then
+			FitPartner(Kit, so, "rim", t.rim, rimSide / piece.w, pad, (rimSide - t.size) / 2, gap)
+		end
+		return
+	end
+	-- the square's body (its picture less its reach) at the icon and its edge
+	local pad, e = PadOf(Kit, SQUARE)
+	local size = e and type(e.size) == "table" and tonumber(e.size[1])
+	local inner = pad and size and size - (tonumber(e.pad[1]) or 0) - (tonumber(e.pad[3]) or 0)
+	if inner and inner > 0 then
+		FitPartner(Kit, so, "edge", t.edge, (t.size + 2) / inner, pad, 1, gap)
+	end
+end
+
 local function ApplyAuraLook(button)
 	local t = texts[button]
 	local Kit = MelloUI.Kit
@@ -125,6 +210,7 @@ local function ApplyAuraLook(button)
 			t.rim:Hide()
 		end
 		t.edge:Show()
+		ShadeButton(button, t)
 		return
 	end
 	local base = "buttons/" .. kind
@@ -150,11 +236,14 @@ local function ApplyAuraLook(button)
 	t.rim:SetSize(side, side)
 	t.rim:Show()
 	t.edge:Hide()
+	-- (the rim drawn at its own size: its shadow at that scale)
+	ShadeButton(button, t, side, p)
 end
 
 -- o: size, swipe (a cooldown spiral), durationBelow (the time under the
 -- icon, else in its middle), dispel (a dispel-coloured border on debuffs),
--- cancel (right-click cancels), tooltip (anchor)
+-- cancel (right-click cancels), tooltip (anchor), shade (the UI shade:
+-- ShadeButton)
 local function InitButton(button, o)
 	Try(button.SetSize, button, o.size, o.size)
 	local edge = button:CreateTexture(nil, "BACKGROUND")
@@ -190,7 +279,9 @@ local function InitButton(button, o)
 		time:SetPoint("CENTER", button, "CENTER", 0, 0)
 	end
 	Try(button.SetDurationText, button, time, {})
-	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size }
+	-- (gap: the room between two buttons of the row, the shade's reach kept in it)
+	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
+		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil }
 	SizeTexts(button, o.size)
 	ApplyAuraLook(button)
 	if o.dispel and button.AddDispelTypeTexture then
@@ -519,7 +610,7 @@ local function SetPlayer(on)
 			{ key = "buffs", filter = "HELPFUL", max = 40 },
 			{ key = "debuffs", filter = "HARMFUL", max = 16 },
 		}, { size = M.db.playerSize, durationBelow = true, dispel = true, cancel = true, tooltip = "ANCHOR_BOTTOMLEFT",
-			anchor = "TOPRIGHT", gx = -1, gy = -1, line = PlayerLine(), spacing = 6, lineSpacing = 16 })
+			anchor = "TOPRIGHT", gx = -1, gy = -1, line = PlayerLine(), spacing = 6, lineSpacing = 16, shade = true })
 		if not ok then
 			MelloUI:Notice("Buffs & Debuffs: your buff rows could not be made (%s).", tostring(c))
 			return
@@ -563,7 +654,7 @@ local function SetTarget(on)
 			{ key = "debuffs", filter = TargetFilter(), max = 16 },
 			{ key = "buffs", filter = "HELPFUL", max = 16 },
 		}, { size = M.db.targetSize, swipe = true, dispel = true, tooltip = "ANCHOR_BOTTOMRIGHT",
-			anchor = "TOPLEFT", gx = 1, gy = -1, line = 170, spacing = 3 })
+			anchor = "TOPLEFT", gx = 1, gy = -1, line = 170, spacing = 3, shade = true })
 		if not ok then
 			MelloUI:Notice("Buffs & Debuffs: the target rows could not be made (%s).", tostring(c))
 			return

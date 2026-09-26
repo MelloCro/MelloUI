@@ -444,39 +444,42 @@ local function IsUnavailable(row, st)
 	return false
 end
 
--- The red of an unavailable row: the palette's selected-row colour laid over
--- the plate as a hue (every colour MelloUI draws comes from the palette),
--- three quarters of the way, so the plate's own light and dark stay readable.
--- Its brightest channel stays whole, so a blue or purple selection tints the
--- way the red one does. Worked out from the palette as it is now (not once
--- at load: a palette chosen in the settings comes later), into one table,
--- again only for a new palette (a new palette is a new table)
-local WHITE = { 1, 1, 1 }
-local unavailableTint = { 1, 1, 1 }
-local tintFrom = nil   -- the palette table unavailableTint was worked out from
+-- The red of an unavailable row: the FIXED "cannot use" red (Core's
+-- MelloUI.Meaning.cannotUse, #4E1812: a meaning colour, the same under every
+-- palette, as the merchant's and trade's red cards; a 0.14.0 build decision) laid
+-- over the plate as a hue, three quarters of the way, so the plate's own
+-- light and dark stay readable. Its brightest channel stays whole. Worked
+-- out once, the first time a row turns red (the colour never changes)
+local unavailableTint = nil
 
 local function UnavailableTint()
-	local palette = MelloUI.Palette
-	if palette ~= tintFrom then
-		tintFrom = palette
-		local c = palette.selectedTab
+	local t = unavailableTint
+	if not t then
+		local c = MelloUI.Meaning.cannotUse
 		local top = math.max(c[1], c[2], c[3])
+		t = {}
 		for i = 1, 3 do
-			unavailableTint[i] = top > 0 and 1 - 0.75 * (1 - c[i] / top) or 1
+			t[i] = top > 0 and 1 - 0.75 * (1 - c[i] / top) or 1
 		end
+		unavailableTint = t
 	end
-	return unavailableTint
+	return t
 end
 
+-- the plate's three pieces tinted directly (no list made per row)
 local function TintPlate(rep, red)
 	local strip = rep and rep.strip
 	if not strip then
 		return
 	end
-	local t = red and UnavailableTint() or WHITE
-	for _, tex in ipairs({ strip.capL, strip.mid, strip.capR }) do
-		tex:SetVertexColor(t[1], t[2], t[3])
+	local r, g, b = 1, 1, 1
+	if red then
+		local t = UnavailableTint()
+		r, g, b = t[1], t[2], t[3]
 	end
+	strip.capL:SetVertexColor(r, g, b)
+	strip.mid:SetVertexColor(r, g, b)
+	strip.capR:SetVertexColor(r, g, b)
 end
 
 -- The game textures a row paints its plate, highlight and marks with: its
@@ -1383,18 +1386,8 @@ local function Build()
 	return skin
 end
 
--- A new palette (the bus's 'palette'): the unavailable rows in its tint
-local function OnPalette()
-	if not active then
-		return
-	end
-	for _, st in pairs(rows) do
-		if st.unavailable then
-			TintPlate(st.plate, true)
-		end
-	end
-end
-
+-- (no 'palette' listener: the unavailable rows' red is a fixed meaning
+-- colour, and everything else here is painted by key)
 local function Activate()
 	if active or not Window() then
 		return
@@ -1404,8 +1397,6 @@ local function Activate()
 		return
 	end
 	active = true
-	-- (heard from the first dressing on: nothing is listened to before)
-	MelloUI:On("palette", OnPalette, "Trainer Kit palette")
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end

@@ -69,6 +69,7 @@ local hooked = false
 -- A value the client hides from addons (secret): never do arithmetic on it.
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
 local Secret = MelloUI.Safe.IsSecret
+local SafeScreenRect = MelloUI.Safe.ScreenRect   -- a frame's rect on the screen (nil: secret or unreadable)
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -1305,12 +1306,11 @@ function M:BarOutline(id)
 	if not (active and pf and pf:IsShown() and page and page:IsShown()) then
 		return nil
 	end
-	local ok, l, b, w, h = pcall(pf.GetRect, pf)
-	if not (ok and l and w) or Secret(l) or Secret(w) or w <= 0 then
+	local l, b, r, t = SafeScreenRect(pf)
+	if not (l and r > l) then
 		return nil
 	end
-	local sc = pf:GetEffectiveScale()
-	return { { l * sc, b * sc, (l + w) * sc, (b + h) * sc } }
+	return { { l, b, r, t } }
 end
 
 function M:OnEnable(db)

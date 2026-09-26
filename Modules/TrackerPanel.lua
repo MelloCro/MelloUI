@@ -479,6 +479,33 @@ local function Build()
 			if not holder.melloShade and rep.skin and Kit.StoneDim then
 				holder.melloShade = Kit:StoneDim(rep.skin, { area = "tracker" })
 			end
+			-- the UI shade (0.14.0; the ui-shade-plan memory: a soft dark shade
+			-- that follows the element's outline; the Tracker area in Dynamic
+			-- UI): the backdrop's rails (their shadow outside only), drawn by
+			-- the backdrop's shade frame one level under its holder: a child of
+			-- the holder, it follows Edit Mode's opacity with the backdrop, the
+			-- reps' Enable / Disable and the tracker's collapse. The title plate
+			-- is an element of its own, on the plate's strip (ours), its shade
+			-- frame at that same level under the holder, so the plate's inward
+			-- half lies under the stone, never on it, and the plate keeps its
+			-- shade at any opacity (at the game's default 0 the plate is the one
+			-- piece seen; review, 2026-09-26). The module headers, bars and item
+			-- buttons lie inside the backdrop: inner pieces, no shade (user,
+			-- 2026-09-26: outline pieces only). Nothing hangs from the game's
+			-- tracker itself (an Edit Mode system): the holder and the strip are
+			-- ours.
+			if Kit.ShadeElement then
+				Kit:ShadeElement(holder, "tracker"):Add(rep)
+				local plate = tracker.Header and tracker.Header.melloRep
+				local strip = plate and rawget(plate, "strip")
+				if strip then
+					local Num = MelloUI.Safe.Number
+					local okH, hl = pcall(holder.GetFrameLevel, holder)
+					local okS, sl = pcall(strip.GetFrameLevel, strip)
+					hl, sl = okH and Num(hl), okS and Num(sl)
+					Kit:ShadeElement(strip, "tracker", { level = (hl and sl) and hl - 1 - sl or -1 }):Add(plate)
+				end
+			end
 			rep.onEnable = function()
 				Opacity()
 				Extent()

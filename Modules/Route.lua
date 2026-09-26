@@ -53,6 +53,8 @@ local M = MelloUI:RegisterModule("Route", {
 		noticeSound = true,
 		lineWidth = 3,
 		arrive = 25,
+		flightHint = true,
+		flightCountdown = true,
 	},
 	options = {
 		{ type = "header", name = "Drawing" },
@@ -86,6 +88,11 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "A short chime with Route's lines: the map's tracking sound for a new destination, a softer one when you arrive. Notice Sounds switches every notice's sound off." },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
 		  desc = "The route ends and the waypoint is cleared when you get this close." },
+		{ type = "header", name = "Flights" },
+		{ type = "toggle", key = "flightHint", name = "Flight Map Help",
+		  desc = "At a flight master: where your route flies to, on the flight map's title band, with a small gem on that flight point. Pointing at a flight point also shows about how long the flight takes." },
+		{ type = "toggle", key = "flightCountdown", name = "Landing Countdown",
+		  desc = "While you fly, the Direction Arrow points at where you will land and counts down the time left (with the Direction Arrow on), also when no route is set. Route Announces says the take-off and the landing." },
 		{ type = "header", name = "Learning" },
 		{ type = "toggle", key = "learn", name = "Learn Paths While Playing",
 		  desc = "Remember where you walk and fly so routes can follow real roads. What it learns is saved and kept from one session to the next. /route shows how much has been learned." },
@@ -132,36 +139,81 @@ local FAR_HUB_COST = 4   -- relative to walking: a straight leg to a dock or fli
 local STRAIGHT_COST = 2.2 -- the direct line from start to goal, so roads win unless they are a real detour
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
--- Continent map sizes in yards, when C_Map.GetMapWorldSize is missing.
-local WORLD_SIZE = { [1414] = { 36799.8, 24533.2 }, [1415] = { 40741.2, 27149.7 }, [12] = { 36799.8, 24533.2 }, [13] = { 40741.2, 27149.7 } }
+-- Continent map sizes in yards, when C_Map.GetMapWorldSize is missing. A
+-- newMap's size is taken from the map's corners first (WorldSize), this one
+-- only when they cannot be read: 2521, Zephras Isle, which is its own
+-- continent (ContinentOf), from the client's map tables.
+local WORLD_SIZE = { [1414] = { 36799.8, 24533.2 }, [1415] = { 40741.2, 27149.7 }, [12] = { 36799.8, 24533.2 }, [13] = { 40741.2, 27149.7 },
+	[2521] = { 5562.5, 3708.3, newMap = true } }
 
 local contCache, rectCache, sizeCache = {}, {}, {}
 
--- The continent map above a map, walking up the parents.
+-- The map a map's places are measured on, walking up the parents: the
+-- Continent map above it. (0.14.0, the Zephras Isle fix: the isle's zone
+-- map sits straight under the World map, with no Continent above it, so the
+-- player had no position there and every route and service failed.) With
+-- no Continent on the way, the highest map below a World or Cosmic map, or
+-- below the top (parent 0), counts as its own continent; a World or Cosmic
+-- map itself has none. Both answers are kept: "none" as false, until the
+-- next loading screen (M.ForgetNoContinent). Also M.ContinentOf, for the
+-- Services bar (one way to find a continent).
 local function ContinentOf(mapID)
 	if not mapID then
 		return nil
 	end
 	local cached = contCache[mapID]
-	if cached then
-		return cached
+	if cached ~= nil then
+		return cached or nil
 	end
-	local id = mapID
-	for _ = 1, 6 do
+	local id, below, found = mapID, nil, false
+	for _ = 1, 8 do
 		local ok, info = pcall(C_Map.GetMapInfo, id)
 		if not ok or type(info) ~= "table" then
+			-- a parent the game does not describe: the map below it is the top
+			found = below or false
 			break
 		end
-		if Plain(info.mapType) == MAP_CONTINENT then
-			contCache[mapID] = id
-			return id
+		-- a secret kind or parent tells nothing: no continent now, nothing
+		-- kept (asked again next time), never a zone taken for its own
+		if MelloUI.Safe.IsSecret(info.mapType) or MelloUI.Safe.IsSecret(info.parentMapID) then
+			return nil
 		end
-		id = Plain(info.parentMapID)
-		if not id or id == 0 then
+		local kind = Plain(info.mapType)
+		if kind == MAP_CONTINENT then
+			found = id
 			break
+		elseif type(kind) == "number" and kind < MAP_CONTINENT then
+			found = below or false   -- the World (1) or Cosmic (0) map: the one below it
+			break
+		end
+		local parent = Plain(info.parentMapID)
+		if not parent or parent == 0 then
+			found = id
+			break
+		end
+		below, id = id, parent
+	end
+	contCache[mapID] = found
+	return found or nil
+end
+
+-- one way to find a map's continent, for the other modules (Services);
+-- asked as M.ContinentOf(mapID) or M:ContinentOf(mapID)
+function M.ContinentOf(a, b)
+	if a == M then
+		a = b
+	end
+	return ContinentOf(Plain(a))
+end
+
+-- A loading screen: the maps without a continent are asked again (the
+-- game may not have known them yet)
+function M.ForgetNoContinent()
+	for id, v in pairs(contCache) do
+		if v == false then
+			contCache[id] = nil
 		end
 	end
-	return nil
 end
 
 local function RectOn(mapID, cont)
@@ -190,8 +242,22 @@ local function WorldSize(cont)
 				w, h = Plain(a), Plain(b)
 			end
 		end
-		if not (w and h and w > 0 and h > 0) then
-			local f = WORLD_SIZE[cont]
+		local f = WORLD_SIZE[cont]
+		if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) and f and not f.newMap then
+			w, h = f[1], f[2]   -- the two continents, as always
+		end
+		if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) and C_Map.GetWorldPosFromMapPos and CreateVector2D then
+			-- (0.14.0, new maps such as Zephras Isle) the map's corners in the
+			-- world: across the map is the world's y, down it the world's x
+			local ok1, _, p1 = pcall(C_Map.GetWorldPosFromMapPos, cont, CreateVector2D(0, 0))
+			local ok2, _, p2 = pcall(C_Map.GetWorldPosFromMapPos, cont, CreateVector2D(1, 1))
+			local x1, y1 = VectorXY(ok1 and p1)
+			local x2, y2 = VectorXY(ok2 and p2)
+			if x1 and y1 and x2 and y2 then
+				w, h = math.abs(y1 - y2), math.abs(x1 - x2)
+			end
+		end
+		if not (type(w) == "number" and type(h) == "number" and w > 0 and h > 0) then
 			w, h = f and f[1] or 40000, f and f[2] or 27000
 		end
 		s = { w, h }
@@ -332,6 +398,58 @@ function M:AnnounceSounds()
 		and MelloUI:AnnounceSounds("track", not M.db.noticeSound)) and true or false
 end
 
+-- Said once per map per session, instead of failing quietly (0.14.0, the
+-- Zephras Isle fix: on the isle nothing was drawn and nothing was said):
+-- a destination is wanted but Route cannot place `what` on `mapID` --
+-- "you" (the player's own map: no position there) or "point" (the
+-- destination's map). Not inside an instance, where Route has never drawn,
+-- nor on a flight; a dungeon's map is not the open world either. With
+-- Route Announces off nothing is said (M:Notify). "you" on a map Route can
+-- place in principle (it has a continent) is said only when the next plan
+-- misses there too: the game may give no position, or not yet say where a
+-- zone lies, for a moment. (M.placeMissed: the map the last plan missed on;
+-- a plan that places the player clears it.)
+M.placeMissed = nil
+do
+	local told = {}   -- [mapID] = true once said
+	local DUNGEON = (Enum and Enum.UIMapType and Enum.UIMapType.Dungeon) or 4
+
+	function M.CannotPlace(mapID, what)
+		if what == "you" then
+			local okM, mine = pcall(C_Map.GetBestMapForUnit, "player")
+			mapID = okM and mine or nil
+		end
+		mapID = Plain(mapID)
+		if type(mapID) ~= "number" or told[mapID] or not M.isEnabled then
+			return
+		end
+		local okI, inside = pcall(IsInInstance)
+		if not okI or Plain(inside) then
+			return
+		end
+		local okT, onTaxi = pcall(UnitOnTaxi, "player")
+		if okT and Plain(onTaxi) then
+			return
+		end
+		local ok, info = pcall(C_Map.GetMapInfo, mapID)
+		info = ok and type(info) == "table" and info or nil
+		if what ~= "you" and info and Plain(info.mapType) == DUNGEON then
+			return
+		end
+		if what == "you" and ContinentOf(mapID) and M.placeMissed ~= mapID then
+			M.placeMissed = mapID   -- the first miss here: said if the next plan misses too
+			return
+		end
+		told[mapID] = true
+		local name = info and MelloUI.Safe.Text(info.name) or ("map " .. mapID)
+		if what == "you" then
+			M:Notify("Route can't place you on this map (" .. name .. "), so there is no route from here.", "info")
+		else
+			M:Notify("Route can't place that point on its map (" .. name .. "), so there is no route to it.", "info")
+		end
+	end
+end
+
 -- Distance to the current destination for the notices: the route's length
 -- when there is one, else the straight line.
 local DestinationDistance -- defined with the route state below
@@ -342,7 +460,9 @@ local DestinationDistance -- defined with the route state below
 -- live.graphs[continent][key] = { x, y, { [otherKey] = cost } }, key = cell.
 --------------------------------------------------------------------------------
 
-local live = { graphs = {}, pins = { entrances = {}, transports = {} } }
+-- (flights: the flight times learned by timing, ["<from node>><to node>"] =
+-- seconds, kept with the learned paths: see "Flight-master help")
+local live = { graphs = {}, pins = { entrances = {}, transports = {} }, flights = {} }
 local mergedSaved = false
 -- What a search can use, counted as it changes, so a search that found no
 -- way is not run again until something has changed (memory audit,
@@ -636,9 +756,10 @@ local function MergeRoads(data)
 	return added
 end
 
--- The learned part of the graph: what the saved variable and the baker keep.
+-- The learned part of the graph: what the saved variable and the baker keep
+-- (the flight times learned by timing with it).
 local function LearnedOnly()
-	local out = { graphs = {}, pins = live.pins }
+	local out = { graphs = {}, pins = live.pins, flights = live.flights }
 	for cont, g in pairs(live.graphs) do
 		local og = {}
 		for key, node in pairs(g) do
@@ -667,41 +788,107 @@ local docks = nil   -- { { cont, x, y, label, pair = index, faction } }
 -- World coordinates (continent id, x, y) -> continent map, yards east, yards south.
 local worldYards = {}
 
-local function YardsOfWorld(wcont, wx, wy)
-	local key = wcont .. ":" .. wx .. ":" .. wy
-	local c = worldYards[key]
-	if c then
-		if c == false then
+-- Through the same ContinentOf as the player's own place (0.14.0, the
+-- Zephras Isle fix), so the docks, quest places and services on a map share
+-- the player's map number: an answer on a map that is not its own continent
+-- (a zone, the isle's flight map) is asked again on the one that is, and
+-- the isle's world map (2991) is always measured on its zone map (2521).
+-- `fresh`: worked out and not kept (the objective places, which
+-- Route:ObjectivePlaces keeps per quest itself), the kept ones not looked up.
+local YardsOfWorld
+do
+	local ROOTS = { [2991] = 2521 }
+	local vec   -- one vector for every ask (the game reads it and keeps nothing)
+
+	local function Ask(wcont, wx, wy, root)
+		if not vec then
+			vec = CreateVector2D(0, 0)
+		end
+		vec.x, vec.y = wx, wy
+		local ok, mapID, pos
+		if root then
+			ok, mapID, pos = pcall(C_Map.GetMapPosFromWorldPos, wcont, vec, root)
+		else
+			ok, mapID, pos = pcall(C_Map.GetMapPosFromWorldPos, wcont, vec)
+		end
+		if not ok then
 			return nil
 		end
-		return c[1], c[2], c[3]
+		local x, y = VectorXY(pos)
+		return Plain(mapID), x, y
 	end
-	if not (C_Map.GetMapPosFromWorldPos and CreateVector2D) then
-		return nil
+
+	YardsOfWorld = function(wcont, wx, wy, fresh)
+		local key
+		if not fresh then
+			key = wcont .. ":" .. wx .. ":" .. wy
+			local c = worldYards[key]
+			if c then
+				if c == false then
+					return nil
+				end
+				return c[1], c[2], c[3]
+			end
+		end
+		if not (C_Map.GetMapPosFromWorldPos and CreateVector2D) then
+			return nil
+		end
+		local mapID, cx, cy = Ask(wcont, wx, wy)
+		local root = ROOTS[wcont] or (mapID and ContinentOf(mapID))
+		if root and (root ~= mapID or not (cx and cy)) then
+			-- (taken when the game answers on that map; for the isle also when it
+			-- answers on its other map, which has the same bounds)
+			local m2, rx, ry = Ask(wcont, wx, wy, root)
+			if rx and ry and (m2 == root or ROOTS[wcont]) then
+				mapID, cx, cy = root, rx, ry
+			end
+		end
+		if not (mapID and cx and cy) then
+			return nil   -- not cached: the client may answer later (as RectOn does)
+		end
+		local cont, x, y = ToYards(mapID, cx, cy)
+		if not cont then
+			return nil
+		end
+		if key then
+			worldYards[key] = { cont, x, y }
+		end
+		return cont, x, y
 	end
-	local ok, contMapID, pos = pcall(C_Map.GetMapPosFromWorldPos, wcont, CreateVector2D(wx, wy))
-	contMapID = ok and Plain(contMapID) or nil
-	local cx, cy = VectorXY(pos)
-	if not (contMapID and cx and cy) then
-		return nil   -- not cached: the client may answer later (as RectOn does)
-	end
-	local w, h = WorldSize(contMapID)
-	worldYards[key] = { contMapID, cx * w, cy * h }
-	return contMapID, cx * w, cy * h
 end
 
-local function PlayerFactionCode()
-	return UnitFactionGroup("player") == "Horde" and 2 or 1
+-- The side a character's rows are for (0.14.0, one side helper for the
+-- addon's data rows, whose side is 0 both, 1 Alliance, 2 Horde): 1 or 2,
+-- and 0 for a character of neither faction yet (a Neutral one: the rows
+-- open to both factions only). M.SideOpen(side[, mine]): whether a row of
+-- that side is this character's (`mine`: PlayerSide asked once per scan).
+function M.PlayerSide()
+	local ok, faction = pcall(UnitFactionGroup, "player")
+	faction = ok and MelloUI.Safe.Text(faction) or nil
+	if faction == "Alliance" then
+		return 1
+	elseif faction == "Horde" then
+		return 2
+	end
+	return 0
 end
 
+function M.SideOpen(side, mine)
+	side = tonumber(side) or 0
+	return side == 0 or side == (mine or M.PlayerSide())
+end
+
+-- (the docks and the flight points are built for the side they were built
+-- with, M.builtSide: a faction chosen later builds them again, M.SideChanged)
 local function BuildDocks()
 	docks = {}
 	edits.hubs = edits.hubs + 1
+	local mine = M.PlayerSide()
+	M.builtSide = mine
 	local data = MelloUI_QuestListData
 	if type(data) ~= "table" or type(data.transports) ~= "table" then
 		return
 	end
-	local mine = PlayerFactionCode()
 	for _, t in ipairs(data.transports) do
 		local faction = t[2]
 		if faction == 0 or faction == mine then
@@ -746,7 +933,7 @@ local function BuildTaxis()
 	if type(data) ~= "table" or type(data.taxiNodes) ~= "table" then
 		return
 	end
-	local mine = PlayerFactionCode()
+	local mine = M.PlayerSide()
 	for id, n in pairs(data.taxiNodes) do
 		if n[5] == 0 or n[5] == mine then
 			local cont, x, y = YardsOfWorld(n[2], n[3], n[4])
@@ -1753,6 +1940,22 @@ local Travel = {
 	entered = false,        -- the login's loading screen has ended (its PLAYER_ENTERING_WORLD)
 }
 
+-- The flight-master help's state (see "Flight-master help" below, where its
+-- functions are): a field of M, not a local (this file's main chunk is near
+-- Lua's 200 locals). slots: the open flight map's points by slot; openGen /
+-- readGen: flight maps opened / read; pending: a flight asked for (the
+-- game's TakeTaxiNode), not yet taken off; active: the flight under way;
+-- arrowOn: its countdown has the arrow; wanted: the slot the route flies to.
+M.flight = { slots = {}, openGen = 0, readGen = -1, arrowOn = false,
+	SPEED = 32,        -- yards a second in the air: the Quest List data's flight times (plus 5 s a flight)
+	TIMEOUT = 5,       -- seconds: no take-off by then (no money for it), nothing happens
+	SHORTEST = 10, LONGEST = 3600,   -- seconds: a flight timed outside these is not learned
+	GEM = 10,          -- the gem on the wanted flight point (its button is 16)
+	BAND = 20,         -- the flight map's title band, its height (TaxiFrame's title bar)
+	INSET = 12,        -- the line's gap from the window's left edge, beside the game's title
+	NEAR = 150,        -- yards: a route's flight end this near a flight point is that point
+}
+
 function Travel.Words(m)
 	if m < 1 then
 		return "under a minute"
@@ -1833,12 +2036,17 @@ function Travel.Sample(now, cont, px, py, measure)
 	Travel.speed, Travel.measuredAt, Travel.steps = s, now, 0
 end
 
--- A flight leg between two flight points ("T<id>"): its time from the flight
+-- A flight leg between two flight points ("T<id>"): its time as timed on an
+-- earlier flight (the flight-master help's, M.flight), else from the flight
 -- network, else as a flight master's map prices one
 function Travel.FlightSeconds(a, b, d)
 	local ia, ib = a[5], b[5]
 	if type(ia) == "string" and type(ib) == "string" and taxis then
 		local ka, kb = ia:sub(2), ib:sub(2)
+		local timed = live.flights[ka .. ">" .. kb]
+		if type(timed) == "number" then
+			return timed
+		end
 		local t = taxis[tonumber(ka)] or taxis[ka]
 		local secs = t and (t.links[tonumber(kb)] or t.links[kb])
 		if type(secs) == "number" then
@@ -1996,6 +2204,13 @@ function Travel.Entered()
 	end
 end
 
+-- "1:16": seconds as minutes and seconds, to the nearest second (Route's
+-- one m:ss formatter: the time taken, the flight times, the countdown)
+function Travel.Clock(secs)
+	secs = math.max(0, math.floor(secs + 0.5))
+	return string.format("%d:%02d", math.floor(secs / 60), secs % 60)
+end
+
 -- "2:48", the time since the destination was set; nil with Travel Time off,
 -- from an hour on, or when tracking was paused (Route switched off
 -- meanwhile) or began before a /reload
@@ -2008,7 +2223,7 @@ function Travel.Took(d)
 	if secs < 0 or secs >= Travel.HOUR then
 		return nil
 	end
-	return string.format("%d:%02d", math.floor(secs / 60), math.floor(secs % 60))
+	return Travel.Clock(math.floor(secs))   -- (the whole seconds gone, as always)
 end
 
 -- The distance line of the arrow or the marker (f.distance): d yards as
@@ -2094,8 +2309,10 @@ local function Plan(force, announce, announceText)
 	if not cont then
 		route = nil
 		Redraw()
+		M.CannotPlace(nil, "you")
 		return
 	end
+	M.placeMissed = nil   -- placed: a miss before was a moment's
 	local d = destination
 	if d.fromQuest and cont == d.cont and Dist(x, y, d.x, d.y) <= OBJECTIVE_ARRIVE then
 		route = nil
@@ -2335,17 +2552,26 @@ do
 	-- "o" (111), holding the value plus 131072 (Tools/build_quest_objectives.py)
 	local BIAS = (48 * 64 + 48) * 64 + 48 + 131072
 
-	-- "<kind><map><name>|<alt>|<x1><y1><x2><y2>...~" for each objective
+	-- "<kind><map><name>|<alt>|<x1><y1><x2><y2>...~" for each objective. The
+	-- map is one digit for 0 and 1; a longer one stands between '#' signs
+	-- ("1#2991#Juvenile Vuldren||...~": 0.14.0, Zephras Isle's quests). Names
+	-- may hold quote marks now (matched plainly: OpenObjectives).
 	local function Decode(packed)
 		local list = {}
-		for kind, wmap, name, alt, coords in packed:gmatch("(%d)(%d)([^|]*)|([^|]*)|([^~]*)~") do
-			local entry, n = { tonumber(kind), name, alt, tonumber(wmap) }, 4
-			for i = 1, #coords - 2, 3 do
-				local a, b, c = coords:byte(i, i + 2)
-				n = n + 1
-				entry[n] = (a * 64 + b) * 64 + c - BIAS
+		for kind, rest in packed:gmatch("(%d)([^~]*)~") do
+			local wmap, name, alt, coords = rest:match("^#(%d+)#([^|]*)|([^|]*)|(.*)$")
+			if not wmap then
+				wmap, name, alt, coords = rest:match("^(%d)([^|]*)|([^|]*)|(.*)$")
 			end
-			list[#list + 1] = entry
+			if wmap then
+				local entry, n = { tonumber(kind), name, alt, tonumber(wmap) }, 4
+				for i = 1, #coords - 2, 3 do
+					local a, b, c = coords:byte(i, i + 2)
+					n = n + 1
+					entry[n] = (a * 64 + b) * 64 + c - BIAS
+				end
+				list[#list + 1] = entry
+			end
 		end
 		return list
 	end
@@ -2546,6 +2772,7 @@ local function ReadTrackedQuest()
 	end
 	local cont, x, y = ToYards(mapID, px, py)
 	if not cont then
+		M.CannotPlace(mapID, "point")
 		return
 	end
 	local title
@@ -2601,6 +2828,7 @@ local function ReadWaypoint()
 	end
 	local cont, x, y = ToYards(mapID, px, py)
 	if not cont then
+		M.CannotPlace(mapID, "point")
 		return
 	end
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromWaypoint = true,
@@ -2865,6 +3093,10 @@ end
 function M:SetDestinationTo(candidate, label, pin, noticeText)
 	local cont, x, y = CandidateYards(candidate)
 	if not cont then
+		-- (a point on a map with no place: said once; its caller falls back)
+		if candidate.mapID then
+			M.CannotPlace(candidate.mapID, "point")
+		end
 		return false
 	end
 	local mapID, mx, my = candidate.mapID, candidate.x, candidate.y
@@ -2890,8 +3122,10 @@ function M:SetDestinationTo(candidate, label, pin, noticeText)
 end
 
 -- Straight-line yards from the player, or nil when on another continent.
-function M:DistanceTo(candidate)
-	local pcont, px, py = PlayerYards()
+-- `sameFrame`: the player's place already asked this frame is used again
+-- (a scan over many candidates asks the game once, not once each).
+function M:DistanceTo(candidate, sameFrame)
+	local pcont, px, py = PlayerYards(sameFrame)
 	local cont, x, y = CandidateYards(candidate)
 	if not (pcont and cont) then
 		return nil
@@ -4408,6 +4642,10 @@ function Travel.Paint()
 	if mm and mm.text then
 		mm.text:SetTextColor(r, g, b)
 	end
+	local caption = M.flight.caption   -- the flight map's "fly to" line (M.flight)
+	if caption then
+		caption.text:SetTextColor(r, g, b)
+	end
 	if not Travel.painted then
 		Travel.painted = true
 		MelloUI:On("palette", Travel.Paint, "Route gold")
@@ -4415,6 +4653,12 @@ function Travel.Paint()
 end
 
 local function UpdateArrow(cont, px, py)
+	-- a flight's landing countdown has the arrow meanwhile (M.flight, from
+	-- Route's half-second tick); the travel time notes the flight
+	if M.flight.arrowOn then
+		Travel.Update(cont, px, py)
+		return true
+	end
 	if not (arrow and M.db.arrow and destination) then
 		if arrow then
 			arrow:Hide()
@@ -4458,6 +4702,9 @@ local function UpdateArrow(cont, px, py)
 	arrow.targetCont, arrow.targetX, arrow.targetY = cont, tx, ty
 	if not remaining or remaining <= 0 then
 		remaining = Dist(px, py, destination.x, destination.y)
+	end
+	if route then
+		route.left = remaining   -- (what the arrow says: Route:FollowedRemaining)
 	end
 	-- the distance and the travel time, made only when either changes
 	Travel.Line(arrow, remaining)
@@ -4562,7 +4809,7 @@ Redraw = function()
 	-- the marker follows the destination straight away; the minimap tick
 	-- that also updates it stops as soon as there is no destination
 	UpdateMarker()
-	if arrow and not (destination and M.isEnabled and M.db.arrow) then
+	if arrow and not (destination and M.isEnabled and M.db.arrow) and not M.flight.arrowOn then
 		arrow:Hide()
 	end
 	if mm then
@@ -4578,6 +4825,888 @@ Redraw = function()
 end
 
 --------------------------------------------------------------------------------
+-- For the other modules (0.14.0, the levelling features: the Quest
+-- Tracker's nearest-first order and turn-in line, the quest tooltips, the
+-- Services bar): Route's one way to know where the player is and how far
+-- things are. Nothing here plans a route or loads the companion.
+--   Route:Where()                    the player's continent map, yards east,
+--                                    yards south; nil when not known (the
+--                                    game asked once a frame at most)
+--   Route:WantWhere(owner, on)       the bus topic 'where' (cont, x, y; all
+--                                    nil when the place is lost), fired from
+--                                    Route's own half-second tick, every 4th
+--                                    one, only while an owner wants it, and
+--                                    only when the player moved 10 yards or
+--                                    more, changed continent, or was lost or
+--                                    found again (a new owner hears the next
+--                                    one, as do the owners when Route comes
+--                                    back on). None while Route is off.
+--   Route:WorldYards(wcont, wx, wy)  world coordinates as the data gives them
+--                                    (world map 0, 1 or 2991, x, y) -> cont,
+--                                    x, y as Where gives them; nil if unknown
+--   Route:ObjectivePlaces(questID)   the places of the quest's open
+--                                    objectives, one flat list { cont, x, y,
+--                                    cont, x, y, ... }, and how many; nil when
+--                                    it is complete, has no data, or the
+--                                    objective data is not loaded (it is
+--                                    never loaded for this). Kept per quest;
+--                                    after a quest log change made again only
+--                                    when which objectives are open changed.
+--                                    Read only: the list is Route's. nil,
+--                                    nil, true ("later") when this frame's
+--                                    share of new places is used up (a whole
+--                                    quest log asked at once): asked again in
+--                                    a later frame, it is made.
+--   Route:FollowedRemaining(questID) the yards left when Route follows that
+--                                    quest (what the arrow says, or worked
+--                                    out as it does while the arrow is off
+--                                    or counting down a flight), else nil
+--   Route:YardsText(d)               "240 yd" / "1.2 km", as the arrow's line
+--   Route:PlaceNear(wcont, wx, wy[, reach])  the named place a world point
+--                                    lies at (MelloUI_PlaceData: within that
+--                                    place's reach, capped by `reach`) and
+--                                    how far; nil for none. Makes nothing.
+--   Route:DistanceTo(c, sameFrame), M.ContinentOf, M.PlayerSide, M.SideOpen
+--   (above).
+-- (Fields of M, no new locals: this file's main chunk is near Lua's limit.)
+--------------------------------------------------------------------------------
+
+function M:Where()
+	return PlayerYards(true)
+end
+
+M.whereWant = { owners = {}, n = 0, fired = false, cont = nil, x = 0, y = 0,
+	EVERY = 4,   -- ticks (2 s)
+	MOVE = 10,   -- yards
+}
+
+function M:WantWhere(owner, on)
+	local w = M.whereWant
+	if owner == nil then
+		return
+	end
+	on = on and true or false
+	if (w.owners[owner] or false) == on then
+		return
+	end
+	w.owners[owner] = on or nil
+	w.n = w.n + (on and 1 or -1)
+	if on then
+		w.fired = false
+	end
+end
+
+-- (from Tick, every EVERY-th tick while someone wants it: the place the
+-- breadcrumb asked for this tick, no new ask)
+function M.WhereTick()
+	local w = M.whereWant
+	local cont, x, y = PlayerYards(true)
+	if w.fired and cont == w.cont and (cont == nil or Dist(x, y, w.x, w.y) < w.MOVE) then
+		return
+	end
+	w.fired, w.cont, w.x, w.y = true, cont, x or 0, y or 0
+	MelloUI:Fire("where", cont, x, y)
+end
+
+function M:WorldYards(wcont, wx, wy)
+	wcont, wx, wy = MelloUI.Safe.Number(wcont), MelloUI.Safe.Number(wx), MelloUI.Safe.Number(wy)
+	if not (wcont and wx and wy) then
+		return nil
+	end
+	return YardsOfWorld(wcont, wx, wy)
+end
+
+function M:YardsText(d)
+	d = MelloUI.Safe.Number(d)
+	return d and Yards(d) or nil
+end
+
+function M:FollowedRemaining(questID)
+	local d = destination
+	if not (d and d.fromQuest and questID and d.questID == questID) then
+		return nil
+	end
+	local r = route
+	-- the arrow's own figure while it shows the route
+	if r and r.left and not M.flight.arrowOn and arrow and arrow:IsShown() then
+		return r.left
+	end
+	local cont, x, y = PlayerYards(true)
+	if r then
+		-- else worked out as the arrow does, from the player's place on the
+		-- route (the arrow off, or counting down a flight), else the
+		-- planned length
+		if cont then
+			local i, _, off, qx, qy = PlaceOnRoute(cont, x, y)
+			if i then
+				local _, _, left = AimPoint(cont, i, qx, qy, off)
+				if left and left > 0 then
+					return left
+				end
+			end
+			if cont == d.cont then
+				return Dist(x, y, d.x, d.y)
+			end
+		end
+		return r.length
+	end
+	if cont and cont == d.cont then
+		return Dist(x, y, d.x, d.y)
+	end
+	return nil
+end
+
+M.logGen = 0   -- quest log changes seen (QUEST_LOG_UPDATE)
+
+do
+	local KEEP = 40      -- quests kept; past that the list starts again
+	-- New places worked out in one frame (each asks the game once or twice):
+	-- a quest is begun only while the frame has some left, so a whole quest
+	-- log read at once (the tracker's first look) is spread over frames. A
+	-- quest not begun gives nil, nil, true ("later"): asked again in a later
+	-- frame it is made.
+	local BUDGET = 200
+	local kept = 0
+	local places = {}    -- [questID] = { log, sig, n, cont, x, y, cont, x, y, ... }
+	local parts = {}     -- the signature's parts, reused
+	local spent, spentAt = 0, nil   -- places worked out in the frame of spentAt (GetTime)
+	M.objectiveBudget = BUDGET      -- (for the tests)
+
+	-- which objectives are open, cheaply: complete, and each one finished
+	local function Signature(questID)
+		local n = 1
+		local okC, done = pcall(C_QuestLog.IsComplete, questID)
+		parts[1] = (okC and Plain(done)) and "c" or "o"
+		if C_QuestLog.GetQuestObjectives then
+			local ok, list = pcall(C_QuestLog.GetQuestObjectives, questID)
+			if ok and type(list) == "table" then
+				for _, o in ipairs(list) do
+					n = n + 1
+					parts[n] = Plain(o.finished) and "1" or "0"
+				end
+			end
+		end
+		return table.concat(parts, "", 1, n)
+	end
+
+	function M:ObjectivePlaces(questID)
+		questID = MelloUI.Safe.Number(questID)
+		local data = MelloUI_QuestObjectiveData
+		if not (questID and type(data) == "table" and type(data[questID]) == "string" and C_QuestLog and C_QuestLog.IsComplete) then
+			return nil
+		end
+		local e = places[questID]
+		local sig = (not e or e.log ~= M.logGen) and Signature(questID)
+		if e and sig and sig == e.sig then
+			e.log = M.logGen   -- the same objectives open: the places as they were
+		elseif sig then
+			local now = GetTime()
+			if now ~= spentAt then
+				spentAt, spent = now, 0
+			end
+			if spent >= BUDGET then
+				return nil, nil, true   -- this frame's share used: later
+			end
+			if not e then
+				if kept >= KEEP then
+					wipe(places)
+					kept = 0
+				end
+				e = {}
+				places[questID] = e
+				kept = kept + 1
+			end
+			for i = 1, e.n or 0 do
+				e[i] = nil
+			end
+			local n = 0
+			for _, entry in ipairs(OpenObjectives(questID) or {}) do
+				local wmap = entry[4]
+				for i = 5, #entry - 1, 2 do
+					spent = spent + 1
+					local cont, x, y = YardsOfWorld(wmap, entry[i], entry[i + 1], true)
+					if cont then
+						e[n + 1], e[n + 2], e[n + 3] = cont, x, y
+						n = n + 3
+					end
+				end
+			end
+			e.n, e.sig, e.log = n, sig, M.logGen
+		end
+		if e.n == 0 then
+			return nil
+		end
+		return e, e.n / 3
+	end
+end
+
+do
+	local WIDEST = 400   -- yards: the widest reach in the data
+
+	function M:PlaceNear(wcont, x, y, reach)
+		local data = MelloUI_PlaceData
+		local t = type(data) == "table" and data[wcont]
+		local Num = MelloUI.Safe.Number
+		x, y, reach = Num(x), Num(y), Num(reach)
+		if type(t) ~= "table" or not (x and y) then
+			return nil
+		end
+		-- the first row whose x is within the widest reach of the point, then
+		-- along while x stays within it
+		local lo, hi = 1, math.floor(#t / 4)
+		local from = x - WIDEST
+		while lo < hi do
+			local mid = math.floor((lo + hi) / 2)
+			if t[mid * 4 - 3] < from then
+				lo = mid + 1
+			else
+				hi = mid
+			end
+		end
+		local best, bestD
+		local i, n = lo * 4 - 3, #t
+		while i <= n do
+			local px = t[i]
+			if px > x + WIDEST then
+				break
+			end
+			local r = t[i + 2]
+			if reach and reach < r then
+				r = reach
+			end
+			local dx, dy = px - x, t[i + 1] - y
+			local d = dx * dx + dy * dy
+			if d <= r * r and (not bestD or d < bestD) then
+				best, bestD = t[i + 3], d
+			end
+			i = i + 4
+		end
+		if not best then
+			return nil
+		end
+		return best, math.sqrt(bestD)
+	end
+end
+
+-- For /route: the player's map and how Route places it (0.14.0: why a map
+-- has no position, said in player words)
+function M.WhereWords()
+	local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+	mapID = ok and Plain(mapID) or nil
+	if type(mapID) ~= "number" then
+		return "your map: the game names none right now"
+	end
+	local okI, info = pcall(C_Map.GetMapInfo, mapID)
+	info = okI and type(info) == "table" and info or nil
+	local head = string.format("your map: %d %s", mapID, info and MelloUI.Safe.Text(info.name) or "(no name)")
+	local okN, inside = pcall(IsInInstance)
+	if okN and Plain(inside) then
+		return head .. ", in an instance (Route draws in the open world only)"
+	end
+	local cont = ContinentOf(mapID)
+	if not cont then
+		return head .. ", a world map or one the game does not describe: Route can't place you on it"
+	end
+	local okP, pos = pcall(C_Map.GetPlayerMapPosition, mapID, "player")
+	local px = okP and VectorXY(pos) or nil
+	if not px then
+		return head .. ", but the game gives no position for you on it"
+	end
+	if cont == mapID then
+		if info and Plain(info.mapType) == MAP_CONTINENT then
+			return head .. ", a continent"
+		end
+		return head .. ", its own continent (there is no continent above it)"
+	end
+	if not RectOn(mapID, cont) then
+		return head .. string.format(", on continent %d, but where it lies on it is not known", cont)
+	end
+	return head .. string.format(", on continent %d", cont)
+end
+
+--------------------------------------------------------------------------------
+-- Flight-master help (0.14.0, the levelling features; the user's picks,
+-- 2026-09-26). State in M.flight (above, by the travel time).
+--   The flight map (Flight Map Help): where the route flies from here,
+--   "Route: fly to Sentinel Hill · about 1:16", on the map window's title
+--   band (a line of ours on the window, on the soft text shade), and a small
+--   gem on that flight point, no bigger than the point's own button, so the
+--   map's picture is never covered. Pointing at a flight point adds its
+--   flight time to its tooltip, and "Your route flies here" on that one.
+--   The known flight points may change at the map, so the route is planned
+--   again as it opens (once routes can be priced).
+--   The flight: "Flying to Sentinel Hill, about 1:16" as it takes off; the
+--   Direction Arrow points at the landing and counts down, "Landing at
+--   Sentinel Hill in about 0:52", then "soon" (Landing Countdown; the arrow
+--   shows for the flight also with no route set, and goes back to the route
+--   after); "Landed at Sentinel Hill (1:14)" on the ground. The notices are
+--   Route's (Route Announces, Announce Sound). No take-off within TIMEOUT
+--   seconds of the click (no money for it): nothing happens.
+--   Flight times: a timed flight first (from one flight point to another,
+--   timed from the click to the landing and kept with the learned paths
+--   while learning is on), then the Quest List data's flight paths (their
+--   path lengths at SPEED, plus 5 s), then the straight line at SPEED; a
+--   flight over several legs is their sum, less 5 s at each stop.
+-- Made at the first flight map (TAXIMAP_OPENED), nothing at login; driven by
+-- that event, the game's own TakeTaxiNode and TaxiNodeOnButtonEnter (post-
+-- hooks, set at the first flight map) and Route's half-second tick while a
+-- flight is asked for or under way (the text changes once a second at
+-- most). After a /reload mid-flight nothing is shown: its start is not known.
+--------------------------------------------------------------------------------
+
+do
+	local F = M.flight
+	local Safe = MelloUI.Safe
+	local Clock = Travel.Clock   -- "1:16"
+
+	-- "Sentinel Hill" of "Sentinel Hill, Westfall"
+	function F.Short(name)
+		if type(name) ~= "string" or name == "" then
+			return nil
+		end
+		return name:match("^%s*([^,]-)%s*,") or name
+	end
+
+	-- A flight timed before, from node a to node b (seconds), or nil
+	function F.Learned(a, b)
+		if not (a and b) then
+			return nil
+		end
+		local t = live.flights[a .. ">" .. b]
+		return type(t) == "number" and t or nil
+	end
+
+	-- A flight timed now: kept, half and half with an older time for the
+	-- same flight (one slow take-off does not stick)
+	function F.Learn(a, b, secs)
+		local key = a .. ">" .. b
+		local old = live.flights[key]
+		if type(old) == "number" then
+			secs = (old + secs) / 2
+		end
+		live.flights[key] = math.floor(secs * 10 + 0.5) / 10
+	end
+
+	-- Timed flights another table kept: the saved ones (`mine`: they win)
+	-- or the ones that come with MelloUI
+	function F.Adopt(list, mine)
+		if type(list) ~= "table" then
+			return
+		end
+		local flights = live.flights
+		for key, secs in pairs(list) do
+			if type(key) == "string" and type(secs) == "number" and secs > 0 and (mine or flights[key] == nil) then
+				flights[key] = secs
+			end
+		end
+	end
+
+	-- One leg between two flight points of the open map (their records)
+	function F.Leg(a, b)
+		local t = F.Learned(a.id, b.id)
+		if t then
+			return t
+		end
+		local node = a.id and taxis and taxis[a.id]
+		t = node and b.id and node.links[b.id]
+		if type(t) == "number" then
+			return t
+		end
+		if a.cont and a.cont == b.cont and a.x and b.x then
+			return Dist(a.x, a.y, b.x, b.y) / F.SPEED + 5
+		end
+		return nil
+	end
+
+	-- Seconds from the flight master here to the point in `slot`, or nil
+	function F.Estimate(slot)
+		local from, to = F.current, F.slots[slot]
+		if not (from and to) or from == to then
+			return nil
+		end
+		local t = F.Learned(from.id, to.id)
+		if t then
+			return t
+		end
+		local numRoutes, nodeSlot = _G.GetNumRoutes, _G.TaxiGetNodeSlot
+		if numRoutes and nodeSlot then
+			local ok, hops = pcall(numRoutes, slot)
+			hops = ok and Safe.Number(hops) or 0
+			local total = hops > 0 and 0 or nil
+			for h = 1, hops do
+				local okA, sa = pcall(nodeSlot, slot, h, true)
+				local okB, sb = pcall(nodeSlot, slot, h, false)
+				sa, sb = okA and Safe.Number(sa), okB and Safe.Number(sb)
+				local a, b = sa and F.slots[sa], sb and F.slots[sb]
+				local secs = a and b and F.Leg(a, b)
+				if not secs then
+					total = nil
+					break
+				end
+				total = total + secs
+			end
+			if total then
+				return total - 5 * (hops - 1)
+			end
+		end
+		return F.Leg(from, to)
+	end
+
+	-- The open flight map's points by slot (node id, name, state, place in
+	-- continent yards) and the one the player stands at (F.current)
+	function F.ReadMap()
+		F.readGen = F.openGen
+		local slots = F.slots
+		wipe(slots)
+		F.current = nil
+		local all, mapOf = C_TaxiMap and C_TaxiMap.GetAllTaxiNodes, _G.GetTaxiMapID
+		if not (all and mapOf) then
+			return
+		end
+		local okM, mapID = pcall(mapOf)
+		mapID = okM and Safe.Number(mapID) or nil
+		if not mapID then
+			return
+		end
+		local ok, list = pcall(all, mapID)
+		if not (ok and type(list) == "table") then
+			return
+		end
+		for _, info in ipairs(list) do
+			local slot = type(info) == "table" and Safe.Number(info.slotIndex)
+			if slot then
+				local px, py = VectorXY(info.position)
+				local cont, x, y
+				if px and py then
+					cont, x, y = ToYards(mapID, px, py)
+				end
+				local rec = { id = Safe.Number(info.nodeID), name = Safe.Text(info.name), state = Plain(info.state), cont = cont, x = x, y = y }
+				slots[slot] = rec
+				if rec.state == FLIGHT_CURRENT then
+					F.current = rec
+				end
+			end
+		end
+	end
+
+	-- The flight point the route flies to from here: the end of the route's
+	-- first run of flights, when this map reaches it; its slot and record
+	function F.Wanted()
+		local r = route
+		if not (r and F.current) then
+			return nil
+		end
+		local points, stop = r.points, nil
+		for i = 2, #points do
+			local a, b = points[i - 1], points[i]
+			local flying = b[4] == "flight"
+			if not flying and a[1] == b[1] and b[4] ~= "boat" then
+				flying = Travel.LinkFlight(a, b, Dist(a[2], a[3], b[2], b[3])) ~= nil
+			end
+			if flying then
+				stop = b
+			elseif stop then
+				break
+			end
+		end
+		if not stop then
+			return nil
+		end
+		local id = type(stop[5]) == "string" and tonumber(stop[5]:match("^T(%d+)$")) or nil
+		local best, bestD
+		for slot, rec in pairs(F.slots) do
+			if rec.state == FLIGHT_REACHABLE then
+				if id and rec.id == id then
+					return slot, rec
+				end
+				if rec.cont == stop[1] and rec.x then
+					local d = Dist(rec.x, rec.y, stop[2], stop[3])
+					if d <= F.NEAR and (not bestD or d < bestD) then
+						best, bestD = slot, d
+					end
+				end
+			end
+		end
+		return best, best and F.slots[best]
+	end
+
+	-- The "fly to" line on the title band, made at its first use. One level
+	-- over the window: above its stone, under the Flight Map Kit's band and
+	-- plate (the window + 2 and + 3), so where the plate reaches into the
+	-- band it covers our text shade, never the other way round
+	function F.Caption(tf)
+		local cap = F.caption
+		if cap then
+			return cap
+		end
+		cap = CreateFrame("Frame", nil, tf)
+		cap:SetPoint("TOPLEFT", tf, "TOPLEFT", 0, 0)
+		cap:SetPoint("TOPRIGHT", tf, "TOPRIGHT", 0, 0)
+		cap:SetHeight(F.BAND)
+		cap:SetFrameLevel((Safe.Number(tf:GetFrameLevel()) or 1) + 1)
+		cap:EnableMouse(false)
+		local text = cap:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		RouteFont.Style(text, "fontText", _G.GameFontHighlight)
+		text:SetWordWrap(false)
+		cap.text = text
+		-- the text shade under it (the eye-strain rule: no text straight on
+		-- the stone), kept inside the band
+		if MelloUI.Shade and MelloUI.Shade.Band then
+			cap.shade = TextShade.Band(cap, text, TextShade.FEATHER, TextShade.PAD_X, 2)
+		end
+		F.caption = cap
+		Travel.Paint()   -- the arrow's gold, repainted with it
+		cap:Hide()
+		return cap
+	end
+
+	-- Left of the game's title while that title sits on the band (the Flight
+	-- Map Kit off), and no wider than the room it leaves; else (the title on
+	-- the kit's plate, riding the top rail) centred under that title: the
+	-- plate reaches a few units into the band, below the title's letters, so
+	-- the line starts CLEAR units under them (at most LOWEST down, which
+	-- keeps it on the band)
+	F.CLEAR, F.LOWEST = 4, 7
+	function F.PlaceCaption(tf, cap)
+		local text = cap.text
+		text:ClearAllPoints()
+		local tl, tb, _, tt = Safe.ScreenRect(tf.TitleText or _G.TaxiFrameTitleText)
+		local fl, _, _, ft = Safe.ScreenRect(tf)
+		local okS, s = pcall(tf.GetEffectiveScale, tf)
+		s = okS and Safe.Number(s) or nil
+		if tl and fl and s and s > 0 and (tb + tt) / 2 < ft - 2 * s then
+			local room = (tl - fl) / s - F.INSET - 8
+			text:SetPoint("LEFT", cap, "LEFT", F.INSET, 0)
+			text:SetJustifyH("LEFT")
+			local okW, w = pcall(text.GetStringWidth, text)
+			w = okW and Safe.Number(w) or nil
+			text:SetWidth((w and room > 0 and w > room) and room or 0)
+		else
+			-- how far the title's letters reach below the window's top
+			local reach = (tb and ft and s and s > 0) and (ft - tb) / s or 0
+			local down = math.min(F.LOWEST, math.max(2, reach + F.CLEAR))
+			text:SetPoint("TOP", cap, "TOP", 0, -down)
+			text:SetJustifyH("CENTER")
+			text:SetWidth(0)
+		end
+	end
+
+	-- The small gem on the wanted flight point's button, made at its first use,
+	-- as a child of that button: it shows only while the map shows the button
+	-- (a far point's comes and goes as paths through it are pointed at: a gem
+	-- without it would lie on the picture)
+	function F.Gem(slot)
+		local button = _G["TaxiButton" .. slot]
+		if type(button) ~= "table" or not (button.GetFrameLevel and button.IsShown) then
+			if F.gem then
+				F.gem:Hide()
+			end
+			return
+		end
+		local g = F.gem
+		if not g then
+			g = CreateFrame("Frame", nil, button)
+			g:SetSize(F.GEM, F.GEM)
+			g:EnableMouse(false)
+			g.tex = g:CreateTexture(nil, "OVERLAY")
+			g.tex:SetAllPoints()
+			local Kit = MelloUI.Kit
+			if not (Kit and Kit.Piece and Kit:Piece("deco/gem_small") and Kit:Apply(g.tex, "deco/gem_small")) then
+				g.tex:SetTexture("Interface/Common/Indicator-Yellow")
+			end
+			F.gem = g
+		end
+		if g:GetParent() ~= button then
+			g:SetParent(button)
+		end
+		g:SetFrameLevel((Safe.Number(button:GetFrameLevel()) or 1) + 2)
+		g:ClearAllPoints()
+		g:SetPoint("CENTER", button, "CENTER", 0, 0)
+		g:Show()
+		-- a gentle pulse, engine-driven (still under Reduce Motion)
+		local anim = MelloUI.Anim
+		if anim and anim.Pulse then
+			F.gemPulse = anim:Pulse(g.tex, 0.55, 1, 1.2)
+		end
+	end
+
+	function F.HideHint()
+		F.wanted = nil
+		if F.caption then
+			F.caption:Hide()
+		end
+		if F.gem then
+			F.gem:Hide()
+			if F.gemPulse and MelloUI.Anim then
+				MelloUI.Anim:StopGroup(F.gemPulse)
+			end
+		end
+	end
+
+	-- The line and the gem as the route and the open map say
+	function F.Hint()
+		local tf = _G.TaxiFrame
+		local slot, rec
+		if M.isEnabled and M.db.flightHint and type(tf) == "table" and Safe.Call(tf, "IsShown") then
+			if F.readGen ~= F.openGen then
+				F.ReadMap()
+			end
+			slot, rec = F.Wanted()
+		end
+		if not slot then
+			F.HideHint()
+			return
+		end
+		F.wanted = slot
+		local cap = F.Caption(tf)
+		local secs = F.Estimate(slot)
+		local node = rec.id and taxis and taxis[rec.id]
+		local name = F.Short(rec.name) or F.Short(node and node.name) or "the flight point"
+		cap.text:SetText("Route: fly to " .. name .. (secs and (Travel.SEP .. "about " .. Clock(secs)) or ""))
+		F.PlaceCaption(tf, cap)
+		cap:Show()
+		F.Gem(slot)
+	end
+
+	-- the route planned again (the known flight points may have changed at
+	-- this map), then the line
+	function F.PlanHint()
+		if not (M.isEnabled and destination) then
+			return
+		end
+		Plan(true)
+		F.Hint()
+	end
+
+	-- TAXIMAP_OPENED, a moment later (after Route learned this map)
+	function F.Opened()
+		if not M.isEnabled then
+			return
+		end
+		F.ReadMap()
+		F.Hook()
+		F.HideHint()
+		if M.db.flightHint and destination then
+			M:WhenReady(F.PlanHint)
+		end
+	end
+
+	-- The game's TakeTaxiNode (a post-hook): the flight asked for
+	function F.Took(slot)
+		slot = Safe.Number(slot)
+		if not (M.isEnabled and slot) then
+			return
+		end
+		if F.readGen ~= F.openGen then
+			F.ReadMap()
+		end
+		local to, from = F.slots[slot], F.current
+		if not (to and to.state == FLIGHT_REACHABLE) then
+			return
+		end
+		local node = to.id and taxis and taxis[to.id]
+		F.pending = { from = from and from.id, to = to.id, name = F.Short(to.name) or F.Short(node and node.name) or "the flight point",
+			cont = to.cont, x = to.x, y = to.y, secs = F.Estimate(slot), at = GetTime() }
+	end
+
+	-- The game's TaxiNodeOnButtonEnter (a post-hook): the flight time in the
+	-- point's tooltip, and whether the route flies there
+	function F.OnEnter(button)
+		if not (M.isEnabled and M.db.flightHint) then
+			return
+		end
+		local slot = Safe.Number(Safe.Call(button, "GetID"))
+		if not slot then
+			return
+		end
+		if F.readGen ~= F.openGen then
+			F.ReadMap()
+		end
+		local rec = F.slots[slot]
+		local tip = _G.GameTooltip
+		if not (rec and rec.state == FLIGHT_REACHABLE and tip) then
+			return
+		end
+		local secs = F.Estimate(slot)
+		if not (secs or slot == F.wanted) then
+			return
+		end
+		local P = MelloUI.Palette
+		if secs then
+			local c = P.text
+			tip:AddLine("Flight time: about " .. Clock(secs), c[1], c[2], c[3])
+		end
+		if slot == F.wanted then
+			local c = P.selectedTrim
+			tip:AddLine("Your route flies here", c[1], c[2], c[3])
+		end
+		tip:Show()
+	end
+
+	-- the post-hooks, once, at the first flight map
+	function F.Hook()
+		if F.hooked then
+			return
+		end
+		F.hooked = true
+		if type(_G.TakeTaxiNode) == "function" then
+			hooksecurefunc("TakeTaxiNode", F.Took)
+		end
+		if type(_G.TaxiNodeOnButtonEnter) == "function" then
+			hooksecurefunc("TaxiNodeOnButtonEnter", F.OnEnter)
+		end
+	end
+
+	-- The arrow given back to the route (or hidden with none)
+	function F.ArrowOff()
+		if not F.arrowOn then
+			return
+		end
+		F.arrowOn = false
+		F.shown, F.shownD = nil, nil
+		if arrow then
+			arrow.label:SetWidth((arrow.shade and TextShade.On()) and 0 or TextShade.LABEL_W)
+			arrow.lineSuffix, arrow.lineD = nil, nil   -- the route's distance line made afresh (Travel.Line)
+			arrow.targetX = nil
+			if not (destination and M.isEnabled and M.db.arrow) then
+				arrow:Hide()
+			end
+		end
+	end
+
+	-- The countdown on the arrow (Route's tick, while flying): the text made
+	-- only when the whole seconds shown change
+	function F.Update(now)
+		local a = F.active
+		if not (a and M.isEnabled and M.db.flightCountdown and M.db.arrow and arrow) then
+			F.ArrowOff()
+			return
+		end
+		local shown = -1   -- no time known
+		if a.secs then
+			local left = a.secs - (now - a.at)
+			shown = left >= 0.5 and math.floor(left + 0.5) or 0
+		end
+		if not F.arrowOn then
+			if arrow.shade == nil then
+				TextShade.Arrow()   -- its text shade, at its first show
+			end
+			if not ArrowPlace.entry then
+				ArrowPlace.Mover()   -- on the one mover at its first show
+			end
+			F.arrowOn = true
+			F.shown, F.shownD = nil, nil
+			arrow.label:SetWidth(0)   -- the whole sentence
+			arrow.lineSuffix, arrow.lineD = nil, nil
+		end
+		if shown ~= F.shown then
+			F.shown = shown
+			if shown < 0 then
+				arrow.label:SetText("Flying to " .. a.name)
+			elseif shown == 0 then
+				arrow.label:SetText("Landing at " .. a.name .. " soon")
+			else
+				arrow.label:SetText("Landing at " .. a.name .. " in about " .. Clock(shown))
+			end
+		end
+		local cont, px, py = PlayerYards(true)
+		if cont and a.cont == cont then
+			arrow.targetCont, arrow.targetX, arrow.targetY = cont, a.x, a.y
+			local d = math.floor(Dist(px, py, a.x, a.y))
+			if d ~= F.shownD then
+				F.shownD = d
+				arrow.distance:SetText(Yards(d))
+			end
+		else
+			arrow.targetX = nil
+			if F.shownD ~= false then
+				F.shownD = false
+				arrow.distance:SetText("")
+			end
+		end
+		arrow:Show()
+	end
+
+	function F.TakeOff(p)
+		F.active = p
+		if F.Listen then
+			F.Listen(true)
+		end
+		M:Notify("Flying to " .. p.name .. (p.secs and (", about " .. Clock(p.secs)) or ""), "track")
+		F.Update(GetTime())
+	end
+
+	function F.Land(now)
+		local a = F.active
+		F.active = nil
+		if F.Listen then
+			F.Listen(false)
+		end
+		F.ArrowOff()
+		if not a then
+			return
+		end
+		local took = now - a.at
+		if M.db.learn and a.from and a.to and took >= F.SHORTEST and took <= F.LONGEST then
+			F.Learn(a.from, a.to, took)
+		end
+		M:Notify("Landed at " .. a.name .. " (" .. Clock(took) .. ")", "arrive")
+	end
+
+	-- Route's tick, while a flight is asked for or under way
+	function F.Tick()
+		local now = GetTime()
+		local p = F.pending
+		if p then
+			if Travel.OnTaxi() then
+				F.pending = nil
+				F.TakeOff(p)
+			elseif now - p.at > F.TIMEOUT then
+				F.pending = nil   -- no take-off: nothing said
+			end
+			return
+		end
+		if F.active then
+			if Travel.OnTaxi() then
+				F.Update(now)
+			else
+				F.Land(now)
+			end
+		end
+	end
+
+	-- PLAYER_CONTROL_GAINED (listened to during a flight): landed now
+	function F.ControlGained()
+		if F.active and not Travel.OnTaxi() then
+			F.Land(GetTime())
+		end
+	end
+
+	-- Route switched off: all of it away (a flight under way is not timed)
+	function F.Stop()
+		F.pending, F.active = nil, nil
+		if F.Listen then
+			F.Listen(false)
+		end
+		F.ArrowOff()
+		F.HideHint()
+	end
+
+	-- an option changed
+	function F.Setting(key)
+		if key == "flightHint" then
+			if M.db.flightHint then
+				F.Hint()
+			else
+				F.HideHint()
+			end
+		elseif (key == "flightCountdown" or key == "arrow") and F.active then
+			F.Update(GetTime())
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Saved graph
 --------------------------------------------------------------------------------
 
@@ -4589,6 +5718,7 @@ local function AdoptSaved()
 		mergedSaved = true
 		local saved = MelloUIRoutes
 		MergePins(saved)
+		M.flight.Adopt(saved.flights, true)   -- the flights this player timed
 		Build.Queue(function()
 			if Merge(saved) > 0 then
 				BuildDocks()
@@ -4612,6 +5742,7 @@ local function LoadBaked()
 		Build.baked = MelloUI_RouteData
 		_G.MelloUI_RouteData = nil
 		MergePins(Build.baked)
+		M.flight.Adopt(Build.baked.flights, false)
 	end
 end
 
@@ -4865,13 +5996,41 @@ Perf.SetScript(logoutFrame, "OnEvent", function()
 	Build.Save()
 end)
 
-Perf.SetScript(eventFrame, "OnEvent", function(_, event)
+-- A faction chosen (a Neutral character's, 0.14.0: its rows were the ones
+-- open to both factions until then): the docks and the flight points built
+-- again for it, and the route planned again. Also asked at every loading
+-- screen (a faction the login did not know yet); nothing when it is the same.
+function M.SideChanged()
+	if not M.isEnabled or M.PlayerSide() == M.builtSide then
+		return
+	end
+	BuildDocks()
+	BuildTaxis()
+	discoveredAt = 0
+	if destination then
+		Plan(true)
+	end
+end
+
+-- The flight-master help listens for the landing while a flight is under
+-- way (M.flight)
+function M.flight.Listen(on)
+	if on then
+		pcall(eventFrame.RegisterEvent, eventFrame, "PLAYER_CONTROL_GAINED")
+	else
+		pcall(eventFrame.UnregisterEvent, eventFrame, "PLAYER_CONTROL_GAINED")
+	end
+end
+
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	if event == "PLAYER_LOGOUT" then
 		Build.Save()
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		last = nil
 		taxiStart = nil
 		Travel.Entered()   -- the travel time's login grace runs from the first one
+		M.ForgetNoContinent()
+		M.SideChanged()
 		C_Timer.After(1, function() ReadWaypoint() end)
 	elseif event == "USER_WAYPOINT_UPDATED" or event == "SUPER_TRACKING_CHANGED" then
 		if event == "SUPER_TRACKING_CHANGED" then
@@ -4882,10 +6041,23 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 		if destination and destination.fromQuest then
 			poiCache[destination.questID] = nil
 		end
+		if event == "QUEST_LOG_UPDATE" then
+			M.logGen = M.logGen + 1   -- the objective places asked again (Route:ObjectivePlaces)
+		end
 	elseif event == "TAXIMAP_OPENED" then
-		-- The routes are known a moment after the map opens.
+		-- The routes are known a moment after the map opens; the
+		-- flight-master help reads the map after Route learned it.
 		C_Timer.After(0.2, LearnFlights)
 		C_Timer.After(0.2, KnownFlightsHere)
+		M.flight.openGen = M.flight.openGen + 1
+		M.flight.HideHint()   -- (the buttons are the last map's until it is read)
+		C_Timer.After(0.25, M.flight.Opened)
+	elseif event == "PLAYER_CONTROL_GAINED" then
+		M.flight.ControlGained()
+	elseif event == "UNIT_FACTION" or event == "NEUTRAL_FACTION_SELECT_RESULT" then
+		if event ~= "UNIT_FACTION" or Plain(unit) == "player" then
+			M.SideChanged()
+		end
 	end
 end)
 
@@ -4896,6 +6068,16 @@ local function Tick()
 	end
 	tickCount = tickCount + 1
 	Record()
+	-- a flight asked for or under way (the flight-master help's countdown)
+	local flight = M.flight
+	if flight.pending or flight.active then
+		flight.Tick()
+	end
+	-- the 'where' topic, while someone wants it (Route:WantWhere)
+	local where = M.whereWant
+	if where.n > 0 and tickCount % where.EVERY == 0 then
+		M.WhereTick()
+	end
 	if tickCount % 2 == 0 then
 		ReadWaypoint()
 		if destination then
@@ -4959,6 +6141,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 		-- the traced roads are not learned data: they stay, counted afresh
 		-- (before the graph is built: once it is, after what came before)
 		Build.Queue(ForgetLearned)
+		wipe(live.flights)   -- the flight times timed go too
 		MelloUIRoutes = live
 		M:Clear()
 		-- (user, 2026-09-24: player words, no developer tools in what players read)
@@ -5074,6 +6257,15 @@ SlashCmdList.MELLOROUTE = function(msg)
 			M.db.learn and "on" or "off", recorded,
 			M.db.learn and recordSkip ~= "" and (", the last one skipped: " .. recordSkip) or ""))
 		do
+			-- (0.14.0) the player's map and how Route places it; the flights timed
+			local timed = 0
+			for _ in pairs(live.flights) do
+				timed = timed + 1
+			end
+			print("   " .. M.WhereWords())
+			print(string.format("   flight times learned by timing your flights: %d", timed))
+		end
+		do
 			-- (not before the graph is whole: the search's index would be built
 			-- on half of it)
 			local cont, px, py = PlayerYards()
@@ -5158,9 +6350,20 @@ function M:OnEnable(db)
 	pcall(eventFrame.RegisterEvent, eventFrame, "TAXIMAP_OPENED")
 	pcall(eventFrame.RegisterEvent, eventFrame, "QUEST_POI_UPDATE")
 	pcall(eventFrame.RegisterEvent, eventFrame, "QUEST_LOG_UPDATE")
+	-- a faction chosen (M.SideChanged): only the events this client has (a
+	-- RegisterEvent of an unknown one raises), the unit's for the player alone
+	pcall(eventFrame.RegisterEvent, eventFrame, "NEUTRAL_FACTION_SELECT_RESULT")
+	if eventFrame.RegisterUnitEvent then
+		pcall(eventFrame.RegisterUnitEvent, eventFrame, "UNIT_FACTION", "player")
+	else
+		pcall(eventFrame.RegisterEvent, eventFrame, "UNIT_FACTION")
+	end
 	if not ticker then
 		ticker = C_Timer.NewTicker(0.5, Tick)
 	end
+	-- back on: the owners of 'where' still wanting it hear the place again
+	-- at the next 4th tick, standing still or not
+	M.whereWant.fired = false
 	if not adoptTicker and not mergedSaved then
 		local polls = 0
 		adoptTicker = C_Timer.NewTicker(2, function(t)
@@ -5187,6 +6390,7 @@ function M:OnDisable()
 		ticker:Cancel()
 		ticker = nil
 	end
+	M.flight.Stop()
 	route = nil
 	StandIn.Update()
 	Redraw()
@@ -5200,6 +6404,7 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "textShade" then
 		TextShade.Apply()
 	end
+	M.flight.Setting(key)
 	PlaceArrow()
 	Redraw()
 	UpdateMarker()

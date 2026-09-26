@@ -423,11 +423,12 @@ local Column = {
 	GEM_B = { window = 1.875 },
 	-- the Services bar (Modules/Services.lua LayoutBar): width, height, the
 	-- stone above it merged (the divider rail's band, MinimapPanel's
-	-- M:DividerHeight(), 26 with either Button Layout; Groups: one row of 5
-	-- cells min(38, (198 - 6 x 4) / 5) with 5 above and under; All Buttons:
-	-- two rows -- merged as wide as the map, loose 26 px icons in the kit's
-	-- rim, the round rim or none)
-	ROW_GROUPS = { 198, 44.8, 26 }, ROW_ALL_MERGED = { 198, 81.6, 26 },
+	-- M:DividerHeight(), 26 with either Button Layout; Groups: one row of 6
+	-- cells min(38, (198 - 7 x 4) / 6) = 28.33 with 5 above and under -- the
+	-- sixth, Errands, since 0.14.0; five were 34.8 in a row of 44.8; All
+	-- Buttons: two rows -- merged as wide as the map, loose 26 px icons in the
+	-- kit's rim, the round rim or none)
+	ROW_GROUPS = { 198, (198 - 7 * 4) / 6 + 2 * 5, 26 }, ROW_ALL_MERGED = { 198, 81.6, 26 },
 	ROW_ALL_KIT = { 244, 100.6 }, ROW_ALL_ROUND = { 222, 91.8 }, ROW_ALL_PLAIN = { 160, 67 },
 	LINE_GAP = 2, LINE_H = 12,   -- Route's distance line (MinimapPanel LINE_GAP, LINE_H)
 	AURA_GAP = 13,               -- Modules/Auras.lua ATTACH_GAP

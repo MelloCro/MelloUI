@@ -19,6 +19,10 @@
 --   W.Button(parent, text, width, skin, opts)
 --   W.CloseButton(parent, skin)
 --   W.IconBox(parent, size, texture, skin)
+--   W.RoundIcon(parent, size, texture, opts)   a round icon button in a rim
+--                                      (the kit's round rim, or the minimap's)
+--   W.TrayBox(parent, opts)            a small list's box beside a window (the
+--                                      kit's list box, or a plain fill and edge)
 --   W.RowPlate(row, opts)              W.RowPlateOff(row), W.RowPlateChild(row, child)
 --   W.Row(parent, y, height, label, hint, desc, opts) and the typed rows
 --     W.ToggleRow / SliderRow / DropdownRow / ButtonRow, W.Gate, W.ClipRow
@@ -814,6 +818,201 @@ function W.IconBox(parent, size, texture, skin)
 end
 
 --------------------------------------------------------------------------------
+-- RoundIcon (0.14.0, the Reminder widget; lifted from the Services bar's
+-- round medallions, which can move onto it later): a round button, its icon
+-- under a round mask inside a rim, with a round highlight. Two looks,
+-- switched live with b:SetKit(Kit):
+--   the kit's round rim (buttons/roundslot through Kit:Slot: every window's
+--   Round Border, swapped with it, its hover and pressed art its own, Dark
+--   Mode's shade), the icon fitted into its opening;
+--   plain: the minimap's tracking rim round the icon (31 : 21, the Services
+--   bar's medallion).
+--   W.RoundIcon(parent, size, texture[, opts]) -> b   a Button, size x size
+--       (the rim's outer size: the whole button), left and right clicks
+--       registered, in the plain look. opts (read once): name; shade (a
+--       shade area of Kit.shadeAreas: the kit rim wears the whole UI's
+--       shade, a partner drawn by the button itself, so it fades and moves
+--       with it, following the rim's own show and hide: none in the plain
+--       look; made with the first kit look, at the shade's pace)
+--   b:SetIcon(texture)   b:SetOn(on) (grey and dimmed while off)
+--   b:SetKit(Kit)        the kit's look while handed the kit (MelloUI.Kit, as
+--                        a shell hands it to its dressing: this file never
+--                        reaches for it), the plain look for nil or false; the
+--                        kit's rim is made the first time. Set the button's
+--                        own scripts BEFORE the first kit look: the kit's rim
+--                        hooks them, and SetScript drops hooks
+--   b.icon, b.mask, b.plainRim, b.kitRim (nil until the first kit look),
+--   b.size, b.kitLaid (true while the kit's rim shows)
+-- It sets no script and holds no colour; nothing is made per call after.
+--------------------------------------------------------------------------------
+
+do
+	local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+	local TRACKING_RIM = "Interface\\Minimap\\MiniMap-TrackingBorder"
+	local HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
+	local PLAIN_RATIO = 31 / 21   -- the tracking rim: a 31 px ring round a 21 px opening
+	local NONE = {}
+
+	local function SetIcon(b, texture)
+		b.icon:SetTexture(texture)
+	end
+
+	local function SetOn(b, on)
+		b.icon:SetDesaturated(not on)
+		b.icon:SetAlpha(on and 1 or 0.45)
+	end
+
+	-- the plain look: the icon centred at its opening's size, the tracking
+	-- rim's art round it (the art sits in its texture's top left: 53 wide
+	-- for a 21 wide opening, from 5 left of it and 4 above)
+	local function PlainLay(b)
+		local d = b.size / PLAIN_RATIO
+		local k = d / 21
+		local icon, rim = b.icon, b.plainRim
+		icon:ClearAllPoints()
+		icon:SetSize(d, d)
+		icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+		rim:ClearAllPoints()
+		rim:SetSize(53 * k, 53 * k)
+		rim:SetPoint("TOPLEFT", icon, "TOPLEFT", -5 * k, 4 * k)
+	end
+
+	-- the kit rim's shade partner (opts.shade): the rim drawn at the
+	-- button's size, so the partner's scale is that against its piece's
+	-- painted width; an unknown area is reported, and the button goes without
+	local function ShadeRim(b, rim, Kit)
+		local ok, el = pcall(Kit.ShadeElement, Kit, b, b.shadeArea, { host = b })
+		if not ok then
+			geterrorhandler()(el)
+			return
+		end
+		local pw = Kit.Size and rim.kitName and Kit:Size(rim.kitName, 1)
+		pw = Secret(pw) and nil or tonumber(pw)
+		el:Add(rim, { scale = (pw and pw > 0) and b.size / pw or nil })
+	end
+
+	local function SetKit(b, Kit)
+		local on = (type(Kit) == "table" and Kit.Slot and Kit.SlotPlaceIcon) and true or false
+		if on then
+			local rim = b.kitRim
+			if not rim then
+				rim = Kit:Slot(b, { kind = "roundslot" })
+				if Kit.RegisterTexture then
+					Kit:RegisterTexture(rim)   -- Dark Mode's shade
+				end
+				b.kitRim = rim
+				if b.shadeArea and Kit.ShadeElement then
+					ShadeRim(b, rim, Kit)
+				end
+			end
+			rim:Show()
+			b.plainRim:Hide()
+			rim.icon = b.icon
+			Kit:SlotPlaceIcon(rim)
+		else
+			if b.kitRim then
+				b.kitRim:Hide()
+			end
+			b.plainRim:Show()
+			PlainLay(b)
+		end
+		b.kitLaid = on
+	end
+
+	function W.RoundIcon(parent, size, texture, opts)
+		opts = type(opts) == "table" and opts or NONE
+		local b = CreateFrame("Button", opts.name, parent)
+		b:SetSize(size, size)
+		b.size = size
+		b.shadeArea = type(opts.shade) == "string" and opts.shade or nil
+		b:EnableMouse(true)
+		b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		local icon = b:CreateTexture(nil, "ARTWORK")
+		icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+		b.icon = icon
+		local mask = b:CreateMaskTexture()
+		mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(icon)
+		icon:AddMaskTexture(mask)
+		b.mask = mask
+		b:SetHighlightTexture(HIGHLIGHT, "ADD")
+		local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+		if hl then
+			hl:ClearAllPoints()
+			hl:SetAllPoints(icon)
+			hl:AddMaskTexture(mask)
+		end
+		b.plainRim = b:CreateTexture(nil, "OVERLAY")
+		b.plainRim:SetTexture(TRACKING_RIM)
+		b.SetIcon, b.SetOn, b.SetKit = SetIcon, SetOn, SetKit
+		if texture ~= nil then
+			b:SetIcon(texture)
+		end
+		SetKit(b, false)
+		return b
+	end
+end
+
+--------------------------------------------------------------------------------
+-- TrayBox (0.14.0: the Restock panel beside the shop, the Services trays;
+-- lifted from the Services bar's menu box, which can move onto it later): the
+-- box of a small list that hangs beside a window. Two looks, switched live
+-- with box:SetKit(Kit) (handed the kit while its look is on, nil or false
+-- for the plain look, as W.RoundIcon):
+--   the kit's list box (Professions-background-summarylist: the single rail
+--   round the list-box stone, the Services menu's look), the rule's inner
+--   panel over the stone so text rows read on it (the eye strain rule;
+--   opts.dim = false leaves the plain stone: a box of icons, no text);
+--   plain: a fill in the palette's inner panel inside a 1 px trim edge (the
+--   look of W.Box), the regions the kit's box fades while it shows.
+--   W.TrayBox(parent[, opts]) -> box   a Frame, sized and placed by the
+--       caller. opts (read once): name, strata, dim, alpha (the plain
+--       fill's, 0.95)
+--   box:SetKit(Kit) -> true while the kit's box shows (made the first time)
+--   box.fill, box.edges   the plain look's regions
+--------------------------------------------------------------------------------
+
+do
+	local NONE = {}
+
+	local function SetKit(box, Kit)
+		local rep = box.kitBox
+		local on = type(Kit) == "table"
+		if on and rep == nil and Kit.Replace then
+			rep = Kit:Replace(box.fill, { as = "Professions-background-summarylist", rect = box, parent = box,
+				level = -1, dim = box.kitDim, alsoFade = box.edges })
+			box.kitBox = rep or false
+		end
+		if on and rep then
+			rep:Enable()
+			return true
+		end
+		if rep then
+			rep:Disable()
+		end
+		return false
+	end
+
+	function W.TrayBox(parent, opts)
+		opts = type(opts) == "table" and opts or NONE
+		local box = CreateFrame("Frame", opts.name, parent)
+		if type(opts.strata) == "string" then
+			box:SetFrameStrata(opts.strata)
+		end
+		local alpha = opts.alpha
+		if type(alpha) ~= "number" or Secret(alpha) then
+			alpha = 0.95
+		end
+		box.fill = W.Solid(box, "BACKGROUND", "innerPanel", alpha)
+		box.fill:SetAllPoints(box)
+		box.edges = Edges(box, "trim", "BORDER")
+		box.kitDim = opts.dim   -- (nil: the rule's panel; false: none)
+		box.SetKit = SetKit
+		return box
+	end
+end
+
+--------------------------------------------------------------------------------
 -- RowPlate (audit rank 10): the one hover look of a row, faded through Anim
 -- (0.10 s in, 0.12 s out; at once under Reduce Motion), with one pair of
 -- shared handlers for every row of every window -- no OnUpdate of the row's
@@ -1490,14 +1689,10 @@ end
 
 W.SWATCH_ROLES = { "mainWindow", "selectedTab", "trim", "selectedTrim", "text" }
 
--- a palette's entry in Core's registry (Ember's for nil or an unknown id)
+-- a palette's entry in Core's registry (Ember's for nil or an unknown id:
+-- Core's one rule, MelloUI:KnownPalette)
 local function PaletteEntry(id)
-	local palettes = MelloUI.Palettes
-	local entry = type(id) == "string" and id ~= "order" and palettes[id]
-	if type(entry) ~= "table" then
-		entry = palettes.ember
-	end
-	return entry
+	return MelloUI.Palettes[MelloUI:KnownPalette(id)]
 end
 
 function W.PaletteName(id)

@@ -252,13 +252,20 @@ RAILS = {"window": (17.0, 17.375, 16.625, 17.375), "single": (5.6, 5.6, 5.6, 5.6
          "red": (9.875, 11.75, 9.875, 11.75), "iron": (9.875, 11.75, 9.875, 11.75), "none": (0.0, 0.0, 0.0, 0.0)}
 RING_RIM = 20.65
 GAME_RIM = (8.5, 14.0, 8.5, 14.0)
+# the window frame's bottom gem corners paint below its bottom rail
+# (MinimapPanel GemReach: window/frame_gem_bl's overhang 12 less the 7 clear
+# rows under its box, x Kit.scale 0.375): counted in the column's bottom, so
+# the tracker hangs clear of them (build round 7, user 2026-09-26; the
+# scratch copy had it, this one caught up in 0.14.0)
+GEM_B = {"window": 1.875}
 # the Services bar (Modules/Services.lua LayoutBar): width, height and the
 # stone above it merged (the divider rail's band, MinimapPanel's
-# M:DividerHeight(), 26 with either Button Layout). Groups: one row of 5
-# cells min(38, (198 - 6 x 4) / 5) plus 5 above and under; All Buttons: two
-# rows (merged: cells as wide as the map allows; loose: 26 px icons in the
-# kit's rim, the round rim or none)
-ROW_GROUPS = (198.0, 44.8, 26.0)
+# M:DividerHeight(), 26 with either Button Layout). Groups: one row of 6
+# cells min(38, (198 - 7 x 4) / 6) = 28.33 plus 5 above and under (the
+# sixth, Errands, since 0.14.0; five were 34.8 in a row of 44.8); All
+# Buttons: two rows (merged: cells as wide as the map allows; loose: 26 px
+# icons in the kit's rim, the round rim or none)
+ROW_GROUPS = (198.0, (198.0 - 7 * 4) / 6 + 2 * 5, 26.0)
 ROW_ALL_MERGED = (198.0, 81.6, 26.0)
 ROW_ALL_KIT = (244.0, 100.6)
 ROW_ALL_ROUND = (222.0, 91.8)
@@ -352,7 +359,7 @@ def column(lay, r, mello):
     if loose is not None and lb > loose[1] and lt < loose[3]:
         lt = loose[3] + LINE_GAP * k
         lb = lt + LINE_H * k
-    bottom = max(frame[3], lb)
+    bottom = max(frame[3] + (GEM_B.get(border, 0.0) if kit and square else 0.0) * k, lb)
     if loose is not None:
         bottom = max(bottom, loose[3])
     mp = (mL, mT, mR, mB)

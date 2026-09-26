@@ -165,14 +165,8 @@ local U_LOOK = { reskin = true, questTrackerKit = true, preloadArt = true, fadeW
 	palette = true }
 local U_PREFERENCE = { nameFormat = true }
 
--- a palette's id as Core reads the setting: one of MelloUI.Palettes, any
--- other value Ember
-local function KnownPalette(id)
-	if type(id) ~= "string" or id == "order" or type(MelloUI.Palettes[id]) ~= "table" then
-		return "ember"
-	end
-	return id
-end
+-- (a palette's id as Core reads the setting: MelloUI:KnownPalette, Core's
+-- one rule -- a registry id, any other value Ember)
 
 -- keys no setup ever sets: the player's accessibility choice, a passing
 -- mode, the switch Tweaks lost (its one-time fold resets rows reading false)
@@ -289,10 +283,12 @@ I.WINDOW_GROUPS = {
 -- The Fresh start wizard's Features step: every feature, adds and replaces
 -- module with a switch of its own, in two columns (Chat has its own step;
 -- Tweaks has no switch). Each starts off; one switched on takes Full's
--- settings for that module.
+-- settings for that module. (0.14.0: the reminder widget's page, Reminders,
+-- and Restock, its fourth user with a module of its own; both say their
+-- role themselves.)
 I.FEATURE_GROUPS = {
 	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Services",
-		"PartyMarkers", "VoiceOver", "Vendor" } },
+		"Reminders", "Restock", "PartyMarkers", "VoiceOver", "Vendor" } },
 	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",
 		"UnitFrames", "BarText", "Tooltip", "Stats" } },
 }
@@ -727,9 +723,9 @@ do
 		if not option then
 			return "ember"
 		elseif option.base == "fresh" then
-			return KnownPalette(type(draft) == "table" and draft[UMB .. ".palette"] or FullPalette(self))
+			return MelloUI:KnownPalette(type(draft) == "table" and draft[UMB .. ".palette"] or FullPalette(self))
 		elseif option.whole or (option.roles or EMPTY)[UKeyRole("palette")] == "full" then
-			return KnownPalette(FullPalette(self))
+			return MelloUI:KnownPalette(FullPalette(self))
 		end
 		return MelloUI:PaletteId()
 	end
@@ -1197,7 +1193,7 @@ end
 -- walk, one 'palette' for the whole apply. (With it on, the palette goes
 -- in from that 'setting' as the Batch ends, the Kit Colours with it.)
 local function PaletteMoves(umNow)
-	return KnownPalette(umNow.palette) ~= MelloUI:PaletteId()
+	return MelloUI:KnownPalette(umNow.palette) ~= MelloUI:PaletteId()
 end
 
 local function LookRefresh(pending, umStart, log)

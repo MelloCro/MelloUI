@@ -56,6 +56,8 @@ local M = MelloUI:RegisterModule("QuestList", {
 		entrancePins = true,
 		transportPins = true,
 		dungeonSummary = true,
+		tipQuestItems = true,
+		tipTurnIn = true,
 	},
 	options = {
 		{ type = "header", name = "List" },
@@ -103,6 +105,13 @@ local M = MelloUI:RegisterModule("QuestList", {
 		{ type = "header", name = "Dungeons" },
 		{ type = "toggle", key = "dungeonSummary", name = "Quest Check When Entering An Instance",
 		  desc = "When you enter a dungeon or raid, list in chat the quests for it you could have picked up but have not." },
+		-- the quest tooltips (0.14.0, QuestListTips.lua): read from your quest
+		-- log and the list's data, so they live with the list
+		{ type = "header", name = "Tooltips" },
+		{ type = "toggle", key = "tipQuestItems", name = "Quest Progress On Items",
+		  desc = "On the tooltip of an item one of your quests asks for, name the quest and how many you have, for example \"Quest: Red Linen Goods (4/6)\"." },
+		{ type = "toggle", key = "tipTurnIn", name = "Turn-In NPCs",
+		  desc = "On the tooltip of an NPC that takes back one of your quests: \"Turn in here\" once the quest is ready, a quieter \"Quest ends here\" while it is still in progress." },
 	},
 })
 
@@ -142,6 +151,7 @@ local function RowByID()
 	end
 	return rowByID
 end
+QL.RowByID = RowByID   -- (the quest tooltips read the turn-ins of the log's quests through it)
 
 -- Classic or Forever (user, 2026-09-23: "use Classic on classic quests, and
 -- Forever on the Forever quests, so that i can know which ones are new"):
@@ -152,6 +162,32 @@ end
 function MelloUI:QuestOrigin(questID)
 	local row = questID and RowByID()[questID]
 	return row and row[QL.F_ORIGIN] or nil
+end
+
+-- Who takes a quest back, and where (0.14.0, the tracker's turn-in line):
+-- name, npcID, cont, wx, wy, zoneName, from the data -- npcID nil when the
+-- data has none (an object, or a name only); cont, wx, wy (the world map
+-- id: 0, 1, 2991 ... and world yards) nil when it has no position;
+-- zoneName the zone the client put the spot in, else the data's. nil when
+-- the data names nobody (the caller keeps its own line then). Read through
+-- the by-ID lookup, so it answers with the Quest List off too.
+function MelloUI:QuestTurnIn(questID)
+	if IsSecret(questID) or type(questID) ~= "number" then
+		return nil
+	end
+	local row = RowByID()[questID]
+	local name = row and row[QL.F_ENDER]
+	if not name or name == "" then
+		return nil
+	end
+	local npc = row[QL.F_ENDERNPC]
+	local cont, wx, wy = row[QL.F_ENDERCONT], nil, nil
+	if cont and cont >= 0 then
+		wx, wy = row[QL.F_ENDERWX], row[QL.F_ENDERWY]
+	else
+		cont = nil
+	end
+	return name, (npc and npc ~= 0) and npc or nil, cont, wx, wy, QL.EnderZoneName(row)
 end
 
 -- the logos themselves (user, 2026-09-23: "instead of text, try to get the
@@ -243,10 +279,11 @@ local nextInChain = nil   -- [questID] = the row that follows it
 QL.eventRows = nil     -- holiday / world event quests, kept out of the zone lists
 QL.zoneByName = nil    -- [lower name] = areaID
 local classBit = nil      -- player's class bit in the data's mask
-local playerSide = nil    -- 1 Alliance, 2 Horde
+local playerSide = nil    -- 1 Alliance, 2 Horde, 0 Neutral (PlayerSide below)
 QL.collapsed = {}      -- [group key] = true while a header is collapsed (per session)
 QL.trackedQuestID = nil -- quest whose giver the map pin currently points at
 QL.RefreshPins = nil   -- redraws the map pins; defined in the map pins section
+QL.logChanges = 0      -- QUEST_LOG_UPDATEs seen while the module is on (the quest tooltips' index follows it)
 
 -- Pins recorded by hand (entrances, docks) live with the Route module's
 -- learned paths, which the baker keeps across sessions, not in the settings
@@ -354,10 +391,16 @@ local function IsOnOrUnder(uiMapID, mapID)
 end
 
 local rectCache = {}   -- [contMapID][mapID] = { minX, maxX, minY, maxY } or false
+local WHOLE_MAP = { 0, 1, 0, 1 }   -- a map's rectangle on itself
 
 -- Rectangle of a map on its continent map, cached. Keyed by the numbers
--- (no string made per look-up: every placed pin asks for it).
+-- (no string made per look-up: every placed pin asks for it). A map on
+-- itself is the whole map, not asked (a zone that is its own top map:
+-- Zephras Isle, 0.14.0).
 local function RectOn(mapID, contMapID)
+	if mapID == contMapID then
+		return WHOLE_MAP
+	end
 	local onCont = rectCache[contMapID]
 	if not onCont then
 		onCont = {}
@@ -381,6 +424,22 @@ local function InRect(r, cx, cy)
 	return nil
 end
 
+-- Is the map a zone (not a continent, the world or an instance)? Cached:
+-- asked for each quest placed on a map with no continent above it.
+local ZONE_TYPE = type(Enum) == "table" and type(Enum.UIMapType) == "table" and Enum.UIMapType.Zone
+ZONE_TYPE = type(ZONE_TYPE) == "number" and ZONE_TYPE or 3
+local zoneMaps = {}   -- [mapID] = true / false
+
+local function IsZoneMap(mapID)
+	local is = zoneMaps[mapID]
+	if is == nil then
+		local ok, info = pcall(C_Map.GetMapInfo, mapID)
+		is = ok and type(info) == "table" and QL.Plain(info.mapType) == ZONE_TYPE or false
+		zoneMaps[mapID] = is
+	end
+	return is
+end
+
 -- A world point as mapID, cx, cy, contMapID: the deepest map that holds it
 -- (city before zone), its position on the continent map and that map; or
 -- nil. QL.ProjectOnMap gives its position on a map (its own or another).
@@ -396,16 +455,24 @@ function QL.ResolveWorld(cont, wx, wy)
 	end
 	local okZ, zinfo = pcall(C_Map.GetMapInfoAtPosition, contMapID, cx, cy)
 	local zone = okZ and type(zinfo) == "table" and QL.Plain(zinfo.mapID) or nil
-	if not zone or zone == contMapID then
-		return nil
-	end
-	local r = RectOn(zone, contMapID)
 	local x, y
-	if r then
-		x, y = InRect(r, cx, cy)
-	end
-	if not x then
-		return nil
+	if not zone or zone == contMapID then
+		-- the top map itself: on a continent a gap between zones (placed
+		-- nowhere); a zone with no continent above it is its own top map
+		-- (Zephras Isle, 2521 right under the world map: the Zephras Isle
+		-- fix, 0.14.0), placed on itself
+		if not IsZoneMap(contMapID) then
+			return nil
+		end
+		zone, x, y = contMapID, cx, cy
+	else
+		local r = RectOn(zone, contMapID)
+		if r then
+			x, y = InRect(r, cx, cy)
+		end
+		if not x then
+			return nil
+		end
 	end
 	-- One level deeper: a city inside the zone.
 	local okC, cinfo = pcall(C_Map.GetMapInfoAtPosition, zone, x, y)
@@ -619,9 +686,15 @@ function QL.EndPoint(row)
 	return nil
 end
 
--- Zone name of the turn-in, from its placement or the build-time guess.
+-- Zone name of the turn-in, from its placement or the build-time guess. A
+-- turn-in at the giver's own spot is not placed twice (ResolveInChunks):
+-- the giver's placement is its placement then.
 function QL.EnderZoneName(row)
 	local n = QL.resolvedEnd and QL.resolvedEnd[row]
+	if n == nil and QL.resolved and row[QL.F_ENDERCONT] == row[QL.F_CONT]
+		and row[QL.F_ENDERWX] == row[QL.F_WX] and row[QL.F_ENDERWY] == row[QL.F_WY] then
+		n = QL.resolved[row]
+	end
 	if n then
 		local ok, info = pcall(C_Map.GetMapInfo, placeMap[n])
 		local name = ok and type(info) == "table" and QL.Plain(info.name) or nil
@@ -797,7 +870,33 @@ local function BuildIndex()
 			classBit = mask
 		end
 	end
-	playerSide = UnitFactionGroup("player") == "Horde" and 2 or 1
+	playerSide = QL.PlayerSide()
+end
+
+-- The player's side as the data writes it: 1 Alliance, 2 Horde, and 0 while
+-- Neutral (a new Skyborne character before the faction choice): the quests
+-- open to both factions only (the Zephras Isle fix, 0.14.0; it counted as
+-- Alliance). Route's one side helper (Route.PlayerSide, a plain function
+-- that answers with Route off too), so the list, Route and Services agree.
+-- (Route.lua loads with every MelloUI; a stripped test world without it
+-- counts as Alliance, as before. The rows' own test stays Eligible's: a
+-- quest row writes "both" as 0 or 3.)
+function QL.PlayerSide()
+	local R = MelloUI.Route
+	return R and R.PlayerSide and R.PlayerSide() or 1
+end
+
+-- The faction picked (or a PvP flag, which comes the same way): the list and
+-- the pins follow a new side at once, not after a reload
+function QL.SideChanged()
+	if playerSide == nil then
+		return   -- no index yet: it reads the side when it is made
+	end
+	local side = QL.PlayerSide()
+	if side ~= playerSide then
+		playerSide = side
+		QL.RefreshPins()
+	end
 end
 
 -- Ask the client where every vanilla giver and turn-in is, a few hundred rows
@@ -909,6 +1008,68 @@ function QL.IsReadyForTurnIn(questID)
 	return false
 end
 
+-- The quest log walk, one for the Quest List (the panel's sums and the
+-- quest tooltips' index; 0.14.0). QL.LogCalls: the log read by C_QuestLog
+-- (true), the older calls (false) or not at all (nil).
+function QL.LogCalls()
+	if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetQuestIDForLogIndex then
+		return true
+	elseif _G.GetNumQuestLogEntries and _G.GetQuestLogTitle then
+		return false
+	end
+	return nil
+end
+
+-- the log's lines (headers too) and quests, nil when it cannot be read
+function QL.LogSize(modern)
+	local ok, lines, quests
+	if modern then
+		ok, lines, quests = pcall(C_QuestLog.GetNumQuestLogEntries)
+	elseif modern == false then
+		ok, lines, quests = pcall(_G.GetNumQuestLogEntries)
+	end
+	if not ok then
+		return nil
+	end
+	lines, quests = QL.Plain(lines), QL.Plain(quests)
+	if type(lines) ~= "number" or type(quests) ~= "number" then
+		return nil
+	end
+	return lines, quests
+end
+
+-- the quest id on a log line, nil for a header
+function QL.LogQuestID(modern, i)
+	local ok, id
+	if modern then
+		ok, id = pcall(C_QuestLog.GetQuestIDForLogIndex, i)
+	else
+		local _, isHeader
+		ok, _, _, _, isHeader, _, _, _, id = pcall(_G.GetQuestLogTitle, i)
+		if ok and QL.Plain(isHeader) then
+			return nil
+		end
+	end
+	id = ok and QL.Plain(id) or nil
+	return (type(id) == "number" and id > 0) and id or nil
+end
+
+-- The quests in the log: their ids into `into` (emptied first: one table
+-- kept and filled again), then true when that is every quest of the log
+-- (false when a folded header hides some, or the log cannot be read)
+function QL.LogQuestIDs(into)
+	wipe(into)
+	local modern = QL.LogCalls()
+	local lines, quests = QL.LogSize(modern)
+	for i = 1, lines or 0 do
+		local id = QL.LogQuestID(modern, i)
+		if id then
+			into[#into + 1] = id
+		end
+	end
+	return lines ~= nil and #into >= quests
+end
+
 -- Quest log colouring: grey trivial, green easy, yellow fair, orange hard, red very hard.
 -- The level the game colours a quest by: for a quest in the log its own
 -- difficulty level (C_QuestLog.GetInfo, which can sit under the level shown
@@ -1015,7 +1176,33 @@ function QL.CurrentAreaID()
 	return areaID, name
 end
 
--- Continent (0 Eastern Kingdoms, 1 Kalimdor) of the map shown, walking up the map tree.
+-- The continent a zone of the data is grouped under by the Continent filter:
+-- the data's (0 Eastern Kingdoms, 1 Kalimdor, 2991 Zephras Isle), or for a
+-- zone the data places on no continent (-1) the zone on its own, as
+-- -areaID (the Zephras Isle fix, 0.14.0: such a zone showed "Unknown
+-- continent" and an empty list). The data's table is written that way on
+-- the first ask (its -1 zones, once), so its other reader -- the panel's
+-- Continent filter, `zoneContinent[zone] == c` -- lists such a zone's
+-- quests alone. nil for a zone the data does not know.
+function QL.ContinentOfZone(areaID)
+	local data = QL.Data()
+	local map = type(data) == "table" and data.zoneContinent
+	if type(map) ~= "table" then
+		return nil
+	end
+	if QL.ownContinents ~= map then
+		QL.ownContinents = map
+		for id, c in pairs(map) do
+			if c == -1 and type(id) == "number" then
+				map[id] = -id
+			end
+		end
+	end
+	return areaID and map[areaID] or nil
+end
+
+-- Continent of the map shown (as QL.ContinentOfZone), walking up the map
+-- tree: its id and name.
 function QL.CurrentContinent()
 	local mapID = CurrentMapID()
 	for _ = 1, 6 do
@@ -1033,12 +1220,12 @@ function QL.CurrentContinent()
 		mapID = QL.Plain(info.parentMapID)
 		if not mapID or mapID == 0 then break end
 	end
-	local areaID = QL.CurrentAreaID()
-	if areaID then
-		local c = QL.Data().zoneContinent and QL.Data().zoneContinent[areaID]
-		if c and c >= 0 then
-			return c, QL.Data().continentNames[c]
-		end
+	local areaID, zoneName = QL.CurrentAreaID()
+	local c = QL.ContinentOfZone(areaID)
+	if c then
+		-- (a zone on its own is named as the zone)
+		local names = QL.Data().continentNames
+		return c, names and names[c] or zoneName
 	end
 	return nil, nil
 end
@@ -1243,6 +1430,12 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 		end
 	elseif event == "PLAYER_LEAVING_WORLD" or event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED_NEW_AREA" then
 		QL.RememberOutside()
+	elseif event == "QUEST_LOG_UPDATE" then
+		-- counted only: the quest tooltips make their index again on the
+		-- next tooltip that needs it (QuestListTips.lua)
+		QL.logChanges = QL.logChanges + 1
+	elseif event == "NEUTRAL_FACTION_SELECT_RESULT" or (event == "UNIT_FACTION" and QL.Plain(...) == "player") then
+		QL.SideChanged()
 	end
 	if WorldMapFrame and WorldMapFrame:IsShown() then
 		QL.Panel:Schedule()
@@ -1264,8 +1457,18 @@ function M:OnEnable(db)
 	if not WorldMapFrame then
 		return
 	end
+	-- the quest tooltips (QuestListTips.lua): their two post-calls, once;
+	-- the log may have changed while the module was off (QUEST_LOG_UPDATE,
+	-- which counts the changes, is registered below with the module's
+	-- other events)
+	QL.logChanges = QL.logChanges + 1
+	if QL.InstallTips then
+		QL.InstallTips()
+	end
 	if not QL.byZone then
 		BuildIndex()
+	else
+		playerSide = QL.PlayerSide()   -- a faction picked while the list was off
 	end
 	QL.Panel:Create()
 	QL.Panel:Apply()
@@ -1300,9 +1503,15 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
 	if eventFrame.RegisterUnitEvent then
 		eventFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+		eventFrame:RegisterUnitEvent("UNIT_FACTION", "player")
 	else
 		eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		eventFrame:RegisterEvent("UNIT_FACTION")
 	end
+	-- a Neutral character picking its faction (Zephras Isle, 0.14.0),
+	-- registered as Route registers it: only where this client has the
+	-- event (a RegisterEvent of an unknown one raises)
+	pcall(eventFrame.RegisterEvent, eventFrame, "NEUTRAL_FACTION_SELECT_RESULT")
 	QL.StartOutsideTicker()
 end
 
@@ -1324,6 +1533,9 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "tipQuestItems" or key == "tipTurnIn" then
+		return   -- read by the next tooltip; the panel and the pins show neither
+	end
 	QL.Panel:Apply()
 	QL.RefreshPins()
 end
