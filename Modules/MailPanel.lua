@@ -1141,6 +1141,12 @@ local function SkinItemSlot(button, row)
 	end
 	local rep = Replace(square or button, { as = Kit:ButtonRimRule(), button = host, parent = host, rect = icon or button,
 		noFade = square == nil, checked = checked, alsoFade = extra })
+	-- the rim's hooks (OnEnter / OnMouseDown ...) turn a frame's mouse on: a
+	-- host over the item's icon would catch its clicks, so off again (the
+	-- button's own hooks below give the rim its hover and press)
+	if host ~= button then
+		host:EnableMouse(false)
+	end
 	button.melloRep = rep or false
 	if not rep then
 		return

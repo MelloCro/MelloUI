@@ -15,10 +15,16 @@ Core\Core.lua
 Core\Perf.lua
 Core\Companions.lua
 Core\Anim.lua
+Core\Widgets.lua
+Core\Shade.lua
+Core\Notice.lua
 Core\Config.lua
 Core\Tutorial.lua
 Core\Backup.lua
 Core\KitTuning.lua
+Core\LayoutFit.lua
+Core\Installer.lua
+Core\InstallerWindow.lua
 Core\EditModeLayout.lua
 
 Media\CustomFonts.lua
@@ -30,11 +36,13 @@ Media\RouteData.lua
 Media\ClassIcons.lua
 Media\KitLayout.lua
 Media\KitSlices.lua
+Media\KitShadows.lua
 Media\KitTuning.lua
 Media\Profiles.lua
 Media\EditModeLayout.lua
 
 Modules\Kit.lua
+Modules\KitWindow.lua
 Modules\UIModifications.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua

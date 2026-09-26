@@ -29,7 +29,7 @@ local M = MelloUI:RegisterModule("ClassIcons", {
 	desc = "High resolution painted class medallions in place of the default class icons, and on player portraits.",
 	icon = "Interface\\Icons\\INV_Misc_Rune_01",
 	flavour = "Painted medallions for every class, on the character sheet and on every portrait.",
-	group = "The look",
+	role = "look",
 	tweak = { label = "Class Icons", desc = "The painted class medallions in place of the game's class icons and on player portraits.", order = 8 },
 	enabledByDefault = true,
 	defaults = {

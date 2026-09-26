@@ -37,7 +37,7 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- drifted from the modules). Each kit panel gives its row as `window` in its
 -- RegisterModule, each folded feature as `tweak` (Core's header):
 --   window  { label, desc, tab = "Windows" | "HUD", order, switch, frames,
---             plainGrab, addon, firstOpen }
+--             plainGrab, addon, firstOpen, include }
 --   tweak   { label, desc, order, off, always }
 --   order   rows with one lead their list (their tab), lowest first; the
 --           rest follow in the TOC's order
@@ -45,10 +45,16 @@ local hooksecurefunc = Perf.hooksecurefunc
 --           MelloUI's own windows: that setting of this module, which
 --           Kit:IsOn reads (the Quest Tracker's questTrackerKit; audit,
 --           2026-09-24, rank 1)
+--   include true: the panel's own options are laid out under its row,
+--           indented and live only while it is on (the nameplates' Name
+--           Shade, 2026-09-25); { keys }: only those, in that order (a
+--           panel whose look choices are in Dynamic UI Modification);
+--           without it a panel's options are not on this page
 -- Made into the lists the code below reads, in the order the user sees:
 --   PANELS  { module name (or the switch), label, description, tab =,
 --           setting = true for a switch: no module goes by that name, and
---           the module paths below pass it by }
+--           the module paths below pass it by; include = the module whose
+--           options go under the row, includeKeys = its keys or nil }
 --   TWEAKS  { module name, label, description, off =, always = }, each
 --           switched by `qol_<name>` here (`off`: off until switched on, as
 --           the module was before it moved here; `always`: no switch, its
@@ -61,11 +67,14 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- read (Lists, by the plain windows' sweep below).
 local PANELS, TWEAKS = {}, {}
 
--- welcomeAsked: the first-login question (take the tour) was asked
--- (Core/Tutorial.lua); layoutApplied: the Edit Mode layout was put in place
--- when the reskin came on (ReskinOn below); flags without option rows
--- defined further down, next to the rest of the switching; declared here so
--- the button on the page can reach them
+-- Flags without option rows: welcomeAsked, the first login was handled (the
+-- installer's login check, Core/Installer.lua); seenVersion, the version
+-- whose one What's new line was given; layoutApplied, the Edit Mode layout
+-- was put in place once when the reskin came on (ReskinOn below) or the
+-- installer answered for it; layoutFitFor and layoutAsked_<character>, the
+-- installer's own facts. The switching functions are defined further down,
+-- next to the rest of the switching; declared here so the button on the
+-- page can reach them.
 local Apply, RestoreAreas, NothingWanted, TweakWanted
 
 -- The page (user, 2026-09-24: "the Dynamic UI Modification is going to be
@@ -129,6 +138,9 @@ local function Panels(tab)
 		for _, area in ipairs(PANELS) do
 			if area.tab == tab then
 				Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+				if area.include then
+					Add({ type = "include", module = area.include, area = area[1], keys = area.includeKeys, flat = true })
+				end
 			end
 		end
 	end)
@@ -211,7 +223,10 @@ Feature("ClassIcons")
 -- Chat and tooltips
 Tab("Chat & Tooltips")
 Feature("Chat")
-Feature("Tweaks", { "chatNotices" }, false)
+Feature("Tweaks", { "chatNotices", "noticeOnScreen", "noticeToChat", "noticeSounds" }, false)
+-- the game's zone text in the notice's look (Core/Notice.lua); Outlined Text
+-- after it, ungated: it sets both texts' outline
+Feature("Tweaks", { "zoneTextShade", "noticeOutline" }, false)
 Feature("Tooltip")
 
 -- Text: the style and sizes first, the single faces under Advanced
@@ -235,12 +250,19 @@ local M = MelloUI:RegisterModule("UIModifications", {
 	-- it drives every reskin panel and folded tweak, so its OFF state has to
 	-- be applied at start-up too, not only when the switch is thrown
 	applyWhenDisabled = true,
-	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded" },   -- a borrowed game setting and one-time steps: never in a profile
+	-- a borrowed game setting, one-time steps, and the installer's facts
+	-- about this machine and character (the version it last showed, the
+	-- layout questions asked, the screen the layout was fitted for): never
+	-- in a profile; and Dark Mode's switch, the player's own preference
+	-- (user, 2026-09-26: no profile carries it)
+	keep = { "savedSurnameOwn", "layoutApplied", "welcomeAsked", "bordersMigrated", "featuresFolded", "questTrackerKitMigrated",
+		"seenVersion", "^layoutAsked_", "layoutFitFor", "qol_DarkMode" },
 	defaults = defaults,
 	options = options,
 	icon = "Interface\\Icons\\INV_Misc_Gem_Ruby_02",
 	flavour = "The painted reskin, area by area, and the quality-of-life tweaks on nameplates, tooltips, chat and unit frames. Start here.",
-	group = "The look",
+	group = "The look", navOrder = 1,
+	role = "core",
 })
 
 -- Unlock the Windows, Auto Snapping and Reset positions sit in the
@@ -1346,11 +1368,11 @@ end
 -- The windows with a plain grab: the frames a module's `window` names with
 -- `plainGrab` (the windows dressed on their first show got their mover only
 -- from the kit's shell before, so theirs is plain from login like the
--- others -- user, 2026-09-24), then the windows no module registers: the
--- configurator (Core/Config.lua is not a module). Made by Lists; the order
--- is of no account (each window's grab is its own).
+-- others -- user, 2026-09-24). MelloUI's own windows have none here: they
+-- register with Core's mover (the configurator through its Kit:OwnWindow
+-- shell), and a second grab would be a second mover. Made by Lists; the
+-- order is of no account (each window's grab is its own).
 local PLAIN_WINDOWS = {}
-local LOOSE_WINDOWS = { "MelloUIConfigFrame" }
 
 -- The lists made from the registry (PANELS and TWEAKS: see the top), the
 -- switches' defaults and their rows on the page, once: at the addon's own
@@ -1384,7 +1406,9 @@ local function Lists()
 		local w, t = module.window, module.tweak
 		if w and w.label then
 			panels[#panels + 1] = { at = at, tab = TAB_RANK[w.tab] or 3, order = type(w.order) == "number" and w.order or math.huge,
-				row = { w.switch or module.name, w.label, w.desc or "", tab = w.tab, setting = w.switch and true or nil } }
+				row = { w.switch or module.name, w.label, w.desc or "", tab = w.tab, setting = w.switch and true or nil,
+					include = (w.include and type(module.options) == "table" and module.options[1]) and module.name or nil,
+					includeKeys = type(w.include) == "table" and w.include or nil } }
 		end
 		if w and w.plainGrab and type(w.frames) == "table" then
 			for _, name in ipairs(w.frames) do
@@ -1398,14 +1422,15 @@ local function Lists()
 	end
 	InOrder(panels, PANELS)
 	InOrder(tweaks, TWEAKS)
-	for _, name in ipairs(LOOSE_WINDOWS) do
-		PLAIN_WINDOWS[#PLAIN_WINDOWS + 1] = name
-	end
 	for _, area in ipairs(PANELS) do
 		defaults[area[1]] = true
 	end
+	-- (an `always` tweak has no switch, so no default either: Everything
+	-- Off (Core's FreshProfileText) would write its qol_ key as false, and
+	-- the one-time fold in OnEnable would take that for a switched-off
+	-- Tweaks and reset its rows)
 	for _, tweak in ipairs(TWEAKS) do
-		if not tweak.off then
+		if not (tweak.off or tweak.always) then
 			defaults["qol_" .. tweak[1]] = true
 		end
 	end
@@ -1978,10 +2003,36 @@ function Apply(db, on)
 	end
 end
 
+-- qol_Tweaks has no default any more (Tweaks has no switch, see Lists): a
+-- saved one is dead data (the old default put `true` in every player's
+-- settings) and, with no default to compare with, would travel in every
+-- profile, share string, backup and bake. Only a false the fold (OnEnable)
+-- has not read yet means something. Dropped at login (OnInit) and after a
+-- profile load or the late settings (the bus's 'restart', below), with the
+-- module on or off.
+local function DropTweaksSwitch(db)
+	if type(db) == "table" and (db.featuresFolded or db.qol_Tweaks ~= false) then
+		db.qol_Tweaks = nil
+	end
+end
+
+-- Dark Mode is off until switched on since 0.13.7 (a personal preference,
+-- user, 2026-09-26); it was on unless switched off before. A player from
+-- then (the fold below done) whose switch was never touched had it running:
+-- theirs is written in as on, so nothing changes for them. A new player's
+-- switch is written by the fold (off), so it is never nil after it.
+local function KeepDarkMode(db)
+	if type(db) == "table" and db.featuresFolded and db.qol_DarkMode == nil then
+		db.qol_DarkMode = true
+	end
+end
+
 -- The driven modules are hidden from the configurator; done once every
 -- module is registered (this file loads before them, see the TOC).
-function M:OnInit()
+function M:OnInit(db)
 	Lists()   -- (made at the addon's ADDON_LOADED already)
+	DropTweaksSwitch(db)   -- (before any profile is saved)
+	KeepDarkMode(db)
 	for _, area in ipairs(PANELS) do
 		local module = MelloUI:GetModule(area[1])
 		if module then
@@ -2054,14 +2105,44 @@ local function ApplyPreload(db, on)
 	Kit:Preload(files)
 end
 
+-- The reskin's Edit Mode layout, answered (ApplyEditModeLayout's done, on a
+-- later frame: the layout is fitted to this screen first, Core/LayoutFit.lua,
+-- like the installer's). Put in: remembered. A FAIL is never put in -- a
+-- screen too small for Mello's layout until the game's UI-scale fix, or
+-- one whose settings do not fit it -- and Core/EditModeLayout.lua has said
+-- so ("Your screen is too small for Mello's layout ..."): answered too, so
+-- the next switch does not say it again (the installer and /mello layout
+-- apply stay for later). Anything else (a fit dropped, no room in Edit
+-- Mode, a save refused) is tried again on the next switch.
+local function ReskinLayoutDone(ok, _, report)
+	local db = MelloUI:GetModuleDB("UIModifications")
+	if not db or db.layoutApplied then
+		return
+	end
+	local failed = type(report) == "table" and report.pass == false and (report.cause == "size" or report.cause == "settings")
+	if ok or failed then
+		MelloUI:NotifySettingChanged(M.name, "layoutApplied", true)
+	end
+end
+
 -- The reskin switched on by the user (the umbrella from its tile or the
 -- reskin toggle; not Core's start-up pass): Custom Sounds comes on with it,
--- and the Edit Mode layout the reskin is drawn for is put in place once
--- (user, 2026-09-22: "if people enable the reskin, it should only auto
--- enable the full reskin and the custom sounds, but it needs to load my
--- current UI layout").
+-- and the Edit Mode layout the reskin is drawn for is put in place once,
+-- fitted to this screen (user, 2026-09-22: "if people enable the reskin, it
+-- should only auto enable the full reskin and the custom sounds, but it
+-- needs to load my current UI layout"; user, 2026-09-25: kept,
+-- through the fitter, so a 16:9 screen never gets the raw 21:9 string).
+-- Never while the installer applies a setup: it sets every switch, Custom
+-- Sounds included, and puts its own fitted layout in. Never in a profile
+-- load or a restart either (Core's restartingModules: the module comes on
+-- again there with the reskin already on; a profile with Custom Sounds off
+-- keeps it off, and no layout goes in).
 local function ReskinOn(db)
-	if MelloUI.initializingModules or not MelloUI.initialized or not db.reskin then
+	if MelloUI.initializingModules or MelloUI.restartingModules or not MelloUI.initialized or not db.reskin then
+		return
+	end
+	local installer = MelloUI.Installer
+	if type(installer) == "table" and installer.applying then
 		return
 	end
 	if MelloUI:GetModule("CustomSounds") and not MelloUI:IsModuleEnabled("CustomSounds") then
@@ -2069,11 +2150,11 @@ local function ReskinOn(db)
 		MelloUI:Print("Custom Sounds switched on with the reskin.")
 	end
 	if not db.layoutApplied and MelloUI.ApplyEditModeLayout then
-		local ok, why = MelloUI:ApplyEditModeLayout()
-		if ok then
-			db.layoutApplied = true
-			MelloUI:NotifySettingChanged(M.name, "layoutApplied", true)
-		elseif why and not why:find("no layout is baked", 1, true) then
+		-- (true at once while it is being fitted; the answer comes to
+		-- ReskinLayoutDone. Refused now -- combat, Edit Mode open -- it is
+		-- put in when that ends, and answered then)
+		local ok, why = MelloUI:ApplyEditModeLayout(false, nil, ReskinLayoutDone)
+		if not ok and type(why) == "string" and not why:find("no layout is baked", 1, true) then
 			MelloUI:Print("Edit Mode layout: %s", why)
 		end
 	end
@@ -2093,17 +2174,47 @@ local function ApplyMotion(db)
 		MelloUI.Anim:SetReduceMotion(db.reduceMotion)
 	end
 end
+-- The whole position store replaced: a new table on the bus's 'setting'
+-- (the installer's Install and Revert, in one Batch: one Fire; Reset
+-- positions). The game's windows here that show go where the store now
+-- says, a hidden one on its next show as ever; MelloUI's own windows,
+-- registered with Core, are placed by whoever replaced it (the installer's
+-- I:PlaceWindows). A drag saves into the same table and places its own
+-- window, so it moves nothing else. storeSeen: the store last placed from
+-- (OnEnable places every window from the store it finds).
+local storeSeen = nil
+local function StoreReplaced(store)
+	if store == storeSeen then
+		return
+	end
+	storeSeen = store
+	if not M.isEnabled then
+		return
+	end
+	for frame, mover in pairs(movers) do
+		if not mover.entry and not mover.moving and frame:IsShown() then
+			PutBack(frame)
+		end
+	end
+end
+
 -- a change reaches OnSettingChanged, and a profile load OnEnable, only while
 -- the module is on: the bus's 'setting' and 'restart' (fired at the end of
 -- NotifySettingChanged and RestartModules, where the hooks on them ran;
 -- audit, 2026-09-24, rank 5) reach it with the module off as well
-MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key)
-	if name == "UIModifications" and key == "reduceMotion" then
+MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key, value)
+	if name ~= "UIModifications" then
+		return
+	elseif key == "reduceMotion" then
 		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
+	elseif key == "positions" then
+		StoreReplaced(value)
 	end
 end), M)
 MelloUI:On("restart", Perf.Shared("'restart' on the bus", function()
-	ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
+	local db = MelloUI:GetModuleDB("UIModifications")
+	ApplyMotion(db)
+	DropTweaksSwitch(db)
 end), M)
 
 function M:OnEnable(db)
@@ -2125,6 +2236,7 @@ function M:OnEnable(db)
 	-- Buffs & Debuffs and Error Messages moved here from pages of their own,
 	-- and Tweaks lost its switch (its rows each switch one thing; user,
 	-- 2026-09-24): each keeps the state it had, once
+	KeepDarkMode(db)   -- (before: a fold done now writes a new player's)
 	if not db.featuresFolded then
 		for _, tweak in ipairs(TWEAKS) do
 			local key = "qol_" .. tweak[1]
@@ -2145,9 +2257,11 @@ function M:OnEnable(db)
 	-- MelloUI's Quest Tracker has a kit switch of its own now (audit,
 	-- 2026-09-24, rank 1); it wore the kit with the Objective tracker's until
 	-- then, so it starts as that one is set, once, and no look changes. The
-	-- flag is not a kept key but travels with the settings: loading a
-	-- profile saved before it clears it, and the restart after the load
-	-- takes that profile over the same way; one saved after carries both.
+	-- flag is this player's own one-time step (in `keep`): profiles, share
+	-- strings and the installer's setups never carry it, and loading one
+	-- leaves it as it is (the macro backup keeps it). A profile saved since
+	-- carries questTrackerKit itself when it is off; loading one saved
+	-- before, which has no such key, leaves the switch at its default (on).
 	if not db.questTrackerKitMigrated then
 		db.questTrackerKit = db.TrackerPanel ~= false
 		db.questTrackerKitMigrated = true
@@ -2165,6 +2279,7 @@ function M:OnEnable(db)
 	for frame in pairs(movers) do
 		PutBack(frame)
 	end
+	storeSeen = db.positions   -- (placed from it just now: its 'setting' at a Batch's end moves nothing again)
 	ApplyNameFormat(db, true)
 	ApplyPreload(db, true)
 	ReskinOn(db)

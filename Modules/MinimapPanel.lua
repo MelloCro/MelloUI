@@ -28,15 +28,22 @@
 -- Minimap from the Services Window", example D): with the square shape and a
 -- rail border (the window frame or the single rail), one frame runs round the
 -- map and MelloUI's Services bar under it; a header plate named "Services"
--- lies between the two, on the frame's stone; the zone band rides the frame's
--- top rail as every window's title plate does (the red plate, its caps' gems
--- on the frame's top corners, which give way), the tracking button and the
--- calendar on its two caps. The game's anchors come back when it is off.
+-- lies between the two, on the frame's stone (with Services' one row of
+-- groups the same rail, gem caps and name); the zone band rides
+-- the frame's top rail as every window's title plate does (the red plate,
+-- its caps' gems on the frame's top corners, which give way), the tracking
+-- button and the calendar on its two caps. The game's anchors come back when
+-- it is off.
 -- The column under the minimap (the map, the Services bar, Route's distance
 -- line; the Quest Tracker below it where nobody placed it) is one contract
--- kept here, on or off: M:ColumnSlot, M:ColumnRect, M:LayColumn and the
--- bus's 'column' (below M:Relayout).
--- Covers the Dark Mode group "minimap". /mmdump [frames|reps].
+-- kept here, on or off: M:ColumnSlot, M:ColumnRect, M:ColumnPart, M:LayColumn
+-- and the bus's 'column' (below M:Relayout).
+-- The map's size is Edit Mode's (Minimap, Size; the column's layout E, user,
+-- 2026-09-25: "yes, flip it"): MelloUI never sizes or moves the map, the
+-- cluster, the zone band or the zone button to fit the column; the Quest
+-- Tracker (Match The Minimap's Width) and Services' row follow the map's
+-- width (M:ColumnWidth). Covers the Dark Mode group "minimap". /mmdump
+-- [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -80,7 +87,7 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
 		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, or none. Both are also chosen with previews by Dynamic UI Modification, at the top of the configurator." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
-		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, a Services plate between the map and the service icons. For the square shape with the window frame or the single rail." },
+		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail." },
 	},
 })
 
@@ -120,9 +127,12 @@ local function Build()
 	-- the ring one level above the map (its rim lies over the map's edge at
 	-- 0.75); the band, its text, the tracking button and the indicators are
 	-- raised one level above the ring (they overlap its top), their game
-	-- levels put back on disable
+	-- levels put back on disable. Every level here is kept as an OFFSET from
+	-- the map's (user, 2026-09-26: the column and the Quest Tracker took
+	-- turns on top): the cluster is toplevel, a click in it lifts the whole
+	-- tree, and a level saved as a number put the band and its buttons back
+	-- under the lifted map on the next re-skin.
 	local ringLevel = map:GetFrameLevel() + 1
-	skin.ringLevel = ringLevel
 	if MinimapCompassTexture then
 		local rep = Replace(MinimapCompassTexture, { as = "UI-HUD-Minimap-Frame", parent = cluster, rect = map, level = ringLevel - cluster:GetFrameLevel(),
 			alsoFade = { MinimapCompassTextureUnderlay } })
@@ -132,20 +142,22 @@ local function Build()
 			for _, key in ipairs({ "BorderTop", "ZoneTextButton", "Tracking", "IndicatorFrame" }) do
 				local f = cluster[key]
 				if f then
-					raised[#raised + 1] = { frame = f, level = f:GetFrameLevel() }
+					raised[#raised + 1] = { frame = f, offset = f:GetFrameLevel() - map:GetFrameLevel() }
 				end
 			end
 			if GameTimeFrame then
-				raised[#raised + 1] = { frame = GameTimeFrame, level = GameTimeFrame:GetFrameLevel() }
+				raised[#raised + 1] = { frame = GameTimeFrame, offset = GameTimeFrame:GetFrameLevel() - map:GetFrameLevel() }
 			end
 			rep.onEnable = function()
+				local base = map:GetFrameLevel()
 				for _, entry in ipairs(raised) do
-					entry.frame:SetFrameLevel(math.max(ringLevel + 1, entry.level))
+					entry.frame:SetFrameLevel(base + math.max(2, entry.offset))
 				end
 			end
 			rep.onDisable = function()
+				local base = map:GetFrameLevel()
 				for _, entry in ipairs(raised) do
-					entry.frame:SetFrameLevel(entry.level)
+					entry.frame:SetFrameLevel(math.max(0, base + entry.offset))
 				end
 			end
 			if active then
@@ -268,7 +280,7 @@ local function BorderFrame()
 	-- cluster: a frame on the cluster kept its size while the map grew --
 	-- user, 2026-09-23: "using the Editmode scaling break the map size")
 	local f = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
-	f:SetFrameLevel(skin.ringLevel or (Minimap:GetFrameLevel() + 1))
+	f:SetFrameLevel(Minimap:GetFrameLevel() + 1)
 	f:EnableMouse(false)
 	f.parts = {}
 	for _, key in ipairs({ "tl", "t", "tr", "l", "r", "bl", "b", "br" }) do
@@ -292,6 +304,21 @@ local function RailDepths(prefix, sc)
 		return d * sc
 	end
 	return Depth(prefix .. "_l", "r"), Depth(prefix .. "_r", "l"), Depth(prefix .. "_t", "b"), Depth(prefix .. "_b", "t")
+end
+
+-- How far a rail family's bottom gem corners paint below the frame, in the
+-- frame's units at `sc` (Kit:NineSlice sets each gem's canvas its overhang
+-- past the frame's corner; the clear rows under its box give some of it
+-- back): 0 without gem corners
+local function GemReach(prefix, sc)
+	local reach = 0
+	for i = 1, 2 do
+		local p = Kit:Piece(prefix .. (i == 1 and "_gem_bl" or "_gem_br"))
+		if p and p.overhang and p.box and p.h then
+			reach = math.max(reach, p.overhang - (p.h - p.box[4]))
+		end
+	end
+	return reach * sc
 end
 
 -- A frame picture cut into nine on f (the corners CORNER piece px, the
@@ -333,10 +360,15 @@ local function CutFrame(f, piece, k)
 	return true
 end
 
--- the merge's measures: the divider band's height (UI px); the cap gem, as
+-- the merge's measures: the divider band's height (UI px: the header rail
+-- stands in it, its opaque part 4 less, its gem caps a hair over the map's
+-- edge; the bar under it, with either Button Layout); the cap gem, as
 -- Kit:TitleOnRail's (tabs/top caps: the gem's centre from the outer end)
 local DIVIDER_H = 26
 local CAP_GEM_X = 48
+-- the rail's ends kept clear of its gem caps: where the clock stood on the
+-- Services plate, and where the name and Route's line stand on the rail
+local RAIL_PAD = DIVIDER_H * 1.6
 
 -- Whether the Services bar joins the square map's frame (Services asks too)
 function M:WantsServices()
@@ -347,6 +379,29 @@ function M:WantsServices()
 	return b and b.prefix ~= nil or false
 end
 
+-- What Services says of its row under the map (the contract Services fills,
+-- read at call time): `groups`, true while its buttons stand as ONE row of
+-- groups (the merged frame's divider rail then shares its rail with Route's
+-- distance line, its "Services" name kept, and the clock goes to the zone
+-- band's right end), and the row's `height` in the
+-- bar's own units (nil: the bar's own height). Services:ColumnRow() -> groups,
+-- height; until Services has it: not groups, the bar's height.
+local function ServicesRow()
+	local services = MelloUI:GetModule("Services")
+	if services and services.isEnabled and services.ColumnRow then
+		local ok, groups, height = pcall(services.ColumnRow, services)
+		if ok then
+			height = MelloUI.Safe.Number(height)
+			return groups == true, (height and height > 0) and height or nil
+		end
+	end
+	return false, nil
+end
+
+-- the stone between the map and the merged bar: the band the divider's rail
+-- stands in, the bar right under it (the "Services" name on the rail with
+-- either Button Layout; over the row of groups it shares the rail with
+-- Route's distance line: the same height)
 function M:DividerHeight()
 	return DIVIDER_H
 end
@@ -365,8 +420,9 @@ local function ServicesBar()
 	return nil
 end
 
--- The divider: the frame's stone across the map's width under it, a header
--- plate on it with "Services" in the title face
+-- The divider: the frame's stone across the map's width under it, the header
+-- rail on it (its gem caps at the ends) with "Services" in the title face
+-- (with either Button Layout: LayoutDivider)
 local function Divider(f)
 	if skin.divider then
 		return skin.divider
@@ -390,7 +446,22 @@ local function Divider(f)
 	return d
 end
 
-local function LayoutDivider(f, b)
+-- a region's width when it reads plainly, else `fallback`
+local function PlainWidth(region, fallback)
+	if not region then
+		return fallback
+	end
+	local ok, w = pcall(region.GetWidth, region)
+	w = ok and MelloUI.Safe.Number(w) or nil
+	return (w and w > 0) and w or fallback
+end
+
+-- `groups`: Services' one row of groups (layout E; user, 2026-09-25: "it
+-- does not have the separation line between the minimap and the services
+-- tab"): the same rail with its two gem caps and its "Services" name
+-- between the map and the row, the name sharing the rail with Route's
+-- distance line (M.RailName; the clock is on the zone band then)
+local function LayoutDivider(f, b, groups)
 	local d = Divider(f)
 	local map = Minimap
 	d:ClearAllPoints()
@@ -403,7 +474,6 @@ local function LayoutDivider(f, b)
 	end
 	Kit:Retile(d.stone)
 	local plate = d.plate
-	local dy = 0
 	if plate then
 		local h = DIVIDER_H - 4
 		local yoff = plate.FitBox and plate:FitBox(h) or 0
@@ -411,20 +481,52 @@ local function LayoutDivider(f, b)
 		plate:SetPoint("LEFT", d, "LEFT", 0, yoff)
 		plate:SetPoint("RIGHT", d, "RIGHT", 0, yoff)
 		plate:SetHeight(plate.height)
-		local okW, w = pcall(d.GetWidth, d)
-		if okW and w and not (issecretvalue and issecretvalue(w)) and w > 0 and plate.FitCaps then
+		-- its caps where it is wider than the two (a width that reads
+		-- secret leaves them as they are)
+		local w = plate.FitCaps and PlainWidth(d, nil)
+		if w then
 			plate:FitCaps(w)
 		end
 	end
-	d.text:ClearAllPoints()
-	d.text:SetPoint("CENTER", d, "CENTER", 0, dy)
+	-- the name always stands on the rail (user, 2026-09-26: "there should be
+	-- text on top of it called Services"); over Services' row of groups it
+	-- shares the rail with Route's distance line (M.RailName)
+	d.shares = groups and true or false
+	d.nameLeft = nil
+	d.text:Show()
 	Kit:TitleFont(d.text, true)
+	M.RailName()
 	d:Show()
 end
 
+-- The rail's name: centred while nothing is tracked (user, 2026-09-26: "if
+-- nothing is tracked, it should only say Services, text anchored to the
+-- middle"); at the rail's left end while Route's distance line stands at its
+-- right end. Route calls this when its line shows or hides.
+function M.RailName()
+	local d = skin and skin.divider
+	if not (d and d.text) then
+		return
+	end
+	local route = MelloUI:GetModule("Route")
+	local left = (d.shares and route and route.DistanceLineShown and route:DistanceLineShown()) and true or false
+	if d.nameLeft == left then
+		return
+	end
+	d.nameLeft = left
+	d.text:ClearAllPoints()
+	if left then
+		d.text:SetPoint("LEFT", d, "LEFT", RAIL_PAD, 0)
+	else
+		d.text:SetPoint("CENTER", d, "CENTER", 0, 0)
+	end
+end
+
 -- The zone band on the frame's top rail (merged) or back where the game put
--- it, with the tracking button, the calendar and the zone text's width
-local function PlaceBand(merged, f, b)
+-- it, with the tracking button, the calendar and the zone text's width;
+-- `groups`: Services' one row of groups (ServicesRow), the clock on the
+-- band
+local function PlaceBand(merged, f, b, groups)
 	local cluster = MinimapCluster
 	local band = cluster and cluster.BorderTop
 	local rep = skin.band
@@ -434,14 +536,17 @@ local function PlaceBand(merged, f, b)
 	local movers = { band, cluster.Tracking, _G.GameTimeFrame, _G.TimeManagerClockButton }
 	if merged then
 		if not skin.bandSaved then
+			-- (a level as an offset from the map's: put back over a map a click
+			-- in the toplevel cluster lifted meanwhile)
 			local saved = {}
+			local base = Minimap:GetFrameLevel()
 			for i, frame in ipairs(movers) do
 				if frame then
 					local pts = {}
 					for j = 1, frame:GetNumPoints() do
 						pts[j] = { frame:GetPoint(j) }
 					end
-					saved[i] = { points = pts, w = frame:GetWidth(), scale = frame:GetScale(), level = frame:GetFrameLevel() }
+					saved[i] = { points = pts, w = frame:GetWidth(), scale = frame:GetScale(), offset = frame:GetFrameLevel() - base }
 				end
 			end
 			saved.textWidth = MinimapZoneText and MinimapZoneText:GetWidth()
@@ -492,13 +597,29 @@ local function PlaceBand(merged, f, b)
 			clock:ClearAllPoints()
 			clock:SetPoint("CENTER", band, "RIGHT", over - CAP_GEM_X * ss, 0)
 		end
-		if MinimapZoneText then
-			MinimapZoneText:SetWidth(math.max(40, plateW - 2 * 70 * ss))
-		end
-		-- the clock on the Services plate's right end, clear of the header
+		-- the clock on the Services plate's right end, clear of the header;
+		-- with Services' one row of groups (layout E) on the zone band's
+		-- right end, just inside the calendar, the zone name kept
+		-- as far clear of it at both ends
 		local timeButton = _G.TimeManagerClockButton
 		local d = skin.divider
-		if timeButton and d then
+		if MinimapZoneText then
+			if groups and timeButton then
+				local margin = CAP_GEM_X * ss + PlainWidth(clock, 19) / 2 + 2 + PlainWidth(timeButton, 40) + 4
+				MinimapZoneText:SetWidth(math.max(40, plateW - 2 * math.max(70 * ss, margin)))
+			else
+				MinimapZoneText:SetWidth(math.max(40, plateW - 2 * 70 * ss))
+			end
+		end
+		if timeButton and groups then
+			timeButton:ClearAllPoints()
+			if clock then
+				timeButton:SetPoint("RIGHT", clock, "LEFT", -2, 0)
+			else
+				timeButton:SetPoint("RIGHT", band, "RIGHT", over - CAP_GEM_X * ss, 0)
+			end
+			timeButton:SetFrameLevel(band:GetFrameLevel() + 2)
+		elseif timeButton and d then
 			timeButton:ClearAllPoints()
 			timeButton:SetPoint("RIGHT", d, "RIGHT", -DIVIDER_H * 1.6, 0)
 			timeButton:SetFrameLevel(d:GetFrameLevel() + 6)
@@ -506,6 +627,7 @@ local function PlaceBand(merged, f, b)
 		skin.bandMerged = true
 	elseif skin.bandMerged then
 		local saved = skin.bandSaved or {}
+		local base = Minimap:GetFrameLevel()
 		for i, frame in ipairs(movers) do
 			local entry = saved[i]
 			if frame and entry then
@@ -519,8 +641,8 @@ local function PlaceBand(merged, f, b)
 				if entry.scale then
 					frame:SetScale(entry.scale)
 				end
-				if entry.level then
-					frame:SetFrameLevel(entry.level)
+				if entry.offset then
+					frame:SetFrameLevel(math.max(0, base + entry.offset))
 				end
 			end
 		end
@@ -587,14 +709,18 @@ local function LaySquare()
 			f.nine[b.prefix] = nine
 		end
 		nine:Show()
+		f.gemReach = b.gem and GemReach(b.prefix, sc) or 0
 		-- merged: the zone band's caps take the top corners
 		if nine.SetTopGems then
 			nine:SetTopGems(not merged)
 		end
 		if merged then
-			LayoutDivider(f, b)
+			-- Services' one row of groups: the rail with its name, which
+			-- shares it with Route's line, the clock on the band
+			local groups = ServicesRow()
+			LayoutDivider(f, b, groups)
 			f:Show()
-			PlaceBand(true, f, b)
+			PlaceBand(true, f, b, groups)
 			return
 		end
 	else
@@ -604,12 +730,21 @@ local function LaySquare()
 		local w, h = p and p.w or 135, p and p.h or 130
 		f:SetPoint("TOPLEFT", map, "TOPLEFT", -(open[1] * k - over), open[2] * k - over)
 		f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", (w - open[3]) * k - over, -((h - open[4]) * k - over))
+		f.gemReach = 0   -- (the picture fills the frame)
 		if not CutFrame(f, b.piece, k) then
 			f:Hide()
 			return
 		end
 	end
 	f:Show()
+end
+
+-- the Services bar laid out again, without calling back
+local function ServicesLayout()
+	local services = MelloUI:GetModule("Services")
+	if services and services.isEnabled and services.LayoutForMinimap then
+		services:LayoutForMinimap()
+	end
 end
 
 -- the map's frame laid, then the column under it (below): what hangs from
@@ -630,6 +765,11 @@ local function Activate()
 	end
 	LayoutSquare()
 	Kit:Cover("minimap")
+	-- the square map's shape set: Services' minimap button onto its edge
+	-- (Services loads first and placed it on the round map at login)
+	if M.db and M.db.shape == "square" then
+		ServicesLayout()
+	end
 end
 
 
@@ -643,6 +783,25 @@ local function Deactivate()
 	end
 	LayoutSquare()   -- the round mask and the game's shape answer back
 	Kit:Uncover("minimap")
+	if M.db and M.db.shape == "square" then
+		ServicesLayout()   -- (the minimap button back on the round map)
+	end
+end
+
+-- the map's container scaled: laid out again on the next frame, once however
+-- often it was scaled in this one (Edit Mode's Size slider dragged), with no
+-- closure made per call
+local function RelayoutNow()
+	if active then
+		M:Relayout()
+	end
+end
+local function RelayoutSoon()
+	if Kit.NextFrame then
+		Kit:NextFrame("Minimap relayout", RelayoutNow)
+	else
+		C_Timer.After(0, RelayoutNow)
+	end
 end
 
 local hooked = false
@@ -652,16 +811,11 @@ local function Hook()
 	end
 	hooked = true
 	-- Edit Mode's Size scales the map's container: the merged frame's band,
-	-- buttons and clock follow it at once
+	-- buttons and clock follow it at once, and the column under it (the
+	-- Relayout's 'column': the Quest Tracker takes the map's new width)
 	local container = Minimap and Minimap:GetParent()
 	if container and container ~= MinimapCluster and container.SetScale then
-		hooksecurefunc(container, "SetScale", function()
-			C_Timer.After(0, function()
-				if active then
-					M:Relayout()
-				end
-			end)
-		end)
+		hooksecurefunc(container, "SetScale", RelayoutSoon)
 	end
 	-- the UI Scale changed (user, 2026-09-24: "UI Scaling Break the UI"): the
 	-- merged band and its buttons were scaled to the frame's EFFECTIVE scale
@@ -708,10 +862,7 @@ end
 
 -- the Services bar joins or leaves the frame: it lays itself out first
 local function LayoutWithServices()
-	local services = MelloUI:GetModule("Services")
-	if services and services.isEnabled and services.LayoutForMinimap then
-		services:LayoutForMinimap()
-	end
+	ServicesLayout()
 	LayoutSquare()
 end
 
@@ -731,17 +882,53 @@ end
 --   M:ColumnSlot(part)  where a part hangs its TOP from: region, its point,
 --                       x, y ("services": the bar, "route": the distance line)
 --   M:ColumnRect()      the stack on the screen, the distance line's slot
---                       included while Route keeps the line: left, bottom,
+--                       included while Route keeps the line, and what is
+--                       painted past the frames (the square frame's bottom
+--                       gems, the ring, the game's own frame art while the
+--                       kit is off, a band under the map): left, bottom,
 --                       right, top in screen pixels; nil when a rect cannot
 --                       be read plainly
 --   M:LayColumn()       something in it changed: the bus's 'column' goes out
 --                       on the next frame, once for everything of that frame
+--   M:ColumnPart(part)  one part of the column of layout E (M.COLUMN_PARTS:
+--                       "band", "map", "services", "route", "tracker": the
+--                       parts, NOT their order) or "frame" (the painted
+--                       frame round the map: the kit ring's opaque part, the
+--                       square border): left, bottom, right, top on the
+--                       screen; nil while it is not in the column or cannot
+--                       be read plainly
+--   M:ColumnOrder()     the parts shown, top to bottom as they stand now
+--                       (sorted by their tops): the band over the map, or
+--                       under it with Edit Mode's Header Underneath; Route's
+--                       line 2 under the map, so over the Services row while
+--                       the bar's distance leaves it room, else under the
+--                       bar; the tracker last where nobody placed it
+--   M:ColumnWidth()     map, line: the column's width on the screen (pixels)
+--                       while this module is on; `map` the map's own (round:
+--                       its diameter, square: its side; its size is Edit
+--                       Mode's), `line` the width the frames line up to: the
+--                       square border's frame (merged: the frame round the
+--                       map and the Services bar) where it stands wider than
+--                       the map, else the map's. The Quest Tracker takes
+--                       `line` (Match The Minimap's Width). nil, nil while
+--                       this module is off or the map cannot be read plainly
+--   M:ColumnSide([l, r]) "left" while the column (its painted frame, or the
+--                       edges l, r already read from it) stands in the
+--                       screen's left half, else "right"; nil when it cannot
+--                       be read. What opens beside the column opens toward
+--                       the screen's centre: Services' tray, the Auras rows
+--   M:ScreenRect(region) a region's edges on the screen (pixels): left,
+--                       bottom, right, top; nil when one cannot be read
+--                       plainly (the column's one reader; Services' too)
 -- Services hangs its bar and Route its line from it; the Quest Tracker hangs
--- below its bottom only where nobody placed it (QuestTracker.lua). The places
+-- below its bottom only where nobody placed it, and takes its width
+-- (QuestTracker.lua). MelloUI never sizes the map for it. The places
 -- are the ones they had -- the bar under the map by its offset (by the
 -- divider's height merged), the line 2 px under the map (inside the square
 -- border and the merged frame too, as before) -- except that the line goes
--- under the bar where a bar offset leaves it no room. The pairwise calls
+-- under the bar where a bar offset leaves it no room, and merged over
+-- Services' row of groups it stands at the divider rail's right end (the
+-- rail's "Services" name at its left end meanwhile). The pairwise calls
 -- above (WantsServices, DividerHeight, BodyPiece, Relayout) stay as they were.
 --------------------------------------------------------------------------------
 
@@ -766,6 +953,17 @@ local function ScreenRect(region)
 		return nil
 	end
 	return l * s, b * s, (l + w) * s, (b + h) * s
+end
+
+function M:ScreenRect(region)
+	return ScreenRect(region)
+end
+
+-- a region's effective scale when it reads plainly and is above 0
+local function EffScale(region)
+	local ok, s = pcall(region.GetEffectiveScale, region)
+	s = ok and Num(s) or nil
+	return (s and s > 0) and s or nil
 end
 
 local Column = {}
@@ -801,15 +999,46 @@ function Column.LineHeight()
 	return route and route.ColumnLine and route:ColumnLine() or nil
 end
 
+-- the Services bar's edges on the screen, its height the row's as Services
+-- gives it (ServicesRow; the bar's own until Services says)
+function Column.BarRect(bar)
+	local l, b, r, t = ScreenRect(bar)
+	if not l then
+		return nil
+	end
+	local _, height = ServicesRow()
+	local s = height and EffScale(bar)
+	if s then
+		b = t - height * s
+	end
+	return l, b, r, t
+end
+
 function M:ColumnSlot(part)
 	local map = Minimap
 	if part == "services" then
 		if Column.Merged() then
-			return map, "BOTTOM", 0, -DIVIDER_H
+			return map, "BOTTOM", 0, -M:DividerHeight()
 		end
 		local services = MelloUI:GetModule("Services")
 		local db = services and services.db
 		return map, "BOTTOM", 0, tonumber(db and db.barOffset) or -26
+	end
+	-- merged over Services' row of groups (layout E): the distance line at
+	-- the divider rail's right end, the "Services" name at its left end
+	-- (M.RailName). Fifth and sixth values: the line's justify and the width
+	-- it may take (the rail less its two ends and the name), or nil
+	if Column.Merged() and ServicesBar() and ServicesRow() then
+		local h = Column.LineHeight() or LINE_H
+		local d = skin and skin.divider
+		local w = PlainWidth(d, nil)
+		local nameW = 0
+		if d and d.text then
+			local ok, sw = pcall(d.text.GetStringWidth, d.text)
+			nameW = ok and MelloUI.Safe.Number(sw) or 0
+		end
+		local maxW = w and math.max(40, w - 2 * RAIL_PAD - nameW - 8) or nil
+		return map, "BOTTOMRIGHT", -RAIL_PAD, -math.max(LINE_GAP, (DIVIDER_H - h) / 2), "RIGHT", maxW
 	end
 	-- the distance line: 2 px under the map as it always lay (square and
 	-- merged too: nothing moves for a user who changes nothing, user,
@@ -818,7 +1047,7 @@ function M:ColumnSlot(part)
 	local bar = Column.LooseBar()
 	if bar then
 		local _, bottom = ScreenRect(map)
-		local _, barBottom, _, barTop = ScreenRect(bar)
+		local _, barBottom, _, barTop = Column.BarRect(bar)
 		local okS, s = pcall(map.GetEffectiveScale, map)
 		s = okS and Num(s) or nil
 		if bottom and barBottom and s then
@@ -832,14 +1061,51 @@ function M:ColumnSlot(part)
 	return map, "BOTTOM", 0, -LINE_GAP
 end
 
+-- What is painted past the block's rect (user, 2026-09-26: the Quest Tracker
+-- must never sit on the Services row): the square frame's bottom gem corners
+-- (f.gemReach, LaySquare), the kit ring's opaque part round the map
+-- (Column.Frame), the game's own frame art while the kit is off (215 x 226
+-- round the 198 map: LayoutFit's Column.GAME), the zone band under the map
+-- (Edit Mode's Header Underneath). -> the rect grown by them
+function Column.Painted(block, l, b, r, t)
+	if block ~= Minimap then
+		local reach = block.gemReach
+		local s = reach and reach > 0 and EffScale(block)
+		if s then
+			b = b - reach * s
+		end
+	else
+		local fl, fb, fr, ft = Column.Frame()
+		if not active and MinimapCompassTexture then
+			local ok, shown = pcall(MinimapCompassTexture.IsVisible, MinimapCompassTexture)
+			if ok and not MelloUI.Safe.IsSecret(shown) and shown then
+				fl, fb, fr, ft = ScreenRect(MinimapCompassTexture)
+			end
+		end
+		if fl then
+			l, b, r, t = math.min(l, fl), math.min(b, fb), math.max(r, fr), math.max(t, ft)
+		end
+	end
+	local band = MinimapCluster and MinimapCluster.BorderTop
+	if band and band:IsShown() then
+		local _, bb = ScreenRect(band)
+		if bb and bb < b then
+			b = bb
+		end
+	end
+	return l, b, r, t
+end
+
 function M:ColumnRect()
-	local l, b, r, t = ScreenRect(Column.Block())
+	local block = Column.Block()
+	local l, b, r, t = ScreenRect(block)
 	if not l then
 		return nil
 	end
+	l, b, r, t = Column.Painted(block, l, b, r, t)
 	local bar = Column.LooseBar()
 	if bar then
-		local bl, bb, br, bt = ScreenRect(bar)
+		local bl, bb, br, bt = Column.BarRect(bar)
 		if not bl then
 			return nil
 		end
@@ -857,6 +1123,140 @@ function M:ColumnRect()
 		b = math.min(b, relBottom + (y - h) * s)
 	end
 	return l, b, r, t
+end
+
+-- The parts of the column (layout E): the zone band, the map, the Services
+-- row, Route's distance line, the Quest Tracker (MelloUI's while it is on,
+-- else the game's). A list of the parts, NOT their order on the screen: the
+-- distance line stands between the map and the Services row while the bar's
+-- distance leaves it room, and Header Underneath puts the band under the
+-- map. The order as it stands: M:ColumnOrder().
+M.COLUMN_PARTS = { "band", "map", "services", "route", "tracker" }
+
+-- the painted frame round the map: the kit ring's opaque part (its piece's
+-- box on its canvas) while it shows, else the map's block
+function Column.Frame()
+	local ring = active and skin and skin.ring
+	local tex = ring and ring.tex
+	if tex and ring.object and ring.object:IsShown() then
+		local l, b, r, t = ScreenRect(tex)
+		local p = l and ring.rule and Kit:Piece(ring.rule.piece)
+		if p and p.box and p.w and p.h and p.w > 0 and p.h > 0 then
+			local w, h = r - l, t - b
+			return l + p.box[1] / p.w * w, t - p.box[4] / p.h * h, l + p.box[3] / p.w * w, t - p.box[2] / p.h * h
+		end
+		if l then
+			return l, b, r, t
+		end
+	end
+	return ScreenRect(Column.Block())
+end
+
+function M:ColumnSide(l, r)
+	if not (l and r) then
+		local _
+		l, _, r = Column.Frame()
+	end
+	local okW, sw = pcall(UIParent.GetWidth, UIParent)
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	sw, us = okW and Num(sw) or nil, okU and Num(us) or nil
+	if not (l and r and sw and us) then
+		return nil
+	end
+	return (l + r < sw * us) and "left" or "right"
+end
+
+function M:ColumnPart(part)
+	if part == "frame" then
+		return Column.Frame()
+	elseif part == "band" then
+		local band = MinimapCluster and MinimapCluster.BorderTop
+		if band and band:IsShown() then
+			return ScreenRect(band)
+		end
+	elseif part == "map" then
+		if Minimap and Minimap:IsShown() then
+			return ScreenRect(Minimap)
+		end
+	elseif part == "services" then
+		local bar = ServicesBar()
+		if bar then
+			return Column.BarRect(bar)
+		end
+	elseif part == "route" then
+		-- the line's slot: from where it hangs, its height, the map's width
+		local h = Minimap and Column.LineHeight()
+		if h then
+			local rel, _, _, y = self:ColumnSlot("route")
+			local _, relBottom = ScreenRect(rel)
+			local l, _, r = ScreenRect(Minimap)
+			local s = EffScale(Minimap)
+			if relBottom and l and s then
+				local top = relBottom + y * s
+				return l, top - h * s, r, top
+			end
+		end
+	elseif part == "tracker" then
+		local qt = MelloUI:GetModule("QuestTracker")
+		local f = (qt and qt.isEnabled and _G.MelloUIQuestTracker) or _G.ObjectiveTrackerFrame
+		if f and f:IsShown() then
+			return ScreenRect(f)
+		end
+	end
+	return nil
+end
+
+-- M:ColumnOrder's list and the tops it is sorted by, reused (no garbage);
+-- parts at one height keep M.COLUMN_PARTS's order
+Column.order, Column.tops, Column.rank = {}, {}, {}
+for i, part in ipairs(M.COLUMN_PARTS) do
+	Column.rank[part] = i
+end
+function Column.ByTop(a, b)
+	local ta, tb = Column.tops[a], Column.tops[b]
+	if ta ~= tb then
+		return ta > tb
+	end
+	return Column.rank[a] < Column.rank[b]
+end
+
+-- The parts shown, top to bottom as they stand on the screen now (a part
+-- that cannot be read plainly is left out). One table, reused on every call:
+-- read it, don't keep or change it.
+function M:ColumnOrder()
+	local order, tops = Column.order, Column.tops
+	for i = #order, 1, -1 do
+		order[i] = nil
+	end
+	for _, part in ipairs(M.COLUMN_PARTS) do
+		local _, _, _, t = self:ColumnPart(part)
+		if t then
+			tops[part] = t
+			order[#order + 1] = part
+		end
+	end
+	table.sort(order, Column.ByTop)
+	return order
+end
+
+function M:ColumnWidth()
+	if not (active and Minimap) then
+		return nil, nil
+	end
+	local l, _, r = ScreenRect(Minimap)
+	if not (l and r > l) then
+		return nil, nil
+	end
+	local map = r - l
+	local line = map
+	local f = skin and skin.square
+	if f and f:IsShown() then
+		local fl, _, fr = ScreenRect(f)
+		if fl and fr - fl > line then
+			line = fr - fl
+		end
+	end
+	return map, line
 end
 
 function Column.Fire()
@@ -878,7 +1278,7 @@ end
 -- height), a profile; and the world entered and Edit Mode's layout applied
 -- (at login the map and the game's tracker take their places then). Heard
 -- whether this module is on or not; each only asks for the next frame's
--- 'column'.
+-- 'column'. (Edit Mode's Size: the container's SetScale hook, M:Relayout.)
 function Column.Lay()
 	M:LayColumn()
 end
@@ -898,9 +1298,28 @@ MelloUI:On("editmode", function(entering)
 		M:LayColumn()
 	end
 end, "Minimap column")
+-- Match The Quest Tracker's Width (`matchTracker`) came and went during the
+-- 0.13.7 build, never shipped: the map's size is Edit Mode's now. A saved one
+-- is dead data that would travel in profiles, share strings and the backup:
+-- dropped at login (OnInit) and after a profile load (the bus's 'restart').
+local function DropStale(db)
+	if type(db) == "table" then
+		db.matchTracker = nil
+	end
+end
+
+function M:OnInit(db)
+	DropStale(db)
+end
+
+function Column.Restart()
+	DropStale(MelloUI:GetModuleDB("MinimapPanel"))
+	M:LayColumn()
+end
+
 MelloUI:On("scale", Column.Lay, "Minimap column")
 MelloUI:On("fonts", Column.Lay, "Minimap column")
-MelloUI:On("restart", Column.Lay, "Minimap column")
+MelloUI:On("restart", Column.Restart, "Minimap column")
 do
 	local ev = CreateFrame("Frame")
 	ev:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -912,6 +1331,12 @@ function M:OnSettingChanged(key, _, db)
 	self.db = db
 	if key == "shape" or key == "squareBorder" or key == "servicesMerge" then
 		LayoutWithServices()
+		-- the shape switched: Services' minimap button onto the new shape's
+		-- edge (it read the game's shape answer before the new mask set it;
+		-- review, 2026-09-25)
+		if key == "shape" then
+			ServicesLayout()
+		end
 	end
 end
 

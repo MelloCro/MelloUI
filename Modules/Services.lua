@@ -10,6 +10,12 @@
 -- database does not know) is remembered the first time you use it. "Nearest"
 -- is by route cost through the Route module, so a flight master across the
 -- river is not "near" when the bridge is a long way round.
+-- Button Layout (the minimap column's layout E, user, 2026-09-25): Groups,
+-- one row of group buttons as wide as the map, each opening a tray of its
+-- services with their distances (GROUPS, below: adding a group is one entry),
+-- or All Buttons, the two rows of an icon per service as before. The tray is
+-- the nearest-service list's own frame (one menu for both). What MinimapPanel
+-- asks of the row: M:ColumnRow().
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -23,11 +29,13 @@ local M = MelloUI:RegisterModule("Services", {
 	desc = "Service icons under the minimap that route you to the nearest repair, mailbox, innkeeper, flight master, auction house, bank, trainer, barber or transmogrifier.",
 	icon = "Interface\\Icons\\Ability_Repair",
 	flavour = "Repair, mailbox, innkeeper, bank... the nearest one is a click under the minimap.",
-	group = "Quests and travel",
+	group = "Quests and travel", navOrder = 3,
+	role = "feature",
 	area = { key = "services", follows = "MinimapPanel" },   -- the bar under the minimap: as the minimap
 	enabledByDefault = true,
 	defaults = {
 		showBar = true,
+		buttonLayout = "groups",
 		barOffset = -26,
 		roundIcons = true,
 		showButton = false,
@@ -35,9 +43,15 @@ local M = MelloUI:RegisterModule("Services", {
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
-		  desc = "Two rows of service icons under the minimap; it moves with the minimap in Edit Mode. Click an icon to route to the nearest one by road, right-click to stop the route. A grey icon has none known on this continent yet. With the painted look, the square minimap in the Window frame or Single rail border, and \"Square minimap: merge with the Services bar\" on (Dynamic UI Modification), the icons sit inside the minimap's frame." },
+		  desc = "Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the painted look, the square minimap in the Window frame or Single rail border, and \"Square minimap: merge with the Services bar\" on (Dynamic UI Modification), the buttons sit inside the minimap's frame." },
+		{ type = "dropdown", key = "buttonLayout", parent = "showBar", name = "Button Layout",
+		  values = {
+			{ value = "groups", label = "Groups" },
+			{ value = "all", label = "All Buttons" },
+		  },
+		  desc = "Groups: one row of five buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. All Buttons: two rows with an icon for every service." },
 		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2,
-		  desc = "How far under the minimap the icons sit. Not used while they are merged into the square minimap's frame." },
+		  desc = "How far under the minimap the buttons sit. Not used while they are merged into the square minimap's frame." },
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
 		  desc = "Show the service icons as round medallions in a round rim instead of squares." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
@@ -53,6 +67,7 @@ local M = MelloUI:RegisterModule("Services", {
 -- is v, or nil when v is secret
 local IsSecret = MelloUI.Safe.IsSecret
 local Plain = MelloUI.Safe.Value
+local Num = MelloUI.Safe.Number
 
 local function VectorXY(pos)
 	if type(pos) ~= "table" then
@@ -145,6 +160,37 @@ local KINDS = {
 	{ key = "barber", label = "Barber", event = "BARBER_SHOP_OPEN", icon = "Interface/Minimap/Tracking/BarberShop" },
 	{ key = "transmog", label = "Transmogrifier", event = "TRANSMOGRIFY_OPEN", icon = "Interface/Minimap/Tracking/Transmogrifier" },
 }
+
+-- The groups of Button Layout's Groups, in the row's order (layout E, 2026-09-25:
+-- the user did not object to these). `members`: KINDS keys, the first one's
+-- icon is the group's. A new group (0.14.0's Route group) is one entry.
+local GROUPS = {
+	{ key = "travel", label = "Travel", members = { "flight", "innkeeper" } },
+	{ key = "trade", label = "Trade", members = { "auction", "banker", "mailbox" } },
+	{ key = "repair", label = "Repair", members = { "repair" } },
+	{ key = "trainers", label = "Trainers", members = { "classtrainer", "proftrainer" } },
+	{ key = "looks", label = "Looks", members = { "barber", "transmog" } },
+}
+
+-- Each kind's look (found on this continent, its nearest, how far a look got):
+-- one plain table per kind, whichever buttons show it (All Buttons' icon,
+-- the group's button, a row of the tray). slot.button: its All Buttons icon,
+-- slot.groupButton: its group's button, once made.
+local slots, slotOf = {}, {}
+do
+	local kindOf = {}
+	for i, kind in ipairs(KINDS) do
+		local s = { kind = kind }
+		slots[i], slotOf[kind], kindOf[kind.key] = s, s, kind
+	end
+	for _, group in ipairs(GROUPS) do
+		group.kinds = {}
+		for _, key in ipairs(group.members) do
+			group.kinds[#group.kinds + 1] = kindOf[key]
+		end
+		group.icon = group.kinds[1].icon
+	end
+end
 
 local function PlayerSide()
 	return UnitFactionGroup("player") == "Horde" and 2 or 1
@@ -616,14 +662,9 @@ local function ScanKind(kind, first, cur, stopAt)
 	return bestD, bestName, bestSub
 end
 
--- The Route module draws the tracking notice; chat when it is off.
+-- MelloUI's one on-screen notice (Core/Notice.lua), Route on or off
 local function Notify(text, kind)
-	local R = MelloUI.Route
-	if R and R.Notify then
-		R:Notify(text, kind)
-	else
-		MelloUI:Notice(text)
-	end
+	MelloUI:Announce(text, kind)
 end
 
 local function CleanSub(sub)
@@ -696,6 +737,27 @@ local function ProfessionMenu(owner, kind)
 		end
 		root:CreateButton("Nearest of any", function() GoTo(kind) end)
 	end)
+end
+
+-- A service's own click (the bar's icon, a group of one, a row of a group's
+-- tray): the profession trainer asks which profession, the rest route to the
+-- nearest one
+local function KindClick(owner, kind)
+	if kind.trainer == "profession" then
+		ProfessionMenu(owner, kind)
+	else
+		GoTo(kind)
+	end
+end
+
+local function StopRoute()
+	local R = MelloUI.Route
+	if R and R.Clear then
+		R:Clear()
+	end
+	if C_Map.ClearUserWaypoint then
+		pcall(C_Map.ClearUserWaypoint)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -792,165 +854,446 @@ local EVENTS = { "MERCHANT_SHOW", "MAIL_SHOW", "GOSSIP_SHOW", "TAXIMAP_OPENED", 
 	"TRAINER_SHOW", "BARBER_SHOP_OPEN", "TRANSMOGRIFY_OPEN" }
 
 --------------------------------------------------------------------------------
--- Menu
+-- Menu: the list of the nearest services and a group's tray (layout E, user,
+-- 2026-09-25), ONE frame, built on its first open and reused. The minimap
+-- button and /services show every service ("Nearest ...", with the Stop route
+-- button); a group button of the bar (Button Layout: Groups) shows its
+-- members as a tray beside the minimap column, toward the screen's centre,
+-- its middle on the row's. A row: the service's icon, its name and the
+-- nearest one's distance (the list adds that one's name), grey while none is
+-- known on this continent; the distances are the bar's own looks (FindNearest,
+-- a look kept 5 s), no scan of their own. A click routes there (a tray's
+-- profession trainer row asks which profession, as the bar's icon did).
+-- Escape, a press elsewhere, the same group again or the list's button closes
+-- it; another group's button switches it. Colours are palette keys (repainted
+-- on 'palette'), the text in Font Style, the sounds Core's, and the fade-in
+-- lands at once under Reduce Motion.
 --------------------------------------------------------------------------------
 
 local menu = nil
-local ROW_HEIGHT = 20
-local MENU_WIDTH = 300
+local bar = nil            -- the bar under the minimap (below)
+local FindNearest          -- a kind's nearest, with its distance (below)
+local ROW_HEIGHT = 24
+local MENU_WIDTH = 340     -- the list of every service
+local TRAY_WIDTH = 250     -- a group's tray
+local MENU_ICON = 20
+local TITLE_SIZE = 15
+local NEAREST_KEEP = 5     -- s: a kind's nearest looked for again after this
+local TRAY_GAP = 10        -- UI units between the tray and the minimap column
+local MENU_FADE = 0.12
+local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local MENU_BACKDROP = {
+	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+	tile = true, tileSize = 16, edgeSize = 16,
+	insets = { left = 4, right = 4, top = 4, bottom = 4 },
+}
 
 local KitOn, SetKitBox   -- the kit look (below)
+
+-- Font Style's face for one of the menu's strings (Fonts loads before this
+-- file; a world without it keeps the font object's face)
+local function Style(fs, role, object, size)
+	if MelloUI.StyleFont then
+		MelloUI:StyleFont(fs, role, object, size)
+	end
+end
+
+-- the pointer over a frame; a secret answer counts as not over
+local function Over(frame, ...)
+	local over = frame:IsMouseOver(...)
+	return not IsSecret(over) and over and true or false
+end
+
+
+-- the menu's box: the kit's L1 box while the painted minimap is on (SV1, as
+-- the bar), else the tooltip's backdrop in the palette's inner panel and trim
+local function MenuBox(kit)
+	if not menu or SetKitBox(menu, kit) or not menu.SetBackdrop then
+		return
+	end
+	local W = MelloUI.Widgets
+	menu:SetBackdrop(MENU_BACKDROP)
+	W.Paint(menu, "innerPanel", "backdrop", 0.95)
+	W.Paint(menu, "trim", "border", 1)
+end
+
+-- A kind's nearest distance as shown (with the nearest one's name: the
+-- list's), the string made again only when the distance or the name changed
+local function DistanceText(s, named)
+	local c = s.nearest
+	if s.textD ~= c.distance or s.textName ~= c.name then
+		s.textD, s.textName = c.distance, c.name
+		s.yards, s.named, s.tip = Yards(c.distance), nil, nil
+	end
+	if named then
+		s.named = s.named or (c.name .. "  " .. s.yards)
+		return s.named
+	end
+	return s.yards
+end
+
+-- a row's tooltip line for a kind's nearest, made again only when it changed
+local function NearestLine(s)
+	local c = s.nearest
+	local yards = DistanceText(s)   -- drops s.tip when the nearest changed
+	if not s.tip or s.tipSub ~= c.sub then
+		local sub = CleanSub(c.sub)
+		s.tipSub = c.sub
+		s.tip = "Nearest: " .. c.name .. (sub ~= "" and (" (" .. sub .. ")") or "") .. ", " .. yards
+	end
+	return s.tip
+end
+
+-- the shared handlers of the menu's rows and the menu itself (one function
+-- each, not one per row)
+local function RowClick(row)
+	local kind, tray, owner = row.kind, menu.group ~= nil, menu.owner
+	menu.quiet = true   -- the route's notice has its own chime
+	menu:Hide()
+	if tray then
+		KindClick(owner or row, kind)
+	else
+		GoTo(kind)
+	end
+end
+
+local function RowEnter(row)
+	local kind = row.kind
+	local s = kind and slotOf[kind]
+	if not s then
+		return
+	end
+	local line
+	if s.nearest then
+		line = NearestLine(s)
+	elseif Route() then
+		line = "None known on this continent yet; it is remembered the first time you use one."
+	else
+		line = "The Route module is off."
+	end
+	local body = (menu.group and kind.trainer == "profession") and "Click to pick a profession and route to its nearest trainer."
+		or "Click to route there by road."
+	MelloUI.Widgets.ShowTooltip(row, kind.label, body, line)
+	if menu.group and menu.leftOfColumn then
+		-- off the tray's far side, not over the minimap column
+		GameTooltip:ClearAllPoints()
+		GameTooltip:SetPoint("BOTTOMRIGHT", row, "TOPLEFT", 0, 0)
+	end
+end
+
+local function StopClick()
+	menu.quiet = true
+	menu:Hide()
+	StopRoute()
+end
+
+-- a press elsewhere: not on the menu (or just round it), the list's minimap
+-- button, or -- a group's tray -- the bar (its buttons open, close and
+-- switch the tray themselves)
+local function Away(self)
+	if Over(self, 20, -20, -20, 20) or (M.button and Over(M.button)) then
+		return false
+	end
+	return not (self.group and bar and Over(bar))
+end
+
+local MenuPress = function(self, _, button)
+	if (button == "LeftButton" or button == "RightButton") and Away(self) then
+		self:Hide()
+	end
+end
+
+local MenuShown = function(self)
+	self:RegisterEvent("GLOBAL_MOUSE_DOWN")
+end
+
+-- Closed: the press listener off, the group button let go, the close sound
+-- (none after a row's click, Stop route or the UI hiding: `quiet`). Once per
+-- open: the menu's OnHide runs it, and the bar's hiding too (a menu hidden
+-- while the UI already was gets no OnHide of its own).
+local function MenuClosed(self)
+	if not self.open then
+		self.quiet = nil
+		return
+	end
+	self.open = nil
+	self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+	MelloUI.Anim:Land(self, "alpha")
+	local owner = self.owner
+	if self.group and owner and owner.UnlockHighlight then
+		owner:UnlockHighlight()
+	end
+	self.group, self.owner = nil, nil
+	if self.quiet then
+		self.quiet = nil
+	else
+		MelloUI:PlayUISound("menu_close")
+	end
+end
+
+local MenuHidden = function(self)
+	if self:IsShown() then
+		-- hidden with the UI (Alt+Z, a cinematic, a pet battle): closed for
+		-- real, quietly, so it does not come back without its group
+		self.quiet = true
+		self:Hide()
+	end
+	MenuClosed(self)
+end
+
+-- A client without GLOBAL_MOUSE_DOWN: the mouse buttons looked at every
+-- frame while the menu is open
+local MenuWatch = function(self)
+	if Away(self) then
+		local down = IsMouseButtonDown and (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
+		if down then
+			self:Hide()
+		end
+	end
+end
+
+local function MenuRow(i)
+	local W = MelloUI.Widgets
+	local row = CreateFrame("Button", nil, menu)
+	row:SetHeight(ROW_HEIGHT)
+	row:SetPoint("TOPLEFT", 8, -30 - (i - 1) * ROW_HEIGHT)
+	row:SetPoint("RIGHT", -8, 0)
+	row.icon = row:CreateTexture(nil, "ARTWORK")
+	row.icon:SetSize(MENU_ICON, MENU_ICON)
+	row.icon:SetPoint("LEFT", 4, 0)
+	row.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)
+	local mask = row:CreateMaskTexture()
+	mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	mask:SetAllPoints(row.icon)
+	row.icon:AddMaskTexture(mask)
+	row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.label:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+	Style(row.label, "fontText", _G.GameFontHighlight)
+	row.where = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.where:SetPoint("RIGHT", -6, 0)
+	row.where:SetPoint("LEFT", row.label, "RIGHT", 8, 0)
+	row.where:SetJustifyH("RIGHT")
+	row.where:SetWordWrap(false)
+	Style(row.where, "fontText", _G.GameFontHighlight)
+	Perf.SetScript(row, "OnClick", RowClick)
+	Perf.SetScript(row, "OnEnter", RowEnter)
+	Perf.SetScript(row, "OnLeave", W.TipLeave)
+	W.RowPlate(row)   -- the palette's hover wash (the scripts are set first)
+	return row
+end
 
 local function CreateMenu()
 	if menu then
 		return menu
 	end
+	local W = MelloUI.Widgets
 	menu = CreateFrame("Frame", "MelloUIServicesMenu", UIParent, "BackdropTemplate")
 	menu:SetFrameStrata("DIALOG")
 	menu:SetClampedToScreen(true)
 	menu:SetWidth(MENU_WIDTH)
-	if menu.SetBackdrop then
-		menu:SetBackdrop({
-			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			tile = true, tileSize = 16, edgeSize = 16,
-			insets = { left = 4, right = 4, top = 4, bottom = 4 },
-		})
-		menu:SetBackdropColor(0.06, 0.06, 0.08, 0.95)
-		menu:SetBackdropBorderColor(0.6, 0.5, 0.3, 1)
-	end
 	menu.title = menu:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	menu.title:SetPoint("TOPLEFT", 12, -10)
-	menu.title:SetText("Nearest ...")
+	Style(menu.title, "fontTitle", _G.GameFontNormal, TITLE_SIZE)
+	W.Paint(menu.title, "selectedTrim", "text")
 	menu.rows = {}
-	for i, kind in ipairs(KINDS) do
-		local row = CreateFrame("Button", nil, menu)
-		row:SetHeight(ROW_HEIGHT)
-		row:SetPoint("TOPLEFT", 8, -30 - (i - 1) * ROW_HEIGHT)
-		row:SetPoint("RIGHT", -8, 0)
-		row:SetHighlightTexture("Interface/QuestFrame/UI-QuestTitleHighlight", "ADD")
-		row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-		row.label:SetPoint("LEFT", 6, 0)
-		row.label:SetText(kind.label)
-		row.where = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-		row.where:SetPoint("RIGHT", -6, 0)
-		row.where:SetPoint("LEFT", row.label, "RIGHT", 8, 0)
-		row.where:SetJustifyH("RIGHT")
-		row.where:SetWordWrap(false)
-		row.kind = kind
-		Perf.SetScript(row, "OnClick", function(self)
-			menu:Hide()
-			GoTo(self.kind)
-		end)
-		menu.rows[i] = row
+	for i = 1, #KINDS do
+		menu.rows[i] = MenuRow(i)
 	end
 	menu.stop = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate")
 	menu.stop:SetSize(110, 20)
 	menu.stop:SetPoint("TOPLEFT", 12, -34 - #KINDS * ROW_HEIGHT)
 	menu.stop:SetText("Stop route")
-	Perf.SetScript(menu.stop, "OnClick", function()
-		menu:Hide()
-		local R = MelloUI.Route
-		if R and R.Clear then
-			R:Clear()
-		end
-		if C_Map.ClearUserWaypoint then
-			pcall(C_Map.ClearUserWaypoint)
-		end
-	end)
+	Perf.SetScript(menu.stop, "OnClick", StopClick)
 	menu.hint = menu:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	menu.hint:SetPoint("LEFT", menu.stop, "RIGHT", 8, 0)
 	menu.hint:SetPoint("RIGHT", -12, 0)
 	menu.hint:SetJustifyH("LEFT")
 	menu.hint:SetText("nearest by road")
+	Style(menu.hint, "fontText", _G.GameFontDisableSmall)
+	W.Paint(menu.hint, "mutedText", "text")
 	menu:SetHeight(30 + #KINDS * ROW_HEIGHT + 34)
 	menu:Hide()
-	if KitOn() then
-		SetKitBox(menu, true)   -- SV1: the L1 box, as the bar
-	end
-	-- Close when clicking elsewhere: a mouse press anywhere, listened for only
-	-- while the menu is open; a client without that event looks at the mouse
-	-- buttons every frame while it is open.
-	local function Away(self)
-		return not self:IsMouseOver(20, -20, -20, 20) and not (M.button and M.button:IsMouseOver())
-	end
+	-- Close on a press elsewhere, listened for only while the menu is open.
+	-- The scripts are set before the kit's box hooks the frame (SetScript
+	-- drops hooks).
+	Perf.SetScript(menu, "OnHide", MenuHidden)
 	local okEvent, registered = pcall(menu.RegisterEvent, menu, "GLOBAL_MOUSE_DOWN")
 	if okEvent and registered ~= false then
 		menu:UnregisterEvent("GLOBAL_MOUSE_DOWN")
-		Perf.SetScript(menu, "OnEvent", function(self, _, button)
-			if (button == "LeftButton" or button == "RightButton") and Away(self) then
-				self:Hide()
-			end
-		end)
-		Perf.HookScript(menu, "OnShow", function(self) self:RegisterEvent("GLOBAL_MOUSE_DOWN") end)
-		Perf.HookScript(menu, "OnHide", function(self) self:UnregisterEvent("GLOBAL_MOUSE_DOWN") end)
+		Perf.SetScript(menu, "OnEvent", MenuPress)
+		Perf.SetScript(menu, "OnShow", MenuShown)
 	else
-		Perf.SetScript(menu, "OnUpdate", function(self)
-			if Away(self) then
-				local down = IsMouseButtonDown and (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
-				if down then
-					self:Hide()
-				end
-			end
-		end)
+		Perf.SetScript(menu, "OnUpdate", MenuWatch)
 	end
+	MenuBox(KitOn())
+	tinsert(UISpecialFrames, "MelloUIServicesMenu")   -- Escape closes it
 	return menu
 end
 
-local function FillMenu()
-	local R = Route()
-	local hasDest = R and R.HasDestination and R:HasDestination()
-	for _, row in ipairs(menu.rows) do
-		local d, name = ScanKind(row.kind, false)
-		if d then
-			row.where:SetText(string.format("%s  |cffaaaaaa%s|r", name, Yards(d)))
-			row.where:SetTextColor(1, 0.82, 0.25)
-			row:Enable()
-			row.label:SetTextColor(1, 1, 1)
+-- A row for a kind: its icon, name and the nearest one's distance (the list
+-- adds that one's name), grey while none is known on this continent
+local function FillRow(row, kind, tray)
+	local W = MelloUI.Widgets
+	row.kind = kind
+	row.icon:SetTexture(kind.icon)
+	row.label:SetText(kind.label)
+	local s = slotOf[kind]
+	if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
+		FindNearest(s)
+	end
+	local c = s.nearest
+	if c then
+		row.where:SetText(DistanceText(s, not tray))
+	else
+		row.where:SetText(Route() and "none known here" or "Route module off")
+	end
+	W.Paint(row.label, c and "text" or "mutedText", "text")
+	W.Paint(row.where, c and "selectedTrim" or "mutedText", "text")
+	row.icon:SetDesaturated(not c)
+	row.icon:SetAlpha(c and 1 or 0.45)
+	row:Show()
+end
+
+-- group: a group's tray; nil: the list of every service
+local function FillMenu(group)
+	local kinds = group and group.kinds or KINDS
+	for i, row in ipairs(menu.rows) do
+		local kind = kinds[i]
+		if kind then
+			FillRow(row, kind, group ~= nil)
 		else
-			row.where:SetText(R and "none known here" or "Route module off")
-			row.where:SetTextColor(0.5, 0.5, 0.5)
-			row.label:SetTextColor(0.6, 0.6, 0.6)
+			row:Hide()
 		end
 	end
-	menu.stop:SetShown(hasDest and true or false)
-	menu.hint:SetShown(not hasDest)
+	menu.title:SetText(group and group.label or "Nearest ...")
+	if group then
+		menu.stop:Hide()
+		menu.hint:Hide()
+		menu:SetSize(TRAY_WIDTH, 30 + #kinds * ROW_HEIGHT + 8)
+	else
+		local R = Route()
+		local hasDest = R and R.HasDestination and R:HasDestination()
+		menu.stop:SetShown(hasDest and true or false)
+		menu.hint:SetShown(not hasDest)
+		menu:SetSize(MENU_WIDTH, 30 + #kinds * ROW_HEIGHT + 34)
+	end
+end
+
+-- The tray beside the minimap column, toward the screen's centre: left of
+-- the column while it stands in the screen's right half, right of it
+-- otherwise, its middle on the row's, clear of the column's painted frame or
+-- ring (MinimapPanel's ColumnRect and ColumnPart "frame"); the screen's edge
+-- keeps it on (clamped). The rects on the screen and the half of the screen
+-- are MinimapPanel's (M:ScreenRect, M:ColumnSide), the one reader the Auras
+-- rows use too
+local function PlaceTray()
+	local mp = MelloUI:GetModule("MinimapPanel")
+	local bl, br
+	if mp and mp.ScreenRect then
+		local ok, l, _, r = pcall(mp.ScreenRect, mp, bar)
+		bl, br = ok and Num(l) or nil, ok and Num(r) or nil
+	end
+	local colL, colR = bl, br
+	local fl, fr   -- the painted frame's edges, for the half of the screen
+	if bl and br and mp.ColumnRect and mp.ColumnPart then
+		for i = 1, 2 do
+			local ok, l, _, r
+			if i == 1 then
+				ok, l, _, r = pcall(mp.ColumnRect, mp)
+			else
+				ok, l, _, r = pcall(mp.ColumnPart, mp, "frame")
+				fl, fr = ok and Num(l) or nil, ok and Num(r) or nil
+			end
+			l, r = ok and Num(l) or nil, ok and Num(r) or nil
+			if l and r then
+				colL, colR = math.min(colL, l), math.max(colR, r)
+			end
+		end
+	end
+	local right = true
+	if bl and br and mp.ColumnSide then
+		local ok, side = pcall(mp.ColumnSide, mp, fl, fr)
+		if ok and side then
+			right = side == "right"
+		end
+	end
+	local okS, ms = pcall(menu.GetEffectiveScale, menu)
+	ms = okS and Num(ms) or nil
+	if not (ms and ms > 0) then
+		ms = nil
+	end
+	menu:ClearAllPoints()
+	menu.leftOfColumn = right
+	if right then
+		local over = (bl and ms) and (bl - colL) / ms or 0
+		menu:SetPoint("RIGHT", bar, "LEFT", -(TRAY_GAP + over), 0)
+	else
+		local over = (br and ms) and (colR - br) / ms or 0
+		menu:SetPoint("LEFT", bar, "RIGHT", TRAY_GAP + over, 0)
+	end
+end
+
+-- The menu shown for a group (its tray, beside the bar) or the list (group
+-- nil: under `owner`, the minimap button, or mid-screen)
+local function OpenMenu(group, owner)
+	CreateMenu()
+	local was = menu:IsShown()
+	local before = menu.owner
+	if menu.group and before and before ~= owner and before.UnlockHighlight then
+		before:UnlockHighlight()
+	end
+	menu.group, menu.owner, menu.open = group, owner, true
+	FillMenu(group)
+	if group then
+		PlaceTray()
+		if owner and owner.LockHighlight then
+			owner:LockHighlight()
+		end
+	else
+		menu:ClearAllPoints()
+		if owner then
+			menu:SetPoint("TOPRIGHT", owner, "BOTTOMLEFT", 0, 0)
+		else
+			menu:SetPoint("CENTER", UIParent, "CENTER")
+		end
+	end
+	MelloUI:PlayUISound("menu_open")
+	if not was then
+		MelloUI.Anim:FadeIn(menu, MENU_FADE)
+	end
 end
 
 local function ToggleMenu(anchor)
-	CreateMenu()
-	if menu:IsShown() then
+	if menu and menu:IsShown() and not menu.group then
 		menu:Hide()
 		return
 	end
-	FillMenu()
-	menu:ClearAllPoints()
-	if anchor then
-		menu:SetPoint("TOPRIGHT", anchor, "BOTTOMLEFT", 0, 0)
-	else
-		menu:SetPoint("CENTER", UIParent, "CENTER")
+	OpenMenu(nil, anchor)
+end
+
+-- a group button's click: its tray opened, closed (the same group again) or
+-- switched to it
+local function ToggleTray(button, group)
+	if menu and menu:IsShown() and menu.group == group then
+		menu:Hide()
+		return
 	end
-	menu:Show()
+	OpenMenu(group, button)
 end
 
 --------------------------------------------------------------------------------
 -- Icon bar under the minimap
 --------------------------------------------------------------------------------
 
-local bar = nil
 local ICON = 26
 local GAP = 5
 local PER_ROW = 5
-
-local function StopRoute()
-	local R = MelloUI.Route
-	if R and R.Clear then
-		R:Clear()
-	end
-	if C_Map.ClearUserWaypoint then
-		pcall(C_Map.ClearUserWaypoint)
-	end
-end
+-- Groups' row: a group button, its rim included (UI units; smaller where the
+-- map is too narrow for them all), the least gap between two, and the row's
+-- padding above and under them is GAP
+local GROUP_CELL = 38
+local MIN_GAP = 4
 
 -- The icons: bright with one of the kind known on this continent, grey
 -- without. Each kind is looked at every 15 s while the bar is visible, one
@@ -969,21 +1312,46 @@ end
 -- nothing, the candidates elsewhere being passed over. A look stops after
 -- its share of the tick and goes on at the next one, the icon as it was
 -- meanwhile.
+--
+-- The looks are per kind (slots, above), whichever buttons show them: All
+-- Buttons' icons, Groups' buttons (a group is grey only while none of its
+-- kinds is known; one not looked at yet counts as known, as an icon did) and
+-- the rows of a group's tray.
 local CHECK_EVERY = 15
 local SPREAD_MS = 1
 local TICK_MS = 1
 local ticker = nil
 
-local function ShowFound(b, found)
-	if found ~= b.found then
-		b.found = found
-		b.nearestAt = nil   -- the tooltip looks again
+-- a group's button bright while one of its kinds is known (or not looked at)
+local function GroupLook(gb)
+	local found = false
+	for _, kind in ipairs(gb.group.kinds) do
+		if slotOf[kind].found ~= false then
+			found = true
+			break
+		end
+	end
+	gb.icon:SetDesaturated(not found)
+	gb.icon:SetAlpha(found and 1 or 0.45)
+end
+
+-- a kind's answer (s: its slot) on its All Buttons icon and its group's button
+local function ShowFound(s, found)
+	if found ~= s.found then
+		s.found = found
+		s.nearestAt = nil   -- the tooltip looks again
 	end
 	if not found then
-		b.nearest = nil
+		s.nearest = nil
 	end
-	b.icon:SetDesaturated(not found)
-	b.icon:SetAlpha(found and 1 or 0.45)
+	local b = s.button
+	if b then
+		b.icon:SetDesaturated(not found)
+		b.icon:SetAlpha(found and 1 or 0.45)
+	end
+	if s.groupButton then
+		GroupLook(s.groupButton)
+	end
 end
 
 -- What an icon's answer hangs on besides the candidates' own places: the
@@ -1039,9 +1407,9 @@ local function SameLook(b, keep)
 	return same
 end
 
--- A look at a button's kind; true once it is done. stopAt: it may stop there
--- and go on at the next call (from the start again when what it hangs on
--- has changed meanwhile). force: looked at even when bright and unchanged.
+-- A look at a kind (b: its slot); true once it is done. stopAt: it may stop
+-- there and go on at the next call (from the start again when what it hangs
+-- on has changed meanwhile). force: looked at even when bright and unchanged.
 local function CheckButton(b, stopAt, force)
 	if b.scanPhase and not SameLook(b) then
 		b.scanPhase = nil
@@ -1063,7 +1431,9 @@ local function CheckButton(b, stopAt, force)
 	return true
 end
 
-local function FindNearest(b)
+-- a kind's nearest one with its distance (b: its slot), for a tooltip or a
+-- row of the menu (declared above the menu)
+function FindNearest(b)
 	b.scanPhase = nil   -- a whole look, in place of one under way
 	SameLook(b, true)
 	local d, name, sub = ScanKind(b.kind, false)
@@ -1079,13 +1449,13 @@ local function FindNearest(b)
 end
 
 -- The kinds from bar.spread on, for about a millisecond (the first pass to
--- its end: the last icon has no state until then); true while some are left
+-- its end: the last kind has no state until then); true while some are left
 -- for the next frames. A look that stops goes on in the next frame.
 local function Spread(self)
 	local t0 = debugprofilestop()
-	local last = self.buttons[#self.buttons]
+	local last = slots[#slots]
 	while self.spread do
-		local b = self.buttons[self.spread]
+		local b = slots[self.spread]
 		if not b then
 			self.spread = nil
 		else
@@ -1110,8 +1480,8 @@ local function RefreshBar()
 	if not (bar and bar:IsShown()) then
 		return
 	end
-	for _, b in ipairs(bar.buttons) do
-		b.scanPhase = nil   -- every one looked at again, from the start
+	for _, s in ipairs(slots) do
+		s.scanPhase = nil   -- every one looked at again, from the start
 	end
 	bar.spread = 1
 	if Spread(bar) and not bar.spreading then
@@ -1126,8 +1496,8 @@ local function Tick()
 		return
 	end
 	local i = bar.nextCheck or 1
-	bar.nextCheck = i % #bar.buttons + 1
-	if not CheckButton(bar.buttons[i], debugprofilestop() + TICK_MS) then
+	bar.nextCheck = i % #slots + 1
+	if not CheckButton(slots[i], debugprofilestop() + TICK_MS) then
 		bar.nextCheck = i
 	end
 end
@@ -1144,8 +1514,8 @@ end
 local function BarTooltip(self)
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(self.kind.label, 1, 1, 1)
-	if self.nearest then
-		local c = self.nearest
+	local c = self.slot.nearest
+	if c then
 		local sub = CleanSub(c.sub)
 		GameTooltip:AddLine(string.format("Nearest: %s%s, %s", c.name, sub ~= "" and (" (" .. sub .. ")") or "", Yards(c.distance)), 1, 0.82, 0.25)
 		if self.kind.trainer == "profession" then
@@ -1161,24 +1531,75 @@ local function BarTooltip(self)
 	GameTooltip:Show()
 end
 
-local function CreateBar()
-	if bar or not Minimap then
+-- A group button's tooltip: each of its services with the nearest one's
+-- distance (each kind's look, kept NEAREST_KEEP s), palette colours
+local function GroupTooltip(self)
+	local group = self.group
+	local P = MelloUI.Palette
+	local gold, text, muted = P.selectedTrim, P.text, P.mutedText
+	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+	GameTooltip:SetText(group.label, gold[1], gold[2], gold[3])
+	local R = Route()
+	for _, kind in ipairs(group.kinds) do
+		local s = slotOf[kind]
+		if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
+			FindNearest(s)
+		end
+		local c = s.nearest
+		if c then
+			GameTooltip:AddDoubleLine(kind.label, DistanceText(s), text[1], text[2], text[3], gold[1], gold[2], gold[3])
+		else
+			GameTooltip:AddDoubleLine(kind.label, R and "none known here" or "Route module off",
+				muted[1], muted[2], muted[3], muted[1], muted[2], muted[3])
+		end
+	end
+	local only = #group.kinds == 1 and group.kinds[1] or nil
+	local hint
+	if only and only.trainer == "profession" then
+		hint = "Click to pick a profession and route to its nearest trainer. Right-click stops the route."
+	elseif only then
+		hint = "Click to route to the nearest one by road. Right-click stops the route."
+	else
+		hint = "Click for the list with distances. Right-click stops the route."
+	end
+	GameTooltip:AddLine(hint, text[1], text[2], text[3], true)
+	GameTooltip:Show()
+end
+
+local TipHide = function()
+	GameTooltip:Hide()
+end
+
+-- A group button's click: a group of one routes at once (as its icon did),
+-- the others open or close their tray; right-click stops the route
+local GroupClick = function(self, mouse)
+	local tray = menu and menu:IsShown() and menu.group
+	if mouse == "RightButton" then
+		if tray then
+			menu:Hide()
+		end
+		StopRoute()
 		return
 	end
-	local rows = math.ceil(#KINDS / PER_ROW)
-	bar = CreateFrame("Frame", "MelloUIServicesBar", Minimap, "BackdropTemplate")
-	bar:SetSize(PER_ROW * ICON + (PER_ROW + 1) * GAP, rows * ICON + (rows + 1) * GAP)
-	if bar.SetBackdrop then
-		bar:SetBackdrop({
-			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			tile = true, tileSize = 16, edgeSize = 12,
-			insets = { left = 3, right = 3, top = 3, bottom = 3 },
-		})
-		bar:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
-		bar:SetBackdropBorderColor(0.55, 0.45, 0.25, 1)
+	local group = self.group
+	if #group.kinds == 1 then
+		if tray then
+			menu.quiet = true
+			menu:Hide()
+		end
+		KindClick(self, group.kinds[1])
+	else
+		ToggleTray(self, group)
 	end
-	bar.buttons = {}
+end
+
+-- All Buttons' icons, one per kind, made the first time that layout shows
+-- (in the bar's first build, just as they always were)
+local function KindButtons()
+	if bar.kindButtons then
+		return bar.kindButtons
+	end
+	local list = {}
 	for i, kind in ipairs(KINDS) do
 		local b = CreateFrame("Button", nil, bar)
 		b:SetSize(ICON, ICON)
@@ -1190,36 +1611,160 @@ local function CreateBar()
 		b.icon:SetTexture(kind.icon)
 		b:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square", "ADD")
 		b.kind = kind
+		b.slot = slots[i]
+		slots[i].button = b
 		Perf.SetScript(b, "OnClick", function(self, mouse)
 			if mouse == "RightButton" then
 				StopRoute()
-			elseif self.kind.trainer == "profession" then
-				ProfessionMenu(self, self.kind)
 			else
-				GoTo(self.kind)
+				KindClick(self, self.kind)
 			end
 		end)
 		Perf.SetScript(b, "OnEnter", function(self)
-			if not self.nearestAt or GetTime() - self.nearestAt > 5 then
-				FindNearest(self)
+			local s = self.slot
+			if not s.nearestAt or GetTime() - s.nearestAt > NEAREST_KEEP then
+				FindNearest(s)
 			end
 			BarTooltip(self)
 		end)
-		Perf.SetScript(b, "OnLeave", function() GameTooltip:Hide() end)
-		bar.buttons[i] = b
+		Perf.SetScript(b, "OnLeave", TipHide)
+		list[i] = b
+		if slots[i].found == false then
+			b.icon:SetDesaturated(true)   -- looked at while Groups showed
+			b.icon:SetAlpha(0.45)
+		end
 	end
+	bar.kindButtons = list
+	return list
+end
+
+-- Groups' buttons, one per group (GROUPS), made the first time that layout
+-- shows; the shared handlers above
+local function GroupButtons()
+	if bar.groupButtons then
+		return bar.groupButtons
+	end
+	local list = {}
+	for i, group in ipairs(GROUPS) do
+		local b = CreateFrame("Button", nil, bar)
+		b:SetSize(GROUP_CELL, GROUP_CELL)
+		b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+		b.icon = b:CreateTexture(nil, "ARTWORK")
+		b.icon:SetAllPoints()
+		b.icon:SetTexture(group.icon)
+		b:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square", "ADD")
+		b.group = group
+		Perf.SetScript(b, "OnClick", GroupClick)
+		Perf.SetScript(b, "OnEnter", GroupTooltip)
+		Perf.SetScript(b, "OnLeave", TipHide)
+		for _, kind in ipairs(group.kinds) do
+			slotOf[kind].groupButton = b
+		end
+		GroupLook(b)
+		list[i] = b
+	end
+	bar.groupButtons = list
+	return list
+end
+
+-- Button Layout: Groups (the default), else All Buttons
+local function GroupsOn()
+	return not (M.db and M.db.buttonLayout == "all")
+end
+
+-- The bar's buttons as the layout wants them (bar.buttons), made on first
+-- use; the other layout's hidden, and a tray closed with Groups
+local function UseButtons()
+	local list, other
+	if GroupsOn() then
+		list, other = GroupButtons(), bar.kindButtons
+	else
+		list, other = KindButtons(), bar.groupButtons
+		if menu and menu.group then
+			menu:Hide()
+		end
+	end
+	if other then
+		for _, b in ipairs(other) do
+			b:Hide()
+		end
+	end
+	bar.buttons = list
+	return list
+end
+
+-- The bar hid (switched off, the minimap hidden...): its tray with it
+local function BarHidden(self)
+	WatchBar(false)
+	if self.spreading then
+		self.spread, self.spreading = nil, nil
+		Perf.SetScript(self, "OnUpdate", nil)
+	end
+	if menu and menu.group then
+		if not menu:IsVisible() then
+			menu.quiet = true   -- gone with the UI already
+		end
+		menu:Hide()
+		MenuClosed(menu)   -- (no OnHide when the UI was hidden first)
+	end
+end
+
+-- The bar's own box while neither the kit's box nor the square frame holds
+-- it (plain: true). All Buttons keeps 0.13.6's colours exactly (its OFF
+-- state is today's look); the Groups row's are palette keys, painted through
+-- the kit's one registry, which paints them again on 'palette'. The registry
+-- paints `barPaint`, which hands the colours to the bar only while the Groups
+-- row wears this box, so All Buttons never takes them.
+local barPaint = {}
+function barPaint:SetBackdropColor(r, g, b, a)
+	if self.on and bar then
+		bar:SetBackdropColor(r, g, b, a)
+	end
+end
+function barPaint:SetBackdropBorderColor(r, g, b, a)
+	if self.on and bar then
+		bar:SetBackdropBorderColor(r, g, b, a)
+	end
+end
+
+local function PlainBarBox(plain)
+	local W = MelloUI.Widgets   -- (Core's; a world without it keeps 0.13.6's colours)
+	barPaint.on = plain and GroupsOn() and W and true or false
+	if not plain then
+		return
+	end
+	bar:SetBackdrop({
+		bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+		edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 12,
+		insets = { left = 3, right = 3, top = 3, bottom = 3 },
+	})
+	if barPaint.on then
+		W.Paint(barPaint, "innerPanel", "backdrop", 0.85)
+		W.Paint(barPaint, "trim", "border", 1)
+	else
+		bar:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
+		bar:SetBackdropBorderColor(0.55, 0.45, 0.25, 1)
+	end
+end
+
+local function CreateBar()
+	if bar or not Minimap then
+		return
+	end
+	local rows = math.ceil(#KINDS / PER_ROW)
+	bar = CreateFrame("Frame", "MelloUIServicesBar", Minimap, "BackdropTemplate")
+	bar:SetSize(PER_ROW * ICON + (PER_ROW + 1) * GAP, rows * ICON + (rows + 1) * GAP)
+	if bar.SetBackdrop then
+		PlainBarBox(true)
+	end
+	UseButtons()
 	-- The known-here state is looked at now and then while the bar is visible.
 	Perf.SetScript(bar, "OnShow", function()
 		RefreshBar()
 		WatchBar(true)
 	end)
-	Perf.SetScript(bar, "OnHide", function(self)
-		WatchBar(false)
-		if self.spreading then
-			self.spread, self.spreading = nil, nil
-			Perf.SetScript(self, "OnUpdate", nil)
-		end
-	end)
+	Perf.SetScript(bar, "OnHide", BarHidden)
 end
 
 --------------------------------------------------------------------------------
@@ -1350,6 +1895,21 @@ local function BarStone(on)
 	end
 end
 
+-- Groups' row: one line as wide as the map (in the square frame or under the
+-- map alike), GROUP_CELL cells, smaller where they do not all fit with
+-- MIN_GAP between them, spread evenly across it: its width, cell and gap (a
+-- map whose width cannot be read: the cells at their size, MIN_GAP apart)
+local function GroupRow()
+	local n = #GROUPS
+	local okW, mapW = pcall(Minimap.GetWidth, Minimap)
+	mapW = okW and Num(mapW) or nil
+	if not (mapW and mapW > 0) then
+		mapW = n * GROUP_CELL + (n + 1) * MIN_GAP
+	end
+	local cell = math.min(GROUP_CELL, (mapW - (n + 1) * MIN_GAP) / n)
+	return mapW, cell, (mapW - n * cell) / (n + 1)
+end
+
 local function LayoutBar()
 	if not bar then
 		return
@@ -1364,31 +1924,43 @@ local function LayoutBar()
 	local cell = icon * ring
 	local inset = kit and 0 or (cell - icon) / 2
 	local merged = Merged()
-	local width = PER_ROW * cell + (PER_ROW + 1) * gap
-	if merged then
-		-- as wide as the map: the cells made smaller where five do not fit
-		-- (user, 2026-09-23: "the buttons are not quite fitting the borders"),
-		-- then spread evenly across it
-		local okW, mapW = pcall(Minimap.GetWidth, Minimap)
-		if okW and mapW and not IsSecret(mapW) and mapW > 0 then
-			width = mapW
-			local minGap = 4
-			local fit = (mapW - (PER_ROW + 1) * minGap) / PER_ROW
-			if cell > fit then
-				local k = fit / cell
-				cell, icon = fit, icon * k
-				inset = kit and 0 or (cell - icon) / 2
+	local perRow, pad, width, height = PER_ROW
+	if GroupsOn() then
+		-- one row of groups, GAP above and under it
+		perRow, pad = #bar.buttons, GAP
+		width, cell, gap = GroupRow()
+		icon = cell / ring
+		inset = kit and 0 or (cell - icon) / 2
+		height = cell + 2 * pad
+	else
+		width = PER_ROW * cell + (PER_ROW + 1) * gap
+		if merged then
+			-- as wide as the map: the cells made smaller where five do not fit
+			-- (user, 2026-09-23: "the buttons are not quite fitting the borders"),
+			-- then spread evenly across it
+			local okW, mapW = pcall(Minimap.GetWidth, Minimap)
+			if okW and mapW and not IsSecret(mapW) and mapW > 0 then
+				width = mapW
+				local minGap = 4
+				local fit = (mapW - (PER_ROW + 1) * minGap) / PER_ROW
+				if cell > fit then
+					local k = fit / cell
+					cell, icon = fit, icon * k
+					inset = kit and 0 or (cell - icon) / 2
+				end
+				gap = (mapW - PER_ROW * cell) / (PER_ROW + 1)
 			end
-			gap = (mapW - PER_ROW * cell) / (PER_ROW + 1)
 		end
+		pad = gap
+		height = rows * cell + (rows + 1) * gap
 	end
-	bar:SetSize(width, rows * cell + (rows + 1) * gap)
+	bar:SetSize(width, height)
 	for i, b in ipairs(bar.buttons) do
-		local col, row = (i - 1) % PER_ROW, math.floor((i - 1) / PER_ROW)
+		local col, row = (i - 1) % perRow, math.floor((i - 1) / perRow)
 		b:SetSize(kit and cell or icon, kit and cell or icon)
 		b:ClearAllPoints()
 		b:Show()
-		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(gap + row * (cell + gap) + inset))
+		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(pad + row * (cell + gap) + inset))
 		if b.rim then
 			local k = icon / 21
 			b.rim:SetSize(53 * k, 53 * k)
@@ -1469,6 +2041,18 @@ local function ApplyIconShape()
 			b.icon:SetTexCoord(0, 1, 0, 1)
 			b.rim:Hide()
 		end
+		-- the hover glow takes the icon's shape too (user, 2026-09-26: "they
+		-- turn round, but the Highlight Glow stays a square"): the same
+		-- circle on the highlight while Round Icons is on, added once
+		local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+		if hl and (b.hlRound or false) ~= round then
+			if round then
+				hl:AddMaskTexture(b.mask)
+			else
+				hl:RemoveMaskTexture(b.mask)
+			end
+			b.hlRound = round
+		end
 		-- the kit's rim (SR2 round; square for square icons), the icon in
 		-- its opening; the game's anchors back when the kit is off
 		if kit then
@@ -1500,31 +2084,17 @@ local function ApplyIconShape()
 	local merged = Merged()
 	BarStone(merged)
 	if bar.SetBackdrop then
+		local plain = false
 		if merged then
 			SetKitBox(bar, false)   -- the minimap's frame is its border, its stone the ground
 			bar:SetBackdrop(nil)
-		elseif not SetKitBox(bar, kit) then
-			bar:SetBackdrop({
-				bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-				edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-				tile = true, tileSize = 16, edgeSize = 12,
-				insets = { left = 3, right = 3, top = 3, bottom = 3 },
-			})
-			bar:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
-			bar:SetBackdropBorderColor(0.55, 0.45, 0.25, 1)
+		else
+			plain = not SetKitBox(bar, kit)
 		end
+		PlainBarBox(plain)
 	end
-	-- the nearest-service menu on the same box (SV1)
-	if menu and menu.SetBackdrop and not SetKitBox(menu, kit) then
-		menu:SetBackdrop({
-			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-			tile = true, tileSize = 16, edgeSize = 16,
-			insets = { left = 4, right = 4, top = 4, bottom = 4 },
-		})
-		menu:SetBackdropColor(0.06, 0.06, 0.08, 0.95)
-		menu:SetBackdropBorderColor(0.6, 0.5, 0.3, 1)
-	end
+	-- the nearest-service menu and the trays on the same box (SV1)
+	MenuBox(kit)
 end
 
 local function ApplyBar()
@@ -1532,6 +2102,7 @@ local function ApplyBar()
 		CreateBar()
 	end
 	if bar then
+		UseButtons()
 		LayerBar()
 		bar:SetShown(M.isEnabled and M.db.showBar and true or false)
 		if bar:IsShown() then
@@ -1555,7 +2126,15 @@ local function UpdateButtonPosition()
 		return
 	end
 	local angle = math.rad(tonumber(M.db.angle) or 205)
+	-- where it always sat on the game's 198 wide map (80 from the middle),
+	-- in proportion should the map's own width differ (Edit Mode's Size
+	-- scales the map's container, not its width: it stays 198)
 	local radius = 80
+	local okW, w = pcall(Minimap.GetWidth, Minimap)
+	w = okW and Num(w) or nil
+	if w and w > 0 then
+		radius = w * 80 / 198
+	end
 	local x, y = math.cos(angle) * radius, math.sin(angle) * radius
 	-- A square minimap wants the button on its edge, not on a circle.
 	if GetMinimapShape then
@@ -1677,6 +2256,14 @@ function M:OnInit(db)
 	self.db = db
 end
 
+-- the map's own size changed by the game: the bar and the minimap button's
+-- place fitted to it again (Edit Mode's Size scales the map's container,
+-- not the map: Edit Mode's close, below, fits them then)
+local function Resized()
+	ApplyBar()
+	UpdateButtonPosition()
+end
+
 local relayoutHooked = false
 local function HookRelayout()
 	if relayoutHooked then
@@ -1685,7 +2272,7 @@ local function HookRelayout()
 	relayoutHooked = true
 	-- the minimap can be resized or moved in Edit Mode: fit the stand and the bar again
 	if Minimap and Minimap.HookScript then
-		Perf.HookScript(Minimap, "OnSizeChanged", function() C_Timer.After(0, ApplyBar) end)
+		Perf.HookScript(Minimap, "OnSizeChanged", function() C_Timer.After(0, Resized) end)
 	end
 	-- and when Edit Mode closes (the kit's one Edit Mode registration, the
 	-- bus's 'editmode'; audit, 2026-09-24)
@@ -1729,16 +2316,35 @@ function M:OnDisable()
 		menu:Hide()
 	end
 	ApplyStand()
+	-- (also a profile load's restart: MinimapPanel lays the map out with the
+	-- new settings here, its mask and shape answer included, before OnEnable
+	-- puts the minimap button on that shape's edge)
 	TellColumn()
 end
 
--- The minimap's frame changed (its shape, border, Merge With Services): the
--- bar laid out again, without calling back (MinimapPanel lays itself out)
+-- The minimap's frame changed (its shape, border, Merge With Services, its
+-- size): the bar laid out again, without calling back (MinimapPanel lays
+-- itself out), and the minimap button's place with the map
 function M:LayoutForMinimap()
 	if bar and M.isEnabled then
 		ApplyIconShape()
 		LayoutBar()
 	end
+	UpdateButtonPosition()
+end
+
+-- MinimapPanel's question about the row under the map (its column, layout
+-- E), asked at call time: `groups`, true while the buttons stand as ONE row
+-- of groups (the merged frame's divider rail then keeps its "Services" name
+-- beside Route's distance line and puts the clock on the zone band), and the
+-- row's height in the bar's own units;
+-- otherwise false, nil (the bar's own height, as always). Makes nothing.
+function M:ColumnRow()
+	if not (self.isEnabled and self.db and self.db.showBar and GroupsOn()) then
+		return false, nil
+	end
+	local _, cell = GroupRow()
+	return true, cell + 2 * GAP
 end
 
 function M:OnSettingChanged(key, value, db)

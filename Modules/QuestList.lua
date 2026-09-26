@@ -34,7 +34,8 @@ local M = MelloUI:RegisterModule("QuestList", {
 	desc = "Panel next to the world map listing the quests of a zone, how many you have completed, and where each one is picked up.",
 	icon = "Interface\\Icons\\INV_Misc_Map_01",
 	flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do.",
-	group = "Quests and travel",
+	group = "Quests and travel", navOrder = 1,
+	role = "feature",
 	area = { key = "questList", follows = "QuestLogPanel" },   -- the panel beside the map: as the quest log
 	keep = { "learnedEntrances", "learnedTransports" },   -- pins recorded by hand (older versions kept them here): never in a profile
 	enabledByDefault = true,
@@ -1042,6 +1043,9 @@ function QL.CurrentContinent()
 	return nil, nil
 end
 
+-- The quest's giver (or turn-in) as the waypoint. True when set; the second
+-- answer (here and in QL.RouteToPoint) is true when Route took it and its
+-- notice says so with a sound, so the caller plays no click sound of its own
 function QL.SetWaypoint(row, atEnder)
 	local mapID, x, y
 	if atEnder then
@@ -1086,7 +1090,7 @@ function QL.SetWaypoint(row, atEnder)
 		end
 		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, text) then
 			QL.trackedQuestID = row[QL.F_ID]
-			return true
+			return true, R.AnnounceSounds ~= nil and R:AnnounceSounds()
 		end
 	end
 	local point = UiMapPoint.CreateFromCoordinates(mapID, x, y)
@@ -1108,7 +1112,10 @@ function QL.RouteToPoint(mapID, x, y, label, notice)
 	end
 	local R = MelloUI.Route
 	if R and R.isEnabled and R.SetDestinationTo then
-		return R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, notice) and true or false
+		if R:SetDestinationTo({ mapID = mapID, x = x, y = y }, label, true, notice) then
+			return true, R.AnnounceSounds ~= nil and R:AnnounceSounds()
+		end
+		return false
 	end
 	if not (C_Map.SetUserWaypoint and UiMapPoint) then
 		return false

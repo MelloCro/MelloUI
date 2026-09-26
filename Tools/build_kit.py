@@ -34,7 +34,10 @@ user 2026-09-23: too many red diamonds); --red-gems builds the old art.
 
 Then the palette's two looks are made from it (Tools/kit_palette.py, user
 2026-09-23: Media/KitWarm and Media/KitBronze, chosen in game);
---no-looks skips them.
+--no-looks skips them. Last, the pieces' shadow partners (Kit:Shadow) are
+made again from the new shapes (Tools/make_kit_shadows.py; the addon's sheet
+and Media/KitShadows.lua too, but only from the default masters folder);
+--no-shadows skips them.
 
 Run:  python Tools/build_kit.py            the masters
       python Tools/build_nineslice.py      the rail families' one-texture pictures (masters)
@@ -667,6 +670,17 @@ def main():
     if not no_looks:
         for look, (n, size) in kit_palette.build_looks(OUT).items():
             print(f"  {look}: {n} pieces recoloured -> masters Media/{kit_palette.LOOKS[look][0]} ({size / 1e6:.1f} MB)")
+    # the shadow partners follow the pieces' shapes (Tools/make_kit_shadows.py:
+    # its sheet's master and, from the default masters only, the addon's copy
+    # and Media/KitShadows.lua)
+    if "--no-shadows" not in sys.argv:
+        import make_kit_shadows
+        addon = make_kit_shadows.addon_writes()
+        digest = make_kit_shadows.write(quiet=True, addon=addon)[:12]
+        print(f"  shadows: sheet sha256 {digest} -> "
+              + ("masters Media/Textures/KitShadows.tga, Media/Textures/KitShadows.tga, Media/KitShadows.lua" if addon else
+                 "masters Media/Textures/KitShadows.tga only (another masters folder: the addon's files left as they are;"
+                 " python Tools/make_kit_shadows.py --addon writes them)"))
     if "--report" in sys.argv:
         for name in sorted(pieces):
             p = pieces[name]

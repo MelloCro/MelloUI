@@ -7,6 +7,8 @@
 --     RW  Raid Warning,  W  Whisper,  G  General,  T  Trade, ...
 --   * class coloured player names in every chat type
 --   * smooth scrolling: the mouse wheel glides the text (Smooth Scrolling)
+--   * one background opacity for every chat window, kept in the profile
+--     (Set The Background Opacity; the game keeps it per character)
 --
 -- The short tags are written AFTER the game has added a line: a secure
 -- post-hook on each chat window's AddMessage rewrites that one line with the
@@ -28,12 +30,15 @@ local M = MelloUI:RegisterModule("Chat", {
 	desc = "Clean chat: hidden background and input art, short coloured channel tags, class coloured names.",
 	icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
 	flavour = "Less frame, more talk. Short channel tags and class colours keep the log readable.",
-	group = "Chat and sound",
+	group = "Chat and sound", navOrder = 1,
+	role = "adds",
 	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names and the art-hiding switches (which only apply while the chat reskin is off).", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
 	keep = { "savedWhisperMode", "savedClassColorCVar" },   -- the player's own game settings, given back when off: never in a profile
 	defaults = {
 		hideBackground = true,
+		windowAlphaOn = false,
+		windowAlpha = 1,
 		hideEditBox = true,
 		hideTabs = false,
 		tabsOnMouseover = true,
@@ -51,6 +56,10 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "header", name = "Appearance" },
 		{ type = "toggle", key = "hideBackground", name = "Hide Window Background",
 		  desc = "Hide the background and border art of all chat windows." },
+		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
+		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
+		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
+		  desc = "How solid the chat windows' background is. Moving the Background slider in a chat tab's menu changes this too." },
 		{ type = "toggle", key = "hideEditBox", name = "Hide Input Box Art",
 		  desc = "Hide the border and background art of the chat input box." },
 		{ type = "toggle", key = "hideTabs", name = "Hide Tab Background",
@@ -150,6 +159,171 @@ local function SetBackgroundShown(shown)
 			end
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Background opacity (user, 2026-09-26: "the Profile does not include the
+-- Chat Background Transparency")
+--
+-- The game keeps each chat window's background opacity per character (the
+-- Background slider in a chat tab's menu, saved in the character's chat
+-- cache): a new character came up at the game's faint default under the chat
+-- stone and parchment, and no profile could carry it. While "Set The
+-- Background Opacity" is on, every chat window -- the numbered ones, docked
+-- or floating, and the whisper windows the game opens later -- gets the one
+-- value through the game's own FCF_SetWindowAlpha, as if its slider had been
+-- moved: the game saves it per character, and the chat reskin's stone,
+-- parchment and dim panel follow through ChatPanel's hook on that same
+-- function (one path for the alpha). A window already at the value is not
+-- written again. The game's slider moved while this is on changes the
+-- setting, so all windows keep one opacity. Off, MelloUI writes nothing:
+-- each window keeps what the game has.
+-- The chat reskin applies it too while Chat Tweaks is off (M.ReskinAlpha):
+-- this same code, never a second copy.
+--------------------------------------------------------------------------------
+
+local Alpha = { applying = false, watched = false, reskin = false, listening = false }
+
+function Alpha.On()
+	return (M.isEnabled or Alpha.reskin) and M.db and M.db.windowAlphaOn == true
+end
+
+function Alpha.Wanted()
+	local v = MelloUI.Safe.Number(M.db and M.db.windowAlpha)
+	if not v then
+		return 1
+	end
+	return math.max(0, math.min(1, v))
+end
+
+-- one window to `want`, through the game's own function; a whisper window
+-- (past the numbered windows) has no saved slot, so it is set, not saved
+function Alpha.Set(cf, want)
+	if type(cf) ~= "table" then
+		return
+	end
+	local have = MelloUI.Safe.Number(cf.oldAlpha)
+	if have and math.abs(have - want) <= 0.005 then
+		return
+	end
+	local okId, id = pcall(cf.GetID, cf)
+	id = okId and MelloUI.Safe.Number(id)
+	local doNotSave = (not id or id < 1 or id > NumWindows() or cf.isTemporary) and true or nil
+	pcall(FCF_SetWindowAlpha, cf, want, doNotSave)
+end
+
+-- every chat window the game has (CHAT_FRAMES, as ChatFrameNames, without
+-- a list made per call: the game's slider calls this while it is dragged)
+function Alpha.Apply()
+	if not Alpha.On() or type(FCF_SetWindowAlpha) ~= "function" then
+		return
+	end
+	Alpha.Watch()
+	local want = Alpha.Wanted()
+	Alpha.applying = true
+	local any = false
+	if type(CHAT_FRAMES) == "table" then
+		for _, name in pairs(CHAT_FRAMES) do
+			local cf = type(name) == "string" and _G[name]
+			if cf then
+				any = true
+				Alpha.Set(cf, want)
+			end
+		end
+	end
+	if not any then
+		for i = 1, NumWindows() do
+			Alpha.Set(_G["ChatFrame" .. i], want)
+		end
+	end
+	Alpha.applying = false
+end
+
+-- the game's own load path (its saved per-character value, or a whisper
+-- window copying its source's) sets a window without saving: held at the
+-- setting while it is on. A whisper window has no saved value, so each of
+-- the game's chat-window updates puts it back to 100%: below 100% it is
+-- set again here each time (at 100% nothing is written)
+function Alpha.OnGameSet(cf, _, doNotSave)
+	if Alpha.applying or not doNotSave or not Alpha.On() then
+		return
+	end
+	Alpha.applying = true
+	Alpha.Set(cf, Alpha.Wanted())
+	Alpha.applying = false
+end
+
+-- the game's Background slider (or its Cancel) moved one window: that value
+-- becomes the setting, and the setting brings every other window to it
+function Alpha.FromGame()
+	local current = _G.FCF_GetCurrentChatFrame
+	if Alpha.applying or not Alpha.On() or type(current) ~= "function" then
+		return
+	end
+	local ok, cf = pcall(current)
+	local a = ok and type(cf) == "table" and MelloUI.Safe.Number(cf.oldAlpha)
+	if not a then
+		return
+	end
+	a = math.floor(math.max(0, math.min(1, a)) * 100 + 0.5) / 100
+	if math.abs(a - Alpha.Wanted()) <= 0.005 then
+		return
+	end
+	MelloUI:NotifySettingChanged("Chat", "windowAlpha", a)
+end
+
+-- the hooks, once, the first time the setting is on (post-hooks: the game's
+-- functions run untouched first)
+function Alpha.Watch()
+	if Alpha.watched then
+		return
+	end
+	Alpha.watched = true
+	hooksecurefunc("FCF_SetWindowAlpha", Alpha.OnGameSet)
+	for _, fn in ipairs({ "FCF_SetChatWindowOpacity", "FCF_CancelWindowColorSettings" }) do
+		if type(_G[fn]) == "function" then
+			hooksecurefunc(fn, Alpha.FromGame)
+		end
+	end
+	-- a new window and the game's Reset Chat Windows start at the game's
+	-- default: the setting again (whisper windows: ApplyWindows)
+	for _, fn in ipairs({ "FCF_OpenNewWindow", "FCF_ResetChatWindows" }) do
+		if type(_G[fn]) == "function" then
+			hooksecurefunc(fn, Alpha.Apply)
+		end
+	end
+end
+
+-- The chat reskin's share (user, 2026-09-26: with Reskin only a new
+-- character's chat stone and parchment stayed nearly see-through): while the
+-- reskin is on and Chat Tweaks is off, the setting still applies, through
+-- this same code. ChatPanel calls M.ReskinAlpha from its enable, its disable
+-- and its whisper window hook. With Chat Tweaks on this module alone applies
+-- it, so the call does nothing then (never twice).
+function Alpha.Reskin()
+	if M.isEnabled then
+		return
+	end
+	-- (the store as it is now: a profile load may have put in a new one)
+	M.db = MelloUI:GetModuleDB("Chat")
+	Alpha.Apply()
+end
+
+-- a change of either key while Chat Tweaks is off (an install, the game's
+-- slider): no OnSettingChanged runs then, so the bus brings it
+function Alpha.OnSetting(module, key)
+	if module == "Chat" and (key == "windowAlphaOn" or key == "windowAlpha") and Alpha.reskin then
+		Alpha.Reskin()
+	end
+end
+
+function M.ReskinAlpha(on)
+	Alpha.reskin = on and true or false
+	if Alpha.reskin and not Alpha.listening then
+		Alpha.listening = true
+		MelloUI:On("setting", Alpha.OnSetting, "Chat background opacity")
+	end
+	Alpha.Reskin()
 end
 
 --------------------------------------------------------------------------------
@@ -2522,6 +2696,7 @@ local function ApplyWindows()
 	SetTabsOnMouseover(db.tabsOnMouseover)
 	SetEditBoxOnTop(db.editBoxTop)
 	SetButtonsHidden(db.hideButtons)
+	Alpha.Apply()
 end
 
 local watchingWhisperWindows = false
@@ -2554,6 +2729,7 @@ local function ApplyAll()
 	SetTabsOnMouseover(db.tabsOnMouseover)
 	SetEditBoxOnTop(db.editBoxTop)
 	SetButtonsHidden(db.hideButtons)
+	Alpha.Apply()
 	HookLines()
 	ApplyClassColors(db.classColors)
 	SetWhisperPopup(db.whisperPopup)
@@ -2589,6 +2765,9 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "hideBackground" or key == "hideEditBox" or key == "hideTabs" then
 		ApplyArt()
+	elseif key == "windowAlphaOn" or key == "windowAlpha" then
+		-- on or a new value: every window to it; off: left as they are
+		Alpha.Apply()
 	elseif key == "tabsOnMouseover" then
 		SetTabsOnMouseover(value)
 	elseif key == "hideButtons" then

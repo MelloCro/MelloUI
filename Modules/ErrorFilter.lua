@@ -41,7 +41,7 @@ local M = MelloUI:RegisterModule("ErrorFilter", {
 	desc = "Hide the red error messages you choose, such as \"Not enough energy\" or \"Spell is not ready yet\", from the middle of the screen.",
 	icon = "Interface\\Icons\\Spell_Holy_Silence",
 	flavour = "Quiet, please. The red shouts in the middle of the screen, a kind at a time.",
-	group = "Frames and bars",
+	role = "adds",
 	tweak = { label = "Error Messages", desc = "Hides the red error messages you choose (not enough energy, not ready yet, out of range...) from the middle of the screen.", order = 2, off = true },
 	enabledByDefault = false,
 	defaults = {

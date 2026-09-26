@@ -20,6 +20,11 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Fonts")
 local hooksecurefunc = Perf.hooksecurefunc
 
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua): what
+-- MelloUI:StyleFont reads from a font object and takes from its callers
+local SafeText = MelloUI.Safe.Text
+local SafeNumber = MelloUI.Safe.Number
+
 local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF"
 
 local BUILTIN_FONTS = {
@@ -166,6 +171,15 @@ local function StyleSettings(s)
 	}
 end
 
+-- The styles and what one sets, for the installer: its Fresh start writes a
+-- chosen style's faces and sizes with the style itself (here they are filled
+-- in only when the style is picked while this module is on)
+MelloUI.FontStyles = STYLES
+MelloUI.FontStyleSettings = function(value)
+	local s = STYLE[value]
+	return s and StyleSettings(s) or nil
+end
+
 local defaults = { scale = 1, outline = "OUTLINE", style = "custom" }
 local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, with their sizes -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice." }
 for _, s in ipairs(STYLES) do
@@ -231,7 +245,8 @@ local M = MelloUI:RegisterModule("Fonts", {
 	desc = "One font per role: interface text, chat and numbers, titles, damage numbers; plus size and outline.",
 	icon = "Interface\\Icons\\INV_Scroll_03",
 	flavour = "One font for all of Azeroth. Pick it, scale it, outline it.",
-	group = "The look",
+	group = "The look", navOrder = 3,
+	role = "look",
 	tweak = { label = "Custom Fonts", desc = "The fonts and sizes used by the whole interface. Off: the game's own fonts.", order = 11 },
 	enabledByDefault = true,   -- every role "default" changes nothing; UI Modifications drives the switch
 	keep = { "paperFollows" },   -- a one-time step that was done: never in a profile
@@ -643,8 +658,9 @@ end
 -- arrow and marker texts) is not drawn through a game font object, so the
 -- retargeting above never reaches it (user, 2026-09-24: "The Tracking Notice
 -- and the Arrow Text should respect the Changes in Font Changing"). Such a
--- module asks for a role's face, size factor and outline here and listens
--- for changes; it keeps its own base size and look.
+-- string is handed to MelloUI:StyleFont (below), which gives it its role's
+-- face, size factor and outline and follows every change; it keeps its own
+-- base size and look.
 --------------------------------------------------------------------------------
 
 -- The face, size factor and flags for a string of the given role whose own
@@ -682,6 +698,172 @@ end
 
 local function FireFontsChanged()
 	MelloUI:Fire("fonts")
+end
+
+--------------------------------------------------------------------------------
+-- MelloUI:StyleFont: the one font path for MelloUI's own strings (audit #12,
+-- 2026-09-25: lifted from the Route's own copy, which every new text would
+-- otherwise have copied again)
+--
+-- MelloUI:StyleFont(fs, role, object, size, flags, outline)
+--   fs       a FontString (or anything with SetFont, an EditBox). Kept in a
+--            weak registry and re-applied at every 'fonts' Fire until it is
+--            collected; styling it again replaces its entry where it stands.
+--   role     "fontText", "fontChat", "fontTitle" or "fontDamage": the role
+--            whose face and size slider the text follows. nil (or any other
+--            value) takes the role of the object's own face, as the game's
+--            font objects do (Friz Quadrata -> fontText, Arial Narrow ->
+--            fontChat, Morpheus -> fontTitle, Skurri -> fontDamage).
+--   object   the game font object the text starts from (GameFontNormal, ...):
+--            its face, size and flags as they were before this module
+--            changed them are the text's base. nil (or not a font object):
+--            fs leaves the registry and keeps the font it has.
+--   size     the text's own base size, in the object's terms (nil: the
+--            object's), times the role's size slider
+--   flags    the text's own base flags (nil: the object's; "": none)
+--   outline  what the Outline setting does to the text:
+--            nil    it follows it (the default, as the game's light fonts):
+--                   Thin or Thick replaces the base flags while this module
+--                   is on; "Keep original", or the module off, keeps them
+--            false  never outlined: the base flags without OUTLINE or
+--                   THICKOUTLINE, whatever the Outline says (ink on
+--                   parchment, a soft text on its own shade)
+--            true   always outlined: the Outline's own while it forces one,
+--                   else a thin OUTLINE, with the module on or off (an
+--                   "Outlined Text" switch: style the text again on a flip)
+-- The font is set at once and again at every 'fonts' Fire (a face, a size,
+-- the Outline, a Font Style, the module on or off). The listener is taken
+-- when this file loads, so it runs before every listener taken later (the
+-- files after this one, every window at its first open): such a listener
+-- already measures the new size. Off, or a role on "Keep the game's", a text
+-- has its base face and size exactly; a face the client cannot load leaves
+-- it on its base face. Nothing is made per Fire. Defined here, after Core:
+-- a file loaded before this one calls it at run time, never at file scope.
+--------------------------------------------------------------------------------
+
+do
+	local styled = setmetatable({}, { __mode = "k" })   -- [fs] = { role, object, size, flags, outline }
+
+	-- flags without their outline words, and an outline word joined to what
+	-- is left: kept, so a Fire makes no string
+	local bare, joined = {}, {}
+
+	local function Bare(flags)
+		local b = bare[flags]
+		if b == nil then
+			local words = {}
+			for word in flags:gmatch("[^%s,]+") do
+				if word:find("MONOCHROME", 1, true) then
+					words[#words + 1] = "MONOCHROME"
+				elseif not word:find("OUTLINE", 1, true) and word ~= "THICK" then
+					words[#words + 1] = word
+				end
+			end
+			b = table.concat(words, ",")
+			bare[flags] = b
+		end
+		return b
+	end
+
+	local function Outlined(word, rest)
+		if rest == "" then
+			return word
+		end
+		local byWord = joined[rest]
+		if not byWord then
+			byWord = {}
+			joined[rest] = byWord
+		end
+		local s = byWord[word]
+		if not s then
+			s = word .. "," .. rest
+			byWord[word] = s
+		end
+		return s
+	end
+
+	-- the face, size and flags a text has without this module: its font
+	-- object's own (as before this module changed it), with the text's own
+	-- size and flags where it sets them
+	local function Base(entry)
+		local object = entry.object
+		local path, size, flags
+		local original = Remember(object)
+		if original then
+			path, size, flags = original.path, original.size, original.flags
+		else
+			local ok, p, s, f = pcall(object.GetFont, object)
+			if ok then
+				path, size, flags = p, s, f
+			end
+		end
+		return SafeText(path), entry.size or SafeNumber(size), entry.flags or SafeText(flags) or ""
+	end
+
+	local function Apply(fs, entry)
+		local basePath, baseSize, baseFlags = Base(entry)
+		if not (basePath and baseSize) then
+			return
+		end
+		local path, factor, forced = basePath, 1, nil
+		local db = M.isEnabled and M.db
+		if db then
+			local role = entry.role
+			if not SCALE_KEY[role] then
+				role = RoleFor(basePath)
+			end
+			path, factor = ChosenFont(role) or basePath, tonumber(ScaleFor(role)) or 1
+			local outline = db.outline
+			forced = (outline and outline ~= "NONE") and outline or nil
+		end
+		local flags
+		if entry.outline == nil then
+			flags = forced or baseFlags
+		elseif entry.outline then
+			flags = Outlined((forced and forced ~= "") and forced or "OUTLINE", Bare(baseFlags))
+		else
+			flags = Bare(baseFlags)
+		end
+		-- the base size as it is at 100%, so the module off changes nothing
+		local size = baseSize
+		if math.abs(factor - 1) > 0.001 then
+			size = math.max(6, math.floor(baseSize * factor + 0.5))
+		end
+		-- a face the client cannot load (a font file gone) leaves the text on its own
+		local ok, set = pcall(fs.SetFont, fs, path, size, flags)
+		if not ok or set == false then
+			pcall(fs.SetFont, fs, basePath, size, flags)
+		end
+	end
+
+	local function Refresh()
+		for fs, entry in pairs(styled) do
+			Apply(fs, entry)
+		end
+	end
+	MelloUI:On("fonts", Refresh, "Fonts own strings")
+
+	function MelloUI:StyleFont(fs, role, object, size, flags, outline)
+		if not fs then
+			return
+		end
+		if type(object) ~= "table" then
+			styled[fs] = nil
+			return
+		end
+		local entry = styled[fs]
+		if not entry then
+			entry = {}
+			styled[fs] = entry
+		end
+		entry.role, entry.object, entry.size, entry.flags = role, object, SafeNumber(size), SafeText(flags)
+		if outline == nil then
+			entry.outline = nil
+		else
+			entry.outline = outline and true or false
+		end
+		Apply(fs, entry)
+	end
 end
 
 local function ApplyAll()

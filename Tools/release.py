@@ -20,6 +20,12 @@ data). The bump writes MelloUI.toc's Version and Interface into every TOC, and
 the release is refused while a TOC lists a file that does not exist, a
 companion is not load-on-demand on MelloUI, or .pkgmeta does not lift it out
 of the MelloUI folder.
+
+The shipped Full experience (the "MelloUI" profile in Media/Profiles.lua,
+which the installer applies) must be exactly what Tools/installer/bake_full.py
+makes from its snapshot through the current code, and the file must hold no
+other profile (the saved-profiles watcher keeps a player's own ones there):
+the release runs `bake_full.py --check` and is refused otherwise.
 """
 import argparse
 import os
@@ -31,6 +37,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 TOC = os.path.join(ROOT, "MelloUI.toc")
 PKGMETA = os.path.join(ROOT, ".pkgmeta")
+FULL_BAKE = os.path.join(HERE, "installer", "bake_full.py")
 
 
 def git(*args, capture=True):
@@ -111,6 +118,23 @@ def check_tocs(main_text):
     return comps, problems
 
 
+def check_full():
+    """The shipped Full experience is the current bake and the only profile in Media/Profiles.lua
+    (Tools/installer/bake_full.py --check, one load try). Returns (ok, lines): on success the bake's
+    length and sha256, else what the check printed (the cause, the fix, what changed in Full)."""
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    try:
+        r = subprocess.run([sys.executable, FULL_BAKE, "--check", "--tries", "1"], cwd=ROOT, env=env,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, [f"the bake did not run: {exc}"]
+    lines = [line.rstrip() for line in ((r.stdout or "") + (r.stderr or "")).splitlines() if line.strip()]
+    if r.returncode != 0:
+        return False, lines[-30:] or [f"bake_full.py --check exited {r.returncode}"]
+    now = [line for line in lines if line.startswith("Full baked now:")]
+    return True, [now[0].replace("Full baked now:", "").strip() if now else "up to date"]
+
+
 def write_tocs(edits, version, interface):
     """The Version and Interface lines of every TOC in `edits` ((path, label, text) each)."""
     for path, _, body in edits:
@@ -185,6 +209,10 @@ def main():
     comps, problems = check_tocs(text)
     if problems:
         sys.exit("the TOCs are not ready for a release:\n" + "\n".join("  " + p for p in problems))
+    full_ok, full_lines = check_full()
+    if not full_ok:
+        sys.exit("the shipped Full experience (the \"MelloUI\" profile in Media/Profiles.lua) is not ready for a "
+                 "release (python Tools/installer/bake_full.py --check):\n" + "\n".join("  " + p for p in full_lines))
     interface = toc_field(text, "Interface")
     new = bump(current, a.how)
     if new <= current:
@@ -216,6 +244,7 @@ def main():
             edits.append((path, f"{name}/{name}.toc", fh.read()))
     for _, label, body in edits:
         print(f"{label}: Version {toc_field(body, 'Version')} -> {version}, Interface {toc_field(body, 'Interface')} -> {interface}")
+    print(f"Full experience (Media/Profiles.lua \"MelloUI\"): the current bake, {full_lines[0]}")
     if a.dry_run:
         print("dry run: nothing changed")
         return

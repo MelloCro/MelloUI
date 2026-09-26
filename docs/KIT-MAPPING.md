@@ -99,6 +99,8 @@ Agreed additions (the only pieces without a game element under them)
 | key | where | kit piece |
 |---|---|---|
 | `ViewportFrame` | around `CharacterModelScene` (the character viewport), over its backdrop | `frame` from the SINGLE-rail family `window/single_*` at 1.6 (catalogue pick **B1**, `kit_raw/viewport_catalog.png`), edges only, OPEN on the right where it meets the pane divider (one rail at the seam, as in the default), one level above the scene. The window's own edge is a double rail; `Tools/make_single_rail.py` makes the single one from the bar frame's rail. The user asked for this frame explicitly; it is passed with `noFade` and is the documented exception to rule 9. |
+| `MelloUI-Crest` | MelloUI's own windows, where no game window has a ring: the configurator's crest, centred left to right with its centre on the outer rail's middle line (`Kit:RailMiddle()`), and the installer's Keep ring | `texture window/portrait_ring`, square, `level` 1 (the corner ring's rule under a key of its own), at 1.25 x the kit's portrait ring for the configurator (decision D1) and 110 px on the installer's Keep page; the disc is `Kit:RingDisc(rep, "innerPanel", holder, 6)` and the emblem (`LogoIcon.tga`) `SetAllPoints` on it with the round mask (2b: never an empty ring). Its own key, so it registers no shell ring and `TitleBehindRing` cuts no plate for it. Approved sketch, 2026-09-24; `Kit:OwnWindow` with `ring = { at = "top" }` (Modules/KitWindow.lua). |
+| `MelloUI-TitlePlate` | the configurator's short title plate, under the crest | `strip tabs/top`, `open`, `heightScale` 1.5: the `TitleBar` look without `onRail`, 200 wide, fitted to 20 px, its top 8 over the crest's bottom, the title on it in `Kit:TitleFont`. The one recorded exception to WINDOW-RULES 2c (the installer and every other window keep the full-width plate on the rail). `Kit:OwnWindow` with `plate = "crest"`. |
 | `RailJoint` | on the junctions of rails (T and +), where the game paints nothing: the pane divider's top under the title plate, the stats box's top edge (the inset's top rail and the stone plate's bottom rail both meet the divider there) and its bottom on the window's bottom rail | `texture inputs/slider_thumb_normal` at the kit's natural size (the gem in a dark bezel: catalogue pick **K**, `kit_raw/joint_catalog.png`, chosen for EVERY junction), centred on the crossing by `Kit:Joint` — the rail's centre line comes from the piece's box (`Kit:RailInset`), never from a guessed offset. Lives on the divider's own frame (level 505 in the game's layout) so it collapses with it; the stats one shows with its box. User's pick, 2026-09-21. |
 
 Slots and tabs
@@ -563,29 +565,51 @@ the game's backdrop and tracking rims otherwise.
 | the bar, the menu | **SV1**: `Professions-background-summarylist` (L1 box) on an invisible anchor, one level under the frame; the frame's own backdrop off |
 | the icons | **SR2**: the kit's round rim (`Kit:Slot` kind `roundslot`), the button grown to the rim's size and the icon fitted into its opening (`SlotPlaceIcon`), the round mask kept; with "Round Icons" off the square R1 rim instead |
 
-## MelloUI's own configurator (Core/Config.lua, 2026-09-21/22)
+## MelloUI's own configurator (Core/Config.lua; the redesign of 2026-09-26)
 
-Not a game window: the kit skin lives inside Config.lua (`KIT`, `KitReplace`, `KitAnchor`) and is decided once, when
-the window is built, from UI Modifications' reskin switch (a change shows after /reload). User's picks: **CT2** tiles,
-**SI1** strip icons, **ST5** strip background, **SL1** slider, **CR4** rows, **SH3** sub-headings, **CA1** tabs
-(`kit_raw/config_catalog*.png`); the rest are the fixed looks, through the existing keys.
+Not a game window. Since the redesign (the approved sketch of 2026-09-24) it is built on the own-window shell
+(`Kit:OwnWindow`, Modules/KitWindow.lua) and the widget set (`MelloUI.Widgets`, Core/Widgets.lua): the kit look is
+`Kit:IsOn("config")` and switches live on `look:config` (the pages are kept per look, at most two sets a session). Every
+region handed to `Kit:Replace` where a widget has none comes from `shell:Anchor`. User's picks from before, kept:
+**SI1** icon rims, **SL1** slider, **CR4** rows, **SH3** sub-headings, **CA1** tabs (`kit_raw/config_catalog*.png`); the
+rest are the fixed looks, through the existing keys. The icon strip (ST5) and the Home tiles (CT2) are gone with the
+redesign.
 
 | part | kit piece (key) |
 |---|---|
-| the window | `NineSlicePanelTemplate` (outer double rail with gems, outward) on an invisible anchor region; `UI-Background-Rock` (page stone) in place of the rock, inset by `Kit:OuterRailInset()` |
-| the title band | `TitleBar` on the band's paint (`band.TitleText` = the title, `fitHeight` 20: a game window's title container, not the 40 px band); the window registers with the window mover |
-| the close button | `RedButton-Exit` |
-| the icon strip | **ST5**: `Professions-background-summarylist` (L1 box) at the strip's own level (one under it tied with the page stone and the dark body did not show); icons 57 px in **SI1** R1 rims (`UI-HUD-ActionBar-IconFrame` as regions of the icon's own frame, the hover handed on from the button), packed with an 8 px gap, centred, every icon's name under it (gold for the current page) |
-| page header | R1 rim on the icon, the title in the kit's title face, description and status lines light with an outline (the dim grey drowned on the stone) |
+| the window | `NineSlicePanelTemplate` (outer double rail with gems, outward) on `shell:Anchor`; `UI-Background-Rock` (page stone) in place of the plain look's tinted rock, inset by `Kit:OuterRailInset()`. Plain look: the rock tinted with the palette's main window, in the game's GenericMetal frame |
+| the crest | `MelloUI-Crest` (agreed addition, above): the portrait ring at 1.25 x, centred on the top rail's middle line, the emblem on its `innerPanel` disc. Plain look: the emblem alone, 88 px, on the top edge |
+| the title plate | `MelloUI-TitlePlate` (agreed addition, above): 200 wide under the crest, "MelloUI" in `Kit:TitleFont` (the 2c exception). Plain look: a `raisedPanel` box with a `trim` edge, the title in `selectedTrim` |
+| the drag strip | nothing drawn: `shell.grab` from the top edge down to the top bar is the mover's handle (Core's one mover, key `MelloUIConfigFrame`) |
+| the top bar | `Kit:StoneDim` over the stone (inner panel 0.8, 2e); no band art of its own. Left: "Layout" in gold, the kit's check boxes (Unlock the Windows, Auto Snapping), Reset positions on a B1 red plate. Right: `RedButton-Exit` (close), Dynamic UI Modification on B1, **Install…** on B1 with the gold trim: its label in `selectedTrim` and a 1 px `selectedTrim` outline, drawn with the palette (no new art, no catalogue). Plain look: an `innerPanel` fill with a `border` line |
+| the side list | an L1 box (`Professions-background-summarylist`, dim 0.8) round the `W.NavRail`; the group headers in gold with the fold glyphs `common-button-list-plus` / `-minus`; each entry a 22 px icon in the **SI1** R1 rim (the Button Border) and its name in the `text` colour; the selected entry a `raisedPanel` marker with a 2 px `selectedTrim` left edge and its name in gold; the hover wash `hover` at 0.5. Plain look: an `innerPanel` box with a `border` edge, the same marker |
+| page header | a 58 px icon in the R1 rim (UI Modifications' pulses while its page is open), the title in the kit's title face, the flavour line in the `text` colour |
 | a page's tabs | **CA1** TB6 via `Kit:SkinPanelTab` (PanelTopTabButtonTemplate) |
-| a section | L1 box (`Professions-background-summarylist`, level -1 under the section), rows set in by `SEC_INSET` |
-| option rows | **CR4**: a faint band on every other row, `FriendsRowHighlight` (the plate's hover look) shown on the hovered row only |
+| a section | L1 box (`Professions-background-summarylist`, level -1 under the section), rows set in by `SEC_INSET`; Home's What's new and Your setup cards and its Help the same |
+| option rows | **CR4**: a faint band on every other row, `FriendsRowHighlight` (the plate's hover look) faded in on the hovered row (`W.RowPlate`) |
 | sub-headings | **SH3**: `GuildFrame-Header` (the header plate), the text past its gem cap |
 | switches | the kit's check box (`Kit:SkinCheckButton`) |
 | sliders | **SL1**: `_Minimal_SliderBar_Middle` (inputs/slider track) at the piece's own thickness (`fitHeight` from its box), `Minimal_SliderBar_Button` gem thumb, `Minimal_SliderBar_Button_Left/Right` arrow steppers |
-| buttons, dropdowns | B1 red plates and D1 by `Kit:SweepControls` on the page |
-| Home tiles | **CT2**: L1 box (level -1 under the tile), the R1 rim on the icon, the glow and IMPORTANT badge kept |
-| left as they were | the window's scroll bar (the classic UIPanelScrollFrame bar; the kit's T2-H1-S1 needs the minimal one), the profile name box (InputBoxTemplate) |
+| buttons, dropdowns | B1 red plates and D1 by the kit's control sweep (`W.Dress` over `Kit:SweepControls`) |
+| left as they were | the window's scroll bar (the classic UIPanelScrollFrame bar in the page area's 30 px gutter; the kit's T2-H1-S1 needs the minimal one, a later step), the profile name box (InputBoxTemplate) |
+
+## MelloUI's own installer (Core/InstallerWindow.lua, 2026-09-26)
+
+Not a game window: the second window on the own-window shell, always in the kit (area `installer`, `Kit.Areas` row
+`always = true`, decision D4). The approved sketch of 2026-09-24.
+
+| part | kit piece (key) |
+|---|---|
+| the window | the configurator's: `NineSlicePanelTemplate` on `shell:Anchor`, `UI-Background-Rock` inset by `Kit:OuterRailInset()` |
+| the ring | `UI-Frame-PortraitMetal-CornerTopLeft`: the standard corner ring with the emblem on its disc (2b); the outer rail skips that corner |
+| the title plate | `TitleBar` on the rail (`onRail`, 2c), the step's title on it in `Kit:TitleFont` |
+| the close button | `RedButton-Exit` (hidden while the Keep countdown runs) |
+| the steps rail | an L1 box (`Professions-background-summarylist`) round the numbered `W.NavRail` (no icons); a done step shows `common-icon-checkmark`; the current step the configurator's marker |
+| the body | one `Kit:StoneDim` (inner panel 0.8, 2e) under the step pages |
+| setup cards | `W.Card` in the palette look in both looks: a `mainWindow` fill (0.85) with a 1 px `border` edge; the chosen one a `raisedPanel` fill with a 2 px `selectedTrim` edge and its title in gold (the side list marker's "selected" look); the hover wash from `W.RowPlate`, none on the chosen card |
+| headings | **SH3**: `GuildFrame-Header`, the text past its gem cap |
+| the Keep ring | `MelloUI-Crest` (agreed addition, above), 110 px, the emblem at 35 % on its disc, the seconds over it in the title face in gold |
+| buttons | B1 red plates (`W.Button`); Install with the configurator's gold trim |
 
 ## Deliberately left as the game's (no kit piece yet)
 

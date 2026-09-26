@@ -26,8 +26,15 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	desc = "Darkens the Blizzard artwork of unit frames, cast bars, action bars, nameplates, cooldown manager, auras and menu bars.",
 	icon = "Interface\\Icons\\Spell_Shadow_Twilight",
 	flavour = "Dim the gold and the glare. The interface steps back, the world steps forward.",
-	group = "The look",
-	tweak = { label = "Dark Mode", desc = "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus.", order = 12 },
+	group = "The look", navOrder = 2,
+	role = "look",
+	-- (off until switched on: a personal preference, never on by default)
+	tweak = { label = "Dark Mode", desc = "Darkens the painted reskin (its brightness below) and, where the reskin is off, the game's own art of unit frames, bars, nameplates, auras and menus.", order = 12, off = true },
+	-- every setting here is the player's own preference (user, 2026-09-26:
+	-- "Dark mode ... should be a personal preference"): no profile, share
+	-- string or setup carries it, and loading one leaves it as it is (its
+	-- switch is in UI Modifications' keep list)
+	keep = { "^." },
 	defaults = {
 		shade = 0.25,        -- brightness of the darkened art (0 = black, 1 = untouched)
 		kitShade = 0.6,      -- brightness of the painted reskin's pieces (Kit:SetShade)

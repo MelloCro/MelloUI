@@ -21,7 +21,8 @@ local M = MelloUI:RegisterModule("Tooltip", {
 	desc = "Dark flat tooltips with class coloured names and borders, plus placement options.",
 	icon = "Interface\\Icons\\INV_Misc_Book_09",
 	flavour = "Dark, flat and out of the way, with names in the colour of their class.",
-	group = "Frames and bars",
+	group = "Frames and bars", navOrder = 3,
+	role = "replaces",
 	tweak = { label = "Tooltip Tweaks", desc = "Class and reaction colours, the health bar and placement of tooltips. The dark backdrop only applies while the tooltip reskin is off.", order = 10 },
 	defaults = {
 		darkBackdrop = true,

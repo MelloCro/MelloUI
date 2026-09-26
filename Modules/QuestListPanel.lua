@@ -42,8 +42,12 @@ local function RowClick(self)
 	if QL.trackedQuestID == self.entry.row[QL.F_ID] then
 		QL.ClearWaypoint()
 		MelloUI:PlayUISound("waypoint_clear")
-	elseif QL.SetWaypoint(self.entry.row, self.entry.ready) then
-		MelloUI:PlayUISound("waypoint_set")
+	else
+		-- (through Route its notice chimes instead: one sound, not two)
+		local set, chimed = QL.SetWaypoint(self.entry.row, self.entry.ready)
+		if set and not chimed then
+			MelloUI:PlayUISound("waypoint_set")
+		end
 	end
 	QL.Panel:Update()
 	if QL.RefreshPins then

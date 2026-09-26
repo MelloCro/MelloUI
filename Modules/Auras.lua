@@ -11,10 +11,11 @@
 -- through AddDispelTypeTexture).
 --
 --   * your buffs: buffs, then debuffs on their own row, where the game's
---     buff bar stands; right-click cancels a buff; temporary weapon
---     enchants too. The game's buff and debuff bars are hidden with the
---     game's own visibility driver (out of combat only) and come back while
---     Edit Mode is open, so they can still be moved there.
+--     buff bar stands, or beside the column under the minimap (Attach To
+--     The Minimap Column, below); right-click cancels a buff; temporary
+--     weapon enchants too. The game's buff and debuff bars are hidden with
+--     the game's own visibility driver (out of combat only) and come back
+--     while Edit Mode is open, so they can still be moved there.
 --   * target: debuffs, then buffs, in the game's own aura place under the
 --     target frame. The game's row is made invisible, not hidden, so the
 --     target frame's layout (the cast bar under the auras) stays the game's.
@@ -33,13 +34,14 @@ local M = MelloUI:RegisterModule("Auras", {
 	desc = "Your own buff and debuff rows on the target frame, enemy nameplates and at your buffs, drawn by the game so they keep working in combat.",
 	icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
 	flavour = "Buffs and debuffs in rows of your own, drawn by the game itself, so they never go dark in a fight.",
-	group = "Frames and bars",
+	role = "replaces",
 	tweak = { label = "Buffs & Debuffs", desc = "MelloUI's own rows of buffs and debuffs: yours in place of the game's buff bar, the target's under its frame, your debuffs on enemy nameplates.", order = 1, off = true },
 	enabledByDefault = false,
 	defaults = {
 		player = true,
 		playerSize = 30,
 		playerPerRow = 12,
+		playerColumn = true,
 		target = true,
 		targetSize = 22,
 		targetOnlyMine = false,
@@ -49,7 +51,9 @@ local M = MelloUI:RegisterModule("Auras", {
 	options = {
 		{ type = "header", name = "Your Buffs" },
 		{ type = "toggle", key = "player", name = "Your Buffs And Debuffs",
-		  desc = "Your buffs, then your debuffs on a row of their own, where the game's buff bar is. Right-click a buff to cancel it. The game's buff bar comes back while Edit Mode is open, so it can still be moved; these follow it." },
+		  desc = "Your buffs, then your debuffs on a row of their own. Right-click a buff to cancel it. Beside the minimap, or where the game's buff bar is: that bar comes back while Edit Mode is open, so it can still be moved, and these follow it." },
+		{ type = "toggle", key = "playerColumn", parent = "player", name = "Attach To The Minimap Column",
+		  desc = "Your buffs in a line beside the minimap, level with the map's top and growing away from it, your debuffs on the line under them. They follow the minimap when it moves or changes size. Needs the Minimap Kit; off, they stand where the game's buff bar is." },
 		{ type = "slider", key = "playerSize", parent = "player", name = "Icon Size", min = 20, max = 48, step = 1 },
 		{ type = "slider", key = "playerPerRow", parent = "player", name = "Icons Per Row", min = 6, max = 20, step = 1 },
 		{ type = "header", name = "Target" },
@@ -365,6 +369,149 @@ local function ItemEnchantments(c)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Attach To The Minimap Column (the minimap column's layout E, user,
+-- 2026-09-25: "the buffs lined up left of the map's top edge, growing
+-- leftwards, debuffs on a line under them"). The rows' top corner stands
+-- ATTACH_GAP UI units beside the column under the minimap, level with the
+-- map's top: left of it, growing leftwards; right of it, growing rightwards,
+-- when the column stands in the screen's left half, so they never run off
+-- the screen. The column is MinimapPanel's contract (M:ColumnPart("frame"):
+-- the painted frame's outer left and right edges on the screen, the round
+-- ring's rim or the square border, whatever the map's size; the rows' end
+-- icon clear of the rim), and the rows follow it on the bus's 'column'. The
+-- place is read on the screen and set against UIParent, never anchored to
+-- the game's minimap (nothing of ours hangs from an Edit Mode system), and
+-- the rows (their right-click cancels a buff: protected) move only out of
+-- combat, through the kit's combat queue. Off, or while the column is not
+-- MelloUI's (the Minimap Kit off), the rows stand on the game's buff bar's
+-- place, set as they always were.
+--------------------------------------------------------------------------------
+
+local ATTACH_GAP = 13   -- UI units between the rows and the column
+local PLACE_KEY = "Auras: your rows by the minimap column"   -- its key in the combat queue
+local Num = MelloUI.Safe.Number
+local placedSide, placedX, placedY   -- the place by the column ("left" / "right"); nil on the game's place
+
+-- the game's buff bar's place (the rows' place before the column)
+local function GamePlace(c)
+	c:ClearAllPoints()
+	c:SetPoint("TOPRIGHT", BuffFrame or UIParent, "TOPRIGHT", 0, 0)
+end
+
+-- the flow away from the column: leftwards from the top right, as the rows
+-- were made, or rightwards from the top left
+local function Flow(c, side)
+	local right = side == "right"
+	Try(c.SetFlowLayoutAnchorPoint, c, right and "TOPLEFT" or "TOPRIGHT")
+	Try(c.SetFlowLayoutGrowthDirection, c, right and 1 or -1, -1)
+	Try(c.UpdateAllAuras, c)
+end
+
+-- MinimapPanel while the column is MelloUI's (the module on), else nil
+local function ColumnOwner()
+	local mm = MelloUI:GetModule("MinimapPanel")
+	if mm and mm.isEnabled and mm.ColumnPart and Minimap then
+		return mm
+	end
+	return nil
+end
+
+-- where the rows' top corner goes: x, y in the rows' own units from the
+-- screen's bottom left, and the side; nil when any size or place reads
+-- secret or cannot be read
+local function ColumnPlace(mm, c)
+	local ok, l, _, r = pcall(mm.ColumnPart, mm, "frame")
+	local okM, _, mb, _, mh = pcall(Minimap.GetRect, Minimap)
+	local okS, ms = pcall(Minimap.GetEffectiveScale, Minimap)
+	local okR, rs = pcall(c.GetEffectiveScale, c)
+	l, r = ok and Num(l), ok and Num(r)
+	mb, mh, ms = okM and Num(mb), okM and Num(mh), okS and Num(ms)
+	rs = okR and Num(rs)
+	-- which half of the screen the column stands in: MinimapPanel's one
+	-- answer (Services' tray asks it too), from the edges read here
+	local okD, column = false, nil
+	if l and r and mm.ColumnSide then
+		okD, column = pcall(mm.ColumnSide, mm, l, r)
+	end
+	if not (l and r and mb and mh and ms and rs and okD and column) or rs <= 0 then
+		return nil
+	end
+	local y = (mb + mh) * ms / rs
+	if column == "left" then
+		return r / rs + ATTACH_GAP, y, "right"
+	end
+	return l / rs - ATTACH_GAP, y, "left"
+end
+
+local function Near(a, b)
+	return b ~= nil and math.abs(a - b) < 0.01
+end
+
+-- the rows put in their place (run out of combat by the kit's queue): by
+-- the column while attached and it can be read (moved only when the place
+-- changed; kept where they are while it cannot be read), else the game's
+local function PlaceNow()
+	local c = playerRows
+	if not c then
+		return
+	end
+	local mm = M.isEnabled and M.db.playerColumn and ColumnOwner()
+	if mm then
+		local x, y, side = ColumnPlace(mm, c)
+		if x then
+			if side ~= placedSide or not Near(x, placedX) or not Near(y, placedY) then
+				if side ~= (placedSide or "left") then
+					Flow(c, side)
+				end
+				c:ClearAllPoints()
+				c:SetPoint(side == "right" and "TOPLEFT" or "TOPRIGHT", UIParent, "BOTTOMLEFT", x, y)
+				placedSide, placedX, placedY = side, x, y
+			end
+			return
+		elseif placedSide then
+			return
+		end
+	end
+	if placedSide then
+		if placedSide ~= "left" then
+			Flow(c, "left")
+		end
+		placedSide, placedX, placedY = nil, nil, nil
+	end
+	GamePlace(c)
+end
+
+-- The rows placed. Never attached and not asked to be: the game's buff
+-- bar's place at once, as it always was set. Else through the combat queue
+-- (at once out of combat); rows made in a fight (a reload in combat) stand
+-- on the game's place meanwhile.
+local function PlacePlayer()
+	if not playerRows then
+		return
+	end
+	if placedSide == nil and not (M.isEnabled and M.db.playerColumn) then
+		GamePlace(playerRows)
+		return
+	end
+	-- (the rows are the game's protected aura frames: their point count can
+	-- read secret to our code, so it is tested for a secret first; user,
+	-- 2026-09-25: "Auras.lua:492: attempt to compare a secret number value")
+	local okN, n = pcall(playerRows.GetNumPoints, playerRows)
+	if okN and not Secret(n) and n == 0 then
+		GamePlace(playerRows)
+	end
+	MelloUI.Kit:WhenOutOfCombat(PlaceNow, PLACE_KEY)
+end
+
+-- the column re-laid (the bus's 'column') or the Minimap Kit switched: the
+-- rows follow while they are attached or asked to be
+local function FollowColumn()
+	if playerRows and M.isEnabled and (M.db.playerColumn or placedSide) then
+		PlacePlayer()
+	end
+end
+
 local function SetPlayer(on)
 	on = on and not inEditMode
 	if on and not playerRows then
@@ -381,8 +528,7 @@ local function SetPlayer(on)
 		ItemEnchantments(c)
 	end
 	if playerRows then
-		playerRows:ClearAllPoints()
-		playerRows:SetPoint("TOPRIGHT", BuffFrame or UIParent, "TOPRIGHT", 0, 0)
+		PlacePlayer()
 		playerRows:SetFrameStrata("LOW")
 		Try(playerRows.SetEnabled, playerRows, on and true or false)
 		playerRows:SetShown(on and true or false)
@@ -566,7 +712,9 @@ end)
 local editHooked = false
 
 -- (through the kit's one Edit Mode registration, the bus's 'editmode';
--- audit, 2026-09-24)
+-- audit, 2026-09-24) and the column under the minimap (the bus's 'column',
+-- told after it was laid again; the Minimap Kit switched on or off). Taken
+-- at the first enable, never at login for a player without this module.
 local function WatchEditMode()
 	if editHooked then
 		return
@@ -576,6 +724,12 @@ local function WatchEditMode()
 		inEditMode = entering
 		if M.isEnabled and M.db.player then
 			SetPlayer(not entering)
+		end
+	end, M)
+	MelloUI:On("column", FollowColumn, M)
+	MelloUI:On("module", function(name)
+		if name == "MinimapPanel" then
+			FollowColumn()
 		end
 	end, M)
 end
@@ -620,6 +774,8 @@ function M:OnSettingChanged(key, value, db)
 		SetTarget(value)
 	elseif key == "nameplates" then
 		SetNameplates(value)
+	elseif key == "playerColumn" then
+		PlacePlayer()
 	elseif key == "playerSize" or key == "playerPerRow" then
 		Resize(playerRows, db.playerSize, PlayerLine())
 	elseif key == "targetSize" then

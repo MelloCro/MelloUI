@@ -25,8 +25,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DIRS = ("Core", "Modules")
 
-# The ceilings: today's counts (wave 3 of the hardening release, 2026-09-25).
-# Lower one when the script says so; never raise one to make a copy pass.
+# The ceilings: today's counts (wave 3 of the hardening release, 2026-09-25;
+# the own-window shell and the widget set of the configurator build,
+# 2026-09-26, start at 0). Lower one when the script says so; never raise
+# one to make a copy pass.
 CEILINGS = {
     "replace-fn": 51,
     "follow-fn": 15,
@@ -39,8 +41,8 @@ CEILINGS = {
     "plain-helper": 0,
     "self-hook": 0,
     "dump-slash": 57,
-    "start-moving": 2,
-    "animation-group": 5,
+    "start-moving": 1,
+    "animation-group": 4,
     "new-ticker": 9,
     "combat-guard": 1,
     "safe-standin": 0,
@@ -49,10 +51,12 @@ CEILINGS = {
     "table-walk": 337,
     "addon-loaded": 33,
     "window-single": 10,
-    "direct-sound": 1,
+    "direct-sound": 0,
     "palette-guard": 6,
     "colour:Core/Core.lua": 2,
-    "colour:Core/Config.lua": 4,
+    "colour:Core/Config.lua": 0,
+    "colour:Core/Widgets.lua": 0,
+    "colour:Modules/KitWindow.lua": 0,
     "colour:Core/Installer.lua": 0,
     "colour:Core/InstallerWindow.lua": 0,
     "colour:Modules/Chat.lua": 24,
@@ -60,8 +64,8 @@ CEILINGS = {
     "colour:Modules/QuestListMap.lua": 4,
     "colour:Modules/QuestListPanel.lua": 8,
     "colour:Modules/QuestTracker.lua": 10,
-    "colour:Modules/Route.lua": 9,
-    "colour:Modules/Services.lua": 12,
+    "colour:Modules/Route.lua": 2,
+    "colour:Modules/Services.lua": 3,
     "colour:Modules/Stats.lua": 1,
     "colour:Modules/UIModifications.lua": 13,
     "colour:Modules/VoiceOver.lua": 9,
@@ -120,8 +124,8 @@ CHECKS = {
     "window-single": (r'NineSlice[^\n]*prefix = "window/single"', None,
                       "a hand-set frame prefix: Kit.framePrefix (the kit's frame family, set with its tuning)"),
     # any call of PlaySound, whatever its argument (a conditional one too), and
-    # PlaySound handed on as a value (pcall(PlaySound, ...)). The one kept is
-    # Route's notice chime: its own switch, on the Master channel, not a UI click
+    # PlaySound handed on as a value (pcall(PlaySound, ...)). None is kept:
+    # the notice's chimes are PlayUISound kinds too (0.13.7)
     "direct-sound": (r"\bPlaySound\s*\(|[(,]\s*PlaySound\s*[,)]", {"skip": ["Core/Core.lua"]},
                      "a UI sound played directly: MelloUI:PlayUISound(kind) (Core.lua), so Custom Sounds sees it"),
     # the guard, and a literal fallback behind a palette colour
@@ -134,6 +138,22 @@ CHECKS = {
 # three number literals (the white 1, 1, 1 reset apart) or a { r, g, b }
 # table of three numbers 0..1, at least one with a fraction.
 OWN_WINDOWS = [key.split(":", 1)[1] for key in CEILINGS if key.startswith("colour:")]
+
+# The one exempt line: shell:Anchor's texture in the own-window shell, the
+# only invisible anchor an own window has (an alpha-0 solid handed to
+# Kit:Replace where a widget has no region of its own; WINDOW-RULES 6). It
+# is exempt by its marker comment, in that file only, and only while the
+# marker stands on ONE line there: a second marked line makes both count.
+EXEMPT = {"Modules/KitWindow.lua": "-- ratchet-ok: the shell's invisible anchor"}
+
+
+def exempt_line(src):
+    """the line number the file's marker exempts, or None"""
+    marker = EXEMPT.get(src.path)
+    if not marker:
+        return None
+    marked = [i + 1 for i, text in enumerate(src.raw.split("\n")) if marker in text]
+    return marked[0] if len(marked) == 1 else None
 NUM = r"(-?\d*\.?\d+)"
 COLOUR_CALL = re.compile(r"\b(?:SetColorTexture|SetTextColor|SetVertexColor|SetBackdropColor|SetBackdropBorderColor"
                          r"|SetShadowColor|SetStatusBarColor|CreateColor)\(\s*" + NUM + r"\s*,\s*" + NUM + r"\s*,\s*" + NUM)
@@ -205,6 +225,7 @@ def matches(name, sources):
         src = sources.get(path)
         if src is None:
             return found
+        skip = exempt_line(src)
         for m in COLOUR_CALL.finditer(src.code):
             if not all(float(v) == 1 for v in m.groups()):
                 found.append((path, src.line_of(m.start())))
@@ -212,7 +233,7 @@ def matches(name, sources):
             vals = [float(v) for v in m.groups()]
             if all(0 <= v <= 1 for v in vals) and any(v != int(v) for v in vals):
                 found.append((path, src.line_of(m.start())))
-        return sorted(found)
+        return sorted(hit for hit in found if hit[1] != skip)
     pattern, where = CHECKS[name][0], CHECKS[name][1]
     rx = re.compile(pattern, re.M)
     for src in sources.values():
@@ -228,7 +249,8 @@ def matches(name, sources):
 
 def instead(name):
     if name.startswith("colour:"):
-        return "a colour literal in an own window: MelloUI.Palette (Core.lua)"
+        return ("a colour literal in an own window: MelloUI.Palette (Core.lua), a key painted with W.Paint / "
+                "Kit:Paint; an invisible anchor is shell:Anchor (Modules/KitWindow.lua)")
     return CHECKS[name][2]
 
 

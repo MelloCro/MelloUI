@@ -1,0 +1,2023 @@
+{
+ "layoutName": "MelloUI",
+ "layoutType": "Account",
+ "systems": [
+  {
+   "system": 0,
+   "systemIndex": 1,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 53.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 6,
+     "value": 0
+    },
+    {
+     "setting": 8,
+     "value": 0
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "MainActionBar",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 0
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 3,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "MultiBarBottomLeft",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 3
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 4,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "MultiBarBottomRight",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 3
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 5,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": -18.0,
+    "offsetY": 74.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 6
+    },
+    {
+     "setting": 3,
+     "value": 3
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 2
+    },
+    {
+     "setting": 9,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 6,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "MultiBarLeft",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 3
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 3
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 7,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "MultiBar5",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 3
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 3
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 8,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "MultiBar6",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 12
+    },
+    {
+     "setting": 3,
+     "value": 3
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 3
+    },
+    {
+     "setting": 9,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 11,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 155.5
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 8
+    },
+    {
+     "setting": 4,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 12,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 155.5
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 9,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 0,
+   "systemIndex": 13,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "StanceBar",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 1,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 239.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 5
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 2,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": -40.8,
+    "offsetY": 0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 4
+    },
+    {
+     "setting": 3,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 1,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": -417.4,
+    "offsetY": 186.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 16,
+     "value": 3
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 417.4,
+    "offsetY": 186.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 16,
+     "value": 3
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 3,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": -660.0,
+    "offsetY": 186.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 0
+    },
+    {
+     "setting": 16,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 4,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 24.0,
+    "offsetY": -250.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 4,
+     "value": 0
+    },
+    {
+     "setting": 5,
+     "value": 1
+    },
+    {
+     "setting": 6,
+     "value": 0
+    },
+    {
+     "setting": 10,
+     "value": 72
+    },
+    {
+     "setting": 11,
+     "value": 36
+    },
+    {
+     "setting": 12,
+     "value": 1
+    },
+    {
+     "setting": 14,
+     "value": 1
+    },
+    {
+     "setting": 16,
+     "value": 2
+    },
+    {
+     "setting": 18,
+     "value": 0
+    },
+    {
+     "setting": 19,
+     "value": 5
+    },
+    {
+     "setting": 20,
+     "value": 100
+    },
+    {
+     "setting": 21,
+     "value": 5
+    },
+    {
+     "setting": 22,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 5,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 24.0,
+    "offsetY": -0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 9,
+     "value": 0
+    },
+    {
+     "setting": 10,
+     "value": 26
+    },
+    {
+     "setting": 11,
+     "value": 8
+    },
+    {
+     "setting": 12,
+     "value": 0
+    },
+    {
+     "setting": 13,
+     "value": 0
+    },
+    {
+     "setting": 14,
+     "value": 0
+    },
+    {
+     "setting": 15,
+     "value": 5
+    },
+    {
+     "setting": 16,
+     "value": 0
+    },
+    {
+     "setting": 18,
+     "value": 0
+    },
+    {
+     "setting": 19,
+     "value": 5
+    },
+    {
+     "setting": 20,
+     "value": 100
+    },
+    {
+     "setting": 21,
+     "value": 5
+    },
+    {
+     "setting": 22,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 6,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": -325.8,
+    "offsetY": -347.7
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 3,
+     "value": 0
+    },
+    {
+     "setting": 7,
+     "value": 1
+    },
+    {
+     "setting": 16,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 7,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "RIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "RIGHT",
+    "offsetX": 0.0,
+    "offsetY": 0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 10,
+     "value": 26
+    },
+    {
+     "setting": 11,
+     "value": 8
+    },
+    {
+     "setting": 12,
+     "value": 0
+    },
+    {
+     "setting": 17,
+     "value": 1
+    },
+    {
+     "setting": 18,
+     "value": 0
+    },
+    {
+     "setting": 19,
+     "value": 5
+    },
+    {
+     "setting": 20,
+     "value": 100
+    },
+    {
+     "setting": 21,
+     "value": 5
+    },
+    {
+     "setting": 22,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 3,
+   "systemIndex": 8,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "CENTER",
+    "relativeTo": "UIParent",
+    "relativePoint": "CENTER",
+    "offsetX": 0.0,
+    "offsetY": 0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 16,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 4,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOP",
+    "offsetX": 0.0,
+    "offsetY": -40.0
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 5,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 700.0,
+    "offsetY": 160.0
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 6,
+   "systemIndex": 1,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPRIGHT",
+    "relativeTo": "MinimapCluster",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 11.0,
+    "offsetY": -31.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 11
+    },
+    {
+     "setting": 5,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 6,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPRIGHT",
+    "relativeTo": "BuffFrame",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": -15.0,
+    "offsetY": -4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 4,
+     "value": 8
+    },
+    {
+     "setting": 5,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 5
+    },
+    {
+     "setting": 10,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 6,
+   "systemIndex": 3,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPRIGHT",
+    "relativeTo": "DebuffFrame",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": 0.0,
+    "offsetY": -4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 11
+    },
+    {
+     "setting": 5,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 5
+    },
+    {
+     "setting": 8,
+     "value": 0
+    },
+    {
+     "setting": 9,
+     "value": 100
+    }
+   ]
+  },
+  {
+   "system": 7,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": -4.0
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 8,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOMLEFT",
+    "offsetX": 32.0,
+    "offsetY": 32.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 4
+    },
+    {
+     "setting": 1,
+     "value": 57
+    },
+    {
+     "setting": 2,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 90
+    }
+   ]
+  },
+  {
+   "system": 9,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 210.0
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 10,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "CENTER",
+    "relativeTo": "UIParent",
+    "relativePoint": "CENTER",
+    "offsetX": 424.3,
+    "offsetY": 51.5
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 11,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": -110.0,
+    "offsetY": 145.0
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 12,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPRIGHT",
+    "offsetX": -5.8,
+    "offsetY": -347.7
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 4
+    },
+    {
+     "setting": 1,
+     "value": 100
+    },
+    {
+     "setting": 2,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 13,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": -18.0,
+    "offsetY": 16.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 3
+    }
+   ]
+  },
+  {
+   "system": 14,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": -11.9,
+    "offsetY": 61.2
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 15,
+   "systemIndex": 1,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 20.2
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 3,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 15,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "MainStatusTrackingBarContainer",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 1.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 3,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 16,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOMRIGHT",
+    "offsetX": -18.0,
+    "offsetY": 150.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 17,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOP",
+    "offsetX": 0.0,
+    "offsetY": -100.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 18,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "RIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "RIGHT",
+    "offsetX": 0.0,
+    "offsetY": 0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 10
+    }
+   ]
+  },
+  {
+   "system": 19,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 20,
+   "systemIndex": 1,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 310.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 12
+    },
+    {
+     "setting": 2,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 100
+    },
+    {
+     "setting": 6,
+     "value": 1
+    },
+    {
+     "setting": 8,
+     "value": 1
+    },
+    {
+     "setting": 9,
+     "value": 1
+    },
+    {
+     "setting": 10,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 20,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 368.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 7
+    },
+    {
+     "setting": 2,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 2
+    },
+    {
+     "setting": 5,
+     "value": 100
+    },
+    {
+     "setting": 6,
+     "value": 1
+    },
+    {
+     "setting": 8,
+     "value": 1
+    },
+    {
+     "setting": 9,
+     "value": 1
+    },
+    {
+     "setting": 10,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 20,
+   "systemIndex": 3,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 420.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 5,
+     "value": 100
+    },
+    {
+     "setting": 6,
+     "value": 0
+    },
+    {
+     "setting": 8,
+     "value": 1
+    },
+    {
+     "setting": 9,
+     "value": 1
+    },
+    {
+     "setting": 10,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 20,
+   "systemIndex": 4,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 420.0,
+    "offsetY": 430.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 1
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 5,
+     "value": 100
+    },
+    {
+     "setting": 6,
+     "value": 0
+    },
+    {
+     "setting": 7,
+     "value": 0
+    },
+    {
+     "setting": 8,
+     "value": 1
+    },
+    {
+     "setting": 9,
+     "value": 1
+    },
+    {
+     "setting": 10,
+     "value": 1
+    },
+    {
+     "setting": 11,
+     "value": 100
+    }
+   ]
+  },
+  {
+   "system": 21,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": -410.0,
+    "offsetY": 380.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 0
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 5,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 0
+    },
+    {
+     "setting": 7,
+     "value": 100
+    },
+    {
+     "setting": 8,
+     "value": 0
+    },
+    {
+     "setting": 9,
+     "value": 3
+    },
+    {
+     "setting": 10,
+     "value": 0
+    },
+    {
+     "setting": 11,
+     "value": 0
+    },
+    {
+     "setting": 12,
+     "value": 5
+    },
+    {
+     "setting": 13,
+     "value": 0
+    },
+    {
+     "setting": 14,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 22,
+   "systemIndex": 1,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": -457.0,
+    "offsetY": 336.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 1
+    },
+    {
+     "setting": 1,
+     "value": 1
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 5,
+     "value": 0
+    },
+    {
+     "setting": 6,
+     "value": 50
+    },
+    {
+     "setting": 7,
+     "value": 1
+    },
+    {
+     "setting": 8,
+     "value": 2
+    },
+    {
+     "setting": 9,
+     "value": 1
+    },
+    {
+     "setting": 10,
+     "value": 0
+    },
+    {
+     "setting": 11,
+     "value": 0
+    },
+    {
+     "setting": 12,
+     "value": 50
+    },
+    {
+     "setting": 13,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 22,
+   "systemIndex": 2,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOP",
+    "offsetX": 0.0,
+    "offsetY": -40.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 50
+    },
+    {
+     "setting": 7,
+     "value": 0
+    },
+    {
+     "setting": 8,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 22,
+   "systemIndex": 3,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOP",
+    "offsetX": 0.0,
+    "offsetY": -90.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 50
+    },
+    {
+     "setting": 7,
+     "value": 0
+    },
+    {
+     "setting": 8,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 22,
+   "systemIndex": 4,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOP",
+    "offsetX": 0.0,
+    "offsetY": -130.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 3,
+     "value": 5
+    },
+    {
+     "setting": 4,
+     "value": 5
+    },
+    {
+     "setting": 6,
+     "value": 50
+    },
+    {
+     "setting": 7,
+     "value": 0
+    },
+    {
+     "setting": 8,
+     "value": 2
+    }
+   ]
+  },
+  {
+   "system": 23,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "TOPLEFT",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 3.4,
+    "offsetY": -6.5
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    },
+    {
+     "setting": 1,
+     "value": 0
+    },
+    {
+     "setting": 2,
+     "value": 0
+    },
+    {
+     "setting": 3,
+     "value": 100
+    },
+    {
+     "setting": 4,
+     "value": 66
+    },
+    {
+     "setting": 5,
+     "value": 2
+    },
+    {
+     "setting": 6,
+     "value": 50
+    },
+    {
+     "setting": 8,
+     "value": 1
+    },
+    {
+     "setting": 9,
+     "value": 1
+    },
+    {
+     "setting": 10,
+     "value": 11
+    },
+    {
+     "setting": 11,
+     "value": 9
+    },
+    {
+     "setting": 12,
+     "value": 100
+    }
+   ]
+  },
+  {
+   "system": 24,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "TOP",
+    "relativeTo": "UIParent",
+    "relativePoint": "TOP",
+    "offsetX": 0.0,
+    "offsetY": -182.0
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 25,
+   "systemIndex": null,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMRIGHT",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": -50.0,
+    "offsetY": 155.5
+   },
+   "anchorInfo2": null,
+   "settings": []
+  },
+  {
+   "system": 26,
+   "systemIndex": 1,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": -373.2,
+    "offsetY": 28.6
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 26,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 373.2,
+    "offsetY": 28.6
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 0
+    }
+   ]
+  },
+  {
+   "system": 27,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "CENTER",
+    "relativeTo": "Minimap",
+    "relativePoint": "CENTER",
+    "offsetX": -68.0,
+    "offsetY": -68.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 10
+    }
+   ]
+  },
+  {
+   "system": 28,
+   "systemIndex": null,
+   "isInDefaultPosition": true,
+   "anchorInfo": {
+    "point": "CENTER",
+    "relativeTo": "UIParent",
+    "relativePoint": "CENTER",
+    "offsetX": 0.0,
+    "offsetY": 0.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 5
+    }
+   ]
+  },
+  {
+   "system": 29,
+   "systemIndex": 1,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOM",
+    "relativeTo": "UIParent",
+    "relativePoint": "BOTTOM",
+    "offsetX": 0.0,
+    "offsetY": 259.5
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 5
+    },
+    {
+     "setting": 1,
+     "value": 50
+    },
+    {
+     "setting": 2,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 100
+    },
+    {
+     "setting": 4,
+     "value": 3
+    },
+    {
+     "setting": 5,
+     "value": 1
+    },
+    {
+     "setting": 6,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 29,
+   "systemIndex": 2,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMLEFT",
+    "relativeTo": "SwingTimerMainHandFrame",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 5
+    },
+    {
+     "setting": 1,
+     "value": 50
+    },
+    {
+     "setting": 2,
+     "value": 1
+    },
+    {
+     "setting": 3,
+     "value": 100
+    },
+    {
+     "setting": 4,
+     "value": 3
+    },
+    {
+     "setting": 5,
+     "value": 1
+    },
+    {
+     "setting": 6,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "system": 29,
+   "systemIndex": 3,
+   "isInDefaultPosition": false,
+   "anchorInfo": {
+    "point": "BOTTOMLEFT",
+    "relativeTo": "SwingTimerOffHandFrame",
+    "relativePoint": "TOPLEFT",
+    "offsetX": 0.0,
+    "offsetY": 4.0
+   },
+   "anchorInfo2": null,
+   "settings": [
+    {
+     "setting": 0,
+     "value": 5
+    },
+    {
+     "setting": 1,
+     "value": 50
+    },
+    {
+     "setting": 2,
+     "value": 2
+    },
+    {
+     "setting": 3,
+     "value": 100
+    },
+    {
+     "setting": 4,
+     "value": 3
+    },
+    {
+     "setting": 5,
+     "value": 1
+    },
+    {
+     "setting": 6,
+     "value": 1
+    }
+   ]
+  }
+ ]
+}

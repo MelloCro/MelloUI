@@ -124,6 +124,7 @@ local defaults = {
 	queueLines = true,
 	soundPacks = true,
 	preferRecordings = false,
+	speakUnrecorded = true,   -- text-to-speech for a line the pack has no recording of
 	soundChannel = "Master",
 	collectLines = false,   -- the voice work's recorder, off for players (user, 2026-09-24)
 	overlay = true,
@@ -169,7 +170,9 @@ for _, group in ipairs(RACE_GROUPS) do
 end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use VoiceOver Sound Packs",
-	desc = "Play the recorded lines from an installed voice pack (MelloUI_VoiceOverData, a separate download) when one exists for the quest or greeting, and use text-to-speech for everything else. Enable the pack in the addon list; it loads when needed." }
+	desc = "Play the recorded lines from an installed voice pack (MelloUI_VoiceOverData, a separate download) when one exists for the quest or greeting; the rest is read with text-to-speech unless Read Unvoiced Lines is off. Enable the pack in the addon list; it loads when needed." }
+options[#options + 1] = { type = "toggle", key = "speakUnrecorded", parent = "soundPacks", name = "Read Unvoiced Lines",
+	desc = "Read a quest or greeting the voice pack has no recording of with a text-to-speech voice. Off: only recorded lines are heard and the rest stay silent. The quest log's Read button always reads." }
 options[#options + 1] = { type = "toggle", key = "preferRecordings", parent = "soundPacks", name = "Prefer Recordings",
 	desc = "When an NPC's greeting text was changed but the pack has exactly one recorded greeting for that NPC, play the recording anyway instead of reading the new text aloud. The words will not match what is on screen." }
 options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound Channel", values = {
@@ -180,7 +183,7 @@ options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound
 	},
 	desc = "Channel the recorded lines play on; its volume slider in the game's sound settings controls them." }
 options[#options + 1] = { type = "toggle", key = "collectLines", name = "Record Dialog Lines",
-	desc = "For making new voice lines: keep every greeting and quest line you see, with the NPC and whether a recording existed, so the lines this client added or changed can be voiced for the pack. Saved on /reload and kept until the game restarts. Off by default." }
+	desc = "For making new voice lines: keep every greeting and quest line you see, with the NPC and whether a recording existed, so the lines this client added or changed can be voiced for the pack. Saved and kept from one session to the next. Off by default." }
 options[#options + 1] = { type = "header", name = "Playback" }
 options[#options + 1] = { type = "toggle", key = "queueLines", name = "Queue Lines",
 	desc = "Read lines one after another: a greeting finishes before the quest offer that follows it. Off makes every new dialog interrupt the previous one." }
@@ -209,7 +212,8 @@ local M = MelloUI:RegisterModule("VoiceOver", {
 	desc = "Read NPC dialog and quest text aloud with the built in text-to-speech voices, shaped by the NPC's race and gender.",
 	icon = "Interface\\Icons\\INV_Misc_Horn_01",
 	flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it.",
-	group = "Chat and sound",
+	group = "Chat and sound", navOrder = 2,
+	role = "feature",
 	area = { key = "voiceover" },   -- its overlay: the reskin's look
 	enabledByDefault = true,
 	keep = { "collectLinesOffOnce" },   -- a one-time step that was done: never in a profile
@@ -768,9 +772,10 @@ end
 --
 -- Records the dialog lines seen in play into the MelloUIVoiceLines saved
 -- variable so Tools\export_voice_lines.py can build the list of lines that
--- need recording for a Forever sound pack. On this beta the client writes
--- the file on /reload but never reads it back, so the export script merges
--- each session into its own store.
+-- need recording for a Forever sound pack. The game writes the file at
+-- logout and on /reload and brings it back at login, so the store grows from
+-- one session to the next; the export script still merges each file into
+-- its own store, so a file that goes missing loses nothing already exported.
 --------------------------------------------------------------------------------
 
 local KINDS = {
@@ -904,7 +909,7 @@ local function CollectLine(entry, questID)
 		isNew = store.gossip[id][text] == nil
 		store.gossip[id][text] = rec
 	end
-	-- Lines only reach the disk on /reload; nudge now and then.
+	-- The game writes the lines at logout and on /reload; now and then a nudge says a /reload saves them sooner.
 	if isNew and not rec.recorded then
 		unsavedLines = unsavedLines + 1
 		if unsavedLines % 5 == 0 then
@@ -968,9 +973,13 @@ local function SpeakEntry(entry)
 			activeHandle = handle
 			return true
 		end
-		-- File missing or channel muted: fall back to speech.
+		-- File missing or channel muted: fall back to speech, unless only
+		-- recordings are wanted (Read Unvoiced Lines off)
 		entry.file = nil
 		entry.length = nil
+		if entry.recordedOnly then
+			return false
+		end
 	end
 	local npc = entry.npc
 	local race = npc and npc.race or nil
@@ -1176,6 +1185,19 @@ local function Enqueue(text, npc, kind, title, questID, matchText)
 	end
 	if not info.log then
 		CollectLine(entry, questID)
+	end
+	-- Read Unvoiced Lines off (user, 2026-09-26: "turn off TTS Voices if the
+	-- Dialog is not voiced"): with the packs on, a line with no recording is
+	-- left silent. The quest log's Read button is asked for, so it still reads.
+	if not entry.file and not info.log and M.db.soundPacks and M.db.speakUnrecorded == false then
+		if not M.db.queueLines then
+			StopEngine()   -- a new window still ends the line before it, as it does when that line is read
+		end
+		Overlay:Update()
+		return
+	end
+	if entry.file and not info.log and M.db.soundPacks and M.db.speakUnrecorded == false then
+		entry.recordedOnly = true   -- a file that fails to play stays silent too
 	end
 	queue[#queue + 1] = entry
 	if not current and not paused then
@@ -2866,7 +2888,7 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 				if not rec.recorded then newGossip = newGossip + 1 end
 			end
 		end
-		MelloUI:Print("Collected this session: %d quest lines from %d quests (%d without a recording), %d greetings (%d without).",
+		MelloUI:Print("Collected so far: %d quest lines from %d quests (%d without a recording), %d greetings (%d without).",
 			questLines, quests, newQuestLines, gossip, newGossip)
 		local shown = 0
 		for _, texts in pairs(store.gossip) do
@@ -2885,7 +2907,7 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 				end
 			end
 		end
-		print("   /reload saves them; take them out before the game fully restarts, which drops them.")
+		print("   Saved when you log out or /reload, and kept from one session to the next.")
 	elseif msg == "packs" then
 		LoadSoundPacks()
 		if #packs == 0 and not next(packErrors) then

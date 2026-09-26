@@ -156,7 +156,8 @@ local M = MelloUI:RegisterModule("CustomSounds", {
 	desc = "The interface's sounds replaced by the custom library: iron, leather, parchment and stone for clicks, windows, bags, gear, vendors, whispers and the group finder.",
 	icon = "Interface\\Icons\\INV_Misc_Bell_01",
 	flavour = "Iron, leather, parchment and stone. Every click, page, pouch and buckle of the interface, re-recorded.",
-	group = "Chat and sound",
+	group = "Chat and sound", navOrder = 3,
+	role = "look",   -- the sound reskin: it comes on with the reskin (UI Modifications' ReskinOn)
 	enabledByDefault = false,
 	defaults = defaults,
 	options = options,

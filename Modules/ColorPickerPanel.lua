@@ -464,6 +464,9 @@ local function SkinSwatch(tex)
 	host:EnableMouse(false)
 	host:SetAllPoints(tex)
 	local rep = Replace(tex, { as = Kit:ButtonRimRule(), button = host, parent = host, rect = tex, noFade = true })
+	-- the rim's hooks (OnEnter / OnMouseDown ...) turn a frame's mouse on:
+	-- the holder is only a place for the rim, so off again
+	host:EnableMouse(false)
 	if not rep then
 		return
 	end
@@ -538,6 +541,13 @@ local function SkinThumbs(cs)
 				skin.thumbs[#skin.thumbs + 1] = { key = key, thumb = thumb, rep = rep, selector = cs }
 			end
 		end
+	end
+	-- the gems' hooks (OnEnter / OnMouseDown ...) turn the holder's mouse on,
+	-- and it lies over the whole selector: off again, or it takes every click
+	-- and drag meant for the wheel and the value / opacity bars (user,
+	-- 2026-09-25: "i cant move the color wheel and the opacity slider")
+	if host then
+		host:EnableMouse(false)
 	end
 end
 

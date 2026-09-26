@@ -22,7 +22,8 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 	desc = "Centred names, transparent name band, no combat flash and frame art opacity for player, target and focus.",
 	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
 	flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose.",
-	group = "Frames and bars",
+	group = "Frames and bars", navOrder = 1,
+	role = "replaces",
 	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames (they step aside where the reskin covers them).", order = 5 },
 	defaults = {
 		centerNames = true,

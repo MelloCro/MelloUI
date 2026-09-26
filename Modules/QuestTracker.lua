@@ -27,6 +27,8 @@
 --     and the title plate) while its look area is on (Kit:IsOn: the reskin
 --     and its own switch), a plain dark panel otherwise; a switch flips it
 --     live
+--   * as wide on the screen as the minimap (Match The Minimap's Width): the
+--     map's size is Edit Mode's, the tracker follows it (FollowWidth)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -39,7 +41,8 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 	desc = "A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached.",
 	icon = "Interface\\Icons\\INV_Misc_Book_08",
 	flavour = "Every watched quest within reach: the tracker scrolls when the list runs long.",
-	group = "Quests and travel",
+	group = "Quests and travel", navOrder = 4,
+	role = "replaces",   -- (the game's objective tracker; it has a window but is not a hidden kit panel)
 	-- its own kit switch on UI Modifications' Windows tab (a setting there,
 	-- not the Objective tracker's: audit, 2026-09-24, rank 1), read by
 	-- Kit:IsOn("questTracker")
@@ -47,12 +50,18 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		switch = "questTrackerKit" },
 	area = { key = "questTracker" },
 	enabledByDefault = false,
+	-- where the layout fit hung the game's tracker (Unplaced, below): this
+	-- machine's fact, never in a profile, never set by a setup
+	keep = { "fitAnchor", "fitAnchorWas" },
 	defaults = {
 		-- the user's settings, 2026-09-23 ("Height 500 by default, width 300,
 		-- scale 100%, font size 13 and scroll step 25"); 0 in Height / Width
 		-- still means the game's tracker's size
 		maxHeight = 500,
 		width = 300,
+		-- the width follows the minimap's (layout E, user, 2026-09-25: "yes,
+		-- flip it": the map's size is Edit Mode's, the tracker follows it)
+		matchMinimap = true,
 		scale = 1,
 		textSize = 13,
 		headerSize = 16,
@@ -65,9 +74,11 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "slider", key = "maxHeight", name = "Height", min = 0, max = 900, step = 20,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
 		  desc = "How tall the tracker may grow before it scrolls. Edit Mode's: the height set for the game's tracker in Edit Mode. The grip in its bottom-left corner sets it by dragging." },
+		{ type = "toggle", key = "matchMinimap", name = "Match The Minimap's Width",
+		  desc = "The tracker as wide on the screen as the minimap: the round map's width, or the square map's frame. Make the minimap bigger or smaller in Edit Mode (Minimap, Size) and the tracker follows. Needs the Minimap Kit. Off: the Width below." },
 		{ type = "slider", key = "width", name = "Width", min = 0, max = 600, step = 10,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
-		  desc = "How wide the tracker is. Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging." },
+		  desc = "How wide the tracker is when it does not match the minimap's width. Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
 		{ type = "slider", key = "scale", name = "Scale", min = 0.6, max = 1.6, step = 0.05, percent = true,
 		  desc = "The size of the whole tracker, text and frame together." },
 		{ type = "slider", key = "textSize", name = "Text Size", min = 10, max = 20, step = 1,
@@ -194,12 +205,18 @@ local function MaxHeight()
 	return h
 end
 
--- the tracker's OWN width: a set width, else what its two anchors on the
--- game's tracker give it (in its own units -- the game's tracker may be
--- scaled by the window mover, and its width is then not ours: the lines ran
--- past the list and were cut, user screenshot 2026-09-23)
+-- the width the last Place laid while it followed the minimap (Match The
+-- Minimap's Width, below Place's column drop), in its own units; nil while
+-- it does not
+local followW = nil
+
+-- the tracker's OWN width: the minimap's it follows, a set width, else what
+-- its two anchors on the game's tracker give it (in its own units -- the
+-- game's tracker may be scaled by the window mover, and its width is then
+-- not ours: the lines ran past the list and were cut, user screenshot
+-- 2026-09-23)
 local function FrameWidth()
-	local set = tonumber(M.db and M.db.width) or 0
+	local set = followW or tonumber(M.db and M.db.width) or 0
 	if set > 0 then
 		return set
 	end
@@ -256,20 +273,54 @@ end
 -- it, never above the game's place. Placed by the user in any way (the
 -- user's own layout places the game's tracker in Edit Mode), it follows that
 -- exactly as before. The game's tracker is only read, never anchored (an
--- Edit Mode system).
+-- Edit Mode system). The title plate reaches about 4.6 of its units above
+-- the frame (38 on the 28 header, its caps' paint from 1 px down), inside
+-- the gap, so its paint stays clear of the column's too.
 local COLUMN_GAP = 8
+
+-- The layout fit's own place (user, 2026-09-26: the tracker must never sit
+-- on the Services row): the installer's fit hangs the game's tracker right
+-- under the minimap column (Edit Mode 12:-1), and Edit Mode counts that as
+-- moved, so the keep-clear stopped after an install. Recorded when the
+-- fitted layout goes in (the bus's 'installer', below: M.db.fitAnchor, the
+-- anchor as Edit Mode saved it) and counted as nobody's place while the
+-- game's tracker still hangs exactly there: a later minimap Size, Services'
+-- Button Layout or Merge, or UI Scale keeps it under the column. Moved in
+-- Edit Mode or by the window mover, it is the player's place again.
+local ANCHOR_EPS = 0.5   -- units: Edit Mode keeps the offsets as the fit wrote them (a tenth)
+
+local function FitPlace(f)
+	local rec = M.db and M.db.fitAnchor
+	if type(rec) ~= "table" or type(rec.x) ~= "number" or type(rec.y) ~= "number" then
+		return false
+	end
+	local okN, n = pcall(f.GetNumPoints, f)
+	if not okN or Secret(n) or n ~= 1 then
+		return false
+	end
+	local ok, p, rel, rp, x, y = pcall(f.GetPoint, f, 1)
+	if not ok or Secret(p) or Secret(rel) or Secret(rp) or Secret(x) or Secret(y) then
+		return false
+	end
+	return p == rec.point and rp == rec.relativePoint and rel == _G[rec.relativeTo or "UIParent"]
+		and type(x) == "number" and type(y) == "number"
+		and math.abs(x - rec.x) <= ANCHOR_EPS and math.abs(y - rec.y) <= ANCHOR_EPS
+end
 
 local function Unplaced(f)
 	if not f then
 		return true
 	end
-	local ok, default = pcall(f.IsInDefaultPosition, f)
-	if not ok or Secret(default) or default ~= true then
-		return false
-	end
 	local um = MelloUI:GetModule("UIModifications")
 	local positions = um and um.isEnabled and um.db and um.db.positions
-	return not (type(positions) == "table" and positions.ObjectiveTrackerFrame)
+	if type(positions) == "table" and positions.ObjectiveTrackerFrame then
+		return false
+	end
+	local ok, default = pcall(f.IsInDefaultPosition, f)
+	if ok and not Secret(default) and default == true then
+		return true
+	end
+	return FitPlace(f)
 end
 
 -- how far below its home (the game's tracker's top right, or the stand-in
@@ -325,10 +376,49 @@ local function ColumnDrop(f, scale, set)
 	return drop / s
 end
 
+-- Match The Minimap's Width (the column's layout E, user, 2026-09-25: "yes,
+-- flip it"). The map's size is Edit Mode's (Minimap, Size); the tracker is
+-- as wide on the screen as the minimap column: MinimapPanel's
+-- M:ColumnWidth() `line` -- the round map's diameter, the square map's
+-- side, or the square border's (the merged) frame where it stands wider, so
+-- the two frames line up edge to edge -- over its own effective scale (the
+-- UI's x its Scale), kept within the grip's bounds. Only while the option
+-- is on and the Minimap Kit is on; else its Width setting, as before. Laid
+-- on the bus's 'column' (Edit Mode's Size, Edit Mode closed, the UI Scale,
+-- the minimap's shape or border) through Place. A width that cannot be read
+-- leaves the tracker as it is (the last one it followed).
+local FOLLOW_MIN, FOLLOW_MAX = 180, 700   -- (the grip's bounds, SetResizeBounds in Build)
+local followPx = nil   -- the column's width last read (screen px)
+
+-- the width to lay at `scale` (its own units), or nil: its Width setting
+local function FollowWidth(scale)
+	local mp = M.db and M.db.matchMinimap ~= false and MelloUI:GetModule("MinimapPanel")
+	if not (mp and mp.isEnabled and mp.ColumnWidth) then
+		followPx = nil
+		return nil
+	end
+	local ok, _, line = pcall(mp.ColumnWidth, mp)
+	line = ok and Plain(line) or nil
+	if type(line) == "number" and line > 0 then
+		followPx = line
+	end
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	us = okU and Plain(us) or nil
+	if not (followPx and type(us) == "number" and us > 0 and scale > 0) then
+		return followW
+	end
+	return math.min(FOLLOW_MAX, math.max(FOLLOW_MIN, followPx / (us * scale)))
+end
+
 -- the frame sits where the game's tracker is, as wide as it, from its top
 local function Place()
 	local scale = tonumber(M.db and M.db.scale) or 1
 	local set = tonumber(M.db and M.db.width) or 0
+	-- the minimap's width while it follows it, laid as a set width
+	followW = FollowWidth(scale)
+	if followW then
+		set = followW
+	end
 	local f = ObjectiveTrackerFrame
 	-- moved with Unlock the Windows: its own place, hung by its top-right
 	-- corner so it still grows downward
@@ -1535,7 +1625,14 @@ local function Build()
 		return
 	end
 	frame = CreateFrame("Frame", "MelloUIQuestTracker", UIParent)
-	frame:SetFrameStrata("LOW")
+	-- MEDIUM, over the minimap's column (user, 2026-09-26: "Quest Tracker
+	-- should have the Priority there"): the cluster and every part of the
+	-- column are LOW, and the cluster is toplevel -- a click in it lifted the
+	-- whole column over a LOW tracker until /reload. Strata beats level, so
+	-- no click or re-skin puts a column part over it; its children, the kit's
+	-- look and the item button (which copies it) are MEDIUM with it, and the
+	-- Services tray (DIALOG) still opens above it.
+	frame:SetFrameStrata("MEDIUM")
 	frame:SetClampedToScreen(true)
 	frame:EnableMouseWheel(true)
 	Perf.SetScript(frame, "OnMouseWheel", function(_, delta) Scroll(delta) end)
@@ -1602,11 +1699,13 @@ local function Build()
 	-- the resize grip, bottom-left (the tracker hangs from its top-right
 	-- corner): dragging sets its width and the height it may grow to
 	-- (user, 2026-09-23: "the quest window should have the option to be
-	-- rescaled")
+	-- rescaled"); while it follows the minimap's width, the height only (the
+	-- width held by the bounds for the drag, its own Width setting kept)
 	frame:SetResizable(true)
 	if frame.SetResizeBounds then
-		frame:SetResizeBounds(180, HEADER_H + 60, 700, 1200)
+		frame:SetResizeBounds(FOLLOW_MIN, HEADER_H + 60, FOLLOW_MAX, 1200)
 	end
+	local widthHeld = false
 	local grip = CreateFrame("Button", nil, frame)
 	grip:SetSize(16, 16)
 	grip:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 3, 3)
@@ -1632,6 +1731,10 @@ local function Build()
 		end
 		sizing = true
 		last.valid = false   -- (the game sizes it by its points now: laid again after)
+		widthHeld = followW ~= nil and frame.SetResizeBounds ~= nil
+		if widthHeld then
+			frame:SetResizeBounds(followW, HEADER_H + 60, followW, 1200)
+		end
 		frame:StartSizing("BOTTOMLEFT")
 	end)
 	Perf.SetScript(grip, "OnMouseUp", function()
@@ -1641,6 +1744,13 @@ local function Build()
 		sizing = false
 		frame:StopMovingOrSizing()
 		local w, h = frame:GetWidth(), frame:GetHeight()
+		if widthHeld then
+			widthHeld = false
+			frame:SetResizeBounds(FOLLOW_MIN, HEADER_H + 60, FOLLOW_MAX, 1200)
+			M.db.maxHeight = math.floor(h + 0.5)
+			MelloUI:NotifySettingChanged(M.name, "maxHeight", M.db.maxHeight)
+			return
+		end
 		M.db.width = math.floor(w + 0.5)
 		M.db.maxHeight = math.floor(h + 0.5)
 		MelloUI:NotifySettingChanged(M.name, "width", M.db.width)
@@ -1762,15 +1872,16 @@ local function OnParchment(area)
 end
 
 -- the column under the minimap re-laid (the bus's 'column', MinimapPanel):
--- where nobody placed it, it follows the column's bottom; placed, Place has
--- the same inputs and leaves the frame as it is. Its height fitted again
--- only when it moved. Out of combat: its quest item button is a secure
--- frame on it.
+-- where nobody placed it, it follows the column's bottom, and the map's
+-- width while it matches it (FollowWidth); otherwise Place has the same
+-- inputs and leaves the frame as it is. Its list laid again only when it
+-- moved or its width changed. Out of combat: its quest item button is a
+-- secure frame on it.
 local function PlaceForColumn()
 	if M.isEnabled and frame and not inEditMode and not sizing then
-		local was = last.drop
+		local was, wasW = last.drop, followW
 		Place()
-		if last.drop ~= was then
+		if last.drop ~= was or followW ~= wasW then
 			MarkDirty()
 		end
 	end
@@ -1783,6 +1894,98 @@ local function OnColumn()
 	else
 		PlaceForColumn()
 	end
+end
+
+-- The fitted layout's tracker anchor as Edit Mode saved it (the layout of
+-- that name, the game's tracker's system): { point, relativeTo,
+-- relativePoint, x, y }; nil on its default place or when it cannot be read
+-- plainly. Read once an install put the layout in.
+local function SavedAnchor(name)
+	if type(name) ~= "string" or not (C_EditMode and C_EditMode.GetLayouts) then
+		return nil
+	end
+	local ok, info = pcall(C_EditMode.GetLayouts)
+	if not (ok and type(info) == "table" and type(info.layouts) == "table") then
+		return nil
+	end
+	local system = Enum and Enum.EditModeSystem and Enum.EditModeSystem.ObjectiveTracker
+	if Secret(system) or type(system) ~= "number" then
+		system = 12
+	end
+	for _, layout in ipairs(info.layouts) do
+		local lname = type(layout) == "table" and layout.layoutName
+		if not Secret(lname) and lname == name and type(layout.systems) == "table" then
+			for _, s in ipairs(layout.systems) do
+				local a = type(s) == "table" and not Secret(s.system) and s.system == system and s.anchorInfo
+				if type(a) == "table" then
+					local p, to, rp, x, y = a.point, a.relativeTo, a.relativePoint, a.offsetX, a.offsetY
+					if Secret(s.isInDefaultPosition) or s.isInDefaultPosition ~= false or Secret(p) or Secret(to)
+						or Secret(rp) or Secret(x) or Secret(y) or type(p) ~= "string" or type(rp) ~= "string"
+						or type(x) ~= "number" or type(y) ~= "number" then
+						return nil
+					end
+					return { point = p, relativeTo = type(to) == "string" and to or "UIParent", relativePoint = rp, x = x, y = y }
+				end
+			end
+			return nil
+		end
+	end
+	return nil
+end
+
+-- The installer's answers (the bus's 'installer', heard whether this module
+-- is on or not): an install that put the fitted layout in records where it
+-- hung the game's tracker (FitPlace), read on the next frame (the install's
+-- frame is long already; Edit Mode's saved layouts are a big read). The
+-- record it replaced stays as long as the installer's restore point does
+-- (Revert stays possible after Keep, until the next install): a revert puts
+-- it back; an install that did not put the layout in has nothing to put back.
+do
+	local pendingName = nil   -- the fitted layout's name, its tracker read on the next frame
+
+	local function Record()
+		local name = pendingName
+		pendingName = nil
+		local db = MelloUI:GetModuleDB(M.name)
+		if name == nil or type(db) ~= "table" then
+			return
+		end
+		db.fitAnchor = SavedAnchor(name)
+		-- (the column laid again on the next frame: the tracker takes it)
+		local mp = MelloUI:GetModule("MinimapPanel")
+		if mp and mp.LayColumn then
+			mp:LayColumn()
+		end
+	end
+
+	MelloUI:On("installer", function(what)
+		local db = MelloUI:GetModuleDB(M.name)
+		if type(db) ~= "table" then
+			return
+		end
+		if what == "installed" then
+			local rp = MelloUI.db and MelloUI.db.installer
+			if type(rp) == "table" and rp.layoutPut and type(rp.layout) == "table" and type(rp.layout.name) == "string" then
+				db.fitAnchorWas = db.fitAnchor or false
+				pendingName = rp.layout.name
+				local Kit = MelloUI.Kit
+				if Kit and Kit.NextFrame then
+					Kit:NextFrame("Quest Tracker fit place", Record)
+				else
+					Record()
+				end
+			else
+				pendingName = nil
+				db.fitAnchorWas = nil
+			end
+		elseif what == "reverted" then
+			pendingName = nil
+			if db.fitAnchorWas ~= nil then
+				db.fitAnchor = db.fitAnchorWas or nil
+				db.fitAnchorWas = nil
+			end
+		end
+	end, "Quest Tracker fit place")
 end
 
 local listening = false
@@ -1806,6 +2009,7 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	local again = frame ~= nil   -- (switched on again: Build keeps its frame)
 	Build()
 	HookEditMode()
 	for _, event in ipairs(EVENTS) do
@@ -1817,6 +2021,13 @@ function M:OnEnable(db)
 	end
 	ApplyLook()
 	frame:Show()
+	-- switched on again: placed again for what changed while it was off
+	-- (the 'column' it missed: the minimap's width it follows, the column's
+	-- drop; review, 2026-09-25), as a 'column' is, after a fight. Place
+	-- leaves it as it is when nothing changed.
+	if again then
+		OnColumn()
+	end
 	-- the look and the parchment sheet switched: followed live
 	Listen()
 	MarkDirty()

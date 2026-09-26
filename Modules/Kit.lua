@@ -208,6 +208,11 @@ Kit.parchmentPiece = "tiles/vellum"
 -- the sheet's own frame is dressed at all (a sheet that is the chat window's
 -- region, not the skin's, shows only while the chat reskin is on).
 Kit.parchmentSheets = {}   -- [area] = { { sheet, alive }, ... }
+-- [area] = the paper the area's sheets and panels were last switched to
+-- (SetParchment, or the first made): a profile load writes parchment_<area>
+-- past UI Modifications' OnSettingChanged, so the bus's 'restart' compares
+-- (below, with the Kit Colours' recheck)
+Kit.parchmentShown = {}
 
 function Kit:ParchmentOn(area)
 	if not area then
@@ -227,10 +232,119 @@ function Kit:SetParchment(area, on)
 	for _, entry in ipairs(self.parchmentDims[area] or {}) do
 		entry.tex:SetShown((not on and (not entry.alive or entry.alive())) and true or false)
 	end
+	if area ~= nil then
+		self.parchmentShown[area] = on and true or false
+	end
 	-- last, once the kit's own sheets and panels are switched (the bus's
 	-- 'parchment' topic, audit 2026-09-24 rank 5; the files that still hook
 	-- this function run after it, as before)
 	MelloUI:Fire("parchment", area, on)
+end
+
+-- Palette colours on the kit's own regions ("Palette-ready", user
+-- 2026-09-25: more palettes are planned). Every region the kit colours
+-- from MelloUI.Palette -- the eye-strain panels (Kit:StoneDim), a frame
+-- rule's `dim` fill (the L1 boxes), a ring's disc given a palette key, the
+-- own-window shell's plain parts (Kit:OwnWindow) -- is painted by its KEY,
+-- looked up when painted, and kept in a weak list; the bus's 'palette'
+-- paints them all again from the table MelloUI.Palette holds then.
+--   Kit:Paint(region, key, how, alpha)
+--     key    a MelloUI.Palette role ("innerPanel", "selectedTrim", ...)
+--     how    "fill" (SetColorTexture, the default), "vertex"
+--            (SetVertexColor), "text" (SetTextColor), "backdrop"
+--            (SetBackdropColor) or "border" (SetBackdropBorderColor); a
+--            backdrop and its border are kept apart, so one frame has both
+--     alpha  the colour's alpha (1)
+--   Kit:PaletteKeyOf(colour) -> the role a palette colour table is, or nil
+-- 'palette' also goes out for a Kit Colours change (the topic's contract,
+-- Core.lua: after both are in place; a new palette is always a NEW table):
+-- while MelloUI.Palette is the table last painted from, nothing is painted.
+-- The listener is taken on the first Paint, never at load; a Paint of a
+-- region painted before reuses its entry (no garbage).
+do
+	local weak = { __mode = "k" }
+	local lists = {
+		main = setmetatable({}, weak),       -- [region] = { key, how, alpha }: fill, vertex, text
+		backdrop = setmetatable({}, weak),   -- [frame] = { key, how, alpha }
+		border = setmetatable({}, weak),
+	}
+	local paintedFrom, listening = nil, false
+
+	local function Apply(region, key, how, alpha)
+		local c = MelloUI.Palette[key]
+		if not c then
+			return
+		end
+		alpha = alpha or 1
+		if how == "fill" then
+			-- the region's own alpha kept (a plain part the kit faded, a dim
+			-- a caller set): a colour set again must not bring it back
+			local was = region:GetAlpha()
+			region:SetColorTexture(c[1], c[2], c[3], alpha)
+			if not Secret(was) then
+				local now = region:GetAlpha()
+				if not Secret(now) and now ~= was then
+					region:SetAlpha(was)
+				end
+			end
+		elseif how == "vertex" then
+			region:SetVertexColor(c[1], c[2], c[3], alpha)
+		elseif how == "text" then
+			region:SetTextColor(c[1], c[2], c[3], alpha)
+		elseif how == "backdrop" then
+			region:SetBackdropColor(c[1], c[2], c[3], alpha)
+		elseif how == "border" then
+			region:SetBackdropBorderColor(c[1], c[2], c[3], alpha)
+		end
+	end
+
+	local function OnPalette()
+		local palette = MelloUI.Palette
+		if palette == paintedFrom then
+			return
+		end
+		paintedFrom = palette
+		for _, list in pairs(lists) do
+			for region, e in pairs(list) do
+				Apply(region, e.key, e.how, e.alpha)
+			end
+		end
+	end
+
+	function Kit:Paint(region, key, how, alpha)
+		if not (region and key) then
+			return
+		end
+		how = how or "fill"
+		local list = lists[how] or lists.main
+		local e = list[region]
+		if e then
+			e.key, e.how, e.alpha = key, how, alpha
+		else
+			list[region] = { key = key, how = how, alpha = alpha }
+		end
+		Apply(region, key, how, alpha)
+		if not listening and MelloUI.On then
+			listening = true
+			paintedFrom = MelloUI.Palette
+			MelloUI:On("palette", OnPalette, "Kit palette")
+		end
+	end
+
+	function Kit:PaletteKeyOf(colour)
+		if type(colour) == "string" then
+			return MelloUI.Palette[colour] and colour or nil
+		end
+		if type(colour) ~= "table" then
+			return nil
+		end
+		for key, c in pairs(MelloUI.Palette) do
+			if c == colour then
+				return key
+			end
+		end
+		return nil
+	end
 end
 
 -- The eye-strain panel of a HUD frame (user, 2026-09-24: "too much small text
@@ -265,13 +379,17 @@ function Kit:StoneDim(host, opts)
 		tex:SetPoint("TOPLEFT", host, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
 		tex:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
 	end
-	local c = MelloUI.Palette.innerPanel
-	tex:SetColorTexture(c[1], c[2], c[3], opts.alpha or 0.8)
+	-- (by its palette key: a new palette paints it again, Kit:Paint)
+	self:Paint(tex, "innerPanel", "fill", opts.alpha or 0.8)
 	if opts.area then
 		local list = self.parchmentDims[opts.area] or {}
 		self.parchmentDims[opts.area] = list
 		list[#list + 1] = { tex = tex, alive = opts.alive }
-		tex:SetShown((not self:ParchmentOn(opts.area) and (not opts.alive or opts.alive())) and true or false)
+		local on = self:ParchmentOn(opts.area)
+		tex:SetShown((not on and (not opts.alive or opts.alive())) and true or false)
+		if self.parchmentShown[opts.area] == nil then
+			self.parchmentShown[opts.area] = on
+		end
 	end
 	return tex
 end
@@ -322,7 +440,11 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		local list = self.parchmentSheets[opts.area] or {}
 		self.parchmentSheets[opts.area] = list
 		list[#list + 1] = { sheet = sheet, alive = opts.alive }
-		sheet:SetShown((self:ParchmentOn(opts.area) and (not opts.alive or opts.alive())) and true or false)
+		local on = self:ParchmentOn(opts.area)
+		sheet:SetShown((on and (not opts.alive or opts.alive())) and true or false)
+		if self.parchmentShown[opts.area] == nil then
+			self.parchmentShown[opts.area] = on
+		end
 	end
 	return sheet, edge
 end
@@ -641,6 +763,9 @@ function Kit:Apply(tex, name, later)
 	if not p then
 		tex:SetTexture(nil)
 		tex.kitPiece, tex.kitName = nil, nil
+		if tex.kitShadow then
+			self:ShadowFit(tex)   -- no piece: its shadow partner hides
+		end
 		return false
 	end
 	if p.tile then
@@ -658,6 +783,9 @@ function Kit:Apply(tex, name, later)
 	if p.tile and not later then
 		self:Retile(tex)
 	end
+	if tex.kitShadow then
+		self:ShadowFit(tex)   -- its shadow partner takes the new piece's shape (Kit:Shadow, below)
+	end
 	return true
 end
 
@@ -665,25 +793,276 @@ local ApplySlice   -- a one-texture nine-slice's picture on its texture (with th
 
 -- Kit Colours changed: every kit texture shown again from the chosen look's
 -- folder, where it is (its texture coordinates -- a strip's tiling, a mirror,
--- a crop -- kept as they are)
+-- a crop -- kept as they are, read into eight locals: no table per texture,
+-- configurator build 2026-09-25). The bus's 'palette' goes out after it, from
+-- Kit:ApplyBorder, once every texture is in the new look.
 function Kit:SetKitColours(value)
 	lookRoot = LOOK_ROOT[value] or ROOT
 	for tex in pairs(SHADED) do
 		local p, name = tex.kitPiece, tex.kitName
 		if p and name and p.file then
-			local coords = { tex:GetTexCoord() }
+			local ulx, uly, llx, lly, urx, ury, lrx, lry = tex:GetTexCoord()
 			if p.tile then
 				tex:SetTexture(PieceRoot(name) .. p.file, "REPEAT", "REPEAT")
 			else
 				tex:SetTexture(PieceRoot(name) .. p.file)
 			end
-			if #coords == 8 then
-				tex:SetTexCoord(unpack(coords))
+			if lry ~= nil then
+				tex:SetTexCoord(ulx, uly, llx, lly, urx, ury, lrx, lry)
 			end
 		elseif type(p) == "table" and p.tile == "slice" then
 			-- a skin's rails as one texture: the look's picture, cut as before
 			ApplySlice(tex, p)
 		end
+	end
+end
+
+-- A profile load (and the late settings at login, the macro backup) writes
+-- the Kit Colours past UI Modifications' OnSettingChanged, the other caller
+-- of ApplyBorder: once they are in (the bus's 'restart', at the end of
+-- Core's RestartModules) the chosen look is read again, and the textures
+-- follow only when it is not the folder they are drawn from. The look is
+-- read as PieceRoot reads it, through the umbrella's bound settings. While
+-- those are not bound (UI Modifications off since the login) a folder can
+-- still be cached (the installer binds them for its look refresh), so the
+-- same check runs again when UI Modifications is switched on (the bus's
+-- 'module', after its OnEnable bound them).
+do
+	local function Recheck()
+		local um = lookRoot ~= nil and MelloUI:GetModule("UIModifications")
+		if um and um.db and (LOOK_ROOT[Kit:BorderValue("colours")] or ROOT) ~= lookRoot then
+			Kit:ApplyBorder("colours")
+		end
+	end
+	local RestartColours = Shared("'restart' on the bus: the Kit Colours", Recheck)
+	local UmbrellaOn = Shared("'module' on the bus: the Kit Colours", function(name, enabled)
+		if enabled and name == "UIModifications" then
+			Recheck()
+		end
+	end)
+	if MelloUI.On then
+		MelloUI:On("restart", RestartColours, "Kit colours")
+		MelloUI:On("module", UmbrellaOn, "Kit colours")
+	end
+end
+
+-- The parchment the same way: a profile load writes parchment_<area> past UI
+-- Modifications' OnSettingChanged too (SetParchment's caller), so on the
+-- frame after the bus's 'restart' each area whose setting is not the paper
+-- it was last switched to (Kit.parchmentShown) is switched, once: a caller's
+-- own refresh in the restart's frame (the installer's Revert makes one) has
+-- set it by then. The areas are gathered first (a switch may make sheets).
+do
+	local areas = {}   -- reused
+	local function PaperSync()
+		for area in pairs(Kit.parchmentSheets) do
+			areas[#areas + 1] = area
+		end
+		for area in pairs(Kit.parchmentDims) do
+			areas[#areas + 1] = area
+		end
+		for i = 1, #areas do
+			local area = areas[i]
+			areas[i] = nil
+			local on = Kit:ParchmentOn(area)
+			if Kit.parchmentShown[area] ~= on then
+				Kit:SetParchment(area, on)
+			end
+		end
+	end
+	local RestartPaper = Shared("'restart' on the bus: the parchment", function()
+		if Kit.NextFrame then
+			Kit:NextFrame("Kit parchment after a restart", PaperSync)
+		end
+	end)
+	if MelloUI.On then
+		MelloUI:On("restart", RestartPaper, "Kit parchment")
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Shadow partners (user, 2026-09-25: the nameplates' "Whole plate" shade is
+-- the first user; 0.14.0 gives every kit piece one). A kit texture's partner
+-- is a soft, dark copy of its OWN piece's shape, made offline from the
+-- piece's alpha (grown, blurred, a quarter of the painted size) by
+-- Tools/make_kit_shadows.py into one sheet, Media\Textures\KitShadows;
+-- Media\KitShadows.lua says where each piece's lies and how far its blur
+-- reaches past the piece (`pad`, painted px: left, top, right, bottom; a
+-- strip's parts reach past their outer sides only, so the three join). One
+-- set for every Kit Colours look: the shapes are the same. The partner is a
+-- region of the piece's own frame at BACKGROUND -8 (under all that frame
+-- draws), anchored to the piece and grown by its pad at the piece's scale,
+-- tinted with a palette colour. Anchors only: nothing is measured, so it
+-- works where every size reads secret (a nameplate).
+--   Kit:Shadow(tex[, opts]) -> partner, or nil (no sheet, no frame)
+--       made once per kit texture (asked again: the same one); opts, read
+--       once and not kept: colour (a MelloUI.Palette key, "innerPanel"),
+--       alpha (its strength 0..1, 0.7), scale (UI units per painted px, for
+--       a texture drawn at another scale than its tex.kitScale)
+--   Kit:ShadowFit(tex[, scale])   its shape and reach again, after the
+--       piece's scale changed. Kit:Apply calls it when the piece changes and
+--       a strip's Rescale (StripMixin) for its three parts; any other change
+--       of a piece's scale (its kitScale, or a partner's own scale) needs
+--       this call from whoever made it
+--   Kit:ShadowSet(tex, wanted[, alpha])   shown with its piece, or not at
+--       all; its strength
+-- It follows its piece's Show, Hide, SetShown and SetAlpha (one shared
+-- handler each, hooked on the piece: our own texture), shows only while its
+-- piece has a shape in the sheet, and repaints on the bus's 'palette'. A
+-- change of piece, scale, strength or colour allocates nothing.
+--------------------------------------------------------------------------------
+do
+	local data = _G.MelloUI_KitShadows
+	local SHAPES = type(data) == "table" and type(data.pieces) == "table" and data.pieces or {}
+	local SHEET = type(data) == "table" and type(data.file) == "string" and data.file or nil
+	local Num = MelloUI.Safe.Number
+	local NO_OPTIONS = {}
+	local partners = setmetatable({}, { __mode = "k" })   -- every partner, for the repaint
+	local listening = false
+
+	local function Paint(sh)
+		local palette = MelloUI.Palette
+		local c = palette[sh.kitColour] or palette.innerPanel
+		sh:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
+	end
+
+	local function Repaint()
+		for sh in pairs(partners) do
+			Paint(sh)
+		end
+	end
+
+	local function Sync(sh)
+		sh:SetShown((sh.kitWanted and sh.kitShape and sh.kitPieceShown) and true or false)
+	end
+
+	-- the piece's shape and the reach at its scale (set again only when one changed)
+	local function Fit(tex, sh)
+		local name = tex.kitName
+		local e = name and SHAPES[name]
+		if type(e) == "string" then
+			e = SHAPES[e]   -- a piece of the same shape (a red end gem's cap)
+		end
+		if type(e) ~= "table" then
+			e = nil
+		end
+		local scale = sh.kitOwnScale or Num(tex.kitScale) or Kit.scale
+		if e and (e ~= sh.kitShape or scale ~= sh.kitFitScale) then
+			local pad, uv = e.pad, e.uv
+			sh:ClearAllPoints()
+			sh:SetPoint("TOPLEFT", tex, "TOPLEFT", -pad[1] * scale, pad[2] * scale)
+			sh:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", pad[3] * scale, -pad[4] * scale)
+			sh:SetTexCoord(uv[1], uv[2], uv[3], uv[4])
+			sh.kitFitScale = scale
+		end
+		sh.kitShape = e
+		Sync(sh)
+	end
+
+	local OnShow = Shared("Show on a kit piece with a shadow", function(tex)
+		local sh = tex.kitShadow
+		if sh then
+			sh.kitPieceShown = true
+			Sync(sh)
+		end
+	end)
+	local OnHide = Shared("Hide on a kit piece with a shadow", function(tex)
+		local sh = tex.kitShadow
+		if sh then
+			sh.kitPieceShown = false
+			Sync(sh)
+		end
+	end)
+	local OnSetShown = Shared("SetShown on a kit piece with a shadow", function(tex, shown)
+		local sh = tex.kitShadow
+		if sh then
+			-- (asked for secret first: a secret answer counts as shown)
+			sh.kitPieceShown = Secret(shown) or (shown and true or false)
+			Sync(sh)
+		end
+	end)
+	local OnSetAlpha = Shared("SetAlpha on a kit piece with a shadow", function(tex, alpha)
+		local sh = tex.kitShadow
+		alpha = Num(alpha)
+		if sh and alpha then
+			sh:SetAlpha(alpha)
+		end
+	end)
+
+	function Kit:Shadow(tex, opts)
+		if type(tex) ~= "table" then
+			return nil
+		end
+		local sh = tex.kitShadow
+		if sh or not SHEET then
+			return sh
+		end
+		local ok, host = pcall(tex.GetParent, tex)
+		if not ok or type(host) ~= "table" or not host.CreateTexture then
+			return nil
+		end
+		if type(opts) ~= "table" then
+			opts = NO_OPTIONS
+		end
+		sh = host:CreateTexture(nil, "BACKGROUND", nil, -8)
+		sh:SetTexture(SHEET)
+		sh.kitColour = type(opts.colour) == "string" and opts.colour or "innerPanel"
+		local a = Num(opts.alpha) or 0.7
+		sh.kitStrength = a < 0 and 0 or a > 1 and 1 or a
+		local s = Num(opts.scale)
+		sh.kitOwnScale = s and s > 0 and s or nil
+		sh.kitWanted = true
+		-- where the piece is now (our own texture: its answers are plain; a
+		-- refused or secret one counts as shown, at full alpha)
+		local okS, shown = pcall(tex.IsShown, tex)
+		sh.kitPieceShown = not okS or Secret(shown) or (shown and true or false)
+		local okA, alpha = pcall(tex.GetAlpha, tex)
+		alpha = okA and Num(alpha)
+		if alpha then
+			sh:SetAlpha(alpha)
+		end
+		tex.kitShadow = sh
+		partners[sh] = true
+		hooksecurefunc(tex, "Show", OnShow)
+		hooksecurefunc(tex, "Hide", OnHide)
+		hooksecurefunc(tex, "SetShown", OnSetShown)
+		hooksecurefunc(tex, "SetAlpha", OnSetAlpha)
+		Paint(sh)
+		Fit(tex, sh)
+		if not listening and MelloUI.On then
+			listening = true
+			MelloUI:On("palette", Repaint, "Kit shadows")
+		end
+		return sh
+	end
+
+	function Kit:ShadowFit(tex, scale)
+		local sh = type(tex) == "table" and tex.kitShadow
+		if not sh then
+			return
+		end
+		scale = Num(scale)
+		if scale and scale > 0 then
+			sh.kitOwnScale = scale
+		end
+		Fit(tex, sh)
+	end
+
+	function Kit:ShadowSet(tex, wanted, alpha)
+		local sh = type(tex) == "table" and tex.kitShadow
+		if not sh then
+			return
+		end
+		sh.kitWanted = wanted and true or false
+		alpha = Num(alpha)
+		if alpha then
+			alpha = alpha < 0 and 0 or alpha > 1 and 1 or alpha
+			if alpha ~= sh.kitStrength then
+				sh.kitStrength = alpha
+				Paint(sh)
+			end
+		end
+		Sync(sh)
 	end
 end
 
@@ -1703,6 +2082,12 @@ function StripMixin:Rescale(scale)
 	self.mid:SetPoint("TOPLEFT", self, "TOPLEFT", (self.capless or (self.noL and not self.endL)) and 0 or wl, 0)
 	self.mid:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", (self.capless or (self.noR and not self.endR)) and 0 or -wr, 0)
 	Kit:Retile(self.mid)
+	-- the parts' shadow partners reach as far at the new scale (Kit:Shadow)
+	if self.capL.kitShadow or self.mid.kitShadow or self.capR.kitShadow then
+		Kit:ShadowFit(self.capL)
+		Kit:ShadowFit(self.mid)
+		Kit:ShadowFit(self.capR)
+	end
 end
 
 -- Scale so the strip's natural height equals `height` (0 or nil: no change).
@@ -2862,6 +3247,14 @@ Kit.Replacements = {
 	["TitleBar"]                              = { kind = "strip", base = "tabs/top", state = "open", heightScale = 1.5, onRail = true },   -- rune caps, red plate (the user's pick H), red matched to buttons/redbtn (F); 1.5 x the bar's height, same width; `onRail`: riding the OUTER rail across the whole window width, its caps' red gems on the rail's top corners in place of the frame's own gems (Kit:TitleOnRail), the title text with it (user, 2026-09-23: "combining B1 and having H3 as a header", layout C; was standing on the rail with the title caps, H1)
 	["_UI-Frame-TopTileStreaks"]              = { kind = "fade" },   -- the streak band under the title: a stone band there read as a second, different backdrop (user, 2026-09-21); the page shows through
 	["UI-Frame-PortraitMetal-CornerTopLeft"]  = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
+	-- the configurator's crest and the short plate under it (approved sketch,
+	-- 2026-09-24; Kit:OwnWindow, Modules/KitWindow.lua): the portrait ring
+	-- centred on the top rail's middle line with the emblem on its disc, and
+	-- the title plate without `onRail`. Keys of their own, so neither is taken
+	-- for a window's corner ring or title plate (no Kit.shells entry, nothing
+	-- cut by TitleBehindRing)
+	["MelloUI-Crest"]                         = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
+	["MelloUI-TitlePlate"]                    = { kind = "strip", base = "tabs/top", state = "open", heightScale = 1.5 },
 	["RedButton-Exit"]                        = { kind = "state", base = "window/close", rect = "normal" },
 	-- inset frames and backdrops
 	["common-insideframe"]                    = { kind = "frame", dim = 0.8 },   -- an inset: single rail + stone, the stone under the palette's inner panel (no eye strain, WINDOW-RULES 2e)
@@ -3332,9 +3725,13 @@ end
 --                      the configurator, the Voice Over overlay, Dynamic UI
 --                      Modification, the copy window: the reskin (UI
 --                      Modifications on, its reskin switch on)
+--   installer          the installer: always (user, 2026-09-25: it
+--                      wears the kit for every player, a new one's reskin
+--                      off too -- the approved sketch, and a preview of what
+--                      Full experience and Reskin only give)
 -- Kit.Areas[area] = { name, topic = "look:<area>", and cover | follows = area
--- | module = name | reskin (+ switch = key) }; a name not listed is read as a
--- cover group. The bus's 'look:<area>' (on) goes out when an area's answer
+-- | module = name | reskin (+ switch = key) | always }; a name not listed is
+-- read as a cover group. The bus's 'look:<area>' (on) goes out when an area's answer
 -- changes: looked at again after a cover, a module switched ('module'), a UI
 -- Modifications setting ('setting') and a profile or late settings load
 -- ('restart') -- on the next frame, once for all that came together, so what
@@ -3362,6 +3759,7 @@ do
 		{ "questList", module = "QuestLogPanel" },
 		{ "config", reskin = true }, { "voiceover", reskin = true }, { "dynamicui", reskin = true },
 		{ "copy", reskin = true },
+		{ "installer", always = true },
 	}
 	for _, area in ipairs(LIST) do
 		area.name, area.topic = area[1], "look:" .. area[1]
@@ -3394,7 +3792,9 @@ do
 		if area.follows then
 			area = Kit.Areas[area.follows]
 		end
-		if area.cover then
+		if area.always then
+			return true
+		elseif area.cover then
 			return Kit.covers[area.name] == true
 		elseif area.module then
 			local module = MelloUI:GetModule(area.module)
@@ -5267,9 +5667,16 @@ function Kit:Replace(region, opts)
 			fill:SetPoint("BOTTOMRIGHT", rep.skin, "BOTTOMRIGHT", -inset, inset)
 			-- opts.dimColor: another palette tone (a card or row lying ON a
 			-- dimmed list takes the main window's tone, a stripe lighter than
-			-- the panel around it, as WINDOW-RULES 2e has rows)
-			local c = opts.dimColor or MelloUI.Palette.innerPanel
-			fill:SetColorTexture(c[1], c[2], c[3], dim)
+			-- the panel around it, as WINDOW-RULES 2e has rows), its key or
+			-- the palette's table; painted by its key (Kit:Paint), so a new
+			-- palette paints it again. A colour of no palette role stays as given.
+			local c = opts.dimColor
+			local tone = c == nil and "innerPanel" or self:PaletteKeyOf(c)
+			if tone then
+				self:Paint(fill, tone, "fill", dim)
+			elseif type(c) == "table" then
+				fill:SetColorTexture(c[1], c[2], c[3], dim)
+			end
 			rep.skin.dimFill = fill
 			table.insert(rep.skin.all, fill)
 		end
@@ -5438,13 +5845,8 @@ function Kit:Replace(region, opts)
 				-- sits lower in the canvas: the text read as riding high —
 				-- user, 2026-09-21)
 				local function Centre(self)
-					local mid = PIECES[StripName(self.strip.base, "mid", self.strip.state)]
-					local dy = 0
-					if mid and mid.box then
-						dy = (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (self.strip.scale or Kit.scale)
-					end
 					text:ClearAllPoints()
-					text:SetPoint("CENTER", self.strip, "CENTER", self.strip.textShift or 0, dy)
+					text:SetPoint("CENTER", self.strip, "CENTER", self.strip.textShift or 0, Kit:StripTextOffset(self.strip))
 					Kit:TitleFont(text, true)
 				end
 				rep.onEnable = Centre
@@ -6468,7 +6870,8 @@ local MEDALLION_DISC = 0.95
 -- PortraitContainer, level 400: its portrait is OVERLAY, the disc goes in
 -- BACKGROUND under it), masked round with the game's own circle mask, the
 -- class medallion's size on the ring's centre; shown / hidden with the
--- ring's replacement. `color` = { r, g, b }.
+-- ring's replacement. `color` = { r, g, b }, or a palette key ("innerPanel":
+-- painted by its key, Kit:Paint, so a new palette paints it again).
 -- `parent` / `sublevel` override the frame and BACKGROUND sublevel the disc is
 -- a region of, for a window whose portrait lives elsewhere (the guild window's
 -- PortraitOverlay at level 300, its portrait BACKGROUND 1: the disc at 0).
@@ -6479,8 +6882,12 @@ function Kit:RingDisc(ring, color, parent, sublevel)
 	parent = parent or ring.object:GetParent()
 	local disc = parent:CreateTexture(nil, "BACKGROUND", nil, sublevel or 7)
 	disc.kitPiece = true
-	local c = color or { 0.16, 0.16, 0.17 }
-	disc:SetColorTexture(c[1], c[2], c[3], 1)
+	if type(color) == "string" then
+		self:Paint(disc, color, "fill", 1)
+	else
+		local c = color or { 0.16, 0.16, 0.17 }
+		disc:SetColorTexture(c[1], c[2], c[3], 1)
+	end
 	local mask = parent:CreateMaskTexture()
 	mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	mask:SetAllPoints(disc)
@@ -6528,7 +6935,12 @@ end
 -- rail's own corner gems were, their centres on the rail's middle line.
 local RAIL_GEM_IN = 20            -- the corner gems' centres, piece px in from the rail's outer corner (window/frame_gem_tl / _tr)
 local CAP_GEM = { x = 48, y = 50 } -- the gem's centre in a tabs/top cap's canvas, from its outer end and its top
-function Kit:TitleOnRail(strip)
+
+-- The OUTER rail's middle line, in UI px ABOVE the window's top edge (the band
+-- is grown outward by `outset`, its box measured from the piece's top): where
+-- the title plate's gems ride (Kit:TitleOnRail) and the configurator's crest
+-- is centred (Kit:OwnWindow)
+function Kit:RailMiddle()
 	local rule = self.Replacements["NineSlicePanelTemplate"]
 	local prefix = rule and rule.prefix or "window/frame"
 	local sc = self.scale * (rule and rule.scale or self.frameScale)
@@ -6537,9 +6949,25 @@ function Kit:TitleOnRail(strip)
 	if rail and rail.box then
 		top, bottom = rail.box[2], rail.box[4]
 	end
-	-- the rail's middle line, above the window's top edge (the band is grown
-	-- outward by `outset`, its box measured from the piece's top)
-	local middle = ((rule and rule.outset or 0) - (top + bottom) / 2) * sc
+	return ((rule and rule.outset or 0) - (top + bottom) / 2) * sc
+end
+
+-- How far a title goes up from a strip's centre to sit on its PAINTED box,
+-- not its canvas (the box sits lower in the canvas: a title centred on the
+-- canvas read as riding high -- user, 2026-09-21). The rail's title plate
+-- and the configurator's short plate (Kit:OwnWindow) centre theirs by it.
+function Kit:StripTextOffset(strip)
+	local mid = strip and PIECES[StripName(strip.base, "mid", strip.state)]
+	if not (mid and mid.box) then
+		return 0
+	end
+	return (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (strip.scale or self.scale)
+end
+
+function Kit:TitleOnRail(strip)
+	local rule = self.Replacements["NineSlicePanelTemplate"]
+	local sc = self.scale * (rule and rule.scale or self.frameScale)
+	local middle = self:RailMiddle()
 	local ss = strip.scale or self.scale
 	local cap = PIECES[StripName(strip.base, "cap_l", strip.state)]
 	local capH = cap and cap.h or 0

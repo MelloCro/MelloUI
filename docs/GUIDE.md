@@ -9,15 +9,15 @@ Everything the [README](../README.md) leaves out: each feature in detail, the vo
 One switch and every window, every bar, the minimap, the nameplates, the chat, the tooltips, even the settings window itself gets the Old-School RPG Look. Gems, rails, the works.
 
 - Don't like it? Flip it off. The game looks like the game again and everything else still works.
-- Turn it on and your action bars, side bars, unit frames and party frames snap into the layout it was drawn for. No fiddling.
+- Turn it on and your action bars, side bars, unit frames and party frames snap into the layout it was drawn for, fitted to your screen. No fiddling.
 - Dark Mode darkens the reskin too, with a brightness slider, for the night owls.
 
 ## 🖱️ Drag. Everything.
 
-Tick one box, then grab any window and drop it wherever you want. Minimap, quest tracker, chat, damage meter, all of it.
+Switch on Unlock the Windows at the top of the settings window, then grab any window and drop it wherever you want. Minimap, quest tracker, chat, damage meter, all of it.
 
 - Scroll the mouse wheel while you're holding it to make it bigger or smaller.
-- It snaps to the middle if you get close, and it STAYS. Reload, restart, come back next week, still there.
+- With Auto Snapping on it snaps to the middle if you get close, and it stays where you drop it.
 - Works with the reskin off as well.
 
 ## 🔊 Every click has a new sound
@@ -57,13 +57,43 @@ Every quest offer, progress line, turn-in and greeting is read out loud in a voi
 - **Party Markers:** your group's class icons float over their heads, green ring for the healer. No more "who heals?" (Open world only, the game hides friendly nameplates in dungeons.)
 - **Names:** everyone in Forever has a surname now. Too much? Show first names only. Or last names. Frames, nameplates and your own head, one setting.
 - **Bars & fonts:** pick your health bar style, pick a font for text, chat, titles and damage numbers, and how big each one is.
-- **Chat:** short channel tags, class colours, input box on top if you want it.
+- **Chat:** short channel tags, class colours, input box on top if you want it, one background opacity for every chat window.
 - **Auto-vendor:** sells your greys and repairs your gear the moment you talk to a merchant.
 - **And:** cooldown numbers on buttons, clean dark tooltips, CC and quest icons on nameplates, FPS and latency, hidden micro menu and bag bar, class medallions on portraits.
 
+## 🧭 Set up in a minute
+
+The first time you log in with MelloUI, a few seconds in, the installer asks how you want to start:
+
+- **Full experience** (recommended): Mello's own setup. The reskin, the features and Mello's Edit Mode layout, fitted to your screen.
+- **No reskin, features on:** the game's look stays and MelloUI's features come on. No Edit Mode change.
+- **Reskin only:** the painted look and Mello's layout; the features stay off.
+- **Fresh start:** everything off, then one step at a time: the look (the reskin, Kit Colours, the button borders, class icons), the minimap (Round or Square), parchment and dark mode, fonts, the features, your screen, chat and the windows. Each step's choices start at Mello's own, and nothing changes until you install. On the Features step every feature starts off: switch on the ones you want, or all of them with **All features**. Each one you switch on comes with Mello's own settings for it; the rest wait in `/mello`.
+
+Dark Mode is yours: no setup changes it and no profile carries it. Fresh start's dark mode row starts at your own choice (off on a new character).
+
+Then:
+
+- **Your screen:** Mello's layout was made on a 21:9 screen; the installer fits it to yours (pieces at an edge keep their distance to it, the middle group tightens, then everything is checked for overlaps). Leave the Edit Mode layout out if you like: your own Edit Mode layouts always stay, and your UI scale is never changed.
+- **Review:** what will change, before anything does.
+- **Install:** your current setup is saved as the profile **Before install** first. Then you have 15 seconds: **Keep** the new setup, or **Revert** to go back at once; if you don't answer, it goes back by itself. A fight or Edit Mode pauses the countdown, and a `/reload` in the middle brings it back with 15 seconds. Before install stays on the Profiles page, so you can load it later too.
+- **Done:** take the tour, open MelloUI, or reload once if the fonts over characters' heads changed.
+
+Close it without installing and nothing changes. Run it again any time: **Install…** at the top of `/mello`, **Install again** on its Home page, or `/mello install`. Updating from an earlier version? No installer, just one line in chat. The game keeps the Edit Mode layout per character: on another character, `/mello layout apply` makes Mello's layout the active one there too.
+
+## ⚙️ The settings window
+
+`/mello`, or the **MelloUI** button in the game menu (Escape), opens it.
+
+- **Top bar:** the Layout group on the left: Unlock the Windows, Auto Snapping and Reset positions (dimmed while UI Modifications is off; switch that on first). On the right: **Install…** (the installer), **Dynamic UI Modification** (the look of the reskin, picked on the interface itself) and close.
+- **Side list:** Home, then the modules by group (The look, Quests and travel, Chat and sound, Frames and bars), then Profiles. Click a group's name to fold it away. Dark Mode, Fonts, Chat, Unit Frames, Nameplates and Tooltip live on UI Modifications' tabs: their entries open that tab right at their switch. A module that is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Pages:** a module's page has its switch and Defaults at the top and its options on tabs. An option that needs another switch is dimmed and says which one. Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (UI Modifications, General) makes all of it instant.
+- **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; your Kit Colours, with Change… to Dynamic UI Modification; your screen; Install again) and Help with every command.
+- Drag the window by its top edge: it stays where you put it. Escape closes it. At a large Font Style it is a little wider, so UI Modifications' tabs keep to one row.
+
 ## 💾 Your settings are safe
 
-The Forever client has a habit of forgetting saved variables. MelloUI keeps a backup of your settings in a few hidden account macros called `MelloUI1`, `MelloUI2`... Don't delete those and you're golden (deleting them returns you to the fresh-install profile). Profiles let you save and load whole setups too.
+The game saves your settings like any addon's, so they're still there after a restart. As a safety net, MelloUI also keeps a copy in a few hidden account macros called `MelloUI1`, `MelloUI2`...: if the saved settings ever go missing (a new PC, a wiped `WTF` folder), that copy brings them back. Keep those macros and you're golden. Profiles let you save and load whole setups too.
 
 ## 🐛 Good to know
 
@@ -96,15 +126,29 @@ Everything below is the detailed reference: profiles, every slash command, what 
 ## Profiles
 
 The MelloUI settings have a **Profiles** page. "Save current as" stores every setting of every
-module under a name; Load replaces all settings with a profile; "Set default" marks the one
+module under a name; Load replaces all settings with a profile (it asks first, as the profile
+list under Your setup on the Home page does; `/mello profile load <name>` loads at once);
+"Set default" marks the one
 that is applied when the addon starts with no settings at all, such as on a fresh install or
 when neither the saved variables nor the macro backup brought anything back; out of the box
 that is the built-in **Everything Off** profile (every module off, made from the module list
-at each login, so it cannot be deleted or overwritten). Profiles are
-kept in the saved variables, which this client writes at `/reload` but does not read back, so
-`Tools\bake_routes.py --watch` (the same watcher that keeps the learned roads) bakes them into
-`Media\Profiles.lua` after each `/reload`; the page shows whether a profile is baked yet. Only
+at each login, so it cannot be deleted or overwritten), and the installer opens a few seconds
+later (*Set up in a minute* above). The installer adds two more: the shipped **MelloUI**
+profile is its Full experience, and **Before install** is the setup you had before you last
+installed. Profiles are
+kept in the saved variables with the rest of the settings, so they stay from one session to the
+next. On a development copy, `Tools\bake_routes.py --watch` (the same watcher that bakes the
+learned roads) also bakes your own into `Media\Profiles.lua` after each `/reload`. The
+watcher never writes the shipped **MelloUI** profile (the Full experience the installer applies,
+baked from a saved setup by `Tools\installer\bake_full.py --write`) or Everything Off, and
+`Tools\release.py` refuses a release while that file holds a stale MelloUI or any other profile,
+which would ship to every player (`python Tools\installer\bake_full.py --check` says which). Only
 values that differ from the defaults are stored, so a profile is a few hundred bytes.
+What is yours stays out of every profile, saved, shared or shipped: your characters' known
+flight points, the game settings MelloUI borrowed, steps done once, and Dark Mode (its switch
+under UI Modifications and every Dark Mode setting), which is a personal preference; loading a
+profile leaves all of it as it is. Loading one also never runs what switching the reskin on by
+hand does: Custom Sounds stays as the profile has it and no Edit Mode layout is put in.
 To share a profile, click **Share** on its row and copy the string; to use someone else's, type a name, click **Import as** and paste their string, then load it from the list. `/mello profile` does the same from chat.
 
 ## Slash commands
@@ -123,7 +167,8 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello preload` | How many artwork files Preload Artwork holds, and how many the game has loaded |
 | `/mello help` | the command list in chat |
 | `/mello tutorial` | the guided tour of the settings window (also the Tutorial button on its Home page) |
-| `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` puts it into Edit Mode as the account layout "MelloUI" and makes it active (done once by itself when the reskin is switched on), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
+| `/mello install` | the installer: a setup for the whole interface, fitted to your screen, with 15 seconds to keep it or go back (also **Install…** in the settings window's top bar and **Install again** on its Home page) |
+| `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` fits it to your screen and puts it into Edit Mode as an account layout ("MelloUI", or "MelloUI <width>x<height>" on another screen size) and makes it active (done once by itself when you switch the reskin on by hand; the installer puts it in for you), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
 | `/mellolog [clear]` | the copy window with what the dump commands logged (`clear` empties it) |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
 | `/qlmap` | Quest List map pins: diagnostics, and `dock`, `zeppelin`, `arrive`, `entrance`, `remove`, `list` to record pins by hand (see Quest List) |
@@ -146,6 +191,10 @@ cooldown manager, micro menu and bag bar, minimap, chat frame, buffs and
 debuffs. Extra options: brightness, desaturate, aura icon border, keep dispel
 colours on debuff borders.
 
+Dark Mode is a personal preference: its switch and every setting here stay out of profiles,
+shared strings and the shipped MelloUI profile, and no installer setup changes it (Fresh
+start's dark mode row sets it as you choose). A new character starts with it off.
+
 ### Bar Textures
 
 Swaps the fill texture of health and power bars (player, target, focus, pet, party, boss,
@@ -166,6 +215,12 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels. Brackets can be
   removed as well.
 - Class coloured player names in every chat type through Blizzard's own override CVar.
+- Set The Background Opacity (off by default): one Background Opacity (100 % by default) for
+  every chat window, docked and floating, whisper tabs and windows opened later included, set
+  through the game's own `FCF_SetWindowAlpha` so the chat stone follows. Profiles carry it,
+  which the game's own per-character value cannot. While it is on, the game's opacity slider on
+  a chat tab changes it for every window; off, MelloUI never writes the opacity and the windows
+  keep what they have.
 
 ### Names
 
@@ -190,6 +245,13 @@ Control" nameplate aura option must be on. Also adds a yellow quest marker left 
 bar on enemies that still count for an unfinished quest objective (Forever's default
 nameplates have no quest icon), read from the unit tooltip data.
 
+With the reskin's Nameplate Kit on, the name above each health bar sits on a soft dark band, as long
+as the name, that fades out at its ends (Name Shade: Name, the default). Whole plate adds a soft shadow that follows
+the plate's own shape: round the level circle, round each end gem and along the bar, in every
+Nameplate Border look. Off: no shade. Shade Strength sets how dark it is. Both sit on UI
+Modifications' HUD tab, under the Nameplates switch. The shapes come in a new texture file, so
+restart the game once after updating.
+
 ### Tweaks
 
 - Hide the micro menu and/or the bag bar. They come back while Edit Mode is open so they can
@@ -201,6 +263,22 @@ nameplates have no quest icon), read from the unit tooltip data.
 - "Chat Notices" (on by default) covers the lines MelloUI writes to chat on its own: a
   learned dungeon entrance, settings restored from the backup, hints. Replies to slash
   commands always show.
+- "On-screen Notices" (on by default): MelloUI's one on-screen notice, the short line in the
+  upper third of the screen that Route, the Services bar and the Quest List use (a route set
+  or finished, a service remembered, a dungeon's quests listed). Soft text in the palette's
+  colours (gold for a new destination or an arrival) over a dark shade with soft edges, in
+  your Font Style; held four seconds, then faded (at once with Reduce Motion). It works with
+  Route off. Unlock the Windows shows a sample line there to drag; Reset positions puts it back
+  at the top centre. Under it: "Send To Chat Instead" (off; the lines go to the chat, where
+  Chat Notices applies) and "Notice Sounds" (on).
+- "Zone Text Shade" (on by default): the game's zone text -- the zone's name when you enter
+  a new area, the subzone under it and the PvP line ("Contested Territory", "Sanctuary") --
+  in the notice's look: each line on the same soft dark shade, without the outline (Outlined
+  Text brings it back for both), in the game's own colours and sizes, fading as the game fades
+  it. Off: the game's own look.
+- "Outlined Text" (off), after Zone Text Shade: draws the notice's and the zone text's lines
+  with an outline. It is not under On-screen Notices, so it also sets the zone text's outline
+  with the notices off.
 - World Text Scale slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
   numbers. Writes the `WorldTextScale` CVar.
 
@@ -222,7 +300,7 @@ its update path compares secret health values and must stay untainted.
 
 ### Cooldown Timers
 
-OmniCC style countdown text on cooldown swipes: outlined numbers that change colour and size
+Large countdown text on cooldown swipes: outlined numbers that change colour and size
 with the time left (red under 5 s, yellow under a minute, dim white for minutes, grey for
 hours). Covers action, pet, stance and flyout buttons and the buff / debuff / crowd control
 icons on nameplates. Options: minimum duration (skips the global cooldown), text size relative
@@ -335,17 +413,19 @@ has settled, since the client can still report the previous quest when the event
 vanilla quest Forever renumbered is found through its title and giver and plays the old
 recording; a line recorded only per player gender plays either file rather than nothing),
 greetings by NPC and text. Everything without a recording, such as Forever's new quests, falls
-back to text-to-speech. The VoiceOver player addon itself is not needed and should be disabled
+back to text-to-speech, unless "Read Unvoiced Lines" is off: then only recorded lines are heard and
+the rest stays silent (the quest log's Read button still reads). The VoiceOver player addon itself is not needed and should be disabled
 so lines are not read twice. `/vo packs` shows what was loaded. The channel the recordings play
 on can be chosen (Master by default). "Prefer Recordings" (off by default) plays an NPC's only
 recorded greeting even when Forever changed the greeting text, instead of reading the new text.
 
 To build a pack for Forever's own content, the module records every greeting and quest line it
-sees ("Record Dialog Lines", on by default) into the `MelloUIVoiceLines` saved variable, which
-the client writes on `/reload`. `Tools\export_voice_lines.py` merges each session into
+sees ("Record Dialog Lines", off by default) into the `MelloUIVoiceLines` saved variable, which
+the game saves at logout and on `/reload` and keeps from one session to the next.
+`Tools\export_voice_lines.py` merges each saved file into
 `Tools\cache\voice_lines.json` and writes `Tools\output\forever_voice_lines.txt` / `.csv`: every
 line with no usable recording, grouped by NPC with a race and gender hint, placeholders replaced
-by spoken words, and the file name each MP3 should get. `/vo lines` shows what the session has
+by spoken words, and the file name each MP3 should get. `/vo lines` shows what has been
 collected so far. Generate the lines (the vanilla pack's voices were the author's own ElevenLabs
 clones; cloning a few of the pack's MP3s per race and gender gives matching voices), then
 `Tools\build_voice_pack.py assign <download.mp3> <file name>` files each MP3 under
@@ -488,21 +568,46 @@ for a flight leg. On the minimap the
 nearby part is drawn the same way, clipped to the minimap's shape. A direction arrow (the
 minimap's own player arrow at double resolution, top centre of the screen by default, drag to
 move, `/route arrow reset`) points along the next leg relative to where you face, with the
-remaining distance and the destination's name and icon under it. Every new destination shows
-a one-line tracking notice in the upper third of the screen with the client's super-track
-chime ("Tracking quest giver Marshal McBride for Kobold Camp Cleanup, 240 yd away"), and
-arriving shows "Arrived" with a softer sound; both have options. Within 25 yards of a pin the
+remaining distance and about how long the rest of the way takes ("1.2 km · about 2 min") and
+the destination's name and icon under it. Every new destination shows
+a line in MelloUI's on-screen notice (see Tweaks: On-screen Notices) with the client's
+super-track chime ("Tracking quest giver Marshal McBride for Kobold Camp Cleanup, 240 yd away"),
+and arriving shows "Arrived" with a softer sound; "Route Announces" and "Announce Sound" switch
+Route's lines and their chime. Within 25 yards of a pin the
 route ends and the pin is cleared; near a quest objective the drawing pauses but the
-destination stays. Options: the two drawings, the distance text, the arrow and its size, the
-notice and its sound, marker size, arrival distance, and learning on or off.
+destination stays. Options: the two drawings, the distance text, the travel time, the text shade, the arrow and
+its size, Route Announces and its sound, marker size, arrival distance, and learning on or off.
 
-Learned paths live in the `MelloUIRoutes` saved variable, which this client writes at
-`/reload` but does not read back at a restart (see *Your settings are safe* above). The traced roads
-are not part of it, only what you walked. To keep them, run the baker while you play:
+Travel Time (on by default) puts the time beside the distance under the arrow and on the World
+Marker's gem ("under a minute" near the end), in the tracking notice ("Tracking Stormwind:
+1.2 km, about 2 min") and in the arrival ("Arrived: Stormwind (2:48)"). The route is priced in
+seconds (flights and boats at their own times, the ground at your speed), and your speed is
+measured as you move and smoothed, so the time follows you onto a mount. It is hidden while you
+are off the path or on a flight. The arrival leaves the time out past an hour, after a
+`/reload`, and when Route was switched off on the way. Off, every text is as it was.
+
+Text Shade (on by default) gives the arrow and the World Marker the nameplates' soft shade, so
+they read on bright ground: a soft dark band behind the distance line and the name line, each
+as wide as its text, a soft shadow of the gem's own shape behind the marker's gem, and a round
+soft shade behind the direction arrow and the marker's edge arrow. The distance under the
+minimap has no shade. Off, the name line is 180 wide again, a longer name cut.
+
+Learned paths live in the `MelloUIRoutes` saved variable, which the game saves at logout and on
+`/reload` and brings back at login, so what you learn stays from one session to the next. The
+traced roads are not part of it, only what you walked. To bake what you walked into the addon
+itself (so it ships to every player), run the baker while you play:
 
 ```
 python Tools\bake_routes.py --watch
 ```
+
+After each `/reload` it writes `Media\RouteData.lua` and your own saved profiles into
+`Media\Profiles.lua`, in the project and in the game's copy; the shipped MelloUI profile and the
+file's head stay exactly as they are, and the built-in Everything Off is never written (see
+*Profiles* above). To change the
+shipped Full experience, save the setup in game, `/reload`, and bake it from that saved file:
+`python Tools\installer\bake_full.py --snapshot <WTF>\Account\<account>\SavedVariables\MelloUI.lua --write`,
+then `python Tools\installer\test_bake.py`.
 
 **Traced roads.** `Tools\trace_roads.py` reads the roads off the zone maps themselves, so routes
 follow roads from the first login: it downloads the build's map art and tables from wago.tools
@@ -521,15 +626,20 @@ reproducible. Stages: `fetch`, `assemble`, `trace`, `bake`, or `all`; `--zone <u
 stage to one zone while tuning. `/route` reports how many traced road points are loaded.
 
 It turns the written file into `Media\RouteData.lua` (project and game copies) after every
-`/reload`, and the module merges that file, the saved variable and the current session. A
-`/reload` at the end of a session is all it takes to keep what was learned. `/route` shows
+`/reload`, and the module merges that file, the saved variable and the current session. The
+game saves what was learned at logout and on every `/reload`; the baker picks it up after a
+`/reload`. `/route` shows
 the counts, `/route quest` what the client reports for the tracked quest, `/route clear`
 drops the route and the pin, `/route reset confirm` wipes the learned paths. Other modules
-route through `MelloUI.Route`: `SetDestinationTo`, `DistanceTo`, `Cheapest` and `Notify`.
+route through `MelloUI.Route`: `SetDestinationTo`, `DistanceTo`, `Cheapest` and `Notify`
+(Route's own lines, under Route Announces). A line of any module's own goes to the on-screen
+notice with `MelloUI:Announce(text, kind)` (Core/Notice.lua), which works with Route off; the
+soft band behind its text is the shared `MelloUI.Shade:Band` (Core/Shade.lua).
 
 ### Services
 
-A bar of two rows of icons under the minimap (it moves with the minimap in Edit Mode): repair,
+A bar of service icons under the minimap (it moves with the minimap in Edit Mode), in groups
+or in two rows (Button Layout, below): repair,
 mailbox, innkeeper, flight master, auction house, bank, class trainer, profession trainer,
 barber and transmogrifier, drawn with the client's own minimap tracking icons. Hover an icon
 for the nearest one's name and distance; click it and the Route module takes the few closest
@@ -546,12 +656,42 @@ profession with a known trainer on the continent (your own ones first, marked), 
 "Nearest of any". Options: the bar and its distance from the minimap, and the older round
 minimap button with a list menu (off by default). `/services <kind>` routes from chat.
 
+Button Layout picks how the bar stands. Groups (the default): one row of five group buttons
+as wide as the map (Travel: flight master, innkeeper; Trade: auction house, bank, mailbox;
+Repair; Trainers: class and profession trainer; Looks: barber, transmogrifier). Hover a group
+for each of its services with the distance to the nearest one; click it for a small list
+beside the minimap column, toward the middle of the screen, with the same distances, and
+click a service there to route to it (the profession trainer asks which profession first).
+Repair has no list: a click routes at once. Escape, a click elsewhere or the same group
+again closes the list, another group switches it; right-click a group to stop the route. A
+group is grey only while none of its services is known on your continent. Merged into the
+square minimap's frame, the row sits under the divider rail with its gem caps and the
+"Services" name (centred; at the rail's left end while Route's distance line stands at its
+right end) and the clock moves beside the zone name. All Buttons: the two rows of an icon per
+service, as before. The minimap button keeps to the map's edge at any Edit Mode size, round
+or square. For modules: `Services:ColumnRow()` answers whether the row of groups stands
+under the map and its height (MinimapPanel's column asks it).
+
 ### Minimap Panel
 
 The minimap cluster in the kit (part of the reskin in UI Modifications): the iron ring
 around the map with the zone name on a title plate standing on it, the tracking button in a
 round rim, plus / minus zoom buttons. Edit Mode still owns the cluster's position; with "Unlock
 the Windows" the map can be dragged by its zone band. `/mmdump` prints the rects.
+
+The map's size is Edit Mode's (Minimap, Size): the border, the map, its buttons and the zone
+name all scale together, and MelloUI never resizes them. What stands under the map follows
+its width: the Services row of groups, and MelloUI's Quest Tracker with "Match The Minimap's
+Width" (Quest Tracker). For modules: `MinimapPanel:ColumnWidth()` gives the map's width on the
+screen and the width the frames line up to (the square border's frame where it is wider).
+MelloUI's own Edit Mode layout (`/mello layout apply`, the installer) sets the Size to 150 %,
+the map about as wide as the Quest Tracker, and puts the game's tracker (which MelloUI's hangs
+on) right under the column with its right edge on the frame's. On a smaller screen the fit
+(`Core\LayoutFit.lua`) takes the largest step that leaves the tracker 300 units under the
+column and your buffs room beside it. Where your buff rows by the column would reach into the
+centre third, the layout is fitted for fewer icons a row or smaller icons, and the installer's
+report says which to set in Buffs & Debuffs (the fit changes them itself only for a caller
+that writes its `places.auras`: `inputs.auras.fitRows`).
 
 ### Tracker Panel
 
@@ -573,12 +713,33 @@ place and height from the game's tracker in Edit Mode, is moved by its header wi
 Windows, and a grip in its bottom-left corner sizes it; Height, Width, Scale, Text Size and
 Scroll Step are in its settings.
 
+"Match The Minimap's Width" (on by default, needs the Minimap Kit) makes the tracker as wide on
+the screen as the minimap above it: the round map, or the square map's frame, so the two line
+up. Make the minimap bigger or smaller in Edit Mode (Minimap, Size) and the tracker follows
+when you leave Edit Mode; the grip then sizes only its height. Off, it takes its own Width.
+
+The tracker stands in front of the minimap column (MEDIUM strata over the column's LOW), so a
+click on the minimap, which raises the whole cluster, never brings the map or the Services row
+over it; the Services group lists still open above it. While it stands where the game or the
+installer's fit put it, it keeps clear of the column: it moves down under everything the
+column paints (the square frame's bottom gems, and with the Minimap Kit off the game's own
+frame round the map) when the minimap's Size, the Services bar's Button Layout or merge, or the
+UI scale changes. The installer records the place its fit wrote, so that place still counts as
+the game's own (Revert takes the record back); a tracker you moved yourself, in Edit Mode or
+with Unlock the Windows, stays where you put it. The keep-clear only ever moves it down.
+
 ### Buffs & Debuffs
 
 MelloUI's own aura rows (off by default), drawn by the game's aura container so they keep working
-in combat: your buffs and debuffs where the game's buff bar is (right-click cancels a buff; the
-game's bar comes back in Edit Mode), the target's debuffs and buffs under the target frame, and
-your debuffs on enemy nameplates. Each part has its own switch and icon size.
+in combat: your buffs and debuffs beside the minimap or where the game's buff bar is (right-click
+cancels a buff; the game's bar comes back in Edit Mode), the target's debuffs and buffs under the
+target frame, and your debuffs on enemy nameplates. Each part has its own switch and icon size.
+
+"Attach To The Minimap Column" (on by default, needs the Minimap Kit) lines your buffs up level
+with the map's top, growing away from it, with your debuffs on the line under them; with the
+minimap on the left half of the screen they sit on its right and grow rightwards. They follow the
+minimap when it moves or changes size (a change during a fight waits for its end). Off, they
+stand where the game's buff bar is.
 
 ### Error Messages
 
@@ -612,14 +773,22 @@ not part of that: when the lines changed, run `python Tools\merge_voice_packs.py
 upload the zip to the release by hand, then update the direct links in the README and the
 CurseForge description.
 
-Every push runs `luacheck Core Modules Media` (`.github/workflows/lint.yml`, options in
-`.luacheckrc`): syntax, unused locals and globals that are neither WoW API nor listed there.
-A new Blizzard global goes into the `read_globals` list of `.luacheckrc`.
+Every push runs `luacheck Core Modules Media MelloUI_Companion` (`.github/workflows/lint.yml`,
+options in `.luacheckrc`): syntax, unused locals and globals that are neither WoW API nor listed
+there. A new Blizzard global goes into the `read_globals` list of `.luacheckrc`. The same
+workflow runs the duplication ratchet, `python Tools/lint/check_panels.py`, which fails when a
+counted copy of a shared system comes back, or a colour number in one of MelloUI's own windows
+(they take their colours from the palette only); its header lists the checks.
 
 Generated media: `Tools\make_ui_sounds.py` synthesizes the configuration window's click sounds
 into `Media\Sounds`, `Tools\make_minimap_frame.py` builds the minimap stand and the objective
 tracker panel from `docs\minimap-frame.webp` and prints the ring, slot and panel constants the
-Services, Minimap Panel and Tracker Panel modules need.
+Services, Minimap Panel and Tracker Panel modules need. `Tools\make_soft_shade.py` builds
+`Media\Textures\SoftShade.tga`, the soft band behind text (`MelloUI.Shade`, Core/Shade.lua: the
+notice, the zone text, nameplate names, Route's Text Shade), and `Tools\make_kit_shadows.py`
+builds `Media\Textures\KitShadows.tga`, a blurred copy of a kit piece's own shape laid under it
+(`Kit:Shadow`: the nameplates' Whole plate shade, the World Marker's gem `deco/gem_large`). Both
+are white with a soft alpha, tinted in game with a palette colour (innerPanel by default).
 
 ## Forever client tables
 
@@ -665,6 +834,15 @@ function M:OnSettingChanged(key, value, db) end -- when an option changes
 
 Settings are stored per module in the `MelloUIDB` saved variable (account wide).
 
+Where the module shows up is said in the same call, never in a hand list (the header of
+`Core/Core.lua` has every field): `icon` and `flavour` for its page header, `group` for its
+entry in the settings window's side list ("The look", "Quests and travel", "Chat and sound" or
+"Frames and bars"; no group, no entry) and `navOrder` for its place in that group, `role` for
+what the installer's setups do with it ("core", "look", "feature", "adds" or "replaces"), and
+for a feature folded under UI Modifications `tweak = { label, desc, order }` (a row on its
+tabs). A window the reskin dresses gives `window = { label, desc, tab = "Windows" | "HUD", ... }`
+(`docs/WINDOW-RULES.md`, section 6).
+
 ## Notes on the Forever client
 
 - Interface version is `16001` (1.60.1). The addon directory is `_classic_beta_`.
@@ -680,3 +858,6 @@ Settings are stored per module in the `MelloUIDB` saved variable (account wide).
 - Mask textures do not apply to `Line` textures; clip lines yourself.
 - New files listed in the TOC (Lua, XML, data) need a full client restart; edits to existing
   files only need a `/reload`.
+- Saved variables are saved and loaded as usual, but can arrive a few seconds after
+  `PLAYER_LOGIN`: Core and Route keep checking for them for a while and adopt them when they
+  come. The macro backup (`Core\Backup.lua`) restores the settings only when they are missing.

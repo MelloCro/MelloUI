@@ -22,7 +22,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 	desc = "Hide the micro menu and bag bar, and scale the floating combat text.",
 	icon = "Interface\\Icons\\INV_Misc_Wrench_01",
 	flavour = "Small knobs with a big effect. Hide what you never click, scale what you never see.",
-	group = "Frames and bars",
+	role = "adds",
 	tweak = { label = "Tweaks", desc = "", order = 15, always = true },
 	keep = { "savedWorldTextScale", "menuTipShown" },   -- the player's own text scale to give back, a one-time tip: never in a profile
 	defaults = {
@@ -32,6 +32,12 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		hideMinimapCoords = true,
 		worldTextScale = 1,
 		chatNotices = true,
+		-- the on-screen notice's (Core/Notice.lua reads them, Tweaks on or off)
+		noticeOnScreen = true,
+		noticeToChat = false,
+		noticeOutline = false,
+		noticeSounds = true,
+		zoneTextShade = true,   -- the game's zone text in the notice's look (Core/Notice.lua too)
 		menuTipShown = false,
 	},
 	options = {
@@ -47,6 +53,19 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "header", name = "Chat" },
 		{ type = "toggle", key = "chatNotices", name = "Chat Notices",
 		  desc = "Lines MelloUI writes to chat on its own: a learned dungeon entrance, settings restored from the backup, hints. Replies to slash commands always show." },
+		{ type = "header", name = "Notices" },
+		{ type = "toggle", key = "noticeOnScreen", name = "On-screen Notices",
+		  desc = "One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Unlock the Windows to move it." },
+		{ type = "toggle", key = "noticeToChat", parent = "noticeOnScreen", name = "Send To Chat Instead",
+		  desc = "Write these lines in the chat instead of showing them on the screen. They follow Chat Notices there." },
+		{ type = "toggle", key = "noticeSounds", parent = "noticeOnScreen", name = "Notice Sounds",
+		  desc = "A short chime with each notice: the map's tracking sound for a new destination, a softer one when you arrive." },
+		{ type = "toggle", key = "zoneTextShade", name = "Zone Text Shade",
+		  desc = "The zone name the game shows when you enter a new area, with its subzone and PvP lines, in the notice's look: a soft dark shade behind each line and no outline (Outlined Text adds it back). The game's colours and sizes stay. Off: the game's own look." },
+		-- (not under On-screen Notices: it sets the zone text's outline too,
+		-- which shows with the notices off)
+		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",
+		  desc = "Draw the on-screen notice's and the zone text's lines with an outline. Off: soft text on a dark shade." },
 		{ type = "header", name = "Combat Text" },
 		{ type = "slider", key = "worldTextScale", name = "World Text Scale", min = 0.5, max = 3, step = 0.1,
 		  format = function(v) return string.format("%.1fx", v) end,

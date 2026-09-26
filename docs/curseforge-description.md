@@ -1,6 +1,6 @@
 # **MelloUI – Voiced NPCs, a Full UI Reskin & a Map That Actually Helps**
 
-_Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch: a fresh install has nothing on, so you only get what you pick. Type `/mello` to start._
+_Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is a switch, and on your first login an installer sets it up the way you pick: the full look, only the features, only the look, or step by step. Type `/mello` for the settings any time._
 
 ## What's in it
 
@@ -19,8 +19,9 @@ Download the release zip and copy every folder in it, `MelloUI` and `MelloUI_Com
 
 ## Good to know
 
-*   Your settings are backed up in hidden account macros (`MelloUI1`, `MelloUI2`…). Keep those.
+*   Your settings are also backed up in hidden account macros (`MelloUI1`, `MelloUI2`…). Keep those.
 *   After an update, restart the game once. `/reload` isn't enough for new files.
+*   Changed your mind? `/mello install` runs the installer again.
 
 ## Links
 

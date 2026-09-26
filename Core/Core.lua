@@ -35,12 +35,20 @@
 -- Modifications). All optional, kept on the module as given. UI
 -- Modifications builds its rows, the plain grabs and the switches' defaults
 -- from `window` and `tweak` (UIModifications.lua's header); the
--- configurator's tile reads `icon` and `flavour`; `group`, `area` and the
+-- configurator reads `icon` and `flavour` (its tiles) and `group` and
+-- `navOrder` (its side list); the installer reads `role`; `area` and the
 -- window's `addon` and `firstOpen` are facts nothing reads yet:
 --   icon             texture path (or file id) of its tile
 --   flavour          one line under its title
---   group            the configurator's section ("Home", "The look",
---                    "Quests and travel", "Chat and sound", "Frames and bars")
+--   group            the side-list group its entry sits in: "The look",
+--                    "Quests and travel", "Chat and sound" or "Frames and
+--                    bars" (Home and Profiles are the configurator's own
+--                    pages). A module shown in the configurator is a page
+--                    entry; a hidden one a shortcut to its qol_ switch on UI
+--                    Modifications' tabs. No group: no entry (a folded
+--                    feature is found on UI Modifications' tabs only)
+--   navOrder         a number: its place in that group, 1 first; entries
+--                    without one come after, in the order they registered
 --   window           a window (or HUD part) the reskin dresses: { label, desc,
 --                    tab = "Windows" | "HUD", order = n (rows with one lead
 --                    their tab, lowest first), switch = "<UI Modifications
@@ -48,15 +56,25 @@
 --                    the Quest Tracker's questTrackerKit), frames = { frame
 --                    names }, addon = "Blizzard_..." (loaded on demand),
 --                    plainGrab = true (a plain grab while the windows are
---                    unlocked), firstOpen = true (dressed on its first show) }
+--                    unlocked), firstOpen = true (dressed on its first show),
+--                    include = true | { keys } (its own options laid out
+--                    under its row, indented and live only while it is on;
+--                    { keys }: only those, in that order) }
 --   tweak            a feature folded under UI Modifications: { label, desc,
 --                    order = n (as window's), off = true (off until switched
 --                    on), always = true (no switch: its rows each switch one
 --                    thing) }
 --   area             an own window's look switch: { key = "questTracker",
 --                    follows = nil | "<module whose switch it follows>" }
--- One of the wrong type goes to the error handler and is left off the
--- module; the module itself still registers.
+--   role             what the installer's setups do with it: "core" (UI
+--                    Modifications, the switchboard), "look" (restyles the
+--                    game's art, fonts or sounds), "feature" (MelloUI's own
+--                    tools), "adds" (adds information or automation to the
+--                    game's UI without restyling it), "replaces" (replaces or
+--                    restyles a game part). A hidden kit panel (it carries
+--                    `window`) needs none: it is look.
+-- One of the wrong type (or a role not in that list) goes to the error
+-- handler and is left off the module; the module itself still registers.
 -- MelloUI:ModulesInOrder() lists the modules in the order they registered.
 --------------------------------------------------------------------------------
 
@@ -187,6 +205,100 @@ function Safe.Call(obj, method, ...)
 	return Checked(pcall(fn, obj, ...))
 end
 
+-- The screen as a player names it: its size in pixels and its aspect ratio
+-- ("32:9", "21:9", "16:9", "16:10", "3:2", "4:3", "5:4": the nearest one,
+-- and no label when none is within 4 %, as a triple screen or a 32:10), from
+-- GetPhysicalScreenSize read through Safe.Number. One helper for the
+-- configurator's Your setup and the installer's Screen step. Returns width,
+-- height, label (nil when none is close); nothing while the client does not
+-- say. Makes no table.
+function MelloUI:ScreenInfo()
+	if not GetPhysicalScreenSize then
+		return nil
+	end
+	local ok, w, h = pcall(GetPhysicalScreenSize)
+	if not ok then
+		return nil
+	end
+	w, h = Safe.Number(w), Safe.Number(h)
+	if not (w and h and w > 0 and h > 0) then
+		return nil
+	end
+	-- (the nearest ratio: each bound is half way between two neighbours;
+	-- "21:9" as the screens sold under it measure, 2560 x 1080 and 3440 x
+	-- 1440, about 2.37)
+	local ratio = w / h
+	local label, target
+	if ratio >= 2.96 then
+		label, target = "32:9", 32 / 9
+	elseif ratio >= 2.07 then
+		label, target = "21:9", 2.37
+	elseif ratio >= 1.689 then
+		label, target = "16:9", 16 / 9
+	elseif ratio >= 1.55 then
+		label, target = "16:10", 1.6
+	elseif ratio >= 1.417 then
+		label, target = "3:2", 1.5
+	elseif ratio >= 1.29 then
+		label, target = "4:3", 4 / 3
+	else
+		label, target = "5:4", 1.25
+	end
+	local off = ratio / target - 1
+	if off > 0.04 or off < -0.04 then
+		label = nil   -- (nothing close: no label rather than a wrong one)
+	end
+	return w, h, label
+end
+
+-- The screen as the texts show it: "3440 × 1440 (21:9)" (no label: the size
+-- alone), and the aspect as a word ("21:9", else "2.39:1"); nil while
+-- ScreenInfo says nothing. Made again only when the size changes: the one
+-- formatter for the configurator's Your setup and the installer's lines.
+do
+	local memo = { w = false, h = false, text = nil, ratio = nil }
+	function MelloUI:ScreenText()
+		local w, h, label = self:ScreenInfo()
+		if not w then
+			return nil
+		end
+		if memo.w ~= w or memo.h ~= h then
+			memo.w, memo.h = w, h
+			local size = string.format("%d \195\151 %d", math.floor(w + 0.5), math.floor(h + 0.5))
+			memo.text = label and (size .. " (" .. label .. ")") or size
+			memo.ratio = label or string.format("%.2f:1", w / h)
+		end
+		return memo.text, memo.ratio
+	end
+end
+
+-- Two reads MelloUI's own engines share (the installer, its window, the Edit
+-- Mode layout; one reader each, plain functions a file binds once):
+--   MelloUI.InCombat()      in combat (the game's lockdown)
+--   MelloUI.EditModeOpen()  Edit Mode open, read only: its manager shown, or
+--                           still active while a game panel hides it for a
+--                           moment (its own flag: it leaves Edit Mode, and
+--                           tells so, only on a real exit)
+function MelloUI.InCombat()
+	return InCombatLockdown and InCombatLockdown() and true or false
+end
+
+function MelloUI.EditModeOpen()
+	local manager = EditModeManagerFrame
+	if type(manager) ~= "table" or type(manager.IsShown) ~= "function" then
+		return false
+	end
+	local active = manager.editModeActive
+	if not Safe.IsSecret(active) and active == true then
+		return true
+	end
+	local ok, shown = pcall(manager.IsShown, manager)
+	if not ok or Safe.IsSecret(shown) then
+		return false
+	end
+	return shown and true or false
+end
+
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
@@ -198,6 +310,13 @@ local PREFIX = "|cff9b8cffMello|rUI: "
 -- be selected and copied, so a dump travels as text instead of screenshots.
 local LOG_MAX = 2000
 local log = {}
+
+-- MelloUI.printHold: while this counter is above 0, printed lines go to the
+-- log only (/mellolog), not to the chat. The installer holds them while it
+-- applies a setup, so a new player's chat gets its one summary line instead
+-- of each module's own ("Font Style: ...", "Custom Sounds switched on ...").
+-- Whoever raises it lowers it again, also on an error.
+MelloUI.printHold = 0
 
 -- A secret value (this client) prints as "[secret]": a format with one
 -- secret argument would make the whole message secret and unindexable.
@@ -228,7 +347,10 @@ function MelloUI:Print(msg, ...)
 		end
 	end
 	msg = tostring(Printable(msg))
-	print(PREFIX .. msg)
+	local hold = MelloUI.printHold
+	if not (type(hold) == "number" and hold > 0) then
+		print(PREFIX .. msg)
+	end
 	log[#log + 1] = (msg:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 	if #log > LOG_MAX then
 		table.remove(log, 1)
@@ -288,8 +410,19 @@ end
 --   "scale"        reason                  "uiscale" | "editmode" (Kit's watcher)
 --   "editmode"     entering                Edit Mode entered (true) / left
 --   "shell"        window                  a kit window shell was built
---   "palette"      -                       the Kit Colours changed
+--   "palette"      -                       MelloUI.Palette or the Kit Colours changed
+--                                          (fired after both are in place; a new
+--                                          palette is a new table)
 --   "column"       -                       the column under the minimap re-laid
+--   "installer"    what, ...               the installer (Core/Installer.lua):
+--                    "installed", setupKey, needsReload   a setup went in
+--                    "countdown", seconds, paused, why    the Keep countdown
+--                    "kept", needsReload                  Keep pressed
+--                    "reverted", reason, reloadOwed       back to 'Before
+--                                          install' (reason "button",
+--                                          "timeout" or "error")
+--                    "revertFailed", reason, why          it could not be
+--                                          put back (the restore point stays)
 --------------------------------------------------------------------------------
 
 -- the settings backup through the bus's Batch: held there, scheduled once at
@@ -492,6 +625,8 @@ end
 --                       "menu_open", "menu_close", "menu_button" (the game
 --                       menu's), "window_open", "window_close", "tick" (the
 --                       chat's scroll button), "waypoint_set", "waypoint_clear"
+--     the notice's:     "notice_track", "notice_arrive", "notice_learn",
+--                       "notice_fail" (MelloUI:Announce, on the Master channel)
 -- Every MelloUI window plays its UI sounds through here, never PlaySound
 -- itself (audit, 2026-09-24: Dynamic UI, Voice Over, the Quest List and the
 -- mover each called it directly; Tools/lint/check_panels.py holds it).
@@ -519,6 +654,12 @@ do
 		tick           = { kit = "U_CHAT_SCROLL_BUTTON" },
 		waypoint_set   = { kit = "UI_MAP_WAYPOINT_CLICK_TO_PLACE", alt = "IG_MAINMENU_OPTION_CHECKBOX_ON" },
 		waypoint_clear = { kit = "UI_MAP_WAYPOINT_REMOVE", alt = "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
+		-- the on-screen notice's chimes (Core/Notice.lua): Route's own from
+		-- before, on the Master channel as they were
+		notice_track   = { kit = "UI_MAP_WAYPOINT_SUPER_TRACK_ON", alt = "UI_MAP_WAYPOINT_CLICK_TO_PLACE", channel = "Master" },
+		notice_arrive  = { kit = "UI_MAP_WAYPOINT_SUPER_TRACK_OFF", alt = "IG_QUEST_LIST_COMPLETE", channel = "Master" },
+		notice_learn   = { kit = "UI_MAP_WAYPOINT_CLICK_TO_PLACE", alt = "IG_MAINMENU_OPTION_CHECKBOX_ON", channel = "Master" },
+		notice_fail    = { kit = "UI_MAP_WAYPOINT_REMOVE", alt = "IG_QUEST_LOG_ABANDON_QUEST", channel = "Master" },
 	}
 	for _, sound in pairs(SOUNDS) do
 		if sound.file then
@@ -542,7 +683,9 @@ do
 			end
 		end
 		local kit = SOUNDKIT and (SOUNDKIT[sound.kit] or (sound.alt and SOUNDKIT[sound.alt]))
-		if kit then
+		if kit and sound.channel then
+			PlaySound(kit, sound.channel)
+		elseif kit then
 			PlaySound(kit)
 		end
 	end
@@ -594,6 +737,8 @@ end
 --   MelloUI:ResetMover(entryOrFrame)   forgets its place, calls its reset,
 --                                      then its default
 --   MelloUI:MoverEntries()             the entries, in registration order
+--   MelloUI:WindowsUnlocked()          true while the windows are unlocked
+--                                      (the provider says so; none: false)
 --   MelloUI:SetMoverProvider(provider)
 --       provider:Attach(entry) is called for every entry, now and later. At
 --       a drag start on a handle, provider:DragStart(entry) is asked first:
@@ -1144,6 +1289,10 @@ do
 		return entries
 	end
 
+	function MelloUI:WindowsUnlocked()
+		return Unlocked()
+	end
+
 	function MelloUI:ResetMover(target)
 		-- a registered frame, or its entry
 		local entry = byFrame[target]
@@ -1326,10 +1475,17 @@ function MelloUI:Notice(msg, ...)
 end
 
 -- One-time hint after the update that moved the settings out of Options > AddOns.
--- The flag lives in the Tweaks settings so the macro backup keeps it.
+-- The flag lives in the Tweaks settings so the macro backup keeps it. It
+-- yields to the installer (its window shows, its countdown runs, or its
+-- first-login check has not decided yet): the installer marks the tip shown
+-- when it opens, and its Done page says where the settings live.
 function MelloUI:ShowMenuButtonTip()
 	local tweaks = self.db and self.db.modules and self.db.modules.Tweaks
 	if not tweaks or tweaks.menuTipShown then
+		return
+	end
+	local installer = self.Installer
+	if type(installer) == "table" and type(installer.Busy) == "function" and installer:Busy() then
 		return
 	end
 	tweaks.menuTipShown = true
@@ -1378,7 +1534,9 @@ end
 -- the modules as registered (MelloUI:ModulesInOrder), and the types of the
 -- registry's own fields (see the header): checked, kept as given
 MelloUI.moduleList = {}
-local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table", tweak = "table", area = "table" }
+local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table", tweak = "table", area = "table",
+	role = "string", navOrder = "number" }
+local ROLES = { core = true, look = true, feature = true, adds = true, replaces = true }
 
 function MelloUI:RegisterModule(name, module)
 	assert(type(name) == "string" and name ~= "", "MelloUI:RegisterModule requires a name")
@@ -1404,6 +1562,10 @@ function MelloUI:RegisterModule(name, module)
 			Report("MelloUI module '" .. name .. "': " .. field .. " must be a " .. kind)
 			module[field] = nil
 		end
+	end
+	if module.role ~= nil and not ROLES[module.role] then
+		Report("MelloUI module '" .. name .. "': role must be core, look, feature, adds or replaces")
+		module.role = nil
 	end
 	if module.enabledByDefault == nil then
 		module.enabledByDefault = true
@@ -1599,6 +1761,19 @@ function MelloUI:AdoptSavedVariables(stage)
 				self.db.profiles[name] = text
 			end
 		end
+		-- (a baked copy carried over stays known as one: it follows a newer
+		-- baked text, see Profiles)
+		if type(temp.profilesShipped) == "table" then
+			local record = type(self.db.profilesShipped) == "table" and self.db.profilesShipped or {}
+			for name, text in pairs(temp.profilesShipped) do
+				if self.db.profiles[name] == text and record[name] == nil then
+					record[name] = text
+				end
+			end
+			if next(record) ~= nil then
+				self.db.profilesShipped = record
+			end
+		end
 		if self.db.defaultProfile == nil then
 			self.db.defaultProfile = temp.defaultProfile
 		end
@@ -1650,9 +1825,20 @@ function MelloUI:AdoptSavedVariables(stage)
 	return false
 end
 
--- After a (late) adoption, modules that are already running must re-read
--- their settings.
-function MelloUI:RestartModules()
+-- Runs fn(self) with restartingModules set, and puts the outer value back
+-- even when fn raises (the error goes on after it): a flag left set would
+-- keep the reskin's own reactions out for the rest of the session.
+local function WhileRestarting(self, fn)
+	local outer = self.restartingModules
+	self.restartingModules = true
+	local ok, err = pcall(fn, self)
+	self.restartingModules = outer
+	if not ok then
+		error(err, 0)
+	end
+end
+
+local function RestartEach(self)
 	for _, module in self:IterateModules() do
 		if module.isEnabled then
 			local db = self:GetModuleDB(module.name)
@@ -1660,6 +1846,15 @@ function MelloUI:RestartModules()
 			SafeCall(module, "OnEnable", db)
 		end
 	end
+end
+
+-- After a (late) adoption, modules that are already running must re-read
+-- their settings.
+-- (restartingModules while it runs: a module's own reaction to a switch --
+-- UI Modifications' reskin bringing Custom Sounds and the Edit Mode layout --
+-- is the player's switch only, never a restart's or a profile load's)
+function MelloUI:RestartModules()
+	WhileRestarting(self, RestartEach)
 	if self.RefreshConfig then
 		self:RefreshConfig()
 	end
@@ -1730,7 +1925,7 @@ end
 -- A profile is the settings serialised the way the macro backup does it
 -- (only values that differ from the defaults). Profiles live in
 -- MelloUIDB.profiles; Tools\bake_routes.py bakes them into Media\Profiles.lua
--- (MelloUI_Profiles) so they survive this client's saved variable handling,
+-- (MelloUI_Profiles) so they ship with the addon,
 -- and the one marked default is applied on a fresh install, that is when no
 -- setting differs from the defaults after login.
 --------------------------------------------------------------------------------
@@ -1766,18 +1961,39 @@ function MelloUI:FreshProfileText()
 	return table.concat(parts, ";")
 end
 
+-- the baked text copied into the player's list, recorded (db.profilesShipped)
+local function RecordShipped(db, name, text)
+	if type(db.profilesShipped) ~= "table" then
+		db.profilesShipped = {}
+	end
+	db.profilesShipped[name] = text
+end
+
+-- The player's profiles, the baked ones (MelloUI_Profiles) copied in while
+-- the name is free. db.profilesShipped[name] records the baked text copied,
+-- so a copy the player never changed follows a newer baked text (a release's
+-- new "MelloUI"); a copy they saved over, or an older copy that was never
+-- recorded, stays theirs.
 function MelloUI:Profiles()
-	self.db.profiles = self.db.profiles or {}
-	if type(MelloUI_Profiles) == "table" then
-		if type(MelloUI_Profiles.profiles) == "table" then
-			for name, text in pairs(MelloUI_Profiles.profiles) do
-				if self.db.profiles[name] == nil and type(text) == "string" then
-					self.db.profiles[name] = text
+	local db = self.db
+	db.profiles = db.profiles or {}
+	local profiles = db.profiles
+	local baked = type(MelloUI_Profiles) == "table" and MelloUI_Profiles.profiles
+	if type(baked) == "table" then
+		for name, text in pairs(baked) do
+			if type(text) == "string" and name ~= self.FRESH_PROFILE then
+				local have = profiles[name]
+				local copied = type(db.profilesShipped) == "table" and db.profilesShipped[name] or nil
+				if have == nil or (copied ~= nil and have == copied and have ~= text) then
+					profiles[name] = text
+					RecordShipped(db, name, text)
+				elseif have == text and copied ~= text then
+					RecordShipped(db, name, text)   -- (a copy equal to the baked text follows it from now on)
 				end
 			end
 		end
 	end
-	self.db.profiles[self.FRESH_PROFILE] = self:FreshProfileText()
+	profiles[self.FRESH_PROFILE] = self:FreshProfileText()
 	if self.db.defaultProfile == nil then
 		self.db.defaultProfile = self.FRESH_PROFILE
 	end
@@ -1801,8 +2017,8 @@ end
 -- string held the sharer's character IDs, and a layoutApplied in it kept
 -- the importer's reskin from ever placing its layout. Loading a profile
 -- leaves them as they are: it used to wipe every character's flight points.
--- The macro backup still writes them: it is what brings them back after a
--- restart.
+-- The macro backup still writes them: it brings them back, with the rest,
+-- should the saved variables ever be missing.
 function MelloUI:IsPersonalKey(moduleName, key)
 	local module = self.modules[moduleName]
 	local keep = module and module.keep
@@ -1879,6 +2095,28 @@ end
 -- keys stay as they are, whatever the text holds (IsPersonalKey). The
 -- tables are emptied in place: a module holding its db (Route's cached
 -- flight points read from it) keeps reading the same one.
+-- The modules UI Modifications drives (hidden) are its to switch, never the
+-- profile's flags: their flags were cleared with the rest (so each would
+-- read as its enabledByDefault), and an old text may carry one ("!DarkMode"
+-- lands in the flags, Dark Mode's switch being off until switched on). The
+-- umbrella switched on or off by the load drives them from its OnEnable /
+-- OnDisable; one off before and after is obeyed as at login (InitModule's
+-- applyWhenDisabled), so what it drives stays off (a load with UI
+-- Modifications off left Dark Mode and every panel running, 2026-09-26).
+local function SwitchForProfile(self)
+	for name, module in self:IterateModules() do
+		if not module.hidden then
+			local want = self:IsModuleEnabled(name)
+			if want ~= (module.isEnabled or false) then
+				self:SetModuleEnabled(name, want)
+			elseif not want and module.applyWhenDisabled then
+				SafeCall(module, "OnDisable", self:GetModuleDB(name))
+			end
+		end
+	end
+	self:RestartModules()
+end
+
 function MelloUI:ApplySettingsText(text)
 	for name, module in self:IterateModules() do
 		local db = self:GetModuleDB(name)
@@ -1894,13 +2132,9 @@ function MelloUI:ApplySettingsText(text)
 	end
 	local applied = self:DeserializeSettings(StripPersonal(self, text))
 	if self.initialized then
-		for name, module in self:IterateModules() do
-			local want = self:IsModuleEnabled(name)
-			if want ~= (module.isEnabled or false) then
-				self:SetModuleEnabled(name, want)
-			end
-		end
-		self:RestartModules()
+		-- (a module's switch here is the profile's, not the player's: the
+		-- reskin's own reactions stay out, as in RestartModules)
+		WhileRestarting(self, SwitchForProfile)
 		if self.RefreshConfig then
 			self:RefreshConfig()
 		end
@@ -2040,8 +2274,8 @@ function MelloUI:LoadProfile(name)
 	return true
 end
 
--- Nothing configured at all (fresh install, or nothing came back from the
--- saved variables and the macro backup): apply the default profile.
+-- Nothing configured at all (a fresh install, or the saved variables missing
+-- and the macro backup empty): apply the default profile.
 function MelloUI:ApplyDefaultProfileIfFresh()
 	if self:SerializeSettings() ~= "" then
 		return false
@@ -2051,8 +2285,8 @@ function MelloUI:ApplyDefaultProfileIfFresh()
 	if not name or type(profiles[name]) ~= "string" then
 		return false
 	end
-	-- as a loaded one: its personal keys never land (the baked 'MelloUI'
-	-- carries a borrowed chat setting that would stand in for the player's own)
+	-- as a loaded one: its personal keys never land (a profile saved before
+	-- they were left out could carry one that would stand in for the player's own)
 	self:DeserializeSettings(StripPersonal(self, profiles[name]))
 	self.db.activeProfile = name
 	self.profileAppliedAtLogin = name
@@ -2095,9 +2329,9 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 				end
 			end
 		end
-		if self:ApplyDefaultProfileIfFresh() then
-			self:Notice("No settings found; the default profile '%s' was applied.", tostring(self.db.activeProfile))
-		end
+		-- (no line for it: a new player gets the installer a few seconds in,
+		-- Core/Installer.lua's one login check)
+		self:ApplyDefaultProfileIfFresh()
 		self.initialized = true
 		-- the modules come up in TOC order; a module that drives others
 		-- (UI Modifications) must not pull them forward out of that order

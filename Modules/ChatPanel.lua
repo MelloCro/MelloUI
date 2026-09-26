@@ -9,8 +9,10 @@
 --   CH1: the single rail around the window's body in place of the eight
 --   border pieces, as regions of the chat frame in their BORDER layer; the
 --   body is the list-box stone in place of the game's flat black, at the
---   alpha slider's value and held there (no brightening under the mouse);
---   the rail is always at full alpha.
+--   alpha slider's value and held there (no brightening under the mouse;
+--   the Chat module's Background Opacity sets that value for every window,
+--   through the game's own function, with Chat Tweaks off too); the rail is
+--   always at full alpha.
 --   NO CHAT FADE (user, 2026-09-21): the tabs, the side button frame, the
 --   edit box and the minimized tabs are held at full alpha too.
 --   CT2: the tabs on TB6 (the single rail with the stone card, lit while
@@ -124,6 +126,9 @@ end
 -- Edit Mode's size and place; only its drawn backdrop reaches further.
 local GROW_SIDE, GROW_TOP, GROW_BOTTOM = 22, 5, 4
 local grown = setmetatable({}, { __mode = "k" })
+-- [chat window] = the holds of its stones (its body and its button column):
+-- the one hold each, re-run after the game's FCF_SetWindowAlpha
+local holds = setmetatable({}, { __mode = "k" })
 
 local function BackdropRect(cf, background)
 	local rect = grown[background]
@@ -194,6 +199,12 @@ local function StoneBackground(cf, background, frame)
 		end
 	end
 	hooksecurefunc(background, "SetAlpha", Hold)
+	local list = holds[cf]
+	if not list then
+		list = {}
+		holds[cf] = list
+	end
+	list[#list + 1] = Hold
 	local enable, disable = rep.onEnable, rep.onDisable
 	rep.onEnable = function(...)
 		if enable then
@@ -229,18 +240,17 @@ local function StoneBackground(cf, background, frame)
 		dim:Hide()
 	end
 	-- the slider: FCF_SetWindowAlpha sets the textures first and remembers
-	-- the value after, so the hold is re-run once the value is known
+	-- the value after, so the holds are re-run once the value is known --
+	-- every stone of that window, its button column's too (only the body's
+	-- was, so the column kept the old value until the next fade). The Chat
+	-- module's Background Opacity comes through this same function.
 	if not skin.alphaHooked and FCF_SetWindowAlpha then
 		skin.alphaHooked = true
 		hooksecurefunc("FCF_SetWindowAlpha", function(f)
-			local bg = f and _G[f:GetName() .. "Background"]
-			if bg and bg.melloRep and bg.melloRep.tex and active then
-				bg.melloRep.tex:SetAlpha(f.oldAlpha or 1)
-				if bg.melloRep.sheet then
-					bg.melloRep.sheet:SetAlpha(f.oldAlpha or 1)
-				end
-				if bg.melloRep.dim then
-					bg.melloRep.dim:SetAlpha(f.oldAlpha or 1)
+			local held = active and f and holds[f]
+			if held then
+				for i = 1, #held do
+					held[i]()
 				end
 			end
 		end)
@@ -560,6 +570,17 @@ local function SkinAll()
 	end
 end
 
+-- The Chat module's Background Opacity while Chat Tweaks is off (user,
+-- 2026-09-26: with Reskin only a new character's stone and parchment stayed
+-- at the game's faint default): Chat's own code, run from here; it does
+-- nothing while Chat Tweaks is on, which applies it alone
+local function ChatAlpha(on)
+	local chat = MelloUI:GetModule("Chat")
+	if chat and chat.ReskinAlpha then
+		chat.ReskinAlpha(on)
+	end
+end
+
 local function Build()
 	if skin then
 		return
@@ -576,9 +597,14 @@ local function Build()
 	end
 	for _, fn in ipairs({ "FCF_OpenNewWindow", "FCF_OpenTemporaryWindow", "FCF_DockFrame", "FCF_UnDockFrame" }) do
 		if _G[fn] then
+			-- (a whisper window: the opacity too, as Chat Tweaks does it)
+			local whisper = fn == "FCF_OpenTemporaryWindow"
 			hooksecurefunc(fn, function()
 				if active then
 					SkinAll()
+					if whisper then
+						ChatAlpha(true)
+					end
 				end
 			end)
 		end
@@ -633,10 +659,14 @@ function M:OnEnable(db)
 	if ChatFrame1 then
 		Activate()
 	end
+	if active then
+		ChatAlpha(true)
+	end
 end
 
 function M:OnDisable()
 	Deactivate()
+	ChatAlpha(false)
 end
 
 --------------------------------------------------------------------------------

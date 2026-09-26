@@ -27,7 +27,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	desc = "Large crowd-control icon above the name and a quest marker on enemy nameplates.",
 	icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
 	flavour = "Know who is stunned, who is your quest target, and who is about to be a problem.",
-	group = "Frames and bars",
+	group = "Frames and bars", navOrder = 2,
+	role = "adds",
 	tweak = { label = "Nameplate Icons", desc = "A large crowd-control icon above the name and a quest marker on enemies you still need. Works with or without the reskin.", order = 4 },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)

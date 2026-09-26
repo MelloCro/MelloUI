@@ -18,6 +18,9 @@
 --   auras stay the game's (the Nameplates tweak module keeps working).
 -- Every size under a nameplate reads secret on this client: the brackets
 -- are fitted from NamePlateSetupOptions, never from the frames.
+-- Name Shade (0.13.7): a soft dark band behind the name (MelloUI.Shade), as
+-- long as the name itself, or on "Whole plate" also a shadow partner under
+-- each piece (Kit:Shadow).
 -- Covers the group "nameplates". /npdump [frames|reps] (the target's plate).
 --------------------------------------------------------------------------------
 
@@ -27,13 +30,24 @@ local Perf = MelloUI.Perf:Scope("NameplatePanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
 
+local SHADE_STRENGTH = 0.7   -- the Shade Strength slider's default
+
 local M = MelloUI:RegisterModule("NameplatePanel", {
 	title = "Nameplate Kit",
 	desc = "Nameplates dressed in the painted kit: the health bar in the bracket, the cast bar on the single rail, the level circle on the orb.",
-	window = { label = "Nameplates", desc = "Nameplate health and cast bars in the kit.", tab = "HUD" },
+	-- (include: the options below sit under this row on UI Modifications' HUD tab)
+	window = { label = "Nameplates", desc = "Nameplate health and cast bars in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = {},
-	options = {},
+	defaults = { nameShade = "name", shadeStrength = SHADE_STRENGTH },
+	options = {
+		{ type = "dropdown", key = "nameShade", name = "Name Shade", values = {
+			{ value = "name", label = "Name" },
+			{ value = "plate", label = "Whole plate" },
+			{ value = "off", label = "Off" },
+		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar. Off: no shade." },
+		{ type = "slider", key = "shadeStrength", name = "Shade Strength", min = 0.3, max = 0.9, step = 0.05, percent = true,
+		  desc = "How dark the shade behind the names (and the plates) is." },
+	},
 })
 
 local skin = nil
@@ -41,6 +55,7 @@ local active = false
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
 
 local function Replace(region, opts)
 	if not region then
@@ -218,6 +233,364 @@ local function FitLevelOrb(uf)
 		ratio = sb / so
 	end
 	tex:SetSize(h * ratio, h * ratio)
+	-- the orb's scale (UI units per painted px), for its shadow partner's
+	-- reach on "Whole plate" (the name shade, below)
+	local piece = tex.kitName and Kit:Piece(tex.kitName)
+	if piece and piece.w > 0 then
+		uf.melloOrbScale = h * ratio / piece.w
+		Kit:ShadowFit(tex, uf.melloOrbScale)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The name shade (user, 2026-09-25, sketches A and B): the shared soft band
+-- (MelloUI.Shade) behind each plate's name and, on "Whole plate", a shadow
+-- partner (Kit:Shadow) under each of the plate's own pieces -- the bracket's
+-- caps and rail, the level orb -- so the shade follows the plate's shape:
+-- round the orb, a diamond round each end gem, a soft rim along the rail.
+-- Made once per plate frame when the kit first dresses it (or when the
+-- setting first asks for them; a crowd's a few plates a frame) and kept as
+-- the plates recycle. Anchors only:
+-- every size under a plate reads secret. The band hugs the name's own text
+-- (user, 2026-09-25: "cant it scale according to the name length?"): it
+-- hangs on the name's MEASURE, an unseen copy of the name's text with no
+-- width of its own, so the engine sizes it to the text. The name's text is
+-- handed on as it is (a secret one too: nothing is read or compared), and
+-- the name's own anchors, justify and truncation stay the game's. Where the
+-- measure cannot take a name, the band lies on the name's whole span as
+-- before (CentreName: the left cap to the level orb's outer edge). The band
+-- follows the name's own show and hide (hooked); the partners follow their
+-- pieces. No script, no per-frame work: the strength is one pass over the
+-- dressed plates, on the setting.
+--------------------------------------------------------------------------------
+
+local SHADE_MODES = { name = true, plate = true, off = true }
+-- the band on the name's line, in plate units: its full middle 4 past the
+-- text's own ends (never inside them, so a band is never narrower than its
+-- two soft ends), its soft ends 20 long, 5 above and below the text (the
+-- band's own top and bottom fade: the text's edges at about 80 %); under all
+-- that the name's frame draws (BACKGROUND -8). SPAN_PAD_X: on the name's
+-- whole span (the measure refused a name), its middle 10 inside the span's
+-- ends, so the soft ends reach 10 past the gem and the orb
+local BAND = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8 }
+local BAND_PAD_X, BAND_PAD_Y, SPAN_PAD_X = 4, 5, -10
+local PARTNER = { colour = "innerPanel" }   -- Kit:Shadow's options (read once: one table for all)
+
+local function ShadeMode()
+	local mode = M.db and M.db.nameShade
+	return SHADE_MODES[mode] and mode or "name"
+end
+
+local function ShadeStrength()
+	local v = M.db and Num(M.db.shadeStrength)
+	if not v then
+		return SHADE_STRENGTH
+	end
+	return v < 0 and 0 or v > 1 and 1 or v
+end
+
+-- the band shows while the kit is on, the shade wanted, the name on the
+-- bracket (centred by us: not inside the bar) and shown by the game
+local function SyncBand(uf)
+	local band = uf.melloNameShade
+	if not band then
+		return
+	end
+	local name = uf.name
+	local want = (active and ShadeMode() ~= "off" and name.melloCentred ~= nil and name.melloNameShown) and true or false
+	if band:IsShown() ~= want then
+		band:SetShown(want)
+	end
+end
+
+local function NameShown(name, shown)
+	name.melloNameShown = shown
+	local uf = name.melloShadeOf
+	if uf then
+		SyncBand(uf)
+	end
+end
+local OnNameShow = Perf.Shared("Show on a nameplate's name (its shade)", function(name)
+	NameShown(name, true)
+end)
+local OnNameHide = Perf.Shared("Hide on a nameplate's name (its shade)", function(name)
+	NameShown(name, false)
+end)
+local OnNameSetShown = Perf.Shared("SetShown on a nameplate's name (its shade)", function(name, shown)
+	-- (asked for secret first: a secret answer counts as shown)
+	NameShown(name, Secret(shown) or (shown and true or false))
+end)
+
+-- The measure's font as the name's: its font object, then its face, size
+-- and flags and its text scale (the game sets the name's height per plate
+-- size). Values are handed on as they come; a secret or refused one leaves
+-- the font object's
+local function CopyFont(name, measure)
+	local okO, object = pcall(name.GetFontObject, name)
+	if okO and not Secret(object) and type(object) == "table" then
+		pcall(measure.SetFontObject, measure, object)
+	end
+	local okF, face, size, flags = pcall(name.GetFont, name)
+	if okF and not Secret(face) and type(face) == "string" then
+		pcall(measure.SetFont, measure, face, size, flags)
+	end
+	local okS, scale = pcall(name.GetTextScale, name)
+	if okS and not Secret(scale) and type(scale) == "number" then
+		pcall(measure.SetTextScale, measure, scale)
+	end
+end
+
+-- the band on the measure (true: it holds the name's text) or on the name's
+-- whole span (false: it refused the name); re-anchored on a change only
+local function HangBand(uf, measured)
+	local band = uf.melloNameShade
+	if not band or uf.melloNameMeasured == measured then
+		return
+	end
+	uf.melloNameMeasured = measured
+	if measured then
+		band:Anchor(uf.melloNameMeasure, BAND_PAD_X, BAND_PAD_Y)
+	else
+		band:Anchor(uf.name, SPAN_PAD_X, BAND_PAD_Y)
+	end
+end
+
+-- the name's text handed on to its measure, untouched (the call answers
+-- whether the measure took it: a client that refuses a secret text there
+-- leaves that plate's band on the span)
+local OnNameText = Perf.Shared("SetText on a nameplate's name (its shade's measure)", function(name, text)
+	local uf = name.melloShadeOf
+	local measure = uf and uf.melloNameMeasure
+	if measure then
+		HangBand(uf, (pcall(measure.SetText, measure, text)))
+	end
+end)
+local OnNameFormatted = Perf.Shared("SetFormattedText on a nameplate's name (its shade's measure)", function(name, ...)
+	local uf = name.melloShadeOf
+	local measure = uf and uf.melloNameMeasure
+	if measure then
+		HangBand(uf, (pcall(measure.SetFormattedText, measure, ...)))
+	end
+end)
+
+-- a new font (Font Style, the faces): each measure takes its name's again
+-- (one listener, taken with the first measure)
+local fontsHeard = false
+local function RefontAll()
+	if not skin then
+		return
+	end
+	for _, uf in ipairs(skin.plates) do
+		local measure = uf.melloNameMeasure
+		if measure then
+			CopyFont(uf.name, measure)
+		end
+	end
+end
+
+-- the name's measure: an unseen font string with no width of its own, on
+-- one point at the name's centre (the name is centred on the span while the
+-- band shows), sized by the engine to the text (none where the name's frame
+-- makes no text: the band then lies on the span)
+local function MakeMeasure(uf, host, name)
+	if type(host.CreateFontString) ~= "function" then
+		return nil
+	end
+	local measure = host:CreateFontString(nil, "BACKGROUND")
+	measure:SetAlpha(0)
+	measure:SetWordWrap(false)
+	measure:SetPoint("CENTER", name, "CENTER", 0, 0)
+	CopyFont(name, measure)
+	uf.melloNameMeasure = measure
+	if not fontsHeard then
+		fontsHeard = true
+		MelloUI:On("fonts", RefontAll, "Nameplate name shade")
+	end
+	return measure
+end
+
+local function MakeBand(uf)
+	local name = uf.name
+	if not name then
+		return nil
+	end
+	-- on the frame that draws the name, under it: over the world, under the bar
+	local okP, host = pcall(name.GetParent, name)
+	if not okP or type(host) ~= "table" or not host.CreateTexture then
+		host = uf
+	end
+	BAND.alpha = ShadeStrength()
+	local band = MelloUI.Shade:Band(host, BAND)
+	if not band then
+		return nil
+	end
+	uf.melloNameShade = band
+	local measure = MakeMeasure(uf, host, name)
+	local okT, text = pcall(name.GetText, name)
+	HangBand(uf, measure and okT and (pcall(measure.SetText, measure, text)) or false)
+	local okS, shown = pcall(name.IsShown, name)
+	name.melloNameShown = not okS or Secret(shown) or (shown and true or false)
+	name.melloShadeOf = uf
+	hooksecurefunc(name, "Show", OnNameShow)
+	hooksecurefunc(name, "Hide", OnNameHide)
+	hooksecurefunc(name, "SetShown", OnNameSetShown)
+	hooksecurefunc(name, "SetText", OnNameText)
+	hooksecurefunc(name, "SetFormattedText", OnNameFormatted)
+	return band
+end
+
+-- the plate's pieces that get a partner: the bracket's caps and rail, the orb
+local function PlatePieces(uf)
+	local strip = uf.melloBracket and uf.melloBracket.strip
+	local orb = uf.melloLevelOrb and uf.melloLevelOrb.tex
+	if strip then
+		return strip.capL, strip.mid, strip.capR, orb
+	end
+	return nil, nil, nil, orb
+end
+
+-- does the plate still lack a part its mode wants (the band; on Whole plate
+-- a partner)?
+local function Lacks(uf, mode)
+	if mode == "off" then
+		return false
+	end
+	if uf.name and not uf.melloNameShade then
+		return true
+	end
+	if mode ~= "plate" then
+		return false
+	end
+	local capL, mid, capR, orb = PlatePieces(uf)
+	return (capL and not capL.kitShadow) or (mid and not mid.kitShadow) or (capR and not capR.kitShadow)
+		or (orb and not orb.kitShadow) or false
+end
+
+-- A crowd's shades are made a few plates a frame (review, 2026-09-25: the
+-- first Whole plate, or a reload among many plates, made every plate's band
+-- and partners -- up to 7 textures and 19 hooks a plate -- in one frame): at
+-- most MAKE_PER_FRAME plates get theirs made in one frame (GetTime: the
+-- frame's time), the rest by a sweep over the dressed plates on the next
+-- frames (Kit:NextFrame), each plate tried once a sweep. Showing, hiding and
+-- the strength of what is there already are never held back.
+local MAKE_PER_FRAME = 6
+local madeAt, madeCount = nil, 0
+local sweepFrom = nil   -- the first dressed plate (its index) the sweep takes up
+local ShadeSweep        -- (below)
+
+local function MayMake()
+	local now = GetTime()
+	if now ~= madeAt then
+		madeAt, madeCount = now, 0
+	end
+	if madeCount >= MAKE_PER_FRAME then
+		return false
+	end
+	madeCount = madeCount + 1
+	return true
+end
+
+local function Hold(uf)
+	local at = uf.melloShadeAt
+	if at and (not sweepFrom or at < sweepFrom) then
+		sweepFrom = at
+	end
+	Kit:NextFrame(skin, ShadeSweep)
+end
+
+local function ShadePiece(tex, plate, strength, make, scale)
+	if not tex then
+		return
+	end
+	if tex.kitShadow then
+		Kit:ShadowSet(tex, plate, strength)
+	elseif plate and make then
+		PARTNER.alpha, PARTNER.scale = strength or ShadeStrength(), scale
+		Kit:Shadow(tex, PARTNER)
+	end
+end
+
+-- The plate's shade as the setting has it: the band made when first wanted,
+-- the partners when Whole plate is first chosen (this frame, or held for the
+-- sweep). `strength`: set it on what is there already too (the setting);
+-- nil leaves it
+local function ShadePlate(uf, strength)
+	local mode = ShadeMode()
+	local make = true
+	if Lacks(uf, mode) and not MayMake() then
+		make = false
+		Hold(uf)
+	end
+	local band = uf.melloNameShade
+	if band then
+		if strength then
+			band:SetStrength(strength)
+		end
+	elseif make and mode ~= "off" then
+		MakeBand(uf)
+	end
+	SyncBand(uf)
+	local plate = mode == "plate"
+	local capL, mid, capR, orb = PlatePieces(uf)
+	ShadePiece(capL, plate, strength, make)
+	ShadePiece(mid, plate, strength, make)
+	ShadePiece(capR, plate, strength, make)
+	ShadePiece(orb, plate, strength, make, uf.melloOrbScale)
+end
+
+-- the held plates, from the first one on, until this frame's making is spent
+-- again (a plate still lacking after its try -- no sheet before the restart
+-- -- is not tried again by this sweep)
+function ShadeSweep(key)
+	local from = sweepFrom
+	sweepFrom = nil
+	if key ~= skin or not from or not active then
+		return   -- (off: Activate goes over every plate again)
+	end
+	local plates, mode, strength = skin.plates, ShadeMode(), ShadeStrength()
+	for n = from, #plates do
+		local uf = plates[n]
+		if Lacks(uf, mode) then
+			ShadePlate(uf, strength)
+			if sweepFrom then
+				return   -- (held again: on from there the next frame)
+			end
+		end
+	end
+end
+
+-- after the game laid the plate out: the partners' reach at the bracket's
+-- new scale (the orb's: FitLevelOrb), the measure in the name's font (the
+-- game sets it with the layout), the band shown or not
+local function FitShade(uf)
+	local capL, mid, capR = PlatePieces(uf)
+	if capL and capL.kitShadow then
+		Kit:ShadowFit(capL)
+		Kit:ShadowFit(mid)
+		Kit:ShadowFit(capR)
+	end
+	local measure = uf.melloNameMeasure
+	if measure then
+		CopyFont(uf.name, measure)
+	end
+	SyncBand(uf)
+end
+
+local function ShadeAll(strength)
+	if not skin then
+		return
+	end
+	for _, uf in ipairs(skin.plates) do
+		ShadePlate(uf, strength)
+	end
+end
+
+-- the Nameplate Border swapped live (Kit:ApplyBorder -> rep:SetBar, then
+-- this): the new bracket's partners at its new scale
+local function OnBarChanged(rep)
+	if rep.melloPlate then
+		FitShade(rep.melloPlate)
+	end
 end
 
 local function SkinUnitFrame(uf)
@@ -238,6 +611,7 @@ local function SkinUnitFrame(uf)
 			fitHeight = Option("healthBarHeight", 12), alsoFade = { hb.deselectedOverlay } })
 		if rep then
 			uf.melloBracket = rep
+			rep.melloPlate, rep.onBarChanged = uf, OnBarChanged
 			-- the target / focus highlight: the game's white outline around the
 			-- bar (selectedBorder) is faded, and the bracket's own iron shines
 			-- gold instead while the game shows it (user, 2026-09-21)
@@ -289,6 +663,7 @@ local function SkinUnitFrame(uf)
 				rep:Refit()
 				CentreName(uf, hb, rep)
 				FitLevelOrb(uf)
+				FitShade(uf)
 			end)
 			local enable = rep.onEnable
 			rep.onEnable = function(...)
@@ -297,6 +672,7 @@ local function SkinUnitFrame(uf)
 				end
 				InsetHealthBar(hb, rep)
 				CentreName(uf, hb, rep)
+				FitShade(uf)
 				-- the bracket's left edge, for what stands beside the bar (the
 				-- Nameplates module's quest icon goes left of the gem cap)
 				uf.melloBracketLeft = rep.strip and rep.strip.capL or nil
@@ -308,6 +684,7 @@ local function SkinUnitFrame(uf)
 				end
 				uf.melloBracketLeft = nil
 				UncentreName(uf)
+				SyncBand(uf)
 				local points = hb.melloInset
 				if points then
 					hb.melloInset = nil
@@ -340,6 +717,11 @@ local function SkinUnitFrame(uf)
 			Replace(lf.selectedBorder, { as = "ui-hud-nameplates-levelindicator-selected" })
 		end
 	end
+	-- the name shade, made with the dress (or a frame or so later in a
+	-- crowd: ShadePlate) and kept as the plate recycles
+	skin.plates[#skin.plates + 1] = uf
+	uf.melloShadeAt = #skin.plates
+	ShadePlate(uf)
 end
 
 local function SkinAll()
@@ -360,7 +742,7 @@ local function Build()
 	if skin then
 		return
 	end
-	skin = { reps = {}, followers = {} }
+	skin = { reps = {}, followers = {}, plates = {} }
 	SkinAll()
 	if NamePlateDriverFrame then
 		hooksecurefunc(NamePlateDriverFrame, "OnNamePlateAdded", function(driver, unit)
@@ -380,12 +762,18 @@ local function Activate()
 		return
 	end
 	active = true
+	local built = skin ~= nil
 	Build()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
 	SkinAll()
 	Kit:Cover("nameplates")
+	if built then
+		-- the shade as the settings are now (a profile load switches the
+		-- module off and on again; a new build made it so already)
+		ShadeAll(ShadeStrength())
+	end
 end
 
 local function Deactivate()
@@ -406,6 +794,14 @@ end
 
 function M:OnDisable()
 	Deactivate()
+end
+
+function M:OnSettingChanged(key)
+	if key == "nameShade" then
+		ShadeAll(nil)
+	elseif key == "shadeStrength" then
+		ShadeAll(ShadeStrength())
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -446,6 +842,10 @@ SlashCmdList.MELLONPDUMP = function(msg)
 				(okT and not Secret(text)) and string.format("%q", tostring(text)) or "(secret)", Centre(name), n,
 				tostring(okP and not Secret(point) and point or "?"), relName,
 				hb and Centre(hb) or "?", tostring(okJ and not Secret(justify) and justify or "?"), tostring(name.melloCentred ~= nil))
+			if uf.melloNameShade then
+				MelloUI:Print("name shade: %s, %s", uf.melloNameShade:IsShown() and "shown" or "hidden",
+					uf.melloNameMeasured and "as long as the name" or "along the whole bracket")
+			end
 			for _, rep in ipairs(skin and skin.reps or {}) do
 				if hb and rep.region == hb.bgTexture and rep.strip and rep.strip.capL then
 					local okL, cl = pcall(rep.strip.capL.GetLeft, rep.strip.capL)

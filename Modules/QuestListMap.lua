@@ -300,8 +300,12 @@ function PinMethods:OnMouseClickAction(button)
 		if data.tracked then
 			QL.ClearWaypoint()
 			MelloUI:PlayUISound("waypoint_clear")
-		elseif QL.SetWaypoint(data.quests[1].row, data.quests[1].state == "ready") then
-			MelloUI:PlayUISound("waypoint_set")
+		else
+			-- (through Route its notice chimes instead: one sound, not two)
+			local set, chimed = QL.SetWaypoint(data.quests[1].row, data.quests[1].state == "ready")
+			if set and not chimed then
+				MelloUI:PlayUISound("waypoint_set")
+			end
 		end
 		QL.Panel:Update()
 		QL.RefreshPins()
@@ -312,8 +316,9 @@ function PinMethods:OnMouseClickAction(button)
 			local mapID = map and QL.Plain(map:GetMapID())
 			local icon = data.raid and "|A:Raid:16:16|a " or "|A:Dungeon:16:16|a "
 			local what = data.raid and "raid" or "dungeon"
-			if QL.RouteToPoint(mapID, data.x, data.y, icon .. data.name,
-				string.format("%sTracking the %s entrance of %s, {dist} away", icon, what, data.name)) then
+			local set, chimed = QL.RouteToPoint(mapID, data.x, data.y, icon .. data.name,
+				string.format("%sTracking the %s entrance of %s, {dist} away", icon, what, data.name))
+			if set and not chimed then   -- (Route's notice chimes when it can)
 				MelloUI:PlayUISound("waypoint_set")
 			end
 		elseif data.dungeonID ~= 0 and QL.byDungeon and QL.byDungeon[data.dungeonID] then
@@ -327,18 +332,17 @@ function PinMethods:OnMouseClickAction(button)
 			local done, total = DungeonProgress(data.dungeonID)
 			local icon = data.raid and "|A:Raid:18:18|a " or "|A:Dungeon:18:18|a "
 			local text = string.format("%s%s: %d quests listed, %d done", icon, data.name, total or 0, done or 0)
-			local R = MelloUI.Route
-			if R and R.isEnabled and R.Notify then
-				R:Notify(text, "silent")
-			end
+			-- MelloUI's one on-screen notice (Core/Notice.lua), Route on or off
+			MelloUI:Announce(text, "silent")
 		end
 	elseif self.kind == "transport" and not IsShiftKeyDown() then
 		local map = self:GetMap()
 		local mapID = map and QL.Plain(map:GetMapID())
 		local what = data.kind == 2 and "zeppelin" or "boat"
 		local icon = "|A:TaxiNode_Neutral:16:16|a "
-		if QL.RouteToPoint(mapID, data.x, data.y, icon .. data.label,
-			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label)) then
+		local set, chimed = QL.RouteToPoint(mapID, data.x, data.y, icon .. data.label,
+			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label))
+		if set and not chimed then   -- (Route's notice chimes when it can)
 			MelloUI:PlayUISound("waypoint_set")
 		end
 	elseif self.kind == "transport" then

@@ -1,12 +1,14 @@
 --------------------------------------------------------------------------------
 -- MelloUI - Backup store
 --
--- The Forever beta client (build 1.60.1.69913) does not reliably load addon
--- SavedVariables from disk: it keeps them in memory across /reload, but drops
--- them when the client restarts or when addon files change. Account macros
+-- The settings live in the MelloUIDB saved variable, which the game saves and
+-- brings back like any addon's. This store is the safety net for a login
+-- where they are missing (the file lost or reset, another PC): account macros
 -- are stored server-side and always come back, so every non-default setting
 -- is mirrored into a few hidden account macros named "MelloUI1", "MelloUI2",
--- ... and restored from there whenever the saved variables are missing.
+-- ... and restored from there only when the saved variables are missing.
+-- (It was made when the Forever beta client did not read its saved variables
+-- back after a restart; the client was fixed on 2026-09-25.)
 --
 -- Format (one line, ';' separated, values type-prefixed):
 --   Module.key=b1      boolean true      Module.key=b0   boolean false
@@ -20,18 +22,22 @@ local Perf = MelloUI.Perf:Scope("Backup")
 local C_Timer = Perf.C_Timer
 
 -- true pauses the store: nothing is read from or written to the macros, the
--- settings run from the defaults / the baked profile and the macros keep what
--- they hold (used 2026-09-22 to test whether the client reads its saved
--- variables again: it still does not, build 1.60.1.69913).
+-- settings run from the saved variables (the defaults / the baked profile
+-- when those are missing) and the macros keep what they hold (used
+-- 2026-09-22 to test whether the client read its saved variables back; it
+-- did not until the client's fix of 2026-09-25).
 local BACKUP_PAUSED = false
 
 local MACRO_PREFIX = "MelloUI"
 local MACRO_ICON = 134400        -- INV_Misc_QuestionMark
 local CHUNK_SIZE = 250           -- macro bodies are limited to 255 characters
--- 16 account macros = 4000 characters (the account holds 120). Eight were
+-- 24 account macros = 6000 characters (the account holds 120). Eight were
 -- full at 1985 characters with a dozen moved windows (user, 2026-09-22: every
--- change past the limit was refused and the old settings came back on reload).
-local MAX_CHUNKS = 16
+-- change past the limit was refused and the old settings came back on reload);
+-- 16 held 3568 of 4000 on the user's own setup of 2026-09-24, personal keys
+-- and window places included (user, 2026-09-25, with the installer: 8 more).
+-- Only as many as the text needs are made.
+local MAX_CHUNKS = 24
 local WRITE_DELAY = 3
 
 --------------------------------------------------------------------------------
@@ -193,7 +199,36 @@ function MelloUI:SerializeSettings()
 	return table.concat(parts, ";")
 end
 
-function MelloUI:DeserializeSettings(text)
+-- a module's settings inside `into` (DeserializeSettings), its defaults laid
+-- on as GetModuleDB lays them on the live ones
+local function IntoDB(self, into, name)
+	local t = into.modules[name]
+	if type(t) ~= "table" then
+		t = {}
+		into.modules[name] = t
+	end
+	return self.ApplyDefaults(t, self.modules[name].defaults)
+end
+
+-- Reads serialised settings. into (optional): a state { modules = { [module]
+-- = settings }, enabled = { [module] = flag } } read into instead of the
+-- live db, which is then not touched (the installer's targets): each module's
+-- table there with its defaults laid on, and the flags in into.enabled; an
+-- old flag of a module UI Modifications drives lands on the umbrella's
+-- switch there too. Returns how many entries were applied.
+function MelloUI:DeserializeSettings(text, into)
+	if type(text) ~= "string" then
+		return 0
+	end
+	local enabled
+	if into ~= nil then
+		assert(type(into) == "table", "MelloUI:DeserializeSettings(text, into): into must be a table")
+		into.modules = type(into.modules) == "table" and into.modules or {}
+		into.enabled = type(into.enabled) == "table" and into.enabled or {}
+		enabled = into.enabled
+	else
+		enabled = self.db.enabled
+	end
 	local applied = 0
 	for entry in text:gmatch("[^;]+") do
 		local key, value = entry:match("^([^=]+)=(.*)$")
@@ -211,16 +246,18 @@ function MelloUI:DeserializeSettings(text)
 						(umbrella.defaults[flagName] ~= nil and flagName)
 						or (umbrella.defaults["qol_" .. flagName] ~= nil and ("qol_" .. flagName)) or nil)
 					if switch and flagName ~= "UIModifications" then
-						self:GetModuleDB("UIModifications")[switch] = decoded
+						local db = into and IntoDB(self, into, "UIModifications") or self:GetModuleDB("UIModifications")
+						db[switch] = decoded
 						applied = applied + 1
 					elseif self.modules[flagName] then
-						self.db.enabled[flagName] = decoded
+						enabled[flagName] = decoded
 						applied = applied + 1
 					end
 				else
 					local moduleName, settingKey = key:match("^([^.]+)%.(.+)$")
 					if moduleName and self.modules[moduleName] then
-						self:GetModuleDB(moduleName)[settingKey] = decoded
+						local db = into and IntoDB(self, into, moduleName) or self:GetModuleDB(moduleName)
+						db[settingKey] = decoded
 						applied = applied + 1
 					end
 				end
@@ -420,6 +457,60 @@ function MelloUI:ScheduleBackup(reason)
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- Settled: the real settings are in place
+--
+-- The saved variables can load late (or be missing), and the account
+-- macros (the backup) can arrive after PLAYER_LOGIN, so for a few
+-- seconds an existing player can look new. MelloUI:SettingsSettled() is true
+-- once one of these held (and stays true for the session: a backup this
+-- session writes later never makes it false again):
+--   - the real saved variables were adopted (not dbIsTemporary);
+--   - the settings came back from the macro backup (restoredFromBackup);
+--   - the macros are in (UPDATE_MACROS came, or the account holds some) and
+--     the backup they hold is empty, or is this session's own write.
+-- The installer's login check and its Install wait for it: a new player is
+-- only known to be new once it holds.
+--------------------------------------------------------------------------------
+
+local Num = MelloUI.Safe.Number
+local settled = false
+local macrosIn = false
+
+-- the account's macros are loaded: UPDATE_MACROS came, or it holds some
+local function MacrosIn()
+	if not macrosIn then
+		local ok, numAccount = pcall(GetNumMacros)
+		numAccount = ok and Num(numAccount) or nil
+		if numAccount and numAccount > 0 then
+			macrosIn = true
+		end
+	end
+	return macrosIn
+end
+
+function MelloUI:SettingsSettled()
+	if settled then
+		return true
+	end
+	if not self.db then
+		return false
+	end
+	if not self.dbIsTemporary or self.restoredFromBackup then
+		settled = true
+	elseif MacrosAvailable() and MacrosIn() then
+		if BACKUP_PAUSED then
+			settled = true   -- (the store brings nothing while paused)
+		else
+			local ok, text = pcall(ReadChunks)
+			if ok and type(text) == "string" and (text == "" or text == lastWritten) then
+				settled = true
+			end
+		end
+	end
+	return settled
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("UPDATE_MACROS")
@@ -430,6 +521,7 @@ Perf.SetScript(frame, "OnEvent", function(_, event)
 			MelloUI:WriteBackup("after combat")
 		end
 	elseif event == "UPDATE_MACROS" then
+		macrosIn = true
 		-- Macros can arrive after PLAYER_LOGIN. If the saved variables were
 		-- missing and nothing was restored yet, try again now.
 		if MelloUI.initialized and MelloUI.dbIsTemporary and not MelloUI.restoredFromBackup then
@@ -437,6 +529,11 @@ Perf.SetScript(frame, "OnEvent", function(_, event)
 				MelloUI:RestartModules()
 				MelloUI:Notice("Settings restored from the macro backup.")
 			end
+		end
+		-- (settled while the macros say what they hold: before a write of
+		-- this session's could make a backup of its own)
+		if not settled then
+			MelloUI:SettingsSettled()
 		end
 	end
 end)

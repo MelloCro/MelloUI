@@ -42,9 +42,11 @@ Options: --jobs N (processes), --effort 0..3 (encoder search; 2 default),
          looser or stricter one costs; not for ship).
 
 What stays TGA in option d (and so in Media):
-  STAY_TGA   the bar fills (paths saved in profiles, 4-8 KB) and LogoIcon
-             (the TOC's IconTexture and Core/Config.lua name it LogoIcon.tga):
-             their masters' bytes, as they are
+  STAY_TGA   the bar fills (paths saved in profiles, 4-8 KB), LogoIcon
+             (the TOC's IconTexture and Core/Config.lua name it LogoIcon.tga)
+             SoftShade (a smooth gradient, 32 KB) and KitShadows (the kit's
+             shadow partners, soft ramps; make_kit_shadows.py --gate): their
+             masters' bytes, as they are
   '.tga'     any file a Lua or TOC path names WITH '.tga' (the client then
              loads that file only): found by scanning the addon's Lua
              (lua_refs); a path built at run time is listed in DYNAMIC_PATHS,
@@ -203,6 +205,8 @@ TEX_SHOWN = [
     (r"^Textures/Masks/", 1.0, False, "masks: at least 512 units for 512 px"),
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)", 4.0, False, "bar fills: stretched along the bars"),
     (r"^Textures/Chat/", 4.0, False, "chat name band: stretched behind a name"),
+    (r"^Textures/SoftShade", 4.0, False, "soft shade band (Core/Shade.lua): stretched behind text"),
+    (r"^Textures/KitShadows", 4 * 26 / 64, False, "kit shadow partners (Kit:Shadow): a texel is 4 painted px, brackets shown at 26 per 64"),
     (r"^Textures/Route/", None, True, "route beam: any world map zoom"),
     (r"^Textures/Stone", None, False, "not referenced by any Lua file"),
 ]
@@ -238,6 +242,9 @@ DARK_WIN_MIN = 8              # ... and an area this many
 STAY_TGA = [
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)\.tga$", "bar fills: 4-8 KB, stretched along bars (565 banding), paths saved in profiles"),
     (r"^Textures/LogoIcon\.tga$", "addressed as LogoIcon.tga by Core/Config.lua and the TOC's IconTexture; 256 KB, loaded once"),
+    (r"^Textures/SoftShade\.tga$", "the soft shade (Core/Shade.lua): a 32 KB smooth alpha gradient stretched behind text; DXT bands it"),
+    (r"^Textures/KitShadows\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
+                                    "DXT5 bands them (make_kit_shadows.py --gate: 14 levels off, its limit 4)"),
 ]
 # Media paths the Lua builds at run time, which lua_refs cannot follow: the
 # file it is in, the known start of the path (Media-relative, no extension)

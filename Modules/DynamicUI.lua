@@ -629,6 +629,7 @@ local PARCHMENTS = {
 	{ "parchment_tooltip", "Tooltips" },
 	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")   -- (user, 2026-09-24: "Tooltip Parchment Option")
 }
+MelloUI.ParchmentAreas = PARCHMENTS   -- (read only: the installer's Fresh start lists the same areas, one list)
 local LAYOUT = {
 	{ module = "ActionBarPanel", key = "hidePageArrows", label = "Action bars: hide the page arrows" },
 	{ module = "MinimapPanel", key = "servicesMerge", label = "Square minimap: merge with the Services bar" },

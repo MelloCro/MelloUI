@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- MelloUI - Cooldown Timers
 --
--- OmniCC style countdown text on cooldown swipes: large outlined numbers that
+-- Countdown text on cooldown swipes: large outlined numbers that
 -- change colour and size with the time left (red when about to finish, yellow
 -- under a minute, dim white for minutes, grey for hours). Covers the action
 -- bars (including pet, stance and flyout buttons) and the aura / crowd control
@@ -20,10 +20,10 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local M = MelloUI:RegisterModule("CooldownText", {
 	title = "Cooldown Timers",
-	desc = "OmniCC style countdown numbers on action bar cooldowns and nameplate auras, coloured by time left.",
+	desc = "Large countdown numbers on action bar cooldowns and nameplate auras, coloured by time left.",
 	icon = "Interface\\Icons\\Spell_Nature_TimeStop",
 	flavour = "Countdowns on every cooldown, coloured by how long you still have to wait.",
-	group = "Frames and bars",
+	role = "adds",
 	tweak = { label = "Cooldown Timers", desc = "Countdown numbers on action bar cooldowns and nameplate auras, coloured by the time left.", order = 3 },
 	defaults = {
 		actionBars = true,
@@ -49,7 +49,7 @@ local M = MelloUI:RegisterModule("CooldownText", {
 })
 
 --------------------------------------------------------------------------------
--- Styles (OmniCC defaults)
+-- Styles (the usual countdown colours and sizes)
 --------------------------------------------------------------------------------
 
 local SOON = 5

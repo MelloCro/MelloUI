@@ -10,10 +10,11 @@
 -- graph from you to the waypoint (A*), with straight legs to reach the graph;
 -- where nothing has been learned yet, it is a straight line.
 --
--- Persistence: this client keeps saved variables only in memory across
--- /reload and drops them at restart, but it does write the file. The graph
--- is therefore saved as MelloUIRoutes and baked by Tools\bake_routes.py into
--- Media\RouteData.lua, which the addon loads like any other file.
+-- Persistence: what is learned is saved as MelloUIRoutes, which the game
+-- writes at logout and on /reload and brings back at login (it can arrive a
+-- few seconds late: AdoptSaved polls for it). Tools\bake_routes.py also bakes
+-- it into Media\RouteData.lua, which the addon loads like any other file, so
+-- the roads can ship to every player.
 --
 -- The traced roads and the quest objective places are the MelloUI_Companion
 -- addon's (loaded on demand, Core\Companions.lua), and the graph is built the
@@ -31,13 +32,16 @@ local M = MelloUI:RegisterModule("Route", {
 	desc = "Draws the way to your map waypoint on the world map and the minimap, along roads you have walked before.",
 	icon = "Interface\\Icons\\Ability_Tracking",
 	flavour = "A trail of gems from here to there, along the roads you have walked before.",
-	group = "Quests and travel",
+	group = "Quests and travel", navOrder = 2,
+	role = "feature",
 	keep = { "^flights_" },   -- each character's own flight points (CharFlightsKey): never in a profile, never wiped by one
 	enabledByDefault = true,
 	defaults = {
 		worldMap = true,
 		minimap = true,
 		distanceText = true,
+		travelTime = true,
+		textShade = true,
 		learn = true,
 		trackQuests = true,
 		trackFirstWatched = false,
@@ -64,6 +68,10 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "When nothing is super-tracked, follow the first quest in the objective tracker instead of showing nothing." },
 		{ type = "toggle", key = "distanceText", name = "Distance Under The Minimap",
 		  desc = "Show the remaining route length under the minimap (hidden while the arrow is shown)." },
+		{ type = "toggle", key = "travelTime", name = "Travel Time",
+		  desc = "About how long the rest of the way takes, beside the distance under the arrow and on the World Marker, from how fast you are moving (on foot or mounted). The tracking notice says it too, and arriving says how long the way took." },
+		{ type = "toggle", key = "textShade", name = "Text Shade",
+		  desc = "A soft dark shade behind the Direction Arrow and the World Marker (their distance and name lines, the arrow and the gem), so they read on bright ground." },
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
 		  desc = "An arrow that points along the route's next leg, with the distance and destination. Drag it to move it; /route arrow reset puts it back at the top centre." },
 		{ type = "slider", key = "arrowScale", parent = "arrow", name = "Arrow Size", min = 0.5, max = 2, step = 0.1 },
@@ -72,15 +80,15 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
 		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away. It fades as you arrive and hides while the place is off screen. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
-		{ type = "toggle", key = "notice", name = "Tracking Notice",
-		  desc = "A one-line notice in the upper third of the screen whenever something new is tracked, and when you arrive." },
-		{ type = "toggle", key = "noticeSound", parent = "notice", name = "Notice Sound",
-		  desc = "A short chime with the notice: the map's super-track sound for a new destination, a soft tick otherwise." },
+		{ type = "toggle", key = "notice", name = "Route Announces",
+		  desc = "Route's lines in the on-screen notice: the place you now track, and your arrival. How notices look, where they show and whether they play a sound is set with On-screen Notices, beside Chat Notices." },
+		{ type = "toggle", key = "noticeSound", parent = "notice", name = "Announce Sound",
+		  desc = "A short chime with Route's lines: the map's tracking sound for a new destination, a softer one when you arrive. Notice Sounds switches every notice's sound off." },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
 		  desc = "The route ends and the waypoint is cleared when you get this close." },
 		{ type = "header", name = "Learning" },
 		{ type = "toggle", key = "learn", name = "Learn Paths While Playing",
-		  desc = "Remember where you walk and fly so routes can follow real roads. What it learns is kept until you quit the game: this version of the game forgets it when it restarts (a /reload keeps it). /route shows how much has been learned." },
+		  desc = "Remember where you walk and fly so routes can follow real roads. What it learns is saved and kept from one session to the next. /route shows how much has been learned." },
 	},
 })
 
@@ -278,184 +286,50 @@ end
 -- had at that moment, so it never followed the Fonts module; the arrow's, the
 -- marker's and the minimap's texts rode on the game's font objects and so
 -- all took the interface face, the distances included. Each text now names
--- its role and the game font object it starts from: the Fonts module gives
--- the role's face, its size slider and the Outline, on top of the text's own
--- base size and flags, and calls back whenever any of them changes. Off, or
--- a role on "Keep the game's", a text keeps its own face exactly as before.
+-- its role and the game font object it starts from, and MelloUI:StyleFont
+-- (Fonts.lua, the one font path for MelloUI's own strings) gives it the
+-- role's face, its size slider and the Outline, on top of the text's own
+-- base size and flags, and again whenever any of them changes. Off, or a
+-- role on "Keep the game's", a text keeps its own face exactly as before.
+-- Asked at call time (the texts are made on first use); without the Fonts
+-- file a text keeps the font object it was made with.
 -- A table, not more locals: this file's main chunk is near Lua's limit.
 --------------------------------------------------------------------------------
 
 local RouteFont = {}
-do
-	local styled = {}   -- [fontString] = { role, object, size, flags }
-	local listening = false
-
-	local function Fonts()
-		local fonts = MelloUI:GetModule("Fonts")
-		return (fonts and fonts.FaceFor) and fonts or nil
-	end
-
-	-- The face, size and flags a text has without the Fonts module: its game
-	-- font object's own, with the text's own size and flags where it sets them
-	local function Base(entry, fonts)
-		local path, size, flags
-		if fonts and fonts.BaseFont then
-			path, size, flags = fonts:BaseFont(entry.object)
-		end
-		if not path then
-			local ok, p, s, f = pcall(entry.object.GetFont, entry.object)
-			if ok then
-				path, size, flags = p, s, f
-			end
-		end
-		return path, entry.size or tonumber(Plain(size)), entry.flags or flags or ""
-	end
-
-	local function Apply(fs, entry)
-		local fonts = Fonts()
-		local basePath, baseSize, baseFlags = Base(entry, fonts)
-		if not (basePath and baseSize) then
-			return
-		end
-		local path, factor, flags = basePath, 1, baseFlags
-		if fonts then
-			path, factor, flags = fonts:FaceFor(entry.role, basePath, baseFlags)
-		end
-		factor = tonumber(factor) or 1
-		-- the base size as it is at 100%, so the module off changes nothing
-		local size = baseSize
-		if math.abs(factor - 1) > 0.001 then
-			size = math.max(6, math.floor(baseSize * factor + 0.5))
-		end
-		-- a face the client cannot load (a font file gone) leaves the text on its own
-		local ok, set = pcall(fs.SetFont, fs, path or basePath, size, flags or "")
-		if not ok or set == false then
-			pcall(fs.SetFont, fs, basePath, size, flags or "")
-		end
-	end
-
-	function RouteFont.Refresh()
-		for fs, entry in pairs(styled) do
-			Apply(fs, entry)
-		end
-	end
-
-	-- fs follows the Fonts module's role ("fontText", "fontChat", ...), from
-	-- the game font object it was made with; size and flags, when given,
-	-- replace the object's own as the text's base.
-	function RouteFont.Style(fs, role, object, size, flags)
-		if not (fs and object) then
-			return
-		end
-		styled[fs] = { role = role, object = object, size = size, flags = flags }
-		-- the Fonts module loads first (MelloUI.toc), but ask only now: the
-		-- texts are made on first use, and one listener serves them all
-		if not listening then
-			local fonts = Fonts()
-			if fonts and fonts.OnFontsChanged then
-				listening = true
-				fonts:OnFontsChanged(RouteFont.Refresh)
-			end
-		end
-		Apply(fs, styled[fs])
+function RouteFont.Style(fs, role, object, size, flags, outline)
+	if MelloUI.StyleFont then
+		MelloUI:StyleFont(fs, role, object, size, flags, outline)
 	end
 end
 
 --------------------------------------------------------------------------------
 -- Tracking notice
 --
--- One line of large orange text in the upper third of the screen, held for a
--- few seconds and faded out, with a chime from the client's own sound kit.
--- Every module that sets a destination gets it through M:Notify.
+-- Route's lines (the place now tracked, the arrival) go to MelloUI's one
+-- on-screen notice (Core/Notice.lua, MelloUI:Announce), which holds, fades,
+-- colours and sounds them, keeps its place and follows the notice options
+-- (On-screen Notices and the rest, beside Chat Notices). Route Announces
+-- (`notice`) and Announce Sound (`noticeSound`) are Route's own say on top:
+-- whether its lines go there at all, and with a chime.
 --------------------------------------------------------------------------------
 
-local notice = nil
-local NOTICE_HOLD, NOTICE_FADE = 4, 1.5
-local SOUNDS = {
-	track = { "UI_MAP_WAYPOINT_SUPER_TRACK_ON", "UI_MAP_WAYPOINT_CLICK_TO_PLACE", "IG_QUEST_LIST_OPEN" },
-	fail = { "UI_MAP_WAYPOINT_REMOVE", "IG_QUEST_LOG_ABANDON_QUEST", "IG_MAINMENU_OPTION_CHECKBOX_OFF" },
-	learn = { "UI_MAP_WAYPOINT_CLICK_TO_PLACE", "IG_MAINMENU_OPTION_CHECKBOX_ON" },
-	arrive = { "UI_MAP_WAYPOINT_SUPER_TRACK_OFF", "IG_QUEST_LIST_COMPLETE", "IG_MAINMENU_OPTION_CHECKBOX_ON" },
-}
-
-local function EnsureNotice()
-	if notice then
-		return notice
-	end
-	notice = CreateFrame("Frame", "MelloUIRouteNotice", UIParent)
-	notice:SetSize(900, 40)
-	notice:SetPoint("TOP", UIParent, "TOP", 0, -180)
-	notice:SetFrameStrata("HIGH")
-	notice.text = notice:CreateFontString(nil, "OVERLAY")
-	local font = _G.GameFont_Gigantic or _G.NumberFont_Outline_Huge or _G.GameFontNormalHuge3 or _G.GameFontNormalHuge
-	if font then
-		notice.text:SetFontObject(font)
-		-- its own look (20, outlined) in the interface text's face and size:
-		-- the base is the object's face and the sizes are in its terms, which
-		-- the title faces' factors are not (they are set against Morpheus)
-		RouteFont.Style(notice.text, "fontText", font, 20, "OUTLINE")
-	end
-	notice.text:SetPoint("CENTER")
-	notice.text:SetWidth(900)
-	notice.text:SetJustifyH("CENTER")
-	notice.text:SetWordWrap(false)
-	notice.text:SetTextColor(1, 0.5, 0)
-	notice.text:SetShadowOffset(2, -2)
-	notice.text:SetShadowColor(0, 0, 0, 0.9)
-	notice:Hide()
-	notice.holds = 0
-	return notice
-end
-
--- Held by a timer, then faded out by the Anim engine, which ends the fade at
--- once under Reduce Motion (audit, 2026-09-24: its own OnUpdate ran the whole
--- five and a half seconds). Every notice starts one hold; the last one to
--- run out fades what is shown then.
-local function NoticeHide(frame)
-	frame:Hide()
-end
-local function NoticeFade()
-	notice.holds = notice.holds - 1
-	if notice.holds > 0 or not notice:IsShown() then
-		return
-	end
-	if MelloUI.Anim then
-		MelloUI.Anim:To(notice, "alpha", 0, NOTICE_FADE, "linear", NoticeHide)
-	else
-		notice:Hide()
-	end
-end
-
-local function PlayNotice(kind)
-	if kind == "silent" or not (M.db.noticeSound and PlaySound and SOUNDKIT) then
-		return
-	end
-	for _, name in ipairs(SOUNDS[kind] or SOUNDS.track) do
-		local id = SOUNDKIT[name]
-		if id then
-			local ok, played = pcall(PlaySound, id, "Master")
-			if ok and played ~= false then
-				return
-			end
-		end
-	end
-end
-
--- kind: "track" (new destination), "arrive", "learn", "fail", "silent" (no chime).
+-- kind: "track" (new destination, the default), "arrive", "learn", "fail",
+-- "info", "silent" (no chime).
 function M:Notify(text, kind)
 	if not M.db.notice then
 		return
 	end
-	local frame = EnsureNotice()
-	frame.text:SetText(text)
-	if MelloUI.Anim then
-		MelloUI.Anim:Stop(frame, "alpha")   -- one fading out comes back
-	end
-	frame:SetAlpha(1)
-	frame:Show()
-	frame.holds = frame.holds + 1
-	C_Timer.After(NOTICE_HOLD, NoticeFade)
-	PlayNotice(kind or "track")
+	MelloUI:Announce(text, kind or "track", not M.db.noticeSound)
+end
+
+-- Whether a destination set now is announced with a sound (Route on, Route
+-- Announces and Announce Sound, and the notice's own switches): a caller
+-- that routes for the player (the Quest List's pins) plays its own click
+-- sound only when not, so one chime sounds, not two
+function M:AnnounceSounds()
+	return (M.isEnabled and M.db.notice and MelloUI.AnnounceSounds
+		and MelloUI:AnnounceSounds("track", not M.db.noticeSound)) and true or false
 end
 
 -- Distance to the current destination for the notices: the route's length
@@ -962,7 +836,8 @@ end
 -- read as "everything usable"). A flight master's own map is the one place
 -- the client says which points are known: each time one opens, the known
 -- points (the current one and the reachable ones) are kept, per character,
--- as a Route setting, so the macro backup carries them across restarts.
+-- as a Route setting: saved with the settings, and in the macro backup too,
+-- which brings them back should the saved variables ever be missing.
 local charFlights = nil   -- { [nodeID] = true }, read once from the setting
 
 local function CharFlightsKey()
@@ -1172,6 +1047,7 @@ end
 --------------------------------------------------------------------------------
 
 local NodesNear, FindRoute, ForgetLearned   -- in a block: its helpers stay out of the main chunk's 200 locals
+local IsFlight   -- the block's rule for a learned flight link, which the travel time prices too
 
 do
 	-- Nodes grouped in 250-yard buckets per continent, built on first use and
@@ -1296,10 +1172,10 @@ do
 	local FLIGHT_LINK_MIN = 200   -- yards: a shorter link is never taken for a flight
 	local FLIGHT_END_REACH = 90   -- yards: a flight link's end lies this near its flight master
 
-	-- A link far quicker than walking is a flight (learned at a flight master,
-	-- maybe by another character)
-	local function IsFlight(node, o, cost)
-		local d = Dist(node[1], node[2], o[1], o[2])
+	-- A link of d yards far quicker than walking (cost seconds) is a flight
+	-- (learned at a flight master, maybe by another character). The one rule
+	-- for it: the travel time prices such a link by it too (Travel.LinkFlight).
+	IsFlight = function(d, cost)
 		return d > FLIGHT_LINK_MIN and cost < d / WALK * 0.5
 	end
 
@@ -1566,7 +1442,7 @@ do
 			for k, cost in pairs(links) do
 				-- a flight only between two flight points this character may use
 				local o = g[k]
-				if not (o and IsFlight(id, o, cost)) or (FlightEnd(cont, id) and FlightEnd(cont, o)) then
+				if not (o and IsFlight(Dist(id[1], id[2], o[1], o[2]), cost)) or (FlightEnd(cont, id) and FlightEnd(cont, o)) then
 					Relax(o or (cont .. "|" .. k), cont, cost)
 				end
 				degree = degree + 1
@@ -1827,17 +1703,366 @@ DestinationDistance = function()
 	return nil
 end
 
--- Say what is tracked now; `text` overrides the standard sentence.
+--------------------------------------------------------------------------------
+-- Travel time (user, 2026-09-25, for 0.13.7): about how long the rest of the
+-- way takes, beside the distance under the arrow and on the World Marker's
+-- gem ("1.2 km · about 2 min"), in the tracking notice, and how long the way
+-- took on arriving ("Arrived: Stormwind (2:48)"). Travel Time off: every
+-- text exactly as before.
+--
+-- The search prices a route in seconds: a walked or traced road at WALK
+-- yards a second (the run speed on foot), a flight at its flight time, a boat
+-- or zeppelin at BOAT_COST with the wait. The legs that join the graph carry
+-- factors on top (1.3 to 4) so that the roads win, which a time must not, so
+-- route.cost is a price, not a time. The estimate prices the route ahead the
+-- search's way without them: its flights and boats at their seconds, its
+-- ground yards at the player's own speed instead of WALK. That speed is
+-- measured once a second from the yards moved, over seconds of moving all
+-- through (a stop or a start within one spoils it), and smoothed (an
+-- exponential moving average); a new pace that holds for two measures in a
+-- row (mounting, dismounting, a faster mount) is taken at once. Before a
+-- measure, and after standing still a while, it is the game's run speed for
+-- the player (mounted or not), else WALK. Not shown while it cannot be trusted: no route, off the
+-- path, on a flight, or over three hours.
+-- Estimated at most once a second, from the arrow's tick (which runs only
+-- while something is routed); a text is made again only when what it shows
+-- changes. (One table: this file's main chunk is near Lua's 200 locals.)
+--------------------------------------------------------------------------------
+
+local Travel = {
+	EVERY = 1,              -- seconds between estimates
+	ALPHA = 0.35,           -- the smoothing: a new measure's share
+	STEP = 0.4,             -- a measure this far (a share) from the smoothed speed is a new pace
+	MOVING = 1,             -- yards a second: slower is standing
+	FASTEST = 60,           -- yards a second: faster is a jump (a portal, a loading screen)
+	FRESH = 10,             -- seconds: an older measure gives way to the run speed
+	LONGEST = 3 * 3600,     -- seconds: a longer estimate is not shown
+	HOUR = 3600,            -- a way that took this long gets no time on arrival
+	LOGIN_GRACE = 20,       -- seconds after the login's loading screen: a destination first seen then was there before
+	SEP = " \194\183 ",     -- " · " between the distance and the time
+	speed = nil, measuredAt = 0, steps = 0,   -- the smoothed speed, when it was last set, new-pace measures in a row
+	at = nil, cont = nil, x = 0, y = 0,       -- the last measure's time and place
+	still = false,          -- a tick since the last measure found the player where the one before did
+	tickX = nil, tickY = nil,                 -- the place at the last tick (the arrow's, 20 a second)
+	nextAt = 0,             -- when the next estimate is due
+	dest = nil,             -- the destination the minutes shown are for
+	minutes = nil,          -- shown: nil none, 0 under a minute, else whole minutes
+	pending = nil,          -- a change by one minute, taken when the next estimate agrees
+	suffix = "",            -- what follows the distance: "" or " · about 2 min"
+	loginAt = nil,          -- when Route came on in the login's pass (EnsureMarker), then when that loading screen ended
+	entered = false,        -- the login's loading screen has ended (its PLAYER_ENTERING_WORLD)
+}
+
+function Travel.Words(m)
+	if m < 1 then
+		return "under a minute"
+	elseif m < 60 then
+		return string.format("about %d min", m)
+	end
+	local h, rest = math.floor(m / 60), m % 60
+	if rest == 0 then
+		return string.format("about %d h", h)
+	end
+	return string.format("about %d h %d min", h, rest)
+end
+
+function Travel.OnTaxi()
+	local ok, on = pcall(UnitOnTaxi, "player")
+	return ok and Plain(on) and true or false
+end
+
+-- yards a second over the ground: the smoothed measure while fresh, else the
+-- game's run speed for the player (a mount's included), else WALK
+function Travel.Speed()
+	if Travel.speed and GetTime() - Travel.measuredAt < Travel.FRESH then
+		return Travel.speed
+	end
+	local unitSpeed = _G.GetUnitSpeed
+	if unitSpeed then
+		local ok, _, run = pcall(unitSpeed, "player")
+		run = ok and MelloUI.Safe.Number(run) or nil
+		if run and run > 0 then
+			return run
+		end
+	end
+	return WALK
+end
+
+-- One measure: the yards moved since the last one over the time between,
+-- taken only when the player moved all the while: a tick that found them
+-- where they were (standing, or starting or stopping within the second)
+-- spoils it, since its part-second pace is no pace (Travel.still). A measure
+-- not taken breaks a run of new-pace measures, and only a speed set counts
+-- as fresh. `measure` false (on a flight) starts the measures over.
+function Travel.Sample(now, cont, px, py, measure)
+	local at, v = Travel.at, nil
+	if measure and at and not Travel.still and Travel.cont == cont then
+		local dt = now - at
+		if dt >= 0.5 and dt <= 3 then
+			v = Dist(px, py, Travel.x, Travel.y) / dt
+			if v < Travel.MOVING or v > Travel.FASTEST then
+				v = nil   -- standing, or a jump (a portal, a loading screen)
+			end
+		end
+	end
+	Travel.still = false
+	if measure then
+		Travel.at, Travel.cont, Travel.x, Travel.y = now, cont, px, py
+	else
+		Travel.at = nil
+	end
+	if not v then
+		Travel.steps = 0
+		return
+	end
+	local s = Travel.speed
+	if not s or now - Travel.measuredAt >= Travel.FRESH then
+		s = v   -- the first measure, or the first for a long while: as it is
+	elseif math.abs(v - s) > s * Travel.STEP then
+		-- once is a stumble (a corner, a slope); twice running, a new pace
+		-- (mounting, dismounting)
+		local steps = Travel.steps + 1
+		if steps < 2 then
+			Travel.steps = steps
+			return
+		end
+		s = v
+	else
+		s = s + Travel.ALPHA * (v - s)
+	end
+	Travel.speed, Travel.measuredAt, Travel.steps = s, now, 0
+end
+
+-- A flight leg between two flight points ("T<id>"): its time from the flight
+-- network, else as a flight master's map prices one
+function Travel.FlightSeconds(a, b, d)
+	local ia, ib = a[5], b[5]
+	if type(ia) == "string" and type(ib) == "string" and taxis then
+		local ka, kb = ia:sub(2), ib:sub(2)
+		local t = taxis[tonumber(ka)] or taxis[ka]
+		local secs = t and (t.links[tonumber(kb)] or t.links[kb])
+		if type(secs) == "number" then
+			return secs
+		end
+	end
+	return d / FLIGHT + 5
+end
+
+-- A link of d yards between two graph nodes ("<cont>|<cell>") that is a
+-- flight learned at a flight master, by the search's own rule (IsFlight): its
+-- seconds; nil for a walked one. (A link too short to be a flight at any
+-- price is not looked up.)
+function Travel.LinkFlight(a, b, d)
+	local ia, ib = a[5], b[5]
+	if not IsFlight(d, 0) or type(ia) ~= "string" or type(ib) ~= "string" then
+		return nil
+	end
+	local c, ka = ia:match("^(%d+)|(.+)$")
+	local kb = ib:match("^%d+|(.+)$")
+	local g = c and kb and live.graphs[tonumber(c)]
+	local node = g and g[ka]
+	local cost = node and node[3][kb]
+	if type(cost) == "number" and IsFlight(d, cost) then
+		return cost
+	end
+	return nil
+end
+
+-- The route ahead of each of its points, summed from its end: G[j] the yards
+-- to cover on the ground from point j, F[j] the seconds of its flights and
+-- boats. Made once per route, at its first estimate (a new plan is a new
+-- route table).
+function Travel.Ahead(r)
+	local G, F = r.etaGround, r.etaFixed
+	if G then
+		return G, F
+	end
+	G, F = {}, {}
+	local points = r.points
+	local n = #points
+	G[n], F[n] = 0, 0
+	for j = n - 1, 1, -1 do
+		local a, b = points[j], points[j + 1]
+		local ground, fixed = 0, 0
+		if a[1] == b[1] then
+			local d = Dist(a[2], a[3], b[2], b[3])
+			if b[4] == "boat" then
+				fixed = BOAT_COST
+			elseif b[4] == "flight" then
+				fixed = Travel.FlightSeconds(a, b, d)
+			else
+				fixed = Travel.LinkFlight(a, b, d) or 0
+				if fixed == 0 then
+					ground = d
+				end
+			end
+		elseif b[4] == "boat" or b[4] == "flight" then
+			fixed = BOAT_COST   -- the crossing to another continent
+		end
+		G[j], F[j] = G[j + 1] + ground, F[j + 1] + fixed
+	end
+	r.etaGround, r.etaFixed = G, F
+	return G, F
+end
+
+-- Seconds from the player's place on the route (between points i and i + 1,
+-- at qx, qy) to its end, or nil
+function Travel.Seconds(i, qx, qy)
+	local r = route
+	if not (r and i and qx) then
+		return nil
+	end
+	local G, F = Travel.Ahead(r)
+	local points = r.points
+	local secs = 0
+	if i < #points then
+		local ground = G[i + 1]
+		if G[i] > ground then
+			local b = points[i + 1]
+			ground = ground + Dist(qx, qy, b[2], b[3])
+		end
+		secs = ground / Travel.Speed() + F[i]
+	end
+	if secs ~= secs or secs > Travel.LONGEST then
+		return nil
+	end
+	return secs
+end
+
+function Travel.MinutesOf(secs)
+	return secs < 60 and 0 or math.floor(secs / 60 + 0.5)
+end
+
+-- The minutes shown (nil: none), and the words after the distance made only
+-- when they change. A change by one minute waits for the next estimate to
+-- agree, so a time on the edge between two does not flicker (`now`: at once).
+function Travel.Show(secs, now)
+	local target = secs and Travel.MinutesOf(secs)
+	local shown = Travel.minutes
+	if target == shown then
+		Travel.pending = nil
+		return
+	end
+	if not now and target and shown and math.abs(target - shown) == 1 and Travel.pending ~= target then
+		Travel.pending = target
+		return
+	end
+	Travel.pending = nil
+	Travel.minutes = target
+	Travel.suffix = target and (Travel.SEP .. Travel.Words(target)) or ""
+end
+
+-- The whole way from here, for the tracking notice ("about 2 min", nil for
+-- none); the arrow and the marker start from the same
+function Travel.Planned()
+	local r = route
+	local p = r and r.points[1]
+	if not (M.db.travelTime and p) or Travel.OnTaxi() then
+		return nil
+	end
+	local secs = Travel.Seconds(1, p[2], p[3])
+	if not secs then
+		return nil
+	end
+	Travel.dest = destination
+	Travel.Show(secs, true)
+	Travel.nextAt = GetTime() + Travel.EVERY
+	return Travel.Words(Travel.minutes)
+end
+
+-- A destination's start: the first time the route's drawing sees it (Plan's
+-- Redraw, at once when it is set). One seen after Route came on at login and
+-- before that loading screen ended, or within LOGIN_GRACE after (the game
+-- tells a pin a moment late, and a cold login's loading screen can be long),
+-- was there before the /reload (or the logout): its start is not known, so
+-- its arrival says no time.
+function Travel.See(d)
+	if d.seenAt then
+		return
+	end
+	local now = GetTime()
+	d.seenAt = now
+	local login = Travel.loginAt
+	if login and (not Travel.entered or now - login < Travel.LOGIN_GRACE) then
+		d.untimed = true
+	end
+end
+
+-- The login's loading screen has ended (the first PLAYER_ENTERING_WORLD after
+-- Route came on in the login's pass): the grace runs from here
+function Travel.Entered()
+	if Travel.loginAt and not Travel.entered then
+		Travel.loginAt, Travel.entered = GetTime(), true
+	end
+end
+
+-- "2:48", the time since the destination was set; nil with Travel Time off,
+-- from an hour on, or when tracking was paused (Route switched off
+-- meanwhile) or began before a /reload
+function Travel.Took(d)
+	local at = d.seenAt
+	if not (M.db.travelTime and at) or d.untimed then
+		return nil
+	end
+	local secs = GetTime() - at
+	if secs < 0 or secs >= Travel.HOUR then
+		return nil
+	end
+	return string.format("%d:%02d", math.floor(secs / 60), math.floor(secs % 60))
+end
+
+-- The distance line of the arrow or the marker (f.distance): d yards as
+-- Yards(d) writes them, then the time. Made again only when what it shows
+-- can have changed (the ticks run 20 and 60 times a second): the whole yards
+-- under 1000; from 1000, once d leaves the band whose tenth of a km is sure
+-- (its edges, where the rounding decides, are written each time d moves).
+function Travel.Line(f, d)
+	local suffix = Travel.suffix
+	if suffix == f.lineSuffix then
+		if d == f.lineD then
+			return
+		elseif d < 1000 then
+			if f.lineYards == math.floor(d) then
+				return
+			end
+		elseif f.lineLo and d > f.lineLo and d < f.lineHi then
+			return
+		end
+	end
+	f.lineSuffix, f.lineD = suffix, d
+	if d < 1000 then
+		f.lineYards, f.lineLo, f.lineHi = math.floor(d), nil, nil
+		f.distance:SetText(string.format("%d yd%s", d, suffix))
+	else
+		local t = d / 100 + 0.5
+		local tenths = math.floor(t)
+		f.lineYards, f.lineLo, f.lineHi = nil, math.max(tenths * 100 - 50, 1000), tenths * 100 + 50
+		if t - tenths < 1e-6 or t - tenths > 1 - 1e-6 then
+			f.lineLo = nil   -- on an edge: which tenth it shows is the format's
+		end
+		f.distance:SetText(string.format("%.1f km%s", d / 1000, suffix))
+	end
+end
+
+-- Say what is tracked now; `text` overrides the standard sentence. With
+-- Travel Time, the time the whole way takes follows the distance ("Tracking
+-- Stormwind: 1.2 km, about 2 min"; a caller's "{dist} away" is followed by
+-- ", about 2 min"); without, the sentences are as they were.
 local function Announce(text)
 	if not destination then
 		return
 	end
 	local d = DestinationDistance()
-	local where = d and (", " .. Yards(d) .. " away") or ""
+	local time = d and Travel.Planned()
 	if text then
+		if time then
+			text = text:gsub("{dist} away", "{dist} away, " .. time)
+		end
 		text = text:gsub("{dist}", d and Yards(d) or "?")
+	elseif time then
+		text = "Tracking " .. (destination.label or "map pin") .. ": " .. Yards(d) .. ", " .. time
 	end
-	M:Notify(text or ("Tracking " .. (destination.label or "map pin") .. where), "track")
+	M:Notify(text or ("Tracking " .. (destination.label or "map pin") .. (d and (", " .. Yards(d) .. " away") or "")), "track")
 end
 
 local function Plan(force, announce, announceText)
@@ -2755,7 +2980,9 @@ local function CheckArrival()
 	end
 	local cont, x, y = PlayerYards()
 	if cont and cont == destination.cont and Dist(x, y, destination.x, destination.y) <= (tonumber(M.db.arrive) or 25) then
-		M:Notify("Arrived: " .. (destination.label or "destination"), "arrive")
+		-- with Travel Time, how long the way took: "Arrived: Stormwind (2:48)"
+		local took = Travel.Took(destination)
+		M:Notify("Arrived: " .. (destination.label or "destination") .. (took and (" (" .. took .. ")") or ""), "arrive")
 		if destination.fromWaypoint and C_Map.ClearUserWaypoint then
 			pcall(C_Map.ClearUserWaypoint)
 		end
@@ -3143,22 +3370,54 @@ function M.PlaceDistanceLine()
 		return
 	end
 	local mp = MelloUI:GetModule("MinimapPanel")
-	local rel, relPoint, x, y
+	local rel, relPoint, x, y, justify, maxW
 	if mp and mp.ColumnSlot then
-		rel, relPoint, x, y = mp:ColumnSlot("route")
+		rel, relPoint, x, y, justify, maxW = mp:ColumnSlot("route")
 	end
 	rel, relPoint, x, y = rel or Minimap, relPoint or "BOTTOM", x or 0, y or -2
 	local at = mm.lineAt
-	if at and at[1] == rel and at[2] == relPoint and at[3] == x and at[4] == y then
+	if at and at[1] == rel and at[2] == relPoint and at[3] == x and at[4] == y and at[5] == justify and at[6] == maxW then
 		return
 	end
 	if not at then
 		at = {}
 		mm.lineAt = at
 	end
-	at[1], at[2], at[3], at[4] = rel, relPoint, x, y
+	at[1], at[2], at[3], at[4], at[5], at[6] = rel, relPoint, x, y, justify, maxW
 	text:ClearAllPoints()
-	text:SetPoint("TOP", rel, relPoint, x, y)
+	if justify == "RIGHT" then
+		-- on the minimap's divider rail, at its right end beside the
+		-- "Services" name: kept to the room the rail leaves, cut with "..."
+		text:SetPoint("TOPRIGHT", rel, relPoint, x, y)
+		text:SetJustifyH("RIGHT")
+		text:SetWordWrap(false)
+		text:SetWidth(maxW or 0)
+	else
+		text:SetPoint("TOP", rel, relPoint, x, y)
+		text:SetJustifyH("CENTER")
+		text:SetWidth(0)
+	end
+end
+
+-- whether the distance line stands under the minimap now (a route or a
+-- destination, Distance Under The Minimap on, the arrow hidden)
+function M:DistanceLineShown()
+	return (mm and mm:IsShown() and mm.text:IsShown()) and true or false
+end
+
+-- The line shown or hidden: the minimap's divider rail moves its "Services"
+-- name aside for it or back to the middle (only when the state changes)
+function M.LineMaybeChanged()
+	local shown = M:DistanceLineShown()
+	if shown == M.lineShown then
+		return
+	end
+	M.lineShown = shown
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if mp and mp.RailName then
+		mp.RailName()
+	end
+	M.PlaceDistanceLine()
 end
 
 -- its height in the column while Route keeps the line (Route on, Distance
@@ -3187,7 +3446,7 @@ local function EnsureMinimapFrame()
 	RouteFont.Style(mm.text, "fontChat", _G.GameFontNormalSmall)
 	M.PlaceDistanceLine()
 	MelloUI:On("column", M.PlaceDistanceLine, "Route distance line")
-	mm.text:SetTextColor(1, 0.82, 0.25)
+	Travel.Paint()   -- in the arrow's gold, a palette colour
 	mm.text:Hide()
 	mm:Hide()
 end
@@ -3305,11 +3564,11 @@ local function EnsureArrow()
 	if not placed then
 		arrow.icon:SetTexture("Interface/Minimap/MinimapArrow")
 	end
-	arrow.icon:SetVertexColor(1, 0.82, 0.25)
+	-- the distance and the travel time: "1.2 km · about 2 min" (Travel.Line)
 	arrow.distance = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	RouteFont.Style(arrow.distance, "fontChat", _G.GameFontNormal)   -- a number
 	arrow.distance:SetPoint("TOP", arrow.icon, "BOTTOM", 0, -2)
-	arrow.distance:SetTextColor(1, 0.82, 0.25)
+	Travel.Paint()   -- the icon and the distance in the palette's gold
 	arrow.label = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	RouteFont.Style(arrow.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
 	arrow.label:SetPoint("TOP", arrow.distance, "BOTTOM", 0, -1)
@@ -3467,6 +3726,185 @@ local gameMarkerFaded = false
 local gameMarkerHooked = false
 local fadingGame = false        -- our own SetAlpha on the game's marker, so the hook lets it through
 
+--------------------------------------------------------------------------------
+-- Text Shade (user, 2026-09-25, for 0.13.7: the marker's texts and gem were
+-- hard to read over bright ground, "and also the arrow"): the nameplates'
+-- readability shade on the World Marker and the Direction Arrow.
+--   Each text line (the distance with the travel time, the destination's
+--   name): the shared soft band (MelloUI.Shade) anchored to the line, so it
+--   hugs the text. While the shade is on, the name line is as wide as its
+--   text (off: 180 wide as always, a longer name cut).
+--   The marker's gem: its shadow partner (Kit:Shadow), a blurred dark copy
+--   of the gem's own art made offline (Tools/make_kit_shadows.py, piece
+--   deco/gem_large), anchored to the gem and grown by the blur; it follows
+--   the gem's show, hide and alpha, and pops in with it.
+--   The direction arrow and the marker's edge arrow: a round soft band. They
+--   are the game's own atlas, which the builder cannot read (it reads the
+--   kit's masters only), and they turn every frame: a copy of their shape
+--   would have to turn with them, a round shade needs nothing.
+-- Anchors only: the marker hangs on the game's navigation frame and moves
+-- every frame, and nothing here is measured. Made at the arrow's and the
+-- marker's first show with the option on, never at login; the option shows
+-- or hides each piece (one SetShown each). The colour is the palette's
+-- innerPanel, repainted on 'palette' by the band and the partner themselves.
+-- One fixed strength, the notice's and the nameplates' default: the
+-- nameplates' Shade Strength is their own setting, not a shared one.
+-- (One table: this file's main chunk is near Lua's limit of 200 locals.)
+--------------------------------------------------------------------------------
+
+local TextShade = {
+	ALPHA = 0.7,          -- its strength
+	FEATHER = 20,         -- a text line's band: its soft ends (the nameplates' length)
+	PAD_X = 4,            -- ... its full part past the text's ends
+	PAD_Y = 4,            -- ... and above and below it
+	LABEL_W = 180,        -- the name line's width with the shade off (as EnsureArrow and EnsureMarker make it)
+	GEM = 26,             -- the marker's gem, drawn this wide (EnsureMarker)
+	OPTS = {},            -- the options handed to Shade:Band and Kit:Shadow (read once, not kept)
+}
+
+-- the option: on unless switched off
+function TextShade.On()
+	return not (M.db and M.db.textShade == false)
+end
+
+-- a soft band on `parent` behind `region`: `feather` long soft ends, its
+-- full part `padX` past the region's ends (a negative one: inside them) and
+-- `padY` above and below, at BACKGROUND `sublevel` (0; -8: under all else
+-- its frame draws)
+function TextShade.Band(parent, region, feather, padX, padY, sublevel)
+	local o = TextShade.OPTS
+	o.colour, o.alpha, o.feather, o.layer, o.sublevel = "innerPanel", TextShade.ALPHA, feather, "BACKGROUND", sublevel or 0
+	o.region, o.padX, o.padY, o.scale = region, padX, padY, nil
+	local band = MelloUI.Shade:Band(parent, o)
+	o.region = nil
+	return band
+end
+
+-- a round soft shade behind a square icon `size` wide: the band's full
+-- middle pulled in to 2 units at the icon's centre, its soft ends reaching
+-- about as far out as its top and bottom fade
+function TextShade.Round(parent, icon, size)
+	return TextShade.Band(parent, icon, math.floor(size * 0.63 + 0.5), 1 - size / 2, 2, -8)
+end
+
+-- the pop the marker's gem comes up with (grown in from 1.6 times its size
+-- as it fades in), and its partner with it
+function TextShade.Pop(region)
+	local pop = region:CreateAnimationGroup()
+	local grow = pop:CreateAnimation("Scale")
+	grow:SetScaleFrom(1.6, 1.6)
+	grow:SetScaleTo(1, 1)
+	grow:SetDuration(0.35)
+	grow:SetSmoothing("OUT")
+	local fade = pop:CreateAnimation("Alpha")
+	fade:SetFromAlpha(0)
+	fade:SetToAlpha(1)
+	fade:SetDuration(0.2)
+	pop:SetToFinalAlpha(true)
+	return pop
+end
+
+-- The arrow's (at its first show: UpdateArrow): a band behind its distance
+-- line and its name line, a round one behind the arrow. With the option off
+-- nothing is made (false: asked; switching it on asks again)
+function TextShade.Arrow()
+	if arrow.shade ~= nil then
+		return
+	end
+	local Shade = MelloUI.Shade
+	if not (TextShade.On() and Shade and Shade.Band) then
+		arrow.shade = false
+		return
+	end
+	local s = {}
+	s.icon = TextShade.Round(arrow, arrow.icon, 54)
+	s.distance = TextShade.Band(arrow, arrow.distance, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
+	s.label = TextShade.Band(arrow, arrow.label, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
+	arrow.shade = s
+	TextShade.Sync(arrow)
+end
+
+-- The marker's (at its first show: UpdateMarker): a band behind its
+-- distance line and its name line, the gem's shadow partner at the gem's
+-- drawn scale (UI units per painted px), a round band behind the edge arrow.
+-- With the option off nothing is made (made when it is switched on)
+function TextShade.Marker()
+	if marker.shade or not TextShade.On() then
+		return
+	end
+	local Shade = MelloUI.Shade
+	local front = marker.front
+	if not (Shade and Shade.Band and front) then
+		return
+	end
+	local s = {}
+	s.distance = TextShade.Band(front, marker.distance, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
+	s.label = TextShade.Band(front, marker.label, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
+	s.edge = TextShade.Round(front, marker.edge, 40)
+	local Kit = MelloUI.Kit
+	local gem = marker.gem
+	local piece = Kit and Kit.Shadow and Kit.Piece and gem.kitName and Kit:Piece(gem.kitName)
+	local w = piece and tonumber(piece.w)
+	if w and w > 0 then
+		local o = TextShade.OPTS
+		o.colour, o.alpha, o.scale = "innerPanel", TextShade.ALPHA, TextShade.GEM / w
+		s.gem = Kit:Shadow(gem, o)
+		o.scale = nil
+		if s.gem then
+			s.pop = TextShade.Pop(s.gem)
+		end
+	end
+	marker.shade = s
+	TextShade.Sync(marker)
+end
+
+-- Each piece shown or hidden as the option and the frame say: on the
+-- marker, the lines' bands and the gem's partner while it stands over the
+-- destination, the edge arrow's while it is off screen (MarkerTick calls
+-- this on a change only). The name line hugs its text while the shade is on.
+function TextShade.Sync(f)
+	local s = f and f.shade
+	if not s then
+		return
+	end
+	local on = TextShade.On()
+	f.label:SetWidth(on and 0 or TextShade.LABEL_W)
+	if f == marker then
+		local over = on and not f.off
+		s.distance:SetShown(over)
+		s.label:SetShown(over)
+		s.edge:SetShown(on and f.off or false)
+		if s.gem then
+			MelloUI.Kit:ShadowSet(f.gem, on)
+		end
+	else
+		s.icon:SetShown(on)
+		s.distance:SetShown(on)
+		s.label:SetShown(on)
+	end
+end
+
+-- The option changed (or a profile came in: OnEnable): what is made is
+-- shown or hidden; what is not made yet is made at the next show with the
+-- option on -- the arrow's at its next tick, the marker's at once while it
+-- is up. Nothing is made at login (neither has been shown).
+function TextShade.Apply()
+	if arrow then
+		if arrow.shade then
+			TextShade.Sync(arrow)
+		elseif arrow.shade == false and TextShade.On() then
+			arrow.shade = nil
+		end
+	end
+	if marker then
+		if marker.shade then
+			TextShade.Sync(marker)
+		elseif marker:IsShown() then
+			TextShade.Marker()
+		end
+	end
+end
+
 local function NavFrame()
 	if C_Navigation and C_Navigation.GetFrame then
 		local ok, f = pcall(C_Navigation.GetFrame)
@@ -3569,10 +4007,17 @@ local function MarkerTick(self, elapsed)
 		self:ClearAllPoints()
 		self:SetPoint("CENTER", nav, "CENTER")
 	end
-	self.gem:SetShown(not off)
-	self.distance:SetShown(not off)
-	self.label:SetShown(not off)
-	self.edge:SetShown(off)
+	-- the gem and the texts, or the edge arrow: set when that changes, not
+	-- every tick (the gem's shadow partner follows its show and hide), with
+	-- their text shade
+	if off ~= self.off then
+		self.off = off
+		self.gem:SetShown(not off)
+		self.distance:SetShown(not off)
+		self.label:SetShown(not off)
+		self.edge:SetShown(off)
+		TextShade.Sync(self)
+	end
 	local beam = self.beam
 	beam:SetShown(not off and M.db.routeBeam and true or false)
 	-- the streaks rise: the strip scrolls up the beam, round and round (they
@@ -3605,16 +4050,18 @@ local function MarkerTick(self, elapsed)
 				beam.glow:SetAlpha(0.85 * fade)
 				beam.streaks:SetAlpha(0.7 * fade)
 			end
-			local text = Yards(math.floor(d + 0.5))
-			if text ~= self.distanceText then
-				self.distanceText = text
-				self.distance:SetText(text)
-			end
+			-- the distance and the travel time, made only when either changes
+			Travel.Line(self, math.floor(d + 0.5))
 		end
 	end
 end
 
 local function EnsureMarker()
+	-- Route coming on in the login's pass (OnEnable): a destination seen in
+	-- the moments after was there before the /reload (Travel.See)
+	if MelloUI.initializingModules and not Travel.loginAt then
+		Travel.loginAt = GetTime()
+	end
 	if marker then
 		return
 	end
@@ -3683,7 +4130,6 @@ local function EnsureMarker()
 	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	RouteFont.Style(marker.distance, "fontChat", _G.GameFontNormal)   -- a number
 	marker.distance:SetPoint("TOP", marker.gem, "BOTTOM", 0, -2)
-	marker.distance:SetTextColor(1, 0.82, 0.25)
 	marker.label = front:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	RouteFont.Style(marker.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
 	marker.label:SetPoint("TOP", marker.distance, "BOTTOM", 0, -1)
@@ -3702,21 +4148,12 @@ local function EnsureMarker()
 	if not placed then
 		marker.edge:SetTexture("Interface/Minimap/MinimapArrow")
 	end
-	marker.edge:SetVertexColor(1, 0.82, 0.25)
+	Travel.Paint()   -- the distance and the edge arrow in the palette's gold
 	marker.edge:Hide()
+	-- the texts' frame, where their shade goes at the first show (TextShade)
+	marker.front = front
 	-- a small pop when the marker comes up: the gem grows in and settles
-	local pop = marker.gem:CreateAnimationGroup()
-	local grow = pop:CreateAnimation("Scale")
-	grow:SetScaleFrom(1.6, 1.6)
-	grow:SetScaleTo(1, 1)
-	grow:SetDuration(0.35)
-	grow:SetSmoothing("OUT")
-	local fade = pop:CreateAnimation("Alpha")
-	fade:SetFromAlpha(0)
-	fade:SetToAlpha(1)
-	fade:SetDuration(0.2)
-	pop:SetToFinalAlpha(true)
-	marker.pop = pop
+	marker.pop = TextShade.Pop(marker.gem)
 	marker.age, marker.angle = 0, math.pi / 2
 	Perf.SetScript(marker, "OnUpdate", MarkerTick)
 	marker:Hide()
@@ -3725,6 +4162,16 @@ end
 -- Shown while there is a destination and the game has a navigation frame
 -- for it; hung on that frame, which the client moves every frame.
 UpdateMarker = function()
+	-- (every destination passes here the moment it is set, through Plan's
+	-- Redraw: when its way began, for the arrival's travel time; Route
+	-- switched off on the way is a pause, and the time is left out)
+	local d = destination
+	if d then
+		Travel.See(d)
+		if not M.isEnabled then
+			d.untimed = true
+		end
+	end
 	if not marker then
 		return
 	end
@@ -3741,7 +4188,8 @@ UpdateMarker = function()
 	marker.nav = nav
 	marker.label:SetText((standIn and standIn.label) or destination.label or "")
 	if not marker:IsShown() then
-		marker.distanceText = nil
+		marker.lineSuffix = nil   -- its distance line made afresh (Travel.Line)
+		TextShade.Marker()   -- its text shade, made at its first show with the option on
 		marker:Show()
 		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
 		local anim = MelloUI.Anim
@@ -3757,6 +4205,11 @@ UpdateMarker = function()
 			else
 				marker.beam.flare:Play()
 			end
+		end
+		-- the gem's shadow partner pops in with it (TextShade)
+		local shadePop = marker.shade and marker.shade.pop
+		if shadePop and anim then
+			anim:PlayGroup(shadePop)
 		end
 	end
 	FadeGameMarker(true)
@@ -3884,17 +4337,100 @@ local function AimPoint(cont, i, qx, qy, offBy)
 	return tx, ty, remaining
 end
 
+-- The travel time (see "Travel time" above), once a second at most, from the
+-- arrow's tick (the minimap's, which runs only while something is routed): a
+-- speed measure, then the time from the player's place on the route.
+-- `asked`: the arrow found that place already (i, qx, qy); else it is looked
+-- up here, for the marker while the arrow is off.
+function Travel.Update(cont, px, py, asked, i, qx, qy)
+	local d = Travel.Follow()
+	if not M.db.travelTime then
+		if Travel.minutes then
+			Travel.Show(nil, true)
+		end
+		return
+	end
+	-- each tick: one that finds the player where the last did spoils this
+	-- second's speed measure (Travel.Sample)
+	if px == Travel.tickX and py == Travel.tickY then
+		Travel.still = true
+	end
+	Travel.tickX, Travel.tickY = px, py
+	local now = GetTime()
+	if now < Travel.nextAt then
+		return
+	end
+	Travel.nextAt = now + Travel.EVERY
+	local onTaxi = Travel.OnTaxi()
+	Travel.Sample(now, cont, px, py, not onTaxi)
+	local secs
+	if d and route and not (onTaxi or offRoute) then
+		if not asked then
+			local _, off
+			i, _, off, qx, qy = PlaceOnRoute(cont, px, py)
+			if i and off > OFF_ROUTE then
+				i = nil
+			end
+		end
+		secs = Travel.Seconds(i, qx, qy)
+	end
+	Travel.Show(secs)
+end
+
+-- The time kept is for the destination now: a new one starts with none (no
+-- other destination's time on the marker as it comes up), estimated at once
+function Travel.Follow()
+	local d = destination
+	if Travel.dest ~= d then
+		Travel.dest, Travel.nextAt = d, 0
+		Travel.Show(nil, true)
+	end
+	return d
+end
+
+-- The arrow, its distance line, the marker's distance and edge arrow and the
+-- distance under the minimap in the palette's gold (the nearest to the gold
+-- they had), again whenever the palette changes
+function Travel.Paint()
+	local c = MelloUI.Palette.selectedTrim
+	local r, g, b = c[1], c[2], c[3]
+	-- (each part only once it exists: a frame half made, by an error part way
+	-- through its making, must not break every later repaint)
+	if arrow and arrow.distance then
+		arrow.icon:SetVertexColor(r, g, b)
+		arrow.distance:SetTextColor(r, g, b)
+	end
+	if marker and marker.distance and marker.edge then
+		marker.distance:SetTextColor(r, g, b)
+		marker.edge:SetVertexColor(r, g, b)
+	end
+	if mm and mm.text then
+		mm.text:SetTextColor(r, g, b)
+	end
+	if not Travel.painted then
+		Travel.painted = true
+		MelloUI:On("palette", Travel.Paint, "Route gold")
+	end
+end
+
 local function UpdateArrow(cont, px, py)
 	if not (arrow and M.db.arrow and destination) then
 		if arrow then
 			arrow:Hide()
 		end
+		-- the arrow off: the marker's time, while the marker is up to show it
+		if marker and marker:IsShown() then
+			Travel.Update(cont, px, py)
+		else
+			Travel.Follow()
+		end
 		return false
 	end
-	local tx, ty, remaining
+	local tx, ty, remaining, i, qx, qy
 	NoteHeading(cont, px, py)
 	if route then
-		local i, _, d, qx, qy = PlaceOnRoute(cont, px, py)
+		local _, d
+		i, _, d, qx, qy = PlaceOnRoute(cont, px, py)
 		if i then
 			route.progress = i
 			route.atX, route.atY = qx, qy   -- the player's place on the path: the painters draw from here
@@ -3908,6 +4444,7 @@ local function UpdateArrow(cont, px, py)
 			tx, ty, remaining = AimPoint(cont, i, qx, qy, d)
 		end
 	end
+	Travel.Update(cont, px, py, true, i, qx, qy)
 	if not tx and destination.cont == cont then
 		tx, ty = destination.x, destination.y
 	end
@@ -3921,14 +4458,32 @@ local function UpdateArrow(cont, px, py)
 	if not remaining or remaining <= 0 then
 		remaining = Dist(px, py, destination.x, destination.y)
 	end
-	arrow.distance:SetText(Yards(remaining))
+	-- the distance and the travel time, made only when either changes
+	Travel.Line(arrow, remaining)
 	arrow.label:SetText(destination.label or "")
+	-- its text shade, asked at its first show (TextShade.Arrow)
+	if arrow.shade == nil then
+		TextShade.Arrow()
+	end
 	-- on the one mover at its first show, not at login (ArrowPlace.Mover)
 	if not ArrowPlace.entry then
 		ArrowPlace.Mover()
 	end
 	arrow:Show()
 	return true
+end
+
+-- A route point's offset on the minimap from the player (pixels) and its
+-- distance (yards), in the view the tick sets once (M.mmView): no closure
+-- made per tick. (Fields of M: this file's main chunk is near Lua's limit.)
+M.mmView = { px = 0, py = 0, rotate = false, sin = 0, cos = 1, ppy = 1 }
+function M.MinimapOffset(yx, yy)
+	local v = M.mmView
+	local dx, dy = yx - v.px, yy - v.py
+	if v.rotate then
+		dx, dy = dx * v.cos - dy * v.sin, dx * v.sin + dy * v.cos
+	end
+	return dx * v.ppy, -dy * v.ppy, math.sqrt(dx * dx + dy * dy)
 end
 
 local mmElapsed = 0
@@ -3965,13 +4520,8 @@ local function MinimapTick(_, elapsed)
 	local R = size / 2 - 1
 	local unit = 2.6 * (tonumber(M.db.lineWidth) or 3)
 	local points = RouteAhead()
-	local function Offset(yx, yy)
-		local dx, dy = yx - px, yy - py
-		if rotate then
-			dx, dy = dx * cos - dy * sin, dx * sin + dy * cos
-		end
-		return dx * pixelsPerYard, -dy * pixelsPerYard, math.sqrt(dx * dx + dy * dy)
-	end
+	local view, Offset = M.mmView, M.MinimapOffset
+	view.px, view.py, view.rotate, view.sin, view.cos, view.ppy = px, py, rotate, sin, cos, pixelsPerYard
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
 		if a[1] == cont and b[1] == cont and b[4] ~= "boat" and b[4] ~= "flight" then
@@ -3991,11 +4541,19 @@ local function MinimapTick(_, elapsed)
 	if M.db.distanceText and not arrowShown then
 		local remaining = route.length or 0
 		local label = destination and destination.label
-		mm.text:SetText(label and (Yards(remaining) .. "  " .. label) or Yards(remaining))
+		-- written only when the route's length or the label changes (no
+		-- string made per tick); a secret label (asked first, never compared:
+		-- kept as mm itself, which no label equals) every time
+		local secret = MelloUI.Safe.IsSecret(label)
+		if secret or remaining ~= mm.lineLength or label ~= mm.lineLabel then
+			mm.lineLength, mm.lineLabel = remaining, secret and mm or label
+			mm.text:SetText(label and (Yards(remaining) .. "  " .. label) or Yards(remaining))
+		end
 		mm.text:Show()
 	else
 		mm.text:Hide()
 	end
+	M.LineMaybeChanged()
 end
 
 Redraw = function()
@@ -4014,6 +4572,7 @@ Redraw = function()
 			end
 			mm.text:Hide()
 		end
+		M.LineMaybeChanged()
 	end
 end
 
@@ -4311,6 +4870,7 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event)
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		last = nil
 		taxiStart = nil
+		Travel.Entered()   -- the travel time's login grace runs from the first one
 		C_Timer.After(1, function() ReadWaypoint() end)
 	elseif event == "USER_WAYPOINT_UPDATED" or event == "SUPER_TRACKING_CHANGED" then
 		if event == "SUPER_TRACKING_CHANGED" then
@@ -4457,14 +5017,15 @@ SlashCmdList.MELLOROUTE = function(msg)
 			taxiCount = taxiCount + 1
 			if TaxiUsable(id, t) then usable = usable + 1 end
 		end
-		-- No saved paths is the usual case after a restart (this client drops
-		-- them then), so say that, not "not loaded": only while the game may
-		-- still bring them (the first 90 s) is it "not yet"
+		-- No saved paths once the game has had its time to bring them (the
+		-- first 90 s) means none were saved before (a first session, learning
+		-- off, a reset), so say that, not "not loaded": only while the game
+		-- may still bring them is it "not yet"
 		MelloUI:Print("Route: %d learned points, %d traced road points, %d links, %d docks, %d flight points (%d usable)%s.",
 			nodes - tracedNodes, tracedNodes, edges, docks and #docks or 0,
 			taxiCount, usable, mergedSaved and ""
 				or adoptTicker and " (paths learned in earlier sessions: the game has not brought them yet)"
-				or " (none from earlier sessions: the game forgets learned paths when it restarts)")
+				or " (none saved from earlier sessions)")
 		if not Build.ready then
 			-- (user, 2026-09-24) built on the first route, not at login
 			print("   the road graph is built the first time a route is wanted: "
@@ -4504,11 +5065,11 @@ SlashCmdList.MELLOROUTE = function(msg)
 		if destination and destination.fromQuest then
 			print("   following the tracked quest: " .. tostring(destination.label))
 		end
-		-- what is learned lives in the saved variables, which this client
-		-- drops when the game restarts: said here as in the option's text
-		-- (the reason a step was skipped only with learning on: off, it is
-		-- always "learning is off", which the line already says)
-		print(string.format("   learning %s: %d steps recorded this session%s; what is learned is kept until you quit the game (a /reload keeps it)",
+		-- what is learned lives in the saved variables and is kept from one
+		-- session to the next: said here as in the option's text (the reason
+		-- a step was skipped only with learning on: off, it is always
+		-- "learning is off", which the line already says)
+		print(string.format("   learning %s: %d steps recorded this session%s; what is learned is saved and kept for your next session",
 			M.db.learn and "on" or "off", recorded,
 			M.db.learn and recordSkip ~= "" and (", the last one skipped: " .. recordSkip) or ""))
 		do
@@ -4577,6 +5138,8 @@ function M:OnEnable(db)
 	EnsureArrow()
 	PlaceArrow()
 	EnsureMarker()
+	-- (a profile brought in: the Text Shade as it says; nothing at login)
+	TextShade.Apply()
 	-- (user, 2026-09-24: nothing runs while nothing is routed) the minimap
 	-- tick sleeps with its frame: mm is made hidden and shown by Redraw only
 	-- while there is a destination, and a hidden frame's OnUpdate never runs.
@@ -4633,6 +5196,8 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "worldMarker" then
 		StandIn.Update()
+	elseif key == "textShade" then
+		TextShade.Apply()
 	end
 	PlaceArrow()
 	Redraw()

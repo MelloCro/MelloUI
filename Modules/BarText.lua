@@ -21,7 +21,7 @@ local M = MelloUI:RegisterModule("BarText", {
 	desc = "Always show health and power values on the player, target and focus frames.",
 	icon = "Interface\\Icons\\INV_Misc_Note_02",
 	flavour = "Numbers where they belong. Health and power values, always in view.",
-	group = "Frames and bars",
+	role = "adds",
 	tweak = { label = "Bar Values", desc = "Health and power values always shown on the player, target and focus frames.", order = 6 },
 	defaults = {
 		player = true,
