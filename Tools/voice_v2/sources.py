@@ -8,8 +8,11 @@ cached by import_wowhead_quests.py, and the Forever client data is read from fil
     wowhead_quest(path)   one cached Wowhead quest page, BOTH section layouts, page scripts removed first
     wowhead_quests()      every cached quest page
     wowhead_npc_display() NPC ID -> the display ID on its cached Wowhead page
+    wowhead_books()       the book text (readable pages) of every cached Forever item / object page
     collector()           the in-game collector store (Forever texts seen in game)
     questcache()          the Forever client's quest cache (questcache.wdb): title, objectives and details
+    pagetextcache()       the Forever client's page text cache (pagetextcache.wdb): the pages it was sent
+    gameobjectcache_readables()  the readable objects (TEXT / GOOBER with a page) the Forever client has seen
     creaturecache()       the Forever client's creature cache (creaturecache.wdb): the displays the server sent
     hotfix_broadcast()    BroadcastText rows from the Forever client's hotfix cache (extracted CSV)
     db2(name)             a Forever 1.60 client table (CSV extracted by wow.export)
@@ -127,20 +130,33 @@ def parse_sql_values(body: str):
             row.append(_sql_number(num))
 
 
-def cmangos(dump: str = DUMP) -> dict:
-    """{"tables": {name: [row dict]}, "sha1": dump sha1}. Parsed once, then cached under voice_v2/_cache."""
+# The readable texts (books, letters, notes, plaques, signs, tablets): the pages and what shows them. An item
+# shows the page chain its PageText starts; a world object of type 9 (TEXT) the chain of data0, a type 10
+# (GOOBER) the chain of data7 (its pageId). Read with cmangos(tables=READABLE_TABLES): a cache of its own, so
+# the line export's cache (TABLES) is unchanged.
+READABLE_TABLES = {
+    "page_text": ("entry", "text", "next_page"),
+    "item_template": ("entry", "name", "class", "subclass", "PageText", "LanguageID", "PageMaterial", "startquest"),
+    "gameobject_template": ("entry", "type", "name", "data0", "data1", "data2", "data7", "data8", "data9"),
+}
+
+
+def cmangos(dump: str = DUMP, tables: dict | None = None) -> dict:
+    """{"tables": {name: [row dict]}, "sha1": dump sha1}. Parsed once, then cached under voice_v2/_cache.
+    tables: {table: kept columns or None for all}; the line export's TABLES by default."""
+    tables = TABLES if tables is None else tables
     digest = sha1_file(dump)
-    spec = hashlib.sha1(json.dumps(TABLES, sort_keys=True).encode()).hexdigest()[:8]   # the kept columns
+    spec = hashlib.sha1(json.dumps(tables, sort_keys=True).encode()).hexdigest()[:8]   # the kept columns
     pk = os.path.join(PARSE_CACHE, "cmangos_%s_%s.pickle" % (digest[:12], spec))
     if os.path.exists(pk):
         with open(pk, "rb") as fh:
             return pickle.load(fh)
-    columns, rows, current = {}, {name: [] for name in TABLES}, None
+    columns, rows, current = {}, {name: [] for name in tables}, None
     with gzip.open(dump, "rt", encoding="utf-8", errors="replace") as fh:
         for line in fh:
             if line.startswith("CREATE TABLE `"):
                 name = line[14:line.index("`", 14)]
-                current = name if name in TABLES else None
+                current = name if name in tables else None
                 if current:
                     columns[current] = []
                 continue
@@ -153,9 +169,9 @@ def cmangos(dump: str = DUMP) -> dict:
                 continue
             if line.startswith("INSERT INTO `"):
                 name = line[13:line.index("`", 13)]
-                if name not in TABLES:
+                if name not in tables:
                     continue
-                cols, keep = columns[name], TABLES[name]
+                cols, keep = columns[name], tables[name]
                 for row in parse_sql_values(line[line.index("VALUES") + 6:]):
                     if len(row) != len(cols):
                         raise SystemExit("cmangos %s: a row has %d values for %d columns" % (name, len(row), len(cols)))
@@ -163,7 +179,7 @@ def cmangos(dump: str = DUMP) -> dict:
                     if keep:
                         rec = {k: rec.get(k) for k in keep}
                     rows[name].append(rec)
-    missing = [n for n in TABLES if n not in columns]
+    missing = [n for n in tables if n not in columns]
     if missing:
         raise SystemExit("cmangos dump lacks tables: %s" % ", ".join(missing))
     out = {"tables": rows, "sha1": digest}
@@ -316,6 +332,51 @@ def wowhead_npc_display(folder: str = WOWHEAD) -> dict:
     return out
 
 
+def _book_pages(raw: str):
+    """The pages of a cached Wowhead item / object page's book viewer (new Book({... pages: [...]})), or None.
+    The array is read with the JSON decoder from its opening bracket: no regex over the whole page."""
+    i = raw.find("new Book(")
+    if i < 0:
+        return None
+    j = raw.find("pages:", i, i + 400)
+    k = raw.find("[", j) if j >= 0 else -1
+    if k < 0:
+        return None
+    try:
+        pages, _ = json.JSONDecoder().raw_decode(raw, k)
+    except ValueError:
+        return None
+    return [p for p in pages if isinstance(p, str)] if isinstance(pages, list) else None
+
+
+def wowhead_books(folder: str = WOWHEAD) -> list:
+    """[{"kind": "item"|"object", "id", "name", "pages": [source text]}] of the cached Forever item and object
+    pages that carry a book (their readable text), in ID order. Page HTML: <br> is a line break, tags go,
+    entities are decoded after the tags are gone (so "&lt;name&gt;" survives as "<name>" for source_clean).
+    "readable" lists the cached pages that say "Right Click to Read" but have no book text cached."""
+    out, missing = [], []
+    for f in os.listdir(folder):
+        m = re.match(r"(item|object)_(\d+)\.html$", f)
+        if not m:
+            continue
+        raw = open(os.path.join(folder, f), encoding="utf-8", errors="replace").read()
+        t = re.search(r"<title>(.*?) - (?:Item|Object) - Forever</title>", raw)
+        name = html.unescape(t.group(1)) if t else None
+        pages = _book_pages(raw)
+        if pages is None:
+            if "Right Click to Read" in raw:
+                missing.append({"kind": m.group(1), "id": int(m.group(2)), "name": name})
+            continue
+        out.append({"kind": m.group(1), "id": int(m.group(2)), "name": name,
+                    "pages": [wowhead_text(p) for p in pages]})
+    out.sort(key=lambda b: (b["kind"], b["id"]))
+    wowhead_books.missing = sorted(missing, key=lambda b: (b["kind"], b["id"]))
+    return out
+
+
+wowhead_books.missing = []
+
+
 # ------------------------------------------------------------------------------------------ collector store
 def collector(path: str = STORE) -> dict:
     with open(path, encoding="utf-8") as fh:
@@ -384,6 +445,58 @@ def questcache(folder: str = GAME_WDB) -> dict:
             rec[name] = p[start:start + n].decode("utf-8", "replace")
             start += n
         out[entry] = rec
+    return out
+
+
+def pagetextcache(folder: str = GAME_WDB) -> dict:
+    """page ID -> {"next": next page ID or 0, "text"} from the Forever client's pagetextcache.wdb (read-only):
+    the pages the Forever server sent this client. A record is the page ID, the next page's ID, 4 unknown
+    bytes, a zero byte, a 12-bit text length (then 4 bits), and the text (no terminator)."""
+    path = os.path.join(folder, "pagetextcache.wdb")
+    if not os.path.exists(path):
+        return {}
+    magic, build, recs = _wdb_records(path)
+    if magic != b"XTPW":
+        raise SystemExit("pagetextcache.wdb: unexpected magic %r" % magic)
+    out = {}
+    for entry, p in recs:
+        if len(p) < 15:
+            continue
+        n = (p[13] << 4) | (p[14] >> 4)
+        if 15 + n != len(p) or struct.unpack_from("<I", p, 0)[0] != entry:
+            continue                                   # a layout this reader does not know: left out, not guessed
+        out[entry] = {"next": struct.unpack_from("<I", p, 4)[0], "text": p[15:].decode("utf-8", "replace"),
+                      "build": build}
+    return out
+
+
+def gameobjectcache_readables(folder: str = GAME_WDB) -> dict:
+    """object ID -> {"type", "name", "page"} for the readable world objects (type 9 TEXT: data0; type 10 GOOBER:
+    data7) in the Forever client's gameobjectcache.wdb: the objects this client has seen. Read-only; used only
+    to report which Forever readables have no page text on this PC."""
+    path = os.path.join(folder, "gameobjectcache.wdb")
+    if not os.path.exists(path):
+        return {}
+    magic, _, recs = _wdb_records(path)
+    if magic != b"BOGW":
+        return {}
+    out = {}
+    for entry, p in recs:
+        try:
+            typ = struct.unpack_from("<I", p, 0)[0]
+            if typ not in (9, 10):
+                continue
+            o, names = 8, []
+            for _ in range(7):                          # name, 3 unused names, icon, cast bar caption, unknown
+                j = p.index(b"\x00", o)
+                names.append(p[o:j].decode("utf-8", "replace"))
+                o = j + 1
+            data = struct.unpack_from("<24i", p, o)
+        except (ValueError, struct.error):
+            continue
+        page = data[0] if typ == 9 else data[7]
+        if page > 0:
+            out[entry] = {"type": typ, "name": names[0], "page": page}
     return out
 
 

@@ -2,12 +2,16 @@
 """Export every voiceable line of the v2 pack as a generation manifest (SPEC.md section 3).
 
     python Tools/voice_v2/export_lines.py [--pilot-selection PATH] [--no-full] [--research-map PATH]
+    python Tools/voice_v2/export_lines.py --readables [--include-orphans]     the readable pages only
 
 Writes to MelloUI-BuildData/output/voice_v2/:
     lines.json, review.csv                 scope "Everything": every quest and NPC text (NOT generated here)
     lines_pilot.json, review_pilot.csv     the pilot: exactly the keys of pilot_selection.json, plus its narrator
                                            A/B alternate, when --pilot-selection is given
     export_counts.json                     the counts per line type, with the research census for comparison
+    lines_readables.json, review_readables.csv   with --readables: books, letters, notes, plaques, signs and
+                                           tablets, every page read by the narrator, keyed "r-<hash8>" (see
+                                           "readables" below); written alone, nothing else is touched
 
 Sources (read-only): the cmangos dump (Classic quests, npc_text / gossip menus and sub-pages, quest-giver and
 trainer greetings, holiday conditions), the cached Wowhead pages (Forever quests, both page layouts), the
@@ -757,6 +761,292 @@ def pilot_review(exp, jobs):
     return [r for r in exp.review if r["key"] in keys]
 
 
+# ============================================================================================ readables
+# Books, letters, notes, plaques, signs and tablets: every page an item or a world object shows in the game's
+# item text window, read by the narrator (the user's decision, 2026-09-28; no ambient chatter or combat shouts).
+#
+#   key   "r-<hash8>"   hash8 of the page's canonical text: its words with the page's own layout markup
+#                       (HTML tags), the player's name / class / race and $B taken out, $G resolved per variant.
+#                       The runtime (Modules/VoiceOver.lua, ITEM_TEXT_READY) makes the same key from the page it
+#                       shows. Identical pages anywhere in the game are one key and one clip.
+#   jobs  one clip per page text, in the narrator's voice (voices.json narrators.readable, else gossipObject);
+#         a page is one text: stage directions in it (<The rest of the book is blank>) are read in line.
+#   meta  lines[0].canon (the pack's text table), .names (the item / object names showing it: the runtime's
+#         fuzzy fallback compares the pages of the open item's name), .places (item / object and page number).
+#
+# Sources (read-only): the cmangos dump (page_text with its next_page chains; items whose PageText starts a
+# chain; objects of type 9 TEXT (data0) and 10 GOOBER (data7)); the Forever client's own caches (its page texts
+# win over the dump's for the same page: Forever fixed some; the readable objects it has seen start chains the
+# dump's objects may not); the cached Wowhead pages of Forever items (book text). Nothing is downloaded.
+READABLE_KIND = "readable"
+READABLE_MAX_PLACES = 12
+PAGE_HTML_TAGS = {"html", "body", "p", "br", "img", "h1", "h2", "h3"}
+_PAGE_TAG_RE = re.compile(r"<\s*/?\s*([A-Za-z0-9]+)([^<>]*)>")
+_LUA_SPACE = " \t\n\v\f\r"
+
+
+def strip_page_html(text, sep="\n"):
+    """The book layout's HTML tags out (<HTML> <BODY> <P> <H1>-<H3> <BR> <IMG>, with or without attributes or a
+    closing slash); a bracketed stage direction (<The rest of the book is blank>, <illegible text>) stays. The
+    runtime's PageText does the same (Lua pattern "<%s*/?%s*(%w+)([^<>]*)>"), so both see the same words."""
+    def rep(m):
+        rest = m.group(2)
+        if m.group(1).lower() in PAGE_HTML_TAGS and (rest == "" or rest[0] in _LUA_SPACE + "/"):
+            return sep
+        return m.group(0)
+    return _PAGE_TAG_RE.sub(rep, text or "")
+
+
+_HTML_PAGE_RE = re.compile(r"\s*<\s*html\b", re.I)
+_CONTINUED_RE = re.compile(r"[ \t]*\n\s*(?=[a-z])")
+
+
+def page_source(text):
+    """A page's source text for the line rules: in a book-layout (HTML) page a line end is only a space and the
+    tags make the breaks; the layout tags go, block breaks stay line breaks; then source_clean (entities, Wowhead
+    <name>-style tokens, $B, line ends); a line that goes on in lower case continues the sentence ("What follows
+    are" / "the military ranks": one <P> per line beside a picture) instead of ending in a full stop. Only spaces
+    and line breaks differ from the raw page, so the canonical text (the key) is the same."""
+    t = text or ""
+    if _HTML_PAGE_RE.match(t):
+        t = re.sub(r"\s+", " ", t)
+    t = V.source_clean(strip_page_html(t, "\n"))
+    return _CONTINUED_RE.sub(" ", t)
+
+
+def readable_key(canon):
+    return "r-" + V.hash8(canon)
+
+
+class Readables:
+    """Every readable page and where it is shown, in a stable order: the dump's items, then its objects (by entry),
+    then the objects only the Forever client knows, then the Wowhead Forever books; orphans last when asked."""
+
+    def __init__(self, include_orphans=False, cm=None, client_pages=None, client_objects=None, books=None):
+        self.counts = collections.Counter()
+        cm = cm if cm is not None else S.cmangos(tables=S.READABLE_TABLES)
+        self.cm_sha1 = cm.get("sha1")
+        T = cm["tables"]
+        self.pages = {r["entry"]: r for r in T["page_text"]}
+        self.client_pages = S.pagetextcache() if client_pages is None else client_pages
+        self.client_objects = S.gameobjectcache_readables() if client_objects is None else client_objects
+        self.books = S.wowhead_books() if books is None else books
+        self.books_missing = list(getattr(S.wowhead_books, "missing", [])) if books is None else []
+        self.include_orphans = include_orphans
+        self.client_differs, self.missing, self.loops = set(), set(), set()
+        starts = collections.OrderedDict()             # page ID -> [place]
+        for r in sorted(T["item_template"], key=lambda r: r["entry"]):
+            if r.get("PageText"):
+                starts.setdefault(r["PageText"], []).append({"item": r["entry"], "name": r["name"]})
+                self.counts["items with a page text (dump)"] += 1
+        go_known = set()
+        for r in sorted(T["gameobject_template"], key=lambda r: r["entry"]):
+            go_known.add(r["entry"])
+            page = r["data0"] if r["type"] == 9 else (r["data7"] if r["type"] == 10 else 0)
+            if page and page > 0:
+                starts.setdefault(page, []).append({"object": r["entry"], "name": r["name"]})
+                self.counts["readable objects (dump, type %d)" % r["type"]] += 1
+        for oid, rec in sorted(self.client_objects.items()):
+            if oid in go_known:
+                continue
+            starts.setdefault(rec["page"], []).append({"object": oid, "name": rec["name"], "forever": True})
+            self.counts["readable objects only the Forever client knows"] += 1
+        self.starts = starts
+
+    def page(self, pid):
+        """(text, source) of one page ID: the Forever client's text when it has the page, else the dump's."""
+        c = self.client_pages.get(pid)
+        d = self.pages.get(pid)
+        if c is not None and S.text_or_none(c["text"]):
+            if d is not None and d.get("text") != c["text"]:
+                self.client_differs.add(pid)
+            return c["text"], "forever-client"
+        if d is None:
+            return None, None
+        return d.get("text"), "cmangos"
+
+    def next_page(self, pid):
+        c = self.client_pages.get(pid)
+        if c is not None:
+            return c.get("next") or 0
+        d = self.pages.get(pid)
+        return (d.get("next_page") or 0) if d else 0
+
+    def chain(self, start):
+        """The page IDs of a chain in reading order; stops at a missing page or a loop (both counted)."""
+        out, seen, pid = [], set(), start
+        while pid:
+            if pid in seen:
+                self.loops.add(start)
+                break
+            if pid not in self.pages and pid not in self.client_pages:
+                self.missing.add(pid)                  # (a page that is there with no text stays: counted later)
+                break
+            seen.add(pid)
+            out.append(pid)
+            pid = self.next_page(pid)
+        return out
+
+    def records(self):
+        """[(ref, text, source, [place])]: one record per page ID (every place that shows it, with its page
+        number), then one per Wowhead book page. ref = page ID or "wh:<kind>:<id>:<n>"."""
+        by_page = collections.OrderedDict()
+        reached = set()
+        for start, places in self.starts.items():
+            for n, pid in enumerate(self.chain(start), 1):
+                reached.add(pid)
+                rec = by_page.setdefault(pid, [])
+                for pl in places:
+                    rec.append(dict(pl, page=n, pageId=pid))
+        heads = set(self.pages) | set(self.client_pages)
+        nexts = {self.next_page(p) for p in heads}
+        orphans = sorted(p for p in heads if p not in reached)
+        self.orphans = orphans
+        if self.include_orphans:
+            for head in [p for p in orphans if p not in nexts] + orphans:
+                for n, pid in enumerate(self.chain(head), 1):
+                    if pid in reached:
+                        continue
+                    reached.add(pid)
+                    by_page.setdefault(pid, []).append({"orphan": True, "page": n, "pageId": pid})
+        out = []
+        for pid, places in by_page.items():
+            text, src = self.page(pid)
+            out.append((pid, text, src, places))
+        for b in self.books:
+            for n, text in enumerate(b["pages"], 1):
+                out.append(("wh:%s:%d:%d" % (b["kind"], b["id"], n), text, "wowhead",
+                            [{b["kind"]: b["id"], "name": b["name"], "page": n, "forever": True}]))
+        self.counts["pages where the Forever client's text differs from the dump (client wins)"] = len(self.client_differs)
+        self.counts["page IDs referenced but missing"] = len(self.missing)
+        self.counts["page chains that loop (cut at the loop)"] = len(self.loops)
+        return out
+
+
+class ReadableExport(Export):
+    """The line export's jobs, voices and checks for readable pages: the narrator reads a page as one text."""
+
+    def spoken(self, text, sex):
+        segs, flags = Export.spoken(self, text, sex)
+        if len(segs) > 1 or (segs and segs[0][0] != "speaker"):
+            segs = [("speaker", " ".join(t for _, t in segs))]    # one reader: directions are read in line
+        # a heading or a closing that ends in a colon ("Respectfully yours:") got the paragraph's full stop too
+        return [(r, re.sub(r"[:;,]\.(?=\s|$)", ".", t)) for r, t in segs], flags
+
+
+def export_readables(cfg, overrides, include_orphans=False, rd=None):
+    """-> (ReadableExport, Readables, groups). Fails (exp.failures) on a hash collision or a spoken-text check."""
+    rd = rd or Readables(include_orphans)
+    n = cfg["narrators"]
+    vk = n.get("readable") or n["gossipObject"]
+    exp = ReadableExport(None, cfg, None, overrides)
+    exp.vset(vk)
+    groups = collections.OrderedDict()        # key -> {canon, text, sex, source, names, places, refs}
+    canon_of = {}
+    for ref, raw, src, places in rd.records():
+        if S.text_or_none(raw) is None:
+            rd.counts["pages with no text (NULL / empty)"] += 1
+            continue
+        text = page_source(raw)
+        if not V.has_letters(text):
+            rd.counts["pages with no words once the layout is out (a picture page)"] += 1
+            continue
+        rd.counts["pages with words"] += 1
+        for sex in V.sex_variants(text):
+            canon = V.key_text(text, sex)
+            if not canon:
+                continue
+            key = readable_key(canon)
+            if canon_of.get(key, canon) != canon:
+                exp.failures.append("readable hash collision: %r / %r -> %s" % (canon_of[key][:60], canon[:60], key))
+                continue
+            canon_of[key] = canon
+            g = groups.get(key)
+            if g is None:
+                g = groups[key] = {"canon": canon, "text": text, "sex": sex, "source": src, "names": [],
+                                   "places": [], "refs": []}
+            else:
+                rd.counts["page variants that repeat an earlier page's words (deduped)"] += 1
+            g["refs"].append(ref)
+            for pl in places:
+                if pl.get("name") and pl["name"] not in g["names"]:
+                    g["names"].append(pl["name"])
+                if len(g["places"]) < READABLE_MAX_PLACES:
+                    g["places"].append(pl)
+    for key, g in groups.items():
+        meta = {"canon": g["canon"], "names": g["names"], "places": g["places"], "pageRefs": len(g["refs"])}
+        exp.add_line(key, 0, vk, READABLE_KIND, g["text"], g["sex"], g["source"], (), meta)
+    allkeys = [k for j in exp.jobs.values() for k in j["keys"]]
+    if len(allkeys) != len(set(allkeys)):
+        exp.failures.append("duplicate keys across jobs")
+    for jid, job in exp.jobs.items():
+        if ("text" in job) == ("segments" in job):
+            exp.failures.append("job %s must have text or segments, not both / neither" % jid)
+    return exp, rd, groups
+
+
+def readables_main(args, cfg, cfg_label, overrides):
+    rd = Readables(args.include_orphans)
+    exp, rd, groups = export_readables(cfg, overrides, args.include_orphans, rd)
+    if exp.failures:
+        for f in exp.failures[:60]:
+            log("FAIL " + f)
+        raise SystemExit("readables export failed: %d problems (nothing written)" % len(exp.failures))
+    jobs = list(exp.jobs.values())
+    main_ids, overlap = set(), 0
+    main_path = os.path.join(args.out, "lines.json")
+    if os.path.exists(main_path):                       # read only: the same words in the same voice = one clip
+        with open(main_path, encoding="utf-8") as fh:
+            main_ids = {j["id"] for j in json.load(fh).get("jobs", [])}
+        overlap = sum(1 for j in jobs if j["id"] in main_ids)
+    words = sum(j["meta"]["words"] for j in jobs)
+    orphan_words = 0
+    if not args.include_orphans:
+        for pid in rd.orphans:
+            t, _ = rd.page(pid)
+            if S.text_or_none(t):
+                orphan_words += V.words(page_source(t))
+    coverage = {
+        "dumpPagesTotal": len(rd.pages),
+        "chainStarts": len(rd.starts),
+        "pagesWithWords": rd.counts["pages with words"],
+        "keys": len(exp.key_job),
+        "jobs": len(jobs),
+        "jobsSharedWithLinesJson": overlap,
+        "orphanPages": len(rd.orphans),
+        "orphanPagesIncluded": bool(args.include_orphans),
+        "orphanWordsLeftOut": orphan_words,
+        "foreverClientPages": len(rd.client_pages),
+        "foreverClientReadableObjects": len(rd.client_objects),
+        "foreverClientObjectsWithoutPageText": sorted(
+            "%d %s (page %d)" % (o, r["name"], r["page"]) for o, r in rd.client_objects.items()
+            if r["page"] not in rd.pages and r["page"] not in rd.client_pages),
+        "wowheadBooks": len(rd.books),
+        "wowheadBookPages": sum(len(b["pages"]) for b in rd.books),
+        "wowheadReadableWithoutBookText": ["%s %d %s" % (b["kind"], b["id"], b["name"]) for b in rd.books_missing],
+        "notes": dict(sorted({**rd.counts, **exp.counts}.items())),
+    }
+    inputs = {"cmangos": rd.cm_sha1, "wowheadBooks": len(rd.books), "foreverPageCache": len(rd.client_pages),
+              "voices": S.sha1_file(NV.voices_path()) if NV.voices_path() else "builtin", "narrator": cfg_label}
+    m = manifest("readables", jobs, inputs, {"notVoiced": len(exp.not_voiced), "speechMinutes150": round(words / 150.0, 1),
+                                             "coverage": coverage})
+    os.makedirs(args.out, exist_ok=True)
+    out = os.path.join(args.out, "lines_readables.json")
+    write_json(out, m)
+    rows = list(exp.review) + [{"key": k, "npc": n_, "voice": "", "kind": kind, "flags": " ".join(fl),
+                                "source text": t, "spoken text": "(not voiced)", "override": ""}
+                               for k, n_, kind, fl, t in exp.not_voiced]
+    write_review(os.path.join(args.out, "review_readables.csv"), rows)
+    log("wrote %s: %d jobs, %d keys, %d words (~%.1f min at 150 wpm); review_readables.csv %d rows" % (
+        out, m["stats"]["jobs"], m["stats"]["keys"], words, words / 150.0, len(rows)))
+    for k, v in coverage.items():
+        if k != "notes":
+            log("  %s: %s" % (k, v))
+    for k, v in coverage["notes"].items():
+        log("  %s: %s" % (k, v))
+    return exp, rd, m
+
+
 # ============================================================================================ main
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -770,10 +1060,19 @@ def main(argv=None):
     ap.add_argument("--remap-all", action="store_true",
                     help="re-map every frozen NPC row whose voice differs from voices.json (its per-NPC table, then "
                          "the identities); only when asked, e.g. after a re-map of the whole assignment")
+    ap.add_argument("--readables", action="store_true",
+                    help="export ONLY the readable pages (books, letters, plaques ...) to lines_readables.json and "
+                         "review_readables.csv; lines.json, the pilot and npc_voices.csv are not touched")
+    ap.add_argument("--include-orphans", action="store_true",
+                    help="with --readables: also the dump's pages no item or object shows (left out by default)")
     args = ap.parse_args(argv)
 
     cfg, cfg_label = NV.load_voices()
     log("voices: %s" % cfg_label)
+    if args.readables:
+        overrides = json.load(open(OVERRIDES, encoding="utf-8")) if os.path.exists(OVERRIDES) else {}
+        overrides = {k: v for k, v in overrides.items() if not k.startswith("_")}
+        return readables_main(args, cfg, cfg_label, overrides)
     nmap = NV.NpcVoiceMap(cfg)
     if not nmap.rows:
         if not args.research_map:

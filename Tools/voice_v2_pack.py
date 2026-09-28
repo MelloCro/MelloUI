@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Build the new voice pack, MelloUI_VoiceOverData_v2, from a line manifest and the clip library.
 
-    python Tools/voice_v2_pack.py <manifest.json>                     build into MelloUI-BuildData/output/voice_v2/
+    python Tools/voice_v2_pack.py <manifest.json> [more.json ...]     build into MelloUI-BuildData/output/voice_v2/
+                                                                      (several manifests make one pack, e.g.
+                                                                      lines.json lines_readables.json)
     python Tools/voice_v2_pack.py <manifest.json> --check             every check and the counts, nothing written
     python Tools/voice_v2_pack.py <manifest.json> --install [ADDONS]  build, then copy the built addon into the
                                                                       game's AddOns folder (only when the user asks)
@@ -9,7 +11,10 @@
     ... --out DIR      the built addon (default MelloUI-BuildData/output/voice_v2/MelloUI_VoiceOverData_v2)
     ... --build TEXT   the build text in the TOC and the index (default "<today> <manifest scope>")
 
-The manifest is lines.json / lines_pilot.json (format "melloui-voice-lines/2", the voice pack spec section 3.6).
+The manifest is lines.json / lines_pilot.json / lines_readables.json (format "melloui-voice-lines/2", the voice
+pack spec section 3.6); several are read as one (their keys must not repeat; a job in two of them is one clip).
+Readable pages (books, letters, plaques ...) are keyed "r-<hash8>" and read by the narrator; their canonical texts
+go into P.texts, and P.readNames maps the item / object name to its pages (the runtime's near-match).
 Only its KEYED jobs go into the pack (A/B alternates have keys: []); a job's clip is <clips>/<id>.ogg, where
 id = "<voiceKey>/<hash12>", kept exactly as the speech service returned it (Ogg Vorbis, mono).
 
@@ -51,7 +56,7 @@ MANIFEST_FORMAT = "melloui-voice-lines/2"
 MAX_CONSTANTS = 100_000          # per function block; Lua 5.1 allows 262,143
 MIN_SECONDS = 0.3
 
-KEY_RE = re.compile(r"^(?:(?:[mf]-)?\d+-(?:accept|objectives|progress|complete)(?:-\d+)?|g-\d+-[0-9a-f]{8})$")
+KEY_RE = re.compile(r"^(?:(?:[mf]-)?\d+-(?:accept|objectives|progress|complete)(?:-\d+)?|g-\d+-[0-9a-f]{8}|r-[0-9a-f]{8})$")
 ID_RE = re.compile(r"^([a-z0-9_]+)/([0-9a-f]{12})$")
 
 
@@ -169,6 +174,7 @@ def plan(manifest: dict, clips: str) -> dict:
     npc_voices = {}            # npc -> set(voiceKey)
     texts, text_index = [], {}
     npc_texts = {}             # npc (0 = objects) -> set(text index)
+    read_names = {}            # canonical item / object name -> set(text index) of its readable pages
     titles = {}                # canonical title -> set(quest ID)
     for job in jobs:
         jid = job.get("id", "")
@@ -204,6 +210,23 @@ def plan(manifest: dict, clips: str) -> dict:
             npc = line.get("npc")
             if isinstance(npc, int) and npc > 0:
                 npc_voices.setdefault(npc, set()).add(voice)
+            if key.startswith("r-"):
+                text = line.get("canon")
+                if not isinstance(text, str) or not text or canon(text) != text:
+                    problems.append("readable key %s has no canonical text (meta.lines[].canon)" % key)
+                    continue
+                if hash8(text) != key[2:]:
+                    problems.append("readable key %s: the text's hash is %s" % (key, hash8(text)))
+                    continue
+                if npc not in (0, None):
+                    problems.append("readable key %s: speaker %r; a page is read by the narrator (0)" % (key, npc))
+                if text not in text_index:
+                    text_index[text] = len(texts)
+                    texts.append(text)
+                for name in line.get("names") or []:
+                    if isinstance(name, str) and canon(name):
+                        read_names.setdefault(canon(name), set()).add(text_index[text])
+                continue
             if key.startswith("g-"):
                 _, key_npc, key_hash = key.split("-")
                 text = line.get("canon")
@@ -258,6 +281,8 @@ def plan(manifest: dict, clips: str) -> dict:
         "texts": texts,
         "npcTexts": {npc: sorted(i + 1 for i in idx) for npc, idx in npc_texts.items()},
         "titles": {t: next(iter(q)) for t, q in titles.items() if len(q) == 1},
+        "readNames": {n: sorted(i + 1 for i in idx) for n, idx in read_names.items()},
+        "readKeys": sum(1 for k in key_file if k.startswith("r-")),
         "titlesDropped": sorted(t for t, q in titles.items() if len(q) > 1),
     }
 
@@ -336,6 +361,9 @@ def index_lua(p: dict, build: str) -> str:
     out += emit_blocks("npcTexts", [(str(n), "{ %s }" % ", ".join(str(i) for i in p["npcTexts"][n]),
                                      {n, *p["npcTexts"][n]}) for n in sorted(p["npcTexts"])])
     out += emit_blocks("titles", [(lua_str(t), str(p["titles"][t]), {t, p["titles"][t]}) for t in sorted(p["titles"])])
+    if p.get("readNames"):
+        out += emit_blocks("readNames", [(lua_str(n), "{ %s }" % ", ".join(str(i) for i in p["readNames"][n]),
+                                          {n, *p["readNames"][n]}) for n in sorted(p["readNames"])])
     return "\n".join(out) + "\n"
 
 
@@ -373,8 +401,9 @@ SOURCES = """MelloUI Voice Over Data v2
 Recorded NPC and quest lines for MelloUI's Voice Over. Every NPC speaks all of its lines in one voice.
 
 Texts
-  The game's quest and NPC texts: taken from the classic-db dump of the game's data, from cached quest pages of
-  World of Warcraft: Forever, and from lines collected in the game.
+  The game's quest and NPC texts, and the pages of its books, letters, notes, plaques and signs: taken from the
+  classic-db dump of the game's data, from cached quest and item pages of World of Warcraft: Forever, from the
+  game's own text cache, and from lines collected in the game.
   The player's name, class and race are left out of the spoken words; lines whose words depend on the
   player's sex are recorded twice.
 
@@ -437,15 +466,34 @@ def guard(folder: str) -> None:
         raise BuildError("refusing to write %s: the pack's folder must be named %s" % (folder, ADDON_NAME))
 
 
-def build(manifest_path: str, clips: str, out: str, build_text: str | None, check_only: bool = False) -> dict:
-    with open(manifest_path, encoding="utf-8") as f:
-        manifest = json.load(f)
+def load_manifests(paths) -> dict:
+    """One manifest from one or several (lines.json + lines_readables.json): the jobs in order, the scopes joined.
+    A job that is in two of them (the same words in the same voice) stays one clip for all of its keys."""
+    if isinstance(paths, str):
+        paths = [paths]
+    merged = None
+    for path in paths:
+        with open(path, encoding="utf-8") as f:
+            m = json.load(f)
+        if m.get("format") != MANIFEST_FORMAT:
+            raise BuildError("%s: manifest format %r, not %r" % (path, m.get("format"), MANIFEST_FORMAT))
+        if merged is None:
+            merged = dict(m, jobs=list(m.get("jobs", [])))
+        else:
+            merged["jobs"].extend(m.get("jobs", []))
+            merged["scope"] = "%s+%s" % (merged.get("scope") or "full", m.get("scope") or "full")
+    return merged
+
+
+def build(manifest_path, clips: str, out: str, build_text: str | None, check_only: bool = False) -> dict:
+    manifest = load_manifests(manifest_path)
     guard(out)
     p = plan(manifest, clips)
     if not build_text:
         build_text = "%s %s" % (datetime.date.today().isoformat(), manifest.get("scope") or "full")
     seconds = sum(p["seconds"])
     stats = {"keys": len(p["lines"]), "files": len(p["files"]), "npcs": len(p["npcs"]), "texts": len(p["texts"]),
+             "readKeys": p["readKeys"], "readNames": len(p["readNames"]),
              "titles": len(p["titles"]), "titlesDropped": len(p["titlesDropped"]), "voices": len(p["voices"]),
              "mb": p["bytes"] / 1e6, "hours": seconds / 3600, "build": build_text}
     if check_only:
@@ -479,7 +527,7 @@ def install(out: str, addons: str) -> tuple:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("manifest")
+    ap.add_argument("manifest", nargs="+", help="lines.json (and lines_readables.json ...): one pack")
     ap.add_argument("--clips", default=os.path.join(OUTPUT, "voice_v2", "clips"))
     ap.add_argument("--out", default=os.path.join(OUTPUT, "voice_v2", ADDON_NAME))
     ap.add_argument("--build", default=None)
@@ -498,6 +546,8 @@ def main(argv=None) -> int:
     print("voice pack %s: %d keys, %d files, %d NPCs, %d texts, %d titles (%d shared titles left out), %d voices, "
           "%.1f MB, %.2f h" % (stats["build"], stats["keys"], stats["files"], stats["npcs"], stats["texts"],
                                stats["titles"], stats["titlesDropped"], stats["voices"], stats["mb"], stats["hours"]))
+    if stats["readKeys"]:
+        print("  readable pages: %d keys, %d item / object names" % (stats["readKeys"], stats["readNames"]))
     if args.check:
         print("checked only: nothing written")
         return 0

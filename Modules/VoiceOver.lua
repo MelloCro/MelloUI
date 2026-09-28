@@ -116,6 +116,7 @@ local defaults = {
 	questObjectives = false,
 	questProgress = true,
 	questComplete = true,
+	readBooks = true,         -- the pages of books, letters, plaques and signs (the item text window)
 	maleVoice = AUTO_VOICE,
 	femaleVoice = AUTO_VOICE,
 	rate = 0,
@@ -151,6 +152,8 @@ local options = {
 	  desc = "What the NPC says when you return with an unfinished quest." },
 	{ type = "toggle", key = "questComplete", name = "Quest Turn-In",
 	  desc = "What the NPC says when you hand in a completed quest." },
+	{ type = "toggle", key = "readBooks", name = "Read Books And Letters Aloud", new = "0.15.0",
+	  desc = "Read the page of a book, letter, note, plaque or sign aloud when you open it: turning the page reads the new page, closing it stops. The narrator's recording when the voice pack has the page." },
 	{ type = "header", name = "Voices" },
 	{ type = "dropdown", key = "maleVoice", name = "Male NPCs", values = VOICE_VALUES,
 	  desc = "Voice used for male and genderless NPCs. Install more voices in Windows speech settings." },
@@ -795,6 +798,7 @@ local KINDS = {
 	progress = { label = "Quest progress", bullet = "SoundQueueBulletProgress", quest = true },
 	complete = { label = "Quest turn-in",  bullet = "SoundQueueBulletComplete", quest = true },
 	objectives = { label = "Objectives",   bullet = "SoundQueueBulletProgress", quest = true, log = true },
+	readable = { label = "Page",           bullet = "SoundQueueBulletGossip",   quest = false, page = true },
 }
 
 local function PlainUnitValue(fn, unit)
@@ -951,6 +955,8 @@ end
 --                (greetings, their pages, quest-giver and trainer
 --                greetings), by the NPC and a hash of the text's words with
 --                the player's name, class and race taken out.
+--   pages        "r-<hash8>": a page of a book, letter, note, plaque or
+--                sign, read by the narrator, by the same hash of its words.
 -- The pack wins wherever it has a line, and an NPC it knows never falls
 -- back to the old pack (two voices for one NPC): a line it lacks is read
 -- with text-to-speech, or left silent. An NPC it does not know keeps the old
@@ -1172,6 +1178,69 @@ local function TextKey(P, speakerID, shown)
 	return nil, false, bestScore
 end
 
+-- A readable page (a book, letter, note, plaque or sign in the item text
+-- window) as it is read and keyed: the book layout's HTML tags and
+-- entities out, the $-tokens the client may leave in taken out ($N $C $R,
+-- $B a break, $G for the player's sex), and the brackets of a stage
+-- direction dropped so its words are read in line. Never given a secret.
+local PAGE_TAGS = { html = true, body = true, p = true, br = true, img = true, h1 = true, h2 = true, h3 = true }
+local PAGE_ENTITIES = { amp = "&", lt = "<", gt = ">", quot = "\"", apos = "'", nbsp = " " }
+
+local function PageText(text)
+	text = text:gsub("<%s*/?%s*(%w+)([^<>]*)>", function(tag, rest)
+		if PAGE_TAGS[tag:lower()] and (rest == "" or rest:find("^[%s/]")) then
+			return " "
+		end
+	end)
+	text = text:gsub("&(%a+);", PAGE_ENTITIES)
+	local female = PlainNumber(select(2, pcall(UnitSex, "player"))) == 3
+	text = text:gsub("%$[gG]%s*([^:;]*):([^;]*);", function(male, other)
+		return female and other or male
+	end)
+	text = text:gsub("%$[bB]", " "):gsub("%$[nNcCrR]", " "):gsub("[<>]", " ")
+	return text
+end
+
+-- A page's key "r-<hash8>": its words as the pack's texts keep them (form A,
+-- then B, then with nothing taken out: a book may name the player's class
+-- or race, or a hero who shares the player's name), else the page of the
+-- open item or object (by its name) with the most words in common.
+-- Returns key, the overlap.
+local function PageKey(P, shown, name)
+	local page = PageText(shown)
+	local forms = KeyForms(page, KeyPlayer())
+	local whole = KeyCanon(CleanText(page))
+	if whole ~= forms[1] and whole ~= forms[2] then
+		forms[#forms + 1] = whole
+	end
+	for _, form in ipairs(forms) do
+		local key = "r-" .. Hash8(form)
+		if P.lines[key] then
+			return key, 1
+		end
+	end
+	local list = type(P.readNames) == "table" and type(name) == "string" and not IsSecret(name)
+		and P.readNames[KeyCanon(name)] or nil
+	if type(list) ~= "table" or type(P.texts) ~= "table" then
+		return nil, 0
+	end
+	local best, bestScore = nil, 0
+	for _, index in ipairs(list) do
+		local text = P.texts[index]
+		if type(text) == "string" then
+			local score = Jaccard(forms[1], text)
+			if score > bestScore then
+				best, bestScore = text, score
+			end
+		end
+	end
+	if best and bestScore >= FUZZY_MATCH and P.lines["r-" .. Hash8(best)] then
+		return "r-" .. Hash8(best), bestScore
+	end
+	return nil, bestScore
+end
+M.voiceKeys.PageText, M.voiceKeys.PageKey = PageText, PageKey
+
 -- The new pack's clip for a line. Returns path, seconds, key, mismatch on a
 -- hit; else nil, nil, nil, nil, known (the speaker is an NPC the pack
 -- gives a voice: it must not fall back to the old pack's). The quest ID
@@ -1186,6 +1255,10 @@ local function V2Line(kind, speakerID, questID, title, text, label)
 		end
 		if questID then
 			key = QuestKey(P, kind, speakerID, questID)
+		end
+	elseif info.page then
+		if type(text) == "string" and not IsSecret(text) then
+			key, score = PageKey(P, text, title)   -- title: the item's or object's name
 		end
 	elseif type(text) == "string" and not IsSecret(text) then
 		key, mismatch, score = TextKey(P, speakerID, text)
@@ -1445,8 +1518,8 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	local info = KINDS[kind] or KINDS.gossip
 	if M.db.queueLines then
 		-- A greeting never waits behind a quest line (the player has already
-		-- moved on to the quest).
-		if not info.quest then
+		-- moved on to the quest); a page the player opened does.
+		if not info.quest and not info.page then
 			if current and KINDS[current.kind].quest then
 				return
 			end
@@ -1480,15 +1553,17 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		npc = npc,
 		kind = kind,
 		title = title or info.label,
-		name = npc and npc.name or nil,
+		name = npc and npc.name or (info.page and (title or info.label)) or nil,   -- a page: the book's name on the plate
 		mode = mode,
 	}
 	matchText = matchText or text
 	-- The old packs: in their own mode, and in the new pack's mode for an
 	-- NPC (or object) the new pack does not know, loaded then.
-	local oldPack = mode == "old"
+	-- (A page is only ever in the new pack.)
+	local oldPack = mode == "old" and not info.page
 	if mode == "v2" and (not info.log or kind == "objectives") and not (opts and opts.noRecording) then
 		local label = info.quest and string.format("%s %q", kind, tostring(title))
+			or info.page and string.format("page of %q", tostring(title))
 			or string.format("greeting from %s (%d)", tostring(npc and npc.name), speakerID)
 		local path, seconds, key, mismatch, known, foundID = V2Line(kind, speakerID, questID, title, matchText, label)
 		questID = questID or foundID
@@ -1498,6 +1573,8 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		elseif known then
 			Trace("%s: NPC %d speaks in the new pack, which has no such line: %s", label, speakerID,
 				(not logLine and M.db.speakUnrecorded == false) and "silent" or "text-to-speech")
+		elseif info.page then
+			Trace("%s: not in the new pack: %s", label, M.db.speakUnrecorded == false and "silent" or "text-to-speech")
 		elseif not info.log then
 			oldPack = true
 			Trace("%s: %s not in the new pack: old pack", label, speakerID ~= 0 and ("NPC " .. speakerID) or "object or item")
@@ -1526,7 +1603,7 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		entry.mismatch = mismatch or nil
 		entry.fileName = fileName
 	end
-	if not info.log then
+	if not info.log and not info.page then   -- the recorder keeps NPC and quest lines only
 		CollectLine(entry, questID)
 	end
 	-- Read Unvoiced Lines off (user, 2026-09-26: "turn off TTS Voices if the
@@ -2938,6 +3015,59 @@ local function ScheduleQuestRead(kind)
 	C_Timer.After(0, function() ReadQuestPanel(kind, serial, 1) end)
 end
 
+--------------------------------------------------------------------------------
+-- Books, letters, notes, plaques and signs (the item text window)
+--
+-- The page shown is read in the narrator's voice (the new pack's "r-" key)
+-- or with text-to-speech; turning the page reads the new page instead, and
+-- closing the window stops it. Read on ITEM_TEXT_READY, which comes for the
+-- first page and for every page turn.
+--------------------------------------------------------------------------------
+
+local function ItemTextValue(name)
+	local fn = _G[name]
+	if type(fn) == "function" then
+		local ok, value = pcall(fn)
+		if ok then
+			return value
+		end
+	end
+	return nil
+end
+
+-- the pages being read or waiting, out of the queue
+local function StopPages()
+	for i = #queue, 1, -1 do
+		if queue[i].kind == "readable" then
+			table.remove(queue, i)
+		end
+	end
+	if current and current.kind == "readable" then
+		Skip(current)
+	else
+		Overlay:Update()
+	end
+end
+
+local function ReadPage()
+	local text = ItemTextValue("ItemTextGetText")
+	if type(text) ~= "string" then
+		return
+	end
+	if not IsSecret(text) then
+		text = PageText(text)
+		local shown = CleanText(text)
+		if shown == "" then
+			return   -- a picture page
+		end
+		if current and current.kind == "readable" and not current.secret and current.text == shown then
+			return   -- the same page shown again: it goes on
+		end
+	end
+	StopPages()
+	Enqueue(text, nil, "readable", PlainString(ItemTextValue("ItemTextGetItem")), nil, nil, { speaker = 0 })
+end
+
 local handlers = {
 	GOSSIP_SHOW = function()
 		if M.db.gossip then
@@ -2984,6 +3114,14 @@ local handlers = {
 		if M.db.stopOnClose then
 			Stop()
 		end
+	end,
+	ITEM_TEXT_READY = function()
+		if M.db.readBooks then
+			ReadPage()
+		end
+	end,
+	ITEM_TEXT_CLOSED = function()
+		StopPages()
 	end,
 	PLAYER_TARGET_CHANGED = function()
 		if M.db.stopOnMove and current then
@@ -3420,6 +3558,7 @@ local EVENTS = {
 	"GOSSIP_SHOW", "GOSSIP_CLOSED",
 	"QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
 	"TRAINER_SHOW",
+	"ITEM_TEXT_READY", "ITEM_TEXT_CLOSED",
 	"PLAYER_TARGET_CHANGED",
 	"VOICE_CHAT_TTS_VOICES_UPDATE", "VOICE_CHAT_TTS_PLAYBACK_FINISHED", "VOICE_CHAT_TTS_PLAYBACK_FAILED",
 }
