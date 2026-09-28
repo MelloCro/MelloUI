@@ -685,7 +685,10 @@ function MelloUI:Print(msg, ...)
 	if n > 0 then
 		local args = { ... }
 		for i = 1, n do
-			args[i] = Printable(args[i])
+			local v = Printable(args[i])
+			-- a nil argument prints as nothing, never as a stray "%s ... nil"
+			if v == nil then v = "" end
+			args[i] = v
 		end
 		local ok, formatted = pcall(string.format, Printable(msg), unpack(args, 1, n))
 		if ok then

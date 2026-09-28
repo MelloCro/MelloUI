@@ -4973,6 +4973,8 @@ SlashCmdList.MELLOUI = function(msg)
 	local raw = (msg or ""):gsub("^%s+", ""):gsub("%s+$", "")
 	msg = raw:lower()
 	local cmd, rest = msg:match("^(%S+)%s*(.-)$")
+	-- a bare /mello matches nothing: no command opens the Configurator
+	cmd, rest = cmd or "", rest or ""
 	-- profile names keep their case (a name saved from the window is
 	-- stored as typed; lowercasing here found none of them)
 	local rawRest = raw:match("^%S+%s*(.-)$") or ""
