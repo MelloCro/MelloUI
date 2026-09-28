@@ -121,7 +121,9 @@ def forever_quests():
 def spoken(text, player_gender):
     """The text as it is to be read: placeholders as words, the $G form for
     the given player gender, line breaks as spaces."""
-    out = re.sub(r"\$[gG]([^;]*);([^;]*);", r"\1" if player_gender == "m" else r"\2", text)
+    # the game's form is $Gmale:female; (colon; spaces allowed, as in "$Glad : lass;")
+    out = re.sub(r"\$[gG]\s*([^:;]*):([^;]*);",
+                 lambda m: (m.group(1) if player_gender == "m" else m.group(2)).strip(), text)
     for key, word in PLACEHOLDERS.items():
         out = out.replace(key, word)
     out = re.sub(r"\$[bB]", " ", out)
@@ -183,6 +185,8 @@ def main():
             if kind == "progress" and args.skip_progress:
                 continue
             text = (rec.get(column) or "").strip()
+            if text.upper() == "NULL":
+                text = ""       # the shared dump parser returns an unquoted NULL as the string "NULL"
             if not text or not any(c.isalpha() for c in text):
                 continue
             if f"{qid}-{kind}" in quest_files or f"m-{qid}-{kind}" in quest_files or f"f-{qid}-{kind}" in quest_files:
@@ -191,7 +195,7 @@ def main():
             race, gender = voices.get(npc, ("", "")) if npc else ("", "")
             if npc and not gender:
                 unknown_npcs.add(npc)
-            variants = [("m", "m-"), ("f", "f-")] if re.search(r"\$[gG][^;]*;[^;]*;", text) else [("m", "")]
+            variants = [("m", "m-"), ("f", "f-")] if re.search(r"\$[gG]\s*[^:;]*:[^;]*;", text) else [("m", "")]
             for player_gender, prefix in variants:
                 file_name = f"{prefix}{qid}-{kind}.mp3"
                 if os.path.exists(os.path.join(args.sources, file_name)):

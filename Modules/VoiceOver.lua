@@ -15,6 +15,8 @@
 --
 -- If a VoiceOver data pack (AI_VoiceOverData_Vanilla) is installed, its
 -- recorded lines are played instead of text-to-speech whenever one exists.
+-- The new pack (MelloUI_VoiceOverData_v2: one voice per NPC for all of its
+-- lines) wins over those wherever it has a line; see "The new voice pack".
 --
 -- Commands: /vo stop, /vo pause, /vo skip, /vo read, /vo test, /vo voices, /vo npc,
 -- /vo packs (what loaded, the last lookups), /vo lines, /vo reset
@@ -126,6 +128,7 @@ local defaults = {
 	stopOnMove = false,
 	queueLines = true,
 	soundPacks = true,
+	oldVoicePack = false,     -- the old pack's recordings even when the new one (MelloUI_VoiceOverData_v2) is installed
 	preferRecordings = false,
 	speakUnrecorded = true,   -- text-to-speech for a line the pack has no recording of
 	soundChannel = "Master",
@@ -173,7 +176,9 @@ for _, group in ipairs(RACE_GROUPS) do
 end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use VoiceOver Sound Packs",
-	desc = "Play the recorded lines from an installed voice pack (MelloUI_VoiceOverData, a separate download) when one exists for the quest or greeting; the rest is read with text-to-speech unless Read Unvoiced Lines is off. Enable the pack in the addon list; it loads when needed." }
+	desc = "Play the recorded lines from an installed voice pack (MelloUI_VoiceOverData_v2 or MelloUI_VoiceOverData, separate downloads) when one exists for the quest or greeting; the rest is read with text-to-speech unless Read Unvoiced Lines is off. Enable the pack in the addon list; it loads when needed." }
+options[#options + 1] = { type = "toggle", key = "oldVoicePack", parent = "soundPacks", name = "Use The Old Voice Pack", new = "0.15.0",
+	desc = "Play the old voice pack's recordings (MelloUI_VoiceOverData) instead of the new pack's (MelloUI_VoiceOverData_v2). The new pack gives every NPC one voice for all of its lines; the old one voices NPCs by race and sex. Has no effect while the new pack is not installed." }
 options[#options + 1] = { type = "toggle", key = "speakUnrecorded", parent = "soundPacks", name = "Read Unvoiced Lines",
 	desc = "Read a quest or greeting the voice pack has no recording of with a text-to-speech voice. Off: only recorded lines are heard and the rest stay silent. The quest log's Read button always reads." }
 options[#options + 1] = { type = "toggle", key = "preferRecordings", parent = "soundPacks", name = "Prefer Recordings",
@@ -565,7 +570,10 @@ local function Normalise(text)
 	end
 	-- $N / $C / $R are the capitalised forms of the same placeholders; $B is
 	-- a line break in the pack texts, plain whitespace in the live text.
-	text = text:gsub("%$g[^;]*;[^;]*;", " ")
+	-- $Gmale:female; is the player's sex's word: the colon form, as every
+	-- quest text writes it (the old ";...;" pattern ran on to the next
+	-- semicolon and ate the words between).
+	text = text:gsub("%$g[^:;]*:[^;]*;", " ")
 	text = text:gsub("%$b", " ")
 	text = text:gsub("[^%w%$%s]", " ")
 	return text
@@ -885,6 +893,13 @@ local function CollectLine(entry, questID)
 	CollectNPC(store, npc)
 	local info = KINDS[entry.kind] or KINDS.gossip
 	local text = Placeholdered(entry.text, store.player)
+	-- With the new pack in use, "recorded" means the NEW pack had the line
+	-- (its file "v2:<key>"): a line the old pack played for an NPC the new
+	-- pack does not know still needs its new voice.
+	local served = entry.file ~= nil and not entry.mismatch
+	if entry.mode == "v2" then
+		served = entry.v2Key ~= nil and not entry.mismatch
+	end
 	local rec = {
 		text = text,
 		npc = npc and npc.name or nil,
@@ -895,8 +910,8 @@ local function CollectLine(entry, questID)
 		-- nagged about new lines that had a recording.) "file" is the
 		-- recording's name, so Tools/export_voice_lines.py can tell a line
 		-- served by another quest's file (a renumbered quest) from a new one.
-		recorded = entry.file ~= nil and not entry.mismatch,
-		file = (entry.file ~= nil and not entry.mismatch) and entry.fileName or nil,
+		recorded = served,
+		file = served and entry.fileName or nil,
 		seen = date("%Y-%m-%d"),
 	}
 	local isNew
@@ -919,6 +934,288 @@ local function CollectLine(entry, questID)
 			MelloUI:Notice("Voice Over: %d new lines without a recording collected (Record Dialog Lines). /reload saves them.", unsavedLines)
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The new voice pack (MelloUI_VoiceOverData_v2)
+--
+-- One voice per NPC for all of its lines. The pack's one index (index.lua,
+-- written by Tools/voice_v2_pack.py) maps a key to a clip
+-- (sounds\<voice>\<hash12>.ogg) and the clip's length:
+--   quest lines  "<questID>-<kind>" (accept, objectives, progress,
+--                complete); "m-" / "f-" in front for a line whose words
+--                depend on the player's sex; "<questID>-<kind>-<npcID>" only
+--                where a second giver or turn-in NPC has a voice of its own
+--                (npcID 0: an object or an item, read by the narrator).
+--   NPC texts    "g-<npcID>-<hash8>": every text an NPC's own window shows
+--                (greetings, their pages, quest-giver and trainer
+--                greetings), by the NPC and a hash of the text's words with
+--                the player's name, class and race taken out.
+-- The pack wins wherever it has a line, and an NPC it knows never falls
+-- back to the old pack (two voices for one NPC): a line it lacks is read
+-- with text-to-speech, or left silent. An NPC it does not know keeps the old
+-- pack for all of its lines, loaded when it is first needed. Use The Old
+-- Voice Pack switches back. Only the current mode's pack loads after login.
+-- The work is done on the dialog events only: no table is built for it.
+--------------------------------------------------------------------------------
+
+local V2_ADDON = "MelloUI_VoiceOverData_v2"
+local v2Pack = nil        -- the pack's table; false: looked for once and not there (a /reload looks again)
+local v2Error = nil       -- why it is not there, for /vo packs
+local FUZZY_MATCH = 0.4   -- the word overlap a changed greeting still needs (as the old pack's)
+
+-- The new pack, loaded the first time it is asked for: counted only when it
+-- is a table of the pack's format 2.
+local function V2()
+	if v2Pack == nil then
+		v2Pack = false
+		local data = _G[V2_ADDON]
+		if type(data) ~= "table" then
+			local LoadAddOn = AddOnAPI("LoadAddOn")
+			if LoadAddOn then
+				local ok, loaded, reason = pcall(LoadAddOn, V2_ADDON)
+				if not ok then
+					v2Error = tostring(loaded)
+				elseif not loaded then
+					v2Error = tostring(reason or "not loaded")
+				end
+			end
+			data = _G[V2_ADDON]
+		end
+		if type(data) == "table" and data.format == 2 and type(data.lines) == "table" and type(data.file) == "table"
+			and type(data.fileVoice) == "table" and type(data.voices) == "table" and type(data.npcs) == "table"
+			and type(data.base) == "string" then
+			v2Pack = data
+		elseif type(data) == "table" then
+			v2Error = "not a pack this version reads"
+		end
+	end
+	return v2Pack or nil
+end
+
+-- "tts" (text-to-speech only), "old" (the old packs, as before the new one)
+-- or "v2" (the new pack, the old one for the NPCs it does not know).
+local function Mode()
+	local db = M.db
+	if not (db and db.soundPacks) then
+		return "tts"
+	end
+	if db.oldVoicePack then
+		return "old"
+	end
+	return V2() and "v2" or "old"
+end
+
+local MODE_LABELS = {   -- for /vo packs
+	tts = "text-to-speech only (Use VoiceOver Sound Packs is off)",
+	old = "the old voice pack's recordings",
+	v2 = "the new voice pack's recordings (the old pack's for NPCs it does not know)",
+}
+
+-- A text's words as the pack's keys are made from them: lower case, every
+-- character but a-z and 0-9 a space, single spaces, trimmed.
+local function KeyCanon(s)
+	s = s:lower():gsub("[^a-z0-9]", " "):gsub(" +", " ")
+	return (s:gsub("^ ", ""):gsub(" $", ""))
+end
+
+-- a player value (name, class, race) taken out of a canonical text, whole
+-- words only; the value is made canonical too, so it holds nothing a
+-- pattern would read as magic
+local function DropWords(s, value)
+	if type(value) ~= "string" then
+		return s
+	end
+	local words = KeyCanon(value)
+	if words == "" then
+		return s
+	end
+	s = s:gsub("%f[%w]" .. words .. "%f[%W]", " "):gsub(" +", " ")
+	return (s:gsub("^ ", ""):gsub(" $", ""))
+end
+
+-- The forms a shown text is looked up by, in order: A with the player's
+-- name, class and race taken out (the pack's texts leave them out), B with
+-- only the name taken out (for a text that spells a class or race out, "an
+-- undead infestation" told to an undead player). Never given a secret.
+local function KeyForms(shown, player)
+	local b = DropWords(KeyCanon(CleanText(shown)), player.name)
+	local a = DropWords(DropWords(b, player.class), player.race)
+	if a == b then
+		return { a }
+	end
+	return { a, b }
+end
+
+-- 32-bit polynomial hash of a canonical text, as 8 hex digits. Exact in
+-- doubles (h * 31 + 255 stays below 2^53); the halves are printed apart,
+-- since %x on a value of 2^31 or more is clipped on Windows.
+local function Hash8(s)
+	local h = 0
+	for i = 1, #s do
+		h = (h * 31 + s:byte(i)) % 4294967296
+	end
+	return string.format("%04x%04x", math.floor(h / 65536), h % 65536)
+end
+
+-- word-set overlap of two canonical texts, 0..1
+local function Jaccard(a, b)
+	local setA, setB, both, all = {}, {}, 0, 0
+	for word in a:gmatch("%S+") do setA[word] = true end
+	for word in b:gmatch("%S+") do setB[word] = true end
+	for word in pairs(setA) do
+		all = all + 1
+		if setB[word] then both = both + 1 end
+	end
+	for word in pairs(setB) do
+		if not setA[word] then all = all + 1 end
+	end
+	if all == 0 then
+		return 0
+	end
+	return both / all
+end
+
+M.voiceKeys = { Canon = KeyCanon, KeyForms = KeyForms, Hash8 = Hash8, Jaccard = Jaccard }   -- the key rules (for the tests)
+
+local function KeyPlayer()
+	return {
+		name = PlainUnitValue(UnitName, "player"),
+		class = PlainUnitValue(UnitClass, "player"),
+		race = PlainUnitValue(UnitRace, "player"),
+	}
+end
+
+-- Who speaks a dialog line: the NPC the window is for ("npc", then
+-- "questnpc"), 0 for an object, an item, a player sharing a quest or no
+-- unit. Never the target: an item's quest would take the target's voice.
+local SPEAKER_UNITS = { "npc", "questnpc" }
+
+local function SpeakerID()
+	for _, unit in ipairs(SPEAKER_UNITS) do
+		local ok, exists = pcall(UnitExists, unit)
+		if ok and exists then
+			return NPCIDFromUnit(unit) or 0
+		end
+	end
+	return 0
+end
+
+-- A quest line's key: the speaker's own clip where the pack has one, else
+-- the quest's (its main giver or turn-in NPC); the player's sex's version
+-- first for a line whose words depend on it, either one when the client
+-- does not say.
+local function QuestKey(P, kind, speakerID, questID)
+	local lines = P.lines
+	local body = questID .. "-" .. kind
+	local sex = PlainNumber(select(2, pcall(UnitSex, "player")))
+	local prefix = sex == 2 and "m-" or (sex == 3 and "f-" or nil)
+	for pass = 1, 2 do
+		local key = pass == 1 and (body .. "-" .. speakerID) or body
+		if prefix then
+			if lines[prefix .. key] then
+				return prefix .. key
+			elseif lines[key] then
+				return key
+			end
+		elseif lines["m-" .. key] then
+			return "m-" .. key
+		elseif lines[key] then
+			return key
+		elseif lines["f-" .. key] then
+			return "f-" .. key
+		end
+	end
+	return nil
+end
+
+-- A text's key: exact (form A, then B), else the NPC's text with the most
+-- words in common (FUZZY_MATCH at least, as the old pack's greetings), else
+-- -- with Prefer Recordings -- the NPC's only text. Returns key, mismatch,
+-- the overlap.
+local function TextKey(P, speakerID, shown)
+	local forms = KeyForms(shown, KeyPlayer())
+	local prefix = "g-" .. speakerID .. "-"
+	for _, form in ipairs(forms) do
+		local key = prefix .. Hash8(form)
+		if P.lines[key] then
+			return key, false, 1
+		end
+	end
+	local list = type(P.npcTexts) == "table" and P.npcTexts[speakerID] or nil
+	local texts = P.texts
+	if type(list) ~= "table" or type(texts) ~= "table" then
+		return nil, false, 0
+	end
+	local best, bestScore = nil, 0
+	for _, index in ipairs(list) do
+		local text = texts[index]
+		if type(text) == "string" then
+			local score = Jaccard(forms[1], text)
+			if score > bestScore then
+				best, bestScore = text, score
+			end
+		end
+	end
+	if best and bestScore >= FUZZY_MATCH then
+		local key = prefix .. Hash8(best)
+		if P.lines[key] then
+			return key, false, bestScore
+		end
+	end
+	if M.db.preferRecordings and #list == 1 and type(texts[list[1]]) == "string" then
+		local key = prefix .. Hash8(texts[list[1]])
+		if P.lines[key] then
+			return key, true, bestScore
+		end
+	end
+	return nil, false, bestScore
+end
+
+-- The new pack's clip for a line. Returns path, seconds, key, mismatch on a
+-- hit; else nil, nil, nil, nil, known (the speaker is an NPC the pack
+-- gives a voice: it must not fall back to the old pack's). The quest ID
+-- used comes last (the pack's title table finds one the client did not give).
+local function V2Line(kind, speakerID, questID, title, text, label)
+	local P = v2Pack
+	local key, mismatch, score
+	local info = KINDS[kind] or KINDS.gossip
+	if info.quest then
+		if not questID and type(title) == "string" and not IsSecret(title) and type(P.titles) == "table" then
+			questID = PlainNumber(P.titles[KeyCanon(title)])
+		end
+		if questID then
+			key = QuestKey(P, kind, speakerID, questID)
+		end
+	elseif type(text) == "string" and not IsSecret(text) then
+		key, mismatch, score = TextKey(P, speakerID, text)
+	end
+	local voice = speakerID ~= 0 and P.npcs[speakerID] or nil
+	if key then
+		local file = P.lines[key]
+		local fileVoice = P.fileVoice[file]
+		local folder, name = P.voices[fileVoice or 0], P.file[file]
+		if speakerID ~= 0 and fileVoice ~= voice then
+			-- a speaker the pack gave another voice, or none (a giver it did
+			-- not know): one NPC never speaks in two voices
+			Trace("%s: new pack %s, voice differs from NPC %d's: not played", label, key, speakerID)
+		elseif type(folder) == "string" and type(name) == "string" then
+			local how = ""
+			if mismatch then
+				how = string.format(" (the words differ, %d%% match; Prefer Recordings)", math.floor((score or 0) * 100 + 0.5))
+			elseif score and score < 1 then
+				how = string.format(" (matched %d%%)", math.floor(score * 100 + 0.5))
+			end
+			Trace("%s: new pack hit %s%s", label, key, how)
+			local seconds = P.seconds and PlainNumber(P.seconds[file]) or nil
+			return P.base .. folder .. "\\" .. name .. ".ogg", seconds, key, mismatch, true, questID
+		end
+	elseif info.quest and not questID then
+		Trace("%s: no quest ID for the new pack", label)
+	elseif score and score > 0 then
+		Trace("%s: new pack, best match only %d%%", label, math.floor(score * 100 + 0.5))
+	end
+	return nil, nil, nil, nil, voice ~= nil, questID
 end
 
 --------------------------------------------------------------------------------
@@ -1111,8 +1408,17 @@ end
 
 -- Queue a line. npc is a table from DescribeNPC (or nil), kind a KINDS key.
 -- matchText, when given, is the text the pack lookups compare (the quest
--- description alone when the objectives are read after it).
-local function Enqueue(text, npc, kind, title, questID, matchText)
+-- description alone when the objectives are read after it). opts (or nil):
+--   speaker    the NPC ID the new pack looks the line up for (the quest
+--              log's giver), else the dialog's NPC (SpeakerID)
+--   follow     the line goes on after the one queued just before it (the
+--              objectives after the offer): never cuts it off
+--   dialog     an objectives line of the quest window: a dialog line (Read
+--              Unvoiced Lines applies), not one the quest log asked for
+--   clipOnly   queued only when the new pack has a clip for it
+--   noRecording  read with text-to-speech, never looked up
+-- Returns the entry when it was queued.
+local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	if not HasTTS() then
 		return
 	end
@@ -1150,10 +1456,21 @@ local function Enqueue(text, npc, kind, title, questID, matchText)
 				end
 			end
 		end
-	else
+	elseif not (opts and opts.follow) then
 		CancelFinishTimer()
 		wipe(queue)
 		current = nil
+	end
+	-- a quest log line (the Read button) always reads; an objectives line of
+	-- the quest window is a dialog line
+	local logLine = info.log and not (opts and opts.dialog)
+	local mode = Mode()
+	local speakerID
+	if mode == "v2" then
+		speakerID = opts and opts.speaker or SpeakerID()
+		if speakerID == 0 and npc and npc.unit == "target" then
+			npc = nil   -- an object's or an item's line: never the target's voice or face
+		end
 	end
 	entryCounter = entryCounter + 1
 	local entry = {
@@ -1164,17 +1481,40 @@ local function Enqueue(text, npc, kind, title, questID, matchText)
 		kind = kind,
 		title = title or info.label,
 		name = npc and npc.name or nil,
+		mode = mode,
 	}
-	if M.db.soundPacks and not info.log then
+	matchText = matchText or text
+	-- The old packs: in their own mode, and in the new pack's mode for an
+	-- NPC (or object) the new pack does not know, loaded then.
+	local oldPack = mode == "old"
+	if mode == "v2" and (not info.log or kind == "objectives") and not (opts and opts.noRecording) then
+		local label = info.quest and string.format("%s %q", kind, tostring(title))
+			or string.format("greeting from %s (%d)", tostring(npc and npc.name), speakerID)
+		local path, seconds, key, mismatch, known, foundID = V2Line(kind, speakerID, questID, title, matchText, label)
+		questID = questID or foundID
+		if path then
+			entry.file, entry.length, entry.mismatch = path, seconds, mismatch or nil
+			entry.v2Key, entry.fileName = key, "v2:" .. key
+		elseif known then
+			Trace("%s: NPC %d speaks in the new pack, which has no such line: %s", label, speakerID,
+				(not logLine and M.db.speakUnrecorded == false) and "silent" or "text-to-speech")
+		elseif not info.log then
+			oldPack = true
+			Trace("%s: %s not in the new pack: old pack", label, speakerID ~= 0 and ("NPC " .. speakerID) or "object or item")
+		end
+		if opts and opts.clipOnly and not path then
+			return nil
+		end
+	end
+	if oldPack and not info.log then
 		-- The pack tables also resolve quest IDs the client does not give.
 		LoadSoundPacks()
 	end
-	matchText = matchText or text
 	if info.quest and not questID then
 		questID = ResolveQuestID(kind, npc, title, matchText)
 	end
 	entry.questID = questID
-	if M.db.soundPacks and not info.log and #packs > 0 then
+	if oldPack and not info.log and #packs > 0 then
 		local path, length, mismatch, fileName
 		if info.quest then
 			path, length, fileName = PackQuestLine(kind, npc, title, matchText, questID)
@@ -1192,14 +1532,14 @@ local function Enqueue(text, npc, kind, title, questID, matchText)
 	-- Read Unvoiced Lines off (user, 2026-09-26: "turn off TTS Voices if the
 	-- Dialog is not voiced"): with the packs on, a line with no recording is
 	-- left silent. The quest log's Read button is asked for, so it still reads.
-	if not entry.file and not info.log and M.db.soundPacks and M.db.speakUnrecorded == false then
-		if not M.db.queueLines then
+	if not entry.file and not logLine and M.db.soundPacks and M.db.speakUnrecorded == false then
+		if not M.db.queueLines and not (opts and opts.follow) then
 			StopEngine()   -- a new window still ends the line before it, as it does when that line is read
 		end
 		Overlay:Update()
 		return
 	end
-	if entry.file and not info.log and M.db.soundPacks and M.db.speakUnrecorded == false then
+	if entry.file and not logLine and M.db.soundPacks and M.db.speakUnrecorded == false then
 		entry.recordedOnly = true   -- a file that fails to play stays silent too
 	end
 	queue[#queue + 1] = entry
@@ -1207,6 +1547,7 @@ local function Enqueue(text, npc, kind, title, questID, matchText)
 		PlayNext()
 	end
 	Overlay:Update()
+	return entry
 end
 
 -- Speak a line straight away outside the queue (settings samples).
@@ -2569,14 +2910,26 @@ local function ReadQuestPanel(kind, serial, attempt)
 	end
 	lastRead.key, lastRead.at = key, GetTime()
 	Trace("%s %q: client quest ID %s after %d read(s)", kind, tostring(title), tostring(questID or "none"), attempt)
-	local spoken = text
+	local spoken, objectives = text, nil
 	if kind == "accept" and M.db.questObjectives and GetObjectiveText and plain then
-		local objectives = GetObjectiveText()
-		if type(objectives) == "string" and not IsSecret(objectives) and objectives ~= "" then
-			spoken = plain .. " " .. objectives
+		local objectiveText = GetObjectiveText()
+		if type(objectiveText) == "string" and not IsSecret(objectiveText) and objectiveText ~= "" then
+			if Mode() == "v2" then
+				-- a line of its own after the offer: the new pack's objectives
+				-- clip, or text-to-speech when it has none (a recorded offer
+				-- no longer swallows them)
+				objectives = objectiveText
+			else
+				spoken = plain .. " " .. objectiveText
+			end
 		end
 	end
-	Enqueue(spoken, DescribeNPC(), kind, title, questID, text)
+	local npc = DescribeNPC()
+	Enqueue(spoken, npc, kind, title, questID, text)
+	if objectives then
+		Enqueue(objectives, npc, "objectives", "Objectives" .. (title and (": " .. title) or ""), questID, nil,
+			{ dialog = true, follow = true })
+	end
 end
 
 local function ScheduleQuestRead(kind)
@@ -2594,6 +2947,17 @@ local handlers = {
 	QUEST_GREETING = function()
 		if M.db.gossip and GetGreetingText then
 			Enqueue(GetGreetingText(), DescribeNPC(), "gossip")
+		end
+	end,
+	-- the trainer's own greeting ("Hello, priest! Ready for some training?"),
+	-- a text of the NPC's own window like any other
+	TRAINER_SHOW = function()
+		local GetTrainerGreetingText = _G.GetTrainerGreetingText
+		if M.db.gossip and GetTrainerGreetingText then
+			local ok, text = pcall(GetTrainerGreetingText)
+			if ok then
+				Enqueue(text, DescribeNPC(), "gossip")
+			end
 		end
 	end,
 	QUEST_DETAIL = function()
@@ -2689,8 +3053,11 @@ local function GiverForQuest(questID)
 	local name = row and row[9] or nil
 	if not npcID and M.db.soundPacks then
 		-- Not in the quest list data (or an item starts it): the pack's own
-		-- quest -> NPC table knows the vanilla givers.
-		LoadSoundPacks()
+		-- quest -> NPC table knows the vanilla givers. (The new pack's mode
+		-- loads the old packs for no lookup of their own: read if loaded.)
+		if Mode() ~= "v2" then
+			LoadSoundPacks()
+		end
 		for _, pack in ipairs(packs) do
 			local byQuest = pack.data.NPCIDLookupByQuestID
 			local id = byQuest and byQuest[questID]
@@ -2715,9 +3082,11 @@ local function GiverForQuest(questID)
 	}
 end
 
-local function SpeakableObjectives(questID, objectivesText, description)
+-- countsOnly: only the objectives' counts ("Goretusk Liver, 0 of 8."), when
+-- a recording has said the objectives themselves
+local function SpeakableObjectives(questID, objectivesText, description, countsOnly)
 	local parts = {}
-	if type(objectivesText) == "string" and not IsSecret(objectivesText) and objectivesText ~= "" then
+	if not countsOnly and type(objectivesText) == "string" and not IsSecret(objectivesText) and objectivesText ~= "" then
 		-- The objectives paragraph repeats the description on some quests
 		-- (the recording already said it); only read it when it adds something.
 		local same = false
@@ -2748,6 +3117,9 @@ local function SpeakableObjectives(questID, objectivesText, description)
 	if #parts == 0 then
 		return nil
 	end
+	if countsOnly then
+		return table.concat(parts, " ")
+	end
 	return "Objectives. " .. table.concat(parts, " ")
 end
 
@@ -2776,16 +3148,25 @@ local function ReadQuest(questID)
 	Stop()
 	local npc = GiverForQuest(questID)
 	local spoken = false
+	-- the new pack's lines in the giver's voice (0: an object or an item)
+	local v2 = Mode() == "v2"
+	local speaker = v2 and (npc.id or 0) or nil
 	if type(description) == "string" and not IsSecret(description) and description ~= "" then
-		Enqueue(description, npc, "accept", title, questID)
+		Enqueue(description, npc, "accept", title, questID, nil, v2 and { speaker = speaker } or nil)
 		spoken = true
 	end
-	local objectives = M.db.questLogObjectives and SpeakableObjectives(questID, objectivesText, description) or nil
+	local label = "Objectives" .. (title and (": " .. title) or "")
+	-- the new pack's objectives line, then only the counts read aloud
+	local clip = nil
+	if v2 and M.db.questLogObjectives and type(objectivesText) == "string" and not IsSecret(objectivesText) and objectivesText ~= "" then
+		clip = Enqueue(objectivesText, npc, "objectives", label, questID, nil, { speaker = speaker, clipOnly = true, follow = true })
+	end
+	local objectives = M.db.questLogObjectives and SpeakableObjectives(questID, objectivesText, description, clip ~= nil) or nil
 	if objectives then
-		Enqueue(objectives, npc, "objectives", "Objectives" .. (title and (": " .. title) or ""), questID)
+		Enqueue(objectives, npc, "objectives", label, questID, nil, v2 and { noRecording = true, follow = true } or nil)
 		spoken = true
 	end
-	return spoken
+	return spoken or clip ~= nil
 end
 
 local readButton = nil
@@ -2929,17 +3310,36 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 		end
 		print("   Saved when you log out or /reload, and kept from one session to the next.")
 	elseif msg == "packs" then
-		LoadSoundPacks()
-		if #packs == 0 and not next(packErrors) then
-			MelloUI:Print("No VoiceOver sound packs installed (looked for addons with X-VoiceOver-DataModule-Version).")
+		local mode = Mode()
+		MelloUI:Print("Voice Over plays %s.", MODE_LABELS[mode])
+		if v2Pack then
+			local keys, npcs = 0, 0
+			for _ in pairs(v2Pack.lines) do keys = keys + 1 end
+			for _ in pairs(v2Pack.npcs) do npcs = npcs + 1 end
+			MelloUI:Print("New pack %s: build %s, %d lines, %d recordings, %d NPCs.", V2_ADDON, tostring(v2Pack.build or "?"),
+				keys, #v2Pack.file, npcs)
+		elseif mode == "old" and M.db.oldVoicePack then
+			print("   New pack: not loaded (Use The Old Voice Pack is on).")
+		elseif v2Error then
+			print(string.format("   New pack %s: not loaded (%s).", V2_ADDON, v2Error))
 		end
-		for _, pack in ipairs(packs) do
-			local files = 0
-			for _ in pairs(pack.data.SoundLengthLookupByFileName) do files = files + 1 end
-			MelloUI:Print("Pack %s: %d recorded lines (priority %d).", pack.name, files, pack.priority)
-		end
-		for name, err in pairs(packErrors) do
-			MelloUI:Print("Pack %s could not be loaded: %s", name, err)
+		if mode == "v2" and not packsLoaded then
+			print("   Old packs: not loaded; they load when an NPC the new pack does not know speaks.")
+		else
+			if mode ~= "v2" then
+				LoadSoundPacks()
+			end
+			if #packs == 0 and not next(packErrors) then
+				MelloUI:Print("No VoiceOver sound packs installed (looked for addons with X-VoiceOver-DataModule-Version).")
+			end
+			for _, pack in ipairs(packs) do
+				local files = 0
+				for _ in pairs(pack.data.SoundLengthLookupByFileName) do files = files + 1 end
+				MelloUI:Print("Pack %s: %d recorded lines (priority %d).", pack.name, files, pack.priority)
+			end
+			for name, err in pairs(packErrors) do
+				MelloUI:Print("Pack %s could not be loaded: %s", name, err)
+			end
 		end
 		if current then
 			print("   current line: " .. (current.file and ("recorded (" .. current.file .. ")") or "text-to-speech"))
@@ -3019,6 +3419,7 @@ end
 local EVENTS = {
 	"GOSSIP_SHOW", "GOSSIP_CLOSED",
 	"QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
+	"TRAINER_SHOW",
 	"PLAYER_TARGET_CHANGED",
 	"VOICE_CHAT_TTS_VOICES_UPDATE", "VOICE_CHAT_TTS_PLAYBACK_FINISHED", "VOICE_CHAT_TTS_PLAYBACK_FAILED",
 }
@@ -3070,9 +3471,12 @@ function M:OnEnable(db)
 	end
 	if db.soundPacks then
 		-- The packs' lookup tables are a few megabytes of Lua; load them a
-		-- moment after login rather than inside the first dialog.
+		-- moment after login rather than inside the first dialog. Only the
+		-- current mode's: asking the mode loads the new pack in its mode;
+		-- the old packs load here only in theirs (in the new pack's mode,
+		-- when an NPC it does not know first speaks).
 		C_Timer.After(3, function()
-			if M.isEnabled and M.db.soundPacks then
+			if M.isEnabled and M.db.soundPacks and Mode() == "old" then
 				LoadSoundPacks()
 			end
 		end)

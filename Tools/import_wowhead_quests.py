@@ -119,6 +119,8 @@ def clean_text(fragment):
     text = html.unescape(text)
     for word, placeholder in PLACEHOLDERS.items():
         text = re.sub(r"<\s*" + word + r"\s*>", placeholder, text, flags=re.I)
+    # Wowhead writes the player-gender words as <guy/girl>, <Lord/Lady>: back to the game's $gmale:female;
+    text = re.sub(r"<\s*([A-Za-z']+)\s*/\s*([A-Za-z']+)\s*>", r"$g\1:\2;", text)
     text = text.replace("\xa0", " ")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\s*\n\s*", " ", text)
@@ -133,12 +135,22 @@ def parse_quest(page_html, quest_id):
     for key in ("Start", "End"):
         m = re.search(key + r": \[url=/forever/npc=(\d+)/[^\]]*\]([^\[]*)\[/url\]", unescaped)
         out[key.lower()] = {"npcID": int(m.group(1)), "name": html.unescape(m.group(2))} if m else None
-    m = re.search(r'<h2 class="heading-size-3">Description</h2>(.*?)<h2', page_html, re.S)
+    # Page scripts are removed first (their text leaked into 7 quest texts); a removed block still ends the
+    # section it interrupted, and so do the page's own blocks (on pages without rewards the description is
+    # followed by the "See if you've already completed this" macro, not by another heading).
+    page = re.sub(r"<(script|style)\b.*?</\1\s*>", "<div>", page_html, flags=re.S | re.I)
+    m = re.search(r'<h2 class="heading-size-3">Description</h2>(.*?)(?:<h2|<div|<table|<ul|<pre|$)', page, re.S)
     out["accept"] = clean_text(m.group(1)) if m else ""
-    m = re.search(r'id="lknlksndgg-progress"[^>]*>(.*?)</div>', page_html, re.S)
-    out["progress"] = clean_text(m.group(1)) if m else ""
-    m = re.search(r'id="lknlksndgg-completion"[^>]*>(.*?)</div>', page_html, re.S)
-    out["complete"] = clean_text(m.group(1)) if m else ""
+    # Progress and completion come in two layouts: the collapsible div, and (on pages with no description)
+    # an inline heading, <h2 classes="first" class="heading-size-3">Progress</h2>text. The inline one holds
+    # 170 progress and 29 completion texts of the cached pages.
+    for name, key, div in (("Progress", "progress", "lknlksndgg-progress"),
+                           ("Completion", "complete", "lknlksndgg-completion")):
+        m = re.search(r'id="' + div + r'"[^>]*>(.*?)</div>', page, re.S)
+        if not m:
+            m = re.search(r'<h2 classes="first" class="heading-size-3">' + name +
+                          r'</h2>(.*?)(?:<table|<div|<h2|<ul|<pre|$)', page, re.S)
+        out[key] = clean_text(m.group(1)) if m else ""
     return out
 
 

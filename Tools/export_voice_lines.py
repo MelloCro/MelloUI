@@ -62,7 +62,7 @@ DEFAULT_PACK = next((os.path.join(ADDONS, name) for name in ("MelloUI_VoiceOverD
                      if os.path.isdir(os.path.join(ADDONS, name))), os.path.join(ADDONS, "MelloUI_VoiceOverData"))
 
 # How placeholders are spoken. $n is the player's name, $c class, $r race,
-# $g male;female; picks by player gender.
+# $gmale:female; picks by player gender.
 # Same words the vanilla pack's generator used, so new lines sound consistent.
 PLACEHOLDERS = {"$n": "adventurer", "$N": "Adventurer", "$c": "adventurer", "$C": "Adventurer", "$r": "traveler", "$R": "Traveler", "$b": " ", "$B": " "}
 
@@ -161,7 +161,7 @@ def load_pack(pack_dir):
 
 def normalise(text):
     text = text.lower()
-    text = re.sub(r"\$g[^;]*;[^;]*;", " ", text)
+    text = re.sub(r"\$g[^:;]*:[^;]*;", " ", text)       # $gmale:female; (the text is lowercased already)
     text = re.sub(r"[^\w$\s]", " ", text)
     return text
 
@@ -217,7 +217,7 @@ def placeholdered(text, player):
 
 def spoken_text(text, player=None):
     out = placeholdered(text, player)
-    out = re.sub(r"\$[gG]([^;]*);([^;]*);", r"\1", out)
+    out = re.sub(r"\$[gG]\s*([^:;]*):([^;]*);", lambda m: m.group(1).strip(), out)   # $Gmale:female;
     for key, word in PLACEHOLDERS.items():
         out = out.replace(key, word)
     out = re.sub(r"\s+", " ", out).strip()
