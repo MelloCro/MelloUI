@@ -833,6 +833,19 @@ local function OpenRecipe(recipeID)
 	end)
 end
 
+-- The quest Route's own map pin follows for now (Route:PinnedQuest: a
+-- needed item's source, or the dock on the way to another continent): the
+-- game tracks the pin then, not the quest, and the quest is still the one
+-- followed. nil for none, or Route off.
+local function RoutePinned()
+	local R = MelloUI:GetModule("Route")
+	if not (R and R.isEnabled and type(R.PinnedQuest) == "function") then
+		return nil
+	end
+	local ok, id = pcall(R.PinnedQuest, R)
+	return ok and MelloUI.Safe.Number(id) or nil
+end
+
 local function OnBlockClick(block, button)
 	if block.recipeID then
 		if IsShiftKeyDown() and button ~= "RightButton" then
@@ -861,7 +874,18 @@ local function OnBlockClick(block, button)
 		end
 	elseif C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
 		local current = C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID()
-		local want = (Plain(current) == id) and 0 or id
+		current = Plain(current)
+		-- followed through Route's pin: a click lets go of that too, or Route
+		-- would go on following the quest through it
+		local pinned = RoutePinned()
+		if (current == nil or current == 0) and pinned then
+			current = pinned
+		end
+		local want = (current == id) and 0 or id
+		if want == 0 and pinned == id then
+			local R = MelloUI:GetModule("Route")
+			pcall(R.Clear, R)
+		end
 		if securecallfunction then
 			securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, want)
 		else
@@ -1086,6 +1110,7 @@ Near.dist = {}                         -- [questID] = yards from the player now,
 Near.key = {}                          -- [questID] = the distance it is sorted by
 Near.turnIn = {}                       -- [questID] = its turn-in line, or false
 Near.filled = {}                       -- [questID] = -1 done, else its objectives finished, as last drawn
+                                       -- (and 100 for each needed item's line shown: FillBlock)
 Near.stamp = 0                         -- bumped when the player's map or the quest log changed
 Near.DIST_ALPHA = 0.75                 -- a distance on the plain look: the body text a step down
 
@@ -1754,10 +1779,12 @@ end
 
 -- Line i under a title at y: with `dash`, the dash in its column and the
 -- text hanging past it (a wrapped line starts under the text, as on the
--- game's tracker); else the text from the dash's column. Returns the next y.
-local function PutLine(block, i, text, y, width, dash, r, g, b)
+-- game's tracker); else the text from the dash's column, or with `under`
+-- from the objective text's (a line of the objective above it: what to do
+-- first). Returns the next y.
+local function PutLine(block, i, text, y, width, dash, r, g, b, under)
 	local fs = Line(block, i)
-	local x = TEXT_X + (dash and LINE_X or BULLET_X)
+	local x = TEXT_X + ((dash or under) and LINE_X or BULLET_X)
 	fs:SetText(text)
 	-- the palette's colour on the stone; the ink below still judges the
 	-- game's shade (`r`), done or not
@@ -1820,6 +1847,19 @@ local function DifficultyColor(level)
 		end
 	end
 	return 1, 0.82, 0
+end
+
+-- What to do first for the quest's objectives whose needed item is not in
+-- the bags yet: Route's { [objective line] = "First: ..." } (Route:ItemFirst,
+-- read at once: the table is Route's), or nil (none, Route off, or its
+-- objective data not loaded)
+local function ItemFirst(questID)
+	local R = MelloUI:GetModule("Route")
+	if not (R and R.isEnabled and type(R.ItemFirst) == "function") then
+		return nil
+	end
+	local ok, hints = pcall(R.ItemFirst, R, questID)
+	return ok and type(hints) == "table" and hints or nil
 end
 
 -- Fill a block from the quest log; returns its height.
@@ -1950,6 +1990,13 @@ local function FillBlock(block, questID, width, followedID)
 	else
 		lastComplete[questID] = false
 		local finished = 0
+		-- an objective whose needed item is not in the bags yet says where
+		-- it comes from, under it (Route:ItemFirst: "First: loot Samuel's
+		-- Remains from Samuel Fipps"), in the heading's gold -- the title ink
+		-- on parchment; gone the moment the item is looted (the bags' event
+		-- rebuilds the tracker)
+		local first = ItemFirst(questID)
+		local hinted = 0
 		for i, obj in ipairs(objectives) do
 			local text = Plain(obj.text)
 			if text and text ~= "" then
@@ -1958,13 +2005,24 @@ local function FillBlock(block, questID, width, followedID)
 				local fs
 				y, fs = PutLine(block, n, text, y, textWidth, true, shade, shade, shade)
 				Progress(questID, i, Plain(obj.numFulfilled), fs)
+				local hint = first and not Plain(obj.finished) and first[i]
+				if type(hint) == "string" then
+					n = n + 1
+					y, fs = PutLine(block, n, hint, y, textWidth, false, 1, 0.82, 0, true)
+					if block.ink then
+						QI.Ink(fs, "title")
+					end
+					hinted = hinted + 1
+				end
 			end
 			if Plain(obj.finished) then
 				finished = finished + 1
 			end
 		end
-		-- (what its places were found for: found again when it changes)
-		Near.filled[questID] = finished
+		-- (what its places were found for: found again when it changes; a
+		-- needed item's line coming or going too, as the item's sources stand
+		-- in for the objective's places until it is looted)
+		Near.filled[questID] = finished + hinted * 100
 	end
 	HideLines(block, n + 1)
 	local h = math.max(y, link and ITEM_SIZE + 4 or 0, poi and 22 or 0)
@@ -2299,6 +2357,10 @@ local function Rebuild()
 	if C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID then
 		local ok, id = pcall(C_SuperTrack.GetSuperTrackedQuestID)
 		followedID = ok and Plain(id) or nil
+	end
+	-- (the game tracking Route's own pin for the quest: still followed)
+	if followedID == nil or followedID == 0 then
+		followedID = RoutePinned() or followedID
 	end
 	local quests = WatchedQuests()
 	local recipes = TrackedRecipes()

@@ -670,7 +670,17 @@ the Services bar's pins, or a waypoint you place on Blizzard's map. Without a pi
 follows the quest you super-track (click it in the objective tracker): to its objective area,
 and to its turn-in once it is complete, using the markers the client places for quests in
 your log ("Fall Back To The First Tracked Quest" follows the top of the tracker instead when
-nothing is super-tracked). The client has no road or terrain data
+nothing is super-tracked). An objective that needs an item in your bags first (Marla's Last
+Wish: Samuel's Remains, dropped by Samuel Fipps, before Marla's Grave) is routed to where the
+item comes from (the creature that drops it, the object that holds it, else a vendor) until
+the bags hold it: the route, the arrow, the World Marker (Route puts its own map pin on the
+source, the way it does on a dock, while every open objective waits on an item; remove the pin
+and the quest stays followed without it) and the Quest Tracker's "First: loot Samuel's Remains
+from Samuel Fipps" line under the objective; the moment it is looted they all go to the
+objective and the quest is super-tracked again. An item used up by the objective's own step (a
+carcass that calls the beast, remains buried) still counts until the objective moves on, five
+minutes at most. Where several are dropped for the quest, as many as the objective still lacks
+are asked for, or all at once where one thing is made of them. The client has no road or terrain data
 for addons, so the roads come from two places: the ones traced from the zone maps' art
 (`MelloUI_Companion\RoadData.lua`, loaded when a route is needed; see *Traced roads* below) and the ones the module learns from you: every
 half second outdoors it drops a breadcrumb and links it to the previous one, flights you take become links, opening a flight
@@ -773,7 +783,9 @@ route through `MelloUI.Route`: `SetDestinationTo`, `DistanceTo`, `Cheapest` and 
 (Route's own lines, under Route Announces); `Where` and `WantWhere` with the bus topic `where`
 (where the player is, every 2 seconds while someone wants it and only after 10 yards of
 movement: the Quest Tracker's distances and the reminders' reach), `WorldYards`,
-`ObjectivePlaces`, `FollowedRemaining` (the way left along the route followed), `YardsText`,
+`ObjectivePlaces`, `ItemFirst` (what to do first for an objective whose needed item is not in
+the bags), `PinnedQuest` (the quest Route's own pin follows for now), `FollowedRemaining` (the
+way left along the route followed), `YardsText`,
 `PlaceNear` (a named town, camp, flight point or sub-zone near a point), `ContinentOf` and
 `PlayerSide` / `SideOpen` (a neutral character's rows are the ones open to both factions). A line of any module's own goes to the on-screen
 notice with `MelloUI:Announce(text, kind)` (Core/Notice.lua), which works with Route off; the
@@ -951,7 +963,10 @@ arrow on the left of the tracker's title switches it too. "Distances" (on) shows
 quest is at the end of its title line ("240 yd", "1.2 km"): its open objectives, or the one who
 takes it back once it is done; the quest you follow shows the way left along its route, as the
 arrow does. "Turn-in Line" (on) makes a finished quest say who takes it and where ("Turn in:
-Gryan Stoutmantle, Sentinel Hill"). Inside an instance, with no position, or with Route off,
+Gryan Stoutmantle, Sentinel Hill"). An objective that needs an item in your bags first says
+where to get it on a line of its own under it, in gold ("First: loot Samuel's Remains from
+Samuel Fipps"; a count when more than one is needed), until the item is looted; the quest stays
+the followed one while Route's own pin on the item's source holds the game's tracking. Inside an instance, with no position, or with Route off,
 the tracker keeps the watch order without distances. It asks Route for positions only while it
 is shown and its Quests section is open.
 

@@ -18,6 +18,33 @@ For every quest the Quest List knows that cmangos classic-db has:
                       creature_template.VendorTemplateId), and their spawns
   explore             areatrigger_involvedrelation: the trigger's place
                       (AreaTrigger of the Classic Era client)
+  needed items        ReqSourceId1-4 / ReqSourceCount1-4: an item the quest
+                      needs in the bags that is not itself an objective
+                      (Marla's Last Wish: Samuel's Remains, dropped by
+                      Samuel Fipps, before Marla's Grave can be used; user,
+                      2026-09-28: "get the item first"). Linked to the
+                      objective of the same number, else to the quest's only
+                      objective, else to every one of them; placed where it
+                      comes from: the creatures that drop it, then the
+                      objects that hold it, or, when nothing drops it, the
+                      vendors who sell it. ReqSourceCount is the most of it
+                      that drops for the quest (cmangos' HasQuestForItem;
+                      0: up to a stack, the count kept then): Route asks for
+                      that many at once only where the objective takes them
+                      together (1016's five bracers for one scroll), else for
+                      as many as the objective still lacks, at most that
+                      (746: a pick for each tool still missing). Left out:
+                      the item the quest giver hands over (SrcItemId), one
+                      that is also a collect objective, one that comes only
+                      from the objective's own creature or object (nothing
+                      to do first), one whose creatures or objects drop the
+                      collect objective's item as well (6142 Clam Bait: the
+                      clam meat drops as it is, the clams are a rare extra),
+                      one of NOT_NEEDED, and one with no place in the open
+                      world.
+                      An objective that needs one is kept even when it has
+                      no place of its own (1195 The Sacred Flame's filled
+                      phial), so the item's sources can stand in for it.
 Forever's own quests (not in classic-db) come from their Wowhead pages
 (cached by import_wowhead_quests.py): the objective list's creature, object
 and item links. A creature is placed by its classic-db spawns, else by its
@@ -25,7 +52,9 @@ Wowhead NPC page's map; an item by what drops it (classic-db's loot for a
 Classic item, else the item page's "dropped by" and "contained in" lists,
 those creatures and objects placed as above); an object by its Wowhead page's
 map. --fetch downloads the item, NPC and object pages not cached yet (one
-every 2.5 s, in rounds until nothing new is needed).
+every 2.5 s, in rounds until nothing new is needed). Their pages list no
+needed items (Wowhead shows only the item the quest giver hands over,
+"Provided item", which is left out anyway), so Forever's quests have none.
 
 Each objective keeps the names the game's objective line is matched by (the
 creature, object or item name, and the quest's own objective text when it
@@ -46,6 +75,19 @@ loading it made as much again in garbage):
   "0" (chr 48) to "o" (chr 111). Places are kept on the open-world maps that
   have zone maps (0, 1 and 2991 today), never inside an instance.
   Decoded, an objective is { kind, "name", "alt", map, x1, y1, x2, y2, ... }.
+  An objective may have no coordinates at all (one kept for a needed item).
+
+  The needed items stand in a table of their own beside it, so no older
+  Route (or any reader of the objective strings) ever sees them:
+  MelloUI_QuestNeededItems = {
+    [questID] = "<obj>|<item>|<count>|<item name>|<from><map><source name>|<x1><y1>...~...",
+  }
+  one record per place a needed item comes from. obj: the objective it is
+  needed for (its place among the quest's packed objectives, counted from 1);
+  item: its item id; count: the most of it that drops for the quest (how many
+  the bags must hold, where the objective takes them at once); from: 1 a creature
+  drops it, 2 an object holds it, 3 a vendor sells it; map and coordinates as
+  an objective's. The same item's records repeat its obj|item|count|name.
 
     python Tools/build_quest_objectives.py [--fetch]
 """
@@ -142,6 +184,14 @@ GRID = 40          # yards: one place kept per cell
 CAP = 30           # places kept per objective at most
 MIN_CHANCE = 0.5   # a drop rarer than this (percent) is no place to farm the item
 
+# Needed items the quest turns into another item on the way, not into the
+# objective: held or not says nothing about what is left to do once that has
+# begun, so the route would send the player back for one they have already
+# turned (review, 2026-09-28). (quest, item): why.
+NOT_NEEDED = {
+    (2930, 9279): "Data Rescue: the white punch card becomes the yellow, blue and red one before the prismatic one",
+}
+
 
 def thin(points, grid=GRID, cap=CAP):
     """One point per grid cell, then at most `cap`, evenly through the list."""
@@ -149,6 +199,19 @@ def thin(points, grid=GRID, cap=CAP):
     for m, x, y in points:
         cells.setdefault((m, int(x // grid), int(y // grid)), (m, round(x), round(y)))
     out = sorted(cells.values())
+    if len(out) > cap:
+        step = len(out) / cap
+        out = [out[int(i * step)] for i in range(cap)]
+    return out
+
+
+def thin_tagged(points, grid=GRID, cap=CAP):
+    """thin() for [((map, x, y), tag)]: each point kept keeps its tag (the
+    source a needed item's place belongs to)."""
+    cells = {}
+    for (m, x, y), tag in points:
+        cells.setdefault((m, int(x // grid), int(y // grid)), ((m, round(x), round(y)), tag))
+    out = sorted(cells.values(), key=lambda c: c[0])
     if len(out) > cap:
         step = len(out) / cap
         out = [out[int(i * step)] for i in range(cap)]
@@ -179,37 +242,87 @@ def pack_map(m):
     return str(m) if m < 10 else f"#{m}#"
 
 
+def check_text(text):
+    """A name or objective text that can be packed: no field separator, no line break."""
+    if "|" in text or "~" in text:
+        raise ValueError(f"{text!r}: '|' and '~' separate the packed fields")
+    if any(ord(ch) < 32 for ch in text):
+        raise ValueError(f"{text!r}: a line break or control character cannot be packed")
+
+
+def pack_places(pts):
+    """The places on the map of the first one: (map, their coordinates); none
+    (an objective kept for a needed item): map 0 and no coordinates."""
+    if not pts:
+        return 0, ""
+    m = pts[0][0]
+    return m, "".join(pack_coord(x) + pack_coord(y) for pm, x, y in pts if pm == m)
+
+
 def pack_objectives(objs):
     """One quest's objectives [(kind, name, alt, [(map, x, y), ...])] as its
     packed string: <kind><map><name>|<alt>|<coordinates>~ per objective, with
-    the places on the map of its first place (pack_map)."""
+    the places on the map of its first place (pack_map); none for one kept
+    for a needed item alone."""
     parts = []
     for kind, name, alt, pts in objs:
-        m = pts[0][0]
         if not 0 < kind < 10:
             raise ValueError(f"kind {kind!r} must be one digit")
         for text in (name, alt):
-            if "|" in text or "~" in text:
-                raise ValueError(f"{text!r}: '|' and '~' separate the packed fields")
-            if any(ord(ch) < 32 for ch in text):
-                raise ValueError(f"{text!r}: a line break or control character cannot be packed")
-        coords = "".join(pack_coord(x) + pack_coord(y) for pm, x, y in pts if pm == m)
+            check_text(text)
+        m, coords = pack_places(pts)
         parts.append(f"{kind}{pack_map(m)}{name}|{alt}|{coords}~")
     return "".join(parts)
 
 
-def write_data(path, out):
-    """MelloUI_Companion/QuestObjectiveData.lua from {questID: [(kind, name, alt, [(map, x, y), ...])]}."""
+def pack_needed(gates, count_objs):
+    """One quest's needed items [(obj, item, count, item name, [(from, source
+    name, [(map, x, y), ...]), ...])] as its packed string: <obj>|<item>|
+    <count>|<item name>|<from><map><source name>|<coordinates>~ per place one
+    comes from. `count_objs`: how many objectives the quest has packed."""
+    parts = []
+    for obj, item, count, item_name, groups in gates:
+        if not 0 < obj <= count_objs:
+            raise ValueError(f"needed item {item!r}: objective {obj!r} is not one of the quest's {count_objs}")
+        if not (isinstance(item, int) and item > 0 and isinstance(count, int) and count > 0):
+            raise ValueError(f"needed item {item!r} x {count!r} cannot be packed")
+        check_text(item_name)
+        for source, name, pts in groups:
+            if source not in (1, 2, 3):
+                raise ValueError(f"needed item {item!r}: source kind {source!r} must be 1, 2 or 3")
+            if not pts:
+                raise ValueError(f"needed item {item!r}: {name!r} has no place")
+            check_text(name)
+            m, coords = pack_places(pts)
+            parts.append(f"{obj}|{item}|{count}|{item_name}|{source}{pack_map(m)}{name}|{coords}~")
+    return "".join(parts)
+
+
+def write_data(path, out, gates=None):
+    """MelloUI_Companion/QuestObjectiveData.lua from {questID: [(kind, name, alt, [(map, x, y), ...])]}
+    and the needed items {questID: [(obj, item, count, item name, [(from, source name, [(map, x, y), ...])])]}."""
+    gates = gates or {}
     with open(os.path.abspath(path), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/build_quest_objectives.py from cmangos classic-db and Wowhead's Forever pages. Do not edit by hand.\n")
         fh.write("-- [questID] = packed objectives, one string per quest; Route decodes the tracked quest's (ObjectivesOf).\n")
         fh.write("-- Each objective is <kind><map><name>|<alt>|<x1><y1><x2><y2>...~ : kind 1 creature, 2 object, 3 item,\n")
         fh.write("-- 4 area; map the world map id, 0 Eastern Kingdoms and 1 Kalimdor as one digit, a longer one between\n")
         fh.write("-- '#' signs (#2991# Zephras Isle); world coordinates in yards, three characters each: the\n")
-        fh.write(f"-- value plus {COORD_BIAS} in base 64, digits \"0\" (chr 48) to \"o\" (chr 111).\n\n")
+        fh.write(f"-- value plus {COORD_BIAS} in base 64, digits \"0\" (chr 48) to \"o\" (chr 111). An objective kept for a\n")
+        fh.write("-- needed item alone has no coordinates.\n")
+        fh.write("-- MelloUI_QuestNeededItems, below: [questID] = the items the bags must hold before an objective can be\n")
+        fh.write("-- done (not objectives themselves), one record per place one comes from:\n")
+        fh.write("-- <obj>|<item>|<count>|<item name>|<from><map><source name>|<x1><y1>...~ : obj the objective it is\n")
+        fh.write("-- needed for (its place in the quest's string, from 1), item its id, count the most of it that drops for\n")
+        fh.write("-- the quest; from 1 a creature drops it, 2 an object holds it, 3 a vendor sells it; map and coordinates\n")
+        fh.write("-- as an objective's.\n\n")
         fh.write("MelloUI_QuestObjectiveData = {\n")
         for qid in sorted(out):
             fh.write(f"\t[{qid}]={lua_str(pack_objectives(out[qid]))},\n")
+        fh.write("}\n\n")
+        fh.write("MelloUI_QuestNeededItems = {\n")
+        for qid in sorted(gates):
+            fh.write(f"\t[{qid}]={lua_str(pack_needed(gates[qid], len(out[qid])))},\n")
         fh.write("}\n")
 
 
@@ -246,7 +359,10 @@ def main():
         oname[e] = r["name"]
         if int(r["type"]) in (3, 25) and int(r["data1"] or 0):   # chests, fishing holes
             oLootOf[int(r["data1"])].append(e)
-    iname = {int(r["entry"]): r["name"] for r in sql_rows(sql, "item_template")}
+    iname, istack = {}, {}                         # item entry -> name; -> how many one stack holds
+    for r in sql_rows(sql, "item_template"):
+        iname[int(r["entry"])] = r["name"]
+        istack[int(r["entry"])] = int(r.get("stackable") or 0)
     dropsC, dropsO = defaultdict(set), defaultdict(set)   # item -> creature / object entries
     for table, owners, drops in (("creature_loot_template", lootOf, dropsC), ("gameobject_loot_template", oLootOf, dropsO)):
         for r in sql_rows(sql, table):
@@ -294,24 +410,114 @@ def main():
                 points = here
         return thin(points)
 
+    def spawns_of(source, entry):
+        return spawnsO.get(entry, []) if source == 2 else spawnsC.get(entry, [])
+
+    def classic_sources(item):
+        """Where a Classic item comes from, [(from, entry)]: the creatures that
+        drop it (1), then the objects that hold it (2); when neither has a
+        place, the vendors who sell it (3)."""
+        found = [(1, c) for c in dropsC.get(item, ())] + [(2, o) for o in dropsO.get(item, ())]
+        if not any(spawns_of(src, e) for src, e in found):
+            found = [(3, v) for v in sells.get(item, ())]
+        return found
+
+    def source_places(sources, quest_zone):
+        """[(from, entry)] -> [(from, name, places)]: the places kept as an
+        objective's are (the open world, the quest's zone when any lie there,
+        one per GRID yards, CAP in all), those of one name together, in the
+        sources' order; a source left with none (or no name) is dropped."""
+        tagged, order = [], []
+        for src, e in sources:
+            key = (src, oname.get(e, "") if src == 2 else cname.get(e, ""))
+            if key not in order:
+                order.append(key)
+            tagged += [(p, key) for p in spawns_of(src, e) if p[0] in world_maps]
+        if quest_zone:
+            here = [t for t in tagged if zone_of(t[0]) == quest_zone]
+            if here:
+                tagged = here
+        groups = defaultdict(list)
+        for p, key in thin_tagged(tagged):
+            groups[key].append(p)
+        return [(src, name, groups[(src, name)]) for src, name in order if name and groups[(src, name)]]
+
+    def needed_items(r, slots, kinds, owners, qzone):
+        """The items the quest needs in the bags that are not objectives
+        (ReqSourceId1-4), each on the objectives it is needed for:
+        [(objective index in objs, item, count, item name, [(from, name, places)])].
+        `slots`: each objective's number (1-4; 0 an area), `kinds`: its kind
+        (1-4, as packed), `owners`: the creatures and objects (("c" | "o",
+        entry)) it is done at or comes from."""
+        qid = int(r["entry"])
+        given = int(r.get("SrcItemId") or 0)
+        collected = {int(r.get(f"ReqItemId{i}") or 0) for i in range(1, 5)}
+        numbered = [n for n, slot in enumerate(slots) if slot]
+        out, seen = [], set()
+        for i in range(1, 5):
+            item = int(r.get(f"ReqSourceId{i}") or 0)
+            if not item:
+                continue
+            stats["needed items"] += 1
+            if item == given:
+                stats["needed: handed over by the quest giver"] += 1
+                continue
+            if item in collected:
+                stats["needed: a collect objective itself"] += 1
+                continue
+            if (qid, item) in NOT_NEEDED:
+                stats["needed: NOT_NEEDED"] += 1
+                continue
+            # the most that drops for the quest; 0: up to a stack (cmangos'
+            # HasQuestForItem -- 1846 Dragonmaw Shinbones)
+            count = int(r.get(f"ReqSourceCount{i}") or 0) or istack.get(item) or 1
+            # the objective of the same number; else the only one; else every one
+            linked = [n for n in numbered if slots[n] == i] or numbered
+            if not linked:
+                stats["needed: no objective to need it for"] += 1
+                continue
+            sources = classic_sources(item)
+            groups = source_places(sources, qzone)
+            if not groups:
+                stats["needed: no place in the open world"] += 1
+                continue
+            mine = {("o" if src == 2 else "c", e) for src, e in sources}
+            for n in linked:
+                if mine <= owners[n]:
+                    stats["needed: comes from the objective itself"] += 1
+                elif kinds[n] == 3 and mine & owners[n]:
+                    # the collect objective's item drops from some of the same
+                    # creatures or objects: it is had without this one
+                    stats["needed: its sources drop the objective's item too"] += 1
+                elif (n, item) not in seen:
+                    seen.add((n, item))
+                    out.append((n, item, count, iname.get(item, ""), groups))
+        return out
+
     log("building objectives")
-    out, stats = {}, defaultdict(int)
+    out, gates_out, stats = {}, {}, defaultdict(int)
     for r in sql_rows(sql, "quest_template"):
         qid = int(r["entry"])
         if qid not in listing:
             continue
         qzone = listing[qid].get("category") or 0
         qzone = qzone if qzone > 0 else 0
-        objs = []
+        # each objective, its number (the quest's 1-4, 0 an area) and where it
+        # is done or its item comes from (needed_items)
+        objs, slots, owners = [], [], []
         for i in range(1, 5):
             alt = (r.get(f"ObjectiveText{i}") or "").strip()
             target = int(r.get(f"ReqCreatureOrGOId{i}") or 0)
             if target > 0:
                 pts = places(spawnsC.get(target, []), qzone)
                 objs.append((1, cname.get(target, ""), alt, pts))
+                slots.append(i)
+                owners.append({("c", target)})
             elif target < 0:
                 pts = places(spawnsO.get(-target, []), qzone)
                 objs.append((2, oname.get(-target, ""), alt, pts))
+                slots.append(i)
+                owners.append({("o", -target)})
             item = int(r.get(f"ReqItemId{i}") or 0)
             if item:
                 pts = []
@@ -319,19 +525,35 @@ def main():
                     pts += spawnsC.get(c, [])
                 for o in dropsO.get(item, ()):
                     pts += spawnsO.get(o, [])
+                mine = {("c", c) for c in dropsC.get(item, ())} | {("o", o) for o in dropsO.get(item, ())}
                 if not pts:
                     for v in sells.get(item, ()):
                         pts += spawnsC.get(v, [])
+                    mine |= {("c", v) for v in sells.get(item, ())}
                 objs.append((3, iname.get(item, ""), "", places(pts, qzone)))
+                slots.append(i)
+                owners.append(mine)
         for t in explore.get(qid, []):
             if t in triggers:
                 objs.append((4, "", "", places([triggers[t]], 0)))
-        objs = [o for o in objs if o[3]]
-        if objs:
-            out[qid] = objs
-            for o in objs:
-                stats[("creature", "object", "item", "area")[o[0] - 1]] += 1
+                slots.append(0)
+                owners.append(set())
+        gates = needed_items(r, slots, [o[0] for o in objs], owners, qzone)
+        # an objective with no place is left out, unless an item is needed
+        # for it (its sources stand in for it while the item is missing)
+        gated = {g[0] for g in gates}
+        keep = [n for n, o in enumerate(objs) if o[3] or n in gated]
+        if keep:
+            at = {n: k + 1 for k, n in enumerate(keep)}
+            out[qid] = [objs[n] for n in keep]
+            for n in keep:
+                stats[("creature", "object", "item", "area")[objs[n][0] - 1]] += 1
+            if gates:
+                gates_out[qid] = [(at[n], item, count, name, groups) for n, item, count, name, groups in gates]
+                stats["needed: kept (objective, item)"] += len(gates)
+                stats["needed: objectives kept for them alone"] += sum(1 for n in gated if not objs[n][3])
     stats["classic quests"] = len(out)
+    stats["quests with needed items"] = len(gates_out)
 
     # ---- Forever's own quests, from their Wowhead pages
     classic = set(out) | {int(r["entry"]) for r in sql_rows(sql, "quest_template")}
@@ -434,7 +656,7 @@ def main():
                 stats[("creature", "object", "item", "area")[e[0] - 1]] += 1
     stats["quests"] = len(out)
 
-    write_data(args.out, out)
+    write_data(args.out, out, gates_out)
     log(f"wrote {args.out}: " + ", ".join(f"{k} {v}" for k, v in sorted(stats.items())))
 
 
