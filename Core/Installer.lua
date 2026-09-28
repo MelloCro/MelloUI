@@ -1034,6 +1034,12 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 				a.playerSize = rows.playerSize
 			end
 		end
+		-- the Minimap Kit's Width and Height a step smaller where the fit
+		-- made room so (BeginFit's column.fitMap), with the layout alone
+		local map, mp = places.minimap, target.modules.MinimapPanel
+		if type(map) == "table" and mp and map.width ~= nil and map.height ~= nil then
+			mp.width, mp.height = map.width, map.height
+		end
 	end
 	return target
 end
@@ -1101,9 +1107,13 @@ local function BeginFit(fit)
 	end
 	local LayoutFit = MelloUI.LayoutFit
 	local inputs = LayoutFit:Inputs(Reader(I, Target(I, fit.option, fit.draft, nil, nil, true)))
-	-- (the installer writes the buff rows the fit wraps: I:PlacesToTarget)
+	-- (the installer writes the buff rows the fit wraps and the minimap's
+	-- Width and Height it steps down: I:PlacesToTarget)
 	if type(inputs) == "table" and type(inputs.auras) == "table" then
 		inputs.auras.fitRows = true
+	end
+	if type(inputs) == "table" and type(inputs.column) == "table" then
+		inputs.column.fitMap = true
 	end
 	fit.W, fit.H = ScreenSize()
 	fit.job = LayoutFit:Run(LayoutInfo(), fit.W, fit.H, inputs, function(fitted, places, report)

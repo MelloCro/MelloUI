@@ -40,6 +40,8 @@ MelloUI.Kit = Kit
 -- the palette by Tools/kit_palette.py, one folder per look holding the same
 -- files, so the layout is shared. Pictures and the tiles already warm are not
 -- recoloured: every look reads them from Media\Kit (kit_palette's SKIP).
+-- Nor are the Elite / Rare / Boss marks (marks/, Modules/KitMarks.lua): their
+-- metals mean what a unit is, under every palette.
 -- The palettes (0.14.0, user 2026-09-26: one recoloured kit per palette for
 -- all six, and the Original): the folder is chosen from the palette in use
 -- (MelloUI:PaletteId(), the one MelloUI.Palette is) AND the Kit Colours
@@ -67,7 +69,8 @@ Kit.colourLooks = {
 	{ value = "bronze", label = "Bronze", folder = "KitBronze" },
 	{ value = "painted", label = "Original (painted)" },
 }
-local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
+-- (the marks' metals and crests; their rings are in every look, their gems the look's: Tools/kit_palette.py GEM_TWINS)
+local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_" }
 local lookRoot = nil   -- the chosen look's folder, once the settings are there
 -- LOOK.PaletteId(): the palette in use (its id, "ember" for one Core does not
 -- know); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
@@ -3008,6 +3011,26 @@ function StripMixin:SetState(state)
 	Kit:Apply(self.capL, StripName(self.base, self.endL and "end_l" or "cap_l", state))
 	Kit:Apply(self.mid, StripName(self.base, "mid", state))
 	Kit:Apply(self.capR, StripName(self.base, self.endR and "end_r" or "cap_r", state))
+	self:SyncActive()
+end
+
+-- A list's selected plate (a strip in its "selected" state) wears the active
+-- look (Kit:SetActive, 0.15.0) round the strip: regions of the strip frame,
+-- shown and hidden with it, or with an `owner` of the frame its pieces are
+-- regions of (a row: over its plate), then following the strip's own Show /
+-- Hide. Only a strip that was selected turns it off (a row's plain and hover
+-- plates share its owner with the selected one)
+function StripMixin:SyncActive()
+	local on = self.state == "selected"
+	if not (on or self.activeWas) then
+		return
+	end
+	local owner = self.kitOwner
+	if owner then
+		on = on and self:IsShown()
+	end
+	self.activeWas = on or nil
+	Kit:SetActive(owner or self, on, self, "rect")
 end
 
 -- Another family of pieces for the strip (a bar's Bar Border), in its state
@@ -3193,8 +3216,9 @@ function Kit:Strip(parent, base, opts)
 	f.capL.kitScale, f.mid.kitScale, f.capR.kitScale = scale, scale, scale
 	if opts.owner then
 		local show, hide = f.Show, f.Hide
-		f.Show = function(self) show(self); self.capL:SetShown(not self.noL or self.endL); self.mid:Show(); self.capR:SetShown(not self.noR or self.endR) end
-		f.Hide = function(self) hide(self); self.capL:Hide(); self.mid:Hide(); self.capR:Hide() end
+		f.kitOwner = opts.owner   -- (its active look is the owner's regions: StripMixin:SyncActive)
+		f.Show = function(self) show(self); self.capL:SetShown(not self.noL or self.endL); self.mid:Show(); self.capR:SetShown(not self.noR or self.endR); self:SyncActive() end
+		f.Hide = function(self) hide(self); self.capL:Hide(); self.mid:Hide(); self.capR:Hide(); self:SyncActive() end
 		f.SetShown = function(self, shown) if shown then self:Show() else self:Hide() end end
 	end
 
@@ -3345,6 +3369,535 @@ function Kit:Bar(parent, opts)
 end
 
 --------------------------------------------------------------------------------
+-- The active look (0.15.0; user, 2026-09-28: "people cant see in which stance
+-- they are as a warrior ... dont just make the stance bar, do it across the
+-- board"; option C of the sketch): a thick gold ring lit additively round the
+-- button, a soft halo just outside it, a soft glow inside its edge, and the
+-- button's icon lifted about 1.2 x with no tint. ONE look for everything the
+-- game or MelloUI shows as active, checked or selected, fed by the kit's own
+-- followers of that state (the game's calls and its own updates, never a
+-- poll):
+--   a slot rim's or a state texture's checked flag (Slot_Update: the action,
+--     stance, pet and possess bars, the bag bar, the micro menu, side tabs,
+--     the spell book's category tabs, icon boxes, check boxes); a rim's own
+--     checked colour gives way to it, a check box keeps its tick beside it
+--   a frame kind's checked() (a selected tall row, R3: FrameTint)
+--   a strip in its "selected" state (a list's selected plate)
+--   a rule marked `active`, while its piece shows (the open tab's card, TB6)
+--   a rule of kind "active": a check button of the game's own art the kit
+--     does not dress (the extra action button, the vehicle bar), the look in
+--     place of its checked art
+--   the own windows' chosen card and side-list marker (Core/Widgets.lua)
+-- The art is Media\Textures\ActiveLook (Tools\make_active_look.py): white
+-- cells, the light (ring, halo, glow) tinted with the palette's selectedTrim
+-- and added as light, the ring's two dark edge lines (the kit art rule) tinted
+-- with its innerPanel and blended over it, both by palette key (Kit:Paint: a
+-- new palette paints them again). A square button or a round rim takes a
+-- whole cell, one texture a layer; an oblong rect (a tab, a row, a card) the
+-- cell cut into nine (the corners CORNER units at the look's scale, the edges
+-- stretched along their length, the middle never drawn). A tab, a row or a
+-- card hold text: their cut stops at the ring's inner dark line, so they wear
+-- the ring, its lines and the halo without the inner glow.
+--   Kit:SetActive(host, on, rect, shape, icon)
+--     host   the frame whose REGIONS the look is, in its OVERLAY layer: over
+--            its art, under its child frames (a pet button's autocast shine
+--            and a cooldown's swipe stay on top). On a secure button only
+--            regions of ours are made, set and shown: allowed in combat
+--     on     true / false, or a SECRET boolean (a flag handed over secret in
+--            combat): shown then with SetAlphaFromBoolean, the client's way
+--            to show what cannot be read (again after a palette's repaint);
+--            the next plain answer lays it again. A look first made for a
+--            secret is its two layers only (no icon copy, no hooks) until a
+--            plain answer shows it
+--     rect   the region the ring lies round (default host); shape "square"
+--            (a button: the look scales with its size, HOST units at 1),
+--            "rect" (a tab, a row, a card: RECT_SCALE, thinner) or
+--            "round" (a round rim); icon: the texture it lifts, a copy of it
+--            added as light at LIFT one sublevel over it (a cooldown's swipe
+--            still darkens it). Read when the look is made; an icon handed
+--            over later is lifted instead
+--   Kit:ActiveShown(host) -> whether its look shows now (tests, dumps)
+--   Kit:ActiveFamily(rim) -> how a rim or state texture shows its checked
+--            state: "look" (the active look stands in for its checked
+--            colour), "both" (a check box: its tick stays, the look beside
+--            it) or nil (it has none: a cog, an arrow, a close button)
+--   Kit:RimDrivesLook(rim) -> whether its checked state is the look (it has
+--            a checked source of its own), Kit:ActiveShape(rim) -> "round"
+--            for the round rims' families, else "square"
+--   Kit:ActiveCounts() -> looks made, textures made
+-- Nothing is made for a host that is never active, and a look wanted while
+-- its host cannot be seen is made on the host's next show (a window dressed
+-- at login makes none, WINDOW-RULES 2f). Once made, a change is a Show / Hide
+-- of its textures: no table, no closure.
+--------------------------------------------------------------------------------
+do
+	local FILE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\ActiveLook"
+	-- the art's geometry (Tools/make_active_look.py; the tests hold the two
+	-- equal): four cells, each a quarter of the file, drawn round a HOST-unit
+	-- square (an action button at scale 1) with HALO units of light outside
+	-- it and INNER inside. A square or round rect takes a whole cell (one
+	-- texture a layer, HALO / HOST of its size past each side); an oblong one
+	-- the nine-slice, its corners CORNER units, CUT of the cell
+	local HALO, INNER, HOST = 8, 12, 45
+	local CORNER = HALO + INNER
+	local CUT = CORNER / (HOST + 2 * HALO)
+	-- a tab, a row, a card (shape "rect") hold text: their nine-slice is cut
+	-- through the ring's inner dark line, RING_IN units in (the tool's RING_H
+	-- + GAP), and the glow past it is never drawn (review, 2026-09-28: it
+	-- washed the selected row's label gold)
+	local RING_IN = 4.4
+	local RECT_CORNER = HALO + RING_IN
+	local RECT_CUT = RECT_CORNER / (HOST + 2 * HALO)
+	local RECT_SCALE = 0.7     -- a tab's, a row's, a card's look
+	local MIN_SCALE, MAX_SCALE = 0.4, 1.3
+	local ROUND_SIZE = 36      -- a round rim not laid out yet
+	local LIFT = 0.2           -- the icon's copy added at this: the icon about 1.2 x as bright
+	local LIGHT_SUB, EDGE_SUB = 6, 7   -- OVERLAY sublevels: over the rims (3) and their glow (4)
+	local Num = MelloUI.Safe.Number
+	-- the nine pieces (the middle never drawn): where each is cut from, u0,
+	-- u1, v0, v1 as shares of its cell
+	local PARTS = { "tl", "t", "tr", "l", "r", "bl", "b", "br" }
+	local function Cuts(c)
+		return {
+			tl = { 0, c, 0, c }, t = { c, 1 - c, 0, c }, tr = { 1 - c, 1, 0, c },
+			l = { 0, c, c, 1 - c }, r = { 1 - c, 1, c, 1 - c },
+			bl = { 0, c, 1 - c, 1 }, b = { c, 1 - c, 1 - c, 1 }, br = { 1 - c, 1, 1 - c, 1 },
+		}
+	end
+	local CUTS, RECT_CUTS = Cuts(CUT), Cuts(RECT_CUT)
+	local WHOLE = { 0, 1, 0, 1 }
+	local looks = setmetatable({}, { __mode = "k" })   -- [host] = its look
+	local liftOf = setmetatable({}, { __mode = "k" })  -- [icon] = the look lifting it
+	local secretLooks = setmetatable({}, { __mode = "k" })   -- [look] = true while a secret flag shows it
+	local made, textures = 0, 0
+
+	-- the host can be seen (a secret answer: taken as seen, the look made)
+	local function Seen(frame)
+		local ok, v = pcall(frame.IsVisible, frame)
+		return not ok or Secret(v) or v == true
+	end
+
+	-- the look's scale (k), the rect's short side (nil: not known yet) and
+	-- whether it takes a whole cell: a round rim always, a square one while
+	-- its scale is in range (short / HOST); an oblong one (a tab, a row) the
+	-- nine-slice at RECT_SCALE, a square one out of range or of no known size
+	-- the nine-slice at its clamped scale, the inner light of two opposite
+	-- edges never meeting (a short row, a small box)
+	local function ScaleOf(look)
+		local w, h = Kit:DrawnSize(look.rect)
+		local short = (w > 0 and h > 0) and math.min(w, h) or nil
+		if look.shape == "round" then
+			return (short or ROUND_SIZE) / HOST, short, true
+		end
+		if look.shape ~= "rect" and short and math.abs(w - h) < 0.5 then
+			local k = short / HOST
+			if k >= MIN_SCALE and k <= MAX_SCALE then
+				return k, short, true
+			end
+		end
+		local k, inner = RECT_SCALE, RING_IN
+		if look.shape ~= "rect" then
+			k, inner = math.max(MIN_SCALE, math.min(MAX_SCALE, short and short / HOST or 1)), INNER
+		end
+		if short and 2 * inner * k > short then
+			k = short / (2 * inner)
+		end
+		return k, short, false
+	end
+
+	-- the pieces laid round the rect at scale k: a whole cell HALO * k past
+	-- each side of it; the nine-slice's corners hung on the rect's (HALO * k
+	-- outside it), its edges between them
+	local function Lay(look, k)
+		look.k = k
+		local rect = look.rect
+		for layer = 1, 2 do
+			local list = layer == 1 and look.light or look.edge
+			if look.whole then
+				local pad = HALO * k
+				local tex = list[1]
+				tex:ClearAllPoints()
+				tex:SetPoint("TOPLEFT", rect, "TOPLEFT", -pad, pad)
+				tex:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", pad, -pad)
+			else
+				local h, c = HALO * k, (look.shape == "rect" and RECT_CORNER or CORNER) * k
+				local tl, t, tr, l, r, bl, b, br = list[1], list[2], list[3], list[4], list[5], list[6], list[7], list[8]
+				tl:ClearAllPoints()
+				tl:SetPoint("TOPLEFT", rect, "TOPLEFT", -h, h)
+				tr:ClearAllPoints()
+				tr:SetPoint("TOPRIGHT", rect, "TOPRIGHT", h, h)
+				bl:ClearAllPoints()
+				bl:SetPoint("BOTTOMLEFT", rect, "BOTTOMLEFT", -h, -h)
+				br:ClearAllPoints()
+				br:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", h, -h)
+				tl:SetSize(c, c)
+				tr:SetSize(c, c)
+				bl:SetSize(c, c)
+				br:SetSize(c, c)
+				if not look.laid then
+					t:SetPoint("TOPLEFT", tl, "TOPRIGHT")
+					t:SetPoint("BOTTOMRIGHT", tr, "BOTTOMLEFT")
+					b:SetPoint("TOPLEFT", bl, "TOPRIGHT")
+					b:SetPoint("BOTTOMRIGHT", br, "BOTTOMLEFT")
+					l:SetPoint("TOPLEFT", tl, "BOTTOMLEFT")
+					l:SetPoint("BOTTOMRIGHT", bl, "TOPRIGHT")
+					r:SetPoint("TOPLEFT", tr, "BOTTOMLEFT")
+					r:SetPoint("BOTTOMRIGHT", br, "TOPRIGHT")
+				end
+			end
+		end
+		look.laid = true
+	end
+
+	-- the rect's size again (a new size read on the host's OnSizeChanged or a
+	-- new show of the look): laid again only when its scale moved (a look
+	-- keeps the pieces it was made with: a whole cell stays one)
+	local function Refit(look)
+		local k = ScaleOf(look)
+		if k ~= look.k then
+			Lay(look, k)
+		end
+	end
+
+	-- the lifted icon's copy as the game has the icon now: its picture,
+	-- crop, colour, grey and alpha (secret answers passed straight on: the
+	-- client takes them), shown while the icon is and the look on
+	local function LiftSync(look)
+		local copy, icon = look.lift, look.icon
+		if not (copy and icon) then
+			return
+		end
+		copy:SetTexture(icon:GetTexture())
+		copy:SetTexCoord(icon:GetTexCoord())
+		copy:SetVertexColor(icon:GetVertexColor())
+		if icon.IsDesaturated and copy.SetDesaturated then
+			copy:SetDesaturated(icon:IsDesaturated())
+		end
+		-- (after the colour: this client resets a texture's alpha in
+		-- SetVertexColor); the icon's own alpha too (an empty extra button's
+		-- is 0), when it reads plainly
+		local a = Num(icon:GetAlpha())
+		copy:SetAlpha(LIFT * (a or 1))
+		local ok, shown = pcall(icon.IsShown, icon)
+		copy:SetShown(look.on == true and (not ok or Secret(shown) or shown == true))
+	end
+
+	-- the icon's own changes while the look is on (one handler for every
+	-- lifted icon's methods, the look kept by its icon)
+	local Lift_OnIcon = Shared("the icon of a button in the active look", function(icon)
+		local look = liftOf[icon]
+		if look and look.on == true and look.lift then
+			LiftSync(look)
+		end
+	end)
+	local LIFT_METHODS = { "SetTexture", "SetAtlas", "SetTexCoord", "SetVertexColor", "SetDesaturated", "SetAlpha",
+		"Show", "Hide", "SetShown" }
+
+	-- the copy that lifts the icon, a region of the icon's own frame one
+	-- sublevel over it (made once a look; a new icon moves it there)
+	local function Lift(look)
+		local icon = look.icon
+		if not (icon and icon.GetTexture and icon.GetParent) then
+			return
+		end
+		local copy = look.lift
+		if not copy then
+			local owner = icon:GetParent() or look.host
+			local okL, layer, sub = pcall(icon.GetDrawLayer, icon)
+			if not (okL and type(layer) == "string" and not Secret(layer)) then
+				layer, sub = "ARTWORK", 0
+			end
+			sub = Num(sub) or 0
+			copy = owner:CreateTexture(nil, layer, nil, math.min(sub + 1, 7))
+			copy:SetBlendMode("ADD")
+			copy.kitPiece = true   -- ours: never faded as the game's art
+			copy:Hide()
+			look.lift = copy
+			textures = textures + 1
+		end
+		copy:ClearAllPoints()
+		copy:SetAllPoints(icon)
+		-- the icon's own masks on the copy too (a button the kit leaves in
+		-- the game's art keeps its rounded mask: the extra action button)
+		local okN, n = pcall(icon.GetNumMaskTextures, icon)
+		n = okN and Num(n) or 0
+		for i = 1, n do
+			local okM, mask = pcall(icon.GetMaskTexture, icon, i)
+			if okM and mask and not Secret(mask) then
+				pcall(copy.AddMaskTexture, copy, mask)
+			end
+		end
+		if liftOf[icon] == nil then
+			for _, m in ipairs(LIFT_METHODS) do
+				if type(icon[m]) == "function" then
+					hooksecurefunc(icon, m, Lift_OnIcon)
+				end
+			end
+		end
+		liftOf[icon] = look
+	end
+
+	-- a look's textures, made the first time it shows: a light and an edge
+	-- texture (a whole cell), or eight of each (the nine-slice), hidden,
+	-- painted by palette key; the host's size followed from then on
+	local Active_OnSize = Shared("OnSizeChanged on a host of the active look", function(host)
+		local look = looks[host]
+		if look and look.built then
+			Refit(look)
+		end
+	end, "script")
+
+	-- the icon lifted and the host's size followed: on a look's first plain
+	-- show (a look first made for a secret flag in a fight waits for one)
+	local function Complete(look)
+		look.lean = nil
+		if look.icon then
+			Lift(look)
+		end
+		if look.host.HookScript then
+			Perf.HookScript(look.host, "OnSizeChanged", Active_OnSize)
+		end
+	end
+
+	-- `lean`: the two layers only (a fight's first secret flags reach every
+	-- action button: no copy of its icon, no hooks, until one reads true)
+	local function Build(look, lean)
+		look.built = true
+		local host = look.host
+		local k, _, whole = ScaleOf(look)
+		look.whole = whole
+		look.light, look.edge = {}, {}
+		local cuts = look.shape == "rect" and RECT_CUTS or CUTS
+		for layer = 1, 2 do
+			local list = layer == 1 and look.light or look.edge
+			local u0, v0 = layer == 1 and 0 or 0.5, look.shape == "round" and 0.5 or 0
+			for i = 1, whole and 1 or #PARTS do
+				local c = whole and WHOLE or cuts[PARTS[i]]
+				local tex = host:CreateTexture(nil, "OVERLAY", nil, layer == 1 and LIGHT_SUB or EDGE_SUB)
+				tex:SetTexture(FILE)
+				tex:SetTexCoord(u0 + c[1] * 0.5, u0 + c[2] * 0.5, v0 + c[3] * 0.5, v0 + c[4] * 0.5)
+				if layer == 1 then
+					tex:SetBlendMode("ADD")
+				end
+				tex.kitPiece = true   -- ours: never faded as the game's art
+				Kit:Paint(tex, layer == 1 and "selectedTrim" or "innerPanel", "vertex", 1)
+				tex:Hide()
+				list[i] = tex
+			end
+			textures = textures + #list
+		end
+		Lay(look, k)
+		if lean then
+			look.lean = true
+		else
+			Complete(look)
+		end
+	end
+
+	-- a secret flag shown (look.secretOn): the pieces take it as their alpha,
+	-- the client's way to show what cannot be read; the icon's copy with them
+	local function ShowSecret(look)
+		local on = look.secretOn
+		for layer = 1, 2 do
+			local list = layer == 1 and look.light or look.edge
+			for i = 1, #list do
+				local tex = list[i]
+				if tex.SetAlphaFromBoolean then
+					tex:SetAlphaFromBoolean(on, 1, 0)
+					tex:Show()
+				end
+			end
+		end
+		look.alphaSet = true
+		local copy = look.lift
+		if copy and copy.SetAlphaFromBoolean then
+			LiftSync(look)
+			copy:SetAlphaFromBoolean(on, LIFT, 0)
+			copy:Show()
+		end
+	end
+
+	-- a new palette's repaint (Kit:Paint: SetVertexColor, which resets a
+	-- texture's alpha on this client) showed every piece a secret flag had
+	-- hidden: those looks take their flag again. Heard after the repaint (the
+	-- listener is taken on the first secret show, after the look's own Paint
+	-- took Kit:Paint's)
+	local paletteHeard = false
+	local function Active_OnPalette()
+		for look in pairs(secretLooks) do
+			if look.secret and look.built then
+				ShowSecret(look)
+			end
+		end
+	end
+
+	-- plain: every piece shown or hidden at full strength (after a secret
+	-- answer their alpha is the client's), the icon's copy with them
+	local function ShowLook(look, on)
+		for layer = 1, 2 do
+			local list = layer == 1 and look.light or look.edge
+			for i = 1, #list do
+				local tex = list[i]
+				if look.alphaSet then
+					tex:SetAlpha(1)
+				end
+				tex:SetShown(on)
+			end
+		end
+		look.alphaSet = nil
+		if look.lift then
+			if on then
+				LiftSync(look)
+			else
+				look.lift:Hide()
+			end
+		end
+	end
+
+	-- a look wanted while its host could not be seen: made on its next show
+	-- (one handler for every host)
+	local Active_OnShow = Shared("OnShow on a host of the active look", function(host)
+		local look = looks[host]
+		if look and look.on == true and not look.built then
+			Build(look)
+			ShowLook(look, true)
+		end
+	end, "script")
+
+	-- a look first wanted: made on the next frame, when whatever dressed its
+	-- host this frame is through (a piece is dressed shown and hidden at the
+	-- end of its dress: a list's selected plate on every row), if it is still
+	-- wanted and its host can be seen; else on the host's next show (hooked
+	-- once, the hook idle afterwards)
+	local function Active_Later(look)
+		if look.on ~= true or look.built then
+			return
+		end
+		local host = look.host
+		if Seen(host) then
+			Build(look)
+			ShowLook(look, true)
+		elseif not look.waiting then
+			look.waiting = true
+			if host.HookScript then
+				Perf.HookScript(host, "OnShow", Active_OnShow)
+			end
+		end
+	end
+
+	function Kit:SetActive(host, on, rect, shape, icon)
+		if type(host) ~= "table" or type(host.CreateTexture) ~= "function" then
+			return   -- (no frame to hang it on: a stand-in, a region)
+		end
+		local look = looks[host]
+		local secret = Secret(on)
+		if not look then
+			if secret then
+				-- (a hidden bar's buttons get their flags too: laid by the next
+				-- plain answer, as it shows)
+				if not Seen(host) then
+					return
+				end
+			elseif not on then
+				return   -- never active: nothing made
+			end
+			look = { host = host, rect = rect or host, shape = shape or "square", on = false }
+			looks[host] = look
+			made = made + 1
+		end
+		if icon ~= nil and icon ~= look.icon then
+			look.icon = icon
+			if look.built and not look.lean then
+				Lift(look)
+			end
+		end
+		if secret then
+			-- (the flag cannot be read: the pieces take it as their alpha, and
+			-- the next plain answer lays the look again, whatever it was)
+			look.on, look.secret, look.secretOn = "secret", true, on
+			if not look.built then
+				Build(look, true)
+			end
+			ShowSecret(look)
+			secretLooks[look] = true
+			if not paletteHeard and MelloUI.On then
+				paletteHeard = true
+				MelloUI:On("palette", Active_OnPalette, "Kit active look")
+			end
+			return
+		end
+		on = on and true or false
+		if on == look.on and not look.secret then
+			return
+		end
+		look.on, look.secret, look.secretOn = on, nil, nil
+		secretLooks[look] = nil
+		if not look.built then
+			if on then
+				Kit:NextFrame(look, Active_Later)
+			end
+			return
+		elseif on then
+			if look.lean then
+				Complete(look)
+			end
+			Refit(look)
+		end
+		ShowLook(look, on)
+	end
+
+	function Kit:ActiveShown(host)
+		local look = host and looks[host]
+		if not (look and look.built and look.on) then
+			return false
+		end
+		local ok, shown = pcall(look.light[1].IsVisible, look.light[1])
+		return ok and not Secret(shown) and shown == true
+	end
+
+	function Kit:ActiveFamily(rim)
+		local fixed = rawget(rim, "activeFamily")   -- (the kit's own field, never an object's)
+		if fixed ~= nil then
+			return fixed or nil
+		end
+		local base = rim.base
+		if type(base) ~= "string" then
+			return nil
+		end
+		local c = Resolution(base).checked
+		if c == "checked" or (not c and rim.glow) then
+			return "look"   -- a rim's lit colour, or its additive glow: the look stands in for it
+		end
+		return c and "both" or nil
+	end
+
+	-- Kit:RimDrivesLook(rim): its checked state is its button's active look
+	-- (a checked source of its own: a panel's checked(), a check button's
+	-- flag; and a family that shows it). An icon's rim on a list row only
+	-- hovers: it never switches off the look the row's selected plate lays
+	-- (one look a host; review, 2026-09-28)
+	function Kit:RimDrivesLook(rim)
+		local b = rim.button
+		return (rim.isChecked or (b and b.GetChecked)) and self:ActiveFamily(rim) ~= nil or false
+	end
+
+	-- Kit:ActiveShape(rim): round for the round rims' families (Round
+	-- Border: buttons/roundslot, buttons/roundrim*), square for every other.
+	-- Button Border's "Rounded corners" (buttons/rimround) is a square: the
+	-- round look on it was a circle across the icon's corners (review,
+	-- 2026-09-28). Read from the rim's base as it is (a border switch keeps
+	-- to its family: square rims stay square, round ones round)
+	function Kit:ActiveShape(rim)
+		local base = rim.base
+		return (type(base) == "string" and base:find("^buttons/round")) and "round" or "square"
+	end
+
+	function Kit:ActiveCounts()
+		return made, textures
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Slot: the painted rim over a button's icon; hover / pressed / checked follow
 -- the button. The button's own art should be faded by the caller.
 --   Kit:Slot(button, { kind = "slot" | "roundslot", icon = texture, scale = , checked = function })
@@ -3382,21 +3935,26 @@ local function Slot_Update(rim)
 	else
 		okC, c = true, nil
 	end
-	if okC and not Secret(c) then
+	local unread = okC and Secret(c)
+	if okC and not unread then
 		checked = c
 	end
 	rim.lastDisabled = disabled
+	-- the active look (Kit:SetActive) shows the checked state: a rim's own
+	-- checked colour and its glow's selected strength give way to it, a
+	-- check box keeps its tick (0.15.0)
+	local active = Kit:ActiveFamily(rim)
 	local state
 	if rim.restState then
 		-- a fixed look (the game's tab art is the same on every tab); the
 		-- states are shown by the glow the replacement adds over it
 		state = rim.restState
-	else
-		state = Kit:ResolveState(rim.base, rim.hover, rim.pressed, checked, disabled)
+	elseif rim.base then
+		state = Kit:ResolveState(rim.base, rim.hover, rim.pressed, checked and active ~= "look", disabled)
 	end
 	rim.lastChecked = checked and true or false   -- for the reads below
 	if rim.glow then
-		local a = checked and 0.7 or rim.hover and 0.35 or 0
+		local a = (checked and not active) and 0.7 or rim.hover and 0.35 or 0
 		rim.glow:SetAlpha(a)
 		rim.glow:SetShown(a > 0)
 	end
@@ -3404,6 +3962,29 @@ local function Slot_Update(rim)
 		rim.state = state
 		Kit:Apply(rim, rim.base .. "_" .. state)
 	end
+	-- on the button, round the rim, while the rim shows (its skin on). Only a
+	-- rim with a checked flag of its own drives it: a hover-only rim (an
+	-- icon's on a list row) would switch off the look the row's selected
+	-- plate lays, one look a host (review, 2026-09-28). A flag that read
+	-- secret leaves it as the flag's own SetChecked showed it (Rim_Checked):
+	-- the last plain answer would undo that on every hover and key press
+	if active and not unread and (rim.isChecked or b.GetChecked) then
+		Kit:SetActive(b, (checked and rim:IsShown()) and true or false, rim, Kit:ActiveShape(rim), rim.icon)
+	end
+end
+
+-- A check button's flag set: a secret one (handed over in combat) can only
+-- be shown, by the active look (the rim keeps its last look until the flag
+-- reads plainly again, the pass after the fight at the latest); a plain one
+-- re-reads the rim
+local function Rim_Checked(rim, value)
+	if Secret(value) then
+		if rim:IsShown() and Kit:RimDrivesLook(rim) then
+			Kit:SetActive(rim.button, value, rim, Kit:ActiveShape(rim), rim.icon)
+		end
+		return
+	end
+	Slot_Update(rim)
 end
 
 -- A press latched by OnMouseDown ends on ANY mouse release, and when the
@@ -3811,8 +4392,8 @@ end, "script")
 local Rim_OnClick = Shared("OnClick on a kit rim's check button", function(b)
 	ReadNext(rimOf[b])
 end, "script")
-local Rim_OnSetChecked = Shared("SetChecked on a kit rim's button", function(b)
-	Slot_Update(rimOf[b])
+local Rim_OnSetChecked = Shared("SetChecked on a kit rim's button", function(b, value)
+	Rim_Checked(rimOf[b], value)
 end)
 local Rim_OnSetEnabled = Shared("SetEnabled on a kit rim's button", function(b)
 	Slot_Update(rimOf[b])
@@ -3950,7 +4531,7 @@ do
 			Perf.HookScript(button, "OnClick", function() ReadNext(tex) end)
 		end
 		if button.SetChecked then
-			hooksecurefunc(button, "SetChecked", function() Slot_Update(tex) end)
+			hooksecurefunc(button, "SetChecked", function(_, value) Rim_Checked(tex, value) end)
 		end
 		if button.SetEnabled then
 			hooksecurefunc(button, "SetEnabled", function() Slot_Update(tex) end)
@@ -4262,11 +4843,16 @@ end
 --           slot picture is (equipment); without it the rim is over the icon (tabs);
 --           `rest` fixes the rim's look (e.g. "checked" = the gold rim on every
 --           tab, as the game's tab art is) and `glow` adds the same rim
---           additively for the selected (0.7) and hovered (0.35) button,
---           standing in for the game's SelectedTexture / TabGlow / Highlight
+--           additively for the hovered (0.35) button, standing in for the
+--           game's TabGlow / Highlight; the selected one wears the active
+--           look (Kit:SetActive) for the game's SelectedTexture
 --   state   a state texture on a button (`base`), e.g. the close button;
 --           `natural` keeps the kit size centred on the rect, `layer` its
 --           draw layer (OVERLAY unless the game's icon must stay on top)
+--   active  the active look alone (Kit:SetActive) on a check button the kit
+--           does not dress, while it is checked; `active = true` on a rule
+--           of another kind puts the active look round its piece whenever
+--           the piece shows (the open tab's card)
 --   vstrip  an upright cap_t / mid / cap_b strip on the rect (a scroll thumb),
 --           `widthScale` x the rect's width, its state from the button
 --   bar     a hollow bar bracket (`bar` = "frame" | "castbar") fitted to the
@@ -4405,7 +4991,7 @@ Kit.Replacements = {
 	["spellbook-item-iconframe-passive-inactive"] = { kind = "slot", slot = "roundslot" },
 	["talents-node-circle-gray"]              = { kind = "slot", slot = "roundslot" },   -- what this client puts on a passive spell's icon
 	["uiframe-tab-left"]                      = { kind = "frame", level = 0, hover = 1.15 },   -- a window's bottom / top tab (TB6, user 2026-09-21; was T1, the tabs/top plate): the single rail with the stone card on the tab's rect, a holder at the tab's own level (its stone and rails under the tab's OVERLAY text, above the window's rail), brighter on hover
-	["uiframe-activetab-left"]                = { kind = "frame", level = 0, lit = { 1.45, 1.3, 0.85 } },   -- ... the open tab: the same card with its iron lit gold (as a selected R3 row); each on the tab's rect, the one the game shows
+	["uiframe-activetab-left"]                = { kind = "frame", level = 0, lit = { 1.45, 1.3, 0.85 }, active = true },   -- ... the open tab: the same card with its iron lit gold (as a selected R3 row); each on the tab's rect, the one the game shows; `active`: the active look round it (0.15.0)
 	["common-dropdown-a-button"]              = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the small round dropdown arrow: the cog plate under the game's arrow (K2)
 	["common-dropdown-a-button-shadowless"]   = { kind = "state", base = "buttons/arrow_down", natural = true },   -- the same template with hasShadow false (WowStyle1ArrowDropdownTemplate; the damage meter's type dropdown, keyed by hand): the kit's down arrow in the arrow's place (user, 2026-09-23: A of kit_raw/meter_arrow_catalog.png) -- not K2, whose cog would stand beside the header's settings cog
 	["RedButton-Expand"]                      = { kind = "state", base = "buttons/arrow_up", natural = true, rect = "normal" },   -- the window's maximize / minimize
@@ -4613,6 +5199,7 @@ Kit.Replacements = {
 	["ActionButtonRimRounded"]                = { kind = "slot", slot = "rimround", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
 	["ActionButtonRimGold"]                   = { kind = "slot", slot = "rimgold", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
 	["ActionButtonRimSunk"]                   = { kind = "slot", slot = "rimsunk", layer = "ARTWORK", sublevel = 2, iconGrow = 0.15 },
+	["ActionButtonActiveLook"]                = { kind = "active" },   -- a check button of the game's own art the kit does not dress (the extra action button, the vehicle bar's; keyed by hand): the active look (Kit:SetActive, 0.15.0) while it is checked, in place of its checked art (an agreed addition where it has none)
 	["UI-HUD-ActionBar-IconFrame"]            = { kind = "slot", slot = "slot", gemSpan = { 97 / 135, 92 / 130 }, layer = "ARTWORK", sublevel = 2 },   -- an action / stance / pet / bag button's rim (its NormalTexture): R1 — the slot rim sized to the bar's pitch so neighbours share a gem, at the NormalTexture's ARTWORK under the OVERLAY name, count, keybind and highlights; the icon fitted into its opening (Kit:SkinActionButton)
 	["UI-HUD-ActionBar-IconFrame-Background"] = { kind = "tile", piece = "tiles/stone", owner = true, sublevel = -1 },   -- an empty slot's backing: the stone in the rim's opening, UNDER the icon (BACKGROUND -1), shown as the game shows the backing (empty slots only)
 	["ui-hud-actionbar-iconframe-slot"]       = { kind = "fade" },   -- the empty slot's ornament
@@ -5424,9 +6011,17 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	if button.GetCheckedTexture then
 		extra[#extra + 1] = button:GetCheckedTexture()
 	end
+	-- opts.alsoFade: more of the game's art the rim stands in for, and
+	-- opts.checked its checked state where the button has no flag (a bag
+	-- slot: an item button, its open bag shown by a highlight region)
+	if opts.alsoFade then
+		for _, region in ipairs(opts.alsoFade) do
+			extra[#extra + 1] = region
+		end
+	end
 	-- opts.as: another slot rule (the action bars' thin rim, "ActionButtonRim")
 	local rep = replace(normal, { as = opts.as or "UI-HUD-ActionBar-IconFrame", button = button, rect = button, pitch = pitch,
-		icon = button.icon, alsoFade = extra })
+		icon = button.icon, alsoFade = extra, checked = opts.checked })
 	button.melloRep = rep or false
 	if not rep then
 		return nil
@@ -6169,6 +6764,11 @@ function ReplacementMixin:Enable()
 			LayRep(self)
 		end
 		object:Show()
+		-- a rim or state texture read again: its button's active look (its
+		-- regions, not the rim's) follows it back on (Kit:SetActive)
+		if object.Update == Slot_Update then
+			Slot_Update(object)
+		end
 	else
 		self.holderShown = true
 	end
@@ -6205,6 +6805,11 @@ function ReplacementMixin:Disable()
 	end
 	if object and object.glow then
 		object.glow:Hide()
+	end
+	-- a rim's active look is regions of its button: off with the rim (one
+	-- that drives it: a hover-only rim leaves a row's plate its look)
+	if object and object.Update == Slot_Update and Kit:RimDrivesLook(object) then
+		Kit:SetActive(object.button, false)
 	end
 	Kit:ShadowRepOn(self, false)
 	if self.onDisable then
@@ -6319,11 +6924,14 @@ function ReplacementMixin:SetState(state)
 		self.Update()
 	elseif self.skin and self.checked then
 		local tint = self.rule.checkedTint
-		if tint and self.checked() then
+		local on = self.checked() and true or false
+		if tint and on then
 			self.skin:SetTint(tint[1], tint[2], tint[3])
 		else
 			self.skin:SetTint(1, 1, 1)
 		end
+		-- the selected row's active look (Kit:SetActive), round its card
+		Kit:SetActive(self.skin, on, self.skin, "rect")
 	else
 		local object = rawget(self, "object")
 		if object and object.Update then
@@ -6966,12 +7574,17 @@ local frameTints = setmetatable({}, { __mode = "k" })   -- [button] = the rep it
 local NO_TINT = { 1, 1, 1 }
 
 local function FrameTint(rep, k)
-	local t = (rep.checked and rep.checked() and rep.rule.checkedTint) or NO_TINT
+	local on = rep.checked and rep.checked() and true or false
+	local t = (on and rep.rule.checkedTint) or NO_TINT
 	for _, tex in ipairs(rep.skin.art) do
 		tex:SetVertexColor(math.min(t[1] * k, 1), math.min(t[2] * k, 1), math.min(t[3] * k, 1))
 	end
 	if rep.skin.body then
 		rep.skin.body:SetVertexColor(math.min(k, 1), math.min(k, 1), math.min(k, 1))
+	end
+	-- the selected row's active look (Kit:SetActive), round its card
+	if rep.checked then
+		Kit:SetActive(rep.skin, on, rep.skin, "rect")
 	end
 end
 
@@ -7170,6 +7783,12 @@ function Kit:Replace(region, opts)
 		end
 		if rule.lit then
 			rep.skin:SetTint(rule.lit[1], rule.lit[2], rule.lit[3])
+		end
+		-- `active`: the piece stands for the game's active / selected art
+		-- (the open tab's card): the active look round it whenever it shows,
+		-- as regions of its skin (made on the skin's first show)
+		if rule.active then
+			self:SetActive(rep.skin, true, rep.skin, "rect")
 		end
 		local button = opts.button
 		if button and (rule.hover or rule.pressed or rule.disabled) then
@@ -7513,6 +8132,23 @@ function Kit:Replace(region, opts)
 			tex:SetAllPoints(rect)
 		end
 		rep.object, rep.rect = tex, rect
+	elseif rule.kind == "active" then
+		-- a check button of the game's own art the kit does not dress (the
+		-- extra action button, the vehicle bar's): the active look in place
+		-- of its checked art (the region, faded; noFade where the button has
+		-- none), following its checked flag as a rim does. The object is an
+		-- empty region on the button, drawing nothing, that the rims'
+		-- followers read (FollowButton: its SetChecked, clicks, the bars'
+		-- events, the pass after a fight)
+		local button = opts.button or parent
+		local mark = button:CreateTexture(nil, "OVERLAY")
+		mark:SetAllPoints(button)
+		mark:SetAlpha(0)
+		mark.kitPiece = true   -- ours: never faded as the game's art
+		mark.button, mark.icon, mark.activeFamily = button, opts.icon, "look"
+		FollowButton(mark, button)
+		Slot_Update(mark)
+		rep.object = mark
 	elseif rule.kind == "vstrip" then
 		-- an upright strip on the rect's height, `widthScale` x the rect's
 		-- width, centred; its state follows the button's over / down flags
@@ -8082,6 +8718,11 @@ function Kit:Replace(region, opts)
 	local object = rawget(rep, "object")
 	if object then
 		object:Hide()
+		-- (a rim read while it was made, shown: its active look waits for the
+		-- rep's Enable too)
+		if object.Update == Slot_Update and self:RimDrivesLook(object) then
+			self:SetActive(object.button, false)
+		end
 	else
 		rep.holderShown = false
 	end

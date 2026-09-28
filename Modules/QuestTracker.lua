@@ -27,8 +27,9 @@
 --     and the title plate) while its look area is on (Kit:IsOn: the reskin
 --     and its own switch), a plain dark panel otherwise; a switch flips it
 --     live
---   * as wide on the screen as the minimap (Match The Minimap's Width): the
---     map's size is Edit Mode's, the tracker follows it (FollowWidth)
+--   * as wide on the screen as the minimap (Match The Minimap's Width) and
+--     glued under it where nobody placed it: the map's size is the Minimap
+--     Kit's Width and Height, the tracker follows it (FollowWidth, Glue)
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -81,7 +82,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
 		  desc = "How tall the tracker may grow before it scrolls. Edit Mode's: the height set for the game's tracker in Edit Mode. The grip in its bottom-left corner sets it by dragging." },
 		{ type = "toggle", key = "matchMinimap", name = "Match The Minimap's Width",
-		  desc = "The tracker as wide on the screen as the minimap: the round map's width, or the square map's frame. Make the minimap bigger or smaller in Edit Mode (Minimap, Size) and the tracker follows. Needs the Minimap Kit. Off: the Width below." },
+		  desc = "The tracker as wide on the screen as the minimap (the round map's width, or the square map's frame) and, unless you moved it yourself, right under it: it moves and changes size with the map (the Minimap Kit's Width and Height). Needs the Minimap Kit. Off: the Width below, under the game's tracker's place." },
 		{ type = "slider", key = "width", name = "Width", min = 0, max = 600, step = 10,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
 		  desc = "How wide the tracker is when it does not match the minimap's width. Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
@@ -106,7 +107,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line", new = "0.14.0",
 		  desc = "A quest ready to turn in says who takes it and where, for example: Turn in: Gryan Stoutmantle, Sentinel Hill." },
 		{ type = "button", name = "Reset Position", text = "Reset",
-		  hint = "back on the game's tracker's place",
+		  hint = "back under the minimap (or on the game's tracker's place)",
 		  onClick = function(_, db)
 			db.pos = nil
 			MelloUI:NotifySettingChanged("QuestTracker", "pos", nil)
@@ -390,17 +391,23 @@ local function ColumnDrop(f, scale, set)
 end
 
 -- Match The Minimap's Width (the column's layout E, user, 2026-09-25: "yes,
--- flip it"). The map's size is Edit Mode's (Minimap, Size); the tracker is
+-- flip it"). The map's size is the Minimap Kit's Width and Height (0.15.0;
+-- Edit Mode's Size before); the tracker is
 -- as wide on the screen as the minimap column: MinimapPanel's
 -- M:ColumnWidth() `line` -- the round map's diameter, the square map's
 -- side, or the square border's (the merged) frame where it stands wider, so
 -- the two frames line up edge to edge -- over its own effective scale (the
--- UI's x its Scale), kept within the grip's bounds. Only while the option
+-- UI's x its Scale), within FOLLOW_LEAST .. FOLLOW_MAX. Only while the option
 -- is on and the Minimap Kit is on; else its Width setting, as before. Laid
 -- on the bus's 'column' (Edit Mode's Size, Edit Mode closed, the UI Scale,
 -- the minimap's shape or border) through Place. A width that cannot be read
 -- leaves the tracker as it is (the last one it followed).
 local FOLLOW_MIN, FOLLOW_MAX = 180, 700   -- (the grip's bounds, SetResizeBounds in Build)
+-- the least it follows, its own units: the round map at the Minimap Kit's
+-- least Width (98) at the tracker's largest Scale (1.6), so the tracker
+-- glued under the map is as wide as it at every Width (the grip's least
+-- stays FOLLOW_MIN)
+local FOLLOW_LEAST = 60
 local followPx = nil   -- the column's width last read (screen px)
 
 -- the width to lay at `scale` (its own units), or nil: its Width setting
@@ -420,7 +427,33 @@ local function FollowWidth(scale)
 	if not (followPx and type(us) == "number" and us > 0 and scale > 0) then
 		return followW
 	end
-	return math.min(FOLLOW_MAX, math.max(FOLLOW_MIN, followPx / (us * scale)))
+	return math.min(FOLLOW_MAX, math.max(FOLLOW_LEAST, followPx / (us * scale)))
+end
+
+-- Glued under the minimap column (0.15.0; user, 2026-09-28: the tracker
+-- "stays glued to the minimap's bottom border, as wide as the map, and moves
+-- and resizes with it"): where nobody placed it, while it follows the map's
+-- width, its top right corner hangs COLUMN_GAP under the column's bottom, on
+-- the frame the column lines up to (MinimapPanel's ColumnAnchor) -- an
+-- anchor, so it moves with the map as the map is dragged. -> that frame, its
+-- point and the y offset in the tracker's own units at `scale`; nil where
+-- the column cannot be read plainly (Place then keeps it clear of the
+-- column as before: ColumnDrop)
+local function Glue(scale)
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if not (mp and mp.isEnabled and mp.ColumnAnchor) then
+		return nil
+	end
+	local ok, region, point, dy = pcall(mp.ColumnAnchor, mp)
+	dy = ok and Plain(dy) or nil
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	us = okU and Plain(us) or nil
+	if not (region and type(point) == "string" and type(dy) == "number" and type(us) == "number" and us > 0
+		and scale > 0) then
+		return nil
+	end
+	-- (a thousandth of a unit: a column that did not move lays the same)
+	return region, point, math.floor((dy / (us * scale) - COLUMN_GAP) * 1000 + 0.5) / 1000
 end
 
 -- the frame sits where the game's tracker is, as wide as it, from its top
@@ -449,13 +482,19 @@ local function Place()
 			gw = okG and Plain(g) or nil
 		end
 	end
-	-- where nobody placed it: clear of the column under the minimap
+	-- where nobody placed it: glued under the minimap column while it
+	-- follows the map's width (Glue), else clear of the column
+	local glue, glueP, glueY = nil, nil, nil
+	if followW and not (px and py) and Unplaced(f) then
+		glue, glueP, glueY = Glue(scale)
+	end
 	local drop = 0
-	if not (px and py) then
+	if not (px and py) and not glue then
 		drop = ColumnDrop(f, scale, set)
 	end
 	if last.valid and last.scale == scale and last.set == set and last.x == px and last.y == py and last.to == f
 		and last.us == us and last.sw == sw and last.sh == sh and last.gw == gw and last.drop == drop
+		and last.glue == glue and last.glueP == glueP and last.glueY == glueY
 		and frame:GetScale() == last.got and SamePoint() then
 		return
 	end
@@ -501,6 +540,11 @@ local function Place()
 		else
 			frame:SetWidth((gw and gw > 100) and gw or FALLBACK_W)
 		end
+	elseif glue then
+		-- under the column, its right edge on the column's frame's, as wide
+		-- as the map (the width it follows)
+		frame:SetPoint("TOPRIGHT", glue, glueP, 0, glueY)
+		frame:SetWidth(set)
 	elseif f then
 		-- the right edge stays on the game's tracker's (it sits by the
 		-- screen's right side); a set width grows to the left; hung lower by
@@ -527,6 +571,7 @@ local function Place()
 	if ok and not (Secret(p) or Secret(rel) or Secret(rp) or Secret(ax) or Secret(ay)) then
 		last.scale, last.set, last.x, last.y, last.to = scale, set, px, py, f
 		last.us, last.sw, last.sh, last.gw, last.drop = us, sw, sh, gw, drop
+		last.glue, last.glueP, last.glueY = glue, glueP, glueY
 		last.p, last.rel, last.rp, last.ax, last.ay = p, rel, rp, ax, ay
 		last.got, last.valid = frame:GetScale(), true
 	end
@@ -2747,9 +2792,9 @@ end
 -- secure frame on it.
 local function PlaceForColumn()
 	if M.isEnabled and frame and not inEditMode and not sizing then
-		local was, wasW = last.drop, followW
+		local was, wasW, wasG, wasY = last.drop, followW, last.glue, last.glueY
 		Place()
-		if last.drop ~= was or followW ~= wasW then
+		if last.drop ~= was or followW ~= wasW or last.glue ~= wasG or last.glueY ~= wasY then
 			MarkDirty()
 		end
 	end

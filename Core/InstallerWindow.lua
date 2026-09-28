@@ -130,6 +130,11 @@ local PAGE_W = WIN_W - BODY_X - EDGE   -- 574
 local PAD = 14                  -- a page's text margin
 local TEXT_W = PAGE_W - 2 * PAD
 local CARD_W, CARD_H, CARD_GAP_X, CARD_GAP_Y = 279, 72, 16, 10
+-- the pages' clip reaches this far past their left and right edges: a chosen
+-- card wears the active look (Kit:SetActive), whose halo reaches 8 x 0.7
+-- units past the card, and the cards lie flush with the page's edges (the
+-- halo was cut off on their outer side; review, 2026-09-28)
+local LOOK_BLEED = 6
 local BANNER_W, BANNER_H = 460, 251
 local PIC_W, PIC_H, PIC_M = 520, 170, 8
 local RING = 110
@@ -3096,11 +3101,18 @@ local function Build()
 	win.rail:SetGroups(IW.GroupsFor(longest))
 	win.rail:SetGroups(IW.GroupsFor(Option()))
 	-- the body: the pages on the dark inner panel over the window's stone
-	win.pager = W.Pager(frame, { step = 80 })
+	-- (the clip LOOK_BLEED wider each side than the pages, which stay where
+	-- they were, as the dark panel under them)
+	win.pager = W.Pager(frame, { step = 80, bleed = LOOK_BLEED })
 	local scroll = win.pager.scroll
-	scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X, TOP)
-	scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE, BODY_BOTTOM)
-	Kit:StoneDim(frame, { rect = scroll, alpha = 0.8 })
+	scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X - LOOK_BLEED, TOP)
+	scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE + LOOK_BLEED, BODY_BOTTOM)
+	local dim = Kit:StoneDim(frame, { rect = scroll, alpha = 0.8 })
+	if dim then
+		dim:ClearAllPoints()
+		dim:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X, TOP)
+		dim:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE, BODY_BOTTOM)
+	end
 	-- the footer: the screen line (or why Install waits), Back, Continue or
 	-- Install
 	local f = win.foot

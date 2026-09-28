@@ -720,6 +720,27 @@ as wide as its text, a soft shadow of the gem's own shape behind the marker's ge
 soft shade behind the direction arrow and the marker's edge arrow. The distance under the
 minimap has no shade. Off, the name line is 180 wide again, a longer name cut.
 
+World Marker (on by default; 0.15.0 states): a gem hung on the game's own navigation point over
+the destination. Far away it is a *beacon*: the gem with the red Light Beam rising from it and
+the distance and travel time under it, faint while it stands in the middle of the screen, where
+your character is. Within 100 yards it becomes the *pin*: the beam fades out on the way in, the
+gem lands on the place with a small pop and stays on top of the NPC, object or item's source
+until it is done (never faint). Off screen, an arrow beside your character points the way to
+turn. Inside a quest's objective area (a camp to clear, a field to search: the client's quest
+area, where it can say) the marker hides, the game's own marker too, and comes back once you
+leave; one spot never hides it, nor Route's own pin, nor a quest MelloUI has no objective places
+for (the game's own point could be one NPC). Every border has a buffer so it never
+flickers from one look to the other: the pin at 100 yards in and 115 out, the screen's edge a
+little inside on the way back, the middle of the screen, and the area's border (back only 10
+yards out of it, or after 3 seconds).
+
+The first route of a session waits a few seconds while the road data loads: meanwhile the
+on-screen notice says "Loading navigation..." (a Route line: Route Announces and the notice's
+own switches apply, no sound) and the direction arrow breathes, turning slowly round while it
+has nothing to point at yet (with Reduce Motion on it is not shown until it has); both go the
+moment the route is ready. A load the game puts off until a fight is over says nothing until
+it really starts.
+
 **Flights** (Route, Flights; both on by default). *Flight Map Help:* when a flight master's map
 opens, the route is planned again from the flight points you know, and the map's title band
 says where it flies and about how long it takes ("Route: fly to Sentinel Hill · about 1:16"),
@@ -788,7 +809,10 @@ the bags), `PinnedQuest` (the quest Route's own pin follows for now), `FollowedR
 way left along the route followed), `YardsText`,
 `PlaceNear` (a named town, camp, flight point or sub-zone near a point), `ContinentOf` and
 `PlayerSide` / `SideOpen` (a neutral character's rows are the ones open to both factions). A line of any module's own goes to the on-screen
-notice with `MelloUI:Announce(text, kind)` (Core/Notice.lua), which works with Route off; the
+notice with `MelloUI:Announce(text, kind)` (Core/Notice.lua), which works with Route off; a line
+held for as long as its caller waits on something (Route's "Loading navigation...") with
+`MelloUI:AnnounceWait(text)` and let go with `MelloUI:AnnounceDone(text)` (no sound, no 4 s hold;
+a new line takes its place as ever). The
 soft band behind its text is the shared `MelloUI.Shade:Band` (Core/Shade.lua).
 
 ### Services
@@ -825,8 +849,8 @@ group is grey only while none of its services is known on your continent. Merged
 square minimap's frame, the row sits under the divider rail with its gem caps and the
 "Services" name (centred; at the rail's left end while Route's distance line stands at its
 right end) and the clock moves beside the zone name. All Buttons: the two rows of an icon per
-service, as before. The minimap button keeps to the map's edge at any Edit Mode size, round
-or square. On a map where you can't be placed, a click says "Can't place you on this map, so no
+service, as before. The minimap button keeps to the map's edge at any size, round, square or
+cropped to the Minimap Kit's Width and Height. On a map where you can't be placed, a click says "Can't place you on this map, so no
 route to the nearest ..." instead of claiming none is known on your continent; a character that
 has not chosen a faction sees the services open to both. The service data also holds the
 vendors and what they sell (food and drink, arrows and bullets, class reagents), which Restock
@@ -917,19 +941,39 @@ around the map with the zone name on a title plate standing on it, the tracking 
 round rim, plus / minus zoom buttons. Edit Mode still owns the cluster's position; with "Unlock
 the Windows" the map can be dragged by its zone band. `/mmdump` prints the rects.
 
-The map's size is Edit Mode's (Minimap, Size): the border, the map, its buttons and the zone
-name all scale together, and MelloUI never resizes them. What stands under the map follows
-its width: the Services row of groups, and MelloUI's Quest Tracker with "Match The Minimap's
-Width" (Quest Tracker). For modules: `MinimapPanel:ColumnWidth()` gives the map's width on the
-screen and the width the frames line up to (the square border's frame where it is wider).
-MelloUI's own Edit Mode layout (`/mello layout apply`, the installer) sets the Size to 150 %,
-the map about as wide as the Quest Tracker, and puts the game's tracker (which MelloUI's hangs
-on) right under the column with its right edge on the frame's. On a smaller screen the fit
-(`Core\LayoutFit.lua`) takes the largest step that leaves the tracker 300 units under the
-column and your buffs room beside it. Where your buff rows by the column would reach into the
-centre third, the layout is fitted for fewer icons a row or smaller icons, and the installer's
-report says which to set in Buffs & Debuffs (the fit changes them itself only for a caller
-that writes its `places.auras`: `inputs.auras.fitRows`).
+**Width** and **Height** (98 to 400, 198 x 198 by default: the game's map at 100 %) size the
+map. The round map is as tall as it is wide, and its painted ring grows and shrinks with it;
+the square map can be up to twice as wide as tall or the other way round. The square map's
+border, the zoom and tracking buttons and the zone name keep their size, and so do the Services
+buttons under the map (spread across a wider map; smaller only on a map narrower than the
+game's, where they would not fit). The game's map stays square underneath (its arrow and
+terrain need a square), and a mask shows the Width x Height of it
+(`Media\Textures\Masks\Minimap`, made by `Tools\make_minimap_masks.py`; the short side in
+256ths of the long one, within a unit of the Height asked for), so a click on the hidden part
+goes through to the world; the player's coordinates stay under the map's shown bottom. While
+the Minimap Kit is on, Edit Mode's minimap Size stays at 100 %. A Size you had set yourself
+before 0.15.0 became your Width and Height once, so the map kept its size on the screen; the
+150 % (or 90 - 140 %) that MelloUI's own layout had set did not, so that map is back at its
+normal size. The group finder's eye stays where Edit Mode puts it, on the map's edge at 198:
+drag it in Edit Mode for another size. Edit Mode's box still fits round the map and still moves
+it.
+
+What stands under the map follows it: the Services row of groups, and MelloUI's Quest Tracker
+with "Match The Minimap's Width" (Quest Tracker), which also hangs right under the map and moves
+with it. For modules: `MinimapPanel:MapFrame()` is the map's shown part (hang things from it,
+not from `Minimap`, whose square can be bigger), `MinimapPanel:ColumnWidth()` gives the map's
+width on the screen and the width the frames line up to (the square border's frame where it is
+wider), `MinimapPanel:ColumnAnchor()` the frame and offset the tracker hangs from. MelloUI's own
+Edit Mode layout (`/mello layout apply`, the installer) puts the minimap at 100 % and the game's
+tracker (which MelloUI's hangs on) right under the column with its right edge on the frame's;
+where the tracker or your buffs have less room than they want (a 5:4 screen such as 1280 x
+1024), the fit lays the layout for the Minimap Kit's map a step smaller, 90 % (178 x 178 from
+the default: the approved layout's own size), the installer sets that Width and Height, and
+its report says so (`/mello layout apply` only asks you to set it).
+Where your buff rows by the column would reach into the centre third, the layout is fitted for
+fewer icons a row or smaller icons, and the installer's report says which to set in Buffs &
+Debuffs (the fit changes them itself only for a caller that writes its `places.auras`:
+`inputs.auras.fitRows`).
 
 ### Tracker Panel
 
@@ -953,8 +997,10 @@ Scroll Step are in its settings.
 
 "Match The Minimap's Width" (on by default, needs the Minimap Kit) makes the tracker as wide on
 the screen as the minimap above it: the round map, or the square map's frame, so the two line
-up. Make the minimap bigger or smaller in Edit Mode (Minimap, Size) and the tracker follows
-when you leave Edit Mode; the grip then sizes only its height. Off, it takes its own Width.
+up. Unless you moved the tracker yourself, it also hangs right under the map, 8 units below
+everything the map's column paints, and moves with the map when you drag it. Change the
+minimap's Width in the Minimap Kit and the tracker follows; the grip then sizes only its
+height. Off, it takes its own Width.
 
 "Nearest Quest First" (on by default, needs Route) puts the nearest quest on top, the one you
 follow above it, and quests with no known place after them in watch order; a quest only moves
@@ -973,9 +1019,10 @@ is shown and its Quests section is open.
 The tracker stands in front of the minimap column (MEDIUM strata over the column's LOW), so a
 click on the minimap, which raises the whole cluster, never brings the map or the Services row
 over it; the Services group lists still open above it. While it stands where the game or the
-installer's fit put it, it keeps clear of the column: it moves down under everything the
+installer's fit put it, it hangs right under the column (Match The Minimap's Width, above), or,
+with that off or the Minimap Kit off, keeps clear of it: it moves down under everything the
 column paints (the square frame's bottom gems, and with the Minimap Kit off the game's own
-frame round the map) when the minimap's Size, the Services bar's Button Layout or merge, or the
+frame round the map) when the minimap's size, the Services bar's Button Layout or merge, or the
 UI scale changes. The installer records the place its fit wrote, so that place still counts as
 the game's own (Revert takes the record back); a tracker you moved yourself, in Edit Mode or
 with Unlock the Windows, stays where you put it. The keep-clear only ever moves it down.
@@ -1050,9 +1097,13 @@ builds `Media\Textures\KitShadows.tga`, a blurred copy of a kit piece's own shap
 rails and the synthetic square, round and capsule shapes; the nameplates' Whole plate shade,
 the World Marker's gem `deco/gem_large`). `Tools\make_soft_glow.py` builds
 `Media\Textures\SoftGlowRound.tga`, the round soft glow laid round a round button
-(`MelloUI.Shade:Glow`: the Reminder widget). All three are white with a soft alpha, tinted in
-game with a palette colour (innerPanel for the shades, selectedTrim for the glow, added as
-light). `Tools\kit_palette.py` recolours the painted kit for each palette of `Tools\palettes.json`
+(`MelloUI.Shade:Glow`: the Reminder widget). `Tools\make_active_look.py` builds
+`Media\Textures\ActiveLook.tga`, the active look laid round whatever is on, checked or
+selected (`Kit:SetActive`: a gold ring with a halo and an inner glow, its two dark edge lines
+in a cell of their own; square and round cells, cut into nine for tabs and rows, whose cut
+stops at the ring's inner line: no glow over their text). All four are
+white with a soft alpha, tinted in game with a palette colour (innerPanel for the shades and
+the ring's lines, selectedTrim for the glows, added as light). `Tools\kit_palette.py` recolours the painted kit for each palette of `Tools\palettes.json`
 (the same colours as Core.lua's `MelloUI.Palettes`) into its own `Media\Kit<Name>` folder;
 `texture_pack.py ship` then packs it like the other looks.
 

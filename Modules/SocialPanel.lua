@@ -10,7 +10,8 @@
 --   the medallion size on the disc in the ring, title plate, close), the
 --   inset rail, bottom and top tabs, the Battle.net band on the header
 --   plate, friend rows' hover as the plate's hover look (shown on hover
---   only, as the game's highlight is), pending-invite headers on the
+--   only, as the game's highlight is), the selected friend or ignored name
+--   in the kit's active look (its locked highlight), pending-invite headers on the
 --   category plate, online / offline dividers, the invite icon button on
 --   the cog, red buttons, dropdowns, check boxes and scroll bars by the
 --   sweep; the ignore list window the same; the raid pane's group boxes per
@@ -365,6 +366,28 @@ local RowLeave = Shared("OnLeave on a list row", function(row)
 	SyncPlate(row)
 end, "script")
 
+-- The selected friend or ignored name: the game locks the row's highlight
+-- (FriendsFrame_FriendButtonSetSelection, IgnoreList_SetButtonSelected:
+-- LockHighlight / UnlockHighlight), and that highlight is faded under the
+-- kit, so nothing showed which one was selected (review, 2026-09-28). The
+-- row wears the active look while it is locked (Kit:SetActive, 0.15.0: the
+-- one look for whatever is selected); a recycled row gets its state from
+-- the game's own Lock / Unlock in its update.
+local locked = setmetatable({}, { __mode = "k" })   -- [row] = true while the game locks its highlight
+
+local function SyncLocked(row)
+	Kit:SetActive(row, active and locked[row] == true, row, "rect")
+end
+
+local RowLock = Shared("LockHighlight on a list row", function(row)
+	locked[row] = true
+	SyncLocked(row)
+end)
+local RowUnlock = Shared("UnlockHighlight on a list row", function(row)
+	locked[row] = nil
+	SyncLocked(row)
+end)
+
 local function HoverPlate(row, highlight)
 	if not (row and highlight) or row.melloRep ~= nil then
 		return
@@ -376,6 +399,13 @@ local function HoverPlate(row, highlight)
 	end
 	Perf.HookScript(row, "OnEnter", RowEnter)
 	Perf.HookScript(row, "OnLeave", RowLeave)
+	if row.LockHighlight and row.UnlockHighlight then
+		hooksecurefunc(row, "LockHighlight", RowLock)
+		hooksecurefunc(row, "UnlockHighlight", RowUnlock)
+		-- (locked before it was dressed: the first open's selected friend)
+		locked[row] = MelloUI.Safe.Call(row, "IsHighlightLocked") and true or nil
+		SyncLocked(row)
+	end
 	Queue(row, MakePlate)
 end
 
@@ -690,6 +720,10 @@ local function Dress()
 	for _, highlight in pairs(plateOf) do
 		Kit:Fade(highlight)
 	end
+	-- the selected row's look back (HoverPlate)
+	for row in pairs(locked) do
+		SyncLocked(row)
+	end
 	StartIdle()
 end
 
@@ -740,6 +774,9 @@ local function Deactivate()
 	end
 	for _, highlight in pairs(plateOf) do
 		Kit:Unfade(highlight)
+	end
+	for row in pairs(locked) do
+		SyncLocked(row)   -- (off: the game's own highlight is back)
 	end
 	Kit:Uncover("social")
 end

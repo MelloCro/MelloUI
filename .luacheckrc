@@ -124,7 +124,7 @@ read_globals = {
 	"POIButtonUtil", "UIErrorsFrame",
 	"AnchorUtil", "AuraContainerSortMethod", "AuraContainerSortDirection", "AuraContainerItemEnchantmentSlot",
 	"QuestInfo_Display", "QuestInfoTitleHeader", "QuestInfoFrame", "GetQuestID",
-	"UnitCanAttack", "UnitClass", "UnitCreatureType", "UnitExists", "UnitFactionGroup",
+	"UnitCanAttack", "UnitClass", "UnitClassification", "UnitCreatureType", "UnitExists", "UnitFactionGroup", "UnitIsBossMob", "UnitIsUnit",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
 	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",

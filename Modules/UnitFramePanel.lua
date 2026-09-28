@@ -16,9 +16,12 @@
 --   L1  buttons/orb under the level number (and the PvP badge's circle)
 --   N3  the tabs/top title plate on the name band (the target's reaction
 --       strip; the player's band is that rect mirrored)
--- The elite / rare / boss rings are faded and the kit ring is tinted gold /
--- silver instead. Bar Textures drops its shaped mask on a bracketed bar
--- (`melloKitBracket`) so the flat fill spans the rect under the rails.
+-- The game's elite / rare / boss rings are faded; the Elite / Rare / Rare
+-- Elite / Boss marks (0.15.0, Modules/KitMarks.lua, the option `marks`) put
+-- the target's and focus's ring and level orb in the unit's metal with a
+-- crest on the ring's top gem instead (below). Bar Textures drops its shaped
+-- mask on a bracketed bar (`melloKitBracket`) so the flat fill spans the rect
+-- under the rails.
 -- Covers the Dark Mode group "unitframes" while on (Kit:Cover).
 -- The UI shade (0.14.0, Modules/KitShade.lua, its area "unitframes"): each
 -- unit frame is one element whose shade lies under the whole frame (below).
@@ -37,10 +40,14 @@ local Kit = MelloUI.Kit
 local M = MelloUI:RegisterModule("UnitFramePanel", {
 	title = "Unit Frames Kit",
 	desc = "The player, target, focus and pet frames dressed in the painted kit on the game's own layout.",
-	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD" },
+	-- (include: the option below sits under this row on UI Modifications' HUD tab)
+	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = {},
-	options = {},
+	defaults = { marks = true },
+	options = {
+		{ type = "toggle", key = "marks", name = "Elite and Rare Marks", new = "0.15.0",
+		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
+	},
 })
 
 local skin = nil
@@ -632,6 +639,21 @@ local function RingCover(ring, bars, mirrored, container)
 	cover.kitPiece = true
 	Kit:Apply(cover, tex.kitName)
 	cover:SetAllPoints(holder)
+	-- the crop, as fractions of the ring (Lay's), and the ring's piece on the
+	-- cover: again when the ring wears another piece (an Elite / Rare mark's
+	-- metal twin, the same shape): texture calls only, so in a fight too
+	local fx0, fx1, fy0, fy1
+	local function Crop()
+		if cover.kitName ~= tex.kitName then
+			Kit:Apply(cover, tex.kitName)
+		end
+		local piece = tex.kitPiece
+		if not (piece and fx0) then
+			return
+		end
+		local u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
+		cover:SetTexCoord(u1 + (u2 - u1) * fx0, u1 + (u2 - u1) * fx1, v1 + (v2 - v1) * fy0, v1 + (v2 - v1) * fy1)
+	end
 	-- (laid protected: one function per cover, nothing made per call)
 	local function Lay()
 		local level = 0
@@ -666,11 +688,9 @@ local function RingCover(ring, bars, mirrored, container)
 		holder:ClearAllPoints()
 		holder:SetPoint("TOPLEFT", tex, "TOPLEFT", cl - rl, -(rb + rh - ct))
 		holder:SetPoint("BOTTOMRIGHT", tex, "BOTTOMRIGHT", -(rl + rw - cr), cb - rb)
-		local piece = tex.kitPiece
-		local u1, u2, v1, v2 = piece.uv[1], piece.uv[2], piece.uv[3], piece.uv[4]
-		local fx0, fx1 = (cl - rl) / rw, (cr - rl) / rw
-		local fy0, fy1 = (rb + rh - ct) / rh, (rb + rh - cb) / rh
-		cover:SetTexCoord(u1 + (u2 - u1) * fx0, u1 + (u2 - u1) * fx1, v1 + (v2 - v1) * fy0, v1 + (v2 - v1) * fy1)
+		fx0, fx1 = (cl - rl) / rw, (cr - rl) / rw
+		fy0, fy1 = (rb + rh - ct) / rh, (rb + rh - cb) / rh
+		Crop()
 		local r, g, b = tex:GetVertexColor()
 		cover:SetVertexColor(r or 1, g or 1, b or 1)
 		holder:Show()
@@ -699,7 +719,7 @@ local function RingCover(ring, bars, mirrored, container)
 			pcall(Paint)
 		end
 	end)
-	ring.cover = { holder = holder, Refit = Refit }
+	ring.cover = { holder = holder, Refit = Refit, Repiece = Crop }
 	skin.covers[#skin.covers + 1] = ring.cover
 	Refit()
 	return ring.cover
@@ -792,6 +812,121 @@ local function PlayerBandRect(container)
 end
 
 --------------------------------------------------------------------------------
+-- The Elite / Rare / Rare Elite / Boss marks (0.15.0; user, 2026-09-28: the
+-- approved sketch's style B): the target's and the focus's portrait ring in
+-- the unit's metal with a crest on its top gem (a crown, a silver star, a
+-- gold star, a skull), their level orb in the metal, and
+-- their target of target's ring. One system with the nameplates' (Modules/
+-- KitMarks.lua): the ring's and the orb's piece swapped for its baked twin of
+-- the same shape, so nothing is laid out again and the shade follows; the
+-- ring's cover over the bars' ends takes the twin too. Texture calls only: a
+-- target changed in a fight is marked at once. Told by the events that change
+-- what a frame shows -- a new target or focus, their target's target, a
+-- changed classification, an encounter's boss units changed (a boss unit is
+-- a boss) -- registered only while the kit and the option are on. The
+-- player, pet and party frames show players: never marked.
+--------------------------------------------------------------------------------
+local TOT_UNIT = { target = "targettarget", focus = "focustarget" }
+local marksFrame = nil   -- the events' frame (made the first time the marks are on)
+
+-- the unit a target-style frame shows (the game's own field, else its name's)
+local function MarkUnitOf(frame)
+	local unit = frame.unit
+	if type(unit) == "string" and not Secret(unit) and TOT_UNIT[unit] then
+		return unit
+	end
+	return frame == FocusFrame and "focus" or "target"
+end
+
+-- (Kit.WearMark: the marks' system, Modules/KitMarks.lua, is loaded -- a
+-- world without it, as a test's, shows no marks)
+local function MarksOn()
+	return active and Kit.WearMark ~= nil and M.db ~= nil and M.db.marks ~= false
+end
+
+-- one marked frame: its ring (and the ring's cover) and level orb in the
+-- metal of what its unit is now; plain with the marks off or no unit
+local function MarkUnit(entry)
+	if not (entry and Kit.WearMark) then
+		return
+	end
+	local kind = MarksOn() and Kit:MarkOf(entry.unit) or nil
+	entry.kind = kind
+	local ring = entry.ring
+	if ring and ring.tex then
+		Kit:WearMark(ring.tex, ring.rule.piece, kind)
+		if ring.cover then
+			ring.cover.Repiece()
+		end
+	end
+	local orb = entry.orb
+	if orb and orb.tex then
+		Kit:WearMark(orb.tex, orb.rule.piece, kind)
+	end
+end
+
+-- every marked frame as its unit is now
+local function MarkAll()
+	local marks = skin and skin.marks
+	if marks then
+		for _, entry in pairs(marks) do
+			MarkUnit(entry)
+		end
+	end
+end
+
+local function OnMarksEvent(_, event, unit)
+	local marks = skin and skin.marks
+	if not marks then
+		return
+	end
+	if event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
+		-- the boss units changed (a pull, a boss gone, the encounter over):
+		-- a frame's unit may have become a boss or stopped being one. The
+		-- burst at a pull marks once, a frame later
+		Kit:NextFrame(MarkAll, MarkAll)
+	elseif event == "PLAYER_TARGET_CHANGED" then
+		MarkUnit(marks.target)
+		MarkUnit(marks.targettarget)
+	elseif event == "PLAYER_FOCUS_CHANGED" then
+		MarkUnit(marks.focus)
+		MarkUnit(marks.focustarget)
+	elseif type(unit) == "string" and not Secret(unit) then
+		if event == "UNIT_TARGET" then
+			local tot = TOT_UNIT[unit]
+			MarkUnit(tot and marks[tot])
+		else
+			MarkUnit(marks[unit])   -- UNIT_CLASSIFICATION_CHANGED
+		end
+	end
+end
+
+-- the events wanted while the kit and the option are on, none else; every
+-- marked frame as its unit is now
+local function MarksSync()
+	if not skin then
+		return
+	end
+	local on = MarksOn()
+	if on and not marksFrame then
+		marksFrame = CreateFrame("Frame")
+		Perf.SetScript(marksFrame, "OnEvent", OnMarksEvent)
+	end
+	if marksFrame then
+		if on then
+			marksFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+			marksFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+			marksFrame:RegisterUnitEvent("UNIT_TARGET", "target", "focus")
+			marksFrame:RegisterUnitEvent("UNIT_CLASSIFICATION_CHANGED", "target", "focus")
+			marksFrame:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+		else
+			marksFrame:UnregisterAllEvents()
+		end
+	end
+	MarkAll()
+end
+
+--------------------------------------------------------------------------------
 -- The frames
 --------------------------------------------------------------------------------
 
@@ -836,7 +971,7 @@ local function SkinPlayer()
 end
 
 -- A target-style frame (TargetFrame, FocusFrame): mirrored, the reaction
--- strip is the name band, the boss ring tints the kit ring.
+-- strip is the name band, its ring and level orb marked (above).
 local function SkinTargetLike(frame)
 	if not frame or (skin.targets[frame]) then
 		return
@@ -868,32 +1003,20 @@ local function SkinTargetLike(frame)
 	Shade(u, SkinBar(main.ManaBar, main.ManaBar, picture, true))
 	TuckBars(ring, { health, main.ManaBar }, true)
 	RingCover(ring, { health, main.ManaBar }, true, container)
-	Shade(u, SkinCircle(main.LevelBackgroundCircle), true)
+	local level = SkinCircle(main.LevelBackgroundCircle)
+	Shade(u, level, true)
 	Shade(u, SkinCircle(contextual and contextual.PvpBackgroundCircle), true)
 	Watch(u)
-	skin.targets[frame] = { ring = ring, boss = container.BossPortraitFrameTexture }
-	-- the boss ring's atlas (gold / silver) tints the kit ring; plain otherwise
-	local function Tint()
-		if not (active and ring and ring.tex) then
-			return
-		end
-		local boss = container.BossPortraitFrameTexture
-		local key = boss and boss:IsShown() and Kit:ArtKey(boss) or nil
-		key = type(key) == "string" and key:lower() or ""
-		if key:find("silver", 1, true) then
-			ring.tex:SetVertexColor(0.85, 0.9, 1)
-		elseif key:find("gold", 1, true) then
-			ring.tex:SetVertexColor(1, 0.82, 0.35)
-		else
-			ring.tex:SetVertexColor(1, 1, 1)
-		end
-	end
+	skin.targets[frame] = { ring = ring }
+	-- its marks: the ring and the level orb in the unit's metal (the game's
+	-- own elite / rare / boss ring, BossPortraitFrameTexture, stays faded)
+	local unit = MarkUnitOf(frame)
+	skin.marks[unit] = { unit = unit, ring = ring, orb = level }
 	-- the game re-anchors the health container and re-atlases the art on
-	-- every target change (CheckClassification): re-tint, re-fit the
-	-- brackets and re-lay the ring cover (the bars' positions moved)
+	-- every target change (CheckClassification): re-fit the brackets and
+	-- re-lay the ring cover (the bars' positions moved)
 	-- (each made once: nothing made per target change)
 	local function Reclassify()
-		Tint()
 		RetuckAll()
 		for _, rep in ipairs(skin.reps) do
 			if rep.kind == "bar" and rep.object:GetParent() and rep.rect and rep.object:GetParent():IsShown() then
@@ -918,8 +1041,6 @@ local function SkinTargetLike(frame)
 	Perf.HookScript(frame, "OnShow", function()
 		Kit:WhenOutOfCombat(Relay)
 	end)
-	Tint()
-	skin.targets[frame].tint = Tint
 	-- the target of target: a small frame with the same parts
 	local tot = frame.totFrame
 	if tot and tot.FrameTexture and not skin.targets[tot] then
@@ -937,6 +1058,11 @@ local function SkinTargetLike(frame)
 		TuckBars(totRing, { tot.HealthBar, tot.ManaBar }, false)
 		RingCover(totRing, { tot.HealthBar, tot.ManaBar }, false, tot)
 		Watch(totU)
+		-- (its ring marked as its unit is: it has no level orb)
+		local totUnit = TOT_UNIT[unit]
+		if totUnit then
+			skin.marks[totUnit] = { unit = totUnit, ring = totRing }
+		end
 	end
 end
 
@@ -1158,8 +1284,8 @@ end
 local function Build()
 	if not skin then
 		-- (units / due: the shade's units waiting for a first show, and those
-		-- shown, made out of combat)
-		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {} }
+		-- shown, made out of combat; marks: the marked frames by their unit)
+		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {}, marks = {} }
 	end
 	SkinPlayer()
 	SkinTargetLike(TargetFrame)
@@ -1180,11 +1306,8 @@ local function Activate()
 	for _, entry in ipairs(skin.followers) do
 		entry.rep:SetShown(entry.region:IsShown())
 	end
-	for _, t in pairs(skin.targets) do
-		if type(t) == "table" and t.tint then
-			t.tint()
-		end
-	end
+	-- (the marks as the targets are now, their events on)
+	MarksSync()
 	for _, entry in ipairs(skin.names) do
 		entry.place()
 	end
@@ -1209,6 +1332,8 @@ local function Deactivate()
 	for _, cover in ipairs(skin.covers) do
 		cover.holder:Hide()
 	end
+	-- (the plain pieces back, the marks' events off)
+	MarksSync()
 	Kit:Uncover("unitframes")
 	Kit:Uncover("partyframes")
 end
@@ -1372,6 +1497,12 @@ function M:OnDisable()
 	Kit:WhenOutOfCombat(Deactivate)
 end
 
+function M:OnSettingChanged(key)
+	if key == "marks" then
+		MarksSync()
+	end
+end
+
 ------------------------------------------------------------------------------------
 -- /uftest: how to see a full party / raid without a group. Edit Mode's own
 -- "Party Frames" / "Raid Frames" boxes fill the frames with the player as
@@ -1410,6 +1541,11 @@ SlashCmdList.MELLOUFDUMP = function(msg)
 			local ok, w, h = pcall(frame.GetSize, frame)
 			MelloUI:Print("== %s (%s) %s x %s  %s L%d %s", key, frame:GetName() or "?", ok and not Secret(w) and string.format("%.0f", w) or "?",
 				ok and not Secret(h) and string.format("%.0f", h) or "?", frame:GetFrameStrata(), frame:GetFrameLevel(), frame:IsShown() and "shown" or "hidden")
+			-- its mark (Elite / Rare ...: the metal twin its ring wears)
+			local mark = skin and skin.marks[key == "tot" and "targettarget" or key]
+			if mark then
+				MelloUI:Print("mark: %s, ring %s", tostring(mark.kind or "none"), tostring(mark.ring and mark.ring.tex and mark.ring.tex.kitName))
+			end
 			Kit:DumpWindow(frame, skin, mode ~= "" and mode or nil, function(m, Rect)
 				if m == "reps" then
 					-- the portraits and their masks, to check the ring's centring

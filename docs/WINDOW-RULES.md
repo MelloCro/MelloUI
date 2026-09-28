@@ -74,7 +74,8 @@ files are removed (they are rebuilt by their tools if ever wanted).
 | headers / plates | `lists/header` for titles and level plates; `lists/plate` plain (gemless, pitch-fitted) for rows and row highlights; `lists/catplate` closed for category headers (no chevron; the game's glyph stays) |
 | TALL list rows (50 px and more: the LFG who / browse lists) | R3 (user, 2026-09-21): a single-rail card with stone under the row (`frame` with `hover` / `checkedTint`), its iron lit gold while selected — the plate's rails get fat when stretched that tall |
 | equipment / icon slots | `buttons/slot` rim UNDER the button, sized by `gemSpan` to the slot pitch so neighbours share a gem |
-| side tabs | `buttons/slot` gold rim at rest (pick I) + the same rim additively as the selected / hover glow |
+| side tabs | `buttons/slot` gold rim at rest (pick I) + the same rim additively as the hover glow; selected: the active look |
+| anything active, checked or selected (user, 2026-09-28, option C: "do it across the board") | THE active look, `Kit:SetActive` (Kit.lua): a gold ring added as light (`selectedTrim`) with a halo outside and a glow inside (none round text: a tab, a row or a card wears the ring, its lines and the halo), its two dark edge lines (`innerPanel`), the icon lifted 1.2 x with no tint; fed by the kit's followers of the state (a rim's checked flag, a frame's `checked()`, a plate in its `selected` state, a rule's `active = true`, kind `active` for a button the kit leaves in the game's art), never polled; a secret flag in combat shown with `SetAlphaFromBoolean`. A window's own copy of a selected look is a bug: KIT-MAPPING "The active look" lists what it stands in for |
 | bottom / top tabs (`PanelTabButtonTemplate`, `TabSystemTemplate`), every window | **TB6** (user, 2026-09-21, `kit_raw/bottomtab_catalog.png`; was T1, the `tabs/top` plate): the single rail with the stone card on the tab's rect, its iron lit gold while open, brighter on hover; the tab's text held centred on the card (the game bobs it on select) — `Kit:SkinPanelTab` |
 | check boxes, everywhere | `buttons/checkbox` off / on / hover — CONSISTENCY (user, 2026-09-21): every check box, expand / collapse glyph and pane toggle in a window is the kit's, none stay the game's |
 | expand / collapse glyphs (+ / -), sub-header toggles | `buttons/plus` / `buttons/minus` plates on the glyph's rect, switched with the atlas the game puts there (`Kit:StateIconReps`) |
@@ -779,7 +780,8 @@ when a copy is added and names the system to use.
     wheel steps 80 for pages and 68 for a side list; a set the glide did not
     make (the scroll bar dragged, a jump) stops it where it lands;
   - a looping glow: `Anim:Pulse(region)` (a still picture under Reduce
-    Motion); an AnimationGroup: `Anim:PlayGroup(group, settle)` /
+    Motion); a slow turn round and round: `Anim:Spin(region[, period])`
+    (0.15.0, the same); an AnimationGroup: `Anim:PlayGroup(group, settle)` /
     `Anim:StopGroup(group)`;
   - regions that slide softly out of a button and back:
     `Anim:Expand` / `Anim:Collapse` (after a grace, so the pointer can
@@ -850,10 +852,12 @@ when a copy is added and names the system to use.
   window binds Core's maker once at the top: a frame whose parent lies in an
   open window is made with no parent and put on it at once (the Gamepad UI
   off: the game's call, as before). The ratchet's `window-createframe`
-  check holds it. What the game's pools make for MelloUI inside a window (a
-  map's pins, an own list's rows) is made inside the window's own Show,
-  while `Safe.WarmNow(frame)`: `Safe.WarmPins`, `Safe.WarmList`; an own
-  list's view takes `Safe.QuietList(view)` (Core.lua has the details).
+  check holds it. With the Gamepad UI on, MelloUI also never writes into, or
+  calls, the game's shared menu, popup, panel and map-pool code (0.15.0: the
+  Escape menu's entry is an own button, questions go through
+  `MelloUI:Confirm`, the Quest List's map marks stay out of the map's pools,
+  its panel is not in WorldMapFrame's tree); the ratchet's panel-call checks
+  hold that.
 - **Later, not a timer: `Kit:NextFrame(key, fn)`**, fn made once per key.
 - **Its shade: section 2g.** A window on a shell is shaded by KitShade with
   nothing to do; an own HUD element calls `Kit:ShadeElement(root, area)` and

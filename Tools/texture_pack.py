@@ -210,6 +210,10 @@ KIT_SHOWN = [
     (r"^icons/", 62 / 192, "192 px round icons shown at 62"),
     (r"^cards/mining$", 531 / 1024, "1024 px shown at 531"),
     (r"^cards/", 531 / 804, "804 px shown at 531"),
+    (r"^marks/ring_", 95 / 197, "the portrait ring's metal twins: 197 px shown at 95"),
+    (r"^marks/crest_", 24 / 64, "64 px crests shown at 12-24 (the nameplates' sizes)"),
+    (r"^marks/orb_", 26 / 98, "the level orb's twins and its disc: 98 px shown at 26"),
+    (r"^marks/", 26 / 64, "the bar caps' metal twins: 64 px brackets shown at 23-29"),
     (r"", 0.375, "Kit.scale (0.375 UI units per painted px)"),
 ]
 
@@ -228,6 +232,7 @@ TEX_SHOWN = [
     (r"^Textures/Chat/", 4.0, False, "chat name band: stretched behind a name"),
     (r"^Textures/SoftShade", 4.0, False, "soft shade band (Core/Shade.lua): stretched behind text"),
     (r"^Textures/SoftGlowRound", 60 / 128, False, "round soft glow (Core/Shade.lua Shade:Glow): 128 px art around a 36-unit ring, 60 units wide"),
+    (r"^Textures/ActiveLook", 61 / 128, False, "the active look (Kit:SetActive): a 128 px cell round a 45-unit button, 61 units across"),
     (r"^Textures/KitShadows", 4 * 26 / 64, False, "kit shadow partners (Kit:Shadow): a texel is 4 painted px, brackets shown at 26 per 64"),
     (r"^Textures/Route/", None, True, "route beam: any world map zoom"),
     (r"^Textures/Stone", None, False, "not referenced by any Lua file"),
@@ -266,6 +271,7 @@ STAY_TGA = [
     (r"^Textures/LogoIcon\.tga$", "addressed as LogoIcon.tga by Core/Config.lua and the TOC's IconTexture; 256 KB, loaded once"),
     (r"^Textures/SoftShade\.tga$", "the soft shade (Core/Shade.lua): a 32 KB smooth alpha gradient stretched behind text; DXT bands it"),
     (r"^Textures/SoftGlowRound\.tga$", "the round soft glow (Core/Shade.lua Shade:Glow): a 64 KB smooth radial alpha ramp, shipped as its master's bytes like SoftShade"),
+    (r"^Textures/ActiveLook\.tga$", "the active look (Kit:SetActive, Tools/make_active_look.py): 256 KB of smooth alpha ramps (ring, halo, glow), shipped as its master's bytes like SoftGlowRound"),
     (r"^Textures/KitShadows\w*\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
                                        "DXT5 bands them (make_kit_shadows.py --gate: 17 levels off, its limit 4)"),
     (r"^Textures/InstallerBanner\.tga$", "addressed as InstallerBanner.tga by Core/InstallerWindow.lua; its DXT5 fails "

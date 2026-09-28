@@ -133,7 +133,8 @@ def load_mello(path):
                    "bar": en.get("Services", True) is not False and sv.get("showBar", True) is not False,
                    "groups": sv.get("buttonLayout", "groups") != "all", "barOffset": sv.get("barOffset", -26),
                    "roundIcons": sv.get("roundIcons", True) is not False,
-                   "match": bool(en.get("QuestTracker")) and qt.get("matchMinimap", True) is not False},
+                   "match": bool(en.get("QuestTracker")) and qt.get("matchMinimap", True) is not False,
+                   "mapW": mm.get("width", 198), "mapH": mm.get("height", 198)},
         "auras": {"rows": bool(en.get("Auras")) and au.get("player", True) is not False,
                   "attached": au.get("playerColumn", True) is not False, "size": au.get("playerSize", 30),
                   "perRow": au.get("playerPerRow", 12)},
@@ -201,7 +202,7 @@ class Fit:
         return hud.elements(self.lay, self.W, self.H, self.mello)[0]
 
     def rects(self):
-        return hud.solve(self.lay, self.W, self.H)[0]
+        return hud.solve(self.lay, self.W, self.H, self.mello)[0]
 
     def by_name(self, E=None):
         return {e["name"]: e for e in (E or self.els())}
@@ -581,22 +582,28 @@ TRACKER_MIN = 200          # never shorter
 TRACKER_KEEP = 300         # shortened for the bottom centre only down to this; below it the centre slides
 
 
-# The minimap's Edit Mode Size for layout E (the flip, user 2026-09-25 "yes,
-# flip it"): the map about as wide as the Quest Tracker's design width, 300:
-# 198 x 150 % = 297 (160 % would be 317). Smaller steps, down to the approved
-# layout's own size, only while the tracker has no room under the column.
-SIZE_DESIGN = 10           # Minimap Size raw: 50 + 10 x raw = 150 %
-TRACKER_DESIGN_W = 300
+# The minimap's Edit Mode Size for layout E: 100 % (0.15.0, user 2026-09-28:
+# the 150 % it had since the flip was "far too big"; with the Minimap Kit on
+# the map's size is its Width x Height, the Size held at 100 % in game).
+# Without the kit, smaller steps, down to the approved layout's own size,
+# only while the tracker has no room under the column.
+SIZE_DESIGN = 5            # Minimap Size raw: 50 + 10 x raw = 100 %
 
 
 def f5m_column(f):
-    """F5m. The minimap column of layout E: the minimap at the Size that makes
-    the map about as wide as the Quest Tracker's design width, a step smaller
-    (down to the approved layout's size) while the tracker would get less
+    """F5m. The minimap column of layout E: the minimap at its normal size,
+    100 % (0.15.0, user 2026-09-28: the 150 % it had was "far too big"). With
+    the Minimap Kit that is only Edit Mode's Size (held at 100 % in game): the
+    map is the kit's Width x Height, and where the tracker would get less
     than TRACKER_KEEP under the column (the corner's pieces under it and the
-    screen's bottom, as F5); the game's tracker (12:-1, which MelloUI's hangs
-    on) right under the column, its right edge on the column's frame's, so the
-    tracker, as wide as that frame, lines up with it."""
+    screen's bottom, as F5) or your buff rows by the column no room, a step
+    smaller (90 %, the approved layout's own size; hud.MAP_STEPS), written by
+    a caller with column fitMap (places' MinimapPanel), else an eye line asks
+    the player to set it. Without the kit the Size is the map's: a step
+    smaller (down to the approved layout's size) while either is short.
+    The game's tracker (12:-1, which MelloUI's hangs on) right under the
+    column, its right edge on the column's frame's, so the tracker, as wide
+    as that frame, lines up with it (in game it is glued there)."""
     rec = f.recs["2:-1"]
     start = hud.setting(rec, "Size")
     E = f.els()
@@ -612,10 +619,21 @@ def f5m_column(f):
     a = hud.auras_input(f.mello)
     narrow = (min(a["size"], row_icon(a["size"], 80)) + 6) * min(a["perRow"], ROWS_LEAST)
     x0, x1 = third(f)
+    c = hud.column_input(f.mello)
+    kit = bool(c["kit"])
+    w0, h0 = c["mapW"], c["mapH"]
+    cin = f.mello.setdefault("column", {})
+    # the trials: without the kit Edit Mode's Size, 100 % down to the
+    # approved layout's; with it the Size at 100 % (held in game) and the
+    # kit's Width x Height, yours then a step smaller (hud.MAP_STEPS)
+    least = SIZE_DESIGN if kit else min(start, SIZE_DESIGN)
+    trials = len(hud.MAP_STEPS) if kit else SIZE_DESIGN - least + 1
     chosen = None
     tracker_ok = rows_ok = True
-    for raw in range(SIZE_DESIGN, start - 1, -1):
-        hud.set_setting(rec, "Size", raw)                        # trial, logged once below
+    for i in range(1, trials + 1):
+        if kit:
+            cin["mapW"], cin["mapH"] = hud.map_step(w0, hud.MAP_STEPS[i - 1]), hud.map_step(h0, hud.MAP_STEPS[i - 1])
+        hud.set_setting(rec, "Size", SIZE_DESIGN if kit else SIZE_DESIGN - i + 1)   # trial, logged once below
         col = f.column()
         ref = col["ref"]
         tw = hud.tracker_match_w(col, t.get("scale", 1) or 1) if col["match"] else t["width"] * (t.get("scale", 1) or 1)
@@ -628,25 +646,49 @@ def f5m_column(f):
         tracker_ok = math.floor((floor_y - tt) / 20.0) * 20 >= need
         rows_ok = not rows or hud.rows_room(col, f.W, x0, x1) >= narrow
         if tracker_ok and rows_ok:
-            chosen = raw
+            chosen = i
             break
     # no step with room for both: the least, the most room for both, and the
     # eye line says which has less than it wants there
     short = None
     if chosen is None:
-        chosen = start
+        chosen = trials
         short = ("the quest tracker and your buff rows get" if not tracker_ok and not rows_ok
                  else "the quest tracker gets" if not tracker_ok else "your buff rows get")
+    # (with the kit: its map as chosen, the rest of the fit laid for it)
+    map_k = hud.MAP_STEPS[chosen - 1] if kit else 1
+    cin["mapW"], cin["mapH"] = hud.map_step(w0, map_k), hud.map_step(h0, map_k)
+    f.map_from = (w0, h0) if (cin["mapW"] != w0 or cin["mapH"] != h0) else None
     hud.set_setting(rec, "Size", start)
+    chosen = SIZE_DESIGN if kit else SIZE_DESIGN - chosen + 1
     pct, pct0 = 50 + 10 * chosen, 50 + 10 * SIZE_DESIGN
-    if chosen == SIZE_DESIGN:
-        why = "layout E: the map about as wide as the Quest Tracker (%d of its %d units)" % (round(198 * pct / 100.0), TRACKER_DESIGN_W)
+    if kit:
+        why = "layout E: the minimap at 100 %; its size is the Minimap Kit's Width and Height"
+    elif chosen == SIZE_DESIGN:
+        why = "layout E: the minimap at its normal size, 100 %"
     elif short:
         why = "the smallest size (the approved layout's): even there %s less room than wanted" % short
     else:
         why = "the largest size that leaves the quest tracker %d units under the minimap%s" % (need, rows and ", and your buff rows room beside it" or "")
     f.set("2:-1", "Size", chosen, "F5m column", why)
-    if short:
+    if kit and f.map_from:
+        # the kit's map a step smaller: written by a caller that writes it
+        # (places' MinimapPanel), else the player is asked to set it
+        w, h = math.floor(cin["mapW"] + 0.5), math.floor(cin["mapH"] + 0.5)
+        fw, fh = math.floor(w0 + 0.5), math.floor(h0 + 0.5)
+        room = (", its smallest: even so %s less room than wanted" % short if short
+                else ": room for the quest tracker under it%s" % (" and your buff rows beside it" if rows else ""))
+        if c.get("fitMap"):
+            f.log.append({"rule": "F5m column", "key": "2:-1", "what": "Minimap Kit %d x %d -> %d x %d" % (fw, fh, w, h),
+                          "why": "the minimap's Width and Height a step smaller (90 %, the approved layout's own size)" + room})
+            f.eye.append("minimap %d x %d (from %d x %d)%s" % (w, h, fw, fh, room))
+        else:
+            f.eye.append("minimap %d x %d wanted (set the Minimap Kit's Width and Height; now %d x %d)%s" % (w, h, fw, fh, room))
+    elif short and kit:
+        w, h = hud.shown(hud.column_input(f.mello))
+        f.eye.append("minimap %d x %d: %s less room than wanted (a smaller Width and Height in the Minimap Kit make room)"
+                     % (math.floor(w + 0.5), math.floor(h + 0.5), short))
+    elif short:
         f.eye.append("minimap at %d%% (from %d%%), its smallest: even so %s less room than wanted" % (pct, pct0, short))
     elif chosen != SIZE_DESIGN:
         f.eye.append("minimap at %d%% (from %d%%): room for the quest tracker under it%s" % (pct, pct0, rows and " and your buff rows beside it" or ""))
@@ -1430,6 +1472,10 @@ def places(f):
         # does not write them: auras.fitRows)
         "Auras": ({"playerPerRow": hud.auras_input(f.mello)["perRow"], "playerSize": hud.auras_input(f.mello)["size"]}
                   if hud.aura_rows(f.column(), f.mello, f.W) is not None and hud.auras_input(f.mello).get("fitRows") else None),
+        # the Minimap Kit's Width and Height a step smaller where F5m made
+        # room so (None for a caller that does not write them: column fitMap)
+        "MinimapPanel": ({"width": hud.column_input(f.mello)["mapW"], "height": hud.column_input(f.mello)["mapH"]}
+                         if getattr(f, "map_from", None) and hud.column_input(f.mello).get("fitMap") else None),
     }
 
 

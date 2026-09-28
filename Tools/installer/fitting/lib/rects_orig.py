@@ -46,20 +46,30 @@ def disp(rec, name):
 # calendar (1 + 19) on its right. The map (198 x 198) in the container's middle.
 BOX_W, BOX_H, BOX_X, BOX_Y = 215.0, 253.0, 10.0, 30.0   # 253: measured in game (Size 150%: 379.5), not the art's 226
 MAP_PX = 198.0
+# the Minimap Kit's shown map (sw, sh) while it is on (0.15.0: the container
+# held at 100 %, the game's margins round the shown map), else None; set by
+# hud.solve for the settings it is given
+SHOWN = None
 
 
-def cluster_size(k):
-    lo = min(BOX_X - BOX_W / 2 * k, -91.5)
-    hi = max(BOX_X + BOX_W / 2 * k, 122.5)
-    return hi - lo + 20, BOX_Y + BOX_H * k - 3   # (the container ends 3 below the cluster, measured)
+def cluster_size(k, sw=None, sh=None):
+    cw, ch = BOX_W * k, BOX_H * k
+    if sw:
+        cw, ch = sw + BOX_W - MAP_PX, sh + BOX_H - MAP_PX
+    lo = min(BOX_X - cw / 2, -91.5)
+    hi = max(BOX_X + cw / 2, 122.5)
+    return hi - lo + 20, BOX_Y + ch - 3   # (the container ends 3 below the cluster, measured)
 
 
-def map_rect(rr, k):
-    """The map (198 x 198 at k) in the cluster rect rr (L, T, R, B)."""
+def map_rect(rr, k, sw=None, sh=None):
+    """The map (198 x 198 at k, or the kit's shown sw x sh in the container
+    at 100 % laid round it) in the cluster rect rr (L, T, R, B)."""
+    w, h, ch = MAP_PX * k, MAP_PX * k, BOX_H * k
+    if sw:
+        w, h, ch = sw, sh, sh + BOX_H - MAP_PX
     cx = rr[0] + (rr[2] - rr[0]) / 2 + BOX_X
-    cy = rr[1] + BOX_Y + BOX_H * k / 2
-    half = MAP_PX / 2 * k
-    return (cx - half, cy - half, cx + half, cy + half)
+    cy = rr[1] + BOX_Y + ch / 2
+    return (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
 
 
 def size_of(rec):
@@ -90,7 +100,9 @@ def size_of(rec):
         return 208 * k, 11 * k, "PlayerCastingBarFrameTemplate 208x11 x BarSize %d%% (bar only, not its text/border)" % (k * 100), "medium"
     if s == "Minimap":
         k = (disp(rec, "Size") or 100) / 100.0
-        w, h = cluster_size(k)
+        w, h = cluster_size(k, *(SHOWN or (None, None)))
+        if SHOWN:
+            return w, h, "MinimapCluster (ResizeLayoutFrame) round its children, the container at 100 %% round the Minimap Kit's %g x %g map" % SHOWN, "medium"
         return w, h, "MinimapCluster (ResizeLayoutFrame) round its children at Size %d%% (the container scaled)" % disp(rec, "Size"), "medium"
     if s == "UnitFrame":
         k = disp(rec, "FrameSize") / 100.0 if setting(rec, "FrameSize") is not None else 1.0
@@ -275,7 +287,7 @@ def solve(layout, overrides=None):
                 rects[fr] = rr
             if fr == "MinimapCluster":
                 k = (disp(rec, "Size") or 100) / 100.0
-                rects["Minimap"] = map_rect(rr, k)
+                rects["Minimap"] = map_rect(rr, k, *(SHOWN or (None, None)))
             notes[rec["key"]] = {"size": [round(w, 1), round(h, 1)], "how": how, "confidence": conf, "source": src,
                                  "rect": [round(v, 1) for v in rr],
                                  "screenshotPx": [round(v * PX) for v in rr]}

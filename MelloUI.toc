@@ -47,6 +47,7 @@ Media\EditModeLayout.lua
 Modules\Kit.lua
 Modules\KitWindow.lua
 Modules\KitShade.lua
+Modules\KitMarks.lua
 Modules\UIModifications.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua

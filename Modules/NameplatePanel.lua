@@ -14,8 +14,14 @@
 --   NC2: the cast bar's background -> the single rail at the raid frames'
 --   0.8 with the stone body, as the bar's regions; its optional border faded.
 --   Fixed: the level indicator's circle -> the orb (as the unit frames'
---   level circle); the name, texts, icons, target highlight, aggro FX and
---   auras stay the game's (the Nameplates tweak module keeps working).
+--   level circle), the level number on a dark disc inside the orb's ring
+--   (0.15.0: the palette's inner panel, readable on any art and colour); the
+--   name, texts, icons, target highlight, aggro FX and auras stay the game's
+--   (the Nameplates tweak module keeps working).
+--   Marks (0.15.0, the approved sketch's style A; Modules/KitMarks.lua, the
+--   option `marks`): an elite's, rare's, rare elite's or boss's plate wears
+--   a small crest before its name and its left end cap and level orb in the
+--   unit's metal (the game's own elite / rare icon faded meanwhile).
 -- Every size under a nameplate reads secret on this client: the brackets
 -- are fitted from NamePlateSetupOptions, never from the frames.
 -- Name Shade (0.13.7): a soft dark band behind the name (MelloUI.Shade), as
@@ -39,7 +45,7 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 	-- (include: the options below sit under this row on UI Modifications' HUD tab)
 	window = { label = "Nameplates", desc = "Nameplate health and cast bars in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { nameShade = "name", shadeStrength = SHADE_STRENGTH },
+	defaults = { nameShade = "name", shadeStrength = SHADE_STRENGTH, marks = true },
 	options = {
 		{ type = "dropdown", key = "nameShade", name = "Name Shade", values = {
 			{ value = "name", label = "Name" },
@@ -48,6 +54,8 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar; this needs the UI Shade on (General tab) and its Nameplates switch in Dynamic UI Modification. Off: no shade." },
 		{ type = "slider", key = "shadeStrength", name = "Shade Strength", min = 0.3, max = 0.9, step = 0.05, percent = true,
 		  desc = "How dark the shade behind the names (and the plates) is." },
+		{ type = "toggle", key = "marks", name = "Elite and Rare Marks", new = "0.15.0",
+		  desc = "Elites, rares, rare elites and bosses stand out: a small crest before the name (a crown, a silver star, a gold star or a skull) and the left end cap and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss." },
 	},
 })
 
@@ -226,6 +234,22 @@ local function UncentreName(uf)
 	end
 end
 
+-- the bracket's units per the units of `region`'s frame (its scale against
+-- the frame the region is drawn on: the level frame, the name's), 1 where a
+-- scale raises or reads secret
+local function StripRatio(strip, region)
+	local okB, sb = pcall(strip.GetEffectiveScale, strip)
+	local okP, parent = pcall(region.GetParent, region)
+	local okO, so = false, nil
+	if okP and type(parent) == "table" then
+		okO, so = pcall(parent.GetEffectiveScale, parent)
+	end
+	if okB and okO and not Secret(sb) and not Secret(so) and type(sb) == "number" and type(so) == "number" and so > 0 then
+		return sb / so
+	end
+	return 1
+end
+
 -- The level circle as tall as the bracket, gem to gem (user, 2026-09-23:
 -- "cap the level circle to the bar height"): the game grows its level frame
 -- faster than the bar with each nameplate size, so the orb dwarfed the bar
@@ -241,16 +265,7 @@ local function FitLevelOrb(uf)
 	if not (tex and type(h) == "number" and h > 0) then
 		return
 	end
-	local ratio = 1
-	local okB, sb = pcall(strip.GetEffectiveScale, strip)
-	local okP, parent = pcall(tex.GetParent, tex)
-	local okO, so = false, nil
-	if okP and type(parent) == "table" then
-		okO, so = pcall(parent.GetEffectiveScale, parent)
-	end
-	if okB and okO and not Secret(sb) and not Secret(so) and type(sb) == "number" and type(so) == "number" and so > 0 then
-		ratio = sb / so
-	end
+	local ratio = StripRatio(strip, tex)
 	tex:SetSize(h * ratio, h * ratio)
 	-- the orb's scale (UI units per painted px), for its shadow partner's
 	-- reach on "Whole plate" (the name shade, below)
@@ -322,11 +337,115 @@ local function SyncBand(uf)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The marks (0.15.0; user, 2026-09-28: the approved sketch's style A): an
+-- elite's, rare's, rare elite's or boss's plate wears a small crest before
+-- its name (a crown, a silver star, a gold star, a skull) and its left end cap
+-- and level orb in the unit's metal (gold, silver, red-bronze). One system
+-- with the unit frames' (Modules/KitMarks.lua): the cap's and the orb's piece
+-- swapped for its baked twin of the same shape, so nothing is laid out again
+-- and their shade follows. The crest is the one piece added (the approved
+-- addition; the game's own elite / rare icon faded meanwhile: one mark a
+-- plate): a region of the name's frame made on the plate's first marked unit
+-- (a crowd of plain units makes none), hung before the name's first letter
+-- (on the name's measure, below) and sized from the bracket's height (a plain
+-- number; every size under a plate reads secret). Told by the game's own
+-- plate added (a recycled plate is marked again), UNIT_CLASSIFICATION_CHANGED
+-- and INSTANCE_ENCOUNTER_ENGAGE_UNIT (an encounter's boss units changed: a
+-- boss unit is a boss), registered only while the kit and the option are on.
+--------------------------------------------------------------------------------
+local CREST_SHARE = 0.7   -- the crest's height, of the bracket's (the level orb's): the sketch's 0.6, a touch larger to read
+local CREST_GAP = 2       -- plate units between the crest and the name's first letter
+-- the game's own icons for what the crest says (Blizzard_NamePlateClassificationFrame)
+local GAME_MARKS = { ["nameplates-icon-elite-gold"] = true, ["nameplates-icon-elite-silver"] = true,
+	["UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star"] = true }
+
+-- (Kit.WearMark: the marks' system, Modules/KitMarks.lua, is loaded -- a
+-- world without it, as a test's, shows no marks)
+local function MarksOn()
+	return active and Kit.WearMark ~= nil and M.db ~= nil and M.db.marks ~= false
+end
+
+-- the game's own elite / rare icon faded while the crest says it (put back
+-- when the crest goes; a PvP icon in its place is left alone)
+local function GameMark(uf, ours)
+	local frame = uf.ClassificationFrame
+	local icon = type(frame) == "table" and frame.classificationIndicator
+	if type(icon) ~= "table" then
+		return
+	end
+	if ours then
+		local atlas = frame.classificationAtlasElement
+		ours = type(atlas) == "string" and not Secret(atlas) and GAME_MARKS[atlas] or false
+	end
+	if ours then
+		if not icon.melloMarkFaded then
+			icon.melloMarkFaded = true
+			icon:SetAlpha(0)
+		end
+	elseif icon.melloMarkFaded then
+		icon.melloMarkFaded = nil
+		icon:SetAlpha(1)
+	end
+end
+
+-- the crest before the name's first letter: on the name's measure while it
+-- holds the text and the name is centred on the bracket (by us), else on the
+-- name's own left edge (a left-justified name, one inside the bar); anchored
+-- again on a change only
+local function HangCrest(uf)
+	local crest = uf.melloCrest
+	if not crest then
+		return
+	end
+	local name = uf.name
+	local on = (uf.melloNameMeasured and name.melloCentred ~= nil and uf.melloNameMeasure) or name
+	if crest.melloOn ~= on then
+		crest.melloOn = on
+		crest:ClearAllPoints()
+		crest:SetPoint("RIGHT", on, "LEFT", -CREST_GAP, 0)
+	end
+end
+
+-- the crest shows while the kit and the option are on, the plate's unit is
+-- marked and the game shows the name
+local function SyncCrest(uf)
+	local crest = uf.melloCrest
+	if not crest then
+		return
+	end
+	local want = (MarksOn() and uf.melloMark ~= nil and uf.name.melloNameShown) and true or false
+	if crest:IsShown() ~= want then
+		crest:SetShown(want)
+	end
+	GameMark(uf, want)
+end
+
+-- The game picks its icon in its own UNIT_CLASSIFICATION_CHANGED handler (the
+-- plate's ClassificationFrame), which may run after ours and would show its
+-- icon beside the crest; a raid mark taken off brings it back too. So the
+-- fade is looked at again each time the game has picked it (hooked once, on
+-- the plate's first crest: a plate without one has nothing to fade)
+local OnGameClassification = Perf.Shared("UpdateClassificationIndicator on a nameplate (its crest)", function(frame)
+	local uf = frame.melloPlate
+	if uf then
+		SyncCrest(uf)
+	end
+end)
+local function WatchGameMark(uf)
+	local frame = uf.ClassificationFrame
+	if type(frame) == "table" and not frame.melloPlate and type(frame.UpdateClassificationIndicator) == "function" then
+		frame.melloPlate = uf
+		hooksecurefunc(frame, "UpdateClassificationIndicator", OnGameClassification)
+	end
+end
+
 local function NameShown(name, shown)
 	name.melloNameShown = shown
 	local uf = name.melloShadeOf
 	if uf then
 		SyncBand(uf)
+		SyncCrest(uf)
 	end
 end
 local OnNameShow = Perf.Shared("Show on a nameplate's name (its shade)", function(name)
@@ -348,19 +467,26 @@ end)
 -- faces), for every measure at once (Shade's one 'fonts' listener)
 local Shade = MelloUI.Shade
 
--- the band on the measure (true: it holds the name's text) or on the name's
--- whole span (false: it refused the name); re-anchored on a change only
-local function HangBand(uf, measured)
+-- the band on the measure (measured: it holds the name's text) or on the
+-- name's whole span (it refused the name), and the crest before the name;
+-- each re-anchored on a change only
+local function Hang(uf)
+	local measured = uf.melloNameMeasured == true
 	local band = uf.melloNameShade
-	if not band or uf.melloNameMeasured == measured then
-		return
+	if band and uf.melloBandMeasured ~= measured then
+		uf.melloBandMeasured = measured
+		if measured then
+			band:Anchor(uf.melloNameMeasure, BAND_PAD_X, BAND_PAD_Y)
+		else
+			band:Anchor(uf.name, SPAN_PAD_X, BAND_PAD_Y)
+		end
 	end
-	uf.melloNameMeasured = measured
-	if measured then
-		band:Anchor(uf.melloNameMeasure, BAND_PAD_X, BAND_PAD_Y)
-	else
-		band:Anchor(uf.name, SPAN_PAD_X, BAND_PAD_Y)
-	end
+	HangCrest(uf)
+end
+
+local function Measured(uf, measured)
+	uf.melloNameMeasured = measured and true or false
+	Hang(uf)
 end
 
 -- the name's text handed on to its measure, untouched (the call answers
@@ -370,41 +496,43 @@ local OnNameText = Perf.Shared("SetText on a nameplate's name (its shade's measu
 	local uf = name.melloShadeOf
 	local measure = uf and uf.melloNameMeasure
 	if measure then
-		HangBand(uf, Shade:MeasureText(measure, text))
+		Measured(uf, Shade:MeasureText(measure, text))
 	end
 end)
 local OnNameFormatted = Perf.Shared("SetFormattedText on a nameplate's name (its shade's measure)", function(name, ...)
 	local uf = name.melloShadeOf
 	local measure = uf and uf.melloNameMeasure
 	if measure then
-		HangBand(uf, Shade:MeasureFormatted(measure, ...))
+		Measured(uf, Shade:MeasureFormatted(measure, ...))
 	end
 end)
 
-local function MakeBand(uf)
+-- the frame that draws the name: the band lies under the name (over the
+-- world, under the bar), the crest beside it
+local function NameHost(uf)
 	local name = uf.name
-	if not name then
-		return nil
-	end
-	-- on the frame that draws the name, under it: over the world, under the bar
 	local okP, host = pcall(name.GetParent, name)
 	if not okP or type(host) ~= "table" or not host.CreateTexture then
 		host = uf
 	end
-	BAND.alpha = ShadeStrength()
-	local band = Shade:Band(host, BAND)
-	if not band then
-		return nil
+	return host
+end
+
+-- The name's measure and the name's hooks, made once per plate by whichever
+-- wants them first: the band, or a mark's crest (hung before the text). The
+-- measure: no width of its own, on one point at the name's centre (the name
+-- is centred on the span while the band shows), sized by the engine to the
+-- text (none where the name's frame makes no text: the band then lies on the
+-- span, the crest on the name's left edge)
+local function WatchName(uf)
+	local name = uf.name
+	if name.melloShadeOf then
+		return
 	end
-	uf.melloNameShade = band
-	-- the name's measure: no width of its own, on one point at the name's
-	-- centre (the name is centred on the span while the band shows), sized by
-	-- the engine to the text (none where the name's frame makes no text: the
-	-- band then lies on the span)
-	local measure = Shade:Measure(host, name, "CENTER")
+	local measure = Shade:Measure(NameHost(uf), name, "CENTER")
 	uf.melloNameMeasure = measure
 	local okT, text = pcall(name.GetText, name)
-	HangBand(uf, measure and okT and Shade:MeasureText(measure, text) or false)
+	uf.melloNameMeasured = (measure and okT and Shade:MeasureText(measure, text)) and true or false
 	local okS, shown = pcall(name.IsShown, name)
 	name.melloNameShown = not okS or Secret(shown) or (shown and true or false)
 	name.melloShadeOf = uf
@@ -413,17 +541,32 @@ local function MakeBand(uf)
 	hooksecurefunc(name, "SetShown", OnNameSetShown)
 	hooksecurefunc(name, "SetText", OnNameText)
 	hooksecurefunc(name, "SetFormattedText", OnNameFormatted)
+end
+
+local function MakeBand(uf)
+	if not uf.name then
+		return nil
+	end
+	BAND.alpha = ShadeStrength()
+	local band = Shade:Band(NameHost(uf), BAND)
+	if not band then
+		return nil
+	end
+	uf.melloNameShade = band
+	WatchName(uf)
+	Hang(uf)
 	return band
 end
 
--- the plate's pieces that get a partner: the bracket's caps and rail, the orb
+-- the plate's pieces that get a partner: the bracket's caps and rail, the
+-- orb, a mark's crest (once the plate has one)
 local function PlatePieces(uf)
 	local strip = uf.melloBracket and uf.melloBracket.strip
 	local orb = uf.melloLevelOrb and uf.melloLevelOrb.tex
 	if strip then
-		return strip.capL, strip.mid, strip.capR, orb
+		return strip.capL, strip.mid, strip.capR, orb, uf.melloCrest
 	end
-	return nil, nil, nil, orb
+	return nil, nil, nil, orb, uf.melloCrest
 end
 
 -- does the plate still lack a part its mode wants (the band; on Whole plate
@@ -438,9 +581,9 @@ local function Lacks(uf, mode)
 	if mode ~= "plate" or not Kit:ShadeOn("nameplates") then
 		return false
 	end
-	local capL, mid, capR, orb = PlatePieces(uf)
+	local capL, mid, capR, orb, crest = PlatePieces(uf)
 	return (capL and not capL.kitShadow) or (mid and not mid.kitShadow) or (capR and not capR.kitShadow)
-		or (orb and not orb.kitShadow) or false
+		or (orb and not orb.kitShadow) or (crest and not crest.kitShadow) or false
 end
 
 -- A crowd's shades are made a few plates a frame (review, 2026-09-25: the
@@ -509,11 +652,12 @@ local function ShadePlate(uf, strength)
 	SyncBand(uf)
 	-- the partners: Whole plate, and the UI Shade's Nameplates area on
 	local plate = mode == "plate" and Kit:ShadeOn("nameplates")
-	local capL, mid, capR, orb = PlatePieces(uf)
+	local capL, mid, capR, orb, crest = PlatePieces(uf)
 	ShadePiece(capL, plate, strength, make)
 	ShadePiece(mid, plate, strength, make)
 	ShadePiece(capR, plate, strength, make)
 	ShadePiece(orb, plate, strength, make, uf.melloOrbScale)
+	ShadePiece(crest, plate, strength, make, uf.melloCrestScale)
 end
 
 -- the held plates, from the first one on, until this frame's making is spent
@@ -563,11 +707,187 @@ local function ShadeAll(strength)
 	end
 end
 
+-- The crest as tall as CREST_SHARE of the bracket (from the bracket's own
+-- height, a plain number, across any scale between the bracket and the
+-- name's frame), at its piece's aspect (every crest square, the rare elite's
+-- too: no wings); its partner's reach with it
+local function FitCrest(uf)
+	local crest = uf.melloCrest
+	local strip = uf.melloBracket and uf.melloBracket.strip
+	local h = strip and strip.height
+	local piece = crest and crest.kitName and Kit:Piece(crest.kitName)
+	if not (piece and piece.h > 0 and type(h) == "number" and h > 0) then
+		return
+	end
+	local ch = h * CREST_SHARE * StripRatio(strip, crest)
+	crest:SetSize(ch * piece.w / piece.h, ch)
+	uf.melloCrestScale = ch / piece.h
+	if crest.kitShadow then
+		Kit:ShadowFit(crest, uf.melloCrestScale)
+	end
+end
+
+-- the unit the plate shows now (the game's own field; none on a plate put
+-- away)
+local function PlateUnit(uf)
+	local unit = uf.unit
+	if type(unit) == "string" and not Secret(unit) then
+		return unit
+	end
+	return nil
+end
+
+-- The plate's marks as its unit is now (`unit`: the plate just added; else
+-- the plate's own): the left cap and the level orb in the metal or plain, the
+-- crest made on the plate's first marked unit (and shaded as the plate is),
+-- showing that unit's mark. Nothing made for a plain unit, nothing made per
+-- call once a plate has its crest
+local function MarkPlate(uf, unit)
+	if not Kit.WearMark then
+		return
+	end
+	local kind = MarksOn() and Kit:MarkOf(unit or PlateUnit(uf)) or nil
+	local was = uf.melloMark
+	uf.melloMark = kind
+	local strip = uf.melloBracket and uf.melloBracket.strip
+	if strip then
+		Kit:WearMark(strip.capL, Kit:StripPieceName(strip.base, "cap_l", strip.state), kind)
+		-- (the target's highlight leaves a metal cap as it is: again when a
+		-- mark comes or goes)
+		if (was == nil) ~= (kind == nil) and uf.melloBracket.melloShine then
+			uf.melloBracket.melloShine()
+		end
+	end
+	local orb = uf.melloLevelOrb
+	if orb and orb.tex then
+		Kit:WearMark(orb.tex, orb.rule.piece, kind)
+	end
+	local crest = uf.melloCrest
+	local made = false
+	if kind and not crest and uf.name then
+		WatchName(uf)
+		crest = NameHost(uf):CreateTexture(nil, "ARTWORK")
+		crest:Hide()
+		uf.melloCrest = crest
+		made = true
+		WatchGameMark(uf)
+	end
+	if not crest then
+		return
+	end
+	local piece = kind and Kit:MarkCrest(kind)
+	if piece and crest.kitName ~= piece then
+		Kit:Apply(crest, piece)
+		FitCrest(uf)
+	end
+	HangCrest(uf)
+	SyncCrest(uf)
+	if made then
+		ShadePlate(uf)   -- (its partner on Whole plate, as the plate's other pieces)
+	end
+end
+
+-- every dressed plate as its unit is now
+local function MarkAll()
+	if skin then
+		for _, uf in ipairs(skin.plates) do
+			MarkPlate(uf)
+		end
+	end
+end
+
+-- UNIT_CLASSIFICATION_CHANGED: a shown plate's unit changed what it is;
+-- INSTANCE_ENCOUNTER_ENGAGE_UNIT: the boss units changed (a pull, a boss
+-- gone, the encounter over), so a plate's unit may have become a boss or
+-- stopped being one (the burst at a pull marks once, a frame later)
+local function OnMarksEvent(_, event, unit)
+	if event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
+		if active then
+			Kit:NextFrame(MarkAll, MarkAll)
+		end
+		return
+	end
+	if not active or type(unit) ~= "string" or Secret(unit) or not unit:find("^nameplate") then
+		return
+	end
+	local ok, base = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+	local uf = ok and type(base) == "table" and base.UnitFrame
+	if type(uf) == "table" and uf.melloKit then
+		MarkPlate(uf, unit)
+	end
+end
+
+-- the event wanted while the kit and the option are on, none else; every
+-- dressed plate as its unit is now
+local marksFrame = nil   -- (made the first time the marks are on)
+local function MarksSync()
+	if not skin then
+		return
+	end
+	local on = MarksOn()
+	if on and not marksFrame then
+		marksFrame = CreateFrame("Frame")
+		Perf.SetScript(marksFrame, "OnEvent", OnMarksEvent)
+	end
+	if marksFrame then
+		if on then
+			marksFrame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+			marksFrame:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+		else
+			marksFrame:UnregisterEvent("UNIT_CLASSIFICATION_CHANGED")
+			marksFrame:UnregisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+		end
+	end
+	MarkAll()
+end
+
 -- the Nameplate Border swapped live (Kit:ApplyBorder -> rep:SetBar, then
--- this): the new bracket's partners at its new scale
+-- this): the new bracket's partners at its new scale, its left cap marked,
+-- the crest at the new bracket's height
 local function OnBarChanged(rep)
-	if rep.melloPlate then
-		FitShade(rep.melloPlate)
+	local uf = rep.melloPlate
+	if uf then
+		FitShade(uf)
+		MarkPlate(uf)
+		FitCrest(uf)
+	end
+end
+
+-- The level number's dark ground (0.15.0; the user: readable on any art and
+-- colour): the palette's inner panel at DISC_ALPHA as the baked disc that
+-- fits inside the orb's ring (Kit.markDisc, the ring's inner edge), a region
+-- of the level frame over the orb (and its metal twin) and under the number
+-- (OVERLAY), on the orb's own rect; shown with the orb. It lies inside the
+-- orb's outline: no shade partner of its own. Its see-through is the
+-- region's alpha, not the colour's: Dark Mode's shade sets a kit texture's
+-- colour again with no alpha, which would make it opaque.
+local DISC_ALPHA = 0.85
+local function OrbDisc(uf, lf)
+	local rep = uf.melloLevelOrb
+	local tex = rep and rep.tex
+	if not tex or uf.melloOrbDisc or not Kit.markDisc then
+		return
+	end
+	local layer, sub = tex:GetDrawLayer()
+	local disc = lf:CreateTexture(nil, layer or "BACKGROUND", nil, math.min((sub or 0) + 1, 7))
+	Kit:Apply(disc, Kit.markDisc)
+	disc:SetAllPoints(tex)
+	Kit:Paint(disc, "innerPanel", "vertex", 1)
+	disc:SetAlpha(DISC_ALPHA)
+	disc:SetShown(active)
+	uf.melloOrbDisc = disc
+	local enable, disable = rep.onEnable, rep.onDisable
+	rep.onEnable = function(...)
+		if enable then
+			enable(...)
+		end
+		disc:Show()
+	end
+	rep.onDisable = function(...)
+		if disable then
+			disable(...)
+		end
+		disc:Hide()
 	end
 end
 
@@ -609,10 +929,17 @@ local function SkinUnitFrame(uf)
 					if active and not Secret(shown) and shown then
 						r, g, b = 1, 0.5, 0   -- the full orange-gold the iron can take (user, 2026-09-21: "increase it more", twice)
 					end
-					strip.capL:SetVertexColor(r, g, b)
+					-- a marked plate's left cap is its metal (the marks): the
+					-- orange would turn gold, silver and red-bronze alike
+					if uf.melloMark then
+						strip.capL:SetVertexColor(1, 1, 1)
+					else
+						strip.capL:SetVertexColor(r, g, b)
+					end
 					strip.mid:SetVertexColor(r, g, b)
 					strip.capR:SetVertexColor(r, g, b)
 				end
+				rep.melloShine = Shine
 				hooksecurefunc(sel, "Show", Shine)
 				hooksecurefunc(sel, "Hide", Shine)
 				hooksecurefunc(sel, "SetShown", Shine)
@@ -645,6 +972,8 @@ local function SkinUnitFrame(uf)
 				CentreName(uf, hb, rep)
 				FitLevelOrb(uf)
 				FitShade(uf)
+				FitCrest(uf)
+				HangCrest(uf)
 			end)
 			local enable = rep.onEnable
 			rep.onEnable = function(...)
@@ -654,6 +983,7 @@ local function SkinUnitFrame(uf)
 				InsetHealthBar(hb, rep)
 				CentreName(uf, hb, rep)
 				FitShade(uf)
+				HangCrest(uf)
 				-- the bracket's left edge, for what stands beside the bar (the
 				-- Nameplates module's quest icon goes left of the gem cap)
 				uf.melloBracketLeft = rep.strip and rep.strip.capL or nil
@@ -666,6 +996,7 @@ local function SkinUnitFrame(uf)
 				uf.melloBracketLeft = nil
 				UncentreName(uf)
 				SyncBand(uf)
+				HangCrest(uf)
 				-- the game's anchors back (the first points.n rows of the bar's list)
 				local points = hb.melloInset
 				if points then
@@ -694,6 +1025,7 @@ local function SkinUnitFrame(uf)
 	if lf and lf.playerLevelDiffIcon then
 		uf.melloLevelOrb = Replace(lf.playerLevelDiffIcon, { as = "ui-hud-nameplates-levelindicator", rect = lf.playerLevelDiffIcon })
 		FitLevelOrb(uf)
+		OrbDisc(uf, lf)
 		-- the game's target ring around the level circle: faded (the bar's
 		-- gold iron is the highlight — user, 2026-09-21)
 		if lf.selectedBorder then
@@ -746,6 +1078,8 @@ local function Build()
 			local ok, base = pcall(driver.GetNamePlateForUnit, driver, unit)
 			if ok and base and base.UnitFrame then
 				SkinUnitFrame(base.UnitFrame)
+				-- (a recycled plate too: the last unit's marks go)
+				MarkPlate(base.UnitFrame, unit)
 			end
 		end)
 	end
@@ -768,6 +1102,8 @@ local function Activate()
 		-- module off and on again; a new build made it so already)
 		ShadeAll(ShadeStrength())
 	end
+	-- (the marks as the plates' units are now, their event on)
+	MarksSync()
 end
 
 local function Deactivate()
@@ -778,6 +1114,8 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	-- (the plain pieces back, the crests hidden, the marks' event off)
+	MarksSync()
 	Kit:Uncover("nameplates")
 end
 
@@ -795,6 +1133,8 @@ function M:OnSettingChanged(key)
 		ShadeAll(nil)
 	elseif key == "shadeStrength" then
 		ShadeAll(ShadeStrength())
+	elseif key == "marks" then
+		MarksSync()
 	end
 end
 
@@ -840,6 +1180,9 @@ SlashCmdList.MELLONPDUMP = function(msg)
 				MelloUI:Print("name shade: %s, %s", uf.melloNameShade:IsShown() and "shown" or "hidden",
 					uf.melloNameMeasured and "as long as the name" or "along the whole bracket")
 			end
+			local strip = uf.melloBracket and uf.melloBracket.strip
+			MelloUI:Print("mark: %s (cap %s, crest %s)", tostring(uf.melloMark or "none"), tostring(strip and strip.capL.kitName),
+				uf.melloCrest and (uf.melloCrest:IsShown() and "shown" or "hidden") or "none")
 			for _, rep in ipairs(skin and skin.reps or {}) do
 				if hb and rep.region == hb.bgTexture and rep.strip and rep.strip.capL then
 					local okL, cl = pcall(rep.strip.capL.GetLeft, rep.strip.capL)

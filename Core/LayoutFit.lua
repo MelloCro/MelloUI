@@ -8,8 +8,10 @@
 -- change that clears it (the rules F0-F12, ported one to one from the
 -- prototype, Tools/installer/fitting/fit.py, whose functions have the same
 -- names). The one change every fit makes is the minimap column of layout E
--- (F5m, the refit, user 2026-09-25 "yes, flip it"): the minimap's Edit Mode Size makes the map about as wide as the
--- Quest Tracker's design width, and the tracker hangs right under the column.
+-- (F5m, the refit, user 2026-09-25 "yes, flip it"): the minimap at its normal
+-- size (0.15.0, user 2026-09-28: the 150 % it had was "far too big"; Edit
+-- Mode's Size 100 %, the map the Minimap Kit's Width x Height, 198 x 198 by
+-- default), and the tracker hangs right under the column.
 -- So the design screen gets the approved layout back with only that and what
 -- it forces (the boss frames and the external defensives make room); a 32:9
 -- screen gets it in a centred 21:9 zone; a screen with no
@@ -41,11 +43,13 @@
 --               reads it), questlist { width }, hideBagBar, statsOn,
 --               actionSlots ([slot] = true: the hidden bars that hold an
 --               action are shown), column { kit, shape, border, merge, bar,
---               groups, barOffset, roundIcons, match } (the minimap column
---               of layout E: the Minimap Kit on, its shape, square border
---               and Merge With Services; the Services bar shown, its Groups
---               layout, distance and round icons; the Quest Tracker's Match
---               The Minimap's Width) and auras { rows, attached, size,
+--               groups, barOffset, roundIcons, match, mapW, mapH, fitMap }
+--               (the minimap column of layout E: the Minimap Kit on, its
+--               shape, square border and Merge With Services; the Services
+--               bar shown, its Groups layout, distance and round icons; the
+--               Quest Tracker's Match The Minimap's Width; the Minimap Kit's
+--               Width and Height; fitMap: true only from a caller that
+--               writes places.minimap, as fitRows below) and auras { rows, attached, size,
 --               perRow, fitRows } (your buff rows, by the minimap column;
 --               fitRows: true only from a caller that writes places.auras;
 --               without it the layout is still laid for the Icons Per Row
@@ -71,6 +75,10 @@
 --                              rows stand by the minimap column and the
 --                              inputs' auras.fitRows is on (Auras' Icons
 --                              Per Row and Icon Size as fitted), else nil
+--                minimap       { width, height } where F5m made the Minimap
+--                              Kit's map a step smaller and the inputs'
+--                              column.fitMap is on (its Width and Height),
+--                              else nil
 --                layoutFitFor  "WxH" (UIModifications.layoutFitFor)
 --     report   verdict ("PASS" | "PASS, needs the user's eye" | "FAIL (...)"),
 --              pass; on a FAIL, cause "size" (tooSmall = true, suggest =
@@ -124,8 +132,10 @@ LayoutFit.DESIGN_W, LayoutFit.DESIGN_H = DESIGN_W, DESIGN_H
 -- the model's revision, kept beside the fit's screen (UIModifications
 -- .layoutFitRev, Core/Installer.lua): a layout fitted by an older one is
 -- offered the refit (Home's Fit to this screen). 2: 0.14.0, the Services
--- row's six groups (a shorter row under the minimap)
-LayoutFit.FIT_REV = 2
+-- row's six groups (a shorter row under the minimap); 3: 0.15.0, the
+-- minimap at 100 % (its size the Minimap Kit's Width and Height; the 150 %
+-- the fit had set was "far too big")
+LayoutFit.FIT_REV = 3
 LayoutFit.TOO_SMALL = "Your screen is too small for Mello's layout at your UI scale; your own Edit Mode layout stays."
 LayoutFit.SETTINGS_FAIL = "Mello's layout fits your screen, but not with some of your settings; your own Edit Mode layout stays."
 -- a screen inside this (UI units) is too small whatever fails; a FAIL on a
@@ -391,9 +401,11 @@ local WINDOWS = {
 local DESIGN_INPUTS = { tracker = { width = 300, maxHeight = 440, scale = 1 }, questlist = { width = 380 } }
 
 --------------------------------------------------------------------------------
--- The minimap column of layout E (the refit: since the flip
--- the map's size is Edit Mode's alone -- Minimap, Size -- and the Quest
--- Tracker and the Services row follow the map's width). One table: this file
+-- The minimap column of layout E (the refit: since the flip the Quest
+-- Tracker and the Services row follow the map's width; since 0.15.0 the
+-- map's size is the Minimap Kit's Width x Height, Edit Mode's Size held at
+-- 100 % while the kit is on -- its art at its own size -- and Edit Mode's
+-- Size only with the kit off). One table: this file
 -- is at Lua's limit of top-level locals. Its functions are below the rects.
 --   the minimap cluster (Blizzard_Minimap/Mainline/Minimap.xml): a
 --   ResizeLayoutFrame (Blizzard_SharedXML/LayoutFrame.lua, widthPadding 20)
@@ -408,7 +420,10 @@ local DESIGN_INPUTS = { tracker = { width = 300, maxHeight = 440, scale = 1 }, q
 --   top to bottom as M:ColumnOrder has it by default: the zone band, the
 --   map, Route's distance line, the Services row, the tracker): the painted
 --   frame and the Services bar live in the map's container, so their
---   measures are map units, times the Size on the screen.
+--   measures are map units, times the Size on the screen (1 with the kit).
+--   With the kit the container is the game's margins round the shown map
+--   (215 - 198 wide, 253 - 198 tall: MinimapPanel's Size), the map square
+--   underneath and cropped to W x H, the short side in 256ths of the long.
 --------------------------------------------------------------------------------
 
 local Column = {
@@ -438,18 +453,24 @@ local Column = {
 	ROW_ALL_KIT = { 244, 100.6 }, ROW_ALL_ROUND = { 222, 91.8 }, ROW_ALL_PLAIN = { 160, 67 },
 	LINE_GAP = 2, LINE_H = 12,   -- Route's distance line (MinimapPanel LINE_GAP, LINE_H)
 	AURA_GAP = 13,               -- Modules/Auras.lua ATTACH_GAP
-	-- the minimap's Size for layout E (raw: 50 + 10 x raw %): 150 %, the map
-	-- 198 x 1.5 = 297 wide, about the Quest Tracker's design width, 300 (160 %
-	-- would be 317); smaller steps, down to the approved layout's own size,
-	-- only where the tracker or your buff rows have no room
-	SIZE_DESIGN = 10, TRACKER_DESIGN_W = 300,
+	-- the minimap's Size for layout E (raw: 50 + 10 x raw %): 100 % (0.15.0,
+	-- user 2026-09-28: the 150 % it had was "far too big"; with the kit on the
+	-- map's size is its Width x Height, the Size held at 100 % in game)
+	SIZE_DESIGN = 5,
+	-- the Minimap Kit's Width and Height (MinimapPanel MAP_BASE, MAP_MIN,
+	-- MAP_MAX, MAP_STEP) and the crop's steps (its Size.STEPS)
+	MAP = 198, MAP_MIN = 98, MAP_MAX = 400, MAP_STEP = 2, CROP_STEPS = 256,
+	-- F5m's steps for the kit's Width x Height: yours, then 90 % of it (the
+	-- approved layout's own minimap size) where the tracker or your buff
+	-- rows are short, as the Size steps without the kit
+	MAP_STEPS = { 1, 0.9 },
 	ROWS_LEAST = 6,              -- Auras' Icons Per Row slider's least
 	BOSS_GAP = 20,               -- the design's gap between the boss frames and the tracker (-325.8 against -5.8 - 300)
 	-- the design's MelloUI settings for the column and your buff rows (Full's:
 	-- the square map in the window frame merged with the Services groups, the
 	-- tracker matching the minimap's width, your buff rows by the column)
 	DESIGN = { kit = true, shape = "square", border = "window", merge = true, bar = true, groups = true, barOffset = -26,
-		roundIcons = true, match = true },
+		roundIcons = true, match = true, mapW = 198, mapH = 198 },
 	DESIGN_AURAS = { rows = true, attached = true, size = 38, perRow = 12 },
 	ROW_NAMES = { "Buffs", "Debuffs" },
 }
@@ -461,7 +482,7 @@ DESIGN_INPUTS.column, DESIGN_INPUTS.auras = Column.DESIGN, Column.DESIGN_AURAS
 -- 'inherited' (Inherit, below).
 Column.APPROVED_INPUTS = { tracker = DESIGN_INPUTS.tracker, questlist = DESIGN_INPUTS.questlist,
 	column = { kit = true, shape = "square", border = "window", merge = true, bar = true, groups = false, barOffset = -26,
-		roundIcons = true, match = false },
+		roundIcons = true, match = false, mapW = 198, mapH = 198 },
 	auras = { rows = true, attached = false, size = 38, perRow = 12 } }
 
 -- unit groups the rules test
@@ -905,10 +926,18 @@ local function MelloFrom(inputs)
 	local border = Str(c.border, D.border)
 	local size, perRow = Num(a.size), Num(a.perRow)
 	perRow = perRow and floor(perRow)
+	-- (the Minimap Kit's Width and Height in its sliders' range)
+	local function MapSide(v)
+		v = Num(v) or Column.MAP
+		return min(Column.MAP_MAX, max(Column.MAP_MIN, v))
+	end
 	return {
 		column = { kit = Bool(c.kit, D.kit), shape = Str(c.shape, D.shape), border = Column.RAILS[border] and border or D.border,
 			merge = Bool(c.merge, D.merge), bar = Bool(c.bar, D.bar), groups = Bool(c.groups, D.groups), barOffset = Num(c.barOffset) or D.barOffset,
-			roundIcons = Bool(c.roundIcons, D.roundIcons), match = Bool(c.match, D.match) },
+			roundIcons = Bool(c.roundIcons, D.roundIcons), match = Bool(c.match, D.match), mapW = MapSide(c.mapW), mapH = MapSide(c.mapH),
+			-- (the caller writes places.minimap, so the fit may make the
+			-- kit's map smaller; else it stays as it is)
+			fitMap = Bool(c.fitMap, false) },
 		-- (fit: the caller writes places.auras, so the fit may change your
 		-- rows' Icons Per Row and Icon Size; else they stay as they are)
 		auras = { rows = Bool(a.rows, DA.rows), attached = Bool(a.attached, DA.attached),
@@ -959,11 +988,18 @@ local function SizeOf(f, s, m)
 		local k = (Disp(f, s, "BarSize") or 100) / 100
 		return 208 * k, 11 * k
 	elseif name == "Minimap" then
-		-- the cluster round its children at the Size (Column, above)
+		-- the cluster round its children at the Size (Column, above), or,
+		-- with the Minimap Kit, round the container at 100 % laid round the
+		-- shown map
 		local k = (Disp(f, s, "Size") or 100) / 100
-		local lo = min(10 - 215 / 2 * k, -91.5)
-		local hi = max(10 + 215 / 2 * k, 122.5)
-		return hi - lo + 20, 30 + 253 * k - 3
+		local cw, ch = 215 * k, 253 * k
+		local sw, sh = Column.ShownOf(f)
+		if sw then
+			cw, ch = sw + 215 - 198, sh + 253 - 198
+		end
+		local lo = min(10 - cw / 2, -91.5)
+		local hi = max(10 + cw / 2, 122.5)
+		return hi - lo + 20, 30 + ch - 3
 	elseif name == "UnitFrame" then
 		local k = Setting(f, s, "FrameSize") ~= nil and Disp(f, s, "FrameSize") / 100 or 1
 		if idx == 1 or idx == 2 then
@@ -1138,7 +1174,7 @@ local function Solve(f)
 								mm = {}
 								frPool.Minimap = mm
 							end
-							mm[1], mm[2], mm[3], mm[4] = Column.MapRect(L, T, Rr, (Disp(f, s, "Size") or 100) / 100)
+							mm[1], mm[2], mm[3], mm[4] = Column.MapRect(L, T, Rr, (Disp(f, s, "Size") or 100) / 100, Column.ShownOf(f))
 							FR.Minimap = mm
 						end
 					end
@@ -1190,12 +1226,74 @@ end
 -- The minimap column (the Column table's functions; its data is above)
 --------------------------------------------------------------------------------
 
--- the map (198 x 198 at the Size k) in the cluster's rect
-function Column.MapRect(l, t, r, k)
+-- the map in the cluster's rect: 198 x 198 at the Size k, or with the
+-- Minimap Kit its shown part, sw x sh (ShownOf), at 100 % in the container
+-- laid round it (the game's margins: 253 - 198 tall)
+function Column.MapRect(l, t, r, k, sw, sh)
+	local w, h, ch = 198 * k, 198 * k, 253 * k
+	if sw then
+		w, h, ch = sw, sh, sh + 253 - 198
+	end
 	local cx = l + (r - l) / 2 + 10
-	local cy = t + 30 + 253 * k / 2
-	local half = 198 / 2 * k
-	return cx - half, cy - half, cx + half, cy + half
+	local cy = t + 30 + ch / 2
+	return cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2
+end
+
+-- The Minimap Kit's shown map for the column's settings `c` (MinimapPanel
+-- Size.Crop): its Width x Height (the round map: W x W), the short side in
+-- whole 256ths of the long one, never under half
+function Column.Shown(c)
+	local w, h = c.mapW, c.mapH
+	if c.shape ~= "square" then
+		h = w
+	end
+	local s, steps = max(w, h), Column.CROP_STEPS
+	local n = max(steps / 2, min(steps, floor(min(w, h) / s * steps + 0.5)))
+	if w >= h then
+		return s, s * n / steps
+	end
+	return s * n / steps, s
+end
+
+-- a side of the kit's map k times as big (F5m's MAP_STEPS), on the sliders'
+-- steps and in their range (MinimapPanel's Size.Migrate); k 1: as it is
+function Column.MapStep(v, k)
+	if k == 1 then
+		return v
+	end
+	local step = Column.MAP_STEP
+	v = Column.MAP_MIN + floor((v * k - Column.MAP_MIN) / step + 0.5) * step
+	return min(Column.MAP_MAX, max(Column.MAP_MIN, v))
+end
+
+-- the shown map's width and height while the Minimap Kit is on, else nil
+function Column.ShownOf(f)
+	local c = f.mello.column
+	if c.kit then
+		return Column.Shown(c)
+	end
+	return nil
+end
+
+-- The Services row (Modules/Services.lua LayoutBar) under the Minimap Kit's
+-- shown map, sw wide: Groups as one row as wide as the map (GroupRow: six
+-- cells as they fit the game's 198 map 4 apart, 28.33, smaller only on a
+-- narrower map), All Buttons merged as two rows of five as wide as it (26
+-- px icons in the kit's 130 / 79 rim as they fit 198, 34.8, smaller only on
+-- a narrower map; the rows 4 apart); never grown with a wider map (user,
+-- 2026-09-28: the buttons "stay at 100 %"); the other rows keep their size.
+-- Into col.rowBuf.
+function Column.KitRow(col, row, sw)
+	local buf = col.rowBuf
+	if row == Column.ROW_GROUPS then
+		buf[1], buf[2], buf[3] = sw, min(38, (min(sw, Column.MAP) - 7 * 4) / 6) + 2 * 5, row[3]
+	elseif row == Column.ROW_ALL_MERGED then
+		local cell = min(26 * 130 / 79, (min(sw, Column.MAP) - 6 * 4) / 5)
+		buf[1], buf[2], buf[3] = sw, 2 * cell + 3 * 4, row[3]
+	else
+		return row
+	end
+	return buf
 end
 
 function Column.Put(into, l, t, r, b)
@@ -1222,15 +1320,22 @@ function Column.Model(f)
 	end
 	Solve(f)
 	if not col then
-		col = { map = {}, frame = {}, piece = {}, barRect = {}, loose = {} }
+		col = { map = {}, frame = {}, piece = {}, barRect = {}, loose = {}, rowBuf = {} }
 		f.col = col
 	end
 	local c = f.mello.column
 	local k = (Disp(f, f.rec["2:-1"], "Size") or 100) / 100
 	local mc = f.R["2:-1"]
-	local mL, mT, mR, mB = Column.MapRect(mc[1], mc[2], mc[3], k)
+	-- (with the Minimap Kit: its shown map, the art at 100 %: k 1; the round
+	-- ring is sized from the map, its rim with it)
+	local sw, sh = Column.ShownOf(f)
+	if sw then
+		k = 1
+	end
+	local mL, mT, mR, mB = Column.MapRect(mc[1], mc[2], mc[3], k, sw, sh)
 	local kit, square, border = c.kit, c.shape == "square", c.border
 	local rim = (kit and square) and Column.RAILS[border] or kit and Column.RING or Column.GAME
+	local rk = (kit and not square) and sw / 198 or k
 	local merged = kit and square and (border == "window" or border == "single") and c.merge and c.bar or false
 	local row
 	if c.bar then
@@ -1245,18 +1350,21 @@ function Column.Model(f)
 		else
 			row = Column.ROW_ALL_PLAIN
 		end
+		if sw then
+			row = Column.KitRow(col, row, sw)
+		end
 	end
 	local map, frame, piece = Column.Put(col.map, mL, mT, mR, mB), col.frame, col.piece
 	local loose, bar = nil, nil
 	if merged then
 		local bt = mB + row[3] * k
 		local bb = bt + row[2] * k
-		Column.Put(frame, mL - rim[1] * k, mT - rim[2] * k, mR + rim[3] * k, bb + rim[4] * k)
+		Column.Put(frame, mL - rim[1] * rk, mT - rim[2] * rk, mR + rim[3] * rk, bb + rim[4] * rk)
 		-- the zone plate on the frame's top rail
 		Column.Put(piece, frame[1], frame[2] - 2 * k, frame[3], bt)
 		bar = Column.Put(col.barRect, frame[1], bt, frame[3], frame[4])
 	else
-		Column.Put(frame, mL - rim[1] * k, mT - rim[2] * k, mR + rim[3] * k, mB + rim[4] * k)
+		Column.Put(frame, mL - rim[1] * rk, mT - rim[2] * rk, mR + rim[3] * rk, mB + rim[4] * rk)
 		-- the zone band at home (175 x 16, 15 right of the cluster's middle,
 		-- 4 down; the kit's plate 1.4 x it), its buttons at its ends
 		local cc = (mc[1] + mc[3]) / 2
@@ -1298,10 +1406,10 @@ function Column.Model(f)
 end
 
 -- the tracker's width on the screen while it matches the minimap's: the
--- column's frame, within the grip's bounds (QuestTracker FOLLOW_MIN,
--- FOLLOW_MAX: 180..700 of its own units)
+-- column's frame, within the least it follows and the grip's most
+-- (QuestTracker FOLLOW_LEAST, FOLLOW_MAX: 60..700 of its own units)
 function Column.TrackerWidth(col, s)
-	return min(700, max(180, (col.ref[3] - col.ref[1]) / s)) * s
+	return min(700, max(60, (col.ref[3] - col.ref[1]) / s)) * s
 end
 
 -- your buff rows stand by the column (Auras' Attach To The Minimap Column,
@@ -1352,8 +1460,8 @@ end
 
 -- The icon sizes F6 tries for your buff rows: yours, then 90, 80, 70 and 60 %
 -- of it, then the slider's least, each only when smaller than yours (F5m
--- sizes the minimap for the 80 % icons: the smaller ones only where the
--- minimap is at its least already). Into `out`.
+-- reckons with the 80 % icons: the smaller ones only where the minimap
+-- leaves no more room). Into `out`.
 function Column.RowSizes(size, out)
 	Truncate(out, 0)
 	out[1] = size
@@ -2159,16 +2267,21 @@ local function F4Slide(f)
 	return true
 end
 
--- F5m. The minimap column of layout E: the minimap at the Size that makes
--- the map about as wide as the Quest Tracker's design width, a step smaller
--- (down to the approved layout's size) while the tracker would get less than
+-- F5m. The minimap column of layout E: the minimap at its normal size, 100 %
+-- (0.15.0, user 2026-09-28: the 150 % it had was "far too big"). With the
+-- Minimap Kit that is only Edit Mode's Size (held at 100 % in game): the map
+-- is the kit's Width x Height, and where the tracker would get less than
 -- TRACKER_KEEP under the column (the corner's pieces under it and the
 -- screen's bottom, as F5) or your buff rows by the column no room for 6 a
--- row of icons at 80 % (what F6 sets, or tells the player to set); where no
--- step leaves room for both, the least, with an eye line that says which is
--- short; the game's tracker (12:-1, which MelloUI's hangs on)
--- right under the column, its right edge on the column's frame's, so the
--- tracker, as wide as that frame, lines up with it.
+-- row of icons at 80 % (what F6 sets, or tells the player to set), a step
+-- smaller (90 %, the approved layout's own size: MAP_STEPS), written by a
+-- caller with column.fitMap (places.minimap), else an eye line asks the
+-- player to set it. Without the kit the Size is the map's: a step smaller
+-- (down to the approved layout's size) while either is short. Where no step
+-- leaves room for both, the least, with an eye line that says which is
+-- short. The game's tracker (12:-1, which MelloUI's hangs on) right under
+-- the column, its right edge on the column's frame's, so the tracker, as
+-- wide as that frame, lines up with it (in game it is glued there).
 function Column.F5m(f)
 	local s = f.rec["2:-1"]
 	local start = Setting(f, s, "Size")
@@ -2190,10 +2303,21 @@ function Column.F5m(f)
 	-- fewer) of icons at 80 % -- what F6 sets, or tells the player to set
 	local narrow = (min(a.size, Column.RowIcon(a.size, 80)) + 6) * min(a.perRow, Column.ROWS_LEAST)
 	local x0, x1 = Third(f)
+	local c = f.mello.column
+	local kit = c.kit
+	local w0, h0 = c.mapW, c.mapH
+	-- the trials: without the kit Edit Mode's Size, 100 % down to the
+	-- approved layout's; with it the Size at 100 % (held in game) and the
+	-- kit's Width x Height, yours then a step smaller (MAP_STEPS)
+	local least = kit and Column.SIZE_DESIGN or min(start, Column.SIZE_DESIGN)
+	local trials = kit and #Column.MAP_STEPS or Column.SIZE_DESIGN - least + 1
 	local chosen, trackerOk, rowsOk = nil, true, true
-	for raw = Column.SIZE_DESIGN, start, -1 do
+	for trial = 1, trials do
 		Step(f)
-		SetRaw(f, s, "Size", raw)   -- a trial, logged once below
+		if kit then
+			c.mapW, c.mapH = Column.MapStep(w0, Column.MAP_STEPS[trial]), Column.MapStep(h0, Column.MAP_STEPS[trial])
+		end
+		SetRaw(f, s, "Size", kit and Column.SIZE_DESIGN or Column.SIZE_DESIGN - trial + 1)   -- a trial, logged once below
 		local col = Column.Model(f)
 		local ref = col.ref
 		local tw = col.match and Column.TrackerWidth(col, t.scale) or t.width * t.scale
@@ -2208,7 +2332,7 @@ function Column.F5m(f)
 		trackerOk = floor((floorY - tt) / 20) * 20 >= need
 		rowsOk = not rows or Column.RowsRoom(col, f.W, x0, x1) >= narrow
 		if trackerOk and rowsOk then
-			chosen = raw
+			chosen = trial
 			break
 		end
 	end
@@ -2216,23 +2340,47 @@ function Column.F5m(f)
 	-- the eye line says which has less than it wants there
 	local short
 	if not chosen then
-		chosen = start
+		chosen = trials
 		short = (not trackerOk and not rowsOk) and "the quest tracker and your buff rows get" or not trackerOk and "the quest tracker gets"
 			or "your buff rows get"
 	end
+	-- (with the kit: its map as chosen, the rest of the fit laid for it)
+	local mapK = kit and Column.MAP_STEPS[chosen] or 1
+	c.mapW, c.mapH = Column.MapStep(w0, mapK), Column.MapStep(h0, mapK)
+	f.mapFrom = (c.mapW ~= w0 or c.mapH ~= h0) and { w0, h0 } or nil
 	SetRaw(f, s, "Size", start)
+	chosen = kit and Column.SIZE_DESIGN or Column.SIZE_DESIGN - chosen + 1
 	local pct, pct0 = 50 + 10 * chosen, 50 + 10 * Column.SIZE_DESIGN
 	local why
-	if chosen == Column.SIZE_DESIGN then
-		why = format("layout E: the map about as wide as the Quest Tracker (%d of its %d units)", floor(198 * pct / 100 + 0.5),
-			Column.TRACKER_DESIGN_W)
+	if kit then
+		why = "layout E: the minimap at 100 %; its size is the Minimap Kit's Width and Height"
+	elseif chosen == Column.SIZE_DESIGN then
+		why = "layout E: the minimap at its normal size, 100 %"
 	elseif short then
 		why = format("the smallest size (the approved layout's): even there %s less room than wanted", short)
 	else
 		why = format("the largest size that leaves the quest tracker %d units under the minimap%s", need, rows and ", and your buff rows room beside it" or "")
 	end
 	Set(f, "2:-1", "Size", chosen, "F5m column", why)
-	if short then
+	if kit and f.mapFrom then
+		-- the kit's map a step smaller: written by a caller that writes it
+		-- (places.minimap), else the player is asked to set it
+		local w, h = floor(c.mapW + 0.5), floor(c.mapH + 0.5)
+		local room = short and format(", its smallest: even so %s less room than wanted", short)
+			or format(": room for the quest tracker under it%s", rows and " and your buff rows beside it" or "")
+		if c.fitMap then
+			Log(f, "F5m column", "2:-1", format("Minimap Kit %d x %d -> %d x %d", floor(w0 + 0.5), floor(h0 + 0.5), w, h),
+				"the minimap's Width and Height a step smaller (90 %, the approved layout's own size)" .. room)
+			Eye(f, format("minimap %d x %d (from %d x %d)%s", w, h, floor(w0 + 0.5), floor(h0 + 0.5), room))
+		else
+			Eye(f, format("minimap %d x %d wanted (set the Minimap Kit's Width and Height; now %d x %d)%s", w, h, floor(w0 + 0.5),
+				floor(h0 + 0.5), room))
+		end
+	elseif short and kit then
+		local w, h = Column.Shown(c)
+		Eye(f, format("minimap %d x %d: %s less room than wanted (a smaller Width and Height in the Minimap Kit make room)",
+			floor(w + 0.5), floor(h + 0.5), short))
+	elseif short then
 		Eye(f, format("minimap at %d%% (from %d%%), its smallest: even so %s less room than wanted", pct, pct0, short))
 	elseif chosen ~= Column.SIZE_DESIGN then
 		Eye(f, format("minimap at %d%% (from %d%%): room for the quest tracker under it%s", pct, pct0, rows and " and your buff rows beside it" or ""))
@@ -3348,6 +3496,9 @@ local function Core(info, W, H, inputs, opts, job)
 		-- your buff rows by the column: Icons Per Row and Icon Size as fitted
 		-- (only for a caller that writes them: auras.fitRows)
 		auras = (Column.Attached(f) and f.mello.auras.fit) and { playerPerRow = f.mello.auras.perRow, playerSize = f.mello.auras.size } or nil,
+		-- the Minimap Kit's Width and Height a step smaller where F5m made
+		-- room so (only for a caller that writes them: column.fitMap)
+		minimap = (f.mapFrom and f.mello.column.fitMap) and { width = f.mello.column.mapW, height = f.mello.column.mapH } or nil,
 		layoutFitFor = format("%.1fx%.1f", W, H),
 	}
 	-- the preview's pieces, from the same model (palette keys only)
@@ -3433,9 +3584,9 @@ local function KeyOf(info, W, H, inputs, opts, job)
 		tostring(t.pos and t.pos.x), tostring(t.pos and t.pos.y), tostring(m.questlist.width), tostring(m.hideBagBar), tostring(m.statsOn))
 	parts[#parts + 1] = concat(m.bars, ",")
 	local c, a = m.column, m.auras
-	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", tostring(c.kit), c.shape, c.border, tostring(c.merge), tostring(c.bar),
+	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", tostring(c.kit), c.shape, c.border, tostring(c.merge), tostring(c.bar),
 		tostring(c.groups), tostring(c.barOffset), tostring(c.roundIcons), tostring(c.match), tostring(a.rows), tostring(a.attached),
-		tostring(a.size), tostring(a.perRow), tostring(a.fit))
+		tostring(a.size), tostring(a.perRow), tostring(a.fit), tostring(c.mapW), tostring(c.mapH), tostring(c.fitMap))
 	local names = {}
 	for name in pairs(m.positions) do
 		names[#names + 1] = name
@@ -3621,7 +3772,8 @@ function LayoutFit:Inputs(read)
 			merge = read("MinimapPanel", "servicesMerge") ~= false, bar = (read("Services") and read("Services", "showBar") ~= false) and true or false,
 			groups = read("Services", "buttonLayout") ~= "all", barOffset = tonumber(read("Services", "barOffset")),
 			roundIcons = read("Services", "roundIcons") ~= false,
-			match = (read("QuestTracker") and read("QuestTracker", "matchMinimap") ~= false) and true or false },
+			match = (read("QuestTracker") and read("QuestTracker", "matchMinimap") ~= false) and true or false,
+			mapW = tonumber(read("MinimapPanel", "width")), mapH = tonumber(read("MinimapPanel", "height")) },
 		auras = { rows = (read("Auras") and read("Auras", "player") ~= false) and true or false, attached = read("Auras", "playerColumn") ~= false,
 			size = tonumber(read("Auras", "playerSize")), perRow = tonumber(read("Auras", "playerPerRow")) },
 		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y } or nil, width = tonumber(read("QuestTracker", "width")),

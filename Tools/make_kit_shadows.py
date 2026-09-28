@@ -44,6 +44,9 @@ What the sheet holds (MelloUI_KitShadows, version 2):
             as the name of the first. A strip's parts share only all together,
             so a cap still meets its own middle's profile. The LEGACY pieces
             share only exact twins (as in 0.13.7).
+          - The marks' metal twins (TWINS: a level orb or a left cap in
+            gold, silver or red-bronze, Tools/kit_marks.py) are their plain
+            piece recoloured: written as that piece's name.
   nines   window/frame, window/single, deco/barframe_red|iron: the rails
           assembled (corners and repeated edges, the body inside them counted
           as filled: the element is one shape; that adds only a few levels to
@@ -145,6 +148,15 @@ SHADOWED = [
     r"^lists/header_(cap_l|mid|cap_r)$",
     r"^inputs/edit_(cap_l|cap_r|end_l|mid)_(normal|focused)$",
     r"^buttons/cog_(normal|hover|pressed)$",
+    # the Elite / Rare / Boss marks (Tools/kit_marks.py): the unit frames' metal rings with their crest on
+    # the top gem, the nameplates' crests before the name
+    r"^marks/(ring|crest)_[a-z]+$",
+]
+# The marks' metal twins (Tools/kit_marks.py): a piece recoloured, its shape its plain piece's, so it uses
+# that piece's shadow (written as the plain piece's name): the level orb's, a Nameplate Border's left cap's
+TWINS = [
+    (r"^marks/orb_(gold|silver|boss)$", "buttons/orb_normal"),
+    (r"^marks/cap_([a-z]+)_(gold|silver|boss)$", r"bars/\1_cap_l"),
 ]
 # strip-named pieces drawn ALONE, not as a strip (the action bars' end caps,
 # ActionBarPanel's gryphons): a shadow of their own, reaching past every side
@@ -245,12 +257,23 @@ def matches(pats, name):
     return any(re.search(pat, name) for pat in pats)
 
 
+def twin_of(name):
+    """The plain piece a mark's metal twin recolours (TWINS), or None."""
+    for pat, to in TWINS:
+        m = re.match(pat, name)
+        if m:
+            return m.expand(to)
+    return None
+
+
 def shadowed(name):
-    return matches(SHADOWED, name)
+    return matches(SHADOWED, name) or twin_of(name) is not None
 
 
 def legacy(name):
-    return matches(LEGACY, name)
+    # (a mark's metal twin is its plain piece's: made as that one is)
+    twin = twin_of(name)
+    return matches(LEGACY, twin if twin is not None else name)
 
 
 def nine_family(name):
@@ -717,7 +740,8 @@ def shadows(layout):
     units   [(key, legacy, {role: piece name})]: pieces that share only together
     nines   {family: (image, info)}
     shapes  {name: (image, info)}"""
-    names = sorted(n for n in layout if shadowed(n))
+    # (a metal twin takes its plain piece's picture, below)
+    names = sorted(n for n in layout if shadowed(n) and twin_of(n) is None)
     parts, ends, units = {}, {}, []
     profiles = {}
     left_out = set()
@@ -759,6 +783,14 @@ def shadows(layout):
     for family in sorted(NINES):
         p, mids = nine_parts(layout, family)
         nines[family] = nine_shadow(p, mids, recipe(family), name=family)
+    # the marks' metal twins: their plain piece's very picture (a recolour has the same shape), so each is
+    # shared as an exact twin (share, below) and adds nothing to the sheet
+    for name in sorted(layout):
+        base = twin_of(name)
+        if base is not None and base in parts:
+            parts[name] = parts[base]
+            if base in ends:
+                ends[name] = ends[base]
     return parts, ends, units, nines, shape_shadows()
 
 

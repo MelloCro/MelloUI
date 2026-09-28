@@ -513,8 +513,10 @@ end
 -- secret or cannot be read
 local function ColumnPlace(mm, c)
 	local ok, l, _, r = pcall(mm.ColumnPart, mm, "frame")
-	local okM, _, mb, _, mh = pcall(Minimap.GetRect, Minimap)
-	local okS, ms = pcall(Minimap.GetEffectiveScale, Minimap)
+	-- (level with the map's shown part: its Width x Height, 0.15.0)
+	local map = mm.MapFrame and mm:MapFrame() or Minimap
+	local okM, _, mb, _, mh = pcall(map.GetRect, map)
+	local okS, ms = pcall(map.GetEffectiveScale, map)
 	local okR, rs = pcall(c.GetEffectiveScale, c)
 	l, r = ok and Num(l), ok and Num(r)
 	mb, mh, ms = okM and Num(mb), okM and Num(mh), okS and Num(ms)

@@ -69,10 +69,14 @@ def bar_cat(rec):
 
 # ------------------------------------------------------------------ rects
 
-def solve(layout, W, H):
+def solve(layout, W, H, mello=None):
     """System rects at UIParent W x H. The same anchor maths as the game
-    (EditModeSystemMixin:ApplySystemAnchor: offsets are UIParent units)."""
+    (EditModeSystemMixin:ApplySystemAnchor: offsets are UIParent units).
+    mello: MelloUI's settings; with the Minimap Kit on, the minimap cluster
+    is laid round its container at 100 % round the kit's shown map (0.15.0,
+    shown_of), whatever Edit Mode's Size."""
     R0.W, R0.H = W, H
+    R0.SHOWN = shown_of(mello) if mello is not None else None
     R0.EXTRA_FRAMES["UIParent"] = (0.0, 0.0, W, H)
     notes = R0.solve(layout)
     rects = {k: tuple(n["rect"]) for k, n in notes.items() if n and n.get("rect")}
@@ -135,7 +139,8 @@ def aura_blocks(lay, r):
     return buffs, debuffs, ext, per, perd
 
 
-TRACK_FOLLOW = (180, 700)        # QuestTracker FOLLOW_MIN, FOLLOW_MAX (its own units)
+TRACK_FOLLOW = (60, 700)         # QuestTracker FOLLOW_LEAST, FOLLOW_MAX (its own units; 0.15.0: the least a
+                                 # round map at the kit's least Width, 98, at the tracker's largest Scale, 1.6)
 
 
 def tracker_match_w(col, s):
@@ -153,8 +158,8 @@ def tracker_rect(mello, W, H, rects=None, col=None):
     w, h = t["width"] * s, t["maxHeight"] * s
     if col is not None and col["match"]:
         # Match The Minimap's Width (QuestTracker, the flip): as wide on the
-        # screen as the column's frame, whatever its own width, within the
-        # grip's bounds (180..700 of its own units)
+        # screen as the column's frame, whatever its own width, within
+        # 60..700 of its own units
         w = tracker_match_w(col, s)
     if t.get("pos") is None:
         r = rects["12:-1"]
@@ -270,12 +275,30 @@ ROW_ALL_MERGED = (198.0, 81.6, 26.0)
 ROW_ALL_KIT = (244.0, 100.6)
 ROW_ALL_ROUND = (222.0, 91.8)
 ROW_ALL_PLAIN = (160.0, 67.0)
+# the Minimap Kit's Width and Height (0.15.0, MinimapPanel MAP_BASE, MAP_MIN,
+# MAP_MAX) and the crop's steps (its Size.STEPS): the game's map stays square,
+# max(W, H), cropped to W x H, the short side in 256ths of the long one
+MAP, MAP_MIN, MAP_MAX, CROP_STEPS = 198.0, 98.0, 400.0, 256
+MAP_STEP = 2.0                   # the sliders' step (MinimapPanel MAP_STEP)
+# F5m's steps for the kit's Width x Height: yours, then 90 % of it (the
+# approved layout's own minimap size) where the tracker or your buff rows are
+# short, as the Size steps without the kit
+MAP_STEPS = (1, 0.9)
+
+
+def map_step(v, k):
+    """A side of the kit's map k times as big, on the sliders' steps and in
+    their range (MinimapPanel's Size.Migrate); k 1: as it is."""
+    if k == 1:
+        return v
+    v = MAP_MIN + math.floor((v * k - MAP_MIN) / MAP_STEP + 0.5) * MAP_STEP
+    return min(MAP_MAX, max(MAP_MIN, v))
 LINE_GAP, LINE_H = 2.0, 12.0    # Route's distance line (MinimapPanel LINE_GAP, LINE_H)
 # the design's MelloUI settings for the column and the buff rows (Full's:
 # the square map in the window frame merged with the Services groups, the
 # Quest Tracker matching the minimap's width, your buff rows by the column)
 DESIGN_COLUMN = {"kit": True, "shape": "square", "border": "window", "merge": True, "bar": True, "groups": True,
-                 "barOffset": -26, "roundIcons": True, "match": True}
+                 "barOffset": -26, "roundIcons": True, "match": True, "mapW": 198.0, "mapH": 198.0}
 DESIGN_AURAS = {"rows": True, "attached": True, "size": 38, "perRow": 12}
 AURA_GAP = 13                    # Modules/Auras.lua ATTACH_GAP
 
@@ -283,7 +306,50 @@ AURA_GAP = 13                    # Modules/Auras.lua ATTACH_GAP
 def column_input(mello):
     c = dict(DESIGN_COLUMN)
     c.update(mello.get("column") or {})
+    # (the Minimap Kit's Width and Height in its sliders' range)
+    for key in ("mapW", "mapH"):
+        v = c.get(key)
+        v = MAP if not isinstance(v, (int, float)) or isinstance(v, bool) else float(v)
+        c[key] = min(MAP_MAX, max(MAP_MIN, v))
     return c
+
+
+def shown(c):
+    """The Minimap Kit's shown map for the column's settings c (MinimapPanel
+    Size.Crop): its Width x Height (the round map: W x W), the short side in
+    whole 256ths of the long one, never under half."""
+    w, h = c["mapW"], c["mapH"]
+    if c["shape"] != "square":
+        h = w
+    s, steps = max(w, h), CROP_STEPS
+    n = max(steps // 2, min(steps, math.floor(min(w, h) / s * steps + 0.5)))
+    if w >= h:
+        return s, s * n / steps
+    return s * n / steps, s
+
+
+def shown_of(mello):
+    """The shown map's width and height while the Minimap Kit is on, else None."""
+    c = column_input(mello)
+    if c["kit"]:
+        return shown(c)
+    return None
+
+
+def kit_row(row, sw):
+    """The Services row under the Minimap Kit's shown map, sw wide
+    (Modules/Services.lua LayoutBar): Groups as one row as wide as the map,
+    the cells as they fit the game's 198 map 4 apart (28.33), smaller only on
+    a narrower map; All Buttons merged as two rows of five as wide as it, the
+    cells as they fit 198 (34.8), smaller only on a narrower map, the rows 4
+    apart; never grown with a wider map (user, 2026-09-28: the buttons "stay
+    at 100 %"). The other rows keep their size."""
+    if row is ROW_GROUPS:
+        return (sw, min(38.0, (min(sw, MAP) - 7 * 4) / 6) + 2 * 5, row[2])
+    if row is ROW_ALL_MERGED:
+        cell = min(26 * 130 / 79.0, (min(sw, MAP) - 6 * 4) / 5)
+        return (sw, 2 * cell + 3 * 4, row[2])
+    return row
 
 
 def auras_input(mello):
@@ -306,7 +372,12 @@ def column(lay, r, mello):
     rec = [x for x in lay["systems"] if x["key"] == "2:-1"][0]
     k = (disp(rec, "Size") or 100) / 100.0
     mc = r["2:-1"]
-    mL, mT, mR, mB = R0.map_rect(mc, k)
+    # (with the Minimap Kit: its shown map, the art at 100 %: k 1; the round
+    # ring is sized from the map, its rim with it)
+    sw, sh = shown_of(mello) or (None, None)
+    if sw:
+        k = 1.0
+    mL, mT, mR, mB = R0.map_rect(mc, k, sw, sh)
     kit, square = bool(c["kit"]), c["shape"] == "square"
     border = c["border"] if c["border"] in RAILS else "window"
     if kit and square:
@@ -315,6 +386,7 @@ def column(lay, r, mello):
         rim = (RING_RIM, RING_RIM, RING_RIM, RING_RIM)
     else:
         rim = GAME_RIM
+    rk = sw / 198.0 if (kit and not square) else k
     merged = kit and square and border in ("window", "single") and bool(c["merge"]) and bool(c["bar"])
     row = None
     if c["bar"]:
@@ -328,16 +400,18 @@ def column(lay, r, mello):
             row = ROW_ALL_ROUND
         else:
             row = ROW_ALL_PLAIN
+        if sw:
+            row = kit_row(row, sw)
     loose = None
     if merged:
         bt = mB + row[2] * k
         bb = bt + row[1] * k
-        frame = (mL - rim[0] * k, mT - rim[1] * k, mR + rim[2] * k, bb + rim[3] * k)
+        frame = (mL - rim[0] * rk, mT - rim[1] * rk, mR + rim[2] * rk, bb + rim[3] * rk)
         top = frame[1] - 2 * k                     # the zone plate on the frame's top rail
         piece = (frame[0], top, frame[2], bt)
         bar = (frame[0], bt, frame[2], frame[3])
     else:
-        frame = (mL - rim[0] * k, mT - rim[1] * k, mR + rim[2] * k, mB + rim[3] * k)
+        frame = (mL - rim[0] * rk, mT - rim[1] * rk, mR + rim[2] * rk, mB + rim[3] * rk)
         # the zone band at home (175 x 16, 15 right of the cluster's middle, 4
         # down; the kit's plate 1.4 x it), its buttons at its ends
         cc = (mc[0] + mc[2]) / 2
@@ -413,7 +487,7 @@ def rows_at(col, W, size, per):
 
 
 def elements(lay, W, H, mello):
-    r, notes = solve(lay, W, H)
+    r, notes = solve(lay, W, H, mello)
     recs = {s["key"]: s for s in lay["systems"]}
     E = []
 

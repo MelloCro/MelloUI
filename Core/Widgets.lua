@@ -955,7 +955,8 @@ end
 
 -- the rim, as regions of the BOX (the icon's own frame) so it draws over the
 -- icon; its rect the box grown by 10 % about its centre; its states the
--- box's: gold (checked) when selected, pressed, hover
+-- box's: pressed, hover, and selected (checked: the kit's active look,
+-- Kit:SetActive, round the rim)
 local function DressIconBox(K, box, skin)
 	local size = box.size
 	local rimRect = CreateFrame("Frame", nil, box)
@@ -1986,16 +1987,52 @@ end
 --   card.title, card.text, card.picture, card.tag (the plate's FontString),
 --   card.swatch (a palette's card)
 -- A frame of the caller's laid on a card that takes the mouse is handed to
--- W.RowPlateChild(card, frame). `skin` keeps the widget set's signature: the
--- approved card is the palette look in both looks, so the kit dresses none of
--- it. Colours by key only (a new palette paints it again); nothing is made
--- per click or hover.
+-- W.RowPlateChild(card, frame). The approved card is the palette look in both
+-- looks; with the kit on (its `skin`: a shell) the chosen card wears the
+-- active look too (0.15.0, Kit:SetActive: the one look for whatever is
+-- selected). Colours by key only (a new palette paints it again); nothing is
+-- made per click or hover.
 --------------------------------------------------------------------------------
 
 local cardOn = setmetatable({}, weakKeys)   -- [card] = true while it is the selected one
 
 local function CardSelected(card)
 	return cardOn[card] == true
+end
+
+-- The active look (Kit:SetActive, 0.15.0: the one look for whatever is
+-- active or selected, the game's windows and MelloUI's own) on a widget: a
+-- chosen card, an icon-less side list's marker. It is the kit's art, so it
+-- shows only while the widget's window wears the kit. The kit is the one
+-- the shell hands over (skin:Kit) the first time a look shows, kept for the
+-- switches after: never reached for.
+local activeKit = nil
+local function ActiveNow(K, frame, on)
+	activeKit = K
+	K:SetActive(frame, on, frame, "rect")
+end
+
+local function WidgetActive(skin, frame, on)
+	if not skin then
+		return
+	end
+	if skin.kit then
+		skin:Kit(ActiveNow, frame, on and true or false)
+	elseif activeKit then
+		activeKit:SetActive(frame, false)
+	end
+end
+
+-- the cards of each shell, their looks put back at its switches (the chosen
+-- card's edge too: Card_SetSelected)
+local cardsOf = setmetatable({}, weakKeys)   -- [shell] = { [card] = true } (weak)
+local function Cards_OnKit(shell)
+	local set = cardsOf[shell]
+	if set then
+		for card in pairs(set) do
+			card:SetSelected(cardOn[card] == true)
+		end
+	end
 end
 
 -- the four edges `px` thick, inside the card's rect (a point set again
@@ -2016,14 +2053,20 @@ local function Card_SetSelected(card, on)
 	on = on and true or false
 	cardOn[card] = on or nil
 	W.Paint(card.fill, on and "raisedPanel" or "mainWindow", "fill", on and 1 or 0.85)
-	CardEdges(card, on and 2 or 1)
+	-- the gold edge gives way to the active look while that shows (its ring,
+	-- added as light, lies on the edge: gold on gold burned out to a pale
+	-- yellow, near white under Obsidian; review 2026-09-28): the resting
+	-- 1 px edge under it
+	local gold = on and not (card.melloSkin and card.melloSkin.kit)
+	CardEdges(card, gold and 2 or 1)
 	for i = 1, 4 do
-		W.Paint(card.edges[i], on and "selectedTrim" or "border", "fill", 1)
+		W.Paint(card.edges[i], gold and "selectedTrim" or "border", "fill", 1)
 	end
 	W.Paint(card.title, on and "selectedTrim" or "text", "text")
 	if on then
 		W.RowPlateOff(card)   -- (just picked: its wash goes at once)
 	end
+	WidgetActive(card.melloSkin, card, on)
 end
 
 local function Card_IsSelected(card)
@@ -2094,6 +2137,17 @@ function W.Card(parent, spec, skin)
 	card.SetSelected, card.IsSelected, card.SetTexts = Card_SetSelected, Card_IsSelected, Card_SetTexts
 	W.RowPlate(card, CARD_PLATE)
 	Perf.SetScript(card, "OnClick", CardClick)
+	if skin and skin.OnKit then
+		-- (the chosen card's active look follows the window's look switch)
+		card.melloSkin = skin
+		local set = cardsOf[skin]
+		if not set then
+			set = setmetatable({}, weakKeys)
+			cardsOf[skin] = set
+		end
+		set[card] = true
+		skin:OnKit(Cards_OnKit)
+	end
 	card:SetSelected(false)
 	return card
 end
@@ -2352,6 +2406,21 @@ local function RepShown(rep, shown)
 	end
 end
 
+-- The marker's active look: on a list of text rows always (the installer's
+-- steps), on a list of icon boxes while a search's results show (the chosen
+-- entry's icon box wears it otherwise; a result row has none). Its own gold
+-- edge gives way while the look shows (the look's ring over it burned out to
+-- a pale yellow; review 2026-09-28)
+local function MarkerLook(rail)
+	local shell = rail.lookShell
+	if not shell then
+		return
+	end
+	local on = (rail.activeMarker or rail.resultsShown) and true or false
+	WidgetActive(shell, rail.marker, on)
+	rail.marker.edge:SetShown(not (on and shell.kit))
+end
+
 -- the rails of each shell, their glyphs and states put back at its switches
 local railsOf = setmetatable({}, weakKeys)   -- [shell] = { [rail] = true } (weak)
 local function Rails_OnKit(shell)
@@ -2359,6 +2428,7 @@ local function Rails_OnKit(shell)
 	if set then
 		for rail in pairs(set) do
 			rail:Paint()
+			MarkerLook(rail)
 		end
 	end
 end
@@ -2500,6 +2570,14 @@ function W.NavRail(parent, spec)
 		end
 		set[rail] = true
 		skin:OnKit(Rails_OnKit)
+		-- the active look on the marker, shown and gliding with it (0.15.0),
+		-- where the rows carry no icon box of their own to wear it (the
+		-- installer's steps; the configurator's side list lights the chosen
+		-- entry's icon box instead, and its search results the marker:
+		-- MarkerLook); made on the marker's first show
+		rail.lookShell = skin
+		rail.activeMarker = not (spec.iconSize > 0 and spec.iconMaker) or nil
+		MarkerLook(rail)
 	end
 	return rail
 end
@@ -2960,6 +3038,7 @@ function Rail:ShowResults(list, n, note, more)
 		end
 		self.listScroll = self.glide and self.glide.pos or 0
 		self.resultsShown = true
+		MarkerLook(self)
 	end
 	self.resultList, self.resultWanted, self.resultNote = list, n, note
 	self.resultHeight = ResultHeight(self)
@@ -3042,6 +3121,7 @@ function Rail:HideResults(instant)
 		return
 	end
 	self.resultsShown = false
+	MarkerLook(self)
 	for i = 1, #self.resultRows do
 		PutAway(self.resultRows[i])
 	end
@@ -3107,7 +3187,12 @@ end
 --         one fades and slides; false: the leaving one fades out, pinned
 --         where it is on screen -- the safe fallback is the default until
 --         the clip test in game says otherwise), name,
---         template ("UIPanelScrollFrameTemplate": the classic scroll bar)
+--         template ("UIPanelScrollFrameTemplate": the classic scroll bar),
+--         bleed (0: units the clip reaches past the pages' left and right
+--         edges, the pages laid that far in: the caller anchors the scroll
+--         frame that much wider. A chosen card's active look reaches its
+--         halo past the card, and a card flush with the page's edge had it
+--         cut off there; review 2026-09-28)
 --   pager:NewPage() -> page       pager:Show(page, dir, instant)  dir -1 | 0 | 1
 --   pager:SetPageHeight(page, h)  the canvas follows only the page on show
 --   pager:AlphaOnly(page, on)     that page only fades, it never slides (a page
@@ -3149,6 +3234,7 @@ function W.Pager(parent, opts)
 	p.shield:EnableMouse(true)
 	p.shield:Hide()
 	p.slide = opts.slide or 12
+	p.bleed = opts.bleed or 0
 	p.cf = { slide = 0, axis = "x", outTime = opts.outTime or 0.10, inTime = opts.inTime or 0.15,
 		outInstant = opts.outInstant ~= false, onDone = ShieldOff, instant = false }
 	return p
@@ -3156,7 +3242,7 @@ end
 
 function Pager:NewPage()
 	local page = CreateFrame("Frame", nil, self.canvas)
-	page:SetPoint("TOPLEFT", self.canvas, "TOPLEFT", 0, 0)
+	page:SetPoint("TOPLEFT", self.canvas, "TOPLEFT", self.bleed, 0)
 	page:Hide()
 	pagerOf[page] = self
 	return page
@@ -3167,8 +3253,9 @@ function Pager:AlphaOnly(page, on)
 end
 
 local function Pin(page, canvas, y)
+	local pager = pagerOf[page]
 	page:ClearAllPoints()
-	page:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0, y)
+	page:SetPoint("TOPLEFT", canvas, "TOPLEFT", pager and pager.bleed or 0, y)
 end
 
 function Pager:Show(page, dir, instant)
@@ -3185,7 +3272,7 @@ function Pager:Show(page, dir, instant)
 	end
 	self.current = page
 	Pin(page, self.canvas, 0)
-	self.canvas:SetWidth(page:GetWidth())
+	self.canvas:SetWidth(page:GetWidth() + 2 * self.bleed)
 	self.canvas:SetHeight(math.max(page:GetHeight(), 1))
 	self.glide:Jump(0)
 	local cf = self.cf

@@ -108,7 +108,7 @@ Slots and tabs
 | game art | where | kit piece |
 |---|---|---|
 | `UI-Character-Info-GearSlot` (inside the 1 × 1 `BorderFrame`) | equipment slot border; the game's pictures overlap so neighbouring slots SHARE their corner diamonds | `slot` rim centred on the picture, sized from the slot pitch (`gemSpan` 97/135 × 92/130: the rim's gem centres land half a pitch from the slot centre, so neighbours share a gem exactly as the game does), drawn UNDER the button (`under`) like the game's picture, so the icon and its quality border sit on top of the rim |
-| `common-sidetab` (`Background`, gold on every tab) + `SelectedTexture` + `TabGlow` (additive) + `HighlightTexture` | the window's side tabs | `slot` gemmed rim, resting in its gold `checked` look on every tab (catalogue pick **I**), as the game's background is; the selected tab gets the same rim additively at 0.7 (its `SelectedTexture` + `TabGlow`), a hovered tab at 0.35 (its `HighlightTexture`). The attached bracket (`frame` with `open`) stays available for tabs that should read as attached.; the tab's icon (drawn by the game 3 px off-centre, 50 px, clipped by its own mask that is faded with the art) is fitted into the rim's opening (`icon`), re-fitted after the game's press / release re-anchoring |
+| `common-sidetab` (`Background`, gold on every tab) + `SelectedTexture` + `TabGlow` (additive) + `HighlightTexture` | the window's side tabs | `slot` gemmed rim, resting in its gold `checked` look on every tab (catalogue pick **I**), as the game's background is; the selected tab wears the active look (its `SelectedTexture` + `TabGlow`; 0.15.0, was the same rim additively at 0.7), a hovered tab the rim additively at 0.35 (its `HighlightTexture`). The attached bracket (`frame` with `open`) stays available for tabs that should read as attached.; the tab's icon (drawn by the game 3 px off-centre, 50 px, clipped by its own mask that is faded with the art) is fitted into the rim's opening (`icon`), re-fitted after the game's press / release re-anchoring |
 
 Small controls
 
@@ -341,7 +341,7 @@ ring cover with their levels). Covers the Dark Mode group `unitframes` while on.
 | game art | where | kit piece |
 |---|---|---|
 | `UI-HUD-UnitFrame-Player-PortraitOn` / `-Target-PortraitOn` / `-TargetofTarget-PortraitOn` (`FrameTexture`, `PetFrameTexture`; the vehicle / class-resource / rare / minus variants are the same region re-atlased) | the frame's ONE picture: ring, name band, both bar rims | faded; the pieces below stand on the frame's own sub-rects, as regions in this picture's layer or of the bars |
-| the same region, `UnitFramePortraitRing` (keyed by hand) | the portrait (60 / 58 / 37 px) | **R1**: `window/portrait_ring` with its OPENING on the portrait's rect (`opening = true`), a region in the picture's layer (BACKGROUND 2 under the bars). The portrait (and a mask with its own anchors, the player's) fitted to the medallion size, 0.759 × ring (rule 2b), re-fitted on every portrait update; Class Icons puts the plain medallion inside a kit ring (`melloKitRing`). The elite / rare / boss rings (`-Boss-Gold`, `-Silver-Winged` …) faded and the kit ring tinted gold / silver instead (`CheckClassification` post-hook) |
+| the same region, `UnitFramePortraitRing` (keyed by hand) | the portrait (60 / 58 / 37 px) | **R1**: `window/portrait_ring` with its OPENING on the portrait's rect (`opening = true`), a region in the picture's layer (BACKGROUND 2 under the bars). The portrait (and a mask with its own anchors, the player's) fitted to the medallion size, 0.759 × ring (rule 2b), re-fitted on every portrait update; Class Icons puts the plain medallion inside a kit ring (`melloKitRing`). The elite / rare / boss rings (`-Boss-Gold`, `-Silver-Winged` …) faded; the kit ring wears the unit's metal instead (the marks, below: 0.15.0; the old gold / silver tint went) |
 | the same region, `UnitFrameBar` / `UnitFrameBarMirrored` | the health bar (124 × 20 / 126 × 20 / 70 × 10) and the power bar (124 × 10 / 134 × 10 / 74 × 7), the bracket on the BAR's own rect | **B3**: the P1 `bars/frame` bracket as regions of the bar, one layer above its fill (the health fills draw at BACKGROUND → BORDER; the power bars have no drawLayer → ARTWORK → OVERLAY 0, under the OVERLAY 1 text), the trough one layer below; ring side capless (`dropCap`), the far gem cap grown OUTWARD past the rect (`capOut`) so the fill keeps its width. Bar Textures drops its shaped mask on a bracketed bar (`melloKitBracket`, `M:RefreshMask`) |
 | the bars' ring-side end (their own anchors) | the game runs the bars into the ring's opening (the target's power bar 8 px past its health bar: the DF art tucked them under its ring) | TUCKED (user, 2026-09-21): each bar's ring-side edge re-anchored to the ring's round BODY (KitLayout `radius`, measured off the compass gems) at the bar's height, 2 px under it — a clean butt joint on the curve, the fill readable to its end (a deeper tuck hid the last per cent of health); far edge and height kept, relative to the frame the game anchors it to; put back on disable. Re-applied on `CheckClassification`, the player's art swaps, frame show |
 | `UI-HUD-UnitFrame-SmallCircle` (`LevelBackgroundCircle`, `PvpBackgroundCircle`, 39 px) | the level badge's circle, the PvP badge's circle | **L1**: `buttons/orb` square on the circle's rect as a region under the frame's own level text / faction icon, following the game's show / hide |
@@ -368,7 +368,37 @@ Agreed addition for the HUD (a stacking device, not a new element):
 
 | key | where | kit piece |
 |---|---|---|
-| `RingCover` (`UnitFramePanel` `RingCover`) | the strip where the bars meet the ring: the bars' vertical span, from their ring-side edge to the ring's far edge | the ring's OWN pixels drawn once more (the same piece, cropped by `SetTexCoord` to that strip) on a holder one level above the bars, because the ring is a region under the bar frames and the user wants the border over the bars' ends (2026-09-21). Follows the ring's tint; re-laid with the bars; covers nothing else (badge, zzz, leader icons and raid marks lie outside the strip) |
+| `RingCover` (`UnitFramePanel` `RingCover`) | the strip where the bars meet the ring: the bars' vertical span, from their ring-side edge to the ring's far edge | the ring's OWN pixels drawn once more (the same piece, cropped by `SetTexCoord` to that strip) on a holder one level above the bars, because the ring is a region under the bar frames and the user wants the border over the bars' ends (2026-09-21). Follows the ring's tint and the piece it wears (a mark's metal twin: the same crop in the twin's uv); re-laid with the bars; covers nothing else (badge, zzz, leader icons and raid marks lie outside the strip) |
+
+### The Elite / Rare / Rare Elite / Boss marks (0.15.0; Modules/KitMarks.lua)
+
+The user's approved sketch (2026-09-28, `MelloUI-BuildData/output/elite_sketch`): Elite gold with a crown, Rare
+silver with a star, Rare Elite silver with a gold star, Boss red-bronze with a skull; no crest has wings (user,
+2026-09-28: the rare elite's is sketch A's, the size of every other crest) (`Kit:MarkOf`:
+`UnitClassification`, `worldboss`, an encounter's boss: `UnitIsBossMob` or a boss1-5 unit, re-marked on
+`INSTANCE_ENCOUNTER_ENGAGE_UNIT`; a hidden level, -1, is no boss: the game hides it for any unit ten levels above
+the player). The art is baked by `Tools/kit_marks.py` (run by `build_kit.py`) into the group `marks/`, its metals
+and crests never recoloured by a palette (the metals mean what a unit is; a ring's compass gems are the plain
+ring's, recoloured in each look as the plain ring's are: `kit_palette.py` `GEM_TWINS`): each marked piece has a METAL TWIN of the same canvas and geometry (`box`, `open`,
+`radius` copied), so a mark is `Kit:WearMark(tex, piece, kind)` — a piece swapped on the texture already there,
+nothing laid out again, its shade partner fitted to the twin by `Kit:Apply` (the twins share their plain piece's
+shadow; the rings and crests have their own). Each place has its switch (`marks`, on, New in 0.15.0).
+
+| place | game art under it | kit piece |
+|---|---|---|
+| unit frames (style B): the target's and focus's ring, their targets' rings | `UnitFramePortraitRing` (above) | `marks/ring_<kind>`: the ring in the metal (its compass gems the look's, as the plain ring's) with the crest on its top gem (a rare elite's ring wears its gold star) |
+| unit frames: the target's and focus's level circle | `UI-HUD-UnitFrame-SmallCircle` (above) | `marks/orb_<gold / silver / boss>` |
+| nameplates (style A): the bracket's left cap | `NamePlateHealthBarBG` (any Nameplate Border family) | `marks/cap_<family>_<metal>` |
+| nameplates: the level circle | `ui-hud-nameplates-levelindicator` | `marks/orb_<metal>` |
+| nameplates: every plate's level number (0.15.0) | the orb's inside | `marks/orb_disc`: a white disc inside the orb's ring, painted the palette's `innerPanel` at 0.85, a region of the level frame one sublevel over the orb, under the number; no shade of its own |
+
+Agreed addition (the approved sketch): the nameplate CREST, `marks/crest_<kind>`, a region of the name's frame
+made on a plate's first marked unit, before the name's first letter (on the name's measure, `Shade:Measure`, while
+the name is centred on the bracket; else on the name's left edge), 0.7 of the bracket's height, shaded on Whole
+plate like the plate's pieces. The game's own elite / rare icon (`ClassificationFrame.classificationIndicator`)
+is faded while the crest shows (one mark a plate) and put back after, looked at again after each of the game's
+`UpdateClassificationIndicator` (hooked on the plate's first crest: the game's handler may run after ours). The
+target highlight's orange leaves a marked plate's metal left cap white.
 
 ## The HUD: cast bars (Modules/CastBarPanel.lua, 2026-09-21)
 
@@ -647,6 +677,36 @@ Not a game window: the second window on the own-window shell, always in the kit 
 | headings | **SH3**: `GuildFrame-Header`, the text past its gem cap |
 | the Keep ring | `MelloUI-Crest` (agreed addition, above), 110 px, the emblem at 35 % on its disc, the seconds over it in the title face in gold |
 | buttons | B1 red plates (`W.Button`); Install with the configurator's gold trim |
+
+## The active look (Kit:SetActive, 0.15.0)
+
+Not a replacement: an agreed addition on every element that can be active, checked or selected (user, 2026-09-28:
+"people cant see in which stance they are as a warrior ... dont just make the stance bar, do it across the board";
+option C of the sketch, 2026-09-28: A's ring and glow with the icon lifted). ONE look (`Media/Textures/ActiveLook.tga`,
+`Tools/make_active_look.py`): a thick gold ring added as light (the palette's `selectedTrim`), a soft halo outside it
+and a soft glow inside its edge, the ring's two dark edge lines blended over it (`innerPanel`), and the icon's ADD
+copy at 0.2 (about 1.2 x as bright, no tint). One texture a layer (a whole cell, drawn round a 45-unit square and
+scaled with the button) round a square button or a round rim; the cell cut into nine round a tab, a row or a card (at
+0.7); regions of the element's own frame in its OVERLAY layer, made the first time it shows active. Where it stands in
+for the element's own checked look, that look gives way. Review fixes (2026-09-28): a tab, a row or a card hold text,
+so their cut stops at the ring's inner dark line (ring, lines and halo, no inner glow over a label); the round cell is
+for the round rims' families only (`buttons/round*`: Button Border's "Rounded corners", `buttons/rimround`, is a
+square); only a rim with a checked source of its own drives its button's look (one look a host: a hover-only icon rim
+on a list row never switches off the row's selected plate's); a flag that reads secret leaves the look as its own
+`SetChecked` showed it (a look first made for one is its two layers only), again after a palette's repaint.
+
+| element | its active state | the look stands in for |
+|---|---|---|
+| action, stance, pet, possess bars, the bags' / bank's slots, spells, macro icons, side tabs, the spell book's category tabs, icon boxes (every `slot` rim) | the button's checked flag (`SetChecked`, a panel's `checked()`); a secret flag in combat through `SetAlphaFromBoolean` | the rim's `_checked` colour (the rim keeps its normal / hover / pressed art); a rim's selected `glow` (it stays the hover glow) |
+| micro menu buttons | the window it opens is open (its `PushedBackground` shown: `SetPushed` / `SetNormal`) | nothing (the rim keeps its pressed art) |
+| the bag bar's slots (item buttons: no checked flag) | its bag is open (its `SlotHighlightTexture` shown: `UpdateBagButtonHighlight`) | the `SlotHighlightTexture` (faded) |
+| the friends list's selected friend, the ignore list's selected name (SocialPanel) | the game's `LockHighlight` | nothing (the row's highlight is faded under the kit) |
+| the extra action button, the vehicle bar's buttons | checked (`ActionButtonActiveLook`, kind `active`) | the button's `CheckedTexture` (faded); where it has none (the extra action button), an addition |
+| check boxes (`buttons/checkbox`: every window's, the Configurator's switches) | checked | nothing: the tick (`on`) stays |
+| the open tab's card (`uiframe-activetab-left`, `active = true`: TB6 on every window, the Configurator's tabs, the spell book's text tabs, the chat tabs, the calendar's today) | while the card shows | nothing (its iron stays lit) |
+| a list's selected plate (`lists/plate` / `lists/row` in the `selected` state: every owner-mode selected rule, rows whose plate the panel moves to `selected`) | while it shows in that state | nothing |
+| tall R3 rows (`frame` with `checked()`: group finder, communities, the who list) | `checked()` | nothing (the iron stays lit by `checkedTint`) |
+| MelloUI's own windows: the chosen `W.Card` (the installer's setups, palettes), the marker of a `W.NavRail` of text rows (the installer's steps), and of an icon rail while a search's results show (the Configurator's side list) | selected, while the window wears the kit | the widget's 2 px gold edge (its 1 px border stays; gold on gold burned out to near white); the installer's pages clip 6 units wider (`W.Pager` `bleed`) so a chosen card keeps its halo |
 
 ## Deliberately left as the game's (no kit piece yet)
 

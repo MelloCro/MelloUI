@@ -19,6 +19,13 @@
 --   MelloUI:AnnounceSounds(kind[, mute])
 --       true when that call would play its sound now (a caller with a
 --       sound of its own plays it only when not: one chime, not two).
+--   MelloUI:AnnounceWait(text[, kind]) / MelloUI:AnnounceDone(text)
+--       (0.15.0) a line held for as long as its caller waits on something
+--       (Route's "Loading navigation..." while the roads go in), never a
+--       sound: shown like any other, but not faded after 4 s. Done fades
+--       it as a hold's end does, while it is still the line shown; a new
+--       line, or the notices switched off, takes its place as ever. A plain
+--       text only. Sent to the chat instead: said there once.
 --
 -- The settings are Tweaks' rows beside Chat Notices (read when used, a
 -- missing one as its default, so they hold with Tweaks off):
@@ -117,7 +124,8 @@ local function WantPreview()
 end
 
 local frame, text, font   -- made with the first notice (frame.shade: its band)
-local state = { holds = 0, kind = "info", preview = false, entry = nil }
+-- (wait: the text of a line held by AnnounceWait while it is shown, else nil)
+local state = { holds = 0, kind = "info", preview = false, entry = nil, wait = nil }
 
 -- where it stands with no place saved: top centre, under the Route arrow
 local function Home(f)
@@ -211,11 +219,12 @@ local function Build()
 	return frame
 end
 
--- a line on the frame, at full, in its kind's colour
+-- a line on the frame, at full, in its kind's colour (a held one's place
+-- taken: AnnounceWait marks its own after this)
 local function Put(msg, kind)
 	Build()
 	text:SetText(msg)
-	state.kind = kind
+	state.kind, state.wait = kind, nil
 	Paint()
 	Measure()
 	Anim:Stop(frame, "alpha")   -- one fading out comes back
@@ -228,8 +237,8 @@ end
 -- windows are unlocked the sample line comes back instead, to drag)
 local function Fade()
 	state.holds = state.holds - 1
-	if state.holds > 0 or not (frame and frame:IsShown()) then
-		return
+	if state.holds > 0 or state.wait or not (frame and frame:IsShown()) then
+		return   -- (a held line stays until its AnnounceDone)
 	end
 	-- asked again here: windows left unlocked over a login build nothing
 	-- then, so the first real line is the first the notice hears of it
@@ -242,6 +251,7 @@ local function Fade()
 end
 
 local function HideNow()
+	state.wait = nil
 	if frame then
 		Anim:Stop(frame, "alpha")
 		frame:Hide()
@@ -258,7 +268,7 @@ local function Preview()
 	state.preview = on
 	if on then
 		Put(PREVIEW, "info")
-	elseif frame and frame:IsShown() and state.holds <= 0 then
+	elseif frame and frame:IsShown() and state.holds <= 0 and not state.wait then
 		Anim:FadeOut(frame, FADE, "linear")
 	end
 end
@@ -287,6 +297,39 @@ function MelloUI:Announce(msg, kind, mute)
 	if sound and not mute and Setting("noticeSounds") then
 		self:PlayUISound(sound)
 	end
+end
+
+-- A line held while its caller waits (see the top): no hold timer, no
+-- sound; the chat gets it once when notices go there
+function MelloUI:AnnounceWait(msg, kind)
+	if type(msg) ~= "string" or Secret(msg) or msg == "" or not Setting("noticeOnScreen") then
+		return
+	end
+	if Setting("noticeToChat") then
+		self:Notice(msg)
+		return
+	end
+	Put(msg, COLOUR[kind] and kind or "info")
+	state.wait = msg
+end
+
+-- The wait is over: its line fades, as at a hold's end, while it is still
+-- the one shown (another line or the sample in its place: left alone)
+function MelloUI:AnnounceDone(msg)
+	local wait = state.wait
+	if wait == nil or type(msg) ~= "string" or Secret(msg) or wait ~= msg then
+		return
+	end
+	state.wait = nil
+	if state.holds > 0 or not (frame and frame:IsShown()) then
+		return
+	end
+	state.preview = WantPreview()
+	if state.preview then
+		Put(PREVIEW, "info")
+		return
+	end
+	Anim:FadeOut(frame, FADE, "linear")
 end
 
 -- Whether MelloUI:Announce(text, kind, mute) would play a sound now: for a

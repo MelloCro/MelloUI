@@ -33,7 +33,9 @@ or purple, never salmon.
 
 Not recoloured, and not copied (the game reads them from Media/Kit in every
 look): pictures (backdrops, cards, icons), the tiles already in the palette's
-warmth (parchment, vellum, leather) and the coloured quilts.
+warmth (parchment, vellum, leather), the coloured quilts and the Elite / Rare /
+Boss marks' metals and crests. The marks' portrait rings are copied with only
+their compass gems recoloured (GEM_TWINS).
 
 build_kit.py runs this after writing Media/Kit; or on its own:
     python Tools/kit_palette.py [--only LOOK,...] [--jobs N]
@@ -191,8 +193,15 @@ def palette_ramps(roles):
             (0.65, Q["selectedTrim"]), (0.85, Q["text"]), (1.0, _mix(top, (255, 255, 255), 0.3))]
     return iron, red, gold
 
-# pictures, the tiles already in the palette's warmth and the coloured quilts: left as painted
-SKIP = re.compile(r"^(backdrops|cards|icons)/|^tiles/(vellum|parchment|leather|quilt_|crackle)")
+# pictures, the tiles already in the palette's warmth and the coloured quilts: left as painted; and the
+# Elite / Rare / Boss marks (Tools/kit_marks.py): their metals mean what a unit is, under every palette
+# (but for the rings' gems, GEM_TWINS)
+SKIP = re.compile(r"^(backdrops|cards|icons)/|^marks/(?!ring_)|^tiles/(vellum|parchment|leather|quilt_|crackle)")
+# The marks' portrait rings (marks/ring_<kind>): the ring in a metal with a crest, its compass gems left as the
+# plain ring has them. In a look only those gems are recoloured, so they are the look's plain ring's gems (the
+# user's sketch kept the gems as the look drew them); the metal and the crest stay as baked.
+GEM_TWINS = re.compile(r"^marks/ring_")
+GEM_PLAIN = "window/portrait_ring"
 # Page stones toned down (user, 2026-09-23: "tone down the concrete in Warm
 # iron and Bronze"; the social window's lists on it were not readable): the
 # tile's light remapped round a dark middle with little spread before the
@@ -256,6 +265,43 @@ def recolour(a, look):
     return b
 
 
+def gem_twin_mask(twin, plain):
+    """The plain ring's compass gems (kit_gems.gem_mask on `plain`, the painted window/portrait_ring) that the
+    ring twin `twin` still shows as the plain ring has them: a gem where the twin matches the plain ring over
+    most of it (the crest covers the top gem, and a few edge texels the metal took stay metal)."""
+    import kit_gems
+    from scipy import ndimage
+    mask = kit_gems.gem_mask(GEM_PLAIN, plain)
+    lab, _ = ndimage.label(mask, structure=np.ones((3, 3)))
+    same = np.abs(twin[..., :3].astype(int) - plain[..., :3].astype(int)).max(-1) <= 8
+    keep = np.zeros(mask.shape, bool)
+    for i, sl in enumerate(ndimage.find_objects(lab), 1):
+        comp = lab[sl] == i
+        if same[sl][comp].mean() >= 0.5:
+            keep[sl] |= comp
+    return keep
+
+
+def recolour_gems(twin, plain, look):
+    """A ring twin (GEM_TWINS) in the look: its gems moved as the look moves the plain ring's (where the twin
+    is the plain ring, exactly the look's gem), everything else as baked."""
+    keep = gem_twin_mask(twin, plain)
+    shift = recolour(plain, look)[..., :3].astype(float) - plain[..., :3].astype(float)
+    out = twin.copy()
+    out[..., :3] = np.clip(np.round(np.where(keep[..., None], twin[..., :3] + shift, twin[..., :3])), 0, 255).astype(np.uint8)
+    return out
+
+
+def recolour_piece(name, a, look, kit):
+    """The piece `name` (its master `a`) as the look has it."""
+    if TONED.search(name):
+        return recolour_toned(a, look)
+    if GEM_TWINS.search(name):
+        plain = np.array(Image.open(os.path.join(kit, GEM_PLAIN.replace("/", os.sep) + ".tga")).convert("RGBA"))
+        return recolour_gems(a, plain, look)
+    return recolour(a, look)
+
+
 def kit_pieces(kit=KIT):
     """The recoloured pieces of Media/Kit, sorted: [(name, its TGA)]."""
     out = []
@@ -278,7 +324,7 @@ def _build_look(job):
         dst = os.path.join(out_root, name.replace("/", os.sep) + ".tga")
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         a = np.array(Image.open(src).convert("RGBA"))
-        out = recolour_toned(a, look) if TONED.search(name) else recolour(a, look)
+        out = recolour_piece(name, a, look, kit)
         Image.fromarray(out).save(dst)
         wanted.add(os.path.normcase(dst))
         total += os.path.getsize(dst)
@@ -328,7 +374,7 @@ def _check_look(job):
             bad.append("%s/%s: missing" % (LOOKS[look].folder, name))
             continue
         a = np.array(Image.open(src).convert("RGBA"))
-        out = recolour_toned(a, look) if TONED.search(name) else recolour(a, look)
+        out = recolour_piece(name, a, look, kit)
         with open(dst, "rb") as fh:
             if fh.read() != _tga_bytes(out):
                 bad.append("%s/%s: differs" % (LOOKS[look].folder, name))

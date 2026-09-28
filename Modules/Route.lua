@@ -81,9 +81,9 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "An arrow that points along the route's next leg, with the distance and destination. Drag it to move it; /route arrow reset puts it back at the top centre." },
 		{ type = "slider", key = "arrowScale", parent = "arrow", name = "Arrow Size", min = 0.5, max = 2, step = 0.1 },
 		{ type = "toggle", key = "worldMarker", name = "World Marker",
-		  desc = "A gem over the destination itself, with the distance, that stays on it as you move the camera; when the place is off screen, an arrow at the screen's edge points the way to turn. Takes the place of the game's own destination marker while it is on." },
+		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, faint while it stands in the middle of the screen; within 100 yards it lands on the place as a pin and stays there. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
-		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away. It fades as you arrive and hides while the place is off screen. Part of the World Marker." },
+		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away. It fades as you come near and is gone once the marker is a pin, and hides while the place is off screen. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
 		{ type = "toggle", key = "notice", name = "Route Announces",
 		  desc = "Route's lines in the on-screen notice: the place you now track, and your arrival. How notices look, where they show and whether they play a sound is set with On-screen Notices, beside Chat Notices." },
@@ -2570,6 +2570,7 @@ end
 
 local OBJECTIVE_RECHECK = 8     -- seconds between choosing again
 local OBJECTIVE_PRICED = 3      -- the nearest this many places are priced by route
+local OBJECTIVE_SPOT = 40       -- yards: an objective whose places all lie this close together is one spot
 local objectiveChoice = {}      -- [questID] = { sig, at, cont, x, y, name, source }
 
 -- Needed items: their functions (Count, Want, Held, Gates here; Listen,
@@ -2888,7 +2889,10 @@ end
 -- priced yet (the graph not built). Sixth: the needed item's source when the
 -- place is one ({ from, "Samuel Fipps", "", map, ..., gate = its gate });
 -- seventh and eighth: OpenObjectives' missing items and "every open place a
--- source".
+-- source"; ninth: the objective is an area, not one spot (0.15.0, the World
+-- Marker hides inside a quest's area: Beacon.InArea) -- a place to explore,
+-- or places spread wider than OBJECTIVE_SPOT (creatures to kill about a
+-- camp); one NPC, one object, one source is a spot.
 local function ObjectiveSpot(questID)
 	local open, sig, missing, sourceOnly = OpenObjectives(questID)
 	if not open then
@@ -2897,11 +2901,11 @@ local function ObjectiveSpot(questID)
 	end
 	local c = objectiveChoice[questID]
 	if c and c.sig == sig and GetTime() - c.at < OBJECTIVE_RECHECK then
-		return c.cont, c.x, c.y, c.name, nil, c.source, missing, sourceOnly
+		return c.cont, c.x, c.y, c.name, nil, c.source, missing, sourceOnly, c.area
 	end
 	local pcont, px, py = PlayerYards()
 	if not pcont then
-		return c and c.cont, c and c.x, c and c.y, c and c.name, nil, c and c.source, missing, sourceOnly
+		return c and c.cont, c and c.x, c and c.y, c and c.name, nil, c and c.source, missing, sourceOnly, c and c.area
 	end
 	-- every place on the player's continent, nearest first
 	local near = {}
@@ -2909,12 +2913,19 @@ local function ObjectiveSpot(questID)
 		local wmap = entry[4]
 		-- (a needed item's source: "Samuel Fipps (Samuel's Remains)")
 		local name = entry.label or (entry[2] ~= "" and entry[2]) or (entry[3] ~= "" and entry[3]) or nil
+		local first, x0, y0, x1, y1 = #near + 1, nil, nil, nil, nil
 		for i = 5, #entry - 1, 2 do
 			local cont, x, y = YardsOfWorld(wmap, entry[i], entry[i + 1])
 			if cont == pcont then
 				near[#near + 1] = { d = Dist(px, py, x, y), cont = cont, x = x, y = y, wmap = wmap, wx = entry[i], wy = entry[i + 1],
 					name = name, source = entry.gate and entry or nil }
+				x0, y0 = math.min(x0 or x, x), math.min(y0 or y, y)
+				x1, y1 = math.max(x1 or x, x), math.max(y1 or y, y)
 			end
+		end
+		local area = entry[1] == 4 or (x0 ~= nil and (x1 - x0 > OBJECTIVE_SPOT or y1 - y0 > OBJECTIVE_SPOT))
+		for k = first, #near do
+			near[k].area = area
 		end
 	end
 	if #near == 0 then
@@ -2940,8 +2951,8 @@ local function ObjectiveSpot(questID)
 		end
 	end
 	objectiveChoice[questID] = { sig = sig, at = GetTime(), cont = pick.cont, x = pick.x, y = pick.y, name = pick.name,
-		source = pick.source }
-	return pick.cont, pick.x, pick.y, pick.name, nil, pick.source, missing, sourceOnly
+		source = pick.source, area = pick.area }
+	return pick.cont, pick.x, pick.y, pick.name, nil, pick.source, missing, sourceOnly, pick.area
 end
 
 local function ReadTrackedQuest()
@@ -2963,7 +2974,7 @@ local function ReadTrackedQuest()
 	-- the objective itself, when the data knows where it is done (the
 	-- companion's data, loaded now if it is not yet, the roads with it)
 	Build.Want()
-	local ocont, ox, oy, oname, later, source, missing, sourceOnly = ObjectiveSpot(questID)
+	local ocont, ox, oy, oname, later, source, missing, sourceOnly, area = ObjectiveSpot(questID)
 	if later then
 		return   -- chosen by route once the roads are in; nothing changes until then
 	end
@@ -2989,10 +3000,12 @@ local function ReadTrackedQuest()
 		end
 		-- (`source`: a needed item's; `sourceOnly`: every open place is one's,
 		-- so Route's own pin goes on it, StandIn; `missing`: the items not
-		-- held; `gated`: the quest needs an item, so the bags are heard, Needed)
+		-- held; `gated`: the quest needs an item, so the bags are heard, Needed;
+		-- `area`: an objective area, not one spot: the World Marker hides
+		-- inside it, Beacon.InArea)
 		destination = { cont = ocont, x = ox, y = oy, fromQuest = true, questID = questID, objective = oname,
 			source = source, sourceOnly = sourceOnly, missing = missing, gated = Needed.Gates(questID) ~= nil,
-			label = "|A:QuestNormal:16:16|a " .. (oname or title or "quest") }
+			area = area and true or false, label = "|A:QuestNormal:16:16|a " .. (oname or title or "quest") }
 		-- announced once per quest (and step), not at every next spawn
 		Plan(true, not same or step, "|A:QuestNormal:22:22|a  Tracking quest " .. (title or "") .. (oname and (": " .. oname) or "") .. ", {dist} away")
 		return
@@ -3020,8 +3033,12 @@ local function ReadTrackedQuest()
 		local ok, t = pcall(C_QuestLog.GetTitleForQuestID, questID)
 		title = ok and Plain(t) or nil
 	end
+	-- (`area` false: the game's own point says nothing of an area or one
+	-- spot, and its quest blob is drawn round one NPC or object too, so the
+	-- World Marker stays on it as on any spot -- never hidden at the target;
+	-- review, 2026-09-28. Hidden only where the data says area: ObjectiveSpot)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromQuest = true, questID = questID,
-		gated = Needed.Gates(questID) ~= nil, label = "|A:QuestNormal:16:16|a " .. (title or "quest") }
+		gated = Needed.Gates(questID) ~= nil, area = false, label = "|A:QuestNormal:16:16|a " .. (title or "quest") }
 	Plan(true, true, "|A:QuestNormal:22:22|a  Tracking quest " .. (title or "") .. ", {dist} away")
 end
 
@@ -3453,6 +3470,7 @@ function M:Cheapest(candidates)
 		return nil
 	end
 	if not Build.Ready() then
+		Build.Loading()   -- (the notice and the arrow's working look while it lasts)
 		return nil, nil, true
 	end
 	local best, bestCost
@@ -3484,6 +3502,7 @@ function M:WhenReady(fn)
 	Build.later = list
 	list[#list + 1] = fn
 	Build.Want()
+	Build.Loading()
 end
 
 -- The world map's list is walked only while it decides the answer (user,
@@ -4041,7 +4060,8 @@ local function ClipToCircle(ax, ay, bx, by, R)
 end
 
 -- Clip a segment to the square of half-size R (Liang-Barsky).
-local function ClipToSquare(ax, ay, bx, by, R)
+local function ClipToSquare(ax, ay, bx, by, R, RY)
+	RY = RY or R   -- (a map cropped to its Width x Height: half its height)
 	local dx, dy = bx - ax, by - ay
 	local t0, t1 = 0, 1
 	local function Edge(p, q)
@@ -4058,7 +4078,7 @@ local function ClipToSquare(ax, ay, bx, by, R)
 		end
 		return true
 	end
-	if Edge(-dx, ax + R) and Edge(dx, R - ax) and Edge(-dy, ay + R) and Edge(dy, R - ay) then
+	if Edge(-dx, ax + R) and Edge(dx, R - ax) and Edge(-dy, ay + RY) and Edge(dy, RY - ay) then
 		return ax + dx * t0, ay + dy * t0, ax + dx * t1, ay + dy * t1
 	end
 	return nil
@@ -4275,9 +4295,45 @@ end
 -- an arrow pointing the way to turn. The direction arrow above still follows
 -- the road; this one shows where the road ends. The game's own destination
 -- marker is only faded while ours shows -- never hidden, moved or written to.
+--
+-- Its states (user, 2026-09-28; the borders in Beacon, each with a buffer
+-- between the way in and the way out, so it never flips on one):
+--   beacon    far off: the gem with the red beam rising from it, the
+--             distance and the travel time under it (Travel.Line). Faint
+--             while it stands in the middle of the screen, where the
+--             character is and the player looks.
+--   pin       under 100 yards: the beam gone (faded out on the way in), the
+--             gem lands on the place with its pop, never faint. It stays on
+--             top of an NPC, an object or an item's source until it is done.
+--   edge      off screen: the arrow on the ring round the character,
+--             easing round it, pointing the way to turn.
+--   hidden    inside a quest's objective AREA (the game's quest blob, where
+--             the client can say so: Beacon.InArea) -- killing about a camp
+--             needs no gem over one of its spots; back when the player
+--             leaves. Never for one spot, nor on Route's own pin.
+-- Per frame (only while it shows): the navigation frame's place and the
+-- distance read, and nothing more while neither moved (the player and the
+-- camera still) except the beam's rising streaks and the ring's easing.
 --------------------------------------------------------------------------------
 
 local marker = nil
+-- Its states' borders (0.15.0; see the top), each with a buffer so the
+-- marker never flips back and forth on one, and what it last saw of the
+-- quest's area (Beacon.InArea); its functions below
+local Beacon = {
+	PIN_IN = 100,         -- yards: nearer than this the beacon turns into the pin
+	PIN_OUT = 115,        -- ... and a beacon again only past this
+	BEAM_FADE = 40,       -- yards past PIN_OUT over which the beam fades in (gone before the pin)
+	EDGE_BACK = 0.10,     -- off screen: back over the place only this far inside every edge (EDGE_MARGIN out)
+	FAINT_IN = 0.10,      -- the beacon this near the screen's middle (in screen heights) goes faint
+	FAINT_OUT = 0.15,     -- ... and full again only past this
+	FAINT_ALPHA = 0.35,
+	FAINT_TIME = 0.25,    -- seconds its fade takes
+	AREA_EVERY = 0.25,    -- seconds between asks whether the player is in the quest's area
+	AREA_BUFFER = 10,     -- yards from where the player was last inside it before the marker comes back
+	AREA_LEAVE = 3,       -- ... or seconds out of it
+	area = { quest = nil, inside = false, next = 0 },
+}
 local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"
 local BEAM_W, BEAM_H = 48, 420
 local BEAM_RED = { 1, 0.16, 0.1 }   -- the user's red (2026-09-23), whatever the palette (fixed colour, for the user to confirm)
@@ -4443,9 +4499,10 @@ function TextShade.Sync(f)
 			MelloUI.Kit:ShadowSet(f.gem, on)
 		end
 	else
+		-- (the arrow turning while the roads go in has no lines: Build.ArrowWork)
 		s.icon:SetShown(on)
-		s.distance:SetShown(on)
-		s.label:SetShown(on)
+		s.distance:SetShown(on and not f.spinning)
+		s.label:SetShown(on and not f.spinning)
 	end
 end
 
@@ -4503,11 +4560,15 @@ local function FadeGameMarker(on)
 	fadingGame = false
 end
 
--- Off screen: the navigation frame sits within EDGE_MARGIN of an edge. Also
--- returns its place as a share of the screen, centre 0.5 / 0.5.
-local function ScreenPlace(nav)
-	local okC, x, y = pcall(nav.GetCenter, nav)
-	if not (okC and Plain(x) and Plain(y)) then
+-- Off screen: the navigation frame (its centre x, y, read by the caller)
+-- sits within EDGE_MARGIN of an edge; once off, it is back on only when
+-- Beacon.EDGE_BACK inside every edge (`wasOff`: the buffer, so a place at
+-- the border does not flip the gem and the edge arrow each frame). Also
+-- returns its place as a share of the screen, centre 0.5 / 0.5, and how far
+-- it is from the centre in screen heights, squared (a wide screen does not
+-- skew it).
+local function ScreenPlace(nav, x, y, wasOff)
+	if not (x and y) then
 		return nil
 	end
 	local scale = nav:GetEffectiveScale() / UIParent:GetEffectiveScale()
@@ -4519,8 +4580,10 @@ local function ScreenPlace(nav)
 	if not (fx > -math.huge and fx < math.huge and fy > -math.huge and fy < math.huge) then
 		return nil   -- (NaN or endless: no place; the marker waits for a real one)
 	end
-	local off = fx < EDGE_MARGIN or fx > 1 - EDGE_MARGIN or fy < EDGE_MARGIN or fy > 1 - EDGE_MARGIN
-	return off, fx, fy
+	local m = wasOff and Beacon.EDGE_BACK or EDGE_MARGIN
+	local off = fx < m or fx > 1 - m or fy < m or fy > 1 - m
+	local dx, dy = (fx - 0.5) * w / h, fy - 0.5
+	return off, fx, fy, dx * dx + dy * dy
 end
 
 -- The navigation frame follows whatever the game super-tracks; the marker
@@ -4549,6 +4612,99 @@ end
 
 local UpdateMarker   -- below: the tick hides the marker through it
 
+-- How far the place is, as the game measures it (C_Navigation.GetDistance),
+-- or nil when it cannot say
+function Beacon.Distance()
+	if C_Navigation and C_Navigation.GetDistance then
+		local ok, d = pcall(C_Navigation.GetDistance)
+		return ok and Plain(d) or nil
+	end
+	return nil
+end
+
+-- The beam at `d` yards: faded in over BEAM_FADE yards past PIN_OUT, so it
+-- is gone before the pin and comes back softly (set on a change only)
+function Beacon.BeamFade(beam, d)
+	local fade = (d - Beacon.PIN_OUT) / Beacon.BEAM_FADE
+	fade = fade < 0 and 0 or fade > 1 and 1 or fade
+	if fade ~= beam.fade then
+		beam.fade = fade
+		beam.glow:SetAlpha(0.85 * fade)
+		beam.streaks:SetAlpha(0.7 * fade)
+	end
+end
+
+-- The beacon faint, or full again: the whole marker, eased (at once under
+-- Reduce Motion)
+function Beacon.Fade(f, faint)
+	local a = faint and Beacon.FAINT_ALPHA or 1
+	local anim = MelloUI.Anim
+	if anim and anim.To then
+		anim:To(f, "alpha", a, Beacon.FAINT_TIME, "outQuad")
+	else
+		f:SetAlpha(a)
+	end
+end
+
+-- One of the marker's AnimationGroups played (the pops, the flare): through
+-- Anim, which ends it at once under Reduce Motion (audit, 2026-09-24)
+function Beacon.Play(group)
+	if not group then
+		return
+	end
+	local anim = MelloUI.Anim
+	if anim then
+		anim:PlayGroup(group)
+	else
+		group:Play()
+	end
+end
+
+-- Whether the marker hides for the quest's objective area (see the top):
+-- only for what the data calls an area (destination.area: ObjectiveSpot;
+-- the game's own point with no data is taken for a spot, ReadTrackedQuest) it
+-- hangs on the game's own tracking of the quest, and only where the client
+-- can say (C_Minimap.IsInsideQuestBlob); never on Route's own pin. Asked
+-- every AREA_EVERY seconds at most (from UpdateMarker: the minimap's tick,
+-- which runs while there is a destination). In at once; out again only
+-- AREA_BUFFER yards from where the player was last seen inside, or after
+-- AREA_LEAVE seconds out of it: walking along the border does not flicker
+-- it. Kept while the quest is the same (the next spawn of the same area)
+-- and it is asked about; not asked for a second (another destination
+-- meanwhile, nothing routed), it starts afresh.
+function Beacon.InArea()
+	local a, d = Beacon.area, destination
+	local blob = _G.C_Minimap
+	local ask = blob and blob.IsInsideQuestBlob
+	if not (ask and d and d.fromQuest and d.area and d.questID) or standIn then
+		a.quest, a.inside = nil, false
+		return false
+	end
+	local now = GetTime()
+	if a.quest ~= d.questID or now > a.next + 1 then
+		a.quest, a.inside, a.next = d.questID, false, 0
+	end
+	if now < a.next then
+		return a.inside
+	end
+	a.next = now + Beacon.AREA_EVERY
+	local ok, inside = pcall(ask, d.questID)
+	inside = ok and Plain(inside) and true or false
+	local cont, px, py = PlayerYards(true)
+	if inside then
+		a.inside, a.since = true, nil
+		a.cont, a.x, a.y = cont, px, py
+	elseif a.inside then
+		a.since = a.since or now
+		-- (a place not known now, or not when inside: the time alone)
+		local moved = cont ~= nil and a.cont ~= nil and (cont ~= a.cont or Dist(a.x, a.y, px, py) >= Beacon.AREA_BUFFER)
+		if moved or now - a.since >= Beacon.AREA_LEAVE then
+			a.inside = false
+		end
+	end
+	return a.inside
+end
+
 local function MarkerTick(self, elapsed)
 	self.age = self.age + elapsed
 	if self.age < 1 / 60 then
@@ -4564,10 +4720,40 @@ local function MarkerTick(self, elapsed)
 		UpdateMarker()
 		return
 	end
-	local off, fx, fy = ScreenPlace(nav)
+	local beam = self.beam
+	-- the streaks rise: the strip scrolls up the beam, round and round (they
+	-- stand still under Reduce Motion)
+	if beam:IsShown() and not (MelloUI.Anim and MelloUI.Anim.reduceMotion) then
+		beam.scroll = (beam.scroll + dt * 0.3) % 1
+		beam.streaks:SetTexCoord(0, 1, beam.scroll, beam.scroll + BEAM_SPAN)
+	end
+	-- where the game has the place, and how far. Neither moved since the
+	-- last tick (the player and the camera still), the edge arrow eased
+	-- round, the gem on this navigation frame and the travel time as its
+	-- line says: nothing more to do
+	local okC, x, y = pcall(nav.GetCenter, nav)
+	x, y = okC and Plain(x) or nil, okC and Plain(y) or nil
+	local d = Beacon.Distance()
+	if x == self.lastX and y == self.lastY and d == self.lastD and not self.easing
+		and (self.off or self.anchoredTo == nav) and Travel.suffix == self.lineSuffix then
+		return
+	end
+	self.lastX, self.lastY, self.lastD = x, y, d
+	local off, fx, fy, centre = ScreenPlace(nav, x, y, self.off)
 	if off == nil then
 		return
 	end
+	-- the pin near the place, the beacon farther: PIN_IN on the way in,
+	-- PIN_OUT on the way out (kept while the distance cannot be read)
+	local pin = self.pin
+	if d then
+		if pin then
+			pin = d < Beacon.PIN_OUT
+		else
+			pin = d < Beacon.PIN_IN
+		end
+	end
+	pin = pin and true or false
 	-- on screen: over the destination (hung on the navigation frame); off
 	-- screen: on the ring round the character, in the destination's direction
 	if not off and (self.mode ~= "nav" or self.anchoredTo ~= nav) then
@@ -4586,14 +4772,39 @@ local function MarkerTick(self, elapsed)
 		self.edge:SetShown(off)
 		TextShade.Sync(self)
 	end
-	local beam = self.beam
-	beam:SetShown(not off and M.db.routeBeam and true or false)
-	-- the streaks rise: the strip scrolls up the beam, round and round (they
-	-- stand still under Reduce Motion)
-	if beam:IsShown() and not (MelloUI.Anim and MelloUI.Anim.reduceMotion) then
-		beam.scroll = (beam.scroll + dt * 0.3) % 1
-		beam.streaks:SetTexCoord(0, 1, beam.scroll, beam.scroll + BEAM_SPAN)
+	-- the beam: the beacon's, never the pin's, hidden off screen, and hidden
+	-- while faded out (PIN_IN to PIN_OUT on the way in: nothing to see, so its
+	-- streaks do not scroll unseen)
+	if d then
+		Beacon.BeamFade(beam, d)
 	end
+	local lit = not off and not pin and M.db.routeBeam and beam.fade > 0 or false
+	if lit ~= beam:IsShown() then
+		beam:SetShown(lit)
+	end
+	if d then
+		-- the distance and the travel time, made only when either changes
+		Travel.Line(self, math.floor(d + 0.5))
+	end
+	-- turned into the pin: the gem lands on the place with its pop (its
+	-- shadow with it)
+	if pin ~= self.pin then
+		self.pin = pin
+		if pin and not off then
+			Beacon.Play(self.pop)
+			Beacon.Play(self.shade and self.shade.pop)
+		end
+	end
+	-- faint: the beacon in the middle of the screen, never the pin or the
+	-- edge arrow (FAINT_IN on the way in, FAINT_OUT on the way out; `centre`
+	-- is squared)
+	local r = self.faint and Beacon.FAINT_OUT or Beacon.FAINT_IN
+	local faint = not off and not pin and centre < r * r
+	if faint ~= self.faint then
+		self.faint = faint
+		Beacon.Fade(self, faint)
+	end
+	self.easing = false
 	if off then
 		-- the direction from the screen's centre to where the game puts the
 		-- place (in screen units, so a wide screen does not skew it); the
@@ -4606,24 +4817,12 @@ local function MarkerTick(self, elapsed)
 		-- half the gap a frame at 60 fps: keeps up with a fast turn, still no jitter
 		-- (user, 2026-09-23: "kinda slow response when turning"; was dt * 12)
 		self.angle = self.angle + diff * math.min(1, dt * 30)
+		-- (still easing: the next ticks go on even with nothing moving)
+		self.easing = math.abs(diff) > 0.002
 		self.mode, self.anchoredTo = "ring", nil
 		self:ClearAllPoints()
 		self:SetPoint("CENTER", UIParent, "CENTER", math.cos(self.angle) * RING_X, math.sin(self.angle) * RING_Y + RING_DY)
 		self.edge:SetRotation(self.angle - math.pi / 2)
-	end
-	if C_Navigation and C_Navigation.GetDistance then
-		local okD, d = pcall(C_Navigation.GetDistance)
-		if okD and Plain(d) then
-			-- the beam fades over the last 50 yards and is gone within 10
-			local fade = math.max(0, math.min(1, (d - 10) / 40))
-			if fade ~= beam.fade then
-				beam.fade = fade
-				beam.glow:SetAlpha(0.85 * fade)
-				beam.streaks:SetAlpha(0.7 * fade)
-			end
-			-- the distance and the travel time, made only when either changes
-			Travel.Line(self, math.floor(d + 0.5))
-		end
 	end
 end
 
@@ -4725,13 +4924,15 @@ local function EnsureMarker()
 	marker.front = front
 	-- a small pop when the marker comes up: the gem grows in and settles
 	marker.pop = TextShade.Pop(marker.gem)
-	marker.age, marker.angle = 0, math.pi / 2
+	marker.age, marker.angle, marker.faint = 0, math.pi / 2, false
 	Perf.SetScript(marker, "OnUpdate", MarkerTick)
 	marker:Hide()
 end
 
 -- Shown while there is a destination and the game has a navigation frame
--- for it; hung on that frame, which the client moves every frame.
+-- for it; hung on that frame, which the client moves every frame. Hidden
+-- inside the quest's objective area (Beacon.InArea), the game's own marker
+-- still faded: nothing over the area at all until the player leaves it.
 UpdateMarker = function()
 	-- (every destination passes here the moment it is set, through Plan's
 	-- Redraw: when its way began, for the arrival's travel time; Route
@@ -4747,12 +4948,20 @@ UpdateMarker = function()
 		return
 	end
 	local nav = M.isEnabled and M.db.worldMarker and destination and NavIsOurs() and NavFrame() or nil
-	if not nav then
+	local inArea = nav and destination.area and Beacon.InArea() or false
+	if inArea or not nav then
 		if marker:IsShown() then
 			marker:Hide()
+			-- (full again for its next show: a faint beacon's fade let go)
+			local anim = MelloUI.Anim
+			if anim and anim.Stop then
+				anim:Stop(marker, "alpha")
+			end
+			marker:SetAlpha(1)
+			marker.faint = false
 		end
 		marker.nav = nil
-		FadeGameMarker(false)
+		FadeGameMarker(inArea)
 		return
 	end
 	-- the tick places it: over the destination or on the ring round the character
@@ -4760,27 +4969,27 @@ UpdateMarker = function()
 	marker.label:SetText((standIn and standIn.label) or destination.label or "")
 	if not marker:IsShown() then
 		marker.lineSuffix = nil   -- its distance line made afresh (Travel.Line)
+		-- a beacon or the pin as the place is far or near now, its beam as
+		-- that says; its parts looked at again at the next tick (MarkerTick)
+		local dist = Beacon.Distance()
+		marker.pin = dist ~= nil and dist < Beacon.PIN_IN
+		marker.lastX, marker.easing = nil, false
+		local beam = marker.beam
+		if dist then
+			Beacon.BeamFade(beam, dist)
+		end
 		TextShade.Marker()   -- its text shade, made at its first show with the option on
 		marker:Show()
 		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
-		local anim = MelloUI.Anim
-		if anim then
-			anim:PlayGroup(marker.pop)
-		else
-			marker.pop:Play()
-		end
-		if M.db.routeBeam then
-			marker.beam:Show()
-			if anim then
-				anim:PlayGroup(marker.beam.flare)
-			else
-				marker.beam.flare:Play()
-			end
+		Beacon.Play(marker.pop)
+		local lit = M.db.routeBeam and not marker.pin and beam.fade > 0 or false
+		beam:SetShown(lit)
+		if lit then
+			Beacon.Play(beam.flare)
 		end
 		-- the gem's shadow partner pops in with it (TextShade)
-		local shadePop = marker.shade and marker.shade.pop
-		if shadePop and anim then
-			anim:PlayGroup(shadePop)
+		if MelloUI.Anim then
+			Beacon.Play(marker.shade and marker.shade.pop)
 		end
 	end
 	FadeGameMarker(true)
@@ -5030,10 +5239,16 @@ local function UpdateArrow(cont, px, py)
 		tx, ty = destination.x, destination.y
 	end
 	if not tx then
-		arrow.targetX = nil
+		arrow.targetX, arrow.aimless = nil, true
+		if Build.loading then
+			-- (nothing to point at while the roads go in: its working look)
+			Build.ArrowWork()
+			return arrow:IsShown()
+		end
 		arrow:Hide()
 		return false
 	end
+	arrow.aimless = nil
 	-- the OnUpdate above turns the icon towards this every frame
 	arrow.targetCont, arrow.targetX, arrow.targetY = cont, tx, ty
 	if not remaining or remaining <= 0 then
@@ -5054,7 +5269,76 @@ local function UpdateArrow(cont, px, py)
 		ArrowPlace.Mover()
 	end
 	arrow:Show()
+	if Build.loading then
+		Build.ArrowWork()   -- (a place to point at now: it stops turning)
+	end
 	return true
+end
+
+-- The arrow's working look while the roads go in (Build.loading, the first
+-- route of a session: "Loading navigation..."): its icon breathes in its
+-- gold (Anim:Pulse); with no place to point at yet (a tracked quest's
+-- places wait to be priced by route: no destination until then) it is shown
+-- for it and turns slowly round besides, its two lines hidden (under Reduce
+-- Motion, where it cannot turn, it is not shown for it). Asked as the
+-- load starts and ends, by UpdateArrow while it lasts and after a setting;
+-- each part set on a change only, made at its first use (never at login).
+-- Not while the flight's landing countdown has the arrow.
+function Build.ArrowWork()
+	local a = arrow
+	if not a then
+		return
+	end
+	local on = (Build.loading and M.isEnabled and M.db.arrow and not M.flight.arrowOn) and true or false
+	-- (aimless: UpdateArrow found nothing to point at, another continent's
+	-- place with no route yet)
+	local spin = on and (not destination or a.aimless) or false
+	-- (the motion engine's breath and turn: still under Reduce Motion)
+	local anim = MelloUI.Anim
+	if not (anim and anim.Pulse and anim.Spin and anim.StopGroup) then
+		anim = nil
+	end
+	if on ~= (a.working or false) then
+		a.working = on
+		if on then
+			a.breath = anim and anim:Pulse(a.icon, 0.35, 1, 0.8) or nil
+		elseif a.breath and anim then
+			anim:StopGroup(a.breath)
+			a.icon:SetAlpha(1)
+		end
+	end
+	if spin ~= (a.spinning or false) then
+		a.spinning = spin
+		if spin then
+			a.spin = anim and anim:Spin(a.icon, 2.4) or nil
+		else
+			if a.spin and anim then
+				anim:StopGroup(a.spin)
+			end
+			if not destination then
+				a:Hide()   -- (the load over with nothing to route to)
+			end
+		end
+		a.distance:SetShown(not spin)
+		a.label:SetShown(not spin)
+		TextShade.Sync(a)
+	end
+	-- shown for it, but not under Reduce Motion (nor without the motion
+	-- engine): an arrow standing still with nothing to point at would read as
+	-- a way to go (review, 2026-09-28); the notice's line tells the wait alone
+	local show = spin and anim ~= nil and not anim.reduceMotion
+	if show and not a:IsShown() then
+		-- its text shade and its place, as at any first show
+		if a.shade == nil then
+			TextShade.Arrow()
+		end
+		if not ArrowPlace.entry then
+			ArrowPlace.Mover()
+		end
+		a:Show()
+	elseif spin and not show and a:IsShown() then
+		a:Hide()
+	end
 end
 
 -- A route point's offset on the minimap from the player (pixels) and its
@@ -5102,6 +5386,18 @@ local function MinimapTick(_, elapsed)
 	end
 	local round = IsRoundMinimap()
 	local R = size / 2 - 1
+	-- the square map cropped to its Width x Height (MinimapPanel, 0.15.0): the
+	-- route clipped to the part it shows
+	local RX, RY = R, R
+	local mp = MelloUI:GetModule("MinimapPanel")
+	local shown = mp and mp.MapFrame and mp:MapFrame()
+	if shown and shown ~= Minimap then
+		local okS, sw, sh = pcall(shown.GetSize, shown)
+		sw, sh = okS and Plain(sw) or nil, okS and Plain(sh) or nil
+		if type(sw) == "number" and type(sh) == "number" then
+			RX, RY = math.min(R, sw / 2 - 1), math.min(R, sh / 2 - 1)
+		end
+	end
 	local unit = 2.6 * (tonumber(M.db.lineWidth) or 3)
 	local points = RouteAhead()
 	local view, Offset = M.mmView, M.MinimapOffset
@@ -5114,7 +5410,7 @@ local function MinimapTick(_, elapsed)
 			if round then
 				ax, ay, bx, by = ClipToCircle(ax, ay, bx, by, R)
 			else
-				ax, ay, bx, by = ClipToSquare(ax, ay, bx, by, R)
+				ax, ay, bx, by = ClipToSquare(ax, ay, bx, by, RX, RY)
 			end
 			if ax then
 				mmPainter:Segment(ax, ay, bx, by, STYLE[b[4]] or STYLE.road, unit, "CENTER")
@@ -6289,10 +6585,21 @@ do
 		end
 	end
 
+	-- The route that waited for the roads: the tracked quest's places priced,
+	-- the route planned and announced
+	function Build.Replan()
+		ReadWaypoint()
+		if Build.waiting and destination then
+			Plan(true)
+		end
+	end
+
 	-- A frame's share of the build. The frame after it plans what waited
-	-- (the first route's search gets a frame of its own): the tracked quest's
-	-- places priced, the route planned and announced, then what was put off
-	-- until routes could price it (M:WhenReady), in the order it was asked.
+	-- (the first route's search gets a frame of its own): the route that
+	-- waited (Build.Replan), then what was put off until routes could price it
+	-- (M:WhenReady), in the order it was asked. Each through pcall, an error
+	-- told in chat: the loading line and the arrow's working look go at the
+	-- end whatever happened (review, 2026-09-28: held for the session else).
 	Perf.SetScript(builder, "OnUpdate", function()
 		if Build.job then
 			Run(BUDGET)
@@ -6303,11 +6610,12 @@ do
 		Build.later = nil
 		if Build.closing or not M.isEnabled then
 			Build.waiting = nil
+			Build.Loaded()
 			return
 		end
-		ReadWaypoint()
-		if Build.waiting and destination then
-			Plan(true)
+		local okR, errR = pcall(Build.Replan)
+		if not okR then
+			MelloUI:Print("|cffff4040Error|r in module 'Route' (after the road graph was built): %s", tostring(errR))
 		end
 		Build.waiting = nil
 		for i = 1, later and #later or 0 do
@@ -6316,6 +6624,9 @@ do
 				MelloUI:Print("|cffff4040Error|r in module 'Route' (after the road graph was built): %s", tostring(err))
 			end
 		end
+		-- last: the route's own notice ("Tracking ...") has taken the
+		-- loading line's place by now, and the arrow its place to point at
+		Build.Loaded()
 	end)
 
 	-- The graph is wanted: the companion loaded (once) and the build started
@@ -6328,6 +6639,11 @@ do
 		end
 		Build.job = coroutine.create(Body)
 		builder:Show()
+		-- something waited while the load was put off (a fight): said now
+		-- that the roads really go in (Build.Show)
+		if Build.told and not Build.loading then
+			C_Timer.After(Build.LOADING_AFTER, Build.Show)
+		end
 	end
 
 	-- Whether routes can be planned; the first ask starts the build
@@ -6350,6 +6666,61 @@ do
 		if announce then
 			w.announce, w.text = true, text
 		end
+		Build.Loading()
+	end
+
+	-- "Loading navigation..." (user, 2026-09-28): the first route of a
+	-- session waits some 5 s for the roads to go in, and nothing on the
+	-- screen said so. From the first thing that waits for them (a route to
+	-- plan, places to price: Build.Wait, M:Cheapest, M:WhenReady) until the
+	-- build's last frame: the line in the on-screen notice, held for as long
+	-- (MelloUI:AnnounceWait: as Route's other lines, with Route Announces
+	-- and the notice's own switches, never a sound), and the Direction
+	-- Arrow's working look (Build.ArrowWork). Only a wait longer than
+	-- LOADING_AFTER says so: a build done sooner (the learned paths alone,
+	-- without the companion) would flash the line. Once a session: the
+	-- graph, once built, stays; a load Route was switched off during may say
+	-- it again. A build nothing waits for (the breadcrumbs of a long walk)
+	-- says nothing. Said only while the build runs: a load the game put off
+	-- (a fight, a moment's refusal: LoadData) holds no line or working arrow
+	-- over the whole fight; Build.Want says it when the build starts.
+	Build.LOADING = "Loading navigation..."
+	Build.LOADING_AFTER = 0.3   -- seconds
+	function Build.Loading()
+		if Build.ready or Build.told or not M.isEnabled then
+			return
+		end
+		Build.told = true
+		C_Timer.After(Build.LOADING_AFTER, Build.Show)
+	end
+
+	-- still waiting a moment later, the build running: said, and the arrow
+	-- at work
+	function Build.Show()
+		if Build.ready or Build.loading or not (Build.told and Build.job and M.isEnabled) then
+			return
+		end
+		Build.loading = true
+		if M.db.notice and MelloUI.AnnounceWait then
+			MelloUI:AnnounceWait(Build.LOADING, "info")
+		end
+		Build.ArrowWork()
+	end
+
+	-- The roads are in (or Route was switched off meanwhile): the line fades
+	-- while it is still the one shown, the arrow's working look goes
+	function Build.Loaded()
+		if not Build.ready then
+			Build.told = nil   -- (switched off first: said again the next time)
+		end
+		if not Build.loading then
+			return
+		end
+		Build.loading = false
+		if MelloUI.AnnounceDone then
+			MelloUI:AnnounceDone(Build.LOADING)
+		end
+		Build.ArrowWork()
 	end
 
 	-- PLAYER_LOGOUT: the saved variable is the learned part of the whole
@@ -6849,6 +7220,7 @@ function M:OnDisable()
 	StandIn.Update()
 	Redraw()
 	UpdateMarker()
+	Build.Loaded()   -- (a load under way: its line and the arrow's working look go)
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -6861,7 +7233,11 @@ function M:OnSettingChanged(key, value, db)
 	M.flight.Setting(key)
 	PlaceArrow()
 	Redraw()
+	if marker then
+		marker.lastX = nil   -- (the marker's parts looked at again at its next tick)
+	end
 	UpdateMarker()
+	Build.ArrowWork()   -- (while the roads go in: the arrow's working look as the settings say)
 end
 
 MelloUI:Profile("Route", "breadcrumbs + planning tick", Tick)

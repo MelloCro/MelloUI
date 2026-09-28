@@ -35,15 +35,26 @@
 -- button and the calendar on its two caps. The game's anchors come back when
 -- it is off.
 -- The column under the minimap (the map, the Services bar, Route's distance
--- line; the Quest Tracker below it where nobody placed it) is one contract
--- kept here, on or off: M:ColumnSlot, M:ColumnRect, M:ColumnPart, M:LayColumn
--- and the bus's 'column' (below M:Relayout).
--- The map's size is Edit Mode's (Minimap, Size; the column's layout E, user,
--- 2026-09-25: "yes, flip it"): MelloUI never sizes or moves the map, the
--- cluster, the zone band or the zone button to fit the column; the Quest
--- Tracker (Match The Minimap's Width) and Services' row follow the map's
--- width (M:ColumnWidth). Covers the Dark Mode group "minimap". /mmdump
--- [frames|reps].
+-- line; the Quest Tracker glued under it where nobody placed it) is one
+-- contract kept here, on or off: M:ColumnSlot, M:ColumnRect, M:ColumnPart,
+-- M:LayColumn and the bus's 'column' (below M:Relayout).
+-- The map's size (0.15.0; user, 2026-09-28: the 150 % of the first load was
+-- "far too big", and free Width and Height sliders instead of the scale):
+-- this module's Width and Height, 198 x 198 by default (the game's map at
+-- 100 %). The game's map stays SQUARE underneath, max(W, H) on a side (its
+-- projection and the player's arrow want a square canvas), cropped to W x H
+-- by a mask (Media/Textures/Masks/Minimap, the short side in 256ths of the
+-- long one) with its hit rect inset to match; a plain frame of that size on
+-- the map's middle, M:MapFrame(), is what the border, the zone band, the
+-- clock, the Services row, Route's line and the Quest Tracker hang from.
+-- Edit Mode's Size (the map's container's scale) is held at 100 % while
+-- this module is on, so the border art and the buttons keep their size; a
+-- Size a player had set became their Width and Height once. The container
+-- takes the game's margins round the shown map and the cluster is laid
+-- round it as the game lays it (Size, below), so Edit Mode's selection box
+-- stays on the map. The Quest Tracker (Match The Minimap's Width) and
+-- Services' row follow the map's width (M:ColumnWidth). Covers the Dark Mode
+-- group "minimap". /mmdump [frames|reps].
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -74,13 +85,25 @@ local CORNER = 40            -- piece px: a backdrop frame's corner square (as A
 local ROUND_MASK = "ui-hud-minimap-frame-generic-mask"   -- the game's (Blizzard_Minimap/Camelot/Skin.lua)
 local SQUARE_MASK = "Interface\\Buttons\\WHITE8X8"
 local HYBRID_ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local Num = MelloUI.Safe.Number
+
+-- the map's Width and Height (0.15.0): the sliders' range and step, in UI
+-- units; the game's map is 198 at 100 % (the range Edit Mode's Size had,
+-- 50 - 200 %: every old Size is kept when taken over, Size.Migrate)
+local MAP_BASE, MAP_MIN, MAP_MAX, MAP_STEP = 198, 98, 400, 2
+local function MapSizeText(v)
+	return tostring(math.floor(v + 0.5))
+end
 
 local M = MelloUI:RegisterModule("MinimapPanel", {
 	title = "Minimap Kit",
 	desc = "The minimap cluster dressed in the painted kit on the game's own layout.",
 	window = { label = "Minimap", desc = "The minimap ring (or a square map in a border of your choosing), zone band and buttons in the kit.", tab = "HUD" },
 	enabledByDefault = true,
-	defaults = { shape = "round", squareBorder = "window", servicesMerge = true },
+	defaults = { shape = "round", squareBorder = "window", servicesMerge = true, width = MAP_BASE, height = MAP_BASE },
+	-- the old Size taken over once (Size.Migrate): this machine's step, never
+	-- in a profile
+	keep = { "sizeMigrated" },
 	options = {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
 		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border chosen below." },
@@ -88,6 +111,12 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, or none. Both are also chosen with previews by Dynamic UI Modification, at the top of the configurator." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
 		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail." },
+		{ type = "slider", key = "width", name = "Width", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP, new = "0.15.0",
+		  format = MapSizeText,
+		  desc = "How wide the map is. The round map is as tall as it is wide, and its painted ring grows and shrinks with it. The square map's border and the zone name keep their size, the Services buttons too (smaller only on a map too narrow for them), and the Quest Tracker under the map follows its width. Edit Mode's minimap Size no longer sizes the map while the Minimap Kit is on." },
+		{ type = "slider", key = "height", name = "Height", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP, new = "0.15.0",
+		  format = MapSizeText,
+		  desc = "How tall the square map is (the round map takes its Width). The shorter side is at least half the longer one." },
 	},
 })
 
@@ -150,8 +179,8 @@ end
 
 -- the square map with no border ("None"): the map's own edge shaded, KitShade's
 -- synthetic square on a plain frame over the map (in the map's container, as
--- the border frame), its partners shown and hidden with it; made the first
--- time that look shows
+-- the border frame; on the map's shown part, M:MapFrame), its partners shown
+-- and hidden with it; made the first time that look shows
 function Shade.Bare(show)
 	local bare = skin and skin.bare
 	if not show then
@@ -166,9 +195,14 @@ function Shade.Bare(show)
 		end
 		bare = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
 		bare:EnableMouse(false)
-		bare:SetAllPoints(Minimap)
 		skin.bare = bare
 		Shade.Add(bare, { shape = "shade/square" })
+	end
+	local shown = M:MapFrame()
+	if bare.on ~= shown then
+		bare.on = shown
+		bare:ClearAllPoints()
+		bare:SetAllPoints(shown)
 	end
 	bare:Show()
 end
@@ -331,6 +365,540 @@ local function Build()
 end
 
 --------------------------------------------------------------------------------
+-- The map's size (0.15.0): Width x Height, a square map cropped
+--------------------------------------------------------------------------------
+-- The game draws the map on a square canvas (sized to anything else, its
+-- terrain slides away from the player's arrow as it zooms). So the map stays
+-- square, max(W, H) on a side (the round map: W), and a mask shows W x H of
+-- it: a band across its middle, the short side in whole 256ths of the long
+-- one (a file per step, Tools/make_minimap_masks.py; never under half: a
+-- step under the sliders' 2 even at 400, so every step of Height shows), the
+-- map's hit rect inset to the band, so a click on the hidden part goes
+-- through to the world. The proxy (M:MapFrame) is the shown part: what
+-- stands round the map hangs from it. The canvas sized, the picture is drawn
+-- again by a zoom there and back (the game keeps drawing it at the old size
+-- until the zoom changes: the map small in a corner).
+-- Held while this module is on:
+--   the container's scale at 1 (Edit Mode's Size; its SetScale hook, Hook
+--   below), Size.editScale keeping Edit Mode's own, given back when off;
+--   the container the game's margins round the shown map (its size less the
+--   map's as the game laid them: 215 x 253 round 198), and the cluster laid
+--   round its children as the game's layout frame lays it (LayCluster), so
+--   Edit Mode's selection box is round the map and the game's own layout,
+--   whenever it runs, finds the cluster as it is;
+--   the zoom buttons and the day / night dial where they stood on the game's
+--   map, in proportion to the shown part, the ring sized from it, and the
+--   player's coordinates under its bottom.
+-- The group finder's eye stays where Edit Mode puts it (an Edit Mode system:
+-- Edit Mode owns its place; on the map's edge at 198, a player drags it in
+-- Edit Mode for another size).
+-- A size is set only when it differs from the frame's own (by more than
+-- SLACK: the client keeps sizes as 32-bit floats); nothing runs a frame by
+-- itself. Out of combat (Kit:WhenOutOfCombat): a frame anchored to the map
+-- may be a protected one of another addon's.
+local Size = {
+	STEPS = 256,
+	SLACK = 0.01,
+	MASK = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Masks\\Minimap\\",
+	-- the dial's centre from the map's at 100 % (Blizzard_Minimap/Camelot/
+	-- Diel.lua: 63, 72 from the cluster's centre; the container hangs 10
+	-- right of the cluster's top middle, 30 down, and the cluster laid round
+	-- its children is 27 taller than it -- its bottom 3 under the cluster's,
+	-- measured in game (Core/LayoutFit.lua's model): 53, 88.5 whatever the
+	-- container's height); its place on the cluster, the game's (Diel.lua's
+	-- AnchorX, AnchorY)
+	DIAL_X = 53, DIAL_Y = 88.5, DIAL_HOME_X = 63, DIAL_HOME_Y = 72,
+	masks = {},          -- [key] = a mask's path, made once
+	bounds = {},         -- LayCluster's extents, reused
+	file = nil,          -- the crop's mask, nil: the whole square
+	home = nil,          -- the game's own, read before anything is changed (Size.Home)
+	editScale = nil,     -- Edit Mode's Size (the container's scale) as the game last set it
+	holding = false,     -- the container's scale is being set from here: its hook stands aside
+	held = false,        -- this module's size is laid (Release puts the game's back)
+	dialDirty = true,    -- the game placed the dial again (Edit Mode's Size): placed once more
+	dialHeld = false,    -- the dial is placed from here (Size.Place)
+	zoomHeld = false,    -- the zoom buttons too
+	coordsHeld = false,  -- the player's coordinates too
+}
+
+-- two sizes the same to the client (it keeps them as 32-bit floats: 217.8
+-- set reads back 217.8000030517578)
+local function Same(a, b)
+	return a ~= nil and b ~= nil and math.abs(a - b) <= Size.SLACK
+end
+
+-- the Width and Height asked for, each in the sliders' range (the round
+-- map: W x W)
+function Size.Wanted()
+	local db = M.db
+	local w = Num(db and db.width) or MAP_BASE
+	local h = Num(db and db.height) or MAP_BASE
+	w = math.min(MAP_MAX, math.max(MAP_MIN, w))
+	h = math.min(MAP_MAX, math.max(MAP_MIN, h))
+	if not (db and db.shape == "square") then
+		h = w
+	end
+	return w, h
+end
+
+-- the canvas's side, the shown part's width and height, and the mask that
+-- crops the canvas to it (nil: the whole square)
+function Size.Crop(w, h)
+	local s = math.max(w, h)
+	local steps = Size.STEPS
+	local n = math.floor(math.min(w, h) / s * steps + 0.5)
+	n = math.max(steps / 2, math.min(steps, n))
+	if n >= steps then
+		return s, s, s, nil
+	end
+	local cut = s * n / steps
+	local key = (w > h and "h" or "v") .. n
+	local file = Size.masks[key]
+	if not file then
+		file = Size.MASK .. key
+		Size.masks[key] = file
+	end
+	if w > h then
+		return s, s, cut, file
+	end
+	return s, cut, s, file
+end
+
+-- a frame's size when it reads plainly
+local function PlainSize(f)
+	local ok, w, h = pcall(f.GetSize, f)
+	return ok and Num(w) or nil, ok and Num(h) or nil
+end
+
+-- a frame's one point, `point` on the same point of the map, as the game
+-- lays it: its offsets, else nil
+local function OnPoint(b, map, point)
+	local okN, n = false, nil
+	if b and b.GetNumPoints then
+		okN, n = pcall(b.GetNumPoints, b)
+	end
+	if not (okN and n == 1) then
+		return nil
+	end
+	local p, rel, rp, x, y = b:GetPoint(1)
+	x, y = Num(x), Num(y)
+	if p == point and rp == point and rel == map and x and y then
+		return x, y
+	end
+	return nil
+end
+
+-- The game's own, read once before anything here changes them: the map's
+-- and the container's sizes (the container's margins round the map), the
+-- zoom buttons' places on the map's middle, the player's coordinates under
+-- its bottom (Minimap.xml: the container's PlayerCoords), the dial
+function Size.Home(map, c)
+	if Size.home then
+		return Size.home
+	end
+	local home = { zoom = {} }
+	local mw, mh = PlainSize(map)
+	local cw, ch = PlainSize(c)
+	home.mapW, home.mapH = (mw and mw > 0) and mw or MAP_BASE, (mh and mh > 0) and mh or MAP_BASE
+	home.cw, home.ch = (cw and cw > 0) and cw or 215, (ch and ch > 0) and ch or 253
+	home.padW, home.padH = math.max(0, home.cw - home.mapW), math.max(0, home.ch - home.mapH)
+	for _, key in ipairs({ "ZoomIn", "ZoomOut", "ZoomHitArea" }) do
+		local b = map[key]
+		local x, y = OnPoint(b, map, "CENTER")
+		if x then
+			home.zoom[#home.zoom + 1] = { frame = b, x = x, y = y }
+		end
+	end
+	local coords = c.PlayerCoords or map.PlayerCoords
+	local x, y = OnPoint(coords, map, "BOTTOM")
+	if x then
+		home.coords = { frame = coords, x = x, y = y }
+	end
+	local dial = MinimapCluster and MinimapCluster.DielFrame
+	if dial and dial.SetScale then
+		home.dial = { frame = dial }
+	end
+	Size.home = home
+	return home
+end
+
+-- The shown part: a plain frame on the map's middle, in the map's container
+function Size.Proxy()
+	local p = Size.proxy
+	if not p then
+		p = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
+		p:EnableMouse(false)
+		p.ignoreInLayout = true   -- (never part of a layout frame's size, as the kit's holders)
+		p:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
+		p:SetSize(MAP_BASE, MAP_BASE)
+		Size.proxy = p
+	end
+	return p
+end
+
+-- What stands round the map hangs from this: the map's shown part while this
+-- module holds its size, else the game's map itself
+function M:MapFrame()
+	local p = Size.proxy
+	if active and Size.held and p then
+		return p
+	end
+	return Minimap
+end
+
+-- The container's scale set to `to` from here; `keep`: its place on the
+-- screen kept (the game anchors it by offsets over its scale: its
+-- SetHeaderUnderneath)
+function Size.Rescale(c, to, keep)
+	local okS, from = pcall(c.GetScale, c)
+	from = okS and Num(from) or nil
+	if not (from and from > 0) or math.abs(from - to) < 1e-6 then
+		return false
+	end
+	local p, rel, rp, x, y
+	if keep then
+		local okN, n = pcall(c.GetNumPoints, c)
+		if okN and n == 1 then
+			p, rel, rp, x, y = c:GetPoint(1)
+			x, y = Num(x), Num(y)
+		end
+	end
+	Size.holding = true
+	c:SetScale(to)
+	Size.holding = false
+	if p and x and y then
+		c:ClearAllPoints()
+		c:SetPoint(p, rel, rp, x * from / to, y * from / to)
+	end
+	return true
+end
+
+-- a map's picture drawn again at its new size: a zoom there and back, now
+-- and once more on the next frame (should the game take the new size only
+-- when it draws)
+function Size.Blink(map)
+	local okZ, z = pcall(map.GetZoom, map)
+	z = okZ and Num(z) or nil
+	if not z then
+		return
+	end
+	pcall(map.SetZoom, map, z > 0 and 0 or 1)
+	pcall(map.SetZoom, map, z)
+end
+
+function Size.BlinkLater()
+	if Minimap then
+		Size.Blink(Minimap)
+	end
+end
+
+function Size.Redraw(map)
+	Size.Blink(map)
+	if Kit.NextFrame then
+		Kit:NextFrame("Minimap redraw", Size.BlinkLater)
+	end
+end
+
+-- the extents of the cluster's layout children among `...` (LayCluster), in
+-- the cluster's units at `es` (its effective scale)
+function Size.Extents(c, es, ...)
+	local b = Size.bounds
+	local Secret = MelloUI.Safe.IsSecret
+	for i = 1, select("#", ...) do
+		local r = select(i, ...)
+		local okV, shown = pcall(r.IsShown, r)
+		shown = okV and not Secret(shown) and shown
+		if (shown or r.includeAsLayoutChildWhenHidden) and not r.ignoreInLayout
+			and (not c.ignoreAllChildren or r.includeInLayout) then
+			-- (on the screen over the cluster's scale; the game's
+			-- GetUnscaledFrameRect: an unreadable rect is 1, 1, 1, 1)
+			local l, bo, r2, t = MelloUI.Safe.ScreenRect(r)
+			if l then
+				l, bo, r2, t = l / es, bo / es, r2 / es, t / es
+			else
+				l, bo, r2, t = 1, 1, 2, 2
+			end
+			b.L, b.R = b.L and math.min(b.L, l) or l, b.R and math.max(b.R, r2) or r2
+			b.B, b.T = b.B and math.min(b.B, bo) or bo, b.T and math.max(b.T, t) or t
+		end
+	end
+end
+
+-- one side as the game's layout frame sizes it (LayoutFrame.lua GetSize)
+local function LaidSide(desired, fixed, lo, hi)
+	lo = Num(lo) or desired
+	hi = math.max(Num(hi) or desired, lo)
+	return Num(fixed) or math.min(math.max(desired, lo), hi)
+end
+
+-- The cluster laid round its shown children as the game's layout frame lays
+-- it (Blizzard_SharedXML/LayoutFrame.lua ResizeLayoutMixin:Layout: from a 1
+-- x 1 start, the extents of its children and regions not ignored in the
+-- layout, plus its widthPadding / heightPadding), once the container took
+-- its size here. Only its size is set: no field of the game's frames is
+-- written and none of its layout code runs from here (run from an addon, it
+-- would run tainted).
+function Size.LayCluster()
+	local c = MinimapCluster
+	if not (c and c.SetSize and c.GetChildren) then
+		return
+	end
+	local okE, es = pcall(c.GetEffectiveScale, c)
+	es = okE and Num(es) or nil
+	if not (es and es > 0) then
+		return
+	end
+	local fw, fh = c.fixedWidth, c.fixedHeight
+	if Num(fw) and Num(fh) then
+		c:SetSize(fw, fh)
+		return
+	end
+	c:SetSize(1, 1)
+	local b = Size.bounds
+	b.L, b.R, b.B, b.T = nil, nil, nil, nil
+	Size.Extents(c, es, c:GetChildren())
+	Size.Extents(c, es, c:GetRegions())
+	local w, h = 1, 1
+	if b.L then
+		w = (b.R - b.L) + (Num(c.widthPadding) or 0)
+		h = (b.T - b.B) + (Num(c.heightPadding) or 0)
+	end
+	c:SetSize(LaidSide(w, fw, c.minimumWidth, c.maximumWidth), LaidSide(h, fh, c.minimumHeight, c.maximumHeight))
+end
+
+-- the zoom buttons, the dial and the ring where they stood on the game's map,
+-- in proportion to the shown part (cw x ch), the player's coordinates under
+-- its bottom (the canvas's is lower on a wide map, s tall)
+function Size.Place(home, cw, ch, s, force)
+	local map = Minimap
+	local kx, ky = cw / home.mapW, ch / home.mapH
+	if force then
+		-- (the game's own places untouched at the game's size)
+		local moved = not (Same(cw, home.mapW) and Same(ch, home.mapH))
+		if moved or Size.zoomHeld then
+			Size.zoomHeld = moved
+			for _, z in ipairs(home.zoom) do
+				z.frame:ClearAllPoints()
+				z.frame:SetPoint("CENTER", map, "CENTER", z.x * kx, z.y * ky)
+			end
+		end
+		local coords = home.coords
+		local cut = not Same(ch, s)
+		if coords and (cut or Size.coordsHeld) then
+			Size.coordsHeld = cut
+			coords.frame:ClearAllPoints()
+			coords.frame:SetPoint("BOTTOM", cut and Size.Proxy() or map, "BOTTOM", coords.x, coords.y)
+		end
+		local ring = skin and skin.ring
+		local p = ring and ring.tex and ring.rule and Kit:Piece(ring.rule.piece)
+		if p and p.w and p.open and p.open[3] > p.open[1] then
+			local size = math.min(cw, ch) * p.w / (p.open[3] - p.open[1]) * (ring.rule.openingScale or 1)
+			ring.tex:SetSize(size, size)
+		end
+	end
+	-- the dial: the game's own while the map is at its own size and Edit
+	-- Mode's Size at 100 % (nothing to follow), else taken over: at 100 %,
+	-- on the shown part's corner
+	local dial = home.dial
+	local ek = Size.editScale
+	if dial and (not (Same(cw, home.mapW) and Same(ch, home.mapH)) or (ek and math.abs(ek - 1) > 1e-6))
+		and (force or Size.dialDirty or not Size.dialHeld) then
+		Size.dialDirty, Size.dialHeld = false, true
+		dial.frame:SetScale(1)
+		dial.frame:ClearAllPoints()
+		dial.frame:SetPoint("CENTER", map, "CENTER", Size.DIAL_X * kx, Size.DIAL_Y * ky)
+	end
+end
+
+-- This module's size laid (Width x Height)
+function Size.Apply()
+	local map = Minimap
+	local c = map and map:GetParent()
+	if not (c and c ~= MinimapCluster and c.SetScale) then
+		return
+	end
+	local home = Size.Home(map, c)
+	-- Edit Mode's Size held at 100 % (a scale found here is the game's)
+	local okS, k = pcall(c.GetScale, c)
+	k = okS and Num(k) or nil
+	if k and (Size.editScale == nil or math.abs(k - 1) > 1e-6) then
+		Size.editScale = k
+	end
+	local moved = Size.Rescale(c, 1, true)
+	local w, h = Size.Wanted()
+	local s, cw, ch, file = Size.Crop(w, h)
+	local mw, mh = PlainSize(map)
+	if not (Same(mw, s) and Same(mh, s)) then
+		map:SetSize(s, s)
+		Size.Redraw(map)
+	end
+	Size.file = file
+	local p = Size.Proxy()
+	local force = not Size.held or cw ~= Size.cw or ch ~= Size.ch
+	if force then
+		Size.cw, Size.ch = cw, ch
+		local ix, iy = (s - cw) / 2, (s - ch) / 2
+		pcall(map.SetHitRectInsets, map, ix, ix, iy, iy)
+		p:SetSize(cw, ch)
+	end
+	Size.held = true
+	local pw, ph = PlainSize(c)
+	if not (Same(pw, cw + home.padW) and Same(ph, ch + home.padH)) then
+		c:SetSize(cw + home.padW, ch + home.padH)
+		moved = true
+	end
+	Size.Place(home, cw, ch, s, force)
+	if moved then
+		Size.LayCluster()
+	end
+end
+
+-- The game's own back (this module switched off)
+function Size.Release()
+	local map = Minimap
+	local c = map and map:GetParent()
+	local home = Size.home
+	if not (Size.held and home and c) then
+		return
+	end
+	Size.held, Size.cw, Size.ch, Size.file = false, nil, nil, nil
+	local mw, mh = PlainSize(map)
+	if not (Same(mw, home.mapW) and Same(mh, home.mapH)) then
+		map:SetSize(home.mapW, home.mapH)
+		Size.Redraw(map)
+	end
+	pcall(map.SetHitRectInsets, map, 0, 0, 0, 0)
+	if Size.zoomHeld then
+		Size.zoomHeld = false
+		for _, z in ipairs(home.zoom) do
+			z.frame:ClearAllPoints()
+			z.frame:SetPoint("CENTER", map, "CENTER", z.x, z.y)
+		end
+	end
+	local coords = home.coords
+	if coords and Size.coordsHeld then
+		Size.coordsHeld = false
+		coords.frame:ClearAllPoints()
+		coords.frame:SetPoint("BOTTOM", map, "BOTTOM", coords.x, coords.y)
+	end
+	-- the dial as the game places it for Edit Mode's Size (Camelot/Diel.lua's
+	-- SetEditModeScale: its scale never under 1, its offsets from the
+	-- cluster's centre shrunk below 100 %), that Size perhaps set while the
+	-- dial was held here
+	local dial = home.dial
+	if dial and Size.dialHeld then
+		local k = Size.editScale or 1
+		local kk = math.min(1, k)
+		dial.frame:SetScale(math.max(1, k))
+		dial.frame:ClearAllPoints()
+		dial.frame:SetPoint("CENTER", MinimapCluster, "CENTER", Size.DIAL_HOME_X * kk, Size.DIAL_HOME_Y * kk)
+	end
+	Size.dialDirty, Size.dialHeld = true, false
+	c:SetSize(home.cw, home.ch)
+	Size.Rescale(c, Size.editScale or 1, true)
+	Size.LayCluster()
+end
+
+-- The size laid or put back, out of combat (a fight's: Size.Later, below,
+-- when it is over)
+function Size.Lay()
+	if not (active or Size.held) then
+		return
+	end
+	if InCombatLockdown() then
+		Kit:WhenOutOfCombat(Size.Later, "Minimap size")
+		return
+	end
+	if active then
+		Size.Apply()
+	else
+		Size.Release()
+	end
+end
+
+-- The Size MelloUI's own layout wrote, not the player: until 0.14.0 the
+-- layout fit (Core/LayoutFit.lua F5m) set 150 %, or a 10 % step down to the
+-- approved layout's 90 % on a smaller screen -- the map "far too big" (user,
+-- 2026-09-28). So a whole 10 % step from 90 to 150 % while the Edit Mode
+-- layout in use is MelloUI's own ("MelloUI", or "MelloUI 1920x1080" on
+-- another screen; unreadable: while the installer or the reskin put it in,
+-- UIModifications' layoutApplied). A player's own Size in MelloUI's layout
+-- reads the same and is not kept: the map at its normal size then.
+function Size.Fitted(k)
+	local step = k * 10
+	if k < 0.895 or k > 1.505 or math.abs(step - math.floor(step + 0.5)) > 0.01 then
+		return false
+	end
+	local ok, state = pcall(MelloUI.EditModeState, MelloUI)
+	local name = ok and type(state) == "table" and state.activeName or nil
+	if type(name) == "string" then
+		return name == "MelloUI" or name:find("^MelloUI %d+x%d+$") ~= nil
+	end
+	local umdb = MelloUI:GetModuleDB("UIModifications")
+	return type(umdb) == "table" and umdb.layoutApplied == true
+end
+
+-- The old Size taken over once (0.15.0): until 0.14.0 the map's size was
+-- Edit Mode's Size (the container's scale). A player who set a Size that is
+-- not 100 % keeps the map's size on the screen: Width and Height 198 x Size,
+-- on the sliders' steps (within a unit; whole units the client keeps exactly
+-- in its 32-bit sizes, and the slider shows as they are). The Size
+-- MelloUI's own layout wrote is not taken over (Size.Fitted). Once
+-- (`sizeMigrated`, this machine's, never in a profile), and never after a
+-- size of the player's own.
+function Size.Migrate(k)
+	local db = M.db
+	if type(db) ~= "table" or db.sizeMigrated then
+		return false
+	end
+	db.sizeMigrated = true
+	k = Num(k)
+	if not (k and k > 0) or math.abs(k - 1) < 0.005 or Size.Fitted(k) then
+		return false
+	end
+	local v = MAP_MIN + math.floor((MAP_BASE * k - MAP_MIN) / MAP_STEP + 0.5) * MAP_STEP
+	v = math.min(MAP_MAX, math.max(MAP_MIN, v))
+	db.width, db.height = v, v
+	return true
+end
+
+-- the container's scale as it reads now (the game's while this module has
+-- not held it)
+function Size.ContainerScale()
+	local c = Minimap and Minimap:GetParent()
+	if not (c and c ~= MinimapCluster and c.GetScale) then
+		return nil
+	end
+	local ok, k = pcall(c.GetScale, c)
+	return ok and Num(k) or nil
+end
+
+-- the login settled with nothing taken over yet: Edit Mode's layout is in,
+-- its Size is the one the game last set (or found before it was held)
+function Size.MigrateLate()
+	if active and Size.Migrate(Size.editScale or Size.ContainerScale()) then
+		M:Relayout()
+	end
+end
+
+-- at the switch-on, before the size is held: a scale that is not 1 is Edit
+-- Mode's (the game's own is 1 until Edit Mode's layout is in); after the
+-- login, whatever it is; during it, 1 waits for Edit Mode (its SetScale
+-- hook) or for the login to settle
+function Size.Start()
+	local db = M.db
+	if type(db) ~= "table" or db.sizeMigrated then
+		return
+	end
+	local k = Size.ContainerScale()
+	if k and (math.abs(k - 1) > 1e-6 or not MelloUI:LoggingIn()) then
+		Size.Migrate(k)
+	else
+		MelloUI:AfterLogin(Size.MigrateLate)
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The square minimap
 --------------------------------------------------------------------------------
 
@@ -341,11 +909,13 @@ local function SetMask(square)
 	if not map then
 		return
 	end
-	pcall(map.SetMaskTexture, map, square and SQUARE_MASK or ROUND_MASK)
+	-- (square: cropped to the Width x Height, Size.Crop)
+	local file = square and (Size.file or SQUARE_MASK) or ROUND_MASK
+	pcall(map.SetMaskTexture, map, file)
 	-- a dungeon's own map (Blizzard_HybridMinimap) masks with a circle of its own
 	local hybrid = _G.HybridMinimap
 	if hybrid and hybrid.CircleMask then
-		pcall(hybrid.CircleMask.SetTexture, hybrid.CircleMask, square and SQUARE_MASK or HYBRID_ROUND_MASK)
+		pcall(hybrid.CircleMask.SetTexture, hybrid.CircleMask, square and (Size.file or SQUARE_MASK) or HYBRID_ROUND_MASK)
 	end
 	if square then
 		if not M.shapeFn then
@@ -366,9 +936,10 @@ local function BorderFrame()
 	if skin.square then
 		return skin.square
 	end
-	-- in the map's own container (Edit Mode's Size scales that, not the
+	-- in the map's own container (Edit Mode's Size scaled that, not the
 	-- cluster: a frame on the cluster kept its size while the map grew --
-	-- user, 2026-09-23: "using the Editmode scaling break the map size")
+	-- user, 2026-09-23: "using the Editmode scaling break the map size";
+	-- held at 100 % since 0.15.0, the map sized by Width and Height)
 	local f = CreateFrame("Frame", nil, Minimap:GetParent() or MinimapCluster)
 	f:SetFrameLevel(Minimap:GetFrameLevel() + 1)
 	f:EnableMouse(false)
@@ -518,7 +1089,7 @@ end
 -- distance line (M.RailName; the clock is on the zone band then)
 local function LayoutDivider(f, b, groups)
 	local d = Divider(f)
-	local map = Minimap
+	local map = M:MapFrame()
 	d:ClearAllPoints()
 	d:SetPoint("TOPLEFT", map, "BOTTOMLEFT", 0, 0)
 	d:SetPoint("TOPRIGHT", map, "BOTTOMRIGHT", 0, 0)
@@ -718,6 +1289,9 @@ end
 
 local function LaySquare()
 	local square = active and M.db and M.db.shape == "square"
+	-- the map's Width and Height first (its crop is the square mask), or the
+	-- game's size back
+	Size.Lay()
 	SetMask(square)
 	if not skin then
 		return
@@ -741,7 +1315,7 @@ local function LaySquare()
 		f:Hide()
 		return
 	end
-	local map = Minimap
+	local map = M:MapFrame()
 	for _, tex in pairs(f.parts) do
 		tex:Hide()
 	end
@@ -823,13 +1397,14 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	-- (the old Size taken over, once, before the size is held)
+	Size.Start()
 	LayoutSquare()
 	Kit:Cover("minimap")
-	-- the square map's shape set: Services' minimap button onto its edge
-	-- (Services loads first and placed it on the round map at login)
-	if M.db and M.db.shape == "square" then
-		ServicesLayout()
-	end
+	-- the map's size and shape set: Services' row as wide as the map, its
+	-- minimap button onto the map's edge (Services loads first and laid them
+	-- on the game's round map at login)
+	ServicesLayout()
 end
 
 
@@ -841,11 +1416,9 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
-	LayoutSquare()   -- the round mask and the game's shape answer back
+	LayoutSquare()   -- the round mask, the game's size and shape answer back
 	Kit:Uncover("minimap")
-	if M.db and M.db.shape == "square" then
-		ServicesLayout()   -- (the minimap button back on the round map)
-	end
+	ServicesLayout()   -- (the row and the minimap button back on the game's map)
 end
 
 -- the map's container scaled: laid out again on the next frame, once however
@@ -864,18 +1437,46 @@ local function RelayoutSoon()
 	end
 end
 
+-- Edit Mode set the container's scale (its Size: a layout put in, or its
+-- slider): kept as Edit Mode's own, taken over once as the map's size
+-- (Size.Migrate), and held at 1 while this module is on -- at once, before
+-- the game anchors the container for the scale it finds (its
+-- SetHeaderUnderneath, right after) and lays the cluster round it; the map
+-- laid out again on the next frame (the dial, which the game placed for its
+-- Size, placed again)
+function Size.OnEditScale(c, scale)
+	if Size.holding then
+		return
+	end
+	scale = Num(scale)
+	if scale and scale > 0 then
+		Size.editScale = scale
+	end
+	if not active then
+		return
+	end
+	Size.dialDirty = true
+	Size.Migrate(scale)
+	if scale and math.abs(scale - 1) > 1e-6 then
+		Size.holding = true
+		c:SetScale(1)
+		Size.holding = false
+	end
+	RelayoutSoon()
+end
+
 local hooked = false
 local function Hook()
 	if hooked then
 		return
 	end
 	hooked = true
-	-- Edit Mode's Size scales the map's container: the merged frame's band,
-	-- buttons and clock follow it at once, and the column under it (the
-	-- Relayout's 'column': the Quest Tracker takes the map's new width)
+	-- Edit Mode's Size scales the map's container: held at 1 while this
+	-- module is on (the map's size is its Width and Height), the map laid
+	-- out again (Size.OnEditScale)
 	local container = Minimap and Minimap:GetParent()
 	if container and container ~= MinimapCluster and container.SetScale then
-		hooksecurefunc(container, "SetScale", RelayoutSoon)
+		hooksecurefunc(container, "SetScale", Size.OnEditScale)
 	end
 	-- the UI Scale changed (user, 2026-09-24: "UI Scaling Break the UI"): the
 	-- merged band and its buttons were scaled to the frame's EFFECTIVE scale
@@ -926,6 +1527,15 @@ local function LayoutWithServices()
 	LayoutSquare()
 end
 
+-- the size laid once a fight is over (Size.Lay), then what follows it: the
+-- Services row as wide as the map, the map's frame round both; and the same
+-- for a new Width or Height, once a frame however often a slider moved in it
+function Size.Later()
+	Size.Lay()
+	LayoutWithServices()
+end
+Size.Changed = Size.Later
+
 -- Services calls this after laying its bar out (Edit Mode, its settings)
 function M:Relayout()
 	LayoutSquare()
@@ -965,13 +1575,25 @@ end
 --                       bar; the tracker last where nobody placed it
 --   M:ColumnWidth()     map, line: the column's width on the screen (pixels)
 --                       while this module is on; `map` the map's own (round:
---                       its diameter, square: its side; its size is Edit
---                       Mode's), `line` the width the frames line up to: the
---                       square border's frame (merged: the frame round the
---                       map and the Services bar) where it stands wider than
---                       the map, else the map's. The Quest Tracker takes
---                       `line` (Match The Minimap's Width). nil, nil while
---                       this module is off or the map cannot be read plainly
+--                       its diameter, square: its width; its Width and
+--                       Height are this module's), `line` the width the
+--                       frames line up to: the square border's frame
+--                       (merged: the frame round the map and the Services
+--                       bar) where it stands wider than the map, else the
+--                       map's. The Quest Tracker takes `line` (Match The
+--                       Minimap's Width). nil, nil while this module is off
+--                       or the map cannot be read plainly
+--   M:ColumnAnchor()    the Quest Tracker's glue (0.15.0): region, point,
+--                       dy -- the frame it lines up with (`line` above), its
+--                       BOTTOMRIGHT, and how far the column's bottom
+--                       (M:ColumnRect) lies under that point, in screen
+--                       pixels (0 or less). The tracker hangs its top right
+--                       corner that far under it, so it moves with the map
+--                       and takes its width. nil while this module is off or
+--                       the column cannot be read plainly
+--   M:MapFrame()        the map's shown part (its Width x Height) while this
+--                       module holds its size, else the game's map: what
+--                       hangs from the map hangs from this
 --   M:ColumnSide([l, r]) "left" while the column (its painted frame, or the
 --                       edges l, r already read from it) stands in the
 --                       screen's left half, else "right"; nil when it cannot
@@ -982,9 +1604,9 @@ end
 --                       plainly. MelloUI.Safe.ScreenRect (Core.lua), the
 --                       addon's one reader, kept here under its old name
 --                       for the modules that ask this one (Services)
--- Services hangs its bar and Route its line from it; the Quest Tracker hangs
--- below its bottom only where nobody placed it, and takes its width
--- (QuestTracker.lua). MelloUI never sizes the map for it. The places
+-- Services hangs its bar and Route its line from it; the Quest Tracker is
+-- glued under its bottom where nobody placed it, and takes its width
+-- (QuestTracker.lua). The map is never sized for it. The places
 -- are the ones they had -- the bar under the map by its offset (by the
 -- divider's height merged), the line 2 px under the map (inside the square
 -- border and the merged frame too, as before) -- except that the line goes
@@ -996,8 +1618,6 @@ end
 
 local LINE_GAP = 2        -- the distance line under what it hangs from
 local LINE_H = 12         -- its height when Route cannot say
-
-local Num = MelloUI.Safe.Number
 
 -- a region's edges on the screen (pixels); nil when one cannot be read
 -- plainly: the addon's one reader (MelloUI.Safe.ScreenRect, Core.lua)
@@ -1024,13 +1644,14 @@ function Column.Merged()
 end
 
 -- the map's block: the square border's frame while it shows round the map
--- (merged, it runs round the Services bar too), else the map
+-- (merged, it runs round the Services bar too), else the map (its shown
+-- part: M:MapFrame)
 function Column.Block()
 	local f = skin and skin.square
 	if active and f and f:IsShown() then
 		return f
 	end
-	return Minimap
+	return M:MapFrame()
 end
 
 -- the Services bar while it shows beside the block, not merged into it
@@ -1064,7 +1685,7 @@ function Column.BarRect(bar)
 end
 
 function M:ColumnSlot(part)
-	local map = Minimap
+	local map = M:MapFrame()
 	if part == "services" then
 		if Column.Merged() then
 			return map, "BOTTOM", 0, -M:DividerHeight()
@@ -1117,7 +1738,7 @@ end
 -- round the 198 map: LayoutFit's Column.GAME), the zone band under the map
 -- (Edit Mode's Header Underneath). -> the rect grown by them
 function Column.Painted(block, l, b, r, t)
-	if block ~= Minimap then
+	if block ~= M:MapFrame() then
 		local reach = block.gemReach
 		local s = reach and reach > 0 and EffScale(block)
 		if s then
@@ -1225,7 +1846,7 @@ function M:ColumnPart(part)
 		end
 	elseif part == "map" then
 		if Minimap and Minimap:IsShown() then
-			return ScreenRect(Minimap)
+			return ScreenRect(M:MapFrame())
 		end
 	elseif part == "services" then
 		local bar = ServicesBar()
@@ -1238,7 +1859,7 @@ function M:ColumnPart(part)
 		if h then
 			local rel, _, _, y = self:ColumnSlot("route")
 			local _, relBottom = ScreenRect(rel)
-			local l, _, r = ScreenRect(Minimap)
+			local l, _, r = ScreenRect(M:MapFrame())
 			local s = EffScale(Minimap)
 			if relBottom and l and s then
 				local top = relBottom + y * s
@@ -1288,24 +1909,47 @@ function M:ColumnOrder()
 	return order
 end
 
+-- the frame the column lines up to (M:ColumnWidth's `line`) and its width
+-- and the map's on the screen; nil while it cannot be read plainly
+function Column.Line()
+	local shown = M:MapFrame()
+	local l, _, r = ScreenRect(shown)
+	if not (l and r > l) then
+		return nil
+	end
+	local map = r - l
+	local f = skin and skin.square
+	if f and f:IsShown() then
+		local fl, _, fr = ScreenRect(f)
+		if fl and fr - fl > map then
+			return f, fr - fl, map
+		end
+	end
+	return shown, map, map
+end
+
 function M:ColumnWidth()
 	if not (active and Minimap) then
 		return nil, nil
 	end
-	local l, _, r = ScreenRect(Minimap)
-	if not (l and r > l) then
+	local _, line, map = Column.Line()
+	if not line then
 		return nil, nil
 	end
-	local map = r - l
-	local line = map
-	local f = skin and skin.square
-	if f and f:IsShown() then
-		local fl, _, fr = ScreenRect(f)
-		if fl and fr - fl > line then
-			line = fr - fl
-		end
-	end
 	return map, line
+end
+
+function M:ColumnAnchor()
+	if not (active and Minimap) then
+		return nil
+	end
+	local region = Column.Line()
+	local _, lb = ScreenRect(region)
+	local _, cb = self:ColumnRect()
+	if not (lb and cb) then
+		return nil
+	end
+	return region, "BOTTOMRIGHT", math.min(0, cb - lb)
 end
 
 function Column.Fire()
@@ -1378,7 +2022,21 @@ end
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
+	if key == "width" or key == "height" then
+		-- a size of the player's own: the old Size is never taken over after it
+		db.sizeMigrated = true
+		-- the map's size first: the Services row takes its width (Size.Changed)
+		if Kit.NextFrame then
+			Kit:NextFrame("Minimap size", Size.Changed)
+		else
+			Size.Changed()
+		end
+		return
+	end
 	if key == "shape" or key == "squareBorder" or key == "servicesMerge" then
+		if key == "shape" then
+			Size.Lay()   -- (the round map is as tall as it is wide)
+		end
 		LayoutWithServices()
 		-- the shape switched: Services' minimap button onto the new shape's
 		-- edge (it read the game's shape answer before the new mask set it;
@@ -1402,7 +2060,7 @@ function M:BarOutline()
 	if not (active and map and map:IsShown()) then
 		return nil
 	end
-	local l, b, r, t = ScreenRect(map)
+	local l, b, r, t = ScreenRect(M:MapFrame())
 	if not (l and r > l) then
 		return nil
 	end
@@ -1425,6 +2083,14 @@ SlashCmdList.MELLOMMDUMP = function(msg)
 	else
 		MelloUI:Print("== MinimapCluster  %s L%d; Minimap L%d; backdrop L%d", MinimapCluster:GetFrameStrata(), MinimapCluster:GetFrameLevel(),
 			Minimap and Minimap:GetFrameLevel() or -1, MinimapBackdrop and MinimapBackdrop:GetFrameLevel() or -1)
+		-- the size (0.15.0): the square map, the part it shows and its mask,
+		-- Edit Mode's Size held
+		local w, h = Size.Wanted()
+		local sw, sh = PlainSize(M:MapFrame())
+		local mw = PlainSize(Minimap)
+		MelloUI:Print("== size  asked %s x %s; map %s square, shows %s x %s (%s); Edit Mode's Size %s, container %s",
+			tostring(w), tostring(h), tostring(mw), tostring(sw), tostring(sh), tostring(Size.file or "no crop"),
+			tostring(Size.editScale), tostring(Size.ContainerScale()))
 		Kit:DumpWindow(MinimapCluster, skin, msg ~= "" and msg or nil)
 	end
 	MelloUI:ShowLog("mmdump " .. msg)

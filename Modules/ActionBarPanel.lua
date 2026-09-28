@@ -1540,6 +1540,42 @@ local function RefitStaleMicros()
 	end
 end
 
+-- A micro button's window open, a bag slot's bag open: their active state
+-- (0.15.0, the active look on every button that can be active). Neither has
+-- a checked flag: the game shows a region of the button while it is (a micro
+-- button's PushedBackground, SetPushed / SetNormal, the button's state set
+-- first; a bag slot's SlotHighlightTexture, UpdateBagButtonHighlight: the
+-- bag slots are item buttons, no check buttons), so the rim reads that
+-- region and its own Show / Hide read the rim again. [region] = the rim's rep.
+local openRep = setmetatable({}, { __mode = "k" })
+
+local Open_OnShown = Shared("Show / Hide on a micro button's pushed background or a bag slot's highlight", function(region)
+	local rep = openRep[region]
+	if rep and active then
+		rep:SetState()
+	end
+end)
+
+-- the rim's checked() for the region (nil: the button has none)
+local function OpenReader(region)
+	if not (region and region.IsShown) then
+		return nil
+	end
+	return function()
+		return region:IsShown() and true or false
+	end
+end
+
+-- ... and the rim read again as the game shows or hides it
+local function FollowOpen(region, rep)
+	if region and region.Show and openRep[region] == nil then
+		openRep[region] = rep
+		hooksecurefunc(region, "Show", Open_OnShown)
+		hooksecurefunc(region, "Hide", Open_OnShown)
+		hooksecurefunc(region, "SetShown", Open_OnShown)
+	end
+end
+
 local function SkinMicroMenu()
 	local menu = MicroMenu
 	if not menu or skin.micro then
@@ -1594,11 +1630,14 @@ local function SkinMicroMenu()
 			-- the character button's portrait shadow art (atlas-sized, centred)
 			-- would show outside the rim: faded with the plate
 			local rep = Replace(button.Background, { as = "MicroButtonRim", button = button, rect = button,
-				pitch = pitch, icon = glyph, alsoFade = { button.PushedBackground, button.Shadow, button.PushedShadow } })
+				pitch = pitch, icon = glyph, checked = OpenReader(button.PushedBackground),
+				alsoFade = { button.PushedBackground, button.Shadow, button.PushedShadow } })
 			button.melloRep = rep or false
 			if rep then
 				AddToGroup("micro", button)
 				Kit:RegisterButtonRim(button)
+				-- its window opened or closed: the active look follows
+				FollowOpen(button.PushedBackground, rep)
 			end
 			if rep and glyph then
 				-- the state textures that follow the glyph, and which atlas
@@ -1798,10 +1837,18 @@ local function SkinBagBar()
 			local ok, w, h = pcall(button.GetSize, button)
 			local pitch = (ok and not Secret(w) and w and w > 0) and { w, h } or nil
 			-- the thin rim in the bag bar's Button Border look; the gems on the
-			-- backdrop round the bar (user, 2026-09-23)
-			local rep = Kit:SkinActionButton(button, Replace, pitch, { as = Kit:ButtonRimRule() })
+			-- backdrop round the bar (user, 2026-09-23). Its bag open is the
+			-- game's highlight region shown: the rim's checked state, the
+			-- highlight faded (the active look stands in for it)
+			local open = button.SlotHighlightTexture
+			if type(open) ~= "table" then
+				open = nil   -- (a slot without one: no open state, nothing faded)
+			end
+			local rep = Kit:SkinActionButton(button, Replace, pitch, { as = Kit:ButtonRimRule(), checked = OpenReader(open),
+				alsoFade = open and { open } or nil })
 			if rep then
 				AddToGroup("bags", button)
+				FollowOpen(open, rep)
 			end
 		end
 	end
@@ -1911,6 +1958,25 @@ local function SkinStatusBars()
 	end
 end
 
+-- The check buttons the kit leaves in the game's own art (0.15.0): the extra
+-- action button and the vehicle bar's. A toggled ability there wears the
+-- active look while the game checks it, as on every bar (Kit's rule
+-- "ActionButtonActiveLook", in place of the button's checked art; where it
+-- has none, an agreed addition). Nothing is drawn until one is checked.
+local ACTIVE_ONLY = { "ExtraActionButton1", "OverrideActionBarButton1", "OverrideActionBarButton2", "OverrideActionBarButton3",
+	"OverrideActionBarButton4", "OverrideActionBarButton5", "OverrideActionBarButton6" }
+
+local function SkinActiveOnly()
+	for _, name in ipairs(ACTIVE_ONLY) do
+		local button = _G[name]
+		if type(button) == "table" and button.SetChecked and button.melloActive == nil then
+			local art = button.GetCheckedTexture and button:GetCheckedTexture() or nil
+			button.melloActive = Replace(art or button.icon or button, { as = "ActionButtonActiveLook", button = button, icon = button.icon,
+				noFade = art == nil }) or false
+		end
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Build / lifecycle
 --------------------------------------------------------------------------------
@@ -1935,6 +2001,7 @@ local function Build()
 	Try("micro menu", SkinMicroMenu)
 	Try("bag bar", SkinBagBar)
 	Try("status bars", SkinStatusBars)
+	Try("extra and vehicle buttons", SkinActiveOnly)
 end
 
 -- The main bar's page number and arrows hidden (user, 2026-09-21): faded

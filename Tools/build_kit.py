@@ -32,6 +32,10 @@ the Lua stays as it is; only the uv is measured on the file.
 The decorative red gems are toned to iron studs on the way (Tools/kit_gems.py,
 user 2026-09-23: too many red diamonds); --red-gems builds the old art.
 
+The Elite / Rare / Rare Elite / Boss marks (group marks/, Tools/kit_marks.py,
+user 2026-09-28) are made last, from the finished portrait ring, level orb and
+bar caps: their metal twins keep the plain piece's geometry (box, open, radius).
+
 Then the palettes' looks are made from it (Tools/kit_palette.py: Ember's
 Media/KitWarm and Media/KitBronze, user 2026-09-23, chosen in game; each
 other palette's Media/Kit<Id>, user 2026-09-26; Tools/palettes.json);
@@ -50,6 +54,7 @@ import numpy as np
 from PIL import Image
 
 import kit_gems
+import kit_marks
 import kit_palette
 from paths import master
 
@@ -185,6 +190,9 @@ DENSITY = [
     (r"^icons/", 0.5),                     # 192 px round icons shown at 62 (the portrait)
     (r"^cards/mining$", 0.6),              # 1024 px shown at 531
     (r"^cards/", 0.8),                     # 804 px shown at 531
+    (r"^marks/ring_", 0.75),               # the portrait ring's metal twins: as the ring
+    (r"^marks/crest_", 0.75),              # 64 px crests shown at 12-24 (the nameplates' sizes)
+    (r"^marks/", 0.5),                     # the orb's and the caps' metal twins, the orb's disc: as theirs
 ]
 
 
@@ -522,42 +530,9 @@ def main():
     jobs += [(key, "tiles/concrete", "concrete") for key in man if key.split("/", 1)[1] == "backdrops/page_stone"]
     jobs += [(key, "tiles/vellum", "vellum") for key in man if key.split("/", 1)[1] == "backdrops/page_parchment"]
     jobs += [(key, "deco/barjoin", "join") for key in man if key.split("/", 1)[1] == "buttons/slot_normal"]
-    for key, out_name, how in jobs:
-        name = key.split("/", 1)[1]                      # "window/frame_tl": the source, whose rules the piece follows
-        a = np.array(Image.open(os.path.join(SRC, name + ".png")).convert("RGBA"))
-        if how == "tone" and not red_gems:
-            a, changed = kit_gems.tone(name, a)
-            toned += 1 if changed else 0
-        logical = None
-        if how in ("tone", "keep") and tile_axes(name) == "xy":
-            # a background tile: its wrap made seamless again; its piece size
-            # keeps the painting's scale (the file is still power-of-two)
-            h0, w0 = a.shape[:2]
-            a = self_quilt(a)
-            logical = (round(a.shape[1] * pot_near(w0) / w0), round(a.shape[0] * pot_near(h0) / h0))
-            a = np.array(Image.fromarray(a).resize(logical, Image.LANCZOS))
-        elif how.startswith("thin:"):
-            a = thin_rim(a, **THIN_RIMS[how[5:]])
-        elif how.startswith("ring:"):
-            family = how[5:]
-            a = thin_ring(a, **THIN_RIMS[family])
-        elif how.startswith("bar:"):
-            _, family, part = how.split(":")
-            a = thin_bar(thin_rim(a, **THIN_RIMS[family]), THIN_RIMS[family]["t"], part)
-            name = out_name                  # a bar piece from here on (its middle tiled)
-        elif how == "join":
-            a = bar_join(heavy_frame(kit_gems.tone(name, a)[0]))
-            name = out_name
-        elif how == "frame_red":
-            a = heavy_frame(a)
-        elif how == "frame_iron":
-            a = heavy_frame(kit_gems.tone(name, a)[0])
-        elif how == "concrete":
-            a = quilt_tile(a, *CONCRETE_QUILT)
-            name = out_name                  # a tile from here on: tiled, at a tile's density
-        elif how == "vellum":
-            a = vellum_tile(a)
-            name = out_name
+    # the file and the layout entry of one piece (`name` the rules it follows,
+    # `extra` its manifest entry, `like` the piece whose geometry it keeps)
+    def emit(out_name, name, a, logical=None, extra=None, like=None):
         h, w = a.shape[:2]
         axes = tile_axes(name)
         fw = pot_near(w) if "x" in axes else pot_up(w)
@@ -621,11 +596,68 @@ def main():
             op = cap_hollow(np.array(im), cap.group(1))
         if op and re.search(r"(slot_|roundslot_|portrait_ring|card_|/frame_mid|castbar_mid|frame_cap|castbar_cap|bars/rim[a-z]*_(cap_[lr]|mid)|buttons/roundrim|checkbox|orb_|cog_|arrow_|plus_|minus_|close_)", name):
             entry["open"] = op
-        if "overhang" in man[key]:
-            entry["overhang"] = int(man[key]["overhang"])   # oversized corners: how far past the frame's corner they reach
+        if extra and "overhang" in extra:
+            entry["overhang"] = int(extra["overhang"])   # oversized corners: how far past the frame's corner they reach
         if re.search(r"(portrait_ring|roundslot_|roundrim|orb_)", out_name):
             entry["radius"] = body_radius(np.array(im))    # the round body without its compass gems
+        if like:
+            # a metal twin (marks/): the plain piece's geometry, so the game swaps
+            # one for the other with no refit
+            for k in ("box", "open", "radius"):
+                if k in pieces[like]:
+                    entry[k] = pieces[like][k]
+                else:
+                    entry.pop(k, None)
         pieces[out_name] = entry
+
+    # the finished pieces the marks are made from (Tools/kit_marks.py)
+    mark_bases, made = kit_marks.bases(), {}
+
+    for key, out_name, how in jobs:
+        name = key.split("/", 1)[1]                      # "window/frame_tl": the source, whose rules the piece follows
+        a = np.array(Image.open(os.path.join(SRC, name + ".png")).convert("RGBA"))
+        if how == "tone" and not red_gems:
+            a, changed = kit_gems.tone(name, a)
+            toned += 1 if changed else 0
+        logical = None
+        if how in ("tone", "keep") and tile_axes(name) == "xy":
+            # a background tile: its wrap made seamless again; its piece size
+            # keeps the painting's scale (the file is still power-of-two)
+            h0, w0 = a.shape[:2]
+            a = self_quilt(a)
+            logical = (round(a.shape[1] * pot_near(w0) / w0), round(a.shape[0] * pot_near(h0) / h0))
+            a = np.array(Image.fromarray(a).resize(logical, Image.LANCZOS))
+        elif how.startswith("thin:"):
+            a = thin_rim(a, **THIN_RIMS[how[5:]])
+        elif how.startswith("ring:"):
+            family = how[5:]
+            a = thin_ring(a, **THIN_RIMS[family])
+        elif how.startswith("bar:"):
+            _, family, part = how.split(":")
+            a = thin_bar(thin_rim(a, **THIN_RIMS[family]), THIN_RIMS[family]["t"], part)
+            name = out_name                  # a bar piece from here on (its middle tiled)
+        elif how == "join":
+            a = bar_join(heavy_frame(kit_gems.tone(name, a)[0]))
+            name = out_name
+        elif how == "frame_red":
+            a = heavy_frame(a)
+        elif how == "frame_iron":
+            a = heavy_frame(kit_gems.tone(name, a)[0])
+        elif how == "concrete":
+            a = quilt_tile(a, *CONCRETE_QUILT)
+            name = out_name                  # a tile from here on: tiled, at a tile's density
+        elif how == "vellum":
+            a = vellum_tile(a)
+            name = out_name
+        if out_name in mark_bases:
+            made[out_name] = a              # (the marks are made from it, below)
+        emit(out_name, name, a, logical, man[key])
+
+    # the Elite / Rare / Rare Elite / Boss marks (group marks/, Tools/kit_marks.py):
+    # made from the finished pieces, each written as any piece; a metal twin
+    # keeps its plain piece's geometry
+    for out_name, a, like in kit_marks.pieces(made, pieces):
+        emit(out_name, out_name, a, like=like)
 
     # ---- Lua
     def num(v):

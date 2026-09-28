@@ -80,6 +80,17 @@ local IsSecret = MelloUI.Safe.IsSecret
 local Plain = MelloUI.Safe.Value
 local Num = MelloUI.Safe.Number
 
+-- the minimap's shown part (MinimapPanel's Width x Height, 0.15.0: its
+-- square map cropped): what the row lines up with and the minimap button
+-- stands round; the game's map without it
+local function MapFrame()
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if mp and mp.MapFrame then
+		return mp:MapFrame()
+	end
+	return Minimap
+end
+
 local function VectorXY(pos)
 	if type(pos) ~= "table" then
 		return nil, nil
@@ -1610,6 +1621,10 @@ local PER_ROW = 5
 -- padding above and under them is GAP
 local GROUP_CELL = 38
 local MIN_GAP = 4
+-- the game's map at 100 % (UI units): the buttons as they fit under it are
+-- their 100 % size, never grown with a wider map (0.15.0, the Minimap Kit's
+-- Width; user, 2026-09-28: the service and group buttons "stay at 100 %")
+local MAP_HOME = 198
 
 -- The icons: bright with one of the kind known on this continent, grey
 -- without. Each kind is looked at every 15 s while the bar is visible, one
@@ -2249,17 +2264,21 @@ local function BarStone(on)
 end
 
 -- Groups' row: one line as wide as the map (in the square frame or under the
--- map alike), GROUP_CELL cells, smaller where they do not all fit with
--- MIN_GAP between them, spread evenly across it: its width, cell and gap (a
--- map whose width cannot be read: the cells at their size, MIN_GAP apart)
+-- map alike), the cells as they fit the game's map at 100 % (GROUP_CELL,
+-- smaller where they do not all fit MAP_HOME with MIN_GAP between them;
+-- smaller still only on a map narrower than that), spread evenly across it:
+-- its width, cell and gap (a map whose width cannot be read: the cells at
+-- their size, MIN_GAP apart)
 local function GroupRow()
 	local n = #GROUPS
-	local okW, mapW = pcall(Minimap.GetWidth, Minimap)
+	local cell = math.min(GROUP_CELL, (MAP_HOME - (n + 1) * MIN_GAP) / n)
+	local map = MapFrame()
+	local okW, mapW = pcall(map.GetWidth, map)
 	mapW = okW and Num(mapW) or nil
 	if not (mapW and mapW > 0) then
-		mapW = n * GROUP_CELL + (n + 1) * MIN_GAP
+		mapW = n * cell + (n + 1) * MIN_GAP
 	end
-	local cell = math.min(GROUP_CELL, (mapW - (n + 1) * MIN_GAP) / n)
+	cell = math.min(cell, (mapW - (n + 1) * MIN_GAP) / n)
 	return mapW, cell, (mapW - n * cell) / (n + 1)
 end
 
@@ -2278,6 +2297,7 @@ local function LayoutBar()
 	local inset = kit and 0 or (cell - icon) / 2
 	local merged = Merged()
 	local perRow, pad, width, height = PER_ROW
+	local vgap = gap   -- (between two rows)
 	if GroupsOn() then
 		-- one row of groups, GAP above and under it
 		perRow, pad = #bar.buttons, GAP
@@ -2289,23 +2309,27 @@ local function LayoutBar()
 		width = PER_ROW * cell + (PER_ROW + 1) * gap
 		if merged then
 			-- as wide as the map: the cells made smaller where five do not fit
-			-- (user, 2026-09-23: "the buttons are not quite fitting the borders"),
-			-- then spread evenly across it
-			local okW, mapW = pcall(Minimap.GetWidth, Minimap)
+			-- the game's map at 100 % (user, 2026-09-23: "the buttons are not
+			-- quite fitting the borders"), smaller still only on a narrower map
+			-- (never grown with a wider one: MAP_HOME), then spread evenly
+			-- across it; the rows minGap apart, as at 100 %
+			local map = MapFrame()
+			local okW, mapW = pcall(map.GetWidth, map)
 			if okW and mapW and not IsSecret(mapW) and mapW > 0 then
 				width = mapW
 				local minGap = 4
-				local fit = (mapW - (PER_ROW + 1) * minGap) / PER_ROW
+				local fit = (math.min(mapW, MAP_HOME) - (PER_ROW + 1) * minGap) / PER_ROW
 				if cell > fit then
 					local k = fit / cell
 					cell, icon = fit, icon * k
 					inset = kit and 0 or (cell - icon) / 2
 				end
 				gap = (mapW - PER_ROW * cell) / (PER_ROW + 1)
+				vgap = minGap
 			end
 		end
-		pad = gap
-		height = rows * cell + (rows + 1) * gap
+		pad = vgap
+		height = rows * cell + (rows + 1) * vgap
 	end
 	bar:SetSize(width, height)
 	for i, b in ipairs(bar.buttons) do
@@ -2313,7 +2337,7 @@ local function LayoutBar()
 		b:SetSize(kit and cell or icon, kit and cell or icon)
 		b:ClearAllPoints()
 		b:Show()
-		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(pad + row * (cell + gap) + inset))
+		b:SetPoint("TOPLEFT", gap + col * (cell + gap) + inset, -(pad + row * (cell + vgap) + inset))
 		if b.rim then
 			local k = icon / 21
 			b.rim:SetSize(53 * k, 53 * k)
@@ -2480,21 +2504,24 @@ local function UpdateButtonPosition()
 	end
 	local angle = math.rad(tonumber(M.db.angle) or 205)
 	-- where it always sat on the game's 198 wide map (80 from the middle),
-	-- in proportion should the map's own width differ (Edit Mode's Size
-	-- scales the map's container, not its width: it stays 198)
-	local radius = 80
-	local okW, w = pcall(Minimap.GetWidth, Minimap)
-	w = okW and Num(w) or nil
+	-- in proportion should the map's shown part differ (MinimapPanel's
+	-- Width and Height; Edit Mode's Size scales the map's container, not
+	-- its width)
+	local rx = 80
+	local map = MapFrame()
+	local okW, w, h = pcall(map.GetSize, map)
+	w, h = okW and Num(w) or nil, okW and Num(h) or nil
 	if w and w > 0 then
-		radius = w * 80 / 198
+		rx = w * 80 / 198
 	end
-	local x, y = math.cos(angle) * radius, math.sin(angle) * radius
+	local ry = (h and h > 0) and h * 80 / 198 or rx
+	local x, y = math.cos(angle) * rx, math.sin(angle) * ry
 	-- A square minimap wants the button on its edge, not on a circle.
 	if GetMinimapShape then
 		local ok, shape = pcall(GetMinimapShape)
 		if ok and shape == "SQUARE" then
 			local q = math.max(math.abs(math.cos(angle)), math.abs(math.sin(angle)))
-			x, y = math.cos(angle) / q * radius, math.sin(angle) / q * radius
+			x, y = math.cos(angle) / q * rx, math.sin(angle) / q * ry
 		end
 	end
 	button:ClearAllPoints()
