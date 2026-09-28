@@ -325,6 +325,10 @@ I.TEXT = {
 	altQuestion = "Use MelloUI's Edit Mode layout on this character too?\n\nYour own layouts stay in Edit Mode's list. Later: /mello layout apply.",
 	altYes = "Use it",
 	altNo = "Not now",
+	-- (the Gamepad UI on: the question waits for a login with the mouse UI;
+	-- never /mello layout apply here, which fits and saves the account's
+	-- shared layout again, where Use it only makes it active)
+	altGamepad = "MelloUI's Edit Mode layout is not active on this character: pick it in Edit Mode's layout list, or log in without the Gamepad UI to be asked.",
 }
 local TEXT = I.TEXT
 
@@ -2187,7 +2191,9 @@ end
 --     Mode layout for this screen, on a character that does not use it (the
 --     game keeps the active layout per character; MelloUI's settings are
 --     the account's): one question, once per character, remembered in
---     UI Modifications' layoutAsked_<character> (the player's own).
+--     UI Modifications' layoutAsked_<character> (the player's own), in
+--     MelloUI's own dialog (MelloUI:Confirm). With the Gamepad UI on: one
+--     chat line instead, and the question waits for the mouse UI.
 -- Whatever opens waits for the end of a fight (PLAYER_REGEN_ENABLED) or for
 -- Edit Mode to close ('editmode'), each taken only then. Nothing polls.
 -- The player's own open (I:Open) comes first: once they opened the
@@ -2210,7 +2216,6 @@ end
 
 local LOGIN_OWNER = "Installer login"   -- the bus owner while a login open waits
 local CHECK_DELAY, CHECK_AGAIN, CHECK_MORE, CHECK_GIVE_UP = 3, 3, 6, 20
-local ALT_POPUP = "MELLOUI_LAYOUT_ALT"
 
 -- started: PLAYER_ENTERING_WORLD came; done: the check decided (or gave
 -- up); first: its first run's time; more: the checks run again; armed: a
@@ -2328,7 +2333,12 @@ end
 
 -- The question for a character that does not use Mello's layout (asked
 -- once per character: user, 2026-09-25): remembered before it is asked, so
--- it is asked once. The game's own popup, its dialog registered only now.
+-- it is asked once, in MelloUI's own dialog (MelloUI:Confirm,
+-- Modules/KitWindow.lua). With the Gamepad UI on nothing is asked: the
+-- D-pad cannot reach that dialog, and the game's own popup would block the
+-- game's protected calls. One chat line says where to pick the layout
+-- instead (TEXT.altGamepad), and the question stays unasked (its key unset)
+-- for a login with the mouse UI.
 -- Use it makes the account's layout for this screen active on this
 -- character (Core/EditModeLayout.lua; after the fight when there is one):
 -- nothing is fitted or saved, so the layout another character installed
@@ -2351,18 +2361,20 @@ local function AltAccept()
 	end
 end
 
-local ALT_DIALOG = { text = TEXT.altQuestion, button1 = TEXT.altYes, button2 = TEXT.altNo, OnAccept = AltAccept,
-	timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3 }
+local ALT_ASK = { text = TEXT.altQuestion, accept = TEXT.altYes, cancel = TEXT.altNo, onAccept = AltAccept }
 
 local function AskAlt()
 	local key = login.altKey
 	login.altKey = nil
-	if not key or type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then
+	if not key or type(MelloUI.Confirm) ~= "function" then
+		return
+	end
+	if MelloUI.Safe.GamepadUI() then
+		MelloUI:Notice(TEXT.altGamepad)
 		return
 	end
 	SetOwn(key, true)
-	StaticPopupDialogs[ALT_POPUP] = ALT_DIALOG
-	StaticPopup_Show(ALT_POPUP)
+	MelloUI:Confirm(ALT_ASK)
 end
 
 local function OnLoginEditMode(entering)

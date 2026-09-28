@@ -2211,6 +2211,11 @@ end
 -- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the
 -- character window is one group; the picker opens it while it runs when it
 -- is closed, and closes it again after.
+-- Not while the game's Gamepad UI is on (0.15.0): a game window shown or
+-- hidden from our code runs the game's gamepad bindings in our run, and the
+-- protected call at their end is blocked (the game's "blocked" popup). There
+-- the picker uses the window only when it is already open, and says so in
+-- the chat when it is not.
 --------------------------------------------------------------------------------
 
 local openedForPicker = false
@@ -2237,14 +2242,20 @@ end
 function M:PickerStart()
 	openedForPicker = false
 	local cf = CharacterFrame
-	if cf and not cf:IsShown() and ShowUIPanel then
-		ShowUIPanel(cf)
-		openedForPicker = true
+	if not (cf and not cf:IsShown() and ShowUIPanel) then
+		return
 	end
+	if MelloUI.Safe.GamepadUI() then
+		MelloUI:Print("Dynamic UI Modification: in the Gamepad UI, open your character window before you start to pick on it.")
+		return
+	end
+	ShowUIPanel(cf)
+	openedForPicker = true
 end
 
+-- (the Gamepad UI switched on since the start: the window is left open)
 function M:PickerStop()
-	if openedForPicker and CharacterFrame and HideUIPanel then
+	if openedForPicker and CharacterFrame and HideUIPanel and not MelloUI.Safe.GamepadUI() then
 		HideUIPanel(CharacterFrame)
 	end
 	openedForPicker = false

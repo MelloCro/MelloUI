@@ -6,10 +6,11 @@
 -- Colours looks GameMenuFrame_warm / _bronze and each palette's own
 -- GameMenuFrame_<palette id>): the
 -- gold "Game Menu" header, nine red plates in an iron and stone frame. The
--- game's own buttons are laid on the plates by their labels (Options, AddOns,
--- Edit Mode, Support, Macros, MelloUI, Log Out, Exit Game, Return to Game),
--- their art hidden and their text kept; a button with any other label is
--- stacked under the last plate with its usual look.
+-- game's own buttons, and MelloUI's own entry (Core/Config.lua), are laid on
+-- the plates by their labels (Options, AddOns, Edit Mode, Support, Macros,
+-- MelloUI, Log Out, Exit Game, Return to Game), their art hidden and their
+-- text kept; a button with any other label is stacked under the last plate
+-- with its usual look.
 --
 -- Every box was measured on the 910 x 1728 art in pixels; S turns them into
 -- frame units.
@@ -28,7 +29,7 @@ local M = MelloUI:RegisterModule("GameMenuPanel", {
 	desc = "The Escape menu on a painted stone and iron frame with red plates for its buttons.",
 	icon = "Interface\\Icons\\INV_Misc_Key_10",
 	flavour = "Nine red plates under a gold header. The way out, in stone and iron.",
-	window = { label = "Game menu", desc = "The Escape menu on its painted plates.", tab = "Windows" },
+	window = { label = "Game menu", desc = "The Escape menu on its painted plates. With the game's Gamepad UI on, the MelloUI plate stays empty: /mello opens MelloUI's settings.", tab = "Windows" },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -293,7 +294,36 @@ local function Buttons()
 			end
 		end
 	end
-	return list
+	-- MelloUI's own entry, once made (Core/Config.lua, at the menu's first
+	-- show with the mouse UI): a child of UIParent, never one of the menu's,
+	-- laid on its plate like the others
+	local own = _G.MelloUIGameMenuButton
+	if own then
+		list[#list + 1] = own
+	end
+	return list, own
+end
+
+-- MelloUI's own entry is no child of the menu, so a raise of the menu does
+-- not carry it along: the menu is toplevel (a click on its stone raises it)
+-- and the game's panel manager raises it again as it lays out the open
+-- panels (UIParentPanelManager.lua:712). On its plate, inside the menu, the
+-- raised menu and the art would cover it and take its clicks; there it
+-- stands one strata over the menu's, where no raise of the menu reaches.
+-- Under the menu (the skin off) it is back at the menu's strata.
+local STRATA_ABOVE = {
+	BACKGROUND = "LOW", LOW = "MEDIUM", MEDIUM = "HIGH", HIGH = "DIALOG",
+	DIALOG = "FULLSCREEN", FULLSCREEN = "FULLSCREEN_DIALOG", FULLSCREEN_DIALOG = "TOOLTIP",
+}
+
+local function MenuStrata()
+	return MelloUI.Safe.Text(GameMenuFrame:GetFrameStrata()) or "DIALOG"
+end
+
+local function OwnStrata(own, strata)
+	if MelloUI.Safe.Text(own:GetFrameStrata()) ~= strata then
+		own:SetFrameStrata(strata)
+	end
 end
 
 local function Arrange()
@@ -303,7 +333,11 @@ local function Arrange()
 	local frame = GameMenuFrame
 	frame:SetSize(FRAME_W, FRAME_H)
 	local extra = 0
-	for _, button in ipairs(Buttons()) do
+	local buttons, own = Buttons()
+	if own then
+		OwnStrata(own, STRATA_ABOVE[MenuStrata()] or "FULLSCREEN")
+	end
+	for _, button in ipairs(buttons) do
 		local fs = button:GetFontString()
 		local index = PlateIndex(fs and fs:GetText())
 		if index and PLATES[index] then
@@ -411,6 +445,10 @@ local function Deactivate()
 	end
 	for button in pairs(dressed) do
 		UndressButton(button)
+	end
+	local own = _G.MelloUIGameMenuButton
+	if own then
+		OwnStrata(own, MenuStrata())
 	end
 	local s = saved[GameMenuFrame]
 	if s then

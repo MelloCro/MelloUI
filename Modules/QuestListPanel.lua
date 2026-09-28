@@ -688,27 +688,135 @@ local function Ask()
 	C_Timer.After(QUIET, Rebuild)
 end
 
--- The rows one layout can show, made ahead in the Gamepad UI (the panel's
--- OnShow): the panel is as tall as the map, never taller than the screen,
--- and a header is the shortest row; two more for the rows cut at the ends
-local rowsWarm = false
-local function RowsToWarm()
-	local h = MelloUI.Safe.Finite(MelloUI.Safe.Call(UIParent, "GetHeight"))
-	local n = h and h > 0 and math.ceil(h / HEADER_HEIGHT) + 2 or 48
-	return math.max(16, math.min(n, 64))
+--------------------------------------------------------------------------------
+-- The panel stands beside the world map, outside the map's own frames
+-- (0.15.0, the map's freeze in the Gamepad UI). As the map's child it was in
+-- every walk the game's gamepad navigation makes of the map (as it opens, on
+-- each focus change, for each frame made in it): the panel, its list and its
+-- rows, and the list's ScrollTarget read on the way, a field MelloUI's list
+-- wrote, so the rest of the walk and the navigation's state after it ran on
+-- MelloUI's time. It hangs in a holder of its own under UIParent instead,
+-- which stands in for the map as the panel's window: it shows and hides
+-- with the map, takes the map's alpha as the map takes it (one flat
+-- picture: the map is a frame buffer, and so is the holder), its scale,
+-- and the strata and level the panel had as its child (on each show, and
+-- each time the map is raised), and it rises when the panel is clicked (a
+-- toplevel window, as the map). The kit's window mover drags the map by
+-- the panel's title plate, as it did while the panel was the map's child
+-- (melloWindowOf: the window the kit files the holder's plate and rail
+-- under, Kit.lua's WindowOf). The panel keeps its own shown state for the
+-- module (Apply, the module's OnDisable), and its OnShow / OnHide come with
+-- the map's as before. Its rows are made as the list needs them: the
+-- navigation's climb from a new frame stops at UIParent, so a row made
+-- later walks no window.
+--------------------------------------------------------------------------------
+
+-- a scale on the holder: the panel's backgrounds laid again at the UI's one
+-- density with it (Kit:SetFrameScale; only when the scale really changed)
+local function HolderScale(holder, scale)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.SetFrameScale then
+		Kit:SetFrameScale(holder, scale)
+	else
+		holder:SetScale(scale)
+	end
+end
+
+-- The map's look and place on the holder, by post-hooks only: nothing is
+-- written on the map. Its alpha comes from the game's fade while the player
+-- moves (PlayerMovementFrameFader sets it on every frame while the map is
+-- open and the player has moved) and from UI Modifications' fade-in: one
+-- call on to the holder each time. Its scale from UI Modifications' saved
+-- scale and the mouse wheel on its mover. Its level: the map is a toplevel
+-- window, raised by a click in it and by the panel manager (Raise, as the
+-- panels are laid out), and as its child the panel rose with it.
+local function FollowMap(holder, frame)
+	local map = WorldMapFrame
+	-- the map's strata, the holder at the map's level and the panel five
+	-- over it, where it stood as the map's child; `up`: only ever lifted (a
+	-- click on the panel raised it over the map, and there it stays)
+	local function Level(up)
+		local strata = map:GetFrameStrata()
+		if holder:GetFrameStrata() ~= strata then
+			holder:SetFrameStrata(strata)
+		end
+		if frame:GetFrameStrata() ~= strata then
+			frame:SetFrameStrata(strata)
+		end
+		local level = map:GetFrameLevel()
+		if up and holder:GetFrameLevel() >= level then
+			return
+		end
+		if holder:GetFrameLevel() ~= level then
+			holder:SetFrameLevel(level)
+		end
+		if frame:GetFrameLevel() ~= level + 5 then
+			frame:SetFrameLevel(level + 5)
+		end
+	end
+	local function Sync()
+		holder:SetAlpha(map:GetAlpha())
+		HolderScale(holder, map:GetScale())
+		Level(false)
+	end
+	-- a click raises the map in the game's own code, no call to hook: the
+	-- panel is lifted after it as the button is let go, while the map shows
+	Perf.SetScript(holder, "OnEvent", function()
+		Level(true)
+	end)
+	Sync()
+	if map:IsShown() then
+		holder:RegisterEvent("GLOBAL_MOUSE_UP")
+	end
+	Perf.HookScript(map, "OnShow", function()
+		Sync()
+		holder:Show()
+		holder:RegisterEvent("GLOBAL_MOUSE_UP")
+	end)
+	Perf.HookScript(map, "OnHide", function()
+		holder:UnregisterEvent("GLOBAL_MOUSE_UP")
+		holder:Hide()
+	end)
+	Perf.hooksecurefunc(map, "Raise", function()
+		Level(true)
+	end)
+	Perf.hooksecurefunc(map, "SetAlpha", function(_, alpha)
+		holder:SetAlpha(alpha)
+	end)
+	Perf.hooksecurefunc(map, "SetScale", function(_, scale)
+		HolderScale(holder, scale)
+	end)
 end
 
 function QL.Panel:Create()
 	if self.frame then
 		return
 	end
-	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", WorldMapFrame, "PortraitFrameTemplate")
+	-- (the holder: the whole screen, no mouse, shown while the map is; at
+	-- the map's strata and level, so the panel and its template's frames are
+	-- made where they were made as the map's children. A frame buffer, as
+	-- the map: the map's fade dims the panel as one picture, not each of its
+	-- layers over the others; the whole screen, so no rail or shade that
+	-- reaches past the panel is cut. Toplevel, as the map: a click on the
+	-- panel raises it. And the map's for the kit: melloWindowOf)
+	local holder = CreateFrame("Frame", nil, UIParent)
+	holder:SetAllPoints(UIParent)
+	holder:SetFrameStrata(WorldMapFrame:GetFrameStrata())
+	holder:SetFrameLevel(WorldMapFrame:GetFrameLevel())
+	holder:SetShown(WorldMapFrame:IsShown())
+	if holder.SetIsFrameBuffer then
+		holder:SetIsFrameBuffer(true)
+	end
+	holder:SetToplevel(true)
+	holder.melloWindowOf = WorldMapFrame
+	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", holder, "PortraitFrameTemplate")
 	self.frame = frame
 	frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 2, 0)
 	frame:SetPoint("BOTTOMLEFT", WorldMapFrame, "BOTTOMRIGHT", 2, 0)
 	frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
-	frame:SetFrameStrata(WorldMapFrame:GetFrameStrata())
-	frame:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 5)
+	-- (the map's strata, five levels over the map, its alpha and scale: now,
+	-- on each show and as the map is raised)
+	FollowMap(holder, frame)
 	frame:EnableMouse(true)
 	if frame.SetTitle then
 		frame:SetTitle("Quests")
@@ -903,9 +1011,6 @@ function QL.Panel:Create()
 		end
 	end)
 	ScrollUtil.InitScrollBoxListWithScrollBar(frame.scrollBox, frame.scrollBar, view)
-	-- the list's layouts never make the game's gamepad navigation walk the
-	-- whole map again (its rows are made as the map shows: OnShow below)
-	MelloUI.Safe.QuietList(view)
 	frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
 	frame.empty:SetPoint("CENTER", frame.scrollBox, "CENTER")
 	frame.empty:SetWidth(240)
@@ -916,13 +1021,6 @@ function QL.Panel:Create()
 	-- laid out afresh each time it shows, the sums taken then (the map draws
 	-- its pins afresh on showing too)
 	Perf.SetScript(frame, "OnShow", function()
-		-- in the Gamepad UI the list's rows are made now, inside the map's own
-		-- Show, before the game opens the map for its navigation: made later,
-		-- each new row would cost a walk of the whole map (Safe.WarmNow)
-		if not rowsWarm and MelloUI.Safe.WarmNow(frame) then
-			rowsWarm = true
-			MelloUI.Safe.WarmList(frame.scrollBox, "Button", RowsToWarm())
-		end
 		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
 		watcher:RegisterEvent("QUEST_LOG_UPDATE")
 		watcher:RegisterEvent("QUEST_TURNED_IN")
@@ -1051,11 +1149,11 @@ end
 
 local inkLabels = nil   -- the page's own texts and their inks, listed once
 
--- `quiet` (a rebuild an event asked for): the list is laid out again only
--- when what it would show differs from what it shows (every row's button
--- set up anew and the kit's rows skinned again, for the same list, was the
--- bulk of a rebuild's time -- /melloperf, 2026-09-24). A click, a filter, a
--- map change, a setting or showing the panel always lay it out.
+-- `quiet` (a rebuild an event or a map change asked for): the list is laid
+-- out again only when what it would show differs from what it shows (every
+-- row's button set up anew and the kit's rows skinned again, for the same
+-- list, was the bulk of a rebuild's time -- /melloperf, 2026-09-24). A
+-- click, a filter, a setting or showing the panel always lay it out.
 function QL.Panel:Update(quiet)
 	local frame = self.frame
 	if not frame or not frame:IsShown() or not QL.byZone then

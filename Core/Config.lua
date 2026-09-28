@@ -1,9 +1,10 @@
 --------------------------------------------------------------------------------
 -- MelloUI - Config
 --
--- The configuration window, opened from its own MelloUI button in the game
--- menu (Escape) or with /mello. Nothing is registered with the Blizzard
--- Settings panel, so there is no entry under Options > AddOns.
+-- The configuration window, opened from its own MelloUI button at the game
+-- menu (Escape; not while the game's Gamepad UI is on) or with /mello.
+-- Nothing is registered with the Blizzard Settings panel, so there is no
+-- entry under Options > AddOns.
 --
 -- Layout (the approved sketch of 2026-09-24; the configurator build):
 --   the shell           Kit:OwnWindow (Modules/KitWindow.lua): the emblem as a
@@ -1566,35 +1567,29 @@ local function InstallerState()
 end
 
 -- Loading a profile by a click asks first (user, 2026-09-25): ONE confirmation
--- for Home's Profile dropdown and the Profiles page's Load button, defined
--- the first time it is asked (not at load). Accepted, it does what Load
--- always did. The typed /mello profile load stays without a question.
-local function LoadAccepted(_, name)
-	if type(name) ~= "string" then
-		return
-	end
+-- for Home's Profile dropdown and the Profiles page's Load button, in
+-- MelloUI's own dialog (MelloUI:Confirm, Modules/KitWindow.lua; the game's
+-- popups run the game's popup and gamepad code in MelloUI's execution, the
+-- Gamepad UI freeze of 0.15.0). Accepted, it does what Load always did. The
+-- typed /mello profile load stays without a question.
+local function LoadAccepted(name)
 	if MelloUI:LoadProfile(name) then
 		MelloUI:Print("Profile '%s' loaded.", name)
 	end
 	MelloUI:RefreshConfig()
 end
 function ConfirmLoadProfile(name)
-	if type(name) ~= "string" or name == "" or type(StaticPopupDialogs) ~= "table" then
+	if type(name) ~= "string" or name == "" then
 		return
 	end
-	if not StaticPopupDialogs.MELLOUI_LOAD_PROFILE then
-		StaticPopupDialogs.MELLOUI_LOAD_PROFILE = {
-			text = "Load the profile '%s'? Your current settings are replaced; save them as a profile first to keep them.",
-			button1 = "Load",
-			button2 = "Cancel",
-			OnAccept = LoadAccepted,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-	end
-	StaticPopup_Show("MELLOUI_LOAD_PROFILE", name, nil, name)
+	MelloUI:Confirm({
+		text = ("Load the profile '%s'? Your current settings are replaced; save them as a profile first to keep them."):format(name),
+		accept = "Load",
+		cancel = "Cancel",
+		onAccept = function()
+			LoadAccepted(name)
+		end,
+	})
 end
 
 -- Your setup's Revert: back to the installer's restore point. An answer the
@@ -1671,22 +1666,12 @@ local function ConfirmRevert()
 		OpenInstallerFor("revert")
 		return
 	end
-	if type(StaticPopupDialogs) ~= "table" then
-		return
-	end
-	if not StaticPopupDialogs.MELLOUI_REVERT_SETUP then
-		StaticPopupDialogs.MELLOUI_REVERT_SETUP = {
-			text = "Go back to how MelloUI was before the installer ran ('Before install')? Your settings return to what they were then, and Edit Mode's layouts too if the installer changed them.",
-			button1 = "Go back",
-			button2 = "Cancel",
-			OnAccept = RevertAccepted,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-	end
-	StaticPopup_Show("MELLOUI_REVERT_SETUP")
+	MelloUI:Confirm({
+		text = "Go back to how MelloUI was before the installer ran ('Before install')? Your settings return to what they were then, and Edit Mode's layouts too if the installer changed them.",
+		accept = "Go back",
+		cancel = "Cancel",
+		onAccept = RevertAccepted,
+	})
 end
 
 -- the profiles' names, sorted, into `out` (emptied first)
@@ -2623,22 +2608,7 @@ function B.AskRestore()
 		MelloUI:Print(TEXT.combat)
 		return
 	end
-	if type(StaticPopupDialogs) ~= "table" then
-		return
-	end
-	if not StaticPopupDialogs.MELLOUI_RESTORE_BACKUP then
-		StaticPopupDialogs.MELLOUI_RESTORE_BACKUP = {
-			text = TEXT.askRestore,
-			button1 = "Restore",
-			button2 = "Cancel",
-			OnAccept = RestoreAccepted,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-	end
-	StaticPopup_Show("MELLOUI_RESTORE_BACKUP")
+	MelloUI:Confirm({ text = TEXT.askRestore, accept = "Restore", cancel = "Cancel", onAccept = RestoreAccepted })
 end
 
 -- Delete: the typed /mello backup delete at once, the page's Delete asked
@@ -2675,22 +2645,7 @@ local function DeleteAccepted()
 	B.Delete("button")
 end
 function B.AskDelete()
-	if type(StaticPopupDialogs) ~= "table" then
-		return
-	end
-	if not StaticPopupDialogs.MELLOUI_DELETE_BACKUP then
-		StaticPopupDialogs.MELLOUI_DELETE_BACKUP = {
-			text = TEXT.askDelete,
-			button1 = "Delete",
-			button2 = "Cancel",
-			OnAccept = DeleteAccepted,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-	end
-	StaticPopup_Show("MELLOUI_DELETE_BACKUP")
+	MelloUI:Confirm({ text = TEXT.askDelete, accept = "Delete", cancel = "Cancel", onAccept = DeleteAccepted })
 end
 end   -- (the Macro Backup block)
 
@@ -4573,63 +4528,91 @@ function MelloUI:ConfigTour()
 end
 
 --------------------------------------------------------------------------------
--- Game menu button (Escape > MelloUI), in its own section above Logout.
+-- Game menu button (Escape > MelloUI): MelloUI's own button, under the menu.
 --------------------------------------------------------------------------------
 
-local gameMenuHooked = false
+-- The Gamepad UI freeze (0.15.0; the taint log of 2026-09-28): the entry the
+-- menu's own AddButton made here, and the layout fields written on the
+-- menu's buttons to put it above Log Out, left MelloUI's taint in the menu's
+-- button list and layout, which the game reads again as the menu opens and
+-- closes. With the Gamepad UI on, the close then ran the game's gamepad
+-- bindings in MelloUI's execution: blocked ("MelloUI has been blocked from an
+-- action only available to the Blizzard UI"), its popup looping until the
+-- game froze. So the entry is MelloUI's own button:
+--   * a child of UIParent at the menu's strata, a few levels over it; nothing
+--     is written on the menu, its button pool or its buttons (the menu's
+--     OnShow / OnHide and SetAlpha are post-hooks)
+--   * made at the menu's first show with the mouse UI, never at login; never
+--     made or shown while the game's Gamepad UI is on (there: /mello)
+--   * centred under the menu; the Game Menu Panel lays it on its MelloUI
+--     plate (Modules/GameMenuPanel.lua, Buttons), as it did the menu's own,
+--     and there, inside the menu, puts it one strata up: a raise of the
+--     (toplevel) menu while it shows does not carry the button along
+--   * at the menu's alpha, which Windows Fade In eases in as it opens
+-- The menu's OnShow hook is put on here, at load: before the Game Menu
+-- Panel's (its OnEnable), so the button is there when the panel lays it.
+local menuButton
 
-local function AddGameMenuButton(menu)
-	local button = menu:AddButton("MelloUI", function()
-		MelloUI:PlayUISound("menu_button")
-		HideUIPanel(menu)
-		MelloUI:OpenConfig()
-	end)
-	local logoutText = LOG_OUT
-	if menu.GetLogoutText then
-		local ok, text = pcall(menu.GetLogoutText, menu)
-		if ok and text then
-			logoutText = text
-		end
+-- the click: the menu closed through the game's panel manager (its gamepad
+-- side would run in MelloUI's execution, so with the mouse UI only), then
+-- the configurator
+local function MenuButtonClick()
+	MelloUI:PlayUISound("menu_button")
+	if not MelloUI.Safe.GamepadUI() then
+		HideUIPanel(GameMenuFrame)
 	end
-	local logoutIndex
-	for _, other in ipairs(menu.buttons or {}) do
-		if other ~= button and other:GetText() == logoutText then
-			logoutIndex = other.layoutIndex
-			break
-		end
-	end
-	if logoutIndex then
-		for _, other in ipairs(menu.buttons) do
-			if other ~= button and other.layoutIndex and other.layoutIndex >= logoutIndex then
-				other.layoutIndex = other.layoutIndex + 1
-			end
-		end
-		button.layoutIndex = logoutIndex
-		button.topPadding = 20
-	end
-	if menu.MarkDirty then
-		menu:MarkDirty()
+	MelloUI:OpenConfig()
+end
+
+-- the menu's alpha, on the button (a secret one is left)
+local function FollowAlpha(_, alpha)
+	alpha = MelloUI.Safe.Number(alpha)
+	if alpha and menuButton then
+		menuButton:SetAlpha(alpha)
 	end
 end
 
-local function HookGameMenu()
-	if gameMenuHooked or not GameMenuFrame then
+local function MakeMenuButton(menu)
+	-- (the template of the menu's own entries, MainMenuFrameTemplates.xml:
+	-- their look)
+	menuButton = CreateFrame("Button", "MelloUIGameMenuButton", UIParent, "MainMenuFrameButtonTemplate")
+	menuButton:SetText("MelloUI")
+	menuButton:SetFrameStrata(menu:GetFrameStrata())
+	menuButton:SetPoint("TOP", menu, "BOTTOM", 0, -4)
+	Perf.SetScript(menuButton, "OnClick", MenuButtonClick)
+	hooksecurefunc(menu, "SetAlpha", FollowAlpha)
+end
+
+local function MenuShown(menu)
+	if MelloUI.Safe.GamepadUI() then
+		if menuButton then
+			menuButton:Hide()
+		end
 		return
 	end
-	if GameMenuFrame.InitButtons then
-		gameMenuHooked = true
-		hooksecurefunc(GameMenuFrame, "InitButtons", AddGameMenuButton)
+	if not menuButton then
+		MakeMenuButton(menu)
+	end
+	-- (over the menu: a level read again each show, the menu is toplevel and
+	-- rises as it shows; a raise while it shows can pass it, which under
+	-- the menu's edge covers nothing)
+	local level = MelloUI.Safe.Number(menu:GetFrameLevel())
+	if level then
+		menuButton:SetFrameLevel(math.min(level + 5, 10000))
+	end
+	FollowAlpha(menu, menu:GetAlpha())
+	menuButton:Show()
+end
+
+local function MenuHidden()
+	if menuButton then
+		menuButton:Hide()
 	end
 end
 
-HookGameMenu()
-if not gameMenuHooked then
-	local waiter = CreateFrame("Frame")
-	waiter:RegisterEvent("PLAYER_LOGIN")
-	Perf.SetScript(waiter, "OnEvent", function(self)
-		HookGameMenu()
-		self:UnregisterAllEvents()
-	end)
+if GameMenuFrame then
+	Perf.HookScript(GameMenuFrame, "OnShow", MenuShown)
+	Perf.HookScript(GameMenuFrame, "OnHide", MenuHidden)
 end
 
 --------------------------------------------------------------------------------

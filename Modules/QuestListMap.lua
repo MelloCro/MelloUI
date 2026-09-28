@@ -26,12 +26,6 @@ local Finite = MelloUI.Safe.Finite
 --------------------------------------------------------------------------------
 
 QL.PIN_TEMPLATE = "MelloUIQuestPinTemplate"
--- the pins made ahead in the map's pool in the Gamepad UI, inside the map's
--- first Show (Safe.WarmPins): a pin the pool makes later, while the map is
--- open, costs a walk of the whole map. More than one map lays at once (the
--- data's busiest zone about 90)
-local PIN_WARM = 128
-local pinsWarm = false
 local MAP_ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
@@ -116,15 +110,17 @@ end
 
 function PinMethods:OnAcquired(kind, data)
 	self.kind, self.data = kind, data
-	if kind == nil then
-		-- a pin made ahead in the map's pool (Safe.WarmPins): nothing to lay
-		self:Hide()
-		return
-	end
 	self.Label:ClearAllPoints()
 	self.Icon:ClearAllPoints()
 	self.Icon:SetAllPoints()
 	self:SetHitRectInsets(0, 0, 0, 0)
+	-- A zone badge leaves its click to the map under it: the map's own click
+	-- opens that zone. A map changed from MelloUI's code stays MelloUI's for
+	-- the session (the map's id and zoom, read by every later change), and
+	-- the game's gamepad pan and zoom then ran on MelloUI's script time. A
+	-- badge whose spot opens another map keeps the click, and does nothing.
+	-- (The hover and its tooltip stay: only the click goes through.)
+	self:SetMouseClickEnabled(kind ~= "badge" or not data.opens)
 	if kind == "giver" then
 		self.Bg:Hide()
 		self.Icon:Show()
@@ -316,13 +312,41 @@ function PinMethods:OnMouseEnter()
 		if data.inLog > 0 then
 			Line(tip, string.format("%d in your quest log", data.inLog), "text")
 		end
-		Line(tip, "Click to open the zone map.", "pinHint")
+		if data.opens then
+			Line(tip, "Click to open the zone map.", "pinHint")
+		end
 	end
 	tip:Show()
 end
 
+-- (only the pin's own tooltip: the map calls this for every pin it releases
+-- in the Gamepad UI, and it must not hide one the game's pins show)
 function PinMethods:OnMouseLeave()
-	GameTooltip:Hide()
+	if GameTooltip:GetOwner() == self then
+		GameTooltip:Hide()
+	end
+end
+
+-- What a click changes on the map is done on the next frame. The game's own
+-- click (ClickHoveredPins: the Gamepad UI's A) is still walking its list of
+-- hovered pins while this runs, and laying the pins again releases them; a
+-- map opened from here would come before the game's own move to the cursor,
+-- which then opens the map under the cursor on top of it.
+local function RelayAfterClick()
+	QL.Panel:Update()
+	QL.RefreshPins()
+end
+
+-- (a transport's Shift-click only, with the mouse: the one map change made
+-- from MelloUI's code. The map keeps it as MelloUI's until a /reload, so a
+-- switch to the Gamepad UI after one wants a /reload first; a zone badge
+-- leaves its click to the map, OnAcquired)
+local function OpenMapAfterClick(map, mapID)
+	C_Timer.After(0, function()
+		if map:IsShown() then   -- (closed in between: left as it is)
+			map:SetMapID(mapID)
+		end
+	end)
 end
 
 function PinMethods:OnMouseClickAction(button)
@@ -341,8 +365,7 @@ function PinMethods:OnMouseClickAction(button)
 				MelloUI:PlayUISound("waypoint_set")
 			end
 		end
-		QL.Panel:Update()
-		QL.RefreshPins()
+		C_Timer.After(0, RelayAfterClick)
 	elseif self.kind == "entrance" then
 		if IsShiftKeyDown() then
 			-- Shift-click routes to the door; a plain click lists its quests.
@@ -396,12 +419,7 @@ function PinMethods:OnMouseClickAction(button)
 			end
 		end
 		if map and map.SetMapID and target then
-			map:SetMapID(target)
-		end
-	elseif data.mapID then
-		local map = self:GetMap()
-		if map and map.SetMapID then
-			map:SetMapID(data.mapID)
+			OpenMapAfterClick(map, target)
 		end
 	end
 end
@@ -550,9 +568,15 @@ local function AddZoneBadges(map, continentMapID)
 			end
 			local okR, minX, maxX, minY, maxY = pcall(C_Map.GetMapRectOnMap, child.mapID, continentMapID)
 			if total > 0 and okR and QL.Plain(minX) and QL.Plain(maxX) and QL.Plain(minY) and QL.Plain(maxY) then
+				local x, y = (minX + maxX) / 2, (minY + maxY) / 2
+				-- the map's own click at the badge's spot opens this zone (it
+				-- goes through the badge, OnAcquired): the map it would open
+				local zoneID = QL.Plain(child.mapID)
+				local okA, under = pcall(C_Map.GetMapInfoAtPosition, continentMapID, x, y)
+				local opens = zoneID ~= nil and okA and type(under) == "table" and QL.Plain(under.mapID) == zoneID
 				map:AcquirePin(QL.PIN_TEMPLATE, "badge", {
-					mapID = child.mapID, name = name, done = done, total = total, available = available, inLog = inLog,
-					lo = lo, hi = hi, x = (minX + maxX) / 2, y = (minY + maxY) / 2,
+					name = name, done = done, total = total, available = available, inLog = inLog,
+					lo = lo, hi = hi, x = x, y = y, opens = opens,
 				})
 			end
 		end
@@ -945,6 +969,15 @@ end
 local learnFailed = nil   -- instance name already reported this session
 QL.pendingExit = nil   -- { name, raid }: instance to learn from where the player exits it
 
+-- where a learned entrance shows, said in its notice: the Gamepad UI has no
+-- Quest List marks on the map
+local function EntranceShows()
+	if MelloUI.Safe.GamepadUI() then
+		return "it shows on the zone map while the Gamepad UI is off"
+	end
+	return "it is on the zone map now"
+end
+
 -- Returns true when done (learned, already known, or not applicable); false
 -- when the instance is not readable yet and a retry is worth it.
 function QL.LearnEntrance()
@@ -979,13 +1012,17 @@ function QL.LearnEntrance()
 		QL.pendingExit = { name = name, raid = kind == "raid" }
 		if learnFailed ~= name then
 			learnFailed = name
-			MelloUI:Notice("Quest List: the entrance of %s will be put on the map when you walk out of it.", name)
+			if MelloUI.Safe.GamepadUI() then
+				MelloUI:Notice("Quest List: the entrance of %s will be learned when you walk out of it.", name)
+			else
+				MelloUI:Notice("Quest List: the entrance of %s will be put on the map when you walk out of it.", name)
+			end
 		end
 		return true
 	end
 	learned[name] = { mapID = lastOutside.mapID, x = lastOutside.x, y = lastOutside.y, raid = kind == "raid" }
 	doorMap = nil   -- a door more: the list is made again
-	MelloUI:Notice("Quest List: learned where the entrance of %s is; it is on the zone map now.", name)
+	MelloUI:Notice("Quest List: learned where the entrance of %s is; %s.", name, EntranceShows())
 	QL.RefreshPins()
 	return true
 end
@@ -1016,7 +1053,7 @@ function QL.LearnEntranceOnExit(attempt)
 	end
 	learned[pending.name] = { mapID = mapID, x = x, y = y, raid = pending.raid }
 	doorMap = nil   -- a door more: the list is made again
-	MelloUI:Notice("Quest List: learned where the entrance of %s is; it is on the zone map now.", pending.name)
+	MelloUI:Notice("Quest List: learned where the entrance of %s is; %s.", pending.name, EntranceShows())
 	QL.RefreshPins()
 end
 
@@ -1043,14 +1080,18 @@ local function FlightPinClicked(pin, button)
 	end
 end
 
+-- the flight pins hooked: kept here, never as a key on the game's own pins
+-- (a pin the pool hands out again keeps its hook, and stays in here)
+local flightHooked = setmetatable({}, { __mode = "k" })
+
 local function HookFlightPins(map)
 	if map and map.EnumeratePinsByTemplate then
 		-- EnumeratePinsByTemplate hands back a generic-for triple (next, set, nil)
 		local ok, f, state, init = pcall(map.EnumeratePinsByTemplate, map, "FlightPointPinTemplate")
 		if ok and type(f) == "function" then
 			for pin in f, state, init do
-				if not pin.melloFlightHooked and pin.OnMouseClickAction then
-					pin.melloFlightHooked = true
+				if not flightHooked[pin] and pin.OnMouseClickAction then
+					flightHooked[pin] = true
 					hooksecurefunc(pin, "OnMouseClickAction", FlightPinClicked)
 				end
 			end
@@ -1066,23 +1107,40 @@ function QL.CreateProvider()
 		return
 	end
 	QL.Provider = CreateFromMixins(MapCanvasDataProviderMixin)
+	-- only while pins are on the map: a pool call made from here marks the
+	-- map's whole canvas for a new layout, in MelloUI's run
 	function QL.Provider:RemoveAllData()
-		self:GetMap():RemoveAllPinsByTemplate(QL.PIN_TEMPLATE)
+		local map = self:GetMap()
+		if map:GetNumActivePinsByTemplate(QL.PIN_TEMPLATE) > 0 then
+			map:RemoveAllPinsByTemplate(QL.PIN_TEMPLATE)
+		end
 	end
-	function QL.Provider:RefreshAllData()
+	-- the pins laid again: on the map's own refresh (fromMap, below) and on
+	-- the Quest List's (QL.RefreshPins: a switch-on with the map open too)
+	function QL.Provider:LayPins(fromMap)
 		self:RemoveAllData()
 		self.palette = MelloUI.Palette   -- the palette the pins are laid in
 		if not (M.isEnabled and QL.byZone) then
 			return
 		end
 		local map = self:GetMap()
-		-- the map showing, not open for the game's gamepad navigation yet
-		-- (its own Show): the pins made ahead, once
-		if not pinsWarm and MelloUI.Safe.Call(map, "IsShown") and MelloUI.Safe.WarmNow(map) then
-			pinsWarm = true
-			MelloUI.Safe.WarmPins(map, QL.PIN_TEMPLATE, PIN_WARM)
+		local gamepad = MelloUI.Safe.GamepadUI()
+		-- Blizzard's flight points, hooked a frame later (their provider has
+		-- made the pins for the map by then). The hook is a post-hook, so it
+		-- stays in the Gamepad UI as well, there on the map's own refresh only
+		-- (a Quest List refresh with the map open costs nothing then).
+		if fromMap or not gamepad then
+			C_Timer.After(0, function() HookFlightPins(map) end)
 		end
-		C_Timer.After(0, function() HookFlightPins(map) end)
+		-- The Gamepad UI: no pins in the map's pools. The game's gamepad
+		-- cursor, pan and zoom go over every pooled pin every frame, and the
+		-- pool calls made from here write the map's scroll state: the map's
+		-- whole per-frame work was charged to MelloUI's script time, and the
+		-- map froze with a controller. (A session switched to the Gamepad UI
+		-- with pins on the map clears them above, once.)
+		if gamepad then
+			return
+		end
 		local mapID = QL.Plain(map:GetMapID())
 		local okI, info = pcall(C_Map.GetMapInfo, mapID)
 		if not mapID or not okI or type(info) ~= "table" then
@@ -1113,6 +1171,11 @@ function QL.CreateProvider()
 			Try("zone badges", AddZoneBadges, map, mapID)
 		end
 	end
+	-- the map's refresh (it opens, it changes map): every provider lays its
+	-- pins again
+	function QL.Provider:RefreshAllData()
+		self:LayPins(true)
+	end
 	WorldMapFrame:AddDataProvider(QL.Provider)
 	-- a new palette: the pins laid again while the map shows (a hidden map
 	-- lays them on its next show). Only a new palette TABLE: 'palette' goes
@@ -1126,7 +1189,7 @@ end
 
 QL.RefreshPins = function()
 	if QL.Provider and WorldMapFrame and WorldMapFrame:IsShown() then
-		QL.Provider:RefreshAllData()
+		QL.Provider:LayPins()
 	end
 end
 

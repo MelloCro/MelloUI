@@ -94,15 +94,15 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Width of the panel next to the map." },
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
-		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver." },
+		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. Off while the game's Gamepad UI is on." },
 		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
 		  desc = "Also mark givers whose quests you have all completed, with a grey tick." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
-		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone." },
+		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone. Off while the game's Gamepad UI is on." },
 		{ type = "toggle", key = "entrancePins", name = "Dungeon And Raid Entrances",
-		  desc = "Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in." },
+		  desc = "Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in. Off while the game's Gamepad UI is on." },
 		{ type = "toggle", key = "transportPins", name = "Boats And Zeppelins",
-		  desc = "Mark the docks and zeppelin towers on the zone maps with the destination. Click to open the destination's map." },
+		  desc = "Mark the docks and zeppelin towers on the zone maps with the destination. Click to route there, Shift-click to open the destination's map. Off while the game's Gamepad UI is on." },
 		{ type = "header", name = "Dungeons" },
 		{ type = "toggle", key = "dungeonSummary", name = "Quest Check When Entering An Instance",
 		  desc = "When you enter a dungeon or raid, list in chat the quests for it you could have picked up but have not." },
@@ -1524,7 +1524,8 @@ function M:OnEnable(db)
 	if not hooked then
 		hooked = true
 		if WorldMapFrame.OnMapChanged then
-			hooksecurefunc(WorldMapFrame, "OnMapChanged", function() QL.Panel:Update() end)
+			-- quiet: a map that lists the same quests is not laid out again
+			hooksecurefunc(WorldMapFrame, "OnMapChanged", function() QL.Panel:Update(true) end)
 		end
 		-- the panel is the addon's own frame (a child of the map): its search
 		-- text goes a while after it hides
@@ -1672,7 +1673,12 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		(function() local n = 0 for _ in pairs(QL.LearnedStore("entrances")) do n = n + 1 end return n end)()))
 	print(string.format("   options: pins %s, entrances %s, transports %s, badges %s",
 		tostring(M.db.mapPins), tostring(M.db.entrancePins), tostring(M.db.transportPins), tostring(M.db.zoneBadges)))
-	if QL.lastPinInfo then
+	-- the Gamepad UI lays no marks (QuestListMap.lua, LayPins): what the last
+	-- refresh found is from before it, and not said
+	local gamepad = MelloUI.Safe.GamepadUI()
+	if gamepad then
+		print("   Gamepad UI on: the map marks are off (they show while the Gamepad UI is off).")
+	elseif QL.lastPinInfo then
 		print(string.format("   last refresh: map %s (%s), type %s", tostring(QL.lastPinInfo.mapID), tostring(QL.lastPinInfo.name), tostring(QL.lastPinInfo.mapType)))
 		local client = QL.ClientEntrances(QL.lastPinInfo.mapID)
 		print(string.format("   client entrance list for this map: %s, %d entries", tostring(C_EncounterJournal and C_EncounterJournal.GetDungeonEntrancesForMap ~= nil), #client))
@@ -1703,12 +1709,13 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		for k, v in pairs(kinds) do parts[#parts + 1] = k .. " " .. v end
 		print("   pins on the map: " .. n .. (n > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
 	end
-	for _, err in ipairs(QL.lastPinErrors) do
+	for _, err in ipairs(gamepad and {} or QL.lastPinErrors) do
 		print("   |cffff4040error|r " .. err)
 	end
-	for i, line in ipairs(QL.lastPointTrace) do
+	local trace = gamepad and {} or QL.lastPointTrace
+	for i, line in ipairs(trace) do
 		if i > 8 then
-			print("   ... " .. (#QL.lastPointTrace - 8) .. " more")
+			print("   ... " .. (#trace - 8) .. " more")
 			break
 		end
 		print("   " .. line)

@@ -9,6 +9,13 @@ same shared systems), and names the shared system to use instead. When a
 count goes DOWN it passes and prints the ceiling to lower, so the gain is
 kept.
 
+Five more (0.15.0, 2026-09-28) count the seeds of the Gamepad UI freezes:
+MelloUI code that writes the game's own menu, popup, layout or map-pool
+state, or opens and closes the game's panels with no Gamepad UI check. With
+the Gamepad UI on, the game's gamepad code then runs in MelloUI's execution:
+a protected call is blocked, and the map's per-frame work is billed to
+MelloUI's script time. They start at 0 (panel-call: see its ceiling).
+
     python Tools/lint/check_panels.py              all checks (exit 1 on a rise)
     python Tools/lint/check_panels.py --list NAME  every match of one check
     python Tools/lint/check_panels.py --counts     today's counts as CEILINGS
@@ -88,17 +95,58 @@ CEILINGS = {
     "colour:Modules/WidgetPanel.lua": 0,
     "meaning:Modules/Chat.lua": 17,
     "meaning:Modules/VoiceOver.lua": 4,
+    # the Gamepad UI freeze fix (0.15.0): 0 each; panel-call keeps the
+    # tracker's right-click to the quest on the map (Modules/QuestTracker.lua)
+    # until that file gets its Gamepad UI check (inside the timer's function)
+    "blizz-menu-button": 0,
+    "blizz-popup": 0,
+    "blizz-layout-field": 0,
+    "panel-call": 1,
+    "map-pool-call": 0,
 }
 
 # Kit.lua from this line on is the kit demo and the slice test (/kitdemo,
 # /kitwhat, /mellokit): developer windows, not the addon's own
 KIT_DEMO = ("Modules/Kit.lua", "-- /kitdemo [scale]: one window with every block")
 
+# The Gamepad UI checks' names: the game's panel openers, its popup
+# functions (every one shows, hides, queues or defines a popup, or reads the
+# popups the game shows: MelloUI asks in its own dialog), the fields the
+# game's Layout reads, and the Gamepad UI test a panel call must follow
+PANEL_CALLS = r"ShowUIPanel|HideUIPanel|OpenAllBags|CloseAllBags|ToggleGameMenu|QuestMapFrame_Open\w*"
+POPUP_CALLS = r"StaticPopup_\w+"
+LAYOUT_FIELDS = r"layoutIndex|topPadding|bottomPadding|leftPadding|rightPadding"
+GAMEPAD_GUARD = r"\bGamepadUI\s*\(\s*\)"
+
+
+def ref(names):
+    """one of `names` as code names it: bare or after a dot or colon (Name,
+    _G.Name, frame:Name), or as a string key (_G["Name"], frame['Name']). A
+    name in any other string is none: a text, or hooksecurefunc("Name", ...)
+    (the `bare` switch)"""
+    return r"(?:\b(?:%s)\b|\[\s*[\"'](?:%s)[\"']\s*\])" % (names, names)
+
+
+def handed_on(value):
+    """`value` handed on (to pcall, a timer, ...), bare or looked up in a
+    table (_G.Name, _G["Name"]); a type() test is no hand-on"""
+    return r"(?<!type)(?<!type )\(\s*[\w.]*(?:%s)\s*[,)]|,\s*[\w.]*(?:%s)\s*[,)]" % (value, value)
+
+
+# the game menu's AddButton, as a method (a local AddButton is MelloUI's own)
+MENU_ADD = r"(?:[:.]AddButton\b|\[\s*[\"']AddButton[\"']\s*\])"
+
+
 # name: (pattern, where, instead). where: None (every file), or a dict with
 #   only  a list of files, or a regex the path must match
 #   skip  files left out
 #   unless  regexes: a file whose code (comments out) matches one is left out
 #   demo  True: Kit.lua's demo region left out
+#   bare  True: a match that starts inside a string is passed over (a name in
+#         a text, or hooksecurefunc("Name", ...), is no call; a string key,
+#         _G["Name"], starts at its bracket and counts)
+#   guard  a regex: a match with a guard before it, in the innermost function
+#          around it, is passed over (Source.guarded)
 CHECKS = {
     "replace-fn": (r"^local function Replace\(", None,
                    "a panel's own Replace: Kit:Replace with the panel's skin (one shared panel skin is audit rank 15)"),
@@ -174,6 +222,46 @@ CHECKS = {
                            "the game's CreateFrame in a file that dresses a window: bind Core's maker once at the "
                            "top, `local CreateFrame = MelloUI.Safe.CreateFrame` (Core.lua), which makes a frame "
                            "inside an open window without the game's gamepad navigation walking that window"),
+    # the Gamepad UI freeze fix (0.15.0); each name also counts written as a
+    # string key (ref). An entry added to the game's own menu (a method call,
+    # or the method handed on as a value): AddButton writes the menu's layout
+    # and button list, which its gamepad close reads
+    "blizz-menu-button": (MENU_ADD + r"\s*\(|" + handed_on(r"[\w.]+" + MENU_ADD), {"bare": True},
+                          "an entry in the game's own menu: MelloUI's own entry, MelloUIGameMenuButton "
+                          "(Core/Config.lua), an own button under UIParent shown from "
+                          "HookScript(GameMenuFrame, \"OnShow\") and never in the Gamepad UI"),
+    # any of the game's popup functions called from MelloUI code (a call, or
+    # the function handed on), and any use of the game's popup table: the
+    # generic confirmations, the queue and AddDefinition end in
+    # StaticPopup_Show too, and a hide runs the popup's gamepad close
+    "blizz-popup": (ref(POPUP_CALLS) + r"\s*\(|" + handed_on(ref(POPUP_CALLS)) + "|" + ref("StaticPopupDialogs"),
+                    {"bare": True},
+                    "a game popup from MelloUI code: the own dialog, MelloUI:Confirm({ text, accept, cancel, "
+                    "onAccept, onCancel }) (Modules/KitWindow.lua); with the Gamepad UI on a game popup runs the "
+                    "game's popup and binding code in MelloUI's execution"),
+    # a write of a field the game's Layout reads, on any frame (dot or
+    # bracket form; a comparison is no write)
+    "blizz-layout-field": (r"\.(?:%s)\s*=(?!=)|\[\s*[\"'](?:%s)[\"']\s*\]\s*=(?!=)" % (LAYOUT_FIELDS, LAYOUT_FIELDS),
+                           {"bare": True},
+                           "a layout field of the game's frames written by MelloUI: an own frame under UIParent, "
+                           "placed by MelloUI (as the own menu entry, MelloUIGameMenuButton in Core/Config.lua)"),
+    # a game panel opened or closed from MelloUI code (a call, or the
+    # function handed on to pcall or a timer) with no MelloUI.Safe.GamepadUI()
+    # check before it in the same function. A check in a function around it
+    # does not count: a handler or a timer made there runs later, when the
+    # Gamepad UI may have been turned on
+    "panel-call": (ref(PANEL_CALLS) + r"\s*\(|" + handed_on(ref(PANEL_CALLS)),
+                   {"bare": True, "guard": GAMEPAD_GUARD},
+                   "a game panel opened or closed from MelloUI code with no Gamepad UI check: test "
+                   "MelloUI.Safe.GamepadUI() (Core.lua) first, in the same function, and in the Gamepad UI leave "
+                   "the window to the player (say what to do with MelloUI:Announce)"),
+    # the map's pin pool used from any file but the Quest List's marks: each
+    # pool call marks the map's scroll state dirty from MelloUI code
+    "map-pool-call": (ref(r"AcquirePin|RemovePin|RemoveAllPinsByTemplate|MarkCanvasDirty"),
+                      {"bare": True, "skip": ["Modules/QuestListMap.lua"]},
+                      "the map's pin pool outside the Quest List's marks (Modules/QuestListMap.lua, which "
+                      "keep out of it in the Gamepad UI): MelloUI's own layer on the map canvas, as Route "
+                      "draws its line"),
 }
 
 # Own windows: MelloUI's windows, whose colours come from the palette only
@@ -222,13 +310,22 @@ TOKEN = re.compile(r"""
 """, re.S | re.X)
 
 
-def strip_comments(src):
+def strip_comments(src, blank=False):
+    """blank: strings too, each character a space (the newlines kept), so the
+    result lines up with the plain strip character for character"""
     def keep(m):
         text = m.group(0)
         if text.startswith("--"):
             return "\n" * text.count("\n")
+        if blank:
+            return re.sub(r"[^\n]", " ", text)
         return text
     return TOKEN.sub(keep, src)
+
+
+# the words that open and close a Lua block: function, if, do (for and while
+# open theirs with do) and repeat open one; end and until close one
+BLOCK_WORD = re.compile(r"\b(function|if|do|repeat|end|until)\b")
 
 
 def lua_files(root):
@@ -247,6 +344,8 @@ class Source:
             self.raw = fh.read().replace("\r\n", "\n")
         self.path = path
         self.code = strip_comments(self.raw)
+        self.bare = strip_comments(self.raw, blank=True)
+        self._functions = None
         self.starts = [0] + [i + 1 for i, c in enumerate(self.code) if c == "\n"]
         self.demo_from = None
         if path == KIT_DEMO[0]:
@@ -259,6 +358,39 @@ class Source:
 
     def line_text(self, n):
         return self.raw.split("\n")[n - 1].strip()
+
+    def functions(self):
+        """[(start, end)] of every function in the file, by start"""
+        if self._functions is None:
+            stack, spans = [], []
+            for m in BLOCK_WORD.finditer(self.bare):
+                if m.group(1) in ("end", "until"):
+                    if stack:
+                        word, at = stack.pop()
+                        if word == "function":
+                            spans.append((at, m.end()))
+                else:
+                    stack.append((m.group(1), m.start()))
+            self._functions = sorted(spans)
+        return self._functions
+
+    def guarded(self, pos, guard):
+        """True when `guard` matches the code that runs on the way to pos: from
+        the start of the innermost function around pos up to pos, the
+        functions that end before pos left out (their code runs elsewhere). A
+        guard after the call, in another function, or in a function around
+        this one (it ran when this one was made, not when it runs) does not
+        count; at the file's top level the top level is looked at."""
+        spans = self.functions()
+        around = [a for a, b in spans if a <= pos < b]
+        i = max(around) if around else 0
+        code = []
+        for a, b in spans:
+            if a >= i and b <= pos:
+                code.append(self.bare[i:a])
+                i = b
+        code.append(self.bare[i:pos])
+        return re.search(guard, "".join(code)) is not None
 
 
 def applies(where, src):
@@ -295,14 +427,18 @@ def matches(name, sources):
             return found if kind == "colour" else []
         lines = src.raw.split("\n")
         return [hit for hit in found if (MEANING_MARK in lines[hit[1] - 1]) == (kind == "meaning")]
-    pattern, where = CHECKS[name][0], CHECKS[name][1]
+    pattern, where = CHECKS[name][0], CHECKS[name][1] or {}
     rx = re.compile(pattern, re.M)
     for src in sources.values():
         if not applies(where, src):
             continue
         for m in rx.finditer(src.code):
             line = src.line_of(m.start())
-            if where and where.get("demo") and src.demo_from and line >= src.demo_from:
+            if where.get("demo") and src.demo_from and line >= src.demo_from:
+                continue
+            if where.get("bare") and src.bare[m.start()] != src.code[m.start()]:
+                continue
+            if where.get("guard") and src.guarded(m.start(), where["guard"]):
                 continue
             found.append((src.path, line))
     return sorted(found)

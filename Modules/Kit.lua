@@ -7038,13 +7038,16 @@ end)
 
 -- The WINDOW a replacement is in: the top frame under UIParent (a title
 -- container may sit in a page inside the window: the group finder's tabs
--- stayed behind when only the page moved — user, 2026-09-21)
+-- stayed behind when only the page moved — user, 2026-09-21), or the game
+-- window a holder of MelloUI's there stands for (melloWindowOf: the Quest
+-- List's beside the world map, 0.15.0 -- its plate and rail are the map's,
+-- and the mover drags the map by the plate, as while it was the map's child)
 local function WindowOf(frame)
 	local depth = 0
 	while frame and frame ~= UIParent and depth < 6 do
 		local up = frame.GetParent and frame:GetParent()
 		if not up or up == UIParent then
-			return frame
+			return frame.melloWindowOf or frame
 		end
 		frame = up
 		depth = depth + 1

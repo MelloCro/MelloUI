@@ -25,7 +25,8 @@
 --                            riding the outer rail (TitleBar, 2c)
 --     close = true,          a close button on the top right corner
 --     escape = true,         Escape closes it (UISpecialFrames: the frame
---                            must be named)
+--                            must be named); held while a question of
+--                            MelloUI:Confirm is shown
 --     mover = { key, anchor, default, save, reset, min, max, base, plainDrag },
 --                            MelloUI:RegisterMover(frame, shell.grab, ...)
 --                            with the crest kept on the screen with it; no
@@ -70,12 +71,16 @@
 -- replacements fade while they are enabled; switched off, every recorded rep
 -- is disabled and they come back. Colours are palette keys (Kit:Paint), so a
 -- new palette paints them again. Sounds only through MelloUI:PlayUISound.
+--
+-- And MelloUI's one question dialog on this shell (the end of the file):
+--   MelloUI:Confirm({ text, accept, cancel, onAccept, onCancel })
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Kit window")
 local Shared = Perf.Shared
+local C_Timer = Perf.C_Timer   -- (the confirm dialog's Escape hold ends a frame later)
 local Kit = MelloUI.Kit
 local Num = MelloUI.Safe.Number
 local W = MelloUI.Widgets   -- (Core/Widgets.lua loads before this file)
@@ -100,6 +105,9 @@ local EDGE_THIN = { edgeFile = WHITE, edgeSize = 1 }
 local EDGE_WIDE = { edgeFile = WHITE, edgeSize = 2 }
 
 local shells = setmetatable({}, { __mode = "k" })   -- [frame] = its shell
+-- the confirm dialog's shell while its question holds the other shells'
+-- Escape (MelloUI:Confirm, the end of the file)
+local escapeHold = nil
 local Shell = {}
 Shell.__index = Shell
 
@@ -415,10 +423,8 @@ function Shell:Fit()
 	MelloUI:FitOnScreen(frame, self.bounds)
 end
 
-function Shell:SetEscape(on)
-	on = on and true or false
-	self.escape = on
-	local name = self.frame:GetName()
+-- a window's name put in UISpecialFrames (once) or taken out
+local function Special(name, on)
 	local list = UISpecialFrames
 	if not name or type(list) ~= "table" then
 		return
@@ -434,6 +440,14 @@ function Shell:SetEscape(on)
 	if on then
 		tinsert(list, name)
 	end
+end
+
+-- (while a question holds Escape, another shell's setting is only
+-- recorded: its name comes back when the question closes)
+function Shell:SetEscape(on)
+	on = on and true or false
+	self.escape = on
+	Special(self.frame:GetName(), on and not (escapeHold and escapeHold ~= self))
 end
 
 --------------------------------------------------------------------------------
@@ -671,4 +685,190 @@ function Kit:OwnWindow(frame, opts)
 		shell:BuildPlain()
 	end
 	return shell
+end
+
+--------------------------------------------------------------------------------
+-- MelloUI:Confirm: the addon's one question dialog
+--
+--   MelloUI:Confirm({
+--     text = "Replace ...?",   the question
+--     accept = "Replace",      the accept button's label ("OK" when none)
+--     cancel = "Cancel",       the cancel button's label ("Cancel" when none)
+--     onAccept = fn,           fn() once the accept button closed it
+--     onCancel = fn,           fn() once the cancel button, Escape or a newer
+--                              question closed it (optional)
+--   })
+-- One dialog for all of MelloUI's questions (one system per job): an own
+-- window on the shell above -- the corner ring with the emblem, "MelloUI"
+-- on the plate on the rail, Escape (which cancels), the fit, the sounds --
+-- a UIParent child at DIALOG strata, the question on the dark inner panel
+-- (2e) in the palette's text colour, the two buttons the widget set's. Made
+-- on its first question, never at login (2f). One question at a time: a
+-- second call replaces the one shown, which counts as cancelled. Escape is
+-- the question's alone while it is shown: the window it was asked from stays
+-- open (the other shells' Escape held, below).
+-- It never uses the game's popups (StaticPopup_Show, StaticPopupDialogs):
+-- with the Gamepad UI on, their gamepad handler and binding stack would run
+-- as MelloUI's code, and the game then blocks its own protected calls (the
+-- "blocked" popup, the Escape freeze). The D-pad does not reach this dialog
+-- (it is not a game panel; the cursor does), so nothing is asked here on its
+-- own while the Gamepad UI is on (the installer's alt question waits).
+--------------------------------------------------------------------------------
+
+local CONFIRM_TITLE = "MelloUI"
+local CONFIRM_W = 420
+local CONFIRM_Y = 120          -- its centre this far above the screen's
+local CONFIRM_TOP = -64        -- the question's panel under the corner ring
+local CONFIRM_EDGE = 16        -- the panel's margin in the window
+local CONFIRM_PAD = 14         -- the question's margin in the panel
+local CONFIRM_BODY = 64        -- the panel's least height
+local CONFIRM_FOOT = 56        -- the band of the buttons under the panel
+local CONFIRM_BUTTON_W, CONFIRM_BUTTON_H, CONFIRM_BUTTON_Y = 120, 24, 18
+local CONFIRM_GAP = 12         -- between the two buttons
+
+-- the dialog's parts (made on the first question) and the question shown
+local confirm = { frame = nil, shell = nil, body = nil, text = nil, accept = nil, cancel = nil, opts = nil }
+
+-- The game's Escape hides every shown UISpecialFrames window at once
+-- (CloseSpecialWindows, after the game's own dialogs had their turn), so the
+-- window a question was asked from (the configurator, the Restock List)
+-- would close with it, where the game's popup took the key alone. While a
+-- question is shown the other shells' names leave the list (their setting
+-- kept: a SetEscape meanwhile is only recorded), and they come back a frame
+-- after it closes: never inside the game's walk of the list, which would
+-- still find them there and hide them all the same.
+local function HoldEscape()
+	if escapeHold then
+		return
+	end
+	escapeHold = confirm.shell
+	for frame, shell in pairs(shells) do
+		if shell ~= escapeHold and shell.escape then
+			Special(frame:GetName(), false)
+		end
+	end
+end
+
+local function ReleaseEscape()
+	-- (a question shown again meanwhile holds on)
+	if not escapeHold or confirm.opts then
+		return
+	end
+	escapeHold = nil
+	for frame, shell in pairs(shells) do
+		if shell.escape then
+			Special(frame:GetName(), true)
+		end
+	end
+end
+
+-- the question answered: the dialog closed first, then the answer's own
+-- function (a question it asks in turn is the one shown then)
+local function Answer(accepted)
+	local opts = confirm.opts
+	confirm.opts = nil
+	confirm.frame:Hide()
+	C_Timer.After(0, ReleaseEscape)
+	if not opts then
+		return
+	end
+	local fn
+	if accepted then
+		fn = opts.onAccept
+	else
+		fn = opts.onCancel
+	end
+	if type(fn) == "function" then
+		fn()
+	end
+end
+
+local Accept_OnClick = Shared("OnClick on the confirm dialog's accept button", function()
+	Answer(true)
+end, "script")
+
+local Cancel_OnClick = Shared("OnClick on the confirm dialog's cancel button", function()
+	Answer(false)
+end, "script")
+
+-- Escape (UISpecialFrames) hides it: the question cancelled. A hide while it
+-- stays shown is the parent's (Alt+Z, a cinematic): the question waits.
+local Confirm_OnHide = Shared("OnHide on the confirm dialog", function(frame)
+	if frame:IsShown() or not confirm.opts then
+		return
+	end
+	Answer(false)
+end, "script")
+
+-- a button's label, the button widened for a long one
+local function Label(button, text)
+	button:SetText(text)
+	local fs = button:GetFontString()
+	local w = fs and Num(fs:GetStringWidth())
+	button:SetWidth(math.max(CONFIRM_BUTTON_W, (w or 0) + 2 * CONFIRM_PAD))
+end
+
+local function BuildConfirm()
+	local f = CreateFrame("Frame", "MelloUIConfirmDialog", UIParent)
+	f:SetFrameStrata("DIALOG")
+	f:SetToplevel(true)
+	f:SetSize(CONFIRM_W, -CONFIRM_TOP + CONFIRM_BODY + CONFIRM_FOOT)
+	f:SetPoint("CENTER", UIParent, "CENTER", 0, CONFIRM_Y)
+	f:EnableMouse(true)
+	f:SetClampedToScreen(true)
+	f:Hide()
+	-- (its own script before the shell's hooks: SetScript drops hooks)
+	Perf.SetScript(f, "OnHide", Confirm_OnHide)
+	local shell = Kit:OwnWindow(f, { area = "config", ring = { at = "tl" }, plate = "rail", title = CONFIRM_TITLE,
+		escape = true, fit = true, sounds = true })
+	-- the question on the dark inner panel over the stone (the eye strain rule)
+	local body = CreateFrame("Frame", nil, f)
+	body:SetPoint("TOPLEFT", f, "TOPLEFT", CONFIRM_EDGE, CONFIRM_TOP)
+	body:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONFIRM_EDGE, CONFIRM_TOP)
+	body:SetHeight(CONFIRM_BODY)
+	W.Solid(body, "BACKGROUND", "innerPanel", 0.8):SetAllPoints(body)
+	local text = W.Text(body, "GameFontHighlight", nil, "text")
+	text:SetJustifyH("CENTER")
+	text:SetJustifyV("MIDDLE")
+	text:SetWidth(CONFIRM_W - 2 * (CONFIRM_EDGE + CONFIRM_PAD))
+	text:SetPoint("CENTER", body, "CENTER", 0, 0)
+	-- accept on the left, cancel on the right (as the game's dialogs)
+	local accept = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Accept_OnClick })
+	accept:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -CONFIRM_GAP / 2, CONFIRM_BUTTON_Y)
+	local cancel = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Cancel_OnClick })
+	cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, CONFIRM_BUTTON_Y)
+	confirm.frame, confirm.shell, confirm.body, confirm.text = f, shell, body, text
+	confirm.accept, confirm.cancel = accept, cancel
+end
+
+function MelloUI:Confirm(opts)
+	if type(opts) ~= "table" then
+		return
+	end
+	if not confirm.frame then
+		BuildConfirm()
+	end
+	local f = confirm.frame
+	local replaced = confirm.opts
+	confirm.opts = opts
+	HoldEscape()
+	confirm.text:SetText(opts.text or "")
+	Label(confirm.accept, opts.accept or "OK")
+	Label(confirm.cancel, opts.cancel or "Cancel")
+	-- the panel as tall as the question
+	local h = Num(confirm.text:GetStringHeight()) or 0
+	local body = math.max(CONFIRM_BODY, h + 2 * CONFIRM_PAD)
+	confirm.body:SetHeight(body)
+	f:SetHeight(-CONFIRM_TOP + body + CONFIRM_FOOT)
+	if f:IsShown() then
+		confirm.shell:Fit()
+	else
+		f:Show()
+	end
+	f:Raise()
+	-- the question it took the place of: cancelled (after, so a question
+	-- its answer asks in turn comes last); the same one asked again stays
+	if replaced and replaced ~= opts and type(replaced.onCancel) == "function" then
+		replaced.onCancel()
+	end
 end

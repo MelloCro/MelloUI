@@ -88,6 +88,11 @@ NOT_CONFIGURATOR = {
     "Core/InstallerWindow.lua": "the installer's own window and steps (not the configurator)",
     "Modules/Restock.lua": "the Restock List window and the shop's list (the Reminders page's Restock List button, "
                            "a schema option, opens them)",
+    "Modules/KitWindow.lua": "the own confirm dialog's answer buttons (MelloUI:Confirm), not options",
+}
+# the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
+NOT_OPTIONS = {
+    "Core/Config.lua:Button(MelloUI)": "MelloUI's own entry at the game's Escape menu (it opens the configurator)",
 }
 FOLDERS = ("Core", "Modules")
 
@@ -599,6 +604,9 @@ def own_rows(root):
             base = "%s:%s(%s)" % (rel, kind, label)
             seen[base] = seen.get(base, 0) + 1
             rid = base if seen[base] == 1 else "%s#%d" % (base, seen[base])
+            if rid in NOT_OPTIONS:
+                prev_end = end
+                continue
             # the code since the control before it, within the function it is built in; then the code after it,
             # up to the next function, for a tag call that names it
             funcs = [f.start() for f in re.finditer(r"\bfunction\b", code[:start])]

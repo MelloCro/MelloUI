@@ -414,21 +414,6 @@ end
 --   Safe.UnderOpenWindow(frame) -> true when a frame made in `frame` would
 --       make the navigation walk a window (the climb its hook does)
 --   Safe.GamepadUI() -> true while the game's Gamepad UI is on
---   Safe.WarmNow(frame) -> true while the Gamepad UI is on and `frame` lies
---       in no window the navigation has open: inside a window's own Show
---       (its OnShow scripts run before the game opens it for the
---       navigation), the moment where frames the game's pools make for
---       MelloUI later cost no walk
---   Safe.WarmList(scrollBox, frameType, count) -> made: an own list's rows
---       made now in its view's own pool, where its layouts take them from
---   Safe.WarmPins(map, template, count) -> made: a map's pins of MelloUI's
---       template made now in the map's own pool (the pin's OnAcquired gets
---       no data then and lays nothing)
---   Safe.QuietList(view): an own list's view never asks the navigation to
---       walk its window again. The game's list view does after each layout
---       in the Gamepad UI (RefreshSmartNav: two walks a scroll step or a new
---       list), in MelloUI's run; the rows are made while the window shows
---       (WarmList), so the window's own walks know them
 --------------------------------------------------------------------------------
 
 function Safe.GamepadUI()
@@ -503,59 +488,6 @@ function Safe.CreateFrame(frameType, name, parent, ...)
 		frame:SetFrameLevel(level)
 	end
 	return frame
-end
-
-function Safe.WarmNow(frame)
-	return Safe.GamepadUI() and not Safe.UnderOpenWindow(frame)
-end
-
-function Safe.WarmList(scrollBox, frameType, count)
-	local view = Safe.Call(scrollBox, "GetView")
-	local target = view and Safe.Call(scrollBox, "GetScrollTarget")
-	local factory = type(view) == "table" and view.frameFactory
-	if not (target and type(factory) == "table" and type(factory.Create) == "function"
-		and type(factory.Release) == "function") then
-		return 0
-	end
-	local made = {}
-	for i = 1, count do
-		local ok, frame = pcall(factory.Create, factory, target, frameType, view.frameFactoryResetter)
-		if not ok or type(frame) ~= "table" then
-			break
-		end
-		made[i] = frame
-	end
-	for i = 1, #made do
-		pcall(factory.Release, factory, made[i])
-	end
-	return #made
-end
-
-function Safe.WarmPins(map, template, count)
-	if type(map) ~= "table" or type(map.AcquirePin) ~= "function" or type(map.RemovePin) ~= "function" then
-		return 0
-	end
-	local made = {}
-	for i = 1, count do
-		local ok, pin = pcall(map.AcquirePin, map, template)
-		if not ok or type(pin) ~= "table" then
-			break
-		end
-		made[i] = pin
-	end
-	for i = 1, #made do
-		pcall(map.RemovePin, map, made[i])
-	end
-	return #made
-end
-
-do
-	local function NoWalk() end
-	function Safe.QuietList(view)
-		if type(view) == "table" then
-			view.RefreshSmartNav = NoWalk
-		end
-	end
 end
 
 -- The screen as a player names it: its size in pixels and its aspect ratio

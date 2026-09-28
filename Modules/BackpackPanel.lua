@@ -562,6 +562,11 @@ end
 -- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the bag
 -- windows are one group; the picker opens the bags while it runs when none
 -- is open, and closes them again after.
+-- Not while the game's Gamepad UI is on (0.15.0): the bags opened or closed
+-- from our code run the game's gamepad bindings in our run, and the
+-- protected call at their end is blocked (the game's "blocked" popup). There
+-- the picker uses the bags only when one is already open, and says so in
+-- the chat when none is.
 --------------------------------------------------------------------------------
 
 local openedForPicker = false
@@ -600,14 +605,20 @@ end
 
 function M:PickerStart()
 	openedForPicker = false
-	if active and not self:BarOutline() and OpenAllBags then
-		OpenAllBags()
-		openedForPicker = true
+	if not (active and not self:BarOutline() and OpenAllBags) then
+		return
 	end
+	if MelloUI.Safe.GamepadUI() then
+		MelloUI:Print("Dynamic UI Modification: in the Gamepad UI, open your bags before you start to pick on them.")
+		return
+	end
+	OpenAllBags()
+	openedForPicker = true
 end
 
+-- (the Gamepad UI switched on since the start: the bags are left open)
 function M:PickerStop()
-	if openedForPicker and CloseAllBags then
+	if openedForPicker and CloseAllBags and not MelloUI.Safe.GamepadUI() then
 		CloseAllBags()
 	end
 	openedForPicker = false

@@ -1873,30 +1873,17 @@ local AddSet = function(value)
 	end
 end
 
--- Suggested replaces the list, once the player says so in the game's
--- confirm dialog (as MelloUI's other replaces ask: Core/Config.lua)
+-- Suggested replaces the list, once the player says so in MelloUI's own
+-- dialog (MelloUI:Confirm, Modules/KitWindow.lua: never the game's popup,
+-- which blocks the game's own calls with the Gamepad UI on)
 local function ResetAccepted()
 	MelloUI:PlayUISound("page")
 	M:Reset()
 end
+local RESET_ASK = { text = "Replace your restock list with the suggestions for your class?", accept = "Replace",
+	cancel = "Cancel", onAccept = ResetAccepted }
 local ResetClick = Shared("OnClick on the Restock List's Suggested", function()
-	if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then
-		ResetAccepted()
-		return
-	end
-	if not StaticPopupDialogs.MELLOUI_RESTOCK_SUGGESTED then
-		StaticPopupDialogs.MELLOUI_RESTOCK_SUGGESTED = {
-			text = "Replace your restock list with the suggestions for your class?",
-			button1 = "Replace",
-			button2 = "Cancel",
-			OnAccept = ResetAccepted,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-	end
-	StaticPopup_Show("MELLOUI_RESTOCK_SUGGESTED")
+	MelloUI:Confirm(RESET_ASK)
 end, "script")
 
 local function BuildList()
