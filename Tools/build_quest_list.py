@@ -98,6 +98,11 @@ EVENTS = {
 }
 CLASSES = {1: "WARRIOR", 2: "PALADIN", 4: "HUNTER", 8: "ROGUE", 16: "PRIEST", 64: "SHAMAN", 128: "MAGE", 256: "WARLOCK", 1024: "DRUID"}
 JUNK = re.compile(r"^\s*[<\[]|UNUSED|\bTEST\b|\bNYI\b|DEPRECATED|\bDND\b|\bTXT\b|^zz|\(123\)|REUSE|Never used", re.I)
+# Quests' own: "TEST" only as the developers write it (in capitals) or in their test-quest names. A plain
+# "Test" is a real word in real quests (Test of Faith, Test of Lore, The Test of Skulls, The Gordok Taste Test,
+# Toxic Test, The Final Test): JUNK's case-blind TEST dropped 19 of them until 0.15.0.
+QUEST_JUNK = re.compile(r"^\s*[<\[]|UNUSED|\bNYI\b|DEPRECATED|\bDND\b|\bTXT\b|^zz|\(123\)|REUSE|Never used", re.I)
+QUEST_JUNK_TEST = re.compile(r"\bTEST\b|\b[Tt]est [Qq]uest|\bTest Kill Quest\b")
 
 
 def log(msg):
@@ -1426,9 +1431,10 @@ def main():
     used_dungeons = {}
     stats = defaultdict(int)
     for qid, q in sorted(listing.items()):
-        if JUNK.search(q.get("name") or ""):
+        name = q.get("name") or ""
+        if QUEST_JUNK.search(name) or QUEST_JUNK_TEST.search(name):
             continue
-        quest_zone = q["category"] if q["category"] > 0 else 0
+        quest_zone =q["category"] if q["category"] > 0 else 0
         giver_name, giver_zone, gx, gy, kind = "", 0, 0, 0, 0
         world = (-1, 0, 0)   # continent, world x, world y of a vanilla spawn (placed by the client)
         giver_id = 0         # creature entry of an NPC giver, for the Voice Over race / gender lookup
