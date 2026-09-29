@@ -4121,6 +4121,12 @@ function ArrowPlace.Forget()
 	end
 end
 
+-- the mover's `waiting`: an old place is still there (so Edit Layout's
+-- Reset all reaches it while the store could not take it in yet)
+function ArrowPlace.Waiting()
+	return M.db ~= nil and (M.db.arrowX ~= nil or M.db.arrowY ~= nil)
+end
+
 -- Rotation for a target dx yards east, dy yards south of the player facing f.
 local function ArrowRotation(dx, dy, facing)
 	local sin, cos = math.sin(facing), math.cos(facing)
@@ -4280,7 +4286,8 @@ function ArrowPlace.Mover()
 	arrow:SetScale(size)
 	ArrowPlace.entry = MelloUI:RegisterMover(arrow, arrow, { key = ArrowPlace.key, anchor = "CENTER",
 		plainDrag = "always", min = 0.5, max = 2, base = size, reset = ArrowPlace.Forget, default = ArrowPlace.Home,
-		label = "Navigation arrow", page = "Route", placeholder = true, when = ArrowPlace.Live })
+		label = "Navigation arrow", page = "Route", placeholder = true, when = ArrowPlace.Live,
+		waiting = ArrowPlace.Waiting })
 	if ArrowPlace.entry then
 		PlaceArrow()
 	end

@@ -47,8 +47,9 @@ Options: --jobs N (processes), --effort 0..3 (encoder search; 2 default),
 What stays TGA in option d (and so in Media):
   STAY_TGA   the bar fills (paths saved in profiles, 4-8 KB), LogoIcon
              (the TOC's IconTexture and Core/Config.lua name it LogoIcon.tga)
-             SoftShade (a smooth gradient, 32 KB) and KitShadows (the kit's
-             shadow partners, soft ramps; make_kit_shadows.py --gate): their
+             SoftShade (a smooth gradient, 32 KB), KitShadows (the kit's
+             shadow partners, soft ramps; make_kit_shadows.py --gate) and
+             the minimap's crop masks (make_minimap_masks.py): their
              masters' bytes, as they are
   '.tga'     any file a Lua or TOC path names WITH '.tga' (the client then
              loads that file only): found by scanning the addon's Lua
@@ -277,6 +278,9 @@ STAY_TGA = [
     (r"^Textures/InstallerBanner\.tga$", "addressed as InstallerBanner.tga by Core/InstallerWindow.lua; its DXT5 fails "
                                          "the gate (32.3 dB, p99.9 50); a DXT5 or a 512 x 256 copy waits for the "
                                          "user's eye (texture_pack.py banner)"),
+    (r"^Textures/Masks/Minimap/[hv]\d+\.tga$", "the minimap's crop masks (Modules/MinimapPanel.lua Size.Crop): "
+                                               "make_minimap_masks.py writes them into Media as TGA and --checks them "
+                                               "there; 256 bands of 8 KB, 13 KB in the zip (as DXT1 BLPs: 15 KB)"),
 ]
 # Media paths the Lua builds at run time, which lua_refs cannot follow: the
 # file it is in, the known start of the path (Media-relative, no extension)
@@ -3310,8 +3314,18 @@ def main():
         for why, items in summary["kept_tga"].items():
             print("  TGA, %s: %d" % (why, len(items)))
             if why != "the gate" and why != "uncompressed sheets":
+                # a family of files for one reason (the minimap's 256 masks) on one line
+                by_reason = {}
                 for it in items:
-                    print("     ", it)
+                    rel, _, reason = it.partition(" -- ")
+                    by_reason.setdefault(reason, []).append(rel)
+                for it in items:
+                    rel, _, reason = it.partition(" -- ")
+                    same = by_reason[reason]
+                    if len(same) <= 4:
+                        print("     ", it)
+                    elif rel == same[0]:
+                        print("      %s .. %s (%d files) -- %s" % (min(same), max(same), len(same), reason))
         print("  %d Lua / TOC paths into Media checked; %d built at run time (by hand): %s" % (
             len(refs), len(dynamic), ", ".join(summary["lua_dynamic"]) or "none"))
         if stops:

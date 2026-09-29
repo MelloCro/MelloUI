@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the new voice pack, MelloUI_VoiceOverData_v2, from a line manifest and the clip library.
+"""Build the voice pack, MelloUI_VoicePack, from a line manifest and the clip library.
 
     python Tools/voice_v2_pack.py <manifest.json> [more.json ...]     build into MelloUI-BuildData/output/voice_v2/
                                                                       (several manifests make one pack, e.g.
@@ -8,7 +8,7 @@
     python Tools/voice_v2_pack.py <manifest.json> --install [ADDONS]  build, then copy the built addon into the
                                                                       game's AddOns folder (only when the user asks)
     ... --clips DIR    the clip library (default MelloUI-BuildData/output/voice_v2/clips)
-    ... --out DIR      the built addon (default MelloUI-BuildData/output/voice_v2/MelloUI_VoiceOverData_v2)
+    ... --out DIR      the built addon (default MelloUI-BuildData/output/voice_v2/MelloUI_VoicePack)
     ... --build TEXT   the build text in the TOC and the index (default "<today> <manifest scope>")
 
 The manifest is lines.json / lines_pilot.json / lines_readables.json (format "melloui-voice-lines/2", the voice
@@ -19,7 +19,7 @@ Only its KEYED jobs go into the pack (A/B alternates have keys: []); a job's cli
 id = "<voiceKey>/<hash12>", kept exactly as the speech service returned it (Ogg Vorbis, mono).
 
 The addon (spec section 1):
-    MelloUI_VoiceOverData_v2.toc          no X-VoiceOver-* fields: only MelloUI's Voice Over reads this pack
+    MelloUI_VoicePack.toc                 no X-VoiceOver-* fields: only MelloUI's Voice Over reads this pack
     index.lua                             key -> clip and length, as flat arrays, each table in its own
                                           function block (Lua 5.1's constant limit), split past 100,000 constants
     SOURCES.txt                           where the texts and voices come from
@@ -28,8 +28,11 @@ The addon (spec section 1):
 The build FAILS (exit 1, every problem listed) when a key is malformed or used twice, a key's clip is missing or
 fails validation (OggS with a Vorbis identification header, mono, at least 0.3 s, at most 4 + words / 1.5 s,
 whole pages to the end-of-stream page), a text key's hash is not the hash of its canonical text, or an NPC would
-speak in two voices. It never writes to any folder but one named MelloUI_VoiceOverData_v2: the old pack
+speak in two voices. It never writes to any folder but one named MelloUI_VoicePack: the old pack it replaces
 (MelloUI_VoiceOverData), built or installed, is never touched.
+
+The release ships the built folder in two zips, each under 2 GB (MelloUI_VoicePack_Part1.zip and
+MelloUI_VoicePack_Part2.zip on the release page); both unzip into the same MelloUI_VoicePack folder.
 
 Standard library only. Tools never ship (.pkgmeta).
 """
@@ -49,7 +52,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from paths import OUTPUT  # noqa: E402
 
-ADDON_NAME = "MelloUI_VoiceOverData_v2"
+ADDON_NAME = "MelloUI_VoicePack"
 OLD_PACK = "MelloUI_VoiceOverData"
 DEFAULT_ADDONS = r"F:\World of Warcraft\_classic_beta_\Interface\AddOns"
 MANIFEST_FORMAT = "melloui-voice-lines/2"
@@ -382,9 +385,9 @@ def interface_version() -> str:
 def toc_text(build: str) -> str:
     return "\n".join([
         "## Interface: %s" % interface_version(),
-        "## Title: MelloUI Voice Over Data v2",
-        "## Notes: Recorded NPC and quest lines for MelloUI's Voice Over: one voice per NPC.",
-        "## Version: 2.0.0",
+        "## Title: MelloUI Voice Pack",
+        "## Notes: Recorded quest, greeting and book lines for MelloUI's Voice Over, one voice per NPC. Replaces the old voice pack.",
+        "## Version: 1.0",
         "## LoadOnDemand: 1",
         "## OptionalDeps: MelloUI",
         "## X-MelloUI-VoicePack: 2",
@@ -395,8 +398,8 @@ def toc_text(build: str) -> str:
     ])
 
 
-SOURCES = """MelloUI Voice Over Data v2
-==========================
+SOURCES = """MelloUI Voice Pack
+=================
 
 Recorded NPC and quest lines for MelloUI's Voice Over. Every NPC speaks all of its lines in one voice.
 
@@ -460,7 +463,7 @@ def sha1(path: str) -> str:
 
 
 def guard(folder: str) -> None:
-    """Only ever a folder named MelloUI_VoiceOverData_v2: never the old pack, built or installed."""
+    """Only ever a folder named MelloUI_VoicePack: never the old pack, built or installed."""
     name = os.path.basename(os.path.normpath(folder))
     if name != ADDON_NAME:
         raise BuildError("refusing to write %s: the pack's folder must be named %s" % (folder, ADDON_NAME))
@@ -511,7 +514,7 @@ def build(manifest_path, clips: str, out: str, build_text: str | None, check_onl
 
 
 def install(out: str, addons: str) -> tuple:
-    """Copy the built addon into the game's AddOns folder, as MelloUI_VoiceOverData_v2 only."""
+    """Copy the built addon into the game's AddOns folder, as MelloUI_VoicePack only."""
     guard(out)
     target = os.path.join(addons, ADDON_NAME)
     guard(target)

@@ -3067,7 +3067,7 @@ local HOME_TIPS = {
 	install = "The installer: a setup for the whole interface in a few steps, fitted to this screen. Closes this window while it runs.",
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
 }
-local HELP_NOTE = "The game keeps your settings. Macro Backup on the Profiles page can also keep a copy in account macros, brought back only when you ask; /mello status shows both. The voice pack (MelloUI_VoiceOverData) is a separate download from the releases page and goes next to the MelloUI folder."
+local HELP_NOTE = "The game keeps your settings. Macro Backup on the Profiles page can also keep a copy in account macros, brought back only when you ask; /mello status shows both. The voice pack, MelloUI_VoicePack, replaces the old pack: a separate download in two parts from the 0.15.0 release (the Voice pack link above). Unzip both into the AddOns folder, where they make one MelloUI_VoicePack folder."
 
 -- This frame's rows counted as spent: a page's first open whose own parts
 -- are this frame's work (Home's header and cards), so the worker starts on
@@ -3076,16 +3076,18 @@ local function RowsDoneThisFrame()
 	W.RowBudget.Spent(BUILD_BUDGET)
 end
 
-local function VoicePackInstalled()
+-- Your setup's voice pack row: MelloUI_VoicePack, else an old pack it
+-- replaces (still played while it is the only one), else none
+local function VoicePackText()
 	if C_AddOns and C_AddOns.IsAddOnLoaded then
-		for _, name in ipairs({ "MelloUI_VoiceOverData", "AI_VoiceOverData_Forever", "AI_VoiceOverData_Vanilla" }) do
+		for i, name in ipairs({ "MelloUI_VoicePack", "MelloUI_VoiceOverData", "AI_VoiceOverData_Forever", "AI_VoiceOverData_Vanilla" }) do
 			local ok, loaded = pcall(C_AddOns.IsAddOnLoaded, name)
 			if ok and loaded then
-				return true
+				return i == 1 and "installed" or "old pack: the new one is under Help"
 			end
 		end
 	end
-	return false
+	return "not installed (the link is under Help)"
 end
 
 -- how many of the modules with a page of their own are on
@@ -3750,7 +3752,7 @@ local function RefreshSetup(page)
 	rows.screen.value:SetText(ScreenText())
 	local on, total = ModulesOn()
 	rows.mello.value:SetText(string.format("%s, %d of %d modules on", tostring(MelloUI.version), on, total))
-	rows.voice.value:SetText(VoicePackInstalled() and "installed" or "not installed (the link is under Help)")
+	rows.voice.value:SetText(VoicePackText())
 	local installer = type(MelloUI.OpenInstaller) == "function"
 	local I = MelloUI.Installer
 	local canRevert = InstallerState() ~= nil and type(I) == "table" and type(I.Revert) == "function"
@@ -3808,7 +3810,7 @@ local SEARCH_TIPS = {
 	help = "The slash commands, the links, and where your settings are kept.",
 	screen = "Your screen's size and shape, as the installer fits MelloUI's layout to it.",
 	mello = "The version running and how many of its modules are on.",
-	voice = "Whether the voice pack for Voice Over is installed.",
+	voice = "Whether the voice pack for Voice Over, MelloUI_VoicePack, is installed.",
 }
 local function FitWanted()
 	return type(MelloUI.OpenInstaller) == "function" and FitDue() and true or false

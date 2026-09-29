@@ -2,7 +2,7 @@
 
 # MelloUI – Voiced NPCs, a Full UI Reskin & a Map That Actually Helps
 
-**Download:** [latest release](https://github.com/MelloCro/MelloUI/releases/latest) · [on CurseForge](https://www.curseforge.com/wow/addons/melloui) · [voice pack (1.6 GB, optional)](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip) · [all releases](https://github.com/MelloCro/MelloUI/releases) · [changelog](CHANGELOG.md)
+**Download:** [latest release](https://github.com/MelloCro/MelloUI/releases/latest) · [on CurseForge](https://www.curseforge.com/wow/addons/melloui) · voice pack (2.6 GB, optional, two parts): [part 1](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part1.zip) + [part 2](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part2.zip) · [all releases](https://github.com/MelloCro/MelloUI/releases) · [changelog](CHANGELOG.md)
 
 **Discord:** [discord.gg/gdpQ6ep7bW](https://discord.gg/gdpQ6ep7bW) · help, bug reports and every new release
 
@@ -25,7 +25,7 @@
 
 Download the [release zip](https://github.com/MelloCro/MelloUI/releases/latest) (not GitHub's "Source code" zip) and copy every folder in it, `MelloUI` and `MelloUI_Companion`, into `World of Warcraft\_classic_beta_\Interface\AddOns\`. Then restart the game fully once (`/reload` doesn't find new folders). `MelloUI_Companion` holds the Route data and only loads when a route needs it.
 
-**Voice pack (optional, 1.6 GB):** [download it](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip), put the `MelloUI_VoiceOverData` folder next to MelloUI, and tick it in the addon list. No pack? The game's text-to-speech reads instead.
+**Voice pack (optional, 2.6 GB in two parts):** download [part 1](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part1.zip) and [part 2](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part2.zip) and unzip both into the same `AddOns` folder: they make one `MelloUI_VoicePack` folder next to MelloUI. Tick it in the addon list. It replaces the old `MelloUI_VoiceOverData` pack, so delete that one. No pack? The game's text-to-speech reads instead.
 
 ## Good to know
 

@@ -42,21 +42,23 @@ I re-recorded the whole interface. Clicks, pages, pouches, buckles, coins, whisp
 
 ## 🎙️ Quest givers talk to you
 
-Every quest offer, progress line, turn-in and greeting is read out loud in a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
+Every quest offer, objective, progress line, turn-in and greeting is read out loud, and so are the pages of books, letters, plaques and signs. With the voice pack every NPC keeps one voice for all of its lines; without it, the game's text-to-speech picks a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
 
 - A little overlay on a scroll shows who's talking, with subtitles.
-- 11,503 recorded lines for Vanilla and the Forever-only quests, with the free voice pack below.
+- Every quest, every greeting and the books voiced, with the free voice pack below.
 - No voice pack? The game's own text-to-speech kicks in (it needs a voice installed in the Windows speech settings). Works out of the box.
 - Forgot what a quest was about? Open your quest log, hit Read, done.
 
-**Get the voice pack (free, 1.6 GB, totally optional but so worth it):**
+**Get the voice pack (free, 2.6 GB, totally optional but so worth it):**
 
-1. Download it here: [MelloUI_VoiceOverData.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.13.0/MelloUI_VoiceOverData.zip)
-2. Unzip it. You get a folder called `MelloUI_VoiceOverData`.
-3. Drop that folder next to MelloUI in `World of Warcraft\_classic_beta_\Interface\AddOns` (the `.toc` file must be directly inside it, not in another folder).
-4. Start the game, tick **MelloUI VoiceOver Data** in the addon list at the character screen. That's it. `/vo packs` in game shows the pack is loaded.
+It comes in two parts, and you need both.
 
-*(Had `AI_VoiceOverData_Vanilla` before? Delete it, everything in it is already in here. The pack merges the vanilla lines of the wow-voiceover project, Unlicense, with the lines made for Forever's own quests.)*
+1. Download [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part2.zip).
+2. Unzip both into `World of Warcraft\_classic_beta_\Interface\AddOns`. They fill the same `MelloUI_VoicePack` folder next to MelloUI (if Windows asks about files that are already there, replace them). The `.toc` file must be directly inside `MelloUI_VoicePack`, not in another folder.
+3. Had the old pack, `MelloUI_VoiceOverData`? Delete that folder. `MelloUI_VoicePack` replaces it, and MelloUI never uses the old one while the new one is installed.
+4. Start the game, tick **MelloUI Voice Pack** in the addon list at the character screen. That's it. `/vo packs` in game shows the pack is loaded.
+
+*(Still on the old pack? It keeps playing until you install the new one, and MelloUI tells you once in chat where to get it.)*
 
 ## 🗺️ The map that actually helps
 
@@ -511,35 +513,65 @@ subtitles: the line is split into sentences packed into pages of three lines, an
 turns as the playback advances, so nothing is ever cut off. The overlay textures come from
 the VoiceOver addon (`Media\Textures\VoiceOver`, Unlicense).
 
-`Tools\merge_voice_packs.py` builds the `MelloUI_VoiceOverData` pack offered on the Releases
-page. The first time it merged `AI_VoiceOverData_Vanilla` and `AI_VoiceOverData_Forever` into
-one addon; since then `Tools\build_voice_pack.py` builds new Forever lines straight into the
-installed merged pack, keeping its other lines, and the merge tool simply packages that pack
-(`--zip` for the release archive, `--install` to place a build in the game's AddOns folder).
+**The voice pack.** `MelloUI_VoicePack` (0.15.0; a separate, load-on-demand addon, downloaded in
+two parts from the v0.15.0 release) gives every NPC one voice for all of its lines. Its one index,
+`index.lua`, maps a key to a clip (`sounds\<voice>\<hash12>.ogg`) and the clip's length: quest
+lines by `<questID>-<kind>` (accept, objectives, progress, complete; `m-` / `f-` in front for a
+line whose words depend on the player's sex; `-<npcID>` behind where a second giver or turn-in NPC
+has a voice of its own, `-0` for an object or an item, read by a narrator), every text an NPC's
+window shows by `g-<npcID>-<hash8>` (greetings, gossip pages, quest-giver and trainer greetings:
+a hash of the words with the player's name, class and race left out; a changed text still plays
+when at least 40% of its words match), and the pages of books, letters, plaques and signs by
+`r-<hash8>`, read by the narrator. Quest IDs are read once the quest panel has settled (the client
+can still report the previous quest when the event fires), else looked up by title. The speaker is
+the dialog's NPC, never the target, and a clip in another voice than the NPC's is not played. The
+module loads the pack on demand and plays its line whenever it has one; everything else is read
+with text-to-speech, unless "Read Unvoiced Lines" is off: then only recorded lines are heard and the
+rest stays silent (the quest log's Read button still reads). The channel the recordings play on can
+be chosen (Master by default). "Prefer Recordings" (off by default) plays an NPC's only recorded
+greeting even when Forever changed the greeting text, instead of reading the new text. `/vo packs`
+shows the pack's build and counts and the last lookups.
 
-If a VoiceOver data pack is installed and enabled in the addon list (`MelloUI_VoiceOverData`,
-or the old `AI_VoiceOverData_Vanilla`: about 1.2 GB of recorded lines for most vanilla quest
-offers and turn-ins, few progress lines, and the greetings), the module loads it on demand and
-plays the recorded line whenever one exists: quest lines by quest ID (read once the quest panel
-has settled, since the client can still report the previous quest when the event fires; a
-vanilla quest Forever renumbered is found through its title and giver and plays the old
-recording; a line recorded only per player gender plays either file rather than nothing),
-greetings by NPC and text. Everything without a recording, such as Forever's new quests, falls
-back to text-to-speech, unless "Read Unvoiced Lines" is off: then only recorded lines are heard and
-the rest stays silent (the quest log's Read button still reads). The VoiceOver player addon itself is not needed and should be disabled
-so lines are not read twice. `/vo packs` shows what was loaded. The channel the recordings play
-on can be chosen (Master by default). "Prefer Recordings" (off by default) plays an NPC's only
-recorded greeting even when Forever changed the greeting text, instead of reading the new text.
+**The old packs.** `MelloUI_VoicePack` replaces `MelloUI_VoiceOverData` (the pack offered up to
+0.14.0) and the VoiceOver data packs before it (`AI_VoiceOverData_Vanilla`). The old pack is no
+longer offered. While `MelloUI_VoicePack` is installed, only it is read: the old packs are never
+loaded, not even for a line it lacks. With only an old pack installed, it still plays as it did
+(quest lines by quest ID, a renumbered vanilla quest through its title and giver, greetings by NPC
+and text), and MelloUI says once per account in chat where to get the new pack. The VoiceOver
+player addon itself is not needed and should be disabled so lines are not read twice.
 
-To build a pack for Forever's own content, the module records every greeting and quest line it
-sees ("Record Dialog Lines", off by default) into the `MelloUIVoiceLines` saved variable, which
-the game saves at logout and on `/reload` and keeps from one session to the next.
+**Building the voice pack (maintainers).** The tools are `Tools\voice_v2_*.py` and the
+`Tools\voice_v2` folder (`Tools\voice_v2_pack.py`'s header describes the addon it builds); they
+write to `MelloUI-BuildData\output\voice_v2`:
+
+1. `Tools\voice_v2_lines.py` (`Tools\voice_v2\export_lines.py`) exports every voiceable line as a
+   manifest, `lines.json` (`--readables` for the book pages: `lines_readables.json`): the texts from
+   the classic-db dump, the cached Wowhead pages of Forever's quests and items, the Forever client's
+   caches and the lines the in-game collector kept; every line gets one speaker, and every NPC its
+   one voice from `Tools\voice_v2\npc_voices.csv`.
+2. `Tools\voice_v2_voices.py` keeps `voices.json`, the voices (made from the game's own NPC
+   recordings) and their seeds.
+3. `Tools\voice_v2\generate.py <manifest>` makes the clips on the speech service, batch by batch,
+   into the clip library (`clips\`); a re-run only makes what is missing.
+4. `python Tools\voice_v2_pack.py lines.json lines_readables.json` checks every key, clip and voice
+   and builds the addon into `output\voice_v2\MelloUI_VoicePack` (`--check` checks only;
+   `--install` copies the build into the game's AddOns folder, only when asked). It never writes
+   to any folder but one named `MelloUI_VoicePack`.
+
+The module still records every greeting and quest line it sees when asked ("Record Dialog Lines",
+off by default) into the `MelloUIVoiceLines` saved variable, which the game saves at logout and on
+`/reload` and keeps from one session to the next; the export reads it for the Forever texts no
+other source has. `/vo lines` shows what has been collected so far.
+
+**The old pack's tools** (kept for reference; `MelloUI_VoiceOverData` is no longer built or
+offered): `Tools\merge_voice_packs.py` merged `AI_VoiceOverData_Vanilla` and
+`AI_VoiceOverData_Forever` into that pack and zipped it; `Tools\build_voice_pack.py` built new
+Forever lines straight into the installed pack.
 `Tools\export_voice_lines.py` merges each saved file into
 `Tools\cache\voice_lines.json` and writes `Tools\output\forever_voice_lines.txt` / `.csv`: every
 line with no usable recording, grouped by NPC with a race and gender hint, placeholders replaced
-by spoken words, and the file name each MP3 should get. `/vo lines` shows what has been
-collected so far. Generate the lines (the vanilla pack's voices were the author's own ElevenLabs
-clones; cloning a few of the pack's MP3s per race and gender gives matching voices), then
+by spoken words, and the file name each MP3 should get. Generate the lines (the vanilla pack's
+voices were the author's own ElevenLabs clones; cloning a few of the pack's MP3s per race and gender gives matching voices), then
 `Tools\build_voice_pack.py assign <download.mp3> <file name>` files each MP3 under
 `Tools\pack_sources` and `Tools\build_voice_pack.py build` writes them into the
 `MelloUI_VoiceOverData` addon in the game's AddOns folder, adding to its lookup tables and
@@ -566,7 +598,8 @@ in game or listed in `Media\NPCVoiceOverrides.lua` (`--allow-unknown` forces the
 **Quest log read-aloud.** The quest log's details view gets a Read button (option "Read Button
 In The Quest Log", also `/vo read` for the selected quest). It reads the quest's description in
 the giver's voice, then the objectives with their current counts ("Goretusk Liver, 3 of 8").
-When a sound pack has the giver's recorded offer line it is played instead of text-to-speech.
+When the voice pack has the giver's offer and objectives lines they play in the giver's voice
+instead of text-to-speech, and only the counts are read after them.
 The giver comes from the Quest List data (every vanilla and Forever quest carries its giver's
 NPC id), so the race and gender voice is right even for quests accepted long ago. The
 description read this way is collected like any other line, so old quests without a recording
@@ -1084,9 +1117,12 @@ The GitHub Action (`.github/workflows/release.yml`, BigWigs packager) zips the a
 TOC, token from the `CF_API_KEY` repository secret) and attaches the same zip to the GitHub
 release for the tag. A tag that already has a release is skipped, so a moved tag cannot upload
 a duplicate; a repository ruleset also forbids moving or deleting `v*` tags. The voice pack is
-not part of that: when the lines changed, run `python Tools\merge_voice_packs.py --zip` and
-upload the zip to the release by hand, then update the direct links in the README and the
-CurseForge description.
+not part of that: when the lines changed, build it (`python Tools\voice_v2_pack.py lines.json
+lines_readables.json`), zip the `MelloUI_VoicePack` folder in two parts, each under GitHub's 2 GB
+limit for a release file and both holding their files under `MelloUI_VoicePack\`
+(`MelloUI_VoicePack_Part1.zip`, `MelloUI_VoicePack_Part2.zip`: unzipped into the same place they
+make one folder), upload both to the release by hand, then update the direct links and the size
+in the README, this guide and the CurseForge description.
 
 Every push runs `luacheck Core Modules Media MelloUI_Companion` (`.github/workflows/lint.yml`,
 options in `.luacheckrc`): syntax, unused locals and globals that are neither WoW API nor listed

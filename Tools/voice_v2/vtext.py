@@ -1,4 +1,4 @@
-"""Text rules of MelloUI_VoiceOverData_v2: canonical text, greeting hash, spoken text.
+"""Text rules of MelloUI_VoicePack: canonical text, greeting hash, spoken text.
 
 A port of the normative reference (ref_vtext.py, written with the v2 format spec). It must give the same
 results on the spec's test vectors (hash, keyText, runtime, spoken); the Lua twin lives in

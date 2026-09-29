@@ -1074,6 +1074,10 @@ end
 --         when       function(entry) -> live: its place kept and its plate
 --                    shown only while true (a module's element: while that
 --                    module is on)
+--         waiting    function(entry) -> waits: true while it stands on a
+--                    place of its own the store has not taken in yet (the
+--                    Route arrow's from before 0.14): Reset all resets it
+--                    too, so its reset lets that place go
 --       The entry holds all of these (resize a boolean, group always set,
 --       label always a string when it has a key or a name) and `moving`
 --       ("plain" or Edit Layout's "layout"), `placing` and `scaling` (held
@@ -1101,6 +1105,7 @@ end
 --   MelloUI:MoverEntries()             the entries, in registration order
 --   MelloUI:MoverEntry(frame) -> entry | nil
 --   MelloUI:EntryLive(entry) -> live       its `when` true, the frame not forbidden
+--   MelloUI:EntryWaiting(entry) -> waits   its `waiting` true
 --   MelloUI:EntryShown(entry) -> shown     its `visible`, else IsShown (secret: false)
 --   MelloUI:EntryRect(entry) -> l, b, w, h
 --       UIParent units, nil when anything reads secret or not finite. A
@@ -1166,8 +1171,8 @@ end
 --                                         window without one closed), its reset
 --                                         called only at Save
 --   ResetAll() -> n                       Reset for every live entry but a "tool"'s
---                                         with a stored or pending place, and
---                                         every live `save` entry, once per key
+--                                         with a stored, pending or waiting place,
+--                                         and every live `save` entry, once per key
 --   Holds(entry), Pos(entry), IsReset(entry), Count(), Touched() -> entries
 --   Differs(entry) -> bool                its change counts in Count() (a reset,
 --                                         or a place unlike the stored one, else
@@ -1553,6 +1558,20 @@ do
 			return (not Secret(live) and live) and true or false
 		end
 		return true
+	end
+
+	-- a place of its own the store has not taken in yet (its `waiting`)
+	local function Waiting(entry)
+		local waiting = entry.waiting
+		if not waiting then
+			return false
+		end
+		local ok, waits = pcall(waiting, entry)
+		if not ok then
+			Report(waits)
+			return false
+		end
+		return (not Secret(waits) and waits) and true or false
 	end
 
 	local function Shown(entry)
@@ -1949,6 +1968,7 @@ do
 			note = type(opts.note) == "function" and opts.note or nil,
 			resetLabel = type(opts.resetLabel) == "string" and opts.resetLabel or nil,
 			when = type(opts.when) == "function" and opts.when or nil,
+			waiting = type(opts.waiting) == "function" and opts.waiting or nil,
 		}
 		entries[#entries + 1] = entry
 		byFrame[frame] = entry
@@ -2016,6 +2036,13 @@ do
 			return false
 		end
 		return Live(entry)
+	end
+
+	function MelloUI:EntryWaiting(entry)
+		if type(entry) ~= "table" then
+			return false
+		end
+		return Waiting(entry)
 	end
 
 	function MelloUI:EntryShown(entry)
@@ -2500,7 +2527,7 @@ do
 			local key = entry.key
 			if entry.group ~= "tool" and not (key ~= nil and done[key]) and Live(entry) then
 				local rec = Held(entry)
-				if entry.save or (key ~= nil and (Stored(key) ~= nil or (rec and rec.pos ~= nil))) then
+				if entry.save or (key ~= nil and (Stored(key) ~= nil or (rec and rec.pos ~= nil))) or Waiting(entry) then
 					if key ~= nil then
 						done[key] = true
 					end

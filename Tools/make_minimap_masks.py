@@ -22,7 +22,8 @@ removed from both folders.
 
 Writes each TGA master (MelloUI-BuildData/masters/Media/Textures/Masks/
 Minimap/, Tools/paths.py) and a byte copy into the addon's Media so it ships
-at once; `texture_pack.py ship` then makes them BLPs like the other masks.
+at once; `texture_pack.py ship` keeps them as those TGAs (its STAY_TGA: 13 KB
+in the zip, less than as BLPs; MinimapPanel names them without an ending).
 Deterministic: the same script gives the same bytes.
 
     python Tools/make_minimap_masks.py            write them all

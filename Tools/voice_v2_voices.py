@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Voices for MelloUI_VoiceOverData_v2: voices.json, new voicegen voices made from the game's own audio,
+"""Voices for MelloUI_VoicePack: voices.json, new voicegen voices made from the game's own audio,
 one short test line per new voice, and a report.
 
 Every NPC that speaks a line gets ONE voice. The identities come from the research map
@@ -1670,7 +1670,7 @@ def cmd_report(args):
     rule_of = {n: classify(n, rows[n], new[n], vj) for n in rows}
     L = []
     w = L.append
-    w("# MelloUI_VoiceOverData_v2: voices")
+    w("# MelloUI_VoicePack: voices")
     w("")
     w(f"Built {BUILD_DATE} by `Tools/voice_v2_voices.py` against Denis's final voicegen library ({len(lib)} voices). "
       f"Every NPC of the frozen map (`Tools/voice_v2/npc_voices.csv`, {len(rows)} NPCs) has one voice; "

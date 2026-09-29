@@ -1068,8 +1068,9 @@ function E:ResetEntry(entry)
 	E:Refresh()
 end
 
--- every live element that is no tool and has a stored or pending place,
--- and every live `save` element (a key once)
+-- every live element that is no tool and has a stored, pending or waiting
+-- place (its `waiting`: the Route arrow's from before 0.14, which its reset
+-- lets go), and every live `save` element (a key once)
 ResetAll = function()
 	local LS, P = Session(), Movers()
 	if not (LS and S.open) then
@@ -1083,7 +1084,7 @@ ResetAll = function()
 		if entry.group ~= "tool" and (key == nil or not seen[key]) and MelloUI:EntryLive(entry)
 			and not P.LockedReason(entry) then
 			local placed = entry.save ~= nil or (key ~= nil and MelloUI:GetPosition(key) ~= nil)
-				or LS.Pos(entry) ~= nil
+				or LS.Pos(entry) ~= nil or MelloUI:EntryWaiting(entry)
 			if placed then
 				if key ~= nil then
 					seen[key] = true
