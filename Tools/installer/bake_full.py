@@ -93,10 +93,12 @@ FITTING = os.path.join(B.HERE, "fitting")
 # (the two old objectives switches, VoiceOver.questObjectives and questLogObjectives, became Quest Objectives in
 # 0.15.0: a snapshot's saved value of either is dropped, never shipped as a key no module reads. Quest Objectives
 # and Read Books And Letters Aloud are on for everyone (user, 2026-09-29): a snapshot with either off never ships
-# it off -- the Full profile leaves both at their default, on; test_bake.py's "no FULL_DROP key" checks it)
+# it off -- the Full profile leaves both at their default, on; test_bake.py's "no FULL_DROP key" checks it. Race
+# Pitch & Speed and Profile Strength were removed in 0.15.0: a snapshot's value of either is dropped too)
 FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPanel.itemBorder",
              "VoiceOver.questObjectives", "VoiceOver.questLogObjectives",
-             "VoiceOver.recordedObjectives", "VoiceOver.readBooks"]
+             "VoiceOver.recordedObjectives", "VoiceOver.readBooks",
+             "VoiceOver.raceProfiles", "VoiceOver.profileStrength"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)
