@@ -30,6 +30,12 @@
 --   QI.GameColour(fs)         the last of them (a done objective is grey)
 --   QI.onParchment            the quest log's reskin is on (its pages and the
 --                             quest list are parchment); QuestLogPanel sets it
+--   QI.ROW, QI.RowFonts, ...  the one quest row the quest log and the quest
+--                             list share: its numbers, fonts, pips column,
+--                             hover band, the Classic / Forever stamp (also
+--                             beside a quest's name on its details page:
+--                             QI.FollowStamp), the section header (Quest
+--                             rows, below)
 --
 -- The rule for the whole interface (user, 2026-09-23: "if the Background of
 -- the text trought the whole UI is set to Parchment, it should use the Black
@@ -478,6 +484,190 @@ function QI.ClassColour(classFile)
 		return nil
 	end
 	return r, g, b
+end
+
+--------------------------------------------------------------------------------
+-- Quest rows (0.15.0; user, 2026-09-27, with screenshots: the Quest Log and
+-- the Quest List should look like they belong together). One row for both
+-- lists, laid as the quest log lays its own (the game's QuestLogTitleTemplate
+-- and its objective lines, Blizzard_UIPanels_Game QuestMapFrame.xml / .lua):
+-- the log's rows are the game's and keep the game's places; the Quests
+-- panel's rows are laid by the same numbers; both are dressed by the same
+-- calls. Its columns, left to right: the icon (the log's POI button, the
+-- list's quest icon), the title with the line under it, the difficulty pips,
+-- the right slot (the log's tracking box, the list's Classic / Forever stamp).
+--   QI.ROW                        the numbers (below)
+--   QI.RowFonts(title, line)      the log's two fonts on a row's title and on
+--                                 the line under it (either may be nil): its
+--                                 titles' (GameFontNormalLeft) and its
+--                                 objectives' (ObjectiveFont), each at its own
+--                                 size as the Fonts module leaves it; returns
+--                                 the two sizes (QI.RowFontObjects(): the two
+--                                 font objects)
+--   QI.RowHeight(titleSize, lineSize)   a row of one title and one line
+--   QI.RowPips(pips, slot)        the pips in their column, just left of the
+--                                 row's right slot
+--   QI.RowBullet(line)            the mark before the line under a title: a
+--                                 small round bullet, as the quest log shows
+--                                 before its objectives (user, 2026-09-29,
+--                                 with a screenshot of the log), never the
+--                                 game's dash (QUEST_DASH, a client's own);
+--                                 the middle dot while `line` (after
+--                                 QI.RowFonts) is in Skurri, which has no
+--                                 U+2022
+--   QI.RowBand(row, titleSize)    the hover band: the quest log's own
+--                                 highlight UNDER the text (its BORDER layer:
+--                                 an additive glow over the text greyed the
+--                                 ink), from 4 px over the title to 4 px under
+--                                 it; made on the row's first lay, hidden
+--   QI.Stamp(tex, on, sheet)      the Classic / Forever logo as an ink stamp:
+--                                 on parchment the logo in the title ink (the
+--                                 sheet's on a kit sheet), its colours
+--                                 dropped; off it its own colours. The two
+--                                 logos are as wide as each other
+--                                 (MelloUI.QUEST_ORIGIN_LOGOS, QuestList.lua)
+--   QI.FollowStamp(tex, paper)    a stamp on a page that switches (a quest's
+--                                 details page): stamped by paper() -> on,
+--                                 sheet now, and again as the quest log's
+--                                 parchment or an ink surface switches
+--                                 (QI.Restamp)
+--   QI.RowHeader(button, label, toggle, count, plate)   a section header
+--                                 where the log's are (QuestLogHeaderTemplate):
+--                                 its height, the label, the +/-, and the count
+--                                 (optional) left of the +/-; `plate` (optional)
+--                                 the region its plate is laid on, as far right
+--                                 of the rows' left as the log's (the label on it)
+--   QI.RowScrollBar(bar, list)    a list's scroll bar where the log's is
+--------------------------------------------------------------------------------
+
+QI.ROW = {
+	top = 8,               -- the title's top under the row's (the log's Text at y -8)
+	gap = 3,               -- the line under the title (the log's objectives, 3 under it)
+	bottom = 6,            -- under the last line (the log's room for its POI button)
+	iconX = 16,            -- the icon column's middle (the log's POI button: 20 px at x 6)
+	iconSize = 18,         -- the list's quest icon (14 was too small, user 2026-09-23)
+	titleX = 31,           -- the title's left (the log's Text at x 31)
+	pipsSize = 10,         -- the difficulty pips (QI.Pips)
+	pipsGap = 4,           -- the pips' right end to the right slot (the log's, left of its tracking box)
+	edge = 8,              -- the list's right slot from the row's right edge
+	band = 4,              -- the hover band over and under the title (the log's highlight)
+	headerHeight = 22,     -- a section header (QuestLogHeaderTemplate)
+	headerPad = 9,         -- the log lays its headers 9 in (QuestLogHeaderTemplate's leftPadding)
+	rowPad = 4,            -- and its rows 4 in (QuestMapFrameOverrides.titleFrameLeftPadding, Forever's):
+	                       -- a header's plate 5 right of the rows' left
+	headerLabelX = 8,      -- its label (ListHeaderVisualTemplate's ButtonText), on the plate
+	headerToggleX = -6,    -- its +/- (the CollapseButton), from the right
+	headerCountX = -30,    -- the list's count, from the right: left of the +/-
+	searchHeight = 20,     -- the search box (SearchBoxTemplate as the log has it)
+	barX = 8, barTop = 2, barBottom = -4,   -- the scroll bar beside the list (the log's ScrollFrameTemplate)
+}
+local ROW = QI.ROW
+
+-- a font object's face, size and flags; nil when it cannot be read
+local function FontOf(object)
+	if not (object and object.GetFont) then
+		return nil
+	end
+	local ok, path, size, flags = pcall(object.GetFont, object)
+	local IsSecret = MelloUI.Safe.IsSecret
+	if ok and path and size and not (IsSecret(path) or IsSecret(size)) then
+		return path, size, flags
+	end
+	return nil
+end
+
+function QI.RowFontObjects()
+	return _G.GameFontNormalLeft or GameFontNormal, _G.ObjectiveFont or _G.GameFontHighlight
+end
+
+function QI.RowFonts(title, line)
+	local titleObject, lineObject = QI.RowFontObjects()
+	local tp, ts, tf = FontOf(titleObject)
+	local lp, ls, lf = FontOf(lineObject)
+	if title and tp then
+		pcall(title.SetFont, title, tp, ts, tf or "")
+	end
+	if line and lp then
+		pcall(line.SetFont, line, lp, ls, lf or "")
+	end
+	ts = ts or 12
+	return ts, ls or ts
+end
+
+function QI.RowHeight(titleSize, lineSize)
+	return math.floor(ROW.top + (titleSize or 12) + ROW.gap + (lineSize or titleSize or 12) + ROW.bottom + 0.5)
+end
+
+function QI.RowPips(pips, slot)
+	pips:ClearAllPoints()
+	pips:SetPoint("RIGHT", slot, "LEFT", -ROW.pipsGap, 0)
+end
+
+-- (U+2022 and a space. MelloUI's own faces and the game's Friz Quadrata,
+-- Arial Narrow and Morpheus have it; the game's Skurri may not (the client
+-- copy checked maps no U+2022 in its Unicode table, only in its Mac one),
+-- so with Skurri on the line the middle dot, U+00B7, which every face has.
+-- A face shared by another addon is not checked.)
+QI.BULLET = "\226\128\162 "
+QI.BULLET_SKURRI = "\194\183 "
+
+function QI.RowBullet(line)
+	local path = FontOf(line)
+	if type(path) == "string" and path:lower():find("skurri", 1, true) then
+		return QI.BULLET_SKURRI
+	end
+	return QI.BULLET
+end
+
+function QI.RowBand(row, titleSize)
+	local band = row.melloBand
+	if not band then
+		band = row:CreateTexture(nil, "BORDER")
+		band:SetAtlas("questlog-quest-glow-yellow")
+		band:Hide()
+		row.melloBand = band
+	end
+	band:ClearAllPoints()
+	band:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -(ROW.top - ROW.band))
+	band:SetPoint("BOTTOMRIGHT", row, "TOPRIGHT", 0, -(ROW.top + (titleSize or 12) + ROW.band))
+	return band
+end
+
+-- (the title ink, read as it is laid: a palette switch lays the list again)
+function QI.Stamp(tex, on, sheet)
+	if on then
+		tex:SetDesaturated(true)
+		tex:SetVertexColor(QI.RoleColour("title", nil, nil, nil, sheet))
+	else
+		tex:SetDesaturated(false)
+		tex:SetVertexColor(1, 1, 1)
+	end
+end
+
+function QI.RowHeader(button, label, toggle, count, plate)
+	button:SetHeight(ROW.headerHeight)
+	if plate then
+		plate:ClearAllPoints()
+		plate:SetPoint("TOPLEFT", button, "TOPLEFT", ROW.headerPad - ROW.rowPad, 0)
+		plate:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT")
+	end
+	toggle:ClearAllPoints()
+	toggle:SetPoint("RIGHT", button, "RIGHT", ROW.headerToggleX, 0)
+	label:ClearAllPoints()
+	label:SetPoint("LEFT", plate or button, "LEFT", ROW.headerLabelX, 0)
+	if count then
+		count:ClearAllPoints()
+		count:SetPoint("RIGHT", button, "RIGHT", ROW.headerCountX, 0)
+		label:SetPoint("RIGHT", count, "LEFT", -6, 0)
+	else
+		label:SetPoint("RIGHT", toggle, "LEFT", -4, 0)
+	end
+end
+
+function QI.RowScrollBar(bar, list)
+	bar:ClearAllPoints()
+	bar:SetPoint("TOPLEFT", list, "TOPRIGHT", ROW.barX, ROW.barTop)
+	bar:SetPoint("BOTTOMLEFT", list, "BOTTOMRIGHT", ROW.barX, ROW.barBottom)
 end
 
 --------------------------------------------------------------------------------
@@ -1113,7 +1303,6 @@ local function OverPlate(fs)
 	end
 	return nil
 end
-QI.OverPlate = OverPlate
 
 -- What a frame holds that may lie under a string of it, as DefaultSkip asks
 -- it, measured once a stamp (the strings of a row share it): its kit strips
@@ -1823,6 +2012,25 @@ local function Tick()
 	end
 end
 
+-- The stamps that follow their page (QI.FollowStamp: the quest details'
+-- logo), each with the call that tells whether its page is on parchment
+-- now. Stamped again only when a page switches: the quest log's parchment
+-- (QuestLogPanel, as it sets QI.onParchment) or an ink surface (below)
+local followers = setmetatable({}, WEAK)
+
+function QI.FollowStamp(tex, paper)
+	followers[tex] = paper
+	local ok, on, sheet = pcall(paper)
+	QI.Stamp(tex, ok and on, ok and sheet)
+end
+
+function QI.Restamp()
+	for tex, paper in pairs(followers) do
+		local ok, on, sheet = pcall(paper)
+		QI.Stamp(tex, ok and on, ok and sheet)
+	end
+end
+
 -- Ink a surface's strings while it is on parchment, put them back when not.
 -- `quiet`: the periodic pass (only shown roots; strings made since, inked),
 -- run in slices by the driver; else a change (the hidden roots too), what
@@ -1856,6 +2064,10 @@ function QI.RefreshSurface(name, quiet)
 	if def.onRefresh and (was ~= on or not quiet) then
 		pcall(def.onRefresh, on)
 	end
+	-- the stamps on its pages follow it (a quest giver's details)
+	if (was or false) ~= on then
+		QI.Restamp()
+	end
 end
 
 function QI.Surface(name, def)
@@ -1866,6 +2078,47 @@ function QI.Surface(name, def)
 	QI.surfaces[name] = def
 	QI.RefreshSurface(name)
 	return def
+end
+
+-- Whether `region` lies in one of the frames after it (as far down as a
+-- surface's walk goes)
+function QI.Within(region, ...)
+	for i = 1, select("#", ...) do
+		local root = select(i, ...)
+		local f = region
+		for _ = 0, MAX_DEPTH + 1 do
+			if not root or not f then
+				break
+			end
+			if f == root then
+				return true
+			end
+			f = f.GetParent and f:GetParent()
+		end
+	end
+	return false
+end
+
+local function InRoots(region, def)
+	return QI.Within(region, def.roots())
+end
+
+-- Whether `region` lies on a surface that is on parchment now (in one of its
+-- roots): true and the surface's sheet flag, else false. Asked as a picture
+-- on a page is laid (a stamp's paper), never each frame
+function QI.OnSurface(region)
+	if not region then
+		return false
+	end
+	for _, def in pairs(QI.surfaces) do
+		if def.active and not def.noWalk then
+			local ok, held = pcall(InRoots, region, def)
+			if ok and held then
+				return true, def.sheet and true or false
+			end
+		end
+	end
+	return false
 end
 
 -- a parchment sheet switched on or off: its surface follows (the bus's

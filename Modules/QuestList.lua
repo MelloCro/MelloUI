@@ -195,17 +195,25 @@ end
 -- actual logo"), cut out of the user's pictures with a soft dark halo for
 -- the parchment: file, the logo's size in the file and the file's size (in
 -- the master's pixels: the shipped file is half that size, and only their
--- ratios are used)
+-- ratios are used). On parchment each is an ink stamp (QuestInk's QI.Stamp).
 local LOGO_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Quests\\"
 MelloUI.QUEST_ORIGIN_LOGOS = {
 	-- Classic: its letters set closer (user, 2026-09-23: "cut some of the
 	-- space between the letters so that the middle aligns")
-	[1] = { file = LOGO_DIR .. "tag_classic", w = 278, h = 32, fw = 512, fh = 32, height = 12 },
+	[1] = { file = LOGO_DIR .. "tag_classic", w = 278, h = 32, fw = 512, fh = 32 },
 	-- Forever: the user's white letters with a border of the logo's light blue
 	-- and a thin dark edge (user, 2026-09-23: "make a border around the white
 	-- letters and color it light blue ... scale it up a bit")
-	[2] = { file = LOGO_DIR .. "tag_forever", w = 255, h = 64, fw = 256, fh = 64, height = 20 },
+	[2] = { file = LOGO_DIR .. "tag_forever", w = 255, h = 64, fw = 256, fh = 64 },
 }
+-- Both as wide as each other (0.15.0; user, 2026-09-29): the Forever logo's
+-- width at its 20 px height, about 80 px; the Classic one, the wider of the
+-- two, shrunk to it, so every title in the Quests panel gains the room it
+-- took (about 24 px). `height`: each logo's height at that width
+local LOGO_WIDTH = 20 * 255 / 64
+for _, logo in pairs(MelloUI.QUEST_ORIGIN_LOGOS) do
+	logo.height = LOGO_WIDTH * logo.h / logo.w
+end
 
 -- The quest's logo on `tex`, `scale` times its usual height: its width, or
 -- nil (and hidden) for a quest the data does not know
@@ -227,14 +235,41 @@ end
 -- The same logo beside the quest's name in the quest details: the quest
 -- log's and a quest giver's (QuestInfo_Display fills both). A texture of
 -- its own, after the name on a one-line title, over it when the title wraps.
+-- On parchment the same ink stamp as the Quests panel's rows (user,
+-- 2026-09-29; the parchment rule: its own colours where the page is not
+-- MelloUI's parchment), stamped again as its page switches (QI.FollowStamp)
 local detailTag = nil
+
+-- whether the details page is on parchment now: the quest log's while its
+-- reskin is on (QuestInk's onParchment: the log's vellum), a quest giver's
+-- while its dialogs' ink surface is on (the kit's darker sheet)
+local function DetailsPaper()
+	local QI = MelloUI.QuestInk
+	local title = QuestInfoTitleHeader
+	if not (QI and title) then
+		return false
+	end
+	if QI.onParchment and QuestMapFrame and QI.Within(title, QuestMapFrame) then
+		return true, false
+	end
+	return QI.OnSurface(title)
+end
+
 local function TagQuestDetails()
 	local title = QuestInfoTitleHeader
 	if not (title and title.GetParent) then
 		return
 	end
+	-- QuestInfo_Display moves the title itself onto each page's content
+	-- frame (the quest log's details, a quest giver's panel, the popup), so
+	-- the logo goes with it: left on the first page's frame it was never
+	-- drawn on the others (our own texture; OVERLAY kept, over the title)
+	local page = title:GetParent()
 	if not detailTag then
-		detailTag = title:GetParent():CreateTexture(nil, "OVERLAY")
+		detailTag = page:CreateTexture(nil, "OVERLAY")
+	elseif detailTag:GetParent() ~= page then
+		detailTag:SetParent(page)
+		detailTag:SetDrawLayer("OVERLAY")
 	end
 	local questID
 	if QuestInfoFrame and QuestInfoFrame.questLog and C_QuestLog and C_QuestLog.GetSelectedQuest then
@@ -251,6 +286,10 @@ local function TagQuestDetails()
 	if not gw then
 		detailTag:Hide()
 		return
+	end
+	local QI = MelloUI.QuestInk
+	if QI and QI.FollowStamp then
+		QI.FollowStamp(detailTag, DetailsPaper)
 	end
 	detailTag:ClearAllPoints()
 	local okW, sw = pcall(title.GetStringWidth, title)

@@ -177,6 +177,16 @@ local function SkinTitle(button)
 	end
 end
 
+-- A section header's plate, one dresser for the log's headers and the Quests
+-- panel's (QuestInk's Quest rows: one header for both lists): the category
+-- plate on the header's normal texture, over the whole header (or `rect`:
+-- the panel's plate place, as far right of its rows as the log's), its
+-- additive highlight faded with it
+local function HeaderPlate(button, normal, highlight, rect)
+	return Replace(normal, { as = "common-button-list-collapseExpand", rect = rect or button, button = button,
+		alsoFade = highlight and { highlight } or nil }) or false
+end
+
 -- A header (QuestLogHeaderTemplate = ListHeaderVisualTemplate): the category
 -- plate on its normal texture, the +/- glyph on its collapse button.
 local function SkinHeader(button)
@@ -184,9 +194,7 @@ local function SkinHeader(button)
 		button.melloRep = false
 		local normal = button.GetNormalTexture and button:GetNormalTexture()
 		if normal then
-			local highlight = button.GetHighlightTexture and button:GetHighlightTexture()
-			button.melloRep = Replace(normal, { as = "common-button-list-collapseExpand", rect = button, button = button,
-				alsoFade = highlight and { highlight } or nil }) or false
+			button.melloRep = HeaderPlate(button, normal, button.GetHighlightTexture and button:GetHighlightTexture())
 		end
 		local collapse = button.CollapseButton
 		if collapse and collapse.UpdateCollapsedState then
@@ -205,7 +213,6 @@ end
 -- 2026-09-23: black text, "D"). The game colours them on each update; the
 -- colour it gave an objective (grey once done) is watched, so inking again
 -- never mistakes our own ink for it. Off: the game's look back.
-local PIP_SIZE = 10
 
 local function QuestLevel(questID)
 	if not (questID and C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetInfo) then
@@ -232,7 +239,11 @@ local function ObjectiveRole(r)
 end
 
 -- One title's ink and pips, one objective's ink (the game's look back while
--- the skin is off)
+-- the skin is off). The log's rows are the one quest row the Quests panel
+-- lays too (QuestInk's Quest rows): the same fonts on the title and the line
+-- under it (QI.RowFonts: the game's own, taken again as the Fonts module
+-- changes them), the pips in the same column, just left of the right slot
+-- (here the tracking box: QI.RowPips)
 local function InkTitle(QI, title)
 	local fs = title.Text
 	if not fs then
@@ -240,12 +251,13 @@ local function InkTitle(QI, title)
 	end
 	if active then
 		local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
+		QI.RowFonts(fs, nil)
 		QI.Ink(fs, tier == 1 and "faded" or "title")
-		title.melloPips = title.melloPips or QI.Pips(title, PIP_SIZE)
-		title.melloPips:ClearAllPoints()
+		title.melloPips = title.melloPips or QI.Pips(title, QI.ROW.pipsSize)
 		if title.Checkbox then
-			title.melloPips:SetPoint("RIGHT", title.Checkbox, "LEFT", -4, 0)
+			QI.RowPips(title.melloPips, title.Checkbox)
 		else
+			title.melloPips:ClearAllPoints()
 			title.melloPips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
 		end
 		title.melloPips:SetTier(tier)
@@ -260,16 +272,25 @@ local function InkTitle(QI, title)
 	end
 end
 
+-- (an objective's bullet is a string of its own, the Dash, in ObjectiveFont's
+-- light grey, which the game never colours: inked as the line after it, as
+-- the Quests panel's bullet is, its own grey back when the skin is off)
 local function InkObjective(QI, objective)
-	local fs = objective.Text
+	local fs, dash = objective.Text, objective.Dash
 	if fs then
 		QI.WatchColour(fs, ObjectiveRole)
 		if active then
-			local r = QI.GameColour(fs)
-			QI.Ink(fs, r < 0.8 and "faded" or "text")
+			local role = ObjectiveRole(QI.GameColour(fs))
+			QI.RowFonts(nil, fs)
+			QI.Ink(fs, role)
+			if dash then
+				QI.RowFonts(nil, dash)
+				QI.Ink(dash, role)
+			end
 		else
 			QI.Plain(fs)
 			fs:SetTextColor(QI.GameColour(fs))
+			QI.Plain(dash, true)
 		end
 	end
 end
@@ -475,11 +496,13 @@ local function SkinList()
 	InkList(true)
 end
 
--- The quest list window (MelloUI's) follows: its rows drawn again
+-- The quest list window (MelloUI's) follows: its rows drawn again; and the
+-- stamp beside a quest's name on the details page (QuestInk's QI.Restamp)
 local function InkQuestListWindow()
 	local QI = MelloUI.QuestInk
 	if QI then
 		QI.onParchment = active
+		QI.Restamp()
 	end
 	local ql = ns.QuestList
 	if ql and ql.Panel and ql.Panel.frame and ql.Panel.Update then
@@ -610,8 +633,7 @@ local function SkinQuestListEntry(button)
 	local highlight = button:GetHighlightTexture()
 	local isHeader = normal and Kit:ArtKey(normal) == "common-button-list-collapseExpand"
 	if isHeader and not button.melloHeader then
-		button.melloHeader = Replace(normal, { as = "common-button-list-collapseExpand", rect = button, button = button,
-			alsoFade = highlight and { highlight } or nil }) or false
+		button.melloHeader = HeaderPlate(button, normal, highlight, button.plateArea)
 		if button.melloHeader then
 			-- refitted when shown, as the hover plate: a width set while the
 			-- button served as a quest row reaches the header's plate too
@@ -619,16 +641,17 @@ local function SkinQuestListEntry(button)
 			Perf.HookScript(button, "OnLeave", KeepLockLit)
 		end
 	end
-	if not button.melloRow then
-		-- a row's hover: the quest log's hover plate on the whole row (its
-		-- clickable width inside the list, left of the scroll bar, and its
-		-- height), shown while the mouse is on it
-		button.melloRow = HoverPlate(highlight, button) or false
+	if not button.melloRow and button.melloBand then
+		-- a row's hover: the quest log's hover plate on the row's hover band
+		-- (QuestInk's QI.RowBand: the title's line, 4 px over and under it,
+		-- across the row -- the rect the log's own plate has), under the
+		-- text, shown while the mouse is on the row; the band itself faded
+		-- (a row has no highlight of its own: the Quests panel clears it)
+		button.melloRow = HoverPlate(button.melloBand, button.melloBand) or false
 		if button.melloRow then
 			button.melloRow:SetShown(false)
 		end
 	end
-	KeepFaded(button.melloRow, highlight)
 	if isHeader then
 		KeepFaded(button.melloHeader, normal)
 		KeepFaded(button.melloHeader, highlight)
@@ -901,6 +924,7 @@ local function Deactivate()
 	InkList()
 	if MelloUI.QuestInk then
 		MelloUI.QuestInk.onParchment = false
+		MelloUI.QuestInk.Restamp()
 	end
 	local ql = ns.QuestList
 	local frame = ql and ql.Panel and ql.Panel.frame

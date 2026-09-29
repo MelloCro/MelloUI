@@ -20,10 +20,17 @@ local M = QL.M
 --------------------------------------------------------------------------------
 
 QL.Panel = {}
-local ROW_HEIGHT = 36   -- a 13 px title over a 12 px line, as the quest log sets them
-local HEADER_HEIGHT = 24
+-- The rows, headers, search box and scroll bar are the quest log's (user,
+-- 2026-09-27: the two lists "look like they belong together"): QuestInk's
+-- Quest rows, the one row both lists share -- its numbers (QI.ROW), fonts,
+-- spacing, columns, hover band and the Classic / Forever stamp
+local QI = MelloUI.QuestInk
+local ROW = QI.ROW
 local LEVEL_SHORTCUT = 4   -- the level check box under the Filter button: hide quests more than 4 (so 5 or more) levels above
-local ICON_SIZE = 18   -- the row's quest icon ("!", "?", tick, swords, chest, door); 14 was too small
+local PIN_SIZE = 14        -- the map pin on the pinned quest's icon
+-- a quest row's height: the log's spacing round its two fonts as the list
+-- was last laid (Update), the list view's extent and each row's own height
+local rowHeight = QI.RowHeight(12, 12)
 local FILTERS = {
 	{ key = "all", label = "All" }, { key = "continent", label = "Continent" }, { key = "zone", label = "Zone" }, { key = "class", label = "Class" },
 	{ key = "dungeons", label = "Dungeons" }, { key = "raids", label = "Raids" }, { key = "attunements", label = "Attunements" }, { key = "events", label = "Events" },
@@ -207,6 +214,10 @@ local function EntryEnter(self)
 	local e = self.entry
 	if e and e.row then
 		RowEnter(self)
+		-- the hover band UNDER the text (QI.RowBand), as the quest log's
+		if self.melloBand then
+			self.melloBand:Show()
+		end
 	end
 	local hover = QL.Panel.OnRowHover
 	if hover then
@@ -219,18 +230,22 @@ local function EntryLeave(self)
 	if e and e.row then
 		Leave()
 	end
+	if self.melloBand then
+		self.melloBand:Hide()
+	end
 	local hover = QL.Panel.OnRowHover
 	if hover then
 		hover(self, false)
 	end
 end
 
--- A button's art for what it shows (a header's plate and its lit copy, a
--- row's highlight): set when it turns from one to the other and when the
--- list is laid out afresh (Update) -- not on every Init: a scroll inits the
--- rows coming into view with the art they already have (audit, 2026-09-24,
--- rank 18). A layout sets it again as before (a highlight the quest log's
--- kit let go of comes back at full alpha; the next layout puts it back).
+-- A button's art for what it shows (a header's plate and its lit copy; a
+-- row has none: its hover is a band under its text, QI.RowBand): set when
+-- it turns from one to the other and when the list is laid out afresh
+-- (Update) -- not on every Init: a scroll inits the rows coming into view
+-- with the art they already have (audit, 2026-09-24, rank 18). A layout
+-- sets it again as before (a highlight the quest log's kit let go of comes
+-- back at full alpha; the next layout puts it back).
 local artLaid = 1   -- counts the layouts (Update)
 local function NewArt(button, kind)
 	if button.artKind == kind and button.artLaid == artLaid then
@@ -244,58 +259,53 @@ end
 -- once (EnsureWidgets), its art when it turns from header to row or back and
 -- on a fresh layout (NewArt), and everything else on each Init.
 -- The quest log's look (user, 2026-09-23: "why is there a difference in
--- text between the Default Quest log, and the MelloUI Quest Module"): the
--- game's face and outline as the Fonts module sets them, the title and the
--- line under it at the quest log's 12 (13 read larger than the log, user
--- screenshot 2026-09-23). Set on every row, so a Fonts change reaches it.
-local TITLE_SIZE, LINE_SIZE = 12, 12   -- the quest log sets both lines the same size
-local function QuestLogFonts(button)
-	local object = GameFontNormal
-	if not (object and object.GetFont) then
-		return
-	end
-	local ok, path, _, flags = pcall(object.GetFont, object)
-	if ok and path then
-		pcall(button.title.SetFont, button.title, path, TITLE_SIZE, flags or "")
-		pcall(button.where.SetFont, button.where, path, LINE_SIZE, flags or "")
-	end
-end
-
+-- text between the Default Quest log, and the MelloUI Quest Module"; again
+-- 2026-09-27): a header and a row are laid as the log lays its own (QuestInk's
+-- Quest rows): a header by QI.RowHeader, a row's title and the line under it
+-- in the log's two fonts at their own sizes as the Fonts module sets them
+-- (QI.RowFonts, on every row, so a Fonts change reaches it), 8 under the
+-- row's top and 3 apart, the icon, pips and stamp in their columns.
 local function EnsureWidgets(button)
 	if button.title then
 		return
 	end
+	-- a header's label, its count and its +/- (placed by QI.RowHeader)
 	button.label = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	if Game15Font_Shadow then
 		button.label:SetFontObject(Game15Font_Shadow)
 	end
-	button.label:SetPoint("LEFT", 9, 0)
-	button.label:SetPoint("RIGHT", -70, 0)
 	button.label:SetJustifyH("LEFT")
 	button.label:SetWordWrap(false)
 	button.count = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	button.count:SetPoint("RIGHT", -30, 0)
 	button.count:SetJustifyH("RIGHT")
 	button.plus = button:CreateTexture(nil, "OVERLAY")
-	button.plus:SetPoint("RIGHT", -6, 0)
+	-- where a header's plate lies (and its highlight, the kit's plate), as far
+	-- right of the rows' left as the log's: a region, never drawn
+	button.plateArea = button:CreateTexture(nil, "BACKGROUND")
+	button.plateArea:Hide()
+	-- a row's icon (placed on the title's line as the row is laid), its title
+	-- and the line under it (their right ends by the columns, InitRow)
 	button.check = button:CreateTexture(nil, "ARTWORK")
-	button.check:SetSize(ICON_SIZE, ICON_SIZE)
-	button.check:SetPoint("CENTER", button, "LEFT", 21, 0)   -- same middle as before, clear of the title at 34
+	button.check:SetSize(ROW.iconSize, ROW.iconSize)
 	button.title = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	button.title:SetPoint("TOPLEFT", 34, -3)
-	button.title:SetPoint("RIGHT", -8, 0)
+	button.title:SetPoint("TOPLEFT", ROW.titleX, -ROW.top)
 	button.title:SetJustifyH("LEFT")
 	button.title:SetWordWrap(false)
 	button.where = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	button.where:SetPoint("BOTTOMLEFT", 34, 4)
-	button.where:SetPoint("RIGHT", -8, 0)
+	button.where:SetPoint("TOPLEFT", button.title, "BOTTOMLEFT", 0, -ROW.gap)
 	button.where:SetJustifyH("LEFT")
 	button.where:SetWordWrap(false)
-	-- Classic or Forever, top right (user, 2026-09-23)
+	-- the right slot, where the log has its tracking box: a region the pips
+	-- and the lines are laid by, never drawn; the Classic or Forever stamp
+	-- stands in it (user, 2026-09-23 / 2026-09-27)
+	button.slot = button:CreateTexture(nil, "BACKGROUND")
+	button.slot:Hide()
 	button.origin = button:CreateTexture(nil, "OVERLAY")
-	button.pin = button:CreateTexture(nil, "OVERLAY")
-	button.pin:SetSize(20, 20)
-	button.pin:SetPoint("RIGHT", -6, 0)
+	-- the map pin on the pinned quest: on its icon's corner, as the log marks
+	-- the quest it follows on its POI button (the columns never move for it)
+	button.pin = button:CreateTexture(nil, "OVERLAY", nil, 1)
+	button.pin:SetSize(PIN_SIZE, PIN_SIZE)
+	button.pin:SetPoint("CENTER", button.check, "BOTTOMRIGHT", -3, 3)
 	-- The map's own pin art, not the small chat icon version.
 	local pinned = false
 	for _, atlas in ipairs({ "Waypoint-MapPin-Minimap-Tracked", "Waypoint-MapPin-Tracked", "Waypoint-MapPin-Untracked" }) do
@@ -385,7 +395,9 @@ local function InitHeader(button, entry)
 			button:UnlockHighlight()
 		end)
 	end
-	button:SetHeight(HEADER_HEIGHT)
+	-- the log's section header (QI.RowHeader: its height, its plate's place,
+	-- label and +/-), with the list's count
+	QI.RowHeader(button, button.label, button.plus, button.count, button.plateArea)
 	button.check:Hide()
 	button.title:Hide()
 	button.where:Hide()
@@ -394,10 +406,19 @@ local function InitHeader(button, entry)
 	button.plus:Show()
 	button.pin:Hide()
 	button.origin:Hide()
+	if button.melloBand then
+		button.melloBand:Hide()
+	end
 	if NewArt(button, "header") then
 		button:SetNormalAtlas("common-button-list-collapseExpand")
 		button:SetHighlightAtlas("common-button-list-collapseExpand", "ADD")
 		button:GetHighlightTexture():SetAlpha(0.4)
+		-- both on the plate's place (QI.RowHeader)
+		local normal, highlight = button:GetNormalTexture(), button:GetHighlightTexture()
+		normal:ClearAllPoints()
+		normal:SetAllPoints(button.plateArea)
+		highlight:ClearAllPoints()
+		highlight:SetAllPoints(button.plateArea)
 	end
 	button.plus:SetAtlas(QL.collapsed[entry.key] and "common-button-list-plus" or "common-button-list-minus", true)
 	button.label:SetText(entry.name)
@@ -406,37 +427,65 @@ local function InitHeader(button, entry)
 	KeyColour(button.count, "text", (entry.done == entry.total and entry.total > 0) and QL.DONE_ALPHA or 1)
 end
 
+-- The right slot's width: the Classic / Forever stamps' (as wide as each
+-- other since 0.15.0, user 2026-09-29: the Classic one shrunk to the Forever
+-- one's, every title about 24 px wider; the widest, should they ever
+-- differ), so every row's stamp, pips and title stand in one column each,
+-- whatever its stamp and whether its quest is pinned (user, 2026-09-27:
+-- "fixed columns")
+local slotWidth = nil
+local function SlotWidth()
+	if not slotWidth then
+		slotWidth = 0
+		for _, logo in pairs(MelloUI.QUEST_ORIGIN_LOGOS or {}) do
+			slotWidth = math.max(slotWidth, logo.height * logo.w / logo.h)
+		end
+	end
+	return slotWidth
+end
+
+local function MouseOver(b)
+	local ok, over = pcall(b.IsMouseOver, b)
+	return ok and over == true
+end
+
 local function InitRow(button, entry)
 	EnsureWidgets(button)
 	button.entry = entry
-	button:SetHeight(ROW_HEIGHT)
 	button.label:Hide()
 	button.count:Hide()
 	button.plus:Hide()
 	button.title:Show()
 	button.where:Show()
-	local tracked = QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID
-	button.pin:SetShown(tracked)
-	-- the logo at the top right (left of the pin on the tracked quest), both
-	-- logos centred on one column whatever their widths (user, 2026-09-23:
-	-- "where is the middle" -- hung by their right edge, the wider Classic
-	-- one sat left of the Forever one), the title stopping short of it
-	local right = tracked and -32 or -8
-	-- and its middle on the row's middle, level with the gem at the end of the
-	-- row's plate (user, 2026-09-23); both lines stop short of it
-	local LOGO_COLUMN = 44   -- the column's centre from the right edge
-	button.origin:ClearAllPoints()
-	button.origin:SetPoint("CENTER", button, "RIGHT", right - LOGO_COLUMN, 0)
-	local logoWidth = MelloUI:ApplyQuestOriginLogo(button.origin, entry.row[QL.F_ID])
-	local tagRoom = logoWidth and (LOGO_COLUMN + logoWidth / 2 + 6) or 0
-	button.title:SetPoint("RIGHT", right - tagRoom, 0)
-	button.where:SetPoint("RIGHT", right - tagRoom, 0)
-	button.titleRight = right - tagRoom   -- the title's right edge (the pips stand in front of it on parchment)
 	if NewArt(button, "row") then
+		-- no highlight of its own: its hover is the band under the text
+		-- (QI.RowBand), as the quest log's (an additive glow over the text
+		-- greyed the ink on parchment -- user, 2026-09-27)
 		button:ClearNormalTexture()
-		button:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
-		button:GetHighlightTexture():SetAlpha(0.6)
+		button:ClearHighlightTexture()
 	end
+	-- the quest log's two fonts and its spacing (the row's height from them,
+	-- as the list was laid)
+	local titleSize = QI.RowFonts(button.title, button.where)
+	button:SetHeight(rowHeight)
+	-- the icon in the icon column, on the title's line
+	button.check:ClearAllPoints()
+	button.check:SetPoint("CENTER", button, "TOPLEFT", ROW.iconX, -(ROW.top + titleSize / 2))
+	-- the right slot on the title's line, the Classic / Forever stamp in its
+	-- middle, where the log has its tracking box: level with the pips and
+	-- with the gem at the end of the hover plate, inside its band (user,
+	-- 2026-09-23 / 2026-09-27); an ink stamp on parchment
+	local slot = SlotWidth()
+	button.slot:SetSize(math.max(slot, 1), titleSize)
+	button.slot:ClearAllPoints()
+	button.slot:SetPoint("TOPRIGHT", button, "TOPRIGHT", -ROW.edge, -ROW.top)
+	button.origin:ClearAllPoints()
+	button.origin:SetPoint("CENTER", button.slot, "CENTER")
+	MelloUI:ApplyQuestOriginLogo(button.origin, entry.row[QL.F_ID])
+	QI.Stamp(button.origin, QI.onParchment)
+	-- the hover band (hidden but on the row under the mouse)
+	QI.RowBand(button, titleSize):SetShown(MouseOver(button))
+	button.pin:SetShown(QL.trackedQuestID ~= nil and entry.row[QL.F_ID] == QL.trackedQuestID)
 	local row = entry.row
 	local r, g, b = QL.DifficultyColor(QL.ColourLevel(row))
 	-- the game's trivial grey (0.5) reads as near black over the list's
@@ -446,7 +495,6 @@ local function InitRow(button, entry)
 		r, g, b = 0.72, 0.72, 0.72
 	end
 	-- "[12] Title", as the quest log writes it
-	QuestLogFonts(button)
 	local levelText = row[QL.F_LEVEL] > 0 and string.format("[%d] ", row[QL.F_LEVEL]) or ""
 	local stepText = entry.step and string.format("%d. ", entry.step) or ""
 	button.title:SetText(stepText .. levelText .. row[QL.F_TITLE])
@@ -498,30 +546,36 @@ local function InitRow(button, entry)
 	else
 		where = entry.showZone and (QL.Data().zones[row[QL.F_ZONE]] or "") or "quest giver unknown"
 	end
-	-- as a quest log objective line: a dash, in the text colour; a step down
-	-- once done
-	button.where:SetText("- " .. where)
+	-- as a quest log objective line: its small round bullet (QI.RowBullet),
+	-- in the text colour; a step down once done
+	button.where:SetText(QI.RowBullet(button.where) .. where)
 	KeyColour(button.where, "text", entry.completed and QL.DONE_ALPHA or 1)
-	-- on the reskin's parchment: both lines in ink, the difficulty in pips at
-	-- the title's right (QuestInk; user, 2026-09-23); a done quest faded, no pips
-	local QI = MelloUI.QuestInk
-	local titleRight = button.titleRight or -8
-	if QI and QI.onParchment then
+	-- on the reskin's parchment the difficulty in pips (QuestInk; user,
+	-- 2026-09-23); a done quest has none
+	local tier = nil
+	if QI.onParchment then
 		local level = QL.ColourLevel(row)
-		local tier = nil
 		if not entry.completed and level > 0 then
 			tier = QI.TierForQuest(row[QL.F_ID], level) or QI.TierOfColour(QL.DifficultyColor(level))
 		end
-		button.pips = button.pips or QI.Pips(button, 10)
-		local pipsRoom = tier and (QI.PipsWidth(10) + 6) or 0
-		button.title:SetPoint("RIGHT", titleRight - pipsRoom, 0)
-		button.pips:ClearAllPoints()
-		button.pips:SetPoint("TOPLEFT", button, "TOPRIGHT", titleRight - pipsRoom + 4, -4)
+	end
+	-- the title stops short of the pips' column on a row with pips, else of
+	-- the slot, as off parchment (a done quest keeps its room: the columns
+	-- stay where they are); the line under it short of the slot (both edges
+	-- from the title's own)
+	local pipsRoom = tier and (QI.PipsWidth(ROW.pipsSize) + ROW.pipsGap + 4) or 6
+	button.title:SetPoint("TOPRIGHT", button.slot, "TOPLEFT", -pipsRoom, 0)
+	button.where:SetPoint("TOPRIGHT", button.title, "BOTTOMRIGHT", pipsRoom - 6, -ROW.gap)
+	-- on the reskin's parchment: both lines in ink, the pips in their column;
+	-- a done quest faded
+	if QI.onParchment then
+		button.pips = button.pips or QI.Pips(button, ROW.pipsSize)
+		QI.RowPips(button.pips, button.slot)
 		button.pips:SetTier(tier)
 		local faded = entry.completed or tier == 1
 		QI.Ink(button.title, faded and "faded" or "title")
 		QI.Ink(button.where, faded and "faded" or "text")
-	elseif QI then
+	else
 		QI.Plain(button.title)
 		QI.Plain(button.where)
 		if button.pips then
@@ -564,15 +618,31 @@ local handedIn = false   -- a quest handed in since the last rebuild
 -- What the list was last laid out from, for the quiet pass (Update below)
 local laid = {}
 
--- The quest log's font (the Fonts module) as the rows take it
-local function ListFont()
-	if GameFontNormal and GameFontNormal.GetFont then
-		local ok, path, _, flags = pcall(GameFontNormal.GetFont, GameFontNormal)
-		if ok then
-			return path, flags
+-- The quest log's two fonts (the Fonts module) as the rows take them
+-- (QI.RowFonts), as one key: their faces, sizes and outlines -- a change
+-- lays the list again (a size changes the rows' height too). Each object's
+-- key is made again only when its font changed: a key made on every ask
+-- was garbage once the collector ran, and an unchanged rebuild makes none.
+local fontKeys = {}   -- [font object] = { path, size, flags, key }
+local IsSecret = MelloUI.Safe.IsSecret
+local function FontKey(object)
+	if object and object.GetFont then
+		local ok, path, size, flags = pcall(object.GetFont, object)
+		if ok and path and not (IsSecret(path) or IsSecret(size) or IsSecret(flags)) then
+			local k = fontKeys[object]
+			if not (k and k[1] == path and k[2] == size and k[3] == flags) then
+				k = { path, size, flags, string.format("%s|%s|%s", tostring(path), tostring(size), tostring(flags)) }
+				fontKeys[object] = k
+			end
+			return k[4]
 		end
 	end
-	return nil, nil
+	return "?"
+end
+
+local function ListFont()
+	local title, line = QI.RowFontObjects()
+	return string.format("%s/%s", FontKey(title), FontKey(line))
 end
 
 -- The quests' sums. The log is walked (how many quests, their ids and their
@@ -666,8 +736,7 @@ local function Rebuild()
 	if moved or (moved == nil and logged) then
 		pins = true
 	end
-	local face, flags = ListFont()
-	if pins or face ~= laid.face or flags ~= laid.flags then
+	if pins or ListFont() ~= laid.font then
 		list = true
 	end
 	if list then
@@ -951,7 +1020,7 @@ function QL.Panel:Create()
 	local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
 	search:SetPoint("TOPLEFT", frame.divider, "BOTTOMLEFT", 10, -6)
 	search:SetPoint("RIGHT", -16, 0)
-	search:SetHeight(22)
+	search:SetHeight(ROW.searchHeight)   -- the log's box (QI.ROW)
 	search:SetAutoFocus(false)
 	if search.Instructions then
 		search.Instructions:SetText("Search quests")
@@ -997,11 +1066,12 @@ function QL.Panel:Create()
 	frame.scrollBox:SetPoint("TOPLEFT", lastRowFirst, "BOTTOMLEFT", 2, -6)
 	frame.scrollBox:SetPoint("BOTTOMRIGHT", -30, 14)
 	frame.scrollBar = CreateFrame("EventFrame", nil, frame, "MinimalScrollBar")
-	frame.scrollBar:SetPoint("TOPLEFT", frame.scrollBox, "TOPRIGHT", 6, 0)
-	frame.scrollBar:SetPoint("BOTTOMLEFT", frame.scrollBox, "BOTTOMRIGHT", 6, 0)
+	QI.RowScrollBar(frame.scrollBar, frame.scrollBox)   -- where the log has its own
 	local view = CreateScrollBoxListLinearView()
+	-- (a row's height from the log's fonts as they are when the list is laid:
+	-- Update)
 	view:SetElementExtentCalculator(function(_, entry)
-		return entry.header and HEADER_HEIGHT or ROW_HEIGHT
+		return entry.header and ROW.headerHeight or rowHeight
 	end)
 	view:SetElementFactory(function(factory, entry)
 		if entry.header then
@@ -1042,6 +1112,15 @@ function QL.Panel:Create()
 	-- too, the palette unchanged
 	MelloUI:On("palette", function()
 		if laid.palette ~= MelloUI.Palette then
+			QL.Panel:Update()
+		end
+	end, "Quest List panel")
+	-- new fonts (the Fonts module: a face, a size, the outline): the rows laid
+	-- again in them while the panel shows -- their height comes from the
+	-- fonts as the list was laid, and a row a scroll brings into view takes
+	-- the fonts as they are now (no quest event need follow a size change)
+	MelloUI:On("fonts", function()
+		if laid.font ~= ListFont() then
 			QL.Panel:Update()
 		end
 	end, "Quest List panel")
@@ -1277,21 +1356,21 @@ function QL.Panel:Update(quiet)
 
 	local entries, done, total = BuildEntries(rows, groupOf, showZone)
 	-- besides the entries, a row's look follows the tracked quest (its pin),
-	-- the level (the difficulty colours), the parchment (the ink) and the
-	-- quest log's font (the Fonts module)
+	-- the level (the difficulty colours), the parchment (the ink and the
+	-- stamp) and the quest log's fonts (the Fonts module)
 	local level = QL.Plain(UnitLevel("player"))
-	local QI = MelloUI.QuestInk
-	local paper = QI and QI.onParchment and true or false
-	local face, flags = ListFont()
+	local paper = QI.onParchment and true or false
+	local font = ListFont()
 	-- and the palette (the text colours: a pass after a switch lays it again)
 	local palette = MelloUI.Palette
 	if quiet and not (revealKey and GetTime() < revealUntil) and laid.title == title and laid.done == done
 		and laid.total == total and laid.tracked == QL.trackedQuestID and laid.level == level and laid.paper == paper
-		and laid.face == face and laid.flags == flags and laid.palette == palette and SameEntries(laid.entries, entries) then
+		and laid.font == font and laid.palette == palette and SameEntries(laid.entries, entries) then
 		return
 	end
 	laid.entries, laid.title, laid.done, laid.total, laid.tracked = entries, title, done, total, QL.trackedQuestID
-	laid.level, laid.paper, laid.face, laid.flags, laid.palette = level, paper, face, flags, palette
+	laid.level, laid.paper, laid.font, laid.palette = level, paper, font, palette
+	rowHeight = QI.RowHeight(QI.RowFonts())
 	frame.zone:SetText(title)
 	frame.count:SetText(string.format("%d of %d completed", done, total))
 	artLaid = artLaid + 1   -- (each row's art set again as it is laid: NewArt)
@@ -1309,18 +1388,16 @@ function QL.Panel:Update(quiet)
 	end
 	-- the page's own texts in ink on the parchment too (user, 2026-09-23: the
 	-- zone, its count, the two check boxes, the empty list's line)
-	if QI then
-		if not inkLabels then
-			inkLabels = { { frame.zone, "title" }, { frame.count, "text" }, { frame.empty, "text" },
-				{ frame.levelCheck and frame.levelCheck.label, "text" }, { frame.hide and frame.hide.text, "text" } }
-		end
-		for _, l in ipairs(inkLabels) do
-			if l[1] then
-				if QI.onParchment then
-					QI.Ink(l[1], l[2])
-				else
-					QI.Plain(l[1], true)
-				end
+	if not inkLabels then
+		inkLabels = { { frame.zone, "title" }, { frame.count, "text" }, { frame.empty, "text" },
+			{ frame.levelCheck and frame.levelCheck.label, "text" }, { frame.hide and frame.hide.text, "text" } }
+	end
+	for _, l in ipairs(inkLabels) do
+		if l[1] then
+			if QI.onParchment then
+				QI.Ink(l[1], l[2])
+			else
+				QI.Plain(l[1], true)
 			end
 		end
 	end
