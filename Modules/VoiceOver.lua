@@ -114,7 +114,7 @@ end
 local defaults = {
 	gossip = true,
 	questDetail = true,
-	questObjectives = false,
+	recordedObjectives = true,   -- the voice pack's objectives line (never text-to-speech)
 	questProgress = true,
 	questComplete = true,
 	readBooks = true,         -- the pages of books, letters, plaques and signs (the item text window)
@@ -126,7 +126,6 @@ local defaults = {
 	profileStrength = 1,
 	stopOnClose = false,
 	questLog = true,
-	questLogObjectives = true,
 	stopOnMove = false,
 	queueLines = true,
 	soundPacks = true,
@@ -146,8 +145,8 @@ local options = {
 	  desc = "The text an NPC greets you with when you talk to them." },
 	{ type = "toggle", key = "questDetail", name = "Quest Offers",
 	  desc = "The quest description when a quest is offered." },
-	{ type = "toggle", key = "questObjectives", parent = "questDetail", name = "Include Objectives",
-	  desc = "Also read the objectives after the quest description." },
+	{ type = "toggle", key = "recordedObjectives", name = "Quest Objectives", new = "0.15.0",
+	  desc = "After a quest offer, and after the description the quest log's Read button reads, play the quest's objectives in the quest giver's voice when the voice pack (MelloUI_VoicePack) has them recorded. Text-to-speech never reads the objectives or their counts." },
 	{ type = "toggle", key = "questProgress", name = "Quest Progress",
 	  desc = "What the NPC says when you return with an unfinished quest." },
 	{ type = "toggle", key = "questComplete", name = "Quest Turn-In",
@@ -181,7 +180,7 @@ options[#options + 1] = { type = "header", name = "Sound Packs" }
 options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use Voice Packs",
 	desc = "Play the recorded lines of the voice pack, MelloUI_VoicePack (a separate download in two parts that replaces the old pack), when it has one for the quest, greeting or page; the rest is read with text-to-speech unless Read Unvoiced Lines is off. Tick the pack in the addon list; it loads when needed." }
 options[#options + 1] = { type = "toggle", key = "speakUnrecorded", parent = "soundPacks", name = "Read Unvoiced Lines",
-	desc = "Read a quest or greeting the voice pack has no recording of with a text-to-speech voice. Off: only recorded lines are heard and the rest stay silent. The quest log's Read button always reads." }
+	desc = "Read a quest or greeting the voice pack has no recording of with a text-to-speech voice. Off: only recorded lines are heard and the rest stay silent." }
 options[#options + 1] = { type = "toggle", key = "preferRecordings", parent = "soundPacks", name = "Prefer Recordings",
 	desc = "When an NPC's greeting text was changed but the pack has exactly one recorded greeting for that NPC, play the recording anyway instead of reading the new text aloud. The words will not match what is on screen." }
 options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound Channel", values = {
@@ -198,10 +197,8 @@ options[#options + 1] = { type = "toggle", key = "queueLines", name = "Queue Lin
 	desc = "Read lines one after another: a greeting finishes before the quest offer that follows it. Off makes every new dialog interrupt the previous one." }
 options[#options + 1] = { type = "toggle", key = "stopOnClose", name = "Stop When Window Closes",
 	desc = "Cut the speech off when you close the dialog. Off by default so the NPC keeps talking while you walk away." }
-options[#options + 1] = { type = "toggle", key = "questLogObjectives", name = "Read The Objectives Too",
-	desc = "After the description, read the objectives with their progress. Off reads only the description." }
 options[#options + 1] = { type = "toggle", key = "questLog", name = "Read Button In The Quest Log",
-	desc = "A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the objectives with their progress. Also /vo read." }
+	desc = "A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read." }
 options[#options + 1] = { type = "toggle", key = "stopOnMove", name = "Stop When Target Changes",
 	desc = "Cut the speech off when you change target." }
 options[#options + 1] = { type = "header", name = "Overlay" }
@@ -796,12 +793,14 @@ end
 -- its own store, so a file that goes missing loses nothing already exported.
 --------------------------------------------------------------------------------
 
+-- clipOnly: only ever the voice pack's clip, never text-to-speech (the
+-- objectives, user 2026-09-29: not their text, not their counts)
 local KINDS = {
 	gossip   = { label = "Greeting",       bullet = "SoundQueueBulletGossip",   quest = false },
 	accept   = { label = "Quest offer",    bullet = "SoundQueueBulletAccept",   quest = true },
 	progress = { label = "Quest progress", bullet = "SoundQueueBulletProgress", quest = true },
 	complete = { label = "Quest turn-in",  bullet = "SoundQueueBulletComplete", quest = true },
-	objectives = { label = "Objectives",   bullet = "SoundQueueBulletProgress", quest = true, log = true },
+	objectives = { label = "Objectives",   bullet = "SoundQueueBulletProgress", quest = true, clipOnly = true },
 	readable = { label = "Page",           bullet = "SoundQueueBulletGossip",   quest = false, page = true },
 }
 
@@ -1489,20 +1488,22 @@ local function TogglePaused()
 end
 
 -- Queue a line. npc is a table from DescribeNPC (or nil), kind a KINDS key.
--- matchText, when given, is the text the pack lookups compare (the quest
--- description alone when the objectives are read after it). opts (or nil):
+-- matchText, when given, is the text the pack lookups compare (a quest
+-- panel's text as the window gave it). opts (or nil):
 --   speaker    the NPC ID the voice pack looks the line up for (the quest
 --              log's giver), else the dialog's NPC (SpeakerID)
 --   follow     the line goes on after the one queued just before it (the
 --              objectives after the offer): never cuts it off
---   dialog     an objectives line of the quest window: a dialog line (Read
---              Unvoiced Lines applies), not one the quest log asked for
---   clipOnly   queued only when the voice pack has a clip for it
---   noRecording  read with text-to-speech, never looked up
--- Returns the entry when it was queued.
+-- A clipOnly kind (the objectives) is queued only when the voice pack has
+-- its clip, and a clip of it that fails to play stays silent: it is never
+-- read with text-to-speech. Returns the entry when it was queued.
 local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	if not HasTTS() then
 		return
+	end
+	local info = KINDS[kind] or KINDS.gossip
+	if info.clipOnly and Mode() ~= "v2" then
+		return   -- only the voice pack has such a line
 	end
 	text = CleanText(text)
 	if text == nil then
@@ -1524,7 +1525,6 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 			end
 		end
 	end
-	local info = KINDS[kind] or KINDS.gossip
 	if M.db.queueLines then
 		-- A greeting never waits behind a quest line (the player has already
 		-- moved on to the quest); a page the player opened does.
@@ -1543,9 +1543,6 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		wipe(queue)
 		current = nil
 	end
-	-- a quest log line (the Read button) always reads; an objectives line of
-	-- the quest window is a dialog line
-	local logLine = info.log and not (opts and opts.dialog)
 	local mode = Mode()
 	local speakerID
 	if mode == "v2" then
@@ -1567,10 +1564,10 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	matchText = matchText or text
 	-- The old packs only in their own mode (MelloUI_VoicePack not
 	-- installed), loaded then. With it, a line it lacks is read with
-	-- text-to-speech or left silent, never the old pack's. (A page, or the
-	-- quest log's objectives, is only ever in the voice pack.)
-	local oldPack = mode == "old" and not info.page and not info.log
-	if mode == "v2" and (not info.log or kind == "objectives") and not (opts and opts.noRecording) then
+	-- text-to-speech or left silent, never the old pack's. (A page, or a
+	-- quest's objectives, is only ever in the voice pack.)
+	local oldPack = mode == "old" and not info.page
+	if mode == "v2" then
 		local label = info.quest and string.format("%s %q", kind, tostring(title))
 			or info.page and string.format("page of %q", tostring(title))
 			or string.format("greeting from %s (%d)", tostring(npc and npc.name), speakerID)
@@ -1579,16 +1576,18 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		if path then
 			entry.file, entry.length, entry.mismatch = path, seconds, mismatch or nil
 			entry.fileName = "v2:" .. key
-		elseif known then
-			Trace("%s: NPC %d speaks in the voice pack, which has no such line: %s", label, speakerID,
-				(not logLine and M.db.speakUnrecorded == false) and "silent" or "text-to-speech")
-		elseif not info.log then
-			Trace("%s: %s not in the voice pack: %s", label,
-				info.page and "the page" or (speakerID ~= 0 and ("NPC " .. speakerID) or "object or item"),
-				M.db.speakUnrecorded == false and "silent" or "text-to-speech")
-		end
-		if opts and opts.clipOnly and not path then
-			return nil
+		else
+			local how = info.clipOnly and "not read"
+				or M.db.speakUnrecorded == false and "silent" or "text-to-speech"
+			if known then
+				Trace("%s: NPC %d speaks in the voice pack, which has no such line: %s", label, speakerID, how)
+			else
+				Trace("%s: %s not in the voice pack: %s", label,
+					info.page and "the page" or (speakerID ~= 0 and ("NPC " .. speakerID) or "object or item"), how)
+			end
+			if info.clipOnly then
+				return nil
+			end
 		end
 	end
 	if oldPack then
@@ -1611,20 +1610,20 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		entry.mismatch = mismatch or nil
 		entry.fileName = fileName
 	end
-	if not info.log and not info.page then   -- the recorder keeps NPC and quest lines only
+	if not info.clipOnly and not info.page then   -- the recorder keeps NPC and quest lines only
 		CollectLine(entry, questID)
 	end
 	-- Read Unvoiced Lines off (user, 2026-09-26: "turn off TTS Voices if the
 	-- Dialog is not voiced"): with the packs on, a line with no recording is
-	-- left silent. The quest log's Read button is asked for, so it still reads.
-	if not entry.file and not logLine and M.db.soundPacks and M.db.speakUnrecorded == false then
+	-- left silent.
+	if not entry.file and M.db.soundPacks and M.db.speakUnrecorded == false then
 		if not M.db.queueLines and not (opts and opts.follow) then
 			StopEngine()   -- a new window still ends the line before it, as it does when that line is read
 		end
 		Overlay:Update()
 		return
 	end
-	if entry.file and not logLine and M.db.soundPacks and M.db.speakUnrecorded == false then
+	if entry.file and (info.clipOnly or (M.db.soundPacks and M.db.speakUnrecorded == false)) then
 		entry.recordedOnly = true   -- a file that fails to play stays silent too
 	end
 	queue[#queue + 1] = entry
@@ -3015,25 +3014,17 @@ local function ReadQuestPanel(kind, serial, attempt)
 	end
 	lastRead.key, lastRead.at = key, GetTime()
 	Trace("%s %q: client quest ID %s after %d read(s)", kind, tostring(title), tostring(questID or "none"), attempt)
-	local spoken, objectives = text, nil
-	if kind == "accept" and M.db.questObjectives and GetObjectiveText and plain then
-		local objectiveText = GetObjectiveText()
-		if type(objectiveText) == "string" and not IsSecret(objectiveText) and objectiveText ~= "" then
-			if Mode() == "v2" then
-				-- a line of its own after the offer: the voice pack's objectives
-				-- clip, or text-to-speech when it has none (a recorded offer
-				-- no longer swallows them)
-				objectives = objectiveText
-			else
-				spoken = plain .. " " .. objectiveText
-			end
-		end
-	end
 	local npc = DescribeNPC()
-	Enqueue(spoken, npc, kind, title, questID, text)
-	if objectives then
-		Enqueue(objectives, npc, "objectives", "Objectives" .. (title and (": " .. title) or ""), questID, nil,
-			{ dialog = true, follow = true })
+	Enqueue(text, npc, kind, title, questID, text)
+	-- after the offer, a line of its own: the voice pack's objectives clip
+	-- (Quest Objectives), or nothing when it has none. Text-to-speech never
+	-- reads the objectives (user, 2026-09-29: the pack has them recorded).
+	if kind == "accept" and M.db.recordedObjectives and plain and GetObjectiveText and Mode() == "v2" then
+		local objectives = GetObjectiveText()
+		if type(objectives) == "string" and not IsSecret(objectives) and objectives ~= "" then
+			Enqueue(objectives, npc, "objectives", "Objectives" .. (title and (": " .. title) or ""), questID, nil,
+				{ follow = true })
+		end
 	end
 end
 
@@ -3188,7 +3179,7 @@ end)
 --
 -- A button on the quest log's details view reads the selected quest: the
 -- description in the giver's voice (the recorded offer line when a pack has
--- it), then the objectives with their current counts.
+-- it), then the voice pack's recorded objectives line when it has one.
 --------------------------------------------------------------------------------
 
 -- The quest's row in the Quest List data (row[9] the giver's name, row[21]
@@ -3246,48 +3237,6 @@ local function GiverForQuest(questID)
 	}
 end
 
--- countsOnly: only the objectives' counts ("Goretusk Liver, 0 of 8."), when
--- a recording has said the objectives themselves
-local function SpeakableObjectives(questID, objectivesText, description, countsOnly)
-	local parts = {}
-	if not countsOnly and type(objectivesText) == "string" and not IsSecret(objectivesText) and objectivesText ~= "" then
-		-- The objectives paragraph repeats the description on some quests
-		-- (the recording already said it); only read it when it adds something.
-		local same = false
-		if type(description) == "string" and not IsSecret(description) then
-			local a, b = Normalise(objectivesText), Normalise(description)
-			same = a == b or (a ~= "" and b:find(a, 1, true) ~= nil) or Similarity(objectivesText, description) > 0.6
-		end
-		if not same then
-			parts[#parts + 1] = objectivesText
-		end
-	end
-	if C_QuestLog and C_QuestLog.GetQuestObjectives then
-		local ok, list = pcall(C_QuestLog.GetQuestObjectives, questID)
-		if ok and type(list) == "table" then
-			for _, objective in ipairs(list) do
-				local text = objective and objective.text
-				if type(text) == "string" and not IsSecret(text) and text ~= "" then
-					-- "Goretusk Liver: 0/8" -> "Goretusk Liver, 0 of 8"
-					text = text:gsub("%s*:%s*", ", "):gsub("(%d+)%s*/%s*(%d+)", "%1 of %2")
-					if objective.finished then
-						text = text .. ", done"
-					end
-					parts[#parts + 1] = text .. "."
-				end
-			end
-		end
-	end
-	if #parts == 0 then
-		return nil
-	end
-	if countsOnly then
-		return table.concat(parts, " ")
-	end
-	return "Objectives. " .. table.concat(parts, " ")
-end
-
-
 local function ReadQuest(questID)
 	if not questID or not HasTTS() then
 		return false
@@ -3316,19 +3265,16 @@ local function ReadQuest(questID)
 	local v2 = Mode() == "v2"
 	local speaker = v2 and (npc.id or 0) or nil
 	if type(description) == "string" and not IsSecret(description) and description ~= "" then
-		Enqueue(description, npc, "accept", title, questID, nil, v2 and { speaker = speaker } or nil)
-		spoken = true
+		-- (Read Unvoiced Lines off and no recording: nothing queued, and
+		-- the button says there is nothing to read)
+		spoken = Enqueue(description, npc, "accept", title, questID, nil, v2 and { speaker = speaker } or nil) ~= nil
 	end
-	local label = "Objectives" .. (title and (": " .. title) or "")
-	-- the voice pack's objectives line, then only the counts read aloud
+	-- then the voice pack's objectives line (Quest Objectives), or nothing:
+	-- never text-to-speech, not the counts either (user, 2026-09-29)
 	local clip = nil
-	if v2 and M.db.questLogObjectives and type(objectivesText) == "string" and not IsSecret(objectivesText) and objectivesText ~= "" then
-		clip = Enqueue(objectivesText, npc, "objectives", label, questID, nil, { speaker = speaker, clipOnly = true, follow = true })
-	end
-	local objectives = M.db.questLogObjectives and SpeakableObjectives(questID, objectivesText, description, clip ~= nil) or nil
-	if objectives then
-		Enqueue(objectives, npc, "objectives", label, questID, nil, v2 and { noRecording = true, follow = true } or nil)
-		spoken = true
+	if v2 and M.db.recordedObjectives and type(objectivesText) == "string" and not IsSecret(objectivesText) and objectivesText ~= "" then
+		clip = Enqueue(objectivesText, npc, "objectives", "Objectives" .. (title and (": " .. title) or ""), questID, nil,
+			{ speaker = speaker, follow = true })
 	end
 	return spoken or clip ~= nil
 end
@@ -3371,7 +3317,7 @@ local function CreateReadButton()
 	end)
 	Perf.SetScript(readButton, "OnEnter", function(self)
 		MelloUI.Widgets.ShowTooltip(self, "Read aloud",
-			"Reads the quest's description in the quest giver's voice, then the objectives with their progress.", nil, "ANCHOR_RIGHT")
+			"Reads the quest's description in the quest giver's voice, then the recorded objectives when the voice pack has them.", nil, "ANCHOR_RIGHT")
 	end)
 	Perf.SetScript(readButton, "OnLeave", function() GameTooltip:Hide() end)
 	local acc = 0

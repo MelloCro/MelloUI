@@ -90,7 +90,10 @@ OUT = os.path.join(B.P.OUTPUT, "installer_bake")
 FIT_COMMON = os.path.join(B.HERE, "fit")
 FITTING = os.path.join(B.HERE, "fitting")
 
-FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPanel.itemBorder"]
+# (the two old objectives switches, VoiceOver.questObjectives and questLogObjectives, became Quest Objectives in
+# 0.15.0: a snapshot's saved value of either is dropped, never shipped as a key no module reads)
+FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPanel.itemBorder",
+             "VoiceOver.questObjectives", "VoiceOver.questLogObjectives"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)

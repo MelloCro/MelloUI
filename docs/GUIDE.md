@@ -42,7 +42,7 @@ I re-recorded the whole interface. Clicks, pages, pouches, buckles, coins, whisp
 
 ## 🎙️ Quest givers talk to you
 
-Every quest offer, objective, progress line, turn-in and greeting is read out loud, and so are the pages of books, letters, plaques and signs. With the voice pack every NPC keeps one voice for all of its lines; without it, the game's text-to-speech picks a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
+Every quest offer, progress line, turn-in and greeting is read out loud (and with the voice pack, the objectives too), and so are the pages of books, letters, plaques and signs. With the voice pack every NPC keeps one voice for all of its lines; without it, the game's text-to-speech picks a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
 
 - A little overlay on a scroll shows who's talking, with subtitles.
 - Every quest, every greeting and the books voiced, with the free voice pack below.
@@ -485,9 +485,10 @@ client restart.
 ### Voice Over
 
 Reads NPC dialog aloud with the client's built in text-to-speech: gossip greetings, quest
-offers (optionally with objectives), quest progress and turn-in text. Speech is not tied to
-the window, so the NPC keeps talking while you walk away; a new dialog interrupts the old one
-and `/vo stop` cuts it off. Voices are the ones installed in Windows (Settings, Time & Language,
+offers, quest progress and turn-in text. A quest's objectives are only ever the voice pack's
+recording ("Quest Objectives", on by default): text-to-speech never reads them. Speech is not
+tied to the window, so the NPC keeps talking while you walk away; a new dialog interrupts the old
+one and `/vo stop` cuts it off. Voices are the ones installed in Windows (Settings, Time & Language,
 Speech); the Windows 11 natural voices become available to the game through the open source
 NaturalVoiceSAPIAdapter.
 
@@ -527,7 +528,7 @@ can still report the previous quest when the event fires), else looked up by tit
 the dialog's NPC, never the target, and a clip in another voice than the NPC's is not played. The
 module loads the pack on demand and plays its line whenever it has one; everything else is read
 with text-to-speech, unless "Read Unvoiced Lines" is off: then only recorded lines are heard and the
-rest stays silent (the quest log's Read button still reads). The channel the recordings play on can
+rest stays silent (the quest log's Read button included). The channel the recordings play on can
 be chosen (Master by default). "Prefer Recordings" (off by default) plays an NPC's only recorded
 greeting even when Forever changed the greeting text, instead of reading the new text. `/vo packs`
 shows the pack's build and counts and the last lookups.
@@ -597,9 +598,9 @@ in game or listed in `Media\NPCVoiceOverrides.lua` (`--allow-unknown` forces the
 
 **Quest log read-aloud.** The quest log's details view gets a Read button (option "Read Button
 In The Quest Log", also `/vo read` for the selected quest). It reads the quest's description in
-the giver's voice, then the objectives with their current counts ("Goretusk Liver, 3 of 8").
-When the voice pack has the giver's offer and objectives lines they play in the giver's voice
-instead of text-to-speech, and only the counts are read after them.
+the giver's voice (the voice pack's offer line when it has one, else text-to-speech unless "Read
+Unvoiced Lines" is off), then the voice pack's objectives line when it has one and "Quest
+Objectives" is on. The objectives and their counts are never read with text-to-speech.
 The giver comes from the Quest List data (every vanilla and Forever quest carries its giver's
 NPC id), so the race and gender voice is right even for quests accepted long ago. The
 description read this way is collected like any other line, so old quests without a recording
