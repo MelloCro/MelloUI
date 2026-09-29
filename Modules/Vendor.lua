@@ -96,9 +96,123 @@ end
 
 local POOR_QUALITY = (Enum and Enum.ItemQuality and Enum.ItemQuality.Poor) or 0
 
+-- the last bag the junk sale and the gear check look in
+local function LastBag()
+	return NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4
+end
+
 --------------------------------------------------------------------------------
 -- Repair
 --------------------------------------------------------------------------------
+
+-- The own gold's repair: only when the money covers the cost (the money
+-- unreadable: nothing is spent on a guess); `done` the line said after it
+local function RepairOwn(cost, done)
+	local money = Money()
+	if not money then
+		return
+	end
+	if money >= cost then
+		RepairAllItems(false)
+		Report(done, CoinText(cost))
+	else
+		Report("|cffff4040Not enough gold to repair|r (%s needed).", CoinText(cost))
+	end
+end
+
+-- One piece's durability as pcall hands it over: "worn" (below its full
+-- durability), "whole" (full, or none at all: an empty slot, a ring), or nil
+-- when it cannot be read (raised, secret)
+local function PieceState(ok, cur, max)
+	if not ok or IsSecret(cur) or IsSecret(max) then
+		return nil
+	end
+	cur, max = Num(cur), Num(max)
+	if cur and max and cur < max then
+		return "worn"
+	end
+	return "whole"
+end
+
+-- Whether the gear still wants mending, read from the pieces themselves (no
+-- merchant needed, unlike the repair price): true when a worn or carried
+-- piece is below its full durability, false when every piece reads whole,
+-- nil when a piece cannot be read or the calls are missing
+local function GearWorn()
+	local wornGet = _G.GetInventoryItemDurability
+	local carriedGet = C_Container and C_Container.GetContainerItemDurability
+	if type(wornGet) ~= "function" or type(carriedGet) ~= "function" then
+		return nil
+	end
+	local unread = false
+	for slot = 1, 19 do   -- the worn gear's slots (1 head .. 19 tabard)
+		local state = PieceState(pcall(wornGet, slot))
+		if state == "worn" then
+			return true
+		end
+		unread = unread or state == nil
+	end
+	for bag = 0, LastBag() do
+		for slot = 1, Num(Ask(C_Container.GetContainerNumSlots, bag)) or 0 do
+			local state = PieceState(pcall(carriedGet, bag, slot))
+			if state == "worn" then
+				return true
+			end
+			unread = unread or state == nil
+		end
+	end
+	if unread then
+		return nil
+	end
+	return false
+end
+
+-- A repair the guild bank was asked to pay is looked at again a moment
+-- later, once the server's answer (the gear's durability) is in: only the
+-- player's withdraw limit can be read at a merchant, not the bank's balance,
+-- so gear that still wants mending means the bank could not pay -- the own
+-- gold then, as the option promises (audit, 0.15.0: nothing was mended and
+-- chat still said "guild funds"). The repair price is the merchant's (its
+-- reputation discount) and reads 0 once the merchant is closed, so with the
+-- merchant gone the pieces themselves decide, and gear that cannot be read
+-- claims nothing (review, 0.15.0: a merchant closed within the second said
+-- "guild funds" for gear the bank never paid for). A check left from an
+-- earlier open finds a later one waiting and does nothing (one timer
+-- function, no closure).
+local GUILD_CHECK = 1.0              -- the wait for the answer (s), as the junk sale's report
+local guildCost, guildPending = nil, 0   -- what the guild was asked to pay; the checks waiting
+
+local function GuildCheck()
+	guildPending = guildPending - 1
+	if guildPending > 0 then
+		return
+	end
+	guildPending = 0
+	local asked = guildCost
+	guildCost = nil
+	if not asked then
+		return
+	end
+	if Ask(CanMerchantRepair) then
+		local okCost, cost = pcall(GetRepairAllCost)
+		cost = okCost and Num(cost) or nil
+		if not cost then
+			return   -- (the cost unreadable: nothing said, nothing spent)
+		end
+		if cost <= 0 then
+			Report("Repaired for %s (guild funds).", CoinText(asked))
+		else
+			RepairOwn(cost, "The guild bank could not pay: repaired for %s from your own gold.")
+		end
+		return
+	end
+	local worn = GearWorn()
+	if worn then
+		Report("The guild bank could not pay for the repair (%s needed).", CoinText(asked))
+	elseif worn == false then
+		Report("Repaired for %s (guild funds).", CoinText(asked))
+	end
+end
 
 local function Repair()
 	if not Ask(CanMerchantRepair) then
@@ -122,21 +236,14 @@ local function Repair()
 		end
 		if guildFunds and (guildFunds == -1 or guildFunds >= cost) then
 			RepairAllItems(true)
-			Report("Repaired for %s (guild funds).", CoinText(cost))
+			-- (said once the answer is in: GuildCheck)
+			guildCost, guildPending = cost, guildPending + 1
+			C_Timer.After(GUILD_CHECK, GuildCheck)
 			return
 		end
 	end
 
-	local money = Money()
-	if not money then
-		return   -- (the money unreadable: nothing is spent on a guess)
-	end
-	if money >= cost then
-		RepairAllItems(false)
-		Report("Repaired for %s.", CoinText(cost))
-	else
-		Report("|cffff4040Not enough gold to repair|r (%s needed).", CoinText(cost))
-	end
+	RepairOwn(cost, "Repaired for %s.")
 end
 
 --------------------------------------------------------------------------------
@@ -278,8 +385,7 @@ end
 -- the junk in the bags into the queue; how many
 local function CollectJunk()
 	queueLen, queuePos = 0, 0
-	local lastBag = (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4)
-	for bag = 0, lastBag do
+	for bag = 0, LastBag() do
 		local numSlots = Num(Ask(C_Container.GetContainerNumSlots, bag)) or 0
 		for slot = 1, numSlots do
 			if IsJunk(bag, slot) then

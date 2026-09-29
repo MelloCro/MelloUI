@@ -741,6 +741,7 @@ driver:SetScript("OnUpdate", function()
 	end
 end)
 
+-- (the tests' probe)
 function Perf:IsRecording()
 	return recording
 end

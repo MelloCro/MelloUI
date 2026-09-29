@@ -212,6 +212,7 @@ function KT:Element(name)
 	return name and self.data.elements[name] or nil
 end
 
+-- any tuning at all (the tests' probe)
 function KT:HasAny()
 	for _, section in ipairs(SECTIONS) do
 		if next(self.data[section]) then

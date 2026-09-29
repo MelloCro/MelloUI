@@ -99,7 +99,6 @@ local TEXT = {
 	freedOne = "The game keeps your settings now, so the copy in your account macros is gone: 1 macro slot is free "
 		.. "again. Macro Backup on the Profiles page turns the copy back on.",
 }
-MelloUI.BACKUP_TEXT = TEXT
 
 --------------------------------------------------------------------------------
 -- Serialisation

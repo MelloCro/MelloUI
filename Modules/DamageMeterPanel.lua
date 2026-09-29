@@ -15,7 +15,8 @@
 --   dropdowns D1 and the scroll bar T2-H1-S1 by the sweep; the class icon of
 --   a source entry swapped for the painted class medallion (a spec icon
 --   stays). Left as the game's: the scale handles (functional grips), the
---   "not active" text, the entries' texts.
+--   "not active" text (in dark ink on the meter's parchment), the entries'
+--   texts.
 -- Covers the Dark Mode group "damagemeter". /dmdump [n] [frames|reps].
 --------------------------------------------------------------------------------
 
@@ -479,6 +480,34 @@ local function CondenseHeader(win, rep)
 	end
 end
 
+-- The parchment rule (user, 2026-09-23: text on parchment in dark ink, in
+-- its own colours with the parchment off; the Damage Meter's Parchment
+-- promises it): the one string of the game's on the meter's body, the "not
+-- active" line (the avoidable-damage type out of an instance), in the kit
+-- sheet's inks (QuestInk.lua) while the sheet shows. The entries' names and
+-- values sit on their bars and the session's name and timer on the header
+-- plate: they keep their colours, as the rule has it for bars and plates.
+local inkLines = {}   -- the session windows' "not active" lines, as each window is dressed
+
+local function InkLine(fs)
+	local QI = MelloUI.QuestInk
+	if not (QI and fs) then
+		return
+	end
+	if active and Kit.ParchmentOn and Kit:ParchmentOn("meter") then
+		QI.onSheet[fs] = true   -- (a kit parchment sheet: its own inks)
+		QI.InkText(fs)
+	else
+		QI.PlainText(fs)
+	end
+end
+
+local function InkLines()
+	for _, fs in ipairs(inkLines) do
+		InkLine(fs)
+	end
+end
+
 local function SkinSession(win)
 	if not win or win.melloSkinned then
 		return
@@ -486,7 +515,6 @@ local function SkinSession(win)
 	win.melloSkinned = true
 	if win.Header then
 		local rep = Replace(win.Header, { as = "ui-damagemeters-header-bar", rect = win.Header })
-		win.melloHeaderRep = rep
 		if rep then
 			CondenseHeader(win, rep)
 		end
@@ -514,6 +542,10 @@ local function SkinSession(win)
 		SkinEntry(container.LocalPlayerEntry)
 		HandOnHover(container.LocalPlayerEntry, win)
 		SkinSourceWindow(container.SourceWindow, win)
+		if container.NotActive then
+			inkLines[#inkLines + 1] = container.NotActive
+			InkLine(container.NotActive)
+		end
 	end
 	SkinToggle(win.MinimizeButton)
 	-- the settings button: the kit's cog IN PLACE of the game's gear, not under
@@ -567,6 +599,13 @@ local function Build()
 	end
 	skin = { reps = {}, followers = {}, entries = {} }
 	SkinAll()
+	-- the meter's parchment switched: its "not active" lines follow (the
+	-- bus's 'parchment', fired once the kit's sheets are switched)
+	MelloUI:On("parchment", Perf.Shared("'parchment' on the bus", function(area)
+		if area == "meter" then
+			InkLines()
+		end
+	end), M)
 	local meter = DamageMeter
 	if meter and meter.SetupSessionWindow then
 		-- secondary session windows are made on demand
@@ -591,6 +630,7 @@ local function Activate()
 		Medallion(entry)
 	end
 	SkinAll()
+	InkLines()
 	Kit:Cover("damagemeter")
 end
 
@@ -605,6 +645,7 @@ local function Deactivate()
 	for _, entry in ipairs(skin.entries) do
 		Medallion(entry)
 	end
+	InkLines()
 	Kit:Uncover("damagemeter")
 end
 

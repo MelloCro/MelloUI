@@ -42,7 +42,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		{ type = "toggle", key = "darkBackdrop", name = "Dark Backdrop", desc = "Flat, near-black tooltip background." },
 		{ type = "slider", key = "backdropAlpha", parent = "darkBackdrop", name = "Backdrop Opacity", min = 0.3, max = 1, step = 0.05, percent = true,
 		  desc = "Opacity of the tooltip background." },
-		{ type = "toggle", key = "darkBorder", name = "Dark Border", desc = "Dark grey tooltip border instead of the gold one." },
+		{ type = "toggle", key = "darkBorder", name = "Dark Border", desc = "A dark tooltip border in your Palette's colours instead of the gold one." },
 		{ type = "toggle", key = "classBorder", name = "Class / Reaction Border",
 		  desc = "Colour the border of unit tooltips by class (players) or reaction (NPCs)." },
 		{ type = "header", name = "Units" },
@@ -64,8 +64,11 @@ local M = MelloUI:RegisterModule("Tooltip", {
 	},
 })
 
-local BACKDROP = { 0.06, 0.06, 0.06 }
-local BORDER = { 0.22, 0.22, 0.22 }
+-- The plain look's colours (Dark Backdrop, Dark Border): the palette's inner
+-- panel and border, read each time they are laid; a new palette lays them
+-- again (OnPalette, heard while the module is on)
+local BACKDROP, BORDER = "innerPanel", "border"
+local PALETTE_OWNER = "Tooltip palette"   -- (the bus owner)
 
 local hooksInstalled = false
 local unitColor = nil            -- { r, g, b } of the unit currently shown, or nil
@@ -105,14 +108,24 @@ local function StyleBackdrop(tooltip)
 	local db = M.db
 	local nine = tooltip.NineSlice
 	if db.darkBackdrop and nine.SetCenterColor then
-		nine:SetCenterColor(BACKDROP[1], BACKDROP[2], BACKDROP[3], db.backdropAlpha or 0.9)
+		local c = MelloUI.Palette[BACKDROP]
+		nine:SetCenterColor(c[1], c[2], c[3], db.backdropAlpha or 0.9)
 	end
 	if nine.SetBorderColor then
 		if unitColor and db.classBorder and tooltip == GameTooltip then
 			nine:SetBorderColor(unitColor[1], unitColor[2], unitColor[3], 1)
 		elseif db.darkBorder then
-			nine:SetBorderColor(BORDER[1], BORDER[2], BORDER[3], 1)
+			local c = MelloUI.Palette[BORDER]
+			nine:SetBorderColor(c[1], c[2], c[3], 1)
 		end
+	end
+end
+
+-- a new palette: the plain look laid again on every tooltip (StyleBackdrop
+-- leaves them alone while the kit's tooltip covers the group)
+local function OnPalette()
+	for _, tooltip in ipairs(TooltipList()) do
+		StyleBackdrop(tooltip)
 	end
 end
 
@@ -323,10 +336,12 @@ end
 function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
+	MelloUI:On("palette", OnPalette, PALETTE_OWNER)
 	ApplyAll()
 end
 
 function M:OnDisable()
+	MelloUI:Off(PALETTE_OWNER, "palette")
 	unitColor = nil
 	for _, tooltip in ipairs(TooltipList()) do
 		RestoreBackdrop(tooltip)

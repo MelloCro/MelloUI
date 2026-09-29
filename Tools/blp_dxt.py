@@ -35,10 +35,10 @@ BLP2 header (1172 bytes before the data; little-endian):
   Mip chain: complete, each level half the last on both sides (a side that
   has reached 1 stays 1) down to 1 x 1, as the format expects. The square
   VoiceOver BLPs the addon draws chain to 1 x 1 like this; the one
-  non-square BLP in Media (VoiceOver/BackgroundGradient, 256 x 16) stops at
-  16 x 1, but no Lua file draws it, so it proves nothing about a short
-  chain -- which is why none is written (and texture_pack's probe has a
-  non-square file to confirm the full chain in game).
+  non-square BLP Media had (VoiceOver/BackgroundGradient, 256 x 16, removed
+  in 0.15.0: no Lua file drew it) stopped at 16 x 1, which proved nothing
+  about a short chain -- which is why none is written (and texture_pack's
+  probe has a non-square file to confirm the full chain in game).
 
 Hidden colour: under alpha 0 a TGA may hold any RGB (637 of the kit's TGAs
 hold non-black colour there). bleed() fills it from the nearest visible

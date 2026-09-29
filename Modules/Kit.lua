@@ -169,8 +169,8 @@ do
 	-- The Kit Colours choice the kit draws under the palette in use: the
 	-- stored one when the palette offers it, else the choice read from the
 	-- same folder (a Bronze kept from Ember shows, under another palette, as
-	-- that palette's own kit); nil when none is (the configurator's label,
-	-- Dynamic UI's row and the installer read it here). With a palette id
+	-- that palette's own kit); nil when none is (the configurator's label
+	-- and row and the installer read it here). With a palette id
 	-- and a Kit Colours value (the installer's draft), the same rule for
 	-- that pair instead of the stored one.
 	function Kit:ColourLookShown(paletteId, value)
@@ -927,7 +927,7 @@ end
 -- never a bigger copy. The page pictures were replaced by tiles cut from
 -- their middles (tiles/concrete, tiles/vellum) for this: a picture can only
 -- be fitted by stretching. `tex.kitOwnScale`: a texture that keeps its
--- caller's scale (the picker's small previews).
+-- caller's scale (the Configurator's picture rows' small previews).
 local BACKGROUNDS = setmetatable({}, { __mode = "k" })   -- every background texture, to lay again when scales change
 
 local function IsBackground(name)
@@ -2138,7 +2138,7 @@ end
 -- their frame's own units and follow any scale with it; only the
 -- backgrounds (measured on the screen) and what a panel laid out from
 -- screen positions (the action bar backdrops, the saved window places, the
--- picker's catchers, the drag grid) go stale.
+-- drag grid) go stale.
 --------------------------------------------------------------------------------
 Kit.scaleListenerCount = 0   -- how many came through Kit:OnUIScaleChanged, for /uiscaledump
 Kit.lastScaleRefit = nil   -- what the last refit did, for /uiscaledump
@@ -4774,8 +4774,8 @@ function Kit:SlotPlaceIcon(rim)
 	end
 end
 
--- Swap a slot rim's art family live (Action Bars Kit's Button Border, the
--- Dynamic UI Modification picker): the same states from another base, the
+-- Swap a slot rim's art family live (a border choice changed: the spell
+-- book's Spell Border): the same states from another base, the
 -- icon fitted into the new opening, and whoever follows the rim told
 -- (rim.onBaseChanged: the empty slot's stone).
 function Kit:SetSlotBase(rim, base)
@@ -4866,7 +4866,6 @@ end
 --   texture one piece (`piece`) sized to the rect (`square`: to its shorter side,
 --           `natural`: the kit size, centred on the rect or opts.center)
 --   tile    a repeatable tile (`piece`) filling the rect at its native scale
---   solid   a flat colour (`color` = { r, g, b, a }) on the rect
 --   fade    nothing: the region is only faded (decoration with no kit equivalent)
 --   picture a painted picture (`piece`, its greyscale twin `grey`) cropped to
 --           the rect's aspect (`crop` = "bottom" | "top" | "middle"), or with
@@ -5315,19 +5314,12 @@ Kit.Replacements = {
 Kit.covers = {}
 
 -- Every window dressed by Kit:SkinWindowShell: [frame] = { outer = rep,
--- title = rep, ring = rep, crest = rep, plate = rep }, and the watchers told of each new
--- one (the bus's 'shell' topic: frame, shell; the window mover in UI
--- Modifications hangs its drag handle on the title plate, the shade system
--- lays every window's shade, Modules/KitShade.lua). A watcher is told of the
--- shells already there when it comes.
+-- title = rep, ring = rep, crest = rep, plate = rep }, and each new one told
+-- on the bus's 'shell' topic (frame, shell): UI Modifications registers a
+-- dressed window's stored place with the mover, the shade system lays every
+-- window's shade (Modules/KitShade.lua). Kit.shells holds the ones already
+-- there for a listener that comes later.
 Kit.shells = {}
-
-function Kit:OnShell(fn)
-	MelloUI:On("shell", fn)
-	for frame, shell in pairs(self.shells) do
-		fn(frame, shell)
-	end
-end
 
 local RegisterShell
 
@@ -5410,10 +5402,10 @@ end
 --   services           the Services bar: as the minimap ('minimap')
 --   questList          the Quest List beside the world map: while the quest
 --                      log's kit (QuestLogPanel) is on
---   config, voiceover, dynamicui, copy
---                      the configurator, the Voice Over overlay, Dynamic UI
---                      Modification, the copy window: the reskin (UI
---                      Modifications on, its reskin switch on)
+--   config, voiceover, copy
+--                      the configurator, the Voice Over overlay, the copy
+--                      window: the reskin (UI Modifications on, its reskin
+--                      switch on)
 --   installer          the installer: always (user, 2026-09-25: it
 --                      wears the kit for every player, a new one's reskin
 --                      off too -- the approved sketch, and a preview of what
@@ -5446,8 +5438,7 @@ do
 		{ "whisper", follows = "chat" },
 		{ "services", follows = "minimap" },
 		{ "questList", module = "QuestLogPanel" },
-		{ "config", reskin = true }, { "voiceover", reskin = true }, { "dynamicui", reskin = true },
-		{ "copy", reskin = true },
+		{ "config", reskin = true }, { "voiceover", reskin = true }, { "copy", reskin = true },
 		{ "installer", always = true },
 	}
 	for _, area in ipairs(LIST) do
@@ -6483,7 +6474,7 @@ end
 --------------------------------------------------------------------------------
 -- The looks a button can take, shared by every panel that offers them (the
 -- action bars, micro menu and bag bar in Action Bars Kit, the bag windows'
--- slots in Backpack Kit) and by the Dynamic UI picker's previews.
+-- slots in Backpack Kit) and by the Configurator's picture rows.
 --   borders:      Button Border (a dropdown's values; `piece` the preview)
 --   backgrounds:  Button / Backdrop Background ("dark" a flat fill, "none" nothing)
 --   rimRule / rimKind: a border's slot rule and its rim piece family
@@ -6565,7 +6556,7 @@ function Kit:SetButtonBackground(button, value)
 	elseif value == "dark" then
 		-- the palette's inner panel, by its key (a new palette paints it again)
 		self:Paint(tex, "innerPanel", "fill", 0.88)
-		-- still ours: a plain mark, no piece (as the solid kind's fill)
+		-- still ours: a plain mark, no piece
 		tex.kitPiece, tex.kitName = true, nil
 		tex:SetAlpha(1)
 	else
@@ -8572,15 +8563,6 @@ function Kit:Replace(region, opts)
 			rep.holderParent, rep.holderLevel, rep.holderStrata, rep.holderShown = parent, level, opts.strata, true
 			setmetatable(rep, BareRep)
 		end
-	elseif rule.kind == "solid" then
-		-- a flat colour on the rect (`color` = { r, g, b, a })
-		local f = MakeHolder(parent, rect, level, opts.strata)
-		local tex = f:CreateTexture(nil, "BACKGROUND")
-		local c = rule.color or { 0.18, 0.18, 0.19, 1 }
-		tex:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
-		tex.kitPiece = true            -- ours: never faded by GameArt
-		tex:SetAllPoints(f)
-		rep.object, rep.tex = f, tex
 	elseif rule.kind == "tile" then
 		-- `owner`: the tile is a REGION of the replaced texture's frame in its
 		-- layer (a list's body under the list's own children); else a holder
@@ -9011,8 +8993,8 @@ local MEDALLION_DISC = 0.95
 -- PortraitContainer, level 400: its portrait is OVERLAY, the disc goes in
 -- BACKGROUND under it), masked round with the game's own circle mask, the
 -- class medallion's size on the ring's centre; shown / hidden with the
--- ring's replacement. `color` = { r, g, b }, or a palette key ("innerPanel":
--- painted by its key, Kit:Paint, so a new palette paints it again).
+-- ring's replacement. `color`: a palette key, "innerPanel" when none is
+-- given (painted by its key, Kit:Paint, so a new palette paints it again).
 -- `parent` / `sublevel` override the frame and BACKGROUND sublevel the disc is
 -- a region of, for a window whose portrait lives elsewhere (the guild window's
 -- PortraitOverlay at level 300, its portrait BACKGROUND 1: the disc at 0).
@@ -9023,12 +9005,7 @@ function Kit:RingDisc(ring, color, parent, sublevel)
 	parent = parent or ring.object:GetParent()
 	local disc = parent:CreateTexture(nil, "BACKGROUND", nil, sublevel or 7)
 	disc.kitPiece = true
-	if type(color) == "string" then
-		self:Paint(disc, color, "fill", 1)
-	else
-		local c = color or { 0.16, 0.16, 0.17 }
-		disc:SetColorTexture(c[1], c[2], c[3], 1)
-	end
+	self:Paint(disc, color or "innerPanel", "fill", 1)
 	local mask = parent:CreateMaskTexture()
 	mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	mask:SetAllPoints(disc)
@@ -9055,19 +9032,6 @@ function Kit:RingDisc(ring, color, parent, sublevel)
 	end
 	disc:SetShown(ring.object:IsShown())
 	return disc
-end
-
--- The OUTER rail's top band: its outer (top) edge, in UI px ABOVE the
--- window's top edge (the band is grown outward by `outset`, its box top
--- measured from the piece's top). The title plate stands on it: its bottom
--- on this line (the TitleBar rule; user, 2026-09-21).
-function Kit:OuterRailTop()
-	local rule = self.Replacements["NineSlicePanelTemplate"]
-	local prefix = rule and rule.prefix or "window/frame"
-	local sc = self.scale * (rule and rule.scale or self.frameScale)
-	local p = PIECES[prefix .. "_t"]
-	local boxTop = (p and p.box) and p.box[2] or 0
-	return ((rule and rule.outset or 0) - boxTop) * sc
 end
 
 -- The title plate riding the outer rail (the TitleBar rule's `onRail`):

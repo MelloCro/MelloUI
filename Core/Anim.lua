@@ -84,11 +84,11 @@ MelloUI.Anim = Anim
 
 --------------------------------------------------------------------------------
 -- Easing curves: t from 0 to 1 in, progress out (0 at the start, 1 at the
--- end; "outBack" overshoots a little before it settles).
+-- end). Only the curves MelloUI eases along (audit, 2026-09-29: the eight
+-- nobody named went).
 --------------------------------------------------------------------------------
 
-local sin, cos, pi, sqrt, exp, abs = math.sin, math.cos, math.pi, math.sqrt, math.exp, math.abs
-local BACK = 1.70158
+local exp, abs = math.exp, math.abs
 
 Anim.easing = {
 	linear = function(t) return t end,
@@ -101,27 +101,6 @@ Anim.easing = {
 		return 1 - (-2 * t + 2) ^ 2 / 2
 	end,
 	outCubic = function(t) return 1 - (1 - t) ^ 3 end,
-	inOutCubic = function(t)
-		if t < 0.5 then
-			return 4 * t * t * t
-		end
-		return 1 - (-2 * t + 2) ^ 3 / 2
-	end,
-	outQuart = function(t) return 1 - (1 - t) ^ 4 end,
-	inSine = function(t) return 1 - cos(t * pi / 2) end,
-	outSine = function(t) return sin(t * pi / 2) end,
-	inOutSine = function(t) return -(cos(pi * t) - 1) / 2 end,
-	outExpo = function(t)
-		if t >= 1 then
-			return 1
-		end
-		return 1 - 2 ^ (-10 * t)
-	end,
-	outCirc = function(t) return sqrt(1 - (t - 1) ^ 2) end,
-	outBack = function(t)
-		local u = t - 1
-		return 1 + (BACK + 1) * u * u * u + BACK * u * u
-	end,
 }
 
 --------------------------------------------------------------------------------
@@ -524,7 +503,7 @@ end
 --   g:Jump(offset)  there at once, the glide stopped
 --   g:Wheel(delta)  a notch: each adds to the running target
 --   g:Stop()        where it is;   g:Sync(offset)  it moved by itself
---   g:IsGliding()   g.pos, g.target, g.step
+--   g:IsGliding()   (the tests' probe)   g.pos, g.target, g.step
 -- The step closes the same share of the gap at any frame rate:
 -- pos += (target - pos) * (1 - exp(-rate * dt)); it snaps within 0.5. The
 -- set runs in a pcall: an error goes to the error handler and halts that
@@ -533,6 +512,8 @@ end
 
 Anim.GLIDE_RATE = 16   -- 1/s: the configurator's feel at 60 fps (it closed 14/60 of the gap a frame)
 
+-- that share for one step (the tests measure the feel with it; the driver
+-- works the same sum out inline)
 function Anim.GlideFactor(rate, dt)
 	return 1 - exp(-(rate or Anim.GLIDE_RATE) * dt)
 end

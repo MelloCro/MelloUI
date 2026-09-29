@@ -35,7 +35,8 @@
 --   band:SetShown(on)         shown or hidden (its parent's own show still rules)
 --   band:IsShown()
 --   band:SetColour(key)       another palette key
---   band:SetFeather(width)    the soft ends' width
+--   band:SetFeather(width)    the soft ends' width (the tests'; the bands
+--                             keep the one they were made with)
 --   band.left, band.mid, band.right: its textures (read only)
 -- Nothing is made until the first band: then its three textures and one
 -- 'palette' listener for all bands, which repaints each from the palette's

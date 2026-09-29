@@ -520,7 +520,6 @@ local function SkinOwnTitle(f)
 	tc:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
 	tc:SetHeight(TITLE_H)
 	tc.TitleText = text   -- our container: the plate's rule reads its string here
-	skin.titleContainer = tc
 	local bg = FirstTexture(unpack(Named(f, TITLE_BG_KEYS)))
 	if bg then
 		claimed[bg] = "title plate"
@@ -696,7 +695,6 @@ local function EmblemRing(f)
 	rect:EnableMouse(false)
 	rect:SetSize(size, size)
 	rect:SetPoint("CENTER", anchor, point)
-	skin.ringRect = rect
 	for _, t in ipairs(parts) do
 		claimed[t] = "emblem (the kit's ring draws it)"
 		done[t] = true
@@ -886,8 +884,8 @@ local function ItemPitch(buttons)
 	return { w + pad, h + pad }
 end
 
--- The bags' Item Background (Backpack Kit's choice, which Dynamic UI
--- Modification also sets): read from its settings, never written
+-- The bags' Item Background (Backpack Kit's choice, its picture row in the
+-- Configurator too): read from its settings, never written
 local function ItemBackground()
 	local bp = MelloUI:GetModule("BackpackPanel")
 	local v = bp and bp.db and bp.db.itemBackground
@@ -1211,7 +1209,6 @@ local function SkinTextAreas(f)
 	Dim(infoPage, "tab info", area, margin)
 	MakeReadable(edit, "tab info text")
 	local buy = BuyInfo(f)
-	skin.buyInfo = buy
 	if buy then
 		Dim(buy, "tab purchase notice", area, margin)
 		for _, region in ipairs({ buy:GetRegions() }) do
@@ -2202,8 +2199,8 @@ for _, ev in ipairs(EVENTS) do
 	pcall(eventFrame.RegisterEvent, eventFrame, ev)
 end
 
--- the bags' Item Background changed (Backpack Kit's option, or Dynamic UI
--- Modification's picker): the guild bank's empty slots follow at once (the
+-- the bags' Item Background changed (Backpack Kit's option, its picture
+-- row too): the guild bank's empty slots follow at once (the
 -- bus's 'setting', fired at the end of NotifySettingChanged where the hook
 -- on it ran: audit 2026-09-24 rank 5)
 MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key)

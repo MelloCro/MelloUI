@@ -38,8 +38,8 @@
 -- Nothing is anchored to an Edit Mode system: the power bar's container sits
 -- in one, and only its widgets' own regions are anchor points here.
 --
--- The switch: Dynamic UI Modification's "Event Widgets" shade row (UI Shade
--- on and shade_widgets on: Kit:ShadeOn("widgets")), at its Shade Strength,
+-- The switch: the Configurator's "Event Widgets" shade row (UI Shade on and
+-- shade_widgets on: Kit:ShadeOn("widgets")), at its Shade Strength,
 -- while the reskin is on (the kit's look: Kit:IsOn(LOOK) below). Switched
 -- off, our frames hide at once; switched on, every widget up is dressed.
 --
@@ -77,10 +77,9 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 
 local AREA = "widgets"                 -- the shade area (Kit.shadeAreas)
--- the reskin's answer: a look area of the event widgets' own when the kit
--- lists one, else the configurator's (the reskin alone: UI Modifications on,
--- its reskin switch on)
-local LOOK = type(Kit.Areas) == "table" and Kit.Areas.widgets and "widgets" or "config"
+-- the reskin's answer: the configurator's look area, as MelloUI's own
+-- windows (the reskin alone: UI Modifications on, its reskin switch on)
+local LOOK = "config"
 local OWNER = "Event widget shade"     -- the bus owner
 local RESTART_KEY = "Event widget shade after a restart"   -- (Kit:NextFrame's key)
 local FADE = 0.25                      -- the widgets' own fade in and out (UIWidgetBaseTemplate)

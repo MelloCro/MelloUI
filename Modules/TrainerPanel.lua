@@ -807,7 +807,6 @@ local WINDOW_METHODS = { "Update", "Refresh", "RefreshList", "UpdateList", "SetS
 
 local function HookList(f)
 	local list, kind = FindList(f)
-	found.list, found.listKind = list, kind
 	if not list or hookedOnce[list] then
 		return
 	end
