@@ -900,13 +900,26 @@ def fix_stale(root, current, compile_check=None):
         left += [(rel, line, t) for line, t in keep]
         if not edits:
             continue
-        new, last = text, None
+        new, last, applied = text, None, []
         for s, e, rep in sorted(edits, reverse=True):
             if last is not None and e > last:
                 continue   # (overlaps the one after it: already taken)
             new = new[:s] + rep + new[e:]
             last = s
+            applied.append((s, e, rep))
             removed += 1
+        # A tag taken out of the middle of a line leaves the space before it at the line's end (0.15.0's release
+        # commit got 25 luacheck W612 warnings that way): the lines an edit touched lose their trailing blanks.
+        for s, _, _ in applied:
+            pos = s - sum((ej - sj) - len(rj) for sj, ej, rj in applied if ej <= s)
+            end = new.find("\n", pos)
+            end = len(new) if end < 0 else end
+            body_end = end - 1 if end > 0 and new[end - 1] == "\r" else end
+            cut = body_end
+            while cut > 0 and new[cut - 1] in " \t" and new[cut - 1] != "\n":
+                cut -= 1
+            if cut < body_end:
+                new = new[:cut] + new[body_end:]
         if new != text:
             originals[path] = text
             with open(path, "w", encoding="utf-8", newline="") as fh:

@@ -123,19 +123,19 @@ local M = MelloUI:RegisterModule("Reminders", {
 	options = {
 		{ type = "header", name = "Reminders" },
 		-- (Restock's rows go here while it has no page of its own: M:OnInit)
-		{ type = "toggle", key = "remind_mail", name = "New Mail", 
+		{ type = "toggle", key = "remind_mail", name = "New Mail",
 		  desc = "Remind you when mail is waiting for you. It goes once you open a mailbox, and comes back only for mail that arrives after." },
-		{ type = "toggle", key = "remind_repair", name = "Repair Gear", 
+		{ type = "toggle", key = "remind_repair", name = "Repair Gear",
 		  desc = "Remind you when your gear is wearing out. Broken gear goes to the top of the list." },
 		{ type = "slider", key = "repairAt", parent = "remind_repair", name = "Remind At", min = 0.1, max = 0.6, step = 0.05, percent = true,
 		  desc = "Remind you once your most worn piece of gear is down to this much durability." },
-		{ type = "toggle", key = "remind_trainer", name = "Trainer", 
+		{ type = "toggle", key = "remind_trainer", name = "Trainer",
 		  desc = "Remind you when a trainer has something new for you." },
-		{ type = "toggle", key = "trainerClass", parent = "remind_trainer", name = "Class Spells", 
+		{ type = "toggle", key = "trainerClass", parent = "remind_trainer", name = "Class Spells",
 		  desc = "When you reach a level with new spells at your class trainer. It stays until you have learned them; each visit to your class trainer tells MelloUI when the next ones come, and before your first visit it goes by the levels trainers teach at." },
-		{ type = "toggle", key = "trainerProfession", parent = "remind_trainer", name = "Profession Ranks", 
+		{ type = "toggle", key = "trainerProfession", parent = "remind_trainer", name = "Profession Ranks",
 		  desc = "When one of your professions can learn its next rank at a trainer: Journeyman, Expert or Artisan." },
-		{ type = "toggle", key = "stayResting", name = "Stay Up In Rest Areas", 
+		{ type = "toggle", key = "stayResting", name = "Stay Up In Rest Areas",
 		  desc = "In an inn or a city every reminder stays until it is done (restocked, a mailbox opened, gear repaired, the spells or the rank learned) or you leave, and Not now there hides it until you next enter one. Off: they come and go there too." },
 		{ type = "header", name = "Widget" },
 		{ type = "dropdown", key = "place", name = "Place", values = PLACES,
@@ -917,7 +917,7 @@ function M:OnInit(db)
 				into[#into + 1] = opt
 			end
 		end
-		rows = { { type = "toggle", key = "remind_restock", name = "Restock", 
+		rows = { { type = "toggle", key = "remind_restock", name = "Restock",
 			desc = "Remind you when something on your restock list runs low: drink, food, ammunition or reagents. Click it to go to the nearest shop that sells it." } }
 		if #gated > 0 then
 			rows[#rows + 1] = { type = "include", module = "Restock", area = "remind_restock", keys = gated }

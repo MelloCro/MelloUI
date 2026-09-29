@@ -63,7 +63,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "A short chime with each notice: the map's tracking sound for a new destination, a softer one when you arrive." },
 		{ type = "toggle", key = "zoneTextShade", name = "Zone Text Shade",
 		  desc = "The zone name the game shows when you enter a new area, with its subzone and PvP lines, in the notice's look: a soft dark shade behind each line and no outline (Outlined Text adds it back). The game's colours and sizes stay. Off: the game's own look." },
-		{ type = "toggle", key = "centreTextShade", name = "Centre Text Shade", 
+		{ type = "toggle", key = "centreTextShade", name = "Centre Text Shade",
 		  desc = "The game's messages in the middle of the screen in the notice's look: red errors, yellow quest progress, raid warnings and boss emotes, each line with a soft dark shade behind it that fades with it, and no outline (Outlined Text adds it back). The game's colours stay. Off: the game's own look." },
 		-- (not under On-screen Notices: it sets the zone text's and the
 		-- centre texts' outline too, which show with the notices off)
