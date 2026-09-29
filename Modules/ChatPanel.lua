@@ -544,18 +544,10 @@ local function SkinBordered(frame, prefix, cf)
 	local rep = Replace(corner, { as = "ChatFrameBorder", rect = frame == cf and BackdropRect(cf, background) or background, parent = frame, alsoFade = others })
 	corner.melloRep = rep or false
 	if rep and Kit.RegisterShell and frame == cf then
-		-- a chat window has no header to hold: a strip along the top of its
-		-- body is its handle for the window mover. It takes the mouse while
-		-- the windows are unlocked, so it covers a strip and not the body --
-		-- over the whole window it swallowed the links, the scroll buttons
-		-- and the wheel (user, 2026-09-22)
-		local grab = CreateFrame("Frame", nil, frame)
-		grab:SetPoint("TOPLEFT", background, "TOPLEFT")
-		grab:SetPoint("TOPRIGHT", background, "TOPRIGHT")
-		grab:SetHeight(22)
-		grab:SetFrameLevel((frame:GetFrameLevel() or 1) + 5)
-		grab:EnableMouse(false)
-		Kit:RegisterShell(frame, { title = grab, outer = rep })
+		-- its rail on the kit's list of dressed windows: the rail Edit Layout
+		-- lights while the chat is dragged, and its shade (a chat window has
+		-- no header: its plate in Edit Layout covers the whole window)
+		Kit:RegisterShell(frame, { outer = rep })
 	end
 	-- the window's rail on its outline (the button column's: SkinChatFrame)
 	if rep and frame == cf then

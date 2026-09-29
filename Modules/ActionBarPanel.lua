@@ -63,7 +63,7 @@ for _, g in ipairs(GROUPS) do
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
 		desc = "A frame round " .. what .. ", with a gem on each corner." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,
-		desc = "What lies behind the buttons inside the backdrop. All of these are also chosen with previews by Dynamic UI Modification, at the top of the configurator." }
+		desc = "What lies behind the buttons inside the backdrop. All three are chosen with pictures on Action Bars > Bars." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.buttonBackground, name = "Button Background", values = BACKGROUND_VALUES,
 		desc = "What a button shows inside its rim where it has no icon." }
 end
@@ -564,8 +564,8 @@ end
 local FRAME_PIECES = { red = "deco/barframe_red", iron = "deco/barframe_iron" }
 local FRAME_PIECE = FRAME_PIECES.red
 
--- The choices as the Configurator and the Dynamic UI Modification picker
--- show them (label, and the piece a preview is drawn with)
+-- The choices as the Configurator shows them, in its picture rows too
+-- (label, and the piece a preview is drawn with)
 M.choices = {
 	barBackdrop = {
 		{ value = "red", label = "Red gems", piece = FRAME_PIECES.red },
@@ -1093,7 +1093,7 @@ end
 
 -- Put frame f round the screen rect r (screen px, the buttons' outline):
 -- grown by the rim and the gap, in the anchor frame's units. The outline on
--- the screen is kept in bd.rects (the Dynamic UI Modification picker covers it).
+-- the screen is kept in bd.rects (a shown frame's is its f.screen, the joins').
 local function PlaceFrame(f, anchor, r, k, level, show, g, bd)
 	local p = Kit:Piece(FRAME_PIECE)
 	if not p then
@@ -1263,8 +1263,8 @@ local function LayoutGroup(g, ks)
 		HideGroup(bd)
 		return
 	end
-	-- Backdrop None: laid out all the same (its outline is what the picker
-	-- covers), only not shown
+	-- Backdrop None: laid out all the same (its outline kept in bd.rects,
+	-- as a shown one's), only not shown
 	local show = FRAME_PIECES[Setting(g, "backdrop")] ~= nil
 	bd.size = size
 	bd.main = bd.main or NewFrame(anchor)
@@ -1462,7 +1462,7 @@ local function LayoutAll()
 		JoinFrames()   -- backdrops that meet become one shape
 		SyncRims()
 		KeepShadesLow()
-		-- in a fight (a setting changed, the picker's outline): laid out again
+		-- in a fight (a setting changed): laid out again
 		-- after it, for the rims a bar could not get and the shade frames' level
 		if InCombatLockdown() then
 			Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
@@ -1754,7 +1754,6 @@ local function SkinMicroMenu()
 					end
 				end
 				Perf.HookScript(button, "OnShow", RefitStaleMicro)
-				button.melloRefitGlyph = Refit
 				-- the stone in the rim's opening under the glyph, as an empty
 				-- action slot has it (user, 2026-09-22: "a background to those
 				-- icons"); a region of the button under the ARTWORK glyph, on
@@ -2088,8 +2087,9 @@ function M:OnSettingChanged(key, value, db)
 	end
 end
 
--- For the Dynamic UI Modification picker. The groups there are to pick
--- from: { id, title, sections = { { key, title, kind, choices } } }, in order.
+-- For the Configurator's picture rows (PickerGroups, Core/Config.lua). The
+-- groups there are to pick from: { id, title, sections = { { key, title,
+-- kind, choices } } }, in order.
 function M:PickerGroups()
 	local out = {}
 	for _, g in ipairs(GROUPS) do
@@ -2100,18 +2100,6 @@ function M:PickerGroups()
 		} }
 	end
 	return out
-end
-
--- A group's outline on the screen (screen px rects, laid out afresh), nil
--- while its buttons are not skinned or not shown
-function M:BarOutline(id)
-	local g = GROUP[id or "bars"]
-	if not (active and skin and g) then
-		return nil
-	end
-	LayoutAll()   -- every group: the joins between them are laid out together
-	local rects = skin.groups[g.id].backdrop.rects
-	return rects and #rects > 0 and rects or nil
 end
 
 local function Hook()

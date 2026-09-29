@@ -1274,7 +1274,7 @@ def f0_store(f):
         if key in P:
             old = P.pop(key)
             f.log.append({"rule": "F0 store", "key": "positions." + key, "what": "removed (was %s)" % old,
-                          "why": "Edit Mode places this frame; one store per place (Reset positions then returns to the fitted place)"})
+                          "why": "Edit Mode places this frame; one store per place (a reset in Edit Layout then returns it to the fitted place)"})
     if f.mello["tracker"].get("pos") is not None:
         f.log.append({"rule": "F0 store", "key": "QuestTracker.pos", "what": "removed (was %s)" % f.mello["tracker"]["pos"],
                       "why": "the tracker hangs on the game's tracker, placed by Edit Mode 12:-1 (QuestTracker.lua:302-310)"})

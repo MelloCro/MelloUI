@@ -14,20 +14,27 @@ tags it New while that update runs. This check compares every option of the tree
                    dropdown) is a new option. A module is "module:<Name>"; a NEW module with a page of its own
                    and no option of its own tagged needs its registry `new` (its page title and side-list entry).
                    A file that does not load, or a module's OnInit that fails, stops the check (exit 2): the
-                   options it would have laid cannot be counted.
-  own rows         the configurator's own controls (Core/Config.lua: Home, the Profiles page) and Dynamic UI
-                   Modification's (Modules/DynamicUI.lua), found where they are built: a control builder's call
-                   (W.ToggleRow, W.SliderRow, W.DropdownRow, W.ButtonRow, W.Switch, W.Dropdown, W.Slider,
-                   W.Button; Dynamic UI's Check, Row and Button) named by its label (a string, or a field the file
-                   spells out once, as TEXT's `switch = "..."`) or, for a bare control, its parent; a
+                   options it would have laid cannot be counted. An option in MOVED was a control of another kind
+                   in the previous release (0.15.0: Dynamic UI Modification's own rows of 0.14.0, now UI
+                   Modifications' definitions) and counts as existing.
+  own rows         the configurator's own controls (Core/Config.lua: Home, the Profiles page, the top bar),
+                   found where they are built: a control builder's call (W.ToggleRow, W.SliderRow, W.DropdownRow,
+                   W.ButtonRow, W.Switch, W.Dropdown, W.Slider, W.Button) named by its label (a string, or a field
+                   the file spells out once, as TEXT's `switch = "..."`) or, for a bare control, its parent; a
                    CreateFrame("Button" | "CheckButton" | "EditBox" | "Slider" | "DropdownButton") named by the
                    text it is given (`x:SetText("Load")`) or the field it is kept in (`row.default`); and the
-                   entries of Dynamic UI's PARCHMENTS and LAYOUT lists by their key. Such a control is tagged when
+                   entries of an OWN_LISTS list by their key. A button made by W.Button and one made by
+                   CreateFrame("Button") (the flat look laid on it by W.FlatButton) are the same kind here, so a
+                   button remade the other way is not a new one. Such a control is tagged when
                    its call -- or the code since the control built before it -- holds `new = "X.Y.Z"`, hands a
                    version to RowOpts / W.NewTag / W.Badge / W.ButtonTag, or names a table whose literal holds
-                   one (Home's PALETTE_DD, BACKUP_TAG, SHADE_TAG); or when a W.NewTag / W.Badge / W.ButtonTag
-                   after it, before the next control, names it. A call whose label is `opt.<field>` is the
-                   schema's own row, counted above. Every other Core/ or Modules/ file that builds controls with
+                   one (Home's PROFILE_DD, BACKUP_TAG, EDIT_LAYOUT); or when a W.NewTag / W.Badge / W.ButtonTag
+                   after it, before the next control, names it. A call whose label is `opt.<field>`, or a layout
+                   row's `r.name` (0.15.0: the pages are laid from Core/ConfigLayout.lua, each row a module's
+                   setting), is the schema's own row, counted above. The configurator's page tools -- controls
+                   that are no option (PAGE_TOOLS: a picker, Copy from, Apply to all, Reset this page, Home's
+                   jumps to the Look page) -- are never New-tagged. Every other Core/ or Modules/ file that builds
+                   controls with
                    the widget set must be listed in NOT_CONFIGURATOR (why its controls are not the
                    configurator's): an unknown one fails, so a new home of options is never skipped.
 
@@ -77,9 +84,10 @@ BUILDERS = {"W.ToggleRow": 3, "W.SliderRow": 3, "W.DropdownRow": 3, "W.ButtonRow
             "W.Switch": 1, "W.Dropdown": 1, "W.Slider": 1, "W.Button": 2}
 OWN_FILES = {
     "Core/Config.lua": {},
-    "Modules/DynamicUI.lua": {"Check": 2, "Row": 1, "Button": 2},
 }
-OWN_LISTS = {"Modules/DynamicUI.lua": ["PARCHMENTS", "LAYOUT"]}
+# (0.15.0: Modules/DynamicUI.lua and its PARCHMENTS and LAYOUT lists went with the configurator rebuild; their rows
+# are UI Modifications' definitions, laid out on the Look and element pages -- MOVED below)
+OWN_LISTS = {}
 # a hand-made control: CreateFrame of one of these kinds (a tab is a page's section, not an option)
 CONTROL_TYPES = ("Button", "CheckButton", "EditBox", "Slider", "DropdownButton")
 # the other files that build controls with the widget set, and why theirs are not the configurator's options
@@ -89,11 +97,49 @@ NOT_CONFIGURATOR = {
     "Modules/Restock.lua": "the Restock List window and the shop's list (the Reminders page's Restock List button, "
                            "a schema option, opens them)",
     "Modules/KitWindow.lua": "the own confirm dialog's answer buttons (MelloUI:Confirm), not options",
+    "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
+    "Modules/Services.lua": "the Services menu's Stop route button (it ends the route), not an option",
+    "Core/EditLayout.lua": "Edit Layout's own control bar and right-click box: a mode's controls, not options",
+    "Core/EditLayoutMovers.lua": "Edit Layout's plates: a mode's controls, not options",
+    "Core/EditLayoutBridge.lua": "the Edit Mode bridge's buttons (Move via Edit Mode, the button on Edit Mode): a mode's "
+                                 "controls, not options",
 }
 # the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
 NOT_OPTIONS = {
     "Core/Config.lua:Button(MelloUI)": "MelloUI's own entry at the game's Escape menu (it opens the configurator)",
 }
+# the configurator's page tools (0.15.0, the rebuild): controls of a page that are no option -- they set nothing of
+# their own, they pick, copy, reset or jump -- so they never carry a New tag (the rebuild's own texts say so), by
+# their id in this check: why
+PAGE_TOOLS = {
+    "Core/Config.lua:W.Dropdown(line)": "a picker page's picker (the frame, bar or window the page's rows are for)",
+    "Core/Config.lua:W.Dropdown(line)#2": "a picker page's Copy from (copies the page's per-pick settings between "
+                                          "picks)",
+    "Core/Config.lua:Button(All)": "Apply to all on a row per pick (writes the pick's value into the row's other keys)",
+    "Core/Config.lua:Button(Reset this page)": "Reset this page (puts the page's settings back to their defaults)",
+    "Core/Config.lua:Button(Change…)#2": "Your setup's second Change… (Home's palette and Kit Colours rows jump "
+                                          "to their one place on the Look page)",
+}
+# a control builder's call whose label is the schema's own row: `opt.<field>` (the old pages' builders), a layout
+# row's `r.name` (the rebuild's element pages: Core/ConfigLayout.lua's rows, each a module's setting)
+SCHEMA_LABEL = re.compile(r"opt\.|r\.name$")
+# the kinds that are one kind here: a W.Button is a Button (W.FlatButton lays the same look on a hand-made one)
+SAME_KIND = {"W.Button": "Button"}
+# schema options that were controls of another kind in the previous release, so they count as existing (untagged; a
+# New tag on one fails as on any old option): (the update they moved in, why). 0.15.0, the configurator rebuild:
+# Dynamic UI Modification's own rows of 0.14.0 (its palette, borders and Kit Colours, parchment sheets and UI shade
+# areas, built by its window) are UI Modifications' option definitions, laid out on the Look page
+_DUI_ROW = ((0, 15, 0), "a row of Dynamic UI Modification's own window in 0.14.0; a UI Modifications definition since "
+                        "the configurator rebuild")
+MOVED = dict.fromkeys(
+    ["UIModifications." + k for k in
+     ["palette", "kitColours", "buttonBorder", "sideTabBorder", "barBorder", "nameplateBorder", "roundBorder",
+      "auraBorder"]
+     + ["parchment_" + a for a in ("tracker", "questTracker", "chat", "whisper", "meter", "character", "tooltip",
+                                   "dialog")]
+     + ["shade_" + a for a in ("windows", "actionbars", "castbars", "unitframes", "chat", "bags", "minimap", "tracker",
+                               "buffs", "widgets", "nameplates")]],
+    _DUI_ROW)
 FOLDERS = ("Core", "Modules")
 
 
@@ -561,7 +607,7 @@ def own_sites(code, local):
             continue
         at = builders[m.group(1)]
         expr = args[at - 1] if len(args) >= at else ""
-        sites.append((m.start(), end, m.group(1), expr, target_of(code, m.start()), bool(re.match(r"opt\.", expr))))
+        sites.append((m.start(), end, m.group(1), expr, target_of(code, m.start()), bool(SCHEMA_LABEL.match(expr))))
     kinds = "|".join(CONTROL_TYPES)
     for m in re.finditer(r'(?<![\w.:])CreateFrame\s*\(\s*"(' + kinds + r')"', code):
         args, end = call_args(code, m.end() - len(m.group(0)) + m.group(0).index("("))
@@ -601,10 +647,11 @@ def own_rows(root):
                         label = label_of(code, st.group(1))
             else:
                 label = label_of(code, expr)
+            kind = SAME_KIND.get(kind, kind)
             base = "%s:%s(%s)" % (rel, kind, label)
             seen[base] = seen.get(base, 0) + 1
             rid = base if seen[base] == 1 else "%s#%d" % (base, seen[base])
-            if rid in NOT_OPTIONS:
+            if rid in NOT_OPTIONS or rid in PAGE_TOOLS:
                 prev_end = end
                 continue
             # the code since the control before it, within the function it is built in; then the code after it,
@@ -697,6 +744,8 @@ def compare(cur, old, current, ref="the previous release"):
         r = cur[rid]
         tag = vtuple(r["new"]) if r["new"] else None
         prev = old.get(rid)
+        if prev is None and rid in MOVED and current >= MOVED[rid][0]:
+            prev = {"kind": r["kind"]}   # (a control of another kind in the previous release: see MOVED)
         was = prev["kind"] if prev else None
         is_new = prev is None or was != r["kind"]
         what = '%s "%s"' % (r["kind"], r["label"])

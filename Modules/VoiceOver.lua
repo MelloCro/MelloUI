@@ -178,7 +178,7 @@ for _, group in ipairs(RACE_GROUPS) do
 		desc = "Voice for " .. group.name:lower() .. " of either gender. Automatic uses the male / female voices above." }
 end
 options[#options + 1] = { type = "header", name = "Sound Packs" }
-options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use VoiceOver Sound Packs",
+options[#options + 1] = { type = "toggle", key = "soundPacks", name = "Use Voice Packs",
 	desc = "Play the recorded lines from an installed voice pack (MelloUI_VoiceOverData_v2 or MelloUI_VoiceOverData, separate downloads) when one exists for the quest or greeting; the rest is read with text-to-speech unless Read Unvoiced Lines is off. Enable the pack in the addon list; it loads when needed." }
 options[#options + 1] = { type = "toggle", key = "oldVoicePack", parent = "soundPacks", name = "Use The Old Voice Pack", new = "0.15.0",
 	desc = "Play the old voice pack's recordings (MelloUI_VoiceOverData) instead of the new pack's (MelloUI_VoiceOverData_v2). The new pack gives every NPC one voice for all of its lines; the old one voices NPCs by race and sex. Has no effect while the new pack is not installed." }
@@ -214,7 +214,7 @@ options[#options + 1] = { type = "toggle", key = "overlayPortrait", parent = "ov
 options[#options + 1] = { type = "toggle", key = "overlaySubtitles", parent = "overlay", name = "Subtitles",
 	desc = "Also show the text being read under the NPC name." }
 options[#options + 1] = { type = "toggle", key = "overlayLock", parent = "overlay", name = "Lock Position",
-	desc = "Prevent the overlay from being dragged. Unlock the Windows (UI Modifications) still moves it, as it moves every window." }
+	desc = "Prevent the overlay from being dragged. Edit Layout still moves it." }
 options[#options + 1] = { type = "slider", key = "overlayScale", parent = "overlay", name = "Overlay Scale", min = 0.6, max = 1.5, step = 0.05, percent = true,
 	desc = "Size of the overlay." }
 
@@ -537,7 +537,7 @@ local function LoadSoundPacks()
 	end
 	table.sort(packs, function(a, b) return a.priority > b.priority end)
 	if #packs > 0 and (IsAddOnLoaded("AI_VoiceOver_Continued") or IsAddOnLoaded("AI_VoiceOver")) then
-		MelloUI:Notice("Voice Over: the VoiceOver player addon is also enabled, so lines may play twice. Disable one of them.")
+		MelloUI:Notice("Voice Over: another voice-over addon is also enabled, so lines may play twice. Disable one of them.")
 	end
 end
 
@@ -1013,7 +1013,7 @@ local function Mode()
 end
 
 local MODE_LABELS = {   -- for /vo packs
-	tts = "text-to-speech only (Use VoiceOver Sound Packs is off)",
+	tts = "text-to-speech only (Use Voice Packs is off)",
 	old = "the old voice pack's recordings",
 	v2 = "the new voice pack's recordings (the old pack's for NPCs it does not know)",
 }
@@ -1789,10 +1789,11 @@ end
 --------------------------------------------------------------------------------
 -- The overlay's place is the one mover's (audit, 2026-09-24, rank 6): kept
 -- in the one store under 'voiceOverlay' (UI Modifications' positions, so
--- profiles, the backup and Reset positions reach it), saved by its bottom
--- edge's middle, where it first stands (over the action bars). Dragged
--- while its padlock is open, as before; moved, and sized by the wheel,
--- like every window while the windows are unlocked.
+-- profiles, the backup and Edit Layout's Reset reach it), saved by its
+-- bottom edge's middle, where it first stands (over the action bars).
+-- Dragged while its padlock is open, as before; moved, and sized by the
+-- wheel, in Edit Layout as every window (its plate, padlock or not; before
+-- its first show too: Edit Layout's source puts it on the mover).
 --------------------------------------------------------------------------------
 
 local OVERLAY_PLACE = "voiceOverlay"
@@ -1852,12 +1853,12 @@ local function MoveOldPlace()
 	db.overlayPoint, db.overlayRelativePoint, db.overlayX, db.overlayY = nil, nil, nil, nil
 end
 
--- Let go after a drag (the mover's plain drag, its buttons', or the mover
--- of the unlocked windows): saved, and hung from its anchor again. The
--- overlay keeps its place itself (the mover's `save`: laid by Apply, as it
--- always was), and a scale the unlocked mover's wheel gave it is its
--- Overlay Scale setting, as the Quest Tracker's wheel is its Scale (a
--- scale in the store would undo the slider at every Apply).
+-- Let go after a drag (the mover's plain drag, its buttons'), or Edit
+-- Layout's change saved: saved, and hung from its anchor again. The overlay
+-- keeps its place itself (the mover's `save`: laid by Apply, as it always
+-- was), and a scale Edit Layout's wheel gave it is its Overlay Scale
+-- setting, as the Quest Tracker's wheel is its Scale (a scale in the store
+-- would undo the slider at every Apply).
 local function SaveOverlay(frame)
 	if not (frame and M.db) then
 		return
@@ -1899,8 +1900,8 @@ function Overlay:ResetPosition()
 	end
 end
 
--- Reset positions (UI Modifications): back where it first stands, at its
--- standard size, as every window goes back (the Quest Tracker's scale too)
+-- Edit Layout's Reset, saved: back where it first stands, at its standard
+-- size, as every window goes back (the Quest Tracker's scale too)
 local function ResetOverlay()
 	ForgetOverlayPlace()
 	if M.db and math.abs((tonumber(M.db.overlayScale) or 1) - 1) > 0.001 then
@@ -1942,7 +1943,7 @@ local function AttachDrag(widget)
 end
 
 -- the padlock's meaning for the mover: dragged at any time while it is
--- open, never while it is shut (the unlocked windows' mover aside)
+-- open, never while it is shut (Edit Layout's plate aside)
 local function FollowPadlock()
 	local entry = Overlay.mover
 	if entry and M.db then
@@ -1950,14 +1951,20 @@ local function FollowPadlock()
 	end
 end
 
--- The one mover, the overlay itself its handle, from its first show
--- (WINDOW-RULES 2f: nothing made for it at login, and it is dragged only
--- once shown). Registered as dragged at any time, so the unlocked windows'
--- mover leaves its mouse on (its tooltip, its drag once the padlock
--- opens), then told the padlock; the wheel's range is the Overlay Scale
--- slider's. (false: the mover gave no entry; not asked again.)
+-- The one mover, the overlay itself its handle, from its first show or
+-- Edit Layout's first open (WINDOW-RULES 2f: nothing made for it at login).
+-- Registered as dragged at any time, so the mover leaves its mouse on (its
+-- tooltip, its drag once the padlock opens), then told the padlock; the
+-- wheel's range is the Overlay Scale slider's; live (its plate, "Voice
+-- Over", a "(hidden)" one at its place while no line is read) while the
+-- module and Show Overlay are on. (false: the mover gave no entry; not
+-- asked again.)
 local OVERLAY_MOVER = { key = OVERLAY_PLACE, anchor = "BOTTOM", plainDrag = "always",
-	save = SaveOverlay, reset = ResetOverlay, default = DefaultPlace, min = 0.6, max = 1.5 }
+	save = SaveOverlay, reset = ResetOverlay, default = DefaultPlace, min = 0.6, max = 1.5,
+	label = "Voice Over", page = "VoiceOver", placeholder = true,
+	when = function()
+		return M.isEnabled and M.db and M.db.overlay and true or false
+	end }
 
 local function RegisterOverlayMover(frame)
 	-- laid from the store once more first: Reset positions before this
@@ -1967,6 +1974,19 @@ local function RegisterOverlayMover(frame)
 	Overlay:RestorePosition()
 	Overlay.mover = MelloUI:RegisterMover(frame, frame, OVERLAY_MOVER) or false
 	FollowPadlock()
+end
+
+-- Edit Layout's source (Core's list; run at each of its opens and resumes,
+-- never at login): the overlay on its mover before its first show, so its
+-- place can be set with no line read yet (the frame itself is OnEnable's)
+local function OverlaySource()
+	if Overlay.mover == nil and M.isEnabled and M.db and M.db.overlay and HasTTS() then
+		Overlay:Create()
+		RegisterOverlayMover(Overlay.frame)
+	end
+end
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(OverlaySource)
 end
 
 -- Frame the head and shoulders. The custom camera used by the VoiceOver
@@ -3468,7 +3488,7 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 				LoadSoundPacks()
 			end
 			if #packs == 0 and not next(packErrors) then
-				MelloUI:Print("No VoiceOver sound packs installed (looked for addons with X-VoiceOver-DataModule-Version).")
+				MelloUI:Print("No old voice packs installed.")
 			end
 			for _, pack in ipairs(packs) do
 				local files = 0
@@ -3650,6 +3670,13 @@ function M:OnSettingChanged(key, value, db)
 			end
 		end
 	elseif key:match("^overlay") then
+		-- (its Overlay Scale set on its page while Edit Layout waits for the
+		-- Configurator: that wins, Edit Layout's pending change of the overlay
+		-- is dropped -- Core's rule for a place written outside it)
+		local LS = MelloUI.LayoutSession
+		if key == "overlayScale" and Overlay.mover and LS and LS.Holds(Overlay.mover) then
+			LS.Release(Overlay.mover)
+		end
 		Overlay:Apply()
 	elseif key == "questLog" then
 		ApplyReadButton()

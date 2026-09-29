@@ -564,6 +564,13 @@ end
 -- is secret in combat -- the colour comes back secret too and goes straight
 -- into the bar, which accepts it; nothing here reads or compares it
 -- (/mello secrets on this client, 2026-09-23).
+-- its three stops, { at, r, g, b } (the Configurator's preview works them
+-- out too, M.PreviewHealthColor below, where a client has no curve)
+local HEALTH_STOPS = {
+	{ 0, 0.85, 0.1, 0.08 },
+	{ 0.5, 0.95, 0.78, 0.1 },
+	{ 1, 0.1, 0.8, 0.1 },
+}
 local healthCurve   -- nil: not built yet; false: this client cannot
 local function HealthCurve()
 	if healthCurve == nil then
@@ -574,9 +581,9 @@ local function HealthCurve()
 				if Enum and Enum.LuaCurveType then
 					c:SetType(Enum.LuaCurveType.Linear)
 				end
-				c:AddPoint(0, CreateColor(0.85, 0.1, 0.08, 1))
-				c:AddPoint(0.5, CreateColor(0.95, 0.78, 0.1, 1))
-				c:AddPoint(1, CreateColor(0.1, 0.8, 0.1, 1))
+				for _, stop in ipairs(HEALTH_STOPS) do
+					c:AddPoint(stop[1], CreateColor(stop[2], stop[3], stop[4], 1))
+				end
 				return c
 			end)
 			if ok and curve then
@@ -952,6 +959,7 @@ end
 --------------------------------------------------------------------------------
 
 local hookedCastBars = setmetatable({}, { __mode = "k" })
+local CAST_FILL = { 1.0, 0.7, 0.0 }   -- a cast's fill where the game names no colour (the preview's too)
 
 local function RecolorCastBar(bar, isFull)
 	local ok, color = pcall(function()
@@ -961,7 +969,7 @@ local function RecolorCastBar(bar, isFull)
 	if ok and color and color.GetRGB then
 		bar:SetStatusBarColor(color:GetRGB())
 	else
-		bar:SetStatusBarColor(1.0, 0.7, 0.0)
+		bar:SetStatusBarColor(CAST_FILL[1], CAST_FILL[2], CAST_FILL[3])
 	end
 end
 
@@ -1207,6 +1215,146 @@ end
 function M:RefreshMask(bar)
 	if bar and self.isEnabled then
 		pcall(UpdateMask, bar)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The Configurator's unit frame preview (0.15.0, Core/ConfigPreview.lua):
+-- what this module puts on the bars, for SAMPLE bars the preview makes. Pure:
+-- no bar of the game is touched and no unit is read -- the player's own
+-- health may be secret even out of combat on this client, so the live
+-- HealthColorFor (which reads the bar's unit) is never called for it.
+--   M.PreviewTexture(area) -> texture, active
+--       texture  the chosen texture's path, or nil where the game's own art
+--                shows ("Default (Blizzard)"; with an `area` -- a group of
+--                `appliers`: "unitframes", "raidframes", "castbars",
+--                "personal" ... -- also while the module or that area is off)
+--       active   the module works on that area's bars (its colours apply)
+--   M.PreviewHealthColor(mode, sample) -> r, g, b
+--       mode    a Health Bar Colour ("green", "class", "reaction",
+--               "health"); nil: the one chosen
+--       sample  plain values only: { class = "MAGE" (a player's class
+--               file), reaction = 1..8 (an NPC's, read when there is no
+--               class), fraction = 0..1 (1 when not given), execute = true
+--               (an enemy: Execute Range tints it below its line), area =
+--               the group its bar is in ("unitframes" when not given) }
+--       as HealthColorFor answers for such a unit: the class colour
+--       (RAID_CLASS_COLORS), the reaction colour (FACTION_BAR_COLORS), By
+--       health from this module's own curve at the plain fraction (its
+--       Evaluate, else the same three stops worked out here), the game's
+--       green otherwise; purple under the execute line while the module
+--       works on that area and it is the unit frames or the nameplates (as
+--       the live tint), whatever mode is asked for
+--   M.PreviewPowerColor(token) -> r, g, b, atlas   a power type's colour
+--       (the game's PowerBarColor, which RecolorManaBar puts on a flat
+--       texture) and the game's own art for it on a player frame
+--   M.PreviewCastColor() -> r, g, b   a cast's fill (RecolorCastBar's)
+--------------------------------------------------------------------------------
+
+do
+	local NONE = {}
+	local EXECUTE_AREAS = { unitframes = true, nameplates = true }   -- (the groups UpdateExecute tints)
+
+	function M.PreviewTexture(area)
+		local db = M.db
+		local active = (area ~= nil and M.isEnabled and db and db[area]) and true or false
+		if not db or db.texture == "default" or (area ~= nil and not active) then
+			return nil, active
+		end
+		local texture = db.texture
+		return IsPlainString(texture) and texture or nil, active
+	end
+
+	-- the fraction as a plain number from 0 to 1 (1: none given)
+	local function Fraction(v)
+		if not IsPlainNumber(v) then
+			return 1
+		end
+		return math.max(0, math.min(1, v))
+	end
+
+	-- By health at a plain fraction: the curve's own answer where it can
+	-- give one, else its three stops
+	local function ByHealth(fraction)
+		local curve = HealthCurve()
+		if curve and curve.Evaluate then
+			local ok, color = pcall(curve.Evaluate, curve, fraction)
+			if ok and color and color.GetRGB then
+				local r, g, b = color:GetRGB()
+				if IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
+					return r, g, b
+				end
+			end
+		end
+		for i = 2, #HEALTH_STOPS do
+			local a, b = HEALTH_STOPS[i - 1], HEALTH_STOPS[i]
+			if fraction <= b[1] then
+				local t = (fraction - a[1]) / (b[1] - a[1])
+				return a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t, a[4] + (b[4] - a[4]) * t
+			end
+		end
+		local last = HEALTH_STOPS[#HEALTH_STOPS]
+		return last[2], last[3], last[4]
+	end
+
+	function M.PreviewHealthColor(mode, sample)
+		sample = type(sample) == "table" and sample or NONE
+		local db = M.db or NONE
+		mode = mode or db.healthColor or "green"
+		local fraction = Fraction(sample.fraction)
+		-- the tint is this module's, on the unit frames' and the nameplates'
+		-- bars only, while it works on them (UpdateExecute's test)
+		local area = IsPlainString(sample.area) and sample.area or "unitframes"
+		if sample.execute and db.executeRange and M.isEnabled and EXECUTE_AREAS[area] and db[area] then
+			-- ExecuteCurve's line: on below it, off from it
+			local at = math.max(1, math.min(99, tonumber(db.executeBelow) or 20)) / 100
+			if fraction < at then
+				return EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3]
+			end
+		end
+		if mode == "health" then
+			return ByHealth(fraction)
+		end
+		if mode == "class" or mode == "reaction" then
+			local class = IsPlainString(sample.class) and sample.class or nil
+			if class then
+				local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+				if color then
+					return color.r, color.g, color.b
+				end
+			elseif mode == "reaction" then
+				local reaction = IsPlainNumber(sample.reaction) and sample.reaction or nil
+				local color = reaction and FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
+				if color then
+					return color.r, color.g, color.b
+				end
+			end
+		end
+		return 0.0, 1.0, 0.0
+	end
+
+	function M.PreviewPowerColor(token)
+		local info = IsPlainString(token) and PowerBarColor and PowerBarColor[token]
+		if type(info) ~= "table" or not IsPlainNumber(info.r) then
+			return 0.0, 0.0, 1.0, nil   -- (the game's mana blue)
+		end
+		local atlas = info.atlasElementName and ("UI-HUD-UnitFrame-Player-PortraitOn-Bar-" .. info.atlasElementName)
+			or info.atlas
+		return info.r, info.g, info.b, IsPlainString(atlas) and atlas or nil
+	end
+
+	-- the game's standard cast fill (its type table; a client without it
+	-- raises, answered by the pcall below)
+	local function StandardFill()
+		return _G.CastingBarTypeInfo[CastingBarType.Standard].classicFillColor:GetRGB()
+	end
+
+	function M.PreviewCastColor()
+		local ok, r, g, b = pcall(StandardFill)
+		if ok and IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
+			return r, g, b
+		end
+		return CAST_FILL[1], CAST_FILL[2], CAST_FILL[3]
 	end
 end
 

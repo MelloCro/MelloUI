@@ -207,7 +207,7 @@ the game's, as the talents page does. User's picks (`kit_raw/legacy_catalog.png`
 | game art | element | kit piece |
 |---|---|---|
 | `NineSlicePanelTemplate`, `TitleBar`, `RedButton-Exit`, `_UI-Frame-TopTileStreaks`, `UI-Frame-PortraitMetal-CornerTopLeft` | the window (`Kit:SkinWindowShell`) | the table's rows; the game's shield portrait (`Legacy-up-c60`, 45 x 62) fitted into the ring like the medallion, aspect kept (`Kit:FitPortrait`) |
-| (agreed addition, user 2026-09-21) | the ring's opening around the shield | `Kit:RingDisc`: a dark grey disc (0.16, 0.16, 0.17) masked round with the game's circle mask, in the PortraitContainer's BACKGROUND under the OVERLAY portrait, the class medallion's size (0.759 x the ring); shown / hidden with the ring |
+| (agreed addition, user 2026-09-21) | the ring's opening around the shield | `Kit:RingDisc`: a disc in the palette's `innerPanel` (painted by its key with `Kit:Paint`, so a new palette paints it again; a caller may pass another palette key) masked round with the game's circle mask, in the PortraitContainer's BACKGROUND under the OVERLAY portrait, the class medallion's size (0.759 x the ring); shown / hidden with the ring |
 | `common-sidetab` | the three side tabs | the table's row (`Kit:SkinSideTab`) |
 | `Legacy-Rewards-Tracker-background`, `Legacy-Challenge-BG`, `Legacy-Tree-Frame-background` | the pages' backdrops | the page stone as a region of the page (`picture`, `owner`) |
 | `Legacy-Tree-Frame-divider-Vertical` | the pane divider (12 x 503) on both pages | `edge window/single_l`, as the character window's divider |
@@ -619,7 +619,7 @@ round buttons wear the kit's round rim; off, the minimap's tracking rim.
 | the Services' Errands group | a sixth cell of the row of groups (SV1 box, SR2 rims), its tray a list like the other groups' |
 | the Quest Tracker's nearest-first switch | `buttons/arrow_up_normal` / `_hover` on the title plate's left gem, dimmed while off |
 | the flight map's wanted flight point | `deco/gem_small`, 10 units on the point's 16-unit button, pulsing through `Anim:Pulse`; shown only while the map shows that button |
-| the palette pickers (Home's Your setup, Dynamic UI, the installer's Look step) | `W.PaletteSwatch` (a strip of a palette's colours) beside a D1 dropdown; the installer's `W.Card`s in the palette look |
+| the palette pickers (the configurator's Look > General, the installer's Look step) | `W.PaletteSwatch` (a strip of a palette's colours) beside a D1 dropdown; the installer's `W.Card`s in the palette look; Home's Your setup names the palette in use (`W.PaletteName`) with Change… to its row on Look |
 
 ## MelloUI's own services bar (Modules/Services.lua, 2026-09-22)
 
@@ -648,7 +648,7 @@ redesign.
 | the crest | `MelloUI-Crest` (agreed addition, above): the portrait ring at 1.25 x, centred on the top rail's middle line, the emblem on its `innerPanel` disc. Plain look: the emblem alone, 88 px, on the top edge |
 | the title plate | `MelloUI-TitlePlate` (agreed addition, above): 200 wide under the crest, "MelloUI" in `Kit:TitleFont` (the 2c exception). Plain look: a `raisedPanel` box with a `trim` edge, the title in `selectedTrim` |
 | the drag strip | nothing drawn: `shell.grab` from the top edge down to the top bar is the mover's handle (Core's one mover, key `MelloUIConfigFrame`) |
-| the top bar | `Kit:StoneDim` over the stone (inner panel 0.8, 2e); no band art of its own. Left: "Layout" in gold, the kit's check boxes (Unlock the Windows, Auto Snapping), Reset positions on a B1 red plate. Right: `RedButton-Exit` (close), Dynamic UI Modification on B1, **Install…** on B1 with the gold trim: its label in `selectedTrim` and a 1 px `selectedTrim` outline, drawn with the palette (no new art, no catalogue). Plain look: an `innerPanel` fill with a `border` line |
+| the top bar | `Kit:StoneDim` over the calm ground (inner panel 0.8, 2e); no band art of its own. Right: `RedButton-Exit` (close), **Edit Layout** on a flat plate (`W.Button`, 0.15.0: a `raisedPanel` fill in a 1 px `border` edge, no gem caps; while the build has Edit Layout, which replaces the Layout group that stood on the left), **Install…** on a flat plate with the gold trim: its label and its 1 px edge in `selectedTrim`, drawn with the palette (no new art, no catalogue). Plain look: an `innerPanel` fill with a `border` line |
 | the side list | an L1 box (`Professions-background-summarylist`, dim 0.8) round the `W.NavRail`; the group headers in gold with the fold glyphs `common-button-list-plus` / `-minus`; each entry a 22 px icon in the **SI1** R1 rim (the Button Border) and its name in the `text` colour; the selected entry a `raisedPanel` marker with a 2 px `selectedTrim` left edge and its name in gold; the hover wash `hover` at 0.5. Plain look: an `innerPanel` box with a `border` edge, the same marker |
 | page header | a 58 px icon in the R1 rim (UI Modifications' pulses while its page is open), the title in the kit's title face, the flavour line in the `text` colour |
 | a page's tabs | **CA1** TB6 via `Kit:SkinPanelTab` (PanelTopTabButtonTemplate) |

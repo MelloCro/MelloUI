@@ -45,16 +45,15 @@
 -- over MelloUI.Shade's soft band (Core/Shade.lua) sized to the text by its
 -- anchors. Its place: TOP of the screen, 180 below the top (just under the
 -- Route arrow's default place), on MelloUI's one mover and position store
--- (key "notice"): Unlock the Windows shows a sample line there to drag, Reset
--- positions puts it back, and it is kept on the screen.
+-- (key "notice", "Centre notices"): while Edit Layout shows, a sample line
+-- stands there on its plate to drag, its Reset puts it back, and it is kept
+-- on the screen.
 --
 -- Nothing is made at login: the frame, the shade and the mover entry come
--- with the first notice (or the first unlock of the windows). Windows left
--- unlocked over a login get their sample line with the next unlock, or once
--- the first notice's hold is over. At load it takes three bus listeners only
--- ('setting', 'module', 'restart': the windows unlocked, its own settings
--- changed); whether the windows are unlocked is Core's mover's to say
--- (MelloUI:WindowsUnlocked). The zone text section below adds its hooks on
+-- with the first notice (or Edit Layout's first open). At load it takes
+-- three bus listeners only ('setting', 'editlayout', 'restart': its own
+-- settings changed, Edit Layout shown or not -- Core's
+-- MelloUI:EditingLayout() says which). The zone text section below adds its hooks on
 -- the game's zone text frames at load, and makes nothing until they show
 -- (the game shows them at every login: see there).
 --------------------------------------------------------------------------------
@@ -117,10 +116,10 @@ local function OnScreen()
 	return Setting("noticeOnScreen") and not Setting("noticeToChat")
 end
 
--- the sample line wanted: the windows unlocked (Core's mover says so) and
--- the notice shown on the screen
+-- the sample line wanted: Edit Layout shows (Core's read) and the notice is
+-- shown on the screen
 local function WantPreview()
-	return MelloUI:WindowsUnlocked() and OnScreen()
+	return MelloUI:EditingLayout() and OnScreen()
 end
 
 local frame, text, font   -- made with the first notice (frame.shade: its band)
@@ -212,10 +211,11 @@ local function Build()
 	Home(frame)
 	MelloUI:On("palette", Paint, OWNER)
 	MelloUI:On("fonts", Measure, OWNER)
-	-- one mover entry: dragged while the windows are unlocked, its place in
-	-- the store, put back on each show (it sets no script of its own)
+	-- one mover entry: moved in Edit Layout, its place in the store, put back
+	-- on each show (it sets no script of its own); "All options >" opens the
+	-- page of the notice's settings (Tweaks')
 	state.entry = MelloUI:RegisterMover(frame, frame, { key = KEY, anchor = "TOP", default = Home,
-		min = 0.5, max = 2, base = 1 })
+		min = 0.5, max = 2, base = 1, label = "Centre notices", page = "Tweaks" })
 	return frame
 end
 
@@ -233,15 +233,14 @@ local function Put(msg, kind)
 	frame:Show()
 end
 
--- the end of a hold: the last one fades what is shown then (while the
--- windows are unlocked the sample line comes back instead, to drag)
+-- the end of a hold: the last one fades what is shown then (while Edit
+-- Layout shows the sample line comes back instead, to drag)
 local function Fade()
 	state.holds = state.holds - 1
 	if state.holds > 0 or state.wait or not (frame and frame:IsShown()) then
 		return   -- (a held line stays until its AnnounceDone)
 	end
-	-- asked again here: windows left unlocked over a login build nothing
-	-- then, so the first real line is the first the notice hears of it
+	-- asked again here: Edit Layout may have come or gone during the hold
 	state.preview = WantPreview()
 	if state.preview then
 		Put(PREVIEW, "info")
@@ -259,7 +258,7 @@ local function HideNow()
 	end
 end
 
--- the sample line while the windows are unlocked, so it can be dragged
+-- the sample line while Edit Layout shows, so its plate can be dragged
 local function Preview()
 	local on = WantPreview()
 	if on == state.preview then
@@ -640,8 +639,8 @@ do
 	end
 end
 
--- what changed: the windows unlocked or locked, its own settings (and the
--- zone text's: its switch, the outline both share)
+-- what changed: its own settings (and the zone text's: its switch, the
+-- outline both share)
 MelloUI:On("setting", function(module, key)
 	if module == "Tweaks" then
 		if key == "noticeOutline" then
@@ -657,20 +656,15 @@ MelloUI:On("setting", function(module, key)
 			end
 			Preview()
 		end
-	elseif module == "UIModifications" and key == "unlock" then
-		Preview()
 	end
 end, OWNER)
-MelloUI:On("module", function(module)
-	if module == "UIModifications" then
-		Preview()
-	end
-end, OWNER)
+-- Edit Layout shown, paused or closed: the sample line with it (made then,
+-- at a player's open of it, when the notice was not yet)
+MelloUI:On("editlayout", Preview, OWNER)
 -- a profile load, or the settings arriving late at login (Core restarts the
 -- modules then): any of it may have changed at once. A notice not made yet
--- stays unmade -- nothing is built at login, even with the windows left
--- unlocked (the sample comes with the next unlock, or after the first line).
--- The zone text's look follows too, once it was made.
+-- stays unmade -- nothing is built at login. The zone text's look follows
+-- too, once it was made.
 MelloUI:On("restart", function()
 	ZoneRefresh(false)
 	if not frame then

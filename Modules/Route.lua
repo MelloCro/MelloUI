@@ -4101,8 +4101,8 @@ local arrow = nil
 -- is on it (ArrowPlace.Mover: at its first show, not at login).
 local ArrowPlace = { key = "routeArrow", size = nil, resized = nil, entry = nil }
 
--- the top centre of the screen: where it stands with no place saved (Reset
--- positions and /route arrow reset put it back here)
+-- the top centre of the screen: where it stands with no place saved (Edit
+-- Layout's Reset and /route arrow reset put it back here)
 function ArrowPlace.Home(f)
 	f:SetScale(tonumber(M.db and M.db.arrowScale) or 1)
 	f:ClearAllPoints()
@@ -4111,7 +4111,7 @@ end
 
 -- an old place (arrowX / arrowY) not moved into the store yet let go, both
 -- keys at once and then through the setting path, so the macro backup
--- forgets it too: /route arrow reset, and Reset positions (the mover's
+-- forgets it too: /route arrow reset, and Edit Layout's Reset (the mover's
 -- reset), or the next placing would move it back in (review, 2026-09-25)
 function ArrowPlace.Forget()
 	if M.db.arrowX ~= nil or M.db.arrowY ~= nil then
@@ -4249,8 +4249,8 @@ local function PlaceArrow()
 			MelloUI:SavePosition(ArrowPlace.key, arrow, false)
 		end
 	end
-	-- the slider's size is its 100 % in the unlocked windows' size readout
-	-- and wheel (read from the entry each time: review, 2026-09-25)
+	-- the slider's size is its 100 % in Edit Layout's size readout and
+	-- wheel (read from the entry each time: review, 2026-09-25)
 	entry.base = size
 	-- the size first: the saved offsets are in its own units
 	arrow:SetScale(size)
@@ -4259,12 +4259,19 @@ local function PlaceArrow()
 	end
 end
 
--- On the one mover: dragged through it, unlocked or not; the store's place
--- put back on every show and after a UI Scale change, kept on the screen.
--- At its first show (UpdateArrow), or at once while an old place waits
--- (PlaceArrow). It sets no drag, show or hide script of its own (Core hooks
--- those); registered at its size, which the saved offsets are in; the
--- wheel's range while unlocked is the Arrow Size slider's.
+-- On the one mover: dragged through it at any time, and in Edit Layout
+-- ("Navigation arrow", a "(hidden)" plate at its place while no route
+-- shows it); the store's place put back on every show and after a UI Scale
+-- change, kept on the screen. At its first show (UpdateArrow), at Edit
+-- Layout's first open (ArrowPlace.Source), or at once while an old place
+-- waits (PlaceArrow). It sets no drag, show or hide script of its own (Core
+-- hooks those); registered at its size, which the saved offsets are in; the
+-- wheel's range in Edit Layout is the Arrow Size slider's; live while Route
+-- and its Direction Arrow are on.
+function ArrowPlace.Live()
+	return M.isEnabled and M.db and M.db.arrow and true or false
+end
+
 function ArrowPlace.Mover()
 	if ArrowPlace.entry or not arrow then
 		return
@@ -4272,10 +4279,24 @@ function ArrowPlace.Mover()
 	local size = tonumber(M.db.arrowScale) or 1
 	arrow:SetScale(size)
 	ArrowPlace.entry = MelloUI:RegisterMover(arrow, arrow, { key = ArrowPlace.key, anchor = "CENTER",
-		plainDrag = "always", min = 0.5, max = 2, base = size, reset = ArrowPlace.Forget, default = ArrowPlace.Home })
+		plainDrag = "always", min = 0.5, max = 2, base = size, reset = ArrowPlace.Forget, default = ArrowPlace.Home,
+		label = "Navigation arrow", page = "Route", placeholder = true, when = ArrowPlace.Live })
 	if ArrowPlace.entry then
 		PlaceArrow()
 	end
+end
+
+-- Edit Layout's source (Core's list; run at each of its opens and resumes,
+-- never at login): the arrow made and on the mover before its first route,
+-- so its place can be set with nothing to follow yet
+function ArrowPlace.Source()
+	if not ArrowPlace.entry and ArrowPlace.Live() then
+		EnsureArrow()
+		ArrowPlace.Mover()
+	end
+end
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(ArrowPlace.Source)
 end
 
 -- /route arrow reset: the saved place forgotten, an old one not moved yet

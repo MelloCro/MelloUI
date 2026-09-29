@@ -36,8 +36,8 @@
 -- The registry's own fields (audit, 2026-09-24, rank 4: one place that says
 -- what a module is, for the configurator, the installer and UI
 -- Modifications). All optional, kept on the module as given. UI
--- Modifications builds its rows, the plain grabs and the switches' defaults
--- from `window` and `tweak` (UIModifications.lua's header); the
+-- Modifications builds its rows, the movable game windows and the switches'
+-- defaults from `window` and `tweak` (UIModifications.lua's header); the
 -- configurator reads `icon` and `flavour` (its tiles) and `group` and
 -- `navOrder` (its side list); the installer reads `role`; `area` and the
 -- window's `addon` and `firstOpen` are facts nothing reads yet:
@@ -61,8 +61,8 @@
 --                    setting>" (the row is that setting, not a module switch:
 --                    the Quest Tracker's questTrackerKit), frames = { frame
 --                    names }, addon = "Blizzard_..." (loaded on demand),
---                    plainGrab = true (a plain grab while the windows are
---                    unlocked), firstOpen = true (dressed on its first show),
+--                    plainGrab = true (its frames move in Edit Layout),
+--                    firstOpen = true (dressed on its first show),
 --                    include = true | { keys } (its own options laid out
 --                    under its row, indented and live only while it is on;
 --                    { keys }: only those, in that order) }
@@ -105,7 +105,8 @@ MelloUI.modules = {}
 -- on a new option without one and takes the old ones out of the files.
 --   MelloUI:ReleaseVersion() -> "0.14.0"   the running update: the TOC's
 --       Version as three numbers (a test build's "0.14.0-rc5" or "0.14.0
---       RC5" is 0.14.0); nil when it names none ("dev")
+--       RC5" is 0.14.0); nil when it names none ("dev"). The tests' probe:
+--       IsNew below is what the tags ask
 --   MelloUI:IsNew(v) -> true while `v` names the running update ("0.14" is
 --       0.14.0); false for nil or anything else
 --------------------------------------------------------------------------------
@@ -171,8 +172,8 @@ end
 --   MelloUI:KnownPalette(id) -> id   a palette id as the setting is read:
 --                         one of the registry's, any other value (nil, "order",
 --                         a number, an unknown name) "ember". The one rule for
---                         it: the switch below, the kit's folders, Dynamic UI,
---                         UI Modifications' Kit Colours, the widgets and the
+--                         it: the switch below, the kit's folders, UI
+--                         Modifications' Kit Colours, the widgets and the
 --                         installer ask here
 --   MelloUI:SetPalette(id) (below, with the settings) the setting
 --                         UIModifications.palette; nil or unknown: ember
@@ -725,6 +726,14 @@ end
 --                                          (Core/Backup.lua: a delayed or
 --                                          held write or delete, the login's
 --                                          look at the macros)
+--   "editlayout"   showing, state          Edit Layout shown or not (Core/EditLayout.lua):
+--                                          state "open" | "paused" | "closed"; on every
+--                                          change of showing and on its close
+--   "mover"        what, entry, ...        the mover registry (the window places
+--                                          below): ("registered", entry),
+--                                          ("shown", entry, shown), ("released",
+--                                          entry) when an Edit Layout session lets
+--                                          go of an entry it held
 --   "installer"    what, ...               the installer (Core/Installer.lua):
 --                    "installed", setupKey, needsReload   a setup went in
 --                    "countdown", seconds, paused, why    the Keep countdown
@@ -1008,79 +1017,185 @@ end
 
 --------------------------------------------------------------------------------
 -- Window places: one store, one mover registry and one keep-on-screen for
--- every MelloUI window (audit, 2026-09-24, rank 6: the whisper popups, the
--- Route arrow, the Voice Over overlay and the copy window each dragged
--- themselves and kept their place their own way, and Unlock the Windows,
--- Reset positions and the UI-scale put-back never reached them). Core keeps
--- the registration and the store, so they work with UI Modifications off;
--- UI Modifications brings the unlocked behaviour (the darkened screen, the
--- grid, the snap, the wheel's scale) as the mover's provider.
+-- every element MelloUI moves (audit, 2026-09-24, rank 6: the whisper popups,
+-- the Route arrow, the Voice Over overlay and the copy window each dragged
+-- themselves and kept their place their own way). Core keeps the
+-- registration, the store, the put-backs and the pending changes of an Edit
+-- Layout session (0.15.0: Edit Layout, Core/EditLayout.lua and its files, is
+-- THE one place to move things; the old Unlock the Windows mode and its
+-- provider went with it), so all of it works with UI Modifications off.
 --
 --   MelloUI:RegisterMover(frame, handle, opts) -> entry
---       handle (default: the frame) is what is dragged. opts, all optional:
+--       handle (default: the frame) is what the plain drag takes. opts, all
+--       optional:
 --         key        its place in the store (default: the frame's name; no
 --                    key, no saved place)
 --         anchor     the frame's point that is saved, held to the same point
 --                    of the screen ("TOPRIGHT": it grows down and left from
---                    there); nil: BOTTOMLEFT to the screen's CENTER, the
---                    mover's own
---         default    function(frame): lays its default place (Reset)
---         save       function(frame): a window that keeps its own place (the
---                    Quest Tracker): called on release, the store untouched
---         reset      function(): Reset positions, for such a window
+--                    there); nil: BOTTOMLEFT to the screen's CENTER
+--         default    function(frame) -> placed[, line]: lays its standard
+--                    place (a Reset's preview, a window with no anchor);
+--                    false and a line when it cannot (a Reset prints it)
+--         save       function(frame[, pos]): a window that keeps its own
+--                    place (the Quest Tracker): called on a plain drag's
+--                    release and at Edit Layout's Save (with the pending
+--                    place, its anchor's form), the store untouched
+--         reset      function(): its own settings back, for such a window
 --         min, max   the wheel's scale range; base: its 100 %
---         with       a frame, or a list of frames, kept on the screen with it
---                    (they move with it: the world map and the Quest List)
---         plainDrag  "always": dragged at any time, unlocked or not;
---                    "unlocked": only while the windows are unlocked;
---                    false (default): only through the provider
---       The entry is { frame, handle, key, anchor, default, save, reset, min,
---       max, base, with, plainDrag, moving }. A frame registered again gets
---       its first entry back. A saved place is put back at once and on every
---       show (not for a `save` window), and on a UI Scale change for the
---       shown ones ("scale" topic, reason "uiscale").
+--         with       a frame, a list of frames, or a function returning
+--                    either (looked up when needed: the Quest List beside
+--                    the world map is made on the map's first show), kept on
+--                    the screen with it (they move with it)
+--         plainDrag  "always": dragged by its handle at any time (while
+--                    Edit Layout shows only a "tool"'s); false (default; the
+--                    old "unlocked" too): moved in Edit Layout only
+--       and Edit Layout's (0.15.0):
+--         label      the plate's name ("Quest Tracker"); default: the key,
+--                    else the frame's name
+--         page       the Configurator page its "All options >" opens (a
+--                    module name, as MelloUI:OpenConfig takes)
+--         group      "own" (default) | "window" | "hud" | "tool" (never a
+--                    plate, never in Reset all or the change count)
+--         placeholder true (its own size) or { w, h } (UI units): a plate
+--                    even while it is hidden or 0 x 0, at its anchored place
+--         visible    function(entry) -> shown: the plate's own test (default:
+--                    the frame shown)
+--         follow     true: the game lays it out again (the panel manager,
+--                    the bag layout, Edit Mode): its place is put back after
+--                    anyone else's SetPoint / SetScale and after
+--                    UpdateUIPanelPositions / UpdateContainerFrameAnchors
+--                    (post-hooks only), a protected one in combat after the
+--                    fight; its own scale noted as its 100 % (base) at the
+--                    registration and whenever someone else scales it
+--         resize     false: no size change in Edit Layout
+--         locked     function(entry) -> reason | nil: shown, not movable
+--         note       function(entry) -> text | nil: a line in its box
+--         resetLabel its box's Reset text (default "Reset")
+--         when       function(entry) -> live: its place kept and its plate
+--                    shown only while true (a module's element: while that
+--                    module is on)
+--       The entry holds all of these (resize a boolean, group always set,
+--       label always a string when it has a key or a name) and `moving`
+--       ("plain" or Edit Layout's "layout"), `placing` and `scaling` (held
+--       while Core or Edit Layout lays it: its post-hooks stand back). A
+--       frame registered again gets its first entry back. A saved place is
+--       put back at once and on every show (not for a `save` window), and on
+--       a UI Scale change for the shown ones ("scale" topic, reason
+--       "uiscale"). Every entry's OnShow / OnHide are hooked, so set them
+--       BEFORE registering (SetScript drops hooks).
 --   MelloUI:SavePosition(key, frame[, scale]) -> saved
 --       the frame's place under key, by its entry's anchor; scale: a number
---       is kept with it (to a hundredth), false drops it, nil leaves it
+--       is kept with it (to a hundredth), false drops it, nil leaves it.
+--       Always the store; a key an Edit Layout session holds leaves the
+--       session (the outside write wins: LayoutSession.Release)
+--   MelloUI:ForgetPosition(key)          the same rule
 --   MelloUI:RestorePosition(key, frame) -> placed[, "combat"]
 --       the saved scale, then the place, kept on the screen; false when
 --       nothing is saved, or for a protected frame in combat
---   MelloUI:ForgetPosition(key)
 --   MelloUI:GetPosition(key) -> { point, relPoint, x, y, scale } or nil
 --       point nil = BOTTOMLEFT, relPoint nil = CENTER; x, y in the frame's
---       own units. Read only: change it through Save / Forget.
---   MelloUI:ResetMover(entryOrFrame)   forgets its place, calls its reset,
---                                      then its default
+--       own units. While a session holds the key: its pending place (nil
+--       for a pending reset), so every put-back places pending values
+--       without knowing it. Read only: change it through Save / Forget.
+--       (A reset is Edit Layout's: LayoutSession.Reset, then Commit.)
 --   MelloUI:MoverEntries()             the entries, in registration order
---   MelloUI:WindowsUnlocked()          true while the windows are unlocked
---                                      (the provider says so; none: false)
---   MelloUI:SetMoverProvider(provider)
---       provider:Attach(entry) is called for every entry, now and later. At
---       a drag start on a handle, provider:DragStart(entry) is asked first:
---       true takes that drag (provider:DragStop(entry) ends it, and the
---       provider saves, through SavePosition or entry.save); otherwise the
---       plain drag runs when entry.plainDrag allows it. The handle's
---       OnDragStart / OnDragStop are Core's: a provider hooks them, never sets
---       them, and leaves the mouse on for "always" handles. A window hidden
---       mid-drag (no OnDragStop) ends its drag from Core's OnHide hook
---       (DragStop for a provider's drag); the frame's own OnShow / OnHide
---       are hooked too, so set them BEFORE registering (SetScript drops hooks).
---       provider:IsUnlocked() says whether the windows are unlocked.
+--   MelloUI:MoverEntry(frame) -> entry | nil
+--   MelloUI:EntryLive(entry) -> live       its `when` true, the frame not forbidden
+--   MelloUI:EntryShown(entry) -> shown     its `visible`, else IsShown (secret: false)
+--   MelloUI:EntryRect(entry) -> l, b, w, h
+--       UIParent units, nil when anything reads secret or not finite. A
+--       hidden frame with no rect (and a 0 x 0 one with a placeholder) is
+--       measured from its first anchor: the relative frame's rect (the
+--       screen, or any frame whose rect reads plainly), the offsets and its
+--       size (the placeholder's when 0), in its scale
+--   MelloUI:EntryBase(entry) -> scale      its 100 %: base when a plain positive number, else 1
+--   MelloUI:MoveEntry(entry, l, b) -> ok   BOTTOMLEFT to the screen's BOTTOMLEFT
+--       at l, b (UI units), in the frame's own units; the Raw methods,
+--       `placing` held; false (nothing done) for a protected frame in combat
+--   MelloUI:ScaleEntry(entry, scale) -> ok the scale (Kit:SetFrameScale with
+--       the Raw SetScale), `scaling` held; the same combat rule
+--   MelloUI:PlaceEntryAt(entry, point, relTo, relPoint, x, y) -> ok
+--       any anchor (Edit Mode's place), the Raw methods, `placing` held
+--   MelloUI:AddMoverSource(fn)            fn() registers what its owner has
+--       that is not registered yet (idempotent; Edit Layout runs every
+--       source at each open and resume: the first-open rule, nothing made
+--       at login); MelloUI:MoverSources() -> the list, in the order they came
+--   MelloUI:EditingLayout() -> false      Core/EditLayout.lua's own answers
+--       while Edit Layout shows; the plain drags wait meanwhile (not a
+--       "tool"'s)
 --   MelloUI:FitOnScreen(frame, extraRects) -> moved, dx, dy
 --       a laid-out frame moved (its points shifted) just enough to be on
 --       the screen, together with extraRects (a frame or a list of frames
 --       that move with it; hidden ones do not count); one larger than the
 --       screen keeps its top-left corner on it. dx, dy in its own units.
+--   MelloUI.LayoutSession                 Edit Layout's pending changes (below)
+-- Edit Mode's systems are moved and scaled only through their plain
+-- <Method>Base methods (Raw), their SetPoint / SetScale post-hooked.
+-- The bus's "mover" topic: ("registered", entry) at a registration,
+-- ("shown", entry, shown) from each entry's OnShow / OnHide, ("released",
+-- entry) when a session lets go of an entry it held (Save, Discard,
+-- Abandon, Drop, Release): an owner that waited re-lays it then.
 -- The store is UI Modifications' `positions` setting, which is in its
 -- settings whether the module is on or off, so profiles, share strings and
--- the macro backup (when on) carry every place. Nothing is made or hooked until a
--- window registers (the 'scale' listener aside: one entry on the bus).
+-- the macro backup (when on) carry every place. Nothing is made or hooked
+-- until an element registers (the 'scale' listener aside: one entry on the
+-- bus); the follow hooks' after-combat frame is made the first time a put-
+-- back waits for a fight's end.
+--
+-- The session (MelloUI.LayoutSession; in memory only, never saved). Only Edit
+-- Layout's own paths write it (Set, Reset); SavePosition and ForgetPosition
+-- always write the store.
+--   Begin(onEnd) -> began                 a session on the store table as it
+--                                         is now; onEnd(reason, n) once at its
+--                                         end: "saved" (n changes), "discarded",
+--                                         "abandoned" (n: why)
+--   Active() -> active                    false once the store table is not the
+--                                         one it began on (abandoned first)
+--   Touch(entry) -> rec                   the first touch: its snapshot (every
+--                                         point, the scale, shown), its follow
+--                                         hook; entries of one key share a record
+--                                         (each element's own snapshot kept)
+--   Set(entry[, scale])                   its rect now, by its anchor, as its
+--                                         pending place (scale as SavePosition's:
+--                                         nil keeps the one it has; dropped at
+--                                         exactly the 100 % it names)
+--   Hang(entry)                           hung by its anchor from the pending
+--                                         place, kept on the screen
+--   Reset(entry)                          the pending reset: its base scale, the
+--                                         preview (its default; a followed game
+--                                         window without one closed), its reset
+--                                         called only at Save
+--   ResetAll() -> n                       Reset for every live entry but a "tool"'s
+--                                         with a stored or pending place, and
+--                                         every live `save` entry, once per key
+--   Holds(entry), Pos(entry), IsReset(entry), Count(), Touched() -> entries
+--   Differs(entry) -> bool                its change counts in Count() (a reset,
+--                                         or a place unlike the stored one, else
+--                                         its snapshot's; moved back: false)
+--   Drop(entry)                           out of it, put back from its snapshot
+--   Release(entry)                        out of it, not put back
+--   Commit() -> saved, n                  Save: the session off FIRST, then in
+--                                         one Batch the keyed places into the
+--                                         store (a reset forgets and calls its
+--                                         reset), each `save`'s save(frame, pos)
+--                                         or reset; "released" for each
+--   Discard()                             put back from the snapshots, the last
+--                                         touched first (unreadable: the store,
+--                                         else its default); no 'setting'
+--   Abandon(reason)                       ended with NO put-back from the
+--                                         snapshots where the store can place:
+--                                         a profile load (RestartModules), the
+--                                         installer, a replaced store
+-- Every touched entry is held where its pending place says while the session
+-- is active: its SetPoint / SetScale post-hooks hang it again after anyone
+-- else's call (idle outside a session, guarded by `placing`). Owners that lay
+-- their element from their own settings wait while it Holds it and lay it
+-- again on "released".
 --------------------------------------------------------------------------------
-
-local RegisterEntry   -- the registration itself (MelloUI:RegisterMover); the copy window's
 
 do
 	local Num = Safe.Number
+	local Finite = Safe.Finite
 	local Secret = Safe.IsSecret
 	local POSITIONS_MODULE = "UIModifications"
 
@@ -1089,13 +1204,22 @@ do
 		TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1 }
 	local POINT_Y = { TOPLEFT = 1, TOP = 1, TOPRIGHT = 1, LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
 		BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0 }
+	local GROUPS = { own = true, window = true, hud = true, tool = true }
 
 	local entries = {}                 -- in registration order
 	local byFrame, byKey, byHandle = {}, {}, {}
-	local provider
+	local sources = {}                 -- MelloUI:AddMoverSource's, in the order they came
 
-	-- the one table of places, looked up each time (a profile load or Reset
-	-- positions puts a new one there); create: made when missing
+	local LayoutSession = {}
+	MelloUI.LayoutSession = LayoutSession
+	-- the session while one runs: { store = the positions table it began on,
+	-- onEnd, recs = { rec, ... } (first touch first), byEntry = { [entry] =
+	-- rec }, byKey = { [key] = rec } }; rec = { entry, pos, reset, snap }
+	local session = nil
+	local Held, Later   -- (below)
+
+	-- the one table of places, looked up each time (a profile load puts a
+	-- new one there); create: made when missing
 	local function Positions(create)
 		local db = MelloUI.db
 		local modules = db and db.modules
@@ -1125,16 +1249,24 @@ do
 		return positions
 	end
 
+	-- the store's own entry for a key (never the pending one)
+	local function Stored(key)
+		local positions = key ~= nil and Positions(false)
+		local pos = positions and positions[key]
+		return type(pos) == "table" and pos or nil
+	end
+
 	-- written through the setting path, as every setting (the macro backup,
-	-- when on, is written from there; as the mover always did)
-	local function Stored(positions)
+	-- when on, is written from there)
+	local function Written(positions)
 		MelloUI:NotifySettingChanged(POSITIONS_MODULE, "positions", positions)
 	end
 
-	-- Edit Mode's own SetPoint / ClearAllPoints / SetScale on its systems
-	-- leave tainted state behind when called from here; the plain methods it
-	-- kept aside (<Method>Base) are used where a frame has them (the mover's
-	-- rule, UIModifications.lua)
+	-- Edit Mode's own SetPoint / ClearAllPoints / SetScale / Hide on its
+	-- systems leave tainted state behind when called from here (the damage
+	-- meter's fight timer then failed on its secret combat duration, user
+	-- 2026-09-23); the plain methods it kept aside (<Method>Base) are used
+	-- where a frame has them. A frame without the overrides answers with its own.
 	local function Raw(frame, method)
 		return frame[method .. "Base"] or frame[method]
 	end
@@ -1185,9 +1317,9 @@ do
 	end
 
 	-- How far a box (in pixels) must move to be on a screen of sw x sh
-	-- pixels (UI Modifications' OnScreen, user 2026-09-24: "UI Scaling Break
-	-- the UI"): past the right or the bottom it comes in; one larger than
-	-- the screen keeps its left and top edges on it.
+	-- pixels (user 2026-09-24: "UI Scaling Break the UI"): past the right or
+	-- the bottom it comes in; one larger than the screen keeps its left and
+	-- top edges on it.
 	local function Pull(left, bottom, right, top, sw, sh)
 		local dx, dy = 0, 0
 		if right > sw then
@@ -1236,6 +1368,17 @@ do
 			left, bottom, right, top = Grow(extras[i], left, bottom, right, top)
 		end
 		return left, bottom, right, top
+	end
+
+	-- an entry's `with`: a frame or a list, or a function's answer (looked up
+	-- now: the Quest List is made on the map's first show)
+	local function WithOf(entry)
+		local with = entry and entry.with
+		if type(with) == "function" then
+			local ok, got = pcall(with, entry)
+			return (ok and type(got) == "table") and got or nil
+		end
+		return with
 	end
 
 	-- The offsets that keep a frame of w x h (its own units) on the screen
@@ -1322,10 +1465,121 @@ do
 		return math.floor(v * step + 0.5) / step
 	end
 
+	-- where a frame sits, by `anchor`: point, relPoint, x, y (its own units,
+	-- to a tenth; the store's measure); nil when it cannot be read
+	local function Measure(frame, anchor)
+		local point, relPoint = anchor or "BOTTOMLEFT", anchor or "CENTER"
+		local fs, us, sw, sh = Screen(frame)
+		local l, b, w, h = Rect(frame)
+		if not (fs and l) then
+			return nil
+		end
+		-- the screen in the frame's own units
+		local k = us / fs
+		local x = l + POINT_X[point] * w - POINT_X[relPoint] * sw * k
+		local y = b + POINT_Y[point] * h - POINT_Y[relPoint] * sh * k
+		return point, relPoint, Round(x, 10), Round(y, 10)
+	end
+
+	-- the scale set with its plain SetScale (Raw), its backgrounds laid
+	-- again only when its scale really changed (Kit:SetFrameScale; the kit
+	-- looked up now: it loads after this file)
+	local function SetFrameScale(frame, scale)
+		local Kit = MelloUI.Kit
+		if Kit and Kit.SetFrameScale then
+			Kit:SetFrameScale(frame, scale, Raw(frame, "SetScale"))
+		else
+			Raw(frame, "SetScale")(frame, scale)
+		end
+	end
+
+	-- a place laid on a frame: its scale first, while it still hangs where
+	-- it was, then its anchor, kept on the screen with its `with`
+	local function PlaceNow(frame, entry, point, relPoint, pos)
+		local scale = Finite(tonumber(pos.scale))
+		if scale and scale > 0 then
+			SetFrameScale(frame, scale)
+		end
+		-- measured before the anchors go: a window sized by them reads 0
+		-- wide after
+		local w, h = Size(frame)
+		local x, y = FitOffsets(frame, point, relPoint, Finite(tonumber(pos.x)) or 0, Finite(tonumber(pos.y)) or 0, w, h,
+			entry and WithOf(entry))
+		Raw(frame, "ClearAllPoints")(frame)
+		Raw(frame, "SetPoint")(frame, point, UIParent, relPoint, x, y)
+	end
+
+	-- RestorePosition's and Hang's placing: `placing` held on its entry (its
+	-- post-hooks stand back); placed, or false[, "combat"]
+	local function Place(frame, entry, pos)
+		local point, relPoint = pos.point or "BOTTOMLEFT", pos.relPoint or "CENTER"
+		if not (POINT_X[point] and POINT_X[relPoint]) then
+			return false
+		end
+		if Locked(frame) then
+			return false, "combat"
+		end
+		local was = entry and entry.placing
+		if entry then
+			entry.placing = true
+		end
+		local ok, err = pcall(PlaceNow, frame, entry, point, relPoint, pos)
+		if entry then
+			entry.placing = was
+		end
+		if not ok then
+			Report(err)
+			return false
+		end
+		return true
+	end
+
+	-- whether an entry is live (MelloUI:EntryLive) and shown (EntryShown)
+	local function Live(entry)
+		local frame = entry.frame
+		if frame.IsForbidden then
+			local ok, forbidden = pcall(frame.IsForbidden, frame)
+			if not ok or Secret(forbidden) or forbidden then
+				return false
+			end
+		end
+		local when = entry.when
+		if when then
+			local ok, live = pcall(when, entry)
+			if not ok then
+				Report(live)
+				return false
+			end
+			return (not Secret(live) and live) and true or false
+		end
+		return true
+	end
+
+	local function Shown(entry)
+		local visible = entry.visible
+		if visible then
+			local ok, shown = pcall(visible, entry)
+			return (ok and not Secret(shown) and shown) and true or false
+		end
+		local frame = entry.frame
+		local ok, shown = pcall(frame.IsShown, frame)
+		return (ok and not Secret(shown) and shown) and true or false
+	end
+
 	function MelloUI:GetPosition(key)
-		local positions = key ~= nil and Positions(false)
-		local pos = positions and positions[key]
-		return type(pos) == "table" and pos or nil
+		if key == nil then
+			return nil
+		end
+		local rec = session and session.byKey[key]
+		if rec and LayoutSession.Active() then
+			if rec.reset then
+				return nil
+			end
+			if rec.pos then
+				return rec.pos
+			end
+		end
+		return Stored(key)
 	end
 
 	function MelloUI:SavePosition(key, frame, scale)
@@ -1333,17 +1587,10 @@ do
 			return false
 		end
 		local entry = byKey[key]
-		local anchor = entry and entry.anchor
-		local point, relPoint = anchor or "BOTTOMLEFT", anchor or "CENTER"
-		local fs, us, sw, sh = Screen(frame)
-		local l, b, w, h = Rect(frame)
-		if not (fs and l) then
+		local point, relPoint, x, y = Measure(frame, entry and entry.anchor)
+		if not point then
 			return false
 		end
-		-- the screen in the frame's own units
-		local k = us / fs
-		local x = l + POINT_X[point] * w - POINT_X[relPoint] * sw * k
-		local y = b + POINT_Y[point] * h - POINT_Y[relPoint] * sh * k
 		local positions = Positions(true)
 		if not positions then
 			return false
@@ -1353,17 +1600,22 @@ do
 			pos = {}
 			positions[key] = pos
 		end
-		-- compact, as the mover's: a tenth of a unit, the scale to a
-		-- hundredth, the points only when not the mover's own
+		-- compact: a tenth of a unit, the scale to a hundredth, the points
+		-- only when not the mover's own
 		pos.point = point ~= "BOTTOMLEFT" and point or nil
 		pos.relPoint = relPoint ~= "CENTER" and relPoint or nil
-		pos.x, pos.y = Round(x, 10), Round(y, 10)
+		pos.x, pos.y = x, y
 		if scale == false then
 			pos.scale = nil
 		elseif Num(scale) and scale > 0 then
 			pos.scale = Round(scale, 100)
 		end
-		Stored(positions)
+		Written(positions)
+		-- (an Edit Layout session that held it lets it go: this write wins)
+		local rec = session and session.byKey[key]
+		if rec then
+			LayoutSession.Release(rec.entry)
+		end
 		return true
 	end
 
@@ -1371,7 +1623,11 @@ do
 		local positions = key ~= nil and Positions(false)
 		if positions and positions[key] ~= nil then
 			positions[key] = nil
-			Stored(positions)
+			Written(positions)
+		end
+		local rec = key ~= nil and session and session.byKey[key]
+		if rec then
+			LayoutSession.Release(rec.entry)
 		end
 	end
 
@@ -1380,61 +1636,171 @@ do
 		if not pos or type(frame) ~= "table" then
 			return false
 		end
-		local point, relPoint = pos.point or "BOTTOMLEFT", pos.relPoint or "CENTER"
-		if not (POINT_X[point] and POINT_X[relPoint]) then
-			return false
-		end
-		if Locked(frame) then
-			return false, "combat"
-		end
-		local entry = byFrame[frame]
-		-- the scale first, while it still hangs where it was; its
-		-- backgrounds laid again only when its scale really changed
-		local scale = tonumber(pos.scale)
-		if scale and scale > 0 then
-			local Kit = self.Kit
-			if Kit and Kit.SetFrameScale then
-				Kit:SetFrameScale(frame, scale, Raw(frame, "SetScale"))
-			else
-				Raw(frame, "SetScale")(frame, scale)
-			end
-		end
-		-- measured before the anchors go: a window sized by them reads 0
-		-- wide after
-		local w, h = Size(frame)
-		local x, y = FitOffsets(frame, point, relPoint, tonumber(pos.x) or 0, tonumber(pos.y) or 0, w, h,
-			entry and entry.with)
-		Raw(frame, "ClearAllPoints")(frame)
-		Raw(frame, "SetPoint")(frame, point, UIParent, relPoint, x, y)
-		return true
+		return Place(frame, byFrame[frame], pos)
 	end
 
 	-- Core's handlers go through a /melloperf scope of their own, one handler
-	-- for every handle (Shared). Core loads before Perf.lua, so its scope is
+	-- for every frame (Shared). Core loads before Perf.lua, so its scope is
 	-- opened by Anim.lua while the files load (MelloUI.CorePerf): one asked
 	-- for here after login would open a file load that never closes
 	-- (review, 2026-09-25). Without it, plain hooks.
 	local wrapped = {}
+	local function Wrap(label, fn, kind)
+		local scope = MelloUI.CorePerf
+		if not (scope and scope.Shared) then
+			return fn
+		end
+		local w = wrapped[fn]
+		if not w then
+			w = scope.Shared(label, fn, kind)
+			wrapped[fn] = w
+		end
+		return w
+	end
+
 	local function Hook(frame, script, label, fn)
 		local scope = MelloUI.CorePerf
 		if scope and scope.Shared and scope.HookScript then
-			local w = wrapped[fn]
-			if not w then
-				w = scope.Shared(label, fn, "script")
-				wrapped[fn] = w
-			end
-			return scope.HookScript(frame, script, w)
+			return scope.HookScript(frame, script, Wrap(label, fn, "script"))
 		end
 		return frame:HookScript(script, fn)
 	end
 
-	local function Unlocked()
-		if not (provider and provider.IsUnlocked) then
-			return false
+	--------------------------------------------------------------------------
+	-- The follow put-back and the session's hold: one post-hook pair per
+	-- frame (SetPoint, SetScale), made at a `follow` registration or a first
+	-- touch; idle for an entry that is neither followed nor held
+	--------------------------------------------------------------------------
+
+	-- a followed entry put back from the store (its pending place while held)
+	local function Follow(entry)
+		if entry.save or entry.key == nil or not Live(entry) then
+			return
 		end
-		local ok, on = pcall(provider.IsUnlocked, provider)
-		return ok and on and true or false
+		local pos = MelloUI:GetPosition(entry.key)
+		if not pos then
+			return
+		end
+		local placed, why = Place(entry.frame, entry, pos)
+		if not placed and why == "combat" then
+			Later(entry)
+		end
 	end
+
+	-- held by the session: hung from its pending place; else followed
+	local function Keep(entry)
+		local rec = Held(entry)
+		if rec then
+			if rec.pos then
+				LayoutSession.Hang(entry)
+			end
+		elseif entry.follow then
+			Follow(entry)
+		end
+	end
+
+	local OnSetPoint = function(frame)
+		local entry = byFrame[frame]
+		if not entry or entry.placing or entry.scaling or entry.moving then
+			return
+		end
+		if entry.follow or session then
+			Keep(entry)
+		end
+	end
+
+	local OnSetScale = function(frame)
+		local entry = byFrame[frame]
+		if not entry or entry.placing or entry.scaling or entry.moving then
+			return
+		end
+		-- someone else scaled it (Edit Mode's Size, the panel manager's fit):
+		-- that is the game's scale for it, its 100 %
+		if entry.follow then
+			local ok, scale = pcall(frame.GetScale, frame)
+			scale = ok and Finite(scale)
+			if scale and scale > 0 then
+				entry.base = scale
+			end
+		end
+		local rec = Held(entry)
+		if rec then
+			if rec.pos then
+				LayoutSession.Hang(entry)
+			end
+			return
+		end
+		if entry.follow then
+			local pos = entry.key ~= nil and Stored(entry.key)
+			if pos and pos.scale then
+				Follow(entry)
+			end
+		end
+	end
+
+	local hooked = setmetatable({}, { __mode = "k" })   -- [frame] = true: its pair of post-hooks made
+	local function HookFrame(frame)
+		if hooked[frame] then
+			return
+		end
+		hooked[frame] = true
+		if type(frame.SetPoint) == "function" then
+			hooksecurefunc(frame, "SetPoint", Wrap("mover: put back after a SetPoint", OnSetPoint, "hook"))
+		end
+		if type(frame.SetScale) == "function" then
+			hooksecurefunc(frame, "SetScale", Wrap("mover: put back after a SetScale", OnSetScale, "hook"))
+		end
+	end
+
+	-- the game lays its panels out again on every show / hide of one, and the
+	-- bags on every open (UpdateContainerFrameAnchors): the followed ones
+	-- that show go back where they were put after each of those
+	local function PutBackShown()
+		for i = 1, #entries do
+			local entry = entries[i]
+			if entry.follow and not (entry.moving or entry.placing) and Shown(entry) then
+				Keep(entry)
+			end
+		end
+	end
+	local panelHooks = false
+	local function HookPanelLayout()
+		if panelHooks then
+			return
+		end
+		panelHooks = true
+		for _, name in ipairs({ "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }) do
+			if type(_G[name]) == "function" then
+				hooksecurefunc(name, Wrap("mover: put back after the panel layout", PutBackShown, "hook"))
+			end
+		end
+	end
+
+	-- a put-back refused in combat (a protected window): once the fight is
+	-- over, for the ones that show then. The frame is made the first time.
+	local waiting = {}   -- [entry] = true
+	local combatFrame
+	local function AfterCombat()
+		combatFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+		for entry in pairs(waiting) do
+			waiting[entry] = nil
+			if Shown(entry) then
+				Keep(entry)
+			end
+		end
+	end
+	Later = function(entry)
+		waiting[entry] = true
+		if not combatFrame then
+			combatFrame = CreateFrame("Frame")
+			combatFrame:SetScript("OnEvent", Wrap("mover: put back after the fight", AfterCombat, "script"))
+		end
+		combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+	end
+
+	--------------------------------------------------------------------------
+	-- The plain drag ("always"): the frame's own StartMoving, saved at once
+	--------------------------------------------------------------------------
 
 	-- a plain drag let go: saved in the store (or by the window itself) and
 	-- hung by its own anchor again, kept on the screen
@@ -1450,24 +1816,17 @@ do
 		end
 	end
 
-	-- a drag over: the plain one let go (saved, hung by its anchor again;
-	-- stale: a drag left over from before a hide, only stopped), the
-	-- provider's handed back to it to end
+	-- a plain drag over: let go (saved, hung by its anchor again; stale: a
+	-- drag left over from before a hide, only stopped). Edit Layout's own
+	-- drag ("layout") is its to end.
 	local function EndDrag(entry, stale)
-		local how = entry.moving
+		if entry.moving ~= "plain" then
+			return
+		end
 		entry.moving = nil
-		if how == "provider" then
-			if provider and provider.DragStop then
-				local ok, err = pcall(provider.DragStop, provider, entry)
-				if not ok then
-					Report(err)
-				end
-			end
-		elseif how == "plain" then
-			entry.frame:StopMovingOrSizing()
-			if not stale then
-				SaveEntry(entry)
-			end
+		entry.frame:StopMovingOrSizing()
+		if not stale then
+			SaveEntry(entry)
 		end
 	end
 
@@ -1479,20 +1838,18 @@ do
 		-- a drag that never saw its OnDragStop (its window hidden while it
 		-- was held): ended first, or the window could never be dragged or
 		-- put back again (review, 2026-09-25); this drag saves its place
-		if entry.moving then
+		if entry.moving == "plain" then
 			EndDrag(entry, true)
+		elseif entry.moving then
+			return   -- (Edit Layout's)
 		end
-		if provider and provider.DragStart then
-			local ok, took = pcall(provider.DragStart, provider, entry)
-			if not ok then
-				Report(took)
-			elseif took then
-				entry.moving = "provider"
-				return
-			end
+		if entry.plainDrag ~= "always" then
+			return
 		end
-		local mode = entry.plainDrag
-		if not (mode == "always" or (mode == "unlocked" and Unlocked())) then
+		-- while Edit Layout shows, its plate is the one way to move an
+		-- element: only its tools (its own bar, the Configurator, the
+		-- installer window) are dragged by themselves then
+		if entry.group ~= "tool" and MelloUI:EditingLayout() then
 			return
 		end
 		local frame = entry.frame
@@ -1506,7 +1863,7 @@ do
 
 	local function DragStop(handle)
 		local entry = byHandle[handle]
-		if entry and entry.moving then
+		if entry and entry.moving == "plain" then
 			EndDrag(entry)
 		end
 	end
@@ -1515,9 +1872,13 @@ do
 	-- OnDragStop: its drag ends here, where it was let go
 	local function OnHide(frame)
 		local entry = byFrame[frame]
-		if entry and entry.moving then
+		if not entry then
+			return
+		end
+		if entry.moving == "plain" then
 			EndDrag(entry)
 		end
+		MelloUI:Fire("mover", "shown", entry, false)
 	end
 
 	-- a saved place put back on every show (the window may have been laid
@@ -1528,22 +1889,19 @@ do
 		if not entry then
 			return
 		end
-		if entry.moving then
+		if entry.moving == "plain" then
 			EndDrag(entry, true)
 		end
-		if not entry.save then
-			MelloUI:RestorePosition(entry.key, frame)
+		if not entry.save and entry.key ~= nil and Live(entry) then
+			local placed, why = MelloUI:RestorePosition(entry.key, frame)
+			if not placed and why == "combat" and entry.follow then
+				Later(entry)
+			end
 		end
+		MelloUI:Fire("mover", "shown", entry, true)
 	end
 
-	local function Attach(entry)
-		local ok, err = pcall(provider.Attach, provider, entry)
-		if not ok then
-			Report(err)
-		end
-	end
-
-	RegisterEntry = function(frame, handle, opts)
+	function MelloUI:RegisterMover(frame, handle, opts)
 		if type(frame) ~= "table" then
 			return nil
 		end
@@ -1555,26 +1913,51 @@ do
 			opts = {}
 		end
 		handle = type(handle) == "table" and handle or frame
-		local key = opts.key
-		if key == nil and frame.GetName then
-			local ok, name = pcall(frame.GetName, frame)
-			key = ok and Safe.Text(name) or nil
+		local key, name = opts.key, nil
+		if frame.GetName then
+			local ok, n = pcall(frame.GetName, frame)
+			name = ok and Safe.Text(n) or nil
+		end
+		if key == nil then
+			key = name
 		end
 		local anchor = opts.anchor
+		local placeholder = opts.placeholder
+		if placeholder ~= true and not (type(placeholder) == "table" and Finite(placeholder[1]) and Finite(placeholder[2])) then
+			placeholder = nil
+		end
+		local label = opts.label
+		if type(label) ~= "string" then
+			label = type(key) == "string" and key or name
+		end
 		entry = {
 			frame = frame, handle = handle, key = key,
 			anchor = POINT_X[anchor] and anchor or nil,
 			default = opts.default, save = opts.save, reset = opts.reset,
 			min = opts.min, max = opts.max, base = opts.base, with = opts.with,
-			plainDrag = (opts.plainDrag == "always" or opts.plainDrag == "unlocked") and opts.plainDrag or false,
+			-- (the old "unlocked" mode is gone: such a window moves in Edit
+			-- Layout only)
+			plainDrag = opts.plainDrag == "always" and "always" or false,
+			label = label,
+			page = type(opts.page) == "string" and opts.page or nil,
+			group = GROUPS[opts.group] and opts.group or "own",
+			placeholder = placeholder,
+			visible = type(opts.visible) == "function" and opts.visible or nil,
+			follow = opts.follow and true or nil,
+			resize = opts.resize ~= false,
+			locked = type(opts.locked) == "function" and opts.locked or nil,
+			note = type(opts.note) == "function" and opts.note or nil,
+			resetLabel = type(opts.resetLabel) == "string" and opts.resetLabel or nil,
+			when = type(opts.when) == "function" and opts.when or nil,
 		}
 		entries[#entries + 1] = entry
 		byFrame[frame] = entry
 		if key ~= nil and byKey[key] == nil then
 			byKey[key] = entry
 		end
-		-- the handle's drag is Core's: the plain drag, or the provider's
-		if not byHandle[handle] then
+		-- the handle's plain drag is Core's (a game window the game lays out
+		-- keeps its handle as it is: it moves in Edit Layout only)
+		if not entry.follow and not byHandle[handle] then
 			byHandle[handle] = entry
 			if handle.RegisterForDrag and entry.plainDrag then
 				handle:RegisterForDrag("LeftButton")
@@ -1585,89 +1968,762 @@ do
 			Hook(handle, "OnDragStart", "mover: drag start", DragStart)
 			Hook(handle, "OnDragStop", "mover: drag stop", DragStop)
 		end
-		Hook(frame, "OnHide", "mover: drag ended by a hide", OnHide)
-		if not entry.save and key ~= nil then
-			Hook(frame, "OnShow", "mover: saved place on show", OnShow)
-			MelloUI:RestorePosition(key, frame)
+		Hook(frame, "OnHide", "mover: hidden", OnHide)
+		Hook(frame, "OnShow", "mover: shown (its saved place)", OnShow)
+		if entry.follow then
+			-- its 100 %: the game's own scale for it now, before a saved one
+			-- is put on it
+			if not (Num(entry.base) and entry.base > 0) then
+				local ok, scale = pcall(frame.GetScale, frame)
+				scale = ok and Finite(scale)
+				entry.base = (scale and scale > 0) and scale or nil
+			end
+			HookFrame(frame)
+			HookPanelLayout()
+		end
+		if not entry.save and key ~= nil and Live(entry) then
+			local placed, why = MelloUI:RestorePosition(key, frame)
+			if not placed and why == "combat" and entry.follow then
+				Later(entry)
+			end
 		end
 		-- no saved place and no anchor of its own: its default place (the game
 		-- draws nothing for a frame with no anchor; user, 2026-09-26: the new
 		-- Restock List never showed until it had been placed once)
 		if entry.default and frame.GetNumPoints and not Locked(frame) then
 			local okN, n = pcall(frame.GetNumPoints, frame)
-			if okN and not Safe.IsSecret(n) and n == 0 then
+			if okN and not Secret(n) and n == 0 then
 				local okD, err = pcall(entry.default, frame)
 				if not okD then
 					Report(err)
 				end
 			end
 		end
-		if provider and provider.Attach then
-			Attach(entry)
-		end
+		MelloUI:Fire("mover", "registered", entry)
 		return entry
-	end
-
-	function MelloUI:RegisterMover(frame, handle, opts)
-		return RegisterEntry(frame, handle, opts)
 	end
 
 	function MelloUI:MoverEntries()
 		return entries
 	end
 
-	function MelloUI:WindowsUnlocked()
-		return Unlocked()
+	function MelloUI:MoverEntry(frame)
+		return frame ~= nil and byFrame[frame] or nil
 	end
 
-	function MelloUI:ResetMover(target)
-		-- a registered frame, or its entry
-		local entry = byFrame[target]
-		if not entry and type(target) == "table" and target.frame ~= nil and byFrame[target.frame] == target then
-			entry = target
+	function MelloUI:EntryLive(entry)
+		if type(entry) ~= "table" or type(entry.frame) ~= "table" then
+			return false
 		end
-		if not entry then
+		return Live(entry)
+	end
+
+	function MelloUI:EntryShown(entry)
+		if type(entry) ~= "table" or type(entry.frame) ~= "table" then
+			return false
+		end
+		return Shown(entry)
+	end
+
+	-- a hidden frame's rect from its first anchor, UI units (EntryRect); k:
+	-- its scale against the screen's
+	local function AnchorRect(entry, frame, k)
+		local okP, p, rel, rp, x, y = pcall(frame.GetPoint, frame, 1)
+		if not okP or Secret(p) or Secret(rel) or Secret(rp) or Secret(x) or Secret(y) then
+			return nil
+		end
+		rp = rp or p
+		if not (POINT_X[p] and POINT_X[rp]) then
+			return nil
+		end
+		local rl, rb, rw, rh
+		if rel == nil or rel == UIParent then
+			local ok, sw, sh = pcall(UIParent.GetSize, UIParent)
+			sw, sh = ok and Finite(sw), ok and Finite(sh)
+			if not (sw and sh) then
+				return nil
+			end
+			rl, rb, rw, rh = 0, 0, sw, sh
+		else
+			-- any frame whose rect reads plainly (the one screen-rect reader)
+			local left, bottom, right, top = Safe.ScreenRect(rel)
+			local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+			us = okU and Finite(us)
+			if not (left and us) or us <= 0 then
+				return nil
+			end
+			rl, rb, rw, rh = left / us, bottom / us, (right - left) / us, (top - bottom) / us
+		end
+		local w, h = Size(frame)
+		w, h = (Finite(w) or 0) * k, (Finite(h) or 0) * k
+		local ph = entry.placeholder
+		if (w <= 0 or h <= 0) and type(ph) == "table" then
+			w, h = ph[1], ph[2]
+		end
+		local ax = rl + POINT_X[rp] * rw + (Finite(x) or 0) * k
+		local ay = rb + POINT_Y[rp] * rh + (Finite(y) or 0) * k
+		return ax - POINT_X[p] * w, ay - POINT_Y[p] * h, w, h
+	end
+
+	function MelloUI:EntryRect(entry)
+		local frame = type(entry) == "table" and entry.frame
+		if type(frame) ~= "table" or not frame.GetRect then
+			return nil
+		end
+		local okS, fs = pcall(frame.GetEffectiveScale, frame)
+		local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+		fs, us = okS and Finite(fs), okU and Finite(us)
+		if not (fs and us) or fs <= 0 or us <= 0 then
+			return nil
+		end
+		local k = fs / us
+		local ok, l, b, w, h = pcall(frame.GetRect, frame)
+		if not ok or Secret(l) or Secret(b) or Secret(w) or Secret(h) then
+			return nil
+		end
+		if l ~= nil then
+			l, b, w, h = Finite(l), Finite(b), Finite(w), Finite(h)
+			if not (l and b and w and h) then
+				return nil
+			end
+			if (w > 0 and h > 0) or not entry.placeholder then
+				return l * k, b * k, w * k, h * k
+			end
+		end
+		return AnchorRect(entry, frame, k)
+	end
+
+	function MelloUI:EntryBase(entry)
+		local base = type(entry) == "table" and entry.base
+		return (Finite(base) and base > 0) and base or 1
+	end
+
+	local function MovePoints(frame, x, y)
+		Raw(frame, "ClearAllPoints")(frame)
+		Raw(frame, "SetPoint")(frame, "BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+	end
+
+	function MelloUI:MoveEntry(entry, l, b)
+		local frame = type(entry) == "table" and entry.frame
+		l, b = Finite(l), Finite(b)
+		if type(frame) ~= "table" or not (l and b) or Locked(frame) then
+			return false
+		end
+		local okS, fs = pcall(frame.GetEffectiveScale, frame)
+		local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+		fs, us = okS and Finite(fs), okU and Finite(us)
+		if not (fs and us) or fs <= 0 or us <= 0 then
+			return false
+		end
+		local k = us / fs
+		local was = entry.placing
+		entry.placing = true
+		local ok, err = pcall(MovePoints, frame, l * k, b * k)
+		entry.placing = was
+		if not ok then
+			Report(err)
+			return false
+		end
+		return true
+	end
+
+	function MelloUI:ScaleEntry(entry, scale)
+		local frame = type(entry) == "table" and entry.frame
+		scale = Finite(scale)
+		if type(frame) ~= "table" or not scale or scale <= 0 or Locked(frame) then
+			return false
+		end
+		local was = entry.scaling
+		entry.scaling = true
+		local ok, err = pcall(SetFrameScale, frame, scale)
+		entry.scaling = was
+		if not ok then
+			Report(err)
+			return false
+		end
+		return true
+	end
+
+	local function PlaceAt(frame, point, relTo, relPoint, x, y)
+		Raw(frame, "ClearAllPoints")(frame)
+		Raw(frame, "SetPoint")(frame, point, relTo, relPoint, x, y)
+	end
+
+	function MelloUI:PlaceEntryAt(entry, point, relTo, relPoint, x, y)
+		local frame = type(entry) == "table" and entry.frame
+		if type(frame) ~= "table" or not (POINT_X[point] and POINT_X[relPoint]) or Locked(frame) then
+			return false
+		end
+		relTo = type(relTo) == "table" and relTo or UIParent
+		local was = entry.placing
+		entry.placing = true
+		local ok, err = pcall(PlaceAt, frame, point, relTo, relPoint, Finite(x) or 0, Finite(y) or 0)
+		entry.placing = was
+		if not ok then
+			Report(err)
+			return false
+		end
+		return true
+	end
+
+	function MelloUI:AddMoverSource(fn)
+		if type(fn) ~= "function" then
 			return
 		end
-		if entry.key ~= nil and not entry.save then
-			self:ForgetPosition(entry.key)
+		for i = 1, #sources do
+			if sources[i] == fn then
+				return
+			end
 		end
-		if entry.reset then
-			local ok, err = pcall(entry.reset)
+		sources[#sources + 1] = fn
+	end
+
+	function MelloUI:MoverSources()
+		return sources
+	end
+
+	-- (Core/EditLayout.lua replaces it: true while Edit Layout shows)
+	function MelloUI:EditingLayout()
+		return false
+	end
+
+	--------------------------------------------------------------------------
+	-- The session (the API in the block's header)
+	--------------------------------------------------------------------------
+
+	-- the record of an entry the active session holds (the store replaced
+	-- meanwhile: the session is abandoned first, nil)
+	Held = function(entry)
+		local s = session
+		if not s then
+			return nil
+		end
+		local rec = s.byEntry[entry] or (entry.key ~= nil and s.byKey[entry.key]) or nil
+		if rec and LayoutSession.Active() then
+			return rec
+		end
+		return nil
+	end
+
+	-- the frame as it is now: every point (plain reads; a secret one, or
+	-- none, makes it unreadable), the scale, shown, and its place measured
+	-- by its anchor (the change count's reference for a `save` window)
+	local function Snapshot(entry)
+		local frame = entry.frame
+		local snap = { points = {} }
+		local okN, n = pcall(frame.GetNumPoints, frame)
+		n = okN and Num(n)
+		if not n or n < 1 then
+			snap.unreadable = true
+		else
+			for i = 1, n do
+				local ok, p, rel, rp, x, y = pcall(frame.GetPoint, frame, i)
+				if not ok or Secret(p) or Secret(rel) or Secret(rp) or Secret(x) or Secret(y) or type(p) ~= "string" then
+					snap.unreadable = true
+					break
+				end
+				snap.points[i] = { p, rel, rp, Num(x) or 0, Num(y) or 0 }
+			end
+		end
+		local okS, scale = pcall(frame.GetScale, frame)
+		snap.scale = okS and Finite(scale) or nil
+		snap.shown = Shown(entry)
+		local point, relPoint, x, y = Measure(frame, entry.anchor)
+		if point then
+			snap.pos = { point = point ~= "BOTTOMLEFT" and point or nil, relPoint = relPoint ~= "CENTER" and relPoint or nil,
+				x = x, y = y }
+			local base = MelloUI:EntryBase(entry)
+			if snap.scale and math.abs(snap.scale - base) > 0.001 then
+				snap.pos.scale = Round(snap.scale, 100)
+			end
+		end
+		return snap
+	end
+
+	-- a frame back where its snapshot had it; false when it has no readable one
+	local function Unwind(rec)
+		local entry, snap = rec.entry, rec.snap
+		local frame = entry.frame
+		if snap.unreadable then
+			return false
+		end
+		if Locked(frame) then
+			if entry.follow then
+				Later(entry)
+			end
+			return true
+		end
+		local was = entry.placing
+		entry.placing = true
+		local ok, err = pcall(function()
+			if snap.scale and snap.scale > 0 then
+				SetFrameScale(frame, snap.scale)
+			end
+			Raw(frame, "ClearAllPoints")(frame)
+			local set = Raw(frame, "SetPoint")
+			for i = 1, #snap.points do
+				local pt = snap.points[i]
+				set(frame, pt[1], pt[2], pt[3], pt[4], pt[5])
+			end
+		end)
+		entry.placing = was
+		if not ok then
+			Report(err)
+		end
+		return true
+	end
+
+	local function Default(entry)
+		if not entry.default then
+			return false
+		end
+		local was = entry.placing
+		entry.placing = true
+		local ok, placed, line = pcall(entry.default, entry.frame)
+		entry.placing = was
+		if not ok then
+			Report(placed)
+			return false
+		end
+		return placed ~= false, line
+	end
+
+	-- a record's elements put back: the first touched from its snapshot
+	-- (unreadable: the store, else its default), then every other element of
+	-- its key from its own
+	local function Undo(rec)
+		local entry = rec.entry
+		if not Unwind(rec) and not (entry.key ~= nil and not entry.save and MelloUI:RestorePosition(entry.key, entry.frame)) then
+			Default(entry)
+		end
+		local more = rec.more
+		for i = 1, more and #more or 0 do
+			Unwind(more[i])
+		end
+	end
+
+	local function Remove(s, rec)
+		local recs = s.recs
+		for i = #recs, 1, -1 do
+			if recs[i] == rec then
+				table.remove(recs, i)
+			end
+		end
+		for e, r in pairs(s.byEntry) do
+			if r == rec then
+				s.byEntry[e] = nil
+			end
+		end
+		for k, r in pairs(s.byKey) do
+			if r == rec then
+				s.byKey[k] = nil
+			end
+		end
+	end
+
+	local function Released(recs)
+		for i = 1, #recs do
+			MelloUI:Fire("mover", "released", recs[i].entry)
+		end
+	end
+
+	local function Ended(s, reason, extra)
+		if s.onEnd then
+			local ok, err = pcall(s.onEnd, reason, extra)
 			if not ok then
 				Report(err)
 			end
 		end
+	end
+
+	-- two places alike: the same anchor, x and y within 0.05 units, the
+	-- scale within 0.005 (none: its 100 %)
+	local function Alike(a, b, base)
+		if a == nil or b == nil then
+			return a == b
+		end
+		if (a.point or "BOTTOMLEFT") ~= (b.point or "BOTTOMLEFT") or (a.relPoint or "CENTER") ~= (b.relPoint or "CENTER") then
+			return false
+		end
+		if math.abs((Num(a.x) or 0) - (Num(b.x) or 0)) > 0.05 or math.abs((Num(a.y) or 0) - (Num(b.y) or 0)) > 0.05 then
+			return false
+		end
+		return math.abs((Num(a.scale) or base) - (Num(b.scale) or base)) <= 0.005
+	end
+
+	local function Copy(pos)
+		return { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y, scale = pos.scale }
+	end
+
+	function LayoutSession.Begin(onEnd)
+		if session and LayoutSession.Active() then
+			return false
+		end
+		local store = Positions(true)
+		if not store then
+			return false
+		end
+		session = { store = store, onEnd = type(onEnd) == "function" and onEnd or nil, recs = {}, byEntry = {}, byKey = {} }
+		return true
+	end
+
+	function LayoutSession.Active()
+		local s = session
+		if not s then
+			return false
+		end
+		if Positions(false) ~= s.store then
+			LayoutSession.Abandon("store")
+			return false
+		end
+		return true
+	end
+
+	function LayoutSession.Touch(entry)
+		if type(entry) ~= "table" or byFrame[entry.frame] == nil or not LayoutSession.Active() then
+			return nil
+		end
+		local s = session
+		local rec = s.byEntry[entry] or (entry.key ~= nil and s.byKey[entry.key]) or nil
+		if rec then
+			if s.byEntry[entry] == nil then
+				-- another element of the key (a whisper popup after the
+				-- stand-in): its own snapshot, so Discard and Drop put it
+				-- back too
+				rec.more = rec.more or {}
+				rec.more[#rec.more + 1] = { entry = entry, snap = Snapshot(entry) }
+			end
+			s.byEntry[entry] = rec
+			return rec
+		end
+		rec = { entry = entry, reset = false, snap = Snapshot(entry) }
+		s.recs[#s.recs + 1] = rec
+		s.byEntry[entry] = rec
+		if entry.key ~= nil then
+			s.byKey[entry.key] = rec
+		end
+		HookFrame(entry.frame)
+		return rec
+	end
+
+	-- the frame's place now, by its anchor, as the pending place; scale as
+	-- SavePosition's (nil: the one it has kept -- the pending one, else the
+	-- stored one, else a `save` element's own from its snapshot, which its
+	-- owner set; none after a reset that laid no place: Reset scaled it to
+	-- its 100 %, and the store's old scale is no longer it), dropped at
+	-- exactly the 100 % its entry names
+	local function Measured(rec, entry, scale, wasReset)
+		local point, relPoint, x, y = Measure(entry.frame, entry.anchor)
+		if not point then
+			return false
+		end
+		local pos = { point = point ~= "BOTTOMLEFT" and point or nil, relPoint = relPoint ~= "CENTER" and relPoint or nil,
+			x = x, y = y }
+		if scale == nil then
+			local was = rec.pos
+			if not (was or wasReset) then
+				was = (entry.key ~= nil and not entry.save and Stored(entry.key)) or (entry.save and rec.snap.pos) or nil
+			end
+			pos.scale = was and Finite(was.scale) or nil
+		elseif Finite(scale) and scale > 0 then
+			local base = entry.base
+			if not (Finite(base) and base > 0 and math.abs(scale - base) <= 0.001) then
+				pos.scale = Round(scale, 100)
+			end
+		end
+		rec.pos = pos
+		return true
+	end
+
+	function LayoutSession.Set(entry, scale)
+		local rec = LayoutSession.Touch(entry)
+		if not rec then
+			return false
+		end
+		local wasReset = rec.reset
+		rec.reset = false
+		return Measured(rec, entry, scale, wasReset)
+	end
+
+	function LayoutSession.Hang(entry)
+		local rec = type(entry) == "table" and Held(entry)
+		if not (rec and rec.pos) then
+			return false
+		end
+		local placed, why = Place(entry.frame, entry, rec.pos)
+		if not placed and why == "combat" then
+			Later(entry)
+		end
+		return placed
+	end
+
+	function LayoutSession.Reset(entry)
+		local rec = LayoutSession.Touch(entry)
+		if not rec then
+			return false
+		end
+		rec.reset, rec.pos = true, nil
+		local frame = entry.frame
+		-- its standard size (one whose size is set elsewhere keeps it)
+		if entry.resize ~= false then
+			MelloUI:ScaleEntry(entry, MelloUI:EntryBase(entry))
+		end
+		-- the preview of its standard place: its default; a game window the
+		-- game lays out closed (it opens afresh at the game's place; never
+		-- from here while the Gamepad UI is on, the freeze rule)
 		if entry.default then
-			local ok, err = pcall(entry.default, entry.frame)
+			local placed, line = Default(entry)
+			if placed then
+				Measured(rec, entry, false)
+			elseif type(line) == "string" then
+				MelloUI:Print(line)
+			end
+		elseif entry.follow and Shown(entry) and not Locked(frame) and not Safe.GamepadUI() then
+			local was = entry.placing
+			entry.placing = true
+			local ok, err = pcall(Raw(frame, "Hide"), frame)
+			entry.placing = was
 			if not ok then
 				Report(err)
 			end
 		end
+		return true
 	end
 
-	function MelloUI:SetMoverProvider(p)
-		provider = p
-		if p and p.Attach then
-			for i = 1, #entries do
-				Attach(entries[i])
+	function LayoutSession.ResetAll()
+		if not LayoutSession.Active() then
+			return 0
+		end
+		local n, done = 0, {}
+		for i = 1, #entries do
+			local entry = entries[i]
+			local key = entry.key
+			if entry.group ~= "tool" and not (key ~= nil and done[key]) and Live(entry) then
+				local rec = Held(entry)
+				if entry.save or (key ~= nil and (Stored(key) ~= nil or (rec and rec.pos ~= nil))) then
+					if key ~= nil then
+						done[key] = true
+					end
+					if LayoutSession.Reset(entry) then
+						n = n + 1
+					end
+				end
 			end
+		end
+		return n
+	end
+
+	function LayoutSession.Holds(entry)
+		return type(entry) == "table" and Held(entry) ~= nil
+	end
+
+	function LayoutSession.Pos(entry)
+		local rec = type(entry) == "table" and Held(entry)
+		return (rec and not rec.reset) and rec.pos or nil
+	end
+
+	function LayoutSession.IsReset(entry)
+		local rec = type(entry) == "table" and Held(entry)
+		return (rec and rec.reset) and true or false
+	end
+
+	-- one record counts: a reset, or a pending place unlike the stored one
+	-- (keyed, not `save`), else the snapshot's; a place moved back exactly is
+	-- none
+	local function Counts(rec)
+		if rec.reset then
+			return true
+		end
+		if not rec.pos then
+			return false
+		end
+		local entry = rec.entry
+		local was = (entry.key ~= nil and not entry.save and Stored(entry.key)) or rec.snap.pos
+		return not Alike(rec.pos, was, MelloUI:EntryBase(entry))
+	end
+
+	function LayoutSession.Count()
+		if not LayoutSession.Active() then
+			return 0
+		end
+		local n = 0
+		local recs = session.recs
+		for i = 1, #recs do
+			if Counts(recs[i]) then
+				n = n + 1
+			end
+		end
+		return n
+	end
+
+	-- this element's change counts (its plate's pending mark: Count's rule)
+	function LayoutSession.Differs(entry)
+		if not LayoutSession.Active() then
+			return false
+		end
+		local rec = type(entry) == "table" and Held(entry) or nil
+		return rec ~= nil and Counts(rec)
+	end
+
+	function LayoutSession.Touched()
+		local list = {}
+		if LayoutSession.Active() then
+			for i, rec in ipairs(session.recs) do
+				list[i] = rec.entry
+			end
+		end
+		return list
+	end
+
+	function LayoutSession.Drop(entry)
+		local rec = type(entry) == "table" and Held(entry)
+		if not rec then
+			return false
+		end
+		Remove(session, rec)
+		Undo(rec)
+		MelloUI:Fire("mover", "released", rec.entry)
+		return true
+	end
+
+	function LayoutSession.Release(entry)
+		local s = session
+		local rec = s and type(entry) == "table" and (s.byEntry[entry] or (entry.key ~= nil and s.byKey[entry.key])) or nil
+		if not rec then
+			return false
+		end
+		Remove(s, rec)
+		MelloUI:Fire("mover", "released", rec.entry)
+		return true
+	end
+
+	-- Save's writes, each record in its own pcall (one that raises is
+	-- reported; the rest still commit); true when a keyed place was written
+	local function CommitOne(rec, positions)
+		local entry = rec.entry
+		if entry.save then
+			if rec.reset then
+				if entry.reset then
+					entry.reset()
+				end
+			elseif rec.pos then
+				entry.save(entry.frame, Copy(rec.pos))
+			end
+			return false
+		end
+		if rec.reset then
+			local wrote = entry.key ~= nil and positions[entry.key] ~= nil
+			if entry.key ~= nil then
+				positions[entry.key] = nil
+			end
+			if entry.reset then
+				entry.reset()
+			end
+			return wrote
+		end
+		if entry.key ~= nil and rec.pos then
+			positions[entry.key] = Copy(rec.pos)
+			return true
+		end
+		return false
+	end
+
+	local function CommitAll(recs)
+		local positions = Positions(true)
+		local wrote = false
+		for i = 1, #recs do
+			local ok, did = pcall(CommitOne, recs[i], positions)
+			if not ok then
+				Report(did)
+			elseif did then
+				wrote = true
+			end
+		end
+		if wrote then
+			Written(positions)
 		end
 	end
 
-	-- a new UI Scale or resolution: the shown windows with a saved place put
+	function LayoutSession.Commit()
+		if not LayoutSession.Active() then
+			return false
+		end
+		local s = session
+		local n = LayoutSession.Count()
+		-- off FIRST: every read and write below is the store's, and the
+		-- owners' own saves (through SavePosition) land there
+		session = nil
+		local ok, err = pcall(MelloUI.Batch, MelloUI, CommitAll, s.recs)
+		if not ok then
+			Report(err)
+		end
+		Released(s.recs)
+		Ended(s, "saved", n)
+		return true, n
+	end
+
+	function LayoutSession.Discard()
+		if not LayoutSession.Active() then
+			return false
+		end
+		local s = session
+		session = nil
+		local recs = s.recs
+		-- (a window the reset closed stays closed: its stored place applies
+		-- on its next show)
+		for i = #recs, 1, -1 do
+			Undo(recs[i])
+		end
+		Released(recs)
+		Ended(s, "discarded")
+		return true
+	end
+
+	function LayoutSession.Abandon(reason)
+		local s = session
+		if not s then
+			return false
+		end
+		session = nil
+		-- the store now (a profile's, about to be the installer's) is the
+		-- truth: nothing put back over it from the snapshots
+		local recs = s.recs
+		for i = 1, #recs do
+			local rec = recs[i]
+			local entry = rec.entry
+			if not entry.save then
+				local live = Live(entry)
+				local placed = live and entry.key ~= nil and Stored(entry.key) ~= nil and MelloUI:RestorePosition(entry.key, entry.frame)
+				if not placed and not (live and Default(entry)) then
+					Unwind(rec)
+				end
+			end
+		end
+		Released(recs)
+		Ended(s, "abandoned", reason)
+		return true
+	end
+
+	-- a new UI Scale or resolution: the shown elements with a saved place put
 	-- back, so they stay on the new screen (the hidden ones on their next
-	-- show)
+	-- show); a pending place is the place here
 	MelloUI:On("scale", function(reason)
 		if reason ~= "uiscale" then
 			return
 		end
 		for i = 1, #entries do
 			local entry = entries[i]
-			if not entry.save and not entry.moving and entry.key ~= nil then
-				local ok, shown = pcall(entry.frame.IsShown, entry.frame)
-				if ok and not Secret(shown) and shown then
-					MelloUI:RestorePosition(entry.key, entry.frame)
+			if not entry.moving and Shown(entry) and Live(entry) then
+				local rec = Held(entry)
+				if rec then
+					if rec.pos then
+						LayoutSession.Hang(entry)
+					end
+				elseif not entry.save and entry.key ~= nil then
+					local placed, why = MelloUI:RestorePosition(entry.key, entry.frame)
+					if not placed and why == "combat" and entry.follow then
+						Later(entry)
+					end
 				end
 			end
 		end
@@ -1676,42 +2732,57 @@ end
 
 local copyFrame
 
--- The copy window: a large text box to select and copy from. In PASTE mode
--- (MelloUI:ShowPaste) the box takes typing and an Import button hands the
--- text on; otherwise whatever is typed is put back at once.
+-- The copy window (/mellolog, the dumps, a profile's share string): a large
+-- text box to select and copy from. In PASTE mode (MelloUI:ShowPaste) the
+-- box takes typing and Import hands the text on; otherwise whatever is typed
+-- is put back at once. An own window on the one shell (WINDOW-RULES 6; the
+-- audit of 2026-09-29: it was the last one on the game's templates), built on
+-- its first open: the corner ring, its title on the plate in the title face,
+-- the flat close, Escape, its place in the one mover (the store's 'copy',
+-- dragged by its top at any time, back in the middle with its Reset in Edit
+-- Layout), the text on the dark inner panel (the eye strain rule) and the
+-- widget set's Import. The look is the 'copy' area's (Kit.Areas).
+local COPY_W, COPY_H = 760, 480
+local COPY_TITLE = "MelloUI: "   -- (plain: the plate paints its title)
+local COPY_TOP = -64      -- the text's panel under the corner ring
+local COPY_EDGE = 28      -- the panel's margin (on the calm ground, clear of its band)
+local COPY_FOOT = 56      -- the band under the panel: the hint and Import
+local COPY_BUTTON_W, COPY_BUTTON_H = 120, 24
+
 local function CopyFrame()
 	if copyFrame then
 		return copyFrame
 	end
-	local f = CreateFrame("Frame", "MelloUICopyFrame", UIParent, "BackdropTemplate")
-	f:SetSize(760, 480)
+	local W = MelloUI.Widgets
+	local f = CreateFrame("Frame", "MelloUICopyFrame", UIParent)
+	f:SetSize(COPY_W, COPY_H)
 	f:SetPoint("CENTER")
 	f:SetFrameStrata("DIALOG")
-	f:SetMovable(true)
+	f:SetToplevel(true)
 	f:EnableMouse(true)
-	f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-	-- the palette's by key (the kit's paint registry repaints them on a
-	-- palette switch): the sunk panel's dark, a plain border's line
-	local W = MelloUI.Widgets
-	if W and W.Paint then
-		W.Paint(f, "innerPanel", "backdrop", 0.97)
-		W.Paint(f, "border", "border", 1)
-	end
-	f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	f.title:SetPoint("TOPLEFT", 12, -10)
-	f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	f.hint:SetPoint("TOPRIGHT", -40, -12)
-	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-	close:SetPoint("TOPRIGHT", 2, 2)
-	local scroll = CreateFrame("ScrollFrame", "MelloUICopyScroll", f, "UIPanelScrollFrameTemplate")
-	scroll:SetPoint("TOPLEFT", 12, -32)
-	scroll:SetPoint("BOTTOMRIGHT", -32, 12)
+	f:Hide()
+	-- (its own script before the shell's and the mover's hooks: SetScript
+	-- drops hooks; review, 2026-09-25)
+	f:SetScript("OnHide", function() f.onAccept = nil end)
+	local shell = MelloUI.Kit:OwnWindow(f, { area = "copy", ring = { at = "tl" }, plate = "rail", title = "MelloUI",
+		close = true, escape = true, fit = true, sounds = true, calm = true,
+		mover = { key = "copy", plainDrag = "always", label = "Copy window" } })
+	f.shell, f.title = shell, shell.title
+	local body = W.Panel(f)
+	body:SetPoint("TOPLEFT", f, "TOPLEFT", COPY_EDGE, COPY_TOP)
+	body:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -COPY_EDGE, COPY_FOOT)
+	f.body = body
+	-- (the scroll bar inside the panel, on its right)
+	local scroll = CreateFrame("ScrollFrame", "MelloUICopyScroll", body, "UIPanelScrollFrameTemplate")
+	scroll:SetPoint("TOPLEFT", body, "TOPLEFT", 10, -8)
+	scroll:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -30, 8)
 	f.scroll = scroll
 	local edit = CreateFrame("EditBox", "MelloUICopyEdit", scroll)
 	edit:SetMultiLine(true)
 	edit:SetAutoFocus(false)
 	edit:SetFontObject(ChatFontNormal)
-	edit:SetWidth(700)
+	W.Paint(edit, "text", "text")
+	edit:SetWidth(COPY_W - 2 * COPY_EDGE - 44)
 	edit:SetScript("OnEscapePressed", function() f:Hide() end)
 	edit:SetScript("OnEditFocusGained", function(self)
 		if not f.onAccept then
@@ -1727,26 +2798,17 @@ local function CopyFrame()
 	end)
 	scroll:SetScrollChild(edit)
 	f.edit = edit
-	f.accept = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	f.accept:SetSize(120, 24)
-	f.accept:SetPoint("BOTTOMRIGHT", -34, 10)
-	f.accept:SetText("Import")
-	f.accept:SetScript("OnClick", function()
+	-- the band under the panel: what the keys do (full-size text: no small
+	-- text on the window's ground), and Import while pasting
+	f.hint = W.Text(f, "GameFontHighlight", nil, "text")
+	f.hint:SetPoint("LEFT", f, "BOTTOMLEFT", COPY_EDGE + 4, COPY_FOOT / 2)
+	f.accept = W.Button(f, "Import", COPY_BUTTON_W, shell, { height = COPY_BUTTON_H, gold = true, onClick = function()
 		local fn = f.onAccept
 		if fn and fn(f.edit:GetText()) then
 			f:Hide()
 		end
-	end)
-	f:SetScript("OnHide", function() f.onAccept = nil end)
-	-- dragged by the one mover (audit, 2026-09-24): at any time, as before,
-	-- and now kept where it was dropped (the store's 'copy'), back in the
-	-- middle with Reset positions. Registered after its own OnHide is set:
-	-- SetScript would drop the mover's hook (review, 2026-09-25)
-	RegisterEntry(f, f, { key = "copy", plainDrag = "always", default = function(self)
-		self:ClearAllPoints()
-		self:SetPoint("CENTER")
 	end })
-	tinsert(UISpecialFrames, "MelloUICopyFrame")
+	f.accept:SetPoint("RIGHT", f, "BOTTOMRIGHT", -COPY_EDGE, COPY_FOOT / 2)
 	copyFrame = f
 	return f
 end
@@ -1756,9 +2818,8 @@ function MelloUI:ShowText(title, text)
 	local f = CopyFrame()
 	f.onAccept = nil
 	f.accept:Hide()
-	f.scroll:SetPoint("BOTTOMRIGHT", -32, 12)
 	f.hint:SetText("Ctrl+A, Ctrl+C to copy  -  Esc closes")
-	f.title:SetText(PREFIX .. (title or ""))
+	f.title:SetText(COPY_TITLE .. (title or ""))
 	f.text = text or ""
 	f.edit:SetText(f.text)
 	f:Show()
@@ -1772,9 +2833,8 @@ function MelloUI:ShowPaste(title, onAccept)
 	local f = CopyFrame()
 	f.onAccept = onAccept
 	f.accept:Show()
-	f.scroll:SetPoint("BOTTOMRIGHT", -32, 42)
 	f.hint:SetText("Ctrl+V to paste  -  Esc closes")
-	f.title:SetText(PREFIX .. (title or ""))
+	f.title:SetText(COPY_TITLE .. (title or ""))
 	f.text = ""
 	f.edit:SetText("")
 	f:Show()
@@ -2320,6 +3380,10 @@ end
 -- UI Modifications' reskin bringing Custom Sounds and the Edit Mode layout --
 -- is the player's switch only, never a restart's or a profile load's)
 function MelloUI:RestartModules()
+	-- an Edit Layout session ends first, nothing of it put back over the
+	-- settings now in place (a profile load, the macro backup's restore):
+	-- every OnEnable below places from the store as it is
+	self.LayoutSession.Abandon("restart")
 	-- the palette the settings now name first (or a profile load's held
 	-- walk): the modules come back up in it, and the kit's own look check
 	-- on 'restart' finds its art in place

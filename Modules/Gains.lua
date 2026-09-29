@@ -114,14 +114,14 @@
 --
 -- Its place: MelloUI's one mover and position store (key "gains", anchor
 -- TOPLEFT; its default TOPLEFT at the screen's centre, 110 right and 30
--- down): Unlock the Windows shows three sample lines to drag, Reset
--- positions puts it back, profiles carry it as every mover's.
+-- down): Edit Layout shows three sample lines there on its plate to drag,
+-- its Reset puts it back, profiles carry it as every mover's.
 --
 -- Cost. Nothing is made at login: the module's OnEnable waits for the
 -- login's frames to be over (MelloUI:AfterLogin) and then makes one event
 -- frame and takes the snapshot (data only: numbers in tables). The lines, the
--- holder and the mover come with the first gain (or the first unlock of the
--- windows). Only a switched-on kind's events are registered; PLAYER_MONEY
+-- holder and the mover come with the first gain (or Edit Layout's first
+-- open). Only a switched-on kind's events are registered; PLAYER_MONEY
 -- only while a merchant is open. Nothing runs per frame: no OnUpdate of its
 -- own, no ticker, no timer (Kit:NextFrame for the pass); Anim's driver runs
 -- only while a line slides. A bag event makes no garbage; the pass makes the
@@ -153,7 +153,7 @@ local WIDTH = 420                   -- the holder (the drag area): as wide as th
 local GAP = 5                       -- between the count, the gem and the name
 local FADE_IN, FADE_OUT, SLIDE = 0.2, 1.2, 0.2
 local HOLD_DEFAULT, HOLD_MIN, HOLD_MAX = 5, 2, 15
-local SAMPLE_HOLD = 3600            -- the unlocked windows' samples: held until locked again
+local SAMPLE_HOLD = 3600            -- Edit Layout's samples: held until it closes or pauses
 local BUY_WINDOW = 2                -- seconds: money spent at a merchant and the item it bought
 local POOR = 0                      -- the junk (grey) quality
 local CLASS_SKILLS = 7              -- the category the game's Skills tab leaves out (SkillsFrame.lua)
@@ -179,7 +179,7 @@ local TEXT = MelloUI.Shade.TEXT
 local PAD_X, FEATHER = TEXT.padX, TEXT.feather
 local PAD_Y = MelloUI.Shade:LinePadY(SIZE)
 
--- the unlocked windows' sample lines, top to bottom (English, as the notice's)
+-- Edit Layout's sample lines, top to bottom (English, as the notice's)
 local SAMPLES = {
 	{ kind = "skill", count = 1, name = "Defense", rank = 57, cap = 80 },
 	{ kind = "item", count = 3, name = "Linen Cloth", quality = 1 },
@@ -192,7 +192,7 @@ end
 
 local M = MelloUI:RegisterModule("Gains", {
 	title = "Gains",
-	desc = "Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them while the windows are unlocked.",
+	desc = "Short lines beside your character show what you just gained: a skill point, the items you loot or receive, and what you buy. You can move them in Edit Layout.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "Every skill point and every new item, told softly beside your character, then gone.",
 	group = "Quests and travel", navOrder = 6,
@@ -326,8 +326,8 @@ local function InCombat()
 end
 
 --------------------------------------------------------------------------------
--- The lines. `ui` is made with the first gain (or the first unlock of the
--- windows): the holder (the mover's frame, click-through while locked), the
+-- The lines. `ui` is made with the first gain (or Edit Layout's first
+-- open): the holder (the mover's frame, click-through), the
 -- lines in order (newest first), the spare rows, and the row of each skill
 -- or item shown.
 --------------------------------------------------------------------------------
@@ -391,6 +391,11 @@ end
 local function Home(frame)
 	frame:ClearAllPoints()
 	frame:SetPoint("TOPLEFT", UIParent, "CENTER", 110, -30)
+end
+
+-- its mover live (its plate in Edit Layout) while the module is on
+local function ModuleOn()
+	return M.isEnabled and true or false
 end
 
 -- the saved place (kept on the screen), else the default
@@ -573,10 +578,10 @@ local function Build()
 	holder:EnableMouse(false)
 	ui = { holder = holder, lines = {}, pool = {}, rows = { skill = {}, item = {}, bought = {}, sample = {} } }
 	Home(holder)
-	-- one mover entry: dragged while the windows are unlocked, its place in
-	-- the store, put back on each show (it sets no script of its own)
+	-- one mover entry: moved in Edit Layout while the module is on, its
+	-- place in the store, put back on each show (it sets no script of its own)
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, anchor = "TOPLEFT", default = Home,
-		min = 0.5, max = 2, base = 1 })
+		min = 0.5, max = 2, base = 1, label = "Gains", page = "Gains", when = ModuleOn })
 	Place()
 	return ui
 end
@@ -586,8 +591,8 @@ end
 local function Put(kind, id, count, label, quality, rank, cap, hold)
 	if not ui then
 		Build()
-		-- windows left unlocked over a login: the samples come with the first
-		-- line, put first so the gain is the newest, on top
+		-- Edit Layout open while the first line comes: the samples come
+		-- first, so the gain is the newest, on top
 		Preview()
 	end
 	local map = ui.rows[kind]
@@ -628,10 +633,10 @@ local function Put(kind, id, count, label, quality, rank, cap, hold)
 	return row
 end
 
--- the sample lines while the windows are unlocked, so the place can be
--- dragged; locked again, they fade
+-- the sample lines while Edit Layout shows, so the place can be dragged on
+-- its plate; paused or closed, they fade
 Preview = function()
-	local want = M.isEnabled and MelloUI:WindowsUnlocked() and true or false
+	local want = M.isEnabled and MelloUI:EditingLayout() and true or false
 	if want == S.preview then
 		return
 	end
@@ -1454,22 +1459,18 @@ local function Stop()
 end
 
 --------------------------------------------------------------------------------
--- The settings bus: the windows unlocked or locked, the notice's outline, a
--- profile load. Taken while the module is on.
+-- The bus: Edit Layout shown or not, the notice's outline, a profile load.
+-- Taken while the module is on.
 --------------------------------------------------------------------------------
 
 local function OnSetting(module, key)
-	if module == "UIModifications" and key == "unlock" then
-		Preview()
-	elseif module == "Tweaks" and key == "noticeOutline" then
+	if module == "Tweaks" and key == "noticeOutline" then
 		RestyleAll()
 	end
 end
 
-local function OnModule(module)
-	if module == "UIModifications" then
-		Preview()
-	end
+local function OnEditLayout()
+	Preview()
 end
 
 local function OnRestart()
@@ -1487,7 +1488,7 @@ end
 function M:OnEnable(db)
 	self.db = db
 	MelloUI:On("setting", OnSetting, OWNER)
-	MelloUI:On("module", OnModule, OWNER)
+	MelloUI:On("editlayout", OnEditLayout, OWNER)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:AfterLogin(Start)

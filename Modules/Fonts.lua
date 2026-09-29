@@ -117,7 +117,7 @@ local function BuildRoleList()
 end
 
 -- Each role has its own size slider (user, 2026-09-22); `scale`, the old
--- single slider, is folded into them once and kept at 1.
+-- single slider, is folded into them once and taken out (MigrateScale).
 local SCALE_KEY = { fontText = "scaleText", fontChat = "scaleChat", fontTitle = "scaleTitle", fontDamage = "scaleDamage" }
 local SCALE_NAME = { fontText = "Interface text size", fontChat = "Chat & numbers size", fontTitle = "Titles & headers size", fontDamage = "Damage numbers size" }
 local SCALE_DESC = {
@@ -180,7 +180,7 @@ MelloUI.FontStyleSettings = function(value)
 	return s and StyleSettings(s) or nil
 end
 
-local defaults = { scale = 1, outline = "OUTLINE", style = "custom" }
+local defaults = { outline = "OUTLINE", style = "custom" }
 local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, with their sizes -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice." }
 for _, s in ipairs(STYLES) do
 	styleDesc[#styleDesc + 1] = s.label .. ": " .. s.desc
@@ -224,7 +224,7 @@ do
 	local values = BuildRoleList()
 	values[1] = { value = KEEP, label = "Chat text, semibold" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatParchment", name = "Chat on parchment", values = values,
-		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Dynamic UI Modification, Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
+		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Look > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
 for _, role in ipairs(ROLES) do
@@ -637,9 +637,14 @@ local function RestoreChatWindows()
 	end
 end
 
--- The old single Font Size slider, folded into the four once.
+-- The old single Font Size slider, folded into the four once and taken out
+-- of the save (0.15.0: its default is gone, so the 1 every older save holds
+-- would otherwise go into every profile and the settings backup). At the
+-- first load (OnInit) and whenever the fonts are applied (a profile loaded
+-- with an old slider in it).
 local function MigrateScale(db)
 	local old = tonumber(db.scale)
+	db.scale = nil
 	if not old or math.abs(old - 1) < 0.001 then
 		return
 	end
@@ -648,7 +653,6 @@ local function MigrateScale(db)
 			db[key] = old
 		end
 	end
-	db.scale = 1
 end
 
 --------------------------------------------------------------------------------
@@ -949,6 +953,7 @@ end
 
 function M:OnInit(db)
 	self.db = db
+	MigrateScale(db)
 end
 
 function M:OnEnable(db)

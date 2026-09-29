@@ -108,7 +108,7 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
 		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border chosen below." },
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
-		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, or none. Both are also chosen with previews by Dynamic UI Modification, at the top of the configurator." },
+		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, or none. Both are chosen with pictures on Minimap > Minimap." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
 		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail." },
 		{ type = "slider", key = "width", name = "Width", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP, new = "0.15.0",
@@ -304,17 +304,8 @@ local function Build()
 			local rep = Replace(first, { as = "MinimapZoneBand", rect = band, alsoFade = extra })
 			skin.band = rep
 			Shade.Add(rep)
-			if rep and MinimapCluster and Kit.RegisterShell then
-				-- the cluster's drag handle for the window mover: a grab frame
-				-- on the band's own rect (the plate is 1.4 x the band and its
-				-- canvas taller than its painted box, so the plate's frame
-				-- made an odd click box — user, 2026-09-21)
-				local grab = CreateFrame("Frame", nil, band:GetParent() or MinimapCluster)
-				grab:SetAllPoints(band)
-				grab:SetFrameLevel((band:GetFrameLevel() or 1) + 5)
-				grab:EnableMouse(false)
-				Kit:RegisterShell(MinimapCluster, { title = grab })
-			end
+			-- (no drag handle of its own: the minimap cluster is moved on its
+			-- plate in Edit Layout, which covers the whole cluster)
 			-- the zone text centred on the plate (user, 2026-09-21); the game's
 			-- anchor (LEFT-justified in its button) put back on disable
 			local text = MinimapZoneText
@@ -877,7 +868,9 @@ end
 -- its Size is the one the game last set (or found before it was held)
 function Size.MigrateLate()
 	if active and Size.Migrate(Size.editScale or Size.ContainerScale()) then
-		M:Relayout()
+		-- a new size: laid as one set on the sliders -- the Services row as
+		-- wide as the map, the frame round both (Size.Changed)
+		Size.Changed()
 	end
 end
 
@@ -1456,11 +1449,20 @@ function Size.OnEditScale(c, scale)
 		return
 	end
 	Size.dialDirty = true
-	Size.Migrate(scale)
+	local taken = Size.Migrate(scale)
 	if scale and math.abs(scale - 1) > 1e-6 then
 		Size.holding = true
 		c:SetScale(1)
 		Size.holding = false
+	end
+	if taken then
+		-- the old Size taken over: a new size, laid as one set on the sliders
+		-- (the Services row as wide as the map, the frame round both)
+		if Kit.NextFrame then
+			Kit:NextFrame("Minimap size", Size.Changed)
+		else
+			Size.Changed()
+		end
 	end
 	RelayoutSoon()
 end
@@ -1599,11 +1601,8 @@ end
 --                       screen's left half, else "right"; nil when it cannot
 --                       be read. What opens beside the column opens toward
 --                       the screen's centre: Services' tray, the Auras rows
---   M:ScreenRect(region) a region's edges on the screen (pixels): left,
---                       bottom, right, top; nil when one cannot be read
---                       plainly. MelloUI.Safe.ScreenRect (Core.lua), the
---                       addon's one reader, kept here under its old name
---                       for the modules that ask this one (Services)
+-- (A region's edges on the screen: MelloUI.Safe.ScreenRect, Core.lua, the
+-- addon's one reader; the old M:ScreenRect alias went in 0.15.0.)
 -- Services hangs its bar and Route its line from it; the Quest Tracker is
 -- glued under its bottom where nobody placed it, and takes its width
 -- (QuestTracker.lua). The map is never sized for it. The places
@@ -1622,11 +1621,6 @@ local LINE_H = 12         -- its height when Route cannot say
 -- a region's edges on the screen (pixels); nil when one cannot be read
 -- plainly: the addon's one reader (MelloUI.Safe.ScreenRect, Core.lua)
 local ScreenRect = MelloUI.Safe.ScreenRect
-
--- (kept for the modules that ask this one: the same reader)
-function M:ScreenRect(region)
-	return ScreenRect(region)
-end
 
 -- a region's effective scale when it reads plainly and is above 0
 local function EffScale(region)
@@ -2047,24 +2041,14 @@ function M:OnSettingChanged(key, _, db)
 	end
 end
 
--- For the Dynamic UI Modification picker (Modules/DynamicUI.lua)
+-- The minimap's picture choices, for the Configurator's picture rows and the
+-- installer's minimap step (PickerGroups: each section's key, title, kind
+-- and choices)
 function M:PickerGroups()
 	return { { id = "minimap", title = "Minimap", hint = "Click to choose the minimap's shape and its square border.", sections = {
 		{ key = "shape", title = "Shape", kind = "frame", choices = SHAPES },
 		{ key = "squareBorder", title = "Square Border", kind = "frame", choices = BORDERS },
 	} } }
-end
-
-function M:BarOutline()
-	local map = Minimap
-	if not (active and map and map:IsShown()) then
-		return nil
-	end
-	local l, b, r, t = ScreenRect(M:MapFrame())
-	if not (l and r > l) then
-		return nil
-	end
-	return { { l, b, r, t } }
 end
 
 function M:OnDisable()

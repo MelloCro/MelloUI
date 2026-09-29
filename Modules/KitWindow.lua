@@ -23,14 +23,24 @@
 --                            "crest": the short plate under the crest
 --                            (MelloUI-TitlePlate); "rail": the standard plate
 --                            riding the outer rail (TitleBar, 2c)
+--     calm = true,           the cleaner look (0.15.0, Background A): ONE flat
+--                            `mainWindow` ground over the page, the stone (the
+--                            kit's, or the plain look's tinted rock) left only
+--                            as a band CALM_BAND wide inside the rail
+--                            (shell.calm); the window's panels (W.Panel) lie
+--                            on that ground
 --     close = true,          a close button on the top right corner
 --     escape = true,         Escape closes it (UISpecialFrames: the frame
 --                            must be named); held while a question of
 --                            MelloUI:Confirm is shown
---     mover = { key, anchor, default, save, reset, min, max, base, plainDrag },
+--     mover = { key, anchor, default, save, reset, min, max, base, plainDrag,
+--               label, page, group, placeholder, resize },
 --                            MelloUI:RegisterMover(frame, shell.grab, ...)
 --                            with the crest kept on the screen with it; no
---                            default: centred
+--                            default: centred. label / page / group /
+--                            placeholder / resize: its plate in Edit Layout
+--                            (its name, the page "All options >" opens, "tool"
+--                            for a window never on a plate), as Core takes them
 --     grabBottom = -70,      the drag strip, from the top edge down to this y
 --     fit = true,            scaled down to fit the screen (never up, not
 --                            while the mover holds the user's scale), on
@@ -67,12 +77,20 @@
 --                                hidden window reads Kit:IsOn(area) again on
 --                                its next show
 --   shell:Fit()   shell:SetEscape(on)
+--   shell:HoldEscape(on)         the window's Escape held while a piece of it
+--                                that Escape closes first is open (a picture
+--                                row's flyout, W.PictureMenu): its setting
+--                                kept, its name back a frame after
+--   Kit:ShellOf(frame)           the shell a window has (nil: none; nothing
+--                                made)
 -- The switch: the plain look is the window's own regions, which the kit's
 -- replacements fade while they are enabled; switched off, every recorded rep
 -- is disabled and they come back. Colours are palette keys (Kit:Paint), so a
 -- new palette paints them again. Sounds only through MelloUI:PlayUISound.
 --
--- And MelloUI's one question dialog on this shell (the end of the file):
+-- And, for the own windows' widgets and questions (the end of the file):
+--   Kit:ChoicePicture(tile, kind, choice)   a look choice's picture (the
+--                                picture rows, W.PictureRow / W.PictureMenu)
 --   MelloUI:Confirm({ text, accept, cancel, onAccept, onCancel })
 --------------------------------------------------------------------------------
 
@@ -80,9 +98,10 @@ local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Kit window")
 local Shared = Perf.Shared
-local C_Timer = Perf.C_Timer   -- (the confirm dialog's Escape hold ends a frame later)
+local C_Timer = Perf.C_Timer   -- (an Escape hold ends a frame later: the confirm dialog's, a flyout's)
 local Kit = MelloUI.Kit
 local Num = MelloUI.Safe.Number
+local Secret = MelloUI.Safe.IsSecret
 local W = MelloUI.Widgets   -- (Core/Widgets.lua loads before this file)
 
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
@@ -91,6 +110,8 @@ local ROCK = "Interface\\FrameGeneral\\UI-Background-Rock"      -- the plain loo
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
+local PAGE_INSET = 6         -- the plain look's page (the rock and its tint) inside the frame's edge
+local CALM_BAND = 14         -- the stone left round the calm ground, inside the rail (opts.calm)
 local PLAIN_CREST = 88       -- the emblem alone on the top edge, without the kit
 local PLAIN_CORNER = 62      -- ... in the corner: a game window's portrait
 local CORNER_X, CORNER_Y = 26, -24   -- a game window's portrait centre from its top left (PortraitFrameTemplate: 62 px at -5, 7)
@@ -287,6 +308,19 @@ function Shell:Lay()
 			self.plate:SetPoint("TOP", frame, "TOP", 0, y - size / 2 + PLATE_OVERLAP)
 		end
 	end
+	-- the calm ground: the page stone's rect (inside the kit's outer rail,
+	-- or the plain look's rock) less the band
+	local calm = self.calm
+	if calm then
+		local l, r, t, b = PAGE_INSET, PAGE_INSET, PAGE_INSET, PAGE_INSET
+		if self.kit then
+			local ins = Kit:OuterRailInset()
+			l, r, t, b = ins[1], ins[2], ins[3], ins[4]
+		end
+		calm:ClearAllPoints()
+		calm:SetPoint("TOPLEFT", frame, "TOPLEFT", l + CALM_BAND, -(t + CALM_BAND))
+		calm:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(r + CALM_BAND), b + CALM_BAND)
+	end
 end
 
 -- the plain look's own extras, made the first time it is shown: the metal
@@ -443,11 +477,40 @@ local function Special(name, on)
 end
 
 -- (while a question holds Escape, another shell's setting is only
--- recorded: its name comes back when the question closes)
+-- recorded: its name comes back when the question closes; the same while
+-- the shell's own hold is on)
 function Shell:SetEscape(on)
 	on = on and true or false
 	self.escape = on
-	Special(self.frame:GetName(), on and not (escapeHold and escapeHold ~= self))
+	Special(self.frame:GetName(), on and not self.escapeHeld and not (escapeHold and escapeHold ~= self))
+end
+
+-- A piece of the window that Escape closes first (a picture row's flyout,
+-- W.PictureMenu, in UISpecialFrames itself) holds the window's Escape while
+-- it is open, as a question holds every shell's (MelloUI:Confirm, below):
+-- the window's name out of the list, its setting kept, and back a frame
+-- after the hold ends -- never inside the game's walk of the list, which
+-- would still find it there and close the window with its flyout. A hold
+-- taken again within that frame keeps it out.
+local released = setmetatable({}, { __mode = "k" })   -- [shell] = true: its hold ends at the next frame
+
+local function EndHolds()
+	for shell in pairs(released) do
+		released[shell] = nil
+		shell.escapeHeld = nil
+		Special(shell.frame:GetName(), shell.escape and not (escapeHold and escapeHold ~= shell))
+	end
+end
+
+function Shell:HoldEscape(on)
+	if on then
+		released[self] = nil
+		self.escapeHeld = true
+		Special(self.frame:GetName(), false)
+	elseif self.escapeHeld and not released[self] then
+		released[self] = true
+		C_Timer.After(0, EndHolds)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -455,32 +518,14 @@ end
 --------------------------------------------------------------------------------
 
 -- the page stone for the plain look's rock, the outer double rail (its
--- lit rail joins the window's mover: its shell registration)
+-- shell registration: the rail Edit Layout lights while the window is
+-- dragged, Kit.shells[frame].outer, and its shade)
 local function DressFrame(K, shell)
 	local frame = shell.frame
 	shell:Replace(shell.bg, { as = "UI-Background-Rock", parent = frame, rect = frame, inset = K:OuterRailInset(), alsoFade = { shell.tint } })
-	-- The rail's registration builds the window's one mover in UI
-	-- Modifications (its lit rail). Core's entry and its handle go with it,
-	-- as a registered window's mover is made there, so that mover is Core's
-	-- whether it comes now or later: no put-back of its own, the drag strip
-	-- its handle. Taken off again after it, so a plate or ring registered
-	-- later is a handle as on any kit window.
-	local entry = shell.mover
-	local known
-	if entry then
-		known = K.shells[frame] or {}
-		known.entry, known.title = entry, known.title or entry.handle
-		K.shells[frame] = known
-	end
 	-- (body = false: the page stone above is the window's one background)
 	local ok, rail = pcall(shell.Replace, shell, shell:Anchor(frame, "BORDER"), { as = "NineSlicePanelTemplate", parent = frame, rect = frame,
 		body = false, skip = shell.ringAt == "tl" and "tl" or nil })
-	if known then
-		known.entry = nil
-		if known.title == entry.handle then
-			known.title = nil
-		end
-	end
 	if not ok then
 		error(rail, 0)
 	end
@@ -536,17 +581,16 @@ local function DressPlate(K, shell)
 	shell.plateRep = rep
 end
 
-local function DressClose(K, shell)
-	local close = shell.close
-	local normal = close and close.GetNormalTexture and close:GetNormalTexture()
-	if normal then
-		shell:Replace(normal, { as = "RedButton-Exit", button = close, alsoFade = K:OtherTextures(close, normal) })
-	end
-end
-
 --------------------------------------------------------------------------------
 -- Kit:OwnWindow
 --------------------------------------------------------------------------------
+
+-- the shell a window already has (nil for none; nothing is made): a piece
+-- that opens over a window finds its window's shell whatever its caller
+-- passed (a picture row's flyout, W.PictureMenu)
+function Kit:ShellOf(frame)
+	return frame and shells[frame] or nil
+end
 
 function Kit:OwnWindow(frame, opts)
 	if not frame then
@@ -573,14 +617,21 @@ function Kit:OwnWindow(frame, opts)
 	bg:SetTexture(ROCK, "REPEAT", "REPEAT")
 	bg:SetHorizTile(true)
 	bg:SetVertTile(true)
-	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -6)
-	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", PAGE_INSET, -PAGE_INSET)
+	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PAGE_INSET, PAGE_INSET)
 	self:Paint(bg, "border", "vertex")
 	local tint = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-	tint:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -6)
-	tint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
+	tint:SetPoint("TOPLEFT", frame, "TOPLEFT", PAGE_INSET, -PAGE_INSET)
+	tint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PAGE_INSET, PAGE_INSET)
 	self:Paint(tint, "mainWindow", "fill", 0.45)
 	shell.bg, shell.tint = bg, tint
+	-- the calm ground over them both (sublevel 3: over the kit's stone too,
+	-- a region in the rock's layer and sublevel), laid by the look (Lay)
+	if opts.calm then
+		local calm = frame:CreateTexture(nil, "BACKGROUND", nil, 3)
+		self:Paint(calm, "mainWindow", "fill", 1)
+		shell.calm = calm
+	end
 
 	-- the drag strip across the top (under the crest and the plate, which
 	-- take no mouse)
@@ -635,8 +686,11 @@ function Kit:OwnWindow(frame, opts)
 	shell:Lay()
 
 	if opts.close then
-		local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-		close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 1, 0)
+		-- (0.15.0: the widget set's flat close, "all flat", both looks; on the
+		-- title plate's line, the plate's height)
+		local close = W.CloseButton(frame, shell)
+		close:SetSize(PLATE_FIT, PLATE_FIT)
+		close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -1)
 		close:SetFrameLevel(base + LEVEL_CLOSE)
 		Perf.SetScript(close, "OnClick", Close_OnClick)
 		shell.close = close
@@ -660,13 +714,15 @@ function Kit:OwnWindow(frame, opts)
 		shell:SetEscape(true)
 	end
 
-	-- the mover before the kit's dressing: the rail's registration with the
-	-- kit (DressFrame) carries Core's entry, whichever look comes first
+	-- the mover (Core's one registry: its place, and its plate in Edit
+	-- Layout), before the kit's dressing
 	local mover = opts.mover
 	if mover then
 		shell.mover = MelloUI:RegisterMover(frame, grab, {
 			key = mover.key, anchor = mover.anchor, default = mover.default or Centre, save = mover.save, reset = mover.reset,
 			min = mover.min, max = mover.max, base = mover.base, plainDrag = mover.plainDrag, with = shell.bounds,
+			label = mover.label, page = mover.page, group = mover.group, placeholder = mover.placeholder,
+			resize = mover.resize,
 		})
 	end
 
@@ -678,13 +734,211 @@ function Kit:OwnWindow(frame, opts)
 	if opts.plate then
 		shell:Kit(DressPlate, shell)
 	end
-	if opts.close then
-		shell:Kit(DressClose, shell)
-	end
 	if not shell.kit then
 		shell:BuildPlain()
 	end
 	return shell
+end
+
+--------------------------------------------------------------------------------
+-- Kit:ChoicePicture: a look choice's picture (0.15.0; the Dynamic UI picker's
+-- previews, moved here with its window gone): what the choice looks like
+-- where it goes, on a small tile -- a picture row's box and its flyout's
+-- tiles (W.PictureRow / W.PictureMenu, Core/Widgets.lua). The kinds, as the
+-- choices' owners name them (Kit.borderKinds' `preview`, a panel's
+-- PickerGroups section `kind`):
+--   rim    the rim round a spell icon on the stone, as on the bar (a choice
+--          with no rim piece: the icon on the stone, its plain edge)
+--   bar    a progress bar in that bracket, a sample fill two thirds along
+--   frame  the border piece round the stone (a rail family: a small
+--          nine-slice of it); none: the stone darkened, "None"
+--   tile   a swatch of the background; Dark: the palette's inner panel;
+--          none: "None"
+--   Kit:ChoicePicture(tile, kind, choice)
+--     tile    the caller's: tile.pic (the picture's square frame), tile.none
+--             (a FontString reading "None"), tile.layers (a table, its
+--             slots filled here, LAYER_* below), tile.size (the picture's
+--             side; TILE when nil)
+--     choice  nil: the tile shows nothing
+-- A tile's parts are made once and kept: drawn again with another choice (a
+-- pooled tile, a row's box after a pick) it makes nothing but a bar strip or
+-- a rail family's nine-slice the first time one is shown on it.
+--------------------------------------------------------------------------------
+
+local TILE = 52            -- a picture's side when the tile names none (the flyout's tiles)
+local NONE_DIM = 0.45      -- the "None" frame's stone, darkened to this much of its light
+local SAMPLE_ICON = "Interface\\Icons\\INV_Sword_04"
+
+-- A tile's textures by what they wear. A texture that once wore a kit piece
+-- stays the kit's (Dark Mode's brightness follows its every tint), so the
+-- slots that wear kit pieces never wear anything else, and what is not the
+-- kit's -- the sample icon, the bar's gold fill, the Dark swatch -- has a
+-- slot of its own that never wears a piece.
+local LAYER_BACK = 1       -- the stone, or a background's swatch (kit pieces)
+local LAYER_PIECE = 2      -- a frame's border piece
+local LAYER_RIM = 3        -- a rim's piece
+local LAYER_OWN = 4        -- the icon, the fill or the Dark swatch (never a kit piece)
+
+-- the tile's texture `i` over the whole picture (made the first time, kept;
+-- what it wore for another choice let go -- a palette fill, a kit piece --
+-- so a new palette or Kit Colours leaves what it wears now)
+local function Layer(tile, i, level)
+	local t = tile.layers[i]
+	if not t then
+		t = tile.pic:CreateTexture(nil, "ARTWORK", nil, level or 0)
+		tile.layers[i] = t
+	else
+		Kit:Unpaint(t)
+		if t.kitName then
+			Kit:Apply(t, nil)
+		end
+	end
+	t:SetDrawLayer("ARTWORK", level or 0)
+	t:ClearAllPoints()
+	t:SetAllPoints(tile.pic)
+	t:SetTexCoord(0, 1, 0, 1)
+	t:SetVertexColor(1, 1, 1, 1)
+	t:Show()
+	return t
+end
+
+-- the stone a rim, a bar or a frame lies on
+local function Stone(tile)
+	local back = Layer(tile, LAYER_BACK, 0)
+	back.kitScale, back.kitOwnScale = Kit.scale, true
+	Kit:Apply(back, "tiles/stone")
+	Kit:Retile(back)
+	return back
+end
+
+-- the icon a rim is shown round: the first action button's, as on the bar
+-- (a secret answer, or none: a sample sword)
+local function SampleIcon()
+	local icon = GetActionTexture and GetActionTexture(1)
+	if Secret(icon) then
+		return SAMPLE_ICON
+	end
+	return icon or SAMPLE_ICON
+end
+
+-- a rail family's small nine-slice on the tile, one per family made and kept
+-- (a pooled tile shows other families after)
+local function Nine(tile, choice, size)
+	local nines = rawget(tile, "melloNines")   -- (fields of our own, never a method)
+	if not nines then
+		nines = {}
+		rawset(tile, "melloNines", nines)
+	end
+	local key = choice.prefix .. (choice.gem and "|gem|" or "|") .. tostring(choice.scale or 1)
+	local skin = nines[key]
+	if not skin then
+		skin = Kit:NineSlice(tile.pic, { prefix = choice.prefix, scale = Kit.scale * (choice.scale or 1) * 0.5 * size / TILE,
+			gems = false, body = false, corners = choice.gem and "gem" or nil })
+		nines[key] = skin
+	end
+	skin:Show()
+end
+
+function Kit:ChoicePicture(tile, kind, choice)
+	local pic = tile.pic
+	if not tile.layers then
+		tile.layers = {}
+	end
+	local layers = tile.layers
+	for i = LAYER_BACK, LAYER_OWN do
+		local t = layers[i]   -- (a slot is made when first worn: they may have gaps)
+		if t then
+			t:Hide()
+		end
+	end
+	local nines = rawget(tile, "melloNines")
+	if nines then
+		for _, skin in pairs(nines) do
+			skin:Hide()
+		end
+	end
+	local strip = rawget(tile, "melloStrip")
+	if strip then
+		strip:Hide()
+	end
+	tile.none:Hide()
+	if not choice then
+		return
+	end
+	local size = tonumber(tile.size) or TILE
+	if kind == "rim" then
+		-- the rim round a spell icon on stone, as on the bar
+		Stone(tile)
+		local icon = Layer(tile, LAYER_OWN, 1)
+		icon:SetTexture(SampleIcon())
+		local p = choice.piece and self:Piece(choice.piece)
+		if p and p.open then
+			icon:ClearAllPoints()
+			icon:SetPoint("TOPLEFT", pic, "TOPLEFT", size * p.open[1] / p.w, -size * p.open[2] / p.h)
+			icon:SetPoint("BOTTOMRIGHT", pic, "BOTTOMRIGHT", -size * (p.w - p.open[3]) / p.w, size * (p.h - p.open[4]) / p.h)
+		elseif not choice.piece then
+			-- no rim of the kit's (the auras' plain edge): the stone's edge
+			-- round the icon
+			icon:ClearAllPoints()
+			icon:SetPoint("TOPLEFT", pic, "TOPLEFT", 2, -2)
+			icon:SetPoint("BOTTOMRIGHT", pic, "BOTTOMRIGHT", -2, 2)
+		end
+		icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		if choice.piece then
+			self:Apply(Layer(tile, LAYER_RIM, 2), choice.piece)
+		end
+	elseif kind == "bar" and self.Strip then
+		-- a progress bar in that bracket: a fill two thirds along, on stone
+		Stone(tile)
+		local base = "bars/" .. (choice.bar or "frame")
+		if not strip then
+			strip = self:Strip(pic, base, { scale = self.scale, layer = "ARTWORK", sublevel = 2 })
+			rawset(tile, "melloStrip", strip)
+		elseif strip.SetBase then
+			strip:SetBase(base)
+		end
+		local yoff = strip:FitBox(size * 0.36)
+		strip:ClearAllPoints()
+		strip:SetPoint("LEFT", pic, "LEFT", 2, yoff)
+		strip:SetPoint("RIGHT", pic, "RIGHT", -2, yoff)
+		strip:SetHeight(strip.height)
+		strip:FitCaps(size - 4)
+		strip:Show()
+		-- (the fill in the palette's gold: a sample, not a bar's meaning)
+		local fill = Layer(tile, LAYER_OWN, 1)
+		fill:ClearAllPoints()
+		fill:SetPoint("LEFT", pic, "LEFT", 4, 0)
+		fill:SetSize((size - 8) * 0.66, size * 0.36 * 0.5)
+		self:Paint(fill, "selectedTrim", "fill", 1)
+	elseif kind == "frame" then
+		-- the border piece itself: its corner gems and rim round the stone
+		local back = Stone(tile)
+		if choice.prefix and self.NineSlice then
+			-- a rail family (the minimap's square borders): a small nine-slice
+			-- of it round the stone, as it is laid on the real frame
+			Nine(tile, choice, size)
+		elseif choice.piece then
+			self:Apply(Layer(tile, LAYER_PIECE, 2), choice.piece)
+		else
+			-- no border: the stone darkened (a dim of the art's light, as the
+			-- kit's `dim`; the recoloured stone keeps its palette's hue)
+			back:SetVertexColor(NONE_DIM, NONE_DIM, NONE_DIM)
+			tile.none:Show()
+		end
+	else
+		-- a swatch of the background
+		if choice.piece then
+			local back = Layer(tile, LAYER_BACK, 0)
+			back.kitScale, back.kitOwnScale = self.scale * 0.5, true   -- a swatch: more of the tile than the UI's resolution would show
+			self:Apply(back, choice.piece)
+			self:Retile(back)
+		elseif choice.value == "dark" then
+			-- the Dark background: the palette's inner panel
+			self:Paint(Layer(tile, LAYER_OWN, 0), "innerPanel", "fill", 0.88)
+		else
+			tile.none:Show()
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -700,13 +954,14 @@ end
 --   })
 -- One dialog for all of MelloUI's questions (one system per job): an own
 -- window on the shell above -- the corner ring with the emblem, "MelloUI"
--- on the plate on the rail, Escape (which cancels), the fit, the sounds --
--- a UIParent child at DIALOG strata, the question on the dark inner panel
--- (2e) in the palette's text colour, the two buttons the widget set's. Made
--- on its first question, never at login (2f). One question at a time: a
--- second call replaces the one shown, which counts as cancelled. Escape is
--- the question's alone while it is shown: the window it was asked from stays
--- open (the other shells' Escape held, below).
+-- on the plate on the rail, Escape (which cancels), the fit, the sounds, the
+-- calm ground (0.15.0) -- a UIParent child at DIALOG strata, the question on
+-- the dark inner panel (W.Panel, 2e) in the palette's text colour, the two
+-- buttons the widget set's flat ones (the accept one the main action's
+-- gold). Made on its first question, never at login (2f). One question at a
+-- time: a second call replaces the one shown, which counts as cancelled.
+-- Escape is the question's alone while it is shown: the window it was asked
+-- from stays open (the other shells' Escape held, below).
 -- It never uses the game's popups (StaticPopup_Show, StaticPopupDialogs):
 -- with the Gamepad UI on, their gamepad handler and binding stack would run
 -- as MelloUI's code, and the game then blocks its own protected calls (the
@@ -719,11 +974,11 @@ local CONFIRM_TITLE = "MelloUI"
 local CONFIRM_W = 420
 local CONFIRM_Y = 120          -- its centre this far above the screen's
 local CONFIRM_TOP = -64        -- the question's panel under the corner ring
-local CONFIRM_EDGE = 16        -- the panel's margin in the window
+local CONFIRM_EDGE = 28        -- the panel's margin in the window (on the calm ground, clear of its band)
 local CONFIRM_PAD = 14         -- the question's margin in the panel
 local CONFIRM_BODY = 64        -- the panel's least height
-local CONFIRM_FOOT = 56        -- the band of the buttons under the panel
-local CONFIRM_BUTTON_W, CONFIRM_BUTTON_H, CONFIRM_BUTTON_Y = 120, 24, 18
+local CONFIRM_FOOT = 66        -- the band of the buttons under the panel
+local CONFIRM_BUTTON_W, CONFIRM_BUTTON_H, CONFIRM_BUTTON_Y = 120, 24, 28
 local CONFIRM_GAP = 12         -- between the two buttons
 
 -- the dialog's parts (made on the first question) and the question shown
@@ -756,7 +1011,7 @@ local function ReleaseEscape()
 	end
 	escapeHold = nil
 	for frame, shell in pairs(shells) do
-		if shell.escape then
+		if shell.escape and not shell.escapeHeld then
 			Special(frame:GetName(), true)
 		end
 	end
@@ -820,20 +1075,21 @@ local function BuildConfirm()
 	-- (its own script before the shell's hooks: SetScript drops hooks)
 	Perf.SetScript(f, "OnHide", Confirm_OnHide)
 	local shell = Kit:OwnWindow(f, { area = "config", ring = { at = "tl" }, plate = "rail", title = CONFIRM_TITLE,
-		escape = true, fit = true, sounds = true })
-	-- the question on the dark inner panel over the stone (the eye strain rule)
-	local body = CreateFrame("Frame", nil, f)
+		escape = true, fit = true, sounds = true, calm = true })
+	-- the question on the dark inner panel on the calm ground (the eye strain
+	-- rule; one surface, one panel)
+	local body = W.Panel(f)
 	body:SetPoint("TOPLEFT", f, "TOPLEFT", CONFIRM_EDGE, CONFIRM_TOP)
 	body:SetPoint("TOPRIGHT", f, "TOPRIGHT", -CONFIRM_EDGE, CONFIRM_TOP)
 	body:SetHeight(CONFIRM_BODY)
-	W.Solid(body, "BACKGROUND", "innerPanel", 0.8):SetAllPoints(body)
 	local text = W.Text(body, "GameFontHighlight", nil, "text")
 	text:SetJustifyH("CENTER")
 	text:SetJustifyV("MIDDLE")
 	text:SetWidth(CONFIRM_W - 2 * (CONFIRM_EDGE + CONFIRM_PAD))
 	text:SetPoint("CENTER", body, "CENTER", 0, 0)
-	-- accept on the left, cancel on the right (as the game's dialogs)
-	local accept = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Accept_OnClick })
+	-- accept on the left, cancel on the right (as the game's dialogs); the
+	-- accept one the main action
+	local accept = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Accept_OnClick, gold = true })
 	accept:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -CONFIRM_GAP / 2, CONFIRM_BUTTON_Y)
 	local cancel = W.Button(f, "", CONFIRM_BUTTON_W, shell, { height = CONFIRM_BUTTON_H, onClick = Cancel_OnClick })
 	cancel:SetPoint("BOTTOMLEFT", f, "BOTTOM", CONFIRM_GAP / 2, CONFIRM_BUTTON_Y)

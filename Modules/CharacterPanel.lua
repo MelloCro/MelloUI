@@ -40,11 +40,10 @@ for _, v in ipairs(LOOKS.backgrounds) do
 	end
 end
 
--- (movable and statRows have no switch on the page: dragging is UI
--- Modifications' Unlock the Windows, the stat plates stay on. Nothing reads
--- movable any more (audit 2026-09-24 rank 6); its default stays, so the
--- false every saved profile holds still matches it and never lands in the
--- settings backup)
+-- (statRows has no switch on the page: the stat plates stay on. `movable`
+-- and `repBarBorder` are gone (audit 0.15.0: dragging is Edit Layout's, the
+-- bars' border UI Modifications' Progress Bar Border, which read the old
+-- value once): what an older save holds is taken out once, DropOldKeys)
 local M = MelloUI:RegisterModule("CharacterPanel", {
 	title = "Character Panel",
 	desc = "The character window dressed in the painted kit: stone frame, slot rims, framed panes and stats, all on the game's own layout.",
@@ -54,14 +53,12 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 		frames = { "CharacterFrame" }, plainGrab = true },
 	enabledByDefault = true,
 	defaults = {
-		movable = false,
 		statRows = true,
 		windowBackground = "window",
-		repBarBorder = "frame",
 	},
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
-		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, parchment, leather or dark. The equipment slots, the progress bars and the side tabs wear UI Modifications' borders (every window's)." },
+		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, parchment, leather or dark. The equipment slots, the progress bars and the side tabs wear the borders of Look > Borders (every window's)." },
 	},
 })
 
@@ -709,9 +706,8 @@ local function BuildSkin(budget)
 		skin.offFrom = 1       -- the first replacement made while the skin is off and not put back since (Deactivate)
 
 		-- the skin takes the mouse over the window, as it always has. It no
-		-- longer drags the window: that drag only ran with db.movable, which
-		-- has no switch and is always false (audit 2026-09-24 rank 6: dead
-		-- code). Moving the window is UI Modifications' Unlock the Windows
+		-- longer drags the window (audit 2026-09-24 rank 6: that drag only ran
+		-- with a setting that had no switch). Moving the window is Edit Layout's
 		skin:EnableMouse(true)
 		-- (hidden until the skin comes on, also while its parts are still
 		-- being made over several frames)
@@ -1528,7 +1524,6 @@ local function SkinOutfitCard(card)
 		if holder and sel then
 			FollowSelection(holder, sel)
 		end
-		card.melloIconRim = holder or nil
 	end
 end
 
@@ -1976,8 +1971,31 @@ local function Hook()
 	end))
 end
 
+-- The two settings with no reader left, out of the save once (audit
+-- 0.15.0; their defaults are gone): a stored key no default matches would go
+-- into every profile and the settings backup (MelloUI:SerializeSettings).
+-- repBarBorder only once UI Modifications has carried it over to its
+-- Progress Bar Border (its bordersMigrated, read as saved): until then its
+-- one-time migration still reads it. At the first load (OnInit) and after a
+-- profile load (OnEnable).
+local function DropOldKeys(db)
+	db.movable = nil
+	if db.repBarBorder ~= nil then
+		local modules = MelloUI.db and MelloUI.db.modules
+		local ui = modules and modules.UIModifications
+		if ui and ui.bordersMigrated then
+			db.repBarBorder = nil
+		end
+	end
+end
+
+function M:OnInit(db)
+	DropOldKeys(db)
+end
+
 function M:OnEnable(db)
 	self.db = db
+	DropOldKeys(db)
 	Hook()
 	if CharacterFrame and CharacterFrame:IsShown() then
 		Sync()
@@ -2208,57 +2226,14 @@ function M:OnSettingChanged(key)
 end
 
 --------------------------------------------------------------------------------
--- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the
--- character window is one group; the picker opens it while it runs when it
--- is closed, and closes it again after.
--- Not while the game's Gamepad UI is on (0.15.0): a game window shown or
--- hidden from our code runs the game's gamepad bindings in our run, and the
--- protected call at their end is blocked (the game's "blocked" popup). There
--- the picker uses the window only when it is already open, and says so in
--- the chat when it is not.
+-- For the Configurator's picture rows (PickerGroups, Core/Config.lua): the
+-- character window is one group.
 --------------------------------------------------------------------------------
 
-local openedForPicker = false
-
 function M:PickerGroups()
-	return { { id = "character", title = "Character", hint = "Click to choose the window's background.", sections = {
+	return { { id = "character", title = "Character", sections = {
 		{ key = "windowBackground", title = "Window Background", kind = "tile", choices = WINDOW_BACKGROUNDS },
 	} } }
-end
-
--- The character window's rect (screen px), nil while it is closed
-function M:BarOutline()
-	local cf = CharacterFrame
-	if not (active and cf and cf:IsShown()) then
-		return nil
-	end
-	local l, b, r, t = SafeScreenRect(cf)
-	if not (l and r > l) then
-		return nil
-	end
-	return { { l, b, r, t } }
-end
-
-function M:PickerStart()
-	openedForPicker = false
-	local cf = CharacterFrame
-	if not (cf and not cf:IsShown() and ShowUIPanel) then
-		return
-	end
-	if MelloUI.Safe.GamepadUI() then
-		MelloUI:Print("Dynamic UI Modification: in the Gamepad UI, open your character window before you start to pick on it.")
-		return
-	end
-	ShowUIPanel(cf)
-	openedForPicker = true
-end
-
--- (the Gamepad UI switched on since the start: the window is left open)
-function M:PickerStop()
-	if openedForPicker and CharacterFrame and HideUIPanel and not MelloUI.Safe.GamepadUI() then
-		HideUIPanel(CharacterFrame)
-	end
-	openedForPicker = false
 end
 
 --------------------------------------------------------------------------------

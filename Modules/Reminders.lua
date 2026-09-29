@@ -140,7 +140,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		  desc = "In an inn or a city every reminder stays until it is done (restocked, a mailbox opened, gear repaired, the spells or the rank learned) or you leave, and Not now there hides it until you next enter one. Off: they come and go there too." },
 		{ type = "header", name = "Widget" },
 		{ type = "dropdown", key = "place", name = "Place", new = "0.14.0", values = PLACES,
-		  desc = "Where the reminder button sits beside your portrait. With the player frame hidden it keeps a place of its own, which you can move while the windows are unlocked." },
+		  desc = "Where the reminder button sits beside your portrait. With the player frame hidden it keeps a place of its own, which you can move in Edit Layout." },
 		{ type = "dropdown", key = "glow", name = "Glow", new = "0.14.0", values = GLOWS,
 		  desc = "The soft glow around the button: a gentle pulse for a few seconds, then steady; always steady; or none. It brightens when you are close to where the reminder sends you." },
 		{ type = "slider", key = "hold", name = "Show For", new = "0.14.0", min = 4, max = 20, step = 1, format = Seconds,

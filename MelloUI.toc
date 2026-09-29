@@ -21,6 +21,8 @@ Core\Notice.lua
 Core\CentreText.lua
 Core\Reminders.lua
 Core\Config.lua
+Core\ConfigLayout.lua
+Core\ConfigPreview.lua
 Core\Tutorial.lua
 Core\Backup.lua
 Core\KitTuning.lua
@@ -28,6 +30,10 @@ Core\LayoutFit.lua
 Core\Installer.lua
 Core\InstallerWindow.lua
 Core\EditModeLayout.lua
+Core\EditLayoutSnap.lua
+Core\EditLayout.lua
+Core\EditLayoutMovers.lua
+Core\EditLayoutBridge.lua
 
 Media\CustomFonts.lua
 Media\CustomTextures.lua
@@ -121,7 +127,6 @@ Modules\UnitFramePanel.lua
 Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
 Modules\ActionBarPanel.lua
-Modules\DynamicUI.lua
 Modules\BackpackPanel.lua
 Modules\MinimapPanel.lua
 Modules\TrackerPanel.lua

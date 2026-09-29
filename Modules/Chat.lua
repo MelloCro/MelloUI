@@ -2380,7 +2380,7 @@ local function MovePopupPlace()
 end
 
 -- f laid where the window with its number opens (made, or put back by
--- Reset positions)
+-- Edit Layout's Reset)
 local function PlacePopup(f)
 	MovePopupPlace()
 	local pos = MelloUI:GetPosition(WHISPER_PLACE)
@@ -2395,8 +2395,24 @@ local function PlacePopup(f)
 	end
 end
 
--- let go after a drag: its corner is where the next window opens
-local function SavePopupPlace(f)
+local standIn, standInEntry = nil, nil   -- (Edit Layout's stand-in for the popups' place, its entry: PopupSource)
+
+-- let go after a drag: its corner is where the next window opens. From
+-- Edit Layout's Save, pos is the key's pending place, and f the window its
+-- session touched first (the popups share one record, and their plate goes
+-- to the first that shows: the one dragged last can be another, review
+-- 2026-09-29), so the place is laid from pos -- on the stand-in, never a
+-- window on the screen -- and measured from there
+local function SavePopupPlace(f, pos)
+	if type(pos) == "table" then
+		local x, y = tonumber(pos.x), tonumber(pos.y)
+		local point, relPoint = pos.point or "BOTTOMLEFT", pos.relPoint or "CENTER"
+		if x and y and ANCHORS[point] and ANCHORS[relPoint] then
+			f = standIn or f
+			f:ClearAllPoints()
+			f:SetPoint(point, UIParent, relPoint, x, y)
+		end
+	end
 	MelloUI:SavePosition(WHISPER_PLACE, f)
 end
 
@@ -2405,12 +2421,54 @@ local function ForgetPopupPlace()
 end
 
 -- every window's mover (one table: the mover copies what it needs): dragged
--- by its header at any time, as it always was, locked windows or not;
--- measured from its bottom-left corner, as the old place was; at its one
--- size (min = max: the unlocked mover's wheel leaves it, the corner it
+-- by its header at any time, as it always was; in Edit Layout one plate for
+-- all of them ("Whisper popups", one key: the first that shows, else the
+-- stand-in below), live while the module and its popups are on; measured
+-- from its bottom-left corner, as the old place was; at its one size
+-- (resize false, min = max: Edit Layout's wheel leaves it, the corner it
 -- saves is for the next window, which opens at that size)
 local POPUP_MOVER = { key = WHISPER_PLACE, anchor = "BOTTOMLEFT", plainDrag = "always",
-	save = SavePopupPlace, reset = ForgetPopupPlace, default = PlacePopup, min = 1, max = 1 }
+	save = SavePopupPlace, reset = ForgetPopupPlace, default = PlacePopup, min = 1, max = 1,
+	label = "Whisper popups", page = "Chat", resize = false,
+	when = function()
+		return M.isEnabled and popupOn and true or false
+	end }
+
+-- Edit Layout's source (Core's list; run at each of its opens and resumes,
+-- never at login): with no whisper open yet, the popups' place has nothing
+-- to stand on -- one STAND-IN takes their key: a plain hidden frame of a
+-- popup's size, no regions, laid where the first window opens, registered
+-- with the popups' mover (a placeholder: its "(hidden)" plate). Made once;
+-- laid again at each run where the next window opens (a window dragged by
+-- its header, a profile or Reset positions moved that place since), unless
+-- the session holds a change of it
+local function PopupSource()
+	if not POPUP_MOVER.when() then
+		return
+	end
+	if standIn then
+		local LS = MelloUI.LayoutSession
+		if not (LS and standInEntry and LS.Holds(standInEntry)) then
+			PlacePopup(standIn)
+		end
+		return
+	end
+	standIn = CreateFrame("Frame", nil, UIParent)
+	standIn:Hide()
+	standIn:SetSize(POPUP_W, POPUP_H)
+	standIn:SetFrameStrata("HIGH")
+	PlacePopup(standIn)
+	local opts = { placeholder = true }
+	for k, v in pairs(POPUP_MOVER) do
+		if k ~= "plainDrag" then
+			opts[k] = v   -- (no drag of its own: it never shows)
+		end
+	end
+	standInEntry = MelloUI:RegisterMover(standIn, standIn, opts)
+end
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(PopupSource)
+end
 
 -- THE LOOK follows the chat's (Kit:IsOn('whisper'): the chat reskin), live
 -- (audit, 2026-09-24, rank 1: it was decided once, when a window was made,
@@ -2662,8 +2720,10 @@ local function CreatePopup(key, kind, target, title)
 	PlaceName(f)
 	f.titleText = title   -- a character name or a Battle.net name; both display as they are
 
-	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-	close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -2, -2)
+	-- the close button: the own windows' one cross (MelloUI.Widgets, flat;
+	-- WINDOW-RULES 6), centred on the header's height at its right end
+	local close = MelloUI.Widgets.CloseButton(f)
+	close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -7, -7)
 	Perf.SetScript(close, "OnClick", function()
 		-- a short fade out (Core/Anim.lua), a plain hide without it
 		if MelloUI.Anim then

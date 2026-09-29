@@ -54,7 +54,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "Opacity of the frame art around the bars and portraits. The bars themselves stay solid." },
 		{ type = "header", name = "Out Of Combat" },
 		{ type = "toggle", key = "fadeOutOfCombat", name = "Fade Out Of Combat", new = "0.14.0",
-		  desc = "Your player frame fades away while nothing needs it. It comes back in combat, with a target, while your health or mana is below full, when you are dead, when you point at where it sits, and while the windows are unlocked or Edit Mode is open." },
+		  desc = "Your player frame fades away while nothing needs it. It comes back in combat, with a target, while your health or mana is below full, when you are dead, when you point at where it sits, and while Edit Layout or Edit Mode is open." },
 		{ type = "slider", key = "fadeAlpha", parent = "fadeOutOfCombat", name = "Faded Opacity", new = "0.14.0", min = 0, max = 0.5, step = 0.05, percent = true,
 		  desc = "How much of the frame stays while it is faded. At 0 % it is gone until it is needed." },
 		{ type = "toggle", key = "fadePet", parent = "fadeOutOfCombat", name = "Pet Frame Too", new = "0.14.0",
@@ -491,7 +491,8 @@ end
 --     stands for "below full", FADE_RECENT below)
 --   * dead or a ghost
 --   * the pointer on the frame (or on the pet's, while it follows)
---   * the windows unlocked for placing (Unlock the Windows), Edit Mode open
+--   * Edit Layout showing (MelloUI:EditingLayout(), the bus's 'editlayout'),
+--     Edit Mode open
 -- The pet frame follows the player frame (shown while it is) and comes back
 -- for its own health too; Pet Frame Too off leaves it alone.
 -- Out slowly after a short hold (FADE_HOLD, then FADE_OUT), in fast
@@ -696,7 +697,7 @@ local function PlayerNeeded()
 	if Fade.editMode or Hovered() then
 		return true
 	end
-	return MelloUI:WindowsUnlocked() and true or false
+	return MelloUI:EditingLayout() and true or false
 end
 
 local function PetNeeded()
@@ -978,11 +979,9 @@ local function HookPointer()
 	end
 end
 
--- the bus: the windows unlocked, Edit Mode
-local Fade_OnSetting = Shared("'setting' on the bus: the unit frames' fade", function(name, key)
-	if name == "UIModifications" and key == "unlock" then
-		Evaluate()
-	end
+-- the bus: Edit Layout shown or not, Edit Mode
+local Fade_OnEditLayout = Shared("'editlayout' on the bus: the unit frames' fade", function()
+	Evaluate()
 end)
 local Fade_OnEditMode = Shared("'editmode' on the bus: the unit frames' fade", function(entering)
 	Fade.editMode = entering and true or false
@@ -1004,7 +1003,7 @@ local function FadeOn()
 	f:RegisterUnitEvent("UNIT_PET", "player")
 	f:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
 	RegisterUnits()
-	MelloUI:On("setting", Fade_OnSetting, FADE_OWNER)
+	MelloUI:On("editlayout", Fade_OnEditLayout, FADE_OWNER)
 	MelloUI:On("editmode", Fade_OnEditMode, FADE_OWNER)
 	-- (the frames are secure unit buttons: hooked out of combat)
 	MelloUI.Kit:WhenOutOfCombat(HookPointer, HOOK_KEY)

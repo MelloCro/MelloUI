@@ -16,17 +16,22 @@ One switch and every window, every bar, the minimap, the nameplates, the chat, t
 
 Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidian** (black glass and pewter), **Royal Azure** (deep navy and gold) and **Fel Ember** (charred black, fel green and void purple), each with a brighter **Vibrant** version. Every palette comes with its own painted kit, so the rails, gems and plates change colour with it, and every MelloUI window, text and highlight follows.
 
-- Pick one on Home > Your setup (Palette), in Dynamic UI Modification, or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember: Warm iron, Bronze or the Original).
-- A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade and Shade Strength are on UI Modifications' General tab; Dynamic UI Modification has a switch per area.
+- Pick one on Look > General (Home's Your setup names yours, with Change… to it), or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember: Warm iron, Bronze or the Original).
+- A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade, Shade Strength and a switch per area are on Look > General; each area's own page links to its switch.
 - Items you can't use and spells you can't learn stay on dark red in every palette.
 
 ## 🖱️ Drag. Everything.
 
-Switch on Unlock the Windows at the top of the settings window, then grab any window and drop it wherever you want. Minimap, quest tracker, chat, damage meter, all of it.
+Press **Edit Layout** at the top of the settings window (or type `/mello edit`). Every part of the interface gets a plate you can drag: MelloUI's trackers and notices, the minimap, chat, the damage meter and any window you have open. The arrow, the Voice Over window and the whisper windows get one too, even while they are hidden.
 
-- Scroll the mouse wheel while you're holding it to make it bigger or smaller.
-- With Auto Snapping on it snaps to the middle if you get close, and it stays where you drop it.
+- Scroll the mouse wheel on a plate to make it bigger or smaller; it stops at 100 % on the way.
+- It snaps to the nearest element's edges and centre, and a gold line shows where. Hold Shift for a straight line, Alt to drop it freely.
+- Right-click a plate for its size, exact position, what it snaps to, Reset, and a link to its settings. Ctrl+right-click resets it. Click one and use the arrow keys to nudge it a pixel at a time.
+- Nothing is kept until you leave: then you choose Save or Discard. A fight pauses Edit Layout; it comes back afterwards with your changes still waiting. A /reload while editing drops unsaved changes.
+- While Edit Layout is open the plates take the mouse, so chat links and window buttons wait until you are done.
+- Action bars, unit frames and the rest that the game places show "Move via Edit Mode"; that opens the game's Edit Mode, and Edit Layout comes back when you close it. Edit Mode has a "MelloUI Edit Layout" button too.
 - Works with the reskin off as well.
+- Edit Layout replaces Unlock the Windows, Auto Snapping and Reset positions (0.15.0): its bar has the Snap switch and Reset all.
 
 ## 🔊 Every click has a new sound
 
@@ -70,7 +75,7 @@ Every quest offer, progress line, turn-in and greeting is read out loud in a voi
 - **Bars & fonts:** pick your health bar style, pick a font for text, chat, titles and damage numbers, and how big each one is.
 - **Chat:** short channel tags, class colours, input box on top if you want it, one background opacity for every chat window.
 - **Auto-vendor:** sells your greys and repairs your gear the moment you talk to a merchant.
-- **Quality Gems:** every item in your bags, the bank and the guild bank wears a small gem in its quality's colour (grey junk, white common, then green, blue, purple, orange), so junk and loot worth keeping jump out at a glance. UI Modifications, Windows tab, Item Slots.
+- **Quality Gems:** every item in your bags, the bank and the guild bank wears a small gem in its quality's colour (grey junk, white common, then green, blue, purple, orange), so junk and loot worth keeping jump out at a glance. Windows > Bags (the Bank and the Guild bank too).
 - **And:** cooldown numbers on buttons, clean dark tooltips, CC and quest icons on nameplates, FPS and latency, hidden micro menu and bag bar, class medallions on portraits.
 
 ## 🧺 Errands, handled
@@ -104,16 +109,20 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 ## ⚙️ The settings window
 
-`/mello`, or the **MelloUI** button in the game menu (Escape), opens it.
+`/mello`, or the **MelloUI** button in the game menu (Escape), opens it. A page's name after it opens that page: `/mello chat`, `/mello unit frames`, `/mello fonts` (a module's name works too).
 
-- **Top bar:** the Layout group on the left: Unlock the Windows, Auto Snapping and Reset positions (dimmed while UI Modifications is off; switch that on first). On the right: **Install…** (the installer), **Dynamic UI Modification** (the look of the reskin, picked on the interface itself) and close.
-- **Side list:** Home, then the modules by group (The look, Quests and travel, Chat and sound, Frames and bars), then Profiles. Click a group's name to fold it away. Dark Mode, Fonts, Chat, Unit Frames, Nameplates and Tooltip live on UI Modifications' tabs: their entries open that tab right at their switch. A module that is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
-- **Search:** the box at the top of the side list finds any option. Type two letters or more: the list shows what matches, best first (a name that matches, then the page, tab or section it is on, then what it does), each with its page and tab over its name and the New tag if it is new. Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens at that option, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays. Dynamic UI Modification's choices live in their own window: the Dynamic UI Modification result (Top bar) opens it.
-- **Pages:** a module's page has its switch and Defaults at the top and its options on tabs. An option that needs another switch is dimmed and says which one. Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (UI Modifications, General) makes all of it instant.
-- **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette; your Kit Colours, with Change… to Dynamic UI Modification; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
-- **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it and on the shortcuts that open that tab, inside the **Dynamic UI Modification** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
-- **Long lists:** a dropdown with many choices (the fonts) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
-- Drag the window by its top edge: it stays where you put it. Escape closes it. At a large Font Style it is a little wider, so UI Modifications' tabs keep to one row.
+- **Top bar:** on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows), **Frames and bars** (Unit Frames, Nameplates, Action Bars, Minimap, Bars & Meters), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
+- **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
+- **Pickers:** Unit Frames (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Resource), Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Target frame's settings to Player?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them ("One setting for Player, Target and Focus."). Unit Frames shows a live preview of the picked frame in its header, following your settings as you change them.
+- **Pictures:** the looks you choose by sight (the borders, the backdrops and backgrounds, the minimap's shape and square border) show the chosen one's picture. Click it and every choice opens as a picture under the row; a click on one puts it on at once. Not in a fight.
+- **Dimmed options:** an option that needs another switch, or that the one picked does not have, is dimmed and says why ("Switch on "UI Modifications" first (Look).", "Not for Pet"). When that switch is on another page or pick, a click on the dimmed option takes you to it.
+- **Search:** the box at the top of the side list finds any setting, page, tab or pick. Type two letters or more: the list shows what matches, best first (a name that matches, then its place, then what it does), each with its place over its name as a breadcrumb (Page > Tab > Section: "Unit Frames > Buffs & Debuffs > Layout") and the New tag if it is new; "Bank" finds "Windows > Bank". Point at a result for its whole place and what it does. Click one, or pick it with Up and Down and press Enter: its page opens on its tab and pick, at that setting, which lights up for a moment. Escape, the little X or an empty box brings the side list back. If a fight starts while you type, the keys go back to your character and your search stays.
+- **Home:** the Tutorial, What's new (Earlier versions for the rest), Your setup (the profile in use, with a list to load another; the palette and your Kit Colours, each with Change… to its row on Look; your screen, with **Fit to this screen** when Mello's layout was fitted to another one; Install again) and Help with every command.
+- **New tags:** everything this update added (a switch, a slider, a dropdown, a button) has a small gold **New** tag right after its name. The tags also lead the way: on its page's entry in the side list (on a group's name while it is folded), on the tab that holds it, inside the **Edit Layout** button, and at the top of What's new. The next update's new options get the tags; this update's go away by themselves.
+- **Long lists:** a dropdown with many choices (the fonts, the Windows picker) shows 18 at a time, never more than half the screen, with a scroll bar; the mouse wheel scrolls it, and it opens at your current choice.
+- Drag the window by its top edge: it stays where you put it. Escape closes it. At a large Font Style a page's tabs take a second row.
 
 ## 💾 Your settings are safe
 
@@ -194,6 +203,7 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello help` | the command list in chat |
 | `/mello tutorial` | the guided tour of the settings window (also the Tutorial button on its Home page) |
 | `/mello install` | the installer: a setup for the whole interface, fitted to your screen, with 15 seconds to keep it or go back (also **Install…** in the settings window's top bar and **Install again** on its Home page) |
+| `/mello edit` | Edit Layout: move and resize the interface (also **Edit Layout** in the settings window's top bar); `/mello edit dump` logs every element it knows, and why one has no plate, to the copy window |
 | `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` fits it to your screen and puts it into Edit Mode as an account layout ("MelloUI", or "MelloUI <width>x<height>" on another screen size) and makes it active (done once by itself when you switch the reskin on by hand; the installer puts it in for you), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
 | `/mellolog [clear]` | the copy window with what the dump commands logged (`clear` empties it) |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
@@ -209,8 +219,8 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 
 ### Palettes and the UI Shade (UI Modifications)
 
-**Palette** (UI Modifications, set on Home > Your setup, in Dynamic UI Modification above Kit
-Colours, or on the installer's Look step): Ember (the default), Obsidian, Obsidian Vibrant,
+**Palette** (UI Modifications, set on Look > General above Kit Colours, or on the installer's Look
+step; Home's Your setup names it): Ember (the default), Obsidian, Obsidian Vibrant,
 Royal Azure, Royal Azure Vibrant, Fel Ember and Fel Ember Vibrant. A palette is ten colours
 (the window, the inner panel, raised panels, borders, trim, text, muted text, the selected tab,
 its gold trim, the hover), and everything MelloUI draws takes its colours from the one in use:
@@ -223,11 +233,10 @@ colours carry a meaning and stay the same in every palette: the chat channels, V
 states, Route's straight-guess blue and beam red, the map's quest-giver blue, and the dark red
 of what you can't use or learn (merchants, trade, trainers).
 
-**UI Shade** (on) and **Shade Strength** (70 %, 30-90 %) on UI Modifications' General tab, and
-the same two in Dynamic UI Modification's Shade section with a switch per area: Windows, Action
-Bars, Cast Bars, Unit Frames, Chat (the whisper popups too), Bags, Minimap (and the Services
-bar), Tracker (the objective tracker and the Quest Tracker), Buffs, Event Widgets and
-Nameplates. Every outline piece of the painted kit gets a soft dark shade of its own shape,
+**UI Shade** (on) and **Shade Strength** (70 %, 30-90 %) on Look > General, with a switch per
+area there (each area's own page links to it): Windows, Action Bars, Cast Bars, Unit Frames,
+Chat (the whisper popups too), Bags, Minimap (and the Services bar), Tracker (the objective
+tracker and the Quest Tracker), Buffs, Event Widgets and Nameplates. Every outline piece of the painted kit gets a soft dark shade of its own shape,
 laid under it so it never darkens the window's own stone: the outer rails, title plates, rings
 and crests of the windows, the bars' backdrops and end caps (and the rims of bars with no
 backdrop), the brackets and plates of the cast bars, the rings, name plates, bar brackets and
@@ -240,7 +249,7 @@ needs the reskin (each area follows its own part of it).
 
 ### Quality Gems (Backpack Kit)
 
-**Quality Gems** (on; UI Modifications, Windows tab, Item Slots): every item in the bag windows,
+**Quality Gems** (on; Windows, on the Bags, Bank or Guild bank pick): every item in the bag windows,
 the bank and the guild bank shows a small gem in the top-left corner of its slot, in the game's
 own colour for its quality: grey for junk, white for common, green, blue, purple, orange, and the
 artifact and heirloom colours. It is the gem the parchment tooltips put before item names, about
@@ -250,10 +259,11 @@ upgrade arrow, the "!" on an item that starts a quest, the quality badge on a cr
 which crafted gear wears while the Professions window is open) the gem moves to the top-right
 corner, and a slot the search box dims has its gem dimmed too. An empty slot shows none, and
 neither do the bank's bag slots (they hold bags). The gems belong to the painted slots: a window
-whose reskin is off (Bags, Bank or Guild bank on the Windows tab, or the reskin itself) shows
-none. The one switch covers all three windows and has a row of its own, so it can be changed
-while the Bags row is off. Nothing is made at login: a slot's gem is made the first time it holds
-an item, and the game's own updates of the slot recolour it.
+whose reskin is off (its Painted Skin on the Windows page, or the reskin itself) shows none. The
+one switch covers all three windows and shows on each one's pick, live while that window's
+Painted Skin is on, so it can be changed on the Bank while the Bags' skin is off. Nothing is made
+at login: a slot's gem is made the first time it holds an item, and the game's own updates of the
+slot recolour it.
 
 ### Dark Mode
 
@@ -300,7 +310,7 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
 ### Names
 
 Characters on this client have a first name and a surname. UI Modifications has one "Show Names
-As" dropdown (its Names tab): first name, last name, or both, for everything at once: the player,
+As" dropdown (Look > General): first name, last name, or both, for everything at once: the player,
 target, focus, pet, party and raid frames, the nameplates, and the name over your own head. The
 frames' text is re-set after the game sets it (post-hooks on `UnitFrame_Update` and
 `CompactUnitFrame_UpdateName`, in the Unit Frames and Nameplates modules); the name over your own
@@ -323,10 +333,9 @@ nameplates have no quest icon), read from the unit tooltip data.
 With the reskin's Nameplate Kit on, the name above each health bar sits on a soft dark band, as long
 as the name, that fades out at its ends (Name Shade: Name, the default). Whole plate adds a soft shadow that follows
 the plate's own shape: round the level circle, round each end gem and along the bar, in every
-Nameplate Border look; this needs the UI Shade on (UI Modifications, General) and its
-Nameplates switch in Dynamic UI Modification. Off: no shade. Shade Strength sets how dark it is
-(the nameplates' own, apart from the UI Shade's). Both sit on UI Modifications' HUD tab, under
-the Nameplates switch.
+Nameplate Border look; this needs the UI Shade and its Shade: Nameplates switch on (Look >
+General). Off: no shade. Shade Strength sets how dark it is (the nameplates' own, apart from the
+UI Shade's). Both sit on Nameplates > Plates, with the nameplates' Painted Skin.
 
 ### Tweaks
 
@@ -344,8 +353,8 @@ the Nameplates switch.
   or finished, a service remembered, a dungeon's quests listed). Soft text in the palette's
   colours (gold for a new destination or an arrival) over a dark shade with soft edges, in
   your Font Style; held four seconds, then faded (at once with Reduce Motion). It works with
-  Route off. Unlock the Windows shows a sample line there to drag; Reset positions puts it back
-  at the top centre. Under it: "Send To Chat Instead" (off; the lines go to the chat, where
+  Route off. Edit Layout shows a sample line there to drag; its Reset puts it back at the top
+  centre. Under it: "Send To Chat Instead" (off; the lines go to the chat, where
   Chat Notices applies) and "Notice Sounds" (on).
 - "Zone Text Shade" (on by default): the game's zone text -- the zone's name when you enter
   a new area, the subzone under it and the PvP line ("Contested Territory", "Sanctuary") --
@@ -413,8 +422,8 @@ Out Of Combat:
   comes back at once in combat and stays for the whole fight; it also comes back with a target,
   while your health is below full, while your mana is below full (only while your power bar
   shows mana, so it stays up while you drink after a fight; rage and energy never keep it), when
-  you are dead or a ghost, when you point at where it sits, and while the windows are unlocked
-  or Edit Mode is open (this client keeps your health, and usually your mana, hidden from addons, so
+  you are dead or a ghost, when you point at where it sits, and while Edit Layout or Edit Mode
+  is open (this client keeps your health, and usually your mana, hidden from addons, so
   MelloUI goes by the game's own updates: the frame stays while your health or mana is still
   changing, from regeneration, a drink or damage, and after a spell's mana cost it waits out the
   five-second pause). It fades out slowly a moment after the last of these ends and comes back
@@ -893,7 +902,7 @@ an inn, your next login).
 **Glow:** a gentle gold pulse
 for a few seconds, then steady (Pulse, then steady), always steady, or off. **Place:** left of,
 above or right of the portrait; with the player frame hidden the button keeps a place of its
-own, which Unlock the Windows lets you drag (a sample shows there). Nothing is checked before
+own, which you can drag in Edit Layout (a sample shows there). Nothing is checked before
 the first moments after login or during a fight, and nothing runs while nothing changes.
 
 For modules: `MelloUI.Reminders` (Core/Reminders.lua) is the one widget. `Rem:Register(spec)`
@@ -932,14 +941,14 @@ Short lines beside your character (right of the screen's centre, a little below)
 - **Bought Items:** the same line with a quiet "bought" after it, for what you buy from a merchant, buybacks too. A sale is no line, and money is never one.
 - **Junk Items** (on): grey items too.
 
-The count is in gold and the name in the palette's text colour; the value and "bought" are smaller and a little fainter. A very long name ends in "...". The newest line is on top and at most five show; gaining the same skill or item again while its line shows adds to it ("+2 Defense") and brings it back to the top. Each line fades after **Show For** (5 s, 2-15), so the oldest go first; with Reduce Motion the lines do not slide, they only fade. Unlock the Windows shows three sample lines to drag the feed; Reset positions puts it back, and profiles carry the place. Nothing is read in the first moments after login; a skill point or item the game keeps hidden during a fight shows as soon as the fight is over.
+The count is in gold and the name in the palette's text colour; the value and "bought" are smaller and a little fainter. A very long name ends in "...". The newest line is on top and at most five show; gaining the same skill or item again while its line shows adds to it ("+2 Defense") and brings it back to the top. Each line fades after **Show For** (5 s, 2-15), so the oldest go first; with Reduce Motion the lines do not slide, they only fade. Edit Layout shows three sample lines to drag the feed; its Reset puts it back, and profiles carry the place. Nothing is read in the first moments after login; a skill point or item the game keeps hidden during a fight shows as soon as the fight is over.
 
 ### Minimap Panel
 
 The minimap cluster in the kit (part of the reskin in UI Modifications): the iron ring
 around the map with the zone name on a title plate standing on it, the tracking button in a
-round rim, plus / minus zoom buttons. Edit Mode still owns the cluster's position; with "Unlock
-the Windows" the map can be dragged by its zone band. `/mmdump` prints the rects.
+round rim, plus / minus zoom buttons. Edit Mode places the cluster; Edit Layout can move it too,
+and while it has a place there, that place wins (its Reset gives it back to Edit Mode). `/mmdump` prints the rects.
 
 **Width** and **Height** (98 to 400, 198 x 198 by default: the game's map at 100 %) size the
 map. The round map is as tall as it is wide, and its painted ring grows and shrinks with it;
@@ -991,8 +1000,8 @@ ready to turn in, lit while followed); click a quest to follow it, Shift-click t
 it, right-click to open it in the quest log. Quest items are used with a click out of combat.
 Tracked recipes show under Professions with their reagents, and Quests and Professions each
 fold away on their own minus. An objective line glows briefly when it counts up. It takes its
-place and height from the game's tracker in Edit Mode, is moved by its header with Unlock the
-Windows, and a grip in its bottom-left corner sizes it; Height, Width, Scale, Text Size and
+place and height from the game's tracker in Edit Mode, is moved in Edit Layout (a drag gives it a
+place of its own; its Reset puts it back where the game or the minimap column lays it), and a grip in its bottom-left corner sizes it; Height, Width, Scale, Text Size and
 Scroll Step are in its settings.
 
 "Match The Minimap's Width" (on by default, needs the Minimap Kit) makes the tracker as wide on
@@ -1025,7 +1034,7 @@ column paints (the square frame's bottom gems, and with the Minimap Kit off the 
 frame round the map) when the minimap's size, the Services bar's Button Layout or merge, or the
 UI scale changes. The installer records the place its fit wrote, so that place still counts as
 the game's own (Revert takes the record back); a tracker you moved yourself, in Edit Mode or
-with Unlock the Windows, stays where you put it. The keep-clear only ever moves it down.
+in Edit Layout, stays where you put it. The keep-clear only ever moves it down.
 
 ### Buffs & Debuffs
 
@@ -1042,7 +1051,7 @@ stand where the game's buff bar is.
 
 With the reskin and the UI Shade on, each of your and the target's aura buttons casts a soft
 shade inside the gap between icons: the thin rim's own shape, or a soft square round the icon in
-the black-edge look (Dynamic UI Modification, Shade: Buffs). Nameplate auras get none.
+the black-edge look (Shade: Buffs on Look > General). Nameplate auras get none.
 
 ### Error Messages
 
@@ -1151,14 +1160,16 @@ function M:OnSettingChanged(key, value, db) end -- when an option changes
 
 Settings are stored per module in the `MelloUIDB` saved variable (account wide).
 
-Where the module shows up is said in the same call, never in a hand list (the header of
-`Core/Core.lua` has every field): `icon` and `flavour` for its page header, `group` for its
-entry in the settings window's side list ("The look", "Quests and travel", "Chat and sound" or
-"Frames and bars"; no group, no entry) and `navOrder` for its place in that group, `role` for
-what the installer's setups do with it ("core", "look", "feature", "adds" or "replaces"), and
-for a feature folded under UI Modifications `tweak = { label, desc, order }` (a row on its
-tabs). A window the reskin dresses gives `window = { label, desc, tab = "Windows" | "HUD", ... }`
-(`docs/WINDOW-RULES.md`, section 6).
+What the module is, is said in the same call, never in a hand list (the header of
+`Core/Core.lua` has every field): `icon` and `flavour` for its page header, `role` for what the
+installer's setups do with it ("core", "look", "feature", "adds" or "replaces"), for a
+feature folded under UI Modifications `tweak = { label, desc, order }` (its switch, `qol_<Name>`),
+and for a window the reskin dresses `window = { label, desc, tab = "Windows" | "HUD", ... }`
+(`docs/WINDOW-RULES.md`, section 6). Where its options show in the settings window is one line
+each in `Core/ConfigLayout.lua`, `R(page, tab, section, "YourModule.someToggle")`: that file
+holds the side list, the pages and every option's one place, so a new option is its schema
+entry here and its line there (one with no line lands at the end of its module's page, under
+Advanced, and the checks name it).
 
 ## Notes on the Forever client
 

@@ -325,9 +325,10 @@ local function Unplaced(f)
 	if not f then
 		return true
 	end
+	-- the game's tracker placed by MelloUI (UI Modifications on): its place
+	-- as the store answers it, a pending one of Edit Layout's too
 	local um = MelloUI:GetModule("UIModifications")
-	local positions = um and um.isEnabled and um.db and um.db.positions
-	if type(positions) == "table" and positions.ObjectiveTrackerFrame then
+	if um and um.isEnabled and MelloUI:GetPosition("ObjectiveTrackerFrame") then
 		return false
 	end
 	local ok, default = pcall(f.IsInDefaultPosition, f)
@@ -456,9 +457,55 @@ local function Glue(scale)
 	return region, point, math.floor((dy / (us * scale) - COLUMN_GAP) * 1000 + 0.5) / 1000
 end
 
--- the frame sits where the game's tracker is, as wide as it, from its top
-local function Place()
-	local scale = tonumber(M.db and M.db.scale) or 1
+-- Only a drag takes it off the glue (D11): a size change alone in Edit
+-- Layout -- the wheel or the box's Size, which turn it about its top-right
+-- corner -- keeps it glued, its new Scale under the column (review,
+-- 2026-09-29: the Save wrote a place of its own). Kept when it was laid
+-- glued before the change (last.glue: before the session held it, or the
+-- Reset's preview) and its top-right corner still sits on the glued place
+-- as the column is now, at the scale it was laid at or at its new one,
+-- within GLUE_EPS units (the wheel lays it on the pixel grid)
+local GLUE_EPS = 2
+
+local function OnGlue(scale)
+	local region, point, gy = Glue(scale)
+	if not region then
+		return false
+	end
+	local l, b, r, t = MelloUI.Safe.ScreenRect(region)
+	local _, _, fr, ft = MelloUI.Safe.ScreenRect(frame)
+	local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+	us = okU and Plain(us) or nil
+	if not (l and fr and type(us) == "number" and us > 0) then
+		return false
+	end
+	-- the column's point, then the glued corner under it (gy of the
+	-- tracker's own units at `scale`), screen px
+	local x = point:find("RIGHT") and r or point:find("LEFT") and l or (l + r) / 2
+	local y = point:find("TOP") and t or point:find("BOTTOM") and b or (b + t) / 2
+	y = y + gy * us * scale
+	return math.abs(fr - x) <= GLUE_EPS * us and math.abs(ft - y) <= GLUE_EPS * us
+end
+
+local function KeepsGlue()
+	if last.glue == nil or not frame then
+		return false
+	end
+	local ok, scale = pcall(frame.GetScale, frame)
+	scale = ok and Plain(scale) or nil
+	return (type(last.scale) == "number" and OnGlue(last.scale))
+		or (type(scale) == "number" and scale > 0 and OnGlue(scale)) or false
+end
+
+-- its entry in Core's mover registry (Build): Edit Layout moves it
+local moverEntry = nil
+
+-- the frame sits where the game's tracker is, as wide as it, from its top;
+-- home: where it sits with no place of its own, at its standard size (its
+-- own place and Scale passed by, nothing written: the mover's default,
+-- Edit Layout's reset before it is saved)
+local function LayFrame(home)
+	local scale = home and 1 or tonumber(M.db and M.db.scale) or 1
 	local set = tonumber(M.db and M.db.width) or 0
 	-- the minimap's width while it follows it, laid as a set width
 	followW = FollowWidth(scale)
@@ -466,9 +513,12 @@ local function Place()
 		set = followW
 	end
 	local f = ObjectiveTrackerFrame
-	-- moved with Unlock the Windows: its own place, hung by its top-right
-	-- corner so it still grows downward
-	local pos = M.db and M.db.pos
+	-- moved in Edit Layout: its own place, hung by its top-right corner so
+	-- it still grows downward
+	local pos = nil
+	if not home then
+		pos = M.db and M.db.pos
+	end
 	local px, py = pos and pos.x, pos and pos.y
 	-- a place of its own is kept on the screen by the screen's size and
 	-- scale, and takes the game's tracker's width when none is set
@@ -575,6 +625,17 @@ local function Place()
 		last.p, last.rel, last.rp, last.ax, last.ay = p, rel, rp, ax, ay
 		last.got, last.valid = frame:GetScale(), true
 	end
+end
+
+-- Laid as its settings say; not while Edit Layout holds a change of it (its
+-- session keeps it where the player put it): laid again when the session
+-- lets go of it ('mover' "released": Listen)
+local function Place()
+	local LS = MelloUI.LayoutSession
+	if moverEntry and LS and LS.Holds(moverEntry) then
+		return
+	end
+	LayFrame(false)
 end
 
 --------------------------------------------------------------------------------
@@ -907,9 +968,17 @@ local function OnBlockClick(block, button)
 		return
 	end
 	if button == "RightButton" then
-		-- next frame, out of this click's (MelloUI's) execution
+		-- (0.15.0) Never in the Gamepad UI: the map opened from MelloUI code
+		-- runs the Gamepad UI's frame manager in MelloUI's run and blocks its
+		-- bindings (the Gamepad UI freeze). The player opens the map there.
+		if MelloUI.Safe.GamepadUI() then
+			MelloUI:Print("Quest Tracker: in the Gamepad UI, open your map to see this quest's details.")
+			return
+		end
+		-- next frame, out of this click's (MelloUI's) execution; the Gamepad
+		-- UI asked again, turned on since the click
 		C_Timer.After(0, function()
-			if QuestMapFrame_OpenToQuestDetails then
+			if QuestMapFrame_OpenToQuestDetails and not MelloUI.Safe.GamepadUI() then
 				pcall(QuestMapFrame_OpenToQuestDetails, id)
 			end
 		end)
@@ -966,7 +1035,10 @@ local function OnBlockEnter(block)
 		GameTooltip:SetText(block.title:GetText() or "")
 	end
 	local c = MelloUI.Palette.text
-	GameTooltip:AddLine("Click: follow  -  Shift-click: stop watching  -  Right-click: quest log", c[1], c[2], c[3], true)
+	-- (the Gamepad UI: no right-click to the quest log, OnBlockClick)
+	local hint = MelloUI.Safe.GamepadUI() and "Click: follow  -  Shift-click: stop watching"
+		or "Click: follow  -  Shift-click: stop watching  -  Right-click: quest log"
+	GameTooltip:AddLine(hint, c[1], c[2], c[3], true)
 	GameTooltip:Show()
 	if block.highlight then
 		block.highlight:Show()
@@ -2081,23 +2153,25 @@ end
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Moving it: by its header while the windows are unlocked, through UI
--- Modifications' mover (MelloUI:RegisterMover, where the frame is built)
+-- Moving it: in Edit Layout, through Core's mover (MelloUI:RegisterMover,
+-- where the frame is built)
 --------------------------------------------------------------------------------
 
 -- where it was dropped, as offsets of its top-right corner from the screen's
--- top-right, in its own units (it hangs from that corner, growing downward)
+-- top-right, in its own units (it hangs from that corner, growing downward);
+-- false when the frame cannot be measured
 local function SavePosition()
 	local fs = frame:GetEffectiveScale()
 	local us = UIParent:GetEffectiveScale()
 	local right, top = frame:GetRight(), frame:GetTop()
 	if not (right and top and fs and fs > 0) then
-		return
+		return false
 	end
 	M.db.pos = {
 		x = (right * fs - UIParent:GetRight() * us) / fs,
 		y = (top * fs - UIParent:GetTop() * us) / fs,
 	}
+	return true
 end
 
 local function ClipHeight()
@@ -2573,17 +2647,31 @@ local function Build()
 	Perf.SetScript(nearest, "OnLeave", Near.OnToggleLeave)
 	header.nearest = nearest
 
-	-- moved like every other window while the windows are unlocked (UI
-	-- Modifications' mover: the screen darkens with its grid, the border
-	-- lights, the corner snaps, the wheel scales it -- user, 2026-09-23: "does
-	-- not have the same darkening ... also the mousewheel does not increase
-	-- its scale"); it keeps its own place, hung by its top-right corner, and
-	-- the wheel's scale is its Scale setting
+	-- moved like every other window in Edit Layout (its plate: dragged,
+	-- snapped, the wheel scales it -- user, 2026-09-23: "the mousewheel does
+	-- not increase its scale"); it keeps its own place, hung by its top-right
+	-- corner (the mover's anchor: a pending place is measured the same way,
+	-- and it grows downward from there), and the wheel's scale is its Scale
+	-- setting. Glued under the minimap column it stays movable: a place of
+	-- its own takes it off the glue, its Reset glues it again (the default:
+	-- its unplaced place, nothing written until Save; a size change alone
+	-- keeps the glue: KeepsGlue). Hidden with nothing watched, it keeps a
+	-- "(hidden)" plate where it would show; switched off, none (`when`).
 	if MelloUI.RegisterMover then
-		MelloUI:RegisterMover(frame, header, {
+		moverEntry = MelloUI:RegisterMover(frame, header, {
+			label = "Quest Tracker", page = "QuestTracker", anchor = "TOPRIGHT", placeholder = true,
 			min = 0.6, max = 1.6,   -- the Scale slider's range
-			save = function()
-				SavePosition()
+			when = function()
+				return M.isEnabled and true or false
+			end,
+			-- (pos: Edit Layout's pending place, its TOPRIGHT offsets exactly:
+			-- taken when the frame cannot be measured)
+			save = function(_, pos)
+				if KeepsGlue() then
+					M.db.pos = nil
+				elseif not SavePosition() and type(pos) == "table" and tonumber(pos.x) and tonumber(pos.y) then
+					M.db.pos = { x = tonumber(pos.x), y = tonumber(pos.y) }
+				end
 				M.db.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
 				last.valid = false   -- (dragged and scaled by the mover: laid again)
 				Place()
@@ -2597,8 +2685,21 @@ local function Build()
 				MelloUI:NotifySettingChanged(M.name, "pos", nil)
 				MelloUI:NotifySettingChanged(M.name, "scale", 1)
 			end,
+			default = function()
+				LayFrame(true)
+			end,
+			note = function(entry)
+				local LS = MelloUI.LayoutSession
+				if last.glue ~= nil and not (LS and LS.Pos(entry) and not KeepsGlue()) then
+					return "Glued under the minimap. Drag it to give it a place of its own; Reset glues it again."
+				end
+				return nil
+			end,
 		})
 	end
+	-- (the header is no handle: its mouse off, clicks go through as over
+	-- the rest of the frame -- its buttons keep theirs)
+	header:EnableMouse(false)
 
 	clip = CreateFrame("Frame", nil, frame)
 	clip:SetPoint("TOPLEFT", header, "BOTTOMLEFT", INSET, -INSET + 4)
@@ -2937,6 +3038,16 @@ local function Listen()
 	MelloUI:On("look:questTracker", OnLook, M)
 	MelloUI:On("parchment", OnParchment, M)
 	MelloUI:On("column", OnColumn, M)
+	-- Edit Layout's session let go of it (Save, Discard, a profile): laid
+	-- from its settings again (Place waited while it was held)
+	MelloUI:On("mover", function(what, entry)
+		if what == "released" and entry ~= nil and entry == moverEntry and M.isEnabled and frame
+			and not inEditMode and not sizing then
+			last.valid = false
+			Place()
+			MarkDirty()
+		end
+	end, M)
 	-- a palette switch: what PaintKey painted follows by itself; the lines'
 	-- colours are read when drawn (StoneColour), so one rebuild. Only for a
 	-- new table: the same one (the Kit Colours' Fire) changed no line, as the
@@ -3015,6 +3126,16 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	-- its place or Scale set from outside Edit Layout (its page's Scale or
+	-- Reset Position while the mode waits for the Configurator): that wins,
+	-- Edit Layout's pending change of it is dropped (Core's rule for a place
+	-- written outside it; Save's own writes come after its session is off)
+	if (key == "pos" or key == "scale") and moverEntry then
+		local LS = MelloUI.LayoutSession
+		if LS and LS.Holds(moverEntry) then
+			LS.Release(moverEntry)
+		end
+	end
 	if frame and not sizing then
 		Place()   -- width, scale; and back on the game's tracker after a drag
 	end

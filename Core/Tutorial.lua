@@ -27,65 +27,99 @@ MelloUI.Tutorial = T
 -- The steps: the page to show, the part to point at (given the window's
 -- tour table `c`, the page and the step), where the tip hangs, and what it
 -- says. The window's parts come from c.part(name) (the plate's title, the
--- side list, the top bar's controls); a module's entry in the side list from
+-- side list, the top bar's controls); a page's entry in the side list from
 -- c.navEntry(key), which unfolds its group and brings the row into view at
--- once. A side-list entry's tip hangs off its right edge, over the page.
+-- once; a page's header parts (its switch, its picker, the preview) and its
+-- tabs from the built page. A side-list entry's tip hangs off its right
+-- edge, over the page. A step whose part this build does not have (no Edit
+-- Layout yet, the installer left out) is passed over.
 --------------------------------------------------------------------------------
 
--- a module's side-list entry: the step's `nav`, else its own page
+local EMPTY = {}
+
+-- a page's side-list entry: the step's `nav`, else its own page
 local function NavTarget(c, _, step)
 	return c.navEntry(step.nav or step.page)
+end
+
+-- a page's tab by its name (the step's `tab`); none on a page with one tab
+local function TabTarget(_, page, step)
+	for _, tab in ipairs(page and page.tabs or EMPTY) do
+		if tab.section and tab.section.name == step.tab then
+			return tab
+		end
+	end
+	return nil
+end
+
+-- a part of the page's header, by its field on the page (the step's
+-- `header`): its switch, its picker, the live preview
+local function HeaderTarget(_, page, step)
+	return page and page[step.header] or nil
+end
+
+-- a top bar control (the step's `part`) while it is there: shown
+local function BarTarget(c, _, step)
+	local part = c.part(step.part)
+	return (part and part:IsShown()) and part or nil
+end
+
+-- Edit Layout's button: only in a build that has Edit Layout (its entry,
+-- MelloUI.StartEditLayout; the button shows only then)
+local function EditLayoutTarget(c, page, step)
+	if type(MelloUI.StartEditLayout) ~= "function" then
+		return nil
+	end
+	return BarTarget(c, page, step)
 end
 
 local STEPS = {
 	{ page = "Home", point = "BottomEdgeCenter",
 	  target = function(c) return c.part("title") end,
-	  text = "Welcome to MelloUI. This is its settings window: /mello opens it, or the MelloUI button in the game menu (Escape); its emblem and its name sit on top. Every module has its page here. This tour shows where things live; close the window to stop it." },
+	  text = "Welcome to MelloUI. This is its settings window: /mello opens it, or the MelloUI button in the game menu (Escape); its emblem and its name sit on top. Every part of your interface has its page here. This tour shows where things live; close the window to stop it." },
 	{ page = "Home", point = "RightEdgeTop",
 	  target = function(c) return c.part("nav") end,
-	  text = "The side list: the modules by group, gold for the page you are on. Click a group's name to fold it; the mouse wheel scrolls the list. Dark Mode, Fonts, Chat and the other features folded into UI Modifications open their place on its tabs." },
-	{ page = "Home", point = "RightEdgeCenter", target = NavTarget, nav = "UIModifications",
-	  text = "UI Modifications is the important one: the painted reskin of the whole interface and every feature that tunes it, all in one place." },
+	  text = "The side list: the pages by group (The look, Frames and bars, Chat and text, Quests and travel, Sound), gold for the page you are on. Click a group's name to fold it. The box over it searches every setting: each result shows where it lives (page, tab and section), and a click takes you there." },
 	{ page = "Home", point = "LeftEdgeCenter",
 	  target = function(_, page) return page.setup end,
-	  text = "Your setup: the profile in use (choosing another asks first), the palette, the Kit Colours, your screen and what is on. The installer sets everything up again from here." },
-	{ page = "UIModifications", point = "RightEdgeTop",
-	  target = function(_, page) return page.sections and page.sections[1] end,
-	  text = "General: the painted kit reskin, one switch for the whole look, the UI Shade and its strength, and the button that opens Dynamic UI Modification, where the look itself is chosen. Off, the game's own art stays everywhere and the features on the other tabs keep working." },
-	{ page = "UIModifications", point = "BottomEdgeLeft",
-	  target = function(c) return c.part("unlock") end,
-	  text = "In the top bar's Layout group: Unlock the Windows. Tick it and drag any window by its title, the minimap by its zone band, the trackers by their headers, the damage meter and the chat anywhere. The mouse wheel scales a window while you drag. Auto Snapping beside it snaps a dropped window's corner to the grid; Reset positions puts everything back. It needs UI Modifications on, works with the reskin off as well, and positions stay across reloads." },
-	{ page = "UIModifications", point = "BottomEdgeLeft",
-	  target = function(_, page) return page.tabs and page.tabs[1] end,
-	  text = "The tabs: Windows and HUD (which areas the reskin dresses), Combat (buffs and debuffs, error messages, cooldown timers, nameplate icons), Unit Frames & Bars, Chat & Tooltips, Text (a font style and the sizes) and Dark Mode / Other. Each feature starts with its own switch; its options wake when it is on." },
-	{ page = "UIModifications", point = "BottomEdgeCenter",
-	  target = function(c) return c.part("dynamic") end,
-	  text = "Dynamic UI Modification, in the top bar on the right: the look of the reskin in one place. The palette, the borders and Kit Colours of every window, the backgrounds and backdrops, the parchment sheets, the soft shade round the kit and the minimap's shape, chosen on the interface itself with pictures." },
+	  text = "Your setup: the profile in use (choosing another asks first), the palette and the Kit Colours with Change… to their place on Look, your screen and what is on. The installer sets everything up again from here." },
+	{ page = "Look", point = "RightEdgeCenter", target = NavTarget,
+	  text = "Look: the look of the whole interface in one place. The painted reskin, the palette, the soft shade, the borders, the fonts, Dark Mode, the bar texture and the parchment sheets. The other pages link here for these." },
+	{ page = "Look", point = "BottomEdgeCenter", target = HeaderTarget, header = "switch",
+	  text = "UI Modifications, the switch at the top of Look: the painted reskin and every feature that tunes the interface (Dark Mode, Fonts, Chat, Tooltip, Buffs & Debuffs, the windows' skins and more) go with it. Off, the game's own art stays everywhere; the palette, the UI Shade and Reduce Motion keep working." },
+	{ page = "Look", point = "BottomEdgeLeft", target = TabTarget, tab = "General",
+	  text = "Every page works the same way: its tabs on top, and on every tab the same sections in the same order (General, Look, Text, Layout, Behaviour, Sound, Advanced). An option that needs another switch is dimmed and says which one. A link row shows a setting whose place is another page, with a button to it (Look >, Minimap >). Reset this page, at the top, puts the page back to its defaults (on a page with a picker, the one picked); it asks first." },
+	{ page = "UnitFrames", point = "BottomEdgeLeft", target = HeaderTarget, header = "picker",
+	  text = "Unit Frames has a picker: the frame the page is for (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Resource). Copy from… gives this frame another frame's settings (it asks first); All, beside a setting, gives its value to every frame. A setting marked shared is one setting for several frames. Action Bars and Windows have pickers too." },
+	{ page = "UnitFrames", point = "LeftEdgeCenter", target = HeaderTarget, header = "preview",
+	  text = "The preview: a sample of the picked frame that follows your settings as you change them." },
+	{ page = "Windows", point = "BottomEdgeLeft", target = HeaderTarget, header = "picker",
+	  text = "Windows: the game's windows in the painted look, one at a time. Pick a window for its Painted Skin, its backgrounds (click one to see every choice as a picture) and links to its shade, parchment and borders on Look." },
+	-- (Edit Layout's step, in its own words, while the build has it: the
+	-- one step about moving things, on the top bar's Edit Layout button;
+	-- 0.15.0: it replaced the step at the old Layout group)
+	{ page = "Windows", point = "BottomEdgeCenter", target = EditLayoutTarget, part = "edit",
+	  text = "Edit Layout: move and resize everything. Drag an element, wheel to resize, right-click for its size, position and snapping, Ctrl+right-click to reset it. Nothing is kept until you choose Save. Action bars and unit frames open the game's Edit Mode from there." },
 	-- (the top bar's Install… is there while the installer is)
-	{ page = "UIModifications", point = "BottomEdgeCenter",
-	  target = function(c)
-		local install = c.part("install")
-		return (install and install:IsShown()) and install or nil
-	  end,
-	  text = "Install…, beside it: the installer. It sets MelloUI up in a few steps, fitted to your screen: Full experience, No reskin, Reskin only or Fresh start. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
+	{ page = "Windows", point = "BottomEdgeCenter", target = BarTarget, part = "install",
+	  text = "Install…, in the top bar: the installer. It sets MelloUI up in a few steps, fitted to your screen: Full experience, No reskin, Reskin only or Fresh start. You have 15 seconds to keep the new setup, and Revert on Home's Your setup goes back later." },
 	{ page = "VoiceOver", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Voice Over: every quest giver and greeting read aloud, in a voice matched to the NPC's race and gender. With the voice pack installed the recorded lines play; without it the text-to-speech voices do. The overlay shows who is speaking. In chat: /vo stop, /vo packs. The quest log gets a Read button." },
 	{ page = "QuestList", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Quest List: on the world map, every quest of the zone you look at, with its giver, turn-in, chain and dungeon, plus docks, zeppelins and instance doors as pins. The filters are on this page. /qlmap explains the pins." },
 	{ page = "Route", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Route: an arrow and a line on the map to the tracked quest or any map pin, along paths learned as you walk, flights and boats included. It keeps the route you are following and never sends you back for a corner you cut. /route shows what it knows, /route clear stops it." },
-	{ page = "Services", point = "RightEdgeCenter", target = NavTarget,
-	  text = "Services: the bar under the minimap, in six groups, routes you to the nearest repair, mailbox, inn, flight master, auction house, bank or trainer, learning the ones it meets; Errands holds your reminders. /services <kind> does the same from chat." },
+	{ page = "Minimap", point = "BottomEdgeLeft", target = TabTarget, tab = "Services Bar",
+	  text = "Services Bar, a tab of the Minimap page: the bar under the minimap, in six groups, routes you to the nearest repair, mailbox, inn, flight master, auction house, bank or trainer, learning the ones it meets; Errands holds your reminders. /services <kind> does the same from chat." },
 	{ page = "QuestTracker", point = "RightEdgeCenter", target = NavTarget,
-	  text = "Quest Tracker: the quests you watch in a tracker under the minimap, as wide as the map above it, that scrolls when the list runs long. The nearest quest comes first (the arrow on its title switches it), each with its distance. With the reskin on, its own switch under UI Modifications, Windows dresses it in the kit." },
+	  text = "Quest Tracker: the quests you watch in a tracker under the minimap, as wide as the map above it, that scrolls when the list runs long. The nearest quest comes first (the arrow on its title switches it), each with its distance. With the reskin on, its Painted Skin switch dresses it in the kit." },
 	{ page = "Reminders", point = "RightEdgeCenter", target = NavTarget,
-	  text = "Reminders: a small round button beside your portrait for supplies running low, new mail, worn gear and new training. Click it to go there; Restock keeps your list and buys only when you click Buy." },
-	{ page = "PartyMarkers", point = "RightEdgeCenter", target = NavTarget,
-	  text = "Party Markers: a class medallion over every party member's head, ringed in their role's colour, on their friendly nameplate (turn those on in the game's options). In the open world; inside instances this game keeps friendly nameplates to itself." },
+	  text = "Reminders: a small round button beside your portrait for supplies running low, new mail, worn gear and new training. Click it to go there. The page's other tabs: Restock keeps your list and buys only when you click Buy; Vendor repairs your gear and sells your junk." },
+	{ page = "Nameplates", point = "BottomEdgeLeft", target = TabTarget, tab = "Party Markers",
+	  text = "Party Markers, a tab of the Nameplates page: a class medallion over every party member's head, ringed in their role's colour, on their friendly nameplate (turn those on in the game's options). In the open world; inside instances this game keeps friendly nameplates to itself." },
 	{ page = "CustomSounds", point = "RightEdgeCenter", target = NavTarget,
 	  text = "Custom Sounds: the interface's own sounds replaced by a recorded library, iron, leather, parchment and stone: clicks, windows, bags, gear, vendors, whispers, the group finder, targets, loot, the level up, the scroll wheel. Off until you switch it on here; each family has its own toggle." },
-	{ page = "CustomSounds", point = "BottomEdgeLeft",
-	  target = function(_, page) return page.tabs and page.tabs[3] end,
+	{ page = "CustomSounds", point = "BottomEdgeLeft", target = TabTarget, tab = "Preview",
 	  text = "The Preview tab: every sound with a Play button and where the game uses it, so you can listen before switching a family on. /sfx log in chat prints what the game plays and what replaced it." },
 	{ page = "Profiles", point = "BottomEdgeLeft",
 	  target = function(_, page) return page.saveButton end,

@@ -120,10 +120,13 @@
 -- end), by anchors only (it follows the player frame with no code): left of
 -- the ring, above it, or right past the frame's far end (the bars; not over
 -- the name band). While the player frame is hidden (no anchor), on a place of
--- its own: MelloUI's one mover and position store (key "reminders", the
--- holder its handle; Unlock the Windows shows it with a sample line, the
--- buttons letting the mouse go so it can be dragged; Reset positions puts it
--- back). Hidden in combat (the secure part is taken off at
+-- its own: MelloUI's one mover and position store (key "reminders"; Edit
+-- Layout shows it with a sample line on its plate to drag, and its Reset puts
+-- it back; beside the portrait its plate is locked, the ring places it).
+-- While Edit Layout holds a change of it, its own placing waits and lays it
+-- again once the change is saved or dropped ('mover' "released"); Edit
+-- Layout's first open builds it (a mover source) while the Reminders module
+-- is on. Hidden in combat (the secure part is taken off at
 -- PLAYER_REGEN_DISABLED, before the lockdown) and in instances; shown again
 -- after while it is still up.
 --
@@ -176,6 +179,8 @@ Rem.TEXT = {
 	target = "Click: target %s",
 	interact = "Then press %s to talk",
 	notNow = "Right-click: not now",
+	-- (Edit Layout's box and plate: why it cannot be moved there)
+	locked = "It sits beside your portrait while your player frame shows.",
 }
 local TEXT = Rem.TEXT
 
@@ -201,8 +206,8 @@ local raising = {}                        -- [key] = true: raised then when acti
 local ui = nil                            -- the widget, made with the first raise
 -- the moment's state: login (the login moment came), combat, instance,
 -- resting, hovered, the hold (due time, over), pending (a raise waited for
--- combat or an instance), preview (the sample while unlocked), the watches,
--- notNow (the rest flags' prefix, read once: RestFlag)
+-- combat or an instance), preview (the sample while Edit Layout shows), the
+-- watches, notNow (the rest flags' prefix, read once: RestFlag)
 local S = { login = false, loginAsked = false, combat = false, instance = false, resting = false,
 	hovered = false, holdDue = 0, holdOver = true, pending = false, preview = false, attached = false,
 	queued = false, show = false, stopped = false, where = false, serial = 0, walks = 0, events = nil,
@@ -505,10 +510,10 @@ local function OverlayPlace(o)
 	return true
 end
 
-local function Place()
-	if not ui then
-		return
-	end
+-- laid: on the ring while it has one, else on its own place (home: its
+-- standard place, the store passed by -- the mover's default, Edit Layout's
+-- reset before it is saved)
+local function Hang(home)
 	local holder = ui.holder
 	if ui.entry and ui.entry.moving then
 		return   -- (being dragged: laid again when let go)
@@ -534,7 +539,7 @@ local function Place()
 		holder:SetPoint(p.point, region, p.rel, p.dx * gap, p.dy * gap)
 	else
 		S.attached = false
-		if not MelloUI:RestorePosition(MOVER_KEY, holder) then
+		if home or not MelloUI:RestorePosition(MOVER_KEY, holder) then
 			Home(holder)
 		end
 	end
@@ -543,6 +548,20 @@ local function Place()
 	if o and o:IsShown() and not OverlayPlace(o) and not InCombatLockdown() then
 		o:Hide()
 	end
+end
+
+-- Laid where it belongs; not while Edit Layout holds a change of it (its
+-- session keeps it where the player put it): laid again when the session
+-- lets go of it (Save, Discard: 'mover' "released", Build's listener)
+local function Place()
+	if not ui then
+		return
+	end
+	local LS = MelloUI.LayoutSession
+	if ui.entry and LS and LS.Holds(ui.entry) then
+		return
+	end
+	Hang(false)
 end
 
 --------------------------------------------------------------------------------
@@ -684,7 +703,7 @@ local function Attach(key)
 		return
 	end
 	if S.preview then
-		Detach()   -- (dragged by the holder under it: nothing over it)
+		Detach()   -- (the sample: nothing to target; its plate lies over it)
 		return
 	end
 	local name = TargetName(key)
@@ -760,7 +779,6 @@ local function Mini(i)
 	end
 	m = W.RoundIcon(ui.holder, MINI, nil, ROUND_OPTS)
 	m:Hide()
-	m:EnableMouse(not S.preview)   -- (the preview's drag: the holder's)
 	Perf.SetScript(m, "OnClick", Click)
 	Perf.SetScript(m, "OnEnter", Enter)
 	Perf.SetScript(m, "OnLeave", Leave)
@@ -824,8 +842,33 @@ local function ForgetFree()
 	MelloUI:ForgetPosition(MOVER_KEY)
 end
 
-local function PlaceAgain()
-	Place()
+-- the mover's default: its standard place, laid whether Edit Layout holds
+-- it or not (its Reset's preview; a first place at the registration)
+local function PlaceHome()
+	if ui then
+		Hang(true)
+	end
+end
+
+-- Edit Layout's plate: locked while the ring places it
+local function Locked()
+	if S.attached then
+		return TEXT.locked
+	end
+	return nil
+end
+
+-- live while the Reminders module is on (its users need it: Restock's too)
+local function RemindersOn()
+	local module = MelloUI:GetModule(SETTINGS)
+	return module ~= nil and module.isEnabled and true or false
+end
+
+-- Edit Layout's session let go of it: laid again where it now belongs
+local function OnMover(what, entry)
+	if what == "released" and ui and entry == ui.entry then
+		Place()
+	end
 end
 
 Build = function()
@@ -888,12 +931,13 @@ Build = function()
 	ui.band = MelloUI.Shade:Band(lf, { alpha = 0.7, feather = 16 })
 	ui.band:Anchor(label, 8, 4)
 	AnchorLabel()
-	-- its own place, on the one mover (used while the ring is hidden). The
-	-- holder is the drag handle: the mover takes a handle's mouse while the
-	-- windows are locked, and the buttons keep theirs (they let it go only
-	-- for the preview's drag)
+	-- its own place, on the one mover (used while the ring is hidden): moved
+	-- in Edit Layout (its plate, locked while the ring places it), never by a
+	-- drag of its own -- the buttons keep their mouse
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, anchor = "CENTER", save = SaveFree,
-		reset = ForgetFree, default = PlaceAgain })
+		reset = ForgetFree, default = PlaceHome, label = "Reminders", page = SETTINGS, when = RemindersOn,
+		locked = Locked })
+	MelloUI:On("mover", OnMover, OWNER)
 	-- placed again when the player frame shows or hides, the kit's unit
 	-- frames switch, or Edit Mode closes (hooks on the game's frame)
 	local pf = _G.PlayerFrame
@@ -1129,10 +1173,11 @@ local function Resume()
 	Watch()
 end
 
--- the sample while the windows are unlocked and it has its own place (no
--- ring to hang from), so it can be dragged
+-- the sample while Edit Layout shows and it has its own place (no ring to
+-- hang from), so its plate can be dragged (the plate over it takes the
+-- mouse: the buttons keep theirs)
 Preview = function()
-	local want = S.login and MelloUI:WindowsUnlocked() and not Anchor() and true or false
+	local want = S.login and MelloUI:EditingLayout() and RemindersOn() and not Anchor() and true or false
 	if want == S.preview then
 		return
 	end
@@ -1141,12 +1186,6 @@ Preview = function()
 		Build()
 	elseif not ui then
 		return
-	end
-	-- the buttons let the mouse go while it is dragged (the holder under
-	-- them is the handle), and take it again after
-	ui.button:EnableMouse(not want)
-	for i = 1, #ui.minis do
-		ui.minis[i]:EnableMouse(not want)
 	end
 	if want then
 		Detach()
@@ -1608,7 +1647,7 @@ local function OnEvent(_, event)
 	end
 end
 
--- the Reminders settings, the windows unlocked, a profile load
+-- the Reminders settings, Edit Layout shown or not, a profile load
 local function OnSetting(module, key)
 	if module == SETTINGS then
 		if key == "place" then
@@ -1629,15 +1668,12 @@ local function OnSetting(module, key)
 		elseif type(key) == "string" and key:sub(1, 7) == "remind_" then
 			Queue(key:sub(8), "setting")
 		end
-	elseif module == "UIModifications" and key == "unlock" then
-		Preview()
 	end
 end
 
-local function OnModule(name)
-	if name == "UIModifications" then
-		Preview()
-	end
+-- Edit Layout shown, paused or closed: the sample with it
+local function OnEditLayout()
+	Preview()
 end
 
 local function OnRestart()
@@ -1664,7 +1700,7 @@ local function EnsureEvents()
 	Perf.SetScript(f, "OnEvent", OnEvent)
 	S.events = f
 	MelloUI:On("setting", OnSetting, OWNER)
-	MelloUI:On("module", OnModule, OWNER)
+	MelloUI:On("editlayout", OnEditLayout, OWNER)
 	MelloUI:On("restart", OnRestart, OWNER)
 	-- registered after the login pass (a module switched on later): the
 	-- world is already entered, so the login moment comes by itself
@@ -1884,6 +1920,19 @@ do
 			fn(key, st.active and true or false, st.up)
 		end
 	end
+end
+
+-- Edit Layout's source (Core's list; run at each of its opens and resumes,
+-- never at login): the widget made, so its place can be set before any
+-- reminder came up -- while the Reminders module is on and a reminder is
+-- registered (its users are there). Built once; nothing new after that.
+local function MoverSource()
+	if not ui and S.events and RemindersOn() then
+		Build()
+	end
+end
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(MoverSource)
 end
 
 -- for tests and dumps (read only): the widget once made, the moment's state,

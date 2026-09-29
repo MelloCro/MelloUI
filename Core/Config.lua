@@ -6,33 +6,44 @@
 -- Nothing is registered with the Blizzard Settings panel, so there is no
 -- entry under Options > AddOns.
 --
--- Layout (the approved sketch of 2026-09-24; the configurator build):
+-- Layout (the approved sketch of 2026-09-24; the rebuild of 0.15.0, the
+-- user's decisions of 2026-09-27/28):
 --   the shell           Kit:OwnWindow (Modules/KitWindow.lua): the emblem as a
 --                       crest on the top rail, the short "MelloUI" plate under
 --                       it, the drag strip, the fit, Escape, the sounds, the
---                       look switch (the kit or the plain palette look)
---   top bar             Layout (Unlock the Windows, Auto Snapping, Reset
---                       positions) on the left; Install..., Dynamic UI
---                       Modification and close on the right
---   side list           the pages and shortcuts by group (W.NavRail), made
---                       from the registry's `group` and `navOrder`
---   page                header (icon, title, flavour, Enabled switch, Defaults)
---                       tabs built from the module's option headers
---                       a striped ledger of options: label left, control right
+--                       look switch (the kit or the plain palette look), and
+--                       the calm ground (one flat mainWindow ground inside a
+--                       band of the stone)
+--   top bar             Install..., Edit Layout (while it is there) and
+--                       close, on the right (Edit Layout, Core/EditLayout.lua,
+--                       took the old Layout group's place in 0.15.0: the one
+--                       place to move things)
+--   side list           the pages in groups that fold (W.NavRail), from
+--                       Core/ConfigLayout.lua's `groups`; the search box on it
+--   page                header (icon, title, flavour, the page's switch,
+--                       Reset this page; a picker page: its picker, Copy
+--                       from, a live preview; Reset and Copy ask first),
+--                       its tabs, and on each tab the
+--                       sections in their fixed order (General, Look, Text,
+--                       Layout, Behaviour, Sound, Advanced) as a striped
+--                       ledger: label left, control right
 --   Home                What's new and Your setup side by side, Help under them
 --
--- Module options are declared as a list, e.g.
---   options = {
---     { type = "header", name = "Components" },          -- becomes a tab
+-- Where every option lives is Core/ConfigLayout.lua's data (MelloUI.
+-- ConfigLayout): one R line places a module's setting on a page, a tab and a
+-- section, once; a Link line names it on another page (its value and a
+-- button to its one place). The modules keep their option schemas as the
+-- definitions, e.g.
 --     { type = "toggle", key = "unitframes", name = "Unit Frames", desc = "..." },
 --     { type = "slider", key = "shade", name = "Brightness", min = 0, max = 1, step = 0.05, percent = true },
 --     { type = "dropdown", key = "style", name = "Style", values = { {value="a", label="A"}, ... } },
 --     { type = "button", name = "Click, light", hint = "checkboxes, tabs", text = "Play", onClick = function(module, db) ... end },
---   }
--- A module's side-list entry and page header show the `icon` (texture path)
--- and `flavour` (one line) it gives RegisterModule (the registry: audit,
--- 2026-09-24, rank 4 -- they were a hand list here), else a question mark and
--- its description.
+-- with `parent` / `requires` (a switch of the same module the row hangs on),
+-- `new` (the update it came with: its New tag), `free` (applied with UI
+-- Modifications off), `get` (a value read another way) and `relist` (a bus
+-- topic its choices are made again on). A page's side-list entry and header
+-- show the `icon` and `flavour` of its layout entry, or of the module it
+-- names ("module:<Name>", the registry's), else a question mark.
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -70,11 +81,9 @@ if not W then
 	return
 end
 
+-- (one size: the 1080 wide window UI Modifications' eight tabs needed went
+-- with them in 0.15.0; a page's tab row wraps onto a second row, LayTabs)
 local WINDOW_WIDTH, WINDOW_HEIGHT = 1000, 760
--- The width when UI Modifications' tabs would not fit one row at the Font
--- Style in use (user, 2026-09-25): measured at the first open, the
--- page area gains the 80 (TabRowFits)
-local WIDE_WIDTH = 1080
 -- the parts, in UI units from the window's edges (the approved sketch)
 local EDGE = 16                    -- the top bar's and the side list's margin
 local BAR_TOP, BAR_HEIGHT = -70, 34   -- the top bar, under the drag strip (the shell's grab ends at BAR_TOP)
@@ -121,6 +130,20 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- lines: Home shows the newest version in a card one column wide, beside
 -- Your setup and above Help.
 local CHANGELOG = {
+	{ version = "0.15.0", lines = {
+		"Gamepad UI: no more freezes on Escape, Options or the world map, and no \"blocked\" popup. If that popup turned MelloUI off, tick it again in the AddOns list.",
+		"An objective that needs an item first now leads you to where the item comes from, with the arrow, the World Marker and a \"First: ...\" line in the Quest Tracker.",
+		"World Marker: a beacon with the distance when far away, a pin on the spot within 100 yards, out of the way inside a quest's area. The first route says Loading navigation.",
+		"Active look: whatever is on, checked or selected (your stance or form, auto attack, an open bag, the selected tab) wears one thick gold ring with a soft glow.",
+		"Nameplates show the level on a dark disc. Elites, rares and bosses wear metal marks on nameplates and on the target and focus frames: gold crown, silver star, red-bronze skull.",
+		"Minimap: its normal size again, with Width and Height sliders; the Quest Tracker hangs right under the map, as wide as it. Mello's layout from before? Press Fit to this screen once.",
+		"This window is rebuilt in a calmer look: groups in the side list, every option in one place, flat buttons, sliders you can type a number into, and search that lights the row.",
+		"Edit Layout (/mello edit): drag anything, the wheel resizes, right-click for exact numbers, and it snaps to its neighbours. Nothing sticks until you Save; action bars go to Edit Mode.",
+		"The Quest Log and the Quest List match: the same rows, fonts, round bullets and Classic or Forever stamps, in dark ink on parchment.",
+		"A new voice pack, MelloUI_VoicePack, voices every quest, greeting and book, one voice per NPC. It is a separate download that replaces the old pack.",
+		"Books, letters and plaques are read aloud page by page (Read Books And Letters Aloud). The Quest List has the 19 quests with Test in their names back.",
+		"/mello on its own opens this window again. New files: restart the game once after updating.",
+	} },
 	{ version = "0.14.0", lines = {
 		"Six new palettes, each with its own painted kit: Obsidian, Royal Azure and Fel Ember, each with a Vibrant version. Pick one on Your setup here or in Dynamic UI Modification.",
 		"A soft shade round the painted kit (UI Shade, UI Modifications). Centre Text Shade: red errors, quest lines, raid warnings and boss emotes on the zone text's shade (Tweaks).",
@@ -195,7 +218,7 @@ local LINKS = {
 -- the addon stay out of this list (/mello help prints a few of them below it).
 local COMMANDS = {
 	{ "/mello", "open or close this window" },
-	{ "/mello <module>", "open a module's page" },
+	{ "/mello <page>", "open a page by its name (a module's name works too)" },
 	{ "/mello list", "modules and their state" },
 	{ "/mello enable <module>", "turn a module on" },
 	{ "/mello disable <module>", "turn a module off" },
@@ -203,6 +226,7 @@ local COMMANDS = {
 	{ "/mello status", "where your settings came from, and their backup" },
 	{ "/mello backup ...", "Macro Backup: on, off, restore or delete the copy" },
 	{ "/mello install", "set MelloUI up: a setup, your screen, keep or go back" },
+	{ "/mello edit", "Edit Layout: move and resize the interface" },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
 	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },
@@ -242,11 +266,6 @@ local currentPage = nil
 -- Drawing helpers
 --------------------------------------------------------------------------------
 
--- (a text's colour by its role's palette key)
-local function Colour(fs, key)
-	W.Paint(fs, key, "text")
-end
-
 -- Text(parent, font, text, key), Solid(parent, layer, key, alpha): the
 -- widgets' (colours by key)
 local Text, Solid = W.Text, W.Solid
@@ -275,10 +294,6 @@ local function ModuleByName(name)
 	end
 	return nil
 end
-
--- a tooltip: the title in gold, the body in the text colour (the palette
--- looked up when shown)
-local ShowTooltip = W.ShowTooltip
 
 -- The handlers the pages share (user, 2026-09-24: a page of two hundred rows
 -- made a dozen functions per row, each wrapped and named by the profiler as
@@ -316,9 +331,8 @@ local SKIN = nil
 -- A framed icon (the widgets' IconBox): the client's action button bevel
 -- around a rounded icon, grey at rest, gold when selected, the text colour
 -- while hovered; with the kit, the rim every window's buttons wear (user,
--- 2026-09-24: the icons follow the Dynamic UI Modification settings) -- UI
--- Modifications' Button Border, swapped live with it, in the Kit Colours
--- look -- showing the box's states: gold (checked) for the current page,
+-- 2026-09-24: the icons follow the look's settings) -- the Button Border
+-- (Look > Borders), swapped live with it, in the Kit Colours look -- showing the box's states: gold (checked) for the current page,
 -- pressed while held, hover. box:SetGlow(on): a pulsing gold glow over the
 -- rim for an important module (Anim:Pulse; a still glow under Reduce Motion).
 local function IconBox(parent, size, texture)
@@ -346,26 +360,27 @@ local ROW_HOVER = { look = "palette", strength = 0.5 }
 --------------------------------------------------------------------------------
 -- Sections and rows
 --
--- A page owns sections; a section is a frame holding rows. Sections map to
--- tabs when there is more than one.
+-- A page owns sections; a section is a frame holding rows, one per tab when
+-- there is more than one. On an element page a tab's section lays its rows
+-- under headings (W.Header), one per section of the fixed order (the
+-- layout's SECTIONS: General, Look, Text, ...), 8 px apart.
 --------------------------------------------------------------------------------
 
 local SelectPage, NavFollow  -- forward declarations
 
-local SEC_INSET = 10   -- the rows' margin inside a section's L1 box (kit)
+local SEC_INSET = 10   -- the rows' margin inside a section's panel
 local INDENT = 22      -- a sub-option's label, per level, right of its parent's
+local PANEL_ON = { on = true }   -- (W.Panel's options: the section is its own panel)
 
--- L1: the single rail with the list-box stone around a section. Made with
--- the section's first rows (a tab not open yet costs nothing until its rows
--- are made: user, 2026-09-24), or at once for a section made whole
-local function SectionBox(sec)
-	if sec.needsBox then
-		sec.needsBox = nil
-		SKIN:Replace(SKIN:Anchor(sec), { as = "Professions-background-summarylist", rect = sec, parent = sec, level = -1 })
-		-- depth (user, 2026-09-24: "everything is just too brown ... add the
-		-- checkbox section a darker tone from our color palette"): the L1
-		-- box lays the palette's inner panel over its stone itself (its
-		-- rule's `dim`, WINDOW-RULES 2e), the rows on that darker ground
+-- The section's panel (0.15.0, the cleaner look the user picked: W.Panel, a
+-- flat inner panel in a 1 px edge on the calm ground, in both looks; the
+-- kit's L1 list box before). Made with the section's first rows (a tab not
+-- open yet costs nothing until its rows are made: user, 2026-09-24), or at
+-- once for a section made whole
+local function SectionPanel(sec)
+	if sec.needsPanel then
+		sec.needsPanel = nil
+		W.Panel(sec, PANEL_ON)
 	end
 end
 
@@ -373,13 +388,13 @@ local function NewSection(page, name)
 	local sec = CreateFrame("Frame", nil, page)
 	sec.name = name
 	sec.page = page
-	sec.y = KIT and SEC_INSET or 0
+	sec.y = SEC_INSET
 	sec.rows = 0
 	sec.refreshers = {}
 	sec:SetWidth(page.width - PAD * 2)
 	sec:SetHeight(10)
 	sec:Hide()
-	sec.needsBox = KIT and true or nil   -- (SectionBox)
+	sec.needsPanel = true   -- (SectionPanel)
 	function sec:Refresh()
 		for _, fn in ipairs(self.refreshers) do
 			fn()
@@ -389,7 +404,7 @@ local function NewSection(page, name)
 	-- their heights are known: the scroll bar does not jump as they come)
 	function sec:Finish()
 		local y = (self.jobs and self.plannedY) or self.y
-		self:SetHeight(math.max(y + (KIT and SEC_INSET or 0), 10))
+		self:SetHeight(math.max(y + SEC_INSET, 10))
 	end
 	page.sections[#page.sections + 1] = sec
 	return sec
@@ -424,9 +439,6 @@ local FIRST_BUDGET = 3
 -- The deadline for up to `ms` of rows now, less those this frame has made;
 -- nil when none are left or rows are under way. EndRows counts them.
 local BeginRows, EndRows = W.RowBudget.Begin, W.RowBudget.End
-
--- a row's height by its option type (the builders below make them so)
-local ROW_HEIGHTS = { toggle = ROW_HEIGHT, slider = SLIDER_ROW_HEIGHT, dropdown = ROW_HEIGHT, button = ROW_HEIGHT, subheader = ROW_HEIGHT - 6 }
 
 -- pages with rows still to make, in the order they were opened: a list per
 -- look, as the pages (pagesBy), so the set not on show is not worked on
@@ -531,7 +543,7 @@ local function MakeRows(sec, maxY, deadline, minY)
 		end
 		return false
 	end
-	SectionBox(sec)
+	SectionPanel(sec)
 	local page = sec.page
 	local refreshers = sec.refreshers
 	local first = #refreshers + 1
@@ -718,15 +730,15 @@ local function Kick()
 	end
 end
 
--- A ledger row (W.Row): stripe, label, optional hint, tooltip with the
--- description; with the kit a faint band on every other row (CR4, user
--- 2026-09-21) and the plate's hover look on the row under the mouse only,
--- plain the palette's hover wash and a line under it. The label and the hint
--- end 10 px left of the row's control, cut there, the full text in the
--- tooltip (no text under a control). A row that sleeps until a switch is on
--- (`sec.gate` while it is made, W.Gate) is dimmed, and its hint slot says
--- which switch wakes it, so it keeps its height. The section keeps where the
--- next row goes (`y`) and how many it holds (`rows`).
+-- A ledger row (W.Row and the typed rows): stripe, label, optional hint,
+-- tooltip with the description; with the kit a faint band on every other row
+-- (CR4, user 2026-09-21) and the plate's hover look on the row under the
+-- mouse only, plain the palette's hover wash and a line under it. The label
+-- and the hint end 10 px left of the row's control, cut there, the full text
+-- in the tooltip (no text under a control). A row that sleeps until a switch
+-- is on (`sec.gate` while it is made, W.Gate) is dimmed, and its hint slot
+-- says which switch wakes it, so it keeps its height. The section keeps
+-- where the next row goes (`y`) and how many it holds (`rows`).
 local ROW = {}   -- the rows' options (one table, filled per row)
 -- `new`: the update the row's option came with (its New tag, W.Row's
 -- opts.new): the schema's `opt.new`, or a hand-built row's (a named table's
@@ -734,12 +746,12 @@ local ROW = {}   -- the rows' options (one table, filled per row)
 local function RowOpts(sec, new)
 	ROW.skin = SKIN
 	ROW.new = new
-	ROW.inset = KIT and SEC_INSET or 0
+	ROW.inset = SEC_INSET
 	ROW.indent = (sec.indent or 0) * INDENT
 	ROW.zebra = (KIT and sec.rows % 2 == 0) and true or false
 	ROW.line = not KIT
 	ROW.look = KIT and "plate" or "palette"
-	ROW.gate = sec.gate
+	ROW.gate, ROW.onCover = sec.gate, nil
 	ROW.labelKey, ROW.hintKey = nil, nil
 	return ROW
 end
@@ -751,125 +763,15 @@ local function Placed(sec, row, height)
 	return row
 end
 
-local function Row(sec, height, label, hint, desc)
-	return Placed(sec, W.Row(sec, sec.y, height, label, hint, desc, RowOpts(sec)), height)
-end
-
--- a row's refresh kept on the section: its control's value (get again) and,
--- for a row that sleeps until a switch is on, its gate (row:Refresh)
-local function Refreshes(sec, row)
-	sec.refreshers[#sec.refreshers + 1] = function() row:Refresh() end
-end
-
--- the typed rows (W.ToggleRow and the others: the row, its control on the
--- right taking get / set, the row's controls dressed by the kit's sweep)
--- on a module's settings. The important switch (the reskin) has its label
--- and its IMPORTANT hint in the palette's gold.
-local function AddToggle(sec, module, db, opt)
-	local key = opt.key
-	local o = RowOpts(sec, opt.new)
-	if opt.important then
-		o.labelKey, o.hintKey = C.accent, C.accent
-	end
-	local row = W.ToggleRow(sec, sec.y, opt.name, opt.important and "IMPORTANT" or opt.hint, opt.desc,
-		function() return db[key] end,
-		function(value)
-			MelloUI:NotifySettingChanged(module.name, key, value)
-			-- the rows that hang on this switch wake or grey at once
-			sec:Refresh()
-		end,
-		o)
-	o.labelKey, o.hintKey = nil, nil
-	Refreshes(sec, row)
-	return Placed(sec, row, ROW_HEIGHT)
-end
-
-local function AddSlider(sec, module, db, opt)
-	local key = opt.key
-	local o = RowOpts(sec, opt.new)
-	o.min, o.max, o.step, o.percent, o.format = opt.min, opt.max, opt.step, opt.percent, opt.format
-	local row = W.SliderRow(sec, sec.y, opt.name, opt.hint, opt.desc,
-		function() return db[key] end,
-		function(value) MelloUI:NotifySettingChanged(module.name, key, value) end,
-		o)
-	o.min, o.max, o.step, o.percent, o.format = nil, nil, nil, nil, nil
-	Refreshes(sec, row)
-	return Placed(sec, row, SLIDER_ROW_HEIGHT)
-end
-
-local function AddDropdown(sec, module, db, opt)
-	local key = opt.key
-	local o = RowOpts(sec, opt.new)
-	local row = W.DropdownRow(sec, sec.y, opt.name, opt.hint, opt.desc,
-		function() return db[key] end,
-		function(value) MelloUI:NotifySettingChanged(module.name, key, value) end,
-		opt.values, o)
-	Refreshes(sec, row)
-	return Placed(sec, row, ROW_HEIGHT)
-end
-
 -- A row with a button on the right (user, 2026-09-22: "a preview button on
--- each sound effect"): the label, a grey hint, and the kit's red plate
--- button with `opt.text`; `opt.onClick(module, db)` on the click.
+-- each sound effect"): the label, a grey hint, and a flat button with
+-- `opt.text`; `opt.onClick(module, db)` on the click.
 local RowButtonClick = Shared("OnClick on the configurator's row buttons", function(self)
 	local opt = self.melloOpt
 	if opt.onClick then
-		opt.onClick(self.melloModule, self.melloDb)
+		opt.onClick(self.melloModule, MelloUI:GetModuleDB(self.melloModule.name))
 	end
 end, "script")
-
-local function AddButton(sec, module, db, opt)
-	local o = RowOpts(sec, opt.new)
-	o.width = opt.width
-	local row, button = W.ButtonRow(sec, sec.y, opt.name, opt.hint, opt.desc, opt.text or "Run", RowButtonClick, o)
-	o.width = nil
-	button.melloOpt, button.melloModule, button.melloDb = opt, module, db
-	if sec.gate then
-		Refreshes(sec, row)   -- (its gate: a button has no value of its own to take again)
-	end
-	return Placed(sec, row, ROW_HEIGHT)
-end
-
--- A heading inside a tab (a `header` opens a new tab; the reskin's
--- "Windows" / "HUD" groups and a folded module's own headers stay inside
--- their area's tab — user, 2026-09-21)
-local function AddSubheader(sec, module, db, opt)
-	local row = Row(sec, ROW_HEIGHT - 6, opt.name, nil, nil)
-	Colour(row.label, C.accent)
-	if KIT then
-		-- SH3 (user, 2026-09-21): the header plate, the text past its gem cap
-		-- (no band, no hover plate on a heading)
-		row:EnableMouse(false)
-		if row.band then
-			row.band:Hide()
-		end
-		row.hover = nil
-		SKIN:Replace(SKIN:Anchor(row), { as = "GuildFrame-Header", rect = row })
-		row.label:SetPoint("LEFT", 34, 0)
-		return
-	end
-	row.label:SetPoint("LEFT", 8, -4)
-	local line = Solid(row, "ARTWORK", C.line, 1)
-	line:SetPoint("BOTTOMLEFT", 8, 0)
-	line:SetPoint("BOTTOMRIGHT", -8, 0)
-end
-
-local builders = {
-	toggle = AddToggle,
-	slider = AddSlider,
-	dropdown = AddDropdown,
-	subheader = AddSubheader,
-	button = AddButton,
-}
-
--- The settings that also change from outside the configurator while it is
--- open, by module and key: the game's own Background slider of a chat window
--- sets Chat's opacity (Modules/Chat.lua). Their rows are kept on their page
--- as they are made (page.follow) and brought in line on the frame after such
--- a change, those rows only (FollowRows): the configurator's own slider
--- drags fire the same topic, and a whole tab refreshed for each would be work
--- for nothing.
-local FOLLOW = { Chat = { windowAlpha = true, windowAlphaOn = true } }
 
 --------------------------------------------------------------------------------
 -- Pages
@@ -898,29 +800,27 @@ local ALPHA_ONLY_ROWS = 40
 local HEADER_ICON = 58   -- the page header's framed icon (the approved sketch)
 
 -- a page header's height from its parts as they are now (the title, the
--- flavour as it wraps, the icon), down to where the tabs or the first
--- section start
+-- flavour as it wraps, the icon, an element page's live preview), down to
+-- where the tabs or the first section start; a picker page's picker line
+-- under them (its place: page.pickerY)
 local function HeaderHeight(page)
-	return PAD + math.max(HEADER_ICON, 26 + 6 + WrappedHeight(page.flavour, 14)) + 18
+	local y = PAD + math.max(HEADER_ICON, 26 + 6 + WrappedHeight(page.flavour, 14), page.previewH or 0)
+	if page.pickerLineH then
+		page.pickerY = y + 8
+		y = page.pickerY + page.pickerLineH
+	end
+	return y + 18
 end
 
 -- a page's tab: its section's page opens it
-local function TabSetSelected(self, selected)
-	if selected then
-		PanelTemplates_SelectTab(self)
-	else
-		PanelTemplates_DeselectTab(self)
-	end
-end
 local TabClick = Shared("OnClick on the configurator's tabs", function(self)
 	MelloUI:PlayUISound("tab")
 	local page = self.section.page
 	local changed = page.current ~= self.section
 	page:Select(self.section, true)
-	-- (a tab changed by hand: the side list's marker leaves the shortcut that
-	-- opened the page for the page's own entry)
+	-- (an open picture flyout closes with the tab it belongs to)
 	if changed then
-		NavFollow(true)
+		W.ClosePictureMenu(window)
 	end
 end, "script")
 
@@ -965,6 +865,7 @@ local function NewPage(name, width)
 	building[#building + 1] = page   -- its rows still to make, if any (the worker drops it when none are)
 
 	function page:Refresh()
+		self.stale = nil
 		for _, fn in ipairs(self.refreshers) do
 			fn()
 		end
@@ -1013,23 +914,12 @@ local function NewPage(name, width)
 		Kick()
 	end
 
-	-- A deep link (a side-list shortcut, /mello fonts): the tab holding the
-	-- option `key` opened, then the page scrolled so its row sits just under
-	-- the top of the view -- a glide, or at once (`instant`). The rows in
-	-- view there come through the scroll hook within the frame's one budget
-	-- (RowsInView; what it leaves, the worker's first work). `animate`: the
-	-- tab cross-fades (the page was on show already). False when the page
-	-- has no such option.
-	function page:Reveal(key, instant, animate)
-		local at = self.anchors and self.anchors[key]
-		if not at then
-			return false
-		end
-		self:RevealAt(at.sec, at.y, instant, animate)
-		return true
-	end
-	-- (the same for a place known by its tab and its y: the search's jump to
-	-- any option's row, page.optSec / page.optY)
+	-- A deep link (a search result, a link row, a sleeping row's switch): the
+	-- tab `sec` opened, then the page scrolled so the row at `y` (the tab's
+	-- own units) sits just under the top of the view -- a glide, or at once
+	-- (`instant`). The rows in view there come through the scroll hook within
+	-- the frame's one budget (RowsInView; what it leaves, the worker's first
+	-- work). `animate`: the tab cross-fades (the page was on show already).
 	function page:RevealAt(sec, y, instant, animate)
 		if self.current ~= sec then
 			self:Select(sec, animate)
@@ -1037,9 +927,9 @@ local function NewPage(name, width)
 		self.pager:ScrollTo(math.max(0, self.headerHeight + y - 8), instant)
 	end
 
-	-- The header's panel down to just above the tabs / the first section, the
-	-- tab row (wrapped onto a second row where the tabs do not fit the
-	-- section's width) and the sections under it, each by one TOPLEFT point.
+	-- A picker page's picker line under the header's texts, the tab row
+	-- (wrapped onto a second row where the tabs do not fit the section's
+	-- width) and the sections under it, each by one TOPLEFT point.
 	-- At Finish (`measured`: the tabs were just sized), and again after a
 	-- font change: the 'fonts' topic marks the built pages (tabsStale), laid
 	-- again on their next show or tab click, the page on show at once. The
@@ -1051,8 +941,11 @@ local function NewPage(name, width)
 			self.baseHeight = HeaderHeight(self)
 		end
 		local y = self.baseHeight
-		if self.headerShade then
-			self.headerShade:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -(PAD - 10), -(y - 8))
+		local line = self.pickerLine
+		if line and self.pickerY then
+			line:ClearAllPoints()
+			line:SetPoint("TOPLEFT", self, "TOPLEFT", PAD + HEADER_ICON + 14, -self.pickerY)
+			line:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
 		end
 		local tabs = self.tabs
 		if tabs then
@@ -1102,22 +995,20 @@ local function NewPage(name, width)
 				tab:SetText(sec.name)
 				PanelTemplates_TabResize(tab, 8)
 				tab.section = sec
-				if KIT and KIT.SkinPanelTab then
-					KIT:SkinPanelTab(tab, SKIN.replace, SKIN.skin)
-				end
-				tab.SetSelected = TabSetSelected
+				-- (flat in both looks, 0.15.0; the selected one wears the
+				-- kit's active look in the kit's: tab:SetSelected)
+				W.FlatTab(tab, SKIN)
 				Perf.SetScript(tab, "OnClick", TabClick)
 				-- a tab holding an option new in the running update: its New
 				-- tag on the tab's top edge (W.Badge)
 				tab.newTag = sec.hasNew and W.Badge(tab, true) or nil
 				self.tabs[#self.tabs + 1] = tab
 			end
-			if not KIT then
-				local line = Solid(self, "ARTWORK", C.accent2, 1)
-				line:SetHeight(1)
-				line:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
-				self.tabLine = line
-			end
+			-- (the flat tabs' line, in both looks)
+			local line = Solid(self, "ARTWORK", C.accent2, 1)
+			line:SetHeight(1)
+			line:SetPoint("RIGHT", self, "RIGHT", -PAD, 0)
+			self.tabLine = line
 		end
 		self:LayTabs(true)
 		local most = 0   -- (the rows of its largest tab)
@@ -1125,7 +1016,7 @@ local function NewPage(name, width)
 			sec:SetWidth(self.width - PAD * 2)
 			sec:Finish()
 			if not sec.jobs then
-				SectionBox(sec)   -- (a tab with no rows to make)
+				SectionPanel(sec)   -- (a tab with no rows to make)
 			end
 			local rows = sec.jobs and sec.plannedRows or sec.rows
 			if rows > most then
@@ -1141,10 +1032,12 @@ local function NewPage(name, width)
 end
 
 -- Page header: framed icon (58, the approved sketch), title in the title face,
--- flavour line and, for modules, the Enabled switch and the Defaults button.
--- `right`: the width kept free on the right (the module's switch and
--- Defaults, 200; Home's Tutorial button).
-local function BuildPageHeader(page, icon, title, flavour, module, right)
+-- the flavour line under it. `new`: the update a brand-new page came with (its
+-- New tag after the title); `right`: the width kept free on the right (an
+-- element page's switch and Reset this page, 200; a live preview's; Home's
+-- Tutorial button). The header lies on the calm ground (0.15.0: the flat
+-- mainWindow reads at 8:1, so no dark panel is laid under it any more).
+local function BuildPageHeader(page, icon, title, flavour, new, right)
 	local box = IconBox(page, HEADER_ICON, icon)
 	box:SetPoint("TOPLEFT", PAD, -PAD)
 	page.headerBox = box   -- (an important module's pulses while its page is open: SelectPage)
@@ -1155,82 +1048,15 @@ local function BuildPageHeader(page, icon, title, flavour, module, right)
 		KIT:TitleFont(titleFS, true)
 	end
 	page.titleText = titleFS
-	-- a brand-new module's page (its registry `new`): its New tag after the title
-	page.titleTag = module and module.new and W.NewTag(page, titleFS, module.new) or nil
+	-- a brand-new page's module (its registry `new`): its New tag after the title
+	page.titleTag = new and W.NewTag(page, titleFS, new) or nil
 
-	local rightWidth = right or (module and 200 or 0)
 	local flavourFS = Text(page, "GameFontHighlightSmall", nil, C.sub)
-	if KIT then
-		-- on the page stone the dim grey drowned (user, 2026-09-21): light
-		-- text with a thin outline
-		flavourFS:SetFontObject("GameFontHighlightSmallOutline")
-		Colour(flavourFS, C.text)
-	end
 	flavourFS:SetPoint("TOPLEFT", titleFS, "BOTTOMLEFT", 2, -6)
-	flavourFS:SetWidth(page.width - PAD * 2 - (HEADER_ICON + 14) - rightWidth)
+	flavourFS:SetWidth(page.width - PAD * 2 - (HEADER_ICON + 14) - (right or 0))
 	flavourFS:SetWordWrap(true)
 	flavourFS:SetText(flavour)
 	page.flavour = flavourFS
-	if KIT then
-		-- the header on the palette's inner panel (user, 2026-09-24: "apply
-		-- the eye strain rule to all existing windows"; WINDOW-RULES 2e): the
-		-- title, the flavour, the status line AND the switches' labels on the
-		-- right ("Enabled", "Unlock the Windows") lay on the plain brown --
-		-- the black backing that faded out to the right (2026-09-22) left the
-		-- right-hand labels on the stone. A page region under everything
-		-- else, across the header's whole width; its bottom follows the
-		-- header's final height (page:Finish)
-		local shade = page:CreateTexture(nil, "BACKGROUND", nil, 1)
-		W.Paint(shade, C.band, "fill", 0.8)
-		shade:SetPoint("TOPLEFT", page, "TOPLEFT", PAD - 10, -(PAD - 10))
-		page.headerShade = shade
-	end
-
-	if module then
-		local lbl = Text(page, "GameFontNormal", "Enabled", C.text)
-		local switch = W.Switch(page, function() return MelloUI:IsModuleEnabled(module.name) end, function(value)
-			MelloUI:SetModuleEnabled(module.name, value)
-			MelloUI:RefreshConfig()
-		end, SwitchOpts())
-		switch:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
-		lbl:SetPoint("RIGHT", switch, "LEFT", -4, 0)
-		page.switch = switch
-		local defaults = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-		defaults:SetSize(90, 22)
-		defaults:SetPoint("TOPRIGHT", switch, "BOTTOMRIGHT", 0, -10)
-		defaults:SetText("Defaults")
-		Perf.SetScript(defaults, "OnClick", function()
-			-- (a module whose keep list is every key, "^." (Dark Mode), keeps
-			-- the player's own preferences, not data: Defaults puts them back)
-			local keep = module.keep
-			local preferences = type(keep) == "table" and #keep == 1 and keep[1] == "^."
-			for key, value in pairs(module.defaults) do
-				-- a character's own data and one-time steps stay (the module's
-				-- keep list: flight points, borrowed game settings, "layout
-				-- already applied"); Defaults puts back settings only
-				if preferences or not MelloUI:IsPersonalKey(module.name, key) then
-					if type(value) == "table" then
-						-- a copy: the live table must not BE the defaults table
-						-- (the window positions were written into it)
-						local copy = {}
-						for k, v in pairs(value) do
-							copy[k] = v
-						end
-						value = copy
-					end
-					MelloUI:NotifySettingChanged(module.name, key, value)
-				end
-			end
-			MelloUI:Print("%s: settings back to their defaults.", module.title)
-			MelloUI:RefreshConfig()
-		end)
-		Perf.SetScript(defaults, "OnEnter", function(self) ShowTooltip(self, "Defaults", "Put every option of this module back to its default value. The module stays on or off as it is.") end)
-		Perf.SetScript(defaults, "OnLeave", function() GameTooltip:Hide() end)
-		page.refreshers[#page.refreshers + 1] = function()
-			switch:Refresh()
-		end
-	end
-
 	page.headerHeight = HeaderHeight(page)
 end
 
@@ -1244,189 +1070,1960 @@ local function OptionOf(owner, key)
 	return nil
 end
 
--- Every entry a module's page lays, in its order: visit(arg, owner, opt,
--- area) -- `owner` nil for a header (a tab), else the module whose setting
--- the row is (an option may belong to ANOTHER module, `opt.module`; an
--- `include` lays out another module's options in place: all of them, its
--- headers as subheaders unless `flat`, or only `keys`, in their order, with
--- inline rows between), `area` the key of this module's switch the included
--- rows hang on. The page's build and the side list's New tags walk the same
--- (NavGroups).
-local function EachOption(module, visit, arg)
-	for _, opt in ipairs(module.options) do
-		if opt.type == "header" then
-			visit(arg, nil, opt)
-		elseif opt.type == "include" then
-			local inc = MelloUI:GetModule(opt.module)
-			if inc then
-				if opt.keys then
-					for _, entry in ipairs(opt.keys) do
-						local sub = type(entry) == "table" and entry or OptionOf(inc, entry)
-						if sub then
-							visit(arg, inc, sub, sub.type ~= "subheader" and opt.area or nil)
-						end
-					end
+local EMPTY = {}
+
+--------------------------------------------------------------------------------
+-- The layout (0.15.0, the configurator rebuild; the user, 2026-09-27/28:
+-- every option in exactly ONE place): Core/ConfigLayout.lua's data
+-- (MelloUI.ConfigLayout, loaded after this file) resolved against the
+-- modules' option schemas once, when first needed -- the window's first
+-- open, a /mello word -- never at load or login. L.Define runs with R and
+-- Link recorders; each id is matched to what it names ("Module.key" the
+-- module's schema option, "Module.#Name" its button of that name,
+-- "Module.!enabled" the module's own switch; headers, subheaders and
+-- includes are the old pages' structure, never options), and each page is
+-- laid out as its tabs, each of the fixed sections (L.SECTIONS) holding its
+-- rows in their order, then its link rows. A line naming an unknown page,
+-- tab, section, pick or option, a per-pick row whose keys differ in type, and
+-- a link whose target is not placed are reported once through the error
+-- handler and left out (the page still builds). A schema option no line
+-- places (and not in L.unplaced) is laid at the end of its module's home
+-- page, in Advanced, so a new option is never lost.
+--   Lay.Get() -> the layout:
+--     pages[key]   { key, def (L.pages'), tabs = { { name, index, new,
+--                  sections = { { name, rows, links } } } }, picks = { { key,
+--                  label, desc } } and pickLabel[key] on a picker page, new }
+--     order        the page keys in the side list's order
+--     place[id]    where a setting's row is: { r, picks (the picks it is
+--                  live on, per-pick and `only` rows), pickSet }
+--     switchOf[module name]   its switch: { r = its switch row } or
+--                  { header = the page whose header has it }
+--   A row r: page (key), tab, section, name, type ("toggle", "slider",
+--   "dropdown", "button", "picture"), and b (its one binding) or keys
+--   ([pick] = binding) with distinct (the bindings in pick order) and
+--   picksOf ([binding] = its picks); only (a set) / onlyList, wide,
+--   picture, swatch, free, gate (a binding), when ({ b, value, line }),
+--   also, new (the update its newest setting came with, while it runs).
+--   A link lk: page, tab, section, name, and target (a binding) or targets
+--   ([pick] = binding).
+--   A binding: { id, mod (the module whose setting it is), opt (its schema
+--   option; none for a module switch), key, kind = "option" | "button" |
+--   "module" }
+--   Lay.Word(text) -> page key, tab name, pick   (/mello words, below)
+--------------------------------------------------------------------------------
+
+local Lay = {}
+do
+	local resolved = nil   -- Lay.Get's answer, made once
+	local bindings = {}    -- [id] = its binding, or false: nothing by that id
+	local words = nil      -- the /mello words (Lay.Word), made at the first
+
+	local function IsOption(o)
+		return type(o) == "table" and o.type ~= nil and o.type ~= "header" and o.type ~= "subheader"
+			and o.type ~= "include" and not o.slot
+	end
+
+	-- what an id names (made once per id, the same table after)
+	local function Bind(id)
+		local b = bindings[id]
+		if b ~= nil then
+			return b or nil
+		end
+		b = false
+		local name, rest = tostring(id):match("^([^.]+)%.(.+)$")
+		local m = name and MelloUI.modules[name]
+		if m and rest == "!enabled" then
+			b = { id = id, mod = m, kind = "module" }
+		elseif m and type(m.options) == "table" then
+			local button = rest:sub(1, 1) == "#" and rest:sub(2) or nil
+			for _, o in ipairs(m.options) do
+				if IsOption(o) and ((button and o.type == "button" and o.key == nil and o.name == button)
+					or (not button and o.key == rest)) then
+					b = { id = id, mod = (o.module and MelloUI.modules[o.module]) or m, opt = o, key = o.key,
+						kind = o.type == "button" and "button" or "option" }
+					break
+				end
+			end
+		end
+		bindings[id] = b
+		return b or nil
+	end
+	Lay.Bind = Bind
+
+	local function KindOf(b, picture)
+		if picture then
+			return "picture"
+		end
+		return b.kind == "module" and "toggle" or b.opt.type
+	end
+
+	local function ByLabel(a, b)
+		return a.label:lower() < b.label:lower()
+	end
+
+	-- the module a page stands for: its header switch's, else the one its
+	-- icon names ("module:<Name>"); nil for none
+	function Lay.ModuleOf(def)
+		local name = def.module or (type(def.icon) == "string" and def.icon:match("^module:(.+)$"))
+		return name and MelloUI.modules[name] or nil
+	end
+
+	-- the Windows page's picks: the registry's kit panels on its Windows tab,
+	-- not the look switch of one of MelloUI's own windows (the Quest
+	-- Tracker's), by label; a pick's key is the panel module's name
+	local function WindowPicks()
+		local out = {}
+		for _, m in ipairs(MelloUI:ModulesInOrder()) do
+			local w = m.window
+			if type(w) == "table" and type(w.label) == "string" and w.tab == "Windows" and not w.switch then
+				out[#out + 1] = { key = m.name, label = w.label, desc = w.desc }
+			end
+		end
+		table.sort(out, ByLabel)
+		return out
+	end
+
+	-- the update a setting came with while it runs (its New tag), else nil
+	local function NewOf(b)
+		local new = b.opt and b.opt.new
+		if new ~= nil and MelloUI:IsNew(new) then
+			return new
+		end
+		return nil
+	end
+
+	function Lay.Get()
+		if resolved then
+			return resolved
+		end
+		local out = { pages = {}, order = {}, place = {}, switchOf = {} }
+		resolved = out
+		local L = MelloUI.ConfigLayout
+		if type(L) ~= "table" or type(L.pages) ~= "table" then
+			-- (a file an update added, which this client loads only after a
+			-- full restart: Home and Profiles until then, and the line once)
+			MelloUI:Print("MelloUI was updated: restart the game once to finish (/reload does not load the new files).")
+			return out
+		end
+		local problems = {}
+		local function Problem(...)
+			problems[#problems + 1] = string.format(...)
+		end
+		-- the pages, their tabs and each tab's sections
+		for key, def in pairs(L.pages) do
+			local p = { key = key, def = def, tabs = {}, tabOf = {} }
+			for i, name in ipairs(def.tabs or EMPTY) do
+				local t = { name = name, index = i, sections = {}, secOf = {} }
+				for j, sname in ipairs(L.SECTIONS) do
+					local s = { name = sname, rows = {}, links = {} }
+					t.sections[j], t.secOf[sname] = s, s
+				end
+				p.tabs[i], p.tabOf[name] = t, t
+			end
+			local picker = def.picker
+			if type(picker) == "table" then
+				p.picks, p.pickLabel = {}, {}
+				if picker.from == "windows" then
+					p.picks = WindowPicks()
 				else
-					for _, sub in ipairs(inc.options) do
-						if sub.type == "header" then
-							if not opt.flat then
-								visit(arg, inc, { type = "subheader", name = sub.name })
-							end
-						else
-							visit(arg, inc, sub, opt.area)
+					for i, pk in ipairs(picker.picks or EMPTY) do
+						p.picks[i] = { key = pk[1], label = pk[2] }
+					end
+				end
+				for _, pk in ipairs(p.picks) do
+					p.pickLabel[pk.key] = pk.label
+				end
+			end
+			if def.module then
+				out.switchOf[def.module] = { header = key }
+			end
+			out.pages[key] = p
+		end
+		for _, g in ipairs(L.groups or EMPTY) do
+			for _, key in ipairs(g.entries) do
+				out.order[#out.order + 1] = key
+			end
+		end
+		local place, switchOf = out.place, out.switchOf
+		local function Place(id, r, picks)
+			if not place[id] then
+				local set = nil
+				if picks then
+					set = {}
+					for _, k in ipairs(picks) do
+						set[k] = true
+					end
+				end
+				place[id] = { r = r, picks = picks, pickSet = set }
+			end
+		end
+		local function AddRow(p, t, s, what, extra)
+			local r = { page = p.key, tab = t, section = s }
+			local first
+			if type(what) == "string" then
+				first = Bind(what)
+				if not first then
+					Problem("%s > %s: no option '%s'", p.key, t.name, what)
+					return
+				end
+				r.b = first
+			elseif not p.picks then
+				Problem("%s > %s: a row per pick on a page with no picker", p.key, t.name)
+				return
+			else
+				local map = what
+				if what.from == "windows" then
+					map = {}
+					for _, pk in ipairs(p.picks) do
+						map[pk.key] = "UIModifications." .. pk.key
+					end
+				end
+				for k in pairs(map) do
+					if k ~= "*" and not p.pickLabel[k] then
+						Problem("%s > %s: no pick '%s'", p.key, t.name, tostring(k))
+					end
+				end
+				r.keys, r.distinct, r.picksOf = {}, {}, {}
+				for _, pk in ipairs(p.picks) do
+					local id = map[pk.key] or map["*"]
+					local b = id and Bind(id)
+					if id and not b then
+						Problem("%s > %s: no option '%s'", p.key, t.name, id)
+					elseif b then
+						r.keys[pk.key] = b
+						local list = r.picksOf[b]
+						if not list then
+							list = {}
+							r.picksOf[b] = list
+							r.distinct[#r.distinct + 1] = b
+						end
+						list[#list + 1] = pk.key
+					end
+				end
+				first = r.distinct[1]
+				if not first then
+					return
+				end
+			end
+			r.type = KindOf(first, extra.picture)
+			for _, b in ipairs(r.distinct or EMPTY) do
+				if KindOf(b, extra.picture) ~= r.type then
+					Problem("%s > %s: '%s' is a %s, '%s' a %s", p.key, t.name, first.id, r.type, b.id, KindOf(b))
+					return nil
+				end
+			end
+			r.name = extra.name or (first.kind == "module" and first.mod.title) or first.opt.name or first.id
+			if extra.only then
+				r.only, r.onlyList = {}, extra.only
+				for _, k in ipairs(extra.only) do
+					r.only[k] = true
+				end
+			end
+			r.wide, r.picture, r.swatch, r.also = extra.wide, extra.picture, extra.swatch, extra.also
+			r.free = (extra.free or (first.opt and first.opt.free)) and true or nil
+			if extra.gate then
+				r.gate = Bind(extra.gate)
+				if not r.gate then
+					Problem("%s > %s: no switch '%s'", p.key, t.name, extra.gate)
+				end
+			end
+			local when = extra.when
+			if when then
+				local b = Bind(when.key)
+				if b then
+					r.when = { b = b, value = when.value, line = when.line }
+				else
+					Problem("%s > %s: no setting '%s'", p.key, t.name, tostring(when.key))
+				end
+			end
+			for _, b in ipairs(r.distinct or { first }) do
+				r.new = r.new or NewOf(b)
+				Place(b.id, r, r.picksOf and r.picksOf[b] or r.onlyList)
+				if b.kind == "module" then
+					switchOf[b.mod.name] = { r = r }
+				end
+			end
+			s.rows[#s.rows + 1] = r
+			return r
+		end
+		local function Section(pageKey, tab, section)
+			local p = out.pages[pageKey]
+			local t = p and p.tabOf[tab]
+			local s = t and t.secOf[section]
+			if not s then
+				Problem("no page / tab / section %s > %s > %s", tostring(pageKey), tostring(tab), tostring(section))
+			end
+			return p, t, s
+		end
+		local links = {}
+		local function R(pageKey, tab, section, what, extra)
+			local p, t, s = Section(pageKey, tab, section)
+			if not s then
+				return
+			end
+			extra = extra or EMPTY
+			if type(what) == "table" and what.prefix then
+				-- every button of that module, in its order
+				local name = tostring(what.prefix):match("^([^.]+)%.#$")
+				local m = name and MelloUI.modules[name]
+				for _, o in ipairs(m and m.options or EMPTY) do
+					if IsOption(o) and o.type == "button" and o.key == nil and type(o.name) == "string" then
+						AddRow(p, t, s, name .. ".#" .. o.name, extra)
+					end
+				end
+				return
+			end
+			AddRow(p, t, s, what, extra)
+		end
+		local function Link(pageKey, tab, section, target, label)
+			local p, t, s = Section(pageKey, tab, section)
+			if s then
+				links[#links + 1] = { page = pageKey, p = p, tab = t, section = s, target = target, name = label }
+			end
+		end
+		local ok, err = pcall(L.Define, R, Link)
+		if not ok then
+			Problem("its rows stopped: %s", tostring(err))
+		end
+		-- the links, now that every setting has its place
+		for _, lk in ipairs(links) do
+			local target = lk.target
+			local good = true
+			if type(target) == "table" then
+				lk.targets = {}
+				local map = target
+				for _, pk in ipairs(lk.p.picks or EMPTY) do
+					local id = map[pk.key] or map["*"]
+					local b = id and Bind(id)
+					if b and place[b.id] then
+						lk.targets[pk.key] = b
+					elseif id then
+						good = false
+						Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, id)
+					end
+				end
+				lk.target = nil
+			else
+				local b = Bind(target)
+				if b and place[b.id] then
+					lk.target = b
+				else
+					good = false
+					Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, tostring(target))
+				end
+			end
+			lk.p = nil
+			if good then
+				lk.isLink = true
+				local list = lk.section.links
+				list[#list + 1] = lk
+			end
+		end
+		-- a schema option no line places (and not left out on purpose): at the
+		-- end of its module's home page, in Advanced
+		local unplaced = L.unplaced or EMPTY
+		for _, name in ipairs(MelloUI.moduleOrder) do
+			local m = MelloUI.modules[name]
+			for _, o in ipairs(type(m.options) == "table" and m.options or EMPTY) do
+				if IsOption(o) then
+					local id = o.key ~= nil and (name .. "." .. tostring(o.key)) or (name .. ".#" .. tostring(o.name))
+					if not place[id] and not unplaced[id] then
+						local key, tab = Lay.HomeOf(out, name)
+						local p = key and out.pages[key]
+						local t = p and (p.tabOf[tab] or p.tabs[1])
+						local r = t and AddRow(p, t, t.secOf.Advanced, id, EMPTY)
+						if r then
+							r.fallback = true   -- (the checks look for these: every option has its R line)
 						end
 					end
 				end
 			end
-		elseif opt.module then
-			local owner = MelloUI:GetModule(opt.module)
-			if owner then
-				visit(arg, owner, opt)
+		end
+		-- the New tags: a tab holding a row new in the running update, a page
+		-- with one or whose module is new itself (its header's, else the one
+		-- its icon names: Reminders)
+		for _, p in pairs(out.pages) do
+			local m = Lay.ModuleOf(p.def)
+			p.new = m ~= nil and MelloUI:IsNew(m.new) or nil
+			for _, t in ipairs(p.tabs) do
+				for _, s in ipairs(t.sections) do
+					for _, r in ipairs(s.rows) do
+						if r.new then
+							t.new, p.new = true, true
+						end
+					end
+					if not t.firstSection and (#s.rows > 0 or #s.links > 0) then
+						t.firstSection = s
+					end
+				end
 			end
-		else
-			visit(arg, module, opt)
+		end
+		if #problems > 0 then
+			geterrorhandler()("MelloUI: the Configurator's layout (Core/ConfigLayout.lua): " .. table.concat(problems, "; "))
+		end
+		return out
+	end
+
+	-- A module's home page: the page holding most of its rows (a panel's
+	-- Painted Skin and a feature's switch count as its own), and the tab of its
+	-- first row there; a window panel's is the Windows page on its pick
+	local counts = nil   -- [module name] = { [page key] = rows }, first[name][page] = its first row
+	local function Count(lay)
+		if counts then
+			return counts
+		end
+		counts = { n = {}, first = {} }
+		local function Add(name, r)
+			local n = counts.n[name]
+			if not n then
+				n = {}
+				counts.n[name], counts.first[name] = n, {}
+			end
+			n[r.page] = (n[r.page] or 0) + 1
+			counts.first[name][r.page] = counts.first[name][r.page] or r
+		end
+		for _, key in ipairs(lay.order) do
+			local p = lay.pages[key]
+			for _, t in ipairs(p and p.tabs or EMPTY) do
+				for _, s in ipairs(t.sections) do
+					for _, r in ipairs(s.rows) do
+						for _, b in ipairs(r.distinct or { r.b }) do
+							Add(b.mod.name, r)
+							local key2 = b.mod.name == "UIModifications" and type(b.key) == "string" and b.key
+							local driven = key2 and (key2:match("^qol_(.+)$") or key2)
+							if driven and MelloUI.modules[driven] then
+								Add(driven, r)
+							end
+						end
+					end
+				end
+			end
+		end
+		return counts
+	end
+
+	function Lay.HomeOf(lay, name)
+		local m = MelloUI.modules[name]
+		local w = m and m.window
+		if type(w) == "table" and w.tab == "Windows" and not w.switch and lay.pages.Windows then
+			return "Windows", nil, name
+		end
+		local c = Count(lay)
+		local n = c.n[name]
+		if not n then
+			return nil
+		end
+		local best, most = nil, 0
+		for _, key in ipairs(lay.order) do
+			if (n[key] or 0) > most then
+				best, most = key, n[key]
+			end
+		end
+		if not best then
+			return nil
+		end
+		local r = c.first[name][best]
+		return best, r.tab.name, nil
+	end
+
+	-- a page word: lower case, spaces out ("screen text" -> "screentext");
+	-- and with only its letters and digits ("bars & meters" -> "barsmeters")
+	local function Norm(s)
+		return (tostring(s or ""):lower():gsub("%s+", ""))
+	end
+	local function Alnum(s)
+		return (tostring(s or ""):lower():gsub("[^%w]", ""))
+	end
+	Lay.Norm = Norm
+
+	local function Words()
+		if words then
+			return words
+		end
+		local lay = Lay.Get()
+		words = { pages = {}, extra = {}, modules = {} }
+		for key, p in pairs(lay.pages) do
+			words.pages[Norm(key)] = key
+			words.pages[Norm(p.def.title)] = key
+			words.pages[Alnum(p.def.title)] = key
+		end
+		local L = MelloUI.ConfigLayout
+		for w, t in pairs(L and L.words or EMPTY) do
+			words.extra[Norm(w)] = t
+		end
+		for _, name in ipairs(MelloUI.moduleOrder) do
+			local key, tab, pick = Lay.HomeOf(lay, name)
+			if key then
+				local t = { key, tab, pick = pick }
+				words.modules[Norm(name)] = t
+				local title = Norm(MelloUI.modules[name].title)
+				words.modules[title] = words.modules[title] or t
+			end
+		end
+		return words
+	end
+
+	-- /mello <words> (7.2): the whole text, lower case, spaces out -- a page's
+	-- key or title, home, then the layout's own words, then a module's name or
+	-- title through its home page (a window panel's pick). Nil: no page.
+	function Lay.Word(text)
+		local w = Norm(text)
+		if w == "" then
+			return nil
+		end
+		local all = Words()
+		local key = all.pages[w] or all.pages[Alnum(text)]
+		if key then
+			return key
+		end
+		if w == "home" then
+			return "Home"
+		end
+		local t = all.extra[w] or all.modules[w]
+		if t and t[1] and resolved.pages[t[1]] then
+			return t[1], t[2], t.pick
+		end
+		return nil
+	end
+end
+
+-- A page's title, icon and flavour: its layout entry's, else those of the
+-- module it names (its registry `icon` and `flavour`: "module:<Name>", or
+-- the page's own module)
+local function PageTitle(key)
+	local L = MelloUI.ConfigLayout
+	local def = L and L.pages and L.pages[key]
+	return def and def.title or key
+end
+local function PageMeta(key)
+	if key == "Home" then
+		return LOGO, HOME_FLAVOUR
+	elseif key == "Profiles" then
+		return PROFILES_META.icon, PROFILES_META.flavour
+	end
+	local L = MelloUI.ConfigLayout
+	local def = L and L.pages and L.pages[key]
+	if not def then
+		return DEFAULT_ICON, ""
+	end
+	local icon, flavour = def.icon, def.flavour
+	local named = type(icon) == "string" and icon:match("^module:(.+)$")
+	local m = (named and MelloUI.modules[named]) or nil
+	local own = def.module and MelloUI.modules[def.module]
+	if named or not icon then
+		icon = m and (Meta(m)) or DEFAULT_ICON
+	end
+	if not flavour then
+		local from = own or m
+		flavour = from and select(2, Meta(from)) or ""
+	end
+	return icon, flavour
+end
+
+--------------------------------------------------------------------------------
+-- Element pages (0.15.0, the rebuild; SPEC sections 1.2, 5): a page of the
+-- layout -- its header (the page's switch on a page one module owns, Reset
+-- this page; on a picker page the picker, Copy from and, on Unit Frames, the
+-- live preview), its tabs, and on each tab the sections in their fixed
+-- order, each a heading (W.Header) over its rows and then its link rows.
+-- Every row is made from a job, a few a frame (MakeRows), in both looks.
+--   A row's setting on a picker page is the CURRENT pick's (`page.pick`,
+--   kept for the session per page): a row per pick reads and writes the
+--   pick's key, takes that key's range, values and pictures, and is dimmed
+--   ("Not for Pet") on a pick that has none; a row one key serves on several
+--   picks says "shared" (its tooltip names them); a row that is one key for
+--   every pick shows its `wide` hint. Apply to all ("All", left of a row per
+--   pick with several keys) shows while those keys differ.
+--   A row sleeps (W.Gate: dimmed, its hint slot saying what wakes it, a
+--   click on it jumping there) on the first of: 1 the pick, 2 UI
+--   Modifications off (a row it drives, unless `free`), 3 its module's own
+--   switch off (a feature with a switch of its own), 4 its area off (a folded
+--   feature's qol_ switch; a kit panel's Painted Skin -- on the Windows page
+--   the CURRENT pick's, so a window wearing another panel's keys stays live
+--   on its own switch -- and the reskin), 5 its schema's parent / requires,
+--   6 the layout's extra gate / when.
+--   Every bulk write (Copy from, All, Reset this page) is one MelloUI:Batch;
+--   the painted skins' and features' switches in it go through UI
+--   Modifications' SetAreas, which refuses a painted skin in combat: then
+--   nothing is written and one line says why. Copy from and Reset this page
+--   ask first (the user, 2026-09-29: MelloUI:Confirm, Modules/KitWindow.lua),
+--   naming the picks and how many settings change; nothing is asked when
+--   nothing would change (the line says so at once), and the answer writes
+--   the picks the question named, whatever is picked by then.
+--   The page on show is refreshed once a frame however many settings change
+--   (the bus's 'setting' and 'module' mark it stale and ask the kit's next
+--   frame; a hidden page is refreshed on its next show).
+--------------------------------------------------------------------------------
+
+-- (what the rest of the file uses of the block)
+local BuildElementPage, JumpTo, ShowPage, RevealRow, AskPageRefresh, RelistPages, EntryLive
+local pickOf = {}   -- [page key] = its pick, kept for the session (both looks' pages share it)
+do
+local ROW_H = { toggle = ROW_HEIGHT, slider = SLIDER_ROW_HEIGHT, dropdown = ROW_HEIGHT, button = ROW_HEIGHT,
+	picture = ROW_HEIGHT }
+-- where a typed row's control starts, from the row's right edge (W.ClipRow's
+-- span: the texts end 10 px left of it)
+local SPAN = { toggle = 12 + 26, slider = 14 + 256, dropdown = 14 + 200, picture = 14 + 200 }
+local SECTION_GAP = 8       -- between a tab's sections
+local ALL_W, ALL_GAP = 44, 8   -- Apply to all's button, and its room left of the control
+local SWATCH_SPEC = { width = 50, height = 14 }
+local SWATCH_GAP = 8
+local PICKER_W, COPY_W, PICKER_LINE = 180, 150, 26
+local RESET_W = 120
+local PREVIEW_W, PREVIEW_H = 220, 96   -- the live preview (Core/ConfigPreview.lua)
+local SWITCH_ROOM = 200     -- the header's right for a page's switch and Reset this page
+
+-- the texts (in-game words: no tool or other addon named)
+local TEXT = {
+	enabled = "Enabled",
+	reset = "Reset this page",
+	resetTip = "Every setting on this page back to its default: every tab, and on a page with a picker the one picked "
+		.. "(and what every pick shares). Switches of whole modules and what belongs to your character stay as they are. "
+		.. "It asks first.",
+	resetDone = "%s: %s reset to default.",
+	resetNone = "%s: every setting on this page is at its default already.",
+	resetAsk = "Reset every setting on the %s page to its default? It changes %s.",
+	resetAskPick = "Reset every setting on the %s page for %s to its default? It changes %s.",
+	resetShared = "%s (%d shared with other %ss)",
+	resetAccept = "Reset",
+	copy = "Copy from…",
+	copyTip = "Every setting this page keeps per %s, copied from the %s you choose to the one shown. What they share is one setting already. It asks first.",
+	copied = "%s: %s copied from %s to %s.",
+	copiedNone = "%s: %s has the settings of %s already.",
+	copyAsk = "Copy the %s settings to %s? It changes %s.",
+	copyAccept = "Copy",
+	cancel = "Cancel",
+	all = "All",
+	allTip = "Set this for every %s that has it: %s.",
+	allDone = "%s: %s set for every %s.",
+	shared = "shared",
+	sharedTip = "One setting for %s%s.",
+	also = " (%s too)",
+	notFor = "Not for %s",
+	switchOn = "Switch on \"%s\" first.",
+	switchOnAt = "Switch on \"%s\" first (%s).",
+	tabWhere = "%s tab",
+	uim = "UI Modifications",
+	pickTip = "The %s this page's settings are for. Rows it has no setting for are dimmed.",
+	nothing = "Nothing to set here yet.",
+}
+local AREAS_REFUSED = "Not in combat: this would switch painted skins."   -- (UI Modifications' own line, areasRefused)
+
+local function Settings(n)
+	return n == 1 and "1 setting" or string.format("%d settings", n)
+end
+
+-- "A", "A and B", "A, B and C"
+local function Join(list)
+	local n = #list
+	if n <= 1 then
+		return list[1] or ""
+	end
+	return table.concat(list, ", ", 1, n - 1) .. " and " .. list[n]
+end
+
+local function LabelsOf(p, picks)
+	local out = {}
+	for i, k in ipairs(picks) do
+		out[i] = p.pickLabel[k] or k
+	end
+	return out
+end
+
+-- a module driven by UI Modifications: UI Modifications itself, a kit
+-- panel (its registry `window`, not the look switch of an own window) or a
+-- folded feature (its `tweak`)
+local drivenOf = {}
+local function Driven(m)
+	local d = drivenOf[m]
+	if d == nil then
+		local w = m.window
+		d = m.name == "UIModifications" or (type(w) == "table" and not w.switch) or type(m.tweak) == "table"
+		drivenOf[m] = d
+	end
+	return d
+end
+
+-- a setting as it is now: read as stored (the module's defaults not laid on
+-- again for every read: GetModuleDB walks them all), its default when unset
+local function Setting(m, key)
+	local all = MelloUI.db and MelloUI.db.modules
+	local db = all and all[m.name]
+	local v = db and db[key]
+	if v == nil then
+		v = m.defaults[key]
+	end
+	return v
+end
+
+-- a binding's value: a module's switch, a setting read another way
+-- (`opt.get`: the Kit Colours the kit draws), or the setting
+local function ValueOf(b)
+	if not b then
+		return nil
+	end
+	if b.kind == "module" then
+		return MelloUI:IsModuleEnabled(b.mod.name)
+	end
+	local opt = b.opt
+	if opt.get then
+		return opt.get(MelloUI:GetModuleDB(b.mod.name))
+	end
+	return Setting(b.mod, b.key)
+end
+
+local function Write(b, value)
+	if b.kind == "module" then
+		MelloUI:SetModuleEnabled(b.mod.name, value)
+		MelloUI:RefreshConfig()
+		return
+	end
+	MelloUI:NotifySettingChanged(b.mod.name, b.key, value)
+end
+
+-- the setting a row reaches on the page's pick (or on `pick`: a question's,
+-- asked on another): the pick's key (nil: none for it), its one key (nil
+-- while the pick is not one of `only`)
+local function Current(page, r, pick)
+	pick = pick or page.pick
+	local keys = r.keys
+	if keys then
+		return keys[pick]
+	end
+	if r.only and pick and not r.only[pick] then
+		return nil
+	end
+	return r.b
+end
+-- the setting whose schema a row's controls are made from: the pick's, else
+-- its first
+local function Shape(page, r)
+	return Current(page, r) or r.b or r.distinct[1]
+end
+
+-- a row that has a setting on this pick
+function EntryLive(page, r, pick)
+	if r.keys then
+		return r.keys[pick] ~= nil
+	end
+	return not (r.only and pick and not r.only[pick])
+end
+
+-- The choices of a picture row's setting: a border kind's (Kit.borderKinds,
+-- by key) or the section of its module's PickerGroups with that key (a panel
+-- that is off still answers: its groups are static tables); kept on the
+-- binding
+local function Choices(b)
+	if b.choices == nil then
+		b.choices = false
+		local K = MelloUI.Kit
+		if b.mod.name == "UIModifications" and K and type(K.borderKinds) == "table" then
+			for _, k in ipairs(K.borderKinds) do
+				if k.key == b.key then
+					b.choices, b.pictureKind = k.values, k.preview or "rim"
+				end
+			end
+		end
+		if not b.choices and type(b.mod.PickerGroups) == "function" then
+			local ok, groups = pcall(b.mod.PickerGroups, b.mod)
+			for _, g in ipairs(ok and type(groups) == "table" and groups or EMPTY) do
+				for _, s in ipairs(g.sections or EMPTY) do
+					if s.key == b.key then
+						b.choices, b.pictureKind = s.choices, s.kind
+					end
+				end
+			end
+		end
+	end
+	return b.choices or EMPTY, b.pictureKind
+end
+
+-- a value as another key of the same row takes it: a switch's as it is, a
+-- slider's kept in its range and on its step, a dropdown's or a picture's
+-- only when that key offers it (nil: not taken)
+local function Fit(b, v)
+	if v == nil or b.kind ~= "option" then
+		return nil
+	end
+	local opt = b.opt
+	local t = opt.type
+	if t == "toggle" then
+		return v and true or false
+	elseif t == "slider" then
+		if type(v) ~= "number" then
+			return nil
+		end
+		v = W.Round(v, opt.step)
+		return math.max(opt.min or v, math.min(opt.max or v, v))
+	end
+	local values = t == "dropdown" and opt.values or (Choices(b))
+	for _, entry in ipairs(type(values) == "table" and values or EMPTY) do
+		if entry.value == v then
+			return v
+		end
+	end
+	return nil
+end
+
+--------------------------------------------------------------------------------
+-- The gates (5.3): the first that fails, as W.Gate wants it -- live, why,
+-- line -- and where a click on the sleeping row jumps (an id, or
+-- "!page:<key>" for a page's header switch, with the pick it needs)
+--------------------------------------------------------------------------------
+
+local lines = {}   -- [why][where or ""] = the line (made once each)
+local function SwitchLine(why, where)
+	local byWhere = lines[why]
+	if not byWhere then
+		byWhere = {}
+		lines[why] = byWhere
+	end
+	local w = where or ""
+	local line = byWhere[w]
+	if not line then
+		line = where and string.format(TEXT.switchOnAt, why, where) or string.format(TEXT.switchOn, why)
+		byWhere[w] = line
+	end
+	return line
+end
+local notFor = {}   -- [pick label] = "Not for <pick>"
+local function NotFor(label)
+	local line = notFor[label]
+	if not line then
+		line = string.format(TEXT.notFor, label)
+		notFor[label] = line
+	end
+	return line
+end
+
+-- where a place is seen from this page: nil here (its tab), else the other
+-- page's title with the pick it is on when it is not on every pick there
+-- ("Action Bars > Bag Bar": a row per pick is named by its shared label),
+-- the pick it needs here (its label, and its key for the jump), or the
+-- other tab it is on ("Minimap tab")
+local farWhere, tabWhere = {}, {}   -- [place] / [tab name] = the text (made once each)
+local function WhereOf(page, place, row)
+	local r = place.r
+	local pick = place.pickSet and place.picks[1]
+	if r.page ~= page.name then
+		local where = farWhere[place]
+		if not where then
+			local other = pick and Lay.Get().pages[r.page]
+			local label = other and other.picks and #place.picks < #other.picks and other.pickLabel[pick]
+			where = label and (PageTitle(r.page) .. " > " .. label) or PageTitle(r.page)
+			farWhere[place] = where
+		end
+		return where, nil
+	end
+	if pick and page.pick and not place.pickSet[page.pick] then
+		return page.lay.pickLabel[pick] or pick, pick
+	end
+	if r.tab ~= row.tab then
+		local name = r.tab.name
+		local where = tabWhere[name]
+		if not where then
+			where = string.format(TEXT.tabWhere, name)
+			tabWhere[name] = where
+		end
+		return where, nil
+	end
+	return nil, nil
+end
+
+-- a switch that is off, by its id: its row's label where it is placed
+local function Off(page, row, id, fallback)
+	local place = Lay.Get().place[id]
+	if not place then
+		return false, fallback, SwitchLine(fallback), nil
+	end
+	local why = place.r.name
+	local where, pick = WhereOf(page, place, row)
+	return false, why, SwitchLine(why, where), id, pick
+end
+
+-- the module whose own look switch a UI Modifications setting is (its
+-- registry `window.switch`: the Quest Tracker's questTrackerKit), else nil
+local lookOwner = nil   -- [UI Modifications key] = that module (made once)
+local function LookOwner(b)
+	if b.mod.name ~= "UIModifications" or b.key == nil then
+		return nil
+	end
+	if not lookOwner then
+		lookOwner = {}
+		for _, m in ipairs(MelloUI:ModulesInOrder()) do
+			local w = m.window
+			if type(w) == "table" and type(w.switch) == "string" then
+				lookOwner[w.switch] = m
+			end
+		end
+	end
+	return lookOwner[b.key]
+end
+
+local function Gate(page, r)
+	-- 1: the pick
+	local b = Current(page, r)
+	if not b then
+		local label = page.lay.pickLabel[page.pick] or tostring(page.pick)
+		return false, nil, NotFor(label)
+	end
+	local m = b.mod
+	local driven = Driven(m)
+	-- 2: UI Modifications (its switch is the Look page's header's)
+	if driven and not r.free and not MelloUI:IsModuleEnabled("UIModifications") then
+		return false, TEXT.uim, SwitchLine(TEXT.uim, PageTitle("Look")), "!page:Look"
+	end
+	-- 3: the module's own switch (a feature with one); a look switch UI
+	-- Modifications keeps for one module (the Quest Tracker's Painted Skin)
+	-- on that module's, as the module's other rows
+	local own = (not driven and b.kind ~= "module" and m) or LookOwner(b)
+	if own and not MelloUI:IsModuleEnabled(own.name) then
+		local sw = Lay.Get().switchOf[own.name]
+		if sw and sw.r then
+			return Off(page, r, sw.r.b.id, own.title)
+		end
+		local at = sw and sw.header
+		return false, own.title, SwitchLine(own.title, at and at ~= page.name and PageTitle(at) or nil), at and ("!page:" .. at)
+	end
+	-- 4: its area: a kit panel's Painted Skin (the Windows page: the pick's)
+	-- and the reskin; a folded feature's switch
+	local w, tweak = m.window, m.tweak
+	if type(w) == "table" and not w.switch then
+		local um = MelloUI.modules.UIModifications
+		local panel = page.fromWindows and page.pick or m.name
+		if um and Setting(um, "reskin") == false then
+			return Off(page, r, "UIModifications.reskin", "Painted kit reskin")
+		elseif um and Setting(um, panel) == false then
+			return Off(page, r, "UIModifications." .. panel, panel)
+		end
+	elseif type(tweak) == "table" and not tweak.always then
+		local um = MelloUI.modules.UIModifications
+		local v = um and Setting(um, "qol_" .. m.name)
+		if (tweak.off and v ~= true) or (not tweak.off and v == false) then
+			return Off(page, r, "UIModifications.qol_" .. m.name, tweak.label or m.title)
+		end
+	end
+	-- 5: the schema's own parent / requires (the same module's switches)
+	local opt = b.opt
+	if opt then
+		local key = opt.parent
+		for i = 1, 2 do
+			if key and not Setting(m, key) then
+				local o = OptionOf(m, key)
+				return Off(page, r, m.name .. "." .. key, o and o.name or key)
+			end
+			key = i == 1 and opt.requires or nil
+		end
+	end
+	-- 6: the layout's own: a switch elsewhere, another setting's value
+	if r.gate and not ValueOf(r.gate) then
+		return Off(page, r, r.gate.id, r.gate.opt and r.gate.opt.name or r.gate.id)
+	end
+	local when = r.when
+	if when and ValueOf(when.b) ~= when.value then
+		return false, nil, when.line
+	end
+	return true
+end
+
+-- a click on a sleeping row: to the switch that wakes it (W.Gate's onCover)
+local function CoverJump(row)
+	local e = row.melloEntry
+	if not e then
+		return
+	end
+	local _, _, _, id, pick = Gate(e.page, e.r)
+	if id then
+		MelloUI:PlayUISound("page")
+		JumpTo(id, pick)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- A row's hint and tooltip for its pick
+--------------------------------------------------------------------------------
+
+-- the hint: a row one key for every pick its `wide` text, a row one key serves
+-- on several picks "shared", else the schema's (the important switch's
+-- IMPORTANT)
+local function Hint(page, r, b)
+	if r.wide then
+		return r.wide
+	end
+	local picks = (r.keys and b and r.picksOf[b]) or (not r.keys and r.onlyList)
+	if picks and #picks >= 2 then
+		return TEXT.shared
+	end
+	local opt = (b or Shape(page, r)).opt
+	if opt then
+		return opt.important and "IMPORTANT" or opt.hint
+	end
+	return nil
+end
+
+-- the tooltip's body: the setting's description, and for a shared one the
+-- picks it is one setting for (made once per row and setting)
+local function Tip(page, r, b)
+	local tips = r.tips
+	if not tips then
+		tips = {}
+		r.tips = tips
+	end
+	local tip = tips[b]
+	if tip then
+		return tip
+	end
+	tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or ""
+	local picks = (r.keys and r.picksOf[b]) or (not r.keys and r.onlyList)
+	if picks and #picks >= 2 then
+		local also = r.also and r.also[b.id]
+		local line = string.format(TEXT.sharedTip, Join(LabelsOf(page.lay, picks)), also and string.format(TEXT.also, also) or "")
+		tip = tip ~= "" and (tip .. "\n\n" .. line) or line
+	end
+	tips[b] = tip
+	return tip
+end
+
+-- a sub-option's depth under its parents (the schema's `parent`, a switch of
+-- the same module): one indent per level
+local function Depth(m, opt)
+	local depth, seen = 0, {}
+	local p = opt and opt.parent and OptionOf(m, opt.parent)
+	while p and not seen[p] and depth < 4 do
+		seen[p] = true
+		depth = depth + 1
+		p = p.parent and OptionOf(m, p.parent)
+	end
+	return depth
+end
+
+-- the gate's cover of a row (W.Gate's, found once: its hint follows the pick)
+local function CoverAmong(row, ...)
+	for i = 1, select("#", ...) do
+		local kid = select(i, ...)
+		if kid.gateRow == row then
+			return kid
+		end
+	end
+	return nil
+end
+local function CoverOf(row)
+	return CoverAmong(row, row:GetChildren())
+end
+
+-- the keys of a row per pick hold different values (Apply to all is offered)
+local function Differ(r)
+	local d = r.distinct
+	local first = ValueOf(d[1])
+	for i = 2, #d do
+		if ValueOf(d[i]) ~= first then
+			return true
+		end
+	end
+	return false
+end
+
+local function RefreshEntry(e)
+	e.row:Refresh()
+	local all = e.all
+	if all then
+		-- (none on a pick with no setting: the row sleeps "Not for <pick>";
+		-- its room is kept all the same)
+		all:SetShown(Current(e.page, e.r) ~= nil and Differ(e.r))
+	end
+end
+
+-- A row per pick takes the pick's setting: its range, values or pictures,
+-- its tooltip and hint (nothing made again)
+local function Rebind(e)
+	local page, r = e.page, e.r
+	if e.link then
+		local lk = e.link
+		if lk.targets then
+			local b = lk.targets[page.pick]
+			e.row:SetTarget(b and PageTitle(Lay.Get().place[b.id].r.page) or nil, nil)
+		end
+		return
+	end
+	if not r.keys then
+		return
+	end
+	local b = Current(page, r)
+	local shape = b or r.distinct[1]
+	local control = e.control
+	if shape ~= e.shape then
+		e.shape = shape
+		local opt = shape.opt
+		if r.type == "slider" and opt then
+			control:SetRange(opt.min, opt.max, opt.step, opt.percent and true or false, opt.format or false)
+		elseif r.type == "dropdown" and opt then
+			control:SetValues(opt.values)
+		elseif r.type == "picture" then
+			control:SetChoices(Choices(shape))
+		end
+		local tip = Tip(page, r, shape)
+		e.row.tipBody, control.tipBody = tip, tip
+	end
+	if e.cover then
+		e.cover.hintText = Hint(page, r, b)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The bulk writes (5.2): ONE MelloUI:Batch (the bus's 'setting' held to its
+-- end, one backup); the painted skins' and features' switches of UI
+-- Modifications through its SetAreas (a few a frame; refused in combat when a
+-- painted skin would switch: then nothing at all is written and one line
+-- says why). `writes`: a list of { binding, value }, in order.
+--------------------------------------------------------------------------------
+
+-- [UI Modifications key] = "skin" (a painted skin's switch: a panel's, the
+-- Quest Tracker's own look) or "feature" (a folded feature's qol_ switch);
+-- IsArea(key) -> that, or nil
+local areaKeys = nil
+local function IsArea(key)
+	if not areaKeys then
+		areaKeys = {}
+		for _, m in ipairs(MelloUI:ModulesInOrder()) do
+			local w, t = m.window, m.tweak
+			if type(w) == "table" and w.label then
+				areaKeys[w.switch or m.name] = "skin"
+			end
+			if type(t) == "table" and not t.always then
+				areaKeys["qol_" .. m.name] = "feature"
+			end
+		end
+	end
+	return areaKeys[key]
+end
+
+-- the one line a refused bulk write prints (UI Modifications' own)
+local function SayRefused()
+	local um = MelloUI.modules.UIModifications
+	MelloUI:Print((um and um.areasRefused) or AREAS_REFUSED)
+end
+
+local writeList, areaValues = {}, {}
+local function WriteAll()
+	for i = 1, #writeList, 2 do
+		local b = writeList[i]
+		if not (b.mod.name == "UIModifications" and IsArea(b.key)) then
+			Write(b, writeList[i + 1])
+		end
+	end
+end
+local function Bulk()
+	for k in pairs(areaValues) do
+		areaValues[k] = nil
+	end
+	local areas, reskin = false, false
+	for i = 1, #writeList, 2 do
+		local b = writeList[i]
+		if b.mod.name == "UIModifications" and IsArea(b.key) then
+			areaValues[b.key] = writeList[i + 1] and true or false
+			areas = true
+		elseif b.mod.name == "UIModifications" and b.key == "reskin" then
+			reskin = (Setting(b.mod, "reskin") ~= false) ~= (writeList[i + 1] and true or false)
+		end
+	end
+	local um = MelloUI.modules.UIModifications
+	-- (the painted reskin itself switched: every painted skin at once, in
+	-- one frame -- refused in combat as SetAreas refuses one skin: D16)
+	if reskin and InCombatLockdown() then
+		SayRefused()
+		return false
+	end
+	local refused = false
+	MelloUI:Batch(function()
+		if areas and um and um.SetAreas then
+			if not um:SetAreas(areaValues) then
+				refused = true
+				return
+			end
+		end
+		WriteAll()
+	end)
+	if refused then
+		SayRefused()
+		return false
+	end
+	return true
+end
+-- Bulk's refusal known before a question is asked: in a fight, a painted
+-- skin's switch or the painted reskin itself among the writes (the pending
+-- writes change each, so SetAreas would refuse them): the line at once, and
+-- no question the answer could only refuse. The answer still goes through
+-- Bulk (a fight that starts while it asks)
+local function FightRefuses()
+	if not InCombatLockdown() then
+		return false
+	end
+	for i = 1, #writeList, 2 do
+		local b = writeList[i]
+		if b.mod.name == "UIModifications" and (IsArea(b.key) == "skin" or b.key == "reskin") then
+			SayRefused()
+			return true
+		end
+	end
+	return false
+end
+local function Want(b, v)
+	writeList[#writeList + 1] = b
+	writeList[#writeList + 1] = v
+end
+local function Clear()
+	for i = #writeList, 1, -1 do
+		writeList[i] = nil
+	end
+end
+
+-- every row of a page (every tab), with the setting it reaches on the pick
+local function EachRow(page, fn, arg)
+	for _, t in ipairs(page.lay.tabs) do
+		for _, s in ipairs(t.sections) do
+			for _, r in ipairs(s.rows) do
+				fn(page, r, arg)
+			end
 		end
 	end
 end
 
-local function BuildModulePage(module, width)
-	local page = NewPage(module.name, width)
-	page.important = module.important and true or false
-	-- where each option's row will lie: its section and its planned y (a
-	-- deep link's target, page:Reveal); and by the option itself, whoever
-	-- owns it, with its row once made (the search's jump: page:RevealAt)
-	page.anchors = {}
-	page.optSec, page.optY, page.optRow = {}, {}, {}
-	local icon, flavour = Meta(module)
-	BuildPageHeader(page, icon, module.title, flavour, module)
-	-- the header's controls dressed now (Defaults and the like, red plates);
-	-- the tabs dress themselves and every row is dressed as it is made, so
-	-- the page is not walked whole afterwards
-	W.Dress(page, SKIN)
-	local db = MelloUI:GetModuleDB(module.name)
-	local sec = nil
-	-- how deep an option hangs under its parents (`opt.parent`, a switch of
-	-- the same module): one indent per level
-	local function Depth(owner, opt)
-		local depth, seen = 0, {}
-		local p = opt.parent and OptionOf(owner, opt.parent)
-		while p and not seen[p] and depth < 4 do
-			seen[p] = true
-			depth = depth + 1
-			p = p.parent and OptionOf(owner, p.parent)
+local function DefaultOf(b)
+	local v = b.mod.defaults[b.key]
+	if type(v) == "table" then
+		-- a copy: the live table must not BE the defaults table
+		local copy = {}
+		for k, x in pairs(v) do
+			copy[k] = x
 		end
-		return depth
+		v = copy
 	end
-	-- the switches a row hangs on, as one gate: `opt.parent` (indented under
-	-- it) and `opt.requires` (not indented), keys of the same module's
-	-- settings, and `area`: { db, key, name } of the tab's area switch
-	local function GateOf(owner, ownerDb, opt, area)
-		local needs = {}
-		for _, key in ipairs({ opt.parent, opt.requires }) do
-			if key then
-				local o = OptionOf(owner, key)
-				needs[#needs + 1] = { db = ownerDb, key = key, name = o and o.name or key }
+	return v
+end
+
+-- Reset this page: every setting of the page's rows on the pick (a row one
+-- key for every pick too) back to its default. Left alone: a module's own
+-- switch (its `!enabled` row, and a folded feature's `qol_` switch, which
+-- is that feature's module switch: D7), and what belongs to the player
+-- (MelloUI:IsPersonalKey), Dark Mode's settings too on every page its rows
+-- sit on (the player's own preference: no profile carries them either).
+-- `pick`: the pick the question named (nil: the page's own)
+local resetShared = 0   -- of a reset's writes, the ones other picks share (ResetWants)
+local function ResetRow(page, r, pick)
+	local b = Current(page, r, pick)
+	if not (b and b.kind == "option" and b.opt.type ~= "button" and b.mod.defaults[b.key] ~= nil) then
+		return
+	end
+	if MelloUI:IsPersonalKey(b.mod.name, b.key) or (b.mod.name == "UIModifications" and IsArea(b.key) == "feature") then
+		return
+	end
+	local v = DefaultOf(b)
+	if type(v) == "table" or Setting(b.mod, b.key) ~= v then
+		Want(b, v)
+		-- (one setting for other picks too, as the row's "shared" hint says,
+		-- or for the whole page: the question counts it)
+		local picks = (r.keys and r.picksOf[b]) or (not r.keys and r.onlyList)
+		if pick and not (picks and #picks < 2) then
+			resetShared = resetShared + 1
+		end
+	end
+end
+-- the writes a reset of the page on `pick` would make (writeList), counted;
+-- and how many of them other picks share
+local function ResetWants(page, pick)
+	Clear()
+	resetShared = 0
+	EachRow(page, ResetRow, pick)
+	return #writeList / 2, resetShared
+end
+local function ResetPage(page, pick)
+	local n = ResetWants(page, pick)
+	local title = page.lay.def.title
+	if n == 0 then
+		MelloUI:Print(TEXT.resetNone, title)
+	elseif Bulk() then
+		MelloUI:Print(TEXT.resetDone, title, Settings(n))
+	end
+	Clear()
+	MelloUI:RefreshConfig()
+end
+-- Reset this page asks first (MelloUI's one dialog), naming the page (the
+-- dialog stays while the side list moves on) and on a picker page the pick
+-- shown now, reset on the answer, and how many of the writes other picks
+-- share; nothing to reset, or a fight that would refuse it: the line at
+-- once, no question
+local function AskResetPage(page)
+	local pick = page.pick
+	local n, shared = ResetWants(page, pick)
+	local refused = n > 0 and FightRefuses()
+	Clear()
+	local lay = page.lay
+	if n == 0 then
+		MelloUI:Print(TEXT.resetNone, lay.def.title)
+		return
+	elseif refused then
+		return
+	end
+	local label = pick and lay.pickLabel and lay.pickLabel[pick]
+	local count = Settings(n)
+	if label and shared > 0 then
+		count = string.format(TEXT.resetShared, count, shared, lay.def.picker.noun or "pick")
+	end
+	local text = label and string.format(TEXT.resetAskPick, lay.def.title, label, count)
+		or string.format(TEXT.resetAsk, lay.def.title, count)
+	MelloUI:Confirm({
+		text = text,
+		accept = TEXT.resetAccept,
+		cancel = TEXT.cancel,
+		onAccept = function()
+			ResetPage(page, pick)
+		end,
+	})
+end
+
+-- Copy from: every row per pick whose keys differ between the two picks
+-- takes the source pick's value (fitted to the key); shared and page-wide
+-- rows are one setting already. `pair`: { source, target }
+local function CopyRow(_, r, pair)
+	local keys = r.keys
+	local from, to = keys and keys[pair[1]], keys and keys[pair[2]]
+	if from and to and from ~= to then
+		local v = Fit(to, ValueOf(from))
+		if v ~= nil and v ~= ValueOf(to) then
+			Want(to, v)
+		end
+	end
+end
+-- the writes a copy from `source` to `target` would make (writeList),
+-- counted; nil when the two are not two picks of the page
+local function CopyWants(page, source, target)
+	local lay = page.lay
+	if not (lay.pickLabel[source] and lay.pickLabel[target] and source ~= target) then
+		return nil
+	end
+	Clear()
+	EachRow(page, CopyRow, { source, target })
+	return #writeList / 2
+end
+local function CopyFrom(page, source, target)
+	local n = CopyWants(page, source, target)
+	if not n then
+		return
+	end
+	local lay = page.lay
+	local title, from, to = lay.def.title, lay.pickLabel[source], lay.pickLabel[target]
+	if n == 0 then
+		MelloUI:Print(TEXT.copiedNone, title, to, from)
+	elseif Bulk() then
+		MelloUI:Print(TEXT.copied, title, Settings(n), from, to)
+	end
+	Clear()
+	MelloUI:RefreshConfig()
+end
+-- a pick as the owner of the settings in Copy from's question: the
+-- picker's noun after its name unless the name ends in a picker's noun
+-- already ("the Target frame's", "the Social window's", "the Bag Bar's"),
+-- and a plural's possessive "'" ("the Raid Frames'", "the Loot windows'")
+local nouns = nil   -- [noun] = true: every picker's (made at the first question)
+local function Owner(label, noun)
+	if not nouns then
+		nouns = {}
+		local L = MelloUI.ConfigLayout
+		for _, def in pairs(type(L) == "table" and L.pages or EMPTY) do
+			if type(def.picker) == "table" and def.picker.noun then
+				nouns[def.picker.noun] = true
 			end
 		end
-		if area then
-			table.insert(needs, 1, area)
+	end
+	local last = (label:match("(%a+)$") or ""):lower()
+	if noun and not (nouns[last] or nouns[last:match("^(.-)s$") or ""]) then
+		label = label .. " " .. noun
+	end
+	return label:find("s$") and (label .. "'") or (label .. "'s")
+end
+
+-- Copy from asks first (MelloUI's one dialog), naming both picks: the pick
+-- shown now takes the source's settings on the answer, even if another is
+-- picked by then; nothing to copy, or a fight that would refuse it: the
+-- line at once, no question
+local function AskCopyFrom(page, source)
+	local target = page.pick
+	local n = CopyWants(page, source, target)
+	local refused = n and n > 0 and FightRefuses()
+	Clear()
+	if not n then
+		return
+	end
+	local lay = page.lay
+	local from, to = lay.pickLabel[source], lay.pickLabel[target]
+	if n == 0 then
+		MelloUI:Print(TEXT.copiedNone, lay.def.title, to, from)
+		return
+	elseif refused then
+		return
+	end
+	MelloUI:Confirm({
+		text = string.format(TEXT.copyAsk, Owner(from, lay.def.picker.noun), to, Settings(n)),
+		accept = TEXT.copyAccept,
+		cancel = TEXT.cancel,
+		onAccept = function()
+			CopyFrom(page, source, target)
+		end,
+	})
+end
+
+-- Apply to all: the pick's value into every other key of the row
+local function ApplyToAll(page, r)
+	local cur = Current(page, r)
+	if not cur then
+		return
+	end
+	local v = ValueOf(cur)
+	Clear()
+	for _, b in ipairs(r.distinct) do
+		if b ~= cur then
+			local fit = Fit(b, v)
+			if fit ~= nil and fit ~= ValueOf(b) then
+				Want(b, fit)
+			end
 		end
-		if #needs == 0 then
-			return nil
+	end
+	if #writeList > 0 and Bulk() then
+		MelloUI:Print(TEXT.allDone, page.lay.def.title, r.name, page.lay.def.picker.noun or "one")
+	end
+	Clear()
+	page:Refresh()
+end
+
+-- The shared handlers of the page's own controls (reading what they need
+-- from the control they run on)
+local ResetPageClick = Shared("OnClick on the configurator's Reset this page", function(self)
+	MelloUI:PlayUISound("tab")
+	AskResetPage(self.melloPage)
+end, "script")
+local AllClick = Shared("OnClick on the configurator's Apply to all", function(self)
+	local e = self.melloEntry
+	MelloUI:PlayUISound("tab")
+	ApplyToAll(e.page, e.r)
+end, "script")
+local TipEnter = Shared("OnEnter on the configurator's page controls", function(self)
+	W.ShowTooltip(self, self.melloTipTitle or "", self.melloTipBody)
+end, "script")
+local function PageTip(control, title, body)
+	control.melloTipTitle, control.melloTipBody = title, body
+	Perf.HookScript(control, "OnEnter", TipEnter)
+	Perf.HookScript(control, "OnLeave", W.TipLeave)
+end
+local function NoValue()
+	return nil
+end
+
+--------------------------------------------------------------------------------
+-- The rows (a job each)
+--------------------------------------------------------------------------------
+
+-- the picks a row per pick has a key for, in their order
+local function PicksWithKeys(lay, r)
+	local out = {}
+	for _, pk in ipairs(lay.picks) do
+		if r.keys[pk.key] then
+			out[#out + 1] = pk.key
 		end
-		return function()
-			for _, n in ipairs(needs) do
-				if not n.db[n.key] then
-					return false, n.name
+	end
+	return out
+end
+
+local SLIDER_KEYS = { "min", "max", "step", "percent", "format" }
+
+local function MakeRow(sec, r)
+	local page = sec.page
+	local b = Current(page, r)
+	local shape = b or r.b or r.distinct[1]
+	local opt = shape.opt
+	local e = { page = page, r = r, shape = shape }
+	local o = RowOpts(sec, r.new)
+	if opt and opt.important then
+		o.labelKey, o.hintKey = C.accent, C.accent
+	end
+	o.indent = Depth(shape.mod, opt) * INDENT
+	o.gate = function()
+		return Gate(page, r)
+	end
+	o.onCover = CoverJump
+	local get = function()
+		return ValueOf(Current(page, r))
+	end
+	local set = function(value)
+		local now = Current(page, r)
+		if now then
+			Write(now, value)
+		end
+	end
+	local hint, desc = Hint(page, r, b), Tip(page, r, shape)
+	local t = r.type
+	local row, control
+	if t == "toggle" then
+		row, control = W.ToggleRow(sec, sec.y, r.name, hint, desc, get, set, o)
+	elseif t == "slider" then
+		for _, k in ipairs(SLIDER_KEYS) do
+			o[k] = opt[k]
+		end
+		row, control = W.SliderRow(sec, sec.y, r.name, hint, desc, get, set, o)
+		for _, k in ipairs(SLIDER_KEYS) do
+			o[k] = nil
+		end
+	elseif t == "dropdown" then
+		row, control = W.DropdownRow(sec, sec.y, r.name, hint, desc, get, set, opt.values, o)
+		if opt.relist then
+			page.relist[#page.relist + 1] = control
+		end
+	elseif t == "picture" then
+		local choices, kind = Choices(shape)
+		o.host = window
+		row, control = W.PictureRow(sec, sec.y, r.name, hint, desc, get, set, choices, kind, o)
+		o.host = nil
+	else
+		o.width = opt.width
+		row, control = W.ButtonRow(sec, sec.y, r.name, hint, desc, opt.text or "Run", RowButtonClick, o)
+		o.width = nil
+		control.melloOpt, control.melloModule = opt, shape.mod
+	end
+	o.gate, o.onCover, o.indent = nil, nil, 0
+	e.row, e.control = row, control
+	row.melloEntry = e
+	local span = SPAN[t] or (12 + (opt and opt.width or 70))
+	if r.keys then
+		e.cover = CoverOf(row)
+		-- Apply to all (a row with several keys): its room always kept, so the
+		-- label never moves when it shows
+		if #r.distinct >= 2 then
+			local all = W.Button(row, TEXT.all, ALL_W, SKIN, { onClick = AllClick })
+			all:SetPoint("RIGHT", control, "LEFT", -ALL_GAP, 0)
+			all.melloEntry = e
+			if not r.allTip then
+				local noun = page.lay.def.picker.noun or "one"
+				r.allTip = string.format(TEXT.allTip, noun, Join(LabelsOf(page.lay, PicksWithKeys(page.lay, r))))
+			end
+			PageTip(all, TEXT.all, r.allTip)
+			W.RowPlateChild(row, all)
+			W.ClipRow(row, all, span + ALL_W + ALL_GAP)
+			all:Hide()
+			e.all = all
+		end
+	end
+	if r.swatch == "palette" then
+		local swatch = W.PaletteSwatch(row, SWATCH_SPEC)
+		swatch:SetPoint("RIGHT", control, "LEFT", -SWATCH_GAP, 0)
+		W.ClipRow(row, swatch, span + SWATCH_SPEC.width + SWATCH_GAP)
+	end
+	sec.refreshers[#sec.refreshers + 1] = function()
+		RefreshEntry(e)
+	end
+	page.entries[#page.entries + 1] = e
+	page.built[r] = e
+	Placed(sec, row, ROW_H[t] or ROW_HEIGHT)
+end
+
+-- a link's value as text: a switch On / Off (W.LinkRow's), a choice by its
+-- label, a slider's number as its box shows it
+local function Shown(b, v)
+	local opt = b.opt
+	if not opt or v == nil or type(v) == "boolean" then
+		return v
+	end
+	if opt.type == "slider" then
+		if opt.format then
+			local ok, text = pcall(opt.format, v)
+			return ok and text or v
+		elseif opt.percent then
+			return string.format("%d%%", math.floor(v * 100 + 0.5))
+		end
+		return v
+	end
+	local values = opt.type == "dropdown" and opt.values or (Choices(b))
+	for _, entry in ipairs(type(values) == "table" and values or EMPTY) do
+		if entry.value == v then
+			return entry.label or tostring(v)
+		end
+	end
+	return v
+end
+local function LinkTarget(page, lk)
+	if lk.targets then
+		return lk.targets[page.pick]
+	end
+	return lk.target
+end
+local function LinkValue(e)
+	local b = LinkTarget(e.page, e.link)
+	if not b then
+		return ""
+	end
+	local v = ValueOf(b)
+	if v ~= e.lastValue or b ~= e.lastTarget then
+		e.lastValue, e.lastTarget, e.lastText = v, b, Shown(b, v)
+	end
+	return e.lastText
+end
+local function LinkGate(page, lk)
+	if lk.targets and not lk.targets[page.pick] then
+		return false, nil, NotFor(page.lay.pickLabel[page.pick] or tostring(page.pick))
+	end
+	return true
+end
+local LinkClick = Shared("OnClick on the configurator's link rows (to the setting's page)", function(row)
+	local e = row.melloEntry
+	local b = e and LinkTarget(e.page, e.link)
+	if b then
+		MelloUI:PlayUISound("page")
+		JumpTo(b.id)
+	end
+end)
+
+local function MakeLink(sec, lk)
+	local page = sec.page
+	local e = { page = page, link = lk }
+	local b = LinkTarget(page, lk) or (lk.targets and select(2, next(lk.targets)))
+	local o = RowOpts(sec)
+	o.target = b and PageTitle(Lay.Get().place[b.id].r.page) or ""
+	o.desc = b and ((b.opt and b.opt.desc) or b.mod.desc) or nil
+	if lk.targets then
+		o.gate = function()
+			return LinkGate(page, lk)
+		end
+	end
+	local row = W.LinkRow(sec, sec.y, lk.name, function()
+		return LinkValue(e)
+	end, LinkClick, o)
+	o.target, o.desc, o.gate = nil, nil, nil
+	e.row = row
+	row.melloEntry = e
+	sec.refreshers[#sec.refreshers + 1] = function()
+		e.row:Refresh()
+	end
+	page.entries[#page.entries + 1] = e
+	Placed(sec, row, ROW_HEIGHT)
+end
+
+-- a section's heading (8 px under the section before it)
+local function MakeHeading(sec, s)
+	local gap = s.gap
+	W.Header(sec, sec.y + gap, s.name, { inset = SEC_INSET })
+	Placed(sec, nil, gap + W.HEADER_HEIGHT)
+end
+
+-- a job of a tab's section: a heading, a row or a link
+local function ElementJob(sec, job)
+	if job.isLink then
+		MakeLink(sec, job)
+	elseif job.rows then
+		MakeHeading(sec, job)
+	else
+		MakeRow(sec, job)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The header's own controls
+--------------------------------------------------------------------------------
+
+-- the picks as a dropdown's values, and the other picks as Copy from's (made
+-- once per page and pick, kept on the layout: both looks share them)
+local function PickValues(lay)
+	if not lay.pickValues then
+		lay.pickValues = {}
+		for i, pk in ipairs(lay.picks) do
+			lay.pickValues[i] = { value = pk.key, label = pk.label }
+		end
+	end
+	return lay.pickValues
+end
+local function CopyValues(lay, pick)
+	lay.copyValues = lay.copyValues or {}
+	local list = lay.copyValues[pick]
+	if not list then
+		list = {}
+		for _, pk in ipairs(lay.picks) do
+			if pk.key ~= pick then
+				list[#list + 1] = { value = pk.key, label = pk.label }
+			end
+		end
+		lay.copyValues[pick] = list
+	end
+	return list
+end
+
+-- A pick chosen: every row made takes its setting (no row is made again),
+-- the page and the preview follow; an open picture flyout closes
+local function SetPick(page, pick)
+	local lay = page.lay
+	if not (lay.pickLabel and lay.pickLabel[pick]) or pick == page.pick then
+		return
+	end
+	page.pick = pick
+	pickOf[page.name] = pick
+	if window then
+		W.ClosePictureMenu(window)
+	end
+	for _, e in ipairs(page.entries) do
+		Rebind(e)
+	end
+	if page.copyBox then
+		page.copyBox:SetValues(CopyValues(lay, pick))
+	end
+	if page.preview and page.preview.SetPick then
+		pcall(page.preview.SetPick, page.preview, pick)
+	end
+	page:Refresh()
+end
+
+local function Header(page, pl)
+	local def = pl.def
+	local module = def.module and MelloUI.modules[def.module]
+	local P = def.preview and pl.picks and MelloUI.ConfigPreview
+	local preview = type(P) == "table" and type(P.Make) == "function"
+	local icon, flavour = PageMeta(page.name)
+	local right = module and SWITCH_ROOM or (preview and PREVIEW_W + 10) or RESET_W + 10
+	page.previewH = preview and PREVIEW_H or nil
+	page.pickerLineH = pl.picks and PICKER_LINE or nil
+	local own = Lay.ModuleOf(def)
+	BuildPageHeader(page, icon, def.title, flavour, own and own.new, right)
+	page.important = module and module.important and true or false
+	local reset = W.Button(page, TEXT.reset, RESET_W, SKIN, { onClick = ResetPageClick })
+	reset.melloPage = page
+	PageTip(reset, TEXT.reset, TEXT.resetTip)
+	page.resetButton = reset
+	if module then
+		-- the page's switch: its module's (Look's is UI Modifications', labelled
+		-- so, its tooltip saying all it takes with it)
+		local name = def.switchLabel or TEXT.enabled
+		local lbl = Text(page, "GameFontNormal", name, C.text)
+		local switch = W.Switch(page, function()
+			return MelloUI:IsModuleEnabled(module.name)
+		end, function(value)
+			MelloUI:SetModuleEnabled(module.name, value)
+			MelloUI:RefreshConfig()
+		end, SwitchOpts())
+		switch:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
+		lbl:SetPoint("RIGHT", switch, "LEFT", -4, 0)
+		PageTip(switch, name, def.switchDesc or module.desc)
+		page.switch, page.switchLabel = switch, lbl
+		page.refreshers[#page.refreshers + 1] = function()
+			switch:Refresh()
+		end
+		reset:SetPoint("TOPRIGHT", switch, "BOTTOMRIGHT", 0, -10)
+	elseif not preview then
+		reset:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
+	end
+	if pl.picks then
+		-- the picker line: the pick, Copy from (placed by LayTabs, under the
+		-- header's texts)
+		local noun = def.picker.noun or "one"
+		local line = CreateFrame("Frame", nil, page)
+		line:SetHeight(PICKER_LINE)
+		local lbl = Text(line, "GameFontNormal", (def.picker.label or "") .. ":", C.text)
+		lbl:SetPoint("LEFT", line, "LEFT", 0, 0)
+		local dd = W.Dropdown(line, PICKER_W, function()
+			return page.pick
+		end, function(value)
+			MelloUI:PlayUISound("tab")
+			SetPick(page, value)
+		end, PickValues(pl), { default = def.picker.label, tooltip = string.format(TEXT.pickTip, noun) })
+		dd:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
+		local copy = W.Dropdown(line, COPY_W, NoValue, function(value)
+			AskCopyFrom(page, value)
+			page.copyBox:Refresh()
+		end, CopyValues(pl, page.pick), { default = TEXT.copy, tooltip = string.format(TEXT.copyTip, noun, noun) })
+		copy:SetPoint("LEFT", dd, "RIGHT", 12, 0)
+		page.pickerLine, page.picker, page.copyBox = line, dd, copy
+		page.refreshers[#page.refreshers + 1] = function()
+			dd:Refresh()
+		end
+		if preview then
+			-- (the preview takes the header's right: Reset this page at the
+			-- picker line's right end)
+			reset:SetPoint("TOPRIGHT", line, "TOPRIGHT", 0, -2)
+		end
+	end
+	if preview then
+		-- the live preview (Core/ConfigPreview.lua): made with the page, never
+		-- at login; it follows the settings itself
+		local ok, made = pcall(P.Make, page, def.preview, SKIN)
+		if ok and type(made) == "table" then
+			made:SetPoint("TOPRIGHT", page, "TOPRIGHT", -PAD, -PAD)
+			if made.SetPick then
+				pcall(made.SetPick, made, page.pick)
+			end
+			page.preview = made
+		elseif not ok then
+			geterrorhandler()(made)
+		end
+	end
+	page.headerHeight = HeaderHeight(page)
+end
+
+--------------------------------------------------------------------------------
+-- The page
+--------------------------------------------------------------------------------
+
+function BuildElementPage(key, width)
+	local pl = Lay.Get().pages[key]
+	if not pl or pl.def.own then
+		return nil
+	end
+	local page = NewPage(key, width)
+	page.lay = pl
+	page.entries, page.built, page.rowSec, page.rowY, page.relist = {}, {}, {}, {}, {}
+	page.fromWindows = pl.def.picker and pl.def.picker.from == "windows" or nil
+	if pl.picks then
+		local pick = pickOf[key]
+		page.pick = (pick and pl.pickLabel[pick]) and pick or (pl.picks[1] and pl.picks[1].key)
+		pickOf[key] = page.pick
+		page.SetPick = SetPick
+	end
+	Header(page, pl)
+	-- the header's controls dressed now (the dropdowns); the tabs dress
+	-- themselves and every row is dressed as it is made
+	W.Dress(page, SKIN)
+	for _, t in ipairs(pl.tabs) do
+		local sec = NewSection(page, t.name)
+		sec.hasNew = t.new
+		for _, s in ipairs(t.sections) do
+			if #s.rows > 0 or #s.links > 0 then
+				s.gap = s == t.firstSection and 0 or SECTION_GAP
+				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
+				for _, r in ipairs(s.rows) do
+					page.rowSec[r], page.rowY[r] = sec, sec.plannedY or sec.y
+					Queue(sec, r, ElementJob, ROW_H[r.type] or ROW_HEIGHT)
+				end
+				for _, lk in ipairs(s.links) do
+					Queue(sec, lk, ElementJob, ROW_HEIGHT)
 				end
 			end
-			return true
+		end
+		if not sec.jobs then
+			-- (a tab with nothing on it: its line, as a module with no options had)
+			local fs = Text(sec, "GameFontDisable", TEXT.nothing)
+			fs:SetPoint("TOPLEFT", 14, -(SEC_INSET + 8))
+			sec.y = SEC_INSET + 30
 		end
 	end
-	-- an option's row, made from its job: the builder, its indent, its gate
-	-- (made with the row, so the hint slot that says which switch wakes it
-	-- is laid before the texts are cut at the control; the typed row dresses
-	-- its controls itself: dropdowns, red plate buttons, through the kit's
-	-- sweep of the row)
-	local function MakeOption(s, job)
-		local owner, ownerDb, opt, area = job[1], job[2], job[3], job[4]
-		local builder = builders[opt.type]
-		if not builder then
-			MelloUI:Print("Unknown option type '%s' in module %s", tostring(opt.type), owner.name)
-			return
-		end
-		local sub = opt.type == "subheader"
-		s.indent = not sub and ((area and 1 or 0) + Depth(owner, opt)) or 0
-		s.gate = not sub and GateOf(owner, ownerDb, opt, area) or nil
-		local row = builder(s, owner, ownerDb, opt)
-		s.indent, s.gate = 0, nil
-		if row then
-			page.optRow[opt] = row   -- (the search's jump lights it: W.Flash)
-		end
-		-- (a row whose setting also changes from outside: kept, FollowRows)
-		local follow = FOLLOW[owner.name]
-		if row and follow and follow[opt.key] then
-			page.follow = page.follow or {}
-			page.follow[#page.follow + 1] = row
-		end
-	end
-	-- each entry (EachOption) built against its owner and its settings,
-	-- under the tab's area switch (`area`, a key of this page's module: the
-	-- rows indented one step and live only while it is on). Here the
-	-- option's setting is filled in and its row queued on the tab; MakeRows
-	-- makes it. A tab holding an option new in the running update is marked
-	-- (its New tag: page:Finish).
-	local areas = {}   -- [area key] = { db, key, name } (the gate's)
-	local dbs = { [module] = db }   -- [owner] = its settings
-	local function Build(_, owner, opt, areaKey)
-		if not owner then
-			sec = NewSection(page, opt.name)
-			return
-		end
-		if not sec then
-			sec = NewSection(page, "General")
-		end
-		local ownerDb = dbs[owner]
-		if not ownerDb then
-			ownerDb = MelloUI:GetModuleDB(owner.name)
-			dbs[owner] = ownerDb
-		end
-		local area = nil
-		if areaKey then
-			area = areas[areaKey]
-			if not area then
-				local o = OptionOf(module, areaKey)
-				area = { db = db, key = areaKey, name = o and o.name or areaKey }
-				areas[areaKey] = area
-			end
-		end
-		if builders[opt.type] and opt.key and ownerDb[opt.key] == nil then
-			ownerDb[opt.key] = owner.defaults[opt.key]
-		end
-		if opt.key and owner == module and not page.anchors[opt.key] then
-			page.anchors[opt.key] = { sec = sec, y = sec.plannedY or sec.y }
-		end
-		if not page.optSec[opt] then
-			page.optSec[opt], page.optY[opt] = sec, sec.plannedY or sec.y
-		end
-		if opt.new ~= nil and MelloUI:IsNew(opt.new) then
-			sec.hasNew = true
-		end
-		Queue(sec, { owner, ownerDb, opt, area }, MakeOption, ROW_HEIGHTS[opt.type] or 0)
-	end
-	EachOption(module, Build)
 	if #page.sections == 0 then
-		sec = NewSection(page, "Options")
-		SectionBox(sec)
-		local fs = Text(sec, "GameFontDisable", "This module has no options. The switch above is all there is to it.")
-		fs:SetPoint("TOPLEFT", 14, -8)
-		sec.y = 30
+		local sec = NewSection(page, pl.def.title)
+		local fs = Text(sec, "GameFontDisable", TEXT.nothing)
+		fs:SetPoint("TOPLEFT", 14, -(SEC_INSET + 8))
+		sec.y = SEC_INSET + 30
 	end
-	-- the tabs, and the first tab's rows down to the bottom of the view
-	-- (page:Select)
 	page:Finish()
 	return page
 end
+
+-- The page named, on show: the page on show already (true), or put on show
+-- (made on its first open) as its side-list entry does
+function ShowPage(name)
+	local page = pages[name]
+	if page and window.pager:Current() == page then
+		return page, true
+	end
+	SelectPage(name)
+	return pages[name], false
+end
+
+-- A row brought into view: its tab opened, the page scrolled so the row sits
+-- under the top of the view (a glide on a page already on show, else at
+-- once: the page's own fade is the motion), the row made when the page has
+-- not made it yet (that one row, out of the pages' turn), and lit
+function RevealRow(page, r, onShow)
+	local sec, y = page.rowSec and page.rowSec[r], page.rowY and page.rowY[r]
+	if not sec then
+		return
+	end
+	page:RevealAt(sec, y, not onShow, onShow)
+	if sec.jobs and not page.built[r] then
+		MakeRows(sec, y + 1, nil, y)
+	end
+	local e = page.built[r]
+	W.Flash(e and e.row)
+end
+
+-- A jump to a setting's one place (a link row's button, a sleeping row's
+-- cover, Home's Change…, a search result): its page, the pick it needs
+-- (`pick`, else the one shown when it has it there, else its first), its tab,
+-- the row lit. "!page:<key>": that page's header switch.
+function JumpTo(id, pick)
+	if type(id) ~= "string" or not window then
+		return
+	end
+	local header = id:match("^!page:(.+)$")
+	if header then
+		local page, onShow = ShowPage(header)
+		if page then
+			page.pager:ScrollTo(0, not onShow)
+			W.Flash(page.switch)
+		end
+		NavFollow(true)
+		return
+	end
+	local place = Lay.Get().place[id]
+	if not place then
+		return
+	end
+	local page, onShow = ShowPage(place.r.page)
+	if not page then
+		return
+	end
+	if page.SetPick then
+		local want = pick or (place.pickSet and not place.pickSet[page.pick] and place.picks[1]) or nil
+		if want then
+			page:SetPick(want)
+		end
+	end
+	RevealRow(page, place.r, onShow)
+	NavFollow(true)
+end
+
+-- The page on show brought in line once a frame however many settings
+-- changed in it (a slider dragged through 30 steps, a Batch of 40 keys);
+-- every built page is stale until its next refresh (a hidden one: its next
+-- show's). Nothing runs while nothing changes.
+local asked = false
+local PageRefresh = Shared("the configurator's page refresh (once a frame)", function()
+	asked = false
+	local page = window and currentPage and pages[currentPage]
+	if page and page.stale and window:IsShown() and window.pager:Current() == page then
+		page:Refresh()
+	end
+end)
+function AskPageRefresh()
+	for _, set in pairs(pagesBy) do
+		for _, page in pairs(set) do
+			page.stale = true
+		end
+	end
+	if asked or not (window and window:IsShown()) then
+		return
+	end
+	local K = MelloUI.Kit
+	if K and K.NextFrame then
+		asked = true
+		K:NextFrame("Config page refresh", PageRefresh)
+	else
+		PageRefresh()
+	end
+end
+
+-- 'palette': the lists made again that a palette renames in place (the Kit
+-- Colours: the row's `relist`), on every built page
+function RelistPages()
+	for _, set in pairs(pagesBy) do
+		for _, page in pairs(set) do
+			for _, dd in ipairs(page.relist or EMPTY) do
+				dd:Refresh(true)
+			end
+		end
+	end
+end
+end   -- (the element pages block)
 
 --------------------------------------------------------------------------------
 -- Home page (the approved sketch of 2026-09-24): the header with the whole
@@ -1434,20 +3031,22 @@ end
 -- the left (this version's changes, the older ones behind Earlier versions),
 -- Your setup on the right (the profile, the palette, Kit Colours, the
 -- screen, MelloUI's state, the installer) -- and Help under both, full
--- width. The palette is chosen right there (0.14.0: it colours MelloUI's own
--- windows with the reskin off too, so it is not Dynamic UI's). The header and
--- both cards are made in the click frame; Help is one job for the worker
--- from the next frame on, its height planned so the page does not jump.
+-- width. The palette and the Kit Colours show as values with Change…, a jump
+-- to their one place on the Look page (0.15.0: every option in one place).
+-- The header and both cards are made in the click frame; Help is one job
+-- for the worker from the next frame on, its height planned so the page does
+-- not jump.
 --------------------------------------------------------------------------------
 
 -- (what the rest of the file uses of it; the block keeps its helpers to
 -- itself: the file is near Lua's limit of 200 locals in one function)
-local BuildHomePage, ConfirmLoadProfile, FillProfileNames, DynamicClick, InstallClick, HomeNew, HomeSearch, HomePart
+local BuildHomePage, ConfirmLoadProfile, FillProfileNames, InstallClick, HomeNew, HomeSearch, HomePart
 do
 local HOME_GAP = 10       -- between the two cards, and above Help
 local CARD_PAD = 12       -- a card's texts inside its box
 local CARD_ROW = 30       -- a Your setup row
 local SETUP_VALUE = 100   -- where a Your setup row's value starts
+local CHANGE_W = 70       -- Your setup's Change… (its text and the plate's sides)
 local CARD_HEAD = SEC_INSET + ROW_HEIGHT - 6 + 8   -- a card's texts start under its heading
 local TUTORIAL_W = 110
 local HELP_NOTE_H = 28    -- Help's note, planned (two lines) until it is made
@@ -1462,9 +3061,8 @@ local EARLIER_BY_WORKER = true
 local HOME_TIPS = {
 	tutorial = "A short tour of this window: where every feature lives, step by step, on the game's help tips. Also /mello tutorial.",
 	profile = "Choose a profile to load it: every setting of every module. It asks first. The Profiles page saves, shares and deletes them.",
-	palette = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Your choice applies at once, with the reskin on or off.",
-	change = "Dynamic UI Modification: the Kit Colours and the rest of the reskin's look, chosen on the interface itself. Closes this window while you pick.",
-	changeOff = "Switch on the painted kit reskin first (UI Modifications, General): the Kit Colours are the reskin's.",
+	palette = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Chosen on the Look page: Change… takes you there.",
+	change = "The colours of the painted art: frames, headers, rows, buttons, slots and bars. Chosen on the Look page: Change… takes you there.",
 	fit = "Mello's Edit Mode layout was fitted to another screen size or UI scale, or by an older MelloUI. The installer fits it to this one, and you can go back right after.",
 	install = "The installer: a setup for the whole interface in a few steps, fitted to this screen. Closes this window while it runs.",
 	revert = "Back to how MelloUI was before the installer ran (the 'Before install' profile): your settings, and Edit Mode's layouts if the installer changed them. Asks first.",
@@ -1504,7 +3102,7 @@ local function ModulesOn()
 	return on, total
 end
 
--- the Kit Colours look in use, by its label (Dynamic UI Modification's)
+-- the Kit Colours look in use, by its label (the Look page's choice)
 local function KitColoursLabel()
 	local K = MelloUI.Kit
 	if not (K and K.BorderValue and type(K.colourLooks) == "table") then
@@ -1702,16 +3300,11 @@ local TutorialClick = Shared("OnClick on the configurator's Tutorial", function(
 		MelloUI.Tutorial:Start()
 	end
 end, "script")
--- Dynamic UI Modification (user, 2026-09-23/24): the look of the whole
--- reskin, the one place it is chosen -- borders, Kit Colours, parchment,
--- every background and backdrop, picked on the interface itself with
--- previews (Modules/DynamicUI.lua); it closes this window. The top bar's
--- button, and Your setup's Change... by the Kit Colours (user, 2026-09-25:
--- Home shows them, Dynamic UI stays the one place to change them).
-DynamicClick = Shared("OnClick on the configurator's Dynamic UI Modification", function()
-	if MelloUI.StartDynamicUI then
-		MelloUI:StartDynamicUI()
-	end
+-- Your setup's Change… by the palette and the Kit Colours: to their one
+-- place, Look > General (the row lit; 0.15.0, the button's `melloJump`)
+local ChangeClick = Shared("OnClick on the configurator's Change…", function(self)
+	MelloUI:PlayUISound("page")
+	JumpTo(self.melloJump)
 end, "script")
 -- Install... and Install again: the installer (Core/InstallerWindow.lua),
 -- which closes this window
@@ -1734,20 +3327,10 @@ local function ProfileSet(name)
 	ConfirmLoadProfile(name)
 end
 local PROFILE_DD = { default = "None loaded", tooltip = HOME_TIPS.profile }
--- the palette in use (Core's MelloUI:SetPalette: the palette and the kit's
--- art switch at once, the reskin on or off -- no Change... to Dynamic UI)
-local function PaletteGet()
-	return MelloUI:PaletteId()
-end
-local function PaletteSet(id)
-	MelloUI:SetPalette(id)
-end
--- (`new`: the update the palette row came with, its New tag after the label)
-local PALETTE_DD = { default = "Palette", tooltip = HOME_TIPS.palette, new = "0.14.0" }
 -- Home's own options (Your setup's controls), each with the update it came
 -- with in `new`: the side list's Home entry is tagged New while one of them
 -- is new (HomeNew; a new control of Home's goes in this list)
-local HOME_OPTIONS = { PROFILE_DD, PALETTE_DD }
+local HOME_OPTIONS = { PROFILE_DD }
 function HomeNew()
 	for _, o in ipairs(HOME_OPTIONS) do
 		if o.new ~= nil and MelloUI:IsNew(o.new) then
@@ -1760,41 +3343,20 @@ end
 -- look for it (in-game words)
 local NEW_LINE = "Look for this tag on the side list, the tabs and the options: it marks everything this update added."
 
--- a Home card: the L1 box with the kit (CT2: single rail and list-box stone,
--- its rule laying the palette's inner panel over the stone, 2e), a palette
--- box without it (the inner panel inside a border line)
+-- a Home card: the widgets' content panel (W.Panel, 0.15.0: a flat inner
+-- panel in a 1 px edge on the calm ground, in both looks)
 local function HomeCard(sec, width)
-	local card
-	if KIT then
-		card = CreateFrame("Frame", nil, sec)
-		-- (one level under the card, so its own texts stay above the stone)
-		SKIN:Replace(SKIN:Anchor(card), { as = "Professions-background-summarylist", rect = card, parent = card, level = -1 })
-	else
-		card = W.Box(sec, C.band, C.line, 1)
-	end
+	local card = W.Panel(sec)
 	card:SetWidth(width)
 	card.w = width
 	return card
 end
 
--- a card's heading: SH3 (the header plate, the text past its gem cap) with
--- the kit, gold text over a line without it
+-- a card's heading: the section heading of the own windows (W.Header: the
+-- title in gold and a hairline, in both looks)
+local CARD_HEADER = { inset = SEC_INSET, x = 2 }
 local function CardHeading(card, text)
-	local head = CreateFrame("Frame", nil, card)
-	head:SetHeight(ROW_HEIGHT - 6)
-	head:SetPoint("TOPLEFT", card, "TOPLEFT", SEC_INSET, -SEC_INSET)
-	head:SetPoint("TOPRIGHT", card, "TOPRIGHT", -SEC_INSET, -SEC_INSET)
-	head.label = Text(head, "GameFontNormal", text, C.accent)
-	if KIT then
-		SKIN:Replace(SKIN:Anchor(head), { as = "GuildFrame-Header", rect = head })
-		head.label:SetPoint("LEFT", 34, 0)
-	else
-		head.label:SetPoint("LEFT", 2, -3)
-		local line = Solid(head, "ARTWORK", C.line, 1)
-		line:SetHeight(1)
-		line:SetPoint("BOTTOMLEFT", 0, 0)
-		line:SetPoint("BOTTOMRIGHT", 0, 0)
-	end
+	local head = W.Header(card, SEC_INSET, text, CARD_HEADER)
 	card.heading = head
 	return head
 end
@@ -1962,6 +3524,10 @@ local function RunHelp(sec)
 		Perf.SetScript(box, "OnTextChanged", LinkChanged)
 		Perf.SetScript(box, "OnEscapePressed", LinkEscape)
 		Perf.SetScript(box, "OnEditFocusGained", LinkFocus)
+		-- (flat in both looks, 0.15.0, as the search box: after its scripts,
+		-- its focus look hooked on them)
+		W.Paint(box, C.text, "text")
+		W.FlatField(box)
 		y = y + 28
 	end
 	y = y + 8
@@ -2056,7 +3622,7 @@ end
 local SETUP_ROWS = { "profile", "palette", "colours", "screen", "fit", "mello", "voice", "installer" }
 local SETUP_LABELS = { profile = "Profile", palette = "Palette", colours = "Kit Colours", screen = "Screen", mello = "MelloUI",
 	voice = "Voice pack", installer = "Installer" }
-local SETUP_VALUES = { "colours", "screen", "mello", "voice" }
+local SETUP_VALUES = { "palette", "colours", "screen", "mello", "voice" }
 
 -- the rows laid top down, those wanted only; the card's height (true when
 -- it changed)
@@ -2111,24 +3677,20 @@ local function BuildSetup(page, sec, width, x)
 	dd:SetPoint("RIGHT", -CARD_PAD, 0)
 	dd.melloTipTitle = "Profile"
 	card.profile = dd
-	-- the palette (0.14.0), live: its swatch (the palette in use, painted by
-	-- key) and the widget set's palette list; the reskin on or off
-	local swatch = W.PaletteSwatch(rows.palette, { width = 50, height = 14 })
-	-- (new in its update: the New tag after the label, the swatch after it)
-	local tag = W.NewTag(rows.palette, rows.palette.label, PALETTE_DD.new)
-	if tag then
-		swatch:SetPoint("LEFT", tag.plate, "RIGHT", 8, 0)
-	else
-		swatch:SetPoint("LEFT", SETUP_VALUE, 0)
-	end
-	rows.palette.newTag = tag
-	local pal = W.Dropdown(rows.palette, 160, PaletteGet, PaletteSet, W.PaletteValues(), PALETTE_DD)
-	pal:SetPoint("RIGHT", -CARD_PAD, 0)
-	pal.melloTipTitle = "Palette"
-	card.palette, card.swatch = pal, swatch
-	-- the Kit Colours, read only, and Change... to Dynamic UI (the one place to change them)
-	local change = W.Button(rows.colours, "Change…", 90, SKIN, { onClick = DynamicClick })
+	-- the palette in use and the Kit Colours by name, each with Change… to
+	-- its one place (0.15.0: Look > General, the row lit). The name has the
+	-- room from the value's start to Change…: 151 of a 341 card, the longest
+	-- ("Royal Azure Vibrant") needs about 116 (no swatch beside it: with
+	-- one it was cut); Change…'s tooltip names it too
+	local changePalette = W.Button(rows.palette, "Change…", CHANGE_W, SKIN, { onClick = ChangeClick })
+	changePalette:SetPoint("RIGHT", -CARD_PAD, 0)
+	changePalette.melloJump = "UIModifications.palette"
+	rows.palette.value:SetPoint("RIGHT", changePalette, "LEFT", -8, 0)
+	HomeTip(changePalette, "Palette", HOME_TIPS.palette)
+	card.changePalette = changePalette
+	local change = W.Button(rows.colours, "Change…", CHANGE_W, SKIN, { onClick = ChangeClick })
 	change:SetPoint("RIGHT", -CARD_PAD, 0)
+	change.melloJump = "UIModifications.kitColours"
 	rows.colours.value:SetPoint("RIGHT", change, "LEFT", -8, 0)
 	HomeTip(change, "Kit Colours", HOME_TIPS.change)
 	card.change = change
@@ -2153,10 +3715,9 @@ end
 
 -- Your setup as things are now: the profiles' list refilled in place (new
 -- entries only when the names changed: the dropdown makes its menu again
--- only then), the palette's name, the Kit Colours' label and whether
--- Dynamic UI can open, the
--- screen, the modules on, the voice pack, the installer's buttons. True
--- when the card's height changed (a row came or went).
+-- only then), the palette's name, the Kit Colours' label, the screen, the
+-- modules on, the voice pack, the installer's buttons. True when the card's
+-- height changed (a row came or went).
 local profileNames = {}
 local function RefreshSetup(page)
 	local card = page.setup
@@ -2178,12 +3739,14 @@ local function RefreshSetup(page)
 		end
 	end
 	card.profile:Refresh()
-	card.palette:Refresh()
+	local palette = W.PaletteName(MelloUI:PaletteId())
+	rows.palette.value:SetText(palette)
+	if card.paletteShown ~= palette then
+		-- (the tooltip's title names it: made again only when it changed)
+		card.paletteShown = palette
+		card.changePalette.melloTipTitle = string.format("Palette: %s", palette)
+	end
 	rows.colours.value:SetText(KitColoursLabel())
-	local K = MelloUI.Kit
-	local canChange = (K and K.IsOn and K:IsOn("dynamicui")) and true or false
-	card.change:SetEnabled(canChange)
-	card.change.melloTipBody = canChange and HOME_TIPS.change or HOME_TIPS.changeOff
 	rows.screen.value:SetText(ScreenText())
 	local on, total = ModulesOn()
 	rows.mello.value:SetText(string.format("%s, %d of %d modules on", tostring(MelloUI.version), on, total))
@@ -2212,7 +3775,7 @@ function BuildHomePage(width)
 	-- one section, no tabs: What's new and Your setup side by side (two
 	-- columns of 341 at the 736 page), Help under them
 	local sec = NewSection(page, "Home")
-	sec.needsBox = nil   -- (each card has its own box)
+	sec.needsPanel = nil   -- (each card is a panel of its own)
 	page.homeSection = sec
 	local column = (width - PAD * 2 - HOME_GAP) / 2
 	BuildNews(page, sec, column)
@@ -2234,7 +3797,8 @@ function BuildHomePage(width)
 end
 
 -- Home for the configurator's search (below): Your setup's rows by their
--- labels (the installer's by its two buttons) and the two cards, each with
+-- labels (the installer's by its two buttons; the palette is found on the
+-- Look page, its one place) and the two cards, each with
 -- what its tooltip says; `add(part, name, tip, new, when)`. A row Your setup
 -- shows only at times (Fit to this screen; the installer's buttons) is found
 -- only then (`when(turn)`, asked of a match once a search, not per
@@ -2259,8 +3823,6 @@ end
 function HomeSearch(add)
 	add("news", "What's new", SEARCH_TIPS.news)
 	add("profile", SETUP_LABELS.profile, HOME_TIPS.profile, PROFILE_DD.new)
-	add("palette", SETUP_LABELS.palette, HOME_TIPS.palette, PALETTE_DD.new)
-	add("colours", SETUP_LABELS.colours, HOME_TIPS.change)
 	add("screen", SETUP_LABELS.screen, SEARCH_TIPS.screen)
 	add("fit", "Fit to this screen", HOME_TIPS.fit, nil, FitWanted)
 	add("mello", SETUP_LABELS.mello, SEARCH_TIPS.mello)
@@ -2703,7 +4265,8 @@ local ProfileShareClick = Shared("OnClick on the configurator's profile Share", 
 	end
 end, "script")
 
--- a profile's row: a frame, four game buttons, two texts (made once, kept)
+-- a profile's row: a frame, four game buttons in the flat look (W.FlatButton,
+-- 0.15.0), two texts (made once, kept)
 local function ProfileRowFrame(sec, i)
 	local row = CreateFrame("Frame", nil, sec)
 	row:SetHeight(30)
@@ -2723,17 +4286,21 @@ local function ProfileRowFrame(sec, i)
 	row.load:SetSize(60, 22)
 	row.load:SetPoint("LEFT", row.name, "RIGHT", 6, 0)
 	row.load:SetText("Load")
+	W.FlatButton(row.load)
 	row.default = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.default:SetSize(100, 22)
 	row.default:SetPoint("LEFT", row.load, "RIGHT", 4, 0)
+	W.FlatButton(row.default)
 	row.delete = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.delete:SetSize(60, 22)
 	row.delete:SetPoint("LEFT", row.default, "RIGHT", 4, 0)
 	row.delete:SetText("Delete")
+	W.FlatButton(row.delete)
 	row.share = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
 	row.share:SetSize(60, 22)
 	row.share:SetPoint("LEFT", row.delete, "RIGHT", 4, 0)
 	row.share:SetText("Share")
+	W.FlatButton(row.share)
 	row.baked = Text(row, "GameFontHighlightSmall", nil, C.sub)
 	row.baked:SetPoint("LEFT", row.share, "RIGHT", 10, 0)
 	row.baked:SetPoint("RIGHT", row, "RIGHT", -8, 0)
@@ -2806,8 +4373,9 @@ local function BuildBackup(sec, width)
 	blk:SetPoint("RIGHT", sec, "RIGHT", 0, 0)
 	blk:SetHeight(10)
 	blk.y, blk.rows = 0, 0
-	blk.inset = KIT and SEC_INSET or 0
-	AddSubheader(blk, nil, nil, BACKUP_HEAD)
+	blk.inset = SEC_INSET
+	-- (its heading: the own windows' section heading, W.Header)
+	Placed(blk, W.Header(blk, blk.y, BACKUP_HEAD.name, { inset = blk.inset }), W.HEADER_HEIGHT)
 	local o = RowOpts(blk, BACKUP_TAG.new)
 	local row = W.ToggleRow(blk, blk.y, T.switch, T.switchHint, T.switchDesc, BackupGet, BackupSet, o)
 	blk.switchRow = Placed(blk, row, ROW_HEIGHT)
@@ -2958,7 +4526,7 @@ function BuildProfilesPage(width)
 	local page = NewPage("Profiles", width)
 	BuildPageHeader(page, PROFILES_META.icon, PROFILES_META.title, PROFILES_META.flavour, nil)
 	local sec = NewSection(page, "Profiles")
-	SectionBox(sec)
+	SectionPanel(sec)
 	page.section = sec
 	sec.rowFrames = {}
 
@@ -2977,10 +4545,13 @@ function BuildProfilesPage(width)
 	sec.nameBox:SetPoint("TOPLEFT", 12, -y)
 	sec.nameBox:SetAutoFocus(false)
 	sec.nameBox:SetMaxLetters(40)
+	W.Paint(sec.nameBox, C.text, "text")
+	W.FlatField(sec.nameBox)   -- (flat in both looks, 0.15.0, as the search box)
 	sec.save = CreateFrame("Button", nil, sec, "UIPanelButtonTemplate")
 	sec.save:SetSize(150, 22)
 	sec.save:SetPoint("LEFT", sec.nameBox, "RIGHT", 8, 0)
 	sec.save:SetText("Save current as")
+	W.FlatButton(sec.save)
 	local function Save()
 		local name = sec.nameBox:GetText()
 		local ok, err = MelloUI:SaveProfile(name)
@@ -3000,6 +4571,7 @@ function BuildProfilesPage(width)
 	sec.import:SetSize(150, 22)
 	sec.import:SetPoint("LEFT", sec.save, "RIGHT", 6, 0)
 	sec.import:SetText("Import as")
+	W.FlatButton(sec.import)
 	Perf.SetScript(sec.import, "OnClick", function()
 		local name = sec.nameBox:GetText():gsub("^%s+", ""):gsub("%s+$", "")
 		if name == "" then
@@ -3108,144 +4680,50 @@ end   -- (the Profiles block)
 -- crest on the top rail with the short "MelloUI" plate under it, the drag
 -- strip down to the top bar, one mover whose place is kept (user,
 -- 2026-09-25: it opens where it was dropped), scaled down to fit the screen with its crest,
--- Escape, the open and close sounds, the look switch
+-- Escape, the open and close sounds, the look switch, and the calm ground
+-- (0.15.0, Background A: the stone only as a band round one flat ground)
+-- (its mover is a "tool" of Edit Layout's: never a plate there, never in its
+-- Reset all; dragged by its strip at any time, its place kept at once)
 local SHELL_OPTS = { area = "config", ring = { at = "top", texture = LOGO, scale = CREST_SCALE }, plate = "crest",
-	title = "MelloUI", plateWidth = 200, escape = true, grabBottom = BAR_TOP, fit = true, sounds = true,
-	mover = { key = "MelloUIConfigFrame", plainDrag = "always" } }
+	title = "MelloUI", plateWidth = 200, escape = true, grabBottom = BAR_TOP, fit = true, sounds = true, calm = true,
+	mover = { key = "MelloUIConfigFrame", plainDrag = "always", group = "tool" } }
 
--- The side list's groups, in order (the approved sketch's names: a design
--- constant, user 2026-09-25). Home and Profiles, the configurator's own pages,
--- stand first and last with no header. Every module whose registry `group`
--- names one of these gets an entry there, by its `navOrder`, then its place
--- in the registry: a module shown here is a page; a hidden one a shortcut
--- into UI Modifications when that has a qol_<Name> switch for it (the other
--- folded features stay on UI Modifications' tabs only).
-local NAV_GROUPS = { "The look", "Quests and travel", "Chat and sound", "Frames and bars" }
-
--- Unlock the Windows, Auto Snapping and Reset positions while UI
--- Modifications is off (its mover provider rests then): dimmed and
--- disabled, their tooltips saying so (the gated-row rule of the rows)
-local GATE_NOTE = "Switch on UI Modifications first."
-local LAYOUT_DIM = 0.4
-
--- The wide window (user, 2026-09-25): UI Modifications' tabs, measured at the first
--- open at the Font Style in use as page:Finish lays them (a tab's width
--- less the 6 px the next one overlaps). One row of a section on the 1000
--- wide window holds them while the sum is this or less (its width less the
--- last tab's overlap); over it the window is WIDE_WIDTH wide, the page
--- area taking the 80. One tab made for the measure, kept hidden.
-local TAB_ROW_ROOM = WINDOW_WIDTH - PAGE_LEFT + PAGE_RIGHT - PAD * 2 - 6
-local function TabRowFits(parent)
-	local um = MelloUI.modules.UIModifications
-	if not (um and type(um.options) == "table") then
-		return true
-	end
-	local tab = CreateFrame("Button", nil, parent, "PanelTopTabButtonTemplate")
-	tab:Hide()
-	local sum = 0
-	for _, opt in ipairs(um.options) do
-		if opt.type == "header" then
-			tab:SetText(opt.name)
-			PanelTemplates_TabResize(tab, 8)
-			sum = sum + (Num(tab:GetWidth()) or 0) - 6
-		end
-	end
-	parent.tabRowWidth = sum
-	return sum <= TAB_ROW_ROOM
-end
-
--- the side list's entries of a group: by navOrder, then the registry's order
-local function NavOrder(a, b)
-	if a.order ~= b.order then
-		return a.order < b.order
-	end
-	return a.at < b.at
-end
-
--- The side list's New tags (the user's rule, 2026-09-26: "for people to
--- easily navigate to that option"): an entry is tagged while its page lays
--- an option new in the running update (MelloUI:IsNew) or its module is new
--- itself (the registry's `new`); a shortcut while the tab of UI
--- Modifications it opens -- the one holding its qol_ switch -- holds one
--- (that tab wears the badge); Home and Profiles by their own rows (HomeNew,
--- ProfilesNew). Read from the schemas once, as the list is made, through the
--- pages' own walk (EachOption), with the tabs as the page makes them (a
--- header opens one; a row before any header opens "General").
-local function NewVisit(acc, owner, opt)
-	if not owner then
-		acc.tab, acc.open = acc.tab + 1, true   -- (a header: the next tab)
-		return
-	end
-	if not acc.open then
-		acc.tab, acc.open = acc.tab + 1, true
-	end
-	if owner == acc.module and opt.key ~= nil and acc.tabOf[opt.key] == nil then
-		acc.tabOf[opt.key] = acc.tab
-	end
-	if opt.new ~= nil and MelloUI:IsNew(opt.new) then
-		acc.any = true
-		acc.tabNew[acc.tab] = true
-	end
-end
-
--- The side list's groups from the registry (made once, at the first open),
--- and whether any of its entries is tagged New
-local function NavGroups()
-	local switches = {}
-	local um = MelloUI.modules.UIModifications
-	if um and type(um.options) == "table" then
-		for _, opt in ipairs(um.options) do
-			if opt.key and not opt.module then
-				switches[opt.key] = true
-			end
-		end
-	end
-	-- (the pages' New options first: a shortcut's tab is on UI Modifications)
-	local pageNew, umTabs = {}, nil
-	for _, module in ipairs(MelloUI:ModulesInOrder()) do
-		if module.group and not module.hidden then
-			local acc = { module = module, any = false, tab = 0, open = false, tabOf = {}, tabNew = {} }
-			EachOption(module, NewVisit, acc)
-			pageNew[module] = acc.any or MelloUI:IsNew(module.new)
-			if module.name == "UIModifications" then
-				umTabs = acc
-			end
-		end
-	end
-	local byGroup = {}
-	local anyNew = false
-	for i, module in ipairs(MelloUI:ModulesInOrder()) do
-		local group = module.group
-		local shortcut = module.hidden and switches["qol_" .. module.name] and ("qol_" .. module.name) or nil
-		if group and (shortcut or not module.hidden) then
-			local icon, flavour = Meta(module)
-			local list = byGroup[group] or {}
-			byGroup[group] = list
-			local new
-			if shortcut then
-				local tab = umTabs and umTabs.tabOf[shortcut]
-				new = (tab ~= nil and umTabs.tabNew[tab]) or MelloUI:IsNew(module.new)
-			else
-				new = pageNew[module]
-			end
-			anyNew = anyNew or new
-			list[#list + 1] = { key = module.name, text = module.title, icon = icon, tip = flavour, module = true,
-				shortcut = shortcut, order = tonumber(module.navOrder) or math.huge, at = i, new = new or nil }
-		end
-	end
+-- The side list's groups (0.15.0: Core/ConfigLayout.lua's `groups`, the
+-- grouped rail the user picked; made once, at the first open): a header per
+-- group that has a title (they fold), an entry per page. An entry is tagged
+-- New while its page holds a row new in the running update or its module is
+-- new itself (the user's rule, 2026-09-26: "for people to easily navigate to
+-- that option"); Home and Profiles by their own rows (HomeNew, ProfilesNew).
+-- A page one module owns shows that module off on its icon.
+local function RailGroups()
+	local L = MelloUI.ConfigLayout
+	local lay = Lay.Get()
 	local homeNew, profilesNew = HomeNew(), ProfilesNew()
-	anyNew = anyNew or homeNew or profilesNew
-	local groups = { { key = "Home", entries = { { key = "Home", text = "Home", icon = LOGO, tip = HOME_FLAVOUR,
-		new = homeNew or nil } } } }
-	for _, name in ipairs(NAV_GROUPS) do
-		local list = byGroup[name]
-		if list then
-			table.sort(list, NavOrder)
-			groups[#groups + 1] = { key = name, title = name, collapsible = true, entries = list }
+	local groups, anyNew = {}, homeNew or profilesNew
+	for gi, g in ipairs(L and L.groups or { { entries = { "Home" } }, { entries = { "Profiles" } } }) do
+		local entries = {}
+		for _, key in ipairs(g.entries) do
+			local p = lay.pages[key]
+			if p or key == "Home" or key == "Profiles" then
+				local icon, tip = PageMeta(key)
+				local new
+				if key == "Home" then
+					new = homeNew
+				elseif key == "Profiles" then
+					new = profilesNew
+				else
+					new = p.new
+				end
+				anyNew = anyNew or new
+				entries[#entries + 1] = { key = key, text = PageTitle(key), icon = icon, tip = tip, new = new or nil,
+					module = p and p.def.module or nil }
+			end
+		end
+		if #entries > 0 then
+			groups[#groups + 1] = { key = g.title or entries[1].key or gi, title = g.title,
+				collapsible = g.title ~= nil or nil, entries = entries }
 		end
 	end
-	groups[#groups + 1] = { key = "Profiles", entries = { { key = "Profiles", text = "Profiles", icon = PROFILES_META.icon,
-		tip = PROFILES_META.flavour, new = profilesNew or nil } } }
 	return groups, anyNew and true or false
 end
 
@@ -3255,126 +4733,64 @@ local function NavIcon(row, size, skin)
 	return W.IconBox(row, size, nil, skin)
 end
 
--- The side list's states: a module that is off shows it on its icon
+-- The side list's states: a page whose module is off shows it on its icon
 local function RefreshNav()
 	local rail = window.rail
 	for key, entry in pairs(window.navEntries) do
 		if entry.module then
-			rail:SetState(key, not MelloUI:IsModuleEnabled(key) and "off" or nil)
+			rail:SetState(key, not MelloUI:IsModuleEnabled(entry.module) and "off" or nil)
 		end
 	end
 	window.navStale = nil
 end
 
--- The Layout group as UI Modifications is: its switches' values, and dimmed
--- and disabled while the module is off
-local function RefreshLayout()
-	local on = MelloUI:IsModuleEnabled("UIModifications") and true or false
-	local parts = window.parts
-	window.layoutGated = not on
-	parts.layout:SetAlpha(on and 1 or LAYOUT_DIM)
-	parts.unlock:SetEnabled(on)
-	parts.snap:SetEnabled(on)
-	parts.reset:SetEnabled(on)
-	parts.unlock:Refresh()
-	parts.snap:Refresh()
-end
-
--- The side list's marker on what is shown: the page's own entry; on UI
--- Modifications the shortcut clicked last while its tab is the one open (a
--- tab changed by hand, `byHand`, moves it to UI Modifications' own entry);
--- none for a page with no entry (/mello characterpanel)
-function NavFollow(byHand, instant)
+-- The side list's marker on the page on show (`instant`: at once)
+function NavFollow(_, instant)
 	if not window then
 		return
 	end
-	if byHand then
-		window.shortcut = nil
-	end
 	local key = currentPage
-	local sc = window.shortcut
-	if sc and key == "UIModifications" then
-		local page = pages.UIModifications
-		local entry = window.navEntries[sc]
-		local at = page and entry and page.anchors and page.anchors[entry.shortcut]
-		if at and page.current == at.sec then
-			key = sc
-		end
-	end
 	local rail = window.rail
 	rail:Select(key and rail.rows[key] and key or nil, instant)
 end
 
--- A shortcut (Dark Mode, Fonts, Chat ...: a feature folded into UI
--- Modifications): UI Modifications on the tab holding its switch, scrolled
--- to it (page:Reveal). From another page, the page comes in already there
--- (one motion: its own fade); on show already, the tab cross-fades and the
--- page glides there. (On show means the open window's pager shows this
--- look's page: a window just opened, `instant`, always goes through
--- SelectPage, for the page's Refresh and the set of the look in use.)
-local function OpenShortcut(key, instant)
-	local entry = window.navEntries[key]
-	if not (entry and entry.shortcut) then
-		return
-	end
-	window.shortcut = key
-	local ui = pages.UIModifications
-	local onShow = not instant and ui ~= nil and window.pager:Current() == ui
-	if not onShow then
-		SelectPage("UIModifications", instant)
-	end
-	local page = pages.UIModifications
-	if page and page:Reveal(entry.shortcut, not onShow, onShow) then
-		NavFollow(false, instant)
-	end
-end
-
 -- a side-list entry clicked (the rail's onSelect)
-local function NavClick(_, key, entry)
-	if entry.shortcut then
-		if not (currentPage == "UIModifications" and window.shortcut == key) then
-			MelloUI:PlayUISound("page")
-		end
-		OpenShortcut(key)
-		return
-	end
-	if currentPage ~= key or window.shortcut then
+local function NavClick(_, key)
+	if currentPage ~= key then
 		MelloUI:PlayUISound("page")
 	end
-	window.shortcut = nil
 	SelectPage(key)
 end
-
 --------------------------------------------------------------------------------
 -- Search (0.14.0; user, 2026-09-26: "search box in the next build"): the box
--- at the top of the side list, in the kit's search box look (S1, the bags'
--- and the Quest List's: one look for the addon). From two letters on, the
--- side list gives its place to the options that match (W.NavRail's
--- results): one a row, the page and the tab over the option's name, found by
--- the option's name, its description and hint, the page's title and the
--- names of its tab and section (any case, colour codes left out), the best
--- first -- a name that is the word, then a name that starts with it, then a
--- name with a word that starts with it, then a name holding it, then where
--- it lies, then its description; within each, pages, shortcuts and the
--- opener of Dynamic UI Modification before tabs, tabs before options (the
--- likeliest place first) -- the New ones with their tag. A click, or Enter on
--- the one selected (the first; Up and Down move), opens its page or tab,
--- makes its row when the page has not made it yet (a page makes its rows a
--- few a frame), scrolls it under the top of the view and lights it a moment
--- (W.Flash). Escape or an empty box gives the side list back. A fight that
--- starts while the box has the keyboard gives the keyboard back to the game
--- (the text and the results stay).
+-- at the top of the side list, flat (0.15.0: W.FlatSearch, the own windows'
+-- field look). From two letters on, the
+-- side list gives its place to what matches (W.NavRail's results): one a
+-- row, its breadcrumb over its name (0.15.0: "Unit Frames > Buffs & Debuffs >
+-- Layout"; a page of one tab: "Tooltip > Look"), found by its name, its
+-- description and hint, where it lies (any case, colour codes left out),
+-- the best first -- a name that is the word, then a name that starts with
+-- it, then a name with a word that starts with it, then a name holding it,
+-- then where it lies, then its description; within each, pages before tabs
+-- and picks, those before rows (the likeliest place first) -- the New ones
+-- with their tag. A click, or Enter on the one selected (the first; Up and
+-- Down move), opens its page, its tab and the pick it needs (the one shown
+-- when the row has a setting there, else the pick whose own setting matched
+-- the words, else its first), makes its row when the page has not made it
+-- yet (a page makes its rows a few a frame), scrolls it under the top of the
+-- view and lights it a moment (W.Flash). Escape or an empty box gives the
+-- side list back. A fight that starts while the box has the keyboard gives
+-- the keyboard back to the game (the text and the results stay).
 --
--- What it finds, its index: the side list's own walk -- its pages and
--- shortcuts in their order, each page's tabs and options as the page lays
--- them (EachOption, the New tags' walk) -- then Home's Your setup rows and
+-- What it finds, its index: the layout (0.15.0) -- each page of the side
+-- list in its order, its tabs (two or more), its picks ("Windows > Bank",
+-- found by the window's own description too), and every row (a row per
+-- pick is ONE result, found by each of its settings' names and
+-- descriptions: "Target Frame" finds "Buffs & Debuffs On This Frame"; link
+-- rows are not results: their target is) -- then Home's Your setup rows and
 -- cards and the Profiles page's Macro Backup rows (their blocks name them:
--- HomeSearch, ProfilesSearch), the top bar's Layout controls, and Dynamic UI
--- Modification as ONE result that opens it ("Top bar > Dynamic UI
--- Modification"): its choices live in its own window, made as it opens and
--- closing this one, which has no way to open at a row; the words of its
--- description (borders, Kit Colours, parchment, backgrounds) find it. Made on
--- the first search (nothing at login, nothing at the window's first open but
+-- HomeSearch, ProfilesSearch), and the top bar's controls. Made on the
+-- first search (nothing at login, nothing at the window's first open but
 -- the box), kept, and made again at the next search after a module was
 -- switched on or off, a profile load's switches too (the 'module' topic,
 -- Config_OnModule; results on show stay as they are, the one selected and
@@ -3397,16 +4813,18 @@ local CLEAR_ROOM = 24
 local PROMPT = "Search options"
 local MIN_LETTERS = 2    -- the side list turns into results from this many letters
 local MAX_SHOWN = 30     -- results shown (the rest counted in the quiet line)
-local JUMP_MARGIN = 8    -- a jump's row under the top of the view (page:Reveal's)
+local JUMP_MARGIN = 8    -- a jump's row under the top of the view (page:RevealAt's)
 local TEXT = {
 	none = "Nothing found. Try another word.",
 	more = "%d more. Type more letters to narrow it down.",
-	layout = "Layout",
 	bar = "Top bar",
+	-- Edit Layout found by the words of the mode it replaced in 0.15.0 too
+	-- (search words, never shown: no text names the old mode)
+	editWords = "unlock windows snap snapping auto position positions reset",
 }
--- within a tier: what a result opens, the likeliest target first (a page, a
--- shortcut, the Dynamic UI Modification window; then a tab; then a row)
-local RANK = { page = 0, shortcut = 0, dynamic = 0, tab = 1 }
+-- within a tier: what a result opens, the likeliest target first (a page;
+-- then a tab or a pick; then a row)
+local RANK = { page = 0, tab = 1, pick = 1 }
 local ROW_RANK = 2
 local Secret = MelloUI.Safe.IsSecret
 local find, lower, byte = string.find, string.lower, string.byte
@@ -3417,6 +4835,7 @@ local nFound = 0
 local words = {}     -- the query's words, when it has more than one
 local moreLines = {} -- [n] = the quiet line for n more, made once per n
 local turn = 0       -- a search's own count: a `when` is asked once in it
+local query = nil    -- the last search's text, lower case (a jump's pick: the one whose setting it names)
 
 -- a text as a player reads it: colour codes, textures and line breaks out
 -- (most texts have none: returned as they are)
@@ -3454,62 +4873,60 @@ local function Entry(e, name, path, tip, place, hint)
 	index[n] = e
 end
 
--- a page's walk (EachOption), in two passes: its tabs as the page makes them
--- (a header opens one; a row before any opens "General"), then its options
--- under "Page > Tab" (the page's title alone on a page of one tab), a
--- sub-option under its parent's name too ("... > Target Frame": the three
--- Icon Size rows of Buffs & Debuffs told apart)
-local walk = { tabs = {}, tabNew = {}, paths = {} }
-local function TabVisit(w, owner, opt)
-	if not owner or not w.open then
-		w.n, w.open = w.n + 1, true
-		w.tabs[w.n] = not owner and (Bare(opt.name) or "") or "General"
-		w.tabNew[w.n] = false
-		if not owner then
-			return
+-- the words a row is found by beyond its name and description: its hint, and
+-- for a row per pick every setting's own name and description
+local parts = {}
+local function RowWords(r)
+	local n = 0
+	for _, b in ipairs(r.distinct or EMPTY) do
+		local opt = b.opt
+		if opt then
+			parts[n + 1], parts[n + 2] = opt.name or "", opt.desc or ""
+			n = n + 2
 		end
 	end
-	if opt.new ~= nil and MelloUI:IsNew(opt.new) then
-		w.tabNew[w.n] = true
+	local b = r.b or r.distinct[1]
+	if b.opt and type(b.opt.hint) == "string" then
+		n = n + 1
+		parts[n] = b.opt.hint
 	end
+	local text = table.concat(parts, " ", 1, n)
+	for i = 1, n do
+		parts[i] = nil
+	end
+	return text
 end
-local function OptionVisit(w, owner, opt)
-	if not owner or not w.open then
-		w.n, w.open, w.section = w.n + 1, true, nil
-		if not owner then
-			return
-		end
-	end
-	if opt.type == "subheader" then
-		w.section = opt.name
+
+-- a page of the layout: the page, its tabs (two or more), its picks, then
+-- every row under its breadcrumb
+local function AddLayoutPage(key, nav, group)
+	local p = Lay.Get().pages[key]
+	if not p then
 		return
 	end
-	if not (ROW_HEIGHTS[opt.type] and type(opt.name) == "string") then
-		return
-	end
-	local new = opt.new ~= nil and MelloUI:IsNew(opt.new) or nil
-	local path = w.count > 1 and w.paths[w.n] or w.title
-	local parent = opt.parent and OptionOf(owner, opt.parent)
-	if parent and type(parent.name) == "string" then
-		path = path .. " > " .. (Bare(parent.name) or "")
-	end
-	Entry({ kind = "option", key = w.key, opt = opt, new = new }, opt.name, path, opt.desc, w.section, opt.hint)
-end
-local function AddPage(module, nav, group)
-	local title = module.title
-	Entry({ kind = "page", key = module.name, new = nav.new and true or nil }, title, group, nav.tip)
-	local w = walk
-	w.n, w.open = 0, false
-	EachOption(module, TabVisit, w)
-	w.count, w.title, w.key = w.n, title, module.name
-	if w.count > 1 then
-		for i = 1, w.count do
-			w.paths[i] = title .. " > " .. w.tabs[i]
-			Entry({ kind = "tab", key = module.name, tab = i, new = w.tabNew[i] or nil }, w.tabs[i], title)
+	local title = p.def.title
+	Entry({ kind = "page", key = key, new = nav.new and true or nil }, title, group, nav.tip)
+	local many = #p.tabs > 1
+	if many then
+		for i, t in ipairs(p.tabs) do
+			Entry({ kind = "tab", key = key, tab = i, new = t.new or nil }, t.name, title)
 		end
 	end
-	w.n, w.open, w.section = 0, false, nil
-	EachOption(module, OptionVisit, w)
+	for _, pk in ipairs(p.picks or EMPTY) do
+		Entry({ kind = "pick", key = key, pick = pk.key }, pk.label, title, pk.desc)
+	end
+	for _, t in ipairs(p.tabs) do
+		local path = many and (title .. " > " .. t.name) or title
+		for _, s in ipairs(t.sections) do
+			local crumb = path .. " > " .. s.name
+			for _, r in ipairs(s.rows) do
+				local b = r.b or r.distinct[1]
+				local tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or nil
+				Entry({ kind = "option", key = key, row = r, new = r.new and true or nil }, r.name, crumb, tip, nil,
+					RowWords(r))
+			end
+		end
+	end
 end
 
 -- Home's and the Profiles page's own rows (their blocks' HomeSearch and
@@ -3523,36 +4940,31 @@ local function AddProfiles(part, name, tip, new, when, section)
 		name, "Profiles", tip, section)
 end
 
+-- (the top bar's Edit Layout: a result while its button is there)
+local function EditLayoutThere()
+	return type(MelloUI.StartEditLayout) == "function"
+end
+
 local function Build()
 	index = {}
 	for _, g in ipairs(window.navGroups) do
 		for _, nav in ipairs(g.entries) do
 			local new = nav.new and true or nil
-			if nav.shortcut then
-				Entry({ kind = "shortcut", key = nav.key, new = new }, nav.text, g.title, nav.tip)
-			elseif nav.key == "Home" then
+			if nav.key == "Home" then
 				Entry({ kind = "page", key = "Home", new = new }, nav.text, nil, nav.tip)
 				HomeSearch(AddHome)
 			elseif nav.key == "Profiles" then
 				Entry({ kind = "page", key = "Profiles", new = new }, nav.text, nil, nav.tip)
 				ProfilesSearch(AddProfiles)
 			else
-				local module = MelloUI.modules[nav.key]
-				if module then
-					AddPage(module, nav, g.title)
-				end
+				AddLayoutPage(nav.key, nav, g.title)
 			end
 		end
 	end
-	-- the top bar: the Layout group's controls (their tooltips' texts), and
-	-- Dynamic UI Modification
-	local parts = window.parts
-	for _, key in ipairs({ "unlock", "snap", "reset" }) do
-		local c = parts[key]
-		Entry({ kind = "bar" }, c.melloTipTitle, TEXT.layout, c.melloTipBody)
-	end
-	local d = parts.dynamic
-	Entry({ kind = "dynamic", new = window.dynamicNew or nil }, d.melloTipTitle, TEXT.bar, d.melloTipBody)
+	-- the top bar: Edit Layout (its tooltip's texts, and the old mode's words)
+	local edit = window.parts.edit
+	Entry({ kind = "bar", part = "edit", when = EditLayoutThere, new = window.editNew or nil }, edit.melloTipTitle,
+		TEXT.bar, edit.melloTipBody, nil, TEXT.editWords)
 end
 
 -- 1: `s` starts with `q`; 2: a word in it does; 3: it holds `q` (lower case)
@@ -3712,6 +5124,7 @@ function Search.Run(text)
 		end
 		return
 	end
+	query = q
 	if not rail.resultsShown then
 		turn = turn + 1   -- (a new search: its gates asked again)
 	end
@@ -3760,35 +5173,6 @@ function Search.Clear()
 	end
 end
 
--- The page named, on show: the page on show already (true), or put on show
--- (made on its first open) as its side-list entry does
-local function ShowPage(name)
-	local page = pages[name]
-	if page and window.pager:Current() == page then
-		return page, true
-	end
-	window.shortcut = nil
-	SelectPage(name)
-	return pages[name], false
-end
-
--- An option's row: its tab opened, the page scrolled so the row sits under
--- the top of the view (a glide on a page already on show, else at once: the
--- page's own fade is the motion), the row made when the page has not made it
--- yet (that one row, out of the pages' turn: page:Select and the scroll made
--- those in view within the frame's budget), and lit
-local function RevealOption(page, opt, onShow)
-	local sec, y = page.optSec and page.optSec[opt], page.optY and page.optY[opt]
-	if not sec then
-		return
-	end
-	page:RevealAt(sec, y, not onShow, onShow)
-	if sec.jobs and not page.optRow[opt] then
-		MakeRows(sec, y + 1, nil, y)
-	end
-	W.Flash(page.optRow[opt])
-end
-
 -- where a frame of the page lies under the page's top, from its anchors (each
 -- a top point on its parent's top: Home's cards and rows, the Profiles
 -- page's parts), nil when they do not say
@@ -3810,29 +5194,36 @@ local function TopIn(page, f)
 	return nil
 end
 
--- a result chosen: the page (or tab, or row) opened and brought into view
+-- the pick a row's result opens: the one shown when the row has a setting
+-- there, else the pick whose own setting the words name, else the first
+-- that has one
+local function PickFor(page, r)
+	if EntryLive(page, r, page.pick) then
+		return page.pick
+	end
+	local first = nil
+	for _, pk in ipairs(page.lay.picks) do
+		if EntryLive(page, r, pk.key) then
+			first = first or pk.key
+			local b = r.keys and r.keys[pk.key]
+			local opt = b and b.opt
+			if query and opt and (find(lower(opt.name or ""), query, 1, true) or find(lower(opt.desc or ""), query, 1, true)) then
+				return pk.key
+			end
+		end
+	end
+	return first
+end
+
+-- a result chosen: the page (or tab, pick or row) opened and brought into view
 local function Jump(e)
 	local kind = e.kind
-	if kind == "dynamic" then
-		DynamicClick()
-		return
-	end
 	MelloUI:PlayUISound("page")
 	if kind == "bar" then
-		W.Flash(window.parts.layout)
-		return
-	end
-	if kind == "shortcut" then
-		-- (UI Modifications on the tab holding its switch, the switch's row lit)
-		local nav = window.navEntries[e.key]
-		local um = MelloUI.modules.UIModifications
-		local page, onShow = ShowPage("UIModifications")
-		window.shortcut = e.key
-		local opt = nav and um and OptionOf(um, nav.shortcut)
-		if page and opt then
-			RevealOption(page, opt, onShow)
+		local part = window.parts[e.part]
+		if part then
+			W.Flash(part)
 		end
-		NavFollow(false)
 		return
 	end
 	local page, onShow = ShowPage(e.key)
@@ -3845,10 +5236,14 @@ local function Jump(e)
 			page:Select(sec, onShow)
 		end
 		page.pager:ScrollTo(0, not onShow)
-		NavFollow(true)
+	elseif kind == "pick" then
+		page:SetPick(e.pick)
+		page.pager:ScrollTo(0, not onShow)
 	elseif kind == "option" then
-		RevealOption(page, e.opt, onShow)
-		NavFollow(true)
+		if page.SetPick then
+			page:SetPick(PickFor(page, e.row))
+		end
+		RevealRow(page, e.row, onShow)
 	elseif kind == "part" then
 		local part = (e.key == "Home" and HomePart or ProfilesPart)(page, e.part)
 		if part then
@@ -3861,6 +5256,7 @@ local function Jump(e)
 	elseif onShow then
 		page.pager:ScrollTo(0, false)
 	end
+	NavFollow(true)
 end
 
 -- the box's and the results' handlers (one function each)
@@ -3915,11 +5311,10 @@ function Search.Index()
 end
 
 -- The box, made with the side list (CreateWindow: the rail's head strip,
--- Search.HEAD tall): the game's search box, dressed in the kit's S1 by the
--- sweep of its strip (the bags' and the Quest List's look), its New tag on
--- its top edge, clear of its clear button. Nothing else of the search is made
--- then: the index at the first search, the result rows with the first
--- results.
+-- Search.HEAD tall): the game's search box, flat in both looks (W.FlatSearch,
+-- 0.15.0), its New tag on its top edge, clear of its clear button. Nothing
+-- else of the search is made then: the index at the first search, the result
+-- rows with the first results.
 Search.HEAD = HEAD
 function Search.MakeBox(rail, skin)
 	local search = CreateFrame("EditBox", nil, rail.head, "SearchBoxTemplate")
@@ -3941,49 +5336,60 @@ function Search.MakeBox(rail, skin)
 	Perf.HookScript(search, "OnEditFocusLost", Search.Unfocus)
 	Perf.SetScript(search, "OnEvent", Search.Fight)
 	search.newTag = W.Badge(search, SEARCH_TAG.new, CLEAR_ROOM)
-	W.Dress(rail.head, skin)
+	W.FlatSearch(search)
 	window.search = search
 	return search
 end
 end   -- (the Search block)
 
 -- the top bar's tooltips (one handler; its texts read from the control:
--- `melloTipTitle`, `melloTipBody`, and `melloGated` for the Layout group,
--- whose tooltip says what wakes it while it sleeps), painted by the widgets'
--- one tooltip (W.ShowTooltip)
+-- `melloTipTitle`, `melloTipBody`), painted by the widgets' one tooltip
+-- (W.ShowTooltip)
 local BarEnter = Shared("OnEnter on the configurator's top bar", function(self)
-	local body = self.melloTipBody
-	if self.melloGated and window.layoutGated then
-		body = GATE_NOTE
-	end
 	-- (under the control, over the page: the bar runs along the window's top)
-	W.ShowTooltip(self, self.melloTipTitle or "", body, nil, "ANCHOR_BOTTOM")
+	W.ShowTooltip(self, self.melloTipTitle or "", self.melloTipBody, nil, "ANCHOR_BOTTOM")
 end, "script")
-local function BarTip(control, title, body, gated)
-	control.melloTipTitle, control.melloTipBody, control.melloGated = title, body, gated
+local function BarTip(control, title, body)
+	control.melloTipTitle, control.melloTipBody = title, body
 	Perf.HookScript(control, "OnEnter", BarEnter)
 	Perf.HookScript(control, "OnLeave", W.TipLeave)
 end
 
--- Reset positions: UI Modifications' one reset (every mover entry, the
--- store, the plain-window drags, the UI-scale put-back; open windows closed)
-local ResetClick = Shared("OnClick on the configurator's Reset positions", function()
-	local um = MelloUI:GetModule("UIModifications")
-	if um and um.ResetPositions then
-		um.ResetPositions()
+-- Edit Layout (0.15.0, the top bar's button where the look's old window
+-- opened): the interface moved and sized on the screen itself
+-- (Core/EditLayout.lua; the one place to move things, it replaced the old
+-- Layout group of Unlock the Windows, Auto Snapping and Reset positions).
+-- The button shows only while MelloUI.StartEditLayout is there (a file an
+-- update adds: loaded after a full restart); Install… closes up to the
+-- close button otherwise. Its tooltip is Edit Layout's own text
+-- (MelloUI.EditLayout.TEXT.desc) when it gives one. /mello edit is its
+-- slash command (below).
+local EDIT_LAYOUT = { name = "Edit Layout", new = "0.15.0",
+	desc = "Move and size MelloUI's windows and bars on the screen itself. Closes the configurator while you edit." }
+local EditLayoutClick = Shared("OnClick on the configurator's Edit Layout", function()
+	if type(MelloUI.StartEditLayout) == "function" then
+		MelloUI:StartEditLayout("configurator")
 	end
-	MelloUI:RefreshConfig()
 end, "script")
-
--- (Dynamic UI Modification and Install... share Home's handlers:
--- DynamicClick, InstallClick)
+local function RefreshBar()
+	local parts = window.parts
+	local edit, install = parts.edit, parts.install
+	local there = type(MelloUI.StartEditLayout) == "function"
+	edit:SetShown(there)
+	local E = MelloUI.EditLayout
+	local text = type(E) == "table" and type(E.TEXT) == "table" and E.TEXT.desc
+	edit.melloTipBody = type(text) == "string" and text or EDIT_LAYOUT.desc
+	install:ClearAllPoints()
+	install:SetPoint("RIGHT", there and edit or parts.close, "LEFT", -8, 0)
+	install:SetShown(type(MelloUI.OpenInstaller) == "function")
+end
 
 local CloseClick = Shared("OnClick on the configurator's close button", function()
 	window:Hide()
 end, "script")
 
 -- On every show: the side list's states (marked stale while it was closed)
--- and the Layout group as the settings are now; the page on show is brought
+-- and the top bar's buttons as what is there; the page on show is brought
 -- in line by SelectPage, which every open calls. (Its own script, set before
 -- the shell's hooks: the shell's look check, fit and sound come after it.)
 local Window_OnShow = Shared("OnShow on the configurator", function()
@@ -3992,7 +5398,7 @@ local Window_OnShow = Shared("OnShow on the configurator", function()
 	if window.navStale then
 		RefreshNav()
 	end
-	RefreshLayout()
+	RefreshBar()
 end, "script")
 
 -- set while OpenConfig shows the window: a look switch at that show leaves
@@ -4028,6 +5434,7 @@ local function Config_OnKit(s, on)
 		window.glowing:SetGlow(false)
 		window.glowing = nil
 	end
+	W.ClosePictureMenu(window)
 	if not currentPage or opening then
 		return
 	end
@@ -4043,38 +5450,21 @@ local function Config_OnKit(s, on)
 	K:NextFrame("Config look page", LookPage)
 end
 
--- the top bar's dark panel with the kit (the eye-strain panel over the page
--- stone, WINDOW-RULES 2e): a region of the WINDOW over its stone, so it never
--- ties with the bar's controls (frames above it) and the outer rail stays in
--- front (made at the kit look's first switch on)
+-- the top bar's dark panel with the kit (the eye-strain panel, WINDOW-RULES
+-- 2e): a region of the WINDOW, so it never ties with the bar's controls
+-- (frames above it) and the outer rail stays in front (made at the kit
+-- look's first switch on)
 local function DressBar(K, bar)
 	window.barDim = K:StoneDim(window, { rect = bar, layer = "BORDER", sublevel = 1 })
 end
 
 -- the bus, taken at the first open (owner "Config"): each returns at once
--- while the window is closed, after marking what its next show brings in line
--- (the rows of FOLLOW's settings on UI Modifications' page on show, taken
--- again: one pass a frame however many changes came in it)
-local FollowRows = Shared("the configurator's rows following an outside setting", function()
-	local page = pages.UIModifications
-	if not (window:IsShown() and page and page.follow and window.pager:Current() == page) then
-		return
-	end
-	for i = 1, #page.follow do
-		page.follow[i]:Refresh()
-	end
-end)
-local function Config_OnSetting(module, key)
-	if module == "UIModifications" and (key == "unlock" or key == "autoSnap") and window:IsShown() then
-		RefreshLayout()
-	elseif FOLLOW[module] and FOLLOW[module][key] and window:IsShown() and currentPage == "UIModifications" then
-		local K = MelloUI.Kit
-		if K and K.NextFrame then
-			K:NextFrame("Config outside setting", FollowRows)
-		else
-			FollowRows()
-		end
-	end
+-- while the window is closed, after marking what its next show brings in
+-- line. A setting changed anywhere (a row, a slider dragged, a profile, the
+-- game's own chat Background slider, a bulk write) marks the pages stale and
+-- refreshes the page on show once, on the next frame (AskPageRefresh)
+local function Config_OnSetting()
+	AskPageRefresh()
 end
 -- 'backup' (the engine wrote, removed or brought back the copy by itself: a
 -- write a few seconds after a change, one held for a fight's end): the
@@ -4101,21 +5491,25 @@ local function Config_OnModule(name, enabled)
 	Search.Stale()   -- (the search's index made again at its next search)
 	if not window:IsShown() then
 		window.navStale = true
+		AskPageRefresh()
 		return
 	end
-	if window.navEntries[name] then
-		window.rail:SetState(name, not enabled and "off" or nil)
+	for key, entry in pairs(window.navEntries) do
+		if entry.module == name then
+			window.rail:SetState(key, not enabled and "off" or nil)
+		end
 	end
-	if name == "UIModifications" then
-		RefreshLayout()
-	end
+	-- (rows wake or sleep with a module: the page on show on the next frame)
+	AskPageRefresh()
 end
 -- 'palette' (the palette or the Kit Colours changed; unlike the painted
 -- regions' own listener, a same-table Fire counts too: a Kit Colours change
 -- writes Your setup's label again, and the Profiles page's colour codes are
--- text, not painted regions): the page on show refreshed while the window
--- is shown; a closed window's next show refreshes its page anyway
+-- text, not painted regions): the lists a palette renames in place made again
+-- (the Kit Colours), the page on show refreshed while the window is shown; a
+-- closed window's next show refreshes its page anyway
 local function Config_OnPalette()
+	RelistPages()
 	if window:IsShown() then
 		MelloUI:RefreshConfig()
 	end
@@ -4139,22 +5533,29 @@ local function Config_OnFonts()
 end
 
 -- The window's parts for the guided tour (Core/Tutorial.lua): one table,
--- made with the window (MelloUI:ConfigTour)
+-- made with the window (MelloUI:ConfigTour). A name that is not a page is
+-- taken as a /mello word (a module's name: the page it lives on)
+local function TourKey(name)
+	if pages[name] or name == "Home" or name == "Profiles" or Lay.Get().pages[name] then
+		return name
+	end
+	return Lay.Word(name) or name
+end
 local function TourSelect(name)
-	SelectPage(name, true)
+	SelectPage(TourKey(name), true)
 	-- (the tour shows the side list, never a search's results: every step
 	-- comes through here, the side list's own step too)
 	Search.Clear()
 end
 local function TourPage(name)
-	return pages[name]
+	return pages[TourKey(name)]
 end
 local function TourPart(name)
 	return window.parts[name]
 end
 local function TourNav(key)
 	Search.Clear()   -- (the side list, not a search's results)
-	return window.rail:Reveal(key)
+	return window.rail:Reveal(TourKey(key))
 end
 -- a part of the page on show brought into view: the page JUMPS so the part
 -- sits 60 below its top (a tip never anchors to a moving part); a part
@@ -4172,29 +5573,13 @@ local function TourScrollTo(target)
 	pager:ScrollTo(math.max(0, pageTop - top - 60), true)
 end
 
-local function CreateWindow()
-	if window then
-		return
-	end
-	local Kit = MelloUI.Kit   -- (looked up now: this file loads before Kit.lua and KitWindow.lua)
-	window = CreateFrame("Frame", "MelloUIConfigFrame", UIParent)
-	window:Hide()
-	local width = TabRowFits(window) and WINDOW_WIDTH or WIDE_WIDTH
-	window:SetSize(width, WINDOW_HEIGHT)
-	window:SetPoint("CENTER")
-	window:SetFrameStrata("HIGH")
-	window:SetToplevel(true)
-	window:EnableMouse(true)
-	window.navStale = true
-	-- (its own show before the shell's hooks: SetScript drops hooks)
-	Perf.SetScript(window, "OnShow", Window_OnShow)
-	shell = Kit:OwnWindow(window, SHELL_OPTS)
-	window.shell = shell
-	KIT, SKIN = shell.kit and Kit or nil, shell.kit and shell or nil
-	pages, building = pagesBy[shell.kit], buildingBy[shell.kit]
-	local barOpts = { skin = shell }   -- (the shell's parts switch with it)
-
-	-- The top bar, under the drag strip
+-- The top bar (under the drag strip): Install…, Edit Layout and close on
+-- the right. (0.15.0, the user's decision of 2026-09-27/28: Edit Layout is
+-- the one place to move things, so the Layout group that stood on the left
+-- -- Unlock the Windows, Auto Snapping, Reset positions -- is gone; its
+-- snapping is the Snap switch on Edit Layout's own bar, its reset that
+-- bar's Reset all.)
+local function TopBar()
 	local bar = CreateFrame("Frame", nil, window)
 	bar:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BAR_TOP)
 	bar:SetPoint("TOPRIGHT", window, "TOPRIGHT", -EDGE, BAR_TOP)
@@ -4207,96 +5592,81 @@ local function CreateWindow()
 	barLine:SetPoint("BOTTOMRIGHT")
 	shell:Kit(DressBar, bar)
 
-	-- Layout (user, 2026-09-23: "Unlock the Window, Reset Position and Turn
-	-- off Auto Snapping should be placed along with as the main options on
-	-- top of that window"): UI Modifications' settings, on the left
-	local texts = (MelloUI:GetModule("UIModifications") or {}).placementTexts or {}
-	local layout = CreateFrame("Frame", nil, bar)
-	local head = Text(layout, "GameFontNormal", "Layout", C.accent)
-	head:SetPoint("LEFT", bar, "LEFT", 12, 0)
-	local function LayoutSwitch(key, fallback, anchor, gap)
-		local t = texts[key]
-		local sw = W.Switch(layout, function()
-			local db = MelloUI:GetModuleDB("UIModifications")
-			if key == "autoSnap" then
-				return not (db and db.autoSnap == false)
-			end
-			return db and db[key]
-		end, function(value)
-			MelloUI:NotifySettingChanged("UIModifications", key, value)
-			MelloUI:RefreshConfig()
-		end, barOpts)
-		sw:SetPoint("LEFT", anchor, "RIGHT", gap, 0)
-		local label = Text(layout, "GameFontHighlight", (t and t.name) or fallback, C.text)
-		label:SetPoint("LEFT", sw, "RIGHT", 2, 0)
-		BarTip(sw, (t and t.name) or fallback, t and t.desc, true)
-		return sw, label
-	end
-	local unlock, unlockText = LayoutSwitch("unlock", "Unlock the Windows", head, 12)
-	local snap, snapText = LayoutSwitch("autoSnap", "Auto Snapping", unlockText, 14)
-	local resetName = (texts.reset and texts.reset.name) or "Reset positions"
-	local reset = W.Button(layout, resetName, 120, shell, { onClick = ResetClick })
-	reset:SetPoint("LEFT", snapText, "RIGHT", 14, 0)
-	BarTip(reset, resetName, texts.reset and texts.reset.desc, true)
-	layout:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
-	layout:SetPoint("BOTTOMRIGHT", reset, "BOTTOMRIGHT", 8, -6)
-
-	-- Install..., Dynamic UI Modification and close, on the right
 	local close = W.CloseButton(bar, shell)
 	close:SetPoint("RIGHT", bar, "RIGHT", -8, 0)
 	Perf.SetScript(close, "OnClick", CloseClick)
-	local dynamic = W.Button(bar, "Dynamic UI Modification", 190, shell, { onClick = DynamicClick })
-	dynamic:SetPoint("RIGHT", close, "LEFT", -8, 0)
-	-- (a New tag inside it, at its right, while Dynamic UI Modification
-	-- offers a new option: the button grows by the tag's room, its label
-	-- keeps its own, and Install... moves along)
-	local D = MelloUI.DynamicUI
-	local dynamicNew = D and D.HasNew and D:HasNew() and true or false
-	dynamic.newTag = W.ButtonTag(dynamic, dynamicNew)
-	BarTip(dynamic, "Dynamic UI Modification", "The look of the reskin, all in one place: the borders and Kit Colours of every "
-		.. "window, the parchment sheets, and the backgrounds of the action bars, micro menu, bag bar, bags, character window, "
-		.. "minimap and professions, chosen on the interface itself with a picture of each choice. Closes the configurator "
-		.. "while you pick.")
-	-- (the red plate with a gold label and a thin gold outline: the approved
-	-- "gold trim"; there while the installer is)
+	-- (the main action: its edge and label in gold; there while the installer
+	-- is, left of Edit Layout while that is there: RefreshBar)
 	local install = W.Button(bar, "Install…", 110, shell, { gold = true, onClick = InstallClick })
-	install:SetPoint("RIGHT", dynamic, "LEFT", -8, 0)
-	install:SetShown(type(MelloUI.OpenInstaller) == "function")
 	BarTip(install, "Install…", "The installer: a setup for the whole interface in a few steps, fitted to this screen. "
 		.. "Closes the configurator while it runs.")
+	local edit = W.Button(bar, EDIT_LAYOUT.name, 120, shell, { onClick = EditLayoutClick })
+	edit:SetPoint("RIGHT", close, "LEFT", -8, 0)
+	-- (its New tag inside it, at its right, while its update runs: the button
+	-- grows by the tag's room, its label keeps its own)
+	edit.newTag = W.ButtonTag(edit, EDIT_LAYOUT.new)
+	BarTip(edit, EDIT_LAYOUT.name, EDIT_LAYOUT.desc)
+	return { topBar = bar, install = install, edit = edit, close = close }
+end
 
-	-- The side list (W.NavRail, from the registry): the pages and the
-	-- shortcuts by group, the page on show marked, the search box over them
-	-- (the rail's head strip; its results take the list's place). Its rows
-	-- count against the frame's one budget of rows: the page's rows in view
-	-- made in the same frame get what it leaves (BeginRows / EndRows). Rows
-	-- 26 high and headers 22: the 18 entries and 4 headers of 0.14.0
-	-- (Reminders and Gains added) stand 578 tall in the 580 the list keeps
-	-- under the box with every group open, so no scroll is needed (rows 29
-	-- and headers 24 before the box: 17 entries, 610 in 612)
-	local rail = W.NavRail(window, { width = NAV_WIDTH, rowHeight = 26, headerHeight = 22, iconMaker = NavIcon, onSelect = NavClick,
-		skin = shell, head = Search.HEAD, onResult = Search.Pick })
+local function CreateWindow()
+	if window then
+		return
+	end
+	local Kit = MelloUI.Kit   -- (looked up now: this file loads before Kit.lua and KitWindow.lua)
+	window = CreateFrame("Frame", "MelloUIConfigFrame", UIParent)
+	window:Hide()
+	window:SetSize(WINDOW_WIDTH, WINDOW_HEIGHT)
+	window:SetPoint("CENTER")
+	window:SetFrameStrata("HIGH")
+	window:SetToplevel(true)
+	window:EnableMouse(true)
+	window.navStale = true
+	-- (its own show before the shell's hooks: SetScript drops hooks)
+	Perf.SetScript(window, "OnShow", Window_OnShow)
+	shell = Kit:OwnWindow(window, SHELL_OPTS)
+	window.shell = shell
+	KIT, SKIN = shell.kit and Kit or nil, shell.kit and shell or nil
+	pages, building = pagesBy[shell.kit], buildingBy[shell.kit]
+
+	-- the layout, resolved once (its time counted in this frame's rows)
+	local t0 = debugprofilestop()
+	Lay.Get()
+	W.RowBudget.Spent(debugprofilestop() - t0)
+
+	window.parts = TopBar()
+	window.parts.title, window.parts.plate, window.parts.crest = shell.title, shell.plate, shell.crest
+
+	-- The side list (W.NavRail, from the layout's groups): the pages in their
+	-- groups, the page on show marked, the search box over them (the rail's
+	-- head strip; its results take the list's place). Its rows count against
+	-- the frame's one budget of rows: the page's rows in view made in the
+	-- same frame get what it leaves (BeginRows / EndRows). Rows 24 high and
+	-- headers 20: the 19 entries and 5 headers stand 579 tall in the 580 the
+	-- list keeps under the box with every group open, so no scroll is needed
+	local rail = W.NavRail(window, { width = NAV_WIDTH, rowHeight = 24, headerHeight = 20, iconMaker = NavIcon,
+		onSelect = NavClick, skin = shell, head = Search.HEAD, onResult = Search.Pick })
 	rail.box:SetPoint("TOPLEFT", window, "TOPLEFT", EDGE, BODY_TOP)
 	rail.box:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", EDGE, EDGE)
 	window.rail = rail
+	window.parts.nav = rail.box
 	-- the search box on its strip (nothing else of the search now)
 	Search.MakeBox(rail, shell)
-	local groups, anyNew = NavGroups()
-	-- (What's new's line about the New tags: while any shows)
-	window.anyNew = anyNew or dynamicNew
-	-- (the search's index walks the list as it stands, and names Dynamic UI
-	-- Modification's tag)
-	window.navGroups, window.dynamicNew = groups, dynamicNew
+	local groups, anyNew = RailGroups()
+	-- (What's new's line about the New tags: while any shows; Edit Layout's
+	-- button counts while it is there)
+	window.editNew = type(MelloUI.StartEditLayout) == "function" and MelloUI:IsNew(EDIT_LAYOUT.new) or nil
+	window.anyNew = anyNew or window.editNew or false
+	-- (the search's index walks the list as it stands)
+	window.navGroups = groups
 	-- (each page's place in the list: the side a page slides in from)
 	window.navEntries, window.pageOrder = {}, {}
 	local n = 0
 	for _, g in ipairs(groups) do
 		for _, e in ipairs(g.entries) do
+			n = n + 1
 			window.navEntries[e.key] = e
-			if not e.shortcut then
-				n = n + 1
-				window.pageOrder[e.key] = n
-			end
+			window.pageOrder[e.key] = n
 		end
 	end
 	BeginRows(FIRST_BUDGET)
@@ -4316,7 +5686,7 @@ local function CreateWindow()
 		window.scroll.ScrollBar:SetPoint("TOPLEFT", window.scroll, "TOPRIGHT", 2, -16)
 		window.scroll.ScrollBar:SetPoint("BOTTOMLEFT", window.scroll, "BOTTOMRIGHT", 2, 16)
 	end
-	window.pageWidth = width - PAGE_LEFT + PAGE_RIGHT
+	window.pageWidth = WINDOW_WIDTH - PAGE_LEFT + PAGE_RIGHT
 
 	-- the pages' rows still to make, a few a frame while the window is open
 	worker = CreateFrame("Frame", nil, window)
@@ -4334,20 +5704,17 @@ local function CreateWindow()
 	window.pageGlide = pager.glide
 	hooksecurefunc(window.scroll, "SetVerticalScroll", RowsInView)
 
-	-- the parts the tour points at, and the tour's one table
-	window.parts = { title = shell.title, plate = shell.plate, crest = shell.crest, topBar = bar, layout = layout,
-		unlock = unlock, snap = snap, reset = reset, install = install, dynamic = dynamic, close = close, nav = rail.box }
+	-- the tour's one table
 	window.tour = { window = window, pager = pager, select = TourSelect, page = TourPage, part = TourPart, navEntry = TourNav,
 		scrollTo = TourScrollTo, search = Search }
 
 	-- the look switched with the window open (the shell's 'look:config')
 	shell:OnKit(Config_OnKit)
-	-- the bus: the Layout group's switches follow their settings however
-	-- they change (the unlock banner's "click here to lock them" too); the
-	-- side list's states and the Layout group's gate follow the modules; the
-	-- palette's colour codes and the Kit Colours' label follow the palette;
-	-- the tab rows follow the fonts; the Profiles page's Macro Backup part
-	-- follows the engine's own writes and removals
+	-- the bus: the pages follow every setting and module switch (once a frame,
+	-- AskPageRefresh); the side list's states and the search's index follow
+	-- the modules; the palette's colour codes and the Kit Colours' label
+	-- follow the palette; the tab rows follow the fonts; the Profiles page's
+	-- Macro Backup part follows the engine's own writes and removals
 	MelloUI:On("setting", Config_OnSetting, "Config")
 	MelloUI:On("module", Config_OnModule, "Config")
 	MelloUI:On("palette", Config_OnPalette, "Config")
@@ -4365,19 +5732,17 @@ local function GetPage(name)
 	elseif name == "Profiles" then
 		page = BuildProfilesPage(window.pageWidth)
 	else
-		local module = MelloUI.modules[name]
-		if not module then
+		page = BuildElementPage(name, window.pageWidth)
+		if not page then
 			return nil
 		end
-		page = BuildModulePage(module, window.pageWidth)
 	end
 	pages[name] = page
 	return page
 end
 
 -- the side a page comes in from: +1 (from the right) for a page further
--- along the list, -1 for one before it, 0 for a page with no place in it (a
--- hidden module's own page, /mello characterpanel)
+-- along the list, -1 for one before it, 0 for a page with no place in it
 local function PageDir(from, to)
 	local order = window.pageOrder
 	local a, b = from and order[from], order[to]
@@ -4411,7 +5776,7 @@ end
 -- under Reduce Motion too. The page on show again (its side-list entry,
 -- /mello) goes back to its top at once, as it always did. (The pager's jump
 -- to the top reaches the scroll hook: it makes no row a click has had the
--- budget for.)
+-- budget for.) An open picture flyout closes with the page it belongs to.
 function SelectPage(name, instant)
 	if not window then
 		return
@@ -4422,6 +5787,9 @@ function SelectPage(name, instant)
 		name = "Home"
 		fresh = not pages.Home
 		page = GetPage("Home")
+	end
+	if currentPage ~= name then
+		W.ClosePictureMenu(window)
 	end
 	local pager = page.pager
 	local from = currentPage
@@ -4450,7 +5818,14 @@ function SelectPage(name, instant)
 			EndRows()
 		end
 	end
-	page:Refresh()
+	-- (the other look's page may have changed the pick since this one was on
+	-- show: both looks' pages share it, pickOf; SetPick refreshes the page)
+	local pick = page.SetPick and pickOf[name]
+	if pick and pick ~= page.pick and page.lay.pickLabel[pick] then
+		page:SetPick(pick)
+	else
+		page:Refresh()
+	end
 	Glow(page)
 	NavFollow(false, instant)
 	Kick()
@@ -4468,7 +5843,6 @@ function MelloUI:RefreshConfig()
 		return
 	end
 	RefreshNav()
-	RefreshLayout()
 	local page = currentPage and pages[currentPage]
 	if page then
 		page:Refresh()
@@ -4479,44 +5853,74 @@ function MelloUI:BuildConfig()
 	-- Nothing to register up front; the window is built on first use.
 end
 
--- /mello [page]: a module's page (a hidden module with a side-list entry:
--- its shortcut, /mello fonts), Profiles, else the page shown last (Home the
--- first time); /mello with the window open closes it
-function MelloUI:OpenConfig(moduleName)
+-- A page by a word (0.15.0, /mello <words>, SPEC 7.2): page, tab, pick. The
+-- whole text, lower case, spaces out: a page's key or title ("look",
+-- "screen text", "bars & meters"), "home", then the layout's own words
+-- ("fonts" is Look > Fonts, "services" Minimap > Services Bar), then a
+-- module's name or title, which opens the page holding most of its rows (a
+-- window panel's: Windows on its pick). Nil for none. Made on its first ask
+-- (the layout's tables only; never at login).
+function MelloUI:ConfigWord(word)
+	if type(word) ~= "string" then
+		return nil
+	end
+	return Lay.Word(word)
+end
+
+-- /mello [words]: the page the words name (MelloUI:ConfigWord: its tab and
+-- pick too), else the page shown last (Home the first time); with the
+-- window open and no page named it closes. A module's name works too (Edit
+-- Layout's "All options >" hands one).
+function MelloUI:OpenConfig(word)
 	CreateWindow()
-	local module = ModuleByName(moduleName)
-	local target = module and module.name or (moduleName and moduleName:lower() == "profiles" and "Profiles") or nil
+	local target, tab, pick
+	if word ~= nil then
+		target, tab, pick = self:ConfigWord(word)
+	end
 	local wasShown = window:IsShown()
 	if wasShown and not target then
 		window:Hide()
 		return
 	end
+	if target and pick then
+		pickOf[target] = pick   -- (a page made now is made on it)
+	end
 	opening = true
 	window:Show()
 	opening = false
 	-- (a window just opened shows its page at once: no switch to see)
-	local entry = target and window.navEntries[target]
-	if entry and entry.shortcut then
-		OpenShortcut(target, not wasShown)
+	SelectPage(target or currentPage or "Home", not wasShown)
+	local page = target and pages[target]
+	if not page then
 		return
 	end
-	if target then
-		window.shortcut = nil
+	if pick and page.SetPick then
+		page:SetPick(pick)
 	end
-	SelectPage(target or currentPage or "Home", not wasShown)
+	if tab then
+		for i, t in ipairs(page.lay and page.lay.tabs or EMPTY) do
+			local sec = page.sections[i]
+			if t.name == tab and sec and page.current ~= sec then
+				page:Select(sec, wasShown)
+				page.pager:ScrollTo(0, not wasShown)
+			end
+		end
+	end
 end
 
 -- The window's parts for the guided tour (Core/Tutorial.lua), one table made
 -- with the window:
 --   c.window, c.pager (its `cf` the switch's timings)
 --   c.select(name)    SelectPage at once (a tip never anchors to a page still
---                     sliding in)
+--                     sliding in); a name that is no page is taken as a
+--                     /mello word (a module's name: its page)
 --   c.page(name)      the built page of the look in use, or nil
 --   c.part(name)      "title" (the plate's FontString), "plate", "crest",
---                     "topBar", "layout", "unlock", "snap", "reset", "install",
---                     "dynamic", "close", "nav"
---   c.navEntry(key)   the side-list row: its group unfolded, the list jumped
---                     to it
+--                     "topBar", "install", "edit" (Edit Layout, shown while
+--                     it is there), "close", "nav" (0.15.0: "layout",
+--                     "unlock", "snap" and "reset" went with the Layout group)
+--   c.navEntry(key)   the side-list row of a page: its group unfolded, the
+--                     list jumped to it
 --   c.scrollTo(part)  the page on show jumped so the part sits 60 below its
 --                     top; a part outside it moves nothing
 --   c.search          the search box's side: Run(text) (what typing does),
@@ -4950,6 +6354,48 @@ function MelloUI:AuraProbe()
 	self:ShowLog("mello auras")
 end
 
+-- /mello's own command words (0.15.0, SPEC 7.2): these first words keep their
+-- commands; anything else is a page word, the WHOLE text (/mello screen text
+-- opens Screen Text), resolved by MelloUI:ConfigWord. `auras` stays the aura
+-- probe: the Buffs & Debuffs page is /mello buffs. One list, which the
+-- handler and its test read.
+local RESERVED = {}
+for _, word in ipairs({ "list", "enable", "disable", "profile", "profiles", "install", "layout", "edit", "perf", "cpu",
+	"secrets", "auras", "preload", "dump", "backup", "status", "tutorial", "tour", "help" }) do
+	RESERVED[word] = true
+end
+
+-- /mello edit [dump] (0.15.0): Edit Layout's slash command, through its one
+-- entry point MelloUI:StartEditLayout("slash") (a second /mello edit while
+-- it shows is a leave, as Escape), and its dump (every element, plate and
+-- layer into the log to copy). Core/EditLayout.lua is a file the update
+-- added, loaded only after a full restart: until then one line says so.
+-- Other words after it are a page's words as before ("/mello edit mode kit").
+local EDIT_RESTART = "Edit Layout needs a full restart of the game after this update."
+local EDIT_USAGE = "/mello edit (move and resize the interface) | /mello edit dump (every element it knows, to copy)"
+local function EditCommand(rest, msg)
+	if rest ~= "" and rest ~= "dump" then
+		if MelloUI:ConfigWord(msg) then
+			MelloUI:OpenConfig(msg)
+		else
+			MelloUI:Print(EDIT_USAGE)
+		end
+		return
+	end
+	local E = MelloUI.EditLayout
+	if type(MelloUI.StartEditLayout) ~= "function" or type(E) ~= "table" then
+		MelloUI:Print(EDIT_RESTART)
+	elseif rest == "dump" then
+		if type(E.Dump) == "function" then
+			E:Dump()
+		else
+			MelloUI:Print(EDIT_RESTART)
+		end
+	else
+		MelloUI:StartEditLayout("slash")
+	end
+end
+
 SLASH_MELLOUI1 = "/mello"
 SLASH_MELLOUI2 = "/melloui"
 SlashCmdList.MELLOUI = function(msg)
@@ -4962,6 +6408,15 @@ SlashCmdList.MELLOUI = function(msg)
 	-- stored as typed; lowercasing here found none of them)
 	local rawRest = raw:match("^%S+%s*(.-)$") or ""
 
+	if cmd ~= "" and not RESERVED[cmd] then
+		-- a page word: the whole text
+		if MelloUI:ConfigWord(msg) then
+			MelloUI:OpenConfig(msg)
+		else
+			MelloUI:Print("Unknown command or page '%s'. /mello help lists the commands, /mello list the modules.", raw)
+		end
+		return
+	end
 	if cmd == "list" then
 		MelloUI:Print("Modules:")
 		for name, module in MelloUI:IterateModules() do
@@ -5052,6 +6507,8 @@ SlashCmdList.MELLOUI = function(msg)
 			MelloUI:Print("Edit Mode layout: %s", MelloUI:EditModeLayoutStatus())
 			MelloUI:Print("/mello layout export (the active layout's share string, to copy) | apply (Mello's layout, fitted to your screen, into Edit Mode and made active)")
 		end
+	elseif cmd == "edit" then
+		EditCommand(rest, msg)
 	elseif cmd == "perf" then
 		SlashCmdList.MELLOPERF(rest or "")
 	elseif cmd == "cpu" then
@@ -5205,13 +6662,13 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 		-- /melloperf is in COMMANDS now; these are the tuning ones
 		print("   /mello dump [m]            print the stored settings of all modules or one module")
+		print("   /mello edit dump           every element Edit Layout knows, and why one has no plate")
 		print("   /mello cpu                 CPU time per handler (old; needs scriptProfile)")
 		print("   /mello preload             how much of the artwork is preloaded")
 		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")
 		print("   /mello auras               what this client's aura container offers (for MelloUI's own aura rows)")
-	elseif cmd ~= "" and not ModuleByName(cmd) and cmd ~= "profiles" then
-		MelloUI:Print("Unknown command or module '%s'. /mello help lists the commands, /mello list the modules.", cmd)
 	else
-		MelloUI:OpenConfig(cmd ~= "" and cmd or nil)
+		-- (a bare /mello: the page shown last, or the window closed)
+		MelloUI:OpenConfig(nil)
 	end
 end

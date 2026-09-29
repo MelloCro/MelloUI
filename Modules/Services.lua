@@ -54,7 +54,7 @@ local M = MelloUI:RegisterModule("Services", {
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
-		  desc = "Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the painted look, the square minimap in the Window frame or Single rail border, and \"Square minimap: merge with the Services bar\" on (Dynamic UI Modification), the buttons sit inside the minimap's frame." },
+		  desc = "Service buttons under the minimap; they move with the minimap in Edit Mode. Groups: one row of group buttons as wide as the map; click one to open its services with their distances, then click a service to route to the nearest one by road. All Buttons: two rows with an icon for every service; click one to route there. Right-click stops the route. A grey button has none known on this continent yet. With the painted look, the square minimap in the Window frame or Single rail border, and \"Merge With Services\" on (Minimap > Services Bar), the buttons sit inside the minimap's frame." },
 		{ type = "dropdown", key = "buttonLayout", parent = "showBar", name = "Button Layout",
 		  values = {
 			{ value = "groups", label = "Groups" },
@@ -893,13 +893,10 @@ local function GoTo(kind, opts)
 	return true
 end
 
--- The profession trainer button asks which profession: a menu of every
--- profession with a known trainer, the character's own ones first.
-local function ProfessionMenu(owner, kind)
-	if not (MenuUtil and MenuUtil.CreateContextMenu) then
-		GoTo(kind)
-		return
-	end
+-- The professions the profession trainer's pick offers: every one with a
+-- known trainer, the character's own ones first -> that list, and the
+-- character's own ones by lower-case name (KnownProfessions)
+local function ProfessionChoices(kind)
 	local known = KnownProfessions()
 	local available = {}
 	for _, prof in ipairs(PROFESSIONS) do
@@ -914,6 +911,26 @@ local function ProfessionMenu(owner, kind)
 		end
 		return a.label < b.label
 	end)
+	return available, known
+end
+
+local PickProfession   -- the pick as MelloUI's own list (the menu's, below)
+
+-- The profession trainer button asks which profession: a menu of every
+-- profession with a known trainer, the character's own ones first. In the
+-- Gamepad UI (0.15.0) that is MelloUI's own list (PickProfession): the
+-- game's menu opened from MelloUI code runs the Gamepad UI's frame manager
+-- in MelloUI's run and blocks its bindings (the Gamepad UI freeze).
+local function ProfessionMenu(owner, kind)
+	if MelloUI.Safe.GamepadUI() then
+		PickProfession(owner, kind)
+		return
+	end
+	if not (MenuUtil and MenuUtil.CreateContextMenu) then
+		GoTo(kind)
+		return
+	end
+	local available, known = ProfessionChoices(kind)
 	MenuUtil.CreateContextMenu(owner, function(_, root)
 		root:CreateTitle("Profession Trainer")
 		for _, prof in ipairs(available) do
@@ -1112,7 +1129,8 @@ local EVENTS = { "MERCHANT_SHOW", "MAIL_SHOW", "GOSSIP_SHOW", "TAXIMAP_OPENED", 
 -- nearest one's distance (the list adds that one's name), grey while none is
 -- known on this continent; the distances are the bar's own looks (FindNearest,
 -- a look kept 5 s), no scan of their own. A click routes there (a tray's
--- profession trainer row asks which profession, as the bar's icon did).
+-- profession trainer row asks which profession, as the bar's icon did; in
+-- the Gamepad UI that pick is this menu too, as a tray: Pick, below).
 -- Escape, a press elsewhere, the same group again or the list's button closes
 -- it; another group's button switches it. Colours are palette keys (repainted
 -- on 'palette'), the text in Font Style, the sounds Core's, and the fade-in
@@ -1139,6 +1157,17 @@ local MENU_BACKDROP = {
 }
 
 local KitOn, SetKitBox   -- the kit look (below)
+
+-- The profession trainer's pick in the Gamepad UI (0.15.0; ProfessionMenu):
+-- the menu as a tray of its own, beside the bar as a group's, titled
+-- Profession Trainer. A row per profession with a known trainer, the
+-- character's own ones first and marked "yours", then Nearest of any; a
+-- row's click routes as the game's menu's entries do. Its entries are kept
+-- and filled again on each open, and the menu makes the rows it needs past
+-- its first ten then.
+local Pick = { group = { key = "pick", label = "Profession Trainer", kinds = {} }, entries = {},
+	HINT = "Click to route to its nearest trainer by road.",
+	HINT_ANY = "Click to route to the nearest profession trainer by road." }
 
 -- Font Style's face for one of the menu's strings (Fonts loads before this
 -- file; a world without it keeps the font object's face)
@@ -1257,6 +1286,8 @@ local function RowClick(row)
 	menu:Hide()
 	if kind.errand then
 		Errand.Click(kind)
+	elseif kind.choice then
+		GoTo(kind.kind, kind.prof and kind.opts or nil)   -- (the pick's row)
 	elseif tray then
 		KindClick(owner or row, kind)
 	else
@@ -1268,6 +1299,8 @@ local function RowEnter(row)
 	local kind = row.kind
 	if kind and kind.errand then
 		MelloUI.Widgets.ShowTooltip(row, kind.label, Errand.HINT, (Errand.Status(kind)))
+	elseif kind and kind.choice then
+		MelloUI.Widgets.ShowTooltip(row, kind.label, kind.prof and Pick.HINT or Pick.HINT_ANY)
 	else
 		local s = kind and slotOf[kind]
 		if not s then
@@ -1410,18 +1443,18 @@ local function CreateMenu()
 	for i = 1, #KINDS do
 		menu.rows[i] = MenuRow(i)
 	end
-	menu.stop = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate")
-	menu.stop:SetSize(110, 20)
+	-- the own window's controls are the widget set's (WINDOW-RULES 6): Stop
+	-- route a flat button, the hint in the rows' hint look (small text in
+	-- `text`: muted text is only for large labels, the palette's rule)
+	menu.stop = W.Button(menu, "Stop route", 110, nil, { height = 20, onClick = StopClick })
 	menu.stop:SetPoint("TOPLEFT", 12, -34 - #KINDS * ROW_HEIGHT)
-	menu.stop:SetText("Stop route")
-	Perf.SetScript(menu.stop, "OnClick", StopClick)
-	menu.hint = menu:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	menu.hint = menu:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	menu.hint:SetPoint("LEFT", menu.stop, "RIGHT", 8, 0)
 	menu.hint:SetPoint("RIGHT", -12, 0)
 	menu.hint:SetJustifyH("LEFT")
 	menu.hint:SetText("nearest by road")
-	Style(menu.hint, "fontText", _G.GameFontDisableSmall)
-	W.Paint(menu.hint, "mutedText", "text")
+	Style(menu.hint, "fontText", _G.GameFontHighlightSmall)
+	W.Paint(menu.hint, "text", "text")
 	menu:SetHeight(30 + #KINDS * ROW_HEIGHT + 34)
 	menu:Hide()
 	-- Close on a press elsewhere, listened for only while the menu is open.
@@ -1480,13 +1513,34 @@ function Errand.Fill(row, e)
 	row:Show()
 end
 
--- group: a group's tray; nil: the list of every service
+-- A row of the profession trainer's pick: the profession (no icon, as the
+-- game's menu), "yours" for the character's own; Nearest of any with the
+-- trainer's icon
+function Pick.Fill(row, e)
+	local W = MelloUI.Widgets
+	row.kind = e
+	row.icon:SetTexture(not e.prof and e.kind.icon or nil)
+	row.label:SetText(e.label)
+	row.where:SetText(e.yours and "yours" or "")
+	W.Paint(row.label, "text", "text")
+	W.Paint(row.where, "selectedTrim", "text")
+	row.icon:SetDesaturated(false)
+	row.icon:SetAlpha(1)
+	row:Show()
+end
+
+-- group: a group's tray (or the pick's); nil: the list of every service
 local function FillMenu(group)
 	local kinds = group and group.kinds or KINDS
+	for i = #menu.rows + 1, #kinds do
+		menu.rows[i] = MenuRow(i)   -- (the pick's rows past the first ten)
+	end
 	for i, row in ipairs(menu.rows) do
 		local kind = kinds[i]
 		if kind and kind.errand then
 			Errand.Fill(row, kind)
+		elseif kind and kind.choice then
+			Pick.Fill(row, kind)
 		elseif kind then
 			FillRow(row, kind, group ~= nil)
 		else
@@ -1511,19 +1565,16 @@ end
 -- the column while it stands in the screen's right half, right of it
 -- otherwise, its middle on the row's, clear of the column's painted frame or
 -- ring (MinimapPanel's ColumnRect and ColumnPart "frame"); the screen's edge
--- keeps it on (clamped). The rects on the screen and the half of the screen
--- are MinimapPanel's (M:ScreenRect, M:ColumnSide), the one reader the Auras
--- rows use too
+-- keeps it on (clamped). The bar's rect on the screen is the addon's one
+-- reader's (MelloUI.Safe.ScreenRect, Core.lua: secret-safe, nil when it
+-- cannot be read plainly), the half of the screen MinimapPanel's
+-- (M:ColumnSide), as the Auras rows ask it too
 local function PlaceTray()
 	local mp = MelloUI:GetModule("MinimapPanel")
-	local bl, br
-	if mp and mp.ScreenRect then
-		local ok, l, _, r = pcall(mp.ScreenRect, mp, bar)
-		bl, br = ok and Num(l) or nil, ok and Num(r) or nil
-	end
+	local bl, _, br = MelloUI.Safe.ScreenRect(bar)
 	local colL, colR = bl, br
 	local fl, fr   -- the painted frame's edges, for the half of the screen
-	if bl and br and mp.ColumnRect and mp.ColumnPart then
+	if bl and br and mp and mp.ColumnRect and mp.ColumnPart then
 		for i = 1, 2 do
 			local ok, l, _, r
 			if i == 1 then
@@ -1539,7 +1590,7 @@ local function PlaceTray()
 		end
 	end
 	local right = true
-	if bl and br and mp.ColumnSide then
+	if bl and br and mp and mp.ColumnSide then
 		local ok, side = pcall(mp.ColumnSide, mp, fl, fr)
 		if ok and side then
 			right = side == "right"
@@ -1599,14 +1650,41 @@ local function ToggleMenu(anchor)
 	OpenMenu(nil, anchor)
 end
 
--- a group button's click: its tray opened, closed (the same group again) or
--- switched to it
+-- a group button's click: its tray opened, closed (the same group again, or
+-- the profession trainer's pick this button's tray row opened) or switched
+-- to it
 local function ToggleTray(button, group)
-	if menu and menu:IsShown() and menu.group == group then
+	if menu and menu:IsShown() and (menu.group == group or (menu.group == Pick.group and menu.owner == button)) then
 		menu:Hide()
 		return
 	end
 	OpenMenu(group, button)
+end
+
+-- The profession trainer's pick in the Gamepad UI (ProfessionMenu): its
+-- entries for `kind` filled, the tray opened beside the bar, or closed (the
+-- same button again)
+function PickProfession(owner, kind)
+	if menu and menu:IsShown() and menu.group == Pick.group and menu.owner == owner then
+		menu:Hide()
+		return
+	end
+	local available, known = ProfessionChoices(kind)
+	local list = Pick.group.kinds
+	wipe(list)
+	for i = 1, #available + 1 do
+		local e = Pick.entries[i]
+		if not e then
+			e = { choice = true, opts = {} }
+			Pick.entries[i] = e
+		end
+		local prof = available[i]
+		e.kind, e.prof, e.opts.profession = kind, prof, prof
+		e.label = prof and prof.label or "Nearest of any"
+		e.yours = prof and known[prof.label:lower()] or false
+		list[i] = e
+	end
+	OpenMenu(Pick.group, owner)
 end
 
 --------------------------------------------------------------------------------
@@ -1963,9 +2041,21 @@ local function KindButtons()
 		b.slot = slots[i]
 		slots[i].button = b
 		Perf.SetScript(b, "OnClick", function(self, mouse)
+			-- a tray here is the profession trainer's pick (the Gamepad UI),
+			-- and a press on the bar leaves it to the bar's buttons (Away):
+			-- closed as GroupClick closes one, but for its own icon's click
+			-- (PickProfession: the same button again closes it)
+			local tray = menu and menu:IsShown() and menu.group
 			if mouse == "RightButton" then
+				if tray then
+					menu:Hide()
+				end
 				StopRoute()
 			else
+				if tray and menu.owner ~= self then
+					menu.quiet = true
+					menu:Hide()
+				end
 				KindClick(self, self.kind)
 			end
 		end)

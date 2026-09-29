@@ -14,7 +14,8 @@ MelloUI code that writes the game's own menu, popup, layout or map-pool
 state, or opens and closes the game's panels with no Gamepad UI check. With
 the Gamepad UI on, the game's gamepad code then runs in MelloUI's execution:
 a protected call is blocked, and the map's per-frame work is billed to
-MelloUI's script time. They start at 0 (panel-call: see its ceiling).
+MelloUI's script time. They start at 0 (panel-call came down from 1 with
+the Quest Tracker's right-click, 0.15.0).
 
     python Tools/lint/check_panels.py              all checks (exit 1 on a rise)
     python Tools/lint/check_panels.py --list NAME  every match of one check
@@ -40,7 +41,7 @@ DIRS = ("Core", "Modules")
 # KitShade at 0). Lower one when the script says so; never
 # raise one to make a copy pass.
 CEILINGS = {
-    "replace-fn": 51,
+    "replace-fn": 50,
     "follow-fn": 15,
     "later-pending": 0,
     "portrait-759": 5,
@@ -60,16 +61,20 @@ CEILINGS = {
     "shared-standin": 23,
     "table-walk": 337,
     "addon-loaded": 33,
-    "window-single": 10,
+    "window-single": 9,
     "direct-sound": 0,
     "palette-guard": 0,
     "direct-shadow": 2,
-    "screen-rect-copy": 7,
+    "screen-rect-copy": 5,
     "window-createframe": 0,
     "colour:Core/Core.lua": 1,
     "colour:Core/Backup.lua": 0,
     "colour:Core/CentreText.lua": 0,
     "colour:Core/Config.lua": 0,
+    # the configurator rebuild (0.15.0): its layout data and its live preview
+    # start at 0; Modules/DynamicUI.lua went with it
+    "colour:Core/ConfigLayout.lua": 0,
+    "colour:Core/ConfigPreview.lua": 0,
     "colour:Core/Widgets.lua": 0,
     "colour:Core/Shade.lua": 0,
     "colour:Core/Reminders.lua": 0,
@@ -80,7 +85,6 @@ CEILINGS = {
     "colour:Core/Installer.lua": 0,
     "colour:Core/InstallerWindow.lua": 0,
     "colour:Modules/Chat.lua": 0,
-    "colour:Modules/DynamicUI.lua": 0,
     "colour:Modules/QuestListMap.lua": 0,
     "colour:Modules/QuestListPanel.lua": 0,
     "colour:Modules/QuestListTips.lua": 0,
@@ -95,14 +99,20 @@ CEILINGS = {
     "colour:Modules/WidgetPanel.lua": 0,
     "meaning:Modules/Chat.lua": 17,
     "meaning:Modules/VoiceOver.lua": 4,
-    # the Gamepad UI freeze fix (0.15.0): 0 each; panel-call keeps the
-    # tracker's right-click to the quest on the map (Modules/QuestTracker.lua)
-    # until that file gets its Gamepad UI check (inside the timer's function)
+    # the Gamepad UI freeze fix (0.15.0): 0 each (the tracker's right-click
+    # to the quest on the map got its Gamepad UI check)
     "blizz-menu-button": 0,
     "blizz-popup": 0,
     "blizz-layout-field": 0,
-    "panel-call": 1,
+    "panel-call": 0,
     "map-pool-call": 0,
+    # Edit Layout (0.15.0): its three new files start at 0; its one key frame
+    # and the secure buttons in their three homes
+    "colour:Core/EditLayout.lua": 0,
+    "colour:Core/EditLayoutMovers.lua": 0,
+    "colour:Core/EditLayoutSnap.lua": 0,
+    "key-propagate": 0,
+    "secure-button": 0,
 }
 
 # Kit.lua from this line on is the kit demo and the slice test (/kitdemo,
@@ -170,7 +180,7 @@ CHECKS = {
                   "a hook on MelloUI's own methods: the settings bus, MelloUI:On(topic, fn, owner)"),
     "dump-slash": (r"SLASH_MELLO\w*DUMP1", None,
                    "one more /xxdump command: a mode of the shared dump (Kit:DumpWindow)"),
-    "start-moving": (r"StartMoving", {"skip": ["Core/Core.lua", "Modules/UIModifications.lua"], "demo": True},
+    "start-moving": (r"StartMoving", {"skip": ["Core/Core.lua"], "demo": True},
                      "a window dragging itself: MelloUI:RegisterMover (Core.lua) and the position store"),
     "animation-group": (r"CreateAnimationGroup", {"skip": ["Core/Anim.lua"]},
                         "a raw AnimationGroup: MelloUI.Anim (Anim:PlayGroup, Reduce Motion aware)"),
@@ -255,6 +265,16 @@ CHECKS = {
                    "a game panel opened or closed from MelloUI code with no Gamepad UI check: test "
                    "MelloUI.Safe.GamepadUI() (Core.lua) first, in the same function, and in the Gamepad UI leave "
                    "the window to the player (say what to do with MelloUI:Announce)"),
+    # Edit Layout's keyboard (0.15.0): the one key frame, its keys propagated
+    # but Esc and the arrows (spec 2.13)
+    "key-propagate": (r"SetPropagateKeyboardInput|EnableKeyboard\(", {"skip": ["Core/EditLayout.lua"]},
+                      "a keyboard handler: Edit Layout's key frame is MelloUI's only one (Core/EditLayout.lua)"),
+    # secure buttons: the reminders' overlay, the tracker's item button, Edit
+    # Layout's two Edit Mode buttons (0.15.0)
+    "secure-button": (r"SecureActionButtonTemplate",
+                      {"skip": ["Core/Reminders.lua", "Modules/QuestTracker.lua", "Core/EditLayoutBridge.lua"]},
+                      "a secure button: made lazily out of combat, laid by rect on UIParent, one click phase "
+                      "(Core/Reminders.lua's Attach / OverlayPlace, Core/EditLayoutBridge.lua)"),
     # the map's pin pool used from any file but the Quest List's marks: each
     # pool call marks the map's scroll state dirty from MelloUI code
     "map-pool-call": (ref(r"AcquirePin|RemovePin|RemoveAllPinsByTemplate|MarkCanvasDirty"),

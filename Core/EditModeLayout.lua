@@ -61,6 +61,18 @@
 --       shift); one SaveLayouts. An apply still waiting or fitting is
 --       dropped. In combat or while Edit Mode is open: when that ends.
 --   MelloUI:ExportEditModeLayout(), MelloUI:EditModeLayoutStatus()
+--   MelloUI:EditModeSystemAnchor(system, index) -> point, relativeTo,
+--       relativePoint, x, y, inDefault | nil                          read only
+--       where the ACTIVE saved layout puts one system (Enum.EditModeSystem;
+--       index: its systemIndex, nil for a system without one): relativeTo is
+--       a frame's name ("UIParent" when it names none), inDefault true while
+--       the system sits at Edit Mode's default place (a frame the game's
+--       managed containers lay out then goes where they say). nil when the
+--       active layout is a preset (its place is the game's own), the system
+--       is not in it, or anything reads secret. Edit Layout's "Back to Edit
+--       Mode's place" for the minimap, the chat, the objective tracker and
+--       the damage meter (UI Modifications' candidates). Each value checked
+--       plainly, as the Quest Tracker's own read of the tracker's place.
 --
 -- Told on the bus once a layout went in (Core.lua's topic table):
 --   "editmodelayout", "put", name     put into Edit Mode and made active
@@ -785,6 +797,61 @@ function MelloUI:EditModeState(which)
 		end
 	end
 	return state
+end
+
+-- One system's place in the active saved layout, read only (see the
+-- header): the layouts table is only read, no manager method is called
+function MelloUI:EditModeSystemAnchor(system, index)
+	local Num, Finite = MelloUI.Safe.Number, MelloUI.Safe.Finite
+	system = Num(system)
+	if index ~= nil then
+		index = Num(index)
+		if index == nil then
+			return nil
+		end
+	end
+	if system == nil or not (C_EditMode and C_EditMode.GetLayouts) then
+		return nil
+	end
+	local full, info, presets = FullList()
+	if not full then
+		return nil
+	end
+	-- (the index counts the presets first: one of them active is no saved
+	-- layout of the player's)
+	local active = info.activeLayout
+	if Secret(active) or type(active) ~= "number" or active <= presets then
+		return nil
+	end
+	local layout = full[active]
+	local systems = type(layout) == "table" and layout.systems
+	if Secret(systems) or type(systems) ~= "table" then
+		return nil
+	end
+	for _, s in ipairs(systems) do
+		local kind = type(s) == "table" and s.system
+		if not Secret(kind) and kind == system then
+			local at = s.systemIndex
+			if Secret(at) then
+				return nil
+			end
+			if index == nil or at == index then
+				local a = s.anchorInfo
+				if Secret(a) or type(a) ~= "table" then
+					return nil
+				end
+				local p, to, rp, x, y = a.point, a.relativeTo, a.relativePoint, a.offsetX, a.offsetY
+				if Secret(p) or Secret(to) or Secret(rp) or type(p) ~= "string" or type(rp) ~= "string"
+					or not Finite(x) or not Finite(y) then
+					return nil
+				end
+				local default = s.isInDefaultPosition
+				return p, (type(to) == "string" and to ~= "") and to or "UIParent", rp, x, y,
+					(not Secret(default) and default == true) and true or false
+			end
+		end
+	end
+	return nil
 end
 
 -- A layout already in Edit Mode's list made active (see the header).

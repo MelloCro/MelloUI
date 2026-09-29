@@ -20,12 +20,15 @@
 -- setups takes its rows from the rail's pool), W.Pager (a page per step,
 -- made on its first show, cross-faded 0.10 s out / 0.15 s in with a 12 px
 -- slide; at once under Reduce Motion), W.Card (the four setups), the typed
--- rows, W.Button (Install in gold), Kit:StoneDim (the body on the dark inner
--- panel: every line of text on it, none small on the stone, WINDOW-RULES
--- 2e), Kit:RingDisc (the Keep page's ring), MelloUI:StyleFont (the
--- countdown's numeral in the title face), MelloUI:ScreenText (the screen
--- line), MelloUI:PlayUISound. Colours by palette key only (W.Paint), so a
--- new palette paints the window again.
+-- rows, W.Button (flat plates; Install the main action, its edge and label
+-- in gold), W.Header (a group's heading), the shell's calm ground (0.15.0,
+-- the cleaner look: one flat ground, the stone only as a band inside the
+-- rail) with ONE W.Panel on it for the body (the dark inner panel: every
+-- line of text on it, none small on the stone, WINDOW-RULES 2e; one
+-- surface, one panel), Kit:RingDisc (the Keep page's ring),
+-- MelloUI:StyleFont (the countdown's numeral in the title face),
+-- MelloUI:ScreenText (the screen line), MelloUI:PlayUISound. Colours by
+-- palette key only (W.Paint), so a new palette paints the window again.
 --
 -- Nothing of it exists at login: this file defines functions and data. The
 -- window is built the first time it opens (WINDOW-RULES 2f), each page on
@@ -70,6 +73,7 @@
 --                                  Fresh start is picked)
 --   IW:FontChoice([draft]) -> key  the Fonts step's card the draft names:
 --                                  a Font Style's value, "mello" or "game"
+--                                  (the tests' probe)
 --   IW:Step(key, def)              a step's page put in or replaced (every
 --                                  step has its own in this file, the Fresh
 --                                  start wizard's included): def = { build =
@@ -81,8 +85,7 @@
 --   IW.win                         the built window: frame, shell, rail,
 --                                  pager, pages[step], foot
 --   IW.state                       (read only) option, step, phase, drafts,
---                                  fits; IW.PAGE_W, IW.TEXT_W, IW.PAD: a
---                                  page's width, its text's width, margin
+--                                  fits; IW.PAGE_W: a page's width
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -141,7 +144,7 @@ local RING = 110
 local BUTTON_W, BUTTON_H = 120, 24
 local DONE_BUTTON_W = 124
 local EYE_SHOWN = 3             -- the eye items listed under the picture (the rest counted)
-IW.PAGE_W, IW.TEXT_W, IW.PAD = PAGE_W, TEXT_W, PAD   -- (a step's page: IW:Step's builders lay out on these)
+IW.PAGE_W = PAGE_W   -- (a step's page; the tests lay a page's columns against it)
 
 -- the Screen step's picture: which pieces, and how (palette keys only):
 -- the pieces that are on screen for real (always, with a
@@ -268,10 +271,10 @@ end
 -- lines, set with the wizard's pages below). No reskin and the refit keep
 -- the player's palette: no line.
 local REVIEW = {
-	full = { "Mello's modules and their settings", "The painted look and the Dynamic UI looks", PaletteLine, true, TEXT.scaleRow },
+	full = { "Mello's modules and their settings", "The painted look and its choices", PaletteLine, true, TEXT.scaleRow },
 	noReskin = { "MelloUI's features and their settings", "The painted reskin is switched off; your bars and layout stay as they are",
 		"No Edit Mode change", TEXT.scaleRow },
-	reskinOnly = { "The painted look and the Dynamic UI looks", PaletteLine, true,
+	reskinOnly = { "The painted look and its choices", PaletteLine, true,
 		"Features stay off; chat on parchment needs Chat tweaks, so it stays off", TEXT.scaleRow },
 	fresh = { TEXT.reviewChoices, PaletteLine, true, TEXT.scaleRow },
 	fit = { true, "Window places fitted to this screen", "Your other settings stay as they are", TEXT.scaleRow },
@@ -507,7 +510,8 @@ local ButtonClick = Shared("OnClick on the installer's buttons", function(button
 end, "script")
 
 -- the mover's save: no place is kept (every open is centred), and its
--- default: the centre
+-- default: the centre. A "tool" of Edit Layout's (0.15.0): never a plate
+-- there, never in its Reset all; dragged by its strip at any time
 local function NoPlace()
 end
 
@@ -516,7 +520,7 @@ local function Centre(frame)
 	frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 end
 
-local MOVER = { save = NoPlace, default = Centre, plainDrag = "always" }
+local MOVER = { save = NoPlace, default = Centre, plainDrag = "always", group = "tool" }
 
 local function Button(parent, text, width, act, gold)
 	local b = W.Button(parent, text, width, win.shell, { height = BUTTON_H, onClick = ButtonClick, gold = gold })
@@ -1274,7 +1278,7 @@ local function DressRing(Kit, page, shell)
 	mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	mask:SetAllPoints(emblem)
 	emblem:AddMaskTexture(mask)
-	page.ringRep, page.emblem = rep, emblem
+	page.emblem = emblem
 end
 
 -- The countdown's numeral in the title face (the Font Style's), sized so it
@@ -1540,7 +1544,7 @@ end
 -- Batch. Each starts at Full's value (I:DefaultDraft). The lists come from
 -- where they live, one system each: the Kit Colours and the Button Border
 -- looks from the kit (Kit.borderKinds, whose Kit Colours are
--- Kit.colourLooks), the parchment areas from Dynamic UI Modification
+-- Kit.colourLooks), the parchment areas from UI Modifications
 -- (MelloUI.ParchmentAreas), the Font Styles from Fonts (MelloUI.FontStyles,
 -- MelloUI.FontStyleSettings), the name forms and the descriptions from the
 -- modules' own registrations, the windows from the registry grouped by
@@ -1577,7 +1581,7 @@ local function WizardSteps()
 	local CHAT_SHEETS = { parchment_chat = true, parchment_whisper = true }
 	local KEEP_FACE = "default"   -- a Fonts role on "Keep the game's"
 	local GATE_INDENT = 22        -- a row that sleeps under a switch on its own page
-	local HEADING_H = 28          -- (the configurator's heading: a row's 34 less 6; W is not read at load)
+	local HEADING_H = 28          -- (W.Header's height, W.HEADER_HEIGHT; W is not read at load)
 	local COLOUR_GAP = 10
 	local COLOUR_W = floor((PAGE_W - 2 * COLOUR_GAP) / 3)
 	local COLOUR_H = 120
@@ -1853,25 +1857,12 @@ local function WizardSteps()
 		return fs
 	end
 
-	-- a heading over a group: the configurator's (the kit's header plate, the
-	-- words past its gem, in gold; plain, a line under them)
-	local function DressHeading(_, row, shell)
-		if shell:Replace(shell:Anchor(row, "BACKGROUND"), { as = "GuildFrame-Header", rect = row }) then
-			row.label:SetPoint("LEFT", row, "LEFT", 34, 0)
-		end
-	end
-
+	-- a heading over a group: the own windows' section heading (W.Header,
+	-- 0.15.0: the title in gold and a hairline after it, in both looks; the
+	-- kit's header plate stays the game windows'). `.label` is its title (a
+	-- sleeping group's cards dim with it, W.Gate)
 	local function Heading(page, text)
-		local shell = win.shell
-		local row = W.Row(page, 0, HEADING_H, text, nil, nil, { labelKey = "selectedTrim" })
-		row:EnableMouse(false)
-		local line = W.Solid(row, "ARTWORK", "border", 1)
-		line:SetHeight(1)
-		line:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 8, 0)
-		line:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -8, 0)
-		shell:Plain(line)
-		shell:Kit(DressHeading, row, shell)
-		return row
+		return W.Header(page, 0, text)
 	end
 
 	-- a card's tooltip (the Font Styles' own words)
@@ -2679,11 +2670,11 @@ local function WizardSteps()
 		return (W.ToggleRow(page, 0, TEXT.allFeatures, nil, TEXT.allFeaturesDesc, AllGet, AllSet, RowOpts(true)))
 	end
 
-	-- the name a feature goes by: its switch's label, else its title
+	-- the name a feature goes by (its row, the Review line): its switch's
+	-- label, else its title
 	local function FeatureLabel(m)
 		return type(m.tweak) == "table" and m.tweak.label or m.title or m.name
 	end
-	IW.FeatureLabel = FeatureLabel   -- (the Review line; the tests)
 
 	-- a feature that needs another for part of its work: switched on, it
 	-- switches that one on too (Restock's reminder is the Reminders widget's;
@@ -3082,9 +3073,11 @@ local function Build()
 	win = { frame = frame, pages = {}, foot = {}, bannerLoaded = false }
 	IW.win = win
 	-- the shell: the corner ring with the emblem, the plate on the rail,
-	-- close, Escape, the fit, the sounds; its one mover keeps no place
+	-- close, Escape, the fit, the sounds; its one mover keeps no place; the
+	-- calm ground (0.15.0: one flat ground, the stone only as a band inside
+	-- the rail)
 	win.shell = Kit:OwnWindow(frame, { area = "installer", ring = { at = "tl", texture = LOGO }, plate = "rail",
-		title = STEPS.choose.title, close = true, escape = true, fit = true, sounds = true, mover = MOVER })
+		title = STEPS.choose.title, close = true, escape = true, fit = true, sounds = true, mover = MOVER, calm = true })
 	state.escape = true
 	-- the steps rail
 	win.rail = W.NavRail(frame, { width = RAIL_W, rowHeight = 32, iconSize = 0, numbered = true, scroll = false,
@@ -3100,23 +3093,22 @@ local function Build()
 	end
 	win.rail:SetGroups(IW.GroupsFor(longest))
 	win.rail:SetGroups(IW.GroupsFor(Option()))
-	-- the body: the pages on the dark inner panel over the window's stone
-	-- (the clip LOOK_BLEED wider each side than the pages, which stay where
-	-- they were, as the dark panel under them)
-	win.pager = W.Pager(frame, { step = 80, bleed = LOOK_BLEED })
+	-- the body: ONE panel on the calm ground (the dark inner panel, 2e; one
+	-- surface, one panel), and the pages on it: the pager a child of the
+	-- panel, so they always lie over it (the clip LOOK_BLEED wider each side
+	-- than the pages, which stay where they were, as the panel under them)
+	local body = W.Panel(frame)
+	body:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X, TOP)
+	body:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE, BODY_BOTTOM)
+	win.body = body
+	win.pager = W.Pager(body, { step = 80, bleed = LOOK_BLEED })
 	local scroll = win.pager.scroll
 	scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X - LOOK_BLEED, TOP)
 	scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE + LOOK_BLEED, BODY_BOTTOM)
-	local dim = Kit:StoneDim(frame, { rect = scroll, alpha = 0.8 })
-	if dim then
-		dim:ClearAllPoints()
-		dim:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_X, TOP)
-		dim:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -EDGE, BODY_BOTTOM)
-	end
 	-- the footer: the screen line (or why Install waits), Back, Continue or
-	-- Install
+	-- Install (the way forward is the main action: gold, as Install)
 	local f = win.foot
-	f.next = Button(frame, TEXT.continue, BUTTON_W, "next")
+	f.next = Button(frame, TEXT.continue, BUTTON_W, "next", true)
 	f.next:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -EDGE, FOOT_MID)
 	f.install = Button(frame, TEXT.install, BUTTON_W, "install", true)
 	f.install:SetPoint("RIGHT", frame, "BOTTOMRIGHT", -EDGE, FOOT_MID)
@@ -3135,7 +3127,7 @@ function IW:Open(page)
 	if not win then
 		Build()
 	end
-	-- the configurator steps aside, as it does for Dynamic UI Modification
+	-- the configurator steps aside, as it does for Edit Layout
 	local config = _G.MelloUIConfigFrame
 	if config and config ~= win.frame and config:IsShown() then
 		config:Hide()

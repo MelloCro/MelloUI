@@ -93,7 +93,8 @@
 --       the same fit as a coroutine stepped by Kit:NextFrame, about 2 ms of
 --       solving a frame (opts.budget; opts.clock, debugprofilestop), then
 --       done(fitted, places, report). The last result is kept by its inputs:
---       an unchanged screen and settings answer from it (LayoutFit:ClearCache()
+--       an unchanged screen and settings answer from it (the key holds the
+--       screen's size and the inputs; LayoutFit:ClearCache(), the tests',
 --       forgets it). LayoutFit:Cancel(job) stops one.
 --   LayoutFit:ScreenSize() -> W, H          UIParent's size (secret-safe)
 --   LayoutFit:Inputs(read) -> inputs        read(module, key); the live
@@ -1095,7 +1096,7 @@ local function Reset(f, W, H, inputs)
 	Truncate(f.notes, 0)
 	Truncate(f.flags, 0)
 	f.W, f.H = W, H
-	f.inset, f.framesD, f.chatLifted, f.bandWhy, f.bandNote = 0, 0, false, nil, nil
+	f.inset, f.bandWhy, f.bandNote = 0, nil, nil
 	local t = f.mello.tracker
 	if t.gameW or t.gameH then
 		local s = f.rec["12:-1"]
@@ -1853,7 +1854,7 @@ end
 
 -- F0. One store per place: Edit Mode places the minimap, the damage meter,
 -- the chat and the game's tracker, so MelloUI's store keeps no place for them
--- (PutBack would move them again), and the Quest Tracker has no place of its
+-- (Core's put-back would move them again), and the Quest Tracker has no place of its
 -- own. Runs first: the tracker's place below is read from 12:-1.
 local function F0Store(f)
 	local P = f.mello.positions
@@ -1862,7 +1863,7 @@ local function F0Store(f)
 		if old ~= nil then
 			P[key] = nil
 			Log(f, "F0 store", "positions." .. key, "removed (was " .. PlaceText(old) .. ")",
-				"Edit Mode places this frame; one store per place (Reset positions then returns to the fitted place)")
+				"Edit Mode places this frame; one store per place (a reset in Edit Layout then returns it to the fitted place)")
 		end
 	end
 	local t = f.mello.tracker
@@ -2182,7 +2183,6 @@ local function F2Chat(f)
 	Move(f, "8:-1", "F2 chat", "lifted above the bottom centre: the screen is too narrow for the chat beside the bar panel", nil, nil, nil, yOff)
 	SetChat(f, w ~= curW and w or nil, h ~= curH and h or nil, "lifted chat: out of the centre third, under the damage meter")
 	Eye(f, format("chat lifted off the bottom edge (its bottom %.0f units up), %d x %d (from %d x %d)", yOff, w, h, curW, curH))
-	f.chatLifted = true
 end
 
 -- F3. The player / target frames come in as a mirrored pair, just enough to
@@ -2204,7 +2204,6 @@ local function F3Frames(f)
 			end
 		end
 	end
-	f.framesD = 0
 	if need <= EPS then
 		return
 	end
@@ -2217,7 +2216,6 @@ local function F3Frames(f)
 	Shift(f, "3:2", "F3 frames", why, d, 0)
 	Shift(f, "3:1", "F3 frames", why, -d, 0)
 	Shift(f, "5:-1", "F3 frames", why, -d, 0)
-	f.framesD = d
 end
 
 -- F4. The bottom centre still runs into the right side: the whole bottom
@@ -3681,7 +3679,8 @@ function LayoutFit:Cancel(job)
 	end
 end
 
--- a size change (the 'scale' topic) or a new layout: the next fit solves again
+-- the next fit solves again, whatever its key (the tests: in the addon a new
+-- screen size or new inputs already make a new key)
 function LayoutFit:ClearCache()
 	cache.key, cache.fitted, cache.places, cache.report = nil, nil, nil, nil
 end

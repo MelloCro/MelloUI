@@ -1902,7 +1902,7 @@ local function BuildList()
 	win.shell = MelloUI.Kit:OwnWindow(f, {
 		area = "config", ring = { at = "tl" }, plate = "rail", title = "Restock List",
 		close = true, escape = true, fit = true, sounds = true,
-		mover = { key = "MelloUIRestockList" },
+		mover = { key = "MelloUIRestockList", label = "Restock list", page = "Restock" },
 	})
 	-- the text sits on the dark inner panel (the eye strain rule)
 	local body = CreateFrame("Frame", nil, f)

@@ -53,11 +53,11 @@ local M = MelloUI:RegisterModule("ProfessionsPanel", {
 	defaults = { pageBackground = "concrete", listBackground = "list", bookBackground = "concrete" },
 	options = {
 		{ type = "dropdown", key = "bookBackground", name = "Book Page Background", values = PAGE_BACKGROUNDS,
-		  desc = "What the professions' book page shows behind the profession cards: cracked concrete, stone, iron plate, parchment, leather or dark. The spells' rims wear UI Modifications' Button Border, the rank bars its Progress Bar Border." },
+		  desc = "What the professions' book page shows behind the profession cards: cracked concrete, stone, iron plate, parchment, leather or dark. The spells' rims wear the Button Border, the rank bars the Progress Bar Border (Look > Borders)." },
 		{ type = "dropdown", key = "pageBackground", name = "Crafting Page Background", values = PAGE_BACKGROUNDS,
 		  desc = "What the crafting page shows behind the recipe list and the recipe: cracked concrete, stone, iron plate, parchment, leather or dark." },
 		{ type = "dropdown", key = "listBackground", name = "Recipe List Background", values = LIST_BACKGROUNDS,
-		  desc = "What the recipe list shows behind its rows: its darker list stone, or one of the other backgrounds. Both are also in Dynamic UI Modification. The reagent slots wear UI Modifications' Button Border, the rank bar its Progress Bar Border, the finished item its Round Border (every window's)." },
+		  desc = "What the recipe list shows behind its rows: its darker list stone, or one of the other backgrounds. All three are chosen with pictures on Windows > Professions. The reagent slots wear the Button Border, the rank bar the Progress Bar Border, the finished item the Round Border (Look > Borders, every window's)." },
 	},
 })
 
@@ -72,7 +72,6 @@ local hooked = false
 -- A value the client hides from addons (secret): never do arithmetic on it.
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
 local Secret = MelloUI.Safe.IsSecret
-local SafeScreenRect = MelloUI.Safe.ScreenRect   -- a frame's rect on the screen (nil: secret or unreadable)
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -1171,12 +1170,15 @@ local function ApplyBackgrounds()
 		local piece = value == "list" and "window/single_body" or LOOKS.backgroundPiece[value]
 		if piece then
 			if body.kitName ~= piece then
+				Kit:Unpaint(body)   -- (the dark fill's palette colour no longer on it)
 				body:SetVertexColor(1, 1, 1, 1)
 				Kit:Apply(body, piece)
 			end
 			Kit:Retile(body)
 		elseif value == "dark" then
-			body:SetColorTexture(0.05, 0.045, 0.04, 0.95)
+			-- the palette's inner panel, by its key (a new palette paints it
+			-- again), as the buttons' Dark background (Kit:SetButtonBackground)
+			Kit:Paint(body, "innerPanel", "fill", 0.95)
 			body.kitPiece, body.kitName = true, nil
 		end
 		-- the list box's dark panel (its rule's `dim`, WINDOW-RULES 2e) lies
@@ -1288,8 +1290,8 @@ function M:OnSettingChanged(key, _, db)
 	end
 end
 
--- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the
--- crafting page while it is open
+-- The pages' picture choices, for the Configurator's picture rows
+-- (PickerGroups: each section's key, title, kind and choices)
 function M:PickerGroups()
 	return {
 		{ id = "crafting", title = "Crafting", hint = "Click to choose the crafting page's and the recipe list's backgrounds.", sections = {
@@ -1300,20 +1302,6 @@ function M:PickerGroups()
 			{ key = "bookBackground", title = "Book Page Background", kind = "tile", choices = PAGE_BACKGROUNDS },
 		} },
 	}
-end
-
--- The window's outline for the group whose page is open
-function M:BarOutline(id)
-	local pf = ProfessionsFrame
-	local page = pf and (id == "profbook" and pf.BookPage or pf.CraftingPage)
-	if not (active and pf and pf:IsShown() and page and page:IsShown()) then
-		return nil
-	end
-	local l, b, r, t = SafeScreenRect(pf)
-	if not (l and r > l) then
-		return nil
-	end
-	return { { l, b, r, t } }
 end
 
 function M:OnEnable(db)

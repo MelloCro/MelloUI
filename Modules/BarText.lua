@@ -431,6 +431,42 @@ local function RemoveAll()
 end
 
 --------------------------------------------------------------------------------
+-- The Configurator's unit frame preview (0.15.0, Core/ConfigPreview.lua):
+-- the value text of SAMPLE numbers, as this module writes and places it on
+-- the frames (one system for the text: the preview copies none of it). No
+-- bar of the game and no unit is read, and nothing is kept.
+--   M.PreviewText(value, max) -> the text FormatText makes for two plain
+--       numbers ("8.6k", "8,640 / 12,000", "72%" ...), or nil (not two plain
+--       numbers, max 0 or less, the settings not read yet)
+--   M.PreviewPlace(fs, bar)   the chosen font size and place on the
+--       preview's own font string and bar (a bar with no game text strings:
+--       placed on the bar's own edges, as a frame without them is)
+--   M.PreviewShows(frameKey, power) -> true while this module shows the
+--       value on that frame's ("player", "target", "focus") health bar, or
+--       its power bar with `power`: the module on, the frame's and the
+--       bar's switches on (BarList's rule)
+--------------------------------------------------------------------------------
+
+function M.PreviewText(value, max)
+	if not M.db or type(value) ~= "number" or type(max) ~= "number" or Secret(value) or Secret(max) or max <= 0 then
+		return nil
+	end
+	return FormatText(value, max)
+end
+
+function M.PreviewPlace(fs, bar)
+	if M.db and fs and bar then
+		ApplyFont(fs)
+		ApplyPosition(fs, bar)
+	end
+end
+
+function M.PreviewShows(frameKey, power)
+	local db = M.db
+	return (M.isEnabled and db and db[frameKey] and db[power and "power" or "health"]) and true or false
+end
+
+--------------------------------------------------------------------------------
 -- Events
 --------------------------------------------------------------------------------
 

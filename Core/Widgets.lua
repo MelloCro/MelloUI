@@ -12,15 +12,27 @@
 --   W.Solid(parent, layer, key, alpha) a flat texture in a palette colour
 --   W.Box(parent, bg, border, alpha)   a backdrop box, its fill and 1 px edge
 --   W.Edges(frame, key, layer)         four 1 px lines round a frame, by key
+--   W.Panel(parent, opts)              THE content panel of the own windows
+--                                      (0.15.0): a flat inner panel in a 1 px
+--                                      edge, in both looks
+--   W.Header(parent, y, text, opts)    a section's heading: a gold title and
+--                                      a hairline (0.15.0)
 --   W.ShowTooltip(owner, title, body, line, anchor)   W.TipLeave (a shared OnLeave)
---   W.Switch(parent, get, set, opts)
---   W.Dropdown(parent, width, get, set, values, opts)
---   W.DropdownMenu(dd, get, set, values)   the one menu of MelloUI's dropdowns,
---                                      on a box made elsewhere (a long list
---                                      capped and scrolled)
---   W.Slider(parent, width, get, set, opts)
---   W.Button(parent, text, width, skin, opts)
---   W.CloseButton(parent, skin)
+--   W.Switch(parent, get, set, opts)   a flat check box (0.15.0)
+--   W.Dropdown(parent, width, get, set, values, opts)   dd:SetValues(values)
+--                                      a flat box and MelloUI's own list
+--                                      (0.15.0: never the game's menu; a
+--                                      long list capped and scrolled)
+--   W.Slider(parent, width, get, set, opts)   a thin track, a round knob and
+--                                      a box to type the value in (0.15.0)
+--   W.NumberBox(parent, width, get, set, opts)   a number to type, in the
+--                                      slider box's look (0.15.0)
+--   W.Button(parent, text, width, skin, opts)   a flat plate (0.15.0), and
+--     W.FlatButton(button, gold): the same look on a button made by hand
+--   W.CloseButton(parent, skin)        a flat plate with a cross (0.15.0)
+--   W.FlatTab(tab, skin)               a page's tab made by hand, flat (0.15.0)
+--   W.FlatField(box)                   a text field or search box made by
+--                                      hand, flat (0.15.0; W.FlatSearch)
 --   W.IconBox(parent, size, texture, skin)
 --   W.RoundIcon(parent, size, texture, opts)   a round icon button in a rim
 --                                      (the kit's round rim, or the minimap's)
@@ -36,6 +48,13 @@
 --     (MelloUI:IsNew); W.TagShown, W.TagAlpha
 --   W.Row(parent, y, height, label, hint, desc, opts) and the typed rows
 --     W.ToggleRow / SliderRow / DropdownRow / ButtonRow, W.Gate, W.ClipRow
+--   W.PictureRow(parent, y, label, hint, desc, get, set, choices, kind, opts)
+--                                      a look chosen by its picture (0.15.0),
+--     its flyout W.PictureMenu(host, skin), one per window (a dropdown's
+--     list opens in it too), W.ClosePictureMenu(host), W.CloseFlyouts()
+--   W.LinkRow(parent, y, label, get, onClick, opts)   a setting kept on
+--                                      another page: its value and a button
+--                                      to it (0.15.0)
 --   W.Card(parent, spec, skin)         a choice card (the installer's setups;
 --                                      spec.palette: a palette's card)
 --   W.PaletteSwatch(parent, spec)      a palette shown by its colours, and
@@ -60,7 +79,18 @@
 -- through MelloUI:PlayUISound, motion only through MelloUI.Anim (Reduce Motion
 -- honoured by every helper). Kit and Fonts load after this file (the TOC):
 -- nothing of theirs is bound here, everything is looked up when a builder
--- runs. Nothing is made at load but the shared handlers and weak tables.
+-- runs (the kit in one place, KitNow: a colour painted, a choice's picture
+-- drawn). Nothing is made at load but the shared handlers and weak tables.
+-- 0.15.0, the cleaner look the user picked (v150 configurator rebuild): the
+-- own windows' panels, buttons, sliders and section headings are flat in
+-- both looks (W.Panel, W.Button, W.Slider, W.Header) on the shell's calm
+-- ground; the kit's list box, red plate, slider and header plate stay the
+-- game windows'. Then "all flat" (user, 2026-09-29): the check boxes, the
+-- dropdowns and their list, a page's tabs, the search box and the text
+-- fields, and the close button too (W.Switch, W.Dropdown, W.FlatTab,
+-- W.FlatField, W.CloseButton), the kit's active look (Kit:SetActive) still
+-- marking a ticked box and the selected tab in the kit's look. Unchanged:
+-- the row plate, W.Card, W.TrayBox.
 --------------------------------------------------------------------------------
 
 local ADDON_NAME, ns = ...
@@ -70,12 +100,12 @@ local Shared = Perf.Shared
 local C_Timer = Perf.C_Timer   -- (a flash's hold: W.Flash)
 local Secret = MelloUI.Safe.IsSecret   -- (Core.lua's, one set for the addon)
 local Num = MelloUI.Safe.Number
-local Finite = MelloUI.Safe.Finite
 
 local W = {}
 MelloUI.Widgets = W
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
+local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- a round icon's, a slider's knob
 local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
 local ICON_FRAME = "UI-HUD-ActionBar-IconFrame"        -- the action button bevel
 local ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"    -- its rounded corners
@@ -83,11 +113,17 @@ local GLOW_ART = "Interface\\Buttons\\UI-ActionButton-Border"
 local RIM_GROW = 1.1        -- the kit rim's rect: the icon box grown about its centre
 local FADE_IN, FADE_OUT = 0.10, 0.12   -- a row's hover
 local GATE_ALPHA = 0.4      -- a row that sleeps until a switch is on
+local FLAT_OFF = 0.5        -- a disabled flat control: its fill and edge at this
 
 -- the typed rows' heights (the configurator's ledger)
 W.ROW_HEIGHT, W.SLIDER_ROW_HEIGHT = 34, 40
 
 local weakKeys = { __mode = "k" }
+local NO_OPTS = {}   -- (a builder called without options reads this empty table)
+
+-- The window's one flyout (a picture row's tiles, a dropdown's list): filled
+-- by W.PictureMenu's block, below; the dropdowns' box opens it from here
+local Flyout = {}
 
 --------------------------------------------------------------------------------
 -- Paint ("Palette-ready", user 2026-09-25): every colour an
@@ -108,8 +144,15 @@ local weakKeys = { __mode = "k" }
 -- Without the kit (a world that never loaded Kit.lua) nothing is painted.
 --------------------------------------------------------------------------------
 
+-- The kit as it is now, looked up in this one place when a colour is painted
+-- or a choice's picture drawn (Kit.lua loads after this file: nothing of it
+-- is bound here)
+local function KitNow()
+	return MelloUI.Kit
+end
+
 function W.Paint(region, key, how, alpha)
-	local Kit = MelloUI.Kit
+	local Kit = KitNow()
 	if region and key and Kit and Kit.Paint then
 		Kit:Paint(region, key, how or "fill", alpha)
 	end
@@ -152,23 +195,98 @@ end
 -- four 1 px lines round a frame, painted by key (a box's edge without a
 -- backdrop: a region each, so the kit look can hide them): { top, bottom,
 -- left, right }. The one copy: the own-window shell's plate uses it too.
-local function Edges(frame, key, layer)
+-- `rect`: the region they lie round, when not the frame itself (a check
+-- box's box, a tab's plate: regions of the frame)
+local function Edges(frame, key, layer, rect)
 	local out = {}
 	for i = 1, 4 do
 		out[i] = frame:CreateTexture(nil, layer or "BORDER")
 		W.Paint(out[i], key, "fill", 1)
 	end
-	out[1]:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	out[1]:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, -1)
-	out[2]:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, 1)
-	out[2]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-	out[3]:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-	out[3]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", 1, 0)
-	out[4]:SetPoint("TOPLEFT", frame, "TOPRIGHT", -1, 0)
-	out[4]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+	rect = rect or frame
+	out[1]:SetPoint("TOPLEFT", rect, "TOPLEFT", 0, 0)
+	out[1]:SetPoint("BOTTOMRIGHT", rect, "TOPRIGHT", 0, -1)
+	out[2]:SetPoint("TOPLEFT", rect, "BOTTOMLEFT", 0, 1)
+	out[2]:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", 0, 0)
+	out[3]:SetPoint("TOPLEFT", rect, "TOPLEFT", 0, 0)
+	out[3]:SetPoint("BOTTOMRIGHT", rect, "BOTTOMLEFT", 1, 0)
+	out[4]:SetPoint("TOPLEFT", rect, "TOPRIGHT", -1, 0)
+	out[4]:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", 0, 0)
 	return out
 end
 W.Edges = Edges
+
+--------------------------------------------------------------------------------
+-- Panel (0.15.0, the cleaner look the user picked: Background A): THE
+-- content panel of the own windows, in both looks -- a flat `innerPanel`
+-- fill in a 1 px `border` edge (W.Box's look, as regions: no backdrop). It
+-- stands where the kit's list box (L1, Professions-background-summarylist)
+-- stood in them: the configurator's sections and side list, the installer's
+-- body, the question dialog's text, a picture row's flyout. One surface, one
+-- panel: it lies on the calm ground (Kit:OwnWindow's `calm`), never on
+-- another panel. The kit's list box stays the game windows'.
+--   W.Panel(parent, opts) -> panel   a Frame, sized and placed by the caller
+--     opts: on (true: the look laid on `parent` itself, which is returned --
+--           a section that is its own panel), alpha (the fill's, 1)
+--   panel.panelFill, panel.panelEdges   (painted by key: a new palette
+--                                       paints them again)
+--------------------------------------------------------------------------------
+
+-- the panel's regions on a frame: its fill under everything the frame
+-- draws, its edge over the fill
+local function PanelLook(frame, alpha)
+	local fill = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+	fill:SetAllPoints(frame)
+	W.Paint(fill, "innerPanel", "fill", alpha or 1)
+	return fill, Edges(frame, "border", "BORDER")
+end
+
+function W.Panel(parent, opts)
+	opts = opts or NO_OPTS
+	local panel = opts.on and parent or CreateFrame("Frame", nil, parent)
+	local alpha = opts.alpha
+	if type(alpha) ~= "number" or Secret(alpha) then
+		alpha = 1
+	end
+	panel.panelFill, panel.panelEdges = PanelLook(panel, alpha)
+	return panel
+end
+
+--------------------------------------------------------------------------------
+-- Header (0.15.0, Headers 1): a section's heading in the own windows -- its
+-- title in gold (`selectedTrim`, GameFontNormal) and a 1 px `border`
+-- hairline from 12 px past the title to 8 px short of the row's right edge,
+-- on the title's middle. No plate, no gem caps, no hover, in both looks (the
+-- kit's header plate, SH3, stays the game windows'): the configurator's
+-- sections and subheadings, Home's cards, the installer's steps.
+--   W.Header(parent, y, text, opts) -> header   a Frame W.HEADER_HEIGHT high,
+--     `y` below the parent's top, as wide as the parent less opts.inset (0)
+--     at both sides; opts.x: the title's left (8)
+--   header.label, header.line
+--------------------------------------------------------------------------------
+
+do
+	W.HEADER_HEIGHT = 28
+	local HEADER_X, HEADER_GAP, HEADER_END = 8, 12, 8   -- the title's left, the title to its line, the line's end
+
+	function W.Header(parent, y, text, opts)
+		opts = opts or NO_OPTS
+		local inset = opts.inset or 0
+		local h = CreateFrame("Frame", nil, parent)
+		h:SetHeight(W.HEADER_HEIGHT)
+		h:SetPoint("TOPLEFT", inset, -(y or 0))
+		h:SetPoint("RIGHT", parent, "RIGHT", -inset, 0)
+		h:EnableMouse(false)
+		h.label = W.Text(h, "GameFontNormal", text, "selectedTrim")
+		h.label:SetWordWrap(false)
+		h.label:SetPoint("LEFT", h, "LEFT", opts.x or HEADER_X, 0)
+		h.line = W.Solid(h, "ARTWORK", "border", 1)
+		h.line:SetHeight(1)
+		h.line:SetPoint("LEFT", h.label, "RIGHT", HEADER_GAP, 0)
+		h.line:SetPoint("RIGHT", h, "RIGHT", -HEADER_END, 0)
+		return h
+	end
+end
 
 --------------------------------------------------------------------------------
 -- W.RowBudget: ONE budget of rows a frame, whoever makes them -- the
@@ -295,67 +413,173 @@ end
 -- The kit's control sweep over `root` (Kit:SweepControls: red plates, check
 -- boxes, dropdowns, tabs, found by what they are): the one way a window's
 -- controls the kit knows are dressed. `depth`: where the sweep starts (the
--- configurator's rows at 2, as a sweep of the page reaches them). The skin
--- is remembered for the root: a dropdown under it dresses its long list's
--- menu with the same look (MenuSkin, below).
-local dressedBy = setmetatable({}, weakKeys)   -- [root] = the skin W.Dress dressed it with
-
+-- configurator's rows at 2, as a sweep of the page reaches them). The own
+-- windows' controls are flat (0.15.0: `melloRep` false, the sweep passes
+-- them by); what a root holds of the game's own is dressed.
 function W.Dress(root, skin, depth)
 	if skin and root then
-		dressedBy[root] = skin
 		skin:Kit(DressSweep, root, skin, depth)
 	end
 end
 
-local function DressSwitch(K, cb, skin)
-	K:SkinCheckButton(cb, skin.replace, "UI-CheckBox-Up")
+-- (0.15.0: the own windows' buttons, sliders, check boxes, dropdowns, tabs,
+-- search box and close button are flat in both looks -- the kit's red
+-- plate, B1, slider, SL1, check box, dropdown plate, D1, tab, TB6, search
+-- box, S1, and red cross stay the game windows')
+
+--------------------------------------------------------------------------------
+-- The active look (Kit:SetActive, 0.15.0: the one look for whatever is
+-- active or selected, the game's windows and MelloUI's own) on a widget: a
+-- chosen card, an icon-less side list's marker, a ticked box, the selected
+-- tab. It is the kit's art, so it shows only while the widget's window wears
+-- the kit. The kit is the one the shell hands over (skin:Kit) the first time
+-- a look shows, kept for the switches after: never reached for. `rect`: the
+-- region the ring lies round (the widget), `shape`: the kit's ("rect": a
+-- card, a tab; "square": a box).
+--------------------------------------------------------------------------------
+
+local activeKit = nil
+local function ActiveNow(K, frame, on, rect, shape)
+	activeKit = K
+	K:SetActive(frame, on, rect or frame, shape or "rect")
 end
 
-local function DressButton(K, button, skin)
-	K:SkinRedButton(button, skin.replace)
-end
-
-local function DressClose(K, close, skin)
-	local normal = close.GetNormalTexture and close:GetNormalTexture()
-	if normal then
-		skin:Replace(normal, { as = "RedButton-Exit", button = close, alsoFade = K:OtherTextures(close, normal) })
-	end
-end
-
-local function DressStepper(K, skin, button, key)
-	local normal = button and button.GetNormalTexture and button:GetNormalTexture()
-	if normal then
-		skin:Replace(normal, { as = key, button = button, alsoFade = K:OtherTextures(button, normal) })
-	end
-end
-
--- SL1: the kit's slider track, thumb and steppers
-local function DressSlider(K, slider, skin)
-	local track = slider.Slider
-	if not track then
+local function WidgetActive(skin, frame, on, rect, shape)
+	if not skin then
 		return
 	end
-	if track.Middle then
-		-- the track at the kit piece's own thickness (fitted to the slider
-		-- frame it came out as two fat stripes -- user, 2026-09-21)
-		local layout = MelloUI_KitLayout and MelloUI_KitLayout.pieces and MelloUI_KitLayout.pieces["inputs/slider_mid"]
-		local natural = layout and layout.box and (layout.box[4] - layout.box[2]) * K.scale or nil
-		skin:Replace(track.Middle, { as = "_Minimal_SliderBar_Middle", rect = track, fitHeight = natural, alsoFade = { track.Left, track.Right } })
+	if skin.kit then
+		skin:Kit(ActiveNow, frame, on and true or false, rect, shape)
+	elseif activeKit then
+		activeKit:SetActive(frame, false)
 	end
-	if track.Thumb then
-		skin:Replace(track.Thumb, { as = "Minimal_SliderBar_Button", rect = track.Thumb, button = track })
+end
+
+-- the flat widgets of each shell that wear the active look, laid again at
+-- its switches (a ticked box, the selected tab): each answers
+-- widget:melloActive() -> on, rect, shape, and widget:melloKitLook(), when
+-- it has one, lays its own look again (a selected tab's gold edge gives way
+-- to the ring in the kit's look)
+local activeOf = setmetatable({}, weakKeys)   -- [shell] = { [widget] = true } (weak)
+local function Actives_OnKit(shell)
+	local set = activeOf[shell]
+	if set then
+		for widget in pairs(set) do
+			if widget.melloKitLook then
+				widget:melloKitLook()
+			end
+			WidgetActive(shell, widget, widget:melloActive())
+		end
 	end
-	DressStepper(K, skin, slider.Back, "Minimal_SliderBar_Button_Left")
-	DressStepper(K, skin, slider.Forward, "Minimal_SliderBar_Button_Right")
+end
+
+local function FollowLook(skin, widget)
+	if not (skin and skin.OnKit) then
+		return
+	end
+	local set = activeOf[skin]
+	if not set then
+		set = setmetatable({}, weakKeys)
+		activeOf[skin] = set
+	end
+	set[widget] = true
+	skin:OnKit(Actives_OnKit)
 end
 
 --------------------------------------------------------------------------------
--- Switch: the game's check box, 26 px. SetValue(on, silent) sets it without
--- (silent) or with set(on); Refresh() takes get() again. A refresh that
--- changes nothing leaves the box alone (the kit's check box redraws on every
--- SetChecked; a tab's refresh set every box on it again -- user, 2026-09-24).
---   opts: skin
+-- The flat controls' one set of handlers (0.15.0): the pointer on a control
+-- and its state (enabled or not, shown) paint it again through its kind's
+-- own look, control.melloLook(control, whole) (`whole`: its state changed,
+-- every part painted; else only what the hover changes). The colours are
+-- looked up when painted (a new palette paints them again).
 --------------------------------------------------------------------------------
+
+local flatHover = setmetatable({}, weakKeys)   -- [control] = true while the pointer is on it
+
+local FlatEnter = Shared("OnEnter on MelloUI's flat controls", function(c)
+	flatHover[c] = true
+	c.melloLook(c)
+end, "script")
+
+local FlatLeave = Shared("OnLeave on MelloUI's flat controls", function(c)
+	flatHover[c] = nil
+	c.melloLook(c)
+end, "script")
+
+local FlatState = Shared("OnEnable / OnDisable / OnShow on MelloUI's flat controls", function(c)
+	c.melloLook(c, true)
+end, "script")
+
+-- `shows`: its look laid again on every show too (a button's own fonts
+-- change its label's colour while it is hidden)
+local function FlatHooks(c, look, shows)
+	c.melloLook = look
+	Perf.HookScript(c, "OnEnter", FlatEnter)
+	Perf.HookScript(c, "OnLeave", FlatLeave)
+	Perf.HookScript(c, "OnEnable", FlatState)
+	Perf.HookScript(c, "OnDisable", FlatState)
+	if shows then
+		Perf.HookScript(c, "OnShow", FlatState)
+	end
+	look(c, true)
+end
+
+--------------------------------------------------------------------------------
+-- Switch (0.15.0, flat: user, 2026-09-29 "all flat"; it was the game's
+-- check box, the kit's in its look): a check button SWITCH px square with
+-- none of the game's art -- a box SWITCH_BOX px in its middle, an
+-- `innerPanel` fill in a 1 px `trim` edge (the panels' `border` is too faint
+-- for a box with nothing in it: 1.6:1), and, ticked, a check mark SWITCH_TICK
+-- px in `selectedTrim` inside it -- the installer's done mark (TICK_ART, its
+-- art desaturated and painted by key), a mark a player reads as "on" (a
+-- filled square reads as "partly on": review, 2026-09-29): the button's own
+-- checked texture, so the game shows it with the check (disabled: its
+-- disabled-checked one, in `mutedText`). Under the pointer the edge takes
+-- `selectedTrim`; disabled, the box at half. With the kit's look on (its
+-- `skin`) a ticked box also wears the active look round the box, its tick
+-- kept, as the kit's own check boxes do. `melloRep` is false, so the kit's
+-- sweep (Kit:SweepControls, Kit:SkinCheckButton) passes it by.
+-- SetValue(on, silent) sets it without (silent) or with set(on); Refresh()
+-- takes get() again. A refresh that changes nothing leaves the box alone (a
+-- tab's refresh set every box on it again -- user, 2026-09-24).
+--   W.Switch(parent, get, set, opts) -> switch   opts: skin
+--   switch.melloFill, switch.melloEdges (the box), switch.melloTick
+--------------------------------------------------------------------------------
+
+local SWITCH, SWITCH_BOX, SWITCH_TICK = 26, 18, 16
+local TICK_ART = "Interface\\RaidFrame\\ReadyCheck-Ready"   -- the check mark (the installer's done mark too)
+
+-- the box as the switch is: its edge lit under the pointer, at half while
+-- disabled (its tick is the game's to show)
+local function SwitchLook(cb)
+	local on = cb:IsEnabled() and true or false
+	local alpha = on and 1 or FLAT_OFF
+	W.Paint(cb.melloFill, "innerPanel", "fill", alpha)
+	local edge = (on and flatHover[cb]) and "selectedTrim" or "trim"
+	local edges = cb.melloEdges
+	for i = 1, 4 do
+		W.Paint(edges[i], edge, "fill", alpha)
+	end
+end
+
+-- (widget:melloActive: a ticked box wears the active look round its box)
+local function SwitchActive(cb)
+	return cb:GetChecked() and true or false, cb.melloFill, "square"
+end
+
+-- a tick: the check mark in the box's middle, painted by key (gold from the
+-- palette, not the art's own green; over the box: the game draws a state
+-- texture in its own layer, over the box's two); laid and painted again once
+-- the button holds it (a state texture handed over may be laid over the
+-- whole button)
+local function Tick(tick, key)
+	tick:SetTexture(TICK_ART)
+	tick:SetDesaturated(true)
+	tick:ClearAllPoints()
+	tick:SetSize(SWITCH_TICK, SWITCH_TICK)
+	tick:SetPoint("CENTER", tick:GetParent(), "CENTER", 0, 0)
+	W.Paint(tick, key, "vertex", 1)
+end
 
 local function SwitchSetValue(self, on, silent)
 	on = on and true or false
@@ -364,6 +588,7 @@ local function SwitchSetValue(self, on, silent)
 	end
 	self.value = on
 	self:SetChecked(on)
+	WidgetActive(self.melloSkin, self, on, self.melloFill, "square")
 	if not silent and self.melloSet then
 		self.melloSet(on)
 	end
@@ -382,73 +607,79 @@ local SwitchClick = Shared("OnClick on MelloUI's switches", function(self)
 end, "script")
 
 function W.Switch(parent, get, set, opts)
-	local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-	cb:SetSize(26, 26)
-	if cb.Text then
-		cb.Text:Hide()
+	local cb = CreateFrame("CheckButton", nil, parent)
+	cb:SetSize(SWITCH, SWITCH)
+	cb.melloRep = false   -- (the kit's sweep passes it by: no kit check box)
+	local fill = cb:CreateTexture(nil, "BACKGROUND")
+	fill:SetSize(SWITCH_BOX, SWITCH_BOX)
+	fill:SetPoint("CENTER", cb, "CENTER", 0, 0)
+	cb.melloFill, cb.melloEdges = fill, Edges(cb, "trim", "BORDER", fill)
+	-- the ticks, the game showing the one for the button's state
+	local tick = cb:CreateTexture(nil, "ARTWORK")
+	cb:SetCheckedTexture(tick)
+	Tick(tick, "selectedTrim")
+	cb.melloTick = tick
+	if cb.SetDisabledCheckedTexture then
+		local off = cb:CreateTexture(nil, "ARTWORK")
+		cb:SetDisabledCheckedTexture(off)
+		Tick(off, "mutedText")
 	end
 	cb.value = false
 	cb.melloGet, cb.melloSet = get, set
-	cb.SetValue, cb.Refresh = SwitchSetValue, SwitchRefresh
+	cb.SetValue, cb.Refresh, cb.melloActive = SwitchSetValue, SwitchRefresh, SwitchActive
 	Perf.SetScript(cb, "OnClick", SwitchClick)
+	FlatHooks(cb, SwitchLook)
 	local skin = opts and opts.skin
 	if skin then
-		skin:Kit(DressSwitch, cb, skin)
+		cb.melloSkin = skin
+		FollowLook(skin, cb)
 	end
 	return cb
 end
 
 --------------------------------------------------------------------------------
--- Dropdown: the Settings panel look -- the text holder alone, gold text in
--- the middle, the text colour under the mouse. `values` is a list of
--- { value, label, tooltip }, read whenever the menu is made (a list filled
--- again in place is picked up).
---   opts: default (the text shown while the value has no entry), tooltip
---   (the box's own tooltip body; its title is `default`)
--- The kit dresses it through its control sweep (W.Dress of its row: the
--- typed row does it).
---   W.DropdownMenu(dd, get, set, values) -> dd
---     the menu W.Dropdown gives its box, on a DropdownButton made elsewhere
---     (Dynamic UI's boxes, in the game's own look): a radio per entry, made
---     again only when out of date (dd:Refresh(); dd:Refresh(true) at once,
---     a list whose names changed in place), a long list capped and scrolled
--- A long list (user, 2026-09-26: "the list does not have a slider option
--- and is way too big" -- the Fonts dropdown's sixty faces ran off the
--- screen) takes the game's own scroll mode (Blizzard_Menu: the root's
--- SetScrollMode(extent); past `extent` px of entries the menu shows that
--- much in its scroll box, with the game's MinimalScrollBar and mouse wheel):
--- at most MENU_ROWS entries and never taller than MENU_SCREEN of the screen
--- (the top-level parent's height in its own units: the menu takes that
--- parent's scale, so the UI scale is in both). A short list is left as it
--- was. The chosen entry is scrolled into view as the menu opens (the box's
--- OnMenuOpened, hooked on its first long list). The scroll bar wears THE
--- scroll bar's look (Kit:SkinScrollBar) while the box's window is in the
--- kit's look (the skin W.Dress remembered): the game pools its menu frames
--- and lends them to every menu, its own too, so the pieces are made once
--- per menu frame, on while our menu shows and off when it is released
--- (the root's menu-acquired and -released callbacks). Nothing is made
--- until a long list opens.
+-- Dropdown (0.15.0, flat: user, 2026-09-29 "all flat"; it was the game's
+-- dropdown button and its menu): a box that names the choice and opens
+-- MelloUI's own list of them under it, in the window's one flyout (a
+-- picture row's too: W.PictureMenu, below). Never the game's menu: a game
+-- menu opened from MelloUI code runs the Gamepad UI's frame manager in
+-- MelloUI's run and blocks its bindings (the Gamepad UI freeze, v150 freeze
+-- plan WP5b), so the list is MelloUI's own whatever the mode. The box is a
+-- picture row's: an `innerPanel` fill in a 1 px `border` edge, the choice in
+-- `text` from its left, a small caret at its right in `text`; `hover` under
+-- the pointer; disabled, at half and the choice in `mutedText`. `values` is
+-- a list of { value, label, tooltip }, read whenever the box names the
+-- choice or the list opens (a list filled again in place, or renamed in
+-- place -- the Voice Over voices once the game has them, the Kit Colours
+-- under a new palette -- is picked up by a refresh).
+--   W.Dropdown(parent, width, get, set, values, opts) -> box   DD_H high
+--     opts: default (the text shown while the value has no entry), tooltip
+--     (the box's own tooltip body; its title is `default`), skin
+--   box:Refresh()          the choice named again from get() (its text set
+--                          only when it changed: nothing made)
+--   box:SetValues(values)  another list on the box (0.15.0: a row whose
+--                          setting is another key per pick): the choice
+--                          named from it; a list open on the old one closes
+--   box.Text, box.melloGet / melloSet / melloValues
+-- The list (the flyout's list mode): a row per entry, LIST_ROW_H high, the
+-- chosen one marked in gold, a row's tooltip its entry's; a click on a row
+-- sets it and closes the list. A long list (user, 2026-09-26: "the list
+-- does not have a slider option and is way too big" -- the Fonts dropdown's
+-- sixty faces ran off the screen) shows at most MENU_ROWS entries and never
+-- more than MENU_SCREEN of the screen, the rest by the wheel or its scroll
+-- bar, the chosen one in view as it opens. It closes as the flyout does:
+-- Escape, a click outside, the page scrolling, the box or the window
+-- hidden, W.ClosePictureMenu (a tab, a page or a pick changed). Unlike a
+-- picture row's it opens in combat, as the game's menu did. Nothing is made
+-- until a list opens.
 --------------------------------------------------------------------------------
 
-local DropdownGold = Shared("OnButtonStateChanged / OnLeave on MelloUI's dropdowns", function(self)
-	W.Paint(self.Text, "selectedTrim", "text")
-end, "hook")
-local DropdownLit = Shared("OnEnter on MelloUI's dropdowns", function(self)
-	W.Paint(self.Text, "text", "text")
-end, "script")
 local DropdownTip = Shared("OnEnter on MelloUI's dropdowns (tooltip)", function(self)
 	W.ShowTooltip(self, self.melloTipTitle or "", self.melloTip)
 end, "script")
 
--- A dropdown's list as it stands: its length and its last entry (a list
--- filled again makes new entries, so either differs)
-local function ListMark(values)
-	local count = values and #values or 0
-	return count, count > 0 and values[count] or nil
-end
-
 -- Where `value` stands in the list (nil when it has no such entry): its
--- radio's place in the menu too, one radio per entry
+-- row's place in the list too, one row per entry
 local function ChoiceIndex(values, value)
 	if values then
 		for i = 1, #values do
@@ -460,367 +691,736 @@ local function ChoiceIndex(values, value)
 	return nil
 end
 
+-- An entry's text: its label, else its value as text (a string value as it
+-- is: a refresh makes no string)
+local function EntryText(entry)
+	local value = entry.value
+	return entry.label or (type(value) == "string" and value) or tostring(value)
+end
+
 -- The text the box shows for `value` (nil when the list has no such entry:
--- the box then shows its default text, and the menu is made again on every
--- refresh, as before)
+-- the box then shows its default text)
 local function ChoiceLabel(values, value)
 	local i = ChoiceIndex(values, value)
-	if i then
-		local entry = values[i]
-		return entry.label or tostring(entry.value)
-	end
-	return nil
+	return i and EntryText(values[i]) or nil
 end
 
--- A long list's menu (the section's head). The game's menu, as the Forever
--- client's Blizzard_Menu lays it: a radio is a line 20 high (MenuVariants.
--- CreateRadio: its text set 20 high whatever the font, the tick centred on
--- it), and the menu adds its inset over and under the entries
--- (MenuStyle1Mixin:GetInset: 8 and 15).
-local MENU_ROW_H = 20      -- a radio's line in the game's menu
-local MENU_INSET = 23      -- the menu's inset over and under its entries
-local MENU_ROWS = 18       -- a long list shows this many entries, and scrolls
-local MENU_MIN_ROWS = 6    -- however small the screen
-local MENU_SCREEN = 0.5    -- and the menu is never taller than this share of the screen
+local DD_H = 25                -- the box's height
+local DD_TEXT_X = 8            -- the choice's left in the box
+local CARET = { 7, 5, 3, 1 }   -- the caret's lines, top down: a small triangle (px)
+local CARET_X = 9              -- its widest line's right end from the box's right
 
--- The scroll box's height for a list of `count` entries, nil for a list
--- short enough to show whole. The menu takes the top-level parent's scale
--- (Blizzard_Menu's AcquireMenu), so that parent's height in its own units
--- is the screen in the menu's.
-local function MenuExtent(count)
-	if count <= MENU_MIN_ROWS then
-		return nil
-	end
-	local rows = MENU_ROWS
-	local TopParent = _G.GetAppropriateTopLevelParent
-	local top = TopParent and TopParent() or UIParent
-	local height = top and Finite(top:GetHeight())
-	if height then
-		local fit = math.floor((height * MENU_SCREEN - MENU_INSET) / MENU_ROW_H)
-		if fit < rows then
-			rows = math.max(fit, MENU_MIN_ROWS)
+-- the box as it is: its fill (the hover) always; `whole`, its state
+-- (enabled or not) too -- the edge, the choice's colour, the caret
+local function DropdownLook(dd, whole)
+	local on = dd:IsEnabled() and true or false
+	local alpha = on and 1 or FLAT_OFF
+	W.Paint(dd.melloFill, (on and flatHover[dd]) and "hover" or "innerPanel", "fill", alpha)
+	if whole then
+		local edges, caret = dd.melloEdges, dd.melloCaret
+		for i = 1, 4 do
+			W.Paint(edges[i], "border", "fill", alpha)
 		end
-	end
-	if count <= rows then
-		return nil
-	end
-	return rows * MENU_ROW_H
-end
-
--- The skin of the window a box is in: the one W.Dress dressed a root above
--- it with (nil: the plain look, or a box the kit never dresses)
-local function MenuSkin(frame)
-	for _ = 1, 12 do
-		if not frame then
-			return nil
+		for i = 1, #caret do
+			W.Paint(caret[i], "text", "fill", alpha)
 		end
-		local skin = dressedBy[frame]
-		if skin then
-			return skin
-		end
-		frame = frame.GetParent and frame:GetParent()
-	end
-	return nil
-end
-
--- The menu frame's scroll bar in the kit's look: its pieces made once per
--- scroll bar (the game keeps its menu frames and lends them again), shown
--- while one of our long lists is open on it
-local menuBars = setmetatable({}, weakKeys)    -- [the menu's ScrollBar] = its kit pieces (false: none to make)
-local menuBarOn = setmetatable({}, weakKeys)   -- [ScrollBar] = true while they show
-local menuKit = nil                             -- the kit, as skin:Kit hands it (MenuReplace's)
-
-local function MenuReplace(region, opts)
-	return menuKit:Replace(region, opts)
-end
-
-local function DressMenuBar(K, bar)
-	local reps = menuBars[bar]
-	if reps == nil then
-		menuKit = K
-		reps = K:SkinScrollBar(bar, MenuReplace) or false
-		menuBars[bar] = reps
-	end
-	if reps and not menuBarOn[bar] then
-		menuBarOn[bar] = true
-		for i = 1, #reps do
-			reps[i]:Enable()
-		end
+		W.Paint(dd.Text, on and "text" or "mutedText", "text")
 	end
 end
 
--- the game's scroll bar again (for the next menu, whoever's it is)
-local function MenuBarOff(bar)
-	if menuBarOn[bar] then
-		menuBarOn[bar] = nil
-		local reps = menuBars[bar]
-		for i = 1, #reps do
-			reps[i]:Disable()
-		end
+local function DropdownRefresh(self)
+	local label = ChoiceLabel(self.melloValues, self.melloGet and self.melloGet()) or self.melloDefault or ""
+	if label ~= self.shownLabel then
+		self.shownLabel = label
+		self.Text:SetText(label)
 	end
 end
 
--- the root's callbacks: `menu` is the menu frame (its ScrollBox and
--- ScrollBar made once, with it), `menu:GetOwnerRegion()` the box
-local MenuAcquired = Shared("a long list's menu acquired (its scroll bar's look)", function(menu)
-	local bar = menu and menu.ScrollBar
-	if not bar then
+local function DropdownSetValues(self, values)
+	if values == self.melloValues then
 		return
 	end
-	local owner = menu.GetOwnerRegion and menu:GetOwnerRegion()
-	local skin = owner and MenuSkin(owner)
-	if skin and skin.kit then
-		skin:Kit(DressMenuBar, bar)
-	else
-		MenuBarOff(bar)
-	end
-end)
-local MenuReleased = Shared("a long list's menu released (the game's scroll bar back)", function(menu)
-	local bar = menu and menu.ScrollBar
-	if bar then
-		MenuBarOff(bar)
-	end
-end)
-
--- the menu open and laid out: the chosen entry in view (the game opens a
--- scroll box at its top)
-local DropdownOpened = Shared("OnMenuOpened on MelloUI's dropdowns (a long list's choice in view)", function(self, menu)
-	local box = menu and menu.ScrollBox
-	if not (box and box.ScrollToElementDataIndex and box:IsShown()) then
-		return
-	end
-	local index = ChoiceIndex(self.melloValues, self.melloGet and self.melloGet())
-	if index then
-		local C = ScrollBoxConstants
-		box:ScrollToElementDataIndex(index, C and C.AlignCenter, 0, true)
-	end
-end, "hook")
-
-local scrollHooked = setmetatable({}, weakKeys)   -- [dd] = true: its OnMenuOpened brings the choice into view
-
--- a menu of `count` entries: the scroll mode when the list is long (the
--- root is made new each time the game makes the menu, so its callbacks go
--- with it)
-local function LongMenu(dd, root, count)
-	local extent = MenuExtent(count)
-	if not (extent and root.SetScrollMode) then
-		return
-	end
-	root:SetScrollMode(extent)
-	if root.AddMenuAcquiredCallback and root.AddMenuReleasedCallback then
-		root:AddMenuAcquiredCallback(MenuAcquired)
-		root:AddMenuReleasedCallback(MenuReleased)
-	end
-	if not scrollHooked[dd] and dd.OnMenuOpened then
-		scrollHooked[dd] = true
-		Perf.hooksecurefunc(dd, "OnMenuOpened", DropdownOpened)
-	end
+	self.melloValues = values
+	Flyout.BoxHidden(self)   -- (a list open on the old one closes)
+	self:Refresh()
 end
 
--- the menu, made by the game when the box opens or GenerateMenu is called
-local function DropdownEntries(dd, root)
-	local values, get, set = dd.melloValues, dd.melloGet, dd.melloSet
-	if not values then
-		return
-	end
-	for _, entry in ipairs(values) do
-		local value = entry.value
-		local radio = root:CreateRadio(entry.label or tostring(value),
-			function() return get() == value end,
-			function() set(value) end,
-			value)
-		if entry.tooltip and radio and radio.SetTooltip then
-			pcall(radio.SetTooltip, radio, function(tooltip)
-				GameTooltip_SetTitle(tooltip, entry.label or tostring(value))
-				GameTooltip_AddNormalLine(tooltip, entry.tooltip)
-			end)
-		end
-	end
-	LongMenu(dd, root, #values)
-end
-
--- the menu is made again only when it is out of date (user, 2026-09-24: a
--- tab's refresh made every dropdown's menu again, the font lists' dozens of
--- entries each time -- 19 ms and a heap of garbage per click on the Text
--- tab): the box not naming the choice, or the list filled again since the
--- menu was made (the Voice Over voices, listed once the game has them, in
--- the same table: the box must then name the chosen voice and the menu hold
--- them all). `force`: made again at once (a list whose entries were renamed
--- in place: Dynamic UI's Kit Colours under a new palette)
-local function DropdownRefresh(self, force)
-	local values = self.melloValues
-	local count, last = ListMark(values)
-	if not force and count == self.menuCount and last == self.menuLast then
-		local label = ChoiceLabel(values, self.melloGet())
-		local text = self.Text
-		if label and text and text:GetText() == label then
-			return
-		end
-	end
-	self.menuCount, self.menuLast = count, last
-	if self.GenerateMenu then
-		pcall(self.GenerateMenu, self)
-	end
-end
-
--- the one menu of MelloUI's dropdowns, on a box made by W.Dropdown or its
--- caller (the section's head)
-function W.DropdownMenu(dd, get, set, values)
-	dd.melloGet, dd.melloSet, dd.melloValues = get, set, values
-	dd.Refresh = DropdownRefresh
-	dd:SetupMenu(DropdownEntries)
-	dd.menuCount, dd.menuLast = ListMark(values)
-	return dd
-end
+local DropdownClick = Shared("OnClick on MelloUI's dropdowns (its list)", function(self)
+	Flyout.Toggle(self)
+end, "script")
 
 function W.Dropdown(parent, width, get, set, values, opts)
-	local dd = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
-	dd:SetWidth(width)
-	dd:SetHeight(25)
-	if dd.Arrow then
-		dd.Arrow:Hide()
+	opts = opts or NO_OPTS
+	local dd = CreateFrame("Button", nil, parent)
+	dd:SetSize(width, DD_H)
+	dd.melloRep = false   -- (the kit's sweep passes it by: no dropdown plate)
+	dd.melloList = true   -- (it opens the flyout's list: W.PictureMenu's block)
+	dd.melloFill = dd:CreateTexture(nil, "BACKGROUND")
+	dd.melloFill:SetAllPoints(dd)
+	dd.melloEdges = Edges(dd, "border", "BORDER")
+	local caret = {}
+	for i, w in ipairs(CARET) do
+		local line = dd:CreateTexture(nil, "ARTWORK")
+		line:SetSize(w, 1)
+		line:SetPoint("TOPRIGHT", dd, "RIGHT", -(CARET_X + (CARET[1] - w) / 2), 3 - i)
+		caret[i] = line
 	end
-	if dd.Text then
-		dd.Text:ClearAllPoints()
-		dd.Text:SetPoint("LEFT", 10, -1)
-		dd.Text:SetPoint("RIGHT", -10, -1)
-		dd.Text:SetJustifyH("CENTER")
-		DropdownGold(dd)
-		if dd.OnButtonStateChanged then
-			Perf.hooksecurefunc(dd, "OnButtonStateChanged", DropdownGold)
-		end
-		Perf.HookScript(dd, "OnEnter", DropdownLit)
-		Perf.HookScript(dd, "OnLeave", DropdownGold)
-	end
-	if dd.SetDefaultText and opts and opts.default then
-		dd:SetDefaultText(opts.default)
-	end
-	W.DropdownMenu(dd, get, set, values)
-	if opts and opts.tooltip then
+	dd.melloCaret = caret
+	local text = W.Text(dd, "GameFontHighlight", nil, "text")
+	text:SetJustifyV("MIDDLE")
+	text:SetWordWrap(false)
+	text:SetPoint("LEFT", dd, "LEFT", DD_TEXT_X, 0)
+	text:SetPoint("RIGHT", dd, "RIGHT", -(CARET_X + CARET[1] + 6), 0)
+	dd.Text = text
+	dd.melloGet, dd.melloSet, dd.melloValues = get, set, values
+	dd.melloDefault, dd.melloSkin = opts.default, opts.skin
+	dd.Refresh, dd.SetValues = DropdownRefresh, DropdownSetValues
+	Perf.SetScript(dd, "OnClick", DropdownClick)
+	Perf.SetScript(dd, "OnHide", Flyout.BoxHidden)
+	FlatHooks(dd, DropdownLook)
+	if opts.tooltip then
 		dd.melloTipTitle, dd.melloTip = opts.default, opts.tooltip
 		Perf.HookScript(dd, "OnEnter", DropdownTip)
 		Perf.HookScript(dd, "OnLeave", TipLeave)
 	end
+	dd:Refresh()
 	return dd
 end
 
 --------------------------------------------------------------------------------
--- Slider: the game's minimal slider with steppers and the value on its
--- right; the kit's SL1 pieces with a skin.
---   opts: min (0), max (1), step (0.05), percent, format (fn(v) -> text),
---   skin
+-- Slider (0.15.0, Sliders 1, the cleaner look the user picked; it was the
+-- game's minimal slider with steppers and the kit's SL1 pieces): a thin track
+-- 4 px high (`innerPanel` in a 1 px `border` edge), the part from the least
+-- value to the knob in `trim`, a round knob 14 px in `selectedTrim` in a
+-- 1 px `innerPanel` ring, and the value in a small box you can type in
+-- (46 x 20, `innerPanel` in a `border` edge, the text colour; wider, up to
+-- 96, where the format names a value in words -- "Edit Mode's", "no limit"
+-- -- the track the shorter for it). No steppers, no gem ends, in both looks.
+-- The wheel is not taken: the page scrolls.
+-- The box never takes the keyboard by itself (an edit box made shown takes
+-- the focus, and a page of them would hold the movement keys while the
+-- window is open): only a click gives it the focus. Enter, Tab or leaving it
+-- takes the number (a percent slider "40" or "40%"), kept in the range and
+-- rounded to the step, and lets the focus go; Escape puts the value back and
+-- lets it go (the window never sees that Escape); the window's hide lets it
+-- go too, the value put back.
+--   W.Slider(parent, width, get, set, opts) -> slider   a Frame `width` wide
+--     and 20 high: the track `width - W.SLIDER_BOX` (54) from its left, the
+--     box at its right (a box wider for its words: the track that much
+--     shorter)
+--     opts: min (0), max (1), step (0.05), percent, format (fn(v) -> text),
+--     skin (kept for the callers: a flat slider has nothing to dress)
+--   slider:Refresh()   get() again (the box left alone while it is typed in)
+--   slider:SetRange(min, max, step[, percent, format])   another range (a
+--     row whose setting is another key per pick): the value put in it
+--   slider.Slider (the track's Slider frame), slider.box (the EditBox),
+--   slider.melloGet / melloSet; W.Round(value, step)
+-- Its handlers are shared (no closure per slider); nothing runs while it is
+-- left alone.
 --------------------------------------------------------------------------------
 
-local function Round(value, step)
-	if not step or step <= 0 then
-		return value
+do
+	local function Round(value, step)
+		if not step or step <= 0 then
+			return value
+		end
+		local n = math.floor(value / step + 0.5) * step
+		local digits, s = 0, step
+		while s < 1 and digits < 6 do
+			s = s * 10
+			digits = digits + 1
+		end
+		local mult = 10 ^ digits
+		return math.floor(n * mult + 0.5) / mult
 	end
-	local n = math.floor(value / step + 0.5) * step
-	local digits, s = 0, step
-	while s < 1 and digits < 6 do
-		s = s * 10
-		digits = digits + 1
-	end
-	local mult = 10 ^ digits
-	return math.floor(n * mult + 0.5) / mult
-end
-W.Round = Round
+	W.Round = Round
 
-local function PercentText(v)
-	return string.format("%d%%", math.floor(v * 100 + 0.5))
-end
-local function PlainText(v)
-	if math.abs(v - math.floor(v + 0.5)) < 0.001 then
-		return tostring(math.floor(v + 0.5))
+	local function PercentText(v)
+		return string.format("%d%%", math.floor(v * 100 + 0.5))
 	end
-	return string.format("%.2f", v)
-end
+	local function PlainText(v)
+		if math.abs(v - math.floor(v + 0.5)) < 0.001 then
+			return tostring(math.floor(v + 0.5))
+		end
+		return string.format("%.2f", v)
+	end
 
--- (the slider's own callback: its owner, the slider, comes first)
-local function SliderChanged(slider, value)
-	if slider.refreshing then
-		return
-	end
-	value = Round(value, slider.melloStep)
-	if slider.melloGet() ~= value then
-		slider.melloSet(value)
-	end
-end
+	local SLIDER_H = 20          -- the slider's frame: the box's height
+	local TRACK_H = 4            -- the track, its 1 px edge included
+	local KNOB = 14              -- the knob, its 1 px ring included
+	local BOX_W, BOX_GAP = 46, 8 -- the value box (its least width), and the room between the track and it
+	local BOX_MAX = 96           -- the widest a box grows for its texts
+	local BOX_INSET = 3          -- the box's text insets, left and right
+	local BOX_LETTERS = 10       -- the least a box takes typed (more when a text of its value is longer)
+	local BOX_FONT = "GameFontHighlight"
+	W.SLIDER_BOX = BOX_W + BOX_GAP   -- the slider's width less the track's (a box wider for its words takes more)
 
-local function SliderRefresh(self)
-	self.refreshing = true
-	self:SetValue(self.melloGet() or self.melloMin)
-	self.refreshing = false
-end
+	-- the value as the box shows it
+	local function ValueText(slider, v)
+		local fmt = slider.melloFormat or (slider.melloPercent and PercentText) or PlainText
+		return fmt(v)
+	end
 
-function W.Slider(parent, width, get, set, opts)
-	opts = opts or {}
-	local min, max, step = opts.min or 0, opts.max or 1, opts.step or 0.05
-	local steps = math.max(1, math.floor((max - min) / step + 0.5))
-	local slider = CreateFrame("Frame", nil, parent, "MinimalSliderWithSteppersTemplate")
-	slider:SetWidth(width)
-	slider.melloGet, slider.melloSet, slider.melloMin, slider.melloStep = get, set, min, step
-	slider:Init(get() or min, min, max, steps,
-		{ [MinimalSliderWithSteppersMixin.Label.Right] = opts.format or (opts.percent and PercentText) or PlainText })
-	if slider.Slider and slider.Slider.SetObeyStepOnDrag then
-		slider.Slider:SetObeyStepOnDrag(true)
+	-- the one hidden text the boxes' texts are measured on (made with the
+	-- first slider, never at load)
+	local measure = nil
+
+	local function MeasuredWidth(parent, text)
+		if not measure then
+			measure = parent:CreateFontString(nil, "BACKGROUND", BOX_FONT)
+			measure:Hide()
+		end
+		measure:SetText(text)
+		local get = measure.GetUnboundedStringWidth or measure.GetStringWidth
+		return Num(get(measure)) or 0
 	end
-	if slider.RightText then
-		W.Paint(slider.RightText, "text", "text")
+
+	-- The box as wide as the widest text its value shows at the range's ends
+	-- and at 0, where a format names the value in words ("Edit Mode's", "no
+	-- limit", "Default"): BOX_W to BOX_MAX, the track giving the room (the
+	-- slider keeps its width); it takes as many letters as its longest text.
+	-- At the make and on SetRange only.
+	local function FitBox(slider)
+		local min, max = slider.melloMin, slider.melloMax
+		local widest, letters = 0, BOX_LETTERS
+		for i = 1, 3 do
+			if i < 3 or (min <= 0 and max >= 0) then
+				local text = tostring(ValueText(slider, (i == 1 and min) or (i == 2 and max) or 0))
+				widest = math.max(widest, MeasuredWidth(slider, text))
+				letters = math.max(letters, #text)
+			end
+		end
+		local boxW = math.max(BOX_W, math.min(BOX_MAX, math.ceil(widest) + 2 * BOX_INSET + 2))
+		slider.box:SetMaxLetters(letters)
+		slider.box:SetWidth(boxW)
+		slider.Slider:SetWidth(math.max(KNOB, slider.melloWidth - boxW - BOX_GAP))
 	end
-	slider.refreshing = false
-	slider:RegisterCallback(MinimalSliderWithSteppersMixin.Event.OnValueChanged, SliderChanged, slider)
-	slider.Refresh = SliderRefresh
-	local skin = opts.skin
-	if skin then
-		skin:Kit(DressSlider, slider, skin)
+
+	-- the box shows `v` (the value only when it changed: a refresh of an
+	-- unchanged row makes no string)
+	local function ShowValue(slider, v)
+		if v ~= slider.shownValue then
+			slider.shownValue = v
+			slider.box:SetText(ValueText(slider, v))
+		end
 	end
-	return slider
+
+	-- the slider's value moved (a drag, a click on the track, a SetValue): kept
+	-- to the step and handed to set, the box following
+	local SliderChanged = Shared("OnValueChanged on MelloUI's sliders", function(track, value)
+		local slider = track.melloSlider
+		if not slider or slider.refreshing then
+			return
+		end
+		value = Round(value, slider.melloStep)
+		if slider.melloGet() ~= value then
+			slider.melloSet(value)
+		end
+		ShowValue(slider, value)
+	end, "script")
+
+	local function SliderRefresh(self)
+		local v = self.melloGet() or self.melloMin
+		self.refreshing = true
+		self.Slider:SetValue(v)
+		self.refreshing = false
+		if not self.box:HasFocus() then
+			ShowValue(self, v)
+		end
+	end
+
+	local function SliderSetRange(self, min, max, step, percent, format)
+		self.melloMin, self.melloMax, self.melloStep = min or 0, max or 1, step or 0.05
+		if percent ~= nil or format ~= nil then
+			self.melloPercent, self.melloFormat = percent and true or false, format
+		end
+		self.refreshing = true
+		self.Slider:SetMinMaxValues(self.melloMin, self.melloMax)
+		self.Slider:SetValueStep(self.melloStep)
+		self.refreshing = false
+		FitBox(self)
+		self.shownValue = nil   -- (the text again: another format, or the same number in a new range)
+		self:Refresh()
+	end
+
+	-- The number typed in the box: its first number ("40%", "40", "1.5x"),
+	-- a hundredth of it on a percent slider, kept in the range and rounded to
+	-- the step; nil for none
+	local function TypedValue(slider, text)
+		local n = tonumber(tostring(text or ""):match("%-?%d*%.?%d+"))
+		if not n then
+			return nil
+		end
+		if slider.melloPercent then
+			n = n / 100
+		end
+		n = Round(n, slider.melloStep)
+		return math.max(slider.melloMin, math.min(slider.melloMax, n))
+	end
+
+	-- the typed number taken (none: the value put back); the box shows the
+	-- value as it is after
+	local function TakeTyped(box)
+		local slider = box.melloSlider
+		local v = TypedValue(slider, box:GetText())
+		if v ~= nil then
+			slider.Slider:SetValue(v)
+			if slider.melloGet() ~= v then
+				slider.melloSet(v)   -- (the slider was there already: no OnValueChanged)
+			end
+		else
+			v = slider.melloGet() or slider.melloMin
+		end
+		slider.shownValue = nil
+		ShowValue(slider, v)
+	end
+
+	-- the focus let go, the number taken (`take`) or the value put back; the
+	-- focus-lost that follows takes nothing again
+	local function LetGo(box, take)
+		if take then
+			TakeTyped(box)
+		else
+			local slider = box.melloSlider
+			slider.shownValue = nil
+			ShowValue(slider, slider.melloGet() or slider.melloMin)
+		end
+		if box:HasFocus() then
+			box.melloLetGo = true
+			box:ClearFocus()
+		end
+	end
+
+	local BoxTake = Shared("OnEnterPressed / OnTabPressed on a slider's value box", function(box)
+		LetGo(box, true)
+	end, "script")
+
+	local BoxEscape = Shared("OnEscapePressed on a slider's value box", function(box)
+		LetGo(box, false)
+	end, "script")
+
+	local BoxFocusGained = Shared("OnEditFocusGained on a slider's value box", function(box)
+		box:HighlightText()
+	end, "script")
+
+	-- a click elsewhere: the number taken (the box's own Enter, Tab or Escape
+	-- already had its say)
+	local BoxFocusLost = Shared("OnEditFocusLost on a slider's value box", function(box)
+		if box.melloLetGo then
+			box.melloLetGo = nil
+			return
+		end
+		TakeTyped(box)
+	end, "script")
+
+	-- the window hidden (the box with it): the focus let go, the value back
+	local BoxHidden = Shared("OnHide on a slider's value box", function(box)
+		if box:HasFocus() then
+			LetGo(box, false)
+		end
+	end, "script")
+
+	-- a disc of the knob under its own round mask
+	local function KnobMask(frame, disc)
+		local mask = frame:CreateMaskTexture()
+		mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		mask:SetAllPoints(disc)
+		disc:AddMaskTexture(mask)
+	end
+
+	-- the track: its edge and fill, the value's part in `trim`, the round knob
+	-- (the thumb: the ring, the knob's disc on it, each under its round mask)
+	local function SliderTrack(slider, width)
+		local track = CreateFrame("Slider", nil, slider)
+		track:SetOrientation("HORIZONTAL")
+		track:SetSize(width - W.SLIDER_BOX, KNOB)
+		track:SetPoint("LEFT", slider, "LEFT", 0, 0)
+		track:EnableMouse(true)
+		track:EnableMouseWheel(false)
+		track.melloSlider = slider
+		local edge = W.Solid(track, "BACKGROUND", "border", 1)
+		edge:SetHeight(TRACK_H)
+		edge:SetPoint("LEFT", track, "LEFT", 0, 0)
+		edge:SetPoint("RIGHT", track, "RIGHT", 0, 0)
+		local fill = W.Solid(track, "BACKGROUND", "innerPanel", 1)
+		fill:SetDrawLayer("BACKGROUND", 1)
+		fill:SetHeight(TRACK_H - 2)
+		fill:SetPoint("LEFT", track, "LEFT", 1, 0)
+		fill:SetPoint("RIGHT", track, "RIGHT", -1, 0)
+		local ring = track:CreateTexture(nil, "OVERLAY", nil, 0)
+		ring:SetSize(KNOB, KNOB)
+		W.Paint(ring, "innerPanel", "fill", 1)
+		track:SetThumbTexture(ring)
+		local knob = track:CreateTexture(nil, "OVERLAY", nil, 1)
+		knob:SetSize(KNOB - 2, KNOB - 2)
+		knob:SetPoint("CENTER", ring, "CENTER", 0, 0)
+		W.Paint(knob, "selectedTrim", "fill", 1)
+		KnobMask(track, ring)
+		KnobMask(track, knob)
+		-- (from the least value to the knob's middle: it moves with the knob)
+		local part = W.Solid(track, "ARTWORK", "trim", 1)
+		part:SetHeight(TRACK_H - 2)
+		part:SetPoint("LEFT", track, "LEFT", 1, 0)
+		part:SetPoint("RIGHT", ring, "CENTER", 0, 0)
+		track.edge, track.fill, track.part, track.knob, track.ring = edge, fill, part, knob, ring
+		Perf.SetScript(track, "OnValueChanged", SliderChanged)
+		return track
+	end
+
+	-- the value's box: never the keyboard's until clicked
+	local function SliderBox(slider)
+		local box = CreateFrame("EditBox", nil, slider)
+		box:SetAutoFocus(false)
+		box:SetSize(BOX_W, SLIDER_H)
+		box:SetPoint("RIGHT", slider, "RIGHT", 0, 0)
+		box:SetFontObject(BOX_FONT)
+		box:SetJustifyH("CENTER")
+		box:SetTextInsets(BOX_INSET, BOX_INSET, 0, 0)
+		box:SetMaxLetters(BOX_LETTERS)
+		box:EnableMouse(true)
+		box:EnableMouseWheel(false)
+		W.Paint(box, "text", "text")
+		local fill = box:CreateTexture(nil, "BACKGROUND")
+		fill:SetAllPoints(box)
+		W.Paint(fill, "innerPanel", "fill", 1)
+		box.fill, box.edges = fill, Edges(box, "border", "BORDER")
+		box.melloSlider = slider
+		Perf.SetScript(box, "OnEnterPressed", BoxTake)
+		Perf.SetScript(box, "OnTabPressed", BoxTake)
+		Perf.SetScript(box, "OnEscapePressed", BoxEscape)
+		Perf.SetScript(box, "OnEditFocusGained", BoxFocusGained)
+		Perf.SetScript(box, "OnEditFocusLost", BoxFocusLost)
+		Perf.SetScript(box, "OnHide", BoxHidden)
+		return box
+	end
+
+	function W.Slider(parent, width, get, set, opts)
+		opts = opts or NO_OPTS
+		local min, max, step = opts.min or 0, opts.max or 1, opts.step or 0.05
+		local slider = CreateFrame("Frame", nil, parent)
+		slider:SetSize(width, SLIDER_H)
+		slider:EnableMouseWheel(false)
+		slider.melloGet, slider.melloSet = get, set
+		slider.melloMin, slider.melloMax, slider.melloStep = min, max, step
+		slider.melloPercent, slider.melloFormat = opts.percent and true or false, opts.format
+		slider.melloWidth = width
+		slider.refreshing = false
+		slider.box = SliderBox(slider)
+		local track = SliderTrack(slider, width)
+		slider.Slider = track
+		slider.refreshing = true
+		track:SetMinMaxValues(min, max)
+		track:SetValueStep(step)
+		track:SetObeyStepOnDrag(true)
+		slider.refreshing = false
+		FitBox(slider)
+		slider.Refresh, slider.SetRange = SliderRefresh, SliderSetRange
+		slider:Refresh()
+		return slider
+	end
 end
 
 --------------------------------------------------------------------------------
--- Buttons: the game's panel button (the kit's red plate, B1, with a skin);
--- the close button (RedButton-Exit).
---   opts: height (22), onClick (a shared handler), gold (the Install look: a
---   `selectedTrim` label and a 1 px `selectedTrim` outline, by key)
+-- Buttons (0.15.0, Buttons 1, the cleaner look the user picked; they were
+-- the kit's red plate, B1): the game's panel button, flat in both looks --
+-- the template's plate art hidden, a `raisedPanel` fill in a 1 px `border`
+-- edge (W.Edges), the label in the text colour. Under the mouse the fill
+-- takes `hover`; pressed, the label goes 1 px down (the button's own pushed
+-- text offset); disabled, the fill and the edge at half and the label in
+-- `mutedText`. The main action (opts.gold: Install..., Install again, the
+-- installer's forward button, Restock's Buy, a question's accept) wears its
+-- edge and label in `selectedTrim` (its label `text` on the hover fill). No
+-- gem caps: `melloRep` is false before any sweep, so the kit's
+-- (Kit:SweepControls, Kit:SkinRedButton) passes it by, whatever window it
+-- is in.
+--   W.Button(parent, text, width, skin, opts) -> button
+--     opts: height (22), onClick (a shared handler), gold
+--     (`skin` kept for the callers: a flat button has nothing to dress)
+--   W.FlatButton(button, gold) -> button   the same look on a button made
+--     by hand from UIPanelButtonTemplate (its creation line kept); once
+--   button.melloFill, button.melloEdges (button.melloOutline: the gold edge)
+-- The flat controls' one set of handlers (FlatHooks); the colours looked
+-- up in the palette when painted (a new palette paints them again).
+--   W.CloseButton(parent, skin) -> button   (0.15.0, flat: user, 2026-09-29
+--     "all flat"; it was the game's red cross, RedButton-Exit in the kit's
+--     look): a flat button CLOSE px square with a cross in `text` -- the
+--     search box's own (common-search-clearbutton), the one cross of the
+--     own windows. The click is the caller's (the configurator's, the
+--     shell's), as it always was; `skin` kept for the callers.
+--   button.melloCross
 --------------------------------------------------------------------------------
 
--- the gold label kept through the button's own font changes (normal /
--- highlight / disabled)
-local GoldLabel = Shared("OnEnter / OnLeave / OnEnable / OnDisable on MelloUI's gold buttons", function(self)
-	local fs = self.GetFontString and self:GetFontString()
-	if fs then
-		W.Paint(fs, "selectedTrim", "text")
-	end
-end, "script")
+do
+	local PLATE_PARTS = { "Left", "Middle", "Right", "Center" }   -- the template's plate (the older and the 128 red one)
+	local PLATE_TEXTURES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
+	local flatGold = setmetatable({}, weakKeys)    -- [button] = true: the main action's
+	local CLOSE, CROSS = 22, 12                    -- the close button, its cross
+	local CROSS_ART = "common-search-clearbutton"  -- (the game's search box's cross: SearchBoxTemplate)
 
-function W.Button(parent, text, width, skin, opts)
-	local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-	b:SetSize(width or 110, opts and opts.height or 22)
-	b:SetText(text or "")
-	if opts and opts.onClick then
-		Perf.SetScript(b, "OnClick", opts.onClick)
+	-- The look as the button is (`edges`: its edge too -- it changes only
+	-- with the button's state, not its hover). The label is painted every time:
+	-- the button's own font changes (normal / highlight / disabled) take its
+	-- colour. A gold label on the hover fill would be too faint (the
+	-- palette's rule: only `text` on `hover`), so under the pointer the main
+	-- action's label is `text`, its edge still gold.
+	local function FlatLook(b, edges)
+		local on = b:IsEnabled() and true or false
+		local alpha = on and 1 or FLAT_OFF
+		local gold = flatGold[b]
+		local lit = on and flatHover[b]
+		W.Paint(b.melloFill, lit and "hover" or "raisedPanel", "fill", alpha)
+		if edges then
+			local key = gold and "selectedTrim" or "border"
+			for i = 1, 4 do
+				W.Paint(b.melloEdges[i], key, "fill", alpha)
+			end
+		end
+		local fs = b:GetFontString()
+		if fs then
+			W.Paint(fs, (not on and "mutedText") or (gold and not lit and "selectedTrim") or "text", "text")
+		end
 	end
-	if skin then
-		skin:Kit(DressButton, b, skin)
+
+	function W.FlatButton(b, gold)
+		if not b or b.melloFill then
+			return b
+		end
+		b.melloRep = false   -- (the kit's sweep passes it by: no red plate, no gem caps)
+		for _, key in ipairs(PLATE_PARTS) do
+			local part = rawget(b, key)
+			if part then
+				part:SetAlpha(0)
+				part:Hide()
+			end
+		end
+		for _, getter in ipairs(PLATE_TEXTURES) do
+			local tex = b[getter] and b[getter](b)
+			if tex then
+				tex:SetAlpha(0)
+			end
+		end
+		b.melloFill = b:CreateTexture(nil, "BACKGROUND", nil, 2)
+		b.melloFill:SetAllPoints(b)
+		b.melloEdges = Edges(b, "border", "BORDER")
+		flatGold[b] = gold and true or nil
+		if gold then
+			b.melloOutline = b.melloEdges
+		end
+		if b.SetPushedTextOffset then
+			b:SetPushedTextOffset(0, -1)
+		end
+		FlatHooks(b, FlatLook, true)
+		return b
 	end
-	if opts and opts.gold then
-		b.melloOutline = Edges(b, "selectedTrim", "OVERLAY")
-		GoldLabel(b)
-		Perf.HookScript(b, "OnEnter", GoldLabel)
-		Perf.HookScript(b, "OnLeave", GoldLabel)
-		Perf.HookScript(b, "OnEnable", GoldLabel)
-		Perf.HookScript(b, "OnDisable", GoldLabel)
+
+	function W.Button(parent, text, width, skin, opts)
+		local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+		b:SetSize(width or 110, opts and opts.height or 22)
+		b:SetText(text or "")
+		if opts and opts.onClick then
+			Perf.SetScript(b, "OnClick", opts.onClick)
+		end
+		return W.FlatButton(b, opts and opts.gold)
 	end
-	return b
+
+	function W.CloseButton(parent, skin)
+		local close = CreateFrame("Button", nil, parent)
+		close:SetSize(CLOSE, CLOSE)
+		W.FlatButton(close)
+		local cross = close:CreateTexture(nil, "ARTWORK")
+		cross:SetAtlas(CROSS_ART)
+		cross:SetSize(CROSS, CROSS)
+		cross:SetPoint("CENTER", close, "CENTER", 0, 0)
+		W.Paint(cross, "text", "vertex")
+		close.melloCross = cross
+		return close
+	end
 end
 
-function W.CloseButton(parent, skin)
-	local close = CreateFrame("Button", nil, parent, "UIPanelCloseButton")
-	if skin then
-		skin:Kit(DressClose, close, skin)
+--------------------------------------------------------------------------------
+-- Tabs (0.15.0, flat: user, 2026-09-29 "all flat"; they were the kit's tab
+-- art, TB6, and the game's own in the plain look): a page's tab -- the
+-- game's top tab (PanelTopTabButtonTemplate), made by the caller (the
+-- configurator's pages) -- its art hidden, the tab TAB_H high and a flat
+-- plate on it, TAB_IN inside its sides (tabs laid 6 px over each other stand
+-- 2 px apart): at rest `raisedPanel` in a 1 px `border` edge, `hover` under
+-- the pointer; the selected one `selectedTab` in a `selectedTrim` edge. The
+-- label is `text` in every state (gold on the selected tab's fill is under
+-- 4.5:1 in Ember) and stays in the plate's middle (the game's select bobs it
+-- up and down). With the kit's look on (its `skin`) the selected tab wears
+-- the active look round its plate, the gold edge then giving way to the
+-- resting one under the ring (as a chosen card's). `melloRep` is false, so
+-- the kit's sweep (Kit:SkinPanelTab) passes it by. The tab keeps the width
+-- its owner gives it: the template's own resize on a show and on a display
+-- change is dropped (it undid the owner's padding: the tabs' gaps jumped).
+--   W.FlatTab(tab, skin) -> tab   once per tab; then
+--   tab:SetSelected(on)   the selected look; the selected tab disabled, as
+--                         the game's select makes it (a click on it does
+--                         nothing), its tooltip hidden
+--   tab.melloFill (the plate), tab.melloEdges
+--------------------------------------------------------------------------------
+
+do
+	local TAB_H, TAB_IN = 24, 4   -- the tab's height (its plate's), and the plate inside its sides
+	local TAB_ART = { "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive",
+		"LeftHighlight", "MiddleHighlight", "RightHighlight" }
+	local tabOn = setmetatable({}, weakKeys)   -- [tab] = true: the selected one
+
+	-- the whole look, every time (a tab has few parts): its fill by state and
+	-- hover, the edge gold on the selected tab unless the ring lies on it, the
+	-- label painted again (the button's own fonts change its colour)
+	local function TabLook(tab)
+		local on = tabOn[tab] == true
+		local lit = flatHover[tab] and not on
+		W.Paint(tab.melloFill, (on and "selectedTab") or (lit and "hover") or "raisedPanel", "fill", 1)
+		local skin = tab.melloSkin
+		local key = (on and not (skin and skin.kit)) and "selectedTrim" or "border"
+		local edges = tab.melloEdges
+		for i = 1, 4 do
+			W.Paint(edges[i], key, "fill", 1)
+		end
+		local fs = tab.Text
+		if fs then
+			W.Paint(fs, "text", "text")
+		end
 	end
-	return close
+
+	-- (widget:melloActive: the selected tab wears the active look round its plate)
+	local function TabActive(tab)
+		return tabOn[tab] == true, tab.melloFill, "rect"
+	end
+
+	local function TabSetSelected(tab, on)
+		on = on and true or false
+		tabOn[tab] = on or nil
+		tab:SetEnabled(not on)
+		if on and GameTooltip:GetOwner() == tab then
+			GameTooltip:Hide()
+		end
+		TabLook(tab)
+		WidgetActive(tab.melloSkin, tab, on, tab.melloFill, "rect")
+	end
+
+	function W.FlatTab(tab, skin)
+		if not tab or tab.melloFill then
+			return tab
+		end
+		tab.melloRep = false   -- (the kit's sweep passes it by: no TB6)
+		for _, key in ipairs(TAB_ART) do
+			local art = rawget(tab, key)
+			if art then
+				art:SetAlpha(0)
+			end
+		end
+		-- (the tab as tall as its plate, and its hidden open-tab art too: the
+		-- height its owner lays the tab row by; a New badge on its top edge
+		-- then lies on the plate's)
+		tab:SetHeight(TAB_H)
+		local open = rawget(tab, "MiddleActive")
+		if open then
+			open:SetHeight(TAB_H)
+		end
+		local fill = tab:CreateTexture(nil, "BACKGROUND", nil, 2)
+		fill:SetPoint("TOPLEFT", tab, "TOPLEFT", TAB_IN, 0)
+		fill:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -TAB_IN, 0)
+		tab.melloFill, tab.melloEdges = fill, Edges(tab, "border", "BORDER", fill)
+		local fs = tab.Text
+		if fs then
+			fs:ClearAllPoints()
+			fs:SetPoint("CENTER", fill, "CENTER", 0, 0)
+		end
+		-- (the owner's width kept: the template sizes the tab again on a show
+		-- and on a display change, to its own padding)
+		Perf.SetScript(tab, "OnShow", nil)
+		tab:UnregisterEvent("DISPLAY_SIZE_CHANGED")
+		tab.melloSkin = skin
+		tab.SetSelected, tab.melloActive, tab.melloKitLook = TabSetSelected, TabActive, TabLook
+		FlatHooks(tab, TabLook)
+		FollowLook(skin, tab)
+		return tab
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The search box (0.15.0, flat: user, 2026-09-29 "all flat"; it was the
+-- kit's S1 in the kit's look, the game's own in the plain one): the game's
+-- search box (SearchBoxTemplate), made by the caller (the configurator's
+-- side list), in the slider value box's look -- its Left / Middle / Right
+-- art hidden, an `innerPanel` fill in a 1 px `border` edge (`trim` while it
+-- has the keyboard) over the art's own span (from SEARCH_LEFT px left of the
+-- box: the magnifying glass inside it). The prompt in `mutedText` (the
+-- palette's hint colour); the glass `mutedText` while the box is idle and
+-- `text` in use (the game's own two shades of it, by key); the clear
+-- button's cross in `text`. What is typed is the caller's to colour (the
+-- configurator's is `text`). `melloRep` is false, so the kit's sweep
+-- (Kit:SkinSearchBox) passes it by. A plain text field made by hand from
+-- InputBoxTemplate (the Profiles page's name, Help's links: review,
+-- 2026-09-29, "all flat") takes the same look: its Left / Middle / Right are
+-- the same art at the same span, and it has no glass, prompt or cross.
+--   W.FlatField(box) -> box   once per box (a search box or a plain field)
+--   W.FlatSearch(box)         the same (the configurator's search box)
+--   box.melloFill, box.melloEdges
+--------------------------------------------------------------------------------
+
+do
+	local SEARCH_LEFT = 5   -- the game's art reaches this far left of the box
+	local SEARCH_ART = { "Left", "Middle", "Right" }
+
+	-- the glass in use (the keyboard in the box, or a text in it) or idle:
+	-- after the game's own scripts, which tint it themselves
+	local function Glass(box)
+		local glass = box.searchIcon
+		if glass then
+			local text = box:GetText()
+			W.Paint(glass, (box:HasFocus() or (text and text ~= "")) and "text" or "mutedText", "vertex")
+		end
+	end
+
+	local SearchFocus = Shared("OnEditFocusGained / OnEditFocusLost on MelloUI's text fields", function(box)
+		local key = box:HasFocus() and "trim" or "border"
+		local edges = box.melloEdges
+		for i = 1, 4 do
+			W.Paint(edges[i], key, "fill", 1)
+		end
+		Glass(box)
+	end, "script")
+
+	local SearchText = Shared("OnTextChanged on MelloUI's search boxes (the glass)", function(box)
+		Glass(box)
+	end, "script")
+
+	function W.FlatField(box)
+		if not box or box.melloFill then
+			return box
+		end
+		box.melloRep = false   -- (the kit's sweep passes it by: no S1)
+		for _, key in ipairs(SEARCH_ART) do
+			local art = rawget(box, key)
+			if art then
+				art:SetAlpha(0)
+			end
+		end
+		local fill = box:CreateTexture(nil, "BACKGROUND", nil, 2)
+		fill:SetPoint("TOPLEFT", box, "TOPLEFT", -SEARCH_LEFT, 0)
+		fill:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
+		W.Paint(fill, "innerPanel", "fill", 1)
+		box.melloFill, box.melloEdges = fill, Edges(box, "border", "BORDER", fill)
+		if box.Instructions then
+			W.Paint(box.Instructions, "mutedText", "text")
+		end
+		local clear = box.clearButton
+		if clear and clear.Icon then
+			W.Paint(clear.Icon, "text", "vertex")
+		end
+		Perf.HookScript(box, "OnEditFocusGained", SearchFocus)
+		Perf.HookScript(box, "OnEditFocusLost", SearchFocus)
+		if box.searchIcon then
+			Perf.HookScript(box, "OnTextChanged", SearchText)
+		end
+		SearchFocus(box)
+		return box
+	end
+	W.FlatSearch = W.FlatField
 end
 
 --------------------------------------------------------------------------------
@@ -1052,7 +1652,6 @@ end
 --------------------------------------------------------------------------------
 
 do
-	local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 	local TRACKING_RIM = "Interface\\Minimap\\MiniMap-TrackingBorder"
 	local HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
 	local PLAIN_RATIO = 31 / 21   -- the tracking rim: a 31 px ring round a 21 px opening
@@ -1690,9 +2289,13 @@ end
 --     opts.line    a 1 px `border` line along its bottom at 0.6 (the plain
 --                  look's ledger)
 --     opts.look    the hover (W.RowPlate): "plate" | "palette" | false
---     opts.gate    fn() -> live, why: the row sleeps while not live (W.Gate)
+--     opts.gate    fn() -> live, why, line: the row sleeps while not live
+--                  (W.Gate)
 --     opts.note    (true) while it sleeps, the hint slot reads "Switch on
---                  "why" first." (the row keeps its height)
+--                  "why" first." -- or `line` as it is, when the gate gives
+--                  one ("Not for Pet") (the row keeps its height)
+--     opts.onCover fn(row): a click on the sleeping row (the configurator's
+--                  jump to the switch that wakes it)
 --     opts.clip    (true, typed rows) the label and hint end 10 px left of
 --                  the control, cut there, the full text in the tooltip
 --     opts.new     the update the option came with: its New tag right after
@@ -1701,11 +2304,14 @@ end
 --                  a tag and no hint keeps its text's width, cut only where
 --                  the two would reach the control (row.newTag)
 --   row:Refresh()  the row's control (get again) and its gate
--- The typed rows (a row and its control, which takes get / set; the row's
--- controls dressed by the kit's sweep with a skin):
+-- The typed rows (a row and its control, which takes get / set; the
+-- controls flat in both looks, 0.15.0: nothing of theirs for the kit's
+-- sweep):
 --   W.ToggleRow(parent, y, label, hint, desc, get, set, opts) -> row, switch
 --   W.SliderRow(parent, y, label, hint, desc, get, set, opts) -> row, slider
---     (opts.min, max, step, percent, format, width 200)
+--     (opts.min, max, step, percent, format, width: the whole slider, its
+--     box included, at the row's right; 256 when none is given, the span
+--     such a row always had)
 --   W.DropdownRow(parent, y, label, hint, desc, get, set, values, opts)
 --     -> row, dropdown (opts.width 200; the label is its default text)
 --   W.ButtonRow(parent, y, label, hint, desc, text, onClick, opts)
@@ -1715,6 +2321,7 @@ end
 
 local controlOf = setmetatable({}, weakKeys)   -- [row] = its control
 local gateOf = setmetatable({}, weakKeys)      -- [row] = its cover (W.Gate)
+local clipAt = setmetatable({}, weakKeys)      -- [row] = the region its texts end at (W.ClipRow)
 
 function W.ControlOf(row)
 	return controlOf[row]
@@ -1747,21 +2354,41 @@ local function GateLine(cover, why)
 	return line
 end
 
--- the cover's tooltip: the row's label, and the switch that wakes it
+-- the line a sleeping row says: the gate's own (as it is), or the switch
+-- that wakes it
+local function SleepLine(cover, why, line)
+	if line then
+		return line
+	end
+	return why and GateLine(cover, why) or nil
+end
+
+-- the cover's tooltip: the row's label, and what wakes it
 local CoverEnter = Shared("OnEnter on MelloUI's sleeping rows", function(self)
-	local _, why = self.gate()
+	local _, why, line = self.gate()
 	local row = self.gateRow
-	W.ShowTooltip(self, row.label and row.label:GetText() or "", why and GateLine(self, why) or nil)
+	W.ShowTooltip(self, row.label and row.label:GetText() or "", SleepLine(self, why, line))
+end, "script")
+
+-- a click on a sleeping row: the caller's (opts.onCover), a left click only
+local CoverClick = Shared("OnMouseUp on MelloUI's sleeping rows (to the switch that wakes it)", function(self, button)
+	local fn = self.onCover
+	if fn and button ~= "RightButton" then
+		fn(self.gateRow)
+	end
 end, "script")
 
 local function GateRefresh(cover)
-	local live, why = cover.gate()
+	local live, why, line = cover.gate()
 	local row = cover.gateRow
 	row:SetAlpha(live and 1 or GATE_ALPHA)
 	cover:SetShown(not live)
 	local hint = cover.note and row.hint
 	if hint then
-		local text = (not live and why) and GateLine(cover, why) or cover.hintText
+		local text = cover.hintText
+		if not live then
+			text = SleepLine(cover, why, line) or text
+		end
 		hint:SetText(text or "")
 		hint:SetShown(text ~= nil and text ~= "")
 	end
@@ -1769,9 +2396,13 @@ end
 
 -- A row that only means something while a switch is on (user, 2026-09-24:
 -- "people will get overwhelmed by all the options"): `gate()` returns whether
--- it is live and, when not, the switch to turn on. Off, the row is dimmed and
--- a cover over it takes the clicks and says which switch wakes it.
+-- it is live and, when not, the switch to turn on -- or a line of its own to
+-- say instead (0.15.0: "Not for Pet", a row that has no setting on this
+-- pick). Off, the row is dimmed and a cover over it takes the clicks and
+-- says what wakes it.
 --   opts.note (true): the hint slot reads that line while it sleeps
+--   opts.onCover (0.15.0): fn(row), a click on the cover (the configurator
+--   jumps to the switch, on another page or pick)
 function W.Gate(row, gate, opts)
 	local cover = CreateFrame("Frame", nil, row)
 	cover:SetAllPoints(row)
@@ -1780,6 +2411,10 @@ function W.Gate(row, gate, opts)
 	cover.gate, cover.gateRow = gate, row
 	Perf.SetScript(cover, "OnEnter", CoverEnter)
 	Perf.SetScript(cover, "OnLeave", TipLeave)
+	if opts and opts.onCover then
+		cover.onCover = opts.onCover
+		Perf.SetScript(cover, "OnMouseUp", CoverClick)
+	end
 	W.RowPlateChild(row, cover)
 	cover:Hide()
 	cover.Refresh = GateRefresh
@@ -1789,9 +2424,9 @@ function W.Gate(row, gate, opts)
 			row.hint = W.Text(row, "GameFontHighlightSmall", nil, "text")
 			row.hint:SetPoint("LEFT", row.newTag or row.label, "RIGHT", row.newTag and (10 + TAG_PAD_X) or 10, 0)
 			row.hint:SetWordWrap(false)
-			local control = controlOf[row]
-			if clipped[row] and control then
-				row.hint:SetPoint("RIGHT", control, "LEFT", -10, 0)
+			local at = clipped[row] and clipAt[row]
+			if at then
+				row.hint:SetPoint("RIGHT", at, "LEFT", -10, 0)
 			end
 		end
 		cover.hintText = row.hint:GetText()
@@ -1820,7 +2455,8 @@ end
 
 -- The label and hint kept left of the control: the last of them ends 10 px
 -- left of it (word wrap off: the game cuts it there), the full text in the
--- row's tooltip when cut; a label with a New tag and no hint: FitLabel
+-- row's tooltip when cut; a label with a New tag and no hint: FitLabel.
+-- `control` may be any region the texts end at (a link row's value).
 function W.ClipRow(row, control, span)
 	local last = row.hint or row.label
 	if not (last and control) then
@@ -1831,7 +2467,7 @@ function W.ClipRow(row, control, span)
 	else
 		last:SetPoint("RIGHT", control, "LEFT", -10, 0)
 	end
-	clipped[row] = true
+	clipped[row], clipAt[row] = true, control
 	if not row.tipTitle then
 		row.tipTitle = row.label and row.label:GetText() or ""
 		Perf.HookScript(row, "OnEnter", RowTipEnter)
@@ -1840,7 +2476,6 @@ function W.ClipRow(row, control, span)
 end
 
 local PLATE_OPTS = {}   -- a row's RowPlate options (one table, filled per row)
-local NO_OPTS = {}
 
 function W.Row(parent, y, height, label, hint, desc, opts)
 	opts = opts or NO_OPTS
@@ -1898,21 +2533,20 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 	return row
 end
 
--- a typed row's control in place: known to the row, the texts cut at it,
--- the row's controls dressed by the kit's sweep. `span`: the control's left
--- edge from the row's right one (where a New tag's label may end: ClipRow)
+-- a typed row's control in place: known to the row, the texts cut at it
+-- (0.15.0: every typed row's control is flat -- `melloRep` false -- so no
+-- sweep of the kit's is asked per row). `span`: the control's left edge from
+-- the row's right one (where a New tag's label may end: ClipRow)
 local function Finish(row, control, opts, span)
 	controlOf[row] = control
 	-- the control's frames that take the mouse keep the row's wash lit (a
-	-- slider's are its bar and its two steppers)
+	-- slider's are its track and its value box)
 	W.RowPlateChild(row, control)
-	W.RowPlateChild(row, control.Slider)
-	W.RowPlateChild(row, control.Back)
-	W.RowPlateChild(row, control.Forward)
+	W.RowPlateChild(row, rawget(control, "Slider"))
+	W.RowPlateChild(row, rawget(control, "box"))
 	if opts.clip ~= false then
 		W.ClipRow(row, control, span)
 	end
-	W.Dress(row, opts.skin, 2)
 	return row, control
 end
 
@@ -1925,13 +2559,23 @@ function W.ToggleRow(parent, y, label, hint, desc, get, set, opts)
 	return Finish(row, switch, opts, 12 + 26)
 end
 
-function W.SliderRow(parent, y, label, hint, desc, get, set, opts)
-	opts = opts or NO_OPTS
-	local row = W.Row(parent, y, W.SLIDER_ROW_HEIGHT, label, hint, desc, opts)
-	local width = opts.width or 200
-	local slider = W.Slider(row, width, get, set, opts)
-	slider:SetPoint("RIGHT", -70, 0)
-	return Finish(row, slider, opts, 70 + width)
+do
+	-- `opts.width` is the whole control's, the track and its box (the track
+	-- `width - W.SLIDER_BOX`), so a caller that places the slider itself (the
+	-- Restock List's lines) keeps the footprint it asked for. None given: the
+	-- span such a row always had -- 200 for the old slider and the 56 px its
+	-- value took right of it -- the track where the old slider was, the box
+	-- in that room, its right edge with the other rows' controls.
+	local SLIDER_WIDTH, SLIDER_END = 256, 14
+
+	function W.SliderRow(parent, y, label, hint, desc, get, set, opts)
+		opts = opts or NO_OPTS
+		local row = W.Row(parent, y, W.SLIDER_ROW_HEIGHT, label, hint, desc, opts)
+		local width = opts.width or SLIDER_WIDTH
+		local slider = W.Slider(row, width, get, set, opts)
+		slider:SetPoint("RIGHT", -SLIDER_END, 0)
+		return Finish(row, slider, opts, SLIDER_END + width)
+	end
 end
 
 -- (the dropdown's own options: its default text is the row's label)
@@ -1947,7 +2591,7 @@ function W.DropdownRow(parent, y, label, hint, desc, get, set, values, opts)
 	return Finish(row, dd, opts, 14 + width)
 end
 
--- (the button is dressed with the row, by the kit's sweep)
+-- (the button flat, as every typed row's control)
 function W.ButtonRow(parent, y, label, hint, desc, text, onClick, opts)
 	opts = opts or NO_OPTS
 	local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
@@ -1960,6 +2604,914 @@ function W.ButtonRow(parent, y, label, hint, desc, text, onClick, opts)
 	ControlTip(button, row, label, desc)
 	row.button = button
 	return Finish(row, button, opts, 12 + width)
+end
+
+--------------------------------------------------------------------------------
+-- PictureRow (0.15.0: Dynamic UI Modification's pictures, folded into the
+-- configurator's pages): a look chosen by its picture -- a border, a
+-- backdrop, a background, the minimap's shape. The row's box shows the
+-- chosen one's picture (28 px) and its name; a click opens the window's
+-- flyout under the box, a tile per choice with its picture (Kit:ChoicePicture,
+-- looked up when drawn, as W.Paint looks up the kit), the chosen one outlined
+-- in gold; a tile sets it at once (the real bars and windows change as you
+-- pick) and closes the flyout.
+--   W.PictureRow(parent, y, label, hint, desc, get, set, choices, kind, opts)
+--     -> row, box
+--     choices  { { value, label, piece | bar | prefix ... } } (the choice
+--              lists the kit and the panels keep: Kit.borderKinds' values, a
+--              PickerGroups section's choices)
+--     kind     "rim" | "bar" | "frame" | "tile" (Kit:ChoicePicture)
+--     opts     host (the window whose flyout it opens: the configurator's
+--              frame), skin (its shell), width (200), and W.Row's
+--   box:SetChoices(choices, kind)   another list (a row whose setting is
+--                                   another key per pick)
+--   box:Refresh()                   the chosen one drawn again (row:Refresh)
+-- The flyout (W.PictureMenu): ONE per host window, made on its first open,
+-- never at login; a child of the host (not of a scrolling page, which would
+-- clip it), over the page, under the box (over it when there is no room
+-- below). Its tiles come from a pool: an open makes no frame once the pool
+-- holds enough. Closed by a tile, Escape (the flyout in UISpecialFrames, the
+-- host's own Escape held meanwhile: shell:HoldEscape), a click outside (a
+-- clear catcher over the host, shown only while the flyout is: no mouse
+-- listener of its own), the box's page scrolling, the box hidden (a tab or
+-- page switched away), the host hidden, W.ClosePictureMenu(host) (a pick
+-- changed), and combat. It never opens in combat (the providers' own
+-- changes were never meant for it: Dynamic UI refused a fight too): a click
+-- then says "Not in combat." in the box's tooltip, and nothing else; a fight
+-- that starts while it is open closes it (PLAYER_REGEN_DISABLED, listened to
+-- only while it is open). With the host's shell it wears the UI shade of the
+-- windows (Kit:ShadeElement, area "windows"), as the window it opens from.
+-- The shell is the host's own (Kit:ShellOf), whatever skin a row passes (a
+-- row in the plain look passes none): `skin` counts only for a host that
+-- has no shell.
+--   W.PictureMenu(host, skin) -> the host's flyout (made the first time)
+--   W.ClosePictureMenu(host)   closes it if it is open (nothing is made)
+--   W.CloseFlyouts() -> true when one was open: every open flyout closed (a
+--     window that keeps its own Escape, Edit Layout's keys, closes an open
+--     list with it first: one step a press, the game's Escape never reaching
+--     the flyout there)
+-- A dropdown's list opens in the same flyout (0.15.0, W.Dropdown: one
+-- flyout of MelloUI's own for a window's choices, never the game's menu):
+-- its host the window the box lies in (the nearest with a shell, else the
+-- top one: HostOf), made on the box's first click; rows in place of the
+-- tiles, left under the box (over it when the screen has no room below; by
+-- the box's right when it would pass the screen's right edge), the same
+-- closing but for combat -- a list opens in a fight and stays open in one,
+-- as the game's menu did. The flyout is clamped to the screen, as the
+-- game's menu was.
+--------------------------------------------------------------------------------
+
+do
+	local PICTURE_W, PICTURE_H = 200, 28   -- a picture row's box, its picture the box's height
+	local TILE, TILE_STEP, TILE_COLS = 52, 78, 6   -- a flyout's pictures, tile to tile, tiles to a line
+	local TILE_BOX = TILE + 8                      -- a tile: its picture with room for its outline
+	local TILE_NAME = 16                           -- the choice's name under a tile
+	local TILE_LINE = TILE_BOX + TILE_NAME + 6     -- a line of tiles
+	local MENU_PAD = 12                            -- the flyout's margin round its tiles
+	local MENU_GAP = 4                             -- the box to the flyout
+	local MENU_LIFT = 50                           -- the catcher over the box's level (over a sleeping row's cover: +30)
+	local NOT_IN_COMBAT = "Not in combat."
+	local SQUARE_SHADE = { shape = "shade/square" }   -- (the flyout's shade: a plain frame's)
+	-- a dropdown's list (the flyout's list mode)
+	local LIST_ROW_H = 20        -- a row: the game's menu's line
+	local LIST_PAD = 4           -- the list's margin round its rows
+	local LIST_MARK = 6          -- the chosen entry's mark, a square at its row's left
+	local LIST_TEXT_X = 16       -- a row's text from its left, the mark before it
+	local LIST_BAR = 6           -- a long list's scroll bar
+	local LIST_GAP = 2           -- the box to the list
+	local LIST_MAX_W = 420       -- the widest a list grows for its entries
+	local MENU_ROWS = 18         -- a long list shows this many entries, and scrolls
+	local MENU_MIN_ROWS = 6      -- however small the screen
+	local MENU_SCREEN = 0.5      -- and it is never taller than this share of the screen
+	local WHEEL_ROWS = 2         -- the rows a notch of the wheel moves
+	local unnamed = 0            -- the flyouts of hosts without a name (each its own global name)
+
+	local menuOf = setmetatable({}, weakKeys)      -- [host] = its flyout
+	local openMenus = setmetatable({}, weakKeys)   -- [flyout] = true while it is open
+	local scrollsHooked = setmetatable({}, weakKeys)   -- [a ScrollFrame] = true: its scrolls close a flyout opened in it
+	local Menu = {}                                -- the flyout's methods
+
+	-- the choice of a list that has `value` (nil: none)
+	local function ChoiceOf(choices, value)
+		local i = ChoiceIndex(choices, value)
+		return i and choices[i] or nil
+	end
+
+	-- a tile's (or a box's) picture: the kit's drawing, looked up when drawn;
+	-- nil: nothing shown
+	local function DrawChoice(tile, kind, choice)
+		local Kit = KitNow()
+		if Kit and Kit.ChoicePicture then
+			Kit:ChoicePicture(tile, kind, choice)
+		end
+	end
+
+	-- a tile's two outlines: the chosen one's (2 px, a faint gold wash) and the
+	-- hover's (1 px)
+	local function Outline(tile, px, wash)
+		local out = {}
+		for i = 1, 4 do
+			out[i] = tile:CreateTexture(nil, "OVERLAY", nil, 7)
+			W.Paint(out[i], "selectedTrim", "fill", 0.95)
+		end
+		out[1]:SetPoint("TOPLEFT")
+		out[1]:SetPoint("TOPRIGHT")
+		out[1]:SetHeight(px)
+		out[2]:SetPoint("BOTTOMLEFT")
+		out[2]:SetPoint("BOTTOMRIGHT")
+		out[2]:SetHeight(px)
+		out[3]:SetPoint("TOPLEFT")
+		out[3]:SetPoint("BOTTOMLEFT")
+		out[3]:SetWidth(px)
+		out[4]:SetPoint("TOPRIGHT")
+		out[4]:SetPoint("BOTTOMRIGHT")
+		out[4]:SetWidth(px)
+		if wash then
+			out[5] = tile:CreateTexture(nil, "OVERLAY", nil, 6)
+			out[5]:SetAllPoints(tile)
+			W.Paint(out[5], "selectedTrim", "fill", wash)
+		end
+		return out
+	end
+
+	local function OutlineShown(out, shown)
+		for i = 1, #out do
+			out[i]:SetShown(shown)
+		end
+	end
+
+	local TileEnter = Shared("OnEnter on a picture flyout's tile", function(tile)
+		OutlineShown(tile.hover, true)
+		local choice = tile.choice
+		if choice then
+			W.ShowTooltip(tile, choice.label or tostring(choice.value), nil, nil, "ANCHOR_TOP")
+		end
+	end, "script")
+
+	local TileLeave = Shared("OnLeave on a picture flyout's tile", function(tile)
+		OutlineShown(tile.hover, false)
+		GameTooltip:Hide()
+	end, "script")
+
+	-- a tile picked: the flyout closed, the choice set (the live UI changes),
+	-- the box drawn again
+	local TileClick = Shared("OnClick on a picture flyout's tile", function(tile)
+		local menu = tile.menu
+		local box = menu and menu.box
+		local choice = tile.choice
+		if not (box and choice) then
+			return
+		end
+		MelloUI:PlayUISound("option_on")
+		Menu.Close(menu)
+		if box.melloSet then
+			box.melloSet(choice.value)
+		end
+		box:Refresh()
+	end, "script")
+
+	local function NewTile(menu, i)
+		local tile = CreateFrame("Button", nil, menu)
+		tile:SetSize(TILE_BOX, TILE_BOX)
+		tile.pic = CreateFrame("Frame", nil, tile)
+		tile.pic:SetSize(TILE, TILE)
+		tile.pic:SetPoint("CENTER")
+		tile.layers = {}
+		tile.size = TILE
+		tile.none = tile.pic:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		tile.none:SetPoint("CENTER")
+		tile.none:SetText("None")
+		W.Paint(tile.none, "text", "text")
+		tile.label = W.Text(tile, "GameFontHighlightSmall", nil, "text")
+		tile.label:SetJustifyH("CENTER")
+		tile.label:SetPoint("TOP", tile, "BOTTOM", 0, -1)
+		tile.label:SetWidth(TILE_STEP - 4)
+		tile.label:SetWordWrap(false)
+		tile.mark = Outline(tile, 2, 0.12)
+		tile.hover = Outline(tile, 1)
+		OutlineShown(tile.hover, false)
+		tile.menu = menu
+		Perf.SetScript(tile, "OnEnter", TileEnter)
+		Perf.SetScript(tile, "OnLeave", TileLeave)
+		Perf.SetScript(tile, "OnClick", TileClick)
+		menu.tiles[i] = tile
+		return tile
+	end
+
+	-- the box's page scrolled away from where the flyout opened: it closes
+	local PictureScrolled = Shared("SetVerticalScroll on a page with a picture row (its flyout closes)", function(scroll, offset)
+		for menu in pairs(openMenus) do
+			if menu.scroll == scroll then
+				local at = Num(offset)
+				if not (at and menu.scrollAt and math.abs(at - menu.scrollAt) < 0.5) then
+					Menu.Close(menu)
+				end
+			end
+		end
+	end, "hook")
+
+	-- the ScrollFrame the box lies in (the page's), up to the host; nil for none
+	local function ScrollOf(box, host)
+		local f = box:GetParent()
+		for _ = 1, 20 do
+			if not f or f == host then
+				return nil
+			end
+			if f:GetObjectType() == "ScrollFrame" then
+				return f
+			end
+			f = f:GetParent()
+		end
+		return nil
+	end
+
+	-- the flyout closed by what is not one of its tiles: the catcher (a click or
+	-- the wheel outside it), a fight, its own hide (Escape) or its host's
+	local CatcherClick = Shared("OnMouseDown / OnMouseWheel on a picture flyout's catcher", function(catcher)
+		Menu.Close(catcher.menu)
+	end, "script")
+
+	local MenuEvent = Shared("OnEvent on a picture flyout (a fight starts)", function(menu)
+		Menu.Close(menu)
+	end, "script")
+
+	local MenuHidden = Shared("OnHide on a picture flyout (Escape, the window hidden)", function(menu)
+		Menu.Close(menu)
+	end, "script")
+
+	local ListWheel -- (the wheel over a list: below, with the list's rows)
+
+	local HostHidden = Shared("OnHide on a window with a picture flyout", function(host)
+		local menu = menuOf[host]
+		if menu then
+			Menu.Close(menu)
+		end
+	end, "script")
+
+	-- the flyout's UI shade (with the host's shell: through skin:Kit, the kit
+	-- handed over, never reached for)
+	local function ShadeMenu(K, menu)
+		local el = K:ShadeElement(menu, "windows", { host = menu })
+		el:Add(menu, SQUARE_SHADE)
+	end
+
+	-- The flyout's shell: its host's own (a window in the plain look has one
+	-- too, though a row there is given none), else the one its caller gave.
+	-- Its Escape is held while the flyout is open, and the shade asked
+	-- through it (now with the kit look on, else at the switch to it); taken
+	-- once, when there is one.
+	local function AdoptShell(menu, skin)
+		if menu.skin then
+			return
+		end
+		local K = KitNow()
+		skin = (K and K.ShellOf and K:ShellOf(menu.host)) or skin
+		if skin then
+			menu.skin = skin
+			skin:Kit(ShadeMenu, menu)
+		end
+	end
+
+	function W.PictureMenu(host, skin)
+		local menu = menuOf[host]
+		if menu then
+			AdoptShell(menu, skin)
+			return menu
+		end
+		local own = host:GetName()
+		if not own then
+			unnamed = unnamed + 1
+			own = unnamed == 1 and "MelloUIWindow" or ("MelloUIWindow" .. unnamed)
+		end
+		local name = own .. "PictureMenu"
+		menu = W.Panel(CreateFrame("Frame", name, host), { on = true })
+		menu:EnableMouse(true)
+		menu:SetClampedToScreen(true)   -- (a window by the screen's edge: the screen holds it)
+		menu:Hide()
+		menu.host, menu.tiles, menu.rows = host, {}, {}
+		-- (the wheel: a list's own while one is open, else the catcher's)
+		Perf.SetScript(menu, "OnMouseWheel", ListWheel)
+		menu:EnableMouseWheel(false)
+		local catcher = CreateFrame("Frame", nil, host)
+		catcher:SetAllPoints(host)
+		catcher:EnableMouse(true)
+		catcher:EnableMouseWheel(true)
+		catcher.menu = menu
+		Perf.SetScript(catcher, "OnMouseDown", CatcherClick)
+		Perf.SetScript(catcher, "OnMouseWheel", CatcherClick)
+		catcher:Hide()
+		menu.catcher = catcher
+		Perf.SetScript(menu, "OnEvent", MenuEvent)
+		Perf.SetScript(menu, "OnHide", MenuHidden)
+		Perf.HookScript(host, "OnHide", HostHidden)
+		tinsert(UISpecialFrames, name)   -- (Escape closes it; hidden, the game passes it by)
+		menuOf[host] = menu
+		AdoptShell(menu, skin)
+		return menu
+	end
+
+	function W.ClosePictureMenu(host)
+		local menu = host and menuOf[host]
+		if menu then
+			Menu.Close(menu)
+		end
+	end
+
+	function W.CloseFlyouts()
+		local any = false
+		for menu in pairs(openMenus) do
+			Menu.Close(menu)   -- (its entry cleared while walked: allowed)
+			any = true
+		end
+		return any
+	end
+
+	-- the tiles for the box's choices, the chosen one marked; the flyout sized
+	-- to them
+	local function LayTiles(menu, box)
+		local choices, kind = box.melloChoices, box.melloKind
+		local chosen = box.melloGet and box.melloGet()
+		local n = #choices
+		-- (a list's rows away, if one opened here before)
+		for i = 1, #menu.rows do
+			menu.rows[i]:Hide()
+		end
+		if menu.listBar then
+			menu.listBar:Hide()
+		end
+		for i = 1, n do
+			local tile = menu.tiles[i] or NewTile(menu, i)
+			local choice = choices[i]
+			tile.choice = choice
+			tile:ClearAllPoints()
+			tile:SetPoint("TOPLEFT", menu, "TOPLEFT", MENU_PAD + ((i - 1) % TILE_COLS) * TILE_STEP,
+				-(MENU_PAD + math.floor((i - 1) / TILE_COLS) * TILE_LINE))
+			tile.label:SetText(choice.label or tostring(choice.value))
+			DrawChoice(tile, kind, choice)
+			local on = choice.value == chosen
+			OutlineShown(tile.mark, on)
+			OutlineShown(tile.hover, false)
+			W.Paint(tile.label, on and "selectedTrim" or "text", "text")
+			tile:Show()
+		end
+		for i = n + 1, #menu.tiles do
+			menu.tiles[i]:Hide()
+		end
+		local cols, lines = math.min(n, TILE_COLS), math.ceil(n / TILE_COLS)
+		menu:SetSize(2 * MENU_PAD + (cols - 1) * TILE_STEP + TILE_BOX, 2 * MENU_PAD + lines * TILE_LINE - 6)
+	end
+
+
+	-- A dropdown's list: a row per entry from a pool (an open makes no frame
+	-- once the pool holds enough), ListRows of them shown from the list's top
+	-- entry (menu.listTop, 0 the first), the others by the wheel over the
+	-- list or its scroll bar (a Slider: its thumb dragged, its track
+	-- clicked), the chosen entry in the middle of the view as it opens. As
+	-- wide as its box, or its widest entry (to LIST_MAX_W). The row under the
+	-- pointer in `hover`, its text `text`; the chosen one's text in gold (but
+	-- on the hover: `text`, the palette's rule) with a gold mark before it.
+
+	-- the rows a list of `count` shows: every one of a short list; at most
+	-- MENU_ROWS of a long one, never more than MENU_SCREEN of the screen (its
+	-- height in the flyout's own units: the UI scale and the window's are in
+	-- it), MENU_MIN_ROWS however small
+	local function ListRows(menu, count)
+		local rows = MENU_ROWS
+		local screen = Num(UIParent:GetHeight())
+		local ui, own = Num(UIParent:GetEffectiveScale()), Num(menu:GetEffectiveScale())
+		if screen and ui and own and own > 0 then
+			local fit = math.floor((screen * ui / own * MENU_SCREEN - 2 * LIST_PAD) / LIST_ROW_H)
+			rows = math.max(MENU_MIN_ROWS, math.min(rows, fit))
+		end
+		return math.min(count, rows)
+	end
+
+	local function RowLook(row)
+		local lit = row.lit and true or false
+		row.fill:SetShown(lit)
+		W.Paint(row.label, (row.chosen and not lit) and "selectedTrim" or "text", "text")
+	end
+
+	local ListRowEnter = Shared("OnEnter on a dropdown list's row", function(row)
+		row.lit = true
+		RowLook(row)
+		local entry = row.entry
+		if entry and entry.tooltip then
+			W.ShowTooltip(row, EntryText(entry), entry.tooltip)
+		end
+	end, "script")
+
+	local ListRowLeave = Shared("OnLeave on a dropdown list's row", function(row)
+		row.lit = nil
+		RowLook(row)
+		if GameTooltip:GetOwner() == row then
+			GameTooltip:Hide()
+		end
+	end, "script")
+
+	-- an entry picked: the list closed, the value set, the box naming it
+	local ListRowClick = Shared("OnClick on a dropdown list's row", function(row)
+		local menu = row.menu
+		local box = menu and menu.box
+		local entry = row.entry
+		if not (box and entry) then
+			return
+		end
+		MelloUI:PlayUISound("option_on")
+		Menu.Close(menu)
+		if box.melloSet then
+			box.melloSet(entry.value)
+		end
+		box:Refresh()
+	end, "script")
+
+	local function NewListRow(menu, i)
+		local row = CreateFrame("Button", nil, menu)
+		row:SetHeight(LIST_ROW_H)
+		row.fill = row:CreateTexture(nil, "BACKGROUND")
+		row.fill:SetAllPoints(row)
+		W.Paint(row.fill, "hover", "fill", 1)
+		row.fill:Hide()
+		row.mark = row:CreateTexture(nil, "ARTWORK")
+		row.mark:SetSize(LIST_MARK, LIST_MARK)
+		row.mark:SetPoint("LEFT", row, "LEFT", (LIST_TEXT_X - LIST_MARK) / 2, 0)
+		W.Paint(row.mark, "selectedTrim", "fill", 1)
+		row.label = W.Text(row, "GameFontHighlight", nil, "text")
+		row.label:SetJustifyV("MIDDLE")
+		row.label:SetWordWrap(false)
+		row.label:SetPoint("LEFT", row, "LEFT", LIST_TEXT_X, 0)
+		row.label:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+		row.menu = menu
+		Perf.SetScript(row, "OnEnter", ListRowEnter)
+		Perf.SetScript(row, "OnLeave", ListRowLeave)
+		Perf.SetScript(row, "OnClick", ListRowClick)
+		menu.rows[i] = row
+		return row
+	end
+
+	-- the shown rows from the list's top entry
+	local function FillList(menu)
+		local values, chosen = menu.listValues, menu.listChosen
+		local top, rows = menu.listTop, menu.rows
+		for i = 1, menu.listShown do
+			local row = rows[i]
+			local entry = values[top + i]
+			if entry then
+				row.entry = entry
+				row.label:SetText(EntryText(entry))
+				row.chosen = entry.value == chosen
+				row.mark:SetShown(row.chosen)
+				RowLook(row)
+				row:Show()
+			else
+				row.entry = nil
+				row:Hide()
+			end
+		end
+		for i = menu.listShown + 1, #rows do
+			rows[i]:Hide()
+		end
+	end
+
+	-- the list moved (the thumb dragged, the track clicked, the wheel): the
+	-- rows from the new top (a row's tooltip goes with its entry)
+	local ListBarMoved = Shared("OnValueChanged on a dropdown list's scroll bar", function(bar, value)
+		local menu = bar.menu
+		if menu.listLaying then
+			return
+		end
+		value = math.floor((Num(value) or 0) + 0.5)
+		if value == menu.listTop then
+			return
+		end
+		menu.listTop = value
+		FillList(menu)
+		local owner = GameTooltip:GetOwner()
+		if owner and owner.menu == menu then
+			GameTooltip:Hide()
+		end
+	end, "script")
+
+	-- a long list's scroll bar: a thin `border` track, a `trim` thumb (made
+	-- with the first long list)
+	local function ListBar(menu)
+		local bar = menu.listBar
+		if bar then
+			return bar
+		end
+		bar = CreateFrame("Slider", nil, menu)
+		bar:SetOrientation("VERTICAL")
+		bar:SetWidth(LIST_BAR)
+		bar:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -LIST_PAD, -LIST_PAD)
+		bar:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -LIST_PAD, LIST_PAD)
+		bar:EnableMouseWheel(false)
+		local track = W.Solid(bar, "BACKGROUND", "border", 1)
+		track:SetAllPoints(bar)
+		local thumb = bar:CreateTexture(nil, "ARTWORK")
+		thumb:SetWidth(LIST_BAR)
+		W.Paint(thumb, "trim", "fill", 1)
+		bar:SetThumbTexture(thumb)
+		bar:SetValueStep(1)
+		bar:SetObeyStepOnDrag(true)
+		bar.menu, bar.thumb = menu, thumb
+		Perf.SetScript(bar, "OnValueChanged", ListBarMoved)
+		menu.listBar = bar
+		return bar
+	end
+
+	ListWheel = Shared("OnMouseWheel on a dropdown list", function(menu, delta)
+		local bar, count, shown = menu.listBar, menu.listCount, menu.listShown
+		if not (bar and count and shown and count > shown) then
+			return
+		end
+		local top = menu.listTop - (Num(delta) or 0) * WHEEL_ROWS
+		bar:SetValue(math.max(0, math.min(count - shown, top)))   -- (its OnValueChanged moves the list)
+	end, "script")
+
+	-- the rows for the box's list, the chosen one marked and in view; the
+	-- flyout sized to them (the tiles away, if pictures opened here before)
+	local function LayList(menu, box)
+		local values = box.melloValues
+		local n = #values
+		for i = 1, #menu.tiles do
+			menu.tiles[i]:Hide()
+		end
+		local shown = ListRows(menu, n)
+		local long = n > shown
+		local chosen = box.melloGet and box.melloGet()
+		menu.listValues, menu.listChosen, menu.listCount, menu.listShown = values, chosen, n, shown
+		-- as wide as the box, or its widest entry (measured on the list's own
+		-- hidden text, made with its first open)
+		local measure = menu.listMeasure
+		if not measure then
+			measure = menu:CreateFontString(nil, "BACKGROUND", "GameFontHighlight")
+			measure:Hide()
+			menu.listMeasure = measure
+		end
+		local width = measure.GetUnboundedStringWidth or measure.GetStringWidth
+		local widest = 0
+		for i = 1, n do
+			measure:SetText(EntryText(values[i]))
+			widest = math.max(widest, Num(width(measure)) or 0)
+		end
+		local right = LIST_PAD + (long and (LIST_BAR + 2) or 0)
+		local w = math.max(Num(box:GetWidth()) or 0, math.ceil(widest) + LIST_TEXT_X + 6 + LIST_PAD + right)
+		menu:SetSize(math.min(LIST_MAX_W, w), 2 * LIST_PAD + shown * LIST_ROW_H)
+		for i = 1, shown do
+			local row = menu.rows[i] or NewListRow(menu, i)
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", menu, "TOPLEFT", LIST_PAD, -(LIST_PAD + (i - 1) * LIST_ROW_H))
+			row:SetPoint("RIGHT", menu, "RIGHT", -right, 0)
+			row.lit = nil
+		end
+		-- the chosen one in the middle of the view (as near as the ends allow)
+		local at = ChoiceIndex(values, chosen)
+		local top = 0
+		if long and at then
+			top = math.max(0, math.min(n - shown, at - 1 - math.floor(shown / 2)))
+		end
+		menu.listTop = top
+		local bar = long and ListBar(menu) or menu.listBar
+		if bar then
+			if long then
+				menu.listLaying = true
+				bar:SetMinMaxValues(0, n - shown)
+				bar:SetValue(top)
+				menu.listLaying = nil
+				bar.thumb:SetHeight(math.max(16, math.floor(shown * LIST_ROW_H * shown / n)))
+				bar:Show()
+			else
+				bar:Hide()
+			end
+		end
+		FillList(menu)
+	end
+
+	-- a list laid from its box's left would pass the screen's right edge (a
+	-- long entry in a narrow box by the screen's edge: review, 2026-09-29).
+	-- In screen pixels: the UI scale and the window's own are in them
+	local function PastRight(menu, box)
+		local left, width, screen = Num(box:GetLeft()), Num(menu:GetWidth()), Num(UIParent:GetRight())
+		if not (left and width and screen) then
+			return false
+		end
+		local own = Num(box:GetEffectiveScale()) or 1
+		local ui = Num(UIParent:GetEffectiveScale()) or 1
+		return left * own + width * (Num(menu:GetEffectiveScale()) or own) > screen * ui + 0.5
+	end
+
+	-- under the box, or over it when there is no room below: the pictures
+	-- right under it, inside the host; a list left under it, on the screen
+	-- (a window as small as Edit Layout's bar would put every list over it),
+	-- by the box's right instead when it would pass the screen's right edge
+	local function PlaceMenu(menu, box, list)
+		menu:ClearAllPoints()
+		local below = Num(box:GetBottom())
+		local floor = list and 0 or Num(menu.host:GetBottom())
+		local h = Num(menu:GetHeight()) or 0
+		local gap = list and LIST_GAP or MENU_GAP
+		local up = below and floor and below - floor < h + gap + (list and 0 or MENU_PAD)
+		if list then
+			local right = PastRight(menu, box)
+			if up then
+				menu:SetPoint(right and "BOTTOMRIGHT" or "BOTTOMLEFT", box, right and "TOPRIGHT" or "TOPLEFT", 0, gap)
+			else
+				menu:SetPoint(right and "TOPRIGHT" or "TOPLEFT", box, right and "BOTTOMRIGHT" or "BOTTOMLEFT", 0, -gap)
+			end
+		elseif up then
+			menu:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT", 0, gap)
+		else
+			menu:SetPoint("TOPRIGHT", box, "BOTTOMRIGHT", 0, -gap)
+		end
+	end
+
+	function Menu.Open(menu, box)
+		local list = box.melloList
+		local entries = list and box.melloValues or box.melloChoices
+		if not (entries and #entries > 0) then
+			return
+		end
+		if openMenus[menu] then
+			Menu.Close(menu)
+		end
+		if list then
+			LayList(menu, box)
+		else
+			LayTiles(menu, box)
+		end
+		PlaceMenu(menu, box, list)
+		-- over the page and every row of it (a sleeping row's cover too), the
+		-- catcher right under it
+		local level = math.max(Num(box:GetFrameLevel()) or 0, Num(menu.host:GetFrameLevel()) or 0) + MENU_LIFT
+		menu.catcher:SetFrameLevel(level)
+		menu:SetFrameLevel(level + 2)
+		menu.box = box
+		openMenus[menu] = true
+		local scroll = ScrollOf(box, menu.host)
+		menu.scroll, menu.scrollAt = scroll, scroll and Num(scroll:GetVerticalScroll()) or nil
+		if scroll and not scrollsHooked[scroll] then
+			scrollsHooked[scroll] = true
+			Perf.hooksecurefunc(scroll, "SetVerticalScroll", PictureScrolled)
+		end
+		-- (pictures close as a fight starts; a list stays, as the game's menu did)
+		if not list then
+			menu:RegisterEvent("PLAYER_REGEN_DISABLED")
+		end
+		menu:EnableMouseWheel(list and true or false)
+		local skin = menu.skin
+		if skin and skin.HoldEscape then
+			skin:HoldEscape(true)
+		end
+		menu.catcher:Show()
+		menu:Show()
+		MelloUI:PlayUISound("tab")
+	end
+
+	function Menu.Close(menu)
+		if not openMenus[menu] then
+			return
+		end
+		openMenus[menu] = nil
+		menu.box = nil
+		menu:UnregisterEvent("PLAYER_REGEN_DISABLED")
+		-- (a tile's tooltip goes with it: the pointer may still be on it)
+		local owner = GameTooltip:GetOwner()
+		if owner and owner.menu == menu then
+			GameTooltip:Hide()
+		end
+		menu.catcher:Hide()
+		menu:Hide()
+		local skin = menu.skin
+		if skin and skin.HoldEscape then
+			skin:HoldEscape(false)
+		end
+	end
+
+	local PictureBoxClick = Shared("OnClick on a picture row's box", function(box)
+		if InCombatLockdown() then
+			W.ShowTooltip(box, box.tipTitle or "", nil, NOT_IN_COMBAT)
+			return
+		end
+		local host = box.melloHost
+		if not host then
+			return
+		end
+		local menu = W.PictureMenu(host, box.melloSkin)
+		if menu.box == box then
+			Menu.Close(menu)
+		else
+			Menu.Open(menu, box)
+		end
+	end, "script")
+
+	-- the box hidden (its tab or page switched away, its window closed): its
+	-- flyout with it (a picture row's box or a dropdown's)
+	local PictureBoxHidden = Shared("OnHide on a picture row's box or a dropdown", function(box)
+		local menu = box.melloHost and menuOf[box.melloHost]
+		if menu and menu.box == box then
+			Menu.Close(menu)
+		end
+	end, "script")
+	Flyout.BoxHidden = PictureBoxHidden
+
+	-- the window a dropdown lies in, its flyout's host: the nearest frame up
+	-- its parents that has a shell (Kit:ShellOf: the configurator, the
+	-- installer, the Restock List), else the top one under UIParent (Edit
+	-- Layout's bar and box); nil for a box on UIParent itself
+	local function HostOf(box)
+		local K = KitNow()
+		local f, top = box:GetParent(), nil
+		for _ = 1, 30 do
+			if not f or f == UIParent then
+				break
+			end
+			if K and K.ShellOf and K:ShellOf(f) then
+				return f
+			end
+			top = f
+			f = f:GetParent()
+		end
+		return top
+	end
+
+	-- a dropdown's click: its list opened in its window's flyout, or closed
+	-- (the same box again); the host found on the first click and kept
+	function Flyout.Toggle(box)
+		local host = box.melloHost or HostOf(box)
+		if not host then
+			return
+		end
+		box.melloHost = host
+		local menu = W.PictureMenu(host, box.melloSkin)
+		if menu.box == box then
+			Menu.Close(menu)
+		else
+			Menu.Open(menu, box)
+		end
+	end
+
+	local PictureBoxEnter = Shared("OnEnter on a picture row's box (hover)", function(box)
+		W.Paint(box.fill, "hover", "fill", 1)
+	end, "script")
+
+	local PictureBoxLeave = Shared("OnLeave on a picture row's box (hover)", function(box)
+		W.Paint(box.fill, "innerPanel", "fill", 1)
+	end, "script")
+
+	-- the chosen one's picture and name (drawn again only when it changed)
+	local function PictureBoxRefresh(box)
+		local choice = box.melloChoices and ChoiceOf(box.melloChoices, box.melloGet())
+		if choice == box.shownChoice and box.melloKind == box.shownKind then
+			return
+		end
+		box.shownChoice, box.shownKind = choice, box.melloKind
+		box.name:SetText(choice and (choice.label or tostring(choice.value)) or "")
+		DrawChoice(box, box.melloKind, choice)
+	end
+
+	local function PictureBoxSetChoices(box, choices, kind)
+		box.melloChoices = choices
+		if kind then
+			box.melloKind = kind
+		end
+		box.shownChoice = false   -- (drawn again)
+		PictureBoxHidden(box)     -- (a flyout open on the old list closes)
+		box:Refresh()
+	end
+
+	function W.PictureRow(parent, y, label, hint, desc, get, set, choices, kind, opts)
+		opts = opts or NO_OPTS
+		local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
+		local width = opts.width or PICTURE_W
+		local box = CreateFrame("Button", nil, row)
+		box:SetSize(width, PICTURE_H)
+		box:SetPoint("RIGHT", -14, 0)
+		box.fill = box:CreateTexture(nil, "BACKGROUND")
+		box.fill:SetAllPoints(box)
+		W.Paint(box.fill, "innerPanel", "fill", 1)
+		box.edges = Edges(box, "border", "BORDER")
+		box.pic = CreateFrame("Frame", nil, box)
+		box.pic:SetSize(PICTURE_H, PICTURE_H)
+		box.pic:SetPoint("LEFT", box, "LEFT", 0, 0)
+		box.layers, box.size = {}, PICTURE_H
+		box.none = box.pic:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		box.none:SetPoint("CENTER")
+		box.none:SetText("None")
+		W.Paint(box.none, "text", "text")
+		box.none:Hide()
+		box.name = W.Text(box, "GameFontHighlight", nil, "text")
+		box.name:SetPoint("LEFT", box.pic, "RIGHT", 8, 0)
+		box.name:SetPoint("RIGHT", box, "RIGHT", -8, 0)
+		box.name:SetWordWrap(false)
+		box.melloGet, box.melloSet, box.melloChoices, box.melloKind = get, set, choices, kind
+		box.melloHost, box.melloSkin = opts.host, opts.skin
+		box.shownChoice = false
+		box.Refresh, box.SetChoices = PictureBoxRefresh, PictureBoxSetChoices
+		Perf.SetScript(box, "OnClick", PictureBoxClick)
+		Perf.SetScript(box, "OnHide", PictureBoxHidden)
+		Perf.HookScript(box, "OnEnter", PictureBoxEnter)
+		Perf.HookScript(box, "OnLeave", PictureBoxLeave)
+		ControlTip(box, row, label, desc)
+		box:Refresh()
+		return Finish(row, box, opts, 14 + width)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- LinkRow (0.15.0): a row for a setting kept on another page -- a global one
+-- on Look, the map's width on Minimap -- showing its value as text and a
+-- flat button naming the page it lives on ("Look >"). The click is the
+-- caller's (the configurator's jump: the page, its tab and pick, the row
+-- flashed). Every option has ONE place: a link row is never a copy of it.
+--   W.LinkRow(parent, y, label, get, onClick, opts) -> row
+--     get()      the setting's value to show: text, or a boolean (On / Off)
+--                or a number
+--     onClick    a shared fn(row)
+--     opts       target (the page's title: the button reads target .. " >",
+--                as wide as its text, 60 to 110), desc (the row's tooltip)
+--                and W.Row's (skin, inset, indent, zebra, line, look, gate,
+--                note, onCover, new)
+--   row:SetTarget(target, get)   another page and value (a per-pick link;
+--                                nil keeps that part)
+--   row:Refresh()   the value read again, and the row's gate
+--   row.button, row.value
+--------------------------------------------------------------------------------
+
+do
+	local LINK_W_MIN, LINK_W_MAX, LINK_PAD = 60, 110, 24   -- the link's button: its width's bounds, the room round its text
+	local LINK_OPTS = {}   -- (the row's options less its gate, which comes once the value is placed)
+
+	local function LinkText(v)
+		if v == true then
+			return "On"
+		elseif v == false then
+			return "Off"
+		elseif v == nil then
+			return ""
+		end
+		return tostring(v)
+	end
+
+	local LinkClick = Shared("OnClick on a link row's button", function(button)
+		local row = button.melloLinkRow
+		if row and row.linkClick then
+			row.linkClick(row)
+		end
+	end, "script")
+
+	local function LinkRowRefresh(row)
+		local text = LinkText(row.linkGet and row.linkGet())
+		if row.value:GetText() ~= text then
+			row.value:SetText(text)
+		end
+		local cover = gateOf[row]
+		if cover then
+			cover:Refresh()
+		end
+	end
+
+	local function LinkRowSetTarget(row, target, get)
+		if target then
+			local button = row.button
+			button:SetText(target .. " >")
+			local fs = button:GetFontString()
+			local w = fs and TextWidth(fs)
+			button:SetWidth(math.max(LINK_W_MIN, math.min(LINK_W_MAX, (w or 0) + LINK_PAD)))
+		end
+		if get then
+			row.linkGet = get
+		end
+		row:Refresh()
+	end
+
+	function W.LinkRow(parent, y, label, get, onClick, opts)
+		opts = opts or NO_OPTS
+		local o = LINK_OPTS
+		o.skin, o.inset, o.indent, o.zebra, o.line = opts.skin, opts.inset, opts.indent, opts.zebra, opts.line
+		o.look, o.strength, o.new, o.labelKey = opts.look, opts.strength, opts.new, opts.labelKey
+		local row = W.Row(parent, y, W.ROW_HEIGHT, label, nil, opts.desc, o)
+		o.skin, o.inset, o.indent, o.zebra, o.line, o.look, o.strength, o.new, o.labelKey = nil, nil, nil, nil, nil, nil, nil, nil, nil
+		local button = W.Button(row, "", LINK_W_MIN, nil, { onClick = LinkClick })
+		button:SetPoint("RIGHT", -12, 0)
+		button.melloLinkRow = row
+		row.button = button
+		row.value = W.Text(row, "GameFontHighlight", nil, "text")
+		row.value:SetJustifyH("RIGHT")
+		row.value:SetWordWrap(false)
+		row.value:SetPoint("RIGHT", button, "LEFT", -10, 0)
+		row.linkGet, row.linkClick = get, onClick
+		row.Refresh, row.SetTarget = LinkRowRefresh, LinkRowSetTarget
+		controlOf[row] = button
+		W.RowPlateChild(row, button)
+		ControlTip(button, row, label, opts.desc)
+		-- (the gate's line, as a typed row's, before the texts are cut at the value)
+		if opts.gate then
+			W.Gate(row, opts.gate, opts)
+		end
+		W.ClipRow(row, row.value)
+		row:SetTarget(opts.target, nil)
+		return row
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -2000,28 +3552,7 @@ local function CardSelected(card)
 	return cardOn[card] == true
 end
 
--- The active look (Kit:SetActive, 0.15.0: the one look for whatever is
--- active or selected, the game's windows and MelloUI's own) on a widget: a
--- chosen card, an icon-less side list's marker. It is the kit's art, so it
--- shows only while the widget's window wears the kit. The kit is the one
--- the shell hands over (skin:Kit) the first time a look shows, kept for the
--- switches after: never reached for.
-local activeKit = nil
-local function ActiveNow(K, frame, on)
-	activeKit = K
-	K:SetActive(frame, on, frame, "rect")
-end
-
-local function WidgetActive(skin, frame, on)
-	if not skin then
-		return
-	end
-	if skin.kit then
-		skin:Kit(ActiveNow, frame, on and true or false)
-	elseif activeKit then
-		activeKit:SetActive(frame, false)
-	end
-end
+-- (the chosen card's active look: WidgetActive, with the flat controls')
 
 -- the cards of each shell, their looks put back at its switches (the chosen
 -- card's edge too: Card_SetSelected)
@@ -2154,8 +3685,8 @@ end
 
 --------------------------------------------------------------------------------
 -- Palettes (0.14.0, user 2026-09-26: "A palette picker"): ONE set of parts
--- for every place a palette is chosen -- the configurator's Home row, the
--- installer's Look step, Dynamic UI's row -- over Core's registry
+-- for every place a palette is chosen -- the configurator's Look page (its
+-- Home shows it), the installer's Look step -- over Core's registry
 -- (MelloUI.Palettes, MelloUI:PaletteId, MelloUI:SetPalette, which applies it).
 --   W.PaletteSwatch(parent, spec) -> swatch   a frame: a strip of chips, one
 --       per role of W.SWATCH_ROLES left to right, inside a 1 px `border`
@@ -2263,9 +3794,9 @@ end
 --   spec: width, rowHeight (30), headerHeight (24), gap (1), iconSize (22;
 --         0: no icons), inset (10), numbered (false: "3. Review"), scroll
 --         (true: a ScrollFrame whose wheel glides at step 68; false: the box
---         as tall as its rows), box (true: the box -- the kit's L1 with a
---         skin whose kit is on, else a palette `innerPanel` box with a
---         `border` edge), skin, iconMaker (fn(row, size, skin) -> an icon
+--         as tall as its rows), box (true: the box -- W.Panel's look, the
+--         palette's `innerPanel` in a `border` edge, in both looks:
+--         rail.plainParts), skin, iconMaker (fn(row, size, skin) -> an icon
 --         with :SetIcon and :SetOn, made once per row; nil: a plain texture),
 --         onSelect (a shared fn(rail, key, entry)), clickable (nil: all;
 --         fn(rail, key, entry) -> bool), doneGlyph (an atlas shown after a
@@ -2433,12 +3964,7 @@ local function Rails_OnKit(shell)
 	end
 end
 
--- the kit's look of the rail's parts (through skin:Kit)
-local function DressRailBox(K, rail, skin)
-	skin:Replace(skin:Anchor(rail.box, "BACKGROUND"), { as = "Professions-background-summarylist", rect = rail.box,
-		parent = rail.box, level = -1 })
-end
-
+-- the kit's look of the rail's header glyphs (through skin:Kit)
 local function DressHeader(K, h, skin)
 	h.plusRep = skin:Replace(h.glyph, { as = "common-button-list-plus", button = h, rect = h.glyph })
 	h.minusRep = skin:Replace(h.glyph, { as = "common-button-list-minus", button = h, rect = h.glyph })
@@ -2509,17 +4035,11 @@ function W.NavRail(parent, spec)
 	box:SetWidth(spec.width)
 	rail.box = box
 	if spec.box ~= false then
-		local fill = box:CreateTexture(nil, "BACKGROUND")
-		fill:SetAllPoints(box)
-		W.Paint(fill, "innerPanel", "fill", 1)
-		rail.plainParts = Edges(box, "border", "BORDER")
+		-- (W.Panel's look in both looks, 0.15.0: the kit's list box, L1, is
+		-- the game windows')
+		local fill, edges = PanelLook(box, 1)
+		rail.plainParts = edges   -- (the four edges, then the fill)
 		rail.plainParts[5] = fill
-		if skin then
-			for i = 1, #rail.plainParts do
-				skin:Plain(rail.plainParts[i])
-			end
-			skin:Kit(DressRailBox, rail, skin)
-		end
 	end
 	rail.width = spec.width - 2 * spec.inset   -- the rows' width
 	-- (the caller's strip over the list: the configurator's search box)
@@ -3322,4 +4842,154 @@ function Pager:Contains(region)
 		f = f.GetParent and f:GetParent() or nil
 	end
 	return false
+end
+
+--------------------------------------------------------------------------------
+-- NumberBox (0.15.0, Edit Layout's right-click box: an element's X and Y): a
+-- number to type, in the slider value box's look -- `innerPanel` in a 1 px
+-- `border` edge, the text colour, centred. Like the slider's box it never
+-- takes the keyboard by itself (only a click gives it the focus). Enter, Tab
+-- or leaving it takes the number typed (its first number: "-320", "320 px";
+-- the typographic minus too), kept in the range and rounded to the step, and
+-- hands it to set when it changed; the box then shows the value as get()
+-- gives it. Escape puts the value back and lets the focus go (the window
+-- never sees that Escape); the box's hide does too.
+--   W.NumberBox(parent, width, get, set, opts) -> box   an EditBox `width` x
+--     20, sized and placed by the caller
+--     opts: min, max (none: no limit), step (1), suffix (shown after the
+--     number, never typed: " %"), format (fn(v) -> text, before the suffix)
+--   box:Refresh()   get() again (left alone while it has the focus)
+--   box.melloNext   an edit box Tab moves to after taking the number (the
+--     caller's: Edit Layout's X -> Y -> Size)
+--   box.melloGet / melloSet, box.fill, box.edges
+-- Its handlers are shared (no closure per box); nothing runs while it is
+-- left alone.
+--------------------------------------------------------------------------------
+
+do
+	local BOX_H, BOX_INSET = 20, 3
+	local BOX_FONT = "GameFontHighlight"
+	local TYPO_MINUS = "\226\136\146"   -- (U+2212, the minus a readout shows)
+
+	local function NumberText(box, v)
+		local fmt = box.melloFormat
+		local text
+		if fmt then
+			text = fmt(v)
+		elseif math.abs(v - math.floor(v + 0.5)) < 0.001 then
+			text = tostring(math.floor(v + 0.5))
+		else
+			text = string.format("%.2f", v)
+		end
+		return box.melloSuffix and (text .. box.melloSuffix) or text
+	end
+
+	-- the number typed, kept in the range and rounded to the step; nil for none
+	local function Typed(box, text)
+		text = tostring(text or ""):gsub(TYPO_MINUS, "-")
+		local n = tonumber(text:match("%-?%d*%.?%d+"))
+		if not n or n ~= n then
+			return nil
+		end
+		n = W.Round(n, box.melloStep)
+		if box.melloMin and n < box.melloMin then
+			n = box.melloMin
+		end
+		if box.melloMax and n > box.melloMax then
+			n = box.melloMax
+		end
+		return n
+	end
+
+	local function Show(box)
+		local v = Num(box.melloGet())
+		box:SetText(v and NumberText(box, v) or "")
+	end
+
+	-- the number taken (none: the value put back), the box showing the value
+	-- after; `take` false: only put back
+	local function LetGo(box, take)
+		if take then
+			local v = Typed(box, box:GetText())
+			if v ~= nil and v ~= box.melloGet() then
+				box.melloSet(v)
+			end
+		end
+		Show(box)
+		if box:HasFocus() then
+			box.melloLetGo = true
+			box:ClearFocus()
+		end
+	end
+
+	local NumberEnter = Shared("OnEnterPressed on a number box", function(box)
+		LetGo(box, true)
+	end, "script")
+
+	local NumberTab = Shared("OnTabPressed on a number box", function(box)
+		LetGo(box, true)
+		local nextBox = box.melloNext
+		if nextBox and nextBox.SetFocus and nextBox:IsVisible() then
+			nextBox:SetFocus()
+		end
+	end, "script")
+
+	local NumberEscape = Shared("OnEscapePressed on a number box", function(box)
+		LetGo(box, false)
+	end, "script")
+
+	local NumberFocusGained = Shared("OnEditFocusGained on a number box", function(box)
+		box:HighlightText()
+	end, "script")
+
+	-- a click elsewhere: the number taken (Enter, Tab and Escape had their say)
+	local NumberFocusLost = Shared("OnEditFocusLost on a number box", function(box)
+		if box.melloLetGo then
+			box.melloLetGo = nil
+			return
+		end
+		LetGo(box, true)
+	end, "script")
+
+	local NumberHidden = Shared("OnHide on a number box", function(box)
+		if box:HasFocus() then
+			LetGo(box, false)
+		end
+	end, "script")
+
+	local function NumberRefresh(box)
+		if not box:HasFocus() then
+			Show(box)
+		end
+	end
+
+	function W.NumberBox(parent, width, get, set, opts)
+		opts = opts or NO_OPTS
+		local box = CreateFrame("EditBox", nil, parent)
+		box:SetAutoFocus(false)
+		box:SetSize(width or 60, BOX_H)
+		box:SetFontObject(BOX_FONT)
+		box:SetJustifyH("CENTER")
+		box:SetTextInsets(BOX_INSET, BOX_INSET, 0, 0)
+		box:EnableMouse(true)
+		box:EnableMouseWheel(false)
+		W.Paint(box, "text", "text")
+		local fill = box:CreateTexture(nil, "BACKGROUND")
+		fill:SetAllPoints(box)
+		W.Paint(fill, "innerPanel", "fill", 1)
+		box.fill, box.edges = fill, Edges(box, "border", "BORDER")
+		box.melloGet, box.melloSet = get, set
+		box.melloMin, box.melloMax = Num(opts.min), Num(opts.max)
+		box.melloStep = Num(opts.step) or 1
+		box.melloSuffix, box.melloFormat = opts.suffix, opts.format
+		box.Refresh = NumberRefresh
+		Perf.SetScript(box, "OnEnterPressed", NumberEnter)
+		Perf.SetScript(box, "OnTabPressed", NumberTab)
+		Perf.SetScript(box, "OnEscapePressed", NumberEscape)
+		Perf.SetScript(box, "OnEditFocusGained", NumberFocusGained)
+		Perf.SetScript(box, "OnEditFocusLost", NumberFocusLost)
+		Perf.SetScript(box, "OnHide", NumberHidden)
+		Show(box)
+		return box
+	end
 end

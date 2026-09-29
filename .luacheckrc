@@ -63,7 +63,7 @@ read_globals = {
 	"GameFontNormal", "ChatFontNormal", "PagedContentFrameBaseMixin", "LegacyChallengeObjectives", "QuestScrollFrame", "GameMenuFrame", "GameTimeFrame", "GameTooltip", "GameTooltipStatusBar",
 	"GameTooltip_AddNormalLine", "GameTooltip_SetDefaultAnchor", "GameTooltip_SetTitle",
 	"GameTooltip_UnitColor", "GeneralDockManager", "GetAddOnCPUUsage", "GetAddOnMemoryUsage",
-	"GetBuildInfo", "GetCVar", "GetPhysicalScreenSize", "GetCoinTextureString", "GetCursorPosition", "GetFrameCPUUsage",
+	"GetBuildInfo", "GetCVar", "GetPhysicalScreenSize", "GetCoinTextureString", "GetCursorPosition", "IsControlKeyDown", "IsAltKeyDown", "GetCurrentKeyBoardFocus", "IsKeyDown", "Menu", "GetFrameCPUUsage",
 	"GetFramerate", "GetFunctionCPUUsage", "GetGossipText", "GetGreetingText",
 	"GetGuildBankWithdrawMoney", "GetInstanceInfo", "GetMacroIndexByName", "GetMacroInfo",
 	"GetMinimapShape", "GetMouseFoci", "GetMouseFocus", "GetMoney", "GetNetStats", "GetNumMacros", "GetNumRoutes", "GetObjectiveText",

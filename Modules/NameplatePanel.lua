@@ -51,7 +51,7 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 			{ value = "name", label = "Name" },
 			{ value = "plate", label = "Whole plate" },
 			{ value = "off", label = "Off" },
-		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar; this needs the UI Shade on (General tab) and its Nameplates switch in Dynamic UI Modification. Off: no shade." },
+		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar; this needs the UI Shade and its Shade: Nameplates switch on (Look). Off: no shade." },
 		{ type = "slider", key = "shadeStrength", name = "Shade Strength", min = 0.3, max = 0.9, step = 0.05, percent = true,
 		  desc = "How dark the shade behind the names (and the plates) is." },
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks", new = "0.15.0",

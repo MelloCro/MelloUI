@@ -65,9 +65,9 @@ files are removed (they are rebuilt by their tools if ever wanted).
 | a window's OUTER border (`NineSlicePanelTemplate`) | the painted double rail `window/frame_*` at 1.0 with the gem corners `frame_gem_*` over it, grown OUTWARD (`outset` 42) so it never covers content; `skip = "tl"` where a portrait ring is that corner |
 | every border INSIDE a window (insets, viewport, dividers, backdrops with an edge) | SINGLE rail `window/single_*` at ONE weight, `Kit.frameScale` 1.6 (pick B1); no mapping carries its own weight |
 | junctions of rails (T and +) | the slider-thumb gem (pick K) via `Kit:Joint`, centred where the rails' centre lines cross |
-| title bar | `tabs/top` in the `title` look (rune caps, F's red) at 1.5 x the bar's height, the outer rail's WHOLE width (the window plus the outset each side), standing ON the outer rail: its bottom on the band's top edge (`Kit:OuterRailTop`, above the window's top edge), the title text centred on it (user, 2026-09-21: the header sits on top of the thick border of every window) |
+| title bar | `tabs/top` in the `title` look (rune caps, F's red) at 1.5 x the bar's height, the outer rail's WHOLE width (the window plus the outset each side), standing ON the outer rail: its caps' gems on the band's middle line (`Kit:TitleOnRail` from `Kit:RailMiddle`, above the window's top edge), the title text centred on it (user, 2026-09-21: the header sits on top of the thick border of every window) |
 | close button | `window/close` states on the button's normal texture rect |
-| portrait icon in the ring (user, 2026-09-21) | the game's portrait is fitted to the CLASS MEDALLION's size in the character window's ring (0.759 x the ring, `Kit:FitPortrait`, aspect kept). If the icon then does not cover the opening (a shield, a non-round asset), it gets the dark grey round background behind it (`Kit:RingDisc`) at that same medallion size — never a loose icon over the page. Two outcomes only: scaled to the medallion, or scaled to the medallion on the disc |
+| portrait icon in the ring (user, 2026-09-21) | the game's portrait is fitted to the CLASS MEDALLION's size in the character window's ring (0.759 x the ring, `Kit:FitPortrait`, aspect kept). If the icon then does not cover the opening (a shield, a non-round asset), it gets the round inner-panel background behind it (`Kit:RingDisc`: the palette's `innerPanel`, painted by its key with `Kit:Paint`, so a new palette paints it again; never a fixed colour) at that same medallion size — never a loose icon over the page. Two outcomes only: scaled to the medallion, or scaled to the medallion on the disc |
 | portrait corner | `window/portrait_ring` square on the ring's rect, the class medallion inside it (plain variant, 0.759 x ring) |
 | backdrops (pane pictures, model landscape) | `tiles/stone` tiled at native scale, no edge of their own |
 | dividers / lines | `window/single_l` edge for the pane divider; `window/divider` strip for scroll lines; natural size + `widthFrac` for a line inside a glow atlas |
@@ -100,7 +100,7 @@ files are removed (they are rebuilt by their tools if ever wanted).
 | the social window (user, 2026-09-21) | the flat window shell as any window, the portrait icons at the medallion size on the disc (2b; the 1.3 x of 2026-09-21 outgrew the ring — user, 2026-09-24); TB6 tabs (picked here, applied to every tabbed window); `lists/header` on the Battle.net band; rows' hover on the plate's hover look shown by hand; category plate on invite headers; K2 invite cog; **G3** raid group boxes: the single rail at the raid frames' 0.8 weight with stone, rows bare text; GC1 raid info column headers |
 | the chat windows (user, 2026-09-21) | CH1 the single rail (no body) in the border pieces' own BORDER layer around the body, which is the list-box stone at the slider's alpha (user: not a flat colour); CT2 = TB6 cards on the tabs; S1 edit plate with the LEFT cap dropped (plain end: no magnifier on a chat box); K2 cogs under the menu / channel / voice / minimize glyphs; arrow on scroll-to-bottom; NO CHAT FADE: tabs, button frame, edit box held at full alpha, the background held at the slider's value |
 | the damage meter (user, 2026-09-21) | L1 body one level under the window at the meter's transparency; `lists/header` on the header with its controls condensed (0.8, centred on the band, off the gems); **D1 = P1** brackets on every entry bar with the caps outside the bar (a StatusBar's fill cannot be re-anchored: the bar is set in by the arms), texts at 0.8 inside, the icon square at the row's height, class medallions on class icons; minus / plus, K2 settings cog, D1 dropdowns, scroll bars by the sweep |
-| MelloUI's configurator (user, 2026-09-21/22; the approved redesign of 2026-09-24, built 2026-09-26) | on the own-window shell (section 6): outer double rail and page stone; the emblem as a CREST centred on the top rail (`MelloUI-Crest`, the portrait ring at 1.25 x, the emblem on its disc, 2b) with the SHORT title plate under it (`MelloUI-TitlePlate`, 200 wide: the recorded 2c exception); the top bar on the inner panel (`Kit:StoneDim` 0.8, 2e): Layout (Unlock the Windows, Auto Snapping, Reset positions) left, Install… / Dynamic UI Modification / close right, B1 plates; the side list in an L1 box: R1 rims on 22 px icons, the palette marker (raised panel, gold edge and name), `common-button-list-plus` / `-minus` fold glyphs on the group headers; the pages on the dark inner panel: CA1 TB6 tabs, L1 section boxes, CR4 rows (alternating faint bands, the plate faded in on hover), SH3 sub-headings on the header plate, kit check boxes, SL1 slider, B1 / D1; Install… a red plate with a gold label and a thin gold outline (palette, no new art); the classic scroll bar kept |
+| MelloUI's configurator (user, 2026-09-21/22; the approved redesign of 2026-09-24, built 2026-09-26) | on the own-window shell (section 6): outer double rail and page stone; the emblem as a CREST centred on the top rail (`MelloUI-Crest`, the portrait ring at 1.25 x, the emblem on its disc, 2b) with the SHORT title plate under it (`MelloUI-TitlePlate`, 200 wide: the recorded 2c exception); the top bar on the inner panel (`Kit:StoneDim` 0.8, 2e): Install… / Edit Layout / close right, B1 plates (0.15.0: Edit Layout replaces the Layout group of Unlock the Windows, Auto Snapping and Reset positions); the side list in an L1 box: R1 rims on 22 px icons, the palette marker (raised panel, gold edge and name), `common-button-list-plus` / `-minus` fold glyphs on the group headers; the pages on the dark inner panel: CA1 TB6 tabs, L1 section boxes, CR4 rows (alternating faint bands, the plate faded in on hover), SH3 sub-headings on the header plate, kit check boxes, SL1 slider, B1 / D1; Install… a red plate with a gold label and a thin gold outline (palette, no new art); the classic scroll bar kept |
 | MelloUI's installer (approved sketch 2026-09-24, built 2026-09-26) | on the own-window shell: the standard corner ring with the emblem on its disc (2b) and the full-width plate on the rail carrying the step's title (2c); the numbered steps rail in an L1 box; the step pages on one `Kit:StoneDim` body (2e); the setup cards in the palette look (raised panel, gold edge and title when chosen); the Keep page's ring (`MelloUI-Crest`, 110 px, the emblem at 35 % on its disc); SH3 headings; B1 buttons, Install gold-trimmed as the configurator's |
 | the bag windows (user, 2026-09-21) | the flat window shell as any window; R1 rims to the grid's pitch with icons filling them and stone in empty slots; the game's quality border kept INSIDE the rim (the rim untinted — the bags differ from the windows' item slots here); the money strip on `lists/header` (B2), raised above the rims; search S1, sort K2 |
 | HUD action bars, micro menu, bag bar, status bars (user, 2026-09-21) | R1 rims to the pitch with the icon filling the opening (empty: stone), the bars' frame art faded (under the rims), gryphons → `deco/rail_cap` orbs behind every bar (X2), page arrows hidden, micro buttons on the cog plate with the game's glyphs (M1), XP / rep bars P1 with the caps outside and `bars/tick` on the segments |
@@ -118,16 +118,18 @@ look for a new element type silently.
 Every window's title plate (the `TitleBar` rule, `onRail`) is placed the same
 way, by the rule itself — never per window:
 
-1. Its BOTTOM sits on the outer rail's top edge (`Kit:OuterRailTop()`: the
-   outset less the rail piece's box top, above the window's top edge) — the
-   header stands on top of the thick border, not inside the window.
+1. It rides the outer rail (`Kit:TitleOnRail()`: its centre lifted above the
+   window's top edge so its caps' gems sit on the rail's middle line,
+   `Kit:RailMiddle()`) — the header stands on the thick border, not inside
+   the window.
 2. It spans the outer rail's WHOLE width: the window's width plus the rail's
    outward growth (`Kit:OuterRailOutset()`) on each side, anchored to the
    window's top corners, its rune caps ending at the border's outer edges.
 3. The window's title text is centred on the plate and put back on disable.
 
-Check on every window: the plate's bottom touches the border's top, the caps
-reach the border's ends, the title sits on the plate.
+Check on every window: the plate rides the border (its caps' gems on the
+rail's middle line), the caps reach the border's ends, the title sits on the
+plate.
 
 **One recorded exception (the approved configurator sketch, 2026-09-24):**
 the configurator's title stands on a short plate under the centred crest
@@ -221,11 +223,13 @@ the login frame (the addon profiler's peak 140 % of a frame). So:
 - Hooks may be installed early if they do nothing until the skin is built;
   border / colour / scale callbacks and the /xxdump commands must cope with a
   window that is not dressed yet ("not dressed yet").
-- A window that relied on the kit's shell for its Unlock-the-Windows mover
-  names its frames in its module's registry entry, `window = { frames = {
-  "FrameName" }, plainGrab = true }`, so it is movable from login (UI
-  Modifications builds its plain-grab list from the registry since wave 3;
-  nothing is added there by hand).
+- A game window that should move in Edit Layout names its frames in its
+  module's registry entry, `window = { frames = { "FrameName" }, plainGrab =
+  true }` (UI Modifications makes its Edit Layout candidates from the
+  registry; nothing is added there by hand). Nothing is made for it at
+  login: a window with a stored place registers with Core's mover after the
+  login (no frame made, its place put back), every other one when Edit
+  Layout opens (a mover source, `MelloUI:AddMoverSource`).
 - Check with /melloperf: a new window adds no kit pieces at login
   (`/run print(#MelloUI.Kit.repList)` before and after), and no handler of it
   runs while it is closed.
@@ -263,8 +267,9 @@ Every kit element casts a soft dark shade of its OWN shape against the world:
   Strength (`uiShadeStrength`, 0.7, 0.3-0.9), and a switch per area
   (`shade_<area>`, on): windows, actionbars, castbars, unitframes, chat,
   bags, minimap, tracker, buffs, widgets, nameplates (`Kit.shadeAreas`). They
-  are on the General tab (the two main ones) and in Dynamic UI Modification's
-  Shade section (all). An area follows its part of the reskin too.
+  are all on the configurator's Look page (Look > General), and each area's
+  own page has a link row to its switch. An area follows its part of the
+  reskin too.
 - **Cost.** Nothing at login (a rare window adds nothing until it is shown,
   2f; the HUD's parts, added while logging in, wait until the login's frames
   are over: `MelloUI:LoggingIn()` / `MelloUI:AfterLogin(fn)`, Core.lua, 3 s
@@ -298,10 +303,11 @@ Every kit element casts a soft dark shade of its OWN shape against the world:
 The portrait inside the ring is always brought to the class medallion's size
 of the character window (0.759 x the ring, `Kit:FitPortrait`, aspect kept).
 Then check the opening: if the icon does not cover it (the Legacy shield,
-any asset that is not a full round picture), add the dark grey round
-background behind it (`Kit:RingDisc`) — the icon stays at the medallion size
-on the disc. Either the icon fills the ring, or it sits on the disc; nothing
-else. The professions window's round icons are the first case; the Legacy
+any asset that is not a full round picture), add the round inner-panel
+background behind it (`Kit:RingDisc`: the palette's `innerPanel`, painted by
+its key with `Kit:Paint`, so a new palette paints it again; never a fixed
+colour) — the icon stays at the medallion size on the disc. Either the icon
+fills the ring, or it sits on the disc; nothing else. The professions window's round icons are the first case; the Legacy
 shield the second.
 
 ## 2a. MANDATORY for a window with tabs / pages (user, 2026-09-21)
@@ -533,13 +539,13 @@ kit texture under the cursor (piece, rect, crop, tint, frame level) when a backg
 "that should include all of the windows, also our self created ones like the
 QuestList, the Custom Scrollable Quest Tracker, Custom Chat etc, so basically
 everything should be lined up and working flawlessly with one another". A
-window MelloUI makes itself (the configurator, the installer, Dynamic UI
-Modification, the Quest List beside the world map, the Quest Tracker under the
-minimap, the whisper popups, the Voice Over overlay, the Route arrow, the
-Services bar, the copy window) keeps every rule above and uses the SAME shared
-systems as the game's windows. It never carries its own copy of one; the
-ratchet (`python Tools/lint/check_panels.py`, run by the Lint workflow) fails
-when a copy is added and names the system to use.
+window MelloUI makes itself (the configurator, the installer, the question
+dialog, the Restock List, the Quest List beside the world map, the Quest
+Tracker under the minimap, the whisper popups, the Voice Over overlay, the
+Route arrow, the Services bar, the copy window) keeps every rule above and
+uses the SAME shared systems as the game's windows. It never carries its own
+copy of one; the ratchet (`python Tools/lint/check_panels.py`, run by the
+Lint workflow) fails when a copy is added and names the system to use.
 
 - **Its look switch: `Kit.Areas` and `Kit:IsOn(area)`.** The window's area is
   one row of Kit.Areas' list (Kit.lua): `{ name, cover = true }` (a HUD
@@ -560,16 +566,21 @@ when a copy is added and names the system to use.
     (`Kit:IsOn(area)`) and the shell takes the `look:<area>` listener; the
     plain look is the window's own regions, which the kit's reps fade while
     they are on, so a switch only enables or disables the recorded reps;
-  - the outer rail and the page stone; the emblem as a crest centred on the
+  - the outer rail and the page stone, and with `calm = true` (0.15.0, the
+    cleaner look the user picked: Background A) ONE flat `mainWindow` ground
+    over the page (`shell.calm`, a region over the stone in both looks), the
+    stone left only as a band inside the rail: the configurator, the
+    installer and the question dialog; their panels (`W.Panel`) lie on that
+    ground, one surface, one panel; the emblem as a crest centred on the
     top rail (`ring = { at = "top", scale }`, rule `MelloUI-Crest`) or in
     the standard corner ring (`at = "tl"`), always on its disc (2b); the
     title plate (`plate = "crest"`: the short plate under the crest, the
     configurator's 2c exception; `"rail"`: the standard plate on the rail)
     with `shell.title` in `Kit:TitleFont`;
   - `close`, the drag strip `shell.grab` (down to `grabBottom`), Core's one
-    mover (`mover = { key, save, default, plainDrag, ... }`: exactly one
-    mover per window, the rail's own shell registration joined to it; the
-    crest kept on the screen with the window), `fit` (scaled down to fit,
+    mover (`mover = { key, save, default, plainDrag, label, page, group,
+    ... }`: exactly one mover per window, the rail's own shell registration
+    joined to it; the crest kept on the screen with the window), `fit` (scaled down to fit,
     never up, not while the mover holds a scale the user gave it, again on
     the `scale` topic), `escape` (UISpecialFrames; `shell:SetEscape(on)`, the
     installer's countdown turns it off) and `sounds` (PlayUISound
@@ -588,12 +599,33 @@ when a copy is added and names the system to use.
   and its own OnShow / OnHide are set before the call (SetScript drops
   hooks).
 - **Its controls: `MelloUI.Widgets` (Core/Widgets.lua), one set for every
-  own window.** `W.Switch`, `W.Dropdown`, `W.Slider`, `W.Button` (`opts.gold`:
-  the Install look, a gold label and outline on the red plate), `W.CloseButton`,
+  own window.** The cleaner look (0.15.0, the user's picks: flat in both
+  looks; the kit's list box, red plate, slider pieces and header plate stay
+  the game windows'): `W.Panel` (THE content panel: a flat `innerPanel` fill
+  in a 1 px `border` edge, on the calm ground; never on another panel),
+  `W.Header` (a section's heading: the title in `selectedTrim` and a 1 px
+  `border` hairline after it, no plate; the configurator's sections and
+  cards, the installer's groups), `W.Button` (a flat `raisedPanel` plate in a
+  1 px `border` edge, no gem caps; `opts.gold`, the main action (Install…,
+  Install again, the installer's Continue, Restock's Buy): its edge and label
+  in `selectedTrim`; `W.FlatButton(b, gold)` the same look on a button made
+  by hand), `W.Slider` (a thin track, a round knob and a box to type the
+  value in: the box never takes the keyboard by itself, Enter, Tab or
+  leaving it takes the number, Escape puts it back; `slider:SetRange(min,
+  max, step)`), `W.Switch`, `W.Dropdown` (`dd:SetValues(values)`: the list
+  swapped), `W.CloseButton`,
   `W.IconBox`, `W.Row` and the typed rows (`W.ToggleRow`, `SliderRow`,
   `DropdownRow`, `ButtonRow`; they take get / set, so any data can sit behind
   them; `opts.gate` dims a row and says "Switch on "X" first." in its hint
-  slot, so no row changes height), `W.RowPlate` (one hover for a row, the
+  slot, or the gate's own line ("Not for Pet"), so no row changes height;
+  `opts.onCover`, the dimmed row's click: the configurator's jump to a switch
+  on another page or pick), `W.PictureRow` (a look chosen by its picture:
+  the chosen one's picture and name, a click opens `W.PictureMenu`, ONE flyout
+  per host window made on its first open, its tiles from a pool drawn by
+  `Kit:ChoicePicture`, closed by a tile, Escape, a click outside, a scroll, a
+  tab, page or pick change, the host hiding and a fight; it never opens in a
+  fight), `W.LinkRow` (a setting whose one place is another page: its value
+  and a button naming that page, "Look >"), `W.RowPlate` (one hover for a row, the
   palette wash or the kit's plate, faded through Anim, none on the selected
   row; `W.RowPlateChild` for a control on it; `W.Flash(row)` lights a row's
   hover a moment, held by a one-shot timer: the row a jump brought into
@@ -615,9 +647,9 @@ when a copy is added and names the system to use.
   with `opts.shade` a shade partner of that area on the rim: the Reminder
   widget's buttons), `W.TrayBox` (a small box of the L1 list-box look, the
   inner panel over the stone: Restock's shop list), the palette parts
-  `W.PaletteSwatch`, `W.PaletteValues` and `W.PaletteName` (the Home row,
-  the installer's cards and Dynamic UI's row: a picture of one palette, or
-  the one in use painted by key) and `W.ShowTooltip`. Each builder takes `skin` (the window's shell, or nil for
+  `W.PaletteSwatch`, `W.PaletteValues` and `W.PaletteName` (Look's Palette
+  row, Home's Your setup and the installer's cards: a picture of one
+  palette, or the one in use painted by key) and `W.ShowTooltip`. Each builder takes `skin` (the window's shell, or nil for
   the plain look) and asks it for the kit (`skin:Kit`, `skin.replace`,
   `skin:Anchor`); it never reaches for `MelloUI.Kit` itself. Kit and Fonts
   load after Widgets.lua and Config.lua: nothing of theirs is bound at file
@@ -633,81 +665,95 @@ when a copy is added and names the system to use.
     other typed rows, `W.Row`: `opts.new`; in the configurator
     `RowOpts(sec, new)`, `new` a named table's field, as
     `RowOpts(blk, BACKUP_TAG.new)`), or in a table the hand-built control
-    names (Home's `PALETTE_DD`, the Profiles page's `BACKUP_TAG`, Dynamic UI's
-    `PALETTE_TAG` / `SHADE_TAG`; a `PARCHMENTS` or `LAYOUT` entry, a border
-    kind, a shade area or a background section its own `new`); a bare
+    names (Home's `PROFILE_DD`, the Profiles page's `BACKUP_TAG`, the top
+    bar's `EDIT_LAYOUT`; a `PARCHMENTS` entry, a border kind, a shade area or
+    a background section its own `new`); a bare
     control (`W.Button`, a `CreateFrame` button, check box or edit box) by a
     tag call after it that names it (`W.NewTag(row, row.rename,
     RENAME_TAG.new)`, `W.ButtonTag(button, ...)`). A new module
     with a page and no option of its own tagged adds `new` to its
-    RegisterModule (its page title and side-list entry). A row generated from
-    the registry (UI Modifications' window and tweak rows) takes it from the
-    generator;
+    RegisterModule (its page title and side-list entry). A switch UI
+    Modifications defines from the registry (a window's Painted Skin, a folded
+    feature's switch) takes it from the registration;
   - it shows ONLY while `MelloUI:IsNew(new)` (Core: the TOC's Version; a
     test build's "0.14.0-rc5" counts as 0.14.0), so the next update shows
     none of the old ones and nobody removes them by hand;
   - the one tag is `W.Tag` (the installer card's "Recommended" plate):
     `W.NewTag` right after the row's label (the hint after the tag, dimmed
-    with a sleeping row), `W.Badge` on a tab's top edge (UI Modifications'
-    tabs; its `inset` keeps it clear of a control at the frame's right: the
+    with a sleeping row), `W.Badge` on a tab's top edge (a page's tabs; its
+    `inset` keeps it clear of a control at the frame's right: the
     configurator's search box and its clear button), `W.ButtonTag` inside a
-    text button at its right (the top bar's
-    Dynamic UI Modification, widened by the tag, its label keeping its own
-    width), and snug near the right edge of the side list's entry and of a
-    folded group's header (`W.NavRail` entries' `new`: a page by its own
-    options, a shortcut by the UI Modifications tab it opens), and one line
-    in Home's What's new. All of it is read from the schemas once, when the
-    configurator is made (made with its rows, never at login);
+    text button at its right (the top bar's Edit Layout, widened by the tag,
+    its label keeping its own width), and snug near the right edge of the
+    side list's entry and of a folded group's header (`W.NavRail` entries'
+    `new`: a page by its rows), and one line in Home's What's new. All of it
+    is read from the schemas through the layout's rows
+    (Core/ConfigLayout.lua) once, when the configurator is made (made with
+    its rows, never at login);
   - `python Tools/lint/check_new_tags.py` (run by `Tools/release.py` before
     anything is tagged) compares every option with the previous release, by
     module and key (a key whose kind changed, a switch become a dropdown, is
     new): it fails on a new option without the current version, on an old
     option tagged with it, on a new page with nothing tagged, and on a file
     that builds controls it does not know (its `OWN_FILES`, the
-    configurator's, or `NOT_CONFIGURATOR`); it stops (exit 2) when a file or
-    a module's OnInit fails in its world. `--fix` takes older versions' tags
+    configurator's, or `NOT_CONFIGURATOR`); a page's own tools (the picker,
+    Copy from…, All, Reset this page) are no options (`PAGE_TOOLS`, never
+    tagged), and a setting that was another kind of control in the last
+    release keeps its age (`MOVED`: Dynamic UI Modification's own rows of
+    0.14.0); it stops (exit 2) when a file or a module's OnInit fails in its
+    world. `--fix` takes older versions' tags
     out of the files: table fields, a `x.new = "..."` line and a version
     handed by position; anything else it names for a hand, and a file that
     would not compile after it is put back.
-- **The configurator's search box (0.14.0) finds every option by itself.**
-  It walks what the side list and the pages walk (the side list's groups,
-  `EachOption` for each page: its tabs, sections and options, a sub-option
-  under its parent's name), so a schema option needs nothing more. A row
+- **Where an option shows: `Core/ConfigLayout.lua` (0.15.0), one place
+  each.** The modules keep their option schemas as the definitions (type,
+  key, name, desc, values, range, `parent` / `requires`, `new`); the data
+  file lays them out: the side list (`L.groups`), the pages (`L.pages`: their
+  tabs, the module whose switch heads them, a picker), and one `R(page, tab,
+  section, "Module.key", extra)` line per row, in the fixed section order
+  (General, Look, Text, Layout, Behaviour, Sound, Advanced). A setting the
+  whole interface shares lives on Look, and each page it touches has a
+  `Link(...)` row to it instead of a copy. A new option is its schema entry
+  and its one line; one with no line lands in Advanced at the end of its
+  module's page, and the checks name it.
+- **The configurator's search box finds every option by itself.** Its index
+  is the layout: each page of the side list, its tabs (two or more), its
+  picks ("Windows > Bank", found by the window's own description too) and
+  every row (a row per pick is ONE result, found by each of its settings'
+  names and descriptions), so a placed schema option needs nothing more.
+  A result's small line is its breadcrumb, `Page > Tab > Section`; the jump
+  opens the page on its tab and a pick that has the row, scrolls to it and
+  lights it (`W.Flash`). Link rows are not results (their target is). A row
   built by hand on Home or the Profiles page is named in its block's
   `HomeSearch` / `ProfilesSearch` (its label, what its tooltip says, its
   `new`, and `when` if it shows only at times: asked once a search, never
   per keystroke, so a `when` may read the game) and found by
   `HomePart` / `ProfilesPart` for the jump; a control that is not a row
-  (the top bar's) is added in the Search block's `Build`. Dynamic UI
-  Modification's choices are not in it (they live in its own window, made
-  as it opens): ONE result, "Top bar > Dynamic UI Modification", opens
-  that window. The best first: a name that is the word, then one that
-  starts with it, has a word starting with it, holds it, then the place
-  it lies, then its description; within each, a page or shortcut before a
-  tab, a tab before a row.
+  (the top bar's) is added in the Search block's `Build`. The best first: a
+  name that is the word, then one that starts with it, has a word starting
+  with it, holds it, then the place it lies, then its description; within
+  each, a page before a tab or a pick, those before a row.
 - **Its registry entry.** Its module's `MelloUI:RegisterModule` carries what
   the configurator, UI Modifications and the installer show; nothing is
   listed by hand anywhere else (UI Modifications makes its PANELS, TWEAKS
   and PLAIN_WINDOWS from it, and the configurator's old MODULE_META is gone;
   Core.lua's header has the shape):
   - `window = { label, desc, tab = "Windows" | "HUD", order, switch, frames,
-    plainGrab, addon, firstOpen, include }` gives it a row on UI
-    Modifications' Windows or HUD tab with nothing edited there or in
-    Config: `order` puts rows that have one first on their tab, lowest
-    first; `switch` makes the row a setting of UI Modifications (an own
-    window's look switch, the Quest Tracker's `questTrackerKit`) instead of
-    a module's switch; `frames` + `plainGrab = true` give the named frames a
-    plain grab while the windows are unlocked; `include = true` lays the
-    panel's own options under its row (indented, live only while it is on;
-    the nameplates' Name Shade), `include = { keys }` only those keys.
-  - `group` places its entry in the configurator's side list ("The look",
-    "Quests and travel", "Chat and sound" or "Frames and bars"; Home and
-    Profiles are the configurator's own). Only the modules that get an
-    entry carry it: a shown module is a page entry, a hidden one a shortcut
-    to its `qol_` switch on UI Modifications' tabs; no group, no entry (the
-    other folded features are found on those tabs). `navOrder` (a number, 1 first) is
-    its place in the group; entries without one follow in the order they
-    registered.
+    plainGrab, addon, firstOpen, include }` makes it a kit panel with nothing
+    edited in UI Modifications or Config: UI Modifications defines its
+    Painted Skin switch (its name, `UIModifications.<Name>`; `order` sorts
+    the definitions); `switch` makes that a setting of UI Modifications (an
+    own window's look switch, the Quest Tracker's `questTrackerKit`) instead
+    of a module's switch; a `tab = "Windows"` panel without one is a pick of
+    the configurator's Windows page by its `label` (its `desc` found by the
+    search), and every other panel's Painted Skin row has its `R` line in
+    Core/ConfigLayout.lua (the page of what it dresses); `frames` +
+    `plainGrab = true`: the named frames move in Edit Layout; `include` is
+    the old pages' structure, no longer read (the layout places the panel's
+    own options).
+  - `group` and `navOrder` are no longer read (0.15.0: the side list is
+    Core/ConfigLayout.lua's `L.groups`, the pages its `L.pages`); Core still
+    checks their types.
   - `icon` and `flavour` for its side-list icon and page header; `role`
     ("core", "look", "feature", "adds" or "replaces") says what the
     installer's setups do with it (a hidden kit panel with a `window` is
@@ -724,11 +770,19 @@ when a copy is added and names the system to use.
   A field of the wrong type (or an unknown role) is reported, never fatal.
 - **Its place: `MelloUI:RegisterMover` (Core).** `MelloUI:RegisterMover(frame,
   handle, { key, anchor, default, save, reset, min, max, base, with,
-  plainDrag })`: one store (UI Modifications' `positions`, kept whether that
+  plainDrag, label, page, group, placeholder, visible, follow, resize,
+  locked, note, resetLabel, when })` (Core.lua's header says what each
+  does): one store (UI Modifications' `positions`, kept whether that
   module is on or off, so profiles, share strings and the macro backup carry
-  it), and Unlock the Windows, Reset positions and the UI-scale put-back
-  reach the window. `plainDrag = "always"` drags it with UI Modifications
-  off. Set the frame's own OnShow / OnHide BEFORE registering, and never
+  it), and Edit Layout (its plate: `label`, `page` for "All options >",
+  `placeholder` for a window still hidden; its Reset and Reset all), its
+  session (pending places until Save or Discard) and the UI-scale put-back
+  reach the window. `plainDrag = "always"` drags it by its handle at any
+  time, with UI Modifications off too, but while Edit Layout shows only a
+  `group = "tool"` window's (the configurator's, the installer's, Edit
+  Layout's own bar: never a plate, never a pending change). Never register
+  a MelloUI frame as an Edit Mode system: the game's own elements get Edit
+  Layout's "Move via Edit Mode" instead. Set the frame's own OnShow / OnHide BEFORE registering, and never
   SetScript OnDragStart / OnDragStop / OnShow / OnHide on a registered frame
   (hook them). `MelloUI:FitOnScreen(frame, extraRects)` keeps it on the
   screen. Never `StartMoving` of its own, nor an x / y in its own settings.
@@ -741,15 +795,22 @@ when a copy is added and names the system to use.
   fn, owner)` / `MelloUI:Off(owner[, topic])` for "setting", "module",
   "restart", "look:<area>", "cover", "parchment", "border", "fonts",
   "scale", "editmode", "shell", "palette", "column", "installer",
-  "editmodelayout", "backup", "shade", "where", "reminder" (Core.lua lists what each carries). A window
+  "editmodelayout", "backup", "shade", "where", "reminder", "editlayout",
+  "mover" (Core.lua lists what each carries). A window
   takes its listeners when it is built, never at file load, and each
   returns at once while the window is closed
   (at most marking what its next show brings in line). Never
   `hooksecurefunc(MelloUI, ...)` or `hooksecurefunc(Kit, ...)` on MelloUI's
   own functions: such a hook runs for every setting of every module and can
   never be taken off. Many settings at once go through
-  `MelloUI:Batch(fn)` (one Fire per key, one backup). A UI-scale change:
-  `Kit:OnUIScaleChanged(fn)`.
+  `MelloUI:Batch(fn)` (one Fire per key, one backup). Loading a profile,
+  Revert, and the configurator's Copy from… and Reset this page ask first
+  through `MelloUI:Confirm` (the last two: the user, 2026-09-29), in plain
+  words that name the page or pick and how many settings change; Copy
+  from… and Reset this page ask nothing when nothing would change or when
+  a fight would refuse the writes (the line at once). The configurator's
+  All (one row's value for every pick that has it) acts at once, as the
+  row's own control does. A UI-scale change: `Kit:OnUIScaleChanged(fn)`.
 - **Its text on parchment: `QI.Surface`.** A window with a parchment sheet
   registers `QI.Surface(area, { on = fn, sheet = true, skip = fn, roots = fn
   })` (`sheet = true`: the inks set for the kit's darker sheet);
@@ -819,8 +880,8 @@ when a copy is added and names the system to use.
     `MelloUI:PaletteId()`, `MelloUI:SetPalette(id)` (the setting
     UIModifications.palette; a switch fires `border`, then exactly one
     `palette`). **`MelloUI:KnownPalette(id)` is the one palette-id rule**
-    (a registry id, anything else Ember): Core, the Kit, Dynamic UI, the
-    widgets and the installer ask it, never a check of their own. The
+    (a registry id, anything else Ember): Core, the Kit, UI Modifications,
+    the widgets and the installer ask it, never a check of their own. The
     kit's folder follows the palette AND Kit Colours: `Kit:LookFolder`,
     `Kit:ColourLooks`, `Kit:ColourLookShown`, `Kit:LookRoot`.
   - **Meaning colours** stay the same under every palette, and only these:
@@ -878,20 +939,23 @@ when a copy is added and names the system to use.
   Repair Gear, Trainer (Modules/Reminders.lua, Modules/Restock.lua). The
   widget is built on first use, never before its login moment (8 s into
   the world) and nothing is checked in combat; with the player frame hidden
-  it has its own place, Core's mover key `reminders` (Unlock the Windows
-  shows a sample). The secure target button is set up only out of combat.
+  it has its own place, Core's mover key `reminders` (Edit Layout shows a
+  sample). The secure target button is set up only out of combat.
   Per-character state is a `keep` key (the registry entry above).
 - **Escape closes it:** the shell's `escape = true` puts its frame name in
-  `UISpecialFrames` (the configurator and the installer); the copy window
-  and Dynamic UI still do it by hand until they move onto the shell.
+  `UISpecialFrames` (the configurator, the installer, the question dialog,
+  the Restock List and, since the 0.15.0 audit, the copy window: area
+  `copy`, built on its first open).
 - **The installer is the second shell** (Core/InstallerWindow.lua over the
   engine in Core/Installer.lua): area "installer", always in the kit
   (`Kit.Areas` row `always = true`); the corner ring with the emblem and
   the plate on the rail carrying the step's title; ONE mover with no saved
   place (`save` a shared no-op: a drag moves it for the session, every open
-  is centred); the numbered steps from `W.NavRail` (switching setups takes
+  is centred; `group = "tool"`: never a plate in Edit Layout); the numbered steps from `W.NavRail` (switching setups takes
   rows from its pool), a `W.Pager` page per step made on its first show, on
-  one `Kit:StoneDim` body (2e), `W.Card` for the setups; Escape and close
+  the calm ground with ONE `W.Panel` for the body (2e; the pager its child,
+  so the pages lie over it), `W.Header` for a group's heading, `W.Card` for
+  the setups; Escape and close
   off while the Keep countdown runs. It changes settings only through the
   engine, in one `MelloUI:Batch`, and never sets the UI scale.
 - **The window rules hold for it too:** the title ON the plate in

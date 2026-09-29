@@ -56,7 +56,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Lines MelloUI writes to chat on its own: a learned dungeon entrance, settings restored from the backup, hints. Replies to slash commands always show." },
 		{ type = "header", name = "Notices" },
 		{ type = "toggle", key = "noticeOnScreen", name = "On-screen Notices",
-		  desc = "One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Unlock the Windows to move it." },
+		  desc = "One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout." },
 		{ type = "toggle", key = "noticeToChat", parent = "noticeOnScreen", name = "Send To Chat Instead",
 		  desc = "Write these lines in the chat instead of showing them on the screen. They follow Chat Notices there." },
 		{ type = "toggle", key = "noticeSounds", parent = "noticeOnScreen", name = "Notice Sounds",

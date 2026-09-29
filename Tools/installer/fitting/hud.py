@@ -185,7 +185,10 @@ WINDOWS = {
     "CollectionsJournal": (703, 606, None, "Blizzard_Collections/Shared/Blizzard_Collections.xml:5"),
     "LegacySystemFrame": (920, 575, None, "Blizzard_LegacySystem/Blizzard_LegacySystem.xml:5"),
     "ContainerFrameCombinedBags": (430, 440, None, "estimate: 10 columns of 37 + 5 spacing (Mainline/ContainerFrame.lua:2879-2885), ~80 slots"),
-    "MelloUIConfigFrame": (1080, 760, ("fit", 16, 16), "Core/Config.lua WIDE_WIDTH, WINDOW_HEIGHT (the width when UI Modifications' tabs need it); Modules/KitWindow.lua Shell:Fit, 16 of room, with its dressing (DRESS)"),
+    # (the configurator: Core/LayoutFit.lua's WINDOWS entry, the shipped fitter's copy, kept in step with it. Both
+    # still say 1080, the old wide mode's width; the window is Core/Config.lua WINDOW_WIDTH x WINDOW_HEIGHT, 1000 x 760,
+    # since the 0.15.0 rebuild. The two copies change to 1000 together, and the goldens are made again then)
+    "MelloUIConfigFrame": (1080, 760, ("fit", 16, 16), "Core/LayoutFit.lua WINDOWS (the old wide width, kept in step with the Lua fitter; the window is 1000 x 760 since 0.15.0); Modules/KitWindow.lua Shell:Fit, 16 of room, with its dressing (DRESS)"),
     # the store places wave 3 moved into the one store (refit, build round 4)
     "voiceOverlay": (600, 200, None, "Modules/VoiceOver.lua FRAME_W, FRAME_H, at its default Overlay Scale (1)"),
     "whisper": (340, 210, None, "Modules/Chat.lua POPUP_W, POPUP_H: the stored corner is the first popup's"),

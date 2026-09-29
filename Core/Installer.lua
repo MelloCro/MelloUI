@@ -129,7 +129,7 @@ local BEFORE_PROFILE = "Before install" -- the restore point on the Profiles pag
 local KEEP_SECONDS = 15
 local EMPTY = {}
 
-I.FULL_PROFILE, I.BEFORE_PROFILE, I.KEEP_SECONDS = FULL_PROFILE, BEFORE_PROFILE, KEEP_SECONDS
+I.BEFORE_PROFILE, I.KEEP_SECONDS = BEFORE_PROFILE, KEEP_SECONDS   -- (the tests')
 -- (compared with a restore point's `at`, time() when it was made)
 I.SESSION_AT = tonumber(time and time()) or 0
 
@@ -168,8 +168,10 @@ local U_PREFERENCE = { nameFormat = true }
 -- (a palette's id as Core reads the setting: MelloUI:KnownPalette, Core's
 -- one rule -- a registry id, any other value Ember)
 
--- keys no setup ever sets: the player's accessibility choice, a passing
--- mode, the switch Tweaks lost (its one-time fold resets rows reading false)
+-- keys no setup ever sets: the player's accessibility choice, and two
+-- dropped keys a profile or share string from before may still bring:
+-- `unlock` (the old Unlock the Windows mode, gone with Edit Layout, 0.15.0)
+-- and the switch Tweaks lost (its one-time fold resets rows reading false)
 local NEVER = { [UMB] = { reduceMotion = true, unlock = true, qol_Tweaks = true } }
 
 -- the installer's own facts about this machine and character, and a
@@ -1500,20 +1502,33 @@ function I:Apply(target, exact)
 	return out.changed, NeedsReload(was)
 end
 
+-- An Edit Layout session (Core's MelloUI.LayoutSession) ended with nothing
+-- put back from it: the setup's store is the truth (Install, Fit to this
+-- screen and Revert, before their first write)
+local function AbandonLayout()
+	local session = MelloUI.LayoutSession
+	if type(session) == "table" and type(session.Abandon) == "function" then
+		session.Abandon("installer")
+	end
+end
+
 -- Every registered window put where the store now says. A window that
 -- keeps its own place (entry.save: the Quest Tracker) moved on its own
--- 'setting' Fire and is left alone: never ResetMover or entry.reset here,
--- which would wipe the place just applied and write settings outside the
--- Batch. A hidden window gets its place on its next show (Core's OnShow).
+-- 'setting' Fire and is left alone: never its entry.reset here, which
+-- would wipe the place just applied and write settings outside the Batch. A hidden window gets its place on its next show (Core's OnShow).
+-- An element that is not live (a module's that is off: UI Modifications'
+-- game windows) is the game's to place; a game window the game lays out
+-- (`follow`) with no place in the store keeps the game's, never its
+-- default (that is Edit Layout's Reset preview: Edit Mode's place).
 function I:PlaceWindows()
 	local placed = { restored = 0, defaulted = 0, skipped = 0 }
 	for _, entry in ipairs(MelloUI:MoverEntries()) do
-		if entry.save then
+		if entry.save or (MelloUI.EntryLive and not MelloUI:EntryLive(entry)) then
 			placed.skipped = placed.skipped + 1
 		elseif entry.key ~= nil and MelloUI:GetPosition(entry.key) then
 			MelloUI:RestorePosition(entry.key, entry.frame)
 			placed.restored = placed.restored + 1
-		elseif entry.default then
+		elseif entry.default and not entry.follow then
 			local ok, err = pcall(entry.default, entry.frame)
 			if ok then
 				placed.defaulted = placed.defaulted + 1
@@ -1942,6 +1957,10 @@ function I:Install(option, draft, fit)
 		local ok, state = pcall(MelloUI.EditModeState, MelloUI, type(fit) == "table" and fit.fitted or nil)
 		layoutBefore = ok and state or nil
 	end
+	-- an Edit Layout session ends before the first write, nothing of it put
+	-- back over the setup (its places come from the store this writes:
+	-- PlaceWindows below)
+	AbandonLayout()
 	-- 2. the restore point (in the db this session runs on: never the
 	-- global, which may not be there yet on this client)
 	local rp = { before = before, layout = layoutBefore, option = option.key, at = time() }
@@ -2116,6 +2135,8 @@ function I:Revert(reason)
 	elseif (CD.running and CD.editMode) or EditModeOpen() then
 		return false, TEXT.editMode   -- (never SaveLayouts behind Edit Mode's own edit)
 	end
+	-- (as Install's: an Edit Layout session ends before anything is put back)
+	AbandonLayout()
 	Stop()
 	local t0 = Clock()
 	local pending = rp.pending

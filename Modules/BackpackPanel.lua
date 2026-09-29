@@ -9,8 +9,8 @@
 --   bag icon with the icon at the medallion size on the dark disc, the title
 --   plate on the rail, the close button); the pooled item buttons in the
 --   action bars' thin rims (user, 2026-09-23: "onto the backpack icons
---   next"), Item Border and Item Background chosen here or with previews by
---   Dynamic UI Modification, the icons filling them, empty slots on the
+--   next"), Item Border and Item Background chosen here or with pictures in
+--   the Configurator, the icons filling them, empty slots on the
 --   chosen background, the game's quality border kept on the icon (the rim untinted —
 --   user, 2026-09-21), every item's quality gem in its slot's corner (Quality
 --   Gems, Kit:ItemGem; user, 2026-09-26); the search box S1; the sort button on the cog; the
@@ -59,7 +59,7 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
 		  desc = "What the bag windows show behind the items: cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
 		{ type = "dropdown", key = "itemBackground", name = "Item Background", values = LOOKS.backgrounds,
-		  desc = "What an empty bag slot shows inside its rim. Both are also chosen with previews by Dynamic UI Modification, at the top of the configurator. The slots' rim is UI Modifications' Button Border (every window's)." },
+		  desc = "What an empty bag slot shows inside its rim. Both are chosen with pictures on Windows > Bags. The slots' rim is the Button Border (Look > Borders, every window's)." },
 		{ type = "toggle", key = "qualityGems", name = "Quality Gems", new = "0.14.0",
 		  desc = "A small gem in the top-left corner of every item in your bags, the bank and the guild bank, in the colour of the item's quality: grey for junk, white for common, then green, blue, purple and orange. Junk and better items stand out at a glance. While the game shows its own mark in that corner (the junk coin at a merchant, the upgrade arrow, the exclamation mark on an item that starts a quest, the quality badge on a crafting reagent), the gem moves to the top-right corner. One switch for all three windows." },
 	},
@@ -72,7 +72,6 @@ local active = false
 local Secret = MelloUI.Safe.IsSecret
 local SafeCall = MelloUI.Safe.Call                -- obj:method() guarded (nil: none, raised or secret)
 local SafeNumber = MelloUI.Safe.Number            -- a plain number, else nil
-local SafeScreenRect = MelloUI.Safe.ScreenRect   -- a frame's rect on the screen (nil: secret or unreadable)
 
 local function Replace(region, opts)
 	if not region then
@@ -305,12 +304,15 @@ local function ApplyWindowBackground(entry)
 	end
 	if piece then
 		if alt.kitName ~= piece then
+			Kit:Unpaint(alt)   -- (the dark fill's palette colour no longer on it)
 			alt:SetVertexColor(1, 1, 1, 1)
 			Kit:Apply(alt, piece)
 		end
 		Kit:Retile(alt)
 	else
-		alt:SetColorTexture(0.05, 0.045, 0.04, 0.95)
+		-- Dark: the palette's inner panel, by its key (a new palette paints
+		-- it again), as the kit's own dark background (Kit:SetButtonBackground)
+		Kit:Paint(alt, "innerPanel", "fill", 0.95)
 		alt.kitName = nil
 	end
 	alt:Show()
@@ -559,69 +561,15 @@ function M:OnSettingChanged(key, value, db)
 end
 
 --------------------------------------------------------------------------------
--- For the Dynamic UI Modification picker (Modules/DynamicUI.lua): the bag
--- windows are one group; the picker opens the bags while it runs when none
--- is open, and closes them again after.
--- Not while the game's Gamepad UI is on (0.15.0): the bags opened or closed
--- from our code run the game's gamepad bindings in our run, and the
--- protected call at their end is blocked (the game's "blocked" popup). There
--- the picker uses the bags only when one is already open, and says so in
--- the chat when none is.
+-- For the Configurator's picture rows (PickerGroups, Core/Config.lua): the
+-- bag windows are one group.
 --------------------------------------------------------------------------------
 
-local openedForPicker = false
-
-local function BagWindows()
-	local list = { ContainerFrameCombinedBags }
-	for i = 1, 7 do
-		list[#list + 1] = _G["ContainerFrame" .. i]
-	end
-	return list
-end
-
 function M:PickerGroups()
-	return { { id = "backpack", title = "Bags", hint = "Click to choose the window's background and the empty slots' background.", sections = {
+	return { { id = "backpack", title = "Bags", sections = {
 		{ key = "windowBackground", title = "Window Background", kind = "tile", choices = WINDOW_BACKGROUNDS },
 		{ key = "itemBackground", title = "Item Background", kind = "tile", choices = LOOKS.backgrounds },
 	} } }
-end
-
--- The shown bag windows' rects (screen px), nil when none is shown
-function M:BarOutline()
-	if not active then
-		return nil
-	end
-	local rects = {}
-	for _, f in ipairs(BagWindows()) do
-		if f and f:IsShown() then
-			local l, b, r, t = SafeScreenRect(f)
-			if l and r > l then
-				rects[#rects + 1] = { l, b, r, t }
-			end
-		end
-	end
-	return #rects > 0 and rects or nil
-end
-
-function M:PickerStart()
-	openedForPicker = false
-	if not (active and not self:BarOutline() and OpenAllBags) then
-		return
-	end
-	if MelloUI.Safe.GamepadUI() then
-		MelloUI:Print("Dynamic UI Modification: in the Gamepad UI, open your bags before you start to pick on them.")
-		return
-	end
-	OpenAllBags()
-	openedForPicker = true
-end
-
--- (the Gamepad UI switched on since the start: the bags are left open)
-function M:PickerStop()
-	if openedForPicker and CloseAllBags and not MelloUI.Safe.GamepadUI() then
-		CloseAllBags()
-	end
-	openedForPicker = false
 end
 
 function M:OnEnable(db)
