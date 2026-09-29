@@ -109,9 +109,9 @@ local M = MelloUI:RegisterModule("QuestList", {
 		-- the quest tooltips (0.14.0, QuestListTips.lua): read from your quest
 		-- log and the list's data, so they live with the list
 		{ type = "header", name = "Tooltips" },
-		{ type = "toggle", key = "tipQuestItems", name = "Quest Progress On Items", new = "0.14.0",
+		{ type = "toggle", key = "tipQuestItems", name = "Quest Progress On Items", 
 		  desc = "On the tooltip of an item one of your quests asks for, name the quest and how many you have, for example \"Quest: Red Linen Goods (4/6)\"." },
-		{ type = "toggle", key = "tipTurnIn", name = "Turn-In NPCs", new = "0.14.0",
+		{ type = "toggle", key = "tipTurnIn", name = "Turn-In NPCs", 
 		  desc = "On the tooltip of an NPC that takes back one of your quests: \"Turn in here\" once the quest is ready, a quieter \"Quest ends here\" while it is still in progress." },
 	},
 })

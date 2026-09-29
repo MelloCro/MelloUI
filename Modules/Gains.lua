@@ -197,7 +197,6 @@ local M = MelloUI:RegisterModule("Gains", {
 	flavour = "Every skill point and every new item, told softly beside your character, then gone.",
 	group = "Quests and travel", navOrder = 6,
 	role = "feature",
-	new = "0.14.0",   -- (a new page: its entry and title tagged New for 0.14.0)
 	enabledByDefault = true,
 	defaults = {
 		skills = true,
@@ -209,18 +208,18 @@ local M = MelloUI:RegisterModule("Gains", {
 	},
 	options = {
 		{ type = "header", name = "Show" },
-		{ type = "toggle", key = "skills", name = "Skill Ups", new = "0.14.0",
+		{ type = "toggle", key = "skills", name = "Skill Ups", 
 		  desc = "A line when one of your skills goes up: weapon skills, Defense, professions, secondary skills and languages." },
-		{ type = "toggle", key = "values", parent = "skills", name = "Show Skill Values", new = "0.14.0",
+		{ type = "toggle", key = "values", parent = "skills", name = "Show Skill Values", 
 		  desc = "The skill's new value and its cap after its name, such as 57 / 80." },
-		{ type = "toggle", key = "items", name = "Looted & Received Items", new = "0.14.0",
+		{ type = "toggle", key = "items", name = "Looted & Received Items", 
 		  desc = "A line for each item that comes into your bags: loot, quest rewards, crafted items, mail and trades. Moving items between your bags, the bank and your gear never counts." },
-		{ type = "toggle", key = "bought", name = "Bought Items", new = "0.14.0",
+		{ type = "toggle", key = "bought", name = "Bought Items", 
 		  desc = "A line for what you buy from a merchant, buybacks too, marked as bought." },
-		{ type = "toggle", key = "junk", name = "Junk Items", new = "0.14.0",
+		{ type = "toggle", key = "junk", name = "Junk Items", 
 		  desc = "Also show junk (grey) items. Off: they are left out." },
 		{ type = "header", name = "Lines" },
-		{ type = "slider", key = "hold", name = "Show For", new = "0.14.0", min = HOLD_MIN, max = HOLD_MAX, step = 1, format = Seconds,
+		{ type = "slider", key = "hold", name = "Show For", min = HOLD_MIN, max = HOLD_MAX, step = 1, format = Seconds,
 		  desc = "How long each line stays before it fades. Gaining the same skill or item again adds to its line and starts it over." },
 	},
 })

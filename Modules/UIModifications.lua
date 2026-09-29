@@ -216,9 +216,9 @@ end
 do
 	local shade = Kit and Kit.shadeSettings
 	if type(shade) == "table" and type(shade.master) == "string" and type(shade.strength) == "string" then
-		Add({ type = "toggle", key = shade.master, name = "UI Shade", new = "0.14.0", free = true,
+		Add({ type = "toggle", key = shade.master, name = "UI Shade", free = true,
 			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand out from the world. Each area has its own switch under it." })
-		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master, new = "0.14.0", free = true,
+		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master, free = true,
 			min = shade.min, max = shade.max, step = shade.step, percent = true,
 			desc = "How dark the shade round the kit's outlines is. The nameplates use their own strength (Nameplates > Plates)." })
 		for _, a in ipairs(type(Kit.shadeAreas) == "table" and Kit.shadeAreas or {}) do

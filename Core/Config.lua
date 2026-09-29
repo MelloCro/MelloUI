@@ -4353,7 +4353,7 @@ end, "script")
 local BACKUP_HEAD = { name = BackupUI.TEXT.heading }
 -- the update Macro Backup's rows came with (their New tags; the side list's
 -- Profiles entry is tagged while they are new: ProfilesNew)
-local BACKUP_TAG = { new = "0.14.0" }
+local BACKUP_TAG = { }
 function ProfilesNew()
 	return BackupUI.Ready() and MelloUI:IsNew(BACKUP_TAG.new) or false
 end
@@ -4807,7 +4807,7 @@ end
 local Search = {}
 do
 -- the box's update (its New tag, W.Badge on its top edge)
-local SEARCH_TAG = { new = "0.14.0" }
+local SEARCH_TAG = { }
 local HEAD, TOP, HEIGHT = 32, 4, 22   -- the box's strip over the side list (the rail's head), the box in it
 -- (its New tag's plate kept clear of the template's clear button: 17 wide,
 -- 3 in from the box's right, and a gap)
