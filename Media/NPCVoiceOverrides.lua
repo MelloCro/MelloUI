@@ -4,7 +4,7 @@
 -- Media\NPCVoiceData.lua is generated from the vanilla NPC list and covers
 -- almost every NPC that Forever inherited. NPCs that are new to Forever are
 -- not in it and are read with the plain male / female voice. List them here
--- to give them a race profile. Talk to (or target) an NPC and type  /vo npc
+-- to give them a race and gender. Talk to (or target) an NPC and type  /vo npc
 -- to see its ID and whether it is already known.
 --
 -- Race codes: human, dwarf, gnome, nightelf, highelf, orc, troll, tauren,

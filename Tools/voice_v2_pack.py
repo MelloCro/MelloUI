@@ -14,7 +14,12 @@
 The manifest is lines.json / lines_pilot.json / lines_readables.json (format "melloui-voice-lines/2", the voice
 pack spec section 3.6); several are read as one (their keys must not repeat; a job in two of them is one clip).
 Readable pages (books, letters, plaques ...) are keyed "r-<hash8>" and read by the narrator; their canonical texts
-go into P.texts, and P.readNames maps the item / object name to its pages (the runtime's near-match).
+go into P.texts, and P.readNames maps the item / object name to its pages (the runtime's near-match). P.readPages
+maps the name to its books of more than one page, each the keys of its pages IN READING ORDER (from the places
+meta.lines[].places give: an item or object and the page number it shows the page at), so the runtime reads the
+whole book: { { "r-..", "r-..", ... }, ... }, one list per different book of that name; a page whose words depend on
+the player's sex is { male key, female key }, a page with no words (a picture) false. P.readNames is a set: it keeps
+no order and merges every item of a name.
 Only its KEYED jobs go into the pack (A/B alternates have keys: []); a job's clip is <clips>/<id>.ogg, where
 id = "<voiceKey>/<hash12>", kept exactly as the speech service returned it (Ogg Vorbis, mono).
 
@@ -27,9 +32,10 @@ The addon (spec section 1):
 
 The build FAILS (exit 1, every problem listed) when a key is malformed or used twice, a key's clip is missing or
 fails validation (OggS with a Vorbis identification header, mono, at least 0.3 s, at most 4 + words / 1.5 s,
-whole pages to the end-of-stream page), a text key's hash is not the hash of its canonical text, or an NPC would
-speak in two voices. It never writes to any folder but one named MelloUI_VoicePack: the old pack it replaces
-(MelloUI_VoiceOverData), built or installed, is never touched.
+whole pages to the end-of-stream page), a text key's hash is not the hash of its canonical text, an NPC would
+speak in two voices, or a book shows two different pages at one page number (other than the two sexes' words).
+It never writes to any folder but one named MelloUI_VoicePack: the old pack it replaces (MelloUI_VoiceOverData),
+built or installed, is never touched.
 
 The release ships the built folder in two zips, each under 2 GB (MelloUI_VoicePack_Part1.zip and
 MelloUI_VoicePack_Part2.zip on the release page); both unzip into the same MelloUI_VoicePack folder.
@@ -164,6 +170,40 @@ def validate_clip(path: str, words: int) -> dict:
 # The pack's content from the manifest
 # ---------------------------------------------------------------------------
 
+def place_of(place: dict):
+    """The item or object a readable page's place names: ("item" | "object", id), else None (an orphan page)."""
+    for kind in ("item", "object"):
+        if isinstance(place.get(kind), int) and not isinstance(place.get(kind), bool):
+            return kind, place[kind]
+    return None
+
+
+def book_chains(read_books: dict, problems: list) -> dict:
+    """P.readPages: canonical name -> [book, ...], each book its pages' keys in reading order (page 1 first); a
+    page with a male and a female text is (male key, female key), a page number with no words None (false in the
+    index). Books with the same pages are one; a name whose books are all one page long is left out (nothing
+    follows its page). Two different texts at one page number (not the two sexes') are a problem."""
+    out = {}
+    for (kind, ident), book in read_books.items():
+        pages, slots = book["pages"], []
+        for number in range(1, max(pages) + 1):
+            here = pages.get(number) or {}
+            if len(here) <= 1:
+                slots.append(next(iter(here), None))
+                continue
+            by_sex = {sex: key for key, sex in here.items()}
+            if len(here) == 2 and set(by_sex) == {"m", "f"}:
+                slots.append((by_sex["m"], by_sex["f"]))
+            else:
+                problems.append("%s %d (%s) shows %d different pages at page %d: %s"
+                                % (kind, ident, book["name"], len(here), number, ", ".join(sorted(here))))
+                slots.append(None)
+        books = out.setdefault(book["name"], [])
+        if slots not in books:
+            books.append(slots)
+    return {name: books for name, books in out.items() if any(len(b) > 1 for b in books)}
+
+
 def plan(manifest: dict, clips: str) -> dict:
     """Everything the index needs, checked. Raises BuildError with every problem found."""
     problems = []
@@ -178,6 +218,7 @@ def plan(manifest: dict, clips: str) -> dict:
     texts, text_index = [], {}
     npc_texts = {}             # npc (0 = objects) -> set(text index)
     read_names = {}            # canonical item / object name -> set(text index) of its readable pages
+    read_books = {}            # ("item" | "object", id) -> {"name": canonical name, "pages": {page number: {key: sex}}}
     titles = {}                # canonical title -> set(quest ID)
     for job in jobs:
         jid = job.get("id", "")
@@ -229,6 +270,12 @@ def plan(manifest: dict, clips: str) -> dict:
                 for name in line.get("names") or []:
                     if isinstance(name, str) and canon(name):
                         read_names.setdefault(canon(name), set()).add(text_index[text])
+                for pl in line.get("places") or []:
+                    where = place_of(pl)
+                    number, name = pl.get("page"), pl.get("name")
+                    if where and isinstance(number, int) and number > 0 and isinstance(name, str) and canon(name):
+                        book = read_books.setdefault(where, {"name": canon(name), "pages": {}})
+                        book["pages"].setdefault(number, {})[key] = line.get("sex")
                 continue
             if key.startswith("g-"):
                 _, key_npc, key_hash = key.split("-")
@@ -255,6 +302,7 @@ def plan(manifest: dict, clips: str) -> dict:
     for npc, voices in sorted(npc_voices.items()):
         if len(voices) > 1:
             problems.append("NPC %d would speak in %d voices: %s" % (npc, len(voices), ", ".join(sorted(voices))))
+    read_pages = book_chains(read_books, problems)
     # the clips themselves
     seconds = []
     for voice, h12, src, words, jids in files:
@@ -285,6 +333,8 @@ def plan(manifest: dict, clips: str) -> dict:
         "npcTexts": {npc: sorted(i + 1 for i in idx) for npc, idx in npc_texts.items()},
         "titles": {t: next(iter(q)) for t, q in titles.items() if len(q) == 1},
         "readNames": {n: sorted(i + 1 for i in idx) for n, idx in read_names.items()},
+        "readPages": read_pages,
+        "readBooks": sum(1 for books in read_pages.values() for b in books if len(b) > 1),
         "readKeys": sum(1 for k in key_file if k.startswith("r-")),
         "titlesDropped": sorted(t for t, q in titles.items() if len(q) > 1),
     }
@@ -367,7 +417,24 @@ def index_lua(p: dict, build: str) -> str:
     if p.get("readNames"):
         out += emit_blocks("readNames", [(lua_str(n), "{ %s }" % ", ".join(str(i) for i in p["readNames"][n]),
                                           {n, *p["readNames"][n]}) for n in sorted(p["readNames"])])
+    if p.get("readPages"):
+        items = []
+        for n in sorted(p["readPages"]):
+            books = p["readPages"][n]
+            keys = {k for b in books for s in b if s for k in (s if isinstance(s, tuple) else (s,))}
+            items.append((lua_str(n), "{ %s }" % ", ".join("{ %s }" % ", ".join(lua_slot(s) for s in b) for b in books),
+                          {n, *keys}))
+        out += emit_blocks("readPages", items)
     return "\n".join(out) + "\n"
+
+
+def lua_slot(slot) -> str:
+    """A book's page in P.readPages: its key, { male key, female key }, or false (no words)."""
+    if slot is None:
+        return "false"
+    if isinstance(slot, tuple):
+        return "{ %s }" % ", ".join(lua_str(k) for k in slot)
+    return lua_str(slot)
 
 
 def interface_version() -> str:
@@ -497,6 +564,7 @@ def build(manifest_path, clips: str, out: str, build_text: str | None, check_onl
     seconds = sum(p["seconds"])
     stats = {"keys": len(p["lines"]), "files": len(p["files"]), "npcs": len(p["npcs"]), "texts": len(p["texts"]),
              "readKeys": p["readKeys"], "readNames": len(p["readNames"]),
+             "readPages": len(p["readPages"]), "readBooks": p["readBooks"],
              "titles": len(p["titles"]), "titlesDropped": len(p["titlesDropped"]), "voices": len(p["voices"]),
              "mb": p["bytes"] / 1e6, "hours": seconds / 3600, "build": build_text}
     if check_only:
@@ -550,7 +618,9 @@ def main(argv=None) -> int:
           "%.1f MB, %.2f h" % (stats["build"], stats["keys"], stats["files"], stats["npcs"], stats["texts"],
                                stats["titles"], stats["titlesDropped"], stats["voices"], stats["mb"], stats["hours"]))
     if stats["readKeys"]:
-        print("  readable pages: %d keys, %d item / object names" % (stats["readKeys"], stats["readNames"]))
+        print("  readable pages: %d keys, %d item / object names; %d books of more than one page under %d names, "
+              "their pages in reading order (P.readPages)" % (stats["readKeys"], stats["readNames"], stats["readBooks"],
+                                                               stats["readPages"]))
     if args.check:
         print("checked only: nothing written")
         return 0

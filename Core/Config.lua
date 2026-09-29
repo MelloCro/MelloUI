@@ -141,7 +141,7 @@ local CHANGELOG = {
 		"Edit Layout (/mello edit): drag anything, the wheel resizes, right-click for exact numbers, and it snaps to its neighbours. Nothing sticks until you Save; action bars go to Edit Mode.",
 		"The Quest Log and the Quest List match: the same rows, fonts, round bullets and Classic or Forever stamps, in dark ink on parchment.",
 		"A new voice pack, MelloUI_VoicePack, voices every quest, greeting and book, one voice per NPC. It is a separate download that replaces the old pack.",
-		"Books, letters and plaques are read aloud page by page (Read Books And Letters Aloud). The Quest List has the 19 quests with Test in their names back.",
+		"Books, letters and plaques are read aloud to the last page, even as you walk on (Read Books And Letters Aloud). The Quest List has the 19 quests with Test back.",
 		"/mello on its own opens this window again. New files: restart the game once after updating.",
 	} },
 	{ version = "0.14.0", lines = {

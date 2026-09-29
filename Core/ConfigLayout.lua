@@ -78,7 +78,9 @@ local MelloUI = ns.MelloUI
 local L = {}
 MelloUI.ConfigLayout = L
 
-L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Advanced" }
+-- (Text-to-Speech: Voice Over's text-to-speech voices, speed and volume, the
+-- user 2026-09-29; the other pages have no row there, so they never show it)
+L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-to-Speech", "Advanced" }
 
 L.groups = {
 	{ entries = { "Home" } },
@@ -537,23 +539,26 @@ function L.Define(R, Link)
 	R("VoiceOver", "Reading", "Behaviour", "VoiceOver.queueLines")
 	R("VoiceOver", "Reading", "Behaviour", "VoiceOver.stopOnClose")
 	R("VoiceOver", "Reading", "Behaviour", "VoiceOver.stopOnMove")
-	R("VoiceOver", "Voices", "Sound", "VoiceOver.maleVoice")
-	R("VoiceOver", "Voices", "Sound", "VoiceOver.femaleVoice")
-	R("VoiceOver", "Voices", "Sound", "VoiceOver.rate")
-	R("VoiceOver", "Voices", "Sound", "VoiceOver.volume")
-	R("VoiceOver", "Voices", "Sound", "VoiceOver.raceProfiles")
-	R("VoiceOver", "Voices", "Sound", "VoiceOver.profileStrength")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_human")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_elf")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_dwarf")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_gnome")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_orc")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_troll")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_tauren")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_undead")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_goblin")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_ogre")
-	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_monster")
+	-- (text-to-speech only: a recorded line keeps its own voice, pace and
+	-- volume, so these sleep while Read Unvoiced Lines is off -- a click on
+	-- one jumps to it; the race pitch and speed profiles are gone, user
+	-- 2026-09-29)
+	local TTS = { gate = "VoiceOver.speakUnrecorded" }
+	R("VoiceOver", "Voices", "Text-to-Speech", "VoiceOver.maleVoice", TTS)
+	R("VoiceOver", "Voices", "Text-to-Speech", "VoiceOver.femaleVoice", TTS)
+	R("VoiceOver", "Voices", "Text-to-Speech", "VoiceOver.rate", TTS)
+	R("VoiceOver", "Voices", "Text-to-Speech", "VoiceOver.volume", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_human", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_elf", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_dwarf", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_gnome", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_orc", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_troll", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_tauren", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_undead", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_goblin", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_ogre", TTS)
+	R("VoiceOver", "Voices", "Advanced", "VoiceOver.voice_monster", TTS)
 	R("VoiceOver", "Sound Packs", "General", "VoiceOver.soundPacks")
 	R("VoiceOver", "Sound Packs", "General", "VoiceOver.speakUnrecorded")
 	R("VoiceOver", "Sound Packs", "General", "VoiceOver.preferRecordings")
