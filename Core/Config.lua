@@ -5380,7 +5380,7 @@ end
 -- close button otherwise. Its tooltip is Edit Layout's own text
 -- (MelloUI.EditLayout.TEXT.desc) when it gives one. /mello edit is its
 -- slash command (below).
-local EDIT_LAYOUT = { name = "Edit Layout", new = "0.15.0",
+local EDIT_LAYOUT = { name = "Edit Layout",
 	desc = "Move and size MelloUI's windows and bars on the screen itself. Closes the configurator while you edit." }
 local EditLayoutClick = Shared("OnClick on the configurator's Edit Layout", function()
 	if type(MelloUI.StartEditLayout) == "function" then

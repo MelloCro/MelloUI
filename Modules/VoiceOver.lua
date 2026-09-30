@@ -102,13 +102,13 @@ local options = {
 	  desc = "The text an NPC greets you with when you talk to them." },
 	{ type = "toggle", key = "questDetail", name = "Quest Offers",
 	  desc = "The quest description when a quest is offered." },
-	{ type = "toggle", key = "recordedObjectives", name = "Quest Objectives", new = "0.15.0",
+	{ type = "toggle", key = "recordedObjectives", name = "Quest Objectives",
 	  desc = "After a quest offer, and after the description the quest log's Read button reads, play the quest's objectives in the quest giver's voice when the voice pack (MelloUI_VoicePack) has them recorded. Text-to-speech never reads the objectives or their counts." },
 	{ type = "toggle", key = "questProgress", name = "Quest Progress",
 	  desc = "What the NPC says when you return with an unfinished quest." },
 	{ type = "toggle", key = "questComplete", name = "Quest Turn-In",
 	  desc = "What the NPC says when you hand in a completed quest." },
-	{ type = "toggle", key = "readBooks", name = "Read Books And Letters Aloud", new = "0.15.0",
+	{ type = "toggle", key = "readBooks", name = "Read Books And Letters Aloud",
 	  desc = "Read a book, letter, note, plaque or sign aloud when you open it: the whole book, from the page you open to the last, with no page turning, and it goes on when you close it or walk away. Turning a page reads on from that page; Stop ends it. The narrator's recordings come from the voice pack (MelloUI_VoicePack); without it only the page you see is read, with text-to-speech when Read Unvoiced Lines is on." },
 	-- (text-to-speech only: a recorded line keeps its own voice, pace and
 	-- volume, so the Configurator dims these while Read Unvoiced Lines is off)

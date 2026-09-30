@@ -45,7 +45,7 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 	enabledByDefault = true,
 	defaults = { marks = true },
 	options = {
-		{ type = "toggle", key = "marks", name = "Elite and Rare Marks", new = "0.15.0",
+		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
 	},
 })

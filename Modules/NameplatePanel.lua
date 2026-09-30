@@ -52,7 +52,7 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 			{ value = "plate", label = "Whole plate" },
 			{ value = "off", label = "Off" },
 		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the UI Shade also follows the plate's own shape, round the level circle, the end gems and along the bar (it needs the UI Shade on, Look). Off: no shade. How dark it is: the UI Shade's Shade Strength." },
-		{ type = "toggle", key = "marks", name = "Elite and Rare Marks", new = "0.15.0",
+		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "Elites, rares, rare elites and bosses stand out: a small crest before the name (a crown, a silver star, a gold star or a skull) and the left end cap and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss." },
 	},
 })
