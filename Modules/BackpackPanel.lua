@@ -13,7 +13,9 @@
 --   the Configurator, the icons filling them, empty slots on the
 --   chosen background, the game's quality border kept on the icon (the rim untinted —
 --   user, 2026-09-21), every item's quality gem in its slot's corner (Quality
---   Gems, Kit:ItemGem; user, 2026-09-26); the search box S1; the sort button on the cog; the
+--   Gems, Kit:ItemGem; user, 2026-09-26), a poor item's icon grey (Grey Out
+--   Junk, 0.16.0), a special bag's rims in its bag type's colour (0.16.0,
+--   TintSlot); the search box S1; the sort button on the cog; the
 --   money strip on the header plate (B2), its frame raised above the rims.
 -- The item buttons are re-acquired and re-laid by the game on every open
 -- (UpdateItemLayout): skinned from that post-hook. Covers the Dark Mode
@@ -54,7 +56,7 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 	window = { label = "Bags", desc = "The backpack and bag windows in the kit.", tab = "Windows", order = 11,
 		frames = { "ContainerFrameCombinedBags" }, plainGrab = true },
 	enabledByDefault = true,
-	defaults = { itemBackground = "stone", windowBackground = "concrete", qualityGems = true },
+	defaults = { itemBackground = "stone", windowBackground = "concrete", qualityGems = true, greyJunk = true },
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
 		  desc = "What the bag windows show behind the items: cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
@@ -62,6 +64,8 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 		  desc = "What an empty bag slot shows inside its rim. Both are chosen with pictures on Windows > Bags. The slots' rim is the Button Border (Look > Borders, every window's)." },
 		{ type = "toggle", key = "qualityGems", name = "Quality Gems",
 		  desc = "A small gem in the top-left corner of every item in your bags, the bank and the guild bank, in the colour of the item's quality: grey for junk, white for common, then green, blue, purple and orange. Junk and better items stand out at a glance. While the game shows its own mark in that corner (the junk coin at a merchant, the upgrade arrow, the exclamation mark on an item that starts a quest, the quality badge on a crafting reagent), the gem moves to the top-right corner. One switch for all three windows." },
+		{ type = "toggle", key = "greyJunk", name = "Grey Out Junk", new = "0.16.0",
+		  desc = "Junk (grey quality) items show grey in your bags, the bank and the guild bank, so they stand apart from what you keep. One switch for all three windows." },
 	},
 })
 
@@ -231,6 +235,136 @@ local function FadeSlotBackground(region, plain)
 	end
 end
 
+-- A special bag's slots (a mining pack, an herb bag, a quiver ...) wear
+-- their bag type's colour on the rim (user, 2026-09-30: "those slots usually
+-- ... have a different color slot borders ... ours have the same color";
+-- pick C of BuildData/output/bag_family_sketch, only the border): the rim
+-- itself grey-toned and tinted with the bag type's colour
+-- (MelloUI.Meaning.bagFamily; as the loot rolls' rims wear their quality),
+-- and two copies of its own art added over it for the metal's light (the
+-- kit's rims are dark iron, a mean grey of 0.2: tinted alone the colour went
+-- near black; 2.5 times its light is the sketch's). The copies follow the
+-- rim's art (its hover and press, the Button Border, Kit Colours: each comes
+-- through the rim's SetTexture / SetTexCoord) and its show and hide. Made the
+-- first time a slot sits in such a bag and kept with the rim, in tables of
+-- this file's (nothing on the game's button); the rim back to its own look
+-- in a normal bag and while the skin is off. The bag type read once per bag
+-- per layout (the bag slots' own family, GetContainerNumFreeSlots).
+local LIGHT = { 1, 0.5 }                             -- the copies' strengths (the rim's 1 + 1 + 0.5 = 2.5x)
+local lights = setmetatable({}, { __mode = "k" })   -- [rim] = its light copies
+local tinted = setmetatable({}, { __mode = "k" })   -- [rim] = true while it wears a bag type's colour
+local familyOf = {}                                -- [bag ID] = its type's colour this layout (false: none)
+local familyBits = nil                             -- the bag types, lowest bit first (listed at the first read)
+
+local function FamilyBits()
+	if not familyBits then
+		familyBits = {}
+		for bitValue in pairs(MelloUI.Meaning.bagFamily) do
+			familyBits[#familyBits + 1] = bitValue
+		end
+		table.sort(familyBits)
+	end
+	return familyBits
+end
+
+local function BagColour(bag)
+	if not bag or bag == 0 then
+		return false   -- (the backpack itself: a normal bag)
+	end
+	local c = familyOf[bag]
+	if c == nil then
+		c = false
+		local C = C_Container
+		if C and C.GetContainerNumFreeSlots then
+			local ok, _, family = pcall(C.GetContainerNumFreeSlots, bag)
+			family = ok and SafeNumber(family) or nil
+			if family and family > 0 then
+				local bits = FamilyBits()
+				for i = 1, #bits do
+					local b = bits[i]
+					if bit.band(family, b) ~= 0 then
+						c = MelloUI.Meaning.bagFamily[b]
+						break
+					end
+				end
+			end
+		end
+		familyOf[bag] = c
+	end
+	return c
+end
+
+local function Lights_Shown(rim)
+	local list = lights[rim]
+	local on = (tinted[rim] and rim:IsShown()) and true or false
+	for i = 1, #list do
+		list[i]:SetShown(on)
+	end
+end
+local function Lights_Texture(rim, ...)
+	local list = lights[rim]
+	for i = 1, #list do
+		list[i]:SetTexture(...)
+	end
+end
+local function Lights_TexCoord(rim, ...)
+	local list = lights[rim]
+	for i = 1, #list do
+		list[i]:SetTexCoord(...)
+	end
+end
+
+local function Untint(rim)
+	tinted[rim] = nil
+	rim:SetDesaturated(false)
+	rim:SetVertexColor(1, 1, 1)
+	Lights_Shown(rim)
+end
+
+local function TintSlot(button)
+	local rep = button.melloRep
+	local rim = rep and rep.object
+	if not (rim and rim.owner and rim.kitName) then
+		return
+	end
+	local c = active and BagColour(SafeCall(button, "GetBagID")) or false
+	if not c then
+		if tinted[rim] then
+			Untint(rim)
+		end
+		return
+	end
+	local list = lights[rim]
+	if not list then
+		list = {}
+		local layer, sub = rim:GetDrawLayer()
+		for i = 1, #LIGHT do
+			-- (above the rim; beside its glow, which adds as these do)
+			local t = rim.owner:CreateTexture(nil, layer or "OVERLAY", nil, math.min((sub or 0) + 1, 7))
+			t:SetAllPoints(rim)
+			Kit:Apply(t, rim.kitName)
+			t:SetDesaturated(true)
+			t:SetBlendMode("ADD")
+			t:SetAlpha(LIGHT[i])
+			t:Hide()
+			list[i] = t
+		end
+		lights[rim] = list
+		hooksecurefunc(rim, "SetTexture", Lights_Texture)
+		hooksecurefunc(rim, "SetTexCoord", Lights_TexCoord)
+		hooksecurefunc(rim, "Show", Lights_Shown)
+		hooksecurefunc(rim, "Hide", Lights_Shown)
+		hooksecurefunc(rim, "SetShown", Lights_Shown)
+	end
+	for i = 1, #list do
+		list[i]:SetVertexColor(c[1], c[2], c[3])
+	end
+	tinted[rim] = true
+	rim:SetDesaturated(true)
+	rim:SetVertexColor(c[1], c[2], c[3])
+	Lights_Shown(rim)
+end
+
 local function SkinItems(frame)
 	local pool = frame.itemButtonPool
 	if not pool then
@@ -249,6 +383,9 @@ local function SkinItems(frame)
 	end
 	local outer = not skinning
 	skinning = true
+	if outer then
+		wipe(familyOf)   -- (a bag may have been swapped since the last layout)
+	end
 	local pitch = ItemPitch(buttons, count)
 	local rimRule, plainFade = nil, nil
 	for i = 1, count do
@@ -283,6 +420,7 @@ local function SkinItems(frame)
 			end
 			FadeSlotBackground(button.ItemSlotBackground, plainFade)
 		end
+		TintSlot(button)
 	end
 	if outer then
 		skinning = false
@@ -538,6 +676,9 @@ local function Deactivate()
 	end
 	for _, region in ipairs(skin.slotBgs) do
 		Kit:Unfade(region)
+	end
+	for rim in pairs(tinted) do
+		Untint(rim)
 	end
 	Kit:Uncover("backpack")
 end

@@ -37,7 +37,7 @@
 -- no ID (system messages, other addons' lines: they cannot be found). Lines
 -- sharing an ID: see Older below.
 --
--- Setting: Tweaks centreTextShade, Centre Text Shade (on), read when used
+-- Setting: Tweaks textShade, Text Shade (on; 0.16.0: one with the zone text's and the Route's), read when used
 -- like the notice's; Outlined Text (noticeOutline) covers these lines too.
 -- The strength is the notice's, fixed. Off is the game's own look: every
 -- band hidden, the error frame and each raid warning line back on its font
@@ -230,7 +230,7 @@ end
 -- loaded (restart). Before the first message nothing is made: that message
 -- builds
 local function Refresh()
-	if Look.Setting("centreTextShade") then
+	if Look.Setting("textShade") then
 		if state.built then
 			StyleOn()
 		end
@@ -243,7 +243,7 @@ local function OnSetting(module, key)
 	if module ~= "Tweaks" then
 		return
 	end
-	if key == "centreTextShade" then
+	if key == "textShade" then
 		Refresh()
 	elseif key == "noticeOutline" and state.on then
 		StyleOn()
@@ -253,7 +253,7 @@ end
 -- a message while the look is off: on now if the setting wants it (the
 -- first one builds: the listeners, the look). false: not wanted
 local function Start()
-	if not (MelloUI.initialized and Look.Setting("centreTextShade")) then
+	if not (MelloUI.initialized and Look.Setting("textShade")) then
 		return false
 	end
 	if not state.built then

@@ -86,8 +86,6 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "slider", key = "width", name = "Width", min = 0, max = 600, step = 10,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
 		  desc = "How wide the tracker is when it does not match the minimap's width. Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
-		{ type = "slider", key = "scale", name = "Scale", min = 0.6, max = 1.6, step = 0.05, percent = true,
-		  desc = "The size of the whole tracker, text and frame together." },
 		{ type = "slider", key = "textSize", name = "Text Size", min = 10, max = 20, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "The size of the quest titles and the section headers; the objectives are one size smaller." },
@@ -2660,7 +2658,7 @@ local function Build()
 	if MelloUI.RegisterMover then
 		moverEntry = MelloUI:RegisterMover(frame, header, {
 			label = "Quest Tracker", page = "QuestTracker", anchor = "TOPRIGHT", placeholder = true,
-			min = 0.6, max = 1.6,   -- the Scale slider's range
+			min = 0.6, max = 1.6,   -- (its size: this wheel's, kept in M.db.scale; 0.16.0: the Scale slider is gone)
 			when = function()
 				return M.isEnabled and true or false
 			end,

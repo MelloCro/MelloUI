@@ -44,7 +44,7 @@ I re-recorded the whole interface. Clicks, pages, pouches, buckles, coins, whisp
 
 Every quest offer, progress line, turn-in and greeting is read out loud (and with the voice pack, the objectives too), and so are the pages of books, letters, plaques and signs. With the voice pack every NPC keeps one voice for all of its lines; without it, the game's text-to-speech picks a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
 
-- A little overlay on a scroll shows who's talking, with subtitles.
+- A small widget shows who's talking: their face, the line, and a gold ring that fills as it plays, with the time left (a book: the whole book). Point at it for Pause, Skip, the lines waiting and the padlock; subtitles if you like.
 - Every quest, every greeting and the books voiced, with the free voice pack below.
 - No voice pack? The game's own text-to-speech kicks in (it needs a voice installed in the Windows speech settings). Works out of the box.
 - Forgot what a quest was about? Open your quest log, hit Read, done.
@@ -64,7 +64,7 @@ It comes in two parts, and you need both.
 
 - **Quest List:** every quest in the zone next to your map. Who gives it, where they stand, what's left to do, how much of the zone you've finished. Filters for dungeons, raids, class quests, attunements, events.
 - **Pins for everything:** quest givers, hand-ins, dungeon doors, boats, zeppelins, flight masters. Click a door to see its quests, click a boat to get routed to the dock.
-- **Smart Route:** a trail of gems along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
+- **Smart Route:** a trail of red dots along real roads to wherever you're going, plus an arrow. Cut a corner or take a shortcut? It just keeps going instead of nagging you to turn around. It learns the roads you walk.
 - **Service Finder:** need a mailbox, a repair guy, an inn, a trainer? Little icons under the minimap. Click one, the arrow takes you to the nearest.
 - **Nearest quest first:** MelloUI's Quest Tracker sorts your quests by distance, shows how far each one is and who takes a finished quest back.
 - **Quest tooltips:** an item your quest needs shows your progress; an NPC says "Turn in here" when your quest is ready for them.
@@ -78,6 +78,10 @@ It comes in two parts, and you need both.
 - **Chat:** short channel tags, class colours, input box on top if you want it, one background opacity for every chat window.
 - **Auto-vendor:** sells your greys and repairs your gear the moment you talk to a merchant.
 - **Quality Gems:** every item in your bags, the bank and the guild bank wears a small gem in its quality's colour (grey junk, white common, then green, blue, purple, orange), so junk and loot worth keeping jump out at a glance. Windows > Bags (the Bank and the Guild bank too).
+- **Grey Out Junk** (0.16.0, on): junk (grey quality) items show grey in the same three windows; the
+  game's own grey for an item you picked up does not take it off.
+- **Special bags** (0.16.0): the slots of a profession or ammo bag (mining, herbs, enchanting, a quiver, a soul
+  bag ...) wear their bag type's colour on the slot border, so you see at a glance which slots take what.
 - **And:** cooldown numbers on buttons, clean dark tooltips, CC and quest icons on nameplates, FPS and latency, hidden micro menu and bag bar, class medallions on portraits.
 
 ## 🧺 Errands, handled
@@ -87,7 +91,10 @@ A small round button beside your portrait taps you on the shoulder, then tucks i
 - **Restock** keeps a list per character (drink, food, arrows or bullets, reagents) and reminds you before you run dry.
 - In an inn or a city every reminder stays up until it is done (restocked, a mailbox opened, gear repaired, your new spells or a profession's next rank learned) or you leave.
 - At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
+- Bags almost full, talent points to spend and Well Fed running out get the same little button.
 - It all lives on the **Reminders** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
+
+And what needs you *right now* shows up as small widgets in one column, each with a gold ring for its time: loot rolls (Need, Greed, Pass right there), the way back to your corpse, a timed quest's clock, summons and resurrect offers (Accept or Decline), ready checks, whispers (Reply opens the conversation), a hungry pet (Feed Pet), outbid / sold / won at the auction house, your crafting batch ("Crafting 12 of 20") and a profession cooldown that's ready again. Voice Over lives there too, always at the bottom: nothing moves what's being read, and a fight never stops it. Loot rolls, summons and ready checks sit right above it; at most four show at once (**Most Widgets Shown**), the rest wait in a slim "+2 more" row you can click open, and whispers or the auction house step aside in a fight and come back after. Move and size the column in Edit Layout; each one has its switch on the Reminders page's **Widgets** tab.
 
 ## 🧭 Set up in a minute
 
@@ -308,6 +315,13 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   which the game's own per-character value cannot. While it is on, the game's opacity slider on
   a chat tab changes it for every window; off, MelloUI never writes the opacity and the windows
   keep what they have.
+- Whisper Popup Window: each conversation gets a small window of its own. Its header has four
+  buttons (0.16.0): Add Friend, Invite To Group, Ignore (it asks first) and Report. Report opens
+  the game's own report window for their last whisper; it is the chat's own "report this line"
+  link, clicked through the chat frame's own handler, so the game lets the report be sent. A
+  button dims when there is nothing to do (a friend already, in your group, ignored, no whisper
+  from them yet) and its tooltip says why. A Battle.net conversation has Invite (while they play
+  this game) and Report.
 
 ### Names
 
@@ -332,7 +346,20 @@ Control" nameplate aura option must be on. Also adds a yellow quest marker left 
 bar on enemies that still count for an unfinished quest objective (Forever's default
 nameplates have no quest icon), read from the unit tooltip data.
 
-With the reskin's Nameplate Kit on, the name above each health bar sits on a soft dark band, as long
+**Threat Line** (on, 0.16.0; Nameplates > Plates): in a group fight, a thin bar along the bottom of
+an enemy's health bar -- in the groove of the Nameplate Kit's lower rail, the bracket its outline;
+without the kit along the bar's bottom edge with a thin dark edge -- fills toward the point
+where the mob would turn on you: gold while safe, amber from 80 % of the pull, red once it is on
+you. For a tank (the TANK role, else Defensive Stance or a bear form) it is gold while the mob is on
+you and red when it is not. No number, nothing else. Where the game keeps the numbers secret (in
+the open world it often does for a nameplate) the bar takes the secret value itself: the game draws
+it, MelloUI never reads it, and its colour follows the threat state while that is open (gold when
+that is secret too). Solo, out of a fight and on friendly plates it stays away. One reader with the
+Threat widget: Core/Threat.lua.
+
+With the reskin's Nameplate Kit on, the level circle sits on the right end's diamond and covers it (0.16.0: the game's
+level frame stays where the game lays it; only its circle, number and target ring move onto the diamond), and the
+name is centred on the bracket, gem to gem. The name above each health bar sits on a soft dark band, as long
 as the name, that fades out at its ends (Name Shade: Name, the default). Whole plate adds a soft shadow that follows
 the plate's own shape: round the level circle, round each end gem and along the bar, in every
 Nameplate Border look; this needs the UI Shade and its Shade: Nameplates switch on (Look >
@@ -508,14 +535,19 @@ in the vanilla data. Re-run it now and then to fold in newly met NPCs.
 
 Lines are queued and read one after another (a greeting finishes before the quest offer that
 follows it; greetings never wait behind quest lines), advancing on the client's playback
-finished event. An overlay in the style of the VoiceOver addon shows the speaking NPC's 3D
-portrait with its talk animation, the NPC name, the line being read and up to three waiting
-lines. Click a line to skip or remove it, hover the portrait for pause, use the button next to
-the name to stop or skip. The frame can be dragged, locked with the padlock in its corner (or
-the option), scaled, reduced to a thin bar without the portrait, and can show the text as
-subtitles: the line is split into sentences packed into pages of three lines, and the page
-turns as the playback advances, so nothing is ever cut off. The overlay textures come from
-the VoiceOver addon (`Media\Textures\VoiceOver`, Unlicense).
+finished event. The **widget** (0.16.0; one row of the widget column, see Widgets below; it
+replaced the 600 x 200 overlay) shows the speaking NPC's 3D face in the round rim, playing its
+talk animation (the book for a page or an object, and with 3D Portrait off), the NPC's name, the
+line with its kind's bullet, and a gold ring round the face that fills as the line plays: a voice
+pack line by its clip's exact length, a text-to-speech line by the estimate (its time with a
+"~"), a book as the whole book ("Page 2 of 5 · 1:52 left"). The count is the lines waiting.
+Paused, the ring stops and dims and the face goes dark under a pause glyph (a resume starts the
+line again). Point at it for its buttons: Pause / Resume (a click on the face too), Skip (Stop
+when nothing waits; it ends a book too), Lines (the tray: every line's length and "3 lines: 0:39
+left in all"; a click skips the one being read or takes a waiting one out) and the padlock (Lock
+The Widgets). Right-click stops. Subtitles show the text under the line in pages that fit (split
+at sentences), turning as the voice goes on. The kind bullets and the book come from the
+VoiceOver addon (`Media\Textures\VoiceOver`, Unlicense).
 
 **The voice pack.** `MelloUI_VoicePack` (0.15.0; a separate, load-on-demand addon, downloaded in
 two parts from the v0.15.0 release) gives every NPC one voice for all of its lines. Its one index,
@@ -614,9 +646,9 @@ plaques and signs (the game's item text window) in a narrator's voice, and it re
 book: the page you open, then every page after it in order, each one as the page before ends, with
 no page turning. Closing the book, or walking away so the game closes it, does not stop it.
 Turning a page by hand reads on from that page, opening another book reads that one instead, and
-Stop (the overlay's button with nothing waiting, `/vo stop`) ends it; `/vo skip` or a click on the
-line skips to the next page. The overlay's line says which page is read ("Page 2 of 7") under the
-book's name. A page opened while a quest line is read waits for it, as before; a quest line opened
+Stop (the widget's button with nothing waiting, `/vo stop`) ends it; `/vo skip`, the widget's Skip
+or a click on the line in its tray skips to the next page. The widget's line says which page is
+read ("Page 2 of 7") under the book's name, and its ring covers the whole book. A page opened while a quest line is read waits for it, as before; a quest line opened
 while a page is read comes after that page, then the book goes on. The pages come from the voice
 pack: its index keeps each book's pages in reading order (`P.readPages`), and when two books share
 a name, the page's words, its number and whether the window shows a next page tell which one is
@@ -750,9 +782,9 @@ your character has discovered are used). A route is the cheapest way through tha
 seconds, with straight legs to reach it; where nothing has been learned yet it is a straight
 line. Routes may cross continents: walk to the dock, boat, walk.
 
-The route is drawn as a chain of small gems like the taxi map: gold along paths you have
-walked or that were traced from the map, pale blue where the route is a straight guess, green
-for a flight leg. On the minimap the
+The route is drawn as a chain of red dots (0.16.0; small gems before): solid along paths you
+have walked or that were traced from the map, paler and farther apart where the route is a
+straight guess, smaller and farther apart for a flight or a boat leg. On the minimap the
 nearby part is drawn the same way, clipped to the minimap's shape. A direction arrow (the
 minimap's own player arrow at double resolution, top centre of the screen by default, drag to
 move, `/route arrow reset`) points along the next leg relative to where you face, with the
@@ -760,11 +792,12 @@ remaining distance and about how long the rest of the way takes ("1.2 km · abou
 the destination's name and icon under it. Every new destination shows
 a line in MelloUI's on-screen notice (see Tweaks: On-screen Notices) with the client's
 super-track chime ("Tracking quest giver Marshal McBride for Kobold Camp Cleanup, 240 yd away"),
-and arriving shows "Arrived" with a softer sound; "Route Announces" and "Announce Sound" switch
-Route's lines and their chime. Within 25 yards of a pin the
+and arriving shows "Arrived" with a softer sound; On-screen Notices and Notice Sounds switch
+Route's lines and their chime, as every notice's. Within 25 yards of a pin the
 route ends and the pin is cleared; near a quest objective the drawing pauses but the
-destination stays. Options: the two drawings, the distance text, the travel time, the text shade, the arrow and
-its size, Route Announces and its sound, marker size, arrival distance, and learning on or off.
+destination stays. Options: the two drawings, the dot size, the distance text, the travel time, the arrow, the
+World Marker and its beam, arrival distance, the flight help, and learning on or off (the text shade is Look's one
+Text Shade, the arrow's size Edit Layout's).
 
 Travel Time (on by default) puts the time beside the distance under the arrow and on the World
 Marker's gem ("under a minute" near the end), in the tracking notice ("Tracking Stormwind:
@@ -781,8 +814,9 @@ soft shade behind the direction arrow and the marker's edge arrow. The distance 
 minimap has no shade. Off, the name line is 180 wide again, a longer name cut.
 
 World Marker (on by default; 0.15.0 states): a gem hung on the game's own navigation point over
-the destination. Far away it is a *beacon*: the gem with the red Light Beam rising from it and
-the distance and travel time under it, faint while it stands in the middle of the screen, where
+the destination. Far away it is a *beacon*: the gem with the red Light Beam rising from it (a
+ring of light on the ground at its foot, the gem lit red by it; 0.16.0) and the distance and
+travel time under it, faint while it stands in the middle of the screen, where
 your character is. Within 100 yards it becomes the *pin*: the beam fades out on the way in, the
 gem lands on the place with a small pop and stays on top of the NPC, object or item's source
 until it is done (never faint). Off screen, an arrow beside your character points the way to
@@ -795,8 +829,8 @@ little inside on the way back, the middle of the screen, and the area's border (
 yards out of it, or after 3 seconds).
 
 The first route of a session waits a few seconds while the road data loads: meanwhile the
-on-screen notice says "Loading navigation..." (a Route line: Route Announces and the notice's
-own switches apply, no sound) and the direction arrow breathes, turning slowly round while it
+on-screen notice says "Loading navigation..." (a Route line: the notice's own switches apply,
+no sound) and the direction arrow breathes, turning slowly round while it
 has nothing to point at yet (with Reduce Motion on it is not shown until it has); both go the
 moment the route is ready. A load the game puts off until a fight is over says nothing until
 it really starts.
@@ -807,7 +841,7 @@ says where it flies and about how long it takes ("Route: fly to Sentinel Hill ·
 in the palette's gold on the soft text shade; a small gem pulses on that flight point's button,
 never on the picture. Pointing at a flight point adds its flight time to the tooltip ("Flight
 time: about 1:16"), and "Your route flies here" on the wanted one. *Landing Countdown:* once you
-take off, Route Announces says "Flying to Sentinel Hill, about 1:16", and the Direction Arrow
+take off, the on-screen notice says "Flying to Sentinel Hill, about 1:16", and the Direction Arrow
 (when it is on) points at the landing, also with no route set, counting down ("Landing at
 Sentinel Hill in about 0:52", then "soon"); on landing it says "Landed at Sentinel Hill (1:22)"
 and the arrow goes back to the route. Flight times come from your own timed flights first
@@ -818,7 +852,7 @@ then a straight line at flying speed.
 Skyborne start): Route takes such a map as its own continent, so you are placed, routed and
 served there like anywhere else. Where the game gives no position at all, Route says "Route
 can't place you on this map (<name>), so there is no route from here." once per map and
-session (not in instances or on flights, and only with Route Announces on), and `/route`
+session (not in instances or on flights, and only with On-screen Notices on), and `/route`
 names your map and why.
 
 Learned paths live in the `MelloUIRoutes` saved variable, which the game saves at logout and on
@@ -861,7 +895,7 @@ game saves what was learned at logout and on every `/reload`; the baker picks it
 the counts, `/route quest` what the client reports for the tracked quest, `/route clear`
 drops the route and the pin, `/route reset confirm` wipes the learned paths. Other modules
 route through `MelloUI.Route`: `SetDestinationTo`, `DistanceTo`, `Cheapest` and `Notify`
-(Route's own lines, under Route Announces); `Where` and `WantWhere` with the bus topic `where`
+(Route's own lines, through the on-screen notice); `Where` and `WantWhere` with the bus topic `where`
 (where the player is, every 2 seconds while someone wants it and only after 10 yards of
 movement: the Quest Tracker's distances and the reminders' reach), `WorldYards`,
 `ObjectivePlaces`, `ItemFirst` (what to do first for an objective whose needed item is not in
@@ -938,8 +972,10 @@ every module):
 
 A new reminder comes up with a short line beside the button and goes after **Show For** (8 s,
 4-20; held while the pointer is on it). **Stay Up In Rest Areas** (on, one switch for all four):
-in an inn or a city every reminder stays up until it is done (restocked, a mailbox opened, gear
-repaired, your new spells or the profession's rank learned) or you leave; switched on
+in an inn, a city or a town every reminder stays up until it is done (restocked, a mailbox opened, gear
+repaired, your new spells or the profession's rank learned) or you leave. A town (0.16.0) is a
+named subzone with an innkeeper or a flight master within 200 yards (the Services' own places, looked
+at each time the subzone changes), so Sentinel Hill or Lakeshire count as a whole; switched on
 there, the ones waiting come back at once; off, they come and go there too. Several at once
 show as one button with a count, the most urgent on it
 (broken gear, Restock, Repair Gear, New Mail, Trainer); the tooltip lists them all, and pointing at the
@@ -960,7 +996,78 @@ For modules: `MelloUI.Reminders` (Core/Reminders.lua) is the one widget. `Rem:Re
 with a key, `check(key, why) -> active[, reach]`, an icon, `text`, `urgency`, the events that
 matter (`when`), `onClick`, `persistent`, a Services `kind` for the reach and the target;
 `Rem:Refresh(key[, raise])`, `Rem:Dismiss(key, untilWhat)`, `Rem:State(key)`, `Rem:Act(key)`;
-the bus topic `reminder` (key, active, up).
+the bus topic `reminder` (key, active, up). A spec with `column = true` is a row of the widget
+column instead (0.16.0): `title` (and its colour), `model` / `portrait` / `icon` for the face,
+`progress` (start, duration, pausedAt: the gold ring, a Cooldown swipe run by the engine) or
+`fraction`, `time`, `count`, `sub`, `actions` (the hover buttons; `secure` for a macro run with
+the player's own click), `tray` and `rightClick`, `combat = false` to fold while in combat,
+`priority` ("now", "ongoing", "wait": the order and what folds first), `bottom` (Voice Over's slot)
+and `compact` (only the face and ring in combat); `Rem:Tray(key[, open])`. Core/Reminders.lua's "The column" header has the whole contract.
+
+### Widgets
+
+The widget column (0.16.0): small live widgets in one column beside the screen's middle, each a
+row with a face in the round kit rim, two lines on a soft band, a gold ring for its time and buttons
+that slide out on hover. Right-click puts one away until something new happens.
+
+Its order, bottom first: Voice Over (the bottom place: no other widget moves what is being read,
+and a fight never stops it; **Compact In Combat**, on by default, shrinks it to the face and ring
+while you fight), then the ones that need an answer now (loot rolls, summons, resurrect offers,
+ready checks), then the ongoing ones, then the ones that can wait (whispers, the auction house,
+profession cooldowns); within each, the older lower, so a new widget only moves the ones of a lower
+priority. **Most Widgets Shown** (Reminders > Widgets, 4; 2 to 6) caps the rows: the rest fold into
+a slim "+2 more" row on top with their small faces, and a click there lists them (a click acts, a
+right-click puts one away). A "now" widget always shows. In a fight whispers, the auction house,
+profession cooldowns, Feed Pet and crafting fold too and come back where they were after it, with
+no sound.
+Move and size the column in Edit Layout ("Widgets"), or, while the widgets are unlocked, drag any
+widget; **Lock The Widgets** (Reminders > Widgets, and Voice Over's padlock) keeps it where it is.
+`/mello widgets` lists what the column holds now (each widget, what shows, where) in the copy
+window, for a report. Voice Over is one of its rows; the rest are
+the **Widgets** module's (Modules/Widgets.lua), each with its switch on the Reminders page's
+Widgets tab:
+
+- **Loot Rolls:** the item in its quality colour, the ring the roll's time, Need / Greed / Pass
+  (Need only when it can be needed); the count is the rolls waiting. While it is on, the game's
+  own roll windows still open and close but draw nothing and take no clicks (hiding them from an
+  addon would lay out the bottom of the screen as the addon's code: blocked in a fight); with the
+  Gamepad UI they stay.
+- **Threat** (0.16.0): only in a group fight and only when it matters. A damage dealer or healer
+  close to pulling their target sees the mob's face, "86% of <the tank>'s threat" and "Ease off"
+  (amber); once it is on them "It is attacking you" and "Aggro" (red); it stays until the threat
+  falls under 70 % (no flicker at the edge). A tank sees "2 mobs not on you", the first one and who
+  it is on, and your threat on it. The ring is your threat against the pull; point at it (or its
+  list button) for the group's threat on your target, highest first, the tank marked. Where the game
+  hides the numbers (a boss): "Close to pulling", no ring. A "now" widget: it never folds.
+- **Corpse Run:** as a ghost, how far your body is and which way, the ring the corpse recovery
+  delay; a click shows the way (Route).
+- **Timed Quests:** the quest's name and first objective, the ring its whole time limit.
+- **Summons / Resurrect Offers:** who and where, the time left, Accept / Decline. While on, the
+  game's own popup still opens, times out and answers as the game has it, but is see-through and
+  click-through (not hidden: hiding a game popup from an addon froze Escape in 0.15.0); it still
+  takes a popup's place, so another popup shows below it. With the Gamepad UI it stays visible. At
+  your body the Corpse Run widget has Resurrect, and the game's Resurrect popup is see-through too.
+- **Ready Checks:** the leader's check and its time, Ready / Not Ready on it (a click on the face:
+  Ready). While it is on, the game's ready check box no longer opens (it stops listening for
+  READY_CHECK); with the Gamepad UI it stays. Your own check shows nothing.
+- **Whispers:** the sender in their class colour, the last line (when it can be read), the unread
+  count; Reply opens their whisper window (Chat's Whisper Popup Window on). While it is on, a
+  whisper to a conversation whose window is not open shows only the widget; a window that is open
+  takes the line and no widget comes up.
+- **Hunter Pet:** a pet that is not happy, its face, the ring its happiness, Feed Pet (then click
+  a food; out of combat).
+- **Auction House:** outbid, sold, won and expired in one list (the tray), heard from the auction
+  house's own notices (this client sends no system message for them); a click shows the way to the
+  nearest mailbox, and opening one clears it. A sale while you were offline comes only as mail.
+- **Crafting:** a batch, "Crafting 12 of 20", the ring each item's cast, Stop.
+- **Profession Cooldowns:** a transmute, mooncloth or the salt shaker ready again (learned while
+  the profession is open, kept per character).
+
+And three more reminders by the portrait: **Bags Almost Full** (at **Free Slots**, 2; a click shows
+the way to the nearest vendor), **Talent Points** and **Well Fed Ending** (its last two minutes).
+Bags Almost Full stays the whole time the bags are at or under Free Slots, in a fight too, until
+you make room (a reminder's `fight`: in a fight only such ones stay drawn and are checked; the
+secure target button is taken off before the lockdown as before).
 
 ### Restock
 

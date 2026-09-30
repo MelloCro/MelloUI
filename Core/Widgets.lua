@@ -36,6 +36,10 @@
 --   W.IconBox(parent, size, texture, skin)
 --   W.RoundIcon(parent, size, texture, opts)   a round icon button in a rim
 --                                      (the kit's round rim, or the minimap's)
+--   W.Glyph(tex, name)                 a widget glyph (pause, list, friend, ...)
+--                                      from the one glyph sheet (0.16.0)
+--   W.GlyphButton(parent, size, glyph, opts)   a round button with a glyph
+--                                      on a dark disc (0.16.0)
 --   W.TrayBox(parent, opts)            a small list's box beside a window (the
 --                                      kit's list box, or a plain fill and edge)
 --   W.RowPlate(row, opts)              W.RowPlateOff(row), W.RowPlateChild(row, child)
@@ -134,7 +138,8 @@ local Flyout = {}
 -- looked up when a region is painted.
 --   W.Paint(region, key, how, alpha)
 --     how    "fill" (SetColorTexture, the default), "vertex" (SetVertexColor),
---            "text" (SetTextColor), "backdrop" (SetBackdropColor), "border"
+--            "text" (SetTextColor), "swipe" (a Cooldown's SetSwipeColor),
+--            "backdrop" (SetBackdropColor), "border"
 --            (SetBackdropBorderColor); a backdrop and its border are kept
 --            apart, so one frame holds both
 --     alpha  the colour's alpha (1)
@@ -1753,6 +1758,60 @@ do
 			b:SetIcon(texture)
 		end
 		SetKit(b, false)
+		return b
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Glyph (0.16.0): the widget glyphs, one sheet (Media/Textures/WidgetGlyphs,
+-- 8 x 2 cells of 32 px, white: made by Tools/make_widget_art.py) for the
+-- widget column's buttons and the whisper window's header buttons; painted by
+-- the caller (the palette's text, its gold on hover)
+--   W.Glyph(tex, name) -> true   the glyph's cell on the texture; false for a
+--                                name the sheet has not (nothing set)
+--   W.GLYPHS                     [name] = its cell
+--   W.GlyphButton(parent, size, glyph, opts) -> b   a W.RoundIcon (opts as
+--                                its) on a dark disc (the palette's
+--                                innerPanel), its glyph on it in the
+--                                palette's text colour (nil: none yet)
+--   b:SetGlyph(name) -> true     another glyph; b.disc
+--------------------------------------------------------------------------------
+
+do
+	local GLYPH_TEX = "Interface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs"
+	W.GLYPHS = { pause = 0, play = 1, skip = 2, stop = 3, list = 4, padlock = 5, padlockOpen = 6, check = 7,
+		cross = 8, way = 9, reply = 10, friend = 11, invite = 12, ignore = 13, report = 14 }
+
+	function W.Glyph(tex, name)
+		local i = W.GLYPHS[name]
+		if not i then
+			return false
+		end
+		local c, r = i % 8, math.floor(i / 8)
+		tex:SetTexture(GLYPH_TEX)
+		tex:SetTexCoord(c / 8, (c + 1) / 8, r / 2, (r + 1) / 2)
+		return true
+	end
+
+	local function SetGlyph(b, name)
+		if W.Glyph(b.icon, name) then
+			W.Paint(b.icon, "text", "vertex")
+			return true
+		end
+		return false
+	end
+
+	function W.GlyphButton(parent, size, glyph, opts)
+		local b = W.RoundIcon(parent, size, nil, opts)
+		local disc = b:CreateTexture(nil, "BACKGROUND", nil, 1)
+		disc:SetTexture(ROUND_MASK)
+		disc:SetAllPoints(b.icon)
+		W.Paint(disc, "innerPanel", "vertex", 0.95)
+		b.disc = disc
+		b.SetGlyph = SetGlyph
+		if glyph ~= nil then
+			SetGlyph(b, glyph)
+		end
 		return b
 	end
 end

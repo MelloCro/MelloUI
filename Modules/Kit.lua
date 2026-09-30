@@ -484,6 +484,8 @@ do
 			region:SetBackdropColor(c[1], c[2], c[3], alpha)
 		elseif how == "border" then
 			region:SetBackdropBorderColor(c[1], c[2], c[3], alpha)
+		elseif how == "swipe" then
+			region:SetSwipeColor(c[1], c[2], c[3], alpha)   -- (a Cooldown's swipe: the widget column's ring)
 		end
 	end
 
@@ -5402,10 +5404,10 @@ end
 --   services           the Services bar: as the minimap ('minimap')
 --   questList          the Quest List beside the world map: while the quest
 --                      log's kit (QuestLogPanel) is on
---   config, voiceover, copy
---                      the configurator, the Voice Over overlay, the copy
---                      window: the reskin (UI Modifications on, its reskin
---                      switch on)
+--   config, copy       the configurator and the copy window: the reskin (UI
+--                      Modifications on, its reskin switch on; the Voice
+--                      Over overlay's area went with it in 0.16.0: Voice
+--                      Over is a row of the widget column)
 --   installer          the installer: always (user, 2026-09-25: it
 --                      wears the kit for every player, a new one's reskin
 --                      off too -- the approved sketch, and a preview of what
@@ -5438,7 +5440,7 @@ do
 		{ "whisper", follows = "chat" },
 		{ "services", follows = "minimap" },
 		{ "questList", module = "QuestLogPanel" },
-		{ "config", reskin = true }, { "voiceover", reskin = true }, { "copy", reskin = true },
+		{ "config", reskin = true }, { "copy", reskin = true },
 		{ "installer", always = true },
 	}
 	for _, area in ipairs(LIST) do
@@ -6176,19 +6178,55 @@ end
 --               whether it starts a quest, the game's record of a slot it
 --               filled before the dress (the bank fills its slots as it makes
 --               them, the guild bank in its own OnShow, before the kit's)
---   Kit:SyncItemGems()  every slot again (the switch)
+--   junk        (0.16.0, user 2026-09-30: "the junk items should be
+--               desaturated in the inventory") a slot holding a poor item
+--               (quality 0) shows its icon grey while Grey Out Junk (Backpack
+--               Kit's `greyJunk`, on) is on and the slot's kit is on; kept
+--               through the game's own SetItemButtonDesaturated (a picked-up
+--               item's grey), one post-hook for all slots; the colour back as
+--               the item goes or the switch goes off
+--   Kit:SyncItemGems()  every slot again (the switches)
 --   Kit:ItemGemCounts() -> slots dressed, gems made, gems shown
 --------------------------------------------------------------------------------
 do
 	local SIZE, INSET, DIM = 0.37, 2, 0.25   -- of the button's width; px in from the icon's corner; a dimmed slot's gem
-	local SWITCH_MODULE, SWITCH_KEY = "BackpackPanel", "qualityGems"
+	local SWITCH_MODULE, SWITCH_KEY, JUNK_KEY = "BackpackPanel", "qualityGems", "greyJunk"
 	local Num, Finite, Text = MelloUI.Safe.Number, MelloUI.Safe.Finite, MelloUI.Safe.Text
 	local slots = {}                                     -- every slot that wears one, in the order dressed
 	local gemOf = setmetatable({}, { __mode = "k" })     -- [button] = its slot's state
 	local gemOfArt = setmetatable({}, { __mode = "k" })  -- [quest texture] = its slot's state
 	local gemOfBadge = setmetatable({}, { __mode = "k" }) -- [reagent quality badge] = its slot's state
 	local wanted = nil                                   -- the switch as last read (nil: read it again)
+	local junkWanted = nil                               -- Grey Out Junk as last read (nil: read it again)
+	local desatHooked = false
 	local made = 0
+
+	local function JunkWanted()
+		if junkWanted == nil then
+			if not MelloUI.db then
+				return true
+			end
+			local db = MelloUI:GetModuleDB(SWITCH_MODULE)
+			junkWanted = not (db and db[JUNK_KEY] == false)
+		end
+		return junkWanted
+	end
+
+	-- a poor item's icon grey (the slot's kit on, the switch on); the colour
+	-- back once it is not
+	local function Grey(st)
+		local icon = st.icon
+		if not icon then
+			return
+		end
+		if st.on and st.q == 0 and JunkWanted() then
+			st.grey = true
+			icon:SetDesaturated(true)
+		elseif st.grey then
+			st.grey = false
+			icon:SetDesaturated(false)
+		end
+	end
 
 	local function Wanted()
 		if wanted == nil then
@@ -6356,6 +6394,14 @@ do
 		if st then
 			st.q = Num(quality)
 			Sync(st)
+			Grey(st)
+		end
+	end)
+	-- the game's own grey on a slot (a picked-up item's): a junk one stays grey
+	local Junk_OnDesaturated = Shared("SetItemButtonDesaturated on a kit item slot (junk)", function(button)
+		local st = gemOf[button]
+		if st and st.grey then
+			st.icon:SetDesaturated(true)
 		end
 	end)
 	-- the corner's marks and the search's shade: a gem shown moved or dimmed
@@ -6390,6 +6436,10 @@ do
 		gemOf[button] = st
 		slots[#slots + 1] = st
 		hooksecurefunc(button, "SetItemButtonQuality", Gem_OnQuality)
+		if not desatHooked and type(_G.SetItemButtonDesaturated) == "function" then
+			desatHooked = true
+			hooksecurefunc("SetItemButtonDesaturated", Junk_OnDesaturated)
+		end
 		-- (the search's shade, called last in each window's update of a slot:
 		-- the corner's marks are set by then)
 		local dim = (button.UpdateItemContextOverlay and "UpdateItemContextOverlay") or (button.SetMatchesSearch and "SetMatchesSearch")
@@ -6417,6 +6467,7 @@ do
 			end
 			st.on = true
 			Sync(st, true)
+			Grey(st)
 		end
 		rep.onDisable = function(...)
 			if disable then
@@ -6424,13 +6475,14 @@ do
 			end
 			st.on = false
 			Sync(st)
+			Grey(st)
 		end
 	end
 
 	-- the switch read again (Quality Gems changed, a profile loaded): every
 	-- slot at once, nothing made while it is off
 	function Kit:SyncItemGems()
-		wanted = nil
+		wanted, junkWanted = nil, nil
 		local on = Wanted()
 		for i = 1, #slots do
 			local st = slots[i]
@@ -6439,6 +6491,7 @@ do
 			elseif st.gem then
 				st.gem:Hide()
 			end
+			Grey(st)
 		end
 	end
 
@@ -6456,12 +6509,12 @@ do
 	-- (a profile load writes the settings past 'setting', then says
 	-- 'restart'; nothing read yet: nothing to follow)
 	local OnSetting = Shared("'setting' on the bus: the quality gems", function(name, key)
-		if name == SWITCH_MODULE and key == SWITCH_KEY then
+		if name == SWITCH_MODULE and (key == SWITCH_KEY or key == JUNK_KEY) then
 			Kit:SyncItemGems()
 		end
 	end)
 	local OnRestart = Shared("'restart' on the bus: the quality gems", function()
-		if wanted ~= nil then
+		if wanted ~= nil or junkWanted ~= nil then
 			Kit:SyncItemGems()
 		end
 	end)
@@ -9595,7 +9648,7 @@ Kit.borderKinds = {
 	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",
 	  desc = "The rim round every round icon: passive spells, the legacy, guild and group finder windows' rings, the auction house's item, the Services bar's round buttons." },
 	{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
-	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon." },
+	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon. Without the reskin, Dark Mode's Buffs & Debuffs draws a thin dark edge round them." },
 	{ kind = "colours", key = "kitColours", default = "warm", name = "Kit Colours", values = Kit.colourLooks,
 	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember palette: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours." },
 }

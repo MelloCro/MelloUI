@@ -104,7 +104,7 @@ local AREAS_REFUSED = "Not in combat: this would switch painted skins."
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false, parchment_dialog = false,
-	autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both",
+	autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both", classNames = true,
 	-- the palette (0.14.0): an id of MelloUI.Palettes, applied by Core
 	-- (MelloUI:SetPalette; this module on or off); a choice, not personal
 	palette = "ember" }, {}
@@ -126,7 +126,9 @@ do
 			if type(a.key) ~= "string" then
 				break
 			end
-			defaults[a.key] = true
+			if not a.noSwitch then
+				defaults[a.key] = true
+			end
 		end
 	end
 end
@@ -220,13 +222,17 @@ do
 			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand out from the world. Each area has its own switch under it." })
 		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master, free = true,
 			min = shade.min, max = shade.max, step = shade.step, percent = true,
-			desc = "How dark the shade round the kit's outlines is. The nameplates use their own strength (Nameplates > Plates)." })
+			desc = "How dark the shade round the kit's outlines is, the nameplates' shade too." })
+		-- (the nameplates' area has no switch here: Nameplates > Name Shade's
+		-- Whole plate is it, 0.16.0)
 		for _, a in ipairs(type(Kit.shadeAreas) == "table" and Kit.shadeAreas or {}) do
 			if type(a.key) ~= "string" then
 				break
 			end
-			Add({ type = "toggle", key = a.key, name = "Shade: " .. a.label, requires = shade.master, free = true, new = a.new,
-				desc = "The UI Shade round the " .. a.label:lower() .. ". Off: no shade there; the other areas keep theirs." })
+			if not a.noSwitch then
+				Add({ type = "toggle", key = a.key, name = "Shade: " .. a.label, requires = shade.master, free = true, new = a.new,
+					desc = "The UI Shade round the " .. a.label:lower() .. ". Off: no shade there; the other areas keep theirs." })
+			end
 		end
 	end
 end
@@ -274,11 +280,19 @@ Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion", free = true
 -- player surname over head", the binary's only surname cvar): your own
 -- name follows, other players' overhead names are the engine's and have
 -- no setting (nameplates on shows them in the chosen form).
+-- (0.16.0: Chat's Names In Chat merged in: one form for the frames, the
+-- nameplates and the chat; its old value carried, MelloUI:MergeSettings)
 Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", values = {
-	{ value = "first", label = "First name" },
-	{ value = "last", label = "Last name" },
-	{ value = "both", label = "First and last name" },
-}, desc = "Which part of a character's name is shown, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, and the name over your own head (the game's own setting for it; Last name shows both there). A character with no surname shows the name it has. Names over other players' heads without a nameplate are the engine's and have no setting." })
+	{ value = "both", label = "Full name (Professor Skillybones)" },
+	{ value = "initial", label = "Initial and surname (P. Skillybones)" },
+	{ value = "firstinitial", label = "Name and initial (Professor S.)" },
+	{ value = "first", label = "First name (Professor)" },
+	{ value = "last", label = "Surname (Skillybones)" },
+}, desc = "How a character's name is written, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, the chat and whisper windows, and the name over your own head (the game's own setting for it: only First name leaves out the surname there). A character with no surname shows the name it has; in the chat the name is still a link to the player. Names over other players' heads without a nameplate are the engine's and have no setting." })
+-- (0.16.0: chat's and the tooltip's Class Coloured Names merged: one
+-- switch, read by both as saved, UI Modifications on or off)
+Add({ type = "toggle", key = "classNames", name = "Class Coloured Names", free = true, new = "0.16.0",
+	desc = "Players' names in their class colour: in every chat type (the game's own setting for it) and in the tooltip. On the parchment sheet a chat name is in dark ink with a gem in its class colour before it instead." })
 
 local M = MelloUI:RegisterModule("UIModifications", {
 	title = "UI Modifications",

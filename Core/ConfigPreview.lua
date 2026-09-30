@@ -158,6 +158,10 @@ local function NameAs(s)
 		return s.first
 	elseif mode == "last" then
 		return s.last or s.first
+	elseif s.last and mode == "initial" then
+		return s.first:sub(1, 1) .. ". " .. s.last
+	elseif s.last and mode == "firstinitial" then
+		return s.first .. " " .. s.last:sub(1, 1) .. "."
 	end
 	return s.last and (s.first .. " " .. s.last) or s.first
 end

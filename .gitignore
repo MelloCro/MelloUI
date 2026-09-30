@@ -20,3 +20,7 @@ Tools/lint/luacheck/
 # Working notes for the assistant sessions (local paths, process notes): not for the public repository
 docs/HANDOVER.md
 docs/plans/
+# The assistant's short rules sheet and the generated code map (Tools/codemap.py): local, like HANDOVER
+CLAUDE.md
+docs/CODEMAP.md
+docs/CODEMAP-FUNCTIONS.md

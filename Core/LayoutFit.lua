@@ -377,12 +377,12 @@ LayoutFit.EDIT_MODE_FRAMES = EDIT_MODE_FRAMES   -- (read only: the installer kee
 -- right and down past the first; `dress` = { left, right, top, bottom }, how
 -- far a window's own dressing reaches past its frame, in its units (counted
 -- by its fit and in its rect). The two store places wave 3 moved into the
--- one store and Full ships (with the minimap column's refit): the voice
--- overlay (Modules/VoiceOver.lua FRAME_W, FRAME_H at its default Overlay
--- Scale) and the whisper popups (Modules/Chat.lua POPUP_W, POPUP_H; six
--- places, each 24 right and 24 down of the one before). The configurator
--- (Core/Config.lua): its wide width (WIDE_WIDTH, when UI Modifications' tabs
--- need it), fitted by its shell (Modules/KitWindow.lua Shell:Fit, 16 of room)
+-- one store and Full ships (with the minimap column's refit): the whisper
+-- popups (Modules/Chat.lua POPUP_W, POPUP_H; six places, each 24 right and
+-- 24 down of the one before; 0.16.0: the Voice Over overlay is a row of the
+-- widget column now, with no window of its own). The configurator
+-- (Core/Config.lua): its width (WINDOW_WIDTH, 1000 since 0.15.0's rebuild),
+-- fitted by its shell (Modules/KitWindow.lua Shell:Fit, 16 of room)
 -- with the kit's dressing: the outer rail (Kit:OuterRailOutset, 42 x 0.375)
 -- on every side and the crest over the top (Kit:RailMiddle 6.375 + half the
 -- ring, 197 x 0.375 x 1.25 / 2)
@@ -391,8 +391,8 @@ local WINDOWS = {
 	ProfessionsFrame = { 673, 594, 20, 20 }, LFGParentFrame = { 458, 535 }, CommunitiesFrame = { 814, 426 },
 	PlayerSpellsFrame = { 1618, 883, 200, 140 }, CollectionsJournal = { 703, 606 }, LegacySystemFrame = { 920, 575 },
 	ContainerFrameCombinedBags = { 430, 440 },
-	MelloUIConfigFrame = { 1080, 760, 16, 16, dress = { 15.75, 15.75, 52.546875, 15.75 } },
-	voiceOverlay = { 600, 200 }, whisper = { 340, 210, nil, nil, 5 * 24 },
+	MelloUIConfigFrame = { 1000, 760, 16, 16, dress = { 15.75, 15.75, 52.546875, 15.75 } },
+	whisper = { 340, 210, nil, nil, 5 * 24 },
 }
 -- The design's own MelloUI settings (the approved snapshot's, the tracker
 -- hung on 12:-1 as every fit leaves it). What the approved layout already

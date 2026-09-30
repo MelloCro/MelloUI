@@ -181,8 +181,13 @@ end
 --                         palette (a 0.14.0 build decision, like the game's
 --                         own can't-use red): cannotUse, #4E1812, what the
 --                         player cannot use or learn (the merchant's and
---                         trade's red cards, the trainer's unlearnable rows).
---                         Read when drawing.
+--                         trade's red cards, the trainer's unlearnable rows);
+--                         threatClose (amber) and threatAggro (red), the
+--                         threat line's and the Threat widget's (0.16.0,
+--                         Core/Threat.lua); bagFamily, a special bag's
+--                         slot rims by its bag type (0.16.0); routeTrail
+--                         and routeBeam, Route's red on the map and in the
+--                         world (0.16.0). Read when drawing.
 -- Every palette passes the palette's hard rules: text on mainWindow 8:1 or
 -- more, text on hover 4.65:1 or more (Ember's 4.69 is the lowest), so muted
 -- text never sits on hover.
@@ -265,6 +270,32 @@ end
 -- the fixed meaning colours (the header above): { r, g, b } in 0..1
 MelloUI.Meaning = {
 	cannotUse = { 0.306, 0.094, 0.071 },   -- #4E1812, an item the player cannot use, a spell not to be learned (meaning colour)
+	-- (0.16.0, the threat line and the Threat widget, Core/Threat.lua: close to
+	-- pulling, and the mob on you -- a loose mob for a tank)
+	threatClose = { 0.878, 0.541, 0.118, hex = "E08A1E" },   -- #E08A1E, amber (meaning colour)
+	threatAggro = { 0.816, 0.188, 0.118, hex = "D0301E" },   -- #D0301E, red (meaning colour)
+	-- (0.16.0, the user's pick C of bag_family_sketch: a special bag's slots
+	-- wear their bag type's colour on the rim) [bag family bit] = colour;
+	-- Modules/BackpackPanel.lua reads it
+	bagFamily = {
+		[0x0001] = Hex("#E1C850"),   -- quiver (meaning colour)
+		[0x0002] = Hex("#E1C850"),   -- ammo pouch (meaning colour)
+		[0x0004] = Hex("#8246C8"),   -- soul bag (meaning colour)
+		[0x0008] = Hex("#C8A06E"),   -- leatherworking (meaning colour)
+		[0x0010] = Hex("#6482E6"),   -- inscription (meaning colour)
+		[0x0020] = Hex("#46BE46"),   -- herbs (meaning colour)
+		[0x0040] = Hex("#BE5ADC"),   -- enchanting (meaning colour)
+		[0x0080] = Hex("#DC963C"),   -- engineering (meaning colour)
+		[0x0200] = Hex("#3CBED7"),   -- gems (meaning colour)
+		[0x0400] = Hex("#CD8442"),   -- mining (meaning colour)
+		[0x8000] = Hex("#46AAAA"),   -- fishing (meaning colour)
+		[0x10000] = Hex("#DC6446"),  -- cooking (meaning colour)
+	},
+	-- (0.16.0, the user's picks of route_marks_sketch: Route's red, the way
+	-- and the destination -- the trail's dots on the map and the minimap, the
+	-- World Marker's beam with the light at its foot; Modules/Route.lua)
+	routeTrail = Hex("#CD261C"),   -- the trail's dots (meaning colour)
+	routeBeam = Hex("#FF291A"),    -- the beam, its ring and glow, the lit gem (meaning colour)
 }
 MelloUI.moduleOrder = {}
 
@@ -1069,6 +1100,7 @@ end
 --                    registration and whenever someone else scales it
 --         resize     false: no size change in Edit Layout
 --         locked     function(entry) -> reason | nil: shown, not movable
+--                    (in Edit Layout, and by its plain drag)
 --         note       function(entry) -> text | nil: a line in its box
 --         resetLabel its box's Reset text (default "Reset")
 --         when       function(entry) -> live: its place kept and its plate
@@ -1103,6 +1135,9 @@ end
 --       without knowing it. Read only: change it through Save / Forget.
 --       (A reset is Edit Layout's: LayoutSession.Reset, then Commit.)
 --   MelloUI:MoverEntries()             the entries, in registration order
+--   MelloUI:AddMoverHandle(frame, handle) -> added
+--       one more handle a registered plainDrag "always" frame is dragged by
+--       (the widget column's rows, 0.16.0); its drag as the first handle's
 --   MelloUI:MoverEntry(frame) -> entry | nil
 --   MelloUI:EntryLive(entry) -> live       its `when` true, the frame not forbidden
 --   MelloUI:EntryWaiting(entry) -> waits   its `waiting` true
@@ -1875,6 +1910,13 @@ do
 		if Locked(frame) then
 			return
 		end
+		-- (locked in place by its own switch: the widget column's lock)
+		if entry.locked then
+			local ok, reason = pcall(entry.locked, entry)
+			if not ok or reason then
+				return
+			end
+		end
 		frame:SetMovable(true)
 		frame:StartMoving()
 		entry.moving = "plain"
@@ -2025,6 +2067,20 @@ do
 
 	function MelloUI:MoverEntries()
 		return entries
+	end
+
+	function MelloUI:AddMoverHandle(frame, handle)
+		local entry = byFrame[frame]
+		if not (entry and entry.plainDrag == "always" and type(handle) == "table") or byHandle[handle] then
+			return false
+		end
+		byHandle[handle] = entry
+		if handle.RegisterForDrag then
+			handle:RegisterForDrag("LeftButton")
+		end
+		Hook(handle, "OnDragStart", "mover: drag start", DragStart)
+		Hook(handle, "OnDragStop", "mover: drag stop", DragStop)
+		return true
 	end
 
 	function MelloUI:MoverEntry(frame)
@@ -3401,6 +3457,164 @@ local function RestartEach(self)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Merged settings (0.16.0; the user, 2026-09-29: twelve of the Configurator
+-- spec's same-meaning groups, docs/plans/next-update.md section 4). One key
+-- lives on for each: a saved value of an old key is carried to it while
+-- that key still holds its default, then the old key goes, so every
+-- player keeps what they had. Run on the raw saved tables before the
+-- modules come up (MelloUI:OnInitialize's pass) and before they come up
+-- again after a profile, a share string or the backup is taken in
+-- (RestartModules): a settings text from before the merge is carried too.
+-- Reads and writes only MelloUI.db; makes nothing when there is nothing to
+-- carry. (The Voice Over widget's padlock and old place: Modules/VoiceOver
+-- OnInit; the Route arrow's size needs its frame: Route's PlaceArrow.)
+--------------------------------------------------------------------------------
+
+do
+	local function Raw(self, name)
+		local mods = self.db and self.db.modules
+		local t = type(mods) == "table" and mods[name]
+		return type(t) == "table" and t or nil
+	end
+
+	local function Own(self, name)
+		local mods = self.db and self.db.modules
+		if type(mods) ~= "table" then
+			return nil
+		end
+		if type(mods[name]) ~= "table" then
+			mods[name] = {}
+		end
+		return mods[name]
+	end
+
+	local MERGES = {
+		-- 1: Chat's Names In Chat into Show Names As (its "full" is "both")
+		function(self)
+			local chat = Raw(self, "Chat")
+			local style = chat and chat.nameStyle
+			if style == nil then
+				return
+			end
+			chat.nameStyle = nil
+			local ui = Own(self, "UIModifications")
+			if ui and (ui.nameFormat == nil or ui.nameFormat == "both") and type(style) == "string" and style ~= "full" then
+				ui.nameFormat = style
+			end
+		end,
+		-- 2: the Route's, the zone text's and the centre texts' shades into
+		-- one Text Shade (off only when all three were off)
+		function(self)
+			local route, tweaks = Raw(self, "Route"), Raw(self, "Tweaks")
+			local r = route and route.textShade
+			local z, c = tweaks and tweaks.zoneTextShade, tweaks and tweaks.centreTextShade
+			if r == nil and z == nil and c == nil then
+				return
+			end
+			if route then
+				route.textShade = nil
+			end
+			if tweaks then
+				tweaks.zoneTextShade, tweaks.centreTextShade = nil, nil
+			end
+			if r ~= true and z ~= true and c ~= true then
+				local t = Own(self, "Tweaks")
+				if t and t.textShade ~= false then
+					t.textShade = false
+				end
+			end
+		end,
+		-- 3: the nameplates' own Shade Strength: they follow the UI Shade's
+		function(self)
+			local np = Raw(self, "NameplatePanel")
+			if np then
+				np.shadeStrength = nil
+			end
+		end,
+		-- 4: the UI Shade's Nameplates switch into Name Shade (Whole plate
+		-- needed both: one that was off is a Name shade now)
+		function(self)
+			local ui = Raw(self, "UIModifications")
+			local on = ui and ui.shade_nameplates
+			if on == nil then
+				return
+			end
+			ui.shade_nameplates = nil
+			local np = on == false and Raw(self, "NameplatePanel")
+			if np and np.nameShade == "plate" then
+				np.nameShade = "name"
+			end
+		end,
+		-- 6: chat's and the tooltip's Class Coloured Names into one (off
+		-- when either was off: the player's no)
+		function(self)
+			local chat, tip = Raw(self, "Chat"), Raw(self, "Tooltip")
+			local a, b = chat and chat.classColors, tip and tip.classNames
+			if a == nil and b == nil then
+				return
+			end
+			if chat then
+				chat.classColors = nil
+			end
+			if tip then
+				tip.classNames = nil
+			end
+			if a == false or b == false then
+				local ui = Own(self, "UIModifications")
+				if ui then
+					ui.classNames = false
+				end
+			end
+		end,
+		-- 7: the tooltip's Use Bar Texture into Bar Textures' Tooltip area
+		function(self)
+			local tip = Raw(self, "Tooltip")
+			local v = tip and tip.barTexture
+			if v == nil then
+				return
+			end
+			tip.barTexture = nil
+			if v == false then
+				local bt = Own(self, "BarTextures")
+				if bt then
+					bt.tooltip = false
+				end
+			end
+		end,
+		-- 10: Dark Mode's Icon Border: part of the aura border now
+		function(self)
+			local dm = Raw(self, "DarkMode")
+			if dm then
+				dm.auraIconBorder = nil
+			end
+		end,
+		-- 12: Route Announces and Announce Sound: the notice's own switches
+		function(self)
+			local route = Raw(self, "Route")
+			if route then
+				route.notice, route.noticeSound = nil, nil
+			end
+		end,
+		-- 17: the Restock reminder's switch: the Restock switch itself
+		function(self)
+			local rem = Raw(self, "Reminders")
+			if rem then
+				rem.remind_restock = nil
+			end
+		end,
+	}
+
+	function MelloUI:MergeSettings()
+		for i = 1, #MERGES do
+			local ok, err = pcall(MERGES[i], self)
+			if not ok then
+				geterrorhandler()(err)
+			end
+		end
+	end
+end
+
 -- After a (late) adoption, modules that are already running must re-read
 -- their settings.
 -- (restartingModules while it runs: a module's own reaction to a switch --
@@ -3415,6 +3629,8 @@ function MelloUI:RestartModules()
 	-- walk): the modules come back up in it, and the kit's own look check
 	-- on 'restart' finds its art in place
 	ApplyStoredPalette(self, true)
+	-- (a settings text from before 0.16.0's merged settings: carried first)
+	self:MergeSettings()
 	WhileRestarting(self, RestartEach)
 	if self.RefreshConfig then
 		self:RefreshConfig()
@@ -3430,7 +3646,9 @@ end
 -- name. A unit token or a name can be a secret value here (nameplates): a
 -- secret first or full name is still handed back (SetText takes it), only
 -- the surname needs string work and is nil when it cannot be done.
--- mode: "first", "last", "both". nil when nothing could be read.
+-- mode: "first", "last", "both" (the full name), "initial" ("P. Skillybones")
+-- or "firstinitial" ("Professor S."; 0.16.0: Show Names As took Names In
+-- Chat's forms). nil when nothing could be read.
 -- A pcall's first result, secret or not; nil when it raised. The value is
 -- never compared: a secret refuses even the nil test (audit, 2026-09-24).
 local function PlainOrSecret(ok, value)
@@ -3468,7 +3686,7 @@ function MelloUI:UnitNameAs(unit, mode)
 		return full
 	elseif mode == "first" then
 		return first
-	elseif mode == "last" then
+	elseif mode == "last" or mode == "initial" or mode == "firstinitial" then
 		if secretFull or secretFirst or first == nil then
 			return nil
 		end
@@ -3476,7 +3694,14 @@ function MelloUI:UnitNameAs(unit, mode)
 		if rest == "" then
 			return full   -- no surname: the name as it is
 		end
-		return rest
+		if mode == "last" then
+			return rest
+		end
+		-- (a letter is a UTF-8 character, not a byte)
+		if mode == "initial" then
+			return (first:match("^[%z\1-\127\194-\244][\128-\191]*") or first:sub(1, 1)) .. ". " .. rest
+		end
+		return first .. " " .. (rest:match("^[%z\1-\127\194-\244][\128-\191]*") or rest:sub(1, 1)) .. "."
 	end
 	return nil
 end
@@ -3904,6 +4129,8 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 		-- during this pass (the unit frame panel read the bars' layers
 		-- before Bar Textures had set them, 2026-09-21): it sets their
 		-- flags and lets this loop enable them in their turn
+		-- (0.16.0's merged settings carried before any module reads its own)
+		self:MergeSettings()
 		self.initializingModules = true
 		for _, module in self:IterateModules() do
 			self:InitModule(module)

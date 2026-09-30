@@ -81,6 +81,7 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		statusbars = true,
 		castbars = true,
 		cooldowns = true,
+		tooltip = true,   -- (0.16.0: the tooltip's health bar; its Use Bar Texture was the Tooltip's own)
 	},
 	options = {
 		{ type = "header", name = "Texture" },
@@ -115,6 +116,8 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		  desc = "Player, pet, target, focus and boss cast bars." },
 		{ type = "toggle", key = "cooldowns", name = "Cooldown Manager Bars",
 		  desc = "The bars of the Buff Bar cooldown viewer." },
+		{ type = "toggle", key = "tooltip", name = "Tooltip Health Bar", new = "0.16.0",
+		  desc = "The health bar under a unit's tooltip (when Tooltip's Hide Health Bar is off)." },
 	},
 })
 

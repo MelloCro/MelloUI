@@ -778,6 +778,9 @@ end
 -- the map's as before. Its rows are made as the list needs them: the
 -- navigation's climb from a new frame stops at UIParent, so a row made
 -- later walks no window.
+-- (0.16.0: the holder is the map marks' too -- QuestListMap.lua, the marks'
+-- own layer, clipped to the map's scroll area -- one holder beside the map for
+-- both, QL.MapHolder: made with whichever needs it first.)
 --------------------------------------------------------------------------------
 
 -- a scale on the holder: the panel's backgrounds laid again at the UI's one
@@ -799,29 +802,37 @@ end
 -- scale and the mouse wheel on its mover. Its level: the map is a toplevel
 -- window, raised by a click in it and by the panel manager (Raise, as the
 -- panels are laid out), and as its child the panel rose with it.
-local function FollowMap(holder, frame)
+local function FollowMap(holder)
 	local map = WorldMapFrame
 	-- the map's strata, the holder at the map's level and the panel five
 	-- over it, where it stood as the map's child; `up`: only ever lifted (a
-	-- click on the panel raised it over the map, and there it stays)
+	-- click on the panel raised it over the map, and there it stays). The
+	-- marks' layer is laid over the map's own pins each time (holder.onLevel)
 	local function Level(up)
+		local frame = holder.panel
 		local strata = map:GetFrameStrata()
 		if holder:GetFrameStrata() ~= strata then
 			holder:SetFrameStrata(strata)
 		end
-		if frame:GetFrameStrata() ~= strata then
+		if frame and frame:GetFrameStrata() ~= strata then
 			frame:SetFrameStrata(strata)
 		end
 		local level = map:GetFrameLevel()
+		if holder.onLevel then
+			holder.onLevel()
+		end
 		if up and holder:GetFrameLevel() >= level then
 			return
 		end
 		if holder:GetFrameLevel() ~= level then
 			holder:SetFrameLevel(level)
 		end
-		if frame:GetFrameLevel() ~= level + 5 then
+		if frame and frame:GetFrameLevel() ~= level + 5 then
 			frame:SetFrameLevel(level + 5)
 		end
+	end
+	holder.Relevel = function()
+		Level(false)
 	end
 	local function Sync()
 		holder:SetAlpha(map:GetAlpha())
@@ -857,18 +868,21 @@ local function FollowMap(holder, frame)
 	end)
 end
 
-function QL.Panel:Create()
-	if self.frame then
-		return
+-- The one holder beside the map: the whole screen, no mouse, shown while the
+-- map is; at the map's strata and level, so the panel and its template's
+-- frames are made where they were made as the map's children. A frame
+-- buffer, as the map: the map's fade dims the panel as one picture, not each
+-- of its layers over the others; the whole screen, so no rail or shade that
+-- reaches past the panel is cut. Toplevel, as the map: a click on the panel
+-- raises it. And the map's for the kit: melloWindowOf. Its alpha, scale,
+-- strata and level follow the map's (FollowMap: now, on each show and as the
+-- map is raised). Made the first time the panel or the marks need it.
+function QL.MapHolder()
+	local holder = QL.holder
+	if holder then
+		return holder
 	end
-	-- (the holder: the whole screen, no mouse, shown while the map is; at
-	-- the map's strata and level, so the panel and its template's frames are
-	-- made where they were made as the map's children. A frame buffer, as
-	-- the map: the map's fade dims the panel as one picture, not each of its
-	-- layers over the others; the whole screen, so no rail or shade that
-	-- reaches past the panel is cut. Toplevel, as the map: a click on the
-	-- panel raises it. And the map's for the kit: melloWindowOf)
-	local holder = CreateFrame("Frame", nil, UIParent)
+	holder = CreateFrame("Frame", nil, UIParent)
 	holder:SetAllPoints(UIParent)
 	holder:SetFrameStrata(WorldMapFrame:GetFrameStrata())
 	holder:SetFrameLevel(WorldMapFrame:GetFrameLevel())
@@ -878,14 +892,24 @@ function QL.Panel:Create()
 	end
 	holder:SetToplevel(true)
 	holder.melloWindowOf = WorldMapFrame
+	QL.holder = holder
+	FollowMap(holder)
+	return holder
+end
+
+function QL.Panel:Create()
+	if self.frame then
+		return
+	end
+	local holder = QL.MapHolder()
 	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", holder, "PortraitFrameTemplate")
 	self.frame = frame
 	frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 2, 0)
 	frame:SetPoint("BOTTOMLEFT", WorldMapFrame, "BOTTOMRIGHT", 2, 0)
 	frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
-	-- (the map's strata, five levels over the map, its alpha and scale: now,
-	-- on each show and as the map is raised)
-	FollowMap(holder, frame)
+	-- (the map's strata, five levels over the map: as its child it stood there)
+	holder.panel = frame
+	holder.Relevel()
 	frame:EnableMouse(true)
 	if frame.SetTitle then
 		frame:SetTitle("Quests")

@@ -10,7 +10,7 @@ ignore = {
 
 -- Written by the addon: saved variables, slash command registration, the pin mixin the XML expects.
 globals = {
-	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines", "MelloUI_QuestPinMixin",
+	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines",
 	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
 	"SLASH_MELLOSERVICES1", "SLASH_MELLOTRDUMP1", "SLASH_MELLOSBDUMP1", "SLASH_MELLOPROFDUMP1", "SLASH_MELLOLEGDUMP1", "SLASH_MELLOGFDUMP1", "SLASH_MELLOVOICEOVER1", "SLASH_MELLOVOICEOVER2", "SLASH_MELLOICONDUMP1",
 	"SLASH_MELLOABDUMP1", "SLASH_MELLOINKWHY1", "SLASH_MELLODIALOGDUMP1", "SLASH_MELLOUISCALEDUMP1", "SLASH_MELLOCHATINK1", "SLASH_MELLOCHATSCROLL1", "SLASH_MELLOBAGDUMP1", "SLASH_MELLOMMDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOUFTEST1", "SLASH_MELLORFDUMP1", "SLASH_MELLOABDUMP1", "SLASH_MELLOCBDUMP1",
@@ -104,6 +104,9 @@ read_globals = {
 	"C_Club",
 	"C_ClassColor", "C_FriendList", "GetGuildRosterInfo", "GetNumGuildMembers", "GetPlayerInfoByGUID",
 	"IsInGuild", "LOCALIZED_CLASS_NAMES_FEMALE", "LOCALIZED_CLASS_NAMES_MALE",
+	-- the whisper window's header buttons (0.16.0): the invite, the Battle.net
+	-- friend's game, the chat frame's link handler that Report's link runs
+	"C_PartyInfo", "BNET_CLIENT_WOW", "WOW_PROJECT_ID", "ChatFrameMixin",
 	-- /mello secrets: the secret-value tools it probes for (2026-09-23)
 	"C_EventUtils", "C_Secrets", "C_CurveUtil", "C_StringUtil", "CurveConstants", "UnitHealthPercent",
 	"UnitHealth", "UnitHealthMax", "UnitPower", "AbbreviateNumbers",
@@ -125,6 +128,8 @@ read_globals = {
 	"AnchorUtil", "AuraContainerSortMethod", "AuraContainerSortDirection", "AuraContainerItemEnchantmentSlot",
 	"QuestInfo_Display", "QuestInfoTitleHeader", "QuestInfoFrame", "GetQuestID",
 	"UnitCanAttack", "UnitClass", "UnitClassification", "UnitCreatureType", "UnitExists", "UnitFactionGroup", "UnitIsBossMob", "UnitIsUnit",
+	-- (0.16.0: the threat line and the Threat widget, Core/Threat.lua)
+	"UnitAffectingCombat",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
 	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",

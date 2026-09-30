@@ -1572,7 +1572,8 @@ local function WizardSteps()
 	local ICONS_ON, PORTRAITS = "UIModifications.qol_ClassIcons", "ClassIcons.portraits"
 	local DARK_ON, SHADE = "UIModifications.qol_DarkMode", "DarkMode.shade"
 	local FONTS_ON, FONT_STYLE = "UIModifications.qol_Fonts", "Fonts.style"
-	local CHAT_ON, NAME_STYLE, NAME_SHADE = "UIModifications.qol_Chat", "Chat.nameStyle", "Chat.nameShade"
+	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name)
+	local CHAT_ON, NAME_STYLE, NAME_SHADE = "UIModifications.qol_Chat", "UIModifications.nameFormat", "Chat.nameShade"
 	-- the wizard's switches of what runs under UI Modifications: it is on while
 	-- any of them is
 	local UMBRELLA = { RESKIN, ICONS_ON, DARK_ON, FONTS_ON, CHAT_ON }
@@ -2750,7 +2751,7 @@ local function WizardSteps()
 	STEPS.features.build, STEPS.features.refresh = BuildFeatures, RefreshWizard
 
 	--------------------------------------------------------------------------------
-	-- Chat: Chat tweaks, the name forms (Chat's own list, one chosen) and the
+	-- Chat: Chat tweaks, the name forms (Show Names As' list, every name's; one chosen) and the
 	-- shade behind names, both asleep with Chat tweaks off
 	--------------------------------------------------------------------------------
 
@@ -2759,8 +2760,8 @@ local function WizardSteps()
 		local function Get()
 			local v = Wizard()[NAME_STYLE]
 			if v == nil then
-				local chat = MelloUI:GetModule("Chat")
-				v = chat and type(chat.defaults) == "table" and chat.defaults.nameStyle or nil
+				local ui = MelloUI:GetModule("UIModifications")
+				v = ui and type(ui.defaults) == "table" and ui.defaults.nameFormat or nil
 			end
 			return v == value
 		end
@@ -2772,7 +2773,8 @@ local function WizardSteps()
 			end
 		end
 		return function(page)
-			return (W.ToggleRow(page, 0, example, kind, nil, Get, Set, RowOpts(zebra, ChatGate, GATE_INDENT)))
+			-- (every name's form, 0.16.0: not asleep with Chat tweaks off)
+			return (W.ToggleRow(page, 0, example, kind, nil, Get, Set, RowOpts(zebra)))
 		end
 	end
 
@@ -2794,7 +2796,7 @@ local function WizardSteps()
 		Part(flow, Heading(page, TEXT.names), 0, HEADING_H, 4, true)
 		-- the name forms, each shown by its example ("Full name (Professor
 		-- Skillybones)": the name on the row, the form beside it)
-		local opt = OptionOf("Chat", "nameStyle")
+		local opt = OptionOf("UIModifications", "nameFormat")
 		for i, entry in ipairs(opt and type(opt.values) == "table" and opt.values or EMPTY) do
 			local label = tostring(entry.label or entry.value)
 			local kind, example = label:match("^(.-) %((.+)%)$")

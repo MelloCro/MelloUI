@@ -541,7 +541,7 @@ QuestList, the Custom Scrollable Quest Tracker, Custom Chat etc, so basically
 everything should be lined up and working flawlessly with one another". A
 window MelloUI makes itself (the configurator, the installer, the question
 dialog, the Restock List, the Quest List beside the world map, the Quest
-Tracker under the minimap, the whisper popups, the Voice Over overlay, the
+Tracker under the minimap, the whisper popups, the widget column, the
 Route arrow, the Services bar, the copy window) keeps every rule above and
 uses the SAME shared systems as the game's windows. It never carries its own
 copy of one; the ratchet (`python Tools/lint/check_panels.py`, run by the
@@ -654,6 +654,23 @@ Lint workflow) fails when a copy is added and names the system to use.
   `skin:Anchor`); it never reaches for `MelloUI.Kit` itself. Kit and Fonts
   load after Widgets.lua and Config.lua: nothing of theirs is bound at file
   scope, everything is looked up when a builder runs.
+- **Its live, small widgets: the Reminder widget and the widget column
+  (`MelloUI.Reminders`, Core/Reminders.lua; 0.16.0).** Anything that wants to
+  tell the player something now -- an errand, a line being read, a roll, an
+  offer, a timer -- is ONE spec on this widget, never a frame of its own:
+  `Rem:Register{ key, check, ... }` puts it by the portrait (a reminder), and
+  with `column = true` it is a row of the one column (Voice Over and the
+  Widgets module's eleven): the face in the kit's round rim (`icon`, a 3D
+  `model`, a unit's `portrait`), `title` and `text` on a soft band, a gold
+  progress ring (`progress`: a Cooldown swipe with Media/Textures/
+  ProgressRing, run by the engine; paused, muted), `count`, `sub`, the hover
+  buttons (`actions`, glyphs from Media/Textures/WidgetGlyphs; `secure` for a
+  macro the player's own click runs, out of combat), a `tray` (W.TrayBox) and
+  the column's one Edit Layout place ("widgets"; its lock, Reminders'
+  widgetLock). Newest on top; shown in combat unless the spec says
+  `combat = false`; nothing made at login, one shared timer only while a row
+  has a running time or a talking face. The contract is the file's header and
+  "The column" section.
 - **New tags: every new option says its update (user, 2026-09-26).** "every
   new Dropdown menu, every new slider, every new checkbox etc needs to get a
   "New" tag for people to easly navigate to that option to test it out in

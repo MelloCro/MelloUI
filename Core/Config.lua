@@ -130,6 +130,20 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- lines: Home shows the newest version in a card one column wide, beside
 -- Your setup and above Help.
 local CHANGELOG = {
+	{ version = "0.16.0", lines = {
+		"Voice Over is a small widget: the speaker's face, the line and a gold ring that fills as it plays. Point at it for Pause, Skip, Lines and the padlock.",
+		"New widgets in one column: loot rolls with Need, Greed and Pass, the way back to your corpse, a timed quest's clock, summons and resurrect offers, ready checks.",
+		"More widgets: whispers with Reply, a pet that is not happy with Feed Pet, the auction house, your crafting batch, a profession cooldown ready again.",
+		"Each widget has its switch on the Widgets tab. Move the column in Edit Layout or drag a widget; Lock The Widgets keeps it put. At most four show, Voice Over at the bottom.",
+		"Threat without a meter: in group fights a line under enemy nameplates and a Threat widget that speaks up only when it matters.",
+		"Reminders by your portrait for bags almost full, talent points to spend and Well Fed running out; they stay up in towns too.",
+		"Whisper windows: Add Friend, Invite To Group, Ignore and Report buttons on the header.",
+		"Gamepad UI: the Quest List's map marks are back. Point the cursor at one for its tooltip and press A to use it.",
+		"Fewer settings that meant the same: one Show Names As for frames, nameplates and chat, one Class Coloured Names and one Text Shade, all on Look.",
+		"Tooltip and Chat: one Background choice each (Painted, Parchment, Dark, Game). Name Shade takes Whole plate and follows the UI Shade's strength.",
+		"The Quest Tracker's and the Route arrow's size is Edit Layout's wheel; Route's notices follow On-screen Notices; Restock's reminder is part of Restock. Your settings carry over.",
+		"New files: restart the game once after updating.",
+	} },
 	{ version = "0.15.0", lines = {
 		"Gamepad UI: no more freezes on Escape, Options or the world map, and no \"blocked\" popup. If that popup turned MelloUI off, tick it again in the AddOns list.",
 		"An objective that needs an item first now leads you to where the item comes from, with the arrow, the World Marker and a \"First: ...\" line in the Quest Tracker.",
@@ -6548,6 +6562,9 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   Hooks and handlers not listed used less than half a millisecond. /mello cpu reset clears the counters.")
 	elseif cmd == "secrets" then
 		MelloUI:SecretProbe()
+	elseif cmd == "widgets" then
+		-- the widget column as it stands (0.16.0), into the copy window
+		MelloUI.Reminders:DumpColumn()
 	elseif cmd == "auras" then
 		MelloUI:AuraProbe()
 	elseif cmd == "preload" then
@@ -6669,6 +6686,7 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   /mello preload             how much of the artwork is preloaded")
 		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")
 		print("   /mello auras               what this client's aura container offers (for MelloUI's own aura rows)")
+		print("   /mello widgets             the widget column as it stands: each widget, what shows, the rows")
 	else
 		-- (a bare /mello: the page shown last, or the window closed)
 		MelloUI:OpenConfig(nil)

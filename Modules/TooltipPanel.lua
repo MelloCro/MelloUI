@@ -972,6 +972,15 @@ local showHooked = setmetatable({}, { __mode = "k" })   -- [tooltip] = true: its
 local ShowInk = Shared("Show on the game's tooltips", function(tip)
 	Touch(tip)
 end)
+-- (and SetShown: the item comparison's tooltips are filled again every 0.2 s
+-- while an item is hovered, their stat changes added after the data's
+-- post-calls, then SetShown(true) -- no Show -- so those lines flickered to
+-- the game's colours; user, 2026-09-30)
+local ShownInk = Shared("SetShown on the game's tooltips", function(tip, shown)
+	if shown then
+		Touch(tip)
+	end
+end)
 
 local function HookShow(tip)
 	if not tip or showHooked[tip] or not tip.Show then
@@ -981,6 +990,9 @@ local function HookShow(tip)
 	if ok and not forbidden then
 		showHooked[tip] = true
 		hooksecurefunc(tip, "Show", ShowInk)
+		if tip.SetShown then
+			hooksecurefunc(tip, "SetShown", ShownInk)
+		end
 	end
 end
 

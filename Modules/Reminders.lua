@@ -108,7 +108,6 @@ local M = MelloUI:RegisterModule("Reminders", {
 	keep = { "^trainer_", "^notnow_" },   -- each character's next trainer level (TrainerKey) and the widget's Not now until the next rest area (Core/Reminders.lua: notnow_<GUID>_<key>): never in a profile
 	enabledByDefault = true,
 	defaults = {
-		remind_restock = true,   -- (its row only while Restock has no switch of its own: M:OnInit)
 		remind_mail = true,
 		remind_repair = true,
 		repairAt = 0.3,
@@ -119,10 +118,11 @@ local M = MelloUI:RegisterModule("Reminders", {
 		place = "left",
 		glow = "pulse",
 		hold = 8,
+		widgetLock = false,   -- (the widget column's, Core/Reminders.lua: Edit Layout's plate locked)
+		widgetMax = 4,        -- (the widget column's rows at most; the rest fold into its "+N more" row)
 	},
 	options = {
 		{ type = "header", name = "Reminders" },
-		-- (Restock's rows go here while it has no page of its own: M:OnInit)
 		{ type = "toggle", key = "remind_mail", name = "New Mail",
 		  desc = "Remind you when mail is waiting for you. It goes once you open a mailbox, and comes back only for mail that arrives after." },
 		{ type = "toggle", key = "remind_repair", name = "Repair Gear",
@@ -136,7 +136,7 @@ local M = MelloUI:RegisterModule("Reminders", {
 		{ type = "toggle", key = "trainerProfession", parent = "remind_trainer", name = "Profession Ranks",
 		  desc = "When one of your professions can learn its next rank at a trainer: Journeyman, Expert or Artisan." },
 		{ type = "toggle", key = "stayResting", name = "Stay Up In Rest Areas",
-		  desc = "In an inn or a city every reminder stays until it is done (restocked, a mailbox opened, gear repaired, the spells or the rank learned) or you leave, and Not now there hides it until you next enter one. Off: they come and go there too." },
+		  desc = "In an inn or a city, and in a town like Sentinel Hill, every reminder stays until it is done (a mailbox opened, the spells or the rank learned ...) or you leave; Not now there waits until you next enter one." },
 		{ type = "header", name = "Widget" },
 		{ type = "dropdown", key = "place", name = "Place", values = PLACES,
 		  desc = "Where the reminder button sits beside your portrait. With the player frame hidden it keeps a place of its own, which you can move in Edit Layout." },
@@ -144,6 +144,10 @@ local M = MelloUI:RegisterModule("Reminders", {
 		  desc = "The soft glow around the button: a gentle pulse for a few seconds, then steady; always steady; or none. It brightens when you are close to where the reminder sends you." },
 		{ type = "slider", key = "hold", name = "Show For", min = 4, max = 20, step = 1, format = Seconds,
 		  desc = "How long a new reminder stays before it tucks itself away. It stays while your pointer is on it." },
+		{ type = "toggle", key = "widgetLock", name = "Lock The Widgets", new = "0.16.0",
+		  desc = "Keep the widget column (Voice Over, loot rolls, the corpse run and the rest) where it is: Edit Layout shows its plate but does not move it. Voice Over's padlock sets this too." },
+		{ type = "slider", key = "widgetMax", name = "Most Widgets Shown", new = "0.16.0", min = 2, max = 6, step = 1,
+		  desc = "How many widgets the column shows at once. The rest wait in a slim \"+2 more\" row on top; a click there lists them. Loot rolls, summons, resurrect offers and ready checks always show, and Voice Over keeps the bottom place." },
 	},
 })
 
@@ -849,12 +853,6 @@ end
 -- Module
 --------------------------------------------------------------------------------
 
--- Restock's rows that belong to its reminder (live only while its switch is
--- on); its shop list and its list window live with the reminder off too
--- (Stay Up In Rest Areas is no longer one of them: it is this page's own,
--- every reminder's)
-local REMINDER_ROWS = { below = true }
-
 -- Stay Up In Rest Areas was Restock's own setting (stayResting) until RC4;
 -- now it is this module's, one switch for all four. An old Restock one is
 -- carried here and dropped there: a saved one at login (OnInit, the module
@@ -891,46 +889,9 @@ function M:OnInit(db)
 	-- Restock's old Stay Up In Rest Areas: now, and after each settings load
 	CarryRestock()
 	MelloUI:On("restart", CarryRestock, "Reminders: Restock's stayResting")
-	-- Restock's rows (Modules/Restock.lua registers after this file), while
-	-- it is a module with no page of its own: laid out first, every one of
-	-- them. With a switch of its own for its reminder (`remind`), all as it
-	-- declares them (the reminder's rows hang on it). Without one, the
-	-- widget's remind_restock is its switch ("Restock"), with the reminder's
-	-- rows under it and the others after them.
-	local restock = MelloUI:GetModule("Restock")
-	if self.restockRows or not restock or restock.group or type(restock.options) ~= "table"
-		or #restock.options == 0 then
-		return
-	end
-	local own = false
-	for _, opt in ipairs(restock.options) do
-		own = own or (opt.type == "toggle" and opt.key == "remind")
-	end
-	local rows
-	if own then
-		rows = { { type = "include", module = "Restock" } }
-	else
-		local gated, free = {}, {}
-		for _, opt in ipairs(restock.options) do
-			if opt.type ~= "header" and opt.type ~= "include" then
-				local into = REMINDER_ROWS[opt.key] and gated or free
-				into[#into + 1] = opt
-			end
-		end
-		rows = { { type = "toggle", key = "remind_restock", name = "Restock",
-			desc = "Remind you when something on your restock list runs low: drink, food, ammunition or reagents. Click it to go to the nearest shop that sells it." } }
-		if #gated > 0 then
-			rows[#rows + 1] = { type = "include", module = "Restock", area = "remind_restock", keys = gated }
-		end
-		if #free > 0 then
-			rows[#rows + 1] = { type = "include", module = "Restock", keys = free }
-		end
-	end
-	self.restockRows = rows
-	local options = self.options
-	for i = #rows, 1, -1 do
-		table.insert(options, 2, rows[i])   -- (under the "Reminders" header)
-	end
+	-- (0.16.0: Restock's rows are no longer copied onto this module's options:
+	-- the configurator lays them out from Core/ConfigLayout.lua, Reminders >
+	-- Restock, and its switch is its reminder's too)
 end
 
 -- On: the event frame (the first time), the switched-on users' events and

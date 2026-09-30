@@ -95,10 +95,16 @@ FITTING = os.path.join(B.HERE, "fitting")
 # and Read Books And Letters Aloud are on for everyone (user, 2026-09-29): a snapshot with either off never ships
 # it off -- the Full profile leaves both at their default, on; test_bake.py's "no FULL_DROP key" checks it. Race
 # Pitch & Speed and Profile Strength were removed in 0.15.0: a snapshot's value of either is dropped too)
+# (0.16.0: the keys the merged settings and the Voice Over widget took out -- carried to the key that lives on at
+# the login, MelloUI:MergeSettings and VoiceOver's OnInit -- dropped here too, so none ships)
 FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPanel.itemBorder",
              "VoiceOver.questObjectives", "VoiceOver.questLogObjectives",
              "VoiceOver.recordedObjectives", "VoiceOver.readBooks",
-             "VoiceOver.raceProfiles", "VoiceOver.profileStrength"]
+             "VoiceOver.raceProfiles", "VoiceOver.profileStrength",
+             "Chat.nameStyle", "Chat.classColors", "Route.textShade", "Tweaks.zoneTextShade", "Tweaks.centreTextShade",
+             "NameplatePanel.shadeStrength", "UIModifications.shade_nameplates", "Tooltip.classNames",
+             "Tooltip.barTexture", "DarkMode.auraIconBorder", "Route.notice", "Route.noticeSound",
+             "Reminders.remind_restock", "VoiceOver.overlayLock", "VoiceOver.overlayScale"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)
@@ -116,9 +122,6 @@ LEGACY_PLACES = ["VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "Vo
 MOVES = {
     "whisper": {"fn": "MovePopupPlace", "file": "@Modules/Chat.lua", "old": ["Chat.whisperPopupPos"],
                 "when": "Chat's OnEnable (a login step since the wave 3 integration fix)"},
-    "voiceOverlay": {"fn": "MoveOldPlace", "file": "@Modules/VoiceOver.lua",
-                     "old": ["VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "VoiceOver.overlayX", "VoiceOver.overlayY"],
-                     "when": "the overlay's first show (the bake calls it)"},
     "routeArrow": {"fn": None, "file": "@Modules/Route.lua", "old": ["Route.arrowX", "Route.arrowY"],
                    "when": "the arrow's first show (needs its frame: a snapshot with the old keys is refused)"},
 }
@@ -220,6 +223,8 @@ function Login()
     STORE_SAVED = Store()
     PRINTED = {}
     M.initialized = true
+    -- (0.16.0: the merged settings carried first, as Core's own login does)
+    if M.MergeSettings then M:MergeSettings() end
     M.initializingModules = true
     for _, module in M:IterateModules() do M:InitModule(module) end
     M.initializingModules = nil
@@ -340,7 +345,21 @@ def entry_line(text):
 # what a login's one-time steps may change besides the moves (anything else
 # stops the bake): a personal key or one-time flag, a FULL_DROP key, or a
 # documented step
-LOGIN_STEPS = {"UIModifications.questTrackerKit"}   # set once from TrackerPanel (UIModifications' OnEnable)
+LOGIN_STEPS = {"UIModifications.questTrackerKit",   # set once from TrackerPanel (UIModifications' OnEnable)
+               # 0.16.0: the merged settings (Core/Core.lua MelloUI:MergeSettings, before the modules come up) and the
+               # Voice Over widget's (VoiceOver's OnInit: its padlock is Reminders' widgetLock; its old place, the
+               # store's voiceOverlay, and its scale are gone)
+               "Chat.nameStyle", "UIModifications.nameFormat", "Route.textShade", "Tweaks.zoneTextShade",
+               "Tweaks.centreTextShade", "Tweaks.textShade", "NameplatePanel.shadeStrength",
+               "UIModifications.shade_nameplates", "NameplatePanel.nameShade", "Chat.classColors", "Tooltip.classNames",
+               "UIModifications.classNames", "Tooltip.barTexture", "BarTextures.tooltip", "DarkMode.auraIconBorder",
+               "Route.notice", "Route.noticeSound", "Reminders.remind_restock", "VoiceOver.overlayLock",
+               "VoiceOver.overlayScale", "VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "VoiceOver.overlayX",
+               "VoiceOver.overlayY", "Reminders.widgetLock",
+               # (Show Names As's form, handed on to the frames' own copies by UI Modifications' OnEnable)
+               "UnitFrames.nameFormat", "Nameplates.nameFormat"}
+# store entries the login takes out (0.16.0: VoiceOver's OnInit forgets the old overlay's place)
+LOGIN_DROPS = {"voiceOverlay"}
 
 
 def raw_modules(snapshot):
@@ -373,26 +392,15 @@ def expected_moves(mods):
     each module's documented rule (the store's compact form: point nil =
     BOTTOMLEFT, relPoint nil = CENTER):
       Chat.whisperPopupPos {x, y} -> whisper {relPoint = BOTTOMLEFT, x, y};
-        without two numbers the old key only goes;
-      VoiceOver.overlayPoint / RelativePoint / X / Y -> voiceOverlay {point
-        unless BOTTOMLEFT, relPoint (else the point) unless CENTER, x, y
-        (0 when missing)}; without a clean point the old keys only go."""
+        without two numbers the old key only goes.
+    (0.16.0: the Voice Over overlay's old place moves no more: the widget
+    column has its own, and the login forgets the old one, LOGIN_DROPS.)"""
     out = {}
     old = (mods.get("Chat") or {}).get("whisperPopupPos")
     if isinstance(old, dict):
         x, y = _num(old.get("x")), _num(old.get("y"))
         if x is not None and y is not None:
             out["whisper"] = {"relPoint": "BOTTOMLEFT", "x": x, "y": y}
-    vo = mods.get("VoiceOver") or {}
-    point = _anchor(vo.get("overlayPoint"))
-    if point:
-        rel = _anchor(vo.get("overlayRelativePoint")) or point
-        e = {"x": _num(vo.get("overlayX")) or 0, "y": _num(vo.get("overlayY")) or 0}
-        if point != "BOTTOMLEFT":
-            e["point"] = point
-        if rel != "CENTER":
-            e["relPoint"] = rel
-        out["voiceOverlay"] = e
     return out
 
 
@@ -402,6 +410,8 @@ def check_moves(mods, saved, login, moved):
     documented entries, or the login left the store in any other state."""
     want = dict(saved)
     want.update(expected_moves(mods))
+    for k in LOGIN_DROPS:
+        want.pop(k, None)
     if moved != want:
         bad = sorted(k for k in set(moved) | set(want) if moved.get(k) != want.get(k))
         raise SystemExit("the position store after the moves is not the saved store plus the documented moves "
@@ -413,6 +423,9 @@ def check_moves(mods, saved, login, moved):
     for k in want:
         if saved.get(k) != want[k]:
             stages[k] = "login" if login.get(k) == want[k] else "bake"
+    for k in LOGIN_DROPS:
+        if k in saved:
+            stages[k] = "login"
     return stages
 
 
@@ -442,7 +455,7 @@ def popup_size():
 def moved_on_screen(store, W, H):
     """[problem] for the moved places the fitter does not place, at W x H:
     every whisper window (its size, all six cascade places) inside the
-    screen; the voice overlay's and the Route arrow's anchor on it."""
+    screen; the Route arrow's anchor on it."""
     out = []
     p = store.get("whisper")
     if p:
@@ -453,7 +466,7 @@ def moved_on_screen(store, W, H):
             if l < 0 or b < 0 or r > W or t > H:
                 out.append("whisper window %d of %d at %.1f,%.1f .. %.1f,%.1f leaves the %.2f x %.2f screen"
                            % (i + 1, WHISPER_CASCADE, l, b, r, t, W, H))
-    for key in ("voiceOverlay", "routeArrow"):
+    for key in ("routeArrow",):
         p = store.get(key)
         if p:
             l, b, _, _ = _rect(p, 0, 0, W, H)
@@ -539,7 +552,9 @@ def bake(snapshot=SNAP, tries=5, wait=60, log=print):
                     "profile": len(saved), "full": len(full)},
         "loginChanges": diff(text_saved, g.TEXT_LOGIN),
         "migrations": migrated,
-        "moves": {k: {"stage": v, "entry": fitted_store.get(k), "when": MOVES[k]["when"]} for k, v in sorted(stages.items())},
+        "moves": {k: {"stage": v, "entry": fitted_store.get(k),
+                      "when": MOVES[k]["when"] if k in MOVES else "the login (dropped)"}
+                  for k, v in sorted(stages.items())},
         "migrationChanges": diff(g.TEXT_LOGIN, g.TEXT_MIGRATED),
         "fullDrop": FULL_DROP,
         "fit": {"W": fit_py["W"], "H": fit_py["H"], "verdict": fit_py["verdict"], "layoutName": fit_py["layoutName"],

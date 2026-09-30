@@ -10,8 +10,8 @@
 --   MelloUI:Announce(text, kind[, mute])
 --       kind: "track" (a new destination), "arrive", "learn", "fail",
 --       "info" or "silent" (as info, never a sound); anything else is info.
---       mute: true leaves the sound out (a caller's own sound switch, Route's
---       Announce Sound). One line at a time: a new one replaces the one shown
+--       mute: true leaves the sound out (a caller's own sound switch). One
+--       line at a time: a new one replaces the one shown
 --       and is held 4 s, then fades over 1.5 s (Anim: at once under Reduce
 --       Motion). Its text colour is a palette colour per kind, its sound one
 --       of Core's UI sounds per kind (PlayUISound, so Custom Sounds sees it).
@@ -34,9 +34,11 @@
 --                   through MelloUI:Notice (Chat Notices can mute it)
 --   noticeOutline   Outlined Text (off): the text outlined; off, soft text
 --   noticeSounds    Notice Sounds (on)
---   zoneTextShade   Zone Text Shade (on): the game's zone text in the same
+--   textShade       Text Shade (on; 0.16.0: one for the zone text, the
+--                   centre texts and the Route's arrow and marker): the
+--                   game's zone text in the same
 --                   look (the "Zone text" section below)
---   centreTextShade Centre Text Shade (on): the game's errors, info lines,
+--                   (and, the same switch) the game's errors, info lines,
 --                   raid warnings and boss emotes in the same look
 --                   (Core/CentreText.lua, on the zone text's look core)
 --
@@ -94,7 +96,7 @@ local SOUND = { track = "notice_track", arrive = "notice_arrive", learn = "notic
 	info = "notice_learn" }
 
 local DEFAULTS = { noticeOnScreen = true, noticeToChat = false, noticeOutline = false, noticeSounds = true,
-	zoneTextShade = true, centreTextShade = true }
+	textShade = true }
 
 -- a setting of the notice (Tweaks' db, as MelloUI:Notice reads Chat Notices)
 local function Setting(key)
@@ -368,7 +370,7 @@ end
 -- The game keeps its colours (they tell friendly, hostile, contested,
 -- sanctuary), its places, its sizes and its fading.
 --
--- Setting: Tweaks zoneTextShade, Zone Text Shade (on), read when used like
+-- Setting: Tweaks textShade, Text Shade (on), read when used like
 -- the notice's. Off is the game's own look: the bands hidden, each line back
 -- on its font object, with its colour, shadow and width.
 --
@@ -588,7 +590,7 @@ do
 
 	-- the look as the setting wants it; again = style it again while on
 	local function Sync(again)
-		if Setting("zoneTextShade") then
+		if Setting("textShade") then
 			if not built then
 				ZoneBuild()
 			end
@@ -648,7 +650,7 @@ MelloUI:On("setting", function(module, key)
 				Restyle()
 			end
 			ZoneRefresh(true)
-		elseif key == "zoneTextShade" then
+		elseif key == "textShade" then
 			ZoneRefresh(true)
 		elseif key == "noticeOnScreen" or key == "noticeToChat" then
 			if not OnScreen() then

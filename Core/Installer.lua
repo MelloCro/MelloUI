@@ -128,6 +128,8 @@ local FULL_PROFILE = "MelloUI"          -- the shipped Full experience
 local BEFORE_PROFILE = "Before install" -- the restore point on the Profiles page
 local KEEP_SECONDS = 15
 local EMPTY = {}
+-- the modules holding a copy of Show Names As (UIModifications' ApplyNameFormat pushes it)
+local NAME_COPIES = { "UnitFrames", "Nameplates" }
 
 I.BEFORE_PROFILE, I.KEEP_SECONDS = BEFORE_PROFILE, KEEP_SECONDS   -- (the tests')
 -- (compared with a restore point's `at`, time() when it was made)
@@ -290,10 +292,12 @@ I.WINDOW_GROUPS = {
 -- and Restock, its fourth user with a module of its own; both say their
 -- role themselves. Gains, the feed of skill ups and items, after them.)
 I.FEATURE_GROUPS = {
+	-- (0.16.0: Widgets joined the first column and Party Markers, the medallions over the party's heads, moved beside
+	-- the nameplates, so both columns fit the page: ten and nine rows)
 	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Services",
-		"Reminders", "Restock", "Gains", "PartyMarkers", "VoiceOver", "Vendor" } },
+		"Reminders", "Restock", "Widgets", "Gains", "VoiceOver", "Vendor" } },
 	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",
-		"UnitFrames", "BarText", "Tooltip", "Stats" } },
+		"PartyMarkers", "UnitFrames", "BarText", "Tooltip", "Stats" } },
 }
 
 -- the lines the window shows (its footer, the Keep page)
@@ -683,7 +687,9 @@ function I:DefaultDraft(full)
 	end
 	local icons, chat = full.modules.ClassIcons or EMPTY, full.modules.Chat or EMPTY
 	d["ClassIcons.portraits"] = icons.portraits
-	d["Chat.nameStyle"], d["Chat.nameShade"] = chat.nameStyle, chat.nameShade
+	-- (0.16.0: the name form is Show Names As, UI Modifications', for every name)
+	local uiFull = full.modules.UIModifications or EMPTY
+	d["UIModifications.nameFormat"], d["Chat.nameShade"] = uiFull.nameFormat, chat.nameShade
 	local map = full.modules.MinimapPanel or EMPTY
 	for _, k in ipairs(DRAFT_MAP) do
 		d["MinimapPanel." .. k] = DeepCopy(map[k])
@@ -903,6 +909,17 @@ local function Target(self, option, draft, fit, cur, forFit)
 		for key in pairs(keys) do
 			t.modules[name] = t.modules[name] or {}
 			t.modules[name][key] = DeepCopy(draft[name .. "." .. key])
+		end
+	end
+	-- the name form's two copies follow Show Names As (user, 2026-09-30:
+	-- after a fresh install the frames kept the setup's "last" while Show
+	-- Names As said the wizard's pick): the wizard sets only Show Names As,
+	-- and the apply's reconcile would put an older copy back over its push
+	local form = (t.modules[UMB] or EMPTY).nameFormat
+	for _, name in ipairs(NAME_COPIES) do
+		local copy = t.modules[name]
+		if form ~= nil and type(copy) == "table" then
+			copy.nameFormat = form
 		end
 	end
 	return t

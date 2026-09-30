@@ -17,6 +17,8 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Nameplates")
+-- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
+local Secret = MelloUI.Safe.IsSecret
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local BASE_ITEM_SIZE = 25 -- NamePlateConstants.AURA_ITEM_HEIGHT
@@ -37,6 +39,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		ccGap = 4,
 		questIcon = true,
 		questIconSize = 22,
+		threatLine = true,
 	},
 	options = {
 		{ type = "header", name = "Crowd Control" },
@@ -54,6 +57,9 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "slider", key = "questIconSize", parent = "questIcon", name = "Quest Icon Size", min = 12, max = 40, step = 1,
 		  format = function(v) return string.format("%d px", v) end,
 		  desc = "Size of the quest marker in pixels." },
+		{ type = "header", name = "Threat" },
+		{ type = "toggle", key = "threatLine", name = "Threat Line", new = "0.16.0",
+		  desc = "In a group fight, a thin bar along the bottom of an enemy's health bar (in the Nameplate Kit's lower rail) fills to the point where it would turn on you: gold while safe, amber when close, red when it is on you. For a tank it turns red when a mob is not on you. Solo it stays away." },
 	},
 })
 
@@ -470,6 +476,171 @@ local function ScheduleQuestRescan()
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- The threat line (0.16.0; user, 2026-09-30: threat_sketch look D without the
+-- number, pulled into 0.16.0): a thin bar along an enemy plate's health bar
+-- filling to the pull (MelloUI.Threat, Core/Threat.lua: one reader with the
+-- Threat widget), gold while safe, amber when close, red when the mob is on
+-- you -- for a tank, red when it is not. Only in a group fight, only on the
+-- plates of mobs whose list the player is on. Where the game keeps the numbers
+-- secret the bar takes the secret value itself (StatusBar:SetValue draws it;
+-- nothing here reads it) and its colour follows the state while that is open,
+-- gold otherwise (user, 2026-09-30: "i dont want anything else, just the
+-- progress bar": the "!" went). Made on a plate's first threat (a crowd out of a fight makes none),
+-- kept in a table of this file's (nothing written on the game's frame).
+-- UNIT_THREAT_LIST_UPDATE lays the plate it names; UNIT_THREAT_SITUATION_UPDATE,
+-- the fight's start and end every plate. A StatusBar: the engine fills it
+-- (every size under a plate reads secret). Where it lies (user, 2026-09-30:
+-- pick C of threat_sketch/threat_castbar_looks.jpg -- the game keeps the
+-- cast bar's place right under the health bar, so a line there was covered
+-- by every cast): in the groove of the Nameplate Kit's lower rail, as wide
+-- as the bar, the bracket its outline; without the kit, along the bar's own
+-- bottom edge with a thin dark edge above it. Never under the cast bar.
+--------------------------------------------------------------------------------
+
+local Threat = MelloUI.Threat
+local W = MelloUI.Widgets
+local THREAT_H = 3
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+local threatLines = setmetatable({}, { __mode = "k" })   -- [the plate's UnitFrame] = its line
+local PLATE_UNITS = {}
+for i = 1, 40 do
+	PLATE_UNITS[i] = "nameplate" .. i
+end
+
+local function ThreatOn()
+	return M.isEnabled and M.db ~= nil and M.db.threatLine ~= false
+end
+
+-- a group fight: the player in combat, in a party or a raid
+local function GroupFight()
+	local ok, fighting = pcall(UnitAffectingCombat, "player")
+	return ok and fighting == true and Threat.Grouped()
+end
+
+local function ThreatLine(uf)
+	local line = threatLines[uf]
+	if line then
+		return line
+	end
+	line = CreateFrame("Frame", nil, uf)
+	line:EnableMouse(false)
+	local hb = uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar
+	local ok, level = pcall(function() return (hb or uf):GetFrameLevel() end)
+	if ok and IsPlainNumber(level) then
+		line:SetFrameLevel(level + 5)
+	end
+	local bar = CreateFrame("StatusBar", nil, line)
+	bar:SetStatusBarTexture(WHITE)
+	bar:SetMinMaxValues(0, 100)   -- (the game's scaledPercentage, as it comes)
+	bar:SetHeight(THREAT_H)
+	local bg = bar:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints(bar)
+	bg:SetTexture(WHITE)
+	W.Paint(bg, "innerPanel", "vertex", 0.85)
+	-- (without the kit: a thin dark edge between it and the bar's fill)
+	local edge = bar:CreateTexture(nil, "BORDER")
+	edge:SetTexture(WHITE)
+	edge:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, 0)
+	edge:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, 0)
+	edge:SetHeight(1)
+	W.Paint(edge, "mainWindow", "vertex", 1)
+	line.bar, line.hb, line.edge = bar, hb, edge
+	threatLines[uf] = line
+	return line
+end
+
+-- in the Kit's lower rail while it dresses the plate (hanging from the bar's
+-- bottom into the rail's groove), else along the bar's own bottom edge;
+-- anchored again on a change only
+local function HangThreat(uf, line)
+	local hb = line.hb or uf
+	local rail = uf.melloBracketLeft ~= nil
+	if line.hbAt == hb and line.rail == rail then
+		return
+	end
+	line.hbAt, line.rail = hb, rail
+	local bar = line.bar
+	bar:ClearAllPoints()
+	if rail then
+		bar:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, 0)
+		bar:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, 0)
+	else
+		bar:SetPoint("BOTTOMLEFT", hb, "BOTTOMLEFT", 0, 0)
+		bar:SetPoint("BOTTOMRIGHT", hb, "BOTTOMRIGHT", 0, 0)
+	end
+	line.edge:SetShown(not rail)
+end
+
+local function HideThreat(uf)
+	local line = threatLines[uf]
+	if line then
+		line:Hide()
+	end
+end
+
+-- one plate as the fight stands now (tank, fight: read once for all plates)
+local function ThreatPlate(uf, unit, tank, fight)
+	if not (fight and ThreatOn() and unit) then
+		HideThreat(uf)
+		return
+	end
+	local ok, hostile = pcall(UnitCanAttack, "player", unit)
+	if not ok or hostile ~= true then
+		HideThreat(uf)
+		return
+	end
+	local status, fraction, tanking, value = Threat.Read("player", unit)
+	-- (a value there: plain, or secret -- asked for secret before the nil test)
+	local hasValue = Secret(value) or value ~= nil
+	if status == false or (status == nil and not hasValue) then
+		HideThreat(uf)
+		return
+	end
+	local line = ThreatLine(uf)
+	HangThreat(uf, line)
+	local r, g, b = Threat.Colour(Threat.State(status, fraction, tank) or "safe")
+	local bar = line.bar
+	if tank and tanking then
+		bar:SetValue(100)
+	elseif hasValue then
+		bar:SetValue(value)
+	else
+		bar:SetValue(0)
+	end
+	bar:SetStatusBarColor(r, g, b)
+	line:Show()
+end
+
+local function ThreatUnit(unit)
+	local plate = C_NamePlate.GetNamePlateForUnit(unit)
+	local uf = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
+	if uf then
+		ThreatPlate(uf, unit, Threat.IsTank(), GroupFight())
+	end
+end
+
+local function ThreatAll()
+	local tank, fight = Threat.IsTank(), GroupFight()
+	for i = 1, #PLATE_UNITS do
+		local unit = PLATE_UNITS[i]
+		local plate = C_NamePlate.GetNamePlateForUnit(unit)
+		local uf = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
+		if uf then
+			ThreatPlate(uf, unit, tank, fight)
+		end
+	end
+end
+
+local function HideAllThreat()
+	for uf in pairs(threatLines) do
+		HideThreat(uf)
+	end
+end
+
+local THREAT_EVENTS = { "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE", "PLAYER_REGEN_DISABLED",
+	"PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE" }
+
 local QUEST_EVENTS = {
 	"QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "QUEST_TURNED_IN",
 	"QUEST_WATCH_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_ENTERING_WORLD",
@@ -489,15 +660,44 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		if QuestActive() then
 			UpdateQuestIcon(plate)
 		end
+		if ThreatOn() then
+			ThreatUnit(unit)
+		end
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if plate and plate.UnitFrame and plate.UnitFrame.MelloUIQuestIcon then
 			plate.UnitFrame.MelloUIQuestIcon:Hide()
 		end
+		if plate and plate.UnitFrame then
+			HideThreat(plate.UnitFrame)
+		end
+	elseif event == "UNIT_THREAT_LIST_UPDATE" then
+		-- (a plate's mob: that plate; the target's or a boss's plate has its
+		-- own nameplateN event too)
+		if not Secret(unit) and type(unit) == "string" and unit:sub(1, 9) == "nameplate" then
+			ThreatUnit(unit)
+		end
+	elseif event == "UNIT_THREAT_SITUATION_UPDATE" or event == "PLAYER_REGEN_DISABLED" or event == "GROUP_ROSTER_UPDATE" then
+		ThreatAll()
+	elseif event == "PLAYER_REGEN_ENABLED" then
+		HideAllThreat()
 	else
 		ScheduleQuestRescan()
 	end
 end)
+
+local function RegisterThreatEvents(register)
+	for _, event in ipairs(THREAT_EVENTS) do
+		if register then
+			eventFrame:RegisterEvent(event)
+		else
+			eventFrame:UnregisterEvent(event)
+		end
+	end
+	if not register then
+		HideAllThreat()
+	end
+end
 
 local function RegisterQuestEvents(register)
 	for _, event in ipairs(QUEST_EVENTS) do
@@ -533,6 +733,7 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(true)
+	RegisterThreatEvents(ThreatOn())
 	InstallPlateNameHook()
 	if db.nameFormat and db.nameFormat ~= "both" then
 		RefreshPlateNames(db.nameFormat)
@@ -555,6 +756,7 @@ function M:OnDisable()
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_ADDED")
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(false)
+	RegisterThreatEvents(false)
 	OutOfCombat(RestoreAll)
 	HideAllQuestIcons()
 	RefreshPlateNames("both")
@@ -564,6 +766,13 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "nameFormat" then
 		RefreshPlateNames(value or "both")
+		return
+	end
+	if key == "threatLine" then
+		RegisterThreatEvents(value ~= false)
+		if value ~= false then
+			ThreatAll()
+		end
 		return
 	end
 	if key == "questIcon" or key == "questIconSize" then

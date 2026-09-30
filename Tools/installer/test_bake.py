@@ -65,36 +65,22 @@ def raw_snapshot():
 
 
 def moved_places(snap):
-    """The store entries the three moved windows must have, by the rule the
-    modules document (written again here, independently): Chat's
-    whisperPopupPos {x, y} -> whisper {relPoint = BOTTOMLEFT, x, y};
-    VoiceOver's overlayPoint / RelativePoint / X / Y -> voiceOverlay {point
-    unless BOTTOMLEFT, relPoint unless CENTER, x, y}; a snapshot that has the
-    store entries already keeps them."""
+    """The store entries the moved windows must have, by the rule the modules
+    document (written again here, independently): Chat's whisperPopupPos
+    {x, y} -> whisper {relPoint = BOTTOMLEFT, x, y}; a snapshot that has the
+    store entries already keeps them. (0.16.0: the Voice Over overlay is a row
+    of the widget column: its old place is dropped at the login, never
+    moved.)"""
     um = snap.get("UIModifications", {})
     store = um.get("positions") or {}
     out = {}
-    chat, vo = snap.get("Chat", {}), snap.get("VoiceOver", {})
+    chat = snap.get("Chat", {})
     old = chat.get("whisperPopupPos")
     if isinstance(old, dict) and isinstance(old.get("x"), (int, float)) and isinstance(old.get("y"), (int, float)):
         out["whisper"] = {"relPoint": "BOTTOMLEFT", "x": old["x"], "y": old["y"]}
     elif "whisper" in store:
         out["whisper"] = store["whisper"]
 
-    def anchor(v):
-        v = ANCHOR_RX.sub("", v).upper() if isinstance(v, str) else None
-        return v if v in ANCHORS else None
-    point = anchor(vo.get("overlayPoint"))
-    if point:
-        rel = anchor(vo.get("overlayRelativePoint")) or point
-        e = {"x": vo.get("overlayX") or 0, "y": vo.get("overlayY") or 0}
-        if point != "BOTTOMLEFT":
-            e["point"] = point
-        if rel != "CENTER":
-            e["relPoint"] = rel
-        out["voiceOverlay"] = e
-    elif "voiceOverlay" in store:
-        out["voiceOverlay"] = store["voiceOverlay"]
     if "routeArrow" in store:
         out["routeArrow"] = store["routeArrow"]
     return out
@@ -168,11 +154,13 @@ def main():
     sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
     print("  Full: %d characters, sha256 %s" % (len(text), sha))
     check(not report["unexpectedChanges"], "the login and the moves changed only personal / one-time / known keys")
-    check(report["migrations"] and sorted(report["migrations"]) == ["MoveOldPlace", "MovePopupPlace"],
+    check(report["migrations"] and sorted(report["migrations"]) == ["MovePopupPlace"],
           "the modules' own moves ran: %s" % report["migrations"])
     stages = {k: v["stage"] for k, v in report["moves"].items()}
-    check(stages == {"whisper": "login", "voiceOverlay": "bake"},
-          "the whisper windows' corner moved at the login (Chat's OnEnable), the voice overlay's by the bake: %s" % stages)
+    check(stages.get("whisper") == "login" and set(stages) <= {"whisper", "voiceOverlay"}
+          and stages.get("voiceOverlay", "login") == "login",
+          "the whisper windows' corner moved at the login (Chat's OnEnable); the old voice overlay's place, if any, "
+          "dropped at the login (0.16.0): %s" % stages)
     check(all(k in {c["key"] for c in report["loginChanges"]} for k in ("Chat.whisperPopupPos", "UIModifications.positions")),
           "the login changes the bake knows include the whisper move (the old key gone, the store written)")
     # the move check itself, on made-up stores: the documented move passes
@@ -297,6 +285,7 @@ def main():
         check(got is not None and {k: got[k] for k in got} == want, "the moved place %s is a store entry %s" % (n, got))
     for k in F.LEGACY_PLACES:
         check(k not in emap, "no old place key %s" % k)
+    check("voiceOverlay" not in pos, "no voiceOverlay place (0.16.0: the widget column has its own)")
     check("QuestTracker.pos" not in emap and "UIModifications.layoutFitFor" not in emap, "no QuestTracker.pos, no layoutFitFor")
     well = all(isinstance(p.get("x"), (int, float)) and isinstance(p.get("y"), (int, float))
                and p.get("point", "BOTTOMLEFT") in ANCHORS and p.get("relPoint", "CENTER") in ANCHORS for p in pos.values())

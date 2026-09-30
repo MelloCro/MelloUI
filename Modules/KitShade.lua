@@ -120,11 +120,14 @@ local AREAS = {
 	{ "tracker", "Tracker" },
 	{ "buffs", "Buffs" },
 	{ "widgets", "Event Widgets" },
-	{ "nameplates", "Nameplates" },
+	-- (no switch of its own, 0.16.0: the nameplates' Name Shade = Whole
+	-- plate is its switch, NameplatePanel asks it with the UI Shade on)
+	{ "nameplates", "Nameplates", noSwitch = true },
 }
 local AREA, BY_KEY = {}, {}
 for _, a in ipairs(AREAS) do
 	a.name, a.label, a.key = a[1], a[2], "shade_" .. a[1]
+	a.noSwitch = a.noSwitch or nil
 	AREA[a.name], BY_KEY[a.key] = a, a
 end
 Kit.shadeAreas = AREAS
@@ -144,7 +147,7 @@ function Kit:ShadeOn(area)
 		return false
 	end
 	local s = Settings()
-	if s and (s[MASTER_KEY] == false or s[a.key] == false) then
+	if s and (s[MASTER_KEY] == false or (not a.noSwitch and s[a.key] == false)) then
 		return false
 	end
 	return true

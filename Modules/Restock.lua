@@ -716,10 +716,10 @@ end
 -- (one table: the widget keeps it, its fields change in place). The widget's
 -- contract (Core/Reminders.lua): the reach is measured by it through
 -- Services:Nearest("vendor", { letters, skip, extra }), which follow the low
--- lines as the click's route does (ReachOpts). No `enabled`: the widget's
--- own remind_restock is the switch
+-- lines as the click's route does (ReachOpts). enabled: on (0.16.0: the
+-- Restock switch is its reminder's too; registered only while it is on)
 local SPEC = {
-	key = REM_KEY, label = "Restock", icon = ICON, text = RemText, urgency = URGENCY, check = RemActive,
+	key = REM_KEY, label = "Restock", icon = ICON, text = RemText, urgency = URGENCY, check = RemActive, enabled = true,
 	when = {},   -- (Core's moments: login, a rest area, a zone; this module tells it of every change of its own)
 	onClick = RemClick, persistent = RemPersistent, tooltip = RemTooltip,
 	dismiss = "rest",   -- Not now: until a rest area is entered again (the user's pick)

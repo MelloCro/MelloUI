@@ -25,6 +25,8 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Chat")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
+local Background   -- (the Background dropdown's reading: below, 0.16.0)
+
 local M = MelloUI:RegisterModule("Chat", {
 	title = "Chat",
 	desc = "Clean chat: hidden background and input art, short coloured channel tags, class coloured names.",
@@ -46,16 +48,25 @@ local M = MelloUI:RegisterModule("Chat", {
 		editBoxTop = true,
 		shortChannels = true,
 		hideBrackets = true,
-		classColors = true,
-		nameStyle = "full",
 		nameShade = true,
 		whisperPopup = false,
 		smoothScroll = true,
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
-		{ type = "toggle", key = "hideBackground", name = "Hide Window Background",
-		  desc = "Hide the background and border art of all chat windows." },
+		-- (0.16.0: the chat windows' look in one: the painted skin, its
+		-- parchment, Dark Mode's, the game's or none; the settings it sets
+		-- keep their own keys -- UI Modifications' ChatPanel and
+		-- parchment_chat, Dark Mode's chat, hideBackground -- read by
+		-- `get`, written by OnSettingChanged)
+		{ type = "dropdown", key = "background", name = "Background", new = "0.16.0", values = {
+			{ value = "painted", label = "Painted" },
+			{ value = "parchment", label = "Parchment" },
+			{ value = "dark", label = "Dark" },
+			{ value = "game", label = "Game" },
+			{ value = "none", label = "None" },
+		  }, get = function(db) return Background(db) end,
+		  desc = "The chat windows' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), the game's art darkened (Dark), the game's own, or none at all. Painted and Parchment need the reskin on (Look)." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
 		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
@@ -77,15 +88,6 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Replace [Guild], [Party], [1. General] and so on with short, saturated coloured tags." },
 		{ type = "toggle", key = "hideBrackets", parent = "shortChannels", name = "Hide Brackets",
 		  desc = "Also remove the square brackets around the short channel tags." },
-		{ type = "toggle", key = "classColors", name = "Class Coloured Names",
-		  desc = "Colour player names by class in every chat type (sets the chatClassColorOverride CVar). On the parchment sheet a name is in dark ink with a gem in its class colour before it instead." },
-		{ type = "dropdown", key = "nameStyle", name = "Names In Chat", values = {
-			{ value = "full", label = "Full name (Professor Skillybones)" },
-			{ value = "initial", label = "Initial and surname (P. Skillybones)" },
-			{ value = "firstinitial", label = "Name and initial (Professor S.)" },
-			{ value = "first", label = "First name (Professor)" },
-			{ value = "last", label = "Surname (Skillybones)" },
-		  }, desc = "How a player's name is written in the chat windows and the whisper windows. A name without a surname stays as it is; the name is still a link to the player." },
 		{ type = "toggle", key = "nameShade", name = "Shade Behind Tags and Links",
 		  desc = "On the parchment sheet, a soft dark band behind a line's channel tag and its links, so their bright colours read without an outline. The rest of the line is in dark ink; a player's name too, with a small gem in their class colour before it." },
 		{ type = "header", name = "Whispers" },
@@ -737,9 +739,22 @@ local function ShortPerson(name, style)
 	return name
 end
 
+-- (0.16.0: Show Names As, UI Modifications' one form for every name, as
+-- saved; its "both" is the full name)
 local function NameStyle()
-	local style = Active("nameStyle")
-	return type(style) == "string" and style ~= "full" and style or nil
+	if not (M.isEnabled and M.db) then
+		return nil
+	end
+	local ui = MelloUI.db and MelloUI.db.modules and MelloUI.db.modules.UIModifications
+	local style = type(ui) == "table" and ui.nameFormat or nil
+	return type(style) == "string" and style ~= "both" and style ~= "full" and style or nil
+end
+
+-- Class Coloured Names (0.16.0: UI Modifications' one switch for the chat
+-- and the tooltip, as saved; on while not saved)
+local function ClassNames()
+	local ui = MelloUI.db and MelloUI.db.modules and MelloUI.db.modules.UIModifications
+	return not (type(ui) == "table" and ui.classNames == false)
 end
 
 -- the shown name in each player link of a line: "[|cffc79c6eName|r]",
@@ -2629,11 +2644,263 @@ local function PlaceName(f)
 	local name, head, inset = f.header, f.head, f.nameInset
 	name:ClearAllPoints()
 	name:SetPoint("LEFT", head, "LEFT", inset, 0)
-	name:SetPoint("RIGHT", head, "RIGHT", -inset, 0)
+	-- (it ends before the header's buttons, LayActions)
+	if f.actionFirst then
+		name:SetPoint("RIGHT", f.actionFirst, "LEFT", -6, 0)
+	else
+		name:SetPoint("RIGHT", head, "RIGHT", -inset, 0)
+	end
 	local Kit = MelloUI.Kit
 	if Kit and Kit.TitleFont and (f.kitDressed or name.melloFontSaved) then
 		pcall(Kit.TitleFont, Kit, name, f.kitDressed)
 	end
+end
+
+-- THE HEADER'S BUTTONS (0.16.0, user 2026-09-30: pick A of
+-- whisper_actions_looks, "make it more aligned"): Add Friend, Invite To
+-- Group, Ignore and Report, the widgets' round glyph buttons on the header's
+-- band, centred on its middle line, evenly spaced, the last one clear of the
+-- plate's end ornament. A Battle.net conversation has Invite (while they
+-- play this game) and Report only. Each one dims while there is nothing to
+-- do (a friend already, in the group, ignored, no whisper from them yet),
+-- read again with every whisper and click.
+local W = MelloUI.Widgets
+local ACTIONS = { "friend", "invite", "ignore", "report" }
+local ACTION_SIZE, ACTION_STEP = 15, 18   -- inside the band's dark part (16.8 tall on the kit's plate), 3 apart
+local ACTION_GEM = 0.3                    -- the plate's right cap: its end ornament's share (lists/header_cap_r, measured: the diamond's tip)
+local ACTION_TEXT = {
+	friend = { title = "Add Friend", desc = "Add %s to your friends list.", done = "Already on your friends list." },
+	invite = { title = "Invite To Group", desc = "Invite %s to your party.", done = "Already in your group.",
+		away = "Not in the game right now." },
+	ignore = { title = "Ignore", desc = "Ignore %s: their whispers and chat no longer reach you. Asks first.",
+		done = "Already on your ignore list." },
+	report = { title = "Report", desc = "Report %s's last whisper: the game's own report window opens.",
+		away = "Nothing to report: no whisper from them yet." },
+}
+local IGNORE_ASK = "Ignore %s? Their whispers and chat no longer reach you."
+-- Report's link: an empty cell of the glyph sheet at the button's size (the
+-- link's area, drawn nothing), in the game's "report this line" link
+local REPORT_LINK = "|Hreportcensoredmessage:%.0f|h|TInterface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs:"
+	.. ACTION_SIZE .. ":" .. ACTION_SIZE .. ":0:0:256:64:224:256:32:64|t|h"
+
+-- a call's first result, or nil when it raised or that is secret
+local function Ask(fn, ...)
+	local ok, v = pcall(fn, ...)
+	if ok and not Secret(v) then
+		return v
+	end
+	return nil
+end
+
+-- the other person's name for a tooltip or a question ("them" for one not plain)
+local function PopupWho(f)
+	return MelloUI.Safe.Text(f.titleText) or "them"
+end
+
+-- a Battle.net friend's game account while they play this game, else nil
+local function BNGameAccount(bnID)
+	local info = C_BattleNet and Ask(C_BattleNet.GetAccountInfoByID, bnID)
+	local game = type(info) == "table" and info.gameAccountInfo
+	if type(game) ~= "table" or Secret(game.isOnline) or not game.isOnline then
+		return nil
+	end
+	local client, project = MelloUI.Safe.Text(game.clientProgram), MelloUI.Safe.Number(game.wowProjectID)
+	if client ~= BNET_CLIENT_WOW or (WOW_PROJECT_ID and project ~= WOW_PROJECT_ID) then
+		return nil
+	end
+	return MelloUI.Safe.Number(game.gameAccountID)
+end
+
+-- The chat frame's own link handler, which Report's link runs: the report
+-- window is then opened by the game's code, so the report can be sent
+-- (C_ReportSystem.SendReport is never an addon's to call: a report window
+-- opened from MelloUI's code would be refused at Send). nil when missing.
+local function ReportHandler()
+	local mixin = ChatFrameMixin
+	local fn = type(mixin) == "table" and mixin.OnHyperlinkClick
+	return type(fn) == "function" and fn or nil
+end
+
+-- whether a button has something to do now, and the line saying why not
+local function ActionState(f, id)
+	local target = f.target
+	if id == "friend" then
+		local guid = MelloUI.Safe.Text(f.guid)
+		if guid and C_FriendList and Ask(C_FriendList.IsFriend, guid) then
+			return false, ACTION_TEXT.friend.done
+		end
+	elseif id == "invite" then
+		if f.kind == "BN_WHISPER" then
+			if not BNGameAccount(target) then
+				return false, ACTION_TEXT.invite.away
+			end
+		elseif Ask(UnitInParty, target) or Ask(UnitInRaid, target) then
+			return false, ACTION_TEXT.invite.done
+		end
+	elseif id == "ignore" then
+		if C_FriendList and Ask(C_FriendList.IsIgnored, target) then
+			return false, ACTION_TEXT.ignore.done
+		end
+	elseif id == "report" then
+		if not (f.reportLine and ReportHandler()) then
+			return false, ACTION_TEXT.report.away
+		end
+	end
+	return true, nil
+end
+
+-- each button's state again, and Report's link on it while it can report
+local function RefreshActions(f)
+	local acts = f.actions
+	if not acts then
+		return
+	end
+	for _, id in ipairs(ACTIONS) do
+		local b = acts[id]
+		if b.wanted then
+			b.actOn, b.note = ActionState(f, id)
+			b:SetOn(b.actOn)
+		end
+	end
+	local report = acts.report
+	local line = report.actOn and f.reportLine
+	if line then
+		report.link.text:SetText(REPORT_LINK:format(line))
+	end
+	report.link:SetShown(line and true or false)
+end
+
+-- the buttons' places: right to left from the ornament (or the band's end),
+-- on the header's middle line, over the plate; the name ends before them
+local function LayActions(f)
+	local acts = f.actions
+	if not acts then
+		return
+	end
+	local plate = f.kitDressed and f.plate or nil
+	local x = -(plate and ((plate.wr or 0) * ACTION_GEM + 4) or 6)
+	local Kit = f.kitDressed and MelloUI.Kit or false
+	local level = (plate or f.head):GetFrameLevel() + 2
+	local first
+	for i = #ACTIONS, 1, -1 do
+		local b = acts[ACTIONS[i]]
+		b:SetKit(Kit)
+		b:SetFrameLevel(level)
+		b:ClearAllPoints()
+		if b.wanted then
+			b:SetPoint("RIGHT", f.head, "RIGHT", x, 0)
+			x = x - ACTION_STEP
+			first = b
+		end
+		b:SetShown(b.wanted)
+	end
+	acts.report.link:SetFrameLevel(level + 4)
+	f.actionFirst = first
+end
+
+local function ActionTip(b, owner)
+	local t = ACTION_TEXT[b.id]
+	W.ShowTooltip(owner or b, t.title, b.note, t.desc:format(PopupWho(b.popup)), "ANCHOR_BOTTOMRIGHT")
+end
+
+local function ActionEnter(self)
+	RefreshActions(self.popup)
+	ActionTip(self)
+end
+
+local function ActionLeave(self)
+	if GameTooltip:IsOwned(self) then
+		GameTooltip:Hide()
+	end
+end
+
+local function ActionClick(self)
+	local f, id = self.popup, self.id
+	RefreshActions(f)
+	if not self.actOn or id == "report" then
+		MelloUI:PlayUISound("check_off")
+		ActionTip(self)
+		return
+	end
+	local target = f.target
+	MelloUI:PlayUISound("tab")
+	if id == "friend" then
+		-- (the game wants a click behind it: this is one)
+		pcall(C_FriendList.AddFriend, target)
+	elseif id == "invite" then
+		if f.kind == "BN_WHISPER" then
+			local account = BNGameAccount(target)
+			if account then
+				pcall(C_BattleNet.InviteFriend, account)
+			end
+		else
+			pcall(C_PartyInfo.InviteUnit, target)
+		end
+	elseif id == "ignore" then
+		MelloUI:Confirm({
+			text = IGNORE_ASK:format(PopupWho(f)),
+			accept = ACTION_TEXT.ignore.title,
+			onAccept = function()
+				pcall(C_FriendList.AddIgnore, target)
+				RefreshActions(f)
+			end,
+		})
+	end
+	ActionTip(self)
+end
+
+-- Report's link over its button: its pointer and tooltip MelloUI's, its
+-- click the chat frame's own handler (ReportHandler). The tooltip is the
+-- link frame's own, from its own enter and from the link's (user,
+-- 2026-09-30: the flag showed none), and goes only once the pointer is off
+-- the frame.
+local function LinkEnter(self)
+	local b = self:GetParent()
+	b:LockHighlight()
+	if not GameTooltip:IsOwned(self) then
+		ActionTip(b, self)
+	end
+end
+
+local function LinkLeave(self)
+	if self:IsMouseOver() then
+		return   -- (off the link, still on its frame)
+	end
+	self:GetParent():UnlockHighlight()
+	if GameTooltip:IsOwned(self) then
+		GameTooltip:Hide()
+	end
+end
+
+-- the four, made with the window (a conversation's first whisper)
+local function MakeActions(f)
+	local acts = {}
+	for _, id in ipairs(ACTIONS) do
+		local b = W.GlyphButton(f.head, ACTION_SIZE, id)
+		b.popup, b.id = f, id
+		b.wanted = f.kind ~= "BN_WHISPER" or id == "invite" or id == "report"
+		Perf.SetScript(b, "OnClick", ActionClick)
+		Perf.SetScript(b, "OnEnter", ActionEnter)
+		Perf.SetScript(b, "OnLeave", ActionLeave)
+		acts[id] = b
+	end
+	local report = acts.report
+	local link = CreateFrame("Frame", nil, report)
+	link:SetAllPoints(report)
+	link:EnableMouse(true)
+	link:SetHyperlinksEnabled(true)
+	link.text = link:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	link.text:SetPoint("CENTER", link, "CENTER", 0, 0)
+	-- the game's own function, set as it is: a wrapper (Perf) would make the
+	-- click MelloUI's, and the report could not be sent
+	link:SetScript("OnHyperlinkClick", ReportHandler())
+	Perf.SetScript(link, "OnEnter", LinkEnter)
+	Perf.SetScript(link, "OnLeave", LinkLeave)
+	Perf.SetScript(link, "OnHyperlinkEnter", LinkEnter)
+	Perf.SetScript(link, "OnHyperlinkLeave", LinkLeave)
+	link:Hide()
+	report.link = link
+	f.actions = acts
 end
 
 -- A window in the look asked for, made or kept (the chat reskin switched):
@@ -2649,6 +2916,7 @@ local function SetPopupLook(f, on)
 	-- on the plate when there is one: a child frame draws over its
 	-- parent's regions, so a name on the header frame would sit under it
 	f.header:SetParent(plate or f.head)
+	LayActions(f)
 	PlaceName(f)
 	InkPopup(f)
 end
@@ -2717,8 +2985,10 @@ local function CreatePopup(key, kind, target, title)
 	name:SetJustifyH("LEFT")
 	name:SetWordWrap(false)
 	f.header = name
-	PlaceName(f)
 	f.titleText = title   -- a character name or a Battle.net name; both display as they are
+	MakeActions(f)
+	LayActions(f)
+	PlaceName(f)
 
 	-- the close button: the own windows' one cross (MelloUI.Widgets, flat;
 	-- WINDOW-RULES 6), centred on the header's height at its right end
@@ -2933,6 +3203,7 @@ end
 -- is not known; the game's gold before 0.14.0), the level after it in that
 -- gold when it is
 local function UpdateHeader(f)
+	RefreshActions(f)
 	local name = f.titleText
 	if not Known(name) then
 		f.header:SetText(name)
@@ -2990,7 +3261,16 @@ local function OnWhisper(_, event, text, sender, ...)
 		title = Ambiguate and Ambiguate(sender, "short") or sender
 		classFile, level = CharacterIdentity(sender, (select(10, ...)))
 	end
+	local fresh = popups[key] == nil   -- (a window made now: shown as it is made, not yet open)
 	local f = popups[key] or CreatePopup(key, how.kind, target, title)
+	-- the header's buttons: Report reports their last line (its chat line
+	-- ID, the 11th), Add Friend asks by the GUID (the 12th, theirs both ways)
+	if how.incoming then
+		f.reportLine = MelloUI.Safe.Number((select(9, ...))) or f.reportLine
+	end
+	if how.kind == "WHISPER" then
+		f.guid = MelloUI.Safe.Text((select(10, ...))) or f.guid
+	end
 	-- known once is known: a later whisper without the answer keeps the earlier one
 	f.classHex = ClassHex(classFile) or f.classHex
 	f.classFile = (Known(classFile) and classFile) or f.classFile
@@ -3015,6 +3295,25 @@ local function OnWhisper(_, event, text, sender, ...)
 		table.remove(f.lineLog, 1)
 	end
 	WriteWhisperLine(f, entry)
+	-- (0.16.0: the widget column's Whispers row hears it here, the one
+	-- whisper listener: the conversation's key, the name, the class colour,
+	-- the text -- secret or not, the listener tests it --, whether it came in
+	-- and whether its window is open: an open one is read there)
+	local open = not fresh and f:IsShown() and true or false
+	MelloUI:Fire("whisper", key, f.titleText or title, f.classHex, text, how.incoming, open)
+	-- with the Whispers widget on, a whisper to a window not open shows only
+	-- the widget; its Reply opens the window (user, 2026-09-30: "it should
+	-- only show the whisper, and by clicking ... the whisper box should
+	-- appear"). One open stays open and takes the line.
+	if how.incoming and not open then
+		local widgets = MelloUI:GetModule("Widgets")
+		if widgets and widgets.isEnabled and type(widgets.Takes) == "function" and widgets:Takes("whisper") then
+			if f:IsShown() then
+				f:Hide()
+			end
+			return
+		end
+	end
 	-- it rises into its place as it fades in (Core/Anim.lua); one fading out
 	-- when the whisper came is simply brought back, without the rise
 	local Anim = MelloUI.Anim
@@ -3127,13 +3426,88 @@ local function ApplyAll()
 	SetButtonsHidden(db.hideButtons)
 	Alpha.Apply()
 	HookLines()
-	ApplyClassColors(db.classColors)
+	ApplyClassColors(ClassNames())
 	SetWhisperPopup(db.whisperPopup)
 	WatchWhisperWindows()
 end
 
 function M:OnInit(db)
 	self.db = db
+	-- (0.16.0: Class Coloured Names is UI Modifications' now, one switch)
+	MelloUI:On("setting", function(module, key, value)
+		if module == "UIModifications" and key == "classNames" and M.isEnabled then
+			ApplyClassColors(value ~= false)
+		end
+	end, "Chat: class names")
+end
+
+-- The Background dropdown (0.16.0): what the settings it stands for say now,
+-- and setting them. The painted skin is UI Modifications' ChatPanel (on
+-- while not saved off), its parchment parchment_chat, the dark look Dark
+-- Mode's chat, none this module's hideBackground.
+local function Saved(module)
+	local mods = MelloUI.db and MelloUI.db.modules
+	local t = type(mods) == "table" and mods[module]
+	return type(t) == "table" and t or nil
+end
+
+Background = function(db)
+	local ui = Saved("UIModifications")
+	if not (ui and ui.ChatPanel == false) then
+		return (ui and ui.parchment_chat == true) and "parchment" or "painted"
+	end
+	if db and db.hideBackground then
+		return "none"
+	end
+	local dm = Saved("DarkMode")
+	if dm and dm.chat == true then
+		return "dark"
+	end
+	return "game"
+end
+M.Background = Background   -- (read only: the tests)
+
+-- one setting written through its module (only a change: its module
+-- applies it)
+local function Put(module, key, value)
+	local t = Saved(module)
+	if t and t[key] == value then
+		return
+	end
+	MelloUI:NotifySettingChanged(module, key, value)
+end
+
+function M.SetBackground(value)
+	local painted = value == "painted" or value == "parchment"
+	Put("UIModifications", "ChatPanel", painted)
+	if painted then
+		Put("UIModifications", "parchment_chat", value == "parchment")
+	end
+	Put("DarkMode", "chat", value == "dark")
+	if M.db and (M.db.hideBackground and true or false) ~= (value == "none") then
+		M.db.hideBackground = value == "none"
+		ApplyArt()
+	end
+	if MelloUI.RefreshConfig then
+		MelloUI:RefreshConfig()
+	end
+end
+
+-- A conversation's popup shown and its box ready for the reply (0.16.0: the
+-- widget column's Whispers row, its Reply); false when there is no such
+-- window (the popups off, or none opened this session)
+function M:OpenWhisper(key)
+	local f = popups[key]
+	if not f then
+		return false
+	end
+	f:Show()
+	f:SetAlpha(1)
+	f:Raise()
+	if f.box then
+		f.box:SetFocus()
+	end
+	return true
 end
 
 function M:OnEnable(db)
@@ -3172,8 +3546,8 @@ function M:OnSettingChanged(key, value, db)
 		SetEditBoxOnTop(value)
 	elseif key == "shortChannels" then
 		HookLines()
-	elseif key == "classColors" then
-		ApplyClassColors(value)
+	elseif key == "background" then
+		M.SetBackground(value)
 	elseif key == "nameShade" then
 		for frame in pairs(shadeWanted) do
 			pcall(ShadeLines, frame)

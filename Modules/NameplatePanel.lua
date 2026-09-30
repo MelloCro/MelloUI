@@ -45,15 +45,13 @@ local M = MelloUI:RegisterModule("NameplatePanel", {
 	-- (include: the options below sit under this row on UI Modifications' HUD tab)
 	window = { label = "Nameplates", desc = "Nameplate health and cast bars in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { nameShade = "name", shadeStrength = SHADE_STRENGTH, marks = true },
+	defaults = { nameShade = "name", marks = true },
 	options = {
 		{ type = "dropdown", key = "nameShade", name = "Name Shade", values = {
 			{ value = "name", label = "Name" },
 			{ value = "plate", label = "Whole plate" },
 			{ value = "off", label = "Off" },
-		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the shade also follows the plate's own shape, round the level circle, the end gems and along the bar; this needs the UI Shade and its Shade: Nameplates switch on (Look). Off: no shade." },
-		{ type = "slider", key = "shadeStrength", name = "Shade Strength", min = 0.3, max = 0.9, step = 0.05, percent = true,
-		  desc = "How dark the shade behind the names (and the plates) is." },
+		}, desc = "A soft dark shade behind each nameplate's name, so it reads on bright ground. Whole plate: the UI Shade also follows the plate's own shape, round the level circle, the end gems and along the bar (it needs the UI Shade on, Look). Off: no shade. How dark it is: the UI Shade's Shade Strength." },
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks", new = "0.15.0",
 		  desc = "Elites, rares, rare elites and bosses stand out: a small crest before the name (a crown, a silver star, a gold star or a skull) and the left end cap and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss." },
 	},
@@ -190,15 +188,11 @@ local function CentreName(uf, hb, rep)
 		span:EnableMouse(false)
 		uf.melloNameSpan = span
 	end
-	local lf = uf.PlayerLevelDiffFrame
-	local okS, shown = pcall(lf and lf.IsShown, lf)
+	-- (0.16.0: the level circle sits on the right cap's diamond, HangLevel:
+	-- the bracket is the whole plate, gem to gem)
 	span:ClearAllPoints()
 	span:SetPoint("TOPLEFT", capL, "TOPLEFT", 0, 0)
-	if lf and okS and not Secret(shown) and shown then
-		span:SetPoint("RIGHT", lf, "RIGHT", 0, 0)
-	else
-		span:SetPoint("RIGHT", capR, "RIGHT", 0, 0)
-	end
+	span:SetPoint("RIGHT", capR, "RIGHT", 0, 0)
 	name:ClearAllPoints()
 	name:SetPoint("BOTTOMLEFT", span, "TOPLEFT", 0, y)
 	name:SetPoint("BOTTOMRIGHT", span, "TOPRIGHT", 0, y)
@@ -250,6 +244,60 @@ local function StripRatio(strip, region)
 	return 1
 end
 
+-- The level circle ON the right cap's diamond, covering it (user, 2026-09-30:
+-- "the circle where the level is ... should be on top of the right diamond
+-- exactly to cover it up"). The game's level frame stays where the game
+-- lays it (its own layout reads that frame's anchor to size the bar); only
+-- its parts move, which the game lays once from its template and never again
+-- (Blizzard_NamePlates/Camelot/Blizzard_NamePlateLevelFrame.xml): the circle
+-- centred on the diamond at the orb's size (the kit's orb and its disc
+-- follow it, the skull hangs on it), the number on the circle, the target
+-- ring round the circle as the template has it round the frame. The
+-- template's places back when the kit comes off. The diamond's centre:
+-- GEM_R of the right cap's width in from its right end (bars/frame_cap_r,
+-- measured: its widest column), at the cap's middle height.
+local GEM_R = 0.24
+
+local function HangLevel(uf, on)
+	local lf = uf.PlayerLevelDiffFrame
+	local icon = lf and lf.playerLevelDiffIcon
+	if not icon then
+		return
+	end
+	local text, ring = lf.playerLevelDiffText, lf.selectedBorder
+	local strip = uf.melloBracket and uf.melloBracket.strip
+	local h = strip and strip.height
+	if on and strip and strip.capR and type(strip.wr) == "number" and type(h) == "number" and h > 0 then
+		local ratio = StripRatio(strip, icon)
+		icon:ClearAllPoints()
+		icon:SetPoint("CENTER", strip.capR, "RIGHT", -strip.wr * GEM_R * ratio, 0)
+		icon:SetSize(h * ratio, h * ratio)
+		if text then
+			text:ClearAllPoints()
+			text:SetPoint("CENTER", icon, "CENTER", 0, 0)
+		end
+		if ring then
+			ring:ClearAllPoints()
+			ring:SetPoint("TOPLEFT", icon, "TOPLEFT", -3, 4)
+			ring:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 3, -4)
+		end
+		return
+	end
+	-- the template's places
+	icon:ClearAllPoints()
+	icon:SetPoint("TOPLEFT", lf, "TOPLEFT", 0, 0)
+	icon:SetPoint("BOTTOMRIGHT", lf, "BOTTOMRIGHT", 0, 0)
+	if text then
+		text:ClearAllPoints()
+		text:SetPoint("CENTER", lf, "CENTER", 0, 0)
+	end
+	if ring then
+		ring:ClearAllPoints()
+		ring:SetPoint("TOPLEFT", lf, "TOPLEFT", -3, 4)
+		ring:SetPoint("BOTTOMRIGHT", lf, "BOTTOMRIGHT", 3, -4)
+	end
+end
+
 -- The level circle as tall as the bracket, gem to gem (user, 2026-09-23:
 -- "cap the level circle to the bar height"): the game grows its level frame
 -- faster than the bar with each nameplate size, so the orb dwarfed the bar
@@ -267,6 +315,7 @@ local function FitLevelOrb(uf)
 	end
 	local ratio = StripRatio(strip, tex)
 	tex:SetSize(h * ratio, h * ratio)
+	HangLevel(uf, active)
 	-- the orb's scale (UI units per painted px), for its shadow partner's
 	-- reach on "Whole plate" (the name shade, below)
 	local piece = tex.kitName and Kit:Piece(tex.kitName)
@@ -315,8 +364,10 @@ local function ShadeMode()
 	return SHADE_MODES[mode] and mode or "name"
 end
 
+-- (0.16.0: the UI Shade's Shade Strength, one for the whole UI)
 local function ShadeStrength()
-	local v = M.db and Num(M.db.shadeStrength)
+	local v = Kit.ShadeStrength and Kit:ShadeStrength()
+	v = Num(v)
 	if not v then
 		return SHADE_STRENGTH
 	end
@@ -1026,6 +1077,22 @@ local function SkinUnitFrame(uf)
 		uf.melloLevelOrb = Replace(lf.playerLevelDiffIcon, { as = "ui-hud-nameplates-levelindicator", rect = lf.playerLevelDiffIcon })
 		FitLevelOrb(uf)
 		OrbDisc(uf, lf)
+		local orb = uf.melloLevelOrb
+		if orb then
+			local enable, disable = orb.onEnable, orb.onDisable
+			orb.onEnable = function(...)
+				if enable then
+					enable(...)
+				end
+				HangLevel(uf, true)
+			end
+			orb.onDisable = function(...)
+				if disable then
+					disable(...)
+				end
+				HangLevel(uf, false)
+			end
+		end
 		-- the game's target ring around the level circle: faded (the bar's
 		-- gold iron is the highlight — user, 2026-09-21)
 		if lf.selectedBorder then
@@ -1053,12 +1120,13 @@ local function SkinAll()
 	end
 end
 
--- the UI Shade's Nameplates area (or UI Shade itself) switched: the bus's
--- 'shade' (Modules/KitShade.lua). The Whole plate partners follow it; the
--- name's band and the strength stay the Name Shade's own
+-- UI Shade switched or its strength moved: the bus's 'shade' for the
+-- Nameplates area (Modules/KitShade.lua; the area has no switch of its own
+-- since 0.16.0). The Whole plate partners follow it, and the bands take the
+-- strength
 local function OnShade(area)
 	if area == "nameplates" and active then
-		ShadeAll(nil)
+		ShadeAll(ShadeStrength())
 	end
 end
 
@@ -1131,8 +1199,6 @@ end
 function M:OnSettingChanged(key)
 	if key == "nameShade" then
 		ShadeAll(nil)
-	elseif key == "shadeStrength" then
-		ShadeAll(ShadeStrength())
 	elseif key == "marks" then
 		MarksSync()
 	end

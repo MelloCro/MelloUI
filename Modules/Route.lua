@@ -44,16 +44,13 @@ local M = MelloUI:RegisterModule("Route", {
 		minimap = true,
 		distanceText = true,
 		travelTime = true,
-		textShade = true,
 		learn = true,
 		trackQuests = true,
 		trackFirstWatched = false,
 		arrow = true,
-		arrowScale = 1,
+		arrowScale = 1,   -- (0.16.0: no slider; an old size, a profile's too, carried into the arrow's Edit Layout size once: PlaceArrow)
 		worldMarker = true,
 		routeBeam = true,
-		notice = true,
-		noticeSound = true,
 		lineWidth = 3,
 		arrive = 25,
 		flightHint = true,
@@ -75,27 +72,20 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "Show the remaining route length under the minimap (hidden while the arrow is shown)." },
 		{ type = "toggle", key = "travelTime", name = "Travel Time",
 		  desc = "About how long the rest of the way takes, beside the distance under the arrow and on the World Marker, from how fast you are moving (on foot or mounted). The tracking notice says it too, and arriving says how long the way took." },
-		{ type = "toggle", key = "textShade", name = "Text Shade",
-		  desc = "A soft dark shade behind the Direction Arrow and the World Marker (their distance and name lines, the arrow and the gem), so they read on bright ground." },
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
 		  desc = "An arrow that points along the route's next leg, with the distance and destination. Drag it to move it; /route arrow reset puts it back at the top centre." },
-		{ type = "slider", key = "arrowScale", parent = "arrow", name = "Arrow Size", min = 0.5, max = 2, step = 0.1 },
 		{ type = "toggle", key = "worldMarker", name = "World Marker",
 		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, faint while it stands in the middle of the screen; within 100 yards it lands on the place as a pin and stays there. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
-		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away. It fades as you come near and is gone once the marker is a pin, and hides while the place is off screen. Part of the World Marker." },
+		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away, with a ring of light on the ground at its foot and the gem lit red. It fades as you come near and is gone once the marker is a pin, and hides while the place is off screen. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
-		{ type = "toggle", key = "notice", name = "Route Announces",
-		  desc = "Route's lines in the on-screen notice: the place you now track, and your arrival. How notices look, where they show and whether they play a sound is set with On-screen Notices, beside Chat Notices." },
-		{ type = "toggle", key = "noticeSound", parent = "notice", name = "Announce Sound",
-		  desc = "A short chime with Route's lines: the map's tracking sound for a new destination, a softer one when you arrive. Notice Sounds switches every notice's sound off." },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
 		  desc = "The route ends and the waypoint is cleared when you get this close." },
 		{ type = "header", name = "Flights" },
 		{ type = "toggle", key = "flightHint", name = "Flight Map Help",
 		  desc = "At a flight master: where your route flies to, on the flight map's title band, with a small gem on that flight point. Pointing at a flight point also shows about how long the flight takes." },
 		{ type = "toggle", key = "flightCountdown", name = "Landing Countdown",
-		  desc = "While you fly, the Direction Arrow points at where you will land and counts down the time left (with the Direction Arrow on), also when no route is set. Route Announces says the take-off and the landing." },
+		  desc = "While you fly, the Direction Arrow points at where you will land and counts down the time left (with the Direction Arrow on), also when no route is set. The on-screen notice says the take-off and the landing." },
 		{ type = "header", name = "Learning" },
 		{ type = "toggle", key = "learn", name = "Learn Paths While Playing",
 		  desc = "Remember where you walk and fly so routes can follow real roads. What it learns is saved and kept from one session to the next. /route shows how much has been learned." },
@@ -384,27 +374,23 @@ end
 -- Route's lines (the place now tracked, the arrival) go to MelloUI's one
 -- on-screen notice (Core/Notice.lua, MelloUI:Announce), which holds, fades,
 -- colours and sounds them, keeps its place and follows the notice options
--- (On-screen Notices and the rest, beside Chat Notices). Route Announces
--- (`notice`) and Announce Sound (`noticeSound`) are Route's own say on top:
--- whether its lines go there at all, and with a chime.
+-- (On-screen Notices and the rest, beside Chat Notices). (0.16.0: Route's
+-- own Route Announces and Announce Sound are gone: its lines follow
+-- On-screen Notices, Send To Chat Instead and Notice Sounds.)
 --------------------------------------------------------------------------------
 
 -- kind: "track" (new destination, the default), "arrive", "learn", "fail",
 -- "info", "silent" (no chime).
 function M:Notify(text, kind)
-	if not M.db.notice then
-		return
-	end
-	MelloUI:Announce(text, kind or "track", not M.db.noticeSound)
+	MelloUI:Announce(text, kind or "track")
 end
 
--- Whether a destination set now is announced with a sound (Route on, Route
--- Announces and Announce Sound, and the notice's own switches): a caller
+-- Whether a destination set now is announced with a sound (Route on and
+-- the notice's own switches, Notice Sounds among them): a caller
 -- that routes for the player (the Quest List's pins) plays its own click
 -- sound only when not, so one chime sounds, not two
 function M:AnnounceSounds()
-	return (M.isEnabled and M.db.notice and MelloUI.AnnounceSounds
-		and MelloUI:AnnounceSounds("track", not M.db.noticeSound)) and true or false
+	return (M.isEnabled and MelloUI.AnnounceSounds and MelloUI:AnnounceSounds("track")) and true or false
 end
 
 -- Said once per map per session, instead of failing quietly (0.14.0, the
@@ -413,7 +399,7 @@ end
 -- "you" (the player's own map: no position there) or "point" (the
 -- destination's map). Not inside an instance, where Route has never drawn,
 -- nor on a flight; a dungeon's map is not the open world either. With
--- Route Announces off nothing is said (M:Notify). "you" on a map Route can
+-- On-screen Notices off nothing is shown (M:Notify). "you" on a map Route can
 -- place in principle (it has a continent) is said only when the next plan
 -- misses there too: the game may give no position, or not yet say where a
 -- zone lies, for a moment. (M.placeMissed: the map the last plan missed on;
@@ -3642,26 +3628,28 @@ end
 -- World map drawing
 --------------------------------------------------------------------------------
 
--- The taxi map's own look: a chain of small gems along the way. Gold for
--- paths you have walked, pale blue where the route is a straight guess, green
--- for a flight, blue on the water.
--- The dots are the kit's small gem (deco/gem_small; the user's pick I2,
--- 2026-09-21) on the map and the minimap alike; the game's indicator dots
--- are the fallback when the kit is not loaded. A style's tint colours the gem:
--- the guess's pale blue tells a guessed stretch from a walked one. It stays
--- fixed whatever the palette until the user says whether it is a meaning
--- colour (0.14.0; the ratchet, Tools/lint/check_panels.py, counts it).
+-- The trail: a chain of dots along the way, on the map and the minimap
+-- alike (user, 2026-09-30: "new icons that we can use instead of the
+-- Diamonds, for example dots?"; pick A of BuildData/output/route_marks_sketch,
+-- in place of the kit's small gems): Media/Textures/Route/trail_dot
+-- (Tools/make_route_beam.py), a white disc with a darker rim, tinted with
+-- Route's red (MelloUI.Meaning.routeTrail, a meaning colour read when
+-- drawing), so the rim is a dark shade of the same red. A guessed stretch
+-- (a straight line where no road is known) is paler and farther apart; a
+-- flight's and a boat's dots are smaller and farther apart.
 local STYLE = {
-	road = { texture = "Interface/Common/Indicator-Yellow", piece = "deco/gem_small", size = 1.0, gap = 1.6, alpha = 1 },
-	guess = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 1.0, gap = 2.2, alpha = 1, color = { 0.8, 0.92, 1 } },   -- (fixed colour, for the user to confirm)
-	flight = { texture = "Interface/Common/Indicator-Green", piece = "deco/gem_small", size = 0.9, gap = 3.0, alpha = 0.8 },
-	boat = { texture = "Interface/Common/Indicator-Gray", piece = "deco/gem_small", size = 0.7, gap = 3.0, alpha = 0.6 },
+	road = { size = 1.0, gap = 1.6, alpha = 1 },
+	guess = { size = 1.0, gap = 2.2, alpha = 0.55 },
+	flight = { size = 0.9, gap = 3.0, alpha = 0.8 },
+	boat = { size = 0.7, gap = 3.0, alpha = 0.6 },
 }
 local MAX_DOTS = 700
 
 -- A pool of small textures on one frame, laid out along route segments with
 -- an even spacing that carries over from one segment to the next.
 local function NewPainter(frame)
+	-- (the dot's path here: the file's main chunk is at Lua 5.1's 200 locals)
+	local TRAIL_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\trail_dot"
 	local painter = { frame = frame, dots = {}, used = 0, carry = 0 }
 	function painter:Begin()
 		self.used = 0
@@ -3678,25 +3666,13 @@ local function NewPainter(frame)
 		local dot = self.dots[self.used]
 		if not dot then
 			dot = self.frame:CreateTexture(nil, "OVERLAY")
+			dot:SetTexture(TRAIL_DOT)
 			self.dots[self.used] = dot
 		end
-		local Kit = MelloUI.Kit
-		local piece = style.piece and Kit and Kit:Piece(style.piece) and style.piece
-		if piece then
-			if dot.kitName ~= piece then
-				Kit:Apply(dot, piece)
-				dot.styleTexture = nil
-			end
-		elseif dot.styleTexture ~= style.texture then
-			dot:SetTexture(style.texture)
-			dot:SetTexCoord(0, 1, 0, 1)
-			dot.kitPiece, dot.kitName = nil, nil
-			dot.styleTexture = style.texture
-		end
-		if dot.styleColor ~= style.color then
-			local c = style.color
-			dot:SetVertexColor(c and c[1] or 1, c and c[2] or 1, c and c[3] or 1)
-			dot.styleColor = style.color
+		local c = MelloUI.Meaning.routeTrail
+		if dot.colour ~= c then
+			dot.colour = c
+			dot:SetVertexColor(c[1], c[2], c[3])
 		end
 		dot:SetAlpha(style.alpha)
 		dot:SetSize(size, size)
@@ -4104,7 +4080,7 @@ local ArrowPlace = { key = "routeArrow", size = nil, resized = nil, entry = nil 
 -- the top centre of the screen: where it stands with no place saved (Edit
 -- Layout's Reset and /route arrow reset put it back here)
 function ArrowPlace.Home(f)
-	f:SetScale(tonumber(M.db and M.db.arrowScale) or 1)
+	f:SetScale(1)
 	f:ClearAllPoints()
 	f:SetPoint("TOP", UIParent, "TOP", 0, -40)
 end
@@ -4228,14 +4204,6 @@ local function PlaceArrow()
 	if not arrow then
 		return
 	end
-	local size = tonumber(M.db.arrowScale) or 1
-	-- one size, the Arrow Size slider's: a size the mover's wheel kept with
-	-- the place gives way when the slider moves (noted while the arrow is
-	-- not on the mover yet, done once it is)
-	if ArrowPlace.size and ArrowPlace.size ~= size then
-		ArrowPlace.resized = true
-	end
-	ArrowPlace.size = size
 	local entry = ArrowPlace.entry
 	if not entry then
 		-- laid when it goes on the mover, at its first show (nothing made
@@ -4248,18 +4216,25 @@ local function PlaceArrow()
 		end
 		return
 	end
-	if ArrowPlace.resized then
-		ArrowPlace.resized = nil
+	-- (0.16.0: the Arrow Size slider is gone; the arrow's size is Edit
+	-- Layout's, the wheel's, kept with its place. An old size is carried
+	-- into the place once: laid at it, then saved with it)
+	local old = tonumber(M.db.arrowScale)
+	if old and old ~= 1 then
+		M.db.arrowScale = 1
 		local pos = MelloUI:GetPosition(ArrowPlace.key)
-		if pos and pos.scale then
-			MelloUI:SavePosition(ArrowPlace.key, arrow, false)
+		if old > 0 and not (pos and pos.scale) then
+			arrow:SetScale(old)
+			if not ArrowPlace.Old() and not MelloUI:RestorePosition(ArrowPlace.key, arrow) then
+				ArrowPlace.Home(arrow)
+				arrow:SetScale(old)
+			end
+			MelloUI:SavePosition(ArrowPlace.key, arrow, old)
 		end
 	end
-	-- the slider's size is its 100 % in Edit Layout's size readout and
-	-- wheel (read from the entry each time: review, 2026-09-25)
-	entry.base = size
-	-- the size first: the saved offsets are in its own units
-	arrow:SetScale(size)
+	entry.base = 1
+	-- the saved size, then the place (the saved offsets are in its units)
+	arrow:SetScale(1)
 	if not ArrowPlace.Old() and not MelloUI:RestorePosition(ArrowPlace.key, arrow) then
 		ArrowPlace.Home(arrow)
 	end
@@ -4272,8 +4247,8 @@ end
 -- Layout's first open (ArrowPlace.Source), or at once while an old place
 -- waits (PlaceArrow). It sets no drag, show or hide script of its own (Core
 -- hooks those); registered at its size, which the saved offsets are in; the
--- wheel's range in Edit Layout is the Arrow Size slider's; live while Route
--- and its Direction Arrow are on.
+-- wheel's range in Edit Layout is 0.5 to 2 (the old Arrow Size slider's);
+-- live while Route and its Direction Arrow are on.
 function ArrowPlace.Live()
 	return M.isEnabled and M.db and M.db.arrow and true or false
 end
@@ -4282,10 +4257,10 @@ function ArrowPlace.Mover()
 	if ArrowPlace.entry or not arrow then
 		return
 	end
-	local size = tonumber(M.db.arrowScale) or 1
+	local size = tonumber(M.db.arrowScale) or 1   -- (an old Arrow Size, carried by PlaceArrow)
 	arrow:SetScale(size)
 	ArrowPlace.entry = MelloUI:RegisterMover(arrow, arrow, { key = ArrowPlace.key, anchor = "CENTER",
-		plainDrag = "always", min = 0.5, max = 2, base = size, reset = ArrowPlace.Forget, default = ArrowPlace.Home,
+		plainDrag = "always", min = 0.5, max = 2, base = 1, reset = ArrowPlace.Forget, default = ArrowPlace.Home,
 		label = "Navigation arrow", page = "Route", placeholder = true, when = ArrowPlace.Live,
 		waiting = ArrowPlace.Waiting })
 	if ArrowPlace.entry then
@@ -4360,11 +4335,16 @@ local Beacon = {
 	AREA_EVERY = 0.25,    -- seconds between asks whether the player is in the quest's area
 	AREA_BUFFER = 10,     -- yards from where the player was last inside it before the marker comes back
 	AREA_LEAVE = 3,       -- ... or seconds out of it
+	-- the light at the beam's foot (pick D; the marker's build): the ring on
+	-- the ground (its middle this far below the gem's), the glow behind the
+	-- gem, and each one's strength (the beam's fade scales them)
+	RING_W = 72, RING_H = 27, RING_DROP = -10,
+	HALO_SIZE = 72,
+	RING_ALPHA = 0.9, HALO_ALPHA = 0.6, LIT_ALPHA = 0.55,
 	area = { quest = nil, inside = false, next = 0 },
 }
 local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"
 local BEAM_W, BEAM_H = 48, 420
-local BEAM_RED = { 1, 0.16, 0.1 }   -- the user's red (2026-09-23), whatever the palette (fixed colour, for the user to confirm)
 local BEAM_SPAN = BEAM_H / (256 * BEAM_W / 64)   -- how many times the streak strip repeats up the beam
 local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
 -- off screen, the arrow goes round the character on this ring (UI units from
@@ -4411,9 +4391,12 @@ local TextShade = {
 	OPTS = {},            -- the options handed to Shade:Band and Kit:Shadow (read once, not kept)
 }
 
--- the option: on unless switched off
+-- the option: Tweaks' Text Shade (0.16.0: one with the zone text's and the
+-- centre texts'), as saved; on unless switched off
 function TextShade.On()
-	return not (M.db and M.db.textShade == false)
+	local mods = MelloUI.db and MelloUI.db.modules
+	local tweaks = type(mods) == "table" and mods.Tweaks
+	return not (type(tweaks) == "table" and tweaks.textShade == false)
 end
 
 -- a soft band on `parent` behind `region`: `feather` long soft ends, its
@@ -4555,6 +4538,14 @@ function TextShade.Apply()
 	end
 end
 
+-- Tweaks' Text Shade switched (0.16.0: the one switch lives there): the bus's
+-- 'setting', taken at OnEnable (the same owner: once)
+function TextShade.OnSetting(module, key)
+	if module == "Tweaks" and key == "textShade" and M.isEnabled then
+		TextShade.Apply()
+	end
+end
+
 local function NavFrame()
 	if C_Navigation and C_Navigation.GetFrame then
 		local ok, f = pcall(C_Navigation.GetFrame)
@@ -4659,7 +4650,55 @@ function Beacon.BeamFade(beam, d)
 		beam.fade = fade
 		beam.glow:SetAlpha(0.85 * fade)
 		beam.streaks:SetAlpha(0.7 * fade)
+		if beam.ring then
+			Beacon.FootFade(beam)
+		end
 	end
+end
+
+-- The light at the beam's foot (user, 2026-09-30: "the icon stops the beam
+-- and the icon itself is not red highlighted like the beam"; pick D of
+-- BuildData/output/route_marks_sketch): a ring of light on the ground round
+-- the foot and a soft glow behind the gem, added as the beam is, and the gem
+-- lit by it (its art again, added over it, in a frame of the beam's above
+-- the gem's; none when the kit's gem is not there), in Route's red
+-- (MelloUI.Meaning.routeBeam). The beam's own: shown, faded and flared with
+-- it. Made the first time the beam shows (not at login with the marker)
+function Beacon.FootFade(beam)
+	local fade = beam.fade or 1
+	beam.ring:SetAlpha(Beacon.RING_ALPHA * fade)
+	beam.halo:SetAlpha(Beacon.HALO_ALPHA * fade)
+	beam.lit:SetAlpha(Beacon.LIT_ALPHA * fade)
+end
+
+function Beacon.Foot(beam)
+	if beam.ring then
+		return
+	end
+	local ring = beam:CreateTexture(nil, "BACKGROUND")
+	ring:SetSize(Beacon.RING_W, Beacon.RING_H)
+	ring:SetPoint("CENTER", marker, "CENTER", 0, Beacon.RING_DROP)
+	ring:SetTexture(BEAM_ROOT .. "beam_ring")
+	local halo = beam:CreateTexture(nil, "BACKGROUND", nil, 1)
+	halo:SetSize(Beacon.HALO_SIZE, Beacon.HALO_SIZE)
+	halo:SetPoint("CENTER", marker, "CENTER")
+	halo:SetTexture(BEAM_ROOT .. "beam_halo")
+	local lift = CreateFrame("Frame", nil, beam)
+	lift:SetAllPoints(marker)
+	lift:SetFrameLevel(marker:GetFrameLevel() + 4)
+	local lit = lift:CreateTexture(nil, "ARTWORK")
+	lit:SetAllPoints(marker.gem)
+	local Kit = MelloUI.Kit
+	if not (Kit and Kit.Apply and Kit:Apply(lit, "deco/gem_large")) then
+		lit:Hide()
+	end
+	local red = MelloUI.Meaning.routeBeam
+	for _, t in ipairs({ ring, halo, lit }) do
+		t:SetBlendMode("ADD")
+		t:SetVertexColor(red[1], red[2], red[3])
+	end
+	beam.ring, beam.halo, beam.lit = ring, halo, lit
+	Beacon.FootFade(beam)
 end
 
 -- The beacon faint, or full again: the whole marker, eased (at once under
@@ -4808,6 +4847,9 @@ local function MarkerTick(self, elapsed)
 	end
 	local lit = not off and not pin and M.db.routeBeam and beam.fade > 0 or false
 	if lit ~= beam:IsShown() then
+		if lit then
+			Beacon.Foot(beam)
+		end
 		beam:SetShown(lit)
 	end
 	if d then
@@ -4871,7 +4913,9 @@ local function EnsureMarker()
 	-- the light beam (user, 2026-09-23: "can you build that beam, but make it
 	-- red"): a glow column from its foot at the destination up into the sky,
 	-- light streaks rising inside it (masked by the column's own shape), both
-	-- added to what is behind them. Made by Tools/make_route_beam.py.
+	-- added to what is behind them. Made by Tools/make_route_beam.py. Route's
+	-- red for the world (MelloUI.Meaning.routeBeam), whatever the palette.
+	local red = MelloUI.Meaning.routeBeam
 	local beam = CreateFrame("Frame", nil, marker)
 	beam:SetSize(BEAM_W, BEAM_H)
 	beam:SetPoint("BOTTOM", marker, "CENTER", 0, -6)
@@ -4880,12 +4924,12 @@ local function EnsureMarker()
 	beam.glow:SetAllPoints()
 	beam.glow:SetTexture(BEAM_ROOT .. "beam_glow")
 	beam.glow:SetBlendMode("ADD")
-	beam.glow:SetVertexColor(BEAM_RED[1], BEAM_RED[2], BEAM_RED[3])
+	beam.glow:SetVertexColor(red[1], red[2], red[3])
 	beam.streaks = beam:CreateTexture(nil, "ARTWORK", nil, 1)
 	beam.streaks:SetAllPoints()
 	beam.streaks:SetTexture(BEAM_ROOT .. "beam_streaks", "CLAMP", "REPEAT")
 	beam.streaks:SetBlendMode("ADD")
-	beam.streaks:SetVertexColor(BEAM_RED[1], BEAM_RED[2] + 0.1, BEAM_RED[3] + 0.05)
+	beam.streaks:SetVertexColor(red[1], red[2] + 0.1, red[3] + 0.05)
 	if beam.CreateMaskTexture and beam.streaks.AddMaskTexture then
 		local shape = beam:CreateMaskTexture()
 		shape:SetAllPoints()
@@ -4894,6 +4938,7 @@ local function EnsureMarker()
 	end
 	beam.glow:SetAlpha(0.85)
 	beam.streaks:SetAlpha(0.7)
+	-- (the light at its foot: Beacon.Foot, at the beam's first show)
 	beam.scroll, beam.fade = 0, 1
 	-- the strip's first window, where the streaks stand under Reduce Motion
 	beam.streaks:SetTexCoord(0, 1, 0, BEAM_SPAN)
@@ -4927,7 +4972,8 @@ local function EnsureMarker()
 	end
 	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	RouteFont.Style(marker.distance, "fontChat", _G.GameFontNormal)   -- a number
-	marker.distance:SetPoint("TOP", marker.gem, "BOTTOM", 0, -2)
+	-- (below the ring on the ground: the texts clear of the beam's light)
+	marker.distance:SetPoint("TOP", marker.gem, "BOTTOM", 0, -8)
 	marker.label = front:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	RouteFont.Style(marker.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
 	marker.label:SetPoint("TOP", marker.distance, "BOTTOM", 0, -1)
@@ -5011,6 +5057,9 @@ UpdateMarker = function()
 		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
 		Beacon.Play(marker.pop)
 		local lit = M.db.routeBeam and not marker.pin and beam.fade > 0 or false
+		if lit then
+			Beacon.Foot(beam)
+		end
 		beam:SetShown(lit)
 		if lit then
 			Beacon.Play(beam.flare)
@@ -5872,7 +5921,7 @@ end
 --   Sentinel Hill in about 0:52", then "soon" (Landing Countdown; the arrow
 --   shows for the flight also with no route set, and goes back to the route
 --   after); "Landed at Sentinel Hill (1:14)" on the ground. The notices are
---   Route's (Route Announces, Announce Sound). No take-off within TIMEOUT
+--   the on-screen notice's (its own switches). No take-off within TIMEOUT
 --   seconds of the click (no money for it): nothing happens.
 --   Flight times: a timed flight first (from one flight point to another,
 --   timed from the click to the landing and kept with the learned paths
@@ -6702,8 +6751,8 @@ do
 	-- screen said so. From the first thing that waits for them (a route to
 	-- plan, places to price: Build.Wait, M:Cheapest, M:WhenReady) until the
 	-- build's last frame: the line in the on-screen notice, held for as long
-	-- (MelloUI:AnnounceWait: as Route's other lines, with Route Announces
-	-- and the notice's own switches, never a sound), and the Direction
+	-- (MelloUI:AnnounceWait: as Route's other lines, with the notice's own
+	-- switches, never a sound), and the Direction
 	-- Arrow's working look (Build.ArrowWork). Only a wait longer than
 	-- LOADING_AFTER says so: a build done sooner (the learned paths alone,
 	-- without the companion) would flash the line. Once a session: the
@@ -6729,7 +6778,7 @@ do
 			return
 		end
 		Build.loading = true
-		if M.db.notice and MelloUI.AnnounceWait then
+		if MelloUI.AnnounceWait then
 			MelloUI:AnnounceWait(Build.LOADING, "info")
 		end
 		Build.ArrowWork()
@@ -6967,7 +7016,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 					okC and string.format("%.2f", v2) or "?", dot:GetWidth() or 0, dot:GetAlpha() or 0, r or 0, g or 0, b or 0, tostring(dot:IsShown()), tostring(dot:GetDrawLayer()))
 			end
 		end
-		MelloUI:Print("kit: %s, gem piece: %s", MelloUI.Kit and "yes" or "no", tostring(MelloUI.Kit and MelloUI.Kit:Piece("deco/gem_small") and "found" or "missing"))
+		MelloUI:Print("kit: %s", MelloUI.Kit and "yes" or "no")
 		MelloUI:Print("module enabled=%s worldMap=%s minimap=%s provider=%s destination=%s route=%s (%d points) map shown=%s",
 			tostring(M.isEnabled), tostring(M.db and M.db.worldMap), tostring(M.db and M.db.minimap), Provider and "yes" or "no",
 			destination and (destination.label or "map pin") or "none", route and "yes" or "no", route and #route.points or 0,
@@ -7185,6 +7234,7 @@ function M:OnEnable(db)
 	EnsureMarker()
 	-- (a profile brought in: the Text Shade as it says; nothing at login)
 	TextShade.Apply()
+	MelloUI:On("setting", TextShade.OnSetting, "Route text shade")
 	-- (user, 2026-09-24: nothing runs while nothing is routed) the minimap
 	-- tick sleeps with its frame: mm is made hidden and shown by Redraw only
 	-- while there is a destination, and a hidden frame's OnUpdate never runs.
@@ -7255,8 +7305,6 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "worldMarker" then
 		StandIn.Update()
-	elseif key == "textShade" then
-		TextShade.Apply()
 	end
 	M.flight.Setting(key)
 	PlaceArrow()

@@ -94,15 +94,15 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Width of the panel next to the map." },
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
-		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. Off while the game's Gamepad UI is on." },
+		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver." },
 		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
 		  desc = "Also mark givers whose quests you have all completed, with a grey tick." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
-		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone. Off while the game's Gamepad UI is on." },
+		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone." },
 		{ type = "toggle", key = "entrancePins", name = "Dungeon And Raid Entrances",
-		  desc = "Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in. Off while the game's Gamepad UI is on." },
+		  desc = "Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in." },
 		{ type = "toggle", key = "transportPins", name = "Boats And Zeppelins",
-		  desc = "Mark the docks and zeppelin towers on the zone maps with the destination. Click to route there, Shift-click to open the destination's map. Off while the game's Gamepad UI is on." },
+		  desc = "Mark the docks and zeppelin towers on the zone maps with the destination. Click to route there, Shift-click to open the destination's map." },
 		{ type = "header", name = "Dungeons" },
 		{ type = "toggle", key = "dungeonSummary", name = "Quest Check When Entering An Instance",
 		  desc = "When you enter a dungeon or raid, list in chat the quests for it you could have picked up but have not." },
@@ -1706,18 +1706,13 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		return
 	end
 	MelloUI:Print("Quest List map pins")
-	print("   provider: " .. tostring(QL.Provider ~= nil) .. "   pin mixin ready: " .. tostring(QL.PinMixin.SetPosition ~= nil)
+	print("   provider: " .. tostring(QL.Provider ~= nil) .. "   marks' layer: " .. tostring(QL.Marks and QL.Marks.layer ~= nil)
 		.. "   GetMapPosFromWorldPos: " .. tostring(C_Map.GetMapPosFromWorldPos ~= nil) .. "   CreateVector2D: " .. tostring(CreateVector2D ~= nil))
 	print(string.format("   data: %d entrances, %d transports, %d learned", #(data.entrances or {}), #(data.transports or {}),
 		(function() local n = 0 for _ in pairs(QL.LearnedStore("entrances")) do n = n + 1 end return n end)()))
 	print(string.format("   options: pins %s, entrances %s, transports %s, badges %s",
 		tostring(M.db.mapPins), tostring(M.db.entrancePins), tostring(M.db.transportPins), tostring(M.db.zoneBadges)))
-	-- the Gamepad UI lays no marks (QuestListMap.lua, LayPins): what the last
-	-- refresh found is from before it, and not said
-	local gamepad = MelloUI.Safe.GamepadUI()
-	if gamepad then
-		print("   Gamepad UI on: the map marks are off (they show while the Gamepad UI is off).")
-	elseif QL.lastPinInfo then
+	if QL.lastPinInfo then
 		print(string.format("   last refresh: map %s (%s), type %s", tostring(QL.lastPinInfo.mapID), tostring(QL.lastPinInfo.name), tostring(QL.lastPinInfo.mapType)))
 		local client = QL.ClientEntrances(QL.lastPinInfo.mapID)
 		print(string.format("   client entrance list for this map: %s, %d entries", tostring(C_EncounterJournal and C_EncounterJournal.GetDungeonEntrancesForMap ~= nil), #client))
@@ -1737,21 +1732,19 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 	else
 		print("   no refresh yet (open the map).")
 	end
-	local pools = WorldMapFrame and WorldMapFrame.pinPools and WorldMapFrame.pinPools[QL.PIN_TEMPLATE]
-	if pools then
-		local n, kinds = 0, {}
-		for pin in pools:EnumerateActive() do
-			n = n + 1
-			kinds[pin.kind or "?"] = (kinds[pin.kind or "?"] or 0) + 1
+	if QL.MarkList then
+		local marks, kinds = QL.MarkList(), {}
+		for _, m in ipairs(marks) do
+			kinds[m.kind] = (kinds[m.kind] or 0) + 1
 		end
 		local parts = {}
 		for k, v in pairs(kinds) do parts[#parts + 1] = k .. " " .. v end
-		print("   pins on the map: " .. n .. (n > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
+		print("   marks on the map: " .. #marks .. (#marks > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
 	end
-	for _, err in ipairs(gamepad and {} or QL.lastPinErrors) do
+	for _, err in ipairs(QL.lastPinErrors) do
 		print("   |cffff4040error|r " .. err)
 	end
-	local trace = gamepad and {} or QL.lastPointTrace
+	local trace = QL.lastPointTrace
 	for i, line in ipairs(trace) do
 		if i > 8 then
 			print("   ... " .. (#trace - 8) .. " more")

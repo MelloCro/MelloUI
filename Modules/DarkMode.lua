@@ -48,7 +48,6 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		statusbars = true,   -- experience / reputation / honor bars
 		cooldowns = true,    -- cooldown manager icons and bars
 		auras = true,        -- buff / debuff icons
-		auraIconBorder = true, -- add a dark border around buff / debuff icons
 		keepDispelColor = true, -- leave the coloured dispel-type debuff borders alone
 		micromenu = true,    -- micro menu and bag bar
 		minimap = true,      -- minimap ring, header and buttons
@@ -87,9 +86,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings." },
 		{ type = "header", name = "Buffs & Debuffs" },
 		{ type = "toggle", key = "auras", name = "Buffs & Debuffs",
-		  desc = "Darken the borders of your buff and debuff icons." },
-		{ type = "toggle", key = "auraIconBorder", parent = "auras", name = "Icon Border",
-		  desc = "Draw a thin dark border around every buff and debuff icon." },
+		  desc = "Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this)." },
 		{ type = "toggle", key = "keepDispelColor", parent = "auras", name = "Keep Dispel Colours",
 		  desc = "Leave the coloured magic / curse / poison / disease debuff borders untouched." },
 	},
@@ -601,9 +598,7 @@ local function CollectAuraButton(button, list)
 	if button.DebuffBorder and not M.db.keepDispelColor then
 		list[#list + 1] = button.DebuffBorder
 	end
-	if M.db.auraIconBorder then
-		list[#list + 1] = GetAuraIconBorder(button)
-	end
+	list[#list + 1] = GetAuraIconBorder(button)
 end
 
 local function CollectAuraFrame(auraFrame, list)
@@ -869,7 +864,6 @@ local appliers = {
 -- Sub-options that require their parent component to be rebuilt.
 local subOptions = {
 	gryphons = "actionbars",
-	auraIconBorder = "auras",
 	keepDispelColor = { "auras", "cooldowns" },
 }
 

@@ -20,6 +20,7 @@ Core\Shade.lua
 Core\Notice.lua
 Core\CentreText.lua
 Core\Reminders.lua
+Core\Threat.lua
 Core\Config.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
@@ -68,12 +69,12 @@ Modules\QuestInk.lua
 Modules\QuestList.lua
 Modules\QuestListPanel.lua
 Modules\QuestListMap.lua
-Modules\QuestListPins.xml
 Modules\QuestListTips.lua
 Modules\Route.lua
 Modules\Services.lua
 Modules\Reminders.lua
 Modules\Restock.lua
+Modules\Widgets.lua
 Modules\Gains.lua
 Modules\PartyMarkers.lua
 Modules\CustomSounds.lua

@@ -37,8 +37,10 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		noticeToChat = false,
 		noticeOutline = false,
 		noticeSounds = true,
-		zoneTextShade = true,   -- the game's zone text in the notice's look (Core/Notice.lua too)
-		centreTextShade = true,   -- the game's errors, raid warnings and boss emotes in it (Core/CentreText.lua)
+		-- (0.16.0: one Text Shade for the zone text, the centre texts and the
+		-- Route's arrow and marker; Core/Notice.lua, Core/CentreText.lua and
+		-- Modules/Route.lua read it as saved)
+		textShade = true,
 		menuTipShown = false,
 	},
 	options = {
@@ -61,10 +63,8 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Write these lines in the chat instead of showing them on the screen. They follow Chat Notices there." },
 		{ type = "toggle", key = "noticeSounds", parent = "noticeOnScreen", name = "Notice Sounds",
 		  desc = "A short chime with each notice: the map's tracking sound for a new destination, a softer one when you arrive." },
-		{ type = "toggle", key = "zoneTextShade", name = "Zone Text Shade",
-		  desc = "The zone name the game shows when you enter a new area, with its subzone and PvP lines, in the notice's look: a soft dark shade behind each line and no outline (Outlined Text adds it back). The game's colours and sizes stay. Off: the game's own look." },
-		{ type = "toggle", key = "centreTextShade", name = "Centre Text Shade",
-		  desc = "The game's messages in the middle of the screen in the notice's look: red errors, yellow quest progress, raid warnings and boss emotes, each line with a soft dark shade behind it that fades with it, and no outline (Outlined Text adds it back). The game's colours stay. Off: the game's own look." },
+		{ type = "toggle", key = "textShade", name = "Text Shade", new = "0.16.0",
+		  desc = "A soft dark shade behind the text MelloUI shows on the world, so it reads on bright ground: the zone name when you enter a new area (with its subzone and PvP lines), the game's messages in the middle of the screen (red errors, yellow quest progress, raid warnings and boss emotes) and the Route's Direction Arrow and World Marker. No outline on the first two (Outlined Text adds it back); the game's colours stay. Off: the game's own look, and no shade behind the arrow and the marker." },
 		-- (not under On-screen Notices: it sets the zone text's and the
 		-- centre texts' outline too, which show with the notices off)
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",

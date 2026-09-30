@@ -14,6 +14,8 @@ local QL = ns.QuestList
 local M = QL.M
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Finite = MelloUI.Safe.Finite
+-- (the marks' layer is made while the map is open: Core's maker, WINDOW-RULES)
+local CreateFrame = MelloUI.Safe.CreateFrame
 
 --------------------------------------------------------------------------------
 -- Map pins
@@ -21,11 +23,11 @@ local Finite = MelloUI.Safe.Finite
 -- Zone maps: one pin per quest giver location, showing what you can do there
 -- (yellow ! pick up, yellow ? turn in, grey ? in progress, grey ! too low,
 -- grey tick all done). Continent maps: a done/total badge on every zone.
--- Built on the map's own data provider system, so the pins pan and zoom with
--- the canvas like Blizzard's.
+-- Laid by the map's own data provider system (its refresh, its zoom), drawn
+-- on MelloUI's own layer on the canvas (0.16.0: "The marks' own layer",
+-- below), so they pan and zoom with the map in both modes.
 --------------------------------------------------------------------------------
 
-QL.PIN_TEMPLATE = "MelloUIQuestPinTemplate"
 local MAP_ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local MAP_CONTINENT = (Enum and Enum.UIMapType and Enum.UIMapType.Continent) or 2
 
@@ -98,29 +100,333 @@ local function QuestState(row, level)
 	return row[QL.F_REQ] <= level and "available" or "locked"
 end
 
-MelloUI_QuestPinMixin = MelloUI_QuestPinMixin or {}
-QL.PinMixin = MelloUI_QuestPinMixin
-local PinMethods = {}
+--------------------------------------------------------------------------------
+-- The marks' own layer (0.16.0; the gamepad freeze plan's F3, the user's
+-- "bring the Quest List map markers back in the Gamepad UI"). The marks are
+-- MelloUI's own frames, never pins in the map's pools (the game's gamepad
+-- cursor, pan and zoom go over the pools every frame, and pool calls made
+-- from MelloUI's code wrote the map's scroll state: the 0.15.0 freeze), and
+-- not among the map's own frames either (the navigation walks those): they
+-- hang in the Quest List's holder beside the map (QL.MapHolder, the
+-- panel's), which follows the map's show, alpha, scale, strata and level.
+--   the anchors  one invisible 1-unit texture per mark on the map's canvas,
+--                at its map spot in the canvas's own units: the canvas's pan
+--                and zoom move them with no code at all (textures, not
+--                frames: nothing for the navigation to walk). Laid when the
+--                marks are, and when the canvas changes size
+--   the clip     a frame over the map's scroll area in the holder (it clips
+--                what lies outside it), laid over the map's own pins
+--   the marks    buttons in the clip, each hung on its anchor: one size on
+--                the screen at every zoom, and no work of ours per frame
+-- The mouse: each mark is a button (hover: its tooltip; click: its action;
+-- a zone badge that opens its zone leaves its click to the map). The Gamepad
+-- UI: the marks take no mouse (nothing for the navigation to walk to); while
+-- the map is focused a light check (THROTTLE s) finds the mark nearest the
+-- soft cursor (the map's own normalized position of it, against the marks'
+-- spots worked out when they were laid) and shows its tooltip, and the A
+-- press (a post-hook on the map's GamepadMapClick: it runs after the game's
+-- click and move, and does its work on the next frame) is its click. One
+-- system for both: made with the map's first refresh, nothing at login.
+--------------------------------------------------------------------------------
 
-function PinMethods:OnLoad()
-	-- Constant on-screen size whatever the zoom, layered with the map's POIs.
-	self:SetScalingLimits(1, 1.0, 1.0)
-	self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI")
+local Marks = { list = {}, n = 0, anchors = {}, buttons = {}, xs = {}, ys = {}, clip = nil, hovered = nil,
+	gamepad = false, wait = 0, hooked = false }
+QL.Marks = Marks
+local THROTTLE = 0.1             -- s between two gamepad hover checks
+local HOVER_PX = 16              -- the soft cursor's reach round a mark, in screen pixels
+local ANCHOR_SIZE = 1
+
+-- a mark as the pools had it: its kind and data (a giver's group, a badge's
+-- counts, an entrance, a transport), laid by Marks.End
+function Marks.Add(kind, data)
+	local n = Marks.n + 1
+	local m = Marks.list[n]
+	if not m then
+		m = {}
+		Marks.list[n] = m
+	end
+	m.kind, m.data = kind, data
+	Marks.n = n
 end
 
-function PinMethods:OnAcquired(kind, data)
-	self.kind, self.data = kind, data
+-- the marks now, for /qlmap and the tests: { kind, x, y } each (read only)
+function QL.MarkList()
+	local out = {}
+	for i = 1, Marks.n do
+		local m = Marks.list[i]
+		out[i] = { kind = m.kind, x = m.data.x, y = m.data.y, data = m.data }
+	end
+	return out
+end
+
+local MarkEnter, MarkLeave, MarkClick   -- (below)
+local Level   -- (below)
+
+local function Clip(map)
+	local clip = Marks.clip
+	if clip then
+		return clip
+	end
+	local holder = QL.MapHolder()
+	clip = CreateFrame("Frame", nil, holder)
+	clip:SetAllPoints(map.ScrollContainer or map:GetCanvas())
+	if clip.SetClipsChildren then
+		clip:SetClipsChildren(true)
+	end
+	Marks.clip = clip
+	holder.onLevel = function()
+		Level(map)
+	end
+	Perf.SetScript(clip, "OnHide", function()
+		MarkLeave()
+	end)
+	return clip
+end
+
+-- above the map's own pins (their levels are the map's: read at each lay)
+local function TopLevel(...)
+	local top = 0
+	for i = 1, select("#", ...) do
+		local child = select(i, ...)
+		local ok, lv = pcall(child.GetFrameLevel, child)
+		if ok and type(lv) == "number" and lv > top then
+			top = lv
+		end
+	end
+	return top
+end
+
+local function MarkButton(i)
+	local b = Marks.buttons[i]
+	if b then
+		return b
+	end
+	b = CreateFrame("Button", nil, Marks.clip)
+	b:SetSize(22, 22)
+	b:RegisterForClicks("LeftButtonUp")
+	local bg = b:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints(b)
+	local icon = b:CreateTexture(nil, "ARTWORK")
+	icon:SetAllPoints(b)
+	local label = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	label:SetJustifyH("CENTER")
+	label:SetPoint("CENTER")
+	b.Bg, b.Icon, b.Label = bg, icon, label
+	Perf.SetScript(b, "OnEnter", MarkEnter)
+	Perf.SetScript(b, "OnLeave", MarkLeave)
+	Perf.SetScript(b, "OnClick", MarkClick)
+	Marks.buttons[i] = b
+	return b
+end
+
+-- (an anchor: an empty texture on the canvas, never drawn)
+local function Anchor(map, i)
+	local a = Marks.anchors[i]
+	if not a then
+		a = map:GetCanvas():CreateTexture(nil, "BACKGROUND")
+		a:SetSize(ANCHOR_SIZE, ANCHOR_SIZE)
+		Marks.anchors[i] = a
+	end
+	return a
+end
+
+-- the anchors at the marks' map spots, in the canvas's own units, and the
+-- spots kept for the hover check (a finite place only: a learned or badge
+-- place read from saved data is never handed on as NaN or endless)
+function Marks.Anchor(map)
+	local canvas = map:GetCanvas()
+	local W, H = QL.Plain(canvas:GetWidth()), QL.Plain(canvas:GetHeight())
+	if not (W and H and W > 0 and H > 0 and W < math.huge and H < math.huge) then
+		return
+	end
+	local xs, ys = Marks.xs, Marks.ys
+	for i = 1, Marks.n do
+		local d = Marks.list[i].data
+		local x, y = Finite(d.x), Finite(d.y)
+		local b = Marks.buttons[i]
+		xs[i], ys[i] = x or false, y or false
+		if x and y then
+			local a = Anchor(map, i)
+			a:ClearAllPoints()
+			a:SetPoint("CENTER", canvas, "TOPLEFT", x * W, -y * H)
+		elseif b then
+			b:Hide()
+		end
+	end
+end
+
+-- the clip over the map's own pins, at the map's strata (their levels are the
+-- map's: read at each lay, and when the map is raised)
+Level = function(map)
+	local clip = Marks.clip
+	if not clip then
+		return
+	end
+	local strata = map:GetFrameStrata()
+	if clip:GetFrameStrata() ~= strata then
+		clip:SetFrameStrata(strata)
+	end
+	local level = TopLevel(map:GetCanvas():GetChildren()) + 1
+	if clip:GetFrameLevel() ~= level then
+		clip:SetFrameLevel(level)
+	end
+end
+
+-- the mouse to the marks (off in the Gamepad UI: the soft cursor's check,
+-- below, stands for it); a badge that opens its zone leaves its click to the
+-- map under it
+local function Mouse(b)
+	local on = not Marks.gamepad
+	b:EnableMouse(on)
+	if on and b.SetMouseClickEnabled then
+		b:SetMouseClickEnabled(b.kind ~= "badge" or not b.data.opens)
+	end
+end
+
+local Watch   -- (the gamepad hover check, below)
+
+-- the marks laid on the map: every mark added since Marks.Begin
+function Marks.End(map)
+	Clip(map)
+	Level(map)
+	Marks.gamepad = MelloUI.Safe.GamepadUI()
+	Marks.Anchor(map)
+	for i = 1, Marks.n do
+		local m, b = Marks.list[i], MarkButton(i)
+		b.kind, b.data = m.kind, m.data
+		QL.DressMark(b, m.kind, m.data)
+		b:ClearAllPoints()
+		if Marks.xs[i] then
+			b:SetPoint("CENTER", Marks.anchors[i], "CENTER", 0, 0)
+			Mouse(b)
+			b:Show()
+		else
+			b:Hide()
+		end
+	end
+	for i = Marks.n + 1, #Marks.buttons do
+		local b = Marks.buttons[i]
+		b.kind, b.data = nil, nil
+		b:Hide()
+	end
+	Watch()
+end
+
+function Marks.Begin()
+	for i = 1, Marks.n do
+		Marks.list[i].data = nil
+	end
+	Marks.n = 0
+end
+
+function Marks.Clear()
+	Marks.Begin()
+	MarkLeave()
+	for i = 1, #Marks.buttons do
+		local b = Marks.buttons[i]
+		b.kind, b.data = nil, nil
+		b:Hide()
+	end
+	Watch()
+end
+
+-- The Gamepad UI's hover: while the map shows and is focused, every THROTTLE
+-- seconds, the mark nearest the soft cursor (the map's own normalized
+-- position of it) within HOVER_PX shows its tooltip: plain sums over the
+-- spots kept at the lay, the canvas's screen size read once. Our own frame's
+-- script, never the map's per-frame work; set only while there are marks.
+local function Nearest()
+	local map = WorldMapFrame
+	local ok, cx, cy = pcall(map.GetNormalizedCursorPosition, map)
+	cx, cy = ok and QL.Plain(cx) or nil, ok and QL.Plain(cy) or nil
+	local canvas = map:GetCanvas()
+	local W, H = QL.Plain(canvas:GetWidth()), QL.Plain(canvas:GetHeight())
+	local s = QL.Plain(canvas:GetEffectiveScale())
+	if not (cx and cy and W and H and s) then
+		return nil
+	end
+	local pw, ph = W * s, H * s   -- the canvas in screen pixels
+	local xs, ys = Marks.xs, Marks.ys
+	local best, bestD = nil, HOVER_PX * HOVER_PX
+	for i = 1, Marks.n do
+		local x, y = xs[i], ys[i]
+		if x then
+			local dx, dy = (x - cx) * pw, (y - cy) * ph
+			local dist = dx * dx + dy * dy
+			if dist <= bestD then
+				best, bestD = Marks.buttons[i], dist
+			end
+		end
+	end
+	return best
+end
+
+local function HoverTick(self, elapsed)
+	Marks.wait = Marks.wait - elapsed
+	if Marks.wait > 0 then
+		return
+	end
+	Marks.wait = THROTTLE
+	local map = WorldMapFrame
+	local focused = map and map.IsMapFocused and map:IsMapFocused()
+	local b = focused and Nearest() or nil
+	if b ~= Marks.hovered then
+		MarkLeave()
+		if b then
+			MarkEnter(b)
+		end
+	end
+end
+
+Watch = function()
+	local clip = Marks.clip
+	if not clip then
+		return
+	end
+	if Marks.gamepad and Marks.n > 0 then
+		if not clip:GetScript("OnUpdate") then
+			Marks.wait = 0
+			Perf.SetScript(clip, "OnUpdate", HoverTick)
+		end
+	elseif clip:GetScript("OnUpdate") then
+		Perf.SetScript(clip, "OnUpdate", nil)
+		MarkLeave()
+	end
+end
+
+-- the A press on the map (after the game's own click and move): the hovered
+-- mark's click, on the next frame
+local function GamepadClick()
+	local b = Marks.hovered
+	if b and Marks.gamepad and b.data then
+		C_Timer.After(0, function()
+			if b.data and b:IsVisible() then
+				MarkClick(b, "LeftButton")
+			end
+		end)
+	end
+end
+
+function Marks.Hook(map)
+	if Marks.hooked or not map then
+		return
+	end
+	local name = map.GamepadMapClick and "GamepadMapClick" or (map.ClickHoveredPins and "ClickHoveredPins")
+	if name then
+		Marks.hooked = true
+		hooksecurefunc(map, name, GamepadClick)
+	end
+end
+
+-- A mark dressed for its kind and data. (A zone badge leaves its click to the
+-- map under it, Marks' Mouse: the map's own click opens that zone. A map
+-- changed from MelloUI's code stays MelloUI's for the session, the map's id
+-- and zoom read by every later change.)
+function QL.DressMark(self, kind, data)
 	self.Label:ClearAllPoints()
 	self.Icon:ClearAllPoints()
 	self.Icon:SetAllPoints()
 	self:SetHitRectInsets(0, 0, 0, 0)
-	-- A zone badge leaves its click to the map under it: the map's own click
-	-- opens that zone. A map changed from MelloUI's code stays MelloUI's for
-	-- the session (the map's id and zoom, read by every later change), and
-	-- the game's gamepad pan and zoom then ran on MelloUI's script time. A
-	-- badge whose spot opens another map keeps the click, and does nothing.
-	-- (The hover and its tooltip stay: only the click goes through.)
-	self:SetMouseClickEnabled(kind ~= "badge" or not data.opens)
 	if kind == "giver" then
 		self.Bg:Hide()
 		self.Icon:Show()
@@ -192,33 +498,14 @@ function PinMethods:OnAcquired(kind, data)
 		self.Label:Show()
 		self:SetSize((self.Label:GetStringWidth() or 30) + 10, 15)
 	end
-	-- a finite place only (a learned or badge place read from saved data is
-	-- never handed to the map as NaN or endless)
-	local x, y = Finite(data.x), Finite(data.y)
-	if x and y then
-		self:SetPosition(x, y)
-	else
-		self:Hide()
-	end
 end
 
-function PinMethods:OnReleased()
-	if self.widgetContainer then
-		self.widgetContainer:UnregisterForWidgetSet()
-	end
-	if self.RemoveAllTags then
-		self:RemoveAllTags()
-	end
-	if GameTooltip:GetOwner() == self then
-		GameTooltip:Hide()
-	end
-end
-
-function PinMethods:OnMouseEnter()
+MarkEnter = function(self)
 	local data = self.data
 	if not data then
 		return
 	end
+	Marks.hovered = self
 	-- (the lines' colours by name, QL.TipLine: the palette's, or the Quest
 	-- List's fixed meaning colours)
 	local tip, Line = GameTooltip, QL.TipLine
@@ -319,19 +606,20 @@ function PinMethods:OnMouseEnter()
 	tip:Show()
 end
 
--- (only the pin's own tooltip: the map calls this for every pin it releases
--- in the Gamepad UI, and it must not hide one the game's pins show)
-function PinMethods:OnMouseLeave()
-	if GameTooltip:GetOwner() == self then
+-- (only the mark's own tooltip; no mark: the one hovered now)
+MarkLeave = function(self)
+	self = self or Marks.hovered
+	if Marks.hovered == self then
+		Marks.hovered = nil
+	end
+	if self and GameTooltip:GetOwner() == self then
 		GameTooltip:Hide()
 	end
 end
 
--- What a click changes on the map is done on the next frame. The game's own
--- click (ClickHoveredPins: the Gamepad UI's A) is still walking its list of
--- hovered pins while this runs, and laying the pins again releases them; a
--- map opened from here would come before the game's own move to the cursor,
--- which then opens the map under the cursor on top of it.
+-- What a click changes on the map is done on the next frame: a map opened
+-- from here would come before the game's own move to the cursor (the Gamepad
+-- UI's A), which then opens the map under the cursor on top of it.
 local function RelayAfterClick()
 	QL.Panel:Update()
 	QL.RefreshPins()
@@ -349,7 +637,7 @@ local function OpenMapAfterClick(map, mapID)
 	end)
 end
 
-function PinMethods:OnMouseClickAction(button)
+MarkClick = function(self, button)
 	local data = self.data
 	if not data or button ~= "LeftButton" then
 		return
@@ -369,7 +657,7 @@ function PinMethods:OnMouseClickAction(button)
 	elseif self.kind == "entrance" then
 		if IsShiftKeyDown() then
 			-- Shift-click routes to the door; a plain click lists its quests.
-			local map = self:GetMap()
+			local map = WorldMapFrame
 			local mapID = map and QL.Plain(map:GetMapID())
 			local icon = data.raid and "|A:Raid:16:16|a " or "|A:Dungeon:16:16|a "
 			local what = data.raid and "raid" or "dungeon"
@@ -393,7 +681,7 @@ function PinMethods:OnMouseClickAction(button)
 			MelloUI:Announce(text, "silent")
 		end
 	elseif self.kind == "transport" and not IsShiftKeyDown() then
-		local map = self:GetMap()
+		local map = WorldMapFrame
 		local mapID = map and QL.Plain(map:GetMapID())
 		local what = data.kind == 2 and "zeppelin" or "boat"
 		local icon = "|A:TaxiNode_Neutral:16:16|a "
@@ -403,7 +691,7 @@ function PinMethods:OnMouseClickAction(button)
 			MelloUI:PlayUISound("waypoint_set")
 		end
 	elseif self.kind == "transport" then
-		local map = self:GetMap()
+		local map = WorldMapFrame
 		local target = data.destMapID
 		if not target and data.destCont and C_Map.GetMapPosFromWorldPos and CreateVector2D then
 			local ok, contMapID, pos = pcall(C_Map.GetMapPosFromWorldPos, data.destCont, CreateVector2D(data.destX, data.destY))
@@ -423,18 +711,6 @@ function PinMethods:OnMouseClickAction(button)
 		end
 	end
 end
-
-local function PreparePinMixin()
-	if QL.PinMixin.SetPosition and QL.PinMixin.OnMouseClickAction then
-		return true
-	end
-	if not MapCanvasPinMixin then
-		return false
-	end
-	Mixin(QL.PinMixin, MapCanvasPinMixin, PinMethods)
-	return true
-end
-PreparePinMixin()
 
 QL.Provider = nil
 
@@ -531,7 +807,7 @@ local function AddGiverPins(map, mapID, mapName)
 	for _, group in ipairs(order) do
 		if group.state ~= "done" or M.db.pinCompleted or group.tracked then
 			table.sort(group.quests, function(a, b) return QL.ByLevel(a.row, b.row) end)
-			map:AcquirePin(QL.PIN_TEMPLATE, "giver", group)
+			Marks.Add("giver", group)
 		end
 	end
 end
@@ -574,7 +850,7 @@ local function AddZoneBadges(map, continentMapID)
 				local zoneID = QL.Plain(child.mapID)
 				local okA, under = pcall(C_Map.GetMapInfoAtPosition, continentMapID, x, y)
 				local opens = zoneID ~= nil and okA and type(under) == "table" and QL.Plain(under.mapID) == zoneID
-				map:AcquirePin(QL.PIN_TEMPLATE, "badge", {
+				Marks.Add("badge", {
 					name = name, done = done, total = total, available = available, inLog = inLog,
 					lo = lo, hi = hi, x = x, y = y, opens = opens,
 				})
@@ -671,21 +947,21 @@ local function AddEntrancePins(map, mapID, mapName)
 		names[e[2]:lower()] = true
 		local x, y = WorldPointOnMap(mapID, mapName, e[3], e[4], e[5], e[6], e[7], e[8])
 		if x then
-			map:AcquirePin(QL.PIN_TEMPLATE, "entrance", { dungeonID = e[1], name = e[2], raid = e[9] == 2, x = x, y = y, source = "data" })
+			Marks.Add("entrance", { dungeonID = e[1], name = e[2], raid = e[9] == 2, x = x, y = y, source = "data" })
 		end
 	end
 	-- Entrances learned by walking in (Forever's new instances).
 	for name, l in pairs(QL.LearnedStore("entrances")) do
 		if l.mapID == mapID and not names[name:lower()] then
 			names[name:lower()] = true
-			map:AcquirePin(QL.PIN_TEMPLATE, "entrance", { dungeonID = DungeonIDByName(name), name = name, raid = l.raid == true, x = l.x, y = l.y, source = "learned" })
+			Marks.Add("entrance", { dungeonID = DungeonIDByName(name), name = name, raid = l.raid == true, x = l.x, y = l.y, source = "learned" })
 		end
 	end
 	-- The client's own entrance list for the map, when this build has one.
 	for _, e in ipairs(QL.ClientEntrances(mapID)) do
 		if not names[e.name:lower()] then
 			names[e.name:lower()] = true
-			map:AcquirePin(QL.PIN_TEMPLATE, "entrance", { dungeonID = DungeonIDByName(e.name), name = e.name, raid = e.raid, x = e.x, y = e.y, source = "client" })
+			Marks.Add("entrance", { dungeonID = DungeonIDByName(e.name), name = e.name, raid = e.raid, x = e.x, y = e.y, source = "client" })
 		end
 	end
 	-- Points of interest that are instance doors.
@@ -693,7 +969,7 @@ local function AddEntrancePins(map, mapID, mapName)
 		if QL.IsEntrancePOI(poi) and not names[poi.name:lower()] then
 			names[poi.name:lower()] = true
 			local id = DungeonIDByName(poi.name)
-			map:AcquirePin(QL.PIN_TEMPLATE, "entrance", { dungeonID = id, name = poi.name, raid = (id ~= 0 and QL.Data().raids[id] == true) or poi.atlas:lower():find("raid") ~= nil, x = poi.x, y = poi.y, source = "client" })
+			Marks.Add("entrance", { dungeonID = id, name = poi.name, raid = (id ~= 0 and QL.Data().raids[id] == true) or poi.atlas:lower():find("raid") ~= nil, x = poi.x, y = poi.y, source = "client" })
 		end
 	end
 end
@@ -757,7 +1033,7 @@ local function AddInstanceStartPins(map, mapID, mapName)
 	for id, group in pairs(groups) do
 		if placed[id] then
 			table.sort(group.quests, function(a, b) return QL.ByLevel(a.row, b.row) end)
-			map:AcquirePin(QL.PIN_TEMPLATE, "giver", group)
+			Marks.Add("giver", group)
 		end
 	end
 end
@@ -766,7 +1042,7 @@ local function AddTransportPins(map, mapID, mapName)
 	for _, t in ipairs(QL.Data().transports or {}) do
 		local x, y = WorldPointOnMap(mapID, mapName, t[5], t[6], t[7], t[8], t[9], t[10])
 		if x then
-			map:AcquirePin(QL.PIN_TEMPLATE, "transport", {
+			Marks.Add("transport", {
 				kind = t[1], faction = t[2], label = t[3], dock = t[4], x = x, y = y,
 				destCont = t[11], destX = t[12], destY = t[13],
 			})
@@ -775,7 +1051,7 @@ local function AddTransportPins(map, mapID, mapName)
 	-- Docks recorded with /qlmap dock (routes the vanilla data cannot know).
 	for label, l in pairs(QL.LearnedStore("transports")) do
 		if l.mapID == mapID then
-			map:AcquirePin(QL.PIN_TEMPLATE, "transport", {
+			Marks.Add("transport", {
 				kind = l.kind or 1, faction = l.faction or 0, label = label, dock = l.dock or mapName, x = l.x, y = l.y,
 				destMapID = l.destMapID, learned = true,
 			})
@@ -969,12 +1245,9 @@ end
 local learnFailed = nil   -- instance name already reported this session
 QL.pendingExit = nil   -- { name, raid }: instance to learn from where the player exits it
 
--- where a learned entrance shows, said in its notice: the Gamepad UI has no
--- Quest List marks on the map
+-- where a learned entrance shows, said in its notice (0.16.0: the marks
+-- show in the Gamepad UI too)
 local function EntranceShows()
-	if MelloUI.Safe.GamepadUI() then
-		return "it shows on the zone map while the Gamepad UI is off"
-	end
 	return "it is on the zone map now"
 end
 
@@ -1012,11 +1285,8 @@ function QL.LearnEntrance()
 		QL.pendingExit = { name = name, raid = kind == "raid" }
 		if learnFailed ~= name then
 			learnFailed = name
-			if MelloUI.Safe.GamepadUI() then
-				MelloUI:Notice("Quest List: the entrance of %s will be learned when you walk out of it.", name)
-			else
-				MelloUI:Notice("Quest List: the entrance of %s will be put on the map when you walk out of it.", name)
-			end
+			-- (0.16.0: the marks show in the Gamepad UI too: one line for both)
+			MelloUI:Notice("Quest List: the entrance of %s will be put on the map when you walk out of it.", name)
 		end
 		return true
 	end
@@ -1103,16 +1373,16 @@ function QL.CreateProvider()
 	if QL.Provider or not (MapCanvasDataProviderMixin and WorldMapFrame and WorldMapFrame.AddDataProvider) then
 		return
 	end
-	if not PreparePinMixin() then
-		return
-	end
 	QL.Provider = CreateFromMixins(MapCanvasDataProviderMixin)
-	-- only while pins are on the map: a pool call made from here marks the
-	-- map's whole canvas for a new layout, in MelloUI's run
+	-- (the marks are MelloUI's own frames: no pool call is ever made from here)
 	function QL.Provider:RemoveAllData()
-		local map = self:GetMap()
-		if map:GetNumActivePinsByTemplate(QL.PIN_TEMPLATE) > 0 then
-			map:RemoveAllPinsByTemplate(QL.PIN_TEMPLATE)
+		Marks.Clear()
+	end
+	-- (the zoom and the pan move the marks' anchors with the canvas: nothing
+	-- of ours runs for them; a new canvas size lays the anchors again)
+	function QL.Provider:OnCanvasSizeChanged()
+		if Marks.n > 0 then
+			Marks.Anchor(self:GetMap())
 		end
 	end
 	-- the pins laid again: on the map's own refresh (fromMap, below) and on
@@ -1124,29 +1394,21 @@ function QL.CreateProvider()
 			return
 		end
 		local map = self:GetMap()
-		local gamepad = MelloUI.Safe.GamepadUI()
 		-- Blizzard's flight points, hooked a frame later (their provider has
-		-- made the pins for the map by then). The hook is a post-hook, so it
-		-- stays in the Gamepad UI as well, there on the map's own refresh only
-		-- (a Quest List refresh with the map open costs nothing then).
-		if fromMap or not gamepad then
+		-- made the pins for the map by then): a post-hook, on the map's own
+		-- refresh, or on the Quest List's outside the Gamepad UI
+		if fromMap or not MelloUI.Safe.GamepadUI() then
 			C_Timer.After(0, function() HookFlightPins(map) end)
 		end
-		-- The Gamepad UI: no pins in the map's pools. The game's gamepad
-		-- cursor, pan and zoom go over every pooled pin every frame, and the
-		-- pool calls made from here write the map's scroll state: the map's
-		-- whole per-frame work was charged to MelloUI's script time, and the
-		-- map froze with a controller. (A session switched to the Gamepad UI
-		-- with pins on the map clears them above, once.)
-		if gamepad then
-			return
-		end
+		-- (the Gamepad UI's A press: the hovered mark's click, one post-hook)
+		Marks.Hook(map)
 		local mapID = QL.Plain(map:GetMapID())
 		local okI, info = pcall(C_Map.GetMapInfo, mapID)
 		if not mapID or not okI or type(info) ~= "table" then
 			return
 		end
 		local mapType, name = QL.Plain(info.mapType), QL.Plain(info.name)
+		Marks.Begin()
 		wipe(QL.lastPointTrace)
 		QL.lastPinErrors = {}
 		QL.lastPinInfo = { mapID = mapID, name = name, mapType = mapType }
@@ -1170,6 +1432,7 @@ function QL.CreateProvider()
 		elseif mapType == MAP_CONTINENT and M.db.zoneBadges then
 			Try("zone badges", AddZoneBadges, map, mapID)
 		end
+		Try("the marks' layer", Marks.End, map)
 	end
 	-- the map's refresh (it opens, it changes map): every provider lays its
 	-- pins again

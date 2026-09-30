@@ -227,7 +227,6 @@ TEX_SHOWN = [
     (r"^Textures/Quests/pip_", 11 / 32, False, "QuestInk.Pips: 11 units"),
     (r"^Textures/Quests/tag_classic", 12 / 32, False, "QuestList logo: 12 units tall"),
     (r"^Textures/Quests/tag_forever", 20 / 64, False, "QuestList logo: 20 units tall"),
-    (r"^Textures/VoiceOver/ScrollFrame", 600 / 1024, False, "VoiceOver: 1024 px art in a 600-unit frame"),
     (r"^Textures/Masks/", 1.0, False, "masks: at least 512 units for 512 px"),
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)", 4.0, False, "bar fills: stretched along the bars"),
     (r"^Textures/Chat/", 4.0, False, "chat name band: stretched behind a name"),
@@ -243,7 +242,6 @@ TEX_SHOWN = [
 # the file (so a halved file keeps them); the rest is never on screen.
 TEX_DRAWN = [
     (r"^Textures/GameMenuFrame", (910 / 1024, 1728 / 2048), "GameMenuPanel TEX_RIGHT / TEX_BOTTOM"),
-    (r"^Textures/VoiceOver/ScrollFrame", (1.0, 342 / 512), "VoiceOver TEX_BOTTOM"),
     (r"^Textures/Quests/tag_classic", (278 / 512, 1.0), "QuestList logo w / fw"),
     (r"^Textures/Quests/tag_forever", (255 / 256, 1.0), "QuestList logo w / fw"),
 ]
@@ -272,6 +270,7 @@ STAY_TGA = [
     (r"^Textures/LogoIcon\.tga$", "addressed as LogoIcon.tga by Core/Config.lua and the TOC's IconTexture; 256 KB, loaded once"),
     (r"^Textures/SoftShade\.tga$", "the soft shade (Core/Shade.lua): a 32 KB smooth alpha gradient stretched behind text; DXT bands it"),
     (r"^Textures/SoftGlowRound\.tga$", "the round soft glow (Core/Shade.lua Shade:Glow): a 64 KB smooth radial alpha ramp, shipped as its master's bytes like SoftShade"),
+    (r"^Textures/(ProgressRing|WidgetGlyphs)\.tga$", "the widget column's gold ring (a Cooldown swipe) and its buttons' glyphs (Tools/make_widget_art.py): smooth alpha edges tinted by the palette, 64 + 32 KB, shipped as their masters' bytes"),
     (r"^Textures/ActiveLook\.tga$", "the active look (Kit:SetActive, Tools/make_active_look.py): 256 KB of smooth alpha ramps (ring, halo, glow), shipped as its master's bytes like SoftGlowRound"),
     (r"^Textures/KitShadows\w*\.tga$", "the kit's shadow partners (Kit:Shadow): soft alpha ramps at a quarter size; "
                                        "DXT5 bands them (make_kit_shadows.py --gate: 17 levels off, its limit 4)"),

@@ -94,8 +94,7 @@ local defaults = {
 	overlay = true,
 	overlayPortrait = true,
 	overlaySubtitles = false,
-	overlayLock = false,
-	overlayScale = 1,
+	overlayCompact = true,   -- (in combat only the face and its ring: the column's `compact`)
 }
 local options = {
 	{ type = "header", name = "Read Aloud" },
@@ -156,17 +155,15 @@ options[#options + 1] = { type = "toggle", key = "questLog", name = "Read Button
 	desc = "A Read button on the quest log's details view: the quest's description in the giver's voice (the recorded offer line when a pack has it), then the recorded objectives when the voice pack has them (Quest Objectives). Also /vo read." }
 options[#options + 1] = { type = "toggle", key = "stopOnMove", name = "Stop When Target Changes",
 	desc = "Cut the speech off when you change target." }
-options[#options + 1] = { type = "header", name = "Overlay" }
-options[#options + 1] = { type = "toggle", key = "overlay", name = "Show Overlay",
-	desc = "Show a frame with the speaking NPC, the line being read and the lines waiting. Drag it to move; /vo reset puts it back." }
+options[#options + 1] = { type = "header", name = "Widget" }
+options[#options + 1] = { type = "toggle", key = "overlay", name = "Show The Widget",
+	desc = "Show the speaker in MelloUI's widget column while a line is read: their face, the line, a gold ring that fills as it plays and the lines waiting. Hover it for Pause, Skip, Lines and the padlock; right-click stops. Move and size the column in Edit Layout; /vo reset puts it back." }
 options[#options + 1] = { type = "toggle", key = "overlayPortrait", parent = "overlay", name = "3D Portrait",
-	desc = "Show the NPC's animated portrait. Off collapses the overlay to a thin bar with a pause button." }
+	desc = "The speaker's animated 3D face in the widget. Off: the book." }
 options[#options + 1] = { type = "toggle", key = "overlaySubtitles", parent = "overlay", name = "Subtitles",
-	desc = "Also show the text being read under the NPC name." }
-options[#options + 1] = { type = "toggle", key = "overlayLock", parent = "overlay", name = "Lock Position",
-	desc = "Prevent the overlay from being dragged. Edit Layout still moves it." }
-options[#options + 1] = { type = "slider", key = "overlayScale", parent = "overlay", name = "Overlay Scale", min = 0.6, max = 1.5, step = 0.05, percent = true,
-	desc = "Size of the overlay." }
+	desc = "Also show the text being read under the line, page by page as the voice goes on." }
+options[#options + 1] = { type = "toggle", key = "overlayCompact", parent = "overlay", name = "Compact In Combat", new = "0.16.0",
+	desc = "In a fight the widget shrinks to the speaker's face and its ring, and the reading goes on (a book too). The name and the line come back when the fight is over." }
 
 local M = MelloUI:RegisterModule("VoiceOver", {
 	title = "Voice Over",
@@ -175,7 +172,6 @@ local M = MelloUI:RegisterModule("VoiceOver", {
 	flavour = "Every quest giver speaks. Recorded voices with the pack, text-to-speech without it.",
 	group = "Chat and sound", navOrder = 2,
 	role = "feature",
-	area = { key = "voiceover" },   -- its overlay: the reskin's look
 	enabledByDefault = true,
 	keep = { "collectLinesOffOnce", "newPackTold" },   -- one-time steps that were done: never in a profile
 	defaults = defaults,
@@ -1262,10 +1258,11 @@ end
 local queue = {}          -- waiting entries
 local current = nil       -- entry being spoken
 local paused = false
+local pausedAt = nil      -- the GetTime the line was paused at (the widget's ring holds there)
 local entryCounter = 0
 local finishTimer = nil
 local failedWarned = false
-local Overlay             -- forward declaration, defined below
+local Widget              -- forward declaration: the widget, defined below
 -- The book being read aloud (Read Books And Letters Aloud, with the voice
 -- pack): { pages = its pages' keys in reading order (a book of P.readPages),
 -- at = the page queued last, name = the item's or object's name }, or nil.
@@ -1350,7 +1347,7 @@ local function OnFinished(entry)
 	if not paused then
 		PlayNext()
 	end
-	Overlay:Update()
+	Widget:Update()
 end
 
 local function StartEntry(entry)
@@ -1415,6 +1412,7 @@ NextPage = function(b)
 				kind = "readable",
 				secret = false,
 				title = string.format("Page %d of %d", at, #b.pages),
+				pageNo = at,
 				name = b.name,
 				file = P.base .. folder .. "\\" .. name .. ".ogg",
 				length = P.seconds and PlainNumber(P.seconds[file]) or nil,
@@ -1438,7 +1436,7 @@ local function Stop()
 	current = nil
 	book = nil
 	StopEngine()
-	Overlay:Update()
+	Widget:Update()
 end
 
 -- The line being read: the next one (a book's page: its next page). A
@@ -1463,7 +1461,7 @@ local function Skip(entry)
 			end
 		end
 	end
-	Overlay:Update()
+	Widget:Update()
 end
 
 local function SetPaused(state)
@@ -1471,6 +1469,7 @@ local function SetPaused(state)
 		return
 	end
 	paused = state
+	pausedAt = paused and GetTime() or nil
 	if paused then
 		CancelFinishTimer()
 		StopEngine()
@@ -1482,7 +1481,7 @@ local function SetPaused(state)
 			PlayNext()
 		end
 	end
-	Overlay:Update()
+	Widget:Update()
 end
 
 local function TogglePaused()
@@ -1626,7 +1625,7 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		if not M.db.queueLines and not (opts and opts.follow) then
 			StopEngine()   -- a new window still ends the line before it, as it does when that line is read
 		end
-		Overlay:Update()
+		Widget:Update()
 		return
 	end
 	if entry.file and (info.clipOnly or (M.db.soundPacks and M.db.speakUnrecorded == false)) then
@@ -1636,7 +1635,7 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	if not current and not paused then
 		PlayNext()
 	end
-	Overlay:Update()
+	Widget:Update()
 	return entry
 end
 
@@ -1648,1117 +1647,161 @@ local function SpeakSample(text, npc)
 	CancelFinishTimer()
 	current = nil
 	SpeakEntry({ text = text, secret = false, npc = npc })
-	Overlay:Update()
+	Widget:Update()
 end
 
 --------------------------------------------------------------------------------
--- Overlay
+-- The widget (0.16.0; the user, 2026-09-29: the old 600 x 200 window was a
+-- "HUGE dialog window": now one row of MelloUI's widget column,
+-- Core/Reminders.lua "The column", in the picked look -- A's layout with C's
+-- ring, docs/plans/next-update-refs/voiceover_widget_picked.jpg)
 --
--- A movable frame with the speaking NPC's 3D portrait (playing its talk
--- animation), the NPC name, the line being read and the lines waiting.
--- Layout and textures follow the VoiceOver addon (MIT licence).
+-- The speaker's 3D face in the round kit rim, talking while the line plays
+-- (the Book for a page or an object, and with 3D Portrait off); their name
+-- and the line (its kind's bullet and title) on the soft band, the
+-- subtitles under them (Subtitles: in pages, as the voice goes on); a gold
+-- ring round the face that fills as the line plays -- a voice pack line
+-- exactly (its clip's length), a text-to-speech line by the estimate (its
+-- time with a "~"), a book as the WHOLE book ("Page 2 of 5 · 1:52 left");
+-- the lines waiting on its count. Paused: the ring stops, muted, and the
+-- face dims under a pause glyph (a resume starts the line again, the ring
+-- too). Its buttons, on hover: Pause / Resume (a click on the face too), Skip
+-- to the next line or Stop when nothing waits (it ends a book too), Lines (the
+-- tray: each line's length and "3 lines: 0:39 left in all"; a click skips the
+-- one playing or takes a waiting one out) and the padlock (Lock The Widgets,
+-- the column's Edit Layout plate). A right click stops. Shown in combat too.
 --------------------------------------------------------------------------------
 
--- The window is one picture (Media/Textures/VoiceOver/ScrollFrame, shipped
--- as a BLP; made from docs/voiceover-frame.webp): a dark square on the left
--- holding the model, a parchment scroll on the right holding the text. The
--- areas were measured on the 2000 x 668 art and scaled to FRAME_W.
-local FRAME_W, FRAME_H = 600, 200
-local ART_SCALE = FRAME_W / 2000
-local TEX_BOTTOM = 342 / 512     -- the art fills the top 342 rows of the 1024 x 512 texture
-local PORTRAIT_X, PORTRAIT_Y = 118 * ART_SCALE, 78 * ART_SCALE
-local PORTRAIT_SIZE = (640 - 118) * ART_SCALE
-local PARCHMENT_LEFT, PARCHMENT_RIGHT = 720 * ART_SCALE, 1860 * ART_SCALE
-local ATLAS = 512
-local ATLAS_BORDER = 416
-local ATLAS_VIEWPORT = 348
-local BORDER_SCALE = PORTRAIT_SIZE / ATLAS_VIEWPORT
-local BORDER_OUTSET = 34 * BORDER_SCALE
-local LINE_WIDTH = 56 * BORDER_SCALE
-local MAX_LINES = 4
-local TALK_ANIMATION = 60
-local VALID_POINTS = {
-	TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true,
-	RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true,
+local WIDGET = "voiceover"   -- its key in the column
+Widget = {}
+local W_TEXT = {
+	label = "Voice Over",
+	unknown = "Unknown",
+	pause = "Pause", pauseDesc = "Hold the line here.",
+	resume = "Resume", resumeDesc = "The line starts again from the top.",
+	skip = "Skip", skipDesc = "Go on to the next line.",
+	stop = "Stop", stopDesc = "Stop reading (a book too).",
+	lines = "Lines", linesDesc = "The line being read and the lines waiting, each with its length.",
+	locked = "Unlock", lockedDesc = "The widgets are locked in place. Click to unlock: then drag any widget to move them.",
+	unlocked = "Lock", unlockedDesc = "Drag any widget to move them (or use Edit Layout). Click to lock them in place.",
+	hint = "Click: pause or resume. Right-click: stop.",
+	left = "%s left",
+	estimate = "~%s left",
+	page = "%s left in the book",
+	oneLine = "1 line: %s left",
+	lines_ = "%d lines: %s left in all",
 }
 
--- Talk animation length in seconds by model file ID (from the VoiceOver
--- addon). Models not listed loop every two seconds.
-local TALK_DURATION = {
-	[116921] = 4.0, [1100258] = 4.0, [117170] = 2.0, [1100087] = 2.0,
-	[117437] = 3.0, [1022598] = 3.0, [117721] = 3.334, [1005887] = 3.334,
-	[118135] = 2.0, [950080] = 2.0, [118355] = 2.0, [878772] = 2.0,
-	[119063] = 4.0, [940356] = 4.0, [119159] = 4.0, [900914] = 4.0,
-	[119369] = 1.8, [119376] = 1.8,
-	[119563] = 2.667, [1000764] = 2.667, [119940] = 2.0, [1011653] = 2.0,
-	[120263] = 3.0, [120294] = 3.0,
-	[120590] = 2.1, [921844] = 2.1, [120791] = 2.0, [974343] = 2.0,
-	[121087] = 2.0, [949470] = 2.0, [121287] = 2.0, [917116] = 2.0,
-	[121608] = 2.0, [997378] = 2.467, [121768] = 2.667, [959310] = 2.667,
-	[121942] = 2.667, [121961] = 2.934, [986648] = 2.934, [122055] = 2.934, [968705] = 2.934,
-	[122414] = 2.5, [1018060] = 2.5, [122560] = 2.5, [1022938] = 2.5,
-}
+local function Head()
+	return current or queue[1]
+end
 
-Overlay = { lines = {} }
+-- the player's gender picks a page's narrator (female: the second key)
+local function PlayerFemale()
+	return PlainNumber(select(2, pcall(UnitSex, "player"))) == 3
+end
 
--- The text's colours; the text lies on parchment in either look, so it is
--- dark ink (the parchment ink rule).
--- The lines' STATES (the line being read, a quest's line being read, a line
--- waiting, a queued line under the pointer: skip) are MEANING colours: fixed,
--- whatever the palette (user, 2026-09-26: "Voice Over state colours stay
--- fixed meaning colours"), each line marked so for the palette ratchet
--- (Tools/lint/check_panels.py). On the painted picture they are the warm
--- browns they always were; in the kit, QuestInk's (the body ink for the line
--- being read, the faded ink for the queue, the skip red and the quest gold
--- darkened to the ink's contrast).
--- The speaker's name and the subtitle take QuestInk's inks in both looks
--- (the heading ink, the body ink: MelloUI.QuestInk, as every other
--- parchment in the UI; 0.14.0 -- the picture had browns of its own before).
--- All of them are put together once, in Overlay:Ink.
--- The name's pale shadow is not ink but the painted picture's own light, a
--- part of that fixed picture (picture art, not a palette role).
-local INKS = {
-	art = {
-		hover   = { 0.62, 0.10, 0.04 },   -- a queued line under the pointer: skip (meaning colour)
-		quest   = { 0.55, 0.36, 0.03 },   -- the line being read, a quest's (meaning colour)
-		current = { 0.22, 0.13, 0.05 },   -- the line being read (meaning colour)
-		queued  = { 0.45, 0.36, 0.26 },   -- a line waiting (meaning colour)
-	},
-	nameShadow = { 1, 0.95, 0.8 },   -- the name's pale shadow, at NAME_SHADOW_ALPHA (picture art)
-}
-local NAME_SHADOW_ALPHA = 0.35
-
-local nameFont, lineFont, subtitleFont
-
-local function EnsureFonts()
-	if nameFont then
-		return
+-- a book's pages' lengths (the voice pack's P.seconds), once per book
+local function BookTimes(b)
+	local lengths = b.lengths
+	if lengths then
+		return lengths
 	end
-	local path = GameFontNormal:GetFont()
-	nameFont = CreateFont("MelloUIVoiceOverNameFont")
-	nameFont:SetFont(path, 19, "")
-	local shadow = INKS.nameShadow
-	nameFont:SetShadowColor(shadow[1], shadow[2], shadow[3], NAME_SHADOW_ALPHA)
-	nameFont:SetShadowOffset(1, -1)
-	nameFont:SetJustifyH("LEFT")
-	lineFont = CreateFont("MelloUIVoiceOverLineFont")
-	lineFont:SetFont(path, 16, "")
-	lineFont:SetShadowOffset(0, 0)
-	lineFont:SetJustifyH("LEFT")
-	subtitleFont = CreateFont("MelloUIVoiceOverSubtitleFont")
-	subtitleFont:SetFont(path, 12, "")
-	subtitleFont:SetShadowOffset(0, 0)
-	subtitleFont:SetJustifyH("LEFT")
-	subtitleFont:SetJustifyV("TOP")
+	local P = v2Pack
+	local female = PlayerFemale()
+	lengths = { total = 0 }
+	for i = 1, #b.pages do
+		local slot = b.pages[i]
+		local key = type(slot) == "table" and (female and slot[2] or slot[1]) or slot
+		local file = P and type(key) == "string" and P.lines[key] or nil
+		local secs = file and P.seconds and PlainNumber(P.seconds[file]) or 0
+		lengths[i] = secs
+		lengths.total = lengths.total + secs
+	end
+	b.lengths = lengths
+	return lengths
 end
 
-local function SetAtlasTexture(texture, left, right, top, bottom)
-	texture:SetTexture(TexturePath("PortraitFrameAtlas"))
-	texture:SetTexCoord(left / ATLAS, right / ATLAS, top / ATLAS, bottom / ATLAS)
-end
-
---------------------------------------------------------------------------------
--- The painted kit's dress (user, 2026-09-24: "VoiceOver Overlay Reskin with
--- all 3 Presets"). While the reskin is on (UI Modifications, Painted kit
--- reskin: the whole interface, as the configurator and Dynamic UI
--- Modification read it -- the overlay is no window or HUD area of its own),
--- the one picture gives way to the kit's pieces, like every other small kit
--- window (the whisper popup, the Dynamic UI panels): the single rail with
--- its stone, the portrait ring round the speaker's model, a parchment sheet
--- with the painted edge on the stone for the lines, the speaker's name on a
--- title plate riding the top rail, and the kit's close / arrow glyphs for
--- stop / skip. Every piece goes through Kit:Apply, so Kit:SetKitColours
--- re-points it when the player picks Warm iron, Bronze or Original: the
--- three looks switch live, with nothing baked. With the reskin off the
--- picture is shown exactly as before, laid out as before.
---------------------------------------------------------------------------------
-
-local KIT_LAYOUT = {
-	ring = 190,                   -- the portrait ring's height: the window's 200 less a little, so it stands on the rails like a medallion
-	ringX = 100,                  -- the ring's centre, right of the window's left edge (its left rim over the left rail)
-	fill = 0.97,                  -- the model's square in the ring's opening: its corners stay under the ring's body
-	paper = { 196, 20, 14, 14 },  -- the parchment's rect: left, top, right, bottom in from the window's edges (the top clear of the plate)
-	plateBox = 26,                -- the name plate's painted box, UI px tall: a window title plate's height
-	plateL = 190, plateR = 8,     -- the plate's ends, in from the window's left and right edges (over the parchment, clear of the ring)
-	stop = { 23, 21 },            -- the stop / skip glyph's box (the close piece is 64 x 58)
-	stopW = 26,                   -- the room the stop button takes from the lines, beside the padlock's
-}
-
--- The kit when the overlay's look switch is on (Kit:IsOn('voiceover'): the
--- reskin, UI Modifications on with its Painted kit reskin -- the one answer
--- every own window asks, audit 2026-09-24 rank 1) and the kit has what the
--- dress needs, else nil.
-local function ReskinKit()
-	local Kit = MelloUI.Kit
-	if not (Kit and Kit.NineSlice and Kit.Strip and Kit.Texture and Kit.Piece and Kit.ParchmentSheet and Kit.StateTexture) then
+-- a line's length in seconds: the clip's, else the estimate it was timed by
+-- (a line still waiting: estimated now)
+local function LineSeconds(e)
+	if e.file and e.length then
+		return e.length
+	end
+	if e.expected then
+		return e.expected
+	end
+	if e.secret or type(e.text) ~= "string" then
 		return nil
 	end
-	if Kit.IsOn and Kit:IsOn("voiceover") then
-		return Kit
+	return EstimateSeconds(e.text, SpeechRate())
+end
+
+-- the seconds left of the line being read
+local function LeftOf(e)
+	local length = LineSeconds(e)
+	if not (length and e.startedAt) then
+		return length
 	end
-	return nil
+	local at = pausedAt or GetTime()
+	local left = length - (at - e.startedAt)
+	return left > 0 and left or 0
 end
 
---------------------------------------------------------------------------------
--- The overlay's place is the one mover's (audit, 2026-09-24, rank 6): kept
--- in the one store under 'voiceOverlay' (UI Modifications' positions, so
--- profiles, the backup and Edit Layout's Reset reach it), saved by its
--- bottom edge's middle, where it first stands (over the action bars).
--- Dragged while its padlock is open, as before; moved, and sized by the
--- wheel, in Edit Layout as every window (its plate, padlock or not; before
--- its first show too: Edit Layout's source puts it on the mover).
---------------------------------------------------------------------------------
-
-local OVERLAY_PLACE = "voiceOverlay"
-
-local function DefaultPlace(frame)
-	frame:ClearAllPoints()
-	frame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
-end
-
--- Settings can come back from the macro backup with stray whitespace;
--- only a clean anchor name is taken.
-local function Anchor(value)
-	if type(value) ~= "string" then
+-- the ring: start, duration[, pausedAt]
+local function Progress()
+	local e = current
+	if not (e and e.startedAt) then
 		return nil
 	end
-	value = value:gsub("%s+", ""):upper()
-	if VALID_POINTS[value] then
-		return value
-	end
-	return nil
-end
-
--- The old place (overlayPoint, overlayRelativePoint, overlayX, overlayY:
--- the overlay's point, the screen's point it hung from, the offsets in its
--- own units) moved into the store, as exactly that, so it stays where it
--- was; the old keys go with the move. Written in the store's own form (as
--- SavePosition writes it: point nil = BOTTOMLEFT, relPoint nil = CENTER)
--- and told through the setting path, as the mover's own saves are. The old
--- keys themselves are the version: nothing writes them any more, so they
--- are there only from before, or from a profile, share string or backup
--- written in the old form (the built-in profile is), and then they are the
--- place wanted. A flag instead could be set on the stand-in settings Core
--- uses until the saved ones arrive, be carried into those (Core's
--- AdoptSavedVariables) and stop the move.
-local function MoveOldPlace()
-	local db = M.db
-	if not db or (db.overlayPoint == nil and db.overlayRelativePoint == nil and db.overlayX == nil and db.overlayY == nil) then
-		return
-	end
-	local point = Anchor(db.overlayPoint)
-	if point then
-		local um = MelloUI:GetModuleDB("UIModifications")
-		if type(um) ~= "table" then
-			return   -- (no store: moved on a later try)
-		end
-		if type(um.positions) ~= "table" then
-			um.positions = {}
-		end
-		local relPoint = Anchor(db.overlayRelativePoint) or point
-		um.positions[OVERLAY_PLACE] = {
-			point = point ~= "BOTTOMLEFT" and point or nil,
-			relPoint = relPoint ~= "CENTER" and relPoint or nil,
-			x = tonumber(db.overlayX) or 0, y = tonumber(db.overlayY) or 0,
-		}
-		MelloUI:NotifySettingChanged("UIModifications", "positions", um.positions)
-	end
-	db.overlayPoint, db.overlayRelativePoint, db.overlayX, db.overlayY = nil, nil, nil, nil
-end
-
--- Let go after a drag (the mover's plain drag, its buttons'), or Edit
--- Layout's change saved: saved, and hung from its anchor again. The overlay
--- keeps its place itself (the mover's `save`: laid by Apply, as it always
--- was), and a scale Edit Layout's wheel gave it is its Overlay Scale
--- setting, as the Quest Tracker's wheel is its Scale (a scale in the store
--- would undo the slider at every Apply).
-local function SaveOverlay(frame)
-	if not (frame and M.db) then
-		return
-	end
-	local ok, scaled = pcall(frame.GetScale, frame)
-	if MelloUI:SavePosition(OVERLAY_PLACE, frame, false) then
-		MelloUI:RestorePosition(OVERLAY_PLACE, frame)
-	end
-	if ok and IsPlainNumber(scaled) and math.abs(scaled - (tonumber(M.db.overlayScale) or 1)) > 0.001 then
-		M.db.overlayScale = math.floor(scaled * 100 + 0.5) / 100
-		MelloUI:NotifySettingChanged(M.name, "overlayScale", M.db.overlayScale)
-	end
-end
-
-function Overlay:SavePosition()
-	SaveOverlay(self.frame)
-end
-
-function Overlay:RestorePosition()
-	local frame = self.frame
-	MoveOldPlace()
-	if not MelloUI:RestorePosition(OVERLAY_PLACE, frame) then
-		DefaultPlace(frame)
-	end
-end
-
--- the place forgotten, the old keys too (/vo reset)
-local function ForgetOverlayPlace()
-	if M.db then
-		M.db.overlayPoint, M.db.overlayRelativePoint, M.db.overlayX, M.db.overlayY = nil, nil, nil, nil
-	end
-	MelloUI:ForgetPosition(OVERLAY_PLACE)
-end
-
-function Overlay:ResetPosition()
-	ForgetOverlayPlace()
-	if self.frame then
-		self:RestorePosition()
-	end
-end
-
--- Edit Layout's Reset, saved: back where it first stands, at its standard
--- size, as every window goes back (the Quest Tracker's scale too)
-local function ResetOverlay()
-	ForgetOverlayPlace()
-	if M.db and math.abs((tonumber(M.db.overlayScale) or 1) - 1) > 0.001 then
-		M.db.overlayScale = 1
-		MelloUI:NotifySettingChanged(M.name, "overlayScale", 1)
-	end
-end
-
--- The mover drags by the overlay itself; its buttons (pause, stop, the
--- lines) drag it too, so it is grabbed anywhere, as it always was. The
--- mover takes one handle a window, so theirs start the same plain drag on
--- the overlay -- only while its padlock is open -- and end it as the mover
--- does (saved, hung from its anchor again). Marked as the mover's drag
--- (entry.moving), so a hide mid-drag, the next drag or the next show ends
--- it as any other. One pair of handlers for every button.
-local ButtonDragStart = Perf.Shared("OnDragStart on the Voice Over overlay's buttons", function()
-	local entry, frame = Overlay.mover, Overlay.frame
-	if not (entry and frame) or entry.moving or entry.plainDrag ~= "always" then
-		return
-	end
-	frame:StartMoving()
-	entry.moving = "plain"
-end, "script")
-
-local ButtonDragStop = Perf.Shared("OnDragStop on the Voice Over overlay's buttons", function()
-	local entry, frame = Overlay.mover, Overlay.frame
-	if not (entry and frame and entry.moving == "plain") then
-		return
-	end
-	entry.moving = nil
-	frame:StopMovingOrSizing()
-	Overlay:SavePosition()
-end, "script")
-
-local function AttachDrag(widget)
-	widget:RegisterForDrag("LeftButton")
-	Perf.SetScript(widget, "OnDragStart", ButtonDragStart)
-	Perf.SetScript(widget, "OnDragStop", ButtonDragStop)
-end
-
--- the padlock's meaning for the mover: dragged at any time while it is
--- open, never while it is shut (Edit Layout's plate aside)
-local function FollowPadlock()
-	local entry = Overlay.mover
-	if entry and M.db then
-		entry.plainDrag = (not M.db.overlayLock) and "always" or false
-	end
-end
-
--- The one mover, the overlay itself its handle, from its first show or
--- Edit Layout's first open (WINDOW-RULES 2f: nothing made for it at login).
--- Registered as dragged at any time, so the mover leaves its mouse on (its
--- tooltip, its drag once the padlock opens), then told the padlock; the
--- wheel's range is the Overlay Scale slider's; live (its plate, "Voice
--- Over", a "(hidden)" one at its place while no line is read) while the
--- module and Show Overlay are on. (false: the mover gave no entry; not
--- asked again.)
-local OVERLAY_MOVER = { key = OVERLAY_PLACE, anchor = "BOTTOM", plainDrag = "always",
-	save = SaveOverlay, reset = ResetOverlay, default = DefaultPlace, min = 0.6, max = 1.5,
-	label = "Voice Over", page = "VoiceOver", placeholder = true,
-	when = function()
-		return M.isEnabled and M.db and M.db.overlay and true or false
-	end }
-
-local function RegisterOverlayMover(frame)
-	-- laid from the store once more first: Reset positions before this
-	-- first show wiped the store but could not reach an overlay the mover
-	-- did not know yet, and with a `save` the mover lays nothing on show
-	-- (review, 2026-09-25); unchanged when nothing was reset
-	Overlay:RestorePosition()
-	Overlay.mover = MelloUI:RegisterMover(frame, frame, OVERLAY_MOVER) or false
-	FollowPadlock()
-end
-
--- Edit Layout's source (Core's list; run at each of its opens and resumes,
--- never at login): the overlay on its mover before its first show, so its
--- place can be set with no line read yet (the frame itself is OnEnable's)
-local function OverlaySource()
-	if Overlay.mover == nil and M.isEnabled and M.db and M.db.overlay and HasTTS() then
-		Overlay:Create()
-		RegisterOverlayMover(Overlay.frame)
-	end
-end
-if MelloUI.AddMoverSource then
-	MelloUI:AddMoverSource(OverlaySource)
-end
-
--- Frame the head and shoulders. The custom camera used by the VoiceOver
--- addon shows the legs on this client, so the portrait zoom is used instead.
-local function AimCamera(model)
-	pcall(model.SetPortraitZoom, model, 0.85)
-	pcall(model.SetPosition, model, 0, 0, 0)
-	pcall(model.SetRotation, model, 0)
-end
-
-function Overlay:CreatePortrait()
-	local frame = self.frame
-	local portrait = CreateFrame("Frame", nil, frame)
-	portrait:SetPoint("TOPLEFT", PORTRAIT_X, -PORTRAIT_Y)
-	portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE)
-	frame.portrait = portrait
-
-	local model = CreateFrame("DressUpModel", nil, portrait)
-	model:SetAllPoints()
-	portrait.model = model
-	model.creatureID = nil
-	Perf.SetScript(model, "OnHide", function(self)
-		pcall(self.ClearModel, self)
-		self.creatureID = nil
-		self.loaded = nil
-		self.retries = nil
-		self.retryIn = nil
-		self.animation = nil
-		self.animStart = nil
-	end)
-	Perf.SetScript(model, "OnUpdate", function(self, elapsed)
-		if not self.creatureID then
-			return
-		end
-		if not self.loaded then
-			-- The creature may not be cached yet: ask again every half second,
-			-- a few times, then leave whatever loaded alone.
-			local ok, fileID = pcall(self.GetModelFileID, self)
-			if ok and fileID then
-				self.loaded = true
-				self.fileID = fileID
-				AimCamera(self)
-			else
-				self.retryIn = (self.retryIn or 0.5) - elapsed
-				if self.retryIn > 0 then
-					return
-				end
-				self.retryIn = 0.5
-				self.retries = (self.retries or 0) + 1
-				if self.retries <= 8 then
-					pcall(self.SetCreature, self, self.creatureID)
-					AimCamera(self)
-					return
-				end
-				self.loaded = true
+	local b = e.book
+	if b and e.pageNo then
+		local L = BookTimes(b)
+		if L.total > 0 then
+			local before = 0
+			for i = 1, e.pageNo - 1 do
+				before = before + (L[i] or 0)
 			end
-		end
-		local playing = IsPlaying()
-		local now = GetTime()
-		local duration = TALK_DURATION[self.fileID or 0] or 2
-		if playing then
-			if self.animation ~= TALK_ANIMATION or now - (self.animStart or 0) >= duration then
-				self.animation = TALK_ANIMATION
-				self.animStart = now
-				pcall(self.SetAnimation, self, TALK_ANIMATION)
-			end
-		elseif self.animation ~= 0 and now - (self.animStart or 0) >= duration then
-			-- Let the current talk cycle finish, then go idle.
-			self.animation = 0
-			self.animStart = now
-			pcall(self.SetAnimation, self, 0)
-		end
-	end)
-
-	-- Book icon for NPCs whose model cannot be shown.
-	portrait.book = portrait:CreateTexture(nil, "ARTWORK")
-	portrait.book:SetAllPoints()
-	portrait.book:SetTexture(TexturePath("Book"))
-	portrait.book:SetTexCoord(8 / 256, 248 / 256, 8 / 256, 248 / 256)
-	portrait.book:Hide()
-
-	-- Pause button over the model; its background dims the model while paused.
-	local pause = CreateFrame("Button", nil, portrait)
-	pause:SetFrameLevel(model:GetFrameLevel() + 1)
-	pause:SetAllPoints()
-	pause.background = pause:CreateTexture(nil, "BACKGROUND")
-	pause.background:SetAllPoints()
-	pause.background:SetTexture(TexturePath("PortraitFrameBackground"))
-	pause.background:SetAlpha(0.75)
-	pause:SetNormalTexture(TexturePath("PortraitFrameAtlas"))
-	pause:GetNormalTexture():ClearAllPoints()
-	pause:GetNormalTexture():SetPoint("CENTER")
-	pause:GetNormalTexture():SetSize(32, 32)
-	pause:SetPushedTexture(TexturePath("PortraitFrameAtlas"))
-	pause:GetPushedTexture():ClearAllPoints()
-	pause:GetPushedTexture():SetPoint("CENTER")
-	pause:GetPushedTexture():SetSize(28, 28)
-	function pause:Update()
-		local hovered = self:IsMouseOver()
-		if paused then
-			self.background:SetShown(true)
-			SetAtlasTexture(self:GetNormalTexture(), 0, 93, 419, 512)
-			SetAtlasTexture(self:GetPushedTexture(), 0, 93, 419, 512)
-			self:GetNormalTexture():SetAlpha(hovered and 1 or 0.75)
-		else
-			self.background:Hide()
-			SetAtlasTexture(self:GetNormalTexture(), 93, 186, 419, 512)
-			SetAtlasTexture(self:GetPushedTexture(), 93, 186, 419, 512)
-			self:GetNormalTexture():SetAlpha(hovered and 1 or 0)
+			return e.startedAt - before, L.total, pausedAt
 		end
 	end
-	Perf.SetScript(pause, "OnEnter", function(self)
-		self:GetNormalTexture():SetAlpha(1)
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText(paused and "Resume" or "Pause")
-		GameTooltip:Show()
-	end)
-	Perf.SetScript(pause, "OnLeave", function(self)
-		self:GetNormalTexture():SetAlpha(paused and 0.75 or 0)
-		GameTooltip:Hide()
-	end)
-	Perf.SetScript(pause, "OnClick", function()
-		MelloUI:PlayUISound("tick")
-		TogglePaused()
-	end)
-	AttachDrag(pause)
-	portrait.pause = pause
-
-	-- The art draws the frame around the square; nothing above the model.
-	local border = CreateFrame("Frame", nil, portrait)
-	border:SetFrameLevel(pause:GetFrameLevel() + 1)
-	border:SetAllPoints()
-	portrait.border = border
-
-	-- Thin line and mini pause button used when the portrait is hidden.
-	frame.portraitLine = frame:CreateTexture(nil, "BORDER")
-	frame.portraitLine:SetPoint("TOPLEFT", -LINE_WIDTH / 2 + 2, BORDER_OUTSET)
-	frame.portraitLine:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", LINE_WIDTH / 2 + 2, -BORDER_OUTSET)
-	SetAtlasTexture(frame.portraitLine, 456, 512, 0, ATLAS_BORDER)
-
-	local mini = CreateFrame("Button", nil, frame)
-	mini:SetSize(26, 26)
-	mini:SetNormalTexture(TexturePath("PortraitFrameAtlas"))
-	mini:GetNormalTexture():ClearAllPoints()
-	mini:GetNormalTexture():SetPoint("CENTER")
-	mini:GetNormalTexture():SetSize(14, 14)
-	mini:SetPushedTexture(TexturePath("PortraitFrameAtlas"))
-	mini:GetPushedTexture():ClearAllPoints()
-	mini:GetPushedTexture():SetPoint("CENTER")
-	mini:GetPushedTexture():SetSize(12, 12)
-	mini.background = mini:CreateTexture(nil, "BACKGROUND")
-	mini.background:SetTexture(TexturePath("SettingsButton"))
-	mini.background:SetPoint("CENTER")
-	mini.background:SetSize(32, 32)
-	function mini:Update()
-		if paused then
-			SetAtlasTexture(self:GetNormalTexture(), 0, 93, 419, 512)
-			SetAtlasTexture(self:GetPushedTexture(), 0, 93, 419, 512)
-		else
-			SetAtlasTexture(self:GetNormalTexture(), 93, 186, 419, 512)
-			SetAtlasTexture(self:GetPushedTexture(), 93, 186, 419, 512)
-		end
-		self:GetNormalTexture():SetAlpha(self:IsMouseOver() and 1 or 0.75)
-	end
-	Perf.SetScript(mini, "OnEnter", function(self) self:GetNormalTexture():SetAlpha(1) end)
-	Perf.SetScript(mini, "OnLeave", function(self) self:GetNormalTexture():SetAlpha(0.75) end)
-	Perf.SetScript(mini, "OnClick", function()
-		MelloUI:PlayUISound("tick")
-		TogglePaused()
-	end)
-	AttachDrag(mini)
-	frame.miniPause = mini
-end
-
-function Overlay:ConfigurePortrait(entry)
-	local portrait = self.frame.portrait
-	if not portrait:IsShown() then
-		return
-	end
-	local model = portrait.model
-	local npcID = entry and entry.npc and entry.npc.id or nil
-	if not npcID then
-		model:Hide()
-		portrait.book:SetShown(entry ~= nil)
-		return
-	end
-	portrait.book:Hide()
-	model:Show()
-	if model.creatureID ~= npcID then
-		pcall(model.ClearModel, model)
-		model.creatureID = npcID
-		model.loaded = nil
-		model.retries = nil
-		model.retryIn = nil
-		model.fileID = nil
-		model.animation = nil
-		model.animStart = nil
-		pcall(model.SetCreature, model, npcID)
-		AimCamera(model)
-	end
-end
-
-function Overlay:CreateLine(index)
-	local container = self.frame.container
-	local button = CreateFrame("Button", nil, container)
-	button:SetHeight(20)
-	button.index = index
-	button.text = button:CreateFontString(nil, "OVERLAY", "MelloUIVoiceOverLineFont")
-	button.text:SetWordWrap(false)
-	button.icon = button:CreateTexture(nil, "ARTWORK")
-	button.icon:SetSize(16, 16)
-	button.icon:SetPoint("CENTER", button, "LEFT", 8, 0)
-	Perf.SetScript(button, "OnClick", function(self)
-		if self.entry then
-			MelloUI:PlayUISound("tick")
-			Skip(self.entry)
-		end
-	end)
-	AttachDrag(button)
-	Perf.SetScript(button, "OnEnter", function(self)
-		self.hovered = true
-		self:Refresh()
-		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:SetText(self.entry == current and "Skip this line" or "Remove from queue")
-		GameTooltip:Show()
-	end)
-	Perf.SetScript(button, "OnLeave", function(self)
-		self.hovered = false
-		self:Refresh()
-		GameTooltip:Hide()
-	end)
-	function button:Refresh()
-		local entry = self.entry
-		if not entry then
-			self:Hide()
-			return
-		end
-		self:Show()
-		local info = KINDS[entry.kind] or KINDS.gossip
-		local isCurrent = entry == current
-		local ink = Overlay:Ink()
-		-- under the name on the picture; under the top of the parchment in the
-		-- kit, where the name is on the plate (Overlay:Dress)
-		local anchor = self.index == 1 and (container.head or container.name) or container.lines[self.index - 1]
-		self:ClearAllPoints()
-		if isCurrent then
-			self:SetAlpha(1)
-			self:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
-		else
-			local position = self.index - (current and 1 or 0)
-			self:SetAlpha(math.max(0.1, math.min(1, 1 - (position - 1) / 3)))
-			self:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, position == 1 and -8 or -2)
-		end
-		self.text:ClearAllPoints()
-		self.text:SetPoint("LEFT", 16 + 5, 0)
-		self.text:SetText(entry.title)
-		local width = container:GetWidth()
-		self:SetWidth(math.min(width, 16 + 5 + self.text:GetStringWidth() + 1))
-		self.text:SetPoint("RIGHT")
-		if self.hovered then
-			self:SetAlpha(1)
-			self.text:SetTextColor(unpack(ink.hover))
-			self.icon:SetTexture(TexturePath("SoundQueueBulletDelete"))
-			self.icon:SetSize(14, 14)
-		elseif isCurrent then
-			if info.quest then
-				self.text:SetTextColor(unpack(ink.quest))
-			else
-				self.text:SetTextColor(unpack(ink.current))
-			end
-			self.icon:SetTexture(TexturePath(info.bullet))
-			self.icon:SetSize(14, 14)
-		else
-			self.text:SetTextColor(unpack(ink.queued))
-			self.icon:SetTexture(TexturePath("SoundQueueBulletQueue"))
-			self.icon:SetSize(22, 22)
-		end
-	end
-	container.lines[index] = button
-	return button
-end
-
-function Overlay:Create()
-	if self.frame then
-		return
-	end
-	EnsureFonts()
-	local frame = CreateFrame("Frame", "MelloUIVoiceOverFrame", UIParent)
-	self.frame = frame
-	frame:SetSize(FRAME_W, FRAME_H)
-	frame:SetFrameStrata("MEDIUM")
-	frame:SetMovable(true)
-	frame:SetClampedToScreen(true)
-	frame:EnableMouse(true)
-	frame:RegisterForDrag("LeftButton")
-	Perf.SetScript(frame, "OnEnter", function(self)
-		if M.db.overlayLock then
-			return
-		end
-		-- (MelloUI's one tooltip: the palette's gold and text)
-		MelloUI.Widgets.ShowTooltip(self, "Voice Over", "Drag to move. The padlock in the corner locks the position.", nil, "ANCHOR_TOP")
-	end)
-	Perf.SetScript(frame, "OnLeave", function() GameTooltip:Hide() end)
-	frame:Hide()
-	-- (its mover comes with its first show: Overlay:Update)
-
-	frame.background = frame:CreateTexture(nil, "BACKGROUND")
-	frame.background:SetAllPoints()
-	frame.background:SetTexture(TexturePath("ScrollFrame"))
-	frame.background:SetTexCoord(0, 1, 0, TEX_BOTTOM)
-	-- the picture's parts, hidden while the kit dresses the window
-	frame.artParts = { frame.background }
-
-	-- The parchment as a sheet with painted edges (user, 2026-09-23: painted
-	-- edges in more places, the voice-over window among them). The picture's
-	-- own parchment is covered by a dark backing, and the same parchment,
-	-- cut from the picture, lies on it with dry-brush strokes on every side
-	-- (Kit:PaintedEdge), so the strokes show against the dark inside the iron
-	-- frame and its gold trim, which stay as painted.
-	local Kit = MelloUI.Kit
-	if Kit and Kit.PaintedEdge then
-		-- the parchment in the 1024 x 512 texture, and so in the window
-		local u1, u2, v1, v2 = 352 / 1024, 982 / 1024, 58 / 512, 292 / 512
-		local sx, sy = FRAME_W / 1024, FRAME_H / (TEX_BOTTOM * 512)
-		local left, right = 352 * sx, 982 * sx
-		local top, bottom = 58 * sy, 292 * sy
-		local backing = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-		-- the palette's inner panel, painted again on 'palette' (Core's
-		-- W.Paint: the kit's one registry)
-		MelloUI.Widgets.Paint(backing, "innerPanel", "fill", 1)
-		backing:SetPoint("TOPLEFT", frame, "TOPLEFT", left, -top)
-		backing:SetSize(right - left, bottom - top)
-		local sheet = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
-		sheet:SetTexture(TexturePath("ScrollFrame"))
-		sheet:SetTexCoord(u1, u2, v1, v2)
-		-- in the kit's one parchment tone, as every other parchment
-		local tint = Kit.parchmentTint
-		if tint then
-			sheet:SetVertexColor(tint[1], tint[2], tint[3])
-		end
-		sheet:SetAllPoints(backing)
-		local edge = Kit:PaintedEdge(sheet, sheet, false, true)
-		if edge then
-			edge:Fit(right - left, bottom - top)
-			frame.artParts[#frame.artParts + 1] = backing
-			frame.artParts[#frame.artParts + 1] = sheet
-		else
-			backing:Hide()
-			sheet:Hide()
-		end
-	end
-
-	self:CreatePortrait()
-
-	local container = CreateFrame("Frame", nil, frame)
-	container:SetPoint("LEFT", frame, "LEFT", PARCHMENT_LEFT, -1)
-	container.lines = {}
-	frame.container = container
-
-	container.name = container:CreateFontString(nil, "ARTWORK", "MelloUIVoiceOverNameFont")
-	container.name:SetPoint("TOPLEFT")
-	container.name:SetWordWrap(false)
-	container.name:SetTextColor(unpack(Overlay:Ink().name))
-	-- what the first line hangs from: the name here, the parchment's top in
-	-- the kit (Overlay:Dress)
-	container.head = container.name
-
-	-- Stop / skip button next to the name.
-	local stop = CreateFrame("Button", nil, container)
-	stop:SetSize(32, 32)
-	stop:SetPoint("BOTTOMLEFT", container.name, "RIGHT", -6, 0)
-	Perf.SetScript(stop, "OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_NONE")
-		GameTooltip:SetPoint("LEFT", self, "RIGHT")
-		GameTooltip:SetText(#queue > 0 and "Skip to next line" or "Stop")
-		GameTooltip:Show()
-	end)
-	Perf.SetScript(stop, "OnLeave", function() GameTooltip:Hide() end)
-	-- (its Stop, nothing waiting, ends a book being read too: skipping its
-	-- page would go on to the next page)
-	Perf.SetScript(stop, "OnClick", function()
-		MelloUI:PlayUISound("tick")
-		if current and #queue > 0 then
-			Skip(current)
-		else
-			Stop()
-		end
-	end)
-	function stop:Refresh()
-		local dress = Overlay.kitOn and Overlay.dress
-		local more = #queue > 0
-		if dress then
-			-- the kit's glyphs: its close cross to stop, its arrow to skip on
-			-- to the next line; the picture's own textures kept but unseen
-			for _, get in ipairs({ self.GetNormalTexture, self.GetPushedTexture, self.GetHighlightTexture }) do
-				local tex = get(self)
-				if tex then
-					tex:SetAlpha(0)
-				end
-			end
-			dress.skip:SetShown(more)
-			dress.stopX:SetShown(not more)
-			return
-		end
-		if Overlay.dress then
-			Overlay.dress.skip:Hide()
-			Overlay.dress.stopX:Hide()
-		end
-		local texture = TexturePath(more and "StopGossipMore" or "StopGossip")
-		self:SetNormalTexture(texture)
-		self:SetPushedTexture(texture)
-		self:SetHighlightTexture(texture, "ADD")
-		self:GetNormalTexture():SetAlpha(1)
-		self:GetPushedTexture():SetAlpha(0.5)
-		self:GetHighlightTexture():SetAlpha(0.5)
-	end
-	stop:Refresh()
-	AttachDrag(stop)
-	container.stop = stop
-
-	-- Padlock in the corner: locks and unlocks the window's position.
-	local lock = CreateFrame("Button", nil, frame)
-	lock:SetSize(26, 26)
-	-- inside the parchment, top right
-	lock:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -(FRAME_W - PARCHMENT_RIGHT) - 2, -34)
-	lock:SetFrameLevel(frame:GetFrameLevel() + 5)
-	function lock:Refresh()
-		local locked = M.db.overlayLock
-		local texture = locked and "Interface/Buttons/LockButton-Locked-Up" or "Interface/Buttons/LockButton-Unlocked-Up"
-		self:SetNormalTexture(texture)
-		self:SetPushedTexture(locked and "Interface/Buttons/LockButton-Locked-Down" or "Interface/Buttons/LockButton-Unlocked-Down")
-		self:SetHighlightTexture(texture, "ADD")
-		self:GetHighlightTexture():SetAlpha(0.4)
-		self:SetAlpha(locked and 0.55 or 0.9)
-	end
-	Perf.SetScript(lock, "OnClick", function(self)
-		M.db.overlayLock = not M.db.overlayLock
-		MelloUI:NotifySettingChanged(M.name, "overlayLock", M.db.overlayLock)
-		MelloUI:PlayUISound(M.db.overlayLock and "option_on" or "option_off")
-		self:Refresh()
-		GameTooltip:Hide()
-	end)
-	Perf.SetScript(lock, "OnEnter", function(self)
-		-- (beside the padlock; the palette's gold and text, as MelloUI's one
-		-- tooltip, W.ShowTooltip)
-		local P = MelloUI.Palette
-		local gold, text = P.selectedTrim, P.text
-		GameTooltip:SetOwner(self, "ANCHOR_NONE")
-		GameTooltip:SetPoint("LEFT", self, "RIGHT", 4, 0)
-		GameTooltip:SetText(M.db.overlayLock and "Position locked" or "Position unlocked", gold[1], gold[2], gold[3])
-		GameTooltip:AddLine(M.db.overlayLock and "Click to unlock and drag the window." or "Drag the window to move it. Click to lock it in place.",
-			text[1], text[2], text[3], true)
-		GameTooltip:Show()
-	end)
-	Perf.SetScript(lock, "OnLeave", function() GameTooltip:Hide() end)
-	lock:Refresh()
-	frame.lock = lock
-
-	container.subtitle = container:CreateFontString(nil, "ARTWORK", "MelloUIVoiceOverSubtitleFont")
-	container.subtitle:SetWordWrap(true)
-	container.subtitle:SetMaxLines(3)
-	container.subtitle:SetTextColor(unpack(Overlay:Ink().subtitle))
-	container.subtitle:Hide()
-	-- each new page fades in (a quarter of a second, easing out) instead of
-	-- jumping in: the reading eye follows it (played through Anim:PlayGroup,
-	-- which ends it at once under Reduce Motion)
-	local fade = container.subtitle:CreateAnimationGroup()
-	local alpha = fade:CreateAnimation("Alpha")
-	alpha:SetFromAlpha(0)
-	alpha:SetToAlpha(1)
-	alpha:SetDuration(0.25)
-	alpha:SetSmoothing("OUT")
-	fade:SetToFinalAlpha(true)
-	container.subtitle.fade = fade
-	local pageAcc = 0
-	Perf.SetScript(container, "OnUpdate", function(_, elapsed)
-		pageAcc = pageAcc + elapsed
-		if pageAcc < 0.1 then
-			return
-		end
-		pageAcc = 0
-		if current and current.pages and #current.pages > 1 and container.subtitle:IsShown() and Overlay.SubtitlePage then
-			if Overlay.SubtitlePage(current) ~= current.page then
-				Overlay:Update()
-			end
-		end
-	end)
-
-	self:Apply()
-end
-
--- The text colours for the current dress (INKS above), both sets put
--- together once (QuestInk.lua loads before this file)
-function Overlay:Ink()
-	if not INKS.picture then
-		local QI, art = MelloUI.QuestInk, INKS.art
-		INKS.picture = {
-			hover = art.hover, quest = art.quest, current = art.current, queued = art.queued,
-			name = QI.INK.title, subtitle = QI.INK.text,
-		}
-		INKS.kit = {
-			hover = { QI.InkOf(unpack(art.hover)) }, quest = { QI.InkOf(unpack(art.quest)) },
-			current = QI.INK.text, queued = QI.INK.faded, name = QI.INK.title, subtitle = QI.INK.text,
-		}
-	end
-	return self.kitOn and INKS.kit or INKS.picture
-end
-
--- Build the kit's pieces once into `dress`, hidden (Overlay:Dress shows
--- them). Returns the dress, or nil when a piece it needs is missing.
-function Overlay:BuildDress(Kit, dress)
-	local frame, L = self.frame, KIT_LAYOUT
-	local ringPiece = Kit:Piece("window/portrait_ring")
-	if not (ringPiece and ringPiece.open and ringPiece.h and ringPiece.h > 0) then
+	local length = LineSeconds(e)
+	if not (length and length > 0) then
 		return nil
 	end
-
-	-- the single rail and its stone over the whole window, as the whisper
-	-- popup and the Dynamic UI panels (no corner gems: on a window this
-	-- small they bunch up)
-	local skin = Kit:NineSlice(frame, { prefix = Kit.framePrefix, gems = false, scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
-	dress.skin = skin
-	dress.parts[#dress.parts + 1] = skin
-
-	-- the parchment the lines are read from, on the stone right of the ring,
-	-- ending in the painted edge (Kit:ParchmentSheet: the vellum tile at the
-	-- UI's one background density, in the kit's parchment tone, never
-	-- stretched). Always there, as the picture's scroll always was: the
-	-- overlay's text is written for parchment. A region of the skin, so it
-	-- comes and goes with it.
-	local paper = CreateFrame("Frame", nil, frame)
-	paper:EnableMouse(false)
-	paper:SetPoint("TOPLEFT", frame, "TOPLEFT", L.paper[1], -L.paper[2])
-	paper:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -L.paper[3], L.paper[4])
-	dress.paper = paper
-	dress.sheet, dress.edge = Kit:ParchmentSheet(skin, paper, { rect = paper, margin = 0, tight = true })
-
-	-- the portrait ring on the left, a dark disc in its opening under the
-	-- model (the palette's inner panel, round: the ring's body covers its
-	-- rim), the ring itself above the model and the pause button
-	local rscale = L.ring / ringPiece.h
-	local open = ringPiece.open
-	dress.portraitSize = (open[3] - open[1]) * rscale * L.fill
-	local disc = skin:CreateTexture(nil, "BACKGROUND", nil, 4)
-	local diameter = 2 * (ringPiece.radius or (ringPiece.w / 2)) * rscale
-	disc:SetSize(diameter, diameter)
-	disc:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
-	-- (by its key: painted again on 'palette', Core's W.Paint -- the kit's
-	-- one registry)
-	MelloUI.Widgets.Paint(disc, "innerPanel", "fill", 1)
-	if skin.CreateMaskTexture and disc.AddMaskTexture then
-		local mask = skin:CreateMaskTexture()
-		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-		mask:SetAllPoints(disc)
-		disc:AddMaskTexture(mask)
-	end
-	-- with the 3D Portrait off, the book stands in the ring (the picture
-	-- shows its own emblem in the square)
-	local emblem = skin:CreateTexture(nil, "ARTWORK")
-	emblem:SetSize(dress.portraitSize * 0.8, dress.portraitSize * 0.8)
-	emblem:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
-	emblem:SetTexture(TexturePath("Book"))
-	emblem:SetTexCoord(8 / 256, 248 / 256, 8 / 256, 248 / 256)
-	dress.emblem = emblem
-	local holder = CreateFrame("Frame", nil, frame)
-	holder:EnableMouse(false)
-	holder:SetAllPoints(frame)
-	holder:SetFrameLevel(frame.portrait.border:GetFrameLevel() + 1)
-	local ring = Kit:Texture(holder, "window/portrait_ring", "ARTWORK", 0, rscale)
-	ring:SetPoint("CENTER", frame, "LEFT", L.ringX, 0)
-	dress.ring = ring
-	dress.parts[#dress.parts + 1] = holder
-
-	-- the speaker's name on a title plate riding the top rail over the
-	-- parchment, in the kit's title face, as every kit window's title (the
-	-- plate is the windows' TitleBar piece, the red plate with rune caps);
-	-- on the plate it keeps the font's own colour (the ink rule: text on a
-	-- plate is not inked)
-	local plate = Kit:Strip(frame, "tabs/top", { state = "open" })
-	local yoff = plate:FitBox(L.plateBox) or 0
-	local railMid = Kit.RailInset and Kit:RailInset(Kit.framePrefix .. "_t", "t") or 0
-	plate:ClearAllPoints()
-	plate:SetPoint("LEFT", frame, "TOPLEFT", L.plateL, -railMid + yoff)
-	plate:SetPoint("RIGHT", frame, "TOPRIGHT", -L.plateR, -railMid + yoff)
-	plate:SetHeight(plate.height)
-	plate:FitCaps(FRAME_W - L.plateL - L.plateR)
-	local name = plate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	-- centred on the plate's painted box (lower in its canvas than the
-	-- middle), clear of the caps' gems
-	name:SetPoint("LEFT", plate, "LEFT", (plate.wl or 0) * 0.6, -yoff)
-	name:SetPoint("RIGHT", plate, "RIGHT", -(plate.wr or 0) * 0.6, -yoff)
-	name:SetJustifyH("CENTER")
-	name:SetWordWrap(false)
-	if Kit.TitleFont then
-		pcall(Kit.TitleFont, Kit, name, true)
-	end
-	dress.plate, dress.plateName = plate, name
-	dress.parts[#dress.parts + 1] = plate
-
-	-- where the first line hangs from in the kit: the container's top
-	local head = CreateFrame("Frame", nil, frame.container)
-	head:SetPoint("TOPLEFT")
-	head:SetSize(1, 1)
-	dress.head = head
-
-	-- stop and skip in the kit's glyphs, following the button's hover and
-	-- press (Kit:StateTexture); shown by stop:Refresh
-	local stop = frame.container.stop
-	dress.stopX = Kit:StateTexture(stop, "window/close")
-	dress.skip = Kit:StateTexture(stop, "buttons/arrow_right")
-	dress.stopX:Hide()
-	dress.skip:Hide()
-
-	for _, part in ipairs(dress.parts) do
-		part:Hide()
-	end
-	return dress
+	return e.startedAt, length, pausedAt
 end
 
--- The parchment and the stone laid again at the UI's one background density
--- (a new overlay scale, the dress just shown)
-function Overlay:RetileDress()
-	local dress = self.kitOn and self.dress
-	if not dress then
-		return
+local function TimeText(_, left, isPaused)
+	if not left then
+		return nil
 	end
-	local Kit = MelloUI.Kit
-	if Kit.RetileBackgrounds then
-		Kit:RetileBackgrounds()
+	if isPaused then
+		return MelloUI.Reminders.TEXT.paused
 	end
-	self:FitEdge()
-end
-
--- the parchment's painted edge fitted to the paper's size
-function Overlay:FitEdge()
-	local dress = self.kitOn and self.dress
-	if dress and dress.edge then
-		local ok, w, h = pcall(dress.paper.GetSize, dress.paper)
-		if ok and w and h and not IsSecret(w) and not IsSecret(h) and w > 0 and h > 0 then
-			dress.edge:Fit(w, h)
-		end
+	-- (rounded up: a line still playing never reads "0:00 left", user 2026-09-30)
+	left = math.ceil(left)
+	local Clock = MelloUI.Reminders.Clock
+	local e = current
+	if e and e.book and e.pageNo then
+		-- (the page is on the line above: the time is the whole book's)
+		return W_TEXT.page:format(Clock(left))
 	end
-end
-
--- Dress the window for the reskin's state: the kit's pieces while it is on,
--- the picture while it is off. Returns true when the dress changed.
-function Overlay:Dress()
-	local frame = self.frame
-	if not frame then
-		return false
+	if e and not e.file then
+		return W_TEXT.estimate:format(Clock(left))
 	end
-	local Kit = ReskinKit()
-	if Kit and self.dress == nil then
-		local building = { parts = {} }
-		local ok, dress = pcall(self.BuildDress, self, Kit, building)
-		-- false: tried and failed, the picture stays (and whatever was made
-		-- before the failure is put away)
-		self.dress = (ok and dress) or false
-		if not self.dress then
-			for _, part in ipairs(building.parts) do
-				part:Hide()
-			end
-		end
-	end
-	local on = (Kit and self.dress) and true or false
-	if on == (self.kitOn or false) then
-		return false
-	end
-	self.kitOn = on
-	local dress = self.dress
-	for _, part in ipairs(frame.artParts or {}) do
-		part:SetShown(not on)
-	end
-	if dress then
-		for _, part in ipairs(dress.parts) do
-			part:SetShown(on)
-		end
-	end
-	local portrait, container = frame.portrait, frame.container
-	local stop = container.stop
-	portrait:ClearAllPoints()
-	container:ClearAllPoints()
-	stop:ClearAllPoints()
-	if on then
-		-- the model in the ring's opening; the lines from the parchment's
-		-- top, a little lower for the plate; stop beside the padlock
-		portrait:SetPoint("CENTER", frame, "LEFT", KIT_LAYOUT.ringX, 0)
-		portrait:SetSize(dress.portraitSize, dress.portraitSize)
-		container:SetPoint("LEFT", frame, "LEFT", PARCHMENT_LEFT, -4)
-		container.head = dress.head
-		container.name:Hide()
-		stop:SetPoint("RIGHT", frame.lock, "LEFT", -2, 0)
-		stop:SetSize(KIT_LAYOUT.stop[1], KIT_LAYOUT.stop[2])
-	else
-		-- as Create lays it out for the picture
-		portrait:SetPoint("TOPLEFT", PORTRAIT_X, -PORTRAIT_Y)
-		portrait:SetSize(PORTRAIT_SIZE, PORTRAIT_SIZE)
-		container:SetPoint("LEFT", frame, "LEFT", PARCHMENT_LEFT, -1)
-		container.head = container.name
-		container.name:Show()
-		stop:SetPoint("BOTTOMLEFT", container.name, "RIGHT", -6, 0)
-		stop:SetSize(32, 32)
-	end
-	container.subtitle:SetTextColor(unpack(self:Ink().subtitle))
-	stop:Refresh()
-	self:RetileDress()
-	return true
-end
-
--- Apply the overlay settings (portrait, lock, scale, position).
-function Overlay:Apply()
-	local frame = self.frame
-	if not frame then
-		return
-	end
-	self:Dress()
-	if frame.lock then
-		frame.lock:Refresh()
-	end
-	FollowPadlock()
-	-- without the model the art's own emblem shows in the square (the book
-	-- in the ring in the kit)
-	frame.portrait:SetShown(M.db.overlayPortrait and true or false)
-	if self.dress then
-		self.dress.emblem:SetShown(not M.db.overlayPortrait)
-	end
-	frame.portraitLine:Hide()
-	frame.miniPause:Hide()
-	-- a new scale: the stone and the parchment repeat at the same density
-	-- on the screen, never a bigger copy -- those in the overlay, laid again
-	-- only when its scale really changed (audit, 2026-09-24: each Apply laid
-	-- every background in the UI)
-	local scale, Kit = tonumber(M.db.overlayScale) or 1, MelloUI.Kit
-	if self.kitOn and self.dress and Kit.SetFrameScale then
-		Kit:SetFrameScale(frame, scale)
-		self:FitEdge()
-	else
-		frame:SetScale(scale)
-		self:RetileDress()
-	end
-	self:RestorePosition()
-	self:Update()
+	return W_TEXT.left:format(Clock(left))
 end
 
 -- Split a line into pages that fit the subtitle's lines, sentence by
--- sentence (a single too-long sentence is split on words).
-local function BuildPages(fs, text)
-	if not fs.IsTruncated then
-		return { text }
-	end
-	local function Fits(candidate)
-		fs:SetText(candidate)
-		return not fs:IsTruncated()
-	end
+-- sentence (a single too-long sentence is split on words). fits(text) ->
+-- true when a page shows whole.
+local function BuildPages(fits, text)
 	local function Pack(pieces)
 		local pages, page = {}, ""
 		for _, piece in ipairs(pieces) do
 			local candidate = page == "" and piece or (page .. " " .. piece)
-			if page ~= "" and not Fits(candidate) then
+			if page ~= "" and not fits(candidate) then
 				pages[#pages + 1] = page
 				page = piece
 			else
@@ -2779,7 +1822,7 @@ local function BuildPages(fs, text)
 	end
 	local pages = {}
 	for _, page in ipairs(Pack(sentences)) do
-		if Fits(page) then
+		if fits(page) then
 			pages[#pages + 1] = page
 		else
 			local words = {}
@@ -2838,101 +1881,195 @@ local function SubtitlePage(entry)
 	end
 	return math.min(index, #pages)
 end
-Overlay.SubtitlePage = SubtitlePage
+Widget.SubtitlePage = SubtitlePage
 
-function Overlay:Update()
-	local frame = self.frame
-	if not frame then
-		return
-	end
-	local visible = M.db.overlay and M.isEnabled and (current ~= nil or #queue > 0)
-	frame:SetShown(visible)
-	if not visible then
-		return
-	end
-	if self.mover == nil then
-		RegisterOverlayMover(frame)
-	end
-	frame.portrait.pause:Update()
-	frame.miniPause:Update()
-	self:ConfigurePortrait(current or queue[1])
+local function SubFits(text)
+	return MelloUI.Reminders:SubFits(text)
+end
 
-	local container = frame.container
-	container:SetHeight(frame:GetHeight())
-	local head = current or queue[1]
-	container.name:SetText(head and (head.name or "Unknown") or "")
-	if self.dress then
-		self.dress.plateName:SetText(head and (head.name or "Unknown") or "")
+-- the subtitle: the page being said of the line being read (a book's page
+-- the window does not show, or a secret line: none)
+local function Subtitle()
+	local e = current
+	if not (M.db.overlaySubtitles and e and not e.secret and type(e.text) == "string" and e.text ~= "") then
+		return nil
 	end
-	container.stop:Refresh()
+	if not e.pages then
+		e.pages = BuildPages(SubFits, e.text)
+		e.pageWeights = nil
+	end
+	e.page = SubtitlePage(e)
+	return e.pages[e.page] or e.text
+end
 
-	-- Lines: the current one first, then the queue.
-	local shown = 0
-	local function Place(entry)
-		if shown >= MAX_LINES then
-			return
+local function HasNext()
+	if #queue > 0 then
+		return true
+	end
+	local e = current
+	return e ~= nil and e.book ~= nil and e.book == book and e.pageNo ~= nil and e.pageNo < #e.book.pages
+end
+
+local function WidgetsLocked()
+	local db = MelloUI:GetModuleDB("Reminders")
+	return db ~= nil and db.widgetLock == true
+end
+
+local function ToggleLock()
+	local on = not WidgetsLocked()
+	MelloUI:NotifySettingChanged("Reminders", "widgetLock", on)
+	MelloUI:PlayUISound(on and "option_on" or "option_off")
+	Widget:Update()
+end
+
+-- the tray: the line being read, then the lines waiting
+local function TrayRowClick(_, row)
+	if row.line then
+		Skip(row.line)
+	end
+end
+
+local function Tray(_, rows)
+	local Clock = MelloUI.Reminders.Clock
+	local n, total, known = 0, 0, true
+	local function Add(e, isCurrent)
+		n = n + 1
+		local r = rows[n] or {}
+		rows[n] = r
+		local secs = isCurrent and LeftOf(e) or LineSeconds(e)
+		r.line = e
+		r.icon = nil
+		r.glyph = isCurrent and (paused and "pause" or "play") or "cross"
+		r.text = e.title or (KINDS[e.kind] or KINDS.gossip).label
+		if secs then
+			total = total + secs
+			r.right = isCurrent and W_TEXT.left:format(Clock(secs)) or Clock(secs)
+		else
+			known = false
+			r.right = ""
 		end
-		shown = shown + 1
-		local line = container.lines[shown] or self:CreateLine(shown)
-		line.entry = entry
+		r.onClick = TrayRowClick
 	end
 	if current then
-		Place(current)
+		Add(current, true)
 	end
-	for _, entry in ipairs(queue) do
-		Place(entry)
+	for _, e in ipairs(queue) do
+		Add(e, false)
 	end
-	for i = shown + 1, #container.lines do
-		container.lines[i].entry = nil
+	rows.n = n
+	if n == 0 or not known then
+		return nil
 	end
+	if n == 1 then
+		return W_TEXT.oneLine:format(Clock(total))
+	end
+	return W_TEXT.lines_:format(n, Clock(total))
+end
 
-	-- the padlock sits at the right edge (in the kit the stop button beside it)
-	local width = PARCHMENT_RIGHT - PARCHMENT_LEFT - 32 - (self.kitOn and KIT_LAYOUT.stopW or 0)
-	container:SetWidth(width)
-	container.name:SetWidth(0)
-	container.name:SetWidth(math.min(width - 26, container.name:GetStringWidth() + 1))
-	for _, line in ipairs(container.lines) do
-		line:Refresh()
-	end
-
-	-- Optional subtitle with the text being read, under the lines (a book's
-	-- page the window does not show has no text here: none).
-	local last = container.lines[shown] or container.head or container.name
-	if M.db.overlaySubtitles and current and not current.secret and type(current.text) == "string" then
-		container.subtitle:ClearAllPoints()
-		container.subtitle:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, -6)
-		container.subtitle:SetWidth(width)
-		if not current.pages or current.pagesWidth ~= width then
-			current.pages = BuildPages(container.subtitle, current.text)
-			current.pagesWidth = width
-			current.pageWeights = nil
+local SPEC = {
+	key = WIDGET, column = true, label = W_TEXT.label, hint = W_TEXT.hint, rightClick = true,
+	-- (the column's bottom slot: no other widget moves what is being read;
+	-- a fight neither stops nor hides it, Compact In Combat only shrinks it)
+	bottom = true,
+	compact = function()
+		return M.db.overlayCompact ~= false
+	end,
+	enabled = function()
+		return M.isEnabled and M.db.overlay and true or false
+	end,
+	check = function()
+		return current ~= nil or #queue > 0
+	end,
+	title = function()
+		local h = Head()
+		return h and (h.name or W_TEXT.unknown) or ""
+	end,
+	text = function()
+		local h = Head()
+		if not h then
+			return ""
 		end
-		current.page = SubtitlePage(current)
-		container.subtitle:SetText(current.pages[current.page] or current.text)
-		container.subtitle:Show()
-		-- a new line or a new page fades in; the same page redrawn stays put
-		if container.subtitle.shownEntry ~= current or container.subtitle.shownPage ~= current.page then
-			container.subtitle.shownEntry, container.subtitle.shownPage = current, current.page
-			container.subtitle.fade:Stop()
-			-- Reduce Motion: the page is simply there (the group ends at its
-			-- final alpha, 1)
-			if MelloUI.Anim then
-				MelloUI.Anim:PlayGroup(container.subtitle.fade)
-			else
-				container.subtitle.fade:Play()
+		local info = KINDS[h.kind] or KINDS.gossip
+		local title = h.title or info.label
+		if IsSecret(title) then
+			return title
+		end
+		return "|T" .. TexturePath(info.bullet) .. ":14:14|t " .. tostring(title)
+	end,
+	icon = TexturePath("Book"),
+	model = function()
+		local h = Head()
+		return M.db.overlayPortrait and h and h.npc and h.npc.id or nil
+	end,
+	talking = function()
+		return IsPlaying()
+	end,
+	count = function()
+		return #queue
+	end,
+	progress = Progress,
+	time = TimeText,
+	sub = Subtitle,
+	tray = Tray,
+	onClick = function(_, mouse)
+		if mouse == "RightButton" then
+			Stop()
+		else
+			TogglePaused()
+		end
+	end,
+	actions = {
+		{ glyph = function() return paused and "play" or "pause" end,
+		  tip = function() return paused and W_TEXT.resume or W_TEXT.pause end,
+		  desc = function() return paused and W_TEXT.resumeDesc or W_TEXT.pauseDesc end,
+		  fn = function() TogglePaused() end },
+		{ glyph = "skip", tip = W_TEXT.skip, desc = W_TEXT.skipDesc, shown = HasNext,
+		  fn = function()
+			local e = current or queue[1]
+			if e then
+				Skip(e)
 			end
-		end
-		last = container.subtitle
-	else
-		container.subtitle:Hide()
-	end
+		  end },
+		{ glyph = "stop", tip = W_TEXT.stop, desc = W_TEXT.stopDesc, shown = function() return not HasNext() end,
+		  fn = function() Stop() end },
+		{ glyph = "list", tip = W_TEXT.lines, desc = W_TEXT.linesDesc, tray = true },
+		{ glyph = function() return WidgetsLocked() and "padlock" or "padlockOpen" end,
+		  tip = function() return WidgetsLocked() and W_TEXT.locked or W_TEXT.unlocked end,
+		  desc = function() return WidgetsLocked() and W_TEXT.lockedDesc or W_TEXT.unlockedDesc end,
+		  fn = ToggleLock },
+	},
+}
 
-	-- Centre the content vertically.
-	local top = (container.head or container.name):GetTop()
-	local bottom = last:GetBottom()
-	if top and bottom then
-		container:SetHeight(math.max(20, top - bottom))
+-- the row laid again on the next frame (a new line, a pause, a skip ...)
+function Widget:Update()
+	if self.registered then
+		MelloUI.Reminders:Refresh(WIDGET)
 	end
+end
+
+function Widget:Register()
+	if not self.registered then
+		self.registered = true
+		MelloUI.Reminders:Register(SPEC)
+	end
+end
+
+function Widget:Unregister()
+	if self.registered then
+		self.registered = false
+		MelloUI.Reminders:Unregister(WIDGET)
+	end
+end
+
+-- the row showing Voice Over now, for /vo portrait (nil: none)
+function Widget:Row()
+	local col = MelloUI.Reminders:Column()
+	for _, row in ipairs(col and col.rows or {}) do
+		if row.key == WIDGET then
+			return row
+		end
+	end
+	return nil
 end
 
 --------------------------------------------------------------------------------
@@ -3093,7 +2230,7 @@ local function StopPages()
 	if current and current.kind == "readable" then
 		Skip(current)
 	else
-		Overlay:Update()
+		Widget:Update()
 	end
 end
 
@@ -3148,6 +2285,7 @@ local function FollowBook(entry, name, key)
 	if entry then
 		entry.book = book
 		entry.title = string.format("Page %d of %d", at, #pages)
+		entry.pageNo = at
 		for _, queued in ipairs(queue) do
 			waiting = waiting or queued == entry
 		end
@@ -3158,7 +2296,7 @@ local function FollowBook(entry, name, key)
 			PlayNext()
 		end
 	end
-	Overlay:Update()
+	Widget:Update()
 end
 
 local function ReadPage()
@@ -3183,7 +2321,16 @@ local function ReadPage()
 		if current and current.kind == "readable" and not current.secret
 			and (name == nil or current.name == name)
 			and (current.text == shown or (found and found.key and current.fileName == "v2:" .. found.key)) then
-			return   -- the page being read shown again: it goes on
+			-- the page being read shown again: it goes on, and a page the
+			-- book went on to by itself (no words, only its sound) takes the
+			-- window's words for its subtitles (user, 2026-09-30: turning
+			-- the pages lost them)
+			if current.text == nil then
+				current.text = shown
+				current.pages, current.pageWeights = nil, nil
+				Widget:Update()
+			end
+			return
 		end
 	end
 	StopPages()
@@ -3486,8 +2633,8 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 			MelloUI:Print("Nothing to read for that quest.")
 		end
 	elseif msg == "reset" then
-		Overlay:ResetPosition()
-		MelloUI:Print("Overlay position reset.")
+		MelloUI.Reminders:ResetColumnPlace()
+		MelloUI:Print("The widgets' place reset.")
 	elseif msg == "lines" then
 		local store = Collected()
 		local quests, questLines, newQuestLines, gossip, newGossip = 0, 0, 0, 0, 0
@@ -3562,10 +2709,10 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 			print("   " .. line)
 		end
 	elseif msg == "portrait" then
-		local frame = Overlay.frame
-		local model = frame and frame.portrait and frame.portrait.model
+		local row = Widget:Row()
+		local model = row and row.model
 		if not model then
-			MelloUI:Print("Overlay not created yet.")
+			MelloUI:Print("The Voice Over widget is not showing.")
 			return
 		end
 		local function Try(name, ...)
@@ -3576,8 +2723,8 @@ SlashCmdList.MELLOVOICEOVER = function(msg)
 			local ok, a, b = pcall(fn, model, ...)
 			return string.format("%s=%s", name, ok and tostring(a) .. (b ~= nil and ("," .. tostring(b)) or "") or ("error: " .. tostring(a)))
 		end
-		MelloUI:Print("Portrait: creature %s, loaded %s, retries %s, shown %s, size %dx%d",
-			tostring(model.creatureID), tostring(model.loaded), tostring(model.retries), tostring(model:IsShown()),
+		MelloUI:Print("Portrait: creature %s, loaded %s, tries %s, shown %s, size %dx%d",
+			tostring(model.creature), tostring(model.loaded), tostring(model.tries), tostring(model:IsShown()),
 			model:GetWidth(), model:GetHeight())
 		print("   " .. Try("GetModelFileID") .. "  " .. Try("GetModel") .. "  " .. Try("HasCustomCamera") .. "  " .. Try("GetModelScale"))
 		print("   " .. Try("GetCameraPosition") .. "  " .. Try("GetPosition") .. "  " .. Try("GetModelAlpha"))
@@ -3637,22 +2784,22 @@ local EVENTS = {
 	"VOICE_CHAT_TTS_VOICES_UPDATE", "VOICE_CHAT_TTS_PLAYBACK_FINISHED", "VOICE_CHAT_TTS_PLAYBACK_FAILED",
 }
 
--- The overlay's look switched (UI Modifications' Painted kit reskin, or the
--- module itself, or a profile): it changes dress at once, not at the next
--- line. Told by the bus's 'look:voiceover' on the frame after the switch
--- (audit, 2026-09-24, ranks 1 and 5: it hooked NotifySettingChanged and
--- SetModuleEnabled, both run for every setting and module and never let
--- go; the kit's look pass listens to those and tells only a real change).
--- The Kit Colours need nothing here: every kit piece is re-pointed by
--- Kit:SetKitColours.
-MelloUI:On("look:voiceover", function()
-	if M.isEnabled and Overlay.frame and Overlay:Dress() then
-		Overlay:Update()
-	end
-end, "Voice Over overlay")
-
 function M:OnInit(db)
 	self.db = db
+	-- 0.16.0: the old window's padlock is the widget column's lock (Lock The
+	-- Widgets, a Reminders setting); its scale and place are gone (the column
+	-- has its own place, sized with Edit Layout's wheel)
+	if db.overlayLock == true then
+		local rdb = MelloUI:GetModuleDB("Reminders")
+		if rdb then
+			rdb.widgetLock = true
+		end
+	end
+	db.overlayLock, db.overlayScale = nil, nil
+	db.overlayPoint, db.overlayRelativePoint, db.overlayX, db.overlayY = nil, nil, nil, nil
+	if MelloUI.GetPosition and MelloUI:GetPosition("voiceOverlay") then
+		MelloUI:ForgetPosition("voiceOverlay")
+	end
 	RefreshVoices()
 end
 
@@ -3671,8 +2818,7 @@ function M:OnEnable(db)
 		MelloUI:Print("Voice Over: this client has no text-to-speech API; the module will do nothing.")
 		return
 	end
-	Overlay:Create()
-	Overlay:Apply()
+	Widget:Register()
 	ApplyReadButton()
 	for _, event in ipairs(EVENTS) do
 		pcall(eventFrame.RegisterEvent, eventFrame, event)
@@ -3701,9 +2847,7 @@ function M:OnDisable()
 		pcall(eventFrame.UnregisterEvent, eventFrame, event)
 	end
 	Stop()
-	if Overlay.frame then
-		Overlay.frame:Hide()
-	end
+	Widget:Unregister()
 	if readButton then
 		readButton:Hide()
 	end
@@ -3724,14 +2868,7 @@ function M:OnSettingChanged(key, value, db)
 			end
 		end
 	elseif key:match("^overlay") then
-		-- (its Overlay Scale set on its page while Edit Layout waits for the
-		-- Configurator: that wins, Edit Layout's pending change of the overlay
-		-- is dropped -- Core's rule for a place written outside it)
-		local LS = MelloUI.LayoutSession
-		if key == "overlayScale" and Overlay.mover and LS and LS.Holds(Overlay.mover) then
-			LS.Release(Overlay.mover)
-		end
-		Overlay:Apply()
+		Widget:Update()
 	elseif key == "questLog" then
 		ApplyReadButton()
 	elseif key == "readBooks" and not value then

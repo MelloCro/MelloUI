@@ -103,20 +103,12 @@ def load_mello(path):
     pos = {k: dict(v) for k, v in mods["UIModifications"]["positions"].items()}
     # the places wave 3 moved into the one store, as the modules' own moves
     # write them (Tools/installer/bake_full.py expected_moves): the whisper
-    # popups' corner and the voice overlay's anchor
+    # popups' corner (0.16.0: the voice overlay's old place is dropped at the
+    # login, VoiceOver's OnInit: the widget column has its own)
     wp = mods.get("Chat", {}).get("whisperPopupPos")
     if isinstance(wp, dict) and isinstance(wp.get("x"), (int, float)) and isinstance(wp.get("y"), (int, float)) and "whisper" not in pos:
         pos["whisper"] = {"relPoint": "BOTTOMLEFT", "x": wp["x"], "y": wp["y"]}
-    vo = mods.get("VoiceOver", {})
-    if isinstance(vo.get("overlayPoint"), str) and "voiceOverlay" not in pos:
-        pt = vo["overlayPoint"].strip().upper()
-        rp = (vo.get("overlayRelativePoint") or pt).strip().upper()
-        e = {"x": vo.get("overlayX") or 0, "y": vo.get("overlayY") or 0}
-        if pt != "BOTTOMLEFT":
-            e["point"] = pt
-        if rp != "CENTER":
-            e["relPoint"] = rp
-        pos["voiceOverlay"] = e
+    pos.pop("voiceOverlay", None)
     en = py(db.enabled)
     mm, sv, au = mods.get("MinimapPanel", {}), mods.get("Services", {}), mods.get("Auras", {})
     return {
