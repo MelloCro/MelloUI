@@ -736,10 +736,28 @@ driver:SetScript("OnUpdate", function()
 			r.recentAll, r.samplesAll = r.recentAll + v, r.samplesAll + 1
 		end
 	end
+	-- (0.17.0) the tweens that run this frame, by frame and prop: which one
+	-- keeps the tween driver going (docs/plans/fps-portrait-fix.md)
+	local Anim = MelloUI.Anim
+	if Anim and Anim.EachRunning and (Anim:Busy()) > 0 then
+		Anim:EachRunning(r.sampleTween)
+	end
 	if r.limit and now() - r.t0 >= r.limit * 1000 then
 		Perf:Stop()
 	end
 end)
+
+-- (0.17.0) a write a hook makes back onto a game region (a texture, a
+-- colour, a text, a place the game had just set): counted per label while
+-- recording, so the next case shows in the report and not only in the FPS.
+-- The rule (CLAUDE.md): never undo a game write on a path the game runs
+-- every frame; cover it, or write only when the game's value changed.
+local writeBacks = {}   -- [label] = count
+function Perf.WriteBack(label)
+	if recording then
+		writeBacks[label] = (writeBacks[label] or 0) + 1
+	end
+end
 
 -- (the tests' probe)
 function Perf:IsRecording()
@@ -754,6 +772,9 @@ function Perf:Start(seconds)
 	for _, row in pairs(rows) do
 		row.calls, row.time, row.max, row.mem, row.over = 0, 0, 0, 0, 0
 	end
+	for label in pairs(writeBacks) do
+		writeBacks[label] = nil
+	end
 	depth = 0
 	local P, E = Profiler()
 	if P and E.RecentAverageTime then
@@ -766,7 +787,23 @@ function Perf:Start(seconds)
 		frames = 0, recent = 0, samples = 0, recentAll = 0, samplesAll = 0,
 		before = Counters(),
 		memStart = AddonMemory(), combat = InCombatLockdown and InCombatLockdown() or false,
+		tweens = {},
 	}
+	-- (one function per recording, not per frame)
+	local tweens, keys = rec.tweens, setmetatable({}, { __mode = "k" })
+	rec.sampleTween = function(frame, prop)
+		local byProp = keys[frame]
+		if not byProp then
+			byProp = {}
+			keys[frame] = byProp
+		end
+		local key = byProp[prop]
+		if not key then
+			key = FrameLabel(frame, "Anim") .. " " .. tostring(prop)
+			byProp[prop] = key
+		end
+		tweens[key] = (tweens[key] or 0) + 1
+	end
 	recording = true
 	driver:Show()
 	if rec.limit then
@@ -914,6 +951,51 @@ function Perf:Report()
 	end
 	if shown == 0 then
 		add("  nothing")
+	end
+
+	-- (0.17.0) a hook at 50 a second runs every frame while its frame shows
+	-- (the target of target's): every hook or script over 30 a second, with
+	-- the frame it hangs on (its label)
+	add("")
+	add("HOOKS AND SCRIPTS OVER 30 A SECOND (every frame while their frame shows)")
+	shown = 0
+	Sorted(list, "calls")
+	for _, row in ipairs(list) do
+		if (row.kind == "hook" or row.kind == "script") and row.calls / dur >= 30 then
+			shown = shown + 1
+			add("  %6.1f calls/s   %s  %s %s", row.calls / dur, row.scope, row.kind, row.label)
+		end
+	end
+	if shown == 0 then
+		add("  none")
+	end
+
+	-- (0.17.0) writes back onto game regions, per second
+	local wb, wbTotal = {}, 0
+	for label, n in pairs(writeBacks) do
+		wb[#wb + 1] = { label = label, n = n }
+		wbTotal = wbTotal + n
+	end
+	Sorted(wb, "n")
+	add("")
+	add("WRITE-BACKS ONTO GAME REGIONS: %.1f per second (each one makes the game's next write a real change)", wbTotal / dur)
+	for i = 1, math.min(#wb, 12) do
+		add("  %6.1f /s   %s", wb[i].n / dur, wb[i].label)
+	end
+
+	-- (0.17.0) the tweens that kept the tween driver running
+	local tw = {}
+	for key, n in pairs(r.tweens or {}) do
+		tw[#tw + 1] = { key = key, n = n }
+	end
+	Sorted(tw, "n")
+	add("")
+	add("TWEENS RUNNING (frames they ran in, of %d)", r.frames)
+	for i = 1, math.min(#tw, 12) do
+		add("  %6d   %s", tw[i].n, tw[i].key)
+	end
+	if #tw == 0 then
+		add("  none")
 	end
 
 	-- slow calls, one line per handler

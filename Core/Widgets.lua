@@ -1764,9 +1764,10 @@ end
 
 --------------------------------------------------------------------------------
 -- Glyph (0.16.0): the widget glyphs, one sheet (Media/Textures/WidgetGlyphs,
--- 8 x 2 cells of 32 px, white: made by Tools/make_widget_art.py) for the
--- widget column's buttons and the whisper window's header buttons; painted by
--- the caller (the palette's text, its gold on hover)
+-- 8 x 4 cells of 32 px, white: made by Tools/make_widget_art.py; 8 x 2 until
+-- 0.17.0) for the widget column's buttons, the whisper window's header
+-- buttons and the chat column's (0.17.0); painted by the caller (the
+-- palette's text, its gold on hover). Cell 15 is empty: Report's link.
 --   W.Glyph(tex, name) -> true   the glyph's cell on the texture; false for a
 --                                name the sheet has not (nothing set)
 --   W.GLYPHS                     [name] = its cell
@@ -1780,7 +1781,13 @@ end
 do
 	local GLYPH_TEX = "Interface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs"
 	W.GLYPHS = { pause = 0, play = 1, skip = 2, stop = 3, list = 4, padlock = 5, padlockOpen = 6, check = 7,
-		cross = 8, way = 9, reply = 10, friend = 11, invite = 12, ignore = 13, report = 14 }
+		cross = 8, way = 9, reply = 10, friend = 11, invite = 12, ignore = 13, report = 14,
+		chat = 16, channels = 17, friends = 18,
+		-- (0.17.0: Combat Text's feed, a mark per kind)
+		hit = 19, heal = 20, proc = 21, avoid = 22, gain = 23,
+		-- (0.17.0: the damage meter's values and the Fight History's chat button)
+		sword = 24, hourglass = 25, chart = 26 }
+	local ROWS = 4
 
 	function W.Glyph(tex, name)
 		local i = W.GLYPHS[name]
@@ -1789,7 +1796,7 @@ do
 		end
 		local c, r = i % 8, math.floor(i / 8)
 		tex:SetTexture(GLYPH_TEX)
-		tex:SetTexCoord(c / 8, (c + 1) / 8, r / 2, (r + 1) / 2)
+		tex:SetTexCoord(c / 8, (c + 1) / 8, r / ROWS, (r + 1) / ROWS)
 		return true
 	end
 

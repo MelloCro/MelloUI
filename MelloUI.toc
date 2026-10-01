@@ -4,6 +4,7 @@
 ## Author: Mello
 ## Version: 0.16.0
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes
+## SavedVariablesPerCharacter: MelloUIFights
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements
 ## X-Website: https://github.com/MelloCro/MelloUI
@@ -19,8 +20,11 @@ Core\Widgets.lua
 Core\Shade.lua
 Core\Notice.lua
 Core\CentreText.lua
+Core\Feed.lua
 Core\Reminders.lua
 Core\Threat.lua
+Core\Fader.lua
+Core\Preview.lua
 Core\Config.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
@@ -76,6 +80,10 @@ Modules\Reminders.lua
 Modules\Restock.lua
 Modules\Widgets.lua
 Modules\Gains.lua
+Modules\CombatText.lua
+Modules\Meter.lua
+Modules\MeterBar.lua
+Modules\MeterHistory.lua
 Modules\PartyMarkers.lua
 Modules\CustomSounds.lua
 Modules\VoiceOver.lua
@@ -83,6 +91,7 @@ Modules\Chat.lua
 Modules\Nameplates.lua
 Modules\Tooltip.lua
 Modules\UnitFrames.lua
+Modules\Fader.lua
 Modules\CharacterPanel.lua
 Modules\GameMenuPanel.lua
 Modules\DialogPanel.lua

@@ -53,6 +53,9 @@ def check(cond, what):
 WINDOWS12 = ["CharacterFrame", "CollectionsJournal", "CommunitiesFrame", "ContainerFrameCombinedBags", "FriendsFrame",
              "LFGParentFrame", "LegacySystemFrame", "MacroFrame", "MelloUIConfigFrame", "PlayerSpellsFrame",
              "ProfessionsFrame", "WorldMapFrame"]
+# (0.17.0, the 2026-10-01 snapshot: MelloUI's own elements placed in Edit Layout -- its bar, the race bar, your values
+# line, the widget column -- are store places too; the Route arrow is a moved one, moved_places)
+OWN_PLACES = ["editLayoutBar", "meterbar", "metervalues", "widgets"]
 ANCHOR_RX = re.compile(r"\s+")
 
 
@@ -157,12 +160,20 @@ def main():
     check(report["migrations"] and sorted(report["migrations"]) == ["MovePopupPlace"],
           "the modules' own moves ran: %s" % report["migrations"])
     stages = {k: v["stage"] for k, v in report["moves"].items()}
-    check(stages.get("whisper") == "login" and set(stages) <= {"whisper", "voiceOverlay"}
-          and stages.get("voiceOverlay", "login") == "login",
-          "the whisper windows' corner moved at the login (Chat's OnEnable); the old voice overlay's place, if any, "
-          "dropped at the login (0.16.0): %s" % stages)
-    check(all(k in {c["key"] for c in report["loginChanges"]} for k in ("Chat.whisperPopupPos", "UIModifications.positions")),
-          "the login changes the bake knows include the whisper move (the old key gone, the store written)")
+    # (a snapshot saved since the move -- 2026-10-01's -- holds the whisper windows' place in the store already:
+    # nothing left to move)
+    old_whisper = isinstance(raw_snapshot().get("Chat", {}).get("whisperPopupPos"), dict)
+    if old_whisper:
+        check(stages.get("whisper") == "login" and set(stages) <= {"whisper", "voiceOverlay"}
+              and stages.get("voiceOverlay", "login") == "login",
+              "the whisper windows' corner moved at the login (Chat's OnEnable); the old voice overlay's place, if any, "
+              "dropped at the login (0.16.0): %s" % stages)
+        check(all(k in {c["key"] for c in report["loginChanges"]} for k in ("Chat.whisperPopupPos", "UIModifications.positions")),
+              "the login changes the bake knows include the whisper move (the old key gone, the store written)")
+    else:
+        check(set(stages) <= {"voiceOverlay"} and stages.get("voiceOverlay", "login") == "login",
+              "the snapshot has the whisper windows' place in the store already: no move left (the old voice overlay's "
+              "place, if any, dropped at the login): %s" % stages)
     # the move check itself, on made-up stores: the documented move passes
     # (at the login or by the bake); anything else riding along stops the bake
     mods = {"Chat": {"whisperPopupPos": {"x": 10, "y": 20}}}
@@ -257,9 +268,15 @@ def main():
             if M.IsPersonalKey(M, mod, str(k)) or F.extra_personal(mod, str(k)):
                 if (mod + "." + str(k) + "=") in text:
                     leaks.append(mod + "." + str(k))
-                if isinstance(v, str) and len(v) >= 4 and v in text:
+                # (as a value the way the profile writes one -- "=s<value>" or ":s<value>" inside a table -- not a
+                # word in another key's name: Chat's own Background copy "parchment" vs parchment_chat, 2026-10-01)
+                if isinstance(v, str) and len(v) >= 4 and re.search(r"[=:]s" + re.escape(v) + r"(?=[;,}|]|$)", text):
                     leaks.append("%s.%s value" % (mod, k))
     check(not leaks, "no personal key or personal value of the snapshot in it: %s" % leaks)
+    # (0.17.0: a module's saved* keys are the player's own game settings it gives back when off -- Combat Text's
+    # and the meter's were about to ship: none in it, whichever module adds one next)
+    saved = re.findall(r"(?:^|;)(\w+\.saved[A-Z]\w*)=", text)
+    check(not saved, "no saved game setting (a module's saved* backup) in it: %s" % saved)
     top = ["kitTuning", "kitEditor", "profiles", "profilesShipped", "activeProfile", "defaultProfile", "installer"]
     known = lua.eval("function(n) return MelloUI.modules[n] ~= nil end")
     check(all(known(k if m == "!" else m) for m, k, v in ents) and not any(t + "." in text or t + "=" in text for t in top),
@@ -278,7 +295,8 @@ def main():
         return M:GetModuleDB("UIModifications").positions end)''')(text))
     names = sorted(pos)
     moved = moved_places(snap)
-    check(sorted(n for n in names if n not in moved) == sorted(WINDOWS12), "the 12 window places: %s" % names)
+    check(sorted(n for n in names if n not in moved) == sorted(WINDOWS12 + OWN_PLACES),
+          "the 12 window places and MelloUI's own elements' (0.17.0): %s" % names)
     check(all(n not in pos for n in F.EDIT_MODE_FRAMES), "no store place for the four Edit Mode frames")
     for n, want in moved.items():
         got = pos.get(n)

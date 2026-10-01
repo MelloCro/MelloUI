@@ -188,7 +188,7 @@ local LAYOUT_OWN = { "layoutFitFor", "layoutFitRev", "layoutApplied" }
 -- off, so they are neutral there (the chat buttons and background stay, and
 -- the chat windows keep the game's own background opacity)
 local NO_RESKIN_ROWS = {
-	["Chat.hideButtons"] = false, ["Chat.hideBackground"] = false, ["Chat.hideEditBox"] = false,
+	["Chat.chatButtons"] = true, ["Chat.hideBackground"] = false, ["Chat.hideEditBox"] = false,
 	["Chat.hideTabs"] = false, ["Chat.tabsOnMouseover"] = false, ["Chat.editBoxTop"] = false,
 	["Chat.windowAlphaOn"] = false,
 	["Tweaks.hideMinimapCoords"] = false, ["Tweaks.hideMicroMenu"] = false, ["Tweaks.hideBagBar"] = false,
@@ -293,11 +293,11 @@ I.WINDOW_GROUPS = {
 -- role themselves. Gains, the feed of skill ups and items, after them.)
 I.FEATURE_GROUPS = {
 	-- (0.16.0: Widgets joined the first column and Party Markers, the medallions over the party's heads, moved beside
-	-- the nameplates, so both columns fit the page: ten and nine rows)
+	-- the nameplates, so both columns fit the page: ten and nine rows; 0.17.0: the Damage Meter, ten and ten)
 	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Services",
 		"Reminders", "Restock", "Widgets", "Gains", "VoiceOver", "Vendor" } },
 	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",
-		"PartyMarkers", "UnitFrames", "BarText", "Tooltip", "Stats" } },
+		"PartyMarkers", "UnitFrames", "BarText", "Meter", "Tooltip", "Stats" } },
 }
 
 -- the lines the window shows (its footer, the Keep page)

@@ -552,7 +552,8 @@ The body is the stone tile at the slider's alpha (2026-09-21, after the round: "
 | `ChatFrameBackground` file art (`<name>Background`, the flat translucent black; keyed `ChatFrameBody`) | the window's body, the side button frame's | `tile window/single_body` as a region in its place (user, 2026-09-21: the dark cracked stone, not a flat colour), its alpha the slider's value (`chatFrame.oldAlpha`, re-read after every `SetAlpha` the game makes by name and after `FCF_SetWindowAlpha`) |
 | `ChatFrameTab-BGLeft` / `-Mid` / `-Right` (`Left` / `Middle` / `Right`), `-Selected*` (`ActiveLeft`..., shown by `FCFTab_UpdateColors`), `-Highlight*`; the `-min` set on a minimized tab | the chat tabs | **CT2** = TB6 via the `uiframe-tab-left` / `uiframe-activetab-left` rules on a sizer 8 px under the tab's top (the art is bottom-anchored in the 32 px tab); the text held centred on the card (the game puts it 5 px under the tab's centre) |
 | `UI-ChatInputBorder-Left2` / `-Mid2` / `-Right2` and the `-Focus-*` set | the edit box | S1 (`UI-ChatInputBorder-Mid2`) with `dropCap = "l"`: the plate's left cap carries the search glyph, so on a chat box it is dropped and the plate closes with `inputs/edit_end_l` (the right cap mirrored, made 2026-09-21); the focused look while typing; the game's own 15 px header inset then puts "Say:" and the text in the field |
-| `UI-ChatIcon-Chat-Up` (menu), `-Minimize-Up`, `-Maximize-Up` (keyed `ChatIconButton`) | the icon buttons | K2: the cog plate at its natural size under the game's glyph |
+| `UI-ChatIcon-Chat-Up` (menu), `-Minimize-Up`, `-Maximize-Up` (keyed `ChatIconButton`) | the icon buttons | K2: the cog plate at its natural size under the game's glyph (the minimize / maximize buttons; the menu's since 0.17.0: the row below) |
+| `UI-ChatIcon-Chat-Up` (ChatFrameMenuButton), `chatframe-button-up` (ChatFrameChannelButton), `quickjoin-button-friendslist-up` (QuickJoinToastButton), keyed `ChatColumnButton` | the chat column's chat menu, Channels, Friends (0.17.0) | the user's pick C of `chat_menu_sketch`: the round rim (the Round Border) on a 22-unit rect centred in the column, the palette's inner-panel disc and the glyph (`chat`, `channels`, `friends`) in its opening, the whisper header's look; the game's art faded, the friends count raised over it; the voice buttons keep K2 |
 | `chatframe-button-up` (the channel / voice buttons' own round plate, the glyph on their `Icon`) | the channel / voice buttons | K2: the cog on the plate's rect, the pushed / highlight art faded, the glyph kept |
 | `minimal-scrollbar-arrow-returntobottom` | scroll-to-bottom | `buttons/arrow_down` on the button's rect (its new-message flash stays, an FX) |
 | `MinimalScrollBar` | the scroll bar | T2 / H1 / S1 by the sweep (its mouse-away fade is the game's, left) |
@@ -583,6 +584,15 @@ header's controls and the bars' contents condensed into their plates. `/dmdump [
 The hover effect (the resize grip and the scroll bar fading in) starts from each window's own `OnEnter`, which a cursor
 landing on a row never fires (the rows take the mouse; the main window's poll only runs while a session timer is
 live): every row's `OnEnter` hands it on to its window (`HandOnHover`).
+
+**MelloUI's own meter (Modules/Meter.lua, MeterBar.lua, MeterHistory.lua; 0.17.0)** replaces these windows while it
+is on (the game's `damageMeterEnabled` off, its windows never shown), so this panel's dressing only matters with it
+off. Its parts are agreed ADDITIONS, not replacements (the user, 2026-10-01, the sketches in
+MelloUI-BuildData/output/meter_sketch): the three values lines (own frames: yours under the player frame's stack,
+the party's on top of each party frame, the game's Show Party Pets giving them room), the race bar (its own mover
+`meterbar`), the summary (a widget column row) and the Fight History window (Kit:OwnWindow, the meter's parchment
+area). None of them writes a game region (CLAUDE.md hard rule 1, the cover rule). The header's small diamonds for the
+game's windows (meter-and-gains.md section 3) are not done yet (low priority).
 
 ## The whole UI's shade (Modules/KitShade.lua, 0.14.0)
 

@@ -465,12 +465,19 @@ def zone_to_yards(z, cont):
     return f
 
 
+# Cities whose own map is underground: the ground over them is the zone's (the Undercity under the Ruins of
+# Lordaeron: Tirisfal's roads to its gate and on to Silverpine run inside its rect; 2026-10-01, Services'
+# nearest innkeeper from Deathknell)
+SURFACE_CITIES = {1458}
+
+
 def inner_maps(z, zones):
     """Zones drawn inside this one on its map (cities): their roads come from
-    their own maps, so their area is left out here."""
+    their own maps, so their area is left out here (an underground city's is
+    not: SURFACE_CITIES)."""
     out = []
     for o in zones:
-        if o is z or o["cont"] != z["cont"]:
+        if o is z or o["cont"] != z["cont"] or o["id"] in SURFACE_CITIES:
             continue
         if o["x0"] >= z["x0"] and o["x1"] <= z["x1"] and o["y0"] >= z["y0"] and o["y1"] <= z["y1"]:
             out.append(o)
@@ -579,6 +586,87 @@ def stitch(g, cont, zone_of=None):
         f"{bridges} bridges, longest {longest:.0f} yd, {ends} road ends carried into the next zone)")
 
 
+# The ground (0.17.0, docs/plans/route-terrain.md option A): the walkable ground measured from the client's own
+# terrain (Tools/trace_terrain.py's grid, cache/terrain/walk_<map>.npz) laid into the graph as ground links (Tools/
+# ground_graph.py), priced over a road's, and the walk grid the runtime checks its straight legs on. A continent with
+# no grid in the cache keeps its roads alone.
+GROUND = {1415: 0, 1414: 1, 2521: 2991}     # continent uiMap -> world map (the terrain's)
+
+
+def add_ground(graphs, conts):
+    import numpy as np
+    from scipy.spatial import cKDTree
+    import ground_graph as gg
+    gg.NEAR_STEP, gg.OPEN_STEP, gg.NEAR_RANGE, gg.MAX_LINKS = 5, 15, 3, 5
+    walk, sizes = {}, {}
+    assign = {}
+    for r in csv.DictReader(open(os.path.join(CACHE, f"UiMapAssignment_{BUILD}.csv"), encoding="utf-8")):
+        if r["OrderIndex"] == "0":
+            assign[int(r["UiMapID"])] = r
+    for cont, wmap in GROUND.items():
+        path = os.path.join(CACHE, "terrain", f"walk_{wmap}.npz")
+        if not os.path.exists(path):
+            log(f"  ground {cont}: no terrain grid in the cache (Tools/trace_terrain.py)")
+            continue
+        b = conts.get(cont)
+        if b is None:
+            a = assign[cont]
+            x0, y0, x1, y1 = (float(a[k]) for k in ("Region_0", "Region_1", "Region_3", "Region_4"))
+            b = {"x0": x0, "y0": y0, "x1": x1, "y1": y1, "width": y1 - y0, "height": x1 - x0}
+            sizes[cont] = b
+        d = np.load(path)
+        cells = gg.fold(d["grid"])
+        e0, s0 = gg.origin(int(d["tx0"]), int(d["ty0"]), b["x1"], b["y1"])
+        pts = gg.nodes_of(cells)
+        xy, links = gg.link(cells, pts, e0, s0)
+        g = graphs.setdefault(cont, {})
+        road_keys = list(g)
+        keys = []
+        for i, (x, y) in enumerate(xy):
+            k = f"{int(math.floor(x / CELL))}:{int(math.floor(y / CELL))}"
+            if k not in g:
+                g[k] = [round(float(x), 1), round(float(y), 1), {}]
+            keys.append(k)
+        n_links = 0
+        for i, ln in links.items():
+            for j, cost in ln.items():
+                ki, kj = keys[i], keys[j]
+                if ki != kj and (g[ki][2].get(kj) is None or g[ki][2][kj] > cost):
+                    g[ki][2][kj] = cost
+                    g[kj][2][ki] = cost
+                    n_links += 1
+        # each ground node near a road to the nearest road node it sees within ROAD_REACH (one join each)
+        joined = 0
+        if road_keys:
+            rxy = [(g[k][0], g[k][1]) for k in road_keys]
+            rtree = cKDTree(rxy)
+            for j, (x, y) in enumerate(xy):
+                kj = keys[j]
+                cand = sorted(rtree.query_ball_point((x, y), gg.ROAD_REACH),
+                              key=lambda i: (rxy[i][0] - x) ** 2 + (rxy[i][1] - y) ** 2)
+                for i in cand[:4]:
+                    rk = road_keys[i]
+                    if rk == kj:
+                        break
+                    rx, ry = rxy[i]
+                    swum = gg.clear(cells, (ry - s0) / gg.CELL, (rx - e0) / gg.CELL, (y - s0) / gg.CELL,
+                                    (x - e0) / gg.CELL)
+                    if swum is None:
+                        continue
+                    dd = math.hypot(x - rx, y - ry)
+                    cost = round(dd / gg.WALK * (gg.GROUND_COST * (1 - swum) + gg.SWIM_COST * swum), 1)
+                    if g[rk][2].get(kj) is None or g[rk][2][kj] > cost:
+                        g[rk][2][kj] = cost
+                        g[kj][2][rk] = cost
+                        joined += 1
+                    break
+        rows = gg.grid_rows(cells)
+        walk[cont] = {"cell": gg.CELL, "e0": e0, "s0": s0, "w": cells.shape[1], "h": cells.shape[0], "rows": rows}
+        log(f"  ground {cont}: {len(pts)} nodes, {n_links} links, {joined} road joins; walk grid "
+            f"{cells.shape[1]} x {cells.shape[0]} ({sum(len(r) for r in rows) // 1024} KB)")
+    return walk, sizes
+
+
 def stage_bake(zones, conts):
     from scipy.spatial import cKDTree
     with open(SEGMENTS, encoding="utf-8") as fh:
@@ -662,6 +750,7 @@ def stage_bake(zones, conts):
         log(f"  {z['id']} {z['name']}: {len(lines)} segments, {len(set(keys))} nodes")
     for c, g in graphs.items():
         stitch(g, c, zone_of)
+    walk, ground_sizes = add_ground(graphs, conts)
     with io.open(OUT, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/trace_roads.py from the zone map art of build " + BUILD + ". Do not edit by hand.\n")
         fh.write("-- Roads traced from the maps for the Route module, in continent yards of the sizes below;\n")
@@ -669,8 +758,17 @@ def stage_bake(zones, conts):
         fh.write("MelloUI_RoadData = {\n")
         fh.write(f'\tbuild = "{BUILD}",\n')
         fh.write("\tsizes = {\n")
-        for c, b in conts.items():
+        for c, b in list(conts.items()) + list(ground_sizes.items()):
             fh.write(f"\t\t[{c}] = {{ {b['width']:.1f}, {b['height']:.1f} }},\n")
+        fh.write("\t},\n")
+        # the walk grid (Tools/ground_graph.py): one run-length string per row of CELL-yard cells from e0, s0
+        fh.write("\twalk = {\n")
+        for c, wg in walk.items():
+            fh.write(f"\t\t[{c}] = {{ cell = {wg['cell']:.4f}, e0 = {wg['e0']:.1f}, s0 = {wg['s0']:.1f}, "
+                     f"w = {wg['w']}, h = {wg['h']}, rows = {{\n")
+            for row in wg["rows"]:
+                fh.write(f'\t\t\t"{row}",\n')
+            fh.write("\t\t} },\n")
         fh.write("\t},\n\tgraphs = {\n")
         for c, g in graphs.items():
             fh.write(f"\t\t[{c}] = {{\n")

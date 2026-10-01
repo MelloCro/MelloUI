@@ -104,7 +104,13 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "Chat.nameStyle", "Chat.classColors", "Route.textShade", "Tweaks.zoneTextShade", "Tweaks.centreTextShade",
              "NameplatePanel.shadeStrength", "UIModifications.shade_nameplates", "Tooltip.classNames",
              "Tooltip.barTexture", "DarkMode.auraIconBorder", "Route.notice", "Route.noticeSound",
-             "Reminders.remind_restock", "VoiceOver.overlayLock", "VoiceOver.overlayScale"]
+             "Reminders.remind_restock", "VoiceOver.overlayLock", "VoiceOver.overlayScale",
+             # (0.17.0, the user's pick C of chat_menu_sketch: Hide Chat Buttons became Chat Buttons, on for the Full
+             # experience too -- a snapshot's old "hide them" is dropped, never shipped)
+             "Chat.hideButtons",
+             # (0.17.0: Unit Frames' Fade Out Of Combat, Faded Opacity and Pet Frame Too: the Fader's now, carried
+             # at the login by MelloUI:MergeSettings)
+             "UnitFrames.fadeOutOfCombat", "UnitFrames.fadeAlpha", "UnitFrames.fadePet"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)

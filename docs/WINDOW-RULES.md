@@ -671,6 +671,64 @@ Lint workflow) fails when a copy is added and names the system to use.
   `combat = false`; nothing made at login, one shared timer only while a row
   has a running time or a talking face. The contract is the file's header and
   "The column" section.
+- **Its lines that stack and fade: `MelloUI.Feed` (Core/Feed.lua; 0.17.0,
+  lifted from Gains when Combat Text's feed came).** A column of soft-shaded
+  lines with no frame round them -- newest on top, at most `max`, each held
+  and then faded (Anim:Mirror), the ones below sliding a slot (Anim:To),
+  Reduce Motion a plain fade -- is ONE `MelloUI.Feed:New(opts)`: its holder
+  and Edit Layout mover (`key`, `label`, `page`, `when`), `width` / `pitch`,
+  `newRow(row)` for the line's own texts and band (Shade:Band with
+  Shade.TEXT), `from = "bottom"` for a column standing on its holder's bottom.
+  `feed:Put(kind, id, hold, apply, ...)` raises a line of the same id or makes
+  a new one; Gains and Combat Text's Feed are its users. Nothing is made
+  before the first line; lines are pooled. The ratchet's `feed-copy` fails a
+  column made by hand.
+- **Fading parts of the UI: `MelloUI.Fader` (Core/Fader.lua; 0.17.0, Unit
+  Frames' Fade Out Of Combat lifted into it).** One fader, every element on it:
+  `Fader:Register({ key, frames, mouse, needed, follows, own, watch })`, each
+  element's choice the Fader module's `show_<key>` (Always / In Combat / On
+  Mouseover; Modules/Fader.lua holds the page and the elements). Alpha only,
+  relative to the frame's own alpha (a game write learned by a post-hook, never
+  fought on a busy frame), pointer hooks on the children that take the mouse,
+  holds as timers, fades through Anim; nothing made while the module is off.
+  Never a second fade of a frame from a module of its own.
+- **Previews of how the UI behaves: `MelloUI.Preview` (Core/Preview.lua;
+  0.17.0, the configurator's Preview list).** One scene engine: it fires the
+  bus's `preview` beats (start, pull, hit 1..12, kill, stop) and never fakes a
+  game event or touches a game frame. A module that takes part listens on the
+  bus, asks `Preview:Plays(part)` before it shows anything (a part played
+  alone: only that one), shows its own sample state from its own code, and
+  undoes only what it did at "stop" (on "combat" it leaves its combat state
+  to the real fight). `Preview.PARTY` is the one made-up group; the stand-in
+  party frames are ConfigPreview's sample frames. A new part: an entry in
+  `Preview.ITEMS` and the module's own listener -- never a scene of its own.
+- **Never fight the game's per-frame writes: COVER (0.17.0; the user's FPS in
+  combat, 160 down to 66, docs/plans/fps-portrait-fix.md).** Never undo a
+  game write on a path the game runs every frame or every update (the target
+  of target's OnUpdate runs `UnitFrame_Update` every frame: its portrait, its
+  name, its power bar's art; RefreshAuras its aura cooldowns; the bars'
+  OnUpdate their values). Each write back makes the game's next write a real
+  change again, and the ENGINE pays (texture loads, layout): a Lua profile
+  cannot see it. Instead:
+  - cover the game's region with an own one on its rect, in its layer one
+    sublevel up (or the same sublevel, made after it), and copy what the
+    game changes on it (alpha, colour, desaturation, show) by post-hooks
+    that write only when the value changed. The patterns: Class Icons'
+    portrait cover (an own texture and a dark round backing), Bar Textures'
+    covered power bar (an own fill and backing, cropped to the game's fill by
+    a mask on the fill's rect, so a secret value moves it), Unit Frames' name
+    cover on the target of target, the execute tint (the bar's rect cropped
+    by a mask, so a value change sets its alpha only);
+  - or write only when the game's value really changed (compare first; a
+    secret cannot be compared: then cover);
+  - cost, highest first: texture / atlas swaps and mask changes; anchors and
+    sizes; colours and alpha (fight those only when a recording shows them);
+  - a write back that remains goes through `MelloUI.Perf.WriteBack(label)`,
+    so `/melloperf record`'s "WRITE-BACKS ONTO GAME REGIONS" names it, with
+    the hooks over 30 a second and the tweens that kept the driver running.
+  MelloUI's own windows and HUD pieces (the damage meter's lines, race bar
+  and summary) follow it from the start: own frames, never a game region
+  written per update.
 - **New tags: every new option says its update (user, 2026-09-26).** "every
   new Dropdown menu, every new slider, every new checkbox etc needs to get a
   "New" tag for people to easly navigate to that option to test it out in
@@ -813,7 +871,7 @@ Lint workflow) fails when a copy is added and names the system to use.
   "restart", "look:<area>", "cover", "parchment", "border", "fonts",
   "scale", "editmode", "shell", "palette", "column", "installer",
   "editmodelayout", "backup", "shade", "where", "reminder", "editlayout",
-  "mover" (Core.lua lists what each carries). A window
+  "mover", "meter", "configurator" (Core.lua lists what each carries). A window
   takes its listeners when it is built, never at file load, and each
   returns at once while the window is closed
   (at most marking what its next show brings in line). Never

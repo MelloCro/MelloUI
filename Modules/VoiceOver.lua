@@ -162,7 +162,7 @@ options[#options + 1] = { type = "toggle", key = "overlayPortrait", parent = "ov
 	desc = "The speaker's animated 3D face in the widget. Off: the book." }
 options[#options + 1] = { type = "toggle", key = "overlaySubtitles", parent = "overlay", name = "Subtitles",
 	desc = "Also show the text being read under the line, page by page as the voice goes on." }
-options[#options + 1] = { type = "toggle", key = "overlayCompact", parent = "overlay", name = "Compact In Combat", new = "0.16.0",
+options[#options + 1] = { type = "toggle", key = "overlayCompact", parent = "overlay", name = "Compact In Combat",
 	desc = "In a fight the widget shrinks to the speaker's face and its ring, and the reading goes on (a book too). The name and the line come back when the fight is over." }
 
 local M = MelloUI:RegisterModule("VoiceOver", {

@@ -628,15 +628,58 @@ end
 -- (optional): EachCandidate's.
 local function Candidates(kind, profession, keep, filter)
 	local out = {}
-	EachCandidate(kind, profession, function(_, name, sub, cont, wx, wy, mapID, x, y)
+	EachCandidate(kind, profession, function(entry, name, sub, cont, wx, wy, mapID, x, y)
 		if cont ~= nil then
-			out[#out + 1] = { name = name, sub = sub, cont = cont, wx = wx, wy = wy }
+			out[#out + 1] = { name = name, sub = sub, cont = cont, wx = wx, wy = wy, entry = entry }
 		else
-			out[#out + 1] = { name = name, sub = sub, mapID = mapID, x = x, y = y }
+			out[#out + 1] = { name = name, sub = sub, mapID = mapID, x = x, y = y, entry = entry }
 		end
 	end, nil, false, nil, nil, keep, filter)
 	return out
 end
+
+-- (0.17.0; the user, 2026-10-01, from Deathknell: "wouldnt it be logical
+-- for him to first try to find the nearest innkeeper in my current zone?")
+-- The nearest by road wins, but one in the player's own zone wins a near
+-- tie: at most NEAR_TIE farther by road, or NEAR_FLOOR yards, whichever is
+-- more (docs/plans/services-nearest-roads.md section 4: at the Undercity's
+-- gate its own services, at Silverpine's border the Sepulcher). A
+-- candidate's zone is read once per data row and kept (weak keys).
+local Zone = { NEAR_TIE = 1.25, NEAR_FLOOR = 300, of = setmetatable({}, { __mode = "k" }) }
+
+function Zone.Of(R, c)
+	local key = c.entry
+	local z = key and Zone.of[key]
+	if z == nil then
+		z = R:ZoneOf(c) or false
+		if key then
+			Zone.of[key] = z
+		end
+	end
+	return z or nil
+end
+
+-- best (Cheapest's) or the cheapest in the player's zone within the tie
+function Zone.Prefer(R, near, costs, best, bestCost)
+	if not (best and bestCost and type(R.ZoneAt) == "function") then
+		return best
+	end
+	local mine = R:ZoneAt(R:Where())
+	if not mine or Zone.Of(R, near[best]) == mine then
+		return best
+	end
+	local walk = tonumber(R.WALK) or 7
+	local limit = math.max(bestCost * Zone.NEAR_TIE, bestCost + Zone.NEAR_FLOOR / walk)
+	local pick, pickCost = best, nil
+	for i = 1, #near do
+		local cost = costs[i]
+		if cost and cost <= limit and (not pickCost or cost < pickCost) and Zone.Of(R, near[i]) == mine then
+			pick, pickCost = i, cost
+		end
+	end
+	return pick
+end
+M.Zone = Zone   -- (read only: the tests)
 
 -- The nearest few by straight line, with their distances (the player's
 -- place read once for them all: Route's DistanceTo with sameFrame).
@@ -875,7 +918,9 @@ local function GoTo(kind, opts)
 		Notify("No " .. what .. " known on this continent yet.", "fail")
 		return false, "none"
 	end
-	local best, _, later = R:Cheapest(near)
+	local costs = {}
+	local best, bestCost, later = R:Cheapest(near, costs)
+	best = Zone.Prefer(R, near, costs, best, bestCost)
 	if later and R.WhenReady then
 		-- the first route of the session: Route's road graph is still being
 		-- built (user, 2026-09-24: built on the first route, not at login), so

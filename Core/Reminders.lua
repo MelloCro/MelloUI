@@ -70,6 +70,12 @@
 --                 part is taken off before the lockdown (it lies over the
 --                 button from UIParent, never inside the widget)
 --     target      fn(key) -> the name of the NPC a click targets while in reach
+--     secure      fn(key) -> a macro the click runs (0.17.0, the buff
+--                 reminders: "/cast [@player] Arcane Intellect"; nil: none
+--                 now): out of combat the one secure button lies over the
+--                 button the pointer is on -- the round button or one of the
+--                 others out on hover -- and runs it; in a fight none (the
+--                 game places no protected frame then), the tooltip says so
 --     kind        a Services kind its click goes to ("mailbox", "repair",
 --                 "classtrainer", "proftrainer", "vendor", ...), with
 --                 profession / letters / skip / extra as Services:Nearest
@@ -189,6 +195,7 @@ Rem.TEXT = {
 	target = "Click: target %s",
 	interact = "Then press %s to talk",
 	notNow = "Right-click: not now",
+	secureFight = "In a fight the click cannot do it: the game allows it only out of combat.",
 	-- (Edit Layout's box and plate: why it cannot be moved there)
 	locked = "It sits beside your portrait while your player frame shows.",
 	-- the column (0.16.0)
@@ -584,7 +591,7 @@ local function Hang(home)
 	end
 	-- the secure target button follows the widget (placed by measure)
 	local o = ui.overlay
-	if o and o:IsShown() and not OverlayPlace(o) and not InCombatLockdown() then
+	if o and o:IsShown() and not OverlayPlace(o, o.target) and not InCombatLockdown() then
 		o:Hide()
 	end
 end
@@ -737,7 +744,23 @@ end
 
 local Enter, Leave, Click, OverlayClick   -- the shared handlers (below)
 
-local function Attach(key)
+-- the macro a click on a reminder runs: its own (spec.secure, 0.17.0), else
+-- on the round button, in reach of an NPC with a name, the one targeting him
+local function MacroOf(key, main)
+	local spec = specs[key]
+	if spec and spec.secure ~= nil then
+		local m = Value(spec.secure, key)
+		if not Secret(m) and type(m) == "string" and m ~= "" then
+			return m
+		end
+	end
+	local name = main and TargetName(key)
+	return name and ("/targetexact " .. name) or nil
+end
+
+-- the secure part over a button: the round button (target left out) or one
+-- of the others out on hover, with its reminder's macro
+local function Attach(key, target)
 	if S.combat or InCombatLockdown() then
 		return
 	end
@@ -745,9 +768,13 @@ local function Attach(key)
 		Detach()   -- (the sample: nothing to target; its plate lies over it)
 		return
 	end
-	local name = TargetName(key)
-	if not name then
-		Detach()
+	target = target or ui.button
+	local main = target == ui.button
+	local macro = MacroOf(key, main)
+	if not macro then
+		if main then
+			Detach()
+		end
 		return
 	end
 	local o = ui.overlay
@@ -762,16 +789,16 @@ local function Attach(key)
 		o:Hide()
 		ui.overlay = o
 	end
-	if o.name ~= name then
-		o:SetAttribute("macrotext1", "/targetexact " .. name)
-		o.name = name
-	elseif o.key == key and o:IsShown() then
+	if o.macro ~= macro then
+		o:SetAttribute("macrotext1", macro)
+		o.macro = macro
+	elseif o.key == key and o.target == target and o:IsShown() then
 		return   -- (laid over the button already)
 	end
-	o.key = key
+	o.key, o.target, o.isMain = key, target, main
 	o:SetFrameStrata(ui.holder:GetFrameStrata())
-	o:SetFrameLevel(ui.button:GetFrameLevel() + 5)
-	if not OverlayPlace(o) then
+	o:SetFrameLevel(target:GetFrameLevel() + 5)
+	if not OverlayPlace(o, target) then
 		o:Hide()   -- (no measure: the button's own click routes instead)
 		return
 	end
@@ -915,7 +942,8 @@ Build = function()
 		return ui
 	end
 	ui = { minis = {}, place = "left" }
-	local holder = CreateFrame("Frame", "MelloUIReminders", UIParent)
+	-- (0.17.0: on the Fader's host, which fades it as the user picks)
+	local holder = CreateFrame("Frame", "MelloUIReminders", (MelloUI.Fader and MelloUI.Fader:Host("reminders") or UIParent))
 	holder:SetSize(SIZE, SIZE)
 	holder:SetFrameStrata("MEDIUM")
 	holder:SetClampedToScreen(true)
@@ -1299,7 +1327,9 @@ Tip = function(self)
 		end
 	end
 	local name = self.isMain and TargetName(key)
-	if name and ui.overlay and ui.overlay:IsShown() then
+	if spec.secure ~= nil and (S.combat or InCombatLockdown()) then
+		GameTooltip:AddLine(TEXT.secureFight, text[1], text[2], text[3], true)
+	elseif name and ui.overlay and ui.overlay:IsShown() then
 		GameTooltip:AddLine(TEXT.target:format(name), text[1], text[2], text[3], true)
 		local bind = _G.GetBindingKey and _G.GetBindingKey("INTERACTTARGET")
 		if type(bind) == "string" and not Secret(bind) then
@@ -1326,6 +1356,12 @@ Enter = Shared("OnEnter on the reminder widget", function(self)
 		EXPAND.count = list.n - 1
 		Anim:Expand(ui.minis, ui.button, EXPAND)
 	end
+	-- (one of the others with a click of its own: the secure part moves
+	-- onto it, out of combat; its tooltip is then the secure part's)
+	if not self.isMain and self ~= ui.overlay and self.key and specs[self.key]
+		and specs[self.key].secure ~= nil and not InCombatLockdown() then
+		Attach(self.key, self)
+	end
 	Tip(self)
 end, "script")
 
@@ -1341,6 +1377,15 @@ Leave = Shared("OnLeave on the reminder widget", function(self)
 	S.hovered = false
 	EXPAND.count = #ui.minis
 	Anim:Collapse(ui.minis, ui.button, EXPAND)
+	-- (the secure part over one going in: back over the round button)
+	local o = ui.overlay
+	if self == o and o.target ~= ui.button and not InCombatLockdown() then
+		if ui.button.key then
+			Attach(ui.button.key)
+		else
+			Detach()
+		end
+	end
 	-- (a hold still due later keeps its own timer: none more is asked for)
 	local due = GetTime() + LEAVE_HOLD
 	if S.holdOver or due > S.holdDue then
@@ -1678,6 +1723,29 @@ end
 
 -- (no `...`: a Lua 5.1 function that takes it and never reads it makes an
 -- `arg` table per call)
+-- a fight's start and end (PLAYER_REGEN_DISABLED / _ENABLED, and the
+-- preview's pretend fight)
+local function FightOn()
+	S.combat = true
+	-- the secure part taken off before the lockdown; what lasts through a
+	-- fight (spec.fight: the bags) stays drawn, the rest hides
+	if ui and ui.holder:IsShown() and FightUp() then
+		Detach()
+		Lay()
+		Watch()
+	else
+		Hide(true)
+	end
+	Col.Combat(true)
+end
+
+local function FightOff()
+	S.combat = false
+	RunDirty()
+	Resume()
+	Col.Combat(false)
+end
+
 local function OnEvent(_, event)
 	if event == "PLAYER_STOPPED_MOVING" and S.stopped then
 		for i = 1, list.n do
@@ -1701,22 +1769,10 @@ local function OnEvent(_, event)
 		end
 	end
 	if event == "PLAYER_REGEN_DISABLED" then
-		S.combat = true
-		-- the secure part taken off before the lockdown; what lasts through a
-		-- fight (spec.fight: the bags) stays drawn, the rest hides
-		if ui and ui.holder:IsShown() and FightUp() then
-			Detach()
-			Lay()
-			Watch()
-		else
-			Hide(true)
-		end
-		Col.Combat(true)
+		S.pretend = false   -- (a real fight: the preview stops, this is its own now)
+		FightOn()
 	elseif event == "PLAYER_REGEN_ENABLED" then
-		S.combat = false
-		RunDirty()
-		Resume()
-		Col.Combat(false)
+		FightOff()
 	elseif event == "PLAYER_UPDATE_RESTING" or event == "ZONE_CHANGED" or event == "ZONE_CHANGED_INDOORS" then
 		OnResting()
 	elseif event == "ZONE_CHANGED_NEW_AREA" then
@@ -1780,6 +1836,25 @@ end
 local CORE_EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_UPDATE_RESTING", "ZONE_CHANGED_NEW_AREA",
 	"ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }
 
+-- the preview's pretend fight (Core/Preview.lua): its pull and its kill as
+-- a fight's start and end; stopped by a real fight ("combat"), the combat
+-- state is left as it is (PLAYER_REGEN_DISABLED makes it the fight's own)
+local function OnPreview(beat, _, reason)
+	local P = MelloUI.Preview
+	if beat == "pull" then
+		-- (the widgets' part or the reminders': the others leave them be)
+		if not S.combat and P and (P:Plays("widgets") or P:Plays("reminders")) then
+			S.pretend = true
+			FightOn()
+		end
+	elseif (beat == "kill" or beat == "stop") and S.pretend then
+		S.pretend = false
+		if not (beat == "stop" and reason == "combat") then
+			FightOff()
+		end
+	end
+end
+
 -- the event frame and the bus listeners, with the first Register
 local function EnsureEvents()
 	if S.events then
@@ -1794,6 +1869,7 @@ local function EnsureEvents()
 	MelloUI:On("setting", OnSetting, OWNER)
 	MelloUI:On("editlayout", OnEditLayout, OWNER)
 	MelloUI:On("restart", OnRestart, OWNER)
+	MelloUI:On("preview", OnPreview, OWNER)
 	-- registered after the login pass (a module switched on later): the
 	-- world is already entered, so the login moment comes by itself
 	if not MelloUI.initializingModules then
@@ -1848,6 +1924,11 @@ end
 --   onClick     fn(key, mouseButton): a click on the face or the band;
 --               rightClick = true hands it the right click too (else the
 --               right click is Not now)
+--   secure      fn(key) -> macro text: a left click on the FACE runs it
+--               (0.17.0, the quest item: "/use item:<id>"): out of combat
+--               the one secure button lies over the face while the pointer
+--               is on it (its right click still Not now); in combat none,
+--               the tooltip says so
 --   combat      false: folded while in combat, back in its place after it
 --               (default: shown; a loot roll, a summon, Voice Over)
 --   priority    "now" (a timer or a decision: a loot roll, a summon, a
@@ -1886,6 +1967,11 @@ end
 local function Column()
 	local COL_KEY = "widgets"
 	local ROW_W, ROW_H, FACE, BTN = 330, 72, 62, 26
+	-- the subtitles' width: the row's, less the face and the margins (given
+	-- outright, not by anchors: a width the anchors give is known only once
+	-- laid out, and the subtitles were measured before -- a line or two
+	-- short, the band ending above them; user, 2026-10-01)
+	local SUB_W = ROW_W - (6 + FACE + 10) - 12
 	local BTN_STEP, TRAY_W, TRAY_ROW = 36, 280, 22
 	local TITLE_SIZE, LINE_SIZE, SUB_SIZE, SUB_LINES = 14, 13, 12, 4
 	local RING_FRAME = 1.16        -- the swipe's frame against the face (Tools/make_widget_art.py)
@@ -1930,7 +2016,8 @@ local function Column()
 	local col = nil              -- the column, made with the first row up
 	local trayRows = { n = 0 }   -- a tray's rows as its spec fills them (reused)
 	local EXP = { count = 0 }    -- Anim:Expand's options for a row's buttons (one table)
-	local RowEnter, RowLeave, RowClick, BtnClick, TrayClick, SecureEnter, SecureLeave, ColDragStart, ColDragStop
+	local RowEnter, RowLeave, RowClick, BtnClick, TrayClick, SecureEnter, SecureLeave, SecurePostClick, ColDragStart,
+		ColDragStop
 	local FoldEnter, FoldLeave, FoldClick, FoldTrayClick
 	local ColLay, Tick
 
@@ -2041,7 +2128,8 @@ local function Column()
 			return col
 		end
 		col = { rows = {} }
-		local holder = CreateFrame("Frame", "MelloUIWidgets", UIParent)
+		-- (0.17.0: on the Fader's host, which fades it as the user picks)
+		local holder = CreateFrame("Frame", "MelloUIWidgets", (MelloUI.Fader and MelloUI.Fader:Host("widgets") or UIParent))
 		holder:SetSize(ROW_W, ROW_H)
 		holder:SetFrameStrata("MEDIUM")
 		holder:SetClampedToScreen(true)
@@ -2196,7 +2284,7 @@ local function Column()
 		local sub = row:CreateFontString(nil, "OVERLAY")
 		Font(sub, SUB_SIZE)
 		sub:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -6)
-		sub:SetPoint("RIGHT", row, "RIGHT", -12, 0)
+		sub:SetWidth(SUB_W)
 		sub:SetJustifyH("LEFT")
 		sub:SetJustifyV("TOP")
 		sub:SetWordWrap(true)
@@ -2211,7 +2299,9 @@ local function Column()
 		box:SetPoint("TOPLEFT", title, "TOPLEFT", -4, 5)
 		box:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -8, 12)
 		row.box = box
-		row.band = MelloUI.Shade:Band(row, { alpha = 0.7, feather = 18, region = box, padX = 2, padY = 0 })
+		-- (featherY: a fixed top and bottom fade, so the name and the last
+		-- subtitle line sit on the band's full strength however tall it is)
+		row.band = MelloUI.Shade:Band(row, { alpha = 0.7, feather = 18, featherY = 14, region = box, padX = 2, padY = 0 })
 		col.rows[#col.rows + 1] = row
 		return row
 	end
@@ -2404,6 +2494,7 @@ local function Column()
 		o:SetAttribute("type1", "macro")
 		Perf.SetScript(o, "OnEnter", SecureEnter)
 		Perf.SetScript(o, "OnLeave", SecureLeave)
+		Perf.SetScript(o, "PostClick", SecurePostClick)
 		o:Hide()
 		CS.secure = o
 		return o
@@ -2418,12 +2509,26 @@ local function Column()
 		CS.secureFor = nil
 	end
 
+	-- what a button's secure click runs: its action's, or on the face its
+	-- row's own (spec.secure)
+	local function SecureSource(b)
+		local key = b.row and b.row.key
+		if not key then
+			return nil
+		end
+		if b.action then
+			return b.action.secure
+		end
+		local spec = specs[key]
+		return b == b.row.face and spec and spec.secure or nil
+	end
+
 	local function SecureOn(b)
-		local a, key = b.action, b.row.key
-		if not (a and key and a.secure) or InCombatLockdown() then
+		local key, src = b.row.key, SecureSource(b)
+		if not (key and src) or InCombatLockdown() then
 			return
 		end
-		local macro = Value(a.secure, key)
+		local macro = Value(src, key)
 		if Secret(macro) or type(macro) ~= "string" or macro == "" then
 			SecureOff()
 			return
@@ -3103,6 +3208,9 @@ local function Column()
 		if type(spec.hint) == "string" then
 			GameTooltip:AddLine(spec.hint, text[1], text[2], text[3], true)
 		end
+		if spec.secure ~= nil and InCombatLockdown() then
+			GameTooltip:AddLine(TEXT.outOfCombat, text[1], text[2], text[3], true)
+		end
 		if not spec.rightClick then
 			GameTooltip:AddLine(TEXT.notNow, text[1], text[2], text[3], true)
 		end
@@ -3146,6 +3254,9 @@ local function Column()
 			end
 		elseif self == row.face then
 			RowTip(self, row)
+			if SecureSource(self) then
+				SecureOn(self)
+			end
 		end
 	end, "script")
 
@@ -3157,9 +3268,9 @@ local function Column()
 		if not row then
 			return
 		end
-		-- (onto the secure button laid over this button: still on it)
+		-- (onto the secure button laid over this button or face: still on it)
 		local o = CS.secure
-		if self.action and o and CS.secureFor == self and o:IsShown() and o:IsMouseOver() then
+		if o and CS.secureFor == self and o:IsShown() and o:IsMouseOver() then
 			return
 		end
 		EXP.count = #row.btns
@@ -3254,8 +3365,24 @@ local function Column()
 	SecureEnter = Shared("OnEnter on the widget's secure button", function(self)
 		local b = CS.secureFor
 		if b and b.row and b.row.key then
-			BtnTip(b, self)
+			if b.action then
+				BtnTip(b, self)
+			else
+				RowTip(self, b.row)
+			end
 		end
+	end, "script")
+
+	-- (over a face: its right click is still Not now; the left one ran the macro)
+	SecurePostClick = Shared("PostClick on the widget's secure button", function(_, mouse, down)
+		local b = CS.secureFor
+		local key = b and not b.action and b.row and b.row.key
+		local spec = key and specs[key]
+		if down or mouse ~= "RightButton" or not spec or spec.rightClick then
+			return
+		end
+		MelloUI:PlayUISound("check_off")
+		Rem:Dismiss(key)
 	end, "script")
 
 	SecureLeave = Shared("OnLeave on the widget's secure button", function(self)
@@ -3513,7 +3640,7 @@ local function Column()
 		if not m then
 			m = col.holder:CreateFontString(nil, "OVERLAY")
 			Font(m, SUB_SIZE)
-			m:SetWidth(ROW_W - (6 + FACE + 10) - 12)
+			m:SetWidth(SUB_W)
 			m:SetWordWrap(true)
 			if m.SetMaxLines then
 				m:SetMaxLines(SUB_LINES)

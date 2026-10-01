@@ -21,6 +21,16 @@
 --         layer     the draw layer (default "BACKGROUND"; an unknown one too)
 --         sublevel  -8..7 (default 0; kept inside that range)
 --         region, padX, padY   laid behind `region` at once (band:Anchor)
+--         featherY  (0.17.0) a fixed height for the top and bottom fade, in
+--                   parent units: for a tall band behind a block of lines
+--                   (the widget column's subtitles). Left out, the texture's
+--                   own fade stretches with the band -- right for one line,
+--                   but a block four lines tall faded over 30% of its height
+--                   at each end, its first and last lines on the fade (user,
+--                   2026-10-01). With it, the texture's top and bottom rows
+--                   are laid at featherY above and below the middle, and the
+--                   middle is the texture's flat part: full strength over the
+--                   whole region, as band:Anchor says
 --   band:Anchor(region[, padX, padY])
 --       Its full-strength middle covers the region grown by padX on each
 --       side and padY above and below; the soft ends reach `feather` further
@@ -37,7 +47,8 @@
 --   band:SetColour(key)       another palette key
 --   band:SetFeather(width)    the soft ends' width (the tests'; the bands
 --                             keep the one they were made with)
---   band.left, band.mid, band.right: its textures (read only)
+--   band.left, band.mid, band.right: its middle row's textures (read only);
+--   band.slices: every texture of it (three, or nine with featherY)
 -- Nothing is made until the first band: then its three textures and one
 -- 'palette' listener for all bands, which repaints each from the palette's
 -- colour of its key. A band makes no garbage once made (Anchor, SetStrength,
@@ -71,6 +82,9 @@ local DEFAULT_FEATHER = 16
 -- the file's slices (Tools\make_soft_shade.py: the ends are its outer
 -- quarters, the middle half is flat across)
 local CAP = 0.25
+-- ... and its height's: the alpha rises over the top 20 of its 64 rows and
+-- falls over the bottom 20, flat between (featherY lays them apart)
+local VCAP = 0.3125
 -- the draw layers a texture can take
 local LAYERS = { BACKGROUND = true, BORDER = true, ARTWORK = true, OVERLAY = true, HIGHLIGHT = true }
 
@@ -103,9 +117,10 @@ function Band:Paint()
 	local palette = MelloUI.Palette
 	local c = palette[self.colour] or palette[DEFAULT_COLOUR]
 	local a = self.alpha
-	self.left:SetVertexColor(c[1], c[2], c[3], a)
-	self.mid:SetVertexColor(c[1], c[2], c[3], a)
-	self.right:SetVertexColor(c[1], c[2], c[3], a)
+	local slices = self.slices
+	for i = 1, #slices do
+		slices[i]:SetVertexColor(c[1], c[2], c[3], a)
+	end
 end
 
 function Band:SetStrength(alpha)
@@ -140,9 +155,10 @@ end
 function Band:SetShown(on)
 	on = on and true or false
 	self.shown = on
-	self.left:SetShown(on)
-	self.mid:SetShown(on)
-	self.right:SetShown(on)
+	local slices = self.slices
+	for i = 1, #slices do
+		slices[i]:SetShown(on)
+	end
 end
 
 function Band:IsShown()
@@ -185,11 +201,31 @@ local function Listen()
 	end
 end
 
-local function Slice(parent, layer, sublevel, l, r)
+local function Slice(parent, layer, sublevel, l, r, top, bottom)
 	local t = parent:CreateTexture(nil, layer, nil, sublevel)
 	t:SetTexture(Shade.FILE)
-	t:SetTexCoord(l, r, 0, 1)
+	t:SetTexCoord(l, r, top or 0, bottom or 1)
 	return t
+end
+
+-- (0.17.0) featherY: the middle row on the texture's flat part, the top and
+-- bottom rows of it laid above and below at a fixed height
+local EDGE_ROWS = { { 0, VCAP, "BOTTOM", "TOP" }, { 1 - VCAP, 1, "TOP", "BOTTOM" } }
+
+local function Edges(band, parent, layer, sublevel, featherY)
+	band.left:SetTexCoord(0, CAP, VCAP, 1 - VCAP)
+	band.mid:SetTexCoord(CAP, 1 - CAP, VCAP, 1 - VCAP)
+	band.right:SetTexCoord(1 - CAP, 1, VCAP, 1 - VCAP)
+	local cols = { { 0, CAP, band.left }, { CAP, 1 - CAP, band.mid }, { 1 - CAP, 1, band.right } }
+	for _, row in ipairs(EDGE_ROWS) do
+		for _, col in ipairs(cols) do
+			local s = Slice(parent, layer, sublevel, col[1], col[2], row[1], row[2])
+			s:SetPoint(row[3] .. "LEFT", col[3], row[4] .. "LEFT")
+			s:SetPoint(row[3] .. "RIGHT", col[3], row[4] .. "RIGHT")
+			s:SetHeight(featherY)
+			band.slices[#band.slices + 1] = s
+		end
+	end
 end
 
 function Shade:Band(parent, opts)
@@ -216,6 +252,11 @@ function Shade:Band(parent, opts)
 	band.right:SetPoint("BOTTOMLEFT", band.mid, "BOTTOMRIGHT")
 	band.left:SetWidth(band.feather)
 	band.right:SetWidth(band.feather)
+	band.slices = { band.left, band.mid, band.right }
+	local featherY = Num(opts.featherY)
+	if featherY and featherY > 0 then
+		Edges(band, parent, layer, sublevel, featherY)
+	end
 	band:Paint()
 	if opts.region then
 		band:Anchor(opts.region, opts.padX, opts.padY)

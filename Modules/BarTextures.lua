@@ -19,6 +19,8 @@ local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("BarTextures")
 local hooksecurefunc = Perf.hooksecurefunc
+-- (0.17.0) a write back onto a game region, counted for /melloperf
+local WriteBack = MelloUI.Perf.WriteBack or function() end
 
 local MEDIA = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
 
@@ -116,7 +118,7 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		  desc = "Player, pet, target, focus and boss cast bars." },
 		{ type = "toggle", key = "cooldowns", name = "Cooldown Manager Bars",
 		  desc = "The bars of the Buff Bar cooldown viewer." },
-		{ type = "toggle", key = "tooltip", name = "Tooltip Health Bar", new = "0.16.0",
+		{ type = "toggle", key = "tooltip", name = "Tooltip Health Bar",
 		  desc = "The health bar under a unit's tooltip (when Tooltip's Hide Health Bar is off)." },
 	},
 })
@@ -309,7 +311,84 @@ local function ShowsOriginal(bar)
 	return ok and IsPlainString(atlas) and atlas == o.atlas
 end
 
+-- (0.17.0) Default (Blizzard) under a health colour: the game's health art
+-- is green, and a class colour multiplied into it came out grey-green (user,
+-- 2026-10-01). The game has each of these pictures in white as well,
+-- "<name>-Status": the fill it tints for heal prediction, absorbs and mana
+-- cost (StatusBarOverlaySegment, by vertex colour). A coloured unit-frame
+-- health bar wears that twin, which takes the colour as it is; a bar whose
+-- art has none (the minus mob's, the small boss frame's, a party vehicle's)
+-- is desaturated instead, the colour then a shade darker. Green keeps the
+-- game's own art untouched.
+local twinNames = {}                                     -- [atlas] = its white twin, or false
+local desaturated = setmetatable({}, { __mode = "k" })   -- [bar] = true while this module greyed its art
+
+local function TwinOf(atlas)
+	local twin = twinNames[atlas]
+	if twin == nil then
+		local name = atlas .. "-Status"
+		twin = (C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name)) and name or false
+		twinNames[atlas] = twin
+	end
+	return twin
+end
+
+-- the game's green art this bar would show coloured: its atlas, when the bar
+-- is a unit-frame health bar and the colour is not the game's green
+local function ColouredArt(bar)
+	if not (healthBars[bar] and tracked[bar] == "unitframes" and M.db.healthColor ~= "green") then
+		return nil
+	end
+	local o = originals[bar]
+	return o and IsPlainString(o.atlas) and o.atlas or nil
+end
+
+local function SetDesaturated(bar, on)
+	if on and not desaturated[bar] then
+		desaturated[bar] = true
+		bar:SetStatusBarDesaturated(true)
+	elseif not on and desaturated[bar] then
+		desaturated[bar] = nil
+		bar:SetStatusBarDesaturated(false)
+	end
+end
+
+-- Default's art on a coloured health bar: the white twin (put on only when
+-- it is not on already: the game re-sets its art often), or the game's own
+-- desaturated. False: not a coloured health bar, Default's usual restore.
+local function ColouredDefault(bar)
+	local atlas = ColouredArt(bar)
+	if not atlas then
+		return false
+	end
+	local twin = TwinOf(atlas)
+	if twin then
+		local tex = bar:GetStatusBarTexture()
+		local ok, now = pcall(tex.GetAtlas, tex)
+		if not (ok and IsPlainString(now) and now == twin) then
+			applying = true
+			RemoveMask(bar)
+			bar:SetStatusBarTexture(twin)
+			applying = false
+		end
+		SetDesaturated(bar, false)
+	else
+		local tex = bar:GetStatusBarTexture()
+		local ok, now = pcall(tex.GetAtlas, tex)
+		if not (ok and IsPlainString(now) and now == atlas) then
+			RestoreBar(bar)
+		end
+		SetDesaturated(bar, true)
+	end
+	return true
+end
+
+local tintSynced   -- (the execute tint's: below)
+
 local function SetTexture(bar)
+	if tintSynced then
+		tintSynced[bar] = nil
+	end
 	local r, g, b, a = bar:GetStatusBarColor()
 	-- "Default (Blizzard)": the game's own art stays (put back if a texture
 	-- was on the bar), the bar keeps its colour handling below (user,
@@ -319,12 +398,13 @@ local function SetTexture(bar)
 		-- bars) with its art already on: a restore that would change nothing
 		-- is left out. A health bar is restored every time, as it always was
 		-- (the restore also has the game colour it again)
-		if applied[bar] and (healthBars[bar] or not ShowsOriginal(bar)) then
+		if not ColouredDefault(bar) and applied[bar] and (healthBars[bar] or not ShowsOriginal(bar)) then
 			RestoreBar(bar)
 		end
 		applied[bar] = true
 		return
 	end
+	SetDesaturated(bar, false)
 	applying = true
 	bar:SetStatusBarTexture(M.db.texture)
 	UpdateMask(bar)
@@ -358,6 +438,9 @@ local function HookBarTexture(bar)
 		if IsPlainString(newTexture) then
 			NoteOriginal(owner, newTexture)
 		end
+		if M.db.texture ~= "default" then
+			WriteBack("BarTextures: a bar fill's art put back after the game's")
+		end
 		SetTexture(owner)
 		if grp == "statusbars" and StatusTrackingColorForAtlasRef then
 			local r, g, b = StatusTrackingColorForAtlasRef(newTexture)
@@ -374,8 +457,143 @@ local function HookBarTexture(bar)
 	end
 end
 
+-- The covered bars (0.17.0; the user's FPS in combat,
+-- docs/plans/fps-portrait-fix.md). The target of target's power bar is
+-- given its art on EVERY frame (its OnUpdate runs UnitFrame_Update ->
+-- UnitFrameManaBar_UpdateType: SetStatusBarTexture(atlas), the colour
+-- white, the fill's alpha): putting this module's texture straight back
+-- made each of those a real change again, two texture swaps a frame (49 a
+-- second in /melloperf). Such a bar is never written: a COVER of ours lies
+-- on it, regions of the bar itself between the game's fill and the kit's
+-- bracket (the fill's layer, a sublevel over it) --
+--   back   an opaque palette ground, so nothing of the game's fill shows
+--          through a texture with see-through parts,
+--   tex    the chosen texture in the power's colour,
+-- both on the bar's whole rect, cut to the game's fill by a mask on the
+-- fill's own rect (the engine moves it with the value, a secret one too:
+-- the texture is cropped as a fill is, never stretched), to the bar's
+-- shape by the shape mask (the game's atlas), and by the fill's own masks.
+-- The game's own writes then land on its own unchanged art and cost
+-- nothing; ours are made only when the texture, the power or the shape
+-- changes. Default (Blizzard), or the group off: the cover hidden.
+local WHITE = "Interface\\Buttons\\WHITE8x8"
+local covered = setmetatable({}, { __mode = "k" })   -- [bar] = true: drawn by a cover
+local coverOf = setmetatable({}, { __mode = "k" })   -- [bar] = { back, tex, crop, file, token, shape, shown }
+
+local function CoverMasks(c, mask)
+	if mask and not c.masks[mask] then
+		c.masks[mask] = true
+		pcall(c.tex.AddMaskTexture, c.tex, mask)
+		pcall(c.back.AddMaskTexture, c.back, mask)
+	end
+end
+
+local function NewCover(bar)
+	local fill = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
+	if not (fill and bar.CreateMaskTexture) then
+		return nil
+	end
+	local okL, layer, sub = pcall(fill.GetDrawLayer, fill)
+	if not okL or type(layer) ~= "string" then
+		layer, sub = "BACKGROUND", 0
+	end
+	sub = math.min(7, (tonumber(sub) or 0) + 1)
+	local back = bar:CreateTexture(nil, layer, nil, sub)
+	back:SetPoint("TOPLEFT", bar, "TOPLEFT")
+	back:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+	MelloUI.Widgets.Paint(back, "mainWindow", "vertex")
+	back:SetTexture(WHITE)
+	local tex = bar:CreateTexture(nil, layer, nil, sub)
+	tex:SetPoint("TOPLEFT", bar, "TOPLEFT")
+	tex:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+	local crop = bar:CreateMaskTexture()
+	crop:SetTexture(WHITE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	crop:SetPoint("TOPLEFT", fill, "TOPLEFT")
+	crop:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+	local c = { back = back, tex = tex, crop = crop, masks = {}, shown = true }
+	CoverMasks(c, crop)
+	-- the fill's own masks (the game's bar shape where it has one)
+	local okN, n = pcall(fill.GetNumMaskTextures, fill)
+	for i = 1, (okN and type(n) == "number" and n) or 0 do
+		CoverMasks(c, fill:GetMaskTexture(i))
+	end
+	coverOf[bar] = c
+	return c
+end
+
+local function CoverShown(c, on)
+	if c and c.shown ~= on then
+		c.shown = on
+		c.back:SetShown(on)
+		c.tex:SetShown(on)
+	end
+end
+
+-- the cover as the settings and the bar's power say, written only where
+-- something changed (the game calls this path every frame)
+local function CoverBar(bar)
+	local c = coverOf[bar]
+	local group = tracked[bar]
+	if not (group and Active(group)) or M.db.texture == "default" then
+		CoverShown(c, false)
+		return
+	end
+	c = c or NewCover(bar)
+	if not c then
+		return
+	end
+	-- the bar's shape: the game's own atlas as a mask (none under a kit
+	-- bracket, whose rails cover the edges)
+	local o = originals[bar]
+	local shape = not bar.melloKitBracket and o and IsPlainString(o.atlas) and o.atlas or nil
+	if c.shape ~= shape then
+		c.shape = shape
+		local mask = masks[bar]
+		if shape then
+			if not mask then
+				mask = bar:CreateMaskTexture()
+				mask:SetAllPoints(bar)
+				masks[bar] = mask
+			end
+			mask:SetAtlas(shape)
+			CoverMasks(c, mask)
+		elseif mask and c.masks[mask] then
+			c.masks[mask] = nil
+			pcall(c.tex.RemoveMaskTexture, c.tex, mask)
+			pcall(c.back.RemoveMaskTexture, c.back, mask)
+		end
+	end
+	local file = M.db.texture
+	if c.file ~= file then
+		c.file = file
+		c.tex:SetTexture(file)
+	end
+	local info = bar.overrideInfo or (PowerBarColor and bar.powerToken and PowerBarColor[bar.powerToken])
+	if c.token ~= info then
+		c.token = info
+		if info and IsPlainNumber(info.r) and IsPlainNumber(info.g) and IsPlainNumber(info.b) then
+			c.tex:SetVertexColor(info.r, info.g, info.b)
+		else
+			c.tex:SetVertexColor(1, 1, 1)
+		end
+	end
+	CoverShown(c, true)
+end
+
+-- (the tests')
+function M.CoverOf(bar)
+	return coverOf[bar]
+end
+
 local function ApplyToBar(bar, group)
 	if not bar or type(bar.SetStatusBarTexture) ~= "function" then
+		return
+	end
+	-- a covered bar: never written (its cover above)
+	if covered[bar] then
+		RememberOriginal(bar)
+		tracked[bar] = group
+		CoverBar(bar)
 		return
 	end
 	-- Nameplate and cooldown layouts call back in here on every relayout.
@@ -407,6 +625,9 @@ local function ApplyToBar(bar, group)
 			if IsPlainString(newTexture) then
 				NoteOriginal(self, newTexture)
 			end
+			if M.db.texture ~= "default" then
+				WriteBack("BarTextures: a bar's texture put back after the game's")
+			end
 			SetTexture(self)
 			if grp == "statusbars" then
 				local r, g, b = StatusTrackingColorForAtlas(newTexture)
@@ -421,6 +642,10 @@ end
 StatusTrackingColorForAtlasRef = StatusTrackingColorForAtlas
 
 function RestoreBar(bar)
+	if covered[bar] then
+		CoverShown(coverOf[bar], false)
+		return
+	end
 	local original = originals[bar]
 	if not original then
 		return
@@ -434,6 +659,10 @@ function RestoreBar(bar)
 	end
 	applying = false
 	applied[bar] = nil
+	if tintSynced then
+		tintSynced[bar] = nil
+	end
+	SetDesaturated(bar, false)
 	if original.r then
 		bar:SetStatusBarColor(original.r, original.g, original.b, original.a)
 	end
@@ -456,7 +685,11 @@ end
 local function ReapplyGroup(group)
 	for bar, grp in pairs(tracked) do
 		if grp == group then
-			SetTexture(bar)
+			if covered[bar] then
+				CoverBar(bar)
+			else
+				SetTexture(bar)
+			end
 		end
 	end
 end
@@ -516,6 +749,10 @@ local function CollectUnitFrameBars(list)
 			if frame.totFrame then
 				AddHealth(list, frame.totFrame.HealthBar)
 				AddPower(list, frame.totFrame.ManaBar)
+				-- (its art re-set on every frame: covered, never written)
+				if frame.totFrame.ManaBar then
+					covered[frame.totFrame.ManaBar] = true
+				end
 			end
 		end
 	end
@@ -633,6 +870,18 @@ local function HealthColorFor(bar)
 		if bar.disconnected then
 			return 0.5, 0.5, 0.5
 		end
+		-- a mob someone else tapped (no loot for you): the game's grey, as
+		-- its own nameplates (0.9) and target frame (0.5) have it (0.17.0;
+		-- the user: it kept its reaction colour). A secret answer: not tapped
+		local okT, denied = pcall(UnitIsTapDenied, unit)
+		local okP, controlled = pcall(UnitPlayerControlled, unit)
+		if okT and okP and not (issecretvalue and (issecretvalue(denied) or issecretvalue(controlled)))
+			and denied == true and controlled == false then
+			if tracked[bar] == "nameplates" then
+				return 0.9, 0.9, 0.9
+			end
+			return 0.5, 0.5, 0.5
+		end
 		local mode = M.db.healthColor
 		if mode == "health" then
 			local curve = HealthCurve()
@@ -659,6 +908,30 @@ local function HealthColorFor(bar)
 end
 
 local recolouring = false
+-- [bar] = { r, g, b } last written (plain only): the game's update path runs
+-- every frame on the target of target, and the same colour again changes
+-- nothing (0.17.0, docs/plans/fps-portrait-fix.md: write only on a change)
+local lastColour = setmetatable({}, { __mode = "k" })
+
+local function SetHealthColour(bar, r, g, b)
+	if IsPlainNumber(r) and IsPlainNumber(g) and IsPlainNumber(b) then
+		local last = lastColour[bar]
+		if last and last[1] == r and last[2] == g and last[3] == b then
+			local ok, cr, cg, cb = pcall(bar.GetStatusBarColor, bar)
+			-- (still on the bar: the game did not recolour it since)
+			if ok and IsPlainNumber(cr) and IsPlainNumber(cg) and IsPlainNumber(cb) and cr == r and cg == g and cb == b then
+				return
+			end
+		end
+		last = last or {}
+		last[1], last[2], last[3] = r, g, b
+		lastColour[bar] = last
+	else
+		lastColour[bar] = nil   -- (a secret colour: written as it is)
+	end
+	WriteBack("BarTextures: a health bar's colour")
+	bar:SetStatusBarColor(r, g, b)
+end
 
 local function RecolorHealthBar(bar)
 	if not bar or not healthBars[bar] then
@@ -672,7 +945,7 @@ local function RecolorHealthBar(bar)
 		return   -- the game's own nameplate colouring stands
 	end
 	recolouring = true
-	bar:SetStatusBarColor(HealthColorFor(bar))
+	SetHealthColour(bar, HealthColorFor(bar))
 	recolouring = false
 end
 
@@ -685,6 +958,11 @@ end
 -- so it works over every colour choice, the game's nameplate colours too.
 local EXECUTE_COLOR = { 0.72, 0.25, 1.0 }
 local executeTints = setmetatable({}, { __mode = "k" })   -- [bar] = the tint over its fill
+-- (tintSynced) [bar] = false once the tint's look matches the fill (layer, art, masks);
+-- anything else: matched again at the next update. Set back by a change of
+-- the fill's art (SetTexture, RestoreBar, the game's own SetStatusBarTexture)
+-- and by a setting (0.17.0: no longer read and written on every value change)
+tintSynced = setmetatable({}, { __mode = "k" })
 local wantMasks = setmetatable({}, { __mode = "k" })      -- UpdateExecute's scratch: the fill's masks
 local executeCurve, executeCurveAt = nil, nil
 
@@ -728,11 +1006,41 @@ local function ExecuteTint(bar)
 		layer, sub = "ARTWORK", 0
 	end
 	tint = bar:CreateTexture(nil, layer, nil, math.min(7, (tonumber(sub) or 0) + 1))
-	tint:SetAllPoints(fill)
+	-- the bar's whole rect, cut to the fill by a mask on the fill's own rect:
+	-- a file texture then shows as the fill shows it (cropped, not
+	-- squeezed) with no texture coordinates written per value
+	tint:SetAllPoints(bar)
+	if bar.CreateMaskTexture and tint.AddMaskTexture then
+		local crop = bar:CreateMaskTexture()
+		crop:SetTexture("Interface\\Buttons\\WHITE8x8", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		crop:SetPoint("TOPLEFT", fill, "TOPLEFT")
+		crop:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+		tint:AddMaskTexture(crop)
+		tint.melloCrop = crop
+	end
 	tint:SetColorTexture(EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3], 0.85)
 	tint:SetAlpha(0)
 	executeTints[bar] = tint
 	return tint
+end
+
+local SyncTint   -- (below)
+
+-- the picture on a bar's fill: its atlas, else its file (nil: none read)
+local function FillArt(bar)
+	local fill = bar:GetStatusBarTexture()
+	if not fill then
+		return nil
+	end
+	local okA, atlas = pcall(fill.GetAtlas, fill)
+	if okA and type(atlas) == "string" and atlas ~= "" then
+		return atlas
+	end
+	local okF, file = pcall(fill.GetTexture, fill)
+	if okF and (type(file) == "string" or type(file) == "number") then
+		return file
+	end
+	return nil
 end
 
 local function UpdateExecute(bar)
@@ -762,9 +1070,29 @@ local function UpdateExecute(bar)
 	if not tint then
 		return
 	end
+	-- (its look matched again when the fill changed: a change this module
+	-- made, or the fill's picture another than the tint took -- two reads)
+	if tintSynced[bar] ~= false or tint.melloArt ~= FillArt(bar) then
+		tintSynced[bar] = false
+		SyncTint(bar, tint)
+	end
+	local alpha = color.a
+	if alpha == nil and color.GetRGBA then
+		alpha = select(4, color:GetRGBA())
+	end
+	if pcall(tint.SetAlpha, tint, alpha) then
+		tint:Show()
+	else
+		tint:Hide()
+	end
+end
+
+-- the tint's look matched to the fill: its layer, its picture and its masks
+-- (only when the fill changed: tintSynced)
+SyncTint = function(bar, tint)
 	-- the fill's masks on the tint too (user, 2026-09-23: it spilled under
 	-- the border): Bar Textures' shaped mask and the kit's come and go with
-	-- the settings, so they are matched on every update
+	-- the settings, so they are matched again when the fill changes
 	local fill = bar:GetStatusBarTexture()
 	-- one sublevel above the fill, wherever the fill is now: the kit moves a
 	-- bar's fill to another layer after the tint was made (the target frame,
@@ -791,15 +1119,17 @@ local function UpdateExecute(bar)
 		if art and tint.melloArt ~= art then
 			tint.melloArt = art
 			if atlas then
-				tint:SetAtlas(atlas)
+				-- the game's own atlas (Bar Texture: Default) carries its colour
+				-- -- the target frame's is green art -- and purple over it came
+				-- out near black (user, 2026-10-01): a flat purple instead,
+				-- cut to the bar's shape by the fill's masks (the game's
+				-- HealthBarMask, copied below)
+				tint:SetColorTexture(EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3], 0.85)
+				tint:SetVertexColor(1, 1, 1, 1)
 			else
 				tint:SetTexture(file)
+				tint:SetVertexColor(EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3], 0.85)
 			end
-			tint:SetVertexColor(EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3], 0.85)
-		end
-		local okC, a, b, c, d, e, f, g, h = pcall(fill.GetTexCoord, fill)
-		if okC and art and type(a) == "number" and type(h) == "number" then
-			tint:SetTexCoord(a, b, c, d, e, f, g, h)
 		end
 	end
 	if fill and fill.GetNumMaskTextures and tint.AddMaskTexture then
@@ -817,7 +1147,7 @@ local function UpdateExecute(bar)
 		end
 		tint.melloMasks = tint.melloMasks or {}
 		for mask in pairs(tint.melloMasks) do
-			if not want[mask] then
+			if not want[mask] and mask ~= tint.melloCrop then
 				pcall(tint.RemoveMaskTexture, tint, mask)
 				tint.melloMasks[mask] = nil
 			end
@@ -828,19 +1158,11 @@ local function UpdateExecute(bar)
 			end
 		end
 	end
-	local alpha = color.a
-	if alpha == nil and color.GetRGBA then
-		alpha = select(4, color:GetRGBA())
-	end
-	if pcall(tint.SetAlpha, tint, alpha) then
-		tint:Show()
-	else
-		tint:Hide()
-	end
 end
 
 local function UpdateAllExecute()
 	for bar in pairs(healthBars) do
+		tintSynced[bar] = nil
 		pcall(UpdateExecute, bar)
 	end
 end
@@ -901,6 +1223,10 @@ end
 -- with a flat texture the colour has to come from the power type instead.
 local function RecolorManaBar(manaBar)
 	if not manaBar or tracked[manaBar] ~= "unitframes" or not Active("unitframes") then
+		return
+	end
+	if covered[manaBar] then
+		CoverBar(manaBar)
 		return
 	end
 	if M.db.texture == "default" then
@@ -1420,6 +1746,11 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "executeRange" or key == "executeBelow" then
 		UpdateAllExecute()
 	elseif key == "healthColor" or key == "overrideThreat" then
+		-- under Default the art follows the colour: the white twin for a
+		-- colour, the game's green for green
+		if key == "healthColor" and db.texture == "default" and db.unitframes then
+			ReapplyGroup("unitframes")
+		end
 		RecolorAllHealthBars()
 		if key == "healthColor" and value == "green" then
 			-- the nameplates are the game's again: let its next update colour them

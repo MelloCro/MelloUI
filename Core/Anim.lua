@@ -43,6 +43,12 @@
 --   MelloUI.Anim:Mirror(frame, fadeIn, hold, fadeOut, smoothing) -> group
 --   MelloUI.Anim:StopMirror(frame)            a fade the game runs on a line,
 --                                             copied onto our frame (below)
+--   MelloUI.Anim:Slide(frame, point, rel, relPoint, x, y, dx, dy, duration, easing)
+--       its anchor set to (x, y), then eased out to (x + dx, y + dy), the
+--       offsets set from what is given, never read back: for a frame whose
+--       anchoring is secret (anchored to a nameplate, below); a tween as the
+--       others (Stop, Land, IsRunning take "slide"), Reduce Motion: it stays
+--       at (x, y)
 --   MelloUI.Anim:Busy() -> tweens, glides     what runs (tests, /melloperf)
 --   MelloUI.Anim:PlayGroup(group, settle)
 --       plays an AnimationGroup (one already playing goes on: Stop it first
@@ -110,14 +116,25 @@ Anim.easing = {
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
 
+-- a Slide's anchor and way, by frame: { point, rel, relPoint, x, y, dx, dy }
+local slides = setmetatable({}, { __mode = "k" })
+
 local function Read(frame, prop)
 	if prop == "alpha" then
 		return frame:GetAlpha()
 	elseif prop == "scale" then
 		return frame:GetScale()
+	elseif prop == "slide" then
+		return 0   -- (a slide's share of its way: it starts at its start)
 	end
 	local ok, point, rel, relPoint, x, y = pcall(frame.GetPoint, frame, 1)
 	if not (ok and point) then
+		return nil
+	end
+	-- (a frame with secret anchoring -- one anchored to a nameplate -- answers
+	-- secret: no anchor to ease, nothing handed back to SetPoint; Anim:Slide
+	-- is the way to move such a frame)
+	if Secret(point) or Secret(x) or Secret(y) then
 		return nil
 	end
 	return prop == "x" and x or y, point, rel, relPoint, x, y
@@ -129,6 +146,11 @@ local function Write(frame, prop, value)
 	elseif prop == "scale" then
 		if value > 0 then
 			frame:SetScale(value)
+		end
+	elseif prop == "slide" then
+		local sl = slides[frame]
+		if sl then
+			frame:SetPoint(sl[1], sl[2], sl[3], sl[4] + sl[6] * value, sl[5] + sl[7] * value)
 		end
 	else
 		local _, point, rel, relPoint, x, y = Read(frame, prop)
@@ -1320,6 +1342,45 @@ do
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The slide (0.17.0, Combat Text's Your Damage: a number rising off an
+-- enemy's nameplate). A frame anchored to a nameplate has secret anchoring
+-- on this client: its GetPoint, GetRect and GetCenter answer secret
+-- (SecretWhenAnchoringSecret), so Anim:To, which eases the offset it reads
+-- back, cannot move it (the user's video, 2026-10-01: the numbers stood
+-- still), and the engine's Translation animation moved its textures but not
+-- its text (the next video: the shade rose, the number stayed). The slide
+-- sets the anchor itself each frame from the anchor and the way it is given
+-- -- SetPoint is never refused, nothing is read -- so the frame and all of
+-- its regions move as one.
+--   MelloUI.Anim:Slide(frame, point, rel, relPoint, x, y, dx, dy, duration, easing)
+--       the frame anchored at (x, y) at once, then eased to (x + dx, y + dy)
+--       over `duration` along `easing` ("outCubic" when left out). A tween
+--       of the prop "slide" (its share of the way, 0 to 1): a new Slide or
+--       Anim:Stop(frame, "slide") replaces or stops it where it is. Under
+--       Reduce Motion it stays at (x, y). One table per frame, reused.
+--------------------------------------------------------------------------------
+
+function Anim:Slide(frame, point, rel, relPoint, x, y, dx, dy, duration, easing)
+	if type(frame) ~= "table" or not frame.SetPoint then
+		return
+	end
+	local sl = slides[frame]
+	if not sl then
+		sl = {}
+		slides[frame] = sl
+	end
+	sl[1], sl[2], sl[3] = point, rel, relPoint
+	sl[4], sl[5] = tonumber(x) or 0, tonumber(y) or 0
+	sl[6], sl[7] = tonumber(dx) or 0, tonumber(dy) or 0
+	Remove(frame, "slide")
+	Write(frame, "slide", 0)
+	if self.reduceMotion then
+		return
+	end
+	self:To(frame, "slide", 1, duration, easing or "outCubic")
+end
+
 -- The Reduce Motion switch. The running tweens end on the driver's next
 -- frame; the groups here at once. The groups are listed first and acted on
 -- after (review, 2026-09-24): a settle, or a group's own OnPlay / OnFinished,
@@ -1372,6 +1433,16 @@ end
 -- for the tests and /melloperf: how many tweens and glides run
 function Anim:Busy()
 	return count, nGliding
+end
+
+-- (0.17.0, /melloperf: which tween keeps the driver running) fn(frame, prop)
+-- for each running tween; makes nothing
+function Anim:EachRunning(fn)
+	for frame, props in pairs(running) do
+		for prop in pairs(props) do
+			fn(frame, prop)
+		end
+	end
 end
 
 MelloUI:Profile("Anim", "tween driver", driver)

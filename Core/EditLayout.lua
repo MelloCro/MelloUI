@@ -769,6 +769,60 @@ local function BoxRow(parent, label)
 	return row
 end
 
+-- an element's own settings (its mover's `settings`, 0.17.0): a slider row
+-- per "Module.key", the module's schema giving its name and range, the value
+-- the module's setting itself (a shortcut: the configurator's row and this
+-- one are the same setting). Rows made as needed, bound to a setting per open
+local settingRows = {}
+
+local function SettingOption(spec)
+	if type(spec) ~= "string" then
+		return nil
+	end
+	local name, key = spec:match("^([%w_]+)%.([%w_]+)$")
+	local module = name and MelloUI:GetModule(name)
+	for _, opt in ipairs(module and module.options or {}) do
+		if opt.key == key and opt.type == "slider" then
+			return opt, name, key, module
+		end
+	end
+	return nil
+end
+
+local function SettingRow(i)
+	local row = settingRows[i]
+	if row then
+		return row
+	end
+	row = BoxRow(box, "")
+	local function Get()
+		local s = row.setting
+		if not s then
+			return 0
+		end
+		local v = MelloUI:GetModuleDB(s.module)[s.key]
+		if v == nil then
+			v = s.default
+		end
+		return Num(v) or 0
+	end
+	local function Set(v)
+		local s = row.setting
+		if s and Num(v) then
+			MelloUI:NotifySettingChanged(s.module, s.key, v)
+			-- (the element's new size on its plate)
+			local P = Movers()
+			if P and P.SyncSoon then
+				P.SyncSoon()
+			end
+		end
+	end
+	row.slider = W.Slider(row, BOX_W - BOX_LABEL - PAD, Get, Set, { min = 0, max = 1, step = 1 })
+	row.slider:SetPoint("LEFT", row, "LEFT", BOX_LABEL, 0)
+	settingRows[i] = row
+	return row
+end
+
 local function MakeBox()
 	catcher = CreateFrame("Frame", nil, UIParent)
 	catcher:Hide()
@@ -950,6 +1004,30 @@ local function OpenBoxFor(plate)
 	Dim(box.pos, locked ~= nil, locked, dimPos)
 	box.pos.x:Refresh()
 	box.pos.y:Refresh()
+	-- the element's own settings, under Size (its mover's `settings`)
+	local rows = { box.size }
+	local n = 0
+	for _, spec in ipairs(entry.settings or {}) do
+		local opt, module, key, mod = SettingOption(spec)
+		if opt then
+			n = n + 1
+			local row = SettingRow(n)
+			row.setting = { module = module, key = key, default = mod.defaults and mod.defaults[key] }
+			row.label:SetText(opt.name or key)
+			row.slider:SetRange(opt.min or 0, opt.max or 1, opt.step or 1, opt.percent and true or false)
+			row.slider:Refresh()
+			Dim(row, locked ~= nil, locked, { row.slider })
+			row:Show()
+			rows[#rows + 1] = row
+		end
+	end
+	for i = n + 1, #settingRows do
+		settingRows[i]:Hide()
+		settingRows[i].setting = nil
+	end
+	rows[#rows + 1] = box.pos
+	rows[#rows + 1] = box.snap
+	box.rows = rows
 	-- Snap to: the four fixed choices, then every other live keyed plate (a
 	-- new list each open: the box names the choice from it)
 	local values = {}
@@ -992,6 +1070,10 @@ function E:OpenBox(spec)
 	box.pos:Hide()
 	box.snap:Hide()
 	box.reset:Hide()
+	for i = 1, #settingRows do
+		settingRows[i]:Hide()
+		settingRows[i].setting = nil
+	end
 	local button = spec.button
 	if type(button) == "table" then
 		box.bridge:SetText(button.text or "")
@@ -1046,6 +1128,11 @@ function E:BoxFollow(entry)
 		box.size.slider:Refresh()
 		box.pos.x:Refresh()
 		box.pos.y:Refresh()
+		for i = 1, #settingRows do
+			if settingRows[i].setting then
+				settingRows[i].slider:Refresh()
+			end
+		end
 	end
 end
 

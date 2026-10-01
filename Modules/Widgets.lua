@@ -32,11 +32,20 @@
 --   Profession      a cooldown ready again (Transmute, Mooncloth, the Salt
 --   Cooldowns       Shaker): read while the profession is open, the ready
 --                   time kept per character, told once it has passed
+--   Quest Items     (0.17.0) in a quest's objective area with its item in the
+--                   bags: the item, the ring the objective's progress, the
+--                   count carried; a click on the face uses it (out of combat)
+--   Healer Drinking (0.17.0) for the group's tank between pulls: a healer
+--                   drinking (their Drink buff; party mana is secret here)
 -- By the portrait (the reminders as they are):
 --   Bags Almost Full    free slots at or under Free Slots; a click: the way
 --                       to the nearest vendor
 --   Talent Points       points to spend
 --   Well Fed Ending     the buff's last two minutes (read out of combat)
+--   Weapon Poisons & Oils   (0.17.0) a poison, an oil or a stone run out on a
+--                       weapon, or its last two minutes, while you carry one
+--   Your Buffs          (0.17.0) a buff of yours missing on you
+--   Your Buffs On The Group   (0.17.0) your group buffs missing on the others
 -- The column's order and fold (user, 2026-09-30; Core/Reminders.lua's
 -- `priority` and `combat`): "now" -- loot rolls, summons, resurrect offers,
 -- ready checks -- always show, right above Voice Over; the others ongoing,
@@ -62,11 +71,9 @@ local pcall, type, floor = pcall, type, math.floor
 local C_Spell, C_Loot, C_DeathInfo, C_SummonInfo, C_UnitAuras = _G.C_Spell, _G.C_Loot, _G.C_DeathInfo,
 	_G.C_SummonInfo, _G.C_UnitAuras
 
-local NEW = "0.16.0"
-
 local M = MelloUI:RegisterModule("Widgets", {
 	title = "Widgets",
-	desc = "Small live widgets in one column: loot rolls, the way back to your corpse, timed quests, summons, resurrect offers, ready checks, whispers, your pet, the auction house, crafting batches and profession cooldowns. And three more reminders by your portrait.",
+	desc = "Small live widgets in one column: loot rolls, the way back to your corpse, timed quests, summons, resurrect offers, ready checks, whispers, your pet, the auction house, crafting batches, profession cooldowns, quest items and a healer drinking. And more reminders by your portrait: bags, talents, Well Fed, weapon poisons and oils, your buffs.",
 	icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
 	flavour = "What needs you now, in one small column.",
 	role = "feature",
@@ -75,44 +82,55 @@ local M = MelloUI:RegisterModule("Widgets", {
 	enabledByDefault = true,
 	defaults = {
 		loot = true, corpse = true, timed = true, summon = true, resurrect = true, ready = true, threat = true, whisper = true,
-		pet = true, auction = true, craft = true, cooldown = true,
+		pet = true, auction = true, craft = true, cooldown = true, questItem = true, healer = true,
 		bags = true, bagsAt = 2, talents = true, wellfed = true,
+		weapon = true, buffs = true, groupBuffs = true,
 	},
 	options = {
 		{ type = "header", name = "In The Column" },
-		{ type = "toggle", key = "loot", name = "Loot Rolls", new = NEW,
+		{ type = "toggle", key = "loot", name = "Loot Rolls",
 		  desc = "A roll in a group: the item in its quality colour, a ring for the time left, and Need, Greed and Pass on hover. The count is the rolls waiting. The game's own roll window stays out of sight meanwhile (with the Gamepad UI it stays)." },
-		{ type = "toggle", key = "corpse", name = "Corpse Run", new = NEW,
+		{ type = "toggle", key = "corpse", name = "Corpse Run",
 		  desc = "As a ghost: how far your body is and which way, and a ring until you can come back. Click it for the way there; at your body, Resurrect. The game's own Resurrect popup is see-through and click-through meanwhile." },
-		{ type = "toggle", key = "timed", name = "Timed Quests", new = NEW,
+		{ type = "toggle", key = "timed", name = "Timed Quests",
 		  desc = "A quest with a time limit: a ring for its whole time and the time left." },
-		{ type = "toggle", key = "summon", name = "Summons", new = NEW,
+		{ type = "toggle", key = "summon", name = "Summons",
 		  desc = "Someone summons you: where to, the time left, and Accept or Decline on hover. The game's own popup is see-through and click-through meanwhile." },
-		{ type = "toggle", key = "resurrect", name = "Resurrect Offers", new = NEW,
+		{ type = "toggle", key = "resurrect", name = "Resurrect Offers",
 		  desc = "Someone offers to resurrect you: the time left, and Accept or Decline on hover. The game's own popup is see-through and click-through meanwhile." },
-		{ type = "toggle", key = "ready", name = "Ready Checks", new = NEW,
+		{ type = "toggle", key = "ready", name = "Ready Checks",
 		  desc = "The leader's ready check and its time, with Ready and Not Ready on hover (a click on it: Ready). The game's own box stays away meanwhile (with the Gamepad UI it stays)." },
-		{ type = "toggle", key = "threat", name = "Threat", new = NEW,
+		{ type = "toggle", key = "threat", name = "Threat",
 		  desc = "In a group fight, only when it matters: close to pulling your target (\"Ease off\") or with it on you (\"Aggro\"), and for a tank the mobs not on you. The ring is your threat against the pull; point at it for the group's threat on your target." },
-		{ type = "toggle", key = "whisper", name = "Whispers", new = NEW,
+		{ type = "toggle", key = "whisper", name = "Whispers",
 		  desc = "A new whisper: the sender in their class colour, the last line and how many are unread. Reply opens their whisper window. Needs Chat's Whisper Popup Window." },
-		{ type = "toggle", key = "pet", name = "Hunter Pet", new = NEW,
+		{ type = "toggle", key = "pet", name = "Hunter Pet",
 		  desc = "Your pet is not happy: its face, a ring for its happiness, and Feed Pet on hover (out of combat)." },
-		{ type = "toggle", key = "auction", name = "Auction House", new = NEW,
+		{ type = "toggle", key = "auction", name = "Auction House",
 		  desc = "Outbid, sold, won and expired at the auction house, in one list. Click it for the way to the nearest mailbox." },
-		{ type = "toggle", key = "craft", name = "Crafting", new = NEW,
+		{ type = "toggle", key = "craft", name = "Crafting",
 		  desc = "A batch you craft: which one of how many, a ring for each item, and Stop on hover." },
-		{ type = "toggle", key = "cooldown", name = "Profession Cooldowns", new = NEW,
+		{ type = "toggle", key = "cooldown", name = "Profession Cooldowns",
 		  desc = "A profession cooldown ready again (a transmute, mooncloth, the salt shaker). MelloUI learns it when you open that profession." },
+		{ type = "toggle", key = "questItem", name = "Quest Items", new = "0.17.0",
+		  desc = "In a quest's objective area, with the quest's item in your bags: the item, a ring for the objective's progress and how many you carry. Click it to use the item (out of combat: it folds away in a fight)." },
+		{ type = "toggle", key = "healer", name = "Healer Drinking", new = "0.17.0",
+		  desc = "When you tank a group, between pulls: a healer of your group is drinking, so wait before the next pull. It goes when they stop or a fight starts. The game keeps party mana hidden from addons, so it shows their drinking, not their mana." },
 		{ type = "header", name = "By The Portrait" },
-		{ type = "toggle", key = "bags", name = "Bags Almost Full", new = NEW,
+		{ type = "toggle", key = "bags", name = "Bags Almost Full",
 		  desc = "Remind you when your bags are almost full; it stays, in a fight too, until you make room. Click it for the way to the nearest vendor." },
-		{ type = "slider", key = "bagsAt", parent = "bags", name = "Free Slots", min = 0, max = 10, step = 1, new = NEW,
+		{ type = "slider", key = "bagsAt", parent = "bags", name = "Free Slots", min = 0, max = 10, step = 1,
 		  desc = "Remind you once this many free bag slots or fewer are left." },
-		{ type = "toggle", key = "talents", name = "Talent Points", new = NEW,
+		{ type = "toggle", key = "talents", name = "Talent Points",
 		  desc = "Remind you when you have talent points to spend." },
-		{ type = "toggle", key = "wellfed", name = "Well Fed Ending", new = NEW,
+		{ type = "toggle", key = "wellfed", name = "Well Fed Ending",
 		  desc = "Remind you when Well Fed has two minutes left." },
+		{ type = "toggle", key = "weapon", name = "Weapon Poisons & Oils", new = "0.17.0",
+		  desc = "Remind you when a poison, an oil or a sharpening stone has run out on a weapon, or has two minutes left, while you carry one to put it back on. It stays until it is back on, in fights too; click it to put it back on (out of combat)." },
+		{ type = "toggle", key = "buffs", name = "Your Buffs", new = "0.17.0",
+		  desc = "Remind you when one of your own buffs is missing on you: Arcane Intellect and a mage's armor, Fortitude, Inner Fire and Divine Spirit, Mark of the Wild, a warlock's armor. Only buffs you can cast. It stays until the buff is back, in fights too (the game hides buffs in a fight, so one lost there shows after it); click it to cast (out of combat)." },
+		{ type = "toggle", key = "groupBuffs", name = "Your Buffs On The Group", new = "0.17.0",
+		  desc = "Remind you when people in your group are missing a buff you can cast (Arcane Intellect and Divine Spirit only on those who use mana); point at it for their names. It stays until they have it, in fights too; click it to cast it on them, one by one (out of combat)." },
 	},
 })
 
@@ -232,6 +250,21 @@ local TEXT = {
 	bagsHint = "Click: the way to the nearest vendor",
 	talentsLabel = "Talent Points", talents = "Talent points: %d to spend", talentsHint = "Open your talents to spend them.",
 	wellfedLabel = "Well Fed", wellfed = "Well Fed ends in %s", wellfedHint = "Eat something to keep it.",
+	weaponLabel = "Weapon", mainHand = "Main hand", offHand = "Off hand", weaponOut = "%s: %s ran out",
+	weaponLeft = "%s: %s, %s left", weaponHint = "Click: put it back on.", anEnchant = "its enchant",
+	buffsLabel = "Your Buffs", buffOne = "%s is missing", buffTwo = "%s and %s are missing",
+	buffMany = "%d of your buffs are missing", buffsHint = "Click: cast it.", buffsDied = "Since you died.",
+	groupLabel = "Your Buffs On The Group", groupOne = "%s is without your %s", groupMany = "%d without your %s",
+	groupAll = "%d without your buffs", groupList = "%s: %s", groupMore = "%s and %d more",
+	groupHint = "Click: cast it on them, one by one.",
+	qiLabel = "Quest Items", qiUse = "Click to use", qiHint = "Click: use it.", qiBags = "%d in your bags",
+	qiFor = "For %s",
+	healerLabel = "Healer Drinking", healerOne = "%s is drinking", healerTwo = "%s and %s are drinking",
+	healerMany = "%d healers are drinking", healerLine = "Wait for them before the next pull",
+	healerWhy = "The game keeps party mana hidden from addons: this shows while they drink.",
+	-- the preview's samples (Core/Preview.lua)
+	pvQiName = "Bundle of Kindling", pvQiLine = "3 of 8 gathered", pvLootName = "Militia Shortsword",
+	pvClick = "A preview: nothing happens.", pvGroupWho = "Tarnok",
 	DIRS = { "north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west" },
 }
 M.TEXT = TEXT
@@ -1598,15 +1631,856 @@ local WELLFED = {
 }
 
 --------------------------------------------------------------------------------
+-- By the portrait: weapon enchants and buffs (0.17.0; the user's picks of
+-- 2026-09-30, MelloUI-BuildData/output/more_ideas_sketch/more_buff_reminders.jpg)
+--   Weapon      a poison, an oil or a stone run out on a weapon, or its last
+--               two minutes, while you carry one that puts it back
+--               (BUFF.ITEMS); the enchant wanted back is the one last seen
+--               on that hand, forgotten when another weapon goes there
+--   Your Buffs  a buff of your own missing on you (BUFF.CLASS: only the ones
+--               you know)
+--   Group       your group buffs missing on the others in your group
+--               (Arcane Intellect and Divine Spirit only on mana users): how
+--               many, their names in the tooltip
+-- (user, 2026-09-30: "the missing buffs should also show in combat, outside
+-- of combat, and outside of towns"; "clickable to apply") Each stays up while
+-- it is wanted, anywhere, fights too (persistent, fight). A fight's auras are
+-- the game's secrets (C_Secrets.ShouldAurasBeSecret, asked first): a read
+-- that cannot see them keeps the last state it knew, and the group is not
+-- read in a fight at all; the weapon's enchant is no secret and is read
+-- then too. A click runs its macro (the widget's secure part, `secure`):
+-- the weapon's item put back on the hand, the buff cast on you, the group's
+-- on the first one missing it -- out of combat (the game places no
+-- protected frame in a fight). Each comes up when something goes missing
+-- (one more missing while it is up raises it again) and at Core's moments;
+-- Not now lasts until all is back on and something goes missing again
+-- (dismiss "change").
+--------------------------------------------------------------------------------
+
+local BUFF = {
+	WARN = 120,           -- s: a weapon enchant's last two minutes
+	HANDS = { 16, 17 },   -- the main hand, the off hand
+	-- [enchant id] = { the items that put it on } (Tools/weapon_enchants.py,
+	-- from the client's own tables; the names are the game's, read when shown)
+	ITEMS = {
+		[7] = { 2892 },   -- Deadly Poison
+		[8] = { 2893 },   -- Deadly Poison II
+		[10] = { 2896 },   -- Creeping Anguish
+		[11] = { 2927 },   -- Creeping Torment
+		[13] = { 2863 },   -- Coarse Sharpening Stone
+		[14] = { 2871 },   -- Heavy Sharpening Stone
+		[19] = { 3239 },   -- Rough Weightstone
+		[20] = { 3240 },   -- Coarse Weightstone
+		[21] = { 3241 },   -- Heavy Weightstone
+		[22] = { 3775 },   -- Crippling Poison
+		[23] = { 6951 },   -- Mind-numbing Poison II
+		[25] = { 3824 },   -- Shadow Oil
+		[26] = { 3829 },   -- Frost Oil
+		[35] = { 5237 },   -- Mind-numbing Poison
+		[40] = { 2862 },   -- Rough Sharpening Stone
+		[42] = { 5654 },   -- Instant Toxin
+		[323] = { 6947 },   -- Instant Poison
+		[324] = { 6949 },   -- Instant Poison II
+		[325] = { 6950 },   -- Instant Poison III
+		[483] = { 7964 },   -- Solid Sharpening Stone
+		[484] = { 7965 },   -- Solid Weightstone
+		[603] = { 3776 },   -- Crippling Poison II
+		[623] = { 8926 },   -- Instant Poison IV
+		[624] = { 8927 },   -- Instant Poison V
+		[625] = { 8928 },   -- Instant Poison VI
+		[626] = { 8984 },   -- Deadly Poison III
+		[627] = { 8985 },   -- Deadly Poison IV
+		[643] = { 9186 },   -- Mind-numbing Poison III
+		[703] = { 10918 },   -- Wound Poison
+		[704] = { 10920 },   -- Wound Poison II
+		[705] = { 10921 },   -- Wound Poison III
+		[706] = { 10922 },   -- Wound Poison IV
+		[1643] = { 12404 },   -- Dense Sharpening Stone
+		[1703] = { 12643 },   -- Dense Weightstone
+		[1803] = { 1254 },   -- Lesser Firestone
+		[1823] = { 13699 },   -- Firestone
+		[1824] = { 13700 },   -- Greater Firestone
+		[1825] = { 13701 },   -- Major Firestone
+		[2506] = { 18262 },   -- Elemental Sharpening Stone
+		[2623] = { 20744 },   -- Minor Wizard Oil
+		[2624] = { 20745 },   -- Minor Mana Oil
+		[2625] = { 20747 },   -- Lesser Mana Oil
+		[2626] = { 20746 },   -- Lesser Wizard Oil
+		[2627] = { 20750 },   -- Wizard Oil
+		[2628] = { 20749 },   -- Brilliant Wizard Oil
+		[2629] = { 20748 },   -- Brilliant Mana Oil
+		[2630] = { 20844 },   -- Deadly Poison V
+		[2684] = { 23122 },   -- Consecrated Sharpening Stone
+		[2685] = { 23123 },   -- Blessed Wizard Oil
+		[7098] = { 211845 },   -- Blackfathom Sharpening Stone
+		[7254] = { 217345 },   -- Sebacious Poison
+		[7255] = { 217346 },   -- Numbing Poison
+		[7256] = { 217347 },   -- Atrophic Poison
+		[7542] = { 226374 },   -- Occult Poison I
+		[7644] = { 232611 },   -- Magnificent Trollshine
+		[7651] = { 234444 },   -- Occult Poison II
+		[8059] = { 5522 },   -- Spellstone
+		[8060] = { 13602 },   -- Greater Spellstone
+		[8061] = { 13603 },   -- Major Spellstone
+		[8700] = { 274947, 277503 },   -- Scroll of Imbue Lesser Flame, Scroll of Imbue Spellbreak
+		[8706] = { 277487 },   -- Scroll of Imbue Baleflame
+		[8707] = { 277489 },   -- Scroll of Imbue Spark
+		[8708] = { 277486 },   -- Scroll of Imbue Striking
+		[8709] = { 277485 },   -- Scroll of Imbue Frost
+		[8710] = { 277488 },   -- Scroll of Imbue Iceknife
+		[8711] = { 277494 },   -- Scroll of Imbue Accuracy
+		[8712] = { 277495 },   -- Scroll of Imbue Quickening
+		[8713] = { 277497 },   -- Scroll of Imbue Flame
+		[8714] = { 277496 },   -- Scroll of Imbue Balefrost
+		[8715] = { 277498 },   -- Scroll of Imbue Manablade
+		[8716] = { 277500 },   -- Scroll of Imbue Greater Flame
+		[8717] = { 277501 },   -- Scroll of Imbue Greater Frost
+		[8718] = { 277502 },   -- Scroll of Imbue Precision
+	},
+	-- [class] = its buffs: spells[1] is the one cast (known? its name and
+	-- icon); any other in the list counts as on (the group version, another
+	-- armor). any: one of them known and on is enough, named as the one last
+	-- seen (else the first known). group: on the others too, "all" or "mana"
+	-- (only those who use mana)
+	CLASS = {
+		MAGE = {
+			{ spells = { 1459, 23028 }, group = "mana" },   -- Arcane Intellect, Arcane Brilliance
+			{ spells = { 7302, 168, 6117 }, any = true },   -- Ice Armor, Frost Armor, Mage Armor
+		},
+		PRIEST = {
+			{ spells = { 1243, 21562 }, group = "all" },    -- Power Word: Fortitude, Prayer of Fortitude
+			{ spells = { 14752, 27681 }, group = "mana" },  -- Divine Spirit, Prayer of Spirit
+			{ spells = { 588 } },                            -- Inner Fire
+		},
+		DRUID = {
+			{ spells = { 1126, 21849 }, group = "all" },    -- Mark of the Wild, Gift of the Wild
+		},
+		WARLOCK = {
+			{ spells = { 706, 687 }, any = true },           -- Demon Armor, Demon Skin
+		},
+	},
+	MANA = { MAGE = true, PRIEST = true, WARLOCK = true, DRUID = true, SHAMAN = true, PALADIN = true, HUNTER = true },
+	PARTY = {}, RAID = {},   -- the group's unit tokens, made once
+	NAMES_SHOWN = 5,         -- names in a tooltip line before "and 3 more"
+}
+for i = 1, 4 do
+	BUFF.PARTY[i] = "party" .. i
+end
+for i = 1, 40 do
+	BUFF.RAID[i] = "raid" .. i
+end
+
+local weapon = { seen = {}, item = {}, want = {}, left = {}, name = {}, carried = {}, wanted = false, due = nil,
+	serial = 0 }
+local buffs = { class = nil, mine = {}, missing = {}, scratch = {}, had = {}, seen = {}, died = false, active = false }
+local group = { lists = {}, order = {}, count = 0, units = {}, active = false }
+
+local function Known(id)
+	local k = Ask(_G.IsPlayerSpell or _G.IsSpellKnown, id)
+	return not Secret(k) and k == true
+end
+
+-- the item carried that puts this enchant back on, or nil
+local function Carried(enchant)
+	local list = BUFF.ITEMS[enchant]
+	local count = (_G.C_Item and _G.C_Item.GetItemCount) or _G.GetItemCount
+	if not list then
+		return nil
+	end
+	for i = 1, #list do
+		local n = Num((Ask(count, list[i])))
+		if n and n > 0 then
+			return list[i]
+		end
+	end
+	return nil
+end
+
+local function ItemName(item)
+	local byID = _G.C_Item and _G.C_Item.GetItemNameByID
+	local name = byID and Text((Ask(byID, item)))
+	if not name then
+		name = Text((Ask(_G.GetItemInfo, item)))
+	end
+	return name
+end
+
+-- raised again when a hand's last two minutes begin (one timer per new due
+-- time; a newer ask makes an older one do nothing)
+local function WeaponSchedule(due)
+	weapon.serial = weapon.serial + 1
+	weapon.due = due
+	if due then
+		local serial = weapon.serial
+		C_Timer.After(math.max(0, due - GetTime()) + 0.5, function()
+			if serial == weapon.serial then
+				Refresh("weapon", true)
+			end
+		end)
+	end
+end
+
+-- the two hands' timed enchants: the one seen, run out or in its last two
+-- minutes, and whether one to put back is carried
+local function WeaponRead()
+	local ok, mh, mhLeft, _, mhID, oh, ohLeft, _, ohID = pcall(_G.GetWeaponEnchantInfo)
+	if not ok then
+		return false
+	end
+	local wanted, soonest = false, nil
+	for i = 1, 2 do
+		local slot = BUFF.HANDS[i]
+		local has, left, id
+		if i == 1 then
+			has, left, id = mh, mhLeft, mhID
+		else
+			has, left, id = oh, ohLeft, ohID
+		end
+		-- (another weapon in the hand: the old one's enchant is not its to miss)
+		local item = Num((Ask(_G.GetInventoryItemID, "player", slot)))
+		if item ~= weapon.item[slot] then
+			weapon.item[slot], weapon.seen[slot] = item, nil
+		end
+		weapon.want[slot], weapon.left[slot], weapon.name[slot], weapon.carried[slot] = nil, nil, nil, nil
+		if not (Secret(has) or Secret(left) or Secret(id)) then
+			id, left = Num(id), Num(left)
+			if has and id and BUFF.ITEMS[id] then
+				weapon.seen[slot] = id
+			end
+			local seen = weapon.seen[slot]
+			local secs = has and left and left / 1000 or nil
+			if seen and (not has or (secs and secs <= BUFF.WARN)) then
+				local carried = Carried(seen)
+				if carried then
+					weapon.want[slot], weapon.name[slot], weapon.carried[slot] = true, ItemName(carried), carried
+					weapon.left[slot] = has and secs or nil
+					wanted = true
+				end
+			end
+			if secs and secs > BUFF.WARN then
+				local due = GetTime() + secs - BUFF.WARN
+				soonest = (soonest == nil or due < soonest) and due or soonest
+			end
+		end
+	end
+	if soonest ~= weapon.due and (soonest == nil or weapon.due == nil or math.abs(soonest - weapon.due) > 5) then
+		WeaponSchedule(soonest)
+	end
+	weapon.wanted = wanted
+	return wanted
+end
+
+local function WeaponLine(slot)
+	local hand = slot == BUFF.HANDS[1] and TEXT.mainHand or TEXT.offHand
+	local name = weapon.name[slot] or TEXT.anEnchant
+	if weapon.left[slot] then
+		return TEXT.weaponLeft:format(hand, name, Clock(math.max(0, weapon.left[slot])))
+	end
+	return TEXT.weaponOut:format(hand, name)
+end
+
+-- whether the game shows auras plainly now (out of combat, and not held
+-- secret: an encounter, PvP)
+local function AurasOpen()
+	local S = _G.C_Secrets
+	if S and type(S.ShouldAurasBeSecret) == "function" then
+		local secret = Ask(S.ShouldAurasBeSecret)
+		return not Secret(secret) and secret == false
+	end
+	return not InCombatLockdown()   -- (a client that cannot say: closed in a fight)
+end
+
+-- the player's class buffs known now (read at each check: a rank or a talent
+-- learned meanwhile)
+local function MyBuffs()
+	if buffs.class == nil then
+		local _, class = Ask(UnitClass, "player")
+		buffs.class = (not Secret(class) and type(class) == "string") and class or false
+	end
+	local list = buffs.class and BUFF.CLASS[buffs.class]
+	wipe(buffs.mine)
+	for i = 1, list and #list or 0 do
+		local b = list[i]
+		local known = false
+		for j = 1, b.any and #b.spells or 1 do
+			known = known or Known(b.spells[j])
+		end
+		if known then
+			buffs.mine[#buffs.mine + 1] = b
+		end
+	end
+	return buffs.mine
+end
+
+-- one of a buff's spells on the unit: true (and which), false, or nil (not
+-- known: a secret answer)
+local function Wears(unit, b)
+	local U = C_UnitAuras
+	if not (U and U.GetAuraDataBySpellName) then
+		return nil
+	end
+	for i = 1, #b.spells do
+		local id = b.spells[i]
+		local name = Spell(id)
+		if name then
+			local aura = Ask(U.GetAuraDataBySpellName, unit, name, "HELPFUL")
+			if Secret(aura) then
+				return nil
+			end
+			if type(aura) == "table" then
+				return true, id
+			end
+		end
+	end
+	return false
+end
+
+-- a buff's name as told: the armor last seen on the player, else the first
+-- one known (any), else the one cast
+local function BuffName(b)
+	local id = b.spells[1]
+	if b.any then
+		id = buffs.seen[b]
+		if not id then
+			for j = 1, #b.spells do
+				if Known(b.spells[j]) then
+					id = b.spells[j]
+					break
+				end
+			end
+		end
+	end
+	return Spell(id or b.spells[1], "?"), id or b.spells[1]
+end
+
+-- the player's own: which are missing; one more missing while some are
+-- already (no edge of its own) raises it again
+local function BuffsRead()
+	if not AurasOpen() then
+		return buffs.active   -- (not seen now, a fight: the last state known stays)
+	end
+	local mine = MyBuffs()
+	local now = buffs.scratch
+	wipe(now)
+	for i = 1, #mine do
+		local b = mine[i]
+		local on, which = Wears("player", b)
+		if on == nil then
+			return buffs.active
+		elseif on then
+			if b.any then
+				buffs.seen[b] = which
+			end
+		else
+			now[#now + 1] = b
+		end
+	end
+	buffs.missing, buffs.scratch = now, buffs.missing
+	local newly, before = false, next(buffs.had) ~= nil
+	for i = 1, #buffs.missing do
+		newly = newly or not buffs.had[buffs.missing[i]]
+	end
+	wipe(buffs.had)
+	for i = 1, #buffs.missing do
+		buffs.had[buffs.missing[i]] = true
+	end
+	if #buffs.missing == 0 then
+		buffs.died = false
+	elseif newly and before then
+		Refresh("buffs", true)
+	end
+	buffs.active = #buffs.missing > 0
+	return buffs.active
+end
+
+-- a group member who can take a buff now: there, online, alive, in sight
+local function Useful(unit)
+	for _, fn in ipairs({ _G.UnitExists, _G.UnitIsConnected, _G.UnitIsVisible }) do
+		local v = Ask(fn, unit)
+		if Secret(v) or v ~= true then
+			return false
+		end
+	end
+	local dead = Ask(_G.UnitIsDeadOrGhost, unit)
+	return not Secret(dead) and dead == false
+end
+
+-- the others in the group missing a buff of the player's: per buff, their
+-- names; how many in all
+local function GroupRead()
+	-- (a fight: the last state known stays -- nothing read, however many
+	-- UNIT_AURA the group sends)
+	if InCombatLockdown() or not AurasOpen() then
+		return group.active
+	end
+	for _, list in pairs(group.lists) do
+		wipe(list)
+	end
+	wipe(group.order)
+	wipe(group.units)
+	group.count = 0
+	local mine = MyBuffs()
+	local raid = Ask(_G.IsInRaid) == true
+	local n = Num((Ask(_G.GetNumGroupMembers))) or 0
+	local units = raid and BUFF.RAID or BUFF.PARTY
+	for i = 1, raid and math.min(n, 40) or math.min(n - 1, 4) do
+		local unit = units[i]
+		if Ask(UnitIsUnit, unit, "player") ~= true and Useful(unit) then
+			local _, class = Ask(UnitClass, unit)
+			local name = Text((Ask(UnitName, unit)))
+			for j = 1, #mine do
+				local b = mine[j]
+				if b.group and name and (b.group == "all" or (not Secret(class) and BUFF.MANA[class])) then
+					local on = Wears(unit, b)
+					if on == false then
+						local list = group.lists[b]
+						if not list then
+							list = {}
+							group.lists[b] = list
+						end
+						if #list == 0 then
+							group.order[#group.order + 1] = b
+							list.unit = unit   -- (the first one missing it: a click casts on them)
+						end
+						list[#list + 1] = name
+						if not group.units[unit] then
+							group.units[unit] = true
+							group.count = group.count + 1
+						end
+					end
+				end
+			end
+		end
+	end
+	group.active = group.count > 0
+	return group.active
+end
+
+local function Names(list)
+	if #list <= BUFF.NAMES_SHOWN then
+		return table.concat(list, ", ")
+	end
+	local shown = table.concat(list, ", ", 1, BUFF.NAMES_SHOWN)
+	return TEXT.groupMore:format(shown, #list - BUFF.NAMES_SHOWN)
+end
+
+local function TipLine(tip, line)
+	local c = MelloUI.Palette.text
+	tip:AddLine(line, c[1], c[2], c[3], true)
+end
+
+local WEAPON = {
+	key = "weapon", label = TEXT.weaponLabel, urgency = 20, hint = TEXT.weaponHint, dismiss = "change",
+	enabled = function() return On("weapon") end,
+	check = function()
+		return WeaponRead()
+	end,
+	text = function()
+		local slot = weapon.want[BUFF.HANDS[1]] and BUFF.HANDS[1] or BUFF.HANDS[2]
+		return WeaponLine(slot)
+	end,
+	icon = function()
+		local slot = weapon.want[BUFF.HANDS[1]] and BUFF.HANDS[1] or BUFF.HANDS[2]
+		local t = Ask(_G.GetInventoryItemTexture, "player", slot)
+		return (not Secret(t) and t) or "Interface\\Icons\\INV_Misc_Bag_08"
+	end,
+	tooltip = function(_, tip)
+		if weapon.want[BUFF.HANDS[1]] and weapon.want[BUFF.HANDS[2]] then
+			TipLine(tip, WeaponLine(BUFF.HANDS[2]))
+		end
+	end,
+	-- the item used, then the hand's slot: the game puts it on that weapon
+	secure = function()
+		local slot = weapon.want[BUFF.HANDS[1]] and BUFF.HANDS[1] or BUFF.HANDS[2]
+		local item = weapon.carried[slot]
+		return item and ("/use item:" .. item .. "\n/use " .. slot) or nil
+	end,
+	persistent = function()
+		return weapon.wanted
+	end,
+	fight = function()
+		return weapon.wanted
+	end,
+}
+
+local BUFFS_SPEC = {
+	key = "buffs", label = TEXT.buffsLabel, urgency = 12, hint = TEXT.buffsHint, dismiss = "change",
+	enabled = function() return On("buffs") end,
+	check = function()
+		return BuffsRead() == true
+	end,
+	text = function()
+		local m = buffs.missing
+		if #m == 1 then
+			return TEXT.buffOne:format((BuffName(m[1])))
+		elseif #m == 2 then
+			return TEXT.buffTwo:format((BuffName(m[1])), (BuffName(m[2])))
+		end
+		return TEXT.buffMany:format(#m)
+	end,
+	icon = function()
+		local b = buffs.missing[1]
+		local id = b and select(2, BuffName(b))
+		return (id and SpellIcon(id)) or "Interface\\Icons\\Spell_Holy_MagicalSentry"
+	end,
+	tooltip = function(_, tip)
+		if #buffs.missing > 2 then
+			for i = 1, #buffs.missing do
+				TipLine(tip, (BuffName(buffs.missing[i])))
+			end
+		end
+		if buffs.died then
+			TipLine(tip, TEXT.buffsDied)
+		end
+	end,
+	secure = function()
+		local b = buffs.missing[1]
+		return b and ("/cast [@player] " .. BuffName(b)) or nil
+	end,
+	persistent = function()
+		return buffs.active
+	end,
+	fight = function()
+		return buffs.active
+	end,
+}
+
+local GROUP = {
+	key = "groupBuffs", label = TEXT.groupLabel, urgency = 10, hint = TEXT.groupHint, dismiss = "change",
+	enabled = function() return On("groupBuffs") end,
+	check = function()
+		return GroupRead() == true
+	end,
+	text = function()
+		local b = group.order[1]
+		if not b then
+			return TEXT.groupAll:format(0)
+		end
+		if #group.order > 1 then
+			return TEXT.groupAll:format(group.count)
+		end
+		local list = group.lists[b]
+		if #list == 1 then
+			return TEXT.groupOne:format(list[1], (BuffName(b)))
+		end
+		return TEXT.groupMany:format(#list, (BuffName(b)))
+	end,
+	icon = function()
+		local b = group.order[1]
+		local id = b and select(2, BuffName(b))
+		return (id and SpellIcon(id)) or "Interface\\Icons\\Spell_Holy_MagicalSentry"
+	end,
+	tooltip = function(_, tip)
+		for i = 1, #group.order do
+			local b = group.order[i]
+			TipLine(tip, TEXT.groupList:format((BuffName(b)), Names(group.lists[b])))
+		end
+	end,
+	secure = function()
+		local b = group.order[1]
+		local unit = b and group.lists[b].unit
+		return unit and ("/cast [@" .. unit .. "] " .. BuffName(b)) or nil
+	end,
+	persistent = function()
+		return group.active
+	end,
+	fight = function()
+		return group.active
+	end,
+}
+
+-- their moments: out of combat only (after a fight, PLAYER_REGEN_ENABLED
+-- reads them again)
+local function BuffEvent(event, a1)
+	if event == "PLAYER_DEAD" then
+		buffs.died = true
+		return
+	end
+	if event == "UNIT_AURA" then
+		if a1 == "player" then
+			if On("buffs") then
+				Refresh("buffs")
+			end
+		elseif On("groupBuffs") and not InCombatLockdown() and type(a1) == "string" and not Secret(a1)
+			and (a1:find("^party%d") or a1:find("^raid%d")) then
+			Refresh("groupBuffs")
+		end
+	elseif event == "PLAYER_REGEN_ENABLED" then
+		if On("weapon") then
+			Refresh("weapon", weapon.wanted)   -- (after a fight: up again while wanted)
+		end
+		if On("buffs") then
+			Refresh("buffs")
+		end
+		if On("groupBuffs") then
+			Refresh("groupBuffs")
+		end
+	elseif event == "UNIT_INVENTORY_CHANGED" then
+		if a1 == "player" and On("weapon") then
+			Refresh("weapon")
+		end
+	elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_UPDATE_DELAYED" then
+		if On("weapon") then
+			Refresh("weapon")
+		end
+	elseif event == "SPELLS_CHANGED" then
+		if On("buffs") then
+			Refresh("buffs")
+		end
+		if On("groupBuffs") then
+			Refresh("groupBuffs")
+		end
+	elseif event == "GROUP_ROSTER_UPDATE" or event == "UNIT_CONNECTION" then
+		if On("groupBuffs") then
+			Refresh("groupBuffs")
+		end
+	elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
+		if On("buffs") then
+			Refresh("buffs")
+		end
+	end
+end
+
+local BUFF_EVENTS = { PLAYER_DEAD = true, UNIT_AURA = true, PLAYER_REGEN_ENABLED = true, UNIT_INVENTORY_CHANGED = true,
+	PLAYER_EQUIPMENT_CHANGED = true, BAG_UPDATE_DELAYED = true, SPELLS_CHANGED = true, GROUP_ROSTER_UPDATE = true,
+	UNIT_CONNECTION = true, PLAYER_ALIVE = true, PLAYER_UNGHOST = true }
+
+--------------------------------------------------------------------------------
+-- Quest items (0.17.0; the user's pick of 2026-09-30, MelloUI-BuildData/
+-- output/more_ideas_sketch/more_widgets.jpg, the top row). In a quest's
+-- objective area -- the game's quest blob (C_Minimap.IsInsideQuestBlob), or
+-- within NEAR yards of the objective Route follows -- with an item to use for
+-- that quest in the bags (GetQuestLogSpecialItemInfo, as the Quest Tracker's
+-- item buttons): the item's face, the ring the open objective's progress, the
+-- count carried. A click on the face uses it: the column's secure face
+-- ("/use item:<id>", Core/Reminders.lua `secure`), out of combat only, so the
+-- row folds away in a fight. Checked on the quest log, the bags, a zone, a
+-- stop and Route's 'where' (asked for only while a quest's item is carried).
+--------------------------------------------------------------------------------
+
+local qitem = { quest = nil, item = nil, icon = nil, name = nil, title = nil, have = 0, line = nil, done = nil,
+	need = nil, any = false, wantsWhere = false, NEAR = 100, OWNER = "Widgets: quest items" }
+
+-- the open objective's line and progress: the first not finished (all done:
+-- the last one)
+function qitem.Objective(questID)
+	qitem.line, qitem.done, qitem.need = nil, nil, nil
+	local list = C_QuestLog and Ask(C_QuestLog.GetQuestObjectives, questID)
+	if Secret(list) or type(list) ~= "table" then
+		return
+	end
+	for i = 1, #list do
+		local o = list[i]
+		if type(o) == "table" then
+			qitem.line, qitem.done, qitem.need = Text(o.text), Num(o.numFulfilled), Num(o.numRequired)
+			if o.finished ~= true then
+				return
+			end
+		end
+	end
+end
+
+-- the player stands in the quest's objective area
+function qitem.Inside(questID)
+	local mm = _G.C_Minimap
+	if mm and type(mm.IsInsideQuestBlob) == "function" then
+		local inside = Ask(mm.IsInsideQuestBlob, questID)
+		if not Secret(inside) and inside == true then
+			return true
+		end
+	end
+	local R = Route()
+	if R and type(R.FollowedRemaining) == "function" then
+		local left = Num((Ask(R.FollowedRemaining, R, questID)))
+		return left ~= nil and left <= qitem.NEAR
+	end
+	return false
+end
+
+-- Route's 'where' wanted only while some quest's item is carried
+function qitem.Where(on)
+	on = on and On("questItem") or false
+	local R = Route()
+	if on ~= qitem.wantsWhere and R and type(R.WantWhere) == "function" then
+		qitem.wantsWhere = on
+		pcall(R.WantWhere, R, qitem.OWNER, on)
+	end
+end
+
+function qitem.Read()
+	qitem.quest, qitem.item, qitem.any = nil, nil, false
+	local QL, special = C_QuestLog, _G.GetQuestLogSpecialItemInfo
+	local count = (_G.C_Item and _G.C_Item.GetItemCount) or _G.GetItemCount
+	if not (QL and type(QL.GetNumQuestLogEntries) == "function" and type(special) == "function") then
+		return false
+	end
+	for i = 1, Num((Ask(QL.GetNumQuestLogEntries))) or 0 do
+		local info = Ask(QL.GetInfo, i)
+		local id = type(info) == "table" and not Secret(info.isHeader) and not info.isHeader and Num(info.questID)
+		if id then
+			local link, icon, _, whenDone = Ask(special, i)
+			link = Text(link)
+			local itemID = link and tonumber(link:match("item:(%d+)"))
+			local have = itemID and Num((Ask(count, itemID))) or 0
+			-- (a finished quest keeps its item only when the game says so)
+			local open = whenDone == true or Ask(QL.IsComplete, id) ~= true
+			if have > 0 and open then
+				qitem.any = true
+				if not qitem.quest and qitem.Inside(id) then
+					qitem.quest, qitem.item, qitem.have = id, itemID, have
+					qitem.icon = not Secret(icon) and icon or nil
+					qitem.name = Text((Ask(_G.C_Item and _G.C_Item.GetItemNameByID, itemID))) or link:match("%[(.-)%]")
+					qitem.title = Text((Ask(QL.GetTitleForQuestID, id)))
+					qitem.Objective(id)
+				end
+			end
+		end
+	end
+	qitem.Where(qitem.any)
+	return qitem.quest ~= nil
+end
+
+local QITEM = {
+	key = "questItem", column = true, label = TEXT.qiLabel, combat = false, hint = TEXT.qiHint,
+	check = function()
+		return qitem.Read()
+	end,
+	title = function()
+		return qitem.name or TEXT.qiLabel
+	end,
+	text = function()
+		return qitem.line or qitem.title or ""
+	end,
+	icon = function()
+		return qitem.icon
+	end,
+	count = function()
+		return qitem.have
+	end,
+	fraction = function()
+		if qitem.done and qitem.need and qitem.need > 0 then
+			return qitem.done / qitem.need
+		end
+	end,
+	time = function()
+		return not InCombatLockdown() and TEXT.qiUse or ""
+	end,
+	secure = function()
+		return qitem.item and ("/use item:" .. qitem.item) or nil
+	end,
+	tooltip = function(_, tip)
+		local text = MelloUI.Palette.text
+		if qitem.title then
+			tip:AddLine(TEXT.qiFor:format(qitem.title), text[1], text[2], text[3], true)
+		end
+		tip:AddLine(TEXT.qiBags:format(qitem.have), text[1], text[2], text[3], true)
+	end,
+}
+
+--------------------------------------------------------------------------------
+-- The healer drinking (0.17.0; the user's pick of 2026-09-30, more_widgets.jpg,
+-- the bottom left: "if the game hides party mana: their Drink buff only, no
+-- %"). Measured that day: party mana IS secret here
+-- (C_Secrets.ShouldUnitPowerBeSecret), so nothing compares a mana value. For
+-- the group's tank (Threat.IsTank) between pulls, a healer of the group with
+-- the Drink buff: wait before the next pull. A healer is the HEALER role, or
+-- with no roles set in the group a class that heals. Read out of combat only
+-- (auras are hidden in a fight, AurasOpen); it goes when they stop drinking or
+-- a fight starts.
+--------------------------------------------------------------------------------
+
+local healer = { names = {}, n = 0, icon = nil, fight = false, DRINK = 430,
+	HEALS = { PRIEST = true, DRUID = true, PALADIN = true, SHAMAN = true } }
+
+-- a group unit's token worth an aura look (UNIT_AURA's own: not the player's)
+function healer.Watched(unit)
+	return not Secret(unit) and type(unit) == "string" and (unit:find("^party%d") or unit:find("^raid%d")) ~= nil
+end
+
+function healer.Read()
+	healer.n = 0
+	wipe(healer.names)
+	local T = MelloUI.Threat
+	if healer.fight or InCombatLockdown() or not (T and T.Grouped() and T.IsTank()) or not AurasOpen() then
+		return false
+	end
+	local U = C_UnitAuras
+	local drink = Spell(healer.DRINK)
+	if not (U and U.GetAuraDataBySpellName and drink) then
+		return false
+	end
+	local raid = Ask(_G.IsInRaid) == true
+	local last = raid and (Num((Ask(_G.GetNumGroupMembers))) or 0) or 4
+	-- roles: when nobody in the group has one, the healing classes
+	local roles = false
+	for i = 1, last do
+		local unit = (raid and "raid" or "party") .. i
+		local role = Ask(_G.UnitGroupRolesAssigned, unit)
+		roles = roles or (not Secret(role) and role ~= nil and role ~= "NONE")
+	end
+	for i = 1, last do
+		local unit = (raid and "raid" or "party") .. i
+		local me = Ask(UnitIsUnit, unit, "player")
+		local heals
+		if roles then
+			heals = Ask(_G.UnitGroupRolesAssigned, unit) == "HEALER"
+		else
+			local _, class = Ask(UnitClass, unit)
+			heals = not Secret(class) and healer.HEALS[class] == true
+		end
+		if me ~= true and heals and Useful(unit) then
+			local aura = Ask(U.GetAuraDataBySpellName, unit, drink, "HELPFUL")
+			if not Secret(aura) and type(aura) == "table" then
+				healer.n = healer.n + 1
+				healer.names[healer.n] = Text((Ask(UnitName, unit))) or "?"
+				healer.icon = (not Secret(aura.icon) and aura.icon) or SpellIcon(healer.DRINK)
+			end
+		end
+	end
+	return healer.n > 0
+end
+
+local HEALER = {
+	key = "healer", column = true, label = TEXT.healerLabel, combat = false,
+	check = function()
+		return healer.Read()
+	end,
+	title = function()
+		local n, names = healer.n, healer.names
+		if n == 1 then
+			return TEXT.healerOne:format(names[1])
+		elseif n == 2 then
+			return TEXT.healerTwo:format(names[1], names[2])
+		end
+		return TEXT.healerMany:format(n)
+	end,
+	text = TEXT.healerLine,
+	icon = function()
+		return healer.icon or SpellIcon(healer.DRINK)
+	end,
+	count = function()
+		return healer.n > 1 and healer.n or nil
+	end,
+	tooltip = function(_, tip)
+		local text = MelloUI.Palette.text
+		if healer.n > 2 then
+			tip:AddLine(table.concat(healer.names, ", "), text[1], text[2], text[3], true)
+		end
+		tip:AddLine(TEXT.healerWhy, text[1], text[2], text[3], true)
+	end,
+}
+
+--------------------------------------------------------------------------------
 -- The specs, the events
 --------------------------------------------------------------------------------
 
 local ORDER = { "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction", "craft",
-	"cooldown", "bags", "talents", "wellfed" }
+	"cooldown", "questItem", "healer", "bags", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }
 local SPECS = { loot = LOOT, corpse = CORPSE, timed = TIMED, summon = SUMMON, resurrect = RESURRECT, ready = READY,
 	threat = THREAT,
-	whisper = WHISPER, pet = PET, auction = AUCTION, craft = CRAFT, cooldown = COOLDOWN, bags = BAGS, talents = TALENTS,
-	wellfed = WELLFED }
+	whisper = WHISPER, pet = PET, auction = AUCTION, craft = CRAFT, cooldown = COOLDOWN, questItem = QITEM,
+	healer = HEALER, bags = BAGS, talents = TALENTS,
+	wellfed = WELLFED, weapon = WEAPON, buffs = BUFFS_SPEC, groupBuffs = GROUP }
 for _, key in ipairs(ORDER) do
 	local spec = SPECS[key]
 	if spec.column then
@@ -1632,12 +2506,41 @@ local EVENTS = {
 	craft = { "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
 		"UPDATE_TRADESKILL_CAST_STOPPED" },
 	cooldown = { "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "BAG_UPDATE_COOLDOWN" },
+	questItem = { "QUEST_LOG_UPDATE", "BAG_UPDATE_DELAYED", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA",
+		"PLAYER_STOPPED_MOVING", "PLAYER_REGEN_ENABLED" },
+	healer = { "UNIT_AURA", "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_DISABLED",
+		"PLAYER_REGEN_ENABLED" },
 	bags = { "BAG_UPDATE_DELAYED" },
 	talents = { "PLAYER_LEVEL_UP", "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE" },
 	wellfed = { "UNIT_AURA" },
+	weapon = { "UNIT_INVENTORY_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "BAG_UPDATE_DELAYED", "PLAYER_REGEN_ENABLED" },
+	buffs = { "UNIT_AURA", "SPELLS_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" },
+	groupBuffs = { "UNIT_AURA", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "SPELLS_CHANGED", "PLAYER_REGEN_ENABLED" },
 }
+-- (the two that hear several of these: sets of their own)
+qitem.HEARS, healer.HEARS = {}, {}
+for _, e in ipairs(EVENTS.questItem) do
+	qitem.HEARS[e] = true
+end
+for _, e in ipairs(EVENTS.healer) do
+	healer.HEARS[e] = true
+end
 
 local function OnEvent(_, event, a1, a2, a3)
+	if BUFF_EVENTS[event] then
+		BuffEvent(event, a1)
+	end
+	if qitem.HEARS[event] and On("questItem") then
+		Refresh("questItem")
+	end
+	if healer.HEARS[event] and On("healer") then
+		if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+			healer.fight = event == "PLAYER_REGEN_DISABLED"
+		end
+		if event ~= "UNIT_AURA" or (not healer.fight and healer.Watched(a1)) then
+			Refresh("healer")
+		end
+	end
 	if event == "START_LOOT_ROLL" then
 		LootAdd(a1, a2)
 		Refresh("loot", true)
@@ -1952,6 +2855,143 @@ local function Read(key)
 end
 
 --------------------------------------------------------------------------------
+-- The preview (0.17.0, Core/Preview.lua): sample rows of the widgets that are
+-- switched on, while the scene wants them -- made-up names and numbers; a
+-- click says it is a preview. Solo: Quest Items, your own buff missing (one
+-- you know). Party: + a healer drinking until the pull, a group buff missing
+-- (one of yours for the group), a loot roll after the kill. Registered with
+-- the first scene, gone at its stop.
+--------------------------------------------------------------------------------
+
+local pv = { want = {}, registered = false, lootAt = 0, buffName = nil, buffIcon = nil, groupName = nil,
+	groupIcon = nil }
+
+local function PvWanted(key)
+	return function()
+		return pv.want[key] == true
+	end
+end
+
+local function PvClick()
+	MelloUI:Announce(TEXT.pvClick, "info")
+end
+
+local PV = {
+	questItem = { key = "preview:questItem", column = true, label = TEXT.qiLabel, combat = false,
+		check = PvWanted("questItem"), onClick = PvClick,
+		title = function() return TEXT.pvQiName end,
+		text = function() return TEXT.pvQiLine end,
+		icon = function() return "Interface\\Icons\\INV_Misc_Bundle_01" end,
+		count = function() return 5 end,
+		fraction = function() return 3 / 8 end,
+		time = function() return TEXT.qiUse end },
+	healer = { key = "preview:healer", column = true, label = TEXT.healerLabel, combat = false,
+		check = PvWanted("healer"), onClick = PvClick,
+		title = function()
+			local P = MelloUI.Preview
+			local h = P and P.PARTY[4]
+			return TEXT.healerOne:format(h and h.name or "")
+		end,
+		text = function() return TEXT.healerLine end,
+		icon = function() return SpellIcon(healer.DRINK) end },
+	loot = { key = "preview:loot", column = true, label = TEXT.loot, priority = "now",
+		check = PvWanted("loot"), onClick = PvClick,
+		title = function()
+			local fn = C_Item and C_Item.GetItemQualityColor or _G.GetItemQualityColor
+			local r, g, b = Ask(fn, 2)
+			if Num(r) and Num(g) and Num(b) then
+				return TEXT.pvLootName, r, g, b
+			end
+			return TEXT.pvLootName
+		end,
+		text = function() return TEXT.lootLine end,
+		icon = function() return "Interface\\Icons\\INV_Sword_04" end,
+		progress = function() return pv.lootAt, 20 end,
+		actions = {
+			{ icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", tip = TEXT.need, desc = TEXT.needDesc, fn = PvClick },
+			{ icon = "Interface\\Buttons\\UI-GroupLoot-Coin-Up", tip = TEXT.greed, desc = TEXT.greedDesc, fn = PvClick },
+			{ icon = "Interface\\Buttons\\UI-GroupLoot-Pass-Up", tip = TEXT.pass, desc = TEXT.passDesc, fn = PvClick },
+		} },
+	buffs = { key = "preview:buffs", label = TEXT.buffsLabel, urgency = 12,
+		check = PvWanted("buffs"), onClick = PvClick, persistent = PvWanted("buffs"),
+		text = function() return TEXT.buffOne:format(pv.buffName or "") end,
+		icon = function() return pv.buffIcon end },
+	groupBuffs = { key = "preview:groupBuffs", label = TEXT.groupLabel, urgency = 10,
+		check = PvWanted("groupBuffs"), onClick = PvClick, persistent = PvWanted("groupBuffs"),
+		fight = PvWanted("groupBuffs"),
+		text = function() return TEXT.groupOne:format(TEXT.pvGroupWho, pv.groupName or "") end,
+		icon = function() return pv.groupIcon end },
+}
+local PV_ORDER = { "questItem", "healer", "loot", "buffs", "groupBuffs" }
+
+-- your own buffs for the samples: the first you know, the first for the group
+local function PvBuffs()
+	pv.buffName, pv.buffIcon, pv.groupName, pv.groupIcon = nil, nil, nil, nil
+	local ok, mine = pcall(MyBuffs)
+	for i = 1, ok and #mine or 0 do
+		local b = mine[i]
+		local name, id = BuffName(b)
+		if not pv.buffName then
+			pv.buffName, pv.buffIcon = name, SpellIcon(id)
+		end
+		if b.group and not pv.groupName then
+			pv.groupName, pv.groupIcon = name, SpellIcon(id)
+		end
+	end
+end
+
+local function PvRefresh()
+	local R = Rem()
+	if not R then
+		return
+	end
+	for _, key in ipairs(PV_ORDER) do
+		R:Refresh(PV[key].key, true)
+	end
+end
+
+local function OnPreview(beat, mode)
+	local R = Rem()
+	if not (R and M.isEnabled) then
+		return
+	end
+	local want = pv.want
+	if beat == "start" then
+		if not pv.registered then
+			pv.registered = true
+			for _, key in ipairs(PV_ORDER) do
+				R:Register(PV[key])
+			end
+		end
+		PvBuffs()
+		local P = MelloUI.Preview
+		local party = mode == "party"
+		local column, byPortrait = P:Plays("widgets"), P:Plays("reminders")
+		want.questItem = column and On("questItem")
+		want.buffs = byPortrait and On("buffs") and pv.buffName ~= nil
+		want.healer = column and party and On("healer")
+		want.groupBuffs = byPortrait and party and On("groupBuffs") and pv.groupName ~= nil
+		want.loot = false
+	elseif beat == "pull" then
+		want.healer = false   -- (the tank pulled: no more waiting)
+	elseif beat == "kill" then
+		if mode == "party" and On("loot") and MelloUI.Preview:Plays("widgets") then
+			want.loot, pv.lootAt = true, GetTime()
+		end
+	elseif beat == "stop" then
+		wipe(want)
+		if pv.registered then
+			pv.registered = false
+			for _, key in ipairs(PV_ORDER) do
+				R:Unregister(PV[key].key)
+			end
+		end
+		return
+	end
+	PvRefresh()
+end
+
+--------------------------------------------------------------------------------
 -- Module
 --------------------------------------------------------------------------------
 
@@ -1959,6 +2999,12 @@ function M:OnInit(db)
 	self.db = db
 	MelloUI:On("whisper", OnWhisper, "Widgets: whispers")
 	MelloUI:On("where", CorpseWhere, "Widgets: corpse")
+	MelloUI:On("preview", OnPreview, "Widgets: preview")
+	MelloUI:On("where", function()
+		if qitem.wantsWhere then
+			Refresh("questItem")
+		end
+	end, qitem.OWNER)
 end
 
 function M:OnEnable(db)
@@ -1989,6 +3035,7 @@ function M:OnDisable()
 		pcall(R.WantWhere, R, "Widgets", false)
 	end
 	corpse.ghost = false
+	qitem.Where(false)
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -2001,6 +3048,8 @@ function M:OnSettingChanged(key, value, db)
 		else
 			if key == "corpse" then
 				CorpseState()
+			elseif key == "questItem" then
+				qitem.Where(false)
 			end
 			Refresh(key)
 		end

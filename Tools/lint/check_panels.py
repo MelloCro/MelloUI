@@ -113,6 +113,17 @@ CEILINGS = {
     "colour:Core/EditLayoutSnap.lua": 0,
     "key-propagate": 0,
     "secure-button": 0,
+    # (0.17.0) the shared feed of soft-shaded lines (Gains and Combat Text on
+    # it) and Combat Text start at 0
+    "feed-copy": 0,
+    "colour:Core/Feed.lua": 0,
+    "colour:Modules/CombatText.lua": 0,
+    "colour:Modules/Gains.lua": 0,
+    # (0.17.0) the damage meter: no colour literal (the palette, the
+    # meaning colours and the game's class colours by name)
+    "colour:Modules/Meter.lua": 0,
+    "colour:Modules/MeterBar.lua": 0,
+    "colour:Modules/MeterHistory.lua": 0,
 }
 
 # Kit.lua from this line on is the kit demo and the slice test (/kitdemo,
@@ -275,6 +286,11 @@ CHECKS = {
                       {"skip": ["Core/Reminders.lua", "Modules/QuestTracker.lua", "Core/EditLayoutBridge.lua"]},
                       "a secure button: made lazily out of combat, laid by rect on UIParent, one click phase "
                       "(Core/Reminders.lua's Attach / OverlayPlace, Core/EditLayoutBridge.lua)"),
+    # (0.17.0) a column of lines made by hand: a new line put first in a list
+    # of lines (the feed's own engine, lifted from Gains)
+    "feed-copy": (r"(?:tinsert|table\.insert)\(\s*[\w.]*lines\s*,\s*1\s*,", {"skip": ["Core/Feed.lua"]},
+                  "a column of lines made by hand: MelloUI.Feed:New(opts) (Core/Feed.lua), the one engine for "
+                  "soft-shaded lines that stack, hold and fade (Gains, Combat Text's feed)"),
     # the map's pin pool used from any file but the Quest List's marks: each
     # pool call marks the map's scroll state dirty from MelloUI code
     "map-pool-call": (ref(r"AcquirePin|RemovePin|RemoveAllPinsByTemplate|MarkCanvasDirty"),

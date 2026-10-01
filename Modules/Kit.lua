@@ -261,6 +261,8 @@ local STATES = { "normal", "hover", "pressed", "checked", "disabled", "plain", "
 -- this client hands out secret numbers under unit frames: never compare one.
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
 local Secret = MelloUI.Safe.IsSecret
+-- (0.17.0) a write back onto a game region, counted for /melloperf
+local WriteBack = MelloUI.Perf.WriteBack or function() end
 
 --------------------------------------------------------------------------------
 -- Pieces
@@ -2000,6 +2002,15 @@ function Kit:Retile(tex)
 		local f, o = RetileSpan(align, h, p.h * scale, top and -top, align == "center", align == "bottom")
 		v1 = v1 + dv * o
 		v2 = v1 + dv * f
+	end
+	-- the same cut as the texture has: nothing written (0.17.0: a nameplate's
+	-- strips are sized again nearly every frame, docs/plans/fps-portrait-fix.md;
+	-- a height change of a strip that tiles across only gives the same cut)
+	local okC, ulx, uly, _, lly, urx = pcall(tex.GetTexCoord, tex)
+	if okC and type(ulx) == "number" and type(uly) == "number" and type(lly) == "number" and type(urx) == "number"
+		and not (Secret(ulx) or Secret(uly) or Secret(lly) or Secret(urx))
+		and math.abs(ulx - u1) < 1e-6 and math.abs(urx - u2) < 1e-6 and math.abs(uly - v1) < 1e-6 and math.abs(lly - v2) < 1e-6 then
+		return
 	end
 	tex:SetTexCoord(u1, u2, v1, v2)
 end
@@ -5271,7 +5282,8 @@ Kit.Replacements = {
 	["ChatFrameBorder"]                       = { kind = "frame", body = false, owner = true, edgeLayer = "BORDER", outset = 8 },   -- CH1: a FloatingBorderedFrame's eight border pieces (UI-ChatFrame-BorderCorner / -BorderTop / -BorderLeft file art, keyed by hand on the top-left corner) -> the single rail as regions of the chat frame in the pieces' BORDER layer, centred on the Background's edge (the pieces reach 4 px past it); the Background stays the game's, the rail stays at full alpha (the Background Opacity moves the stone only), and so does its shade
 	["ChatFrameBody"]                         = { kind = "tile", piece = "window/single_body", owner = true },   -- the window's Background (ChatFrameBackground file art, the translucent black at the alpha slider; keyed by hand): the list-box stone as a region in its place, at the slider's alpha (user, 2026-09-21: the dark cracked stone, not a flat colour)
 	["ChatIconButton"]                        = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the menu / channel / voice / minimize / maximize icon buttons (UI-ChatIcon-* file art, keyed by hand): K2, the cog plate under the game's glyph
-	["chatframe-button-up"]                   = { kind = "state", base = "buttons/cog" },   -- the channel / voice buttons' own round plate (27 x 26, the glyph on their Icon): K2, the cog plate on its rect
+	["chatframe-button-up"]                   = { kind = "state", base = "buttons/cog" },   -- the voice buttons' own round plate (27 x 26, the glyph on their Icon): K2, the cog plate on its rect
+	["ChatColumnButton"]                      = { kind = "slot", slot = "roundslot" },   -- (0.17.0, the user's pick C of chat_menu_sketch) the chat column's three game buttons -- the chat menu (UI-ChatIcon-Chat-Up), Channels (chatframe-button-up) and Friends (quickjoin-button-friendslist-up), keyed by hand: the round rim (the Round Border) on a 22-unit rect in the column, ChatPanel's disc and glyph in its opening (the whisper header's look)
 	["minimal-scrollbar-arrow-returntobottom"] = { kind = "state", base = "buttons/arrow_down" },   -- scroll-to-bottom: the kit's down arrow on the button's rect (its new-messages flash stays, an FX)
 	-- the chat tabs (ChatTabTemplate Left / ActiveLeft, keyed by hand) reuse the TB6 tab rules `uiframe-tab-left` / `uiframe-activetab-left`; the edit box reuses `UI-ChatInputBorder-Mid2`
 
@@ -6666,6 +6678,7 @@ local FADED = Kit.faded
 -- secret alpha cannot be compared: faded again
 local Faded_OnSetAlpha = Shared("SetAlpha on faded art", function(o, a)
 	if FADED[o] and (Secret(a) or a ~= 0) then
+		WriteBack("Kit: faded art's alpha put back to 0")
 		o:SetAlpha(0)
 	end
 end)

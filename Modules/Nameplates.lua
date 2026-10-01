@@ -58,7 +58,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		  format = function(v) return string.format("%d px", v) end,
 		  desc = "Size of the quest marker in pixels." },
 		{ type = "header", name = "Threat" },
-		{ type = "toggle", key = "threatLine", name = "Threat Line", new = "0.16.0",
+		{ type = "toggle", key = "threatLine", name = "Threat Line",
 		  desc = "In a group fight, a thin bar along the bottom of an enemy's health bar (in the Nameplate Kit's lower rail) fills to the point where it would turn on you: gold while safe, amber when close, red when it is on you. For a tank it turns red when a mob is not on you. Solo it stays away." },
 	},
 })

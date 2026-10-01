@@ -405,6 +405,8 @@ end
 --------------------------------------------------------------------------------
 
 local playerRows
+-- (0.17.0: the Fader's Buffs & Debuffs element fades these rows too)
+M.PlayerRows = function() return playerRows end
 local gameBarsHidden = false
 local pendingBars = nil
 local inEditMode = false

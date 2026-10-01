@@ -85,6 +85,13 @@ local timers = setmetatable({}, { __mode = "k" })     -- [cooldown] = timer
 local active = {}                                      -- [cooldown] = true while counting
 local pending = setmetatable({}, { __mode = "k" })    -- [cooldown] = { start, duration, modRate, tries }
 local requestedHidden = setmetatable({}, { __mode = "k" }) -- [cooldown] = what Blizzard last asked for
+-- [cooldown] = true: one of ours cleared by the game, stopped at the next
+-- tick unless it is set again first. The game clears and sets some cooldowns
+-- again on EVERY frame (the target of target's auras: its OnUpdate runs
+-- RefreshAuras); a stop and a start each time wrote the game's own numbers
+-- flag back and forth and laid our text again, every frame (0.17.0,
+-- docs/plans/fps-portrait-fix.md: write only when something changed)
+local cleared = setmetatable({}, { __mode = "k" })
 local hidingNumbers = false
 local hooksInstalled = false
 
@@ -255,6 +262,21 @@ local function StartTimer(cooldown, start, duration, modRate)
 	if not M.isEnabled or (cooldown.IsForbidden and cooldown:IsForbidden()) then
 		return
 	end
+	-- cleared and set again in the same moment: the same cooldown is still
+	-- counting, nothing to write
+	if cleared[cooldown] then
+		cleared[cooldown] = nil
+		local timer = timers[cooldown]
+		if timer and timer.expires and IsPlainNumber(start) and IsPlainNumber(duration) then
+			local d = duration
+			if IsPlainNumber(modRate) and modRate > 0 and modRate ~= 1 then
+				d = d / modRate
+			end
+			if math.abs(start + d - timer.expires) < 0.01 then
+				return
+			end
+		end
+	end
 	local category = Category(cooldown)
 	if not category then
 		-- Nameplate aura icons get their cooldown before Blizzard parents them
@@ -315,6 +337,11 @@ Tick = function()
 	ticking = false
 	if not M.isEnabled then
 		return
+	end
+	-- the cleared ones not set again since: stopped now
+	for cooldown in pairs(cleared) do
+		cleared[cooldown] = nil
+		StopTimer(cooldown, true)
 	end
 	local now = GetTime()
 	if next(pending) then
@@ -391,6 +418,15 @@ local function InstallHooks()
 	-- every cooldown in the game is cleared through here, some on every
 	-- frame: StopTimer returns at once for one that is not ours
 	hooksecurefunc(index, "Clear", function(cooldown)
+		local timer = timers[cooldown]
+		if timer and timer.expires then
+			-- one of ours: stopped at the next tick unless set again first
+			if not cleared[cooldown] then
+				cleared[cooldown] = true
+				Wake()
+			end
+			return
+		end
 		StopTimer(cooldown, true)
 	end)
 	hooksecurefunc(index, "SetHideCountdownNumbers", function(cooldown, hidden)
@@ -418,6 +454,7 @@ end
 
 function M:OnDisable()
 	-- the tick stops at its next turn (the module is off)
+	wipe(cleared)
 	for cooldown in pairs(timers) do
 		StopTimer(cooldown, true)
 	end

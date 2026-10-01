@@ -291,7 +291,7 @@ Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", values = {
 }, desc = "How a character's name is written, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, the chat and whisper windows, and the name over your own head (the game's own setting for it: only First name leaves out the surname there). A character with no surname shows the name it has; in the chat the name is still a link to the player. Names over other players' heads without a nameplate are the engine's and have no setting." })
 -- (0.16.0: chat's and the tooltip's Class Coloured Names merged: one
 -- switch, read by both as saved, UI Modifications on or off)
-Add({ type = "toggle", key = "classNames", name = "Class Coloured Names", free = true, new = "0.16.0",
+Add({ type = "toggle", key = "classNames", name = "Class Coloured Names", free = true,
 	desc = "Players' names in their class colour: in every chat type (the game's own setting for it) and in the tooltip. On the parchment sheet a chat name is in dark ink with a gem in its class colour before it instead." })
 
 local M = MelloUI:RegisterModule("UIModifications", {
@@ -490,6 +490,59 @@ local function QuestListBeside()
 	return _G.MelloUIQuestListPanel
 end
 local WITH = { WorldMapFrame = QuestListBeside }
+
+-- The game's bag windows: the combined one and each bag's own
+local BAG_WINDOWS = { "ContainerFrameCombinedBags" }
+for i = 1, 13 do
+	BAG_WINDOWS[#BAG_WINDOWS + 1] = "ContainerFrame" .. i
+end
+
+-- A bag window carries the bag windows the game stacks on it (0.17.0; a
+-- player's bags went off the screen): on every open the game hangs each
+-- shown bag on the one before it, up a column and then in columns to its
+-- left, so a bag moved up or aside took the rest past the screen's edge.
+-- Its `with` is that stack, the shown bags whose anchors lead to it, so its
+-- place is kept on the screen together with them (Core's FitOffsets; Edit
+-- Layout's drag the same). The bag frames looked up on first need.
+local bagSet, bagList
+local bagStack = {}   -- (BagStack's answer, reused: read at once)
+
+local function BagStack(entry)
+	local root = entry and entry.frame
+	if not bagList then
+		bagSet, bagList = {}, {}
+		for _, name in ipairs(BAG_WINDOWS) do
+			local f = _G[name]
+			if type(f) == "table" and f.GetPoint then
+				bagSet[f] = true
+				bagList[#bagList + 1] = f
+			end
+		end
+	end
+	wipe(bagStack)
+	for _, bag in ipairs(bagList) do
+		local okV, shown = pcall(bag.IsShown, bag)
+		if bag ~= root and okV and not Secret(shown) and shown then
+			-- up its chain of anchors, bag on bag, to this one
+			local f = bag
+			for _ = 1, #bagList do
+				local ok, _, rel = pcall(f.GetPoint, f, 1)
+				if not ok or Secret(rel) or not bagSet[rel] then
+					break
+				end
+				if rel == root then
+					bagStack[#bagStack + 1] = bag
+					break
+				end
+				f = rel
+			end
+		end
+	end
+	return bagStack
+end
+for _, name in ipairs(BAG_WINDOWS) do
+	WITH[name] = BagStack
+end
 
 -- a chat window's id, and whether it hangs in the dock (the game's own
 -- setting for it, or the frame's own mark), read plainly
@@ -819,9 +872,9 @@ end), M)
 -- alpha is touched, which the game allows on any window, in combat too; the
 -- hooks are post-hooks and nothing is written onto the windows.
 local fadeHooked = setmetatable({}, { __mode = "k" })
-local EXTRA_WINDOWS = { "ContainerFrameCombinedBags", "BankFrame", "SettingsPanel", "AddonList" }
-for i = 1, 13 do
-	EXTRA_WINDOWS[#EXTRA_WINDOWS + 1] = "ContainerFrame" .. i
+local EXTRA_WINDOWS = { "BankFrame", "SettingsPanel", "AddonList" }
+for _, name in ipairs(BAG_WINDOWS) do
+	EXTRA_WINDOWS[#EXTRA_WINDOWS + 1] = name
 end
 
 local function FadeOnShow(self)

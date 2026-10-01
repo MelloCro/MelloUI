@@ -26,11 +26,12 @@ Press **Edit Layout** at the top of the settings window (or type `/mello edit`).
 
 - Scroll the mouse wheel on a plate to make it bigger or smaller; it stops at 100 % on the way.
 - It snaps to the nearest element's edges and centre, and a gold line shows where. Hold Shift for a straight line, Alt to drop it freely.
-- Right-click a plate for its size, exact position, what it snaps to, Reset, and a link to its settings. Ctrl+right-click resets it. Click one and use the arrow keys to nudge it a pixel at a time.
+- Right-click a plate for its size, exact position, what it snaps to, Reset, and a link to its settings. Some elements show their own settings there too (the race bar's Width and Height): the same settings as in the configurator, so a change in either place is the other's. Ctrl+right-click resets it. Click one and use the arrow keys to nudge it a pixel at a time.
 - Nothing is kept until you leave: then you choose Save or Discard. A fight pauses Edit Layout; it comes back afterwards with your changes still waiting. A /reload while editing drops unsaved changes.
 - While Edit Layout is open the plates take the mouse, so chat links and window buttons wait until you are done.
 - Action bars, unit frames and the rest that the game places show "Move via Edit Mode"; that opens the game's Edit Mode, and Edit Layout comes back when you close it. Edit Mode has a "MelloUI Edit Layout" button too.
 - Works with the reskin off as well.
+- A moved bag keeps the bags the game stacks on it (above it, then in columns to its left) on the screen with it, wherever you put it.
 - Edit Layout replaces Unlock the Windows, Auto Snapping and Reset positions (0.15.0): its bar has the Snap switch and Reset all.
 
 ## 🔊 Every click has a new sound
@@ -92,6 +93,7 @@ A small round button beside your portrait taps you on the shoulder, then tucks i
 - In an inn or a city every reminder stays up until it is done (restocked, a mailbox opened, gear repaired, your new spells or a profession's next rank learned) or you leave.
 - At a shop that sells what you are low on, a small shopping list opens beside it. Nothing is bought until you click **Buy**.
 - Bags almost full, talent points to spend and Well Fed running out get the same little button.
+- So do your buffs: a poison or an oil that ran out on your weapon (while you carry one to put back), one of your own buffs missing on you, and your buffs missing on your group, with their names. They stay up until it is back on, in fights too, and a click puts it back on (out of combat).
 - It all lives on the **Reminders** page, one switch per reminder. The Services bar's **Errands** group shows the same reminders.
 
 And what needs you *right now* shows up as small widgets in one column, each with a gold ring for its time: loot rolls (Need, Greed, Pass right there), the way back to your corpse, a timed quest's clock, summons and resurrect offers (Accept or Decline), ready checks, whispers (Reply opens the conversation), a hungry pet (Feed Pet), outbid / sold / won at the auction house, your crafting batch ("Crafting 12 of 20") and a profession cooldown that's ready again. Voice Over lives there too, always at the bottom: nothing moves what's being read, and a fight never stops it. Loot rolls, summons and ready checks sit right above it; at most four show at once (**Most Widgets Shown**), the rest wait in a slim "+2 more" row you can click open, and whispers or the auction house step aside in a fight and come back after. Move and size the column in Edit Layout; each one has its switch on the Reminders page's **Widgets** tab.
@@ -120,8 +122,9 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 `/mello`, or the **MelloUI** button in the game menu (Escape), opens it. A page's name after it opens that page: `/mello chat`, `/mello unit frames`, `/mello fonts` (a module's name works too).
 
-- **Top bar:** on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows), **Frames and bars** (Unit Frames, Nameplates, Action Bars, Minimap, Bars & Meters), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
+- **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text** and **Gains**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`), and `/mello preview stop`.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader), **Frames and bars** (Unit Frames, Nameplates, Action Bars, Minimap, Bars & Meters), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
 - **Pickers:** Unit Frames (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Resource), Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Target frame's settings to Player?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them ("One setting for Player, Target and Focus."). Unit Frames shows a live preview of the picked frame in its header, following your settings as you change them.
@@ -143,7 +146,7 @@ Want an extra copy? **Macro Backup** on the Profiles page (off unless you turn i
 
 - Not every Forever-only NPC is recorded yet; those lines use text-to-speech for now.
 - Instance doors new to Forever show up on the map after your first visit (or `/qlmap entrance`).
-- Where no road is known yet, the route draws a straight guess. Walk it once and it learns.
+- Where no road is known yet, the route goes over the walkable ground (0.17.0: measured from the game's own terrain, so it goes round ridges and cliffs). Only where the ground is not known (in an instance) is it a straight guess, and the arrow then says "straight · no known way". Walk it once and it learns.
 - Dark Mode only recolours textures (the game's combat rules forbid the rest), so a frame drawn without textures keeps its colours.
 - After an update, restart the game once. `/reload` isn't enough for new files.
 - The tour uses the game's help tips, so they must be on (Options > Gameplay > Help).
@@ -209,12 +212,15 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello profile ...` | `save <name>`, `load <name>`, `delete <name>`, `default <name>` or `default none`, `export <name>` (a share string to copy), `import <name>` (paste someone's string in as that profile), `list` (see *Profiles*) |
 | `/mello cpu` | CPU time per handler and hook of every module since login (needs `/console scriptProfile 1` and a `/reload`); `/mello cpu reset` zeroes the counters |
 | `/mello preload` | How many artwork files Preload Artwork holds, and how many the game has loaded |
+| `/mello preview solo` / `party` | a short scene of how the interface behaves in a fight, alone or in a group (the settings window's **Preview**) |
+| `/mello preview <part>` | one part alone: `fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`; `/mello preview stop` ends it |
 | `/mello help` | the command list in chat |
 | `/mello tutorial` | the guided tour of the settings window (also the Tutorial button on its Home page) |
 | `/mello install` | the installer: a setup for the whole interface, fitted to your screen, with 15 seconds to keep it or go back (also **Install…** in the settings window's top bar and **Install again** on its Home page) |
 | `/mello edit` | Edit Layout: move and resize the interface (also **Edit Layout** in the settings window's top bar); `/mello edit dump` logs every element it knows, and why one has no plate, to the copy window |
 | `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` fits it to your screen and puts it into Edit Mode as an account layout ("MelloUI", or "MelloUI <width>x<height>" on another screen size) and makes it active (done once by itself when you switch the reskin on by hand; the installer puts it in for you), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
 | `/mellolog [clear]` | the copy window with what the dump commands logged (`clear` empties it) |
+| `/mello combattext test` | Combat Text: a few sample lines in the chosen style |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
 | `/qlmap` | Quest List map pins: diagnostics, and `dock`, `zeppelin`, `arrive`, `entrance`, `remove`, `list` to record pins by hand (see Quest List) |
 | `/route` | Route: how much has been learned, the current route, your map and how Route places you on it, and how many flight times it has learned; `/route quest` (what the client reports for the tracked quest), `/route clear`, `/route arrow reset`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
@@ -302,9 +308,15 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
 ### Chat
 
 - Move the input box above the chat window.
-- Hide the chat window background and border art, the input box art, the buttons next to
-  the chat, and optionally the
+- Hide the chat window background and border art, the input box art, and optionally the
   tab background.
+- Chat Buttons (0.17.0, on; Hide Chat Buttons before, which hid them): the game's own chat
+  buttons in their column left of the chat -- the chat menu (Say, Party, Raid, Guild, Yell,
+  whisper and reply, macros, emotes and voice emotes, and the language you speak), Channels and
+  Friends with its online count. With the chat reskin they wear the whisper window's round
+  buttons (the kit's rim, a dark disc, our glyph); every click and menu stays the game's, so the
+  language you pick is the game's own choice. While you speak more than one language, the one you
+  speak shows at the right end of the line you type in, and what you type stays clear of it.
 - Short, saturated channel tags: G for Guild (green), P for Party, R for Raid, RW for Raid
   Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels. Brackets can be
   removed as well.
@@ -399,7 +411,7 @@ UI Shade's). Both sit on Nameplates > Plates, with the nameplates' Painted Skin.
 - "Outlined Text" (off), after Centre Text Shade: draws the notice's lines, the zone text and
   the game's centre messages with an outline. It is not under On-screen Notices, so it also
   sets the zone text's outline with the notices off.
-- World Text Scale slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
+- Numbers Over Enemies (Screen Text > Combat Text; it was World Text Scale) slider (0.5x to 3.0x, default 1.0x) for the floating damage and healing
   numbers. Writes the `WorldTextScale` CVar.
 
 ### Vendor
@@ -445,24 +457,50 @@ flash on player / target / focus / pet / party frames, no resting / combat statu
 player frame, and a frame art opacity slider. Together with Dark Mode, Bar Textures set to the
 "Class (players) / reaction (NPCs)" health colour and Bar Text this gives the flat RougeUI look.
 
-Out Of Combat:
+Fading the player frame out of combat (0.14.0's Fade Out Of Combat) is the **Fader**'s since
+0.17.0 (below): its Player Frame row, Faded Opacity and Pet Frame Too; your settings carry over.
+The Unit Frames page has a link row to it.
 
-- "Fade Out Of Combat" (off by default): the player frame fades away while nothing needs it. It
-  comes back at once in combat and stays for the whole fight; it also comes back with a target,
-  while your health is below full, while your mana is below full (only while your power bar
-  shows mana, so it stays up while you drink after a fight; rage and energy never keep it), when
-  you are dead or a ghost, when you point at where it sits, and while Edit Layout or Edit Mode
-  is open (this client keeps your health, and usually your mana, hidden from addons, so
-  MelloUI goes by the game's own updates: the frame stays while your health or mana is still
-  changing, from regeneration, a drink or damage, and after a spell's mana cost it waits out the
-  five-second pause). It fades out slowly a moment after the last of these ends and comes back
-  quickly; Reduce Motion makes both instant. The reminder button beside the portrait and your
-  cast bar (also when Edit Mode locks it to the player frame) stay in full view while the frame
-  is faded.
-- "Faded Opacity" (0-50 %, 0 by default), under it: how much of the frame stays while it is
-  faded. At 0 % it is gone until it is needed.
-- "Pet Frame Too" (on), under it: your pet's frame fades and comes back with the player frame,
-  and also comes back while your pet is hurt. Off: the pet frame always stays.
+### Fader
+
+The Fader page (The look, 0.17.0; off by default, its switch in the page header) fades parts of
+the interface away while you do not need them. Each element has one **Show** choice:
+
+- **Always**: never faded (the default).
+- **In Combat**: faded out of combat, back at once in a fight (no fade racing the fight); also back
+  with a target (**Show With A Target**, on) and while you point at it (**Also Show On
+  Mouseover**, on).
+- **On Mouseover**: faded all the time, a fight too, and shown only while you point at it. A
+  short grace when the pointer leaves, so moving from one button to the next does not flicker.
+  Keys still work on a faded bar, and an On Mouseover bar at 0 % still shows when you point at it.
+
+Every element also comes back while Edit Layout, Edit Mode or the configurator is open. The
+elements: **Frames** (Player Frame and **Pet Frame Too**, Target Frame, Party Frames, Raid Frames,
+Buffs & Debuffs), **Bars** (Main Action Bar, Action Bar 2 to 8 each on its own, Stance & Pet Bar,
+Micro Menu, Bag Bar, Experience & Reputation Bars; and the Reminders by your portrait under Frames)
+and **Chat & Map** (the chat with its tabs, buttons, the Friends button and the line you type in, the
+Minimap with its band and the Services row, the Quest Tracker, the game's Objective Tracker, the
+Widget Column, and Route's arrow and World Marker). **Fade Everything** puts every element on In Combat,
+**Fade Nothing** on Always. **Faded Opacity** (0-50 %), **Fade After** (how long it waits after a
+fight, a target or the pointer leaving; 1.5 s) and **Fade Speed** (0.6 s; coming back is always
+quick; Reduce Motion: at once) shape it.
+
+Its own reasons keep a few things up: the player frame while your health or mana is below full
+or you are dead (this client keeps your health, and usually your mana, hidden from addons, so
+MelloUI goes by the game's own updates: the frame stays while your health or mana is still
+changing, and after a spell's mana cost it waits out the five-second pause), the pet frame while
+your pet is hurt, the chat while you type. The reminder button beside the portrait (its own row,
+Reminders) and your cast bar stay in full view while the player frame is faded. Left out on purpose, as they only come up
+when they matter: Gains, the cast bar, the damage meter's
+race bar and summary, Combat Text and the notices. (The reminders, the widget column and Route's
+arrow and marker fade their own way too: the Fader fades a frame they sit on, so neither gets in the
+other's way.) The page also holds **Windows Fade In** (the
+game's windows fade in when they open) and the chat's **Tabs Only On Mouseover**, with link rows
+where they were.
+
+The Fader only sets the alpha of each part (never shows, hides or moves one), on top of the
+alpha the game gives it (Edit Mode's Opacity of the unit and aura frames is kept). `/mello fade`
+opens the page.
 
 ### Fonts
 
@@ -750,6 +788,17 @@ quests open to both factions.
 
 ### Route
 
+The ground (0.17.0): besides the roads traced from the map art and the paths you walked, Route knows
+the walkable ground of both continents and Zephras Isle, measured offline from the game's own
+terrain (slopes over about 50 degrees are walls, deep water is swum at a slower pace). Routes go
+round a ridge instead of over it: from Northshire to Stone Cairn Lake the way leads out of the valley
+and round. A road always wins a like way over open ground. The straight line to the goal, the legs
+from you and to the goal onto the roads, and the jumps between two paths are taken only where the
+ground is walkable. Where no ground is known (an instance) the old rule stays: a route far longer
+than the straight line gives way to a straight guess, and the arrow then reads "444 yd straight ·
+no known way" instead of a time. Buildings, bridges and caves are not ground: the traced roads
+cover towns and bridges, and a road always counts.
+
 Following: the arrow projects you onto the route and aims a stretch ahead along it (farther ahead
 the farther you are from the path), advances eagerly when you cut a corner, and keeps the planned
 route while you follow it; a new route is only planned after you have been more than 45 yards
@@ -917,7 +966,9 @@ mailbox, innkeeper, flight master, auction house, bank, class trainer, professio
 barber and transmogrifier, drawn with the client's own minimap tracking icons. Hover an icon
 for the nearest one's name and distance; click it and the Route module takes the few closest
 candidates, routes to the one that is cheapest to reach by road, boat or flight (a bank across
-the river is not "nearest" when the bridge is a long way round), drops the map pin on it and
+the river is not "nearest" when the bridge is a long way round), but one in your own zone wins a
+near tie (at most a quarter farther, or 300 yards, whichever is more: from Deathknell the Brill
+innkeeper, at Silverpine's border the Sepulcher's, which is clearly nearer), drops the map pin on it and
 shows the tracking notice with the service's icon. Right-click stops the route. Icons for
 services with none known on your continent are greyed. Vanilla service NPCs and mailboxes
 come from the vanilla database with their faction, flight masters from the flight point data
@@ -1062,12 +1113,51 @@ Widgets tab:
 - **Crafting:** a batch, "Crafting 12 of 20", the ring each item's cast, Stop.
 - **Profession Cooldowns:** a transmute, mooncloth or the salt shaker ready again (learned while
   the profession is open, kept per character).
+- **Quest Items** (0.17.0): in a quest's objective area (the game's quest area on the map, or
+  within 100 yards of the objective Route leads you to) while you carry that quest's item to use
+  (the item the Quest Tracker's item button uses): the item, the open objective's line ("2/4 Oil
+  drums filled"), the ring its progress, the count you carry and "Click to use". A click on its
+  face uses the item: out of combat a secure button lies over the face while you point at it (a
+  right click is still Not now). It folds away in a fight (the game allows that click only out of
+  combat) and comes back after it. Checked when the quest log or the bags change, at a new
+  subzone, when you stop, and as you travel (Route's place, asked for only while you carry a
+  quest's item).
+- **Healer Drinking** (0.17.0): when you tank a group (the TANK role, or a tanking form), between
+  pulls: a healer of your group drinking, "Aldwyn is drinking / Wait for them before the next
+  pull" (two: both names; more: how many, the names in the tooltip). A healer is the HEALER role,
+  or, when nobody in the group has a role, a priest, druid, paladin or shaman. The game keeps
+  party mana hidden from addons (measured), so it shows the Drink buff, not their mana; it goes
+  when they stop drinking or a fight starts (auras are read only out of combat).
 
 And three more reminders by the portrait: **Bags Almost Full** (at **Free Slots**, 2; a click shows
 the way to the nearest vendor), **Talent Points** and **Well Fed Ending** (its last two minutes).
 Bags Almost Full stays the whole time the bags are at or under Free Slots, in a fight too, until
 you make room (a reminder's `fight`: in a fight only such ones stay drawn and are checked; the
 secure target button is taken off before the lockdown as before).
+
+The buff reminders (0.17.0), by the portrait too. Each stays up the whole time it is wanted,
+anywhere and in fights too (the reminders' `persistent` and `fight`). A fight's auras are the
+game's secrets (each read asks `C_Secrets.ShouldAurasBeSecret` first): a read that cannot see
+them keeps the last state it knew, so a buff lost in a fight shows after it; the weapon's enchant
+is no secret and is read in a fight too. A click puts it back on (the widget's secure part,
+`secure`, laid out of combat over the button the pointer is on, the round one or one of the
+others out on hover; in a fight the tooltip says the click cannot):
+- **Weapon Poisons & Oils:** a poison, an oil, a sharpening stone or weightstone (or one of
+  Forever's imbue scrolls, a warlock's stone) that ran out on a weapon, or has two minutes left,
+  while you carry one that puts the same enchant back: "Main hand: Instant Poison ran out". The
+  enchant is the one last seen on that hand; another weapon there forgets it. The items come
+  from the client's own tables (`Tools/weapon_enchants.py`). A click: `/use item:<id>` then
+  `/use 16` (or 17), the game's way of putting it on that weapon.
+- **Your Buffs:** your own buffs missing on you, only the ones you know: Arcane Intellect and a
+  mage's armor, Fortitude, Inner Fire and Divine Spirit, Mark of the Wild, a warlock's armor. A
+  group version on you counts (Arcane Brilliance, Prayer of Fortitude, Gift of the Wild); the armor
+  is named as the one you wore last. After a death the tooltip says so. A click casts it on you.
+- **Your Buffs On The Group:** the others in your group missing a buff you can cast ("2 without
+  your Power Word: Fortitude"; Arcane Intellect and Divine Spirit only on those who use mana), their
+  names in the tooltip; the dead, offline and far away left out; not read in a fight. A click
+  casts it on the first one missing it, then the next.
+Each comes up when something goes missing and at the usual moments, and a right click (Not now)
+lasts until everything is back on and something goes missing again.
 
 ### Restock
 
@@ -1096,10 +1186,72 @@ Short lines beside your character (right of the screen's centre, a little below)
 
 - **Skill Ups:** "+1 Defense 57 / 80" when a skill goes up: weapon skills, Defense, professions, secondary skills and languages (the lines the Skills tab lists, a folded heading's too). A newly learned skill is no "+1", and a new rank from a trainer (or a riding rank) only changes the numbers a line shows. **Show Skill Values** (on): the value and the cap after the name.
 - **Looted & Received Items:** "+3 Linen Cloth" for each item that comes into your bags: loot, quest rewards, crafted items, mail and trades. The small gem before the name is the item's quality colour, the same gem as in the bags and the tooltips. Moving items between your bags, the bank and your gear never counts. When one loot brings more than five items, the best of them are shown.
-- **Bought Items:** the same line with a quiet "bought" after it, for what you buy from a merchant, buybacks too. A sale is no line, and money is never one.
+- **Bought Items:** the same line with a quiet "bought" after it, for what you buy from a merchant, buybacks too. A sale makes no line for the item (its money is a Money line).
 - **Junk Items** (on): grey items too.
+- **Money** (on): "+" and the game's own coins when your money goes up: loot, quest rewards, sales, mail and trades. Several gains in a row add up on one line; spending makes no line.
+- **Currencies** (on): "+15" with the currency's own icon and name for honor, tokens and other currencies.
+- **Item Names In Quality Colour** (off): item names in their quality colour beside the gem; blue and purple read less well over bright ground.
 
 The count is in gold and the name in the palette's text colour; the value and "bought" are smaller and a little fainter. A very long name ends in "...". The newest line is on top and at most five show; gaining the same skill or item again while its line shows adds to it ("+2 Defense") and brings it back to the top. Each line fades after **Show For** (5 s, 2-15), so the oldest go first; with Reduce Motion the lines do not slide, they only fade. Edit Layout shows three sample lines to drag the feed; its Reset puts it back, and profiles carry the place. Nothing is read in the first moments after login; a skill point or item the game keeps hidden during a fight shows as soon as the fight is over.
+
+### Combat Text
+
+The text that floats over your character in a fight (the damage you take, your heals, Dodge and Parry, procs, the resources you gain) can be drawn by MelloUI, each line on the on-screen notice's soft dark shade instead of a thick outline (**Outlined Text** outlines it too). **Combat Text Style** (Screen Text, Combat Text tab) picks who draws it:
+
+- **Game (Blizzard)** (the default): the game's own text, exactly as before; MelloUI does nothing at all.
+- **Lanes:** round your character. Damage taken falls on your left, healing rises on your right, procs, auras, Dodge and Parry and the start and end of a fight sit above your head, and the resources you gain show small under your feet.
+- **Feed:** one column over your portrait, the newest on top, each line with a small mark for its kind (a point for a hit, a plus for a heal, a star for a proc, a ring for a miss, a drop for a resource) and the healer's name.
+- **Classic:** one stream over your head, like the game's, in MelloUI's font and shade.
+
+**Preview** plays a few made-up lines in the chosen style (also `/mello combattext test`). Damage taken is red, healing green, resources blue, procs in the palette's gold; crits are a third bigger. **Shade Size** (how big the soft shade behind every line is, the text over you and Your Damage alike: 100% as the notices', less hugs the numbers closer, 0% none), **Text Around You** (the size of these styles' text), **Notices In Title Font** (procs and auras in the title font, as the window titles), **Lane Spread** (how far left and right the Lanes run) and **Most Lines** (per lane, in the stream or in the feed) shape it (each dimmed on Game, where the game draws the text: its size is then **Game Text Around You**); each kind has its switch (Damage Taken, Healing, Procs & Auras, Dodge, Parry & Block, Resources Gained, Entering & Leaving Combat, Reputation & Honor). Each style moves and sizes in Edit Layout, which shows sample lines to drag. While a MelloUI style is on, the game's own text is kept quiet (its switch in the game's options stays on, as the text needs it); back on Game it is as it was. In a fight the game hides the amounts from addons: MelloUI shows them as the game gives them, with no totals of its own.
+
+**Your Damage** draws the numbers of the damage you deal in MelloUI's look as well, at each enemy's nameplate: **Rise** (straight up, as the game's), **Fan** (up, left and right in turn) or **Stack** (a short column beside the enemy, the newest on top). Crits are gold and bigger, spells violet, a glancing blow smaller, and a dodge or parry shows as a word. It keeps the feel of the game's numbers: as big as they are (**Numbers Over Enemies** sizes it, as it sizes the game's; Text Around You does not), starting on the enemy and shooting up, about a second and a half each, and the killing blow finishes rising after the enemy's nameplate is gone. Only your own and your pet's hits show: a hit is drawn on an enemy you or your pet are fighting (on its threat list), never another player's first hit on a fresh mob. The game only tells an addon that an enemy was hit, not by whom, so in a group, or where the game keeps threat hidden, the game's own numbers show (they know whose hit it is), and MelloUI's come back when you play solo again. One case it cannot tell apart: alone, a passer-by hitting the same mob you fight. The game's own damage numbers are switched off meanwhile and come back as they were on **Game** (the default). MelloUI draws at the enemies' nameplates, so with enemy nameplates off (the V key) the game's own numbers show until you turn them on again. Preview shows it at your target's nameplate. `/mello combattext order` prints, for 15 seconds, the order in which a hit and the threat update arrive (a check for the hits held a moment for it).
+
+On **Game**, the numbers over the enemies are drawn by the game: their font is **Game Numbers Font** on the same tab and their size **Numbers Over Enemies**. Your Damage's numbers take the Game Numbers Font too (at once, no /reload), so every number over the enemies is one font. One size per thing on the screen: Text Around You (MelloUI's styles), Game Text Around You (the Game style) and Numbers Over Enemies (the game's numbers or Your Damage, whichever draws them); the search finds them by their old names too. The tab also has the game's own switches for them: **Damage Over Enemies**, **DoT Ticks Over Enemies**, **Pet Damage Over Enemies** and **Healing Over Friends**. They show the game's setting as it is and change it only when you do; one this client does not have is dimmed ("Not in this client"), and the damage ones are dimmed while Your Damage draws the numbers.
+
+### Damage Meter
+
+MelloUI's damage meter **in place of the game's** (Bars & Meters, Damage Meter). Its switch,
+**Use MelloUI's Damage Meter (replaces the game's)**, is on by default: while it is on the game's
+own meter windows never show (MelloUI switches off the game's "Enable Damage Meter" setting out
+of combat and puts your own value back when you switch MelloUI's meter off). The numbers are the
+game's own: a pet's damage counts for its owner, and in a fight the game hides the amounts from
+addons, so MelloUI shows them as the game gives them.
+
+- **Your Values** and **Party Values**: three numbers by every frame. The sword is this fight's
+  damage per second (gold), the hourglass this run's (in a fight: as of the last fight), the cross
+  your healing per second (green); a zero is a dim dash. Yours sit on top of your frame, over
+  its name plate; move them in Edit Layout (Your Values; Reset puts them back on the frame).
+  They show, hide and fade with your frame. The party's sit on top of each party frame. To make
+  room there, Party Values
+  switches on the game's own Show Party Pets (the frames stand a little further apart, party pets
+  show under them); your own setting comes back when it is off. In a fight a party member's
+  number is live while no one else in the group has their class, else it fills in when the fight
+  ends. Raid-style party frames get none.
+- **Race Bar**: in a fight, one bar for the group, captioned "Current DPS" (or HPS). The top
+  player is its right end with their value above it ("41 dps"), everyone else a class medallion
+  under the bar at their share of the top, labelled 2nd, 3rd ...; you are the gold-ringed pin and
+  the bar is filled up to you. Crowded pins keep the pin and drop the label (yours always shows);
+  the pointer on it lists everyone. It fades in when a fight starts and out after it. With the
+  painted look it wears the kit's bar frame (your Bar Border choice) and your Bar Texture. **Race
+  Bar Shows** (Auto: healing for a healer, else damage), **Race Bar Pins** (2 to 10), **Race Bar
+  Width** and **Race Bar Height**. Move it in Edit Layout; right-click it there for Width and Height too. In a
+  fight the game keeps the numbers hidden from addons: they show as whole numbers then, with one
+  decimal after the fight.
+- **Fight Summary**: for a few seconds after a fight (longer while you point at it), a row in the widget column: won or lost and its
+  length, your damage, DPS and rank, the gold ring your share of the group. The pointer shows the
+  top five; a click opens that fight in the Fight History.
+- **Fight History**: every fight of this session, newest first, grouped by run ("The Deadmines,
+  run 1"); "This run" on top. A fight's Damage and Healing tabs list everyone with their class
+  medallion, share line, per second and total; Your spells lists your top eight (a pet's under
+  its own name). **Fights Kept** (10 to 200, 100) keeps that many; Clear asks first. The history
+  stays over a /reload and starts empty at the next login. It opens from its button in the chat's
+  button column (a small bar chart under the channels' "#") and from the summary.
+
+A **run** starts when you enter a dungeon or raid (not on a corpse run back in), when your group
+changes, or at your first fight in another place; out in the world it lasts from login. Run DPS is
+the run's damage divided by its fight time. `/mello meter test` records a made-up fight to see the
+summary and the History.
 
 ### Minimap Panel
 
@@ -1124,6 +1276,14 @@ before 0.15.0 became your Width and Height once, so the map kept its size on the
 normal size. The group finder's eye stays where Edit Mode puts it, on the map's edge at 198:
 drag it in Edit Mode for another size. Edit Mode's box still fits round the map and still moves
 it.
+
+The square map in the Window frame carries the zone name's plate on its top rail, its caps on
+the frame's top corners, the clock beside the calendar on it: merged with Services or not, and
+with Services off (0.17.0; before, without the merge, the plate stood above the frame where the
+game puts it). The game still lays the cluster round the plate's own place (Edit Mode puts it
+back there before it lays the cluster), so Edit Mode's box and the day / night dial stay where
+they were; the plate goes back onto the rail right after. A picture frame or no border: the
+game's place.
 
 What stands under the map follows it: the Services row of groups, and MelloUI's Quest Tracker
 with "Match The Minimap's Width" (Quest Tracker), which also hangs right under the map and moves

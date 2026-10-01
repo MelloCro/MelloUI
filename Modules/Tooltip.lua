@@ -44,7 +44,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		-- settings it sets keep their own keys -- UI Modifications'
 		-- TooltipPanel and parchment_tooltip, darkBackdrop and darkBorder --
 		-- read by `get`, written by OnSettingChanged)
-		{ type = "dropdown", key = "background", name = "Background", new = "0.16.0", values = {
+		{ type = "dropdown", key = "background", name = "Background", values = {
 			{ value = "painted", label = "Painted" },
 			{ value = "parchment", label = "Parchment" },
 			{ value = "dark", label = "Dark" },

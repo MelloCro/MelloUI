@@ -22,9 +22,12 @@ dark edge lines, its shadow), so a gold tint reads as a gilt rim with dark
 edges. Drawn by the swipe over a frame RING_FRAME times the face's size,
 the band lies just outside the face's round rim.
 
-The glyphs (256 x 64: 8 x 2 cells of 32 px, in GLYPHS order, left to right,
-top row first): drawn at 8 times the size with PIL and averaged down, so
-their edges are smooth at any size.
+The glyphs (256 x 128: 8 x 4 cells of 32 px, in GLYPHS order, left to right,
+top row first; 0.17.0 grew it from 8 x 2 for the chat column's buttons):
+drawn at 8 times the size with PIL and averaged down, so their edges are
+smooth at any size. Cell 15 stays empty on purpose: the whisper window's
+Report link draws that cell (Modules/Chat.lua REPORT_LINK), a clickable
+area with nothing in it.
 
 Writes the TGA masters (MelloUI-BuildData/masters/Media/Textures/,
 Tools/paths.py) and byte copies into the addon's Media/Textures/ so they
@@ -56,7 +59,16 @@ SUPER = 4
 CELL = 32
 BIG = 8                            # drawn at CELL * BIG, averaged down
 GLYPHS = ("pause", "play", "skip", "stop", "list", "padlock", "padlockOpen", "check",
-          "cross", "way", "reply", "friend", "invite", "ignore", "report")
+          "cross", "way", "reply", "friend", "invite", "ignore", "report", None,
+          # (0.17.0: the chat's own buttons, the game's column dressed -- the user's pick C of
+          # BuildData/output/chat_menu_sketch: the chat menu, Channels, Friends)
+          "chat", "channels", "friends",
+          # (0.17.0: Combat Text's feed, a small mark per kind -- the user's sketch combat_text_looks:
+          # a hit taken, a heal, a proc or notice, an avoided blow, a resource gained)
+          "hit", "heal", "proc", "avoid", "gain",
+          # (0.17.0: the damage meter -- the user's pick, meter_sketch/meter_three_values: this fight's
+          # DPS, this run's, and the Fight History's chat button, a rising bar chart)
+          "sword", "hourglass", "chart")
 
 
 def smootherstep(t):
@@ -167,16 +179,73 @@ def glyph(name):
         # a flag on its pole
         line([(9, 5), (9, 27)], 3.2)
         d.polygon(P((10, 5.5), (25, 10), (10, 15.5)), fill=255)
+    elif name == "chat":
+        # a speech bubble with three dots (the chat menu; Reply's bubble has none)
+        box(4.5, 6, 27.5, 21.5, 5)
+        d.polygon(P((9, 19.5), (15.5, 19.5), (8, 27.5)), fill=255)
+        for x in (10.5, 16, 21.5):
+            d.ellipse(((x - 2) * k, 11.8 * k, (x + 2) * k, 15.8 * k), fill=0)
+    elif name == "channels":
+        # a hash: two leaning uprights, two bars (the channels)
+        line([(13.5, 6), (11, 26)], 3.2)
+        line([(21.5, 6), (19, 26)], 3.2)
+        line([(7, 12.5), (26, 12.5)], 3.2)
+        line([(6, 19.5), (25, 19.5)], 3.2)
+    elif name == "friends":
+        # two people: one behind, one in front with a gap round it
+        d.ellipse((17 * k, 4.5 * k, 25 * k, 12.5 * k), fill=255)
+        d.pieslice((14 * k, 13.5 * k, 28 * k, 29 * k), 180, 360, fill=255)
+        d.ellipse((5 * k, 6.5 * k, 15.5 * k, 17 * k), fill=0)
+        d.pieslice((1.5 * k, 16 * k, 19 * k, 33.5 * k), 180, 360, fill=0)
+        d.ellipse((6.5 * k, 8 * k, 14 * k, 15.5 * k), fill=255)
+        d.pieslice((3 * k, 17.5 * k, 17.5 * k, 33 * k), 180, 360, fill=255)
+    elif name == "hit":
+        # a hit taken: a point, upwards
+        d.polygon(P((16, 4), (28, 27), (4, 27)), fill=255)
+    elif name == "heal":
+        # a heal: a plus
+        box(12.5, 4, 19.5, 28, 1.5)
+        box(4, 12.5, 28, 19.5, 1.5)
+    elif name == "proc":
+        # a proc or a notice: a four-pointed star
+        d.polygon(P((16, 2), (19.5, 12.5), (30, 16), (19.5, 19.5), (16, 30), (12.5, 19.5), (2, 16), (12.5, 12.5)), fill=255)
+    elif name == "avoid":
+        # a blow avoided: a ring
+        d.ellipse((4.5 * k, 4.5 * k, 27.5 * k, 27.5 * k), outline=255, width=int(3.6 * k))
+    elif name == "gain":
+        # a resource gained: a drop
+        d.ellipse((7.5 * k, 12 * k, 24.5 * k, 29 * k), fill=255)
+        d.polygon(P((16, 2.5), (24, 17), (8, 17)), fill=255)
+    elif name == "sword":
+        # this fight: a sword, point up-right (the blade, the guard, the grip)
+        line([(11.5, 20.5), (26, 6)], 4)
+        d.polygon(P((26.5, 3.5), (28.5, 5.5), (27.5, 8)), fill=255)
+        line([(6.5, 17.5), (14.5, 25.5)], 3.4)
+        line([(10, 22), (5.5, 26.5)], 3.6)
+    elif name == "hourglass":
+        # this run: an hourglass, two caps and two bulbs
+        box(7, 3.5, 25, 7.5, 1.5)
+        box(7, 24.5, 25, 28.5, 1.5)
+        d.polygon(P((9, 7), (23, 7), (17.6, 16), (23, 25), (9, 25), (14.4, 16)), fill=255)
+        d.polygon(P((12.2, 9.5), (19.8, 9.5), (16, 14)), fill=0)
+    elif name == "chart":
+        # the Fight History: three bars rising, on a base line
+        box(5, 17, 10.5, 25.5, 1)
+        box(13.25, 11, 18.75, 25.5, 1)
+        box(21.5, 5, 27, 25.5, 1)
+        box(3.5, 26.5, 28.5, 29, 1)
     else:
         raise ValueError(name)
     return im.resize((CELL, CELL), Image.BOX)
 
 
 def glyph_sheet():
-    cols, rows = 8, 2
+    cols, rows = 8, 4
     sheet = np.zeros((rows * CELL, cols * CELL, 4), np.uint8)
     sheet[..., :3] = 255
     for i, name in enumerate(GLYPHS):
+        if name is None:
+            continue   # (an empty cell: Report's link)
         x, y = (i % cols) * CELL, (i // cols) * CELL
         sheet[y:y + CELL, x:x + CELL, 3] = np.asarray(glyph(name), np.uint8)
     return sheet

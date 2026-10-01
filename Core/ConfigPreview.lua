@@ -71,6 +71,9 @@ local RAID_W, RAID_H = 120, 52   -- the raid cell (its bar), the name inside its
 -- where the client has it; else the game's plain bar in the game's colour)
 local PLAIN_BAR = "Interface\\TargetingFrame\\UI-StatusBar"
 local GAME_HEALTH = "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health"
+-- (0.17.0) its white twin, which Default wears under a health colour (Bar
+-- Textures' ColouredDefault: the colour on the green art came out grey-green)
+local GAME_HEALTH_WHITE = GAME_HEALTH .. "-Status"
 local GAME_CAST = "ui-castingbar-filling-standard"
 local GAME_RAID = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill"
 local NO_PORTRAIT = "Interface\\Icons\\INV_Misc_QuestionMark"   -- (a client without the creature portrait)
@@ -222,7 +225,15 @@ local function PaintHealth(bar, s, BT)
 		Picture(bar, texture)
 		bar:SetStatusBarColor(BT.PreviewHealthColor("green", s))
 	else
-		local coloured = Picture(bar, texture, GAME_HEALTH)
+		local white = active and BT.db.healthColor ~= "green" and Atlas(GAME_HEALTH_WHITE)
+		local coloured = Picture(bar, texture, white and GAME_HEALTH_WHITE or GAME_HEALTH)
+		if s.healthAtlas then
+			-- (a party member's replica: the party frame's own bar art, and
+			-- its white twin under a health colour)
+			local twin = s.healthAtlas .. "-Status"
+			coloured = Picture(bar, texture, (active and BT.db.healthColor ~= "green" and Atlas(twin)) and twin
+				or s.healthAtlas)
+		end
 		if active then
 			-- the module colours the unit frames' health, the game's art too
 			bar:SetStatusBarColor(BT.PreviewHealthColor(nil, s))
@@ -570,4 +581,129 @@ function Preview.Make(parent, kind, skin)
 		OnShow(p)   -- (made on show: no OnShow comes)
 	end
 	return p
+end
+
+-- a new copy of the party pick's sample (0.17.0: Preview's stand-ins, below)
+function Preview.PartySample()
+	local s = {}
+	for k, v in pairs(SAMPLES.party) do
+		s[k] = v
+	end
+	return s
+end
+
+--------------------------------------------------------------------------------
+-- A party member's replica (0.17.0: Preview's stand-ins, Core/Preview.lua; the
+-- user, 2026-10-01: "the party frames are not a 1-1 replica on how they
+-- actually look ingame"): the game's party member frame as its own template
+-- draws it (Blizzard_UnitFrame PartyFrameTemplates.xml, PartyMemberFrameTemplate,
+-- and PartyMemberFrame.lua's ToPlayerArt: 120 x 53; the portrait 37 at 7,-6
+-- in its circle mask under the frame's picture at 1,-2; the name 57 x 12 at
+-- 46,-6; the health bar 70 x 10 at 45,-19 in its container, its fill masked
+-- by the health mask at -29,3; the mana bar 74 x 7 at 41,-30, its fill masked
+-- at 14,-26 of the frame), with the same keys, so the unit frame skin dresses
+-- it as it dresses a member (UnitFramePanel:DressStandIn) -- never a secure
+-- template of the game's: no unit, no events, no scripts of the game's.
+-- Painted from a sample as the configurator's preview is: the bars wear what
+-- the settings put on the real ones (Bar Textures' preview exports), the name
+-- in Unit Frames' form, the portrait Class Icons' medallion or a creature's.
+--   Preview.MakeParty(parent) -> frame
+--   Preview.PaintParty(frame, sample)   (a PartySample() with its own name,
+--       class, health and power)
+--------------------------------------------------------------------------------
+
+local PARTY_W, PARTY_H = 120, 53
+local PARTY_ART = "UI-HUD-UnitFrame-Party-PortraitOn"
+local PARTY_HEALTH = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health"
+
+local function Masked(region, parent, atlas, rel, x, y)
+	local mask = parent:CreateMaskTexture()
+	if Atlas(atlas) then
+		mask:SetAtlas(atlas, true)
+	end
+	mask:SetPoint("TOPLEFT", rel, "TOPLEFT", x, y)
+	if region and region.AddMaskTexture then
+		region:AddMaskTexture(mask)
+	end
+	return mask
+end
+
+function Preview.MakeParty(parent)
+	local f = CreateFrame("Frame", nil, parent)
+	f:SetSize(PARTY_W, PARTY_H)
+	f.Portrait = f:CreateTexture(nil, "BACKGROUND")
+	f.Portrait:SetSize(37, 37)
+	f.Portrait:SetPoint("TOPLEFT", f, "TOPLEFT", 7, -6)
+	local circle = f:CreateMaskTexture()
+	circle:SetAtlas("CircleMask")
+	circle:SetAllPoints(f.Portrait)
+	f.Portrait:AddMaskTexture(circle)
+	f.PortraitMask = circle
+	f.Texture = f:CreateTexture(nil, "ARTWORK")
+	f.Texture:SetAtlas(PARTY_ART, true)
+	f.Texture:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -2)
+	f.Flash = f:CreateTexture(nil, "ARTWORK")
+	f.Flash:SetAtlas("UI-HUD-UnitFrame-Party-PortraitOn-InCombat", true)
+	f.Flash:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -2)
+	f.Flash:Hide()
+	f.Name = f:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+	f.Name:SetSize(57, 12)
+	f.Name:SetJustifyH("LEFT")
+	f.Name:SetPoint("TOPLEFT", f, "TOPLEFT", 46, -6)
+	local hc = CreateFrame("Frame", nil, f)
+	hc:SetSize(70, 10)
+	hc:SetPoint("TOPLEFT", f, "TOPLEFT", 45, -19)
+	local health = Bar(hc)
+	health:SetSize(70, 10)
+	health:SetPoint("TOPLEFT", hc, "TOPLEFT", 0, 0)
+	health:SetStatusBarTexture(PARTY_HEALTH)
+	hc.HealthBar = health
+	hc.HealthBarMask = Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -29, 3)
+	f.HealthBarContainer = hc
+	local mana = Bar(f)
+	mana:SetSize(74, 7)
+	mana:SetPoint("TOPLEFT", f, "TOPLEFT", 41, -30)
+	mana.ManaBarMask = Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 14, -26)
+	f.ManaBar = mana
+	f.PartyMemberOverlay = CreateFrame("Frame", nil, f)
+	f.PartyMemberOverlay:SetAllPoints(f)
+	return f
+end
+
+-- the portrait: Class Icons' medallion while its player portraits are on,
+-- else the game's portrait of a sample creature (as on the real frame: a
+-- player's own picture; none of this client's units is read here)
+local function PaintPartyPortrait(f, s)
+	local tex = f.Portrait
+	local ci = Running("ClassIcons")
+	local medallion = ci and ci.db.portraits and s.class and MelloUI:ClassIconPath(s.class) or nil
+	local want = medallion or s.display or NO_PORTRAIT
+	if f.portraitShows == want then
+		return
+	end
+	f.portraitShows = want
+	tex:SetTexCoord(0, 1, 0, 1)
+	if medallion then
+		tex:SetTexture(medallion)
+	elseif s.display and type(_G.SetPortraitTextureFromCreatureDisplayID) == "function"
+		and pcall(_G.SetPortraitTextureFromCreatureDisplayID, tex, s.display) then
+		return
+	else
+		tex:SetTexture(NO_PORTRAIT)
+	end
+end
+
+function Preview.PaintParty(f, s)
+	s.healthAtlas = PARTY_HEALTH
+	f.sample = s
+	f.Name:SetText(NameAs(s))
+	PaintPartyPortrait(f, s)
+	local BT = Exports("BarTextures", "PreviewHealthColor")
+	if BT then
+		PaintHealth(f.HealthBarContainer.HealthBar, s, BT)
+		PaintPower(f.ManaBar, s, BT)
+	else
+		Fill(f.HealthBarContainer.HealthBar, s.health, s.max)
+		Fill(f.ManaBar, s.power, s.powerMax)
+	end
 end

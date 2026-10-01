@@ -1239,6 +1239,16 @@ local function SkinPartyMember(frame)
 	end
 end
 
+-- a party member's replica (Core/ConfigPreview.lua's, the preview's stand-ins:
+-- the game's member frame's keys and geometry) dressed as a member while the
+-- look is on (0.17.0; the user: "not a 1-1 replica"). Once per frame; the
+-- skin's switch off and on takes it along with the members
+function M:DressStandIn(frame)
+	if active and skin then
+		SkinPartyMember(frame)
+	end
+end
+
 local function SkinParty()
 	local pf = PartyFrame
 	if not pf then

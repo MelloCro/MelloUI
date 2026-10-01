@@ -7,14 +7,16 @@
 -- Media/ClassIcons.lua (MelloUI_ClassIcons). This module:
 --   * exposes MelloUI:ClassIconPath(classFile) / MelloUI:FactionIconPath(faction)
 --     for any module that draws a class or faction icon,
---   * replaces PLAYER portraits everywhere the game draws one (the player
+--   * covers PLAYER portraits everywhere the game draws one (the player
 --     frame, target, focus, party) with the player's class medallion; NPC
 --     portraits are never touched,
 --   * optionally swaps the player frame's PvP flag icon for the faction
 --     medallion.
 --
--- Only texture swaps on existing widgets: no frame geometry changes, so
--- nothing here needs an InCombatLockdown guard. Everything is a post-hook
+-- The portraits are COVERED, never written (0.17.0: the game redraws some
+-- every frame, and a write back made the engine redo its own work every
+-- frame; "Portraits", below). No frame geometry changes, so nothing here
+-- needs an InCombatLockdown guard. Everything is a post-hook
 -- (hooksecurefunc); MelloUI never calls a Blizzard function that rebuilds
 -- game data.
 --------------------------------------------------------------------------------
@@ -90,7 +92,37 @@ end
 
 --------------------------------------------------------------------------------
 -- Portraits
+--
+-- A COVER, never a write on the game's portrait (0.17.0; the user's FPS in
+-- combat, docs/plans/fps-portrait-fix.md). The target of target redraws its
+-- portrait on EVERY frame (its OnUpdate runs UnitFrame_Update ->
+-- UnitFramePortrait_Update: a class atlas or SetPortraitTexture); the old
+-- way put the medallion on that same texture, so each frame the game put
+-- its art back and this put the medallion back: two texture swaps a frame,
+-- each a file load the next one cancelled (AsyncFile.log: 3381 cancels of
+-- the class icon sheet), 160 fps down to 66 in a fight. Now:
+--   * one texture of ours per portrait, made at its first need, in the
+--     portrait's own layer and sublevel (under the frame's ring at the next
+--     sublevel), on its rect (SetAllPoints: the kit's fit follows);
+--   * while it shows, the game's portrait is masked out (a mask of ours far
+--     off its rect, added when the cover comes and taken off when it goes,
+--     never per frame): two regions of one sublevel are drawn in no fixed
+--     order -- the player's own portrait came out over the cover (user,
+--     2026-10-01: "it only changed the portraits of my target, but not
+--     mine") -- and with the game's masked out, the order cannot matter;
+--   * its state kept per portrait (the class and the variant shown): the
+--     hooks only compare, and the texture is set when the answer changes;
+--   * the game's own writes on its portrait copied onto the cover, only when
+--     they change it: the alpha (range fading), the vertex colour (dead,
+--     tapped, disconnected), the desaturation, the show and hide;
+--   * Player Portraits off or the module off: the covers hidden, the game's
+--     portrait as the game left it (nothing to put back).
+-- The character window's portrait and the class-icon portraits of other
+-- panels (SetPortraitToClassIcon / SetPortraitToSpecIcon) take the same
+-- cover.
 --------------------------------------------------------------------------------
+
+local WHITE = "Interface\\Buttons\\WHITE8x8"
 
 -- The character window's own portrait sits inside the kit ring: it gets the
 -- plain medallion (no diamonds).
@@ -105,19 +137,166 @@ local function VariantFor(texture)
 	return nil
 end
 
-local replaced = setmetatable({}, { __mode = "k" })   -- portraits carrying a medallion
+-- [portrait] = { tex, hide, masked, class, variant, alpha, r, g, b, a, desat }:
+-- the cover and what it shows (a side table: nothing written on the game's)
+local covers = setmetatable({}, { __mode = "k" })
 
--- Puts classFile's medallion on a portrait texture object. Returns true if it did.
+local function Num(v)
+	return MelloUI.Safe.Number(v)
+end
+
+-- the game's look of its portrait copied onto the cover (each only when it
+-- changed: these come with every update of the frame)
+local function CopyAlpha(c, portrait)
+	local ok, a = pcall(portrait.GetAlpha, portrait)
+	a = ok and Num(a) or 1
+	if c.alpha ~= a then
+		c.alpha = a
+		c.tex:SetAlpha(a)
+	end
+end
+
+local function CopyColour(c, portrait)
+	local ok, r, g, b, a = pcall(portrait.GetVertexColor, portrait)
+	r, g, b, a = ok and Num(r) or 1, ok and Num(g) or 1, ok and Num(b) or 1, ok and Num(a) or 1
+	if c.r ~= r or c.g ~= g or c.b ~= b or c.a ~= a then
+		c.r, c.g, c.b, c.a = r, g, b, a
+		c.tex:SetVertexColor(r, g, b, a)
+	end
+end
+
+local function CopyDesaturated(c, portrait)
+	local ok, d = pcall(portrait.IsDesaturated, portrait)
+	d = ok and d == true or false
+	if c.desat ~= d then
+		c.desat = d
+		c.tex:SetDesaturated(d)
+	end
+end
+
+local function CopyShown(c, portrait)
+	local ok, shown = pcall(portrait.IsShown, portrait)
+	shown = (ok and shown == true and c.class ~= nil) and true or false
+	if c.shown ~= shown then
+		c.shown = shown
+		c.tex:SetShown(shown)
+	end
+	-- the game's portrait masked out while the cover shows (on a change only)
+	if c.hide and c.masked ~= shown then
+		c.masked = shown
+		if shown then
+			pcall(portrait.AddMaskTexture, portrait, c.hide)
+		else
+			pcall(portrait.RemoveMaskTexture, portrait, c.hide)
+		end
+	end
+end
+
+-- the game's writes on a covered portrait (one set of handlers for all)
+local function OnPortraitAlpha(portrait)
+	local c = covers[portrait]
+	if c and c.class then
+		CopyAlpha(c, portrait)
+	end
+end
+local function OnPortraitColour(portrait)
+	local c = covers[portrait]
+	if c and c.class then
+		CopyColour(c, portrait)
+	end
+end
+local function OnPortraitDesaturated(portrait)
+	local c = covers[portrait]
+	if c and c.class then
+		CopyDesaturated(c, portrait)
+	end
+end
+local function OnPortraitShown(portrait)
+	local c = covers[portrait]
+	if c then
+		CopyShown(c, portrait)
+	end
+end
+
+local function NewCover(portrait)
+	local parent = portrait.GetParent and portrait:GetParent()
+	if not (parent and parent.CreateTexture) then
+		return nil
+	end
+	local okL, layer, sub = pcall(portrait.GetDrawLayer, portrait)
+	if not okL or type(layer) ~= "string" then
+		layer, sub = "BACKGROUND", 0
+	end
+	sub = Num(sub) or 0
+	-- (in its layer and sublevel: under the ring the frame keeps at the next
+	-- sublevel; the game's portrait masked out while it shows)
+	local tex = parent:CreateTexture(nil, layer, nil, sub)
+	tex:SetAllPoints(portrait)
+	tex:Hide()
+	-- the mask that hides the game's portrait: one white pixel far off its
+	-- rect, everything else clamped to nothing (a mask must be the
+	-- portrait's frame's own region)
+	local hide = nil
+	if parent.CreateMaskTexture and portrait.AddMaskTexture then
+		hide = parent:CreateMaskTexture()
+		hide:SetTexture(WHITE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		hide:SetSize(1, 1)
+		hide:SetPoint("BOTTOMRIGHT", portrait, "TOPLEFT", -64, 64)
+	end
+	local c = { tex = tex, hide = hide, masked = false, shown = false }
+	covers[portrait] = c
+	hooksecurefunc(portrait, "SetAlpha", OnPortraitAlpha)
+	hooksecurefunc(portrait, "SetVertexColor", OnPortraitColour)
+	if type(portrait.SetDesaturated) == "function" then
+		hooksecurefunc(portrait, "SetDesaturated", OnPortraitDesaturated)
+	end
+	hooksecurefunc(portrait, "Show", OnPortraitShown)
+	hooksecurefunc(portrait, "Hide", OnPortraitShown)
+	hooksecurefunc(portrait, "SetShown", OnPortraitShown)
+	return c
+end
+
+-- The medallion of classFile on the portrait's cover (made at its first
+-- need), set only when the class or the variant changed. Returns true if it
+-- shows one.
 local function ApplyClassPortrait(texture, classFile)
-	local path = MelloUI:ClassIconPath(classFile, VariantFor(texture))
-	if not (texture and path) then
+	if not texture then
 		return false
 	end
-	texture:SetTexture(path)
-	texture:SetTexCoord(0, 1, 0, 1)
-	texture.melloClassIcon = classFile
-	replaced[texture] = true
+	local variant = VariantFor(texture)
+	local path = MelloUI:ClassIconPath(classFile, variant)
+	local c = covers[texture]
+	if not path then
+		if c and c.class then
+			c.class = nil
+			CopyShown(c, texture)
+		end
+		return false
+	end
+	c = c or NewCover(texture)
+	if not c then
+		return false
+	end
+	if c.class ~= classFile or c.variant ~= variant then
+		c.class, c.variant = classFile, variant
+		c.tex:SetTexture(path)
+		c.tex:SetTexCoord(0, 1, 0, 1)
+		CopyAlpha(c, texture)
+		CopyColour(c, texture)
+		CopyDesaturated(c, texture)
+	end
+	CopyShown(c, texture)
 	return true
+end
+
+-- the cover off a portrait (an NPC now, the toggle off): hidden, its class
+-- forgotten; the game's portrait as the game left it
+local function Uncover(texture)
+	local c = covers[texture]
+	if c and c.class then
+		c.class, c.variant = nil, nil
+		CopyShown(c, texture)
+	end
 end
 
 -- unit's portrait, if unit is a player with a mapped class icon and the
@@ -125,25 +304,35 @@ end
 -- portrait (model render or its default question-mark art).
 local function TryReplacePlayerPortrait(texture, unit)
 	if not (M.isEnabled and M.db and M.db.portraits) then
+		Uncover(texture)
 		return false
 	end
 	-- UnitIsPlayer first: it is false for an NPC and for no unit at all, so
 	-- an NPC's portrait costs one question
 	if not (texture and unit and UnitIsPlayer(unit) and UnitExists(unit)) then
+		if texture then
+			Uncover(texture)
+		end
 		return false
 	end
 	local _, classFile = UnitClass(unit)
 	return ApplyClassPortrait(texture, SafeValue(classFile))
 end
 
--- Re-applies the medallion (in its current variant) to every portrait that
--- carries one: the kit modules call it when a ring goes on or off.
+-- The medallion again in its current variant on every portrait that shows
+-- one: the kit modules call it when a ring goes on or off.
 function M:RefreshPortraits(textures)
 	for _, texture in ipairs(textures or {}) do
-		if texture and texture.melloClassIcon then
-			pcall(ApplyClassPortrait, texture, texture.melloClassIcon)
+		local c = texture and covers[texture]
+		if c and c.class then
+			pcall(ApplyClassPortrait, texture, c.class)
 		end
 	end
+end
+
+-- (the tests': the cover of a portrait, nil when none)
+function M.CoverOf(texture)
+	return covers[texture]
 end
 
 local hooksInstalled = false
@@ -152,9 +341,8 @@ local hooksInstalled = false
 -- UnitFramePortrait_Update ends in SetPortraitTexture (its render branch),
 -- and its own hook below runs right after: for the same portrait in the
 -- same frame that second look would do the same again (the target of
--- target does both on every frame, 41 a second in /melloperf 2026-09-24:
--- twice the unit questions for an NPC, the medallion set twice for a
--- player), so it is left at once. The class atlas branch never calls
+-- target does both on every frame, 41 a second in /melloperf 2026-09-24),
+-- so it is left at once. The class atlas branch never calls
 -- SetPortraitTexture, so its portrait is never stamped and is still seen.
 local looked = setmetatable({}, { __mode = "k" })
 
@@ -167,13 +355,18 @@ local function InstallHooks()
 	-- Every portrait the game draws eventually calls this (CharacterPanel's
 	-- own "player" portrait, PortraitFrameMixin:SetPortraitToUnit, and the
 	-- unit frame portrait path below). One hook covers all of them. It runs
-	-- many times a second (the target of target's frame redraws its portrait
-	-- with each update, 24/s in a /melloperf recording, 2026-09-24): with the
-	-- toggle off, no texture or no unit token, it is left at once, before any
-	-- call into the game; an NPC's portrait is left at UnitIsPlayer.
+	-- many times a second (the target of target's portrait, every frame):
+	-- with the toggle off and no cover, no texture or no unit token, it is
+	-- left at once; an NPC's portrait is left at UnitIsPlayer.
 	if type(SetPortraitTexture) == "function" then
 		hooksecurefunc("SetPortraitTexture", function(texture, unit)
-			if not (texture and type(unit) == "string" and M.isEnabled and M.db and M.db.portraits) then
+			if not (texture and type(unit) == "string") then
+				return
+			end
+			if not (M.isEnabled and M.db and M.db.portraits) then
+				if covers[texture] then
+					Uncover(texture)
+				end
 				return
 			end
 			looked[texture] = GetTime()
@@ -183,9 +376,9 @@ local function InstallHooks()
 
 	-- PlayerFrame, TargetFrame, FocusFrame and the party member frames all
 	-- share this update path (Blizzard_UnitFrame/Mainline/UnitFrame.lua):
-	-- it sometimes sets a plain class atlas instead of calling
-	-- SetPortraitTexture (UnitFrame_ShouldReplacePortrait branch, e.g. a
-	-- vehicle or mind-controlled unit), so it needs its own hook too. The
+	-- for a player it sets the game's class atlas instead of calling
+	-- SetPortraitTexture (UnitFrame_ShouldReplacePortrait, the
+	-- ReplaceOtherPlayerPortraits CVar), so it needs its own hook too. The
 	-- stamp is used up here: seen once, then looked at again next time.
 	if type(UnitFramePortrait_Update) == "function" then
 		hooksecurefunc("UnitFramePortrait_Update", function(self)
@@ -233,13 +426,14 @@ local function InstallHooks()
 			end
 			local _, classFile = UnitClass("player")
 			if classFile then
-				pcall(ApplyClassPortrait, self:GetPortrait(), classFile)
+				pcall(ApplyClassPortrait, self:GetPortrait(), SafeValue(classFile))
 			end
 		end)
 	end
 
 	-- The player frame's PvP flag icon: the faction medallion instead of the
-	-- small Alliance/Horde atlas, when the player is flagged.
+	-- small Alliance/Horde atlas, when the player is flagged (a write on the
+	-- game's icon, but only when the flag shows: a one-off, not per frame).
 	if type(PlayerFrame_ShowPvPIcon) == "function" then
 		hooksecurefunc("PlayerFrame_ShowPvPIcon", function(factionGroup)
 			if not (M.isEnabled and M.db and M.db.pvpFlag) then
@@ -281,18 +475,11 @@ end
 function M:OnDisable()
 	-- Hooks cannot be removed (hooksecurefunc); every callback checks
 	-- M.isEnabled and the toggles, so they are no-ops from here on. The
-	-- portraits already carrying a medallion go back to the game's render
-	-- where the unit is known (the unit frames); the rest refresh when
-	-- their window next asks for its portrait.
-	for texture in pairs(replaced) do
-		texture.melloClassIcon = nil
-		local parent = texture.GetParent and texture:GetParent()
-		local unit = parent and parent.unit
-		if type(unit) == "string" and type(SetPortraitTexture) == "function" then
-			pcall(SetPortraitTexture, texture, unit)
-		end
+	-- covers are hidden: the game's portraits were never written, so there
+	-- is nothing to put back.
+	for texture in pairs(covers) do
+		Uncover(texture)
 	end
-	wipe(replaced)
 	local icon = M.pvpIcon
 	if icon and icon.melloPvPAtlas then
 		pcall(icon.SetAtlas, icon, icon.melloPvPAtlas)
@@ -301,6 +488,11 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "portraits" and not value then
+		for texture in pairs(covers) do
+			Uncover(texture)
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -330,6 +522,25 @@ SlashCmdList.MELLOICONDUMP = function()
 		table.sort(mappedFactions)
 	end
 	MelloUI:Print("Faction icons mapped: %s", #mappedFactions > 0 and table.concat(mappedFactions, ", ") or "none")
+
+	-- (0.17.0) the covers on your own and your target's portraits
+	local function CoverLine(label, portrait)
+		local c = portrait and covers[portrait]
+		if not portrait then
+			MelloUI:Print("%s: no portrait found", label)
+		elseif not c then
+			MelloUI:Print("%s portrait: no cover made", label)
+		else
+			local okL, layer, sub = pcall(portrait.GetDrawLayer, portrait)
+			local okC, cl, cs = pcall(c.tex.GetDrawLayer, c.tex)
+			MelloUI:Print("%s portrait: cover %s, class %s, the game's portrait %s (portrait %s %s, cover %s %s)", label,
+				c.tex:IsShown() and "shown" or "hidden", tostring(c.class), c.masked and "masked out" or "visible",
+				okL and tostring(layer) or "?", okL and tostring(sub) or "?", okC and tostring(cl) or "?", okC and tostring(cs) or "?")
+		end
+	end
+	local pf = PlayerFrame and PlayerFrame.PlayerFrameContainer
+	CoverLine("your", pf and pf.PlayerPortrait)
+	CoverLine("the target's", TargetFrame and TargetFrame.portrait)
 
 	if not UnitExists("target") then
 		MelloUI:Print("target: none")

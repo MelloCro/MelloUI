@@ -130,6 +130,10 @@ read_globals = {
 	"UnitCanAttack", "UnitClass", "UnitClassification", "UnitCreatureType", "UnitExists", "UnitFactionGroup", "UnitIsBossMob", "UnitIsUnit",
 	-- (0.16.0: the threat line and the Threat widget, Core/Threat.lua)
 	"UnitAffectingCombat",
+	-- (0.17.0: the language you speak on the chat's edit box, Modules/Chat.lua)
+	"DEFAULT_CHAT_FRAME", "GetNumLanguages",
+	-- (0.17.0: Combat Text, Modules/CombatText.lua)
+	"C_CombatText", "UnitPowerType", "UnitIsTapDenied", "UnitPlayerControlled",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
 	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",

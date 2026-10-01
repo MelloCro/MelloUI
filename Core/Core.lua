@@ -296,6 +296,14 @@ MelloUI.Meaning = {
 	-- World Marker's beam with the light at its foot; Modules/Route.lua)
 	routeTrail = Hex("#CD261C"),   -- the trail's dots (meaning colour)
 	routeBeam = Hex("#FF291A"),    -- the beam, its ring and glow, the lit gem (meaning colour)
+	-- (0.17.0, Combat Text's lines, the user's sketch combat_text_looks: the
+	-- damage you take, the healing you get, the resources you gain; softened
+	-- to sit with the palette. Modules/CombatText.lua)
+	combatTaken = Hex("#E25C48"),      -- (meaning colour)
+	combatHeal = Hex("#7AC860"),       -- (meaning colour)
+	combatResource = Hex("#609CE6"),   -- (meaning colour)
+	-- (Your Damage: a spell's hit on an enemy, as the game tells them apart)
+	combatSpell = Hex("#BE96E6"),      -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 
@@ -748,6 +756,9 @@ end
 --   "reminder"     key, active, up         a reminder's state changed
 --                                          (Core/Reminders.lua): active =
 --                                          wanted now, up = on the widget
+--   "meter"        what, fight             the damage meter's history changed
+--                                          (Modules/Meter.lua): "fight", the
+--                                          new record / "clear"
 --   "editmodelayout" what, name            a layout went into Edit Mode
 --                                          (Core/EditModeLayout.lua): "put",
 --                                          name (put in, made active) /
@@ -760,6 +771,9 @@ end
 --   "editlayout"   showing, state          Edit Layout shown or not (Core/EditLayout.lua):
 --                                          state "open" | "paused" | "closed"; on every
 --                                          change of showing and on its close
+--   "configurator" shown                   the configurator window shown or hidden
+--                                          (0.17.0: the Fader shows every element
+--                                          while it is open)
 --   "mover"        what, entry, ...        the mover registry (the window places
 --                                          below): ("registered", entry),
 --                                          ("shown", entry, shown), ("released",
@@ -1099,6 +1113,12 @@ end
 --                    fight; its own scale noted as its 100 % (base) at the
 --                    registration and whenever someone else scales it
 --         resize     false: no size change in Edit Layout
+--         settings   (0.17.0) { "Module.key", ... }: the element's own settings
+--                    as sliders in its Edit Layout box -- shortcuts to the
+--                    configurator's (the same setting: the module's schema
+--                    gives the name and range, a change goes through
+--                    NotifySettingChanged); a slider entry only (the race
+--                    bar's Width and Height; user, 2026-10-01)
 --         locked     function(entry) -> reason | nil: shown, not movable
 --                    (in Edit Layout, and by its plain drag)
 --         note       function(entry) -> text | nil: a line in its box
@@ -1759,6 +1779,10 @@ do
 			return
 		end
 		if entry.follow or session then
+			local wb = MelloUI.Perf and MelloUI.Perf.WriteBack
+			if wb then
+				wb("mover: a window put back after the game moved it")
+			end
 			Keep(entry)
 		end
 	end
@@ -2006,6 +2030,7 @@ do
 			visible = type(opts.visible) == "function" and opts.visible or nil,
 			follow = opts.follow and true or nil,
 			resize = opts.resize ~= false,
+			settings = type(opts.settings) == "table" and opts.settings or nil,
 			locked = type(opts.locked) == "function" and opts.locked or nil,
 			note = type(opts.note) == "function" and opts.note or nil,
 			resetLabel = type(opts.resetLabel) == "string" and opts.resetLabel or nil,
@@ -3601,6 +3626,39 @@ do
 			local rem = Raw(self, "Reminders")
 			if rem then
 				rem.remind_restock = nil
+			end
+		end,
+		-- 0.17.0: Unit Frames' Fade Out Of Combat into the Fader (Modules/
+		-- Fader.lua): on (with Unit Frames on) -> the Fader on and the Player
+		-- Frame's Show "In Combat"; Faded Opacity and Pet Frame Too as they were
+		function(self)
+			local uf = Raw(self, "UnitFrames")
+			if not uf then
+				return
+			end
+			local on, alpha, pet = uf.fadeOutOfCombat, uf.fadeAlpha, uf.fadePet
+			if on == nil and alpha == nil and pet == nil then
+				return
+			end
+			uf.fadeOutOfCombat, uf.fadeAlpha, uf.fadePet = nil, nil, nil
+			local fd = Own(self, "Fader")
+			if not fd then
+				return
+			end
+			local enabled = self.db.enabled
+			if on == true and not (type(enabled) == "table" and enabled.UnitFrames == false) then
+				if fd.show_player == nil then
+					fd.show_player = "combat"
+				end
+				if type(enabled) == "table" and enabled.Fader == nil then
+					enabled.Fader = true
+				end
+			end
+			if type(alpha) == "number" and fd.alpha == nil then
+				fd.alpha = alpha
+			end
+			if pet == false and fd.petToo == nil then
+				fd.petToo = false
 			end
 		end,
 	}

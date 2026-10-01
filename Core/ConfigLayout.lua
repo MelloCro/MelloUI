@@ -63,7 +63,9 @@
 --                      Core/CentreText.lua, MelloUI:Notice)
 --          gate        "Module.key": live only while that switch is on
 --          when        { key, value, line }: live only while that setting
---                      has that value; `line` is the hint while it has not
+--                      has that value; `line` is the hint while it has not.
+--                      { key, notValue, line } (0.17.0): live while it has
+--                      any other value
 --          also        { [id] = text }: frames with no pick that key reaches
 --                      too (the shared hint's tail)
 -- Link(page, tab, section, target, label): a row naming a setting whose one
@@ -84,7 +86,7 @@ L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-
 
 L.groups = {
 	{ entries = { "Home" } },
-	{ title = "The look", entries = { "Look", "Windows" } },
+	{ title = "The look", entries = { "Look", "Windows", "Fader" } },
 	{ title = "Frames and bars", entries = { "UnitFrames", "Nameplates", "ActionBars", "Minimap", "BarsMeters" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
 	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
@@ -106,6 +108,10 @@ L.pages = {
 		flavour = "The game's windows in the painted look, one at a time: pick a window.",
 		tabs = { "Windows" },
 		picker = { label = "Window", noun = "window", from = "windows" } },
+	-- (0.17.0) which parts fade away, and when they come back (its header
+	-- switch: the Fader module's, off by default)
+	Fader = { title = "Fader", icon = "module:Fader", module = "Fader",
+		tabs = { "Fader", "Frames", "Bars", "Chat & Map" } },
 	UnitFrames = { title = "Unit Frames", icon = "module:UnitFrames",
 		flavour = "The player, target, focus, pet, party and raid frames, the cast bars and the personal resource display: pick a frame.",
 		tabs = { "Frame", "Bars", "Buffs & Debuffs" }, preview = "unitframe",
@@ -162,6 +168,8 @@ L.pages = {
 -- spread over several pages, and the panels with no row of their own. The
 -- Auras module's name is /mello's aura probe: its page is buffs / debuffs.
 L.words = {
+	fade = { "Fader" },
+	mouseover = { "Fader" },
 	uimodifications = { "Look" },
 	palette = { "Look", "General" },
 	uishade = { "Look", "General" },
@@ -277,7 +285,6 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.qualityGems", BankPanel = "BackpackPanel.qualityGems", GuildBankPanel = "BackpackPanel.qualityGems" }, { name = "Quality Gems" })
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.greyJunk", BankPanel = "BackpackPanel.greyJunk", GuildBankPanel = "BackpackPanel.greyJunk" }, { name = "Grey Out Junk" })
 	R("Windows", "Windows", "Layout", { BackpackPanel = "Tweaks.bagSlotsOnBags" }, { name = "Bag Slots on Bag Window" })
-	R("Windows", "Windows", "Behaviour", "UIModifications.fadeWindows", { wide = "every window" })
 
 	-- Unit Frames (the picker: Player ... Personal Resource)
 	R("UnitFrames", "Frame", "General", "UIModifications.qol_UnitFrames", { only = { "player", "target", "focus", "pet", "party" } })
@@ -292,11 +299,6 @@ function L.Define(R, Link)
 	R("UnitFrames", "Frame", "Look", "ClassIcons.pvpFlag", { only = { "player" } })
 	R("UnitFrames", "Frame", "Look", "UnitFramePanel.marks", { only = { "target", "focus" } })
 	R("UnitFrames", "Frame", "Text", "UnitFrames.centerNames", { only = { "player", "target", "focus", "pet" } })
-	R("UnitFrames", "Frame", "Behaviour", "UnitFrames.fadeOutOfCombat", { only = { "player" } })
-	-- Pet Frame Too: a sub-switch of the Player's Fade Out Of Combat (its
-	-- schema's parent), not the pet's own fade
-	R("UnitFrames", "Frame", "Behaviour", "UnitFrames.fadePet", { only = { "pet" } })
-	R("UnitFrames", "Frame", "Behaviour", "UnitFrames.fadeAlpha", { only = { "player", "pet" } })
 	R("UnitFrames", "Bars", "General", "UIModifications.qol_BarText", { only = { "player", "target", "focus" } })
 	R("UnitFrames", "Bars", "Look", { player = "BarTextures.unitframes", target = "BarTextures.unitframes", focus = "BarTextures.unitframes", pet = "BarTextures.unitframes", party = "BarTextures.unitframes", raid = "BarTextures.raidframes", castbars = "BarTextures.castbars", personal = "BarTextures.personal" }, { name = "Bar Texture", also = { ["BarTextures.unitframes"] = "boss and target of target" } })
 	R("UnitFrames", "Bars", "Text", { player = "BarText.player", target = "BarText.target", focus = "BarText.focus" }, { name = "Values On This Frame" })
@@ -377,7 +379,21 @@ function L.Define(R, Link)
 	R("BarsMeters", "XP & Reputation", "Look", "DarkMode.statusbars", { name = "Dark Mode" })
 	R("BarsMeters", "Cooldown Manager", "Look", "BarTextures.cooldowns", { name = "Bar Texture" })
 	R("BarsMeters", "Cooldown Manager", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
-	R("BarsMeters", "Damage Meter", "Look", "UIModifications.DamageMeterPanel", { name = "Painted Skin" })
+	-- (0.17.0: MelloUI's meter replaces the game's; its switch heads the tab)
+	R("BarsMeters", "Damage Meter", "General", "Meter.!enabled", { name = "Use MelloUI's Damage Meter (replaces the game's)" })
+	R("BarsMeters", "Damage Meter", "General", "Meter.values")
+	R("BarsMeters", "Damage Meter", "General", "Meter.party")
+	R("BarsMeters", "Damage Meter", "General", "Meter.bar")
+	R("BarsMeters", "Damage Meter", "General", "Meter.summary")
+	R("BarsMeters", "Damage Meter", "General", "Meter.history")
+	-- (the game's meter windows: never shown while MelloUI's meter is on)
+	R("BarsMeters", "Damage Meter", "Look", "UIModifications.DamageMeterPanel", { name = "Painted Skin",
+		when = { key = "Meter.!enabled", value = false, line = "Only for the game's meter (MelloUI's meter off)" } })
+	R("BarsMeters", "Damage Meter", "Layout", "Meter.pins")
+	R("BarsMeters", "Damage Meter", "Layout", "Meter.barWidth")
+	R("BarsMeters", "Damage Meter", "Layout", "Meter.barHeight")
+	R("BarsMeters", "Damage Meter", "Behaviour", "Meter.metric")
+	R("BarsMeters", "Damage Meter", "Behaviour", "Meter.historySize")
 	R("BarsMeters", "FPS / Latency", "General", "UIModifications.qol_Stats")
 	R("BarsMeters", "FPS / Latency", "General", "Stats.showFps")
 	R("BarsMeters", "FPS / Latency", "General", "Stats.showLatency")
@@ -394,12 +410,11 @@ function L.Define(R, Link)
 	R("Chat", "Chat Frame", "Look", "Chat.windowAlpha")
 	R("Chat", "Chat Frame", "Look", "Chat.hideEditBox")
 	R("Chat", "Chat Frame", "Look", "Chat.hideTabs")
-	R("Chat", "Chat Frame", "Look", "Chat.hideButtons")
+	R("Chat", "Chat Frame", "Look", "Chat.chatButtons")
 	R("Chat", "Chat Frame", "Text", "Fonts.fontChatText")
 	R("Chat", "Chat Frame", "Text", "Fonts.fontChatParchment")
 	R("Chat", "Chat Frame", "Text", "Fonts.scaleChatParchment")
 	R("Chat", "Chat Frame", "Layout", "Chat.editBoxTop")
-	R("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover")
 	R("Chat", "Chat Frame", "Behaviour", "Chat.smoothScroll")
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")
@@ -434,9 +449,59 @@ function L.Define(R, Link)
 	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.range")
 	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.targeting")
 	R("ScreenText", "Error Messages", "Behaviour", "ErrorFilter.busy")
+	-- (0.17.0) Combat Text: MelloUI's text over your character (its module's
+	-- switch the tab's first row), then the engine's numbers over the enemies
+	-- (their font and size, and the game's own switches for them)
+	R("ScreenText", "Combat Text", "General", "CombatText.!enabled", { name = "MelloUI Combat Text" })
+	R("ScreenText", "Combat Text", "General", "CombatText.style")
+	R("ScreenText", "Combat Text", "General", "CombatText.dealt")
+	R("ScreenText", "Combat Text", "General", "CombatText.#Preview")
+	R("ScreenText", "Combat Text", "Look", "CombatText.shadeSize")
+	-- (the configurator audit, 2026-10-01: one size per thing on screen --
+	-- the text around you, MelloUI's or the game's (only one draws it), and
+	-- the numbers over the enemies, the game's or Your Damage's)
+	R("ScreenText", "Combat Text", "Text", "CombatText.size",
+		{ when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	R("ScreenText", "Combat Text", "Text", "Fonts.scaleDamage",
+		{ when = { key = "CombatText.style", value = "game", line = "Only for the Game style (the others: Text Around You)" } })
+	R("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale")
+	R("ScreenText", "Combat Text", "Text", "CombatText.titleNotices",
+		{ when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
 	R("ScreenText", "Combat Text", "Text", "Fonts.fontDamage")
-	R("ScreenText", "Combat Text", "Text", "Fonts.scaleDamage")
-	R("ScreenText", "Combat Text", "Layout", "Tweaks.worldTextScale")
+	R("ScreenText", "Combat Text", "Layout", "CombatText.spread",
+		{ when = { key = "CombatText.style", value = "lanes", line = "Only for the Lanes style" } })
+	R("ScreenText", "Combat Text", "Layout", "CombatText.lines",
+		{ when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
+	for _, key in ipairs({ "taken", "heals", "notices", "avoid", "resource", "combat", "reputation",
+		"enemyDamage", "enemyPeriodic", "enemyPet", "enemyHealing" }) do
+		R("ScreenText", "Combat Text", "Behaviour", "CombatText." .. key)
+	end
+
+	-- (0.17.0) The Fader (header: its module's switch): how it fades, then
+	-- the elements, each one Show choice; Unit Frames' Fade Out Of Combat
+	-- (carried over: Core.lua's MergeSettings), Windows Fade In and the
+	-- chat's Tabs Only On Mouseover moved here, Link rows where they were
+	R("Fader", "Fader", "General", "Fader.#Fade Everything")
+	R("Fader", "Fader", "General", "Fader.#Fade Nothing")
+	R("Fader", "Fader", "Look", "Fader.alpha")
+	R("Fader", "Fader", "Behaviour", "Fader.after")
+	R("Fader", "Fader", "Behaviour", "Fader.speed")
+	R("Fader", "Fader", "Behaviour", "Fader.target")
+	R("Fader", "Fader", "Behaviour", "Fader.mouse")
+	R("Fader", "Fader", "Behaviour", "UIModifications.fadeWindows")
+	for _, key in ipairs({ "player", "petToo", "target", "party", "raid", "buffs", "reminders" }) do
+		R("Fader", "Frames", "General", key == "petToo" and "Fader.petToo" or ("Fader.show_" .. key),
+			key == "petToo" and { when = { key = "Fader.show_player", notValue = "always",
+				line = "Only while the Player Frame fades" } } or nil)
+	end
+	for _, key in ipairs({ "bar1", "bar2", "bar3", "bar4", "bar5", "bar6", "bar7", "bar8", "stance", "micro", "bags", "xp" }) do
+		R("Fader", "Bars", "General", "Fader.show_" .. key)
+	end
+	R("Fader", "Chat & Map", "General", "Fader.show_chat")
+	R("Fader", "Chat & Map", "General", "Chat.tabsOnMouseover")
+	for _, key in ipairs({ "minimap", "tracker", "objectives", "widgets", "route" }) do
+		R("Fader", "Chat & Map", "General", "Fader.show_" .. key)
+	end
 
 	-- Quest Tracker (header: its module's switch)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.questTrackerKit", { name = "Painted Skin" })
@@ -512,7 +577,7 @@ function L.Define(R, Link)
 	-- Modules/Widgets.lua; the column's lock is the Reminders module's)
 	R("Reminders", "Widgets", "General", "Widgets.!enabled", { name = "Widgets" })
 	for _, key in ipairs({ "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction",
-		"craft", "cooldown", "bags", "bagsAt", "talents", "wellfed" }) do
+		"craft", "cooldown", "questItem", "healer", "bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }) do
 		R("Reminders", "Widgets", "General", "Widgets." .. key)
 	end
 	R("Reminders", "Widgets", "Layout", "Reminders.widgetLock")
@@ -524,6 +589,10 @@ function L.Define(R, Link)
 	R("Gains", "Gains", "General", "Gains.items")
 	R("Gains", "Gains", "General", "Gains.bought")
 	R("Gains", "Gains", "General", "Gains.junk")
+	-- (0.17.0) money, the other currencies and the names' quality colour
+	R("Gains", "Gains", "General", "Gains.money")
+	R("Gains", "Gains", "General", "Gains.currencies")
+	R("Gains", "Gains", "Look", "Gains.qualityNames")
 	R("Gains", "Gains", "Behaviour", "Gains.hold")
 
 	-- Voice Over (header: its module's switch)
@@ -600,6 +669,12 @@ function L.Define(R, Link)
 	Link("Windows", "Windows", "Look", { CharacterPanel = "UIModifications.parchment_character", DialogPanel = "UIModifications.parchment_dialog", ColorPickerPanel = "UIModifications.parchment_dialog", ReadyPanel = "UIModifications.parchment_dialog", StackSplitPanel = "UIModifications.parchment_dialog" }, "Parchment")
 	Link("Windows", "Windows", "Look", "UIModifications.buttonBorder", "Button, side tab and round borders")
 	Link("VoiceOver", "Widget", "Layout", "Reminders.widgetLock", "Lock the widgets")
+	Link("Reminders", "Widgets", "General", "Meter.summary", "Fight summary")
+	-- (0.17.0: the fades moved to the Fader)
+	Link("UnitFrames", "Frame", "Behaviour", { player = "Fader.show_player", pet = "Fader.petToo",
+		target = "Fader.show_target", party = "Fader.show_party", raid = "Fader.show_raid" }, "Fade (Fader)")
+	Link("Windows", "Windows", "Behaviour", "UIModifications.fadeWindows", "Windows fade in")
+	Link("Chat", "Chat Frame", "Behaviour", "Chat.tabsOnMouseover", "Tabs only on mouseover")
 	-- (0.16.0: the merged settings, from where their members were)
 	Link("Chat", "Messages", "Text", "UIModifications.nameFormat", "Names")
 	Link("Chat", "Messages", "Text", "UIModifications.classNames", "Class coloured names")

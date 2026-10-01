@@ -36,7 +36,12 @@ local M = MelloUI:RegisterModule("Chat", {
 	role = "adds",
 	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names and the art-hiding switches (which only apply while the chat reskin is off).", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
-	keep = { "savedWhisperMode", "savedClassColorCVar" },   -- the player's own game settings, given back when off: never in a profile
+	keep = { "savedWhisperMode", "savedClassColorCVar",   -- the player's own game settings, given back when off: never in a profile
+		-- (0.17.0) the Background dropdown's own copy: what it shows is read
+		-- back from the keys it sets (Background) -- the reskin's, the
+		-- parchment's, Dark Mode's (personal), hideBackground -- which carry the
+		-- look; in a profile its set would write Dark Mode's personal key
+		"background" },
 	defaults = {
 		hideBackground = true,
 		windowAlphaOn = false,
@@ -44,7 +49,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		hideEditBox = true,
 		hideTabs = false,
 		tabsOnMouseover = true,
-		hideButtons = true,
+		chatButtons = true,
 		editBoxTop = true,
 		shortChannels = true,
 		hideBrackets = true,
@@ -59,7 +64,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		-- keep their own keys -- UI Modifications' ChatPanel and
 		-- parchment_chat, Dark Mode's chat, hideBackground -- read by
 		-- `get`, written by OnSettingChanged)
-		{ type = "dropdown", key = "background", name = "Background", new = "0.16.0", values = {
+		{ type = "dropdown", key = "background", name = "Background", values = {
 			{ value = "painted", label = "Painted" },
 			{ value = "parchment", label = "Parchment" },
 			{ value = "dark", label = "Dark" },
@@ -79,8 +84,8 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible." },
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
-		{ type = "toggle", key = "hideButtons", name = "Hide Chat Buttons",
-		  desc = "Hide the buttons next to the chat: chat menu, channel and voice buttons, social button and the minimize button column." },
+		{ type = "toggle", key = "chatButtons", name = "Chat Buttons", new = "0.17.0",
+		  desc = "The game's chat buttons in their column left of the chat: the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak), Channels and Friends. While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },
 		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
 		  desc = "The mouse wheel glides the chat text up and down instead of jumping a line at a time, in the chat windows and the whisper windows. Off, or with Reduce Motion on, it jumps as before." },
 		{ type = "header", name = "Channels" },
@@ -563,6 +568,94 @@ local function SetButtonsHidden(hidden)
 				frame:SetParent(buttonParents[frame] or UIParent)
 			end
 		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The language you speak (0.17.0; the user, 2026-09-30: "the switch speaking
+-- different ingame language"; pick C of BuildData/output/chat_menu_sketch).
+-- The game's chat menu (its column, Chat Buttons) switches it, and nothing
+-- showed which one is on: while Chat Buttons is on and you speak more than
+-- one, its name stands at the right end of the line you type in -- the main
+-- window's edit box, where the game keeps it -- and the typed text is kept
+-- clear of it (the box's right inset). Read only: post-hooks on that edit
+-- box's SetGameLanguage (every change, the game's own) and UpdateHeader
+-- (after the game lays its insets); the label is a frame of ours on it.
+-- (One table: this file's main chunk is near Lua 5.1's 200 locals.)
+--------------------------------------------------------------------------------
+
+local Speak = { hooked = false, label = nil, INSET = 13, GAP = 8 }
+
+function Speak.Box()
+	local cf = DEFAULT_CHAT_FRAME
+	return cf and cf.editBox or nil
+end
+
+function Speak.Wanted()
+	if not (M.isEnabled and M.db and M.db.chatButtons) then
+		return false
+	end
+	local ok, n = pcall(GetNumLanguages)
+	return ok and not Secret(n) and type(n) == "number" and n > 1
+end
+
+-- the right inset: the game's own, plus the label's width while it shows
+function Speak.Inset(box)
+	box = box or Speak.Box()
+	if not (box and box.GetTextInsets) then
+		return
+	end
+	local ok, l, r, t, b = pcall(box.GetTextInsets, box)
+	if not ok or Secret(l) or Secret(r) then
+		return
+	end
+	local label = Speak.label
+	local want = Speak.INSET
+	if label and label:IsShown() then
+		want = want + label.text:GetStringWidth() + Speak.GAP
+	end
+	if r ~= want then
+		box:SetTextInsets(l, want, t, b)
+	end
+end
+
+function Speak.Update()
+	local box = Speak.Box()
+	if not box then
+		return
+	end
+	local lang = box.language   -- (the game's own field: read)
+	if Speak.Wanted() and type(lang) == "string" and not Secret(lang) and lang ~= "" then
+		local label = Speak.label
+		if not label then
+			label = CreateFrame("Frame", nil, box)
+			label:SetPoint("RIGHT", box, "RIGHT", -Speak.INSET, 0)
+			label:SetSize(1, 16)
+			label:EnableMouse(false)
+			label.text = label:CreateFontString(nil, "OVERLAY", "ChatFontNormal")
+			label.text:SetPoint("RIGHT")
+			MelloUI.Widgets.Paint(label.text, "text", "text")
+			Speak.label = label
+		end
+		label.text:SetText(lang)
+		label:Show()
+	elseif Speak.label then
+		Speak.label:Hide()
+	end
+	Speak.Inset(box)
+end
+
+function Speak.Hook()
+	local box = Speak.Box()
+	if Speak.hooked or not box then
+		return
+	end
+	Speak.hooked = true
+	if type(box.SetGameLanguage) == "function" then
+		hooksecurefunc(box, "SetGameLanguage", Speak.Update)
+	end
+	if type(box.UpdateHeader) == "function" then
+		hooksecurefunc(box, "UpdateHeader", Speak.Inset)
 	end
 end
 
@@ -2681,7 +2774,7 @@ local IGNORE_ASK = "Ignore %s? Their whispers and chat no longer reach you."
 -- Report's link: an empty cell of the glyph sheet at the button's size (the
 -- link's area, drawn nothing), in the game's "report this line" link
 local REPORT_LINK = "|Hreportcensoredmessage:%.0f|h|TInterface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs:"
-	.. ACTION_SIZE .. ":" .. ACTION_SIZE .. ":0:0:256:64:224:256:32:64|t|h"
+	.. ACTION_SIZE .. ":" .. ACTION_SIZE .. ":0:0:256:128:224:256:32:64|t|h"   -- (the sheet 256 x 128 since 0.17.0)
 
 -- a call's first result, or nil when it raised or that is secret
 local function Ask(fn, ...)
@@ -3390,7 +3483,7 @@ local function ApplyWindows()
 	ApplyArt()
 	SetTabsOnMouseover(db.tabsOnMouseover)
 	SetEditBoxOnTop(db.editBoxTop)
-	SetButtonsHidden(db.hideButtons)
+	SetButtonsHidden(not db.chatButtons)
 	Alpha.Apply()
 end
 
@@ -3423,7 +3516,9 @@ local function ApplyAll()
 	ApplyArt()
 	SetTabsOnMouseover(db.tabsOnMouseover)
 	SetEditBoxOnTop(db.editBoxTop)
-	SetButtonsHidden(db.hideButtons)
+	SetButtonsHidden(not db.chatButtons)
+	Speak.Hook()
+	Speak.Update()
 	Alpha.Apply()
 	HookLines()
 	ApplyClassColors(ClassNames())
@@ -3526,6 +3621,7 @@ function M:OnDisable()
 	SetTabsOnMouseover(false)
 	SetEditBoxOnTop(false)
 	SetButtonsHidden(false)
+	Speak.Update()   -- (the module off: its label hidden, the game's inset back)
 	ApplyClassColors(false)
 	SetWhisperPopup(false)
 	Smooth.StopAll()
@@ -3540,8 +3636,9 @@ function M:OnSettingChanged(key, value, db)
 		Alpha.Apply()
 	elseif key == "tabsOnMouseover" then
 		SetTabsOnMouseover(value)
-	elseif key == "hideButtons" then
-		SetButtonsHidden(value)
+	elseif key == "chatButtons" then
+		SetButtonsHidden(not value)
+		Speak.Update()
 	elseif key == "editBoxTop" then
 		SetEditBoxOnTop(value)
 	elseif key == "shortChannels" then

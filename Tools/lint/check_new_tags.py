@@ -103,6 +103,10 @@ NOT_CONFIGURATOR = {
     "Core/EditLayoutMovers.lua": "Edit Layout's plates: a mode's controls, not options",
     "Core/EditLayoutBridge.lua": "the Edit Mode bridge's buttons (Move via Edit Mode, the button on Edit Mode): a mode's "
                                  "controls, not options",
+    "Modules/MeterHistory.lua": "the Fight History window's Clear button and tabs (the Damage Meter page's Fight History "
+                                "option, a schema option, switches the window)",
+    "Core/Preview.lua": "the preview's Stop button and its list's rows (the top bar's Preview button, New-tagged in "
+                        "Core/Config.lua, opens them): a scene's controls, not options",
 }
 # the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
 NOT_OPTIONS = {

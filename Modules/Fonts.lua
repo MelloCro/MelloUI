@@ -92,8 +92,8 @@ local ROLES = {
 	  desc = "The chat windows and every number: bar values, cooldown counts, stack counts, damage on unit frames." },
 	{ key = "fontTitle",  match = "morpheus", name = "Titles & headers (Morpheus)",
 	  desc = "Window titles, quest and item names in dialogs, mail and book text, and the kit's title plates while the reskin is on. Enchanted Land unless you choose otherwise; Keep the game's puts Morpheus back everywhere, the plates included." },
-	{ key = "fontDamage", match = "skurri",   name = "Damage numbers (Skurri)",
-	  desc = "The floating combat text in the world (after /reload)." },
+	{ key = "fontDamage", match = "skurri",   name = "Game Numbers Font (Skurri)",
+	  desc = "The font of the numbers over the enemies: the game's own (after /reload) and Your Damage's (at once); and of the game's text around you with Combat Text's Game style. MelloUI's text around you uses the interface text font." },
 }
 
 local KEEP = "default"
@@ -119,12 +119,12 @@ end
 -- Each role has its own size slider (user, 2026-09-22); `scale`, the old
 -- single slider, is folded into them once and taken out (MigrateScale).
 local SCALE_KEY = { fontText = "scaleText", fontChat = "scaleChat", fontTitle = "scaleTitle", fontDamage = "scaleDamage" }
-local SCALE_NAME = { fontText = "Interface text size", fontChat = "Chat & numbers size", fontTitle = "Titles & headers size", fontDamage = "Damage numbers size" }
+local SCALE_NAME = { fontText = "Interface text size", fontChat = "Chat & numbers size", fontTitle = "Titles & headers size", fontDamage = "Game Text Around You" }
 local SCALE_DESC = {
 	fontText = "Every font drawn with the interface face, relative to its normal size.",
 	fontChat = "The chat windows (on top of the game's own chat font size) and every number.",
 	fontTitle = "Titles, headers, dialog names, mail and book text, and the kit's own title face on the painted plates.",
-	fontDamage = "The numbers drawn with the damage face in the interface (the scrolling combat text over you). The floating numbers in the world keep the engine's size.",
+	fontDamage = "The size of the game's own combat text around your character (Combat Text's Game style). MelloUI's styles: Text Around You; the numbers over the enemies: Numbers Over Enemies.",
 }
 -- The title role's default is the kit's face (user, 2026-09-22: "make it
 -- Enchanted Land as default"); the other roles keep the game's.
@@ -817,6 +817,9 @@ do
 				role = RoleFor(basePath)
 			end
 			path, factor = ChosenFont(role) or basePath, tonumber(ScaleFor(role)) or 1
+			if entry.faceOnly then
+				factor = 1   -- (its size is another setting's: Your Damage's, Numbers Over Enemies)
+			end
 			local outline = db.outline
 			forced = (outline and outline ~= "NONE") and outline or nil
 		end
@@ -847,7 +850,7 @@ do
 	end
 	MelloUI:On("fonts", Refresh, "Fonts own strings")
 
-	function MelloUI:StyleFont(fs, role, object, size, flags, outline)
+	function MelloUI:StyleFont(fs, role, object, size, flags, outline, faceOnly)
 		if not fs then
 			return
 		end
@@ -861,6 +864,7 @@ do
 			styled[fs] = entry
 		end
 		entry.role, entry.object, entry.size, entry.flags = role, object, SafeNumber(size), SafeText(flags)
+		entry.faceOnly = faceOnly and true or nil
 		if outline == nil then
 			entry.outline = nil
 		else
@@ -934,6 +938,26 @@ local function ApplyWorldFonts(db)
 			end
 		end
 	end
+end
+
+-- A font object in the game's own numbers face (its DAMAGE_TEXT_FONT as the
+-- game had it): the base of a string drawn as the numbers over the enemies
+-- (0.17.0: Your Damage, the user's pick "one font for every number over
+-- enemies"), styled with the "fontDamage" role -- the Game Numbers Font face
+-- while one is chosen, the game's own on "Keep the game's" or this module off.
+-- Made on the first ask.
+local gameNumbers = nil
+function MelloUI:GameNumbersFont()
+	if not gameNumbers and type(CreateFont) == "function" then
+		local face = worldOriginals.DAMAGE_TEXT_FONT or rawget(_G, "DAMAGE_TEXT_FONT")
+		gameNumbers = CreateFont("MelloUIGameNumbersFont")
+		if type(face) == "string" and face ~= "" then
+			pcall(gameNumbers.SetFont, gameNumbers, face, 14, "")
+		elseif _G.GameFontHighlight then
+			gameNumbers:CopyFontObject(_G.GameFontHighlight)
+		end
+	end
+	return gameNumbers
 end
 
 local function RestoreWorldFonts()

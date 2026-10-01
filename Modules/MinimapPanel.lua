@@ -1145,7 +1145,12 @@ end
 -- it, with the tracking button, the calendar and the zone text's width;
 -- `groups`: Services' one row of groups (ServicesRow), the clock on the
 -- band
-local function PlaceBand(merged, f, b, groups)
+-- `onFrame`: the zone band on the square map's frame (its top rail), else
+-- back on the game's place. On the frame whether Services is merged into it
+-- or not (the user's test, 2026-10-01: with Services off or not merged the
+-- band floated over the frame, off its rail). `groups`: Services' one row of
+-- groups (layout E) under the map
+local function PlaceBand(onFrame, f, b, groups)
 	local cluster = MinimapCluster
 	local band = cluster and cluster.BorderTop
 	local rep = skin.band
@@ -1153,7 +1158,7 @@ local function PlaceBand(merged, f, b, groups)
 		return
 	end
 	local movers = { band, cluster.Tracking, _G.GameTimeFrame, _G.TimeManagerClockButton }
-	if merged then
+	if onFrame then
 		if not skin.bandSaved then
 			-- (a level as an offset from the map's: put back over a map a click
 			-- in the toplevel cluster lifted meanwhile)
@@ -1177,7 +1182,7 @@ local function PlaceBand(merged, f, b, groups)
 			if frame and skin.bandSaved[i] then
 				local okE, fe = pcall(f.GetEffectiveScale, f)
 				local okM, me = pcall(frame.GetEffectiveScale, frame)
-				if okE and okM and fe and me and me > 0 then
+				if okE and okM and fe and me and me > 0 and math.abs(fe / me - 1) > 1e-6 then
 					frame:SetScale(frame:GetScale() * fe / me)
 				end
 			end
@@ -1222,15 +1227,18 @@ local function PlaceBand(merged, f, b, groups)
 		-- as far clear of it at both ends
 		local timeButton = _G.TimeManagerClockButton
 		local d = skin.divider
+		-- (the clock on the Services rail only while that rail shows: merged
+		-- with Services' two rows; else on the band, beside the calendar)
+		local onRail = not groups and d and d:IsShown()
 		if MinimapZoneText then
-			if groups and timeButton then
+			if timeButton and not onRail then
 				local margin = CAP_GEM_X * ss + PlainWidth(clock, 19) / 2 + 2 + PlainWidth(timeButton, 40) + 4
 				MinimapZoneText:SetWidth(math.max(40, plateW - 2 * math.max(70 * ss, margin)))
 			else
 				MinimapZoneText:SetWidth(math.max(40, plateW - 2 * 70 * ss))
 			end
 		end
-		if timeButton and groups then
+		if timeButton and not onRail then
 			timeButton:ClearAllPoints()
 			if clock then
 				timeButton:SetPoint("RIGHT", clock, "LEFT", -2, 0)
@@ -1238,7 +1246,7 @@ local function PlaceBand(merged, f, b, groups)
 				timeButton:SetPoint("RIGHT", band, "RIGHT", over - CAP_GEM_X * ss, 0)
 			end
 			timeButton:SetFrameLevel(band:GetFrameLevel() + 2)
-		elseif timeButton and d then
+		elseif timeButton then
 			timeButton:ClearAllPoints()
 			timeButton:SetPoint("RIGHT", d, "RIGHT", -DIVIDER_H * 1.6, 0)
 			timeButton:SetFrameLevel(d:GetFrameLevel() + 6)
@@ -1277,6 +1285,11 @@ local function PlaceBand(merged, f, b, groups)
 		end
 		skin.bandMerged = nil
 		skin.bandSaved = nil
+		-- the cluster laid round the band on its own place again, as the
+		-- game's layout has it (Edit Mode lays the cluster only after it put
+		-- the band there itself: SetHeaderUnderneath, then Layout); the size
+		-- may have been laid while the band stood on the frame
+		Size.LayCluster()
 	end
 end
 
@@ -1296,15 +1309,13 @@ local function LaySquare()
 	local f = BorderFrame()
 	local b = BORDER[M.db and M.db.squareBorder or "window"] or BORDER.window
 	local merged = square and M:WantsServices() and ServicesBar() ~= nil
-	if not merged then
-		PlaceBand(false)
-		if skin.divider then
-			skin.divider:Hide()
-		end
+	if not merged and skin.divider then
+		skin.divider:Hide()
 	end
 	-- (no border: the map's own edge takes the shade, Shade.Bare)
 	Shade.Bare(square and b.value == "none")
 	if not square or b.value == "none" then
+		PlaceBand(false)   -- (no frame: the band on the game's place)
 		f:Hide()
 		return
 	end
@@ -1335,9 +1346,9 @@ local function LaySquare()
 		end
 		nine:Show()
 		f.gemReach = b.gem and GemReach(b.prefix, sc) or 0
-		-- merged: the zone band's caps take the top corners
+		-- the zone band on the top rail: its caps take the top corners
 		if nine.SetTopGems then
-			nine:SetTopGems(not merged)
+			nine:SetTopGems(false)
 		end
 		if merged then
 			-- Services' one row of groups: the rail with its name, which
@@ -1348,7 +1359,11 @@ local function LaySquare()
 			PlaceBand(true, f, b, groups)
 			return
 		end
+		f:Show()
+		PlaceBand(true, f, b, nil)
+		return
 	else
+		PlaceBand(false)   -- (a picture frame has no rail for it: the game's place)
 		local p = Kit:Piece(b.piece)
 		local k = Kit.scale
 		local open = (p and p.open) or { 29, 34, 106, 97 }

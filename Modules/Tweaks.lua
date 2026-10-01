@@ -63,16 +63,16 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Write these lines in the chat instead of showing them on the screen. They follow Chat Notices there." },
 		{ type = "toggle", key = "noticeSounds", parent = "noticeOnScreen", name = "Notice Sounds",
 		  desc = "A short chime with each notice: the map's tracking sound for a new destination, a softer one when you arrive." },
-		{ type = "toggle", key = "textShade", name = "Text Shade", new = "0.16.0",
+		{ type = "toggle", key = "textShade", name = "Text Shade",
 		  desc = "A soft dark shade behind the text MelloUI shows on the world, so it reads on bright ground: the zone name when you enter a new area (with its subzone and PvP lines), the game's messages in the middle of the screen (red errors, yellow quest progress, raid warnings and boss emotes) and the Route's Direction Arrow and World Marker. No outline on the first two (Outlined Text adds it back); the game's colours stay. Off: the game's own look, and no shade behind the arrow and the marker." },
 		-- (not under On-screen Notices: it sets the zone text's and the
 		-- centre texts' outline too, which show with the notices off)
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",
 		  desc = "Draw the on-screen notice's lines, the zone text and the game's messages in the middle of the screen with an outline. Off: soft text on a dark shade." },
 		{ type = "header", name = "Combat Text" },
-		{ type = "slider", key = "worldTextScale", name = "World Text Scale", min = 0.5, max = 3, step = 0.1,
-		  format = function(v) return string.format("%.1fx", v) end,
-		  desc = "Scale of the floating damage and healing numbers in the world (WorldTextScale). Default is 1.0." },
+		{ type = "slider", key = "worldTextScale", name = "Numbers Over Enemies", min = 0.5, max = 3, step = 0.1,
+		  format = function(v) return string.format("%.1fx", v) end, search = "world text scale",
+		  desc = "The size of the numbers over the enemies and the ones you heal: the game's own, and Your Damage's when MelloUI draws them (one or the other shows). 1.0 is the game's size." },
 	},
 })
 

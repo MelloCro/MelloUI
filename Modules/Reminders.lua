@@ -144,9 +144,9 @@ local M = MelloUI:RegisterModule("Reminders", {
 		  desc = "The soft glow around the button: a gentle pulse for a few seconds, then steady; always steady; or none. It brightens when you are close to where the reminder sends you." },
 		{ type = "slider", key = "hold", name = "Show For", min = 4, max = 20, step = 1, format = Seconds,
 		  desc = "How long a new reminder stays before it tucks itself away. It stays while your pointer is on it." },
-		{ type = "toggle", key = "widgetLock", name = "Lock The Widgets", new = "0.16.0",
+		{ type = "toggle", key = "widgetLock", name = "Lock The Widgets",
 		  desc = "Keep the widget column (Voice Over, loot rolls, the corpse run and the rest) where it is: Edit Layout shows its plate but does not move it. Voice Over's padlock sets this too." },
-		{ type = "slider", key = "widgetMax", name = "Most Widgets Shown", new = "0.16.0", min = 2, max = 6, step = 1,
+		{ type = "slider", key = "widgetMax", name = "Most Widgets Shown", min = 2, max = 6, step = 1,
 		  desc = "How many widgets the column shows at once. The rest wait in a slim \"+2 more\" row on top; a click there lists them. Loot rolls, summons, resurrect offers and ready checks always show, and Voice Over keeps the bottom place." },
 	},
 })

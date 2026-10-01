@@ -751,6 +751,105 @@ local function MergeRoads(data)
 	return added
 end
 
+-- The ground (0.17.0; the user, 2026-10-01, in Northshire: the dots led
+-- over a ridge no one can climb; docs/plans/route-terrain.md, option A). The
+-- companion's walk grid -- the walkable ground measured offline from the
+-- client's own terrain (Tools/trace_terrain.py, Tools/ground_graph.py; its
+-- ground links are in the graph beside the roads, priced over them) -- says
+-- whether a straight leg stays on walkable ground: the start's and the
+-- goal's legs to the graph, the direct line and the jumps between paths
+-- take only those. A continent with no grid (an instance, a map not
+-- measured) answers nil: as before, and a straight line there is a guess.
+--   M.Ground.Set(data)     the companion's walk grids (data.walk, scaled
+--                          by data.sizes as the roads), at the build
+--   M.Ground.Has(cont)     a grid for that continent
+--   M.Ground.Clear(cont, x0, y0, x1, y1) -> true (no wall on the segment),
+--                          false (a wall), nil (no grid there)
+-- A row is decoded the first time a leg crosses it (its runs kept).
+M.Ground = { grids = {} }
+
+function M.Ground.Set(data)
+	local walk = type(data) == "table" and data.walk
+	if type(walk) ~= "table" then
+		return
+	end
+	for contKey, g in pairs(walk) do
+		local cont = tonumber(contKey)
+		if cont and type(g) == "table" and type(g.rows) == "table" and type(g.cell) == "number" then
+			local w, h = WorldSize(cont)
+			local size = type(data.sizes) == "table" and data.sizes[cont]
+			g.sx = (w and size and size[1] and size[1] > 0) and w / size[1] or 1
+			g.sy = (h and size and size[2] and size[2] > 0) and h / size[2] or 1
+			g.decoded = {}
+			M.Ground.grids[cont] = g
+		end
+	end
+end
+
+function M.Ground.Has(cont)
+	return M.Ground.grids[cont] ~= nil
+end
+
+-- a row's runs: { last column of run 1, its letter, last column of run 2, ... }
+function M.Ground.Row(g, r)
+	local runs = g.decoded[r]
+	if runs then
+		return runs
+	end
+	runs = {}
+	local text = g.rows[r + 1]
+	if type(text) == "string" then
+		local col = 0
+		for letter, count in text:gmatch("(%a)(%d*)") do
+			col = col + (tonumber(count) or 1)
+			runs[#runs + 1] = col - 1
+			runs[#runs + 1] = letter
+		end
+	end
+	g.decoded[r] = runs
+	return runs
+end
+
+-- the letter of a cell (w walk, s swim, x wall, n none), nil off the grid
+function M.Ground.At(g, r, q)
+	if r < 0 or q < 0 or r >= g.h or q >= g.w then
+		return nil
+	end
+	local runs = M.Ground.Row(g, r)
+	local lo, hi = 1, #runs / 2
+	if hi < 1 then
+		return nil
+	end
+	while lo < hi do
+		local mid = math.floor((lo + hi) / 2)
+		if runs[mid * 2 - 1] < q then
+			lo = mid + 1
+		else
+			hi = mid
+		end
+	end
+	return runs[lo * 2]
+end
+
+function M.Ground.Clear(cont, x0, y0, x1, y1)
+	local g = M.Ground.grids[cont]
+	if not g then
+		return nil
+	end
+	x0, y0, x1, y1 = x0 / g.sx, y0 / g.sy, x1 / g.sx, y1 / g.sy
+	local cell = g.cell
+	local steps = math.max(1, math.ceil(Dist(x0, y0, x1, y1) / (cell * 0.5)))
+	for i = 0, steps do
+		local t = i / steps
+		local q = math.floor((x0 + (x1 - x0) * t - g.e0) / cell)
+		local r = math.floor((y0 + (y1 - y0) * t - g.s0) / cell)
+		if M.Ground.At(g, r, q) == "x" then
+			return false
+		end
+	end
+	return true
+end
+
 -- The learned part of the graph: what the saved variable and the baker keep
 -- (the flight times learned by timing with it).
 local function LearnedOnly()
@@ -1532,7 +1631,11 @@ do
 		for key, d in pairs(near) do
 			local cost = d / WALK * 1.3
 			local node = g and g[key]
-			if id == "S" and sHx and d > 5 and node then
+			-- (0.17.0: a leg over a wall is no leg: the walk grid's)
+			if node and M.Ground.Clear(cont, x, y, node[1], node[2]) == false then
+				cost = nil
+			end
+			if cost and id == "S" and sHx and d > 5 and node then
 				-- the node's direction from the player against the heading
 				local dot = ((node[1] - x) * sHx + (node[2] - y) * sHy) / d
 				if dot < -0.3 then
@@ -1541,10 +1644,12 @@ do
 					cost = cost * (1 + (0.3 - dot) * (BEHIND_COST - 1) / 0.6)   -- sideways: in between
 				end
 			end
-			local nid = cont .. "|" .. key
-			AddExtra(id, nid, cost)
-			if node then
-				nodeExtra[node] = extra[nid]
+			if cost then
+				local nid = cont .. "|" .. key
+				AddExtra(id, nid, cost)
+				if node then
+					nodeExtra[node] = extra[nid]
+				end
 			end
 		end
 	end
@@ -1608,7 +1713,8 @@ do
 				end
 			end
 		end
-		if scont == gcont then
+		-- (0.17.0: the direct line only where the ground allows it, or is not known)
+		if scont == gcont and M.Ground.Clear(scont, sx, sy, gx, gy) ~= false then
 			AddExtra("S", "G", Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
 		end
 		-- the estimate at the fastest way this character can travel: flying
@@ -1653,7 +1759,7 @@ do
 				end
 				for k, d in pairs(near) do
 					local o = g[k]
-					if o ~= id and links[k] == nil then
+					if o ~= id and links[k] == nil and M.Ground.Clear(cont, id[1], id[2], o[1], o[2]) ~= false then
 						Relax(o, cont, d / WALK * JUMP_COST)
 					end
 				end
@@ -2151,6 +2257,17 @@ end
 -- when they change. A change by one minute waits for the next estimate to
 -- agree, so a time on the edge between two does not flicker (`now`: at once).
 function Travel.Show(secs, now)
+	-- (0.17.0, docs/plans/route-terrain.md section 4: the straight line no
+	-- known way proves, "444 yd straight · no known way", not a time)
+	local guess = route and route.guess or false
+	if guess ~= (Travel.guess or false) then
+		Travel.guess = guess
+		Travel.minutes, Travel.pending = nil, nil
+		Travel.suffix = guess and (" straight" .. Travel.SEP .. "no known way") or ""
+	end
+	if guess then
+		return
+	end
 	local target = secs and Travel.MinutesOf(secs)
 	local shown = Travel.minutes
 	if target == shown then
@@ -2181,6 +2298,9 @@ function Travel.Planned()
 	Travel.dest = destination
 	Travel.Show(secs, true)
 	Travel.nextAt = GetTime() + Travel.EVERY
+	if not Travel.minutes then
+		return nil   -- (0.17.0: a straight guess has no time to tell)
+	end
 	return Travel.Words(Travel.minutes)
 end
 
@@ -2347,19 +2467,25 @@ local function Plan(force, announce, announceText)
 		-- the direct line won: its real walking time, not the price that made roads compete
 		cost = Dist(x, y, d.x, d.y) / WALK
 	end
-	if points and cont == d.cont then
-		-- A silly detour is worse than a straight guess.
+	if points and cont == d.cont and not M.Ground.Has(cont) then
+		-- A silly detour is worse than a straight guess -- only where the
+		-- ground is not known (0.17.0): with it, the long way round is the way
 		local beeline = Dist(x, y, d.x, d.y)
 		if cost > beeline / WALK * 3 + 60 then
 			points, cost = nil, nil
 		end
 	end
+	local guess = false
 	if not points and cont == d.cont then
 		points = { { cont, x, y, "guess" }, { d.cont, d.x, d.y, "guess" } }
 		cost = Dist(x, y, d.x, d.y) / WALK
+		guess = true
+	elseif points and #points == 2 and cont == d.cont then
+		-- (the direct line: a guess unless the ground shows it walkable)
+		guess = M.Ground.Clear(cont, x, y, d.x, d.y) ~= true
 	end
 	if points then
-		route = { points = points, cost = cost, length = RouteLength(points), dest = { d.cont, d.x, d.y } }
+		route = { points = points, cost = cost, length = RouteLength(points), dest = { d.cont, d.x, d.y }, guess = guess }
 	else
 		route = nil
 	end
@@ -3450,7 +3576,9 @@ end
 -- Index and cost (seconds) of the candidate cheapest to reach by route. While
 -- the graph is still being built (the first route of the session): nil, nil,
 -- true -- not priced yet; M:WhenReady makes the choice once it can be.
-function M:Cheapest(candidates)
+-- costs (optional, 0.17.0): a table filled with every candidate's cost
+-- ([i] = seconds, nil where none), for a caller's own rule (Services' zone)
+function M:Cheapest(candidates, costs)
 	local pcont, px, py = PlayerYards()
 	if not pcont then
 		return nil
@@ -3467,13 +3595,43 @@ function M:Cheapest(candidates)
 			if not points and cont == pcont then
 				cost = Dist(px, py, x, y) / WALK * 1.3
 			end
+			if costs then
+				costs[i] = cost
+			end
 			if cost and (not bestCost or cost < bestCost) then
 				best, bestCost = i, cost
 			end
+		elseif costs then
+			costs[i] = nil
 		end
 	end
 	return best, bestCost
 end
+
+-- (0.17.0, Services' nearest: your own zone wins a near tie) The zone map a
+-- point lies in -- the zone, never a city inside it -- from continent yards
+-- (as Where gives them) or a candidate (as DistanceTo takes it); nil where
+-- the client places it in no zone. Asks the client once per call: a caller
+-- keeps the answer.
+function M:ZoneAt(cont, yx, yy)
+	if not (cont and yx and yy and C_Map.GetMapInfoAtPosition) then
+		return nil
+	end
+	local w, h = WorldSize(cont)
+	if not (w and h) or w <= 0 or h <= 0 then
+		return nil
+	end
+	local ok, info = pcall(C_Map.GetMapInfoAtPosition, cont, yx / w, yy / h)
+	local zone = ok and type(info) == "table" and Plain(info.mapID) or nil
+	return zone ~= cont and zone or nil
+end
+
+function M:ZoneOf(c)
+	return M:ZoneAt(CandidateYards(c))
+end
+
+-- the walking speed the costs are in (yards a second)
+M.WALK = WALK
 
 -- fn run once routes can be priced: at once when the graph is built, else in
 -- the frame after it is (the build started now if it is not yet). For a
@@ -4114,7 +4272,8 @@ local function EnsureArrow()
 	if arrow or not Minimap then
 		return
 	end
-	arrow = CreateFrame("Frame", "MelloUIRouteArrow", UIParent)
+	-- (0.17.0: on the Fader's host, which fades it as the user picks)
+	arrow = CreateFrame("Frame", "MelloUIRouteArrow", (MelloUI.Fader and MelloUI.Fader:Host("route") or UIParent))
 	arrow:SetSize(72, 96)
 	arrow:SetFrameStrata("MEDIUM")
 	arrow:SetClampedToScreen(true)
@@ -4905,7 +5064,7 @@ local function EnsureMarker()
 	if marker then
 		return
 	end
-	marker = CreateFrame("Frame", "MelloUIRouteMarker", UIParent)
+	marker = CreateFrame("Frame", "MelloUIRouteMarker", (MelloUI.Fader and MelloUI.Fader:Host("route") or UIParent))
 	marker:SetSize(44, 44)
 	marker:SetFrameStrata("LOW")
 	marker:SetClampedToScreen(true)
@@ -5204,6 +5363,9 @@ function Travel.Update(cont, px, py, asked, i, qx, qy)
 	if not M.db.travelTime then
 		if Travel.minutes then
 			Travel.Show(nil, true)
+		end
+		if Travel.guess then
+			Travel.guess, Travel.suffix = false, ""   -- (the guess's words are Travel Time's too)
 		end
 		return
 	end
@@ -6628,6 +6790,7 @@ do
 			-- once merged
 			local roads = MelloUI_RoadData
 			_G.MelloUI_RoadData = nil
+			M.Ground.Set(roads)
 			MergeRoads(roads)
 		end
 		if at.stage == 1 then

@@ -6,8 +6,8 @@
 --   * transparent name band (the reaction coloured strip behind target names)
 --   * no red combat flash / status glow around the frames
 --   * adjustable frame art opacity
---   * the player frame (and the pet frame with it) faded out of combat
---     while nothing needs it (0.14.0, off by default; below)
+--   (the player frame's Fade Out Of Combat, 0.14.0, is the Fader's since
+--   0.17.0: Core/Fader.lua and Modules/Fader.lua, its settings carried over)
 --
 -- Combined with Dark Mode, Bar Textures (class / reaction health colour) and
 -- Bar Text this gives the flat "RougeUI" look.
@@ -17,17 +17,18 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("UnitFrames")
 local hooksecurefunc = Perf.hooksecurefunc
+-- (0.17.0) a write back onto a game region, counted for /melloperf
+local WriteBack = MelloUI.Perf.WriteBack or function() end
 local Shared = Perf.Shared or function(_, fn) return fn end
-local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("UnitFrames", {
 	title = "Unit Frames",
-	desc = "Centred names, transparent name band, no combat flash and frame art opacity for player, target and focus. The player frame can fade out of combat.",
+	desc = "Centred names, transparent name band, no combat flash and frame art opacity for player, target and focus.",
 	icon = "Interface\\Icons\\INV_Misc_GroupLooking",
 	flavour = "Player, target and focus, centred and calm. Frame art at the opacity you choose.",
 	group = "Frames and bars", navOrder = 1,
 	role = "replaces",
-	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames (they step aside where the reskin covers them), and the player frame faded out of combat.", order = 5 },
+	tweak = { label = "Unit Frame Tweaks", desc = "Name and glow tweaks on the unit frames (they step aside where the reskin covers them).", order = 5 },
 	defaults = {
 		centerNames = true,
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
@@ -35,9 +36,6 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		hideCombatGlow = true,
 		hideStatusGlow = true,
 		frameAlpha = 1,
-		fadeOutOfCombat = false,
-		fadeAlpha = 0,
-		fadePet = true,
 	},
 	options = {
 		{ type = "header", name = "Names" },
@@ -52,13 +50,6 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		{ type = "header", name = "Frame Art" },
 		{ type = "slider", key = "frameAlpha", name = "Frame Art Opacity", min = 0.1, max = 1, step = 0.05, percent = true,
 		  desc = "Opacity of the frame art around the bars and portraits. The bars themselves stay solid." },
-		{ type = "header", name = "Out Of Combat" },
-		{ type = "toggle", key = "fadeOutOfCombat", name = "Fade Out Of Combat",
-		  desc = "Your player frame fades away while nothing needs it. It comes back in combat, with a target, while your health or mana is below full, when you are dead, when you point at where it sits, and while Edit Layout or Edit Mode is open." },
-		{ type = "slider", key = "fadeAlpha", parent = "fadeOutOfCombat", name = "Faded Opacity", min = 0, max = 0.5, step = 0.05, percent = true,
-		  desc = "How much of the frame stays while it is faded. At 0 % it is gone until it is needed." },
-		{ type = "toggle", key = "fadePet", parent = "fadeOutOfCombat", name = "Pet Frame Too",
-		  desc = "Your pet's frame fades and comes back with the player frame, and also comes back while your pet is hurt. Off: the pet frame always stays." },
 	},
 })
 
@@ -91,9 +82,104 @@ local function NameMode()
 	return mode
 end
 
+-- The target of target's name (0.17.0; the user's FPS in combat,
+-- docs/plans/fps-portrait-fix.md): its frame runs UnitFrame_Update on EVERY
+-- frame (its OnUpdate), so a form written on the game's name was undone by
+-- the game each frame and written again here, a text laid out twice a
+-- frame. There a COVER of ours shows the form: a string on the name's rect,
+-- in its font and colour (copied when the game changes them), the game's
+-- name hidden under it by its alpha, which the game never sets. Its text is
+-- set only when it changes; the game's own writes land on its hidden name.
+-- Back to the full name (or the module off): the cover hidden, the game's
+-- name shown again.
+local nameCovers = setmetatable({}, { __mode = "k" })   -- [frame] = { fs, text }
+
+local function EveryFrame(frame)
+	return frame.frameType == "TargetofTarget"
+end
+
+local function CopyNameLook(name)
+	local frame = name and name.GetParent and name:GetParent()
+	local c = frame and nameCovers[frame]
+	if not c then
+		return
+	end
+	local okF, file, size, flags = pcall(name.GetFont, name)
+	if okF and type(file) == "string" and type(size) == "number" then
+		pcall(c.fs.SetFont, c.fs, file, size, flags)
+	end
+	local okC, r, g, b, a = pcall(name.GetTextColor, name)
+	if okC and type(r) == "number" and type(g) == "number" and type(b) == "number" then
+		c.fs:SetTextColor(r, g, b, type(a) == "number" and a or 1)
+	end
+end
+
+local function NameCover(frame)
+	local c = nameCovers[frame]
+	if c then
+		return c
+	end
+	local name = frame.name
+	local parent = name.GetParent and name:GetParent() or frame
+	local okL, layer = pcall(name.GetDrawLayer, name)
+	local fs = parent:CreateFontString(nil, okL and type(layer) == "string" and layer or "OVERLAY")
+	local okO, object = pcall(name.GetFontObject, name)
+	if okO and type(object) == "table" then
+		fs:SetFontObject(object)
+	end
+	fs:SetAllPoints(name)
+	local okJ, justify = pcall(name.GetJustifyH, name)
+	fs:SetJustifyH(okJ and type(justify) == "string" and justify or "LEFT")
+	fs:SetWordWrap(false)
+	local okS, shadowX, shadowY = pcall(name.GetShadowOffset, name)
+	if okS and type(shadowX) == "number" and type(shadowY) == "number" then
+		fs:SetShadowOffset(shadowX, shadowY)
+	end
+	c = { fs = fs, text = nil }
+	nameCovers[frame] = c
+	CopyNameLook(name)
+	hooksecurefunc(name, "SetTextColor", CopyNameLook)
+	hooksecurefunc(name, "SetFontObject", CopyNameLook)
+	hooksecurefunc(name, "SetFont", CopyNameLook)
+	return c
+end
+
+-- the form on a per-frame name's cover (text set only when it changed)
+local function CoverName(frame, unit, mode)
+	local c = NameCover(frame)
+	local text = MelloUI:UnitNameAs(unit, mode)
+	if text == nil then
+		return
+	end
+	-- (a secret text cannot be compared: set as it is)
+	if MelloUI.Safe.IsSecret(text) or c.text ~= text then
+		c.text = not MelloUI.Safe.IsSecret(text) and text or nil
+		c.fs:SetText(text)
+	end
+	if not c.fs:IsShown() or frame.name:GetAlpha() ~= 0 then
+		c.fs:Show()
+		frame.name:SetAlpha(0)
+	end
+end
+
+-- the full name back on a per-frame name: the cover away
+local function UncoverName(frame)
+	local c = nameCovers[frame]
+	if c and c.fs:IsShown() then
+		c.fs:Hide()
+		c.text = nil
+		frame.name:SetAlpha(1)
+	end
+end
+
 local function ApplyNameFormat(frame, unit, mode)
+	if EveryFrame(frame) then
+		CoverName(frame, unit, mode)
+		return
+	end
 	local text = MelloUI:UnitNameAs(unit, mode)
 	if text ~= nil then
+		WriteBack("UnitFrames: a name's form written over the game's")
 		pcall(frame.name.SetText, frame.name, text)
 	end
 end
@@ -153,9 +239,18 @@ local function RefreshNames(mode)
 	end
 	for _, frame in ipairs(frames) do
 		if frame and frame.name and frame.unit then
-			local text = MelloUI:UnitNameAs(frame.overrideName or frame.unit, mode)
-			if text ~= nil then
-				pcall(frame.name.SetText, frame.name, text)
+			if EveryFrame(frame) then
+				-- (the per-frame names: a cover, or none for the full name)
+				if mode == "both" then
+					UncoverName(frame)
+				else
+					pcall(CoverName, frame, frame.overrideName or frame.unit, mode)
+				end
+			else
+				local text = MelloUI:UnitNameAs(frame.overrideName or frame.unit, mode)
+				if text ~= nil then
+					pcall(frame.name.SetText, frame.name, text)
+				end
 			end
 		end
 	end
@@ -476,589 +571,6 @@ local function ApplyFrameAlpha()
 end
 
 --------------------------------------------------------------------------------
--- Fade Out Of Combat (0.14.0; a player's wish on 0.13.7, "hide the player /
--- pet frame out of combat", put in by the user 2026-09-26). While nothing
--- needs them, the player frame -- and the pet frame with it -- fade to
--- Faded Opacity (0 by default: gone). They come back while any of these
--- holds, and stay:
---   * combat (PLAYER_REGEN_DISABLED: back at once, never faded in a fight)
---   * a target
---   * the player's health below full
---   * mana below full while the power bar shows mana (the drink after a
---     fight); rage, energy and the rest never count, they rest empty or full
---     (a health or mana this client hands over secret -- the health always,
---     out of combat too -- is never compared: a change of it heard lately
---     stands for "below full", FADE_RECENT below)
---   * dead or a ghost
---   * the pointer on the frame (or on the pet's, while it follows)
---   * Edit Layout showing (MelloUI:EditingLayout(), the bus's 'editlayout'),
---     Edit Mode open
--- The pet frame follows the player frame (shown while it is) and comes back
--- for its own health too; Pet Frame Too off leaves it alone.
--- Out slowly after a short hold (FADE_HOLD, then FADE_OUT), in fast
--- (FADE_IN), through MelloUI.Anim (Reduce Motion: at once); a frame not seen
--- (a pet not summoned) takes its alpha at once, so a pet summoned while the
--- frames are faded appears faded. Only the frames' OWN alpha is set, allowed
--- in a fight (they are secure unit buttons: never shown, hidden or moved
--- here). The pet frame is the player frame's child: while the fade is on it
--- ignores its parent's alpha (set out of combat; its old setting put back
--- after), so its own rule decides and never the player's times its own.
--- The player's cast bar the same: Edit Mode's lock to the player frame makes
--- it the frame's child (PlayerFrame_AttachCastBar), and a cast out of combat
--- shows in full. The rest under the frame fades with it (the class
--- resources and totems, the game's; the kit's dressing and the UI shade).
--- Who else sets an alpha there sets it on the frames' regions (Frame Art
--- Opacity above, Dark Mode's colours, the kit's faded pictures, the UI
--- shade's partners): that multiplies with this and is never touched.
--- Nothing else in MelloUI sets these two frames' own alpha, nor does the
--- game's unit frame code (its vehicle and Edit Mode code moves and
--- re-dresses them; its alpha writes are on a status texture, the party and
--- compact frames); the fade writes the alpha only when its answer changes
--- and never answers a write (no loop).
--- The UI shade (Modules/KitShade.lua, area "unitframes") is drawn on the
--- player's container and on the pet frame's own shade frame: it fades with
--- them. The Reminder widget (Core/Reminders.lua) is UIParent's, only
--- anchored to the portrait: it stays whole.
--- Nothing is made, hooked or registered while the option is off: the event
--- frame, its events and the bus listeners come with the first switch on;
--- the events and listeners go with the switch or the module off, the
--- frames' alpha back to 1 at once; the pointer hooks (post-hooks, which
--- cannot be taken off) are inert then. No ticker, no OnUpdate: the hold is a
--- timer (looked at again only while the pointer rests on a bar or button of
--- the frame after the frame heard it leave: none of the frame's own leaves
--- comes when it goes), the end of a secret health's or mana's window is one
--- more (one pending at most), the fades are Anim's.
---   M.fadeState   the state (read only; the tests')
---------------------------------------------------------------------------------
-
-local FADE_IN, FADE_OUT, FADE_HOLD = 0.2, 0.6, 1.5
--- A secret health or mana (user, 2026-09-26, RC5: "The Fade of Unitframes is
--- not working" -- issecretvalue(UnitHealth("player")) true out of combat;
--- the game's API documentation: UnitHealth SecretReturns, always; UnitPower
--- secret for every power type not flagged never-secret) is never compared.
--- The game's own events answer instead: each change of the health fires
--- UNIT_HEALTH, of the mana UNIT_POWER_UPDATE (what its own bars redraw on);
--- while it fills out of combat the regen ticks every 2 s (a drink or food
--- adds its own ticks), at full they stop. So a change within FADE_RECENT --
--- one tick's 2 s and a half-second margin for the server's and the frame's
--- lag -- is "below full"; after the last tick the frame waits FADE_RECENT,
--- then the hold, then fades (it goes 4 s after the last change).
--- FADE_CAST: a spell's mana cost stops the mana's regen for five seconds,
--- then the next 2-s tick comes (up to 7 s with no event): a cost (a cast and
--- a power event within FADE_PAIR of each other) keeps the mana's window open
--- that long, with the same margin.
-local FADE_RECENT, FADE_CAST, FADE_PAIR = 2.5, 7.5, 0.5
-local FADE_MAX = 0.5                           -- Faded Opacity's top
-local FADE_OWNER = "UnitFrames: fade"          -- the bus owner
-local OWN_ALPHA_KEY = "UnitFrames: the pet frame's and cast bar's own alpha"   -- (Kit:WhenOutOfCombat's keys)
-local HOOK_KEY = "UnitFrames: the fade's pointer hooks"
-local FADE_EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_TARGET_CHANGED", "PLAYER_DEAD",
-	"PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD" }
-local HEALTH_EVENTS = { "UNIT_HEALTH", "UNIT_MAXHEALTH" }
-local POWER_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_SPELLCAST_SUCCEEDED" }
-local Secret = MelloUI.Safe.IsSecret
-local Finite = MelloUI.Safe.Finite
-
--- on: the fade runs; pet: the pet frame follows; mana: the power bar shows
--- mana (its events registered); combat, editMode: as told; holding, holdDue:
--- the hold; lost: a frame heard the pointer leave while it is still over
--- it (on a bar or button of the frame's own, which takes the pointer: no
--- leave of the frame comes when it goes, so the hold looks again);
--- state[frame] = "shown" / "faded" (nil: not touched); kept[frame]: the pet
--- frame's and the cast bar's own ignore-parent-alpha before the fade (nil:
--- not set); hpUntil, manaUntil, petUntil: the GetTime a secret health's /
--- mana's / pet health's "below full" window ends; manaAt, castAt: the last
--- power event and cast (FADE_PAIR); armed: the windows' timer pending
-local Fade = { on = false, pet = false, mana = false, combat = false, editMode = false, holding = false,
-	holdDue = 0, lost = false, state = {}, kept = {}, events = nil, hooked = false,
-	hpUntil = 0, manaUntil = 0, petUntil = 0, manaAt = -math.huge, castAt = -math.huge, armed = false }
-M.fadeState = Fade
-
-local function FadeWanted()
-	local db = M.isEnabled and M.db
-	return db and db.fadeOutOfCombat == true or false
-end
-
-local function FadedAlpha()
-	local a = Finite(tonumber(M.db and M.db.fadeAlpha)) or 0
-	return a < 0 and 0 or a > FADE_MAX and FADE_MAX or a
-end
-
--- a yes / no question about a unit (a target, dead, a pet, in a fight). A
--- secret answer is no: none of these is ever secret by the game's API
--- documentation, and as yes it would hold the frame for good (nothing asks
--- again until the next event -- the RC5 bug); a fight still shows it
--- (PLAYER_REGEN_DISABLED, InCombatLockdown)
-local function Yes(fn, unit)
-	if type(fn) ~= "function" then
-		return false
-	end
-	local ok, v = pcall(fn, unit)
-	if not ok or Secret(v) then
-		return false
-	end
-	return v and true or false
-end
-
-local RecentTimer   -- (below)
-
--- a secret value's window (hpUntil ...) still open: not full; the one timer
--- armed to look again when it ends, FADE_RECENT ahead at most. One pending
--- at most (C_Timer.After cannot be taken back), and every window opened
--- after the arm runs FADE_RECENT or more from its event: none ends before
--- the armed look, whichever window still counts by then. (Review of the RC5
--- fix: armed for a cost's whole 7.5 s, a druid gone to cat form -- the mana
--- no longer counts -- whose health's window, opened after, ended first got
--- no look of its own: the fade came 5 s late.) A cost's long window just
--- gets two or three looks.
-local function Open(untilAt)
-	local now = GetTime()
-	if now >= untilAt then
-		return false
-	end
-	if not Fade.armed then
-		Fade.armed = true
-		local wait = untilAt - now
-		C_Timer.After(wait < FADE_RECENT and wait or FADE_RECENT, RecentTimer)
-	end
-	return true
-end
-
--- cur below max (health, or power of `kind`). A secret or refused answer is
--- never compared: its window answers (`untilAt`, a change heard lately)
-local function Below(curFn, maxFn, unit, kind, untilAt)
-	if type(curFn) ~= "function" or type(maxFn) ~= "function" then
-		return false
-	end
-	local okC, cur = pcall(curFn, unit, kind)
-	local okM, max = pcall(maxFn, unit, kind)
-	if not (okC and okM) or Secret(cur) or Secret(max) then
-		return Open(untilAt)
-	end
-	cur, max = tonumber(cur), tonumber(max)
-	if not (cur and max) or max <= 0 then
-		return false
-	end
-	return cur < max
-end
-
-local function ManaType()
-	local types = type(Enum) == "table" and Enum.PowerType
-	return type(types) == "table" and Finite(types.Mana) or 0
-end
-
--- the player's power bar shows mana (a secret answer: not known, not held)
-local function OnMana()
-	local fn = _G.UnitPowerType
-	if type(fn) ~= "function" then
-		return false
-	end
-	local ok, kind = pcall(fn, "player")
-	if not ok or Secret(kind) then
-		return false
-	end
-	return kind == ManaType()
-end
-
--- the pointer on the frame, on screen (a secret answer: not). IsMouseOver
--- asks only the frame's rectangle, shown or not: the hidden pet frame of a
--- character with no pet, under the player frame, never counts
-local function Over(frame)
-	if not frame then
-		return false
-	end
-	local okV, shown = pcall(frame.IsVisible, frame)
-	if not okV or Secret(shown) or not shown then
-		return false
-	end
-	local ok, over = pcall(frame.IsMouseOver, frame)
-	return ok and not Secret(over) and over and true or false
-end
-
-local function Hovered()
-	return Over(PlayerFrame) or (Fade.pet and Over(PetFrame))
-end
-
--- the player frame is needed now (the cheap and likely answers first: a
--- fight's health and power events end at the first test)
-local function PlayerNeeded()
-	if Fade.combat or InCombatLockdown() then
-		return true
-	end
-	if Yes(UnitExists, "target") or Yes(_G.UnitIsDeadOrGhost, "player") then
-		return true
-	end
-	if Below(UnitHealth, UnitHealthMax, "player", nil, Fade.hpUntil) then
-		return true
-	end
-	if Fade.mana and Below(UnitPower, _G.UnitPowerMax, "player", ManaType(), Fade.manaUntil) then
-		return true
-	end
-	if Fade.editMode or Hovered() then
-		return true
-	end
-	return MelloUI:EditingLayout() and true or false
-end
-
-local function PetNeeded()
-	return Yes(UnitExists, "pet") and Below(UnitHealth, UnitHealthMax, "pet", nil, Fade.petUntil)
-end
-
--- seen: a secret answer counts as seen (the move is only a tween)
-local function Seen(frame)
-	local ok, seen = pcall(frame.IsVisible, frame)
-	if ok and Secret(seen) then
-		return true
-	end
-	return ok and seen and true or false
-end
-
--- the frame to `alpha` through Anim, at once where it is not seen
-local function FadeTo(frame, alpha, duration)
-	if Seen(frame) then
-		MelloUI.Anim:To(frame, "alpha", alpha, duration, duration == FADE_IN and "outQuad" or "inOutQuad")
-	else
-		MelloUI.Anim:Stop(frame, "alpha")
-		frame:SetAlpha(alpha)
-	end
-end
-
-local function Bring(frame)
-	if frame and Fade.state[frame] ~= "shown" then
-		Fade.state[frame] = "shown"
-		FadeTo(frame, 1, FADE_IN)
-	end
-end
-
-local function Dim(frame)
-	if frame and Fade.state[frame] ~= "faded" then
-		Fade.state[frame] = "faded"
-		FadeTo(frame, FadedAlpha(), FADE_OUT)
-	end
-end
-
--- a frame touched by the fade back to 1 at once, and let go
-local function Release(frame)
-	if frame and Fade.state[frame] ~= nil then
-		Fade.state[frame] = nil
-		MelloUI.Anim:Stop(frame, "alpha")
-		frame:SetAlpha(1)
-	end
-end
-
-local HoldTimer   -- (below)
-
--- the hold, from now (one shared function for every timer: one that finds
--- a later due time leaves it to the later one)
-local function Hold()
-	Fade.holding = true
-	Fade.holdDue = GetTime() + FADE_HOLD
-	C_Timer.After(FADE_HOLD, HoldTimer)
-end
-
--- The answer now: a frame needed comes back at once; one no longer needed
--- waits for the hold (settle: the hold is over, it fades now). A reason
--- back ends the hold; the pointer still over a frame that heard it leave
--- keeps one running, to look again (Fade.lost).
-local function Evaluate(settle)
-	if not Fade.on then
-		return
-	end
-	local player = PlayerNeeded()
-	local wait = false
-	if player then
-		Bring(PlayerFrame)
-	elseif PlayerFrame and Fade.state[PlayerFrame] ~= "faded" then
-		if settle then
-			Dim(PlayerFrame)
-		else
-			wait = true
-		end
-	end
-	if Fade.pet then
-		if player or PetNeeded() then
-			Bring(PetFrame)
-		elseif PetFrame and Fade.state[PetFrame] ~= "faded" then
-			if settle then
-				Dim(PetFrame)
-			else
-				wait = true
-			end
-		end
-	end
-	if wait or (Fade.lost and Hovered()) then
-		if not Fade.holding then
-			Hold()
-		end
-	else
-		Fade.holding = false
-	end
-end
-
-HoldTimer = Shared("the fade's hold: the unit frames", function()
-	if not (Fade.on and Fade.holding) or GetTime() + 0.05 < Fade.holdDue then
-		return
-	end
-	Fade.holding = false
-	Evaluate(true)
-end)
-
--- a secret value's window ran out, or the armed look came (a window still
--- open: Evaluate arms again); then the hold, then the fade
-RecentTimer = Shared("the fade's secret health / mana window: the unit frames", function()
-	Fade.armed = false
-	Evaluate()
-end)
-
--- the mana's window open until `t` at least (a cost's window runs longer)
-local function ManaUntil(t)
-	if t > Fade.manaUntil then
-		Fade.manaUntil = t
-	end
-end
-
--- a change heard: its window opened from now. False: nothing for the fade to
--- look at (a cast only widens the mana's window; the pet's health while Pet
--- Frame Too is off; another power of the player's, a combo point or a rune).
--- A max's change (UNIT_MAXHEALTH, UNIT_MAXPOWER) opens none: it says nothing
--- of the value (a higher max: the regen's own ticks follow)
-local function Stamp(event, unit, kind)
-	local now = GetTime()
-	if event == "UNIT_HEALTH" then
-		if not Secret(unit) and unit == "pet" then
-			if not Fade.pet then
-				return false
-			end
-			Fade.petUntil = now + FADE_RECENT
-		else
-			Fade.hpUntil = now + FADE_RECENT
-		end
-	elseif event == "UNIT_POWER_UPDATE" then
-		if not Secret(kind) and kind ~= nil and kind ~= "MANA" then
-			return false
-		end
-		Fade.manaAt = now
-		ManaUntil(now + FADE_RECENT)
-		if now - Fade.castAt <= FADE_PAIR then
-			ManaUntil(Fade.castAt + FADE_CAST)
-		end
-	else   -- UNIT_SPELLCAST_SUCCEEDED
-		Fade.castAt = now
-		if now - Fade.manaAt <= FADE_PAIR then
-			ManaUntil(now + FADE_CAST)
-		end
-		return false
-	end
-	return true
-end
-
--- the values not known yet (switched on, the world entered, a fight over,
--- back alive): the windows of a frame not faded open for FADE_RECENT, so it
--- stays until the regen's first tick has had its time (no fade and straight
--- back); a faded frame is left faded (a tick brings it when it is needed)
-local function Seed()
-	local t = GetTime() + FADE_RECENT
-	if Fade.state[PlayerFrame] ~= "faded" then
-		if t > Fade.hpUntil then
-			Fade.hpUntil = t
-		end
-		ManaUntil(t)
-	end
-	if Fade.state[PetFrame] ~= "faded" and t > Fade.petUntil then
-		Fade.petUntil = t
-	end
-end
-
--- a frame under the player frame that keeps its own alpha while the fade is
--- on: it ignores its parent's (its own old setting back after)
-local function OwnAlpha(frame)
-	if not (frame and frame.SetIgnoreParentAlpha) then
-		return
-	end
-	if Fade.on then
-		if Fade.kept[frame] == nil then
-			local ok, was = pcall(frame.IsIgnoringParentAlpha, frame)
-			Fade.kept[frame] = (ok and not Secret(was) and was) and true or false
-		end
-		frame:SetIgnoreParentAlpha(true)
-	elseif Fade.kept[frame] ~= nil then
-		frame:SetIgnoreParentAlpha(Fade.kept[frame])
-		Fade.kept[frame] = nil
-	end
-end
-
--- the pet frame (its own rule) and the player's cast bar (a cast in full);
--- out of combat (the pet frame is a secure unit button)
-local function OwnAlphaNow()
-	OwnAlpha(PetFrame)
-	OwnAlpha(_G.PlayerCastingBarFrame)
-end
-
-local function SyncOwnAlpha()
-	MelloUI.Kit:WhenOutOfCombat(OwnAlphaNow, OWN_ALPHA_KEY)
-end
-
--- the health events for the player (and the pet while it follows); the
--- power events only while the power bar shows mana
-local function RegisterUnits()
-	local f = Fade.events
-	for i = 1, #HEALTH_EVENTS do
-		if Fade.pet then
-			f:RegisterUnitEvent(HEALTH_EVENTS[i], "player", "pet")
-		else
-			f:RegisterUnitEvent(HEALTH_EVENTS[i], "player")
-		end
-	end
-	Fade.mana = OnMana()
-	for i = 1, #POWER_EVENTS do
-		if Fade.mana then
-			f:RegisterUnitEvent(POWER_EVENTS[i], "player")
-		else
-			f:UnregisterEvent(POWER_EVENTS[i])
-		end
-	end
-end
-
-local Fade_OnEvent = function(_, event, unit, kind)
-	if not Fade.on then
-		return
-	end
-	if event == "UNIT_HEALTH" or event == "UNIT_POWER_UPDATE" or event == "UNIT_SPELLCAST_SUCCEEDED" then
-		if not Stamp(event, unit, kind) then
-			return
-		end
-	elseif event == "PLAYER_REGEN_DISABLED" then
-		Fade.combat = true
-	elseif event == "PLAYER_REGEN_ENABLED" then
-		Fade.combat = false
-		Seed()
-	elseif event == "PLAYER_ENTERING_WORLD" then
-		-- (a loading screen: no fight goes on through one)
-		Fade.combat = InCombatLockdown() or Yes(_G.UnitAffectingCombat, "player")
-		Seed()
-	elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
-		Seed()
-	elseif event == "UNIT_DISPLAYPOWER" then
-		RegisterUnits()
-	elseif event == "UNIT_MAXHEALTH" and not Fade.pet and not Secret(unit) and unit == "pet" then
-		return
-	end
-	Evaluate()
-end
-
--- the pointer on the frames (and their bars, which take it from the frame)
-local Fade_OnEnter = Shared("OnEnter on the player / pet frame: the fade", function()
-	if Fade.on then
-		Fade.lost = false
-		Evaluate()
-	end
-end, "script")
-local Fade_OnLeave = Shared("OnLeave on the player / pet frame: the fade", function()
-	if Fade.on then
-		Fade.lost = true
-		Fade.holding = false   -- (the hold from this leave)
-		Evaluate()
-	end
-end, "script")
-
-local function HookPointer()
-	if Fade.hooked then
-		return
-	end
-	Fade.hooked = true
-	local main = PlayerFrame and PlayerFrame.PlayerFrameContent and PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
-	local bars = main and main.HealthBarsContainer
-	local mana = main and main.ManaBarArea
-	local list = { PlayerFrame, bars and bars.HealthBar, mana and mana.ManaBar, PetFrame, _G.PetFrameHealthBar, _G.PetFrameManaBar }
-	for i = 1, 6 do
-		local f = list[i]
-		if type(f) == "table" and f.HookScript then
-			Perf.HookScript(f, "OnEnter", Fade_OnEnter)
-			Perf.HookScript(f, "OnLeave", Fade_OnLeave)
-		end
-	end
-end
-
--- the bus: Edit Layout shown or not, Edit Mode
-local Fade_OnEditLayout = Shared("'editlayout' on the bus: the unit frames' fade", function()
-	Evaluate()
-end)
-local Fade_OnEditMode = Shared("'editmode' on the bus: the unit frames' fade", function(entering)
-	Fade.editMode = entering and true or false
-	Evaluate()
-end)
-
-local function FadeOn()
-	Fade.on = true
-	Fade.pet = M.db.fadePet ~= false
-	if not Fade.events then
-		local f = CreateFrame("Frame")
-		Perf.SetScript(f, "OnEvent", Fade_OnEvent)
-		Fade.events = f
-	end
-	local f = Fade.events
-	for i = 1, #FADE_EVENTS do
-		f:RegisterEvent(FADE_EVENTS[i])
-	end
-	f:RegisterUnitEvent("UNIT_PET", "player")
-	f:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
-	RegisterUnits()
-	MelloUI:On("editlayout", Fade_OnEditLayout, FADE_OWNER)
-	MelloUI:On("editmode", Fade_OnEditMode, FADE_OWNER)
-	-- (the frames are secure unit buttons: hooked out of combat)
-	MelloUI.Kit:WhenOutOfCombat(HookPointer, HOOK_KEY)
-	Fade.combat = InCombatLockdown() or Yes(_G.UnitAffectingCombat, "player")
-	Fade.editMode = MelloUI.EditModeOpen and MelloUI.EditModeOpen() or false
-	Fade.holding, Fade.lost = false, false
-	Seed()
-	SyncOwnAlpha()
-	Evaluate()
-end
-
-local function FadeOff()
-	if not Fade.on then
-		return
-	end
-	Fade.on = false
-	Fade.holding = false
-	Fade.events:UnregisterAllEvents()
-	MelloUI:Off(FADE_OWNER)
-	Release(PlayerFrame)
-	Release(PetFrame)
-	SyncOwnAlpha()
-end
-
-local function Refade(frame)
-	if frame and Fade.state[frame] == "faded" then
-		FadeTo(frame, FadedAlpha(), FADE_IN)
-	end
-end
-
--- the option, the module or a fade setting changed: on, off or followed
-local function FadeSync()
-	if not FadeWanted() then
-		FadeOff()
-		return
-	end
-	if not Fade.on then
-		FadeOn()
-		return
-	end
-	local pet = M.db.fadePet ~= false
-	if pet ~= Fade.pet then
-		Fade.pet = pet
-		if not pet then
-			Release(PetFrame)   -- (left alone from now: the game's alpha, 1)
-		end
-		RegisterUnits()
-	end
-	-- a new Faded Opacity on the frames faded now
-	Refade(PlayerFrame)
-	Refade(PetFrame)
-	Evaluate()
-end
-
---------------------------------------------------------------------------------
 -- Hooks
 --------------------------------------------------------------------------------
 
@@ -1139,26 +651,17 @@ function M:OnEnable(db)
 		end)
 	end
 	ApplyAll()
-	FadeSync()
 end
 
 function M:OnDisable()
 	ApplyAll()
 	RefreshNames("both")   -- the game's full names back
-	FadeSync()             -- (off: the frames' alpha back to 1, the events gone)
 end
-
--- the fade's own settings (Fade Out Of Combat and the rows under it)
-local FADE_KEYS = { fadeOutOfCombat = true, fadeAlpha = true, fadePet = true }
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "nameFormat" then
 		RefreshNames(value or "both")
-		return
-	end
-	if FADE_KEYS[key] then
-		FadeSync()
 		return
 	end
 	ApplyAll()

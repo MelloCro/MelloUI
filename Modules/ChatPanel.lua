@@ -18,8 +18,9 @@
 --   CT2: the tabs on TB6 (the single rail with the stone card, lit while
 --   open, the text held centred), the minimized tabs the same.
 --   Fixed: the edit box on the S1 plate with its focused look, the side
---   buttons (menu, channel, voice, minimize / maximize) on the cog plate
---   under the game's glyphs (K2), scroll-to-bottom on the arrow, the scroll
+--   buttons (voice, minimize / maximize) on the cog plate under the game's
+--   glyphs (K2); the column's chat menu, Channels and Friends in the round
+--   glyph look (0.17.0, pick C: SkinColumnButton); scroll-to-bottom on the arrow, the scroll
 --   bar T2-H1-S1 by the sweep. Left as the game's: the resize grabber, the
 --   dock's overflow arrow, the new-message glow and flash FX, the combat
 --   log's filter bar.
@@ -367,7 +368,9 @@ local function NoFade(frame)
 	end
 	frame.melloNoFade = true
 	hooksecurefunc(frame, "SetAlpha", function(f, a)
-		if active and a ~= 1 and not f.melloAlphaing then
+		-- (0.17.0: the Fader's fade of the chat's line is not undone here)
+		local Fader = MelloUI.Fader
+		if active and a ~= 1 and not f.melloAlphaing and not (Fader and Fader:Holds(f)) then
 			f.melloAlphaing = true
 			f:SetAlpha(1)
 			f.melloAlphaing = nil
@@ -763,6 +766,67 @@ local function SkinIconButton(button)
 	end
 end
 
+-- The column's three game buttons (0.17.0; the user's pick C of
+-- BuildData/output/chat_menu_sketch: "the game's own column, dressed"): the
+-- chat menu, Channels and Friends in the whisper header's look -- the kit's
+-- round rim (ChatColumnButton) on a rect of ours centred in the column, the
+-- palette's inner-panel disc in its opening and our glyph on it (the rim's
+-- icon: Kit:Slot fits it) -- over the game's button, which keeps every click,
+-- menu and tooltip (the rim lights with the button's own hover and press).
+-- The game's own art faded; the friends count raised over the disc. Each
+-- follows its button's show and hide (regions and a frame of it).
+local COLUMN_SIZE = 22
+local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+
+local function SkinColumnButton(button, art, glyph, fade, count)
+	if not (button and art) or button.melloRep ~= nil then
+		return
+	end
+	local W = MelloUI.Widgets
+	local rect = CreateFrame("Frame", nil, button)
+	rect:SetSize(COLUMN_SIZE, COLUMN_SIZE)
+	rect:SetPoint("CENTER")
+	rect:EnableMouse(false)
+	local icon = button:CreateTexture(nil, "ARTWORK", nil, 2)
+	W.Glyph(icon, glyph)
+	W.Paint(icon, "text", "vertex")
+	local disc = button:CreateTexture(nil, "ARTWORK", nil, 1)
+	disc:SetTexture(ROUND_MASK)
+	disc:SetAllPoints(icon)
+	W.Paint(disc, "innerPanel", "vertex", 0.95)
+	local layer, sub
+	if count then
+		layer, sub = count:GetDrawLayer()
+	end
+	local function Ours(on)
+		icon:SetShown(on)
+		disc:SetShown(on)
+		if count then
+			count:SetDrawLayer(on and "OVERLAY" or (layer or "BORDER"), on and 7 or (sub or 0))
+		end
+	end
+	Ours(false)
+	local rep = Replace(art, { as = "ChatColumnButton", button = button, rect = rect, icon = icon, alsoFade = fade })
+	button.melloRep = rep or false
+	if not rep then
+		return
+	end
+	local enable, disable = rep.onEnable, rep.onDisable
+	rep.onEnable = function(...)
+		if enable then
+			enable(...)
+		end
+		Ours(true)
+	end
+	rep.onDisable = function(...)
+		if disable then
+			disable(...)
+		end
+		Ours(false)
+	end
+	Ours(active)
+end
+
 local function SkinEditBox(edit)
 	if not edit or edit.melloRep ~= nil then
 		return
@@ -851,7 +915,20 @@ local function SkinAll()
 		SkinChatFrame(cf)
 		SkinMinimized(cf)
 	end
-	for _, key in ipairs({ "ChatFrameMenuButton", "ChatFrameChannelButton", "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton" }) do
+	-- the column's three (the Chat module's Chat Buttons shows them)
+	local menu, channel, social = _G.ChatFrameMenuButton, _G.ChatFrameChannelButton, _G.QuickJoinToastButton
+	if menu and menu.GetNormalTexture then
+		SkinColumnButton(menu, menu:GetNormalTexture(), "chat",
+			{ menu:GetPushedTexture(), menu:GetDisabledTexture(), menu:GetHighlightTexture() })
+	end
+	if channel and channel.GetNormalTexture then
+		SkinColumnButton(channel, channel:GetNormalTexture(), "channels",
+			{ channel.Icon, channel:GetPushedTexture(), channel:GetHighlightTexture() })
+	end
+	if social and social.FriendsButton then
+		SkinColumnButton(social, social.FriendsButton, "friends", nil, social.FriendCount)
+	end
+	for _, key in ipairs({ "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton" }) do
 		SkinIconButton(_G[key])
 	end
 end

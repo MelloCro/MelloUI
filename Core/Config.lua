@@ -40,8 +40,11 @@
 --     { type = "button", name = "Click, light", hint = "checkboxes, tabs", text = "Play", onClick = function(module, db) ... end },
 -- with `parent` / `requires` (a switch of the same module the row hangs on),
 -- `new` (the update it came with: its New tag), `free` (applied with UI
--- Modifications off), `get` (a value read another way) and `relist` (a bus
--- topic its choices are made again on). A page's side-list entry and header
+-- Modifications off), `get` (a value read another way), `missing` (0.17.0:
+-- function() -> a line while this client lacks the setting, its row dimmed
+-- with it), `search` (0.17.0: words the search finds the row by but no text
+-- shows, e.g. its name before a rename) and `relist` (a bus topic its choices
+-- are made again on). A page's side-list entry and header
 -- show the `icon` and `flavour` of its layout entry, or of the module it
 -- names ("module:<Name>", the registry's), else a question mark.
 --------------------------------------------------------------------------------
@@ -241,6 +244,8 @@ local COMMANDS = {
 	{ "/mello backup ...", "Macro Backup: on, off, restore or delete the copy" },
 	{ "/mello install", "set MelloUI up: a setup, your screen, keep or go back" },
 	{ "/mello edit", "Edit Layout: move and resize the interface" },
+	{ "/mello preview solo", "a fight, alone or (party) in a group, played to see" },
+	{ "/mello preview <part>", "one part alone: fader, widgets, meter, gains ..." },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
 	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },
@@ -1345,7 +1350,7 @@ do
 			if when then
 				local b = Bind(when.key)
 				if b then
-					r.when = { b = b, value = when.value, line = when.line }
+					r.when = { b = b, value = when.value, notValue = when.notValue, line = when.line }
 				else
 					Problem("%s > %s: no setting '%s'", p.key, t.name, tostring(when.key))
 				end
@@ -2034,8 +2039,19 @@ local function Gate(page, r)
 		return Off(page, r, r.gate.id, r.gate.opt and r.gate.opt.name or r.gate.id)
 	end
 	local when = r.when
-	if when and ValueOf(when.b) ~= when.value then
-		return false, nil, when.line
+	if when then
+		local v = ValueOf(when.b)
+		if (when.notValue ~= nil and v == when.notValue) or (when.notValue == nil and v ~= when.value) then
+			return false, nil, when.line
+		end
+	end
+	-- 7: (0.17.0) a setting this client may lack (Combat Text's over-enemy
+	-- switches, the engine's own CVars): its schema's `missing` says why
+	if opt and type(opt.missing) == "function" then
+		local ok, line = pcall(opt.missing)
+		if ok and type(line) == "string" then
+			return false, nil, line
+		end
 	end
 	return true
 end
@@ -4837,6 +4853,7 @@ local TEXT = {
 	-- Edit Layout found by the words of the mode it replaced in 0.15.0 too
 	-- (search words, never shown: no text names the old mode)
 	editWords = "unlock windows snap snapping auto position positions reset",
+	previewWords = "preview simulate simulation test demo try fight combat behave behaviour",
 }
 -- within a tier: what a result opens, the likeliest target first (a page;
 -- then a tab or a pick; then a row)
@@ -4906,6 +4923,10 @@ local function RowWords(r)
 		n = n + 1
 		parts[n] = b.opt.hint
 	end
+	if b.opt and type(b.opt.search) == "string" then
+		n = n + 1
+		parts[n] = b.opt.search
+	end
 	local text = table.concat(parts, " ", 1, n)
 	for i = 1, n do
 		parts[i] = nil
@@ -4938,8 +4959,10 @@ local function AddLayoutPage(key, nav, group)
 			for _, r in ipairs(s.rows) do
 				local b = r.b or r.distinct[1]
 				local tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or nil
-				Entry({ kind = "option", key = key, row = r, new = r.new and true or nil }, r.name, crumb, tip, nil,
-					RowWords(r))
+				-- (a renamed row's old name: found as well as by its own, `search`)
+				local old = b.opt and type(b.opt.search) == "string" and lower(b.opt.search) or nil
+				Entry({ kind = "option", key = key, row = r, new = r.new and true or nil, lsearch = old }, r.name, crumb,
+					tip, nil, RowWords(r))
 			end
 		end
 	end
@@ -4981,6 +5004,10 @@ local function Build()
 	local edit = window.parts.edit
 	Entry({ kind = "bar", part = "edit", when = EditLayoutThere, new = window.editNew or nil }, edit.melloTipTitle,
 		TEXT.bar, edit.melloTipBody, nil, TEXT.editWords)
+	-- the top bar: Preview (0.17.0)
+	local preview = window.parts.preview
+	Entry({ kind = "bar", part = "preview", new = MelloUI:IsNew(preview.melloNew) or nil }, preview.melloTipTitle, TEXT.bar,
+		preview.melloTipBody, nil, TEXT.previewWords)
 end
 
 -- 1: `s` starts with `q`; 2: a word in it does; 3: it holds `q` (lower case)
@@ -5014,6 +5041,9 @@ local function Tier(e, q, nWords)
 	local t = NameTier(e.lname, q)
 	if t then
 		return t
+	end
+	if e.lsearch and find(e.lsearch, q, 1, true) then
+		return 3   -- (its old name holds the whole query: as a name of many words)
 	end
 	if nWords <= 1 then
 		if find(e.lplace, q, 1, true) then
@@ -5400,6 +5430,21 @@ local function RefreshBar()
 	install:SetShown(type(MelloUI.OpenInstaller) == "function")
 end
 
+-- Preview (0.17.0; the user, 2026-10-01: "preview opens the preview menu
+-- and i can click different stuff to check it out individually"): its list
+-- (Core/Preview.lua) -- a fight alone or in a group, or one part at a time,
+-- played as a short scene. The configurator steps aside while it plays and
+-- comes back after.
+local PREVIEW = { name = "Preview", new = "0.17.0",
+	desc = "See how your interface behaves in a fight, with made-up numbers: resting, the fight, after it. "
+		.. "A fight alone or in a group, or one part at a time (the fades, the reminders, the widget column, "
+		.. "party frames, the meter, Combat Text, Gains). Out of combat only; Stop ends it." }
+local PreviewClick = Shared("OnClick on the configurator's Preview", function(button)
+	if MelloUI.Preview then
+		MelloUI.Preview:ToggleMenu(button, shell)
+	end
+end, "script")
+
 local CloseClick = Shared("OnClick on the configurator's close button", function()
 	window:Hide()
 end, "script")
@@ -5415,6 +5460,11 @@ local Window_OnShow = Shared("OnShow on the configurator", function()
 		RefreshNav()
 	end
 	RefreshBar()
+	MelloUI:Fire("configurator", true)
+end, "script")
+
+local Window_OnHide = Shared("OnHide on the configurator", function()
+	MelloUI:Fire("configurator", false)
 end, "script")
 
 -- set while OpenConfig shows the window: a look switch at that show leaves
@@ -5622,7 +5672,12 @@ local function TopBar()
 	-- grows by the tag's room, its label keeps its own)
 	edit.newTag = W.ButtonTag(edit, EDIT_LAYOUT.new)
 	BarTip(edit, EDIT_LAYOUT.name, EDIT_LAYOUT.desc)
-	return { topBar = bar, install = install, edit = edit, close = close }
+	-- Preview: at the bar's left end, its list under it
+	local preview = W.Button(bar, PREVIEW.name, 110, shell, { onClick = PreviewClick })
+	preview:SetPoint("LEFT", bar, "LEFT", 8, 0)
+	preview.newTag, preview.melloNew = W.ButtonTag(preview, PREVIEW.new), PREVIEW.new
+	BarTip(preview, PREVIEW.name, PREVIEW.desc)
+	return { topBar = bar, install = install, edit = edit, close = close, preview = preview }
 end
 
 local function CreateWindow()
@@ -5640,6 +5695,7 @@ local function CreateWindow()
 	window.navStale = true
 	-- (its own show before the shell's hooks: SetScript drops hooks)
 	Perf.SetScript(window, "OnShow", Window_OnShow)
+	Perf.HookScript(window, "OnHide", Window_OnHide)
 	shell = Kit:OwnWindow(window, SHELL_OPTS)
 	window.shell = shell
 	KIT, SKIN = shell.kit and Kit or nil, shell.kit and shell or nil
@@ -5672,7 +5728,7 @@ local function CreateWindow()
 	-- (What's new's line about the New tags: while any shows; Edit Layout's
 	-- button counts while it is there)
 	window.editNew = type(MelloUI.StartEditLayout) == "function" and MelloUI:IsNew(EDIT_LAYOUT.new) or nil
-	window.anyNew = anyNew or window.editNew or false
+	window.anyNew = anyNew or window.editNew or MelloUI:IsNew(PREVIEW.new) or false
 	-- (the search's index walks the list as it stands)
 	window.navGroups = groups
 	-- (each page's place in the list: the side a page slides in from)
@@ -6377,7 +6433,7 @@ end
 -- handler and its test read.
 local RESERVED = {}
 for _, word in ipairs({ "list", "enable", "disable", "profile", "profiles", "install", "layout", "edit", "perf", "cpu",
-	"secrets", "auras", "preload", "dump", "backup", "status", "tutorial", "tour", "help" }) do
+	"secrets", "auras", "preload", "dump", "backup", "status", "tutorial", "tour", "help", "preview" }) do
 	RESERVED[word] = true
 end
 
@@ -6425,6 +6481,26 @@ SlashCmdList.MELLOUI = function(msg)
 	local rawRest = raw:match("^%S+%s*(.-)$") or ""
 
 	if cmd ~= "" and not RESERVED[cmd] then
+		-- (0.17.0) "<module> test": a module's own sample, its SlashTest
+		-- (/mello combattext test: Combat Text's burst)
+		if rest == "test" then
+			local module = ModuleByName(cmd)
+			if module and type(module.SlashTest) == "function" then
+				module:SlashTest()
+				return
+			end
+		end
+		-- "<module> <word>": a module's own word (module.SlashWords[word]:
+		-- /mello combattext order, Combat Text's event order log)
+		if rest ~= "" then
+			local module = ModuleByName(cmd)
+			local words = module and module.SlashWords
+			local fn = type(words) == "table" and words[rest]
+			if type(fn) == "function" then
+				fn()
+				return
+			end
+		end
 		-- a page word: the whole text
 		if MelloUI:ConfigWord(msg) then
 			MelloUI:OpenConfig(msg)
@@ -6525,6 +6601,10 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 	elseif cmd == "edit" then
 		EditCommand(rest, msg)
+	elseif cmd == "preview" then
+		if MelloUI.Preview then
+			MelloUI.Preview.Slash(rest)
+		end
 	elseif cmd == "perf" then
 		SlashCmdList.MELLOPERF(rest or "")
 	elseif cmd == "cpu" then

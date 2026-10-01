@@ -101,9 +101,23 @@
 --             down in the same moment (PLAYER_MONEY, heard only while the
 --             merchant is open; the purchase's money and its item come in
 --             one update, and the pass runs on the next frame): a purchase,
---             a buyback too. A sale raises the money and takes an item: no
---             line. Money itself is never a line.
+--             a buyback too. A sale takes an item: no line for it (its money
+--             is one, below).
+--   money     (0.17.0, the user's meter-and-gains plan) a rise of your money
+--             (GetMoney, PLAYER_MONEY while Money is on): loot, quest
+--             rewards, sales, mail, trades. "+" in gold and the game's own
+--             money string with its coins (GetMoneyString: never coin
+--             textures by hand); ONE line that sums while it shows. Spending
+--             makes no line. A secret read is skipped: the next one compares
+--             with the last plain sum, so nothing is lost
+--   currency  (0.17.0) another currency gained (CURRENCY_DISPLAY_UPDATE with
+--             a plain positive change, while Currencies is on): "+15 <icon>
+--             Honor Points", the currency's own icon and name
+--             (C_CurrencyInfo.GetCurrencyInfo), one line per currency
 -- Stacks gained together sum: the counts are compared, not the stacks.
+-- Item Names In Quality Colour (0.17.0, off): an item's name in the game's
+-- quality colour beside its gem (else the palette's text colour; the
+-- names' colour is set by Fill and again on the palette).
 --
 -- Secret values (MelloUI.Safe, the secret test first): a skill or item read
 -- that comes back secret or fails leaves what was known as it was; it is read
@@ -114,7 +128,7 @@
 --
 -- Its place: MelloUI's one mover and position store (key "gains", anchor
 -- TOPLEFT; its default TOPLEFT at the screen's centre, 110 right and 30
--- down): Edit Layout shows three sample lines there on its plate to drag,
+-- down): Edit Layout shows four sample lines there on its plate to drag,
 -- its Reset puts it back, profiles carry it as every mover's.
 --
 -- Cost. Nothing is made at login: the module's OnEnable waits for the
@@ -122,14 +136,15 @@
 -- frame and takes the snapshot (data only: numbers in tables). The lines, the
 -- holder and the mover come with the first gain (or Edit Layout's first
 -- open). Only a switched-on kind's events are registered; PLAYER_MONEY
--- only while a merchant is open. Nothing runs per frame: no OnUpdate of its
+-- while Money is on or a merchant is open. Nothing runs per frame: no OnUpdate of its
 -- own, no ticker, no timer (Kit:NextFrame for the pass); Anim's driver runs
 -- only while a line slides. A bag event makes no garbage; the pass makes the
 -- line's texts only. The game's skill API hands a table per line
 -- (GetSkillLineInfo), read once per change.
 --
 -- Settings (this page): the module's switch (on), Skill Ups, Show Skill
--- Values, Looted & Received Items, Bought Items, Junk Items, Show For.
+-- Values, Looted & Received Items, Bought Items, Junk Items, Money,
+-- Currencies, Item Names In Quality Colour, Show For.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -140,7 +155,7 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 
-local pairs, type, pcall, format, tinsert, tremove = pairs, type, pcall, string.format, table.insert, table.remove
+local pairs, type, pcall, format = pairs, type, pcall, string.format
 
 local OWNER = "Gains"
 local MOVER_KEY = "gains"
@@ -184,6 +199,7 @@ local SAMPLES = {
 	{ kind = "skill", count = 1, name = "Defense", rank = 57, cap = 80 },
 	{ kind = "item", count = 3, name = "Linen Cloth", quality = 1 },
 	{ kind = "bought", count = 5, name = "Refreshing Spring Water", quality = 1 },
+	{ kind = "money", count = 25734 },
 }
 
 local function Seconds(value)
@@ -204,6 +220,9 @@ local M = MelloUI:RegisterModule("Gains", {
 		items = true,
 		bought = true,
 		junk = true,
+		money = true,
+		currencies = true,
+		qualityNames = false,
 		hold = HOLD_DEFAULT,
 	},
 	options = {
@@ -218,6 +237,12 @@ local M = MelloUI:RegisterModule("Gains", {
 		  desc = "A line for what you buy from a merchant, buybacks too, marked as bought." },
 		{ type = "toggle", key = "junk", name = "Junk Items",
 		  desc = "Also show junk (grey) items. Off: they are left out." },
+		{ type = "toggle", key = "money", name = "Money", new = "0.17.0",
+		  desc = "A line when your money goes up: loot, quest rewards, sales, mail and trades, with the game's coins. Several gains in a row add up on one line. Spending makes no line." },
+		{ type = "toggle", key = "currencies", name = "Currencies", new = "0.17.0",
+		  desc = "A line for the other currencies you gain (honor, tokens, marks), with the currency's own icon." },
+		{ type = "toggle", key = "qualityNames", name = "Item Names In Quality Colour", new = "0.17.0",
+		  desc = "Item names in their quality colour (green, blue, purple) beside the quality gem. Blue and purple read less well over bright ground. Off: the names in the text colour." },
 		{ type = "header", name = "Lines" },
 		{ type = "slider", key = "hold", name = "Show For", min = HOLD_MIN, max = HOLD_MAX, step = 1, format = Seconds,
 		  desc = "How long each line stays before it fades. Gaining the same skill or item again adds to its line and starts it over." },
@@ -325,15 +350,15 @@ local function InCombat()
 end
 
 --------------------------------------------------------------------------------
--- The lines. `ui` is made with the first gain (or Edit Layout's first
--- open): the holder (the mover's frame, click-through), the
--- lines in order (newest first), the spare rows, and the row of each skill
--- or item shown.
+-- The lines: MelloUI.Feed (Core/Feed.lua, 0.17.0: the engine lifted from
+-- here, now shared with Combat Text's feed). Its holder (the mover's frame,
+-- click-through) and lines come with the first gain (or Edit Layout's first
+-- open); a skill's or an item's line is its kind and id there.
 --------------------------------------------------------------------------------
 
-local ui
+local feed   -- (made at the end of this section)
 local S = {
-	started = false, skillsOn = false, itemsOn = false, preview = false,
+	started = false, skillsOn = false, itemsOn = false, moneyOn = false, currenciesOn = false, preview = false,
 	merchant = false, bank = false, money = nil, spentAt = nil,
 	itemsQueued = false, skillsQueued = false, skillRetry = false, slotRetry = false, nRetry = 0, nWait = 0,
 }
@@ -397,78 +422,8 @@ local function ModuleOn()
 	return M.isEnabled and true or false
 end
 
--- the saved place (kept on the screen), else the default
-local function Place()
-	local holder = ui.holder
-	local entry = ui.entry
-	if entry and entry.moving then
-		return
-	end
-	if not MelloUI:RestorePosition(MOVER_KEY, holder) then
-		Home(holder)
-		MelloUI:FitOnScreen(holder)
-	end
-end
-
--- the lines in their slots, newest at the top; a line that moves slides
--- (Anim: at once under Reduce Motion), a new one is laid in its slot
-local function Lay()
-	local lines = ui.lines
-	for i = 1, #lines do
-		local row = lines[i]
-		if row.slot ~= i then
-			local y = -(i - 1) * PITCH
-			if row.slot then
-				MelloUI.Anim:To(row, "y", y, SLIDE, "outCubic")
-			else
-				row:ClearAllPoints()
-				row:SetPoint("TOPLEFT", ui.holder, "TOPLEFT", 0, y)
-			end
-			row.slot = i
-		end
-	end
-end
-
-local function IndexOf(row)
-	local lines = ui.lines
-	for i = 1, #lines do
-		if lines[i] == row then
-			return i
-		end
-	end
-	return nil
-end
-
--- a line over (its fade ended, dropped, or its holder hidden): out of the
--- list, its skill or item free, the row back with the spares, hidden itself
--- (a parent's hide leaves it shown)
-local function RowHidden(row)
-	local kind = row.kind
-	if not kind then
-		return   -- (a spare already)
-	end
-	row.kind = nil
-	local map = ui.rows[kind]
-	if map[row.id] == row then
-		map[row.id] = nil
-	end
-	local i = IndexOf(row)
-	if i then
-		tremove(ui.lines, i)
-	end
-	row.slot = nil
-	MelloUI.Anim:Stop(row)
-	MelloUI.Anim:StopMirror(row)
-	ui.pool[#ui.pool + 1] = row
-	Lay()
-end
-local OnRowHide   -- (RowHidden wrapped once, with the first line)
-
-local function NewRow()
-	local row = CreateFrame("Frame", nil, ui.holder)
-	row:SetSize(WIDTH, PITCH)
-	row:EnableMouse(false)
-	row:Hide()
+-- a line's texts and band (the feed made the line)
+local function NewRow(row)
 	local plus = row:CreateFontString(nil, "OVERLAY")
 	local name = row:CreateFontString(nil, "OVERLAY")
 	local tail = row:CreateFontString(nil, "OVERLAY")
@@ -491,37 +446,63 @@ local function NewRow()
 	tail:SetPoint("BOTTOMLEFT", name, "BOTTOMRIGHT", 0, 0)
 	local W = MelloUI.Widgets
 	W.Paint(plus, "selectedTrim", "text")
-	W.Paint(name, "text", "text")
 	W.Paint(tail, "text", "text", TAIL_ALPHA)   -- (small text is never mutedText: the palette rule)
+	-- (the name's colour is Fill's: the text colour, or an item's quality
+	-- colour with Item Names In Quality Colour; Repaint sets it again)
 	Restyle(row)
 	-- the band from the count's left to the tail's right: it follows the
 	-- texts by its anchors, whatever their length
 	row.band = MelloUI.Shade:Band(row, TEXT)
 	row.band:Anchor(plus, tail, PAD_X, PAD_Y)
-	if not OnRowHide then
-		OnRowHide = Perf.Shared("OnHide on a gains line (its line over)", RowHidden, "script")
-	end
-	Perf.SetScript(row, "OnHide", OnRowHide)
-	return row
 end
 
-local function Take()
-	local pool = ui.pool
-	local n = #pool
-	if n > 0 then
-		local row = pool[n]
-		pool[n] = nil
-		return row
+-- the money a line says, in the game's own string with its coins
+local function MoneyText(copper)
+	local fn = _G.GetMoneyString
+	if type(fn) == "function" then
+		local ok, text = pcall(fn, copper, true)
+		if ok and Text(text) then
+			return text
+		end
 	end
-	return NewRow()
+	local coin = Api("C_CurrencyInfo", "GetCoinTextureString")
+	if coin then
+		local ok, text = pcall(coin, copper)
+		if ok and Text(text) then
+			return text
+		end
+	end
+	return tostring(copper)
+end
+
+-- the name's colour: an item's quality colour with Item Names In Quality
+-- Colour on, else the palette's text colour (a sample as the kind it stands for)
+local function NameColour(row)
+	local kind = row.kind
+	if kind == "sample" then
+		kind = SAMPLES[row.id] and SAMPLES[row.id].kind
+	end
+	local c = MelloUI.Palette.text
+	local r, g, b = c[1], c[2], c[3]
+	if (kind == "item" or kind == "bought") and M.db and M.db.qualityNames then
+		local qr, qg, qb = QualityColour(row.quality)
+		if qr then
+			r, g, b = qr, qg, qb
+		end
+	end
+	row.name:SetTextColor(r, g, b)
 end
 
 -- what a line says, from its row's fields
 local function Fill(row)
-	row.plus:SetText("+" .. row.count)
 	local kind = row.kind
+	if kind == "money" then
+		row.plus:SetText("+")
+	else
+		row.plus:SetText("+" .. row.count)
+	end
 	local gem, name = row.gem, row.name
-	local layout = kind == "skill" and "skill" or "item"
+	local layout = (kind == "item" or kind == "bought") and "item" or "skill"
 	if row.layout ~= layout then
 		row.layout = layout
 		name:ClearAllPoints()
@@ -531,11 +512,16 @@ local function Fill(row)
 			name:SetPoint("LEFT", gem, "RIGHT", GAP, 0)
 		end
 	end
-	name:SetText(row.label)
+	if kind == "money" then
+		name:SetText(MoneyText(row.count))
+	else
+		name:SetText(row.label)
+	end
 	Cut(name)
+	NameColour(row)
 	if layout == "skill" then
 		gem:Hide()
-		if M.db and M.db.values ~= false and row.rank and row.cap and row.cap > 0 then
+		if kind == "skill" and M.db and M.db.values ~= false and row.rank and row.cap and row.cap > 0 then
 			row.tail:SetText(format(TAIL_VALUE, row.rank, row.cap))
 		else
 			row.tail:SetText("")
@@ -551,85 +537,34 @@ local function Fill(row)
 	end
 end
 
--- a line gone at once (past MAX_LINES, the module off): its OnHide takes it
--- out of the list (RowHidden); one not on the screen is taken out here
-local function Drop(row)
-	MelloUI.Anim:StopMirror(row)
-	if row.kind then
-		RowHidden(row)
-	end
-	local i = IndexOf(row)
-	if i then
-		tremove(ui.lines, i)   -- (never left in the list)
-	end
-end
-
 local Preview   -- (below)
 
-local function Build()
-	if ui then
-		return ui
-	end
-	local holder = CreateFrame("Frame", "MelloUIGains", UIParent)
-	holder:SetSize(WIDTH, MAX_LINES * PITCH)
-	holder:SetFrameStrata("LOW")
-	holder:SetClampedToScreen(true)
-	holder:EnableMouse(false)
-	ui = { holder = holder, lines = {}, pool = {}, rows = { skill = {}, item = {}, bought = {}, sample = {} } }
-	Home(holder)
-	-- one mover entry: moved in Edit Layout while the module is on, its
-	-- place in the store, put back on each show (it sets no script of its own)
-	ui.entry = MelloUI:RegisterMover(holder, holder, { key = MOVER_KEY, anchor = "TOPLEFT", default = Home,
-		min = 0.5, max = 2, base = 1, label = "Gains", page = "Gains", when = ModuleOn })
-	Place()
-	return ui
-end
-
--- a line for a skill or item: a new one on top, or the one it has added to,
--- raised to the top with its hold started again
-local function Put(kind, id, count, label, quality, rank, cap, hold)
-	if not ui then
-		Build()
-		-- Edit Layout open while the first line comes: the samples come
-		-- first, so the gain is the newest, on top
-		Preview()
-	end
-	local map = ui.rows[kind]
-	local row = map[id]
-	local new = not row
+-- a line's fields and texts: a new one counts from 0; a sample shows as
+-- the kind it stands for
+local function Apply(row, new, count, label, quality, rank, cap)
 	if new then
-		row = Take()
-		row.kind, row.id, row.count, row.slot = kind, id, 0, nil
-		map[id] = row
-		tinsert(ui.lines, 1, row)
-	else
-		local i = IndexOf(row)
-		if i and i > 1 then
-			tremove(ui.lines, i)
-			tinsert(ui.lines, 1, row)
-		end
+		row.count = 0
 	end
-	if kind == "sample" then
+	local sample = row.kind == "sample"
+	if sample then
 		row.count = count
 	else
 		row.count = row.count + count
 	end
 	row.label, row.quality, row.rank, row.cap = label, quality, rank, cap
-	-- (a sample shows as the kind it stands for)
-	if kind == "sample" then
-		row.kind = SAMPLES[id].kind
+	if sample then
+		row.kind = SAMPLES[row.id].kind
 		Fill(row)
 		row.kind = "sample"
 	else
 		Fill(row)
 	end
-	while #ui.lines > MAX_LINES do
-		Drop(ui.lines[#ui.lines])
-	end
-	ui.holder:Show()
-	Lay()
-	MelloUI.Anim:Mirror(row, new and FADE_IN or 0, hold or Hold(), FADE_OUT)
-	return row
+end
+
+-- a line for a skill or item: a new one on top, or the one it has added to,
+-- raised to the top with its hold started again
+local function Put(kind, id, count, label, quality, rank, cap, hold)
+	return feed:Put(kind, id, hold or Hold(), Apply, count, label, quality, rank, cap)
 end
 
 -- the sample lines while Edit Layout shows, so the place can be dragged on
@@ -645,12 +580,36 @@ Preview = function()
 			local s = SAMPLES[i]
 			Put("sample", i, s.count, s.name, s.quality, s.rank, s.cap, SAMPLE_HOLD)
 		end
-	elseif ui then
-		local map = ui.rows.sample
+	elseif feed.ui then
+		local map = feed:Rows("sample")
 		for i = 1, #SAMPLES do
 			local row = map[i]
 			if row then
-				MelloUI.Anim:Mirror(row, 0, 0, FADE_OUT)
+				feed:Fade(row)
+			end
+		end
+	end
+end
+
+-- the preview's kill (0.17.0, Core/Preview.lua): what a kill brings, as
+-- sample lines with the usual hold -- the skill, the loot, the money (not
+-- the bought line: no vendor after a kill); its stop fades what is left
+local KILL_SAMPLES = { 4, 2, 1 }
+local function OnPreview(beat)
+	if not M.isEnabled then
+		return
+	end
+	if beat == "kill" and MelloUI.Preview and MelloUI.Preview:Plays("gains") then
+		for _, i in ipairs(KILL_SAMPLES) do
+			local s = SAMPLES[i]
+			Put("sample", i, s.count, s.name, s.quality, s.rank, s.cap)
+		end
+	elseif beat == "stop" and feed.ui and not S.preview then
+		local map = feed:Rows("sample")
+		for i = 1, #SAMPLES do
+			local row = map[i]
+			if row then
+				feed:Fade(row)
 			end
 		end
 	end
@@ -658,26 +617,16 @@ end
 
 -- the value / cap after every skill line again (Show Skill Values)
 local function Tails()
-	if not ui then
+	if not feed.ui then
 		return
 	end
-	for _, row in pairs(ui.rows.skill) do
+	for _, row in pairs(feed:Rows("skill")) do
 		Fill(row)
 	end
 end
 
 local function RestyleAll()
-	if not ui then
-		return
-	end
-	local lines = ui.lines
-	for i = 1, #lines do
-		Restyle(lines[i])
-	end
-	local pool = ui.pool
-	for i = 1, #pool do
-		Restyle(pool[i])
-	end
+	feed:Each(Restyle)
 end
 
 -- the text shadows from the palette as it is now (the colours are Kit:Paint's)
@@ -688,16 +637,19 @@ local function ShadowRow(row)
 end
 
 local function Repaint()
-	if not ui then
-		return
-	end
-	for i = 1, #ui.lines do
-		ShadowRow(ui.lines[i])
-	end
-	for i = 1, #ui.pool do
-		ShadowRow(ui.pool[i])
-	end
+	feed:Each(ShadowRow)
+	feed:Each(NameColour)
 end
+
+-- (Edit Layout open while the first line comes: the samples come first, so
+-- the gain is the newest, on top)
+local function OnBuild()
+	Preview()
+end
+
+feed = MelloUI.Feed:New({ name = "MelloUIGains", key = MOVER_KEY, label = "Gains", page = "Gains", when = ModuleOn,
+	width = WIDTH, pitch = PITCH, max = MAX_LINES, home = Home, newRow = NewRow, onBuild = OnBuild,
+	fadeIn = FADE_IN, fadeOut = FADE_OUT, slide = SLIDE })
 
 --------------------------------------------------------------------------------
 -- Skills
@@ -720,7 +672,7 @@ end
 -- a cap that changed (a trainer's new rank, a rank given with it): the line
 -- shown says it, its count kept
 local function SkillCap(id)
-	local row = ui and ui.rows.skill[id]
+	local row = feed:Row("skill", id)
 	if row then
 		row.rank, row.cap = skillRank[id], skillCap[id]
 		Fill(row)
@@ -1299,7 +1251,22 @@ end
 local ITEM_EVENTS = { "BAG_UPDATE", "BAG_UPDATE_DELAYED", "MERCHANT_SHOW", "MERCHANT_CLOSED", "BANKFRAME_OPENED",
 	"BANKFRAME_CLOSED" }
 
-local function OnEvent(_, event, a1, a2)
+-- a currency gained: its own icon and name (the game's), a line per currency
+local function CurrencyGained(id, change)
+	local info = Ask(Api("C_CurrencyInfo", "GetCurrencyInfo"), id)
+	if type(info) ~= "table" then
+		return
+	end
+	local name = Text(info.name)
+	if not name or name == "" then
+		return
+	end
+	local icon = Num(info.iconFileID)
+	local label = icon and ("|T" .. icon .. ":0|t " .. name) or name
+	Put("currency", id, change, label)
+end
+
+local function OnEvent(_, event, a1, a2, a3)
 	if event == "BAG_UPDATE" then
 		local bag = Num(a1)
 		if bag and carried[bag] then
@@ -1311,21 +1278,34 @@ local function OnEvent(_, event, a1, a2)
 	elseif event == "SKILL_LINES_CHANGED" then
 		QueueSkills()
 	elseif event == "PLAYER_MONEY" then
+		-- (a secret read is skipped: the next plain one is compared with the
+		-- last plain sum)
 		local money = Money()
 		if money then
-			if S.merchant and S.money and money < S.money then
+			local last = S.money
+			if last and money > last and S.moneyOn then
+				Put("money", "money", money - last)
+			elseif S.merchant and last and money < last then
 				S.spentAt = GetTime()
 			end
 			S.money = money
 		end
+	elseif event == "CURRENCY_DISPLAY_UPDATE" then
+		local id, change = Num(a1), Num(a3)
+		if S.currenciesOn and id and change and change > 0 then
+			CurrencyGained(id, change)
+		end
 	elseif event == "MERCHANT_SHOW" then
 		Flush()
-		S.merchant, S.money, S.spentAt = true, Money(), nil
+		S.merchant, S.spentAt = true, nil
+		S.money = Money() or S.money
 		events:RegisterEvent("PLAYER_MONEY")
 	elseif event == "MERCHANT_CLOSED" then
 		Flush()
 		S.merchant, S.spentAt = false, nil
-		events:UnregisterEvent("PLAYER_MONEY")
+		if not S.moneyOn then
+			events:UnregisterEvent("PLAYER_MONEY")
+		end
 	elseif event == "BANKFRAME_OPENED" then
 		Flush()
 		S.bank = true
@@ -1405,7 +1385,7 @@ local function Sync()
 		-- asked, not assumed closed)
 		S.bank = Interacting("Banker", "CharacterBanker", "AccountBanker")
 		S.merchant, S.spentAt = Interacting("Merchant"), nil
-		S.money = S.merchant and Money() or nil
+		S.money = Money() or S.money
 		Baseline()
 		for i = 1, #ITEM_EVENTS do
 			events:RegisterEvent(ITEM_EVENTS[i])
@@ -1419,8 +1399,30 @@ local function Sync()
 		for i = 1, #ITEM_EVENTS do
 			events:UnregisterEvent(ITEM_EVENTS[i])
 		end
-		events:UnregisterEvent("PLAYER_MONEY")
+		if not S.moneyOn then
+			events:UnregisterEvent("PLAYER_MONEY")
+		end
 		StopWaiting()
+	end
+	-- money: PLAYER_MONEY while Money is on (a merchant's bought check too)
+	local wantMoney = db.money ~= false
+	if wantMoney and not S.moneyOn then
+		S.moneyOn = true
+		S.money = Money()
+		events:RegisterEvent("PLAYER_MONEY")
+	elseif not wantMoney and S.moneyOn then
+		S.moneyOn = false
+		if not S.merchant then
+			events:UnregisterEvent("PLAYER_MONEY")
+		end
+	end
+	local wantCurrencies = db.currencies ~= false
+	if wantCurrencies and not S.currenciesOn then
+		S.currenciesOn = true
+		events:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+	elseif not wantCurrencies and S.currenciesOn then
+		S.currenciesOn = false
+		events:UnregisterEvent("CURRENCY_DISPLAY_UPDATE")
 	end
 	if not (S.skillRetry or S.nRetry > 0 or S.slotRetry) then
 		events:UnregisterEvent("PLAYER_REGEN_ENABLED")
@@ -1441,20 +1443,14 @@ local function Start()
 end
 
 local function Stop()
-	S.started, S.skillsOn, S.itemsOn = false, false, false
+	S.started, S.skillsOn, S.itemsOn, S.moneyOn, S.currenciesOn = false, false, false, false, false
 	S.merchant, S.bank, S.spentAt, S.skillRetry, S.nRetry, S.slotRetry = false, false, nil, false, 0, false
 	if events then
 		events:UnregisterAllEvents()
 	end
 	StopWaiting()
 	S.preview = false
-	if ui then
-		local lines = ui.lines
-		while #lines > 0 do
-			Drop(lines[#lines])
-		end
-		ui.holder:Hide()
-	end
+	feed:Clear()
 end
 
 --------------------------------------------------------------------------------
@@ -1473,9 +1469,9 @@ local function OnEditLayout()
 end
 
 local function OnRestart()
-	if ui and M.isEnabled then
+	if feed.ui and M.isEnabled then
 		RestyleAll()
-		Place()
+		feed:Place()
 	end
 	Preview()
 end
@@ -1490,6 +1486,7 @@ function M:OnEnable(db)
 	MelloUI:On("editlayout", OnEditLayout, OWNER)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
+	MelloUI:On("preview", OnPreview, OWNER)
 	MelloUI:AfterLogin(Start)
 end
 
@@ -1500,9 +1497,11 @@ end
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
-	if key == "skills" or key == "items" or key == "bought" then
+	if key == "skills" or key == "items" or key == "bought" or key == "money" or key == "currencies" then
 		Sync()
 	elseif key == "values" then
 		Tails()
+	elseif key == "qualityNames" then
+		feed:Each(NameColour)
 	end
 end
