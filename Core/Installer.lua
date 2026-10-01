@@ -293,7 +293,8 @@ I.WINDOW_GROUPS = {
 -- role themselves. Gains, the feed of skill ups and items, after them.)
 I.FEATURE_GROUPS = {
 	-- (0.16.0: Widgets joined the first column and Party Markers, the medallions over the party's heads, moved beside
-	-- the nameplates, so both columns fit the page: ten and nine rows; 0.17.0: the Damage Meter, ten and ten)
+	-- the nameplates, so both columns fit the page: ten and nine rows; 0.17.0: the Damage Meter, ten and ten -- full:
+	-- a module left off the page says so, `installer = false`, as the Swing Timers, 0.17.1)
 	{ key = "quests", label = "Quests, travel and your group", members = { "QuestList", "QuestTracker", "Route", "Services",
 		"Reminders", "Restock", "Widgets", "Gains", "VoiceOver", "Vendor" } },
 	{ key = "combat", label = "Combat, frames and tooltips", members = { "Auras", "CooldownText", "ErrorFilter", "Nameplates",

@@ -766,7 +766,11 @@ end
 --   M.Ground.Clear(cont, x0, y0, x1, y1) -> true (no wall on the segment),
 --                          false (a wall), nil (no grid there)
 -- A row is decoded the first time a leg crosses it (its runs kept).
-M.Ground = { grids = {} }
+-- (0.17.1, the walking freezes: docs/plans/hotfix-0.17.1-route-freeze.md)
+-- The line is sampled once a cell, not twice, and the decoded rows are kept
+-- ROWS at most per grid, the oldest let go first: they grew as you walked
+-- (60 MB against 48). Clear itself makes nothing.
+M.Ground = { grids = {}, ROWS = 256 }
 
 function M.Ground.Set(data)
 	local walk = type(data) == "table" and data.walk
@@ -780,7 +784,7 @@ function M.Ground.Set(data)
 			local size = type(data.sizes) == "table" and data.sizes[cont]
 			g.sx = (w and size and size[1] and size[1] > 0) and w / size[1] or 1
 			g.sy = (h and size and size[2] and size[2] > 0) and h / size[2] or 1
-			g.decoded = {}
+			g.decoded, g.kept, g.keptAt = {}, {}, 0   -- the rows decoded, and which, in the order they came
 			M.Ground.grids[cont] = g
 		end
 	end
@@ -806,6 +810,13 @@ function M.Ground.Row(g, r)
 			runs[#runs + 1] = letter
 		end
 	end
+	-- (the oldest row let go once ROWS are kept: a ring of their numbers)
+	local slot = g.keptAt % M.Ground.ROWS + 1
+	local old = g.kept[slot]
+	if old then
+		g.decoded[old] = nil
+	end
+	g.kept[slot], g.keptAt = r, slot
 	g.decoded[r] = runs
 	return runs
 end
@@ -837,13 +848,20 @@ function M.Ground.Clear(cont, x0, y0, x1, y1)
 		return nil
 	end
 	x0, y0, x1, y1 = x0 / g.sx, y0 / g.sy, x1 / g.sx, y1 / g.sy
-	local cell = g.cell
-	local steps = math.max(1, math.ceil(Dist(x0, y0, x1, y1) / (cell * 0.5)))
+	local cell, e0, s0 = g.cell, g.e0, g.s0
+	local steps = math.max(1, math.ceil(Dist(x0, y0, x1, y1) / cell))
+	-- (0.17.1) the cells of the two ends are not asked: someone stands there
+	-- (the player, a quest's place, a node), and a wall cell under one -- the
+	-- edge of a slope, a house -- cut every leg from it, so the search went
+	-- the long way round the continent and over the sea (a fifth of the ends
+	-- the hotfix's timing pairs picked)
+	local qa, ra = math.floor((x0 - e0) / cell), math.floor((y0 - s0) / cell)
+	local qb, rb = math.floor((x1 - e0) / cell), math.floor((y1 - s0) / cell)
 	for i = 0, steps do
 		local t = i / steps
-		local q = math.floor((x0 + (x1 - x0) * t - g.e0) / cell)
-		local r = math.floor((y0 + (y1 - y0) * t - g.s0) / cell)
-		if M.Ground.At(g, r, q) == "x" then
+		local q = math.floor((x0 + (x1 - x0) * t - e0) / cell)
+		local r = math.floor((y0 + (y1 - y0) * t - s0) / cell)
+		if not ((q == qa and r == ra) or (q == qb and r == rb)) and M.Ground.At(g, r, q) == "x" then
 			return false
 		end
 	end
@@ -1340,6 +1358,39 @@ end
 local NodesNear, FindRoute, ForgetLearned   -- in a block: its helpers stay out of the main chunk's 200 locals
 local IsFlight   -- the block's rule for a learned flight link, which the travel time prices too
 
+-- (0.17.1, the walking freezes: the user, 2026-10-01, "im having random
+-- freezes while walking" / "it happens only when im tracking a quest";
+-- docs/plans/hotfix-0.17.1-route-freeze.md) The walk grid's checks ran
+-- INSIDE the search: from the start and the goal to every node within
+-- OFFROAD (the ground lattice puts hundreds there), from every dock and
+-- flight point in every search, and across open ground from every path's
+-- end it reached -- up to 300 ms a search, and the tracked quest's pick ran
+-- four. Now:
+--   legs     with a grid, the LEG_MAX nearest nodes within LEG_NEAR are
+--            checked, the ones within OFFROAD (LEG_WIDE checks at most,
+--            spread over it) only when none of those is clear; a dock's or
+--            a flight point's legs are worked out once and kept (as its
+--            nodes near were), the start's once for a pick and the route
+--            after it; the cells under a leg's two ends are not asked
+--            (M.Ground.Clear)
+--   jumps    across open ground only where the ground is not known: the
+--            ground's own links are that
+--   pricing  one search for every candidate (Search.Price)
+--   frames   a search runs in a job of its own that hands over to the next
+--            frame when it has used BUDGET ms of this one (Search.Run); its
+--            answer is used when it comes -- at once, inside the frame,
+--            nearly always
+-- The job's state and tunables, one table (the main chunk is near its 200
+-- locals): the queue, the job running, when its slice began, what waits
+-- for the queue to empty (M:WhenReady), the plan and the pricing pending,
+-- the pricings kept (M:Cheapest); counted, for /route and the tests: the
+-- searches run, the path ends crossed from (jumps); the seeker frame.
+-- BUDGET 3 ms: a slice ends past it after at most EVERY more nodes, inside
+-- the 5 ms a slow call starts at (/melloperf).
+local Search = { LEG_NEAR = 80, LEG_MAX = 8, LEG_WIDE = 64, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
+	PRICE_CAP = 2, PRICE_EXTRA = 120, REPICK_MOVED = 40, queue = {}, running = nil, slice = 0, after = {}, plan = nil,
+	pricing = {}, priced = {}, runs = 0, jumps = 0, frame = nil }
+
 do
 	-- Nodes grouped in 250-yard buckets per continent, built on first use and
 	-- then kept up to date as nodes are added (memory audit, 2026-09-24: it
@@ -1405,10 +1456,118 @@ do
 		return found, count
 	end
 
+	-- (0.17.1) NodesNear into two lists kept from one call to the next (the
+	-- keys in nearKey, their yards in nearD, `n` of them), for the legs below
+	local nearKey, nearD = {}, {}
+	local function NearList(cont, x, y, radius)
+		local g = live.graphs[cont]
+		local index = g and Buckets(cont)
+		local n = 0
+		if index then
+			local span = math.ceil(radius / BUCKET)
+			local bx, by = math.floor(x / BUCKET), math.floor(y / BUCKET)
+			for i = -span, span do
+				for j = -span, span do
+					local list = index[(bx + i) * 100000 + by + j]
+					if list then
+						for _, key in ipairs(list) do
+							local node = g[key]
+							if node then
+								local d = Dist(x, y, node[1], node[2])
+								if d <= radius then
+									n = n + 1
+									nearKey[n], nearD[n] = key, d
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		return n
+	end
+
+	-- the `k` nearest of NearList's `n` moved to its front, nearest first (a
+	-- selection: k is small)
+	local function NearestFirst(n, k)
+		for i = 1, math.min(k, n) do
+			local m = i
+			for j = i + 1, n do
+				if nearD[j] < nearD[m] then
+					m = j
+				end
+			end
+			nearKey[i], nearKey[m] = nearKey[m], nearKey[i]
+			nearD[i], nearD[m] = nearD[m], nearD[i]
+		end
+	end
+
+	-- (0.17.1) The legs from a point to the graph on a continent whose ground
+	-- is known: the nearest LEG_MAX nodes within LEG_NEAR whose straight line
+	-- the walk grid allows (the ground lattice is about 40 yd apart). When
+	-- none is: the nodes within OFFROAD past those, nearest first, LEG_WIDE of
+	-- them checked at most, spread over the whole reach (a wall round the
+	-- player hides the nearest ones, however many a town has), until LEG_MAX
+	-- are. Into legKey / legD (kept), their count returned.
+	local legKey, legD = {}, {}
+	local order = {}   -- the second pass's nodes (their places in nearKey / nearD), nearest first
+	local function ByNear(i, j)
+		return nearD[i] < nearD[j]
+	end
+
+	local function Legs(cont, x, y)
+		local g = live.graphs[cont]
+		if not g then
+			return 0
+		end
+		local count = 0
+		local n = NearList(cont, x, y, Search.LEG_NEAR)
+		local k = math.min(Search.LEG_MAX, n)
+		NearestFirst(n, k)
+		for i = 1, k do
+			local node = g[nearKey[i]]
+			if node and M.Ground.Clear(cont, x, y, node[1], node[2]) ~= false then
+				count = count + 1
+				legKey[count], legD[count] = nearKey[i], nearD[i]
+			end
+		end
+		if count > 0 then
+			return count
+		end
+		local checked = k > 0 and nearD[k] or -1
+		n = NearList(cont, x, y, OFFROAD)
+		local m = 0
+		for i = 1, n do
+			if nearD[i] > checked then
+				m = m + 1
+				order[m] = i
+			end
+		end
+		for i = #order, m + 1, -1 do
+			order[i] = nil
+		end
+		table.sort(order, ByNear)
+		for s = 1, m, math.max(1, math.ceil(m / Search.LEG_WIDE)) do
+			local i = order[s]
+			local node = g[nearKey[i]]
+			if node and M.Ground.Clear(cont, x, y, node[1], node[2]) ~= false then
+				count = count + 1
+				legKey[count], legD[count] = nearKey[i], nearD[i]
+				if count >= Search.LEG_MAX then
+					break
+				end
+			end
+			Search.Yield()
+		end
+		return count
+	end
+
 	-- Neighbourhood links of a fixed hub (dock, flight point), kept until a
 	-- node is added near it (memory audit, 2026-09-24: every new node threw
-	-- all of them away)
-	local hubNear, hubAt = {}, {}   -- [id] = its NodesNear, [id] = { cont, x, y } it was taken at
+	-- all of them away). Where the ground is known its legs themselves are
+	-- kept (0.17.1, hubLegs: { node key, yards, node key, yards, ... }): the
+	-- walk grid's checks of every hub ran in every search.
+	local hubNear, hubAt, hubLegs = {}, {}, {}   -- [id] = its NodesNear, [id] = { cont, x, y } it was taken at, [id] = its legs
 	-- A dead end's NodesNear at JUMP, kept only while big searches follow one
 	-- another (a player off a long route is routed again every two seconds)
 	-- and let go with the working tables below: [cont][node] = near
@@ -1441,7 +1600,7 @@ do
 		-- the hubs and dead ends that may see it (a yard to spare) look again
 		for id, at in pairs(hubAt) do
 			if at[1] == cont and Dist(at[2], at[3], node[1], node[2]) <= OFFROAD + 1 then
-				hubNear[id], hubAt[id] = nil, nil
+				hubNear[id], hubAt[id], hubLegs[id] = nil, nil, nil
 			end
 		end
 		local ends = jumpNear[cont]
@@ -1475,21 +1634,33 @@ do
 	-- search has run for SCRATCH_IDLE seconds, or SCRATCH_IDLE_BIG after one
 	-- that expanded more than SCRATCH_KEEP nodes (2-4 MB for a road across a
 	-- continent): the memory is only held while it is saving garbage. Graph
-	-- nodes go by their own table; the start ("S"), the goal ("G"), docks
-	-- ("D<i>"), flight points ("T<id>") and a link to a cell with no node
-	-- ("c|key") by string.
+	-- nodes go by their own table; the start ("S"), the goal ("G"; a
+	-- pricing's goals "G1", "G2" ...), docks ("D<i>"), flight points
+	-- ("T<id>") and a link to a cell with no node ("c|key") by string.
 	local SCRATCH_KEEP, SCRATCH_IDLE, SCRATCH_IDLE_BIG = 500, 20, 4
 	local gScore, from, closed = {}, {}, {}   -- per node: cost so far, the node before, expanded
 	local heapId, heapF, heapCont, heapN = {}, {}, {}, 0   -- binary heap keyed by f
 	local extra, nodeExtra, pos = {}, {}, {}   -- id -> { otherId = cost }, graph node -> its extra, id -> { cont, x, y }
 	local flightEnds = {}   -- [node] = a flight point this character may use is at it
 	local sBase, sFrom          -- the node being expanded: its cost so far, itself
-	local sGoalCont, sGoalX, sGoalY, sSpeed, sHx, sHy   -- the goal, the estimate's speed, the heading
+	local sSpeed, sHx, sHy      -- the estimate's speed, the heading
+	-- the goals: `n` of them, each its id, continent and place; of[id] = its
+	-- number (0.17.1: a pricing has several, a route one, "G")
+	local goals = { n = 0, id = {}, cont = {}, x = {}, y = {}, of = {}, ids = {} }
+	-- the start's legs as last worked out (0.17.1: a pick's search and the
+	-- route's after it start from the same place): where, at which graph
+	-- edit, the legs' node keys and yards
+	local startLegs = { cont = nil, x = 0, y = 0, edits = -1, n = 0, keys = {}, ds = {} }
+	local hubIds = {}   -- the flight points' ids, gathered before their legs are made (a search may yield there)
 	local lastSearch, releaseQueued, scratchBig = 0, false, false
 	-- [scont][gcont] = { hub edits, other continents' edits } of a search that found no way
 	local failed = {}
 
 	local function ReleaseIfIdle()
+		if Search.running or #Search.queue > 0 then
+			C_Timer.After(SCRATCH_IDLE_BIG, ReleaseIfIdle)   -- (never under a search that waits for its next frame)
+			return
+		end
 		if GetTime() - lastSearch < (scratchBig and SCRATCH_IDLE_BIG or SCRATCH_IDLE) then
 			C_Timer.After(SCRATCH_IDLE_BIG, ReleaseIfIdle)
 			return
@@ -1522,7 +1693,7 @@ do
 		if n == 0 then
 			return nil
 		end
-		local id, cont = heapId[1], heapCont[1]
+		local id, cont, f = heapId[1], heapCont[1], heapF[1]
 		heapId[1], heapF[1], heapCont[1] = heapId[n], heapF[n], heapCont[n]
 		heapId[n], heapF[n], heapCont[n] = nil, nil, nil
 		n = n - 1
@@ -1540,7 +1711,7 @@ do
 			heapCont[s], heapCont[i] = heapCont[i], heapCont[s]
 			i = s
 		end
-		return id, cont
+		return id, cont, f
 	end
 
 	local function SetPos(id, cont, x, y)
@@ -1567,6 +1738,9 @@ do
 	end
 
 	-- the estimate to the goal at the fastest way this character can travel
+	-- (several goals: to the nearest, and none while one is on another
+	-- continent -- the least of the goals' own estimates, never more than
+	-- any of them)
 	local function Heuristic(id, cont)
 		local x, y
 		if type(id) == "table" then
@@ -1578,10 +1752,24 @@ do
 			end
 			cont, x, y = p[1], p[2], p[3]
 		end
-		if cont ~= sGoalCont then
-			return 0
+		local gc, gx, gy = goals.cont, goals.x, goals.y
+		if goals.n == 1 then
+			if cont ~= gc[1] then
+				return 0
+			end
+			return Dist(x, y, gx[1], gy[1]) / sSpeed
 		end
-		return Dist(x, y, sGoalX, sGoalY) / sSpeed
+		local best
+		for i = 1, goals.n do
+			if cont ~= gc[i] then
+				return 0
+			end
+			local d = Dist(x, y, gx[i], gy[i])
+			if not best or d < best then
+				best = d
+			end
+		end
+		return (best or 0) / sSpeed
 	end
 
 	-- One link out of the node being expanded
@@ -1625,32 +1813,71 @@ do
 		if extra[b][a] == nil or extra[b][a] > cost then extra[b][a] = cost end
 	end
 
+	-- One leg from a point to the graph node `key`, `d` yards away
+	local function Leg(id, cont, x, y, key, d, node)
+		local cost = d / WALK * 1.3
+		if id == "S" and sHx and d > 5 and node then
+			-- the node's direction from the player against the heading
+			local dot = ((node[1] - x) * sHx + (node[2] - y) * sHy) / d
+			if dot < -0.3 then
+				cost = cost * BEHIND_COST
+			elseif dot < 0.3 then
+				cost = cost * (1 + (0.3 - dot) * (BEHIND_COST - 1) / 0.6)   -- sideways: in between
+			end
+		end
+		local nid = cont .. "|" .. key
+		AddExtra(id, nid, cost)
+		if node then
+			nodeExtra[node] = extra[nid]
+		end
+	end
+
+	-- A point's legs to the graph. Where the ground is not known: every node
+	-- within OFFROAD, as ever. Where it is (0.17.0: a leg over a wall is no
+	-- leg): the nearest clear ones (Legs, 0.17.1), a hub's kept, the start's
+	-- kept while the player and the graph stay as they were.
 	local function LinkPoint(id, cont, x, y, cached)
-		local near = cached and HubNear(id, cont, x, y) or NodesNear(cont, x, y, OFFROAD)
 		local g = live.graphs[cont]
-		for key, d in pairs(near) do
-			local cost = d / WALK * 1.3
-			local node = g and g[key]
-			-- (0.17.0: a leg over a wall is no leg: the walk grid's)
-			if node and M.Ground.Clear(cont, x, y, node[1], node[2]) == false then
-				cost = nil
+		if not M.Ground.Has(cont) then
+			local near = cached and HubNear(id, cont, x, y) or NodesNear(cont, x, y, OFFROAD)
+			for key, d in pairs(near) do
+				Leg(id, cont, x, y, key, d, g and g[key])
 			end
-			if cost and id == "S" and sHx and d > 5 and node then
-				-- the node's direction from the player against the heading
-				local dot = ((node[1] - x) * sHx + (node[2] - y) * sHy) / d
-				if dot < -0.3 then
-					cost = cost * BEHIND_COST
-				elseif dot < 0.3 then
-					cost = cost * (1 + (0.3 - dot) * (BEHIND_COST - 1) / 0.6)   -- sideways: in between
+			return
+		end
+		local n, keys, ds
+		if cached then
+			local list, at = hubLegs[id], hubAt[id]
+			if not (list and at and at[1] == cont and at[2] == x and at[3] == y) then
+				local count = Legs(cont, x, y)
+				list = {}
+				for i = 1, count do
+					list[i * 2 - 1], list[i * 2] = legKey[i], legD[i]
 				end
+				hubLegs[id], hubAt[id], hubNear[id] = list, { cont, x, y }, nil
 			end
-			if cost then
-				local nid = cont .. "|" .. key
-				AddExtra(id, nid, cost)
-				if node then
-					nodeExtra[node] = extra[nid]
+			for i = 1, #list, 2 do
+				local key = list[i]
+				Leg(id, cont, x, y, key, list[i + 1], g and g[key])
+			end
+			return
+		elseif id == "S" then
+			local s = startLegs
+			if not (s.cont == cont and s.edits == edits.all and Dist(s.x, s.y, x, y) < 1) then
+				local at = edits.all   -- (as it was when the legs were begun: an edit while they are made counts)
+				local count = Legs(cont, x, y)
+				for i = 1, count do
+					s.keys[i], s.ds[i] = legKey[i], legD[i]
 				end
+				s.cont, s.x, s.y, s.edits, s.n = cont, x, y, at, count
 			end
+			n, keys, ds = s.n, s.keys, s.ds
+		else
+			n, keys, ds = Legs(cont, x, y), legKey, legD
+		end
+		for i = 1, n do
+			local key = keys[i]
+			Leg(id, cont, x, y, key, ds[i], g and g[key])
 		end
 	end
 
@@ -1663,9 +1890,46 @@ do
 		return d / WALK * FAR_HUB_COST
 	end
 
-	-- The start, the goal, the docks and the flight points, linked to the
-	-- graph and to each other
-	local function Begin(scont, sx, sy, gcont, gx, gy, hx, hy)
+	-- The goals of the next search: `n` of them; GoalId(i) the i-th of a
+	-- pricing's ids ("G1" ...), made once
+	local function GoalId(i)
+		local id = goals.ids[i]
+		if not id then
+			id = "G" .. i
+			goals.ids[i] = id
+		end
+		return id
+	end
+
+	local function SetGoal(i, id, cont, x, y)
+		goals.id[i], goals.cont[i], goals.x[i], goals.y[i] = id, cont, x, y
+		goals.of[id] = i
+	end
+
+	local function ClearGoals()
+		for i = 1, goals.n do
+			goals.of[goals.id[i]] = nil
+		end
+		goals.n = 0
+	end
+
+	-- a hub's straight leg from the start and to each goal on its continent
+	local function HubEnds(id, cont, x, y, scont, sx, sy)
+		if cont == scont then
+			AddExtra("S", id, HubLeg(Dist(x, y, sx, sy)))
+		end
+		for i = 1, goals.n do
+			if cont == goals.cont[i] then
+				AddExtra(goals.id[i], id, HubLeg(Dist(x, y, goals.x[i], goals.y[i])))
+			end
+		end
+	end
+
+	-- The start, the goals (set before: SetGoal), the docks and the flight
+	-- points, linked to the graph and to each other. The hubs are walked by
+	-- number (0.17.1: a search may hand over to the next frame inside, and a
+	-- table walked by pairs must not grow meanwhile)
+	local function Begin(scont, sx, sy, hx, hy)
 		wipe(gScore)
 		wipe(from)
 		wipe(closed)
@@ -1678,56 +1942,73 @@ do
 		heapN = 0
 		sHx, sHy = hx, hy
 		SetPos("S", scont, sx, sy)
-		SetPos("G", gcont, gx, gy)
+		for i = 1, goals.n do
+			SetPos(goals.id[i], goals.cont[i], goals.x[i], goals.y[i])
+		end
 		LinkPoint("S", scont, sx, sy)
-		LinkPoint("G", gcont, gx, gy)
-		for i, d in ipairs(docks or {}) do
+		for i = 1, goals.n do
+			LinkPoint(goals.id[i], goals.cont[i], goals.x[i], goals.y[i])
+		end
+		local list = docks or {}
+		for i = 1, #list do
+			local d = list[i]
 			local id = "D" .. i
 			SetPos(id, d.cont, d.x, d.y)
 			LinkPoint(id, d.cont, d.x, d.y, true)
 			if d.pair then
 				AddExtra(id, "D" .. d.pair, BOAT_COST)
 			end
-			if d.cont == scont then
-				AddExtra("S", id, HubLeg(Dist(d.x, d.y, sx, sy)))
-			end
-			if d.cont == gcont then
-				AddExtra("G", id, HubLeg(Dist(d.x, d.y, gx, gy)))
-			end
+			HubEnds(id, d.cont, d.x, d.y, scont, sx, sy)
+			Search.Yield()
 		end
-		for id, t in pairs(taxis or {}) do
-			if TaxiUsable(id, t) then
-				local nid = "T" .. id
+		local all = taxis or {}
+		local n = 0
+		for tid in pairs(all) do
+			n = n + 1
+			hubIds[n] = tid
+		end
+		for i = #hubIds, n + 1, -1 do
+			hubIds[i] = nil
+		end
+		for i = 1, n do
+			local tid = hubIds[i]
+			local t = all[tid]
+			if t and TaxiUsable(tid, t) then
+				local nid = "T" .. tid
 				SetPos(nid, t.cont, t.x, t.y)
 				LinkPoint(nid, t.cont, t.x, t.y, true)
 				for other, secs in pairs(t.links) do
-					if taxis[other] and TaxiUsable(other, taxis[other]) then
+					if all[other] and TaxiUsable(other, all[other]) then
 						AddExtra(nid, "T" .. other, secs)
 					end
 				end
-				if t.cont == scont then
-					AddExtra("S", nid, HubLeg(Dist(t.x, t.y, sx, sy)))
-				end
-				if t.cont == gcont then
-					AddExtra("G", nid, HubLeg(Dist(t.x, t.y, gx, gy)))
-				end
+				HubEnds(nid, t.cont, t.x, t.y, scont, sx, sy)
 			end
+			Search.Yield()
 		end
 		-- (0.17.0: the direct line only where the ground allows it, or is not known)
-		if scont == gcont and M.Ground.Clear(scont, sx, sy, gx, gy) ~= false then
-			AddExtra("S", "G", Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
-		end
-		-- the estimate at the fastest way this character can travel: flying
-		-- only with a usable flight point on the goal's continent, else walking
-		-- (a far tighter estimate: the long road searches finish)
-		local speed = WALK
-		for tid, t in pairs(taxis or {}) do
-			if t.cont == gcont and TaxiUsable(tid, t) then
-				speed = FLIGHT
-				break
+		for i = 1, goals.n do
+			local gx, gy = goals.x[i], goals.y[i]
+			if scont == goals.cont[i] and M.Ground.Clear(scont, sx, sy, gx, gy) ~= false then
+				AddExtra("S", goals.id[i], Dist(sx, sy, gx, gy) / WALK * STRAIGHT_COST)
 			end
 		end
-		sGoalCont, sGoalX, sGoalY, sSpeed = gcont, gx, gy, speed
+		-- the estimate at the fastest way this character can travel: flying
+		-- only with a usable flight point on a goal's continent, else walking
+		-- (a far tighter estimate: the long road searches finish)
+		local speed = WALK
+		for i = 1, n do
+			local tid = hubIds[i]
+			local t = all[tid]
+			if t and TaxiUsable(tid, t) then
+				for k = 1, goals.n do
+					if t.cont == goals.cont[k] then
+						speed = FLIGHT
+					end
+				end
+			end
+		end
+		sSpeed = speed
 	end
 
 	-- The links out of one node
@@ -1745,8 +2026,11 @@ do
 				end
 				degree = degree + 1
 			end
-			if degree <= 1 then
-				-- the end of a path: cross open ground to any path nearby
+			-- the end of a path: cross open ground to any path nearby -- only
+			-- where the ground is not known (0.17.1: the ground's own links are
+			-- that, and the walk grid's check of every jump cost the most)
+			if degree <= 1 and not M.Ground.Has(cont) then
+				Search.jumps = Search.jumps + 1
 				local ends = scratchBig and jumpNear[cont]
 				local near = ends and ends[id]
 				if not near then
@@ -1759,7 +2043,7 @@ do
 				end
 				for k, d in pairs(near) do
 					local o = g[k]
-					if o ~= id and links[k] == nil and M.Ground.Clear(cont, id[1], id[2], o[1], o[2]) ~= false then
+					if o ~= id and links[k] == nil then
 						Relax(o, cont, d / WALK * JUMP_COST)
 					end
 				end
@@ -1825,6 +2109,70 @@ do
 		return points, gScore.G
 	end
 
+	-- The search from the start to Begin's goals: until the one goal ("G")
+	-- is reached, or every goal of a pricing is (`single` false: each one's
+	-- cost then in gScore, the goals never expanded -- a way through one to
+	-- another is not the way the player walks to that one), or none can be
+	-- any more. Every EVERY nodes it may hand over to the next frame
+	-- (Search.Yield: only inside a job). How it ended: "found", "none" (no
+	-- way), "big" (past 60,000 nodes), "cap" (a pricing's other goals cost
+	-- more than PRICE_CAP times the cheapest's and PRICE_EXTRA seconds: no
+	-- choice, whatever they cost)
+	local function Walk(scont, single)
+		gScore.S = 0
+		Push("S", Heuristic("S"), scont)
+		local expanded, settled, cap = 0, 0, nil
+		local ended
+		while true do
+			local id, cont, f = Pop()
+			if not id then
+				ended = "none"
+				break
+			end
+			if single then
+				if id == "G" then
+					ended = "found"
+					break
+				end
+			elseif cap and f > cap then
+				ended = "cap"
+				break
+			end
+			if not closed[id] then
+				closed[id] = true
+				if not single and goals.of[id] then
+					settled = settled + 1
+					cap = cap or gScore[id] * Search.PRICE_CAP + Search.PRICE_EXTRA
+					if settled >= goals.n then
+						ended = "found"
+						break
+					end
+				else
+					expanded = expanded + 1
+					if expanded > 60000 then
+						scratchBig = true
+						return "big"
+					end
+					Expand(id, cont)
+					if expanded % Search.EVERY == 0 then
+						Search.Yield()
+					end
+				end
+			end
+		end
+		scratchBig = scratchBig or expanded > SCRATCH_KEEP
+		return ended
+	end
+
+	local function Searched()
+		Search.runs = Search.runs + 1
+		lastSearch = GetTime()
+		if not releaseQueued then
+			releaseQueued = true
+			C_Timer.After(SCRATCH_IDLE_BIG, ReleaseIfIdle)
+		end
+	end
+
 	-- Route from (scont, sx, sy) to (gcont, gx, gy): a list of { cont, x, y, kind }
 	-- points and the total cost in seconds, or nil.
 	FindRoute = function(scont, sx, sy, gcont, gx, gy, hx, hy)
@@ -1847,40 +2195,179 @@ do
 				return nil
 			end
 		end
-		lastSearch = GetTime()
-		if not releaseQueued then
-			releaseQueued = true
-			C_Timer.After(SCRATCH_IDLE_BIG, ReleaseIfIdle)
+		Searched()
+		ClearGoals()
+		SetGoal(1, "G", gcont, gx, gy)
+		goals.n = 1
+		Begin(scont, sx, sy, hx, hy)
+		local ended = Walk(scont, true)
+		if ended ~= "found" then
+			if ended == "none" and others then
+				failed[scont] = failed[scont] or {}
+				failed[scont][gcont] = { edits.hubs, others }
+			end
+			return nil
 		end
-		Begin(scont, sx, sy, gcont, gx, gy, hx, hy)
-		gScore.S = 0
-		Push("S", Heuristic("S"), scont)
-		local expanded = 0
-		while true do
-			local id, cont = Pop()
-			if not id then
-				scratchBig = scratchBig or expanded > SCRATCH_KEEP
-				if others then
-					failed[scont] = failed[scont] or {}
-					failed[scont][gcont] = { edits.hubs, others }
-				end
-				return nil
-			end
-			if id == "G" then
-				break
-			end
-			if not closed[id] then
-				closed[id] = true
-				expanded = expanded + 1
-				if expanded > 60000 then
-					scratchBig = true
-					return nil
-				end
-				Expand(id, cont)
-			end
-		end
-		scratchBig = scratchBig or expanded > SCRATCH_KEEP
 		return Path()
+	end
+
+	-- (0.17.1) What each of `places` ({ cont, x, y } each) costs from
+	-- (scont, sx, sy), in seconds, in ONE search (it was one search a place:
+	-- the tracked quest's pick ran three, Services' nearest six): out[i] its
+	-- cost, nil where the search did not reach it. True when the ones not
+	-- reached have no way it could find (it ran out of graph, or past 60,000
+	-- nodes, where FindRoute gave none either), false when it stopped at the
+	-- cap (Walk's "cap").
+	function Search.Price(scont, sx, sy, places, out)
+		if not next(CharFlights()) then
+			RefreshDiscovered()
+		end
+		local n = #places
+		for i = 1, n do
+			out[i] = nil
+		end
+		if n == 0 then
+			return true
+		end
+		Searched()
+		ClearGoals()
+		for i = 1, n do
+			local p = places[i]
+			SetGoal(i, GoalId(i), p[1], p[2], p[3])
+		end
+		goals.n = n
+		Begin(scont, sx, sy)
+		local ended = Walk(scont, false)
+		for i = 1, n do
+			local id = goals.id[i]
+			out[i] = closed[id] and gScore[id] or nil
+		end
+		return ended ~= "cap"
+	end
+
+	-- (0.17.1) The jobs. A search runs in a coroutine of its own, one at a
+	-- time (they share the working tables above), in a queue: the first is
+	-- begun as it is asked for, in the asker's frame, and nearly always ends
+	-- there; one that has used BUDGET ms of the frame hands over to the next
+	-- (Search.Yield, between nodes and between hubs) and goes on there, from
+	-- the seeker frame's OnUpdate, shown only while a job waits. A job is a
+	-- table: kind "route" (scont, sx, sy, gcont, gx, gy, hx, hy -> points,
+	-- cost) or "price" (scont, sx, sy, places, costs -> costs filled,
+	-- exhausted), and done(job), called when it ends in a later frame. A
+	-- stale job (asked for again since) is dropped unanswered; one whose graph
+	-- was reset under it begins again (ForgetLearned).
+	local OnSeek   -- the seeker frame's OnUpdate (Search.frame: made with the first job that waits for a frame)
+
+	local function Clock()
+		local f = debugprofilestop
+		return f and f() or 0
+	end
+
+	function Search.Yield()
+		local job = Search.running
+		if job and coroutine.running() == job.co and Clock() - Search.slice > Search.BUDGET then
+			coroutine.yield()
+		end
+	end
+
+	local function Work(job)
+		if job.kind == "price" then
+			job.exhausted = Search.Price(job.scont, job.sx, job.sy, job.places, job.costs)
+		else
+			job.points, job.cost = FindRoute(job.scont, job.sx, job.sy, job.gcont, job.gx, job.gy, job.hx, job.hy)
+		end
+	end
+
+	-- one slice of a job: true when it has ended
+	local function Slice(job)
+		if not job.co then
+			job.co = coroutine.create(Work)
+		end
+		Search.running, Search.slice = job, Clock()
+		local ok, err = coroutine.resume(job.co, job)
+		Search.running = nil
+		if not ok then
+			job.failed, job.ended = true, true   -- (never waited for again)
+			MelloUI:Print("|cffff4040Error|r in module 'Route' (finding a way): %s", tostring(err))
+			return true
+		end
+		return coroutine.status(job.co) == "dead"
+	end
+
+	-- Search.Run(job) -> true when it has ended already (its answers in it);
+	-- else its done(job) is called in the frame it ends
+	function Search.Run(job)
+		local q = Search.queue
+		while q[1] and q[1].stale do
+			table.remove(q, 1)   -- (asked for again since: the new one may begin now)
+		end
+		q[#q + 1] = job
+		if #q == 1 and Slice(job) then
+			table.remove(q, 1)
+			return true
+		end
+		local seeker = Search.frame
+		if not seeker then
+			seeker = CreateFrame("Frame")
+			Perf.SetScript(seeker, "OnUpdate", OnSeek)
+			Search.frame = seeker
+		end
+		seeker:Show()
+		return false
+	end
+
+	-- whether a search is under way (asked for, not ended)
+	function Search.Busy()
+		return #Search.queue > 0
+	end
+
+	-- fn run once no search is under way (M:WhenReady)
+	function Search.After(fn)
+		local list = Search.after
+		list[#list + 1] = fn
+	end
+
+	local function Told(ok, err)
+		if not ok then
+			MelloUI:Print("|cffff4040Error|r in module 'Route' (after finding a way): %s", tostring(err))
+		end
+	end
+
+	OnSeek = function()
+		local q = Search.queue
+		if not M.isEnabled then
+			-- switched off meanwhile: nothing more found, nothing waits
+			for i = 1, #q do
+				q[i].stale, q[i].ended = true, true
+			end
+			wipe(q)
+			wipe(Search.after)
+			Search.repickDue = false
+			Search.frame:Hide()
+			Build.Loaded()   -- (the loading line, if it waited for this search: never held)
+			return
+		end
+		local job = q[1]
+		if job then
+			if job.stale then
+				table.remove(q, 1)   -- (begun or not: its working tables are wiped by the next one's Begin)
+			elseif Slice(job) then
+				table.remove(q, 1)
+				if not job.failed and not job.stale and job.done then
+					Told(pcall(job.done, job))
+				end
+			end
+		end
+		if #q == 0 then
+			Search.frame:Hide()
+			local after = Search.after
+			if #after > 0 then
+				Search.after = {}
+				for i = 1, #after do
+					Told(pcall(after[i]))
+				end
+			end
+		end
 	end
 
 	-- /route reset: the learned nodes go, with every link to them, and the
@@ -1915,8 +2402,14 @@ do
 		buckets = nil
 		wipe(hubNear)
 		wipe(hubAt)
+		wipe(hubLegs)
 		wipe(failed)
 		jumpNear = {}
+		startLegs.edits = -1
+		-- (0.17.1) a search waiting for its next frame begins again on the graph as it is now
+		for _, job in ipairs(Search.queue) do
+			job.co = nil
+		end
 	end
 end
 
@@ -2414,6 +2907,12 @@ local function Plan(force, announce, announceText)
 	end
 	local now = GetTime()
 	if not force then
+		-- (0.17.1) a plan for it under way: its answer comes (a long search
+		-- asked again every few seconds would never end)
+		local pending = Search.plan
+		if pending and not pending.ended and not pending.stale and pending.d == destination then
+			return
+		end
 		-- (user, 2026-09-22: the arrow was too strict) a route being
 		-- followed is kept and only re-projected by the arrow; a new one is
 		-- planned when the player has been off it for OFF_ROUTE_SECONDS, or
@@ -2461,8 +2960,39 @@ local function Plan(force, announce, announceText)
 			announce, announceText = true, waited.text
 		end
 	end
+	-- (0.17.1) the search as a job (Search.Run): its answer put in place
+	-- below at once, or in the frame it ends. A plan asked for again while
+	-- one waits for its frame takes its place (its notice with it, for the
+	-- same destination)
+	local before = Search.plan
+	if before and not before.stale and not before.ended then
+		before.stale = true
+		if before.d == d and before.announce and not announce then
+			announce, announceText = true, before.text
+		end
+	end
 	local hx, hy = Heading(cont)
-	local points, cost = FindRoute(cont, x, y, d.cont, d.x, d.y, hx, hy)
+	local job = { kind = "route", scont = cont, sx = x, sy = y, gcont = d.cont, gx = d.x, gy = d.y, hx = hx, hy = hy,
+		d = d, announce = announce, text = announceText, done = Search.Planned }
+	Search.plan = job
+	if Search.Run(job) then
+		Search.Planned(job)
+	end
+end
+
+-- The route a plan's search found, put in place (Plan; Search.Run's done)
+function Search.Planned(job)
+	job.ended = true
+	if Search.plan == job then
+		Search.plan = nil
+	end
+	local d = job.d
+	if destination ~= d then
+		return   -- (another destination since: its own plan follows)
+	end
+	local cont, x, y = job.scont, job.sx, job.sy
+	local points, cost = job.points, job.cost
+	local announce, announceText = job.announce, job.text
 	if points and #points == 2 and cont == d.cont then
 		-- the direct line won: its real walking time, not the price that made roads compete
 		cost = Dist(x, y, d.x, d.y) / WALK
@@ -3019,6 +3549,12 @@ local function ObjectiveSpot(questID)
 	if not pcont then
 		return c and c.cont, c and c.x, c and c.y, c and c.name, nil, c and c.source, missing, sourceOnly, c and c.area
 	end
+	-- (0.17.1) the same objectives, and the player still within REPICK_MOVED
+	-- yards of where they were chosen: kept (a walk chose again, and searched,
+	-- every OBJECTIVE_RECHECK seconds)
+	if c and c.sig == sig and c.pcont == pcont and Dist(px, py, c.px, c.py) < Search.REPICK_MOVED then
+		return c.cont, c.x, c.y, c.name, nil, c.source, missing, sourceOnly, c.area
+	end
 	-- every place on the player's continent, nearest first
 	local near = {}
 	for _, entry in ipairs(open) do
@@ -3063,7 +3599,7 @@ local function ObjectiveSpot(questID)
 		end
 	end
 	objectiveChoice[questID] = { sig = sig, at = GetTime(), cont = pick.cont, x = pick.x, y = pick.y, name = pick.name,
-		source = pick.source, area = pick.area }
+		source = pick.source, area = pick.area, pcont = pcont, px = px, py = py }
 	return pick.cont, pick.x, pick.y, pick.name, nil, pick.source, missing, sourceOnly, pick.area
 end
 
@@ -3088,7 +3624,13 @@ local function ReadTrackedQuest()
 	Build.Want()
 	local ocont, ox, oy, oname, later, source, missing, sourceOnly, area = ObjectiveSpot(questID)
 	if later then
-		return   -- chosen by route once the roads are in; nothing changes until then
+		-- chosen by route once the roads are in (Build.Replan), or once its
+		-- search has ended (0.17.1: one that went on in the next frames);
+		-- nothing changes until then
+		if Build.ready then
+			Search.RepickSoon()
+		end
+		return
 	end
 	if ocont then
 		local same = destination and destination.fromQuest and destination.questID == questID
@@ -3203,6 +3745,23 @@ local function ReadWaypoint()
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromWaypoint = true,
 		label = "|A:Waypoint-MapPin-ChatIcon:16:16|a map pin" }
 	Plan(true, true)
+end
+
+-- (0.17.1) The tracked quest's pick waited for its search (one that went on
+-- in the next frames): read again once it has ended, once however often it
+-- was asked (the search's answer is kept a moment: M:Cheapest)
+function Search.Repick()
+	Search.repickDue = false
+	if M.isEnabled then
+		ReadWaypoint()
+	end
+end
+
+function Search.RepickSoon()
+	if not Search.repickDue then
+		Search.repickDue = true
+		M:WhenReady(Search.Repick)
+	end
 end
 
 -- A candidate is { mapID, x, y } (map fraction) or { cont, wx, wy } (world
@@ -3578,6 +4137,13 @@ end
 -- true -- not priced yet; M:WhenReady makes the choice once it can be.
 -- costs (optional, 0.17.0): a table filled with every candidate's cost
 -- ([i] = seconds, nil where none), for a caller's own rule (Services' zone)
+-- (0.17.1) Every candidate is priced in ONE search (Search.Price), as a job:
+-- one that goes on in the next frames answers nil, nil, true as well, and
+-- M:WhenReady runs once it has ended. Its answer is kept PRICE_KEEP seconds
+-- for the same places while the player is within PRICE_NEAR yards of where
+-- it was asked, so that next ask has it at once. A candidate with no way at
+-- all costs its straight line on foot, as before; one the search stopped
+-- short of (far dearer than the cheapest) none.
 function M:Cheapest(candidates, costs)
 	local pcont, px, py = PlayerYards()
 	if not pcont then
@@ -3587,25 +4153,69 @@ function M:Cheapest(candidates, costs)
 		Build.Loading()   -- (the notice and the arrow's working look while it lasts)
 		return nil, nil, true
 	end
-	local best, bestCost
+	local places, index, parts = {}, {}, {}
 	for i, c in ipairs(candidates) do
 		local cont, x, y = CandidateYards(c)
 		if cont then
-			local points, cost = FindRoute(pcont, px, py, cont, x, y)
-			if not points and cont == pcont then
-				cost = Dist(px, py, x, y) / WALK * 1.3
-			end
-			if costs then
-				costs[i] = cost
-			end
-			if cost and (not bestCost or cost < bestCost) then
-				best, bestCost = i, cost
-			end
-		elseif costs then
+			local n = #places + 1
+			places[n], index[n] = { cont, x, y }, i
+			parts[n] = string.format("%d:%.0f:%.0f", cont, x, y)
+		end
+	end
+	local sig = table.concat(parts, " ")
+	local kept = Search.priced[sig]
+	if not (kept and kept.scont == pcont and GetTime() - kept.at < Search.PRICE_KEEP
+		and Dist(px, py, kept.sx, kept.sy) <= Search.PRICE_NEAR) then
+		local pending = Search.pricing[sig]
+		if pending and not pending.ended then
+			return nil, nil, true   -- (asked for already: its answer comes)
+		end
+		local job = { kind = "price", scont = pcont, sx = px, sy = py, places = places, costs = {}, sig = sig,
+			done = Search.Priced }
+		Search.pricing[sig] = job
+		if not Search.Run(job) then
+			return nil, nil, true
+		end
+		Search.Priced(job)
+		kept = job
+	end
+	if costs then
+		for i = 1, #candidates do
 			costs[i] = nil
 		end
 	end
+	local best, bestCost
+	for n = 1, #places do
+		local i, p = index[n], places[n]
+		local cost = kept.costs[n]
+		if cost == nil and kept.exhausted and p[1] == pcont then
+			cost = Dist(px, py, p[2], p[3]) / WALK * 1.3
+		end
+		if costs then
+			costs[i] = cost
+		end
+		if cost and (not bestCost or cost < bestCost) then
+			best, bestCost = i, cost
+		end
+	end
 	return best, bestCost
+end
+
+-- A pricing's answer kept (M:Cheapest; Search.Run's done), by its places;
+-- the ones kept past PRICE_KEEP let go
+function Search.Priced(job)
+	local now = GetTime()
+	job.ended, job.at = true, now
+	local kept = Search.priced
+	for sig, old in pairs(kept) do
+		if now - old.at >= Search.PRICE_KEEP then
+			kept[sig] = nil
+		end
+	end
+	kept[job.sig] = job
+	if Search.pricing[job.sig] == job then
+		Search.pricing[job.sig] = nil
+	end
 end
 
 -- (0.17.0, Services' nearest: your own zone wins a near tie) The zone map a
@@ -3637,9 +4247,15 @@ M.WALK = WALK
 -- the frame after it is (the build started now if it is not yet). For a
 -- choice Cheapest could not make yet (its third answer): made then, by route
 -- as ever, not by straight line. Dropped when Route is switched off meanwhile.
+-- (0.17.1) A search going on in the next frames (Search.Run): fn run once no
+-- search is under way any more, so the choice it waited for is there.
 function M:WhenReady(fn)
 	if Build.ready then
-		fn()
+		if Search.Busy() then
+			Search.After(fn)
+		else
+			fn()
+		end
 		return
 	end
 	local list = Build.later or {}
@@ -6418,7 +7034,12 @@ do
 			return
 		end
 		Plan(true)
-		F.Hint()
+		-- (0.17.1: a search that goes on in the next frames: the line once it has ended)
+		if Search.Busy() then
+			Search.After(F.Hint)
+		else
+			F.Hint()
+		end
 	end
 
 	-- TAXIMAP_OPENED, a moment later (after Route learned this map)
@@ -6866,7 +7487,13 @@ do
 		end
 		-- last: the route's own notice ("Tracking ...") has taken the
 		-- loading line's place by now, and the arrow its place to point at
-		Build.Loaded()
+		-- (0.17.1: once its search has ended, when that went on in the next
+		-- frames)
+		if Search.Busy() then
+			Search.After(Build.Loaded)
+		else
+			Build.Loaded()
+		end
 	end)
 
 	-- The graph is wanted: the companion loaded (once) and the build started

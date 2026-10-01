@@ -165,6 +165,9 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local Anim = MelloUI.Anim
 local W = MelloUI.Widgets
+-- (0.17.1, docs/plans/game-look.md) the look of MelloUI's own parts: the
+-- painted one with the reskin, the game's own without (the "own" area)
+local Look = MelloUI.Look
 
 local Rem = {}
 MelloUI.Reminders = Rem
@@ -274,6 +277,9 @@ local function HoldTime()
 end
 
 local function GlowMode()
+	if not Look:On() then
+		return "off"   -- (0.17.1: the game's look has no glow)
+	end
 	local g = Setting("glow")
 	return (not Secret(g) and GLOWS[g]) and g or "pulse"
 end
@@ -960,24 +966,17 @@ Build = function()
 	ui.button = b
 	ui.glow = MelloUI.Shade:Glow(b, { region = b, size = SIZE })
 	-- the count: a number on a small dark disc at the button's lower right
+	-- (the game's look: its corner number, no disc; Look.Count)
 	local disc = b:CreateTexture(nil, "OVERLAY", nil, 6)
 	disc:SetTexture(ROUND)
 	disc:SetSize(17, 17)
 	disc:SetPoint("CENTER", b, "BOTTOMRIGHT", -5, 5)
-	W.Paint(disc, "innerPanel", "vertex", 0.9)
+	Look.Paint(disc, "innerPanel", "vertex", 0.9)
 	disc:Hide()
 	ui.disc = disc
 	local count = b:CreateFontString(nil, "OVERLAY")
-	local numberFont = _G.NumberFontNormalSmall or GameFontHighlightSmall
-	if numberFont then
-		count:SetFontObject(numberFont)
-	end
-	if MelloUI.StyleFont and numberFont then
-		MelloUI:StyleFont(count, "fontChat", numberFont, COUNT_SIZE)
-	end
-	count:SetPoint("CENTER", disc, "CENTER", 0, 0)
-	W.Paint(count, "selectedTrim", "text")
 	count:Hide()
+	Look.Count(count, disc, b, COUNT_SIZE)
 	ui.count = count
 	-- the label: its line beside the button while it is new, on a soft band
 	local lf = CreateFrame("Frame", nil, holder)
@@ -985,17 +984,11 @@ Build = function()
 	lf:Hide()
 	ui.labelFrame = lf
 	local label = lf:CreateFontString(nil, "OVERLAY")
-	local textFont = _G.GameFontHighlight or GameFontHighlightSmall
-	if textFont then
-		label:SetFontObject(textFont)
-	end
-	if MelloUI.StyleFont and textFont then
-		MelloUI:StyleFont(label, "fontText", textFont, LABEL_SIZE)
-	end
+	Look.Text(label, "text", LABEL_SIZE)
 	label:SetWordWrap(false)
-	W.Paint(label, "text", "text")
 	ui.label = label
-	ui.band = MelloUI.Shade:Band(lf, { alpha = 0.7, feather = 16 })
+	-- (its plate: the soft band painted, the game's tooltip frame in its look)
+	ui.band = Look.Plate(lf, { alpha = 0.7, feather = 16 })
 	ui.band:Anchor(label, 8, 4)
 	AnchorLabel()
 	-- its own place, on the one mover (used while the ring is hidden): moved
@@ -1014,6 +1007,8 @@ Build = function()
 		Perf.HookScript(pf, "OnHide", placeLater)
 	end
 	MelloUI:On("look:unitframes", OnLook, OWNER)
+	-- (0.17.1: the glow is the painted look's own: none in the game's)
+	MelloUI:On("look:own", ApplyGlows, OWNER .. " (its glow)")
 	MelloUI:On("editmode", PlaceLater, OWNER)
 	MelloUI:On("where", OnWhere, OWNER)
 	Place()
@@ -1043,8 +1038,7 @@ Lay = function()
 		b.key = nil
 		b:SetIcon(SAMPLE_ICON)
 		ui.glow:SetShown(false)
-		ui.disc:Hide()
-		ui.count:Hide()
+		Look.CountShown(ui.count, false)
 		ui.label:SetText(TEXT.preview)
 		Anim:Retract(ui.minis)
 		Detach()
@@ -1056,11 +1050,9 @@ Lay = function()
 	ui.glow:SetStrength(states[top].reach and "reach" or "near")
 	if n > 1 then
 		ui.count:SetText(n)
-		ui.count:Show()
-		ui.disc:Show()
+		Look.CountShown(ui.count, true)
 	else
-		ui.count:Hide()
-		ui.disc:Hide()
+		Look.CountShown(ui.count, false)
 	end
 	ui.label:SetText(Rem:Text(top))
 	for i = 2, n do
@@ -2047,9 +2039,10 @@ local function Column()
 	-- colour, or an icon as it is
 	local function SetPicture(tex, glyph, icon)
 		if glyph and W.Glyph(tex, glyph) then
-			W.Paint(tex, "text", "vertex")
+			Look.Paint(tex, "text", "vertex")
 			return
 		end
+		Look.Unpaint(tex)
 		local Kit = MelloUI.Kit
 		if Kit and Kit.Unpaint then
 			Kit:Unpaint(tex, "vertex")
@@ -2146,6 +2139,13 @@ local function Column()
 		holder:EnableMouse(false)
 		MelloUI:RestorePosition(COL_KEY, holder)
 		MelloUI:On("look:unitframes", OnLookCol, OWNER .. " column")
+		-- (0.17.1: the glow is the painted look's own; the rest of a row's look
+		-- follows the own look by itself: MelloUI.Look)
+		MelloUI:On("look:own", function()
+			for i = 1, #col.rows do
+				ApplyGlow(col.rows[i].glow)
+			end
+		end, OWNER .. " column (its glows)")
 		return col
 	end
 
@@ -2176,7 +2176,7 @@ local function Column()
 		-- dark ground in the opening under it while it loads
 		local ground = row:CreateTexture(nil, "BACKGROUND", nil, 1)
 		ground:SetTexture(ROUND)
-		W.Paint(ground, "innerPanel", "vertex")
+		Look.Paint(ground, "innerPanel", "vertex")
 		ground:Hide()
 		row.ground = ground
 		local model = CreateFrame("DressUpModel", nil, row)
@@ -2201,38 +2201,36 @@ local function Column()
 		ground:SetAllPoints(face.icon)
 		model:SetAllPoints(face.icon)
 		row.glow = MelloUI.Shade:Glow(face, { region = face, size = FACE, strength = GLOW_LOW })
-		-- the ring: a dark track, the gold swipe over it
+		-- the ring: a dark track, the gold swipe over it (the game's look:
+		-- the cooldown's own dark sweep over the face; Look.Ring)
 		local ring = CreateFrame("Cooldown", nil, face)
-		ring:SetSize(FACE * RING_FRAME, FACE * RING_FRAME)
-		ring:SetPoint("CENTER", face, "CENTER", 0, 0)
 		ring:SetFrameLevel(face:GetFrameLevel() + 2)
 		ring:EnableMouse(false)
-		ring:SetSwipeTexture(RING_TEX)
 		ring:SetDrawEdge(false)
 		ring:SetDrawBling(false)
 		ring:SetHideCountdownNumbers(true)
 		ring:SetReverse(true)
 		ring:Hide()
-		W.Paint(ring, "selectedTrim", "swipe")
 		row.ring = ring
 		local track = face:CreateTexture(nil, "BACKGROUND", nil, -6)
 		track:SetTexture(RING_TEX)
 		track:SetAllPoints(ring)
-		W.Paint(track, "innerPanel", "vertex", 0.85)
+		Look.Paint(track, "innerPanel", "vertex", 0.85)
 		track:Hide()
 		row.track = track
+		Look.Ring(ring, { texture = RING_TEX, face = face, size = FACE * RING_FRAME, track = track })
 		-- paused: the face dimmed under a pause glyph
 		local dim = face:CreateTexture(nil, "OVERLAY", nil, 5)
 		dim:SetTexture(ROUND)
 		dim:SetAllPoints(face.icon)
-		W.Paint(dim, "innerPanel", "vertex", DIM_ALPHA)
+		Look.Paint(dim, "innerPanel", "vertex", DIM_ALPHA)
 		dim:Hide()
 		row.dim = dim
 		local pause = face:CreateTexture(nil, "OVERLAY", nil, 6)
 		W.Glyph(pause, "pause")
 		pause:SetSize(24, 24)
 		pause:SetPoint("CENTER", face.icon, "CENTER", 0, 0)
-		W.Paint(pause, "text", "vertex")
+		Look.Paint(pause, "text", "vertex")
 		pause:Hide()
 		row.pauseGlyph = pause
 		-- the count: a number on a small dark disc at the face's lower right,
@@ -2244,45 +2242,35 @@ local function Column()
 		disc:SetTexture(ROUND)
 		disc:SetSize(19, 19)
 		disc:SetPoint("CENTER", face, "BOTTOMRIGHT", -8, 8)
-		W.Paint(disc, "innerPanel", "vertex", 0.95)
+		Look.Paint(disc, "innerPanel", "vertex", 0.95)
 		disc:Hide()
 		row.disc = disc
 		local count = over:CreateFontString(nil, "OVERLAY")
-		local numberFont = _G.NumberFontNormalSmall or GameFontHighlightSmall
-		if numberFont then
-			count:SetFontObject(numberFont)
-		end
-		if MelloUI.StyleFont and numberFont then
-			MelloUI:StyleFont(count, "fontChat", numberFont, COUNT_SIZE)
-		end
-		count:SetPoint("CENTER", disc, "CENTER", 0, 0)
-		W.Paint(count, "selectedTrim", "text")
 		count:Hide()
+		Look.Count(count, disc, face, COUNT_SIZE)
 		row.count = count
 		-- the lines: the title, the line and its time, the subtitles
 		local title = row:CreateFontString(nil, "OVERLAY")
-		Font(title, TITLE_SIZE)
+		Look.Text(title, "gold", TITLE_SIZE)
 		title:SetPoint("TOPLEFT", face, "TOPRIGHT", 10, -9)
 		title:SetPoint("RIGHT", row, "RIGHT", -12, 0)
 		title:SetJustifyH("LEFT")
 		title:SetWordWrap(false)
 		row.title = title
 		local time = row:CreateFontString(nil, "OVERLAY")
-		Font(time, LINE_SIZE - 1)
+		Look.Text(time, "note", LINE_SIZE - 1)
 		time:SetPoint("TOPRIGHT", title, "BOTTOMRIGHT", 0, -6)
 		time:SetJustifyH("RIGHT")
-		W.Paint(time, "text", "text")
 		row.time = time
 		local text = row:CreateFontString(nil, "OVERLAY")
-		Font(text, LINE_SIZE)
+		Look.Text(text, "text", LINE_SIZE)
 		text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -5)
 		text:SetPoint("RIGHT", time, "LEFT", -8, 0)
 		text:SetJustifyH("LEFT")
 		text:SetWordWrap(false)
-		W.Paint(text, "text", "text")
 		row.text = text
 		local sub = row:CreateFontString(nil, "OVERLAY")
-		Font(sub, SUB_SIZE)
+		Look.Text(sub, "text", SUB_SIZE)
 		sub:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -6)
 		sub:SetWidth(SUB_W)
 		sub:SetJustifyH("LEFT")
@@ -2291,7 +2279,6 @@ local function Column()
 		if sub.SetMaxLines then
 			sub:SetMaxLines(SUB_LINES)
 		end
-		W.Paint(sub, "text", "text")
 		sub:Hide()
 		row.sub = sub
 		-- the band behind them (an empty region its anchor: the rect)
@@ -2301,7 +2288,8 @@ local function Column()
 		row.box = box
 		-- (featherY: a fixed top and bottom fade, so the name and the last
 		-- subtitle line sit on the band's full strength however tall it is)
-		row.band = MelloUI.Shade:Band(row, { alpha = 0.7, feather = 18, featherY = 14, region = box, padX = 2, padY = 0 })
+		-- (the painted look's soft band; the game's tooltip frame in its look: Look.Plate)
+		row.band = Look.Plate(row, { alpha = 0.7, feather = 18, featherY = 14, region = box, padX = 2, padY = 0 })
 		col.rows[#col.rows + 1] = row
 		return row
 	end
@@ -2641,13 +2629,12 @@ local function Column()
 		end
 		row.title:SetText(title)
 		if type(r) == "number" and type(g) == "number" and type(b) == "number" and not (Secret(r) or Secret(g) or Secret(b)) then
-			local Kit = MelloUI.Kit
-			if Kit and Kit.Unpaint then
-				Kit:Unpaint(row.title, "text")
-			end
-			row.title:SetTextColor(r, g, b)
+			local c = row.titleColour or {}
+			c[1], c[2], c[3] = r, g, b
+			row.titleColour = c
+			Look.Colour(row.title, c)
 		else
-			W.Paint(row.title, "selectedTrim", "text")
+			Look.Colour(row.title, nil)
 		end
 		local text = Value(spec.text, key)
 		row.text:SetText((Secret(text) or type(text) == "string") and text or "")
@@ -2674,11 +2661,9 @@ local function Column()
 		local n = Num(Value(spec.count, key))
 		if n and n > 0 then
 			row.count:SetText(n)
-			row.count:Show()
-			row.disc:Show()
+			Look.CountShown(row.count, true)
 		else
-			row.count:Hide()
-			row.disc:Hide()
+			Look.CountShown(row.count, false)
 		end
 		-- the ring
 		local start, duration, pausedAt = Values(spec.progress, key)
@@ -2693,16 +2678,15 @@ local function Column()
 				if ring.Pause then
 					ring:Pause()
 				end
-				W.Paint(ring, "mutedText", "swipe")
+				Look.RingState(ring, "paused", true)
 			else
 				ring:SetCooldown(start, duration)
 				if ring.Resume then
 					ring:Resume()
 				end
-				W.Paint(ring, "selectedTrim", "swipe")
+				Look.RingState(ring, "run", true)
 			end
 			ring:Show()
-			row.track:Show()
 		else
 			row.pStart, row.pDur, row.pPaused = nil, nil, nil
 			-- a share with no time (a pet's happiness): the ring held there
@@ -2714,12 +2698,11 @@ local function Column()
 				if ring.Pause then
 					ring:Pause()
 				end
-				W.Paint(ring, "selectedTrim", "swipe")
+				Look.RingState(ring, "share", true)
 				ring:Show()
-				row.track:Show()
 			else
 				row.ring:Hide()
-				row.track:Hide()
+				Look.RingState(row.ring, nil, false)
 			end
 		end
 		local paused = pausedAt ~= nil

@@ -87,7 +87,8 @@ L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-
 L.groups = {
 	{ entries = { "Home" } },
 	{ title = "The look", entries = { "Look", "Windows", "Fader" } },
-	{ title = "Frames and bars", entries = { "UnitFrames", "Nameplates", "ActionBars", "Minimap", "BarsMeters" } },
+	{ title = "Frames and bars", entries = { "UnitFrames", "Nameplates", "ActionBars", "Minimap", "BarsMeters",
+		"SwingTimers" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
 	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
 	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
@@ -130,6 +131,10 @@ L.pages = {
 	Minimap = { title = "Minimap", icon = "module:MinimapPanel",
 		flavour = "The minimap, its shape, size and border, and the Services bar under it.",
 		tabs = { "Minimap", "Services Bar" } },
+	-- (0.17.1) the shot bar and the melee bar (its header switch: the Swing
+	-- Timers module's, off by default)
+	SwingTimers = { title = "Swing Timers", icon = "module:SwingTimers", module = "SwingTimers",
+		tabs = { "Swing Timers" } },
 	BarsMeters = { title = "Bars & Meters", icon = "module:Stats",
 		flavour = "The experience and reputation bars, the cooldown manager, the damage meter, event widgets and the FPS / latency readout.",
 		tabs = { "XP & Reputation", "Cooldown Manager", "Damage Meter", "Event Widgets", "FPS / Latency" } },
@@ -202,6 +207,8 @@ L.words = {
 	restock = { "Reminders", "Restock" },
 	vendor = { "Reminders", "Vendor" },
 	widgets = { "Reminders", "Widgets" },
+	wand = { "SwingTimers" },
+	autoshot = { "SwingTimers" },
 }
 
 -- (0.16.0: the chat windows' and the tooltips' painted skins, their
@@ -383,6 +390,7 @@ function L.Define(R, Link)
 	R("BarsMeters", "Damage Meter", "General", "Meter.!enabled", { name = "Use MelloUI's Damage Meter (replaces the game's)" })
 	R("BarsMeters", "Damage Meter", "General", "Meter.values")
 	R("BarsMeters", "Damage Meter", "General", "Meter.party")
+	R("BarsMeters", "Damage Meter", "General", "Meter.raid")
 	R("BarsMeters", "Damage Meter", "General", "Meter.bar")
 	R("BarsMeters", "Damage Meter", "General", "Meter.summary")
 	R("BarsMeters", "Damage Meter", "General", "Meter.history")
@@ -502,6 +510,18 @@ function L.Define(R, Link)
 	for _, key in ipairs({ "minimap", "tracker", "objectives", "widgets", "route" }) do
 		R("Fader", "Chat & Map", "General", "Fader.show_" .. key)
 	end
+
+	-- (0.17.1) Swing Timers (header: its module's switch): which bars, their
+	-- look, their size, when they show
+	R("SwingTimers", "Swing Timers", "General", "SwingTimers.shot")
+	R("SwingTimers", "Swing Timers", "General", "SwingTimers.melee")
+	R("SwingTimers", "Swing Timers", "General", "SwingTimers.offhand")
+	R("SwingTimers", "Swing Timers", "Look", "SwingTimers.look")
+	R("SwingTimers", "Swing Timers", "Text", "SwingTimers.text",
+		{ when = { key = "SwingTimers.look", value = "castbar", line = "Only for the Cast Bar look" } })
+	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.width")
+	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.height")
+	R("SwingTimers", "Swing Timers", "Behaviour", "SwingTimers.show")
 
 	-- Quest Tracker (header: its module's switch)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.questTrackerKit", { name = "Painted Skin" })

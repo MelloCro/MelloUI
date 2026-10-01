@@ -36,11 +36,14 @@ local Perf = MelloUI.Perf:Scope("MeterBar")
 local C_Timer = Perf.C_Timer
 local Shared = Perf.Shared
 local Safe = MelloUI.Safe
-local Num, Text = Safe.Number, Safe.Text
+local Num, Text, Secret = Safe.Number, Safe.Text, Safe.IsSecret
 local W = MelloUI.Widgets
+-- (0.17.1, docs/plans/game-look.md) the look of MelloUI's own parts: the
+-- painted one with the reskin, the game's own without
+local Look = MelloUI.Look
 local Meter = ns.Meter
 local M = Meter.M
-local pcall, type, ipairs, pairs, min = pcall, type, ipairs, pairs, math.min
+local pcall, ipairs, min = pcall, ipairs, math.min
 
 local WHITE = "Interface\\Buttons\\WHITE8x8"
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
@@ -86,16 +89,6 @@ local function Healing()
 	return ok and Text(role) == "HEALER" or false
 end
 
-local function StyleText(fs, size)
-	local object = _G.GameFontHighlight
-	if type(object) == "table" then
-		fs:SetFontObject(object)
-		if MelloUI.StyleFont then
-			MelloUI:StyleFont(fs, "fontText", object, size)
-		end
-	end
-	fs:SetShadowOffset(1, -1)
-end
 
 -- the bar's size: Race Bar Width and Height (its track; the holder adds the
 -- caption above and the pins under it)
@@ -106,29 +99,31 @@ local function Size()
 	return math.floor(w + 0.5), math.floor(h + 0.5)
 end
 
--- the fill's texture: the status bars' Bar Texture, else MelloUI's Minimalist
-local MINIMALIST = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Minimalist"
-local function FillTexture()
-	local bt = MelloUI:GetModule("BarTextures")
-	local texture = bt and bt.PreviewTexture and bt.PreviewTexture("statusbars")
-	return type(texture) == "string" and texture or MINIMALIST
-end
+-- the fill's texture: the status bars' Bar Texture, else MelloUI's Minimalist (W.BarFill)
+local FillTexture = W.BarFill
 
 local function Home(holder)
 	holder:ClearAllPoints()
 	holder:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, B.HOME_Y)
 end
 
-local function ClassColour(fs, class, fallback)
+-- a string in its class's colour (its role's own colour without one): one
+-- colour table a string, set again in place (Look.Colour keeps it over a
+-- look switch)
+local classColours = setmetatable({}, { __mode = "k" })
+local function ClassColour(fs, class)
 	local QI = MelloUI.QuestInk
 	local r, g, b
 	if QI and QI.ClassColour then
 		r, g, b = QI.ClassColour(class)
 	end
 	if r then
-		fs:SetTextColor(r, g, b)
+		local c = classColours[fs] or {}
+		classColours[fs] = c
+		c[1], c[2], c[3] = r, g, b
+		Look.Colour(fs, c)
 	else
-		W.Paint(fs, fallback or "text", "text")
+		Look.Colour(fs, nil)
 	end
 end
 
@@ -156,15 +151,28 @@ local function NewPin(ui, mine)
 		rim:SetTexture(ROUND_MASK)
 		rim:SetSize(size + 2 * B.RIM, size + 2 * B.RIM)
 		rim:SetPoint("TOP", fill or bar, "BOTTOMRIGHT", 0, -1)
-		W.Paint(rim, "selectedTrim", "vertex")
+		Look.Paint(rim, "selectedTrim", "vertex")
+		Look.Hide(rim)
 		pin.rim = rim
 	end
 	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 2)
 	icon:SetSize(size, size)
 	icon:SetPoint("TOP", fill or bar, "BOTTOMRIGHT", 0, -1 - (mine and B.RIM or 0))
 	pin.icon = icon
+	-- (the game's look: the game's round class icon in the minimap's ring, as
+	-- its round buttons; the ring's art sits in its file's top left, 53 of
+	-- 64 round a 21 wide opening)
+	local ring = holder:CreateTexture(nil, "ARTWORK", nil, 3)
+	local _, ringFile = Look.Art("ring")
+	ring:SetTexture(ringFile)
+	local k = size / 21
+	ring:SetSize(53 * k, 53 * k)
+	ring:SetPoint("TOPLEFT", icon, "TOPLEFT", -5 * k, 4 * k)
+	Look.Only(ring, "game")
+	pin.ring = ring
 	local label = holder:CreateFontString(nil, "OVERLAY")
-	StyleText(label, mine and B.ME_LABEL or B.LABEL)
+	Look.Text(label, mine and "value" or "text", mine and B.ME_LABEL or B.LABEL)
+	label:SetShadowOffset(1, -1)
 	label:SetPoint("TOP", icon, "BOTTOM", 0, -1)
 	pin.label = label
 	return pin
@@ -174,12 +182,13 @@ local function SetPinShown(pin, on)
 	pin.bar:SetShown(on)
 	pin.icon:SetShown(on)
 	pin.label:SetShown(on)
+	Look.Show(pin.ring, on)
 	if pin.rim then
-		pin.rim:SetShown(on)
+		Look.Show(pin.rim, on)
 	end
 end
 
-local ListShow, ListHide   -- (below)
+local ListShow, ListHide, LookBar   -- (below)
 
 local function Build()
 	if Bar.ui then
@@ -196,38 +205,29 @@ local function Build()
 	Bar.ui = ui
 	-- the caption and the top value above the track
 	local caption = holder:CreateFontString(nil, "OVERLAY")
-	StyleText(caption, B.CAPTION)
+	Look.Text(caption, "title", B.CAPTION, { alpha = 0.8 })
+	caption:SetShadowOffset(1, -1)
 	caption:SetPoint("BOTTOMLEFT", holder, "TOPLEFT", 0, -16)
 	caption:SetText(TEXT.caption)
-	W.Paint(caption, "text", "text", 0.8)
 	ui.caption = caption
 	local unit = holder:CreateFontString(nil, "OVERLAY")
-	StyleText(unit, B.CAPTION)
+	Look.Text(unit, "value", B.CAPTION)
+	unit:SetShadowOffset(1, -1)
 	unit:SetPoint("BOTTOMRIGHT", holder, "TOPRIGHT", 0, -16)
-	W.Paint(unit, "selectedTrim", "text")
 	ui.unit = unit
 	local top = holder:CreateFontString(nil, "OVERLAY")
-	StyleText(top, B.TOP)
+	Look.Text(top, "value", B.TOP)
+	top:SetShadowOffset(1, -1)
 	top:SetPoint("BOTTOMRIGHT", unit, "BOTTOMLEFT", -3, 0)
-	W.Paint(top, "selectedTrim", "text")
 	ui.top = top
-	-- the track: your fill on the plain look's dark ground and trim edge,
-	-- or in the kit's bar bracket (Look, below)
+	-- the track: your fill in the kit's bar bracket painted, in the game's
+	-- meter bar in its look (LookBar, below)
 	local track = CreateFrame("Frame", nil, holder)
 	track:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -B.ABOVE)
 	track:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, -B.ABOVE)
 	ui.track = track
-	local ground = W.Solid(track, "BACKGROUND", "innerPanel", 0.85)
-	ground:SetAllPoints(track)
-	ui.ground = ground
-	ui.edges = W.Edges and W.Edges(track, "trim") or nil
 	local fill = CreateFrame("StatusBar", nil, track)
 	fill:SetAllPoints(track)
-	fill:SetStatusBarTexture(FillTexture())
-	local tex = fill:GetStatusBarTexture()
-	if tex then
-		W.Paint(tex, "trim", "vertex")
-	end
 	fill:SetMinMaxValues(0, 1)
 	fill:SetValue(0)
 	ui.fill = fill
@@ -238,7 +238,6 @@ local function Build()
 	end
 	ui.me = NewPin(ui, true)
 	SetPinShown(ui.me, false)
-	W.Paint(ui.me.label, "selectedTrim", "text")
 	ui.me.label:SetText(Meter.TEXT.you)
 	-- the pointer on it: everyone in order
 	holder:EnableMouse(true)
@@ -252,7 +251,7 @@ local function Build()
 		Home(holder)
 	end
 	Bar.Resize()
-	Bar.Look()
+	Look.Watch(ui, LookBar)   -- (now, and at every switch of MelloUI's own look)
 	return ui
 end
 
@@ -270,43 +269,75 @@ function Bar.Resize()
 	end
 end
 
--- the look: the kit's bracket while the status bars wear the kit, else the
--- plain ground and edge; the fill's texture again (Bar Texture)
-function Bar.Look()
-	local ui = Bar.ui
-	if not ui then
+-- the look (0.17.1, MelloUI's own look: the reskin): painted, the kit's
+-- bar bracket round your fill in your Bar Texture and the palette's trim;
+-- the game's, its damage meter's bar -- the dark ground, its shadowed edge
+-- 2 px round, the cooldown manager's fill (as its meter entries) in your
+-- class's colour. The one place the race bar names both looks (Look.Watch)
+LookBar = function(ui, painted)
+	local fill, Kit = ui.fill, MelloUI.Kit
+	local tex = fill:GetStatusBarTexture()
+	if painted then
+		fill:SetStatusBarTexture(FillTexture())
+		tex = fill:GetStatusBarTexture()
+		if tex then
+			W.Paint(tex, "trim", "vertex")
+		end
+		if ui.rep == nil and Kit and Kit.Replace then
+			local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(fill)
+			local ok, r = pcall(Kit.Replace, Kit, fill, { as = "TooltipStatusBar", parent = fill, rect = fill, noFade = true,
+				layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub })
+			ui.rep = ok and r or false
+		end
+		if ui.rep then
+			ui.rep:Enable()
+			pcall(ui.rep.Refit, ui.rep)
+		end
+		if ui.back then
+			ui.back:Hide()
+			ui.edge:Hide()
+		end
 		return
 	end
-	ui.fill:SetStatusBarTexture(FillTexture())
-	local tex = ui.fill:GetStatusBarTexture()
+	if ui.rep then
+		ui.rep:Disable()
+	end
+	if tex and Kit and Kit.Unpaint then
+		Kit:Unpaint(tex, "vertex")
+	end
+	local _, fillAtlas = Look.Art("barFill")
+	if not pcall(fill.SetStatusBarTexture, fill, fillAtlas) then
+		fill:SetStatusBarTexture(FillTexture())
+	end
+	tex = fill:GetStatusBarTexture()
 	if tex then
-		W.Paint(tex, "trim", "vertex")
-	end
-	local Kit = MelloUI.Kit
-	local kit = Kit and Kit.IsOn and Kit:IsOn("statusbars") and true or false
-	if kit and not ui.rep and Kit.Replace then
-		local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(ui.fill)
-		local ok, r = pcall(Kit.Replace, Kit, ui.fill, { as = "TooltipStatusBar", parent = ui.fill, rect = ui.fill, noFade = true,
-			layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub })
-		ui.rep = ok and r or false
-	end
-	local rep = ui.rep
-	if rep then
-		if kit then
-			rep:Enable()
-			pcall(rep.Refit, rep)
-		else
-			rep:Disable()
+		local QI = MelloUI.QuestInk
+		local okC, _, class = pcall(_G.UnitClass, "player")
+		local r, g, b
+		if okC and QI and QI.ClassColour and not Secret(class) then
+			r, g, b = QI.ClassColour(class)
 		end
+		tex:SetVertexColor(r or 1, g or 0.82, b or 0, 1)
 	end
-	local plain = not (kit and rep)
-	ui.ground:SetShown(plain)
-	if ui.edges then
-		for _, e in pairs(ui.edges) do
-			if type(e) == "table" and e.SetShown then
-				e:SetShown(plain)
-			end
-		end
+	if not ui.back then
+		local back = fill:CreateTexture(nil, "BACKGROUND")
+		back:SetAtlas((select(2, Look.Art("barBack"))))
+		back:SetAllPoints(fill)
+		local edge = fill:CreateTexture(nil, "OVERLAY")
+		edge:SetAtlas((select(2, Look.Art("barEdge"))))
+		edge:SetPoint("TOPLEFT", fill, "TOPLEFT", -2, 2)
+		edge:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 2, -2)
+		ui.back, ui.edge = back, edge
+	end
+	ui.back:Show()
+	ui.edge:Show()
+end
+
+-- the look again: a Bar Texture or Bar Border changed (the painted look's)
+function Bar.Look()
+	local ui = Bar.ui
+	if ui then
+		LookBar(ui, Look:On())
 	end
 end
 
@@ -421,8 +452,8 @@ local function Lay(sources, healing, sample)
 		if pin then
 			pcall(pin.bar.SetMinMaxValues, pin.bar, 0, topAmount)
 			pcall(pin.bar.SetValue, pin.bar, src.totalAmount)
-			local path = Meter.ClassIcon(src.classFilename)
-			pin.icon:SetTexture(path or "Interface\\Icons\\INV_Misc_QuestionMark")
+			-- (the class's medallion painted, the game's round class icon in its look)
+			Look.ClassIcon(pin.icon, src.classFilename, Meter.ClassIcon(src.classFilename))
 			SetPinShown(pin, true)
 			shown[#shown + 1] = pin
 		end
@@ -445,11 +476,8 @@ local function BuildList()
 	f:SetFrameStrata("TOOLTIP")
 	f:SetSize(B.LIST_W, 20)
 	f:Hide()
-	local fill = W.Solid(f, "BACKGROUND", "innerPanel", 0.92)
-	fill:SetAllPoints(f)
-	if W.Edges then
-		W.Edges(f, "trim")
-	end
+	-- (the flat panel painted, the game's tooltip frame in its look)
+	Look.Panel(f, { alpha = 0.92 })
 	list = { frame = f, rows = {} }
 	Bar.listFrame = f   -- (read only: the tests')
 	return list
@@ -463,22 +491,21 @@ local function ListRow(i)
 	local f = list.frame
 	row = {}
 	row.rank = f:CreateFontString(nil, "OVERLAY")
-	StyleText(row.rank, B.CAPTION)
+	Look.Text(row.rank, "text", B.CAPTION)
 	row.rank:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -6 - (i - 1) * B.LIST_ROW)
 	row.rank:SetWidth(28)
 	row.rank:SetJustifyH("LEFT")
 	row.name = f:CreateFontString(nil, "OVERLAY")
-	StyleText(row.name, B.CAPTION)
+	Look.Text(row.name, "text", B.CAPTION)
 	row.name:SetPoint("LEFT", row.rank, "RIGHT", 2, 0)
 	row.name:SetWidth(120)
 	row.name:SetJustifyH("LEFT")
 	row.name:SetWordWrap(false)
 	row.value = f:CreateFontString(nil, "OVERLAY")
-	StyleText(row.value, B.CAPTION)
+	Look.Text(row.value, "text", B.CAPTION)
 	row.value:SetPoint("RIGHT", f, "RIGHT", -8, 0)
 	row.value:SetPoint("TOP", row.rank, "TOP", 0, 0)
 	row.value:SetJustifyH("RIGHT")
-	W.Paint(row.value, "text", "text")
 	list.rows[i] = row
 	return row
 end
@@ -495,8 +522,10 @@ ListShow = Shared("OnEnter on the race bar", function(holder)
 		row.rank:SetText(Meter.Ordinal(i))
 		if src.isLocalPlayer == true then
 			row.name:SetText(Meter.TEXT.you)
-			W.Paint(row.name, "selectedTrim", "text")
+			Look.Text(row.name, "value", B.CAPTION)
+			Look.Colour(row.name, nil)
 		else
+			Look.Text(row.name, "text", B.CAPTION)
 			row.name:SetText(src.name or Meter.TEXT.someone)
 			ClassColour(row.name, src.classFilename)
 		end
@@ -660,8 +689,8 @@ end
 function Bar.Apply()
 	if not looking then
 		looking = true
-		MelloUI:On("look:statusbars", LookChanged, "Race bar")
 		MelloUI:On("border", LookChanged, "Race bar")
+		MelloUI:On("look:statusbars", LookChanged, "Race bar")   -- (the Bar Texture follows the status bars' look)
 	end
 	if Bar.ui then
 		Bar.Resize()

@@ -167,6 +167,16 @@ function W.Repaint()
 	MelloUI:Fire("palette")
 end
 
+-- The fill texture of MelloUI's own bars (0.17.1, lifted from the race bar's
+-- for the swing timers): the status bars' Bar Texture, else MelloUI's
+-- Minimalist. Read when a bar is (re)dressed: Bar Textures' look:statusbars.
+local BAR_FILL = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Minimalist"
+function W.BarFill()
+	local bt = MelloUI:GetModule("BarTextures")
+	local texture = bt and bt.PreviewTexture and bt.PreviewTexture("statusbars")
+	return type(texture) == "string" and texture or BAR_FILL
+end
+
 function W.Text(parent, font, text, key)
 	local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
 	fs:SetJustifyH("LEFT")
@@ -1798,6 +1808,23 @@ do
 		tex:SetTexture(GLYPH_TEX)
 		tex:SetTexCoord(c / 8, (c + 1) / 8, r / ROWS, (r + 1) / ROWS)
 		return true
+	end
+
+	-- a glyph as inline text markup (0.17.1: the meter's tooltip lines on a
+	-- raid-style frame), size in the line's units, tinted r, g, b (0..1); ""
+	-- for a name the sheet has not
+	local CELL = 32
+	function W.GlyphMarkup(name, size, r, g, b)
+		local i = W.GLYPHS[name]
+		if not i then
+			return ""
+		end
+		local c, row = i % 8, math.floor(i / 8)
+		local function Byte(v)
+			return math.floor(math.max(0, math.min(1, tonumber(v) or 1)) * 255 + 0.5)
+		end
+		return string.format("|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d:%d:%d:%d|t", GLYPH_TEX, size, size, 8 * CELL, ROWS * CELL,
+			c * CELL, (c + 1) * CELL, row * CELL, (row + 1) * CELL, Byte(r), Byte(g), Byte(b))
 	end
 
 	local function SetGlyph(b, name)

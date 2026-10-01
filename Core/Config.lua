@@ -246,6 +246,7 @@ local COMMANDS = {
 	{ "/mello edit", "Edit Layout: move and resize the interface" },
 	{ "/mello preview solo", "a fight, alone or (party) in a group, played to see" },
 	{ "/mello preview <part>", "one part alone: fader, widgets, meter, gains ..." },
+	{ "/mello swing log", "20 s of your swings and shots, to copy (/mellolog)" },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
 	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },
@@ -307,7 +308,7 @@ local function ModuleByName(name)
 	end
 	local wanted = name:lower()
 	for key, m in MelloUI:IterateModules() do
-		if key:lower() == wanted or m.title:lower() == wanted then
+		if key:lower() == wanted or m.title:lower() == wanted or (type(m.slash) == "string" and m.slash == wanted) then
 			return m
 		end
 	end

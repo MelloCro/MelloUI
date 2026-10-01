@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.1
+
+- Fixed: short freezes while walking with a quest tracked (Route's new ground checks). Routes are worked out a little at a time, so they never stall the game, and the tracked quest's places are priced in one go.
+- Fixed: Route no longer sends you the long way round (by boat or far off) when you or the place you go to stand at the edge of a slope or in a building.
+- Swing Timers (new, off by default; Frames and bars): a shot bar and a melee bar in MelloUI's look in place of the game's swing timers. The shot bar counts Auto Shot down, the melee bar each swing of your main hand (and a wand's shots), with a thinner off-hand bar under it. Two looks, Cast Bar (with the bar's name and the seconds left) and Hairline; In Combat or Always; Width and Height; out of range a bar dims. Move them in Edit Layout.
+- With the painted reskin off, MelloUI's own parts now take the game's own look instead of MelloUI's painted one: the widget column (every widget, Voice Over's too) and the reminders beside your portrait sit on the game's tooltip frame in its fonts and colours, with the game's round button rings and cooldown sweep, and the race bar is the game's meter bar with its round class icons. Switching the reskin changes them in place.
+- Damage Meter: the number on raid-style frames. On every raid-style party frame and every raid frame, one small number on the right, beside the health: a damage dealer's DPS (gold, the sword), a healer's HPS (green, the cross). In a fight it is live wherever MelloUI can tell who the frame is (you, and anyone whose class no one else in the group has); after the fight it shows that player's number from the last fight. Point at a frame for this fight, this run and healing. On Raid-Style Frames (Damage Meter page) switches it.
+
 ## 0.17.0
 
 - Gains: your money shows too, with the game's coins (loot, quest rewards, sales, mail; several gains add up on one line), and so do other currencies with their own icons. Item Names In Quality Colour (off) shows item names in their quality colour.

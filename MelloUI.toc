@@ -18,6 +18,7 @@ Core\Companions.lua
 Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua
+Core\GameLook.lua
 Core\Notice.lua
 Core\CentreText.lua
 Core\Feed.lua
@@ -84,6 +85,8 @@ Modules\CombatText.lua
 Modules\Meter.lua
 Modules\MeterBar.lua
 Modules\MeterHistory.lua
+Modules\MeterRaid.lua
+Modules\SwingTimers.lua
 Modules\PartyMarkers.lua
 Modules\CustomSounds.lua
 Modules\VoiceOver.lua

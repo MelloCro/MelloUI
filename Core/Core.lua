@@ -19,6 +19,8 @@
 --   OnSettingChanged(key, value, db)  called when one of its options changes
 --   hidden           true: not listed in the configurator (driven by another
 --                    module: the kit panels by Painted UI); /mello list shows it
+--   slash            a short word /mello finds the module by besides its key
+--                    and title (0.17.1: "swing" for Swing Timers: /mello swing log)
 --   important        true: the configurator's tile keeps a gold border, a glowing
 --                    icon and an IMPORTANT badge (the UI Modifications entry)
 --   keep             the settings that are this player's own, not choices
@@ -79,6 +81,9 @@
 --                    game's UI without restyling it), "replaces" (replaces or
 --                    restyles a game part). A hidden kit panel (it carries
 --                    `window`) needs none: it is look.
+--   installer        false: a feature, adds or replaces module NOT offered on
+--                    the installer's Features step (0.17.1: its two columns are
+--                    full; the Swing Timers are switched on in the settings)
 -- One of the wrong type (or a role not in that list) goes to the error
 -- handler and is left off the module; the module itself still registers.
 -- MelloUI:ModulesInOrder() lists the modules in the order they registered.
@@ -304,6 +309,10 @@ MelloUI.Meaning = {
 	combatResource = Hex("#609CE6"),   -- (meaning colour)
 	-- (Your Damage: a spell's hit on an enemy, as the game tells them apart)
 	combatSpell = Hex("#BE96E6"),      -- (meaning colour)
+	-- (0.17.1, the swing timers, the user's picks of swing_looks: the shot
+	-- reloading in cream, a melee swing pale; Modules/SwingTimers.lua)
+	swingShot = Hex("#E9DCAA"),        -- (meaning colour)
+	swingMelee = Hex("#EFEBE3"),       -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 
@@ -687,6 +696,47 @@ end
 
 function MelloUI:ClearLog()
 	wipe(log)
+end
+
+-- One game setting (a CVar) held at `want` while `on`, and the player's own
+-- value given back when not (0.17.1, lifted from the damage meter's when the
+-- swing timers needed the same: one way for every module that steps in for
+-- a part of the game). The player's value is noted in db[savedKey] the first
+-- time it is changed; keep savedKey in the module's `keep` (never in a
+-- profile). Ask out of combat: the caller waits for the fight's end. Returns
+-- true when it wrote the CVar.
+--   MelloUI:HoldCVar(db, name, savedKey, on, want)
+--   MelloUI:CVarText(name) -> the CVar's value as text (nil: unknown)
+function MelloUI:CVarText(name)
+	local api = C_CVar
+	if not (api and api.GetCVar) then
+		return nil
+	end
+	local ok, v = pcall(api.GetCVar, name)
+	return ok and Safe.Text(v) or nil
+end
+
+function MelloUI:HoldCVar(db, name, savedKey, on, want)
+	local api = C_CVar
+	if not (db and api and api.SetCVar) then
+		return false
+	end
+	if on then
+		local now = self:CVarText(name)
+		if now ~= nil and now ~= want then
+			if db[savedKey] == nil then
+				db[savedKey] = now
+			end
+			pcall(api.SetCVar, name, want)
+			return true
+		end
+	elseif db[savedKey] ~= nil then
+		local saved = db[savedKey]
+		db[savedKey] = nil
+		pcall(api.SetCVar, name, saved)
+		return true
+	end
+	return false
 end
 
 -- an error in a listener or a callback: to the game's error handler, and on
@@ -3038,6 +3088,10 @@ MelloUI.moduleList = {}
 local REGISTRY_FIELDS = { flavour = "string", group = "string", window = "table", tweak = "table", area = "table",
 	role = "string", navOrder = "number" }
 REGISTRY_FIELDS.new = "string"   -- (0.14.0: a new module's New tag, the update it came with)
+REGISTRY_FIELDS.slash = "string"   -- (0.17.1: its short /mello word)
+-- (0.17.1: false -- a feature not offered on the installer's Features step,
+-- whose two columns are full; switched on in the settings window)
+REGISTRY_FIELDS.installer = "boolean"
 local ROLES = { core = true, look = true, feature = true, adds = true, replaces = true }
 
 function MelloUI:RegisterModule(name, module)

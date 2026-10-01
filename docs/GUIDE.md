@@ -124,7 +124,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 - **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
 - **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text** and **Gains**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`), and `/mello preview stop`.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader), **Frames and bars** (Unit Frames, Nameplates, Action Bars, Minimap, Bars & Meters), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader), **Frames and bars** (Unit Frames, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
 - **Pickers:** Unit Frames (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Resource), Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Target frame's settings to Player?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them ("One setting for Player, Target and Focus."). Unit Frames shows a live preview of the picked frame in its header, following your settings as you change them.
@@ -214,6 +214,7 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello preload` | How many artwork files Preload Artwork holds, and how many the game has loaded |
 | `/mello preview solo` / `party` | a short scene of how the interface behaves in a fight, alone or in a group (the settings window's **Preview**) |
 | `/mello preview <part>` | one part alone: `fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`; `/mello preview stop` ends it |
+| `/mello swing log` | 20 seconds of your swings and shots as the game reports them, to copy from `/mellolog` (Swing Timers) |
 | `/mello help` | the command list in chat |
 | `/mello tutorial` | the guided tour of the settings window (also the Tutorial button on its Home page) |
 | `/mello install` | the installer: a setup for the whole interface, fitted to your screen, with 15 seconds to keep it or go back (also **Install…** in the settings window's top bar and **Install again** on its Home page) |
@@ -1227,7 +1228,15 @@ addons, so MelloUI shows them as the game gives them.
   switches on the game's own Show Party Pets (the frames stand a little further apart, party pets
   show under them); your own setting comes back when it is off. In a fight a party member's
   number is live while no one else in the group has their class, else it fills in when the fight
-  ends. Raid-style party frames get none.
+  ends.
+- **On Raid-Style Frames** (0.17.1): on every raid-style party frame and every raid frame, one
+  small number on the right, on the health %'s line: a damage dealer's DPS (gold, the sword), a
+  healer's HPS (green, the cross; the group role decides, and without one the larger side of their
+  last fight). No shade behind it, an outline instead, so forty boxes stay clean. In a fight it is
+  live for you and for anyone whose class no one else in the group has (the game hides who the
+  others are), and empty, never a dash, for the rest until the fight ends; after it, each player's
+  number from the last fight, until the next one starts. Pointing at such a frame adds three lines
+  to its tooltip: this fight, this run and healing. Never on pets' or arena frames.
 - **Race Bar**: in a fight, one bar for the group, captioned "Current DPS" (or HPS). The top
   player is its right end with their value above it ("41 dps"), everyone else a class medallion
   under the bar at their share of the top, labelled 2nd, 3rd ...; you are the gold-ringed pin and
@@ -1252,6 +1261,32 @@ A **run** starts when you enter a dungeon or raid (not on a corpse run back in),
 changes, or at your first fight in another place; out in the world it lasts from login. Run DPS is
 the run's damage divided by its fight time. `/mello meter test` records a made-up fight to see the
 summary and the History.
+
+### Swing Timers
+
+A shot bar and a melee bar in MelloUI's look **in place of the game's swing timers** (Frames
+and bars, Swing Timers; 0.17.1). Off by default. While it is on, the game's own swing timers are
+switched off (its "Show Swing Timer" setting, out of combat) and your own value comes back when you
+switch it off.
+
+- **Shot Bar**: a bow, gun, crossbow or thrown weapon's Auto Shot. Cream, it shrinks from both
+  ends to the middle until the next shot; full again at each shot. It fades out when Auto Shot
+  stops.
+- **Melee Bar**: each swing of your main hand, pale, shrinking to the middle; full again at the
+  next swing. A wand's shots ("Shoot (wand)") count down on it too.
+- **Off Hand Bar**: a thinner bar under it for your off-hand weapon, while you carry one.
+- **Look**: Cast Bar (the cast bar's frame, the bar's name above it on the left and the seconds
+  left on the right: **Label And Time**) or Hairline (a thin rim on a soft shade, nothing else).
+  With the cast bars' painted look off, both are a plain bar.
+- **Show**: In Combat (a bar shows in a fight once it swings or shoots, and fades out when the
+  fight ends) or Always (each bar at rest while you carry a weapon for it).
+- **Width** and **Height**; out of range a bar dims, as the game's does. Move them in Edit Layout
+  (Shot Timer and Swing Timer, just above your cast bar at first); right-click them there for
+  Width and Height too.
+
+The bars are counted down by the game itself, not by MelloUI each frame, so they cost no frame
+rate. `/mello swing log` prints 20 seconds of your swings and shots as the game reports them, to
+copy from `/mellolog`.
 
 ### Minimap Panel
 

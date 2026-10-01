@@ -157,12 +157,15 @@ local M = MelloUI:RegisterModule("Meter", {
 		summary = true,
 		history = true,
 		historySize = T.HISTORY,
+		raid = true,
 	},
 	options = {
 		{ type = "toggle", key = "values", name = "Your Values", new = NEW,
 		  desc = "Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)." },
 		{ type = "toggle", key = "party", name = "Party Values", new = NEW,
-		  desc = "The same three numbers on top of each party frame. To make room, the game's own Show Party Pets setting is switched on while this is on (the party frames stand a little further apart, and party pets show under them); your own setting comes back when it is off. With raid-style party frames there are none: the race bar and the Fight History have the numbers." },
+		  desc = "The same three numbers on top of each party frame. To make room, the game's own Show Party Pets setting is switched on while this is on (the party frames stand a little further apart, and party pets show under them); your own setting comes back when it is off. With raid-style party frames: On Raid-Style Frames." },
+		{ type = "toggle", key = "raid", name = "On Raid-Style Frames", new = "0.17.1",
+		  desc = "A small DPS or healing number on the right of each raid-style or raid frame, beside the health. In a fight, players MelloUI cannot tell apart stay empty until it ends. Point at a frame for all three numbers." },
 		{ type = "toggle", key = "bar", name = "Race Bar", new = NEW,
 		  desc = "In a fight, one bar for the group: the top player at its right end with their value, everyone else a class icon at their share of the top, you the gold pin with the bar filled up to you. It fades in when the fight starts and out when it ends. The pointer on it lists everyone. Move it in Edit Layout." },
 		{ type = "dropdown", key = "metric", name = "Race Bar Shows", new = NEW,
@@ -747,41 +750,11 @@ end
 
 local CVAR = { meter = "damageMeterEnabled", pets = "showPartyPets" }
 
-local function GetCVarText(name)
-	local C_CVar = _G.C_CVar
-	if not (C_CVar and C_CVar.GetCVar) then
-		return nil
-	end
-	return Text((Ask(C_CVar.GetCVar, name)))
-end
-
-local function SetCVarText(name, value)
-	local C_CVar = _G.C_CVar
-	if C_CVar and C_CVar.SetCVar then
-		pcall(C_CVar.SetCVar, name, value)
-	end
-end
-
 -- one CVar held at `want` while `on` (its value noted in db[savedKey] the
--- first time), put back when not
+-- first time), put back when not: MelloUI:HoldCVar (Core, 0.17.1: lifted
+-- from here for the swing timers)
 local function Hold(name, savedKey, on, want)
-	local db = M.db
-	if not db then
-		return
-	end
-	if on then
-		local now = GetCVarText(name)
-		if now ~= nil and now ~= want then
-			if db[savedKey] == nil then
-				db[savedKey] = now
-			end
-			SetCVarText(name, want)
-		end
-	elseif db[savedKey] ~= nil then
-		local saved = db[savedKey]
-		db[savedKey] = nil
-		SetCVarText(name, saved)
-	end
+	MelloUI:HoldCVar(M.db, name, savedKey, on, want)
 end
 
 local Events   -- (below)
@@ -831,6 +804,8 @@ local function PaintPart(p)
 		W.Paint(p.text, key, "text")
 	end
 end
+
+Meter.PaintPart = PaintPart   -- (the raid-style frames' number: Modules/MeterRaid.lua)
 
 local BAND = { alpha = 0.6, feather = 10 }
 
@@ -908,7 +883,7 @@ local function SetLine(line, fight, run, heal)
 	SetPart(line.parts[3], heal)
 end
 
--- the last fight's entry for a key (plain), or nil
+-- the last fight's entry for a key (plain), or nil (Meter.LastEntry)
 local function LastEntry(key)
 	local last = Meter.Last()
 	if not (last and key) then
@@ -921,6 +896,8 @@ local function LastEntry(key)
 	end
 	return nil
 end
+
+Meter.LastEntry = LastEntry
 
 -- the last fight's numbers on a line (out of a fight, or the party's in one
 -- when they cannot be told apart)
@@ -961,6 +938,9 @@ end
 
 -- after a fight (and at a placement): every line from the records
 function Meter.LinesAfter()
+	if Meter.Raid and Meter.Raid.After then
+		Meter.Raid.After()
+	end
 	if not S.linesOn then
 		return
 	end
@@ -978,9 +958,71 @@ function Meter.LinesAfter()
 	end
 end
 
--- in a fight: yours live (isLocalPlayer); a party member's by their class
--- while no one else in the group has it, else a dash
-local classCount, classUnit = {}, {}
+-- Who is who in a fight (0.17.1: one way for the party lines and the
+-- raid-style frames, Modules/MeterRaid.lua). The game hides a source's name
+-- and GUID in a fight; its class and isLocalPlayer stay plain. A unit is its
+-- source when it is you (isLocalPlayer), or when its class is the only one
+-- of its kind in the group (yours counted); else nil (nothing shown).
+--   Meter.WhoCount()              the group's classes counted (once per read)
+--   Meter.SourceFor(unit, sources) -> the unit's source, or nil
+local whoCount = {}
+
+function Meter.WhoCount()
+	wipe(whoCount)
+	local raid = Ask(_G.IsInRaid) == true
+	local units, n = PARTY_UNITS, #PARTY_UNITS
+	if raid then
+		units, n = RAID_UNITS, math.min(40, Num((Ask(_G.GetNumGroupMembers))) or 0)
+	end
+	for i = 1, n do
+		local _, class = Ask(_G.UnitClass, units[i])
+		class = Text(class)
+		if class then
+			whoCount[class] = (whoCount[class] or 0) + 1
+		end
+	end
+	if not raid then
+		-- (yours: a raid's units hold you already)
+		local _, mine = Ask(_G.UnitClass, "player")
+		mine = Text(mine)
+		if mine then
+			whoCount[mine] = (whoCount[mine] or 0) + 1
+		end
+	end
+end
+
+function Meter.SourceFor(unit, sources)
+	if type(unit) ~= "string" or type(sources) ~= "table" then
+		return nil
+	end
+	local me = unit == "player"
+	if not me then
+		local same = Ask(_G.UnitIsUnit, unit, "player")
+		me = not Secret(same) and same == true
+	end
+	if me then
+		for _, src in ipairs(sources) do
+			if src.isLocalPlayer == true then
+				return src
+			end
+		end
+		return nil
+	end
+	local _, class = Ask(_G.UnitClass, unit)
+	class = Text(class)
+	if not class or whoCount[class] ~= 1 then
+		return nil
+	end
+	for _, src in ipairs(sources) do
+		if src.isLocalPlayer ~= true and Text(src.classFilename) == class then
+			return src
+		end
+	end
+	return nil
+end
+
+-- in a fight: yours live (isLocalPlayer); a party member's by Meter.SourceFor
+-- (their class while no one else in the group has it), else a dash
 local function LinesLive(dmg, heal)
 	if not S.linesOn then
 		return
@@ -1004,39 +1046,13 @@ local function LinesLive(dmg, heal)
 	if not S.partyOn then
 		return
 	end
-	wipe(classCount)
-	wipe(classUnit)
 	for i, unit in ipairs(PARTY_UNITS) do
-		local _, class = Ask(_G.UnitClass, unit)
-		class = Text(class)
-		if class then
-			classCount[class] = (classCount[class] or 0) + 1
-			classUnit[class] = i
-		end
-	end
-	local _, myClass = Ask(_G.UnitClass, "player")
-	myClass = Text(myClass)
-	if myClass then
-		classCount[myClass] = (classCount[myClass] or 0) + 1
-	end
-	for i = 1, #PARTY_UNITS do
 		local line = Lines.party[i]
 		if line then
-			SetLine(line, nil, RunRate(UnitKey(PARTY_UNITS[i]), false), nil)
+			local d, h = Meter.SourceFor(unit, dmg), Meter.SourceFor(unit, heal)
+			SetLine(line, d and d.amountPerSecond, RunRate(UnitKey(unit), false), h and h.amountPerSecond)
 		end
 	end
-	local function Fill(sources, slot)
-		for _, src in ipairs(sources or {}) do
-			local class = Text(src.classFilename)
-			local i = class and classCount[class] == 1 and src.isLocalPlayer ~= true and classUnit[class]
-			local line = i and Lines.party[i]
-			if line then
-				SetPart(line.parts[slot], src.amountPerSecond)
-			end
-		end
-	end
-	Fill(dmg, 1)
-	Fill(heal, 3)
 end
 
 -- yours: on top of your frame, over its name plate, from the name's left as
@@ -1163,9 +1179,13 @@ local function LiveRead()
 	end
 	local dmg = Meter.Sources(KIND.damage)
 	local heal = Meter.Sources(KIND.healing)
+	Meter.WhoCount()
 	LinesLive(dmg, heal)
 	if Meter.Bar and Meter.Bar.Live then
 		Meter.Bar.Live(dmg, heal)
+	end
+	if Meter.Raid and Meter.Raid.Live then
+		Meter.Raid.Live(dmg, heal)
 	end
 end
 
@@ -1409,6 +1429,9 @@ local function FightStart()
 	end
 	if Meter.Bar and Meter.Bar.Fight then
 		Meter.Bar.Fight(true)
+	end
+	if Meter.Raid and Meter.Raid.Fight then
+		Meter.Raid.Fight()
 	end
 	LiveSoon()
 end
@@ -1713,6 +1736,9 @@ local function Apply()
 	if Meter.HistoryApply then
 		Meter.HistoryApply()
 	end
+	if Meter.Raid and Meter.Raid.Apply then
+		Meter.Raid.Apply()
+	end
 end
 
 local function OnEditLayout()
@@ -1756,6 +1782,10 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "values" or key == "party" then
 		Apply()
+	elseif key == "raid" then
+		if Meter.Raid and Meter.Raid.Apply then
+			Meter.Raid.Apply()
+		end
 	elseif key == "summary" then
 		Meter.Summary()
 	elseif key == "historySize" then

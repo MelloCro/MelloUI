@@ -156,7 +156,7 @@ local function Add(opt)
 end
 
 Add({ type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
-	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art; every feature keeps working." })
+	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art, and MelloUI's own parts (the widget column, the reminders, the race bar ...) take the game's own look too; every feature keeps working." })
 Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
 	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
 Add({ type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",

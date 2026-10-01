@@ -5453,6 +5453,10 @@ do
 		{ "services", follows = "minimap" },
 		{ "questList", module = "QuestLogPanel" },
 		{ "config", reskin = true }, { "copy", reskin = true },
+		-- (0.17.1, docs/plans/game-look.md) MelloUI's own parts -- the widget
+		-- column, the meter, Combat Text, the notices ... -- painted with the
+		-- reskin, in the game's own look without it (MelloUI.Look)
+		{ "own", reskin = true },
 		{ "installer", always = true },
 	}
 	for _, area in ipairs(LIST) do

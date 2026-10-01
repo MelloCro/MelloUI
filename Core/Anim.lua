@@ -49,6 +49,9 @@
 --       anchoring is secret (anchored to a nameplate, below); a tween as the
 --       others (Stop, Land, IsRunning take "slide"), Reduce Motion: it stays
 --       at (x, y)
+--   MelloUI.Anim:Timer(bar, seconds[, grow]) / :TimerText(fs, bar) /
+--       :StopTimer(bar[, full])   a StatusBar counting seconds away, run by
+--       the engine with its seconds' text (0.17.1, the swing timers; below)
 --   MelloUI.Anim:Busy() -> tweens, glides     what runs (tests, /melloperf)
 --   MelloUI.Anim:PlayGroup(group, settle)
 --       plays an AnimationGroup (one already playing goes on: Stop it first
@@ -1442,6 +1445,149 @@ function Anim:EachRunning(fn)
 		for prop in pairs(props) do
 			fn(frame, prop)
 		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The timer (0.17.1, the swing timers): a StatusBar that counts a span of
+-- seconds away by itself -- the engine moves its fill every frame
+-- (StatusBar:SetTimerDuration on a duration object, C_DurationUtil) and
+-- writes its seconds into a font string (a duration text binding), with no
+-- Lua each frame: the frame rate lesson of 0.17.0. NOT stopped by Reduce
+-- Motion: it tells time, it is no motion for show.
+--   MelloUI.Anim:Timer(bar, seconds[, grow]) -> true when the engine runs it
+--       the bar full now and empty after `seconds` (grow: empty, then full),
+--       in the bar's own fill style (Center: from both ends to the middle).
+--       Asked again, it starts over with the time given. Without the
+--       engine's timer bars (another client): false, the bar left full
+--       (empty with grow) -- no Lua loop stands in.
+--   MelloUI.Anim:TimerText(fontString, bar) -> true when bound
+--       the font string shows the seconds left of the bar's timer, one
+--       decimal rounded up, written by the engine every 0.1 s at most; ""
+--       once it has run out or is stopped. Bound once: it follows every
+--       Timer on that bar after.
+--   MelloUI.Anim:StopTimer(bar[, full])   its timer stopped, the bar empty
+--       (full: full), its texts ""
+-- One duration object a bar and one binding a font string, made on the
+-- first ask (weak keys); nothing is made per Timer.
+--------------------------------------------------------------------------------
+
+do
+	local durationOf = setmetatable({}, { __mode = "k" })   -- [bar] = its duration object
+	local textsOf = setmetatable({}, { __mode = "k" })      -- [bar] = { the bindings showing it }
+	local bindingOf = setmetatable({}, { __mode = "k" })    -- [font string] = its binding
+	local formatter   -- the seconds' one formatter (made with the first binding)
+
+	local function Engine()
+		local util, enum = _G.C_DurationUtil, _G.Enum
+		if util and util.CreateDuration and enum and enum.StatusBarTimerDirection and enum.StatusBarInterpolation then
+			return util, enum
+		end
+		return nil
+	end
+
+	local function Rest(bar, value)
+		pcall(bar.SetMinMaxValues, bar, 0, 1)   -- (also lets go of a timer: the engine's own way)
+		pcall(bar.SetValue, bar, value)
+	end
+
+	local function Texts(bar, duration)
+		local list = textsOf[bar]
+		for i = 1, list and #list or 0 do
+			local b = list[i]
+			if duration then
+				pcall(b.SetDuration, b, duration)
+			end
+			pcall(b.SetEnabled, b, duration ~= nil)
+			if not duration then
+				local okF, fs = pcall(b.GetFontString, b)
+				if okF and type(fs) == "table" and fs.SetText then
+					fs:SetText("")
+				end
+			end
+		end
+	end
+
+	function Anim:Timer(bar, seconds, grow)
+		if type(bar) ~= "table" or not bar.SetValue then
+			return false
+		end
+		if type(seconds) ~= "number" or Secret(seconds) or seconds <= 0 then
+			self:StopTimer(bar, false)
+			return false
+		end
+		local util, enum = Engine()
+		if not (util and bar.SetTimerDuration) then
+			Rest(bar, grow and 0 or 1)
+			return false
+		end
+		local d = durationOf[bar]
+		if not d then
+			local ok, made = pcall(util.CreateDuration)
+			if not ok or not made then
+				Rest(bar, grow and 0 or 1)
+				return false
+			end
+			d = made
+			durationOf[bar] = d
+		end
+		local direction = grow and enum.StatusBarTimerDirection.ElapsedTime or enum.StatusBarTimerDirection.RemainingTime
+		local ok = pcall(d.SetTimeFromStart, d, GetTime(), seconds)
+			and pcall(bar.SetTimerDuration, bar, d, enum.StatusBarInterpolation.Immediate, direction)
+		if not ok then
+			Rest(bar, grow and 0 or 1)
+			return false
+		end
+		Texts(bar, d)
+		return true
+	end
+
+	function Anim:StopTimer(bar, full)
+		if type(bar) ~= "table" or not bar.SetValue then
+			return
+		end
+		Rest(bar, full and 1 or 0)
+		Texts(bar, nil)
+	end
+
+	function Anim:TimerText(fs, bar)
+		if type(fs) ~= "table" or type(bar) ~= "table" or bindingOf[fs] then
+			return bindingOf[fs] ~= nil
+		end
+		local util = Engine()
+		local strings, enum = _G.C_StringUtil, _G.Enum
+		if not (util and util.CreateDurationTextBinding and strings and strings.CreateNumericRuleFormatter
+			and enum.NumericRuleFormatRounding) then
+			return false
+		end
+		if not formatter then
+			local ok, f = pcall(strings.CreateNumericRuleFormatter)
+			if not (ok and f and pcall(f.SetBreakpoints, f, { { threshold = 0, step = 0.1,
+				rounding = enum.NumericRuleFormatRounding.Up, format = "%.1f" } })) then
+				return false
+			end
+			formatter = f
+		end
+		local ok, b = pcall(util.CreateDurationTextBinding)
+		if not (ok and b and pcall(b.SetFontString, b, fs) and pcall(b.SetFormatter, b, formatter)) then
+			return false
+		end
+		pcall(b.SetUpdateInterval, b, 0.1)
+		pcall(b.SetExpiredText, b, "")
+		pcall(b.SetZeroDurationText, b, "")
+		bindingOf[fs] = b
+		local list = textsOf[bar]
+		if not list then
+			list = {}
+			textsOf[bar] = list
+		end
+		list[#list + 1] = b
+		local d = durationOf[bar]
+		if d then
+			pcall(b.SetDuration, b, d)
+		end
+		pcall(b.SetEnabled, b, d ~= nil)
+		return true
 	end
 end
 
