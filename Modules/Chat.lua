@@ -84,7 +84,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible." },
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
-		{ type = "toggle", key = "chatButtons", name = "Chat Buttons", new = "0.17.0",
+		{ type = "toggle", key = "chatButtons", name = "Chat Buttons",
 		  desc = "The game's chat buttons in their column left of the chat: the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak), Channels and Friends. While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },
 		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
 		  desc = "The mouse wheel glides the chat text up and down instead of jumping a line at a time, in the chat windows and the whisper windows. Off, or with Reduce Motion on, it jumps as before." },

@@ -5436,7 +5436,7 @@ end
 -- (Core/Preview.lua) -- a fight alone or in a group, or one part at a time,
 -- played as a short scene. The configurator steps aside while it plays and
 -- comes back after.
-local PREVIEW = { name = "Preview", new = "0.17.0",
+local PREVIEW = { name = "Preview",
 	desc = "See how your interface behaves in a fight, with made-up numbers: resting, the fight, after it. "
 		.. "A fight alone or in a group, or one part at a time (the fades, the reminders, the widget column, "
 		.. "party frames, the meter, Combat Text, Gains). Out of combat only; Stop ends it." }
