@@ -351,7 +351,7 @@ local function PaintCrest(p, s)
 		return
 	end
 	if crest.kitName ~= piece then
-		Kit:Apply(crest, piece)
+		Kit:Apply(crest, piece)   -- look-ok: the preview of the kit's elite mark (only while the unit frames wear the kit)
 	end
 	crest:SetAlpha(ufp.db.marks == false and DIM or 1)
 	crest:Show()

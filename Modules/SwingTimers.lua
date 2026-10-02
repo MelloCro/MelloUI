@@ -11,10 +11,13 @@
 --
 -- The bars:
 --   shot    a bow, gun, crossbow or thrown weapon's Auto Shot (PLAYER_SWING
---           Ranged): cream, shrinking from both ends to the middle until the
---           next shot. (The red aiming stage waits for the user's second
---           /mello swing log: whether moving holds a shot back on this
---           client; plan section 2.)
+--           Ranged), two stages (the user's second /mello swing log,
+--           2026-10-02: moving holds the shot back -- it fired 0.36-0.58 s
+--           after the player stopped): reloading, cream, shrinking from both
+--           ends to the middle over the cycle less the aim (moving is fine);
+--           then the aim, red, growing from the middle over B.AIM while the
+--           player stands still ("Hold"); moving empties it and it waits
+--           ("Moving"), standing still starts it again.
 --   melee   the main hand's swings (PLAYER_SWING MainHand), pale; the off
 --           hand's on a thinner bar under it (60 % of its height, shown with
 --           an off-hand weapon only); a wand's shots ("Shoot (wand)") on the
@@ -29,12 +32,16 @@
 --   castbar   A: the cast bar's own bracket (Kit:Replace "ui-castingbar-frame"),
 --             the bar's name above it on the left, its seconds on the right
 --   hairline  B: the same piece as the thin rim (bar = "rimhair"), no text
---   the cast bars' look off: a plain bar (the inner panel's ground, a trim
---   edge), as the race bar's
+--   the cast bars' look off: the game's own swing timer bar (its ground,
+--   frame and the hand's fill: MelloUI.Look.GameSwing), the labels in the
+--   game's font and white (docs/plans/game-look.md wave 3); the bars still
+--   empty from both ends to the middle, as ours
 -- Both stand on the UI Shade's Cast Bars area (Kit:ShadeElement).
 -- The game's swing timers are switched off while this is on (its own CVar,
 -- showSwingTimer, held by MelloUI:HoldCVar; the player's value comes back
--- when this is off), out of combat only. Never a Hide or SetPoint on the
+-- when this is off), out of combat only -- and held off: switched on again
+-- in the game's settings, it is off again at once (CVAR_UPDATE; in a fight
+-- at its end), as the damage meter holds the game's meter. Never a Hide or SetPoint on the
 -- game's Edit Mode frames.
 -- Two Edit Layout movers, "Shot Timer" and "Swing Timer", just above the
 -- player's cast bar by default, with the Width and Height in their boxes.
@@ -82,7 +89,7 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 		height = 10 },
 	options = {
 		{ type = "toggle", key = "shot", name = "Shot Bar", new = NEW,
-		  desc = "The shot bar for a bow, gun, crossbow or thrown weapon while Auto Shot is on: cream, shrinking to the middle until the next shot." },
+		  desc = "The shot bar for a bow, gun, crossbow or thrown weapon while Auto Shot is on: cream, shrinking to the middle while it reloads (you can move), then red, growing from the middle while you aim: stand still, moving holds the shot back." },
 		{ type = "toggle", key = "melee", name = "Melee Bar", new = NEW,
 		  desc = "The melee bar: each swing of your main hand counted down, shrinking to the middle. A wand's shots (Shoot) count down on it too." },
 		{ type = "toggle", key = "offhand", name = "Off Hand Bar", new = NEW,
@@ -110,11 +117,12 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 -- main hand's (OFF of its height, GAP between), the label's size, the
 -- dimming out of range (the game's OUT_OF_RANGE_ALPHA), the fades
 local B = { ABOVE = 14, GAP = 5, OFF = 0.6, LABEL = 11, OUT = 0.4, FADE_IN = 0.15, FADE_OUT = 0.6, CAST_GAP = 30,
-	BAR_GAP = 8 }
+	BAR_GAP = 8,
+	AIM = 0.5 }   -- the shot's aim at the cycle's end (Classic's Auto Shot; the user's log: 0.36-0.58 s after stopping)
 local CVAR = "showSwingTimer"
 local TYPE = { main = 0, off = 1, ranged = 2 }
 local TEXT = { shot = "Auto Shot", main = "Main Hand", wand = "Shoot (wand)", off = "Off Hand",
-	shotMover = "Shot Timer", meleeMover = "Swing Timer" }
+	shotMover = "Shot Timer", meleeMover = "Swing Timer", hold = "Hold", moving = "Moving" }
 local MOVER = { shot = "swingshot", melee = "swingmelee" }
 local KINDS = { "shot", "melee" }
 
@@ -122,7 +130,11 @@ local KINDS = { "shot", "melee" }
 -- swung this fight, the ranged weapon a wand, the CVar's write waiting for
 -- the fight's end, the range per swing type (true: out)
 local S = { bars = {}, fight = false, autoShot = false, ran = {}, wand = false, cvarDue = false, out = {},
-	looking = false }
+	looking = false, hasRanged = nil, hasOff = nil,
+	-- the shot's stage ("reload", "aim", "wait"; nil: none), when its aim is
+	-- due, and the player moving
+	shotStage = nil, aimAt = 0, moving = false }
+local Shot = {}   -- the shot bar's two stages (below)
 
 local function On()
 	return M.isEnabled and true or false
@@ -135,23 +147,17 @@ local function Size()
 	return math.floor(w + 0.5), math.floor(h + 0.5)
 end
 
+-- a label: MelloUI's text font and the palette while the cast bars wear the
+-- kit, the game's small white font in its look (MelloUI.Look)
 local function StyleText(fs, size)
-	local object = _G.GameFontHighlightSmall or _G.GameFontHighlight
-	if type(object) == "table" then
-		fs:SetFontObject(object)
-		if MelloUI.StyleFont then
-			MelloUI:StyleFont(fs, "fontText", object, size)
-		end
-	end
+	MelloUI.Look.Text(fs, "text", size, { area = "castbar" })
 	fs:SetShadowOffset(1, -1)
 end
 
--- one track: a frame with the plain look's ground and edges, and the fill
--- (a StatusBar the engine counts down, from both ends to the middle)
-local function NewTrack(holder, colour)
+-- one track: a frame and the fill (a StatusBar the engine counts down, from
+-- both ends to the middle); `hand` the game's fill for it in its look
+local function NewTrack(holder, colour, hand)
 	local track = CreateFrame("Frame", nil, holder)
-	local ground = W.Solid(track, "BACKGROUND", "innerPanel", 0.85)
-	ground:SetAllPoints(track)
 	local fill = CreateFrame("StatusBar", nil, track)
 	fill:SetAllPoints(track)
 	fill:SetStatusBarTexture(W.BarFill())
@@ -162,8 +168,7 @@ local function NewTrack(holder, colour)
 	fill:SetStatusBarColor(colour[1], colour[2], colour[3])
 	fill:SetMinMaxValues(0, 1)
 	fill:SetValue(0)
-	return { frame = track, ground = ground, edges = W.Edges and W.Edges(track, "trim") or nil, fill = fill,
-		colour = colour }
+	return { frame = track, fill = fill, colour = colour, hand = hand }
 end
 
 -- the default place: just above the player's cast bar (the shot bar above
@@ -198,24 +203,31 @@ local function Build(kind)
 	ui = { kind = kind, holder = holder, shown = false }
 	S.bars[kind] = ui
 	local Meaning = MelloUI.Meaning
-	ui.main = NewTrack(holder, kind == "shot" and Meaning.swingShot or Meaning.swingMelee)
+	ui.main = NewTrack(holder, kind == "shot" and Meaning.swingShot or Meaning.swingMelee,
+		kind == "shot" and "ranged" or "main")
 	ui.tracks = { ui.main }
 	if kind == "melee" then
-		ui.off = NewTrack(holder, Meaning.swingMelee)
+		ui.off = NewTrack(holder, Meaning.swingMelee, "off")
 		ui.tracks[2] = ui.off
 	end
 	local label = holder:CreateFontString(nil, "OVERLAY")
 	StyleText(label, B.LABEL)
-	W.Paint(label, "text", "text")
 	label:SetPoint("BOTTOMLEFT", ui.main.frame, "TOPLEFT", 2, 2)
 	label:SetText(kind == "shot" and TEXT.shot or TEXT.main)
 	ui.label = label
 	local time = holder:CreateFontString(nil, "OVERLAY")
 	StyleText(time, B.LABEL)
-	W.Paint(time, "text", "text")
 	time:SetPoint("BOTTOMRIGHT", ui.main.frame, "TOPRIGHT", -2, 2)
 	ui.time = time
 	ui.timed = MelloUI.Anim:TimerText(time, ui.main.fill)
+	if kind == "shot" then
+		-- (the aim's word in the seconds' place: "Hold", "Moving")
+		local state = holder:CreateFontString(nil, "OVERLAY")
+		StyleText(state, B.LABEL)
+		state:SetPoint("BOTTOMRIGHT", ui.main.frame, "TOPRIGHT", -2, 2)
+		state:Hide()
+		ui.state = state
+	end
 	local key = MOVER[kind]
 	ui.entry = MelloUI:RegisterMover(holder, holder, { key = key, default = Home(kind), min = 0.5, max = 2, base = 1,
 		label = kind == "shot" and TEXT.shotMover or TEXT.meleeMover, page = "SwingTimers", when = On, placeholder = true,
@@ -250,12 +262,16 @@ Lay = function(ui)
 		if t.rep and t.rep.Refit then
 			pcall(t.rep.Refit, t.rep)
 		end
+		if t.game then
+			MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, true, t == ui.off and offH or h)   -- (its inset by its height)
+		end
 	end
 end
 
 -- the look of one track: the cast bar's bracket (A) or its hairline (B)
--- while the cast bars wear the kit, else the plain ground and edge
-local function LookTrack(t, kit, bar)
+-- while the cast bars wear the kit, else the game's own swing timer bar
+local function LookTrack(t, kit, bar, height)
+	MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, false)
 	t.fill:SetStatusBarTexture(W.BarFill())
 	t.fill:SetStatusBarColor(t.colour[1], t.colour[2], t.colour[3])
 	local Kit = MelloUI.Kit
@@ -283,12 +299,9 @@ local function LookTrack(t, kit, bar)
 			rep:Disable()
 		end
 	end
-	local plain = not (kit and rep)
-	t.ground:SetShown(plain)
-	for _, e in pairs(t.edges or {}) do
-		if type(e) == "table" and e.SetShown then
-			e:SetShown(plain)
-		end
+	t.game = not (kit and rep)
+	if t.game then
+		MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, true, height)
 	end
 end
 
@@ -298,14 +311,19 @@ Look = function(ui)
 	local db = M.db
 	local hairline = db and db.look == "hairline"
 	local bar = hairline and "rimhair" or "castbar"
-	LookTrack(ui.main, kit, bar)
+	local _, h = Size()
+	LookTrack(ui.main, kit, bar, h)
 	if ui.off then
-		LookTrack(ui.off, kit, bar)
+		LookTrack(ui.off, kit, bar, math.max(3, math.floor(h * B.OFF + 0.5)))
 	end
 	-- A's label and seconds (B: the bar alone)
 	local text = not hairline and not (db and db.text == false)
+	ui.textOn = text
 	ui.label:SetShown(text)
 	ui.time:SetShown(text and ui.timed)
+	if ui.kind == "shot" then
+		Shot.Paint(ui)
+	end
 end
 
 local function LookAll()
@@ -318,27 +336,41 @@ end
 -- What shows
 --------------------------------------------------------------------------------
 
-local function Speeds()
+-- The weapons as last read plainly (the user's video, 2026-10-02: in a fight
+-- the speeds are secret -- UnitAttackSpeed and UnitRangedDamage are
+-- SecretWhenUnitStatsRestricted -- and the shot bar, asking on each swing,
+-- read "no ranged weapon" and hid for the rest of the fight, Show: Always
+-- too). Read when the world loads, a weapon changes and a fight ends; a
+-- secret read keeps what was known; a shot or an off-hand swing proves its
+-- weapon.
+local function ReadWeapons()
 	local ok, main, off, ranged = pcall(_G.UnitAttackSpeed, "player")
-	if not ok then
-		return nil
+	if not ok or Secret(main) or Secret(off) or Secret(ranged) then
+		return
 	end
-	ranged = Num(ranged)
-	if not ranged and _G.UnitRangedDamage then
+	if ranged == nil and _G.UnitRangedDamage then
 		local okR, r = pcall(_G.UnitRangedDamage, "player")
-		ranged = okR and Num(r) or nil
+		if not okR or Secret(r) then
+			return
+		end
+		ranged = r
 	end
-	return Num(main), Num(off), ranged
+	S.hasOff = type(off) == "number" and off > 0
+	S.hasRanged = type(ranged) == "number" and ranged > 0
 end
 
 local function HasOffHand()
-	local _, off = Speeds()
-	return off ~= nil and off > 0
+	if S.hasOff == nil then
+		ReadWeapons()
+	end
+	return S.hasOff == true
 end
 
 local function HasRanged()
-	local _, _, ranged = Speeds()
-	return ranged ~= nil and ranged > 0
+	if S.hasRanged == nil then
+		ReadWeapons()
+	end
+	return S.hasRanged == true
 end
 
 -- the ranged slot's weapon a wand (its swings on the melee bar)
@@ -368,26 +400,28 @@ local function InFight()
 	return ok and not Secret(v) and v == true
 end
 
--- whether a bar shows now: its switch, a weapon for it, and the Show rule
-local function Wanted(kind)
+-- whether a bar may show at all: its switch and a weapon for it
+local function Allowed(kind)
 	local db = M.db
 	if not (On() and db) then
 		return false
 	end
 	if kind == "shot" then
-		if db.shot == false or S.wand or not HasRanged() then
-			return false
-		end
-		if db.show == "always" then
-			return true
-		end
-		return InFight() and S.autoShot and S.ran.shot == true
+		return db.shot ~= false and not S.wand and HasRanged()
 	end
-	if db.melee == false then
+	return db.melee ~= false
+end
+
+-- whether a bar shows now: allowed, and the Show rule
+local function Wanted(kind)
+	if not Allowed(kind) then
 		return false
 	end
-	if db.show == "always" then
+	if M.db.show == "always" then
 		return true
+	end
+	if kind == "shot" then
+		return InFight() and S.autoShot and S.ran.shot == true
 	end
 	return InFight() and S.ran.melee == true
 end
@@ -435,6 +469,87 @@ local function TrackOf(swingType)
 	return S.bars.melee, "melee", swingType == TYPE.off and "off" or "main"
 end
 
+-- The shot bar's two stages (the user's video and second log, 2026-10-02):
+-- the reload, cream, counted down by the engine (moving is fine); at its end
+-- the aim, red, counted up from the middle over B.AIM while the player
+-- stands still, or waiting ("Moving") while the player moves. The reload's
+-- end comes from one C_Timer.After a shot (the function shared, no closure:
+-- a later shot's reload moves aimAt, and an earlier call finds it not due).
+
+-- the shot bar in its stage: the fill's colour (cream reloading, the aim's
+-- red; the game's own fill in its own white in its look) and the text in the
+-- seconds' place (the seconds, "Hold", "Moving")
+function Shot.Paint(ui)
+	local stage = S.shotStage or "reload"
+	local t = ui.main
+	local c = MelloUI.Meaning.swingAim
+	if stage == "reload" then
+		c = t.game and MelloUI.Look.Palette("castbar").text or t.colour
+	end
+	t.fill:SetStatusBarColor(c[1], c[2], c[3])
+	local text = ui.textOn and true or false
+	ui.time:SetShown(text and ui.timed and stage == "reload" or false)
+	if ui.state then
+		ui.state:SetText(stage == "wait" and TEXT.moving or TEXT.hold)
+		ui.state:SetShown(text and stage ~= "reload")
+	end
+end
+
+-- the aim: run now, or wait while the player moves
+function Shot.Aim()
+	local ui = S.bars.shot
+	if not ui then
+		return
+	end
+	if S.moving then
+		S.shotStage = "wait"
+		MelloUI.Anim:StopTimer(ui.main.fill)
+	else
+		S.shotStage = "aim"
+		MelloUI.Anim:Timer(ui.main.fill, B.AIM, true)
+	end
+	Shot.Paint(ui)
+end
+
+-- the reload's end (C_Timer.After): the aim, unless a later shot moved it
+Shot.Due = Shared("the shot bar: its reload done", function()
+	if S.shotStage == "reload" and GetTime() + 0.01 >= S.aimAt then
+		Shot.Aim()
+	end
+end)
+
+-- a shot fired: the reload from full
+function Shot.Start(ui, duration)
+	local reload = duration - B.AIM
+	S.shotStage = "reload"
+	S.aimAt = GetTime() + math.max(reload, 0)
+	Shot.Paint(ui)
+	if reload > 0 then
+		MelloUI.Anim:Timer(ui.main.fill, reload)
+		C_Timer.After(reload, Shot.Due)
+	else
+		Shot.Aim()
+	end
+end
+
+-- no shot on its way (Auto Shot stopped, the module off): the bar at rest
+function Shot.Stop()
+	S.shotStage = nil
+	local ui = S.bars.shot
+	if ui then
+		MelloUI.Anim:StopTimer(ui.main.fill)
+		Shot.Paint(ui)
+	end
+end
+
+-- the player started or stopped moving: the aim waits, or runs again
+function Shot.Moving(moving)
+	S.moving = moving
+	if (moving and S.shotStage == "aim") or (not moving and S.shotStage == "wait") then
+		Shot.Aim()
+	end
+end
+
 local function Swing(duration, swingType)
 	duration = Num(duration)
 	if Secret(swingType) or not duration or duration <= 0 then
@@ -444,14 +559,29 @@ local function Swing(duration, swingType)
 	S.ran[kind] = true
 	if kind == "shot" then
 		S.autoShot = true   -- (a shot fired: Auto Shot is on, also when it was started before a /reload)
+		S.hasRanged = true   -- (and a ranged weapon there, whatever a secret read said)
+	elseif swingType == TYPE.off then
+		S.hasOff = true
 	end
 	Update()
+	-- (the first swing or shot comes BEFORE PLAYER_REGEN_DISABLED -- the
+	-- user's second log -- so with Show: In Combat it is not wanted yet: the
+	-- bar made now all the same and its timer started, shown when the fight's
+	-- event comes a moment later -- the user's video 2026-10-02, the first
+	-- shot after a /reload an empty bar)
+	if not S.bars[kind] and Allowed(kind) then
+		Build(kind)
+	end
 	local ui, _, part = TrackOf(swingType)
 	if not ui then
 		return   -- (switched off, or no weapon for it: nothing made)
 	end
 	if part == "main" and kind == "melee" then
 		ui.label:SetText(swingType == TYPE.ranged and TEXT.wand or TEXT.main)
+	end
+	if kind == "shot" then
+		Shot.Start(ui, duration)
+		return
 	end
 	local track = ui[part]
 	if track then
@@ -524,17 +654,33 @@ local OnEvent = Shared("OnEvent of the swing timers", function(_, event, a1, a2,
 	elseif event == "STOP_AUTOREPEAT_SPELL" then
 		S.autoShot = false
 		S.ran.shot = false
-		local ui = S.bars.shot
-		if ui then
-			MelloUI.Anim:StopTimer(ui.main.fill)
-		end
+		Shot.Stop()
 		Update()
+	elseif event == "PLAYER_STARTED_MOVING" then
+		Shot.Moving(true)
+	elseif event == "PLAYER_STOPPED_MOVING" then
+		Shot.Moving(false)
+	elseif event == "CVAR_UPDATE" then
+		-- the game's own swing timers switched on again (its settings) while
+		-- these stand in for them (the user, 2026-10-02: players had both):
+		-- off again (out of combat; in a fight at its end, Switches), the
+		-- player's newest choice kept for when these are switched off
+		if a1 == CVAR and On() then
+			local now = MelloUI:CVarText(CVAR)
+			if now ~= nil and now ~= "0" then
+				if M.db then
+					M.db.savedSwing = now
+				end
+				Switches()
+			end
+		end
 	elseif event == "PLAYER_REGEN_DISABLED" then
 		S.fight = true
 		Update()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		S.fight = false
 		S.ran.shot, S.ran.melee = false, false
+		ReadWeapons()   -- (plain again out of the fight)
 		if S.cvarDue then
 			Switches()
 		end
@@ -545,6 +691,7 @@ local OnEvent = Shared("OnEvent of the swing timers", function(_, event, a1, a2,
 		Update()
 	elseif event == "WEAPON_SLOT_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
 		ReadWand()
+		ReadWeapons()
 		if event == "PLAYER_ENTERING_WORLD" then
 			RangeChecks(true)
 		end
@@ -554,7 +701,7 @@ end)
 
 local EVENTS = { "PLAYER_SWING", "PLAYER_SWING_RANGE_UPDATE", "PLAYER_TARGET_CHANGED", "START_AUTOREPEAT_SPELL",
 	"STOP_AUTOREPEAT_SPELL", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "WEAPON_SLOT_CHANGED",
-	"PLAYER_ENTERING_WORLD" }
+	"PLAYER_ENTERING_WORLD", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "CVAR_UPDATE" }
 
 local function Events(on)
 	if not S.frame then
@@ -606,7 +753,10 @@ function M:OnEnable(db)
 		MelloUI:On("look:statusbars", LookAll, "Swing timers")
 	end
 	ReadWand()
+	ReadWeapons()
 	S.fight = MelloUI.InCombat()
+	local okM, moving = pcall(_G.IsPlayerMoving)
+	S.moving = okM and not Secret(moving) and moving == true or false
 	Switches()
 	Update()
 end
@@ -614,6 +764,7 @@ end
 function M:OnDisable()
 	Events(false)
 	S.fight, S.autoShot, S.ran.shot, S.ran.melee = false, false, false, false
+	Shot.Stop()
 	for _, ui in pairs(S.bars) do
 		MelloUI.Anim:StopTimer(ui.main.fill)
 		if ui.off then

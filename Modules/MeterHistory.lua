@@ -25,6 +25,11 @@
 -- disc). A child of the column, so Chat Buttons off hides it with the rest.
 -- Tooltip "Fight History / Every fight of this session"; a click toggles the
 -- window. Made after the login's frames while Fight History is on.
+-- With the reskin off (docs/plans/game-look.md, wave 2) its contents
+-- take the game's look through MelloUI.Look: the game's fonts and colours,
+-- the settings list's marks on the rows, the game's meter bars for the share
+-- lines and the spells, its round class icons; the chat button the game's
+-- own column button (the chat's look, as its neighbours).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -34,6 +39,7 @@ local Shared = Perf.Shared
 local CreateFrame = MelloUI.Safe.CreateFrame
 local W = MelloUI.Widgets
 local Kit = MelloUI.Kit
+local Look = MelloUI.Look
 local Meter = ns.Meter
 local M = Meter.M
 local ipairs, pairs, type, max, min, floor = ipairs, pairs, type, math.max, math.min, math.floor
@@ -47,6 +53,7 @@ local H = {
 	LIST_W = 236, ROW = 34, HEAD = 22, RUN_ROW = 40,
 	LEDGER_ROW = 28, LEDGER_MAX = 8, MEDAL = 20, SPELL_ROW = 17, SPELLS_SHORT = 4,
 	TAB_W = 96, BUTTON = 32, DISC = 22, GLYPH = 14,
+	BAR_GAME = 5,   -- (the share lines' and the spells' bars in the game's look)
 }
 
 local TEXT = {
@@ -82,22 +89,13 @@ local function On()
 	return M.isEnabled and M.db and M.db.history ~= false or false
 end
 
-local function StyleText(fs, size)
-	local object = _G.GameFontHighlight
-	if type(object) == "table" then
-		fs:SetFontObject(object)
-		if MelloUI.StyleFont then
-			MelloUI:StyleFont(fs, "fontText", object, size)
-		end
-	end
-end
-
-local function Font(parent, size, key, justify)
+-- a string in its role (MelloUI.Look: "text", "gold", "note"): MelloUI's
+-- font and the palette painted, the game's font object and colour in its look
+local function Font(parent, size, role, justify)
 	local fs = parent:CreateFontString(nil, "OVERLAY")
-	StyleText(fs, size)
+	Look.Text(fs, role or "text", size)
 	fs:SetJustifyH(justify or "LEFT")
 	fs:SetWordWrap(false)
-	W.Paint(fs, key or "text", "text")
 	return fs
 end
 
@@ -113,10 +111,10 @@ end
 local function Tint(tex, class, key)
 	local r, g, b = ClassColour(class)
 	if r then
-		Kit:Unpaint(tex, "vertex")
+		Look.Unpaint(tex)
 		tex:SetVertexColor(r, g, b)
 	else
-		W.Paint(tex, key or "trim", "vertex")
+		Look.Paint(tex, key or "trim", "vertex")
 	end
 end
 
@@ -205,25 +203,27 @@ end, "script")
 local function NewSlot(parent)
 	local slot = CreateFrame("Button", nil, parent)
 	slot:SetHeight(H.ROW)
-	local sel = W.Solid(slot, "BACKGROUND", "selectedTab", 0.55)
+	local sel = slot:CreateTexture(nil, "BACKGROUND")
+	Look.Mark(sel, "selected", "selectedTab", 0.55)
 	sel:SetAllPoints(slot)
 	sel:Hide()
 	slot.sel = sel
-	local hover = W.Solid(slot, "BACKGROUND", "hover", 0.35)
+	local hover = slot:CreateTexture(nil, "BACKGROUND")
+	Look.Mark(hover, "hover", "hover", 0.35)
 	hover:SetAllPoints(slot)
 	slot:SetHighlightTexture(hover)
 	slot.name = Font(slot, 13, "text")
 	slot.name:SetPoint("TOPLEFT", slot, "TOPLEFT", 8, -4)
 	slot.name:SetPoint("RIGHT", slot, "RIGHT", -86, 0)
-	slot.sub = Font(slot, 11, "text")
+	slot.sub = Font(slot, 11, "note")
 	slot.sub:SetPoint("TOPLEFT", slot.name, "BOTTOMLEFT", 0, -2)
 	slot.sub:SetAlpha(0.8)
 	slot.right = Font(slot, 12, "text", "RIGHT")
 	slot.right:SetPoint("TOPRIGHT", slot, "TOPRIGHT", -8, -5)
 	-- a run's head: small capitals in gold with a line after them
-	slot.head = Font(slot, 11, "selectedTrim")
+	slot.head = Font(slot, 11, "gold")
 	slot.head:SetPoint("BOTTOMLEFT", slot, "BOTTOMLEFT", 4, 4)
-	slot.line = W.Solid(slot, "ARTWORK", "border", 1)
+	slot.line = Look.Solid(slot, "ARTWORK", "border", 1)
 	slot.line:SetHeight(1)
 	slot.line:SetPoint("LEFT", slot.head, "RIGHT", 6, 0)
 	slot.line:SetPoint("RIGHT", slot, "RIGHT", -6, 0)
@@ -387,7 +387,8 @@ local function LedgerRow(i)
 	disc:SetTexture(ROUND_MASK)
 	disc:SetSize(H.MEDAL + 2, H.MEDAL + 2)
 	disc:SetPoint("LEFT", row, "LEFT", 2, 0)
-	W.Paint(disc, "border", "vertex")
+	Look.Paint(disc, "border", "vertex")
+	Look.Hide(disc)   -- (the game's round class icon has its own rim)
 	row.disc = disc
 	local medal = row:CreateTexture(nil, "ARTWORK", nil, 2)
 	medal:SetSize(H.MEDAL, H.MEDAL)
@@ -398,11 +399,12 @@ local function LedgerRow(i)
 	row.name:SetPoint("RIGHT", row, "RIGHT", -130, 0)
 	row.total = Font(row, 13, "text", "RIGHT")
 	row.total:SetPoint("RIGHT", row, "RIGHT", -6, 3)
-	row.rate = Font(row, 11, "text", "RIGHT")
+	row.rate = Font(row, 11, "note", "RIGHT")
 	row.rate:SetPoint("RIGHT", row.total, "LEFT", -10, 0)
 	row.rate:SetAlpha(0.8)
-	-- the share line: the top's whole width, this one's share of it
-	local track = W.Solid(row, "BORDER", "border", 0.6)
+	-- the share line: the top's whole width, this one's share of it (the
+	-- game's meter bar in its look, a little taller so its art reads)
+	local track = Look.Solid(row, "BORDER", "border", 0.6)
 	track:SetHeight(2)
 	track:SetPoint("BOTTOMLEFT", disc, "BOTTOMRIGHT", 6, 1)
 	track:SetPoint("RIGHT", row, "RIGHT", -6, 0)
@@ -411,6 +413,7 @@ local function LedgerRow(i)
 	share:SetTexture(WHITE)
 	share:SetHeight(2)
 	share:SetPoint("LEFT", track, "LEFT", 0, 0)
+	Look.Bar(share, { track = track, height = H.BAR_GAME })
 	row.share = share
 	win.ledger[i] = row
 	return row
@@ -435,14 +438,16 @@ local function SpellRow(i)
 	bar:SetTexture(WHITE)
 	bar:SetHeight(3)
 	bar:SetPoint("LEFT", row, "LEFT", 160, 0)
-	W.Paint(bar, "trim", "vertex")
+	Look.Paint(bar, "trim", "vertex")
 	row.bar = bar
 	-- its dark outline, 1 px round it (the user's test, 2026-10-01: the bare
-	-- trim line hardly showed on the parchment)
-	local outline = W.Solid(row, "BORDER", "mainWindow", 0.9)
+	-- trim line hardly showed on the parchment); the game's meter bar and its
+	-- own shadowed edge in the game's look
+	local outline = Look.Solid(row, "BORDER", "mainWindow", 0.9)
 	outline:SetPoint("TOPLEFT", bar, "TOPLEFT", -1, 1)
 	outline:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 1, -1)
 	row.outline = outline
+	Look.Bar(bar, { outline = outline, height = H.BAR_GAME })
 	win.spellRows[i] = row
 	return row
 end
@@ -503,14 +508,10 @@ local function LayLedger()
 	for i = 1, n do
 		local e, row = list[i], LedgerRow(i)
 		row.name:SetText(i .. ".  " .. NameOf(e))
-		if e.me then
-			W.Paint(row.name, "selectedTrim", "text")
-		else
-			W.Paint(row.name, "text", "text")
-		end
+		Look.Tint(row.name, e.me and "gold" or nil)   -- (you in gold)
 		row.total:SetText(Meter.Big(e.value))
 		row.rate:SetText(TEXT.perSecond:format(Meter.Plain(e.rate)))
-		row.medal:SetTexture(Meter.ClassIcon(e.c) or "Interface\\Icons\\INV_Misc_QuestionMark")
+		Look.ClassIcon(row.medal, e.c, Meter.ClassIcon(e.c))
 		row.share:SetWidth(max(1, width * e.value / max(top, 1)))
 		Tint(row.share, e.c, e.me and "selectedTrim" or "trim")
 		row:Show()
@@ -677,7 +678,7 @@ local function Build()
 	win.body = body
 	local dim = Kit.StoneDim and Kit:StoneDim(body, { rect = body, area = AREA, alpha = 0.85 })
 	if not dim then
-		local fill = W.Solid(body, "BACKGROUND", "innerPanel", 0.85)
+		local fill = Look.Solid(body, "BACKGROUND", "innerPanel", 0.85)
 		fill:SetAllPoints(body)
 	end
 	if Kit.ParchmentSheet then
@@ -696,7 +697,7 @@ local function Build()
 	runRow.head:Hide()
 	runRow.line:Hide()
 	runRow.name:SetText(TEXT.thisRun)
-	W.Paint(runRow.name, "selectedTrim", "text")
+	Look.Tint(runRow.name, "gold")
 	Perf.SetScript(runRow, "OnClick", RunClick)
 	win.runRow = runRow
 	local list = CreateFrame("Frame", nil, left)
@@ -711,13 +712,13 @@ local function Build()
 	win.empty:SetPoint("RIGHT", list, "RIGHT", -8, 0)
 	win.empty:SetWordWrap(true)
 	win.empty:SetText(TEXT.empty)
-	win.count = Font(left, 11, "text")
+	win.count = Font(left, 11, "note")
 	win.count:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 6, 12)
 	win.clear = W.Button(left, TEXT.clear, 80, win.shell, { onClick = ClearClick })
 	win.clear.melloNoInk = true   -- (a plate of its own, as the tabs)
 	win.clear:SetPoint("BOTTOMRIGHT", left, "BOTTOMRIGHT", -4, 4)
 	-- the line between the two sides
-	local split = W.Solid(body, "ARTWORK", "border", 1)
+	local split = Look.Solid(body, "ARTWORK", "border", 1)
 	split:SetWidth(1)
 	split:SetPoint("TOPLEFT", left, "TOPRIGHT", 8, 0)
 	split:SetPoint("BOTTOMLEFT", left, "BOTTOMRIGHT", 8, 0)
@@ -726,10 +727,10 @@ local function Build()
 	right:SetPoint("TOPLEFT", left, "TOPRIGHT", 18, 0)
 	right:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 8)
 	win.right = right
-	win.headName = Font(right, 15, "selectedTrim")
+	win.headName = Font(right, 15, "gold")
 	win.headName:SetPoint("TOPLEFT", right, "TOPLEFT", 2, -2)
 	win.headName:SetPoint("RIGHT", right, "RIGHT", -4, 0)
-	win.headSub = Font(right, 11, "text")
+	win.headSub = Font(right, 11, "note")
 	win.headSub:SetPoint("TOPLEFT", win.headName, "BOTTOMLEFT", 0, -3)
 	win.tabs = {}
 	local prev = nil
@@ -760,7 +761,7 @@ local function Build()
 	local spellPane = CreateFrame("Frame", nil, board)
 	spellPane:Hide()
 	win.spellPane = spellPane
-	local spellsHead = Font(spellPane, 11, "selectedTrim")
+	local spellsHead = Font(spellPane, 11, "gold")
 	spellsHead:SetPoint("TOPLEFT", spellPane, "TOPLEFT", 4, 0)
 	spellsHead:SetText(TEXT.spellsHead)
 	win.spellsEmpty = Font(board, 12, "text")
@@ -847,17 +848,17 @@ local function MakeButton()
 	disc:SetTexture(ROUND_MASK)
 	disc:SetSize(H.DISC, H.DISC)
 	disc:SetPoint("CENTER")
-	W.Paint(disc, "innerPanel", "vertex", 0.95)
+	Look.Paint(disc, "innerPanel", "vertex", 0.95, "chat")
 	local glyph = button:CreateTexture(nil, "ARTWORK", nil, 2)
 	W.Glyph(glyph, "chart")
 	glyph:SetSize(H.GLYPH, H.GLYPH)
 	glyph:SetPoint("CENTER")
-	W.Paint(glyph, "text", "vertex")
 	local hover = button:CreateTexture(nil, "HIGHLIGHT")
 	hover:SetTexture(ROUND_MASK)
 	hover:SetSize(H.DISC, H.DISC)
 	hover:SetPoint("CENTER")
-	W.Paint(hover, "hover", "vertex", 0.5)
+	Look.Paint(hover, "hover", "vertex", 0.5, "chat")
+	Look.ColumnButton(button, glyph, { disc, hover })
 	Perf.SetScript(button, "OnClick", ButtonClick)
 	Perf.SetScript(button, "OnEnter", ButtonEnter)
 	Perf.SetScript(button, "OnLeave", ButtonLeave)

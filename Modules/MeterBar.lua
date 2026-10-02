@@ -293,10 +293,7 @@ LookBar = function(ui, painted)
 			ui.rep:Enable()
 			pcall(ui.rep.Refit, ui.rep)
 		end
-		if ui.back then
-			ui.back:Hide()
-			ui.edge:Hide()
-		end
+		Look.GameBar(fill, nil, false)
 		return
 	end
 	if ui.rep then
@@ -305,10 +302,8 @@ LookBar = function(ui, painted)
 	if tex and Kit and Kit.Unpaint then
 		Kit:Unpaint(tex, "vertex")
 	end
-	local _, fillAtlas = Look.Art("barFill")
-	if not pcall(fill.SetStatusBarTexture, fill, fillAtlas) then
-		fill:SetStatusBarTexture(FillTexture())
-	end
+	Look.GameBar(fill, nil, true)   -- (the game's fill, its ground and edge)
+	ui.back, ui.edge = Look.GameBarParts(fill)
 	tex = fill:GetStatusBarTexture()
 	if tex then
 		local QI = MelloUI.QuestInk
@@ -319,18 +314,6 @@ LookBar = function(ui, painted)
 		end
 		tex:SetVertexColor(r or 1, g or 0.82, b or 0, 1)
 	end
-	if not ui.back then
-		local back = fill:CreateTexture(nil, "BACKGROUND")
-		back:SetAtlas((select(2, Look.Art("barBack"))))
-		back:SetAllPoints(fill)
-		local edge = fill:CreateTexture(nil, "OVERLAY")
-		edge:SetAtlas((select(2, Look.Art("barEdge"))))
-		edge:SetPoint("TOPLEFT", fill, "TOPLEFT", -2, 2)
-		edge:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT", 2, -2)
-		ui.back, ui.edge = back, edge
-	end
-	ui.back:Show()
-	ui.edge:Show()
 end
 
 -- the look again: a Bar Texture or Bar Border changed (the painted look's)

@@ -1214,12 +1214,11 @@ local Pick = { group = { key = "pick", label = "Profession Trainer", kinds = {} 
 	HINT = "Click to route to its nearest trainer by road.",
 	HINT_ANY = "Click to route to the nearest profession trainer by road." }
 
--- Font Style's face for one of the menu's strings (Fonts loads before this
--- file; a world without it keeps the font object's face)
-local function Style(fs, role, object, size)
-	if MelloUI.StyleFont then
-		MelloUI:StyleFont(fs, role, object, size)
-	end
+-- a palette key's colour role for a menu string (MelloUI.Look's Tint): the
+-- palette's key painted, the game's gold, white or grey with the reskin off
+local TINT = { text = "text", selectedTrim = "gold", mutedText = "muted" }
+local function Tint(fs, key)
+	MelloUI.Look.Tint(fs, TINT[key] or "text")
 end
 
 -- the pointer over a frame; a secret answer counts as not over
@@ -1231,14 +1230,14 @@ end
 
 -- the menu's box: the kit's L1 box while the painted minimap is on (SV1, as
 -- the bar), else the tooltip's backdrop in the palette's inner panel and trim
+-- (the reskin off: in the tooltip's own colours, MelloUI.Look)
 local function MenuBox(kit)
 	if not menu or SetKitBox(menu, kit) or not menu.SetBackdrop then
 		return
 	end
-	local W = MelloUI.Widgets
 	menu:SetBackdrop(MENU_BACKDROP)
-	W.Paint(menu, "innerPanel", "backdrop", 0.95)
-	W.Paint(menu, "trim", "border", 1)
+	MelloUI.Look.Paint(menu, "innerPanel", "backdrop", 0.95)
+	MelloUI.Look.Paint(menu, "trim", "border", 1)
 end
 
 -- A kind's nearest distance as shown (with the nearest one's name: the
@@ -1457,13 +1456,13 @@ local function MenuRow(i)
 	row.icon:AddMaskTexture(mask)
 	row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.label:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-	Style(row.label, "fontText", _G.GameFontHighlight)
+	MelloUI.Look.Text(row.label, "text")
 	row.where = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.where:SetPoint("RIGHT", -6, 0)
 	row.where:SetPoint("LEFT", row.label, "RIGHT", 8, 0)
 	row.where:SetJustifyH("RIGHT")
 	row.where:SetWordWrap(false)
-	Style(row.where, "fontText", _G.GameFontHighlight)
+	MelloUI.Look.Text(row.where, "text")
 	Perf.SetScript(row, "OnClick", RowClick)
 	Perf.SetScript(row, "OnEnter", RowEnter)
 	Perf.SetScript(row, "OnLeave", W.TipLeave)
@@ -1482,8 +1481,7 @@ local function CreateMenu()
 	menu:SetWidth(MENU_WIDTH)
 	menu.title = menu:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	menu.title:SetPoint("TOPLEFT", 12, -10)
-	Style(menu.title, "fontTitle", _G.GameFontNormal, TITLE_SIZE)
-	W.Paint(menu.title, "selectedTrim", "text")
+	MelloUI.Look.Text(menu.title, "gold", TITLE_SIZE, { font = "fontTitle", object = "GameFontNormal" })
 	menu.rows = {}
 	for i = 1, #KINDS do
 		menu.rows[i] = MenuRow(i)
@@ -1498,8 +1496,7 @@ local function CreateMenu()
 	menu.hint:SetPoint("RIGHT", -12, 0)
 	menu.hint:SetJustifyH("LEFT")
 	menu.hint:SetText("nearest by road")
-	Style(menu.hint, "fontText", _G.GameFontHighlightSmall)
-	W.Paint(menu.hint, "text", "text")
+	MelloUI.Look.Text(menu.hint, "note", nil, { object = "GameFontHighlightSmall" })
 	menu:SetHeight(30 + #KINDS * ROW_HEIGHT + 34)
 	menu:Hide()
 	-- Close on a press elsewhere, listened for only while the menu is open.
@@ -1522,7 +1519,6 @@ end
 -- A row for a kind: its icon, name and the nearest one's distance (the list
 -- adds that one's name), grey while none is known on this continent
 local function FillRow(row, kind, tray)
-	local W = MelloUI.Widgets
 	row.kind = kind
 	row.icon:SetTexture(kind.icon)
 	row.label:SetText(kind.label)
@@ -1536,8 +1532,8 @@ local function FillRow(row, kind, tray)
 	else
 		row.where:SetText(Route() and "none known here" or "Route module off")
 	end
-	W.Paint(row.label, c and "text" or "mutedText", "text")
-	W.Paint(row.where, c and "selectedTrim" or "mutedText", "text")
+	Tint(row.label, c and "text" or "mutedText")
+	Tint(row.where, c and "selectedTrim" or "mutedText")
 	row.icon:SetDesaturated(not c)
 	row.icon:SetAlpha(c and 1 or 0.45)
 	row:Show()
@@ -1545,14 +1541,13 @@ end
 
 -- An errand's row: its icon, name and how it stands (Errand.Status)
 function Errand.Fill(row, e)
-	local W = MelloUI.Widgets
 	row.kind = e
 	row.icon:SetTexture(e.icon)
 	row.label:SetText(e.label)
 	local text, key = Errand.Status(e)
 	row.where:SetText(text)
-	W.Paint(row.label, "text", "text")
-	W.Paint(row.where, key, "text")
+	Tint(row.label, "text")
+	Tint(row.where, key)
 	row.icon:SetDesaturated(false)
 	row.icon:SetAlpha(1)
 	row:Show()
@@ -1562,13 +1557,12 @@ end
 -- game's menu), "yours" for the character's own; Nearest of any with the
 -- trainer's icon
 function Pick.Fill(row, e)
-	local W = MelloUI.Widgets
 	row.kind = e
 	row.icon:SetTexture(not e.prof and e.kind.icon or nil)
 	row.label:SetText(e.label)
 	row.where:SetText(e.yours and "yours" or "")
-	W.Paint(row.label, "text", "text")
-	W.Paint(row.where, "selectedTrim", "text")
+	Tint(row.label, "text")
+	Tint(row.where, "selectedTrim")
 	row.icon:SetDesaturated(false)
 	row.icon:SetAlpha(1)
 	row:Show()
@@ -1971,7 +1965,7 @@ end
 -- button's below -- the service's name and the nearest one in the gold, the
 -- hints in the text colour (0.14.0: the palettes; greys of its own before)
 local function BarTooltip(self)
-	local P = MelloUI.Palette
+	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(self.kind.label, gold[1], gold[2], gold[3])
@@ -1999,7 +1993,7 @@ end
 -- distance (each kind's look, kept NEAREST_KEEP s), palette colours
 local function GroupTooltip(self)
 	local group = self.group
-	local P = MelloUI.Palette
+	local P = MelloUI.Look.Palette()
 	local gold, text, muted = P.selectedTrim, P.text, P.mutedText
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(group.label, gold[1], gold[2], gold[3])
@@ -2226,9 +2220,8 @@ local function PlainBarBox(plain)
 		tile = true, tileSize = 16, edgeSize = 12,
 		insets = { left = 3, right = 3, top = 3, bottom = 3 },
 	})
-	local W = MelloUI.Widgets   -- (Core's)
-	W.Paint(barPaint, "innerPanel", "backdrop", 0.85)
-	W.Paint(barPaint, "trim", "border", 1)
+	MelloUI.Look.Paint(barPaint, "innerPanel", "backdrop", 0.85)   -- (the reskin off: the tooltip's own colours)
+	MelloUI.Look.Paint(barPaint, "trim", "border", 1)
 end
 
 local function CreateBar()
@@ -2292,7 +2285,7 @@ end
 local function KitAnchor(frame)
 	local tex = frame:CreateTexture(nil, "BACKGROUND")
 	tex:SetAllPoints(frame)
-	local none = MelloUI.Palette.innerPanel
+	local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0: the kit's invisible anchor
 	tex:SetColorTexture(none[1], none[2], none[3], 0)
 	return tex
 end
@@ -2359,7 +2352,7 @@ end
 local function KitRim(b, round)
 	local key = round and "kitRoundRim" or "kitSquareRim"
 	if not b[key] then
-		b[key] = MelloUI.Kit:Slot(b, { kind = round and "roundslot" or "slot" })
+		b[key] = MelloUI.Kit:Slot(b, { kind = round and "roundslot" or "slot" })   -- look-ok: the kit's rim, only while the minimap wears the kit (KitOn)
 		if MelloUI.Kit.RegisterTexture then
 			MelloUI.Kit:RegisterTexture(b[key])   -- Dark Mode's shade
 		end
@@ -2390,7 +2383,7 @@ local function BarStone(on)
 			local mp = MelloUI:GetModule("MinimapPanel")
 			local piece = mp and mp.BodyPiece and mp:BodyPiece() or "window/frame_body"
 			if bar.stone.kitName ~= piece then
-				MelloUI.Kit:Apply(bar.stone, piece)
+				MelloUI.Kit:Apply(bar.stone, piece)   -- look-ok: the merged frame's stone, only with the kit (Merged)
 			end
 			MelloUI.Kit:Retile(bar.stone)
 		end
@@ -2717,8 +2710,9 @@ local function CreateButton()
 		ToggleMenu(self)
 	end)
 	Perf.SetScript(button, "OnEnter", function(self)
-		-- (the palette's gold and text, as MelloUI's one tooltip)
-		local P = MelloUI.Palette
+		-- (the palette's gold and text, as MelloUI's one tooltip; the reskin
+		-- off, the game's)
+		local P = MelloUI.Look.Palette()
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("Services", gold[1], gold[2], gold[3])

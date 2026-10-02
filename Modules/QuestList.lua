@@ -59,6 +59,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		dungeonSummary = true,
 		tipQuestItems = true,
 		tipTurnIn = true,
+		folded = false,   -- (the panel folded away beside the map: its tab on the map's edge)
 	},
 	options = {
 		{ type = "header", name = "List" },
@@ -196,7 +197,7 @@ end
 -- the parchment: file, the logo's size in the file and the file's size (in
 -- the master's pixels: the shipped file is half that size, and only their
 -- ratios are used). On parchment each is an ink stamp (QuestInk's QI.Stamp).
-local LOGO_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Quests\\"
+local LOGO_DIR = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Quests\\"   -- look-ok: the quest origin stamps (content)
 MelloUI.QUEST_ORIGIN_LOGOS = {
 	-- Classic: its letters set closer (user, 2026-09-23: "cut some of the
 	-- space between the letters so that the middle aligns")
@@ -1175,19 +1176,21 @@ QL.MEANING = {
 	horde = { 1, 0.3, 0.3 },      -- a transport of the Horde (meaning colour)
 }
 
+-- (the palette as the Quest List's look shows it -- the Quest Log's switch, the
+-- user's pick 2026-10-02: the game's colours while that look is off)
 function QL.TipColour(name)
-	local c = QL.MEANING[name] or MelloUI.Palette[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette("questList")[name]
 	return c[1], c[2], c[3]
 end
 
 function QL.TipLine(tip, text, name, wrap)
-	local c = QL.MEANING[name] or MelloUI.Palette[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette("questList")[name]
 	tip:AddLine(text, c[1], c[2], c[3], wrap)
 end
 
 function QL.TipTitle(tip, text, name)
 	name = name or "selectedTrim"
-	local c = QL.MEANING[name] or MelloUI.Palette[name]
+	local c = QL.MEANING[name] or MelloUI.Look.Palette("questList")[name]
 	tip:SetText(text, c[1], c[2], c[3])
 end
 
@@ -1601,6 +1604,9 @@ function M:OnDisable()
 	if QL.Panel.frame then
 		QL.Panel.frame:Hide()
 	end
+	if QL.Fold and QL.Fold.tab then
+		QL.Fold.tab:Hide()
+	end
 	-- off with the map closed, the panel's OnHide never comes: the search
 	-- text goes now (the first search after an enable makes it again)
 	if QL.searchText then
@@ -1741,6 +1747,17 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		for k, v in pairs(kinds) do parts[#parts + 1] = k .. " " .. v end
 		print("   marks on the map: " .. #marks .. (#marks > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
 	end
+	-- the layers: the marks over the map's picture (their holder a strata up), the panel's holder beside it
+	local function Layer(name, f)
+		if f then
+			print(string.format("   %s: %s %d%s%s", name, f:GetFrameStrata(), f:GetFrameLevel(),
+				f.IsFrameBuffer and f:IsFrameBuffer() and ", frame buffer" or "", f:IsVisible() and "" or ", hidden"))
+		end
+	end
+	Layer("map", WorldMapFrame)
+	Layer("panel's holder", QL.holder)
+	Layer("marks' holder", QL.marksHolder)
+	Layer("marks' layer", QL.Marks and QL.Marks.clip)
 	for _, err in ipairs(QL.lastPinErrors) do
 		print("   |cffff4040error|r " .. err)
 	end

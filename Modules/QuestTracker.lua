@@ -653,11 +653,64 @@ local Near = {}
 -- W.Paint's (region, key, how, alpha), the same guard as the Quest List's and
 -- the chat's PaintKey. The lines' colours are read when a rebuild draws them
 -- (StoneColour): a palette switch rebuilds (Listen).
+-- (in the tracker's look: the palette while the kit dresses it, the game's
+-- colours with its switch or the reskin off -- MelloUI.Look.Paint, again at
+-- every switch)
 local function PaintKey(region, key, how, alpha)
+	MelloUI.Look.Paint(region, key, how, alpha, "questTracker")
+end
+
+-- The tracker's own pictures in the look (docs/plans/game-look.md wave 5,
+-- the user's pick 2026-10-02: the game's art with the reskin off): the kit's
+-- pieces while MelloUI's own parts are painted, the game's art they always
+-- fell back to otherwise -- the game's plus / minus buttons and quest arrow,
+-- no kit slot round a quest item, the map pin's chat icon for the followed
+-- quest. (One table: the file's locals.)
+local Art = {}
+-- the tracker's look area: on while the kit dresses it (the reskin and the
+-- tracker's own switch on), the game's look otherwise -- either switch off
+-- shows the same tracker
+Art.AREA = "questTracker"
+
+-- a kit piece on a texture, only in the painted look: true when it is on.
+-- False: the caller sets the game's art, so nothing of the kit's is left on
+-- the texture -- no kit piece (a Kit Colours or palette walk would put the
+-- kit's picture back: review 2026-10-02) and the whole picture (the piece's
+-- crop dropped)
+function Art.Kit(tex, piece)
 	local Kit = MelloUI.Kit
-	if Kit and Kit.Paint then
-		Kit:Paint(region, key, how, alpha)
+	if MelloUI.Look:On(Art.AREA) and Kit and Kit.Apply and Kit:Apply(tex, piece) then
+		return true
 	end
+	tex.kitPiece, tex.kitName = nil, nil
+	tex:SetTexCoord(0, 1, 0, 1)
+	return false
+end
+
+-- the followed quest's mark: the kit's small gem (a gold dot without the
+-- kit), or the game's map pin's chat icon (MelloUI.Look.Watch: now and at
+-- every switch)
+function Art.Followed(tex, painted)
+	local Kit = MelloUI.Kit
+	if painted then
+		if not (Kit and Kit.Apply and Kit:Apply(tex, "deco/gem_small")) and Kit and Kit.Paint then   -- look-ok: the painted look's branch
+			Kit:Paint(tex, "selectedTrim", "fill", 1)
+		end
+		return
+	end
+	if Kit and Kit.Unpaint then
+		Kit:Unpaint(tex, "fill")
+	end
+	tex.kitPiece, tex.kitName = nil, nil
+	-- (resetTexCoords: the kit gem's crop must not crop the pin too)
+	tex:SetAtlas((select(2, MelloUI.Look.Art("mapPinChat"))), false, nil, true)
+end
+
+-- the quest item's border: the kit's slot painted (none without the kit),
+-- none in the game's look (the item button as the game's tracker shows it)
+function Art.ItemBorder(tex, painted)
+	local Kit = MelloUI.Kit
+	tex:SetShown(painted and Kit and Kit.Apply and Kit:Apply(tex, "buttons/slot_normal") and true or false)   -- look-ok: painted only
 end
 
 -- The kit's look for this tracker: its own look area, Kit:IsOn -- the reskin
@@ -1017,7 +1070,7 @@ local function OnBlockEnter(block)
 		if not (link and pcall(GameTooltip.SetHyperlink, GameTooltip, link)) then
 			GameTooltip:SetText(block.title:GetText() or "")
 		end
-		local c = MelloUI.Palette.text   -- (a hint: small text is never mutedText)
+		local c = MelloUI.Look.Palette(Art.AREA).text   -- (a hint: small text is never mutedText; the tracker's look off: the game's white)
 		GameTooltip:AddLine("Click: open the recipe  -  Shift-click: stop tracking", c[1], c[2], c[3], true)
 		GameTooltip:Show()
 		if block.highlight then
@@ -1032,7 +1085,7 @@ local function OnBlockEnter(block)
 	if not pcall(GameTooltip.SetHyperlink, GameTooltip, "quest:" .. block.questID) then
 		GameTooltip:SetText(block.title:GetText() or "")
 	end
-	local c = MelloUI.Palette.text
+	local c = MelloUI.Look.Palette(Art.AREA).text   -- (the tracker's look off: the game's white)
 	-- (the Gamepad UI: no right-click to the quest log, OnBlockClick)
 	local hint = MelloUI.Safe.GamepadUI() and "Click: follow  -  Shift-click: stop watching"
 		or "Click: follow  -  Shift-click: stop watching  -  Right-click: quest log"
@@ -1068,10 +1121,7 @@ local function NewBlock()
 	block.highlight:Hide()
 	block.followed = block:CreateTexture(nil, "ARTWORK")
 	block.followed:SetSize(10, 10)
-	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Apply and Kit:Apply(block.followed, "deco/gem_small")) then
-		PaintKey(block.followed, "selectedTrim", "fill", 1)
-	end
+	MelloUI.Look.Watch(block.followed, Art.Followed, Art.AREA)   -- (the kit's gem, or the game's map pin icon)
 	-- the quest's map button, the game's own (POIButtonTemplate, as on the
 	-- game's tracker: "..." in progress, "?" ready to turn in, lit while
 	-- followed). Its click is the block's (follow / stop following), never
@@ -1101,9 +1151,7 @@ local function NewBlock()
 	item.border = item:CreateTexture(nil, "OVERLAY")
 	item.border:SetPoint("TOPLEFT", -2, 2)
 	item.border:SetPoint("BOTTOMRIGHT", 2, -2)
-	if not (Kit and Kit.Apply and Kit:Apply(item.border, "buttons/slot_normal")) then
-		item.border:Hide()   -- (no kit slot: no border at all)
-	end
+	MelloUI.Look.Watch(item.border, Art.ItemBorder, Art.AREA)   -- (the kit's slot, or none: the game's own button)
 	item.cooldown = CreateFrame("Cooldown", nil, item, "CooldownFrameTemplate")
 	item.cooldown:SetAllPoints(item)
 	Perf.SetScript(item, "OnEnter", function(self)
@@ -1111,7 +1159,7 @@ local function NewBlock()
 		if InCombatLockdown() then
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 			pcall(GameTooltip.SetHyperlink, GameTooltip, self.itemLink)
-			local c = MelloUI.Palette.text
+			local c = MelloUI.Look.Palette(Art.AREA).text   -- (the tracker's look off: the game's white)
 			GameTooltip:AddLine("Out of combat, a click uses it.", c[1], c[2], c[3], true)
 			GameTooltip:Show()
 		end
@@ -1166,7 +1214,7 @@ local function StoneColour(block, r, g, b)
 	if block.ink then
 		return r, g, b
 	end
-	local P = MelloUI.Palette
+	local P = MelloUI.Look.Palette(Art.AREA)   -- (the tracker's look off: the game's gold and white)
 	if r == 1 and g == 0.82 and b == 0 then
 		return P.selectedTrim[1], P.selectedTrim[2], P.selectedTrim[3]
 	elseif r == g and g == b and r >= 0.8 and KitCovers() then
@@ -1660,7 +1708,7 @@ do
 			-- the body text a step down (small text is never mutedText, the
 			-- palette rule; as the Quest List's done rows). Read when drawn:
 			-- a palette switch rebuilds
-			local c = MelloUI.Palette.text
+			local c = MelloUI.Look.Palette(Art.AREA).text   -- (the tracker's look off: the game's white)
 			fs:SetTextColor(c[1], c[2], c[3], Near.DIST_ALPHA)
 		end
 		fs:ClearAllPoints()
@@ -1827,9 +1875,8 @@ do
 		if not button then
 			return
 		end
-		local Kit = MelloUI.Kit
-		if not (Kit and Kit.Apply and Kit:Apply(button.icon, "buttons/arrow_up_normal")) then
-			button.icon:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")
+		if not Art.Kit(button.icon, "buttons/arrow_up_normal") then
+			button.icon:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")   -- (the game's quest arrow)
 		end
 		button.icon:SetAlpha(Near.On() and 1 or 0.4)
 	end
@@ -1840,11 +1887,8 @@ do
 	Near.TIP_ROUTE = "Needs Route, which is off."
 
 	function Near.OnToggleEnter(button)
-		-- (the kit's arrow lit under the pointer)
-		local Kit = MelloUI.Kit
-		if Kit and Kit.Apply then
-			Kit:Apply(button.icon, "buttons/arrow_up_hover")
-		end
+		-- (the kit's arrow lit under the pointer; the game's arrow as it is)
+		Art.Kit(button.icon, "buttons/arrow_up_hover")
 		local body = Near.On() and Near.TIP_ON or Near.TIP_OFF
 		local line = not Route() and Near.TIP_ROUTE or nil
 		local W = MelloUI.Widgets
@@ -2354,10 +2398,9 @@ local function MakeToggle(parent, size, IsCollapsed, OnClick)
 	toggle.icon = toggle:CreateTexture(nil, "ARTWORK")
 	toggle.icon:SetAllPoints(toggle)
 	function toggle.Refresh()
-		local Kit = MelloUI.Kit
 		local collapsed = IsCollapsed()
 		local piece = collapsed and "buttons/plus_normal" or "buttons/minus_normal"
-		if not (Kit and Kit.Apply and Kit:Apply(toggle.icon, piece)) then
+		if not Art.Kit(toggle.icon, piece) then
 			toggle.icon:SetTexture(collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
 		end
 	end
@@ -2865,9 +2908,16 @@ end
 
 -- The kit's look switched on or off for this tracker (the bus's
 -- 'look:questTracker', told on the frame after the reskin or the tracker's
--- own switch changed): its frame's look at once, every line's ink and colour
--- on the next rebuild -- the same as a tracker built in that look
+-- own switch changed): its frame's look at once, the fold and Nearest
+-- First's toggles in their art (Art.Kit), every line's ink and colour on the
+-- next rebuild -- the same as a tracker built in that look
 local function OnLook()
+	if header and header.toggle then
+		header.toggle.Refresh()
+	end
+	if header and header.nearest then
+		Near.RefreshToggle()
+	end
 	if M.isEnabled and frame then
 		ApplyLook()
 		MarkDirty()
@@ -3033,7 +3083,13 @@ local function Listen()
 		return
 	end
 	listening = true
-	MelloUI:On("look:questTracker", OnLook, M)
+	-- (the palette's table as the look shows it read again: one listener
+	-- for the topic, the same owner's is replaced)
+	local drawnFrom
+	MelloUI:On("look:" .. Art.AREA, function()
+		drawnFrom = MelloUI.Look.Palette(Art.AREA)
+		OnLook()
+	end, M)
 	MelloUI:On("parchment", OnParchment, M)
 	MelloUI:On("column", OnColumn, M)
 	-- Edit Layout's session let go of it (Save, Discard, a profile): laid
@@ -3051,9 +3107,9 @@ local function Listen()
 	-- new table: the same one (the Kit Colours' Fire) changed no line, as the
 	-- paint registry skips it too. Switched off, the switch-on's rebuild
 	-- draws the palette in use.
-	local drawnFrom = MelloUI.Palette
+	drawnFrom = MelloUI.Look.Palette(Art.AREA)   -- look-ok: the palette as the look shows it (its own table per look)
 	MelloUI:On("palette", function()
-		local P = MelloUI.Palette
+		local P = MelloUI.Look.Palette(Art.AREA)   -- look-ok: as above
 		if P == drawnFrom then
 			return
 		end

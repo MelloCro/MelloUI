@@ -51,6 +51,7 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
+local Look = MelloUI.Look   -- (0.17.1: the game's look with the reskin off)
 local Meter = ns.Meter
 local M = Meter.M
 
@@ -121,14 +122,9 @@ local function Style(h, frame)
 		return
 	end
 	h.size = size
-	local object = _G.GameFontHighlight
-	if type(object) == "table" then
-		h.text:SetFontObject(object)
-		if MelloUI.StyleFont then
-			-- (no shade: an outline, the user's "remove the shading")
-			MelloUI:StyleFont(h.text, "fontText", object, size, "", true)
-		end
-	end
+	-- (no shade: an outline, the user's "remove the shading"; the game's
+	-- small outlined number in its look)
+	Look.Text(h.text, "numberSmall", size, { outline = true })
 	h.glyph:SetSize(math.floor(size * R.GLYPH + 0.5), math.floor(size * R.GLYPH + 0.5))
 end
 
@@ -278,12 +274,7 @@ local function TipLine(tip, glyph, label, value, r, g, b)
 end
 
 local function Colour(kind)
-	if kind == "heal" then
-		local c = MelloUI.Meaning.combatHeal
-		return c[1], c[2], c[3]
-	end
-	local c = MelloUI.Palette[kind == "sword" and "selectedTrim" or "text"]
-	return c[1], c[2], c[3]
+	return Look.RoleColour(kind == "heal" and "heal" or (kind == "sword" and "gold" or "text"))
 end
 
 local OnTooltip = Shared("the meter's lines on a raid-style frame's tooltip", function(tip)

@@ -54,7 +54,7 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Config")
 local hooksecurefunc = Perf.hooksecurefunc
 
-local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
+local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"   -- look-ok: MelloUI's logo (its emblem on the window, never an empty ring)
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"   -- the round emblem of the logo (user, 2026-09-24: new logo, "round_inner")
 local LOGO_FULL = TEXTURE_PATH .. "LogoFull.tga"   -- the whole logo, for the home page's header
 local ICON = "Interface\\Icons\\"
@@ -133,6 +133,16 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- lines: Home shows the newest version in a card one column wide, beside
 -- Your setup and above Help.
 local CHANGELOG = {
+	{ version = "0.18.0", lines = {
+		"With the reskin off, MelloUI now wears the game's own look everywhere: its windows, buttons, tabs, sliders, menus and tooltips, the meter, Combat Text, Gains, Services and Restock.",
+		"Route's World Marker becomes the game's waypoint icon and arrow. The Quest Tracker uses the game's buttons and map pin; the Quest List follows the Quest Log's look.",
+		"Switch the reskin and everything changes in place. The installer's first run still shows the painted look.",
+		"Quest List: the minimize button on its title bar folds it away beside the map. A Quests tab with your done / total count brings it back, and it remembers how you left it.",
+		"Swing Timers: the shot bar has two stages, the cream reload you can move through, then the red aim in the last half second. Hold still: moving holds the shot back.",
+		"Swing Timers: the shot bar stays up through a fight, and the first shot or swing after a /reload shows.",
+		"The game's own swing timers stay off while MelloUI's are on. Switch MelloUI's off to get yours back.",
+		"No new files this time: a /reload after updating is enough.",
+	} },
 	{ version = "0.16.0", lines = {
 		"Voice Over is a small widget: the speaker's face, the line and a gold ring that fills as it plays. Point at it for Pause, Skip, Lines and the padlock.",
 		"New widgets in one column: loot rolls with Need, Greed and Pass, the way back to your corpse, a timed quest's clock, summons and resurrect offers, ready checks.",
@@ -6205,7 +6215,7 @@ local function ProbeAPIs()
 			end
 			-- (two palette colours, one each side of half health: any two
 			-- tell whether the curve answers)
-			local low, high = MelloUI.Palette.selectedTab, MelloUI.Palette.text
+			local low, high = MelloUI.Palette.selectedTab, MelloUI.Palette.text   -- look-ok: a dump's probe, two colours
 			curve:AddPoint(0, CreateColor(low[1], low[2], low[3], 1))
 			curve:AddPoint(0.5, CreateColor(high[1], high[2], high[3], 1))
 			local color = UnitHealthPercent("player", true, curve)

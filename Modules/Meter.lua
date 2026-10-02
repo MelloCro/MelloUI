@@ -75,6 +75,9 @@ local C_Timer = Perf.C_Timer
 local Safe = MelloUI.Safe
 local Secret, Num, Text, Finite = Safe.IsSecret, Safe.Number, Safe.Text, Safe.Finite
 local W = MelloUI.Widgets
+-- (0.17.1, docs/plans/game-look.md) the look of MelloUI's own parts: the
+-- painted one with the reskin, the game's own without
+local Look = MelloUI.Look
 local pcall, type, pairs, ipairs, tostring = pcall, type, pairs, ipairs, tostring
 local floor, max, min, abs = math.floor, math.max, math.min, math.abs
 local tremove, sort, wipe = table.remove, table.sort, wipe
@@ -781,28 +784,14 @@ local Lines = { me = nil, party = {} }
 Meter.Lines = Lines
 local PARTS = { "sword", "hourglass", "heal" }
 
-local function StyleValue(fs)
-	local object = _G.GameFontHighlight
-	if type(object) == "table" then
-		fs:SetFontObject(object)
-		if MelloUI.StyleFont then
-			MelloUI:StyleFont(fs, "fontText", object, T.SIZE)
-		end
-	end
-end
-
 -- a part's colours: the sword gold, the hourglass the text colour, the
--- cross healing's green (the meaning colour Combat Text's heals wear)
+-- cross healing's green (the meaning colour Combat Text's heals wear; the
+-- game's gold, white and green in its look: MelloUI.Look)
+local TINT = { sword = "gold", hourglass = "text", heal = "heal" }
 local function PaintPart(p)
-	if p.kind == "heal" then
-		local c = MelloUI.Meaning.combatHeal
-		p.glyph:SetVertexColor(c[1], c[2], c[3])
-		p.text:SetTextColor(c[1], c[2], c[3])
-	else
-		local key = p.kind == "sword" and "selectedTrim" or "text"
-		W.Paint(p.glyph, key, "vertex")
-		W.Paint(p.text, key, "text")
-	end
+	local tint = TINT[p.kind] or "text"
+	Look.Paint(p.glyph, tint, "vertex")
+	Look.Tint(p.text, tint)
 end
 
 Meter.PaintPart = PaintPart   -- (the raid-style frames' number: Modules/MeterRaid.lua)
@@ -819,7 +808,7 @@ local function NewLine(parent, align)
 		W.Glyph(g, kind)
 		g:SetSize(T.GLYPH, T.GLYPH)
 		local fs = f:CreateFontString(nil, "OVERLAY")
-		StyleValue(fs)
+		Look.Text(fs, "text", T.SIZE)
 		fs:SetShadowOffset(1, -1)
 		fs:SetText(TEXT.dash)
 		local p = { glyph = g, text = fs, kind = kind }
@@ -854,6 +843,7 @@ local function NewLine(parent, align)
 	local band = MelloUI.Shade:Band(f, BAND)
 	if band then
 		band:Anchor(line.parts[1].glyph, line.parts[#line.parts].text, 6, MelloUI.Shade:LinePadY(T.SIZE))
+		Look.Hide(band)   -- (the soft band is the painted look's: none in the game's)
 	end
 	line.band = band
 	return line
@@ -1347,9 +1337,10 @@ local SUMMARY = {
 		return TEXT.trayFoot
 	end,
 	tooltip = function(_, tip)
-		local P, QI = MelloUI.Palette, MelloUI.QuestInk
+		local QI = MelloUI.QuestInk
+		local tr, tg, tb = Look.RoleColour("text")   -- (the palette's text, the game's white)
 		for i, s in ipairs(TopFive(S.summary)) do
-			local r, g, b = P.text[1], P.text[2], P.text[3]
+			local r, g, b = tr, tg, tb
 			local cr, cg, cb
 			if QI and QI.ClassColour then
 				cr, cg, cb = QI.ClassColour(s.c)
@@ -1358,7 +1349,7 @@ local SUMMARY = {
 				r, g, b = cr, cg, cb
 			end
 			tip:AddDoubleLine(Meter.Ordinal(i) .. " " .. (s.me and TEXT.you or s.n),
-				Meter.Big(s.d) .. "  " .. Meter.Plain(s.dps) .. "/s", r, g, b, P.text[1], P.text[2], P.text[3])
+				Meter.Big(s.d) .. "  " .. Meter.Plain(s.dps) .. "/s", r, g, b, tr, tg, tb)
 		end
 	end,
 	actions = {

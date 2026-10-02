@@ -187,7 +187,7 @@ do
 	local W = MelloUI.Widgets
 	Add({ type = "dropdown", key = "palette", name = "Palette", free = true,
 		values = type(W) == "table" and type(W.PaletteValues) == "function" and W.PaletteValues() or {},
-		desc = "The colours of MelloUI's own windows and, with the painted kit reskin, of all its art. Your choice applies at once, with the reskin on or off." })
+		desc = "The colours of MelloUI's painted look: its own windows and parts and all of the reskin's art. Your choice applies at once. With the reskin off, MelloUI's windows and parts take the game's own colours instead." })
 end
 
 -- The borders, one choice per kind for every window, and the Kit Colours

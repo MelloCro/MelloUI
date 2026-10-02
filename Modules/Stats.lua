@@ -88,11 +88,13 @@ end
 
 -- The labels (fps, ms, the separators) in the palette's text colour, as a
 -- colour code: made again when the palette is a new table (0.14.0: the
--- palettes; the numbers keep their good -> bad gradient, a meaning colour)
+-- palettes; the numbers keep their good -> bad gradient, a meaning colour).
+-- The palette as MelloUI.Look shows it: the game's white with the reskin off
+-- (docs/plans/game-look.md), its own table, so a switch makes them again.
 local label = { from = nil, code = nil, gap = nil }
 
 local function Label()
-	local palette = MelloUI.Palette
+	local palette = MelloUI.Look.Palette()
 	if label.from ~= palette then
 		label.from = palette
 		label.code = MelloUI:PaletteCode("text")
@@ -120,9 +122,8 @@ local function ApplyFont()
 	end
 	text:SetShadowOffset(1, -1)
 	-- the palette's inner panel as the shadow (read when applied; again on
-	-- 'palette')
-	local shadow = MelloUI.Palette.innerPanel
-	text:SetShadowColor(shadow[1], shadow[2], shadow[3], 0.8)
+	-- 'palette'; the reskin off: the game's black)
+	MelloUI.Look.Shadow(text, 0.8)
 end
 
 local function ApplyPosition()
@@ -192,7 +193,7 @@ Perf.SetScript(frame, "OnEnter", function(self)
 	local bandwidthIn, bandwidthOut, home, world = GetNetStats()
 	-- the palette's gold and text, as MelloUI's one tooltip (W.ShowTooltip);
 	-- the FPS and latency figures keep their good -> bad gradient
-	local P = MelloUI.Palette
+	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
 	local gold, ink = P.selectedTrim, P.text
 	GameTooltip:AddLine("MelloUI Stats", gold[1], gold[2], gold[3])
 	GameTooltip:AddDoubleLine("FPS", string.format("%d", math.floor((GetFramerate() or 0) + 0.5)), ink[1], ink[2], ink[3], Gradient(GetFramerate() or 0, 60, 20))
@@ -241,7 +242,7 @@ end
 -- was not drawn in: 'palette' goes out for a Kit Colours change too, the
 -- palette unchanged
 local function OnPalette()
-	if M.isEnabled and M.db and label.from ~= MelloUI.Palette then
+	if M.isEnabled and M.db and label.from ~= MelloUI.Look.Palette() then
 		ApplyFont()
 		Label()
 		if frame:IsShown() then
@@ -258,6 +259,7 @@ function M:OnEnable(db)
 	self.db = db
 	-- (one listener: On again with the same owner keeps it)
 	MelloUI:On("palette", OnPalette, "Stats")
+	MelloUI:On("look:own", OnPalette, "Stats")   -- (the reskin switched: the game's colours, or the palette)
 	ApplyAll()
 end
 

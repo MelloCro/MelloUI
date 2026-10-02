@@ -135,7 +135,7 @@ end
 -- a palette colour at full brightness (its brightest channel at 1): the
 -- added light's colour
 local function Lit(key)
-	local c = MelloUI.Palette[key]
+	local c = MelloUI.Look.Palette()[key]   -- (the reskin off: the game's colours)
 	local m = max(c[1], c[2], c[3])
 	if m <= 0 then
 		return c[1], c[2], c[3]

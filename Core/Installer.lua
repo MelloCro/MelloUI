@@ -2460,6 +2460,7 @@ ShowOwed = function()
 		end
 		return
 	end
+	local first = login.fresh   -- (a new player's: the installer's first run)
 	login.owed, login.fresh, login.waited = nil, false, false
 	if what == "alt" then
 		AskAlt()
@@ -2468,6 +2469,9 @@ ShowOwed = function()
 		if IW and IW:IsShown() then
 			MelloUI:Off(LOGIN_OWNER, "restart")
 			return   -- (open already: the player's own)
+		end
+		if first and MelloUI.Kit and MelloUI.Kit.Showcase then
+			MelloUI.Kit:Showcase(true)   -- (its first run in the kit's look, whatever the reskin)
 		end
 		OpenNow(what ~= "open" and what or nil)
 	end

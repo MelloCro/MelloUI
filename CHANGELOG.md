@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.0
+
+- With the painted reskin off, all of MelloUI now takes the game's own look, not only the widgets and the race bar. Its windows (the settings, Fight History, Restock, the copy window) use the game's window frame, buttons, tabs, check boxes, dropdowns, sliders and list highlights, and its menus and tooltips the game's tooltip frame. The damage meter's numbers, the notices, Combat Text, Gains, threat, Services, Restock and the swing timers use the game's fonts, colours and art. Route's World Marker becomes the game's waypoint icon with its edge arrow and map pin, without the beam. The Quest Tracker uses the game's buttons, quest arrow and map pin icon; the Quest List follows the Quest Log's look; the chat shows no shade behind names. Switching the reskin changes everything in place, and the installer's first run still shows MelloUI's painted look.
+- Quest List: a minimize button on its title bar folds it away beside the map. A bookmark tab with "Quests" and your done / total count stays on the map's edge; click it to bring the list back. It remembers whether you left it folded or open.
+- Swing Timers: the shot bar now has two stages. First the reload, cream and shrinking to the middle, while you can move. Then the aim in the last half second, red and growing from the middle with "Hold": stand still. Moving holds the shot back; the red empties ("Moving") and starts again when you stop.
+- Fixed: the Quest List's quest marks no longer vanish from the world map when you click the map, and the list's title bar no longer covers the map's when you click the list.
+- Fixed: the Swing Timers' shot bar no longer disappears during a fight.
+- Fixed: the first shot or swing after a /reload shows on the swing timers (the bar came up empty for it).
+- Fixed: the game's own swing timers can no longer show together with MelloUI's. Switched on in the game's settings while MelloUI's are on, they go off again (after the fight); your choice comes back when you switch MelloUI's off.
+
 ## 0.17.1
 
 - Fixed: short freezes while walking with a quest tracked (Route's new ground checks). Routes are worked out a little at a time, so they never stall the game, and the tracked quest's places are priced in one go.

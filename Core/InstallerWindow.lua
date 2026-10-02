@@ -106,7 +106,7 @@ local floor, min, abs = math.floor, math.min, math.abs
 local format, concat = string.format, table.concat
 local EMPTY = {}
 
-local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"
+local TEXTURE_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\"   -- look-ok: MelloUI's logo and the setups' banner picture
 local LOGO = TEXTURE_PATH .. "LogoIcon.tga"
 -- the approved banner (450 x 245.5 of a 512 x 256 file, half the drawn
 -- art's pixels: shown at 460 x 251 it looks the same, a quarter of the
@@ -3041,6 +3041,10 @@ local Window_OnHide = Shared("OnHide on the installer window", function(frame)
 	end
 	frame:UnregisterAllEvents()
 	MelloUI:Off(OWNER_SHOWN)
+	-- (its first run over: from now on its look is the reskin's)
+	if MelloUI.Kit and MelloUI.Kit.Showcase then
+		MelloUI.Kit:Showcase(false)
+	end
 	-- the banner released (about 2 MB); loaded again on the Setup page's
 	-- next show
 	local choose = win.pages.choose

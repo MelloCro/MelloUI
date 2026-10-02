@@ -15,7 +15,9 @@
 -- the stacked lines' padding, Shade:LinePadY, so two bands that meet read as
 -- one), the notice's soft text shadow (MelloUI.CentreLook.Shadow), no
 -- outline unless the notice's Outlined Text is on (Tweaks noticeOutline),
--- Font Style applying (MelloUI:StyleFont, the interface text role).
+-- Font Style applying (MelloUI:StyleFont, the interface text role). With the
+-- reskin off (MelloUI.Look, docs/plans/game-look.md wave 3) the game's
+-- floating text: no band, its black shadow, outlined, its gold and white.
 --   a skill   "+1  Defense  57 / 80": the "+1" in the palette's gold
 --             (selectedTrim), the name in its text colour, the value and the
 --             cap after it quiet (Show Skill Values): smaller, in the text
@@ -150,6 +152,7 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Gains")
+local GameLook = MelloUI.Look   -- (the reskin off: the game's floating text)
 
 local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
@@ -371,10 +374,11 @@ local function Hold()
 	return v
 end
 
--- the notice's Outlined Text (Tweaks noticeOutline, off by default)
+-- the notice's Outlined Text (Tweaks noticeOutline, off by default); the
+-- reskin off: outlined, as the game's floating texts
 local function Outline()
 	local Look = MelloUI.CentreLook
-	return Look and Look.Setting and Look.Setting("noticeOutline") and true or false
+	return GameLook.Outline(Look and Look.Setting and Look.Setting("noticeOutline"))
 end
 
 local function StyleText(fs, size, outline)
@@ -387,11 +391,9 @@ local function StyleText(fs, size, outline)
 	end
 end
 
+-- the notice's soft shadow (the reskin off: the game's black one)
 local function Shadow(fs)
-	local Look = MelloUI.CentreLook
-	if Look and Look.Shadow then
-		Look.Shadow(fs)
-	end
+	GameLook.Shadow(fs, TEXT.shadow)
 end
 
 -- a long name cut at MAX_NAME ("..."), a short one as wide as its text (the
@@ -444,9 +446,8 @@ local function NewRow(row)
 	row.gem = gem
 	-- the value / cap or "bought" on the name's baseline, right after it
 	tail:SetPoint("BOTTOMLEFT", name, "BOTTOMRIGHT", 0, 0)
-	local W = MelloUI.Widgets
-	W.Paint(plus, "selectedTrim", "text")
-	W.Paint(tail, "text", "text", TAIL_ALPHA)   -- (small text is never mutedText: the palette rule)
+	GameLook.Paint(plus, "selectedTrim", "text")
+	GameLook.Paint(tail, "text", "text", TAIL_ALPHA)   -- (small text is never mutedText: the palette rule)
 	-- (the name's colour is Fill's: the text colour, or an item's quality
 	-- colour with Item Names In Quality Colour; Repaint sets it again)
 	Restyle(row)
@@ -454,6 +455,7 @@ local function NewRow(row)
 	-- texts by its anchors, whatever their length
 	row.band = MelloUI.Shade:Band(row, TEXT)
 	row.band:Anchor(plus, tail, PAD_X, PAD_Y)
+	GameLook.Hide(row.band)   -- (no band in the game's look)
 end
 
 -- the money a line says, in the game's own string with its coins
@@ -476,14 +478,14 @@ local function MoneyText(copper)
 end
 
 -- the name's colour: an item's quality colour with Item Names In Quality
--- Colour on, else the palette's text colour (a sample as the kind it stands for)
+-- Colour on, else the palette's text colour (a sample as the kind it stands
+-- for; the reskin off: the game's white)
 local function NameColour(row)
 	local kind = row.kind
 	if kind == "sample" then
 		kind = SAMPLES[row.id] and SAMPLES[row.id].kind
 	end
-	local c = MelloUI.Palette.text
-	local r, g, b = c[1], c[2], c[3]
+	local r, g, b = GameLook.RoleColour("text")
 	if (kind == "item" or kind == "bought") and M.db and M.db.qualityNames then
 		local qr, qg, qb = QualityColour(row.quality)
 		if qr then
@@ -639,6 +641,12 @@ end
 local function Repaint()
 	feed:Each(ShadowRow)
 	feed:Each(NameColour)
+end
+
+-- the reskin switched: the lines there styled and painted again
+local function OnLook()
+	feed:Each(Restyle)
+	Repaint()
 end
 
 -- (Edit Layout open while the first line comes: the samples come first, so
@@ -1487,6 +1495,7 @@ function M:OnEnable(db)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:On("preview", OnPreview, OWNER)
+	GameLook.Watch(M, OnLook)
 	MelloUI:AfterLogin(Start)
 end
 

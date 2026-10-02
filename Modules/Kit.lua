@@ -452,6 +452,10 @@ end
 -- while MelloUI.Palette is the table last painted from, nothing is painted.
 -- The listener is taken on the first Paint, never at load; a Paint of a
 -- region painted before reuses its entry (no garbage).
+-- The colours are the palette as MelloUI.Look shows it (docs/plans/
+-- game-look.md wave 4): MelloUI.Palette while the reskin is on, the game's
+-- own colours by the same keys with it off (Look.Palette), so every own
+-- window's flat part follows the reskin; painted again at 'look:own'.
 do
 	local weak = { __mode = "k" }
 	local lists = {
@@ -461,8 +465,14 @@ do
 	}
 	local paintedFrom, listening = nil, false
 
+	-- the palette as the look shows it now (MelloUI.Look; without it, the palette)
+	local function Colours()
+		local Look = MelloUI.Look
+		return type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or MelloUI.Palette
+	end
+
 	local function Apply(region, key, how, alpha)
-		local c = MelloUI.Palette[key]
+		local c = Colours()[key]
 		if not c then
 			return
 		end
@@ -491,17 +501,21 @@ do
 		end
 	end
 
+	local function RepaintAll()
+		for _, list in pairs(lists) do
+			for region, e in pairs(list) do
+				Apply(region, e.key, e.how, e.alpha)
+			end
+		end
+	end
+
 	local function OnPalette()
 		local palette = MelloUI.Palette
 		if palette == paintedFrom then
 			return
 		end
 		paintedFrom = palette
-		for _, list in pairs(lists) do
-			for region, e in pairs(list) do
-				Apply(region, e.key, e.how, e.alpha)
-			end
-		end
+		RepaintAll()
 	end
 
 	function Kit:Paint(region, key, how, alpha)
@@ -521,6 +535,7 @@ do
 			listening = true
 			paintedFrom = MelloUI.Palette
 			MelloUI:On("palette", OnPalette, "Kit palette")
+			MelloUI:On("look:own", RepaintAll, "Kit palette")   -- (the reskin switched: the game's colours or the palette)
 		end
 	end
 
@@ -5369,6 +5384,29 @@ do
 		return rails[frame] or known.outer
 	end
 
+	-- the top frame under UIParent a rep really hangs in (a holder's own,
+	-- never the window its melloWindowOf files it under)
+	local function TopOf(f)
+		for _ = 1, 16 do
+			local up = type(f) == "table" and type(f.GetParent) == "function" and f:GetParent() or nil
+			if not up or up == UIParent then
+				return f
+			end
+			f = up
+		end
+		return f
+	end
+
+	-- a plate and a ring of one window (the Quest List's plate is filed
+	-- under the world map, melloWindowOf, but hangs in its own holder: run
+	-- behind the MAP's ring, it started at the map's portrait and covered the
+	-- map's whole title -- user's video, 2026-10-02); a rep without a
+	-- kitParent: one window, as before
+	local function OneWindow(title, ring)
+		local a, b = title.kitParent, ring.kitParent
+		return a == nil or b == nil or TopOf(a) == TopOf(b)
+	end
+
 	RegisterShell = function(frame, shell)
 		local known = Kit.shells[frame] or {}
 		known.outer = shell.outer or known.outer
@@ -5393,7 +5431,7 @@ do
 			if skin and skin.SetTopGems then
 				skin:SetTopGems(false)
 			end
-			if known.ring then
+			if known.ring and OneWindow(known.title, known.ring) then
 				Kit:TitleBehindRing(known.title, known.ring, rail)
 			end
 		end
@@ -5452,12 +5490,20 @@ do
 		{ "whisper", follows = "chat" },
 		{ "services", follows = "minimap" },
 		{ "questList", module = "QuestLogPanel" },
-		{ "config", reskin = true }, { "copy", reskin = true },
+		-- (the settings windows; on through the installer's showcase too: its
+		-- confirm boxes and the windows it opens wear the same look)
+		{ "config", reskin = true, showcase = true }, { "copy", reskin = true },
 		-- (0.17.1, docs/plans/game-look.md) MelloUI's own parts -- the widget
 		-- column, the meter, Combat Text, the notices ... -- painted with the
-		-- reskin, in the game's own look without it (MelloUI.Look)
-		{ "own", reskin = true },
-		{ "installer", always = true },
+		-- reskin, in the game's own look without it (MelloUI.Look). On
+		-- through the installer's showcase as well: its window is built from
+		-- the shared controls, the colour registry and the shell, which all
+		-- ask this area (review 2026-10-02: a hybrid first window otherwise)
+		{ "own", reskin = true, showcase = true },
+		-- (docs/plans/game-look.md wave 4) the installer: the kit's look on
+		-- its first run (the showcase, before the player chooses:
+		-- Kit:Showcase), the reskin's after it
+		{ "installer", reskin = true, showcase = true },
 	}
 	for _, area in ipairs(LIST) do
 		area.name, area.topic = area[1], "look:" .. area[1]
@@ -5490,7 +5536,7 @@ do
 		if area.follows then
 			area = Kit.Areas[area.follows]
 		end
-		if area.always then
+		if area.always or (area.showcase and Kit.showcaseOn) then
 			return true
 		elseif area.cover then
 			return Kit.covers[area.name] == true
@@ -5554,6 +5600,19 @@ do
 	local function NotifyCover(group, covered)
 		MelloUI:Fire("cover", group, covered)
 		Later()
+	end
+
+	-- the installer's first run open (on) or closed (off): the areas marked
+	-- showcase (the installer's, the settings windows', MelloUI's own parts')
+	-- answer on meanwhile, whatever the reskin (the kit's look is its
+	-- showcase); their 'look:<area>' goes out on the next frame as for any
+	-- switch
+	function Kit:Showcase(on)
+		on = on and true or false
+		if self.showcaseOn ~= on then
+			self.showcaseOn = on
+			Later()
+		end
 	end
 
 	function Kit:Cover(group)
@@ -7993,10 +8052,21 @@ function Kit:Replace(region, opts)
 				if ringX then
 					left = ringX
 				end
+				-- a window docked beside another (Kit:TitleJoin): the plate
+				-- starts on the other's right gem
+				local join, joinX, from
+				if not ringX then
+					join, joinX, from = Kit:TitleJoin(window, self.strip, out)
+					left = from or left
+				end
 				-- the title stays over the window's middle, not the shorter plate's
 				self.strip.textShift = -(left + out) / 2
 				self.strip:ClearAllPoints()
-				self.strip:SetPoint("LEFT", window, "TOPLEFT", left, lift)
+				if join then
+					self.strip:SetPoint("LEFT", join, "TOPRIGHT", joinX, lift)
+				else
+					self.strip:SetPoint("LEFT", window, "TOPLEFT", left, lift)
+				end
 				self.strip:SetPoint("RIGHT", window, "TOPRIGHT", out, lift)
 				self.strip:SetHeight(self.strip.height)
 				local w = window:GetWidth()
@@ -9137,6 +9207,28 @@ function Kit:StripTextOffset(strip)
 		return 0
 	end
 	return (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (strip.scale or self.scale)
+end
+
+-- A window docked right of another (window.melloTitleJoin, the frame it
+-- docks to: the Quest List's panel beside the world map): its plate starts
+-- where the other's ends, its left cap's gem on the other's right one, so
+-- the two plates meet at ONE gem (user, 2026-10-02: a gem each, side by
+-- side, "the headers are now split"). Returns the frame to anchor to, the x
+-- from its TOPRIGHT, and the plate's left end from the window's own left
+-- edge (the title's centring and the caps' fit; nil while not laid out).
+function Kit:TitleJoin(window, strip, out)
+	local join = window.melloTitleJoin
+	if type(join) ~= "table" or type(join.GetRight) ~= "function" then
+		return nil
+	end
+	local x = out - 2 * CAP_GEM.x * (strip.scale or self.scale)
+	local okR, right = pcall(join.GetRight, join)
+	local okL, left = pcall(window.GetLeft, window)
+	local from
+	if okR and okL and not Secret(right) and not Secret(left) and type(right) == "number" and type(left) == "number" then
+		from = right - left + x
+	end
+	return join, x, from
 end
 
 function Kit:TitleOnRail(strip)

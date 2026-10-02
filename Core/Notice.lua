@@ -49,7 +49,10 @@
 -- Route arrow's default place), on MelloUI's one mover and position store
 -- (key "notice", "Centre notices"): while Edit Layout shows, a sample line
 -- stands there on its plate to drag, its Reset puts it back, and it is kept
--- on the screen.
+-- on the screen. With the reskin off (MelloUI.Look, docs/plans/game-look.md
+-- wave 3) the game's floating text instead: the game's gold or white, its
+-- black shadow, outlined, no band (the zone text section keeps Text Shade's
+-- own switch: a dressing of the game's texts, not a part of MelloUI's).
 --
 -- Nothing is made at login: the frame, the shade and the mover entry come
 -- with the first notice (or Edit Layout's first open). At load it takes
@@ -69,6 +72,7 @@ local Secret = MelloUI.Safe.IsSecret
 local Num = MelloUI.Safe.Number
 local Call = MelloUI.Safe.Call
 local Anim = MelloUI.Anim
+local GameLook = MelloUI.Look   -- (the reskin off: the game's floating text)
 
 local OWNER = "Notice"
 local KEY = "notice"            -- its place in the store
@@ -147,22 +151,22 @@ local function Place()
 	end
 end
 
--- the text's colour (its kind's) and its shadow, from the palette as it is now
+-- the text's colour (its kind's) and its shadow, from the palette as it is
+-- now (the reskin off: the game's gold or white, its black shadow)
 local function Paint()
 	if not text then
 		return
 	end
-	local palette = MelloUI.Palette
-	local c = palette[COLOUR[state.kind] or "text"] or palette.text
-	text:SetTextColor(c[1], c[2], c[3], 1)
-	local s = palette.innerPanel
-	text:SetShadowColor(s[1], s[2], s[3], SHADOW_ALPHA)
+	local r, g, b = GameLook.RoleColour(COLOUR[state.kind] == "selectedTrim" and "gold" or "text")
+	text:SetTextColor(r, g, b, 1)
+	GameLook.Shadow(text, SHADOW_ALPHA)
 end
 
 -- the font: the interface face at SIZE, outlined only with Outlined Text
+-- (the reskin off: outlined, as the game's floating texts)
 local function Style()
 	if text and font and MelloUI.StyleFont then
-		MelloUI:StyleFont(text, "fontText", font, SIZE, "", Setting("noticeOutline"))
+		MelloUI:StyleFont(text, "fontText", font, SIZE, "", GameLook.Outline(Setting("noticeOutline")))
 	end
 end
 
@@ -208,9 +212,13 @@ local function Build()
 	text:SetShadowOffset(TEXT.shadowX, TEXT.shadowY)
 	frame.shade = MelloUI.Shade:Band(frame, TEXT)
 	frame.shade:Anchor(text, PAD_X, PAD_Y)
-	Style()
-	Paint()
+	GameLook.Hide(frame.shade)   -- (no band in the game's look)
 	Home(frame)
+	-- styled and painted now, and again at a switch of the reskin
+	GameLook.Watch(frame, function()
+		Restyle()
+		Paint()
+	end)
 	MelloUI:On("palette", Paint, OWNER)
 	MelloUI:On("fonts", Measure, OWNER)
 	-- one mover entry: moved in Edit Layout, its place in the store, put back
@@ -455,7 +463,7 @@ do
 
 	-- the soft shadow's colour, from the palette as it is now
 	function Look.Shadow(fs)
-		local s = MelloUI.Palette.innerPanel
+		local s = MelloUI.Palette.innerPanel   -- look-ok: the zone text's shadow (a dressing of the game's text, Text Shade's own switch)
 		fs:SetShadowColor(s[1], s[2], s[3], SHADOW_ALPHA)
 	end
 
@@ -492,7 +500,7 @@ do
 					holders[parent] = holder
 				end
 				line.fs = fs
-				line.band = MelloUI.Shade:Band(holder, TEXT)
+				line.band = MelloUI.Shade:Band(holder, TEXT)   -- look-ok: the zone text's band (Text Shade's own switch)
 				line.band:Anchor(fs, PAD_X, line.padY)
 				line.band:SetShown(false)
 			end

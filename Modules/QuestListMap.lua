@@ -107,15 +107,17 @@ end
 -- cursor, pan and zoom go over the pools every frame, and pool calls made
 -- from MelloUI's code wrote the map's scroll state: the 0.15.0 freeze), and
 -- not among the map's own frames either (the navigation walks those): they
--- hang in the Quest List's holder beside the map (QL.MapHolder, the
--- panel's), which follows the map's show, alpha, scale, strata and level.
+-- hang in a holder of their own (QL.MarksHolder, a strata over the map's:
+-- in the panel's holder, a frame buffer drawn all over or all under the
+-- map, they were gone each time the map was clicked -- 2026-10-02), which
+-- follows the map's show, alpha and scale.
 --   the anchors  one invisible 1-unit texture per mark on the map's canvas,
 --                at its map spot in the canvas's own units: the canvas's pan
 --                and zoom move them with no code at all (textures, not
 --                frames: nothing for the navigation to walk). Laid when the
 --                marks are, and when the canvas changes size
 --   the clip     a frame over the map's scroll area in the holder (it clips
---                what lies outside it), laid over the map's own pins
+--                what lies outside it), over the map's own pins
 --   the marks    buttons in the clip, each hung on its anchor: one size on
 --                the screen at every zoom, and no work of ours per frame
 -- The mouse: each mark is a button (hover: its tooltip; click: its action;
@@ -167,33 +169,16 @@ local function Clip(map)
 	if clip then
 		return clip
 	end
-	local holder = QL.MapHolder()
-	clip = CreateFrame("Frame", nil, holder)
+	clip = CreateFrame("Frame", nil, QL.MarksHolder())
 	clip:SetAllPoints(map.ScrollContainer or map:GetCanvas())
 	if clip.SetClipsChildren then
 		clip:SetClipsChildren(true)
 	end
 	Marks.clip = clip
-	holder.onLevel = function()
-		Level(map)
-	end
 	Perf.SetScript(clip, "OnHide", function()
 		MarkLeave()
 	end)
 	return clip
-end
-
--- above the map's own pins (their levels are the map's: read at each lay)
-local function TopLevel(...)
-	local top = 0
-	for i = 1, select("#", ...) do
-		local child = select(i, ...)
-		local ok, lv = pcall(child.GetFrameLevel, child)
-		if ok and type(lv) == "number" and lv > top then
-			top = lv
-		end
-	end
-	return top
 end
 
 local function MarkButton(i)
@@ -255,20 +240,17 @@ function Marks.Anchor(map)
 	end
 end
 
--- the clip over the map's own pins, at the map's strata (their levels are the
--- map's: read at each lay, and when the map is raised)
-Level = function(map)
+-- the clip over the map's own pins: its holder a strata over the map's (the
+-- map's strata read at each lay: the game may change it as the map opens)
+Level = function()
 	local clip = Marks.clip
 	if not clip then
 		return
 	end
-	local strata = map:GetFrameStrata()
+	QL.holder.SyncMarks()
+	local strata = QL.marksHolder:GetFrameStrata()
 	if clip:GetFrameStrata() ~= strata then
 		clip:SetFrameStrata(strata)
-	end
-	local level = TopLevel(map:GetCanvas():GetChildren()) + 1
-	if clip:GetFrameLevel() ~= level then
-		clip:SetFrameLevel(level)
 	end
 end
 
@@ -288,7 +270,7 @@ local Watch   -- (the gamepad hover check, below)
 -- the marks laid on the map: every mark added since Marks.Begin
 function Marks.End(map)
 	Clip(map)
-	Level(map)
+	Level()
 	Marks.gamepad = MelloUI.Safe.GamepadUI()
 	Marks.Anchor(map)
 	for i = 1, Marks.n do
@@ -485,7 +467,7 @@ function QL.DressMark(self, kind, data)
 		-- the count, the count in its gold; once all are done, in its text
 		-- colour a step down (QL.DONE_ALPHA, as the list's done quests:
 		-- small text is never muted text)
-		local palette = MelloUI.Palette
+		local palette = MelloUI.Look.Palette("questList")   -- (the Quest List's look: the game's colours while it is off)
 		local ground = palette.innerPanel
 		local done = data.done >= data.total
 		local ink = done and palette.text or palette.selectedTrim
@@ -1389,7 +1371,7 @@ function QL.CreateProvider()
 	-- the Quest List's (QL.RefreshPins: a switch-on with the map open too)
 	function QL.Provider:LayPins(fromMap)
 		self:RemoveAllData()
-		self.palette = MelloUI.Palette   -- the palette the pins are laid in
+		self.palette = MelloUI.Look.Palette("questList")   -- the palette the pins are laid in (as the look shows it)
 		if not (M.isEnabled and QL.byZone) then
 			return
 		end
@@ -1444,7 +1426,13 @@ function QL.CreateProvider()
 	-- lays them on its next show). Only a new palette TABLE: 'palette' goes
 	-- out for a Kit Colours change too, the palette unchanged
 	MelloUI:On("palette", function()
-		if QL.Provider.palette ~= MelloUI.Palette then
+		if QL.Provider.palette ~= MelloUI.Look.Palette("questList") then
+			QL.RefreshPins()
+		end
+	end, "Quest List pins")
+	-- its look switched (the Quest Log's, game-look wave 5): the pins in the game's colours or the palette's
+	MelloUI:On("look:questList", function()
+		if QL.Provider.palette ~= MelloUI.Look.Palette("questList") then
 			QL.RefreshPins()
 		end
 	end, "Quest List pins")

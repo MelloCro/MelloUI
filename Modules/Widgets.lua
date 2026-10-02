@@ -2065,7 +2065,7 @@ local function Names(list)
 end
 
 local function TipLine(tip, line)
-	local c = MelloUI.Palette.text
+	local c = MelloUI.Look.Palette().text   -- (the reskin off: the game's white)
 	tip:AddLine(line, c[1], c[2], c[3], true)
 end
 
@@ -2369,7 +2369,7 @@ local QITEM = {
 		return qitem.item and ("/use item:" .. qitem.item) or nil
 	end,
 	tooltip = function(_, tip)
-		local text = MelloUI.Palette.text
+		local text = MelloUI.Look.Palette().text   -- (the reskin off: the game's white)
 		if qitem.title then
 			tip:AddLine(TEXT.qiFor:format(qitem.title), text[1], text[2], text[3], true)
 		end
@@ -2462,7 +2462,7 @@ local HEALER = {
 		return healer.n > 1 and healer.n or nil
 	end,
 	tooltip = function(_, tip)
-		local text = MelloUI.Palette.text
+		local text = MelloUI.Look.Palette().text   -- (the reskin off: the game's white)
 		if healer.n > 2 then
 			tip:AddLine(table.concat(healer.names, ", "), text[1], text[2], text[3], true)
 		end

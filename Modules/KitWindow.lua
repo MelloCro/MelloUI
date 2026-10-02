@@ -87,6 +87,14 @@
 -- replacements fade while they are enabled; switched off, every recorded rep
 -- is disabled and they come back. Colours are palette keys (Kit:Paint), so a
 -- new palette paints them again. Sounds only through MelloUI:PlayUISound.
+-- The plain look is the GAME's window (docs/plans/game-look.md wave 4: the
+-- own windows' areas follow the reskin, so the plain look shows with it
+-- off): ButtonFrameTemplate's metal NineSlice (PortraitFrameTemplate's with
+-- the corner ring, ButtonFrameTemplateNoPortrait's without), its rock in its
+-- own colours under the title bar with the top streaks, no palette tint and
+-- no calm ground (the panels on it are the game's insets: W.Panel), the
+-- title in the game's gold on the bar, the game's close button at its place
+-- (UIPanelCloseButton's art, TOPRIGHT -2, 1, 24 px: this client's own).
 --
 -- And, for the own windows' widgets and questions (the end of the file):
 --   Kit:ChoicePicture(tile, kind, choice)   a look choice's picture (the
@@ -115,6 +123,12 @@ local CALM_BAND = 14         -- the stone left round the calm ground, inside the
 local PLAIN_CREST = 88       -- the emblem alone on the top edge, without the kit
 local PLAIN_CORNER = 62      -- ... in the corner: a game window's portrait
 local CORNER_X, CORNER_Y = 26, -24   -- a game window's portrait centre from its top left (PortraitFrameTemplate: 62 px at -5, 7)
+-- the game's window (ButtonFrameTemplate on this client): its rock from under
+-- the title bar (2 in with the portrait, 7 without, 21 down, 2 in at the
+-- bottom), the streaks under the bar, the close button's size and place
+local GAME_BG_TOP, GAME_BG_IN, GAME_BG_IN_NOPORTRAIT, GAME_BG_EDGE = 21, 2, 7, 2
+local GAME_STREAKS = "_UI-Frame-TopTileStreaks"
+local GAME_CLOSE, GAME_CLOSE_X, GAME_CLOSE_Y = 24, -2, 1
 local PLATE_FIT = 20         -- the plate's fit height (a game window's title container); its painted part 1.5 x that
 local PLATE_OVERLAP = 8      -- the short plate reaches this far up over the crest's bottom (the approved sketch)
 local GRAB_BOTTOM = -40      -- the drag strip's bottom edge when none is given
@@ -122,7 +136,6 @@ local FIT_MARGIN = 16        -- a window scaled to fit leaves this much of the s
 -- frame levels over the window's own
 local LEVEL_GRAB, LEVEL_CREST, LEVEL_PLATE, LEVEL_CLOSE = 1, 4, 7, 8
 
-local EDGE_THIN = { edgeFile = WHITE, edgeSize = 1 }
 local EDGE_WIDE = { edgeFile = WHITE, edgeSize = 2 }
 
 local shells = setmetatable({}, { __mode = "k" })   -- [frame] = its shell
@@ -334,9 +347,17 @@ function Shell:BuildPlain()
 	local frame = self.frame
 	local framed = false
 	if NineSliceUtil and NineSliceUtil.ApplyLayoutByName then
+		-- the game's own window frame (this client's metal, its Camelot
+		-- offsets in the layouts): over the window's content as the game's
+		-- (its NineSlice stands over the window), under the corner ring's
+		-- emblem's metal opening only where the layout has one; under a
+		-- crest on the top edge
 		local nine = CreateFrame("Frame", nil, frame, "NineSlicePanelTemplate")
 		nine:SetAllPoints(frame)
-		framed = pcall(NineSliceUtil.ApplyLayoutByName, nine, "GenericMetal")
+		nine:SetFrameLevel(frame:GetFrameLevel() + (self.ringAt == "top" and LEVEL_CREST - 1 or LEVEL_CREST + 1))
+		nine:EnableMouse(false)
+		framed = pcall(NineSliceUtil.ApplyLayoutByName, nine,
+			self.ringAt == "tl" and "PortraitFrameTemplate" or "ButtonFrameTemplateNoPortrait")
 		if framed then
 			self:Plain(nine)
 		else
@@ -350,19 +371,40 @@ function Shell:BuildPlain()
 		Kit:Paint(edge, "border", "border")
 		self:Plain(edge)
 	end
-	local line = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-	line:SetPoint("TOPLEFT", frame, "TOPLEFT", 7, -7)
-	line:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -7, 7)
-	line:SetBackdrop(EDGE_THIN)
-	Kit:Paint(line, "trim", "border")
-	line:EnableMouse(false)
-	self:Plain(line)
+	-- the streaks under the title bar (the template's TopTileStreaks)
+	local streaks = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
+	if pcall(streaks.SetAtlas, streaks, GAME_STREAKS, true) then
+		streaks:SetHorizTile(true)
+		streaks:SetPoint("TOPLEFT", self.bg, "TOPLEFT", 4, 0)
+		streaks:SetPoint("TOPRIGHT", self.bg, "TOPRIGHT", 0, 0)
+		self:Plain(streaks)
+	else
+		streaks:Hide()
+	end
+end
+
+-- the close button as the look has it: the kit's on the plate's line, the
+-- plate's height; the game's (the plain look) at its own size and place
+function Shell:LayClose()
+	local close = self.close
+	if not close then
+		return
+	end
+	close:ClearAllPoints()
+	if self.kit then
+		close:SetSize(PLATE_FIT, PLATE_FIT)
+		close:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -2, -1)
+	else
+		close:SetSize(GAME_CLOSE, GAME_CLOSE)
+		close:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", GAME_CLOSE_X, GAME_CLOSE_Y)
+	end
 end
 
 -- the look switched (the shell's own state, then its listeners)
 function Shell:Switch(on)
 	self.kit = on
 	self:Lay()
+	self:LayClose()
 	local reps = self.reps
 	if on then
 		for i = 1, #reps do
@@ -612,24 +654,29 @@ function Kit:OwnWindow(frame, opts)
 	shells[frame] = shell
 	local base = frame:GetFrameLevel()
 
-	-- the plain look's page: the rock, tinted (the kit's stone stands in for both)
+	-- the plain look's page: the game's rock, in its own colours, from under
+	-- the title bar (the kit's stone stands in for it)
 	local bg = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
 	bg:SetTexture(ROCK, "REPEAT", "REPEAT")
 	bg:SetHorizTile(true)
 	bg:SetVertTile(true)
-	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", PAGE_INSET, -PAGE_INSET)
-	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PAGE_INSET, PAGE_INSET)
-	self:Paint(bg, "border", "vertex")
+	local bgIn = (opts.ring and opts.ring.at == "tl") and GAME_BG_IN or GAME_BG_IN_NOPORTRAIT
+	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", bgIn, -GAME_BG_TOP)
+	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -GAME_BG_EDGE, GAME_BG_EDGE)
+	-- (its palette tint, the painted look's only: none in the game's)
 	local tint = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
 	tint:SetPoint("TOPLEFT", frame, "TOPLEFT", PAGE_INSET, -PAGE_INSET)
 	tint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PAGE_INSET, PAGE_INSET)
 	self:Paint(tint, "mainWindow", "fill", 0.45)
+	MelloUI.Look.Hide(tint)
 	shell.bg, shell.tint = bg, tint
 	-- the calm ground over them both (sublevel 3: over the kit's stone too,
-	-- a region in the rock's layer and sublevel), laid by the look (Lay)
+	-- a region in the rock's layer and sublevel), laid by the look (Lay);
+	-- the painted look's only (the game's windows show their rock)
 	if opts.calm then
 		local calm = frame:CreateTexture(nil, "BACKGROUND", nil, 3)
 		self:Paint(calm, "mainWindow", "fill", 1)
+		MelloUI.Look.Hide(calm)
 		shell.calm = calm
 	end
 
@@ -676,6 +723,11 @@ function Kit:OwnWindow(frame, opts)
 		fill:SetAllPoints(plate)
 		self:Paint(fill, "raisedPanel", "fill", 1)
 		shell.plateFill, shell.plateEdges = fill, W.Edges(plate, "trim")   -- (four 1 px lines, the widget set's)
+		-- (the game's look: the title alone on the bar, no box)
+		MelloUI.Look.Hide(fill)
+		for i = 1, #shell.plateEdges do
+			MelloUI.Look.Hide(shell.plateEdges[i])
+		end
 		local title = plate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		title:SetPoint("CENTER", plate, "CENTER", 0, 0)
 		title:SetWordWrap(false)
@@ -689,11 +741,10 @@ function Kit:OwnWindow(frame, opts)
 		-- (0.15.0: the widget set's flat close, "all flat", both looks; on the
 		-- title plate's line, the plate's height)
 		local close = W.CloseButton(frame, shell)
-		close:SetSize(PLATE_FIT, PLATE_FIT)
-		close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -1)
 		close:SetFrameLevel(base + LEVEL_CLOSE)
 		Perf.SetScript(close, "OnClick", Close_OnClick)
 		shell.close = close
+		shell:LayClose()
 	end
 
 	-- show and hide (before the mover, whose hooks come after)

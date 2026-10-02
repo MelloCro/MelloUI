@@ -39,6 +39,10 @@
 -- combatResource; the notices in the palette's gold (selectedTrim), the
 -- words and names in its text colour, by key (painted again on the
 -- palette). Crits are 1.35 times as big and held a little longer.
+-- With the reskin off (MelloUI.Look, docs/plans/game-look.md wave 3) the
+-- game's floating text: no band, the game's black shadow, outlined, the
+-- words white and the notices gold in the game's colours (the meaning
+-- colours stay: they say what a number is).
 --
 -- One source: COMBAT_TEXT_UPDATE (C_CombatText.GetCurrentEventInfo: data,
 -- arg3, arg4 -- SecretReturns, so any of them may be secret) and the fight's
@@ -139,6 +143,7 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("CombatText")
+local GameLook = MelloUI.Look   -- (the reskin off: the game's floating text)
 local hooksecurefunc = Perf.hooksecurefunc
 
 local Secret = MelloUI.Safe.IsSecret
@@ -662,17 +667,16 @@ end
 local TEXT_LOOK = MelloUI.Shade.TEXT
 local PAD_X, FEATHER = TEXT_LOOK.padX, TEXT_LOOK.feather
 
--- the notice's Outlined Text (Tweaks noticeOutline, off by default)
+-- the notice's Outlined Text (Tweaks noticeOutline, off by default); the
+-- reskin off: outlined, as the game's floating texts
 local function Outline()
 	local Look = MelloUI.CentreLook
-	return Look and Look.Setting and Look.Setting("noticeOutline") and true or false
+	return GameLook.Outline(Look and Look.Setting and Look.Setting("noticeOutline"))
 end
 
+-- the soft shadow (the reskin off: the game's black one)
 local function Shadow(fs)
-	local Look = MelloUI.CentreLook
-	if Look and Look.Shadow then
-		Look.Shadow(fs)
-	end
+	GameLook.Shadow(fs, TEXT_LOOK.shadow)
 end
 
 -- the text font at a size (numbers: a Your Damage line's, the Game Numbers
@@ -741,15 +745,15 @@ local function Build(row, glyph)
 	row.word = NewFont(row)
 	row.notice = NewFont(row)
 	row.tail = NewFont(row)
-	local W = MelloUI.Widgets
-	W.Paint(row.word, "text", "text")
-	W.Paint(row.notice, "selectedTrim", "text")
-	W.Paint(row.tail, "text", "text", 0.85)   -- (small text is never mutedText: the palette rule)
+	GameLook.Paint(row.word, "text", "text")
+	GameLook.Paint(row.notice, "selectedTrim", "text")
+	GameLook.Paint(row.tail, "text", "text", 0.85)   -- (small text is never mutedText: the palette rule)
 	if glyph then
 		local g = row:CreateTexture(nil, "OVERLAY")
 		row.glyph = g
 	end
 	row.band = MelloUI.Shade:Band(row, TEXT_LOOK)
+	GameLook.Hide(row.band)   -- (no band in the game's look)
 end
 
 -- the colour of a number: the kind's meaning colour
@@ -846,10 +850,10 @@ local function Lay(row, align, main, hasTail, hasSign, size)
 	-- far taller than its digits); 0% no band
 	local band = row.band
 	if share <= 0 then
-		band:SetShown(false)
+		GameLook.Show(band, false)
 		return
 	end
-	band:SetShown(true)
+	GameLook.Show(band, true)
 	band:SetFeather(math.max(4, FEATHER * share))
 	local left = (glyph and align == "LEFT") and glyph or (hasSign and sign or m)
 	local right = hasTail and tail or m
@@ -903,16 +907,33 @@ local function Fill(row, e, align, scale)
 		if e.glyph and W.Glyph(glyph, e.glyph) then
 			local g = math.floor(TextSize() * T.glyph + 0.5)
 			glyph:SetSize(g, g)
-			-- (the kind's meaning colour, else the palette's as it is now: a line
-			-- lives a few seconds, the mark is never registered for a repaint)
-			local c = e.colour or MelloUI.Palette[e.kind == "notice" and "selectedTrim" or "text"]
-			glyph:SetVertexColor(c[1], c[2], c[3])
+			-- (the kind's meaning colour, else the look's gold or white as it is
+			-- now: a line lives a few seconds, the mark is never registered for
+			-- a repaint)
+			local c = e.colour
+			if c then
+				glyph:SetVertexColor(c[1], c[2], c[3])
+			else
+				glyph:SetVertexColor(GameLook.RoleColour(e.kind == "notice" and "gold" or "text"))
+			end
 			glyph:Show()
 		else
 			glyph:Hide()
 		end
 	end
 	Lay(row, align, main, hasTail, hasSign, size * big)
+end
+
+-- a crit's gold and a hit's white as the look shows them now (one table
+-- each, filled as asked: an entry makes no table of its own)
+local RoleRGB
+do
+	local kept = { gold = { 1, 1, 1 }, text = { 1, 1, 1 } }
+	RoleRGB = function(role)
+		local t = kept[role]
+		t[1], t[2], t[3] = GameLook.RoleColour(role)
+		return t
+	end
 end
 
 local function Restyle(row)
@@ -1504,8 +1525,8 @@ local function DealtEntry(event, flags, amount, school)
 		e.glancing = flag == "GLANCING" or nil
 		local physical = Enum and Enum.Damageclass and Enum.Damageclass.MaskPhysical or 1
 		local s = Num(school)
-		local P = MelloUI.Palette
-		e.colour = e.crit and P.selectedTrim or ((s and s ~= physical) and MelloUI.Meaning.combatSpell) or P.text
+		e.colour = e.crit and RoleRGB("gold") or ((s and s ~= physical) and MelloUI.Meaning.combatSpell)
+			or RoleRGB("text")
 		return e
 	elseif DEALT.words[event] then
 		e.kind, e.label = "avoid", Word(event)
@@ -1907,6 +1928,13 @@ local function Repaint()
 	EachLine(ShadowRow)
 end
 
+-- the reskin switched: the lines there are styled again at their next fill,
+-- their shadows now
+local function OnLook()
+	EachLine(Restyle)
+	EachLine(ShadowRow)
+end
+
 -- the state the settings ask for: a style of ours on (the game's text kept
 -- coming and faded), or the game's own back
 Apply = function()
@@ -1973,6 +2001,7 @@ function M:OnEnable(db)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("palette", Repaint, OWNER)
 	MelloUI:On("preview", OnPreview, OWNER)
+	GameLook.Watch(M, OnLook)   -- (the reskin switched: the lines shown restyled)
 	-- Game: nothing more (no frame, no event, no CVar)
 	if Style() ~= "game" or Dealt() ~= "game" or (db and (db.savedGameText ~= nil or db.savedDealt ~= nil)) then
 		MelloUI:AfterLogin(Start)

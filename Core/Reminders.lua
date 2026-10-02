@@ -855,7 +855,7 @@ local function Mini(i)
 	Perf.SetScript(m, "OnEnter", Enter)
 	Perf.SetScript(m, "OnLeave", Leave)
 	m:SetKit(KitOn())
-	m.glow = MelloUI.Shade:Glow(m, { region = m, size = MINI })
+	m.glow = MelloUI.Shade:Glow(m, { region = m, size = MINI })   -- look-ok: ApplyGlow, none in the game's look (GlowMode)
 	ApplyGlow(m.glow)
 	ui.minis[i] = m
 	AnchorMini(m, i)
@@ -964,7 +964,7 @@ Build = function()
 	Perf.SetScript(b, "OnLeave", Leave)
 	b:SetKit(KitOn())
 	ui.button = b
-	ui.glow = MelloUI.Shade:Glow(b, { region = b, size = SIZE })
+	ui.glow = MelloUI.Shade:Glow(b, { region = b, size = SIZE })   -- look-ok: ApplyGlows, none in the game's look (GlowMode)
 	-- the count: a number on a small dark disc at the button's lower right
 	-- (the game's look: its corner number, no disc; Look.Count)
 	local disc = b:CreateTexture(nil, "OVERLAY", nil, 6)
@@ -1293,7 +1293,7 @@ Tip = function(self)
 	end
 	-- (the title in gold, the lines and the hints in the body text: small
 	-- text is never mutedText, the palette rule)
-	local P = MelloUI.Palette
+	local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
 	local gold, text = P.selectedTrim, P.text
 	GameTooltip:SetOwner(self, PLACES[ui.place].tip)
 	if not key then
@@ -1972,8 +1972,8 @@ local function Column()
 	local ROW_FADE = 0.25
 	local DIM_ALPHA = 0.6
 	local SHARE_SPAN, FULL = 100, 0.999   -- a share's swipe (a full one would end the cooldown: drawn nothing)
-	local MEDIA = "Interface\\AddOns\\MelloUI\\Media\\Textures\\"
-	local RING_TEX = MEDIA .. "ProgressRing"
+	local MEDIA = "Interface\\AddOns\\MelloUI\\Media\\Textures\\"   -- look-ok: the painted ring's (Look.Ring: the game's sweep)
+	local RING_TEX = MEDIA .. "ProgressRing"   -- look-ok: Look.Ring's painted texture
 	local TALK_ANIMATION, TALK_TIME, LOAD_TRIES = 60, 2, 8
 	-- a talk animation's length in seconds by model file ID (from the
 	-- VoiceOver addon, MIT licence; the Voice Over overlay's until 0.16.0);
@@ -2200,7 +2200,7 @@ local function Column()
 		row.face = face
 		ground:SetAllPoints(face.icon)
 		model:SetAllPoints(face.icon)
-		row.glow = MelloUI.Shade:Glow(face, { region = face, size = FACE, strength = GLOW_LOW })
+		row.glow = MelloUI.Shade:Glow(face, { region = face, size = FACE, strength = GLOW_LOW })   -- look-ok: ApplyGlows (GlowMode)
 		-- the ring: a dark track, the gold swipe over it (the game's look:
 		-- the cooldown's own dark sweep over the face; Look.Ring)
 		local ring = CreateFrame("Cooldown", nil, face)
@@ -2976,7 +2976,8 @@ local function Column()
 		f.label = label
 		local box = f:CreateTexture(nil, "BACKGROUND")
 		box:SetAllPoints(f)
-		f.band = MelloUI.Shade:Band(f, { alpha = 0.7, feather = 18, region = box, padX = 2, padY = 0 })
+		-- (its plate as the rows': the band painted, the game's tooltip frame)
+		f.band = Look.Plate(f, { alpha = 0.7, feather = 18, region = box, padX = 2, padY = 0 })
 		col.fold = f
 		return f
 	end
@@ -3174,7 +3175,7 @@ local function Column()
 		if not spec then
 			return
 		end
-		local P = MelloUI.Palette
+		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner, "ANCHOR_TOP")
 		GameTooltip:SetText(Rem:Label(key), gold[1], gold[2], gold[3])
@@ -3205,7 +3206,7 @@ local function Column()
 		if not a then
 			return
 		end
-		local P = MelloUI.Palette
+		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(owner or b, "ANCHOR_BOTTOMRIGHT")
 		GameTooltip:SetText(Value(a.tip, b.row.key) or "", gold[1], gold[2], gold[3])
@@ -3382,7 +3383,7 @@ local function Column()
 
 	-- the fold row: what waits in it, a click its list
 	FoldEnter = Shared("OnEnter on the widget column's fold row", function(self)
-		local P = MelloUI.Palette
+		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's gold and white)
 		local gold, text = P.selectedTrim, P.text
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText(TEXT.foldTitle, gold[1], gold[2], gold[3])

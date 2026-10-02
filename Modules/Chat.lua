@@ -1441,7 +1441,7 @@ end
 -- (the chat's own regions take their palette colours by key through Core's
 -- W.Paint -- MelloUI.Widgets.Paint, the kit's one registry, which paints
 -- them again on 'palette'; 0.14.0: the palettes)
-local SHADE_FILE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Chat\\name_shade"
+local SHADE_FILE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Chat\\name_shade"   -- look-ok: the painted look's only (ShadeLines)
 local SHADE_ALPHA = 0.55
 local SHADE_KEY = "raisedPanel"                 -- the palette's raised panel (Ember's #2E1F14): a warm dark on the paper
 local SHADE_PAD = 3                             -- UI px the band reaches past its text on each side
@@ -1587,7 +1587,9 @@ end
 local function ShadeLines(frame)
 	local lines = frame and frame.visibleLines
 	local want = shadeWanted[frame]
-	local on = type(lines) == "table" and want and want() and Active("nameShade") ~= false
+	-- (docs/plans/game-look.md wave 5, the user's pick: none with the reskin
+	-- off -- the game's look has no soft bands -- MelloUI.Look)
+	local on = type(lines) == "table" and want and want() and Active("nameShade") ~= false and MelloUI.Look:On()
 	local used = {}
 	if on then
 		for i, line in ipairs(lines) do
@@ -1640,6 +1642,13 @@ local function WatchShade(frame, wanted)
 		return
 	end
 	shadeWanted[frame] = wanted
+	-- the reskin switched: every watched frame's shades laid again (one
+	-- listener for them all: the same owner's is replaced)
+	MelloUI:On("look:own", function()
+		for f in pairs(shadeWanted) do
+			ShadeLines(f)
+		end
+	end, "Chat name shade")
 	local function AfterRedraw(f)
 		pcall(FitLineFonts, f)
 		InkVisible(f)
@@ -1674,7 +1683,7 @@ local function InkFrameFont(frame, on)
 			pcall(frame.SetFont, frame, path, size, "")
 		end
 		-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
-		local none = MelloUI.Palette.innerPanel
+		local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
 		frame:SetShadowColor(none[1], none[2], none[3], 0)
 	elseif frame.melloInkFont then
 		local saved = frame.melloInkFont
@@ -2322,7 +2331,7 @@ local function PopupFont(f)
 	pcall(f.msgs.SetFont, f.msgs, path, size, f.inked and "" or flags)
 	if f.inked then
 		-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
-		local none = MelloUI.Palette.innerPanel
+		local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
 		f.msgs:SetShadowColor(none[1], none[2], none[3], 0)
 	else
 		local sh = f.msgs.melloShadow
@@ -2773,7 +2782,7 @@ local ACTION_TEXT = {
 local IGNORE_ASK = "Ignore %s? Their whispers and chat no longer reach you."
 -- Report's link: an empty cell of the glyph sheet at the button's size (the
 -- link's area, drawn nothing), in the game's "report this line" link
-local REPORT_LINK = "|Hreportcensoredmessage:%.0f|h|TInterface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs:"
+local REPORT_LINK = "|Hreportcensoredmessage:%.0f|h|TInterface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs:"   -- look-ok: the report icon in a chat line (content)
 	.. ACTION_SIZE .. ":" .. ACTION_SIZE .. ":0:0:256:128:224:256:32:64|t|h"   -- (the sheet 256 x 128 since 0.17.0)
 
 -- a call's first result, or nil when it raised or that is secret
@@ -3149,7 +3158,7 @@ local function CreatePopup(key, kind, target, title)
 
 	PlacePopup(f)
 	popups[key] = f
-	f.palette = MelloUI.Palette   -- the palette its header and lines are written in
+	f.palette = MelloUI.Look.Palette()   -- the palette its header and lines are written in (as the look shows it)
 	-- the one mover (registered once its own scripts are set: the mover
 	-- hooks its hide); and from the first window on, every window follows
 	-- the chat's look and the palette (the same listeners for all, told
@@ -3157,6 +3166,7 @@ local function CreatePopup(key, kind, target, title)
 	MelloUI:RegisterMover(f, head, POPUP_MOVER)
 	MelloUI:On("look:whisper", PopupsFollowLook, "Chat whisper popups")
 	MelloUI:On("palette", PopupsFollowPalette, "Chat whisper palette")
+	MelloUI:On("look:own", PopupsFollowPalette, "Chat whisper palette")   -- (the reskin switched: the game's colours)
 	return f
 end
 
@@ -3315,7 +3325,7 @@ end
 -- registry by themselves). Only a window written in another palette table:
 -- 'palette' goes out for a Kit Colours change too, the palette unchanged.
 PopupsFollowPalette = function()
-	local palette = MelloUI.Palette
+	local palette = MelloUI.Look.Palette()   -- (the reskin off: the game's colours, its own table)
 	for _, f in pairs(popups) do
 		if f.palette ~= palette then
 			f.palette = palette

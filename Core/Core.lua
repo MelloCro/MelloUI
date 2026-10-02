@@ -267,8 +267,11 @@ function MelloUI:KnownPalette(id)
 end
 
 -- A palette colour as a chat / font-string colour code: "|cffAE8546"
+-- (docs/plans/game-look.md wave 4: the palette as MelloUI.Look shows it --
+-- the game's own colours by the same keys with the reskin off)
 function MelloUI:PaletteCode(role)
-	local c = self.Palette[role]
+	local Look = self.Look
+	local c = (type(Look) == "table" and type(Look.Palette) == "function" and Look.Palette() or self.Palette)[role]
 	return "|cff" .. (c and c.hex or "FFFFFF")
 end
 
@@ -313,6 +316,8 @@ MelloUI.Meaning = {
 	-- reloading in cream, a melee swing pale; Modules/SwingTimers.lua)
 	swingShot = Hex("#E9DCAA"),        -- (meaning colour)
 	swingMelee = Hex("#EFEBE3"),       -- (meaning colour)
+	-- (the shot's aim, the red of the picked swing_looks: stand still)
+	swingAim = Hex("#D63428"),         -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 

@@ -4423,7 +4423,7 @@ local MAX_DOTS = 700
 -- an even spacing that carries over from one segment to the next.
 local function NewPainter(frame)
 	-- (the dot's path here: the file's main chunk is at Lua 5.1's 200 locals)
-	local TRAIL_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\trail_dot"
+	local TRAIL_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\trail_dot"   -- look-ok: the trail's dots in Route's red, a meaning colour (the user's pick 2026-10-02 keeps them)
 	local painter = { frame = frame, dots = {}, used = 0, carry = 0 }
 	function painter:Begin()
 		self.used = 0
@@ -4897,17 +4897,7 @@ local function EnsureArrow()
 	arrow.icon = arrow:CreateTexture(nil, "ARTWORK")
 	arrow.icon:SetSize(54, 54)
 	arrow.icon:SetPoint("TOP", 0, -2)
-	-- The client's own high-resolution direction arrows, oldest fallback last.
-	local placed = false
-	for _, atlas in ipairs({ "ui-hud-minimap-arrow-player-2x", "ui-hud-minimap-arrow-player" }) do
-		if pcall(arrow.icon.SetAtlas, arrow.icon, atlas) and arrow.icon:GetAtlas() then
-			placed = true
-			break
-		end
-	end
-	if not placed then
-		arrow.icon:SetTexture("Interface/Minimap/MinimapArrow")
-	end
+	Travel.PlayerArrow(arrow.icon)
 	-- the distance and the travel time: "1.2 km · about 2 min" (Travel.Line)
 	arrow.distance = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	RouteFont.Style(arrow.distance, "fontChat", _G.GameFontNormal)   -- a number
@@ -5118,7 +5108,7 @@ local Beacon = {
 	RING_ALPHA = 0.9, HALO_ALPHA = 0.6, LIT_ALPHA = 0.55,
 	area = { quest = nil, inside = false, next = 0 },
 }
-local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"
+local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"   -- look-ok: the beam, the painted look's only (Beacon.painted)
 local BEAM_W, BEAM_H = 48, 420
 local BEAM_SPAN = BEAM_H / (256 * BEAM_W / 64)   -- how many times the streak strip repeats up the beam
 local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
@@ -5169,6 +5159,9 @@ local TextShade = {
 -- the option: Tweaks' Text Shade (0.16.0: one with the zone text's and the
 -- centre texts'), as saved; on unless switched off
 function TextShade.On()
+	if not MelloUI.Look:On() then
+		return false   -- (the reskin off: the game's look, no band; its text shade comes back with the reskin)
+	end
 	local mods = MelloUI.db and MelloUI.db.modules
 	local tweaks = type(mods) == "table" and mods.Tweaks
 	return not (type(tweaks) == "table" and tweaks.textShade == false)
@@ -5182,7 +5175,7 @@ function TextShade.Band(parent, region, feather, padX, padY, sublevel)
 	local o = TextShade.OPTS
 	o.colour, o.alpha, o.feather, o.layer, o.sublevel = "innerPanel", TextShade.ALPHA, feather, "BACKGROUND", sublevel or 0
 	o.region, o.padX, o.padY, o.scale = region, padX, padY, nil
-	local band = MelloUI.Shade:Band(parent, o)
+	local band = MelloUI.Shade:Band(parent, o)   -- look-ok: TextShade.On: the painted look's only
 	o.region = nil
 	return band
 end
@@ -5446,6 +5439,81 @@ function Beacon.FootFade(beam)
 	beam.lit:SetAlpha(Beacon.LIT_ALPHA * fade)
 end
 
+-- The game's own player arrow (its high-resolution direction arrows, the
+-- oldest fallback last): the direction arrow's and the marker's edge arrow
+function Travel.PlayerArrow(tex)
+	for _, atlas in ipairs({ "ui-hud-minimap-arrow-player-2x", "ui-hud-minimap-arrow-player" }) do
+		if pcall(tex.SetAtlas, tex, atlas) and tex:GetAtlas() then
+			return
+		end
+	end
+	tex:SetTexture("Interface/Minimap/MinimapArrow")
+end
+
+-- The marker's gem and edge arrow in the look (docs/plans/game-look.md wave
+-- 3, the user's pick: the game's art): the kit's gem and the player arrow
+-- painted; with the reskin off the game's own navigation art, as its
+-- super-tracked frame draws it (Navigation-Tracked-Icon at its size, its
+-- edge arrow) -- the beam, its light and the text shade off
+-- (the game's icon on a texture of its own, marker.gameGem, as the game's
+-- SuperTrackedFrame draws it on its Icon: the user's screenshot 2026-10-02,
+-- the icon set on the kit's gem texture showed a solid gold block -- what
+-- the kit's piece left on it was not all undone by SetAtlas. The gem stays
+-- the marker's anchor, empty, at the icon's size: the texts stand under it)
+function Beacon.Art()
+	if not (marker and marker.gem) then
+		return
+	end
+	local gem, edge, game = marker.gem, marker.edge, marker.gameGem
+	if Beacon.painted ~= false then
+		gem:SetSize(TextShade.GEM, TextShade.GEM)
+		local Kit = MelloUI.Kit
+		if not (Kit and Kit.Apply and Kit:Apply(gem, "deco/gem_large")) then   -- look-ok: Beacon.Art's painted branch
+			gem:SetTexture("Interface/Minimap/POIIcons")
+		end
+		if game then
+			game:Hide()
+		end
+		if edge then
+			edge:SetSize(40, 40)
+			Travel.PlayerArrow(edge)
+		end
+		return
+	end
+	gem.kitPiece, gem.kitName = nil, nil   -- (no kit piece now: the kit's shadow partner lets it go)
+	gem:SetTexture(nil)
+	if not game then
+		-- (made the first time the game's look needs it, set once)
+		game = gem:GetParent():CreateTexture(nil, "ARTWORK")
+		game:SetPoint("CENTER", gem, "CENTER")
+		game:SetAtlas((select(2, MelloUI.Look.Art("navIcon"))), true)
+		marker.gameGem = game
+	end
+	if game then
+		gem:SetSize(game:GetSize())
+		game:SetShown(gem:IsShown())
+	end
+	if edge then
+		edge:SetAtlas((select(2, MelloUI.Look.Art("navArrow"))), true, nil, true)   -- (resetTexCoords: no crop kept)
+	end
+end
+
+-- The reskin switched (MelloUI.Look; now, and at each switch): the marks in
+-- their look -- the gold, the gem and the edge arrow, the beam (none in the
+-- game's look) and the text shade
+function Beacon.OnLook(_, painted)
+	Beacon.painted = painted and true or false
+	Beacon.Art()
+	Travel.Paint()
+	TextShade.Apply()
+	if marker then
+		marker.lastX = nil   -- (its next tick lays it again: the beam back in the painted look)
+		if not painted and marker.beam then
+			marker.beam:Hide()
+		end
+	end
+end
+
 function Beacon.Foot(beam)
 	if beam.ring then
 		return
@@ -5464,7 +5532,7 @@ function Beacon.Foot(beam)
 	local lit = lift:CreateTexture(nil, "ARTWORK")
 	lit:SetAllPoints(marker.gem)
 	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Apply and Kit:Apply(lit, "deco/gem_large")) then
+	if not (Kit and Kit.Apply and Kit:Apply(lit, "deco/gem_large")) then   -- look-ok: the beam's foot, the painted look's only
 		lit:Hide()
 	end
 	local red = MelloUI.Meaning.routeBeam
@@ -5609,6 +5677,9 @@ local function MarkerTick(self, elapsed)
 	if off ~= self.off then
 		self.off = off
 		self.gem:SetShown(not off)
+		if self.gameGem then
+			self.gameGem:SetShown(not off and Beacon.painted == false)
+		end
 		self.distance:SetShown(not off)
 		self.label:SetShown(not off)
 		self.edge:SetShown(off)
@@ -5620,7 +5691,7 @@ local function MarkerTick(self, elapsed)
 	if d then
 		Beacon.BeamFade(beam, d)
 	end
-	local lit = not off and not pin and M.db.routeBeam and beam.fade > 0 or false
+	local lit = Beacon.painted ~= false and not off and not pin and M.db.routeBeam and beam.fade > 0 or false
 	if lit ~= beam:IsShown() then
 		if lit then
 			Beacon.Foot(beam)
@@ -5742,7 +5813,7 @@ local function EnsureMarker()
 	marker.gem:SetSize(26, 26)
 	marker.gem:SetPoint("CENTER")
 	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Apply and Kit:Apply(marker.gem, "deco/gem_large")) then
+	if not (Kit and Kit.Apply and Kit:Apply(marker.gem, "deco/gem_large")) then   -- look-ok: Beacon.Art lays it again in the look
 		marker.gem:SetTexture("Interface/Minimap/POIIcons")
 	end
 	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -5757,16 +5828,8 @@ local function EnsureMarker()
 	marker.edge = front:CreateTexture(nil, "ARTWORK")
 	marker.edge:SetSize(40, 40)
 	marker.edge:SetPoint("CENTER")
-	local placed = false
-	for _, atlas in ipairs({ "ui-hud-minimap-arrow-player-2x", "ui-hud-minimap-arrow-player" }) do
-		if pcall(marker.edge.SetAtlas, marker.edge, atlas) and marker.edge:GetAtlas() then
-			placed = true
-			break
-		end
-	end
-	if not placed then
-		marker.edge:SetTexture("Interface/Minimap/MinimapArrow")
-	end
+	Travel.PlayerArrow(marker.edge)
+	Beacon.Art()   -- (the reskin off: the game's own destination icon and edge arrow)
 	Travel.Paint()   -- the distance and the edge arrow in the palette's gold
 	marker.edge:Hide()
 	-- the texts' frame, where their shade goes at the first show (TextShade)
@@ -5831,7 +5894,7 @@ UpdateMarker = function()
 		marker:Show()
 		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
 		Beacon.Play(marker.pop)
-		local lit = M.db.routeBeam and not marker.pin and beam.fade > 0 or false
+		local lit = Beacon.painted ~= false and M.db.routeBeam and not marker.pin and beam.fade > 0 or false
 		if lit then
 			Beacon.Foot(beam)
 		end
@@ -6027,17 +6090,18 @@ end
 -- distance under the minimap in the palette's gold (the nearest to the gold
 -- they had), again whenever the palette changes
 function Travel.Paint()
-	local c = MelloUI.Palette.selectedTrim
-	local r, g, b = c[1], c[2], c[3]
+	-- (the reskin off, MelloUI.Look: the game's gold, the arrows in their own colours)
+	local r, g, b = MelloUI.Look.RoleColour("gold")
+	local ir, ig, ib = MelloUI.Look.RoleColour("picture")
 	-- (each part only once it exists: a frame half made, by an error part way
 	-- through its making, must not break every later repaint)
 	if arrow and arrow.distance then
-		arrow.icon:SetVertexColor(r, g, b)
+		arrow.icon:SetVertexColor(ir, ig, ib)
 		arrow.distance:SetTextColor(r, g, b)
 	end
 	if marker and marker.distance and marker.edge then
 		marker.distance:SetTextColor(r, g, b)
-		marker.edge:SetVertexColor(r, g, b)
+		marker.edge:SetVertexColor(ir, ig, ib)
 	end
 	if mm and mm.text then
 		mm.text:SetTextColor(r, g, b)
@@ -6950,6 +7014,20 @@ do
 		end
 	end
 
+	-- the gem's picture: the kit's small gem painted, the game's map pin with
+	-- the reskin off (MelloUI.Look)
+	function F.GemArt(tex, painted)
+		if painted then
+			local Kit = MelloUI.Kit
+			if not (Kit and Kit.Piece and Kit:Piece("deco/gem_small") and Kit:Apply(tex, "deco/gem_small")) then   -- look-ok: F.GemArt's painted branch
+				tex:SetTexture("Interface/Common/Indicator-Yellow")
+			end
+			return
+		end
+		tex.kitPiece, tex.kitName = nil, nil
+		tex:SetAtlas((select(2, MelloUI.Look.Art("mapPin"))), false, nil, true)   -- (resetTexCoords: the kit gem's crop dropped)
+	end
+
 	-- The small gem on the wanted flight point's button, made at its first use,
 	-- as a child of that button: it shows only while the map shows the button
 	-- (a far point's comes and goes as paths through it are pointed at: a gem
@@ -6969,10 +7047,7 @@ do
 			g:EnableMouse(false)
 			g.tex = g:CreateTexture(nil, "OVERLAY")
 			g.tex:SetAllPoints()
-			local Kit = MelloUI.Kit
-			if not (Kit and Kit.Piece and Kit:Piece("deco/gem_small") and Kit:Apply(g.tex, "deco/gem_small")) then
-				g.tex:SetTexture("Interface/Common/Indicator-Yellow")
-			end
+			MelloUI.Look.Watch(g.tex, F.GemArt)   -- (its look now, and at each switch of the reskin)
 			F.gem = g
 		end
 		if g:GetParent() ~= button then
@@ -7095,7 +7170,7 @@ do
 		if not (secs or slot == F.wanted) then
 			return
 		end
-		local P = MelloUI.Palette
+		local P = MelloUI.Look.Palette()   -- (the reskin off: the game's white and gold)
 		if secs then
 			local c = P.text
 			tip:AddLine("Flight time: about " .. Clock(secs), c[1], c[2], c[3])
@@ -8025,6 +8100,7 @@ function M:OnEnable(db)
 	-- (a profile brought in: the Text Shade as it says; nothing at login)
 	TextShade.Apply()
 	MelloUI:On("setting", TextShade.OnSetting, "Route text shade")
+	MelloUI.Look.Watch(M, Beacon.OnLook)   -- (the reskin off: the game's art for the marks)
 	-- (user, 2026-09-24: nothing runs while nothing is routed) the minimap
 	-- tick sleeps with its frame: mm is made hidden and shown by Redraw only
 	-- while there is a destination, and a hidden frame's OnUpdate never runs.

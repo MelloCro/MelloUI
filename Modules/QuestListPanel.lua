@@ -795,7 +795,13 @@ local function HolderScale(holder, scale)
 end
 
 -- The map's look and place on the holder, by post-hooks only: nothing is
--- written on the map. Its alpha comes from the game's fade while the player
+-- written on the map. The holder is a frame buffer, as the map: each is
+-- drawn as ONE picture, all over or all under the other, and which one is
+-- over changes with each click on either (a toplevel raise), whatever levels
+-- they are given. So the map's quest marks are not in it: they have a holder
+-- of their own a STRATA over the map's (QL.MarksHolder; in the panel's holder
+-- they were gone each time the map was clicked -- user's video and test,
+-- 2026-10-02). Its alpha comes from the game's fade while the player
 -- moves (PlayerMovementFrameFader sets it on every frame while the map is
 -- open and the player has moved) and from UI Modifications' fade-in: one
 -- call on to the holder each time. Its scale from UI Modifications' saved
@@ -804,10 +810,29 @@ end
 -- panels are laid out), and as its child the panel rose with it.
 local function FollowMap(holder)
 	local map = WorldMapFrame
+	-- the marks' holder (QL.MarksHolder, when made): a strata over the
+	-- map's, its alpha, scale and shown state the map's
+	local function Marks()
+		local marks = QL.marksHolder
+		if not marks then
+			return
+		end
+		local strata = map:GetFrameStrata()
+		strata = QL.STRATA_UP[strata] or strata
+		if marks:GetFrameStrata() ~= strata then
+			marks:SetFrameStrata(strata)
+		end
+		marks:SetAlpha(map:GetAlpha())
+		local scale = map:GetScale()
+		if marks:GetScale() ~= scale then
+			marks:SetScale(scale)
+		end
+		marks:SetShown(map:IsShown())
+	end
+	holder.SyncMarks = Marks
 	-- the map's strata, the holder at the map's level and the panel five
 	-- over it, where it stood as the map's child; `up`: only ever lifted (a
-	-- click on the panel raised it over the map, and there it stays). The
-	-- marks' layer is laid over the map's own pins each time (holder.onLevel)
+	-- click on the panel raised it over the map, and there it stays)
 	local function Level(up)
 		local frame = holder.panel
 		local strata = map:GetFrameStrata()
@@ -817,10 +842,8 @@ local function FollowMap(holder)
 		if frame and frame:GetFrameStrata() ~= strata then
 			frame:SetFrameStrata(strata)
 		end
+		Marks()
 		local level = map:GetFrameLevel()
-		if holder.onLevel then
-			holder.onLevel()
-		end
 		if up and holder:GetFrameLevel() >= level then
 			return
 		end
@@ -856,15 +879,21 @@ local function FollowMap(holder)
 	Perf.HookScript(map, "OnHide", function()
 		holder:UnregisterEvent("GLOBAL_MOUSE_UP")
 		holder:Hide()
+		Marks()
 	end)
 	Perf.hooksecurefunc(map, "Raise", function()
 		Level(true)
 	end)
 	Perf.hooksecurefunc(map, "SetAlpha", function(_, alpha)
 		holder:SetAlpha(alpha)
+		local marks = QL.marksHolder
+		if marks then
+			marks:SetAlpha(alpha)
+		end
 	end)
 	Perf.hooksecurefunc(map, "SetScale", function(_, scale)
 		HolderScale(holder, scale)
+		Marks()
 	end)
 end
 
@@ -897,6 +926,226 @@ function QL.MapHolder()
 	return holder
 end
 
+-- the strata one over each (the marks' holder over the map's)
+QL.STRATA_UP = { BACKGROUND = "LOW", LOW = "MEDIUM", MEDIUM = "HIGH", HIGH = "DIALOG", DIALOG = "FULLSCREEN",
+	FULLSCREEN = "FULLSCREEN_DIALOG", FULLSCREEN_DIALOG = "TOOLTIP" }
+
+-- The map's quest marks' own holder (QuestListMap.lua's layer): the whole
+-- screen, no mouse, no frame buffer and not toplevel, a STRATA over the
+-- map's, so the marks are over the map's picture whichever window was
+-- clicked last (the map's border, a strata over its canvas, still frames
+-- them). Its alpha, scale and shown state follow the map's with the panel's
+-- holder (FollowMap). Made with the marks' first lay, never at login.
+function QL.MarksHolder()
+	local marks = QL.marksHolder
+	if marks then
+		return marks
+	end
+	local holder = QL.MapHolder()
+	marks = CreateFrame("Frame", nil, UIParent)
+	marks:SetAllPoints(UIParent)
+	QL.marksHolder = marks
+	holder.SyncMarks()
+	return marks
+end
+
+--------------------------------------------------------------------------------
+-- The fold (user, 2026-10-02, the sketch's B: docs/plans/next-update-refs/
+-- questlist_fold_sketch.jpg): the panel folds away beside the map by the
+-- game's own minimize button on its frame (MaximizeMinimizeButtonFrameTemplate,
+-- where the close button stands; the kit's window shell dresses it as any
+-- window's), and a bookmark tab on the map's edge unfolds it -- the title
+-- plate stood on its side, "Quests" down it and the count under it. Kept in
+-- M.db.folded. Folded, the list is still counted for the tab (Update stops
+-- before it lays the rows out). The tab hangs in the panel's holder beside
+-- the map (never the map's child: the Gamepad UI's walks), made the first
+-- time the list folds.
+-- (In the game, 2026-10-02: "the fold button is barely visible, and the
+-- bookmark is not attached". The button stood in the close button's slot,
+-- under the title plate's corner gem: it stands where the map has its own,
+-- left of that slot, over the plate. The tab stood off the map's edge by the
+-- panel's dock gap: it hangs from the map itself now, its map side on the
+-- outer part of the map's rail, as a bookmark laid on a book's edge.)
+--------------------------------------------------------------------------------
+
+local Fold = {
+	ACROSS = 30, ALONG = 116,   -- the tab's size stood up: across the map's edge, down it
+	DOWN = 70,                  -- from the map's top edge
+	TUCK = 10,                  -- how far the tab's map side lies on the map's rail
+	OVER = 6,                   -- the fold button's levels over the title container (the kit's plate and gems ride there)
+	TURN = math.pi / 2,         -- stood on its side, read from the bottom up
+	FADE = 0.15,
+	-- the game's look: the panel tab's own three pieces (PanelTabButtonTemplate)
+	GAME = { "uiframe-tab-right", "_uiframe-tab-center", "uiframe-tab-left" },
+	CAP = 30,                   -- a game piece's end along the tab
+	KIT = "tabs/top_mid_open",  -- the kit's: the title plate's middle (TitleBar's strip)
+}
+
+-- a texture laid along the tab from `from` (down from its top), `len` long,
+-- drawn turned: its own width runs down the tab
+function Fold.Lay(tex, tab, from, len)
+	tex:ClearAllPoints()
+	tex:SetSize(len, Fold.ACROSS)
+	tex:SetPoint("CENTER", tab, "TOP", 0, -(from + len / 2))
+	if tex.SetRotation then
+		tex:SetRotation(Fold.TURN)
+	end
+end
+
+-- the tab on the map's edge: its map side on the map's rail (the kit's
+-- grows outward by Kit:OuterRailOutset; the game's border stands on the edge)
+function Fold.Dock(tab, painted)
+	local Kit = MelloUI.Kit
+	local out = painted and Kit and Kit.OuterRailOutset and Kit:OuterRailOutset() or 0
+	tab:ClearAllPoints()
+	tab:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", out - Fold.TUCK, -Fold.DOWN)
+end
+
+-- the fold button over the window's title plate (the kit's plate and its
+-- corner gems ride on the title container's level)
+function Fold.Raise(frame)
+	local mm = frame.MaximizeMinimizeFrame
+	if not mm then
+		return
+	end
+	local tc = frame.TitleContainer
+	local top = frame:GetFrameLevel()
+	if tc and tc:GetFrameLevel() > top then
+		top = tc:GetFrameLevel()
+	end
+	mm:SetFrameLevel(top + Fold.OVER)
+end
+
+-- the tab in its look (the Quest List's: the Quest Log's look area): the
+-- kit's plate, else the game's tab pieces
+function Fold.Art(tab, painted)
+	local Kit = MelloUI.Kit
+	local pieces = tab.pieces
+	Fold.Dock(tab, painted)
+	if painted and Kit and Kit.Apply and Kit:Apply(pieces[2], Fold.KIT) then
+		Fold.Lay(pieces[2], tab, 0, Fold.ALONG)
+		pieces[1]:Hide()
+		pieces[3]:Hide()
+		pieces[2]:Show()
+		return
+	end
+	local mid = Fold.ALONG - 2 * Fold.CAP
+	for i, tex in ipairs(pieces) do
+		tex.kitPiece, tex.kitName = nil, nil   -- (no Kit Colours walk dresses it again)
+		tex:SetAtlas(Fold.GAME[i], false, nil, true)   -- (resetTexCoords: the kit plate's crop dropped)
+		Fold.Lay(tex, tab, i == 1 and 0 or i == 2 and Fold.CAP or Fold.CAP + mid, i == 2 and mid or Fold.CAP)
+		tex:Show()
+	end
+end
+
+-- the count under the tab, its centre half its length below it
+function Fold.PlaceCount(tab)
+	local w = tab.count:GetStringWidth() or 0
+	tab.count:ClearAllPoints()
+	tab.count:SetPoint("CENTER", tab, "BOTTOM", 0, -(w / 2 + 6))
+end
+
+local FoldTabClick = Perf.Shared("OnClick on the Quest List's folded tab", function()
+	local mm = QL.Panel.frame and QL.Panel.frame.MaximizeMinimizeFrame
+	MelloUI:PlayUISound("option_on")
+	if mm then
+		mm:Maximize()   -- (its callback unfolds the panel: one way, as the button)
+	else
+		Fold.Set(false)
+	end
+end, "script")
+
+local FoldTabEnter = Perf.Shared("OnEnter on the Quest List's folded tab", function(tab)
+	MelloUI.Widgets.ShowTooltip(tab, "Quests", "Click to unfold the Quest List beside the map.")
+end, "script")
+
+local FoldTabLeave = Perf.Shared("OnLeave on the Quest List's folded tab", function(tab)
+	if GameTooltip:GetOwner() == tab then
+		GameTooltip:Hide()
+	end
+end, "script")
+
+-- the map opened with the list folded: the count as it is now
+local FoldTabShown = Perf.Shared("OnShow on the Quest List's folded tab", function()
+	QL.Panel:Update()
+end, "script")
+
+function Fold.Tab()
+	if Fold.tab then
+		return Fold.tab
+	end
+	local tab = CreateFrame("Button", "MelloUIQuestListTab", QL.MapHolder())
+	tab:SetSize(Fold.ACROSS, Fold.ALONG)
+	Fold.Dock(tab, false)   -- (on the look's side as the look comes: Fold.Art)
+	tab.pieces = {}
+	for i = 1, 3 do
+		tab.pieces[i] = tab:CreateTexture(nil, "BACKGROUND")
+	end
+	tab.label = tab:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	tab.label:SetPoint("CENTER", tab, "CENTER", 0, 0)
+	tab.label:SetText("Quests")
+	tab.count = tab:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	if tab.label.SetRotation then
+		tab.label:SetRotation(Fold.TURN)
+		tab.count:SetRotation(Fold.TURN)
+	end
+	local Look = MelloUI.Look
+	Look.Text(tab.label, "gold", nil, { area = "questList", font = "fontTitle" })
+	Look.Text(tab.count, "text", 10, { area = "questList" })
+	Look.Watch(tab, Fold.Art, "questList")
+	Perf.SetScript(tab, "OnClick", FoldTabClick)
+	Perf.SetScript(tab, "OnEnter", FoldTabEnter)
+	Perf.SetScript(tab, "OnLeave", FoldTabLeave)
+	Perf.SetScript(tab, "OnShow", FoldTabShown)
+	tab:Hide()
+	Fold.tab = tab
+	return tab
+end
+
+-- the list counted while folded (Update): the tab says it
+function Fold.Count(done, total)
+	local tab = Fold.tab
+	if tab then
+		tab.count:SetText(string.format("%d/%d", done, total))
+		Fold.PlaceCount(tab)
+	end
+end
+
+-- folded or open: the panel faded out and the tab in, or back (at once under
+-- Reduce Motion, Anim's own rule); the button's state with it
+function Fold.Set(folded)
+	local frame = QL.Panel.frame
+	if not frame then
+		return
+	end
+	folded = folded and true or false
+	M.db.folded = folded
+	local Anim = MelloUI.Anim
+	local mm = frame.MaximizeMinimizeFrame
+	if mm then
+		if folded then
+			mm:Minimize(true, true)   -- (its look only: no callback)
+		else
+			mm:Maximize(true, true)
+		end
+	end
+	if not M.isEnabled then
+		return
+	end
+	local tab = (folded or Fold.tab) and Fold.Tab()
+	if folded then
+		Anim:FadeOut(frame, Fold.FADE)
+		Anim:FadeIn(tab, Fold.FADE)
+	else
+		if tab then
+			Anim:FadeOut(tab, Fold.FADE)
+		end
+		Anim:FadeIn(frame, Fold.FADE)
+	end
+end
+
+QL.Fold = Fold
+
 function QL.Panel:Create()
 	if self.frame then
 		return
@@ -910,6 +1159,8 @@ function QL.Panel:Create()
 	-- (the map's strata, five levels over the map: as its child it stood there)
 	holder.panel = frame
 	holder.Relevel()
+	-- the title plate joins the map's at one gem (Kit:TitleJoin)
+	frame.melloTitleJoin = WorldMapFrame
 	frame:EnableMouse(true)
 	if frame.SetTitle then
 		frame:SetTitle("Quests")
@@ -917,6 +1168,38 @@ function QL.Panel:Create()
 	if frame.CloseButton then
 		frame.CloseButton:Hide()
 	end
+	-- the fold (above): the game's minimize button where the map has its
+	-- own, left of the close button's slot (the slot itself sits under the
+	-- title plate's corner gem), over the plate; the kit's window shell
+	-- dresses it (Kit:SkinWindowShell)
+	-- (a client without the template: no fold button, the panel as before)
+	local okMM, mm = pcall(CreateFrame, "Frame", nil, frame, "MaximizeMinimizeButtonFrameTemplate")
+	if okMM and mm and type(mm.SetOnMinimizedCallback) == "function" then
+		if frame.CloseButton then
+			mm:SetPoint("RIGHT", frame.CloseButton, "LEFT", -1, 0)   -- (the map's own anchor: Blizzard_WorldMap.xml)
+		else
+			mm:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -27, 1)
+		end
+		mm:SetOnMinimizedCallback(function()
+			Fold.Set(true)
+		end)
+		mm:SetOnMaximizedCallback(function()
+			Fold.Set(false)
+		end)
+		frame.MaximizeMinimizeFrame = mm
+		Fold.Raise(frame)
+	elseif okMM and mm then
+		mm:Hide()
+	end
+	-- the map opened with the list folded and no tab made yet: made now (and
+	-- the fold button over the plate again: the panel is levelled as the map
+	-- opens)
+	Perf.HookScript(holder, "OnShow", function()
+		Fold.Raise(frame)
+		if M.isEnabled and M.db.folded and not Fold.tab then
+			Fold.Tab():Show()
+		end
+	end)
 	-- Drop the portrait ring: the border art without the circle is a separate
 	-- layout that Blizzard's own helper switches to.
 	if not (ButtonFrameTemplate_HidePortrait and pcall(ButtonFrameTemplate_HidePortrait, frame)) then
@@ -1155,7 +1438,23 @@ function QL.Panel:Apply()
 		return
 	end
 	self.frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
-	self.frame:SetShown(M.isEnabled)
+	-- (folded: the tab on the map's edge in its place -- the fold, above)
+	local folded = M.db.folded and true or false
+	self.frame:SetShown(M.isEnabled and not folded)
+	-- (the tab made the first time it shows: with the map, never at login)
+	if Fold.tab then
+		Fold.tab:SetShown(M.isEnabled and folded)
+	elseif folded and M.isEnabled and QL.holder and QL.holder:IsShown() then
+		Fold.Tab():Show()
+	end
+	local mm = self.frame.MaximizeMinimizeFrame
+	if mm then
+		if folded then
+			mm:Minimize(true, true)
+		else
+			mm:Maximize(true, true)
+		end
+	end
 	self.frame.levelCheck:SetChecked(tonumber(M.db.levelAbove) == LEVEL_SHORTCUT)
 	self:Update()
 end
@@ -1259,7 +1558,12 @@ local inkLabels = nil   -- the page's own texts and their inks, listed once
 -- click, a filter, a setting or showing the panel always lay it out.
 function QL.Panel:Update(quiet)
 	local frame = self.frame
-	if not frame or not frame:IsShown() or not QL.byZone then
+	if not frame or not QL.byZone then
+		return
+	end
+	-- folded: counted for its tab while the map shows it, not laid out
+	local folded = not frame:IsShown()
+	if folded and not (Fold.tab and Fold.tab:IsVisible()) then
 		return
 	end
 	local db, data = M.db, QL.Data()
@@ -1379,6 +1683,10 @@ function QL.Panel:Update(quiet)
 	end
 
 	local entries, done, total = BuildEntries(rows, groupOf, showZone)
+	Fold.Count(done, total)
+	if folded then
+		return
+	end
 	-- besides the entries, a row's look follows the tracked quest (its pin),
 	-- the level (the difficulty colours), the parchment (the ink and the
 	-- stamp) and the quest log's fonts (the Fonts module)

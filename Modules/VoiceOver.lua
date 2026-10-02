@@ -1273,7 +1273,7 @@ local book = nil
 local NextPage            -- forward declaration, defined below
 
 local function TexturePath(name)
-	return "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\VoiceOver\\" .. name
+	return "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Textures\\VoiceOver\\" .. name   -- look-ok: the book's and the bullets' pictures (content, not the window)
 end
 
 local function CancelFinishTimer()

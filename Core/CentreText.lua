@@ -102,7 +102,7 @@ local function Record(list, host, line, padY)
 	holder:Hide()
 	local rec = {
 		holder = holder,
-		band = Shade:Band(holder, TEXT),
+		band = Shade:Band(holder, TEXT),   -- look-ok: the game's centre texts' band (Text Shade's own switch)
 		measure = Shade:Measure(holder, line, "TOP"),
 		line = line,
 		padY = padY,
