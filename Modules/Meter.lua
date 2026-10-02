@@ -167,7 +167,7 @@ local M = MelloUI:RegisterModule("Meter", {
 		  desc = "Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)." },
 		{ type = "toggle", key = "party", name = "Party Values", new = NEW,
 		  desc = "The same three numbers on top of each party frame. To make room, the game's own Show Party Pets setting is switched on while this is on (the party frames stand a little further apart, and party pets show under them); your own setting comes back when it is off. With raid-style party frames: On Raid-Style Frames." },
-		{ type = "toggle", key = "raid", name = "On Raid-Style Frames", new = "0.17.1",
+		{ type = "toggle", key = "raid", name = "On Raid-Style Frames",
 		  desc = "A small DPS or healing number on the right of each raid-style or raid frame, beside the health. In a fight, players MelloUI cannot tell apart stay empty until it ends. Point at a frame for all three numbers." },
 		{ type = "toggle", key = "bar", name = "Race Bar", new = NEW,
 		  desc = "In a fight, one bar for the group: the top player at its right end with their value, everyone else a class icon at their share of the top, you the gold pin with the bar filled up to you. It fades in when the fight starts and out when it ends. The pointer on it lists everyone. Move it in Edit Layout." },
