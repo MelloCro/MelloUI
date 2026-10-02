@@ -993,10 +993,10 @@ end
 
 -- The fitter's places into the target (inside the one Batch like every
 -- other setting). With the layout: the four Edit Mode frames' store places
--- removed, the tracker's own place cleared and its sizes, the Quest List's
--- width, the window places, the buff rows by the minimap's column (Icons
+-- removed, the tracker's own place cleared and its sizes, the window
+-- places, the buff rows by the minimap's column (Icons
 -- Per Row, Icon Size) as the fit wrapped them. Without it (the switch off, a FAIL, No reskin,
--- no fit): only the window places and the Quest List's width; Edit Mode
+-- no fit): only the window places; Edit Mode
 -- still holds the player's own layout, so its four frames' store places and
 -- the tracker's own place stay as the player has them (cur: the current
 -- state; without it the target's are left). (layoutFitFor is the machine's
@@ -1021,10 +1021,6 @@ function I:PlacesToTarget(target, fit, option, draft, cur)
 		for key, p in pairs(type(places.windows) == "table" and places.windows or EMPTY) do
 			store[key] = DeepCopy(p)
 		end
-	end
-	local ql = places.questList
-	if type(ql) == "table" and ql.width ~= nil and target.modules.QuestList then
-		target.modules.QuestList.width = ql.width
 	end
 	if layoutOn then
 		for _, key in ipairs(type(places.remove) == "table" and places.remove or EMPTY) do
@@ -1142,7 +1138,7 @@ local function BeginFit(fit)
 end
 
 -- The fit for a setup: the fitter reads the setup's own target (Full's
--- window places, the tracker and the Quest List as the setup leaves them;
+-- window places and the tracker as the setup leaves them;
 -- the draft as it is on the next frame), as a coroutine on Kit:NextFrame,
 -- about 2 ms a frame. done(fit) runs once, on a later frame. The fitter
 -- keeps its last result by its inputs, so an unchanged screen answers

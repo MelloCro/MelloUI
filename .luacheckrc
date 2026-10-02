@@ -55,7 +55,7 @@ read_globals = {
 	"C_VoiceChat", "CanGuildBankRepair", "CanMerchantRepair", "CastingBarType",
 	"CharacterReagentBag0Slot", "CompactPartyFrame", "CompactRaidFrameContainer", "Constants",
 	"ContainerFrame1", "ContainerFrameCombinedBags", "ContainerFrameSettingsManager",
-	"CreateDataProvider", "CreateFont", "CreateColor", "CreateFrame", "CreateFromMixins", "CreateMacro",
+	"CreateDataProvider", "CreateFont", "CreateFontFamily", "CreateColor", "CreateFrame", "CreateFromMixins", "CreateMacro",
 	"CreateScrollBoxListLinearView", "CreateVector2D", "DeadlyDebuffFrame", "DebuffFrame",
 	"EditMacro", "EditModeManagerFrame", "Enum", "EventRegistry", "ExpansionLandingPageMinimapButton",
 	"ExtraActionButton1", "FACTION_BAR_COLORS", "FCF_SetChatWindowFontSize",

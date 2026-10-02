@@ -1400,6 +1400,14 @@ local function FitLineFonts(frame)
 	end
 	local okF, _, _, frameFlags = pcall(frame.GetFont, frame)
 	local flags = inked and "" or (okF and frameFlags) or ""
+	-- the chat's family on the frame (Fonts.lua's Font families: SetFont on
+	-- a line made it one face, and Chinese letters boxes -- 2026-10-02); the
+	-- lines take the frame's font object at each redraw, their colours with
+	-- it. A lookup each redraw, nothing made.
+	if fonts.HasFamilies and fonts:HasFamilies() then
+		fonts:ChatFace(frame, path, size, flags, inked)
+		return
+	end
 	for _, line in ipairs(lines) do
 		local okL, lpath, lsize, lflags = pcall(line.GetFont, line)
 		if okL and (lpath ~= path or math.abs((lsize or 0) - size) > 0.05 or (lflags or "") ~= flags) then
@@ -1678,22 +1686,27 @@ local function InkFrameFont(frame, on)
 			local sr, sg, sb, sa = frame:GetShadowColor()
 			frame.melloInkFont = { flags = flags or "", shadow = { sr, sg, sb, sa } }
 		end
+		-- (a family of the chat's -- Fonts.lua's Font families -- without its
+		-- outline and shadow; one face and the shadow put out where the
+		-- client has no families)
+		local fonts = MelloUI:GetModule("Fonts")
 		local ok, path, size = pcall(frame.GetFont, frame)
-		if ok and path and size then
+		if ok and path and size and not (fonts and fonts.ChatFace and fonts:ChatFace(frame, path, size, "", true)) then
 			pcall(frame.SetFont, frame, path, size, "")
+			-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
+			local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
+			frame:SetShadowColor(none[1], none[2], none[3], 0)
 		end
-		-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
-		local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
-		frame:SetShadowColor(none[1], none[2], none[3], 0)
 	elseif frame.melloInkFont then
 		local saved = frame.melloInkFont
+		local fonts = MelloUI:GetModule("Fonts")
 		local ok, path, size = pcall(frame.GetFont, frame)
-		if ok and path and size then
+		if ok and path and size and not (fonts and fonts.ChatFace and fonts:ChatFace(frame, path, size, saved.flags, false)) then
 			pcall(frame.SetFont, frame, path, size, saved.flags)
-		end
-		local sh = saved.shadow
-		if sh and sh[1] then
-			frame:SetShadowColor(sh[1], sh[2], sh[3], sh[4] or 1)
+			local sh = saved.shadow
+			if sh and sh[1] then
+				frame:SetShadowColor(sh[1], sh[2], sh[3], sh[4] or 1)
+			end
 		end
 		frame.melloInkFont = nil
 	end
@@ -2328,16 +2341,21 @@ local function PopupFont(f)
 		local sr, sg, sb, sa = f.msgs:GetShadowColor()
 		f.msgs.melloShadow = { sr, sg, sb, sa }
 	end
-	pcall(f.msgs.SetFont, f.msgs, path, size, f.inked and "" or flags)
-	if f.inked then
-		-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
-		local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
-		f.msgs:SetShadowColor(none[1], none[2], none[3], 0)
-	else
-		local sh = f.msgs.melloShadow
-		f.msgs:SetShadowColor(sh[1] or 0, sh[2] or 0, sh[3] or 0, sh[4] or 1)
+	-- (a family of the chat's -- Fonts.lua's Font families: the game's faces
+	-- kept for Chinese and the other alphabets; one face by SetFont where
+	-- the client has no families)
+	if not (fonts and fonts.ChatFace and fonts:ChatFace(f.msgs, path, size, f.inked and "" or flags, f.inked)) then
+		pcall(f.msgs.SetFont, f.msgs, path, size, f.inked and "" or flags)
+		if f.inked then
+			-- no shadow: alpha 0 (in the palette's inner panel, no colour of its own)
+			local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
+			f.msgs:SetShadowColor(none[1], none[2], none[3], 0)
+		else
+			local sh = f.msgs.melloShadow
+			f.msgs:SetShadowColor(sh[1] or 0, sh[2] or 0, sh[3] or 0, sh[4] or 1)
+		end
 	end
-	if f.box and f.box.SetFont then
+	if f.box and f.box.SetFont and not (fonts and fonts.ChatFace and fonts:ChatFace(f.box, path, size, flags, false)) then
 		pcall(f.box.SetFont, f.box, path, size, flags)
 	end
 	-- the names' gems are as big as the font was when their lines were
@@ -2372,11 +2390,15 @@ local function InkPopup(f)
 	-- whisper window follows
 	if not popupFontHooked and _G.ChatFrame1 and _G.ChatFrame1.SetFont then
 		popupFontHooked = true
-		hooksecurefunc(_G.ChatFrame1, "SetFont", function()
+		local function Follow()
 			for _, w in pairs(popups) do
 				PopupFont(w)
 			end
-		end)
+		end
+		hooksecurefunc(_G.ChatFrame1, "SetFont", Follow)
+		-- (the Fonts module puts a family on the chat, no SetFont: its
+		-- 'fonts' Fire after every change, the chat's size menu too)
+		MelloUI:On("fonts", Follow, "whisper windows' font")
 	end
 end
 local popupCount = 0

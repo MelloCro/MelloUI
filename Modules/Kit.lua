@@ -5127,8 +5127,8 @@ Kit.Replacements = {
 	["QuestLog-frame-devider"]                = { kind = "strip", base = "window/divider" },   -- the line under a header
 	["questlog-icon-setting"]                 = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the list's settings button (a 15 x 16 gear glyph): the cog plate (K2), as the dropdown arrows
 	["questlog-quest-glow-yellow"]            = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a quest title's highlight (the game shows it on hover / selection): the plate's hover look
-	["QuestListFilter"]                       = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- MelloUI's Quests panel filter buttons (F7, user 2026-09-21): the plain plate (hover from the button) ...
-	["QuestListFilter-Selected"]              = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... the selected plate on the active filter (from the panel's db.filter)
+	["QuestListFilter"]                       = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- the Quest List's switch on the quest log's count box (the side window's filter buttons were the first, F7, user 2026-09-21), the Auction House's category rows: the plain plate (hover from the button) ...
+	["QuestListFilter-Selected"]              = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... the selected plate (the Auction House's chosen category)
 	-- the guild and communities window (CommunitiesFrame; file art keyed by hand; 2026-09-21)
 	["UI-Background-Rock"]                    = { kind = "picture", piece = "tiles/concrete", crop = "middle", owner = true },   -- ButtonFrameTemplate's rock background: the page stone as a region of the frame
 	["bluemenu-main"]                         = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a communities list entry's background (the sheet's blue plate): the plain plate
@@ -5384,29 +5384,6 @@ do
 		return rails[frame] or known.outer
 	end
 
-	-- the top frame under UIParent a rep really hangs in (a holder's own,
-	-- never the window its melloWindowOf files it under)
-	local function TopOf(f)
-		for _ = 1, 16 do
-			local up = type(f) == "table" and type(f.GetParent) == "function" and f:GetParent() or nil
-			if not up or up == UIParent then
-				return f
-			end
-			f = up
-		end
-		return f
-	end
-
-	-- a plate and a ring of one window (the Quest List's plate is filed
-	-- under the world map, melloWindowOf, but hangs in its own holder: run
-	-- behind the MAP's ring, it started at the map's portrait and covered the
-	-- map's whole title -- user's video, 2026-10-02); a rep without a
-	-- kitParent: one window, as before
-	local function OneWindow(title, ring)
-		local a, b = title.kitParent, ring.kitParent
-		return a == nil or b == nil or TopOf(a) == TopOf(b)
-	end
-
 	RegisterShell = function(frame, shell)
 		local known = Kit.shells[frame] or {}
 		known.outer = shell.outer or known.outer
@@ -5431,7 +5408,7 @@ do
 			if skin and skin.SetTopGems then
 				skin:SetTopGems(false)
 			end
-			if known.ring and OneWindow(known.title, known.ring) then
+			if known.ring then
 				Kit:TitleBehindRing(known.title, known.ring, rail)
 			end
 		end
@@ -5452,8 +5429,8 @@ end
 --                      UI Modifications' questTrackerKit (on unless switched off)
 --   whisper            the whisper popups: as the chat windows ('chat')
 --   services           the Services bar: as the minimap ('minimap')
---   questList          the Quest List beside the world map: while the quest
---                      log's kit (QuestLogPanel) is on
+--   questList          the Quest List, a page of the world map's quest log:
+--                      while the quest log's kit (QuestLogPanel) is on
 --   config, copy       the configurator and the copy window: the reskin (UI
 --                      Modifications on, its reskin switch on; the Voice
 --                      Over overlay's area went with it in 0.16.0: Voice
@@ -7771,16 +7748,13 @@ end)
 
 -- The WINDOW a replacement is in: the top frame under UIParent (a title
 -- container may sit in a page inside the window: the group finder's tabs
--- stayed behind when only the page moved — user, 2026-09-21), or the game
--- window a holder of MelloUI's there stands for (melloWindowOf: the Quest
--- List's beside the world map, 0.15.0 -- its plate and rail are the map's,
--- and the mover drags the map by the plate, as while it was the map's child)
+-- stayed behind when only the page moved — user, 2026-09-21)
 local function WindowOf(frame)
 	local depth = 0
 	while frame and frame ~= UIParent and depth < 6 do
 		local up = frame.GetParent and frame:GetParent()
 		if not up or up == UIParent then
-			return frame.melloWindowOf or frame
+			return frame
 		end
 		frame = up
 		depth = depth + 1
@@ -8052,21 +8026,10 @@ function Kit:Replace(region, opts)
 				if ringX then
 					left = ringX
 				end
-				-- a window docked beside another (Kit:TitleJoin): the plate
-				-- starts on the other's right gem
-				local join, joinX, from
-				if not ringX then
-					join, joinX, from = Kit:TitleJoin(window, self.strip, out)
-					left = from or left
-				end
 				-- the title stays over the window's middle, not the shorter plate's
 				self.strip.textShift = -(left + out) / 2
 				self.strip:ClearAllPoints()
-				if join then
-					self.strip:SetPoint("LEFT", join, "TOPRIGHT", joinX, lift)
-				else
-					self.strip:SetPoint("LEFT", window, "TOPLEFT", left, lift)
-				end
+				self.strip:SetPoint("LEFT", window, "TOPLEFT", left, lift)
 				self.strip:SetPoint("RIGHT", window, "TOPRIGHT", out, lift)
 				self.strip:SetHeight(self.strip.height)
 				local w = window:GetWidth()
@@ -9207,28 +9170,6 @@ function Kit:StripTextOffset(strip)
 		return 0
 	end
 	return (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (strip.scale or self.scale)
-end
-
--- A window docked right of another (window.melloTitleJoin, the frame it
--- docks to: the Quest List's panel beside the world map): its plate starts
--- where the other's ends, its left cap's gem on the other's right one, so
--- the two plates meet at ONE gem (user, 2026-10-02: a gem each, side by
--- side, "the headers are now split"). Returns the frame to anchor to, the x
--- from its TOPRIGHT, and the plate's left end from the window's own left
--- edge (the title's centring and the caps' fit; nil while not laid out).
-function Kit:TitleJoin(window, strip, out)
-	local join = window.melloTitleJoin
-	if type(join) ~= "table" or type(join.GetRight) ~= "function" then
-		return nil
-	end
-	local x = out - 2 * CAP_GEM.x * (strip.scale or self.scale)
-	local okR, right = pcall(join.GetRight, join)
-	local okL, left = pcall(window.GetLeft, window)
-	local from
-	if okR and okL and not Secret(right) and not Secret(left) and type(right) == "number" and type(left) == "number" then
-		from = right - left + x
-	end
-	return join, x, from
 end
 
 function Kit:TitleOnRail(strip)

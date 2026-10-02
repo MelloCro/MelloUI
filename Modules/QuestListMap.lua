@@ -107,16 +107,17 @@ end
 -- cursor, pan and zoom go over the pools every frame, and pool calls made
 -- from MelloUI's code wrote the map's scroll state: the 0.15.0 freeze), and
 -- not among the map's own frames either (the navigation walks those): they
--- hang in a holder of their own (QL.MarksHolder, a strata over the map's:
--- in the panel's holder, a frame buffer drawn all over or all under the
--- map, they were gone each time the map was clicked -- 2026-10-02), which
--- follows the map's show, alpha and scale.
+-- hang in the layer over the map (QL.MapLayer, a strata over the map's: in
+-- 0.18.0's holder beside the map, a frame buffer drawn all over or all under
+-- the map, they were gone each time the map was clicked -- 2026-10-02), which
+-- follows the map's show, alpha and scale; the Quest List's page hangs there
+-- too.
 --   the anchors  one invisible 1-unit texture per mark on the map's canvas,
 --                at its map spot in the canvas's own units: the canvas's pan
 --                and zoom move them with no code at all (textures, not
 --                frames: nothing for the navigation to walk). Laid when the
 --                marks are, and when the canvas changes size
---   the clip     a frame over the map's scroll area in the holder (it clips
+--   the clip     a frame over the map's scroll area in the layer (it clips
 --                what lies outside it), over the map's own pins
 --   the marks    buttons in the clip, each hung on its anchor: one size on
 --                the screen at every zoom, and no work of ours per frame
@@ -169,7 +170,7 @@ local function Clip(map)
 	if clip then
 		return clip
 	end
-	clip = CreateFrame("Frame", nil, QL.MarksHolder())
+	clip = CreateFrame("Frame", nil, QL.MapLayer())
 	clip:SetAllPoints(map.ScrollContainer or map:GetCanvas())
 	if clip.SetClipsChildren then
 		clip:SetClipsChildren(true)
@@ -240,15 +241,15 @@ function Marks.Anchor(map)
 	end
 end
 
--- the clip over the map's own pins: its holder a strata over the map's (the
+-- the clip over the map's own pins: its layer a strata over the map's (the
 -- map's strata read at each lay: the game may change it as the map opens)
 Level = function()
 	local clip = Marks.clip
 	if not clip then
 		return
 	end
-	QL.holder.SyncMarks()
-	local strata = QL.marksHolder:GetFrameStrata()
+	QL.SyncMapLayer()
+	local strata = QL.mapLayer:GetFrameStrata()
 	if clip:GetFrameStrata() ~= strata then
 		clip:SetFrameStrata(strata)
 	end

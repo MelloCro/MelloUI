@@ -1,8 +1,9 @@
 --------------------------------------------------------------------------------
--- MelloUI - Quest List: the panel
+-- MelloUI - Quest List: the page
 --
--- The list attached to the right of the world map. Shares its data and helpers
--- with QuestList.lua through ns.QuestList (QL).
+-- The list as a page of the world map's quest log column, switched with the
+-- log by a button on the column's top row. Shares its data and helpers with
+-- QuestList.lua through ns.QuestList (QL).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -26,16 +27,18 @@ QL.Panel = {}
 -- spacing, columns, hover band and the Classic / Forever stamp
 local QI = MelloUI.QuestInk
 local ROW = QI.ROW
-local LEVEL_SHORTCUT = 4   -- the level check box under the Filter button: hide quests more than 4 (so 5 or more) levels above
+local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
 local PIN_SIZE = 14        -- the map pin on the pinned quest's icon
 -- a quest row's height: the log's spacing round its two fonts as the list
 -- was last laid (Update), the list view's extent and each row's own height
 local rowHeight = QI.RowHeight(12, 12)
+-- the groups the list shows, in the group dropdown's order (the module's
+-- Show Quests For setting, db.filter)
 local FILTERS = {
-	{ key = "all", label = "All" }, { key = "continent", label = "Continent" }, { key = "zone", label = "Zone" }, { key = "class", label = "Class" },
-	{ key = "dungeons", label = "Dungeons" }, { key = "raids", label = "Raids" }, { key = "attunements", label = "Attunements" }, { key = "events", label = "Events" },
+	{ key = "zone", label = "Current zone" }, { key = "continent", label = "Current continent" }, { key = "all", label = "All quests" },
+	{ key = "class", label = "Class quests" }, { key = "dungeons", label = "Dungeons" }, { key = "raids", label = "Raids" },
+	{ key = "attunements", label = "Attunements" }, { key = "events", label = "Events" },
 }
-local BUTTONS_PER_ROW = 4
 
 local function HeaderClick(self)
 	if self.entry and self.entry.header then
@@ -758,581 +761,268 @@ local function Ask()
 end
 
 --------------------------------------------------------------------------------
--- The panel stands beside the world map, outside the map's own frames
--- (0.15.0, the map's freeze in the Gamepad UI). As the map's child it was in
--- every walk the game's gamepad navigation makes of the map (as it opens, on
--- each focus change, for each frame made in it): the panel, its list and its
--- rows, and the list's ScrollTarget read on the way, a field MelloUI's list
--- wrote, so the rest of the walk and the navigation's state after it ran on
--- MelloUI's time. It hangs in a holder of its own under UIParent instead,
--- which stands in for the map as the panel's window: it shows and hides
--- with the map, takes the map's alpha as the map takes it (one flat
--- picture: the map is a frame buffer, and so is the holder), its scale,
--- and the strata and level the panel had as its child (on each show, and
--- each time the map is raised), and it rises when the panel is clicked (a
--- toplevel window, as the map). The kit's window mover drags the map by
--- the panel's title plate, as it did while the panel was the map's child
--- (melloWindowOf: the window the kit files the holder's plate and rail
--- under, Kit.lua's WindowOf). The panel keeps its own shown state for the
--- module (Apply, the module's OnDisable), and its OnShow / OnHide come with
--- the map's as before. Its rows are made as the list needs them: the
--- navigation's climb from a new frame stops at UIParent, so a row made
--- later walks no window.
--- (0.16.0: the holder is the map marks' too -- QuestListMap.lua, the marks'
--- own layer, clipped to the map's scroll area -- one holder beside the map for
--- both, QL.MapHolder: made with whichever needs it first.)
+-- The layer over the map (QL.MapLayer): the map marks' clip (QuestListMap.lua)
+-- and the list's page in the quest log's column (below) hang in it. They are
+-- MelloUI's own frames, never the map's children: as the map's children they
+-- were in every walk the game's gamepad navigation makes of the map (as it
+-- opens, on each focus change, for each frame made in it), and a field
+-- MelloUI's list wrote was read on the way, so the rest of the walk ran on
+-- MelloUI's time (0.15.0, the map's freeze in the Gamepad UI). A plain frame
+-- under UIParent, the whole screen, no mouse, a STRATA over the map's: the
+-- map is a frame buffer, drawn as ONE picture, and two frame buffers in one
+-- strata swap order with every click whatever levels they are given (0.18.0:
+-- the side window's holder was one, and the map's marks in it were gone each
+-- time the map was clicked -- user's video and test, 2026-10-02); a strata
+-- up, the layer is over the map's picture whichever was clicked last (the
+-- map's border, a strata over its canvas, still frames the marks). Its alpha
+-- (the game's fade while the player moves, PlayerMovementFrameFader; UI
+-- Modifications' fade-in), its scale (UI Modifications' saved scale, the
+-- mouse wheel on its mover) and its shown state follow the map's, by
+-- post-hooks only: nothing is written on the map. Made with the page (the
+-- module's enable) or the marks' first lay.
 --------------------------------------------------------------------------------
 
--- a scale on the holder: the panel's backgrounds laid again at the UI's one
--- density with it (Kit:SetFrameScale; only when the scale really changed)
-local function HolderScale(holder, scale)
-	local Kit = MelloUI.Kit
-	if Kit and Kit.SetFrameScale then
-		Kit:SetFrameScale(holder, scale)
-	else
-		holder:SetScale(scale)
-	end
-end
-
--- The map's look and place on the holder, by post-hooks only: nothing is
--- written on the map. The holder is a frame buffer, as the map: each is
--- drawn as ONE picture, all over or all under the other, and which one is
--- over changes with each click on either (a toplevel raise), whatever levels
--- they are given. So the map's quest marks are not in it: they have a holder
--- of their own a STRATA over the map's (QL.MarksHolder; in the panel's holder
--- they were gone each time the map was clicked -- user's video and test,
--- 2026-10-02). Its alpha comes from the game's fade while the player
--- moves (PlayerMovementFrameFader sets it on every frame while the map is
--- open and the player has moved) and from UI Modifications' fade-in: one
--- call on to the holder each time. Its scale from UI Modifications' saved
--- scale and the mouse wheel on its mover. Its level: the map is a toplevel
--- window, raised by a click in it and by the panel manager (Raise, as the
--- panels are laid out), and as its child the panel rose with it.
-local function FollowMap(holder)
-	local map = WorldMapFrame
-	-- the marks' holder (QL.MarksHolder, when made): a strata over the
-	-- map's, its alpha, scale and shown state the map's
-	local function Marks()
-		local marks = QL.marksHolder
-		if not marks then
-			return
-		end
-		local strata = map:GetFrameStrata()
-		strata = QL.STRATA_UP[strata] or strata
-		if marks:GetFrameStrata() ~= strata then
-			marks:SetFrameStrata(strata)
-		end
-		marks:SetAlpha(map:GetAlpha())
-		local scale = map:GetScale()
-		if marks:GetScale() ~= scale then
-			marks:SetScale(scale)
-		end
-		marks:SetShown(map:IsShown())
-	end
-	holder.SyncMarks = Marks
-	-- the map's strata, the holder at the map's level and the panel five
-	-- over it, where it stood as the map's child; `up`: only ever lifted (a
-	-- click on the panel raised it over the map, and there it stays)
-	local function Level(up)
-		local frame = holder.panel
-		local strata = map:GetFrameStrata()
-		if holder:GetFrameStrata() ~= strata then
-			holder:SetFrameStrata(strata)
-		end
-		if frame and frame:GetFrameStrata() ~= strata then
-			frame:SetFrameStrata(strata)
-		end
-		Marks()
-		local level = map:GetFrameLevel()
-		if up and holder:GetFrameLevel() >= level then
-			return
-		end
-		if holder:GetFrameLevel() ~= level then
-			holder:SetFrameLevel(level)
-		end
-		if frame and frame:GetFrameLevel() ~= level + 5 then
-			frame:SetFrameLevel(level + 5)
-		end
-	end
-	holder.Relevel = function()
-		Level(false)
-	end
-	local function Sync()
-		holder:SetAlpha(map:GetAlpha())
-		HolderScale(holder, map:GetScale())
-		Level(false)
-	end
-	-- a click raises the map in the game's own code, no call to hook: the
-	-- panel is lifted after it as the button is let go, while the map shows
-	Perf.SetScript(holder, "OnEvent", function()
-		Level(true)
-	end)
-	Sync()
-	if map:IsShown() then
-		holder:RegisterEvent("GLOBAL_MOUSE_UP")
-	end
-	Perf.HookScript(map, "OnShow", function()
-		Sync()
-		holder:Show()
-		holder:RegisterEvent("GLOBAL_MOUSE_UP")
-	end)
-	Perf.HookScript(map, "OnHide", function()
-		holder:UnregisterEvent("GLOBAL_MOUSE_UP")
-		holder:Hide()
-		Marks()
-	end)
-	Perf.hooksecurefunc(map, "Raise", function()
-		Level(true)
-	end)
-	Perf.hooksecurefunc(map, "SetAlpha", function(_, alpha)
-		holder:SetAlpha(alpha)
-		local marks = QL.marksHolder
-		if marks then
-			marks:SetAlpha(alpha)
-		end
-	end)
-	Perf.hooksecurefunc(map, "SetScale", function(_, scale)
-		HolderScale(holder, scale)
-		Marks()
-	end)
-end
-
--- The one holder beside the map: the whole screen, no mouse, shown while the
--- map is; at the map's strata and level, so the panel and its template's
--- frames are made where they were made as the map's children. A frame
--- buffer, as the map: the map's fade dims the panel as one picture, not each
--- of its layers over the others; the whole screen, so no rail or shade that
--- reaches past the panel is cut. Toplevel, as the map: a click on the panel
--- raises it. And the map's for the kit: melloWindowOf. Its alpha, scale,
--- strata and level follow the map's (FollowMap: now, on each show and as the
--- map is raised). Made the first time the panel or the marks need it.
-function QL.MapHolder()
-	local holder = QL.holder
-	if holder then
-		return holder
-	end
-	holder = CreateFrame("Frame", nil, UIParent)
-	holder:SetAllPoints(UIParent)
-	holder:SetFrameStrata(WorldMapFrame:GetFrameStrata())
-	holder:SetFrameLevel(WorldMapFrame:GetFrameLevel())
-	holder:SetShown(WorldMapFrame:IsShown())
-	if holder.SetIsFrameBuffer then
-		holder:SetIsFrameBuffer(true)
-	end
-	holder:SetToplevel(true)
-	holder.melloWindowOf = WorldMapFrame
-	QL.holder = holder
-	FollowMap(holder)
-	return holder
-end
-
--- the strata one over each (the marks' holder over the map's)
+-- the strata one over each (the layer over the map's)
 QL.STRATA_UP = { BACKGROUND = "LOW", LOW = "MEDIUM", MEDIUM = "HIGH", HIGH = "DIALOG", DIALOG = "FULLSCREEN",
 	FULLSCREEN = "FULLSCREEN_DIALOG", FULLSCREEN_DIALOG = "TOOLTIP" }
 
--- The map's quest marks' own holder (QuestListMap.lua's layer): the whole
--- screen, no mouse, no frame buffer and not toplevel, a STRATA over the
--- map's, so the marks are over the map's picture whichever window was
--- clicked last (the map's border, a strata over its canvas, still frames
--- them). Its alpha, scale and shown state follow the map's with the panel's
--- holder (FollowMap). Made with the marks' first lay, never at login.
-function QL.MarksHolder()
-	local marks = QL.marksHolder
-	if marks then
-		return marks
-	end
-	local holder = QL.MapHolder()
-	marks = CreateFrame("Frame", nil, UIParent)
-	marks:SetAllPoints(UIParent)
-	QL.marksHolder = marks
-	holder.SyncMarks()
-	return marks
-end
-
---------------------------------------------------------------------------------
--- The fold (user, 2026-10-02, the sketch's B: docs/plans/next-update-refs/
--- questlist_fold_sketch.jpg): the panel folds away beside the map by the
--- game's own minimize button on its frame (MaximizeMinimizeButtonFrameTemplate,
--- where the close button stands; the kit's window shell dresses it as any
--- window's), and a bookmark tab on the map's edge unfolds it -- the title
--- plate stood on its side, "Quests" down it and the count under it. Kept in
--- M.db.folded. Folded, the list is still counted for the tab (Update stops
--- before it lays the rows out). The tab hangs in the panel's holder beside
--- the map (never the map's child: the Gamepad UI's walks), made the first
--- time the list folds.
--- (In the game, 2026-10-02: "the fold button is barely visible, and the
--- bookmark is not attached". The button stood in the close button's slot,
--- under the title plate's corner gem: it stands where the map has its own,
--- left of that slot, over the plate. The tab stood off the map's edge by the
--- panel's dock gap: it hangs from the map itself now, its map side on the
--- outer part of the map's rail, as a bookmark laid on a book's edge.)
---------------------------------------------------------------------------------
-
-local Fold = {
-	ACROSS = 30, ALONG = 116,   -- the tab's size stood up: across the map's edge, down it
-	DOWN = 70,                  -- from the map's top edge
-	TUCK = 10,                  -- how far the tab's map side lies on the map's rail
-	OVER = 6,                   -- the fold button's levels over the title container (the kit's plate and gems ride there)
-	TURN = math.pi / 2,         -- stood on its side, read from the bottom up
-	FADE = 0.15,
-	-- the game's look: the panel tab's own three pieces (PanelTabButtonTemplate)
-	GAME = { "uiframe-tab-right", "_uiframe-tab-center", "uiframe-tab-left" },
-	CAP = 30,                   -- a game piece's end along the tab
-	KIT = "tabs/top_mid_open",  -- the kit's: the title plate's middle (TitleBar's strip)
-}
-
--- a texture laid along the tab from `from` (down from its top), `len` long,
--- drawn turned: its own width runs down the tab
-function Fold.Lay(tex, tab, from, len)
-	tex:ClearAllPoints()
-	tex:SetSize(len, Fold.ACROSS)
-	tex:SetPoint("CENTER", tab, "TOP", 0, -(from + len / 2))
-	if tex.SetRotation then
-		tex:SetRotation(Fold.TURN)
-	end
-end
-
--- the tab on the map's edge: its map side on the map's rail (the kit's
--- grows outward by Kit:OuterRailOutset; the game's border stands on the edge)
-function Fold.Dock(tab, painted)
-	local Kit = MelloUI.Kit
-	local out = painted and Kit and Kit.OuterRailOutset and Kit:OuterRailOutset() or 0
-	tab:ClearAllPoints()
-	tab:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", out - Fold.TUCK, -Fold.DOWN)
-end
-
--- the fold button over the window's title plate (the kit's plate and its
--- corner gems ride on the title container's level)
-function Fold.Raise(frame)
-	local mm = frame.MaximizeMinimizeFrame
-	if not mm then
+-- a scale on the layer: the page's backgrounds laid again at the UI's one
+-- density with it (Kit:SetFrameScale; only when the scale really changed)
+local function LayerScale(layer, scale)
+	if layer:GetScale() == scale then
 		return
 	end
-	local tc = frame.TitleContainer
-	local top = frame:GetFrameLevel()
-	if tc and tc:GetFrameLevel() > top then
-		top = tc:GetFrameLevel()
-	end
-	mm:SetFrameLevel(top + Fold.OVER)
-end
-
--- the tab in its look (the Quest List's: the Quest Log's look area): the
--- kit's plate, else the game's tab pieces
-function Fold.Art(tab, painted)
 	local Kit = MelloUI.Kit
-	local pieces = tab.pieces
-	Fold.Dock(tab, painted)
-	if painted and Kit and Kit.Apply and Kit:Apply(pieces[2], Fold.KIT) then
-		Fold.Lay(pieces[2], tab, 0, Fold.ALONG)
-		pieces[1]:Hide()
-		pieces[3]:Hide()
-		pieces[2]:Show()
-		return
-	end
-	local mid = Fold.ALONG - 2 * Fold.CAP
-	for i, tex in ipairs(pieces) do
-		tex.kitPiece, tex.kitName = nil, nil   -- (no Kit Colours walk dresses it again)
-		tex:SetAtlas(Fold.GAME[i], false, nil, true)   -- (resetTexCoords: the kit plate's crop dropped)
-		Fold.Lay(tex, tab, i == 1 and 0 or i == 2 and Fold.CAP or Fold.CAP + mid, i == 2 and mid or Fold.CAP)
-		tex:Show()
-	end
-end
-
--- the count under the tab, its centre half its length below it
-function Fold.PlaceCount(tab)
-	local w = tab.count:GetStringWidth() or 0
-	tab.count:ClearAllPoints()
-	tab.count:SetPoint("CENTER", tab, "BOTTOM", 0, -(w / 2 + 6))
-end
-
-local FoldTabClick = Perf.Shared("OnClick on the Quest List's folded tab", function()
-	local mm = QL.Panel.frame and QL.Panel.frame.MaximizeMinimizeFrame
-	MelloUI:PlayUISound("option_on")
-	if mm then
-		mm:Maximize()   -- (its callback unfolds the panel: one way, as the button)
+	if Kit and Kit.SetFrameScale then
+		Kit:SetFrameScale(layer, scale)
 	else
-		Fold.Set(false)
+		layer:SetScale(scale)
+	end
+end
+
+local function FollowMap(layer)
+	local map = WorldMapFrame
+	-- the map's strata read each time (the game may change it as the map
+	-- opens), its alpha, scale and shown state
+	local function Sync()
+		local strata = map:GetFrameStrata()
+		strata = QL.STRATA_UP[strata] or strata
+		if layer:GetFrameStrata() ~= strata then
+			layer:SetFrameStrata(strata)
+		end
+		layer:SetAlpha(map:GetAlpha())
+		LayerScale(layer, map:GetScale())
+		layer:SetShown(map:IsShown())
+	end
+	QL.SyncMapLayer = Sync
+	Sync()
+	Perf.HookScript(map, "OnShow", Sync)
+	Perf.HookScript(map, "OnHide", Sync)
+	Perf.hooksecurefunc(map, "SetAlpha", function(_, alpha)
+		layer:SetAlpha(alpha)
+	end)
+	Perf.hooksecurefunc(map, "SetScale", function(_, scale)
+		LayerScale(layer, scale)
+	end)
+end
+
+function QL.MapLayer()
+	local layer = QL.mapLayer
+	if layer then
+		return layer
+	end
+	layer = CreateFrame("Frame", nil, UIParent)
+	layer:SetAllPoints(UIParent)
+	QL.mapLayer = layer
+	FollowMap(layer)
+	return layer
+end
+
+--------------------------------------------------------------------------------
+-- The page in the quest log's column (user, 2026-10-02: the Quest List as
+-- "this huge window next to the World map" went; "the quest list merge with
+-- the quest log" -- docs/plans/quest-list-in-log.md). The map's quest column
+-- shows the quest log or the Quest List, switched by one button on the
+-- column's top row where the game has its count box: "Quest List" over the
+-- log, "Quest Log" over the list, the log's count it covers in its tooltip.
+-- The list is a page of MelloUI's own in the layer over the map (above), over
+-- the column's content, and each of its parts stands where the game's stands,
+-- anchored to it: the search box on the game's, the switch on the count box,
+-- the menu button on the gear, the page and its border on the log's scroll
+-- frame and border, the scroll bar where the log has its own
+-- (QI.RowScrollBar). Under the search row: the group dropdown (its text the
+-- list's title) with the done count, a divider and the rows -- the log's own
+-- rows (QuestInk's QI.ROW). It shows while the module is on, the list is
+-- chosen (db.view) and the game shows its quest list: a quest's details (the
+-- game hides its list for them) or a map without the quest log hide it, and
+-- Back brings it again. While it shows, the game's list is faded (its alpha
+-- 0, given back the moment the page goes): no log text through the page while
+-- the map fades as the player moves. The game's frames get nothing else from
+-- it: no key, no anchor of theirs, no script; post-hooks on their show and
+-- hide.
+--------------------------------------------------------------------------------
+
+-- the column's frames: the quest log side panel and its list (the scroll
+-- frame the search row, the count box, the gear and the border hang in)
+local function Column()
+	local qm = QuestMapFrame
+	local qf = qm and qm.QuestsFrame
+	return qm, (qf and qf.ScrollFrame) or QuestScrollFrame
+end
+
+-- the game shows its quest list (their own shown flags: the map's show and
+-- hide reach the page through the layer)
+local function ColumnShown()
+	local qm, sf = Column()
+	return qm ~= nil and sf ~= nil and qm:IsShown() and sf:IsShown()
+end
+
+local faded = false   -- the game's list faded under the page
+
+-- the page, the switch and the fade as the module, the view and the column
+-- say; `off`: the module is going off (its flag may not have moved yet)
+function QL.Panel:Sync(off)
+	local frame = self.frame
+	if not frame then
+		return
+	end
+	local column = (not off and M.isEnabled and ColumnShown()) and true or false
+	local list = column and M.db.view == "list"
+	frame:SetShown(list)
+	local switch = frame.switch
+	switch:SetShown(column)
+	switch:SetText(list and "Quest Log" or "Quest List")
+	local _, sf = Column()
+	if sf and faded ~= list then
+		faded = list
+		sf:SetAlpha(list and 0 or 1)
+	end
+end
+
+-- the column's show and hide (the map opening, a quest's details, Back)
+local SyncColumn = Perf.Shared("the quest log column's show and hide (the Quest List's page)", function()
+	QL.Panel:Sync()
+end, "script")
+
+local SwitchClick = Perf.Shared("OnClick on the Quest List's switch", function()
+	M.db.view = M.db.view == "list" and "log" or "list"
+	MelloUI:PlayUISound("tab")
+	QL.Panel:Sync()
+end, "script")
+
+-- the log's count as the game's count box under the switch says it
+local function LogCount()
+	local fs = _G.QuestLogQuestCount
+	local text = fs and fs.GetText and MelloUI.Safe.Text(fs:GetText())
+	return (text and text ~= "") and text or nil
+end
+
+local SwitchEnter = Perf.Shared("OnEnter on the Quest List's switch", function(self)
+	local count = LogCount()
+	local more = count and ("\n" .. count) or ""
+	if M.db.view == "list" then
+		MelloUI.Widgets.ShowTooltip(self, "Quest Log", "Back to the quests you have taken." .. more, nil, "ANCHOR_RIGHT")
+	else
+		MelloUI.Widgets.ShowTooltip(self, "Quest List", "The quests you can pick up here: who gives them, where, "
+			.. "and how many of them you have done." .. more, nil, "ANCHOR_RIGHT")
 	end
 end, "script")
 
-local FoldTabEnter = Perf.Shared("OnEnter on the Quest List's folded tab", function(tab)
-	MelloUI.Widgets.ShowTooltip(tab, "Quests", "Click to unfold the Quest List beside the map.")
-end, "script")
-
-local FoldTabLeave = Perf.Shared("OnLeave on the Quest List's folded tab", function(tab)
-	if GameTooltip:GetOwner() == tab then
+local SwitchLeave = Perf.Shared("OnLeave on the Quest List's switch", function(self)
+	if GameTooltip:GetOwner() == self then
 		GameTooltip:Hide()
 	end
 end, "script")
 
--- the map opened with the list folded: the count as it is now
-local FoldTabShown = Perf.Shared("OnShow on the Quest List's folded tab", function()
-	QL.Panel:Update()
-end, "script")
+-- the game's list lies under the page (faded): its wheel stops on the page
+local Swallow = Perf.Shared("OnMouseWheel on the Quest List's page", function() end, "script")
 
-function Fold.Tab()
-	if Fold.tab then
-		return Fold.tab
+-- the gear's menu: what the quests start from (they apply to the map pins
+-- too), and the two hides that stood as check boxes beside the side window's
+-- Filter button (user, 2026-09-23)
+local function MenuSetup(_, root)
+	root:CreateTitle("Quests that start from")
+	for _, k in ipairs(QL.START_KINDS) do
+		root:CreateCheckbox(QL.StarterIconMarkup(k.key, 18) .. " " .. k.label,
+			function() return M.db[k.setting] ~= false end,
+			function()
+				MelloUI:NotifySettingChanged(M.name, k.setting, M.db[k.setting] == false)
+			end)
 	end
-	local tab = CreateFrame("Button", "MelloUIQuestListTab", QL.MapHolder())
-	tab:SetSize(Fold.ACROSS, Fold.ALONG)
-	Fold.Dock(tab, false)   -- (on the look's side as the look comes: Fold.Art)
-	tab.pieces = {}
-	for i = 1, 3 do
-		tab.pieces[i] = tab:CreateTexture(nil, "BACKGROUND")
-	end
-	tab.label = tab:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	tab.label:SetPoint("CENTER", tab, "CENTER", 0, 0)
-	tab.label:SetText("Quests")
-	tab.count = tab:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	if tab.label.SetRotation then
-		tab.label:SetRotation(Fold.TURN)
-		tab.count:SetRotation(Fold.TURN)
-	end
-	local Look = MelloUI.Look
-	Look.Text(tab.label, "gold", nil, { area = "questList", font = "fontTitle" })
-	Look.Text(tab.count, "text", 10, { area = "questList" })
-	Look.Watch(tab, Fold.Art, "questList")
-	Perf.SetScript(tab, "OnClick", FoldTabClick)
-	Perf.SetScript(tab, "OnEnter", FoldTabEnter)
-	Perf.SetScript(tab, "OnLeave", FoldTabLeave)
-	Perf.SetScript(tab, "OnShow", FoldTabShown)
-	tab:Hide()
-	Fold.tab = tab
-	return tab
+	root:CreateDivider()
+	-- the "Hide Quests More Than N Levels Above Me" setting at +4 (the red
+	-- ones); off puts it back to no limit, any other value reads as off
+	root:CreateCheckbox("Hide quests 5+ levels above me",
+		function() return tonumber(M.db.levelAbove) == LEVEL_SHORTCUT end,
+		function()
+			MelloUI:NotifySettingChanged(M.name, "levelAbove", tonumber(M.db.levelAbove) ~= LEVEL_SHORTCUT and LEVEL_SHORTCUT or 0)
+		end)
+	root:CreateCheckbox("Hide completed quests",
+		function() return M.db.hideCompleted and true or false end,
+		function()
+			MelloUI:NotifySettingChanged(M.name, "hideCompleted", not M.db.hideCompleted)
+		end)
 end
 
--- the list counted while folded (Update): the tab says it
-function Fold.Count(done, total)
-	local tab = Fold.tab
-	if tab then
-		tab.count:SetText(string.format("%d/%d", done, total))
-		Fold.PlaceCount(tab)
+-- the group dropdown's list: the module's Show Quests For
+local function GroupSetup(_, root)
+	for _, f in ipairs(FILTERS) do
+		root:CreateRadio(f.label, function() return M.db.filter == f.key end, function()
+			MelloUI:NotifySettingChanged(M.name, "filter", f.key)
+		end)
 	end
 end
-
--- folded or open: the panel faded out and the tab in, or back (at once under
--- Reduce Motion, Anim's own rule); the button's state with it
-function Fold.Set(folded)
-	local frame = QL.Panel.frame
-	if not frame then
-		return
-	end
-	folded = folded and true or false
-	M.db.folded = folded
-	local Anim = MelloUI.Anim
-	local mm = frame.MaximizeMinimizeFrame
-	if mm then
-		if folded then
-			mm:Minimize(true, true)   -- (its look only: no callback)
-		else
-			mm:Maximize(true, true)
-		end
-	end
-	if not M.isEnabled then
-		return
-	end
-	local tab = (folded or Fold.tab) and Fold.Tab()
-	if folded then
-		Anim:FadeOut(frame, Fold.FADE)
-		Anim:FadeIn(tab, Fold.FADE)
-	else
-		if tab then
-			Anim:FadeOut(tab, Fold.FADE)
-		end
-		Anim:FadeIn(frame, Fold.FADE)
-	end
-end
-
-QL.Fold = Fold
 
 function QL.Panel:Create()
 	if self.frame then
 		return
 	end
-	local holder = QL.MapHolder()
-	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", holder, "PortraitFrameTemplate")
+	local qm, sf = Column()
+	if not (qm and sf) then
+		return
+	end
+	local layer = QL.MapLayer()
+	local frame = CreateFrame("Frame", "MelloUIQuestListPanel", layer)
 	self.frame = frame
-	frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 2, 0)
-	frame:SetPoint("BOTTOMLEFT", WorldMapFrame, "BOTTOMRIGHT", 2, 0)
-	frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
-	-- (the map's strata, five levels over the map: as its child it stood there)
-	holder.panel = frame
-	holder.Relevel()
-	-- the title plate joins the map's at one gem (Kit:TitleJoin)
-	frame.melloTitleJoin = WorldMapFrame
+	frame:Hide()   -- (Sync shows it)
+	local area = qm.ContentsAnchor or qm
+	frame:SetPoint("TOPLEFT", area, "TOPLEFT")
+	frame:SetPoint("BOTTOMRIGHT", area, "BOTTOMRIGHT")
 	frame:EnableMouse(true)
-	if frame.SetTitle then
-		frame:SetTitle("Quests")
-	end
-	if frame.CloseButton then
-		frame.CloseButton:Hide()
-	end
-	-- the fold (above): the game's minimize button where the map has its
-	-- own, left of the close button's slot (the slot itself sits under the
-	-- title plate's corner gem), over the plate; the kit's window shell
-	-- dresses it (Kit:SkinWindowShell)
-	-- (a client without the template: no fold button, the panel as before)
-	local okMM, mm = pcall(CreateFrame, "Frame", nil, frame, "MaximizeMinimizeButtonFrameTemplate")
-	if okMM and mm and type(mm.SetOnMinimizedCallback) == "function" then
-		if frame.CloseButton then
-			mm:SetPoint("RIGHT", frame.CloseButton, "LEFT", -1, 0)   -- (the map's own anchor: Blizzard_WorldMap.xml)
-		else
-			mm:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -27, 1)
-		end
-		mm:SetOnMinimizedCallback(function()
-			Fold.Set(true)
-		end)
-		mm:SetOnMaximizedCallback(function()
-			Fold.Set(false)
-		end)
-		frame.MaximizeMinimizeFrame = mm
-		Fold.Raise(frame)
-	elseif okMM and mm then
-		mm:Hide()
-	end
-	-- the map opened with the list folded and no tab made yet: made now (and
-	-- the fold button over the plate again: the panel is levelled as the map
-	-- opens)
-	Perf.HookScript(holder, "OnShow", function()
-		Fold.Raise(frame)
-		if M.isEnabled and M.db.folded and not Fold.tab then
-			Fold.Tab():Show()
-		end
-	end)
-	-- Drop the portrait ring: the border art without the circle is a separate
-	-- layout that Blizzard's own helper switches to.
-	if not (ButtonFrameTemplate_HidePortrait and pcall(ButtonFrameTemplate_HidePortrait, frame)) then
-		if frame.PortraitContainer then
-			frame.PortraitContainer:Hide()
-		end
-		if NineSliceUtil and frame.NineSlice then
-			pcall(NineSliceUtil.ApplyLayoutByName, frame.NineSlice, "PortraitFrameTemplateNoPortrait")
-		end
-	end
+	frame:EnableMouseWheel(true)
+	Perf.SetScript(frame, "OnMouseWheel", Swallow)
 
-	-- The quest log's dark book background inside the border.
+	-- the list's area: the log's scroll frame, with its border. The page
+	-- itself, the divider and the count are the page frame's OWN regions,
+	-- under every frame of the page whatever its level (in the game, 2026-10-02:
+	-- on a frame at the rows' and the dropdown's level, the kit's parchment,
+	-- drawn as a region of that frame, covered the rows and the dropdown's
+	-- plate -- "they are there and clickable, just dont see them")
+	local list = CreateFrame("Frame", nil, frame)
+	list:SetAllPoints(sf)
+	frame.list = list
 	frame.bg = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
-	frame.bg:SetPoint("TOPLEFT", 8, -26)
-	frame.bg:SetPoint("BOTTOMRIGHT", -8, 8)
+	frame.bg:SetAllPoints(sf.Background or list)
 	if not pcall(frame.bg.SetAtlas, frame.bg, "QuestLog-main-background") then
 		MelloUI.Widgets.Paint(frame.bg, "innerPanel", "fill", 1)
 	end
+	local okB, border = pcall(CreateFrame, "Frame", nil, list, "QuestLogBorderFrameTemplate")
+	frame.border = okB and border or nil
 
-	-- Filter by what a quest starts from (user, 2026-09-23): a quest giver, a
-	-- mob drop, an item picked up, or not known. Top right, beside the title.
-	local okF, filterButton = pcall(CreateFrame, "DropdownButton", nil, frame, "WowStyle1FilterDropdownTemplate")
-	if not okF then
-		filterButton = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
-		if filterButton.SetDefaultText then
-			filterButton:SetDefaultText("Filter")
-		end
-	end
-	filterButton:SetSize(94, 22)
-	filterButton:SetPoint("TOPRIGHT", -18, -34)
-	if filterButton.Text and filterButton.Text.SetText then
-		filterButton.Text:SetText("Filter")
-	end
-	filterButton:SetupMenu(function(_, root)
-		root:CreateTitle("Quests that start from")
-		for _, k in ipairs(QL.START_KINDS) do
-			root:CreateCheckbox(QL.StarterIconMarkup(k.key, 18) .. " " .. k.label,
-				function() return M.db[k.setting] ~= false end,
-				function()
-					MelloUI:NotifySettingChanged(M.name, k.setting, M.db[k.setting] == false)
-				end)
-		end
-	end)
-	-- the funnel button's reset (the red X) shows when any kind is hidden
-	if filterButton.SetIsDefaultCallback then
-		filterButton:SetIsDefaultCallback(function()
-			for _, k in ipairs(QL.START_KINDS) do
-				if M.db[k.setting] == false then
-					return false
-				end
-			end
-			return true
-		end)
-	end
-	if filterButton.SetDefaultCallback then
-		filterButton:SetDefaultCallback(function()
-			for _, k in ipairs(QL.START_KINDS) do
-				M.db[k.setting] = true
-			end
-			MelloUI:NotifySettingChanged(M.name, "startGiver", true)
-		end)
-	end
-	frame.filterButton = filterButton
-
-	-- Under the Filter button (user, 2026-09-23): a shortcut to the "Hide
-	-- Quests More Than N Levels Above Me" setting. Checked sets it to
-	-- LEVEL_SHORTCUT (hiding quests 5 or more levels above, the red ones);
-	-- unchecked puts it back to no limit. Any other value set in the settings
-	-- shows it unchecked.
-	local check = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-	check:SetSize(22, 22)
-	check:SetPoint("TOPRIGHT", filterButton, "BOTTOMRIGHT", 2, -2)
-	check.label = check:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	check.label:SetPoint("RIGHT", check, "LEFT", -1, 1)
-	check.label:SetText("Hide 5+ levels above me")
-	check:SetHitRectInsets(-(check.label:GetStringWidth() + 4), 0, 0, 0)
-	Perf.SetScript(check, "OnClick", function(self)
-		MelloUI:NotifySettingChanged(M.name, "levelAbove", self:GetChecked() and LEVEL_SHORTCUT or 0)
-		MelloUI:PlayUISound(self:GetChecked() and "option_on" or "option_off")
-	end)
-	Perf.SetScript(check, "OnEnter", function(self)
-		-- (MelloUI's one tooltip: the palette's gold and text)
-		MelloUI.Widgets.ShowTooltip(self, "Hide quests 5+ levels above me",
-			"Leaves out the quests 5 or more levels above your character (the red ones) in the Quests list and on the map. "
-			.. "The same as Hide Quests More Than N Levels Above Me set to +4 in the settings; unchecked, no limit.", nil, "ANCHOR_RIGHT")
-	end)
-	Perf.SetScript(check, "OnLeave", function() GameTooltip:Hide() end)
-	frame.levelCheck = check
-	-- and under it Hide completed (user, 2026-09-23: "should also be somewhere
-	-- there"; it sat under the filter buttons)
-	frame.hide = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-	frame.hide:SetSize(22, 22)
-	frame.hide:SetPoint("TOPRIGHT", check, "BOTTOMRIGHT", 0, 2)
-	frame.hide.text = frame.hide:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	frame.hide.text:SetPoint("RIGHT", frame.hide, "LEFT", -1, 1)
-	frame.hide.text:SetText("Hide completed")
-	frame.hide:SetHitRectInsets(-(frame.hide.text:GetStringWidth() + 4), 0, 0, 0)
-	Perf.SetScript(frame.hide, "OnClick", function(self)
-		M.db.hideCompleted = self:GetChecked() and true or false
-		MelloUI:NotifySettingChanged(M.name, "hideCompleted", M.db.hideCompleted)
-		QL.Panel:Update()
-	end)
-
-	frame.zone = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
-	frame.zone:SetPoint("TOPLEFT", 18, -36)
-	frame.zone:SetPoint("RIGHT", filterButton, "LEFT", -8, 0)
-	frame.zone:SetJustifyH("LEFT")
-	frame.zone:SetWordWrap(false)
-	frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	frame.count:SetPoint("TOPLEFT", frame.zone, "BOTTOMLEFT", 0, -3)
-	frame.count:SetJustifyH("LEFT")
-
-	frame.divider = frame:CreateTexture(nil, "ARTWORK")
-	-- below the count and the two check boxes under the Filter button
-	frame.divider:SetPoint("LEFT", 12, 0)
-	frame.divider:SetPoint("TOP", frame.hide, "BOTTOM", 0, -2)
-	frame.divider:SetPoint("RIGHT", -12, 0)
-	frame.divider:SetHeight(8)
-	if not pcall(frame.divider.SetAtlas, frame.divider, "QuestLog-frame-devider") then
-		MelloUI.Widgets.Paint(frame.divider, "trim", "fill", 0.6)
-		frame.divider:SetHeight(1)
-	end
-
-	-- Search box in the quest log's style. Typing searches every zone.
+	-- the search row: the box on the game's (typing searches every zone), the
+	-- menu on the gear
 	local search = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
-	search:SetPoint("TOPLEFT", frame.divider, "BOTTOMLEFT", 10, -6)
-	search:SetPoint("RIGHT", -16, 0)
-	search:SetHeight(ROW.searchHeight)   -- the log's box (QI.ROW)
+	if sf.SearchBox then
+		search:SetAllPoints(sf.SearchBox)
+	else
+		search:SetPoint("BOTTOMLEFT", sf, "TOPLEFT", 6, 7)
+		search:SetSize(200, ROW.searchHeight)
+	end
 	search:SetAutoFocus(false)
 	if search.Instructions then
 		search.Instructions:SetText("Search quests")
 	end
-	Perf.HookScript(search, "OnTextChanged", function(self, userInput)
+	Perf.HookScript(search, "OnTextChanged", function(_, userInput)
 		if userInput then
 			searched = true
 			Ask()
@@ -1344,36 +1034,69 @@ function QL.Panel:Create()
 		QL.Panel:Update()
 	end)
 	frame.search = search
-
-	-- Filter buttons.
-	frame.filters = {}
-	for i, f in ipairs(FILTERS) do
-		local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-		b:SetSize(84, 22)
-		local column, row = (i - 1) % BUTTONS_PER_ROW, math.floor((i - 1) / BUTTONS_PER_ROW)
-		if column > 0 then
-			b:SetPoint("LEFT", frame.filters[i - 1], "RIGHT", 3, 0)
-		elseif row > 0 then
-			b:SetPoint("TOPLEFT", frame.filters[i - BUTTONS_PER_ROW], "BOTTOMLEFT", 0, -3)
-		else
-			b:SetPoint("TOPLEFT", frame.search, "BOTTOMLEFT", -4, -5)
+	local okM, menu = pcall(CreateFrame, "DropdownButton", nil, frame, "UIPanelIconDropdownButtonTemplate")
+	if not okM then
+		menu = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		menu:SetSize(94, 22)
+		if menu.SetDefaultText then
+			menu:SetDefaultText("Filter")
 		end
-		b:SetText(f.label)
-		b.key = f.key
-		Perf.SetScript(b, "OnClick", function(self)
-			M.db.filter = self.key
-			MelloUI:NotifySettingChanged(M.name, "filter", self.key)
-			QL.Panel:Update()
-		end)
-		frame.filters[i] = b
 	end
-	-- Virtualised list with headers and rows, below the last row of buttons.
-	local lastRowFirst = frame.filters[#frame.filters - ((#frame.filters - 1) % BUTTONS_PER_ROW)]
+	if sf.SettingsDropdown then
+		menu:SetPoint("CENTER", sf.SettingsDropdown, "CENTER")
+	else
+		menu:SetPoint("BOTTOMRIGHT", sf, "TOPRIGHT", 19, 7)
+	end
+	menu:SetupMenu(MenuSetup)
+	frame.menu = menu
+
+	-- the switch on the count box: in the layer, not the page (it shows over
+	-- the log too), over the page's border
+	local switch = CreateFrame("Button", nil, layer, "UIPanelButtonTemplate")
+	local box = _G.QuestLogCount
+	if box then
+		switch:SetAllPoints(box)
+	else
+		switch:SetSize(100, 20)
+		switch:SetPoint("LEFT", search, "RIGHT", 3, 0)
+	end
+	local over = frame.border or frame
+	switch:SetFrameLevel(over:GetFrameLevel() + 10)
+	switch:SetText("Quest List")
+	Perf.SetScript(switch, "OnClick", SwitchClick)
+	Perf.HookScript(switch, "OnEnter", SwitchEnter)
+	Perf.HookScript(switch, "OnLeave", SwitchLeave)
+	switch:Hide()
+	frame.switch = switch
+
+	-- on the page, under the search row: the group the list shows (its text
+	-- the list's title: the zone, "Dungeons", the search) and how many of its
+	-- quests are done, then a divider
+	frame.count = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	frame.count:SetPoint("RIGHT", list, "TOPRIGHT", -10, -21)
+	frame.count:SetJustifyH("RIGHT")
+	local group = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+	group:SetHeight(22)
+	group:SetPoint("TOPLEFT", list, "TOPLEFT", 8, -10)
+	group:SetPoint("RIGHT", frame.count, "LEFT", -8, 0)
+	group:SetupMenu(GroupSetup)
+	frame.group = group
+	frame.divider = frame:CreateTexture(nil, "ARTWORK")
+	frame.divider:SetPoint("TOPLEFT", list, "TOPLEFT", 4, -36)
+	frame.divider:SetPoint("TOPRIGHT", list, "TOPRIGHT", -4, -36)
+	frame.divider:SetHeight(8)
+	if not pcall(frame.divider.SetAtlas, frame.divider, "QuestLog-frame-devider") then
+		MelloUI.Widgets.Paint(frame.divider, "trim", "fill", 0.6)
+		frame.divider:SetHeight(1)
+	end
+
+	-- the rows (headers and quests: one pool), the scroll bar where the log
+	-- has its own
 	frame.scrollBox = CreateFrame("Frame", nil, frame, "WowScrollBoxList")
-	frame.scrollBox:SetPoint("TOPLEFT", lastRowFirst, "BOTTOMLEFT", 2, -6)
-	frame.scrollBox:SetPoint("BOTTOMRIGHT", -30, 14)
+	frame.scrollBox:SetPoint("TOPLEFT", list, "TOPLEFT", 0, -46)
+	frame.scrollBox:SetPoint("BOTTOMRIGHT", list, "BOTTOMRIGHT")
 	frame.scrollBar = CreateFrame("EventFrame", nil, frame, "MinimalScrollBar")
-	QI.RowScrollBar(frame.scrollBar, frame.scrollBox)   -- where the log has its own
+	QI.RowScrollBar(frame.scrollBar, frame.scrollBox)
 	local view = CreateScrollBoxListLinearView()
 	-- (a row's height from the log's fonts as they are when the list is laid:
 	-- Update)
@@ -1388,12 +1111,18 @@ function QL.Panel:Create()
 		end
 	end)
 	ScrollUtil.InitScrollBoxListWithScrollBar(frame.scrollBox, frame.scrollBar, view)
+	-- the rows and the dropdown over the list frame and the kit's frames on
+	-- the page (its parchment's painted edges), under the border (the
+	-- template's level 100) and the switch
+	local rowsLevel = frame:GetFrameLevel() + 3
+	frame.scrollBox:SetFrameLevel(rowsLevel)
+	group:SetFrameLevel(rowsLevel)
 	frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisable")
 	frame.empty:SetPoint("CENTER", frame.scrollBox, "CENTER")
 	frame.empty:SetWidth(240)
 	frame.empty:Hide()
 
-	-- the quest log's and the player's casts counted while the panel shows
+	-- the quest log's and the player's casts counted while the page shows
 	-- (QuestList.lua asks only while the map shows, registered the same way);
 	-- laid out afresh each time it shows, the sums taken then (the map draws
 	-- its pins afresh on showing too)
@@ -1413,17 +1142,17 @@ function QL.Panel:Create()
 		watcher:UnregisterAllEvents()
 		asks, logAsks, casts, searched, handedIn = 0, 0, 0, false, false
 	end)
-	-- a new palette: the rows laid again in it while the panel shows (a
-	-- hidden panel is laid afresh on its next show). Only a palette TABLE
-	-- the list was not laid in: 'palette' goes out for a Kit Colours change
-	-- too, the palette unchanged
+	-- a new palette: the rows laid again in it while the page shows (a hidden
+	-- page is laid afresh on its next show). Only a palette TABLE the list
+	-- was not laid in: 'palette' goes out for a Kit Colours change too, the
+	-- palette unchanged
 	MelloUI:On("palette", function()
 		if laid.palette ~= MelloUI.Palette then
 			QL.Panel:Update()
 		end
 	end, "Quest List panel")
 	-- new fonts (the Fonts module: a face, a size, the outline): the rows laid
-	-- again in them while the panel shows -- their height comes from the
+	-- again in them while the page shows -- their height comes from the
 	-- fonts as the list was laid, and a row a scroll brings into view takes
 	-- the fonts as they are now (no quest event need follow a size change)
 	MelloUI:On("fonts", function()
@@ -1431,31 +1160,19 @@ function QL.Panel:Create()
 			QL.Panel:Update()
 		end
 	end, "Quest List panel")
+
+	-- the page follows the column: its show and hide, the map's included
+	Perf.HookScript(qm, "OnShow", SyncColumn)
+	Perf.HookScript(qm, "OnHide", SyncColumn)
+	Perf.HookScript(sf, "OnShow", SyncColumn)
+	Perf.HookScript(sf, "OnHide", SyncColumn)
 end
 
 function QL.Panel:Apply()
 	if not self.frame then
 		return
 	end
-	self.frame:SetWidth(tonumber(M.db.width) or QL.PANEL_WIDTH)
-	-- (folded: the tab on the map's edge in its place -- the fold, above)
-	local folded = M.db.folded and true or false
-	self.frame:SetShown(M.isEnabled and not folded)
-	-- (the tab made the first time it shows: with the map, never at login)
-	if Fold.tab then
-		Fold.tab:SetShown(M.isEnabled and folded)
-	elseif folded and M.isEnabled and QL.holder and QL.holder:IsShown() then
-		Fold.Tab():Show()
-	end
-	local mm = self.frame.MaximizeMinimizeFrame
-	if mm then
-		if folded then
-			mm:Minimize(true, true)
-		else
-			mm:Maximize(true, true)
-		end
-	end
-	self.frame.levelCheck:SetChecked(tonumber(M.db.levelAbove) == LEVEL_SHORTCUT)
+	self:Sync()
 	self:Update()
 end
 
@@ -1561,21 +1278,13 @@ function QL.Panel:Update(quiet)
 	if not frame or not QL.byZone then
 		return
 	end
-	-- folded: counted for its tab while the map shows it, not laid out
-	local folded = not frame:IsShown()
-	if folded and not (Fold.tab and Fold.tab:IsVisible()) then
+	-- laid while the page shows (the log shown instead: laid afresh as the
+	-- page shows)
+	if not frame:IsShown() then
 		return
 	end
 	local db, data = M.db, QL.Data()
 	QL.SyncTracked()
-	for _, b in ipairs(frame.filters) do
-		-- on the kit (QuestLogPanel) the selection is a plate, not a dimming
-		b:SetAlpha((b.melloKitPlate or b.key == db.filter) and 1 or 0.6)
-	end
-	frame.hide:SetChecked(db.hideCompleted and true or false)
-	if frame.filterButton.ValidateResetState then
-		frame.filterButton:ValidateResetState()
-	end
 
 	local rows, title, groupOf, showZone
 	local term = frame.search and frame.search:GetText() or ""
@@ -1683,10 +1392,6 @@ function QL.Panel:Update(quiet)
 	end
 
 	local entries, done, total = BuildEntries(rows, groupOf, showZone)
-	Fold.Count(done, total)
-	if folded then
-		return
-	end
 	-- besides the entries, a row's look follows the tracked quest (its pin),
 	-- the level (the difficulty colours), the parchment (the ink and the
 	-- stamp) and the quest log's fonts (the Fonts module)
@@ -1703,8 +1408,11 @@ function QL.Panel:Update(quiet)
 	laid.entries, laid.title, laid.done, laid.total, laid.tracked = entries, title, done, total, QL.trackedQuestID
 	laid.level, laid.paper, laid.font, laid.palette = level, paper, font, palette
 	rowHeight = QI.RowHeight(QI.RowFonts())
-	frame.zone:SetText(title)
-	frame.count:SetText(string.format("%d of %d completed", done, total))
+	-- the title on the group dropdown (kept over its selection's label)
+	if frame.group.OverrideText then
+		frame.group:OverrideText(title)
+	end
+	frame.count:SetText(string.format("%d of %d done", done, total))
 	artLaid = artLaid + 1   -- (each row's art set again as it is laid: NewArt)
 	frame.scrollBox:SetDataProvider(CreateDataProvider(entries), ScrollBoxConstants.RetainScrollPosition)
 	if #entries == 0 then
@@ -1719,10 +1427,9 @@ function QL.Panel:Update(quiet)
 		frame.empty:Hide()
 	end
 	-- the page's own texts in ink on the parchment too (user, 2026-09-23: the
-	-- zone, its count, the two check boxes, the empty list's line)
+	-- count, the empty list's line)
 	if not inkLabels then
-		inkLabels = { { frame.zone, "title" }, { frame.count, "text" }, { frame.empty, "text" },
-			{ frame.levelCheck and frame.levelCheck.label, "text" }, { frame.hide and frame.hide.text, "text" } }
+		inkLabels = { { frame.count, "text" }, { frame.empty, "text" } }
 	end
 	for _, l in ipairs(inkLabels) do
 		if l[1] then
@@ -1735,11 +1442,15 @@ function QL.Panel:Update(quiet)
 	end
 end
 
--- Show one group (a dungeon, a raid, a chain) after a click elsewhere: switch
--- the list, fold the other groups, scroll to it and pulse the title and the
--- group's header so the change is seen.
+-- Show one group (a dungeon, a raid, a chain) after a click elsewhere: the
+-- column on the list, the list switched, the other groups folded, scrolled to
+-- it, and the title and the group's header pulsed so the change is seen.
 function QL.Panel:Reveal(key, filter)
 	local frame = self.frame
+	if M.db.view ~= "list" then
+		M.db.view = "list"
+		self:Sync()
+	end
 	if filter and M.db.filter ~= filter then
 		M.db.filter = filter
 		MelloUI:NotifySettingChanged(M.name, "filter", filter)
@@ -1763,12 +1474,12 @@ function QL.Panel:Reveal(key, filter)
 		pcall(frame.scrollBox.ScrollToElementDataIndex, frame.scrollBox, index,
 			ScrollBoxConstants and ScrollBoxConstants.AlignBegin or 0, 0)
 	end
-	-- the title block (zone name and count), not the whole panel
+	-- the title row (the group dropdown and the count), not the whole page
 	if not frame.titleArea then
 		frame.titleArea = CreateFrame("Frame", nil, frame)
-		frame.titleArea:SetPoint("TOPLEFT", frame.zone, "TOPLEFT", -6, 4)
-		frame.titleArea:SetPoint("BOTTOM", frame.count, "BOTTOM", 0, -4)
-		frame.titleArea:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
+		frame.titleArea:SetPoint("TOPLEFT", frame.group, "TOPLEFT", -4, 3)
+		frame.titleArea:SetPoint("BOTTOM", frame.group, "BOTTOM", 0, -3)
+		frame.titleArea:SetPoint("RIGHT", frame.list, "RIGHT", -4, 0)
 	end
 	Pulse(frame.titleArea, 0)
 	return index ~= nil

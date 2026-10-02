@@ -93,7 +93,7 @@ end
 -- size only while it is shown -- and the plate is hidden until hovered. So a
 -- plate kept the size of whatever the row showed first (the 24 px header's
 -- border on a 36 px quest row) and a middle stretched across a width set
--- while it was hidden (the Panel Width setting). It is refitted each time it
+-- while it was hidden (0.18.0's Panel Width setting). It is refitted each time it
 -- is shown instead: it always fits the row the mouse is on.
 local function ShowPlate(rep, shown)
 	rep.object:SetShown(shown and true or false)
@@ -496,7 +496,7 @@ local function SkinList()
 	InkList(true)
 end
 
--- The quest list window (MelloUI's) follows: its rows drawn again; and the
+-- The quest list page (MelloUI's) follows: its rows drawn again; and the
 -- stamp beside a quest's name on the details page (QuestInk's QI.Restamp)
 local function InkQuestListWindow()
 	local QI = MelloUI.QuestInk
@@ -583,10 +583,10 @@ local function SkinExistingPins()
 end
 
 --------------------------------------------------------------------------------
--- MelloUI's own quest list window (Modules/QuestListPanel.lua: the "Quests"
--- panel docked to the map's right, built from the game's templates —
--- PortraitFrameTemplate without the portrait, the quest log's page and
--- divider, a search box, UIPanelButton filters, a check box, a
+-- MelloUI's own quest list page (Modules/QuestListPanel.lua: the Quest List
+-- in the map's quest log column, over the log's own parts and built from the
+-- game's templates -- the quest log's page, border and divider, a search box,
+-- the gear's icon dropdown, a text dropdown, a UIPanelButton switch, a
 -- MinimalScrollBar list whose one pool of buttons serves as headers AND
 -- rows). Skinned with the same rules as the game's quest log (user, 2026-09-21).
 --------------------------------------------------------------------------------
@@ -696,72 +696,48 @@ local function SkinQuestList()
 		return
 	end
 	frame.melloKitHooked = true
-	-- the panel is docked 2 px right of the map: with both outer rails
-	-- growing outward they overlapped (user, 2026-09-21) — spread the two
-	-- by both rails' growth while the skin is on (this window is MelloUI's own)
-	local gap = 2 + 2 * Kit:OuterRailOutset()
-	local function Dock(x)
-		frame:ClearAllPoints()
-		frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", x, 0)
-		frame:SetPoint("BOTTOMLEFT", WorldMapFrame, "BOTTOMRIGHT", x, 0)
-	end
-	skin.questListDock = Dock
-	Dock(gap)
-	Kit:SkinWindowShell(frame, Replace, skin, { noRing = true, body = false })
+	-- the page dressed as the log's column it lies on (BuildSkin's quest log
+	-- side panel, below): its page, its border, the search box, the gear
 	if frame.bg then
-		-- the page fills the window to the outer rail's bevel (the frame's
-		-- body is off, as the page region sits under the frame's holders)
-		Replace(frame.bg, { as = "QuestLog-main-background", rect = frame, inset = Kit:OuterRailInset() })
+		Replace(frame.bg, { as = "QuestLog-main-background" })
+	end
+	local border = frame.border
+	if border and border.Border then
+		Replace(border.Border, { as = "questlog-frame", parent = border, rect = border, alsoFade = { border.TopDetail, border.Shadow } })
 	end
 	if frame.divider then
 		Replace(frame.divider, { as = "QuestLog-frame-devider", rect = frame.divider })
 	end
 	Kit:SkinSearchBox(frame.search, Replace)
-	-- the filter buttons (F7): the plain plate, the selected plate on the
-	-- active filter; the panel's own alpha dimming is off while the skin is on
-	for _, b in ipairs(frame.filters or {}) do
-		if b.Middle then
-			local extra = { b.Left, b.Right }
-			for _, region in ipairs({ b:GetRegions() }) do
-				if region:GetObjectType() == "Texture" and region ~= b.Middle and region ~= b.Left and region ~= b.Right
-					and not region.kitPiece and region:GetDrawLayer() == "HIGHLIGHT" then
-					extra[#extra + 1] = region
-				end
-			end
-			b.melloPlain = Replace(b.Middle, { as = "QuestListFilter", rect = b, button = b, alsoFade = extra })
-			b.melloSelected = Replace(b.Middle, { as = "QuestListFilter-Selected", rect = b, noFade = true })
-			b.melloKitPlate = true
-		end
+	local menu = frame.menu
+	if menu and menu.Icon then
+		Replace(menu.Icon, { as = "questlog-icon-setting", button = menu, rect = menu.Icon, alsoFade = Kit:OtherTextures(menu, menu.Icon) })
 	end
-	local function RefreshFilters()
-		if not active then
-			return
-		end
-		local db = ql.M and ql.M.db
-		for _, b in ipairs(frame.filters or {}) do
-			if b.melloPlain then
-				local selected = db and b.key == db.filter
-				b.melloPlain:SetShown(not selected)
-				b.melloSelected:SetShown(selected and true or false)
-				b:SetAlpha(1)
+	-- the group dropdown: the dropdown plate (D1), as every text dropdown's
+	local group = frame.group
+	if group and group.Background then
+		group.melloRep = Replace(group.Background, { as = "common-dropdown-textholder", rect = group, button = group,
+			alsoFade = { group.Arrow } }) or false
+	end
+	-- the switch on the count box: the list's plain plate (F7), hover from
+	-- the button
+	local b = frame.switch
+	if b and b.Middle then
+		local extra = { b.Left, b.Right }
+		for _, region in ipairs({ b:GetRegions() }) do
+			if region:GetObjectType() == "Texture" and region ~= b.Middle and region ~= b.Left and region ~= b.Right
+				and not region.kitPiece and region:GetDrawLayer() == "HIGHLIGHT" then
+				extra[#extra + 1] = region
 			end
 		end
+		Replace(b.Middle, { as = "QuestListFilter", rect = b, button = b, alsoFade = extra })
 	end
-	skin.refreshFilters = RefreshFilters
-	hooksecurefunc(ql.Panel, "Update", RefreshFilters)
-	RefreshFilters()
-	Kit:SkinCheckButton(frame.hide, Replace, "UI-CheckBox-Up")
-	if frame.levelCheck then
-		Kit:SkinCheckButton(frame.levelCheck, Replace, "UI-CheckBox-Up")   -- the map's "5+ levels above" shortcut
-	end
-	-- the rows' hover, told by the panel (its buttons' scripts are set once
+	-- the rows' hover, told by the page (its buttons' scripts are set once
 	-- and call it; audit, 2026-09-24, rank 18: they were set on every Init,
 	-- and this hooked them again after each one)
 	ql.Panel.OnRowHover = QuestListHover
 	Kit:HookScrollBoxRows(frame.scrollBox, SkinQuestListEntry, function() return active end, true)
 	Kit:SkinScrollBarsIn(frame, Replace)
-	-- (the shade under the list's text, 2026-09-22, is gone: the page is one
-	-- even parchment -- user, 2026-09-23: "remove it")
 end
 
 --------------------------------------------------------------------------------
@@ -867,9 +843,6 @@ function M:RefreshFollowers()
 	Kit:SkinScrollBarsIn(WorldMapFrame, Replace, WorldMapFrame.ScrollContainer)
 	Kit:FitPortrait(Portrait(), skin.ring)
 	SkinQuestList()
-	if skin.refreshFilters then
-		skin.refreshFilters()
-	end
 	-- the Quests panel's plates: Enable shows every rep, but a row's hover
 	-- plate belongs only on the row the mouse is on, a header's plate only
 	-- on a button that shows a header now
@@ -891,9 +864,6 @@ local function Activate()
 	end
 	BuildSkin()
 	active = true
-	if skin.questListDock then
-		skin.questListDock(2 + 2 * Kit:OuterRailOutset())
-	end
 	skin:Show()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
@@ -917,9 +887,6 @@ local function Deactivate()
 	end
 	Kit:UnfitPortrait(Portrait())
 	RefreshPins()
-	if skin.questListDock then
-		skin.questListDock(2)
-	end
 	-- the quest log and the quest list in the game's colours again
 	InkList()
 	if MelloUI.QuestInk then
@@ -928,9 +895,6 @@ local function Deactivate()
 	end
 	local ql = ns.QuestList
 	local frame = ql and ql.Panel and ql.Panel.frame
-	for _, b in ipairs(frame and frame.filters or {}) do
-		b.melloKitPlate = nil
-	end
 	if ql and ql.Panel and ql.Panel.Update and frame then
 		ql.Panel:Update()
 	end

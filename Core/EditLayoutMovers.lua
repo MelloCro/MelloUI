@@ -245,7 +245,7 @@ local function Pivot(entry, l, b, w, h)
 end
 
 -- the frames kept on the screen with it (a frame, a list, or a function
--- giving either: the Quest List beside the map, made on the map's first show)
+-- giving either: a bag window's stack, worked out as it is needed)
 local function WithOf(entry)
 	local with = entry.with
 	if type(with) == "function" then

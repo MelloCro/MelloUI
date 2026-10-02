@@ -295,7 +295,6 @@ function DesignPlaces(info, sw, sh)
     local qt = M:GetModuleDB("QuestTracker")
     if places.questTracker.clearPos then qt.pos = nil end
     qt.maxHeight, qt.width = places.questTracker.maxHeight, places.questTracker.width
-    M:GetModuleDB("QuestList").width = places.questList.width
     -- places.layoutFitFor: one machine's fact, never baked
     STORE_FITTED = Store()
     return { W = W, H = H, verdict = report.verdict, layoutName = report.layoutName, places = places, inputs = inputs }

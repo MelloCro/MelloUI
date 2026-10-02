@@ -484,12 +484,10 @@ local function SharedNote()
 	return EDIT_TEXT.sharedNote
 end
 
--- the world map carries the Quest List beside it (made on the map's first
--- show: looked up when needed)
-local function QuestListBeside()
-	return _G.MelloUIQuestListPanel
-end
-local WITH = { WorldMapFrame = QuestListBeside }
+-- the frames a window carries, kept on the screen with it (the bag stacks,
+-- below; the Quest List is a page inside the world map's own rect since
+-- 0.18.0's side window went)
+local WITH = {}
 
 -- The game's bag windows: the combined one and each bag's own
 local BAG_WINDOWS = { "ContainerFrameCombinedBags" }

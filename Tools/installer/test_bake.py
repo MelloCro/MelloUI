@@ -332,7 +332,7 @@ def main():
     flua, fit = FC.new_world()
     info = FC.source_info()
     inputs = {"positions": {n: pos[n] for n in pos}, "tracker": {"width": 300, "maxHeight": 440, "scale": 1},
-              "questlist": {"width": 380}, "hideBagBar": False, "statsOn": False}
+              "hideBagBar": False, "statsOn": False}
     fitted, places, rep = fit.Fit(fit, FC.to_lua(flua, info), fit.DESIGN_W, fit.DESIGN_H, FC.to_lua(flua, inputs),
                                   FC.to_lua(flua, {"screenW": 3440, "screenH": 1440}))
     rep, places = FC.from_lua(flua, rep), FC.from_lua(flua, places)
@@ -341,8 +341,9 @@ def main():
     # places, and the other entries as they are)
     same = sorted(places["windows"]) == sorted(pos) and all(places["windows"][n] == pos[n] for n in pos)
     check(same, "fitted at the design size, the 12 window places come back unchanged (the moved two as they are)")
+    # (after 0.18.0 the Quest List is a page of the map's quest log: the fit has no width of its own for it)
     check(places["questTracker"]["maxHeight"] == 440 and places["questTracker"]["width"] == 300
-          and places["questList"]["width"] == 380, "the tracker's and the Quest List's sizes are the design's")
+          and "questList" not in places, "the tracker's sizes are the design's; no Quest List width any more")
 
     print("== the Full rules of test_options.py")
     check(len(text) <= 4000, "%d characters (at most 4,000)" % len(text))   # (the macro backup holds 6,000 since MAX_CHUNKS 24)

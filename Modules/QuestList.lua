@@ -25,19 +25,14 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("QuestList")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
--- the panel's width by default, one value: the setting's and the panel's
--- own when none is set (it fell back to 340 there; audit, 2026-09-24,
--- rank 18)
-local PANEL_WIDTH = 380
-
 local M = MelloUI:RegisterModule("QuestList", {
 	title = "Quest List",
-	desc = "Panel next to the world map listing the quests of a zone, how many you have completed, and where each one is picked up.",
+	desc = "A page in the world map's quest log listing the quests of a zone, how many you have completed, and where each one is picked up.",
 	icon = "Interface\\Icons\\INV_Misc_Map_01",
-	flavour = "Every quest of the zone beside the map: who gives it, where, and what is left to do.",
+	flavour = "Every quest of the zone in the map's quest log: who gives it, where, and what is left to do.",
 	group = "Quests and travel", navOrder = 1,
 	role = "feature",
-	area = { key = "questList", follows = "QuestLogPanel" },   -- the panel beside the map: as the quest log
+	area = { key = "questList", follows = "QuestLogPanel" },   -- the page in the quest log's column: as the quest log
 	keep = { "learnedEntrances", "learnedTransports" },   -- pins recorded by hand (older versions kept them here): never in a profile
 	enabledByDefault = true,
 	defaults = {
@@ -50,7 +45,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		otherFaction = false,
 		otherClass = false,
 		levelAbove = 0,
-		width = PANEL_WIDTH,
 		mapPins = true,
 		pinCompleted = false,
 		zoneBadges = true,
@@ -59,7 +53,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		dungeonSummary = true,
 		tipQuestItems = true,
 		tipTurnIn = true,
-		folded = false,   -- (the panel folded away beside the map: its tab on the map's edge)
+		view = "log",     -- (the map's quest column: "log", the game's quest log, or "list", this list)
 	},
 	options = {
 		{ type = "header", name = "List" },
@@ -73,11 +67,11 @@ local M = MelloUI:RegisterModule("QuestList", {
 			{ value = "attunements", label = "Attunements" },
 			{ value = "events", label = "Events" },
 		  },
-		  desc = "Which quests the panel lists. The buttons on the panel switch this as well." },
+		  desc = "Which quests the list shows. The dropdown at the top of the list switches this as well." },
 		{ type = "toggle", key = "hideCompleted", name = "Hide Completed",
 		  desc = "Leave out quests you have already completed instead of greying them." },
 		{ type = "toggle", key = "startGiver", name = "Quests From a Quest Giver",
-		  desc = "List quests picked up from a quest giver or an object (the \"!\"). The Filter button on the panel switches these as well; they apply to the map pins too." },
+		  desc = "List quests picked up from a quest giver or an object (the \"!\"). The gear button on the list switches these as well; they apply to the map pins too." },
 		{ type = "toggle", key = "startDrop", name = "Quests From a Mob Drop",
 		  desc = "List quests that begin with an item dropped by creatures (crossed swords)." },
 		{ type = "toggle", key = "startPickup", name = "Quests From an Item Picked Up",
@@ -91,8 +85,6 @@ local M = MelloUI:RegisterModule("QuestList", {
 		{ type = "slider", key = "levelAbove", name = "Hide Quests More Than N Levels Above Me", min = 0, max = 30, step = 1,
 		  format = function(v) return v == 0 and "no limit" or ("+" .. v) end,
 		  desc = "Leave out quests whose level is more than this many levels above your character. 0 shows everything." },
-		{ type = "slider", key = "width", name = "Panel Width", min = 260, max = 520, step = 10,
-		  desc = "Width of the panel next to the map." },
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
 		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver." },
@@ -119,7 +111,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 
 -- Shared with QuestListPanel.lua and QuestListMap.lua: state and helpers the
 -- three files use together. Everything else stays local to its file.
-local QL = { M = M, PANEL_WIDTH = PANEL_WIDTH }
+local QL = { M = M }
 ns.QuestList = QL
 
 --------------------------------------------------------------------------------
@@ -1526,8 +1518,16 @@ end)
 
 local hooked = false
 
+-- the side window's settings, gone with it after 0.18.0 (its Panel Width
+-- and its fold): a saved value is dropped, so no profile, share string or
+-- backup carries a setting that no longer exists
+local GONE = { "width", "folded" }
+
 function M:OnInit(db)
 	self.db = db
+	for _, key in ipairs(GONE) do
+		db[key] = nil
+	end
 end
 
 function M:OnEnable(db)
@@ -1569,8 +1569,8 @@ function M:OnEnable(db)
 			-- quiet: a map that lists the same quests is not laid out again
 			hooksecurefunc(WorldMapFrame, "OnMapChanged", function() QL.Panel:Update(true) end)
 		end
-		-- the panel is the addon's own frame (a child of the map): its search
-		-- text goes a while after it hides
+		-- the page is the addon's own frame (in the layer over the map): its
+		-- search text goes a while after it hides
 		if QL.Panel.frame then
 			Perf.HookScript(QL.Panel.frame, "OnHide", PanelHidden)
 		end
@@ -1601,11 +1601,9 @@ end
 function M:OnDisable()
 	eventFrame:UnregisterAllEvents()
 	QL.StopOutsideTicker()
+	-- the page and its switch gone, the game's list given back
 	if QL.Panel.frame then
-		QL.Panel.frame:Hide()
-	end
-	if QL.Fold and QL.Fold.tab then
-		QL.Fold.tab:Hide()
+		QL.Panel:Sync(true)
 	end
 	-- off with the map closed, the panel's OnHide never comes: the search
 	-- text goes now (the first search after an enable makes it again)
@@ -1747,7 +1745,7 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		for k, v in pairs(kinds) do parts[#parts + 1] = k .. " " .. v end
 		print("   marks on the map: " .. #marks .. (#marks > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""))
 	end
-	-- the layers: the marks over the map's picture (their holder a strata up), the panel's holder beside it
+	-- the layers: the marks and the page over the map's picture (their layer a strata up)
 	local function Layer(name, f)
 		if f then
 			print(string.format("   %s: %s %d%s%s", name, f:GetFrameStrata(), f:GetFrameLevel(),
@@ -1755,8 +1753,8 @@ SlashCmdList.MELLOQUESTMAP = function(msg)
 		end
 	end
 	Layer("map", WorldMapFrame)
-	Layer("panel's holder", QL.holder)
-	Layer("marks' holder", QL.marksHolder)
+	Layer("layer over the map", QL.mapLayer)
+	Layer("page", QL.Panel.frame)
 	Layer("marks' layer", QL.Marks and QL.Marks.clip)
 	for _, err in ipairs(QL.lastPinErrors) do
 		print("   |cffff4040error|r " .. err)

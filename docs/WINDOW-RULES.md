@@ -540,7 +540,7 @@ kit texture under the cursor (piece, rect, crop, tint, frame level) when a backg
 QuestList, the Custom Scrollable Quest Tracker, Custom Chat etc, so basically
 everything should be lined up and working flawlessly with one another". A
 window MelloUI makes itself (the configurator, the installer, the question
-dialog, the Restock List, the Quest List beside the world map, the Quest
+dialog, the Restock List, the Quest List in the map's quest log, the Quest
 Tracker under the minimap, the whisper popups, the widget column, the
 Route arrow, the Services bar, the copy window) keeps every rule above and
 uses the SAME shared systems as the game's windows. It never carries its own

@@ -40,7 +40,7 @@
 --               positions (UI Modifications' store: the window places; none
 --               when nil), tracker { pos, width, maxHeight, scale } (a width
 --               or maxHeight of 0: the game's tracker's, as QuestTracker
---               reads it), questlist { width }, hideBagBar, statsOn,
+--               reads it), hideBagBar, statsOn,
 --               actionSlots ([slot] = true: the hidden bars that hold an
 --               action are shown), column { kit, shape, border, merge, bar,
 --               groups, barOffset, roundIcons, match, mapW, mapH, fitMap }
@@ -70,7 +70,6 @@
 --                questTracker  { clearPos = true, maxHeight, width }
 --                              (QuestTracker.pos = nil: it hangs on 12:-1;
 --                              a 0 the fit did not have to change stays 0)
---                questList     { width }
 --                auras         { playerPerRow, playerSize } while your buff
 --                              rows stand by the minimap column and the
 --                              inputs' auras.fitRows is on (Auras' Icons
@@ -399,7 +398,7 @@ local WINDOWS = {
 -- overlaps at its screen with these is 'inherited'; a FAIL that these pass
 -- on the same screen is the player's settings, not the screen's size. (The
 -- window places are the player's own: Full's come from its baked profile.)
-local DESIGN_INPUTS = { tracker = { width = 300, maxHeight = 440, scale = 1 }, questlist = { width = 380 } }
+local DESIGN_INPUTS = { tracker = { width = 300, maxHeight = 440, scale = 1 } }
 
 --------------------------------------------------------------------------------
 -- The minimap column of layout E (the refit: since the flip the Quest
@@ -481,7 +480,7 @@ DESIGN_INPUTS.column, DESIGN_INPUTS.auras = Column.DESIGN, Column.DESIGN_AURAS
 -- rows, the Quest Tracker at its own width, your buff rows on the game's buff
 -- bar's place. What that layout overlaps at its own screen with these is
 -- 'inherited' (Inherit, below).
-Column.APPROVED_INPUTS = { tracker = DESIGN_INPUTS.tracker, questlist = DESIGN_INPUTS.questlist,
+Column.APPROVED_INPUTS = { tracker = DESIGN_INPUTS.tracker,
 	column = { kit = true, shape = "square", border = "window", merge = true, bar = true, groups = false, barOffset = -26,
 		roundIcons = true, match = false, mapW = 198, mapH = 198 },
 	auras = { rows = true, attached = false, size = 38, perRow = 12 } }
@@ -764,27 +763,26 @@ local function Truncate(list, n)
 	end
 end
 
--- the whole trial state: the layout, the tracker's and Quest List's sizes,
--- your buff rows' icon size and length, and the lengths of the lists a trial
--- appends to
+-- the whole trial state: the layout, the tracker's size, your buff rows'
+-- icon size and length, and the lengths of the lists a trial appends to
 local function Save(f, buf)
 	local n = SaveLayout(f, buf)
 	local t, a = f.mello.tracker, f.mello.auras
-	buf[n + 1], buf[n + 2], buf[n + 3] = t.width, t.maxHeight, f.mello.questlist.width
-	buf[n + 4], buf[n + 5], buf[n + 6], buf[n + 7] = #f.log, #f.eye, #f.notes, #f.flags
-	buf[n + 8], buf[n + 9] = a.size, a.perRow
+	buf[n + 1], buf[n + 2] = t.width, t.maxHeight
+	buf[n + 3], buf[n + 4], buf[n + 5], buf[n + 6] = #f.log, #f.eye, #f.notes, #f.flags
+	buf[n + 7], buf[n + 8] = a.size, a.perRow
 	return buf
 end
 
 local function Restore(f, buf)
 	local n = RestoreLayout(f, buf)
 	local t, a = f.mello.tracker, f.mello.auras
-	t.width, t.maxHeight, f.mello.questlist.width = buf[n + 1], buf[n + 2], buf[n + 3]
-	a.size, a.perRow = buf[n + 8], buf[n + 9]
-	Truncate(f.log, buf[n + 4])
-	Truncate(f.eye, buf[n + 5])
-	Truncate(f.notes, buf[n + 6])
-	Truncate(f.flags, buf[n + 7])
+	t.width, t.maxHeight = buf[n + 1], buf[n + 2]
+	a.size, a.perRow = buf[n + 7], buf[n + 8]
+	Truncate(f.log, buf[n + 3])
+	Truncate(f.eye, buf[n + 4])
+	Truncate(f.notes, buf[n + 5])
+	Truncate(f.flags, buf[n + 6])
 end
 
 local function CopyInfo(v)
@@ -906,7 +904,6 @@ local function MelloFrom(inputs)
 	local t = type(inputs.tracker) == "table" and inputs.tracker or EMPTY
 	local pos = t.pos
 	local width, height, scale = Num(t.width), Num(t.maxHeight), Num(t.scale)
-	local ql = type(inputs.questlist) == "table" and Num(inputs.questlist.width)
 	-- the minimap column and your buff rows: a missing field, or one that
 	-- cannot be read plainly (secret: tested first), is the design's
 	local c = type(inputs.column) == "table" and inputs.column or EMPTY
@@ -947,7 +944,6 @@ local function MelloFrom(inputs)
 		positions = positions,
 		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y } or nil, width = width or 300, maxHeight = height or 440,
 			gameW = width ~= nil and width <= 0, gameH = height ~= nil and height <= 0, scale = (scale and scale > 0) and scale or 1 },
-		questlist = { width = (ql and ql > 0) and ql or 380 },
 		hideBagBar = inputs.hideBagBar and true or false,
 		statsOn = inputs.statsOn and true or false,
 		bars = BarsFor(inputs),
@@ -3086,8 +3082,9 @@ local function WindowRect(name, p, W, H)
 end
 
 -- the world map (702 x 534, 1035 wide with its quest log, times its store
--- scale) and the Quest List docked on its right (+2), as one rect; nil when
--- the store has no place for the map (the game places it then)
+-- scale; the Quest List is a page of that quest log since 0.18.0's side
+-- window went); nil when the store has no place for the map (the game
+-- places it then)
 local function MapRect(f, withLog)
 	local p = f.mello.positions.WorldMapFrame
 	if not p then
@@ -3096,8 +3093,7 @@ local function MapRect(f, withLog)
 	local s = WindowScale(nil, f.W, f.H, p)
 	local l, t, r, b = AnchorRect(0, 0, f.W, f.H, p.point or "BOTTOMLEFT", p.relPoint or "CENTER", (p.x or 0) * s, (p.y or 0) * s,
 		(702 + (withLog and 333 or 0)) * s, 534 * s)
-	local qr = r + 2 + f.mello.questlist.width
-	return min(l, r + 2), t, max(r, qr), b, s
+	return l, t, r, b, s
 end
 
 local function SortedWindows(P)
@@ -3115,10 +3111,9 @@ end
 -- the left / right edge is held to the 21:9 zone's edge instead; W2, a window
 -- that would leave the screen at its size (times its scale: its store entry's
 -- own, else the game's checkFit) is pulled back by what is missing plus GAP,
--- keeping its anchor. Then the world map + Quest List pair stays on the
--- screen, the Quest List narrower (not below its 260) when the pair is wider
--- than the screen. A map with no place in the store is the game's to place:
--- only the Quest List's width is fitted then (no place is made for the map).
+-- keeping its anchor. Then the world map stays on the screen, with its
+-- quest log open when the screen is wide enough (the Quest List is a page of
+-- that log). A map with no place in the store is the game's to place.
 local function F12Windows(f)
 	local P = f.mello.positions
 	local W, H = f.W, f.H
@@ -3166,7 +3161,6 @@ local function F12Windows(f)
 			Log(f, "F12 windows", "positions." .. name, PlaceText(before) .. " -> " .. PlaceText(p), concat(why, "; "))
 		end
 	end
-	local ql = f.mello.questlist
 	local mp = P.WorldMapFrame
 	local ms = mp and WindowScale(nil, W, H, mp) or 1
 	local function Pull(withLog)
@@ -3180,7 +3174,7 @@ local function F12Windows(f)
 			mp.x = Round1((mp.x or 0) + dx / ms)
 			mp.y = Round1((mp.y or 0) - down / ms)
 			Log(f, "F12 map", "positions.WorldMapFrame", format("moved %.1f, %.1f", dx, 0 - down),
-				format("the map%s and the Quest List stay on the screen together", withLog and " with its quest log" or ""))
+				format("the map%s stays on the screen", withLog and " with its quest log" or ""))
 		end
 	end
 	for pass = 1, 2 do
@@ -3190,27 +3184,17 @@ local function F12Windows(f)
 			local l, t, r, b = MapRect(f, withLog)
 			w, h = r - l, b - t
 		else
-			w, h = 702 + (withLog and 333 or 0) + 2 + ql.width, 534
+			w, h = 702 + (withLog and 333 or 0), 534
 		end
 		if w <= W and h <= H then
 			Pull(withLog)
 			if not withLog then
-				Note(f, format("world map with its quest log open (1035) + Quest List (%d) are wider than %d units: fits with the log closed", ql.width, Int(W)))
+				Note(f, format("world map with its quest log open (1035) is wider than %d units: fits with the log closed", Int(W)))
 			end
 			return
 		end
 	end
-	local room = floor((W - 702 * ms - 2) / 10) * 10
-	if room >= 260 then
-		local old = ql.width
-		ql.width = min(old, room)
-		Log(f, "F12 map", "QuestList.width", format("%d -> %d", old, ql.width), "map + Quest List fit the width")
-		Eye(f, format("Quest List %d wide (from %d)", ql.width, old))
-		Pull(false)
-		Note(f, format("world map with its quest log open (1035 wide, the game's own panel) + the Quest List do not fit %d units", Int(W)))
-	else
-		Flag(f, format("world map + Quest List cannot fit %d units", Int(W)))
-	end
+	Flag(f, format("the world map cannot fit %d units", Int(W)))
 end
 
 --------------------------------------------------------------------------------
@@ -3282,8 +3266,8 @@ local function CheckAll(f)
 		local withLog = pass == 2
 		local l, t, r, b = MapRect(f, withLog)
 		if l and Off(l, t, r, b, W, H) then
-			rep.windows[#rep.windows + 1] = format("world map%s + Quest List %d L%.0f R%.0f (screen %.0f)", withLog and " with its quest log" or "",
-				f.mello.questlist.width, l, r, W)
+			rep.windows[#rep.windows + 1] = format("world map%s L%.0f R%.0f (screen %.0f)", withLog and " with its quest log" or "",
+				l, r, W)
 		end
 	end
 	for _, name in ipairs(SortedWindows(P)) do
@@ -3490,7 +3474,6 @@ local function Core(info, W, H, inputs, opts, job)
 		windows = windows,
 		questTracker = { clearPos = true, maxHeight = (t.gameH and t.maxHeight == t.startH) and 0 or t.maxHeight,
 			width = (t.gameW and t.width == t.startW) and 0 or t.width },
-		questList = { width = f.mello.questlist.width },
 		-- your buff rows by the column: Icons Per Row and Icon Size as fitted
 		-- (only for a caller that writes them: auras.fitRows)
 		auras = (Column.Attached(f) and f.mello.auras.fit) and { playerPerRow = f.mello.auras.perRow, playerSize = f.mello.auras.size } or nil,
@@ -3578,8 +3561,8 @@ local function KeyOf(info, W, H, inputs, opts, job)
 	end
 	local m = MelloFrom(inputs)
 	local t = m.tracker
-	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s|%s", tostring(t.width), tostring(t.maxHeight), tostring(t.scale),
-		tostring(t.pos and t.pos.x), tostring(t.pos and t.pos.y), tostring(m.questlist.width), tostring(m.hideBagBar), tostring(m.statsOn))
+	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s", tostring(t.width), tostring(t.maxHeight), tostring(t.scale),
+		tostring(t.pos and t.pos.x), tostring(t.pos and t.pos.y), tostring(m.hideBagBar), tostring(m.statsOn))
 	parts[#parts + 1] = concat(m.bars, ",")
 	local c, a = m.column, m.auras
 	parts[#parts + 1] = format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", tostring(c.kit), c.shape, c.border, tostring(c.merge), tostring(c.bar),
@@ -3777,7 +3760,6 @@ function LayoutFit:Inputs(read)
 			size = tonumber(read("Auras", "playerSize")), perRow = tonumber(read("Auras", "playerPerRow")) },
 		tracker = { pos = type(pos) == "table" and { x = pos.x, y = pos.y } or nil, width = tonumber(read("QuestTracker", "width")),
 			maxHeight = tonumber(read("QuestTracker", "maxHeight")), scale = tonumber(read("QuestTracker", "scale")) },
-		questlist = { width = tonumber(read("QuestList", "width")) },
 		hideBagBar = (read("Tweaks") and read("Tweaks", "hideBagBar")) and true or false,
 		statsOn = read("Stats") and true or false,
 		actionSlots = self:ActionSlots(),

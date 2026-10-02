@@ -320,6 +320,8 @@ local function IsFontObject(value)
 	return ok and objectType == "Font"
 end
 
+local Remember   -- (below)
+
 local function DiscoverFontObjects()
 	if fontObjects then
 		return fontObjects
@@ -339,10 +341,228 @@ local function DiscoverFontObjects()
 			end
 		end
 	end
+	-- every one read before any is changed (the first ApplyAll / RestoreAll
+	-- asks): a family's members as the game made them, and which members two
+	-- objects share (Font families, below). The light fonts first, then the
+	-- dark ink ones, the chat's last: a member they share is a light font's
+	-- (the outline and the face most of its sharers want)
+	local function Pass(object)
+		if chatObjects[object] then
+			return 3
+		end
+		local ok, r, g, b = pcall(object.GetTextColor, object)
+		r, g, b = ok and SafeNumber(r), ok and SafeNumber(g), ok and SafeNumber(b)
+		return (r and g and b and 0.299 * r + 0.587 * g + 0.114 * b < 0.5) and 2 or 1
+	end
+	for pass = 1, 3 do
+		for _, entry in ipairs(fontObjects) do
+			if Pass(entry.object) == pass then
+				Remember(entry.object)
+			end
+		end
+	end
 	return fontObjects
 end
 
-local function Remember(object)
+--------------------------------------------------------------------------------
+-- Font families (users' report, 2026-10-02: Chinese in the chat drawn as
+-- boxes with this module on)
+--
+-- The game's fonts are font FAMILIES: a face per alphabet (Latin, Korean,
+-- Simplified and Traditional Chinese, Cyrillic), and the client draws each
+-- letter in its alphabet's member -- a Chinese name in an English client in
+-- the Chinese face. SetFont with one file, the game's own included, makes a
+-- font that one face, and the letters it lacks are boxes (the test card in
+-- game: a family made with CreateFontFamily, or a family with only its Latin
+-- member changed, keeps them). So:
+--   a game font object  its Latin member takes the face, and its Cyrillic one
+--                       when the face has Cyrillic letters (the game's own
+--                       Cyrillic member draws them spaced out); every member
+--                       the size and the outline; nothing else is touched.
+--                       Many game fonts SHARE their members (one inherits
+--                       another's): such a font follows the one it shares
+--                       with, and takes a family of its own only when it
+--                       wants another face, size or outline (the chat's font
+--                       beside the numbers' one, a dark ink font), with its
+--                       own alignment, indent, spacing, colour and shadow put
+--                       back (the first cut gave every sharing font one with
+--                       the chat's left alignment: the Game Menu's buttons
+--                       and the cast bar's text went left -- user, 2026-10-02)
+--   a frame of the chat a family of our own (a chat window, a whisper window
+--                       and its answer box): the face for Latin (and
+--                       Cyrillic), the chat font's own faces for the other
+--                       alphabets, each member's shadow and colour as the
+--                       chat font's; made once per face, size, flags and
+--                       shadow (FitLineFonts asks after every redraw: a
+--                       lookup, nothing made)
+-- A client without families (no GetFontObjectForAlphabet / CreateFontFamily)
+-- keeps SetFont. (Korean letters are boxes in this client with or without
+-- MelloUI: it has no Korean face.)
+--------------------------------------------------------------------------------
+
+local Family = {
+	ALPHABETS = { "roman", "korean", "simplifiedchinese", "traditionalchinese", "russian" },
+	-- faces with Cyrillic letters: the fonts MelloUI ships (read from their
+	-- files, 2026-10-02) and the game's Arial Narrow (its own Cyrillic member)
+	CYRILLIC = { "notosans", "alegreya", "ebgaramond", "sourceserif4", "spectral", "prototype", "arialn" },
+	made = setmetatable({}, { __mode = "k" }),      -- [base members][face][size][flags][1 shadow / 2 none] = family
+	owner = setmetatable({}, { __mode = "k" }),     -- [member] = the game font object it was first read from
+	count = 0,
+}
+
+function Family.Cyrillic(path)
+	local lower = type(path) == "string" and path:lower() or ""
+	for _, name in ipairs(Family.CYRILLIC) do
+		if lower:find(name, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+-- a font's members as they are now, by alphabet: { member, path, size,
+-- flags }; nil for a font of one face (a member the font hands out for every
+-- alphabet is that one face: kept once, as Latin), or a client without
+-- families
+function Family.Read(object)
+	if type(object) ~= "table" or type(object.GetFontObjectForAlphabet) ~= "function" then
+		return nil
+	end
+	local list, seen
+	for _, alphabet in ipairs(Family.ALPHABETS) do
+		local ok, member = pcall(object.GetFontObjectForAlphabet, object, alphabet)
+		if ok and type(member) == "table" and member ~= object and type(member.GetFont) == "function"
+			and not (seen and seen[member]) then
+			local okF, path, size, flags = pcall(member.GetFont, member)
+			path = okF and SafeText(path) or nil
+			size = okF and SafeNumber(size) or nil
+			if path and size then
+				list, seen = list or {}, seen or {}
+				seen[member] = true
+				list[alphabet] = { member = member, path = path, size = size, flags = okF and SafeText(flags) or "" }
+			end
+		end
+	end
+	-- (one member only: a font of one face)
+	if not (list and list.roman) or not (list.korean or list.simplifiedchinese or list.traditionalchinese or list.russian) then
+		return nil
+	end
+	return list
+end
+
+-- each member's shadow and colour, read when a family is made from them
+-- (only then: most fonts never need them)
+function Family.Looks(members)
+	for _, m in pairs(members) do
+		if not m.shadow then
+			local member = m.member
+			local okO, x, y = pcall(member.GetShadowOffset, member)
+			local okS, sr, sg, sb, sa = pcall(member.GetShadowColor, member)
+			local okC, r, g, b, a = pcall(member.GetTextColor, member)
+			m.shadow = { okO and SafeNumber(x) or 0, okO and SafeNumber(y) or 0, okS and SafeNumber(sr) or 0,
+				okS and SafeNumber(sg) or 0, okS and SafeNumber(sb) or 0, okS and SafeNumber(sa) or 0 }
+			m.colour = { okC and SafeNumber(r) or 1, okC and SafeNumber(g) or 1, okC and SafeNumber(b) or 1,
+				okC and SafeNumber(a) or 1 }
+		end
+	end
+end
+
+-- the file a member takes: the face for Latin, and for Cyrillic when the face
+-- (not the game's own Latin face) has those letters; else its own
+function Family.FileFor(alphabet, own, face, roman)
+	if alphabet == "roman" then
+		return face
+	end
+	if alphabet == "russian" and face ~= roman and Family.Cyrillic(face) then
+		return face
+	end
+	return own
+end
+
+-- a game font object's members: the face, the size share and the flags
+function Family.Set(members, face, scale, FlagsOf)
+	local roman = members.roman.path
+	for alphabet, m in pairs(members) do
+		pcall(m.member.SetFont, m.member, Family.FileFor(alphabet, m.path, face, roman),
+			math.max(6, math.floor(m.size * scale + 0.5)), FlagsOf(m.flags))
+	end
+end
+
+function Family.Restore(members)
+	for _, m in pairs(members) do
+		pcall(m.member.SetFont, m.member, m.path, m.size, m.flags)
+	end
+end
+
+local function Slot(t, k)
+	local v = t[k]
+	if not v then
+		v = {}
+		t[k] = v
+	end
+	return v
+end
+
+-- a family of our own from a base's members: the face on Latin (and
+-- Cyrillic), `size` for Latin and each other member at its own share of it,
+-- the flags on all, each member's shadow and colour as the base's (noShadow:
+-- none), and the region's own alignment, wrapped-line indent and line
+-- spacing (the chat window keeps them on its font object: a font object's
+-- own is centred -- the chat's lines came out centred, user 2026-10-02).
+-- nil without families.
+function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, indent, spacing)
+	if type(CreateFontFamily) ~= "function" or not (base and base.roman) or type(face) ~= "string" then
+		return nil
+	end
+	size = math.max(6, math.floor((tonumber(size) or base.roman.size) + 0.5))
+	flags = flags or ""
+	justifyH = type(justifyH) == "string" and justifyH or "LEFT"
+	justifyV = type(justifyV) == "string" and justifyV or "MIDDLE"
+	indent = indent and true or false
+	spacing = type(spacing) == "number" and spacing or 0
+	local slot = Slot(Slot(Slot(Family.made, base), face), size)
+	slot = Slot(Slot(Slot(Slot(Slot(slot, flags), justifyH), justifyV), indent), spacing)
+	local kind = noShadow and 2 or 1
+	if slot[kind] then
+		return slot[kind]
+	end
+	Family.Looks(base)
+	local list = {}
+	for _, alphabet in ipairs(Family.ALPHABETS) do
+		local m = base[alphabet]
+		if m then
+			list[#list + 1] = { alphabet = alphabet, file = Family.FileFor(alphabet, m.path, face, base.roman.path),
+				height = math.max(6, math.floor(size * m.size / base.roman.size + 0.5)), flags = flags }
+		end
+	end
+	Family.count = Family.count + 1
+	local ok, fam = pcall(CreateFontFamily, "MelloUIFontFamily" .. Family.count, list)
+	if not (ok and type(fam) == "table") then
+		return nil
+	end
+	pcall(fam.SetJustifyH, fam, justifyH)
+	pcall(fam.SetJustifyV, fam, justifyV)
+	pcall(fam.SetIndentedWordWrap, fam, indent)
+	pcall(fam.SetSpacing, fam, spacing)
+	for _, alphabet in ipairs(Family.ALPHABETS) do
+		local m = base[alphabet]
+		local okM, member = pcall(fam.GetFontObjectForAlphabet, fam, alphabet)
+		if m and okM and type(member) == "table" then
+			local sh, c = m.shadow, m.colour
+			pcall(member.SetShadowOffset, member, sh[1], sh[2])
+			pcall(member.SetShadowColor, member, sh[3], sh[4], sh[5], noShadow and 0 or sh[6])
+			pcall(member.SetTextColor, member, c[1], c[2], c[3], c[4])
+			pcall(member.SetJustifyH, member, justifyH)
+			pcall(member.SetJustifyV, member, justifyV)
+			pcall(member.SetIndentedWordWrap, member, indent)
+			pcall(member.SetSpacing, member, spacing)
+		end
+	end
+	slot[kind] = fam
+	return fam
+end
+
+Remember = function(object)
 	if originals[object] then
 		return originals[object]
 	end
@@ -350,8 +570,79 @@ local function Remember(object)
 	if not ok or not path then
 		return nil
 	end
-	originals[object] = { path = path, size = size or 12, flags = flags or "" }
+	local members = Family.Read(object)
+	local shared = false
+	if members then
+		-- (its Latin member another font's already: it follows that one)
+		local first = Family.owner[members.roman.member]
+		shared = first ~= nil and first ~= object
+		for _, m in pairs(members) do
+			if not Family.owner[m.member] then
+				Family.owner[m.member] = object
+			end
+		end
+	end
+	originals[object] = { path = path, size = size or 12, flags = flags or "", members = members, shared = shared,
+		owner = shared and Family.owner[members.roman.member] or nil }
 	return originals[object]
+end
+
+-- the chat font's members as the game made them: the base of the chat's own
+-- families
+function Family.ChatBase()
+	local chat = _G.ChatFontNormal
+	local original = chat and Remember(chat)
+	return original and original.members
+end
+
+-- a font object's own look, as the game made it: what a family put on it
+-- would replace (read once, the first time it needs a family)
+function Family.Look(object)
+	local okC, r, g, b, a = pcall(object.GetTextColor, object)
+	local okO, x, y = pcall(object.GetShadowOffset, object)
+	local okS, sr, sg, sb, sa = pcall(object.GetShadowColor, object)
+	local okH, jh = pcall(object.GetJustifyH, object)
+	local okV, jv = pcall(object.GetJustifyV, object)
+	local okI, indent = pcall(object.GetIndentedWordWrap, object)
+	local okP, spacing = pcall(object.GetSpacing, object)
+	return { colour = okC and SafeNumber(r) and { r, g, b, SafeNumber(a) or 1 } or nil,
+		offset = okO and SafeNumber(x) and SafeNumber(y) and { x, y } or nil,
+		shadow = okS and SafeNumber(sr) and { sr, sg, sb, SafeNumber(sa) or 1 } or nil,
+		justifyH = okH and SafeText(jh) or nil, justifyV = okV and SafeText(jv) or nil,
+		indent = okI and indent == true, spacing = okP and SafeNumber(spacing) or nil }
+end
+
+-- a font object that shares its members and wants another face, size or
+-- outline than the one it shares with: a family of its own, made with its
+-- own alignment, indent and spacing, and its colour and shadow put back after
+function Family.Own(object, original, face, size, flags)
+	if type(object.SetFontObject) ~= "function" then
+		return false
+	end
+	original.look = original.look or Family.Look(object)
+	local l = original.look
+	local fam = Family.Make(original.members, face, size, flags, false, l.justifyH or "CENTER", l.justifyV or "MIDDLE",
+		l.indent, l.spacing)
+	if not fam then
+		return false
+	end
+	pcall(object.SetFontObject, object, fam)
+	if l.colour then
+		pcall(object.SetTextColor, object, l.colour[1], l.colour[2], l.colour[3], l.colour[4])
+	end
+	if l.offset then
+		pcall(object.SetShadowOffset, object, l.offset[1], l.offset[2])
+	end
+	if l.shadow then
+		pcall(object.SetShadowColor, object, l.shadow[1], l.shadow[2], l.shadow[3], l.shadow[4])
+	end
+	pcall(object.SetJustifyH, object, l.justifyH or "CENTER")
+	pcall(object.SetJustifyV, object, l.justifyV or "MIDDLE")
+	if l.spacing then
+		pcall(object.SetSpacing, object, l.spacing)
+	end
+	pcall(object.SetIndentedWordWrap, object, l.indent and true or false)
+	return true
 end
 
 -- The face for a font object: its role's choice, else its own.
@@ -408,12 +699,47 @@ local function ApplyToObject(object)
 	end
 	local scale = ScaleFor(chatObjects[object] and "fontChat" or RoleFor(original.path))
 	local size = math.max(6, math.floor(original.size * scale + 0.5))
-	pcall(object.SetFont, object, FontFor(object), size, EffectiveFlags(object, original.flags))
+	local face = FontFor(object)
+	local flags = EffectiveFlags(object, original.flags)
+	-- a family: its members (Font families, above), else one face
+	if original.members and not original.shared then
+		Family.Set(original.members, face, scale, function(own)
+			return EffectiveFlags(object, own)
+		end)
+		return
+	end
+	if original.members then
+		-- sharing its members: it follows the font it shares them with, which
+		-- changes them, unless it wants another face, size or outline
+		local owner = original.owner
+		local oo = owner and Remember(owner)
+		if not original.own and oo and FontFor(owner) == face
+			and ScaleFor(chatObjects[owner] and "fontChat" or RoleFor(oo.path)) == scale
+			and EffectiveFlags(owner, oo.flags) == flags then
+			return
+		end
+		original.own = Family.Own(object, original, face, size, flags) or nil
+		if original.own then
+			return
+		end
+	end
+	pcall(object.SetFont, object, face, size, flags)
 end
 
 local function RestoreObject(object)
 	local original = originals[object]
-	if original then
+	if not original then
+		return
+	end
+	if original.members and not original.shared then
+		Family.Restore(original.members)
+	elseif original.members then
+		-- (a sharer back with its owner's members, unless it took a family of
+		-- its own: that one in the game's faces then)
+		if original.own then
+			Family.Own(object, original, original.path, original.size, original.flags)
+		end
+	else
 		pcall(object.SetFont, object, original.path, original.size, original.flags)
 	end
 end
@@ -586,7 +912,7 @@ local function ApplyChatWindow(frame)
 		flags = ""
 	end
 	local face, size = ChatWindowFace(frame, original, frame ~= _G.COMBATLOG and ChatOnParchment())
-	pcall(frame.SetFont, frame, face, size, flags or original.flags)
+	M:ChatFace(frame, face, size, flags or original.flags, frame.melloInkFont ~= nil)
 end
 
 local function ApplyChatWindows()
@@ -605,6 +931,8 @@ local function ApplyChatWindows()
 				end
 				if M.isEnabled then
 					ApplyChatWindow(chatFrame)
+					-- (the chat's family on: the whisper windows follow, Chat.lua)
+					MelloUI:Fire("fonts")
 				end
 			end
 		end)
@@ -626,13 +954,52 @@ function M:ChatWindowFont(frame, onPaper)
 	return ChatWindowFace(frame, original, onPaper)
 end
 
+-- The chat's face on one of its frames (a chat window, a whisper window, its
+-- answer box: Chat.lua too, with this module on or off): a family of our own
+-- (Font families, above), the game's faces kept for the other alphabets; one
+-- face by SetFont where the client has no families. True when a family was
+-- put on.
+function M:ChatFamily(face, size, flags, noShadow, justifyH, justifyV, indent, spacing)
+	return Family.Make(Family.ChatBase(), face, size, flags, noShadow, justifyH, justifyV, indent, spacing)
+end
+
+-- whether the client has families (and the chat font is one)
+function M:HasFamilies()
+	return type(CreateFontFamily) == "function" and Family.ChatBase() ~= nil
+end
+
+function M:ChatFace(region, face, size, flags, noShadow)
+	if not (region and face and size) then
+		return false
+	end
+	-- (the region's alignment, indent and spacing kept: the chat window's
+	-- are LEFT and indented, on the copy of its font object the game made
+	-- for it -- ChatFrameOverrides.lua's OnLoad)
+	local okH, justifyH = pcall(region.GetJustifyH, region)
+	local okV, justifyV = pcall(region.GetJustifyV, region)
+	local okI, indent = pcall(region.GetIndentedWordWrap, region)
+	local okS, spacing = pcall(region.GetSpacing, region)
+	local fam = type(region.SetFontObject) == "function"
+		and self:ChatFamily(face, size, flags, noShadow, okH and SafeText(justifyH), okV and SafeText(justifyV),
+			okI and indent == true, okS and SafeNumber(spacing))
+	if fam then
+		local okO, now = pcall(region.GetFontObject, region)
+		if not (okO and now == fam) then
+			pcall(region.SetFontObject, region, fam)
+		end
+		return true
+	end
+	pcall(region.SetFont, region, face, size, flags or "")
+	return false
+end
+
 local function RestoreChatWindows()
 	for i = 1, (NUM_CHAT_WINDOWS or 10) do
 		local frame = _G["ChatFrame" .. i]
 		local original = frame and originals[frame]
 		if original then
 			local _, _, flags = frame:GetFont()
-			pcall(frame.SetFont, frame, original.path, ChatBaseSize(frame, original), flags or original.flags)
+			M:ChatFace(frame, original.path, ChatBaseSize(frame, original), flags or original.flags, frame.melloInkFont ~= nil)
 		end
 	end
 end
@@ -1037,3 +1404,4 @@ function M:OnSettingChanged(key, value, db)
 end
 
 MelloUI:Profile("Fonts", "parchment panel walk", OnParchmentPanelUpdated)
+
