@@ -1041,7 +1041,7 @@ end
 
 --------------------------------------------------------------------------------
 -- /chdump [n] [frames|reps]: a chat window's art (n = 1 by default). Opens
--- the copy window.
+-- the copy window. Also /chdump tabs, shade, edit (below).
 --------------------------------------------------------------------------------
 SLASH_MELLOCHDUMP1 = "/chdump"
 -- /chdump tabs: every chat tab against its window and the dock -- parent,
@@ -1109,8 +1109,85 @@ local function DumpShade()
 	end
 end
 
+-- /chdump edit: the main window's edit box and what the game lays its text
+-- by (ChatFrameEditBoxMixin:UpdateHeader: the text's left inset is 15 + the
+-- header's width + its suffix's; a header measured wider than half the box
+-- is cut to half, the suffix shown -- the text then starts mid-line); every
+-- read guarded (a secret or refused one prints "?")
+local function DumpEdit()
+	local cf = DEFAULT_CHAT_FRAME
+	local box = cf and cf.editBox
+	if not box then
+		MelloUI:Print("no edit box")
+		return
+	end
+	local Num = MelloUI.Safe.Number
+	local function N(obj, method, ...)
+		if not (obj and obj[method]) then
+			return "-"
+		end
+		local ok, v = pcall(obj[method], obj, ...)
+		v = ok and Num(v) or nil
+		return v and string.format("%.1f", v) or "?"
+	end
+	local function T(obj, method)
+		local ok, v = pcall(obj[method], obj)
+		return ok and type(v) == "string" and not MelloUI.Safe.IsSecret(v) and v or "?"
+	end
+	local function Points(obj)
+		local out = {}
+		for i = 1, obj:GetNumPoints() do
+			local ok, p, rel, rp, x, y = pcall(obj.GetPoint, obj, i)
+			if ok then
+				local rn = rel and (rel.GetName and rel:GetName() or rel.GetDebugName and rel:GetDebugName()) or "?"
+				out[#out + 1] = string.format("%s>%s:%s(%s,%s)", tostring(p), tostring(rn), tostring(rp),
+					tostring(Num(x) or "?"), tostring(Num(y) or "?"))
+			end
+		end
+		return table.concat(out, " ")
+	end
+	local function Font(fs)
+		local ok, face, size, flags = pcall(fs.GetFont, fs)
+		local okO, object = pcall(fs.GetFontObject, fs)
+		local oname = okO and object and object.GetName and object:GetName() or "?"
+		return string.format("%s %s %s (object %s)", ok and tostring(face) or "?", ok and tostring(Num(size) or "?") or "?",
+			ok and tostring(flags) or "?", tostring(oname))
+	end
+	local okI, l, r, t, b = pcall(box.GetTextInsets, box)
+	MelloUI:Print("edit box %s: width %s, shown %s, insets L %s R %s T %s B %s, justify %s, chat type %s, language %s",
+		tostring(box:GetName()), N(box, "GetWidth"), tostring(box:IsShown()), okI and tostring(Num(l) or "?") or "?",
+		okI and tostring(Num(r) or "?") or "?", okI and tostring(Num(t) or "?") or "?", okI and tostring(Num(b) or "?") or "?",
+		T(box, "GetJustifyH"), tostring(box:GetAttribute("chatType")), tostring(box.language))
+	MelloUI:Print("  its font: %s", Font(box))
+	local header = _G[box:GetName() .. "Header"]
+	local suffix = _G[box:GetName() .. "HeaderSuffix"]
+	if header then
+		MelloUI:Print("  header \"%s\": width %s (string %s), left %s right %s, shown %s, points %s",
+			T(header, "GetText"), N(header, "GetWidth"), N(header, "GetStringWidth"), N(header, "GetLeft"),
+			N(header, "GetRight"), tostring(header:IsShown()), Points(header))
+		MelloUI:Print("  header font: %s", Font(header))
+	end
+	if suffix then
+		MelloUI:Print("  suffix \"%s\": shown %s, width %s, points %s", T(suffix, "GetText"), tostring(suffix:IsShown()),
+			N(suffix, "GetWidth"), Points(suffix))
+	end
+	local lang = box.languageHeader
+	if lang then
+		MelloUI:Print("  the game's language header: shown %s, width %s", tostring(lang:IsShown()), N(lang, "GetWidth"))
+	end
+	local Chat = MelloUI:GetModule("Chat")
+	MelloUI:Print("  Chat module on %s, Chat Buttons %s (the language you speak at the line's right end)",
+		tostring(Chat and Chat.isEnabled), tostring(Chat and Chat.db and Chat.db.chatButtons))
+end
+
 SlashCmdList.MELLOCHDUMP = function(msg)
 	msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+	if msg:find("^edit") then
+		MelloUI:ClearLog()
+		DumpEdit()
+		MelloUI:ShowLog("chdump edit")
+		return
+	end
 	if msg:find("^tab") then
 		MelloUI:ClearLog()
 		DumpTabs()

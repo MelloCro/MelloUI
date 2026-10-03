@@ -516,8 +516,14 @@ function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, inde
 	end
 	size = math.max(6, math.floor((tonumber(size) or base.roman.size) + 0.5))
 	flags = flags or ""
-	justifyH = type(justifyH) == "string" and justifyH or "LEFT"
-	justifyV = type(justifyV) == "string" and justifyV or "MIDDLE"
+	-- (false: left unset -- the font's default, which a region using it does
+	-- not take over its own: Family.Own)
+	if justifyH ~= false then
+		justifyH = type(justifyH) == "string" and justifyH or "LEFT"
+	end
+	if justifyV ~= false then
+		justifyV = type(justifyV) == "string" and justifyV or "MIDDLE"
+	end
 	indent = indent and true or false
 	spacing = type(spacing) == "number" and spacing or 0
 	local slot = Slot(Slot(Slot(Family.made, base), face), size)
@@ -540,8 +546,12 @@ function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, inde
 	if not (ok and type(fam) == "table") then
 		return nil
 	end
-	pcall(fam.SetJustifyH, fam, justifyH)
-	pcall(fam.SetJustifyV, fam, justifyV)
+	if justifyH then
+		pcall(fam.SetJustifyH, fam, justifyH)
+	end
+	if justifyV then
+		pcall(fam.SetJustifyV, fam, justifyV)
+	end
 	pcall(fam.SetIndentedWordWrap, fam, indent)
 	pcall(fam.SetSpacing, fam, spacing)
 	for _, alphabet in ipairs(Family.ALPHABETS) do
@@ -552,8 +562,12 @@ function Family.Make(base, face, size, flags, noShadow, justifyH, justifyV, inde
 			pcall(member.SetShadowOffset, member, sh[1], sh[2])
 			pcall(member.SetShadowColor, member, sh[3], sh[4], sh[5], noShadow and 0 or sh[6])
 			pcall(member.SetTextColor, member, c[1], c[2], c[3], c[4])
-			pcall(member.SetJustifyH, member, justifyH)
-			pcall(member.SetJustifyV, member, justifyV)
+			if justifyH then
+				pcall(member.SetJustifyH, member, justifyH)
+			end
+			if justifyV then
+				pcall(member.SetJustifyV, member, justifyV)
+			end
 			pcall(member.SetIndentedWordWrap, member, indent)
 			pcall(member.SetSpacing, member, spacing)
 		end
@@ -621,8 +635,13 @@ function Family.Own(object, original, face, size, flags)
 	end
 	original.look = original.look or Family.Look(object)
 	local l = original.look
-	local fam = Family.Make(original.members, face, size, flags, false, l.justifyH or "CENTER", l.justifyV or "MIDDLE",
-		l.indent, l.spacing)
+	-- its alignment as read, but a default one (CENTER, MIDDLE: what a font
+	-- object reads with none set) left unset: set, it is handed to every
+	-- region using the font that has none of its own -- the chat's edit box
+	-- began its text mid-line (2026-10-03, ChatFontNormal)
+	local jh = (l.justifyH and l.justifyH ~= "CENTER") and l.justifyH or false
+	local jv = (l.justifyV and l.justifyV ~= "MIDDLE") and l.justifyV or false
+	local fam = Family.Make(original.members, face, size, flags, false, jh, jv, l.indent, l.spacing)
 	if not fam then
 		return false
 	end
@@ -636,8 +655,12 @@ function Family.Own(object, original, face, size, flags)
 	if l.shadow then
 		pcall(object.SetShadowColor, object, l.shadow[1], l.shadow[2], l.shadow[3], l.shadow[4])
 	end
-	pcall(object.SetJustifyH, object, l.justifyH or "CENTER")
-	pcall(object.SetJustifyV, object, l.justifyV or "MIDDLE")
+	if jh then
+		pcall(object.SetJustifyH, object, jh)
+	end
+	if jv then
+		pcall(object.SetJustifyV, object, jv)
+	end
 	if l.spacing then
 		pcall(object.SetSpacing, object, l.spacing)
 	end
@@ -915,12 +938,35 @@ local function ApplyChatWindow(frame)
 	M:ChatFace(frame, face, size, flags or original.flags, frame.melloInkFont ~= nil)
 end
 
+-- The chat windows' edit boxes LEFT, as the game has them (user, 2026-10-03,
+-- /chdump edit: the line typed began mid-box, the box at CENTER): a box's
+-- text font is a copy of ChatFontNormal, which takes a family of its own
+-- here (Font families) -- a font made at runtime brings a CENTER of its own,
+-- where the game's XML fonts leave it unset -- and the box took it over. Set
+-- after each pass over the fonts (a later change of ChatFontNormal hands it
+-- down again) and on each whisper window's box as it opens. Every chat
+-- window's, the whisper windows' too (CHAT_FRAMES)
+function Family.EditBoxesLeft()
+	for _, name in ipairs(CHAT_FRAMES or {}) do
+		local frame = _G[name]
+		local box = frame and frame.editBox
+		if box and box.SetJustifyH then
+			pcall(box.SetJustifyH, box, "LEFT")
+		end
+	end
+end
+
 local function ApplyChatWindows()
 	for i = 1, (NUM_CHAT_WINDOWS or 10) do
 		local frame = _G["ChatFrame" .. i]
 		if frame and frame.GetFont then
 			ApplyChatWindow(frame)
 		end
+	end
+	Family.EditBoxesLeft()
+	if not Family.whisperHooked and type(FCF_OpenTemporaryWindow) == "function" then
+		Family.whisperHooked = true
+		hooksecurefunc("FCF_OpenTemporaryWindow", Family.EditBoxesLeft)
 	end
 	if not chatHooked and type(FCF_SetChatWindowFontSize) == "function" then
 		chatHooked = true
@@ -1002,6 +1048,7 @@ local function RestoreChatWindows()
 			M:ChatFace(frame, original.path, ChatBaseSize(frame, original), flags or original.flags, frame.melloInkFont ~= nil)
 		end
 	end
+	Family.EditBoxesLeft()   -- (ChatFontNormal keeps a family of its own: its CENTER still there)
 end
 
 -- The old single Font Size slider, folded into the four once and taken out

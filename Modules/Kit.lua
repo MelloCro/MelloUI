@@ -5284,7 +5284,7 @@ Kit.Replacements = {
 	["Minimal_SliderBar_Button_Right"]        = { kind = "state", base = "buttons/arrow_right", natural = true },
 
 	-- Tooltips (TooltipPanel, 2026-09-21; user's pick TT1 from kit_raw/tooltip_catalog.png)
-	["Tooltip-NineSlice-CornerTopLeft"]       = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", edgeLayer = "BORDER" },   -- TT1: a tooltip's NineSlice (the TooltipDefaultLayout pieces, keyed on the top-left corner; the other eight faded) -> the single rail with the list-box stone as REGIONS of the NineSlice in its own layers (under the tooltip's texts as the game's pieces are)
+	["Tooltip-NineSlice-CornerTopLeft"]       = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = -8, edgeLayer = "BORDER" },   -- TT1: a tooltip's NineSlice (the TooltipDefaultLayout pieces, keyed on the top-left corner; the other eight faded) -> the single rail with the list-box stone as REGIONS of the NineSlice in its own layers (under the tooltip's texts as the game's pieces are); the stone at the bottom of BACKGROUND (-8): the game's line icons (AddTexture's GameTooltipTextureN, the quest objectives' check marks) lie at BACKGROUND 0 of the tooltip, on the NineSlice's level (/ttdump icons, 2026-10-03)
 	["TooltipStatusBar"]                      = { kind = "bar", bar = "frame", capOut = true },   -- the unit tooltip's health bar (a StatusBar with no border art; an agreed addition, as the catalogue showed it): P1 with the caps outside, the bar set in by the arms
 	-- Nameplates (NameplatePanel, 2026-09-21; user's picks NP1 = P1, NC2 from kit_raw/nameplate_catalog.png)
 	["NamePlateHealthBarBG"]                  = { kind = "bar", bar = "frame", capOut = true, borderGroup = "nameplate" },   -- NP1: the health bar's backing (UI-HUD-CoolDownManager-Bar-BG, keyed by hand) -> P1 as the bar's regions above the fill, the caps outside, the bar set in by the arms after the game's UpdateAnchors; the trough under the fill
@@ -5430,6 +5430,8 @@ end
 --   services           the Services bar: as the minimap ('minimap')
 --   questList          the Quest List, a page of the world map's quest log:
 --                      while the quest log's kit (QuestLogPanel) is on
+--   loot               the loot window's own parts (0.18.2: the Discard
+--                      button): while the loot window's kit (LootPanel) is on
 --   config, copy       the configurator and the copy window: the reskin (UI
 --                      Modifications on, its reskin switch on; the Voice
 --                      Over overlay's area went with it in 0.16.0: Voice
@@ -5466,6 +5468,7 @@ do
 		{ "whisper", follows = "chat" },
 		{ "services", follows = "minimap" },
 		{ "questList", module = "QuestLogPanel" },
+		{ "loot", module = "LootPanel" },
 		-- (the settings windows; on through the installer's showcase too: its
 		-- confirm boxes and the windows it opens wear the same look)
 		{ "config", reskin = true, showcase = true }, { "copy", reskin = true },

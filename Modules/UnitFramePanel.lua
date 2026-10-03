@@ -1666,17 +1666,92 @@ SlashCmdList.MELLOUFTEST = function()
 end
 
 --------------------------------------------------------------------------------
--- /ufdump [player|target|focus|pet|tot|party|party1] [frames|reps]: the frame's art
--- (regions by default). Opens the copy window. Secret-safe (Kit:DumpWindow
--- guards every read).
+-- /ufdump [player|target|focus|pet|tot|party|party1] [frames|reps|names]: the
+-- frame's art (regions by default). Opens the copy window. Secret-safe
+-- (Kit:DumpWindow guards every read). "names" (2026-10-03, a player's party
+-- frame showed two names over each other): every line of text under the
+-- frame, six frames deep -- its frame, the text, shown / seen, its alpha, its
+-- draw layer, where it lies on the screen and what it hangs on; a name
+-- shade's measure is marked (it must never be seen: alpha 0).
 --------------------------------------------------------------------------------
+local function DumpNames(root)
+	local measures = {}
+	for name, entry in pairs(skin and skin.nameShades or {}) do
+		if entry.measure then
+			measures[entry.measure] = name
+		end
+	end
+	local function Show(v)
+		if Secret(v) then
+			return "<secret>"
+		end
+		return tostring(v)
+	end
+	local function Label(f)
+		local ok, n = pcall(f.GetDebugName, f)
+		if ok and type(n) == "string" and not Secret(n) then
+			return (n:gsub("^UIParent%.", ""))
+		end
+		return tostring(f:GetName() or f)
+	end
+	local count = 0
+	-- one region: a line of text with something in it is printed
+	local function Line(f, r)
+		if r.GetObjectType and r:GetObjectType() == "FontString" then
+			local okT, text = pcall(r.GetText, r)
+			if okT and text ~= nil and (Secret(text) or text ~= "") then
+				count = count + 1
+				local okA, alpha = pcall(r.GetAlpha, r)
+				-- (what is seen: its own alpha times its frame's -- a measure's frame is at 0)
+				local okE, frameAlpha = pcall(f.GetEffectiveAlpha, f)
+				if okA and okE and not Secret(alpha) and not Secret(frameAlpha) and type(frameAlpha) == "number" then
+					alpha = string.format("%.2f (seen %.2f)", alpha, alpha * frameAlpha)
+				end
+				local layer, sub = r:GetDrawLayer()
+				local l, b, rr, t
+				if MelloUI.Safe.ScreenRect then
+					l, b, rr, t = MelloUI.Safe.ScreenRect(r)
+				end
+				local okP, point, rel = pcall(r.GetPoint, r, 1)
+				MelloUI:Print("%s  \"%s\"  %s%s  alpha %s  %s %s  at %s  on %s %s%s", Label(f), Show(text),
+					r:IsShown() and "shown" or "hidden", r:IsVisible() and " seen" or "",
+					okA and Show(alpha) or "?", tostring(layer), tostring(sub),
+					l and string.format("%.0f,%.0f-%.0f,%.0f", l, b, rr, t) or "?",
+					okP and tostring(point) or "?", okP and rel and Label(rel) or "-",
+					measures[r] and "  [a name shade's measure]" or "")
+			end
+		end
+	end
+	local Walk
+	local function Regions(f, ...)
+		for i = 1, select("#", ...) do
+			Line(f, (select(i, ...)))
+		end
+	end
+	local function Children(depth, ...)
+		for i = 1, select("#", ...) do
+			Walk((select(i, ...)), depth)
+		end
+	end
+	Walk = function(f, depth)
+		if depth > 6 or not f.GetRegions then
+			return
+		end
+		Regions(f, f:GetRegions())
+		Children(depth + 1, f:GetChildren())
+	end
+	Walk(root, 0)
+	MelloUI:Print("%d lines of text", count)
+end
+
 SLASH_MELLOUFDUMP1 = "/ufdump"
 SlashCmdList.MELLOUFDUMP = function(msg)
 	msg = (msg or ""):lower()
-	local which, mode = msg:match("^(%a*)%s*(%a*)$")
-	if which == "frames" or which == "reps" then
+	local which, mode = msg:match("^(%w*)%s*(%a*)$")
+	if which == "frames" or which == "reps" or which == "names" then
 		which, mode = "", which
 	end
+	which, mode = which or "", mode or ""
 	local keys = which ~= "" and { which } or { "player", "target" }
 	MelloUI:ClearLog()
 	for _, key in ipairs(keys) do
@@ -1693,36 +1768,40 @@ SlashCmdList.MELLOUFDUMP = function(msg)
 			if mark then
 				MelloUI:Print("mark: %s, ring %s", tostring(mark.kind or "none"), tostring(mark.ring and mark.ring.tex and mark.ring.tex.kitName))
 			end
-			Kit:DumpWindow(frame, skin, mode ~= "" and mode or nil, function(m, Rect)
-				if m == "reps" then
-					-- the portraits and their masks, to check the ring's centring
-					local container = frame.PlayerFrameContainer or frame.TargetFrameContainer or frame
-					local portrait = container.PlayerPortrait or container.Portrait
-					local mask = container.PlayerPortraitMask or container.PortraitMask
-					if portrait then
-						Rect("portrait", portrait)
-					end
-					if mask then
-						Rect("portrait mask", mask)
-					end
-					-- the bars' and the ring cover's levels (the cover must be above)
-					local main = frame.PlayerFrameContent and frame.PlayerFrameContent.PlayerFrameContentMain
-						or frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain or frame
-					local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar or main.HealthBar
-					local mana = main.ManaBarArea and main.ManaBarArea.ManaBar or main.ManaBar
-					for _, entry in ipairs({ { "health bar", health }, { "power bar", mana } }) do
-						if entry[2] then
-							Rect(entry[1], entry[2], string.format("%s L%d", entry[2]:GetFrameStrata(), entry[2]:GetFrameLevel()))
+			if mode == "names" then
+				DumpNames(frame)
+			else
+				Kit:DumpWindow(frame, skin, mode ~= "" and mode or nil, function(m, Rect)
+					if m == "reps" then
+						-- the portraits and their masks, to check the ring's centring
+						local container = frame.PlayerFrameContainer or frame.TargetFrameContainer or frame
+						local portrait = container.PlayerPortrait or container.Portrait
+						local mask = container.PlayerPortraitMask or container.PortraitMask
+						if portrait then
+							Rect("portrait", portrait)
+						end
+						if mask then
+							Rect("portrait mask", mask)
+						end
+						-- the bars' and the ring cover's levels (the cover must be above)
+						local main = frame.PlayerFrameContent and frame.PlayerFrameContent.PlayerFrameContentMain
+							or frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain or frame
+						local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar or main.HealthBar
+						local mana = main.ManaBarArea and main.ManaBarArea.ManaBar or main.ManaBar
+						for _, entry in ipairs({ { "health bar", health }, { "power bar", mana } }) do
+							if entry[2] then
+								Rect(entry[1], entry[2], string.format("%s L%d", entry[2]:GetFrameStrata(), entry[2]:GetFrameLevel()))
+							end
+						end
+						for _, cover in ipairs(skin and skin.covers or {}) do
+							if cover.holder:GetParent() == (frame.PlayerFrameContainer or frame.TargetFrameContainer or frame) then
+								Rect("ring cover", cover.holder, string.format("%s L%d %s", cover.holder:GetFrameStrata(), cover.holder:GetFrameLevel(), cover.holder:IsShown() and "shown" or "hidden"))
+							end
 						end
 					end
-					for _, cover in ipairs(skin and skin.covers or {}) do
-						if cover.holder:GetParent() == (frame.PlayerFrameContainer or frame.TargetFrameContainer or frame) then
-							Rect("ring cover", cover.holder, string.format("%s L%d %s", cover.holder:GetFrameStrata(), cover.holder:GetFrameLevel(), cover.holder:IsShown() and "shown" or "hidden"))
-						end
-					end
-				end
-				return false
-			end)
+					return false
+				end)
+			end
 		end
 	end
 	MelloUI:ShowLog("ufdump " .. msg)

@@ -15,6 +15,7 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Tooltip")
 local hooksecurefunc = Perf.hooksecurefunc
+local Num = MelloUI.Safe.Number
 
 local Background   -- (the Background dropdown's reading: below, 0.16.0)
 
@@ -79,6 +80,7 @@ local BACKDROP, BORDER = "innerPanel", "border"
 local PALETTE_OWNER = "Tooltip palette"   -- (the bus owner)
 
 local hooksInstalled = false
+local Follow   -- (At the cursor: Placement, below)
 local unitColor = nil            -- { r, g, b } of the unit currently shown, or nil
 local applyingBarColor = false
 local originalBarTexture = nil
@@ -260,6 +262,7 @@ end
 local function OnTooltipHidden(tooltip)
 	if tooltip == GameTooltip then
 		unitColor = nil
+		Follow.on = false
 	end
 end
 
@@ -305,15 +308,66 @@ end
 -- Placement
 --------------------------------------------------------------------------------
 
+-- At the cursor (user, 2026-10-03: "as soon as i move the tooltip over an
+-- enemy and then move it away, the tooltip disappears instantly, it should
+-- slowly fade out so that its still readable for a second like the default
+-- behaves"): the game fades a world tooltip out only while its anchor stays
+-- the game's own -- moving off, it lays the tooltip again through
+-- GameTooltip_SetDefaultAnchor (SetOwner ... "ANCHOR_NONE"), and a tooltip
+-- the engine had anchored to the cursor (SetOwner ... "ANCHOR_CURSOR", as
+-- this module did) changed anchor there and went at once. So the game's
+-- anchor is kept and the tooltip is laid at the cursor here: after the
+-- game's own placing, then followed while it shows (its OnUpdate, a post-hook:
+-- it runs only while the tooltip shows, and moves it only when the cursor
+-- moved), and left where it is while it fades (its alpha under 1). Any other
+-- SetOwner (a frame placing the tooltip itself) ends the following.
+-- (One table: the place, its offsets.)
+Follow = { on = false, x = nil, y = nil,
+	-- the anchor's point of the tooltip and its offset from the cursor's tip
+	-- (in the tooltip's own units): above it, or to the right of its arrow
+	AT = { cursor = { "BOTTOMLEFT", 4, 4 }, cursor_right = { "TOPLEFT", 22, -2 } } }
+
+function Follow.Place(tip, force)
+	local spec = Follow.AT[M.db and M.db.anchor]
+	if not spec then
+		return
+	end
+	local x, y = GetCursorPosition()
+	if not force and x == Follow.x and y == Follow.y then
+		return
+	end
+	local scale = tip:GetEffectiveScale()
+	if not (scale and scale > 0) then
+		return
+	end
+	Follow.x, Follow.y = x, y
+	tip:ClearAllPoints()
+	tip:SetPoint(spec[1], UIParent, "BOTTOMLEFT", x / scale + spec[2], y / scale + spec[3])
+end
+
+-- followed while it shows, at full alpha (fading: left where it is)
+function Follow.OnUpdate(tip)
+	if Follow.on and M.isEnabled then
+		local alpha = Num(tip:GetAlpha())
+		if alpha and alpha >= 0.99 then
+			Follow.Place(tip)
+		end
+	end
+end
+
+-- a SetOwner not the game's default placing (that one is followed by the
+-- post-hook below, which takes the tooltip again): not ours to move
+function Follow.OnSetOwner()
+	Follow.on = false
+end
+
 local function OnDefaultAnchor(tooltip, parent)
 	if not M.isEnabled or tooltip ~= GameTooltip then
 		return
 	end
-	local anchor = M.db.anchor
-	if anchor == "cursor" then
-		tooltip:SetOwner(parent or UIParent, "ANCHOR_CURSOR")
-	elseif anchor == "cursor_right" then
-		tooltip:SetOwner(parent or UIParent, "ANCHOR_CURSOR_RIGHT", 16, 0)
+	if Follow.AT[M.db.anchor] then
+		Follow.on = true
+		Follow.Place(tooltip, true)
 	end
 end
 
@@ -355,6 +409,9 @@ local function InstallHooks()
 	end
 	if GameTooltip then
 		Perf.HookScript(GameTooltip, "OnHide", OnTooltipHidden)
+		-- (At the cursor: below Placement)
+		hooksecurefunc(GameTooltip, "SetOwner", Follow.OnSetOwner)
+		Perf.HookScript(GameTooltip, "OnUpdate", Follow.OnUpdate)
 	end
 	if GameTooltipStatusBar then
 		-- Blizzard recolours the bar green on every value change; put the unit

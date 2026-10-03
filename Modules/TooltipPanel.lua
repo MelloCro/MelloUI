@@ -163,6 +163,9 @@ end
 -- (3.9 in) is solid paper by the first letter; any margin more would put the
 -- strokes under the text's first letters.
 local SHEET_MARGIN = 0
+-- the dark panel's and the sheet's sublevels in BACKGROUND: over the stone
+-- (the rule's -8), under the game's line icons at 0 (AddSheet)
+local SUB = { dim = -7, sheet = -6 }
 -- the sweep that catches a colour the game gave a line without any call this
 -- file hears (a line recoloured in place): seconds between passes while an
 -- inked tooltip shows
@@ -1052,9 +1055,13 @@ local function ShowSheets()
 end
 
 -- The parchment on a dressed tooltip: a region of its NineSlice in the layer
--- stack the kit's stone and rail live in (the stone BACKGROUND 0, the sheet
--- BACKGROUND 3, the rail BORDER), under the tooltip's texts as the game's
--- own pieces are. It follows the tooltip's every size by its anchors; the
+-- stack the kit's stone and rail live in (the stone BACKGROUND -8, the sheet
+-- BACKGROUND -6, the rail BORDER), under the tooltip's texts as the game's
+-- own pieces are. All at the bottom of BACKGROUND (user, 2026-10-03: "the
+-- checkmarks for completed objectives are hidden behind the parchment"):
+-- the game's line icons (AddTexture's GameTooltipTextureN, a quest
+-- objective's check mark) lie at BACKGROUND 0 of the tooltip, which shares
+-- its level with the NineSlice (/ttdump icons). It follows the tooltip's every size by its anchors; the
 -- tile and the painted edge are laid again as the kit's skin (our frame, the
 -- tooltip's size) changes size or shows, and the lines inked then too.
 local function AddSheet(tip, rep)
@@ -1069,16 +1076,17 @@ local function AddSheet(tip, rep)
 	-- under the palette's inner panel. A region of the NineSlice as the sheet
 	-- is (the tooltip's texts are drawn over the NineSlice's layers, a frame
 	-- of ours could come over them), in its stack between the stone
-	-- (BACKGROUND 0) and the sheet (BACKGROUND 3); Kit:SetParchment switches
-	-- it against the sheet, ShowSheets with the reskin.
+	-- (BACKGROUND -8) and the sheet (BACKGROUND -6), all under the game's line
+	-- icons (BACKGROUND 0); Kit:SetParchment switches it against the sheet,
+	-- ShowSheets with the reskin.
 	if not dims[tip] and Kit.StoneDim then
-		dims[tip] = Kit:StoneDim(nine, { area = "tooltip", sublevel = 2, alive = function() return active end })
+		dims[tip] = Kit:StoneDim(nine, { area = "tooltip", sublevel = SUB.dim, alive = function() return active end })
 	end
 	if sheets[tip] or not Kit.ParchmentSheet then
 		return
 	end
 	local sheet = Kit:ParchmentSheet(nine, rep.skin, { margin = SHEET_MARGIN, fine = true, area = "tooltip",
-		alive = function() return active end })
+		sublevel = SUB.sheet, alive = function() return active end })
 	if not sheet then
 		return
 	end
@@ -1238,13 +1246,89 @@ function M:OnDisable()
 end
 
 --------------------------------------------------------------------------------
--- /ttdump [frames|reps]: the GameTooltip's art (hover something, then type
--- it: the tooltip is dumped as last shown). Opens the copy window.
+-- /ttdump [frames|reps|icons]: the GameTooltip's art (hover something, then
+-- type it: the tooltip is dumped as last shown). Opens the copy window.
+-- icons: the tooltip's own texture regions (the quest objectives' check
+-- marks, AddTexture's GameTooltipTextureN, 2026-10-03: "hidden behind the
+-- parchment") -- shown, visible, alpha, layer, file, size, place, tint --
+-- beside the sheet, the dark panel and the NineSlice they lie on.
 --------------------------------------------------------------------------------
+local function DumpIcons(tip)
+	local function Read(obj, method, ...)
+		local fn = obj and obj[method]
+		if type(fn) ~= "function" then
+			return "-"
+		end
+		local ok, a, b, c, d = pcall(fn, obj, ...)
+		if not ok then
+			return "err"
+		end
+		local out = {}
+		for _, v in ipairs({ a, b, c, d }) do
+			if Secret(v) then
+				out[#out + 1] = "secret"
+			elseif type(v) == "number" then
+				out[#out + 1] = v == math.floor(v) and string.format("%d", v) or string.format("%.2f", v)
+			else
+				out[#out + 1] = tostring(v)
+			end
+		end
+		return table.concat(out, ",")
+	end
+	local function Facts(label, r)
+		if not r then
+			MelloUI:Print("%s: none", label)
+			return
+		end
+		local okP, p, rel, rp, x, y = pcall(r.GetPoint, r, 1)
+		local place = "no point"
+		if okP and p and not Secret(p) and not Secret(x) then
+			local okN, relName = pcall(function() return rel and (rel:GetName() or rel:GetDebugName()) end)
+			place = string.format("%s %s %s %.0f %.0f", tostring(p), tostring(okN and relName or "?"), tostring(rp), x or 0, y or 0)
+		end
+		MelloUI:Print("%s: shown=%s visible=%s alpha=%s eff=%s layer=%s tex=%s atlas=%s size=%s tint=%s | %s", label,
+			Read(r, "IsShown"), Read(r, "IsVisible"), Read(r, "GetAlpha"), Read(r, "GetEffectiveAlpha"), Read(r, "GetDrawLayer"),
+			Read(r, "GetTexture"), Read(r, "GetAtlas"), Read(r, "GetSize"), Read(r, "GetVertexColor"), place)
+	end
+	MelloUI:Print("tooltip %s: strata=%s level=%s shown=%s eff alpha=%s lines=%s; kit %s, parchment %s",
+		Read(tip, "GetName"), Read(tip, "GetFrameStrata"), Read(tip, "GetFrameLevel"), Read(tip, "IsShown"),
+		Read(tip, "GetEffectiveAlpha"), Read(tip, "NumLines"), active and "on" or "off",
+		(Kit.ParchmentOn and Kit:ParchmentOn("tooltip")) and "on" or "off")
+	local nine = tip.NineSlice
+	MelloUI:Print("NineSlice: level=%s shown=%s alpha=%s", Read(nine, "GetFrameLevel"), Read(nine, "IsShown"), Read(nine, "GetAlpha"))
+	Facts("sheet", sheets[tip])
+	Facts("dark panel", dims[tip])
+	-- every texture region of the tooltip itself (the numbered ones by name,
+	-- shown or not, and any other)
+	local n = 0
+	local function Each(...)
+		for i = 1, select("#", ...) do
+			local r = select(i, ...)
+			local okK, kind = pcall(r.GetObjectType, r)
+			if okK and kind == "Texture" then
+				n = n + 1
+				local okN, name = pcall(r.GetName, r)
+				Facts(string.format("%d %s", n, tostring(okN and not Secret(name) and name or "?")), r)
+			end
+		end
+	end
+	Each(tip:GetRegions())
+	MelloUI:Print("%d texture regions on the tooltip", n)
+end
+
 SLASH_MELLOTTDUMP1 = "/ttdump"
 SlashCmdList.MELLOTTDUMP = function(msg)
 	msg = (msg or ""):lower()
 	MelloUI:ClearLog()
+	if msg == "icons" then
+		if GameTooltip then
+			DumpIcons(GameTooltip)
+		else
+			MelloUI:Print("No tooltip.")
+		end
+		MelloUI:ShowLog("ttdump icons")
+		return
+	end
 	-- the ink's hooks as they went in on this client
 	local shows = 0
 	for _ in pairs(showHooked) do

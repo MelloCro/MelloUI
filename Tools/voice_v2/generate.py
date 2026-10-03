@@ -8,9 +8,18 @@
     ... --max-total-minutes M   refuse a manifest with more speech than this (default 10: the pilot only)
     ... --clips DIR             the clip library (default MelloUI-BuildData/output/voice_v2/clips)
     ... --only P01,P02          only these pilot lines (meta.pilot), e.g. to redo a few
+    ... --collect BATCHID       take a batch already on the server (a stopped run's): its clips, then delete it
 
 The manifest is lines.json / lines_pilot.json (format "melloui-voice-lines/2"). Every job goes to /v1/batches with
-its voicegen fields only (id, text or segments, voice, seed, ghoul, tempo, act, seconds); keys and meta stay here.
+its voicegen fields only (id, text or segments, voice, seed, ghoul, tempo, act, seconds, speed); keys and meta stay
+here.
+
+Each voice's speaking speed (the voice sample ratings, Tools/voice_samples): Tools/voice_v2/voice_speeds.json
+{"speeds": {"<voice>": 1.1, ...}} puts `speed` on every job -- and every segment -- of that voice that sets none of its
+own (voicegen: pitch kept, 0.5 .. 2.0, a segment's own beats its job's). clips/index.json records the speed each clip
+was made at (none recorded: 1); a clip made at another speed than its job asks for now counts as missing, so a run
+in the same clip folder makes the lines of a voice whose speed changed again (all of them: --max-total-minutes
+guards the size). --voice-speeds names another file; a missing file changes nothing.
 
 For each batch, strictly one after another:
   1. /v1/health must be ok and idle; while another batch runs or is queued, wait (poll 60 s, give up after 30 min)
@@ -50,11 +59,14 @@ import voice_v2_voices as VV  # noqa: E402   the voicegen client (token handling
 
 V2 = os.path.join(OUTPUT, "voice_v2")
 MANIFEST_FORMAT = "melloui-voice-lines/2"
-VG_FIELDS = ("id", "text", "segments", "voice", "seed", "ghoul", "tempo", "act", "seconds")
+VG_FIELDS = ("id", "text", "segments", "voice", "seed", "ghoul", "tempo", "act", "seconds", "speed")
+VOICE_SPEEDS = os.path.join(HERE, "voice_speeds.json")
+SPEED_RANGE = (0.5, 2.0)
 ENTRY_RE = re.compile(r"^[a-z0-9_]+/[0-9a-f]{12}\.ogg$")
 POLL_SECONDS = 30
 BATCH_TIMEOUT = 90 * 60
-TERMINAL = {"done", "failed", "cancelled", "canceled", "finished", "complete", "completed", "error"}
+# (the service ends a batch with a failed job as "incomplete": finished too)
+TERMINAL = {"done", "failed", "cancelled", "canceled", "finished", "complete", "completed", "error", "incomplete"}
 
 
 def say(*a):
@@ -89,6 +101,37 @@ def vg_job(job: dict) -> dict:
     return {k: job[k] for k in VG_FIELDS if k in job}
 
 
+def load_voice_speeds(path: str) -> dict:
+    """voice -> speed from a voice_speeds.json ({} when the file is missing); a speed out of voicegen's range or
+    not a number stops the run."""
+    data = load_json(path, {}) or {}
+    speeds = data.get("speeds", {}) if isinstance(data, dict) else {}
+    out = {}
+    for voice, sp in speeds.items():
+        if not isinstance(sp, (int, float)) or isinstance(sp, bool) or not SPEED_RANGE[0] <= sp <= SPEED_RANGE[1]:
+            raise SystemExit("%s: the speed of %s is %r, not a number in %s .. %s"
+                             % (path, voice, sp, SPEED_RANGE[0], SPEED_RANGE[1]))
+        out[voice] = float(sp)
+    return out
+
+
+def apply_voice_speeds(jobs: list, speeds: dict) -> int:
+    """`speed` from speeds on each job / segment of a listed voice that has none of its own; returns how many."""
+    n = 0
+    if not speeds:
+        return 0
+    for job in jobs:
+        if "segments" in job:
+            for seg in job["segments"]:
+                if "speed" not in seg and "speed" not in job and seg.get("voice") in speeds:
+                    seg["speed"] = speeds[seg["voice"]]
+                    n += 1
+        elif "speed" not in job and job.get("voice") in speeds:
+            job["speed"] = speeds[job["voice"]]
+            n += 1
+    return n
+
+
 def words_of(job: dict) -> int:
     return PACK.words_of(job)
 
@@ -113,6 +156,34 @@ def clip_ok(path: str, words: int):
         return PACK.validate_clip(path, words)
     except PACK.BuildError:
         return None
+
+
+def job_speed(job: dict):
+    """The speed a job asks voicegen for: a number, or for a job of segments the list of its segments' (a segment's
+    own, else its job's, else 1)."""
+    if "segments" in job:
+        return [float(seg.get("speed", job.get("speed", 1.0))) for seg in job["segments"]]
+    return float(job.get("speed", 1.0))
+
+
+def made_at_speed(index: dict, job: dict) -> bool:
+    """The clip of this job was made at the speed the job asks for now (a clip with no speed recorded: at 1)."""
+    want = job_speed(job)
+    have = (index.get(job["id"]) or {}).get("speed")
+    if have is None:
+        have = [1.0] * len(want) if isinstance(want, list) else 1.0
+    return have == want
+
+
+def accepted_long(index: dict, clips: str, jid: str) -> bool:
+    """A clip kept although longer than the guard: index acceptedLong (its words checked with voicegen's ASR, a
+    slow voice -- the voice samples' Lich King), the file still the one recorded."""
+    rec = index.get(jid) or {}
+    path = clip_path(clips, jid)
+    if not rec.get("acceptedLong") or not os.path.isfile(path):
+        return False
+    with open(path, "rb") as f:
+        return sha1_bytes(f.read()) == rec.get("sha1")
 
 
 def plan_batches(jobs: list, max_minutes: float) -> list:
@@ -194,15 +265,25 @@ def download_bytes(path: str) -> bytes:
 # ------------------------------------------------------------------------------------------------------------
 # one batch
 # ------------------------------------------------------------------------------------------------------------
-def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict) -> dict:
-    health = VV.wait_idle()
+def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict, collect: str = None) -> dict:
+    """Send the jobs as one batch, wait, take its clips, delete it on the server. collect: a batch already on
+    the server -- nothing is sent, its clips are taken for these jobs (those it holds)."""
+    os.makedirs(batches_dir, exist_ok=True)
     t0 = time.time()
-    payload = {"name": name, "jobs": [vg_job(j) for j in jobs]}
-    reply = api("/v1/batches", json.dumps(payload, ensure_ascii=False).encode("utf-8"), "POST")
-    bid = reply["id"]
+    if collect:
+        bid = collect
+        st0 = api("/v1/batches/%s" % bid)
+        name = st0.get("name") or name
+        health = {}
+        reply = {"jobs": st0.get("total"), "speech_minutes": st0.get("speech_minutes"), "mode": st0.get("mode")}
+    else:
+        health = VV.wait_idle()
+        payload = {"name": name, "jobs": [vg_job(j) for j in jobs]}
+        reply = api("/v1/batches", json.dumps(payload, ensure_ascii=False).encode("utf-8"), "POST")
+        bid = reply["id"]
     # the client retries a POST whose reply was lost: never leave a second copy of this batch running
     try:
-        for other in api("/v1/batches") or []:
+        for other in ([] if collect else api("/v1/batches") or []):
             oid = other.get("id") if isinstance(other, dict) else None
             if oid and oid != bid and other.get("name") == name:
                 say("  a duplicate of %s (%s) was queued: cancelling and deleting it" % (name, oid))
@@ -261,9 +342,13 @@ def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict) 
                     got[info.filename[:-4]] = z.read(info)
         except (VV.VGError, zipfile.BadZipFile) as e:
             say("    clips.zip failed (%s); fetching clips one by one" % e)
+        held = None
+        if collect:
+            # (a collected batch holds only some of the manifest's jobs: fetch none it does not hold)
+            held = set(server_jobs) or None
         for job in jobs:
             jid = job["id"]
-            if jid not in got:
+            if jid not in got and (held is None or jid in held):
                 try:
                     got[jid] = download_bytes("/v1/batches/%s/clips/%s.ogg" % (bid, jid))
                 except VV.VGError as e:
@@ -299,7 +384,7 @@ def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict) 
             if seed_used is not None and [u for u in used] != asked:
                 record["rerolled"].append({"id": jid, "asked": asked, "used": seed_used})
             index[jid] = {"seconds": round(info["seconds"], 3), "bytes": info["bytes"], "sha1": sha1_bytes(blob),
-                          "batch": bid, "seedUsed": seed_used, "made": record["finished"]}
+                          "batch": bid, "seedUsed": seed_used, "made": record["finished"], "speed": job_speed(job)}
         if os.path.exists(zpath):
             os.remove(zpath)
     except KeyboardInterrupt:
@@ -336,6 +421,9 @@ def main(argv=None) -> int:
     ap.add_argument("--only", default="", help="comma list of meta.pilot names (P01,P18m ...)")
     ap.add_argument("--name", default=None, help="batch name prefix (default melloui-v2-<scope>-<yyyymmdd-hhmm>)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--voice-speeds", default=VOICE_SPEEDS, help="each voice's speed (default voice_speeds.json)")
+    ap.add_argument("--collect", default=None, metavar="BATCHID",
+                    help="take the clips of this batch already on the server (a stopped run's), then delete it there")
     args = ap.parse_args(argv)
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -359,10 +447,15 @@ def main(argv=None) -> int:
     if args.only:
         want = {p.strip() for p in args.only.split(",") if p.strip()}
         jobs = [j for j in jobs if (j.get("meta") or {}).get("pilot") in want]
+    speeds = load_voice_speeds(args.voice_speeds)
+    if speeds:
+        say("voice speeds (%s): %d voices, %d jobs or segments given one"
+            % (os.path.basename(args.voice_speeds), len(speeds), apply_voice_speeds(jobs, speeds)))
     index = load_json(os.path.join(args.clips, "index.json"), {})
     todo, have = [], 0
     for j in jobs:
-        if clip_ok(clip_path(args.clips, j["id"]), words_of(j)):
+        if ((clip_ok(clip_path(args.clips, j["id"]), words_of(j)) or accepted_long(index, args.clips, j["id"]))
+                and made_at_speed(index, j)):
             have += 1
         else:
             todo.append(j)
@@ -372,6 +465,15 @@ def main(argv=None) -> int:
     if total_min > args.max_total_minutes:
         say("refusing: %.1f speech minutes is more than --max-total-minutes %.1f" % (total_min, args.max_total_minutes))
         return 1
+    if args.collect:
+        try:
+            rec = run_batch(args.name or "collect", todo, args.clips, args.batches, index, collect=args.collect)
+        except VV.VGError as e:
+            say("voicegen: %s" % e)
+            return 1
+        for f in rec["failures"]:
+            say("  FAILED %s: %s" % (f["id"], f["why"]))
+        return 0
     batches = plan_batches(todo, args.max_batch_minutes)
     for n, b in enumerate(batches, 1):
         say("  batch %d: %d jobs, %.2f speech minutes, %s .. %s" % (

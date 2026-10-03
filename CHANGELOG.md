@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.2
+
+- Discard (a player's request): a button left of Sort on the bag window frees a slot by throwing away your cheapest grey or white junk (at a vendor it sells it instead). It never touches white gear, food, drink, potions, scrolls, conjured items, crafting materials, reagents, ammunition, quest items, keys or anything on your Restock list, never a stack worth 1 gold or more (Never Throw Away Items Worth), and a white item asks first. The same button sits under the loot window's list, and frees a slot only when the loot is worth more.
+- Fixed: names on the unit frames, most visibly the party frames, were drawn twice, a little apart, so they looked garbled (since 0.18.1, which removed the plate behind them).
+- Fixed: the line you type in the chat began in the middle of the box (since 0.18.1, with the Fonts module on).
+- Fixed: the check marks before a creature's quest objectives in its tooltip were hidden behind the tooltip's parchment and stone.
+- Fixed: with the tooltip at the cursor (Tooltip, Anchor), the tooltip of a creature or an object vanished the moment you moved off it; it now fades out as the game's own does, so you can still read it for a moment.
+
 ## 0.18.1
 
 - Quest List: no window beside the world map any more. It is a page of the map's quest log: a button on the log's top row switches between the Quest Log and the Quest List, and the map remembers which one you left open. The group buttons are one dropdown, and the filters sit in the gear's menu.

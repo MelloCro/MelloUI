@@ -68,7 +68,10 @@ GLYPHS = ("pause", "play", "skip", "stop", "list", "padlock", "padlockOpen", "ch
           "hit", "heal", "proc", "avoid", "gain",
           # (0.17.0: the damage meter -- the user's pick, meter_sketch/meter_three_values: this fight's
           # DPS, this run's, and the Fight History's chat button, a rising bar chart)
-          "sword", "hourglass", "chart")
+          "sword", "hourglass", "chart",
+          # (0.18.2: the Discard button on the bag and loot windows -- the user's pick A of
+          # BuildData/output/discard_sketch: a bin on the Sort button's cog plate)
+          "bin")
 
 
 def smootherstep(t):
@@ -234,6 +237,14 @@ def glyph(name):
         box(13.25, 11, 18.75, 25.5, 1)
         box(21.5, 5, 27, 25.5, 1)
         box(3.5, 26.5, 28.5, 29, 1)
+    elif name == "bin":
+        # Discard: a bin -- its handle, the lid, the body narrowing down, three slots cut in it
+        box(12, 3, 20, 7.5, 1.6)
+        d.rounded_rectangle((14 * k, 4.8 * k, 18 * k, 7.5 * k), radius=0.6 * k, fill=0)
+        box(5, 7, 27, 10.5, 1.2)
+        d.polygon(P((7.5, 12.5), (24.5, 12.5), (22.6, 29), (9.4, 29)), fill=255)
+        for x in (12.4, 16, 19.6):
+            d.rounded_rectangle(((x - 0.95) * k, 15.5 * k, (x + 0.95) * k, 26 * k), radius=0.9 * k, fill=0)
     else:
         raise ValueError(name)
     return im.resize((CELL, CELL), Image.BOX)

@@ -1193,6 +1193,21 @@ slider per line and Remove, Add a line, Suggested (click twice) to go back to th
 suggestions, and it takes items dropped from your bags or from a shop. Counting runs just after
 your bags change, never in combat.
 
+### Discard
+
+A button left of Sort on the bag window (the search box makes room) frees a bag slot: it throws
+away the grey or white junk worth least (the vendor's price times the stack). At a vendor it sells
+that item instead, so nothing is lost. Its tooltip names the item first. What it never touches:
+white weapons and armour (a profession's tool, gear you wear or might), food, drink, potions,
+elixirs, scrolls, bandages, conjured items, bags, gems, reagents, ammunition, crafting materials,
+recipes, quest items and anything that starts a quest, keys, lockboxes, anything locked or worth
+nothing to a vendor (the Hearthstone), white odds that are not junk (mounts, pets, holiday items)
+and the items on your Restock list. **Never Throw Away Items Worth** (1 gold): a stack worth that
+or more is kept. A grey item goes on the click; a white one asks first, with its name and value.
+**Discard Button on Loot** puts the same button under the loot window's list; there it frees a
+slot only when something you are looting is worth more than what it would throw away (a quest
+item always is). Both rows are on the Windows page, the bag and loot windows' Behaviour.
+
 ### Gains
 
 Short lines beside your character (right of the screen's centre, a little below) show what you just gained, each on the on-screen notice's soft dark shade, without an outline unless the notice's **Outlined Text** is on. It is on by default (the installer's Fresh start begins with every feature off):

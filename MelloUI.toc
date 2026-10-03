@@ -81,6 +81,7 @@ Modules\Services.lua
 Modules\Reminders.lua
 Modules\Restock.lua
 Modules\Widgets.lua
+Modules\Discard.lua
 Modules\Gains.lua
 Modules\CombatText.lua
 Modules\Meter.lua

@@ -292,6 +292,8 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.qualityGems", BankPanel = "BackpackPanel.qualityGems", GuildBankPanel = "BackpackPanel.qualityGems" }, { name = "Quality Gems" })
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.greyJunk", BankPanel = "BackpackPanel.greyJunk", GuildBankPanel = "BackpackPanel.greyJunk" }, { name = "Grey Out Junk" })
 	R("Windows", "Windows", "Layout", { BackpackPanel = "Tweaks.bagSlotsOnBags" }, { name = "Bag Slots on Bag Window" })
+	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.bagButton", LootPanel = "Discard.lootButton" }, { name = "Discard Button" })
+	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.keepWorth", LootPanel = "Discard.keepWorth" }, { name = "Never Throw Away Items Worth" })
 
 	-- Unit Frames (the picker: Player ... Personal Resource)
 	R("UnitFrames", "Frame", "General", "UIModifications.qol_UnitFrames", { only = { "player", "target", "focus", "pet", "party" } })

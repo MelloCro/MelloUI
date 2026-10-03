@@ -472,6 +472,7 @@ Covers `backpack`.
 | `common-coinbox-left / -center / -right` (`MoneyFrame.Border`) | the money strip | **B2**: `lists/header` on the border's rect; the money frame raised one level above the item buttons while on (the bottom row's pitch-sized rims reached over the coins), put back on disable |
 | `BagSearchBoxTemplate` (`BagItemSearchBox`, re-parented among the bags) | the search box | S1 (`Kit:SkinSearchBox`) |
 | `bags-button-autosort-up` (`BagItemAutoSortButton`) | the sort button | K2: the cog plate UNDER the game's round button (its glyph is its plate: kept, not faded) |
+| (MelloUI's own, Modules/Discard.lua, 0.18.2) the Discard button, a child of the sort button left of it; the same button under the loot window's list | the bag and loot windows | the user's pick A of `discard_sketch`: K2 (the cog plate, the kit size fitted to the sort button's 28 width, its hover / press following the button) with the `bin` glyph in the palette's text; without the kit (areas `backpack` / `loot`) the game's round column plate `chatframe-button-up` with the glyph white (Look.ColumnButton). The search box is 30 shorter while it shows (the game's width kept from `SetSearchBoxPoint`) |
 | left as the game's | icons, counts, cooldowns, the new-item / flash glows, junk coin, quest and upgrade marks, the search dimming, the filter icon, the free-slot count, the bag-icon dropdown, the bank | — |
 
 ## The minimap cluster (Modules/MinimapPanel.lua, 2026-09-21)

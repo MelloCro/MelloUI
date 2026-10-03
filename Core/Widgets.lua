@@ -2181,7 +2181,9 @@ do
 		-- (0.17.0: Combat Text's feed, a mark per kind)
 		hit = 19, heal = 20, proc = 21, avoid = 22, gain = 23,
 		-- (0.17.0: the damage meter's values and the Fight History's chat button)
-		sword = 24, hourglass = 25, chart = 26 }
+		sword = 24, hourglass = 25, chart = 26,
+		-- (0.18.2: the Discard button on the bag and loot windows)
+		bin = 27 }
 	local ROWS = 4
 
 	function W.Glyph(tex, name)

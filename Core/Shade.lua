@@ -309,8 +309,12 @@ end
 -- The measure (lifted from the nameplates' name shade, 0.13.7, for any line
 -- a band must hug without reading its size: the centre texts, 0.14.0)
 --   local m = MelloUI.Shade:Measure(parent, source[, point])
---       An unseen font string made on `parent` (BACKGROUND, alpha 0, no
---       width of its own, no wrap), its `point` ("TOP" when left out;
+--       An unseen font string made on `parent` (BACKGROUND, no width of its
+--       own, no wrap) -- on parent's unseen child frame (alpha 0, one per
+--       parent, on parent's rect, out of layouts, no mouse): its own alpha
+--       does not keep it unseen, a font object handed to a font string sets
+--       that back to 1 (2026-10-03: every party frame drew its measure's copy
+--       of the name over the name, a hair wider) -- its `point` ("TOP" when left out;
 --       "CENTER", "LEFT", ...) on the same point of `source` (the line it
 --       measures), its font copied from source: font object, then face,
 --       size and flags, then text scale (a secret or refused one leaves that
@@ -343,6 +347,23 @@ do
 	local POINTS = { TOP = true, BOTTOM = true, LEFT = true, RIGHT = true, CENTER = true, TOPLEFT = true,
 		TOPRIGHT = true, BOTTOMLEFT = true, BOTTOMRIGHT = true }
 	local fontsHeard = false
+	local holders = setmetatable({}, { __mode = "k" })   -- [parent] = its unseen frame for measures
+
+	-- the frame a parent's measures are drawn on: alpha 0 (a frame's alpha no
+	-- font object changes), on the parent's rect so it is laid out, out of
+	-- the parent's layout, no mouse; made with the parent's first measure
+	local function Holder(parent)
+		local holder = holders[parent]
+		if not holder then
+			holder = CreateFrame("Frame", nil, parent)
+			holder:SetAllPoints(parent)
+			holder:SetAlpha(0)
+			holder:EnableMouse(false)
+			holder.ignoreInLayout = true
+			holders[parent] = holder
+		end
+		return holder
+	end
 
 	-- the line's font on the measure: each part handed on as it comes
 	local function CopyFont(source, m)
@@ -358,6 +379,7 @@ do
 		if okS and not Secret(scale) and type(scale) == "number" then
 			pcall(m.SetTextScale, m, scale)
 		end
+		m:SetAlpha(0)   -- (the font object set it back; its holder keeps it unseen anyway)
 	end
 
 	local function RefontAll()
@@ -380,8 +402,8 @@ do
 			return nil
 		end
 		point = type(point) == "string" and POINTS[point] and point or "TOP"
-		local m = parent:CreateFontString(nil, "BACKGROUND")
-		m:SetAlpha(0)
+		local m = Holder(parent):CreateFontString(nil, "BACKGROUND")
+		m:SetAlpha(0)   -- (and its own alpha 0 too, for what it is worth)
 		m:SetWordWrap(false)
 		m:SetPoint(point, source, point, 0, 0)
 		CopyFont(source, m)

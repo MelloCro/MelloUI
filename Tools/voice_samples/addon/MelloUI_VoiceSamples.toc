@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: MelloUI Voice Samples
+## Notes: Listen to every voice of the MelloUI voice pack at three speeds and tell us which sounds right. /voicesamples
+## Author: MelloCro
+## Version: 1
+## SavedVariables: MelloUIVoiceSamplesDB
+
+Data.lua
+Core.lua
