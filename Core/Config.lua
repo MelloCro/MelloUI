@@ -133,6 +133,17 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- lines: Home shows the newest version in a card one column wide, beside
 -- Your setup and above Help.
 local CHANGELOG = {
+	{ version = "0.18.1", lines = {
+		"The Quest List is a page of the world map's quest log now: a button on the log's top row switches between the Quest Log and the Quest List.",
+		"Route knows the streets of all six capitals: in through the gates and along the streets, not round or across the walls.",
+		"Route takes the Rut'theran portal and the Deeprun Tram, both ways. The world map shows them with the boats and zeppelins.",
+		"The navigation arrow sits in the widget column now, with the place and the distance beside it. Its Stop really stops the route.",
+		"Chat: the Friends button is at the top of the button column left of the chat.",
+		"Unit frames: no plate behind the names, so long names fit, with a soft shade behind them as on the nameplates. The level sits on a dark disc.",
+		"Fixed: Chinese and other alphabets in the chat no longer turn into boxes with a MelloUI font.",
+		"Fixed: Execute Range no longer turns a dead target's bar purple.",
+		"New files: restart the game once after updating.",
+	} },
 	{ version = "0.18.0", lines = {
 		"With the reskin off, MelloUI now wears the game's own look everywhere: its windows, buttons, tabs, sliders, menus and tooltips, the meter, Combat Text, Gains, Services and Restock.",
 		"Route's World Marker becomes the game's waypoint icon and arrow. The Quest Tracker uses the game's buttons and map pin; the Quest List follows the Quest Log's look.",

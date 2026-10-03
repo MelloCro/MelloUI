@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.1
+
+- Quest List: no window beside the world map any more. It is a page of the map's quest log: a button on the log's top row switches between the Quest Log and the Quest List, and the map remembers which one you left open. The group buttons are one dropdown, and the filters sit in the gear's menu.
+- Route knows the streets of the six capitals (Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff and Undercity): it leads you in through the gates and along the streets instead of round the walls or across them.
+- Route takes the portal between Rut'theran Village and Darnassus and the Deeprun Tram between Stormwind and Ironforge, both ways, and counts their time in the arrival time. The world map shows them with the boats and zeppelins.
+- The navigation arrow now sits in the widget column, turning in its round button with the place and the distance beside it; the separate arrow on the screen is gone. Its Stop really stops the route: a tracked quest's route no longer comes straight back. Pick a quest, set a map pin or choose a place to start again.
+- Chat: the Friends button moved into the button column left of the chat, at the top, above Channels.
+- Unit frames: the plate behind the names is gone, so long names fit; the soft shade the nameplates have lies behind every unit frame's name instead. The level sits on a dark disc, as on the nameplates, and the disc is fully dark on both now.
+- Fixed: Chinese and the other alphabets in the chat and the whisper windows no longer turn into boxes when the Fonts module sets a font.
+- Fixed: Execute Range no longer turns a dead target's health bar purple.
+
 ## 0.18.0
 
 - With the painted reskin off, all of MelloUI now takes the game's own look, not only the widgets and the race bar. Its windows (the settings, Fight History, Restock, the copy window) use the game's window frame, buttons, tabs, check boxes, dropdowns, sliders and list highlights, and its menus and tooltips the game's tooltip frame. The damage meter's numbers, the notices, Combat Text, Gains, threat, Services, Restock and the swing timers use the game's fonts, colours and art. Route's World Marker becomes the game's waypoint icon with its edge arrow and map pin, without the beam. The Quest Tracker uses the game's buttons, quest arrow and map pin icon; the Quest List follows the Quest Log's look; the chat shows no shade behind names. Switching the reskin changes everything in place, and the installer's first run still shows MelloUI's painted look.
