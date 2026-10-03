@@ -18,6 +18,9 @@ icons and lake shores look much like roads up close. Tools/roads_review.html
 shows every zone with its traced segments; click a segment to drop it, draw
 missing roads, and save the result as Tools/roads/review.json. The bake
 applies that review on top of the automatic trace (Tools/roads/segments.json).
+The capitals' own maps draw no roads: their streets are walked in game with the
+road recorder (/route record) and brought in by Tools/roads_import.py as
+Tools/roads/recorded.json, laid here as roads of their city.
 
 The bake then stitches each continent (stitch()): road ends of neighbouring
 zones that meet are joined, every traced dead end is carried on to the nearest
@@ -64,6 +67,7 @@ TRACES = os.path.join(CACHE, "roadtraces", BUILD)
 ROADS = os.path.join(HERE, "roads")                   # committed: segments.json (auto), review.json (by hand)
 SEGMENTS = os.path.join(ROADS, "segments.json")
 REVIEW = os.path.join(ROADS, "review.json")
+RECORDED = os.path.join(ROADS, "recorded.json")       # committed: the capitals' streets, walked (Tools/roads_import.py)
 OUT = os.path.join(ROOT, "MelloUI_Companion", "RoadData.lua")   # the route data companion (loaded on demand)
 
 CONTINENTS = {1414: "Kalimdor", 1415: "Eastern Kingdoms"}
@@ -71,6 +75,11 @@ WALK = 7.0          # yards per second, as in Route.lua
 CELL = 10           # yards per graph cell, as in Route.lua
 NODE_STEP = 20      # yards between nodes along a road
 JOIN_YARDS = 30     # roads whose nodes come this close are linked (crossings, segment ends)
+WALKED_STEP = 5     # yards between nodes along a walked street: a street passing another's end has a node near it
+WALKED_JOIN = 12    # walked streets join each other only this close (a crossing, a stretch begun on another) --
+                    # never across the buildings between two streets
+WALKED_JOIN_ROAD = 16   # ... and a traced road (the gate: the recording begun on the road outside), never
+                        # through a city wall
 
 
 def log(msg):
@@ -492,6 +501,160 @@ def load_review():
     return {"removed": r.get("removed", []), "added": r.get("added", {})}
 
 
+def may_join(walked, ka, kb, d):
+    """Whether two nodes `d` yards apart are joined: a walked street's only at its own short reach."""
+    wa, wb = ka in walked, kb in walked
+    if wa and wb:
+        return d <= WALKED_JOIN
+    if wa or wb:
+        return d <= WALKED_JOIN_ROAD
+    return True
+
+
+GATE_REACH = 350   # yards: a walked street's end at its city's gate joins the nearest road outside this near
+GATE_PIECE = 100   # nodes of road or ground a piece needs to be the world outside (not a pocket of ground between
+                   # rocks, as below Ironforge's Gates; an island's roads are their own piece: Teldrassil's)
+GATE_FIRST = 150   # yards: ... and a recording's very first point this near (where the recorder is begun: Thunder
+                   # Bluff's map takes in Mulgore round the mesas, its first point 100 yd inside it)
+GATE_MARK = 15     # yards: a street end this near a Gate mark is at the gate wherever it lies
+GATE_EDGE = 40     # yards: a street end past its city's map, or this near its edge, is at the gate (Ironforge's map
+                   # reaches past its Gates: the recording ended 16 yd inside it)
+
+
+def walk_grid(cont, conts):
+    """(cells, east0, south0) of a continent's terrain grid as add_ground lays it, or None without one."""
+    import numpy as np
+    import ground_graph as gg
+    wmap = GROUND.get(cont)
+    path = os.path.join(CACHE, "terrain", f"walk_{wmap}.npz")
+    if wmap is None or cont not in conts or not os.path.exists(path):
+        return None
+    d = np.load(path)
+    cells = gg.fold(d["grid"])
+    e0, s0 = gg.origin(int(d["tx0"]), int(d["ty0"]), conts[cont]["x1"], conts[cont]["y1"])
+    return cells, e0, s0
+
+
+def join_gates(graphs, walked, street_ends, conts, gates=None):
+    """A recording begun or ended at its city's gate (Stormwind's, 2026-10-02: Elwynn's traced road stops on the
+    bridge, 126 yd short; Ironforge's, 2026-10-03: Dun Morogh's stops 281 yd below the Gates, the way down winds
+    between rocks) joins the nearest road or ground node outside the city's map within GATE_REACH, over open ground
+    on the terrain grid (a mountain or a cliff between blocks it), priced as the ground: run after add_ground, so
+    the ground's own checked links carry the way on to the road. A street's end deep inside the city never gets
+    one: the terrain grid sees no wall there."""
+    from scipy.spatial import cKDTree
+    import ground_graph as gg
+    for cont in sorted({e[0] for e in street_ends}):
+        g = graphs[cont]
+        wk = walked[cont]
+        road = [k for k in g if k not in wk]
+        if not road:
+            continue
+        grid = walk_grid(cont, conts)
+        find, world = pieces(g, wk)
+        road = [k for k in road if world(find(k))]   # (a pocket of ground the world does not reach: no way out)
+        pts = [(g[k][0], g[k][1]) for k in road]
+        tree = cKDTree(pts)
+        marks = (gates or {}).get(cont, [])
+        for c, k, rect, name, first in street_ends:
+            if c != cont or k is None or k not in wk:
+                continue
+            x, y = g[k][0], g[k][1]
+            e0, e1, s0, s1 = rect
+            edge = min(x - e0, e1 - x, y - s0, s1 - y)
+            if not (edge <= GATE_EDGE or (first and edge <= GATE_FIRST)
+                    or any(math.hypot(x - mx, y - my) <= GATE_MARK for mx, my in marks)):
+                continue
+            ds, ix = tree.query((x, y), k=32, distance_upper_bound=GATE_REACH)
+            for d, i in zip(ds, ix):
+                if i >= len(road):
+                    break
+                rx, ry = pts[i]
+                if e0 <= rx <= e1 and s0 <= ry <= s1:
+                    continue   # (a road node inside the city's map: never the way out)
+                swum = 0.0
+                if grid:
+                    cells, ge, gs = grid
+                    swum = gg.clear(cells, (y - gs) / gg.CELL, (x - ge) / gg.CELL, (ry - gs) / gg.CELL, (rx - ge) / gg.CELL)
+                    if swum is None:
+                        continue
+                ro = road[i]
+                cost = round(d / WALK * (gg.GROUND_COST * (1 - swum) + gg.SWIM_COST * swum), 1)
+                g[k][2][ro] = cost
+                g[ro][2][k] = cost
+                log(f"  {name}: a street at the gate joined to the road outside ({d:.0f} yd)")
+                break
+
+
+def pieces(g, walked=()):
+    """(find, world): the graph's connected pieces, find(key) -> its piece; world(piece) -> true for a piece of the
+    world outside (GATE_PIECE nodes or more that are not walked streets: the mainland's roads, an island's)"""
+    parent = {k: k for k in g}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    for k, v in g.items():
+        for o in v[2]:
+            if o in parent:
+                parent[find(k)] = find(o)
+    sizes = {}
+    for k in g:
+        if k not in walked:
+            sizes[find(k)] = sizes.get(find(k), 0) + 1
+    return find, lambda piece: sizes.get(piece, 0) >= GATE_PIECE
+
+
+def walked_apart(graphs, walked):
+    """The walked streets that reach no road of the world (a city recorded without its way out): named in the log."""
+    for cont, wk in walked.items():
+        g = graphs.get(cont)
+        if not (g and wk):
+            continue
+        find, world = pieces(g, wk)
+        apart = {}
+        for k in wk:
+            if not world(find(k)):
+                apart.setdefault(find(k), []).append(k)
+        for keys in apart.values():
+            x, y = g[keys[0]][0], g[keys[0]][1]
+            log(f"  {len(keys)} walked nodes reach no road (at {x:.0f}, {y:.0f}): record from the road outside the gate")
+
+
+def recorded_gates(conts):
+    """The recorder's Gate marks: {continent: [(yards east, yards south), ...]}"""
+    if not os.path.exists(RECORDED):
+        return {}
+    with open(RECORDED, encoding="utf-8") as fh:
+        cities = json.load(fh).get("cities", {})
+    out = {}
+    for city in cities.values():
+        for m in city.get("marks", []):
+            cont = conts.get(m["cont"])
+            if cont and m["kind"] == "Gate":
+                out.setdefault(m["cont"], []).append((m["at"][0] * cont["width"], m["at"][1] * cont["height"]))
+    return out
+
+
+def load_recorded(conts):
+    """The streets walked with the road recorder: {city uiMapID: [(continent, polyline in continent yards), ...]}
+    (their continent fractions times the continent's size)."""
+    if not os.path.exists(RECORDED):
+        return {}
+    with open(RECORDED, encoding="utf-8") as fh:
+        cities = json.load(fh).get("cities", {})
+    out = {}
+    for cid, city in cities.items():
+        for s in city.get("stretches", []):
+            cont = conts.get(s["cont"])
+            if cont and len(s["points"]) >= 2:
+                line = [(fx * cont["width"], fy * cont["height"]) for fx, fy in s["points"]]
+                out.setdefault(int(cid), []).append((s["cont"], line))
+    return out
+
+
 STITCH_YARDS = 600    # the longest bridge laid between two road pieces (512 yd joins northern and southern
                       # Stranglethorn, where the jungle road was not traced)
 BRIDGE_COST = 1.5     # a bridge's price relative to walking a road (Route's JUMP_COST)
@@ -502,14 +665,18 @@ BORDER_REACH = 350    # yards: a road's dead end is linked to another zone's roa
                       # river bridge, Duskwood's map paints no road on its side; 289 yd)
 
 
-def stitch(g, cont, zone_of=None):
+def stitch(g, cont, zone_of=None, walked=frozenset()):
     """Join the continent's road pieces (user, 2026-09-23: the route to the
     boat went straight across the hills -- the roads were joined only within
     a zone, so no road crossed a zone border and Eastern Kingdoms fell into
     828 pieces). First the road ends of neighbouring zones that meet
     (JOIN_YARDS, as inside a zone), then the shortest bridges that connect
     the pieces, each at most STITCH_YARDS, priced BRIDGE_COST x walking: a
-    spanning tree over the pieces, so only the bridges needed are laid."""
+    spanning tree over the pieces, so only the bridges needed are laid. A
+    walked street (`walked`: recorded in game) ends where the street ends: it
+    joins only at its short reach (may_join), gets no bridge, its dead ends
+    are never carried to another zone's road nor another zone's to it (through
+    a city wall); join_gates joins a city's streets to the world outside, after the ground."""
     from scipy.spatial import cKDTree
     keys = sorted(g)
     if not keys:
@@ -545,6 +712,8 @@ def stitch(g, cont, zone_of=None):
     for a, b in tree.query_pairs(JOIN_YARDS):
         if find(a) != find(b) or keys[b] not in g[keys[a]][2]:
             d = math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1])
+            if not may_join(walked, keys[a], keys[b], d):
+                continue
             if keys[b] not in g[keys[a]][2]:
                 crossings += 1
             join(a, b, d / WALK)
@@ -553,7 +722,7 @@ def stitch(g, cont, zone_of=None):
     pairs = tree.query_pairs(STITCH_YARDS, output_type="ndarray")
     cand = []
     for a, b in pairs:
-        if find(a) != find(b):
+        if find(a) != find(b) and keys[a] not in walked and keys[b] not in walked:
             cand.append((math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1]), int(a), int(b)))
     cand.sort()
     bridges, longest = 0, 0.0
@@ -573,12 +742,14 @@ def stitch(g, cont, zone_of=None):
     if zone_of:
         for i in dead_ends:
             k = keys[i]
+            if k in walked:
+                continue
             here = zone_of.get(k)
             ds, ix = tree.query(pts[i], k=64, distance_upper_bound=BORDER_REACH)
             for d, j in zip(ds, ix):
                 if j >= len(keys) or d == float("inf"):
                     break
-                if zone_of.get(keys[j]) not in (None, here) and keys[j] not in g[k][2]:
+                if zone_of.get(keys[j]) not in (None, here) and keys[j] not in g[k][2] and keys[j] not in walked:
                     join(i, j, d / WALK * BRIDGE_COST)
                     ends += 1
                     break
@@ -593,7 +764,10 @@ def stitch(g, cont, zone_of=None):
 GROUND = {1415: 0, 1414: 1, 2521: 2991}     # continent uiMap -> world map (the terrain's)
 
 
-def add_ground(graphs, conts):
+def add_ground(graphs, conts, walked=None, cities=()):
+    """`cities`: (continent, east0, east1, south0, south1) of each city whose streets were walked: the terrain's
+    grid sees no building or wall, so no ground node is laid inside one (it cut through the city's walls: Stormwind's
+    Valley of Heroes to the Mage Quarter, 2026-10-02), and no ground node joins a walked street."""
     import numpy as np
     from scipy.spatial import cKDTree
     import ground_graph as gg
@@ -620,10 +794,21 @@ def add_ground(graphs, conts):
         pts = gg.nodes_of(cells)
         xy, links = gg.link(cells, pts, e0, s0)
         g = graphs.setdefault(cont, {})
-        road_keys = list(g)
+        streets = (walked or {}).get(cont, ())
+        road_keys = [k for k in g if k not in streets]
+        inside = [c for c in cities if c[0] == cont]
+        dropped = 0
         keys = []
         for i, (x, y) in enumerate(xy):
+            if any(c[1] <= x <= c[2] and c[3] <= y <= c[4] for c in inside):
+                keys.append(None)
+                dropped += 1
+                continue
             k = f"{int(math.floor(x / CELL))}:{int(math.floor(y / CELL))}"
+            if k in streets:
+                keys.append(None)   # (a walked street's cell: the ground's links would hang on the street)
+                dropped += 1
+                continue
             if k not in g:
                 g[k] = [round(float(x), 1), round(float(y), 1), {}]
             keys.append(k)
@@ -631,7 +816,7 @@ def add_ground(graphs, conts):
         for i, ln in links.items():
             for j, cost in ln.items():
                 ki, kj = keys[i], keys[j]
-                if ki != kj and (g[ki][2].get(kj) is None or g[ki][2][kj] > cost):
+                if ki is not None and kj is not None and ki != kj and (g[ki][2].get(kj) is None or g[ki][2][kj] > cost):
                     g[ki][2][kj] = cost
                     g[kj][2][ki] = cost
                     n_links += 1
@@ -642,6 +827,8 @@ def add_ground(graphs, conts):
             rtree = cKDTree(rxy)
             for j, (x, y) in enumerate(xy):
                 kj = keys[j]
+                if kj is None:
+                    continue
                 cand = sorted(rtree.query_ball_point((x, y), gg.ROAD_REACH),
                               key=lambda i: (rxy[i][0] - x) ** 2 + (rxy[i][1] - y) ** 2)
                 for i in cand[:4]:
@@ -662,7 +849,8 @@ def add_ground(graphs, conts):
                     break
         rows = gg.grid_rows(cells)
         walk[cont] = {"cell": gg.CELL, "e0": e0, "s0": s0, "w": cells.shape[1], "h": cells.shape[0], "rows": rows}
-        log(f"  ground {cont}: {len(pts)} nodes, {n_links} links, {joined} road joins; walk grid "
+        log(f"  ground {cont}: {len(pts) - dropped} nodes" + (f" ({dropped} in walked cities left out)" if dropped else "")
+            + f", {n_links} links, {joined} road joins; walk grid "
             f"{cells.shape[1]} x {cells.shape[0]} ({sum(len(r) for r in rows) // 1024} KB)")
     return walk, sizes
 
@@ -673,6 +861,11 @@ def stage_bake(zones, conts):
         auto = json.load(fh)["zones"]
     review = load_review()
     removed = set(review["removed"])
+    recorded = load_recorded(conts)
+    walked = {c: set() for c in CONTINENTS}   # per continent (keys are cells: the continents share them): the
+                                              # node keys laid from a walked street
+    street_ends = []   # (continent, node key, the city's map in continent yards, its name, the recording's first
+                       # point): each walked street's ends
     graphs = {c: {} for c in CONTINENTS}
     zone_of = {}   # node key -> the zone it was traced in (the first, where zones overlap)
     total_nodes, total_links = 0, 0
@@ -685,6 +878,11 @@ def stage_bake(zones, conts):
         lines += [a["points"] for a in review["added"].get(str(z["id"]), [])]
         cont = conts[z["cont"]]
         to_yards = zone_to_yards(z, cont)
+        ylines = [[to_yards(x, y) for x, y in pts] for pts in lines]
+        streets = [line for c, line in recorded.get(z["id"], []) if c == z["cont"]]
+        first_street = len(ylines)
+        rect = (cont["y1"] - z["y1"], cont["y1"] - z["y0"], cont["x1"] - z["x1"], cont["x1"] - z["x0"])
+        ylines += streets
         inner = inner_maps(z, zones)
         g = graphs[z["cont"]]
         nodes = []           # (x, y) yards of the nodes placed in this zone
@@ -698,7 +896,14 @@ def stage_bake(zones, conts):
             k = f"{int(math.floor(yx / CELL))}:{int(math.floor(yy / CELL))}"
             if k not in g:
                 g[k] = [round(yx, 1), round(yy, 1), {}]
-                zone_of[k] = z["id"]
+                if street:
+                    # (zone_of is keyed by cell alone, shared by the continents: a street's node never takes over
+                    # another continent's entry, so the roads of both bake as they did without the streets; a
+                    # walked node gets no carry or bridge whatever its zone)
+                    zone_of.setdefault(k, z["id"])
+                    walked[z["cont"]].add(k)   # (a traced road's node a street passes stays the road's: the two meet there)
+                else:
+                    zone_of[k] = z["id"]
             nodes.append((yx, yy))
             keys.append(k)
             return k
@@ -713,44 +918,71 @@ def stage_bake(zones, conts):
                 g[kb][2][ka] = cost
                 total_links += 1
 
-        for pts in lines:
-            # walk the polyline placing a node every NODE_STEP yards
-            ypts = [to_yards(x, y) for x, y in pts]
+        def along(ka, pa, kb, x, y, street):
+            # seconds along a line from the last node to the next: a walked street's nodes (a few yards apart,
+            # so most points fall in a cell already made) measured between the nodes as they stand
+            if street:
+                return math.hypot(g[kb][0] - g[ka][0], g[kb][1] - g[ka][1]) / WALK
+            return math.hypot(x - pa[0], y - pa[1]) / WALK
+
+        for li, ypts in enumerate(ylines):
+            # walk the polyline placing a node every NODE_STEP yards (a walked street's every WALKED_STEP)
+            street = li >= first_street
+            step = WALKED_STEP if street else NODE_STEP
             prev_key, prev_pt, carry = None, None, 0.0
             first = True
             for i in range(len(ypts)):
                 if i == 0:
                     k = add_node(*ypts[0])
                     prev_key, prev_pt = k, ypts[0]
+                    if street:
+                        street_ends.append((z["cont"], k, rect, z["name"], li == first_street))
                     continue
                 ax, ay = ypts[i - 1]
                 bx, by = ypts[i]
                 seg = math.hypot(bx - ax, by - ay)
-                at = NODE_STEP - carry
+                at = step - carry
                 while at < seg:
                     f = at / seg
                     k = add_node(ax + (bx - ax) * f, ay + (by - ay) * f)
                     if k and prev_key:
-                        link(prev_key, k, math.hypot(ax + (bx - ax) * f - prev_pt[0], ay + (by - ay) * f - prev_pt[1]) / WALK)
+                        link(prev_key, k, along(prev_key, prev_pt, k, ax + (bx - ax) * f, ay + (by - ay) * f, street))
                     if k:
                         prev_key, prev_pt = k, (ax + (bx - ax) * f, ay + (by - ay) * f)
-                    at += NODE_STEP
-                carry = seg - (at - NODE_STEP)
+                    at += step
+                carry = seg - (at - step)
                 if i == len(ypts) - 1:
                     k = add_node(bx, by)
                     if k and prev_key:
-                        link(prev_key, k, math.hypot(bx - prev_pt[0], by - prev_pt[1]) / WALK)
+                        link(prev_key, k, along(prev_key, prev_pt, k, bx, by, street))
+                    if street:
+                        street_ends.append((z["cont"], k, rect, z["name"], False))
         # crossings and segment ends: link nodes that came close to each other
         if nodes:
             tree = cKDTree(nodes)
             for a, b in tree.query_pairs(JOIN_YARDS):
+                ka, kb = keys[a], keys[b]
                 d = math.hypot(nodes[a][0] - nodes[b][0], nodes[a][1] - nodes[b][1])
-                link(keys[a], keys[b], d / WALK)
+                if ka in walked[z["cont"]] or kb in walked[z["cont"]]:
+                    # (a walked street's points mostly fall in a node made before: measured between the nodes)
+                    d = math.hypot(g[ka][0] - g[kb][0], g[ka][1] - g[kb][1])
+                if may_join(walked[z["cont"]], ka, kb, d):
+                    link(ka, kb, d / WALK)
         total_nodes += len(set(keys))
-        log(f"  {z['id']} {z['name']}: {len(lines)} segments, {len(set(keys))} nodes")
+        log(f"  {z['id']} {z['name']}: {len(lines)} segments" + (f" and {len(streets)} walked streets" if streets else "")
+            + f", {len(set(keys))} nodes")
     for c, g in graphs.items():
-        stitch(g, c, zone_of)
-    walk, ground_sizes = add_ground(graphs, conts)
+        stitch(g, c, zone_of, walked[c])
+    cities = []
+    for z in zones:
+        # (an underground city keeps the zone's ground over it: Tirisfal's round the Ruins over the Undercity,
+        # SURFACE_CITIES; its streets join it only at the gate, as everywhere)
+        if z["id"] in recorded and z["id"] not in SURFACE_CITIES:
+            cont = conts[z["cont"]]
+            cities.append((z["cont"], cont["y1"] - z["y1"], cont["y1"] - z["y0"], cont["x1"] - z["x1"], cont["x1"] - z["x0"]))
+    walk, ground_sizes = add_ground(graphs, conts, walked, cities)
+    join_gates(graphs, walked, street_ends, conts, recorded_gates(conts))
+    walked_apart(graphs, walked)
     with io.open(OUT, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/trace_roads.py from the zone map art of build " + BUILD + ". Do not edit by hand.\n")
         fh.write("-- Roads traced from the maps for the Route module, in continent yards of the sizes below;\n")

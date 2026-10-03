@@ -273,7 +273,6 @@ local COMMANDS = {
 	{ "/vo reset", "the Voice Over window back to its place" },
 	{ "/route status", "the route, its road data and your flight points" },
 	{ "/route clear", "stop the route" },
-	{ "/route arrow reset", "the direction arrow back to the top of the screen" },
 	{ "/services", "the list of the nearest services" },
 	{ "/services <service>", "route to the nearest one, e.g. /services repair" },
 	{ "/restock", "your Restock List: what to keep in your bags" },

@@ -59,6 +59,14 @@ FOREVER = "1.60.1.69913"        # Forever, exported with wow.export (semicolon s
 VECTOR_COLUMNS = {"Loc", "Pos", "Corpse", "Region", "GeoBox", "MapOffset", "FlightMapOffset"}
 
 
+
+# The transports the data has no path for (kind 3 portal, 4 tram): (kind, one end's name, (world map continent,
+# world x, world y), the other end's name, its place) -- the ends the road recorder marked (2026-10-03)
+EXTRA_TRANSPORTS = [
+    (3, "Darnassus", (1, 9946.7, 2617.9), "Rut'theran Village", (1, 8785.6, 966.9)),
+    (4, "Stormwind", (0, -8372.8, 545.7), "Ironforge", (0, -4839.5, -1317.8)),
+]
+
 def db2(name):
     """Rows of a client table: the Forever export when it exists in the cache,
     else the Classic Era one. Both CSV dialects are normalised to wago's."""
@@ -821,6 +829,17 @@ def build_map_points(sql, zones, used_dungeons, raids):
                                loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0,
                                other[0], round(other[1], 1), round(other[2], 1)))
     log(f"  {len(transports)} boat / zeppelin docks")
+    # (2026-10-03) the portal between Darnassus and Rut'theran Village and the Deeprun Tram between Stormwind and
+    # Ironforge: no transport path in the data. Their ends where the road recorder marked them in game (the user's
+    # recordings, Tools/roads/recorded.json), both ways, for the Alliance
+    for kind, a_name, a, b_name, b in EXTRA_TRANSPORTS:
+        for here, (cont, x, y), there, other in ((a_name, a, b_name, b), (b_name, b, a_name, a)):
+            loc = locate(zones, cont, x, y)
+            label = ("Portal to " if kind == 3 else "Deeprun Tram to ") + there
+            transports.append((kind, 1, label, here, cont, x, y,
+                               loc[0]["areaID"] if loc else 0, loc[1] if loc else 0, loc[2] if loc else 0,
+                               other[0], other[1], other[2]))
+    log(f"  {len(EXTRA_TRANSPORTS) * 2} portal / tram ends")
     return entrances, transports
 
 
@@ -1597,7 +1616,8 @@ def main():
             did, name, cont, wx, wy, zone, px, py, kind = e
             fh.write(f"\t\t{{{did},{lua_str(name)},{cont},{wx},{wy},{zone},{px},{py},{kind}}},\n")
         fh.write("\t},\n")
-        fh.write("\t-- transports: kind (1 boat, 2 zeppelin), faction (0 neutral, 1 Alliance, 2 Horde), label, dock name,\n")
+        fh.write("\t-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),\n")
+        fh.write("\t-- label, dock name,\n")
         fh.write("\t-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y\n\ttransports = {\n")
         for t in transports:
             kind, faction, label, here, cont, wx, wy, zone, px, py, dcont, dx, dy = t

@@ -85,7 +85,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
 		{ type = "toggle", key = "chatButtons", name = "Chat Buttons",
-		  desc = "The game's chat buttons in their column left of the chat: the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak), Channels and Friends. While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },
+		  desc = "The game's chat buttons in their column left of the chat: Friends at the top, Channels, the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak). While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },
 		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
 		  desc = "The mouse wheel glides the chat text up and down instead of jumping a line at a time, in the chat windows and the whisper windows. Off, or with Reduce Motion on, it jumps as before." },
 		{ type = "header", name = "Channels" },
@@ -569,6 +569,107 @@ local function SetButtonsHidden(hidden)
 			end
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The Friends button in the column (user, 2026-10-03: "the Social icon on the
+-- Chat, people ask for it to relocate onto the left side where all the other
+-- buttons are, just keep the Social one on the first spot"). The game keeps it
+-- in its chat alert stack over the main window (ChatAlertFrame, which lays its
+-- frames out again whenever an alert comes or goes); while the module and Chat
+-- Buttons are on it stands at the top of the main window's button column, the
+-- Channels button under it -- the voice buttons and the Fight History button
+-- follow the Channels button as before, the chat menu stays at the bottom.
+-- Post-hooks only: after the stack's UpdateAnchors (an alert's coming and
+-- going, never per frame) it is put back in the column; a friend's toast,
+-- which the stack hangs on it, follows it. Off: the Channels button at the
+-- column's top again (its XML place), the Friends button where the game last
+-- laid it. (One table: this file's main chunk is near Lua 5.1's 200 locals.)
+--------------------------------------------------------------------------------
+
+local Social = { hooked = false, on = false, home = nil, GAP = 2 }
+
+function Social.Wanted()
+	return (M.isEnabled and M.db and M.db.chatButtons) and true or false
+end
+
+-- the game's own place of the Friends button, as its stack laid it (to give
+-- back); a secret or missing anchor is not kept, nor our own (the stack
+-- leaves a hidden button where it stood)
+function Social.Keep(social)
+	local ok, p, rel, rp, x, y = pcall(social.GetPoint, social, 1)
+	if ok and type(p) == "string" and not (Secret(p) or Secret(rel) or Secret(rp) or Secret(x) or Secret(y))
+		and rel ~= _G.ChatFrame1ButtonFrame then
+		Social.home = { p, rel, rp, x, y }
+	end
+end
+
+-- its layer: the game's (LOW 4, under the chat window's own) put it behind the
+-- column's stone (user, 2026-10-03: "it sits behind the texture"), so in the
+-- column it takes the Channels button's strata and level; out of it, the
+-- game's again (kept from the first time)
+function Social.Layer(social, from)
+	if not Social.layer then
+		local okS, strata = pcall(social.GetFrameStrata, social)
+		local okL, level = pcall(social.GetFrameLevel, social)
+		Social.layer = { okS and type(strata) == "string" and strata or "LOW", okL and type(level) == "number" and level or 4 }
+	end
+	local strata, level = Social.layer[1], Social.layer[2]
+	if from then
+		local okS, s = pcall(from.GetFrameStrata, from)
+		local okL, l = pcall(from.GetFrameLevel, from)
+		strata = okS and type(s) == "string" and s or strata
+		level = okL and type(l) == "number" and l or level
+	end
+	if social:GetFrameStrata() ~= strata then
+		social:SetFrameStrata(strata)
+	end
+	if social:GetFrameLevel() ~= level then
+		social:SetFrameLevel(level)
+	end
+end
+
+function Social.Place()
+	local social, column, channel = _G.QuickJoinToastButton, _G.ChatFrame1ButtonFrame, _G.ChatFrameChannelButton
+	if not (social and column and channel and social.SetPoint and channel.SetPoint) then
+		return
+	end
+	if Social.Wanted() then
+		Social.Keep(social)
+		Social.on = true
+		social:ClearAllPoints()
+		social:SetPoint("TOP", column, "TOP", 0, 0)
+		channel:ClearAllPoints()
+		channel:SetPoint("TOP", social, "BOTTOM", 0, -Social.GAP)
+		Social.Layer(social, channel)
+	elseif Social.on then
+		Social.on = false
+		channel:ClearAllPoints()
+		channel:SetPoint("TOP", column, "TOP", 0, 0)
+		Social.Layer(social)
+		local h = Social.home
+		if h then
+			social:ClearAllPoints()
+			social:SetPoint(h[1], h[2], h[3], h[4], h[5])
+		end
+	end
+end
+
+-- after the game's stack laid its frames: its new place kept, ours again
+function Social.AfterLayout()
+	local social = _G.QuickJoinToastButton
+	if social and Social.Wanted() then
+		Social.Place()
+	end
+end
+
+function Social.Hook()
+	local stack = _G.ChatAlertFrame
+	if Social.hooked or not (stack and type(stack.UpdateAnchors) == "function") then
+		return
+	end
+	Social.hooked = true
+	hooksecurefunc(stack, "UpdateAnchors", Social.AfterLayout)
 end
 
 --------------------------------------------------------------------------------
@@ -3549,6 +3650,8 @@ local function ApplyAll()
 	SetTabsOnMouseover(db.tabsOnMouseover)
 	SetEditBoxOnTop(db.editBoxTop)
 	SetButtonsHidden(not db.chatButtons)
+	Social.Hook()
+	Social.Place()
 	Speak.Hook()
 	Speak.Update()
 	Alpha.Apply()
@@ -3653,6 +3756,7 @@ function M:OnDisable()
 	SetTabsOnMouseover(false)
 	SetEditBoxOnTop(false)
 	SetButtonsHidden(false)
+	Social.Place()   -- (the module off: the Friends button the game's again)
 	Speak.Update()   -- (the module off: its label hidden, the game's inset back)
 	ApplyClassColors(false)
 	SetWhisperPopup(false)
@@ -3670,6 +3774,7 @@ function M:OnSettingChanged(key, value, db)
 		SetTabsOnMouseover(value)
 	elseif key == "chatButtons" then
 		SetButtonsHidden(not value)
+		Social.Place()
 		Speak.Update()
 	elseif key == "editBoxTop" then
 		SetEditBoxOnTop(value)

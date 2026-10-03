@@ -99,6 +99,8 @@ NOT_CONFIGURATOR = {
     "Modules/KitWindow.lua": "the own confirm dialog's answer buttons (MelloUI:Confirm), not options",
     "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
     "Modules/Services.lua": "the Services menu's Stop route button (it ends the route), not an option",
+    "Modules/RouteRecorder.lua": "the road recorder's window (a developer tool, /route record): its city switches and "
+                                 "buttons record roads, not options",
     "Core/EditLayout.lua": "Edit Layout's own control bar and right-click box: a mode's controls, not options",
     "Core/EditLayoutMovers.lua": "Edit Layout's plates: a mode's controls, not options",
     "Core/EditLayoutBridge.lua": "the Edit Mode bridge's buttons (Move via Edit Mode, the button on Edit Mode): a mode's "

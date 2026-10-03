@@ -904,44 +904,6 @@ local function OnBarChanged(rep)
 	end
 end
 
--- The level number's dark ground (0.15.0; the user: readable on any art and
--- colour): the palette's inner panel at DISC_ALPHA as the baked disc that
--- fits inside the orb's ring (Kit.markDisc, the ring's inner edge), a region
--- of the level frame over the orb (and its metal twin) and under the number
--- (OVERLAY), on the orb's own rect; shown with the orb. It lies inside the
--- orb's outline: no shade partner of its own. Its see-through is the
--- region's alpha, not the colour's: Dark Mode's shade sets a kit texture's
--- colour again with no alpha, which would make it opaque.
-local DISC_ALPHA = 0.85
-local function OrbDisc(uf, lf)
-	local rep = uf.melloLevelOrb
-	local tex = rep and rep.tex
-	if not tex or uf.melloOrbDisc or not Kit.markDisc then
-		return
-	end
-	local layer, sub = tex:GetDrawLayer()
-	local disc = lf:CreateTexture(nil, layer or "BACKGROUND", nil, math.min((sub or 0) + 1, 7))
-	Kit:Apply(disc, Kit.markDisc)
-	disc:SetAllPoints(tex)
-	Kit:Paint(disc, "innerPanel", "vertex", 1)
-	disc:SetAlpha(DISC_ALPHA)
-	disc:SetShown(active)
-	uf.melloOrbDisc = disc
-	local enable, disable = rep.onEnable, rep.onDisable
-	rep.onEnable = function(...)
-		if enable then
-			enable(...)
-		end
-		disc:Show()
-	end
-	rep.onDisable = function(...)
-		if disable then
-			disable(...)
-		end
-		disc:Hide()
-	end
-end
-
 local function SkinUnitFrame(uf)
 	if not uf or uf.melloKit then
 		return
@@ -1076,7 +1038,10 @@ local function SkinUnitFrame(uf)
 	if lf and lf.playerLevelDiffIcon then
 		uf.melloLevelOrb = Replace(lf.playerLevelDiffIcon, { as = "ui-hud-nameplates-levelindicator", rect = lf.playerLevelDiffIcon })
 		FitLevelOrb(uf)
-		OrbDisc(uf, lf)
+		-- the level number's dark ground (the unit frames' too: Kit:OrbDisc)
+		if Kit.OrbDisc then
+			Kit:OrbDisc(uf.melloLevelOrb, lf)
+		end
 		local orb = uf.melloLevelOrb
 		if orb then
 			local enable, disable = orb.onEnable, orb.onDisable

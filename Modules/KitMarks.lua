@@ -34,8 +34,10 @@
 --   Kit:MarkCrest(kind) -> the crest alone ("marks/crest_<kind>"), or nil
 --   Kit:WearMark(tex, piece, kind): the kit texture shows `piece` or, for a
 --       kind, its twin -- swapped only when that changes
---   Kit.markDisc: the white disc that fits inside the level orb's ring (the
---       nameplates' dark ground under the level number, painted there)
+--   Kit.markDisc: the white disc that fits inside the level orb's ring
+--   Kit:OrbDisc(rep, host[, number]) -> the level number's dark ground on a
+--       level orb (Kit.markDisc in the palette's inner panel; the nameplates'
+--       since 0.15.0, the unit frames' since 2026-10-03, below)
 -- Its users: UnitFramePanel (the target's and focus's ring and level orb,
 -- their targets' rings) and NameplatePanel (the left cap, the level orb and a
 -- crest before the name); each has its own switch (its `marks` option).
@@ -45,6 +47,7 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
+local hooksecurefunc = MelloUI.Perf:Scope("KitMarks").hooksecurefunc
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
@@ -141,4 +144,76 @@ function Kit:WearMark(tex, piece, kind)
 	if tex.kitName ~= want then
 		self:Apply(tex, want)
 	end
+end
+
+-- The level number's dark ground (0.15.0 on the nameplates; the user: readable
+-- on any art and colour. The unit frames' too, 2026-10-03: "the circle is
+-- fine but ... make it the same as on the nameplates, circle with a black
+-- background"): the palette's inner panel at DISC_ALPHA on the baked disc
+-- that fits inside the orb's ring (Kit.markDisc, the ring's inner edge), a
+-- region of `host` (the frame that draws the number) one sublevel over the
+-- orb (and its metal twin, worn on the same texture), on the orb's own rect.
+-- It shows while the orb does (the orb texture's own show and hide, hooked:
+-- the rep's switch and the game's show and hide of the circle alike). It lies
+-- inside the orb's outline: no shade partner of its own. Its strength is the
+-- region's alpha, not the colour's (Dark Mode's shade sets a kit texture's
+-- colour again with no alpha): opaque since 2026-10-03 (the user: "the
+-- untiframe and the nameplate Disc Darkness can be 100%"; 0.85 before).
+-- `number`: the level text where it shares the orb's draw layer (the unit
+-- frames': both OVERLAY, the number drawn over the orb only by the order of
+-- the two) -- raised to the top of that layer while the rep is on, so the
+-- disc never covers it; its own sublevel back with the rep off. Made once per
+-- orb: asked again, the same disc.
+local DISC_ALPHA = 1
+local discs = setmetatable({}, { __mode = "k" })   -- [orb texture] = its disc
+
+function Kit:OrbDisc(rep, host, number)
+	local tex = rep and rep.tex
+	if not (tex and type(host) == "table" and host.CreateTexture and self.markDisc) then
+		return nil
+	end
+	local disc = discs[tex]
+	if disc then
+		return disc
+	end
+	local layer, sub = tex:GetDrawLayer()
+	disc = host:CreateTexture(nil, layer or "BACKGROUND", nil, math.min((sub or 0) + 1, 7))
+	self:Apply(disc, self.markDisc)
+	disc:SetAllPoints(tex)
+	self:Paint(disc, "innerPanel", "vertex", 1)
+	disc:SetAlpha(DISC_ALPHA)
+	discs[tex] = disc
+	local function Sync()
+		disc:SetShown(tex:IsShown())
+	end
+	hooksecurefunc(tex, "Show", Sync)
+	hooksecurefunc(tex, "Hide", Sync)
+	hooksecurefunc(tex, "SetShown", Sync)
+	Sync()
+	local okL, numberLayer, numberSub = false, nil, nil
+	if type(number) == "table" and number.SetDrawLayer then
+		okL, numberLayer, numberSub = pcall(number.GetDrawLayer, number)
+	end
+	if okL and type(numberLayer) == "string" then
+		numberSub = tonumber(numberSub) or 0
+		local function Raise(on)
+			number:SetDrawLayer(numberLayer, on and 7 or numberSub)
+		end
+		local enable, disable = rep.onEnable, rep.onDisable
+		rep.onEnable = function(...)
+			if enable then
+				enable(...)
+			end
+			Raise(true)
+		end
+		rep.onDisable = function(...)
+			if disable then
+				disable(...)
+			end
+			Raise(false)
+		end
+		-- (asked for while its skin is on: a rep made then is enabled at once)
+		Raise(true)
+	end
+	return disc
 end

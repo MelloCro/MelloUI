@@ -1883,8 +1883,12 @@ end
 --               `model` (fn(key) -> a creature id): its 3D face in the
 --               rim's opening, the camera on the face, talking while
 --               `talking` (fn(key) -> true) says so; or `portrait` (fn(key)
---               -> a unit token: its 2D portrait, SetPortraitTexture); a
---               low glow round it
+--               -> a unit token: its 2D portrait, SetPortraitTexture); or
+--               `turn` = true: an arrow in the opening over the dark ground
+--               (Route's Navigation arrow, user 2026-10-03: nav_widget_looks
+--               pick A), `turnArt` fn(texture, key) handed it at each fill:
+--               its owner dresses and turns it (the column runs nothing per
+--               frame); a low glow round it
 --   the band    a soft shade (Shade:Band) behind two lines: `title` (fn(key)
 --               -> text[, r, g, b]: an item's quality, a class colour; the
 --               label in the palette's gold when left out) and `text`, the
@@ -2618,6 +2622,49 @@ local function Column()
 		return m.anim ~= 0
 	end
 
+	-- the turning arrow (spec.turn): its texture in the face over the dark
+	-- ground, made at its first use and handed to the spec's turnArt; the
+	-- owner turns it (Route, every frame while its row is wanted: the column
+	-- runs nothing per frame) and tells its line changes through
+	-- Rem:SetLines. (One table: Column's locals.)
+	local TURN = { SHARE = 0.5 }
+
+	function TURN.Set(row, spec, on)
+		local tex = row.turnTex
+		if not on then
+			if tex then
+				tex:Hide()
+			end
+			return
+		end
+		if not tex then
+			tex = row.face:CreateTexture(nil, "ARTWORK", nil, 3)
+			tex:SetSize(FACE * TURN.SHARE, FACE * TURN.SHARE)
+			tex:SetPoint("CENTER", row.face.icon, "CENTER", 0, 0)
+			row.turnTex = tex
+		end
+		tex:Show()
+		if type(spec.turnArt) == "function" then
+			local ok, err = pcall(spec.turnArt, tex, row.key)
+			if not ok then
+				Report(err)
+			end
+		end
+	end
+
+	-- a shown row's ring held at a share (a pet's happiness, the way done)
+	function TURN.Share(row, share)
+		row.liveShare = share
+		share = share < 0 and 0 or (share > FULL and FULL or share)
+		local ring = row.ring
+		ring:SetCooldown(GetTime() - share * SHARE_SPAN, SHARE_SPAN)
+		if ring.Pause then
+			ring:Pause()
+		end
+		Look.RingState(ring, "share", true)
+		ring:Show()
+	end
+
 	local function Fill(row, key)
 		local spec = specs[key]
 		row.key = key
@@ -2628,6 +2675,7 @@ local function Column()
 			title = Rem:Label(key)
 		end
 		row.title:SetText(title)
+		row.liveTitle = title
 		if type(r) == "number" and type(g) == "number" and type(b) == "number" and not (Secret(r) or Secret(g) or Secret(b)) then
 			local c = row.titleColour or {}
 			c[1], c[2], c[3] = r, g, b
@@ -2638,9 +2686,17 @@ local function Column()
 		end
 		local text = Value(spec.text, key)
 		row.text:SetText((Secret(text) or type(text) == "string") and text or "")
-		-- the face: a 3D face, a unit's portrait (a pet's) or the icon
-		local id = Num(Value(spec.model, key))
-		if id and id > 0 then
+		row.liveText, row.liveShare = text, nil
+		-- the face: the turning arrow, a 3D face, a unit's portrait (a pet's)
+		-- or the icon
+		local turning = spec.turn ~= nil
+		TURN.Set(row, spec, turning)
+		local id = not turning and Num(Value(spec.model, key)) or nil
+		if turning then
+			row.model:Hide()
+			row.face:SetIcon(nil)
+			row.ground:Show()
+		elseif id and id > 0 then
 			row.face:SetIcon(nil)
 			row.ground:Show()
 			SetModel(row, id)
@@ -2691,6 +2747,7 @@ local function Column()
 			row.pStart, row.pDur, row.pPaused = nil, nil, nil
 			-- a share with no time (a pet's happiness): the ring held there
 			local share = spec.fraction ~= nil and Num(Value(spec.fraction, key)) or nil
+			row.liveShare = share
 			if share then
 				share = share < 0 and 0 or (share > FULL and FULL or share)
 				local ring = row.ring
@@ -3609,6 +3666,33 @@ local function Column()
 					open = not row.trayOpen
 				end
 				SetTray(row, open)
+				return
+			end
+		end
+	end
+
+	-- a shown row's title, line and ring share set now, each when it is
+	-- given and changed (the Navigation arrow's distance as the player
+	-- walks: a Refresh would lay the whole row again); nothing for a row not
+	-- up (its next fill reads the spec)
+	function Rem:SetLines(key, title, text, share)
+		if not (col and key) then
+			return
+		end
+		for i = 1, up.n do
+			local row = col.rows[i]
+			if row.key == key and row:IsShown() then
+				if type(title) == "string" and title ~= row.liveTitle then
+					row.liveTitle = title
+					row.title:SetText(title)
+				end
+				if type(text) == "string" and text ~= row.liveText then
+					row.liveText = text
+					row.text:SetText(text)
+				end
+				if type(share) == "number" and share ~= row.liveShare and not row.pDur then
+					TURN.Share(row, share)
+				end
 				return
 			end
 		end

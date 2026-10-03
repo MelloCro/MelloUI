@@ -977,8 +977,12 @@ local function ExecuteCurve()
 				if Enum and Enum.LuaCurveType then
 					c:SetType(Enum.LuaCurveType.Linear)
 				end
-				-- a step made of two points a hair apart: on below, off from `at`
-				c:AddPoint(0, CreateColor(1, 1, 1, 1))
+				-- a step made of two points a hair apart: on below, off from `at`;
+				-- and off at none left (user, 2026-10-03: a dead unit's bar all
+				-- purple -- its fill gone, the crop on it had nothing to cut by,
+				-- so the tint lay on the whole bar)
+				c:AddPoint(0, CreateColor(1, 1, 1, 0))
+				c:AddPoint(0.0001, CreateColor(1, 1, 1, 1))
 				c:AddPoint(at - 0.0005, CreateColor(1, 1, 1, 1))
 				c:AddPoint(at, CreateColor(1, 1, 1, 0))
 				c:AddPoint(1, CreateColor(1, 1, 1, 0))
@@ -1635,9 +1639,10 @@ do
 		-- bars only, while it works on them (UpdateExecute's test)
 		local area = IsPlainString(sample.area) and sample.area or "unitframes"
 		if sample.execute and db.executeRange and M.isEnabled and EXECUTE_AREAS[area] and db[area] then
-			-- ExecuteCurve's line: on below it, off from it
+			-- ExecuteCurve's line: on below it, off from it (and off at none
+			-- left: a dead unit)
 			local at = math.max(1, math.min(99, tonumber(db.executeBelow) or 20)) / 100
-			if fraction < at then
+			if fraction > 0 and fraction < at then
 				return EXECUTE_COLOR[1], EXECUTE_COLOR[2], EXECUTE_COLOR[3]
 			end
 		end

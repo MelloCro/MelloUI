@@ -73,7 +73,7 @@ local LIST = {
 	{ "tracker", "Quest Tracker", "Chat & Map", "MelloUI's Quest Tracker." },
 	{ "objectives", "Objective Tracker", "Chat & Map", "The game's own objective tracker." },
 	{ "widgets", "Widget Column", "Chat & Map", "The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. On Mouseover hides a loot roll or a summons until you point at the column." },
-	{ "route", "Route Arrow & World Marker", "Chat & Map", "Route's direction arrow and the World Marker over the destination." },
+	{ "route", "World Marker", "Chat & Map", "Route's World Marker over the destination (the Direction Arrow is a row of the Widget Column: it fades with the column)." },
 }
 
 local SHOW = { { value = "always", label = "Always" }, { value = "combat", label = "In Combat" },
@@ -578,7 +578,7 @@ local function Register()
 		mouse = function() return Mice({}, G("MelloUIWidgets"), 4) end })
 	F:Register({ key = "route",
 		frames = function() return Add({}, F:Host("route")) end,
-		mouse = function() return Mice(Mice({}, G("MelloUIRouteArrow"), 2), G("MelloUIRouteMarker"), 2) end })
+		mouse = function() return Mice({}, G("MelloUIRouteMarker"), 2) end })
 end
 
 --------------------------------------------------------------------------------

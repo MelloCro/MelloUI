@@ -14,8 +14,12 @@
 --       grown outward, the fill on the whole rect behind it
 --   R1  window/portrait_ring with its OPENING on the game's portrait rect
 --   L1  buttons/orb under the level number (and the PvP badge's circle)
---   N3  the tabs/top title plate on the name band (the target's reaction
---       strip; the player's band is that rect mirrored)
+--   N3  the tabs/top title plate on the name band -- retired 2026-10-03
+--       (user: longer names did not fit it): the name centred on the band's
+--       rect as before, the nameplates' soft shade behind it (below), on
+--       every unit frame's name
+--   the level orb's dark ground under the number, as the nameplates' (user,
+--       2026-10-03: Kit:OrbDisc)
 -- The game's elite / rare / boss rings are faded; the Elite / Rare / Rare
 -- Elite / Boss marks (0.15.0, Modules/KitMarks.lua, the option `marks`) put
 -- the target's and focus's ring and level orb in the unit's metal with a
@@ -86,8 +90,8 @@ local Num = MelloUI.Safe.Number
 -- stands five levels over its target frame (the game's) and over that
 -- frame's bottom edge, under its ring: its shade frame sits at the target
 -- frame's own level, so its shade never lies on the target's art. Only the
--- pieces on the frame's outline get one: the portrait ring, the name band's
--- plate, the bars' brackets (a bracket running capless into the ring fades
+-- pieces on the frame's outline get one: the portrait ring, the bars'
+-- brackets (a bracket running capless into the ring fades
 -- out softly on that side: the left on the player's, the right on the
 -- mirrored target's), the level / PvP orbs, and the party backdrop's rail.
 -- Never the trough, the ring's cover over the bars' ends (a crop) or a faded
@@ -725,8 +729,9 @@ local function RingCover(ring, bars, mirrored, container)
 	return ring.cover
 end
 
--- The name centred on its plate (N3, as the title on a window's title
--- plate): the game's anchors saved and put back on disable.
+-- The name centred on its band's rect (as a window's title on its plate;
+-- the plate itself retired 2026-10-03, the soft shade behind the name
+-- instead: NameShade): the game's anchors saved and put back on disable.
 local function CenterName(fs, rect)
 	if not (fs and rect) then
 		return
@@ -771,20 +776,143 @@ local function RestoreNames()
 	end
 end
 
--- The name band plate (N3) as a region in the faded picture's layer (so the
--- ring, made after it, draws over its end), on `rect`.
-local function SkinBand(picture, rect)
-	return Replace(picture, { as = "UnitFrameNameBand", rect = rect, noFade = true })
+--------------------------------------------------------------------------------
+-- The name shade (user, 2026-10-03: "most of the longer names dont fit into
+-- the texture, why dont we just remove that texture and instead use the same
+-- shadow effect under the names that we have behind the names on the
+-- Nameplates. (For all Unitframes)"): the name plate (N3) is gone; behind
+-- each unit frame's name -- the player's, the target's and the focus's,
+-- their targets', the pet's, each party member's -- lies the shared soft band
+-- (MelloUI.Shade) the nameplates have, as long as the name's text: hung on
+-- the name's measure (Shade:Measure, an unseen copy of the name that the
+-- engine sizes to its text; the text handed on from the name's own SetText
+-- as it comes, a secret one too: nothing is read or compared). Where the
+-- measure refuses a name, the band lies on the name's whole line. It draws
+-- on the frame under the unit's art (the player's, target's and focus's
+-- container; the others' own frame) at the bottom of its stack: under the
+-- ring, the bars and the name. Its strength is the UI Shade's Shade Strength
+-- (the bus's 'shade'); it shows while the skin is on and the game shows the
+-- name. Made once per name, with its frame's dressing: no script, no work
+-- per frame.
+--------------------------------------------------------------------------------
+
+-- the nameplates' band: its full middle 4 past the text's ends, its soft ends
+-- 20 long, 5 above and below the text; on the name's line (the measure
+-- refused the name): its middle 10 inside the line's ends
+local NAME_BAND = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8 }
+local NAME_PAD = { x = 4, y = 5, lineX = -10 }
+
+local function NameStrength()
+	local v = Kit.ShadeStrength and Num(Kit:ShadeStrength())
+	if not v then
+		return 0.7
+	end
+	return v < 0 and 0 or v > 1 and 1 or v
+end
+
+-- shown while the skin is on and the game shows the name
+local function SyncNameShade(entry)
+	local want = (active and entry.shown) and true or false
+	if entry.band:IsShown() ~= want then
+		entry.band:SetShown(want)
+	end
+end
+
+-- on the measure (it took the name's text) or on the name's line; anchored
+-- again on a change only
+local function HangNameShade(entry, measured)
+	measured = measured and true or false
+	if entry.measured ~= measured then
+		entry.measured = measured
+		if measured then
+			entry.band:Anchor(entry.measure, NAME_PAD.x, NAME_PAD.y)
+		else
+			entry.band:Anchor(entry.fs, NAME_PAD.lineX, NAME_PAD.y)
+		end
+	end
+end
+
+-- the name's band on `host` (once per name; after CenterName, so a centred
+-- name's measure hangs on its centre, a left-justified one's on its left)
+local function NameShade(fs, host)
+	local Soft = MelloUI.Shade   -- (the shared bands; Shade here is the UI shade's)
+	if type(fs) ~= "table" or type(fs.SetText) ~= "function" or type(host) ~= "table" or not (skin and Soft)
+		or skin.nameShades[fs] then
+		return
+	end
+	NAME_BAND.alpha = NameStrength()
+	local band = Soft:Band(host, NAME_BAND)
+	if not band then
+		return
+	end
+	local okJ, justify = pcall(fs.GetJustifyH, fs)
+	local point = (okJ and (justify == "LEFT" or justify == "RIGHT")) and justify or "CENTER"
+	local entry = { fs = fs, band = band, measure = Soft:Measure(host, fs, point) }
+	skin.nameShades[fs] = entry
+	local okT, text = pcall(fs.GetText, fs)
+	HangNameShade(entry, entry.measure and okT and Soft:MeasureText(entry.measure, text))
+	local okS, shown = pcall(fs.IsShown, fs)
+	entry.shown = not okS or Secret(shown) or (shown and true or false)
+	hooksecurefunc(fs, "SetText", function(_, t)
+		HangNameShade(entry, entry.measure and Soft:MeasureText(entry.measure, t))
+	end)
+	hooksecurefunc(fs, "SetFormattedText", function(_, ...)
+		HangNameShade(entry, entry.measure and Soft:MeasureFormatted(entry.measure, ...))
+	end)
+	local function Shown(on)
+		entry.shown = on
+		SyncNameShade(entry)
+	end
+	hooksecurefunc(fs, "Show", function()
+		Shown(true)
+	end)
+	hooksecurefunc(fs, "Hide", function()
+		Shown(false)
+	end)
+	hooksecurefunc(fs, "SetShown", function(_, on)
+		-- (asked for secret first: a secret answer counts as shown)
+		Shown(Secret(on) or (on and true or false))
+	end)
+	SyncNameShade(entry)
+end
+
+-- every name's band: shown or hidden with the skin, at the Shade Strength
+local function SyncNameShades(strength)
+	if not skin then
+		return
+	end
+	for _, entry in pairs(skin.nameShades) do
+		if strength then
+			entry.band:SetStrength(strength)
+		end
+		SyncNameShade(entry)
+	end
+end
+
+-- UI Shade switched or its strength moved: the bus's 'shade' for the unit
+-- frames' area (Modules/KitShade.lua)
+local function OnShade(area)
+	if area == SHADE_AREA then
+		SyncNameShades(NameStrength())
+	end
 end
 
 -- The level / PvP circle (L1): the orb under the frame's own text, following
--- the game's show / hide. Returns the rep.
-local function SkinCircle(circle)
+-- the game's show / hide. `number`: the level text -- the level circle's orb
+-- gets the nameplates' dark ground under it (user, 2026-10-03: "make it the
+-- same as on the nameplates, circle with a black background";
+-- Kit:OrbDisc, which also lifts the number over it: the two share OVERLAY).
+-- Returns the rep.
+local function SkinCircle(circle, number)
 	if not circle then
 		return nil
 	end
 	local rep = Replace(circle, { as = "UI-HUD-UnitFrame-SmallCircle" })
 	Follow(rep, circle)
+	if rep and number and Kit.OrbDisc then
+		local okP, host = pcall(circle.GetParent, circle)
+		Kit:OrbDisc(rep, okP and host or nil, number)
+	end
 	return rep
 end
 
@@ -953,10 +1081,10 @@ local function SkinPlayer()
 	})
 	-- (its shade: the outline's parts, under the whole frame)
 	local u = Unit(pf, container)
-	-- the band before the ring: both in the picture's layer, the ring over it
+	-- the name centred on the band's rect, its shade behind it
 	local band = PlayerBandRect(container)
-	Shade(u, SkinBand(picture, band))
 	CenterName(PlayerName, band)
+	NameShade(PlayerName, container)
 	skin.playerRing = SkinRing(picture, container.PlayerPortrait, container.PlayerPortraitMask)
 	Shade(u, skin.playerRing, true)
 	local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar
@@ -965,7 +1093,7 @@ local function SkinPlayer()
 	Shade(u, SkinBar(mana, mana, picture, false))
 	TuckBars(skin.playerRing, { health, mana }, false)
 	RingCover(skin.playerRing, { health, mana }, false, container)
-	Shade(u, SkinCircle(main.LevelBackgroundCircle), true)
+	Shade(u, SkinCircle(main.LevelBackgroundCircle, _G.PlayerLevelText), true)
 	Shade(u, SkinCircle(main.PvpBackgroundCircle), true)
 	Watch(u)
 end
@@ -993,8 +1121,8 @@ local function SkinTargetLike(frame)
 	local u = Unit(frame, container)
 	if main.ReputationColor then
 		Replace(main.ReputationColor, { as = "UI-HUD-UnitFrame-Target-PortraitOn-Type" })
-		Shade(u, SkinBand(picture, main.ReputationColor))
 		CenterName(main.Name, main.ReputationColor)
+		NameShade(main.Name, container)
 	end
 	local ring = SkinRing(picture, container.Portrait)   -- its mask follows the portrait's anchors
 	Shade(u, ring, true)
@@ -1003,7 +1131,7 @@ local function SkinTargetLike(frame)
 	Shade(u, SkinBar(main.ManaBar, main.ManaBar, picture, true))
 	TuckBars(ring, { health, main.ManaBar }, true)
 	RingCover(ring, { health, main.ManaBar }, true, container)
-	local level = SkinCircle(main.LevelBackgroundCircle)
+	local level = SkinCircle(main.LevelBackgroundCircle, main.LevelText)
 	Shade(u, level, true)
 	Shade(u, SkinCircle(contextual and contextual.PvpBackgroundCircle), true)
 	Watch(u)
@@ -1058,6 +1186,7 @@ local function SkinTargetLike(frame)
 		TuckBars(totRing, { tot.HealthBar, tot.ManaBar }, false)
 		RingCover(totRing, { tot.HealthBar, tot.ManaBar }, false, tot)
 		Watch(totU)
+		NameShade(tot.Name, tot)
 		-- (its ring marked as its unit is: it has no level orb)
 		local totUnit = TOT_UNIT[unit]
 		if totUnit then
@@ -1087,13 +1216,14 @@ local function SkinPet()
 	TuckBars(petRing, { PetFrameHealthBar, PetFrameManaBar }, false)
 	RingCover(petRing, { PetFrameHealthBar, PetFrameManaBar }, false, pf)
 	Watch(u)
+	NameShade(_G.PetName or pf.name, pf)
 end
 
 --------------------------------------------------------------------------------
 -- The party frames (PartyFrame's pooled PartyMemberFrameTemplate, 120 x 53:
 -- the picture is a region of the member frame at ARTWORK 0 with the name
--- after it, the portrait at BACKGROUND; the ring and the name plate go to
--- BACKGROUND above the portrait, under the name; the bars as on the player
+-- after it, the portrait at BACKGROUND; the ring goes to BACKGROUND above
+-- the portrait, under the name, the name's shade under both; the bars as on the player
 -- frame; the member's pet frame the same at half size). The frames are
 -- re-acquired from the pool on every show: skinned from that hook.
 --------------------------------------------------------------------------------
@@ -1204,16 +1334,17 @@ local function SkinPartyMember(frame)
 	local health = frame.HealthBarContainer.HealthBar
 	local band = frame.Name and NameBandRect(frame, frame.Name, frame.HealthBarContainer)
 	if band then
-		Shade(u, SkinBand(picture, band))
 		CenterName(frame.Name, band)
 	end
+	NameShade(frame.Name, frame)
 	local ring = SkinRing(picture, portrait, nil, "UnitFramePortraitRingParty")
 	Shade(u, ring, true)
 	Shade(u, SkinBar(health, health, picture, false, true))
 	Shade(u, SkinBar(frame.ManaBar, frame.ManaBar, picture, false))
 	TuckBars(ring, { health, frame.ManaBar }, false)
 	RingCover(ring, { health, frame.ManaBar }, false, frame)
-	-- the member's pet: the same at half size (no name plate: its name has no band)
+	-- the member's pet: the same at half size (its name has no shade: the pet's
+	-- frame shows none)
 	local pet = frame.PetFrame
 	if pet and pet.Texture and pet.Portrait and pet.HealthBar then
 		FadeArt({
@@ -1295,7 +1426,11 @@ local function Build()
 	if not skin then
 		-- (units / due: the shade's units waiting for a first show, and those
 		-- shown, made out of combat; marks: the marked frames by their unit)
-		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {}, marks = {} }
+		-- nameShades: [name] = its shade (NameShade)
+		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {}, marks = {},
+			nameShades = {} }
+		-- (taken with the first dressing, once)
+		MelloUI:On("shade", OnShade, "Unit Frames Kit name shade")
 	end
 	SkinPlayer()
 	SkinTargetLike(TargetFrame)
@@ -1321,6 +1456,7 @@ local function Activate()
 	for _, entry in ipairs(skin.names) do
 		entry.place()
 	end
+	SyncNameShades(NameStrength())
 	RetuckAll()
 	for _, cover in ipairs(skin.covers) do
 		cover.Refit()
@@ -1338,6 +1474,7 @@ local function Deactivate()
 		rep:Disable()
 	end
 	RestoreNames()
+	SyncNameShades()
 	UntuckBars()
 	for _, cover in ipairs(skin.covers) do
 		cover.holder:Hide()

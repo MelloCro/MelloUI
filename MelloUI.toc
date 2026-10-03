@@ -3,7 +3,7 @@
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
 ## Version: 0.18.0
-## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes
+## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords
 ## SavedVariablesPerCharacter: MelloUIFights
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements
@@ -76,6 +76,7 @@ Modules\QuestListPanel.lua
 Modules\QuestListMap.lua
 Modules\QuestListTips.lua
 Modules\Route.lua
+Modules\RouteRecorder.lua
 Modules\Services.lua
 Modules\Reminders.lua
 Modules\Restock.lua

@@ -48,7 +48,6 @@ local M = MelloUI:RegisterModule("Route", {
 		trackQuests = true,
 		trackFirstWatched = false,
 		arrow = true,
-		arrowScale = 1,   -- (0.16.0: no slider; an old size, a profile's too, carried into the arrow's Edit Layout size once: PlaceArrow)
 		worldMarker = true,
 		routeBeam = true,
 		lineWidth = 3,
@@ -73,7 +72,7 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "travelTime", name = "Travel Time",
 		  desc = "About how long the rest of the way takes, beside the distance under the arrow and on the World Marker, from how fast you are moving (on foot or mounted). The tracking notice says it too, and arriving says how long the way took." },
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
-		  desc = "An arrow that points along the route's next leg, with the distance and destination. Drag it to move it; /route arrow reset puts it back at the top centre." },
+		  desc = "A row in the widget column while a route is followed: an arrow that points along the route's next leg, the destination, the distance and the travel time, and a ring that fills as the way is done. Hover it to show the route on the map or to stop it." },
 		{ type = "toggle", key = "worldMarker", name = "World Marker",
 		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, faint while it stands in the middle of the screen; within 100 yards it lands on the place as a pin and stays there. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
@@ -85,7 +84,7 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "flightHint", name = "Flight Map Help",
 		  desc = "At a flight master: where your route flies to, on the flight map's title band, with a small gem on that flight point. Pointing at a flight point also shows about how long the flight takes." },
 		{ type = "toggle", key = "flightCountdown", name = "Landing Countdown",
-		  desc = "While you fly, the Direction Arrow points at where you will land and counts down the time left (with the Direction Arrow on), also when no route is set. The on-screen notice says the take-off and the landing." },
+		  desc = "While you fly, the Direction Arrow's row points at where you will land and its ring counts down the time left (with the Direction Arrow on), also when no route is set. The on-screen notice says the take-off and the landing." },
 		{ type = "header", name = "Learning" },
 		{ type = "toggle", key = "learn", name = "Learn Paths While Playing",
 		  desc = "Remember where you walk and fly so routes can follow real roads. What it learns is saved and kept from one session to the next. /route shows how much has been learned." },
@@ -1031,6 +1030,21 @@ local function BuildDocks()
 	end
 end
 
+-- a dock leg's seconds, the wait included: a boat or a zeppelin BOAT_COST;
+-- the portal between Darnassus and Rut'theran Village a few seconds, the
+-- Deeprun Tram about three minutes (the user, 2026-10-03: "2-4 minutes
+-- depending on the wait time for the train"); `d` a dock, or a route point's
+-- id ("D3": its dock)
+M.DOCK_SECONDS = { [3] = 10, [4] = 180 }
+
+function M.DockSeconds(d)
+	if type(d) == "string" then
+		local index = tonumber(d:match("^D(%d+)$"))
+		d = index and docks and docks[index]
+	end
+	return d and M.DOCK_SECONDS[d.kind] or BOAT_COST
+end
+
 --------------------------------------------------------------------------------
 -- Flight points
 --
@@ -1956,7 +1970,7 @@ do
 			SetPos(id, d.cont, d.x, d.y)
 			LinkPoint(id, d.cont, d.x, d.y, true)
 			if d.pair then
-				AddExtra(id, "D" .. d.pair, BOAT_COST)
+				AddExtra(id, "D" .. d.pair, M.DockSeconds(d))
 			end
 			HubEnds(id, d.cont, d.x, d.y, scont, sx, sy)
 			Search.Yield()
@@ -2700,7 +2714,7 @@ function Travel.Ahead(r)
 		if a[1] == b[1] then
 			local d = Dist(a[2], a[3], b[2], b[3])
 			if b[4] == "boat" then
-				fixed = BOAT_COST
+				fixed = M.DockSeconds(b[5])
 			elseif b[4] == "flight" then
 				fixed = Travel.FlightSeconds(a, b, d)
 			else
@@ -3611,6 +3625,17 @@ local function ReadTrackedQuest()
 	if M.db.trackQuests then
 		questID = TrackedQuestID()
 	end
+	-- stopped (M.nav.Stop): no quest followed, nor the first tracked one,
+	-- until the player focuses a quest again
+	local stop = M.stopped
+	if stop then
+		local quest = SuperTrackState()
+		if quest and (stop.cleared or quest ~= stop.quest) then
+			M.stopped = nil
+		else
+			questID = nil
+		end
+	end
 	if not questID then
 		if destination and destination.fromQuest then
 			destination = nil
@@ -3742,6 +3767,7 @@ local function ReadWaypoint()
 		M.CannotPlace(mapID, "point")
 		return
 	end
+	M.stopped = nil   -- (a new pin: the player's pick, M.nav.Stop)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromWaypoint = true,
 		label = "|A:Waypoint-MapPin-ChatIcon:16:16|a map pin" }
 	Plan(true, true)
@@ -4099,6 +4125,7 @@ function M:SetDestinationTo(candidate, label, pin, noticeText)
 	if not mapID then
 		mapID, mx, my = MapPointOfYards(cont, x, y)
 	end
+	M.stopped = nil   -- (a destination chosen: the player's pick, M.nav.Stop)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = mx, my = my, label = label }
 	if pin and mapID and C_Map.SetUserWaypoint and UiMapPoint then
 		local okCan, can = pcall(C_Map.CanSetUserWaypointOnMap, mapID)
@@ -4835,47 +4862,31 @@ local function ClipToSquare(ax, ay, bx, by, R, RY)
 end
 
 --------------------------------------------------------------------------------
--- Direction arrow
+-- Direction arrow: a row of the widget column (user, 2026-10-03: "merge me
+-- the Navigation Arrow into the Widget"; pick A of MelloUI-BuildData/output/
+-- nav_widget_sketch: the arrow turning in the rim, the ring filling as the
+-- way is done, the destination and the distance line on the band; the arrow
+-- on the screen went: docs/plans/nav-widget.md). `arrow` is its state, no
+-- frame of its own: UpdateArrow, the loading look and the landing countdown
+-- set it, the row (MelloUI.Reminders, key "route") reads it --
+--   Show / Hide / IsShown   whether the row is wanted (its check)
+--   targetCont/X/Y          where it points (aimless: nowhere yet)
+--   title, distance.text    the destination; the distance and travel time
+--                           (Travel.Line writes it through `distance`)
+--   quiet, spinning         the line hidden and the arrow going round while
+--                           the roads load with nothing to point at
+--   icon                    the row's arrow texture, once it has one (its
+--                           colour: Travel.Paint)
+-- The row's place and size are the column's (Edit Layout's "Widgets"). The
+-- column lays the arrow's texture in the row's face and hands it here
+-- (turnArt): Route turns it every frame from a small frame of its own
+-- (M.nav.turner, made at that first hand-over, shown only while the row is
+-- wanted, as the arrow's own OnUpdate was) and tells the column its lines
+-- when they change (M.nav.Push: Rem:SetLines, no re-lay). Made at the
+-- module's enable: a table and the row's spec.
 --------------------------------------------------------------------------------
 
 local arrow = nil
-
--- Its place: MelloUI's one mover and place store (Core.lua; audit,
--- 2026-09-24, rank 6: it dragged itself and kept arrowX / arrowY of its own,
--- so Unlock the Windows, Reset positions and the UI-scale put-back never
--- reached it). Dragged at any time, as always; saved by its centre from the
--- screen's centre, as arrowX / arrowY were, in its own units. (Its parts in
--- one table: the file is near Lua's limit of 200 locals.) key: its place in
--- the store; size: the Arrow Size it was last laid at; resized: the slider
--- moved since (a size the wheel kept gives way); entry: its mover, once it
--- is on it (ArrowPlace.Mover: at its first show, not at login).
-local ArrowPlace = { key = "routeArrow", size = nil, resized = nil, entry = nil }
-
--- the top centre of the screen: where it stands with no place saved (Edit
--- Layout's Reset and /route arrow reset put it back here)
-function ArrowPlace.Home(f)
-	f:SetScale(1)
-	f:ClearAllPoints()
-	f:SetPoint("TOP", UIParent, "TOP", 0, -40)
-end
-
--- an old place (arrowX / arrowY) not moved into the store yet let go, both
--- keys at once and then through the setting path, so the macro backup
--- forgets it too: /route arrow reset, and Edit Layout's Reset (the mover's
--- reset), or the next placing would move it back in (review, 2026-09-25)
-function ArrowPlace.Forget()
-	if M.db.arrowX ~= nil or M.db.arrowY ~= nil then
-		M.db.arrowX, M.db.arrowY = nil, nil
-		MelloUI:NotifySettingChanged(M.name, "arrowX", nil)
-		MelloUI:NotifySettingChanged(M.name, "arrowY", nil)
-	end
-end
-
--- the mover's `waiting`: an old place is still there (so Edit Layout's
--- Reset all reaches it while the store could not take it in yet)
-function ArrowPlace.Waiting()
-	return M.db ~= nil and (M.db.arrowX ~= nil or M.db.arrowY ~= nil)
-end
 
 -- Rotation for a target dx yards east, dy yards south of the player facing f.
 local function ArrowRotation(dx, dy, facing)
@@ -4884,174 +4895,265 @@ local function ArrowRotation(dx, dy, facing)
 	return math.atan2(-rx, -ry)
 end
 
-local function EnsureArrow()
-	if arrow or not Minimap then
-		return
+-- the row's parts (fields of M: this file's main chunk is near Lua's limit)
+M.nav = { KEY = "route", SPIN = 2.4, registered = false,
+	MAP_TIP = "Show on the map", STOP_TIP = "Stop the route" }
+
+function M.nav.Rem()
+	local r = MelloUI.Reminders
+	return type(r) == "table" and type(r.Register) == "function" and r or nil
+end
+
+-- the row looked at again on the next frame (shown, hidden, laid afresh)
+function M.nav.Refresh()
+	local r = M.nav.Rem()
+	if r and M.nav.registered then
+		r:Refresh(M.nav.KEY)
 	end
-	-- (0.17.0: on the Fader's host, which fades it as the user picks)
-	arrow = CreateFrame("Frame", "MelloUIRouteArrow", (MelloUI.Fader and MelloUI.Fader:Host("route") or UIParent))
-	arrow:SetSize(72, 96)
-	arrow:SetFrameStrata("MEDIUM")
-	arrow:SetClampedToScreen(true)
-	arrow:EnableMouse(true)
-	arrow.icon = arrow:CreateTexture(nil, "ARTWORK")
-	arrow.icon:SetSize(54, 54)
-	arrow.icon:SetPoint("TOP", 0, -2)
-	Travel.PlayerArrow(arrow.icon)
-	-- the distance and the travel time: "1.2 km · about 2 min" (Travel.Line)
-	arrow.distance = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	RouteFont.Style(arrow.distance, "fontChat", _G.GameFontNormal)   -- a number
-	arrow.distance:SetPoint("TOP", arrow.icon, "BOTTOM", 0, -2)
-	Travel.Paint()   -- the icon and the distance in the palette's gold
-	arrow.label = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	RouteFont.Style(arrow.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
-	arrow.label:SetPoint("TOP", arrow.distance, "BOTTOM", 0, -1)
-	arrow.label:SetWidth(180)
-	arrow.label:SetWordWrap(false)
-	Perf.SetScript(arrow, "OnEnter", function(self)
-		-- (MelloUI's one tooltip: the palette's gold and text)
-		MelloUI.Widgets.ShowTooltip(self, "Route", "Points along the next leg of the route. Drag to move.", nil, "ANCHOR_LEFT")
-	end)
-	Perf.SetScript(arrow, "OnLeave", function() GameTooltip:Hide() end)
-	arrow.frameAge = 0
-	Perf.SetScript(arrow, "OnUpdate", function(self, elapsed)
-		self.frameAge = self.frameAge + elapsed
-		if self.frameAge < 1 / 60 or not self.targetX then
-			return
-		end
-		self.frameAge = 0
-		local cont, px, py = PlayerYards(true)   -- the minimap's ask this frame, when it drew first
-		if not cont or cont ~= self.targetCont then
-			return
-		end
+end
+
+-- where the arrow points, from the way the player faces (Route's turner,
+-- every frame while the row is wanted)
+function M.nav.Angle()
+	local a = arrow
+	if not a then
+		return nil
+	end
+	if not a.targetX then
+		return a.angle
+	end
+	local cont, px, py = PlayerYards(true)   -- (the minimap's ask this frame, when it drew first)
+	if cont and cont == a.targetCont then
 		local facing = 0
 		if GetPlayerFacing then
 			local ok, f = pcall(GetPlayerFacing)
 			facing = ok and Plain(f) or 0
 		end
-		self.icon:SetRotation(ArrowRotation(self.targetX - px, self.targetY - py, facing))
-	end)
-	arrow:Hide()
-	-- (its drag and its place: ArrowPlace.Mover, when it is first shown)
+		a.angle = ArrowRotation(a.targetX - px, a.targetY - py, facing)
+	end
+	return a.angle
 end
 
--- The place it had before the store (arrowX / arrowY, its centre's offsets
--- from the screen's centre in its own units), moved into the store once, so
--- it stands exactly where it did: laid the old way at its size, then saved
--- by the store's own measure; the old keys go. The data is the version:
--- while the old keys are there the move has not happened. (A flag would not
--- do: a late settings load carries plain values over from the table used
--- before it, not tables, so the flag would come through without the
--- store's entry.) A profile or backup from before brings its place along.
--- A place the store already has (dragged since) wins; half a place is let
--- go. Returns true while it still stands on the old place (the store could
--- not measure it yet: tried again at the next placing).
-function ArrowPlace.Old()
-	local x, y = M.db.arrowX, M.db.arrowY
-	if x == nil and y == nil then
-		return false
+-- the ring: the share of the way done (none while flying: the flight's
+-- time has it)
+function M.nav.Share()
+	local r = route
+	if M.flight.arrowOn or not (r and r.left and r.length and r.length > 0) then
+		return nil
 	end
-	x, y = tonumber(x), tonumber(y)
-	if x and y and not MelloUI:GetPosition(ArrowPlace.key) then
-		arrow:ClearAllPoints()
-		arrow:SetPoint("CENTER", UIParent, "CENTER", x, y)
-		-- (through the setting path: the macro backup takes the new place,
-		-- and with it the old keys gone)
-		if not MelloUI:SavePosition(ArrowPlace.key, arrow) then
-			return true
-		end
-	end
-	M.db.arrowX, M.db.arrowY = nil, nil
-	return false
+	local share = 1 - r.left / r.length
+	return share < 0 and 0 or share
 end
 
-local function PlaceArrow()
-	if not arrow then
+-- the ring while flying: the flight's time, from take-off
+function M.nav.Flight()
+	local f = M.flight.arrowOn and M.flight.active
+	if f and f.secs and f.at then
+		return f.at, f.secs
+	end
+	return nil
+end
+
+-- the map opened on the destination's map (the game's own open, the next
+-- frame, out of this click's run); never in the Gamepad UI: a map opened
+-- from MelloUI's code there runs its frame manager in MelloUI's run (the
+-- 0.15.0 freeze), the player opens it
+function M.nav.ShowMap()
+	if MelloUI.Safe.GamepadUI() then
+		MelloUI:Print("Route: in the Gamepad UI, open your map to see the route.")
 		return
 	end
-	local entry = ArrowPlace.entry
-	if not entry then
-		-- laid when it goes on the mover, at its first show (nothing made
-		-- or hooked at login: review, 2026-09-25, WINDOW-RULES 2f); at once
-		-- only while an old place waits to be moved in (the one login after
-		-- the update): the move needs the mover's anchor, and Reset
-		-- positions has to reach it
-		if M.db.arrowX ~= nil or M.db.arrowY ~= nil then
-			ArrowPlace.Mover()
+	C_Timer.After(0, M.nav.OpenMap)
+end
+
+function M.nav.OpenMap()
+	if MelloUI.Safe.GamepadUI() or type(_G.OpenWorldMap) ~= "function" then
+		return
+	end
+	local d = destination
+	local ok, err = pcall(_G.OpenWorldMap, d and (d.mapID or d.cont) or nil)
+	if not ok then
+		geterrorhandler()(err)
+	end
+end
+
+-- the route stopped (the row's Stop, /route clear; user, 2026-10-03: "clicking
+-- on stop the route does not actually stop it" -- a tracked quest's route
+-- came straight back): the map pin cleared, the game's focus on a quest let
+-- go (the quest stays in the tracker), and no quest followed until the player
+-- picks one again (M.stopped: ReadTrackedQuest) -- super-tracks a quest, sets
+-- a map pin or a destination (SetDestinationTo)
+function M.nav.Stop()
+	local quest = SuperTrackState()
+	local d = destination
+	M.stopped = { quest = (d and d.fromQuest and d.questID) or quest or TrackedQuestID(), cleared = quest == nil }
+	if quest and C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
+		-- (once the game's focus is let go, any quest focused again is the
+		-- player's pick; when it could not be, another quest)
+		M.stopped.cleared = pcall(C_SuperTrack.SetSuperTrackedQuestID, 0) and SuperTrackState() == nil
+	end
+	if C_Map.ClearUserWaypoint then
+		pcall(C_Map.ClearUserWaypoint)
+	end
+	M:Clear()
+end
+
+-- the row's lines told to the column when they changed (from UpdateArrow,
+-- the landing countdown and the loading look); the way's share in steps of
+-- half a percent
+function M.nav.Push()
+	local r = M.nav.Rem()
+	local a = arrow
+	if not (r and M.nav.registered and a and a.shown and r.SetLines) then
+		return
+	end
+	local share = M.nav.Share()
+	r:SetLines(M.nav.KEY, a.title or "", (not a.quiet and a.distance.text) or "",
+		share and math.floor(share * 200 + 0.5) / 200 or nil)
+end
+
+-- the row's arrow turned, every frame while it is wanted (while it goes
+-- round, the motion engine turns it: M.nav.Work)
+function M.nav.Turn()
+	local a = arrow
+	local tex = a and a.icon
+	if not (tex and a.shown) then
+		M.nav.turner:Hide()
+		return
+	end
+	if a.spinning then
+		return
+	end
+	local angle = M.nav.Angle()
+	if angle then
+		tex:SetRotation(angle)
+	end
+end
+
+-- the loading look on the row's arrow as Build.ArrowWork has it: it breathes
+-- in its gold while the roads load (Anim:Pulse) and goes round, 2.4 s a
+-- turn, with nothing to point at (Anim:Spin); set again when the column
+-- hands the arrow over (a row made, or another row's face)
+function M.nav.Work()
+	local a = arrow
+	local tex = a and a.icon
+	local anim = MelloUI.Anim
+	if not (tex and anim and anim.Pulse and anim.Spin and anim.StopGroup) then
+		return
+	end
+	if a.working and not a.breath then
+		a.breath = anim:Pulse(tex, 0.35, 1, 0.8)
+	elseif not a.working and a.breath then
+		anim:StopGroup(a.breath)
+		a.breath = nil
+		tex:SetAlpha(1)
+	end
+	if a.spinning and not a.spin then
+		a.spin = anim:Spin(tex, M.nav.SPIN)
+	elseif not a.spinning and a.spin then
+		anim:StopGroup(a.spin)
+		a.spin = nil
+	end
+end
+
+function M.nav.Turning()
+	local t = M.nav.turner
+	if not t then
+		if not (arrow and arrow.icon) then
+			return
 		end
+		t = CreateFrame("Frame")
+		t:Hide()
+		Perf.SetScript(t, "OnUpdate", M.nav.Turn)
+		M.nav.turner = t
+	end
+	t:SetShown(arrow.shown and arrow.icon ~= nil)
+end
+
+function M.nav.Register()
+	local r = M.nav.Rem()
+	if not r or M.nav.registered then
 		return
 	end
-	-- (0.16.0: the Arrow Size slider is gone; the arrow's size is Edit
-	-- Layout's, the wheel's, kept with its place. An old size is carried
-	-- into the place once: laid at it, then saved with it)
-	local old = tonumber(M.db.arrowScale)
-	if old and old ~= 1 then
-		M.db.arrowScale = 1
-		local pos = MelloUI:GetPosition(ArrowPlace.key)
-		if old > 0 and not (pos and pos.scale) then
-			arrow:SetScale(old)
-			if not ArrowPlace.Old() and not MelloUI:RestorePosition(ArrowPlace.key, arrow) then
-				ArrowPlace.Home(arrow)
-				arrow:SetScale(old)
+	M.nav.registered = true
+	r:Register({
+		key = M.nav.KEY, column = true, label = "Navigation", enabled = true,
+		check = function()
+			return arrow ~= nil and arrow.shown and M.isEnabled and M.db ~= nil and M.db.arrow and true or false
+		end,
+		title = function()
+			return arrow and arrow.title or ""
+		end,
+		text = function()
+			return (arrow and not arrow.quiet) and arrow.distance.text or ""
+		end,
+		turn = true,
+		turnArt = function(tex)
+			if arrow.icon ~= tex then
+				-- (another row's face: the look's groups on the one it had go)
+				local anim = MelloUI.Anim
+				if anim and anim.StopGroup then
+					if arrow.breath then
+						anim:StopGroup(arrow.breath)
+					end
+					if arrow.spin then
+						anim:StopGroup(arrow.spin)
+					end
+				end
+				if arrow.icon then
+					arrow.icon:SetAlpha(1)
+				end
+				arrow.breath, arrow.spin = nil, nil
 			end
-			MelloUI:SavePosition(ArrowPlace.key, arrow, old)
-		end
-	end
-	entry.base = 1
-	-- the saved size, then the place (the saved offsets are in its units)
-	arrow:SetScale(1)
-	if not ArrowPlace.Old() and not MelloUI:RestorePosition(ArrowPlace.key, arrow) then
-		ArrowPlace.Home(arrow)
-	end
+			arrow.icon = tex
+			Travel.PlayerArrow(tex)
+			Travel.Paint()
+			M.nav.Work()
+			M.nav.Turning()
+			M.nav.Turn()
+		end,
+		fraction = M.nav.Share,
+		progress = M.nav.Flight,
+		onClick = function()
+			M.nav.ShowMap()
+		end,
+		hint = M.nav.MAP_TIP,
+		actions = {
+			{ glyph = "way", tip = M.nav.MAP_TIP, desc = "Opens the map on the destination, the route drawn on it.",
+			  fn = function() M.nav.ShowMap() end },
+			{ glyph = "cross", tip = M.nav.STOP_TIP, desc = "Clears the destination and its route.",
+			  fn = function() M.nav.Stop() end },
+		},
+	})
 end
 
--- On the one mover: dragged through it at any time, and in Edit Layout
--- ("Navigation arrow", a "(hidden)" plate at its place while no route
--- shows it); the store's place put back on every show and after a UI Scale
--- change, kept on the screen. At its first show (UpdateArrow), at Edit
--- Layout's first open (ArrowPlace.Source), or at once while an old place
--- waits (PlaceArrow). It sets no drag, show or hide script of its own (Core
--- hooks those); registered at its size, which the saved offsets are in; the
--- wheel's range in Edit Layout is 0.5 to 2 (the old Arrow Size slider's);
--- live while Route and its Direction Arrow are on.
-function ArrowPlace.Live()
-	return M.isEnabled and M.db and M.db.arrow and true or false
-end
-
-function ArrowPlace.Mover()
-	if ArrowPlace.entry or not arrow then
+local function EnsureArrow()
+	if arrow then
 		return
 	end
-	local size = tonumber(M.db.arrowScale) or 1   -- (an old Arrow Size, carried by PlaceArrow)
-	arrow:SetScale(size)
-	ArrowPlace.entry = MelloUI:RegisterMover(arrow, arrow, { key = ArrowPlace.key, anchor = "CENTER",
-		plainDrag = "always", min = 0.5, max = 2, base = 1, reset = ArrowPlace.Forget, default = ArrowPlace.Home,
-		label = "Navigation arrow", page = "Route", placeholder = true, when = ArrowPlace.Live,
-		waiting = ArrowPlace.Waiting })
-	if ArrowPlace.entry then
-		PlaceArrow()
+	local a = { shown = false, quiet = false }   -- (its title: none until it is first shown)
+	-- the distance line: Travel.Line writes it here as on the marker's text
+	-- (its `text`, as a font string keeps it)
+	a.distance = { SetText = function(self, text) self.text = text end }
+	function a:IsShown()
+		return self.shown
 	end
-end
-
--- Edit Layout's source (Core's list; run at each of its opens and resumes,
--- never at login): the arrow made and on the mover before its first route,
--- so its place can be set with nothing to follow yet
-function ArrowPlace.Source()
-	if not ArrowPlace.entry and ArrowPlace.Live() then
-		EnsureArrow()
-		ArrowPlace.Mover()
+	function a:Show()
+		if not self.shown then
+			self.shown = true
+			M.nav.Refresh()
+			M.nav.Turning()
+		end
 	end
-end
-if MelloUI.AddMoverSource then
-	MelloUI:AddMoverSource(ArrowPlace.Source)
-end
-
--- /route arrow reset: the saved place forgotten, an old one not moved yet
--- too; laid now if it is on the mover, else at its first show
-function ArrowPlace.Reset()
-	ArrowPlace.Forget()
-	MelloUI:ForgetPosition(ArrowPlace.key)
-	PlaceArrow()
+	function a:Hide()
+		if self.shown then
+			self.shown = false
+			M.nav.Refresh()
+			M.nav.Turning()
+		end
+	end
+	arrow = a
+	M.nav.Register()
 end
 
 --------------------------------------------------------------------------------
@@ -5204,26 +5306,6 @@ function TextShade.Pop(region)
 	return pop
 end
 
--- The arrow's (at its first show: UpdateArrow): a band behind its distance
--- line and its name line, a round one behind the arrow. With the option off
--- nothing is made (false: asked; switching it on asks again)
-function TextShade.Arrow()
-	if arrow.shade ~= nil then
-		return
-	end
-	local Shade = MelloUI.Shade
-	if not (TextShade.On() and Shade and Shade.Band) then
-		arrow.shade = false
-		return
-	end
-	local s = {}
-	s.icon = TextShade.Round(arrow, arrow.icon, 54)
-	s.distance = TextShade.Band(arrow, arrow.distance, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
-	s.label = TextShade.Band(arrow, arrow.label, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
-	arrow.shade = s
-	TextShade.Sync(arrow)
-end
-
 -- The marker's (at its first show: UpdateMarker): a band behind its
 -- distance line and its name line, the gem's shadow partner at the gem's
 -- drawn scale (UI units per painted px), a round band behind the edge arrow.
@@ -5290,13 +5372,6 @@ end
 -- option on -- the arrow's at its next tick, the marker's at once while it
 -- is up. Nothing is made at login (neither has been shown).
 function TextShade.Apply()
-	if arrow then
-		if arrow.shade then
-			TextShade.Sync(arrow)
-		elseif arrow.shade == false and TextShade.On() then
-			arrow.shade = nil
-		end
-	end
 	if marker then
 		if marker.shade then
 			TextShade.Sync(marker)
@@ -6095,9 +6170,8 @@ function Travel.Paint()
 	local ir, ig, ib = MelloUI.Look.RoleColour("picture")
 	-- (each part only once it exists: a frame half made, by an error part way
 	-- through its making, must not break every later repaint)
-	if arrow and arrow.distance then
-		arrow.icon:SetVertexColor(ir, ig, ib)
-		arrow.distance:SetTextColor(r, g, b)
+	if arrow and arrow.icon then
+		arrow.icon:SetVertexColor(ir, ig, ib)   -- (the row's arrow: its lines are the column's)
 	end
 	if marker and marker.distance and marker.edge then
 		marker.distance:SetTextColor(r, g, b)
@@ -6168,7 +6242,7 @@ local function UpdateArrow(cont, px, py)
 		return false
 	end
 	arrow.aimless = nil
-	-- the OnUpdate above turns the icon towards this every frame
+	-- the row's turning face turns towards this every frame (M.nav.Angle)
 	arrow.targetCont, arrow.targetX, arrow.targetY = cont, tx, ty
 	if not remaining or remaining <= 0 then
 		remaining = Dist(px, py, destination.x, destination.y)
@@ -6178,16 +6252,9 @@ local function UpdateArrow(cont, px, py)
 	end
 	-- the distance and the travel time, made only when either changes
 	Travel.Line(arrow, remaining)
-	arrow.label:SetText(destination.label or "")
-	-- its text shade, asked at its first show (TextShade.Arrow)
-	if arrow.shade == nil then
-		TextShade.Arrow()
-	end
-	-- on the one mover at its first show, not at login (ArrowPlace.Mover)
-	if not ArrowPlace.entry then
-		ArrowPlace.Mover()
-	end
+	arrow.title = destination.label or ""
 	arrow:Show()
+	M.nav.Push()
 	if Build.loading then
 		Build.ArrowWork()   -- (a place to point at now: it stops turning)
 	end
@@ -6195,14 +6262,15 @@ local function UpdateArrow(cont, px, py)
 end
 
 -- The arrow's working look while the roads go in (Build.loading, the first
--- route of a session: "Loading navigation..."): its icon breathes in its
--- gold (Anim:Pulse); with no place to point at yet (a tracked quest's
--- places wait to be priced by route: no destination until then) it is shown
--- for it and turns slowly round besides, its two lines hidden (under Reduce
--- Motion, where it cannot turn, it is not shown for it). Asked as the
--- load starts and ends, by UpdateArrow while it lasts and after a setting;
--- each part set on a change only, made at its first use (never at login).
--- Not while the flight's landing countdown has the arrow.
+-- route of a session: "Loading navigation..."): with no place to point at
+-- yet (a tracked quest's places wait to be priced by route: no destination
+-- until then) its row shows for it, the arrow going round and its title the
+-- notice's line, the distance line hidden; under Reduce Motion, where it
+-- cannot turn, the row is not shown for it (an arrow standing still with
+-- nothing to point at would read as a way to go: review, 2026-09-28; the
+-- notice's line tells the wait alone). With a place to point at, it points.
+-- Asked as the load starts and ends, by UpdateArrow while it lasts and after
+-- a setting. Not while the landing countdown has the arrow.
 function Build.ArrowWork()
 	local a = arrow
 	if not a then
@@ -6212,52 +6280,27 @@ function Build.ArrowWork()
 	-- (aimless: UpdateArrow found nothing to point at, another continent's
 	-- place with no route yet)
 	local spin = on and (not destination or a.aimless) or false
-	-- (the motion engine's breath and turn: still under Reduce Motion)
-	local anim = MelloUI.Anim
-	if not (anim and anim.Pulse and anim.Spin and anim.StopGroup) then
-		anim = nil
-	end
 	if on ~= (a.working or false) then
 		a.working = on
-		if on then
-			a.breath = anim and anim:Pulse(a.icon, 0.35, 1, 0.8) or nil
-		elseif a.breath and anim then
-			anim:StopGroup(a.breath)
-			a.icon:SetAlpha(1)
-		end
 	end
 	if spin ~= (a.spinning or false) then
-		a.spinning = spin
+		a.spinning, a.quiet = spin, spin
 		if spin then
-			a.spin = anim and anim:Spin(a.icon, 2.4) or nil
+			a.title = Build.LOADING
+		elseif not destination then
+			a:Hide()   -- (the load over with nothing to route to)
+		end
+	end
+	M.nav.Work()
+	if spin then
+		local anim = MelloUI.Anim
+		if anim and not anim.reduceMotion then
+			a:Show()
 		else
-			if a.spin and anim then
-				anim:StopGroup(a.spin)
-			end
-			if not destination then
-				a:Hide()   -- (the load over with nothing to route to)
-			end
+			a:Hide()
 		end
-		a.distance:SetShown(not spin)
-		a.label:SetShown(not spin)
-		TextShade.Sync(a)
 	end
-	-- shown for it, but not under Reduce Motion (nor without the motion
-	-- engine): an arrow standing still with nothing to point at would read as
-	-- a way to go (review, 2026-09-28); the notice's line tells the wait alone
-	local show = spin and anim ~= nil and not anim.reduceMotion
-	if show and not a:IsShown() then
-		-- its text shade and its place, as at any first show
-		if a.shade == nil then
-			TextShade.Arrow()
-		end
-		if not ArrowPlace.entry then
-			ArrowPlace.Mover()
-		end
-		a:Show()
-	elseif spin and not show and a:IsShown() then
-		a:Hide()
-	end
+	M.nav.Push()
 end
 
 -- A route point's offset on the minimap from the player (pixels) and its
@@ -6481,6 +6524,10 @@ function M:YardsText(d)
 	d = MelloUI.Safe.Number(d)
 	return d and Yards(d) or nil
 end
+
+-- (for the road recorder, Modules/RouteRecorder.lua) continent yards -> a
+-- map's 0..1 place, nil off that map's continent: OnMap(mapID, cont, x, y)
+M.OnMap = OnMap
 
 function M:FollowedRemaining(questID)
 	local d = destination
@@ -7210,12 +7257,12 @@ do
 		F.arrowOn = false
 		F.shown, F.shownD = nil, nil
 		if arrow then
-			arrow.label:SetWidth((arrow.shade and TextShade.On()) and 0 or TextShade.LABEL_W)
 			arrow.lineSuffix, arrow.lineD = nil, nil   -- the route's distance line made afresh (Travel.Line)
 			arrow.targetX = nil
 			if not (destination and M.isEnabled and M.db.arrow) then
 				arrow:Hide()
 			end
+			M.nav.Refresh()   -- (the ring: the way's share again)
 		end
 	end
 
@@ -7233,27 +7280,16 @@ do
 			shown = left >= 0.5 and math.floor(left + 0.5) or 0
 		end
 		if not F.arrowOn then
-			if arrow.shade == nil then
-				TextShade.Arrow()   -- its text shade, at its first show
-			end
-			if not ArrowPlace.entry then
-				ArrowPlace.Mover()   -- on the one mover at its first show
-			end
 			F.arrowOn = true
 			F.shown, F.shownD = nil, nil
-			arrow.label:SetWidth(0)   -- the whole sentence
 			arrow.lineSuffix, arrow.lineD = nil, nil
+			M.nav.Refresh()   -- (the ring: the flight's time, its time text on the row)
 		end
 		if shown ~= F.shown then
 			F.shown = shown
-			if shown < 0 then
-				arrow.label:SetText("Flying to " .. a.name)
-			elseif shown == 0 then
-				arrow.label:SetText("Landing at " .. a.name .. " soon")
-			else
-				arrow.label:SetText("Landing at " .. a.name .. " in about " .. Clock(shown))
-			end
+			arrow.title = (shown == 0 and "Landing at " or "Flying to ") .. a.name
 		end
+		M.nav.Push()
 		local cont, px, py = PlayerYards(true)
 		if cont and a.cont == cont then
 			arrow.targetCont, arrow.targetX, arrow.targetY = cont, a.x, a.y
@@ -7891,14 +7927,8 @@ SlashCmdList.MELLOROUTE = function(msg)
 			C_SuperTrack and C_SuperTrack.IsSuperTrackingUserWaypoint and tostring(C_SuperTrack.IsSuperTrackingUserWaypoint()) or "?")
 		MelloUI:ShowLog("route dots")
 	elseif msg == "clear" then
-		if C_Map.ClearUserWaypoint then
-			pcall(C_Map.ClearUserWaypoint)
-		end
-		M:Clear()
+		M.nav.Stop()   -- (a tracked quest's route stays stopped too)
 		MelloUI:Print("Route cleared.")
-	elseif msg == "arrow reset" then
-		ArrowPlace.Reset()
-		MelloUI:Print("Arrow back at the top centre of the screen.")
 	elseif msg == "reset confirm" then
 		-- the traced roads are not learned data: they stay, counted afresh
 		-- (before the graph is built: once it is, after what came before)
@@ -7908,6 +7938,10 @@ SlashCmdList.MELLOROUTE = function(msg)
 		M:Clear()
 		-- (user, 2026-09-24: player words, no developer tools in what players read)
 		MelloUI:Print("Learned paths wiped. The paths that come with MelloUI itself come back at the next /reload.")
+	elseif msg == "record" and M.Recorder then
+		-- (a developer tool, in no help line: the capitals' streets walked by
+		-- hand, Modules/RouteRecorder.lua)
+		M.Recorder.Open()
 	elseif msg == "layers" then
 		-- the world map's layers, low to high, and where the route sits
 		local canvas = WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas and WorldMapFrame:GetCanvas()
@@ -8078,12 +8112,15 @@ SlashCmdList.MELLOROUTE = function(msg)
 			mapFrame and string.format("%dx%d", mapFrame:GetWidth(), mapFrame:GetHeight()) or "not created",
 			mapPainter and mapPainter.used or 0, tostring(Provider ~= nil),
 			mmPainter and tostring(mmPainter.used) or "none", arrow and arrow:IsShown() and "shown" or "hidden"))
-		print("   /route clear   |   /route arrow reset   |   /route reset   |   /route dots")
+		print("   /route clear   |   /route reset   |   /route dots")
 	end
 end
 
 function M:OnInit(db)
 	self.db = db
+	-- (the Direction Arrow became a row of the widget column, 2026-10-03: its
+	-- old place and size keys go)
+	db.arrowX, db.arrowY, db.arrowScale = nil, nil, nil
 end
 
 function M:OnEnable(db)
@@ -8095,7 +8132,6 @@ function M:OnEnable(db)
 	CreateProvider()
 	EnsureMinimapFrame()
 	EnsureArrow()
-	PlaceArrow()
 	EnsureMarker()
 	-- (a profile brought in: the Text Shade as it says; nothing at login)
 	TextShade.Apply()
@@ -8173,7 +8209,6 @@ function M:OnSettingChanged(key, value, db)
 		StandIn.Update()
 	end
 	M.flight.Setting(key)
-	PlaceArrow()
 	Redraw()
 	if marker then
 		marker.lastX = nil   -- (the marker's parts looked at again at its next tick)

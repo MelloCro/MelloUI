@@ -106,7 +106,7 @@ files are removed (they are rebuilt by their tools if ever wanted).
 | HUD action bars, micro menu, bag bar, status bars (user, 2026-09-21) | R1 rims to the pitch with the icon filling the opening (empty: stone), the bars' frame art faded (under the rims), gryphons → `deco/rail_cap` orbs behind every bar (X2), page arrows hidden, micro buttons on the cog plate with the game's glyphs (M1), XP / rep bars P1 with the caps outside and `bars/tick` on the segments |
 | HUD compact raid frames (user, 2026-09-21) | F1 G1: the single rail at 0.8 with stone as regions of the frame (rails above the fills, under the icons); the group border on the single rail 1.6; the totem borders → round rims; selection edge and aggro glow the game's |
 | HUD cast bars (user, 2026-09-21) | C1 T1: `bars/castbar` with the game's bar as its opening and the caps outside, the bar narrowed by the arms so it reads the game's width; `lists/header` on the 12 px under the standalone bar; all FX faded and their animations stopped |
-| HUD unit frames (player / target / focus / ToT / pet; user, 2026-09-21) | B3 R1 L1 N3: the frame's one picture faded; `window/portrait_ring` with its opening on the portrait (the portrait at the medallion size, 2b); the P1 bracket on each bar, ring side capless, far cap grown outward, the fill on the whole rect; the bars END on the ring's round body 2 px under it (never deeper: the fill must be readable to its end) and the ring's own pixels are drawn once more over their ends (`RingCover`); `buttons/orb` under the level / PvP circle; the `tabs/top` title plate on the name band with the name centred on it. Party frames the same (Round 3, done): the ring and plate at BACKGROUND under the name (the party picture is drawn above its portrait), the plate centred over the health bar at the frame's proportion × 1.2, wide enough for its rune caps |
+| HUD unit frames (player / target / focus / ToT / pet; user, 2026-09-21) | B3 R1 L1 N3: the frame's one picture faded; `window/portrait_ring` with its opening on the portrait (the portrait at the medallion size, 2b); the P1 bracket on each bar, ring side capless, far cap grown outward, the fill on the whole rect; the bars END on the ring's round body 2 px under it (never deeper: the fill must be readable to its end) and the ring's own pixels are drawn once more over their ends (`RingCover`); `buttons/orb` under the level / PvP circle, the level's with the nameplates' dark disc (`Kit:OrbDisc`); the name centred on the name band's rect with the nameplates' soft name shade behind it (the `tabs/top` title plate retired 2026-10-03: longer names did not fit it). Party frames the same (Round 3, done): the ring at BACKGROUND under the name (the party picture is drawn above its portrait), the name centred over the health bar |
 
 A new element type = a new catalogue for the user to pick from
 (`UITest/tools/*_catalog.py` -> `kit_raw/*_catalog.png`, lettered options at the
@@ -243,7 +243,7 @@ Every kit element casts a soft dark shade of its OWN shape against the world:
 - **Outline pieces only.** A shade partner goes under the pieces that form an
   element's edge against the world: a window's outer rail (outside only), its
   title plate, gem corners, ring or crest; a bar's backdrop rails and end
-  caps; a unit frame's ring, name plate, bar brackets and orbs; a rim. Never
+  caps; a unit frame's ring, bar brackets and orbs; a rim. Never
   under an inner piece (a row plate, a section band, a scroll thumb, a slot
   inside a window): that only darkens the window's own stone.
 - **Its own shape.** Pieces take their baked partner from
@@ -368,7 +368,7 @@ Frames tweak's name centring step aside for that group while it is covered
 - A frame hidden at load (a cast bar) has no rects until it first shows:
   re-fit its pieces on `OnShow`.
 - A strip narrower than its two caps goes capless (`FitCaps`): a plate whose
-  caps must show (the party name plate) gets a rect at least that wide, or
+  caps must show (a plate with rune caps) gets a rect at least that wide, or
   a height at which the caps fit.
 - A smaller frame gets the bigger frame's element SCALED by their portraits'
   ratio, not the same pixels (the 18 px band ate the 120 px party frame).

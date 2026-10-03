@@ -48,6 +48,15 @@ local TRANSPORT_ATLAS = {
 	[1] = { "taxinode_continent_alliance_timed", "TaxiNode_Alliance" },
 	[2] = { "taxinode_continent_horde_timed", "TaxiNode_Horde" },
 }
+-- (2026-10-03) the portal between Darnassus and Rut'theran Village and the
+-- Deeprun Tram's stations, by their transport kind (3, 4): the game's
+-- Alliance portal, its mine cart (no tram of its own in this client)
+local TRANSPORT_KIND_ATLAS = {
+	[3] = { "MagePortalAlliance", "TaxiNode_Alliance" },
+	[4] = { "Vehicle-SilvershardMines-MineCart", "Vehicle-AllianceCart", "TaxiNode_Alliance" },
+}
+local TRANSPORT_PLACE = { [2] = "Zeppelin tower", [3] = "Portal", [4] = "Tram station" }
+local TRANSPORT_WHAT = { [2] = "zeppelin", [3] = "portal", [4] = "tram" }
 
 -- A quest found only inside a dungeon or raid is pinned beside its entrance.
 local BESIDE_DOOR_X, BESIDE_DOOR_Y = 20, 10   -- pixels: off the entrance pin's own icon
@@ -460,7 +469,7 @@ function QL.DressMark(self, kind, data)
 			SetFirstAtlas(self.Icon, data.raid and { "Raid", "DungeonSkull" } or { "Dungeon", "DungeonSkull" })
 		else
 			self:SetSize(26, 26)
-			SetFirstAtlas(self.Icon, TRANSPORT_ATLAS[data.faction] or TRANSPORT_ATLAS[0])
+			SetFirstAtlas(self.Icon, TRANSPORT_KIND_ATLAS[data.kind] or TRANSPORT_ATLAS[data.faction] or TRANSPORT_ATLAS[0])
 		end
 	else
 		-- a zone's badge in the palette as it is now (the pins are laid
@@ -556,7 +565,7 @@ MarkEnter = function(self)
 		end
 	elseif self.kind == "transport" then
 		QL.TipTitle(tip, data.label)
-		Line(tip, (data.kind == 2 and "Zeppelin tower" or "Dock") .. " at " .. data.dock, "text")
+		Line(tip, (TRANSPORT_PLACE[data.kind] or "Dock") .. " at " .. data.dock, "text")
 		if data.faction == 1 then
 			Line(tip, "Alliance", "alliance")
 		elseif data.faction == 2 then
@@ -666,7 +675,7 @@ MarkClick = function(self, button)
 	elseif self.kind == "transport" and not IsShiftKeyDown() then
 		local map = WorldMapFrame
 		local mapID = map and QL.Plain(map:GetMapID())
-		local what = data.kind == 2 and "zeppelin" or "boat"
+		local what = TRANSPORT_WHAT[data.kind] or "boat"
 		local icon = "|A:TaxiNode_Neutral:16:16|a "
 		local set, chimed = QL.RouteToPoint(mapID, data.x, data.y, icon .. data.label,
 			string.format("%sTracking the %s to %s, {dist} away", icon, what, data.label))

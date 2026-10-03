@@ -5326,7 +5326,6 @@ Kit.Replacements = {
 	["ui-castingbar-full-glow-standard"]      = { kind = "fade" },   -- the completion flash
 	["castbar_shadow_embedded"]               = { kind = "fade" },   -- the overlay look's drop shadow
 	["CastBarFX"]                             = { kind = "fade" },   -- the glows, flakes, wisps, sparkles and shine (keyed by hand: their animations drive alpha, the panel stops those)
-	["UnitFrameNameBand"]                     = { kind = "strip", base = "tabs/top", state = "title", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- N3: the title plate on the name band's rect (the target's strip; the player's the same rect mirrored), a region in the faded picture's layer so the ring draws over its end
 }
 
 --------------------------------------------------------------------------------

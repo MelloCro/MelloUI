@@ -463,7 +463,8 @@ MelloUI_QuestListData = {
 		{1977,"Zul'Gurub",0,-11916.2,-1206.9,33,53.7,17.6,2},
 		{1977,"Zul'Gurub",0,-11915.8,-1236.4,33,54.2,17.6,2},
 	},
-	-- transports: kind (1 boat, 2 zeppelin), faction (0 neutral, 1 Alliance, 2 Horde), label, dock name,
+	-- transports: kind (1 boat, 2 zeppelin, 3 portal, 4 tram), faction (0 neutral, 1 Alliance, 2 Horde),
+	-- label, dock name,
 	-- continent, world x, world y, zone (build-time guess), map x, map y, destination continent, world x, world y
 	transports = {
 		{1,0,"Boat to Booty Bay","Ratchet",1,-1005.6,-3841.6,14,35.5,79.8,0,-14277.7,582.9},
@@ -491,6 +492,10 @@ MelloUI_QuestListData = {
 		{1,0,"Boat to Thunder Bluff","Zephras Isle",2991,1952.5,1019.1,0,57.7,81.0,1,-802.0,366.5},
 		{1,0,"Boat to Stormwind City","Auberdine",1,6548.3,942.2,361,12.2,15.3,0,-8654.5,1344.4},
 		{1,0,"Boat to Auberdine","Stormwind City",0,-8654.5,1344.4,1519,21.8,56.9,1,6548.3,942.2},
+		{3,1,"Portal to Rut'theran Village","Darnassus",1,9946.7,2617.9,1657,30.3,41.3,1,8785.6,966.9},
+		{3,1,"Portal to Darnassus","Rut'theran Village",1,8785.6,966.9,141,55.9,89.7,1,9946.7,2617.9},
+		{4,1,"Deeprun Tram to Ironforge","Stormwind",0,-8372.8,545.7,1519,67.8,32.5,0,-4839.5,-1317.8},
+		{4,1,"Deeprun Tram to Stormwind","Ironforge",0,-4839.5,-1317.8,1537,76.4,51.2,0,-8372.8,545.7},
 	},
 	-- flight points: [id] = { name, continent, world x, world y, faction (0 both, 1 Alliance, 2 Horde) }
 	taxiNodes = {

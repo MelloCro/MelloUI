@@ -22,7 +22,7 @@ Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidi
 
 ## 🖱️ Drag. Everything.
 
-Press **Edit Layout** at the top of the settings window (or type `/mello edit`). Every part of the interface gets a plate you can drag: MelloUI's trackers and notices, the minimap, chat, the damage meter and any window you have open. The arrow, the Voice Over window and the whisper windows get one too, even while they are hidden.
+Press **Edit Layout** at the top of the settings window (or type `/mello edit`). Every part of the interface gets a plate you can drag: MelloUI's trackers and notices, the minimap, chat, the damage meter and any window you have open. The widget column (with the Direction Arrow and Voice Over in it) and the whisper windows get one too, even while they are hidden.
 
 - Scroll the mouse wheel on a plate to make it bigger or smaller; it stops at 100 % on the way.
 - It snaps to the nearest element's edges and centre, and a gold line shows where. Hold Shift for a straight line, Alt to drop it freely.
@@ -224,7 +224,7 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello combattext test` | Combat Text: a few sample lines in the chosen style |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
 | `/qlmap` | Quest List map pins: diagnostics, and `dock`, `zeppelin`, `arrive`, `entrance`, `remove`, `list` to record pins by hand (see Quest List) |
-| `/route` | Route: how much has been learned, the current route, your map and how Route places you on it, and how many flight times it has learned; `/route quest` (what the client reports for the tracked quest), `/route clear`, `/route arrow reset`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
+| `/route` | Route: how much has been learned, the current route, your map and how Route places you on it, and how many flight times it has learned; `/route quest` (what the client reports for the tracked quest), `/route clear`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
 | `/services [kind]` | Services: open the nearest-service menu, or route straight to the nearest `repair`, `mailbox`, `innkeeper`, `flight`, `auction`, `bank`, `class trainer`, `profession trainer`, `barber` or `transmog` |
 | `/restock` | Restock: your Restock List window (what this character keeps in its bags) |
 | `/sfx` | Custom Sounds: the state; `/sfx play <name>` auditions a sound, `/sfx list` names them, `/sfx log` prints every sound kit the game plays and what replaced it, `/sfx kit <id>` what a kit maps to; `/sfxdump` the last sound events in the copy window |
@@ -255,7 +255,7 @@ Chat (the whisper popups too), Bags, Minimap (and the Services bar), Tracker (th
 tracker and the Quest Tracker), Buffs, Event Widgets and Nameplates. Every outline piece of the painted kit gets a soft dark shade of its own shape,
 laid under it so it never darkens the window's own stone: the outer rails, title plates, rings
 and crests of the windows, the bars' backdrops and end caps (and the rims of bars with no
-backdrop), the brackets and plates of the cast bars, the rings, name plates, bar brackets and
+backdrop), the brackets and plates of the cast bars, the rings, bar brackets and
 orbs of the unit and party frames, the chat rail, tabs, minimized card and input box, the
 minimap's ring or square frame and zone plate, the tracker's rail and title plate, each aura's
 rim, the battleground and event widgets' bars (and a soft band behind their score and timer
@@ -314,7 +314,9 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
 - Chat Buttons (0.17.0, on; Hide Chat Buttons before, which hid them): the game's own chat
   buttons in their column left of the chat -- the chat menu (Say, Party, Raid, Guild, Yell,
   whisper and reply, macros, emotes and voice emotes, and the language you speak), Channels and
-  Friends with its online count. With the chat reskin they wear the whisper window's round
+  Friends with its online count. Friends stands at the top of the column (the game keeps it over
+  the chat), Channels and the voice buttons under it, the chat menu at the bottom; a friend's
+  toast still shows by it. With the chat reskin they wear the whisper window's round
   buttons (the kit's rim, a dark disc, our glyph); every click and menu stays the game's, so the
   language you pick is the game's own choice. While you speak more than one language, the one you
   speak shows at the right end of the line you type in, and what you type stays clear of it.
@@ -481,7 +483,7 @@ Buffs & Debuffs), **Bars** (Main Action Bar, Action Bar 2 to 8 each on its own, 
 Micro Menu, Bag Bar, Experience & Reputation Bars; and the Reminders by your portrait under Frames)
 and **Chat & Map** (the chat with its tabs, buttons, the Friends button and the line you type in, the
 Minimap with its band and the Services row, the Quest Tracker, the game's Objective Tracker, the
-Widget Column, and Route's arrow and World Marker). **Fade Everything** puts every element on In Combat,
+Widget Column (with Route's Direction Arrow in it), and Route's World Marker). **Fade Everything** puts every element on In Combat,
 **Fade Nothing** on Always. **Faded Opacity** (0-50 %), **Fade After** (how long it waits after a
 fight, a target or the pointer leaving; 1.5 s) and **Fade Speed** (0.6 s; coming back is always
 quick; Reduce Motion: at once) shape it.
@@ -755,6 +757,9 @@ zoom and pan with the map:
   the client reports for the map shown.
 - *Boats and zeppelins*: docks and towers with the destination, in the taxi-node icons of
   your faction; click to route to the dock, Shift-click to open the destination's map. The
+  portal between Darnassus and Rut'theran Village and the Deeprun Tram's two stations (in
+  Stormwind's Dwarven District and Ironforge's Tinker Town) show the same way, in the portal's
+  and a mine cart's icon. The
   vanilla routes come from the
   transport ships' paths; Forever's new routes (Stormwind Harbour, Southshore, Steamwheedle
   Port to Powderfuse Port) are recorded on the spot with `/qlmap dock Boat to Auberdine`
@@ -833,18 +838,20 @@ for addons, so the roads come from two places: the ones traced from the zone map
 half second outdoors it drops a breadcrumb and links it to the previous one, flights you take become links, opening a flight
 master's map records the links from there to every reachable point, and the boats, zeppelins
 and the vanilla flight network from the Quest List data connect the rest (only flight points
-your character has discovered are used). A route is the cheapest way through that graph, in
+your character has discovered are used), with the portal between Darnassus and Rut'theran
+Village (a few seconds) and the Deeprun Tram (about three minutes, the wait included). A route is the cheapest way through that graph, in
 seconds, with straight legs to reach it; where nothing has been learned yet it is a straight
 line. Routes may cross continents: walk to the dock, boat, walk.
 
 The route is drawn as a chain of red dots (0.16.0; small gems before): solid along paths you
 have walked or that were traced from the map, paler and farther apart where the route is a
 straight guess, smaller and farther apart for a flight or a boat leg. On the minimap the
-nearby part is drawn the same way, clipped to the minimap's shape. A direction arrow (the
-minimap's own player arrow at double resolution, top centre of the screen by default, drag to
-move, `/route arrow reset`) points along the next leg relative to where you face, with the
-remaining distance and about how long the rest of the way takes ("1.2 km · about 2 min") and
-the destination's name and icon under it. Every new destination shows
+nearby part is drawn the same way, clipped to the minimap's shape. The Direction Arrow (a row
+of the widget column since the update after 0.18.0: it moves and sizes with the column) turns in
+the round rim along the next leg relative to where you face, with the destination's name and the
+remaining distance and about how long the rest of the way takes ("1.2 km · about 2 min") on its
+band, and a gold ring that fills as the way is done (while you fly: the flight's time, with the
+time left). Point at it for **Show on the map** and **Stop the route**; a click opens the map. Every new destination shows
 a line in MelloUI's on-screen notice (see Tweaks: On-screen Notices) with the client's
 super-track chime ("Tracking quest giver Marshal McBride for Kobold Camp Cleanup, 240 yd away"),
 and arriving shows "Arrived" with a softer sound; On-screen Notices and Notice Sounds switch
@@ -1227,7 +1234,7 @@ addons, so MelloUI shows them as the game gives them.
 - **Your Values** and **Party Values**: three numbers by every frame. The sword is this fight's
   damage per second (gold), the hourglass this run's (in a fight: as of the last fight), the cross
   your healing per second (green); a zero is a dim dash. Yours sit on top of your frame, over
-  its name plate; move them in Edit Layout (Your Values; Reset puts them back on the frame).
+  its name; move them in Edit Layout (Your Values; Reset puts them back on the frame).
   They show, hide and fade with your frame. The party's sit on top of each party frame. To make
   room there, Party Values
   switches on the game's own Show Party Pets (the frames stand a little further apart, party pets
