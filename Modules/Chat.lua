@@ -78,7 +78,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
 		  desc = "How solid the chat windows' background is. Moving the Background slider in a chat tab's menu changes this too." },
 		-- (user, 2026-10-04: "can we also make a Border opacity aswell?" -- the painted rails: Modules/ChatPanel.lua)
-		{ type = "slider", key = "borderAlpha", name = "Border Opacity", min = 0, max = 1, step = 0.05, percent = true, new = "0.18.3",
+		{ type = "slider", key = "borderAlpha", name = "Border Opacity", min = 0, max = 1, step = 0.05, percent = true,
 		  desc = "How solid the painted border round the chat windows and their button column is, and its shade (the Painted and Parchment backgrounds)." },
 		{ type = "toggle", key = "hideEditBox", name = "Hide Input Box Art",
 		  desc = "Hide the border and background art of the chat input box." },
