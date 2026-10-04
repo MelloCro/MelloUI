@@ -693,9 +693,19 @@ local function IsEditModeSystem(frame)
 	return not Secret(system) and type(system) == "number" and type(frame.SetPointBase) == "function"
 end
 
+-- a frame laid over the whole screen (within 2 units of UIParent's size): a
+-- holder of windows, never one (CandidateOpts)
+local function CoversScreen(frame)
+	local okW, w = pcall(frame.GetWidth, frame)
+	local okH, h = pcall(frame.GetHeight, frame)
+	w, h = okW and Num(w) or nil, okH and Num(h) or nil
+	local sw, sh = Num(UIParent:GetWidth()), Num(UIParent:GetHeight())
+	return w ~= nil and h ~= nil and sw ~= nil and sh ~= nil and w >= sw - 2 and h >= sh - 2
+end
+
 -- the registration of a candidate, or nil for a frame that is none (its
 -- module's own window, a forbidden frame, a frame of another addon, an Edit
--- Mode system but the four)
+-- Mode system but the four, a holder laid over the whole screen)
 local function CandidateOpts(frame, name)
 	if type(frame) ~= "table" or type(name) ~= "string" or type(frame.GetObjectType) ~= "function" then
 		return nil
@@ -705,6 +715,15 @@ local function CandidateOpts(frame, name)
 		if not ok or Secret(forbidden) or forbidden then
 			return nil
 		end
+	end
+	-- (2026-10-04, the user: "the whole 'Container Frame Container' is
+	-- selectable, which is the whole background") a frame laid over the whole
+	-- screen is a holder, no window: the game's ContainerFrameContainer, every
+	-- bag's parent, is the window the kit finds for a bag (Kit's WindowOf: the
+	-- top frame under UIParent). Nothing to move, and its plate would cover
+	-- the screen
+	if CoversScreen(frame) then
+		return nil
 	end
 	local shared = SHARED[name]
 	if shared then

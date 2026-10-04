@@ -18,7 +18,10 @@ GLOW_RING must equal RING (the tests check it). The curves are smootherstep,
 flat where they start and end: no visible line anywhere; the fall is raised
 to FALL_POWER, so the light is bright near the ring and trails off softly.
 Each texel is the mean of SUPER x SUPER samples, so the ring's inner rise is
-smooth at any size. 128 x 128 px (a 36-unit ring's glow is 60 units wide).
+smooth at any size. 128 x 128 px (a 36-unit ring's glow is 50 units wide).
+The ring at 0.72 (2026-10-04, the user: the widgets' glow "kind of too big";
+it was 0.60, reaching a third of the ring's size past each side, now about a
+fifth), the clear middle and the peak moved out with it.
 
 Writes the TGA master (MelloUI-BuildData/masters/Media/Textures/, Tools/paths.py)
 and a byte copy into the addon's Media/Textures/ so it ships at once;
@@ -40,9 +43,9 @@ from paths import ADDON_MEDIA, master
 
 NAME = ("Textures", "SoftGlowRound.tga")
 SIZE = 128        # px, square
-RING = 0.60       # the ring's edge (Core/Shade.lua GLOW_RING)
-INNER = 0.50      # clear inside this
-PEAK = 0.66       # full here: just outside the ring's edge
+RING = 0.72       # the ring's edge (Core/Shade.lua GLOW_RING; 0.60 until 2026-10-04)
+INNER = 0.62      # clear inside this (0.50)
+PEAK = 0.77       # full here: just outside the ring's edge (0.66)
 FALL_POWER = 1.8  # the fall's shape: above 1, brighter near the ring, a longer soft tail
 SUPER = 4         # samples per texel, each way
 

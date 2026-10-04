@@ -1163,7 +1163,10 @@ Widgets tab:
   the profession is open, kept per character).
 - **Quest Items** (0.17.0): in a quest's objective area (the game's quest area on the map, or
   within 100 yards of the objective Route leads you to) while you carry that quest's item to use
-  (the item the Quest Tracker's item button uses): the item, the open objective's line ("2/4 Oil
+  (the item the Quest Tracker's item button uses; 0.18.4: for a quest the game names no item for,
+  one you made yourself, the item whose use the game's own data says completes one of its
+  objectives -- Traditions of the Bluff's Prepared Incense; MelloUI_Companion's objective data,
+  `Tools\build_quest_objectives.py`): the item, the open objective's line ("2/4 Oil
   drums filled"), the ring its progress, the count you carry and "Click to use". A click on its
   face uses the item: out of combat a secure button lies over the face while you point at it (a
   right click is still Not now). It folds away in a fight (the game allows that click only out of

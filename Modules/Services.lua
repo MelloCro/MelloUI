@@ -2075,7 +2075,7 @@ local function KindButtons()
 		b.icon = b:CreateTexture(nil, "ARTWORK")
 		b.icon:SetAllPoints()
 		b.icon:SetTexture(kind.icon)
-		b:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square", "ADD")
+		MelloUI.Widgets.HoverLight(b, "square")   -- (its shape follows Round Icons: ApplyIconShape)
 		b.kind = kind
 		b.slot = slots[i]
 		slots[i].button = b
@@ -2130,7 +2130,7 @@ local function GroupButtons()
 		b.icon = b:CreateTexture(nil, "ARTWORK")
 		b.icon:SetAllPoints()
 		b.icon:SetTexture(group.icon)
-		b:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square", "ADD")
+		MelloUI.Widgets.HoverLight(b, "square")   -- (its shape follows Round Icons: ApplyIconShape)
 		b.group = group
 		Perf.SetScript(b, "OnClick", GroupClick)
 		Perf.SetScript(b, "OnEnter", GroupTooltip)
@@ -2347,6 +2347,16 @@ SetKitBox = function(frame, on)
 	return false
 end
 
+-- A service button's mouseover light in its border's shape (W.HoverLight;
+-- user, 2026-10-04): round over a round medallion -- the kit's round rim (the
+-- button itself) or the plain look's tracking rim (31 : 21 round the icon,
+-- the button: 5 of 21 past each side) -- square over a square icon. Laid
+-- again with the button's size (LayoutBar).
+local function LayLight(b, round, kit)
+	local out = (round and not kit) and 5 * b:GetWidth() / 21 or 0
+	MelloUI.Widgets.HoverLight(b, round and "round" or "square", b, out)
+end
+
 -- A service button's kit rim (round or square), made once each, the icon
 -- fitted into the shown one's opening.
 local function KitRim(b, round)
@@ -2472,6 +2482,7 @@ local function LayoutBar()
 			b.rim:ClearAllPoints()
 			b.rim:SetPoint("TOPLEFT", b, "TOPLEFT", -5 * k, 4 * k)
 		end
+		LayLight(b, M.db.roundIcons and true or false, kit)
 	end
 	if kit then
 		for _, b in ipairs(bar.buttons) do
@@ -2547,17 +2558,9 @@ local function ApplyIconShape()
 			b.rim:Hide()
 		end
 		-- the hover glow takes the icon's shape too (user, 2026-09-26: "they
-		-- turn round, but the Highlight Glow stays a square"): the same
-		-- circle on the highlight while Round Icons is on, added once
-		local hl = b.GetHighlightTexture and b:GetHighlightTexture()
-		if hl and (b.hlRound or false) ~= round then
-			if round then
-				hl:AddMaskTexture(b.mask)
-			else
-				hl:RemoveMaskTexture(b.mask)
-			end
-			b.hlRound = round
-		end
+		-- turn round, but the Highlight Glow stays a square"; 2026-10-04: the
+		-- round light, no square one cut round)
+		LayLight(b, round, kit)
 		-- the kit's rim (SR2 round; square for square icons), the icon in
 		-- its opening; the game's anchors back when the kit is off
 		if kit then
@@ -2678,7 +2681,7 @@ local function CreateButton()
 	button:SetFrameLevel(8)
 	button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	button:RegisterForDrag("LeftButton")
-	button:SetHighlightTexture("Interface/Minimap/UI-Minimap-ZoomButton-Highlight")
+	MelloUI.Widgets.HoverLight(button, "round")
 	local overlay = button:CreateTexture(nil, "OVERLAY")
 	overlay:SetSize(53, 53)
 	overlay:SetTexture("Interface/Minimap/MiniMap-TrackingBorder")

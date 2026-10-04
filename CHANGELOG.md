@@ -5,7 +5,11 @@
 - Voice pack: if you have not got it yet, download the voice pack remade for 0.18.3, both parts: [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip) (delete the earlier `MelloUI_VoicePack` folder first, then unzip both into `AddOns`). It is the same pack as in 0.18.3: if you already downloaded that one, there is nothing to download again.
 - Route: a quest whose item you make from other items (Traditions of the Bluff: buy four things from four vendors in Thunder Bluff and combine them) now leads you to each of those items in turn, and the Quest Tracker says what to get from whom, then "Next: use ... to make ..." once you have them all. This works for every such quest, Classic and Forever alike.
 - Route: a Forever quest item that a vendor sells now leads you to that vendor.
+- Widgets: the Quest Items widget also comes up for an item you made yourself and use at the objective (Traditions of the Bluff's Prepared Incense at the burner), where the game names no quest item, for every such quest.
 - Quest Tracker: when an objective needs several items first, its "First: ..." line names the one the route is heading for.
+- Widgets and Edit Layout: the glow round the widgets, and round an element you drag in Edit Layout, is smaller and softer.
+- Widgets and Services: a round button now lights up with a round glow under the mouse, and a square one with a square glow. The widgets' round buttons showed a square light cut into a circle.
+- Fixed: Edit Layout let you pick "Container Frame Container", an invisible frame the size of the whole screen (the game's holder of the bag windows).
 - Fixed: Route went back to the vendors of a made item after you had made it, when the quest's line words it differently ("Incense created").
 - World Marker: near the place it rises above it, with the distance and the name over it and gold chevrons rippling down to it, so it never covers the NPC you are looking for. It glides between its far and near looks instead of popping.
 - World Marker: it no longer jumps. Picking another quest or place brings it up afresh there with its beam rising, and when its spot moves to a nearer creature it glides there.

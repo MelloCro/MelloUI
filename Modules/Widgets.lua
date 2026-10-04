@@ -2297,6 +2297,28 @@ function qitem.Inside(questID)
 	return false
 end
 
+-- (0.18.4; the user, 2026-10-04: on Traditions of the Bluff the widget never
+-- came) a quest the game names no item for -- the player made it, it was not
+-- handed over -- may still be done by using one: the objective data names
+-- them (MelloUI_QuestUseItems: an item whose use credits one of the quest's
+-- objectives, or completes it; MelloUI_Companion, Route's). The first of them
+-- the bags hold, and how many, else nil
+function qitem.DataItem(questID, count)
+	local data = _G.MelloUI_QuestUseItems
+	local list = type(data) == "table" and data[questID]
+	if type(list) ~= "string" then
+		return nil, 0
+	end
+	for id in list:gmatch("%d+") do
+		local itemID = tonumber(id)
+		local have = Num((Ask(count, itemID))) or 0
+		if have > 0 then
+			return itemID, have
+		end
+	end
+	return nil, 0
+end
+
 -- Route's 'where' wanted only while some quest's item is carried
 function qitem.Where(on)
 	on = on and On("questItem") or false
@@ -2322,6 +2344,14 @@ function qitem.Read()
 			link = Text(link)
 			local itemID = link and tonumber(link:match("item:(%d+)"))
 			local have = itemID and Num((Ask(count, itemID))) or 0
+			-- (none of the game's in the bags: one the objective data names)
+			if have == 0 then
+				itemID, have = qitem.DataItem(id, count)
+				if itemID then
+					link, whenDone = nil, nil
+					icon = Ask(_G.C_Item and _G.C_Item.GetItemIconByID, itemID)
+				end
+			end
 			-- (a finished quest keeps its item only when the game says so)
 			local open = whenDone == true or Ask(QL.IsComplete, id) ~= true
 			if have > 0 and open then
@@ -2329,7 +2359,7 @@ function qitem.Read()
 				if not qitem.quest and qitem.Inside(id) then
 					qitem.quest, qitem.item, qitem.have = id, itemID, have
 					qitem.icon = not Secret(icon) and icon or nil
-					qitem.name = Text((Ask(_G.C_Item and _G.C_Item.GetItemNameByID, itemID))) or link:match("%[(.-)%]")
+					qitem.name = Text((Ask(_G.C_Item and _G.C_Item.GetItemNameByID, itemID))) or (link and link:match("%[(.-)%]"))
 					qitem.title = Text((Ask(QL.GetTitleForQuestID, id)))
 					qitem.Objective(id)
 				end

@@ -660,7 +660,13 @@ Lint workflow) fails when a copy is added and names the system to use.
   own), `W.RoundIcon` (a round button: the icon round-masked in the
   minimap's tracking rim, the kit's round rim while `b:SetKit(Kit)`, and
   with `opts.shade` a shade partner of that area on the rim: the Reminder
-  widget's buttons), `W.TrayBox` (a small box of the L1 list-box look, the
+  widget's buttons), `W.HoverLight(b, shape, region, out)` (0.18.4: a
+  button's mouseover light in its border's shape, the user's rule "every
+  round border the round glow, every square one the square glow": the
+  game's round light over a round border, its square one over a square
+  border; the button's own highlight texture, so no script; every own
+  button that lights on hover takes it, never a light file set by hand),
+  `W.TrayBox` (a small box of the L1 list-box look, the
   inner panel over the stone: Restock's shop list), the palette parts
   `W.PaletteSwatch`, `W.PaletteValues` and `W.PaletteName` (Look's Palette
   row, Home's Your setup and the installer's cards: a picture of one

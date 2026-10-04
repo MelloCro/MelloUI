@@ -85,7 +85,9 @@ local RANGE_MIN, RANGE_MAX = 0.5, 2        -- the size's range, of the standard 
 local DETENT = 0.3                         -- s: the wheel holds at 100 %
 local HOLD, FADE = 1.2, 0.4                -- s: the readout after a drop, then its fade
 local PLATE_FADE = 0.12
-local GLOW = 28                            -- the outer glow's reach
+-- the outer glow's reach and its strength at the plate (2026-10-04, the user: "kind of too big" while
+-- dragging: 28 and 0.7 before)
+local GLOW, GLOW_ALPHA = 14, 0.5
 local MAX_PLATES, FIRST_BATCH = 64, 32     -- the pool, and the plates made in one frame
 local SYNC_KEY = "EditLayout sync"
 local HIGH_STRATA = { FULLSCREEN = true, FULLSCREEN_DIALOG = true, TOOLTIP = true }
@@ -785,7 +787,7 @@ local function PaintGlow()
 	end
 	local r, g, b = Lit("selectedTrim")
 	local inner, outer = glow.inner, glow.outer
-	inner.r, inner.g, inner.b, inner.a = r, g, b, 0.7
+	inner.r, inner.g, inner.b, inner.a = r, g, b, GLOW_ALPHA
 	outer.r, outer.g, outer.b, outer.a = r, g, b, 0
 	for i = 1, 4 do
 		local band = glow.bands[i]
@@ -803,7 +805,7 @@ local function MakeGlow()
 	glow:EnableMouse(false)
 	glow.bands = {}
 	local r, g, b = Lit("selectedTrim")
-	glow.inner, glow.outer = CreateColor(r, g, b, 0.7), CreateColor(r, g, b, 0)
+	glow.inner, glow.outer = CreateColor(r, g, b, GLOW_ALPHA), CreateColor(r, g, b, 0)
 	for i = 1, 4 do
 		local tex = glow:CreateTexture(nil, "BACKGROUND")
 		tex:SetTexture(WHITE)

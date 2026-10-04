@@ -155,6 +155,6 @@ files["Media"] = {
 -- files only define their table too; Route reads them (read_globals above).
 files["MelloUI_Companion"] = {
 	globals = {
-		"MelloUI_RoadData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems",
+		"MelloUI_RoadData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems", "MelloUI_QuestUseItems",
 	},
 }

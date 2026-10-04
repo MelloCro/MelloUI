@@ -34,6 +34,8 @@
 --   W.FlatField(box)                   a text field or search box made by
 --                                      hand, flat (0.15.0; W.FlatSearch)
 --   W.IconBox(parent, size, texture, skin)
+--   W.HoverLight(b, shape, region, out)   a button's mouseover light in its
+--                                      border's shape: round or square (0.18.4)
 --   W.RoundIcon(parent, size, texture, opts)   a round icon button in a rim
 --                                      (the kit's round rim, or the minimap's)
 --   W.Glyph(tex, name)                 a widget glyph (pause, list, friend, ...)
@@ -2023,9 +2025,49 @@ function W.IconBox(parent, size, texture, skin)
 end
 
 --------------------------------------------------------------------------------
+-- HoverLight (0.18.4): a button's mouseover light in the shape of its border
+-- (user, 2026-10-04: "every round border should have the round mouseover
+-- glow, and every Square one should have square mouseover glow"): the game's
+-- round light (its round minimap buttons') on a round border, its square one
+-- (an action button's) on a square border. It is the button's highlight
+-- texture: the engine shows it while the mouse is over the button, no script.
+-- (A round border wore the square light cut by a circle until then: its
+-- straight bright edges still showed.)
+--   W.HoverLight(b, shape[, region[, out]]) -> the texture   shape "round" or
+--       "square"; laid over region (default the button: the border's rect),
+--       out units past each side; called again to switch the shape live (a
+--       call that changes nothing sets nothing: a layout pass may call it)
+--------------------------------------------------------------------------------
+
+do
+	local LIGHT = {
+		round = "Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight",
+		square = "Interface\\Buttons\\ButtonHilight-Square",
+	}
+
+	function W.HoverLight(b, shape, region, out)
+		shape = LIGHT[shape] and shape or "square"
+		region, out = region or b, out or 0
+		if b.hoverShape ~= shape then
+			b:SetHighlightTexture(LIGHT[shape], "ADD")
+			b.hoverShape, b.hoverRegion = shape, nil   -- (laid again below)
+		end
+		local hl = b.GetHighlightTexture and b:GetHighlightTexture()
+		if hl and (b.hoverRegion ~= region or b.hoverOut ~= out) then
+			hl:ClearAllPoints()
+			hl:SetPoint("TOPLEFT", region, "TOPLEFT", -out, out)
+			hl:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", out, -out)
+			b.hoverRegion, b.hoverOut = region, out
+		end
+		return hl
+	end
+end
+
+--------------------------------------------------------------------------------
 -- RoundIcon (0.14.0, the Reminder widget; lifted from the Services bar's
 -- round medallions, which can move onto it later): a round button, its icon
--- under a round mask inside a rim, with a round highlight. Two looks,
+-- under a round mask inside a rim, with the round light (W.HoverLight) over
+-- the whole rim. Two looks,
 -- switched live with b:SetKit(Kit):
 --   the kit's round rim (buttons/roundslot through Kit:Slot: every window's
 --   Round Border, swapped with it, its hover and pressed art its own, Dark
@@ -2053,7 +2095,6 @@ end
 
 do
 	local TRACKING_RIM = "Interface\\Minimap\\MiniMap-TrackingBorder"
-	local HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
 	local PLAIN_RATIO = 31 / 21   -- the tracking rim: a 31 px ring round a 21 px opening
 	local NONE = {}
 
@@ -2139,13 +2180,7 @@ do
 		mask:SetAllPoints(icon)
 		icon:AddMaskTexture(mask)
 		b.mask = mask
-		b:SetHighlightTexture(HIGHLIGHT, "ADD")
-		local hl = b.GetHighlightTexture and b:GetHighlightTexture()
-		if hl then
-			hl:ClearAllPoints()
-			hl:SetAllPoints(icon)
-			hl:AddMaskTexture(mask)
-		end
+		W.HoverLight(b, "round")   -- over the whole rim: the kit's (on the button) and the plain medallion alike
 		b.plainRim = b:CreateTexture(nil, "OVERLAY")
 		b.plainRim:SetTexture(TRACKING_RIM)
 		b.SetIcon, b.SetOn, b.SetKit = SetIcon, SetOn, SetKit

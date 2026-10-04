@@ -501,7 +501,7 @@ end
 Shade.GLOW_FILE = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftGlowRound"
 -- the ring's edge in the art, as a share of its half-width (make_soft_glow.py
 -- RING): the art reaches (1 / RING - 1) / 2 of the ring's size past each side
-Shade.GLOW_RING = 0.6
+Shade.GLOW_RING = 0.72   -- (0.6 until 2026-10-04: the user, the widgets' glow "kind of too big")
 
 do
 	local GLOW_KEY = "selectedTrim"
