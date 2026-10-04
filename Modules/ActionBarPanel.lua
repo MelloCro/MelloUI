@@ -98,7 +98,7 @@ end
 options[#options + 1] = { type = "subheader", name = "Backdrops" }
 for _, e in ipairs(ELEMENTS) do
 	defaults[e.key] = false
-	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = "0.18.5",
+	options[#options + 1] = { type = "toggle", key = e.key, name = e.name,
 		desc = "A backdrop round " .. e.what .. ". Elements placed together share one backdrop, shown when one of them has it "
 			.. "on" .. (e.status and "; this bar then takes their width, within a limit." or ".") }
 end
