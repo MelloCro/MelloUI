@@ -142,6 +142,7 @@ Modules\CollectionsPanel.lua
 Modules\UnitFramePanel.lua
 Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
+Modules\HealerFrames.lua
 Modules\ActionBarPanel.lua
 Modules\BackpackPanel.lua
 Modules\BagWindow.lua

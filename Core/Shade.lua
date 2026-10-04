@@ -486,6 +486,9 @@ end
 --                         motion a new glow has)
 --   glow:Still()          from now on: a steady glow
 --   glow:SetColour(key)   another palette key
+--   glow:SetTint(r, g, b) a colour of meaning instead (a debuff's dispel
+--                         colour, perhaps secret: handed to the texture as it
+--                         is, kept through a new palette); nil: its key again
 --   glow:Anchor(region[, size])   hung on another ring; region left out: the
 --                         ring it hangs on now, at a new size
 --   glow.tex              its texture (read only)
@@ -589,9 +592,27 @@ do
 	end
 
 	function Glow:Paint()
+		if self.tinted then
+			-- (a colour that is not the palette's: kept as given, perhaps
+			-- secret -- only handed on, never read)
+			self.tex:SetVertexColor(self.tintR, self.tintG, self.tintB, self.strength)
+			return
+		end
 		local palette = MelloUI.Palette
 		local c = palette[self.key] or palette[GLOW_KEY]
 		self.tex:SetVertexColor(c[1], c[2], c[3], self.strength)
+	end
+
+	-- a colour of meaning rather than the palette's (a debuff's dispel
+	-- colour: the client's, and secret in a fight): kept through a new
+	-- palette; nil goes back to its key
+	function Glow:SetTint(r, g, b)
+		if not Secret(r) and r == nil then   -- (a secret is a colour: tested first, never compared)
+			self.tinted, self.tintR, self.tintG, self.tintB = false, nil, nil, nil
+		else
+			self.tinted, self.tintR, self.tintG, self.tintB = true, r, g, b
+		end
+		self:Paint()
 	end
 
 	function Glow:SetStrength(s)

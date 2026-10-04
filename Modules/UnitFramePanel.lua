@@ -47,10 +47,20 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 	-- (include: the option below sits under this row on UI Modifications' HUD tab)
 	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { marks = true },
+	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100 },
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
+		{ type = "dropdown", key = "barBackground", name = "Bar Background", new = "0.19.0", values = {
+			{ value = "kit", label = "Painted Trough" },
+			{ value = "dark", label = "Dark" },
+			{ value = "texture", label = "Bar Texture, Dark" },
+			{ value = "none", label = "None" },
+		  },
+		  desc = "What lies behind the health and power bars, under the fill, the heals coming in and the bars' borders: the painted dark trough, a flat dark, the Bar Texture's finish in the dark, or nothing. Every unit frame: the player, target, focus, pet, target of target and party." },
+		{ type = "slider", key = "barBackgroundAlpha", name = "Bar Background Opacity", new = "0.19.0", min = 0, max = 100, step = 5,
+		  format = function(v) return math.floor(v + 0.5) .. "%" end,
+		  desc = "How solid the bars' background is: lower lets the world show through the empty part of a bar." },
 	},
 })
 
@@ -349,6 +359,67 @@ local function FadeArt(list)
 	end
 end
 
+-- Bar Background (0.19.0; user, 2026-10-04: "i need a option to change the
+-- unitframe background"): what lies in a bracket's opening under the fill,
+-- the heals coming in (HealerFrames) and the rails -- the bracket's trough.
+-- One look for every bracketed bar here (the player, target, focus, pet,
+-- target of target, party members, the preview's stand-ins): "kit" the
+-- painted trough as before, "dark" a flat innerPanel, "texture" the Bar
+-- Texture's finish in mainWindow, "none" nothing; its opacity. Set on the
+-- trough itself (MelloUI's region): a palette paint follows the palette and
+-- the dark-mode shade, the painted trough the kit's colours.
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+local BACKGROUND_KEY = { dark = "innerPanel", texture = "mainWindow" }
+
+local function TroughFile(look)
+	if look == "texture" then
+		local bt = MelloUI:GetModule("BarTextures")
+		local file = bt and bt.PreviewTexture and bt.PreviewTexture("unitframes")
+		return file or MelloUI.Widgets.BarFill()
+	end
+	return WHITE
+end
+
+local function DressTrough(rep)
+	local trough = rep and rep.trough
+	if not trough then
+		return
+	end
+	local db = M.db or {}
+	local look = db.barBackground
+	local key = BACKGROUND_KEY[look]
+	if key then
+		Kit:Apply(trough, nil)   -- (no piece: out of the kit's colours and tiling)
+		trough:SetTexture(TroughFile(look))
+		trough:SetTexCoord(0, 1, 0, 1)
+		Kit:Paint(trough, key, "vertex")
+	elseif trough.kitName ~= "bars/trough" then
+		Kit:Unpaint(trough, "vertex")
+		trough:SetVertexColor(1, 1, 1)
+		Kit:Apply(trough, "bars/trough")
+	end
+	local alpha = Num(db.barBackgroundAlpha) or 100
+	trough:SetAlpha(look == "none" and 0 or math.max(0, math.min(1, alpha / 100)))
+end
+
+local function DressTroughs()
+	if not skin then
+		return
+	end
+	for _, rep in ipairs(skin.reps) do
+		if rep.kind == "bar" then
+			DressTrough(rep)
+		end
+	end
+end
+
+-- the Bar Texture changed: the "texture" troughs take the new finish
+local function OnBarSetting(module, key)
+	if module == "BarTextures" and (key == "texture" or key == "unitframes") and M.db and M.db.barBackground == "texture" then
+		DressTroughs()
+	end
+end
+
 -- A bar's bracket (B3): regions of the bar itself in the layer over its
 -- fill, fitted to `rect`; Bar Textures told to drop its mask.
 local function SkinBar(bar, rect, picture, mirrored, health)
@@ -364,6 +435,7 @@ local function SkinBar(bar, rect, picture, mirrored, health)
 	if not rep then
 		return nil
 	end
+	DressTrough(rep)
 	local textures = MelloUI:GetModule("BarTextures")
 	rep.onEnable = function()
 		bar.melloKitBracket = true
@@ -403,6 +475,8 @@ end
 -- [portrait] = its refit, for the SetPortraitTexture hook (a side table: no
 -- field of the game's portrait written)
 local refits = setmetatable({}, { __mode = "k" })
+-- (0.19.0) [portrait] = the rep of the ring round it, for M:RingOf
+local ringOf = setmetatable({}, { __mode = "k" })
 
 -- The ring (R1) as a region in the faded picture's layer, its opening on the
 -- portrait; the portrait (and a mask with its own anchors) then fitted to
@@ -414,6 +488,7 @@ local function SkinRing(picture, portrait, mask, key)
 	if not rep then
 		return nil
 	end
+	ringOf[portrait] = rep
 	local icons = MelloUI:GetModule("ClassIcons")
 	-- the portrait (and a mask with its own anchors: the player's) fitted to
 	-- the medallion size in the ring, 0.759 x the ring (rule 2b), the disc's
@@ -1537,6 +1612,7 @@ local function Build()
 			nameShades = {} }
 		-- (taken with the first dressing, once)
 		MelloUI:On("shade", OnShade, "Unit Frames Kit name shade")
+		MelloUI:On("setting", OnBarSetting, "Unit Frames Kit bar background")
 	end
 	SkinPlayer()
 	SkinTargetLike(TargetFrame)
@@ -1683,6 +1759,23 @@ local function FarEnd(main)
 	return health
 end
 
+-- (0.19.0) the kit's ring texture round a portrait (a unit frame's, a party
+-- member's, a stand-in's) while the look is on and the ring shows, else nil:
+-- HealerFrames' debuff glow hugs its rim (Kit:RingRim)
+function M:RingOf(portrait)
+	local rep = active and portrait and ringOf[portrait]
+	local tex = rep and rep.tex
+	if not (tex and tex.kitPiece) then
+		return nil
+	end
+	-- (a secret or refused answer counts as shown)
+	local ok, shown = pcall(tex.IsShown, tex)
+	if ok and not Secret(shown) and not shown then
+		return nil
+	end
+	return tex
+end
+
 function M:ReminderAnchor()
 	local pf = PlayerFrame
 	if not pf then
@@ -1755,6 +1848,8 @@ end
 function M:OnSettingChanged(key)
 	if key == "marks" then
 		MarksSync()
+	elseif key == "barBackground" or key == "barBackgroundAlpha" then
+		DressTroughs()
 	end
 end
 
@@ -1860,8 +1955,17 @@ SlashCmdList.MELLOUFDUMP = function(msg)
 		which, mode = "", which
 	end
 	which, mode = which or "", mode or ""
-	local keys = which ~= "" and { which } or { "player", "target" }
 	MelloUI:ClearLog()
+	if which == "heals" then
+		-- (0.19.0) incoming heals and the debuff glow on every frame (HealerFrames)
+		local healer = MelloUI:GetModule("HealerFrames")
+		if healer and healer.Dump then
+			healer:Dump(function(...) MelloUI:Print(...) end)
+		end
+		MelloUI:ShowLog("ufdump heals")
+		return
+	end
+	local keys = which ~= "" and { which } or { "player", "target" }
 	for _, key in ipairs(keys) do
 		local getter = FRAMES[key]
 		local frame = getter and getter()

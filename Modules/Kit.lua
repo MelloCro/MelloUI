@@ -891,6 +891,12 @@ local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function
 	if t.kitShading then
 		return
 	end
+	-- (0.19.0) a colour that is secret (a debuff's dispel colour in a fight,
+	-- Kit:TintSkin): shown as it is, neither kept as the base nor shaded --
+	-- no arithmetic on a secret
+	if Secret(r) or Secret(g) or Secret(b) then
+		return
+	end
 	-- kept in the one table (a hover tints a whole skin's pieces: no new
 	-- table per piece per hover)
 	local base = t.kitBase
@@ -1165,6 +1171,15 @@ end
 --       sides, Kit:ShadowFit(nine[, scale][, open])
 --   Kit:ShadowSet(tex, wanted[, alpha])   shown with its piece, or not at
 --       all; its strength (a nine: all its parts)
+--   Kit:ShadowTint(tex, r, g, b[, blend])   (0.19.0) a colour of meaning
+--       instead of the palette's, perhaps secret, kept through a new palette;
+--       blend "ADD": drawn as light (a glow); r = nil: the palette's colour
+--       and the shade's blend back
+--   Kit:GlowNine(host, rect, family, opts) -> nine   (0.19.0) a soft outline
+--       as light round `rect` (an outline family's nine, hidden at first);
+--       not a shade: no area switch or strength reaches it
+--   Kit:GlowShow(nine, r, g, b[, alpha])   shown in a colour of meaning
+--       (perhaps secret), drawn as light; r = nil: hidden
 --   Kit:ShadowCut(tex, x0, x1, y0, y1[, sides])   the part of the piece the
 --       texture shows (nil: all of it)
 --   Kit:ShadowNine(host, rect, family, opts) -> nine, or nil (no nine of that
@@ -1253,6 +1268,11 @@ do
 	local function Paint(sh)
 		local palette = MelloUI.Palette
 		local c = palette[sh.kitColour] or palette.innerPanel
+		if sh.kitTinted then
+			-- (Kit:ShadowTint: a colour of meaning, perhaps secret, kept
+			-- through a new palette)
+			c = sh.kitTint
+		end
 		sh:SetVertexColor(c[1], c[2], c[3], sh.kitStrength)
 		local l, r = sh.kitEndL, sh.kitEndR
 		if l then
@@ -1942,6 +1962,77 @@ do
 			self:NextFrame(REFIT_KEY, RefitSoon)
 		else
 			Refit()
+		end
+	end
+
+	-- (0.19.0) A partner (or a nine's parts) in a colour of meaning instead
+	-- of the palette's, and drawn as light (blend "ADD"): the soft outline as
+	-- a glow (HealerFrames: a raid frame's rail glowing in its unit's debuff
+	-- colour). The colour may be secret: only handed on. r = nil: the
+	-- palette's colour and the shade's blend back.
+	local function TintOne(sh, r, g, b, blend)
+		if not Secret(r) and r == nil then
+			sh.kitTinted = false
+			sh:SetBlendMode("BLEND")
+		else
+			local t = sh.kitTint
+			if not t then
+				t = {}
+				sh.kitTint = t
+			end
+			t[1], t[2], t[3] = r, g, b
+			sh.kitTinted = true
+			sh:SetBlendMode(blend == "ADD" and "ADD" or "BLEND")
+		end
+		Paint(sh)
+	end
+
+	function Kit:ShadowTint(tex, r, g, b, blend)
+		if type(tex) ~= "table" then
+			return
+		end
+		local parts = tex.kitParts
+		if parts then
+			for i = 1, #parts do
+				TintOne(parts[i], r, g, b, blend)
+			end
+			return
+		end
+		local sh = tex.kitShadow
+		if sh then
+			TintOne(sh, r, g, b, blend)
+		end
+	end
+
+	-- (0.19.0) A soft outline as light: the sheet's nine of `family` (an
+	-- outline family: nothing inside) round `rect`, hidden until shown in a
+	-- colour (HealerFrames' debuff glow round a frame). Not a shade: no area,
+	-- so no UI Shade switch or strength reaches it. opts as Kit:ShadowNine's.
+	function Kit:GlowNine(host, rect, family, opts)
+		local nine = self:ShadowNine(host, rect, family, opts)
+		if nine then
+			for i = 1, #nine.kitParts do
+				SetOne(nine.kitParts[i], false)
+			end
+		end
+		return nine
+	end
+
+	-- shown in a colour of meaning (perhaps secret: handed on) at `alpha`,
+	-- drawn as light; r = nil: hidden
+	function Kit:GlowShow(nine, r, g, b, alpha)
+		if type(nine) ~= "table" or type(nine.kitParts) ~= "table" then
+			return
+		end
+		local on = Secret(r) or r ~= nil
+		for i = 1, #nine.kitParts do
+			local sh = nine.kitParts[i]
+			if on then
+				TintOne(sh, r, g, b, "ADD")
+				SetOne(sh, true, alpha)
+			else
+				SetOne(sh, false)
+			end
 		end
 	end
 
@@ -2708,6 +2799,27 @@ local function NineSlice_SetTint(self, r, g, b)
 	end
 	for _, tex in ipairs(self.art) do
 		tex:SetVertexColor(r or 1, g or 1, b or 1)
+	end
+end
+
+-- A colour of meaning on a skin's rails and corners for a while (0.19.0: a
+-- raid frame's rail in the colour of the debuff its unit has, HealerFrames),
+-- perhaps secret: handed to the textures as it is (the Dark Mode hook leaves
+-- a secret alone). r = nil: each piece's own colour back (the tint it was
+-- given before, its base, shaded by Dark Mode as ever).
+function Kit:TintSkin(skin, r, g, b)
+	if type(skin) ~= "table" or type(skin.art) ~= "table" then
+		return
+	end
+	if not Secret(r) and r == nil then
+		for _, tex in ipairs(skin.art) do
+			local base = tex.kitBase
+			tex:SetVertexColor(base and base[1] or 1, base and base[2] or 1, base and base[3] or 1)
+		end
+		return
+	end
+	for _, tex in ipairs(skin.art) do
+		tex:SetVertexColor(r, g, b)
 	end
 end
 
@@ -9257,6 +9369,16 @@ function Kit:FitRingHole(title, ring)
 			holder:SetFrameLevel(level + 2)
 		end
 	end
+end
+
+-- (0.19.0) The ring's rim -- its round body, not the gems that stand out of
+-- it -- as a share of its texture's width, `tuck` piece px inside the rim's
+-- edge (a glow lying under the ring starts under the rim: no gap between the
+-- two -- HealerFrames' debuff glow; user, 2026-10-04)
+function Kit:RingRim(tex, tuck)
+	local piece = PIECES[(tex and tex.kitName) or "window/portrait_ring"]
+	local radius = ((piece and piece.radius) or 84) - (tuck or 0)
+	return 2 * radius / ((piece and piece.w) or 197)
 end
 
 -- The portrait ring's centre, in UI px right of the window's left edge (nil

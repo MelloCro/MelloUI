@@ -93,6 +93,9 @@ Preview.ITEMS = {
 		desc = "Quest items, a healer drinking, a loot roll." },
 	{ key = "partyframes", part = "party", mode = "party", name = "Party Frames",
 		desc = "Stand-ins where your party frames sit, hurt and healed." },
+	-- (0.19.0; the user, 2026-10-04: "how can i simulate and see how it works ingame?")
+	{ key = "healer", part = "healer", mode = "party", name = "Healer Frames", module = "HealerFrames",
+		desc = "Heals coming in and debuffs to remove: on the stand-in party and your own frame." },
 	{ key = "meter", part = "meter", mode = "party", name = "Damage Meter", module = "Meter",
 		desc = "Your numbers, the group's race bar, the summary." },
 	{ key = "combattext", part = "combattext", mode = "solo", name = "Combat Text", module = "CombatText",
@@ -291,7 +294,8 @@ end
 -- its party numbers on them)
 local function Stand(b)
 	if b.beat == "start" then
-		if S.mode == "party" and Preview:Plays("party") then
+		-- (the healer part shows its heals and glows on them too)
+		if S.mode == "party" and (Preview:Plays("party") or Preview:Plays("healer")) then
 			StandShow()
 		end
 	elseif not stand.on then

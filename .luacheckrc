@@ -141,6 +141,9 @@ read_globals = {
 	-- (0.19.0: the bag window by kind, Modules/BagWindow.lua)
 	"C_NewItems", "ClearItemButtonOverlay", "SetItemButtonQuality", "SetItemButtonCount", "SetItemButtonDesaturated",
 	"GetMoneyString", "GetCVarBool", "MoneyFrame_UpdateMoney",
+	-- (0.19.0: incoming heals and the debuff glow, Modules/HealerFrames.lua)
+	"CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "C_UnitAuras", "DebuffTypeColor", "UnitCanAssist", "issecrettable",
+	"CompactUnitFrame_SetUnit",
 	"tinsert", "wipe",
 	-- the game's gamepad navigation, read by Core's MelloUI.Safe.CreateFrame (0.14.0)
 	"InputUtil", "SmartNavigation",

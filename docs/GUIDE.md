@@ -509,6 +509,35 @@ Fading the player frame out of combat (0.14.0's Fade Out Of Combat) is the **Fad
 0.17.0 (below): its Player Frame row, Faded Opacity and Pet Frame Too; your settings carry over.
 The Unit Frames page has a link row to it.
 
+**Bar Background** (Unit Frames > Bars > Look, 0.19.0): what lies behind the health and power
+bars in the painted look, under the fill, the incoming heals and the bars' borders: the
+Painted Trough (as before), a flat Dark, the Bar Texture's finish in the dark (Bar Texture,
+Dark), or None. **Bar Background Opacity** lets the world show through the empty part of a bar.
+One choice for every unit frame: player, target, focus, pet, target of target and party.
+
+### Healer Frames
+
+What a healer reads off the frames (0.19.0; on by default, both looks):
+
+- **Incoming Heals** (Unit Frames > Bars): the heals on their way to a unit, on its health bar
+  after the health: your heals in teal, other healers' in a darker teal, shields striped.
+  They stop at the bar's end. Forever's player, target and focus frames (and their targets')
+  have no incoming heals of their own, so MelloUI draws them there; the party, pet and raid
+  frames show the game's own (the raid frames' Display Incoming Heals).
+- **Debuff Glow** (Unit Frames > Buffs & Debuffs): while a friend has a debuff that can be
+  removed, a soft glow in its colour (Magic blue, Curse purple, Disease brown, Poison green)
+  round their frame: round the portrait and the bars on the unit and party frames; on the raid
+  frames the border takes the colour too. **Debuff Glow Shows** picks which debuffs light a
+  frame: every one that can be removed (the default), the ones someone in your group can remove,
+  or only the ones you can. The game's own coloured wash on the raid frames is its Raid Frame
+  option and stays as you set it.
+- Both work in a fight: the numbers and colours come from the game as they are, and MelloUI
+  never reads them.
+- `/ufdump heals` lists each frame's unit, its glow and its heal bars.
+- **See it without a fight:** the configurator's Preview > Healer Frames (or `/mello preview healer`): the
+  stand-in party takes heals as it is hurt and healed, each member glowing in one of the four colours, and your
+  own frame's glow goes through all four.
+
 ### Fader
 
 The Fader page (The look, 0.17.0; off by default, its switch in the page header) fades parts of

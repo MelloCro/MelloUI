@@ -179,6 +179,16 @@ function M:OnDisable()
 	Deactivate()
 end
 
+-- (0.19.0) A compact frame's rail skin while the kit dresses it, else nil:
+-- HealerFrames puts the colour of its unit's debuff on it (Kit:TintSkin)
+function M:RailSkin(frame)
+	if not active or type(frame) ~= "table" then
+		return nil
+	end
+	local rep = frame.melloRep
+	return type(rep) == "table" and rep.skin or nil
+end
+
 --------------------------------------------------------------------------------
 -- /rfdump [frame name] [frames|reps]: a compact frame's art (default: the
 -- first raid-style party member, else the first raid frame). Opens the copy window.
