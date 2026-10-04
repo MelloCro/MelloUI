@@ -51,14 +51,14 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
-		{ type = "dropdown", key = "barBackground", name = "Bar Background", new = "0.19.0", values = {
+		{ type = "dropdown", key = "barBackground", name = "Bar Background", values = {
 			{ value = "kit", label = "Painted Trough" },
 			{ value = "dark", label = "Dark" },
 			{ value = "texture", label = "Bar Texture, Dark" },
 			{ value = "none", label = "None" },
 		  },
 		  desc = "What lies behind the health and power bars, under the fill, the heals coming in and the bars' borders: the painted dark trough, a flat dark, the Bar Texture's finish in the dark, or nothing. Every unit frame: the player, target, focus, pet, target of target and party." },
-		{ type = "slider", key = "barBackgroundAlpha", name = "Bar Background Opacity", new = "0.19.0", min = 0, max = 100, step = 5,
+		{ type = "slider", key = "barBackgroundAlpha", name = "Bar Background Opacity", min = 0, max = 100, step = 5,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "How solid the bars' background is: lower lets the world show through the empty part of a bar." },
 	},

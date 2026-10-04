@@ -1963,11 +1963,11 @@ local function WizardSteps()
 		return look and look.value or DraftColours()
 	end
 
-	-- a colour card's line: Ember's looks by name; under another palette its
-	-- own kit, and the Original
+	-- a colour card's line: Ember's looks by name (Ember's three, and an
+	-- Ember-style palette's: Ember Vibrant, 0.19.1); under another palette its
+	-- own kit, and the Original (two choices)
 	local function ColourLine(look, looks)
-		local Kit = MelloUI.Kit
-		if look.value ~= "painted" and Kit and Kit.ColourLooks and looks ~= Kit:ColourLooks("ember") then
+		if look.value ~= "painted" and #looks < 3 then
 			return TEXT.colourOwn
 		end
 		return TEXT.colourLine[look.value]
@@ -2029,18 +2029,40 @@ local function WizardSteps()
 	end
 
 	-- the palettes' cards: a column per palette, its Vibrant under it (an id
-	-- "<palette>Vibrant"), in the registry's order -> each card's { column,
-	-- line }, the columns, the lines
+	-- "<palette>Vibrant"), in the registry's order; a later palette with no
+	-- Vibrant under the column with the fewest cards (the first such), so the
+	-- cards keep their width -> each card's { column, line }, the columns, the
+	-- lines
 	local function PalettePlaces()
+		local order = MelloUI.Palettes.order
 		local places, colOf, cols, lines = {}, {}, 0, 1
-		for i, id in ipairs(MelloUI.Palettes.order) do
+		local twin, used = {}, {}   -- [id] = it has a Vibrant; [column] = the lines it holds
+		for _, id in ipairs(order) do
+			local base = id:match("^(.+)Vibrant$")
+			if base then
+				twin[base] = true
+			end
+		end
+		for i, id in ipairs(order) do
 			local base = id:match("^(.+)Vibrant$")
 			local col = base and colOf[base]
+			if not col and not base and not twin[id] and cols > 0 then
+				col = 1
+				for c = 2, cols do
+					if used[c] < used[col] then
+						col = c
+					end
+				end
+			end
 			if col then
-				places[i], lines = { col, 2 }, 2
+				used[col] = used[col] + 1
+				places[i] = { col, used[col] }
+				if used[col] > lines then
+					lines = used[col]
+				end
 			else
 				cols = cols + 1
-				colOf[id] = cols
+				colOf[id], used[cols] = cols, 1
 				places[i] = { cols, 1 }
 			end
 		end

@@ -71,7 +71,7 @@ from paths import MASTER_MEDIA
 MEDIA = MASTER_MEDIA
 LAYOUT = os.path.join(MEDIA, "KitLayout.lua")
 LUA = os.path.join(MEDIA, "KitSlices.lua")
-LOOKS = ("Kit",) + kit_palette.FOLDERS   # the painted kit and each look's folder (kit_palette.LOOKS)
+LOOKS = ("Kit",) + kit_palette.FOLDERS + kit_palette.style_folders()   # the painted kit, each look's folder (kit_palette.LOOKS) and a painted look's border styles
 PARTS = ("tl", "t", "tr", "l", "r", "bl", "b", "br")
 CORNERS = ("tl", "tr", "bl", "br")
 

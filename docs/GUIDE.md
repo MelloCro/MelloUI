@@ -12,11 +12,11 @@ One switch and every window, every bar, the minimap, the nameplates, the chat, t
 - Turn it on and your action bars, side bars, unit frames and party frames snap into the layout it was drawn for, fitted to your screen. No fiddling.
 - Dark Mode darkens the reskin too, with a brightness slider, for the night owls.
 
-## 🎨 Seven palettes and a soft shade
+## 🎨 Eight palettes and a soft shade
 
-Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidian** (black glass and pewter), **Royal Azure** (deep navy and gold) and **Fel Ember** (charred black, fel green and void purple), each with a brighter **Vibrant** version. Every palette comes with its own painted kit, so the rails, gems and plates change colour with it, and every MelloUI window, text and highlight follows.
+Ember, the warm brown and bronze MelloUI started with, now has company: **Obsidian** (black glass and pewter), **Royal Azure** (deep navy and gold) and **Fel Ember** (charred black, fel green and void purple), each with a brighter **Vibrant** version, as Ember has one too. Every palette comes with its own painted kit, so the rails, gems and plates change colour with it, and every MelloUI window, text and highlight follows.
 
-- Pick one on Look > General (Home's Your setup names yours, with Change… to it), or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember: Warm iron, Bronze or the Original).
+- Pick one on Look > General (Home's Your setup names yours, with Change… to it), or on the installer's Look step in Fresh start. Kit Colours then offers that palette's kit or the Original (under Ember and Ember Vibrant: Warm iron, Bronze or the Original).
 - A soft dark shade follows the outline of every painted piece, so the interface stands out from the world: windows, bars, unit frames, chat, bags, the minimap, the trackers, buffs, event widgets and nameplates. It is on at 70 %. UI Shade, Shade Strength and a switch per area are on Look > General; each area's own page links to its switch.
 - Items you can't use and spells you can't learn stay on dark red in every palette.
 
@@ -428,6 +428,12 @@ UI Shade's). Both sit on Nameplates > Plates, with the nameplates' Painted Skin.
   still be moved.
 - With the bag bar hidden, the bag slots dock under the open bag window (combined or separate
   bags) so bags can still be equipped and removed. Off switch: "Bag Slots on Bag Window".
+- "Collapse Arrow" (on by default; Action Bars > Bag Bar > Behaviour): an arrow between the
+  backpack and the bags folds the bag slots (and the key ring) away so only the backpack shows;
+  click it again to bring them back. While an item is on the cursor they come out by
+  themselves, so a bag can be dropped into a slot. It is the game's own arrow and setting
+  (expandBagBar, remembered by the game), which this client keeps hidden; the bar keeps its
+  size, so the bottom row does not move.
 - Hide the player coordinates the client writes under the minimap ("Hide Minimap
   Coordinates", on by default).
 - "Chat Notices" (on by default) covers the lines MelloUI writes to chat on its own: a

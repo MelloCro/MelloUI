@@ -500,12 +500,6 @@ local function SetEditBoxOnTop(top)
 			end
 		end
 	end
-	-- the chat reskin's shade of the edit box plates reaches away from the
-	-- window, so it follows the side they are on (ChatPanel)
-	local panel = MelloUI:GetModule("ChatPanel")
-	if panel and panel.EditBoxSide then
-		panel.EditBoxSide(top)
-	end
 end
 
 --------------------------------------------------------------------------------

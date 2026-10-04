@@ -178,6 +178,9 @@ DENSITY = [
     (r"^bars/trough_v$", 0.35),            # 41 px shown at 8
     (r"^bars/", 0.5),                      # brackets 64 px shown at 23-29
     (r"^tabs/", 0.5),                      # title plate 89 px shown at 30
+    # the world map's waypoint pins (Modules/QuestLogPanel.lua PIN_PIECES; user, 2026-10-04: "very pixelated" as
+    # the slider thumb's 20 texels): their own pieces, cut from the sheet at its native 74 px, held 1:1
+    (r"^inputs/mappin_", 1.0),
     (r"^inputs/", 0.5),                    # plates 57 px shown at 20
     (r"^tiles/", 0.5),                     # 512 px shown at 192 per repeat
     (r"^deco/rail_", 0.35),

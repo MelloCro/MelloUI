@@ -859,13 +859,9 @@ local function BuildChrome(SP)
 	Tab(SP.GameTab)
 	Tab(SP.AddOnsTab)
 
-	-- the search box: S1, its left end plain and the game's own magnifier
-	-- left on it (the kit's glass cap would need the text moved past it)
-	local search = SP.SearchBox
-	if search and search.Middle then
-		chrome.search = Replace(search.Middle, { as = "common-search-border-middle", rect = search, edit = search, dropCap = "l",
-			alsoFade = List(search.Left, search.Right) })
-	end
+	-- the search box: the kit's one (Kit:SkinSearchBox -- the flat field,
+	-- the game's own magnifier kept inside it)
+	chrome.search = Kit:SkinSearchBox(SP.SearchBox, Replace)
 
 	-- the two areas the game frames with one picture (Options_InnerFrame): an
 	-- L1 box round the category list, one round the page, each a holder at

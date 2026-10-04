@@ -1826,6 +1826,223 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- FlatOver (0.19.1; the user, 2026-10-04: "you made new icons for the
+-- checkboxes, dropdowns, sliders etc ... now we have a lot of different
+-- looking icons which serve the same function ... from now on only use the
+-- same style as we have in the Configurator"): the controls above laid over
+-- the GAME's own in every window the kit dresses -- the kit's control pieces
+-- (B1's red plate, the check box, D1, B6, S1 / N1, TB6, the slider's and the
+-- scroll bar's pieces, the red cross, the cog plates, the +/- plates) gave
+-- way to these. One look: the same keys and sizes as the switch, the
+-- dropdown, the button, the tab, the search box and the list's scroll bar.
+-- The parts are regions of `holder` (the kit's holder frame on the control's
+-- rect: Modules/Kit.lua's "flat" kind, which fades the game's art and
+-- follows the control's state as its rims do) and are painted by FlatState.
+--   W.FlatOver(holder, kind, opts) -> parts
+--     kind: "button", "check", "dropdown", "edit", "close", "arrow" (opts.dir
+--     "up" / "down" / "left" / "right"), "plus", "minus", "tab" (at rest),
+--     "tabActive" (the open one), "track" (a scroll bar's), "thumb" (its
+--     handle), "slider" (a slider's track), "knob" (its handle); opts.left:
+--     the fill reaching that far left of the rect (an edit box's art: the
+--     search glass inside it); opts.body = false: a plate's edge alone
+--   W.FlatState(parts, hover, pressed, checked, disabled, focus)
+--   W.FlatDir(parts, dir)   an arrow turned ("up" / "down" / "left" / "right")
+--   parts.box: the region the check's box is (the active look lies round it)
+--   parts.partial: a check's tick muted (on for some characters only)
+--------------------------------------------------------------------------------
+
+do
+	local FLAT_TICK = "Interface\\RaidFrame\\ReadyCheck-Ready"   -- the switch's check mark (TICK_ART)
+	local FLAT_CROSS = "common-search-clearbutton"               -- the close button's cross (CROSS_ART)
+	local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+	local BOX, MARK = 18 / 26, 16 / 26   -- the switch's box and tick, of its button (SWITCH_BOX, SWITCH_TICK)
+	local THIN = 4                       -- a scroll bar's track and handle, a slider's track: this thick
+	local KNOB = 14                      -- the slider's knob (its ring 1 px round it)
+	local GLYPH_LINES = {
+		-- a small caret pointing down (the dropdown's: CARET), and its turns; a plus, a minus: 1 px lines
+		down = { { 7, 1, 0, 2 }, { 5, 1, 0, 1 }, { 3, 1, 0, 0 }, { 1, 1, 0, -1 } },
+		up = { { 1, 1, 0, 2 }, { 3, 1, 0, 1 }, { 5, 1, 0, 0 }, { 7, 1, 0, -1 } },
+		left = { { 1, 1, -2, 0 }, { 1, 3, -1, 0 }, { 1, 5, 0, 0 }, { 1, 7, 1, 0 } },
+		right = { { 1, 7, -1, 0 }, { 1, 5, 0, 0 }, { 1, 3, 1, 0 }, { 1, 1, 2, 0 } },
+		plus = { { 9, 1, 0, 0 }, { 1, 9, 0, 0 } },
+		minus = { { 9, 1, 0, 0 } },
+	}
+
+	local function Lines(holder, set)
+		local out = {}
+		for i, l in ipairs(GLYPH_LINES[set]) do
+			local t = holder:CreateTexture(nil, "ARTWORK", nil, 2)
+			t:SetSize(l[1], l[2])
+			t:SetPoint("CENTER", holder, "CENTER", l[3], l[4])
+			out[i] = t
+		end
+		return out
+	end
+
+	-- a part laid in the holder's middle at `share` of its smaller side (the
+	-- check's box and tick), again as the holder is sized
+	local function Middle(holder, region, share)
+		region:SetPoint("CENTER", holder, "CENTER", 0, 0)
+		region.melloShare = share
+	end
+	local FlatSized = Shared("OnSizeChanged on a kit flat control's holder", function(holder)
+		local w, h = holder:GetSize()
+		w, h = Num(w), Num(h)
+		if not (w and h) then
+			return
+		end
+		local side = math.min(w, h)
+		for _, region in ipairs(holder.melloMiddles) do
+			local s = math.max(math.floor(side * region.melloShare + 0.5), 1)
+			region:SetSize(s, s)
+		end
+	end, "script")
+
+	local function Plate(holder, p, left)
+		local fill = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
+		fill:SetPoint("TOPLEFT", holder, "TOPLEFT", -(left or 0), 0)
+		fill:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 0, 0)
+		p.fill, p.edges = fill, Edges(holder, "border", "BORDER", fill)
+	end
+
+	function W.FlatOver(holder, kind, opts)
+		opts = opts or NO_OPTS
+		local p = { kind = kind, holder = holder }
+		if kind == "check" then
+			local box = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
+			local tick = holder:CreateTexture(nil, "ARTWORK", nil, 2)
+			tick:SetTexture(FLAT_TICK)
+			tick:SetDesaturated(true)
+			Middle(holder, box, BOX)
+			Middle(holder, tick, MARK)
+			holder.melloMiddles = { box, tick }
+			p.fill, p.edges, p.tick, p.box = box, Edges(holder, "trim", "BORDER", box), tick, box
+		elseif kind == "track" or kind == "thumb" then
+			local bar = holder:CreateTexture(nil, "ARTWORK", nil, 1)
+			bar:SetPoint("TOP", holder, "TOP", 0, 0)
+			bar:SetPoint("BOTTOM", holder, "BOTTOM", 0, 0)
+			bar:SetWidth(THIN)
+			p.fill = bar
+		elseif kind == "slider" then
+			local track = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
+			track:SetPoint("LEFT", holder, "LEFT", 0, 0)
+			track:SetPoint("RIGHT", holder, "RIGHT", 0, 0)
+			track:SetHeight(THIN)
+			p.fill, p.edges = track, Edges(holder, "border", "BORDER", track)
+		elseif kind == "knob" then
+			local ring = holder:CreateTexture(nil, "ARTWORK", nil, 1)
+			ring:SetTexture(ROUND)
+			ring:SetSize(KNOB + 2, KNOB + 2)
+			ring:SetPoint("CENTER", holder, "CENTER", 0, 0)
+			local disc = holder:CreateTexture(nil, "ARTWORK", nil, 2)
+			disc:SetTexture(ROUND)
+			disc:SetSize(KNOB, KNOB)
+			disc:SetPoint("CENTER", holder, "CENTER", 0, 0)
+			p.ring, p.disc = ring, disc
+		else
+			-- a plate: the button's, a tab's, the dropdown's and edit box's field
+			Plate(holder, p, opts.left)
+			if kind == "dropdown" then
+				local caret = Lines(holder, "down")
+				for _, line in ipairs(caret) do
+					local _, _, _, x, y = line:GetPoint(1)
+					line:ClearAllPoints()
+					line:SetPoint("CENTER", holder, "RIGHT", -12 + x, y)
+				end
+				p.glyph = caret
+			elseif kind == "arrow" then
+				p.dir = opts.dir or "down"
+				p.glyph = Lines(holder, p.dir)
+			elseif kind == "plus" or kind == "minus" then
+				p.glyph = Lines(holder, kind)
+			elseif kind == "close" then
+				local cross = holder:CreateTexture(nil, "ARTWORK", nil, 2)
+				cross:SetAtlas(FLAT_CROSS)
+				Middle(holder, cross, 12 / 22)
+				holder.melloMiddles = { cross }
+				p.cross = cross
+			end
+		end
+		if holder.melloMiddles then
+			Perf.SetScript(holder, "OnSizeChanged", FlatSized)
+			FlatSized(holder)
+		end
+		if opts.body == false and p.edges then
+			-- the edge alone (a frame round something: the calendar's today)
+			p.fill:Hide()
+			p.noBody = true
+		end
+		return p
+	end
+
+	-- an arrow turned: its four lines laid again for `dir` (a flat arrow that
+	-- follows the rotation the game gives its art: Kit's `rotates`)
+	function W.FlatDir(p, dir)
+		local set, glyph = GLYPH_LINES[dir], p and p.glyph
+		if not (set and glyph and p.dir) or p.dir == dir then
+			return
+		end
+		p.dir = dir
+		for i, l in ipairs(set) do
+			local t = glyph[i]
+			if t then
+				t:SetSize(l[1], l[2])
+				t:ClearAllPoints()
+				t:SetPoint("CENTER", p.holder, "CENTER", l[3], l[4])
+			end
+		end
+	end
+
+	local function PaintAll(list, key, how, alpha)
+		if list then
+			for i = 1, #list do
+				W.Paint(list[i], key, how, alpha)
+			end
+		end
+	end
+
+	function W.FlatState(p, hover, pressed, checked, disabled, focus)
+		local kind = p.kind
+		local alpha = disabled and FLAT_OFF or 1
+		local lit = (hover or pressed) and not disabled
+		if kind == "check" then
+			W.Paint(p.fill, "innerPanel", "fill", alpha)
+			PaintAll(p.edges, lit and "selectedTrim" or "trim", "fill", alpha)
+			p.tick:SetShown(checked and true or false)
+			W.Paint(p.tick, (disabled or p.partial) and "mutedText" or "selectedTrim", "vertex", 1)   -- (p.partial: on for some characters only)
+		elseif kind == "track" then
+			W.Paint(p.fill, "border", "fill", 1)
+		elseif kind == "thumb" then
+			W.Paint(p.fill, lit and "selectedTrim" or "trim", "fill", alpha)
+		elseif kind == "slider" then
+			W.Paint(p.fill, "innerPanel", "fill", alpha)
+			PaintAll(p.edges, "border", "fill", alpha)
+		elseif kind == "knob" then
+			W.Paint(p.ring, "innerPanel", "vertex", alpha)
+			W.Paint(p.disc, lit and "text" or "selectedTrim", "vertex", alpha)
+		elseif kind == "tabActive" then
+			W.Paint(p.fill, "selectedTab", "fill", 1)
+			PaintAll(p.edges, "selectedTrim", "fill", 1)
+		elseif kind == "edit" then
+			W.Paint(p.fill, "innerPanel", "fill", alpha)
+			PaintAll(p.edges, focus and "trim" or "border", "fill", alpha)
+		elseif kind == "dropdown" then
+			W.Paint(p.fill, lit and "hover" or "innerPanel", "fill", alpha)
+			PaintAll(p.edges, "border", "fill", alpha)
+			PaintAll(p.glyph, "text", "fill", alpha)
+		else
+			-- the button's plate (a close button, an arrow, a +/-, a tab at rest)
+			W.Paint(p.fill, lit and "hover" or "raisedPanel", "fill", alpha)
+			PaintAll(p.edges, "border", "fill", alpha)
+			PaintAll(p.glyph, disabled and "mutedText" or "text", "fill", 1)
+			if p.cross then
+				W.Paint(p.cross, disabled and "mutedText" or "text", "vertex", 1)
+			end
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- IconBox: a framed icon -- the client's action button bevel around a
 -- rounded icon, grey at rest, gold when selected, the text colour while
 -- hovered; with the kit, the rim every window's buttons wear (UI
@@ -2273,46 +2490,55 @@ do
 end
 
 --------------------------------------------------------------------------------
--- PlateButton (0.19.0): a small square button on the kit's cog plate (the bag
--- window's Sort button's plate, buttons/cog: its hover and press follow the
--- button) with a glyph on it -- the plate's own painted cog covered by a black
--- opening (the palette's inner panel; the user, 2026-10-04: "make sure ...
--- the background is actually black, since i think there is another icon
--- sketched under it"); the game's round column button in the game's look
--- (Look.ColumnButton: the glyph in the text colour, the plate and the opening
--- hidden). The Discard buttons and the bag window's Settings.
+-- PlateButton (0.19.0; flat since 0.19.1, the user, 2026-10-04: "from now on
+-- only use the same style as we have in the Configurator" -- it was the kit's
+-- cog plate with a black opening): a small square button with a glyph on the
+-- Configurator's flat plate (W.FlatOver's "button": `raisedPanel` in a 1 px
+-- `border` edge, `hover` under the pointer); the game's round column button
+-- in the game's look (Look.ColumnButton: the glyph in the text colour, the
+-- plate hidden). The Discard buttons and the bag window's Settings.
 --   W.PlateButton(parent, w, h, glyphSize, area, scripts) -> b, glyph
---     scripts: { OnClick = fn, OnEnter = fn, OnLeave = fn }, set before the
---     plate's hooks (a SetScript after them drops them); the caller puts its
---     art on `glyph` (W.Glyph, or a picture of the game's)
+--     scripts: { OnClick = fn, OnEnter = fn, OnLeave = fn }, set first (the
+--     plate's own hover is hooked after them); the caller puts its art on
+--     `glyph` (W.Glyph, or a picture of the game's)
+--   b.plate (its fill)
 --------------------------------------------------------------------------------
 do
-	-- the cog plate's opening (buttons/cog: 8..40 of its 50 px across, 8..39
-	-- of its 49 down): its left, right, top and bottom insets, of its size
-	local OPEN = { 0.16, 0.18, 0.165, 0.18 }
+	local plates = setmetatable({}, weakKeys)   -- [button] = its flat parts
+	local function PlatePaint(b, hover)
+		local p = plates[b]
+		if p then
+			W.FlatState(p, hover, false, false, not b:IsEnabled())
+		end
+	end
+	local PlateEnter = Shared("OnEnter on MelloUI's plate buttons", function(b)
+		PlatePaint(b, true)
+	end, "script")
+	local PlateLeave = Shared("OnLeave on MelloUI's plate buttons", function(b)
+		PlatePaint(b, false)
+	end, "script")
+
 	function W.PlateButton(parent, w, h, glyphSize, area, scripts)
-		local Kit, Look = MelloUI.Kit, MelloUI.Look
+		local Look = MelloUI.Look
 		local b = CreateFrame("Button", nil, parent)
 		b:SetSize(w, h)
 		for script, fn in pairs(scripts or NO_OPTS) do
 			b:SetScript(script, fn)
 		end
-		-- the plate at the button's width, its aspect kept, centred
-		local plate = Kit:StateTexture(b, "buttons/cog", { layer = "BACKGROUND" })
-		local pw, ph = Kit:Size("buttons/cog_normal", 1)
-		local height = (pw > 0 and ph > 0) and w * ph / pw or w
-		plate:ClearAllPoints()
-		plate:SetSize(w, height)
-		plate:SetPoint("CENTER")
-		local open = b:CreateTexture(nil, "BACKGROUND", nil, 1)
-		open:SetPoint("TOPLEFT", plate, "TOPLEFT", w * OPEN[1], -height * OPEN[3])
-		open:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -w * OPEN[2], height * OPEN[4])
-		W.Paint(open, "innerPanel", "fill", 1)
+		local p = W.FlatOver(b, "button")
+		plates[b] = p
+		Perf.HookScript(b, "OnEnter", PlateEnter)
+		Perf.HookScript(b, "OnLeave", PlateLeave)
+		PlatePaint(b, false)
 		local glyph = b:CreateTexture(nil, "ARTWORK", nil, 2)
 		glyph:SetSize(glyphSize, glyphSize)
 		glyph:SetPoint("CENTER")
-		Look.ColumnButton(b, glyph, { plate, open }, area)
-		b.plate, b.open = plate, open
+		local painted = { p.fill }
+		for i = 1, #p.edges do
+			painted[#painted + 1] = p.edges[i]
+		end
+		Look.ColumnButton(b, glyph, painted, area)
+		b.plate = p.fill
 		return b, glyph
 	end
 end

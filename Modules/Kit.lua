@@ -51,10 +51,13 @@ MelloUI.Kit = Kit
 --       today's three looks,
 --       Warm iron (warm, the default), Bronze, the Original (painted).
 --       Any other palette: "painted" is the Original (Media\Kit), anything
---       else (warm, bronze, nil) that palette's own kit, Media\Kit<Id>.
+--       else (warm, bronze, nil) that palette's own kit, Media\Kit<Id>; one
+--       with Ember's two looks (Ember Vibrant, 0.19.1: Core's `looks`
+--       "ember") its Bronze in Media\Kit<Id>Bronze, its warm iron in Kit<Id>.
 --   Kit:ColourLooks([paletteId]) -> the Kit Colours choices under a palette
---       (nil: the one in use): Ember's three; another palette's own kit
---       (value "warm", its name, its folder) and the Original
+--       (nil: the one in use): Ember's three (and an Ember-style palette's,
+--       in its own folders); another palette's own kit (value "warm", its
+--       name, its folder) and the Original
 --   Kit.colourLooks: the choices under the palette in use (the Kit Colours
 --       row's values), the same table kept and filled again on a switch
 --   Kit:ColourLookShown() -> the entry of Kit.colourLooks the kit draws:
@@ -76,6 +79,30 @@ local lookRoot = nil   -- the chosen look's folder, once the settings are there
 -- know); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
 -- palette's Kit Colours choices (one table: Kit.lua has few locals to spare)
 local LOOK = {}
+-- A painted look (a palette's kit painted for it, not recoloured; Tools/
+-- build_art_look.py) holds its own pages, parchment and rank marks: only the
+-- content every look shares is read from Media\Kit (Tools/kit_palette.py
+-- ART_SKIP; texture_pack.py checks the two agree)
+LOOK.ART_UNCOLOURED = { "^cards/", "^icons/", "^backdrops/profession_", "^backdrops/schematic_", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
+-- [the look's root] = the ending of its own shadow sheet (Media\Textures\KitShadows_<id>: its shapes, the same
+-- layout as KitShadows.lua's, Tools/make_kit_shadows.py build_look). None: Forged Steel, the one painted look,
+-- was taken out again (user, 2026-10-04: "i want the forged steel deleted from the addon, i dont like it")
+LOOK.ART_ROOTS = {}
+-- the shadow sheet for the look in use (`base` the sheet's file, KitShadows.lua's; nil: nil)
+function LOOK.ShadowSheet(base)
+	local ending = base and lookRoot and LOOK.ART_ROOTS[lookRoot]
+	return ending and (base .. ending) or base
+end
+-- a texture shown from another file, its coordinates kept (SetTexture resets them; Kit:SetKitColours' way)
+function LOOK.Retexture(tex, file)
+	if tex then
+		local ulx, uly, llx, lly, urx, ury, lrx, lry = tex:GetTexCoord()
+		tex:SetTexture(file)
+		if lry ~= nil then
+			tex:SetTexCoord(ulx, uly, llx, lly, urx, ury, lrx, lry)
+		end
+	end
+end
 
 do
 	-- every palette of Core's registry but Ember has kit art of its own
@@ -103,6 +130,13 @@ do
 			end
 		end
 		return "ember"
+	end
+
+	-- (0.19.1) a palette with Ember's two looks, Warm iron and Bronze (Core's registry: `looks` "ember")
+	function LOOK.EmberStyle(id)
+		local reg = MelloUI.Palettes
+		local entry = type(reg) == "table" and reg[id]
+		return type(entry) == "table" and entry.looks == "ember"
 	end
 
 	function LOOK.PaletteId()
@@ -148,6 +182,11 @@ do
 			root = RootOf(folders[id])
 			roots[id] = root
 		end
+		-- (0.19.1) a palette with Ember's two looks (its registry entry's `looks`, "ember": Ember Vibrant): its
+		-- Bronze in Kit<Id>Bronze beside its warm iron, Kit<Id> (Tools/kit_palette.py, the same rule)
+		if kitColours == "bronze" and LOOK.EmberStyle(id) then
+			return RootOf(folders[id] .. "Bronze"), folders[id] .. "Bronze"
+		end
 		return root, folders[id]
 	end
 
@@ -160,7 +199,13 @@ do
 			local name = type(entry) == "table" and type(entry.name) == "string" and entry.name
 				or (id:sub(1, 1):upper() .. id:sub(2)):gsub("(%l)(%u)", "%1 %2")
 			local _, folder = self:LookFolder(id, "warm")
-			list = { { value = "warm", label = name, folder = folder }, PAINTED }
+			if LOOK.EmberStyle(id) then
+				-- Ember's three choices, in that palette's own folders
+				local _, bronze = self:LookFolder(id, "bronze")
+				list = { { value = "warm", label = EMBER[1].label, folder = folder }, { value = "bronze", label = EMBER[2].label, folder = bronze }, PAINTED }
+			else
+				list = { { value = "warm", label = name, folder = folder }, PAINTED }
+			end
 			looks[id] = list
 		end
 		return list
@@ -219,7 +264,7 @@ do
 			root = self:LookFolder(paletteId == nil and LOOK.PaletteId() or paletteId, look)
 		end
 		if type(piece) == "string" and root ~= ROOT then
-			for _, pattern in ipairs(UNCOLOURED) do
+			for _, pattern in ipairs(LOOK.ART_ROOTS[root] and LOOK.ART_UNCOLOURED or UNCOLOURED) do
 				if piece:find(pattern) then
 					return ROOT
 				end
@@ -248,7 +293,7 @@ local function PieceRoot(name)
 	if lookRoot == ROOT then
 		return ROOT
 	end
-	for _, pattern in ipairs(UNCOLOURED) do
+	for _, pattern in ipairs(LOOK.ART_ROOTS[lookRoot] and LOOK.ART_UNCOLOURED or UNCOLOURED) do
 		if name:find(pattern) then
 			return ROOT
 		end
@@ -1284,6 +1329,17 @@ do
 	end
 
 	local function Repaint()
+		-- a painted look's own sheet (0.19.1: Forged Steel's shapes, the same
+		-- layout): swapped in once the look in use is another
+		local sheet = LOOK and LOOK.ShadowSheet(SHEET and data.file)   -- (LOOK: none where a test world runs this block alone)
+		if sheet and sheet ~= SHEET then
+			SHEET = sheet
+			for sh in pairs(partners) do
+				LOOK.Retexture(sh, SHEET)
+				LOOK.Retexture(sh.kitEndL, SHEET)
+				LOOK.Retexture(sh.kitEndR, SHEET)
+			end
+		end
 		for sh in pairs(partners) do
 			Paint(sh)
 		end
@@ -1360,7 +1416,7 @@ do
 	-- a region of `host` for a partner, painted, not yet placed
 	local function NewPartner(host, colour, strength)
 		local sh = host:CreateTexture(nil, "BACKGROUND", nil, -8)
-		sh:SetTexture(SHEET)
+		sh:SetTexture(LOOK and LOOK.ShadowSheet(SHEET and data.file) or SHEET)
 		sh.kitPiece, sh.kitPartner = true, true
 		sh.kitColour, sh.kitStrength = colour, strength
 		sh.kitWanted, sh.kitPieceShown = true, true
@@ -2836,7 +2892,9 @@ local function NineSlice_Art(skin, opts)
 	local open = opts.open or ""
 	local oL, oR, oT, oB = open:find("l") ~= nil, open:find("r") ~= nil, open:find("t") ~= nil, open:find("b") ~= nil
 
-	local gemCorners = opts.corners == "gem" and PIECES[prefix .. "_gem_tl"] ~= nil
+	-- (a painted look draws its plain mitred corners: its gem corners would be plain corners in a shared sheet, which
+	-- a border style (Window Border) cannot swap)
+	local gemCorners = opts.corners == "gem" and PIECES[prefix .. "_gem_tl"] ~= nil and not LOOK.ART_ROOTS[PieceRoot(prefix .. "_body")]
 	local skip = opts.skip or ""
 	if opts.body ~= false then
 		-- the body reaches under the whole edge when gem corners sit on it:
@@ -4108,6 +4166,10 @@ local function Slot_Update(rim)
 		checked = c
 	end
 	rim.lastDisabled = disabled
+	-- a flat control (the "flat" kind, 0.19.1): its parts painted by the state
+	if rim.flatParts then
+		MelloUI.Widgets.FlatState(rim.flatParts, rim.hover, rim.pressed, checked, disabled, rim.flatFocus)
+	end
 	-- the active look (Kit:SetActive) shows the checked state: a rim's own
 	-- checked colour and its glow's selected strength give way to it, a
 	-- check box keeps its tick (0.15.0)
@@ -4140,6 +4202,51 @@ local function Slot_Update(rim)
 		Kit:SetActive(b, (checked and rim:IsShown()) and true or false, rim, Kit:ActiveShape(rim), rim.icon)
 	end
 end
+
+-- A flat control's opening (rep:GetOpening, as a bar's): its face is the whole rect
+local function FlatOpening()
+	return 0, 0, 0, 0
+end
+
+-- A flat control's button greyed out (FLAT_OFF) as it is: its Enable /
+-- Disable read again (the rims follow SetEnabled alone; a panel button
+-- turned off with Disable kept its lit plate -- one handler for all)
+local flatButtons = setmetatable({}, { __mode = "k" })   -- [button] = { its flat reps' drivers }
+local FlatButton_Enabled = Shared("Enable / Disable on a kit flat control's button", function(button)
+	local list = flatButtons[button]
+	if list then
+		for i = 1, #list do
+			Slot_Update(list[i])
+		end
+	end
+end, "hook")
+
+-- A flat arrow over art the game turns (a rule's `rotates`: the bag bar's
+-- arrow): SetRotation's angle, a quarter turn counter-clockwise at a time
+-- from the art's own way (the rule's `dir`), lays the arrow's lines again
+local FLAT_TURNS = { "left", "down", "right", "up" }   -- each a quarter turn counter-clockwise from the one before
+local FLAT_TURN_OF = { left = 0, down = 1, right = 2, up = 3 }
+local flatTurns = setmetatable({}, { __mode = "k" })   -- [the game's art] = the flat arrow's parts
+local FlatArrow_Turn = Shared("SetRotation on a kit flat arrow's art", function(region, angle)
+	local parts = flatTurns[region]
+	if not parts or type(angle) ~= "number" or Secret(angle) then
+		return
+	end
+	local q = (math.floor(angle / (math.pi / 2) + 0.5) + (parts.turnFrom or 0)) % 4
+	MelloUI.Widgets.FlatDir(parts, FLAT_TURNS[q + 1])
+end, "hook")
+
+-- A flat edit box's field (the "flat" kind): its edge in `trim` while it has
+-- the keyboard, as the Configurator's search box's (one handler for all)
+local flatFields = setmetatable({}, { __mode = "k" })   -- [edit box] = its flat rep's driver
+local FlatField_Focus = Shared("OnEditFocusGained / Lost on a kit flat field", function(edit)
+	local driver = flatFields[edit]
+	if driver then
+		local ok, focus = pcall(edit.HasFocus, edit)
+		driver.flatFocus = (ok and not Secret(focus) and focus) and true or nil
+		Slot_Update(driver)
+	end
+end, "script")
 
 -- A check button's flag set: a secret one (handed over in combat) can only
 -- be shown, by the active look (the rim keeps its last look until the flag
@@ -5017,6 +5124,13 @@ end
 --   state   a state texture on a button (`base`), e.g. the close button;
 --           `natural` keeps the kit size centred on the rect, `layer` its
 --           draw layer (OVERLAY unless the game's icon must stay on top)
+--   flat    (0.19.1) a control in the Configurator's flat look (`flat` =
+--           button / check / dropdown / edit / close / arrow (`dir`) / plus /
+--           minus / tab / tabActive / track / thumb / slider / knob:
+--           W.FlatOver's parts on a holder on the rect, painted by its state
+--           as the rims are; `rect = "normal"` the button's normal texture's
+--           rect); opts.left an edit box's fill reaching left over its glass,
+--           opts.body = false the edge alone, opts.fitHeight a centred height
 --   active  the active look alone (Kit:SetActive) on a check button the kit
 --           does not dress, while it is checked; `active = true` on a rule
 --           of another kind puts the active look round its piece whenever
@@ -5072,7 +5186,7 @@ Kit.Replacements = {
 	-- by TitleBehindRing)
 	["MelloUI-Crest"]                         = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
 	["MelloUI-TitlePlate"]                    = { kind = "strip", base = "tabs/top", state = "open", heightScale = 1.5 },
-	["RedButton-Exit"]                        = { kind = "state", base = "window/close", rect = "normal" },
+	["RedButton-Exit"]                        = { kind = "flat", flat = "close", rect = "normal" },   -- (0.19.1) flat: the close button (was the red cross)
 	-- inset frames and backdrops
 	["common-insideframe"]                    = { kind = "frame", dim = 0.8 },   -- an inset: single rail + stone, the stone under the palette's inner panel (no eye strain, WINDOW-RULES 2e)
 	["common-insideframe-2x"]                 = { kind = "frame" },
@@ -5116,29 +5230,29 @@ Kit.Replacements = {
 	["UI-Character-Info-GearSlot"]            = { kind = "fade" },   -- a gear slot's frame art (its BorderFrame's picture): faded, the slot wears the action bars' thin rim on the button itself (CharacterPanel, Item Border; user 2026-09-23: "onto the Character Pane next"). Was the gemmed slot sized so neighbours shared a gem
 	["common-sidetab"]                        = { kind = "slot", slot = "slot", rest = "checked", glow = true, sideTab = true, iconBleed = 2, keepIcon = true },   -- gold rim on every tab (the user's pick, I), additive glow when selected; `sideTab`: every window's at the Character window's size, in the one Side Tab Border (Kit:RegisterSideTab)
 	-- small controls
-	["checkbox-minimal"]                      = { kind = "state", base = "buttons/checkbox" },
+	["checkbox-minimal"]                      = { kind = "flat", flat = "check" },   -- (0.19.1) flat: a check box (was the kit's)
 	-- scroll bars (user, 2026-09-21: T2 / H1 / S1 is THE scroll bar, the only
 	-- look for every MinimalScrollBar): the dark trough as the track, the gem
 	-- slab thumb stretching with the content, the kit arrow buttons as steppers
-	["minimal-scrollbar-track-middle"]        = { kind = "edge", piece = "bars/trough_v", scale = 1.0, level = -1 },   -- on the whole Track (Begin / End faded with it)
-	["minimal-scrollbar-small-thumb-middle"]  = { kind = "vstrip", base = "lists/scrollthumb", widthScale = 1.25, level = 0 },   -- on the Thumb (Begin / End faded with it)
-	["minimal-scrollbar-arrow-top"]           = { kind = "state", base = "buttons/arrow_up", natural = true },
-	["minimal-scrollbar-arrow-bottom"]        = { kind = "state", base = "buttons/arrow_down", natural = true },
+	["minimal-scrollbar-track-middle"]        = { kind = "flat", flat = "track", level = -1 },   -- (0.19.1) flat: a scroll bar's track (was T2's trough)
+	["minimal-scrollbar-small-thumb-middle"]  = { kind = "flat", flat = "thumb", level = 0 },   -- (0.19.1) flat: its thumb (was H1's slab)
+	["minimal-scrollbar-arrow-top"]           = { kind = "flat", flat = "arrow", dir = "up" },   -- (0.19.1) flat: a scroll bar's up stepper (was S1's arrow)
+	["minimal-scrollbar-arrow-bottom"]        = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: ... its down stepper
 	-- progress bars (user, 2026-09-21: P1): the hollow bar bracket with the
 	-- trough in its opening, under the game's tinted fill and its text
 	["common-stat-bar-BG"]                    = { kind = "bar", bar = "frame", heightScale = 0.85 },   -- the character pane's skill / reputation bars: P1 at 0.85 of the bar's height (user, 2026-09-21: the borders 15 % smaller), the fill fitted into the smaller opening by the panel
 	-- list glyphs (user, 2026-09-21: consistency — every check box, expand /
 	-- collapse control and toggle in a window is the kit's): the +/- plates
 	-- on the glyph's rect, the plus for a collapsed header, the minus for an open one
-	["common-button-list-plus"]               = { kind = "state", base = "buttons/plus", natural = true },
-	["common-button-list-minus"]              = { kind = "state", base = "buttons/minus", natural = true },
-	["campaign_headericon_closed"]            = { kind = "state", base = "buttons/plus", natural = true, rect = "normal" },   -- a sub-header's toggle, collapsed
-	["campaign_headericon_open"]              = { kind = "state", base = "buttons/minus", natural = true, rect = "normal" },  -- ... open
+	["common-button-list-plus"]               = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: a list's expand (was the kit's +)
+	["common-button-list-minus"]              = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: ... collapse (was the kit's -)
+	["campaign_headericon_closed"]            = { kind = "flat", flat = "plus", rect = "normal" },   -- (0.19.1) flat: a sub-header's toggle, closed (was the kit's +)
+	["campaign_headericon_open"]              = { kind = "flat", flat = "minus", rect = "normal" },   -- (0.19.1) flat: ... open
 	-- the character window's equipment manager
 	["UI-Character-Info-OutfitCard"]          = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 0 },   -- an outfit card: the gemless plate ...
 	["UI-Character-Info-OutfitCard-Hover"]    = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- ... its hover (shown / hidden by the game)
 	["UI-Character-Info-OutfitCard-Selected"] = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... its selected bar (likewise)
-	["common-button-tertiary-normal"]         = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8, capOverhang = 0.35 },   -- New Set (a tertiary button re-atlased with its state): the red plate (B1), the game's + icon and text on top
+	["common-button-tertiary-normal"]         = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8 },   -- (0.19.1) the red plate again, gemless (B1; user, 2026-10-04: "no more diamonds on the sides"; was flat for a day): New Set, the game's + icon and text on top
 	-- the spell book (user's picks, 2026-09-21: P1 C1 H3 K1 T1); the talents
 	-- page stays the game's until the user's per-class art arrives
 	-- The PAGES (user, 2026-09-23: backgrounds keep one resolution, never
@@ -5157,12 +5271,12 @@ Kit.Replacements = {
 	["spellbook-item-iconframe-passive"]      = { kind = "slot", slot = "roundslot" },   -- a passive's: the round rim (the icon is round)
 	["spellbook-item-iconframe-passive-inactive"] = { kind = "slot", slot = "roundslot" },
 	["talents-node-circle-gray"]              = { kind = "slot", slot = "roundslot" },   -- what this client puts on a passive spell's icon
-	["uiframe-tab-left"]                      = { kind = "frame", level = 0, hover = 1.15 },   -- a window's bottom / top tab (TB6, user 2026-09-21; was T1, the tabs/top plate): the single rail with the stone card on the tab's rect, a holder at the tab's own level (its stone and rails under the tab's OVERLAY text, above the window's rail), brighter on hover
-	["uiframe-activetab-left"]                = { kind = "frame", level = 0, lit = { 1.45, 1.3, 0.85 }, active = true },   -- ... the open tab: the same card with its iron lit gold (as a selected R3 row); each on the tab's rect, the one the game shows; `active`: the active look round it (0.15.0)
-	["common-dropdown-a-button"]              = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the small round dropdown arrow: the cog plate under the game's arrow (K2)
-	["common-dropdown-a-button-shadowless"]   = { kind = "state", base = "buttons/arrow_down", natural = true },   -- the same template with hasShadow false (WowStyle1ArrowDropdownTemplate; the damage meter's type dropdown, keyed by hand): the kit's down arrow in the arrow's place (user, 2026-09-23: A of kit_raw/meter_arrow_catalog.png) -- not K2, whose cog would stand beside the header's settings cog
-	["RedButton-Expand"]                      = { kind = "state", base = "buttons/arrow_up", natural = true, rect = "normal" },   -- the window's maximize / minimize
-	["RedButton-Condense"]                    = { kind = "state", base = "buttons/arrow_down", natural = true, rect = "normal" },
+	["uiframe-tab-left"]                      = { kind = "flat", flat = "tab", level = -1 },   -- (0.19.1) flat: a window's tab at rest (was TB6)
+	["uiframe-activetab-left"]                = { kind = "flat", flat = "tabActive", level = -1, active = true },   -- (0.19.1) flat: the open tab (was TB6 lit gold); `active`: the active look round it, as the Configurator's open tab
+	["common-dropdown-a-button"]              = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: the small round dropdown arrow (was K2's cog under it)
+	["common-dropdown-a-button-shadowless"]   = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: ... without its shadow (was the kit's arrow)
+	["RedButton-Expand"]                      = { kind = "flat", flat = "arrow", dir = "up", rect = "normal" },   -- (0.19.1) flat: the window's maximize (was the kit's arrow)
+	["RedButton-Condense"]                    = { kind = "flat", flat = "arrow", dir = "down", rect = "normal" },   -- (0.19.1) flat: ... minimize
 	-- the professions window (user's picks, 2026-09-21: A, F crop 1, K1)
 	-- the book page's backdrop: the user's own page painting (the kit's soft
 	-- stones, tiles/crackle and a plain grey were all tried before it)
@@ -5202,28 +5316,28 @@ Kit.Replacements = {
 	-- the crafting page (user's picks, 2026-09-21: S1 D1 B1 N1 R1 O1 K2 L1 T1)
 	["Profession-Background-Template2"]       = { kind = "picture", piece = "tiles/concrete", crop = "middle", level = -2, edge = "brush" },   -- the crafting page's backdrop: the same page stone as the book's; TWO under the page, so the list box and the schematic picture (one under their frames, which may sit at the page's level) never tie with it
 	["Professions-background-summarylist"]    = { kind = "frame", dim = 0.8 },   -- the recipe list box (L1): single rail, stone body under the palette's inner panel (no eye strain, WINDOW-RULES 2e)
-	["common-search-border-middle"]           = { kind = "strip", base = "inputs/edit", state = "normal", owner = true },
-	["common-dropdown-b-button"]              = { kind = "frame", level = -1, hover = 1.25, pressed = 0.75, disabled = 0.6 },   -- the filter dropdown (B6, user 2026-09-21): the single-rail band with stone, its states by tint
-	["_128-RedButton-Center"]                 = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8, capOverhang = 0.35 },   -- B1: the plate at the button's height, its gem caps reaching past the button's ends (the game's Left / Right pieces sit outside its Center too)
-	["_128-RedButton-Center-Disabled"]        = { kind = "strip", base = "buttons/redbtn", state = "disabled", owner = true, heightScale = 0.8, capOverhang = 0.35 },
-	["UI-SpellbookIcon-PrevPage-Up"]          = { kind = "state", base = "buttons/arrow_left", natural = true, fit = "height" },   -- the spinner's - / + (N1), as tall as their buttons, flush to the plate; also the character window's pane toggle (PrevPage = open, NextPage = collapsed)
-	["UI-SpellbookIcon-NextPage-Up"]          = { kind = "state", base = "buttons/arrow_right", natural = true, fit = "height" },
+	["common-search-border-middle"]           = { kind = "flat", flat = "edit" },   -- (0.19.1) flat: a search box / the quantity box (was S1 / N1; a search box's fill over its glass: Kit:SkinSearchBox's opts.left)
+	["common-dropdown-b-button"]              = { kind = "flat", flat = "dropdown", level = -1 },   -- (0.19.1) flat: a filter dropdown (was B6)
+	["_128-RedButton-Center"]                 = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8 },   -- (0.19.1) the red plate again, gemless (B1, user 2026-10-04): the plate at the button's height, its closed ends on the button's (no gem caps reaching past them now)
+	["_128-RedButton-Center-Disabled"]        = { kind = "strip", base = "buttons/redbtn", state = "disabled", owner = true, heightScale = 0.8 },
+	["UI-SpellbookIcon-PrevPage-Up"]          = { kind = "flat", flat = "arrow", dir = "left" },   -- (0.19.1) flat: a spinner's / pager's back arrow (was the kit's)
+	["UI-SpellbookIcon-NextPage-Up"]          = { kind = "flat", flat = "arrow", dir = "right" },   -- (0.19.1) flat: ... its forward arrow
 	["Professions-Slot-Frame"]                = { kind = "slot", slot = "slot" },   -- a reagent slot's frame over its icon (R1)
 	["auctionhouse-itemicon-border-white"]    = { kind = "slot", slot = "roundslot" },   -- the output icon's quality-coloured border (O2, user 2026-09-21): the round rim, tinted like the border
 	["AuctionHouseBackgroundTemplate"]        = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = 1, edgeLayer = "BORDER", dim = 0.8 },   -- an auction house box (a Background picture + an inset NineSlice at the box's level; keyed by hand, its atlas differs per box): L1, the single rail with the list-box stone under the inner panel (2e), as REGIONS of the box, so the stone always lies under the box's scroll box and rows (user, 2026-09-24)
-	["common-button-tertiary-square-normal"]  = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the link button's plate (K2), under the game's chain-link icon
+	["common-button-tertiary-square-normal"]  = { kind = "flat", flat = "button" },   -- (0.19.1) flat: a square icon button's plate (was K2's cog)
 	["Professions_Recipe_Hover"]              = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a region of the row under its text (the game's translucent hover is HIGHLIGHT over it)
 	["Professions_Recipe_Active"]             = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },
 	["Professions-skillbar-bg"]               = { kind = "bar", bar = "frame", layer = "ARTWORK", sublevel = 4 },   -- the crafting page's rank bar: the same P1 as the book's
 	["Profession-ProgressBar-BG"]             = { kind = "bar", bar = "frame", layer = "ARTWORK", sublevel = 4 },   -- the rank bars (P1): the masked fill is ARTWORK 2, so the bracket's caps go to 4 and its middle (one below the caps) to 3, both over the fill
 	-- shared controls met in the legacy / quest log / guild windows (2026-09-21)
-	["UI-Panel-Button-Up"]                    = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8, capOverhang = 0.35 },   -- UIPanelButtonTemplate (Left / Middle / Right file pieces; keyed by hand, file textures read back as ids): the red plate (B1), as the 128-RedButton
-	["UI-CheckBox-Up"]                        = { kind = "state", base = "buttons/checkbox" },   -- the classic check box (file art; keyed by hand): the kit's, as checkbox-minimal
-	["questlog-icon-ticksquare"]              = { kind = "state", base = "buttons/checkbox" },   -- the quest log's tracking tick box (a Frame with a CheckMark the game shows / hides)
-	["ui-journeys-delve-arrow-small-left"]    = { kind = "state", base = "buttons/arrow_left", natural = true, rect = "normal" },   -- a reward track's scroll arrows
-	["ui-journeys-delve-arrow-small-right"]   = { kind = "state", base = "buttons/arrow_right", natural = true, rect = "normal" },
-	["128-redbutton-plus"]                    = { kind = "state", base = "buttons/plus", natural = true },    -- a card's expand glyph (the legacy challenge cards)
-	["128-redbutton-minus"]                   = { kind = "state", base = "buttons/minus", natural = true },
+	["UI-Panel-Button-Up"]                    = { kind = "strip", base = "buttons/redbtn", state = "normal", owner = true, heightScale = 0.8 },   -- (0.19.1) the red plate again, gemless (B1, user 2026-10-04): UIPanelButtonTemplate (Left / Middle / Right file pieces; keyed by hand, file textures read back as ids)
+	["UI-CheckBox-Up"]                        = { kind = "flat", flat = "check" },   -- (0.19.1) flat: the classic check box (keyed by hand; was the kit's)
+	["questlog-icon-ticksquare"]              = { kind = "flat", flat = "check" },   -- (0.19.1) flat: the quest log's tracking tick box (was the kit's)
+	["ui-journeys-delve-arrow-small-left"]    = { kind = "flat", flat = "arrow", dir = "left", rect = "normal" },   -- (0.19.1) flat: a reward track's arrow (was the kit's)
+	["ui-journeys-delve-arrow-small-right"]   = { kind = "flat", flat = "arrow", dir = "right", rect = "normal" },   -- (0.19.1) flat: ...
+	["128-redbutton-plus"]                    = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: a card's expand glyph (was the kit's +)
+	["128-redbutton-minus"]                   = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: ...
 	-- the legacy window (Blizzard_LegacySystem: the reward track, challenges
 	-- and tree pages; the tree's nodes are talent buttons and stay the game's,
 	-- as the talents page does). Picks pending the user's catalogue choice
@@ -5265,7 +5379,7 @@ Kit.Replacements = {
 	["MapTitleBand"]                          = { kind = "picture", piece = "tiles/concrete", crop = "top", level = 0 },   -- an agreed addition (user, 2026-09-21): a body-off window's title band (the map for its canvas; the collections and LFG pages, whose rock starts below the title) filled with the page stone, inside the outer rail, so it is not bare once the title plate stands on the rail
 	["questlog-frame"]                        = { kind = "frame", body = false },   -- the border around the list / details (QuestLogBorderFrameTemplate): the single rail, edges only
 	["QuestLog-frame-devider"]                = { kind = "strip", base = "window/divider" },   -- the line under a header
-	["questlog-icon-setting"]                 = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the list's settings button (a 15 x 16 gear glyph): the cog plate (K2), as the dropdown arrows
+	["questlog-icon-setting"]                 = { kind = "flat", flat = "button" },   -- (0.19.1) flat: a list's settings button's plate (was K2)
 	["questlog-quest-glow-yellow"]            = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a quest title's highlight (the game shows it on hover / selection): the plate's hover look
 	["QuestListFilter"]                       = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- the Quest List's switch on the quest log's count box (the side window's filter buttons were the first, F7, user 2026-09-21), the Auction House's category rows: the plain plate (hover from the button) ...
 	["QuestListFilter-Selected"]              = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... the selected plate (the Auction House's chosen category)
@@ -5277,9 +5391,9 @@ Kit.Replacements = {
 	["communities-ring-gold"]                 = { kind = "slot", slot = "roundslot" },   -- the entry's icon ring: the round rim
 	["CommunitiesListBody"]                   = { kind = "tile", piece = "window/single_body", owner = true },   -- the communities list's box (L1), in two parts: the stone body as a REGION of the list under its rows (the list's blue Bg, filigrees faded) ...
 	["CommunitiesListBox"]                    = { kind = "frame", body = false },   -- ... and the single rail on the list's InsetFrame rect at that frame's own level (200: over the rows), the gold border faded
-	["common-dropdown-textholder"]            = { kind = "strip", base = "inputs/dropdown", state = "normal", owner = true },   -- a text dropdown (WowStyle1DropdownTemplate): the dropdown plate (D1), its painted cap in place of the game's arrow, hover from the button
+	["common-dropdown-textholder"]            = { kind = "flat", flat = "dropdown" },   -- (0.19.1) flat: a text dropdown, WowStyle1DropdownTemplate (was D1)
 	["UI-Background-Marble"]                  = { kind = "fade" },   -- the marble strip under a list's scroll bar: nothing stands in (the trough is the bar's)
-	["UI-ChatInputBorder-Mid2"]               = { kind = "strip", base = "inputs/edit", state = "normal", owner = true },   -- the chat edit box (Left / Mid / Right file pieces): the edit plate (S1)
+	["UI-ChatInputBorder-Mid2"]               = { kind = "flat", flat = "edit" },   -- (0.19.1) flat: the chat edit box (was S1)
 	["UI-ClassTrainer-HorizontalBar"]         = { kind = "fade" },   -- the guild info page's horizontal bars over its headers: faded — a gem-capped divider stacked on a gem-capped header plate read as clutter (user, 2026-09-21); the plate alone marks the section
 	["GuildFrame-Header"]                     = { kind = "strip", base = "lists/header", owner = true },   -- a guild page header (GH1, user 2026-09-21; a region of the GuildFrame sheet, keyed by hand): the header plate as a region under the page's text
 	["ColumnDisplayButton"]                   = { kind = "strip", base = "lists/header", owner = true },   -- a roster column header (GC1, user 2026-09-21; WhoFrame-ColumnTabs file pieces, keyed by hand): the header plate per column, hover from the button
@@ -5287,7 +5401,7 @@ Kit.Replacements = {
 	["GuildFrame-Bar"]                        = { kind = "bar", bar = "frame" },   -- the guild reputation bar (CommunitiesGuildProgressBarTemplate): P1
 	["GuildFrame-Sheet"]                      = { kind = "fade" },   -- the guild info / news pages' sheet backgrounds (GuildFrame file pieces, keyed by hand): faded, the page stone shows
 	["UI-Frame-InnerBorderPiece"]             = { kind = "fade" },   -- loose inset-border textures (the roster's column band, the info page's two columns): faded — the inset rail and the pane divider stand in
-	["UIDropDownMenu"]                        = { kind = "strip", base = "inputs/dropdown", state = "normal", owner = true },   -- an old-style dropdown (Left / Middle / Right file art 64 px tall with the box in its middle; keyed by hand): D1 fitted to the box's 24 px, the arrow button faded
+	["UIDropDownMenu"]                        = { kind = "flat", flat = "dropdown" },   -- (0.19.1) flat: an old-style dropdown (was D1)
 	-- the dungeon finder (PVEFrame) and the collections (CollectionsJournal), 2026-09-21 first pass
 	["bluemenu-Ring"]                         = { kind = "slot", slot = "roundslot" },   -- a group button's ring on its masked icon (the dungeon finder's left column): the round rim
 	["bluemenu-shadowcovers"]                 = { kind = "fade" },   -- the shadow strips beside the left column: nothing stands in
@@ -5307,13 +5421,13 @@ Kit.Replacements = {
 	["groupfinder-button-cover"]              = { kind = "frame", body = false, level = 0 },   -- a category button's cover (the border over its painted banner; user, 2026-09-21): the single rail, edges only, at the button's own level so it sits over the painting (a region of the button); the painting, selection and hover stay the game's
 	["groupfinder-Stat-StoneBG"]              = { kind = "fade" },   -- the who list's header band: faded — the window's one page picture runs under it (a second stone met it with a seam)
 	["glues-characterSelect-searchbar"]       = { kind = "fade" },   -- the who search box's own backdrop (the S1 plate stands in)
-	["UI-SquareButton-Up"]                    = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- a square icon button's plate (the browse refresh; file art keyed by hand): K2, the game's icon on top
+	["UI-SquareButton-Up"]                    = { kind = "flat", flat = "button" },   -- (0.19.1) flat: a square icon button's plate (was K2)
 	["shop-list-rule"]                        = { kind = "strip", base = "window/divider" },   -- the activity list's rule line
 	["LFGBrowse-Result"]                      = { kind = "frame", hover = 1.15, pressed = 0.9, checkedTint = { 1.45, 1.3, 0.85 } },   -- a TALL list row (R3, user 2026-09-21; the plate's rails got fat stretched to 50-60 px): a single-rail card with stone under the row, its iron lit gold while the game marks it selected, brighter on hover
 	["LFGBrowse-Grouping"]                    = { kind = "strip", base = "lists/catplate", state = "closed", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a browse grouping header: the category plate
 	["groupfinder-highlightbar-yellow"]       = { kind = "fade" },   -- the selected result's bar: faded, the card's iron lights instead (R3)
-	["QuestLog-icon-Expand"]                  = { kind = "state", base = "buttons/plus", natural = true },    -- a grouping header's glyphs (two textures the game shows / hides)
-	["QuestLog-icon-shrink"]                  = { kind = "state", base = "buttons/minus", natural = true },
+	["QuestLog-icon-Expand"]                  = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: a grouping header's glyphs (was the kit's + / -)
+	["QuestLog-icon-shrink"]                  = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: ...
 	["common-button-list-large"]              = { kind = "frame", hover = 1.15, pressed = 0.9, checkedTint = { 1.45, 1.3, 0.85 } },   -- a who list row (the large list plate, 58 px tall): R3, as the browse rows
 	["common-button-list-large-selected"]     = { kind = "fade" },   -- its selected bar: faded, the card's iron lights instead
 	-- junctions of rails (T and +): the game has no art there, so this is an
@@ -5375,8 +5489,9 @@ Kit.Replacements = {
 	["MicroMenuBackgroundArt"]                = { kind = "fade" },   -- the micro menu's backing (an IconFrame-Background region, keyed by hand)
 	["ui-hud-actionbar-gryphon-left"]         = { kind = "texture", piece = "deco/rail_cap_l", fit = "height", anchor = "BOTTOMRIGHT" },   -- X2: the left end cap → the rail's orb cap, the gryphon's height, standing at the bar's end — on a holder at the BAR's level, under its buttons (user, 2026-09-21: the caps behind the bar)
 	["ui-hud-actionbar-gryphon-right"]        = { kind = "texture", piece = "deco/rail_cap_r", fit = "height", anchor = "BOTTOMLEFT" },
-	["ui-hud-actionbar-pageuparrow-up"]       = { kind = "state", base = "buttons/arrow_up", natural = true },   -- the page arrows: the kit's arrows at their size
-	["ui-hud-actionbar-pagedownarrow-up"]     = { kind = "state", base = "buttons/arrow_down", natural = true },
+	["ui-hud-actionbar-pageuparrow-up"]       = { kind = "flat", flat = "arrow", dir = "up" },   -- (0.19.1) flat: the action bar's page arrows (was the kit's)
+	["ui-hud-actionbar-pagedownarrow-up"]     = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: ...
+	["bag-arrow"]                             = { kind = "flat", flat = "arrow", dir = "left", rotates = true },   -- (0.19.1) flat: the bag bar's fold arrow (BagBarExpandToggle, shown by Tweaks' Collapse Arrow); its art points left unturned, the game turns it (SetRotation): the flat arrow follows
 	["MicroButtonRim"]                        = { kind = "slot", slot = "rim", pitchSize = 1, layer = "OVERLAY", sublevel = 1 },   -- a micro button's plate -> the THIN rim, a square of the size ActionBarPanel gives it (SetPitch): the bag bar's slot size, the buttons spaced as the bag slots are (user, 2026-09-23: "make the microbar buttons match the bag button slots in size and have the same distance to borders"); the game's glyph fitted inside
 	["UI-HUD-MicroMenu-ButtonBG-Up"]          = { kind = "slot", slot = "slot", gemSpan = { 97 / 135, 92 / 130 }, layer = "OVERLAY", sublevel = 1 },   -- a micro button's plate → the R1 slot rim sized to the button's pitch (neighbours share a gem), the game's glyph inside it, nothing painted behind (user, 2026-09-22: the cog plates M1 were not wanted, the rim is)
 	["UI-HUD-MicroMenu-ButtonBG-Down"]        = { kind = "fade" },
@@ -5394,7 +5509,7 @@ Kit.Replacements = {
 	["BagSlotBackground"]                     = { kind = "fade" },   -- the combined bags' slot-cell picture (UI-Bag-Components, keyed by hand): faded, the rims and stone stand in
 	["UI-Bag-1Slot"]                          = { kind = "fade" },   -- a one-slot bag's picture
 	["UI-Quickslot2"]                         = { kind = "slot", slot = "slot", gemSpan = { 97 / 135, 92 / 130 }, layer = "ARTWORK", sublevel = 2 },   -- a bag slot's NormalTexture (the classic quickslot rim): R1 as the action buttons
-	["bags-button-autosort-up"]               = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND", fit = "width" },   -- the sort button: K2, the cog plate UNDER the game's round button (its glyph is its plate: not faded)
+	["bags-button-autosort-up"]               = { kind = "flat", flat = "button" },   -- (0.19.1) flat: the bags' Clean Up button's plate (was K2)
 	["common-coinbox-center"]                 = { kind = "strip", base = "lists/header" },   -- the money strip (Left / Middle / Right, keyed on the middle): B2 (user, 2026-09-21), the header plate on its rect, the coins on it
 
 	-- The minimap cluster (MinimapPanel; user's picks R1 Z2 from kit_raw/minimap_catalog.png, 2026-09-21)
@@ -5402,26 +5517,26 @@ Kit.Replacements = {
 	["UI-HUD-Minimap-Frame-Circle"]           = { kind = "fade" },   -- the rotated mode's underlay
 	["MinimapZoneBand"]                       = { kind = "strip", base = "tabs/top", state = "title", owner = true, heightScale = 1.4, widthScale = 1.4 },   -- Z2: the zone band (BorderTop, a nine-slice of textures keyed by hand) → the title plate as regions of the band, 1.4 x the band's height and width (user, 2026-09-21), standing on the ring's top rim as a window title on its rail; the zone text centred on it
 	["ui-hud-minimap-button"]                 = { kind = "texture", piece = "buttons/roundslot_normal", square = true, owner = true },   -- the tracking button's round plate: the round rim under the game's glyph
-	["ui-hud-minimap-zoom-in"]                = { kind = "state", base = "buttons/plus", natural = true },   -- the zoom buttons: the kit's plus / minus
-	["ui-hud-minimap-zoom-out"]               = { kind = "state", base = "buttons/minus", natural = true },
+	["ui-hud-minimap-zoom-in"]                = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: the minimap's zoom buttons (was the kit's + / -)
+	["ui-hud-minimap-zoom-out"]               = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: ...
 
 	-- The objective tracker (TrackerPanel; user's pick T2 from the same catalogue)
 	["ui-questtracker-primary-objective-header"] = { kind = "strip", base = "tabs/top", state = "title", owner = true },   -- T2: the tracker's header band → the title plate
 	["UI-QuestTracker-Secondary-Objective-Header"] = { kind = "strip", base = "lists/header", owner = true },   -- a module's header band → the header plate
-	["ui-questtrackerbutton-collapse-all"]    = { kind = "state", base = "buttons/minus", natural = true },   -- the collapse / expand glyphs, switched with the atlas the game puts there
-	["ui-questtrackerbutton-expand-all"]      = { kind = "state", base = "buttons/plus", natural = true },
-	["ui-questtrackerbutton-secondary-collapse"] = { kind = "state", base = "buttons/minus", natural = true },
-	["ui-questtrackerbutton-secondary-expand"] = { kind = "state", base = "buttons/plus", natural = true },
-	["ui-questtrackerbutton-filter"]          = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the filter button: the cog plate under the game's glyph
+	["ui-questtrackerbutton-collapse-all"]    = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: the tracker's collapse / expand (was the kit's - / +)
+	["ui-questtrackerbutton-expand-all"]      = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: ...
+	["ui-questtrackerbutton-secondary-collapse"] = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: ...
+	["ui-questtrackerbutton-secondary-expand"] = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: ...
+	["ui-questtrackerbutton-filter"]          = { kind = "flat", flat = "button" },   -- (0.19.1) flat: the tracker's filter button's plate (was K2)
 	["ObjectiveTrackerBackground"]            = { kind = "frame" },   -- Edit Mode's tracker backdrop (a NineSlicePanelTemplate child): L1, the single rail with stone, its child (follows the opacity); TrackerPanel lays the parchment sheet with the painted edge on its stone
 	["UI-Character-Skills-BarBorder"]         = { kind = "bar", bar = "frame" },   -- a tracker progress bar's border pieces (file art, keyed by hand): P1
 
 	-- MelloUI's own configurator (Core/Config.lua, 2026-09-21; user's picks CT2 SI1 from kit_raw/config_catalog.png): its
 	-- sliders are MinimalSliderWithSteppersTemplate; everything else goes through the fixed looks' existing keys
-	["_Minimal_SliderBar_Middle"]             = { kind = "strip", base = "inputs/slider", owner = true },   -- a minimal slider's track (Left / Middle / Right, keyed on the middle): the kit slider's track as the slider's regions
-	["Minimal_SliderBar_Button"]              = { kind = "state", base = "inputs/slider_thumb", natural = true },   -- its thumb: the gem thumb
-	["Minimal_SliderBar_Button_Left"]         = { kind = "state", base = "buttons/arrow_left", natural = true },   -- its steppers: the kit arrows
-	["Minimal_SliderBar_Button_Right"]        = { kind = "state", base = "buttons/arrow_right", natural = true },
+	["_Minimal_SliderBar_Middle"]             = { kind = "flat", flat = "slider" },   -- (0.19.1) flat: a minimal slider's track (was the kit slider, SL1)
+	["Minimal_SliderBar_Button"]              = { kind = "flat", flat = "knob" },   -- (0.19.1) flat: its thumb (was the gem thumb)
+	["Minimal_SliderBar_Button_Left"]         = { kind = "flat", flat = "arrow", dir = "left" },   -- (0.19.1) flat: a slider's steppers (was the kit's arrows)
+	["Minimal_SliderBar_Button_Right"]        = { kind = "flat", flat = "arrow", dir = "right" },   -- (0.19.1) flat: ...
 
 	-- Tooltips (TooltipPanel, 2026-09-21; user's pick TT1 from kit_raw/tooltip_catalog.png)
 	["Tooltip-NineSlice-CornerTopLeft"]       = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = -8, edgeLayer = "BORDER" },   -- TT1: a tooltip's NineSlice (the TooltipDefaultLayout pieces, keyed on the top-left corner; the other eight faded) -> the single rail with the list-box stone as REGIONS of the NineSlice in its own layers (under the tooltip's texts as the game's pieces are); the stone at the bottom of BACKGROUND (-8): the game's line icons (AddTexture's GameTooltipTextureN, the quest objectives' check marks) lie at BACKGROUND 0 of the tooltip, on the NineSlice's level (/ttdump icons, 2026-10-03)
@@ -5436,10 +5551,10 @@ Kit.Replacements = {
 	-- The chat windows (ChatPanel, 2026-09-21; user's picks CH1 CT2 from kit_raw/chat_catalog.png)
 	["ChatFrameBorder"]                       = { kind = "frame", body = false, owner = true, edgeLayer = "BORDER", outset = 8 },   -- CH1: a FloatingBorderedFrame's eight border pieces (UI-ChatFrame-BorderCorner / -BorderTop / -BorderLeft file art, keyed by hand on the top-left corner) -> the single rail as regions of the chat frame in the pieces' BORDER layer, centred on the Background's edge (the pieces reach 4 px past it); the Background stays the game's, the rail stays at full alpha (the Background Opacity moves the stone only), and so does its shade
 	["ChatFrameBody"]                         = { kind = "tile", piece = "window/single_body", owner = true },   -- the window's Background (ChatFrameBackground file art, the translucent black at the alpha slider; keyed by hand): the list-box stone as a region in its place, at the slider's alpha (user, 2026-09-21: the dark cracked stone, not a flat colour)
-	["ChatIconButton"]                        = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the menu / channel / voice / minimize / maximize icon buttons (UI-ChatIcon-* file art, keyed by hand): K2, the cog plate under the game's glyph
-	["chatframe-button-up"]                   = { kind = "state", base = "buttons/cog" },   -- the voice buttons' own round plate (27 x 26, the glyph on their Icon): K2, the cog plate on its rect
+	["ChatIconButton"]                        = { kind = "flat", flat = "button" },   -- (0.19.1) flat: a chat menu / channel button's plate (was K2)
+	["chatframe-button-up"]                   = { kind = "flat", flat = "button" },   -- (0.19.1) flat: a voice button's plate (was K2)
 	["ChatColumnButton"]                      = { kind = "slot", slot = "roundslot" },   -- (0.17.0, the user's pick C of chat_menu_sketch) the chat column's three game buttons -- the chat menu (UI-ChatIcon-Chat-Up), Channels (chatframe-button-up) and Friends (quickjoin-button-friendslist-up), keyed by hand: the round rim (the Round Border) on a 22-unit rect in the column, ChatPanel's disc and glyph in its opening (the whisper header's look)
-	["minimal-scrollbar-arrow-returntobottom"] = { kind = "state", base = "buttons/arrow_down" },   -- scroll-to-bottom: the kit's down arrow on the button's rect (its new-messages flash stays, an FX)
+	["minimal-scrollbar-arrow-returntobottom"] = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: scroll-to-bottom (was the kit's arrow)
 	-- the chat tabs (ChatTabTemplate Left / ActiveLeft, keyed by hand) reuse the TB6 tab rules `uiframe-tab-left` / `uiframe-activetab-left`; the edit box reuses `UI-ChatInputBorder-Mid2`
 
 	-- The damage meter (DamageMeterPanel, 2026-09-21; user's pick D1 = P1 from kit_raw/dpsmeter_catalog.png)
@@ -5447,14 +5562,14 @@ Kit.Replacements = {
 	["ui-damagemeters-header-bar"]            = { kind = "strip", base = "lists/header", owner = true },   -- a session window's header band: the header plate as its regions, the game's timer / dropdowns / buttons on it
 	["damagemeters-background"]               = { kind = "frame" },   -- a session window's body (MinimizeContainer.Background, alpha = the transparency setting): L1 as the container's child at its level, its alpha following the setting
 	["DamageMeterSourceBackground"]           = { kind = "frame" },   -- the source / spell breakdown window's Background (common-dropdown-bg, keyed by hand): L1 the same
-	["DamageMeterSettingsIcon"]               = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the settings dropdown button's glyph (an Icon set in Lua, keyed by hand): K2, the kit's cog in the glyph's place (the glyph faded since 2026-09-23: laid under it, the two gears read as one stacked on the other)
+	["DamageMeterSettingsIcon"]               = { kind = "flat", flat = "button" },   -- (0.19.1) flat: the damage meter's settings button's plate (was K2)
 
 	-- The social window (SocialPanel, 2026-09-21): fixed looks; the raid pane's group box per the user's G pick
 	["FriendsRowHighlight"]                   = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a friend / ignore / raid-info row's highlight (UI-QuestLogTitleHighlight file art, keyed by hand): the plate's hover look, shown on hover only
 	["FriendsPendingHeader"]                  = { kind = "strip", base = "lists/catplate", state = "closed", owner = true },   -- a pending-invite header (UI-Background-Rock BG + arrows, keyed by hand): the category plate, the game's arrows on it
 	["UI-FriendsFrame-OnlineDivider"]         = { kind = "strip", base = "window/divider" },   -- the online / offline divider line
 	["battlenet-friends-main"]                = { kind = "strip", base = "lists/header", owner = true },   -- the Battle.net tag band under the tabs: the header plate
-	["friendslist-invitebutton-default-normal"] = { kind = "state", base = "buttons/cog", natural = true, layer = "BACKGROUND" },   -- the invite icon button: K2, the cog plate under the game's glyph
+	["friendslist-invitebutton-default-normal"] = { kind = "flat", flat = "button" },   -- (0.19.1) flat: the friends list's invite button's plate (was K2)
 	["UI-RaidFrame-GroupOutline"]             = { kind = "frame", scale = 0.8 },   -- a raid group box's outline (162 x 80 file picture): G3 (user, 2026-09-21), the single rail at the raid frames' small weight with the stone body
 	["UI-RaidInfo-Header"]                    = { kind = "fade" },   -- the raid info popup's header / footer bands: faded (the dialog's own border stands)
 	["CalendarBackground"]                    = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = 1, edgeLayer = "BORDER", edgeSub = 1, dim = 0.8 },   -- a calendar day (CalendarPanel, 2026-09-24; its NormalTexture, the CalendarBackground file keyed by hand): the single-rail card with stone under the inner panel (2e: the day's event text reads on dark), as REGIONS of the day button -- the stone and panel under its BORDER event picture, the rails one sublevel over it -- on the button's rect grown by the rail's centre inset, so neighbouring days share one rail
@@ -7004,9 +7119,13 @@ function ReplacementMixin:Enable()
 		end
 		object:Show()
 		-- a rim or state texture read again: its button's active look (its
-		-- regions, not the rim's) follows it back on (Kit:SetActive)
+		-- regions, not the rim's) follows it back on (Kit:SetActive); a flat
+		-- control's driver likewise (the "flat" kind)
 		if object.Update == Slot_Update then
 			Slot_Update(object)
+		end
+		if self.flatDriver then
+			Slot_Update(self.flatDriver)
 		end
 	else
 		self.holderShown = true
@@ -7049,6 +7168,10 @@ function ReplacementMixin:Disable()
 	-- that drives it: a hover-only rim leaves a row's plate its look)
 	if object and object.Update == Slot_Update and Kit:RimDrivesLook(object) then
 		Kit:SetActive(object.button, false)
+	end
+	local driver = self.flatDriver
+	if driver and Kit:RimDrivesLook(driver) then
+		Kit:SetActive(driver.button, false)
 	end
 	Kit:ShadowRepOn(self, false)
 	if self.onDisable then
@@ -7157,6 +7280,13 @@ function ReplacementMixin:SetState(state)
 			state = Kit:ResolveState(self.vstrip.base .. "_mid", b.over, b.down, nil, b.IsEnabled and not b:IsEnabled())
 		end
 		self.vstrip:SetState(state or Kit:FirstState(self.vstrip.base, "mid"))
+	elseif self.flatDriver then
+		-- (a flat control reads its state from its button; a given state is
+		-- the edit field's lit edge: "focused" / "normal", a binding button)
+		if state then
+			self.flatDriver.flatFocus = (state == "focused") or nil
+		end
+		Slot_Update(self.flatDriver)
 	elseif self.strip then
 		self.strip:SetState(state)
 	elseif self.skin and self.Update then
@@ -7557,6 +7687,118 @@ end
 -- that was tuned and is not any more goes back to what the piece (or the
 -- module that tinted it) said, so clearing a box in the editor undoes it
 -- without a reload and without flattening a module's own colours.
+-- (0.19.1) A texture of a window moved or resized by the kit editor (an element's `regions` entry: x, y, padL /
+-- padR / padT / padB, Core/KitTuning.lua; user 2026-10-04, "move each individual thing on the windows"): against
+-- the points it had when first tuned, taken again when its owner has laid it out anew since, so the same tuning
+-- applied any number of times gives the same place. Weak tables: nothing is written on the texture.
+LOOK.geomBase = setmetatable({}, { __mode = "k" })   -- [texture] = its own points { point, relative, relativePoint, x, y } (+ w, h)
+LOOK.geomSet = setmetatable({}, { __mode = "k" })    -- [texture] = the points the tuning last set
+LOOK.geomTune = setmetatable({}, { __mode = "k" })   -- [texture] = the tuning on it, for Kit:RefitRegion
+LOOK.centeredOn = setmetatable({}, { __mode = "k" }) -- [texture] = the replacement centred on it (a portrait's ring)
+function LOOK.Points(tex)
+	local out = {}
+	for i = 1, tex:GetNumPoints() do
+		local point, relative, relativePoint, x, y = tex:GetPoint(i)
+		if Secret(x) or Secret(y) then
+			return nil
+		end
+		out[i] = { point, relative, relativePoint, x or 0, y or 0 }
+	end
+	return out
+end
+function LOOK.SamePoints(a, b)
+	if not (a and b) or #a ~= #b then
+		return false
+	end
+	for i = 1, #a do
+		local p, q = a[i], b[i]
+		if p[1] ~= q[1] or p[2] ~= q[2] or p[3] ~= q[3] or math.abs(p[4] - q[4]) > 0.01 or math.abs(p[5] - q[5]) > 0.01 then
+			return false
+		end
+	end
+	return true
+end
+function LOOK.TuneGeometry(tex, tune)
+	local cur = LOOK.Points(tex)
+	if not cur or #cur == 0 then
+		return false
+	end
+	local base = LOOK.geomBase[tex]
+	if not base or not LOOK.SamePoints(cur, LOOK.geomSet[tex]) then
+		base = cur
+		local ok, w, h = pcall(tex.GetSize, tex)
+		if ok and not Secret(w) and not Secret(h) then
+			base.w, base.h = w, h
+		end
+		LOOK.geomBase[tex] = base
+	end
+	local x, y = tune.x or 0, tune.y or 0
+	local L, R, T, B = tune.padL or 0, tune.padR or 0, tune.padT or 0, tune.padB or 0
+	local set = {}
+	tex:ClearAllPoints()
+	for i, p in ipairs(base) do
+		local point = p[1]
+		local px, py = p[4] + x, p[5] + y
+		local centreX, centreY = not (point:find("LEFT") or point:find("RIGHT")), not (point:find("TOP") or point:find("BOTTOM"))
+		-- a side's point moves with its side; one point alone keeps the box's middle in step with its growth
+		if point:find("LEFT") then px = px - L elseif point:find("RIGHT") then px = px + R elseif #base == 1 and centreX then px = px + (R - L) / 2 end
+		if point:find("TOP") then py = py + T elseif point:find("BOTTOM") then py = py - B elseif #base == 1 and centreY then py = py + (T - B) / 2 end
+		tex:SetPoint(point, p[2], p[3], px, py)
+		set[i] = { point, p[2], p[3], px, py }
+	end
+	if #base == 1 and base.w and base.h then
+		tex:SetSize(math.max(1, base.w + L + R), math.max(1, base.h + T + B))
+	end
+	LOOK.geomSet[tex], LOOK.geomTune[tex] = set, tune
+	return true
+end
+function LOOK.UntuneGeometry(tex)
+	local base = LOOK.geomBase[tex]
+	if base and LOOK.SamePoints(LOOK.Points(tex), LOOK.geomSet[tex]) then
+		-- still where the tuning put it: back to its own points
+		tex:ClearAllPoints()
+		for _, p in ipairs(base) do
+			tex:SetPoint(p[1], p[2], p[3], p[4], p[5])
+		end
+		if #base == 1 and base.w and base.h then
+			tex:SetSize(base.w, base.h)
+		end
+	end
+	LOOK.geomBase[tex], LOOK.geomSet[tex], LOOK.geomTune[tex] = nil, nil, nil
+end
+
+-- A window's texture tuned (Kit:TuneRegions; the kit editor's live drag): Kit:TuneTexture, and its place and size
+-- (x, y, pad*; a replacement's own textures take their move from its rectangle instead, Kit:TuneObject).
+-- A ring centred on the texture keeps its own place: the portrait moves under it (user, 2026-10-04).
+function Kit:TuneRegion(tex, tune)
+	self:TuneTexture(tex, tune)
+	if tune and (tune.x or tune.y or tune.padL or tune.padR or tune.padT or tune.padB) then
+		pcall(LOOK.TuneGeometry, tex, tune)
+	elseif LOOK.geomBase[tex] then
+		pcall(LOOK.UntuneGeometry, tex)
+	end
+	local ring = LOOK.centeredOn[tex]
+	if ring and ring.tex then
+		pcall(LOOK.CenterTune, ring, ring.tune)
+	end
+end
+
+-- A texture its owner has just laid out again (a portrait fitted to its ring on every refresh): its tuning on the
+-- new place, and the ring centred on it back where it was
+function Kit:RefitRegion(tex)
+	if not tex then
+		return
+	end
+	local tune = LOOK.geomTune[tex]
+	if tune then
+		pcall(LOOK.TuneGeometry, tex, tune)
+		local ring = LOOK.centeredOn[tex]
+		if ring and ring.tex then
+			pcall(LOOK.CenterTune, ring, ring.tune)
+		end
+	end
+end
+
 function Kit:TuneTexture(tex, tune)
 	tune = tune or {}
 	local had = tex.melloTuned or nil
@@ -7674,6 +7916,47 @@ function Kit:TuneTexture(tex, tune)
 	tex.melloTuned = now
 end
 
+-- (0.19.1) The editor's proxy rectangle on its element, the tuning's offsets on it. ProxyTo lays it on another
+-- rectangle (a close button's face, Replace's rect = "normal": the plate hung from the face itself and the
+-- editor's drag moved nothing, user 2026-10-04); CenterTune moves a piece centred on something other than its
+-- rect (a portrait's ring on the portrait) by the same offsets, its size by the pads
+function LOOK.PlaceProxy(rep, tune)
+	local x, y = tune and tune.x or 0, tune and tune.y or 0
+	rep.proxy:ClearAllPoints()
+	rep.proxy:SetPoint("TOPLEFT", rep.proxyOf, "TOPLEFT", x - (tune and tune.padL or 0), y + (tune and tune.padT or 0))
+	rep.proxy:SetPoint("BOTTOMRIGHT", rep.proxyOf, "BOTTOMRIGHT", x + (tune and tune.padR or 0), y - (tune and tune.padB or 0))
+end
+function LOOK.ProxyTo(rep, rect)
+	if not rep.proxy then
+		return rect
+	end
+	rep.proxyOf, rep.proxy.melloProxyOf = rect, rect
+	LOOK.PlaceProxy(rep, rep.tune)
+	return rep.proxy
+end
+function LOOK.CenterTune(rep, tune)
+	local tex = rep.tex
+	local L, R, T, B = tune and tune.padL or 0, tune and tune.padR or 0, tune and tune.padT or 0, tune and tune.padB or 0
+	if not rep.centerSize then
+		local w, h = tex:GetSize()
+		if Secret(w) or Secret(h) then
+			return
+		end
+		rep.centerSize = { w, h }
+	end
+	-- the centre's own move (a portrait moved by the editor, Kit:TuneRegion) taken back off: the ring stays
+	-- where it was and the portrait moves under it; its middle moves by x + (R - L) / 2 however it is held
+	local own = LOOK.geomTune[rep.centerOn]
+	local ox = own and (own.x or 0) + ((own.padR or 0) - (own.padL or 0)) / 2 or 0
+	local oy = own and (own.y or 0) + ((own.padT or 0) - (own.padB or 0)) / 2 or 0
+	tex:ClearAllPoints()
+	tex:SetPoint("CENTER", rep.centerOn, rep.centerPoint or "CENTER", (tune and tune.x or 0) + (R - L) / 2 - ox, (tune and tune.y or 0) + (T - B) / 2 - oy)
+	-- (a square piece that waited for its rect's size is sized by its sizer, from the proxy, pads and all)
+	if not rep.sizer then
+		tex:SetSize(math.max(1, rep.centerSize[1] + L + R), math.max(1, rep.centerSize[2] + T + B))
+	end
+end
+
 -- The whole replacement: its rectangle (through the proxy made in Replace),
 -- its alpha and every texture in it.
 function Kit:TuneObject(rep, tune)
@@ -7691,10 +7974,19 @@ function Kit:TuneObject(rep, tune)
 	end
 	rep.tune = tune
 	if rep.proxy and rep.proxyOf then
-		local x, y = tune and tune.x or 0, tune and tune.y or 0
-		rep.proxy:ClearAllPoints()
-		rep.proxy:SetPoint("TOPLEFT", rep.proxyOf, "TOPLEFT", x - (tune and tune.padL or 0), y + (tune and tune.padT or 0))
-		rep.proxy:SetPoint("BOTTOMRIGHT", rep.proxyOf, "BOTTOMRIGHT", x + (tune and tune.padR or 0), y - (tune and tune.padB or 0))
+		LOOK.PlaceProxy(rep, tune)
+		if rep.centerOn and rep.tex then
+			pcall(LOOK.CenterTune, rep, tune)
+		end
+	elseif not InCombatLockdown() and not (obj.IsProtected and obj:IsProtected()) then
+		-- (0.19.1) no proxy to move it by (built before the editor was there, or
+		-- laid by its window's own code: the kit editor's drag did nothing,
+		-- user 2026-10-04): its own frame moved against its own points
+		if tune and (tune.x or tune.y or tune.padL or tune.padR or tune.padT or tune.padB) then
+			pcall(LOOK.TuneGeometry, obj, tune)
+		elseif LOOK.geomBase[obj] then
+			pcall(LOOK.UntuneGeometry, obj)
+		end
 	end
 	if obj.SetAlpha then
 		pcall(obj.SetAlpha, obj, (tune and tune.alpha) or 1)
@@ -7788,7 +8080,7 @@ function Kit:TuneRegions(frame, regions)
 						region.melloHidden = nil
 						pcall(region.Show, region)
 					end
-					self:TuneTexture(region, tune)
+					self:TuneRegion(region, tune)
 				end
 			elseif region.melloTuned or region.melloHidden then
 				-- it was changed and is not listed any more: put it back.
@@ -7798,7 +8090,7 @@ function Kit:TuneRegions(frame, regions)
 					region.melloHidden = nil
 					pcall(region.Show, region)
 				end
-				self:TuneTexture(region, nil)
+				self:TuneRegion(region, nil)
 			end
 		end
 	end
@@ -8338,7 +8630,7 @@ function Kit:Replace(region, opts)
 		local button = opts.button or parent
 		local tex = self:StateTexture(button, rule.base, { scale = self.scale, layer = rule.layer or "OVERLAY", checked = opts.checked })
 		if rule.rect == "normal" and button.GetNormalTexture and button:GetNormalTexture() then
-			rect = button:GetNormalTexture()
+			rect = LOOK.ProxyTo(rep, button:GetNormalTexture())
 		end
 		tex:ClearAllPoints()
 		if rule.natural then
@@ -8368,6 +8660,79 @@ function Kit:Replace(region, opts)
 			tex:SetAllPoints(rect)
 		end
 		rep.object, rep.rect = tex, rect
+	elseif rule.kind == "flat" then
+		-- (0.19.1; the user, 2026-10-04: "from now on only use the same style as
+		-- we have in the Configurator") the Configurator's flat control over
+		-- the game's (MelloUI.Widgets.FlatOver: its plate, box, caret, field,
+		-- tab, track or knob), on a holder of ours on the rect; painted by the
+		-- control's state (FlatState) as a rim follows its button: an empty
+		-- region of the holder (the check's box: its active look lies round it)
+		-- is the rim FollowButton drives, Slot_Update painting the parts
+		local button = opts.button or (isFrame and region) or parent
+		if rule.rect == "normal" and button and button.GetNormalTexture and button:GetNormalTexture() then
+			rect = LOOK.ProxyTo(rep, button:GetNormalTexture())
+		end
+		local f = MakeHolder(parent, rect, level, opts.strata)
+		-- opts.fitHeight (an old dropdown's 24 px box in its taller frame): the
+		-- plate that tall, centred on the rect
+		local fit = opts.fitHeight
+		if fit and fit > 0 then
+			f:ClearAllPoints()
+			f:SetPoint("LEFT", rect, "LEFT", 0, 0)
+			f:SetPoint("RIGHT", rect, "RIGHT", 0, 0)
+			f:SetHeight(fit)
+		end
+		-- (the call's own: an edit box's fill over its glass -- the search
+		-- box's only, opts.left -- and body = false, the edge alone)
+		local parts = MelloUI.Widgets.FlatOver(f, rule.flat, { dir = rule.dir, left = opts.left, body = opts.body })
+		local driver = f:CreateTexture(nil, "BACKGROUND")
+		driver:SetAlpha(0)
+		driver:SetAllPoints(parts.box or f)
+		driver.kitPiece = true   -- ours: never faded as the game's art
+		driver.button, driver.flatParts, driver.isChecked = button, parts, opts.checked
+		-- (a check box wears the active look round its box while ticked, as the
+		-- Configurator's switch; no other flat control has a checked look)
+		driver.activeFamily = rule.flat == "check" and "look" or false
+		if button and button.HookScript then
+			FollowButton(driver, button)
+			local list = flatButtons[button]
+			if not list then
+				list = {}
+				flatButtons[button] = list
+				if type(button.Enable) == "function" then
+					hooksecurefunc(button, "Enable", FlatButton_Enabled)
+				end
+				if type(button.Disable) == "function" then
+					hooksecurefunc(button, "Disable", FlatButton_Enabled)
+				end
+			end
+			list[#list + 1] = driver
+		end
+		local edit = opts.edit
+		if rule.flat == "edit" and edit and edit.HookScript then
+			flatFields[edit] = driver
+			Perf.HookScript(edit, "OnEditFocusGained", FlatField_Focus)
+			Perf.HookScript(edit, "OnEditFocusLost", FlatField_Focus)
+		end
+		-- `rotates` (an arrow the game turns by rotating its art: the bag
+		-- bar's): the flat arrow follows that rotation, a quarter at a time
+		if rule.rotates and rule.flat == "arrow" and not isFrame and region.SetRotation then
+			flatTurns[region] = parts
+			parts.turnFrom = FLAT_TURN_OF[rule.dir or "left"] or 0
+			hooksecurefunc(region, "SetRotation", FlatArrow_Turn)
+			if region.GetRotation then
+				FlatArrow_Turn(region, region:GetRotation())
+			end
+		end
+		Slot_Update(driver)
+		-- `active` (the open tab): the active look round the holder whenever
+		-- it shows, as regions of it -- the Configurator's open tab wears it too
+		if rule.active then
+			self:SetActive(f, true, f, "rect")
+		end
+		rep.object, rep.rect, rep.flat, rep.flatDriver = f, rect, parts, driver
+		-- (a panel that reads a plate's opening: a flat control's face is its whole rect)
+		rep.GetOpening = FlatOpening
 	elseif rule.kind == "active" then
 		-- a check button of the game's own art the kit does not dress (the
 		-- extra action button, the vehicle bar's): the active look in place
@@ -8937,11 +9302,19 @@ function Kit:Replace(region, opts)
 						tex:SetSize(s, s)
 					end
 				end)
+				rep.sizer = sizer   -- (it sizes the piece from the proxy, pads and all: LOOK.CenterTune)
 			end
 			tex:SetSize(size, size)
 			tex:SetPoint("CENTER", opts.center or rect, "CENTER")
 		else
 			tex:SetAllPoints(rule.owner and rect or f)
+		end
+		-- (0.19.1) a piece centred on something other than its rect (a portrait's ring on the portrait) follows the
+		-- editor's drag by its own anchor: the holder moved with the proxy and the ring stayed; and it keeps its
+		-- place when that something is moved under it (Kit:TuneRegion; user, 2026-10-04)
+		if opts.center and (rule.natural or rule.square or rule.opening) then
+			rep.centerOn, rep.centerPoint = opts.center, rule.natural and opts.centerPoint or nil
+			LOOK.centeredOn[opts.center] = rep
 		end
 		rep.object, rep.tex = (rule.owner and not isFrame) and tex or f, tex
 	end
@@ -9605,6 +9978,7 @@ function Kit:FitPortrait(portrait, ring, mode)
 		portrait:ClearAllPoints()
 		portrait:SetPoint("CENTER", portrait:GetParent(), "TOPLEFT", saved.cx, saved.cy)
 		portrait:SetSize(w * k, h * k)
+		self:RefitRegion(portrait)   -- (a portrait moved in the kit editor stays moved)
 	end
 end
 
@@ -9617,6 +9991,7 @@ function Kit:UnfitPortrait(portrait)
 		end
 		portrait:SetSize(saved.w, saved.h)
 		portrait.melloSaved = nil
+		self:RefitRegion(portrait)
 	end
 end
 
@@ -9840,7 +10215,6 @@ Kit.auraLooks = { { value = "black", label = "Plain black edge" } }
 for _, v in ipairs(Kit.buttonLooks.borders) do
 	Kit.auraLooks[#Kit.auraLooks + 1] = v
 end
-
 Kit.borderKinds = {
 	{ kind = "button", key = "buttonBorder", default = "thin", name = "Button Border", values = Kit.buttonLooks.borders, preview = "rim",
 	  desc = "The rim on every square button: the action bars, the micro menu, the bag bar, your bags, the equipment slots and the spell book's spells." },
@@ -9855,7 +10229,7 @@ Kit.borderKinds = {
 	{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
 	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon. Without the reskin, Dark Mode's Buffs & Debuffs draws a thin dark edge round them." },
 	{ kind = "colours", key = "kitColours", default = "warm", name = "Kit Colours", values = Kit.colourLooks,
-	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember palette: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours." },
+	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember and Ember Vibrant palettes: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours." },
 }
 local BORDER_KIND = {}
 for _, k in ipairs(Kit.borderKinds) do
@@ -10079,11 +10453,19 @@ function Kit:SkinSearchBox(search, replace)
 	if not (search and search.Middle) or search.melloRep ~= nil then
 		return search and search.melloRep or nil
 	end
+	-- (0.19.1: the field flat, the Configurator's search box -- the game's
+	-- glass stays inside it and the text where the game has it; the S1 strip
+	-- had its own glass cap, the game's faded and the text moved past the cap)
+	local rule = self:RuleFor("common-search-border-middle")
+	local flat = rule and rule.kind == "flat"
+	-- (left: the field reaches over the art's 5 px left of the box, the glass
+	-- inside it -- the search box's own span, as W.FlatSearch's)
 	local rep = replace(search.Middle, { as = "common-search-border-middle", rect = search, edit = search,
-		alsoFade = { search.Left, search.Right, search.searchIcon } })
+		left = flat and 5 or nil,
+		alsoFade = flat and { search.Left, search.Right } or { search.Left, search.Right, search.searchIcon } })
 	search.melloRep = rep or false
-	if not rep then
-		return nil
+	if not rep or flat then
+		return rep or nil
 	end
 	local l, r, t, b = search:GetTextInsets()
 	local instr = search.Instructions

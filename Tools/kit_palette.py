@@ -23,6 +23,11 @@ byte for byte as shipped; user, 2026-09-26):
     title plate, the red button, a lit gem) becomes the palette's deep red
     (selectedTab), its highlights kept brighter so a lit gem still glints.
 
+Ember Vibrant (0.19.1, "looks": "ember" in palettes.json; user, 2026-10-04) has
+Ember's two looks too, made by the same formulas from its own roles
+(ember_ramps): warm iron in Media/KitEmberVibrant, bronze in
+Media/KitEmberVibrantBronze.
+
 Every other palette has ONE look, its own kit (user, 2026-09-26: one
 recoloured kit per palette, beside the Original), made the way the approved
 sheets show it (MelloUI-BuildData/palette/additions_0.14.0/00_Overview.png):
@@ -124,6 +129,25 @@ GOLD = [(0.0, (0, 0, 0)), (0.12, P["raisedPanel"]), (0.30, P["trim"] * 0.75), (0
         (0.65, P["selectedTrim"]), (0.85, P["text"]), (1.0, (245, 235, 210))]
 
 
+
+
+def ember_ramps(roles):
+    """Ember's two looks (warm, bronze) with their red and gold, made by the formulas above from another
+    palette's ten roles ({role: "#RRGGBB"}): a palette with "looks": "ember" in palettes.json (Ember Vibrant,
+    0.19.1; user, 2026-10-04: "a more Vivid and Vibrant Variation of the Ember Profile, both Bronze and Warm
+    Iron"). Ember's own stay written out above, as approved."""
+    Q = {k: _hex(v) for k, v in roles.items()}
+    warm = [(0.0, (0, 0, 0)), (0.10, Q["innerPanel"]), (0.16, Q["mainWindow"]), (0.26, Q["border"]),
+            (0.55, np.minimum(Q["mutedText"] * 1.25, 255)), (1.0, (235, 226, 205))]
+    bronze = [(0.0, (0, 0, 0)), (0.08, Q["innerPanel"]), (0.15, Q["mainWindow"]), (0.22, Q["border"]),
+              (0.38, Q["trim"]), (0.55, Q["selectedTrim"]), (0.8, Q["text"]), (1.0, (245, 235, 210))]
+    red = [(0.0, (0, 0, 0)), (0.18, Q["selectedTab"] * 0.7), (0.30, Q["selectedTab"]),
+           (0.5, np.minimum(Q["selectedTab"] * 1.6, 255)), (1.0, (200, 120, 100))]
+    gold = [(0.0, (0, 0, 0)), (0.12, Q["raisedPanel"]), (0.30, Q["trim"] * 0.75), (0.48, Q["trim"]),
+            (0.65, Q["selectedTrim"]), (0.85, Q["text"]), (1.0, (245, 235, 210))]
+    return warm, bronze, red, gold
+
+
 # ---------------------------------------------------------------- the other palettes' ramps
 # OKLCH (Bjorn Ottosson's Oklab, in polar form), as the approved sheets used it
 
@@ -219,12 +243,51 @@ Look = namedtuple("Look", "folder ramp red gold palette suffix")
 LOOKS = {"warm": Look("KitWarm", WARM, RED, GOLD, DEFAULT, "_warm"),
          "bronze": Look("KitBronze", BRONZE, RED, GOLD, DEFAULT, "_bronze")}
 for _pid in ORDER:
-    if _pid != DEFAULT:
-        _iron, _red, _gold = palette_ramps(PALETTES[_pid]["roles"])
-        LOOKS[_pid] = Look("Kit" + folder_id(_pid), _iron, _red, _gold, _pid, "_" + _pid)
+    if _pid == DEFAULT:
+        continue
+    if PALETTES[_pid].get("looks") == "ember":
+        # Ember's two looks for another palette (ember_ramps): its warm iron keyed by its id in Kit<Id>, as every
+        # palette's own kit; its bronze <id>Bronze in Kit<Id>Bronze (Kit.lua: Kit:LookFolder, the same rule)
+        _warm, _bronze, _red, _gold = ember_ramps(PALETTES[_pid]["roles"])
+        LOOKS[_pid] = Look("Kit" + folder_id(_pid), _warm, _red, _gold, _pid, "_" + _pid)
+        LOOKS[_pid + "Bronze"] = Look("Kit" + folder_id(_pid) + "Bronze", _bronze, _red, _gold, _pid, "_" + _pid + "Bronze")
+        continue
+    _iron, _red, _gold = palette_ramps(PALETTES[_pid]["roles"])
+    LOOKS[_pid] = Look("Kit" + folder_id(_pid), _iron, _red, _gold, _pid, "_" + _pid)
 # the looks' folders beside Media/Kit, in order; Ember's (as shipped in 0.13.7)
 FOLDERS = tuple(lk.folder for lk in LOOKS.values())
 EMBER_FOLDERS = tuple(lk.folder for lk in LOOKS.values() if lk.palette == DEFAULT)
+# Painted looks (a palette with "art" in palettes.json, user 2026-10-04: Forged Steel, the v3 kit): a kit painted
+# for that palette, written by Tools/build_art_look.py, never recoloured from Media/Kit (build_looks and check
+# leave them out; their whole frames, TEXTURES, are recoloured as any look's). Their folder holds every piece
+# but the content the looks share (ART_SKIP): its own pages, parchment and rank marks (Kit.lua: LOOK.ART_UNCOLOURED).
+ART = tuple(pid for pid in ORDER if PALETTES[pid].get("art"))
+ART_FOLDERS = tuple(LOOKS[pid].folder for pid in ART)
+ART_SKIP = re.compile(r"^(cards|icons)/|^backdrops/(?!page_)|^tiles/(leather|quilt_|crackle)")
+
+
+def style_folders(kit=KIT):
+    """A painted look's border styles (Window Border / Inner Border, user 2026-10-04): the folders under
+    <Folder>/frames/ that build_art_look.py wrote, as Media-relative paths ("KitSteel/frames/double"). Only
+    build_nineslice.py treats them as looks (their rails' one-texture pictures); the ship ships their files as
+    they are."""
+    out = []
+    for folder in ART_FOLDERS:
+        root = os.path.join(os.path.dirname(kit), folder, "frames")
+        if os.path.isdir(root):
+            out += [folder + "/frames/" + s for s in sorted(os.listdir(root)) if os.path.isdir(os.path.join(root, s, "window"))]
+    return tuple(out)
+
+
+def owns(folder, name):
+    """Whether the look in `folder` ("Kit", "KitWarm", "KitSteel") holds the piece `name` itself (else it is read
+    from Media/Kit): the painted kit holds all, a painted look all but ART_SKIP, a recoloured look what it
+    recolours."""
+    if folder == "Kit":
+        return True
+    if folder in ART_FOLDERS:
+        return not ART_SKIP.search(name)
+    return recoloured(name)
 
 
 def _gradient(v, stops):
@@ -343,7 +406,7 @@ def build_looks(kit=KIT, looks=None, jobs=None):
     some of LOOKS' keys, default all; files of a look no longer in the kit
     removed), a process per look (`jobs` at most, default 8). Returns
     { look: (files, bytes) } in LOOKS' order."""
-    todo = [lk for lk in LOOKS if looks is None or lk in looks]
+    todo = [lk for lk in LOOKS if (looks is None or lk in looks) and lk not in ART]   # (a painted look: build_art_look.py)
     jobs = max(1, min(jobs or 8, len(todo)))
     if jobs == 1:
         done = dict(_build_look((lk, kit)) for lk in todo)
@@ -392,7 +455,7 @@ def check(kit=KIT, textures=None, jobs=None):
     look (TEXTURES) against what build_looks / build_textures would write
     now. Returns the problems (empty when the masters are up to date)."""
     textures = textures or os.path.join(os.path.dirname(kit), "Textures")
-    todo = list(LOOKS)
+    todo = [lk for lk in LOOKS if lk not in ART]   # (a painted look's pieces: build_art_look.py --check)
     jobs = max(1, min(jobs or 8, len(todo)))
     if jobs == 1:
         per = [_check_look((lk, kit)) for lk in todo]
@@ -548,6 +611,17 @@ def _in_place(folder_root, roles, title, w, h):
     return img
 
 
+def look_name(look):
+    """A look as the sheets name it: the palette, and for one with Ember's two looks which of them."""
+    lk = LOOKS[look]
+    name = PALETTES[lk.palette]["name"]
+    if lk.palette == DEFAULT:
+        return name + " · " + {"warm": "Warm iron", "bronze": "Bronze"}[look]
+    if PALETTES[lk.palette].get("looks") == "ember":
+        return name + " · " + ("Bronze" if lk.folder.endswith("Bronze") else "Warm iron")
+    return name
+
+
 def _roles_rgb(pid):
     return {k: tuple(int(round(x)) for x in _hex(v)) for k, v in PALETTES[pid]["roles"].items()}
 
@@ -568,7 +642,7 @@ def contact_sheet(look, out_dir, kit=KIT, cols=12, cell=150):
     H = head_h + place_h + 50 + rows * (cell + label_h) + 40
     img = Image.new("RGBA", (W, H), roles["innerPanel"] + (255,))
     d = ImageDraw.Draw(img)
-    title = pal["name"] + ("" if lk.palette != DEFAULT else " · " + {"warm": "Warm iron", "bronze": "Bronze"}[look])
+    title = look_name(look)
     d.text((20, 16), title, font=_font("Cinzel/Cinzel-Bold.ttf", 48), fill=roles["selectedTrim"])
     d.text((22, 80), pal.get("blurb", ""), font=_font("Alegreya/Alegreya-Regular.ttf", 24), fill=roles["text"])
     d.text((22, 112), "Media/%s  ·  %d recoloured pieces  ·  the masters, before the ship compresses them"
@@ -606,10 +680,7 @@ def overview(out_dir, kit=KIT, w=940, h=400):
     """Every look's pieces in place, two to a row, with the painted original."""
     cards = [("Original (painted)", KIT, _roles_rgb(DEFAULT))]
     for look, lk in LOOKS.items():
-        name = PALETTES[lk.palette]["name"]
-        if lk.palette == DEFAULT:
-            name += " · " + {"warm": "Warm iron", "bronze": "Bronze"}[look]
-        cards.append((name, os.path.join(os.path.dirname(kit), lk.folder), _roles_rgb(lk.palette)))
+        cards.append((look_name(look), os.path.join(os.path.dirname(kit), lk.folder), _roles_rgb(lk.palette)))
     rows = (len(cards) + 1) // 2
     img = Image.new("RGBA", (40 + 2 * w + 20, 40 + rows * (h + 20)), (22, 21, 19, 255))
     for i, (name, root, roles) in enumerate(cards):

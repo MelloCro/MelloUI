@@ -78,11 +78,11 @@ local M = MelloUI:RegisterModule("HealerFrames", {
 	enabledByDefault = true,
 	defaults = { incomingHeals = true, debuffGlow = true, debuffGlowShows = "all" },
 	options = {
-		{ type = "toggle", key = "incomingHeals", name = "Incoming Heals", new = "0.19.0",
+		{ type = "toggle", key = "incomingHeals", name = "Incoming Heals",
 		  desc = "The heals on their way to a unit shown on its health bar: your heals, other healers' heals and shields. On the player, target and focus frames and their targets; the party, pet and raid frames show the game's own (the raid frames' Display Incoming Heals)." },
-		{ type = "toggle", key = "debuffGlow", name = "Debuff Glow", new = "0.19.0",
+		{ type = "toggle", key = "debuffGlow", name = "Debuff Glow",
 		  desc = "A soft glow in the debuff's colour (Magic blue, Curse purple, Disease brown, Poison green) round a friend's frame while they have a debuff that can be removed. On the raid frames the border takes the colour too." },
-		{ type = "dropdown", key = "debuffGlowShows", name = "Debuff Glow Shows", values = SHOWS, new = "0.19.0",
+		{ type = "dropdown", key = "debuffGlowShows", name = "Debuff Glow Shows", values = SHOWS,
 		  desc = "Which debuffs light a frame: every one that can be removed, the ones someone in your group can remove, or only the ones you can remove." },
 	},
 })

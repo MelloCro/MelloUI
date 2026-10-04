@@ -774,6 +774,10 @@ function M:FitPortrait()
 			portrait:ClearAllPoints()
 			portrait:SetPoint("CENTER", portrait:GetParent(), "TOPLEFT", portraitSaved.cx, portraitSaved.cy)
 			portrait:SetSize(size, size)
+			-- (0.19.1) a portrait moved in the kit editor stays moved under its ring
+			if Kit.RefitRegion then
+				Kit:RefitRegion(portrait)
+			end
 		end
 	elseif portraitSaved then
 		portrait:ClearAllPoints()
@@ -782,6 +786,9 @@ function M:FitPortrait()
 		end
 		portrait:SetSize(portraitSaved.w, portraitSaved.h)
 		portraitSaved = nil
+		if Kit.RefitRegion then
+			Kit:RefitRegion(portrait)
+		end
 	end
 end
 
@@ -1563,8 +1570,16 @@ local function SkinEquipmentManager()
 	local new = pane.NewSet
 	if new and new.StateTexture then
 		local rep = Replace(new.StateTexture, { as = "common-button-tertiary-normal", rect = new, button = new })
-		if rep and new.OnButtonStateChanged and rep.Update then
-			hooksecurefunc(new, "OnButtonStateChanged", function() rep.Update() end)   -- disabled comes only this way
+		if rep and new.OnButtonStateChanged then
+			-- disabled comes only this way (a tinted plate's Update; the flat
+			-- plate, 0.19.1, re-read through SetState)
+			hooksecurefunc(new, "OnButtonStateChanged", function()
+				if rep.Update then
+					rep.Update()
+				else
+					rep:SetState()
+				end
+			end)
 		end
 		-- the game sets the + icon at LEFT 13 and the label LEFT 35 (left-
 		-- justified across the button); the pair is centred on the button

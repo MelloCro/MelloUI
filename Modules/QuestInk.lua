@@ -1010,14 +1010,25 @@ local function KindOf(obj)
 end
 
 -- a replacement that is a plate behind text (a header, a row's plate, a
--- bar's bracket, a slot); not a line (a divider) nor a picture or tile
-local PLATE_KIND = { strip = true, frame = true, bar = true, slot = true }
+-- bar's bracket, a slot, a flat control's dark plate -- 0.19.1); not a
+-- line (a divider) nor a picture or tile
+local PLATE_KIND = { strip = true, frame = true, bar = true, slot = true, flat = true }
 -- the kit's plates a string may lie over wherever they were put (OverPlate)
-local GLOBAL_PLATE = { strip = true, bar = true, slot = true }
+local GLOBAL_PLATE = { strip = true, bar = true, slot = true, flat = true }
 
 -- a replacement's painted base ("" when it has none)
 local function PlateBase(rep)
 	return (rep.strip and rep.strip.base) or (rep.rule and rep.rule.base) or ""
+end
+
+-- a flat control with a body (its fill: a button, a field, a tab); one
+-- that is an edge alone (body = false) or a knob is no plate
+local function FlatBody(rep)
+	if rep.kind ~= "flat" then
+		return true
+	end
+	local parts = rep.flat
+	return (parts and parts.fill and not parts.noBody) and true or false
 end
 
 -- The kit's replacements, taken in as the kit makes them (Kit.repList only
@@ -1037,7 +1048,7 @@ local function SyncReps()
 			if rep.region then
 				regionRep[rep.region] = rep
 			end
-			if GLOBAL_PLATE[rep.kind] and not PlateBase(rep):find("divider", 1, true) then
+			if GLOBAL_PLATE[rep.kind] and FlatBody(rep) and not PlateBase(rep):find("divider", 1, true) then
 				plateReps[#plateReps + 1] = rep
 			end
 		end
@@ -1052,8 +1063,8 @@ local function RepOf(region)
 end
 
 -- a texture of the game's that is a plate (its atlas a kit rule's strip,
--- bar or frame), shown and solid
-local GAME_PLATE_KIND = { strip = true, bar = true, frame = true }
+-- bar, frame or flat control), shown and solid
+local GAME_PLATE_KIND = { strip = true, bar = true, frame = true, flat = true }
 local function GamePlate(region)
 	if KindOf(region) ~= "Texture" or region.kitName or not region:IsShown() then
 		return false
@@ -1083,7 +1094,7 @@ local function GamePlate(region)
 end
 
 local function IsPlate(rep)
-	if not (rep and PLATE_KIND[rep.kind]) then
+	if not (rep and PLATE_KIND[rep.kind] and FlatBody(rep)) then
 		return false
 	end
 	return not PlateBase(rep):find("divider", 1, true)

@@ -194,7 +194,7 @@ that eye strain issue a rule to check". Check it on every window:
   checked against this before it is handed over.
 - Before handing a window over: look at it and ask "is there small text on
   brown?" — if yes, it needs the panel.
-- The hex values above are Ember's. Since 0.14.0 there are seven palettes
+- The hex values above are Ember's. Since 0.19.1 there are eight palettes
   (section 6, Colours): the code paints by KEY (`innerPanel`, `mainWindow`,
   `text`, `selectedTrim`), never by these numbers, so the rule holds in each.
 
@@ -613,10 +613,20 @@ Lint workflow) fails when a copy is added and names the system to use.
   Nothing is made at load: a window builds its shell at its first open (2f),
   and its own OnShow / OnHide are set before the call (SetScript drops
   hooks).
+- **ONE control style UI-wide (0.19.1; the user, 2026-10-04: "now we have a
+  lot of different looking icons which serve the same function ... from now
+  on only use the same style as we have in the Configurator").** Every button,
+  check box, dropdown, edit / search box, tab, slider, scroll bar, close / +
+  / - / arrow / icon button looks like the Configurator's -- MelloUI's own
+  through the widgets below, the game windows' through the kit's `flat` kind
+  (`W.FlatOver` / `W.FlatState` over the game's control: KIT-MAPPING "One
+  control style"). A new control gets no look of its own and no kit piece:
+  use a widget, or the flat kind for a game control. `v190/flatcontrols`
+  holds it (no rule on a kit control piece, none drawn by hand).
 - **Its controls: `MelloUI.Widgets` (Core/Widgets.lua), one set for every
   own window.** The cleaner look (0.15.0, the user's picks: flat in both
-  looks; the kit's list box, red plate, slider pieces and header plate stay
-  the game windows'): `W.Panel` (THE content panel: a flat `innerPanel` fill
+  looks; since 0.19.1 the game windows' controls too -- the kit's list box
+  and header plate stay the game windows'): `W.Panel` (THE content panel: a flat `innerPanel` fill
   in a 1 px `border` edge, on the calm ground; never on another panel),
   `W.Header` (a section's heading: the title in `selectedTrim` and a 1 px
   `border` hairline after it, no plate; the configurator's sections and

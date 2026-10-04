@@ -844,7 +844,18 @@ local function MemberRect(e, root)
 		end
 		return ButtonsRect(root)
 	end
-	return ShownRect(GroupButtons(GROUP[e.group]))
+	local rect, size = ShownRect(GroupButtons(GROUP[e.group]))
+	-- the bag bar's fold arrow (Tweaks' Collapse Arrow) inside it while it
+	-- shows: in the rect, never the size (the gap is a button's share)
+	local toggle = e.group == "bags" and rawget(_G, "BagBarExpandToggle")
+	if rect and toggle and toggle:IsShown() then
+		local l, b, r, t = ScreenRect(toggle)
+		if l then
+			rect[1], rect[2] = math.min(rect[1], l), math.min(rect[2], b)
+			rect[3], rect[4] = math.max(rect[3], r), math.max(rect[4], t)
+		end
+	end
+	return rect, size
 end
 
 -- A member's pad: its rect grown by the rim (the piece's, at ks screen px
@@ -1874,6 +1885,14 @@ local function SkinBagBar()
 			end
 		end
 	end
+	-- the fold's arrow (the game's BagBarExpandToggle, shown by Tweaks'
+	-- Collapse Arrow): the flat arrow on its rect, following the game's turns
+	local toggle = rawget(_G, "BagBarExpandToggle")
+	local normal = toggle and toggle.GetNormalTexture and toggle:GetNormalTexture()
+	if normal then
+		Replace(normal, { as = "bag-arrow", button = toggle, rect = toggle,
+			alsoFade = { toggle:GetPushedTexture(), toggle:GetHighlightTexture() } })
+	end
 	WatchForBackdrop(bar)
 end
 
@@ -2152,6 +2171,9 @@ local function Hook()
 			C_Timer.After(0, RefitStaleMicros)
 		end
 	end, M)
+	-- the bag bar folded or opened (Tweaks' Collapse Arrow): its backdrop
+	-- round what shows
+	MelloUI:On("bagbar", ScheduleBackdrop, M)
 	-- the UI Scale changed, or a bar's Size in Edit Mode (user, 2026-09-24:
 	-- "UI Scaling Break the UI"): the backdrops are measured from the
 	-- buttons' rects ON THE SCREEN, and a new UI scale moves the bars that

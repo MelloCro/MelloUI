@@ -25,6 +25,19 @@ This file is the readable copy of that table: **change both together.**
 | `state` | a state texture on a button (`base`), e.g. the close button; `rect = "normal"` takes the button's normal texture rect |
 | `texture` | one piece (`piece`); `square` sizes it to the rect's shorter side and centres it on `opts.center` |
 | `tile` | a repeatable tile (`piece`) filling the rect at its native scale |
+| `flat` | (0.19.1) **the Configurator's flat control** over the game's (`flat` = `button`, `check`, `dropdown`, `edit`, `close`, `arrow` with `dir`, `plus`, `minus`, `tab`, `tabActive`, `track`, `thumb`, `slider`, `knob`): `MelloUI.Widgets.FlatOver` / `FlatState` on a holder of ours on the rect, painted by the control's state (hover, pressed, checked, disabled, an edit box's focus) as a rim follows its button; `rect = "normal"`; the call's opts: `left` (an edit box's fill reaching left over its glass: Kit:SkinSearchBox's only), `body = false` (the edge alone), `fitHeight` (a centred height); `rep:SetState("focused" / "normal")` lights an edit field's edge; `parts.partial` mutes a check's tick (on for some characters). No shade: the Configurator's controls wear none |
+
+**One control style (0.19.1; the user, 2026-10-04: "now we have a lot of different looking icons which serve the same
+function ... from now on only use the same style as we have in the Configurator").** Every control the kit dresses is
+the `flat` kind now: the panel buttons and the red buttons (were B1's red plate), the check boxes and the quest log's
+tick (the kit's check box), the dropdowns (D1, B6), the round dropdown arrow and every icon button's plate (K2's cog),
+the search, quantity and chat edit boxes (S1 / N1), the window tabs (TB6), the close / expand / condense buttons (the
+red cross, the kit's arrows), the steppers and page arrows, the + / - plates, the minimal slider (SL1's track, the gem
+thumb, its arrows) and the scroll bar (T2 / H1 / S1). The catalogue picks named below for those controls are history:
+the rows say what each control WAS mapped to; the table keeps them so a window's other rows still read. MelloUI's own
+windows use the Configurator's widgets directly (`W.Button`, `W.Switch`, `W.Dropdown`, `W.Slider`, `W.FlatSearch`,
+`W.FlatTab`, `W.CloseButton`, `W.PlateButton`); no part of MelloUI draws a kit control piece by hand
+(`v190/flatcontrols` O5).
 
 ## The table
 
@@ -452,6 +465,7 @@ bar's prints the measured pitch, the xp one the fill's state). Covers `actionbar
 | `UI-HUD-ActionBar-Frame` (`BorderArt` of the main bar, micro menu, bag bar), the main bar's pooled `-Divider-ThreeSlice-*` frames, `MicroMenu.BackgroundArt` | the bars' frame art | faded: it lies under the pitch-sized rims |
 | `ui-hud-actionbar-gryphon-left` / `-right` (`EndCaps.LeftEndCap.Texture`, 154 × 95) | the main bar's end caps | **X2**: `deco/rail_cap_l` / `_r` at the gryphon's height on its inner bottom corner, on holders at the BACKGROUND strata (user: the caps behind ALL the bars and the status bars), following the caps' rects and `EndCaps`' show / hide |
 | `ui-hud-actionbar-pageuparrow-up` / `-pagedownarrow-up` (+ down / mouseover / disabled) | the page arrows | `buttons/arrow_up` / `_down` at their size — and the whole `ActionBarPageNumber` faded with its mouse off by the module option "Hide Page Arrows" (user, 2026-09-21; on by default) |
+| `bag-arrow` (`BagBarExpandToggle`'s normal art; its pushed / highlight faded) | the bag bar's fold arrow (Tweaks' Collapse Arrow shows it; this client hides it) | (0.19.1) the flat arrow (`flat`, `rotates`): the art points left unturned and the game turns it with `SetRotation`; the flat arrow follows a quarter turn at a time (`W.FlatDir`) |
 | `UI-HUD-MicroMenu-ButtonBG-Up` / `-Down` (`Background` / `PushedBackground`) | a micro button's plate | the R1 slot rim, SQUARE at the bar's pitch (the spacing between neighbours, 27 px for 32 px buttons: the game's plates overlap) so neighbours share a gem, centred on the tall button (OVERLAY, over the glyph's edges), the game's glyph fitted into the rim's opening (its pushed / highlight / disabled states and the character portrait anchored to it, the fit redone after every state-atlas set), the stone tile (`tiles/stone`) in the opening under the glyph as an empty action slot has it (an agreed addition, user 2026-09-22: "a background to those icons"); the character button's portrait is its icon, fitted into the opening on the stone like the glyphs (user, 2026-09-22: "only the real icons", "but the custom borders", "square rim at the button's width"; M1's cog plates are gone) |
 | `UI-HUD-ExperienceBar-Frame` (`BarFrameTexture`, 1192 × 17), `-Background` | a status bar container (XP / reputation / honour; two may stack) | P1: `bars/frame` bracket as the container's OVERLAY regions with the caps OUTSIDE the bar (`capOut`); the trough on a holder at the LOW strata one level under the fill's status bar (the fill is a LOW frame under the MEDIUM container: an opaque trough on the container hid it); Bar Textures drops its mask (`melloKitBracket`). The containers by name (the manager's `barContainers` is filled on this client too); re-fitted from `LayoutBars` / `UpdateBarsShown` |
 | `UI-HUD-ExperienceBar-Divider` (pooled `StatusBarDividerTemplate` frames, 20 per bar) | the segment dividers | `bars/tick` at its size on each, re-skinned from `UpdateDividers` |

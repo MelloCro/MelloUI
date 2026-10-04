@@ -142,43 +142,11 @@ local function OtherTextures(button, keep)
 	return extra
 end
 
--- A search box (SearchBoxTemplate): the edit plate, its glass cap in place
--- of the game's icon; the text and the instructions start past the cap.
+-- A search box (SearchBoxTemplate): the kit's one search box (Kit:SkinSearchBox,
+-- since 0.19.1 the Configurator's flat field; this window had its own copy of
+-- the S1 strip's)
 local function SkinSearchBox(search)
-	if not (search and search.Middle) then
-		return
-	end
-	local rep = Replace(search.Middle, { as = "common-search-border-middle", rect = search, edit = search,
-		alsoFade = { search.Left, search.Right, search.searchIcon } })
-	if not rep then
-		return
-	end
-	local l, r, t, b = search:GetTextInsets()
-	local instr = search.Instructions
-	local points = {}
-	if instr then
-		for i = 1, instr:GetNumPoints() do
-			points[i] = { instr:GetPoint(i) }
-		end
-	end
-	rep.onEnable = function()
-		local capW = rep.strip.capL:GetWidth() * 0.45
-		search:SetTextInsets(capW, r, t, b)
-		if instr then
-			instr:ClearAllPoints()
-			instr:SetPoint("TOPLEFT", search, "TOPLEFT", capW, 0)
-			instr:SetPoint("BOTTOMRIGHT", search, "BOTTOMRIGHT", -20, 0)
-		end
-	end
-	rep.onDisable = function()
-		search:SetTextInsets(l, r, t, b)
-		if instr then
-			instr:ClearAllPoints()
-			for _, pt in ipairs(points) do
-				instr:SetPoint(unpack(pt))
-			end
-		end
-	end
+	Kit:SkinSearchBox(search, Replace)
 end
 
 --------------------------------------------------------------------------------
@@ -287,7 +255,8 @@ SkinTab = function(tab)
 					if plain then plain:SetShown(not tab.isSelected) end
 					if open then open:SetShown(tab.isSelected and true or false) end
 					-- the label centred on the plate's red middle (between the
-					-- two rune caps), the game's own y offset kept
+					-- two rune caps), the game's own y offset kept; a flat tab
+					-- (0.19.1) has no strip: the label stays where the game has it
 					local fs = tab.Text
 					local strip = (tab.isSelected and open or plain)
 					strip = strip and strip.strip

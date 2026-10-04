@@ -49,7 +49,8 @@ local Shared, hooksecurefunc, C_Timer = Perf.Shared, Perf.hooksecurefunc, Perf.C
 local Kit = MelloUI.Kit
 local W = MelloUI.Widgets
 local Look = MelloUI.Look
-local Secret, Num = MelloUI.Safe.IsSecret, MelloUI.Safe.Number
+local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
 
 -- (the user, 2026-10-04: "what kind of customization options can we give the players?" -- the kinds and the layout
 -- picked; their own kinds, saved searches, come with a sketch first)
@@ -74,33 +75,32 @@ local M = MelloUI:RegisterModule("BagWindow", {
 	-- (no group: its rows sit on the Windows page, the bag window's)
 	installer = false,
 	enabledByDefault = true,
-	new = "0.19.0",
 	defaults = { recent = true, recentFor = "close", gear = true, quest = true, consumables = true, junk = true,
 		trade = true, splitTrade = false, columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality" },
 	options = {
-		{ type = "toggle", key = "recent", name = "Recent Kind", new = "0.19.0",
+		{ type = "toggle", key = "recent", name = "Recent Kind",
 		  desc = "What you picked up lately, under its own heading first. Off: it goes straight to its own kind." },
-		{ type = "dropdown", key = "recentFor", parent = "recent", name = "Recent Lasts", values = RECENT_FOR, new = "0.19.0",
+		{ type = "dropdown", key = "recentFor", parent = "recent", name = "Recent Lasts", values = RECENT_FOR,
 		  desc = "How long an item stays under Recent: until you close your bags, only until you hover it, or for 5 minutes after you got it." },
-		{ type = "toggle", key = "gear", name = "Gear Kind", new = "0.19.0",
+		{ type = "toggle", key = "gear", name = "Gear Kind",
 		  desc = "Weapons and armour under their own heading. Off: they go to Other." },
-		{ type = "toggle", key = "quest", name = "Quest Kind", new = "0.19.0",
+		{ type = "toggle", key = "quest", name = "Quest Kind",
 		  desc = "Quest items, and items that start a quest, under their own heading. Off: they go to their own kind." },
-		{ type = "toggle", key = "consumables", name = "Consumables Kind", new = "0.19.0",
+		{ type = "toggle", key = "consumables", name = "Consumables Kind",
 		  desc = "Food, drink, potions, scrolls and bandages under their own heading. Off: they go to Other." },
-		{ type = "toggle", key = "junk", name = "Junk Kind", new = "0.19.0",
+		{ type = "toggle", key = "junk", name = "Junk Kind",
 		  desc = "Grey junk under its own heading, with what it sells for (and Sell Junk at a vendor). Off: it goes to its own kind." },
-		{ type = "toggle", key = "trade", name = "Trade Goods Kind", new = "0.19.0",
+		{ type = "toggle", key = "trade", name = "Trade Goods Kind",
 		  desc = "Crafting materials, reagents, recipes and gems under their own heading. Off: they go to Other." },
-		{ type = "toggle", key = "splitTrade", parent = "trade", name = "Split Trade Goods", new = "0.19.0",
+		{ type = "toggle", key = "splitTrade", parent = "trade", name = "Split Trade Goods",
 		  desc = "Trade goods split by type, each under its own heading: Cloth, Leather, Metal & Stone, Herbs, Meat, Reagents, Recipes and so on." },
-		{ type = "slider", key = "columns", name = "Columns", min = 8, max = 16, step = 1, new = "0.19.0",
+		{ type = "slider", key = "columns", name = "Columns", min = 8, max = 16, step = 1,
 		  desc = "How many slots across the bag window is: more makes it wider and shorter." },
-		{ type = "slider", key = "itemSize", name = "Item Size", min = 30, max = 46, step = 1, new = "0.19.0",
+		{ type = "slider", key = "itemSize", name = "Item Size", min = 30, max = 46, step = 1,
 		  desc = "How big the item slots are (37 is the game's own size)." },
-		{ type = "toggle", key = "foldEmpty", name = "Fold Empty Slots", new = "0.19.0",
+		{ type = "toggle", key = "foldEmpty", name = "Fold Empty Slots",
 		  desc = "All your empty slots as one slot with their count (drop an item on it to put it in a free slot). Off: every empty slot shows." },
-		{ type = "dropdown", key = "sortBy", name = "Sort Items By", values = SORT_BY, new = "0.19.0",
+		{ type = "dropdown", key = "sortBy", name = "Sort Items By", values = SORT_BY,
 		  desc = "The order inside each kind: better quality first, by name, the ones you picked up last first, or the highest item level first." },
 	},
 })
@@ -1133,7 +1133,7 @@ local function Build()
 	sort:SetSize(28, 26)
 	sort:SetNormalAtlas("bags-button-autosort-up")
 	sort:SetPushedAtlas("bags-button-autosort-down")
-	sort:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+	W.HoverLight(sort, "square")   -- (the game's sort button's light: the shared one)
 	sort:SetPoint("TOPRIGHT", f, "TOPRIGHT", -G.SIDE, -32)
 	Perf.SetScript(sort, "OnClick", SortClick)
 	Perf.SetScript(sort, "OnEnter", SortEnter)
@@ -1141,9 +1141,9 @@ local function Build()
 	win.sort = sort
 	local search = CreateFrame("EditBox", nil, f, "BagSearchBoxTemplate")
 	search:SetHeight(20)
+	W.FlatSearch(search)   -- (the Configurator's search box, as every own window's)
 	win.search = search
 	win.shell:Kit(function(K)
-		K:SkinSearchBox(search, win.shell.replace)
 		if sort:GetNormalTexture() then
 			win.shell:Replace(sort:GetNormalTexture(), { as = "bags-button-autosort-up", button = sort, noFade = true })
 		end

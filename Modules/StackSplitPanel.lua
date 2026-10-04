@@ -537,8 +537,13 @@ SlashCmdList.MELLOSPLITDUMP = function(msg)
 		Found("picture (one item)", p.single, p.single and (" " .. Faded(p.single) .. ", shown " .. Shown(p.single)) or nil)
 		Found("picture (stacks)", p.multi, p.multi and (" " .. Faded(p.multi) .. ", shown " .. Shown(p.multi)) or nil)
 		local plate = skin and skin.plate
-		Found("edit plate (the field)", plate and plate.strip, plate and string.format(" %s, shown %s, caps l %s (end %s) r %s",
-			Rect(plate.strip), Shown(plate.strip), Shown(plate.strip.capL), tostring(plate.strip.endL), Shown(plate.strip.capR)) or nil)
+		if plate and plate.flat then
+			-- (0.19.1: the field flat, the Configurator's look -- no strip)
+			Found("edit field (flat)", plate.object, string.format(" %s, shown %s", Rect(plate.object), Shown(plate.object)))
+		else
+			Found("edit plate (the field)", plate and plate.strip, (plate and plate.strip) and string.format(" %s, shown %s, caps l %s (end %s) r %s",
+				Rect(plate.strip), Shown(plate.strip), Shown(plate.strip.capL), tostring(plate.strip.endL), Shown(plate.strip.capR)) or nil)
+		end
 		for _, key in ipairs({ "text", "count" }) do
 			local fs = p[key]
 			if fs then

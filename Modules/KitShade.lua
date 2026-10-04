@@ -41,7 +41,7 @@
 --       budget lasts and the area is on, else on a later frame (the rest of a
 --       crowd, the next frame; an area off, when it is switched on); obj is
 --       a replacement (Kit:Replace's rep: its skin, strip, upright strip or
---       texture), a strip (StripMixin), a skin (Kit:NineSlice), a kit
+--       texture; a flat control's none -- the Configurator's wear no shade), a strip (StripMixin), a skin (Kit:NineSlice), a kit
 --       texture or a plain frame (with opts.shape; once per frame). Drawn by
 --       another frame than the part's own, its partners are shown and hidden
 --       with that frame too (the strip, the skin, the holder, the plain

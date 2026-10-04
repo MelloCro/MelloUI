@@ -1,6 +1,6 @@
 {
- "note": "MelloUI's colour palettes, the one source the tools read (Tools/kit_palette.py and what uses it). The same colours as MelloUI.Palettes in Core/Core.lua: Ember is the palette MelloUI shipped with (the default), the six others come from MelloUI-BuildData/palette/additions_0.14.0/palettes_0.14.0.json. Each id's kit is Media/Kit<Id> (Id = the id with its first letter in capitals) and its Game Menu picture Media/Textures/GameMenuFrame_<id>; Ember keeps its two looks, Media/KitWarm and Media/KitBronze, and GameMenuFrame_warm / _bronze. Roles: the ten swatches, #RRGGBB.",
- "order": ["ember", "obsidian", "obsidianVibrant", "royalAzure", "royalAzureVibrant", "felEmber", "felEmberVibrant"],
+ "note": "MelloUI's colour palettes, the one source the tools read (Tools/kit_palette.py and what uses it). The same colours as MelloUI.Palettes in Core/Core.lua: Ember is the palette MelloUI shipped with (the default), the six others come from MelloUI-BuildData/palette/additions_0.14.0/palettes_0.14.0.json. Each id's kit is Media/Kit<Id> (Id = the id with its first letter in capitals) and its Game Menu picture Media/Textures/GameMenuFrame_<id>; Ember keeps its two looks, Media/KitWarm and Media/KitBronze, and GameMenuFrame_warm / _bronze. A palette with \"looks\": \"ember\" (Ember Vibrant, 0.19.1) has Ember's two looks too, made from its own roles by Ember's formulas: its warm iron in Media/Kit<Id>, its bronze in Media/Kit<Id>Bronze, GameMenuFrame_<id> / _<id>Bronze. A palette with \"art\" would have a kit painted for it (not recoloured from Media/Kit), written by Tools/build_art_look.py; none has since Forged Steel was taken out (user, 2026-10-04). Roles: the ten swatches, #RRGGBB.",
+ "order": ["ember", "emberVibrant", "obsidian", "obsidianVibrant", "royalAzure", "royalAzureVibrant", "felEmber", "felEmberVibrant"],
  "palettes": {
   "ember": {
    "name": "Ember",
@@ -16,6 +16,23 @@
     "selectedTab": "#4E1812",
     "selectedTrim": "#AE8546",
     "hover": "#5A3C24"
+   }
+  },
+  "emberVibrant": {
+   "name": "Ember Vibrant",
+   "looks": "ember",
+   "blurb": "Ember, lit: ember-black panels, vivid bronze trim, bright cream-gold text, a jewel ember red for the selection.",
+   "roles": {
+    "mainWindow": "#23190A",
+    "innerPanel": "#110F06",
+    "raisedPanel": "#401F03",
+    "border": "#4E3B24",
+    "trim": "#C27F18",
+    "text": "#FEE0AA",
+    "mutedText": "#AF8E5D",
+    "selectedTab": "#730201",
+    "selectedTrim": "#F3AF3C",
+    "hover": "#683602"
    }
   },
   "obsidian": {

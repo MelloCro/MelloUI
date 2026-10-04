@@ -58,7 +58,9 @@
 --
 -- A `regions` entry inside an element takes the same `tune` fields and is
 -- keyed by the region's name, its key in the frame table, or its atlas /
--- texture name -- whatever the editor could read.
+-- texture name -- whatever the editor could read. Its x, y and pad* move and
+-- resize the texture against its own points (Kit:TuneRegion, 0.19.1: the
+-- editor drags a window's textures too).
 --
 -- Editing API (used by the editor addon, safe to call from anywhere):
 --   MelloUI.KitTuning:Set(section, key, path, value)   nil value clears

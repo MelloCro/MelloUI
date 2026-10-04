@@ -5,7 +5,7 @@ _Hey! MelloUI is my all-in-one UI for World of Warcraft: Forever. Everything is 
 ## What's in it
 
 *   **UI Reskin:** every window and bar in an Old-School RPG Look, with a soft shade round it.
-*   **Seven palettes:** Ember, Obsidian, Royal Azure and Fel Ember (plus Vibrant ones), each with its own painted kit.
+*   **Eight palettes:** Ember, Obsidian, Royal Azure and Fel Ember, each with a Vibrant version and its own painted kit.
 *   **Move anything:** drag and resize any window.
 *   **Voiced quest givers:** quests read out loud, with subtitles.
 *   **A map that helps:** quest list, pins, a route arrow and the nearest quest first in the tracker.

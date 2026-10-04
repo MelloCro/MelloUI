@@ -283,13 +283,19 @@ def nine_family(name):
 
 
 _ALPHA = {}
+_READ_FROM = None   # a painted look's masters folder while build_look reads its pieces
 
 
 def piece_alpha(p):
-    """The piece's alpha at its painted size, 0..1 (read once per build)."""
+    """The piece's alpha at its painted size, 0..1 (read once per build; from a
+    painted look's folder while build_look reads it, where it has the piece)."""
     key = (p["file"], p["w"], p["h"], tuple(p["uv"]))
     if key not in _ALPHA:
         path = os.path.join(KIT, p["file"].replace("\\", os.sep) + ".tga")
+        if _READ_FROM:
+            own = os.path.join(_READ_FROM, p["file"].replace("\\", os.sep) + ".tga")
+            if os.path.exists(own):
+                path = own
         with Image.open(path) as im:
             a = im.convert("RGBA").getchannel("A")
         cw, ch = a.size
@@ -876,11 +882,10 @@ def pack(images):
     return at, 1 << max(2, math.ceil(math.log2(max(used, 1))))
 
 
-def build():
-    """(the sheet's TGA bytes, the Lua's bytes, the sheet (RGBA array),
-    pieces {name: entry or the name of the piece it shares}, everything:
-    {"pieces", "nines", "shapes", "rects": the drawn texel rects,
-    "used": texels drawn})."""
+def plan():
+    """The sheet's plan from the masters: every shadow, which share, and where
+    each distinct one lies ({"layout", "parts", "ends", "nines", "shapes",
+    "alias", "images", "at", "sheet_h"})."""
     layout = load_layout()
     parts, ends, units, nines, shapes = shadows(layout)
     alias = share(parts, ends, units)
@@ -903,6 +908,80 @@ def build():
                 images[key] = q
             table[name][1]["image"] = key
     at, sheet_h = pack(images)
+    return {"layout": layout, "parts": parts, "ends": ends, "nines": nines, "shapes": shapes, "alias": alias,
+            "images": images, "at": at, "sheet_h": sheet_h}
+
+
+def sheet_rgba(images, at, sheet_h):
+    """The sheet: each image at its place, its edges repeated GUTTER texels outward, white with that alpha."""
+    alpha = np.zeros((sheet_h, SHEET_W), np.uint8)
+    for key, img in images.items():
+        x, y = at[key]
+        h, w = img.shape
+        alpha[y - GUTTER:y + h + GUTTER, x - GUTTER:x + w + GUTTER] = np.pad(img, GUTTER, mode="edge")
+    rgba = np.zeros((sheet_h, SHEET_W, 4), np.uint8)
+    rgba[..., :3] = 255
+    rgba[..., 3] = alpha
+    return rgba
+
+
+def build_look(folder):
+    """A painted look's sheet (kit_palette.ART, user 2026-10-04: Forged Steel): the shadows of ITS pieces (read
+    from masters/Media/<folder>, the painted kit's where the look has none), each laid exactly where the painted
+    kit's lies, so the one Media/KitShadows.lua (uv, pad) serves both and Kit.lua only takes the look's sheet
+    (KitShadows<suffix>). Stops if a shadow's size differs from the kit's (the layout would). The TGA's bytes."""
+    global _READ_FROM
+    base = plan()
+    _READ_FROM = os.path.join(MASTER_MEDIA, folder)
+    _ALPHA.clear()
+    try:
+        parts, ends, _, nines, shapes = shadows(base["layout"])
+    finally:
+        _READ_FROM = None
+        _ALPHA.clear()
+    images = {}
+    for key, img in base["images"].items():
+        if key.startswith(("nine:", "shape:")):
+            group, name = key.split(":", 1)
+            new = (nines if group == "nine" else shapes)[name][0]
+        elif "#" in key:
+            n, k = key.split("#")
+            new = ends[n][k][0]
+        else:
+            new = parts[key][0]
+        if new.shape != img.shape:
+            raise SystemExit("%s: its shadow in %s is %s, the painted kit's %s: the sheets' layouts would differ"
+                             % (key, folder, new.shape, img.shape))
+        images[key] = new
+    buf = io.BytesIO()
+    Image.fromarray(sheet_rgba(images, base["at"], base["sheet_h"]), "RGBA").save(buf, format="TGA")
+    return buf.getvalue()
+
+
+def write_look(pid, quiet=False):
+    """A painted look's sheet (palette id `pid`, kit_palette.ART) to its master and the addon's Media (beside
+    KitShadows.tga: the ship keeps it TGA); its sha256."""
+    import kit_palette
+    look = kit_palette.LOOKS[pid]
+    tga = build_look(look.folder)
+    name = SHEET[1][:-4] + look.suffix + ".tga"
+    for path in (master(SHEET[0], name), os.path.join(ADDON_MEDIA, SHEET[0], name)):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(tga)
+        if not quiet:
+            print("->", os.path.normpath(path))
+    return hashlib.sha256(tga).hexdigest()
+
+
+def build():
+    """(the sheet's TGA bytes, the Lua's bytes, the sheet (RGBA array),
+    pieces {name: entry or the name of the piece it shares}, everything:
+    {"pieces", "nines", "shapes", "rects": the drawn texel rects,
+    "used": texels drawn})."""
+    pl = plan()
+    parts, ends, nines, shapes, alias = pl["parts"], pl["ends"], pl["nines"], pl["shapes"], pl["alias"]
+    images, at, sheet_h = pl["images"], pl["at"], pl["sheet_h"]
     alpha = np.zeros((sheet_h, SHEET_W), np.uint8)
     for key, img in images.items():
         x, y = at[key]

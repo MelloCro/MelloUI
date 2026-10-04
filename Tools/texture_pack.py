@@ -201,6 +201,7 @@ KIT_SHOWN = [
     (r"^bars/trough_v$", 8 / 41, "41 px shown at 8"),
     (r"^bars/", 26 / 64, "64 px brackets shown at 23-29"),
     (r"^tabs/", 30 / 89, "89 px title plate shown at 30"),
+    (r"^inputs/mappin_", 38 / 74, "74 px waypoint pins shown at 32-38 units on the world map (1.2x when zoomed)"),
     (r"^inputs/", 20 / 57, "57 px plates shown at 20"),
     (r"^tiles/", 192 / 512, "512 px tile shown at 192 per repeat"),
     (r"^deco/gem", 12 / 25, "25 px gems shown at 9-15"),
@@ -1226,7 +1227,7 @@ def atlas_specs(cand, hq, sheet=ATLAS_SHEET):
                             "rect": (cx, cy, sw, sh), "cell": (x, y) + sizes[n], "raw": raw}
             specs.append({"group": gname, "index": si, "file": sheet_file, "W": W, "H": H, "raw": raw, "lead": lead,
                           "placed": placed, "sizes": sizes,
-                          "looks": LOOKS if gname.startswith("sheet") else ("Kit",)})
+                          "looks": LOOKS if gname.startswith("sheet") else ("Kit",) + kit_palette.ART_FOLDERS})
     return specs, uvmap
 
 
@@ -1319,7 +1320,7 @@ def check_atlas(layout_path, jobs, uvmap, plans, out, option):
         for look in LOOKS:
             if look != "Kit" and not os.path.isdir(os.path.join(out, option, look)):
                 continue
-            root = look if (look == "Kit" or kit_palette.recoloured(n)) else "Kit"
+            root = look if kit_palette.owns(look, n) else "Kit"
             base = os.path.join(out, option, root, pc["file"].replace("\\", os.sep))
             have = [e for e in (".blp", ".tga") if os.path.exists(base + e)]
             if len(have) != 1:
@@ -1737,7 +1738,7 @@ def preload_stats(layout, rows_by_stem):
     for look in LOOKS:
         files = {m for m in MASKS}
         for n, p in layout.items():
-            root = look if (look == "Kit" or kit_palette.recoloured(n)) else "Kit"
+            root = look if kit_palette.owns(look, n) else "Kit"
             files.add(root + "/" + p["file"].replace("\\", "/"))
         disk = gpu = 0
         missing = []
@@ -2622,11 +2623,12 @@ def tga_pins(refs):
     return pins
 
 
-def kit_uncoloured(kit_lua=None):
+def kit_uncoloured(kit_lua=None, table="UNCOLOURED"):
     """Modules/Kit.lua's UNCOLOURED (the Lua patterns of the pieces it reads
-    from Media/Kit in every look), from its source; None if it is not there."""
+    from Media/Kit in every look; `table` "LOOK.ART_UNCOLOURED": in a
+    painted look), from its source; None if it is not there."""
     text = open(kit_lua or KIT_LUA, encoding="utf-8").read()
-    m = re.search(r"^local UNCOLOURED = \{([^}]*)\}", text, re.M)
+    m = re.search(r"^(?:local )?%s = \{([^}]*)\}" % re.escape(table), text, re.M)
     return re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1)) if m else None
 
 
@@ -2650,6 +2652,17 @@ def check_colour_rule(names, kit_lua=None):
         if kit != kit_palette.recoloured(n):
             problems.append("piece %s: Kit.lua reads it from %s, kit_palette %s it (UNCOLOURED and SKIP disagree)" % (
                 n, "the look's folder" if kit else "Media/Kit", "recolours" if kit_palette.recoloured(n) else "does not recolour"))
+    # a painted look (kit_palette.ART_FOLDERS) reads all but ART_UNCOLOURED from its folder (kit_palette.ART_SKIP)
+    if kit_palette.ART_FOLDERS:
+        art = kit_uncoloured(kit_lua, "LOOK.ART_UNCOLOURED")
+        if not art:
+            return problems + ["Modules/Kit.lua: no `LOOK.ART_UNCOLOURED = { ... }` to check kit_palette.ART_SKIP against"]
+        for n in sorted(names):
+            own = not any(find(n, p) for p in art)
+            if own != kit_palette.owns(kit_palette.ART_FOLDERS[0], n):
+                problems.append("piece %s: in a painted look Kit.lua reads it from %s, kit_palette from %s "
+                                "(ART_UNCOLOURED and ART_SKIP disagree)" % (n, "its folder" if own else "Media/Kit",
+                                                                            "Media/Kit" if own else "its folder"))
     return problems
 
 
@@ -2669,7 +2682,7 @@ def check_refs(final, pieces, slices, refs):
 
     for n, p in sorted(pieces.items()):
         for look in LOOKS:
-            root = look if (look == "Kit" or kit_palette.recoloured(n)) else "Kit"
+            root = look if kit_palette.owns(look, n) else "Kit"
             stem = root + "/" + p["file"].replace("\\", "/")
             h = have(stem)
             if len(h) != 1:

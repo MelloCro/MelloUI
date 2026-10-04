@@ -113,17 +113,9 @@ end
 --     window's own shade stays whole under the column: the window's rail
 --     shows through the column's see-through stone there, and its shade
 --     with it (opening that side would drop the window's corner shade);
---   each tab's card: the same nine with its foot open (the tab stands on
---     the window's top rail), drawn under the tab, on the tab's strata, cut
---     by a mask at the rail's inner edge: the sides' shade lies on the
---     rail beside the foot, never below it on the stone or the parchment;
---   a minimized window's card: the whole nine (it stands alone);
---   the edit box's plate: its own pieces' shadows, cut to reach past its
---     ends and its free side only, never toward the window it sits on (the
---     box is a strata above the window: a shade reaching into the window
---     would lie on its stone and parchment). Below the window, the game's
---     place; above it with Chat Tweaks' Edit Box On Top (M.EditBoxSide).
--- The side buttons sit inside the column's rail: inner pieces, no partner.
+-- The tabs, a minimized window's card and the edit box are the
+-- Configurator's flat controls (0.19.1), which wear no shade; the side
+-- buttons sit inside the column's rail: inner pieces, no partner.
 -- Each element's shade is made when its frame is first seen, while the
 -- reskin is on (chat windows never opened add nothing, nor a column that
 -- Hide Chat Buttons keeps hidden); after that the partners follow their
@@ -141,16 +133,13 @@ local shade = {
 	hooked = setmetatable({}, { __mode = "k" }),    -- [root] = true: its OnShow hooked
 	anchor = setmetatable({}, { __mode = "k" }),    -- [chat window] = the rect its shade frame lies on
 	rail = setmetatable({}, { __mode = "k" }),      -- [chat window] = its rail (the ChatFrameBorder replacement)
-	cut = setmetatable({}, { __mode = "k" }),       -- [tab or button column] = { kind, root, cf, rep, opts, mask }: its shade's mask
-	plates = setmetatable({}, { __mode = "k" }),    -- [edit box plate] = the cut of each part (EDIT_PARTS order)
-	editTop = false,                                -- the edit boxes above their windows (Chat's Edit Box On Top)
+	cut = setmetatable({}, { __mode = "k" }),       -- [button column] = { kind, root, cf, rep, opts, mask }: its shade's mask
 	-- a cut's mask: the plain white square, clamped (nothing outside it), and
 	-- how far it reaches past the shade on its free sides (UI units; a
 	-- shade reaches about 13 at the kit's scale)
 	MASK = "Interface\\Buttons\\WHITE8X8",
 	REACH = 96,
 }
-local EDIT_PARTS = { "capL", "mid", "capR" }
 local Border   -- (Border Opacity: below, before the bordered frames)
 
 -- the element of a root: a chat window's drawn by its own shade frame (one
@@ -176,12 +165,8 @@ function shade.ColumnOpen(cf)
 end
 
 -- A cut's mask laid (again), on its window's rail (rep.skin: the rail's
--- outer edge; its top edge's bottom: the rail's inner edge):
---   a tab: from well above the tab down to the rail's inner edge;
---   a button column: from well past the column up to the rail's outer edge
---     on the column's side.
--- A docked tab's own window lies on the dock's first one, so the rail is
--- always the one under the tab.
+-- outer edge): a button column's, from well past the column up to the
+-- rail's outer edge on the column's side.
 function shade.LayCut(rec)
 	local mask, rail = rec.mask, shade.rail[rec.cf]
 	local railSkin = rail and rail.skin
@@ -190,15 +175,7 @@ function shade.LayCut(rec)
 	end
 	local R = shade.REACH
 	mask:ClearAllPoints()
-	if rec.kind == "tab" then
-		mask:SetPoint("TOPLEFT", rec.root, "TOPLEFT", -R, R)
-		local edge = Kit.RailAnchor and Kit:RailAnchor(railSkin, "t")
-		if edge then
-			mask:SetPoint("BOTTOMRIGHT", edge, "BOTTOMRIGHT", R, 0)
-		else
-			mask:SetPoint("BOTTOMRIGHT", railSkin, "TOPRIGHT", R, -(railSkin.thickness or 0))
-		end
-	elseif rec.opts.open == "r" then
+	if rec.opts.open == "r" then
 		mask:SetPoint("TOPRIGHT", railSkin, "TOPLEFT", 0, R)
 		mask:SetPoint("BOTTOMLEFT", railSkin, "BOTTOMLEFT", -R, -R)
 	else
@@ -208,8 +185,8 @@ function shade.LayCut(rec)
 end
 
 -- a root's waiting parts made, as one element of its own (only while the
--- reskin is on: else they wait for a show while it is); a tab's or a
--- column's mask made first, on the element's shade frame (a mask works on
+-- reskin is on: else they wait for a show while it is); a column's mask
+-- made first, on the element's shade frame (a mask works on
 -- the textures of the frame that made it)
 local function MakeShade(root)
 	local list = shade.pending[root]
@@ -239,7 +216,7 @@ local function MakeShade(root)
 	end
 end
 
-local Shade_OnShow = Perf.Shared("OnShow on a chat window, tab or edit box: its first shade", function(root)
+local Shade_OnShow = Perf.Shared("OnShow on a chat window or button column: its first shade", function(root)
 	MakeShade(root)
 end, "script")
 
@@ -279,8 +256,8 @@ local function ShadeSeen()
 	end
 end
 
--- A part whose shade a mask cuts (a tab's card on its window, `cf`; a
--- button column's rail beside it), made at its root's first show
+-- A part whose shade a mask cuts (a button column's rail beside its
+-- window, `cf`), made at its root's first show
 function shade.Cut(kind, root, cf, rep, open)
 	if not (root and cf and rep) or shade.cut[root] then
 		return
@@ -310,61 +287,6 @@ function shade.ColumnMoved(cf)
 	local nine = colSkin and colSkin.kitShadeNine
 	if nine and Kit.ShadowFit then
 		Kit:ShadowFit(nine, nil, open)
-	end
-end
-
--- An edit box plate's parts cut to their free sides: each part's whole
--- piece (painted px) with its pads on the ends' and the free side only. The
--- cut tables the parts are made with follow (a part not made yet takes the
--- side of its making), and a made partner is cut again
-local function CutPlate(strip)
-	local cuts = shade.plates[strip]
-	if not (cuts and Kit.Size) then
-		return
-	end
-	local sides = shade.editTop and "lrt" or "lrb"
-	for i = 1, #EDIT_PARTS do
-		local part, cut = strip[EDIT_PARTS[i]], cuts[i]
-		local w, h = Kit:Size(part and part.kitName, 1)
-		if w > 0 and h > 0 then
-			cut[2], cut[4], cut.sides = w, h, sides
-			if part.kitShadow and Kit.ShadowCut then
-				Kit:ShadowCut(part, 0, w, 0, h, sides)
-			end
-		end
-	end
-end
-
-local function ShadePlate(edit, rep)
-	local strip = rep and rep.strip
-	if not (strip and Kit.ShadeElement and Kit.ShadowCut) or shade.plates[strip] then
-		return
-	end
-	local cuts = {}
-	for i = 1, #EDIT_PARTS do
-		cuts[i] = { 0, 0, 0, 0 }
-	end
-	shade.plates[strip] = cuts
-	CutPlate(strip)
-	for i = 1, #EDIT_PARTS do
-		local part = strip[EDIT_PARTS[i]]
-		if part and cuts[i][2] > 0 then
-			ShadeLater(edit, part, { cut = cuts[i] })
-		end
-	end
-end
-
--- The side the edit boxes sit on (Chat Tweaks' Edit Box On Top, told by
--- Modules/Chat.lua whenever it places them): the plates' shade reaches away
--- from the window
-function M.EditBoxSide(top)
-	top = top and true or false
-	if shade.editTop == top then
-		return
-	end
-	shade.editTop = top
-	for strip in pairs(shade.plates) do
-		CutPlate(strip)
 	end
 end
 
@@ -792,15 +714,7 @@ local function SkinTab(tab, cf)
 		end
 		Steady()
 	end
-	-- the card's shade (the plain card: the lit one lies on the same rect):
-	-- on its window, its foot open and cut at the rail's inner edge; alone,
-	-- the whole nine
-	local card = plain or open
-	if card and cf then
-		shade.Cut("tab", tab, cf, card, "b")
-	elseif card then
-		ShadeLater(tab, card)
-	end
+	-- (the card is the Configurator's flat tab, 0.19.1: no shade)
 end
 
 -- A small icon button (menu, channel, voice, minimize, maximize): the cog
@@ -901,15 +815,10 @@ local function SkinEditBox(edit)
 		edit.melloRep = false
 		return
 	end
-	-- the S1 plate with its LEFT cap dropped: that cap carries the search
-	-- glyph, and this is a chat box (user, 2026-09-21); the plate closes with
-	-- the plain end piece (inputs/edit_end_l, the right cap mirrored), so the
-	-- game's own 15 px header inset clears the rail as it is
-	edit.melloRep = Replace(mid, { as = "UI-ChatInputBorder-Mid2", rect = edit, parent = edit, edit = edit, dropCap = "l",
+	-- the edit field: the flat one (0.19.1, the Configurator's search box
+	-- look; no shade, as the Configurator's)
+	edit.melloRep = Replace(mid, { as = "UI-ChatInputBorder-Mid2", rect = edit, parent = edit, edit = edit,
 		alsoFade = { _G[name .. "Left"], _G[name .. "Right"], edit.focusLeft, edit.focusMid, edit.focusRight } }) or false
-	if edit.melloRep then
-		ShadePlate(edit, edit.melloRep)
-	end
 end
 
 local function SkinChatFrame(cf)
@@ -1153,12 +1062,12 @@ local function DumpTabs()
 	end
 end
 
--- /chdump shade: each chat window's, tab's and edit box's shade (made, or
+-- /chdump shade: each chat window's and button column's shade (made, or
 -- waiting for its first show) and the frame that draws it against its own
 local function DumpShade()
-	MelloUI:Print("chat shade: on %s, strength %.2f, partners made %d, edit boxes %s, reskin active %s",
+	MelloUI:Print("chat shade: on %s, strength %.2f, partners made %d, reskin active %s",
 		tostring(Kit.ShadeOn and Kit:ShadeOn(SHADE_AREA)), Kit.ShadeStrength and Kit:ShadeStrength() or 0,
-		Kit.shadeState and Kit.shadeState.made[SHADE_AREA] or 0, shade.editTop and "on top" or "below", tostring(active))
+		Kit.shadeState and Kit.shadeState.made[SHADE_AREA] or 0, tostring(active))
 	local function One(label, root)
 		if not root then
 			return
@@ -1180,9 +1089,6 @@ local function DumpShade()
 		local name = cf:GetName() or "?"
 		One(name, cf)
 		One(name .. "ButtonFrame", cf.buttonFrame)
-		One(name .. "Tab", _G[name .. "Tab"])
-		One(name .. "EditBox", cf.editBox)
-		One(name .. "Minimized", _G[name .. "Minimized"])
 	end
 end
 

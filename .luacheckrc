@@ -41,7 +41,7 @@ globals = {
 -- WoW API, Blizzard frames and the addon's own data files and named frames.
 read_globals = {
 	"HelpTip", "StaticPopup_Show", "GetActionTexture", "OpenAllBags", "CloseAllBags", "CVarCallbackRegistry",
-	"BagItemAutoSortButton", "BagItemSearchBox", "MainMenuBarBackpackButton",
+	"BagItemAutoSortButton", "BagItemSearchBox", "MainMenuBarBackpackButton", "BagBarExpandToggle", "MainMenuBarBagManager",
 	"ADDONS", "EXIT_GAME", "GAMEMENU_ADDONS", "GAMEMENU_EDIT_MODE", "GAMEMENU_HELP", "GAMEMENU_OPTIONS", "GAMEMENU_SUPPORT", "HELP_LABEL", "HUD_EDIT_MODE_MENU", "LOGOUT", "MACROS", "OPTIONS", "QUIT", "RETURN_TO_GAME",
 	"EnumerateFrames",
 	"LFGListingCategorySelection_UpdateCategoryButtons", "LFGListingFrame",

@@ -164,9 +164,11 @@ local function SkinTitle(button)
 			local rep = Replace(tick, { as = "questlog-icon-ticksquare", button = cb, rect = tick, alsoFade = extra,
 				checked = function() return cb.CheckMark:IsShown() end })
 			if rep then
+				-- (SetState: the rule's own re-read -- a rim's Update, the flat
+				-- box's driver)
 				local function Update()
-					if active and rep.object.Update then
-						rep.object:Update()
+					if active then
+						rep:SetState()
 					end
 				end
 				hooksecurefunc(cb.CheckMark, "SetShown", Update)
@@ -517,12 +519,14 @@ end
 -- I7 tracked and hover), applied to the game's own textures after each
 -- atlas change and put back on disable.
 --------------------------------------------------------------------------------
+-- (0.19.1, the user 2026-10-04: "very pixelated": the pins' own pieces, cut at the sheet's native 74 px, where the
+-- slider thumb's 20 texels were stretched)
 local PIN_PIECES = {
-	["Waypoint-MapPin-Untracked"] = "inputs/slider_thumb_normal",
-	["Waypoint-MapPin-Tracked"] = "inputs/slider_thumb_hover",
-	["Waypoint-MapPin-Highlight"] = "inputs/slider_thumb_hover",
-	["Waypoint-MapPin-Minimap-Tracked"] = "inputs/slider_thumb_hover",
-	["Waypoint-MapPin-Minimap-Untracked"] = "inputs/slider_thumb_normal",
+	["Waypoint-MapPin-Untracked"] = "inputs/mappin_normal",
+	["Waypoint-MapPin-Tracked"] = "inputs/mappin_hover",
+	["Waypoint-MapPin-Highlight"] = "inputs/mappin_hover",
+	["Waypoint-MapPin-Minimap-Tracked"] = "inputs/mappin_hover",
+	["Waypoint-MapPin-Minimap-Untracked"] = "inputs/mappin_normal",
 }
 local pinTextures = {}
 

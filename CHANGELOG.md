@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.1
+
+- Bag bar: a small arrow beside the backpack folds the bag slots away so only the backpack shows, and brings them back with another click. While you hold an item they come out by themselves, so a new bag can go straight into a slot. The game remembers which way you left it. Switch it off with Collapse Arrow (Action Bars > Bag Bar).
+- One look for every control: the check boxes, dropdowns, search and text boxes, tabs, sliders, scroll bars, close buttons and the small +, -, arrow and icon buttons in every window now look like the ones in MelloUI's settings, the game's windows included. Text buttons such as OK, Accept and Create wear the red plate, now with plain closed ends and no diamonds on the sides. With the reskin off they keep the game's own look.
+- Settings: every border, every text size and font, and every parchment switch now sit together on Look. Borders has the Nameplate, Minimap Square, Tooltip Class / Reaction and Chat Border Opacity settings beside the kit's borders. Fonts has each element's text size and font: chat, unit frame bars, cooldown timers, FPS / latency, the Quest Tracker, notices and combat text. Parchment has the chat and tooltip switches too. Each element's own page still names its setting, with a button to it.
+- The world map's waypoint pins are sharp again: their gem is drawn from the painting's full-size art, nearly four times the detail it had, in every palette.
+- New palette: Ember Vibrant, a brighter take on Ember: ember-black panels, vivid bronze trim, bright cream-gold text and a jewel ember red for the selection. Like Ember it comes in Warm iron and Bronze: pick it and its Kit Colours in Look > General, or in the installer, where its card sits under Ember's.
+
 ## 0.19.0
 
 - Bags by Kind: your bags in one window sorted by kind, each kind under its own heading: what you picked up lately, gear, quest items, consumables, junk, trade goods and the rest. Small kinds sit side by side, so the window stays about as big as before. All your empty slots fold into one slot that shows how many are free (drop an item on it to put it in a free slot); a special bag's free slots, such as a mining bag's, get a slot of their own. Click a heading to fold that kind into one slot. Junk shows what it sells for, and at a vendor a Sell Junk button sells it all. The bags still open and close as before: with the bag key, at a vendor, the bank, the mailbox, a trade and the auction house. On by default; switch it off on Windows > Bags to get the game's bag window back.

@@ -687,6 +687,36 @@ function Art.Kit(tex, piece)
 	return false
 end
 
+-- A toggle on the title plate in the painted look (0.19.1, the user
+-- 2026-10-04: "only use the same style as we have in the Configurator" -- it
+-- was the kit's plus / minus / arrow piece): the Configurator's flat plate and
+-- its glyph (MelloUI.Widgets.FlatOver: "plus", its upright line hidden for a
+-- minus, or an "arrow" up), made the first time; in the game's look none of it
+-- shows and the icon has the game's art. `lit`: under the pointer. True while
+-- the flat look shows.
+function Art.Flat(button, kind, lit)
+	local W = MelloUI.Widgets
+	local painted = (type(W) == "table" and W.FlatOver and MelloUI.Look:On(Art.AREA)) and true or false
+	local p = button.flat
+	if painted and not p then
+		p = W.FlatOver(button, kind, kind == "arrow" and { dir = "up" } or nil)
+		button.flat = p
+	end
+	if p then
+		p.fill:SetShown(painted)
+		for _, list in ipairs({ p.edges, p.glyph }) do
+			for i = 1, #list do
+				list[i]:SetShown(painted)
+			end
+		end
+		if painted then
+			W.FlatState(p, lit)
+		end
+	end
+	button.icon:SetShown(not painted)
+	return painted
+end
+
 -- the followed quest's mark: the kit's small gem (a gold dot without the
 -- kit), or the game's map pin's chat icon (MelloUI.Look.Watch: now and at
 -- every switch)
@@ -1868,17 +1898,23 @@ do
 		return line or nil
 	end
 
-	-- the plate's arrow: lit while on (the kit's arrow, else the game's
-	-- quest arrow), dim while off
+	-- the plate's arrow: lit while on (the Configurator's flat arrow, Art.Flat;
+	-- the game's quest arrow in its look), dim while off
 	function Near.RefreshToggle()
 		local button = header and header.nearest
 		if not button then
 			return
 		end
-		if not Art.Kit(button.icon, "buttons/arrow_up_normal") then
-			button.icon:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")   -- (the game's quest arrow)
+		local alpha = Near.On() and 1 or 0.4
+		if Art.Flat(button, "arrow", button.lit) then
+			local glyph = button.flat.glyph
+			for i = 1, #glyph do
+				glyph[i]:SetAlpha(alpha)
+			end
+			return
 		end
-		button.icon:SetAlpha(Near.On() and 1 or 0.4)
+		button.icon:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")   -- (the game's quest arrow)
+		button.icon:SetAlpha(alpha)
 	end
 
 	Near.TIP = "Nearest Quest First"
@@ -1887,8 +1923,9 @@ do
 	Near.TIP_ROUTE = "Needs Route, which is off."
 
 	function Near.OnToggleEnter(button)
-		-- (the kit's arrow lit under the pointer; the game's arrow as it is)
-		Art.Kit(button.icon, "buttons/arrow_up_hover")
+		-- (the flat plate lit under the pointer; the game's arrow as it is)
+		button.lit = true
+		Near.RefreshToggle()
 		local body = Near.On() and Near.TIP_ON or Near.TIP_OFF
 		local line = not Route() and Near.TIP_ROUTE or nil
 		local W = MelloUI.Widgets
@@ -1907,6 +1944,9 @@ do
 
 	function Near.OnToggleLeave()
 		GameTooltip:Hide()
+		if header and header.nearest then
+			header.nearest.lit = nil
+		end
 		Near.RefreshToggle()
 	end
 
@@ -2239,7 +2279,7 @@ local function UpdateThumb()
 	local travel = visible - h
 	local y = travel * (scrollOffset / MaxScroll())
 	thumb:ClearAllPoints()
-	thumb:SetPoint("TOPRIGHT", clip, "TOPRIGHT", THUMB_W + 3, -y)
+	thumb:SetPoint("TOP", clip, "TOPRIGHT", THUMB_W / 2 + 3, -y)   -- (centred on the track)
 	thumb:SetHeight(h)
 end
 
@@ -2390,8 +2430,14 @@ end
 local SECTION_H = 24
 local sections = {}
 
--- A collapse toggle, the kit's minus / plus (the game's without the kit):
--- `IsCollapsed()` picks the icon, `OnClick` flips the state
+-- A collapse toggle: the Configurator's flat plus / minus (Art.Flat; the
+-- game's plus / minus buttons in its look): `IsCollapsed()` picks the glyph,
+-- `OnClick` flips the state
+local ToggleLit = Perf.Shared("OnEnter / OnLeave on the Quest Tracker's toggles", function(toggle)
+	toggle.lit = toggle:IsMouseOver() and true or nil
+	toggle.Refresh()
+end, "script")
+
 local function MakeToggle(parent, size, IsCollapsed, OnClick)
 	local toggle = CreateFrame("Button", nil, parent)
 	toggle:SetSize(size, size)
@@ -2399,12 +2445,15 @@ local function MakeToggle(parent, size, IsCollapsed, OnClick)
 	toggle.icon:SetAllPoints(toggle)
 	function toggle.Refresh()
 		local collapsed = IsCollapsed()
-		local piece = collapsed and "buttons/plus_normal" or "buttons/minus_normal"
-		if not Art.Kit(toggle.icon, piece) then
+		if Art.Flat(toggle, "plus", toggle.lit) then
+			toggle.flat.glyph[2]:SetShown(collapsed and true or false)   -- (its upright line: a plus while folded)
+		else
 			toggle.icon:SetTexture(collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
 		end
 	end
 	Perf.SetScript(toggle, "OnClick", OnClick)
+	Perf.SetScript(toggle, "OnEnter", ToggleLit)   -- (our own button: its scripts, not hooks)
+	Perf.SetScript(toggle, "OnLeave", ToggleLit)
 	toggle.Refresh()
 	return toggle
 end
@@ -2815,27 +2864,20 @@ local function Build()
 	content:SetPoint("TOPLEFT", clip, "TOPLEFT", 0, 0)
 	content:SetSize(ContentWidth(), 1)
 
-	-- the scroll thumb: the kit's, or a plain bar, beside the list
+	-- the scroll bar beside the list: the Configurator's list scroll bar (0.19.1,
+	-- the user 2026-10-04: "only use the same style as we have in the
+	-- Configurator" -- it was the kit's thumb slab): a thin `border` track and
+	-- a `trim` thumb, 4 px
 	track = frame:CreateTexture(nil, "ARTWORK")
-	PaintKey(track, "innerPanel", "fill", 0.35)
-	track:SetWidth(3)
+	PaintKey(track, "border", "fill", 1)
+	track:SetWidth(4)
 	track:SetPoint("TOP", clip, "TOPRIGHT", THUMB_W / 2 + 3, 0)
 	track:SetPoint("BOTTOM", clip, "BOTTOMRIGHT", THUMB_W / 2 + 3, 0)
-	local Kit = MelloUI.Kit
-	local okT, vstrip = false, nil
-	if Kit and Kit.VStrip then
-		okT, vstrip = pcall(Kit.VStrip, Kit, frame, "lists/scrollthumb", { state = "normal", scale = Kit.scale })
-	end
-	if okT and vstrip then
-		thumb = vstrip
-		thumb:SetWidth(THUMB_W + 2)
-	else
-		thumb = CreateFrame("Frame", nil, frame)
-		thumb:SetWidth(THUMB_W - 2)
-		local t = thumb:CreateTexture(nil, "ARTWORK")
-		t:SetAllPoints(thumb)
-		PaintKey(t, "selectedTrim", "fill", 0.8)
-	end
+	thumb = CreateFrame("Frame", nil, frame)
+	thumb:SetWidth(4)
+	local t = thumb:CreateTexture(nil, "ARTWORK")
+	t:SetAllPoints(thumb)
+	PaintKey(t, "trim", "fill", 1)
 	thumb:SetFrameLevel(frame:GetFrameLevel() + 6)
 	thumb:Hide()
 	track:Hide()

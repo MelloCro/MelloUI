@@ -146,9 +146,11 @@ band at the schematic's aspect with the still-life, chosen by colour).
 
 ## 8c. One kit per palette (0.14.0)
 
-MelloUI has seven palettes (Core.lua `MelloUI.Palettes`; `Tools/palettes.json` holds the same colours for the art
+MelloUI has eight palettes (Core.lua `MelloUI.Palettes`; `Tools/palettes.json` holds the same colours for the art
 tools). Ember keeps its three looks as before: Warm iron (`Media/KitWarm`, the default), Bronze (`Media/KitBronze`) and
-the Original (`Media/Kit`, the painted one). Every other palette has ONE recoloured kit of its own, `Media/Kit<Id>`
+the Original (`Media/Kit`, the painted one). Ember Vibrant (0.19.1, `"looks": "ember"` in both registries) has the same
+three, made by Ember's own formulas from its roles (`kit_palette.ember_ramps`): Warm iron in `Media/KitEmberVibrant`,
+Bronze in `Media/KitEmberVibrantBronze`, and the Original. Every other palette has ONE recoloured kit of its own, `Media/Kit<Id>`
 (`KitObsidian`, `KitObsidianVibrant`, `KitRoyalAzure`, `KitRoyalAzureVibrant`, `KitFelEmber`, `KitFelEmberVibrant`),
 plus the Original, and a Game Menu picture `GameMenuFrame_<id>`. `Tools/kit_palette.py` makes them from the painted
 masters (the same 74 pieces as KitWarm; the uncoloured groups, backdrops, cards, icons and the vellum, parchment,
@@ -158,6 +160,35 @@ byte-identical; a palette look whose saturated colours fail the DXT gate on a sh
 same uv. In the Lua: `Kit:LookFolder(paletteId, kitColours)`, `Kit:ColourLooks([paletteId])` (the Kit Colours choices
 under a palette), `Kit:ColourLookShown()`, `Kit:LookRoot([look][, piece][, paletteId])`. A switch walks the kit's
 textures once and fires `palette`; Preload Artwork holds only the look in use.
+
+**A painted palette (0.19.1, user 2026-10-04).** A palette with `"art"` in `Tools/palettes.json`
+(`kit_palette.ART`) has a kit painted for it instead of a recoloured one. None ships: Forged Steel, the one there was,
+was taken out again the same day (the user: "i want the forged steel deleted from the addon, i dont like it"), with its
+Window Border and Inner Border styles. Its masters and its Media are kept in
+`MelloUI-BuildData/masters_archive/forged_steel_2026-10-04`, its art in `MelloUI-BuildData/kit_v3`; the support below
+stays for another painted palette (Kit.lua's `LOOK.ART_ROOTS` is empty until one is added).
+
+- **The art.** Forged Steel's art is the v3 kit, `MelloUI-BuildData/kit_v3/v3_2x`: 310 pieces at their 2x layout size,
+  cut by `kit_v3/tools/build_v3.py` from the user's ChatGPT material sheets.
+  - Forged blue steel and flat dark panels.
+  - Hover is a lighter piece; gold only marks selected, checked or open.
+  - The gem and ornament pieces are empty.
+- **The masters.** `Tools/build_art_look.py` writes them to `masters/Media/KitSteel` on the painted kit's own canvas
+  for each piece, so the one layout holds; `--check` compares them. `kit_palette.py` never recolours it, but still
+  recolours its Game Menu picture (`GameMenuFrame_steel`).
+- **What it owns.** The folder holds every piece but the content the looks share (`kit_palette.ART_SKIP` = Kit.lua
+  `LOOK.ART_UNCOLOURED`: cards, icons, the profession and schematic backdrops, leather, quilt, crackle), so its pages,
+  parchment and rank marks are its own. `kit_palette.owns(folder, name)` is the rule `texture_pack.py` reads per look
+  (the Kit-only picture sheets are made for a painted look too), and the ship checks that the two lists agree.
+- **Its shadows.** `build_art_look.py` also writes `Textures/KitShadows_steel.tga`: the look's own shapes laid exactly
+  where `KitShadows.lua` places the painted kit's (`make_kit_shadows.build_look`; it stops if a size would
+  differ). Kit.lua takes the look's sheet when it makes a partner and when the look changes: `LOOK.ART_ROOTS`
+  gives the ending; `LOOK.ShadowSheet` picks the sheet; `LOOK.Retexture` swaps it and keeps the coordinates.
+- **Shapes the code expects:**
+  - its `tabs/top` caps end 40 px in from their outer end: the title bar is laid past the window to where the
+    old gems' centres were (`CAP_GEM`, `Kit:TitleOnRail`);
+  - its "red" twins (`deco/barframe_red`, `bars/frame_cap_*_red`) are steel, since their red was a gem.
+- **Build order:** `build_art_look.py`, `build_nineslice.py`, `texture_pack.py ship`.
 
 ## 8d. The shade sheet and the shade API (0.14.0)
 

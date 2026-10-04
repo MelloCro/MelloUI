@@ -179,10 +179,16 @@ local function RowHighlights(row)
 end
 
 -- "Enabled for some characters": the game gives the check box its grey
--- (disabled) tick for it; the kit's tick is shown greyed the same way, its
--- own art desaturated -- no colour of ours
+-- (disabled) tick for it; the flat box's tick is shown muted the same way
+-- (parts.partial: W.FlatState paints it mutedText), the kit's own art
+-- desaturated
 local function SyncPartial(cb)
 	local rep = cb.melloRep
+	if rep and rep.flat then
+		rep.flat.partial = (active and partial[cb] == true) or nil
+		rep:SetState()
+		return
+	end
 	local tex = rep and rep.object
 	if tex and tex.SetDesaturated then
 		tex:SetDesaturated(active and partial[cb] == true)
@@ -701,20 +707,9 @@ local function Build()
 	-- the check box, search box, dropdown, buttons and scroll bar, by what
 	-- they are; the list's rows are ours (SkinRow), not the sweep's
 	Kit:SweepControls(al, Replace, skin, ListBox(al))
-	-- the character dropdown's band has no arrow of its own (user,
-	-- 2026-09-24: "add the dropdown arrow too"): the kit's down arrow on its
-	-- right end, at its own size, its hover and pressed looks following the
-	-- button
-	local dd = al.Dropdown
-	if dd and dd.CreateTexture and not skin.ddArrow then
-		local arrow = Kit:StateTexture(dd, "buttons/arrow_down", { layer = "OVERLAY", sublevel = 6 })
-		local w, h = Kit:Size("buttons/arrow_down_normal")
-		arrow:ClearAllPoints()
-		arrow:SetSize(w, h)
-		arrow:SetPoint("RIGHT", dd, "RIGHT", -3, 0)
-		arrow:Hide()
-		skin.ddArrow = arrow
-	end
+	-- (the character dropdown's arrow, user 2026-09-24 "add the dropdown
+	-- arrow too": since 0.19.1 the flat dropdown's own caret, as every
+	-- dropdown's -- the kit's extra down arrow went with the kit's controls)
 	HookList(al)
 	return skin
 end
@@ -738,9 +733,6 @@ local function Activate()
 	for button in pairs(toggleReps) do
 		SyncToggle(button)
 	end
-	if skin.ddArrow then
-		skin.ddArrow:Show()
-	end
 	HeaderFont(true)
 	RefreshRows()
 end
@@ -753,9 +745,6 @@ local function Deactivate()
 	if skin then
 		for _, rep in ipairs(skin.reps) do
 			rep:Disable()
-		end
-		if skin.ddArrow then
-			skin.ddArrow:Hide()
 		end
 	end
 	HeaderFont(false)

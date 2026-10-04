@@ -5,6 +5,8 @@
 --   * hide the micro menu (character / spellbook / ... buttons)
 --   * hide the bag bar (the bag slots then dock under the open bag window,
 --     with or without Combine Bags, so bags can still be equipped and removed)
+--   * the bag bar's fold: the game's arrow beside the backpack folds the bag
+--     slots away and brings them back (the game's own expandBagBar setting)
 --   * world text scale (floating combat text / damage numbers)
 --
 -- Hidden frames are re-parented to an invisible frame instead of calling Hide(),
@@ -16,6 +18,7 @@ local _, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Tweaks")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local Num = MelloUI.Safe.Number
 
 local M = MelloUI:RegisterModule("Tweaks", {
 	title = "Tweaks",
@@ -29,6 +32,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		hideMicroMenu = false,
 		hideBagBar = false,
 		bagSlotsOnBags = true,
+		bagBarFold = true,
 		hideMinimapCoords = true,
 		worldTextScale = 1,
 		chatNotices = true,
@@ -53,6 +57,8 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Hide the player coordinates the client writes under the minimap." },
 		{ type = "toggle", key = "bagSlotsOnBags", parent = "hideBagBar", name = "Bag Slots on Bag Window",
 		  desc = "While the bag bar is hidden, show the bag slots under the open bag window so bags can still be equipped and removed. Works with and without the Combine Bags option." },
+		{ type = "toggle", key = "bagBarFold", name = "Collapse Arrow", new = "0.19.1",
+		  desc = "An arrow beside the backpack folds the bag slots away so only the backpack shows; click it again to bring them back. While you hold an item they come out by themselves, so a new bag can be dropped into a slot. The game remembers which way you left it." },
 		{ type = "header", name = "Chat" },
 		{ type = "toggle", key = "chatNotices", name = "Chat Notices",
 		  desc = "Lines MelloUI writes to chat on its own: a learned dungeon entrance, settings restored from the backup, hints. Replies to slash commands always show." },
@@ -96,6 +102,7 @@ local HIDE_TARGETS = {
 local originalParents = setmetatable({}, { __mode = "k" })
 local editModeActive = false
 local UpdateBagSlots = nil   -- defined in the bag slots section
+local Fold = {}             -- the bag bar's fold (its section below)
 
 local function SetFrameHidden(frame, hidden)
 	if not frame or not frame.SetParent then
@@ -122,6 +129,9 @@ local function UpdateHiddenFrames()
 	end
 	if UpdateBagSlots then
 		UpdateBagSlots()
+	end
+	if Fold.Apply then
+		Fold.Apply()
 	end
 end
 
@@ -338,10 +348,309 @@ function UpdateBagSlots()
 	local db = M.db
 	local want = M.isEnabled and db and db.hideBagBar and db.bagSlotsOnBags and not editModeActive and BagsBar ~= nil
 	if want then
+		-- (the fold's hidden slots out first: the dock takes the ones shown)
+		if Fold.Release then
+			Fold.Release()
+		end
 		AttachBagSlots()
 	else
 		DetachBagSlots()
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The bag bar's fold (0.19.1; the user, 2026-10-04: "make the bag button to be
+-- able to collapse itself into a 1 bag but also expendable"; picked: the arrow
+-- between the backpack and the bags, and the bags out by themselves while an
+-- item is on the cursor). The game has the whole of it -- BagBarExpandToggle,
+-- the expandBagBar CVar its click sets and the game keeps, and
+-- MainMenuBarBagManager's state (that CVar, or an item on the cursor) -- and
+-- this client turns it off (BagsBar.hideExpandToggle). Here the arrow is shown
+-- and laid, its click left the game's own; the bag slots and the key ring are
+-- hidden while the bar is folded. Never a key on the game's frames and never
+-- its layout run: after each of its passes the slots are chained from the
+-- arrow with the game's own anchors (BagsBarMixin:Layout's). The bar keeps
+-- its size (the game centres the bottom row on it, so a fold moves nothing
+-- else); should the arrow not fit in the bar's own room, the backpack steps
+-- out on its side by the rest. The game's frame art round the bar follows
+-- what shows. The arrow's look: the game's art, or the kit's flat arrow
+-- (ActionBarPanel). Told on the bus: 'bagbar' (the backdrops).
+--------------------------------------------------------------------------------
+
+Fold.CVAR = "expandBagBar"
+Fold.SLOTS = { "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot",
+	"CharacterReagentBag0Slot", "KeyRingButton" }
+Fold.POOLS = { "HorizontalDividersPool", "VerticalDividersPool" }
+Fold.ART = { -6, 6, 5, -5 }   -- the frame art round the bar (BagsBar.BorderArt's own offsets)
+Fold.hid = setmetatable({}, { __mode = "k" })   -- [slot] = true: hidden by the fold (shown again by it alone)
+Fold.list = {}
+Fold.on = false
+
+-- a frame's length along the bar (its width on a row, its height in a column)
+function Fold.Len(frame, horizontal)
+	local ok, w, h = pcall(frame.GetSize, frame)
+	if not ok then
+		return 0
+	end
+	return Num(horizontal and w or h) or 0
+end
+
+-- the bag buttons in the game's order (the backpack first)
+function Fold.Buttons()
+	local list = Fold.list
+	wipe(list)
+	local mgr = MainMenuBarBagManager
+	if mgr and mgr.EnumerateBagButtons then
+		for _, button in mgr:EnumerateBagButtons() do
+			list[#list + 1] = button
+		end
+	end
+	return list
+end
+
+function Fold.Active()
+	local db = M.db
+	if not (M.isEnabled and db and db.bagBarFold and not db.hideBagBar and not slotsAttached) then
+		return false
+	end
+	if not (BagsBar and BagBarExpandToggle and MainMenuBarBackpackButton and MainMenuBarBagManager) then
+		return false
+	end
+	local get = (C_CVar and C_CVar.GetCVar) or GetCVar
+	local ok, value = pcall(get, Fold.CVAR)
+	return ok and value ~= nil
+end
+
+-- the game's state: the player's (the CVar) or an item on the cursor
+function Fold.Open()
+	local mgr = MainMenuBarBagManager
+	local ok, open = pcall(mgr.ShouldBarExpand, mgr)
+	if not ok then
+		return true
+	end
+	return open and true or false
+end
+
+function Fold.Turn(texture, angle)
+	if texture and texture.SetRotation then
+		texture:SetRotation(angle)
+	end
+end
+
+function Fold.HideDividers(bar)
+	for _, key in ipairs(Fold.POOLS) do
+		local pool = rawget(bar, key)
+		if pool and pool.EnumerateActive then
+			for divider in pool:EnumerateActive() do
+				divider:Hide()
+			end
+		end
+	end
+end
+
+-- The frame art round what shows: from the backpack's corners, out along the
+-- bar by `beyond` on the bags' side
+function Fold.FitArt(bar, pack, point, beyond)
+	local art = rawget(bar, "BorderArt")
+	if not (art and art.SetPoint) then
+		return
+	end
+	if not Fold.artPoints then
+		local saved = {}
+		for i = 1, art:GetNumPoints() do
+			saved[i] = { art:GetPoint(i) }
+		end
+		Fold.artPoints = saved
+	end
+	local A = Fold.ART
+	local l, t, r, b = A[1], A[2], A[3], A[4]
+	if point == "RIGHT" then
+		l = l - beyond
+	elseif point == "LEFT" then
+		r = r + beyond
+	elseif point == "BOTTOM" then
+		t = t + beyond
+	else
+		b = b - beyond
+	end
+	art:ClearAllPoints()
+	art:SetPoint("TOPLEFT", pack, "TOPLEFT", l, t)
+	art:SetPoint("BOTTOMRIGHT", pack, "BOTTOMRIGHT", r, b)
+end
+
+function Fold.Lay(open)
+	local bar, toggle, pack = BagsBar, BagBarExpandToggle, MainMenuBarBackpackButton
+	for _, name in ipairs(Fold.SLOTS) do
+		local slot = _G[name]
+		if slot then
+			if open then
+				if Fold.hid[slot] then
+					Fold.hid[slot] = nil
+					slot:Show()
+				end
+			elseif slot:IsShown() then
+				Fold.hid[slot] = true
+				slot:Hide()
+			end
+		end
+	end
+	local ok, point, relativePoint, x, y = pcall(bar.GetBagButtonAnchorPoints, bar)
+	local okH, horizontal = pcall(bar.IsHorizontal, bar)
+	if not (ok and okH and point) then
+		return
+	end
+	-- the arrow at the game's size (its long side across the bar), beside the
+	-- backpack toward the bags, as BagsBarMixin:Layout lays it
+	toggle:SetSize(horizontal and Fold.w or Fold.h, horizontal and Fold.h or Fold.w)
+	toggle:ClearAllPoints()
+	toggle:SetPoint(point, pack, relativePoint)
+	toggle:Show()
+	-- which way it points (BagBarExpandToggleMixin:GetRotation's: its art
+	-- points left unturned; open, toward the backpack)
+	local angle
+	if horizontal then
+		angle = (open == (bar:IsDirectionLeft() and true or false)) and math.pi or 0
+	else
+		angle = (open == (bar:IsDirectionUp() and true or false)) and (math.pi / 2) or (3 * math.pi / 2)
+	end
+	Fold.Turn(toggle:GetNormalTexture(), angle)
+	Fold.Turn(toggle:GetPushedTexture(), angle)
+	Fold.Turn(toggle:GetHighlightTexture(), angle)
+	-- the slots that show, chained from the arrow
+	local beyond, anchor, gap = Fold.Len(toggle, horizontal), toggle, math.abs((horizontal and x or y) or 0)
+	for _, button in ipairs(Fold.Buttons()) do
+		if button ~= pack and button:IsShown() then
+			button:ClearAllPoints()
+			button:SetPoint(point, anchor, relativePoint, x, y)
+			anchor = button
+			beyond = beyond + gap + Fold.Len(button, horizontal)
+		end
+	end
+	-- the backpack in its place, stepped out by what the bar has no room for
+	local over = Fold.Len(pack, horizontal) + beyond - Fold.Len(bar, horizontal)
+	over = over > 0.5 and over or 0
+	local dx, dy = 0, 0
+	if point == "RIGHT" then
+		dx = over
+	elseif point == "LEFT" then
+		dx = -over
+	elseif point == "BOTTOM" then
+		dy = -over
+	else
+		dy = over
+	end
+	pack:ClearAllPoints()
+	pack:SetPoint(point, bar, point, dx, dy)
+	-- folded: no divider between buttons that are not there
+	if not open then
+		Fold.HideDividers(bar)
+	end
+	Fold.FitArt(bar, pack, point, beyond)
+end
+
+-- the fold gone (the option off, the bar hidden, its slots docked): the
+-- slots back, the arrow hidden, the game's own chain from the backpack laid
+-- again (its pass not run), the frame art on its own anchors
+function Fold.Release()
+	if not Fold.on then
+		return
+	end
+	Fold.on = false
+	for slot in pairs(Fold.hid) do
+		slot:Show()
+	end
+	wipe(Fold.hid)
+	local bar, toggle, pack = BagsBar, BagBarExpandToggle, MainMenuBarBackpackButton
+	toggle:Hide()
+	local ok, point, relativePoint, x, y = pcall(bar.GetBagButtonAnchorPoints, bar)
+	if ok and point then
+		pack:ClearAllPoints()
+		pack:SetPoint(point, bar, point)
+		local anchor = pack
+		for _, button in ipairs(Fold.Buttons()) do
+			if button ~= pack and button:IsShown() then
+				button:ClearAllPoints()
+				button:SetPoint(point, anchor, relativePoint, x, y)
+				anchor = button
+			end
+		end
+	end
+	local art = rawget(bar, "BorderArt")
+	if art and Fold.artPoints then
+		art:ClearAllPoints()
+		for _, p in ipairs(Fold.artPoints) do
+			art:SetPoint(unpack(p))
+		end
+	end
+	Fold.told = nil
+	MelloUI:Fire("bagbar")
+end
+
+function Fold.Apply()
+	if not Fold.Active() then
+		Fold.Release()
+		return
+	end
+	if not Fold.w then
+		-- the arrow's own size (10 x 16 on a row)
+		local ok, w, h = pcall(BagBarExpandToggle.GetSize, BagBarExpandToggle)
+		w, h = ok and Num(w), ok and Num(h)
+		Fold.w, Fold.h = (w and w > 0) and w or 10, (h and h > 0) and h or 16
+	end
+	Fold.Hook()
+	Fold.on = true
+	local open = Fold.Open()
+	Fold.Lay(open)
+	-- (told only when it changed: the backdrops re-lay on the bar's own
+	-- passes as well)
+	if Fold.told ~= open then
+		Fold.told = open
+		MelloUI:Fire("bagbar")
+	end
+end
+
+-- After the game's pass (its Layout run directly, or through the expand
+-- callback it took at load, which a hook never sees): laid again now and
+-- once more a frame later, whichever came first
+local function FoldNext()
+	Fold.pending = false
+	Fold.Apply()
+end
+
+Fold.Changed = Perf.Shared("the bag bar's layout and expand state (the fold)", function()
+	if not Fold.on then
+		return
+	end
+	Fold.Apply()
+	if not Fold.pending then
+		Fold.pending = true
+		C_Timer.After(0, FoldNext)
+	end
+end, "hook")
+
+-- The arrow clicked: the slots shown or hidden BEFORE the game's own click
+-- handler sets the CVar and its pass runs, so its dividers come out right
+Fold.PreClick = Perf.Shared("PreClick on the bag bar's arrow", function()
+	if not Fold.on then
+		return
+	end
+	local mgr = MainMenuBarBagManager
+	local okU, user = pcall(mgr.IsBarUserExpanded, mgr)
+	Fold.Lay((okU and not user) or rawget(mgr, "expandBarAuto") == true)
+end, "script")
+
+function Fold.Hook()
+	if Fold.hooked then
+		return
+	end
+	Fold.hooked = true
+	if BagsBar.Layout then
+		hooksecurefunc(BagsBar, "Layout", Fold.Changed)
+	end
+	if EventRegistry and EventRegistry.RegisterCallback then
+		EventRegistry:RegisterCallback("MainMenuBarManager.OnExpandChanged", Fold.Changed, Fold)
+	end
+	Perf.HookScript(BagBarExpandToggle, "PreClick", Fold.PreClick)
 end
 
 --------------------------------------------------------------------------------
@@ -458,7 +767,7 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
-	if HIDE_TARGETS[key] or key == "bagSlotsOnBags" then
+	if HIDE_TARGETS[key] or key == "bagSlotsOnBags" or key == "bagBarFold" then
 		UpdateHiddenFrames()
 	elseif key == "worldTextScale" then
 		ApplyWorldTextScale(value)

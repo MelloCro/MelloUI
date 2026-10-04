@@ -532,44 +532,9 @@ local function SkinCraftingPage(page)
 		if list.Background then
 			skin.listBox = Replace(list.Background, { as = "Professions-background-summarylist" })
 		end
-		local search = list.SearchBox
-		if search and search.Middle then
-			local rep = Replace(search.Middle, { as = "common-search-border-middle", rect = search, edit = search,
-				alsoFade = { search.Left, search.Right, search.searchIcon } })
-			if rep then
-				-- the plate's left cap carries its own magnifying glass: the
-				-- text and the "Search" instructions start past it (the
-				-- game's 16 px inset was for its own icon); put back on disable
-				local l, r, t, b = search:GetTextInsets()
-				local saved = { l, r, t, b }
-				local instr = search.Instructions
-				local instrPoints = {}
-				if instr then
-					for i = 1, instr:GetNumPoints() do
-						instrPoints[i] = { instr:GetPoint(i) }
-					end
-				end
-				local function Fit()
-					local capW = rep.strip.capL:GetWidth() * 0.45
-					search:SetTextInsets(capW, r, t, b)
-					if instr then
-						instr:ClearAllPoints()
-						instr:SetPoint("TOPLEFT", search, "TOPLEFT", capW, 0)
-						instr:SetPoint("BOTTOMRIGHT", search, "BOTTOMRIGHT", -20, 0)
-					end
-				end
-				rep.onEnable = Fit
-				rep.onDisable = function()
-					search:SetTextInsets(unpack(saved))
-					if instr then
-						instr:ClearAllPoints()
-						for _, pt in ipairs(instrPoints) do
-							instr:SetPoint(unpack(pt))
-						end
-					end
-				end
-			end
-		end
+		-- the search box: the kit's one (Kit:SkinSearchBox -- the flat field,
+		-- the game's glass kept inside it)
+		Kit:SkinSearchBox(list.SearchBox, Replace)
 		local filter = list.FilterDropdown
 		if filter and filter.Background then
 			-- the frame is a child of the button one level under it (under its text)
@@ -798,7 +763,8 @@ local function SkinCraftingPage(page)
 				-- the plate: the replacement's strip, or found among the button's
 				-- children (the sweep may have dressed the button first: the
 				-- replace here then made none -- user, 2026-09-24: "nothing
-				-- changed")
+				-- changed"); a flat plate (0.19.1) has none: the label stays
+				-- where the game centres it
 				local strip = b.melloPlate and b.melloPlate.strip
 				if not strip then
 					for _, child in ipairs({ b:GetChildren() }) do

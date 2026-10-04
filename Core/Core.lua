@@ -167,8 +167,9 @@ end
 -- values as Tools/palettes.json, which the art tools read):
 --   MelloUI.Palettes      { [id] = { id, name, blurb, roles = { [role] =
 --                         { r, g, b, hex = "RRGGBB" } } }, order = { ids } }
---                         ids: ember, obsidian, obsidianVibrant, royalAzure,
---                         royalAzureVibrant, felEmber, felEmberVibrant
+--                         ids: ember, emberVibrant (0.19.1), obsidian,
+--                         obsidianVibrant, royalAzure, royalAzureVibrant,
+--                         felEmber, felEmberVibrant
 --   MelloUI.Palette       THE palette in use: one palette's roles table, so
 --                         a switch always puts another table there (read it
 --                         when painting, never hold it from load)
@@ -205,18 +206,25 @@ do
 	-- each palette's ten swatches in this order
 	local ROLES = { "mainWindow", "innerPanel", "raisedPanel", "border", "trim", "text", "mutedText", "selectedTab",
 		"selectedTrim", "hover" }
-	local function Add(id, name, blurb, hexes)
+	-- `looks` (0.19.1): "ember" for a palette with Ember's two kit looks (Warm iron, Bronze) rather than one kit of
+	-- its own (Modules/Kit.lua: Kit:LookFolder; Tools/palettes.json, the same field)
+	local function Add(id, name, blurb, hexes, looks)
 		local roles = {}
 		for i = 1, #ROLES do
 			roles[ROLES[i]] = Hex(hexes[i])
 		end
 		local palettes = MelloUI.Palettes
-		palettes[id] = { id = id, name = name, blurb = blurb, roles = roles }
+		palettes[id] = { id = id, name = name, blurb = blurb, roles = roles, looks = looks }
 		palettes.order[#palettes.order + 1] = id
 	end
 	--   id, name, blurb, { mainWindow, innerPanel, raisedPanel, border, trim, text, mutedText, selectedTab, selectedTrim, hover }
 	Add("ember", "Ember", "MelloUI's first palette: warm dark brown, bronze-gold trim, a deep red for the selection.",
 		{ "#1F1B16", "#11100D", "#2E1F14", "#3D342A", "#8D642F", "#C6AF85", "#7F6846", "#4E1812", "#AE8546", "#5A3C24" })
+	-- (0.19.1, user 2026-10-04: "a more Vivid and Vibrant Variation of the Ember Profile, both Bronze and Warm Iron":
+	-- the vivid of two samples; Ember's two looks made from its roles, Media\KitEmberVibrant and KitEmberVibrantBronze)
+	Add("emberVibrant", "Ember Vibrant",
+		"Ember, lit: ember-black panels, vivid bronze trim, bright cream-gold text, a jewel ember red for the selection.",
+		{ "#23190A", "#110F06", "#401F03", "#4E3B24", "#C27F18", "#FEE0AA", "#AF8E5D", "#730201", "#F3AF3C", "#683602" }, "ember")
 	Add("obsidian", "Obsidian",
 		"Neutral black glass and pewter, cold white text, one crimson accent. The calmest, highest-contrast base.",
 		{ "#18191B", "#0D0E10", "#212326", "#353739", "#72767D", "#BEC1C5", "#75797E", "#54040A", "#9A9FA5", "#3B3F44" })
