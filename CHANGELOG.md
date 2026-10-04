@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.3
+
+- A new voice pack, remade for this version: every voice at a better pace (each one chosen by ear), the Forever Narrator reads every quest's objectives, and the new quests are voiced. Download it again, both parts (2.5 GB): [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip). Delete the earlier `MelloUI_VoicePack` folder first, then unzip both parts into `AddOns`. The earlier pack still plays until you swap.
+- Chat: Border Opacity (Chat, Look) sets how solid the painted border round the chat windows and their button column is.
+- Tooltip: Fade Delay (Tooltip, Behaviour) sets how long the tooltip of a creature or an object stays fully visible after your cursor leaves it, before it fades out: 0.1 to 1 second, 0.4 by default.
+- Quest List: 96 new Forever quests, and about 200 quests that showed for both factions now show only for their own.
+- Fixed: the painted nameplates flickered as they moved: the health bar, its border and the level ring slid a pixel against each other, and the bar's colour sometimes showed past the border. The whole plate now moves as one, as the game's own does.
+- Fixed: the Friends button in the chat's button column could show a second ring and background, the game's own, under the painted one.
+
 ## 0.18.2
 
 - Discard (a player's request): a button left of Sort on the bag window frees a slot by throwing away your cheapest grey or white junk (at a vendor it sells it instead). It never touches white gear, food, drink, potions, scrolls, conjured items, crafting materials, reagents, ammunition, quest items, keys or anything on your Restock list, never a stack worth 1 gold or more (Never Throw Away Items Worth), and a white item asks first. The same button sits under the loot window's list, and frees a slot only when the loot is worth more.

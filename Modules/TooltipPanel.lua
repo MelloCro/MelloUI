@@ -1246,7 +1246,7 @@ function M:OnDisable()
 end
 
 --------------------------------------------------------------------------------
--- /ttdump [frames|reps|icons]: the GameTooltip's art (hover something, then
+-- /ttdump [frames|reps|icons|fade]: the GameTooltip's art (hover something, then
 -- type it: the tooltip is dumped as last shown). Opens the copy window.
 -- icons: the tooltip's own texture regions (the quest objectives' check
 -- marks, AddTexture's GameTooltipTextureN, 2026-10-03: "hidden behind the
@@ -1327,6 +1327,14 @@ SlashCmdList.MELLOTTDUMP = function(msg)
 			MelloUI:Print("No tooltip.")
 		end
 		MelloUI:ShowLog("ttdump icons")
+		return
+	end
+	-- fade: what the Tooltip module's Fade Delay did this session (ours, or
+	-- the game's own fade where the engine would not let go)
+	if msg == "fade" then
+		local tm = MelloUI:GetModule("Tooltip")
+		MelloUI:Print("%s", tm and tm.FadeReport and tm.FadeReport() or "the Tooltip module has no fade report")
+		MelloUI:ShowLog("ttdump fade")
 		return
 	end
 	-- the ink's hooks as they went in on this client

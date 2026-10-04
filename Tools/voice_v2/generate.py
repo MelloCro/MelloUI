@@ -65,6 +65,7 @@ SPEED_RANGE = (0.5, 2.0)
 ENTRY_RE = re.compile(r"^[a-z0-9_]+/[0-9a-f]{12}\.ogg$")
 POLL_SECONDS = 30
 BATCH_TIMEOUT = 90 * 60
+ALL_MADE_GRACE = 3 * 60   # a batch with every job made that still says it is running: finished after this
 # (the service ends a batch with a failed job as "incomplete": finished too)
 TERMINAL = {"done", "failed", "cancelled", "canceled", "finished", "complete", "completed", "error", "incomplete"}
 
@@ -299,6 +300,7 @@ def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict, 
     deleted = False
     try:
         last = None
+        all_made_since = None
         while True:
             st = api("/v1/batches/%s" % bid)
             line = "state %s, %s/%s done, eta %s min" % (st.get("state"), st.get("done"), st.get("total"),
@@ -309,6 +311,16 @@ def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict, 
             state = str(st.get("state", "")).lower()
             if state in TERMINAL:
                 break
+            # every job made and none failed, yet the batch never says it finished (2026-10-03, the pack remake:
+            # batch 63 sat at 307/307 'running' for over 30 minutes, and the timeout would have deleted its clips
+            # unread): after ALL_MADE_GRACE seconds it is taken as finished, its clips fetched one by one if need be
+            if st.get("total") and st.get("done") == st.get("total") and not st.get("failed"):
+                all_made_since = all_made_since or time.time()
+                if time.time() - all_made_since > ALL_MADE_GRACE:
+                    say("    every job made, the batch still says '%s': taken as finished" % st.get("state"))
+                    break
+            else:
+                all_made_since = None
             if time.time() - t0 > BATCH_TIMEOUT:
                 raise VV.VGError("batch %s did not finish in %d minutes" % (bid, BATCH_TIMEOUT // 60))
             time.sleep(POLL_SECONDS)
@@ -402,7 +414,22 @@ def run_batch(name: str, jobs: list, clips: str, batches_dir: str, index: dict, 
             VV._call("/v1/batches/%s" % bid, method="DELETE", timeout=60)
             deleted = True
         except VV.VGError as e:
-            say("    DELETE failed: %s" % e)
+            # (a batch taken as finished while it still says 'running' must be cancelled first: HTTP 409; left
+            # standing, it blocks the box for the next batch -- 2026-10-03, the pack remake's batch 63)
+            if "cancel it first" in str(e) or "409" in str(e):
+                try:
+                    api("/v1/batches/%s/cancel" % bid, b"", "POST")
+                    for _ in range(20):
+                        if str(api("/v1/batches/%s" % bid).get("state", "")).lower() not in ("running", "queued"):
+                            break
+                        time.sleep(3)
+                    VV._call("/v1/batches/%s" % bid, method="DELETE", timeout=60)
+                    deleted = True
+                    say("    the batch was cancelled, then deleted")
+                except VV.VGError as e2:
+                    say("    DELETE failed after a cancel: %s" % e2)
+            else:
+                say("    DELETE failed: %s" % e)
         record["deletedOnServer"] = deleted
         save_json(os.path.join(batches_dir, bid + ".json"), record)
     say("    saved %d of %d clips, %d failures, %d re-rolled seeds; batch deleted on the server: %s"

@@ -37,6 +37,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		anchor = "default",
 		hideInCombat = false,
 		scale = 1,
+		fadeDelay = 0.4,
 	},
 	options = {
 		{ type = "header", name = "Backdrop" },
@@ -61,6 +62,9 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		  desc = "Colour the tooltip health bar by class or reaction instead of green." },
 		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hide the health bar under unit tooltips (on by default). The two options above only matter when the bar is shown." },
 		{ type = "toggle", key = "hideInCombat", name = "Hide Unit Tooltips In Combat", desc = "Do not show tooltips for units while in combat." },
+		{ type = "slider", key = "fadeDelay", name = "Fade Delay", min = 0.1, max = 1, step = 0.05, new = "0.18.3",
+		  format = function(v) return string.format("%.2f s", v) end,
+		  desc = "How long the tooltip of a creature or an object stays fully visible after your cursor leaves it, before it fades out (the fade itself takes a quarter of a second)." },
 		{ type = "header", name = "Placement" },
 		{ type = "dropdown", key = "anchor", name = "Anchor", desc = "Where tooltips appear.",
 		  values = {
@@ -81,6 +85,7 @@ local PALETTE_OWNER = "Tooltip palette"   -- (the bus owner)
 
 local hooksInstalled = false
 local Follow   -- (At the cursor: Placement, below)
+local Fade     -- (Fade Delay: below Placement)
 local unitColor = nil            -- { r, g, b } of the unit currently shown, or nil
 local applyingBarColor = false
 local originalBarTexture = nil
@@ -263,6 +268,7 @@ local function OnTooltipHidden(tooltip)
 	if tooltip == GameTooltip then
 		unitColor = nil
 		Follow.on = false
+		Fade.Stop(true)
 	end
 end
 
@@ -371,6 +377,102 @@ local function OnDefaultAnchor(tooltip, parent)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Fade Delay (user, 2026-10-03: "Can we make that fade custom and give users a
+-- slider from 0.1 - 1 second, default should be 0.4 seconds before starting
+-- to fade"): a world tooltip the game fades out (the cursor left a creature or
+-- an object: GameTooltip:FadeOut, the engine's, its time not settable) stays
+-- whole for Fade Delay, then fades in Fade.SPAN and hides. When the engine's
+-- fade starts (a post-hook on FadeOut) the tooltip is shown once more -- Show
+-- ends a tooltip's fade -- and ours runs on a frame of our own, only while it
+-- holds and fades. Each frame checks that the engine let go: an alpha fallen
+-- under what we set is the engine's still, and ours stands down for the
+-- session, the game's fade used (nothing fights the engine frame by frame:
+-- WINDOW-RULES section 6); /ttdump fade says which. Anything that takes the
+-- tooltip again (a new unit, an item: any SetOwner) or hides it ends ours,
+-- the tooltip whole again.
+-- (One table: the state, the driver, what this session found.)
+--------------------------------------------------------------------------------
+Fade = { SPAN = 0.25, MIN = 0.1, MAX = 1, on = false, start = 0, set = 1, driver = nil,
+	engine = false, runs = 0, last = nil }
+
+function Fade.Delay()
+	local d = tonumber(M.db and M.db.fadeDelay) or 0.4
+	return math.min(Fade.MAX, math.max(Fade.MIN, d))
+end
+
+function Fade.Stop(whole)
+	if not Fade.on then
+		return
+	end
+	Fade.on = false
+	if Fade.driver then
+		Fade.driver:Hide()
+	end
+	if whole and GameTooltip then
+		GameTooltip:SetAlpha(1)
+	end
+end
+
+function Fade.OnUpdate()
+	local tip = GameTooltip
+	local alpha = Num(tip:GetAlpha())
+	if alpha and alpha < Fade.set - 0.02 then
+		-- the engine's fade still runs: it is left to it, for the session
+		Fade.engine, Fade.on = true, false
+		Fade.last = string.format("the game's fade went on after Show (alpha %.2f, ours %.2f): the game's own fade is used this session", alpha, Fade.set)
+		Fade.driver:Hide()
+		return
+	end
+	local hold, t = Fade.Delay(), GetTime() - Fade.start
+	if t < hold then
+		return
+	end
+	local a = 1 - (t - hold) / Fade.SPAN
+	if a <= 0 then
+		Fade.last = string.format("faded: %.2f s whole, then %.2f s fading (run %d)", hold, Fade.SPAN, Fade.runs)
+		Fade.on = false
+		Fade.driver:Hide()
+		tip:Hide()
+		tip:SetAlpha(1)
+		return
+	end
+	Fade.set = a
+	tip:SetAlpha(a)
+end
+
+function Fade.OnFadeOut(tip)
+	if tip ~= GameTooltip or not M.isEnabled or Fade.engine then
+		return
+	end
+	-- (as the game's fade: left where it is, not followed)
+	Follow.on = false
+	if not Fade.driver then
+		Fade.driver = CreateFrame("Frame")
+		Fade.driver:Hide()
+		Perf.SetScript(Fade.driver, "OnUpdate", Fade.OnUpdate)
+	end
+	Fade.runs = Fade.runs + 1
+	Fade.start, Fade.set, Fade.on = GetTime(), 1, true
+	tip:Show()
+	tip:SetAlpha(1)
+	Fade.driver:Show()
+end
+
+-- what this session's fades did (/ttdump fade)
+function M.FadeReport()
+	return string.format("Fade Delay %.2f s (fade %.2f s); %s; %d fades taken over; last: %s",
+		Fade.Delay(), Fade.SPAN, Fade.engine and "the game's own fade (ours stood down)" or (M.isEnabled and "ours" or "module off"),
+		Fade.runs, tostring(Fade.last or "none yet"))
+end
+
+-- any SetOwner: the tooltip taken again (ours ends) and no longer the game's
+-- default placing to follow (that one is taken again by OnDefaultAnchor)
+local function OnSetOwner()
+	Follow.OnSetOwner()
+	Fade.Stop(true)
+end
+
 -- (its backgrounds laid again at the UI's one resolution whatever the scale:
 -- those in the tooltip, and only when its scale really changed -- audit,
 -- 2026-09-24: each setting of this module laid every background in the UI)
@@ -410,8 +512,12 @@ local function InstallHooks()
 	if GameTooltip then
 		Perf.HookScript(GameTooltip, "OnHide", OnTooltipHidden)
 		-- (At the cursor: below Placement)
-		hooksecurefunc(GameTooltip, "SetOwner", Follow.OnSetOwner)
+		hooksecurefunc(GameTooltip, "SetOwner", OnSetOwner)
 		Perf.HookScript(GameTooltip, "OnUpdate", Follow.OnUpdate)
+		-- (Fade Delay: the engine's fade taken over when it starts)
+		if type(GameTooltip.FadeOut) == "function" then
+			hooksecurefunc(GameTooltip, "FadeOut", Fade.OnFadeOut)
+		end
 	end
 	if GameTooltipStatusBar then
 		-- Blizzard recolours the bar green on every value change; put the unit
@@ -456,6 +562,7 @@ end
 function M:OnDisable()
 	MelloUI:Off(PALETTE_OWNER, "palette")
 	unitColor = nil
+	Fade.Stop(true)
 	for _, tooltip in ipairs(TooltipList()) do
 		RestoreBackdrop(tooltip)
 	end

@@ -103,7 +103,7 @@ local options = {
 	{ type = "toggle", key = "questDetail", name = "Quest Offers",
 	  desc = "The quest description when a quest is offered." },
 	{ type = "toggle", key = "recordedObjectives", name = "Quest Objectives",
-	  desc = "After a quest offer, and after the description the quest log's Read button reads, play the quest's objectives in the quest giver's voice when the voice pack (MelloUI_VoicePack) has them recorded. Text-to-speech never reads the objectives or their counts." },
+	  desc = "After a quest offer, and after the description the quest log's Read button reads, play the quest's objectives when the voice pack (MelloUI_VoicePack) has them recorded: the Forever Narrator reads them. Text-to-speech never reads the objectives or their counts." },
 	{ type = "toggle", key = "questProgress", name = "Quest Progress",
 	  desc = "What the NPC says when you return with an unfinished quest." },
 	{ type = "toggle", key = "questComplete", name = "Quest Turn-In",
@@ -1223,7 +1223,12 @@ local function V2Line(kind, speakerID, questID, title, text, label, page)
 		local file = P.lines[key]
 		local fileVoice = P.fileVoice[file]
 		local folder, name = P.voices[fileVoice or 0], P.file[file]
-		if speakerID ~= 0 and fileVoice ~= voice then
+		-- a quest's objectives in a narrator's voice (the pack of 2026-10-04 on:
+		-- the user, "the quest objectives are going to be read only by the
+		-- Forever Narrator"): the narrator reads them whoever gives the quest --
+		-- played, as the narrator's line (no NPC's face), not the giver's
+		local narrated = kind == "objectives" and type(folder) == "string" and folder:find("^narrator") ~= nil
+		if speakerID ~= 0 and fileVoice ~= voice and not narrated then
 			-- a speaker the pack gave another voice, or none (a giver it did
 			-- not know): one NPC never speaks in two voices
 			Trace("%s: voice pack %s, voice differs from NPC %d's: not played", label, key, speakerID)
@@ -1234,9 +1239,9 @@ local function V2Line(kind, speakerID, questID, title, text, label, page)
 			elseif score and score < 1 then
 				how = string.format(" (matched %d%%)", math.floor(score * 100 + 0.5))
 			end
-			Trace("%s: voice pack hit %s%s", label, key, how)
+			Trace("%s: voice pack hit %s%s%s", label, key, how, narrated and " (the narrator's)" or "")
 			local seconds = P.seconds and PlainNumber(P.seconds[file]) or nil
-			return P.base .. folder .. "\\" .. name .. ".ogg", seconds, key, mismatch, true, questID
+			return P.base .. folder .. "\\" .. name .. ".ogg", seconds, key, mismatch, true, questID, narrated
 		end
 	elseif info.quest and not questID then
 		Trace("%s: no quest ID for the voice pack", label)
@@ -1244,6 +1249,12 @@ local function V2Line(kind, speakerID, questID, title, text, label, page)
 		Trace("%s: voice pack, best match only %d%%", label, math.floor(score * 100 + 0.5))
 	end
 	return nil, nil, nil, nil, voice ~= nil, questID
+end
+M.voiceKeys.V2Line = function(...)   -- (the tests: a line looked up in the pack loaded, V2())
+	if not V2() then
+		return nil
+	end
+	return V2Line(...)
 end
 
 --------------------------------------------------------------------------------
@@ -1575,12 +1586,16 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 		local label = info.quest and string.format("%s %q", kind, tostring(title))
 			or info.page and string.format("page of %q", tostring(title))
 			or string.format("greeting from %s (%d)", tostring(npc and npc.name), speakerID)
-		local path, seconds, key, mismatch, known, foundID = V2Line(kind, speakerID, questID, title, matchText, label,
-			info.page and opts and opts.page or nil)
+		local path, seconds, key, mismatch, known, foundID, narrated = V2Line(kind, speakerID, questID, title, matchText,
+			label, info.page and opts and opts.page or nil)
 		questID = questID or foundID
 		if path then
 			entry.file, entry.length, entry.mismatch = path, seconds, mismatch or nil
 			entry.fileName = "v2:" .. key
+			if narrated then
+				-- (the narrator's line: no NPC's face or name, as an object's)
+				entry.npc, entry.name = nil, nil
+			end
 		else
 			local how = info.clipOnly and "not read"
 				or M.db.speakUnrecorded == false and "silent" or "text-to-speech"

@@ -3800,3 +3800,10 @@ npc,name,voice,identity,reason,source,assigned
 275789,Malah Longwind,taurenfemaleshamannpc,taurenfemaleshaman,silent in game -> crc32(entry) mod race/sex pool,wowhead,2026-09-28
 275811,Pal'juh,trollfemalestandardnpc,trollfemalestandard,game greeting set of primary display,wowhead,2026-09-28
 275954,Bareth Dawnstone,undeadmalewarriornpc,undeadmalewarrior,game greeting set of primary display,forever-cache,2026-09-28
+253285,Fillion Flamebreeze,skyborne_male,unnamed_kit353070,game greeting set of primary display,wowhead,2026-10-03
+264074,Mazu'kon,trollmaleshamannpc,trollmaleshaman,game greeting set of primary display,wowhead,2026-10-03
+270038,Calder Gray,undeadmalestandardnpc,undeadmalestandard,game greeting set of primary display,wowhead,2026-10-03
+270637,Howin Kindfeather,dwarfmalestandardnpc,dwarfmalestandard,game greeting set of primary display,wowhead,2026-10-03
+270844,Sylessa Duskwhisper,nightelffemalestandardnpc,nightelffemalestandard,game greeting set of primary display,wowhead,2026-10-03
+271866,Night Watch Guard,humanmaleofficialnpc,humanmaleofficial,game greeting set of primary display,wowhead,2026-10-03
+277182,Ahab Wheathoof,narrator_neutral,creature:unknown,no display known; nothing known: narrator,wowhead,2026-10-03

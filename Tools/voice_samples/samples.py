@@ -6,6 +6,9 @@ into #voiceover-feedback; `tally` reads those codes back. The speeds the user se
 Tools/voice_v2/voice_speeds.json, which generate.py applies to every job of that voice when the pack is remade.
 
     python Tools/voice_samples/samples.py pick [--refresh]   choose each voice's line (writes picks.json)
+    python Tools/voice_samples/samples.py add VOICE...       voices the service gained since the pick, appended to
+                                                             picks.json; every other voice keeps its line (a re-run
+                                                             of pick would deal the random lines anew)
     python Tools/voice_samples/samples.py manifest           the generation list (samples_manifest.json); the pack's
                                                              own 1.0x clips are copied, not made again
     python Tools/voice_v2/generate.py <OUT>/samples_manifest.json --clips <OUT>/clips --batches <OUT>/batches
@@ -24,6 +27,8 @@ with none: "give them a random quest text from the game"), first that applies:
   npc      a quest dialogue of an NPC the live voice map gives this voice (the pack used an older map)
   name     a quest dialogue of the NPC the voice is named after (Tirion Fordring, Ahab Wheathoof ...)
   random   a quest's accept text from the game, drawn at random per voice (the same draw every run)
+  copy     (add) a `<voice>__<hash>` copy of a voice (Denis's remakes beside the original, 2026-10-03): the
+           original's line and seed, made fresh, so the two are heard side by side
 Only clean lines: one speaker, no flags but a stand-in's, no gendered variant. SKIP: voices left out
 (pandacub, the user's call).
 
@@ -151,7 +156,8 @@ def line_of(job: dict) -> dict:
     return lines[0]
 
 
-def pick_all(names, vmap, jobs, index, quests):
+def pick_all(names, vmap, jobs, index, quests, used=None):
+    """Each voice's line. `used`: texts already read by another voice (add: the deal goes on past them)."""
     by_voice = collections.defaultdict(list)
     by_npc = collections.defaultdict(list)
     pool = []
@@ -184,7 +190,7 @@ def pick_all(names, vmap, jobs, index, quests):
     # the quests drawn for the voices with no line of their own: one fixed shuffle, dealt in voice order, so no
     # two voices read the same quest and a re-run draws the same
     random.Random(20261003).shuffle(pool)
-    dealt = iter(pool)
+    dealt = (j for j in pool if not used or j["text"] not in used)
 
     def best_of(cands):
         cands = [j for j in cands if is_dialogue(j) and in_range(j)]
@@ -242,6 +248,43 @@ def cmd_pick(args):
     save_json(os.path.join(OUT, "picks.json"), {"voices": len(picks), "skipped": SKIP, "picks": picks})
     c = collections.Counter(p["source"] for p in picks)
     say("picks.json: %d voices (%s)" % (len(picks), ", ".join("%s %d" % kv for kv in sorted(c.items()))))
+    return 0
+
+
+def cmd_add(args):
+    """Voices appended to picks.json; the picks already there are kept as they are (their order too: a feedback
+    code lists the voices in the data's order, and each data version keeps its own)."""
+    import sources
+    data = load_json(os.path.join(OUT, "picks.json"))
+    picks = data["picks"]
+    by_voice = {p["voice"]: p for p in picks}
+    names, vmap = service_lists(refresh=True)
+    unknown = [v for v in args.voices if v not in names]
+    if unknown:
+        say("not on the service: %s" % ", ".join(unknown))
+        return 1
+    new = [v for v in args.voices if v not in by_voice and v not in SKIP]
+    if not new:
+        say("nothing to add (already picked or skipped)")
+        return 0
+    jobs = load_json(os.path.join(V2, "lines.json"))["jobs"] + load_json(os.path.join(V2, "lines_readables.json"))["jobs"]
+    index = load_json(os.path.join(V2, "clips", "index.json"), {})
+    quests = sources.quest_list()
+    used = {p["text"] for p in picks}
+    for v in new:
+        base = v.split("__")[0]
+        if "__" in v and base in by_voice:
+            # a copy: the original's line and seed (a fresh clip: no pack id)
+            p = dict(by_voice[base], voice=v, source="copy", copyOf=base, packId=None, packLines=0, mapNpcs=0,
+                     mapKind=None)
+        else:
+            p = pick_all([v], vmap, jobs, index, quests, used)[0]
+            used.add(p["text"])
+        picks.append(p)
+        by_voice[v] = p
+        say("  %-36s %-6s %s" % (v, p["source"], p["text"][:70]))
+    save_json(os.path.join(OUT, "picks.json"), dict(data, voices=len(picks), picks=picks))
+    say("picks.json: %d voices (%d added)" % (len(picks), len(new)))
     return 0
 
 
@@ -310,6 +353,8 @@ GROUPS = [("narrator", "Narrators"), ("creature_", "Creatures"), ("skyborne", "S
 
 
 def group_of(p: dict) -> str:
+    if p.get("copyOf") or "__" in p["voice"]:
+        return "Copies (compare with the original)"
     for prefix, label in GROUPS:
         if p["voice"].startswith(prefix):
             return label
@@ -453,6 +498,8 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("pick")
     p.add_argument("--refresh", action="store_true", help="fetch the voice list and the voice map again")
+    ad = sub.add_parser("add")
+    ad.add_argument("voices", nargs="+")
     sub.add_parser("manifest")
     a = sub.add_parser("addon")
     a.add_argument("--complete-only", action="store_true", help="only the voices with all three speeds made")
@@ -464,7 +511,8 @@ def main(argv=None) -> int:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
-    return {"pick": cmd_pick, "manifest": cmd_manifest, "addon": cmd_addon, "tally": cmd_tally}[args.cmd](args)
+    return {"pick": cmd_pick, "add": cmd_add, "manifest": cmd_manifest, "addon": cmd_addon,
+            "tally": cmd_tally}[args.cmd](args)
 
 
 if __name__ == "__main__":

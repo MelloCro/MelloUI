@@ -91,55 +91,145 @@ local function Option(key, fallback)
 	return fallback
 end
 
--- The health bar set in by the bracket's arms from the anchors the game
--- just gave it (UpdateAnchors runs on every acquire and option change, in
--- combat too — it is not a protected frame). The game's anchors are kept in
--- one list per bar (melloPoints: made on the first layout, its rows filled
--- again on each one; points.n of them are the game's now), so the game's
--- every layout of a plate costs no garbage (0.14.0, backlog B11).
-local function InsetHealthBar(hb, rep)
-	-- once per game layout: melloInset holds the game's anchors until the
-	-- game's next UpdateAnchors clears it (a second pass inset the bar twice)
-	if not (active and rep.GetArms) or hb.melloInsetting or hb.melloInset then
-		return
+-- The health bar set in by the bracket's arms (UpdateAnchors runs on every
+-- acquire and option change, in combat too -- it is not a protected frame).
+-- Its anchors are the game's own two (Blizzard_NamePlateUnitFrame.lua,
+-- UpdateAnchors: TOPLEFT and BOTTOMRIGHT on the health container, offsets
+-- from its setup options -- plain values), laid from those options, never
+-- read back: a frame on a nameplate answers its anchors SECRET, and the
+-- read-back gave up there, the bar keeping its whole width under the
+-- bracket's caps (user, 2026-10-04: "the nameplate texture sometimes spills
+-- under the border"; the name's anchors went the same way, CentreName).
+-- (One table: the bars inset since the game's last layout, weak keys --
+-- nothing written onto the game's bar.)
+local Inset = { done = setmetatable({}, { __mode = "k" }) }
+
+-- the game's offsets of the bar on its container: TOPLEFT x, y, BOTTOMRIGHT x, y
+function Inset.GamePoints()
+	local opts = NamePlateSetupOptions
+	local classic = opts and opts.useClassicHealthBar
+	if classic and not Secret(classic) then
+		local h, v = Option("horizontalScale", 1), Option("verticalScale", 1)
+		return 3.5 * h, 0.5 * v, -20.75 * h, 0.5 * v
 	end
-	local okN, n = pcall(hb.GetNumPoints, hb)
-	if not okN or Secret(n) or not n or n == 0 then
-		return
-	end
-	local points = hb.melloPoints
-	if not points then
-		points = { n = 0 }
-		hb.melloPoints = points
-	end
-	for i = 1, n do
-		local ok, point, rel, relPoint, x, y = pcall(hb.GetPoint, hb, i)
-		if not ok or Secret(point) or Secret(x) or Secret(y) or not point then
-			return
-		end
-		local pt = points[i]
-		if not pt then
-			pt = {}
-			points[i] = pt
-		end
-		pt[1], pt[2], pt[3], pt[4], pt[5] = point, rel, relPoint, x or 0, y or 0
-	end
-	points.n = n
-	hb.melloInset = points
-	local armL, armR = rep:GetArms()
-	hb.melloInsetting = true
+	return 0, 0, 0, 0
+end
+
+-- the bar on its container, the bracket's arms in from each end and `m` in
+-- from its top and bottom (0, 0, 0: the game's own)
+function Inset.Lay(hb, container, armL, armR, m)
+	local x1, y1, x2, y2 = Inset.GamePoints()
 	hb:ClearAllPoints()
-	for i = 1, n do
-		local pt = points[i]
-		local point, x = pt[1], pt[4]
-		if point:find("LEFT") then
-			x = x + armL
-		elseif point:find("RIGHT") then
-			x = x - armR
-		end
-		hb:SetPoint(point, pt[2], pt[3], x, pt[5])
+	hb:SetPoint("TOPLEFT", container, "TOPLEFT", x1 + armL, y1 - m)
+	hb:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", x2 - armR, y2 + m)
+end
+
+-- Pixel perfect (user, 2026-10-04: "the nameplate texture sometimes spills
+-- under the border", "i want it to be pixel perfect"): the bracket's solid
+-- outline is fitted to the bar's height, so the fill's top and bottom lay ON
+-- the rails' outer rows -- the art's soft edge -- and a pixel's rounding
+-- showed the fill past them. The fill is set in by half the thinner rail
+-- (its edges at the rails' centres, under solid metal) and the bracket
+-- thickened by the same twice, so the border keeps its size and place.
+-- The bracket's own fallback height (a plate's size can read secret) is
+-- the bar's set-in height too.
+function Inset.Margin(rep, h)
+	local mid = rep.base and Kit.StripPieceName and Kit:Piece(Kit:StripPieceName(rep.base, "mid"))
+	local box, open = mid and mid.box, mid and mid.open
+	if not (box and open and box[4] > box[2]) then
+		return 0
 	end
-	hb.melloInsetting = nil
+	local rail = math.min(open[2] - box[2], box[4] - open[4])
+	return math.max(rail, 0) / 2 * h / (box[4] - box[2])
+end
+
+-- refit: the bracket refitted here (the game's layout refits it itself, just after)
+local function InsetHealthBar(hb, rep, container, refit)
+	-- once per game layout (the game's next UpdateAnchors clears it: a second
+	-- pass would inset the bar twice)
+	if not (active and rep.GetArms and container) or Inset.done[hb] then
+		return
+	end
+	local armL, armR = rep:GetArms()
+	if Secret(armL) or Secret(armR) or type(armL) ~= "number" or type(armR) ~= "number" then
+		return
+	end
+	local h = Option("healthBarHeight", 12)
+	local m = Inset.Margin(rep, h)
+	Inset.done[hb] = true
+	Inset.Lay(hb, container, armL, armR, m)
+	rep.thicken, rep.fitHeight = 2 * m, h - 2 * m
+	if refit then
+		rep:Refit()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- One pixel grid for the whole plate (user, 2026-10-04: "the Actual
+-- Healthbar, the Border, the Round border, its background, the level text
+-- and the name text are all separate entities and moving independently,
+-- the Default one is static, and everything moves unified"). The game's
+-- plate rounds its layout to the nearest pixel, every frame and region of
+-- it, once, at its making (Blizzard_NamePlateUnitFrame.lua OnLoad:
+-- PixelUtil.SetRoundLayoutToNearestPixelRecursively); what MelloUI adds to a
+-- plate later -- the bracket and its trough, the level ring and its disc,
+-- the name shade, the crest, the marks -- kept its own sub-pixel layout and
+-- slid against the game's rounded parts as the plate moved. The plate's
+-- tree is rounded again after the game lays it out (UpdateAnchors: its
+-- acquire and option changes, never per frame), walked by varargs (no
+-- table made), only what is not rounded yet set; a value read secret is
+-- left alone.
+--------------------------------------------------------------------------------
+local Round = { DEPTH = 6 }
+
+function Round.One(r)
+	local ok, on = pcall(r.GetRoundLayoutToNearestPixel, r)
+	if ok and not Secret(on) and on == false then
+		pcall(r.SetRoundLayoutToNearestPixel, r, true)
+	end
+end
+
+function Round.Regions(...)
+	for i = 1, select("#", ...) do
+		Round.One((select(i, ...)))
+	end
+end
+
+function Round.Children(depth, ...)
+	for i = 1, select("#", ...) do
+		Round.Tree((select(i, ...)), depth)
+	end
+end
+
+-- a call's results when it went through, else none
+function Round.Ok(ok, ...)
+	if ok then
+		return ...
+	end
+end
+
+-- (a forbidden frame -- the plate's aura icons, Blizzard_AuraContainerFrameProviders
+-- -- is never touched: any call on it from our code raises, 2026-10-04)
+function Round.Tree(frame, depth)
+	if not (frame and frame.GetRoundLayoutToNearestPixel) then
+		return
+	end
+	local okF, forbidden = pcall(frame.IsForbidden, frame)
+	if not okF or Secret(forbidden) or forbidden then
+		return
+	end
+	-- (nor a protected one: no secure frame's layout from here -- the hard rules)
+	local okP, protected = pcall(frame.IsProtected, frame)
+	if not okP or Secret(protected) or protected then
+		return
+	end
+	Round.One(frame)
+	if frame.GetRegions then
+		Round.Regions(Round.Ok(pcall(frame.GetRegions, frame)))
+	end
+	if depth < Round.DEPTH and frame.GetChildren then
+		Round.Children(depth + 1, Round.Ok(pcall(frame.GetChildren, frame)))
+	end
 end
 
 -- The name centred on the bracket (user, 2026-09-22: it sat to the right):
@@ -709,6 +799,10 @@ local function ShadePlate(uf, strength)
 	ShadePiece(capR, plate, strength, make)
 	ShadePiece(orb, plate, strength, make, uf.melloOrbScale)
 	ShadePiece(crest, plate, strength, make, uf.melloCrestScale)
+	-- (what was just made, on the plate's one pixel grid: One pixel grid, above)
+	if make and active then
+		Round.Tree(uf, 0)
+	end
 end
 
 -- the held plates, from the first one on, until this frame's making is spent
@@ -976,27 +1070,32 @@ local function SkinUnitFrame(uf)
 				end
 			end
 			hooksecurefunc(uf, "UpdateAnchors", function()
-				hb.melloInset = nil   -- the game re-anchored the bar from scratch
+				Inset.done[hb] = nil   -- the game re-anchored the bar from scratch
 				if uf.name then
 					uf.name.melloCentred = nil   -- the game re-anchored the name too
 				end
-				InsetHealthBar(hb, rep)
+				InsetHealthBar(hb, rep, container)
 				rep:Refit()
 				CentreName(uf, hb, rep)
 				FitLevelOrb(uf)
 				FitShade(uf)
 				FitCrest(uf)
 				HangCrest(uf)
+				-- (every part on the plate on the game's one pixel grid)
+				if active then
+					Round.Tree(uf, 0)
+				end
 			end)
 			local enable = rep.onEnable
 			rep.onEnable = function(...)
 				if enable then
 					enable(...)
 				end
-				InsetHealthBar(hb, rep)
+				InsetHealthBar(hb, rep, container, true)
 				CentreName(uf, hb, rep)
 				FitShade(uf)
 				HangCrest(uf)
+				Round.Tree(uf, 0)
 				-- the bracket's left edge, for what stands beside the bar (the
 				-- Nameplates module's quest icon goes left of the gem cap)
 				uf.melloBracketLeft = rep.strip and rep.strip.capL or nil
@@ -1010,21 +1109,15 @@ local function SkinUnitFrame(uf)
 				UncentreName(uf)
 				SyncBand(uf)
 				HangCrest(uf)
-				-- the game's anchors back (the first points.n rows of the bar's list)
-				local points = hb.melloInset
-				if points then
-					hb.melloInset = nil
-					hb.melloInsetting = true
-					hb:ClearAllPoints()
-					for i = 1, points.n do
-						local pt = points[i]
-						hb:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5])
-					end
-					hb.melloInsetting = nil
+				-- the game's anchors back (its own layout, no arms, no margin)
+				if Inset.done[hb] and container then
+					Inset.done[hb] = nil
+					Inset.Lay(hb, container, 0, 0, 0)
 				end
+				rep.thicken, rep.fitHeight = nil, Option("healthBarHeight", 12)
 			end
 			if active then
-				InsetHealthBar(hb, rep)
+				InsetHealthBar(hb, rep, container, true)
 				CentreName(uf, hb, rep)
 				uf.melloBracketLeft = rep.strip and rep.strip.capL or nil
 			end
@@ -1069,6 +1162,10 @@ local function SkinUnitFrame(uf)
 	skin.plates[#skin.plates + 1] = uf
 	uf.melloShadeAt = #skin.plates
 	ShadePlate(uf)
+	-- (the dressed plate on the game's one pixel grid)
+	if active then
+		Round.Tree(uf, 0)
+	end
 end
 
 local function SkinAll()

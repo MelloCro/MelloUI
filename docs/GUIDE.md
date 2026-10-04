@@ -43,21 +43,22 @@ I re-recorded the whole interface. Clicks, pages, pouches, buckles, coins, whisp
 
 ## 🎙️ Quest givers talk to you
 
-Every quest offer, progress line, turn-in and greeting is read out loud (and with the voice pack, the objectives too), and so are the pages of books, letters, plaques and signs. With the voice pack every NPC keeps one voice for all of its lines; without it, the game's text-to-speech picks a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
+Every quest offer, progress line, turn-in and greeting is read out loud (and with the voice pack, the objectives too, by the Forever Narrator), and so are the pages of books, letters, plaques and signs. With the voice pack every NPC keeps one voice for all of its lines; without it, the game's text-to-speech picks a voice that fits the NPC's race and gender. And it always reads the right quest. Yes, that was a thing.
 
 - A small widget shows who's talking: their face, the line, and a gold ring that fills as it plays, with the time left (a book: the whole book). Point at it for Pause, Skip, the lines waiting and the padlock; subtitles if you like.
 - Every quest, every greeting and the books voiced, with the free voice pack below.
 - No voice pack? The game's own text-to-speech kicks in (it needs a voice installed in the Windows speech settings). Works out of the box.
 - Forgot what a quest was about? Open your quest log, hit Read, done.
 
-**Get the voice pack (free, 2.6 GB, totally optional but so worth it):**
+**Get the voice pack (free, 2.5 GB, totally optional but so worth it):**
 
-It comes in two parts, and you need both.
+It comes in two parts, and you need both. Remade for 0.18.3: every voice at a better pace, and the Forever Narrator reads the objectives. It needs MelloUI 0.18.3 or newer.
 
-1. Download [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.15.0/MelloUI_VoicePack_Part2.zip).
-2. Unzip both into `World of Warcraft\_classic_beta_\Interface\AddOns`. They fill the same `MelloUI_VoicePack` folder next to MelloUI (if Windows asks about files that are already there, replace them). The `.toc` file must be directly inside `MelloUI_VoicePack`, not in another folder.
-3. Had the old pack, `MelloUI_VoiceOverData`? Delete that folder. `MelloUI_VoicePack` replaces it, and MelloUI never uses the old one while the new one is installed.
-4. Start the game, tick **MelloUI Voice Pack** in the addon list at the character screen. That's it. `/vo packs` in game shows the pack is loaded.
+1. Download [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip).
+2. Had an earlier voice pack? Delete its `MelloUI_VoicePack` folder first: the new recordings replace all of it, and old files left behind only take up space.
+3. Unzip both into `World of Warcraft\_classic_beta_\Interface\AddOns`. They fill the same `MelloUI_VoicePack` folder next to MelloUI. The `.toc` file must be directly inside `MelloUI_VoicePack`, not in another folder.
+4. Had the old pack, `MelloUI_VoiceOverData`? Delete that folder. `MelloUI_VoicePack` replaces it, and MelloUI never uses the old one while the new one is installed.
+5. Start the game, tick **MelloUI Voice Pack** in the addon list at the character screen. That's it. `/vo packs` in game shows the pack is loaded.
 
 *(Still on the old pack? It keeps playing until you install the new one, and MelloUI tells you once in chat where to get it.)*
 
@@ -324,6 +325,8 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
   Warning, W for whispers, and G, T, LD, WD, LFG for the numbered channels. Brackets can be
   removed as well.
 - Class coloured player names in every chat type through Blizzard's own override CVar.
+- Border Opacity (100 % by default): how solid the painted border round the chat windows and their
+  button column is, its soft shade with it (the Painted and Parchment backgrounds).
 - Set The Background Opacity (off by default): one Background Opacity (100 % by default) for
   every chat window, docked and floating, whisper tabs and windows opened later included, set
   through the game's own `FCF_SetWindowAlpha` so the chat stone follows. Profiles carry it,
@@ -432,6 +435,10 @@ class coloured player names, the tooltip health bar hidden by default (or shown 
 Textures fill and class / reaction colour), optional hiding of unit tooltips in combat, anchoring
 at or right of the cursor, and a tooltip scale. Blizzard's tooltip health bar fields are never written, since
 its update path compares secret health values and must stay untainted.
+
+**Fade Delay** (0.1 to 1 second, 0.4 by default): when your cursor leaves a creature or an object, its tooltip
+stays fully visible this long, then fades out in a quarter of a second. Pointing at something else meanwhile
+shows the new tooltip at once. `/ttdump fade` tells what the last fades did.
 
 With Tooltip Parchment on, a gem before an item's name shows its quality, and one before a player's name shows their class. The name is in dark ink, or in a dark shade of its reaction colour where the game shows one (unit frames, Class Coloured Names off). NPC names keep a dark shade of their reaction colour and have no gem.
 
@@ -590,8 +597,8 @@ The Widgets). Right-click stops. Subtitles show the text under the line in pages
 at sentences), turning as the voice goes on. The kind bullets and the book come from the
 VoiceOver addon (`Media\Textures\VoiceOver`, Unlicense).
 
-**The voice pack.** `MelloUI_VoicePack` (0.15.0; a separate, load-on-demand addon, downloaded in
-two parts from the v0.15.0 release) gives every NPC one voice for all of its lines. Its one index,
+**The voice pack.** `MelloUI_VoicePack` (0.15.0, remade for 0.18.3; a separate, load-on-demand addon,
+downloaded in two parts from the v0.18.3 release) gives every NPC one voice for all of its lines. Its one index,
 `index.lua`, maps a key to a clip (`sounds\<voice>\<hash12>.ogg`) and the clip's length: quest
 lines by `<questID>-<kind>` (accept, objectives, progress, complete; `m-` / `f-` in front for a
 line whose words depend on the player's sex; `-<npcID>` behind where a second giver or turn-in NPC
@@ -601,7 +608,8 @@ a hash of the words with the player's name, class and race left out; a changed t
 when at least 40% of its words match), and the pages of books, letters, plaques and signs by
 `r-<hash8>`, read by the narrator. Quest IDs are read once the quest panel has settled (the client
 can still report the previous quest when the event fires), else looked up by title. The speaker is
-the dialog's NPC, never the target, and a clip in another voice than the NPC's is not played. The
+the dialog's NPC, never the target, and a clip in another voice than the NPC's is not played (but
+for the objectives: since 0.18.3's pack the Forever Narrator reads them, whoever gives the quest). The
 module loads the pack on demand and plays its line whenever it has one; everything else is read
 with text-to-speech, unless "Read Unvoiced Lines" is off: then only recorded lines are heard and the
 rest stays silent (the quest log's Read button included). The channel the recordings play on can

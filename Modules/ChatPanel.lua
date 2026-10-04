@@ -151,6 +151,7 @@ local shade = {
 	REACH = 96,
 }
 local EDIT_PARTS = { "capL", "mid", "capR" }
+local Border   -- (Border Opacity: below, before the bordered frames)
 
 -- the element of a root: a chat window's drawn by its own shade frame (one
 -- level under the window, as the kit's shade frames are, on the rect)
@@ -230,6 +231,11 @@ local function MakeShade(root)
 	end
 	for i = 1, #list, 2 do
 		el:Add(list[i], list[i + 1] or nil)
+	end
+	-- (a rail's shade: at the rail's Border Opacity)
+	local rail = Border.rails[root]
+	if rail then
+		Border.Lay(root, rail)
 	end
 end
 
@@ -532,6 +538,52 @@ local function StoneBackground(cf, background, frame)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Border Opacity (user, 2026-10-04: "we have a background opacity slider for
+-- the chat, can we also make a Border opacity aswell?"): the Chat module's
+-- borderAlpha on the painted rail of every chat window and of its button
+-- column, and on their shade with it (each rail's own shade frame: a window's
+-- holds its rail's shade only, a column's its own). The rails are ours: one
+-- write a piece when the value changes, a rail is made or its shade is.
+-- (One table: the rails, by the frame they border.)
+--------------------------------------------------------------------------------
+Border = { rails = setmetatable({}, { __mode = "k" }) }
+
+function Border.Alpha()
+	local db = MelloUI:GetModuleDB("Chat")
+	local a = db and db.borderAlpha
+	if type(a) ~= "number" or Secret(a) then
+		return 1
+	end
+	return math.max(0, math.min(1, a))
+end
+
+-- one rail (and its shade, once made)
+function Border.Lay(frame, rep, a)
+	a = a or Border.Alpha()
+	local pieces = rep.skin and rep.skin.all
+	for i = 1, pieces and #pieces or 0 do
+		pieces[i]:SetAlpha(a)
+	end
+	local el = shade.made[frame]
+	local host = el and el.Host and el:Host()
+	if host then
+		host:SetAlpha(a)
+	end
+end
+
+function Border.Add(frame, rep)
+	Border.rails[frame] = rep
+	Border.Lay(frame, rep)
+end
+
+function Border.LayAll()
+	local a = Border.Alpha()
+	for frame, rep in pairs(Border.rails) do
+		Border.Lay(frame, rep, a)
+	end
+end
+
 -- A bordered frame: the single rail (CH1) on the background's rect in place
 -- of the eight border pieces, in the chat frame's own BORDER layer.
 local function SkinBordered(frame, prefix, cf)
@@ -546,6 +598,9 @@ local function SkinBordered(frame, prefix, cf)
 	end
 	local rep = Replace(corner, { as = "ChatFrameBorder", rect = frame == cf and BackdropRect(cf, background) or background, parent = frame, alsoFade = others })
 	corner.melloRep = rep or false
+	if rep then
+		Border.Add(frame, rep)
+	end
 	if rep and Kit.RegisterShell and frame == cf then
 		-- its rail on the kit's list of dressed windows: the rail Edit Layout
 		-- lights while the chat is dragged, and its shade (a chat window has
@@ -778,7 +833,13 @@ end
 local COLUMN_SIZE = 22
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 
-local function SkinColumnButton(button, art, glyph, fade, count)
+-- hidden: art of the game's that its animations bring back (the Friends
+-- button's quick-join picture, its flash and count: the toast animations
+-- set their alpha in the engine, past a fade -- user, 2026-10-04: "there are
+-- two borders and backgrounds under the Social button", "remove the old
+-- one"). The game never shows or hides them itself, so they are hidden while
+-- ours shows and shown again with the game's look: one write each, no fight.
+local function SkinColumnButton(button, art, glyph, fade, count, hidden)
 	if not (button and art) or button.melloRep ~= nil then
 		return
 	end
@@ -803,6 +864,9 @@ local function SkinColumnButton(button, art, glyph, fade, count)
 		disc:SetShown(on)
 		if count then
 			count:SetDrawLayer(on and "OVERLAY" or (layer or "BORDER"), on and 7 or (sub or 0))
+		end
+		for _, region in ipairs(hidden or {}) do
+			region:SetShown(not on)
 		end
 	end
 	Ours(false)
@@ -926,7 +990,13 @@ local function SkinAll()
 			{ channel.Icon, channel:GetPushedTexture(), channel:GetHighlightTexture() })
 	end
 	if social and social.FriendsButton then
-		SkinColumnButton(social, social.FriendsButton, "friends", nil, social.FriendCount)
+		local hidden = {}
+		for _, key in ipairs({ "QueueButton", "FlashingLayer", "QueueCount" }) do
+			if social[key] and social[key].SetShown then
+				hidden[#hidden + 1] = social[key]
+			end
+		end
+		SkinColumnButton(social, social.FriendsButton, "friends", nil, social.FriendCount, hidden)
 	end
 	for _, key in ipairs({ "ChatFrameToggleVoiceDeafenButton", "ChatFrameToggleVoiceMuteButton" }) do
 		SkinIconButton(_G[key])
@@ -1032,11 +1102,18 @@ function M:OnEnable(db)
 	if active then
 		ChatAlpha(true)
 	end
+	-- the Chat module's Border Opacity (its setting, on the bus): the rails
+	MelloUI:On("setting", function(module, key)
+		if module == "Chat" and key == "borderAlpha" then
+			Border.LayAll()
+		end
+	end, "ChatPanel border opacity")
 end
 
 function M:OnDisable()
 	Deactivate()
 	ChatAlpha(false)
+	MelloUI:Off("ChatPanel border opacity", "setting")
 end
 
 --------------------------------------------------------------------------------

@@ -241,12 +241,23 @@ def locate(zones, map_id, wx, wy):
 # Wowhead
 # ---------------------------------------------------------------------------
 
+# Wowhead's Forever listing of 2026-09-27, kept: on 2026-10-03 Wowhead dropped 848 quests from its Forever
+# database (Season of Discovery's runes and their quests, IDs 77000-90999, and 6 others; their pages answer 404),
+# and Forever has that content (the user, 2026-10-03: "keep them"). Its rows are read first, today's listing over
+# them, so a quest still listed takes Wowhead's current data.
+KEPT_LISTINGS = os.path.join(CACHE, "wowhead_listing_2026-09-27")
+
+
 def load_listing():
     quests = {}
-    for f in glob.glob(os.path.join(WOWHEAD, "listing_*.html")):
-        for row in listing_data(open(f, encoding="utf-8").read()):
-            quests[row["id"]] = row
-    log(f"  {len(quests)} quests in the Wowhead listing")
+    kept = 0
+    for folder in (KEPT_LISTINGS, WOWHEAD):
+        for f in glob.glob(os.path.join(folder, "listing_*.html")):
+            for row in listing_data(open(f, encoding="utf-8").read()):
+                if folder == KEPT_LISTINGS:
+                    kept += 1
+                quests[row["id"]] = row
+    log(f"  {len(quests)} quests in the Wowhead listing ({kept} rows from the kept listing of 2026-09-27)")
     return quests
 
 

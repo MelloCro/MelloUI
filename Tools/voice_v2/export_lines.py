@@ -18,8 +18,9 @@ trainer greetings, holiday conditions), the cached Wowhead pages (Forever quests
 in-game collector store (fallback for Forever quest texts, Forever NPC greetings), the Forever client's quest
 cache (fallback for Forever accept / objectives). Media/QuestListData.lua gives the quest list and giver kinds.
 
-Every line gets exactly one speaker: accept and objectives the giver, progress and complete the turn-in NPC,
-0 (a narrator) for objects and items. Each NPC speaks in its one voice from npc_voices.csv (created once from
+Every line gets exactly one speaker: accept the giver, progress and complete the turn-in NPC, 0 (a narrator) for
+objects and items; objectives always the Forever Narrator (voices.json narrators.objectives; the user, 2026-10-03:
+"the quest objectives are going to be read only by the Forever Narrator"). Each NPC speaks in its one voice from npc_voices.csv (created once from
 the research draft, then only appended to). Player name / class / race are left out of the spoken text, $G
 lines become two versions, stage directions become narrator segments, and the same words in the same voice
 are made once (one job serving several keys). The exporter fails loudly when a check of SPEC.md 3.6 fails.
@@ -381,6 +382,9 @@ class Export:
 
     def narrator(self, zero_kind, side):
         n = self.cfg["narrators"]
+        if zero_kind == "objectives":
+            # (the Forever Narrator; a voices.json from before 2026-10-03 has no key: the stage narrator is the same)
+            return n.get("objectives") or n["stage"]
         side = str(side if side in (1, 2, 3) else 3)
         return n["item"][side] if zero_kind == "item" else n["object"][side]
 
@@ -583,6 +587,11 @@ class Export:
         # ---- quest lines
         for qid, q, kind, text, src, npcs, zero, primary, notes in quest_records:
             side = q["side"] if q["side"] in (1, 2, 3) else 3
+            if kind == "objectives":
+                # the Forever Narrator alone, whoever gives the quest: one plain key, no speaker keys
+                npcs, zero, primary = set(), "objectives", 0
+                notes = [x for x in notes if x != "speaker-unknown"]
+                self.counts["objectives read by the Forever Narrator"] += 1
             spk = sorted(npcs) + ([0] if zero else [])
             pv = self.voice_of(primary, zero or "object", side)
             title = V.canon_title(q["title"])
@@ -698,10 +707,16 @@ def build_pilot(exp: Export, selection_path: str):
         full = exp.jobs[jid]
         meta = full["meta"]
         vk, segs = meta["voiceKey"], [tuple(x) for x in meta["_segs"]]
-        if vk != e["voice"]:
-            problems.append("%s %s: voice %s, the selection says %s" % (e["pilot"], key, vk, e["voice"]))
-        if exp.seed(vk) != e["seed"]:
-            problems.append("%s %s: seed %s, the selection says %s" % (e["pilot"], key, exp.seed(vk), e["seed"]))
+        want_voice, want_seed = e["voice"], e["seed"]
+        if key.endswith("-objectives"):
+            # (the selection is the pilot of 2026-09-28, the giver's voice; since 2026-10-03 objectives are the
+            # Forever Narrator's, at its own seed)
+            want_voice = exp.narrator("objectives", 3)
+            want_seed = exp.seed(want_voice)
+        if vk != want_voice:
+            problems.append("%s %s: voice %s, the selection says %s" % (e["pilot"], key, vk, want_voice))
+        if exp.seed(vk) != want_seed:
+            problems.append("%s %s: seed %s, the selection says %s" % (e["pilot"], key, exp.seed(vk), want_seed))
         if [r for r, _ in segs] != [r for r, _ in e["spoken"]]:
             problems.append("%s %s: segment roles %s, the selection says %s" % (
                 e["pilot"], key, [r for r, _ in segs], [r for r, _ in e["spoken"]]))

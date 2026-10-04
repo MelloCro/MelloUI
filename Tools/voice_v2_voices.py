@@ -1485,7 +1485,9 @@ def cmd_build(args):
     narrators = {"stage": "narrator_neutral",
                  "object": {"1": "narrator_neutral", "2": "narrator_neutral", "3": "narrator_neutral"},
                  "item": {"1": "narrator_neutral", "2": "narrator_neutral", "3": "narrator_neutral"},
-                 "gossipObject": "narrator_neutral"}
+                 "gossipObject": "narrator_neutral",
+                 # (the user, 2026-10-03: quest objectives are read only by the Forever Narrator)
+                 "objectives": "narrator_neutral"}
     out = OrderedDict([
         ("format", "melloui-voices/1"),
         ("created", BUILD_DATE),

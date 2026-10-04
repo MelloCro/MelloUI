@@ -5287,7 +5287,7 @@ Kit.Replacements = {
 	["Tooltip-NineSlice-CornerTopLeft"]       = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = -8, edgeLayer = "BORDER" },   -- TT1: a tooltip's NineSlice (the TooltipDefaultLayout pieces, keyed on the top-left corner; the other eight faded) -> the single rail with the list-box stone as REGIONS of the NineSlice in its own layers (under the tooltip's texts as the game's pieces are); the stone at the bottom of BACKGROUND (-8): the game's line icons (AddTexture's GameTooltipTextureN, the quest objectives' check marks) lie at BACKGROUND 0 of the tooltip, on the NineSlice's level (/ttdump icons, 2026-10-03)
 	["TooltipStatusBar"]                      = { kind = "bar", bar = "frame", capOut = true },   -- the unit tooltip's health bar (a StatusBar with no border art; an agreed addition, as the catalogue showed it): P1 with the caps outside, the bar set in by the arms
 	-- Nameplates (NameplatePanel, 2026-09-21; user's picks NP1 = P1, NC2 from kit_raw/nameplate_catalog.png)
-	["NamePlateHealthBarBG"]                  = { kind = "bar", bar = "frame", capOut = true, borderGroup = "nameplate" },   -- NP1: the health bar's backing (UI-HUD-CoolDownManager-Bar-BG, keyed by hand) -> P1 as the bar's regions above the fill, the caps outside, the bar set in by the arms after the game's UpdateAnchors; the trough under the fill
+	["NamePlateHealthBarBG"]                  = { kind = "bar", bar = "frame", capOut = true, borderGroup = "nameplate", into = 0.5 },   -- NP1: the health bar's backing (UI-HUD-CoolDownManager-Bar-BG, keyed by hand) -> P1 as the bar's regions above the fill, the caps outside, the bar set in by the arms after the game's UpdateAnchors; the trough under the fill. into 0.5 (user, 2026-10-04: "pixel perfect"): the trough's and the fill's edges at the rails' centres, under solid metal, never on the rails' soft outer rows (NameplatePanel sets the fill in and thickens the bracket by the same)
 	["NamePlateCastBarBackground"]            = { kind = "frame", scale = 0.8, owner = true, bodyLayer = "BACKGROUND", edgeLayer = "ARTWORK", edgeSub = 1, outset = 2 },   -- outset 2: the single rail's 2 px outer pad, so the painted line's outer edge is ON the bar's edge and the fill (which reaches that edge, a StatusBar's fill cannot be set in) ends under the line (user, 2026-09-22: "spilling on the bottom")   -- NC2: the cast bar's background (ui-castingbar-background on a nameplate, keyed by hand; its Border faded) -> the single rail at 0.8 with the stone body as the bar's regions: the stone under the ARTWORK fill, the rails one sublevel above it, under the OVERLAY text
 	["UI-HUD-Nameplates-Selected"]            = { kind = "fade" },   -- the target / focus outline around the health bar: faded; the bracket's iron shines gold while the game shows it (NameplatePanel)
 	["ui-hud-nameplates-levelindicator"]      = { kind = "texture", piece = "buttons/orb_normal", square = true, owner = true },
@@ -8415,7 +8415,10 @@ function Kit:Replace(region, opts)
 			-- scale, so the fill and the trough follow; kept in `opts`, so a
 			-- live look swap (SetBar -> Refit) keeps it too
 			local artScale = opts.artScale or rule.artScale or 1
-			local yoff = self.strip:FitBox((h + (opts.thicken or rule.thicken or 0)) * (rule.heightScale or 1) * artScale)
+			-- (rep.thicken: set by the panel that sets the fill in from the rect
+			-- -- the nameplates', its edges at the rails' centres: NameplatePanel)
+			local thicken = self.thicken or opts.thicken or rule.thicken or 0
+			local yoff = self.strip:FitBox((h + thicken) * (rule.heightScale or 1) * artScale)
 			self.stripOffset = yoff
 			local w = self:RectSize("GetWidth")
 			if not (w and w > 0) then

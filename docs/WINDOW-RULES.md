@@ -465,6 +465,21 @@ kit texture under the cursor (piece, rect, crop, tint, frame level) when a backg
 
 ## 5. Gotchas that cost a screenshot round each
 
+- A nameplate rounds its layout to whole pixels, every frame and region of it,
+  once, when the game makes it (`PixelUtil.SetRoundLayoutToNearestPixelRecursively`
+  in its OnLoad). Anything added later is NOT rounded and slides by fractions of
+  a pixel against the game's parts as the plate moves: the "flicker" of
+  2026-10-04 (the fill's visible height flipping 10/11 px frame by frame).
+  NameplatePanel's `Round.Tree` rounds the plate's tree again after each game
+  layout and after making its shade parts; a new part on a plate needs nothing
+  more, but one made at another moment must be rounded there too.
+- A bar's fill must never end ON a rail's outer edge (the art's soft rows): a
+  pixel's rounding shows it past the rail. Set the fill in to the rails'
+  centres and thicken the bracket by the same (the nameplates: `into = 0.5`,
+  NameplatePanel's `Inset.Margin`).
+- A frame on a nameplate answers its anchors SECRET: never read a plate's
+  anchors back to move them; lay them from the game's own layout (its setup
+  options), as `Inset.Lay` and `CentreName` do.
 - `Kit:Fade` must skip kit textures (`kitPiece`), or our own art vanishes.
 - A row acquired before layout has height 0: guard every scale against 0 and
   refit on the initialized callback.
