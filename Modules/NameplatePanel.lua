@@ -265,7 +265,11 @@ local function CentreName(uf, hb, rep)
 	-- the name into the bar on the small ones (user, 2026-09-23: size 1)
 	local mid = Kit:Piece(Kit:StripPieceName(strip.base, "mid", strip.state))
 	local railTop = (mid and mid.box and mid.box[2] or 14) * (strip.scale or 1)
-	local y = Option("healthBarToNameAboveSpacing", 2) - railTop
+	-- (0.18.5: raised over the target's combo points where the Nameplates
+	-- module lays them, M:NameLift)
+	local plates = MelloUI:GetModule("Nameplates")
+	local lift = plates and plates.NameLift and plates:NameLift(uf) or 0
+	local y = Option("healthBarToNameAboveSpacing", 2) - railTop + lift
 	name.melloCentred = style   -- what to put back (the style's own anchors)
 	-- the span the name is centred on: from the left cap to the level
 	-- orb's outer edge where the game shows the orb (it stands past the
@@ -290,32 +294,33 @@ local function CentreName(uf, hb, rep)
 end
 
 -- The game's anchors for the style back (as UpdateAnchors lays them; the
--- game's next UpdateAnchors on the plate lays them itself anyway).
+-- game's next UpdateAnchors on the plate lays them itself anyway): the
+-- Nameplates module's one place for them (M:LayGameName), with its lift
+-- where the target's combo points stand (0.18.5).
 local function UncentreName(uf)
 	local name = uf.name
-	local style = name and name.melloCentred
-	if not style then
+	if not (name and name.melloCentred) then
 		return
 	end
 	name.melloCentred = nil
-	local styles = NamePlateConstants and NamePlateConstants.NAME_ANCHOR_STYLES
-	local container = uf.HealthBarsContainer
-	local y = Option("healthBarToNameAboveSpacing", 2)
-	name:ClearAllPoints()
-	if styles and style == styles.CenteredAboveHealthBar then
-		name:SetJustifyH("CENTER")
-		name:SetPoint("BOTTOM", container, "TOP", 0, y)
-	else
-		name:SetJustifyH(NamePlateSetupOptions and NamePlateSetupOptions.nameJustificationWhenAboveHealthBar or "LEFT")
-		name:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 0, y)
-		local lf = uf.PlayerLevelDiffFrame
-		local hbText = container and container.healthBar and container.healthBar.Text
-		if lf and lf:IsShown() then
-			name:SetPoint("RIGHT", lf, "RIGHT", 0, 0)
-		elseif hbText then
-			name:SetPoint("RIGHT", hbText, "LEFT", -2, 0)
-		end
+	local plates = MelloUI:GetModule("Nameplates")
+	if plates and plates.LayGameName then
+		plates:LayGameName(uf, plates.NameLift and plates:NameLift(uf) or 0)
 	end
+end
+
+-- A plate's name laid again where the kit lays it (CentreName, with the
+-- Nameplates module's lift): true while the kit holds the name, false when
+-- the game's own anchors do (the kit off, a plate it has not dressed, the
+-- name inside the bar). For the Nameplates module's combo points (0.18.5).
+function M:PlaceName(uf)
+	local rep = uf and uf.melloBracket
+	local hb = uf and uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar
+	if not (active and rep and hb and uf.name) then
+		return false
+	end
+	CentreName(uf, hb, rep)
+	return uf.name.melloCentred ~= nil
 end
 
 -- the bracket's units per the units of `region`'s frame (its scale against

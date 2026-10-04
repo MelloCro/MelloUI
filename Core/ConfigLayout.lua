@@ -126,7 +126,7 @@ L.pages = {
 		tabs = { "Plates", "Auras & Icons", "Party Markers" } },
 	ActionBars = { title = "Action Bars", icon = "module:ActionBarPanel",
 		flavour = "The action bars, the micro menu and the bag bar: pick a bar.",
-		tabs = { "Bars", "Cooldown Timers" },
+		tabs = { "Bars", "Backdrops", "Cooldown Timers" },
 		picker = { label = "Bar", noun = "bar", picks = { { "bars", "Action Bars" }, { "micro", "Micro Menu" }, { "bag", "Bag Bar" } } } },
 	Minimap = { title = "Minimap", icon = "module:MinimapPanel",
 		flavour = "The minimap, its shape, size and border, and the Services bar under it.",
@@ -195,6 +195,7 @@ L.words = {
 	partymarkers = { "Nameplates", "Party Markers" },
 	actionbarpanel = { "ActionBars", "Bars" },
 	cooldowntext = { "ActionBars", "Cooldown Timers" },
+	backdrops = { "ActionBars", "Backdrops" },
 	minimappanel = { "Minimap", "Minimap" },
 	services = { "Minimap", "Services Bar" },
 	stats = { "BarsMeters", "FPS / Latency" },
@@ -330,6 +331,8 @@ function L.Define(R, Link)
 
 	-- Nameplates (tabs: the parts differ)
 	R("Nameplates", "Plates", "General", "Nameplates.threatLine")
+	R("Nameplates", "Plates", "General", "Nameplates.comboPoints")
+	R("Nameplates", "Plates", "General", "Nameplates.comboSize")   -- (under its switch: the user, 2026-10-04)
 	R("Nameplates", "Plates", "Look", "UIModifications.NameplatePanel", { name = "Painted Skin" })
 	R("Nameplates", "Plates", "Look", "UIModifications.nameplateBorder", { picture = true })
 	R("Nameplates", "Plates", "Look", "DarkMode.nameplates", { name = "Dark Mode" })
@@ -360,6 +363,23 @@ function L.Define(R, Link)
 	R("ActionBars", "Bars", "Look", { bars = "ActionBarPanel.buttonBackground", micro = "ActionBarPanel.microButtonBackground", bag = "ActionBarPanel.bagButtonBackground" }, { name = "Button Background", picture = true })
 	R("ActionBars", "Bars", "Look", { bars = "DarkMode.actionbars", micro = "DarkMode.micromenu", bag = "DarkMode.micromenu" }, { name = "Dark Mode" })
 	R("ActionBars", "Bars", "Look", "DarkMode.gryphons", { only = { "bars" } })
+	-- (0.18.5) each element's backdrop, one list whatever the pick (the user,
+	-- 2026-10-04: "a list on Action Bars"); the looks stay on Bars > Look
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar1")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar2")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar3")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar4")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar5")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar6")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar7")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBar8")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropStance")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropPet")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropPossess")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropMicro")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropBags")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropXP")
+	R("ActionBars", "Backdrops", "General", "ActionBarPanel.backdropXP2")
 	R("ActionBars", "Cooldown Timers", "General", "UIModifications.qol_CooldownText", { only = { "bars" } })
 	R("ActionBars", "Cooldown Timers", "General", "CooldownText.actionBars", { only = { "bars" } })
 	R("ActionBars", "Cooldown Timers", "Text", "CooldownText.fontRatio", { only = { "bars" } })
@@ -601,7 +621,8 @@ function L.Define(R, Link)
 	-- Modules/Widgets.lua; the column's lock is the Reminders module's)
 	R("Reminders", "Widgets", "General", "Widgets.!enabled", { name = "Widgets" })
 	for _, key in ipairs({ "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction",
-		"craft", "cooldown", "questItem", "healer", "bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }) do
+		"craft", "cooldown", "questItem", "healer", "rare", "rareSound",
+		"bags", "bagsAt", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }) do
 		R("Reminders", "Widgets", "General", "Widgets." .. key)
 	end
 	R("Reminders", "Widgets", "Layout", "Reminders.widgetLock")

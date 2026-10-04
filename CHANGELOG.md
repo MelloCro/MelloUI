@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.5
+
+- Nameplates: Combo Points. For a rogue, and a druid in Cat Form, your five combo points sit in a row on the top edge of your target's health bar, in the game's own art: empty sockets as soon as you target an enemy, lit as you build them, glowing when all five are lit. The name moves up a little to make room. Combo Point Size sets how big they are (Nameplates > Plates).
+- Action Bars: every bar can have a backdrop now, each with its own switch (Action Bars > Backdrops): Action Bars 1 to 8, the stance, pet and possess bars, the micro menu, the bag bar and the experience and reputation bars. Off on a new install; the backdrops you had stay on.
+- Action Bars: whatever you place together shares one backdrop, in any shape: stacked bars, a column beside a row, the micro menu and bag bar on the end of a bar. Its corners get gems, its inner corners a turned joint, and it shows when one of the bars in it has its backdrop on. It takes the look of the first of them: Action Bar 1, the other bars, the micro menu, the bag bar.
+- Action Bars: the experience and reputation bars fit a backdrop they are in, taking the width of the bars beside them (within a limit, so they never stretch far).
+- Widgets: Rare Alert. A rare or rare elite nearby, seen on the minimap, as a nameplate, as your target or under the mouse, comes up in the widget column with its face, its name and how far it is and which way, glowing and with a sound as it appears. Click its face to target it; Lead Me There shows the way (Reminders > Widgets).
+- Fixed: the target frame's combo points sit outside the portrait ring instead of over its border.
+
 ## 0.18.4
 
 - Voice pack: if you have not got it yet, download the voice pack remade for 0.18.3, both parts: [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip) (delete the earlier `MelloUI_VoicePack` folder first, then unzip both into `AddOns`). It is the same pack as in 0.18.3: if you already downloaded that one, there is nothing to download again.

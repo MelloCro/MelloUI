@@ -37,6 +37,11 @@
 --                   count carried; a click on the face uses it (out of combat)
 --   Healer Drinking (0.17.0) for the group's tank between pulls: a healer
 --                   drinking (their Drink buff; party mana is secret here)
+--   Rare Alert      (0.18.5) a rare or rare elite spotted nearby (the
+--                   minimap's rare mark, a plate, the target, the mouse): its
+--                   3D face, the rare crest, how far and which way, a bright
+--                   pulse and the user's sound as it comes up; a click on the
+--                   face targets it, Lead Me There routes to it
 -- By the portrait (the reminders as they are):
 --   Bags Almost Full    free slots at or under Free Slots; a click: the way
 --                       to the nearest vendor
@@ -83,6 +88,7 @@ local M = MelloUI:RegisterModule("Widgets", {
 	defaults = {
 		loot = true, corpse = true, timed = true, summon = true, resurrect = true, ready = true, threat = true, whisper = true,
 		pet = true, auction = true, craft = true, cooldown = true, questItem = true, healer = true,
+		rare = true, rareSound = true,
 		bags = true, bagsAt = 2, talents = true, wellfed = true,
 		weapon = true, buffs = true, groupBuffs = true,
 	},
@@ -116,6 +122,10 @@ local M = MelloUI:RegisterModule("Widgets", {
 		  desc = "In a quest's objective area, with the quest's item in your bags: the item, a ring for the objective's progress and how many you carry. Click it to use the item (out of combat: it folds away in a fight)." },
 		{ type = "toggle", key = "healer", name = "Healer Drinking",
 		  desc = "When you tank a group, between pulls: a healer of your group is drinking, so wait before the next pull. It goes when they stop or a fight starts. The game keeps party mana hidden from addons, so it shows their drinking, not their mana." },
+		{ type = "toggle", key = "rare", name = "Rare Alert", new = "0.18.5",
+		  desc = "A rare or rare elite nearby, seen on the minimap, as a nameplate, as your target or under the mouse: its face, its name and how far it is, glowing as it comes up. Click its face to target it (out of combat); Lead Me There shows the way to where the minimap has it." },
+		{ type = "toggle", key = "rareSound", parent = "rare", name = "Rare Alert Sound", new = "0.18.5",
+		  desc = "Play a sound when a rare is spotted." },
 		{ type = "header", name = "By The Portrait" },
 		{ type = "toggle", key = "bags", name = "Bags Almost Full",
 		  desc = "Remind you when your bags are almost full; it stays, in a fight too, until you make room. Click it for the way to the nearest vendor." },
@@ -219,6 +229,13 @@ local function SpellIcon(id)
 end
 
 local TEXT = {
+	-- (0.18.5) the Rare Alert
+	rareLabel = "Rare Alert", rare = "Rare", rareElite = "Rare Elite", rareLine = "%s \194\183 %s",
+	rareFar = "%s to the %s", rareNear = "nearby", rareHint = "Click its face: target it",
+	rareWay = "Lead Me There", rareWayDesc = "Route to where the minimap shows it.",
+	rareDismiss = "Dismiss", rareDismissDesc = "Until another rare comes up.",
+	rareSample = "Ghost Howl", rareTest = "Rare Alert test: %s as a rare, for a minute.",
+	rareTestOff = "Rare Alert is off (Reminders > Widgets).",
 	loot = "Loot Rolls", lootLine = "Roll before the ring runs out", need = "Need", needDesc = "Roll for it as Need.",
 	greed = "Greed", greedDesc = "Roll for it as Greed.", pass = "Pass", passDesc = "Pass on it.",
 	corpse = "Your corpse", corpseLabel = "Corpse Run", corpseFar = "%s, to the %s", corpseNear = "Your body is near",
@@ -518,13 +535,13 @@ local function CorpseWay()
 	end
 end
 
--- which way the body is from the player (map north up; map y grows south)
-local function Bearing()
-	local c = corpse
-	if not (c.mapID and C_Map and C_Map.GetPlayerMapPosition) then
+-- which way a map point is from the player, in words (map north up; map y
+-- grows south): the body's, a rare's (0.18.5)
+local function Bearing(mapID, x, y)
+	if not (mapID and x and y and C_Map and C_Map.GetPlayerMapPosition) then
 		return nil
 	end
-	local pos = Ask(C_Map.GetPlayerMapPosition, c.mapID, "player")
+	local pos = Ask(C_Map.GetPlayerMapPosition, mapID, "player")
 	if type(pos) ~= "table" or Secret(pos) then
 		return nil
 	end
@@ -533,7 +550,7 @@ local function Bearing()
 	if not (px and py) then
 		return nil
 	end
-	local dx, dy = c.x - px, py - c.y
+	local dx, dy = x - px, py - y
 	if dx == 0 and dy == 0 then
 		return nil
 	end
@@ -571,7 +588,7 @@ local CORPSE = {
 					return TEXT.corpseNear
 				end
 				local yards = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
-				local dir = Bearing()
+				local dir = Bearing(corpse.mapID, corpse.x, corpse.y)
 				return dir and TEXT.corpseFar:format(yards, dir) or yards
 			end
 		end
@@ -2501,15 +2518,325 @@ local HEALER = {
 }
 
 --------------------------------------------------------------------------------
+-- Rare Alert (0.18.5; user, 2026-10-04: MelloUI-BuildData/output/
+-- rare_alert_sketch, look A, "make the Widget pulse when its detected"): a
+-- rare or rare elite spotted nearby comes up as a row of the column -- its 3D
+-- face (the creature id in its GUID: the column's model face; the icon where
+-- the GUID is secret), the rare crest on the rim (the column's crest), its
+-- name in silver (a rare elite's in gold), how far and which way while its
+-- place is known, the glow bright and pulsing for its first PULSE seconds
+-- (the column's alert) and the user's own sound (PlayUISound "rare", Rare
+-- Alert Sound). Spotted by the game's own rare marks on the minimap
+-- (VIGNETTE_MINIMAP_UPDATED, C_VignetteInfo: the mark's atlas says rare or
+-- rare elite, its object GUID the creature, GetVignettePosition its place)
+-- and by the units met -- a plate added, the target, the mouse -- whose
+-- UnitClassification says rare or rareelite, hostile and alive. Every read
+-- is tested for a secret first; a secret answer spots nothing. A click on
+-- the face targets it (/targetexact, the column's secure face click, out of
+-- combat); Lead Me There routes to its place (Route with the map pin: the
+-- World Marker on it); the right click or Dismiss: Not now until a new rare
+-- is raised. One rare at a time, the newest; the same one again
+-- within AGAIN seconds comes back quietly (no sound, no pulse). It goes when
+-- it dies, KEEP seconds after its mark left the minimap, or KEEP seconds
+-- after a sighting without a mark. One table for the rare up (filled again,
+-- never made per event); one timer at a time while it is up.
+--------------------------------------------------------------------------------
+
+local rare = { now = nil, alerted = {}, c = {}, pending = false, AGAIN = 300, KEEP = 60, PULSE = 12, EVERY = 15,
+	KINDS = { vignettekill = "rare", vignettekillelite = "rareelite" },
+	CLASSES = { rare = "rare", rareelite = "rareelite" },
+	ICON = "Interface\\Icons\\INV_Misc_Bone_Skull_01" }
+
+-- the creature id in a creature's GUID ("Creature-0-...-<id>-<spawn>"); nil
+-- for a secret, another kind or none
+function rare.Npc(guid)
+	guid = Text(guid)
+	if not guid then
+		return nil
+	end
+	local kind, id = guid:match("^(%a+)%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-(%d+)%-")
+	if kind ~= "Creature" and kind ~= "Vehicle" then
+		return nil
+	end
+	return tonumber(id)
+end
+
+-- a mark's place on the player's map: mapID, x, y (nil when not known)
+function rare.Place(vignette)
+	local mapID = Num((Ask(C_Map.GetBestMapForUnit, "player")))
+	local V = _G.C_VignetteInfo
+	if not (mapID and V and V.GetVignettePosition) then
+		return nil
+	end
+	local pos = Ask(V.GetVignettePosition, vignette, mapID)
+	if type(pos) ~= "table" or Secret(pos) then
+		return nil
+	end
+	local x, y = Ask(pos.GetXY, pos)
+	x, y = Num(x), Num(y)
+	if not (x and y) then
+		return nil
+	end
+	return mapID, x, y
+end
+
+-- whether the row belongs up now
+function rare.Active()
+	local r = rare.now
+	if not (r and r.name) or r.dead then
+		return false
+	end
+	if r.vignette and not r.off then
+		return true   -- its mark on the minimap
+	end
+	return GetTime() - (r.off or r.seen) < rare.KEEP
+end
+
+-- one timer at a time while a rare is up: the row looked at again (its pulse
+-- over, its time run out)
+function rare.Tick()
+	rare.pending = false
+	Refresh("rare")
+	if rare.Active() then
+		rare.Wait()
+	end
+end
+
+-- the pulse over: the glow back down (a refresh only; the Tick chain stays one)
+function rare.PulseOver()
+	Refresh("rare")
+end
+
+-- (every EVERY s, or sooner when its time runs out before that: it goes on
+-- time, never up to EVERY s late)
+function rare.Wait()
+	if rare.pending then
+		return
+	end
+	rare.pending = true
+	local r, delay = rare.now, rare.EVERY
+	if r and not (r.vignette and not r.off) then
+		local left = rare.KEEP - (GetTime() - (r.off or r.seen)) + 0.1
+		if left < delay then
+			delay = left > 0.1 and left or 0.1
+		end
+	end
+	C_Timer.After(delay, rare.Tick)
+end
+
+-- a rare spotted: the row up for it, a new one with the sound and the pulse
+function rare.Spot(kind, name, npc, vignette, mapID, x, y)
+	local now = GetTime()
+	local r = rare.now
+	local same = r ~= nil and r.name ~= nil and ((npc and r.npc == npc) or r.name == name)
+	if not same then
+		r = r or {}
+		r.name, r.npc, r.vignette, r.mapID, r.x, r.y, r.dead, r.off, r.alertUntil = name, npc, nil, nil, nil, nil, nil, nil, nil
+		local key = npc or name
+		local last = rare.alerted[key]
+		if not last or now - last >= rare.AGAIN then
+			rare.alerted[key] = now
+			r.alertUntil = now + rare.PULSE
+			if M.db.rareSound ~= false then
+				MelloUI:PlayUISound("rare")
+			end
+			C_Timer.After(rare.PULSE + 0.1, rare.PulseOver)
+		end
+		rare.now = r
+	end
+	r.kind, r.seen, r.off = kind, now, nil
+	r.npc = r.npc or npc
+	if vignette then
+		r.vignette = vignette
+	end
+	if mapID then
+		r.mapID, r.x, r.y = mapID, x, y
+	end
+	Refresh("rare", not same)
+	rare.Wait()
+end
+
+-- VIGNETTE_MINIMAP_UPDATED: a mark come onto the minimap or gone from it
+function rare.Vignette(guid, onMinimap)
+	if Secret(guid) or type(guid) ~= "string" then
+		return
+	end
+	local V = _G.C_VignetteInfo
+	local info = V and Ask(V.GetVignetteInfo, guid)
+	local r = rare.now
+	local ours = r ~= nil and r.vignette == guid
+	local dead = type(info) == "table" and not Secret(info.isDead) and info.isDead == true
+	if type(info) ~= "table" or dead or (not Secret(onMinimap) and onMinimap == false) then
+		if ours then
+			if type(info) ~= "table" or dead then
+				r.dead = true
+			else
+				r.off = GetTime()
+			end
+			Refresh("rare")
+		end
+		return
+	end
+	local atlas = Text(info.atlasName)
+	local kind = atlas and rare.KINDS[atlas:lower()]
+	local name = kind and Text(info.name)
+	if not name then
+		return
+	end
+	rare.Spot(kind, name, rare.Npc(info.objectGUID), guid, rare.Place(guid))
+end
+
+-- a unit met (a plate, the target, the mouse): a living, hostile rare
+function rare.Unit(unit)
+	local class = Text((Ask(UnitClassification, unit)))
+	local kind = class and rare.CLASSES[class]
+	if not kind then
+		return
+	end
+	local hostile, dead = Ask(UnitCanAttack, "player", unit), Ask(UnitIsDead, unit)
+	local name = Text((Ask(UnitName, unit)))
+	if Secret(hostile) or hostile ~= true or Secret(dead) or not name then
+		return
+	end
+	local r = rare.now
+	if dead then
+		if r and r.name == name then
+			r.dead = true   -- (seen dead: the row goes)
+			Refresh("rare")
+		end
+		return
+	end
+	rare.Spot(kind, name, rare.Npc((Ask(UnitGUID, unit))))
+end
+
+-- /mello widgets rare [elite] (the user, 2026-10-04: "how can i test the
+-- widget without encountering a rare"): a made-up sighting through the same
+-- path as a real one -- your target as the rare (its face, its name: the
+-- face's click targets it), else a sample rare; its place a little north-east
+-- of you, so the distance, the way and Lead Me There work. Always new: the
+-- sound and the pulse each time. It goes 60 s later, as a unit seen.
+function M:TestRare(elite)
+	if not On("rare") then
+		MelloUI:Print(TEXT.rareTestOff)
+		return
+	end
+	local name = Text((Ask(UnitName, "target")))
+	local npc = name and rare.Npc((Ask(UnitGUID, "target"))) or nil
+	if not name then
+		name, npc = TEXT.rareSample, 3056   -- (Ghost Howl, a rare of Mulgore; its face shows once the game knows it)
+	end
+	local mapID, x, y = Num((Ask(C_Map.GetBestMapForUnit, "player"))), nil, nil
+	local pos = mapID and Ask(C_Map.GetPlayerMapPosition, mapID, "player")
+	if type(pos) == "table" and not Secret(pos) then
+		x, y = Ask(pos.GetXY, pos)
+		x, y = Num(x), Num(y)
+	end
+	if x and y then
+		x, y = x + 0.01, y - 0.01   -- (a little north-east)
+	else
+		mapID = nil
+	end
+	rare.now = nil
+	rare.alerted[npc or name] = nil
+	rare.Spot(elite and "rareelite" or "rare", name, npc, nil, mapID, x, y)
+	MelloUI:Print(TEXT.rareTest:format(name))
+end
+
+-- (the /mello handler's "<module> <word>": Core/Config.lua reads a module's
+-- SlashWords; "widgets" is a page word there, so a branch of its own in the
+-- handler is never reached)
+M.SlashWords = {
+	rare = function() M:TestRare(false) end,
+	["rare elite"] = function() M:TestRare(true) end,
+}
+
+-- the way to its place (Lead Me There): Route with the map pin
+function rare.Way()
+	local r, R = rare.now, Route()
+	if not (r and r.mapID and R and type(R.SetDestinationTo) == "function") then
+		return
+	end
+	local c = rare.c
+	c.mapID, c.x, c.y = r.mapID, r.x, r.y
+	pcall(R.SetDestinationTo, R, c, r.name, true)
+end
+
+local RARE = {
+	key = "rare", column = true, label = TEXT.rareLabel, priority = "now",
+	when = { "where" },   -- (how far, again as the player moves)
+	hint = TEXT.rareHint,
+	check = function()
+		return rare.Active()
+	end,
+	title = function()
+		local r = rare.now
+		if not (r and r.name) then
+			return TEXT.rareLabel
+		end
+		if r.kind == "rareelite" then
+			return r.name   -- (the column's gold)
+		end
+		local c = MelloUI.Meaning.rareSilver
+		return r.name, c[1], c[2], c[3]
+	end,
+	text = function()
+		local r = rare.now
+		local what = r and r.kind == "rareelite" and TEXT.rareElite or TEXT.rare
+		local where = TEXT.rareNear
+		local R = Route()
+		if r and r.mapID and R and type(R.DistanceTo) == "function" then
+			local c = rare.c
+			c.mapID, c.x, c.y = r.mapID, r.x, r.y
+			local ok, d = pcall(R.DistanceTo, R, c, true)
+			d = ok and Num(d) or nil
+			if d then
+				where = type(R.YardsText) == "function" and R:YardsText(d) or (floor(d) .. " yd")
+				local dir = Bearing(r.mapID, r.x, r.y)
+				if dir then
+					where = TEXT.rareFar:format(where, dir)
+				end
+			end
+		end
+		return TEXT.rareLine:format(what, where)
+	end,
+	model = function()
+		return rare.now and rare.now.npc
+	end,
+	icon = rare.ICON,
+	crest = function()
+		return rare.now and rare.now.kind
+	end,
+	alert = function()
+		local r = rare.now
+		return r ~= nil and r.alertUntil ~= nil and GetTime() < r.alertUntil
+	end,
+	secure = function()
+		local r = rare.now
+		return r and r.name and ("/targetexact " .. r.name) or nil
+	end,
+	actions = {
+		{ glyph = "way", tip = TEXT.rareWay, desc = TEXT.rareWayDesc, fn = rare.Way,
+		  shown = function() return rare.now ~= nil and rare.now.mapID ~= nil end },
+		{ glyph = "cross", tip = TEXT.rareDismiss, desc = TEXT.rareDismissDesc,
+		  fn = function()
+			local r = Rem()
+			if r then
+				r:Dismiss("rare")   -- (Not now: until a new rare is raised)
+			end
+		  end },
+	},
+}
+
+--------------------------------------------------------------------------------
 -- The specs, the events
 --------------------------------------------------------------------------------
 
 local ORDER = { "loot", "corpse", "timed", "summon", "resurrect", "ready", "threat", "whisper", "pet", "auction", "craft",
-	"cooldown", "questItem", "healer", "bags", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }
+	"cooldown", "questItem", "healer", "rare", "bags", "talents", "wellfed", "weapon", "buffs", "groupBuffs" }
 local SPECS = { loot = LOOT, corpse = CORPSE, timed = TIMED, summon = SUMMON, resurrect = RESURRECT, ready = READY,
 	threat = THREAT,
 	whisper = WHISPER, pet = PET, auction = AUCTION, craft = CRAFT, cooldown = COOLDOWN, questItem = QITEM,
-	healer = HEALER, bags = BAGS, talents = TALENTS,
+	healer = HEALER, rare = RARE, bags = BAGS, talents = TALENTS,
 	wellfed = WELLFED, weapon = WEAPON, buffs = BUFFS_SPEC, groupBuffs = GROUP }
 for _, key in ipairs(ORDER) do
 	local spec = SPECS[key]
@@ -2540,6 +2867,7 @@ local EVENTS = {
 		"PLAYER_STOPPED_MOVING", "PLAYER_REGEN_ENABLED" },
 	healer = { "UNIT_AURA", "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_DISABLED",
 		"PLAYER_REGEN_ENABLED" },
+	rare = { "VIGNETTE_MINIMAP_UPDATED", "NAME_PLATE_UNIT_ADDED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT" },
 	bags = { "BAG_UPDATE_DELAYED" },
 	talents = { "PLAYER_LEVEL_UP", "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE" },
 	wellfed = { "UNIT_AURA" },
@@ -2547,18 +2875,32 @@ local EVENTS = {
 	buffs = { "UNIT_AURA", "SPELLS_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" },
 	groupBuffs = { "UNIT_AURA", "GROUP_ROSTER_UPDATE", "UNIT_CONNECTION", "SPELLS_CHANGED", "PLAYER_REGEN_ENABLED" },
 }
--- (the two that hear several of these: sets of their own)
-qitem.HEARS, healer.HEARS = {}, {}
+-- (the three that hear several of these: sets of their own)
+qitem.HEARS, healer.HEARS, rare.HEARS = {}, {}, {}
 for _, e in ipairs(EVENTS.questItem) do
 	qitem.HEARS[e] = true
 end
 for _, e in ipairs(EVENTS.healer) do
 	healer.HEARS[e] = true
 end
+for _, e in ipairs(EVENTS.rare) do
+	rare.HEARS[e] = true
+end
 
 local function OnEvent(_, event, a1, a2, a3)
 	if BUFF_EVENTS[event] then
 		BuffEvent(event, a1)
+	end
+	if rare.HEARS[event] and On("rare") then
+		if event == "VIGNETTE_MINIMAP_UPDATED" then
+			rare.Vignette(a1, a2)
+		elseif event == "NAME_PLATE_UNIT_ADDED" then
+			if not Secret(a1) and type(a1) == "string" then
+				rare.Unit(a1)
+			end
+		else
+			rare.Unit(event == "PLAYER_TARGET_CHANGED" and "target" or "mouseover")
+		end
 	end
 	if qitem.HEARS[event] and On("questItem") then
 		Refresh("questItem")

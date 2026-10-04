@@ -2962,16 +2962,44 @@ end
 -- False when the kit has no such piece.
 Kit.nineParts = { "tl", "tr", "bl", "br", "t", "b", "l", "r" }
 
-function Kit:CutNine(f, parts, piece, k, corner, show)
+-- The cut itself, as file coordinates ({ u0, u1, v0, v1 } each): the corners
+-- tl / tr / bl / br and the rails top / bottom / left / right of `piece`
+-- with a `corner` px square. Made once per piece and corner, never changed:
+-- CutNine's parts and the action bars' joined backdrops (ActionBarPanel)
+-- cut by it. Nil when the kit has no such piece.
+local nineCoords = {}   -- [piece][corner] = the cut (no key made per call: CutNine runs on every relayout)
+function Kit:NineCoords(piece, corner)
+	local byPiece = nineCoords[piece]
+	local tc = byPiece and byPiece[corner]
+	if tc then
+		return tc
+	end
 	local p = PIECES[piece]
 	if not p then
-		return false
+		return nil
 	end
 	local c, w, h = corner, p.w, p.h
 	local u0, u1, v0, v1 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
 	-- (the picture's lines as file coordinates, as u0 + (u1 - u0) * x / w)
 	local ua, ub, uc, ud = u0 + (u1 - u0) * 0 / w, u0 + (u1 - u0) * c / w, u0 + (u1 - u0) * (w - c) / w, u0 + (u1 - u0) * w / w
 	local va, vb, vc, vd = v0 + (v1 - v0) * 0 / h, v0 + (v1 - v0) * c / h, v0 + (v1 - v0) * (h - c) / h, v0 + (v1 - v0) * h / h
+	tc = { tl = { ua, ub, va, vb }, tr = { uc, ud, va, vb }, bl = { ua, ub, vc, vd }, br = { uc, ud, vc, vd },
+		top = { ub, uc, va, vb }, bottom = { ub, uc, vc, vd }, left = { ua, ub, vb, vc }, right = { uc, ud, vb, vc } }
+	byPiece = byPiece or {}
+	nineCoords[piece] = byPiece
+	byPiece[corner] = tc
+	return tc
+end
+
+function Kit:CutNine(f, parts, piece, k, corner, show)
+	local p = PIECES[piece]
+	if not p then
+		return false
+	end
+	local c, w, h = corner, p.w, p.h
+	local nc = self:NineCoords(piece, corner)
+	local ua, ub, uc, ud = nc.tl[1], nc.tl[2], nc.tr[1], nc.tr[2]
+	local va, vb, vc, vd = nc.tl[3], nc.tl[4], nc.bl[3], nc.bl[4]
 	local cs = c * k
 	for _, key in ipairs(self.nineParts) do
 		local tex = parts[key]

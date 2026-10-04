@@ -318,6 +318,9 @@ MelloUI.Meaning = {
 	swingMelee = Hex("#EFEBE3"),       -- (meaning colour)
 	-- (the shot's aim, the red of the picked swing_looks: stand still)
 	swingAim = Hex("#D63428"),         -- (meaning colour)
+	-- (0.18.5, the Rare Alert, the user's pick A of rare_alert_sketch: a rare's
+	-- name in the game's silver, as its crest's metal; a rare elite's stays gold)
+	rareSilver = Hex("#D2D6DC"),       -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 
@@ -1051,6 +1054,8 @@ end
 --                       chat's scroll button), "waypoint_set", "waypoint_clear"
 --     the notice's:     "notice_track", "notice_arrive", "notice_learn",
 --                       "notice_fail" (MelloUI:Announce, on the Master channel)
+--     the user's own:   "marker" (Route's World Marker as it changes), "rare"
+--                       (the Rare Alert: a rare spotted, on the Master channel)
 -- Every MelloUI window plays its UI sounds through here, never PlaySound
 -- itself (audit, 2026-09-24: Dynamic UI, Voice Over, the Quest List and the
 -- mover each called it directly; Tools/lint/check_panels.py holds it).
@@ -1088,6 +1093,10 @@ do
 		-- destination, the far beacon into the near look over the place and
 		-- back -- the user's own sound (their SFX library: Quest_TrackChange_01)
 		marker         = { file = "SFX\\Quest_TrackChange.ogg", kit = "UI_RUNECARVING_CLOSE_MAIN_WINDOW", alt = "UI_MAP_WAYPOINT_CLICK_TO_PLACE" },
+		-- the Rare Alert (0.18.5, user 2026-10-04): a rare just spotted -- the
+		-- user's own sound (their SFX library: Alert/RareMob/RareMob_Ward_01),
+		-- on the Master channel as the notice's chimes, so it is heard
+		rare           = { file = "SFX\\RareMob_Ward.ogg", kit = "RAID_WARNING", alt = "UI_MAP_WAYPOINT_SUPER_TRACK_ON", channel = "Master" },
 	}
 	for _, sound in pairs(SOUNDS) do
 		if sound.file then

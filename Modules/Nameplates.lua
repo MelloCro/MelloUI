@@ -19,6 +19,7 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Nameplates")
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local Num = MelloUI.Safe.Number
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 
 local BASE_ITEM_SIZE = 25 -- NamePlateConstants.AURA_ITEM_HEIGHT
@@ -40,6 +41,8 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		questIcon = true,
 		questIconSize = 22,
 		threatLine = true,
+		comboPoints = true,
+		comboSize = 90,
 	},
 	options = {
 		{ type = "header", name = "Crowd Control" },
@@ -60,12 +63,22 @@ local M = MelloUI:RegisterModule("Nameplates", {
 		{ type = "header", name = "Threat" },
 		{ type = "toggle", key = "threatLine", name = "Threat Line",
 		  desc = "In a group fight, a thin bar along the bottom of an enemy's health bar (in the Nameplate Kit's lower rail) fills to the point where it would turn on you: gold while safe, amber when close, red when it is on you. For a tank it turns red when a mob is not on you. Solo it stays away." },
+		{ type = "header", name = "Combo Points" },
+		{ type = "toggle", key = "comboPoints", name = "Combo Points", new = "0.18.5",
+		  desc = "For a rogue, and a druid in Cat Form: your five combo points in a row on the top edge of your target's health bar, empty until you build them. The name moves up a little to make room." },
+		{ type = "slider", key = "comboSize", parent = "comboPoints", name = "Combo Point Size", min = 50, max = 150, step = 5, new = "0.18.5",
+		  format = function(v) return string.format("%d%%", v) end,
+		  desc = "The size of each combo point, as a share of the health bar's height." },
 	},
 })
 
 local function Active()
 	return M.isEnabled and M.db and M.db.bigCC
 end
+
+-- the combo points on the target's plate (their section below; the name's
+-- lift is read by the crowd-control icon's offset before it)
+local Combo = {}
 
 --------------------------------------------------------------------------------
 -- The name's form on nameplates (user, 2026-09-22): after the game has set
@@ -113,6 +126,48 @@ local function InstallPlateNameHook()
 	plateNameHooked = true
 	if type(CompactUnitFrame_UpdateName) == "function" then
 		hooksecurefunc("CompactUnitFrame_UpdateName", OnCompactName)
+	end
+end
+
+-- a plate setup option (NamePlateSetupOptions: plain numbers), else fallback
+local function SetupOption(key, fallback)
+	local opts = NamePlateSetupOptions
+	return (opts and Num(opts[key])) or fallback
+end
+
+-- The game's own anchors for a plate's name, `lift` units higher: as the
+-- game's UpdateAnchors lays them for its setup style
+-- (Blizzard_NamePlateUnitFrame.lua; the name's own anchors read secret here,
+-- so they are laid again from the plain options, never read). The one place
+-- for them: NameplatePanel puts the name back here when its kit look comes
+-- off, and the combo points lift it here (Combo, below). A name inside the
+-- bar is left to the game.
+function M:LayGameName(uf, lift)
+	local name = uf and uf.name
+	local container = uf and uf.HealthBarsContainer
+	local styles = NamePlateConstants and NamePlateConstants.NAME_ANCHOR_STYLES
+	if not (name and container and styles) then
+		return
+	end
+	local style = SetupOption("unitNameAnchorStyle", styles.InsideHealthBar)
+	if style == styles.InsideHealthBar then
+		return
+	end
+	local y = SetupOption("healthBarToNameAboveSpacing", 2) + (lift or 0)
+	name:ClearAllPoints()
+	if style == styles.CenteredAboveHealthBar then
+		name:SetJustifyH("CENTER")
+		name:SetPoint("BOTTOM", container, "TOP", 0, y)
+		return
+	end
+	name:SetJustifyH(NamePlateSetupOptions and NamePlateSetupOptions.nameJustificationWhenAboveHealthBar or "LEFT")
+	name:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 0, y)
+	local lf = uf.PlayerLevelDiffFrame
+	local hbText = container.healthBar and container.healthBar.Text
+	if lf and MelloUI.Safe.Call(lf, "IsShown") then
+		name:SetPoint("RIGHT", lf, "RIGHT", 0, 0)
+	elseif hbText then
+		name:SetPoint("RIGHT", hbText, "LEFT", -2, 0)
 	end
 end
 
@@ -178,7 +233,8 @@ local function ComputeOffset(unitFrame)
 			offset = offset + BASE_ITEM_SIZE * scale + 2
 		end
 	end
-	return offset + (M.db.ccGap or 0)
+	-- (the name lifted over the combo points: the icon rises with it)
+	return offset + (M.db.ccGap or 0) + M:NameLift(unitFrame)
 end
 
 local function AnchorCC(unitFrame)
@@ -275,6 +331,8 @@ local function HookUnitFrame(unitFrame)
 	hookedUnitFrames[unitFrame] = true
 	if type(unitFrame.UpdateAnchors) == "function" then
 		hooksecurefunc(unitFrame, "UpdateAnchors", function(self)
+			-- (the game laid the name again: lifted again over the combo points)
+			Combo.Relaid(self)
 			if Active() then
 				AnchorCC(self)
 			end
@@ -647,11 +705,280 @@ local QUEST_EVENTS = {
 }
 
 --------------------------------------------------------------------------------
+-- Combo points on the target's plate (0.18.5; user, 2026-10-04: look A of
+-- BuildData/output/combo_sketch, sketch 2): a rogue's, and a druid's in Cat
+-- Form, five points in a row centred on the target plate's health bar, half
+-- over its top edge, empty sockets from the moment a hostile mob is targeted
+-- (the plate's height never jumps; the user's pick). The game's own art by
+-- atlas ELEMENT (the client picks its style: Camelot's bronze rim and red ball
+-- for a rogue, the druid's grey sockets), so the reskin changes nothing here:
+-- the same art in both looks. Layers as the game's templates
+-- (Blizzard_UnitFrame/Mainline/RogueComboPointBar.xml, DruidComboPointBar.xml):
+-- the shadow under the socket, the socket empty or lit, the point on it, the
+-- frame glow over all when all five are lit (at 1.3 of its size, the sketch's,
+-- so it shows round the socket); each piece at its atlas's size scaled to the
+-- socket. The count can be secret (GetComboPoints:
+-- SecretWhenUnitPowerRestricted) and is never read here: each lit socket,
+-- point and glow is a StatusBar's fill on the range its point covers -- (i - 1,
+-- i), the glow (4, 5) -- handed the count with SetValue, so the engine shows
+-- the bar empty or full. One row, made on the first target that needs it and
+-- moved between plates, kept in this table (nothing written on the game's
+-- frames). The plate's name rises to clear it (M:NameLift: NameplatePanel's
+-- CentreName in the kit look, M:LayGameName otherwise), the crowd-control icon
+-- with it (ComputeOffset); the debuff rows and the raid mark hang on the name
+-- (the game's UpdateAnchors) and rise too. The game's own combo bars for
+-- plates (ClassNameplateBarRogue / Druid) are not loaded in this client
+-- (Blizzard_NamePlates.toc: ExcludeLoadGameType camelot): no CVar to steer.
+-- The target frame's ComboFrame (CVar comboPointLocation) is UnitFramePanel's.
+--------------------------------------------------------------------------------
+
+Combo.ART = {
+	ROGUE = { shadow = "uf-roguecp-bg-shadow", empty = "uf-roguecp-bg-dis", lit = "uf-roguecp-bg",
+		point = "uf-roguecp-icon-red", glow = "uf-roguecp-frame-glow" },
+	DRUID = { shadow = "UF-DruidCP-BG-Shadow", empty = "UF-DruidCP-BG-Dis", lit = "UF-DruidCP-BG-Active",
+		point = "UF-DruidCP-Icon", glow = "UF-DruidCP-Ring-Glow" },
+}
+Combo.N = 5
+Combo.GLOW = 1.3        -- the glow's size over its scaled atlas (the sketch's)
+Combo.GAP = 1 / 16      -- between two sockets, of a socket (the sketch's 1 px at 16)
+Combo.DROP = 1 / 16     -- the shadow under its socket, of a socket (the sketch's)
+Combo.CAT = 1           -- GetShapeshiftFormID's Cat Form (DRUID_CAT_FORM)
+Combo.LEVEL = 8         -- over the health bar: over the kit's bracket rail and the threat line
+Combo.lifted = setmetatable({}, { __mode = "k" })   -- [a plate's UnitFrame] = its name's lift
+
+-- the player's class when it has combo points (ROGUE or DRUID), else false
+function Combo.Class()
+	if Combo.class == nil then
+		local _, class = UnitClass("player")
+		class = MelloUI.Safe.Text(class)
+		Combo.class = (class == "ROGUE" or class == "DRUID") and class or false
+	end
+	return Combo.class
+end
+
+-- whether the row belongs on the target's plate now: the option on, a rogue
+-- or a druid in Cat Form, a target the player can attack (a value read
+-- secret counts as no)
+function Combo.Wanted()
+	local class = Combo.Class()
+	if not (class and M.isEnabled and M.db and M.db.comboPoints ~= false) then
+		return false
+	end
+	if class == "DRUID" then
+		local okF, form = pcall(GetShapeshiftFormID)
+		if not okF or Num(form) ~= Combo.CAT then
+			return false
+		end
+	end
+	local ok, hostile = pcall(UnitCanAttack, "player", "target")
+	return ok and not Secret(hostile) and hostile == true
+end
+
+-- the target's plate's UnitFrame, or nil
+function Combo.TargetFrame()
+	local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, "target")
+	if not ok or Secret(plate) or type(plate) ~= "table" or (plate.IsForbidden and plate:IsForbidden()) then
+		return nil
+	end
+	local uf = plate.UnitFrame
+	return uf and uf.HealthBarsContainer and uf.HealthBarsContainer.healthBar and uf or nil
+end
+
+-- a StatusBar whose fill is `atlas`, shown full from `lo` + 1 on (the
+-- engine compares the count it is handed: nothing here does)
+function Combo.Bar(row, atlas, lo)
+	local bar = CreateFrame("StatusBar", nil, row)
+	bar:SetStatusBarTexture(atlas)
+	bar:SetMinMaxValues(lo, lo + 1)
+	bar:SetValue(lo)
+	bar:EnableMouse(false)
+	return bar
+end
+
+function Combo.Make()
+	local art = Combo.ART[Combo.Class()]
+	local row = CreateFrame("Frame", nil, UIParent)
+	row:EnableMouse(false)
+	row:Hide()
+	row.shadow, row.empty, row.lit, row.point, row.glow = {}, {}, {}, {}, {}
+	for i = 1, Combo.N do
+		row.shadow[i] = row:CreateTexture(nil, "BACKGROUND")
+		row.shadow[i]:SetAtlas(art.shadow)
+		row.empty[i] = row:CreateTexture(nil, "BORDER")
+		row.empty[i]:SetAtlas(art.empty)
+		row.lit[i] = Combo.Bar(row, art.lit, i - 1)
+		row.point[i] = Combo.Bar(row, art.point, i - 1)
+		row.glow[i] = Combo.Bar(row, art.glow, Combo.N - 1)
+	end
+	row.art = art
+	Combo.row = row
+	return row
+end
+
+-- the socket's size: a share of the plate's health bar height (the setup
+-- option: a plate's own sizes read secret), the user's Combo Point Size
+function Combo.Socket()
+	return SetupOption("healthBarHeight", 12) * (Num(M.db.comboSize) or 90) / 100
+end
+
+-- the name's lift over a row of `s`: from the bar's top to the sockets' top,
+-- less the game's gap under the name and a pixel (the sketch's 5 at 16)
+function Combo.NameLift(s)
+	return math.max(0, s / 2 - SetupOption("healthBarToNameAboveSpacing", 2) - 1)
+end
+
+-- a piece at its atlas's size times f (s x s where the client gives none),
+-- centred x units from the row's left edge, y up
+function Combo.Piece(region, row, atlas, f, s, x, y)
+	local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
+	local w, h = info and Num(info.width), info and Num(info.height)
+	if w and h then
+		region:SetSize(w * f, h * f)
+	else
+		region:SetSize(s, s)
+	end
+	region:ClearAllPoints()
+	region:SetPoint("CENTER", row, "LEFT", x, y)
+end
+
+-- the row's pieces for a socket of s, laid again only when s changed
+function Combo.Lay(row, s)
+	if row.size == s then
+		return
+	end
+	row.size = s
+	local art = row.art
+	local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(art.empty)
+	local base = info and Num(info.width)
+	local f = (base and base > 0) and s / base or 1
+	local gap = s * Combo.GAP
+	row:SetSize(Combo.N * s + (Combo.N - 1) * gap, s)
+	for i = 1, Combo.N do
+		local x = (i - 1) * (s + gap) + s / 2
+		Combo.Piece(row.shadow[i], row, art.shadow, f, s, x, -s * Combo.DROP)
+		Combo.Piece(row.empty[i], row, art.empty, f, s, x, 0)
+		Combo.Piece(row.lit[i], row, art.lit, f, s, x, 0)
+		Combo.Piece(row.point[i], row, art.point, f, s, x, 0)
+		Combo.Piece(row.glow[i], row, art.glow, f * Combo.GLOW, s * Combo.GLOW, x, 0)
+	end
+end
+
+-- the name of a plate laid again with its lift: where the kit lays it
+-- (NameplatePanel:PlaceName, true while the kit holds the name), else on the
+-- game's own anchors
+function Combo.PlaceName(uf)
+	local panel = MelloUI:GetModule("NameplatePanel")
+	if panel and panel.PlaceName and panel:PlaceName(uf) then
+		return
+	end
+	M:LayGameName(uf, Combo.lifted[uf] or 0)
+end
+
+-- a plate's name lifted by `lift` (0: back down), the crowd-control icon
+-- with it; nothing done when the lift is the same
+function Combo.Lift(uf, lift)
+	if (Combo.lifted[uf] or 0) == lift then
+		return
+	end
+	Combo.lifted[uf] = lift > 0 and lift or nil
+	Combo.PlaceName(uf)
+	if Active() then
+		AnchorCC(uf)
+	end
+end
+
+-- after the game laid a plate out again (UpdateAnchors: an acquire, an option
+-- change; never per frame): its name lifted again
+function Combo.Relaid(uf)
+	if Combo.lifted[uf] then
+		Combo.PlaceName(uf)
+	end
+end
+
+-- the row onto the target's plate (its plate before: the name back down)
+function Combo.Attach(uf)
+	local row = Combo.row or Combo.Make()
+	local hb = uf.HealthBarsContainer.healthBar
+	if Combo.at ~= uf then
+		local old = Combo.at
+		Combo.at = uf
+		HookUnitFrame(uf)   -- (its layout hook: the lift kept through the game's)
+		row:SetParent(uf)
+		row:ClearAllPoints()
+		row:SetPoint("CENTER", hb, "TOP", 0, 0)
+		local ok, level = pcall(hb.GetFrameLevel, hb)
+		level = ((ok and Num(level)) or 0) + Combo.LEVEL
+		row:SetFrameLevel(level)
+		for i = 1, Combo.N do
+			-- (the game's template layers: the lit socket, its point, the glow over all)
+			row.lit[i]:SetFrameLevel(level + 1)
+			row.point[i]:SetFrameLevel(level + 2)
+			row.glow[i]:SetFrameLevel(level + 3)
+		end
+		if old then
+			Combo.Lift(old, 0)
+		end
+	end
+	local s = Combo.Socket()
+	Combo.Lay(row, s)
+	Combo.Lift(uf, Combo.NameLift(s))
+	row:Show()
+end
+
+function Combo.Detach()
+	local uf = Combo.at
+	Combo.at = nil
+	if Combo.row then
+		Combo.row:Hide()
+	end
+	if uf then
+		Combo.Lift(uf, 0)
+	end
+end
+
+-- the count handed to the bars (plain or secret alike: never compared here)
+function Combo.Count()
+	local row = Combo.row
+	if not (row and Combo.at) then
+		return
+	end
+	local ok, n = pcall(GetComboPoints, "player", "target")
+	if not ok then
+		return
+	end
+	if not Secret(n) and type(n) ~= "number" then
+		n = 0
+	end
+	for i = 1, Combo.N do
+		row.lit[i]:SetValue(n)
+		row.point[i]:SetValue(n)
+		row.glow[i]:SetValue(n)
+	end
+end
+
+-- the row where it belongs now: on the target's plate with the count, or away
+function Combo.Update()
+	local uf = Combo.Wanted() and Combo.TargetFrame()
+	if not uf then
+		Combo.Detach()
+		return
+	end
+	Combo.Attach(uf)
+	Combo.Count()
+end
+
+-- the name's lift on a plate (0 where the row is not): for the crowd-control
+-- icon's offset and NameplatePanel's CentreName
+function M:NameLift(uf)
+	return Combo.lifted[uf] or 0
+end
+
+--------------------------------------------------------------------------------
 -- Events & lifecycle
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
+Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 	if event == "NAME_PLATE_UNIT_ADDED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if Active() then
@@ -663,6 +990,9 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		if ThreatOn() then
 			ThreatUnit(unit)
 		end
+		if Combo.on then
+			Combo.Update()   -- (the target's plate may come after the target)
+		end
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
 		if plate and plate.UnitFrame and plate.UnitFrame.MelloUIQuestIcon then
@@ -670,7 +1000,17 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		end
 		if plate and plate.UnitFrame then
 			HideThreat(plate.UnitFrame)
+			if plate.UnitFrame == Combo.at then
+				Combo.Detach()
+			end
 		end
+	elseif event == "UNIT_POWER_FREQUENT" then
+		-- (the player's; only a combo point change: energy ticks pass by)
+		if Secret(power) or power == nil or power == "COMBO_POINTS" then
+			Combo.Count()
+		end
+	elseif event == "PLAYER_TARGET_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
+		Combo.Update()
 	elseif event == "UNIT_THREAT_LIST_UPDATE" then
 		-- (a plate's mob: that plate; the target's or a boss's plate has its
 		-- own nameplateN event too)
@@ -683,8 +1023,36 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 		HideAllThreat()
 	else
 		ScheduleQuestRescan()
+		if event == "PLAYER_ENTERING_WORLD" and Combo.on then
+			Combo.Update()
+		end
 	end
 end)
+
+-- the combo points' events while the row is wanted at all (the option on, a
+-- class with combo points): the target, the player's power (a unit event),
+-- a druid's form; off: the row away
+local COMBO_EVENTS = { "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM" }
+function Combo.Register(on)
+	on = (on and Combo.Class()) and true or false
+	if Combo.on == on then
+		return
+	end
+	Combo.on = on
+	for _, event in ipairs(COMBO_EVENTS) do
+		if not on then
+			eventFrame:UnregisterEvent(event)
+		elseif event ~= "UPDATE_SHAPESHIFT_FORM" or Combo.Class() == "DRUID" then
+			eventFrame:RegisterEvent(event)
+		end
+	end
+	if on then
+		eventFrame:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+	else
+		eventFrame:UnregisterEvent("UNIT_POWER_FREQUENT")
+		Combo.Detach()
+	end
+end
 
 local function RegisterThreatEvents(register)
 	for _, event in ipairs(THREAT_EVENTS) do
@@ -744,6 +1112,10 @@ function M:OnEnable(db)
 	if db.questIcon then
 		UpdateAllQuestIcons()
 	end
+	Combo.Register(db.comboPoints ~= false)
+	if Combo.on then
+		Combo.Update()   -- (no target at login: nothing made)
+	end
 end
 
 -- (Kit.lua loads before this file, so its combat queue is always there:
@@ -757,6 +1129,7 @@ function M:OnDisable()
 	eventFrame:UnregisterEvent("NAME_PLATE_UNIT_REMOVED")
 	RegisterQuestEvents(false)
 	RegisterThreatEvents(false)
+	Combo.Register(false)
 	OutOfCombat(RestoreAll)
 	HideAllQuestIcons()
 	RefreshPlateNames("both")
@@ -781,6 +1154,11 @@ function M:OnSettingChanged(key, value, db)
 		else
 			HideAllQuestIcons()
 		end
+		return
+	end
+	if key == "comboPoints" or key == "comboSize" then
+		Combo.Register(db.comboPoints ~= false)
+		Combo.Update()
 		return
 	end
 	if db.bigCC then

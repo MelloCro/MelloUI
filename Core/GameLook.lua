@@ -108,6 +108,10 @@ Look.ART = {
 	navArrow = { "atlas", "Navigation-Tracked-Arrow" },
 	mapPin = { "atlas", "Waypoint-MapPin-Tracked" },
 	mapPinChat = { "atlas", "Waypoint-MapPin-ChatIcon" },   -- (wave 5: the Quest Tracker's followed quest)
+	-- (0.18.5) the game's own rank icons for a rare and a rare elite (its plates' and
+	-- target frame's, Blizzard_NamePlateClassificationFrame): the Rare Alert's crest
+	rareMark = { "atlas", "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star" },
+	rareEliteMark = { "atlas", "nameplates-icon-elite-silver" },
 }
 
 function Look.Art(key)

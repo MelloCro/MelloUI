@@ -297,6 +297,33 @@ Dark Mode is a personal preference: its switch and every setting here stay out o
 shared strings and the shipped MelloUI profile, and no installer setup changes it (Fresh
 start's dark mode row sets it as you choose). A new character starts with it off.
 
+### Action Bars (backdrops)
+
+The reskin can put a painted backdrop round each bar: a frame with a gem on each outer
+corner and stone behind the buttons. Each element has its own switch (Action Bars >
+Backdrops): Action Bars 1 to 8, the stance, pet and possess bars, the micro menu, the bag bar
+and the two experience / reputation bars. A new install starts with none; the installer's
+MelloUI setup turns on Action Bar 1's, the micro menu's and the bag bar's, and a player from
+before 0.18.5 keeps the backdrops they had.
+
+- **Placed together, one backdrop.** Elements whose backdrops would touch (about a third of a
+  button apart, as Edit Mode snaps them) share one outline, whatever the shape: stacked bars, a
+  column beside a row, the micro menu and the bag bar on the end of a bar. Its outer corners get
+  gems, its inner corners the turned joint, and the stone runs through it as one surface.
+- **One on is enough.** A shared backdrop shows when one of its elements has its switch on; the
+  others join it as they are.
+- **Its look is its leader's:** Action Bar 1, then the other bars in order, then the micro menu,
+  then the bag bar. The gems and the backgrounds stay on Action Bars > Bars > Look, per pick
+  (Action Bars, Micro Menu, Bag Bar); the experience bars wear the action bars' look.
+- **The experience and reputation bars fit.** In a shared backdrop with bars above or below
+  them they take those bars' width, by their scale, within 0.85 to 1.25 times their own; past
+  that they keep their size and the outline goes round them as they are. Their bracket gives
+  way to the backdrop's rails. Set their width in Edit Mode's Size to bring them in range.
+- Laid out again after any change (a bar moved, shown or hidden, a setting), never in a fight:
+  what waits for a fight's end is done when it is over.
+- `/abdump backdrops` lists the elements, their switches and rects, what each backdrop draws
+  and the experience bars' fit.
+
 ### Bar Textures
 
 Swaps the fill texture of health and power bars (player, target, focus, pet, party, boss,
@@ -374,6 +401,17 @@ the open world it often does for a nameplate) the bar takes the secret value its
 it, MelloUI never reads it, and its colour follows the threat state while that is open (gold when
 that is secret too). Solo, out of a fight and on friendly plates it stays away. One reader with the
 Threat widget: Core/Threat.lua.
+
+**Combo Points** (on, 0.18.5; Nameplates > Plates): for a rogue, and a druid in Cat Form, five
+combo points in a row centred on the top edge of your target's health bar, in the game's own art
+(the rogue's bronze sockets and red points, the druid's grey sockets): five empty sockets as soon
+as you target an enemy you can attack, so the plate never jumps, a point lit for each one you
+build, and the game's glow round all five when they are full. The name moves up a little to make
+room, and the debuff row, the raid mark and the large crowd-control icon above it move up with it;
+the threat line, the quest marker and the cast bar keep their places. **Combo Point Size** (90 %)
+sets each socket as a share of the health bar's height. Where the game keeps the count secret the
+points take it themselves: the game draws them, MelloUI never reads it. The same art with the reskin
+on and off. Only the target's plate: one row, moved when you change target.
 
 With the reskin's Nameplate Kit on, the level circle sits on the right end's diamond and covers it (0.16.0: the game's
 level frame stays where the game lays it; only its circle, number and target ring move onto the diamond), and the
@@ -1179,6 +1217,19 @@ Widgets tab:
   or, when nobody in the group has a role, a priest, druid, paladin or shaman. The game keeps
   party mana hidden from addons (measured), so it shows the Drink buff, not their mana; it goes
   when they stop drinking or a fight starts (auras are read only out of combat).
+- **Rare Alert** (0.18.5, on): a rare or rare elite nearby comes up at the top of the column the
+  moment it is seen: on the minimap (the game's own rare mark), as a nameplate, as your target or
+  under the mouse. Its 3D face in the rim with a crest on top (a silver star for a rare, a gold one
+  for a rare elite; the game's own rank icon with the reskin off), its name in silver (a rare
+  elite's in gold) and "Rare · 240 yd to the north-east" while the minimap shows where it is
+  ("nearby" when it was only seen as a unit). As it comes up the widget glows bright and pulses
+  for about 12 seconds, with your sound (**Rare Alert Sound**, on). Click its face to target it
+  (out of combat); **Lead Me There** shows the way to where the minimap has it; Dismiss (or a
+  right click) puts it away until another rare comes up. The same rare seen again within 5
+  minutes comes back quietly. It goes when it dies, a minute after its mark leaves the minimap,
+  or a minute after it was last seen. To try it without a rare: `/mello widgets rare` (your target
+  as a rare, else a sample one, its place a little north-east of you) or `/mello widgets rare
+  elite`.
 
 And three more reminders by the portrait: **Bags Almost Full** (at **Free Slots**, 2; a click shows
 the way to the nearest vendor), **Talent Points** and **Well Fed Ending** (its last two minutes).

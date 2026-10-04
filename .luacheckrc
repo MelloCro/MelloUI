@@ -135,7 +135,7 @@ read_globals = {
 	-- (0.17.0: Combat Text, Modules/CombatText.lua)
 	"C_CombatText", "UnitPowerType", "UnitIsTapDenied", "UnitPlayerControlled",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
-	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitPosition", "GetCameraZoom", "UnitRace", "UnitReaction",
+	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitPosition", "GetCameraZoom", "GetComboPoints", "GetShapeshiftFormID", "UnitIsDead", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",
 	"UpdateContainerFrameAnchors", "WorldMapFrame", "date", "hooksecurefunc", "issecretvalue", "time",
 	"tinsert", "wipe",

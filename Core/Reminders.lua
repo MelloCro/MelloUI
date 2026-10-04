@@ -1904,6 +1904,16 @@ end
 --               fn(key, left, paused) -> text (nil: none)
 --               `fraction` fn(key) -> 0..1 instead: the ring held at that
 --               share, with no time (a pet's happiness)
+--   the crest   `crest` fn(key) -> "rare" | "rareelite" (0.18.5, the Rare
+--               Alert): a crest on the rim's top, the kit's (marks/crest_rare,
+--               a silver star; crest_rareelite, a gold one) while the kit's
+--               unit frames are on, else the game's own rank icon
+--               (MelloUI.Look's rareMark / rareEliteMark); made on a row's
+--               first crest
+--   the glow    low, as the Reminders' glow setting has it; `alert` fn(key)
+--               -> true: bright, and pulsing for as long as it says so
+--               (0.18.5, a rare just spotted; user 2026-10-04: "make the
+--               Widget pulse when its detected")
 --   the count   `count` fn(key) -> n: a small disc on the face while n > 0
 --   actions     { { glyph = "pause" | icon = texture, tip, desc, fn(key),
 --               shown = fn(key), tray = true, secure = fn(key) -> macro
@@ -2103,6 +2113,9 @@ local function Column()
 		for i = 1, #col.rows do
 			local row = col.rows[i]
 			row.face:SetKit(Kit)
+			if row.crest and row.crest.kind then
+				Col.Crest(row, row.crest.kind)   -- (the kit's crest or the game's icon)
+			end
 			for j = 1, #row.btns do
 				row.btns[j]:SetKit(Kit)
 			end
@@ -2715,6 +2728,10 @@ local function Column()
 				row.face:SetIcon(Rem:Icon(key) or SAMPLE_ICON)
 			end
 		end
+		-- the crest on the rim (a rare's)
+		if spec.crest ~= nil or row.crest then
+			Col.Crest(row, spec.crest ~= nil and Value(spec.crest, key) or nil)
+		end
 		-- the count
 		local n = Num(Value(spec.count, key))
 		if n and n > 0 then
@@ -2810,9 +2827,9 @@ local function Column()
 				PlaceBtn(row, i)
 			end
 		end
-		-- the glow: low, as the Reminders' glow setting has it
-		ApplyGlow(row.glow)
-		row.glow:SetStrength(GLOW_LOW)
+		-- the glow: low, as the Reminders' glow setting has it (bright while
+		-- the spec's `alert` says so)
+		Col.Glow(row, key)
 		LayButtons(row, key)
 		if row.trayOpen then
 			FillTray(row)
@@ -3646,9 +3663,56 @@ local function Column()
 		end
 		for i = 1, up.n do
 			local row = col.rows[i]
-			ApplyGlow(row.glow)
+			Col.Glow(row, row.key)
+		end
+	end
+
+	-- a row's glow: low, as the Reminders' glow setting has it; bright, and
+	-- pulsing in the "pulse" setting, while its spec's `alert` says so
+	function Col.Glow(row, key)
+		local spec = key and specs[key]
+		local alert = spec and spec.alert ~= nil and Value(spec.alert, key)
+		alert = not Secret(alert) and alert == true
+		ApplyGlow(row.glow)
+		local mode = GlowMode()
+		if alert and mode ~= "off" then
+			row.glow:SetStrength("reach")
+			if mode == "pulse" then
+				row.glow:Pulse()
+			end
+		else
 			row.glow:SetStrength(GLOW_LOW)
 		end
+	end
+
+	-- the crest on a row's rim (spec.crest): the kit's while the kit's unit
+	-- frames are on, else the game's own rank icon; made on its first use
+	Col.CREST = { rare = { "marks/crest_rare", "rareMark" }, rareelite = { "marks/crest_rareelite", "rareEliteMark" } }
+	Col.CREST_SIZE = 0.38   -- of the face (the sketch's 24 on a 62 face)
+	function Col.Crest(row, kind)
+		local art = type(kind) == "string" and not Secret(kind) and Col.CREST[kind] or nil
+		local tex = row.crest
+		if not art then
+			if tex then
+				tex:Hide()
+				tex.kind = nil
+			end
+			return
+		end
+		if not tex then
+			tex = row.face:CreateTexture(nil, "OVERLAY", nil, 7)
+			tex:SetSize(FACE * Col.CREST_SIZE, FACE * Col.CREST_SIZE)
+			tex:SetPoint("CENTER", row.face, "TOP", 0, -2)
+			row.crest = tex
+		end
+		local Kit = KitOn()
+		if Kit and Kit.Apply then
+			Kit:Apply(tex, art[1])   -- look-ok: the kit's crest while the kit's unit frames are on (KitOn)
+		else
+			tex:SetAtlas((select(2, Look.Art(art[2]))))
+		end
+		tex.kind = kind
+		tex:Show()
 	end
 
 	function Col.Source()

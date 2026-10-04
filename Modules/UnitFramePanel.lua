@@ -1055,6 +1055,108 @@ local function MarksSync()
 end
 
 --------------------------------------------------------------------------------
+-- The target's combo points outside the ring (a player's screenshot via the
+-- user, 2026-10-04: "the combopoints are on top of the Portrait Border and
+-- hide the artwork, can you move them a bit more to the right side so that
+-- they appear outside of the borders"). The game's ComboFrame (Camelot's, at
+-- the target frame's top right) lays its ComboPoint frames on an arc that
+-- hugs the game's own portrait ring; the kit's ring (R1) is wider, so the arc
+-- lay on its bezel. While the kit dresses the frame each point stands on its
+-- own angle of the game's arc, out from the ring's centre past its rim: hung
+-- on the ring itself, so wherever the game puts the ComboFrame (it anchors it
+-- again on every update, ComboFrame_ApplyOverrides) the points stay round the
+-- ring, and nothing here runs per update (the game never anchors a point).
+-- Laid when the kit comes on and when the target frame shows (the ring's size
+-- known then), again only when the ring's width changed; the game's own
+-- anchors back when the kit goes off.
+--------------------------------------------------------------------------------
+
+local Combo = {
+	GAP = 2,          -- UI px between the ring's rim and a point
+	saved = nil,      -- [i] = the point's own anchor, as the game laid it
+	angles = nil,     -- [i] = its angle on the game's arc
+	width = nil,      -- the ring's width the points were laid for
+}
+
+-- the game's arc: the circle through three of its points (their centres in
+-- the ComboFrame's top-right corner's terms, y up), and each point's angle on it
+function Combo.Read(points)
+	local saved, centres = {}, {}
+	for i, p in ipairs(points) do
+		local ok, pt, rel, rp, x, y = pcall(p.GetPoint, p, 1)
+		local okS, w, h = pcall(p.GetSize, p)
+		if not (ok and okS and pt == "TOPRIGHT" and rp == "TOPRIGHT" and not Secret(x) and not Secret(y)
+			and not Secret(w) and not Secret(h) and type(x) == "number" and type(y) == "number"
+			and type(w) == "number" and type(h) == "number") then
+			return false
+		end
+		saved[i] = { pt, rel, rp, x, y }
+		centres[i] = { x - w / 2, y - h / 2 }
+	end
+	local a, b, c = centres[2], centres[4], centres[6]
+	if not (a and b and c) then
+		return false
+	end
+	local d = 2 * (a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2]))
+	if math.abs(d) < 1e-6 then
+		return false
+	end
+	local a2, b2, c2 = a[1] ^ 2 + a[2] ^ 2, b[1] ^ 2 + b[2] ^ 2, c[1] ^ 2 + c[2] ^ 2
+	local ux = (a2 * (b[2] - c[2]) + b2 * (c[2] - a[2]) + c2 * (a[2] - b[2])) / d
+	local uy = (a2 * (c[1] - b[1]) + b2 * (a[1] - c[1]) + c2 * (b[1] - a[1])) / d
+	local angles = {}
+	for i, ce in ipairs(centres) do
+		angles[i] = math.atan2(ce[2] - uy, ce[1] - ux)
+	end
+	Combo.saved, Combo.angles = saved, angles
+	return true
+end
+
+function Combo.Lay()
+	local cf = _G.ComboFrame
+	local points = cf and cf.ComboPoints
+	local entry = skin and TargetFrame and skin.targets[TargetFrame]
+	local ring = type(entry) == "table" and entry.ring
+	if not (active and type(points) == "table" and ring and ring.tex) then
+		return
+	end
+	local okW, w = pcall(ring.tex.GetWidth, ring.tex)
+	if not okW or Secret(w) or type(w) ~= "number" or w <= 0 or w == Combo.width then
+		return
+	end
+	if not (Combo.angles or Combo.Read(points)) then
+		return   -- (the game's anchors unreadable: its own arc stays)
+	end
+	Combo.width = w
+	for i, p in ipairs(points) do
+		local okS, pw = pcall(p.GetWidth, p)
+		local half = (okS and not Secret(pw) and type(pw) == "number") and pw / 2 or 6
+		local r = w / 2 + half + Combo.GAP
+		local t = Combo.angles[i]
+		if t then
+			p:ClearAllPoints()
+			p:SetPoint("CENTER", ring.tex, "CENTER", r * math.cos(t), r * math.sin(t))
+		end
+	end
+end
+
+function Combo.Restore()
+	local cf = _G.ComboFrame
+	local points = cf and cf.ComboPoints
+	if not (Combo.width and type(points) == "table" and Combo.saved) then
+		return
+	end
+	Combo.width = nil
+	for i, p in ipairs(points) do
+		local a = Combo.saved[i]
+		if a then
+			p:ClearAllPoints()
+			p:SetPoint(a[1], a[2], a[3], a[4], a[5])
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The frames
 --------------------------------------------------------------------------------
 
@@ -1159,6 +1261,10 @@ local function SkinTargetLike(frame)
 		RetuckAll()
 		for _, cover in ipairs(skin.covers) do
 			cover.Refit()
+		end
+		-- (the target's combo points round its ring, above: a lookup when laid)
+		if frame == TargetFrame then
+			Combo.Lay()
 		end
 	end
 	if frame.CheckClassification then
@@ -1461,6 +1567,7 @@ local function Activate()
 	for _, cover in ipairs(skin.covers) do
 		cover.Refit()
 	end
+	Combo.Lay()
 	Kit:Cover("unitframes")
 	Kit:Cover("partyframes")
 end
@@ -1481,6 +1588,7 @@ local function Deactivate()
 	end
 	-- (the plain pieces back, the marks' events off)
 	MarksSync()
+	Combo.Restore()
 	Kit:Uncover("unitframes")
 	Kit:Uncover("partyframes")
 end

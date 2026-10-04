@@ -362,7 +362,10 @@ LOGIN_STEPS = {"UIModifications.questTrackerKit",   # set once from TrackerPanel
                "VoiceOver.overlayScale", "VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "VoiceOver.overlayX",
                "VoiceOver.overlayY", "Reminders.widgetLock",
                # (Show Names As's form, handed on to the frames' own copies by UI Modifications' OnEnable)
-               "UnitFrames.nameFormat", "Nameplates.nameFormat"}
+               "UnitFrames.nameFormat", "Nameplates.nameFormat",
+               # 0.18.5: the backdrops' switches taken over from the looks (ActionBarPanel's MigrateBackdrops: a player
+               # from before keeps Action Bar 1's, the micro menu's and the bag bar's)
+               "ActionBarPanel.backdropBar1", "ActionBarPanel.backdropMicro", "ActionBarPanel.backdropBags"}
 # store entries the login takes out (0.16.0: VoiceOver's OnInit forgets the old overlay's place)
 LOGIN_DROPS = {"voiceOverlay"}
 

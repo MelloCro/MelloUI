@@ -30,11 +30,11 @@ local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
 
 -- The looks a group of buttons can take (action bars, micro menu, bag bar;
--- the rims are UI Modifications' Button Border, every window's)
+-- the rims are UI Modifications' Button Border, every window's). No "None"
+-- since 0.18.5: each element's backdrop has its own switch (ELEMENTS).
 local BACKDROP_VALUES = {
 	{ value = "red", label = "Red gems" },
 	{ value = "iron", label = "Iron gems" },
-	{ value = "none", label = "None" },
 }
 local BACKGROUND_VALUES = Kit.buttonLooks.backgrounds
 
@@ -44,6 +44,32 @@ local GROUPS = {
 	{ id = "bars", title = "Action Bars", keys = { backdrop = "barBackdrop", background = "barBackground", buttonBackground = "buttonBackground" } },
 	{ id = "micro", title = "Micro Menu", keys = { backdrop = "microBackdrop", background = "microBackground", buttonBackground = "microButtonBackground" } },
 	{ id = "bags", title = "Bag Bar", keys = { backdrop = "bagBackdrop", background = "bagBackground", buttonBackground = "bagButtonBackground" } },
+}
+
+-- The elements that can wear a backdrop (user, 2026-10-04: "Everything
+-- should have the option to have a backdrop, but not on by Default"), each
+-- by its own switch, in the order that makes a joined backdrop's leader
+-- (whose look it takes: Action Bar 1, then the other bars, the micro menu,
+-- the bag bar; the experience and reputation bars wear the action bars'
+-- look). `frame`: the element's frame; `group`: whose look it wears.
+local ELEMENTS = {
+	{ key = "backdropBar1", frame = "MainActionBar", name = "Action Bar 1", what = "Action Bar 1", group = "bars" },
+	{ key = "backdropBar2", frame = "MultiBarBottomLeft", name = "Action Bar 2", what = "Action Bar 2", group = "bars" },
+	{ key = "backdropBar3", frame = "MultiBarBottomRight", name = "Action Bar 3", what = "Action Bar 3", group = "bars" },
+	{ key = "backdropBar4", frame = "MultiBarRight", name = "Action Bar 4", what = "Action Bar 4", group = "bars" },
+	{ key = "backdropBar5", frame = "MultiBarLeft", name = "Action Bar 5", what = "Action Bar 5", group = "bars" },
+	{ key = "backdropBar6", frame = "MultiBar5", name = "Action Bar 6", what = "Action Bar 6", group = "bars" },
+	{ key = "backdropBar7", frame = "MultiBar6", name = "Action Bar 7", what = "Action Bar 7", group = "bars" },
+	{ key = "backdropBar8", frame = "MultiBar7", name = "Action Bar 8", what = "Action Bar 8", group = "bars" },
+	{ key = "backdropStance", frame = "StanceBar", name = "Stance Bar", what = "the stance bar", group = "bars" },
+	{ key = "backdropPet", frame = "PetActionBar", name = "Pet Bar", what = "the pet bar", group = "bars" },
+	{ key = "backdropPossess", frame = "PossessActionBar", name = "Possess Bar", what = "the possess bar", group = "bars" },
+	{ key = "backdropMicro", frame = "MicroMenu", name = "Micro Menu", what = "the micro menu", group = "micro" },
+	{ key = "backdropBags", frame = "BagsBar", name = "Bag Bar", what = "the bag bar", group = "bags" },
+	{ key = "backdropXP", frame = "MainStatusTrackingBarContainer", name = "Experience Bar", status = true, group = "bars",
+	  what = "the experience bar (the reputation bar in its place at the top level)" },
+	{ key = "backdropXP2", frame = "SecondaryStatusTrackingBarContainer", name = "Reputation Bar", status = true, group = "bars",
+	  what = "the second status bar (a watched reputation while you level)" },
 }
 
 local defaults = { hidePageArrows = true }
@@ -57,15 +83,24 @@ for _, g in ipairs(GROUPS) do
 	if g.id ~= "bars" then
 		options[#options + 1] = { type = "subheader", name = g.title }
 	end
-	local what = g.id == "bars" and "Action Bar 1 (and the bars snapped to it in Edit Mode: as wide a bar widens it, a narrower one gets a tab tucked under it)"
+	local what = g.id == "bars" and "the action bars (and the experience and reputation bars)"
 		or (g.id == "micro" and "the micro menu" or "the bag bar")
 	-- (the buttons' rim: UI Modifications' Button Border, every window's)
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
-		desc = "A frame round " .. what .. ", with a gem on each corner." }
+		desc = "The gems on the corners of the backdrop round " .. what .. ". Elements placed together share one backdrop, "
+			.. "in the look of the first of them: Action Bar 1, the other bars, the micro menu, the bag bar. Each element's "
+			.. "backdrop is switched on under Backdrops." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,
 		desc = "What lies behind the buttons inside the backdrop. All three are chosen with pictures on Action Bars > Bars." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.buttonBackground, name = "Button Background", values = BACKGROUND_VALUES,
 		desc = "What a button shows inside its rim where it has no icon." }
+end
+options[#options + 1] = { type = "subheader", name = "Backdrops" }
+for _, e in ipairs(ELEMENTS) do
+	defaults[e.key] = false
+	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = "0.18.5",
+		desc = "A backdrop round " .. e.what .. ". Elements placed together share one backdrop, shown when one of them has it "
+			.. "on" .. (e.status and "; this bar then takes their width, within a limit." or ".") }
 end
 
 local M = MelloUI:RegisterModule("ActionBarPanel", {
@@ -75,6 +110,9 @@ local M = MelloUI:RegisterModule("ActionBarPanel", {
 	enabledByDefault = true,
 	defaults = defaults,
 	options = options,
+	-- the per-element switches taken over once (MigrateBackdrops): this
+	-- machine's step, never in a profile
+	keep = { "backdropsMigrated" },
 })
 
 local skin = nil
@@ -111,10 +149,9 @@ end
 --------------------------------------------------------------------------------
 -- The shade (0.14.0: the whole UI's soft shade, Modules/KitShade.lua, the
 -- Action Bars area). What stands against the world casts it: each backdrop's
--- rails (every part of its nine its own part of the piece's shadow, so a part
--- a join hides takes its shadow along, and the pieces of an opened rail cast
--- theirs), the end caps, the status bars' brackets, and where no backdrop
--- covers a bar (Backdrop None, a bar standing apart) its buttons' rims. A
+-- rails and gems (each piece its own part of the nine's shadow, ShadePiece),
+-- the end caps, the status bars' brackets, and where no backdrop covers a
+-- bar (its backdrop off, a bar standing apart) its buttons' rims. A
 -- group's shadows lie on its shade frame: BACKGROUND strata, kept there (the
 -- game lifts the bars to TOOLTIP while a spell is dragged), level 0 whatever
 -- its bar's, under the end caps and every backdrop (the status bars' too: no
@@ -176,6 +213,7 @@ end
 -- piece px), as the options its partner is made with: that part of the
 -- piece's shadow, reaching past the piece's outer sides only. Made once per
 -- piece (red and iron gems: one geometry today, each its own all the same).
+local FRAME_CORNER = 40      -- piece px: the corner square (the gem and the mitre) of the nine-slice
 local partCut = {}   -- [piece name] = { [part key] = { cut = { x0, x1, y0, y1 } } }
 local function PartCuts(name, p, c)
 	local cuts = partCut[name]
@@ -192,53 +230,35 @@ local function PartCuts(name, p, c)
 	return cuts
 end
 
--- A backdrop's nine, shaded once (its partners follow the frame's show and
--- hide, each part's own, and Kit:CutNine's cut and scale from then on)
-local function ShadeParts(f, name, p, c)
-	if f.melloShaded or not f.melloShade then
-		return
-	end
-	f.melloShaded = true
-	local el = Shade(f:GetParent(), true, f)
-	local cuts = PartCuts(name, p, c)
-	for _, key in ipairs(Kit.nineParts) do
-		el:Add(f.parts[key], cuts[key])
-	end
-end
-
--- The pieces of an opened rail (OpenRail / OpenSideRail's segs, each marked
--- with its side): the rail's part of the shadow, at the frame's scale. A piece
--- still waiting for its partner takes the side it shows now (its options are
--- read when it is made).
+-- A piece of a backdrop (a rail or a gem, ShapeOn) shaded: its part of the
+-- piece's shadow, at the holder's scale. Added to the holder's shade once,
+-- with options read when its partner is made; a piece the pool hands out
+-- again takes its new part on its partner (Kit:ShadowCut) or, still
+-- waiting for one, in those options.
 local SEG_PART = { top = "t", bottom = "b", left = "l", right = "r" }
-local function ShadeSegs(f, c)
-	local el, pool = f.melloShade, f.segs
-	local p = pool and (pool.used or 0) > 0 and Kit:Piece(f.piece)
-	if not (el and p) then
+local function ShadePiece(f, tex, name, part)
+	tex.kitScale = f.k   -- (drawn at k: its shadow reaches as far)
+	local p = f.shade and Kit:Piece(name)
+	if not p then
 		return
 	end
-	local cuts = PartCuts(f.piece, p, c)
-	for i = 1, pool.used do
-		local tex = pool[i]
-		local cut = cuts[SEG_PART[tex.melloRail] or "t"].cut
-		tex.kitScale = f.k
-		if tex.kitShadow then
-			Kit:ShadowCut(tex, cut[1], cut[2], cut[3], cut[4])
+	local cut = PartCuts(name, p, FRAME_CORNER)[part].cut
+	if tex.kitShadow then
+		Kit:ShadowCut(tex, cut[1], cut[2], cut[3], cut[4])
+	else
+		local o = tex.melloShadeOpts
+		if o then
+			local oc = o.cut
+			oc[1], oc[2], oc[3], oc[4] = cut[1], cut[2], cut[3], cut[4]
 		else
-			local o = tex.melloShadeOpts
-			if o then
-				local oc = o.cut
-				oc[1], oc[2], oc[3], oc[4] = cut[1], cut[2], cut[3], cut[4]
-			else
-				tex.melloShadeOpts = { cut = { cut[1], cut[2], cut[3], cut[4] } }
-				el:Add(tex, tex.melloShadeOpts)
-			end
+			tex.melloShadeOpts = { cut = { cut[1], cut[2], cut[3], cut[4] } }
+			f.shade:Add(tex, tex.melloShadeOpts)
 		end
 	end
 end
 
--- [root] = true while a shown backdrop covers that bar (Action Bar 1 and the
--- bars snapped to it, the micro menu, the bag bar): filled by each layout
+-- [root] = true while a shown backdrop covers that element (every member of
+-- a drawn backdrop): filled by each layout
 local covered = {}
 
 -- A rim drawn at another size than its partner was made at (a micro
@@ -370,6 +390,10 @@ local BACKGROUND_PIECES = Kit.buttonLooks.backgroundPiece
 
 local GROUP = {}          -- id -> group
 local KEY_GROUP = {}      -- setting key -> group, role
+local ELEMENT_KEY = {}    -- an element's backdrop switch -> the element
+for _, e in ipairs(ELEMENTS) do
+	ELEMENT_KEY[e.key] = e
+end
 for _, g in ipairs(GROUPS) do
 	GROUP[g.id] = g
 	for role, key in pairs(g.keys) do
@@ -541,26 +565,28 @@ local function SkinBar(bar)
 end
 
 --------------------------------------------------------------------------------
--- The backdrop (user, 2026-09-23, sketched on the bars: "make a backdrop border
--- behind the action bar, that resizes the currently used action bar border
--- texture ... the whole action bar only has 4 gems and they are on the
--- backdrop ... a concrete texture which stands behind the actionbar buttons";
--- "attached to the Action Bar 1, but once another action bar is snapped to
--- the action bar 1 it should dynamically expand to cover the other one").
--- The slot rim as painted (deco/barframe, red gems) cut as a nine-slice round
--- Action Bar 1, the stone inside it behind the buttons (which wear thin rims
--- now). A bar Edit Mode snapped to it (or to one snapped to it) as wide as it
--- widens the backdrop; a narrower one (the stance or pet bar) gets a tab of
--- the same frame that tucks under the backdrop, so only its outer gems show.
--- Frames of Action Bar 1 at the BACKGROUND strata (over the end caps, under
--- every button): they follow its moves, scale and hiding; laid out again
--- out of combat when Edit Mode re-lays a bar or a bar is shown or hidden.
+-- The backdrops (user, 2026-09-23, sketched on the bars: "make a backdrop
+-- border behind the action bar ... the whole action bar only has 4 gems and
+-- they are on the backdrop ... a concrete texture which stands behind the
+-- actionbar buttons"; 2026-10-04, docs/plans/dynamic-backdrops.md: "give the
+-- users more freedom to snap more random Elements together and form a
+-- unified backdrop"). Every element in ELEMENTS can wear one, by its own
+-- switch (off on a new install). Elements that stand together share ONE
+-- backdrop: their pads (the buttons' rect grown by the rim and the gap,
+-- PadOf) that touch or overlap make a group, drawn when one of them is
+-- switched on (the others join it all the same) in its leader's look (the
+-- first in ELEMENTS). Its outline is MelloUI.Outline's (Core/Outline.lua):
+-- the nine's rails along each side, a gem on each outer corner, the L joint
+-- (deco/barjoin) in each inner one, the background through the whole shape
+-- from the screen's origin. A status bar in a group with others is fitted
+-- to their width (SetFit) and its bracket gives way to the rails. Drawn on a
+-- holder of the leader's (its moves, scale and hiding followed), from pools:
+-- the same counts again make nothing new. Laid out out of combat after a
+-- change (ScheduleBackdrop).
 --------------------------------------------------------------------------------
 
--- the slot rim as painted (red gems), or the kit's toned slot (iron gems):
--- the same border, the same geometry
 -- Backdrop -> the border piece: the slot rim with heavier top and bottom rails
--- (Tools/build_kit.py heavy_frame), its gems red or iron
+-- (Tools/build_kit.py heavy_frame), its gems red or iron (one geometry)
 local FRAME_PIECES = { red = "deco/barframe_red", iron = "deco/barframe_iron" }
 local FRAME_PIECE = FRAME_PIECES.red
 
@@ -570,22 +596,19 @@ M.choices = {
 	barBackdrop = {
 		{ value = "red", label = "Red gems", piece = FRAME_PIECES.red },
 		{ value = "iron", label = "Iron gems", piece = FRAME_PIECES.iron },
-		{ value = "none", label = "None" },
 	},
 	barBackground = BACKGROUND_VALUES,
 }
 -- the buttons' own backing: the same textures
 M.choices.buttonBackground = M.choices.barBackground
-local FRAME_CORNER = 40      -- piece px: the corner square (the gem and the mitre) of the nine-slice
 local FRAME_GAP = 0.12       -- of a button's size: stone between the buttons' rims and the frame's inner edge
-local SNAP_GAP = 0.35        -- of a button's size: a bar this close to the group counts as snapped
-local FULL_WIDTH = 0.85      -- a snapped bar at least this share of the backdrop's width widens it (else a tab)
+local FRAME_OPEN = { 29, 34, 106, 96 }   -- (the piece's opening when the layout gives none: deco/barframe_red's)
+local JOIN_PIECE = "deco/barjoin"        -- an inner corner, its own face turned up and left
+local Outline = MelloUI.Outline
 
 -- A frame's rect in screen px (l, b, r, t), nil while it has no size: the
 -- addon's one reader (MelloUI.Safe.ScreenRect, Core.lua: secret-safe) with
--- the size the backdrops need. Four numbers, no table: the rects below are
--- joined as numbers, one table for the rect they return (0.14.0: it was two
--- tables per button)
+-- the size the backdrops need. Four numbers, no table.
 local function ScreenRect(f)
 	local l, b, r, t = SafeScreenRect(f)
 	if l and r > l and t > b then
@@ -626,518 +649,6 @@ local function ButtonsRect(bar)
 	return { rl, rb, rr, rt }, size
 end
 
--- The gap between two rects (0 when they touch or overlap) and whether they
--- run side by side on the other axis.
-local function Gap(a, b)
-	local dx = math.max(0, math.max(a[1], b[1]) - math.min(a[3], b[3]))
-	local dy = math.max(0, math.max(a[2], b[2]) - math.min(a[4], b[4]))
-	return math.max(dx, dy), (dx == 0 or dy == 0)
-end
-
---------------------------------------------------------------------------------
--- Joining backdrops that meet (user, 2026-09-23: "when the backdrop is not
--- equaly wide ... make a L shapped texture that aplies here"). Where a
--- narrower backdrop sits on a wider one (the bag bar on the micro menu, a
--- bar snapped to Action Bar 1), the two become one shape: the narrower one
--- loses its edge and corners on that side, its side rails run on into the
--- wider one's rail, its background meets the wider one's; the wider one's
--- rail opens under it; at each step the L joint (deco/barjoin) turns the
--- side rail into the wider one's rail. A side that lines up with the wider
--- frame's side runs straight on, the wider frame's corner there dropped.
---------------------------------------------------------------------------------
-
-local JOIN_PIECE = "deco/barjoin"
--- A frame's rails: outer and inner edge from each side of its piece (px); the
--- inner edges from the piece's opening (its top and bottom rails are heavier)
-local function Rails(f)
-	local p = Kit:Piece(f.piece or FRAME_PIECE)
-	local o = p and p.open or { 29, 28, 106, 102 }
-	local w, h = p and p.w or 135, p and p.h or 130
-	return { top = { 6, o[2] }, bottom = { 5, h - o[4] }, left = { 7, o[1] }, right = { 7, w - o[3] } }
-end
-local JOIN_REACH = 110        -- piece px: frames overlapping this much still meet (both grow round their buttons)
-
--- Local units of frame f for a screen point (from its bottom-left corner)
-local function Local(f, x, y)
-	return (x - f.screen[1]) / f.s, (y - f.screen[2]) / f.s
-end
-
-local function Pooled(f, pool, piece, layer, sublevel)
-	f[pool] = f[pool] or {}
-	f[pool].used = (f[pool].used or 0) + 1
-	local tex = f[pool][f[pool].used]
-	if not tex then
-		tex = f:CreateTexture(nil, layer, nil, sublevel)
-		f[pool][f[pool].used] = tex
-	end
-	if tex.kitName ~= piece then
-		Kit:Apply(tex, piece)
-	end
-	tex:ClearAllPoints()
-	tex:Show()
-	return tex
-end
-
--- Before a layout: every part shown, the extras put away
-local function ResetJoins(f)
-	for _, tex in pairs(f.parts) do
-		tex:Show()
-	end
-	for _, pool in ipairs({ "segs", "joins" }) do
-		if f[pool] then
-			for _, tex in ipairs(f[pool]) do
-				tex:Hide()
-			end
-			f[pool].used = 0
-		end
-	end
-	f.spans = nil
-end
-
--- The narrower frame n into the wider frame w; `above`: n sits on w's top
-local function Join(n, w, above)
-	local N, W = n.screen, w.screen
-	local side = above and "top" or "bottom"
-	local RAIL, NRAIL = Rails(w), Rails(n)
-	-- w's rail on that side, and n's side rails (screen px)
-	local wOuter = above and (W[4] - RAIL.top[1] * w.ks) or (W[2] + RAIL.bottom[1] * w.ks)
-	local wInner = above and (W[4] - RAIL.top[2] * w.ks) or (W[2] + RAIL.bottom[2] * w.ks)
-	local lOuter, lInner = N[1] + NRAIL.left[1] * n.ks, N[1] + NRAIL.left[2] * n.ks
-	local rOuter, rInner = N[3] - NRAIL.right[1] * n.ks, N[3] - NRAIL.right[2] * n.ks
-	local half = (RAIL.left[2] - RAIL.left[1]) * w.ks / 2
-	local alignedL = math.abs(lOuter - (W[1] + RAIL.left[1] * w.ks)) <= half
-	local alignedR = math.abs(rOuter - (W[3] - RAIL.right[1] * w.ks)) <= half
-	local parts, cs = n.parts, n.cs
-	-- n: its edge and corners on that side go; its side rails run to w's rail;
-	-- its background reaches w's
-	local _, yOuter = Local(n, 0, wOuter)
-	local _, yInner = Local(n, 0, wInner)
-	if above then
-		parts.b:Hide(); parts.bl:Hide(); parts.br:Hide()
-		parts.l:SetPoint("BOTTOMRIGHT", n, "BOTTOMLEFT", cs, yOuter)
-		parts.r:SetPoint("BOTTOMLEFT", n, "BOTTOMRIGHT", -cs, yOuter)
-		n.stone:SetPoint("BOTTOMRIGHT", n, "BOTTOMRIGHT", -n.stoneInset[3], yInner)
-	else
-		parts.t:Hide(); parts.tl:Hide(); parts.tr:Hide()
-		parts.l:SetPoint("TOPLEFT", n, "BOTTOMLEFT", 0, yOuter)
-		parts.r:SetPoint("TOPRIGHT", n, "BOTTOMRIGHT", 0, yOuter)
-		n.stone:SetPoint("TOPLEFT", n, "BOTTOMLEFT", n.stoneInset[1], yInner)
-	end
-	-- the L joints at the steps (not where a side lines up)
-	local y0, y1 = math.min(wOuter, wInner), math.max(wOuter, wInner)
-	for _, step in ipairs({ { not alignedL, lOuter, lInner, false }, { not alignedR, rInner, rOuter, true } }) do
-		if step[1] then
-			local x0, x1 = step[2], step[3]
-			local tex = Pooled(n, "joins", JOIN_PIECE, "ARTWORK", 1)
-			local lx, ly = Local(n, x0, y0)
-			tex:SetPoint("BOTTOMLEFT", n, "BOTTOMLEFT", lx, ly)
-			tex:SetSize((x1 - x0) / n.s, (y1 - y0) / n.s)
-			local p = Kit:Piece(JOIN_PIECE)
-			local u0, u1, v0, v1 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
-			if step[4] then u0, u1 = u1, u0 end            -- the right step: mirrored
-			if not above then v0, v1 = v1, v0 end          -- n below w: flipped
-			tex:SetTexCoord(u0, u1, v0, v1)
-		end
-	end
-	n:SetFrameLevel(w:GetFrameLevel() + 1)
-	-- w: its rail on that side opens under n (collected: several may sit there)
-	w.spans = w.spans or { top = {}, bottom = {}, left = {}, right = {} }
-	table.insert(w.spans[side], { l = lOuter, r = rOuter, alignedL = alignedL, alignedR = alignedR })
-end
-
--- w's rail on a side with openings: the pieces between them, the corners of a
--- side that n lines up with dropped (its side rail running to w's edge)
-local function OpenRail(w, side)
-	local spans = w.spans and w.spans[side]
-	if not spans or #spans == 0 then
-		return
-	end
-	table.sort(spans, function(a, b) return a.l < b.l end)
-	local W, parts, cs = w.screen, w.parts, w.cs
-	local top = side == "top"
-	parts[top and "t" or "b"]:Hide()
-	local left, right = W[1] + cs * w.s, W[3] - cs * w.s
-	if spans[1].alignedL then
-		parts[top and "tl" or "bl"]:Hide()
-		if top then parts.l:SetPoint("TOPLEFT", w, "TOPLEFT", 0, 0) else parts.l:SetPoint("BOTTOMRIGHT", w, "BOTTOMLEFT", cs, 0) end
-	end
-	if spans[#spans].alignedR then
-		parts[top and "tr" or "br"]:Hide()
-		if top then parts.r:SetPoint("TOPRIGHT", w, "TOPRIGHT", 0, 0) else parts.r:SetPoint("BOTTOMLEFT", w, "BOTTOMRIGHT", -cs, 0) end
-	end
-	local x = left
-	local pieces = {}
-	for _, span in ipairs(spans) do
-		if span.l > x then
-			pieces[#pieces + 1] = { x, span.l }
-		end
-		x = math.max(x, span.r)
-	end
-	if right > x then
-		pieces[#pieces + 1] = { x, right }
-	end
-	local u0, u1, v0, v1 = unpack(w.railTC[side])
-	for _, seg in ipairs(pieces) do
-		local tex = Pooled(w, "segs", w.piece, "ARTWORK", 0)
-		tex.melloRail = side   -- (its shadow the rail's: ShadeSegs)
-		local lx = (seg[1] - W[1]) / w.s
-		if top then
-			tex:SetPoint("TOPLEFT", w, "TOPLEFT", lx, 0)
-		else
-			tex:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT", lx, 0)
-		end
-		tex:SetSize((seg[2] - seg[1]) / w.s, cs)
-		tex:SetTexCoord(u0, u1, v0, v1)
-	end
-end
-
--- The shorter frame n beside the taller frame w (user, 2026-09-23: "snapping
--- a horizontal and vertical bar does not result in a L shape"): the same
--- joining turned on its side. `leftOf`: n sits against w's left side. n's
--- facing edge and corners go, its top and bottom rails run on into w's side
--- rail, its background reaches w's; w's side rail opens beside n; at each
--- step the L joint turns w's side rail into n's top / bottom rail (the same
--- art: w's side rail is the thin upright band, n's rail the heavy one;
--- flipped at the bottom step, mirrored on w's right side). An edge that
--- lines up with w's runs straight on, w's corner there dropped.
-local function JoinSide(n, w, leftOf)
-	local N, W = n.screen, w.screen
-	local side = leftOf and "left" or "right"
-	local RAIL, NRAIL = Rails(w), Rails(n)
-	-- w's side rail facing n, and n's top and bottom rails (screen px)
-	local wOuter = leftOf and (W[1] + RAIL.left[1] * w.ks) or (W[3] - RAIL.right[1] * w.ks)
-	local wInner = leftOf and (W[1] + RAIL.left[2] * w.ks) or (W[3] - RAIL.right[2] * w.ks)
-	local tOuter, tInner = N[4] - NRAIL.top[1] * n.ks, N[4] - NRAIL.top[2] * n.ks
-	local bOuter, bInner = N[2] + NRAIL.bottom[1] * n.ks, N[2] + NRAIL.bottom[2] * n.ks
-	local alignedT = math.abs(tOuter - (W[4] - RAIL.top[1] * w.ks)) <= (RAIL.top[2] - RAIL.top[1]) * w.ks / 2
-	local alignedB = math.abs(bOuter - (W[2] + RAIL.bottom[1] * w.ks)) <= (RAIL.bottom[2] - RAIL.bottom[1]) * w.ks / 2
-	local parts, cs = n.parts, n.cs
-	local xOuter = Local(n, wOuter, 0)
-	local xInner = Local(n, wInner, 0)
-	if leftOf then
-		parts.r:Hide(); parts.tr:Hide(); parts.br:Hide()
-		parts.t:SetPoint("BOTTOMRIGHT", n, "TOPLEFT", xOuter, -cs)
-		parts.b:SetPoint("TOPRIGHT", n, "BOTTOMLEFT", xOuter, cs)
-		n.stone:SetPoint("BOTTOMRIGHT", n, "BOTTOMLEFT", xInner, n.stoneInset[4])
-	else
-		parts.l:Hide(); parts.tl:Hide(); parts.bl:Hide()
-		parts.t:SetPoint("TOPLEFT", n, "TOPLEFT", xOuter, 0)
-		parts.b:SetPoint("BOTTOMLEFT", n, "BOTTOMLEFT", xOuter, 0)
-		n.stone:SetPoint("TOPLEFT", n, "TOPLEFT", xInner, -n.stoneInset[2])
-	end
-	-- the L joints at the steps (not where an edge lines up)
-	local x0, x1 = math.min(wOuter, wInner), math.max(wOuter, wInner)
-	for _, step in ipairs({ { not alignedT, tInner, tOuter, false }, { not alignedB, bOuter, bInner, true } }) do
-		if step[1] then
-			local y0, y1 = step[2], step[3]
-			local tex = Pooled(n, "joins", JOIN_PIECE, "ARTWORK", 1)
-			local lx, ly = Local(n, x0, y0)
-			tex:SetPoint("BOTTOMLEFT", n, "BOTTOMLEFT", lx, ly)
-			tex:SetSize((x1 - x0) / n.s, (y1 - y0) / n.s)
-			local p = Kit:Piece(JOIN_PIECE)
-			local u0, u1, v0, v1 = p.uv[1], p.uv[2], p.uv[3], p.uv[4]
-			if not leftOf then u0, u1 = u1, u0 end         -- on w's right side: mirrored
-			if step[4] then v0, v1 = v1, v0 end            -- the bottom step: flipped
-			tex:SetTexCoord(u0, u1, v0, v1)
-		end
-	end
-	n:SetFrameLevel(w:GetFrameLevel() + 1)
-	-- w: its side rail opens beside n
-	w.spans = w.spans or { top = {}, bottom = {}, left = {}, right = {} }
-	table.insert(w.spans[side], { l = bOuter, r = tOuter, alignedL = alignedB, alignedR = alignedT })
-end
-
--- w's side rail ("left" / "right") with openings: the pieces between them
--- (bottom to top), the corners of an edge n lines up with dropped (w's top or
--- bottom rail running on to its side)
-local function OpenSideRail(w, side)
-	local spans = w.spans and w.spans[side]
-	if not spans or #spans == 0 then
-		return
-	end
-	table.sort(spans, function(a, b) return a.l < b.l end)
-	local W, parts, cs = w.screen, w.parts, w.cs
-	local left = side == "left"
-	parts[left and "l" or "r"]:Hide()
-	local bottom, top = W[2] + cs * w.s, W[4] - cs * w.s
-	if spans[1].alignedL then
-		parts[left and "bl" or "br"]:Hide()
-		if left then parts.b:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT", 0, 0) else parts.b:SetPoint("TOPRIGHT", w, "BOTTOMRIGHT", 0, cs) end
-	end
-	if spans[#spans].alignedR then
-		parts[left and "tl" or "tr"]:Hide()
-		if left then parts.t:SetPoint("TOPLEFT", w, "TOPLEFT", 0, 0) else parts.t:SetPoint("BOTTOMRIGHT", w, "TOPRIGHT", 0, -cs) end
-	end
-	local y = bottom
-	local pieces = {}
-	for _, span in ipairs(spans) do
-		if span.l > y then
-			pieces[#pieces + 1] = { y, span.l }
-		end
-		y = math.max(y, span.r)
-	end
-	if top > y then
-		pieces[#pieces + 1] = { y, top }
-	end
-	local u0, u1, v0, v1 = unpack(w.railTC[side])
-	for _, seg in ipairs(pieces) do
-		local tex = Pooled(w, "segs", w.piece, "ARTWORK", 0)
-		tex.melloRail = side   -- (its shadow the rail's: ShadeSegs)
-		local ly = (seg[1] - W[2]) / w.s
-		if left then
-			tex:SetPoint("BOTTOMLEFT", w, "BOTTOMLEFT", 0, ly)
-		else
-			tex:SetPoint("BOTTOMRIGHT", w, "BOTTOMRIGHT", 0, ly)
-		end
-		tex:SetSize(cs, (seg[2] - seg[1]) / w.s)
-		tex:SetTexCoord(u0, u1, v0, v1)
-	end
-end
-
--- Two frames side by side: one's right edge on the other's left, their
--- heights overlapping, the shorter one within the taller one's height
-local function TrySide(a, b)
-	local A, B = a.screen, b.screen
-	if math.min(A[4], B[4]) - math.max(A[2], B[2]) <= 0 then
-		return
-	end
-	local L, R = a, b
-	if A[1] > B[1] then
-		L, R = b, a
-	end
-	local Ls, Rs = L.screen, R.screen
-	local ks = math.max(L.ks, R.ks)
-	if Ls[3] < Rs[1] or Ls[3] > Rs[1] + JOIN_REACH * ks or Ls[3] >= Rs[3] then
-		return   -- apart, or one over the other rather than beside it
-	end
-	local narrow, wide = L, R
-	if (Ls[4] - Ls[2]) > (Rs[4] - Rs[2]) then
-		narrow, wide = R, L
-	end
-	local N, W = narrow.screen, wide.screen
-	local RAIL = Rails(wide)
-	local band = (RAIL.top[2] - RAIL.top[1]) * wide.ks
-	if N[2] < W[2] - band or N[4] > W[4] + band then
-		return   -- staggered: neither sits within the other's height
-	end
-	JoinSide(narrow, wide, narrow == L)
-	return true
-end
-
--- Do two shown frames meet? Joined when one sits on the other within the
--- other's width, or beside it within its height.
-local function TryJoin(a, b)
-	local A, B = a.screen, b.screen
-	if math.min(A[3], B[3]) - math.max(A[1], B[1]) <= 0 then
-		return
-	end
-	if TrySide(a, b) then
-		return
-	end
-	local up, down = a, b
-	if A[4] < B[4] then
-		up, down = b, a
-	end
-	local U, D = up.screen, down.screen
-	local ks = math.max(up.ks, down.ks)
-	if U[2] > D[4] or U[2] < D[4] - JOIN_REACH * ks or U[4] <= D[4] then
-		return   -- apart, or one inside the other rather than on it
-	end
-	local narrow, wide = up, down
-	if (U[3] - U[1]) > (D[3] - D[1]) then
-		narrow, wide = down, up
-	end
-	local N, W = narrow.screen, wide.screen
-	local RAIL = Rails(wide)
-	local band = (RAIL.left[2] - RAIL.left[1]) * wide.ks
-	if N[1] < W[1] - band or N[3] > W[3] + band then
-		return   -- staggered: neither sits within the other
-	end
-	Join(narrow, wide, narrow == up)
-end
-
--- The background tiled at one on-screen size and from the screen's origin
--- rather than its own corner, so two backdrops that meet show one surface
--- (their stone's patches carried on across the join, not restarted at it)
-local function AlignStone(f)
-	local tex, p = f.stone, f.stone.kitPiece
-	if not (f.screen and type(p) == "table" and p.tile and tex:IsShown()) then
-		return
-	end
-	-- one repeat the same size ON SCREEN for every backdrop, whatever its
-	-- bar's scale (user, 2026-09-23: with the micro menu scaled up in Edit
-	-- Mode its stone came out stretched next to the bag bar's sharper one):
-	-- the kit's one background resolution, its phase from the screen's
-	-- origin, so backdrops that meet show one surface
-	tex.kitAlign = "screen"
-	Kit:Retile(tex)
-end
-
-local function JoinFrames()
-	local list = {}
-	for _, g in ipairs(GROUPS) do
-		local bd = skin.groups[g.id].backdrop
-		if bd.main and bd.main:IsShown() and bd.main.screen then
-			list[#list + 1] = bd.main
-		end
-		for _, tab in ipairs(bd.tabs) do
-			if tab:IsShown() and tab.screen then
-				list[#list + 1] = tab
-			end
-		end
-	end
-	for i = 1, #list do
-		for j = i + 1, #list do
-			TryJoin(list[i], list[j])
-		end
-	end
-	for _, f in ipairs(list) do
-		OpenRail(f, "top")
-		OpenRail(f, "bottom")
-		OpenSideRail(f, "left")
-		OpenSideRail(f, "right")
-		AlignStone(f)
-		ShadeSegs(f, FRAME_CORNER)
-	end
-end
-
-local function NewFrame(parent)
-	local f = CreateFrame("Frame", nil, parent)
-	-- its rails' shadows on the group's shade frame (ShadeParts, ShadeSegs)
-	f.melloShade = Shade(parent, nil, f)
-	-- not part of the bar's size: an action bar is a layout frame that grows
-	-- round its shown children, so the backdrop (a child reaching past the
-	-- buttons) made it grow, which grew the backdrop ... until a relog (user,
-	-- 2026-09-23, Edit Mode's Icon Size 100% -> 110%)
-	f.ignoreInLayout = true
-	f:EnableMouse(false)
-	f:SetFrameStrata("BACKGROUND")
-	-- and KEPT there: the game raises the action bars to TOOLTIP while a
-	-- spell is dragged from the spell book (above the window), and a child
-	-- follows its parent's strata -- the backdrop rose with its bar, one
-	-- level over the buttons, and its background covered their icons, their
-	-- own backgrounds and the stance bar (user, 2026-09-23, /abdump icons:
-	-- the buttons TOOLTIP L3, the backdrops TOOLTIP L3 / L4)
-	if f.SetFixedFrameStrata then
-		f:SetFixedFrameStrata(true)
-	end
-	f.stone = f:CreateTexture(nil, "BACKGROUND", nil, 0)
-	f.stone.kitScale = Kit.scale
-	Kit:Apply(f.stone, "tiles/stone")
-	f.parts = {}
-	for _, key in ipairs({ "tl", "t", "tr", "l", "r", "bl", "b", "br" }) do
-		local tex = f:CreateTexture(nil, "ARTWORK")
-		Kit:Apply(tex, FRAME_PIECE)
-		f.parts[key] = tex
-	end
-	Perf.SetScript(f, "OnSizeChanged", function(self)
-		if self.screen then
-			AlignStone(self)
-		else
-			Kit:Retile(self.stone)
-		end
-	end)
-	if Kit.RegisterTexture then
-		Kit:RegisterTexture(f.stone)
-	end
-	f:Hide()
-	return f
-end
-
--- Lay a frame out: the nine-slice at k UI units per piece px, the group's
--- background inside the rim.
-local function LayoutFrame(f, k, g)
-	local name = FRAME_PIECES[Setting(g, "backdrop")] or FRAME_PIECE
-	local p = Kit:Piece(name)
-	if not p then
-		return
-	end
-	ResetJoins(f)
-	f.piece = name
-	-- the nine (the kit's one cut, Kit:CutNine): the corners (the gems) at f's
-	-- corners, the edges stretched between them (the rim is even along them),
-	-- the rails' coordinates in f.railTC for the pieces a joined rail is cut
-	-- into (a texture's own GetTexCoord answers with its four corners, eight
-	-- numbers); each part drawn at k, its shadow cut and scaled with it
-	Kit:CutNine(f, f.parts, name, k, FRAME_CORNER)
-	ShadeParts(f, name, p, FRAME_CORNER)
-	-- the background (stone by default) reaches just under the rim's inner edge
-	local choice = Setting(g, "background") or "stone"
-	local bg = BACKGROUND_PIECES[choice]
-	if bg then
-		if f.stone.kitName ~= bg then
-			Kit:Unpaint(f.stone)   -- (the dark fill's palette colour no longer on it)
-			Kit:Apply(f.stone, bg)
-		end
-		f.stone:SetVertexColor(1, 1, 1)
-		f.stone.darkFill = nil
-		f.stone:Show()
-	elseif choice == "dark" then
-		if f.stone.kitName ~= nil or not f.stone.darkFill then
-			-- the palette's inner panel, by its key (a new palette paints it again),
-			-- as the buttons' Dark background (Kit:SetButtonBackground)
-			Kit:Paint(f.stone, "innerPanel", "fill", 0.88)
-			f.stone.kitPiece, f.stone.kitName, f.stone.darkFill = true, nil, true   -- still ours (a plain mark): never faded with the game's art
-		end
-		f.stone:Show()
-	else
-		f.stone:Hide()
-	end
-	local open = p.open or { 29, 28, 106, 102 }
-	f.stoneInset = { (open[1] - 3) * k, (open[2] - 3) * k, (p.w - open[3] - 3) * k, (p.h - open[4] - 3) * k }
-	f.stone:ClearAllPoints()
-	f.stone:SetPoint("TOPLEFT", f, "TOPLEFT", f.stoneInset[1], -f.stoneInset[2])
-	f.stone:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -f.stoneInset[3], f.stoneInset[4])
-	Kit:Retile(f.stone)
-end
-
--- Put frame f round the screen rect r (screen px, the buttons' outline):
--- grown by the rim and the gap, in the anchor frame's units. The outline on
--- the screen is kept in bd.rects (a shown frame's is its f.screen, the joins').
-local function PlaceFrame(f, anchor, r, k, level, show, g, bd)
-	local p = Kit:Piece(FRAME_PIECE)
-	if not p then
-		return false
-	end
-	local open = p.open or { 29, 28, 106, 102 }
-	local s = anchor:GetEffectiveScale()
-	local baseL, baseB = ScreenRect(anchor)
-	if not baseL then
-		return false
-	end
-	local gap = FRAME_GAP * (bd.size or 0) / s
-	-- in the anchor's units: the rect, grown by the frame's rim and the gap
-	local l = (r[1] - baseL) / s - open[1] * k - gap
-	local b = (r[2] - baseB) / s - (p.h - open[4]) * k - gap
-	local rr = (r[3] - baseL) / s + (p.w - open[3]) * k + gap
-	local t = (r[4] - baseB) / s + open[2] * k + gap
-	bd.rects[#bd.rects + 1] = { baseL + l * s, baseB + b * s, baseL + rr * s, baseB + t * s }
-	if not show then
-		f.screen = nil
-		f:Hide()
-		return true
-	end
-	-- what the joins need: its screen rect and scales
-	f.screen = bd.rects[#bd.rects]
-	f.s, f.k, f.ks, f.cs = s, k, k * s, FRAME_CORNER * k
-	f:ClearAllPoints()
-	f:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", l, b)
-	f:SetSize(rr - l, t - b)
-	f:SetFrameLevel(level)
-	LayoutFrame(f, k, g)
-	f:Show()
-	return true
-end
-
-local function HideGroup(bd)
-	if bd.main then
-		bd.main:Hide()
-	end
-	for _, tab in ipairs(bd.tabs) do
-		tab:Hide()
-	end
-end
-
 -- The rect of a set of buttons (the shown ones, screen px) and the size of
 -- the smallest one's shorter side.
 local function ShownRect(buttons)
@@ -1172,132 +683,18 @@ local function ShownRect(buttons)
 	return { rl, rb, rr, rt }, size
 end
 
--- Action Bar 1 and the bars snapped to it: the backdrop's rect, the button
--- size, and the narrower snapped bars' rects (its tabs)
-local function BarsGeometry(main)
-	local core, size = ButtonsRect(main)
-	if not (core and size and size > 0) then
-		return nil
-	end
-	local members, order = { [main] = core }, {}
-	local grew = true
-	while grew do
-		grew = false
-		for _, name in ipairs(BAR_NAMES) do
-			local bar = _G[name]
-			if bar and bar ~= main and not members[bar] and skin.bars[bar] and bar:IsShown() then
-				local r = ButtonsRect(bar)
-				if r then
-					for _, mr in pairs(members) do
-						local gap, beside = Gap(r, mr)
-						if beside and gap <= SNAP_GAP * size then
-							members[bar], order[#order + 1], grew = r, bar, true
-							break
-						end
-					end
-				end
-			end
-		end
-	end
-	-- Action Bar 1 widened by every snapped bar lined up with it (a row as
-	-- wide, a column as tall), again as it grows
-	local rect = { core[1], core[2], core[3], core[4] }
-	local pending = order
-	repeat
-		local rest, widened = {}, false
-		for _, bar in ipairs(pending) do
-			local r = members[bar]
-			local w, h = rect[3] - rect[1], rect[4] - rect[2]
-			local overX = math.min(r[3], rect[3]) - math.max(r[1], rect[1])
-			local overY = math.min(r[4], rect[4]) - math.max(r[2], rect[2])
-			local row = overX >= FULL_WIDTH * w and (r[3] - r[1]) <= w / FULL_WIDTH
-			local column = overY >= FULL_WIDTH * h and (r[4] - r[2]) <= h / FULL_WIDTH
-			if (row or column) and Gap(r, rect) <= SNAP_GAP * size then
-				rect = { math.min(rect[1], r[1]), math.min(rect[2], r[2]), math.max(rect[3], r[3]), math.max(rect[4], r[4]) }
-				widened = true
-			else
-				rest[#rest + 1] = bar
-			end
-		end
-		pending = rest
-	until not widened
-	local tabs = {}
-	for _, bar in ipairs(pending) do
-		tabs[#tabs + 1] = members[bar]
-	end
-	return rect, size, tabs, members
-end
-
--- Where each group's backdrop hangs
+-- Where each group's own buttons hang
 local ANCHORS = {
 	bars = function() return _G.MainActionBar or _G.MainMenuBar end,
 	micro = function() return _G.MicroMenu end,
 	bags = function() return _G.BagsBar end,
 }
 
--- `ks`: screen px per piece px of the rails, the same for every backdrop (so
--- the rails match where two meet); nil: from the group's own buttons
-local function LayoutGroup(g, ks)
-	local bd = skin and skin.groups[g.id].backdrop
-	if not bd then
-		return
-	end
-	bd.rects = {}
-	local anchor = ANCHORS[g.id]()
-	if not (active and anchor and anchor:IsShown() and #GroupButtons(g) > 0) then
-		HideGroup(bd)
-		return
-	end
-	local rect, size, tabs, members
-	if g.id == "bars" then
-		if not skin.bars[anchor] then
-			HideGroup(bd)
-			return
-		end
-		rect, size, tabs, members = BarsGeometry(anchor)
-	else
-		rect, size = ShownRect(GroupButtons(g))
-		tabs = {}
-	end
-	if not (rect and size and size > 0) then
-		HideGroup(bd)
-		return
-	end
-	-- Backdrop None: laid out all the same (its outline kept in bd.rects,
-	-- as a shown one's), only not shown
-	local show = FRAME_PIECES[Setting(g, "backdrop")] ~= nil
-	bd.size = size
-	bd.main = bd.main or NewFrame(anchor)
-	local s = anchor:GetEffectiveScale()
-	-- UI units per piece px: the rim as the slot rims were drawn (97 px of the
-	-- slot = one pitch), on Action Bar 1's buttons for every group (user,
-	-- 2026-09-23: the bag bar's rails, on its larger buttons, came out
-	-- thicker than the micro menu's where the two joined)
-	local k = (ks or size / 97) / s
-	local placed = PlaceFrame(bd.main, anchor, rect, k, 3, show, g, bd)
-	-- the narrower snapped bars: a tab each, joined to the backdrop where
-	-- they meet (JoinFrames: one shape, an L joint at each step)
-	for i, r in ipairs(tabs) do
-		bd.tabs[i] = bd.tabs[i] or NewFrame(anchor)
-		PlaceFrame(bd.tabs[i], anchor, r, k, 2, show, g, bd)
-	end
-	for i = #tabs + 1, #bd.tabs do
-		bd.tabs[i]:Hide()
-	end
-	-- the bars this backdrop covers: their rims cast no shadow of their own
-	-- (ShadeRims)
-	if show and placed then
-		covered[anchor] = true
-		if members then
-			for bar in pairs(members) do
-				covered[bar] = true
-			end
-		end
-	end
-end
-
--- The rails' scale for every backdrop: Action Bar 1's buttons (else each
--- group's own)
+-- The rails' scale for every backdrop (screen px per piece px): the rim as
+-- the slot rims were drawn (97 px of the slot = one pitch) on Action Bar 1's
+-- buttons, so the rails match wherever two elements meet (user, 2026-09-23:
+-- the bag bar's rails, on its larger buttons, came out thicker than the
+-- micro menu's where the two joined). Nil without Action Bar 1.
 local function RailScale()
 	local main = ANCHORS.bars()
 	if skin and main and skin.bars[main] then
@@ -1307,6 +704,618 @@ local function RailScale()
 		end
 	end
 	return nil
+end
+
+--------------------------------------------------------------------------------
+-- The experience and reputation bars fitted (user, 2026-10-04: they "should
+-- follow and adjust their width to fit the border and not strech it too
+-- much"). A status bar in a drawn backdrop with other elements takes the
+-- width of their buttons above or below it, by its scale: the container's
+-- plain SetScale (Edit Mode's *Base). Its width is Edit Mode's Size, which
+-- the bars inside follow only through the game's own layout functions,
+-- never run from here. Within 0.85 - 1.25 only; past that it keeps its own
+-- size and the outline takes it as it is. A change keeps its anchor where
+-- it stands on the screen by the game's own rule (EditModeSystemMixin:
+-- SetScaleOverride: the offsets times old / new). The game's later anchors
+-- carry the scale themselves (ApplySystemAnchor: offset / scale), except the
+-- bottom stack's for a bar in its default place (EditModeManagerFrame:
+-- UpdateBottomActionBarPositions: plain offsets), which KeepFitPlaces puts on
+-- the scale again. Never in a fight; the bar's own scale back when it
+-- leaves its backdrop, the backdrop goes, or the reskin goes off.
+--------------------------------------------------------------------------------
+
+local FIT_MIN, FIT_MAX = 0.85, 1.25
+local fits = {}      -- [container] = { base = its scale before, k = the factor on it, x, y = its first point's offsets as set here }
+local fitSeen = {}   -- [container] = true: fitted by this layout (filled by each)
+
+local function Protected(f)
+	local ok, v = pcall(f.IsProtected, f)
+	return ok and not Secret(v) and v and true or false
+end
+
+-- the container's anchors, their offsets times `by` (Edit Mode's *Base),
+-- and its first point's offsets remembered; false when one cannot be read
+local function ScaleAnchors(container, by, fit)
+	local n = MelloUI.Safe.Call(container, "GetNumPoints")
+	if type(n) ~= "number" or n < 1 then
+		return false
+	end
+	local points = {}
+	for i = 1, n do
+		local ok, point, rel, relPoint, x, y = pcall(container.GetPoint, container, i)
+		x, y = ok and MelloUI.Safe.Finite(x), ok and MelloUI.Safe.Finite(y)
+		if not (x and y) then
+			return false
+		end
+		points[i] = { point, rel, relPoint, x * by, y * by }
+	end
+	local setPoint = container.SetPointBase or container.SetPoint
+	for _, pt in ipairs(points) do
+		setPoint(container, pt[1], pt[2], pt[3], pt[4], pt[5])
+	end
+	if fit then
+		fit.x, fit.y = points[1][4], points[1][5]
+	end
+	return true
+end
+
+-- The fit `k` on a status bar's container (1: its own scale back); true when
+-- its scale changed. Never in a fight.
+local function SetFit(container, k)
+	local fit = fits[container]
+	local have = fit and fit.k or 1
+	if math.abs(have - k) < 0.001 or InCombatLockdown() then
+		return false
+	end
+	local base = fit and fit.base
+	if not base then
+		local ok, v = pcall(container.GetScale, container)
+		base = ok and MelloUI.Safe.Finite(v) or 1
+		if base <= 0 then
+			base = 1
+		end
+	end
+	local setScale = container.SetScaleBase or container.SetScale
+	setScale(container, base * k)
+	if k == 1 then
+		fits[container] = nil
+		ScaleAnchors(container, have / k)
+	else
+		fit = fit or { base = base }
+		fit.k = k
+		fits[container] = fit
+		ScaleAnchors(container, have / k, fit)
+	end
+	return true
+end
+
+-- After the game's bottom stack laid a fitted bar in its default place (its
+-- offsets plain, for the bar's own scale; their change from the ones set
+-- here tells it did): its offsets on the fit again, at once. Counted
+-- (MelloUI.Perf.WriteBack): the stack is laid when a bar shows, hides or
+-- moves, never per frame. A protected one in a fight waits for the next
+-- layout (LayoutAll runs this first).
+local function KeepFitPlaces()
+	for container, fit in pairs(fits) do
+		local okD, default = pcall(container.IsInDefaultPosition, container)
+		local ok, _, _, _, x, y = pcall(container.GetPoint, container, 1)
+		x, y = ok and MelloUI.Safe.Finite(x), ok and MelloUI.Safe.Finite(y)
+		if okD and default == true and x and y and (math.abs(x - (fit.x or 0)) > 1e-4 or math.abs(y - (fit.y or 0)) > 1e-4)
+			and not (InCombatLockdown() and Protected(container)) then
+			ScaleAnchors(container, 1 / fit.k, fit)
+			MelloUI.Perf.WriteBack("ActionBarPanel: a fitted status bar's place")
+		end
+	end
+end
+
+-- Every fit taken off (the reskin off): out of combat
+local function RestoreFits()
+	for container in pairs(fits) do
+		SetFit(container, 1)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The members and their groups
+--------------------------------------------------------------------------------
+
+-- an element shown on the screen (a micro menu parked by Tweaks' Hide Micro
+-- Menu reads shown under its hidden holder: left out)
+local function OnScreen(f)
+	local ok, v = pcall(f.IsVisible, f)
+	return ok and not Secret(v) and v == true
+end
+
+-- An element's rect (its buttons', screen px) and a button's size; a status
+-- bar's is its container's as it stands (fitted or not), with no size
+local function MemberRect(e, root)
+	if e.status then
+		if not skin.status[root] then
+			return nil
+		end
+		local l, b, r, t = ScreenRect(root)
+		if not l then
+			return nil
+		end
+		return { l, b, r, t }
+	elseif e.group == "bars" then
+		if not skin.bars[root] then
+			return nil
+		end
+		return ButtonsRect(root)
+	end
+	return ShownRect(GroupButtons(GROUP[e.group]))
+end
+
+-- A member's pad: its rect grown by the rim (the piece's, at ks screen px
+-- per piece px) and the gap (a share of its button, else of `size`, Action
+-- Bar 1's), kept in m.pad
+local function PadOf(m, ks, size)
+	local p = Kit:Piece(FRAME_PIECE)
+	local open = p and p.open or FRAME_OPEN
+	local w, h = p and p.w or 135, p and p.h or 130
+	local gap = FRAME_GAP * (m.size or size)
+	local r, pad = m.rect, m.pad or {}
+	pad[1], pad[2] = r[1] - open[1] * ks - gap, r[2] - (h - open[4]) * ks - gap
+	pad[3], pad[4] = r[3] + (w - open[3]) * ks + gap, r[4] + open[2] * ks + gap
+	m.pad = pad
+	return pad
+end
+
+-- The elements on the screen now, in ELEMENTS' order: { e, root, rect,
+-- size, on, pad } (the entries kept and filled again by each layout)
+local members = {}
+local function Members()
+	local n = 0
+	for _, e in ipairs(ELEMENTS) do
+		local root = _G[e.frame]
+		if type(root) == "table" and root.GetObjectType and OnScreen(root) then
+			local rect, size = MemberRect(e, root)
+			if rect then
+				n = n + 1
+				local m = members[n] or {}
+				members[n] = m
+				m.e, m.root, m.rect = e, root, rect
+				m.size = size and size > 0 and size or nil
+				m.on = M.db ~= nil and M.db[e.key] == true
+			end
+		end
+	end
+	for i = #members, n + 1, -1 do
+		members[i] = nil
+	end
+	return members, n
+end
+
+-- The factor that fits status bar m to the buttons of the others of its
+-- group above or below it (at least half of one across the other: a bar
+-- that only meets its end, the micro menu snapped beside, is not one); 1
+-- when there are none or it falls outside the limits
+local function FitFor(m, group, list)
+	local l, r
+	for _, i in ipairs(group) do
+		local o = list[i]
+		if not o.e.status then
+			local ox0, ox1 = o.rect[1], o.rect[3]
+			local over = math.min(ox1, m.rect[3]) - math.max(ox0, m.rect[1])
+			if over > 0.5 * math.min(ox1 - ox0, m.rect[3] - m.rect[1]) then
+				l = l and math.min(l, ox0) or ox0
+				r = r and math.max(r, ox1) or ox1
+			end
+		end
+	end
+	local fit = fits[m.root]
+	local natural = (m.rect[3] - m.rect[1]) / (fit and fit.k or 1)
+	if not l or natural <= 0 then
+		return 1
+	end
+	local k = (r - l) / natural
+	if k < FIT_MIN or k > FIT_MAX then
+		return 1
+	end
+	return math.floor(k * 1000 + 0.5) / 1000
+end
+
+--------------------------------------------------------------------------------
+-- The drawing: a holder per leader, its pieces from pools
+--------------------------------------------------------------------------------
+
+local holders = {}   -- [element key] = the holder of the backdrop that element leads (made the first time it leads one)
+local inShape = {}   -- [root] = true: in a drawn backdrop (filled by each layout; a status bar's bracket gives way)
+local holderUsed = {}   -- [holder] = true: drawn by this layout
+
+-- the pools' layers: the background under the rails, the gems and joints
+-- over their ends
+local POOLS = { stone = { "BACKGROUND", 0 }, rail = { "ARTWORK", 0 }, gem = { "ARTWORK", 1 }, joint = { "ARTWORK", 1 } }
+
+-- the background tiled at one on-screen size and from the screen's origin
+-- (user, 2026-09-23: with the micro menu scaled up in Edit Mode its stone
+-- came out stretched next to the bag bar's sharper one), so the pieces of a
+-- shape show one surface
+local function RetileStones(f)
+	local pool = f.pools.stone
+	for i = 1, pool.used do
+		Kit:Retile(pool[i])
+	end
+end
+
+local function NewHolder(root)
+	local f = CreateFrame("Frame", nil, root)
+	-- not part of the bar's size: an action bar is a layout frame that grows
+	-- round its shown children, so a backdrop (a child reaching past the
+	-- buttons) made it grow, which grew the backdrop ... until a relog (user,
+	-- 2026-09-23, Edit Mode's Icon Size 100% -> 110%)
+	f.ignoreInLayout = true
+	f:EnableMouse(false)
+	f:SetFrameStrata("BACKGROUND")
+	-- and KEPT there: the game raises the action bars to TOOLTIP while a
+	-- spell is dragged from the spell book (above the window), and a child
+	-- follows its parent's strata -- the backdrop rose with its bar, one
+	-- level over the buttons, and its background covered their icons, their
+	-- own backgrounds and the stance bar (user, 2026-09-23, /abdump icons:
+	-- the buttons TOOLTIP L3, the backdrops TOOLTIP L3 / L4)
+	if f.SetFixedFrameStrata then
+		f:SetFixedFrameStrata(true)
+	end
+	f.root = root
+	-- its rails' and gems' shadows on the root's shade frame (ShadePiece)
+	f.shade = Shade(root, true, f)
+	f.pools = {}
+	for kind in pairs(POOLS) do
+		f.pools[kind] = { used = 0 }
+	end
+	Perf.SetScript(f, "OnSizeChanged", RetileStones)
+	f:Hide()
+	return f
+end
+
+-- the next texture of a pool (made the first time), showing `piece`
+local function Take(f, kind, piece)
+	local pool = f.pools[kind]
+	local i = pool.used + 1
+	pool.used = i
+	local tex = pool[i]
+	if not tex then
+		local layer = POOLS[kind]
+		tex = f:CreateTexture(nil, layer[1], nil, layer[2])
+		pool[i] = tex
+	end
+	if piece and tex.kitName ~= piece then
+		Kit:Apply(tex, piece)
+	end
+	tex:ClearAllPoints()
+	tex:Show()
+	return tex
+end
+
+-- a texture over the screen rect x0, y0 - x1, y1 (in f's units from its corner)
+local function Lay(f, tex, x0, y0, x1, y1)
+	local s = f.s
+	tex:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", (x0 - f.ox) / s, (y0 - f.oy) / s)
+	tex:SetSize((x1 - x0) / s, (y1 - y0) / s)
+end
+
+-- Backdrop Background on a piece of the background: a tile, or the dark
+-- fill (the palette's inner panel by its key, as the buttons' Dark
+-- background, Kit:SetButtonBackground: a new palette paints it again)
+local function PaintStone(tex, choice)
+	local bg = BACKGROUND_PIECES[choice]
+	if bg then
+		if tex.kitName ~= bg then
+			Kit:Unpaint(tex)   -- (the dark fill's palette colour no longer on it)
+			tex.kitScale = Kit.scale
+			Kit:Apply(tex, bg)
+		end
+		tex:SetVertexColor(1, 1, 1)
+		tex.darkFill = nil
+	elseif tex.kitName ~= nil or not tex.darkFill then
+		Kit:Paint(tex, "innerPanel", "fill", 0.88)
+		tex.kitPiece, tex.kitName, tex.darkFill = true, nil, true   -- still ours (a plain mark): never faded with the game's art
+	end
+	if not tex.melloRegistered then
+		tex.melloRegistered = true
+		if Kit.RegisterTexture then
+			Kit:RegisterTexture(tex)
+		end
+	end
+end
+
+-- a convex corner's gem by the turn (the shape on the loop's left), and
+-- where its square lies from the corner (in corner squares)
+local GEM = { right = { up = "br" }, up = { left = "tr" }, left = { down = "tl" }, down = { right = "bl" } }
+-- each rail's painted band in the nine (piece px from the piece's outer
+-- edge): its outer line here (the margin outside it is clear), its inner line
+-- the piece's opening (the top and bottom rails heavier)
+local RAIL_OUTER = { top = 6, bottom = 5, left = 7, right = 7 }
+local function RailInner(p, side)
+	local open = p.open or FRAME_OPEN
+	if side == "top" then
+		return open[2]
+	elseif side == "bottom" then
+		return p.h - open[4]
+	elseif side == "left" then
+		return open[1]
+	end
+	return p.w - open[3]
+end
+local GEM_AT = { tl = { 0, -1 }, tr = { -1, -1 }, bl = { 0, 0 }, br = { -1, 0 } }
+local STEP = { right = { 1, 0 }, up = { 0, 1 }, left = { -1, 0 }, down = { 0, -1 } }
+local STONE_INSET = { 0, 0, 0, 0 }   -- (left, bottom, right, top: filled per shape)
+
+-- The outline a holder drew last, kept with its pads and its tolerance (the
+-- rail scale's): the same pads again (a setting, a show, a size that moved
+-- nothing) reuse it and its background's cut, so such a relayout makes no
+-- new shape (Outline.Shape builds its grid afresh: some KB a call)
+local function KeptShape(f, pads, tol)
+	local key = f.shapeKey
+	if not (key and key[1] == tol and #key == 1 + 4 * #pads) then
+		return nil
+	end
+	local k = 1
+	for _, r in ipairs(pads) do
+		for c = 1, 4 do
+			k = k + 1
+			if key[k] ~= r[c] then
+				return nil
+			end
+		end
+	end
+	return f.shape
+end
+
+local function KeepShape(f, pads, tol, shape)
+	local key = f.shapeKey or {}
+	key[1] = tol
+	local k = 1
+	for _, r in ipairs(pads) do
+		for c = 1, 4 do
+			k = k + 1
+			key[k] = r[c]
+		end
+	end
+	for i = #key, k + 1, -1 do
+		key[i] = nil
+	end
+	f.shapeKey, f.shape, f.fill = key, shape, nil
+end
+
+-- One backdrop on holder f: the outline round `pads` (screen px), with the
+-- rails and gems of `piece`, the background `choice`, at ks screen px per
+-- piece px. False when its leader cannot be read on the screen.
+local function DrawShape(f, pads, piece, choice, ks)
+	local baseL, baseB = ScreenRect(f.root)
+	local s = MelloUI.Safe.Finite(MelloUI.Safe.Call(f.root, "GetEffectiveScale"))
+	local p, tc = Kit:Piece(piece), Kit:NineCoords(piece, FRAME_CORNER)
+	local jp = Kit:Piece(JOIN_PIECE)
+	if not (baseL and s and s > 0 and p and tc and jp) then
+		return false
+	end
+	local C = FRAME_CORNER * ks
+	-- (edges closer than half a rail lined up: no notch of a few px)
+	local shape = KeptShape(f, pads, C / 2)
+	if not shape then
+		shape = Outline.Shape(pads, C / 2)
+		KeepShape(f, pads, C / 2, shape)
+	end
+	local X, Y = shape.X, shape.Y
+	if not (X and #X >= 2 and #Y >= 2) then
+		return false
+	end
+	f.s, f.k, f.ox, f.oy = s, ks / s, X[1], Y[1]
+	f:ClearAllPoints()
+	f:SetPoint("BOTTOMLEFT", f.root, "BOTTOMLEFT", (X[1] - baseL) / s, (Y[1] - baseB) / s)
+	f:SetSize((X[#X] - X[1]) / s, (Y[#Y] - Y[1]) / s)
+	f:SetFrameLevel(3)
+	f:Show()
+	for _, pool in pairs(f.pools) do
+		pool.used = 0
+	end
+	-- the background, just under the rails' inner edges
+	if BACKGROUND_PIECES[choice] or choice == "dark" then
+		local open = p.open or FRAME_OPEN
+		STONE_INSET[1], STONE_INSET[2] = (open[1] - 3) * ks, (p.h - open[4] - 3) * ks
+		STONE_INSET[3], STONE_INSET[4] = (p.w - open[3] - 3) * ks, (open[2] - 3) * ks
+		-- (its cut kept with the shape: the insets follow the rail scale, as
+		-- the shape's tolerance does)
+		f.fill = f.fill or Outline.Fill(shape, STONE_INSET)
+		for _, r in ipairs(f.fill) do
+			local tex = Take(f, "stone")
+			PaintStone(tex, choice)
+			Lay(f, tex, r[1], r[2], r[3], r[4])
+			tex.kitAlign = "screen"
+			Kit:Retile(tex)
+		end
+	end
+	local ju0, ju1, jv0, jv1 = jp.uv[1], jp.uv[2], jp.uv[3], jp.uv[4]
+	for _, loop in ipairs(shape.loops) do
+		local m = #loop
+		-- the rails: each side from corner to corner, short of a gem's square
+		-- at an outer corner; at an inner one on past it by the other rail's
+		-- clear margin, up to that rail's outer line (as the joins of before:
+		-- the two rails' lines meet, the joint where their bands cross)
+		for i = 1, m do
+			local a, b = loop[i], loop[i % m + 1]
+			local side = Outline.SideOf(a.dout)
+			local ta = a.convex and C or -RAIL_OUTER[Outline.SideOf(a.din)] * ks
+			local tb = b.convex and C or -RAIL_OUTER[Outline.SideOf(b.dout)] * ks
+			local x0, y0, x1, y1
+			if side == "top" or side == "bottom" then
+				if a.x < b.x then
+					x0, x1 = a.x + ta, b.x - tb
+				else
+					x0, x1 = b.x + tb, a.x - ta
+				end
+				if side == "top" then
+					y0, y1 = a.y - C, a.y
+				else
+					y0, y1 = a.y, a.y + C
+				end
+			else
+				if a.y < b.y then
+					y0, y1 = a.y + ta, b.y - tb
+				else
+					y0, y1 = b.y + tb, a.y - ta
+				end
+				if side == "right" then
+					x0, x1 = a.x - C, a.x
+				else
+					x0, x1 = a.x, a.x + C
+				end
+			end
+			if x1 > x0 and y1 > y0 then
+				local tex = Take(f, "rail", piece)
+				local t = tc[side]
+				tex:SetTexCoord(t[1], t[2], t[3], t[4])
+				Lay(f, tex, x0, y0, x1, y1)
+				ShadePiece(f, tex, piece, SEG_PART[side])
+			end
+		end
+		-- the corners: a gem on each outer one, the L joint in each inner one,
+		-- over the square where the two rails' bands cross (turned to face the
+		-- empty side: mirrored when it lies right of the corner, flipped when
+		-- below)
+		for i = 1, m do
+			local c = loop[i]
+			if c.convex then
+				local which = GEM[c.din] and GEM[c.din][c.dout]
+				if which then
+					local at, t = GEM_AT[which], tc[which]
+					local tex = Take(f, "gem", piece)
+					tex:SetTexCoord(t[1], t[2], t[3], t[4])
+					local x, y = c.x + at[1] * C, c.y + at[2] * C
+					Lay(f, tex, x, y, x + C, y + C)
+					ShadePiece(f, tex, piece, which)
+				end
+			else
+				local ex = STEP[c.dout][1] - STEP[c.din][1]
+				local ey = STEP[c.dout][2] - STEP[c.din][2]
+				-- the rail along the corner's row (top or bottom) and the one
+				-- along its column (left or right), each band from the corner
+				local across = (c.din == "left" or c.din == "right") and c.din or c.dout
+				local hs = Outline.SideOf(across)
+				local vs = Outline.SideOf(across == c.din and c.dout or c.din)
+				local ho, hi = RAIL_OUTER[hs] * ks, RailInner(p, hs) * ks
+				local vo, vi = RAIL_OUTER[vs] * ks, RailInner(p, vs) * ks
+				local y0, y1, x0, x1
+				if hs == "top" then
+					y0, y1 = c.y - hi, c.y - ho
+				else
+					y0, y1 = c.y + ho, c.y + hi
+				end
+				if vs == "left" then
+					x0, x1 = c.x + vo, c.x + vi
+				else
+					x0, x1 = c.x - vi, c.x - vo
+				end
+				local tex = Take(f, "joint", JOIN_PIECE)
+				local u0, u1, v0, v1 = ju0, ju1, jv0, jv1
+				if ex > 0 then
+					u0, u1 = u1, u0
+				end
+				if ey < 0 then
+					v0, v1 = v1, v0
+				end
+				tex:SetTexCoord(u0, u1, v0, v1)
+				Lay(f, tex, x0, y0, x1, y1)
+			end
+		end
+	end
+	-- the pools' textures this shape did not need put away
+	for _, pool in pairs(f.pools) do
+		for i = pool.used + 1, #pool do
+			pool[i]:Hide()
+		end
+	end
+	return true
+end
+
+local padList = {}   -- (the members' pads in their order: Outline.Clusters' input, kept)
+
+-- Every backdrop laid out: the members, their groups, the status bars'
+-- fits, each drawn group on its leader's holder; the holders no group
+-- needs hidden
+local function LayoutBackdrops()
+	wipe(fitSeen)
+	wipe(holderUsed)
+	local list, n = Members()
+	local ks = RailScale()
+	for i = 1, n do
+		if ks then
+			break
+		end
+		ks = list[i].size and list[i].size / 97
+	end
+	if ks and n > 0 then
+		local size = ks * 97
+		for i = 1, n do
+			padList[i] = PadOf(list[i], ks, size)
+		end
+		for i = #padList, n + 1, -1 do
+			padList[i] = nil
+		end
+		local groups = Outline.Clusters(padList, 0)
+		for _, group in ipairs(groups) do
+			for _, i in ipairs(group) do
+				if list[i].on then
+					group.drawn = true
+					break
+				end
+			end
+			-- the status bars of a drawn group fitted first: their pads again
+			for _, i in ipairs(group) do
+				local m = list[i]
+				if m.e.status then
+					local k = group.drawn and FitFor(m, group, list) or 1
+					if k ~= 1 then
+						fitSeen[m.root] = true
+					end
+					if SetFit(m.root, k) then
+						local l, b, r, t = ScreenRect(m.root)
+						if l then
+							m.rect[1], m.rect[2], m.rect[3], m.rect[4] = l, b, r, t
+							PadOf(m, ks, size)
+						end
+					end
+				end
+			end
+		end
+		for _, group in ipairs(groups) do
+			if group.drawn then
+				local leader = list[group[1]]
+				local g = GROUP[leader.e.group]
+				local f = holders[leader.e.key]
+				if not f and not InCombatLockdown() then
+					-- (never made in a fight: the leader can be protected; the
+					-- layout after it makes it)
+					f = NewHolder(leader.root)
+					holders[leader.e.key] = f
+				end
+				local pads = f and {}
+				for k, i in ipairs(pads and group or {}) do
+					pads[k] = list[i].pad
+				end
+				local piece = FRAME_PIECES[Setting(g, "backdrop")] or FRAME_PIECE
+				if f and DrawShape(f, pads, piece, Setting(g, "background") or "stone", ks) then
+					holderUsed[f] = true
+					for _, i in ipairs(group) do
+						covered[list[i].root] = true
+						inShape[list[i].root] = true
+					end
+				end
+			end
+		end
+	end
+	-- a fitted bar no longer in a drawn group: its own size back
+	for container in pairs(fits) do
+		if not fitSeen[container] then
+			SetFit(container, 1)
+		end
+	end
+	for _, f in pairs(holders) do
+		if not holderUsed[f] then
+			f:Hide()
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -1450,23 +1459,32 @@ local function SyncRims()
 	end
 end
 
+-- The status bars' brackets (P1) give way to the rails of a backdrop they
+-- are in: one outline, no bracket inside it
+local function SyncBrackets()
+	for container, rep in pairs(skin.statusReps) do
+		rep:SetShown(not inShape[container])
+	end
+end
+
 local LAYOUT_KEY = "Action bars: layout"   -- (Kit:WhenOutOfCombat's key: one layout waits at a time)
 local function LayoutAll()
-	wipe(covered)
-	MatchMicroToBags()
-	local ks = RailScale()
-	for _, g in ipairs(GROUPS) do
-		LayoutGroup(g, ks)
+	if not (active and skin) then
+		return
 	end
-	if active and skin then
-		JoinFrames()   -- backdrops that meet become one shape
-		SyncRims()
-		KeepShadesLow()
-		-- in a fight (a setting changed): laid out again
-		-- after it, for the rims a bar could not get and the shade frames' level
-		if InCombatLockdown() then
-			Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
-		end
+	wipe(covered)
+	wipe(inShape)
+	MatchMicroToBags()
+	KeepFitPlaces()
+	LayoutBackdrops()
+	SyncRims()
+	SyncBrackets()
+	KeepShadesLow()
+	-- in a fight (a setting changed): laid out again after it, for what a
+	-- protected bar could not get now (a holder, a rim frame, a status bar's
+	-- fit) and the shade frames' level
+	if InCombatLockdown() then
+		Kit:WhenOutOfCombat(LayoutAll, LAYOUT_KEY)
 	end
 end
 
@@ -1474,11 +1492,14 @@ local function HideAll()
 	if not skin then
 		return
 	end
-	for _, g in ipairs(GROUPS) do
-		HideGroup(skin.groups[g.id].backdrop)
+	for _, f in pairs(holders) do
+		f:Hide()
 	end
 	for _, rs in pairs(skin.rims) do
 		rs.host:Hide()
+	end
+	if next(fits) then
+		Kit:WhenOutOfCombat(RestoreFits)
 	end
 end
 
@@ -1496,13 +1517,15 @@ local function ScheduleBackdrop()
 	end)
 end
 
--- What moves a group: a bar re-laid, shown or hidden, resized, dragged in
--- Edit Mode, Edit Mode closed.
+-- What moves a backdrop: an element re-laid, shown or hidden, resized,
+-- dragged in Edit Mode, Edit Mode closed. (The watched ones in a table of
+-- ours: never a key on the game's frames.)
+local watched = setmetatable({}, { __mode = "k" })
 WatchForBackdrop = function(bar)
-	if not bar or bar.melloBackdropWatch then
+	if not bar or watched[bar] then
 		return
 	end
-	bar.melloBackdropWatch = true
+	watched[bar] = true
 	Perf.HookScript(bar, "OnShow", ScheduleBackdrop)
 	Perf.HookScript(bar, "OnHide", ScheduleBackdrop)
 	Perf.HookScript(bar, "OnSizeChanged", ScheduleBackdrop)
@@ -1893,6 +1916,7 @@ local function SkinStatusContainer(container)
 		end
 	end
 	if rep then
+		skin.statusReps[container] = rep   -- (hidden while the bar is in a backdrop: SyncBrackets)
 		rep.onEnable = function() Flag(true) end
 		rep.onDisable = function() Flag(false) end
 		if active then
@@ -1913,6 +1937,8 @@ local function SkinStatusContainer(container)
 			Replace(bar.StatusBar.Background, { as = "UI-HUD-ExperienceBar-Background" })
 		end
 	end
+	-- a member of the backdrops (its own switch; fitted to the others)
+	WatchForBackdrop(container)
 end
 
 -- The container's pooled segment dividers → ticks (re-acquired on every
@@ -1982,9 +2008,9 @@ end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, bars = {}, status = {}, capSync = {}, groups = {}, rims = {} }
+		skin = { reps = {}, bars = {}, status = {}, statusReps = {}, capSync = {}, groups = {}, rims = {} }
 		for _, g in ipairs(GROUPS) do
-			skin.groups[g.id] = { buttons = {}, backdrop = { tabs = {}, rects = {} } }
+			skin.groups[g.id] = { buttons = {} }
 		end
 	end
 	-- each part on its own, so one failing part reports and the rest builds
@@ -2074,6 +2100,13 @@ function M:OnSettingChanged(key, value, db)
 		ApplyPageArrows()
 		return
 	end
+	-- an element's backdrop switched on or off: the backdrops again
+	if ELEMENT_KEY[key] then
+		if active then
+			LayoutAll()
+		end
+		return
+	end
 	-- a group's choice, live
 	local owner = KEY_GROUP[key]
 	if not owner then
@@ -2083,7 +2116,7 @@ function M:OnSettingChanged(key, value, db)
 	if role == "buttonBackground" then
 		ApplyButtonBackground(g, value)
 	elseif active then
-		LayoutAll()               -- the backdrop on, off, its gems or its background (and the joins with it)
+		LayoutAll()               -- its gems or its background (on every backdrop it leads)
 	end
 end
 
@@ -2134,6 +2167,15 @@ local function Hook()
 			end
 		end)
 	end
+	-- the game's bottom stack laid its bars in their default places: a
+	-- fitted status bar's offsets on its fit again (KeepFitPlaces)
+	if EditModeManagerFrame and type(EditModeManagerFrame.UpdateBottomActionBarPositions) == "function" then
+		hooksecurefunc(EditModeManagerFrame, "UpdateBottomActionBarPositions", function()
+			if next(fits) then
+				KeepFitPlaces()
+			end
+		end)
+	end
 	-- the status bars appear and stack at runtime (a reputation watched, a
 	-- level gained): skin whatever the manager lays out
 	if StatusTrackingBarManager then
@@ -2158,6 +2200,30 @@ local function Hook()
 	end
 end
 
+-- (0.18.5) a Backdrop switch per element took over from Backdrop None: a
+-- player who had a group's backdrop keeps it (Action Bar 1's, the micro
+-- menu's, the bag bar's switch on); None became off, the gems back on red
+-- for when it is switched on again. Once (`backdropsMigrated`: this
+-- machine's, never in a profile). A new player (no earlier login: UI
+-- Modifications' welcomeAsked and seenVersion unset) starts with none.
+local MIGRATE_ON = { bars = "backdropBar1", micro = "backdropMicro", bags = "backdropBags" }
+local function MigrateBackdrops(db)
+	if db.backdropsMigrated then
+		return
+	end
+	db.backdropsMigrated = true
+	local um = MelloUI.GetModuleDB and MelloUI:GetModuleDB("UIModifications")
+	local existing = type(um) == "table" and (um.welcomeAsked == true or um.seenVersion ~= nil)
+	for _, g in ipairs(GROUPS) do
+		local key = g.keys.backdrop
+		if db[key] == "none" then
+			db[key] = "red"
+		elseif existing then
+			db[MIGRATE_ON[g.id]] = true
+		end
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
 	-- the one Action Bar Border choice of earlier the same day, split in two
@@ -2166,6 +2232,7 @@ function M:OnEnable(db)
 		db.barBackdrop = (old == "backdrop" and "red") or (old == "backdrop_iron" and "iron") or "none"
 		db.border = nil
 	end
+	MigrateBackdrops(db)
 	-- the groups' own button borders gave way to UI Modifications' Button
 	-- Border, every window's (read from here once by its migration, which
 	-- runs first): the old keys go
@@ -2180,7 +2247,8 @@ end
 
 --------------------------------------------------------------------------------
 -- /abdump [bar|micro|bags|xp] [frames|reps]: the art of the main bar (or
--- the micro menu, the bag bar, the main status bar). Opens the copy window.
+-- the micro menu, the bag bar, the main status bar); /abdump backdrops: the
+-- backdrops' members, groups and fits. Opens the copy window.
 --------------------------------------------------------------------------------
 SLASH_MELLOABDUMP1 = "/abdump"
 SlashCmdList.MELLOABDUMP = function(msg)
@@ -2221,24 +2289,51 @@ SlashCmdList.MELLOABDUMP = function(msg)
 				end
 			end
 		end
-		for _, g in ipairs(GROUPS) do
-			local bd = skin and skin.groups[g.id] and skin.groups[g.id].backdrop
-			for _, f in ipairs({ bd and bd.main, unpack(bd and bd.tabs or {}) }) do
-				if f then
-					MelloUI:Print("backdrop %s: shown=%s %s L%d", g.id, tostring(f:IsShown()), f:GetFrameStrata(), f:GetFrameLevel())
+		for _, e in ipairs(ELEMENTS) do
+			local f = holders[e.key]
+			if f then
+				MelloUI:Print("backdrop %s: shown=%s %s L%d", e.key, tostring(f:IsShown()), f:GetFrameStrata(), f:GetFrameLevel())
+				-- its shade frame: under every backdrop
+				local host = f.shade and f.shade:Host()
+				if host then
+					MelloUI:Print("shade %s: shown=%s %s L%d", e.key, tostring(host:IsVisible()), host:GetFrameStrata(), host:GetFrameLevel())
 				end
-			end
-			-- its shade frame (made with its first shadow): under every backdrop
-			local main = bd and bd.main
-			if main and main.melloShaded then
-				local host = main.melloShade:Host()
-				MelloUI:Print("shade %s: shown=%s %s L%d", g.id, tostring(host:IsVisible()), host:GetFrameStrata(), host:GetFrameLevel())
 			end
 		end
 		for root, rs in pairs(skin and skin.rims or {}) do
 			MelloUI:Print("rim shade %s: shown=%s %s L%d", root:GetName() or "?", tostring(rs.host:IsVisible()), rs.host:GetFrameStrata(), rs.host:GetFrameLevel())
 		end
 		MelloUI:ShowLog("abdump icons")
+		return
+	end
+	if which == "backdrops" then
+		-- the members (screen rects, switches), their groups and leaders, the
+		-- pieces each holder draws, the status bars' fits
+		local list, n = Members()
+		local ks = RailScale()
+		MelloUI:Print("rail scale %s (screen px per piece px), %d members", tostring(ks), n)
+		for i = 1, n do
+			local m = list[i]
+			local r = m.rect
+			MelloUI:Print("%d %s: %s  %.0f,%.0f - %.0f,%.0f  size %s  in a backdrop %s", i, m.e.name, m.on and "on" or "off",
+				r[1], r[2], r[3], r[4], m.size and string.format("%.1f", m.size) or "-", tostring(inShape[m.root] == true))
+		end
+		for _, e in ipairs(ELEMENTS) do
+			local f = holders[e.key]
+			if f then
+				local counts = {}
+				for kind, pool in pairs(f.pools) do
+					counts[#counts + 1] = kind .. " " .. pool.used
+				end
+				table.sort(counts)
+				MelloUI:Print("holder of %s: shown=%s  %s", e.name, tostring(f:IsShown()), table.concat(counts, ", "))
+			end
+		end
+		for container, fit in pairs(fits) do
+			MelloUI:Print("fit %s: x%.3f on %.3f, default place %s", container:GetName() or "?", fit.k, fit.base,
+				tostring(select(2, pcall(container.IsInDefaultPosition, container))))
+		end
+		MelloUI:ShowLog("abdump backdrops")
 		return
 	end
 	if which == "states" then

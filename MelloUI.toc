@@ -18,6 +18,7 @@ Core\Companions.lua
 Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua
+Core\Outline.lua
 Core\GameLook.lua
 Core\Notice.lua
 Core\CentreText.lua
