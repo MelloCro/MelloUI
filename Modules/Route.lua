@@ -78,7 +78,7 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, smaller the farther the place, faint while it stands in the middle of the screen; within 100 yards it rises above the place, the distance and the name over it and gold chevrons rippling down to it, so it never covers what you are looking for. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
 		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away, with a ring of light on the ground at its foot and the gem lit red. It fades as you come near and is gone once the marker rises above the place, and hides while the place is off screen. Part of the World Marker." },
-		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds", new = "0.18.4",
+		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds",
 		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. Plays on the Sound Effects channel. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
