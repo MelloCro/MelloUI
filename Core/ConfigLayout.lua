@@ -284,6 +284,12 @@ function L.Define(R, Link)
 	-- live on the CURRENT pick's Painted Skin, not on the panel owning the
 	-- key: the Bank wears the Bags' keys, and Quality Gems stays live on the
 	-- Bank with the Bags' skin off
+	-- (0.19.0) the bag window by kind, MelloUI's own (either look; works with UI Modifications off)
+	R("Windows", "Windows", "General", { BackpackPanel = "BagWindow.!enabled" }, { name = "Bags by Kind", free = true })
+	-- (its kinds, the user's picks of 2026-10-04; its layout's below, after Bag Slots on Bag Window)
+	for _, key in ipairs({ "recent", "recentFor", "gear", "quest", "consumables", "junk", "trade", "splitTrade" }) do
+		R("Windows", "Windows", "General", { BackpackPanel = "BagWindow." .. key }, { free = true })
+	end
 	R("Windows", "Windows", "Look", { from = "windows" }, { name = "Painted Skin" })
 	R("Windows", "Windows", "Look", { CharacterPanel = "CharacterPanel.windowBackground", BackpackPanel = "BackpackPanel.windowBackground", BankPanel = "BackpackPanel.windowBackground" }, { name = "Window Background", picture = true })
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.itemBackground", BankPanel = "BackpackPanel.itemBackground", GuildBankPanel = "BackpackPanel.itemBackground" }, { name = "Item Slot Background", picture = true })
@@ -293,6 +299,9 @@ function L.Define(R, Link)
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.qualityGems", BankPanel = "BackpackPanel.qualityGems", GuildBankPanel = "BackpackPanel.qualityGems" }, { name = "Quality Gems" })
 	R("Windows", "Windows", "Look", { BackpackPanel = "BackpackPanel.greyJunk", BankPanel = "BackpackPanel.greyJunk", GuildBankPanel = "BackpackPanel.greyJunk" }, { name = "Grey Out Junk" })
 	R("Windows", "Windows", "Layout", { BackpackPanel = "Tweaks.bagSlotsOnBags" }, { name = "Bag Slots on Bag Window" })
+	for _, key in ipairs({ "columns", "itemSize", "foldEmpty", "sortBy" }) do
+		R("Windows", "Windows", "Layout", { BackpackPanel = "BagWindow." .. key }, { free = true })
+	end
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.bagButton", LootPanel = "Discard.lootButton" }, { name = "Discard Button" })
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.keepWorth", LootPanel = "Discard.keepWorth" }, { name = "Never Throw Away Items Worth" })
 

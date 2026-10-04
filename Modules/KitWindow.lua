@@ -18,8 +18,12 @@
 --                            middle line (MelloUI-Crest); "tl": the standard
 --                            corner ring (UI-Frame-PortraitMetal-CornerTopLeft,
 --                            the plate behind it, 2c); the emblem on the ring's
---                            disc, never an empty ring (2b)
---     plate = "crest" | "rail", title = "MelloUI", plateWidth = 200,
+--                            disc, never an empty ring (2b). x, y (a "tl"
+--                            ring, the kit look): its centre from the top left
+--                            (else the game's portrait's, CORNER_X / _Y) -- a
+--                            bigger ring set higher so its gems cover the rail
+--                            and the plate where they are cut (the bags')
+--     plate ="crest" | "rail", title = "MelloUI", plateWidth = 200,
 --                            "crest": the short plate under the crest
 --                            (MelloUI-TitlePlate); "rail": the standard plate
 --                            riding the outer rail (TitleBar, 2c)
@@ -310,7 +314,7 @@ function Shell:Lay()
 			x, y, point = 0, self.kit and Kit:RailMiddle() or 0, "TOP"
 		else
 			size = self.kit and self.ringSize or PLAIN_CORNER
-			x, y, point = CORNER_X, CORNER_Y, "TOPLEFT"
+			x, y, point = self.kit and self.ringX or CORNER_X, self.kit and self.ringY or CORNER_Y, "TOPLEFT"
 		end
 		crest:SetSize(size, size)
 		crest:ClearAllPoints()
@@ -694,6 +698,7 @@ function Kit:OwnWindow(frame, opts)
 	if ring then
 		shell.ringAt = ring.at == "tl" and "tl" or "top"
 		shell.ringSize = (self:Size("window/portrait_ring")) * (ring.scale or 1)
+		shell.ringX, shell.ringY = tonumber(ring.x), tonumber(ring.y)
 		shell.emblemTexture = ring.texture or LOGO
 		local crest = CreateFrame("Frame", nil, frame)
 		crest:SetFrameLevel(base + LEVEL_CREST)

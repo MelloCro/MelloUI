@@ -362,7 +362,7 @@ local GLYPH = 15
 local GAP = 2                     -- between the button and Sort
 local SHORTER = SIZE_W + GAP      -- the search box's room given up (30)
 local MIN_SEARCH = 40             -- the search box never narrower
-local AREA = { bags = "backpack", loot = "loot" }
+local AREA = { bags = "backpack", loot = "loot", kinds = "backpack" }
 
 local function Tip(self)
 	local selling = AtVendor()
@@ -380,31 +380,24 @@ local function Tip(self)
 	GameTooltip:Show()
 end
 
-local function MakeButton(source, parent)
-	local Kit, Look, W = MelloUI.Kit, MelloUI.Look, MelloUI.Widgets
-	local b = CreateFrame("Button", nil, parent)
-	b:SetSize(SIZE_W, SIZE_H)
-	b.source = source
-	-- (the scripts first: a SetScript after the plate's hooks would drop them)
-	b:SetScript("OnClick", function(self)
+-- (the scripts handed in first: a SetScript after the plate's hooks would drop them)
+local BUTTON_SCRIPTS = {
+	OnClick = function(self)
 		M.Click(self.source)
-	end)
-	b:SetScript("OnEnter", Tip)
-	b:SetScript("OnLeave", function()
+	end,
+	OnEnter = Tip,
+	OnLeave = function()
 		GameTooltip:Hide()
-	end)
-	-- the kit's cog plate (its hover and press follow the button), as the
-	-- Sort button's: the kit size fitted to the width, centred
-	local plate = Kit:StateTexture(b, "buttons/cog", { layer = "BACKGROUND" })
-	local w, h = Kit:Size("buttons/cog_normal", 1)
-	plate:ClearAllPoints()
-	plate:SetSize(SIZE_W, h > 0 and SIZE_W * h / w or SIZE_W)
-	plate:SetPoint("CENTER")
-	local glyph = b:CreateTexture(nil, "ARTWORK", nil, 2)
+	end,
+}
+
+local function MakeButton(source, parent)
+	local W = MelloUI.Widgets
+	-- the kit's cog plate, as the Sort button's, its opening black under the
+	-- bin (W.PlateButton: the bag window's Settings is the same button)
+	local b, glyph = W.PlateButton(parent, SIZE_W, SIZE_H, GLYPH, AREA[source], BUTTON_SCRIPTS)
+	b.source = source
 	W.Glyph(glyph, "bin")
-	glyph:SetSize(GLYPH, GLYPH)
-	glyph:SetPoint("CENTER")
-	Look.ColumnButton(b, glyph, { plate }, AREA[source])
 	buttons[source] = b
 	return b
 end
@@ -462,10 +455,24 @@ local function Sync()
 	if buttons.bags then
 		buttons.bags:SetShown(on and M.db.bagButton and true or false)
 	end
+	if buttons.kinds then
+		buttons.kinds:SetShown(on and M.db.bagButton and true or false)
+	end
 	if buttons.loot then
 		buttons.loot:SetShown(on and M.db.lootButton and true or false)
 	end
 	FitSearch()
+end
+
+-- The bag window by kind (Modules/BagWindow.lua, 0.19.0) asks for the same
+-- button for its search row (that window places it); shown by the same
+-- switch as the bag window's
+function M:KindWindowButton(parent)
+	if not buttons.kinds then
+		MakeButton("kinds", parent)
+	end
+	Sync()
+	return buttons.kinds
 end
 
 local hooked = false

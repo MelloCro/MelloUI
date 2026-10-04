@@ -1051,8 +1051,9 @@ end
 --     the game's own:   "option_on", "option_off" (its checkbox clicks),
 --                       "menu_open", "menu_close", "menu_button" (the game
 --                       menu's), "window_open", "window_close", "tick" (the
---                       chat's scroll button), "waypoint_set", "waypoint_clear"
---     the notice's:     "notice_track", "notice_arrive", "notice_learn",
+--                       chat's scroll button), "waypoint_set", "waypoint_clear",
+--                       "bags_open", "bags_close" (the bag window by kind)
+--     the notice's:    "notice_track", "notice_arrive", "notice_learn",
 --                       "notice_fail" (MelloUI:Announce, on the Master channel)
 --     the user's own:   "marker" (Route's World Marker as it changes), "rare"
 --                       (the Rare Alert: a rare spotted, on the Master channel)
@@ -1097,6 +1098,10 @@ do
 		-- user's own sound (their SFX library: Alert/RareMob/RareMob_Ward_01),
 		-- on the Master channel as the notice's chimes, so it is heard
 		rare           = { file = "SFX\\RareMob_Ward.ogg", kit = "RAID_WARNING", alt = "UI_MAP_WAYPOINT_SUPER_TRACK_ON", channel = "Master" },
+		-- the bag window by kind (0.19.0): the game's own bag sounds, as its
+		-- bag window played them
+		bags_open      = { kit = "IG_BACKPACK_OPEN" },
+		bags_close     = { kit = "IG_BACKPACK_CLOSE" },
 	}
 	for _, sound in pairs(SOUNDS) do
 		if sound.file then

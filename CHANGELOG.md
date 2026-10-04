@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0
+
+- Bags by Kind: your bags in one window sorted by kind, each kind under its own heading: what you picked up lately, gear, quest items, consumables, junk, trade goods and the rest. Small kinds sit side by side, so the window stays about as big as before. All your empty slots fold into one slot that shows how many are free (drop an item on it to put it in a free slot); a special bag's free slots, such as a mining bag's, get a slot of their own. Click a heading to fold that kind into one slot. Junk shows what it sells for, and at a vendor a Sell Junk button sells it all. The bags still open and close as before: with the bag key, at a vendor, the bank, the mailbox, a trade and the auction house. On by default; switch it off on Windows > Bags to get the game's bag window back.
+- Bags by Kind, your way (Windows > Bags): switch each kind on or off, split Trade Goods into Cloth, Leather, Metal & Stone, Herbs and the rest, choose how long Recent lasts (until the bags close, until you hover the item, or 5 minutes), and set the columns, the item size, whether the empty slots fold into one, and the order inside each kind (quality, name, newest first or item level). The gear button on the bag window opens these settings.
+- Fixed: the Discard button showed the plate's own cog under its bin; its middle is black now.
+
 ## 0.18.5
 
 - Nameplates: Combo Points. For a rogue, and a druid in Cat Form, your five combo points sit in a row on the top edge of your target's health bar, in the game's own art: empty sockets as soon as you target an enemy, lit as you build them, glowing when all five are lit. The name moves up a little to make room. Combo Point Size sets how big they are (Nameplates > Plates).

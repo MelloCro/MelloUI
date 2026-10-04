@@ -1282,6 +1282,34 @@ slider per line and Remove, Add a line, Suggested (click twice) to go back to th
 suggestions, and it takes items dropped from your bags or from a shop. Counting runs just after
 your bags change, never in combat.
 
+### Bags by Kind
+
+Your bags in one window of MelloUI's own (0.19.0, on), each kind of item under its own gold
+heading: **Recent** (what you picked up lately; it glows until you hover it and stays in Recent
+until you close the bags), **Gear**, **Quest**, **Other**, **Consumables**, **Junk** and **Trade
+Goods**. Small kinds sit side by side in a row, a big one gets a row of its own. All your empty
+slots fold into one slot with the number of free slots on it: drop an item on it and it goes into a
+free slot. A special bag (a mining bag, an herb bag ...) gets an empty slot of its own in its bag
+type's colour. Click a heading to fold that kind into one slot (its count beside it); click again to
+open it. Junk's heading shows what it all sells for, and at a vendor a **Sell Junk** button sells it.
+The search box dims what does not match, the cog button cleans up your bags, the gear button beside
+it opens these settings (Windows > Bags), and the Discard button and your bag slots (Bag Slots on
+Bag Window) come along. The bags still open and close as the game
+opens them: the bag key, the backpack button, a vendor, the bank, the mailbox, a trade, the auction
+house; the bank's own bags keep their windows. The window wears the painted look with the reskin
+and the game's without it, and moves in Edit Layout. **Bags by Kind** is on the Windows page (Bags,
+General); off, you get the game's bag window back. While it is on, the game's Combined Bags setting
+is held on (it comes back as you had it when you switch Bags by Kind off).
+
+Under it, each kind has a switch (**Recent Kind**, **Gear Kind**, **Quest Kind**, **Consumables
+Kind**, **Junk Kind**, **Trade Goods Kind**): a kind switched off hands its items on (Recent's to
+their own kind, a grey item to its own kind, gear, consumables and trade goods to Other). **Recent
+Lasts**: until the bags close, until you hover the item, or for 5 minutes. **Split Trade Goods**
+gives every type its own heading (Cloth, Leather, Metal & Stone, Herbs, Reagents, Recipes ... in
+the game's own words). On the Layout section: **Columns** (8 to 16 slots across), **Item Size**
+(30 to 46, the game's own is 37), **Fold Empty Slots** (off: every empty slot shows) and **Sort
+Items By**: quality, name, newest first (the order you picked them up in) or item level.
+
 ### Discard
 
 A button left of Sort on the bag window (the search box makes room) frees a bag slot: it throws

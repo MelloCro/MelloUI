@@ -2273,6 +2273,51 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- PlateButton (0.19.0): a small square button on the kit's cog plate (the bag
+-- window's Sort button's plate, buttons/cog: its hover and press follow the
+-- button) with a glyph on it -- the plate's own painted cog covered by a black
+-- opening (the palette's inner panel; the user, 2026-10-04: "make sure ...
+-- the background is actually black, since i think there is another icon
+-- sketched under it"); the game's round column button in the game's look
+-- (Look.ColumnButton: the glyph in the text colour, the plate and the opening
+-- hidden). The Discard buttons and the bag window's Settings.
+--   W.PlateButton(parent, w, h, glyphSize, area, scripts) -> b, glyph
+--     scripts: { OnClick = fn, OnEnter = fn, OnLeave = fn }, set before the
+--     plate's hooks (a SetScript after them drops them); the caller puts its
+--     art on `glyph` (W.Glyph, or a picture of the game's)
+--------------------------------------------------------------------------------
+do
+	-- the cog plate's opening (buttons/cog: 8..40 of its 50 px across, 8..39
+	-- of its 49 down): its left, right, top and bottom insets, of its size
+	local OPEN = { 0.16, 0.18, 0.165, 0.18 }
+	function W.PlateButton(parent, w, h, glyphSize, area, scripts)
+		local Kit, Look = MelloUI.Kit, MelloUI.Look
+		local b = CreateFrame("Button", nil, parent)
+		b:SetSize(w, h)
+		for script, fn in pairs(scripts or NO_OPTS) do
+			b:SetScript(script, fn)
+		end
+		-- the plate at the button's width, its aspect kept, centred
+		local plate = Kit:StateTexture(b, "buttons/cog", { layer = "BACKGROUND" })
+		local pw, ph = Kit:Size("buttons/cog_normal", 1)
+		local height = (pw > 0 and ph > 0) and w * ph / pw or w
+		plate:ClearAllPoints()
+		plate:SetSize(w, height)
+		plate:SetPoint("CENTER")
+		local open = b:CreateTexture(nil, "BACKGROUND", nil, 1)
+		open:SetPoint("TOPLEFT", plate, "TOPLEFT", w * OPEN[1], -height * OPEN[3])
+		open:SetPoint("BOTTOMRIGHT", plate, "BOTTOMRIGHT", -w * OPEN[2], height * OPEN[4])
+		W.Paint(open, "innerPanel", "fill", 1)
+		local glyph = b:CreateTexture(nil, "ARTWORK", nil, 2)
+		glyph:SetSize(glyphSize, glyphSize)
+		glyph:SetPoint("CENTER")
+		Look.ColumnButton(b, glyph, { plate, open }, area)
+		b.plate, b.open = plate, open
+		return b, glyph
+	end
+end
+
+--------------------------------------------------------------------------------
 -- TrayBox (0.14.0: the Restock panel beside the shop, the Services trays;
 -- lifted from the Services bar's menu box, which can move onto it later): the
 -- box of a small list that hangs beside a window. Two looks, switched live

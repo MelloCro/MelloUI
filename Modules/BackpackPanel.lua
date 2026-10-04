@@ -365,28 +365,16 @@ local function TintSlot(button)
 	Lights_Shown(rim)
 end
 
-local function SkinItems(frame)
-	local pool = frame.itemButtonPool
-	if not pool then
-		return
-	end
-	local buttons, count = skinning and {} or itemList, 0
-	for button in pool:EnumerateActive() do
-		count = count + 1
-		buttons[count] = button
-	end
-	for i = #buttons, count + 1, -1 do
-		buttons[i] = nil
-	end
-	if count == 0 then
-		return
-	end
+-- The slots dressed: the kit's rim, the Item Background, the slot picture
+-- faded, the bag type's colour. `pitch` is the grid's ({ x, y }; nil: the
+-- button's own size). The game's bag windows' buttons (SkinItems) and the
+-- bag window by kind's (M:DressSlots) alike: one dressing for every bag slot
+local function DressButtons(buttons, count, pitch)
 	local outer = not skinning
 	skinning = true
 	if outer then
 		wipe(familyOf)   -- (a bag may have been swapped since the last layout)
 	end
-	local pitch = ItemPitch(buttons, count)
 	local rimRule, plainFade = nil, nil
 	for i = 1, count do
 		local button = buttons[i]
@@ -425,6 +413,39 @@ local function SkinItems(frame)
 	if outer then
 		skinning = false
 	end
+end
+
+local function SkinItems(frame)
+	local pool = frame.itemButtonPool
+	if not pool then
+		return
+	end
+	local buttons, count = skinning and {} or itemList, 0
+	for button in pool:EnumerateActive() do
+		count = count + 1
+		buttons[count] = button
+	end
+	for i = #buttons, count + 1, -1 do
+		buttons[i] = nil
+	end
+	if count == 0 then
+		return
+	end
+	DressButtons(buttons, count, ItemPitch(buttons, count))
+end
+
+-- The bag window by kind (Modules/BagWindow.lua, 0.19.0) hands its item
+-- buttons here (the game's ContainerFrameItemButtonTemplate, as the game's
+-- bag windows' are): dressed by the same code while the kit is on, so the
+-- two windows' slots never differ. `pitch`: its grid ({ x, y }). False while
+-- the kit is off (the buttons keep the game's look; the window asks again on
+-- its 'look:backpack').
+function M:DressSlots(buttons, count, pitch)
+	if not (active and skin) or count < 1 then
+		return false
+	end
+	DressButtons(buttons, count, pitch)
+	return true
 end
 
 -- A window's background choice: `alt` (a tile on the window's background

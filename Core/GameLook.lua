@@ -112,6 +112,8 @@ Look.ART = {
 	-- target frame's, Blizzard_NamePlateClassificationFrame): the Rare Alert's crest
 	rareMark = { "atlas", "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star" },
 	rareEliteMark = { "atlas", "nameplates-icon-elite-silver" },
+	-- (0.19.0) the game's options gear: the bag window's Settings button
+	optionsGear = { "atlas", "optionsicon-brown" },
 }
 
 function Look.Art(key)

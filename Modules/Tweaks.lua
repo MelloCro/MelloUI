@@ -204,8 +204,13 @@ local function LayoutBagSlots()
 end
 
 -- The bag window the slots hang from: the first one shown, which is the one
--- in the bottom right corner.
+-- in the bottom right corner. The bag window by kind (Modules/BagWindow.lua)
+-- first, while it shows: the game's own bag window is then never seen.
 local function FirstBagFrame()
+	local own = ns.BagWindowShown and ns.BagWindowShown()
+	if own then
+		return own
+	end
 	if ContainerFrameSettingsManager and ContainerFrameSettingsManager.GetBagsShown then
 		local ok, shown = pcall(ContainerFrameSettingsManager.GetBagsShown, ContainerFrameSettingsManager)
 		if ok and type(shown) == "table" and shown[1] and shown[1]:IsShown() then
@@ -253,6 +258,8 @@ local function HookBagFrames()
 	if type(UpdateContainerFrameAnchors) == "function" then
 		hooksecurefunc("UpdateContainerFrameAnchors", ScheduleBagSlotUpdate)
 	end
+	-- the bag window by kind shown, laid out or hidden
+	MelloUI:On("bagwindow", ScheduleBagSlotUpdate, "Tweaks bag slots")
 	local frames = { ContainerFrameCombinedBags }
 	for i = 1, (NUM_CONTAINER_FRAMES or 13) do
 		frames[#frames + 1] = _G["ContainerFrame" .. i]

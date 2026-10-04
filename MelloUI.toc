@@ -144,6 +144,7 @@ Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
 Modules\ActionBarPanel.lua
 Modules\BackpackPanel.lua
+Modules\BagWindow.lua
 Modules\MinimapPanel.lua
 Modules\TrackerPanel.lua
 Modules\QuestTracker.lua

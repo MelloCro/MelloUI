@@ -138,6 +138,9 @@ read_globals = {
 	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitPosition", "GetCameraZoom", "GetComboPoints", "GetShapeshiftFormID", "UnitIsDead", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",
 	"UpdateContainerFrameAnchors", "WorldMapFrame", "date", "hooksecurefunc", "issecretvalue", "time",
+	-- (0.19.0: the bag window by kind, Modules/BagWindow.lua)
+	"C_NewItems", "ClearItemButtonOverlay", "SetItemButtonQuality", "SetItemButtonCount", "SetItemButtonDesaturated",
+	"GetMoneyString", "GetCVarBool", "MoneyFrame_UpdateMoney",
 	"tinsert", "wipe",
 	-- the game's gamepad navigation, read by Core's MelloUI.Safe.CreateFrame (0.14.0)
 	"InputUtil", "SmartNavigation",

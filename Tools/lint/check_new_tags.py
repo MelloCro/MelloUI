@@ -97,6 +97,7 @@ NOT_CONFIGURATOR = {
     "Modules/Restock.lua": "the Restock List window and the shop's list (the Reminders page's Restock List button, "
                            "a schema option, opens them)",
     "Modules/KitWindow.lua": "the own confirm dialog's answer buttons (MelloUI:Confirm), not options",
+    "Modules/BagWindow.lua": "the bag window by kind's Sell Junk button (it sells at a vendor), not an option",
     "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
     "Modules/Services.lua": "the Services menu's Stop route button (it ends the route), not an option",
     "Modules/RouteRecorder.lua": "the road recorder's window (a developer tool, /route record): its city switches and "

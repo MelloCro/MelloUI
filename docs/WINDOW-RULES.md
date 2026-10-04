@@ -996,7 +996,9 @@ Lint workflow) fails when a copy is added and names the system to use.
   "marker" (0.18.4: the user's own Quest_TrackChange from their SFX
   library, Media/Sounds/SFX, the game's runecarving kit behind it); the
   Rare Alert's "rare" (0.18.5: the user's own RareMob_Ward, on the Master
-  channel, the game's raid warning behind it). A new sound is one row of Core's SOUNDS
+  channel, the game's raid warning behind it); the bag window by kind's
+  "bags_open", "bags_close" (0.19.0: the game's own backpack sounds, as its
+  bag window played them). A new sound is one row of Core's SOUNDS
   table; Custom Sounds is asked first and its PlaySound hook swaps a game
   kit as it does any game click.
 - **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =
