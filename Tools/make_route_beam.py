@@ -24,6 +24,15 @@ and one is laid over the map (blend mode BLEND):
                                radius) with a rim at 0.28 of its light (to 0.34),
                                so one tint colours the dot and darkens its rim
 
+and the World Marker's chevrons near its place (0.18.4, the user's pick A of
+MelloUI-BuildData/output/near_marker_sketch), laid over the world (BLEND):
+
+  chevron.tga        64 x 32   a V pointing down, 16 x 7 of the 32 x 16 it is
+                               drawn at (2 px a unit), its line 2.4 wide; tinted
+                               the palette's gold
+  chevron_shade.tga  64 x 32   the same V, its line 4.6 wide, blurred (3.2 px):
+                               its soft dark edge, tinted innerPanel under it
+
 Writes the TGA masters (Tools/paths.py); `texture_pack.py ship` makes Media.
 
     python Tools/make_route_beam.py
@@ -122,6 +131,24 @@ def trail_dot():
     return Image.merge("RGBA", (light, light, light, cover))
 
 
+def chevron(stroke, blur=0.0):
+    """a V pointing down, 16 x 7 units in a 32 x 16 drawing at 2 px a unit, its line `stroke` units wide"""
+    w, h, k = 64, 32, 2.0
+    cx, cy = w / 2, h / 2
+    a, b, c = (cx - 8 * k, cy - 3.5 * k), (cx, cy + 3.5 * k), (cx + 8 * k, cy - 3.5 * k)
+    r = stroke * k / 2
+
+    def seg(x, y, p, q):
+        px, py = q[0] - p[0], q[1] - p[1]
+        t = max(0.0, min(1.0, ((x - p[0]) * px + (y - p[1]) * py) / (px * px + py * py)))
+        return math.hypot(x - (p[0] + t * px), y - (p[1] + t * py))
+
+    def v(x, y):
+        return 1.0 if min(seg(x, y, a, b), seg(x, y, b, c)) <= r else 0.0
+    img = supersampled(w, h, 4, v)
+    return img.filter(ImageFilter.GaussianBlur(blur)) if blur else img
+
+
 def save(mask, name):
     white = Image.new("L", mask.size, 255)
     path = os.path.join(OUT, name + ".tga")
@@ -138,6 +165,8 @@ def main():
     path = os.path.join(OUT, "trail_dot.tga")
     trail_dot().save(path)
     print(path)
+    print(save(chevron(2.4), "chevron"))
+    print(save(chevron(4.6, 3.2), "chevron_shade"))
 
 
 if __name__ == "__main__":

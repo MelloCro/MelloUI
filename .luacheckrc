@@ -75,7 +75,7 @@ read_globals = {
 	"MainMenuBar", "MultiBarBottomLeft", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "MapQuestInfoRewardsFrame",
 	"MelloUIHiddenFrame", "MelloUIMinimapStand", "MelloUIServicesBar", "MelloUI_CustomFonts",
 	"MelloUI_CustomTextures", "MelloUI_NPCVoiceData", "MelloUI_NPCVoiceOverrides", "MelloUI_Profiles",
-	"MelloUI_QuestListData", "MelloUI_PlaceData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
+	"MelloUI_QuestListData", "MelloUI_PlaceData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
 	"MicroMenuContainer", "MinimalSliderWithSteppersMixin", "Minimap", "MinimapCluster",
 	"MinimapCompassTexture", "MinimapCompassTextureUnderlay", "MinimapBackdrop", "MinimapZoneText",
 	"Mixin", "NUM_BAG_SLOTS",
@@ -135,7 +135,7 @@ read_globals = {
 	-- (0.17.0: Combat Text, Modules/CombatText.lua)
 	"C_CombatText", "UnitPowerType", "UnitIsTapDenied", "UnitPlayerControlled",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
-	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitRace", "UnitReaction",
+	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitPosition", "GetCameraZoom", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",
 	"UpdateContainerFrameAnchors", "WorldMapFrame", "date", "hooksecurefunc", "issecretvalue", "time",
 	"tinsert", "wipe",
@@ -155,6 +155,6 @@ files["Media"] = {
 -- files only define their table too; Route reads them (read_globals above).
 files["MelloUI_Companion"] = {
 	globals = {
-		"MelloUI_RoadData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems",
+		"MelloUI_RoadData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems",
 	},
 }

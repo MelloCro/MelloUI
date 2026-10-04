@@ -50,6 +50,7 @@ local M = MelloUI:RegisterModule("Route", {
 		arrow = true,
 		worldMarker = true,
 		routeBeam = true,
+		markerSound = true,
 		lineWidth = 3,
 		arrive = 25,
 		flightHint = true,
@@ -74,9 +75,11 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
 		  desc = "A row in the widget column while a route is followed: an arrow that points along the route's next leg, the destination, the distance and the travel time, and a ring that fills as the way is done. Hover it to show the route on the map or to stop it." },
 		{ type = "toggle", key = "worldMarker", name = "World Marker",
-		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, faint while it stands in the middle of the screen; within 100 yards it lands on the place as a pin and stays there. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
+		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, smaller the farther the place, faint while it stands in the middle of the screen; within 100 yards it rises above the place, the distance and the name over it and gold chevrons rippling down to it, so it never covers what you are looking for. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
-		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away, with a ring of light on the ground at its foot and the gem lit red. It fades as you come near and is gone once the marker is a pin, and hides while the place is off screen. Part of the World Marker." },
+		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away, with a ring of light on the ground at its foot and the gem lit red. It fades as you come near and is gone once the marker rises above the place, and hides while the place is off screen. Part of the World Marker." },
+		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds", new = "0.18.4",
+		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. Plays on the Sound Effects channel. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
 		  desc = "The route ends and the waypoint is cleared when you get this close." },
@@ -3355,7 +3358,9 @@ do
 	-- table of their own so no older reader of the objectives meets them):
 	-- "<obj>|<item>|<count>|<item name>|<from><map><source name>|<x1><y1>...~"
 	-- per place one comes from, `obj` counting the objective records from 1.
-	local function Decode(packed, needed)
+	-- `made` (MelloUI_QuestMadeItems, 2026-10-04): "<obj>,<obj>", the
+	-- objectives whose item is made by using their needed items (entry.made).
+	local function Decode(packed, needed, made)
 		local list, at = {}, {}
 		for kind, rest in packed:gmatch("(%d)([^~]*)~") do
 			local wmap, name, alt, coords = rest:match("^#(%d+)#([^|]*)|([^|]*)|(.*)$")
@@ -3386,6 +3391,12 @@ do
 					Places({ tonumber(from), name, "", tonumber(wmap) }, coords))
 			end
 		end
+		for obj in (made or ""):gmatch("%d+") do
+			local objective = at[tonumber(obj)]
+			if objective and objective.gates then
+				objective.made = true
+			end
+		end
 		return list
 	end
 
@@ -3399,7 +3410,8 @@ do
 			return nil
 		end
 		local needed = MelloUI_QuestNeededItems and MelloUI_QuestNeededItems[questID]
-		list = Decode(packed, type(needed) == "string" and needed or nil)
+		local made = MelloUI_QuestMadeItems and MelloUI_QuestMadeItems[questID]
+		list = Decode(packed, type(needed) == "string" and needed or nil, type(made) == "string" and made or nil)
 		decoded[questID] = list
 		order[#order + 1] = questID
 		if #order > KEPT then
@@ -3430,8 +3442,11 @@ end
 -- by the game's objective line: hints[line] = its gate, wants[line] = how
 -- many the bags must hold (Route:ItemFirst). Third and fourth: how many
 -- needed items are missing, and whether every open place is one's source
--- (the stand-in pin goes there only then: StandIn).
-local function OpenObjectives(questID, hints, wants)
+-- (the stand-in pin goes there only then: StandIn). Of several items one
+-- line still lacks, the hint names `prefer` when it is one (the item the
+-- route goes for), else the first; a made objective (entry.made) whose items
+-- the bags all hold gets hints[line] = the objective itself (use them).
+local function OpenObjectives(questID, hints, wants, prefer)
 	local data = ObjectivesOf(questID)
 	if not data then
 		return nil
@@ -3454,24 +3469,43 @@ local function OpenObjectives(questID, hints, wants)
 					local finished = Plain(o.finished) and true or false
 					local need, have = Plain(o.numRequired), Plain(o.numFulfilled)
 					local left = type(need) == "number" and need > 1 and type(have) == "number" and need - have or nil
-					texts[#texts + 1] = { text:lower(), finished, i, left }
+					texts[#texts + 1] = { text:lower(), finished, i, left, Plain(o.type) }
 					lines[#lines + 1] = text .. (finished and "+" or "-")
 				end
 			end
 		end
 	end
 	lines = table.concat(lines, "\n")
-	local function Match(name)
+	-- An item's objective is the game's item line (2026-10-04, Traditions of
+	-- the Bluff: the incense made, its line done, Route went back to the
+	-- vendors -- the item's name read in another line, or in none): an item
+	-- (kind 3) never takes a line of another type, and with its name in no
+	-- line the quest's one item line is its own when the data has one item.
+	local function Match(name, kind)
 		if not name or name == "" then
 			return nil
 		end
 		name = name:lower()
 		for _, t in ipairs(texts) do
-			if t[1]:find(name, 1, true) then
+			if t[1]:find(name, 1, true) and not (kind == 3 and t[5] and t[5] ~= "item") then
 				return t
 			end
 		end
 		return nil
+	end
+	local items, itemLine = 0, nil
+	for _, entry in ipairs(data) do
+		if entry[1] == 3 then
+			items = items + 1
+		end
+	end
+	for _, t in ipairs(texts) do
+		if t[5] == "item" then
+			itemLine = itemLine == nil and t or false
+		end
+	end
+	if items ~= 1 then
+		itemLine = nil
 	end
 	local anyMatched, sig, missing, sourceOnly = false, {}, 0, true
 	-- (an item needed for several objectives, 905's feather for each of three
@@ -3496,7 +3530,7 @@ local function OpenObjectives(questID, hints, wants)
 				end
 				sig[#sig + 1] = i .. "s" .. g
 				local line = t and t[3]
-				if hints and line and not hints[line] then
+				if hints and line and (not hints[line] or (prefer and gate.item == prefer)) then
 					hints[line] = gate
 					if wants then
 						wants[line] = want
@@ -3507,6 +3541,10 @@ local function OpenObjectives(questID, hints, wants)
 		if not lacking then
 			open[#open + 1] = entry
 			sig[#sig + 1] = i
+			local line = t and t[3]
+			if entry.made and hints and line and not hints[line] then
+				hints[line] = entry
+			end
 			-- (one kept for a needed item alone has no place to go to)
 			if #entry > 4 then
 				sourceOnly = false
@@ -3515,7 +3553,7 @@ local function OpenObjectives(questID, hints, wants)
 	end
 	for i, entry in ipairs(data) do
 		local kind = entry[1]
-		local t = Match(entry[2]) or Match(entry[3])
+		local t = Match(entry[2], kind) or Match(entry[3], kind) or (kind == 3 and itemLine) or nil
 		if t then
 			anyMatched = true
 			if not t[2] then
@@ -3856,11 +3894,23 @@ end
 -- own point for the quest is the objective the item is for) while every
 -- open place of the quest is one, and is given back the moment the bags hold
 -- the item.
+-- And on a followed quest's own place once the game's point for quests is
+-- seen off the ground (2026-10-04, the user's video and /route pin: this
+-- client puts a quest's point at height 0 -- 166 yd under Thunder Bluff's
+-- mesa, 40-60 under Mulgore's plain -- so the marker, hung on the game's
+-- frame, sank into the ground; the game sets a map pin on the ground, the
+-- vendors' stand-ins stood on them). Seen once -- the game's distance to its
+-- point more than OFF_GROUND above the flat one on the map allows -- it holds
+-- for the session (StandIn.offGround): the pin on Route's own spot, so the
+-- marker stands on the ground and on the place the route goes to. Inside a
+-- quest's area the marker still hides (Beacon.InArea: s.spot).
 --------------------------------------------------------------------------------
 
 -- in a block: its helpers stay out of the main chunk's 200 locals
 do
 	local STAND_IN_MOVE = 30   -- yards: a new exit dock this far from the pin moves it
+	local SPOT_MOVE = 8        -- yards: a quest's place this far from its stand-in moves it
+	local OFF_GROUND = 15      -- yards: the game's point this far above or below the ground is off it
 	-- the stand-in the player took away ("<questID>:<item>" for a needed
 	-- item's source, "<questID>:dock"): none put up for it again meanwhile
 	local dismissed = nil
@@ -3983,14 +4033,49 @@ do
 		end
 	end
 
-	-- (`whole`: the marker's whole label, a needed item's source's)
-	local function PlaceStandIn(dock, label, whole)
+	-- Whether the game's point for the followed quest is off the ground (see
+	-- the top): measured while the game tracks the quest, kept once seen
+	local function QuestPointOffGround(d)
+		if StandIn.offGround then
+			return true
+		end
+		local quest = SuperTrackState()
+		if not (quest and quest == d.questID and C_Navigation and C_Navigation.GetDistance) then
+			return false
+		end
+		local okD, dist = pcall(C_Navigation.GetDistance)
+		dist = okD and Plain(dist) or nil
+		local mapID, mx, my = QuestObjectivePoint(quest)
+		if not (dist and mapID) then
+			return false
+		end
+		local cont, x, y = ToYards(mapID, mx, my)
+		local pcont, px, py = PlayerYards(true)
+		if not (cont and cont == pcont) then
+			return false
+		end
+		local flat = Dist(px, py, x, y)
+		if dist * dist - flat * flat > OFF_GROUND * OFF_GROUND then
+			StandIn.offGround = true
+		end
+		return StandIn.offGround == true
+	end
+
+	-- (`whole`: the marker's whole label, a needed item's source's; `spot`:
+	-- the quest's own place)
+	local function PlaceStandIn(dock, label, whole, spot)
 		local mapID, mx, my = MapPointOfYards(dock[1], dock[2], dock[3])
 		local before = standIn
-		local s = { cont = dock[1], x = dock[2], y = dock[3],
+		local s = { cont = dock[1], x = dock[2], y = dock[3], spot = spot,
 			label = whole or ("|A:Waypoint-MapPin-ChatIcon:16:16|a " .. (label or "the boat")) }
 		if before then
 			s.pin, s.questID = before.pin, before.questID
+			-- (2026-10-04) another quest meanwhile: the one to give back is that one,
+			-- if the game tracks it -- the pin before stays the player's own
+			if destination.fromQuest and before.questID ~= destination.questID then
+				local quest = SuperTrackState()
+				s.questID = quest == destination.questID and quest or nil
+			end
 		else
 			-- what to give back: the pin there was (the player's own), the quest
 			-- the game tracks (not one Route follows as the first tracked quest:
@@ -4010,6 +4095,25 @@ do
 			return
 		end
 		SaveStandIn({ cont = s.cont, x = s.x, y = s.y, pin = s.pin, questID = s.questID })
+		-- (0.18.4) the marker, standing for the same destination, glides there
+		if StandIn.Moved then
+			StandIn.Moved()
+		end
+	end
+
+	-- Whether Route's own pin should stand for the destination but is not up
+	-- there yet (2026-10-04, the user's video: on a quest picked in the tracker
+	-- the marker showed on the game's point, sunk, then hopped to Route's pin):
+	-- the marker waits for it (NavIsOurs). Not for a quest whose pin the player
+	-- took away
+	StandIn.Pending = function(d)
+		if not (StandIn.offGround and d and d.fromQuest and not crossContinent and M.isEnabled and M.db.worldMarker) then
+			return false
+		end
+		if dismissed and dismissed:find("^" .. tostring(d.questID) .. ":") then
+			return false
+		end
+		return not (standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < STAND_IN_MOVE)
 	end
 
 	-- A stand-in left from before a reload: given back once the pins are known
@@ -4045,9 +4149,12 @@ do
 		-- Only while every open place is a source: beside a plain objective the
 		-- pick moves between the two as the player walks (review, 2026-09-28)
 		local atSource = not crossContinent and d ~= nil and d.source ~= nil and d.sourceOnly
-		local want = (crossContinent or atSource) and M.isEnabled and M.db.worldMarker
+		-- (2026-10-04) a followed quest's own place, the game's point for it off the ground
+		local atSpot = not crossContinent and not atSource and d ~= nil and d.fromQuest and M.isEnabled
+			and M.db.worldMarker and QuestPointOffGround(d)
+		local want = (crossContinent or atSource or atSpot) and M.isEnabled and M.db.worldMarker
 		-- what a stand-in would stand for, for a quest (`dismissed`)
-		local key = want and d.fromQuest and (d.questID .. ":" .. (atSource and d.source.gate.item or "dock")) or nil
+		local key = want and d.fromQuest and (d.questID .. ":" .. (atSource and d.source.gate.item or atSpot and "spot" or "dock")) or nil
 		-- the stand-in pin removed or replaced (by the player): no longer ours;
 		-- removed, with nothing else tracked, the quest it held is tracked again
 		if standIn and not IsPlace(standIn, WaypointYards()) then
@@ -4063,12 +4170,13 @@ do
 		if key and key == dismissed then
 			return
 		end
-		if want and atSource then
-			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < STAND_IN_MOVE then
+		if want and (atSource or atSpot) then
+			if standIn and standIn.cont == d.cont and Dist(standIn.x, standIn.y, d.x, d.y) < (atSpot and SPOT_MOVE or STAND_IN_MOVE)
+				and (standIn.spot or false) == (atSpot or false) then
 				standIn.label = d.label   -- (another source this near: its name)
 				return
 			end
-			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label)
+			PlaceStandIn({ d.cont, d.x, d.y }, nil, d.label, atSpot or nil)
 			return
 		end
 		local dock, label
@@ -5208,6 +5316,32 @@ local Beacon = {
 	RING_W = 72, RING_H = 27, RING_DROP = -10,
 	HALO_SIZE = 72,
 	RING_ALPHA = 0.9, HALO_ALPHA = 0.6, LIT_ALPHA = 0.55,
+	-- the gem and the beam smaller the farther the place (user, 2026-10-04:
+	-- "the waypoint marker and the Light beam change their size dynamically
+	-- depending on the distance"): full size within SIZE_NEAR yards (the pin
+	-- always), then (SIZE_NEAR / d) ^ SIZE_POWER, never under SIZE_MIN; the
+	-- texts keep theirs. Set when it changes by more than SIZE_STEP
+	SIZE_NEAR = 150, SIZE_POWER = 0.8, SIZE_MIN = 0.35, SIZE_STEP = 0.005,
+	-- the ring round the character follows the camera's zoom (the same day:
+	-- the arrow "behaves much more smoothly and dynamically when you are
+	-- spinning around" in another marker): RING_X / RING_Y at RING_ZOOM yards,
+	-- larger nearer, smaller farther, within RING_MIN to RING_MAX of that
+	RING_ZOOM = 15, RING_MIN = 0.6, RING_MAX = 2,
+	-- the near look (user, 2026-10-04: "Hover above, point down", pick A of
+	-- MelloUI-BuildData/output/near_marker_sketch): within PIN_IN the gem rises
+	-- HOVER above the place (gliding GLIDE seconds), the distance and the name
+	-- over it, three gold chevrons under it (CHEV_Y below the gem's middle,
+	-- CHEV_W x CHEV_H each) rippling down toward the place, the lowest one's tip
+	-- about 40 above it -- clear of the NPC; back down to the beacon's foot the
+	-- same way. The texts change sides fading (WORDS_FADE)
+	HOVER = 79, GLIDE = 0.8, WORDS_FADE = 0.45,
+	CHEV_Y = { 17, 25, 33 }, CHEV_W = 32, CHEV_H = 16,   -- (the V itself 16 x 7: Tools/make_route_beam.py)
+	RIPPLE = 1.75, RIPPLE_TRAVEL = 7.5, RIPPLE_STAGGER = 0.25,
+	-- Route's own pin set again for the same destination (a nearer spawn, the
+	-- game's sunken point given up for Route's spot): the marker glides there
+	-- on screen in MOVE_TIME seconds, never jumps (user, 2026-10-04: "Our
+	-- navigation sometimes jumps around and skips the appearing animation")
+	MOVE_TIME = 0.4,
 	area = { quest = nil, inside = false, next = 0 },
 }
 local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"   -- look-ok: the beam, the painted look's only (Beacon.painted)
@@ -5320,8 +5454,10 @@ function TextShade.Marker()
 		return
 	end
 	local s = {}
-	s.distance = TextShade.Band(front, marker.distance, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
-	s.label = TextShade.Band(front, marker.label, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
+	-- (the lines' bands on the texts' frame: they fade with them, Beacon.Turn)
+	local words = marker.words or front
+	s.distance = TextShade.Band(words, marker.distance, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
+	s.label = TextShade.Band(words, marker.label, TextShade.FEATHER, TextShade.PAD_X, TextShade.PAD_Y)
 	s.edge = TextShade.Round(front, marker.edge, 40)
 	local Kit = MelloUI.Kit
 	local gem = marker.gem
@@ -5462,6 +5598,10 @@ local function NavIsOurs()
 	if not C_SuperTrack then
 		return true
 	end
+	-- (0.18.4) Route's own pin due for it but not up there yet: wait for it
+	if StandIn.Pending and StandIn.Pending(destination) then
+		return false
+	end
 	local quest, pin = SuperTrackState()
 	if standIn then
 		return pin ~= false
@@ -5482,6 +5622,244 @@ function Beacon.Distance()
 		return ok and Plain(d) or nil
 	end
 	return nil
+end
+
+-- /route pin (user, 2026-10-04: "Navigation pin looks like its under the
+-- ground", with a video: from about 60 yards in, the pin sat on the character
+-- while the distance went down to 7 yd): where the game has the marker's
+-- place. While a quest is followed the marker hangs on the game's own
+-- navigation to that quest (NavIsOurs), so the place and its height are the
+-- game's quest marker's, not Route's spot. The game's distance against the
+-- flat one on the map says how far above or below it lies, if the game
+-- measures in three dimensions.
+function M.PinReport()
+	local quest, pin = SuperTrackState()
+	MelloUI:Print("World Marker: the game tracks %s; the marker hangs on it: %s",
+		quest and ("quest " .. quest) or pin and "the map pin" or "nothing", tostring(NavIsOurs()))
+	local d = Beacon.Distance()
+	local pcont, px, py = PlayerYards()
+	local function Flat(label, mapID, x, y, z)
+		local cont, yx, yy
+		if mapID and x and y then
+			cont, yx, yy = ToYards(mapID, x, y)
+		end
+		if not cont then
+			print(string.format("   %s: %s", label, mapID and "a place Route cannot measure" or "none"))
+			return
+		end
+		local flat = cont == pcont and px and Dist(px, py, yx, yy) or nil
+		local line = string.format("   %s: map %d at %.3f, %.3f%s; flat on the map: %s", label, mapID, x, y,
+			z and string.format(", height %.1f", z) or "", flat and string.format("%.1f yd", flat) or "another continent")
+		if flat and d and d > flat + 1 then
+			line = line .. string.format("  -> the game's point about %.0f yd above or below", math.sqrt(d * d - flat * flat))
+		end
+		print(line)
+	end
+	print("   the game's distance (C_Navigation.GetDistance): " .. (d and string.format("%.1f yd", d) or "none"))
+	if pin and C_Map.GetUserWaypoint then
+		local ok, point = pcall(C_Map.GetUserWaypoint)
+		if ok and type(point) == "table" and type(point.position) == "table" then
+			Flat("the map pin", Plain(point.uiMapID), Plain(point.position.x), Plain(point.position.y), Plain(point.z))
+		end
+	end
+	if quest then
+		Flat("the game's quest marker", QuestObjectivePoint(quest))
+		if C_QuestLog and C_QuestLog.GetNextWaypoint then
+			local ok, mapID, x, y = pcall(C_QuestLog.GetNextWaypoint, quest)
+			Flat("the quest's next waypoint", ok and Plain(mapID) or nil, ok and Plain(x) or nil, ok and Plain(y) or nil)
+		end
+	end
+	if destination then
+		local flat = pcont == destination.cont and px and Dist(px, py, destination.x, destination.y) or nil
+		print(string.format("   Route's spot (%s): flat %s", tostring(destination.label),
+			flat and string.format("%.1f yd", flat) or "another continent"))
+	end
+	if UnitPosition then
+		-- (2026-10-04, the user's report: this client always answers height 0)
+		local ok, wy, wx, wz, inst = pcall(UnitPosition, "player")
+		wz = ok and Plain(wz) or nil
+		print(string.format("   you: world %s, %s, %s (instance %s)", tostring(ok and Plain(wx)), tostring(ok and Plain(wy)),
+			(wz == nil or wz == 0) and "no height (the client gives none)" or string.format("height %.1f", wz),
+			tostring(ok and Plain(inst))))
+	end
+	local nav = NavFrame()
+	if nav then
+		local okC, x, y = pcall(nav.GetCenter, nav)
+		local off, fx, fy = ScreenPlace(nav, okC and Plain(x) or nil, okC and Plain(y) or nil)
+		local okS, state = pcall(C_Navigation.GetTargetState)
+		local okW, clamped = pcall(C_Navigation.WasClampedToScreen)
+		print(string.format("   the navigation frame: %s of the screen across, %s up%s; target state %s, clamped %s",
+			fx and string.format("%.2f", fx) or "?", fy and string.format("%.2f", fy) or "?", off and " (off screen)" or "",
+			tostring(okS and Plain(state)), tostring(okW and Plain(clamped))))
+	end
+	if marker then
+		print(string.format("   the marker: %s%s", marker:IsShown() and "shown" or "hidden",
+			marker:IsShown() and (marker.off and ", at the edge" or marker.pin and ", the pin" or ", the beacon") or ""))
+	end
+end
+
+-- The gem's and the beam's size at `d` yards (see Beacon's SIZE_*): 1 near or
+-- unknown, smaller farther
+function Beacon.Size(d)
+	if not d or d <= Beacon.SIZE_NEAR then
+		return 1
+	end
+	local s = (Beacon.SIZE_NEAR / d) ^ Beacon.SIZE_POWER
+	return s < Beacon.SIZE_MIN and Beacon.SIZE_MIN or s
+end
+
+-- The marker's gem (its frame: the gem, its shadow partner, the game's icon)
+-- and its beam at that size; the pin always full size. Set on a change only
+function Beacon.Resize(f, d, pin)
+	local s = pin and 1 or Beacon.Size(d)
+	if f.size and math.abs(s - f.size) <= Beacon.SIZE_STEP then
+		return
+	end
+	f.size = s
+	if f.core then
+		f.core:SetScale(s)
+	end
+	if f.beam then
+		f.beam:SetScale(s)
+	end
+end
+
+-- How much larger or smaller the ring round the character is at the camera's
+-- zoom now (see Beacon's RING_*)
+function Beacon.RingScale()
+	local zoom = GetCameraZoom and GetCameraZoom()
+	zoom = Plain(zoom)
+	if type(zoom) ~= "number" or zoom <= 0 then
+		return 1
+	end
+	local k = Beacon.RING_ZOOM / zoom
+	return k < Beacon.RING_MIN and Beacon.RING_MIN or k > Beacon.RING_MAX and Beacon.RING_MAX or k
+end
+
+-- The marker's texts beside the gem: under it far away (the beacon: below the
+-- ring on the ground, clear of the beam's light), over it near the place (the
+-- distance on top, the name under it, then the gem: the near look's pick A)
+function Beacon.LayWords(f, near)
+	local gem, distance, label = f.gem, f.distance, f.label
+	distance:ClearAllPoints()
+	label:ClearAllPoints()
+	if near then
+		label:SetPoint("BOTTOM", gem, "TOP", 0, 6)
+		distance:SetPoint("BOTTOM", label, "TOP", 0, 1)
+	else
+		distance:SetPoint("TOP", gem, "BOTTOM", 0, -8)
+		label:SetPoint("TOP", distance, "BOTTOM", 0, -1)
+	end
+	f.wordsNear = near
+end
+
+-- The chevrons under the gem near the place, made the first time it is near:
+-- three small frames on the gem's frame, each the chevron (the palette's gold,
+-- Travel.Paint) over its soft dark edge (innerPanel); Anim:Ripple moves and
+-- fades them, each from half its fall above where it rests
+function Beacon.Chevrons(f)
+	if f.chev then
+		return f.chev
+	end
+	local list = {}
+	for i, y in ipairs(Beacon.CHEV_Y) do
+		local c = CreateFrame("Frame", nil, f.core)
+		c:SetSize(Beacon.CHEV_W, Beacon.CHEV_H)
+		c:SetPoint("CENTER", f.core, "CENTER", 0, Beacon.RIPPLE_TRAVEL / 2 - y)
+		local edge = c:CreateTexture(nil, "ARTWORK", nil, 0)
+		edge:SetAllPoints()
+		edge:SetTexture(BEAM_ROOT .. "chevron_shade")
+		local W = MelloUI.Widgets
+		if W and W.Paint then
+			W.Paint(edge, "innerPanel", "vertex", 0.75)
+		end
+		local gold = c:CreateTexture(nil, "ARTWORK", nil, 1)
+		gold:SetAllPoints()
+		gold:SetTexture(BEAM_ROOT .. "chevron")
+		c.gold = gold
+		c:Hide()
+		list[i] = c
+	end
+	f.chev = list
+	Travel.Paint()
+	return list
+end
+
+-- Route's own pin set again for the same destination (StandIn calls it): the
+-- marker glides from where it stands now to the new place (MarkerTick), from
+-- its own middle on the screen. Under Reduce Motion, or unseen, it jumps
+StandIn.Moved = function()
+	local f = marker
+	local anim = MelloUI.Anim
+	if not (f and f:IsShown() and not f.off and f.nav) or (anim and anim.reduceMotion) then
+		return
+	end
+	local okC, cx, cy = pcall(f.GetCenter, f)
+	cx, cy = okC and Plain(cx) or nil, okC and Plain(cy) or nil
+	if not (cx and cy) then
+		return
+	end
+	local scale = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+	f.glideX, f.glideY, f.glideAt = cx * scale, cy * scale, GetTime()
+end
+
+-- The marker's sound as it changes (Marker Sounds): the user's own
+function Beacon.Sound()
+	if M.db.markerSound ~= false then
+		MelloUI:PlayUISound("marker")
+	end
+end
+
+-- Near the place, or far from it again: the gem glides up over the place (or
+-- back down to the beacon's foot), the texts change sides fading out and in,
+-- the chevrons ripple under the gem while near (under Reduce Motion all of it
+-- at once and still). `from`: the gem's height to start from (the marker
+-- coming up near: from the place)
+function Beacon.Turn(f, near, from)
+	local anim = MelloUI.Anim
+	local core, words = f.core, f.words
+	local to = near and Beacon.HOVER or 0
+	if from then
+		core:ClearAllPoints()
+		core:SetPoint("CENTER", f, "CENTER", 0, from)
+		f.coreY = from
+	end
+	-- (a glide only when the gem's height changes: none from 0 to 0 when it
+	-- comes up far away)
+	if (f.coreY or 0) ~= to then
+		if anim and anim.To then
+			anim:To(core, "y", to, Beacon.GLIDE, "inOutQuad")
+		else
+			core:ClearAllPoints()
+			core:SetPoint("CENTER", f, "CENTER", 0, to)
+		end
+		f.coreY = to
+	end
+	if f.wordsNear ~= near then
+		Beacon.LayWords(f, near)
+		-- (off screen the texts are hidden and the edge arrow on their frame
+		-- shows: they change sides at once)
+		if anim and anim.To and not f.off then
+			words:SetAlpha(0)
+			anim:To(words, "alpha", 1, Beacon.WORDS_FADE, "outQuad")
+		end
+	end
+	if near then
+		local chev = Beacon.Chevrons(f)
+		for _, c in ipairs(chev) do
+			c:SetShown(not f.off)
+		end
+		if anim and anim.Ripple then
+			anim:Ripple(chev, Beacon.RIPPLE, Beacon.RIPPLE_TRAVEL, Beacon.RIPPLE_STAGGER)
+		end
+	elseif f.chev then
+		if anim and anim.StopRipple then
+			anim:StopRipple(f.chev)
+		end
+		for _, c in ipairs(f.chev) do
+			c:Hide()
+		end
+	end
 end
 
 -- The beam at `d` yards: faded in over BEAM_FADE yards past PIN_OUT, so it
@@ -5648,8 +6026,9 @@ end
 -- Whether the marker hides for the quest's objective area (see the top):
 -- only for what the data calls an area (destination.area: ObjectiveSpot;
 -- the game's own point with no data is taken for a spot, ReadTrackedQuest) it
--- hangs on the game's own tracking of the quest, and only where the client
--- can say (C_Minimap.IsInsideQuestBlob); never on Route's own pin. Asked
+-- hangs on the game's own tracking of the quest, or on Route's own pin on the
+-- quest's place (2026-10-04, StandIn: s.spot), and only where the client can
+-- say (C_Minimap.IsInsideQuestBlob); never on Route's other pins. Asked
 -- every AREA_EVERY seconds at most (from UpdateMarker: the minimap's tick,
 -- which runs while there is a destination). In at once; out again only
 -- AREA_BUFFER yards from where the player was last seen inside, or after
@@ -5661,7 +6040,7 @@ function Beacon.InArea()
 	local a, d = Beacon.area, destination
 	local blob = _G.C_Minimap
 	local ask = blob and blob.IsInsideQuestBlob
-	if not (ask and d and d.fromQuest and d.area and d.questID) or standIn then
+	if not (ask and d and d.fromQuest and d.area and d.questID) or (standIn and not standIn.spot) then
 		a.quest, a.inside = nil, false
 		return false
 	end
@@ -5691,12 +6070,10 @@ function Beacon.InArea()
 end
 
 local function MarkerTick(self, elapsed)
-	self.age = self.age + elapsed
-	if self.age < 1 / 60 then
-		return
-	end
-	local dt = self.age
-	self.age = 0
+	-- every frame (2026-10-04: at most 60 a second made it judder on a faster
+	-- screen -- the user's 90 fps video: every other frame or so, unevenly);
+	-- a still frame stops at the check below
+	local dt = elapsed
 	-- the destination cleared (a map pin removed, a quest untracked) or its
 	-- navigation frame gone: away at once, whatever else still ticks
 	-- (user, 2026-09-23: the arrow stayed round the character after clearing)
@@ -5719,8 +6096,9 @@ local function MarkerTick(self, elapsed)
 	local okC, x, y = pcall(nav.GetCenter, nav)
 	x, y = okC and Plain(x) or nil, okC and Plain(y) or nil
 	local d = Beacon.Distance()
-	if x == self.lastX and y == self.lastY and d == self.lastD and not self.easing
-		and (self.off or self.anchoredTo == nav) and Travel.suffix == self.lineSuffix then
+	if x == self.lastX and y == self.lastY and d == self.lastD and not self.easing and not self.glideAt
+		and (self.off or self.anchoredTo == nav) and Travel.suffix == self.lineSuffix
+		and not (self.off and Beacon.RingScale() ~= self.ringK) then
 		return
 	end
 	self.lastX, self.lastY, self.lastD = x, y, d
@@ -5739,9 +6117,26 @@ local function MarkerTick(self, elapsed)
 		end
 	end
 	pin = pin and true or false
+	Beacon.Resize(self, d, pin)
+	-- (0.18.4) its place moved under it (StandIn.Moved): from where it stood
+	-- to the new place, eased, until MOVE_TIME is up; off screen it lets go
+	if self.glideAt then
+		local t = off and 1 or (GetTime() - self.glideAt) / Beacon.MOVE_TIME
+		if t < 1 then
+			local ease = MelloUI.Anim and MelloUI.Anim.easing and MelloUI.Anim.easing.inOutQuad
+			local e = ease and ease(t) or t
+			local scale = nav:GetEffectiveScale() / UIParent:GetEffectiveScale()
+			local tx, ty = x * scale, y * scale
+			self.mode, self.anchoredTo = "glide", nil
+			self:ClearAllPoints()
+			self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", self.glideX + (tx - self.glideX) * e, self.glideY + (ty - self.glideY) * e)
+		else
+			self.glideAt = nil
+		end
+	end
 	-- on screen: over the destination (hung on the navigation frame); off
 	-- screen: on the ring round the character, in the destination's direction
-	if not off and (self.mode ~= "nav" or self.anchoredTo ~= nav) then
+	if not off and not self.glideAt and (self.mode ~= "nav" or self.anchoredTo ~= nav) then
 		self.mode, self.anchoredTo = "nav", nav
 		self:ClearAllPoints()
 		self:SetPoint("CENTER", nav, "CENTER")
@@ -5758,6 +6153,11 @@ local function MarkerTick(self, elapsed)
 		self.distance:SetShown(not off)
 		self.label:SetShown(not off)
 		self.edge:SetShown(off)
+		if self.chev then
+			for _, c in ipairs(self.chev) do
+				c:SetShown(not off and self.pin == true)
+			end
+		end
 		TextShade.Sync(self)
 	end
 	-- the beam: the beacon's, never the pin's, hidden off screen, and hidden
@@ -5777,13 +6177,14 @@ local function MarkerTick(self, elapsed)
 		-- the distance and the travel time, made only when either changes
 		Travel.Line(self, math.floor(d + 0.5))
 	end
-	-- turned into the pin: the gem lands on the place with its pop (its
-	-- shadow with it)
+	-- near the place or far from it again (0.18.4): the gem glides up over the
+	-- place or back down to the beacon's foot, the texts change sides, the
+	-- chevrons ripple near it; the marker's sound as it turns, on screen
 	if pin ~= self.pin then
 		self.pin = pin
-		if pin and not off then
-			Beacon.Play(self.pop)
-			Beacon.Play(self.shade and self.shade.pop)
+		Beacon.Turn(self, pin)
+		if not off then
+			Beacon.Sound()
 		end
 	end
 	-- faint: the beacon in the middle of the screen, never the pin or the
@@ -5811,8 +6212,11 @@ local function MarkerTick(self, elapsed)
 		-- (still easing: the next ticks go on even with nothing moving)
 		self.easing = math.abs(diff) > 0.002
 		self.mode, self.anchoredTo = "ring", nil
+		-- (the ring's size at the camera's zoom: Beacon.RingScale)
+		local k = Beacon.RingScale()
+		self.ringK = k
 		self:ClearAllPoints()
-		self:SetPoint("CENTER", UIParent, "CENTER", math.cos(self.angle) * RING_X, math.sin(self.angle) * RING_Y + RING_DY)
+		self:SetPoint("CENTER", UIParent, "CENTER", math.cos(self.angle) * RING_X * k, (math.sin(self.angle) * RING_Y + RING_DY) * k)
 		self.edge:SetRotation(self.angle - math.pi / 2)
 	end
 end
@@ -5884,20 +6288,31 @@ local function EnsureMarker()
 	local front = CreateFrame("Frame", nil, marker)
 	front:SetAllPoints()
 	front:SetFrameLevel(marker:GetFrameLevel() + 3)
-	marker.gem = front:CreateTexture(nil, "ARTWORK")
+	-- the gem on a frame of its own, sized with the beam by the distance
+	-- (Beacon.Resize; its shadow partner and the game's icon are made on it
+	-- too), the texts and the edge arrow on `front` at their own size
+	local core = CreateFrame("Frame", nil, marker)
+	core:SetSize(44, 44)
+	core:SetPoint("CENTER")
+	core:SetFrameLevel(marker:GetFrameLevel() + 3)
+	marker.core = core
+	marker.gem = core:CreateTexture(nil, "ARTWORK")
 	marker.gem:SetSize(26, 26)
 	marker.gem:SetPoint("CENTER")
 	local Kit = MelloUI.Kit
 	if not (Kit and Kit.Apply and Kit:Apply(marker.gem, "deco/gem_large")) then   -- look-ok: Beacon.Art lays it again in the look
 		marker.gem:SetTexture("Interface/Minimap/POIIcons")
 	end
+	-- the texts (0.18.4): they change sides of the gem near the place
+	-- (Beacon.LayWords), fading as one with their shade bands: `front` is
+	-- their frame (`words`), the edge arrow on it too, shown only off screen,
+	-- where they change sides at once (no frame more made at login)
+	marker.words = front
 	marker.distance = front:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	RouteFont.Style(marker.distance, "fontChat", _G.GameFontNormal)   -- a number
-	-- (below the ring on the ground: the texts clear of the beam's light)
-	marker.distance:SetPoint("TOP", marker.gem, "BOTTOM", 0, -8)
 	marker.label = front:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	RouteFont.Style(marker.label, "fontText", _G.GameFontHighlightSmall)   -- the destination's name
-	marker.label:SetPoint("TOP", marker.distance, "BOTTOM", 0, -1)
+	Beacon.LayWords(marker, false)
 	marker.label:SetWidth(180)
 	marker.label:SetWordWrap(false)
 	marker.edge = front:CreateTexture(nil, "ARTWORK")
@@ -5911,7 +6326,7 @@ local function EnsureMarker()
 	marker.front = front
 	-- a small pop when the marker comes up: the gem grows in and settles
 	marker.pop = TextShade.Pop(marker.gem)
-	marker.age, marker.angle, marker.faint = 0, math.pi / 2, false
+	marker.angle, marker.faint = math.pi / 2, false
 	Perf.SetScript(marker, "OnUpdate", MarkerTick)
 	marker:Hide()
 end
@@ -5946,6 +6361,10 @@ UpdateMarker = function()
 			end
 			marker:SetAlpha(1)
 			marker.faint = false
+			-- (the chevrons' ripple stopped while unseen: the next show starts it)
+			if marker.chev and MelloUI.Anim and MelloUI.Anim.StopRipple then
+				MelloUI.Anim:StopRipple(marker.chev)
+			end
 		end
 		marker.nav = nil
 		FadeGameMarker(inArea)
@@ -5954,7 +6373,23 @@ UpdateMarker = function()
 	-- the tick places it: over the destination or on the ring round the character
 	marker.nav = nav
 	marker.label:SetText((standIn and standIn.label) or destination.label or "")
+	-- a new destination (another quest, another place: not the next spot of
+	-- the same quest) while it shows (0.18.4, the user's video: it jumped
+	-- there): it comes up afresh there, its way in played as on its first show.
+	-- Known by the quest, else by the destination itself (a new pin is a new
+	-- one): nothing made each frame
+	local key = destination.questID or destination
+	if marker:IsShown() and key ~= marker.soundKey then
+		marker:Hide()
+		local anim = MelloUI.Anim
+		if anim and anim.Stop then
+			anim:Stop(marker, "alpha")
+		end
+		marker:SetAlpha(1)
+		marker.faint = false
+	end
 	if not marker:IsShown() then
+		marker.glideAt = nil   -- (a way in, not a glide)
 		marker.lineSuffix = nil   -- its distance line made afresh (Travel.Line)
 		-- a beacon or the pin as the place is far or near now, its beam as
 		-- that says; its parts looked at again at the next tick (MarkerTick)
@@ -5965,10 +6400,16 @@ UpdateMarker = function()
 		if dist then
 			Beacon.BeamFade(beam, dist)
 		end
+		Beacon.Resize(marker, dist, marker.pin)   -- (its size for that distance from the start: no shrink on show)
 		TextShade.Marker()   -- its text shade, made at its first show with the option on
 		marker:Show()
+		-- (0.18.4) the near look or the beacon's as the place is now: near, the
+		-- gem rises from the place into its hover (the near look's way in)
+		Beacon.Turn(marker, marker.pin, 0)
 		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
-		Beacon.Play(marker.pop)
+		if not marker.pin then
+			Beacon.Play(marker.pop)
+		end
 		local lit = Beacon.painted ~= false and M.db.routeBeam and not marker.pin and beam.fade > 0 or false
 		if lit then
 			Beacon.Foot(beam)
@@ -5978,8 +6419,17 @@ UpdateMarker = function()
 			Beacon.Play(beam.flare)
 		end
 		-- the gem's shadow partner pops in with it (TextShade)
-		if MelloUI.Anim then
+		if MelloUI.Anim and not marker.pin then
 			Beacon.Play(marker.shade and marker.shade.pop)
+		end
+	end
+	-- the marker's sound for a new destination (Marker Sounds; 0.18.4): a new
+	-- quest or another place, not the next spot of the same quest, and not
+	-- the destination a /reload brought back
+	if key ~= marker.soundKey then
+		marker.soundKey = key
+		if not (Travel.loginAt and GetTime() - Travel.loginAt < 10) then
+			Beacon.Sound()
 		end
 	end
 	FadeGameMarker(true)
@@ -6176,6 +6626,10 @@ function Travel.Paint()
 	if marker and marker.distance and marker.edge then
 		marker.distance:SetTextColor(r, g, b)
 		marker.edge:SetVertexColor(ir, ig, ib)
+	end
+	-- (the near look's chevrons, once made: the distance's gold)
+	for _, c in ipairs(marker and marker.chev or {}) do
+		c.gold:SetVertexColor(r, g, b)
 	end
 	if mm and mm.text then
 		mm.text:SetTextColor(r, g, b)
@@ -6684,18 +7138,26 @@ do
 		wipe(hints)
 		wipe(wants)
 		wipe(words)
-		OpenObjectives(questID, hints, wants)
-		local any, d = false, destination
+		local d = destination
+		local going = d and d.fromQuest and d.questID == questID and d.source
+		OpenObjectives(questID, hints, wants, going and going.gate and going.gate.item)
+		local any = false
 		for line, gate in pairs(hints) do
-			local from = d and d.fromQuest and d.questID == questID and d.source
-			if not (from and from.gate and from.gate.item == gate.item) then
-				from = gate[1]
+			if gate.made then
+				-- (2026-10-04, Traditions of the Bluff: the four bought, the
+				-- incense not made yet) the objective itself: use them
+				words[line] = "Next: use " .. gate.gates[1].name .. " to make " .. gate[2]
+			else
+				local from = going
+				if not (from and from.gate and from.gate.item == gate.item) then
+					from = gate[1]
+				end
+				-- (how many are held of how many wanted, when more than one is)
+				local want = wants[line] or gate.count
+				local held = want > 1 and Needed.Count(gate)
+				words[line] = "First: " .. (Needed.VERB[from[1]] or "get") .. " " .. gate.name
+					.. (held and string.format(" (%d/%d)", held, want) or "") .. " from " .. from[2]
 			end
-			-- (how many are held of how many wanted, when more than one is)
-			local want = wants[line] or gate.count
-			local held = want > 1 and Needed.Count(gate)
-			words[line] = "First: " .. (Needed.VERB[from[1]] or "get") .. " " .. gate.name
-				.. (held and string.format(" (%d/%d)", held, want) or "") .. " from " .. from[2]
 			any = true
 		end
 		return any and words or nil
@@ -7978,6 +8440,18 @@ SlashCmdList.MELLOROUTE = function(msg)
 			end
 		end
 		if questID then
+			-- (2026-10-04) the quest's lines as the game reports them, and the
+			-- objective data Route has for it
+			local okO, list = pcall(C_QuestLog.GetQuestObjectives, questID)
+			for i, o in ipairs(okO and type(list) == "table" and list or {}) do
+				print(string.format("   line %d (%s)%s: %s", i, tostring(Plain(o.type)), Plain(o.finished) and ", done" or "",
+					tostring(Plain(o.text))))
+			end
+			for i, e in ipairs(ObjectivesOf(questID) or {}) do
+				print(string.format("   data %d: kind %d, %s%s%s", i, e[1], e[2] ~= "" and e[2] or e[3],
+					e.gates and string.format(", %d needed item%s", #e.gates, #e.gates == 1 and "" or "s") or "",
+					e.made and ", made of them" or ""))
+			end
 			poiCache[questID] = nil
 			local mapID, x, y = QuestObjectivePoint(questID)
 			print(string.format("   objective marker: %s", mapID and string.format("map %d at %.3f, %.3f", mapID, x, y) or "none found"))
@@ -7991,6 +8465,8 @@ SlashCmdList.MELLOROUTE = function(msg)
 				print("   not following it" .. (destination and " (a map pin has priority)" or ""))
 			end
 		end
+	elseif msg == "pin" then
+		M.PinReport()
 	elseif msg == "reset" then
 		MelloUI:Print("This wipes every learned path. Type  /route reset confirm  to do it.")
 	else

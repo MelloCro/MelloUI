@@ -986,7 +986,9 @@ Lint workflow) fails when a copy is added and names the system to use.
   own "option_on", "option_off", "menu_open", "menu_close", "menu_button",
   "window_open", "window_close", "tick", "waypoint_set", "waypoint_clear";
   the on-screen notice's chimes "notice_track", "notice_arrive",
-  "notice_learn", "notice_fail". A new sound is one row of Core's SOUNDS
+  "notice_learn", "notice_fail"; Route's World Marker as it changes,
+  "marker" (0.18.4: the user's own Quest_TrackChange from their SFX
+  library, Media/Sounds/SFX, the game's runecarving kit behind it). A new sound is one row of Core's SOUNDS
   table; Custom Sounds is asked first and its PlaySound hook swaps a game
   kit as it does any game click.
 - **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =

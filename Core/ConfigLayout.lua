@@ -572,6 +572,7 @@ function L.Define(R, Link)
 	R("Route", "Arrow & Marker", "General", "Route.arrow")
 	R("Route", "Arrow & Marker", "General", "Route.worldMarker")
 	R("Route", "Arrow & Marker", "General", "Route.routeBeam")
+	R("Route", "Arrow & Marker", "Sound", "Route.markerSound")
 	R("Route", "Flights", "General", "Route.flightHint")
 	R("Route", "Flights", "General", "Route.flightCountdown")
 

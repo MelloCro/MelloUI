@@ -225,7 +225,7 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello combattext test` | Combat Text: a few sample lines in the chosen style |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
 | `/qlmap` | Quest List map pins: diagnostics, and `dock`, `zeppelin`, `arrive`, `entrance`, `remove`, `list` to record pins by hand (see Quest List) |
-| `/route` | Route: how much has been learned, the current route, your map and how Route places you on it, and how many flight times it has learned; `/route quest` (what the client reports for the tracked quest), `/route clear`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
+| `/route` | Route: how much has been learned, the current route, your map and how Route places you on it, and how many flight times it has learned; `/route quest` (what the client reports for the tracked quest), `/route pin` (where the game has the World Marker's place, and how far above or below), `/route clear`, `/route reset confirm`, `/route dots` (the route painters, for the copy window) |
 | `/services [kind]` | Services: open the nearest-service menu, or route straight to the nearest `repair`, `mailbox`, `innkeeper`, `flight`, `auction`, `bank`, `class trainer`, `profession trainer`, `barber` or `transmog` |
 | `/restock` | Restock: your Restock List window (what this character keeps in its bags) |
 | `/sfx` | Custom Sounds: the state; `/sfx play <name>` auditions a sound, `/sfx list` names them, `/sfx log` prints every sound kit the game plays and what replaced it, `/sfx kit <id>` what a kit maps to; `/sfxdump` the last sound events in the copy window |
@@ -840,7 +840,16 @@ from Samuel Fipps" line under the objective; the moment it is looted they all go
 objective and the quest is super-tracked again. An item used up by the objective's own step (a
 carcass that calls the beast, remains buried) still counts until the objective moves on, five
 minutes at most. Where several are dropped for the quest, as many as the objective still lacks
-are asked for, or all at once where one thing is made of them. The client has no road or terrain data
+are asked for, or all at once where one thing is made of them. An objective item made by using
+other items (0.18.4; Traditions of the Bluff: buy four things from four Thunder Bluff vendors,
+combine them into the Prepared Incense) is routed to each of those items in turn, nearest
+first, the tracker's line naming the one the route goes for ("First: buy Sinew Thread from
+Mahu"); with all of them in the bags it says "Next: use Bundle of Herbs to make Prepared
+Incense". Which items are made of which comes from the client's own spell data, for every quest
+alike (`Toolsuild_quest_objectives.py`, made items); a Forever item that is only sold has
+its vendors as its places. `/route pin` reports where the game has the World Marker's place:
+what it tracks, its distance against the flat one on the map (a point far above or below the
+ground shows as the difference), your height. The client has no road or terrain data
 for addons, so the roads come from two places: the ones traced from the zone maps' art
 (`MelloUI_Companion\RoadData.lua`, loaded when a route is needed; see *Traced roads* below) and the ones the module learns from you: every
 half second outdoors it drops a breadcrumb and links it to the previous one, flights you take become links, opening a flight
@@ -887,13 +896,31 @@ World Marker (on by default; 0.15.0 states): a gem hung on the game's own naviga
 the destination. Far away it is a *beacon*: the gem with the red Light Beam rising from it (a
 ring of light on the ground at its foot, the gem lit red by it; 0.16.0) and the distance and
 travel time under it, faint while it stands in the middle of the screen, where
-your character is. Within 100 yards it becomes the *pin*: the beam fades out on the way in, the
-gem lands on the place with a small pop and stays on top of the NPC, object or item's source
-until it is done (never faint). Off screen, an arrow beside your character points the way to
-turn. Inside a quest's objective area (a camp to clear, a field to search: the client's quest
+your character is. Within 100 yards it turns into the *near look* (0.18.4; it was a pin on the
+place): the beam fades out on the way in, the gem glides up about 80 above the place, the distance
+and the name over it and three gold chevrons under it rippling down toward the place, so it never
+covers the NPC, object or item's source you are looking for (never faint); walking away it glides
+back down into the beacon. A soft sound plays as it turns and when a new destination comes up
+(Marker Sounds, on: the user's own Quest_TrackChange, Media\Sounds\SFX), never while the place is
+off screen nor for the destination a /reload brings back. Under Reduce Motion it changes at once
+and the chevrons stand still. It never jumps: another destination (a quest picked in the tracker,
+another pin) brings it up afresh there with its way in, the beam's flare and the gem's pop or
+rise; when Route's own pin moves for the same destination (a nearer creature, or the game's sunken
+point given up for Route's spot) it glides there on screen in 0.4 seconds; and while Route's pin
+for a quest is due but not up yet it waits rather than showing on the game's point. The gem and the beam get smaller the farther the place is
+(0.18.4: full size within 150 yards, down to about a third far away; the distance and the name
+keep their size, the pin always full size). Off screen, an arrow beside your character points the
+way to turn, on a ring that follows the camera's zoom (wider when you zoom in), moving every frame
+of your screen. Inside a quest's objective area (a camp to clear, a field to search: the client's quest
 area, where it can say) the marker hides, the game's own marker too, and comes back once you
 leave; one spot never hides it, nor Route's own pin, nor a quest MelloUI has no objective places
-for (the game's own point could be one NPC). Every border has a buffer so it never
+for (the game's own point could be one NPC). The game puts its point for a quest at height 0, sea
+level (0.18.4: 166 yards under Thunder Bluff's mesa, 40 to 60 under Mulgore's plain), so a marker
+hung on it sank into the ground; once Route sees that (the game's distance to its point well over
+the flat one on the map), a followed quest's place gets Route's own map pin, which the game sets
+on the ground: the marker stands on it, at the place the route goes to, the quest stays the one
+followed, and a quest's area still hides it. Remove that pin and the quest is the game's to track
+again. Every border has a buffer so it never
 flickers from one look to the other: the pin at 100 yards in and 115 out, the screen's edge a
 little inside on the way back, the middle of the screen, and the area's border (back only 10
 yards out of it, or after 3 seconds).
@@ -1411,7 +1438,9 @@ takes it back once it is done; the quest you follow shows the way left along its
 arrow does. "Turn-in Line" (on) makes a finished quest say who takes it and where ("Turn in:
 Gryan Stoutmantle, Sentinel Hill"). An objective that needs an item in your bags first says
 where to get it on a line of its own under it, in gold ("First: loot Samuel's Remains from
-Samuel Fipps"; a count when more than one is needed), until the item is looted; the quest stays
+Samuel Fipps"; a count when more than one is needed; the item the route goes for when several are
+missing), until the item is looted, and "Next: use ... to make ..." once the bags hold everything an
+objective item is made of; the quest stays
 the followed one while Route's own pin on the item's source holds the game's tracking. Inside an instance, with no position, or with Route off,
 the tracker keeps the watch order without distances. It asks Route for positions only while it
 is shown and its Quests section is open.

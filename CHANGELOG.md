@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.18.4
+
+- Voice pack: if you have not got it yet, download the voice pack remade for 0.18.3, both parts: [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip) (delete the earlier `MelloUI_VoicePack` folder first, then unzip both into `AddOns`). It is the same pack as in 0.18.3: if you already downloaded that one, there is nothing to download again.
+- Route: a quest whose item you make from other items (Traditions of the Bluff: buy four things from four vendors in Thunder Bluff and combine them) now leads you to each of those items in turn, and the Quest Tracker says what to get from whom, then "Next: use ... to make ..." once you have them all. This works for every such quest, Classic and Forever alike.
+- Route: a Forever quest item that a vendor sells now leads you to that vendor.
+- Quest Tracker: when an objective needs several items first, its "First: ..." line names the one the route is heading for.
+- Fixed: Route went back to the vendors of a made item after you had made it, when the quest's line words it differently ("Incense created").
+- World Marker: near the place it rises above it, with the distance and the name over it and gold chevrons rippling down to it, so it never covers the NPC you are looking for. It glides between its far and near looks instead of popping.
+- World Marker: it no longer jumps. Picking another quest or place brings it up afresh there with its beam rising, and when its spot moves to a nearer creature it glides there.
+- World Marker: a soft sound as it changes and when a new destination comes up (Marker Sounds, Route > Arrow & Marker, on by default).
+- World Marker: the gem and its light beam get smaller the farther the place is, as things do in the world; the distance and the name stay readable.
+- World Marker: the arrow beside your character turns smoothly at any frame rate (it moved at most 60 times a second, so it stuttered on faster screens), and its ring follows the camera's zoom.
+- Fixed: the World Marker sank into the ground while following a quest, often far below it (the game puts a quest's point at sea level). It now stands on Route's own map pin on the ground, at the place the route leads to.
+
 ## 0.18.3
 
 - A new voice pack, remade for this version: every voice at a better pace (each one chosen by ear), the Forever Narrator reads every quest's objectives, and the new quests are voiced. Download it again, both parts (2.5 GB): [MelloUI_VoicePack_Part1.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part1.zip) and [MelloUI_VoicePack_Part2.zip](https://github.com/MelloCro/MelloUI/releases/download/v0.18.3/MelloUI_VoicePack_Part2.zip). Delete the earlier `MelloUI_VoicePack` folder first, then unzip both parts into `AddOns`. The earlier pack still plays until you swap.

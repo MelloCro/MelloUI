@@ -89,6 +89,31 @@ loading it made as much again in garbage):
   drops it, 2 an object holds it, 3 a vendor sells it; map and coordinates as
   an objective's. The same item's records repeat its obj|item|count|name.
 
+  MelloUI_QuestMadeItems = { [questID] = "<obj>,<obj>..." }: the objectives
+  whose item is made by using other items; once the bags hold them all, the
+  tracker says to use them.
+
+  Made items (the user, 2026-10-04, Traditions of the Bluff -- buy four things
+  from four vendors, combine them, use it at a spot: "i want all these types of
+  quests to work like that"), from the client's own tables (SpellEffect,
+  SpellReagents, ItemEffect, ItemXItemEffect, exported with wow.export into the
+  cache like Map): an item is made when a spell that an item casts on use
+  creates it; it is made from that spell's reagents and the items that cast it
+  (an item made by more than one such spell is left alone: which one?). A
+  quest's item objective that comes from no place of its own (nothing drops it,
+  holds it or sells it) gets those items as its needed items, each from where
+  it comes from, and is marked made; one whose needed items (ReqSourceId) are
+  all among them is marked made too (Pendant of the Sea Lion's two halves). A
+  spell that calls a creature makes nothing (Ishamuhale's Fang: the carcass
+  calls the beast). Only a whole recipe: every part from a place (most of a
+  Darkmoon deck's cards drop anywhere: none of them then), none of them another
+  objective of the quest (Answering Air's Call's fragment is made of the very
+  essences the quest asks for). A Forever item comes from what its Wowhead page
+  says drops it or holds it, else from what sells it; for a part, only what
+  drops it at MIN_CHANCE or more (the page's count out of kills), and nothing
+  that drops it when more than WORLD_DROP kinds of creature do (a world drop:
+  the Forever Darkmoon decks' cards).
+
     python Tools/build_quest_objectives.py [--fetch]
 """
 import argparse
@@ -183,6 +208,7 @@ def listview(page, lv_id):
 GRID = 40          # yards: one place kept per cell
 CAP = 30           # places kept per objective at most
 MIN_CHANCE = 0.5   # a drop rarer than this (percent) is no place to farm the item
+WORLD_DROP = 20    # a made item's part that more kinds of creature drop (Wowhead) is a world drop: no place
 
 # Needed items the quest turns into another item on the way, not into the
 # objective: held or not says nothing about what is left to do once that has
@@ -191,6 +217,46 @@ MIN_CHANCE = 0.5   # a drop rarer than this (percent) is no place to farm the it
 NOT_NEEDED = {
     (2930, 9279): "Data Rescue: the white punch card becomes the yellow, blue and red one before the prismatic one",
 }
+
+# Made items (see the top): the client's tables say which spell creates an item and which item casts it on use
+CREATE_ITEM = 24   # SpellEffect.Effect: the spell creates EffectItemType
+ON_USE = 0         # ItemEffect.TriggerType: the item casts SpellID when it is used
+
+
+def load_made_from():
+    """{made item: {item it is made from: how many}} from the client's tables (see the top)."""
+    creates = defaultdict(set)                     # spell -> the items it creates
+    for r in db2("SpellEffect"):
+        if int(r.get("Effect") or 0) == CREATE_ITEM and int(r.get("EffectItemType") or 0) > 0:
+            creates[int(r["SpellID"])].add(int(r["EffectItemType"]))
+    on_use = {}                                    # item effect -> its spell, when it creates an item
+    for r in db2("ItemEffect"):
+        spell = int(r.get("SpellID") or 0)
+        if int(r.get("TriggerType") or 0) == ON_USE and spell in creates:
+            on_use[int(r["ID"])] = spell
+    cast_by = defaultdict(set)                     # spell -> the items that cast it on use
+    for r in db2("ItemXItemEffect"):
+        spell = on_use.get(int(r.get("ItemEffectID") or 0))
+        if spell:
+            cast_by[spell].add(int(r["ItemID"]))
+    reagents = defaultdict(dict)                   # spell -> {item: how many}
+    for r in db2("SpellReagents"):
+        spell = int(r.get("SpellID") or 0)
+        if spell in cast_by:
+            for k in range(8):
+                item = int(r.get(f"Reagent_{k}") or 0)
+                if item > 0:
+                    reagents[spell][item] = max(int(r.get(f"ReagentCount_{k}") or 0), 1)
+    recipes = defaultdict(list)                    # made item -> [{item: how many}], one per spell
+    for spell in sorted(cast_by):
+        for made in creates[spell]:
+            parts = dict(reagents.get(spell, {}))
+            for user in cast_by[spell]:
+                parts.setdefault(user, 1)
+            parts.pop(made, None)
+            if parts:
+                recipes[made].append(parts)
+    return {made: found[0] for made, found in recipes.items() if len(found) == 1}
 
 
 def thin(points, grid=GRID, cap=CAP):
@@ -298,10 +364,12 @@ def pack_needed(gates, count_objs):
     return "".join(parts)
 
 
-def write_data(path, out, gates=None):
-    """MelloUI_Companion/QuestObjectiveData.lua from {questID: [(kind, name, alt, [(map, x, y), ...])]}
-    and the needed items {questID: [(obj, item, count, item name, [(from, source name, [(map, x, y), ...])])]}."""
+def write_data(path, out, gates=None, made=None):
+    """MelloUI_Companion/QuestObjectiveData.lua from {questID: [(kind, name, alt, [(map, x, y), ...])]},
+    the needed items {questID: [(obj, item, count, item name, [(from, source name, [(map, x, y), ...])])]}
+    and the objectives made by using them {questID: [obj, ...]}."""
     gates = gates or {}
+    made = made or {}
     with open(os.path.abspath(path), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/build_quest_objectives.py from cmangos classic-db and Wowhead's Forever pages. Do not edit by hand.\n")
         fh.write("-- [questID] = packed objectives, one string per quest; Route decodes the tracked quest's (ObjectivesOf).\n")
@@ -324,6 +392,16 @@ def write_data(path, out, gates=None):
         for qid in sorted(gates):
             fh.write(f"\t[{qid}]={lua_str(pack_needed(gates[qid], len(out[qid])))},\n")
         fh.write("}\n")
+        if made:
+            fh.write("\n-- MelloUI_QuestMadeItems: [questID] = the objectives (their places in the quest's string) whose item is\n")
+            fh.write("-- made by using their needed items; once the bags hold them all, the tracker says to use them.\n")
+            fh.write("MelloUI_QuestMadeItems = {\n")
+            for qid in sorted(made):
+                for obj in made[qid]:
+                    if not (qid in gates and any(g[0] == obj for g in gates[qid])):
+                        raise ValueError(f"quest {qid}: objective {obj} is made, but needs no item")
+                fh.write(f"\t[{qid}]={lua_str(','.join(str(o) for o in made[qid]))},\n")
+            fh.write("}\n")
 
 
 def main():
@@ -333,6 +411,8 @@ def main():
     args = ap.parse_args()
 
     sql = fetch_file(CMANGOS_SQL, os.path.join(CACHE, "ClassicDB.sql.gz"))
+    made_from = load_made_from()
+    log(f"  {len(made_from)} items are made by using other items (the client's spells)")
     zones, _ = load_zone_maps()
     listing = load_listing()
     # The maps Route can walk: open-world maps (no instance, no battleground)
@@ -442,6 +522,42 @@ def main():
             groups[key].append(p)
         return [(src, name, groups[(src, name)]) for src, name in order if name and groups[(src, name)]]
 
+    def made_objectives(objs, obj_item, gates, qzone, groups_of, skip=()):
+        """The objectives (their places in objs) whose item is made by using other items (made_from). One whose item
+        comes from no place of its own gets them as its needed items (added to `gates`; `groups_of(item, zone)` gives
+        an item's name and its sources' places, `skip` the items the quest giver hands over); one already gated only
+        by them is made too."""
+        made = []
+        for n, item in sorted(obj_item.items()):
+            parts = made_from.get(item)
+            if not parts:
+                continue
+            mine = [g for g in gates if g[0] == n]
+            if mine:
+                if all(g[1] in parts for g in mine):
+                    made.append(n)
+                continue
+            if objs[n][3]:
+                continue   # it drops, an object holds it or a vendor sells it: no need to make it
+            if any(part in obj_item.values() for part in parts):
+                stats["made: made of another objective's item (left alone)"] += 1
+                continue
+            found = []
+            for part, count in sorted(parts.items()):
+                if part in skip:
+                    continue
+                name, groups = groups_of(part, qzone)
+                if not (name and groups):
+                    break
+                found.append((n, part, count, name, groups))
+            else:
+                if found:
+                    gates.extend(found)
+                    made.append(n)
+                continue
+            stats["made: a part comes from no place (left alone)"] += 1
+        return made
+
     def needed_items(r, slots, kinds, owners, qzone):
         """The items the quest needs in the bags that are not objectives
         (ReqSourceId1-4), each on the objectives it is needed for:
@@ -495,7 +611,7 @@ def main():
         return out
 
     log("building objectives")
-    out, gates_out, stats = {}, {}, defaultdict(int)
+    out, gates_out, made_out, stats = {}, {}, {}, defaultdict(int)
     for r in sql_rows(sql, "quest_template"):
         qid = int(r["entry"])
         if qid not in listing:
@@ -504,7 +620,7 @@ def main():
         qzone = qzone if qzone > 0 else 0
         # each objective, its number (the quest's 1-4, 0 an area) and where it
         # is done or its item comes from (needed_items)
-        objs, slots, owners = [], [], []
+        objs, slots, owners, obj_item = [], [], [], {}
         for i in range(1, 5):
             alt = (r.get(f"ObjectiveText{i}") or "").strip()
             target = int(r.get(f"ReqCreatureOrGOId{i}") or 0)
@@ -530,6 +646,7 @@ def main():
                     for v in sells.get(item, ()):
                         pts += spawnsC.get(v, [])
                     mine |= {("c", v) for v in sells.get(item, ())}
+                obj_item[len(objs)] = item
                 objs.append((3, iname.get(item, ""), "", places(pts, qzone)))
                 slots.append(i)
                 owners.append(mine)
@@ -539,6 +656,9 @@ def main():
                 slots.append(0)
                 owners.append(set())
         gates = needed_items(r, slots, [o[0] for o in objs], owners, qzone)
+        made = made_objectives(objs, obj_item, gates, qzone,
+                               lambda part, z: (iname.get(part, ""), source_places(classic_sources(part), z)),
+                               skip={int(r.get("SrcItemId") or 0)})
         # an objective with no place is left out, unless an item is needed
         # for it (its sources stand in for it while the item is missing)
         gated = {g[0] for g in gates}
@@ -552,6 +672,9 @@ def main():
                 gates_out[qid] = [(at[n], item, count, name, groups) for n, item, count, name, groups in gates]
                 stats["needed: kept (objective, item)"] += len(gates)
                 stats["needed: objectives kept for them alone"] += sum(1 for n in gated if not objs[n][3])
+            if made:
+                made_out[qid] = [at[n] for n in made]
+                stats["made: objectives made by using their needed items"] += len(made)
     stats["classic quests"] = len(out)
     stats["quests with needed items"] = len(gates_out)
 
@@ -581,6 +704,25 @@ def main():
     def object_points(i):
         return spawnsO.get(i) or wh_points("object", i)
 
+    def forever_sources(i, min_chance=0):
+        """Where a Forever item comes from, [(from, entry)]: what its Wowhead page says drops it (1; with `min_chance`,
+        only at that many percent or more, by the page's count out of kills) or holds it (2), else what sells it (3)."""
+        page = read_page("item", i)
+
+        def often(d):
+            count, outof = d.get("count"), d.get("outof")
+            if not min_chance or not (isinstance(count, int) and isinstance(outof, int) and outof > 0 and count > 0):
+                return True
+            return 100.0 * count / outof >= min_chance
+        drops = listview(page, "dropped-by")
+        if min_chance and len(drops) > WORLD_DROP:
+            drops = []   # a world drop: no place to farm it
+        found = [(1, int(d["id"])) for d in drops if d.get("id") and often(d)]
+        found += [(2, int(d["id"])) for d in listview(page, "contained-in-object") if d.get("id")]
+        if not found:
+            found = [(3, int(d["id"])) for d in listview(page, "sold-by") if d.get("id")]
+        return found
+
     def item_sources(i):
         """Creatures and objects an item comes from: ([npc ids], [object ids])."""
         if i in iname:   # a Classic item: classic-db's loot, then vendors
@@ -588,10 +730,36 @@ def main():
             if not npcs and not objs:
                 npcs = list(sells.get(i, ()))
             return npcs, objs
-        page = read_page("item", i)
-        npcs = [int(d["id"]) for d in listview(page, "dropped-by") if d.get("id")]
-        objs = [int(d["id"]) for d in listview(page, "contained-in-object") if d.get("id")]
-        return npcs, objs
+        found = forever_sources(i)
+        return [e for src, e in found if src != 2], [e for src, e in found if src == 2]
+
+    def page_title(kind, i, word):
+        """A name from a Wowhead page's title ("Bundle of Herbs - Item - Forever")."""
+        m = re.search(r"<title>(.*?) - " + word, read_page(kind, i) or "")
+        return " ".join(html.unescape(m.group(1)).split()) if m else ""
+
+    def forever_groups(i, quest_zone):
+        """A made item's part: its name and its sources' places, as a needed item's groups [(from, name, places)]."""
+        if i in iname:
+            return iname[i], source_places(classic_sources(i), quest_zone)
+        tagged, order = [], []
+        for src, e in forever_sources(i, MIN_CHANCE):
+            if src == 2:
+                name, pts = oname.get(e) or page_title("object", e, "Object"), object_points(e)
+            else:
+                name, pts = cname.get(e) or page_title("npc", e, "NPC"), creature_points(e)
+            key = (src, name)
+            if name and key not in order:
+                order.append(key)
+            tagged += [(p, key) for p in pts if p[0] in world_maps]
+        if quest_zone:
+            here = [t for t in tagged if zone_of(t[0]) == quest_zone]
+            if here:
+                tagged = here
+        groups = defaultdict(list)
+        for p, key in thin_tagged(tagged):
+            groups[key].append(p)
+        return page_title("item", i, "Item"), [(src, name, groups[(src, name)]) for src, name in order if groups[(src, name)]]
 
     def missing_pages():
         need = set()
@@ -601,6 +769,19 @@ def main():
                     need.add(("npc", i))
                 elif kind == "object" and i not in spawnsO and not read_page("object", i):
                     need.add(("object", i))
+                elif kind == "item" and i in made_from and i not in iname:
+                    for part in made_from[i]:
+                        if part in iname:
+                            continue
+                        if not read_page("item", part):
+                            need.add(("item", part))
+                        for src, e in forever_sources(part):
+                            if src == 2 and e not in spawnsO and not read_page("object", e):
+                                need.add(("object", e))
+                            elif src != 2 and e not in spawnsC and not read_page("npc", e):
+                                need.add(("npc", e))
+                    if not read_page("item", i):
+                        need.add(("item", i))
                 elif kind == "item":
                     if i not in iname and not read_page("item", i):
                         need.add(("item", i))
@@ -634,7 +815,7 @@ def main():
     for qid, objs in forever:
         qzone = listing[qid].get("category") or 0
         qzone = qzone if qzone > 0 else 0
-        entries = []
+        entries, gates, obj_item = [], [], {}
         for kind, i, name in objs:
             if kind == "npc":
                 entries.append((1, name, "", places(creature_points(i), qzone)))
@@ -647,16 +828,26 @@ def main():
                     pts += creature_points(n)
                 for o in objs2:
                     pts += object_points(o)
+                obj_item[len(entries)] = i
                 entries.append((3, name, "", places(pts, qzone)))
-        entries = [e for e in entries if e[3]]
-        if entries:
-            out[qid] = entries
+        made = made_objectives(entries, obj_item, gates, qzone, forever_groups)
+        gated = {g[0] for g in gates}
+        keep = [n for n, e in enumerate(entries) if e[3] or n in gated]
+        if keep:
+            at = {n: k + 1 for k, n in enumerate(keep)}
+            out[qid] = [entries[n] for n in keep]
             stats["forever quests"] += 1
-            for e in entries:
-                stats[("creature", "object", "item", "area")[e[0] - 1]] += 1
+            for n in keep:
+                stats[("creature", "object", "item", "area")[entries[n][0] - 1]] += 1
+            if gates:
+                gates_out[qid] = [(at[n], item, count, name, groups) for n, item, count, name, groups in gates]
+                stats["needed: kept (objective, item)"] += len(gates)
+            if made:
+                made_out[qid] = [at[n] for n in made]
+                stats["made: objectives made by using their needed items"] += len(made)
     stats["quests"] = len(out)
 
-    write_data(args.out, out, gates_out)
+    write_data(args.out, out, gates_out, made_out)
     log(f"wrote {args.out}: " + ", ".join(f"{k} {v}" for k, v in sorted(stats.items())))
 
 

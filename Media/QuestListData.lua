@@ -1862,6 +1862,7 @@ MelloUI_QuestListData = {
 		{"vendor","Innkeeper Faralia","Innkeeper",1,1,2729.9,1498.1,"df"},
 		{"vendor","Garon Hutchins","",0,1,-6856.1,708.4,"df"},
 		{"vendor","Renn'az","Ammunition Vendor",2,0,-622.7,-4533.8,"a"},
+		{"repair","Rix Xizzix","Lost and Found",0,0,-14393.4,408.6},
 		{"trainer","Aramis Hammerhand","Paladin Trainer",2,0,1843.2,1632.5},
 		{"trainer","Shari Stilwell","Paladin Trainer",2,0,2258.9,313.0},
 		{"trainer","Hilda the Breaker","Paladin Trainer",2,0,2415.6,2039.2},

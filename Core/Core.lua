@@ -1084,6 +1084,10 @@ do
 		notice_arrive  = { kit = "UI_MAP_WAYPOINT_SUPER_TRACK_OFF", alt = "IG_QUEST_LIST_COMPLETE", channel = "Master" },
 		notice_learn   = { kit = "UI_MAP_WAYPOINT_CLICK_TO_PLACE", alt = "IG_MAINMENU_OPTION_CHECKBOX_ON", channel = "Master" },
 		notice_fail    = { kit = "UI_MAP_WAYPOINT_REMOVE", alt = "IG_QUEST_LOG_ABANDON_QUEST", channel = "Master" },
+		-- Route's World Marker as it changes (0.18.4, user 2026-10-04): a new
+		-- destination, the far beacon into the near look over the place and
+		-- back -- the user's own sound (their SFX library: Quest_TrackChange_01)
+		marker         = { file = "SFX\\Quest_TrackChange.ogg", kit = "UI_RUNECARVING_CLOSE_MAIN_WINDOW", alt = "UI_MAP_WAYPOINT_CLICK_TO_PLACE" },
 	}
 	for _, sound in pairs(SOUNDS) do
 		if sound.file then

@@ -36,6 +36,9 @@
 --   MelloUI.Anim:Spin(region[, period]) -> group
 --                                             a slow turn round and round
 --                                             (below)
+--   MelloUI.Anim:Ripple(regions[, period][, travel][, stagger]) /
+--   MelloUI.Anim:StopRipple(regions)         a column rippling down, one
+--                                             after another (below)
 --   MelloUI.Anim:Expand(regions, from, opts) / :Collapse(regions, from, opts)
 --                                             the soft expand: regions ease
 --                                             out of one point and back in
@@ -961,6 +964,74 @@ function Anim:Spin(region, period)
 	group:GetAnimations():SetDuration(Positive(period, 2.4))
 	self:PlayGroup(group)
 	return group
+end
+
+-- A ripple down a column (0.18.4, Route's chevrons under the World Marker near
+-- its place, pointing down at it: the user, 2026-10-04, "i love its
+-- animations, smooth transitionings"): each region in turn fades in, falls
+-- `travel` units (7.5) and fades out, `stagger` seconds (0.25) after the one
+-- before, every `period` seconds (1.75), round and round. One REPEAT group per
+-- region, made here once: every loop is as long for each (the others' turns
+-- as an end delay), so the column keeps its order. Played through PlayGroup:
+-- under Reduce Motion a still column, the first full and each after it
+-- fainter. Asked again, it plays the same groups again with the times given.
+--   MelloUI.Anim:Ripple(regions[, period][, travel][, stagger])
+--   MelloUI.Anim:StopRipple(regions)    still, full, where they rest
+local rippleOf = setmetatable({}, { __mode = "k" })   -- [region] = group
+local rippleStill = setmetatable({}, { __mode = "k" })   -- [group] = its region's alpha when still
+
+local function RippleStill(group)
+	local region = group:GetParent()
+	if region and region.SetAlpha then
+		region:SetAlpha(rippleStill[group] or 1)
+	end
+end
+
+function Anim:Ripple(regions, period, travel, stagger)
+	period, travel, stagger = Positive(period, 1.75), Positive(travel, 7.5), Positive(stagger, 0.25)
+	local n = #regions
+	for i = 1, n do
+		local region = regions[i]
+		local group = rippleOf[region]
+		if not group then
+			group = region:CreateAnimationGroup()
+			group:SetLooping("REPEAT")
+			group:CreateAnimation("Translation")
+			group:CreateAnimation("Alpha")
+			group:CreateAnimation("Alpha")
+			rippleOf[region] = group
+		end
+		local fall, fadeIn, fadeOut = group:GetAnimations()
+		local before, after = (i - 1) * stagger, (n - i) * stagger
+		local fade = period * 0.3
+		fall:SetOffset(0, -travel)
+		fall:SetDuration(period)
+		fall:SetStartDelay(before)
+		fall:SetEndDelay(after)
+		fadeIn:SetFromAlpha(0)
+		fadeIn:SetToAlpha(1)
+		fadeIn:SetDuration(fade)
+		fadeIn:SetStartDelay(before)
+		fadeOut:SetFromAlpha(1)
+		fadeOut:SetToAlpha(0)
+		fadeOut:SetDuration(fade)
+		fadeOut:SetStartDelay(before + period - fade)
+		fadeOut:SetEndDelay(after)
+		rippleStill[group] = 1 - (i - 1) * 0.3
+		region:SetAlpha(1)
+		self:PlayGroup(group, RippleStill)
+	end
+end
+
+function Anim:StopRipple(regions)
+	for i = 1, #regions do
+		local region = regions[i]
+		local group = rippleOf[region]
+		if group then
+			self:StopGroup(group)
+		end
+		region:SetAlpha(1)
+	end
 end
 
 --------------------------------------------------------------------------------
