@@ -55,18 +55,17 @@ local M = MelloUI:RegisterModule("Discard", {
 	flavour = "Full bags? The cheapest junk makes room, never anything worth keeping.",
 	role = "feature",
 	-- (no group: its rows sit on the Windows page, the bag and loot windows' Behaviour)
-	new = "0.18.2",
 	-- (not on the installer's Features step: its two columns are full, as for
 	-- the Swing Timers; on by default, its switches on the Windows page)
 	installer = false,
 	enabledByDefault = true,
 	defaults = { bagButton = true, lootButton = true, keepWorth = 100 },
 	options = {
-		{ type = "toggle", key = "bagButton", name = "Discard Button", new = "0.18.2",
+		{ type = "toggle", key = "bagButton", name = "Discard Button",
 		  desc = "A button on the bag window that frees a slot: it throws away the grey or white junk item worth least (at a vendor it sells it). Never food, drink, potions, scrolls, conjured items, crafting materials, quest items, reagents, ammunition, keys, white gear or anything on your Restock list. A white item asks first." },
-		{ type = "toggle", key = "lootButton", name = "Discard Button on Loot", new = "0.18.2",
+		{ type = "toggle", key = "lootButton", name = "Discard Button on Loot",
 		  desc = "The same button on the loot window. It frees a slot only when something you are looting is worth more than what it would throw away." },
-		{ type = "slider", key = "keepWorth", name = "Never Throw Away Items Worth", min = 1, max = 1000, step = 1, new = "0.18.2",
+		{ type = "slider", key = "keepWorth", name = "Never Throw Away Items Worth", min = 1, max = 1000, step = 1,
 		  desc = "In silver: a stack worth this or more is never thrown away (selling it at a vendor still is). 100 silver = 1 gold." },
 	},
 })
