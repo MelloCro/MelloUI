@@ -994,7 +994,9 @@ Lint workflow) fails when a copy is added and names the system to use.
   the on-screen notice's chimes "notice_track", "notice_arrive",
   "notice_learn", "notice_fail"; Route's World Marker as it changes,
   "marker" (0.18.4: the user's own Quest_TrackChange from their SFX
-  library, Media/Sounds/SFX, the game's runecarving kit behind it). A new sound is one row of Core's SOUNDS
+  library, Media/Sounds/SFX, the game's runecarving kit behind it); the
+  Rare Alert's "rare" (0.18.5: the user's own RareMob_Ward, on the Master
+  channel, the game's raid warning behind it). A new sound is one row of Core's SOUNDS
   table; Custom Sounds is asked first and its PlaySound hook swaps a game
   kit as it does any game click.
 - **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =
