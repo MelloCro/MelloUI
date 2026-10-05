@@ -5354,7 +5354,6 @@ local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge 
 local RING_X, RING_Y, RING_DY = 230, 170, -20
 local gameMarkerFaded = false
 local gameMarkerHooked = false
-local fadingGame = false        -- our own SetAlpha on the game's marker, so the hook lets it through
 
 --------------------------------------------------------------------------------
 -- Text Shade (user, 2026-09-25, for 0.13.7: the marker's texts and gem were
@@ -5535,27 +5534,39 @@ local function NavFrame()
 	return nil
 end
 
--- The game's own marker at alpha 0 while ours shows, back to 1 after. A
--- post-hook keeps it at 0 when the game sets its alpha again.
+-- The game's own marker (SuperTrackedFrame) hidden while ours shows, shown
+-- again after. (0.19.2: it was held at alpha 0 by a post-hook on SetAlpha,
+-- which the game sets EVERY frame from its OnUpdate (UpdateAlpha): a
+-- write undone on a per-frame path, against hard rule 1, and a player's
+-- "attempt to call a nil value" in its UpdateAlpha, 1296 times a session.)
+-- Hidden, its OnUpdate does not run at all; the game shows it only from its
+-- events (InitializeNavigationFrame's SetShown), so a post-hook on Show and
+-- SetShown hides it again then. The navigation frame our marker hangs on
+-- (C_Navigation.GetFrame) is the engine's own and keeps its place.
+local KeepGameMarkerHidden = Perf.Shared("Show / SetShown on the game's navigation marker", function(self)
+	if gameMarkerFaded and self:IsShown() then
+		self:Hide()
+	end
+end, "hook")
+
 local function FadeGameMarker(on)
 	local f = _G.SuperTrackedFrame
-	if not (f and f.SetAlpha) or gameMarkerFaded == on then
+	if not (f and f.Hide) or gameMarkerFaded == on then
 		return
 	end
 	gameMarkerFaded = on
 	if not gameMarkerHooked then
 		gameMarkerHooked = true
-		hooksecurefunc(f, "SetAlpha", function(self)
-			if gameMarkerFaded and not fadingGame then
-				fadingGame = true
-				self:SetAlpha(0)
-				fadingGame = false
-			end
-		end)
+		hooksecurefunc(f, "Show", KeepGameMarkerHidden)
+		hooksecurefunc(f, "SetShown", KeepGameMarkerHidden)
 	end
-	fadingGame = true
-	f:SetAlpha(on and 0 or 1)
-	fadingGame = false
+	if on then
+		f:Hide()
+	else
+		-- (back as the game had it: shown, its OnUpdate hides it again at once
+		-- should it have no navigation frame -- InitializeNavigationFrame)
+		f:Show()
+	end
 end
 
 -- Off screen: the navigation frame (its centre x, y, read by the caller)

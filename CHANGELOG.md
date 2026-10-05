@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.2
+
+- Fixed: on some characters, right after logging in, a flood of Lua errors ("attempt to call a nil value") from the action bars, tooltips and unit frames, and now and then "MelloUI has been blocked from an action" when using an item from the bags. The Quest List now spreads its start-up work over the first seconds, so MelloUI never asks the game for too much at once.
+- Fixed: while MelloUI's World Marker shows, the game's own navigation marker is hidden instead of being dimmed again every frame.
+
 ## 0.19.1
 
 - Bag bar: a small arrow beside the backpack folds the bag slots away so only the backpack shows, and brings them back with another click. While you hold an item they come out by themselves, so a new bag can go straight into a slot. The game remembers which way you left it. Switch it off with Collapse Arrow (Action Bars > Bag Bar).

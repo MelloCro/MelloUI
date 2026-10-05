@@ -131,6 +131,10 @@ QL.F_NPC, QL.F_ENDER, QL.F_ENDERNPC, QL.F_ENDERZONE, QL.F_ENDERCONT, QL.F_ENDERW
 -- origin: 1 Classic (classic-db has the quest), 2 Forever's own
 QL.F_ORIGIN = 28
 
+-- the givers' and turn-ins' map places resolved after login: at most this
+-- many ms a frame (ResolveInChunks)
+QL.RESOLVE_MS = 2
+
 -- [questID] = row. Made the first time it is asked for, by the index below
 -- or by the quest origin, and kept: the data does not change.
 local rowByID = nil
@@ -951,9 +955,15 @@ local function ResolveInChunks(onDone)
 	QL.resolved = QL.resolved or {}
 	QL.resolvedEnd = QL.resolvedEnd or {}
 	local i, n = 1, #rows
+	-- (0.19.2: a time budget per frame, not 300 rows: a row's map conversions
+	-- cost about 0.1 ms, so 300 rows were up to 55 ms a frame, 18 frames
+	-- running, right after login -- the client's budget for an addon is a
+	-- 1000 ms burst refilled at 500 ms a second, and once it is spent the
+	-- game cannot call MelloUI's hooks: the user's "attempt to call a nil
+	-- value" flood, 2026-10-05. QL.RESOLVE_MS a frame stays far under it)
 	local function Step()
-		local stop = math.min(i + 299, n)
-		while i <= stop do
+		local t0 = debugprofilestop()
+		while i <= n do
 			local row = rows[i]
 			if (row[QL.F_CONT] or -1) >= 0 and QL.resolved[row] == nil then
 				QL.resolved[row] = StorePlacement(QL.ResolveWorld(row[QL.F_CONT], row[QL.F_WX], row[QL.F_WY]))
@@ -963,6 +973,9 @@ local function ResolveInChunks(onDone)
 				QL.resolvedEnd[row] = StorePlacement(QL.ResolveWorld(row[QL.F_ENDERCONT], row[QL.F_ENDERWX], row[QL.F_ENDERWY]))
 			end
 			i = i + 1
+			if debugprofilestop() - t0 >= QL.RESOLVE_MS then
+				break
+			end
 		end
 		if i <= n then
 			C_Timer.After(0, Step)

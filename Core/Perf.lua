@@ -708,6 +708,55 @@ end
 --------------------------------------------------------------------------------
 
 local GetAddonMetric, GetOverallMetric, RECENT   -- read every frame while recording
+local LAST   -- (a login recording: the game's "total time in the most recent tick")
+
+-- A login recording (/melloperf login: the next login or /reload, from the
+-- moment MelloUI loads): each tick's whole MelloUI time by the game's
+-- profiler, the heaviest kept with the events fired around them -- the
+-- client gives every addon a time budget, and a tick past its restricted
+-- burst (1000 ms on this client) leaves the game unable to call MelloUI's
+-- hooks until it refills (the user's fresh character, 2026-10-05: every
+-- hooked method "attempt to call a nil value" at login, MelloUI's peak 1962 ms)
+local LOGIN_KEEP, LOGIN_NAMES = 12, 10
+local catcher   -- the login recording's event listener (every event, while it lasts)
+
+local function LoginTick(r, ms)
+	-- (the whole Lua heap, every addon's: a collection the tick ran shows as a drop)
+	r.heapPrev, r.heapNow = r.heapNow, gc("count")
+	local heavy = r.heavy
+	if #heavy < LOGIN_KEEP or ms > heavy[#heavy].ms then
+		local names = {}
+		for i = 1, #r.prevEvents do names[#names + 1] = r.prevEvents[i] end
+		names[#names + 1] = "|"
+		for i = 1, #r.tickEvents do names[#names + 1] = r.tickEvents[i] end
+		heavy[#heavy + 1] = { ms = ms, at = (now() - r.t0) / 1000, frame = r.frames, events = table.concat(names, " "),
+			heap = r.heapNow, dheap = r.heapNow and r.heapPrev and (r.heapNow - r.heapPrev) or nil }
+		table.sort(heavy, function(a, b) return a.ms > b.ms end)
+		if #heavy > LOGIN_KEEP then
+			heavy[#heavy] = nil
+		end
+	end
+	-- (the events of this tick become the ones before the next)
+	r.prevEvents, r.tickEvents = r.tickEvents, r.prevEvents
+	wipe(r.tickEvents)
+end
+
+local function Catcher_OnEvent(_, event)
+	local r = rec
+	if not (recording and r and r.login) then
+		return
+	end
+	r.eventCount[event] = (r.eventCount[event] or 0) + 1
+	local list = r.tickEvents
+	if #list < LOGIN_NAMES then
+		for i = 1, #list do
+			if list[i] == event then
+				return
+			end
+		end
+		list[#list + 1] = event
+	end
+end
 
 local driver = CreateFrame("Frame")
 driver:Hide()
@@ -742,6 +791,12 @@ driver:SetScript("OnUpdate", function()
 	if Anim and Anim.EachRunning and (Anim:Busy()) > 0 then
 		Anim:EachRunning(r.sampleTween)
 	end
+	if r.login and GetAddonMetric and LAST then
+		local ok, v = pcall(GetAddonMetric, ADDON_NAME, LAST)
+		if ok and type(v) == "number" and not Secret(v) then
+			LoginTick(r, v)
+		end
+	end
 	if r.limit and now() - r.t0 >= r.limit * 1000 then
 		Perf:Stop()
 	end
@@ -764,7 +819,7 @@ function Perf:IsRecording()
 	return recording
 end
 
-function Perf:Start(seconds)
+function Perf:Start(seconds, login)
 	if recording then
 		MelloUI:Print("Already recording. /melloperf stop ends it.")
 		return
@@ -778,7 +833,7 @@ function Perf:Start(seconds)
 	depth = 0
 	local P, E = Profiler()
 	if P and E.RecentAverageTime then
-		GetAddonMetric, GetOverallMetric, RECENT = P.GetAddOnMetric, P.GetOverallMetric, E.RecentAverageTime
+		GetAddonMetric, GetOverallMetric, RECENT, LAST = P.GetAddOnMetric, P.GetOverallMetric, E.RecentAverageTime, E.LastTime
 	else
 		GetAddonMetric, GetOverallMetric = nil, nil
 	end
@@ -804,6 +859,14 @@ function Perf:Start(seconds)
 		end
 		tweens[key] = (tweens[key] or 0) + 1
 	end
+	if login then
+		rec.login, rec.heavy, rec.tickEvents, rec.prevEvents, rec.eventCount = true, {}, {}, {}, {}
+		if not catcher then
+			catcher = CreateFrame("Frame")
+			catcher:SetScript("OnEvent", Catcher_OnEvent)
+		end
+		catcher:RegisterAllEvents()
+	end
 	recording = true
 	driver:Show()
 	if rec.limit then
@@ -820,6 +883,9 @@ function Perf:Stop()
 	end
 	recording = false
 	driver:Hide()
+	if catcher then
+		catcher:UnregisterAllEvents()
+	end
 	rec.duration = (now() - rec.t0) / 1000
 	rec.after = Counters()
 	rec.memEnd = AddonMemory()
@@ -834,6 +900,16 @@ end
 local function Sorted(list, field)
 	table.sort(list, function(a, b) return a[field] > b[field] end)
 	return list
+end
+
+-- the client's restricted burst for an addon (GetScriptBucketThrottleLimits)
+local function LoginBurst()
+	local get = rawget(_G, "GetScriptBucketThrottleLimits")
+	local ok, l = pcall(get or error)
+	if ok and type(l) == "table" and type(l.luaScriptBucketThrottleMaxMsBurstRestricted) == "number" then
+		return l.luaScriptBucketThrottleMaxMsBurstRestricted
+	end
+	return nil
 end
 
 function Perf:Report()
@@ -873,6 +949,26 @@ function Perf:Report()
 		end
 	end
 	SessionLines(add)
+	if r.login and r.heavy then
+		add("")
+		add("THE HEAVIEST FRAMES SINCE MELLOUI LOADED (all of MelloUI's time in the frame, the game's profiler;")
+		add("  the events fired the frame before | in it; the restricted budget here is a %s ms burst)",
+			LoginBurst() or "?")
+		for _, h in ipairs(r.heavy) do
+			add("  %7.1f ms  at %5.2f s (frame %d)  heap %s MB (%s)  %s", h.ms, h.at, h.frame,
+				h.heap and format("%.1f", h.heap / 1024) or "?", h.dheap and format("%+.1f MB", h.dheap / 1024) or "-", h.events)
+		end
+		local events = {}
+		for name, n in pairs(r.eventCount or {}) do
+			events[#events + 1] = { name = name, n = n }
+		end
+		Sorted(events, "n")
+		local line = {}
+		for k = 1, math.min(#events, 15) do
+			line[#line + 1] = events[k].name .. " x" .. events[k].n
+		end
+		add("  the most frequent events: %s", table.concat(line, ", "))
+	end
 	if r.memStart and r.memEnd then
 		add("  Memory: %.1f MB -> %.1f MB", r.memStart / 1024, r.memEnd / 1024)
 	end
@@ -1137,6 +1233,11 @@ driver:SetScript("OnEvent", function(_, _, addon)
 		local t = now()
 		CloseLoad(t)
 		Perf.loadedAt = t
+		-- (/melloperf login: this login recorded from here, 20 seconds)
+		if type(MelloUIDB) == "table" and MelloUIDB.perfLogin then
+			MelloUIDB.perfLogin = nil
+			Perf:Start(20, true)
+		end
 	elseif Perf.loadedAt and loadName and LoadOf(addon) then
 		CloseLoad(now())
 	end
@@ -1154,6 +1255,11 @@ SlashCmdList.MELLOPERF = function(msg)
 			MelloUI:ShowText("Performance", Perf.lastReport)
 		else
 			MelloUI:Print("No recording yet. /melloperf record starts one.")
+		end
+	elseif cmd == "login" then
+		if type(MelloUIDB) == "table" then
+			MelloUIDB.perfLogin = true
+			MelloUI:Print("The next login or /reload is recorded for 20 seconds from the moment MelloUI loads; the report opens by itself.")
 		end
 	elseif cmd == "load" then
 		MelloUI:ShowText("Performance: loading", Perf:LoadReport())
