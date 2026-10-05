@@ -818,6 +818,27 @@ givers near a zone border land in the correct zone. Chain quests know their pred
 gives "Step 2 of 5" and "Next: ..." in the tooltips and numbered, chain-ordered rows in chain
 groups.
 
+**Only what the giver would offer (0.19.3).** The data also carries what the game asks before it
+offers a quest (`needs`: the server's own checks from the vanilla database; a quest of Forever's
+own: the quest before it in Wowhead's series), so a yellow "!" means the giver has it for you now:
+
+- *Not yet* (`QL.Unmet`): an earlier quest to finish (or to have in your log), a profession's skill,
+  a standing with a faction. The quest stays in the list with a grey marker and its tooltip says
+  why ("After The Defias Brotherhood", "Needs Fishing 100", "Needs Honored with Argent Dawn");
+  it is no pin on the map and no "could pick up now" in the zone badges.
+- *Never for this character* (`QL.Closed`): another race's quest, a quest above its last level,
+  the other choice of an either-or quest once you took one, a lead-in whose quest you already
+  have. Left out like another class's quests.
+- *Holidays and world events*: their givers only stand while the event runs, so their quests are
+  pinned while they are in your log or while the list shows Events.
+- *The giver's own answer* (`QL.Offers`): Forever's own quests come with no requirements in any
+  data (Helene Peltskinner's "Rough Wolf Pelts" wants Skinning; Wowhead does not say so). When a
+  quest giver's gossip or greeting lists what it offers, a quest of the list's for that NPC it
+  leaves out is remembered as not offered ("Not offered when you last talked to ..."), per
+  character in `MelloUIQuestOffers`. A level up or a newly learned profession forgets them all,
+  turning in a quest forgets those of its turn-in NPC, and talking to the giver again learns
+  afresh. A window that cannot be read in full teaches nothing.
+
 **On the map.** The module adds its own pins through the map's data provider system, so they
 zoom and pan with the map:
 

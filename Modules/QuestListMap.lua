@@ -106,7 +106,19 @@ local function QuestState(row, level)
 	if QL.IsOnQuest(row[QL.F_ID]) then
 		return QL.IsReadyForTurnIn(row[QL.F_ID]) and "ready" or "progress"
 	end
+	-- (a quest the game would not offer yet -- another quest first, a skill,
+	-- a standing -- is no "!" on the map: QL.Unmet)
+	if QL.Unmet(row) then
+		return "after"
+	end
 	return row[QL.F_REQ] <= level and "available" or "locked"
+end
+
+-- A holiday's or world event's quest is pinned while it is in the log, or
+-- while the list shows the events: its giver stands only while the event
+-- runs (0.19.3; the list keeps these quests out of the zone lists too)
+local function SeasonWanted(row, state)
+	return (row[QL.F_EVENT] or 0) == 0 or state == "ready" or state == "progress" or M.db.filter == "events"
 end
 
 --------------------------------------------------------------------------------
@@ -530,6 +542,9 @@ MarkEnter = function(self)
 				end
 				Line(tip, line, "text", true)
 			end
+			if (row[QL.F_EVENT] or 0) ~= 0 and (q.state == "available" or q.state == "locked") then
+				Line(tip, "   Only while " .. (QL.Data().events[row[QL.F_EVENT]] or "its event") .. " runs", "text", true)
+			end
 		end
 		if data.tracked then
 			Line(tip, "Tracked. Click to remove the waypoint.", "pinHint")
@@ -750,7 +765,7 @@ local function AddGiverPins(map, mapID, mapName)
 			return
 		end
 		local state = QuestState(row, level)
-		if not StartWanted(row, state) then
+		if state == "after" or not StartWanted(row, state) or not SeasonWanted(row, state) then
 			return
 		end
 		local x, y, who, item
@@ -790,7 +805,7 @@ local function AddGiverPins(map, mapID, mapName)
 		if not seen[row] and not (QL.resolved and QL.resolved[row]) and (row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0)
 			and QL.Eligible(row) then
 			local state = QuestState(row, level)
-			if ItemPinWanted(row, state) and StartWanted(row, state) then
+			if state ~= "after" and ItemPinWanted(row, state) and StartWanted(row, state) then
 				seen[row] = true
 				Consider(row, row[QL.F_X] / 100, row[QL.F_Y] / 100, row[QL.F_GIVER], state, ItemKind(row))
 			end

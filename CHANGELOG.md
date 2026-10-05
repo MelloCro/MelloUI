@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.3
+
+- Fixed: the Quest List marked quests on the map that the quest giver would not offer yet. A yellow "!" now means the quest is really there for you: a quest that needs an earlier quest of its chain, a profession's skill or a standing with a faction waits until you have it (its tooltip in the list says what it needs), quests for other races, quests you have outlevelled and the other choice of an either-or quest are left out, and holiday quests show on the map only while they are in your log or the list shows Events.
+- The Quest List learns from the quest givers themselves: when you talk to one and a quest the list expected is not offered, its "!" goes away for that character, and its tooltip says so. It comes back to be checked when you level up, learn a profession, hand in a quest to that giver or talk to them again.
+
 ## 0.19.2
 
 - Fixed: on some characters, right after logging in, a flood of Lua errors ("attempt to call a nil value") from the action bars, tooltips and unit frames, and now and then "MelloUI has been blocked from an action" when using an item from the bags. The Quest List now spreads its start-up work over the first seconds, so MelloUI never asks the game for too much at once.

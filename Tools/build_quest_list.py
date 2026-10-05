@@ -674,7 +674,102 @@ def build_chains(sql, listing):
     log(f"  {len(names)} quest chains covering {len(chain_of)} quests")
     # Previous quest inside the chain, for step numbers and "next step" hints.
     prev_in_chain = {q: p for q, p in prev_of.items() if chain_of.get(q) and chain_of.get(p) == chain_of[q]}
-    return chain_of, names, prev_in_chain
+    return chain_of, names, prev_in_chain, prev_of
+
+
+# ---------------------------------------------------------------------------
+# What the game asks before it offers a quest
+# ---------------------------------------------------------------------------
+
+ALLIANCE_RACES = 1 | 4 | 8 | 64      # Human, Dwarf, Night Elf, Gnome (RequiredRaces bits)
+HORDE_RACES = 2 | 16 | 32 | 128      # Orc, Undead, Tauren, Troll
+
+
+def build_needs(sql, listing, series_prev, classic_ids):
+    """The checks the server makes before a quest giver offers a quest (cmangos' Player::CanTakeQuest),
+    for the Quest List to mark only what can be picked up now (user, 2026-10-05: "the quest list is
+    showing me quests on the map that i can pick up, but when i go there there are no quests").
+    A Classic quest: classic-db's quest_template. A quest of Forever's own: the quest before it in
+    Wowhead's series. Only quests the listing has are named (a quest Forever dropped can never be done,
+    so it never holds another back)."""
+    qt = {int(r["entry"]): r for r in sql_rows(sql, "quest_template")}
+
+    def num(r, key):
+        return int(r.get(key) or 0)
+
+    groups = defaultdict(list)          # exclusive group -> its quests
+    for qid, r in qt.items():
+        if num(r, "ExclusiveGroup"):
+            groups[num(r, "ExclusiveGroup")].append(qid)
+    # The quests before a quest, as cmangos lists them (ObjectMgr::LoadQuests): its PrevQuestId, and every
+    # quest whose NextQuestId names it; negative: that quest in the log rather than done.
+    prevs = defaultdict(list)
+    for qid, r in qt.items():
+        if num(r, "PrevQuestId"):
+            prevs[qid].append(num(r, "PrevQuestId"))
+    for qid, r in qt.items():
+        n = num(r, "NextQuestId")
+        if n and abs(n) in qt:
+            prevs[abs(n)].append(-qid if n < 0 else qid)
+    after, races, skills, reps, max_level, breadcrumbs, exclusive = {}, {}, {}, {}, {}, {}, []
+    for qid in sorted(listing):
+        r = qt.get(qid) if qid in classic_ids else None
+        if r is None:
+            p = series_prev.get(qid)
+            if p and p in listing:
+                after[qid] = [p]
+            continue
+        # Any one of these lets the quest be offered (Player::SatisfyQuestPreviousQuest): a quest done (in the log
+        # when negative), or, when that quest is in a negative exclusive group, every quest of the group.
+        alts = []
+        for p in prevs.get(qid, []):
+            sign, pid = (-1 if p < 0 else 1), abs(p)
+            g = num(qt[pid], "ExclusiveGroup") if pid in qt else 0
+            if g < 0:
+                alt = sorted(sign * m for m in groups[g] if m in listing)
+                if len(alt) == 1:
+                    alt = alt[0]
+                elif not alt:
+                    continue
+            elif pid in listing:
+                alt = sign * pid
+            else:
+                continue
+            if alt not in alts:
+                alts.append(alt)
+        if alts:
+            after[qid] = alts
+        mask = num(r, "RequiredRaces")
+        if mask and (mask & ALLIANCE_RACES) != ALLIANCE_RACES and (mask & HORDE_RACES) != HORDE_RACES:
+            races[qid] = mask
+        if num(r, "RequiredSkill"):
+            skills[qid] = (num(r, "RequiredSkill"), num(r, "RequiredSkillValue"))
+        if num(r, "RequiredMinRepFaction") or num(r, "RequiredMaxRepFaction"):
+            reps[qid] = (num(r, "RequiredMinRepFaction"), num(r, "RequiredMinRepValue"),
+                         num(r, "RequiredMaxRepFaction"), num(r, "RequiredMaxRepValue"))
+        if 0 < num(r, "MaxLevel") < 255:
+            max_level[qid] = num(r, "MaxLevel")
+        b = num(r, "BreadcrumbForQuestId")
+        if b and b in listing:
+            breadcrumbs[qid] = b
+    # One of these taken or done, the rest are no longer offered (Player::SatisfyQuestExclusiveGroup)
+    for g, members in sorted(groups.items()):
+        members = sorted(m for m in members if m in listing)
+        if g > 0 and len(members) > 1:
+            exclusive.append(members)
+    log(f"  needs: {len(after)} after another quest, {len(races)} race, {len(skills)} skill, {len(reps)} reputation, "
+        f"{len(max_level)} max level, {len(breadcrumbs)} breadcrumbs, {len(exclusive)} exclusive groups")
+    return {"after": after, "races": races, "skills": skills, "reps": reps, "maxLevel": max_level,
+            "breadcrumbs": breadcrumbs, "exclusive": exclusive}
+
+
+def lua_after(alts):
+    """An `after` entry: a lone quest as its number, else the list of alternatives (a list in it: all of them)."""
+    def one(a):
+        return "{" + ",".join(str(x) for x in a) + "}" if isinstance(a, list) else str(a)
+    if len(alts) == 1 and not isinstance(alts[0], list):
+        return str(alts[0])
+    return "{" + ",".join(one(a) for a in alts) + "}"
 
 
 # ---------------------------------------------------------------------------
@@ -1404,7 +1499,8 @@ def main():
 
     starters = load_starters(sql, spawns, zones, list(listing), args.fetch_npcs)
 
-    chain_of, chain_names, prev_of = build_chains(sql, listing)
+    chain_of, chain_names, prev_of, series_prev = build_chains(sql, listing)
+    needs = build_needs(sql, listing, series_prev, classic_ids)
     wh_zones = load_wowhead_zones()
     for zid, (name, _, _) in wh_zones.items():
         areas.setdefault(zid, name)   # Forever's new zones and instances
@@ -1665,7 +1761,37 @@ def main():
         fh.write("\t},\n\tchains = {\n")
         for cid in sorted(chain_names):
             fh.write(f"\t\t[{cid}] = {lua_str(chain_names[cid])},\n")
-        fh.write("\t},\n\tclasses = {\n")
+        fh.write("\t},\n")
+        fh.write("\t-- what the game asks before it offers a quest (classic-db's quest_template; a quest of Forever's own:\n")
+        fh.write("\t-- the quest before it in Wowhead's series). after: [quest] = the quest to do first, or a list of which\n")
+        fh.write("\t-- any one will do (a negative id: that quest in the log instead; a list inside: all of those);\n")
+        fh.write("\t-- races: [quest] = race mask, when narrower than a faction (1 Human, 2 Orc, 4 Dwarf, 8 Night Elf,\n")
+        fh.write("\t-- 16 Undead, 32 Tauren, 64 Gnome, 128 Troll); skills: [quest] = { skill line, skill }; reps: [quest] =\n")
+        fh.write("\t-- { faction, at least, faction, below } (0 for none); maxLevel: [quest] = level above which it is\n")
+        fh.write("\t-- no longer offered; breadcrumbs: [quest] = the quest it leads to (gone once that one is taken or done);\n")
+        fh.write("\t-- exclusive: quests of which only one can be done (one taken or done, the rest are gone)\n")
+        fh.write("\tneeds = {\n\t\tafter = {\n")
+        for qid, alts in sorted(needs["after"].items()):
+            fh.write(f"\t\t\t[{qid}] = {lua_after(alts)},\n")
+        fh.write("\t\t},\n\t\traces = {\n")
+        for qid, mask in sorted(needs["races"].items()):
+            fh.write(f"\t\t\t[{qid}] = {mask},\n")
+        fh.write("\t\t},\n\t\tskills = {\n")
+        for qid, (skill, value) in sorted(needs["skills"].items()):
+            fh.write(f"\t\t\t[{qid}] = {{{skill},{value}}},\n")
+        fh.write("\t\t},\n\t\treps = {\n")
+        for qid, rep in sorted(needs["reps"].items()):
+            fh.write(f"\t\t\t[{qid}] = {{{','.join(str(v) for v in rep)}}},\n")
+        fh.write("\t\t},\n\t\tmaxLevel = {\n")
+        for qid, lvl in sorted(needs["maxLevel"].items()):
+            fh.write(f"\t\t\t[{qid}] = {lvl},\n")
+        fh.write("\t\t},\n\t\tbreadcrumbs = {\n")
+        for qid, target in sorted(needs["breadcrumbs"].items()):
+            fh.write(f"\t\t\t[{qid}] = {target},\n")
+        fh.write("\t\t},\n\t\texclusive = {\n")
+        for members in needs["exclusive"]:
+            fh.write(f"\t\t\t{{{','.join(str(m) for m in members)}}},\n")
+        fh.write("\t\t},\n\t},\n\tclasses = {\n")
         for mask, cls in sorted(CLASSES.items()):
             fh.write(f"\t\t[{mask}] = {lua_str(cls)},\n")
         fh.write("\t},\n\tquests = {\n")

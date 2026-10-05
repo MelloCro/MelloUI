@@ -173,8 +173,17 @@ local function RowEnter(self)
 		Line(tip, "In your quest log, objectives not done", "text")
 	elseif e.available then
 		Line(tip, "Available to pick up", "questGold")
+	elseif e.unmet then
+		Line(tip, QL.UnmetText(QL.Unmet(row)) or "Not offered yet", "text", true)
+		if row[QL.F_REQ] > (QL.Plain(UnitLevel("player")) or 60) then
+			Line(tip, string.format("Needs level %d", row[QL.F_REQ]), "text")
+		end
 	else
 		Line(tip, string.format("Needs level %d", row[QL.F_REQ]), "text")
+	end
+	if row[QL.F_EVENT] ~= 0 and not (e.completed or e.onQuest) then
+		local event = QL.Data().events[row[QL.F_EVENT]]
+		Line(tip, "Only while " .. (event or "its event") .. " runs", "text")
 	end
 	if QL.trackedQuestID == row[QL.F_ID] then
 		Line(tip, "Map pin set on this quest giver. Click to remove it.", "pinHint")
@@ -1203,10 +1212,14 @@ local function BuildEntries(rows, groupOf, showZone)
 			end
 			if not (completed and db.hideCompleted) then
 				local onQuest = not completed and QL.IsOnQuest(row[QL.F_ID])
+				-- (what the game asks first -- another quest, a skill, a standing --
+				-- keeps a quest from being one to pick up now: QL.Unmet)
+				local unmet = not (completed or onQuest) and QL.Unmet(row) or nil
 				group.rows[#group.rows + 1] = {
 					row = row, completed = completed, onQuest = onQuest, showZone = showZone,
 					ready = onQuest and QL.IsReadyForTurnIn(row[QL.F_ID]) or false,
-					available = not onQuest and row[QL.F_REQ] <= level,
+					available = not onQuest and not unmet and row[QL.F_REQ] <= level,
+					unmet = unmet,
 					step = (key:sub(1, 5) == "chain") and QL.chainStep and QL.chainStep[row] or nil,
 				}
 			end
@@ -1259,7 +1272,7 @@ local function SameEntries(a, b)
 				return false
 			end
 		elseif y.header or x.row ~= y.row or x.completed ~= y.completed or x.onQuest ~= y.onQuest or x.ready ~= y.ready
-			or x.available ~= y.available or x.showZone ~= y.showZone or x.step ~= y.step then
+			or x.available ~= y.available or x.unmet ~= y.unmet or x.showZone ~= y.showZone or x.step ~= y.step then
 			return false
 		end
 	end

@@ -316,6 +316,7 @@ local nextInChain = nil   -- [questID] = the row that follows it
 QL.eventRows = nil     -- holiday / world event quests, kept out of the zone lists
 QL.zoneByName = nil    -- [lower name] = areaID
 local classBit = nil      -- player's class bit in the data's mask
+local raceBit = nil       -- player's race bit in the data's race masks (nil: a race the data does not know)
 local playerSide = nil    -- 1 Alliance, 2 Horde, 0 Neutral (PlayerSide below)
 QL.collapsed = {}      -- [group key] = true while a header is collapsed (per session)
 QL.trackedQuestID = nil -- quest whose giver the map pin currently points at
@@ -907,6 +908,10 @@ local function BuildIndex()
 			classBit = mask
 		end
 	end
+	-- (the eight races the masks know; a newer one is never left out by them)
+	local okR, _, _, raceID = pcall(UnitRace, "player")
+	raceID = okR and QL.Plain(raceID) or nil
+	raceBit = (type(raceID) == "number" and raceID >= 1 and raceID <= 8) and 2 ^ (raceID - 1) or nil
 	playerSide = QL.PlayerSide()
 end
 
@@ -1011,7 +1016,7 @@ function QL.Eligible(row)
 			return false
 		end
 	end
-	return true
+	return not QL.Closed(row)
 end
 
 function QL.IsCompleted(questID)
@@ -1052,6 +1057,434 @@ function QL.IsReadyForTurnIn(questID)
 		end
 	end
 	return false
+end
+
+-- What the game asks before it offers a quest (0.19.3; user, 2026-10-05: "the
+-- quest list is showing me quests on the map that i can pick up, but when i
+-- go there there are no quests"). The data's `needs` (build_quest_list.py:
+-- the server's own checks from classic-db; a quest of Forever's own: the
+-- quest before it in Wowhead's series), read in two ways:
+--   QL.Closed  never offered to this character, now or later: a quest for
+--              other races, one above its last level, a breadcrumb whose
+--              quest is taken or done, one of a group of which only one can
+--              be done once another is taken or done, one below a standing
+--              the character is past. Out of the lists, the counts and the
+--              map, like another class's quest (QL.Eligible)
+--   QL.Unmet   not yet: a quest to do first (or to have in the log), a
+--              profession's skill, a standing with a faction, or its giver
+--              did not offer it when last asked (Offers, below). Listed,
+--              never as one to pick up now, and not on the map
+-- (A quest taken or done is the player's own: never closed, never unmet.)
+local NO_NEEDS = {}
+local function Needs()
+	local data = QL.Data()
+	return type(data) == "table" and data.needs or NO_NEEDS
+end
+
+local function TakenOrDone(questID)
+	return QL.IsCompleted(questID) or QL.IsOnQuest(questID)
+end
+
+-- [questID] = its group of the data's `exclusive`, made on first use
+local exclusiveOf = nil
+local function ExclusiveOf(questID)
+	if not exclusiveOf then
+		exclusiveOf = {}
+		for _, members in ipairs(Needs().exclusive or NO_NEEDS) do
+			for _, id in ipairs(members) do
+				exclusiveOf[id] = members
+			end
+		end
+	end
+	return exclusiveOf[questID]
+end
+
+-- The character's standing with a faction (the reputation bar's value: 0 is
+-- Neutral, 3000 Friendly ...); 0 for one not met yet, nil when it cannot be
+-- read (never holding a quest back then)
+local function Standing(factionID)
+	local ok, value
+	if C_Reputation and C_Reputation.GetFactionDataByID then
+		local info
+		ok, info = pcall(C_Reputation.GetFactionDataByID, factionID)
+		if ok and info == nil then
+			return 0
+		end
+		value = ok and type(info) == "table" and QL.Plain(info.currentStanding)
+	elseif GetFactionInfoByID then
+		local name
+		ok, name, _, _, _, _, value = pcall(GetFactionInfoByID, factionID)
+		if ok and not name then
+			return 0
+		end
+		value = ok and QL.Plain(value)
+	end
+	return type(value) == "number" and value or nil
+end
+
+-- A profession's skill (with its bonuses, as the server counts it); 0 when not
+-- learned, nil when it cannot be read
+local function Skill(skillLineID)
+	if not (C_SkillInfo and C_SkillInfo.GetSkillLineInfoByID) then
+		return nil
+	end
+	local ok, info = pcall(C_SkillInfo.GetSkillLineInfoByID, skillLineID)
+	if not ok then
+		return nil
+	end
+	local rank = type(info) == "table" and QL.Plain(info.rank)
+	if type(rank) ~= "number" then
+		return info == nil and 0 or nil
+	end
+	return rank + (QL.Plain(info.tempPoints) or 0) + (QL.Plain(info.modifier) or 0)
+end
+
+function QL.Closed(row)
+	local id = row[QL.F_ID]
+	local needs = Needs()
+	local mask = needs.races and needs.races[id]
+	if mask and raceBit and bit.band(mask, raceBit) == 0 then
+		return true
+	end
+	local maxLevel = needs.maxLevel and needs.maxLevel[id]
+	local target = needs.breadcrumbs and needs.breadcrumbs[id]
+	local group = needs.exclusive and ExclusiveOf(id)
+	local rep = needs.reps and needs.reps[id]
+	local below = rep and rep[3] ~= 0
+	if not (maxLevel or target or group or below) or TakenOrDone(id) then
+		return false
+	end
+	if maxLevel and (QL.Plain(UnitLevel("player")) or 0) > maxLevel then
+		return true
+	end
+	if target and TakenOrDone(target) then
+		return true
+	end
+	if group then
+		for _, other in ipairs(group) do
+			if other ~= id and TakenOrDone(other) then
+				return true
+			end
+		end
+	end
+	if below then
+		local standing = Standing(rep[3])
+		if standing and standing >= rep[4] then
+			return true
+		end
+	end
+	return false
+end
+
+-- One of `after`'s choices met: a quest done (a negative id: in the log), or
+-- every quest of a list
+local function AfterMet(choice)
+	if type(choice) == "table" then
+		for _, id in ipairs(choice) do
+			if not AfterMet(id) then
+				return false
+			end
+		end
+		return true
+	end
+	if choice < 0 then
+		return QL.IsOnQuest(-choice)
+	end
+	return QL.IsCompleted(choice)
+end
+
+-- The quest to name for a choice not met: itself, or a list's first not done
+local function AfterName(choice)
+	if type(choice) == "table" then
+		for _, id in ipairs(choice) do
+			if not AfterMet(id) then
+				return math.abs(id)
+			end
+		end
+		return math.abs(choice[1])
+	end
+	return math.abs(choice)
+end
+
+-- For a quest neither taken nor done (the callers have asked already): nil
+-- when the game would offer it now (its level aside: the callers compare
+-- that), else why not: "after", questID, inLog (the quest to do first, or to
+-- have in the log) / "skill", skill line, skill / "rep", faction, standing /
+-- "refused", npc id, giver's name (not offered the last time it was asked)
+function QL.Unmet(row)
+	local id = row[QL.F_ID]
+	local needs = Needs()
+	local after = needs.after and needs.after[id]
+	if after then
+		local list = type(after) == "table" and after or { after }
+		local met = false
+		for _, choice in ipairs(list) do
+			if AfterMet(choice) then
+				met = true
+				break
+			end
+		end
+		if not met then
+			local first = list[1]
+			return "after", AfterName(first), type(first) == "number" and first < 0
+		end
+	end
+	local skill = needs.skills and needs.skills[id]
+	if skill then
+		local have = Skill(skill[1])
+		if have and have < math.max(skill[2], 1) then
+			return "skill", skill[1], skill[2]
+		end
+	end
+	local rep = needs.reps and needs.reps[id]
+	if rep and rep[1] ~= 0 then
+		local standing = Standing(rep[1])
+		if standing and standing < rep[2] then
+			return "rep", rep[1], rep[2]
+		end
+	end
+	-- (and what the data cannot know: its giver did not offer it, Offers below)
+	local npc = QL.RefusedBy(id)
+	if npc then
+		return "refused", npc, row[QL.F_GIVER]
+	end
+	return nil
+end
+
+-- (the professions quests ask for, by the skill line ids classic-db uses:
+-- their names when the character has not learned one, so the game has none)
+local SKILL_NAMES = {
+	[129] = "First Aid", [164] = "Blacksmithing", [165] = "Leatherworking", [171] = "Alchemy", [182] = "Herbalism",
+	[185] = "Cooking", [186] = "Mining", [197] = "Tailoring", [202] = "Engineering", [333] = "Enchanting",
+	[356] = "Fishing", [393] = "Skinning",
+}
+-- the standings by the bar's value where each begins (the game's own words:
+-- FACTION_STANDING_LABEL1 .. 8)
+local STANDING_AT = { -42000, -6000, -3000, 0, 3000, 9000, 21000, 42000 }
+
+-- QL.Unmet's answer in words, for the tooltips: "After: Quest", "Needs
+-- Mining 50", "Needs Honored with the Argent Dawn"
+function QL.UnmetText(kind, a, b)
+	if kind == "after" then
+		local prev = RowByID()[a]
+		local title = prev and prev[QL.F_TITLE] or "another quest"
+		return (b and "While you have %s in your log" or "After %s"):format(title)
+	elseif kind == "skill" then
+		local okI, info = pcall(C_SkillInfo.GetSkillLineInfoByID, a)
+		local name = okI and type(info) == "table" and QL.Plain(info.name) or SKILL_NAMES[a] or "a profession"
+		return b > 0 and ("Needs %s %d"):format(name, b) or ("Needs %s"):format(name)
+	elseif kind == "rep" then
+		local okI, info = pcall(C_Reputation.GetFactionDataByID, a)
+		local name = okI and type(info) == "table" and QL.Plain(info.name) or "a faction"
+		for i, at in ipairs(STANDING_AT) do
+			local label = _G["FACTION_STANDING_LABEL" .. i]
+			if at == b and type(label) == "string" then
+				return ("Needs %s with %s"):format(label, name)
+			end
+		end
+		return ("Needs more reputation with %s"):format(name)
+	elseif kind == "refused" then
+		return ("Not offered when you last talked to %s"):format(b or "its giver")
+	end
+	return nil
+end
+
+-- What the giver itself offered (0.19.3; user, 2026-10-05, at Helene
+-- Peltskinner in Goldshire: "im here but there is no quest"). Forever's own
+-- quests come with no requirements anywhere -- Wowhead lists none, the
+-- client holds none -- and her "Rough Wolf Pelts" is a skinner's. The
+-- giver's window is the game's own answer: when a quest giver's gossip or
+-- greeting lists what it offers, a quest of the data's for that NPC that it
+-- leaves out (neither done nor in the log) is remembered as not offered,
+-- for this character, and one it lists is offered again. QL.Unmet reads it:
+-- no "!" on the map until
+--   a level up or a profession learned  every giver is asked again (all of
+--                                       it forgotten)
+--   a quest turned in                   its turn-in NPC's quests (the next
+--                                       step of a chain the data does not know)
+--   the giver is talked to again        what it lists then
+-- (A window that cannot be read in full teaches nothing.) Kept per character
+-- in MelloUIQuestOffers (SavedVariablesPerCharacter): { level, professions
+-- (a bit per PROFESSION_IDS), refused = { [questID] = the giver's npc id } }.
+-- Nothing at login: read with the first quest asked about.
+local PROFESSION_IDS = { 129, 164, 165, 171, 182, 185, 186, 197, 202, 333, 356, 393 }
+local Offers = { store = nil, seen = {}, byNpc = nil }   -- seen: what the open window lists (one table, wiped)
+QL.Offers = Offers
+
+function Offers.Professions()
+	local mask, bitValue = 0, 1
+	for _, id in ipairs(PROFESSION_IDS) do
+		local have = Skill(id)
+		if have and have > 0 then
+			mask = mask + bitValue
+		end
+		bitValue = bitValue * 2
+	end
+	return mask
+end
+
+-- Its refusals forgotten when the level or the professions are not those
+-- they were learned at; true when it forgot any
+function Offers.Recheck(s)
+	local level, professions = QL.Plain(UnitLevel("player")), Offers.Professions()
+	if level == s.level and professions == s.professions then
+		return false
+	end
+	s.level, s.professions = level, professions
+	if next(s.refused) then
+		wipe(s.refused)
+		return true
+	end
+	return false
+end
+
+function Offers.Store()
+	local s = Offers.store
+	if s then
+		return s
+	end
+	s = rawget(_G, "MelloUIQuestOffers")
+	if type(s) ~= "table" then
+		s = {}
+		_G.MelloUIQuestOffers = s
+	end
+	if type(s.refused) ~= "table" then
+		s.refused = {}
+	end
+	Offers.Recheck(s)
+	Offers.store = s
+	return s
+end
+
+-- the giver's npc id when the data's quest was not offered by it the last
+-- time it was asked
+function QL.RefusedBy(questID)
+	return Offers.Store().refused[questID]
+end
+
+-- the NPC whose window is open: its creature id, or nil
+local function WindowNpc()
+	local ok, guid = pcall(UnitGUID, "npc")
+	guid = ok and QL.Plain(guid)
+	if type(guid) ~= "string" then
+		return nil
+	end
+	local kind, id = guid:match("^(%a+)%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-(%d+)")
+	return (kind == "Creature" or kind == "Vehicle") and tonumber(id) or nil
+end
+
+-- The quests the open window offers, into `into`; false when they cannot
+-- all be read
+local function Listed(event, into)
+	if event == "GOSSIP_SHOW" then
+		local ok, list = pcall(C_GossipInfo.GetAvailableQuests)
+		if not ok or type(list) ~= "table" then
+			return false
+		end
+		for _, info in ipairs(list) do
+			local id = type(info) == "table" and QL.Plain(info.questID)
+			if type(id) ~= "number" then
+				return false
+			end
+			into[id] = true
+		end
+		return true
+	end
+	local okN, n = pcall(GetNumAvailableQuests)   -- QUEST_GREETING
+	n = okN and QL.Plain(n)
+	if type(n) ~= "number" then
+		return false
+	end
+	for i = 1, n do
+		local ok, _, _, _, _, id = pcall(GetAvailableQuestInfo, i)
+		id = ok and QL.Plain(id)
+		if type(id) ~= "number" then
+			return false
+		end
+		into[id] = true
+	end
+	return true
+end
+
+-- [npc id] = the data's quests that NPC gives, made with the first window
+local function GivenBy(npcID)
+	local byNpc = Offers.byNpc
+	if not byNpc then
+		byNpc = {}
+		for _, row in pairs(RowByID()) do
+			local npc = row[QL.F_NPC]
+			if npc and npc ~= 0 then
+				byNpc[npc] = byNpc[npc] or {}
+				table.insert(byNpc[npc], row)
+			end
+		end
+		Offers.byNpc = byNpc
+	end
+	return byNpc[npcID]
+end
+
+-- A quest giver's gossip or greeting (GOSSIP_SHOW, QUEST_GREETING): what it
+-- offers now. True when that changed what is known
+function Offers.Window(event)
+	local npc = WindowNpc()
+	local rows = npc and GivenBy(npc)
+	if not rows then
+		return false
+	end
+	local seen = Offers.seen
+	wipe(seen)
+	if not Listed(event, seen) then
+		return false
+	end
+	local refused = Offers.Store().refused
+	local changed = false
+	for _, row in ipairs(rows) do
+		local id = row[QL.F_ID]
+		local was = refused[id]
+		if seen[id] or TakenOrDone(id) then
+			refused[id] = nil
+		else
+			refused[id] = npc
+		end
+		changed = changed or refused[id] ~= was
+	end
+	return changed
+end
+
+-- A quest's details from its giver (QUEST_DETAIL): offered
+function Offers.Detail()
+	local ok, id = pcall(GetQuestID)
+	id = ok and QL.Plain(id)
+	local refused = Offers.Store().refused
+	if type(id) == "number" and refused[id] then
+		refused[id] = nil
+		return true
+	end
+	return false
+end
+
+-- A quest turned in (QUEST_TURNED_IN): its turn-in NPC is asked again
+function Offers.TurnedIn(questID)
+	local row = type(questID) == "number" and RowByID()[questID]
+	local ender = row and row[QL.F_ENDERNPC]
+	if not ender or ender == 0 then
+		return false
+	end
+	local refused = Offers.Store().refused
+	local changed = false
+	for id, npc in pairs(refused) do
+		if npc == ender then
+			refused[id] = nil
+			changed = true
+		end
+	end
+	return changed
+end
+
+-- A level up (PLAYER_LEVEL_UP) or a skill changed (SKILL_LINES_CHANGED, a
+-- profession learned among them): asked again when either moved
+function Offers.Changed()
+	return Offers.store ~= nil and Offers.Recheck(Offers.store)
 end
 
 -- The quest log walk, one for the Quest List (the panel's sums and the
@@ -1453,7 +1886,7 @@ local function DungeonSummary()
 	if not dungeonID then
 		return
 	end
-	local missing, inLog, done, total = {}, 0, 0, 0
+	local missing, inLog, done, total, later = {}, 0, 0, 0, 0
 	for _, row in ipairs(data.quests or {}) do
 		if row[QL.F_DUNGEON] == dungeonID and QL.Eligible(row) then
 			total = total + 1
@@ -1461,6 +1894,8 @@ local function DungeonSummary()
 				done = done + 1
 			elseif QL.IsOnQuest(row[QL.F_ID]) then
 				inLog = inLog + 1
+			elseif QL.Unmet(row) then
+				later = later + 1   -- (not offered yet: another quest first, a skill, a standing)
 			else
 				missing[#missing + 1] = row
 			end
@@ -1469,7 +1904,8 @@ local function DungeonSummary()
 	if total == 0 then
 		return
 	end
-	MelloUI:Print("%s: %d of %d quests done, %d in your log, %d not picked up.", name, done, total, inLog, #missing)
+	MelloUI:Print("%s: %d of %d quests done, %d in your log, %d not picked up%s.", name, done, total, inLog, #missing,
+		later > 0 and string.format(", %d not offered yet", later) or "")
 	for _, row in ipairs(data.quests or {}) do
 		if row[QL.F_DUNGEON] == dungeonID and QL.Eligible(row) and QL.IsOnQuest(row[QL.F_ID]) and QL.IsReadyForTurnIn(row[QL.F_ID]) and (row[QL.F_ENDER] or "") ~= "" then
 			local endZone = QL.EnderZoneName(row) or QL.Data().zones[QL.ZoneOf(row)]
@@ -1523,6 +1959,21 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 		QL.logChanges = QL.logChanges + 1
 	elseif event == "NEUTRAL_FACTION_SELECT_RESULT" or (event == "UNIT_FACTION" and QL.Plain(...) == "player") then
 		QL.SideChanged()
+	else
+		-- what the givers offer (Offers): the pins follow what was learned
+		local changed
+		if event == "GOSSIP_SHOW" or event == "QUEST_GREETING" then
+			changed = QL.Offers.Window(event)
+		elseif event == "QUEST_DETAIL" then
+			changed = QL.Offers.Detail()
+		elseif event == "QUEST_TURNED_IN" then
+			changed = QL.Offers.TurnedIn(QL.Plain(...))
+		elseif event == "PLAYER_LEVEL_UP" or event == "SKILL_LINES_CHANGED" then
+			changed = QL.Offers.Changed()
+		end
+		if changed then
+			QL.RefreshPins()
+		end
 	end
 	if WorldMapFrame and WorldMapFrame:IsShown() then
 		QL.Panel:Schedule()
@@ -1597,6 +2048,10 @@ function M:OnEnable(db)
 	eventFrame:RegisterEvent("PLAYER_LEAVING_WORLD")
 	eventFrame:RegisterEvent("ZONE_CHANGED")
 	eventFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+	-- (what the quest givers offer: QL.Offers)
+	for _, event in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED" }) do
+		eventFrame:RegisterEvent(event)
+	end
 	if eventFrame.RegisterUnitEvent then
 		eventFrame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 		eventFrame:RegisterUnitEvent("UNIT_FACTION", "player")

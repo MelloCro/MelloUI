@@ -51,7 +51,7 @@ read_globals = {
 	"bit", "AddonCompartmentFrame", "BagsBar", "BuffBarCooldownViewer", "BuffFrame",
 	"ButtonFrameTemplate_HidePortrait", "CHAT_FRAME_TEXTURES", "C_AddOns", "C_AreaPoiInfo", "C_CVar",
 	"C_Container", "C_CurrencyInfo", "C_EncounterJournal", "C_GossipInfo", "C_Map", "C_MerchantFrame",
-	"C_NamePlate", "C_PlayerInfo", "ITEM_QUALITY_COLORS", "C_QuestLog", "C_SuperTrack", "C_TaxiMap", "C_Texture", "C_Timer", "C_TooltipInfo",
+	"C_NamePlate", "C_PlayerInfo", "ITEM_QUALITY_COLORS", "C_QuestLog", "C_Reputation", "C_SkillInfo", "GetFactionInfoByID", "GetNumAvailableQuests", "GetAvailableQuestInfo", "C_SuperTrack", "C_TaxiMap", "C_Texture", "C_Timer", "C_TooltipInfo",
 	"C_VoiceChat", "CanGuildBankRepair", "CanMerchantRepair", "CastingBarType",
 	"CharacterReagentBag0Slot", "CompactPartyFrame", "CompactRaidFrameContainer", "Constants",
 	"ContainerFrame1", "ContainerFrameCombinedBags", "ContainerFrameSettingsManager",
