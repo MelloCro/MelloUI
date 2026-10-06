@@ -45,9 +45,10 @@
 --                families and of the list (Services' learned places, kind
 --                "vendor", written through Services:Learn): a shop seen
 --                overrides the shipped row of the same name.
--- The reminder's switch is the Reminders page's "Restock" (remind_restock,
--- as remind_<key> is every reminder's); the spec is taken back while the
--- module is off.
+-- The reminder's switch is this module's own (0.16.0: the Reminders page's
+-- Restock tab, "Restock List And Shop"; the old remind_restock is gone): the
+-- spec is taken back while the module is off. The Reminders switch is over
+-- it too: off, no reminder of Restock's either (RemActive).
 -- Nothing at login but the event frame (two merchant events) and the
 -- reminder's spec, a table handed to the widget at OnEnable (registered
 -- later, the widget's login moment would wait 8 s more); the first count and
@@ -96,10 +97,11 @@ local M = MelloUI:RegisterModule("Restock", {
 		shopPanel = true,
 	},
 	-- (no header and no switch of its own for the reminder: the Reminders page
-	-- lays these rows under its "Restock" switch, remind_restock)
+	-- lays these rows on its Restock tab, under this module's switch, which is
+	-- the reminder's too)
 	options = {
 		{ type = "slider", key = "below", name = "Remind Below", min = 0.25, max = 0.75, step = 0.05, percent = true,
-		  desc = "You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount." },
+		  desc = "You are reminded when a line drops below this share of its amount: at 50 %, a line of 20 water reminds you at 9. At a shop it is bought back up to the full amount. The reminder needs Reminders on; the Restock List marks the low lines either way." },
 		{ type = "toggle", key = "shopPanel", name = "Shopping List At The Shop",
 		  desc = "At a merchant who sells what you are low on, a small list beside the shop window: each item, how many and the price, and the total. Nothing is bought until you click Buy." },
 		{ type = "button", name = "Restock List", text = "Edit",
@@ -638,9 +640,9 @@ local function RemindersOn()
 	return MelloUI:IsModuleEnabled("Reminders") and true or false
 end
 
--- (the reminder's own switch is the core's: the Reminders setting
--- remind_restock, read by the widget before it asks this; the Reminders
--- page's module switch off, none of its reminders is wanted)
+-- (the reminder's own switch is this module's: its spec is with the widget
+-- only while the module is on, enabled = true; the Reminders page's module
+-- switch off, none of its reminders is wanted)
 local function RemActive()
 	if not (M.isEnabled and M.db and RemindersOn()) then
 		return false
@@ -1477,7 +1479,7 @@ local function BuyEnd(completed)
 		return
 	end
 	-- "Restocked: 20 Melon Juice, 1000 Razor Arrow for 1g 20s." (Vendor's
-	-- Report In Chat)
+	-- Report In Chat while Vendor Automation is on; off, always)
 	local parts = nil
 	for r = 1, plan.n do
 		local n = buy.bought[r] or 0
@@ -2119,10 +2121,13 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "below" then
 		Dirty()
-		if not state.ready then
-			return
+		if state.ready then
+			Count()
 		end
-		Count()
+		-- (the open Restock List's intro says the share: laid again)
+		if win.frame and win.frame:IsShown() then
+			ListLayout()
+		end
 	elseif key == ListKey() then
 		EnsureList()
 		Listen()

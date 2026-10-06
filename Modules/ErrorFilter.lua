@@ -16,7 +16,8 @@
 -- AddMessage may refuse a secret from an addon's frame). What it lets through
 -- still reaches the frame's own AddMessage, so the centre texts' shade
 -- (Core/CentreText.lua, Centre Text Shade) dresses those lines as it does
--- with this module off.
+-- with this module off. A hidden message is silent too: Custom Sounds hears
+-- the event itself and asks M:Hides before its knock (0.19.4).
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -139,6 +140,21 @@ end)
 
 local function Apply(db)
 	Take(M.isEnabled and Rebuild(db) or false)
+end
+
+-- Whether an error of the game's is hidden here (Custom Sounds asks before
+-- its knock, so a hidden error makes no sound either). As the handler
+-- above: the secret test first, and a secret text is never hidden; nothing
+-- is hidden while the event is the game frame's (the module off, or no kind
+-- switched on).
+function M:Hides(messageType, message)
+	if not (self.isEnabled and took) then
+		return false
+	end
+	if Secret(message) or message == nil then
+		return false
+	end
+	return hidden[message] == true
 end
 
 function M:OnEnable(db)

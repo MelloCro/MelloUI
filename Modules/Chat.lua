@@ -34,7 +34,7 @@ local M = MelloUI:RegisterModule("Chat", {
 	flavour = "Less frame, more talk. Short channel tags and class colours keep the log readable.",
 	group = "Chat and sound", navOrder = 1,
 	role = "adds",
-	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names and the art-hiding switches (which only apply while the chat reskin is off).", order = 9 },
+	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes.", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
 	keep = { "savedWhisperMode", "savedClassColorCVar",   -- the player's own game settings, given back when off: never in a profile
 		-- (0.17.0) the Background dropdown's own copy: what it shows is read
@@ -72,7 +72,7 @@ local M = MelloUI:RegisterModule("Chat", {
 			{ value = "game", label = "Game" },
 			{ value = "none", label = "None" },
 		  }, get = function(db) return Background(db) end,
-		  desc = "The chat windows' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), the game's art darkened (Dark), the game's own, or none at all. Painted and Parchment need the reskin on (Look)." },
+		  desc = "The chat windows' background: the painted kit (Painted), the kit with a parchment sheet whose text is dark ink (Parchment), a dark panel of the palette behind the window, its tabs and its input box (Dark), the game's own, or none at all. Painted and Parchment need the reskin on (Look)." },
 		{ type = "toggle", key = "windowAlphaOn", name = "Set The Background Opacity",
 		  desc = "Give every chat window the same background opacity, kept in your profile. Off, each window keeps the opacity set in its tab's menu." },
 		{ type = "slider", key = "windowAlpha", parent = "windowAlphaOn", name = "Background Opacity", min = 0, max = 1, step = 0.05, percent = true,
@@ -85,7 +85,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "toggle", key = "hideTabs", name = "Hide Tab Background",
 		  desc = "Hide the background art behind the chat tabs. The tab text stays." },
 		{ type = "toggle", key = "tabsOnMouseover", name = "Tabs Only On Mouseover",
-		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible." },
+		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible. It adds to the Fader's Chat fade: both fade the tabs, so with both on the two fades multiply. Does nothing under the painted chat (the Painted and Parchment backgrounds), which keeps its tabs shown." },
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
 		{ type = "toggle", key = "chatButtons", name = "Chat Buttons",
@@ -98,7 +98,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "toggle", key = "hideBrackets", parent = "shortChannels", name = "Hide Brackets",
 		  desc = "Also remove the square brackets around the short channel tags." },
 		{ type = "toggle", key = "nameShade", name = "Shade Behind Tags and Links",
-		  desc = "On the parchment sheet, a soft dark band behind a line's channel tag and its links, so their bright colours read without an outline. The rest of the line is in dark ink; a player's name too, with a small gem in their class colour before it." },
+		  desc = "On the parchment sheet, a soft dark band behind a line's channel tag and its links, so their bright colours read without an outline. This switch sets the bands only: the dark ink of the rest of the line, and the small gem in the class colour before a player's name, come with the parchment either way." },
 		{ type = "header", name = "Whispers" },
 		{ type = "toggle", key = "whisperPopup", name = "Whisper Popup Window",
 		  desc = "A whisper opens a small window of its own, one per person, with the conversation and a box to answer in, instead of a new chat tab. Whispers still show in the main chat. Switching it off puts the game's own whisper setting back." },
@@ -349,7 +349,7 @@ local function SetEditBoxArtShown(shown)
 		if editBox then
 			for _, suffix in ipairs({ "Left", "Mid", "Right" }) do
 				local tex = _G[editName .. suffix]
-				if tex then
+				if type(tex) == "table" and tex.SetShown then
 					tex:SetShown(shown)
 				end
 			end
@@ -519,6 +519,129 @@ local function SetTabArtShown(shown)
 				end
 			end
 		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Background "Dark" (0.19.4, the options audit: 'Dark' only shaded the tabs
+-- and the input box, and only with Dark Mode on; the user's pick is look D
+-- of MelloUI-BuildData/output/chat_dark_sketch): the chat's own dark, with
+-- or without Dark Mode. The palette's innerPanel behind each window and its
+-- button column, a 1 px line in the palette's border round both; the tabs
+-- and the input box in the same dark, their game art hidden; the open tab
+-- edged in the palette's selectedTrim. The
+-- pieces are regions of the game's frames, so the game's show, hide and fade
+-- carry them; kept in a weak list here (never keys on the frames), made the
+-- first time the look is on (never at login). The fill's alpha is Background
+-- Opacity while "Set The Background Opacity" is on, else 0.8. Hide Tab
+-- Background / Hide Input Box Background drop those plates as they drop the
+-- game's art. (A table: Chat.lua is near Lua's 200 top-level locals.)
+--------------------------------------------------------------------------------
+M.Dark = {
+	ALPHA = 0.8,
+	TAB_TOP = 8,              -- a tab's visible part starts this far under its top (its art is bottom-anchored in 32 px)
+	EDIT = { 3, -4, -1, 4 },  -- the input box's field in its 32 px rect: its sides on the window's (box -5 / +16, window -2 / +15), 24 px tall
+	parts = setmetatable({}, { __mode = "k" }),   -- [game frame] = its plate
+	on = false, alpha = 0.8, hooked = false,
+}
+
+function M.Dark.Active()
+	return (M.isEnabled and M.db and Background(M.db) == "dark" and not ArtCovered()) and true or false
+end
+
+-- a plate on `owner`: the fill where `kind` lies, its four 1 px edges, a
+-- tab's highlight (the HIGHLIGHT layer: shown by the button on mouse-over)
+function M.Dark.Make(owner, kind, rect)
+	local D, W = M.Dark, MelloUI.Widgets
+	local fill = owner:CreateTexture(nil, "BACKGROUND", nil, 1)
+	if kind == "tab" then
+		fill:SetPoint("TOPLEFT", owner, "TOPLEFT", 0, -D.TAB_TOP)
+		fill:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", 0, 0)
+	elseif kind == "edit" then
+		fill:SetPoint("TOPLEFT", owner, "TOPLEFT", D.EDIT[1], D.EDIT[2])
+		fill:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", D.EDIT[3], D.EDIT[4])
+	else
+		fill:SetAllPoints(rect)
+	end
+	local p = { fill = fill, edges = W.Edges(owner, "border", "BORDER", fill) }
+	if kind == "tab" then
+		p.lit = owner:CreateTexture(nil, "HIGHLIGHT")
+		p.lit:SetAllPoints(fill)
+		W.Paint(p.lit, "hover", "fill", 0.35)
+	end
+	D.parts[owner] = p
+	return p
+end
+
+function M.Dark.Paint(p, fillKey, edgeKey)
+	local W = MelloUI.Widgets
+	W.Paint(p.fill, fillKey, "fill", M.Dark.alpha)
+	for i = 1, #p.edges do
+		W.Paint(p.edges[i], edgeKey, "fill", 1)
+	end
+end
+
+-- a tab painted open (the game shows its Active set on the open one) or at
+-- rest: the same dark, the open one edged in selectedTrim (look D's; not a
+-- selectedTab fill: in the game's look that is the gold of the tabs' text)
+function M.Dark.PaintTab(p, open)
+	M.Dark.Paint(p, "innerPanel", open and "selectedTrim" or "border")
+end
+
+-- one plate shown and painted, or hidden (made only to be shown)
+function M.Dark.Show(owner, kind, rect, shown)
+	local D = M.Dark
+	local p = owner and D.parts[owner]
+	if not p then
+		if not (shown and owner and (rect or kind == "tab" or kind == "edit")) then
+			return
+		end
+		p = D.Make(owner, kind, rect)
+	end
+	if shown then
+		if kind == "tab" then
+			D.PaintTab(p, owner.ActiveLeft and owner.ActiveLeft:IsShown())
+		else
+			D.Paint(p, "innerPanel", "border")
+		end
+	end
+	p.fill:SetShown(shown)
+	for i = 1, #p.edges do
+		p.edges[i]:SetShown(shown)
+	end
+	if p.lit then
+		p.lit:SetShown(shown)
+	end
+end
+
+-- every chat window's plates to the look (`on`), the fill at its alpha; the
+-- open tab followed through the game's FCFTab_UpdateColors (a post-hook,
+-- taken the first time the look is on)
+function M.Dark.Apply(on)
+	local D = M.Dark
+	if not (on or D.on) then
+		return
+	end
+	D.on = on
+	D.alpha = Alpha.On() and Alpha.Wanted() or D.ALPHA
+	local db = M.db or {}
+	for _, name in ipairs(ChatFrameNames()) do
+		local cf = _G[name]
+		if cf then
+			D.Show(cf, "window", _G[name .. "Background"], on)
+			D.Show(cf.buttonFrame, "column", _G[name .. "ButtonFrameBackground"], on)
+			D.Show(_G[name .. "Tab"], "tab", nil, on and not db.hideTabs)
+			D.Show(cf.editBox or _G[name .. "EditBox"], "edit", nil, on and not db.hideEditBox)
+		end
+	end
+	if on and not D.hooked and type(FCFTab_UpdateColors) == "function" then
+		D.hooked = true
+		hooksecurefunc("FCFTab_UpdateColors", function(tab, selected)
+			local p = D.on and D.parts[tab]
+			if p and p.fill:IsShown() then
+				D.PaintTab(p, selected)
+			end
+		end)
 	end
 end
 
@@ -3598,10 +3721,13 @@ end
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
+-- (the Dark look hides the game's art and lays its own: M.Dark)
 local function ApplyArt()
-	SetBackgroundShown(not HideArt("hideBackground"))
-	SetEditBoxArtShown(not HideArt("hideEditBox"))
-	SetTabArtShown(not HideArt("hideTabs"))
+	local dark = M.Dark.Active()
+	SetBackgroundShown(not (dark or HideArt("hideBackground")))
+	SetEditBoxArtShown(not (dark or HideArt("hideEditBox")))
+	SetTabArtShown(not (dark or HideArt("hideTabs")))
+	M.Dark.Apply(dark)
 end
 
 local coverWatched = false
@@ -3665,6 +3791,8 @@ function M:OnInit(db)
 	MelloUI:On("setting", function(module, key, value)
 		if module == "UIModifications" and key == "classNames" and M.isEnabled then
 			ApplyClassColors(value ~= false)
+		elseif M.isEnabled and ((module == "DarkMode" and key == "chat") or (module == "UIModifications" and key == "ChatPanel")) then
+			ApplyArt()   -- (the Background they make up: the Dark look on or off)
 		end
 	end, "Chat: class names")
 end
@@ -3714,6 +3842,8 @@ function M.SetBackground(value)
 	Put("DarkMode", "chat", value == "dark")
 	if M.db and (M.db.hideBackground and true or false) ~= (value == "none") then
 		M.db.hideBackground = value == "none"
+	end
+	if M.isEnabled then
 		ApplyArt()
 	end
 	if MelloUI.RefreshConfig then
@@ -3748,6 +3878,7 @@ function M:OnEnable(db)
 end
 
 function M:OnDisable()
+	M.Dark.Apply(false)
 	SetBackgroundShown(true)
 	SetEditBoxArtShown(true)
 	SetTabArtShown(true)
@@ -3768,6 +3899,7 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "windowAlphaOn" or key == "windowAlpha" then
 		-- on or a new value: every window to it; off: left as they are
 		Alpha.Apply()
+		M.Dark.Apply(M.Dark.Active())   -- (the Dark look's fill takes it too)
 	elseif key == "tabsOnMouseover" then
 		SetTabsOnMouseover(value)
 	elseif key == "chatButtons" then

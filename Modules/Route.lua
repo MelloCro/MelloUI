@@ -67,9 +67,9 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "trackQuests", name = "Route To The Tracked Quest",
 		  desc = "When no map pin is set, route to the quest you are tracking (the one with the arrow): to the nearest place for an objective you have not finished yet (a creature to kill, an object to use, where the item drops or is sold, a place to explore), and to its turn-in once it is complete. An objective that needs an item in your bags first (remains to bury, a key for a cage) is routed to where that item comes from until you have it." },
 		{ type = "toggle", key = "trackFirstWatched", parent = "trackQuests", name = "Fall Back To The First Tracked Quest",
-		  desc = "When nothing is super-tracked, follow the first quest in the objective tracker instead of showing nothing." },
+		  desc = "When nothing is super-tracked, follow the first quest on the game's watch list instead of showing nothing. That is the game's own order of the quests you watch, not the Quest Tracker's Nearest Quest First order." },
 		{ type = "toggle", key = "distanceText", name = "Distance Under The Minimap",
-		  desc = "Show the remaining route length under the minimap (hidden while the arrow is shown)." },
+		  desc = "Show the remaining route length and the destination under the minimap, with or without Route On The Minimap (hidden while the Direction Arrow shows them)." },
 		{ type = "toggle", key = "travelTime", name = "Travel Time",
 		  desc = "About how long the rest of the way takes, beside the distance under the arrow and on the World Marker, from how fast you are moving (on foot or mounted). The tracking notice says it too, and arriving says how long the way took." },
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
@@ -79,10 +79,10 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
 		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away, with a ring of light on the ground at its foot and the gem lit red. It fades as you come near and is gone once the marker rises above the place, and hides while the place is off screen. Part of the World Marker." },
 		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds",
-		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. Plays on the Sound Effects channel. Part of the World Marker." },
+		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. For a new destination it is the one sound: the tracking notice leaves its chime out then. Plays on the Sound Effects channel. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
 		{ type = "slider", key = "arrive", name = "Arrived Within (yards)", min = 10, max = 100, step = 5,
-		  desc = "The route ends and the waypoint is cleared when you get this close." },
+		  desc = "The route ends and the waypoint is cleared when you get this close. Not for the route to a tracked quest: that one moves on with the quest." },
 		{ type = "header", name = "Flights" },
 		{ type = "toggle", key = "flightHint", name = "Flight Map Help",
 		  desc = "At a flight master: where your route flies to, on the flight map's title band, with a small gem on that flight point. Pointing at a flight point also shows about how long the flight takes." },
@@ -382,17 +382,19 @@ end
 --------------------------------------------------------------------------------
 
 -- kind: "track" (new destination, the default), "arrive", "learn", "fail",
--- "info", "silent" (no chime).
-function M:Notify(text, kind)
-	MelloUI:Announce(text, kind or "track")
+-- "info", "silent" (no chime). mute: the line without its chime (0.19.4:
+-- the World Marker's sound stands for a new destination's, M.TrackMute)
+function M:Notify(text, kind, mute)
+	MelloUI:Announce(text, kind or "track", mute)
 end
 
 -- Whether a destination set now is announced with a sound (Route on and
--- the notice's own switches, Notice Sounds among them): a caller
+-- the notice's own switches, Notice Sounds among them, or, 0.19.4, the
+-- World Marker's sound standing for it: M.MarkerSounds): a caller
 -- that routes for the player (the Quest List's pins) plays its own click
--- sound only when not, so one chime sounds, not two
+-- sound only when not, so one sound plays, not two
 function M:AnnounceSounds()
-	return (M.isEnabled and MelloUI.AnnounceSounds and MelloUI:AnnounceSounds("track")) and true or false
+	return (M.isEnabled and ((MelloUI.AnnounceSounds and MelloUI:AnnounceSounds("track")) or (M.MarkerSounds and M.MarkerSounds()))) and true or false
 end
 
 -- Said once per map per session, instead of failing quietly (0.14.0, the
@@ -2913,7 +2915,11 @@ local function Announce(text)
 	elseif time then
 		text = "Tracking " .. (destination.label or "map pin") .. ": " .. Yards(d) .. ", " .. time
 	end
-	M:Notify(text or ("Tracking " .. (destination.label or "map pin") .. (d and (", " .. Yards(d) .. " away") or "")), "track")
+	-- (0.19.4) one sound for a new destination: no chime while the World
+	-- Marker's own sound stands for it (M.TrackMute, by the marker below)
+	local mute = M.TrackMute ~= nil and M.TrackMute(destination) or nil
+	M:Notify(text or ("Tracking " .. (destination.label or "map pin") .. (d and (", " .. Yards(d) .. " away") or "")), "track",
+		mute)
 end
 
 local function Plan(force, announce, announceText)
@@ -4892,7 +4898,8 @@ function M.LineMaybeChanged()
 end
 
 -- its height in the column while Route keeps the line (Route on, Distance
--- Under The Minimap on): its face's size and a hair; nil otherwise
+-- Under The Minimap on, the route's dots on the minimap or not: the line's
+-- own switch, M.MinimapLine): its face's size and a hair; nil otherwise
 function M:ColumnLine()
 	local text = mm and mm.text
 	if not (M.isEnabled and M.db and M.db.distanceText and text) then
@@ -5814,11 +5821,77 @@ StandIn.Moved = function()
 	f.glideX, f.glideY, f.glideAt = cx * scale, cy * scale, GetTime()
 end
 
--- The marker's sound as it changes (Marker Sounds): the user's own
+-- The marker's sound as it changes (Marker Sounds): the user's own. True
+-- when it played
 function Beacon.Sound()
 	if M.db.markerSound ~= false then
 		MelloUI:PlayUISound("marker")
+		return true
 	end
+	return false
+end
+
+-- One sound for a new destination (0.19.4, the options audit: the tracking
+-- notice's chime and the marker's sound played together). The marker's own
+-- sound plays (Marker Sounds, the user's pick for its changes), and the
+-- "Tracking ..." line goes without its chime when the marker sounds for
+-- that destination: it came up for it and sounded, or it is not up for it
+-- yet and comes up as soon as the game's frame follows it (Route's own pin
+-- going up first). Otherwise the line chimes -- the World Marker or Marker
+-- Sounds off, the player inside the quest's area, no marker on this
+-- continent, the login's quiet seconds, the next spot of the same quest
+-- (the marker stays quiet for it) -- and a marker coming up for that
+-- destination within CHIME_SPAN seconds of the chime stays quiet. What was
+-- said last: Beacon.saidKey (the destination as the marker knows it: its
+-- quest, else itself), saidAt, saidChime (the chime played), saidMarker
+-- (the sound left to the marker); Beacon.soundFor, the destination the
+-- marker last sounded for. Nothing is made: a few fields set per line
+Beacon.QUIET = 10         -- seconds after the login the marker comes up without its sound (a /reload's destination)
+Beacon.CHIME_SPAN = 2     -- seconds after a line's chime a marker coming up for that destination stays quiet
+
+-- the login's quiet seconds (Travel.loginAt, EnsureMarker)
+function Beacon.Quiet()
+	return Travel.loginAt ~= nil and GetTime() - Travel.loginAt < Beacon.QUIET
+end
+
+-- whether the marker's sound stands for destination d's line, said now
+function Beacon.Takes(d)
+	if not (d and marker and M.isEnabled and M.db.worldMarker and M.db.markerSound ~= false) then
+		return false
+	end
+	local key = d.questID or d
+	if marker.soundKey == key then
+		-- up for it: it sounded for it, and this is the first line since
+		return Beacon.soundFor == key and Beacon.saidKey ~= key
+	end
+	-- not up for it yet: it comes up with its sound, unless it stays away
+	return not (Beacon.Quiet() or not NavFrame() or (crossContinent and not standIn) or (d.area and Beacon.InArea()))
+end
+
+-- (Route's Announce, above the marker: through M) whether the "Tracking
+-- ..." line for destination d goes without its chime; notes what was said
+function M.TrackMute(d)
+	local mute = Beacon.Takes(d)
+	Beacon.saidKey = d and (d.questID or d) or nil
+	Beacon.saidAt = GetTime()
+	Beacon.saidMarker = mute
+	Beacon.saidChime = not mute and MelloUI.AnnounceSounds ~= nil and MelloUI:AnnounceSounds("track") or false
+	return mute
+end
+
+-- (M:AnnounceSounds) whether the marker's sound stands for the destination
+-- set now: its line left the sound to the marker, or, its line still to
+-- come (the roads still going in), the marker sounded for it
+function M.MarkerSounds()
+	local d = destination
+	if not (d and M.db and M.db.markerSound ~= false) then
+		return false
+	end
+	local key = d.questID or d
+	if Beacon.saidKey == key then
+		return Beacon.saidMarker == true
+	end
+	return Beacon.soundFor == key
 end
 
 -- Near the place, or far from it again: the gem glides up over the place (or
@@ -6436,11 +6509,13 @@ UpdateMarker = function()
 	end
 	-- the marker's sound for a new destination (Marker Sounds; 0.18.4): a new
 	-- quest or another place, not the next spot of the same quest, and not
-	-- the destination a /reload brought back
+	-- the destination a /reload brought back; nor (0.19.4: one sound) one
+	-- whose line chimed just now (Beacon.Takes)
 	if key ~= marker.soundKey then
 		marker.soundKey = key
-		if not (Travel.loginAt and GetTime() - Travel.loginAt < 10) then
-			Beacon.Sound()
+		local chimed = Beacon.saidKey == key and Beacon.saidChime and GetTime() - Beacon.saidAt < Beacon.CHIME_SPAN
+		if not (Beacon.Quiet() or chimed) and Beacon.Sound() then
+			Beacon.soundFor = key
 		end
 	end
 	FadeGameMarker(true)
@@ -6781,6 +6856,28 @@ function M.MinimapOffset(yx, yy)
 	return dx * v.ppy, -dy * v.ppy, math.sqrt(dx * dx + dy * dy)
 end
 
+-- The distance line under the minimap (Distance Under The Minimap: the
+-- line's own switch, the route's dots there on or off; the options audit,
+-- 2026-10-05): the route's length and the destination, hidden while the
+-- arrow shows them. Written only when the route's length or the label
+-- changes (no string made per tick); a secret label (asked first, never
+-- compared: kept as mm itself, which no label equals) every time.
+function M.MinimapLine(arrowShown)
+	local text = mm.text
+	if arrowShown or not (route and M.isEnabled and M.db.distanceText) then
+		text:Hide()
+		return
+	end
+	local remaining = route.length or 0
+	local label = destination and destination.label
+	local secret = MelloUI.Safe.IsSecret(label)
+	if secret or remaining ~= mm.lineLength or label ~= mm.lineLabel then
+		mm.lineLength, mm.lineLabel = remaining, secret and mm or label
+		text:SetText(label and (Yards(remaining) .. "  " .. label) or Yards(remaining))
+	end
+	text:Show()
+end
+
 local mmElapsed = 0
 local function MinimapTick(_, elapsed)
 	mmElapsed = mmElapsed + elapsed
@@ -6792,13 +6889,14 @@ local function MinimapTick(_, elapsed)
 	local cont, px, py = PlayerYards(true)   -- one ask a frame, shared with the arrow
 	local arrowShown = cont and UpdateArrow(cont, px, py) or false
 	UpdateMarker()
-	if not (route and M.isEnabled and M.db.minimap) then
-		mmPainter:End()
-		mm.text:Hide()
-		return
+	-- the distance line before the dots: its own switch, with or without
+	-- Route On The Minimap (where the player is not known: kept as it was)
+	if cont or not (route and M.isEnabled and M.db.distanceText) then
+		M.MinimapLine(arrowShown)
 	end
-	if not cont then
+	if not (route and M.isEnabled and M.db.minimap and cont) then
 		mmPainter:End()
+		M.LineMaybeChanged()
 		return
 	end
 	local diameter = MinimapDiameter()
@@ -6845,21 +6943,6 @@ local function MinimapTick(_, elapsed)
 		end
 	end
 	mmPainter:End()
-	if M.db.distanceText and not arrowShown then
-		local remaining = route.length or 0
-		local label = destination and destination.label
-		-- written only when the route's length or the label changes (no
-		-- string made per tick); a secret label (asked first, never compared:
-		-- kept as mm itself, which no label equals) every time
-		local secret = MelloUI.Safe.IsSecret(label)
-		if secret or remaining ~= mm.lineLength or label ~= mm.lineLabel then
-			mm.lineLength, mm.lineLabel = remaining, secret and mm or label
-			mm.text:SetText(label and (Yards(remaining) .. "  " .. label) or Yards(remaining))
-		end
-		mm.text:Show()
-	else
-		mm.text:Hide()
-	end
 	M.LineMaybeChanged()
 end
 

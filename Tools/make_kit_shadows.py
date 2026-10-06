@@ -151,6 +151,9 @@ SHADOWED = [
     # the Elite / Rare / Boss marks (Tools/kit_marks.py): the unit frames' metal rings with their crest on
     # the top gem, the nameplates' crests before the name
     r"^marks/(ring|crest)_[a-z]+$",
+    # the nameplates' mark on top (2026-10-05): its crest, a plain line's end gems, a boss's line ends and beads
+    # (the line itself, thin and stretched, has none)
+    r"^marks/top(crest_[a-z]+|gem_[a-z]+|end_boss_[lr]|bead_boss)$",
 ]
 # The marks' metal twins (Tools/kit_marks.py): a piece recoloured, its shape its plain piece's, so it uses
 # that piece's shadow (written as the plain piece's name): the level orb's, a Nameplate Border's left cap's

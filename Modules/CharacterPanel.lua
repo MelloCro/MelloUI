@@ -32,10 +32,12 @@ local Kit = MelloUI.Kit
 local LOOKS = Kit.buttonLooks
 
 -- Window Background: the window's own stone, or one of the button
--- backgrounds over the whole window (not None: the world would show through)
+-- backgrounds over the whole window (not None: the world would show through;
+-- not Parchment: the window's parchment is Look > Parchment's Character
+-- Window since 0.19.4, the options audit: one control, ParchmentMode)
 local WINDOW_BACKGROUNDS = { { value = "window", label = "Window stone", piece = "window/frame_body" } }
 for _, v in ipairs(LOOKS.backgrounds) do
-	if v.value ~= "none" then
+	if v.value ~= "none" and v.value ~= "parchment" then
 		WINDOW_BACKGROUNDS[#WINDOW_BACKGROUNDS + 1] = v
 	end
 end
@@ -58,7 +60,7 @@ local M = MelloUI:RegisterModule("CharacterPanel", {
 	},
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
-		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, parchment, leather or dark. The equipment slots, the progress bars and the side tabs wear the borders of Look > Borders (every window's)." },
+		  desc = "What the character window shows behind everything: its own stone, or stone, cracked concrete, iron plate, leather or dark. Parchment is Look > Parchment's Character Window: under the right pane, or over the whole window (on its own stone, whatever this shows). The equipment slots, the progress bars and the side tabs wear the borders of Look > Borders (every window's)." },
 	},
 })
 
@@ -82,10 +84,25 @@ local layHeld = nil       -- GetTime() of the window's OnShow, which lays the pa
 -- The test is MelloUI.Safe's (Core.lua), one set for the addon.
 local Secret = MelloUI.Safe.IsSecret
 
--- Window Background Parchment chosen: the whole window on parchment, so the
--- right pane's own Parchment sheet stands down (one parchment per surface).
+-- The window's parchment: Look > Parchment's Character Window (UI
+-- Modifications' parchment_character; 0.19.4, the options audit: Window
+-- Background's Parchment folded in, one control) -- "off", "pane" (a sheet
+-- under the right pane) or "window" (one over the whole window, the right
+-- pane's own standing down: one parchment per surface). An older save's
+-- switch, until MelloUI:MergeSettings has carried it: on is the right pane.
+local function ParchmentMode()
+	local um = MelloUI:GetModule("UIModifications")
+	local v = um and um.db and um.db.parchment_character
+	if v == true then
+		return "pane"
+	elseif v == "pane" or v == "window" then
+		return v
+	end
+	return "off"
+end
+
 local function WindowParchment()
-	return (M.db and M.db.windowBackground == "parchment") and true or false
+	return ParchmentMode() == "window"
 end
 
 -- Where a frame or region lies on the screen (left, right, top, bottom in
@@ -381,8 +398,8 @@ Part(function(cf)
 			-- edges run under the divider, the window's rails and the title
 			-- plate: nothing of them showed. The sheet now lies on the part of
 			-- the pane nothing covers (LayClear) and ends in the quest log's
-			-- own strokes; it stands down while the Window Background is
-			-- Parchment (that sheet covers the whole window, this pane with it).
+			-- own strokes; it stands down while the parchment is the Whole
+			-- window's (that sheet covers the whole window, this pane with it).
 			if stone and stone.object and stone.object ~= stone.tex and Kit.ParchmentSheet then
 				local clear = CreateFrame("Frame", nil, stone.object)
 				clear:EnableMouse(false)
@@ -659,8 +676,8 @@ Part(function()
 	SkinSidePanes()
 end)
 
--- the Window Background's parchment sheet: made here with the rest (it
--- was made on the skin's first coming on), shown by ApplyWindowBackground
+-- the whole window's parchment sheet: made here with the rest (it was
+-- made on the skin's first coming on), shown by ApplyWindowBackground
 Part(function()
 	WindowSheet()
 end)
@@ -1724,7 +1741,7 @@ end
 -- Turning the skin on and off
 --------------------------------------------------------------------------------
 
-local ApplyWindowBackground   -- below, with the settings
+local ApplyWindowBackground, LayWindowBody   -- below, with the settings
 
 local InkSurface -- below
 -- (true when it turned the skin on)
@@ -1948,17 +1965,23 @@ local function Hook()
 	end)
 	-- the panes' inner panels come and go with the character tab (the paper
 	-- doll shown: the model and the stats; any other tab: a list and its
-	-- details), and with the right pane's Parchment sheet (UI Modifications'
-	-- switch, or a Parchment Window Background: both go through SetParchment)
+	-- details), and with the window's parchment (Look > Parchment's Character
+	-- Window, the right pane's or the whole window's: it goes through
+	-- SetParchment)
 	local paper = _G.PaperDollFrame
 	if paper then
 		Perf.HookScript(paper, "OnShow", function() M:RefreshDims() end)
 		Perf.HookScript(paper, "OnHide", function() M:RefreshDims() end)
 	end
 	-- (the bus's 'parchment', fired once the kit's sheets are switched, where
-	-- the hook on Kit.SetParchment ran: audit 2026-09-24 rank 5)
+	-- the hook on Kit.SetParchment ran: audit 2026-09-24 rank 5). The choice
+	-- moved to or from the Whole window: its sheet and the body under it
+	-- (the right pane's sheet was switched by the SetParchment that fired it)
 	MelloUI:On("parchment", Shared("'parchment' on the bus", function(area)
 		if area == "character" then
+			if active and skin and skin.wholeParchment ~= WindowParchment() then
+				LayWindowBody()
+			end
 			M:RefreshDims()
 		end
 	end), M)
@@ -2056,13 +2079,13 @@ end
 -- The panes' inner panels (WINDOW-RULES 2e, BuildSkin's PaneDim) and the
 -- insets' own (the stats, the equipment manager), shown where their text
 -- lies on stone. Not on parchment (user, 2026-09-24: text on parchment
--- follows the ink rule instead): the right pane's Parchment sheet takes the
+-- follows the ink rule instead): the right pane's parchment takes the
 -- right pane's panel and the insets' with it (their texts are inked there);
--- a Parchment Window Background takes both panes'. Not on a Dark Window
--- Background either: that window is dark already. The panes' only off the
--- character tab (the model and the stats' insets are there). The paper
--- doll's own shown flag, not its visibility, so the answer holds while the
--- window is closed.
+-- the whole window's takes both panes'. Not on a Dark Window Background
+-- either: that window is dark already. The panes' only off the character
+-- tab (the model and the stats' insets are there). The paper doll's own
+-- shown flag, not its visibility, so the answer holds while the window is
+-- closed.
 function M:RefreshDims()
 	if not (skin and skin.dims) then
 		return
@@ -2070,8 +2093,9 @@ function M:RefreshDims()
 	local bg = M.db and M.db.windowBackground or "window"
 	local paper = _G.PaperDollFrame
 	local onDoll = paper and paper:IsShown() and true or false
-	local rightParchment = WindowParchment() or Kit:ParchmentOn("character")
-	local stone = active and bg ~= "parchment" and bg ~= "dark"
+	local mode = ParchmentMode()
+	local rightParchment = mode ~= "off"
+	local stone = active and mode ~= "window" and bg ~= "dark"
 	local left, right = stone and not onDoll, stone and not onDoll and not rightParchment
 	for key, f in pairs(skin.dims) do
 		f:SetShown(((key == "left" and left) or (key == "right" and right)) and true or false)
@@ -2087,8 +2111,10 @@ function M:RefreshDims()
 	end
 end
 
--- Window Background Parchment as a parchment SHEET on the window's stone,
--- inside its rails, ending in the quest log's painted strokes on every side
+-- The whole window's parchment (Look > Parchment's Character Window: Whole
+-- window; Window Background's Parchment before 0.19.4) as a parchment SHEET
+-- on the window's stone, inside its rails, ending in the quest log's
+-- painted strokes on every side
 -- (user, 2026-09-24: the character window's parchment without the quest
 -- log's edge). The body under the rails stays the window's stone, so the
 -- gaps between the strokes show stone, as the quest log's do, and never a
@@ -2132,24 +2158,28 @@ WindowSheet = function()
 end
 
 -- Window Background on the window's stone body (the frame skin's `body`,
--- under both panes: one surface); Parchment as a sheet on that stone
--- (WindowSheet)
-ApplyWindowBackground = function()
+-- under both panes: one surface); the whole window's parchment as a sheet
+-- on the window's own stone, whatever the Window Background (WindowSheet:
+-- the look Window Background's Parchment had; without the sheet, the
+-- Parchment tile on the body). skin.wholeParchment: the choice laid (the
+-- 'parchment' listener in Hook lays them again when it moves). True when
+-- laid (the skin built).
+LayWindowBody = function()
 	local body = skin and skin.window and skin.window.skin and skin.window.skin.body
 	if not body then
-		return
+		return false
 	end
 	local value = M.db and M.db.windowBackground or "window"
+	local whole = WindowParchment()
 	local sheet = WindowSheet()
 	if sheet then
-		sheet:SetShown(value == "parchment")
+		sheet:SetShown(whole)
 	end
-	local piece = (value == "window" or (value == "parchment" and sheet)) and "window/frame_body" or LOOKS.backgroundPiece[value]
-	-- the right pane's own Parchment sheet stands down under a parchment
-	-- window and comes back with any other background
-	if Kit.SetParchment then
-		Kit:SetParchment("character", Kit:ParchmentOn("character"))
+	skin.wholeParchment = whole
+	if whole then
+		value = sheet and "window" or "parchment"
 	end
+	local piece = value == "window" and "window/frame_body" or LOOKS.backgroundPiece[value]
 	M:LayParchment()
 	if piece then
 		if body.kitName ~= piece then
@@ -2160,15 +2190,25 @@ ApplyWindowBackground = function()
 	elseif value == "dark" then
 		M:PaintDarkBackground()
 	end
+	return true
+end
+
+-- the body and the sheets: the right pane's own parchment sheet stands down
+-- under the whole window's and comes back with the right pane's (its
+-- `alive`, read again by SetParchment: a profile load's change too)
+ApplyWindowBackground = function()
+	if LayWindowBody() and Kit.SetParchment then
+		Kit:SetParchment("character", Kit:ParchmentOn("character"))
+	end
 end
 
 -- The Dark window background: a flat fill in the palette's inner panel, read
 -- now (not by key through Kit:Paint: the same texture wears a kit piece for
 -- every other choice); a new palette lays it again (the 'palette' listener
--- in Hook)
+-- in Hook). Not under the whole window's parchment: that lies on the stone
 function M:PaintDarkBackground()
 	local body = skin and skin.window and skin.window.skin and skin.window.skin.body
-	if not (body and self.db and self.db.windowBackground == "dark") then
+	if not (body and self.db and self.db.windowBackground == "dark") or WindowParchment() then
 		return
 	end
 	local c = MelloUI.Palette.innerPanel
@@ -2176,9 +2216,10 @@ function M:PaintDarkBackground()
 	body.kitPiece, body.kitName = true, nil   -- still ours (a plain mark): never faded with the game's art
 end
 
--- The right pane on parchment (its Parchment sheet, or Window Background
--- Parchment): its texts in ink (QuestInk's rule, user 2026-09-23); the
--- category and header plates, the bars and the icons as they are
+-- The window on parchment (Look > Parchment's Character Window: the right
+-- pane's sheet, or the whole window's): its texts in ink (QuestInk's rule,
+-- user 2026-09-23); the category and header plates, the bars and the icons
+-- as they are
 InkSurface = function()
 	local QI = MelloUI.QuestInk
 	if not QI then
@@ -2206,10 +2247,9 @@ InkSurface = function()
 			if not (active and M.isEnabled) then
 				return false
 			end
-			local bg = M.db and M.db.windowBackground
-			return Kit:ParchmentOn("character") or bg == "parchment"
+			return ParchmentMode() ~= "off"
 		end,
-		-- a Parchment window background is under everything; the Parchment
+		-- the whole window's parchment is under everything; the right pane's
 		-- sheet only under the right pane: a string elsewhere (the Skills
 		-- tab's rows beside it) keeps its colours
 		skip = function(fs)
@@ -2219,7 +2259,7 @@ InkSurface = function()
 			elseif plate then
 				return true
 			end
-			if M.db and M.db.windowBackground == "parchment" then
+			if WindowParchment() then
 				return false
 			end
 			local on = QI.OnSheet(fs, "character")
@@ -2235,8 +2275,9 @@ function M:OnSettingChanged(key)
 	if key == "statRows" then
 		self:RefreshStats()
 	elseif key == "windowBackground" then
+		-- (the panes' panels follow from its SetParchment, the bus's
+		-- 'parchment'; the ink reads only the parchment's choice, 0.19.4)
 		ApplyWindowBackground()
-		InkSurface()
 	end
 end
 

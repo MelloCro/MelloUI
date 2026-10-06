@@ -142,8 +142,13 @@ local function MarkerParent(plate, unitFrame)
 	return WorldFrame or unitFrame
 end
 
+-- each plate's marker, keyed by the game's unit frame: kept here, never as a
+-- key on the game's frame (hard rule 1); weak, so a frame the game drops
+-- takes its entry along
+local markers = setmetatable({}, { __mode = "k" })
+
 local function GetMarker(plate, unitFrame)
-	local marker = unitFrame.MelloUIPartyMarker
+	local marker = markers[unitFrame]
 	if marker then
 		return marker
 	end
@@ -171,7 +176,7 @@ local function GetMarker(plate, unitFrame)
 	marker.ring:AddMaskTexture(marker.ringMask)
 	marker.ring:Hide()
 	marker:Hide()
-	unitFrame.MelloUIPartyMarker = marker
+	markers[unitFrame] = marker
 	return marker
 end
 
@@ -200,7 +205,7 @@ local function UpdatePlate(plate)
 	if not unitFrame or (unitFrame.IsForbidden and unitFrame:IsForbidden()) then
 		return
 	end
-	local marker = unitFrame.MelloUIPartyMarker
+	local marker = markers[unitFrame]
 	if not (M.isEnabled and M.db) then
 		if marker then
 			marker:Hide()
@@ -258,8 +263,8 @@ local function HideAll()
 	if ok and type(plates) == "table" then
 		for _, plate in ipairs(plates) do
 			local uf = plate.UnitFrame
-			if uf and uf.MelloUIPartyMarker then
-				uf.MelloUIPartyMarker:Hide()
+			if uf and markers[uf] then
+				markers[uf]:Hide()
 			end
 		end
 	end
@@ -279,8 +284,8 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
 		local uf = ok and plate and plate.UnitFrame
-		if uf and uf.MelloUIPartyMarker then
-			uf.MelloUIPartyMarker:Hide()
+		if uf and markers[uf] then
+			markers[uf]:Hide()
 		end
 	else
 		-- the group changed, a role was set, a zone entered: every plate again
@@ -365,7 +370,7 @@ SlashCmdList.MELLOPMDUMP = function()
 			Step("plateClips", plate.DoesClipChildren, plate)
 			Step("frameClips", uf.DoesClipChildren, uf)
 		end
-		local marker = uf and not ufForbidden and uf.MelloUIPartyMarker
+		local marker = uf and not ufForbidden and markers[uf]
 		MelloUI:Print("%d %s: plate forbidden=%s frame forbidden=%s  class=%s role=%s  marker=%s  |%s", i, tostring(unit),
 			tostring(forbidden), tostring(ufForbidden), classFile, role, marker and (marker:IsShown() and "shown" or "hidden") or "none", steps)
 	end

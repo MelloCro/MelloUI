@@ -59,7 +59,7 @@ local M = MelloUI:RegisterModule("BackpackPanel", {
 	defaults = { itemBackground = "stone", windowBackground = "concrete", qualityGems = true, greyJunk = true },
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
-		  desc = "What the bag windows show behind the items: cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
+		  desc = "What the bag windows show behind the items (Bags by Kind's window too, and the bank): cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
 		{ type = "dropdown", key = "itemBackground", name = "Item Background", values = LOOKS.backgrounds,
 		  desc = "What an empty bag slot shows inside its rim. Both are chosen with pictures on Windows > Bags. The slots' rim is the Button Border (Look > Borders, every window's)." },
 		{ type = "toggle", key = "qualityGems", name = "Quality Gems",
@@ -446,6 +446,18 @@ function M:DressSlots(buttons, count, pitch)
 	end
 	DressButtons(buttons, count, pitch)
 	return true
+end
+
+-- The Window Background as saved, read whether this module is on or off (0.19.4, the options audit): the bag window
+-- by kind lays it on its own page (Kit:OwnWindow's `background`), with the kit look as these windows do; the bags'
+-- old first choice ('page') is the concrete now
+function M:WindowBackground()
+	local db = MelloUI.GetModuleDB and MelloUI:GetModuleDB("BackpackPanel")
+	local value = db and db.windowBackground
+	if type(value) ~= "string" or value == "page" then
+		return "concrete"
+	end
+	return value
 end
 
 -- A window's background choice: `alt` (a tile on the window's background

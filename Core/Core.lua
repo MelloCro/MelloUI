@@ -1061,6 +1061,7 @@ end
 --                       menu's), "window_open", "window_close", "tick" (the
 --                       chat's scroll button), "waypoint_set", "waypoint_clear",
 --                       "bags_open", "bags_close" (the bag window by kind)
+--                       "ready_check" (the Ready Check widget's alert)
 --     the notice's:    "notice_track", "notice_arrive", "notice_learn",
 --                       "notice_fail" (MelloUI:Announce, on the Master channel)
 --     the user's own:   "marker" (Route's World Marker as it changes), "rare"
@@ -1110,6 +1111,10 @@ do
 		-- bag window played them
 		bags_open      = { kit = "IG_BACKPACK_OPEN" },
 		bags_close     = { kit = "IG_BACKPACK_CLOSE" },
+		-- the Ready Check widget (0.19.4): the game's box stays away while it
+		-- is on, so its alert, as the box's OnShow played it (Custom Sounds'
+		-- hook swaps in its bell)
+		ready_check    = { kit = "READY_CHECK" },
 	}
 	for _, sound in pairs(SOUNDS) do
 		if sound.file then
@@ -3744,6 +3749,71 @@ do
 			end
 			if pet == false and fd.petToo == nil then
 				fd.petToo = false
+			end
+		end,
+		-- 0.19.4 (the options audit): the Fonts' Scale Title and Scale Text
+		-- held a Font Style's face correction and the player's own size in
+		-- one; the face's part is the face's now (Fonts' FaceFactor), Size
+		-- Title and Size Text the player's alone: an old scale over its face's
+		-- correction, so every look stays as it was. Scale Damage sized
+		-- nothing on this client: gone. (MelloUI.FontFaceFactor is set when
+		-- Modules/Fonts.lua loads, before any MergeSettings; without it every
+		-- face counts 1)
+		function(self)
+			local fonts = Raw(self, "Fonts")
+			if not fonts then
+				return
+			end
+			fonts.scaleDamage = nil
+			local faceFactor = self.FontFaceFactor
+			local function Carry(old, new, face)
+				local scale = fonts[old]
+				if scale == nil then
+					return
+				end
+				fonts[old] = nil
+				scale = tonumber(scale)
+				if not scale or not (fonts[new] == nil or fonts[new] == 1) then
+					return
+				end
+				local f = type(faceFactor) == "function" and tonumber(faceFactor(face, fonts[face])) or 1
+				if not f or f <= 0 then
+					f = 1
+				end
+				local size = math.floor(scale / f * 20 + 0.5) / 20
+				fonts[new] = math.max(0.7, math.min(1.5, size))
+			end
+			Carry("scaleTitle", "sizeTitle", "fontTitle")
+			Carry("scaleText", "sizeText", "fontText")
+		end,
+		-- 0.19.4 (the options audit): Class Icons' PvP Flag Icon is gone (its
+		-- hook was on a function this client never calls): its saved key goes
+		function(self)
+			local icons = Raw(self, "ClassIcons")
+			if icons then
+				icons.pvpFlag = nil
+			end
+		end,
+		-- 0.19.4 (the options audit, C3): the character window's parchment
+		-- is one choice, Look > Parchment's Character Window (UI
+		-- Modifications' parchment_character: "off", "pane" -- the right
+		-- pane's sheet -- or "window", the whole window's). Its old switch
+		-- (a boolean): on is the right pane. Window Background's Parchment
+		-- (CharacterPanel's windowBackground, a value it no longer has) is
+		-- the whole window, the Window Background back to its default (the
+		-- window's stone, which that sheet lay on)
+		function(self)
+			local ui, cp = Raw(self, "UIModifications"), Raw(self, "CharacterPanel")
+			local old = ui and ui.parchment_character
+			if type(old) == "boolean" then
+				ui.parchment_character = old and "pane" or "off"
+			end
+			if cp and cp.windowBackground == "parchment" then
+				cp.windowBackground = nil
+				local t = Own(self, "UIModifications")
+				if t then
+					t.parchment_character = "window"
+				end
 			end
 		end,
 	}

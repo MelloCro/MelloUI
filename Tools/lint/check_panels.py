@@ -54,7 +54,7 @@ CEILINGS = {
     "dump-slash": 57,
     "start-moving": 0,
     "animation-group": 3,
-    "new-ticker": 9,
+    "new-ticker": 8,
     "combat-guard": 1,
     "safe-standin": 0,
     "fn-standin": 0,

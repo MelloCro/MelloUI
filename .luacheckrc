@@ -86,7 +86,7 @@ read_globals = {
 	"PersonalResourceDisplayFrame", "PetAttackModeTexture", "PetCastingBarFrame", "OverlayPlayerCastingBarFrame", "TotemFrame", "RaidInfoFrame", "RaidFrame", "FriendsListFrame", "FriendsFrameIcon", "FriendsFrame", "MainActionBar", "MicroMenu", "BagsBar", "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer", "ActionButton1", "ActionButton2", "CompactRaidGroup_UpdateBorder", "CompactPartyFrameMember1", "CompactRaidGroup1Member1", "CompactRaidFrame1", "DefaultCompactUnitFrameSetup", "DefaultCompactMiniFrameSetup", "PetFrameFlash",
 	"PetFrameHealthBar", "PetFrameManaBar", "PetFrameTexture", "PlaySound", "PlaySoundFile",
 	"PlayerCastingBarFrame", "PlayerFrame", "PlayerFrame_UpdatePlayerNameTextAnchor", "PlayerName",
-	"PlayerFrame_ShowPvPIcon", "PlayerFrame_GetPlayerFrameContentContextual", "PortraitFrameMixin", "UnitFramePortrait_Update",
+	"PortraitFrameMixin", "UnitFramePortrait_Update",
 	"PlayerSpellsFrame", "LegacySystemFrame", "ProfessionsFrame", "PowerBarColor", "QuestInfoFrame", "QuestInfoObjectivesFrame",
 	"QuestInfoRequiredMoneyFrame", "QuestInfoRewardsFrame", "QuestInfoSpecialObjectivesFrame",
 	"QuestInfoTimerFrame", "QuestMapFrame", "QuestLogQuests_Update", "QuestMapFrame_ShowQuestDetails", "CommunitiesFrame", "WaypointLocationPinMixin", "LFGParentFrame", "LFGListingCategorySelection_UpdateCategoryButtons", "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame", "CollectionsJournal", "MountJournal", "ToyBox", "HeirloomsJournal", "WardrobeCollectionFrame", "CollectionsJournal_UpdateSelectedTab", "RAID_CLASS_COLORS", "RepairAllItems", "ResetCPUUsage",
@@ -98,7 +98,7 @@ read_globals = {
 	"TextStatusBarText", "TooltipDataProcessor", "UIParent", "UISpecialFrames", "UiMapPoint",
 	-- chat: every window incl. whisper windows, tab alphas (read only), the whisper popup (2026-09-23)
 	"CHAT_FRAMES", "CHAT_FRAME_TAB_NORMAL_MOUSEOVER_ALPHA", "CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA",
-	"FCFDock_GetSelectedWindow", "FCF_OpenTemporaryWindow", "GENERAL_CHAT_DOCK", "ChatTypeInfo",
+	"FCFDock_GetSelectedWindow", "FCF_OpenTemporaryWindow", "FCFTab_UpdateColors", "GENERAL_CHAT_DOCK", "ChatTypeInfo",
 	"Ambiguate", "C_BattleNet", "C_ChatInfo", "SetItemRef", "YOU",
 	-- a community channel line's author (the chat's class gems on parchment, 0.14.0)
 	"C_Club",

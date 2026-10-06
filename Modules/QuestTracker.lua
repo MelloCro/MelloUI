@@ -80,18 +80,18 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "header", name = "Tracker" },
 		{ type = "slider", key = "maxHeight", name = "Height", min = 0, max = 900, step = 20,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
-		  desc = "How tall the tracker may grow before it scrolls. Edit Mode's: the height set for the game's tracker in Edit Mode. The grip in its bottom-left corner sets it by dragging." },
+		  desc = "How tall the tracker may grow before it scrolls (at least 88, room for the title and a few lines). Edit Mode's: the height set for the game's tracker in Edit Mode. The grip in its bottom-left corner sets it by dragging." },
 		{ type = "toggle", key = "matchMinimap", name = "Match The Minimap's Width",
 		  desc = "The tracker as wide on the screen as the minimap (the round map's width, or the square map's frame) and, unless you moved it yourself, right under it: it moves and changes size with the map (the Minimap Kit's Width and Height). Needs the Minimap Kit. Off: the Width below, under the game's tracker's place." },
 		{ type = "slider", key = "width", name = "Width", min = 0, max = 600, step = 10,
 		  format = function(v) v = math.floor(v + 0.5) return v == 0 and "Edit Mode's" or tostring(v) end,
-		  desc = "How wide the tracker is when it does not match the minimap's width. Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
+		  desc = "How wide the tracker is when it does not match the minimap's width (at least 60). Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
 		{ type = "slider", key = "textSize", name = "Text Size", min = 10, max = 20, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the quest titles and the section headers; the objectives are one size smaller." },
+		  desc = "The size of the quest titles and the section headers (in the Fonts module's title face while the tracker wears the Painted Skin, which draws them larger); the objectives are one size smaller. The Fonts' Titles & headers size does not change it." },
 		{ type = "slider", key = "headerSize", name = "Header Text Size", min = 10, max = 24, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the tracker's title, All Objectives (in the Fonts module's title face while the reskin is on, which draws it larger)." },
+		  desc = "The size of the tracker's title, All Objectives (in the Fonts module's title face while the tracker wears the Painted Skin, which draws it larger). The Fonts' Titles & headers size does not change it." },
 		{ type = "slider", key = "scrollStep", name = "Scroll Step", min = 10, max = 120, step = 5,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "How far one turn of the mouse wheel scrolls." },
@@ -192,11 +192,15 @@ local Scroll                  -- below
 -- 500 of the Height ran off the screen) -- the room from the tracker's top
 -- down to the screen's edge, in its own units
 local SCREEN_MARGIN = 8
+-- the least set Height and Width (the options audit, 0.19.4: a Height under
+-- the grip's floor left only the title plate, a Width under 60 no room for
+-- the lines); 0 still means the game's tracker's
+local LEAST_H, LEAST_W = HEADER_H + 60, 60
 
 local function SetOrGameHeight()
 	local h = tonumber(M.db and M.db.maxHeight) or 0
 	if h > 0 then
-		return h
+		return math.max(LEAST_H, h)
 	end
 	local f = ObjectiveTrackerFrame
 	local ok, gh = pcall(function() return f and f:GetHeight() end)
@@ -222,13 +226,19 @@ end
 -- it does not
 local followW = nil
 
+-- the set Width, at least LEAST_W; 0: none (the game's tracker's)
+local function SetWidth()
+	local w = tonumber(M.db and M.db.width) or 0
+	return w > 0 and math.max(LEAST_W, w) or 0
+end
+
 -- the tracker's OWN width: the minimap's it follows, a set width, else what
 -- its two anchors on the game's tracker give it (in its own units -- the
 -- game's tracker may be scaled by the window mover, and its width is then
 -- not ours: the lines ran past the list and were cut, user screenshot
 -- 2026-09-23)
 local function FrameWidth()
-	local set = followW or tonumber(M.db and M.db.width) or 0
+	local set = followW or SetWidth()
 	if set > 0 then
 		return set
 	end
@@ -504,7 +514,7 @@ local moverEntry = nil
 -- Edit Layout's reset before it is saved)
 local function LayFrame(home)
 	local scale = home and 1 or tonumber(M.db and M.db.scale) or 1
-	local set = tonumber(M.db and M.db.width) or 0
+	local set = SetWidth()
 	-- the minimap's width while it follows it, laid as a set width
 	followW = FollowWidth(scale)
 	if followW then
@@ -916,7 +926,7 @@ local function ApplyLook()
 		end
 		StyleText(header.text, HeaderSize())
 		if kitOn and Kit and Kit.TitleFont then
-			pcall(Kit.TitleFont, Kit, header.text, true)
+			pcall(Kit.TitleFont, Kit, header.text, true, true)   -- (its size is Header Text Size's)
 		end
 		-- on the plate's painted band, not its canvas: the band sits lower in
 		-- the canvas, and the title rode high on it (user, 2026-09-23: "move
@@ -2525,7 +2535,7 @@ local function Section(key, label)
 	end
 	StyleText(row.text, TitleSize())
 	if kit and Kit and Kit.TitleFont then
-		pcall(Kit.TitleFont, Kit, row.text, true)
+		pcall(Kit.TitleFont, Kit, row.text, true, true)   -- (its size is Text Size's)
 	end
 	row.toggle.Refresh()
 	OnGem(row.toggle, kit and row.plate, HEADER_GEM, row, -6)
@@ -3134,6 +3144,15 @@ local function Listen()
 	end, M)
 	MelloUI:On("parchment", OnParchment, M)
 	MelloUI:On("column", OnColumn, M)
+	-- a face, a size or the Outline of the Fonts changed (the bus's 'fonts';
+	-- the options audit, 0.19.4: it showed only at the next rebuild): the
+	-- title at once, the lines and the section headers on the rebuild
+	MelloUI:On("fonts", function()
+		if M.isEnabled and frame then
+			ApplyLook()
+			MarkDirty()
+		end
+	end, M)
 	-- Edit Layout's session let go of it (Save, Discard, a profile): laid
 	-- from its settings again (Place waited while it was held)
 	MelloUI:On("mover", function(what, entry)

@@ -86,9 +86,11 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "Chat tabs, the chat input box and the chat buttons. Window background colours stay as configured in the chat settings." },
 		{ type = "header", name = "Buffs & Debuffs" },
 		{ type = "toggle", key = "auras", name = "Buffs & Debuffs",
-		  desc = "Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this)." },
-		{ type = "toggle", key = "keepDispelColor", parent = "auras", name = "Keep Dispel Colours",
-		  desc = "Leave the coloured magic / curse / poison / disease debuff borders untouched." },
+		  desc = "Darken the borders of your buff and debuff icons, with a thin dark edge round each icon (0.16.0: the Icon Border switch is part of this). The game's own icons: while Buffs & Debuffs shows MelloUI's rows in their place, there is nothing here to darken (those rows take the Aura Border)." },
+		-- (no parent: it serves the Cooldown Manager's icons as well as the
+		-- buffs and debuffs, and must not dim while only that one is on)
+		{ type = "toggle", key = "keepDispelColor", name = "Keep Dispel Colours",
+		  desc = "Leave the coloured magic / curse / poison / disease debuff borders untouched: on your buff and debuff icons (Buffs & Debuffs) and on the Cooldown Manager's icons (its Dark Mode)." },
 	},
 })
 

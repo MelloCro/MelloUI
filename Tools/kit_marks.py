@@ -182,6 +182,56 @@ class Canvas:
             d.line([(s(cx + tx * r), s(cy + 0.36 * r)), (s(cx + tx * r), s(cy + 0.6 * r))], fill=OUTLINE + (255,), width=max(1, int(0.45 * SK)))
         self.lay(lay)
 
+    def wing(self, bx, by, side, scale, metal, rise=1.0, spread=1.0, ink=1.0):
+        """One wing from its root (bx, by), `side` +1 right / -1 left: five feathers fanning up and out (the
+        sketches' wing, rank_sketch/sketch_ranks.py)."""
+        for ang, ln in ((-78, 1.00), (-60, 0.92), (-42, 0.80), (-24, 0.66), (-6, 0.50)):
+            a = math.radians(ang) * rise
+            L = 34 * scale * ln * spread
+            ux, uy = math.cos(a) * side, math.sin(a)
+            nx, ny = -uy, ux
+            w = 5.2 * scale
+            tip = (bx + ux * L, by + uy * L)
+            mid1 = (bx + ux * L * 0.55 + nx * w * side, by + uy * L * 0.55 + ny * w * side)
+            mid2 = (bx + ux * L * 0.55 - nx * w * 0.55 * side, by + uy * L * 0.55 - ny * w * 0.55 * side)
+            self.poly([(bx, by), mid1, tip, mid2], metal, width=ink, box=(bx - L, by - L, bx + L, by + L * 0.3))
+
+    def diamond(self, cx, cy, r, metal, width=1.0):
+        self.poly([(cx, cy - r), (cx + r * 0.8, cy), (cx, cy + r), (cx - r * 0.8, cy)], metal, width=width)
+
+    def bead(self, cx, cy, r, metal, ink=1.0):
+        box = (cx - r, cy - r, cx + r, cy + r)
+        m = Image.new("L", self.big.size, 0)
+        ImageDraw.Draw(m).ellipse([v * SK for v in box], fill=255)
+        lay, d = self.layer()
+        lay.paste(metal_fill(self.big.size, metal, [v * SK for v in box]), (0, 0), m)
+        d.ellipse([v * SK for v in box], outline=OUTLINE + (255,), width=max(1, int(ink * SK)))
+        self.lay(lay)
+
+    def taper(self, pts, w0, w1, metal, ink):
+        """a stroke along `pts` (canvas px), its width from w0 to w1, inked by `ink` px, a ball at its end"""
+        n = len(pts)
+        ink_m = Image.new("L", self.big.size, 0)
+        body = Image.new("L", self.big.size, 0)
+        di, db = ImageDraw.Draw(ink_m), ImageDraw.Draw(body)
+        for k, (x, y) in enumerate(pts):
+            w = w0 + (w1 - w0) * k / (n - 1)
+            rb = (w / 2) * SK
+            ri = rb + ink * SK
+            di.ellipse([x * SK - ri, y * SK - ri, x * SK + ri, y * SK + ri], fill=255)
+            db.ellipse([x * SK - rb, y * SK - rb, x * SK + rb, y * SK + rb], fill=255)
+        x, y = pts[-1]
+        rb = w1 * 0.95 * SK
+        ri = rb + ink * SK
+        di.ellipse([x * SK - ri, y * SK - ri, x * SK + ri, y * SK + ri], fill=255)
+        db.ellipse([x * SK - rb, y * SK - rb, x * SK + rb, y * SK + rb], fill=255)
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        box = tuple(v * SK for v in (min(xs) - w0, min(ys) - w0, max(xs) + w0, max(ys) + w0))
+        lay = Image.new("RGBA", self.big.size, (0, 0, 0, 0))
+        lay.paste(Image.new("RGBA", self.big.size, OUTLINE + (255,)), (0, 0), ink_m)
+        lay.paste(metal_fill(self.big.size, metal, box), (0, 0), body)
+        self.lay(lay)
+
     def done(self):
         return np.array(self.big.resize(self.size, Image.LANCZOS))
 
@@ -197,14 +247,15 @@ def orb_ring(orb, metal):
     return Image.fromarray(a, "RGBA")
 
 
-def draw_crest(c, orb, kind, cx, cy, r):
+def draw_crest(c, orb, kind, cx, cy, r, rim=None, mark=1.0):
     """The crest on canvas `c`, its disc of radius r centred on (cx, cy): the dark face, the orb's ring as its
-    rim, the mark. Nothing past the rim (no wings: user, 2026-09-28), so every kind's crest has one outline."""
-    metal = METAL_OF[kind]
+    rim (in `rim`, else the kind's metal), the mark. Nothing past the rim (no wings: user, 2026-09-28), so every
+    kind's crest has one outline (the nameplates' mark on top adds its wings around it: top_crest)."""
+    metal = rim or METAL_OF[kind]
     face = r * ORB_RING_IN / 49.0
     c.disc(cx, cy, face + 0.6, FACE)
     c.paste(orb_ring(orb, metal), cx, cy, r)
-    inner = face * 0.95
+    inner = face * 0.95 * mark      # (`mark`: the mark's size; the mark on top's is the sketch's, larger)
     if kind == "elite":
         c.crown(cx, cy + inner * 0.05, inner * 0.72, "gold")
     elif kind == "rare":
@@ -258,6 +309,136 @@ def disc(size=98, radius=ORB_RING_IN):
     return out
 
 
+# ------------------------------------------------------------------ the nameplates' mark on top
+# (user, 2026-10-05, MelloUI-BuildData/output/rank_sketch: look E, "dont recolor the nameplates themselves ... just
+# the metal line with the icon on it"; the boss's line ornate, style 3 of sketch_ornate.py, "keep this last one as
+# the Boss nameplate", with "the wings on the edges of the top Metal" line; docs/plans/rank-marks-top.md): a metal
+# line over the name, the crest on its middle. The game lays it from these pieces (NameplatePanel's mark on top):
+#   marks/topcrest_<kind>    the crest with its wings (an elite's gold, a rare elite's silver around a gold crest, a
+#                            boss's red-bronze; a rare has none); a boss's with the filigree's two big scrolls each
+#                            side. Its canvas is centred on the crest's disc (the game hangs it by its centre)
+#   marks/topline_<metal>    the line: a short strip, the same along its length (the game stretches it between the
+#                            ends and the crest), inked above and below only
+#   marks/topgem_<metal>     a plain line's end gem (a rare elite's gold on its silver line)
+#   marks/topend_boss_<l|r>  a boss's line end: its gem, two small scrolls turned back to the crest, a wing outward;
+#                            centred on the gem
+#   marks/topbead_boss       the bead halfway along each half of a boss's line
+# The sizes are the sketch's, in its pixels (the user's plate, its bracket about 33 tall) times TOP_UNIT (the crest's
+# disc 19 sketch px = CREST_SIZE), so the game sizes each piece from the bracket alone.
+TOP_UNIT = CREST_SIZE / 19.0
+TOP_CR = 9.5                  # the crest disc's radius
+TOP_LINE = {"gold": 1.5, "silver": 1.5, "boss": 1.15}   # the line's thickness
+TOP_GEM = 3.0                 # an end gem's half height
+TOP_BEAD = 1.5                # a boss bead's radius
+TOP_INK = 0.27                # the plain pieces' ink (the sketch's 0.8 px at 3x)
+TOP_SCROLL_INK = 0.55         # the filigree's ink (sketch_ornate3)
+TOP_WINGS = {"elite": "gold", "rareelite": "silver", "boss": "boss"}   # the crest's wings (a rare: none)
+TOP_RIM = {"elite": "gold", "rare": "silver", "rareelite": "gold", "boss": "boss"}   # the crest's rim
+TOP_MARK = 1.25               # the mark's size on the crest (as the sketch's: the plain crest's is smaller)
+
+
+def volute(x, y, out, up, length, turn, start, power=3.0, n=140):
+    """a scroll from (x, y) heading `out` (+1 right / -1 left), a little toward `up` (-1 up / +1 down) already,
+    its curvature growing along it: a long easy sweep, then a tight curl (sketch_ornate3)"""
+    pts, px, py = [], x, y
+    ds = length / n
+    for k in range(n + 1):
+        pts.append((px, py))
+        phi = start + turn * math.pi * ((k + 0.5) * ds / length) ** power
+        px += out * math.cos(phi) * ds
+        py += up * math.sin(phi) * ds
+    return pts
+
+
+def centred(draw, reach):
+    """A piece drawn by `draw(canvas, cx, cy)` around the centre of a canvas `reach` px each way, cut back to the
+    smallest canvas still centred on that point (so the game can hang it by its CENTER)."""
+    size = int(2 * reach)
+    c = Canvas((size, size))
+    draw(c, size / 2.0, size / 2.0)
+    a = c.done()
+    ys, xs = np.nonzero(a[..., 3] > 0)
+    if not len(xs):
+        return a
+    mid = size / 2.0
+    dx = int(math.ceil(max(mid - xs.min(), xs.max() + 1 - mid))) + 2
+    dy = int(math.ceil(max(mid - ys.min(), ys.max() + 1 - mid))) + 2
+    return a[int(mid - dy):int(mid + dy), int(mid - dx):int(mid + dx)]
+
+
+def top_crest(orb, kind):
+    U = TOP_UNIT
+
+    def draw(c, cx, cy):
+        r = TOP_CR * U
+        if kind == "boss":
+            for side in (-1, 1):
+                xs = cx + side * (TOP_CR - 1.0) * U
+                c.taper(volute(xs, cy + 0.5 * U, side, -1, 30 * U, 2.15, 0.30), 1.6 * U, 0.55 * U, "boss", TOP_SCROLL_INK * U)
+                c.taper(volute(xs, cy + 1.5 * U, side, 1, 23 * U, 2.05, 0.26), 1.35 * U, 0.5 * U, "boss", TOP_SCROLL_INK * U)
+        wings = TOP_WINGS.get(kind)
+        if wings:
+            for side in (-1, 1):
+                c.wing(cx + side * r * 0.35, cy + r * 0.25, side, r / 34 * 1.75, wings, rise=0.95, ink=TOP_INK * U)
+        draw_crest(c, orb, kind, cx, cy, r, rim=TOP_RIM[kind], mark=TOP_MARK)
+    return centred(draw, 48 * U)
+
+
+def top_line(metal):
+    """the line: 16 px long, its band the metal's gradient top to bottom, inked above and below (never at its ends:
+    the game stretches it)"""
+    U = TOP_UNIT
+    t = TOP_LINE[metal] * U
+    ink = TOP_INK * U * 2
+    h = int(math.ceil(t + 2 * ink + 4))
+    h += h % 2
+    yy = np.arange(h, dtype=np.float64) + 0.5
+    top, bot = h / 2 - t / 2, h / 2 + t / 2
+
+    def cover(a, b):   # how much of each row lies between a and b (anti-aliased edges)
+        return np.clip(np.minimum(yy + 0.5, b) - np.maximum(yy - 0.5, a), 0, 1)
+    band, outer = cover(top, bot), cover(top - ink, bot + ink)
+    rgb = _ramp(metal, 1.0 - np.clip((yy - top) / max(t, 1), 0, 1))
+    out = np.zeros((h, 16, 4), np.float64)
+    for i in np.nonzero(outer > 0)[0]:
+        # (a row the band covers in part is ink for the rest)
+        out[i, :, :3] = (rgb[i] * band[i] + np.array(OUTLINE, np.float64) * (outer[i] - band[i])) / outer[i]
+        out[i, :, 3] = outer[i] * 255
+    return np.clip(out + 0.5, 0, 255).astype(np.uint8)
+
+
+def top_gem(metal):
+    U = TOP_UNIT
+    return centred(lambda c, cx, cy: c.diamond(cx, cy, TOP_GEM * U, metal, width=TOP_INK * U), 6 * U)
+
+
+def top_end(side):
+    """a boss's line end, `side` -1 left / +1 right: the wing out of the line's end (under the gem), two small
+    scrolls turned back to the crest, the gem; centred on the gem"""
+    U = TOP_UNIT
+
+    def draw(c, cx, cy):
+        c.wing(cx + side * 1.0 * U, cy + 1.0 * U, side, 0.62 * U, "boss", rise=0.8, spread=1.0, ink=TOP_INK * U)
+        xs = cx - side * 3.5 * U
+        for up in (-1, 1):
+            c.taper(volute(xs, cy + up * 0.4 * U, -side, up, 13 * U, 2.0, 0.35), 1.15 * U, 0.45 * U, "boss", TOP_SCROLL_INK * U)
+        c.diamond(cx, cy, TOP_GEM * U, "boss", width=TOP_INK * U)
+    return centred(draw, 30 * U)
+
+
+def top_bead():
+    U = TOP_UNIT
+    return centred(lambda c, cx, cy: c.bead(cx, cy, TOP_BEAD * U, "boss", ink=TOP_INK * U * 1.6), 4 * U)
+
+
+def top_pieces(orb):
+    out = [("marks/topcrest_" + kind, top_crest(orb, kind)) for kind in KINDS]
+    out += [("marks/topline_" + metal, top_line(metal)) for metal in METALS]
+    out += [("marks/topgem_" + metal, top_gem(metal)) for metal in ("gold", "silver")]
+    out += [("marks/topend_boss_l", top_end(-1)), ("marks/topend_boss_r", top_end(1)), ("marks/topbead_boss", top_bead())]
+    return out
+
+
 def bases():
     """The finished pieces the marks are made from (build_kit.py keeps them as it makes them)."""
     return {"window/portrait_ring", "buttons/orb_normal"} | {"bars/%s_cap_l" % f for f in CAP_FAMILIES}
@@ -280,4 +461,7 @@ def pieces(made, layout):
             if base in made:
                 out.append(("marks/cap_%s_%s" % (family, metal), recolour(made[base], metal), base))
     out.append(("marks/orb_disc", disc(orb.shape[1]), None))
+    # the nameplates' mark on top (2026-10-05)
+    for name, a in top_pieces(orb):
+        out.append((name, a, None))
     return out

@@ -81,7 +81,7 @@ local M = MelloUI:RegisterModule("BagWindow", {
 		{ type = "toggle", key = "recent", name = "Recent Kind",
 		  desc = "What you picked up lately, under its own heading first. Off: it goes straight to its own kind." },
 		{ type = "dropdown", key = "recentFor", parent = "recent", name = "Recent Lasts", values = RECENT_FOR,
-		  desc = "How long an item stays under Recent: until you close your bags, only until you hover it, or for 5 minutes after you got it." },
+		  desc = "How long an item stays under Recent: until you close your bags, only until you point at it (it moves to its own kind as the pointer leaves it), or for 5 minutes after you got it." },
 		{ type = "toggle", key = "gear", name = "Gear Kind",
 		  desc = "Weapons and armour under their own heading. Off: they go to Other." },
 		{ type = "toggle", key = "quest", name = "Quest Kind",
@@ -529,11 +529,38 @@ M.byKind, M.empties = byKind, empties
 -- The item buttons: the game's own template, one holder per bag
 --------------------------------------------------------------------------------
 
+local LayoutSoon   -- (the events' one, below)
+
+-- Recent Lasts Until Hovered: was this slot's item laid under Recent, and is
+-- the game's new-item mark off it now?
+local function LeftRecent(bag, slot)
+	local list = byKind.recent
+	if not (list and M.db and M.db.recentFor == "hover") then
+		return false
+	end
+	if C_NewItems and C_NewItems.IsNewItem and C_NewItems.IsNewItem(bag, slot) then
+		return false
+	end
+	for i = 1, #list do
+		if list[i].bag == bag and list[i].slot == slot then
+			return true
+		end
+	end
+	return false
+end
+
 local SlotLeft = Shared("OnLeave on a bag window slot", function(self)
 	-- the game cleared its new-item mark on the hover: the glow follows
-	local info = C_Container.GetContainerItemInfo(self:GetBagID(), self:GetID())
+	local bag, slot = self:GetBagID(), self:GetID()
+	local info = C_Container.GetContainerItemInfo(bag, slot)
 	if info and self.UpdateNewItem then
 		self:UpdateNewItem(info.quality)
+	end
+	-- Until Hovered: the item leaves Recent as the pointer leaves it (laid
+	-- again on the next frame, never while it is under the mouse; options
+	-- audit, 2026-10-05: it stayed until the next relayout)
+	if LeftRecent(bag, slot) then
+		LayoutSoon()
 	end
 end, "script")
 
@@ -1032,12 +1059,51 @@ end
 
 local Listen   -- (below: the events while shown)
 
+-- The bags' Window Background (0.19.4, the options audit: Backpack Kit's, as the game's bag windows and the bank wear
+-- it) on this window's page: the shell's page stone takes it (opts.background), with the kit look, as theirs do
+local function WindowBackground()
+	local panel = MelloUI:GetModule("BackpackPanel")
+	return panel and panel.WindowBackground and panel:WindowBackground() or nil
+end
+
+-- The money lies on the page: in dark ink while the page is parchment (the parchment ink rule, QuestInk.lua), in its
+-- own colours otherwise (the texts of this window's own money frame, the game's template)
+local MONEY_TEXTS = { "GoldButton", "SilverButton", "CopperButton" }
+local function InkMoney()
+	local QI, money = MelloUI.QuestInk, win.money
+	if not (QI and QI.InkText and QI.PlainText and money) then
+		return
+	end
+	local paper = Kit:IsOn(AREA) and WindowBackground() == "parchment"
+	for _, key in ipairs(MONEY_TEXTS) do
+		local button = money[key]
+		local fs = button and button.Text
+		if fs then
+			if paper then
+				QI.InkText(fs)
+			else
+				QI.PlainText(fs)
+			end
+		end
+	end
+end
+
+-- the bags' Window Background changed (Backpack Kit's option or the picker, on the bus whether that module is on or
+-- off): the page and the money's ink at once (taken with the window, at its first open)
+local BackgroundChanged = Shared("'setting' on the bus (the bag window's background)", function(name, key)
+	if name == "BackpackPanel" and key == "windowBackground" and win.shell then
+		win.shell:SetBackground()
+		InkMoney()
+	end
+end)
+
 local Shown = Shared("OnShow on the bag window", function()
 	MelloUI:PlayUISound("bags_open")
 	Listen(true)
 	if win.money then
 		MoneyFrame_UpdateMoney(win.money)
 	end
+	InkMoney()
 	M:Layout()
 end, "script")
 
@@ -1112,9 +1178,10 @@ local function Build()
 		area = AREA, plate = "rail",
 		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", scale = ringW > 0 and G.RING / ringW or 1,
 			x = G.RING_X, y = G.RING_Y },
-		title = TEXT.title, close = true, escape = true, fit = true,
+		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
 		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home },
 	})
+	MelloUI:On("setting", BackgroundChanged, "Bag window background")
 	-- the items, on the own windows' dark panel (user, 2026-10-04: "this part should have a darker background for
 	-- clarity and less eye strain, that part should scale with the inventory size"; WINDOW-RULES 2e): W.Panel, the
 	-- game's inset in its look, held round the items by its corners so it grows and shrinks with them
@@ -1175,12 +1242,14 @@ local function Build()
 	win.sell:SetFrameLevel(headings.junk:GetFrameLevel() + 2)
 	win.sell:Hide()
 	W.Dress(f, win.shell)
-	-- the look switched: the slots dressed as the game's bag slots, or left in the game's look
+	-- the look switched: the slots dressed as the game's bag slots, or left in the game's look; the money's ink with
+	-- the page (the Window Background is the kit look's)
 	win.shell:OnKit(function(_, on)
 		if on then
 			undressed = #made
 			Dress()
 		end
+		InkMoney()
 	end)
 	return f
 end
@@ -1210,7 +1279,7 @@ local LAYOUT_EVENTS = { "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED", "QUEST_AC
 local MARK_EVENTS = { "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "INVENTORY_SEARCH_UPDATE" }
 
 local relay = false
-local function LayoutSoon()
+function LayoutSoon()
 	if relay then
 		return
 	end

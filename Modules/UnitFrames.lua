@@ -46,7 +46,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		{ type = "toggle", key = "hideCombatGlow", name = "Hide Combat Flash",
 		  desc = "Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks." },
 		{ type = "toggle", key = "hideStatusGlow", name = "Hide Status Glow",
-		  desc = "Hide the glow around the player portrait and name that shows resting (yellow) and combat (red)." },
+		  desc = "Hide the glow around the player portrait and name that shows resting (yellow) and combat (red), and the pet frame's glow while your pet attacks." },
 		{ type = "header", name = "Frame Art" },
 		{ type = "slider", key = "frameAlpha", name = "Frame Art Opacity", min = 0.1, max = 1, step = 0.05, percent = true,
 		  desc = "Opacity of the frame art around the bars and portraits. The bars themselves stay solid." },
@@ -561,7 +561,14 @@ local function FrameArtTextures()
 	return list
 end
 
+-- (0.19.4, the options audit) The kit's unit frame skin fades this same art
+-- and puts every write back to 0 (Kit:Fade): nothing is set while it covers
+-- the frames. When it goes off, Kit:Unfade leaves 1 and the cover listener
+-- (OnEnable) sets the chosen opacity again.
 local function ApplyFrameAlpha()
+	if MelloUI.Kit and MelloUI.Kit:IsCovered("unitframes") then
+		return
+	end
 	local alpha = M.isEnabled and (tonumber(M.db.frameAlpha) or 1) or 1
 	for _, tex in ipairs(FrameArtTextures()) do
 		if tex and tex.SetAlpha then
@@ -647,6 +654,7 @@ function M:OnEnable(db)
 		MelloUI.Kit:OnCover(function(group, covered)
 			if group == "unitframes" and not covered and M.isEnabled then
 				ApplyNames()
+				ApplyFrameAlpha()   -- (after the skin's Unfade, which left the art at 1)
 			end
 		end)
 	end

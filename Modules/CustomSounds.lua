@@ -37,6 +37,7 @@ local ADDON_NAME, ns = ...
 local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("CustomSounds")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
+local Secret = MelloUI.Safe.IsSecret
 
 local SOUND_PATH = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Sounds\\SFX\\"
 
@@ -66,9 +67,9 @@ local options = {
 	{ type = "toggle", key = "clicks", name = "Clicks",
 	  desc = "Buttons, checkboxes, tabs and scroll arrows: light clicks, a heavy one for Okay/Accept, a latch releasing for Cancel, Quit and abandoning a quest." },
 	{ type = "toggle", key = "windows", name = "Windows",
-	  desc = "A page turn when the character sheet, spell book, quest log or main menu opens, a latch when they close; the spell book's page turns; the bags as a leather pouch opening and closing." },
+	  desc = "A page turn when the character sheet, spell book, quest log or main menu opens, a latch when they close; the spell book's page turns; a quest giver's list and Decline; the bags as a leather pouch opening and closing." },
 	{ type = "toggle", key = "inventory", name = "Inventory",
-	  desc = "An item picked up, moved between slots, put down or looted; a rare or better item has its own sound. Silences the game's own pick-up and put-down sounds (the Equipment and Vendor sounds rely on that)." },
+	  desc = "An item picked up, moved between slots, put down or looted; a rare or better item has its own sound. Silences the game's own pick-up and put-down sounds (the Equipment and Vendor sounds rely on that, and play only while this is on)." },
 	{ type = "toggle", key = "equipment", parent = "inventory", name = "Equipment",
 	  desc = "Buckles and plate for armour, a steel slide for weapons, jewellery ticks for rings, necks and trinkets; straps loosening when something is taken off." },
 	{ type = "toggle", key = "vendor", parent = "inventory", name = "Vendor",
@@ -82,7 +83,7 @@ local options = {
 	{ type = "toggle", key = "quests", name = "Quests",
 	  desc = "The mechanism engaging when a quest is turned in." },
 	{ type = "toggle", key = "errors", name = "Errors",
-	  desc = "A muted knock for the game's red error messages (\"You can't do that yet\"), at most one every half second." },
+	  desc = "A muted knock for the game's red error messages (\"You can't do that yet\"), at most one every half second; none for a message Error Messages hides." },
 	{ type = "toggle", key = "targets", name = "Targets",
 	  desc = "An iron sight catching when a target is selected, a latch releasing when it is lost." },
 	{ type = "toggle", key = "levelUp", name = "Level Up",
@@ -109,7 +110,8 @@ local options = {
 
 -- The Preview tab: a Play button per sound (user, 2026-09-22), in the
 -- library's order, each with where the game uses it. Plays whether or not
--- the module or its family is on.
+-- its family is on; while the module is off the buttons sleep, as every row
+-- of a switched-off module (Core/Config.lua).
 local PREVIEW = {
 	{ "UI_Click_Light", "Click, light", "checkboxes, tabs, list rows, minimap zoom" },
 	{ "UI_Click_Heavy", "Click, heavy", "Okay, Accept, the panel buttons, the main menu opening" },
@@ -196,7 +198,9 @@ local KITS = {
 	[825] = { "UI_Click_Light", "clicks" },   -- IG_CHAT_EMOTE_BUTTON
 	[823] = { "UI_Click_Light", "clicks" },   -- IG_MINIMAP_ZOOM_IN
 	[824] = { "UI_Click_Light", "clicks" },   -- IG_MINIMAP_ZOOM_OUT
-	[877] = { "UI_Click_Light", "clicks" },   -- IG_QUEST_LIST_SELECT
+	-- (a kit takes its file's group, whose switch mutes that file: the quest
+	-- giver's list row and Decline play the quest log's close, Windows')
+	[877] = { "UI_Click_Light", "windows" },   -- IG_QUEST_LIST_SELECT
 	[864] = { "UI_Click_Light", "clicks" },   -- IG_BACKPACK_COIN_SELECT
 	[891] = { "UI_Click_Light", "clicks" },   -- MONEY_FRAME_OPEN
 	[821] = { "UI_Click_Light", "clicks" },   -- IG_MINIMAP_OPEN
@@ -219,7 +223,7 @@ local KITS = {
 	[807] = { "UI_Cancel", "clicks" },   -- GS_LOGIN_CHANGE_REALM_CANCEL
 	[39514] = { "UI_Cancel", "clicks" }, -- UI_IG_STORE_CANCEL_BUTTON
 	[866] = { "UI_Cancel", "clicks" },   -- IG_BACKPACK_COIN_CANCEL
-	[879] = { "UI_Cancel", "clicks" },   -- IG_QUEST_CANCEL
+	[879] = { "UI_Cancel", "windows" },  -- IG_QUEST_CANCEL (its file's group, as 877)
 	[846] = { "UI_Cancel", "clicks" },   -- IG_QUEST_LOG_ABANDON_QUEST
 	[847] = { "UI_Cancel", "clicks" },
 	[892] = { "UI_Cancel", "clicks" },   -- MONEY_FRAME_CLOSE
@@ -325,7 +329,9 @@ local FILES = {
 	[567453] = { "UI_TargetSelect", "targets", { 101, 867, 869, 871, 873, 206593 } },   -- iselecttarget
 	[567520] = { "UI_Cancel", "targets", { 684, 868, 870, 872, 874, 900, 206823 } },   -- ideselecttarget
 	[567416] = { "Map_Ping", "map", { 3175 } },   -- mapping
-	[567428] = { "Loot_Coins", "loot", { 120, 895, 247487, 249509 } },   -- lootcoinsmall
+	-- (kits 247487 and 249509 play this file too, or the money dialog's,
+	-- 567483: listed there only, so one group owns each kit)
+	[567428] = { "Loot_Coins", "loot", { 120, 895 } },   -- lootcoinsmall
 	[567413] = { "Loot_Coins", "loot", { 287276 } },   -- lootcoinlarge
 	[567489] = { "SpellIcon_Drag", "spells", { 688, 832, 837, 902 } },   -- uspelliconpickup (engine, on the drag)
 	[567524] = { "SpellIcon_Place", "spells", { 689, 833, 838, 903 } },   -- uspellicondrop
@@ -535,7 +541,8 @@ local function Play(name, why, a, b)
 	return false
 end
 
--- The Preview tab's Play: the file as is, whatever is on or off.
+-- The Preview tab's Play: the file as is, whichever families are on or off
+-- (the module itself is on: its buttons sleep while it is off).
 function M:Preview(name)
 	local ok, willPlay = PlayFile(name, (self.db and self.db.channel) or "SFX")
 	if not (ok and willPlay) then
@@ -632,7 +639,14 @@ end
 local holdingItem = false
 local holdingSpell = false
 local pickedFromPaperDoll = 0   -- GetTime of a pick-up from an equipment slot
+local putDownAt = 0             -- GetTime an item last left the cursor
 local enteredWorld = 0
+
+-- Equipment and Vendor sit under Inventory (their rows grey with it): each
+-- plays only while Inventory is on too, whose mutes they rely on
+local function ChildOn(group)
+	return GroupOn("inventory") and GroupOn(group)
+end
 
 local function ItemQuality(link, itemID)
 	local quality
@@ -698,6 +712,9 @@ local function CursorChanged(isDefault, newType, oldType)
 	local wasItem = holdingItem
 	local isItem = newType == CURSOR_ITEM
 	holdingItem = isItem
+	if wasItem and not isItem then
+		putDownAt = GetTime()
+	end
 	-- a spell, macro, ability, pet action, mount... on the cursor
 	local wasSpell = holdingSpell
 	local isSpell = not isDefault and newType ~= nil and not CURSOR_PLAIN[newType] and true or false
@@ -732,10 +749,12 @@ local function CursorChanged(isDefault, newType, oldType)
 	elseif isItem and wasItem then
 		Play("Inventory_Move", "cursor swapped items")
 	elseif wasItem and not isItem then
+		-- (the drop is left to Equipment or Vendor only while that one is on;
+		-- off, the plain drop plays, as anywhere else)
 		local onto = MouseFrame()
-		if OnEquipmentSlot(onto) then
+		if GroupOn("equipment") and OnEquipmentSlot(onto) then
 			Note("Inventory_Drop skipped: dropped on an equipment slot (Equipment plays)")
-		elseif OnMerchant(onto) then
+		elseif GroupOn("vendor") and OnMerchant(onto) then
 			Note("Inventory_Drop skipped: dropped on the merchant (Vendor plays)")
 		else
 			Play("Inventory_Drop", "cursor put an item down")
@@ -785,7 +804,7 @@ local WEAPON_SLOTS = { [16] = true, [17] = true, [18] = true }
 local ACCESSORY_SLOTS = { [2] = true, [11] = true, [12] = true, [13] = true, [14] = true }
 
 local function EquipmentChanged(slot, hasCurrent)
-	if not GroupOn("equipment") or GetTime() - enteredWorld < 3 then
+	if not ChildOn("equipment") or GetTime() - enteredWorld < 3 then
 		return
 	end
 	if hasCurrent then
@@ -845,6 +864,13 @@ local function ApplicationChanged(_, newStatus)
 	end
 end
 
+-- An error Error Messages hides never reaches the screen: no knock for it
+-- (its own test: a secret text is never hidden there, so it knocks)
+local function ErrorHidden(messageType, message)
+	local filter = MelloUI:GetModule("ErrorFilter")
+	return type(filter) == "table" and type(filter.Hides) == "function" and filter:Hides(messageType, message) or false
+end
+
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 	if event == "CURSOR_CHANGED" then
 		CursorChanged(...)
@@ -861,7 +887,7 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 			Play("Craft_Item", "item crafted")
 		end
 	elseif event == "UI_ERROR_MESSAGE" then
-		if GroupOn("errors") then
+		if GroupOn("errors") and not ErrorHidden(...) then
 			Play("UI_Error", "error message")
 		end
 	elseif event == "CHAT_MSG_MONEY" then
@@ -900,6 +926,11 @@ local EVENTS = {
 
 -- The merchant: buying and selling are engine sounds (the item's pick-up
 -- and put-down files, muted with Inventory); the functions are hooked once.
+-- A drag-sell (an item dropped on the merchant's window, or on one of its
+-- goods) goes through PickupMerchantItem with the item on the cursor: a sale
+-- when the cursor held an item as it was called (still held, should the
+-- cursor's event come after the call, or put down in this same frame, should
+-- it come during it); with an empty cursor it picks a good up to buy.
 local merchantHooked = false
 
 local function HookMerchant()
@@ -913,14 +944,21 @@ local function HookMerchant()
 		if restock and restock.buyingQuiet then
 			return
 		end
-		if GroupOn("vendor") then
+		if ChildOn("vendor") then
 			Play("Vendor_Buy", "bought")
 		end
 	end
 	local function Sold()
-		if GroupOn("vendor") then
+		if ChildOn("vendor") then
 			Play("Vendor_Sell", "sold")
 		end
+	end
+	if type(_G.PickupMerchantItem) == "function" then
+		hooksecurefunc("PickupMerchantItem", function()
+			if holdingItem or putDownAt == GetTime() then
+				Sold()
+			end
+		end)
 	end
 	if type(BuyMerchantItem) == "function" then
 		hooksecurefunc("BuyMerchantItem", Bought)
@@ -943,42 +981,38 @@ end
 
 --------------------------------------------------------------------------------
 -- The scroll wheel: a notch per step. The game has no wheel sound, so there
--- is nothing to mute and no kit to hook: every frame with an OnMouseWheel
--- script gets a post-hook (EnumerateFrames, once at enable and every ten
--- seconds for frames made since; a hook is a one-time thing per frame).
--- The game adds a new frame at the end of its list and never drops one, so
--- the ten-second look starts where the last walk ended and sees only the new
--- frames; a walk over all of them (at enable, then once a minute, should a
--- new frame ever turn up earlier in the list) is spread over frames, a
--- millisecond at a time, instead of one long stall (6 ms every ten seconds
--- before, 2026-09-24 /melloperf).
--- Only the frames given the hook are remembered (user, 2026-09-24: "clean up
--- the spikes"). The walk used to keep every frame it had looked at, the whole
--- interface's, in a weak table: 1.3 MB at 20 000 frames, 2.5 MB at 40 000,
--- doubling a megabyte and more at a time as windows made new frames (the
--- likeliest source of the walk's memory in the 2026-09-24 recording), and
--- gone through again in one go at the end of every garbage collection. A walk
--- over every frame now counts its way to where the last walk ended instead:
--- the same count there means no frame turned up earlier in the list, so every
--- frame up to it was looked at before and only those after it are new;
--- another count (never seen so far) looks at every frame again, the hooked
--- ones apart.
+-- is nothing to mute and no kit to hook: a frame with an OnMouseWheel script
+-- gets a post-hook (a hook is a one-time thing per frame). Nothing at login
+-- and no poller (0.19.4; before, a walk over every frame of the interface at
+-- enable and another look every ten seconds, against the login rule): the
+-- frames are found where the mouse goes, at the moments the game tells --
+--   * the mouse leaving the world for the interface (the world frame's
+--     OnLeave, the hook the hover ticks use too), looked at on the next frame;
+--   * a click on the interface (GLOBAL_MOUSE_DOWN; over the world nothing is
+--     asked);
+--   * each new frame the hover ticks find under the mouse, while they run.
+-- A look hooks the frame under the mouse and its parents, then walks the
+-- window they belong to (the frame just under UIParent), every frame in it,
+-- so its other lists and panes sound too before the mouse reaches them; a
+-- window is walked again only WALK_AGAIN seconds after its last walk (pages
+-- made since). A walk is spread over frames, a millisecond at a time (far
+-- from the client's 1000 ms per-addon burst), on a stack used again and
+-- again, the children handed over as values (no list made per frame). Only
+-- the frames given the hook and the windows walked are remembered, both
+-- weakly (user, 2026-09-24: "clean up the spikes").
 --------------------------------------------------------------------------------
 
 local wheelHooked = setmetatable({}, { __mode = "k" })   -- the frames given the hook
-local wheelTicker = nil
+local wheelWalked = setmetatable({}, { __mode = "k" })   -- window -> GetTime of its last walk
 local wheelHooks = 0
 local WALK_BUDGET = 1       -- ms a walk may take per frame
-local WALK_CHECK = 64       -- frames looked at between two looks at the clock
-local FULL_EVERY = 6        -- ten-second looks between two walks over every frame
-local wheelCursor = nil     -- the frame the walk under way stopped at (nil: from the first)
-local wheelCount = 0        -- frames from the first up to wheelCursor
-local wheelTail = nil       -- the last frame the last finished walk reached
-local wheelTailCount = 0    -- frames from the first up to wheelTail
-local wheelKnown = nil      -- a walk from the first: the last walk's end, not reached yet
-local wheelKnownCount = 0
+local WALK_CHECK = 32       -- frames looked at between two looks at the clock
+local WALK_AGAIN = 10       -- seconds before a window is walked again
+local WHEEL_UP = 40         -- parents looked at above the frame under the mouse, at most
+local walkStack = {}        -- the frames still to look at, the last on top
+local walkTop = 0
 local wheelWalking = false
-local wheelLooks = 0
+local wheelLookQueued = false
 local wheelWalker = CreateFrame("Frame")
 
 local function OnWheel()
@@ -998,27 +1032,28 @@ local function HookWheel(f)
 	end
 end
 
--- One stretch of the walk, up to the budget; true once the list's end is reached.
+-- a frame's children onto the stack
+local function PushChildren(...)
+	for i = 1, select("#", ...) do
+		walkTop = walkTop + 1
+		walkStack[walkTop] = (select(i, ...))
+	end
+end
+
+-- One stretch of the walk, up to the budget; true once the stack is empty.
 local function WalkStep()
 	local stop = debugprofilestop() + WALK_BUDGET
 	local count = 0
-	local f = EnumerateFrames(wheelCursor)
-	while f do
-		wheelCount = wheelCount + 1
-		if not wheelKnown then
+	while walkTop > 0 do
+		local f = walkStack[walkTop]
+		walkStack[walkTop] = nil
+		walkTop = walkTop - 1
+		if not (f.IsForbidden and f:IsForbidden()) then
 			if not wheelHooked[f] then
 				HookWheel(f)
 			end
-		elseif f == wheelKnown then
-			-- the last walk's end: the frames after it are the new ones
-			wheelKnown = nil
-			if wheelCount ~= wheelKnownCount then
-				-- a frame turned up before it: every frame again, from the first
-				wheelCount = 0
-				f = nil
-			end
+			PushChildren(f:GetChildren())
 		end
-		wheelCursor = f
 		count = count + 1
 		if count >= WALK_CHECK then
 			count = 0
@@ -1026,42 +1061,39 @@ local function WalkStep()
 				return false
 			end
 		end
-		f = EnumerateFrames(f)
 	end
-	if wheelKnown then
-		-- the last walk's end never came: every frame again, from the first
-		wheelKnown, wheelCursor, wheelCount = nil, nil, 0
-		return false
-	end
-	wheelTail, wheelTailCount = wheelCursor, wheelCount
 	return true
 end
 
-local function Walking()
-	local ok, done = pcall(WalkStep)
-	if not ok then
-		-- the walk from the start again next time, every frame looked at
-		wheelCursor, wheelTail, wheelTailCount, wheelKnown = nil, nil, 0, nil
+-- the walk under way given up (a frame that refused, or the wheel off); its
+-- window is walked again at a later look
+local function DropWalk()
+	for i = walkTop, 1, -1 do
+		walkStack[i] = nil
 	end
-	if not ok or done then
+	walkTop = 0
+	if wheelWalking then
 		wheelWalking = false
 		Perf.SetScript(wheelWalker, "OnUpdate", nil)
 	end
 end
 
--- A walk to the list's end: from where the last one ended (the frames made
--- since), or with `full` from the first frame; one already under way goes on
--- (it reaches the end too).
-local function Walk(full)
+local function Walking()
+	local ok, done = pcall(WalkStep)
+	if not ok then
+		DropWalk()
+	elseif done then
+		wheelWalking = false
+		Perf.SetScript(wheelWalker, "OnUpdate", nil)
+	end
+end
+
+-- a window onto the stack; the walk starts now (one under way takes it on)
+local function WalkWindow(window)
+	walkTop = walkTop + 1
+	walkStack[walkTop] = window
 	if wheelWalking then
 		return
-	end
-	if full or not wheelTail then
-		wheelCursor, wheelCount = nil, 0
-		wheelKnown, wheelKnownCount = wheelTail, wheelTailCount
-	else
-		wheelCursor, wheelCount = wheelTail, wheelTailCount
-		wheelKnown = nil
 	end
 	wheelWalking = true
 	Walking()
@@ -1070,22 +1102,72 @@ local function Walk(full)
 	end
 end
 
-local function LookForWheels()
-	wheelLooks = wheelLooks + 1
-	Walk(not wheelTail or wheelLooks % FULL_EVERY == 0)
-end
-
-local function ApplyWheel()
-	if GroupOn("scrollWheel") then
-		if not wheelTicker then
-			Walk(true)
-			wheelTicker = C_Timer.NewTicker(10, LookForWheels)
+-- f (the frame under the mouse) and its parents hooked, and their window
+-- walked unless it was lately; a frame on the world's side (a nameplate's)
+-- has no window
+local function WheelLookAt(f)
+	if not (f and GroupOn("scrollWheel")) then
+		return
+	end
+	local window
+	for _ = 1, WHEEL_UP do
+		if f == UIParent or f == WorldFrame then
+			break
 		end
-	elseif wheelTicker then
-		wheelTicker:Cancel()
-		wheelTicker = nil
+		if not wheelHooked[f] then
+			HookWheel(f)
+		end
+		window = f
+		local ok, parent = pcall(f.GetParent, f)
+		if not ok or Secret(parent) then
+			parent = nil
+		end
+		f = parent
+		if not f then
+			break
+		end
+	end
+	if not window or f == WorldFrame then
+		return
+	end
+	local now = GetTime()
+	local last = wheelWalked[window]
+	if not last or now - last >= WALK_AGAIN then
+		wheelWalked[window] = now
+		WalkWindow(window)
 	end
 end
+
+local function WheelLook()
+	wheelLookQueued = false
+	WheelLookAt(MouseFrame())
+end
+
+-- a look on the next frame (as the world frame's OnLeave runs, the mouse
+-- may not have its new frame yet); one waiting at a time
+local function QueueWheelLook()
+	if not wheelLookQueued and GroupOn("scrollWheel") then
+		wheelLookQueued = true
+		C_Timer.After(0, WheelLook)
+	end
+end
+
+-- the mouse over the world (its frame says so without a list): a click
+-- there has no list to look at
+local function OverWorld()
+	local w = WorldFrame
+	if not (w and w.IsMouseMotionFocus) then
+		return false
+	end
+	local ok, focus = pcall(w.IsMouseMotionFocus, w)
+	return ok and not Secret(focus) and focus == true
+end
+
+Perf.SetScript(wheelWalker, "OnEvent", function(_, event)
+	if event == "GLOBAL_MOUSE_DOWN" and not OverWorld() then
+		WheelLookAt(MouseFrame())
+	end
+end)
 
 --------------------------------------------------------------------------------
 -- Hover ticks: the frame under the mouse, polled twenty times a second (a
@@ -1185,6 +1267,8 @@ local function HoverTick()
 	if not f or f == WorldFrame or f == UIParent then
 		return
 	end
+	-- (a new frame under the mouse: the wheel's look too, while it is on)
+	WheelLookAt(f)
 	local ok, isButton = pcall(f.IsObjectType, f, "Button")
 	if not (ok and isButton) then
 		return
@@ -1221,7 +1305,8 @@ end
 
 -- the world frame's hooks: the mouse came (noted; the next look finds the
 -- world and rests) or went (the looks start again, the first a twentieth of
--- a second later, as it would have come had they run on)
+-- a second later, as it would have come had they run on; and the wheel's
+-- look at what the mouse went to, on the next frame)
 local function WorldEntered()
 	worldEntered = true
 end
@@ -1231,6 +1316,7 @@ local function WorldLeft()
 	if GroupOn("hover") then
 		StartLooks()
 	end
+	QueueWheelLook()
 end
 
 local function HookWorld()
@@ -1253,6 +1339,19 @@ local function ApplyHover()
 		hoverLast = nil
 		hoverLooks = 0
 		hoverX, hoverY = nil, nil
+	end
+end
+
+-- The wheel's moments while Scroll Wheel is on: the world frame's hooks
+-- (the hover ticks' too) and the clicks. Nothing is looked at here: the
+-- first look comes with the mouse (at login, nothing is walked).
+local function ApplyWheel()
+	if GroupOn("scrollWheel") then
+		HookWorld()
+		pcall(wheelWalker.RegisterEvent, wheelWalker, "GLOBAL_MOUSE_DOWN")
+	else
+		pcall(wheelWalker.UnregisterEvent, wheelWalker, "GLOBAL_MOUSE_DOWN")
+		DropWalk()
 	end
 end
 
@@ -1307,6 +1406,11 @@ function M:OnSettingChanged(key, value, db)
 	ApplyMutes()
 	ApplyHover()
 	ApplyWheel()
+	-- (switched on in the configurator: the window under the mouse, the
+	-- configurator itself, looked at now rather than at the next click)
+	if key == "scrollWheel" and value then
+		QueueWheelLook()
+	end
 end
 
 --------------------------------------------------------------------------------

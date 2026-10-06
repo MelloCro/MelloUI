@@ -103,7 +103,7 @@ local AREAS_REFUSED = "Not in combat: this would switch painted skins."
 
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
-	parchment_whisper = false, parchment_meter = false, parchment_character = false, parchment_tooltip = false, parchment_dialog = false,
+	parchment_whisper = false, parchment_meter = false, parchment_character = "off", parchment_tooltip = false, parchment_dialog = false,
 	autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both", classNames = true,
 	-- the palette (0.14.0): an id of MelloUI.Palettes, applied by Core
 	-- (MelloUI:SetPalette; this module on or off); a choice, not personal
@@ -156,7 +156,7 @@ local function Add(opt)
 end
 
 Add({ type = "toggle", key = "reskin", name = "Painted kit reskin", important = true,
-	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art, and MelloUI's own parts (the widget column, the reminders, the race bar ...) take the game's own look too; every feature keeps working." })
+	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art, and MelloUI's own parts (the widget column, the reminders, the race bar ...) take the game's own look too; every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on." })
 Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
 	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
 Add({ type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",
@@ -222,7 +222,7 @@ do
 			desc = "A soft dark shade round the kit's outlines, so windows, bars and frames stand out from the world. Each area has its own switch under it." })
 		Add({ type = "slider", key = shade.strength, name = "Shade Strength", parent = shade.master, free = true,
 			min = shade.min, max = shade.max, step = shade.step, percent = true,
-			desc = "How dark the shade round the kit's outlines is, the nameplates' shade too." })
+			desc = "How dark the UI Shade round the kit's outlines is, the nameplates' Whole plate shade too. The bands behind unit frame and nameplate names keep their own." })
 		-- (the nameplates' area has no switch here: Nameplates > Name Shade's
 		-- Whole plate is it, 0.16.0)
 		for _, a in ipairs(type(Kit.shadeAreas) == "table" and Kit.shadeAreas or {}) do
@@ -240,14 +240,24 @@ end
 -- The parchment sheets (the kit's, Kit:SetParchment; the text on them in
 -- dark ink): one switch per area, live with the reskin. The list is the
 -- installer's too (its Fresh start lists the same areas, one list: read
--- only)
+-- only). An area with `values` is a choice instead, its "off" the switch's
+-- off (Kit:ParchmentOn reads either), `on` the choice an older switch's true
+-- stands for: the character window's (0.19.4, the options audit: Window
+-- Background's Parchment folded in, one control) is its right pane's sheet
+-- or the whole window's (Modules/CharacterPanel.lua; an older save carried
+-- by MelloUI:MergeSettings)
+local CHARACTER_PARCHMENT = {
+	{ value = "off", label = "Off" },
+	{ value = "pane", label = "Right pane" },
+	{ value = "window", label = "Whole window" },
+}
 local PARCHMENTS = {
 	{ "parchment_tracker", "Objective Tracker" },
 	{ "parchment_questTracker", "Quest Tracker" },
 	{ "parchment_chat", "Chat" },
 	{ "parchment_whisper", "Whisper Popup" },
 	{ "parchment_meter", "Damage Meter" },
-	{ "parchment_character", "Character Window" },
+	{ "parchment_character", "Character Window", values = CHARACTER_PARCHMENT, on = "pane", new = "0.19.4" },
 	{ "parchment_tooltip", "Tooltips" },
 	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")
 }
@@ -258,17 +268,17 @@ local PARCHMENT_DESC = {
 	parchment_chat = "The chat windows on a parchment sheet, their text in dark ink.",
 	parchment_whisper = "The whisper popup on a parchment sheet, its text in dark ink.",
 	parchment_meter = "The damage meter on a parchment sheet, its text in dark ink.",
-	parchment_character = "The character window on a parchment sheet, its text in dark ink.",
+	parchment_character = "The character window on a parchment sheet, its text in dark ink: Right pane lays it under the right pane (the stats, reputation, skills and the other lists); Whole window over the whole window inside its frame, the window's own stone round its edge. Off: no parchment; the window shows its Window Background (Windows > Character window).",
 	parchment_tooltip = "The tooltips on a parchment sheet, their text in dark ink.",
 	parchment_dialog = "The popup dialogs, the colour picker, ready checks and split stack on a parchment sheet, their text in dark ink.",
 }
 for _, entry in ipairs(PARCHMENTS) do
-	Add({ type = "toggle", key = entry[1], name = "Parchment: " .. entry[2], requires = "reskin", new = entry.new,
-		desc = PARCHMENT_DESC[entry[1]] })
+	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2], values = entry.values,
+		requires = "reskin", new = entry.new, desc = PARCHMENT_DESC[entry[1]] })
 end
 
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
-	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off." })
+	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once." })
 Add({ type = "toggle", key = "reduceMotion", name = "Reduce Motion", free = true,
 	desc = "Every MelloUI animation ends at once: windows open without fading, the whisper popup appears in place, the quest tracker's lines do not flash, the configurator jumps instead of gliding. For anyone who finds moving interface parts distracting. Works with UI Modifications switched off as well." })
 -- Names (user, 2026-09-22: "make that option global for all of the 3
@@ -290,9 +300,10 @@ Add({ type = "dropdown", key = "nameFormat", name = "Show Names As", values = {
 	{ value = "last", label = "Surname (Skillybones)" },
 }, desc = "How a character's name is written, everywhere at once: the player, target, focus, pet, party and raid frames, the nameplates, the chat and whisper windows, and the name over your own head (the game's own setting for it: only First name leaves out the surname there). A character with no surname shows the name it has; in the chat the name is still a link to the player. Names over other players' heads without a nameplate are the engine's and have no setting." })
 -- (0.16.0: chat's and the tooltip's Class Coloured Names merged: one
--- switch, read by both as saved, UI Modifications on or off)
+-- switch, read by both as saved; it acts only while Chat Tweaks and Tooltip
+-- Tweaks run, so not with UI Modifications off: options audit, 2026-10-05)
 Add({ type = "toggle", key = "classNames", name = "Class Coloured Names", free = true,
-	desc = "Players' names in their class colour: in every chat type (the game's own setting for it) and in the tooltip. On the parchment sheet a chat name is in dark ink with a gem in its class colour before it instead." })
+	desc = "Players' names in their class colour: in every chat type (the game's own setting for it) and in the tooltip. On the parchment sheet a chat name is in dark ink with a gem in its class colour before it instead. It works through Chat Tweaks and Tooltip Tweaks: with UI Modifications off (or one of the two), the names there keep the game's own colours." })
 
 local M = MelloUI:RegisterModule("UIModifications", {
 	title = "UI Modifications",
@@ -1543,8 +1554,11 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "uiShade" or key == "uiShadeStrength" or key:sub(1, 6) == "shade_" then
 		return   -- the UI shade: applied from the bus's 'setting', module on or off (Modules/KitShade.lua)
 	elseif key:sub(1, 10) == "parchment_" then
-		if MelloUI.Kit and MelloUI.Kit.SetParchment then
-			MelloUI.Kit:SetParchment(key:sub(11), value and true or false)
+		-- (a switch, or a choice whose "off" is off: the character window's,
+		-- 0.19.4, read by Kit.ParchmentValueOn)
+		local kit = MelloUI.Kit
+		if kit and kit.SetParchment then
+			kit:SetParchment(key:sub(11), kit.ParchmentValueOn and kit.ParchmentValueOn(value) or value == true)
 		end
 		return
 	elseif MelloUI.Kit and MelloUI.Kit.borderKinds then

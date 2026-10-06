@@ -865,10 +865,11 @@ end
 -- measure refuses a name, the band lies on the name's whole line. It draws
 -- on the frame under the unit's art (the player's, target's and focus's
 -- container; the others' own frame) at the bottom of its stack: under the
--- ring, the bars and the name. Its strength is the UI Shade's Shade Strength
--- (the bus's 'shade'); it shows while the skin is on and the game shows the
--- name. Made once per name, with its frame's dressing: no script, no work
--- per frame.
+-- ring, the bars and the name. It is a readability band, as the notice's and
+-- the nameplates' (0.19.4, the options audit): at the soft text look's
+-- strength (MelloUI.Shade.TEXT), never the UI Shade's; it shows while the
+-- skin is on and the game shows the name. Made once per name, with its
+-- frame's dressing: no script, no work per frame.
 --------------------------------------------------------------------------------
 
 -- the nameplates' band: its full middle 4 past the text's ends, its soft ends
@@ -876,14 +877,6 @@ end
 -- refused the name): its middle 10 inside the line's ends
 local NAME_BAND = { colour = "innerPanel", feather = 20, layer = "BACKGROUND", sublevel = -8 }
 local NAME_PAD = { x = 4, y = 5, lineX = -10 }
-
-local function NameStrength()
-	local v = Kit.ShadeStrength and Num(Kit:ShadeStrength())
-	if not v then
-		return 0.7
-	end
-	return v < 0 and 0 or v > 1 and 1 or v
-end
 
 -- shown while the skin is on and the game shows the name
 local function SyncNameShade(entry)
@@ -915,7 +908,9 @@ local function NameShade(fs, host)
 		or skin.nameShades[fs] then
 		return
 	end
-	NAME_BAND.alpha = NameStrength()
+	-- (a readability band: the soft text look's strength, the notice's and the
+	-- nameplates' name bands' too; 0.19.4)
+	NAME_BAND.alpha = Soft.TEXT.alpha
 	local band = Soft:Band(host, NAME_BAND)
 	if not band then
 		return
@@ -951,24 +946,14 @@ local function NameShade(fs, host)
 	SyncNameShade(entry)
 end
 
--- every name's band: shown or hidden with the skin, at the Shade Strength
-local function SyncNameShades(strength)
+-- every name's band: shown or hidden with the skin (its strength its own:
+-- the UI Shade's bus is not its; 0.19.4)
+local function SyncNameShades()
 	if not skin then
 		return
 	end
 	for _, entry in pairs(skin.nameShades) do
-		if strength then
-			entry.band:SetStrength(strength)
-		end
 		SyncNameShade(entry)
-	end
-end
-
--- UI Shade switched or its strength moved: the bus's 'shade' for the unit
--- frames' area (Modules/KitShade.lua)
-local function OnShade(area)
-	if area == SHADE_AREA then
-		SyncNameShades(NameStrength())
 	end
 end
 
@@ -1611,7 +1596,6 @@ local function Build()
 		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {}, marks = {},
 			nameShades = {} }
 		-- (taken with the first dressing, once)
-		MelloUI:On("shade", OnShade, "Unit Frames Kit name shade")
 		MelloUI:On("setting", OnBarSetting, "Unit Frames Kit bar background")
 	end
 	SkinPlayer()
@@ -1638,7 +1622,7 @@ local function Activate()
 	for _, entry in ipairs(skin.names) do
 		entry.place()
 	end
-	SyncNameShades(NameStrength())
+	SyncNameShades()
 	RetuckAll()
 	for _, cover in ipairs(skin.covers) do
 		cover.Refit()

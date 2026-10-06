@@ -72,8 +72,9 @@ Kit.colourLooks = {
 	{ value = "bronze", label = "Bronze", folder = "KitBronze" },
 	{ value = "painted", label = "Original (painted)" },
 }
--- (the marks' metals and crests; their rings are in every look, their gems the look's: Tools/kit_palette.py GEM_TWINS)
-local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_" }
+-- (the marks' metals and crests, the nameplates' mark on top; their rings are in every look, their gems the look's:
+-- Tools/kit_palette.py GEM_TWINS)
+local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_", "^marks/top" }
 local lookRoot = nil   -- the chosen look's folder, once the settings are there
 -- LOOK.PaletteId(): the palette in use (its id, "ember" for one Core does not
 -- know); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
@@ -448,13 +449,20 @@ Kit.parchmentSheets = {}   -- [area] = { { sheet, alive }, ... }
 -- (below, with the Kit Colours' recheck)
 Kit.parchmentShown = {}
 
+-- an area's saved parchment value as on / off: a switch, or a choice whose
+-- "off" is off (the character window's, 0.19.4: "pane" / "window", UI
+-- Modifications' PARCHMENTS)
+function Kit.ParchmentValueOn(v)
+	return (v == true or (type(v) == "string" and v ~= "off")) and true or false
+end
+
 function Kit:ParchmentOn(area)
 	if not area then
 		return true
 	end
 	local um = MelloUI:GetModule("UIModifications")
 	local db = um and um.db
-	return (db and db["parchment_" .. area] == true) and true or false
+	return Kit.ParchmentValueOn(db and db["parchment_" .. area])
 end
 
 function Kit:SetParchment(area, on)
@@ -673,7 +681,7 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		sheet:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
 	end
 	-- opts.piece: another parchment tile than the kit's (the character
-	-- window's Window Background Parchment keeps the tile it was chosen as;
+	-- window's Whole window parchment keeps the tile it was chosen as;
 	-- user, 2026-09-24)
 	if not self:Apply(sheet, opts.piece or self.parchmentPiece) then
 		sheet:Hide()
@@ -828,16 +836,23 @@ end
 Kit.defaultTitleFont = "Interface\\AddOns\\MelloUI\\Media\\Fonts\\EnchantedLand.ttf"
 Kit.titleFont = Kit.defaultTitleFont
 Kit.titleFontScale = 1.5   -- user, 2026-09-21: the face at 1.5 x the string's size (a custom face only; the game's own keeps its size)
-Kit.titleSizeFactor = 1    -- the Fonts module's "Titles & headers size" slider (user, 2026-09-22: it did nothing on the plates)
-local titleStrings = setmetatable({}, { __mode = "k" })   -- every string in the title face, for a re-size
+Kit.titleSizeFactor = 1    -- the Fonts module's "Titles & headers size" slider (user, 2026-09-22: it did nothing on the plates), times the face's correction
+Kit.titleFaceFactor = 1    -- the face's correction alone (0.19.4): a string with a size of its own (Kit:TitleFont's ownSize)
+-- every string in the title face, for a re-size: true, or "own" for a string
+-- whose size is its own setting's (the slider passes it by)
+local titleStrings = setmetatable({}, { __mode = "k" })
 
--- The slider's factor; every title string re-set at the new size.
-function Kit:SetTitleSizeFactor(factor)
+-- The Fonts' factors (the slider's times the face's, and the face's alone);
+-- every title string re-set at the new size.
+function Kit:SetTitleSizeFactor(factor, faceFactor)
 	factor = tonumber(factor) or 1
-	if math.abs(factor - (self.titleSizeFactor or 1)) < 0.001 then
+	faceFactor = tonumber(faceFactor) or 1
+	if math.abs(factor - (self.titleSizeFactor or 1)) < 0.001
+		and math.abs(faceFactor - (self.titleFaceFactor or 1)) < 0.001 then
 		return
 	end
 	self.titleSizeFactor = factor
+	self.titleFaceFactor = faceFactor
 	for fs in pairs(titleStrings) do
 		if fs.melloFontSaved then
 			self:TitleFont(fs, true)
@@ -863,7 +878,11 @@ function Kit:SetTitleFace(face)
 	end
 end
 
-function Kit:TitleFont(fs, on)
+-- ownSize (0.19.4): true, the string's size is a setting of its own (the
+-- Quest Tracker's Header Text Size, Combat Text's Size): the Fonts' title
+-- size slider passes it by, the face's correction still reaches it; false,
+-- it follows the slider; nil keeps what it was given before (a re-set)
+function Kit:TitleFont(fs, on, ownSize)
 	if not (fs and fs.GetFont and fs.SetFont) then
 		return
 	end
@@ -876,7 +895,11 @@ function Kit:TitleFont(fs, on)
 			fs.melloFontSaved = { path, size, flags or "" }
 		end
 		local saved = fs.melloFontSaved
-		titleStrings[fs] = true
+		local own = titleStrings[fs] == "own"
+		if ownSize ~= nil then
+			own = ownSize and true or false
+		end
+		titleStrings[fs] = own and "own" or true
 		-- SetFont answers false when the face cannot be used yet (the file
 		-- is read on first use; a string fonted during loading lost its text
 		-- — the tracker's "All Objectives" came up blank, 2026-09-21): then
@@ -884,7 +907,8 @@ function Kit:TitleFont(fs, on)
 		-- moment later, a few times
 		local face = self.titleFont or saved[1]
 		local scale = self.titleFont and (self.titleFontScale or 1) or 1
-		local okSet, applied = pcall(fs.SetFont, fs, face, saved[2] * scale * (self.titleSizeFactor or 1), saved[3])
+		local factor = own and (self.titleFaceFactor or 1) or (self.titleSizeFactor or 1)
+		local okSet, applied = pcall(fs.SetFont, fs, face, saved[2] * scale * factor, saved[3])
 		if not (okSet and applied) then
 			pcall(fs.SetFont, fs, saved[1], saved[2], saved[3])
 			fs.melloFontTries = (fs.melloFontTries or 0) + 1
@@ -10227,7 +10251,7 @@ Kit.borderKinds = {
 	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",
 	  desc = "The rim round every round icon: passive spells, the legacy, guild and group finder windows' rings, the auction house's item, the Services bar's round buttons." },
 	{ kind = "aura", key = "auraBorder", default = "thin", name = "Aura Border", values = Kit.auraLooks, preview = "rim",
-	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon. Without the reskin, Dark Mode's Buffs & Debuffs draws a thin dark edge round them." },
+	  desc = "The rim round your buffs and debuffs, the target's and the nameplates' (Buffs & Debuffs): a plain black edge or one of the thin rims the buttons wear. The debuff colour stays round the icon. Only MelloUI's own aura rows wear it (Buffs & Debuffs, off by default): the game's own buff and debuff icons keep their edge, which Dark Mode's Buffs & Debuffs darkens." },
 	{ kind = "colours", key = "kitColours", default = "warm", name = "Kit Colours", values = Kit.colourLooks,
 	  desc = "The colours of all the painted art (frames, headers, rows, buttons, slots, bars). With the Ember and Ember Vibrant palettes: Warm iron (the metal in warm browns), Bronze (warm browns with gold bevels), or the Original painted grey iron and bright red. With any other palette: that palette's own colours, or the Original. Pictures keep their own colours." },
 }

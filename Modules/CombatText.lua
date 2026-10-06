@@ -292,7 +292,7 @@ M = MelloUI:RegisterModule("CombatText", {
 		  onClick = function() M.Preview() end },
 		{ type = "slider", key = "size", name = "Text Around You", new = NEW, min = T.sizeMin, max = T.sizeMax, step = 1,
 		  search = "combat text size",
-		  desc = "The size of the text around your character in the Lanes, Feed and Classic styles. Crits are a third bigger. The numbers over the enemies have their own size: Numbers Over Enemies." },
+		  desc = "The size of the text around your character in the Lanes, Feed and Classic styles. Crits are a third bigger. The Fonts' Interface text and Titles & headers sizes do not change it (only their faces). The numbers over the enemies have their own size: Numbers Over Enemies." },
 		{ type = "toggle", key = "titleNotices", name = "Notices In Title Font", new = NEW,
 		  desc = "Procs and auras in the title font, as the window titles. Off: in the text font, as the numbers." },
 		{ type = "slider", key = "shadeSize", name = "Shade Size", new = NEW, min = 0, max = 1, step = 0.1, percent = true,
@@ -692,7 +692,9 @@ local function StyleText(fs, size, numbers)
 	if type(object) == "table" then
 		fs:SetFontObject(object)
 		if MelloUI.StyleFont then
-			MelloUI:StyleFont(fs, numbers and "fontDamage" or "fontText", object, size, "", Outline(), numbers)
+			-- (the size is Combat Text's own: the face's correction alone, never
+			-- the Fonts' Interface text size; 0.19.4)
+			MelloUI:StyleFont(fs, numbers and "fontDamage" or "fontText", object, size, "", Outline(), numbers or "own")
 		end
 	end
 end
@@ -719,7 +721,7 @@ local function StyleNotice(fs, size)
 		if MelloUI.StyleFont then
 			MelloUI:StyleFont(fs, "fontText", nil)
 		end
-		Kit:TitleFont(fs, true)
+		Kit:TitleFont(fs, true, true)   -- (its size is Combat Text's: the title size slider passes it by)
 	end
 	fs.melloSize = key
 end

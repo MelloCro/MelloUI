@@ -2496,16 +2496,14 @@ local function LayoutBar()
 	end
 	-- hung where the column under the minimap keeps it (MinimapPanel's
 	-- column: under the map by the bar's offset, or under the divider
-	-- merged; audit, 2026-09-24, rank 18)
+	-- merged; audit, 2026-09-24, rank 18). MinimapPanel is always there with
+	-- its ColumnSlot by now (its file loads before any module starts): the
+	-- two fallbacks that stood here never ran (options audit, 2026-10-05)
 	bar:ClearAllPoints()
 	local mp = MelloUI:GetModule("MinimapPanel")
-	if mp and mp.ColumnSlot then
+	if mp then
 		local rel, relPoint, x, y = mp:ColumnSlot("services")
 		bar:SetPoint("TOP", rel, relPoint, x, y)
-	elseif merged then
-		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, -(mp.DividerHeight and mp:DividerHeight() or 26))
-	else
-		bar:SetPoint("TOP", Minimap, "BOTTOM", 0, tonumber(M.db.barOffset) or -26)
 	end
 end
 

@@ -16,7 +16,11 @@
 --                      buffs, widgets (the event widgets), nameplates
 --   Kit:ShadeOn(area) -> the area's shade wanted: UI Shade on and the area's
 --                      switch on (false for a name not in the list)
---   Kit:ShadeStrength() -> 0.3 .. 0.9 (0.7 by default)
+--   Kit:ShadeStrength() -> 0.3 .. 0.9 (0.7 by default): the areas' shade
+--                      (an area's own bands too: the event widgets'); the
+--                      bands under the unit frames' and the nameplates'
+--                      names are readability bands at the soft text look's
+--                      strength, never this (0.19.4)
 --   Kit:ShadeElement(root, area, opts) -> element
 --       one element of an area (a unit frame, an action bar group, a chat
 --       window, a window): its partners drawn by ONE shade frame, a child of
@@ -95,7 +99,10 @@ local Num = MelloUI.Safe.Number
 
 local SETTINGS = "UIModifications"         -- the module whose settings hold the switches
 local MASTER_KEY, STRENGTH_KEY = "uiShade", "uiShadeStrength"
-local DEFAULT, MIN, MAX = 0.7, 0.3, 0.9    -- the strength (the nameplates' and the notice's)
+-- the strength; its default is the soft text look's own (MelloUI.Shade.TEXT:
+-- the notice's and the name bands', which keep it: readability bands, never
+-- the UI Shade's, 0.19.4), so on the defaults the two match
+local DEFAULT, MIN, MAX = 0.7, 0.3, 0.9
 local OWNER = "Kit shade"                  -- the bus owner
 local PUMP_KEY = "Kit shade: partners"     -- (Kit:NextFrame's keys; the pump's for Kit:WhenOutOfCombat too)
 local WINDOW_KEY = "Kit shade: windows"

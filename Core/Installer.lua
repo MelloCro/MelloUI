@@ -1258,7 +1258,10 @@ local function LookRefresh(pending, umStart, log)
 			if how == "border" and Kit.ApplyBorder then
 				ok, err = pcall(Kit.ApplyBorder, Kit, what)
 			elseif how == "parchment" and Kit.SetParchment then
-				ok, err = pcall(Kit.SetParchment, Kit, what, umNow[key] == true)
+				-- (an area with a choice, the character window's since
+				-- 0.19.4: "off" is off, "pane" / "window" on)
+				local on = Kit.ParchmentValueOn and Kit.ParchmentValueOn(umNow[key]) or umNow[key] == true
+				ok, err = pcall(Kit.SetParchment, Kit, what, on)
 			end
 			if not ok then
 				Report(err)

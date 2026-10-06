@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.19.4
+
+- Nameplates: elites, rares, rare elites and bosses wear a new mark. A metal line runs over the name with a crest on its middle: gold, crowned and winged for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and for a boss red-bronze scrollwork round a skull with a wing on each end of the line. The plate itself keeps its own look (no more gold or silver end caps). Switch it with Elite and Rare Marks (Nameplates > Plates).
+- Settings: a setting that does nothing in the current setup is now dimmed, with a line saying what wakes it. For example the chat's Hide Input Box and Hide Tabs under the painted chat, the tooltip's health bar settings while Hide Health Bar is on, Dark Mode where a painted skin covers the frames, the unit frame tweaks under the painted unit frames, Combat Text's kinds on the Game style, and the Quest Tracker's Width while it matches the minimap. The Voice Over voices stay live with the voice packs off, since every line is then read aloud.
+- Settings: Windows Fade In moved to Windows, as it works without the Fader. The Nameplate Icons switch is now called Nameplate Tweaks, and its tooltip lists everything it switches. Clearer descriptions throughout, among them UI Modifications' switch, the reskin (it also turns Custom Sounds on and puts the layout in once), Chat Tweaks, Class Coloured Names, Remind Below and Tabs Only On Mouseover (it adds to the Fader's chat fade).
+- Fonts: Font Styles no longer change the size of text that has its own size slider (the Quest Tracker's headers, Combat Text and the chat). Interface Text Size and Titles & Headers Size are now only your own size on top of the style, and your current look is kept. A Font Style picked while Custom Fonts was off is applied when you turn Custom Fonts on.
+- Fonts: removed the Game Text Around You slider, as the game sizes that text itself.
+- The Quest Tracker and the FPS / latency readout follow a font change at once. The Quest Tracker's Height and Width can no longer be set so small that nothing fits.
+- A new Bar Texture now reaches the tooltip's health bar, the swing timers and the damage meter's race bar at once, without a /reload. The swing timers now follow the Cast Bars bar texture instead of the Experience & Reputation one. Switching Player Portraits on shows the class medallions at once.
+- Character window: its parchment is one choice now, Look > Parchment > Character Window: Off, Right pane or Whole window. Window Background no longer offers Parchment; a character window you had on parchment keeps its look.
+- Chat: the Dark background is now the chat's own dark panel, with or without Dark Mode. The window and its button column sit on the palette's Inner Panel with a thin border, and the tabs and the input box match it, the open tab edged in the selected trim colour. Background Opacity sets how solid it is.
+- Removed the PvP Flag Icon switch (Unit Frames), as this client never showed it.
+- Bags by Kind: the bag window now shows the Window Background you pick on Windows > Bags, as the bank does. On Parchment the gold count is in dark ink.
+- Unit frames and nameplates: the soft band behind each name keeps one strength of its own, like the on-screen notices. Shade Strength now sets only the UI Shade, the nameplates' Whole plate shade included.
+- Cooldown Timers: Colour By Time Left is now Colour And Size By Time Left, as it also makes the last 5 seconds larger and minutes and hours smaller.
+- Notices you send to the chat (Send To Chat Instead) now show there even while Chat Notices is off.
+- A new route destination plays one sound: the World Marker's own, without the tracking notice's chime. The chime stays when the marker is off or silent.
+- Fixed: Health Bar Colour's Class colour for players turned enemy and neutral NPC nameplates green. They keep the game's colours now.
+- Fixed: the Default bar texture with Green tinted the game's own health bar art.
+- Fixed: switching Bags by Kind off in the settings gave an error.
+- Fixed: Frame Art Opacity was lost when the painted unit frames were switched off.
+- Tooltip Scale now also scales the comparison tooltips and a linked item's tooltip.
+- Distance Under The Minimap now shows with Route On The Minimap off.
+- Voice Over: trying a voice in the settings no longer stops the line being read or the lines waiting after it. They go on once the sample ends.
+- Bringing the bag bar back (Hide Bag Bar or Bag Slots on Bag Window off, or Edit Mode opened) puts the bag slots in place without running the game's own bag bar layout. Nameplates and Party Markers no longer write onto the game's nameplates, and turning off the large CC icon no longer runs the game's own nameplate layout.
+- Custom Sounds: the Equipment and Vendor sounds now follow Inventory, as their greyed rows show. With one of them off, a drop on a gear slot or at the merchant plays the normal drop sound. Selling an item by dropping it on the merchant plays the sell sound.
+- Custom Sounds: the quest giver's list rows and Decline follow the Windows switch, and no longer go silent with Clicks off. No error knock for a message Error Messages hides.
+- Custom Sounds: Scroll Wheel no longer searches the whole interface at login and every ten seconds. It finds a window's lists when the mouse reaches it.
+- Ready Check widget: the ready-check alert sound and the taskbar flash are back.
+- Restock: an open Restock List shows a new Remind Below share at once. Its "Restocked:" chat line no longer follows Report In Chat while Vendor Automation is off.
+- Reminders: the switch's tooltip now says what it turns off. The widgets' portrait reminders keep their own switches.
+- Bags by Kind: with Recent Lasts set to Until Hovered, an item now leaves Recent as soon as you point away from it.
+- Dark Mode: Keep Dispel Colours no longer greys out when Buffs & Debuffs is off; it also covers the Cooldown Manager's icons.
+- Fader: Fade Everything and Fade Nothing now apply in one step.
+
 ## 0.19.3
 
 - Fixed: the Quest List marked quests on the map that the quest giver would not offer yet. A yellow "!" now means the quest is really there for you: a quest that needs an earlier quest of its chain, a profession's skill or a standing with a faction waits until you have it (its tooltip in the list says what it needs), quests for other races, quests you have outlevelled and the other choice of an either-or quest are left out, and holiday quests show on the map only while they are in your log or the list shows Events.

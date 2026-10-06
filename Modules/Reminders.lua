@@ -12,8 +12,11 @@
 -- the settings it reads are this module's: remind_<key>, place, glow, hold,
 -- stayResting)
 -- and three of its four users. Restock is the fourth (Modules/Restock.lua):
--- while it has no page of its own, its rows are on this page under its
--- switch (M:OnInit): remind_restock, as every reminder's is remind_<key>.
+-- while it has no page of its own, its rows are on this page's Restock tab
+-- (Core/ConfigLayout.lua), under the Restock module's own switch, which is
+-- its reminder's too (0.16.0: the old remind_restock is gone). This
+-- module's switch is over all four; the Widgets' reminders by the portrait
+-- (bags, talents, Well Fed, weapon, buffs) are Widgets' and have their own.
 --   New Mail     mail waiting (HasNewMail: at login and when mail comes).
 --                Gone once a mailbox is opened; back only for mail that came
 --                after (all of it read before, or a new latest sender).
@@ -100,7 +103,7 @@ end
 
 local M = MelloUI:RegisterModule("Reminders", {
 	title = "Reminders",
-	desc = "A small round button beside your portrait reminds you of errands: supplies running low, new mail, gear to repair, a trainer with something new. Click it to route to the nearest place.",
+	desc = "A round button by your portrait for errands: supplies low (Restock), new mail, gear to repair, a trainer with something new. Click it to route there. Off, none of the four shows; the Widgets' portrait reminders keep their own switches.",
 	icon = "Interface\\Icons\\INV_Letter_15",
 	flavour = "Supplies, mail, repairs and training: a gentle nudge beside your portrait, never a nag.",
 	group = "Quests and travel", navOrder = 5,

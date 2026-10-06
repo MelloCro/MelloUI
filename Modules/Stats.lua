@@ -251,6 +251,18 @@ local function OnPalette()
 	end
 end
 
+-- A new face or Font Style (Look > Fonts): the readout in it at once, its
+-- width measured again (0.19.4, the options audit: it waited for a change
+-- of its own settings)
+local function OnFonts()
+	if M.isEnabled and M.db then
+		ApplyFont()
+		if frame:IsShown() then
+			Refresh()
+		end
+	end
+end
+
 function M:OnInit(db)
 	self.db = db
 end
@@ -260,6 +272,7 @@ function M:OnEnable(db)
 	-- (one listener: On again with the same owner keeps it)
 	MelloUI:On("palette", OnPalette, "Stats")
 	MelloUI:On("look:own", OnPalette, "Stats")   -- (the reskin switched: the game's colours, or the palette)
+	MelloUI:On("fonts", OnFonts, "Stats")
 	ApplyAll()
 end
 

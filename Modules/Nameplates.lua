@@ -32,7 +32,7 @@ local M = MelloUI:RegisterModule("Nameplates", {
 	flavour = "Know who is stunned, who is your quest target, and who is about to be a problem.",
 	group = "Frames and bars", navOrder = 2,
 	role = "adds",
-	tweak = { label = "Nameplate Icons", desc = "A large crowd-control icon above the name and a quest marker on enemies you still need. Works with or without the reskin.", order = 4 },
+	tweak = { label = "Nameplate Tweaks", desc = "On the game's nameplates: the large crowd-control icon above the name, the quest marker on enemies you still need, the threat line, the combo points on your target's plate and the names' form (Show Names As). Off: all five go. Works with or without the reskin.", order = 4 },
 	defaults = {
 		nameFormat = "both",   -- set by UI Modifications' "Show Names As" (one setting for every name)
 		bigCC = true,
@@ -363,7 +363,33 @@ local function ApplyAll()
 	end
 end
 
--- Let Blizzard lay the plate out again with its own anchors and sizes.
+-- The game's own gap between the health bars and its crowd-control lists:
+-- 5 px, plus the level frame's width and gap while that frame shows on the
+-- bars' right (the game's UpdateAnchors, Blizzard_NamePlateUnitFrame.lua).
+-- Every read can be secret on a plate: then the plain 5 px.
+local function GameCCGap(unitFrame)
+	local level = unitFrame.PlayerLevelDiffFrame
+	if not level then
+		return 5
+	end
+	local okS, shown = pcall(level.IsShown, level)
+	if not okS or Secret(shown) or not shown then
+		return 5
+	end
+	local okP, _, _, relativePoint, x = pcall(level.GetPoint, level, 1)
+	local okW, width = pcall(level.GetWidth, level)
+	if not (okP and okW) or Secret(relativePoint) or relativePoint ~= "RIGHT"
+		or not IsPlainNumber(x) or not IsPlainNumber(width) then
+		return 5
+	end
+	return 5 + width + math.abs(x)
+end
+
+-- Put back what MelloUI changed: the lists' scales and the game's own anchor
+-- for them. Never by running the game's UpdateAnchors from here: a layout
+-- function of the game's, run by an addon, taints the plate (hard rule 1).
+-- The game lays the plate again itself whenever it next needs to (a new
+-- unit on it, an option), and the hook above then stays out (not Active).
 local function RestoreAll()
 	if not (C_NamePlate and C_NamePlate.GetNamePlates) then
 		return
@@ -371,17 +397,26 @@ local function RestoreAll()
 	for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
 		local unitFrame = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
 		local auras = unitFrame and unitFrame.AurasFrame
+		local bars = unitFrame and unitFrame.HealthBarsContainer
 		if auras then
 			local scale = IsPlainNumber(auras.auraItemScale) and auras.auraItemScale or 1
-			if auras.CrowdControlListFrame then
-				auras.CrowdControlListFrame:SetScale(1)
+			local gap = bars and GameCCGap(unitFrame)
+			local cc = auras.CrowdControlListFrame
+			if cc then
+				cc:SetScale(1)
+				if bars then
+					cc:ClearAllPoints()
+					cc:SetPoint("LEFT", bars, "RIGHT", gap, 0)
+				end
 			end
-			if auras.LossOfControlFrame then
-				auras.LossOfControlFrame:SetScale(scale)
+			local loc = auras.LossOfControlFrame
+			if loc then
+				loc:SetScale(scale)
+				if bars then
+					loc:ClearAllPoints()
+					loc:SetPoint("LEFT", bars, "RIGHT", gap, 0)
+				end
 			end
-		end
-		if unitFrame and type(unitFrame.UpdateAnchors) == "function" then
-			pcall(unitFrame.UpdateAnchors, unitFrame)
 		end
 	end
 end
@@ -448,8 +483,13 @@ local function IsQuestTarget(unit)
 	return ok and result == true
 end
 
+-- each plate's quest icon, keyed by the game's unit frame: kept here, never
+-- as a key on the game's frame (hard rule 1); weak, so a frame the game
+-- drops takes its entry along
+local questIcons = setmetatable({}, { __mode = "k" })
+
 local function GetQuestIcon(unitFrame)
-	local icon = unitFrame.MelloUIQuestIcon
+	local icon = questIcons[unitFrame]
 	if not icon then
 		-- on a layer frame above the health bar: the unit frame's own regions
 		-- draw under its children, so the Nameplate Kit's gem cap (a region
@@ -465,7 +505,7 @@ local function GetQuestIcon(unitFrame)
 		icon = layer:CreateTexture(nil, "OVERLAY")
 		icon:SetTexture(QUEST_ICON_TEXTURE)
 		icon:Hide()
-		unitFrame.MelloUIQuestIcon = icon
+		questIcons[unitFrame] = icon
 	end
 	local size = M.db.questIconSize or 22
 	icon:SetSize(size, size)
@@ -500,8 +540,8 @@ local function UpdateQuestIcon(plate)
 		return
 	end
 	if not QuestActive() then
-		if unitFrame.MelloUIQuestIcon then
-			unitFrame.MelloUIQuestIcon:Hide()
+		if questIcons[unitFrame] then
+			questIcons[unitFrame]:Hide()
 		end
 		return
 	end
@@ -995,8 +1035,8 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit, power)
 		end
 	elseif event == "NAME_PLATE_UNIT_REMOVED" then
 		local plate = C_NamePlate.GetNamePlateForUnit(unit)
-		if plate and plate.UnitFrame and plate.UnitFrame.MelloUIQuestIcon then
-			plate.UnitFrame.MelloUIQuestIcon:Hide()
+		if plate and plate.UnitFrame and questIcons[plate.UnitFrame] then
+			questIcons[plate.UnitFrame]:Hide()
 		end
 		if plate and plate.UnitFrame then
 			HideThreat(plate.UnitFrame)
@@ -1085,8 +1125,8 @@ local function HideAllQuestIcons()
 	if C_NamePlate and C_NamePlate.GetNamePlates then
 		for _, plate in ipairs(C_NamePlate.GetNamePlates()) do
 			local unitFrame = plate and not (plate.IsForbidden and plate:IsForbidden()) and plate.UnitFrame
-			if unitFrame and unitFrame.MelloUIQuestIcon then
-				unitFrame.MelloUIQuestIcon:Hide()
+			if unitFrame and questIcons[unitFrame] then
+				questIcons[unitFrame]:Hide()
 			end
 		end
 	end

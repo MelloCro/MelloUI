@@ -87,7 +87,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Leave out quests whose level is more than this many levels above your character. 0 shows everything." },
 		{ type = "header", name = "Map" },
 		{ type = "toggle", key = "mapPins", name = "Quest Givers On Zone Maps",
-		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver." },
+		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)." },
 		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
 		  desc = "Also mark givers whose quests you have all completed, with a grey tick." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",

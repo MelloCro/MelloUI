@@ -592,6 +592,14 @@ Lint workflow) fails when a copy is added and names the system to use.
     title plate (`plate = "crest"`: the short plate under the crest, the
     configurator's 2c exception; `"rail"`: the standard plate on the rail)
     with `shell.title` in `Kit:TitleFont`;
+  - `background` (0.19.4): the page stone's piece in the kit look, a Window
+    Background value (Kit.buttonLooks.backgrounds: a tile at the one density,
+    or 'dark' = innerPanel) or a function returning one, laid on the stone's
+    own texture (one surface) through the picture rep's SetPiece. It is read
+    again on every switch on and every show; `shell:SetBackground([value])`
+    lays it again; `shell.page` is the page stone's rep. The bag window by
+    kind uses it for the bags' Window Background; the other own windows keep
+    the stone;
   - `close`, the drag strip `shell.grab` (down to `grabBottom`), Core's one
     mover (`mover = { key, save, default, plainDrag, label, page, group,
     ... }`: exactly one mover per window, the rail's own shell registration
@@ -1008,7 +1016,9 @@ Lint workflow) fails when a copy is added and names the system to use.
   Rare Alert's "rare" (0.18.5: the user's own RareMob_Ward, on the Master
   channel, the game's raid warning behind it); the bag window by kind's
   "bags_open", "bags_close" (0.19.0: the game's own backpack sounds, as its
-  bag window played them). A new sound is one row of Core's SOUNDS
+  bag window played them); the Ready Check widget's "ready_check" (0.19.4:
+  the game's READY_CHECK, played while the game's own ready-check box no
+  longer hears the event). A new sound is one row of Core's SOUNDS
   table; Custom Sounds is asked first and its PlaySound hook swaps a game
   kit as it does any game click.
 - **Secret values: `MelloUI.Safe`.** Bound plainly at load, `local Secret =

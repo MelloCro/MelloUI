@@ -110,7 +110,13 @@ FULL_DROP = ["VoiceOver.collectLines", "CharacterPanel.slotBorder", "BackpackPan
              "Chat.hideButtons",
              # (0.17.0: Unit Frames' Fade Out Of Combat, Faded Opacity and Pet Frame Too: the Fader's now, carried
              # at the login by MelloUI:MergeSettings)
-             "UnitFrames.fadeOutOfCombat", "UnitFrames.fadeAlpha", "UnitFrames.fadePet"]
+             "UnitFrames.fadeOutOfCombat", "UnitFrames.fadeAlpha", "UnitFrames.fadePet",
+             # (0.19.4: the Fonts' Scale Title / Scale Text became Size Title / Size Text, the face's correction its
+             # own -- carried at the login by MelloUI:MergeSettings; Scale Damage gone. Full is gothic: Alegreya-
+             # Regular's own 1.1 makes Full's Size Text 1, the default)
+             "Fonts.scaleTitle", "Fonts.scaleText", "Fonts.scaleDamage",
+             # (0.19.4, the options audit: Class Icons' PvP Flag Icon removed; MelloUI:MergeSettings drops it)
+             "ClassIcons.pvpFlag"]
 EDIT_MODE_FRAMES = ["MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame"]
 # the installer's additions to the keep lists and the one-time flag name rule
 # (the installer build's test_options.py name check)

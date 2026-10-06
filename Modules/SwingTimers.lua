@@ -160,7 +160,7 @@ local function NewTrack(holder, colour, hand)
 	local track = CreateFrame("Frame", nil, holder)
 	local fill = CreateFrame("StatusBar", nil, track)
 	fill:SetAllPoints(track)
-	fill:SetStatusBarTexture(W.BarFill())
+	fill:SetStatusBarTexture(W.BarFill("castbars"))
 	local style = _G.Enum and _G.Enum.StatusBarFillStyle
 	if style and style.Center and fill.SetFillStyle then
 		pcall(fill.SetFillStyle, fill, style.Center)
@@ -272,7 +272,7 @@ end
 -- while the cast bars wear the kit, else the game's own swing timer bar
 local function LookTrack(t, kit, bar, height)
 	MelloUI.Look.GameSwing(t.frame, t.fill, t.hand, false)
-	t.fill:SetStatusBarTexture(W.BarFill())
+	t.fill:SetStatusBarTexture(W.BarFill("castbars"))
 	t.fill:SetStatusBarColor(t.colour[1], t.colour[2], t.colour[3])
 	local Kit = MelloUI.Kit
 	if kit and t.rep == nil and Kit and Kit.Replace then
@@ -750,7 +750,10 @@ function M:OnEnable(db)
 	if not S.looking then
 		S.looking = true
 		MelloUI:On("look:castbar", LookAll, "Swing timers")
-		MelloUI:On("look:statusbars", LookAll, "Swing timers")
+		-- the cast bars' Bar Texture set or switched (W.BarFill "castbars",
+		-- 0.19.4: the swing timers wear the cast bar bracket, so the Cast Bars
+		-- area's fill too): the fill again
+		W.OnBarTexture("castbars", LookAll, "Swing timers")
 	end
 	ReadWand()
 	ReadWeapons()

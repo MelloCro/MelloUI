@@ -1136,7 +1136,8 @@ local EMPTY = {}
 --     order        the page keys in the side list's order
 --     place[id]    where a setting's row is: { r, picks (the picks it is
 --                  live on, per-pick and `only` rows), pickSet }
---     switchOf[module name]   its switch: { r = its switch row } or
+--     switchOf[module name]   its switch: { r = its switch row, id = the
+--                  switch's setting id (the row may hold a key per pick) } or
 --                  { header = the page whose header has it }
 --   A row r: page (key), tab, section, name, type ("toggle", "slider",
 --   "dropdown", "button", "picture"), and b (its one binding) or keys
@@ -1297,6 +1298,40 @@ do
 				place[id] = { r = r, picks = picks, pickSet = set }
 			end
 		end
+		-- a row's or a link's `when` (ConfigLayout's header), bound once: one
+		-- setting { key, value | notValue }, or (0.19.4, the options audit)
+		-- { any = { parts } } / { all = { parts } }, each part one of the
+		-- three; nil (and a Problem) for a key with no setting
+		local function BindWhen(w, pageKey, tabName)
+			if type(w) ~= "table" then
+				return nil
+			end
+			local list = w.any or w.all
+			if list then
+				local parts = {}
+				for i, part in ipairs(list) do
+					local bound = BindWhen(part, pageKey, tabName)
+					if not bound then
+						return nil
+					end
+					parts[i] = bound
+				end
+				if #parts == 0 then
+					Problem("%s > %s: a `when` with no parts", pageKey, tabName)
+					return nil
+				end
+				if w.any then
+					return { any = parts, line = w.line }
+				end
+				return { all = parts, line = w.line }
+			end
+			local b = Bind(w.key)
+			if not b then
+				Problem("%s > %s: no setting '%s'", pageKey, tabName, tostring(w.key))
+				return nil
+			end
+			return { b = b, value = w.value, notValue = w.notValue, line = w.line }
+		end
 		local function AddRow(p, t, s, what, extra)
 			local r = { page = p.key, tab = t, section = s }
 			local first
@@ -1367,20 +1402,23 @@ do
 					Problem("%s > %s: no switch '%s'", p.key, t.name, extra.gate)
 				end
 			end
-			local when = extra.when
-			if when then
-				local b = Bind(when.key)
-				if b then
-					r.when = { b = b, value = when.value, notValue = when.notValue, line = when.line }
-				else
-					Problem("%s > %s: no setting '%s'", p.key, t.name, tostring(when.key))
+			if extra.when then
+				r.when = BindWhen(extra.when, p.key, t.name)
+			end
+			-- (0.19.4) a row with a key per pick: a `when` per key, by id
+			if extra.whenFor then
+				r.whenFor = {}
+				for id, w in pairs(extra.whenFor) do
+					r.whenFor[id] = BindWhen(w, p.key, t.name)
 				end
 			end
 			for _, b in ipairs(r.distinct or { first }) do
 				r.new = r.new or NewOf(b)
 				Place(b.id, r, r.picksOf and r.picksOf[b] or r.onlyList)
 				if b.kind == "module" then
-					switchOf[b.mod.name] = { r = r }
+					-- (its id kept: a row with a key per pick has no r.b --
+					-- the Windows page's switch row, Bags by Kind off, 0.19.4)
+					switchOf[b.mod.name] = { r = r, id = b.id }
 				end
 			end
 			s.rows[#s.rows + 1] = r
@@ -1415,10 +1453,11 @@ do
 			end
 			AddRow(p, t, s, what, extra)
 		end
-		local function Link(pageKey, tab, section, target, label)
+		local function Link(pageKey, tab, section, target, label, extra)
 			local p, t, s = Section(pageKey, tab, section)
 			if s then
-				links[#links + 1] = { page = pageKey, p = p, tab = t, section = s, target = target, name = label }
+				links[#links + 1] = { page = pageKey, p = p, tab = t, section = s, target = target, name = label,
+					when = extra and extra.when and BindWhen(extra.when, pageKey, t.name) or nil }
 			end
 		end
 		local ok, err = pcall(L.Define, R, Link)
@@ -2000,6 +2039,48 @@ local function LookOwner(b)
 	return lookOwner[b.key]
 end
 
+-- a bound `when` (BindWhen): one setting has (or has not) its value, any
+-- part holds, every part holds
+local function WhenHolds(w)
+	local parts = w.any or w.all
+	if parts then
+		local any = w.any ~= nil
+		for i = 1, #parts do
+			if WhenHolds(parts[i]) == any then
+				return any
+			end
+		end
+		return not any
+	end
+	local v = ValueOf(w.b)
+	if w.notValue ~= nil then
+		return v ~= w.notValue
+	end
+	return v == w.value
+end
+
+-- a compound `when` that does not hold: the first switch among its parts
+-- that does not hold either, by its id (a click on the sleeping row goes
+-- there, as a `gate`'s does: the text-to-speech rows to Read Unvoiced
+-- Lines); nil where no part is a switch
+local function WakingSwitch(w)
+	local parts = w.any or w.all
+	if parts then
+		for i = 1, #parts do
+			local id = not WhenHolds(parts[i]) and WakingSwitch(parts[i])
+			if id then
+				return id
+			end
+		end
+		return nil
+	end
+	local b = w.b
+	if b and (b.kind == "module" or (b.opt and b.opt.type == "toggle")) then
+		return b.id
+	end
+	return nil
+end
+
 local function Gate(page, r)
 	-- 1: the pick
 	local b = Current(page, r)
@@ -2019,8 +2100,8 @@ local function Gate(page, r)
 	local own = (not driven and b.kind ~= "module" and m) or LookOwner(b)
 	if own and not MelloUI:IsModuleEnabled(own.name) then
 		local sw = Lay.Get().switchOf[own.name]
-		if sw and sw.r then
-			return Off(page, r, sw.r.b.id, own.title)
+		if sw and sw.id then
+			return Off(page, r, sw.id, own.title)
 		end
 		local at = sw and sw.header
 		return false, own.title, SwitchLine(own.title, at and at ~= page.name and PageTitle(at) or nil), at and ("!page:" .. at)
@@ -2059,12 +2140,16 @@ local function Gate(page, r)
 	if r.gate and not ValueOf(r.gate) then
 		return Off(page, r, r.gate.id, r.gate.opt and r.gate.opt.name or r.gate.id)
 	end
-	local when = r.when
-	if when then
-		local v = ValueOf(when.b)
-		if (when.notValue ~= nil and v == when.notValue) or (when.notValue == nil and v ~= when.value) then
-			return false, nil, when.line
+	local when = (r.whenFor and r.whenFor[b.id]) or r.when
+	if when and not WhenHolds(when) then
+		-- (0.19.4) a compound one's cover jumps to a switch that wakes it
+		local id = (when.any or when.all) and WakingSwitch(when) or nil
+		local place = id and Lay.Get().place[id]
+		if place then
+			local _, pick = WhereOf(page, place, r)
+			return false, nil, when.line, id, pick
 		end
+		return false, nil, when.line
 	end
 	-- 7: (0.17.0) a setting this client may lack (Combat Text's over-enemy
 	-- switches, the engine's own CVars): its schema's `missing` says why
@@ -2720,6 +2805,9 @@ local function LinkGate(page, lk)
 	if lk.targets and not lk.targets[page.pick] then
 		return false, nil, NotFor(page.lay.pickLabel[page.pick] or tostring(page.pick))
 	end
+	if lk.when and not WhenHolds(lk.when) then
+		return false, nil, lk.when.line
+	end
 	return true
 end
 local LinkClick = Shared("OnClick on the configurator's link rows (to the setting's page)", function(row)
@@ -2738,7 +2826,7 @@ local function MakeLink(sec, lk)
 	local o = RowOpts(sec)
 	o.target = b and PageTitle(Lay.Get().place[b.id].r.page) or ""
 	o.desc = b and ((b.opt and b.opt.desc) or b.mod.desc) or nil
-	if lk.targets then
+	if lk.targets or lk.when then
 		o.gate = function()
 			return LinkGate(page, lk)
 		end

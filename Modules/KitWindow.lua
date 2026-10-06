@@ -33,6 +33,17 @@
 --                            as a band CALM_BAND wide inside the rail
 --                            (shell.calm); the window's panels (W.Panel) lie
 --                            on that ground
+--     background = fn | value,  the page stone's piece in the kit look (0.19.4,
+--                            the options audit: the bags' Window Background
+--                            on the bag window): a Window Background value
+--                            (Kit.buttonLooks.backgrounds: a tile repeated at
+--                            the UI's one density, or "dark", the palette's
+--                            inner panel) or a function answering one, read
+--                            when the kit dresses the page, at every switch
+--                            on and show, and on shell:SetBackground(). It
+--                            stands in for the stone on the stone's own
+--                            texture (one surface); nil: the kit's own stone.
+--                            The plain look keeps the game's rock
 --     close = true,          a close button on the top right corner
 --     escape = true,         Escape closes it (UISpecialFrames: the frame
 --                            must be named); held while a question of
@@ -62,7 +73,8 @@
 -- (the kit's, on the ring's disc; made with the kit), shell.plainEmblem,
 -- shell.disc, shell.ring (the ring's rep), shell.plate (the plate's frame),
 -- shell.plateRep, shell.title (FontString), shell.grab, shell.close,
--- shell.rail (the outer rail's rep), shell.mover (Core's entry),
+-- shell.rail (the outer rail's rep), shell.page (the page stone's rep; both
+-- made with the kit), shell.mover (Core's entry),
 -- shell.reps, shell.replace (fn(region, opts) for Kit helpers that take a
 -- replace function), shell.skin ({ reps, followers } for Kit helpers),
 -- shell.bounds (what is kept on the screen with the frame).
@@ -81,6 +93,10 @@
 --                                hidden window reads Kit:IsOn(area) again on
 --                                its next show
 --   shell:Fit()   shell:SetEscape(on)
+--   shell:SetBackground(value)   the page's piece (opts.background) laid
+--                                again: `value` a new choice, nil the
+--                                window's own read again (a window without
+--                                one: nothing)
 --   shell:HoldEscape(on)         the window's Escape held while a piece of it
 --                                that Escape closes first is open (a picture
 --                                row's flyout, W.PictureMenu): its setting
@@ -418,6 +434,8 @@ function Shell:Switch(on)
 			entry.rep:SetShown(entry.region:IsShown())
 		end
 		self:RunQueue()
+		-- (a choice made while the kit look was off)
+		self:SetBackground()
 	else
 		for i = 1, #reps do
 			reps[i]:Disable()
@@ -446,6 +464,28 @@ function Shell:SetKit(on)
 	end
 end
 
+-- The page's piece (opts.background) laid on the kit's page stone: the
+-- picture's own SetPiece (the one the bank's page takes the same choice
+-- through), which repeats a tile at the UI's one density and lays it again
+-- as the page shows or changes size; "dark" painted by its palette key (a
+-- new palette paints it again). `value`: a new choice (a value or a function
+-- answering one); nil: the window's choice read again. A window that has
+-- none keeps the kit's stone (nothing done), as does a page not made yet
+-- (the kit's dressing reads it then).
+function Shell:SetBackground(value)
+	if value ~= nil then
+		self.background = value
+	end
+	local page, choice = self.page, self.background
+	if choice == nil or not (page and page.SetPiece) then
+		return
+	end
+	if type(choice) == "function" then
+		choice = Reported(pcall(choice))
+	end
+	page:SetPiece(type(choice) == "string" and choice or nil)
+end
+
 -- on every show: the look as Kit:IsOn answers now (a switch made while it
 -- was hidden), the fit, the sound (`opened`: a real open, not the UI shown
 -- again around the open window)
@@ -453,6 +493,9 @@ function Shell:Showing(opened)
 	local want = Kit:IsOn(self.area) and true or false
 	if want ~= self.kit then
 		self:Switch(want)
+	elseif want then
+		-- (a choice made while it was hidden: a profile loaded, ...)
+		self:SetBackground()
 	end
 	if self.fit then
 		self:Fit()
@@ -568,7 +611,9 @@ end
 -- dragged, Kit.shells[frame].outer, and its shade)
 local function DressFrame(K, shell)
 	local frame = shell.frame
-	shell:Replace(shell.bg, { as = "UI-Background-Rock", parent = frame, rect = frame, inset = K:OuterRailInset(), alsoFade = { shell.tint } })
+	shell.page = shell:Replace(shell.bg, { as = "UI-Background-Rock", parent = frame, rect = frame, inset = K:OuterRailInset(), alsoFade = { shell.tint } })
+	-- (the window's own choice in the stone's place, opts.background)
+	shell:SetBackground()
 	-- (body = false: the page stone above is the window's one background)
 	local ok, rail = pcall(shell.Replace, shell, shell:Anchor(frame, "BORDER"), { as = "NineSlicePanelTemplate", parent = frame, rect = frame,
 		body = false, skip = shell.ringAt == "tl" and "tl" or nil })
@@ -650,6 +695,7 @@ function Kit:OwnWindow(frame, opts)
 		frame = frame, area = opts.area, kit = self:IsOn(opts.area) and true or false,
 		reps = {}, queue = {}, plains = {}, onKit = {}, bounds = {},
 		fit = opts.fit and true or false, sounds = opts.sounds and true or false,
+		background = opts.background,
 	}, Shell)
 	shell.skin = { reps = shell.reps, followers = {} }
 	shell.replace = function(region, ropts)

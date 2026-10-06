@@ -31,7 +31,9 @@
 -- missing one as its default, so they hold with Tweaks off):
 --   noticeOnScreen  On-screen Notices (on): off, nothing is shown or played
 --   noticeToChat    Send To Chat Instead (off): the line goes to the chat
---                   through MelloUI:Notice (Chat Notices can mute it)
+--                   through MelloUI:Print, past Chat Notices' filter
+--                   (0.19.4, the options audit: the player chose the chat
+--                   for it, so with Chat Notices off it showed nowhere)
 --   noticeOutline   Outlined Text (off): the text outlined; off, soft text
 --   noticeSounds    Notice Sounds (on)
 --   textShade       Text Shade (on; 0.16.0: one for the zone text, the
@@ -296,7 +298,7 @@ function MelloUI:Announce(msg, kind, mute)
 		kind = "info"
 	end
 	if Setting("noticeToChat") then
-		self:Notice(msg)
+		self:Print(msg)   -- (not Notice: Chat Notices never mutes a line sent here)
 	else
 		Put(msg, kind)
 		state.holds = state.holds + 1
@@ -315,7 +317,7 @@ function MelloUI:AnnounceWait(msg, kind)
 		return
 	end
 	if Setting("noticeToChat") then
-		self:Notice(msg)
+		self:Print(msg)
 		return
 	end
 	Put(msg, COLOUR[kind] and kind or "info")

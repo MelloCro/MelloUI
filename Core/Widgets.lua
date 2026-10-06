@@ -170,13 +170,36 @@ function W.Repaint()
 end
 
 -- The fill texture of MelloUI's own bars (0.17.1, lifted from the race bar's
--- for the swing timers): the status bars' Bar Texture, else MelloUI's
--- Minimalist. Read when a bar is (re)dressed: Bar Textures' look:statusbars.
+-- for the swing timers): the Bar Texture of a Bar Textures area (`area`, an
+-- Apply To key; nil: "statusbars", the XP & Reputation bars', which the race
+-- bar wears; the swing timers ask for "castbars", 0.19.4, the options audit),
+-- else MelloUI's Minimalist. Read when a bar is (re)dressed;
+-- W.OnBarTexture(area) tells when to dress it again.
 local BAR_FILL = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Minimalist"
-function W.BarFill()
+function W.BarFill(area)
 	local bt = MelloUI:GetModule("BarTextures")
-	local texture = bt and bt.PreviewTexture and bt.PreviewTexture("statusbars")
+	local texture = bt and bt.PreviewTexture and bt.PreviewTexture(area or "statusbars")
 	return type(texture) == "string" and texture or BAR_FILL
+end
+
+-- W.OnBarTexture(area, fn, owner): fn() once a Bar Textures fill for that
+-- area may read differently: its Bar Texture or the area's Apply To switch
+-- set (an area of W.BarFill's; "tooltip", the tooltip's health bar), or
+-- the module switched on or off (0.19.4, the options audit: the race bar,
+-- the swing timers and the tooltip's bar kept the old fill until a look
+-- change or a /reload). The bus's 'setting' and 'module', one listener each
+-- per owner (MelloUI:On keeps one per owner), made when asked, never per event.
+function W.OnBarTexture(area, fn, owner)
+	MelloUI:On("setting", function(module, key)
+		if module == "BarTextures" and (key == "texture" or key == area) then
+			fn()
+		end
+	end, owner)
+	MelloUI:On("module", function(name)
+		if name == "BarTextures" then
+			fn()
+		end
+	end, owner)
 end
 
 function W.Text(parent, font, text, key)

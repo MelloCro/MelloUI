@@ -89,11 +89,11 @@ local ROLES = {
 	{ key = "fontText",   match = "frizqt",   name = "Interface text (Friz Quadrata)",
 	  desc = "Window text, buttons, tooltips, the quest log, nameplate names and the names above characters in the world (those after /reload)." },
 	{ key = "fontChat",   match = "arialn",   name = "Chat & numbers (Arial Narrow)",
-	  desc = "The chat windows and every number: bar values, cooldown counts, stack counts, damage on unit frames." },
+	  desc = "The numbers: cooldown counts, stack counts; and the chat windows while Chat text and Interface text both keep the game's. The value text on the unit frames' bars follows the Interface text, the hit numbers on the portraits the Game Numbers Font." },
 	{ key = "fontTitle",  match = "morpheus", name = "Titles & headers (Morpheus)",
-	  desc = "Window titles, quest and item names in dialogs, mail and book text, and the kit's title plates while the reskin is on. Enchanted Land unless you choose otherwise; Keep the game's puts Morpheus back everywhere, the plates included." },
+	  desc = "Window titles, quest and item names in dialogs, mail and book text, and the kit's title plates and headers while the reskin is on. Enchanted Land unless you choose otherwise. Keep the game's leaves each string in the game's own face: Morpheus where the game uses it, the interface face on the strings that start in it (the Quest Tracker's headers, Combat Text's notices)." },
 	{ key = "fontDamage", match = "skurri",   name = "Game Numbers Font (Skurri)",
-	  desc = "The font of the numbers over the enemies: the game's own (after /reload) and Your Damage's (at once); and of the game's text around you with Combat Text's Game style. MelloUI's text around you uses the interface text font." },
+	  desc = "The numbers over the enemies: the game's own (after /reload) and Your Damage's (at once); and the hit numbers on the unit frames' portraits. The game's text around you (Combat Text's Game style) and MelloUI's are drawn in the Interface text face." },
 }
 
 local KEEP = "default"
@@ -118,14 +118,13 @@ end
 
 -- Each role has its own size slider (user, 2026-09-22); `scale`, the old
 -- single slider, is folded into them once and taken out (MigrateScale).
-local SCALE_KEY = { fontText = "scaleText", fontChat = "scaleChat", fontTitle = "scaleTitle", fontDamage = "scaleDamage" }
-local SCALE_NAME = { fontText = "Interface text size", fontChat = "Chat & numbers size", fontTitle = "Titles & headers size", fontDamage = "Game Text Around You" }
-local SCALE_DESC = {
-	fontText = "Every font drawn with the interface face, relative to its normal size.",
-	fontChat = "The chat windows (on top of the game's own chat font size) and every number.",
-	fontTitle = "Titles, headers, dialog names, mail and book text, and the kit's own title face on the painted plates.",
-	fontDamage = "The size of the game's own combat text around your character (Combat Text's Game style). MelloUI's styles: Text Around You; the numbers over the enemies: Numbers Over Enemies.",
-}
+-- The player's own size only (0.19.4, the options audit: Size Title and
+-- Size Text took over Scale Title and Scale Text, which a Font Style also
+-- used for its faces' correction, FaceFactor below; MelloUI:MergeSettings
+-- carries an old save). The damage numbers have no size here: the game
+-- sizes its text around you itself (Scale Damage, gone in 0.19.4).
+local SCALE_KEY = { fontText = "sizeText", fontChat = "scaleChat", fontTitle = "sizeTitle" }
+local IS_ROLE = {}   -- [roleKey] = true, filled from ROLES
 -- The title role's default is the kit's face (user, 2026-09-22: "make it
 -- Enchanted Land as default"); the other roles keep the game's.
 local TITLE_DEFAULT = "Interface\\AddOns\\" .. ADDON_NAME .. "\\Media\\Fonts\\EnchantedLand.ttf"
@@ -160,11 +159,37 @@ for _, s in ipairs(STYLES) do
 	styleValues[#styleValues + 1] = { value = s.value, label = s.label }
 end
 
--- What a style sets: { key = value }
+-- A face's own size correction in a role (0.19.4, the options audit): the
+-- styles' titleScale for a title face, textScale for an interface text face;
+-- 1 for a face no style names (the game's, Enchanted Land, the numbers' and
+-- every other role's). Applied whenever the face is in use, as the kit's 1.5
+-- is; the player's size (SCALE_KEY) comes on top, except on text with a size
+-- of its own (the Quest Tracker's headers, Combat Text, the chat's borrowed
+-- interface face), which takes the face's correction alone.
+local FACE_FACTOR = { fontTitle = {}, fontText = {} }
+for _, s in ipairs(STYLES) do
+	local title, text = FACE_FACTOR.fontTitle, FACE_FACTOR.fontText
+	title[FONT_DIR .. s.title] = title[FONT_DIR .. s.title] or s.titleScale
+	text[FONT_DIR .. s.text] = text[FONT_DIR .. s.text] or s.textScale
+end
+
+-- The correction of a face in a role; a path nil, "" or "Keep the game's":
+-- the role's default face (the title's Enchanted Land, the game's
+-- elsewhere: both 1). For the installer's samples and MelloUI:MergeSettings
+-- too (MelloUI.FontFaceFactor; M.FaceFactor once the module is made).
+local function FaceFactor(roleKey, path)
+	local byPath = FACE_FACTOR[roleKey]
+	local f = byPath and type(path) == "string" and byPath[path]
+	return type(f) == "number" and f or 1
+end
+MelloUI.FontFaceFactor = FaceFactor
+
+-- What a style sets: { key = value }. The sizes back to 100%: the faces
+-- bring their own correction (FaceFactor)
 local function StyleSettings(s)
 	return {
-		fontTitle = FONT_DIR .. s.title, scaleTitle = s.titleScale,
-		fontText = FONT_DIR .. s.text, scaleText = s.textScale,
+		fontTitle = FONT_DIR .. s.title, sizeTitle = 1,
+		fontText = FONT_DIR .. s.text, sizeText = 1,
 		fontChat = FONT_DIR .. NUMBERS, scaleChat = 1,
 		fontChatText = FONT_DIR .. s.text,
 		fontChatParchment = FONT_DIR .. s.paper,
@@ -181,7 +206,7 @@ MelloUI.FontStyleSettings = function(value)
 end
 
 local defaults = { outline = "OUTLINE", style = "custom" }
-local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, with their sizes -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice." }
+local styleDesc = { "A preset: choosing a style changes every font at once -- the titles, the interface text, the chat and numbers, the chat text and the chat on parchment, the sizes back to 100% (each face brings its own size correction) -- each pairing themed with readability first. Fine-tune any of them afterwards (the style then shows Custom). The damage numbers keep their own choice." }
 for _, s in ipairs(STYLES) do
 	styleDesc[#styleDesc + 1] = s.label .. ": " .. s.desc
 end
@@ -193,8 +218,11 @@ local options = {
 	{ type = "dropdown", key = "style", name = "Font Style", hint = "preset: changes every font at once", values = styleValues, desc = table.concat(styleDesc, "\n") },
 }
 for _, role in ipairs(ROLES) do
+	IS_ROLE[role.key] = true
 	defaults[role.key] = role.key == "fontTitle" and TITLE_DEFAULT or KEEP
-	defaults[SCALE_KEY[role.key]] = 1
+	if SCALE_KEY[role.key] then
+		defaults[SCALE_KEY[role.key]] = 1
+	end
 	options[#options + 1] = { type = "dropdown", key = role.key, name = role.name, values = BuildRoleList(), desc = role.desc }
 end
 -- Chat text (user, 2026-09-23: the Font Decisions should take over the chat's
@@ -208,7 +236,7 @@ do
 	local values = BuildRoleList()
 	values[1] = { value = KEEP, label = "Same as Interface text" }
 	options[#options + 1] = { type = "dropdown", key = "fontChatText", name = "Chat text", values = values,
-		desc = "The chat windows' messages, the chat's input box and the whisper windows. The same face as the Interface text unless you choose otherwise (the Chat & numbers face while that is the game's), so the chat follows the Font Styles and your own choice of reading face." }
+		desc = "The chat windows' messages, the chat's input box and the whisper windows. The same face as the Interface text unless you choose otherwise (the Chat & numbers face while that is the game's), so the chat follows the Font Styles and your own choice of reading face. The size stays the chat's own (Chat & numbers size)." }
 end
 -- Chat on parchment (user, 2026-09-24: the chat's font did not fit the
 -- parchment): the chat windows and the whisper windows lying on their
@@ -227,10 +255,12 @@ do
 		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Look > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
-for _, role in ipairs(ROLES) do
-	options[#options + 1] = { type = "slider", key = SCALE_KEY[role.key], name = SCALE_NAME[role.key], min = 0.7, max = 1.5, step = 0.05, percent = true,
-		desc = SCALE_DESC[role.key] }
-end
+options[#options + 1] = { type = "slider", key = "sizeText", name = "Interface text size", min = 0.7, max = 1.5, step = 0.05, percent = true, new = "0.19.4",
+	desc = "Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set." }
+options[#options + 1] = { type = "slider", key = "scaleChat", name = "Chat & numbers size", min = 0.7, max = 1.5, step = 0.05, percent = true,
+	desc = "The chat windows (on top of the game's own chat font size) and every number." }
+options[#options + 1] = { type = "slider", key = "sizeTitle", name = "Titles & headers size", min = 0.7, max = 1.5, step = 0.05, percent = true, new = "0.19.4",
+	desc = "Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own." }
 options[#options + 1] = { type = "slider", key = "scaleChatParchment", name = "Chat on parchment size", min = 0.7, max = 1.5, step = 0.05, percent = true,
 	desc = "The chat and whisper windows' text on their parchment sheet, relative to the chat's own size." }
 options[#options + 1] = { type = "dropdown", key = "outline", name = "Outline", values = {
@@ -238,7 +268,7 @@ options[#options + 1] = { type = "dropdown", key = "outline", name = "Outline", 
 		{ value = "OUTLINE", label = "Thin outline" },
 		{ value = "THICKOUTLINE", label = "Thick outline" },
 	},
-	desc = "Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look." }
+	desc = "Force an outline on every light-coloured font. Dark text on parchment (quests, spellbook, dialogs) keeps its original look. MelloUI's own text in the world (notices, combat text, Gains lines) takes its outline from Notices: Outlined Text; this sets only how thick it is." }
 
 local M = MelloUI:RegisterModule("Fonts", {
 	title = "Fonts",
@@ -264,13 +294,19 @@ local function ChosenFont(roleKey)
 	return nil
 end
 
--- The chat text's face (Chat text, else Chat & numbers), nil to keep the game's
-local ScaleFor   -- (below)
+M.FaceFactor = FaceFactor
+
+-- The correction of the face a role draws in now (FaceFactor): all a text
+-- with a size of its own takes from this module
+local function FaceScale(roleKey)
+	return FaceFactor(roleKey, ChosenFont(roleKey))
+end
 
 -- The chat text's face, nil to keep the game's, and the size factor that
--- face needs: its own choice; else the interface text's face at the
--- interface text's size factor (a Font Style sizes its reading face to the
--- game's x-height with it); else the chat & numbers face
+-- face needs: its own choice; else the interface text's face with that
+-- face's correction (a Font Style sizes its reading face to the game's
+-- x-height with it; the chat's size stays its own, never Interface text
+-- size's: 0.19.4); else the chat & numbers face
 local function ChatTextFont()
 	local own = ChosenFont("fontChatText")
 	if own then
@@ -278,7 +314,7 @@ local function ChatTextFont()
 	end
 	local text = ChosenFont("fontText")
 	if text then
-		return text, ScaleFor("fontText")
+		return text, FaceScale("fontText")
 	end
 	return ChosenFont("fontChat"), 1
 end
@@ -708,11 +744,11 @@ local function EffectiveFlags(object, originalFlags)
 	return originalFlags
 end
 
--- The scale of a role, from its own slider.
-function ScaleFor(roleKey)
+-- The scale of a role: its face's correction times its own slider.
+local function ScaleFor(roleKey)
 	local db = M.db
 	local value = db and tonumber(db[SCALE_KEY[roleKey] or ""])
-	return value or 1
+	return FaceScale(roleKey) * (value or 1)
 end
 
 local function ApplyToObject(object)
@@ -1051,7 +1087,7 @@ local function RestoreChatWindows()
 	Family.EditBoxesLeft()   -- (ChatFontNormal keeps a family of its own: its CENTER still there)
 end
 
--- The old single Font Size slider, folded into the four once and taken out
+-- The old single Font Size slider, folded into the role sizes once and taken out
 -- of the save (0.15.0: its default is gone, so the 1 every older save holds
 -- would otherwise go into every profile and the settings backup). At the
 -- first load (OnInit) and whenever the fonts are applied (a profile loaded
@@ -1149,6 +1185,10 @@ end
 --            true   always outlined: the Outline's own while it forces one,
 --                   else a thin OUTLINE, with the module on or off (an
 --                   "Outlined Text" switch: style the text again on a flip)
+--   faceOnly what the role's size does to the text: nil, the face's
+--            correction times the role's size slider; true, nothing (its
+--            size is another setting's); "own", the face's correction
+--            alone (a text with a size slider of its own: 0.19.4)
 -- The font is set at once and again at every 'fonts' Fire (a face, a size,
 -- the Outline, a Font Style, the module on or off). The listener is taken
 -- when this file loads, so it runs before every listener taken later (the
@@ -1227,12 +1267,16 @@ do
 		local db = M.isEnabled and M.db
 		if db then
 			local role = entry.role
-			if not SCALE_KEY[role] then
+			if not IS_ROLE[role] then
 				role = RoleFor(basePath)
 			end
-			path, factor = ChosenFont(role) or basePath, tonumber(ScaleFor(role)) or 1
-			if entry.faceOnly then
+			path = ChosenFont(role) or basePath
+			if entry.faceOnly == "own" then
+				factor = FaceScale(role)   -- (a size of its own: the face's correction alone)
+			elseif entry.faceOnly then
 				factor = 1   -- (its size is another setting's: Your Damage's, Numbers Over Enemies)
+			else
+				factor = tonumber(ScaleFor(role)) or 1
 			end
 			local outline = db.outline
 			forced = (outline and outline ~= "NONE") and outline or nil
@@ -1278,7 +1322,7 @@ do
 			styled[fs] = entry
 		end
 		entry.role, entry.object, entry.size, entry.flags = role, object, SafeNumber(size), SafeText(flags)
-		entry.faceOnly = faceOnly and true or nil
+		entry.faceOnly = faceOnly == "own" and "own" or (faceOnly and true or nil)
 		if outline == nil then
 			entry.outline = nil
 		else
@@ -1301,7 +1345,7 @@ local function ApplyAll()
 		MelloUI.Kit:SetTitleFace((type(value) == "string" and value ~= "" and value ~= KEEP) and value or false)
 	end
 	if MelloUI.Kit and MelloUI.Kit.SetTitleSizeFactor then
-		MelloUI.Kit:SetTitleSizeFactor(ScaleFor("fontTitle"))
+		MelloUI.Kit:SetTitleSizeFactor(ScaleFor("fontTitle"), FaceScale("fontTitle"))
 	end
 	ApplyChatWindows()
 	HookParchmentPanels()
@@ -1317,7 +1361,7 @@ local function RestoreAll()
 		MelloUI.Kit:SetTitleFace(nil)   -- the kit's default face with the module off
 	end
 	if MelloUI.Kit and MelloUI.Kit.SetTitleSizeFactor then
-		MelloUI.Kit:SetTitleSizeFactor(1)
+		MelloUI.Kit:SetTitleSizeFactor(1, 1)
 	end
 	RestoreChatWindows()
 	RestoreParchmentStrings()
@@ -1405,6 +1449,23 @@ function M:OnEnable(db)
 			db.fontChatParchment = st and (FONT_DIR .. st.paper) or KEEP
 		end
 		db.paperFollows = true
+	end
+	-- a Font Style named whose faces were never written (picked while this
+	-- module was off: OnSettingChanged runs only while it is on): written
+	-- now, so the style's name never stands over other faces (0.19.4)
+	local st = STYLE[db.style]
+	if st then
+		local set, stale = StyleSettings(st), false
+		for k, v in pairs(set) do
+			if k:sub(1, 4) == "font" and db[k] ~= v then
+				stale = true
+			end
+		end
+		if stale then
+			for k, v in pairs(set) do
+				db[k] = v
+			end
+		end
 	end
 	ApplyWorldFonts(db)
 	ApplyAll()

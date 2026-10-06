@@ -2442,10 +2442,27 @@ local function WizardSteps()
 	-- mode and its brightness
 	--------------------------------------------------------------------------------
 
-	-- an area's sheet switch
-	local function SheetRow(key, label, zebra)
+	-- an area's sheet switch; an area with a choice (MelloUI.ParchmentAreas'
+	-- `values`: the character window's, 0.19.4) its dropdown, an older
+	-- switch's true read as the area's `on`
+	local function SheetRow(key, label, zebra, area)
 		local gate = CHAT_SHEETS[key] and ChatSheetGate or ReskinGate
 		local draftKey = "UIModifications." .. key
+		if type(area) == "table" and type(area.values) == "table" then
+			local function Get()
+				local v = Wizard()[draftKey]
+				if v == true then
+					return area.on
+				end
+				return type(v) == "string" and v or "off"
+			end
+			local function Set(value)
+				Put(draftKey, value)
+			end
+			return function(page)
+				return (W.DropdownRow(page, 0, label, nil, nil, Get, Set, area.values, RowOpts(zebra, gate)))
+			end
+		end
 		return function(page)
 			return KeyRow(page, label, nil, nil, draftKey, false, RowOpts(zebra, gate))
 		end
@@ -2483,7 +2500,7 @@ local function WizardSteps()
 		for i, area in ipairs(type(MelloUI.ParchmentAreas) == "table" and MelloUI.ParchmentAreas or EMPTY) do
 			local key, label = area[1], area[2]
 			if type(key) == "string" and type(label) == "string" then
-				LaterRow(page, SheetRow(key, label, i % 2 == 1), W.ROW_HEIGHT, 0)
+				LaterRow(page, SheetRow(key, label, i % 2 == 1, area), W.ROW_HEIGHT, 0)
 			end
 		end
 		flow[#flow].gap = 12
@@ -2559,17 +2576,25 @@ local function WizardSteps()
 		local own = FullStyle()
 		local base = own and type(settings) == "function" and settings(own)
 		base = type(base) == "table" and base or EMPTY
+		-- (0.19.4) a sample's size: its face's own correction (Fonts'
+		-- FaceFactor; the game's faces 1) times the player's size
+		local Factor = MelloUI.FontFaceFactor
+		local function Scale(role, face, size)
+			local f = type(Factor) == "function" and tonumber(Factor(role, face)) or 1
+			return (f or 1) * (Num(size) or 1)
+		end
+		local mTitle = Face(full["Fonts.fontTitle"], Face(base.fontTitle, game.title))
+		local mText = Face(full["Fonts.fontText"], Face(base.fontText, game.text))
 		local list = { { key = "mello", tag = TEXT.melloFonts, tip = TEXT.melloFontsTip,
-			title = Face(full["Fonts.fontTitle"], Face(base.fontTitle, game.title)),
-			titleScale = Num(full["Fonts.scaleTitle"]) or Num(base.scaleTitle) or 1,
-			text = Face(full["Fonts.fontText"], Face(base.fontText, game.text)),
-			textScale = Num(full["Fonts.scaleText"]) or Num(base.scaleText) or 1 } }
+			title = mTitle, titleScale = Scale("fontTitle", mTitle, full["Fonts.sizeTitle"] or base.sizeTitle),
+			text = mText, textScale = Scale("fontText", mText, full["Fonts.sizeText"] or base.sizeText) } }
 		for _, style in ipairs(type(MelloUI.FontStyles) == "table" and MelloUI.FontStyles or EMPTY) do
 			local set = style.value ~= own and type(settings) == "function" and settings(style.value)
 			if type(set) == "table" then
+				local title, text = Face(set.fontTitle, game.title), Face(set.fontText, game.text)
 				list[#list + 1] = { key = style.value, tag = style.label, tip = style.desc,
-					title = Face(set.fontTitle, game.title), titleScale = Num(set.scaleTitle) or 1,
-					text = Face(set.fontText, game.text), textScale = Num(set.scaleText) or 1 }
+					title = title, titleScale = Scale("fontTitle", title, set.sizeTitle),
+					text = text, textScale = Scale("fontText", text, set.sizeText) }
 			end
 		end
 		list[#list + 1] = { key = "game", tag = TEXT.gameFonts, tip = TEXT.gameFontsTip,

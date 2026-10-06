@@ -73,7 +73,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 			{ value = "cursor_right", label = "Right of the cursor" },
 		  } },
 		{ type = "slider", key = "scale", name = "Scale", min = 0.5, max = 1.5, step = 0.05, percent = true,
-		  desc = "Scale of the game tooltip." },
+		  desc = "Scale of the game tooltip, the comparison tooltips beside it and a linked item's tooltip." },
 	},
 })
 
@@ -310,6 +310,16 @@ local function ApplyHealthBar()
 	end
 end
 
+-- Bar Textures' texture, its Tooltip Health Bar switch or the module itself
+-- changed: the bar's fill laid again at once (0.19.4, the options audit: it
+-- waited for a /reload); heard while this module is on
+local BAR_OWNER = "Tooltip bar texture"
+local function OnBarTexture()
+	if M.isEnabled then
+		ApplyHealthBar()
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Placement
 --------------------------------------------------------------------------------
@@ -475,15 +485,24 @@ end
 
 -- (its backgrounds laid again at the UI's one resolution whatever the scale:
 -- those in the tooltip, and only when its scale really changed -- audit,
--- 2026-09-24: each setting of this module laid every background in the UI)
+-- 2026-09-24: each setting of this module laid every background in the UI).
+-- The game tooltip, the comparison tooltips beside it, and a linked item's
+-- tooltip with its own (0.19.4, the options audit: they stayed at 1 beside
+-- a scaled game tooltip); none of them secure.
+local SCALED = { "GameTooltip", "ShoppingTooltip1", "ShoppingTooltip2",
+	"ItemRefTooltip", "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2" }
+
 local function ApplyScale()
-	if GameTooltip then
-		local scale = M.isEnabled and (tonumber(M.db.scale) or 1) or 1
-		local Kit = MelloUI.Kit
-		if Kit and Kit.SetFrameScale then
-			Kit:SetFrameScale(GameTooltip, scale)
-		else
-			GameTooltip:SetScale(scale)
+	local scale = M.isEnabled and (tonumber(M.db.scale) or 1) or 1
+	local Kit = MelloUI.Kit
+	for _, name in ipairs(SCALED) do
+		local tip = _G[name]
+		if tip and tip.SetScale then
+			if Kit and Kit.SetFrameScale then
+				Kit:SetFrameScale(tip, scale)
+			else
+				tip:SetScale(scale)
+			end
 		end
 	end
 end
@@ -556,11 +575,13 @@ function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
 	MelloUI:On("palette", OnPalette, PALETTE_OWNER)
+	MelloUI.Widgets.OnBarTexture("tooltip", OnBarTexture, BAR_OWNER)
 	ApplyAll()
 end
 
 function M:OnDisable()
 	MelloUI:Off(PALETTE_OWNER, "palette")
+	MelloUI:Off(BAR_OWNER)
 	unitColor = nil
 	Fade.Stop(true)
 	for _, tooltip in ipairs(TooltipList()) do

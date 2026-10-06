@@ -55,7 +55,7 @@ local LIST = {
 	{ "party", "Party Frames", "Frames", "The party frames, the game's and the raid-style ones." },
 	{ "raid", "Raid Frames", "Frames", "The raid frames." },
 	{ "buffs", "Buffs & Debuffs", "Frames", "Your own buffs and debuffs, the game's or MelloUI's rows by the minimap." },
-	{ "reminders", "Reminders", "Frames", "The round reminders beside your portrait (restock, mail, your buffs, the weapon's poison...)." },
+	{ "reminders", "Reminders", "Frames", "The round reminders beside your portrait (restock, mail, your buffs, the weapon's poison...). A new reminder does not bring them back: In Combat keeps it faded until a fight, On Mouseover until you point at them." },
 	{ "bar1", "Main Action Bar", "Bars", "Action Bar 1. Its keys work while it is faded." },
 	{ "bar2", "Action Bar 2", "Bars", "Its keys work while it is faded." },
 	{ "bar3", "Action Bar 3", "Bars", "Its keys work while it is faded." },
@@ -72,7 +72,7 @@ local LIST = {
 	{ "minimap", "Minimap", "Chat & Map", "The minimap with its zone band and the Services row." },
 	{ "tracker", "Quest Tracker", "Chat & Map", "MelloUI's Quest Tracker." },
 	{ "objectives", "Objective Tracker", "Chat & Map", "The game's own objective tracker." },
-	{ "widgets", "Widget Column", "Chat & Map", "The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. On Mouseover hides a loot roll or a summons until you point at the column." },
+	{ "widgets", "Widget Column", "Chat & Map", "The column of widgets: loot rolls, summons, Voice Over, whispers and the rest. A new one does not bring the column back: In Combat keeps a loot roll, a summons or a whisper faded out of combat, On Mouseover until you point at the column." },
 	{ "route", "World Marker", "Chat & Map", "Route's World Marker over the destination (the Direction Arrow is a row of the Widget Column: it fades with the column)." },
 }
 
@@ -87,15 +87,31 @@ for _, e in ipairs(LIST) do
 end
 
 local M   -- (the module, below)
+local bulk = false   -- (SetAll at work: the engine syncs once at its end)
 
-local function SetAll(value)
-	local db = M and M.db
-	if not db then
-		return
-	end
+local function SetEach(value)
 	for _, e in ipairs(LIST) do
-		db["show_" .. e[1]] = value
 		MelloUI:NotifySettingChanged("Fader", "show_" .. e[1], value)
+	end
+end
+
+local function SetAllNow(value)
+	bulk = true
+	local ok, err = pcall(SetEach, value)
+	bulk = false
+	Fader:Changed("show")
+	if not ok then
+		error(err, 0)
+	end
+end
+
+-- Fade Everything / Fade Nothing: every element's choice in one Batch (the
+-- bus's 'setting' Fires held until its end, the settings backup once), and
+-- the engine synced once for the lot, not once per element (options audit,
+-- 2026-10-05: 24 Syncs and 24 backups per click)
+local function SetAll(value)
+	if M and M.db then
+		MelloUI:Batch(SetAllNow, value)
 	end
 end
 
@@ -606,5 +622,7 @@ end
 
 function M:OnSettingChanged(key, _, db)
 	self.db = db
-	Fader:Changed(key)
+	if not bulk then
+		Fader:Changed(key)
+	end
 end

@@ -61,20 +61,20 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "An arrow beside the backpack folds the bag slots away so only the backpack shows; click it again to bring them back. While you hold an item they come out by themselves, so a new bag can be dropped into a slot. The game remembers which way you left it." },
 		{ type = "header", name = "Chat" },
 		{ type = "toggle", key = "chatNotices", name = "Chat Notices",
-		  desc = "Lines MelloUI writes to chat on its own: a learned dungeon entrance, settings restored from the backup, hints. Replies to slash commands always show." },
+		  desc = "Lines MelloUI writes to chat on its own: a learned dungeon entrance, settings restored from the backup, hints. Replies to slash commands, and the notices you send to the chat (Send To Chat Instead), always show." },
 		{ type = "header", name = "Notices" },
 		{ type = "toggle", key = "noticeOnScreen", name = "On-screen Notices",
 		  desc = "One short line in the upper third of the screen when MelloUI has news for you: a route set or finished, a service remembered, a dungeon's quests listed. It fades after a few seconds. Move it in Edit Layout." },
 		{ type = "toggle", key = "noticeToChat", parent = "noticeOnScreen", name = "Send To Chat Instead",
-		  desc = "Write these lines in the chat instead of showing them on the screen. They follow Chat Notices there." },
+		  desc = "Write these lines in the chat instead of showing them on the screen. They show there even while Chat Notices is off." },
 		{ type = "toggle", key = "noticeSounds", parent = "noticeOnScreen", name = "Notice Sounds",
-		  desc = "A short chime with each notice: the map's tracking sound for a new destination, a softer one when you arrive." },
+		  desc = "A short chime with each notice: the map's tracking sound for a new destination (left out while the World Marker's own sound plays for it), a softer one when you arrive." },
 		{ type = "toggle", key = "textShade", name = "Text Shade",
 		  desc = "A soft dark shade behind the text MelloUI shows on the world, so it reads on bright ground: the zone name when you enter a new area (with its subzone and PvP lines), the game's messages in the middle of the screen (red errors, yellow quest progress, raid warnings and boss emotes) and the Route's Direction Arrow and World Marker. No outline on the first two (Outlined Text adds it back); the game's colours stay. Off: the game's own look, and no shade behind the arrow and the marker." },
 		-- (not under On-screen Notices: it sets the zone text's and the
 		-- centre texts' outline too, which show with the notices off)
 		{ type = "toggle", key = "noticeOutline", name = "Outlined Text",
-		  desc = "Draw the on-screen notice's lines, the zone text and the game's messages in the middle of the screen with an outline. Off: soft text on a dark shade." },
+		  desc = "Draw the text MelloUI shows on the world with an outline: the on-screen notice's lines, Combat Text's lines and the Gains lines, and, while Text Shade is on, the zone text and the game's messages in the middle of the screen. Off: soft text on a dark shade." },
 		{ type = "header", name = "Combat Text" },
 		{ type = "slider", key = "worldTextScale", name = "Numbers Over Enemies", min = 0.5, max = 3, step = 0.1,
 		  format = function(v) return string.format("%.1fx", v) end, search = "world text scale",
@@ -339,9 +339,8 @@ local function DetachBagSlots()
 	if holder then
 		holder:Hide()
 	end
-	if BagsBar and BagsBar.Layout then
-		pcall(BagsBar.Layout, BagsBar)   -- Blizzard's own anchors again
-	end
+	-- the game's own anchors again, laid by hand (its Layout is never run)
+	Fold.Chain()
 end
 
 function UpdateBagSlots()
@@ -548,6 +547,37 @@ function Fold.Lay(open)
 	Fold.FitArt(bar, pack, point, beyond)
 end
 
+-- The game's own chain (BagsBarMixin:Layout's anchors) laid by hand, its
+-- pass never run: the backpack at the bar's end, the arrow beside it while
+-- it shows, the slots that show chained on from there. For the fold gone and
+-- for the slots back from the bag window (Hide Bag Bar or Bag Slots on Bag
+-- Window off, Edit Mode opened).
+function Fold.Chain()
+	local bar, toggle, pack = BagsBar, BagBarExpandToggle, MainMenuBarBackpackButton
+	if not (bar and pack and bar.GetBagButtonAnchorPoints) then
+		return
+	end
+	local ok, point, relativePoint, x, y = pcall(bar.GetBagButtonAnchorPoints, bar)
+	if not (ok and point) then
+		return
+	end
+	pack:ClearAllPoints()
+	pack:SetPoint(point, bar, point)
+	local anchor = pack
+	if toggle and toggle:IsShown() then
+		toggle:ClearAllPoints()
+		toggle:SetPoint(point, pack, relativePoint)
+		anchor = toggle
+	end
+	for _, button in ipairs(Fold.Buttons()) do
+		if button ~= pack and button:IsShown() then
+			button:ClearAllPoints()
+			button:SetPoint(point, anchor, relativePoint, x, y)
+			anchor = button
+		end
+	end
+end
+
 -- the fold gone (the option off, the bar hidden, its slots docked): the
 -- slots back, the arrow hidden, the game's own chain from the backpack laid
 -- again (its pass not run), the frame art on its own anchors
@@ -560,21 +590,9 @@ function Fold.Release()
 		slot:Show()
 	end
 	wipe(Fold.hid)
-	local bar, toggle, pack = BagsBar, BagBarExpandToggle, MainMenuBarBackpackButton
-	toggle:Hide()
-	local ok, point, relativePoint, x, y = pcall(bar.GetBagButtonAnchorPoints, bar)
-	if ok and point then
-		pack:ClearAllPoints()
-		pack:SetPoint(point, bar, point)
-		local anchor = pack
-		for _, button in ipairs(Fold.Buttons()) do
-			if button ~= pack and button:IsShown() then
-				button:ClearAllPoints()
-				button:SetPoint(point, anchor, relativePoint, x, y)
-				anchor = button
-			end
-		end
-	end
+	local bar = BagsBar
+	BagBarExpandToggle:Hide()
+	Fold.Chain()
 	local art = rawget(bar, "BorderArt")
 	if art and Fold.artPoints then
 		art:ClearAllPoints()

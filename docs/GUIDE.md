@@ -418,9 +418,19 @@ level frame stays where the game lays it; only its circle, number and target rin
 name is centred on the bracket, gem to gem. The name above each health bar sits on a soft dark band, as long
 as the name, that fades out at its ends (Name Shade: Name, the default). Whole plate adds a soft shadow that follows
 the plate's own shape: round the level circle, round each end gem and along the bar, in every
-Nameplate Border look; this needs the UI Shade and its Shade: Nameplates switch on (Look >
-General). Off: no shade. Shade Strength sets how dark it is (the nameplates' own, apart from the
-UI Shade's). Both sit on Nameplates > Plates, with the nameplates' Painted Skin.
+Nameplate Border look; this needs the UI Shade on (Look > General), and its Shade Strength sets how
+dark that shadow is. Off: no shade. The band behind the name keeps one strength of its own, like the
+on-screen notice's (0.19.4). Name Shade sits on Nameplates > Plates, with the nameplates' Painted Skin.
+
+**Elite and Rare Marks** (on; Nameplates > Plates, with the Nameplate Kit): a metal line over the
+name with a crest on its middle (since 0.19.4; before it a small crest before the name and the
+plate's end cap and level circle in the metal). Silver says rare, wings say elite: an elite's line
+is gold, its crest crowned and winged; a rare's silver with a star; a rare elite's silver line with
+gold end gems and a gold crest on silver wings; a boss's red-bronze, scrollwork curling out of a
+skull crest, a bead along each half and a wing on each end of the line. The plate itself keeps its
+own look. The game's own elite or rare icon steps aside while the mark shows. The pieces are kit
+art (Tools/kit_marks.py, group marks/top*), sized from the bracket's height and hung on the name's
+top corners (on the bar's top when the name sits inside the bar).
 
 ### Tweaks
 
@@ -445,8 +455,8 @@ UI Shade's). Both sit on Nameplates > Plates, with the nameplates' Painted Skin.
   colours (gold for a new destination or an arrival) over a dark shade with soft edges, in
   your Font Style; held four seconds, then faded (at once with Reduce Motion). It works with
   Route off. Edit Layout shows a sample line there to drag; its Reset puts it back at the top
-  centre. Under it: "Send To Chat Instead" (off; the lines go to the chat, where
-  Chat Notices applies) and "Notice Sounds" (on).
+  centre. Under it: "Send To Chat Instead" (off; the lines go to the chat, even
+  while Chat Notices is off) and "Notice Sounds" (on).
 - "Zone Text Shade" (on by default): the game's zone text -- the zone's name when you enter
   a new area, the subzone under it and the PvP line ("Contested Territory", "Sanctuary") --
   in the notice's look: each line on the same soft dark shade, without the outline (Outlined
@@ -492,7 +502,8 @@ Large countdown text on cooldown swipes: outlined numbers that change colour and
 with the time left (red under 5 s, yellow under a minute, dim white for minutes, grey for
 hours). Covers action, pet, stance and flyout buttons and the buff / debuff / crowd control
 icons on nameplates. Options: minimum duration (skips the global cooldown), text size relative
-to the icon, tenths below 5 s, colour by time. Blizzard's built-in numbers are hidden where the
+to the icon, tenths below 5 s, colour and size by time (larger in the last 5 s, smaller for minutes and
+hours). Blizzard's built-in numbers are hidden where the
 module draws its own; when the client hands over secret start or duration values (possible on
 enemy nameplate auras) the built-in numbers are left in place.
 
@@ -577,9 +588,9 @@ Reminders) and your cast bar stay in full view while the player frame is faded. 
 when they matter: Gains, the cast bar, the damage meter's
 race bar and summary, Combat Text and the notices. (The reminders, the widget column and Route's
 arrow and marker fade their own way too: the Fader fades a frame they sit on, so neither gets in the
-other's way.) The page also holds **Windows Fade In** (the
-game's windows fade in when they open) and the chat's **Tabs Only On Mouseover**, with link rows
-where they were.
+other's way.) The page also holds the chat's **Tabs Only On Mouseover** (it adds to the Chat fade: the two multiply; not under the
+painted chat), with a link row where it was, and a link
+to **Windows Fade In** (the game's windows fade in when they open), which lives on Windows.
 
 The Fader only sets the alpha of each part (never shows, hides or moves one), on top of the
 alpha the game gives it (Edit Mode's Opacity of the unit and aura frames is kept). `/mello fade`
@@ -594,8 +605,10 @@ Replaces the font of every global font object and the chat windows. Choose betwe
 four fonts shipped with the game, fonts other addons register with LibSharedMedia-3.0, or
 your own `.ttf` files placed in `Media\Fonts` and listed in `Media\CustomFonts.lua`
 (new font files need a full client restart). One face per role: interface text, chat and
-numbers, titles and headers, damage numbers, each with its own size slider (the chat windows
-scale on top of the game's own chat font size); an outline option forces thin or thick outlines
+numbers, titles and headers, damage numbers. The interface text, chat and numbers, and titles and
+headers roles each have a size slider: your own size on top of the face's own correction, so a
+Font Style puts them back to 100% (the chat windows scale on top of the game's own chat font size;
+the Quest Tracker, Combat Text and the chat keep their own sizes). An outline option forces thin or thick outlines
 (Friz Quadrata plus a thin outline is the RougeUI look). The floating combat text and the
 names above characters follow the face after a `/reload`; their size is the engine's.
 
@@ -964,7 +977,8 @@ remaining distance and about how long the rest of the way takes ("1.2 km · abou
 band, and a gold ring that fills as the way is done (while you fly: the flight's time, with the
 time left). Point at it for **Show on the map** and **Stop the route**; a click opens the map. Every new destination shows
 a line in MelloUI's on-screen notice (see Tweaks: On-screen Notices) with the client's
-super-track chime ("Tracking quest giver Marshal McBride for Kobold Camp Cleanup, 240 yd away"),
+super-track chime ("Tracking quest giver Marshal McBride for Kobold Camp Cleanup, 240 yd away") --
+left out while the World Marker's own sound plays for that destination, so a new destination makes one sound --
 and arriving shows "Arrived" with a softer sound; On-screen Notices and Notice Sounds switch
 Route's lines and their chime, as every notice's. Within 25 yards of a pin the
 route ends and the pin is cleared; near a quest objective the drawing pauses but the
@@ -995,7 +1009,8 @@ place): the beam fades out on the way in, the gem glides up about 80 above the p
 and the name over it and three gold chevrons under it rippling down toward the place, so it never
 covers the NPC, object or item's source you are looking for (never faint); walking away it glides
 back down into the beacon. A soft sound plays as it turns and when a new destination comes up
-(Marker Sounds, on: the user's own Quest_TrackChange, Media\Sounds\SFX), never while the place is
+(Marker Sounds, on: the user's own Quest_TrackChange, Media\Sounds\SFX; for a new destination it is the only
+sound, the notice leaves its chime out), never while the place is
 off screen nor for the destination a /reload brings back. Under Reduce Motion it changes at once
 and the chevrons stand still. It never jumps: another destination (a quest picked in the tracker,
 another pin) brings it up afresh there with its way in, the beam's flare and the gem's pop or
@@ -1353,7 +1368,8 @@ it opens these settings (Windows > Bags), and the Discard button and your bag sl
 Bag Window) come along. The bags still open and close as the game
 opens them: the bag key, the backpack button, a vendor, the bank, the mailbox, a trade, the auction
 house; the bank's own bags keep their windows. The window wears the painted look with the reskin
-and the game's without it, and moves in Edit Layout. **Bags by Kind** is on the Windows page (Bags,
+and the game's without it (in the painted look its page shows the bags' **Window Background**, as the bank
+does; on Parchment the gold count is in dark ink), and moves in Edit Layout. **Bags by Kind** is on the Windows page (Bags,
 General); off, you get the game's bag window back. While it is on, the game's Combined Bags setting
 is held on (it comes back as you had it when you switch Bags by Kind off).
 
@@ -1404,11 +1420,11 @@ The text that floats over your character in a fight (the damage you take, your h
 - **Feed:** one column over your portrait, the newest on top, each line with a small mark for its kind (a point for a hit, a plus for a heal, a star for a proc, a ring for a miss, a drop for a resource) and the healer's name.
 - **Classic:** one stream over your head, like the game's, in MelloUI's font and shade.
 
-**Preview** plays a few made-up lines in the chosen style (also `/mello combattext test`). Damage taken is red, healing green, resources blue, procs in the palette's gold; crits are a third bigger. **Shade Size** (how big the soft shade behind every line is, the text over you and Your Damage alike: 100% as the notices', less hugs the numbers closer, 0% none), **Text Around You** (the size of these styles' text), **Notices In Title Font** (procs and auras in the title font, as the window titles), **Lane Spread** (how far left and right the Lanes run) and **Most Lines** (per lane, in the stream or in the feed) shape it (each dimmed on Game, where the game draws the text: its size is then **Game Text Around You**); each kind has its switch (Damage Taken, Healing, Procs & Auras, Dodge, Parry & Block, Resources Gained, Entering & Leaving Combat, Reputation & Honor). Each style moves and sizes in Edit Layout, which shows sample lines to drag. While a MelloUI style is on, the game's own text is kept quiet (its switch in the game's options stays on, as the text needs it); back on Game it is as it was. In a fight the game hides the amounts from addons: MelloUI shows them as the game gives them, with no totals of its own.
+**Preview** plays a few made-up lines in the chosen style (also `/mello combattext test`). Damage taken is red, healing green, resources blue, procs in the palette's gold; crits are a third bigger. **Shade Size** (how big the soft shade behind every line is, the text over you and Your Damage alike: 100% as the notices', less hugs the numbers closer, 0% none), **Text Around You** (the size of these styles' text), **Notices In Title Font** (procs and auras in the title font, as the window titles), **Lane Spread** (how far left and right the Lanes run) and **Most Lines** (per lane, in the stream or in the feed) shape it (each dimmed on Game, where the game draws and sizes the text itself); each kind has its switch (Damage Taken, Healing, Procs & Auras, Dodge, Parry & Block, Resources Gained, Entering & Leaving Combat, Reputation & Honor). Each style moves and sizes in Edit Layout, which shows sample lines to drag. While a MelloUI style is on, the game's own text is kept quiet (its switch in the game's options stays on, as the text needs it); back on Game it is as it was. In a fight the game hides the amounts from addons: MelloUI shows them as the game gives them, with no totals of its own.
 
 **Your Damage** draws the numbers of the damage you deal in MelloUI's look as well, at each enemy's nameplate: **Rise** (straight up, as the game's), **Fan** (up, left and right in turn) or **Stack** (a short column beside the enemy, the newest on top). Crits are gold and bigger, spells violet, a glancing blow smaller, and a dodge or parry shows as a word. It keeps the feel of the game's numbers: as big as they are (**Numbers Over Enemies** sizes it, as it sizes the game's; Text Around You does not), starting on the enemy and shooting up, about a second and a half each, and the killing blow finishes rising after the enemy's nameplate is gone. Only your own and your pet's hits show: a hit is drawn on an enemy you or your pet are fighting (on its threat list), never another player's first hit on a fresh mob. The game only tells an addon that an enemy was hit, not by whom, so in a group, or where the game keeps threat hidden, the game's own numbers show (they know whose hit it is), and MelloUI's come back when you play solo again. One case it cannot tell apart: alone, a passer-by hitting the same mob you fight. The game's own damage numbers are switched off meanwhile and come back as they were on **Game** (the default). MelloUI draws at the enemies' nameplates, so with enemy nameplates off (the V key) the game's own numbers show until you turn them on again. Preview shows it at your target's nameplate. `/mello combattext order` prints, for 15 seconds, the order in which a hit and the threat update arrive (a check for the hits held a moment for it).
 
-On **Game**, the numbers over the enemies are drawn by the game: their font is **Game Numbers Font** on the same tab and their size **Numbers Over Enemies**. Your Damage's numbers take the Game Numbers Font too (at once, no /reload), so every number over the enemies is one font. One size per thing on the screen: Text Around You (MelloUI's styles), Game Text Around You (the Game style) and Numbers Over Enemies (the game's numbers or Your Damage, whichever draws them); the search finds them by their old names too. The tab also has the game's own switches for them: **Damage Over Enemies**, **DoT Ticks Over Enemies**, **Pet Damage Over Enemies** and **Healing Over Friends**. They show the game's setting as it is and change it only when you do; one this client does not have is dimmed ("Not in this client"), and the damage ones are dimmed while Your Damage draws the numbers.
+On **Game**, the numbers over the enemies are drawn by the game: their font is **Game Numbers Font** on the same tab and their size **Numbers Over Enemies**. Your Damage's numbers take the Game Numbers Font too (at once, no /reload), so every number over the enemies is one font. One size per thing on the screen: Text Around You (MelloUI's styles) and Numbers Over Enemies (the game's numbers or Your Damage, whichever draws them); the search finds them by their old names too. The tab also has the game's own switches for them: **Damage Over Enemies**, **DoT Ticks Over Enemies**, **Pet Damage Over Enemies** and **Healing Over Friends**. They show the game's setting as it is and change it only when you do; one this client does not have is dimmed ("Not in this client"), and the damage ones are dimmed while Your Damage draws the numbers.
 
 ### Damage Meter
 
@@ -1480,7 +1496,8 @@ own choice comes back when you switch MelloUI's off.
 - **Off Hand Bar**: a thinner bar under it for your off-hand weapon, while you carry one.
 - **Look**: Cast Bar (the cast bar's frame, the bar's name above it on the left and the seconds
   left on the right: **Label And Time**) or Hairline (a thin rim on a soft shade, nothing else).
-  With the cast bars' painted look off, both are a plain bar.
+  With the cast bars' painted look off, both are a plain bar. In the painted look the fill wears the Cast
+  Bars' Bar Texture (Bar Textures > Apply To > Cast Bars; Minimalist while that is off or Default).
 - **Show**: In Combat (a bar shows in a fight once it swings or shoots, and fades out when the
   fight ends) or Always (each bar at rest while you carry a weapon for it).
 - **Width** and **Height**; out of range a bar dims, as the game's does. Move them in Edit Layout

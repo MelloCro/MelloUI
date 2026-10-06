@@ -145,7 +145,7 @@ options[#options + 1] = { type = "dropdown", key = "soundChannel", name = "Sound
 	},
 	desc = "Channel the recorded lines play on; its volume slider in the game's sound settings controls them." }
 options[#options + 1] = { type = "toggle", key = "collectLines", name = "Record Dialog Lines",
-	desc = "For making new voice lines: keep every greeting and quest line you see, with the NPC and whether a recording existed, so the lines this client added or changed can be voiced for the pack. Saved and kept from one session to the next. Off by default." }
+	desc = "For making new voice lines: keep the greetings and quest lines Voice Over picks up (read aloud or left silent), with the NPC and whether a recording existed, so the lines this client added or changed can be voiced for the pack. Lines of a kind switched off, repeats and greetings passed over behind a quest line are not kept. Saved and kept from one session to the next. Off by default." }
 options[#options + 1] = { type = "header", name = "Playback" }
 options[#options + 1] = { type = "toggle", key = "queueLines", name = "Queue Lines",
 	desc = "Read lines one after another: a greeting finishes before the quest offer that follows it. Off makes every new dialog interrupt the previous one." }
@@ -1654,14 +1654,47 @@ local function Enqueue(text, npc, kind, title, questID, matchText, opts)
 	return entry
 end
 
--- Speak a line straight away outside the queue (settings samples).
+-- Speak a line straight away outside the queue (settings samples). The line
+-- being read is cut: back to the front of the queue, read again from its
+-- start once the sample is over (as after a pause; a book goes on behind
+-- it). The sample over (the engine's finished event, or its estimated time:
+-- M.SampleOver), the queue goes on. While paused the paused line stays as it
+-- is and the queue waits for the resume.
 local function SpeakSample(text, npc)
 	if not HasTTS() then
 		return
 	end
 	CancelFinishTimer()
-	current = nil
-	SpeakEntry({ text = text, secret = false, npc = npc })
+	if current and not paused then
+		table.insert(queue, 1, current)
+		current = nil
+	end
+	local started = SpeakEntry({ text = text, secret = false, npc = npc })
+	if not paused then
+		M.sampling = started or nil
+		if started then
+			finishTimer = C_Timer.NewTimer(EstimateSeconds(text, SpeechRate()), M.SampleOver)
+		else
+			PlayNext()
+		end
+	end
+	Widget:Update()
+end
+
+-- The sample over: the queue goes on (nothing to do once a line has started
+-- meanwhile: it cut the sample)
+function M.SampleOver()
+	if not M.sampling then
+		return
+	end
+	M.sampling = nil
+	if current then
+		return
+	end
+	CancelFinishTimer()
+	if not paused then
+		PlayNext()
+	end
 	Widget:Update()
 end
 
@@ -2420,6 +2453,8 @@ local handlers = {
 	VOICE_CHAT_TTS_PLAYBACK_FINISHED = function()
 		if current and not current.file and not paused then
 			OnFinished(current)
+		elseif not current then
+			M.SampleOver()   -- (a voice sample read out: the queue goes on)
 		end
 	end,
 	VOICE_CHAT_TTS_PLAYBACK_FAILED = function()
@@ -2429,6 +2464,8 @@ local handlers = {
 		end
 		if current and not current.file then
 			OnFinished(current)
+		elseif not current then
+			M.SampleOver()
 		end
 	end,
 }

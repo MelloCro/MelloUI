@@ -99,7 +99,7 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		{ type = "toggle", key = "overrideThreat", name = "Colour Overrides Threat",
 		  desc = "The chosen health bar colour wins over the game's own recolouring of health bars (the aggro / threat display on nameplates and unit frames): whenever the game sets its colour, yours is put back. Off: the game's threat colours show." },
 		{ type = "toggle", key = "executeRange", name = "Execute Range",
-		  desc = "An enemy's health bar turns purple once its health is below the percentage set here, on the target and focus frames and on nameplates, so you see when finishing moves can be used. Works in combat, when the game hides the exact health, and with every health bar colour." },
+		  desc = "An enemy's health bar turns purple once its health is below the percentage set here, on the target, focus, target-of-target and boss frames and on nameplates, so you see when finishing moves can be used. Works in combat, when the game hides the exact health, and with every health bar colour." },
 		{ type = "slider", key = "executeBelow", parent = "executeRange", name = "Execute Below", min = 5, max = 50, step = 1,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "The health percentage under which the bar turns purple (20% for most execute abilities, 35% for some)." },
@@ -113,9 +113,9 @@ local M = MelloUI:RegisterModule("BarTextures", {
 		{ type = "toggle", key = "personal", name = "Personal Resource Display",
 		  desc = "The health and power bars under your character." },
 		{ type = "toggle", key = "statusbars", name = "Experience & Reputation Bars",
-		  desc = "Experience, reputation and honor bars." },
+		  desc = "Experience, reputation and honor bars, and, in the painted look, the damage meter's race bar (Minimalist there while this is off or the texture is Default)." },
 		{ type = "toggle", key = "castbars", name = "Cast Bars",
-		  desc = "Player, pet, target, focus and boss cast bars." },
+		  desc = "Player, pet, target, focus and boss cast bars, and, in the painted look, MelloUI's swing timers (Minimalist there while this is off or the texture is Default)." },
 		{ type = "toggle", key = "cooldowns", name = "Cooldown Manager Bars",
 		  desc = "The bars of the Buff Bar cooldown viewer." },
 		{ type = "toggle", key = "tooltip", name = "Tooltip Health Bar",
@@ -904,7 +904,25 @@ local function HealthColorFor(bar)
 			end
 		end
 	end
+	-- Green under Default (Blizzard): the game's own green art on a bar the
+	-- game keeps white (lockColor: the player, target, focus, pet, party and
+	-- boss frames' health) stays white, as the game leaves it; 0, 1, 0 on it
+	-- tinted the art (0.19.4, the options audit). Any other bar: the green a
+	-- flat texture needs written.
+	if bar.lockColor and M.db.texture == "default" and M.db.healthColor == "green" then
+		return 1, 1, 1
+	end
 	return 0.0, 1.0, 0.0
+end
+
+-- the unit a plain player: false for an NPC, no unit, or an answer that
+-- cannot be read plainly
+local function PlainPlayer(unit)
+	if not unit then
+		return false
+	end
+	local ok, isPlayer = pcall(UnitIsPlayer, unit)
+	return ok and not (issecretvalue and issecretvalue(isPlayer)) and isPlayer == true
 end
 
 local recolouring = false
@@ -941,8 +959,15 @@ local function RecolorHealthBar(bar)
 	if not (group == "unitframes" or group == "nameplates") or not Active(group) then
 		return
 	end
-	if group == "nameplates" and M.db.healthColor == "green" then
-		return   -- the game's own nameplate colouring stands
+	-- the game's own nameplate colouring stands: under Green, and under Class
+	-- colour on an NPC's plate (its reaction red, yellow or green; 0.19.4,
+	-- the options audit: Class colour turned every NPC plate green). The unit
+	-- frames' NPC bars take the green, as under Green.
+	if group == "nameplates" then
+		local mode = M.db.healthColor
+		if mode == "green" or (mode == "class" and not PlainPlayer(UnitOf(bar))) then
+			return
+		end
 	end
 	recolouring = true
 	SetHealthColour(bar, HealthColorFor(bar))

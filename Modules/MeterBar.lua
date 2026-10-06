@@ -674,6 +674,8 @@ function Bar.Apply()
 		looking = true
 		MelloUI:On("border", LookChanged, "Race bar")
 		MelloUI:On("look:statusbars", LookChanged, "Race bar")   -- (the Bar Texture follows the status bars' look)
+		-- the status bars' Bar Texture set or switched (W.BarFill): the fill again
+		W.OnBarTexture("statusbars", LookChanged, "Race bar")
 	end
 	if Bar.ui then
 		Bar.Resize()

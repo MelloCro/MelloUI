@@ -195,6 +195,7 @@ DENSITY = [
     (r"^cards/", 0.8),                     # 804 px shown at 531
     (r"^marks/ring_", 0.75),               # the portrait ring's metal twins: as the ring
     (r"^marks/crest_", 0.75),              # 64 px crests shown at 12-24 (the nameplates' sizes)
+    (r"^marks/top", 0.75),                 # the nameplates' mark on top: its filigree's thin strokes kept
     (r"^marks/", 0.5),                     # the orb's and the caps' metal twins, the orb's disc: as theirs
 ]
 

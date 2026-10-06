@@ -8,7 +8,8 @@
 --   M:IsSelling()         true while the junk sale runs (money still changes)
 --   M:AfterSelling(fn)    fn() now when no sale runs, else once it is over
 --                         (the same fn asked twice runs once)
---   M:Report(fmt, ...)    a line in chat when Report In Chat is on
+--   M:Report(fmt, ...)    a line in chat when Report In Chat is on (with
+--                         the module off: always, the option's default)
 --   M.CoinText(copper)    the gold / silver / copper text with coin icons
 -- Every value the client hands over is read secret-safe (MelloUI.Safe: the
 -- secret test first): a secret cost, money or item quality is never compared.
@@ -69,9 +70,15 @@ local function Report(msg, ...)
 	end
 end
 
--- (for Restock's line: "Restocked: 20 Melon Juice ... for 1g 20s")
+-- (for Restock's line: "Restocked: 20 Melon Juice ... for 1g 20s"). Report
+-- In Chat is read only while Vendor Automation is on, as its row (dimmed
+-- with the switch off) says; off, Restock's line comes as by default.
 function M:Report(msg, ...)
-	Report(msg, ...)
+	if self.isEnabled then
+		Report(msg, ...)
+	else
+		MelloUI:Print(msg, ...)
+	end
 end
 M.CoinText = CoinText
 

@@ -105,7 +105,7 @@ local M = MelloUI:RegisterModule("Widgets", {
 		{ type = "toggle", key = "resurrect", name = "Resurrect Offers",
 		  desc = "Someone offers to resurrect you: the time left, and Accept or Decline on hover. The game's own popup is see-through and click-through meanwhile." },
 		{ type = "toggle", key = "ready", name = "Ready Checks",
-		  desc = "The leader's ready check and its time, with Ready and Not Ready on hover (a click on it: Ready). The game's own box stays away meanwhile (with the Gamepad UI it stays)." },
+		  desc = "The leader's ready check and its time, with Ready and Not Ready on hover (a click on it: Ready). The game's own box stays away meanwhile (with the Gamepad UI it stays); its alert sound and the taskbar flash still come." },
 		{ type = "toggle", key = "threat", name = "Threat",
 		  desc = "In a group fight, only when it matters: close to pulling your target (\"Ease off\") or with it on you (\"Aggro\"), and for a tank the mobs not on you. The ring is your threat against the pull; point at it for the group's threat on your target." },
 		{ type = "toggle", key = "whisper", name = "Whispers",
@@ -2963,6 +2963,14 @@ local function OnEvent(_, event, a1, a2, a3)
 		end
 		ready.who, ready.at, ready.total = Text(a1), GetTime(), Num(a2)
 		Refresh("ready", true)
+		-- the game's box stays away (it no longer hears READY_CHECK), and its
+		-- show was what played the alert and flashed the taskbar: both from
+		-- here then (the game's kit, which Custom Sounds swaps for its bell)
+		local box = _G.ReadyCheckFrame
+		if not (type(box) == "table" and Ask(box.IsEventRegistered, box, "READY_CHECK") == true) then
+			MelloUI:PlayUISound("ready_check")
+			Ask(_G.FlashClientIcon)
+		end
 	elseif event == "READY_CHECK_CONFIRM" then
 		local isPlayer = not Secret(a1) and type(a1) == "string" and Ask(UnitIsUnit, a1, "player")
 		if isPlayer == true then
@@ -3062,7 +3070,8 @@ end
 -- want people to see the widget one"). While a use is on, its game window
 -- stays out of sight, put back when it goes off. Only C calls on the game's
 -- frames, no key written on them and none of their layout run from here:
---   the ready check's box stops listening for READY_CHECK;
+--   the ready check's box stops listening for READY_CHECK (its alert sound
+--   and the taskbar flash are played by the widget's event instead);
 --   the four loot roll frames still open and close as the game has them,
 --   but draw nothing and take no clicks (hiding them from here would lay out
 --   the screen's bottom frames as MelloUI's code: blocked in a fight).

@@ -32,6 +32,12 @@
 --       buttons/orb_*          the level orb in the metal
 --       bars/<family>_cap_l    a Nameplate Border's left cap in the metal
 --   Kit:MarkCrest(kind) -> the crest alone ("marks/crest_<kind>"), or nil
+--       (the Rare Alert's and the configurator's preview's)
+--   Kit:MarkTop(kind) -> the nameplates' mark on top for the kind (2026-10-05,
+--       docs/plans/rank-marks-top.md): its pieces' names, { crest, line, endL,
+--       endR, bead } -- the crest with its wings, the line (stretched between
+--       the ends and the crest), its two ends (a plain line's gems, a boss's
+--       winged scrolled ends) and a boss's bead (nil for the others) -- or nil
 --   Kit:WearMark(tex, piece, kind): the kit texture shows `piece` or, for a
 --       kind, its twin -- swapped only when that changes
 --   Kit.markDisc: the white disc that fits inside the level orb's ring
@@ -39,8 +45,9 @@
 --       level orb (Kit.markDisc in the palette's inner panel; the nameplates'
 --       since 0.15.0, the unit frames' since 2026-10-03, below)
 -- Its users: UnitFramePanel (the target's and focus's ring and level orb,
--- their targets' rings) and NameplatePanel (the left cap, the level orb and a
--- crest before the name); each has its own switch (its `marks` option).
+-- their targets' rings) and NameplatePanel (the mark on top: a metal line
+-- over the name with the crest on it; 2026-10-05, the plate itself no longer
+-- in the metal); each has its own switch (its `marks` option).
 -- Nothing is made at load, and nothing per call once a twin was looked up.
 --------------------------------------------------------------------------------
 
@@ -134,6 +141,20 @@ end
 function Kit:MarkCrest(kind)
 	local name = kind and CRESTS[kind]
 	return (name and self:Piece(name)) and name or nil
+end
+
+local TOPS = {
+	elite = { crest = "marks/topcrest_elite", line = "marks/topline_gold", endL = "marks/topgem_gold", endR = "marks/topgem_gold" },
+	rare = { crest = "marks/topcrest_rare", line = "marks/topline_silver", endL = "marks/topgem_silver", endR = "marks/topgem_silver" },
+	rareelite = { crest = "marks/topcrest_rareelite", line = "marks/topline_silver", endL = "marks/topgem_gold",
+		endR = "marks/topgem_gold" },
+	boss = { crest = "marks/topcrest_boss", line = "marks/topline_boss", endL = "marks/topend_boss_l",
+		endR = "marks/topend_boss_r", bead = "marks/topbead_boss" },
+}
+
+function Kit:MarkTop(kind)
+	local top = kind and TOPS[kind]
+	return (top and self:Piece(top.crest)) and top or nil
 end
 
 function Kit:WearMark(tex, piece, kind)
