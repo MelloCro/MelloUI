@@ -430,6 +430,14 @@ function QL.DressMark(self, kind, data)
 	self.Label:ClearAllPoints()
 	self.Icon:ClearAllPoints()
 	self.Icon:SetAllPoints()
+	-- (the pool gives one button to every kind: an objective mark's glyph
+	-- crop, its tint and its ring go before another kind's art -- a giver's
+	-- "!" came up as a piece of its atlas, 0.19.5)
+	self.Icon:SetTexCoord(0, 1, 0, 1)
+	self.Icon:SetVertexColor(1, 1, 1, 1)
+	if self.Ring then
+		self.Ring:Hide()
+	end
 	self:SetHitRectInsets(0, 0, 0, 0)
 	if kind == "giver" then
 		self.Bg:Hide()
@@ -470,6 +478,8 @@ function QL.DressMark(self, kind, data)
 		-- quest-giver blue, a fixed meaning colour (QL.MEANING)
 		self.Label:SetTextColor(QL.TipColour("pinHint"))
 		self.Label:SetShown(data.tracked)
+	elseif kind == "objective" then
+		QL.Objectives.Dress(self, data)   -- (0.19.5: QuestListObjectives.lua)
 	elseif kind == "entrance" or kind == "transport" then
 		self.Bg:Hide()
 		self.Label:Hide()
@@ -553,6 +563,17 @@ MarkEnter = function(self)
 				or data.item and "Click to set a waypoint here." or "Click to set a waypoint on this giver."
 			Line(tip, where, "pinHint")
 		end
+		local open = 0
+		for _, q in ipairs(data.quests) do
+			if q.state == "available" or q.state == "locked" then
+				open = open + 1
+			end
+		end
+		if open > 0 then
+			Line(tip, open == 1 and "Alt-click to hide this quest (this character)." or "Alt-click to hide these quests (this character).", "pinHint")
+		end
+	elseif self.kind == "objective" then
+		QL.Objectives.Tip(tip, data, Line)
 	elseif self.kind == "entrance" then
 		QL.TipTitle(tip, data.name)
 		local lv = data.dungeonID ~= 0 and QL.Data().dungeonLevel and QL.Data().dungeonLevel[data.dungeonID]
@@ -650,6 +671,10 @@ MarkClick = function(self, button)
 		return
 	end
 	if self.kind == "giver" then
+		if IsAltKeyDown() then
+			QL.HideGiver(data)   -- (0.19.5: its quests not taken, hidden for this character)
+			return
+		end
 		if data.tracked then
 			QL.ClearWaypoint()
 			MelloUI:PlayUISound("waypoint_clear")
@@ -660,6 +685,9 @@ MarkClick = function(self, button)
 				MelloUI:PlayUISound("waypoint_set")
 			end
 		end
+		C_Timer.After(0, RelayAfterClick)
+	elseif self.kind == "objective" then
+		QL.Objectives.Click(data)
 		C_Timer.After(0, RelayAfterClick)
 	elseif self.kind == "entrance" then
 		if IsShiftKeyDown() then
@@ -765,7 +793,8 @@ local function AddGiverPins(map, mapID, mapName)
 			return
 		end
 		local state = QuestState(row, level)
-		if state == "after" or not StartWanted(row, state) or not SeasonWanted(row, state) then
+		if state == "after" or not StartWanted(row, state) or not SeasonWanted(row, state) or QL.GreyHidden(row, state)
+			or (state == "available" or state == "locked") and QL.IsHidden(row[QL.F_ID]) then
 			return
 		end
 		local x, y, who, item
@@ -805,7 +834,8 @@ local function AddGiverPins(map, mapID, mapName)
 		if not seen[row] and not (QL.resolved and QL.resolved[row]) and (row[QL.F_X] ~= 0 or row[QL.F_Y] ~= 0)
 			and QL.Eligible(row) then
 			local state = QuestState(row, level)
-			if state ~= "after" and ItemPinWanted(row, state) and StartWanted(row, state) then
+			if state ~= "after" and ItemPinWanted(row, state) and StartWanted(row, state) and not QL.GreyHidden(row, state)
+				and not ((state == "available" or state == "locked") and QL.IsHidden(row[QL.F_ID])) then
 				seen[row] = true
 				Consider(row, row[QL.F_X] / 100, row[QL.F_Y] / 100, row[QL.F_GIVER], state, ItemKind(row))
 			end
@@ -997,7 +1027,7 @@ local function AddInstanceStartPins(map, mapID, mapName)
 		local id = QL.InstanceStart(row)
 		if id and QL.Eligible(row) and QL.StartShown(row) then
 			local state = QuestState(row, level)
-			if state == "available" or state == "locked" then
+			if (state == "available" or state == "locked") and not QL.GreyHidden(row, state) and not QL.IsHidden(row[QL.F_ID]) then
 				local group = groups[id]
 				if not group then
 					group = { quests = {}, state = "locked", tracked = false, dungeonID = id, giver = QL.Data().dungeons[id],
@@ -1384,12 +1414,22 @@ function QL.CreateProvider()
 	-- (the marks are MelloUI's own frames: no pool call is ever made from here)
 	function QL.Provider:RemoveAllData()
 		Marks.Clear()
+		if QL.Objectives then
+			QL.Objectives.Clear()   -- (their areas and spots on the canvas)
+		end
 	end
 	-- (the zoom and the pan move the marks' anchors with the canvas: nothing
 	-- of ours runs for them; a new canvas size lays the anchors again)
 	function QL.Provider:OnCanvasSizeChanged()
 		if Marks.n > 0 then
 			Marks.Anchor(self:GetMap())
+		end
+	end
+	-- (0.19.5) the zoom: the objectives' areas zoomed out, their places' dots
+	-- zoomed in, the dots one size on the screen (QuestListObjectives.lua)
+	function QL.Provider:OnCanvasScaleChanged()
+		if QL.Objectives and QL.Objectives.ndots > 0 then
+			QL.Objectives.Zoom(self:GetMap())
 		end
 	end
 	-- the pins laid again: on the map's own refresh (fromMap, below) and on
@@ -1435,6 +1475,11 @@ function QL.CreateProvider()
 			end
 			if M.db.transportPins then
 				Try("transports", AddTransportPins, map, mapID, name)
+			end
+			-- (0.19.5) where the log's quests are done: after the givers, so
+			-- the objective marks keep clear of them (QuestListObjectives.lua)
+			if M.db.objectiveMarks and QL.Objectives then
+				Try("objective marks", QL.Objectives.Add, map, mapID)
 			end
 		elseif mapType == MAP_CONTINENT and M.db.zoneBadges then
 			Try("zone badges", AddZoneBadges, map, mapID)

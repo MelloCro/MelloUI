@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.19.5
+
+- Quest List map: quests you can't pick up are left off the map: other classes' quests, the earlier steps of a chain you've moved past, quests whose breadcrumb is in your log (the tooltip says which to hand in first) and quests the server only offers under special conditions.
+- Quest List: hide a quest you don't want with Alt-click, on its giver's mark on the map or on the quest in the list. Hidden quests stay off the map and the list for that character until you take them; the list's gear menu has Show hidden quests to bring one back.
+- Quests no database places (Forever's own) learn their objective spots as you play: each time an objective's count goes up, the spot is remembered for all your characters, and the objective marks and Route use it from then on. Restart the game once after updating: a /reload is not enough, as the spots are kept in a new save file.
+- Quest List map: Hide Grey Quests (Quest List > Map) leaves quests far below your level off the map until you take them, using the game's own grey. Quests in your log and the one you track still show.
+- Quest List map: objective marks. For the quests in your log, the world map shows where each open objective is done: a faint area with an outline and one mark with the objective's kind (kill, collect, use, explore) and your progress. Zoom in and the area gives way to a dot for every spot. Its tooltip names the mob or object, its level and the drop chance; a click sets a waypoint there. The same marks show on the minimap for the objectives near you, with a small mark and arrow on its edge for the nearest ones just beyond it (needs Route on). Switch them with Objective Marks and On The Minimap, or show only your tracked quests (Quest List > Map). While they are on, the game's own blue quest areas and quest markers on the world map are switched off (Hide The Game's Quest Areas), and come back as you had them when you turn the marks off.
+- New /mellobug: if the game ever says MelloUI was blocked from an action, MelloUI keeps what a report needs (the action, whether you were in combat, MelloUI's frame times), and /mellobug shows it ready to copy and send.
+- Route: pick how the way is drawn on the world map and the minimap with Trail Look (Route > Look): Red Beads (Route's red dots, now in a gold ring), Gilded Line (one pale gold line) or Waymarks (short pale gold dashes). The destination is now MelloUI's own flag in a gold ring, on the minimap too, where it sits on the edge with a small arrow while it's farther away. Route Dot Size is now called Trail Size.
+- World Marker: the destination's mark is now the same flag in a gold ring. Its light beam and the ring of light at its foot follow the Trail Look: red with Red Beads, gold with Gilded Line and Waymarks.
+
 ## 0.19.4
 
 - Nameplates: elites, rares, rare elites and bosses wear a new mark. A metal line runs over the name with a crest on its middle: gold, crowned and winged for an elite, silver with a star for a rare, silver with a gold star and wings for a rare elite, and for a boss red-bronze scrollwork round a skull with a wing on each end of the line. The plate itself keeps its own look (no more gold or silver end caps). Switch it with Elite and Rare Marks (Nameplates > Plates).

@@ -52,6 +52,10 @@ local function RowClick(self)
 	if not (self.entry and self.entry.row) then
 		return
 	end
+	if IsAltKeyDown() then
+		QL.ToggleHidden(self.entry.row)   -- (0.19.5: hidden for this character, or shown again)
+		return
+	end
 	if QL.trackedQuestID == self.entry.row[QL.F_ID] then
 		QL.ClearWaypoint()
 		MelloUI:PlayUISound("waypoint_clear")
@@ -197,6 +201,11 @@ local function RowEnter(self)
 		Line(tip, string.format("Click to route to the %s entrance.", QL.IsRaid(QL.InstanceStart(row)) and "raid" or "dungeon"), "pinHint")
 	else
 		Line(tip, "Location not known yet.", "text")
+	end
+	if e.hidden then
+		Line(tip, "Hidden for this character. Alt-click to show it again.", "pinHint")
+	elseif not (e.completed or e.onQuest) then
+		Line(tip, "Alt-click to hide it from the map and the list (this character).", "pinHint")
 	end
 	ShowTipIcon(row)
 	tip:Show()
@@ -532,6 +541,13 @@ local function InitRow(button, entry)
 		button.check:SetDesaturated(not entry.available)
 		button.check:SetAlpha(entry.available and 1 or 0.6)
 		button.title:SetTextColor(r, g, b, 1)
+		if entry.hidden then
+			-- (0.19.5: hidden by hand, listed while Show Hidden Quests is on)
+			button.title:SetText(button.title:GetText() .. "  (hidden)")
+			button.check:SetDesaturated(true)
+			button.check:SetAlpha(0.45)
+			KeyColour(button.title, "text", QL.DONE_ALPHA)
+		end
 	end
 	local where
 	if entry.ready and (row[QL.F_ENDER] or "") ~= "" then
@@ -971,6 +987,12 @@ local function MenuSetup(_, root)
 		function()
 			MelloUI:NotifySettingChanged(M.name, "hideCompleted", not M.db.hideCompleted)
 		end)
+	-- (0.19.5) the quests hidden by hand, listed dimmed to Alt-click back
+	root:CreateCheckbox(string.format("Show hidden quests (%d)", QL.HiddenCount()),
+		function() return M.db.showHidden and true or false end,
+		function()
+			MelloUI:NotifySettingChanged(M.name, "showHidden", not M.db.showHidden)
+		end)
 end
 
 -- the group dropdown's list: the module's Show Quests For
@@ -1220,6 +1242,7 @@ local function BuildEntries(rows, groupOf, showZone)
 					ready = onQuest and QL.IsReadyForTurnIn(row[QL.F_ID]) or false,
 					available = not onQuest and not unmet and row[QL.F_REQ] <= level,
 					unmet = unmet,
+					hidden = not (completed or onQuest) and QL.IsHidden(row[QL.F_ID]) or nil,
 					step = (key:sub(1, 5) == "chain") and QL.chainStep and QL.chainStep[row] or nil,
 				}
 			end
@@ -1272,7 +1295,8 @@ local function SameEntries(a, b)
 				return false
 			end
 		elseif y.header or x.row ~= y.row or x.completed ~= y.completed or x.onQuest ~= y.onQuest or x.ready ~= y.ready
-			or x.available ~= y.available or x.unmet ~= y.unmet or x.showZone ~= y.showZone or x.step ~= y.step then
+			or x.available ~= y.available or x.unmet ~= y.unmet or x.showZone ~= y.showZone or x.step ~= y.step
+			or x.hidden ~= y.hidden then
 			return false
 		end
 	end

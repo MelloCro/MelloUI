@@ -52,6 +52,7 @@ local M = MelloUI:RegisterModule("Route", {
 		routeBeam = true,
 		markerSound = true,
 		lineWidth = 3,
+		trailLook = "beads",
 		arrive = 25,
 		flightHint = true,
 		flightCountdown = true,
@@ -59,11 +60,16 @@ local M = MelloUI:RegisterModule("Route", {
 	options = {
 		{ type = "header", name = "Drawing" },
 		{ type = "toggle", key = "worldMap", name = "Route On The World Map",
-		  desc = "Draw the route to the waypoint on the world map. Blue where it follows paths you have walked, orange where it is a straight guess." },
+		  desc = "Draw the route to the waypoint on the world map, and its destination as a flag in a gold ring. A stretch where no road is known is a paler, straight guess." },
 		{ type = "toggle", key = "minimap", name = "Route On The Minimap",
 		  desc = "Draw the nearby part of the route on the minimap." },
-		{ type = "slider", key = "lineWidth", name = "Route Dot Size", min = 1, max = 8, step = 1,
-		  desc = "Size of the gems that mark the route on the world map and the minimap." },
+		{ type = "dropdown", key = "trailLook", name = "Trail Look", new = "0.19.5", values = {
+			{ value = "beads", label = "Red Beads" },
+			{ value = "line", label = "Gilded Line" },
+			{ value = "dashes", label = "Waymarks" },
+		  }, desc = "How the route is drawn on the world map and the minimap: red beads in gold rings, one pale gold line, or short pale gold dashes. The destination is a flag in a gold ring either way." },
+		{ type = "slider", key = "lineWidth", name = "Trail Size", min = 1, max = 8, step = 1,
+		  desc = "How big the route's beads, line or dashes are on the world map and the minimap." },
 		{ type = "toggle", key = "trackQuests", name = "Route To The Tracked Quest",
 		  desc = "When no map pin is set, route to the quest you are tracking (the one with the arrow): to the nearest place for an objective you have not finished yet (a creature to kill, an object to use, where the item drops or is sold, a place to explore), and to its turn-in once it is complete. An objective that needs an item in your bags first (remains to bury, a key for a cage) is routed to where that item comes from until you have it." },
 		{ type = "toggle", key = "trackFirstWatched", parent = "trackQuests", name = "Fall Back To The First Tracked Quest",
@@ -3305,126 +3311,15 @@ function Needed.Held(gate, left, questID, lines)
 end
 
 -- A quest's entries, { { kind, name, alt, map, x1, y1, x2, y2, ... }, ... },
--- or nil. The data keeps each quest as one packed string (memory audit,
--- 2026-09-24: as tables it held 1.7 MB, nearly all of it places of quests
--- never tracked, and made as much again in garbage while loading); a quest's
--- is decoded when it is asked for, and the last few are kept, as the tracked
--- one is asked for again every few seconds.
-local ObjectivesOf
-do
-	local KEPT = 4                  -- decoded quests kept
-	local decoded, order = {}, {}   -- [questID] = its entries; the questIDs, oldest first
-	-- a coordinate is three characters, base 64 with the digits "0" (48) to
-	-- "o" (111), holding the value plus 131072 (Tools/build_quest_objectives.py)
-	local BIAS = (48 * 64 + 48) * 64 + 48 + 131072
-
-	-- the coordinates after an entry's fields
-	local function Places(entry, coords)
-		local n = #entry
-		for i = 1, #coords - 2, 3 do
-			local a, b, c = coords:byte(i, i + 2)
-			n = n + 1
-			entry[n] = (a * 64 + b) * 64 + c - BIAS
-		end
-		return entry
-	end
-
-	-- A needed item's places, gathered on the objective it is needed for:
-	-- objective.gates = { { item = id, count = n, name = "Samuel's Remains",
-	-- [1..] = { from, "Samuel Fipps", "", map, x1, y1, ..., label =
-	-- "Samuel Fipps (Samuel's Remains)", gate = the gate } } }
-	local function Gate(objective, item, count, itemName, place)
-		local gates = objective.gates
-		if not gates then
-			gates = {}
-			objective.gates = gates
-		end
-		local gate
-		for _, g in ipairs(gates) do
-			if g.item == item then
-				gate = g
-				break
-			end
-		end
-		if not gate then
-			gate = { item = item, count = count, name = itemName }
-			gates[#gates + 1] = gate
-		end
-		place.gate = gate
-		place.label = place[2] .. " (" .. itemName .. ")"
-		gate[#gate + 1] = place
-	end
-
-	-- "<kind><map><name>|<alt>|<x1><y1><x2><y2>...~" for each objective. The
-	-- map is one digit for 0 and 1; a longer one stands between '#' signs
-	-- ("1#2991#Juvenile Vuldren||...~": 0.14.0, Zephras Isle's quests). Names
-	-- may hold quote marks now (matched plainly: OpenObjectives). An objective
-	-- may have no coordinates (0.15.0: one kept for a needed item alone).
-	-- `needed`, the quest's needed items (0.15.0, MelloUI_QuestNeededItems, a
-	-- table of their own so no older reader of the objectives meets them):
-	-- "<obj>|<item>|<count>|<item name>|<from><map><source name>|<x1><y1>...~"
-	-- per place one comes from, `obj` counting the objective records from 1.
-	-- `made` (MelloUI_QuestMadeItems, 2026-10-04): "<obj>,<obj>", the
-	-- objectives whose item is made by using their needed items (entry.made).
-	local function Decode(packed, needed, made)
-		local list, at = {}, {}
-		for kind, rest in packed:gmatch("(%d)([^~]*)~") do
-			local wmap, name, alt, coords = rest:match("^#(%d+)#([^|]*)|([^|]*)|(.*)$")
-			if not wmap then
-				wmap, name, alt, coords = rest:match("^(%d)([^|]*)|([^|]*)|(.*)$")
-			end
-			-- (each record counted, decoded or not: a needed item names its
-			-- objective by that count)
-			at[#at + 1] = false
-			if wmap then
-				local entry = Places({ tonumber(kind), name, alt, tonumber(wmap) }, coords)
-				list[#list + 1] = entry
-				at[#at] = entry
-			end
-		end
-		for record in (needed or ""):gmatch("([^~]*)~") do
-			local obj, item, count, itemName, from, rest = record:match("^(%d+)|(%d+)|(%d+)|([^|]*)|(%d)(.*)$")
-			local wmap, name, coords
-			if rest then
-				wmap, name, coords = rest:match("^#(%d+)#([^|]*)|(.*)$")
-				if not wmap then
-					wmap, name, coords = rest:match("^(%d)([^|]*)|(.*)$")
-				end
-			end
-			local objective = wmap and at[tonumber(obj)]
-			if objective then
-				Gate(objective, tonumber(item), tonumber(count), itemName,
-					Places({ tonumber(from), name, "", tonumber(wmap) }, coords))
-			end
-		end
-		for obj in (made or ""):gmatch("%d+") do
-			local objective = at[tonumber(obj)]
-			if objective and objective.gates then
-				objective.made = true
-			end
-		end
-		return list
-	end
-
-	function ObjectivesOf(questID)
-		local list = decoded[questID]
-		if list then
-			return list
-		end
-		local packed = MelloUI_QuestObjectiveData and MelloUI_QuestObjectiveData[questID]
-		if type(packed) ~= "string" then
-			return nil
-		end
-		local needed = MelloUI_QuestNeededItems and MelloUI_QuestNeededItems[questID]
-		local made = MelloUI_QuestMadeItems and MelloUI_QuestMadeItems[questID]
-		list = Decode(packed, type(needed) == "string" and needed or nil, type(made) == "string" and made or nil)
-		decoded[questID] = list
-		order[#order + 1] = questID
-		if #order > KEPT then
-			decoded[table.remove(order, 1)] = nil
-		end
-		return list
-	end
+-- an entry's needed items on it (.gates, .made), or nil: the one reader of
+-- the companion's objective places, shared with the Quest List's objective
+-- marks since 0.19.5 (MelloUI.QuestObjectives, Core/QuestObjectives.lua:
+-- the decoding and its few kept quests moved there unchanged).
+-- (looked up when asked, not bound at load: the file loads before the
+-- modules in the game; a world that leaves it out has no objective places)
+local function ObjectivesOf(questID)
+	local QO = MelloUI.QuestObjectives
+	return QO and QO.Of(questID) or nil
 end
 
 -- The needed items of a quest's data, every objective's, in one new list, or
@@ -3464,55 +3359,13 @@ local function OpenObjectives(questID, hints, wants, prefer)
 		end
 	end
 	-- (each line: its text, finished, its index, and what it still lacks when
-	-- it counts more than one; `lines` all of them as one string, Needed.Held)
-	local texts, open, lines = {}, {}, {}
-	if C_QuestLog and C_QuestLog.GetQuestObjectives then
-		local ok, list = pcall(C_QuestLog.GetQuestObjectives, questID)
-		if ok and type(list) == "table" then
-			for i, o in ipairs(list) do
-				local text = Plain(o.text)
-				if text then
-					local finished = Plain(o.finished) and true or false
-					local need, have = Plain(o.numRequired), Plain(o.numFulfilled)
-					local left = type(need) == "number" and need > 1 and type(have) == "number" and need - have or nil
-					texts[#texts + 1] = { text:lower(), finished, i, left, Plain(o.type) }
-					lines[#lines + 1] = text .. (finished and "+" or "-")
-				end
-			end
-		end
-	end
-	lines = table.concat(lines, "\n")
-	-- An item's objective is the game's item line (2026-10-04, Traditions of
-	-- the Bluff: the incense made, its line done, Route went back to the
-	-- vendors -- the item's name read in another line, or in none): an item
-	-- (kind 3) never takes a line of another type, and with its name in no
-	-- line the quest's one item line is its own when the data has one item.
-	local function Match(name, kind)
-		if not name or name == "" then
-			return nil
-		end
-		name = name:lower()
-		for _, t in ipairs(texts) do
-			if t[1]:find(name, 1, true) and not (kind == 3 and t[5] and t[5] ~= "item") then
-				return t
-			end
-		end
-		return nil
-	end
-	local items, itemLine = 0, nil
-	for _, entry in ipairs(data) do
-		if entry[1] == 3 then
-			items = items + 1
-		end
-	end
-	for _, t in ipairs(texts) do
-		if t[5] == "item" then
-			itemLine = itemLine == nil and t or false
-		end
-	end
-	if items ~= 1 then
-		itemLine = nil
-	end
+	-- it counts more than one; `lines` all of them as one string, Needed.Held;
+	-- an entry's line found by name, an item by the quest's one item line:
+	-- MelloUI.QuestObjectives' Lines / ItemLine / Match, shared since 0.19.5)
+	local QO = MelloUI.QuestObjectives
+	local open = {}
+	local texts, lines = QO.Lines(questID)
+	local itemLine = QO.ItemLine(data, texts)
 	local anyMatched, sig, missing, sourceOnly = false, {}, 0, true
 	-- (an item needed for several objectives, 905's feather for each of three
 	-- nests: its places once, not once each)
@@ -3559,7 +3412,7 @@ local function OpenObjectives(questID, hints, wants, prefer)
 	end
 	for i, entry in ipairs(data) do
 		local kind = entry[1]
-		local t = Match(entry[2], kind) or Match(entry[3], kind) or (kind == 3 and itemLine) or nil
+		local t = QO.Match(entry, texts, itemLine)
 		if t then
 			anyMatched = true
 			if not t[2] then
@@ -4543,15 +4396,21 @@ end
 -- World map drawing
 --------------------------------------------------------------------------------
 
--- The trail: a chain of dots along the way, on the map and the minimap
--- alike (user, 2026-09-30: "new icons that we can use instead of the
--- Diamonds, for example dots?"; pick A of BuildData/output/route_marks_sketch,
--- in place of the kit's small gems): Media/Textures/Route/trail_dot
--- (Tools/make_route_beam.py), a white disc with a darker rim, tinted with
--- Route's red (MelloUI.Meaning.routeTrail, a meaning colour read when
--- drawing), so the rim is a dark shade of the same red. A guessed stretch
--- (a straight line where no road is known) is paler and farther apart; a
--- flight's and a boat's dots are smaller and farther apart.
+-- The trail: how the way is drawn, on the map and the minimap alike, in the
+-- look the player picks (Trail Look, 0.19.5: the user's A, C and E of
+-- BuildData/output/route_look_sketch, "to fit our style more"; before it,
+-- pick A of route_marks_sketch, the red dots, 2026-09-30):
+--   beads   (E, the default) Media/Textures/Route/trail_dot (Tools/
+--           make_route_beam.py), a white disc with a darker rim, tinted with
+--           Route's red (MelloUI.Meaning.routeTrail, the World Marker beam's
+--           red, a meaning colour read when drawing), each in a ring of the
+--           palette's gold (selectedTrim)
+--   line    (A) one pale gold line (the palette's text) in a dark casing
+--           (innerPanel), round at its bends; a guessed stretch, a flight's
+--           and a boat's dashed
+--   dashes  (C) short pale gold dashes in the same casing
+-- A guessed stretch (a straight line where no road is known) is paler and
+-- sparser; a flight's and a boat's marks are smaller and sparser.
 local STYLE = {
 	road = { size = 1.0, gap = 1.6, alpha = 1 },
 	guess = { size = 1.0, gap = 2.2, alpha = 0.55 },
@@ -4560,16 +4419,51 @@ local STYLE = {
 }
 local MAX_DOTS = 700
 
--- A pool of small textures on one frame, laid out along route segments with
--- an even spacing that carries over from one segment to the next.
+-- the trail's looks and their measures (fields of M: this file's main chunk
+-- is near Lua's limit of locals)
+M.TRAIL = { beads = true, line = true, dashes = true,
+	RING = 0.74,               -- a bead's red disc, of its gold ring's size (the sketch's 1.4 px ring at 10.5)
+	CORE = 0.27, CASE = 0.57,  -- the line's gold core and dark casing, of the dot size (2.8 and 6 px at 10.5)
+	DASH = 0.86, GAP = 0.57,   -- a dash and the space after it, of the dot size (9 and 6 px at 10.5)
+	ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask",
+}
+-- the trail's look now: the setting's, beads for anything else
+function M.TrailLook()
+	local look = M.db and M.db.trailLook
+	return (look ~= nil and M.TRAIL[look] == true) and look or "beads"
+end
+
+-- A pool of small textures and lines on one frame, laid out along route
+-- segments with an even spacing that carries over from one segment to the
+-- next. A pooled region is painted by its palette key only when the key or
+-- the alpha changes (the minimap redraws twenty times a second); a new
+-- palette repaints them through the kit's list (W.Paint). A piece is placed,
+-- sized and shown again only when its place, size or alpha changed (0.19.5:
+-- standing still, a tick of the minimap writes nothing; the beads' gold
+-- rings had doubled the writes a tick).
 local function NewPainter(frame)
 	-- (the dot's path here: the file's main chunk is at Lua 5.1's 200 locals)
-	local TRAIL_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\trail_dot"   -- look-ok: the trail's dots in Route's red, a meaning colour (the user's pick 2026-10-02 keeps them)
-	local painter = { frame = frame, dots = {}, used = 0, carry = 0 }
-	function painter:Begin()
-		self.used = 0
-		self.carry = 0
+	local TRAIL_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\trail_dot"   -- look-ok: the trail's dots in Route's red, a meaning colour (the user's pick 2026-10-06 keeps them, ringed in the palette's gold)
+	local T = M.TRAIL
+	local painter = { frame = frame, dots = {}, rims = {}, used = 0, cases = {}, cores = {}, lused = 0,
+		jcases = {}, jcores = {}, jused = 0, carry = 0, dashOn = true, look = "beads" }
+	local function Paint(region, key, alpha, how)
+		local W = MelloUI.Widgets
+		if (region.mpKey ~= key or region.mpAlpha ~= alpha) and W and W.Paint then
+			region.mpKey, region.mpAlpha = key, alpha
+			W.Paint(region, key, how, alpha)
+		end
 	end
+	local function Finite(a, b, c)
+		return a > -math.huge and a < math.huge and b > -math.huge and b < math.huge
+			and (c == nil or (c > -math.huge and c < math.huge))
+	end
+	function painter:Begin()
+		self.used, self.lused, self.jused = 0, 0, 0
+		self.carry, self.dashOn, self.lastX = 0, true, nil
+		self.look = M.TrailLook()
+	end
+	-- a bead: Route's red dot in its gold ring
 	function painter:Dot(x, y, size, style, anchor)
 		if self.used >= MAX_DOTS then
 			return
@@ -4578,22 +4472,135 @@ local function NewPainter(frame)
 			return   -- (a NaN or endless place or size: nothing to draw)
 		end
 		self.used = self.used + 1
-		local dot = self.dots[self.used]
+		local dot, rim = self.dots[self.used], self.rims[self.used]
 		if not dot then
-			dot = self.frame:CreateTexture(nil, "OVERLAY")
+			rim = self.frame:CreateTexture(nil, "OVERLAY", nil, 1)
+			rim:SetTexture(T.ROUND)
+			dot = self.frame:CreateTexture(nil, "OVERLAY", nil, 2)
 			dot:SetTexture(TRAIL_DOT)
-			self.dots[self.used] = dot
+			rim:SetPoint("CENTER", dot, "CENTER")   -- (the ring round its dot: placed with it, once)
+			self.dots[self.used], self.rims[self.used] = dot, rim
 		end
 		local c = MelloUI.Meaning.routeTrail
 		if dot.colour ~= c then
 			dot.colour = c
 			dot:SetVertexColor(c[1], c[2], c[3])
 		end
-		dot:SetAlpha(style.alpha)
-		dot:SetSize(size, size)
-		dot:ClearAllPoints()
-		dot:SetPoint("CENTER", self.frame, anchor, x, y)
-		dot:Show()
+		if rim.mpAlpha ~= style.alpha or rim.mpKey ~= "selectedTrim" then
+			Paint(rim, "selectedTrim", style.alpha, "vertex")
+		end
+		if dot.atAlpha ~= style.alpha then
+			dot.atAlpha = style.alpha
+			dot:SetAlpha(style.alpha)
+		end
+		if dot.atSize ~= size then
+			dot.atSize = size
+			dot:SetSize(size * T.RING, size * T.RING)
+			rim:SetSize(size, size)
+		end
+		if dot.atX ~= x or dot.atY ~= y or dot.atAnchor ~= anchor then
+			dot.atX, dot.atY, dot.atAnchor = x, y, anchor
+			dot:ClearAllPoints()
+			dot:SetPoint("CENTER", self.frame, anchor, x, y)
+		end
+		if not dot.on then
+			dot.on = true
+			dot:Show()
+			rim:Show()
+		end
+	end
+	-- a stroke of the line: its dark casing under, its gold core over (every
+	-- casing under every core: the sublevels, so the bends join)
+	function painter:Stroke(ax, ay, bx, by, size, alpha, anchor)
+		if self.lused >= MAX_DOTS then
+			return
+		end
+		self.lused = self.lused + 1
+		local case, core = self.cases[self.lused], self.cores[self.lused]
+		if not case then
+			case = self.frame:CreateLine(nil, "OVERLAY", nil, 1)
+			core = self.frame:CreateLine(nil, "OVERLAY", nil, 3)
+			self.cases[self.lused], self.cores[self.lused] = case, core
+		end
+		Paint(case, "innerPanel", 0.92 * alpha, "fill")
+		Paint(core, "text", alpha, "fill")
+		if case.atSize ~= size then
+			case.atSize = size
+			case:SetThickness(size * T.CASE)
+			core:SetThickness(size * T.CORE)
+		end
+		if case.atAX ~= ax or case.atAY ~= ay or case.atBX ~= bx or case.atBY ~= by or case.atAnchor ~= anchor then
+			case.atAX, case.atAY, case.atBX, case.atBY, case.atAnchor = ax, ay, bx, by, anchor
+			case:SetStartPoint(anchor, self.frame, ax, ay)
+			case:SetEndPoint(anchor, self.frame, bx, by)
+			core:SetStartPoint(anchor, self.frame, ax, ay)
+			core:SetEndPoint(anchor, self.frame, bx, by)
+		end
+		if not case.on then
+			case.on = true
+			case:Show()
+			core:Show()
+		end
+	end
+	-- the line's round bend: a disc of the casing and one of the core
+	function painter:Joint(x, y, size, alpha, anchor)
+		if self.jused >= MAX_DOTS then
+			return
+		end
+		self.jused = self.jused + 1
+		local case, core = self.jcases[self.jused], self.jcores[self.jused]
+		if not case then
+			case = self.frame:CreateTexture(nil, "OVERLAY", nil, 1)
+			case:SetTexture(T.ROUND)
+			core = self.frame:CreateTexture(nil, "OVERLAY", nil, 3)
+			core:SetTexture(T.ROUND)
+			self.jcases[self.jused], self.jcores[self.jused] = case, core
+		end
+		Paint(case, "innerPanel", 0.92 * alpha, "vertex")
+		Paint(core, "text", alpha, "vertex")
+		if case.atX ~= x or case.atY ~= y or case.atSize ~= size or case.atAnchor ~= anchor then
+			case.atX, case.atY, case.atSize, case.atAnchor = x, y, size, anchor
+			case:SetSize(size * T.CASE, size * T.CASE)
+			core:SetSize(size * T.CORE, size * T.CORE)
+			case:ClearAllPoints()
+			case:SetPoint("CENTER", self.frame, anchor, x, y)
+			core:ClearAllPoints()
+			core:SetPoint("CENTER", self.frame, anchor, x, y)
+		end
+		if not case.on then
+			case.on = true
+			case:Show()
+			core:Show()
+		end
+	end
+	-- a segment in dashes: the dash and the space carry over to the next
+	function painter:Dashes(ax, ay, bx, by, style, size, len, anchor)
+		local on, off = size * T.DASH, size * T.GAP * style.gap / STYLE.road.gap
+		if not (Finite(on, off) and on > 0 and off > 0) then
+			return
+		end
+		local ux, uy = (bx - ax) / len, (by - ay) / len
+		local drawing, left = self.dashOn, self.carry
+		if not (left > 0 and left < math.huge) then
+			drawing, left = true, on
+		end
+		local t = 0
+		while t < len do
+			if self.lused >= MAX_DOTS then
+				self.carry = 0
+				return
+			end
+			local d = math.min(left, len - t)
+			if drawing then
+				self:Stroke(ax + ux * t, ay + uy * t, ax + ux * (t + d), ay + uy * (t + d), size, style.alpha, anchor)
+			end
+			t, left = t + d, left - d
+			if left <= 1e-6 then
+				drawing = not drawing
+				left = drawing and on or off
+			end
+		end
+		self.dashOn, self.carry = drawing, left
 	end
 	-- One route segment; `unit` is the dot size for width 3 in frame units.
 	function painter:Segment(ax, ay, bx, by, style, unit, anchor)
@@ -4602,12 +4609,28 @@ local function NewPainter(frame)
 		-- finite, positive numbers only (NaN fails every test below): a step of
 		-- 0 or a map zoomed very far in never ended this loop -- the game froze
 		-- opening the map (a player in gamepad mode, 2026-09-26)
-		if not (len > 0 and len < math.huge) then
+		if not (len > 0 and len < math.huge and ax > -math.huge and ax < math.huge and ay > -math.huge and ay < math.huge) then
 			return
 		end
 		local size = unit * style.size
 		local step = size * style.gap
 		if not (size > 0 and size < math.huge and step > 0 and step < math.huge) then
+			return
+		end
+		local look = self.look
+		if look == "line" and style == STYLE.road then
+			self:Joint(ax, ay, size, style.alpha, anchor)
+			self:Stroke(ax, ay, bx, by, size, style.alpha, anchor)
+			self.lastX, self.lastY, self.lastSize, self.lastAnchor = bx, by, size, anchor
+			self.dashOn, self.carry = true, 0
+			return
+		elseif look ~= "beads" then
+			if self.lastX then
+				-- (a solid run ends: its last bend rounded)
+				self:Joint(self.lastX, self.lastY, self.lastSize, STYLE.road.alpha, self.lastAnchor)
+				self.lastX = nil
+			end
+			self:Dashes(ax, ay, bx, by, style, size, len, anchor)
 			return
 		end
 		local ux, uy = dx / len, dy / len
@@ -4627,17 +4650,131 @@ local function NewPainter(frame)
 		self.carry = at - len
 	end
 	function painter:End()
+		if self.lastX then
+			self:Joint(self.lastX, self.lastY, self.lastSize, STYLE.road.alpha, self.lastAnchor)
+			self.lastX = nil
+		end
 		for i = self.used + 1, #self.dots do
-			self.dots[i]:Hide()
+			local dot = self.dots[i]
+			if dot.on then
+				dot.on = false
+				dot:Hide()
+				self.rims[i]:Hide()
+			end
+		end
+		for i = self.lused + 1, #self.cases do
+			local case = self.cases[i]
+			if case.on then
+				case.on = false
+				case:Hide()
+				self.cores[i]:Hide()
+			end
+		end
+		for i = self.jused + 1, #self.jcases do
+			local case = self.jcases[i]
+			if case.on then
+				case.on = false
+				case:Hide()
+				self.jcores[i]:Hide()
+			end
 		end
 	end
 	function painter:Clear()
-		self.used = 0
+		self.used, self.lused, self.jused, self.lastX = 0, 0, 0, nil
 		self:End()
 	end
 	return painter
 end
 
+-- The goal's mark (0.19.5, with the trail's looks; the user's pick of
+-- route_look_sketch): the flag (the widget glyph) on the palette's dark disc
+-- in its gold ring, the objective marks' family; the flag in Route's red
+-- with the beads, in the palette's text colour with the line and the dashes.
+-- On the world map it lies over the game's own red waypoint pin, a little
+-- larger (a cover: the game's pin under it still takes its clicks, this mark
+-- takes no mouse); on the minimap at its place, or on the edge toward it
+-- with a gold chevron when it lies beyond. Made the first time a goal is
+-- drawn on that map, never at login.
+--   M.GoalMark(parent) -> the mark (a frame, hidden)
+--   M.MarkPlace(mark, size, anchorFrame, anchor, x, y)   sized, placed (both
+--                                         written only on a change), shown:
+--                                         the objective marks' on the
+--                                         minimap too, with their own glyph
+--   M.GoalLay(mark, ...)                  M.MarkPlace, the flag coloured for
+--                                         the trail's look now (M.GoalFlag)
+M.TRAIL.CHEVRON = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\chevron"   -- look-ok: the minimap goal's edge chevron, the palette's gold
+M.TRAIL.GOAL_MAP = 26     -- the mark on the world map, screen px (the game's pin is 30, its diamond about 22)
+M.TRAIL.GOAL_MINI = 16    -- on the minimap
+M.GOAL_LEVEL = 2900       -- the world map mark's level when the map cannot say its waypoint pin's (its pins: 2000 up)
+function M.GoalMark(parent)
+	local T, W = M.TRAIL, MelloUI.Widgets
+	local f = CreateFrame("Frame", nil, parent)
+	f:EnableMouse(false)
+	f.ring = f:CreateTexture(nil, "ARTWORK", nil, 1)
+	f.ring:SetTexture(T.ROUND)
+	f.ring:SetAllPoints()
+	f.disc = f:CreateTexture(nil, "ARTWORK", nil, 2)
+	f.disc:SetTexture(T.ROUND)
+	f.flag = f:CreateTexture(nil, "ARTWORK", nil, 3)
+	f.flag:SetPoint("CENTER")
+	if W then
+		W.Glyph(f.flag, "flag")
+		W.Paint(f.ring, "selectedTrim", "vertex", 1)
+		W.Paint(f.disc, "innerPanel", "vertex", 0.95)
+	end
+	f:Hide()
+	return f
+end
+-- the flag's colour for the trail's look now: Route's red with the beads (a
+-- meaning colour, out of the palette's list), the palette's text with the
+-- line and the dashes; written only on a change (the maps' marks and the
+-- World Marker alike)
+function M.GoalFlag(flag)
+	local look = M.TrailLook()
+	local c = MelloUI.Meaning.routeTrail
+	if flag.look == look and (look ~= "beads" or flag.red == c) then
+		return
+	end
+	flag.look = look
+	if look == "beads" then
+		flag.red = c
+		if MelloUI.Kit and MelloUI.Kit.Unpaint then
+			MelloUI.Kit:Unpaint(flag, "vertex")
+		end
+		flag:SetVertexColor(c[1], c[2], c[3], 1)
+	elseif MelloUI.Widgets then
+		flag.red = nil
+		MelloUI.Widgets.Paint(flag, "text", "vertex", 1)
+	end
+end
+function M.MarkPlace(f, size, anchorFrame, anchor, x, y)
+	if f.size ~= size then
+		f.size = size
+		f:SetSize(size, size)
+		local ring = math.max(1, size * 0.08)
+		f.disc:ClearAllPoints()
+		f.disc:SetPoint("TOPLEFT", f, "TOPLEFT", ring, -ring)
+		f.disc:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -ring, ring)
+		f.flag:SetSize(size * 0.58, size * 0.58)
+	end
+	-- (moved half a pixel or more, or onto another frame: the minimap's
+	-- marks follow the player a tick at a time, mostly by less)
+	local ax, ay = f.atX, f.atY
+	if f.atFrame ~= anchorFrame or not ax or (x - ax) * (x - ax) + (y - ay) * (y - ay) >= 0.25 then
+		f.atX, f.atY, f.atFrame = x, y, anchorFrame
+		f:ClearAllPoints()
+		f:SetPoint("CENTER", anchorFrame, anchor, x, y)
+	end
+	if not f:IsShown() then
+		f:Show()
+	end
+end
+function M.GoalLay(f, size, anchorFrame, anchor, x, y)
+	M.MarkPlace(f, size, anchorFrame, anchor, x, y)
+	if f.flag.look ~= M.TrailLook() or f.flag.look == "beads" and f.flag.red ~= MelloUI.Meaning.routeTrail then
+		M.GoalFlag(f.flag)
+	end
+end
 local Provider = nil
 local mapPainter = nil
 local mapFrame = nil
@@ -4680,10 +4817,16 @@ local function CanvasLayers(canvas)
 	return out
 end
 
-local function LayerRouteFrame(canvas)
+-- (0.19.5: the one rule for MelloUI's drawings on the map's canvas -- Route's
+-- trail and the Quest List's objective areas: M.LayerAboveArt(frame,
+-- canvas); the layers it has placed are passed by, so two never climb over
+-- each other)
+M.artLayers = setmetatable({}, { __mode = "k" })
+function M.LayerAboveArt(frame, canvas)
+	M.artLayers[frame] = true
 	local tiles, pins = canvas:GetFrameLevel(), nil
 	for _, child in ipairs({ canvas:GetChildren() }) do
-		if child ~= mapFrame then
+		if not M.artLayers[child] then
 			local lv = child:GetFrameLevel()
 			local kind = nil
 			if child.GetFrameLevelType then
@@ -4705,8 +4848,8 @@ local function LayerRouteFrame(canvas)
 	if pins and pins > level then
 		level = math.min(level + 5, pins - 1)
 	end
-	if mapFrame:GetFrameLevel() ~= level then
-		mapFrame:SetFrameLevel(level)
+	if frame:GetFrameLevel() ~= level then
+		frame:SetFrameLevel(level)
 	end
 end
 
@@ -4745,8 +4888,11 @@ local function DrawWorldMap()
 		mapPainter = NewPainter(mapFrame)
 		Perf.SetScript(mapFrame, "OnSizeChanged", function() C_Timer.After(0, DrawWorldMap) end)
 	end
-	LayerRouteFrame(map:GetCanvas())
+	M.LayerAboveArt(mapFrame, map:GetCanvas())
 	mapPainter:Begin()
+	if M.goalMap then
+		M.goalMap:Hide()
+	end
 	if not (route and M.isEnabled and M.db.worldMap) then
 		mapPainter:End()
 		return
@@ -4781,6 +4927,36 @@ local function DrawWorldMap()
 		end
 	end
 	mapPainter:End()
+	-- the goal's mark, over the game's waypoint pin, the same size on screen
+	-- at every zoom. The map's pins stand at fixed levels of their own (its
+	-- pin levels manager, from 2000 up: not the canvas's plus some), so the
+	-- mark goes one above the waypoint pin's, asked of the map (read only);
+	-- the canvas's plus 1000 lay under it (the user, 2026-10-06: the red
+	-- diamond still showed)
+	local d = destination
+	local gx, gy
+	if d then
+		gx, gy = OnMap(mapID, d.cont, d.x, d.y)
+	end
+	if gx and gx >= 0 and gx <= 1 and gy >= 0 and gy <= 1 then
+		local canvas = map:GetCanvas()
+		if not M.goalMap then
+			M.goalMap = M.GoalMark(canvas)
+		end
+		local want = M.GOAL_LEVEL
+		local okM, mgr = pcall(map.GetPinFrameLevelsManager, map)
+		if okM and mgr and mgr.GetValidFrameLevel then
+			local okL, lv = pcall(mgr.GetValidFrameLevel, mgr, "PIN_FRAME_LEVEL_WAYPOINT_LOCATION")
+			lv = okL and Plain(lv)
+			if type(lv) == "number" and lv >= 0 and lv < 9000 then
+				want = lv + 1
+			end
+		end
+		if M.goalMap:GetFrameLevel() ~= want then
+			M.goalMap:SetFrameLevel(want)
+		end
+		M.GoalLay(M.goalMap, M.TRAIL.GOAL_MAP / scale, mapFrame, "TOPLEFT", gx * W, -gy * H)
+	end
 end
 
 local function CreateProvider()
@@ -4791,6 +4967,9 @@ local function CreateProvider()
 	function Provider:RemoveAllData()
 		if mapPainter then
 			mapPainter:Clear()
+		end
+		if M.goalMap then
+			M.goalMap:Hide()
 		end
 	end
 	function Provider:RefreshAllData()
@@ -5322,7 +5501,8 @@ local Beacon = {
 	-- gem, and each one's strength (the beam's fade scales them)
 	RING_W = 72, RING_H = 27, RING_DROP = -10,
 	HALO_SIZE = 72,
-	RING_ALPHA = 0.9, HALO_ALPHA = 0.6, LIT_ALPHA = 0.55,
+	RING_ALPHA = 0.9, HALO_ALPHA = 0.6,
+	FLAG = 15, FLAG_RING = 2,   -- the flag mark (0.19.5): the flag glyph, the gold ring's width round the dark disc
 	-- the gem and the beam smaller the farther the place (user, 2026-10-04:
 	-- "the waypoint marker and the Light beam change their size dynamically
 	-- depending on the distance"): full size within SIZE_NEAR yards (the pin
@@ -5973,7 +6153,6 @@ function Beacon.FootFade(beam)
 	local fade = beam.fade or 1
 	beam.ring:SetAlpha(Beacon.RING_ALPHA * fade)
 	beam.halo:SetAlpha(Beacon.HALO_ALPHA * fade)
-	beam.lit:SetAlpha(Beacon.LIT_ALPHA * fade)
 end
 
 -- The game's own player arrow (its high-resolution direction arrows, the
@@ -6004,10 +6183,7 @@ function Beacon.Art()
 	local gem, edge, game = marker.gem, marker.edge, marker.gameGem
 	if Beacon.painted ~= false then
 		gem:SetSize(TextShade.GEM, TextShade.GEM)
-		local Kit = MelloUI.Kit
-		if not (Kit and Kit.Apply and Kit:Apply(gem, "deco/gem_large")) then   -- look-ok: Beacon.Art's painted branch
-			gem:SetTexture("Interface/Minimap/POIIcons")
-		end
+		Beacon.FlagMark()
 		if game then
 			game:Hide()
 		end
@@ -6019,6 +6195,7 @@ function Beacon.Art()
 	end
 	gem.kitPiece, gem.kitName = nil, nil   -- (no kit piece now: the kit's shadow partner lets it go)
 	gem:SetTexture(nil)
+	Beacon.FollowGem()   -- (the flag mark's disc and flag go with the painted look)
 	if not game then
 		-- (made the first time the game's look needs it, set once)
 		game = gem:GetParent():CreateTexture(nil, "ARTWORK")
@@ -6032,6 +6209,79 @@ function Beacon.Art()
 	end
 	if edge then
 		edge:SetAtlas((select(2, MelloUI.Look.Art("navArrow"))), true, nil, true)   -- (resetTexCoords: no crop kept)
+	end
+end
+
+-- The marker's mark (0.19.5, the user's pick B of BuildData/output/
+-- world_marker_flag_sketch): the maps' goal mark -- the flag on the palette's
+-- dark disc in its gold ring -- in the kit gem's place. The gem texture is the
+-- ring; the disc and the flag stand on it, on the gem's frame (core: sized by
+-- the distance with it), made once, shown and hidden with the gem (post-hooks
+-- on MelloUI's own texture) and popping in with it. The flag red with Red
+-- Beads, the palette's text else (M.GoalFlag); the beam's light follows the
+-- same look (Beacon.Tint).
+function Beacon.FlagMark()
+	local gem, W = marker.gem, MelloUI.Widgets
+	gem.kitPiece, gem.kitName = nil, nil   -- (no kit piece: no shadow partner; the disc is its own dark ground)
+	gem:SetTexture(M.TRAIL.ROUND)
+	gem:SetTexCoord(0, 1, 0, 1)
+	if W then
+		W.Paint(gem, "selectedTrim", "vertex", 1)
+	end
+	if not marker.goalDisc then
+		local core = marker.core
+		local disc = core:CreateTexture(nil, "ARTWORK", nil, 2)
+		disc:SetTexture(M.TRAIL.ROUND)
+		disc:SetPoint("TOPLEFT", gem, "TOPLEFT", Beacon.FLAG_RING, -Beacon.FLAG_RING)
+		disc:SetPoint("BOTTOMRIGHT", gem, "BOTTOMRIGHT", -Beacon.FLAG_RING, Beacon.FLAG_RING)
+		local flag = core:CreateTexture(nil, "ARTWORK", nil, 3)
+		flag:SetSize(Beacon.FLAG, Beacon.FLAG)
+		flag:SetPoint("CENTER", gem, "CENTER")
+		if W then
+			W.Paint(disc, "innerPanel", "vertex", 0.95)
+			W.Glyph(flag, "flag")
+		end
+		marker.goalDisc, marker.goalFlag = disc, flag
+		marker.goalPops = { TextShade.Pop(disc), TextShade.Pop(flag) }
+		hooksecurefunc(gem, "Show", Beacon.FollowGem)
+		hooksecurefunc(gem, "Hide", Beacon.FollowGem)
+		hooksecurefunc(gem, "SetShown", Beacon.FollowGem)
+	end
+	M.GoalFlag(marker.goalFlag)
+	Beacon.FollowGem()
+end
+function Beacon.FollowGem()
+	local disc, flag = marker and marker.goalDisc, marker and marker.goalFlag
+	if disc then
+		local shown = Beacon.painted ~= false and marker.gem:IsShown() and true or false
+		disc:SetShown(shown)
+		flag:SetShown(shown)
+	end
+end
+
+-- The beam's light (its glow, its streaks, the ring at its foot and the glow
+-- behind the mark) in the trail's look: Route's red (MelloUI.Meaning.
+-- routeBeam) with Red Beads, the palette's gold (selectedTrim) with the line
+-- and the dashes (0.19.5, pick B); written only on a change; again at a new
+-- palette (Travel.Paint) and a new Trail Look
+function Beacon.Tint()
+	local beam = marker and marker.beam
+	if not beam then
+		return
+	end
+	local c = M.TrailLook() == "beads" and MelloUI.Meaning.routeBeam or MelloUI.Look.Palette().selectedTrim
+	if beam.tint == c then
+		return
+	end
+	beam.tint = c
+	beam.glow:SetVertexColor(c[1], c[2], c[3])
+	beam.streaks:SetVertexColor(math.min(1, c[1]), math.min(1, c[2] + 0.1), math.min(1, c[3] + 0.05))
+	if beam.ring then
+		beam.ring:SetVertexColor(c[1], c[2], c[3])
+		beam.halo:SetVertexColor(c[1], c[2], c[3])
+	end
+	if marker.goalFlag then
+		M.GoalFlag(marker.goalFlag)
 	end
 end
 
@@ -6063,21 +6313,16 @@ function Beacon.Foot(beam)
 	halo:SetSize(Beacon.HALO_SIZE, Beacon.HALO_SIZE)
 	halo:SetPoint("CENTER", marker, "CENTER")
 	halo:SetTexture(BEAM_ROOT .. "beam_halo")
-	local lift = CreateFrame("Frame", nil, beam)
-	lift:SetAllPoints(marker)
-	lift:SetFrameLevel(marker:GetFrameLevel() + 4)
-	local lit = lift:CreateTexture(nil, "ARTWORK")
-	lit:SetAllPoints(marker.gem)
-	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Apply and Kit:Apply(lit, "deco/gem_large")) then   -- look-ok: the beam's foot, the painted look's only
-		lit:Hide()
-	end
+	-- (0.19.5: the kit's gem lit by the beam went with the gem: the flag
+	-- mark stands there on its own dark disc)
 	local red = MelloUI.Meaning.routeBeam
-	for _, t in ipairs({ ring, halo, lit }) do
+	for _, t in ipairs({ ring, halo }) do
 		t:SetBlendMode("ADD")
 		t:SetVertexColor(red[1], red[2], red[3])
 	end
-	beam.ring, beam.halo, beam.lit = ring, halo, lit
+	beam.ring, beam.halo = ring, halo
+	beam.tint = nil   -- (Beacon.Tint again: the ring and the glow in the look's light)
+	Beacon.Tint()
 	Beacon.FootFade(beam)
 end
 
@@ -6383,10 +6628,7 @@ local function EnsureMarker()
 	marker.gem = core:CreateTexture(nil, "ARTWORK")
 	marker.gem:SetSize(26, 26)
 	marker.gem:SetPoint("CENTER")
-	local Kit = MelloUI.Kit
-	if not (Kit and Kit.Apply and Kit:Apply(marker.gem, "deco/gem_large")) then   -- look-ok: Beacon.Art lays it again in the look
-		marker.gem:SetTexture("Interface/Minimap/POIIcons")
-	end
+	-- (its art: Beacon.Art, below -- the flag mark in the painted look)
 	-- the texts (0.18.4): they change sides of the gem near the place
 	-- (Beacon.LayWords), fading as one with their shade bands: `front` is
 	-- their frame (`words`), the edge arrow on it too, shown only off screen,
@@ -6403,8 +6645,9 @@ local function EnsureMarker()
 	marker.edge:SetSize(40, 40)
 	marker.edge:SetPoint("CENTER")
 	Travel.PlayerArrow(marker.edge)
-	Beacon.Art()   -- (the reskin off: the game's own destination icon and edge arrow)
+	Beacon.Art()   -- (the flag mark; the reskin off: the game's own destination icon and edge arrow)
 	Travel.Paint()   -- the distance and the edge arrow in the palette's gold
+	Beacon.Tint()   -- the beam's light in the trail's look
 	marker.edge:Hide()
 	-- the texts' frame, where their shade goes at the first show (TextShade)
 	marker.front = front
@@ -6493,6 +6736,10 @@ UpdateMarker = function()
 		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
 		if not marker.pin then
 			Beacon.Play(marker.pop)
+			if marker.goalPops and Beacon.painted ~= false then
+				Beacon.Play(marker.goalPops[1])
+				Beacon.Play(marker.goalPops[2])
+			end
 		end
 		local lit = Beacon.painted ~= false and M.db.routeBeam and not marker.pin and beam.fade > 0 or false
 		if lit then
@@ -6724,6 +6971,7 @@ function Travel.Paint()
 	if caption then
 		caption.text:SetTextColor(r, g, b)
 	end
+	Beacon.Tint()   -- (the beam's light: the palette's gold with the line and the dashes)
 	if not Travel.painted then
 		Travel.painted = true
 		MelloUI:On("palette", Travel.Paint, "Route gold")
@@ -6843,6 +7091,74 @@ function Build.ArrowWork()
 	M.nav.Push()
 end
 
+-- The goal's mark on the minimap (0.19.5): at its place while it lies on
+-- the map, else on the edge toward it with a gold chevron outside it;
+-- hidden off this continent, without a goal or with the minimap's route
+-- off. In the view the tick has just set (M.mmView).
+function M.GoalOnMinimap(cont, round, R, RX, RY)
+	local d, g = destination, M.goalMini
+	if not (d and cont and d.cont == cont and M.isEnabled and M.db.minimap) then
+		if g then
+			g:Hide()
+			M.goalChev.on = false
+			M.goalChev:Hide()
+		end
+		return
+	end
+	if not g then
+		g = M.GoalMark(mm)
+		g:SetFrameLevel(mm:GetFrameLevel() + 5)
+		M.goalMini = g
+		local chev = mm:CreateTexture(nil, "OVERLAY", nil, 4)
+		chev:SetTexture(M.TRAIL.CHEVRON)
+		chev:SetSize(20, 10)
+		chev:Hide()   -- (shown when a goal lies beyond the map: a new texture shows at once)
+		chev.on = false
+		if MelloUI.Widgets then
+			MelloUI.Widgets.Paint(chev, "selectedTrim", "vertex", 1)
+		end
+		M.goalChev = chev
+	end
+	local gx, gy = M.MinimapOffset(d.x, d.y)
+	if not (gx > -math.huge and gx < math.huge and gy > -math.huge and gy < math.huge) then
+		g:Hide()
+		M.goalChev.on = false
+		M.goalChev:Hide()
+		return
+	end
+	local size, chev = M.TRAIL.GOAL_MINI, M.goalChev
+	local m = size / 2 + 1
+	local inside
+	if round then
+		inside = gx * gx + gy * gy <= (R - m) * (R - m)
+	else
+		inside = math.abs(gx) <= RX - m and math.abs(gy) <= RY - m
+	end
+	if inside then
+		M.GoalLay(g, size, mm, "CENTER", gx, gy)
+		if chev.on then
+			chev.on = false
+			chev:Hide()
+		end
+		return
+	end
+	-- beyond the map: the mark just inside its edge, the chevron outside it
+	local k = M.MinimapEdge(gx, gy, round, R, RX, RY, m + 7)
+	M.GoalLay(g, size, mm, "CENTER", gx * k, gy * k)
+	local kc = M.MinimapEdge(gx, gy, round, R, RX, RY, 4)
+	local cx, cy = gx * kc, gy * kc
+	if not chev.atX or (cx - chev.atX) * (cx - chev.atX) + (cy - chev.atY) * (cy - chev.atY) >= 0.25 then
+		chev.atX, chev.atY = cx, cy
+		chev:ClearAllPoints()
+		chev:SetPoint("CENTER", mm, "CENTER", cx, cy)
+		chev:SetRotation(math.atan2(gy, gx) + math.pi / 2)   -- (the art's V points down)
+	end
+	if not chev.on then
+		chev.on = true
+		chev:Show()
+	end
+end
+
 -- A route point's offset on the minimap from the player (pixels) and its
 -- distance (yards), in the view the tick sets once (M.mmView): no closure
 -- made per tick. (Fields of M: this file's main chunk is near Lua's limit.)
@@ -6878,6 +7194,82 @@ function M.MinimapLine(arrowShown)
 	text:Show()
 end
 
+-- The minimap's view now (0.19.5: Route's drawing and the other modules'
+-- on the minimap, one view a tick): its scale (pixels a yard), its turn, its
+-- shape (round, or the square map cropped to its Width x Height:
+-- MinimapPanel, 0.15.0) -- set into M.mmView for M.MinimapOffset; returns
+-- round, R, RX, RY (pixels from its middle)
+function M.MinimapView(px, py)
+	local diameter = MinimapDiameter()
+	local size = Minimap:GetWidth()
+	local rotate = GetCVar("rotateMinimap") == "1"
+	local sin, cos = 0, 1
+	if rotate and GetPlayerFacing then
+		local ok, facing = pcall(GetPlayerFacing)
+		facing = ok and Plain(facing) or 0
+		sin, cos = math.sin(facing), math.cos(facing)
+	end
+	local round = IsRoundMinimap()
+	local R = size / 2 - 1
+	local RX, RY = R, R
+	local mp = MelloUI:GetModule("MinimapPanel")
+	local shown = mp and mp.MapFrame and mp:MapFrame()
+	if shown and shown ~= Minimap then
+		local okS, sw, sh = pcall(shown.GetSize, shown)
+		sw, sh = okS and Plain(sw) or nil, okS and Plain(sh) or nil
+		if type(sw) == "number" and type(sh) == "number" then
+			RX, RY = math.min(R, sw / 2 - 1), math.min(R, sh / 2 - 1)
+		end
+	end
+	local view = M.mmView
+	view.px, view.py, view.rotate, view.sin, view.cos, view.ppy = px, py, rotate, sin, cos, size / diameter
+	return round, R, RX, RY
+end
+
+-- How far along (gx, gy) a mark beyond the minimap stands just inside its
+-- edge, `inset` pixels in: the factor of the offset (the goal's mark, the
+-- objective marks' edge marks)
+function M.MinimapEdge(gx, gy, round, R, RX, RY, inset)
+	if round then
+		return (R - inset) / math.sqrt(gx * gx + gy * gy)
+	end
+	local kx = gx ~= 0 and (RX - inset) / math.abs(gx) or math.huge
+	local ky = gy ~= 0 and (RY - inset) / math.abs(gy) or math.huge
+	return math.min(kx, ky)
+end
+
+-- The other modules' drawing on the minimap (0.19.5: the Quest List's
+-- objective marks): fn(cont, round, R, RX, RY) each tick of Route's minimap
+-- layer, cont nil while the player's place or the view is not known (hide
+-- then); fn nil: no more (its last call, with nil, hides). The layer ticks
+-- while Route has a route or a goal, or a module wants it: one minimap layer,
+-- Route's (Route off: none)
+M.mmClients = {}
+function M.WantMinimap(owner, fn)
+	local old = M.mmClients[owner]
+	if old == fn then
+		return
+	end
+	M.mmClients[owner] = fn
+	if old and not fn then
+		pcall(old, nil)
+	end
+	M.MinimapShown()
+end
+-- (the frame the marks hang on: shown and hidden with the layer)
+function M.MinimapFrame()
+	return mm
+end
+-- the layer shown while it has something to draw (Redraw, M.WantMinimap)
+function M.MinimapShown()
+	if not mm then
+		return
+	end
+	local mine = (route ~= nil or destination ~= nil)
+		and (M.db.minimap or M.db.distanceText or M.db.arrow or M.db.worldMarker)
+	mm:SetShown((M.isEnabled and (mine or next(M.mmClients) ~= nil)) and true or false)
+end
+
 local mmElapsed = 0
 local function MinimapTick(_, elapsed)
 	mmElapsed = mmElapsed + elapsed
@@ -6894,39 +7286,25 @@ local function MinimapTick(_, elapsed)
 	if cont or not (route and M.isEnabled and M.db.distanceText) then
 		M.MinimapLine(arrowShown)
 	end
-	if not (route and M.isEnabled and M.db.minimap and cont) then
+	-- the view, once a tick, for Route's drawing and the other modules' (the
+	-- route clipped to the part of the map that shows)
+	local drawRoute = (route and M.isEnabled and M.db.minimap and cont) and true or false
+	local round, R, RX, RY
+	if cont and (drawRoute or next(M.mmClients) ~= nil) then
+		round, R, RX, RY = M.MinimapView(px, py)
+	end
+	for _, fn in pairs(M.mmClients) do
+		fn(R and cont or nil, round, R, RX, RY)
+	end
+	if not drawRoute then
 		mmPainter:End()
+		M.GoalOnMinimap(nil)
 		M.LineMaybeChanged()
 		return
 	end
-	local diameter = MinimapDiameter()
-	local size = Minimap:GetWidth()
-	local pixelsPerYard = size / diameter
-	local rotate = GetCVar("rotateMinimap") == "1"
-	local sin, cos = 0, 1
-	if rotate and GetPlayerFacing then
-		local ok, facing = pcall(GetPlayerFacing)
-		facing = ok and Plain(facing) or 0
-		sin, cos = math.sin(facing), math.cos(facing)
-	end
-	local round = IsRoundMinimap()
-	local R = size / 2 - 1
-	-- the square map cropped to its Width x Height (MinimapPanel, 0.15.0): the
-	-- route clipped to the part it shows
-	local RX, RY = R, R
-	local mp = MelloUI:GetModule("MinimapPanel")
-	local shown = mp and mp.MapFrame and mp:MapFrame()
-	if shown and shown ~= Minimap then
-		local okS, sw, sh = pcall(shown.GetSize, shown)
-		sw, sh = okS and Plain(sw) or nil, okS and Plain(sh) or nil
-		if type(sw) == "number" and type(sh) == "number" then
-			RX, RY = math.min(R, sw / 2 - 1), math.min(R, sh / 2 - 1)
-		end
-	end
 	local unit = 2.6 * (tonumber(M.db.lineWidth) or 3)
 	local points = RouteAhead()
-	local view, Offset = M.mmView, M.MinimapOffset
-	view.px, view.py, view.rotate, view.sin, view.cos, view.ppy = px, py, rotate, sin, cos, pixelsPerYard
+	local Offset = M.MinimapOffset
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
 		if a[1] == cont and b[1] == cont and b[4] ~= "boat" and b[4] ~= "flight" then
@@ -6943,6 +7321,7 @@ local function MinimapTick(_, elapsed)
 		end
 	end
 	mmPainter:End()
+	M.GoalOnMinimap(cont, round, R, RX, RY)
 	M.LineMaybeChanged()
 end
 
@@ -6955,12 +7334,13 @@ Redraw = function()
 		arrow:Hide()
 	end
 	if mm then
-		mm:SetShown((route ~= nil or destination ~= nil) and M.isEnabled and (M.db.minimap or M.db.distanceText or M.db.arrow or M.db.worldMarker))
+		M.MinimapShown()
 		if not route then
 			if mmPainter then
 				mmPainter:Clear()
 			end
 			mm.text:Hide()
+			M.GoalOnMinimap(nil)
 		end
 		M.LineMaybeChanged()
 	end
@@ -8777,6 +9157,8 @@ function M:OnSettingChanged(key, value, db)
 	self.db = db
 	if key == "worldMarker" then
 		StandIn.Update()
+	elseif key == "trailLook" then
+		Beacon.Tint()   -- (the World Marker's light and flag in the new look; the maps' at the redraw)
 	end
 	M.flight.Setting(key)
 	Redraw()

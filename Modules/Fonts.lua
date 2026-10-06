@@ -255,11 +255,11 @@ do
 		desc = "The chat windows and whisper windows while they lie on their parchment sheet (Look > Parchment). By default the chat text's face in its semibold cut where it has one, heavier so the dark ink reads on the paper; each Font Style sets that cut of its reading face." }
 end
 options[#options + 1] = { type = "subheader", name = "Size and outline" }
-options[#options + 1] = { type = "slider", key = "sizeText", name = "Interface text size", min = 0.7, max = 1.5, step = 0.05, percent = true, new = "0.19.4",
+options[#options + 1] = { type = "slider", key = "sizeText", name = "Interface text size", min = 0.7, max = 1.5, step = 0.05, percent = true,
 	desc = "Every font drawn with the interface face, relative to its normal size; a Font Style puts it back to 100% (its faces bring their own correction). Not the text with a size of its own: the Quest Tracker, Combat Text, the chat (Chat & numbers size), FPS / Latency, Cooldown Timers, and the bar values while their size is set." }
 options[#options + 1] = { type = "slider", key = "scaleChat", name = "Chat & numbers size", min = 0.7, max = 1.5, step = 0.05, percent = true,
 	desc = "The chat windows (on top of the game's own chat font size) and every number." }
-options[#options + 1] = { type = "slider", key = "sizeTitle", name = "Titles & headers size", min = 0.7, max = 1.5, step = 0.05, percent = true, new = "0.19.4",
+options[#options + 1] = { type = "slider", key = "sizeTitle", name = "Titles & headers size", min = 0.7, max = 1.5, step = 0.05, percent = true,
 	desc = "Titles, headers, dialog names, mail and book text, and the kit's title face on the painted plates; a Font Style puts it back to 100% (its faces bring their own correction). Not the Quest Tracker's title and section headers or Combat Text's notices: they have sizes of their own." }
 options[#options + 1] = { type = "slider", key = "scaleChatParchment", name = "Chat on parchment size", min = 0.7, max = 1.5, step = 0.05, percent = true,
 	desc = "The chat and whisper windows' text on their parchment sheet, relative to the chat's own size." }

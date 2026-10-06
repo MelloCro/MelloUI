@@ -1267,3 +1267,124 @@ SlashCmdList.MELLOPERF = function(msg)
 		MelloUI:ShowText("Performance", Perf:Overview())
 	end
 end
+
+--------------------------------------------------------------------------------
+-- Blocked actions (/mellobug; 0.19.5, offered at 0.19.3 and taken by the user
+-- 2026-10-06). When the game blocks or forbids an action and names MelloUI
+-- (ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN), what a report needs is
+-- kept as it happens: the function the game named, whether a fight was on,
+-- the time, the zone, MelloUI's version and memory, the Gamepad UI, and the
+-- game profiler's figures for MelloUI this session (its average, its slowest
+-- frame, its frames over 1 / 5 / 10 / 50 / 100 ms: SessionLines -- a frame
+-- past the client's per-addon budget is the known cause of blocked calls,
+-- docs: the Lua budget throttle). The last BUG.KEEP in MelloUIDB.blocked (the
+-- saved variables' own root, never a profile: a block often ends in a
+-- /reload); one chat line a session per function (Chat Notices). /mellobug
+-- shows them in the copy window to paste into a report; /mellobug clear
+-- forgets them. Two events, nothing else at login; nothing a frame.
+--------------------------------------------------------------------------------
+local BUG = { KEEP = 10, told = {}, ADDONS = { MelloUI = true, MelloUI_Companion = true } }
+Perf.bug = BUG
+
+function BUG.List()
+	local db = rawget(_G, "MelloUIDB")
+	if type(db) ~= "table" then
+		return nil
+	end
+	if type(db.blocked) ~= "table" then
+		db.blocked = {}
+	end
+	return db.blocked
+end
+
+function BUG.Capture(event, addon, func)
+	addon = Secret(addon) and nil or addon
+	if not (type(addon) == "string" and BUG.ADDONS[addon]) then
+		return
+	end
+	func = (type(func) == "string" and not Secret(func)) and func or "?"
+	local list = BUG.List()
+	if not list then
+		return
+	end
+	local lines = {}
+	SessionLines(function(...)
+		lines[#lines + 1] = format(...)
+	end)
+	local okZ, zone = pcall(GetRealZoneText)
+	local okC, combat = pcall(InCombatLockdown)
+	local kb = AddonMemory()
+	local entry = {
+		when = date("%Y-%m-%d %H:%M:%S"),
+		what = event == "ADDON_ACTION_FORBIDDEN" and "forbidden" or "blocked",
+		addon = addon, func = func,
+		combat = okC and combat and true or false,
+		zone = okZ and type(zone) == "string" and not Secret(zone) and zone or "?",
+		version = MelloUI.version, memory = kb and math.floor(kb + 0.5) or nil,
+		gamepad = MelloUI.Safe.GamepadUI and MelloUI.Safe.GamepadUI() and true or false,
+		lines = lines,
+	}
+	table.insert(list, 1, entry)
+	while #list > BUG.KEEP do
+		table.remove(list)
+	end
+	if not BUG.told[func] then
+		BUG.told[func] = true
+		MelloUI:Notice("The game blocked an action of %s (%s). /mellobug shows a report to send.", addon, func)
+	end
+end
+
+-- the report: every kept block, newest first, and the session now
+function BUG.Report()
+	local L = {}
+	local function add(...)
+		L[#L + 1] = format(...)
+	end
+	local okB, build, buildNo = pcall(GetBuildInfo)
+	add("MelloUI %s, blocked actions report (%s)", tostring(MelloUI.version), date("%Y-%m-%d %H:%M"))
+	add("Client %s (%s)", okB and tostring(build) or "?", okB and tostring(buildNo) or "?")
+	local list = BUG.List() or {}
+	if #list == 0 then
+		add("")
+		add("No blocked action kept. When the game says MelloUI was blocked, type /mellobug right after it.")
+	end
+	for i, e in ipairs(list) do
+		add("")
+		add("%d. %s  %s %s by the game: %s", i, e.when or "?", e.addon or "?", e.what or "blocked", e.func or "?")
+		add("   %s, %s%s; MelloUI %s, %s KB", e.combat and "in combat" or "out of combat", e.zone or "?",
+			e.gamepad and ", Gamepad UI" or "", tostring(e.version), e.memory and tostring(e.memory) or "?")
+		for _, line in ipairs(e.lines or {}) do
+			add("  %s", line)
+		end
+	end
+	add("")
+	add("NOW")
+	SessionLines(add)
+	add("")
+	add("To find the cause: /console taintLog 2, /reload, do what you did; the game writes Logs/taint.log.")
+	return table.concat(L, "\n")
+end
+
+BUG.frame = CreateFrame("Frame")
+BUG.frame:RegisterEvent("ADDON_ACTION_BLOCKED")
+BUG.frame:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+BUG.frame:SetScript("OnEvent", function(_, event, addon, func)
+	local ok, err = pcall(BUG.Capture, event, addon, func)
+	if not ok then
+		geterrorhandler()(err)
+	end
+end)
+
+SLASH_MELLOBUG1 = "/mellobug"
+SlashCmdList.MELLOBUG = function(msg)
+	if strtrim(msg or ""):lower() == "clear" then
+		local list = BUG.List()
+		if list then
+			wipe(list)
+		end
+		wipe(BUG.told)
+		MelloUI:Print("Blocked actions forgotten.")
+		return
+	end
+	MelloUI:ShowText("Blocked actions", BUG.Report())
+end

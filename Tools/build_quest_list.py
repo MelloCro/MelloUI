@@ -683,6 +683,7 @@ def build_chains(sql, listing):
 
 ALLIANCE_RACES = 1 | 4 | 8 | 64      # Human, Dwarf, Night Elf, Gnome (RequiredRaces bits)
 HORDE_RACES = 2 | 16 | 32 | 128      # Orc, Undead, Tauren, Troll
+ALL_CLASSES = sum(CLASSES)           # every class's RequiredClasses bit (warrior .. druid)
 
 
 def build_needs(sql, listing, series_prev, classic_ids):
@@ -693,6 +694,7 @@ def build_needs(sql, listing, series_prev, classic_ids):
     Wowhead's series. Only quests the listing has are named (a quest Forever dropped can never be done,
     so it never holds another back)."""
     qt = {int(r["entry"]): r for r in sql_rows(sql, "quest_template")}
+    conditions = {int(r["condition_entry"]): r for r in sql_rows(sql, "conditions")}
 
     def num(r, key):
         return int(r.get(key) or 0)
@@ -712,6 +714,7 @@ def build_needs(sql, listing, series_prev, classic_ids):
         if n and abs(n) in qt:
             prevs[abs(n)].append(-qid if n < 0 else qid)
     after, races, skills, reps, max_level, breadcrumbs, exclusive = {}, {}, {}, {}, {}, {}, []
+    classes, next_chain, crumbs_to, cond = {}, {}, {}, {}
     for qid in sorted(listing):
         r = qt.get(qid) if qid in classic_ids else None
         if r is None:
@@ -752,15 +755,73 @@ def build_needs(sql, listing, series_prev, classic_ids):
         b = num(r, "BreadcrumbForQuestId")
         if b and b in listing:
             breadcrumbs[qid] = b
+            # (0.19.5) the quest it leads to is not offered while it is in the log
+            crumbs_to.setdefault(b, []).append(qid)
+        # (0.19.5; user, 2026-10-06: "only the ones i can pick up") the class (Wowhead's listing leaves it out for the
+        # class books and many trainer quests), the next quest of the chain taken or done (Player::SatisfyQuestNextChain)
+        # and the quest's RequiredCondition (the conditions table)
+        mask = num(r, "RequiredClasses") & ALL_CLASSES
+        if mask and mask != ALL_CLASSES:
+            classes[qid] = mask
+        n = num(r, "NextQuestInChain")
+        if n and n != qid and n in listing:
+            next_chain[qid] = n
+        if num(r, "RequiredCondition"):
+            t = condition_tree(conditions, num(r, "RequiredCondition"))
+            if t != [0]:
+                cond[qid] = t
     # One of these taken or done, the rest are no longer offered (Player::SatisfyQuestExclusiveGroup)
     for g, members in sorted(groups.items()):
         members = sorted(m for m in members if m in listing)
         if g > 0 and len(members) > 1:
             exclusive.append(members)
     log(f"  needs: {len(after)} after another quest, {len(races)} race, {len(skills)} skill, {len(reps)} reputation, "
-        f"{len(max_level)} max level, {len(breadcrumbs)} breadcrumbs, {len(exclusive)} exclusive groups")
+        f"{len(max_level)} max level, {len(breadcrumbs)} breadcrumbs, {len(exclusive)} exclusive groups, "
+        f"{len(classes)} class, {len(next_chain)} next in chain, {len(crumbs_to)} led to by breadcrumbs, "
+        f"{len(cond)} conditions")
     return {"after": after, "races": races, "skills": skills, "reps": reps, "maxLevel": max_level,
-            "breadcrumbs": breadcrumbs, "exclusive": exclusive}
+            "breadcrumbs": breadcrumbs, "exclusive": exclusive, "classes": classes, "nextChain": next_chain,
+            "crumbsTo": crumbs_to, "cond": cond}
+
+
+# A quest's RequiredCondition as a tree (0.19.5), the server's own conditions (cmangos ConditionMgr; classic-db's
+# `conditions`: type, value1-4, flags bit 1 = reversed): {"and", ...} / {"or", ...} / {"not", x}, and the leaves the
+# client can check: {8, quest, rev} rewarded, {9, quest, rev} taken, {19, quest} available, {23, item, count, rev} items
+# (the bank too: rev = fewer than), {1, spell, rev} the player's aura. {0}: cannot tell (a place the giver stands in, an
+# instance script, the war effort's supplies): never hides a quest.
+def condition_tree(conditions, cid, depth=0):
+    c = conditions.get(cid)
+    if c is None or depth > 8:
+        return [0]
+
+    def num(key):
+        return int(c.get(key) or 0)
+    t, rev = num("type"), num("flags") & 1
+    if t in (-1, -2):
+        parts = [condition_tree(conditions, num(k), depth + 1) for k in ("value1", "value2", "value3", "value4") if num(k)]
+        node = ["and" if t == -1 else "or"] + parts
+        if all(p == [0] for p in parts):
+            node = [0]
+    elif t == -3:
+        inner = condition_tree(conditions, num("value1"), depth + 1)
+        node = [0] if inner == [0] else ["not", inner]
+    elif t in (8, 9, 1):
+        node = [t, num("value1"), rev]
+    elif t == 19:
+        node = [19, num("value1")]
+    elif t == 23:
+        node = [23, num("value1"), num("value2"), rev]
+    else:
+        node = [0]
+    if rev and t in (-1, -2) and node != [0]:
+        node = ["not", node]
+    return node
+
+
+def lua_tree(t):
+    if t[0] in ("and", "or", "not"):
+        return '{"' + t[0] + '",' + ",".join(lua_tree(x) for x in t[1:]) + "}"
+    return "{" + ",".join(str(x) for x in t) + "}"
 
 
 def lua_after(alts):
@@ -1501,6 +1562,11 @@ def main():
 
     chain_of, chain_names, prev_of, series_prev = build_chains(sql, listing)
     needs = build_needs(sql, listing, series_prev, classic_ids)
+    # (0.19.5) classic-db's class where Wowhead's listing has none (the class books, many trainer quests): the quest
+    # row's class mask, as the list's class filter and the map read it
+    for qid, mask in needs["classes"].items():
+        if not listing[qid].get("reqclass"):
+            listing[qid]["reqclass"] = mask
     wh_zones = load_wowhead_zones()
     for zid, (name, _, _) in wh_zones.items():
         areas.setdefault(zid, name)   # Forever's new zones and instances
@@ -1769,7 +1835,12 @@ def main():
         fh.write("\t-- 16 Undead, 32 Tauren, 64 Gnome, 128 Troll); skills: [quest] = { skill line, skill }; reps: [quest] =\n")
         fh.write("\t-- { faction, at least, faction, below } (0 for none); maxLevel: [quest] = level above which it is\n")
         fh.write("\t-- no longer offered; breadcrumbs: [quest] = the quest it leads to (gone once that one is taken or done);\n")
-        fh.write("\t-- exclusive: quests of which only one can be done (one taken or done, the rest are gone)\n")
+        fh.write("\t-- exclusive: quests of which only one can be done (one taken or done, the rest are gone);\n")
+        fh.write("\t-- nextChain: [quest] = the next quest of its chain (gone once that one is taken or done); crumbsTo:\n")
+        fh.write("\t-- [quest] = the breadcrumbs leading to it (not offered while one is in the log); cond: [quest] = the\n")
+        fh.write("\t-- server's condition as a tree: {\"and\", ...} {\"or\", ...} {\"not\", x}, leaves {8, quest, rev} rewarded,\n")
+        fh.write("\t-- {9, quest, rev} taken, {19, quest} available, {23, item, count, rev} items (bank too; rev: fewer than),\n")
+        fh.write("\t-- {1, spell, rev} the player's aura, {0} cannot tell (never hides a quest)\n")
         fh.write("\tneeds = {\n\t\tafter = {\n")
         for qid, alts in sorted(needs["after"].items()):
             fh.write(f"\t\t\t[{qid}] = {lua_after(alts)},\n")
@@ -1791,6 +1862,15 @@ def main():
         fh.write("\t\t},\n\t\texclusive = {\n")
         for members in needs["exclusive"]:
             fh.write(f"\t\t\t{{{','.join(str(m) for m in members)}}},\n")
+        fh.write("\t\t},\n\t\tnextChain = {\n")
+        for qid, nxt in sorted(needs["nextChain"].items()):
+            fh.write(f"\t\t\t[{qid}] = {nxt},\n")
+        fh.write("\t\t},\n\t\tcrumbsTo = {\n")
+        for qid, crumbs in sorted(needs["crumbsTo"].items()):
+            fh.write(f"\t\t\t[{qid}] = {{{','.join(str(c) for c in sorted(crumbs))}}},\n")
+        fh.write("\t\t},\n\t\tcond = {\n")
+        for qid, tree in sorted(needs["cond"].items()):
+            fh.write(f"\t\t\t[{qid}] = {lua_tree(tree)},\n")
         fh.write("\t\t},\n\t},\n\tclasses = {\n")
         for mask, cls in sorted(CLASSES.items()):
             fh.write(f"\t\t[{mask}] = {lua_str(cls)},\n")

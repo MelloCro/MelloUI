@@ -33,11 +33,13 @@ local M = MelloUI:RegisterModule("QuestList", {
 	group = "Quests and travel", navOrder = 1,
 	role = "feature",
 	area = { key = "questList", follows = "QuestLogPanel" },   -- the page in the quest log's column: as the quest log
-	keep = { "learnedEntrances", "learnedTransports" },   -- pins recorded by hand (older versions kept them here): never in a profile
+	keep = { "learnedEntrances", "learnedTransports",   -- pins recorded by hand (older versions kept them here): never in a profile
+		"savedQuestPOI" },   -- (0.19.5) the game's Quest Objectives setting as the player had it (Hide The Game's Quest Areas)
 	enabledByDefault = true,
 	defaults = {
 		filter = "zone",
 		hideCompleted = false,
+		showHidden = false,
 		startGiver = true,
 		startDrop = true,
 		startPickup = true,
@@ -50,6 +52,11 @@ local M = MelloUI:RegisterModule("QuestList", {
 		zoneBadges = true,
 		entrancePins = true,
 		transportPins = true,
+		objectiveMarks = true,
+		objectiveTrackedOnly = false,
+		objectiveMinimap = true,
+		hideGameObjectives = true,
+		hideGrey = false,
 		dungeonSummary = true,
 		tipQuestItems = true,
 		tipTurnIn = true,
@@ -70,6 +77,8 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Which quests the list shows. The dropdown at the top of the list switches this as well." },
 		{ type = "toggle", key = "hideCompleted", name = "Hide Completed",
 		  desc = "Leave out quests you have already completed instead of greying them." },
+		{ type = "toggle", key = "showHidden", name = "Show Hidden Quests", new = "0.19.5",
+		  desc = "List the quests you hid (Alt-click a quest giver's mark on the map, or a quest in the list), dimmed, so you can Alt-click them back. Hidden quests stay off the map either way. Hiding is kept per character." },
 		{ type = "toggle", key = "startGiver", name = "Quests From a Quest Giver",
 		  desc = "List quests picked up from a quest giver or an object (the \"!\"). The gear button on the list switches these as well; they apply to the map pins too." },
 		{ type = "toggle", key = "startDrop", name = "Quests From a Mob Drop",
@@ -90,12 +99,22 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)." },
 		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
 		  desc = "Also mark givers whose quests you have all completed, with a grey tick." },
+		{ type = "toggle", key = "hideGrey", parent = "mapPins", name = "Hide Grey Quests", new = "0.19.5",
+		  desc = "Leave quests that are grey for you (far below your level, as the game colours them) off the zone map until you take them. Quests in your log and the one you track still show." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone." },
 		{ type = "toggle", key = "entrancePins", name = "Dungeon And Raid Entrances",
 		  desc = "Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in." },
 		{ type = "toggle", key = "transportPins", name = "Boats And Zeppelins",
 		  desc = "Mark the docks and zeppelin towers on the zone maps with the destination. Click to route there, Shift-click to open the destination's map." },
+		{ type = "toggle", key = "objectiveMarks", name = "Objective Marks", new = "0.19.5",
+		  desc = "Mark on the zone map where the quests in your log are done: an outline round each objective's area with one mark for it (a sword to kill, a bag to collect, a cog to use, a flag to explore) and its progress, and the single places as small dots when you zoom in. Hover a mark for the quest, the objective and what drops it; click it for a waypoint. A done objective's marks go; a done quest shows only its hand-in ?." },
+		{ type = "toggle", key = "objectiveTrackedOnly", parent = "objectiveMarks", name = "Only The Tracked Quests", new = "0.19.5",
+		  desc = "Mark only the quests you track, not every quest in your log." },
+		{ type = "toggle", key = "hideGameObjectives", parent = "objectiveMarks", name = "Hide The Game's Quest Areas", new = "0.19.5",
+		  desc = "While the objective marks are on, the game's own blue quest areas and quest markers on the world map are switched off, through the game's own Quest Objectives setting (the quest buttons in the game's quest tracker go with it). Turning this or the marks off gives the game's setting back as you had it." },
+		{ type = "toggle", key = "objectiveMinimap", parent = "objectiveMarks", name = "On The Minimap", new = "0.19.5",
+		  desc = "The same marks on the minimap for the objectives near you, and a small mark on its edge with an arrow for the nearest ones just beyond it. Drawn with Route's minimap drawing, so Route has to be on." },
 		{ type = "header", name = "Dungeons" },
 		{ type = "toggle", key = "dungeonSummary", name = "Quest Check When Entering An Instance",
 		  desc = "When you enter a dungeon or raid, list in chat the quests for it you could have picked up but have not." },
@@ -1003,6 +1022,10 @@ end
 
 function QL.Eligible(row)
 	local db = M.db
+	-- (hidden by hand and not taken: off the map, off the list unless asked for)
+	if not db.showHidden and QL.IsHidden(row[QL.F_ID]) and not QL.IsOnQuest(row[QL.F_ID]) then
+		return false
+	end
 	if not db.otherFaction and row[QL.F_SIDE] ~= 0 and row[QL.F_SIDE] ~= 3 and row[QL.F_SIDE] ~= playerSide then
 		return false
 	end
@@ -1151,8 +1174,14 @@ function QL.Closed(row)
 	local group = needs.exclusive and ExclusiveOf(id)
 	local rep = needs.reps and needs.reps[id]
 	local below = rep and rep[3] ~= 0
-	if not (maxLevel or target or group or below) or TakenOrDone(id) then
+	-- (0.19.5; user, 2026-10-06: "only the ones i can pick up") the next
+	-- quest of its chain taken or done (cmangos' Player::SatisfyQuestNextChain)
+	local nextChain = needs.nextChain and needs.nextChain[id]
+	if not (maxLevel or target or group or below or nextChain) or TakenOrDone(id) then
 		return false
+	end
+	if nextChain and TakenOrDone(nextChain) then
+		return true
 	end
 	if maxLevel and (QL.Plain(UnitLevel("player")) or 0) > maxLevel then
 		return true
@@ -1206,12 +1235,121 @@ local function AfterName(choice)
 	return math.abs(choice)
 end
 
+-- (0.19.5) a quest's condition: the data's `cond`, the server's own from
+-- classic-db's conditions table (build_quest_list.py condition_tree). True,
+-- false, or nil when it cannot be told from here (a place, an instance
+-- script, the war effort's supplies, an aura that reads secret): nil never
+-- holds a quest back. `depth` bounds a condition that asks whether another
+-- quest can be picked up (leaf 19), whose own needs may ask again.
+-- Leaves: {8, quest, rev} rewarded, {9, quest, rev} taken, {19, quest}
+-- available, {23, item, count, rev} items with the bank (rev: fewer than),
+-- {1, spell, rev} the player's aura; {0} cannot tell.
+local function ItemCount(itemID)
+	local f = C_Item and C_Item.GetItemCount or GetItemCount
+	if type(f) ~= "function" then
+		return nil
+	end
+	local ok, n = pcall(f, itemID, true)
+	n = ok and QL.Plain(n)
+	return type(n) == "number" and n or nil
+end
+
+function QL.CondMet(t, depth)
+	local kind = t[1]
+	if kind == "and" or kind == "or" then
+		local unknown = false
+		for i = 2, #t do
+			local v = QL.CondMet(t[i], depth)
+			if v == (kind == "or") then
+				return v
+			elseif v == nil then
+				unknown = true
+			end
+		end
+		if unknown then
+			return nil
+		end
+		return kind == "and"
+	elseif kind == "not" then
+		local v = QL.CondMet(t[2], depth)
+		if v == nil then
+			return nil
+		end
+		return not v
+	elseif kind == 8 or kind == 9 then
+		local v = (kind == 8 and QL.IsCompleted or QL.IsOnQuest)(t[2])
+		return (t[3] == 1) ~= v
+	elseif kind == 23 then
+		local n = ItemCount(t[2])
+		if not n then
+			return nil
+		end
+		local have = n >= math.max(t[3] or 1, 1)
+		return (t[4] == 1) ~= have
+	elseif kind == 1 then
+		if not (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) then
+			return nil
+		end
+		local ok, aura = pcall(C_UnitAuras.GetPlayerAuraBySpellID, t[2])
+		if not ok or IsSecret(aura) then
+			return nil
+		end
+		return (t[3] == 1) ~= (aura ~= nil)
+	elseif kind == 19 then
+		depth = (depth or 0) + 1
+		local row = RowByID()[t[2]]
+		if not row or depth > 3 then
+			return nil
+		end
+		if TakenOrDone(t[2]) then
+			return false
+		end
+		return QL.Eligible(row) and QL.Unmet(row, depth) == nil
+	end
+	return nil
+end
+
+-- The words for a condition not met: its first leaf that is false
+local function CondWhy(t, depth)
+	local kind = t[1]
+	if kind == "and" or kind == "or" then
+		for i = 2, #t do
+			if QL.CondMet(t[i], depth) == false then
+				return CondWhy(t[i], depth)
+			end
+		end
+		return nil
+	elseif kind == "not" then
+		return "Not yet offered to you"
+	end
+	local rev = (kind == 23 and t[4] or t[3]) == 1
+	if kind == 8 or kind == 9 or kind == 19 then
+		local other = RowByID()[t[2]]
+		local title = other and other[QL.F_TITLE] or "another quest"
+		if kind == 8 then
+			return (rev and "Only before you hand in %s" or "After %s"):format(title)
+		elseif kind == 9 then
+			return (rev and "Not while you have %s in your log" or "While you have %s in your log"):format(title)
+		end
+		return ("While %s can still be picked up"):format(title)
+	elseif kind == 23 then
+		local ok, name = pcall(C_Item.GetItemNameByID, t[2])
+		name = ok and QL.Plain(name) or "an item"
+		return (rev and "Only without %s in your bags" or "Needs %s"):format(name)
+	elseif kind == 1 then
+		return "Needs a special effect on you"
+	end
+	return nil
+end
+
 -- For a quest neither taken nor done (the callers have asked already): nil
 -- when the game would offer it now (its level aside: the callers compare
 -- that), else why not: "after", questID, inLog (the quest to do first, or to
 -- have in the log) / "skill", skill line, skill / "rep", faction, standing /
--- "refused", npc id, giver's name (not offered the last time it was asked)
-function QL.Unmet(row)
+-- "crumb", questID (a breadcrumb leading to it is in the log) / "cond", its
+-- words (the server's condition) / "refused", npc id, giver's name (not
+-- offered the last time it was asked)
+function QL.Unmet(row, depth)
 	local id = row[QL.F_ID]
 	local needs = Needs()
 	local after = needs.after and needs.after[id]
@@ -1242,6 +1380,21 @@ function QL.Unmet(row)
 		if standing and standing < rep[2] then
 			return "rep", rep[1], rep[2]
 		end
+	end
+	-- (0.19.5) a breadcrumb leading to it in the log: the server offers the
+	-- quest only once that one is handed in
+	local crumbs = needs.crumbsTo and needs.crumbsTo[id]
+	if crumbs then
+		for _, crumb in ipairs(crumbs) do
+			if QL.IsOnQuest(crumb) then
+				return "crumb", crumb
+			end
+		end
+	end
+	-- (0.19.5) the server's condition, where the client can tell
+	local cond = needs.cond and needs.cond[id]
+	if cond and QL.CondMet(cond, depth) == false then
+		return "cond", CondWhy(cond, depth) or "Not yet offered to you"
 	end
 	-- (and what the data cannot know: its giver did not offer it, Offers below)
 	local npc = QL.RefusedBy(id)
@@ -1283,6 +1436,11 @@ function QL.UnmetText(kind, a, b)
 			end
 		end
 		return ("Needs more reputation with %s"):format(name)
+	elseif kind == "crumb" then
+		local crumb = RowByID()[a]
+		return ("Hand in %s first"):format(crumb and crumb[QL.F_TITLE] or "the quest that leads here")
+	elseif kind == "cond" then
+		return a
 	elseif kind == "refused" then
 		return ("Not offered when you last talked to %s"):format(b or "its giver")
 	end
@@ -1360,6 +1518,69 @@ end
 -- time it was asked
 function QL.RefusedBy(questID)
 	return Offers.Store().refused[questID]
+end
+
+-- Quests hidden by hand (0.19.5; the user, 2026-10-06: Questie's manual
+-- hide): per character, in this same store (hidden = { [questID] = true };
+-- a level up or a profession keeps them, unlike the refusals). A hidden quest
+-- is left off the map, and off the list unless Show Hidden Quests is on
+-- (QL.Eligible); once taken it shows as ever. Alt-click a giver's mark
+-- (every quest it marks that is not taken) or a row (QL.ToggleHidden).
+function QL.IsHidden(questID)
+	local hidden = Offers.Store().hidden
+	return (hidden and hidden[questID] == true) and true or false
+end
+
+function QL.HiddenCount()
+	local n = 0
+	for _ in pairs(Offers.Store().hidden or {}) do
+		n = n + 1
+	end
+	return n
+end
+
+function QL.SetHidden(questID, on)
+	local s = Offers.Store()
+	if type(s.hidden) ~= "table" then
+		s.hidden = {}
+	end
+	s.hidden[questID] = on and true or nil
+end
+
+-- the list and the map again after a hide, its sound and its line
+local function HiddenChanged(text, on)
+	MelloUI:PlayUISound(on and "option_off" or "option_on")
+	MelloUI:Announce(text, "silent")
+	if QL.Panel and QL.Panel.Update then
+		QL.Panel:Update()
+	end
+	if QL.RefreshPins then
+		QL.RefreshPins()
+	end
+end
+
+-- a row's Alt-click: hidden, or shown again
+function QL.ToggleHidden(row)
+	local id = row[QL.F_ID]
+	local on = not QL.IsHidden(id)
+	QL.SetHidden(id, on)
+	HiddenChanged((on and "Hidden: " or "Shown again: ") .. row[QL.F_TITLE], on)
+end
+
+-- a giver mark's Alt-click: its quests not taken yet hidden (the map's mark
+-- groups a giver's quests: { row, state } each)
+function QL.HideGiver(group)
+	local n, first = 0, nil
+	for _, q in ipairs(group.quests or {}) do
+		if q.state == "available" or q.state == "locked" then
+			QL.SetHidden(q.row[QL.F_ID], true)
+			n = n + 1
+			first = first or q.row[QL.F_TITLE]
+		end
+	end
+	if n > 0 then
+		HiddenChanged(n == 1 and ("Hidden: " .. first) or string.format("Hidden: %d quests from %s", n, group.giver or "this giver"), true)
+	end
 end
 
 -- the NPC whose window is open: its creature id, or nil
@@ -1568,6 +1789,43 @@ function QL.ColourLevel(row)
 		end
 	end
 	return level
+end
+
+-- A quest grey for you, as the game colours it (DifficultyUtil.
+-- GetRelativeDifficultyColor: more than 4 levels under yours and further
+-- than your trivial range, UnitQuestTrivialLevelRange); where the client
+-- has no range, QL.DifficultyColor's own steps. A quest of no known level
+-- is never grey.
+function QL.IsGrey(row)
+	local level = row[QL.F_LEVEL]
+	local mine = type(UnitEffectiveLevel) == "function" and QL.Plain(UnitEffectiveLevel("player")) or nil
+	if type(mine) ~= "number" then
+		mine = QL.Plain(UnitLevel("player"))
+	end
+	if type(level) ~= "number" or level <= 0 or type(mine) ~= "number" then
+		return false
+	end
+	local below = mine - level
+	if below <= 4 then
+		return false
+	end
+	local range
+	if type(UnitQuestTrivialLevelRange) == "function" then
+		local ok, r = pcall(UnitQuestTrivialLevelRange, "player")
+		range = ok and QL.Plain(r) or nil
+	end
+	if type(range) == "number" then
+		return below > range
+	end
+	local trivial = mine >= 40 and 12 or mine >= 30 and 9 or mine >= 20 and 7 or mine >= 10 and 6 or 5
+	return below >= trivial
+end
+
+-- (0.19.5, the user's Hide Grey Quests; Questie hides them by default) a
+-- quest not taken yet that the map leaves out for being grey -- never one in
+-- the log, never the tracked one
+function QL.GreyHidden(row, state)
+	return state == "available" and M.db.hideGrey == true and QL.trackedQuestID ~= row[QL.F_ID] and QL.IsGrey(row)
 end
 
 function QL.DifficultyColor(level)
@@ -1957,6 +2215,11 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 		-- counted only: the quest tooltips make their index again on the
 		-- next tooltip that needs it (QuestListTips.lua)
 		QL.logChanges = QL.logChanges + 1
+		-- (0.19.5) the objective marks follow the log's progress while the map
+		-- shows (once after a burst: QuestListObjectives.lua)
+		if QL.Objectives then
+			QL.Objectives.LogChanged()
+		end
 	elseif event == "NEUTRAL_FACTION_SELECT_RESULT" or (event == "UNIT_FACTION" and QL.Plain(...) == "player") then
 		QL.SideChanged()
 	else
@@ -2064,6 +2327,9 @@ function M:OnEnable(db)
 	-- event (a RegisterEvent of an unknown one raises)
 	pcall(eventFrame.RegisterEvent, eventFrame, "NEUTRAL_FACTION_SELECT_RESULT")
 	QL.StartOutsideTicker()
+	if QL.Objectives then
+		QL.Objectives.GameMarks()   -- (the game's own quest areas off while the objective marks are on)
+	end
 end
 
 function M:OnDisable()
@@ -2081,6 +2347,10 @@ function M:OnDisable()
 	if QL.Provider and WorldMapFrame then
 		QL.Provider:RemoveAllData()
 	end
+	if QL.Objectives then
+		QL.Objectives.MiniSoon()   -- (off: the minimap's marks go)
+		QL.Objectives.GameMarks()   -- (and the game's own quest areas come back)
+	end
 end
 
 function M:OnSettingChanged(key, value, db)
@@ -2090,6 +2360,10 @@ function M:OnSettingChanged(key, value, db)
 	end
 	QL.Panel:Apply()
 	QL.RefreshPins()
+	if QL.Objectives then
+		QL.Objectives.MiniSoon()   -- (the minimap's marks: their switches, the tracked-only choice)
+		QL.Objectives.GameMarks()   -- (the game's own quest areas: off while the marks are on)
+	end
 end
 
 -- /qlmap: why pins are (not) on the map shown.

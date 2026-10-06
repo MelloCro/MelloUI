@@ -11,7 +11,7 @@ ignore = {
 -- Written by the addon: saved variables, slash command registration, the pin mixin the XML expects.
 globals = {
 	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines", "MelloUIRoadRecords",
-	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
+	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOBUG1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
 	"SLASH_MELLOSERVICES1", "SLASH_MELLOTRDUMP1", "SLASH_MELLOSBDUMP1", "SLASH_MELLOPROFDUMP1", "SLASH_MELLOLEGDUMP1", "SLASH_MELLOGFDUMP1", "SLASH_MELLOVOICEOVER1", "SLASH_MELLOVOICEOVER2", "SLASH_MELLOICONDUMP1",
 	"SLASH_MELLOABDUMP1", "SLASH_MELLOINKWHY1", "SLASH_MELLODIALOGDUMP1", "SLASH_MELLOUISCALEDUMP1", "SLASH_MELLOCHATINK1", "SLASH_MELLOCHATSCROLL1", "SLASH_MELLOBAGDUMP1", "SLASH_MELLOMMDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOUFTEST1", "SLASH_MELLORFDUMP1", "SLASH_MELLOABDUMP1", "SLASH_MELLOCBDUMP1",
 	"SLASH_MELLOSOCDUMP1", "SLASH_MELLOTTDUMP1", "SLASH_MELLONPDUMP1", "SLASH_MELLOADDONLISTDUMP1",
@@ -69,13 +69,13 @@ read_globals = {
 	"GetMinimapShape", "GetMouseFoci", "GetMouseFocus", "GetMoney", "GetNetStats", "GetNumMacros", "GetNumRoutes", "GetObjectiveText",
 	"GetPlayerFacing", "GetProfessionInfo", "GetProfessions", "GetProgressText",
 	"GetQuestDifficultyColor", "GetQuestID", "GetQuestLogQuestText", "GetQuestText",
-	"GetRepairAllCost", "GetRewardText", "GetServerTime", "GetSubZoneText", "GetSuperTrackedQuestID",
+	"GetRepairAllCost", "GetRewardText", "GetServerTime", "GetSubZoneText", "GetRealZoneText", "GetSuperTrackedQuestID",
 	"GetTaxiMapID", "GetTime", "GetTitleText", "HideUIPanel", "ShowUIPanel", "InCombatLockdown", "IsInInstance",
 	"IsMouseButtonDown", "IsShiftKeyDown", "KeyRingButton", "LOG_OUT", "LibStub", "MainActionBar",
 	"MainMenuBar", "MultiBarBottomLeft", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "MapQuestInfoRewardsFrame",
 	"MelloUIHiddenFrame", "MelloUIMinimapStand", "MelloUIServicesBar", "MelloUI_CustomFonts",
 	"MelloUI_CustomTextures", "MelloUI_NPCVoiceData", "MelloUI_NPCVoiceOverrides", "MelloUI_Profiles",
-	"MelloUI_QuestListData", "MelloUI_PlaceData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
+	"MelloUI_QuestListData", "MelloUI_PlaceData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems", "MelloUI_QuestObjectiveSources", "MelloUI_RouteData", "MelloUI_RoadData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MenuUtil", "MerchantFrame", "MicroMenu",
 	"MicroMenuContainer", "MinimalSliderWithSteppersMixin", "Minimap", "MinimapCluster",
 	"MinimapCompassTexture", "MinimapCompassTextureUnderlay", "MinimapBackdrop", "MinimapZoneText",
 	"Mixin", "NUM_BAG_SLOTS",
@@ -98,7 +98,7 @@ read_globals = {
 	"TextStatusBarText", "TooltipDataProcessor", "UIParent", "UISpecialFrames", "UiMapPoint",
 	-- chat: every window incl. whisper windows, tab alphas (read only), the whisper popup (2026-09-23)
 	"CHAT_FRAMES", "CHAT_FRAME_TAB_NORMAL_MOUSEOVER_ALPHA", "CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA",
-	"FCFDock_GetSelectedWindow", "FCF_OpenTemporaryWindow", "FCFTab_UpdateColors", "GENERAL_CHAT_DOCK", "ChatTypeInfo",
+	"FCFDock_GetSelectedWindow", "FCF_OpenTemporaryWindow", "FCFTab_UpdateColors", "UnitEffectiveLevel", "UnitQuestTrivialLevelRange", "GENERAL_CHAT_DOCK", "ChatTypeInfo",
 	"Ambiguate", "C_BattleNet", "C_ChatInfo", "SetItemRef", "YOU",
 	-- a community channel line's author (the chat's class gems on parchment, 0.14.0)
 	"C_Club",
@@ -162,5 +162,6 @@ files["Media"] = {
 files["MelloUI_Companion"] = {
 	globals = {
 		"MelloUI_RoadData", "MelloUI_QuestObjectiveData", "MelloUI_QuestNeededItems", "MelloUI_QuestMadeItems", "MelloUI_QuestUseItems",
+		"MelloUI_QuestObjectiveSources",
 	},
 }

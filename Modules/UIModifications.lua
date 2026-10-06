@@ -257,7 +257,7 @@ local PARCHMENTS = {
 	{ "parchment_chat", "Chat" },
 	{ "parchment_whisper", "Whisper Popup" },
 	{ "parchment_meter", "Damage Meter" },
-	{ "parchment_character", "Character Window", values = CHARACTER_PARCHMENT, on = "pane", new = "0.19.4" },
+	{ "parchment_character", "Character Window", values = CHARACTER_PARCHMENT, on = "pane" },
 	{ "parchment_tooltip", "Tooltips" },
 	{ "parchment_dialog", "Dialogs" },     -- (user, 2026-09-24: the popup dialogs, "add a parchment to it")
 }

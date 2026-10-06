@@ -2458,7 +2458,9 @@ do
 		-- (0.17.0: the damage meter's values and the Fight History's chat button)
 		sword = 24, hourglass = 25, chart = 26,
 		-- (0.18.2: the Discard button on the bag and loot windows)
-		bin = 27 }
+		bin = 27,
+		-- (0.19.5: the Quest List's objective marks: collect, use, explore; kill is the sword)
+		bag = 28, cog = 29, flag = 30 }
 	local ROWS = 4
 
 	function W.Glyph(tex, name)

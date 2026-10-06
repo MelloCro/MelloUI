@@ -10,6 +10,13 @@ column": Voice Over and the other widgets, the user's picked look of
     Textures/WidgetGlyphs.tga    the small buttons' glyphs (pause, play,
                                  skip, stop, list, lock, unlock, check,
                                  cross, the way, reply), one 32 px cell each
+    Textures/MapDot.tga          (0.19.5) the Quest List's objective places
+                                 on the zoomed-in world map: a white dot in
+                                 a BLACK ring, one piece (the user,
+                                 2026-10-06: "colored dots with black
+                                 outline"; two round masks stacked at 10 px
+                                 were blurred) -- tinted, the white takes the
+                                 palette's colour and the ring stays black
 
 Both are WHITE where they draw, their alpha the picture, so the game tints
 them with a palette colour (the ring with selectedTrim, its dim track with
@@ -40,6 +47,7 @@ script gives the same bytes.
 """
 import hashlib
 import io
+import math
 import os
 import sys
 
@@ -48,6 +56,9 @@ from PIL import Image, ImageDraw
 from paths import ADDON_MEDIA, master
 
 RING_NAME = ("Textures", "ProgressRing.tga")
+DOT_NAME = ("Textures", "MapDot.tga")
+DOT_SIZE = 32                 # the map dot's texture (drawn at about 10 px)
+DOT_FILL, DOT_OUT = 0.60, 0.94   # the white dot to DOT_FILL of the half-width, the black ring to DOT_OUT
 GLYPH_NAME = ("Textures", "WidgetGlyphs.tga")
 
 RING_SIZE = 128
@@ -71,7 +82,11 @@ GLYPHS = ("pause", "play", "skip", "stop", "list", "padlock", "padlockOpen", "ch
           "sword", "hourglass", "chart",
           # (0.18.2: the Discard button on the bag and loot windows -- the user's pick A of
           # BuildData/output/discard_sketch: a bin on the Sort button's cog plate)
-          "bin")
+          "bin",
+          # (0.19.5: the Quest List's objective marks, one mark per kind -- the user's pick, C's behaviour with D's
+          # marks of BuildData/output/objective_marks_sketch: a bag to collect, a cog to use, a flag to explore; the
+          # sword to kill is the meter's)
+          "bag", "cog", "flag")
 
 
 def smootherstep(t):
@@ -245,6 +260,29 @@ def glyph(name):
         d.polygon(P((7.5, 12.5), (24.5, 12.5), (22.6, 29), (9.4, 29)), fill=255)
         for x in (12.4, 16, 19.6):
             d.rounded_rectangle(((x - 0.95) * k, 15.5 * k, (x + 0.95) * k, 26 * k), radius=0.9 * k, fill=0)
+    elif name == "bag":
+        # collect: a sack -- its full body, the neck gathered by a tie, the cloth flaring out above it
+        d.ellipse((5 * k, 11.5 * k, 27 * k, 30 * k), fill=255)
+        d.polygon(P((10.5, 14), (21.5, 14), (19, 9.5), (13, 9.5)), fill=255)
+        d.rounded_rectangle((11 * k, 8.4 * k, 21 * k, 10.8 * k), radius=1.2 * k, fill=0)
+        d.polygon(P((13, 8.6), (19, 8.6), (24, 3.5), (20, 4.6), (16, 2.8), (12, 4.6), (8, 3.5)), fill=255)
+    elif name == "cog":
+        # use: a cog -- eight teeth round a wheel, a hole in its middle
+        for i in range(8):
+            a = i * math.pi / 4
+            cx, cy = 16 + 11 * math.cos(a), 16 + 11 * math.sin(a)
+            ux, uy = math.cos(a), math.sin(a)
+            vx, vy = -uy, ux
+            w, h = 2.6, 3.2
+            d.polygon(P((cx - vx * w - ux * h, cy - vy * w - uy * h), (cx + vx * w - ux * h, cy + vy * w - uy * h),
+                        (cx + vx * w * 0.8 + ux * h, cy + vy * w * 0.8 + uy * h),
+                        (cx - vx * w * 0.8 + ux * h, cy - vy * w * 0.8 + uy * h)), fill=255)
+        d.ellipse((6 * k, 6 * k, 26 * k, 26 * k), fill=255)
+        d.ellipse((12 * k, 12 * k, 20 * k, 20 * k), fill=0)
+    elif name == "flag":
+        # explore: a flag on its pole, the cloth waving
+        line([(8.5, 4.5), (8.5, 28.5)], 3.2)
+        d.polygon(P((10, 5), (16, 3.5), (22, 6), (27.5, 5), (27.5, 16.5), (22, 17.5), (16, 15), (10, 16.5)), fill=255)
     else:
         raise ValueError(name)
     return im.resize((CELL, CELL), Image.BOX)
@@ -262,6 +300,26 @@ def glyph_sheet():
     return sheet
 
 
+def map_dot():
+    """a white dot in a black ring: alpha the whole disc, the colour white inside, black in the ring (smooth edges:
+    drawn SUPER times larger and averaged down)"""
+    n = DOT_SIZE * SUPER
+    c = (np.arange(n) + 0.5) / n * 2.0 - 1.0
+    r = np.sqrt(c[None, :] ** 2 + c[:, None] ** 2)
+    aa = 1.2 / DOT_SIZE
+    a = 1.0 - smootherstep((r - DOT_OUT) / aa + 0.5)
+    white = 1.0 - smootherstep((r - DOT_FILL) / aa + 0.5)
+    a = a.reshape(DOT_SIZE, SUPER, DOT_SIZE, SUPER).mean(axis=(1, 3))
+    white = white.reshape(DOT_SIZE, SUPER, DOT_SIZE, SUPER).mean(axis=(1, 3))
+    img = np.zeros((DOT_SIZE, DOT_SIZE, 4), np.uint8)
+    v = np.clip(white * 255 + 0.5, 0, 255).astype(np.uint8)
+    img[..., 0] = v
+    img[..., 1] = v
+    img[..., 2] = v
+    img[..., 3] = np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8)
+    return img
+
+
 def tga(img):
     buf = io.BytesIO()
     Image.fromarray(img, "RGBA").save(buf, format="TGA")
@@ -275,7 +333,7 @@ def main():
         print("unknown argument: %s (nothing written)\n" % " ".join(bad))
         print(__doc__[__doc__.index("    python Tools/"):].rstrip())
         return 2
-    files = [(RING_NAME, tga(ring())), (GLYPH_NAME, tga(glyph_sheet()))]
+    files = [(RING_NAME, tga(ring())), (GLYPH_NAME, tga(glyph_sheet())), (DOT_NAME, tga(map_dot()))]
     stale = []
     for name, data in files:
         targets = [master(*name), os.path.join(ADDON_MEDIA, *name)]

@@ -222,6 +222,7 @@ To share a profile, click **Share** on its row and copy the string; to use someo
 | `/mello edit` | Edit Layout: move and resize the interface (also **Edit Layout** in the settings window's top bar); `/mello edit dump` logs every element it knows, and why one has no plate, to the copy window |
 | `/mello layout` | the Edit Mode layout the reskin is drawn for: `apply` fits it to your screen and puts it into Edit Mode as an account layout ("MelloUI", or "MelloUI <width>x<height>" on another screen size) and makes it active (done once by itself when you switch the reskin on by hand; the installer puts it in for you), `export` prints the active layout's share string for baking into `Media\EditModeLayout.lua` |
 | `/mellolog [clear]` | the copy window with what the dump commands logged (`clear` empties it) |
+| `/mellobug [clear]` | when the game says MelloUI was blocked from an action: a report of the last blocks (the function, combat, MelloUI's frame times) in the copy window, to send with a bug report (`clear` forgets them) |
 | `/mello combattext test` | Combat Text: a few sample lines in the chosen style |
 | `/vo ...` | Voice Over: `stop`, `pause`, `skip`, `test`, `voices`, `npc`, `packs`, `lines`, `reset` |
 | `/qlmap` | Quest List map pins: diagnostics, and `dock`, `zeppelin`, `arrive`, `entrance`, `remove`, `list` to record pins by hand (see Quest List) |
