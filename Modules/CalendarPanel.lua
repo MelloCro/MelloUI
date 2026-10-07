@@ -61,9 +61,9 @@
 --
 -- Taint: nothing of the game's is replaced or re-scripted. Post-hooks
 -- (CalendarFrame_Update, the popups' OnShow, the arrows' Enable / Disable)
--- and HookScript only, our state in weak side tables (the kit's melloRep
--- markers on the controls it dresses are the only fields written on game
--- frames). No calendar function is called: no event is opened, created,
+-- and HookScript only, our state in weak side tables (the kit's reps of the
+-- controls it dresses too: MelloUI.Kept.repOf; no field is written on a game
+-- frame). No calendar function is called: no event is opened, created,
 -- answered or invited to. Nothing is moved but the title strings, which are
 -- lent to the plate and put back. Switching the module off disables every
 -- replacement and puts the strings' fonts, layers, parents and points back:
@@ -81,6 +81,10 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("CalendarPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("CalendarPanel", {
 	title = "Calendar Kit",
@@ -130,7 +134,7 @@ local weekdays = {}                                    -- { bg, name, rep }
 local arrowReps = {}                                   -- { rep, button }
 local popups = {}                                      -- { frame, nine, dim, plate, header }
 local listBoxes = {}                                   -- { frame, rep }
-local rims = {}                                        -- the class icons' rims { melloRep, icon, button }
+local rims = {}                                        -- the class icons' rims { icon, button } (the rep: MelloUI.Kept.repOf[holder])
 local raised = setmetatable({}, { __mode = "k" })      -- [fs] = { layer, sublevel }: a string lifted over our plate while dressed
 local lent = setmetatable({}, { __mode = "k" })        -- [fs] = { parent, points, font }: a title string riding the plate
 local stats = { days = 0, weekdays = 0, popups = 0, lists = 0, edits = 0, buttons = 0, dividers = 0, rims = 0 }
@@ -204,7 +208,7 @@ local function Anchor(host, layer, sublevel)
 	local tex = host:CreateTexture(nil, layer or "BACKGROUND", nil, sublevel)
 	tex:SetAllPoints(host)
 	tex:SetColorTexture(0, 0, 0, 0)
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	return tex
 end
 
@@ -265,7 +269,7 @@ local function BorderArt(cf)
 	end
 	if #list == 0 then
 		for _, region in ipairs({ cf:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				local ok, layer = pcall(region.GetDrawLayer, region)
 				if ok and layer == "BORDER" then
 					list[#list + 1] = region
@@ -324,7 +328,7 @@ local function PlaceYear()
 	if not (active and month and year and plate and plate.object and plate.object:IsShown()) then
 		return
 	end
-	if not year.melloFontSaved then
+	if not fontSavedOf[year] then
 		-- the month's size first (saved to put back), then the title face
 		local home = lent[year]
 		local okM, obj = pcall(month.GetFontObject, month)
@@ -475,11 +479,11 @@ end
 -- would sit a level under the button, at the window's own level). The
 -- sweep leaves a dressed one alone.
 local function SkinFilter(dd)
-	if not (dd and dd.Background) or done[dd] or dd.melloRep ~= nil then
+	if not (dd and dd.Background) or done[dd] or repOf[dd] ~= nil then
 		return
 	end
 	done[dd] = true
-	dd.melloRep = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
+	repOf[dd] = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
 end
 
 -- A close button (UIPanelCloseButton) on the kit's
@@ -593,7 +597,7 @@ end
 -- cap dropped -- that cap is the search glass (the chat's, Edit Mode's and
 -- the auction house's rule).
 local function SkinEdit(edit)
-	if not edit or done[edit] or edit.melloRep ~= nil or edit.searchIcon then
+	if not edit or done[edit] or repOf[edit] ~= nil or edit.searchIcon then
 		return
 	end
 	done[edit] = true
@@ -734,7 +738,7 @@ local function SkinPopup(p)
 		-- the inner panel over the stone inside the rail (2e: a popup is text)
 		local l, r, t, b = RailInsets()
 		local dim = p:CreateTexture(nil, "BACKGROUND", nil, -6)
-		dim.kitPiece = true
+		pieceOf[dim] = true
 		dim:SetPoint("TOPLEFT", p, "TOPLEFT", l, -t)
 		dim:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -r, b)
 		Kit:Paint(dim, "innerPanel", "fill", 0.8)   -- (by its key: a new palette paints it again)
@@ -781,7 +785,7 @@ end
 -- top. The totals button under them keeps the game's art.
 --------------------------------------------------------------------------------
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -815,7 +819,7 @@ local function SkinClassButtons()
 			local icon = b.GetNormalTexture and b:GetNormalTexture()
 			local back
 			for _, region in ipairs({ b:GetRegions() }) do
-				if region ~= icon and region:GetObjectType() == "Texture" and not region.kitPiece then
+				if region ~= icon and region:GetObjectType() == "Texture" and not pieceOf[region] then
 					local ok, layer = pcall(region.GetDrawLayer, region)
 					if ok and layer == "BACKGROUND" then
 						back = region
@@ -825,14 +829,15 @@ local function SkinClassButtons()
 			if icon then
 				local rep = Replace(back or icon, { as = Kit:ButtonRimRule(), button = b, parent = b, rect = icon, noFade = back == nil })
 				if rep then
-					local holder = { melloRep = rep, icon = icon, button = b }
+					local holder = { icon = icon, button = b }
+					repOf[holder] = rep
 					rims[#rims + 1] = holder
 					Kit:RegisterButtonRim(holder)
 					FitIconRim(holder)
 					for _, method in ipairs({ "Enable", "Disable", "SetEnabled" }) do
 						if b[method] then
 							hooksecurefunc(b, method, function()
-								local rim = holder.melloRep.object
+								local rim = repOf[holder].object
 								if active and rim and rim.Update then
 									rim:Update()
 								end
@@ -1120,7 +1125,7 @@ local function Shown(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function FadedState(obj)
@@ -1168,7 +1173,7 @@ local function DumpOwn(frame)
 		local kind = region:GetObjectType()
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "") .. (Kit.faded[region] and " faded" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "") .. (Kit.faded[region] and " faded" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. TextOf(region):sub(1, 40) .. ", font " .. FontText(region)
 		end
@@ -1179,7 +1184,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (dressed)" or "")
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 
@@ -1204,7 +1209,7 @@ local function DumpCalendar(cf)
 	-- the title: both strings, where they are and in which face
 	for _, fs in ipairs(List(_G.CalendarMonthName, _G.CalendarYearName)) do
 		Found("title string", fs, string.format(" text %s, parent %s, font %s, title face %s, lent %s, %s", TextOf(fs), Label(fs:GetParent()),
-			FontText(fs), tostring(fs.melloFontSaved ~= nil), tostring(lent[fs] ~= nil), RectText(fs)))
+			FontText(fs), tostring(fontSavedOf[fs] ~= nil), tostring(lent[fs] ~= nil), RectText(fs)))
 	end
 	if not _G.CalendarMonthName then
 		Found("title string", nil)

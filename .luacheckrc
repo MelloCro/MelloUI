@@ -58,7 +58,13 @@ read_globals = {
 	"CreateDataProvider", "CreateFont", "CreateFontFamily", "CreateColor", "CreateFrame", "CreateFromMixins", "CreateMacro",
 	"CreateScrollBoxListLinearView", "CreateVector2D", "DeadlyDebuffFrame", "DebuffFrame",
 	"EditMacro", "EditModeManagerFrame", "Enum", "EventRegistry", "ExpansionLandingPageMinimapButton",
-	"ExtraActionButton1", "FACTION_BAR_COLORS", "FCF_SetChatWindowFontSize",
+	"ExtraActionButton1", "ActionButton_UpdateRangeIndicator", "C_ActionBar",
+	-- (0.19.6, Quest Auto: the quest frame's and the greeting's own calls)
+	"AcceptQuest", "CompleteQuest", "GetActiveQuestID", "GetActiveTitle", "GetInventoryItemLink", "GetNumActiveQuests",
+	"GetNumQuestChoices", "GetQuestItemInfo", "GetQuestItemLink", "GetQuestMoneyToGet", "GetQuestReward",
+	"IsQuestCompletable", "SelectActiveQuest", "SelectAvailableQuest",
+	-- (0.19.6, Cooldown Tweaks: an action's spell, the out-of-range dot the hot key shows)
+	"GetActionInfo", "GetMacroSpell", "RANGE_INDICATOR", "FACTION_BAR_COLORS", "FCF_SetChatWindowFontSize",
 	"FocusFrame", "PetFrame", "Game15Font_Shadow", "GameFontHighlightOutline", "GameFontHighlightSmall",
 	"GameFontNormal", "ChatFontNormal", "PagedContentFrameBaseMixin", "LegacyChallengeObjectives", "QuestScrollFrame", "GameMenuFrame", "GameTimeFrame", "GameTooltip", "GameTooltipStatusBar",
 	"GameTooltip_AddNormalLine", "GameTooltip_SetDefaultAnchor", "GameTooltip_SetTitle",

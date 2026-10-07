@@ -220,7 +220,7 @@ def palette_ramps(roles):
 # pictures, the tiles already in the palette's warmth and the coloured quilts: left as painted; and the
 # Elite / Rare / Boss marks (Tools/kit_marks.py): their metals mean what a unit is, under every palette
 # (but for the rings' gems, GEM_TWINS)
-SKIP = re.compile(r"^(backdrops|cards|icons)/|^marks/(?!ring_)|^tiles/(vellum|parchment|leather|quilt_|crackle)")
+SKIP = re.compile(r"^(backdrops|cards|icons)/|^marks/(?!ring_)|^tiles/(vellum|parchment|agedparchment|leather|quilt_|crackle)")
 # The marks' portrait rings (marks/ring_<kind>): the ring in a metal with a crest, its compass gems left as the
 # plain ring has them. In a look only those gems are recoloured, so they are the look's plain ring's gems (the
 # user's sketch kept the gems as the look drew them); the metal and the crest stay as baked.
@@ -231,7 +231,7 @@ GEM_PLAIN = "window/portrait_ring"
 # tile's light remapped round a dark middle with little spread before the
 # ramp -- calm dark stone a step lighter than the list stone (window bodies,
 # ~0.10), its cracks a hint
-TONED = re.compile(r"^tiles/concrete")
+TONED = re.compile(r"^tiles/(concrete|brushedmetal)")   # (0.19.6: the NewUI2 brushed dark metal, toned as the concrete)
 TONED_MID, TONED_SPREAD = 0.16, 0.09
 
 # Each look: its folder beside Media/Kit (Kit:LookFolder in Kit.lua picks it

@@ -66,6 +66,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("MerchantPanel", {
 	title = "Merchant Kit",
@@ -87,7 +92,7 @@ local hooked = false
 -- what this module made or looked at, kept OFF the game's frames (weak keys)
 local done = setmetatable({}, { __mode = "k" })         -- [frame / region] = true: looked at once
 local cards = {}                                        -- { tex (the plain face, painted mainWindow), source (the game's label plate), item, red, redTex (the fixed-red face, made on first red) }
-local toolRims = {}                                     -- the repair / junk buttons' rim holders { melloRep, icon, button }
+local toolRims = {}                                     -- the repair / junk buttons' rim holders { icon, button } (the rep: MelloUI.Kept.repOf)
 local arrowReps = {}                                    -- the page arrows { rep, button }
 local tabReps = {}                                      -- the tabs' cards { rep, region } (kept hidden while the kit is off)
 local fadedArt = {}                                     -- game art faded with no piece of its own on its rect
@@ -219,7 +224,7 @@ local function PaintCard(entry)
 	local fixed = entry.redTex
 	if red and not fixed then
 		fixed = entry.item:CreateTexture(nil, "BACKGROUND", nil, -2)
-		fixed.kitPiece = true   -- ours: never faded as the game's art
+		pieceOf[fixed] = true   -- ours: never faded as the game's art
 		fixed:SetAllPoints(entry.item)
 		fixed:SetColorTexture(CANNOT_USE[1], CANNOT_USE[2], CANNOT_USE[3], CARD_ALPHA)
 		entry.redTex = fixed
@@ -255,7 +260,7 @@ local function SkinCard(item, plate)
 		return
 	end
 	local tex = item:CreateTexture(nil, "BACKGROUND", nil, -2)
-	tex.kitPiece = true   -- ours: never faded as the game's art
+	pieceOf[tex] = true   -- ours: never faded as the game's art
 	tex:SetAllPoints(item)
 	Kit:Paint(tex, "mainWindow", "fill", CARD_ALPHA)
 	-- (shown or not by PaintCard, from ReadTint just below)
@@ -330,7 +335,7 @@ end
 local TOOL_BUTTONS = { "MerchantRepairAllButton", "MerchantRepairItemButton", "MerchantGuildBankRepairButton", "MerchantSellAllJunkButton" }
 
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -357,7 +362,7 @@ end)
 -- a button's first texture in `layer`, other than `skip` and ours
 local function TextureIn(button, layer, skip)
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region ~= skip and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region ~= skip and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, l = pcall(region.GetDrawLayer, region)
 			if ok and l == layer then
 				return region
@@ -368,7 +373,7 @@ end
 
 -- a rim's look read again from its button (enabled, hovered, pressed)
 local function UpdateRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	if active and rim and rim.Update then
 		rim:Update()
 	end
@@ -407,7 +412,8 @@ local function SkinTool(button)
 	if not rep then
 		return
 	end
-	local holder = { melloRep = rep, icon = icon, button = button }
+	local holder = { icon = icon, button = button }
+	repOf[holder] = rep
 	toolRims[#toolRims + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	FitIconRim(holder)
@@ -484,7 +490,7 @@ end
 
 local function KeepInsetUnder(f)
 	local inset = InsetOf(f)
-	local rep = inset and inset.melloRep
+	local rep = inset and repOf[inset]
 	local holder = rep and rep.object
 	if not (holder and holder.SetFrameLevel) then
 		return
@@ -547,7 +553,7 @@ local function SkinBand(f)
 	local bands = Bands()
 	local band = bands[1]
 	local inset = InsetOf(f)
-	local rep = inset and inset.melloRep
+	local rep = inset and repOf[inset]
 	local host = rep and rep.skin
 	for _, b in ipairs(bands) do
 		FadeArt(b)
@@ -609,7 +615,7 @@ local function InsetArt(inset)
 	local list = List(inset.Bg)
 	if inset.NineSlice then
 		for _, region in ipairs({ inset.NineSlice:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				list[#list + 1] = region
 			end
 		end
@@ -683,7 +689,7 @@ local function SkinTab(tab)
 		Kit:SkinPanelTab(tab, Replace, skin)
 	else
 		plainTex, openTex = Part(tab, "Left", "Left"), Part(tab, "LeftDisabled", "LeftDisabled")
-		if not (plainTex and openTex) or tab.melloRep ~= nil then
+		if not (plainTex and openTex) or repOf[tab] ~= nil then
 			return
 		end
 		local hl = tab.GetHighlightTexture and tab:GetHighlightTexture()
@@ -692,7 +698,7 @@ local function SkinTab(tab)
 		local open = Replace(openTex, { as = "uiframe-activetab-left", rect = tab,
 			alsoFade = List(Part(tab, "MiddleDisabled", "MiddleDisabled"), Part(tab, "RightDisabled", "RightDisabled")) })
 		-- the Kit's own "dressed" marker, as its tab helper sets it
-		tab.melloRep = plain or open or false
+		repOf[tab] = plain or open or false
 		Follow(plain, plainTex)
 		Follow(open, openTex)
 	end
@@ -726,11 +732,11 @@ end
 -- the dropdown plate (D1), its painted cap in place of the arrow. A client
 -- whose rules turn the filter off hides the dropdown: the plate goes with it.
 local function SkinDropdown(dd)
-	if not (dd and dd.Background) or done[dd] or dd.melloRep ~= nil then
+	if not (dd and dd.Background) or done[dd] or repOf[dd] ~= nil then
 		return
 	end
 	done[dd] = true
-	dd.melloRep = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
+	repOf[dd] = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
 end
 
 --------------------------------------------------------------------------------
@@ -792,7 +798,7 @@ local function PlaceTitle()
 		rep:Refit()
 	end
 	local text = TitleText(Window())
-	if text and not text.melloFontSaved then
+	if text and not fontSavedOf[text] then
 		Kit:TitleFont(text, true)
 	end
 end
@@ -1040,7 +1046,7 @@ local function Shown(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function FadedState(obj)
@@ -1060,7 +1066,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			local okT, text = pcall(region.GetText, region)
 			art = "text: " .. ((okT and type(text) == "string" and not Secret(text)) and text:sub(1, 40) or "?")
@@ -1072,7 +1078,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (dressed)" or "")
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 
@@ -1088,7 +1094,7 @@ local function DumpShell(f)
 		local okS, w, h = pcall(portrait.GetSize, portrait)
 		Found("portrait", portrait, string.format(" file %s, size %s x %s, fitted %s, shown %s",
 			(okT and not Secret(file)) and tostring(file) or "?", okS and Num(w) or "?", okS and Num(h) or "?",
-			tostring(portrait.melloSaved ~= nil), Shown(portrait)))
+			tostring(portraitSavedOf[portrait] ~= nil), Shown(portrait)))
 	else
 		Found("portrait", nil)
 	end
@@ -1101,7 +1107,7 @@ local function DumpShell(f)
 		Found("title text", title, string.format(" text %s, face %s, title face %s, plate %s",
 			(okT and type(text) == "string" and not Secret(text)) and text or "?",
 			(okF and type(face) == "string" and not Secret(face)) and face or "?",
-			tostring(title.melloFontSaved ~= nil), tostring(TitleRep() ~= nil)))
+			tostring(fontSavedOf[title] ~= nil), tostring(TitleRep() ~= nil)))
 	else
 		Found("title text", nil)
 	end
@@ -1110,7 +1116,7 @@ end
 local function DumpParts(f)
 	local inset = InsetOf(f)
 	Found("list box (Inset)", inset, inset and string.format(" dressed %s, dim %s", Dressed(inset),
-		tostring(inset.melloRep and inset.melloRep.skin and inset.melloRep.skin.dimFill ~= nil)) or nil)
+		tostring(repOf[inset] and repOf[inset].skin and repOf[inset].skin.dimFill ~= nil)) or nil)
 	for _, band in ipairs(Bands()) do
 		Found("bottom band", band, string.format(" %s, shown %s", FadedState(band), Shown(band)))
 	end

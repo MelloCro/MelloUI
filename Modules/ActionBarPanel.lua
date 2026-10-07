@@ -28,6 +28,12 @@ local Perf = MelloUI.Perf:Scope("ActionBarPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local bracketOf = MelloUI.Kept.bracketOf
+local glyphStoneOf = MelloUI.Kept.glyphStoneOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local repOf = MelloUI.Kept.repOf
+local slotStoneOf = MelloUI.Kept.slotStoneOf
 
 -- The looks a group of buttons can take (action bars, micro menu, bag bar;
 -- the rims are UI Modifications' Button Border, every window's). No "None"
@@ -36,6 +42,15 @@ local BACKDROP_VALUES = {
 	{ value = "red", label = "Red gems" },
 	{ value = "iron", label = "Iron gems" },
 }
+-- (0.19.8, the border library's stage 3; the user, 2026-10-06: "go with
+-- recommended" of MelloUI-BuildData/output/bar_group_border_sketch) and every
+-- style of the border library (Modules/KitBorders.lua) but its Backdrop: the
+-- red and iron gems are that look here, with their own L joint (DrawLibrary)
+for _, look in ipairs(Kit.squareLooks or {}) do
+	if look.style ~= "backdrop" then
+		BACKDROP_VALUES[#BACKDROP_VALUES + 1] = { value = look.value, label = look.label }
+	end
+end
 local BACKGROUND_VALUES = Kit.buttonLooks.backgrounds
 
 -- The groups (user, 2026-09-23: the action bars first, then "onto the micro
@@ -87,7 +102,8 @@ for _, g in ipairs(GROUPS) do
 		or (g.id == "micro" and "the micro menu" or "the bag bar")
 	-- (the buttons' rim: UI Modifications' Button Border, every window's)
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
-		desc = "The gems on the corners of the backdrop round " .. what .. ". Elements placed together share one backdrop, "
+		desc = "The border of the backdrop round " .. what .. ": the red or iron gems on its corners, or one of the border "
+			.. "styles of Look > Borders (drawn heavy, its inner corners mitred). Elements placed together share one backdrop, "
 			.. "in the look of the first of them: Action Bar 1, the other bars, the micro menu, the bag bar. Each element's "
 			.. "backdrop is switched on under Backdrops." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,
@@ -127,6 +143,7 @@ local BAG_BUTTONS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "Charact
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
 local SafeScreenRect = MelloUI.Safe.ScreenRect
+local Finite = MelloUI.Safe.Finite
 
 local function Replace(region, opts)
 	if not region then
@@ -209,54 +226,6 @@ local function KeepShadesLow()
 	end
 end
 
--- The part of the backdrop's piece each part of its nine shows (Kit:CutNine,
--- piece px), as the options its partner is made with: that part of the
--- piece's shadow, reaching past the piece's outer sides only. Made once per
--- piece (red and iron gems: one geometry today, each its own all the same).
-local FRAME_CORNER = 40      -- piece px: the corner square (the gem and the mitre) of the nine-slice
-local partCut = {}   -- [piece name] = { [part key] = { cut = { x0, x1, y0, y1 } } }
-local function PartCuts(name, p, c)
-	local cuts = partCut[name]
-	if not cuts then
-		local w, h = p.w, p.h
-		cuts = {
-			tl = { cut = { 0, c, 0, c } }, tr = { cut = { w - c, w, 0, c } },
-			bl = { cut = { 0, c, h - c, h } }, br = { cut = { w - c, w, h - c, h } },
-			t = { cut = { c, w - c, 0, c } }, b = { cut = { c, w - c, h - c, h } },
-			l = { cut = { 0, c, c, h - c } }, r = { cut = { w - c, w, c, h - c } },
-		}
-		partCut[name] = cuts
-	end
-	return cuts
-end
-
--- A piece of a backdrop (a rail or a gem, ShapeOn) shaded: its part of the
--- piece's shadow, at the holder's scale. Added to the holder's shade once,
--- with options read when its partner is made; a piece the pool hands out
--- again takes its new part on its partner (Kit:ShadowCut) or, still
--- waiting for one, in those options.
-local SEG_PART = { top = "t", bottom = "b", left = "l", right = "r" }
-local function ShadePiece(f, tex, name, part)
-	tex.kitScale = f.k   -- (drawn at k: its shadow reaches as far)
-	local p = f.shade and Kit:Piece(name)
-	if not p then
-		return
-	end
-	local cut = PartCuts(name, p, FRAME_CORNER)[part].cut
-	if tex.kitShadow then
-		Kit:ShadowCut(tex, cut[1], cut[2], cut[3], cut[4])
-	else
-		local o = tex.melloShadeOpts
-		if o then
-			local oc = o.cut
-			oc[1], oc[2], oc[3], oc[4] = cut[1], cut[2], cut[3], cut[4]
-		else
-			tex.melloShadeOpts = { cut = { cut[1], cut[2], cut[3], cut[4] } }
-			f.shade:Add(tex, tex.melloShadeOpts)
-		end
-	end
-end
-
 -- [root] = true while a shown backdrop covers that element (every member of
 -- a drawn backdrop): filled by each layout
 local covered = {}
@@ -267,11 +236,11 @@ local covered = {}
 -- the fit reads its button's scale against the rim frame's again)
 local function RimRefit(rep)
 	local rim = rep and rep.object
-	if not (rim and rim.kitShadow and rim.kitName) then
+	if not (rim and rim.kitShadow and pieceNameOf[rim]) then
 		return
 	end
 	local w = MelloUI.Safe.Call(rim, "GetWidth")
-	local pw = Kit:Size(rim.kitName, 1)
+	local pw = Kit:Size(pieceNameOf[rim], 1)
 	if type(w) == "number" and w > 0 and pw and pw > 0 then
 		Kit:ShadowFit(rim, w / pw)
 	end
@@ -314,15 +283,15 @@ local function ShadeRims(root, buttons)
 		-- (on the first button's rim, never on the bar, an Edit Mode system;
 		-- only its level counts: the partners lie on their rims)
 		local first = buttons[1]
-		local firstRep = first.melloRep
+		local firstRep = repOf[first]
 		local at = firstRep and rawget(firstRep, "object")
 		host:SetAllPoints((type(at) == "table" and at.GetObjectType) and at or first)
 		rs = { host = host, opts = { host = host, drawn = true } }
 		skin.rims[root] = rs
 		local el = Shade(root, nil, host)
 		for _, button in ipairs(buttons) do
-			if button.melloRep then
-				el:Add(button.melloRep, rs.opts)
+			if repOf[button] then
+				el:Add(repOf[button], rs.opts)
 			end
 		end
 	end
@@ -373,7 +342,7 @@ local function RefitBar(bar)
 	local pitch = first and BarPitch(bar, first)
 	if pitch then
 		for _, button in ipairs(entry.buttons) do
-			local rep = button.melloRep
+			local rep = repOf[button]
 			if rep and rep.SetPitch then
 				rep:SetPitch(pitch[1], pitch[2])
 				RimRefit(rep)   -- (a shaded rim's shadow at its new size and its button's scale)
@@ -384,9 +353,9 @@ end
 
 local WatchForBackdrop   -- below: the backdrop round Action Bar 1 follows every bar's layout
 
--- Bar / Button Background -> the tile behind the buttons or in an empty
--- button ("dark": a near-black fill, none: nothing)
-local BACKGROUND_PIECES = Kit.buttonLooks.backgroundPiece
+-- (Bar / Button Background -> the tile behind the buttons or in an empty
+-- button: Kit.buttonLooks.backgroundPiece, read where it is drawn --
+-- Modules/KitBackdrop.lua and Kit:SetButtonBackground)
 
 local GROUP = {}          -- id -> group
 local KEY_GROUP = {}      -- setting key -> group, role
@@ -459,8 +428,8 @@ local function SkinBar(bar)
 			local pool = bar[key]
 			if pool then
 				for divider in pool:EnumerateActive() do
-					if divider.melloRep == nil then
-						divider.melloRep = true
+					if repOf[divider] == nil then
+						repOf[divider] = true
 						for _, region in ipairs({ divider:GetRegions() }) do
 							if region:GetObjectType() == "Texture" then
 								Replace(region, { as = Kit:ArtKey(region) })
@@ -599,11 +568,16 @@ M.choices = {
 	},
 	barBackground = BACKGROUND_VALUES,
 }
+-- (0.19.8: the border library's styles, drawn as the library draws them, Kit:BorderPicture)
+for _, look in ipairs(Kit.squareLooks or {}) do
+	if look.style ~= "backdrop" then
+		local c = M.choices.barBackdrop
+		c[#c + 1] = { value = look.value, label = look.label, style = look.style, piece = look.piece }
+	end
+end
 -- the buttons' own backing: the same textures
 M.choices.buttonBackground = M.choices.barBackground
 local FRAME_GAP = 0.12       -- of a button's size: stone between the buttons' rims and the frame's inner edge
-local FRAME_OPEN = { 29, 34, 106, 96 }   -- (the piece's opening when the layout gives none: deco/barframe_red's)
-local JOIN_PIECE = "deco/barjoin"        -- an inner corner, its own face turned up and left
 local Outline = MelloUI.Outline
 
 -- A frame's rect in screen px (l, b, r, t), nil while it has no size: the
@@ -658,7 +632,7 @@ local function ShownRect(buttons)
 			-- the rim's rect where it has one (a micro button's rim is a
 			-- square on a taller button: the backdrop keeps the same distance
 			-- to the rims on every bar)
-			local rim = button.melloRep and button.melloRep.object
+			local rim = repOf[button] and repOf[button].object
 			local l, b, r, t
 			if rim and rim.IsShown and rim:IsShown() then
 				l, b, r, t = ScreenRect(rim)
@@ -862,15 +836,8 @@ end
 -- per piece px) and the gap (a share of its button, else of `size`, Action
 -- Bar 1's), kept in m.pad
 local function PadOf(m, ks, size)
-	local p = Kit:Piece(FRAME_PIECE)
-	local open = p and p.open or FRAME_OPEN
-	local w, h = p and p.w or 135, p and p.h or 130
-	local gap = FRAME_GAP * (m.size or size)
-	local r, pad = m.rect, m.pad or {}
-	pad[1], pad[2] = r[1] - open[1] * ks - gap, r[2] - (h - open[4]) * ks - gap
-	pad[3], pad[4] = r[3] + (w - open[3]) * ks + gap, r[4] + open[2] * ks + gap
-	m.pad = pad
-	return pad
+	m.pad = Kit:BackdropPad(m.rect, ks, FRAME_GAP * (m.size or size), m.pad)   -- (the kit's one pad rule)
+	return m.pad
 end
 
 -- The elements on the screen now, in ELEMENTS' order: { e, root, rect,
@@ -935,309 +902,13 @@ local holders = {}   -- [element key] = the holder of the backdrop that element 
 local inShape = {}   -- [root] = true: in a drawn backdrop (filled by each layout; a status bar's bracket gives way)
 local holderUsed = {}   -- [holder] = true: drawn by this layout
 
--- the pools' layers: the background under the rails, the gems and joints
--- over their ends
-local POOLS = { stone = { "BACKGROUND", 0 }, rail = { "ARTWORK", 0 }, gem = { "ARTWORK", 1 }, joint = { "ARTWORK", 1 } }
-
--- the background tiled at one on-screen size and from the screen's origin
--- (user, 2026-09-23: with the micro menu scaled up in Edit Mode its stone
--- came out stretched next to the bag bar's sharper one), so the pieces of a
--- shape show one surface
-local function RetileStones(f)
-	local pool = f.pools.stone
-	for i = 1, pool.used do
-		Kit:Retile(pool[i])
-	end
-end
-
+-- (0.19.8: the holder and its drawing are the kit's, Modules/KitBackdrop.lua,
+-- one system for every backdrop: the unit frames' too) its rails' and gems'
+-- shadows on the root's shade frame, the bars' area
 local function NewHolder(root)
-	local f = CreateFrame("Frame", nil, root)
-	-- not part of the bar's size: an action bar is a layout frame that grows
-	-- round its shown children, so a backdrop (a child reaching past the
-	-- buttons) made it grow, which grew the backdrop ... until a relog (user,
-	-- 2026-09-23, Edit Mode's Icon Size 100% -> 110%)
-	f.ignoreInLayout = true
-	f:EnableMouse(false)
-	f:SetFrameStrata("BACKGROUND")
-	-- and KEPT there: the game raises the action bars to TOOLTIP while a
-	-- spell is dragged from the spell book (above the window), and a child
-	-- follows its parent's strata -- the backdrop rose with its bar, one
-	-- level over the buttons, and its background covered their icons, their
-	-- own backgrounds and the stance bar (user, 2026-09-23, /abdump icons:
-	-- the buttons TOOLTIP L3, the backdrops TOOLTIP L3 / L4)
-	if f.SetFixedFrameStrata then
-		f:SetFixedFrameStrata(true)
-	end
-	f.root = root
-	-- its rails' and gems' shadows on the root's shade frame (ShadePiece)
+	local f = Kit:BackdropHolder(root)
 	f.shade = Shade(root, true, f)
-	f.pools = {}
-	for kind in pairs(POOLS) do
-		f.pools[kind] = { used = 0 }
-	end
-	Perf.SetScript(f, "OnSizeChanged", RetileStones)
-	f:Hide()
 	return f
-end
-
--- the next texture of a pool (made the first time), showing `piece`
-local function Take(f, kind, piece)
-	local pool = f.pools[kind]
-	local i = pool.used + 1
-	pool.used = i
-	local tex = pool[i]
-	if not tex then
-		local layer = POOLS[kind]
-		tex = f:CreateTexture(nil, layer[1], nil, layer[2])
-		pool[i] = tex
-	end
-	if piece and tex.kitName ~= piece then
-		Kit:Apply(tex, piece)
-	end
-	tex:ClearAllPoints()
-	tex:Show()
-	return tex
-end
-
--- a texture over the screen rect x0, y0 - x1, y1 (in f's units from its corner)
-local function Lay(f, tex, x0, y0, x1, y1)
-	local s = f.s
-	tex:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", (x0 - f.ox) / s, (y0 - f.oy) / s)
-	tex:SetSize((x1 - x0) / s, (y1 - y0) / s)
-end
-
--- Backdrop Background on a piece of the background: a tile, or the dark
--- fill (the palette's inner panel by its key, as the buttons' Dark
--- background, Kit:SetButtonBackground: a new palette paints it again)
-local function PaintStone(tex, choice)
-	local bg = BACKGROUND_PIECES[choice]
-	if bg then
-		if tex.kitName ~= bg then
-			Kit:Unpaint(tex)   -- (the dark fill's palette colour no longer on it)
-			tex.kitScale = Kit.scale
-			Kit:Apply(tex, bg)
-		end
-		tex:SetVertexColor(1, 1, 1)
-		tex.darkFill = nil
-	elseif tex.kitName ~= nil or not tex.darkFill then
-		Kit:Paint(tex, "innerPanel", "fill", 0.88)
-		tex.kitPiece, tex.kitName, tex.darkFill = true, nil, true   -- still ours (a plain mark): never faded with the game's art
-	end
-	if not tex.melloRegistered then
-		tex.melloRegistered = true
-		if Kit.RegisterTexture then
-			Kit:RegisterTexture(tex)
-		end
-	end
-end
-
--- a convex corner's gem by the turn (the shape on the loop's left), and
--- where its square lies from the corner (in corner squares)
-local GEM = { right = { up = "br" }, up = { left = "tr" }, left = { down = "tl" }, down = { right = "bl" } }
--- each rail's painted band in the nine (piece px from the piece's outer
--- edge): its outer line here (the margin outside it is clear), its inner line
--- the piece's opening (the top and bottom rails heavier)
-local RAIL_OUTER = { top = 6, bottom = 5, left = 7, right = 7 }
-local function RailInner(p, side)
-	local open = p.open or FRAME_OPEN
-	if side == "top" then
-		return open[2]
-	elseif side == "bottom" then
-		return p.h - open[4]
-	elseif side == "left" then
-		return open[1]
-	end
-	return p.w - open[3]
-end
-local GEM_AT = { tl = { 0, -1 }, tr = { -1, -1 }, bl = { 0, 0 }, br = { -1, 0 } }
-local STEP = { right = { 1, 0 }, up = { 0, 1 }, left = { -1, 0 }, down = { 0, -1 } }
-local STONE_INSET = { 0, 0, 0, 0 }   -- (left, bottom, right, top: filled per shape)
-
--- The outline a holder drew last, kept with its pads and its tolerance (the
--- rail scale's): the same pads again (a setting, a show, a size that moved
--- nothing) reuse it and its background's cut, so such a relayout makes no
--- new shape (Outline.Shape builds its grid afresh: some KB a call)
-local function KeptShape(f, pads, tol)
-	local key = f.shapeKey
-	if not (key and key[1] == tol and #key == 1 + 4 * #pads) then
-		return nil
-	end
-	local k = 1
-	for _, r in ipairs(pads) do
-		for c = 1, 4 do
-			k = k + 1
-			if key[k] ~= r[c] then
-				return nil
-			end
-		end
-	end
-	return f.shape
-end
-
-local function KeepShape(f, pads, tol, shape)
-	local key = f.shapeKey or {}
-	key[1] = tol
-	local k = 1
-	for _, r in ipairs(pads) do
-		for c = 1, 4 do
-			k = k + 1
-			key[k] = r[c]
-		end
-	end
-	for i = #key, k + 1, -1 do
-		key[i] = nil
-	end
-	f.shapeKey, f.shape, f.fill = key, shape, nil
-end
-
--- One backdrop on holder f: the outline round `pads` (screen px), with the
--- rails and gems of `piece`, the background `choice`, at ks screen px per
--- piece px. False when its leader cannot be read on the screen.
-local function DrawShape(f, pads, piece, choice, ks)
-	local baseL, baseB = ScreenRect(f.root)
-	local s = MelloUI.Safe.Finite(MelloUI.Safe.Call(f.root, "GetEffectiveScale"))
-	local p, tc = Kit:Piece(piece), Kit:NineCoords(piece, FRAME_CORNER)
-	local jp = Kit:Piece(JOIN_PIECE)
-	if not (baseL and s and s > 0 and p and tc and jp) then
-		return false
-	end
-	local C = FRAME_CORNER * ks
-	-- (edges closer than half a rail lined up: no notch of a few px)
-	local shape = KeptShape(f, pads, C / 2)
-	if not shape then
-		shape = Outline.Shape(pads, C / 2)
-		KeepShape(f, pads, C / 2, shape)
-	end
-	local X, Y = shape.X, shape.Y
-	if not (X and #X >= 2 and #Y >= 2) then
-		return false
-	end
-	f.s, f.k, f.ox, f.oy = s, ks / s, X[1], Y[1]
-	f:ClearAllPoints()
-	f:SetPoint("BOTTOMLEFT", f.root, "BOTTOMLEFT", (X[1] - baseL) / s, (Y[1] - baseB) / s)
-	f:SetSize((X[#X] - X[1]) / s, (Y[#Y] - Y[1]) / s)
-	f:SetFrameLevel(3)
-	f:Show()
-	for _, pool in pairs(f.pools) do
-		pool.used = 0
-	end
-	-- the background, just under the rails' inner edges
-	if BACKGROUND_PIECES[choice] or choice == "dark" then
-		local open = p.open or FRAME_OPEN
-		STONE_INSET[1], STONE_INSET[2] = (open[1] - 3) * ks, (p.h - open[4] - 3) * ks
-		STONE_INSET[3], STONE_INSET[4] = (p.w - open[3] - 3) * ks, (open[2] - 3) * ks
-		-- (its cut kept with the shape: the insets follow the rail scale, as
-		-- the shape's tolerance does)
-		f.fill = f.fill or Outline.Fill(shape, STONE_INSET)
-		for _, r in ipairs(f.fill) do
-			local tex = Take(f, "stone")
-			PaintStone(tex, choice)
-			Lay(f, tex, r[1], r[2], r[3], r[4])
-			tex.kitAlign = "screen"
-			Kit:Retile(tex)
-		end
-	end
-	local ju0, ju1, jv0, jv1 = jp.uv[1], jp.uv[2], jp.uv[3], jp.uv[4]
-	for _, loop in ipairs(shape.loops) do
-		local m = #loop
-		-- the rails: each side from corner to corner, short of a gem's square
-		-- at an outer corner; at an inner one on past it by the other rail's
-		-- clear margin, up to that rail's outer line (as the joins of before:
-		-- the two rails' lines meet, the joint where their bands cross)
-		for i = 1, m do
-			local a, b = loop[i], loop[i % m + 1]
-			local side = Outline.SideOf(a.dout)
-			local ta = a.convex and C or -RAIL_OUTER[Outline.SideOf(a.din)] * ks
-			local tb = b.convex and C or -RAIL_OUTER[Outline.SideOf(b.dout)] * ks
-			local x0, y0, x1, y1
-			if side == "top" or side == "bottom" then
-				if a.x < b.x then
-					x0, x1 = a.x + ta, b.x - tb
-				else
-					x0, x1 = b.x + tb, a.x - ta
-				end
-				if side == "top" then
-					y0, y1 = a.y - C, a.y
-				else
-					y0, y1 = a.y, a.y + C
-				end
-			else
-				if a.y < b.y then
-					y0, y1 = a.y + ta, b.y - tb
-				else
-					y0, y1 = b.y + tb, a.y - ta
-				end
-				if side == "right" then
-					x0, x1 = a.x - C, a.x
-				else
-					x0, x1 = a.x, a.x + C
-				end
-			end
-			if x1 > x0 and y1 > y0 then
-				local tex = Take(f, "rail", piece)
-				local t = tc[side]
-				tex:SetTexCoord(t[1], t[2], t[3], t[4])
-				Lay(f, tex, x0, y0, x1, y1)
-				ShadePiece(f, tex, piece, SEG_PART[side])
-			end
-		end
-		-- the corners: a gem on each outer one, the L joint in each inner one,
-		-- over the square where the two rails' bands cross (turned to face the
-		-- empty side: mirrored when it lies right of the corner, flipped when
-		-- below)
-		for i = 1, m do
-			local c = loop[i]
-			if c.convex then
-				local which = GEM[c.din] and GEM[c.din][c.dout]
-				if which then
-					local at, t = GEM_AT[which], tc[which]
-					local tex = Take(f, "gem", piece)
-					tex:SetTexCoord(t[1], t[2], t[3], t[4])
-					local x, y = c.x + at[1] * C, c.y + at[2] * C
-					Lay(f, tex, x, y, x + C, y + C)
-					ShadePiece(f, tex, piece, which)
-				end
-			else
-				local ex = STEP[c.dout][1] - STEP[c.din][1]
-				local ey = STEP[c.dout][2] - STEP[c.din][2]
-				-- the rail along the corner's row (top or bottom) and the one
-				-- along its column (left or right), each band from the corner
-				local across = (c.din == "left" or c.din == "right") and c.din or c.dout
-				local hs = Outline.SideOf(across)
-				local vs = Outline.SideOf(across == c.din and c.dout or c.din)
-				local ho, hi = RAIL_OUTER[hs] * ks, RailInner(p, hs) * ks
-				local vo, vi = RAIL_OUTER[vs] * ks, RailInner(p, vs) * ks
-				local y0, y1, x0, x1
-				if hs == "top" then
-					y0, y1 = c.y - hi, c.y - ho
-				else
-					y0, y1 = c.y + ho, c.y + hi
-				end
-				if vs == "left" then
-					x0, x1 = c.x + vo, c.x + vi
-				else
-					x0, x1 = c.x - vi, c.x - vo
-				end
-				local tex = Take(f, "joint", JOIN_PIECE)
-				local u0, u1, v0, v1 = ju0, ju1, jv0, jv1
-				if ex > 0 then
-					u0, u1 = u1, u0
-				end
-				if ey < 0 then
-					v0, v1 = v1, v0
-				end
-				tex:SetTexCoord(u0, u1, v0, v1)
-				Lay(f, tex, x0, y0, x1, y1)
-			end
-		end
-	end
-	-- the pools' textures this shape did not need put away
-	for _, pool in pairs(f.pools) do
-		for i = pool.used + 1, #pool do
-			pool[i]:Hide()
-		end
-	end
-	return true
 end
 
 local padList = {}   -- (the members' pads in their order: Outline.Clusters' input, kept)
@@ -1305,8 +976,12 @@ local function LayoutBackdrops()
 				for k, i in ipairs(pads and group or {}) do
 					pads[k] = list[i].pad
 				end
-				local piece = FRAME_PIECES[Setting(g, "backdrop")] or FRAME_PIECE
-				if f and DrawShape(f, pads, piece, Setting(g, "background") or "stone", ks) then
+				-- (the gems' frame, or a border library style: its outline the
+				-- frame's all the same, DrawLibrary)
+				local value = Setting(g, "backdrop")
+				local piece = FRAME_PIECES[value] or FRAME_PIECE
+				local styleId = not FRAME_PIECES[value] and value or nil
+				if f and Kit:DrawBackdrop(f, pads, piece, Setting(g, "background") or "stone", ks, styleId) then
 					holderUsed[f] = true
 					for _, i in ipairs(group) do
 						covered[list[i].root] = true
@@ -1333,13 +1008,23 @@ end
 -- The micro menu matched to the bag bar (user, 2026-09-23: "make the microbar
 -- buttons match the bag button slots in size and have the same distance to
 -- borders as the Bag buttons are"): each micro rim is the bag slots' size and
--- the buttons are spaced as the bag slots are, through the micro menu's own
--- layout padding (the game's is -5: 32 px buttons 27 apart). Both measured
--- without their Edit Mode Size, so at the same Size the two bars match; the
--- game's padding comes back when the reskin goes off.
+-- the buttons are spaced as the bag slots are. Both measured without their
+-- Edit Mode Size, so at the same Size the two bars match.
+-- Never through the game's own layout (hard rule 1, 0.19.8): its padding
+-- (childXPadding -5: 32 px buttons 27 apart) stays the game's and its Layout
+-- is never run from here (set and run from here, it laid the menu out
+-- tainted, as Cooldown Tweaks' RefreshLayout tainted the Cooldown Manager).
+-- The game lays the menu out with its padding; a post-hook on its Layout
+-- moves each button by its column and row to our pitch and sizes the menu to
+-- them, before MicroMenuContainer:Layout reads that size. The game's points
+-- and size, kept in tables of ours, go back when the reskin goes off.
 --------------------------------------------------------------------------------
 
-local microPadding = nil   -- the game's { x, y } padding, while ours is set
+local microPad = nil   -- { x, y }: our padding, while the reskin spaces the menu
+local microPlaced = setmetatable({}, { __mode = "k" })   -- [button] = { x, y, gameX, gameY }: its offsets as set here, and as the game laid them
+local microSized = nil   -- { w, h, gameW, gameH }: the menu's size as set here, and as the game laid it
+local microLaid = nil    -- the game's last full layout of the menu (its oldGridSettings table: read, never written)
+local MICRO_KEY = "Action bars: micro spacing"   -- (Kit:WhenOutOfCombat's key)
 
 -- The bag slots' size and the gap between them, in the bag bar's own units
 -- (Edit Mode Size 100 %)
@@ -1351,7 +1036,7 @@ local function BagMetrics()
 	local size, lefts, tops = nil, {}, {}
 	for _, name in ipairs(BAG_BUTTONS) do
 		local b = _G[name]
-		if b and b:IsShown() and b.melloRep then
+		if b and b:IsShown() and repOf[b] then
 			local ok, w, l, t = pcall(function() return b:GetWidth(), b:GetLeft(), b:GetTop() end)
 			if ok and w and l and t and not (Secret(w) or Secret(l) or Secret(t)) and w > 0 then
 				if name == "MainMenuBarBackpackButton" or not size then
@@ -1384,6 +1069,142 @@ local function BagMetrics()
 	return size, math.max(0, pitch - size)
 end
 
+local function Near(a, b)
+	return a ~= nil and b ~= nil and math.abs(a - b) < 0.01
+end
+
+-- An offset the game laid at its pitch (the button's size and its padding),
+-- at ours: the same column (row) counted from the menu's corner; and that count
+local function Respace(offset, size, gamePad, pad)
+	local pitch = size + gamePad
+	if pitch <= 0 then
+		return offset, 0
+	end
+	local n = math.floor(math.abs(offset) / pitch + 0.5)
+	return (offset < 0 and -n or n) * (size + pad), n
+end
+
+-- The container sized to the menu as MicroMenuContainerMixin:Layout sizes it
+-- (the menu's size times its scale), and only while the menu is its child
+local function FitMicroContainer(menu, w, h)
+	local container = MicroMenuContainer
+	if not container or menu:GetParent() ~= container then
+		return
+	end
+	local scale = Finite(MelloUI.Safe.Call(menu, "GetScale")) or 1
+	local cw, ch = math.max(w * scale, 1), math.max(h * scale, 1)
+	local ok, ow, oh = pcall(container.GetSize, container)
+	if not (ok and Near(Finite(ow), cw) and Near(Finite(oh), ch)) then
+		container:SetSize(cw, ch)
+	end
+end
+
+-- The menu's shown buttons (its children, as varargs: no table per pass) at
+-- the pitch of `px`, `py` from the game's (`gx`, `gy`): the furthest column
+-- and row, and whether any button moved. `relaid`: every point is the game's
+local function SpaceButtons(gx, gy, px, py, relaid, ...)
+	local cols, rows, wrote = 0, 0, false
+	for i = 1, select("#", ...) do
+		local button = select(i, ...)
+		if button.layoutIndex and button:IsShown() then
+			local ok, point, rel, relPoint, x, y = pcall(button.GetPoint, button, 1)
+			x, y = ok and Finite(x), ok and Finite(y)
+			local okS, w, h = pcall(button.GetSize, button)
+			w, h = okS and Finite(w), okS and Finite(h)
+			if x and y and w and h and point and not (Secret(point) or Secret(rel) or Secret(relPoint)) then
+				local done = microPlaced[button]
+				local ax, ay = x, y   -- (the game's offsets: where it stands, unless put there from here)
+				if done and not relaid and Near(done[1], x) and Near(done[2], y) then
+					ax, ay = done[3], done[4]
+				end
+				local tx, col = Respace(ax, w, gx, px)
+				local ty, row = Respace(ay, h, gy, py)
+				cols, rows = math.max(cols, col), math.max(rows, row)
+				if not (Near(tx, x) and Near(ty, y)) then
+					button:SetPoint(point, rel, relPoint, tx, ty)
+					wrote = true
+				end
+				if microPad then
+					done = done or {}
+					done[1], done[2], done[3], done[4] = tx, ty, ax, ay
+					microPlaced[button] = done
+				end
+			end
+		end
+	end
+	return cols, rows, wrote
+end
+
+-- Every shown button of the menu at our pitch (none set: back at the
+-- game's), the menu sized to them; only what differs is written. A full
+-- layout by the game since the last pass (a new oldGridSettings) left every
+-- point the game's; else a button still where it was put here has its game
+-- offsets in microPlaced. `fit`: the container sized too, for a pass outside
+-- the game's layout (in it, MicroMenuContainer:Layout reads the menu's size
+-- right after the hook). True when it wrote anything.
+local SpaceMicroLater
+local function SpaceMicro(fit)
+	local menu = MicroMenu
+	if not (menu and (microPad or microSized)) then
+		return false
+	end
+	-- (a protected one in a fight: after it. The container is in the main
+	-- bar's anchors: Camelot's MAIN_ACTION_BAR_RELATIVE_TO)
+	if InCombatLockdown() and (Protected(menu) or (fit and MicroMenuContainer and Protected(MicroMenuContainer))) then
+		Kit:WhenOutOfCombat(SpaceMicroLater, MICRO_KEY)
+		return false
+	end
+	local gx, gy = Finite(menu.childXPadding) or 0, Finite(menu.childYPadding) or 0   -- (the game's own)
+	local px, py = gx, gy
+	if microPad then
+		px, py = microPad[1], microPad[2]
+	end
+	local laid = menu.oldGridSettings
+	local relaid = laid ~= nil and laid ~= microLaid
+	microLaid = laid
+	local cols, rows, wrote = SpaceButtons(gx, gy, px, py, relaid, menu:GetChildren())
+	local ok, mw, mh = pcall(menu.GetSize, menu)
+	mw, mh = ok and Finite(mw), ok and Finite(mh)
+	if mw and mh then
+		local done = microSized
+		local gw, gh = mw, mh
+		if done and not relaid and Near(done[1], mw) and Near(done[2], mh) then
+			gw, gh = done[3], done[4]
+		end
+		-- (the game's size is its buttons' extent: each column and row further at our pitch)
+		local tw, th = gw + cols * (px - gx), gh + rows * (py - gy)
+		if not (Near(tw, mw) and Near(th, mh)) then
+			menu:SetSize(tw, th)
+			wrote = true
+		end
+		if microPad then
+			done = done or {}
+			done[1], done[2], done[3], done[4] = tw, th, gw, gh
+			microSized = done
+		end
+		if fit then
+			FitMicroContainer(menu, tw, th)
+		end
+	end
+	if not microPad then
+		wipe(microPlaced)
+		microSized = nil
+	end
+	return wrote
+end
+SpaceMicroLater = function()
+	SpaceMicro(true)
+end
+
+-- After each of the game's own layouts of the menu (Edit Mode, a button
+-- shown or hidden, the vehicle bar's override): the spacing again. Counted
+-- (MelloUI.Perf.WriteBack): laid on a change, never per frame
+local OnMicroLayout = Shared("Layout on the micro menu (its spacing)", function()
+	if SpaceMicro(false) then
+		MelloUI.Perf.WriteBack("ActionBarPanel: the micro menu's spacing")
+	end
+end)
+
 local function MatchMicroToBags()
 	local menu = MicroMenu
 	if not (active and skin and skin.micro and menu) then
@@ -1404,7 +1225,7 @@ local function MatchMicroToBags()
 	local S, G = size / feature, gap / feature
 	local bw, bh
 	for _, button in ipairs(GroupButtons(GROUP.micro)) do
-		local rep = button.melloRep
+		local rep = repOf[button]
 		if rep and rep.SetPitch then
 			rep:SetPitch(S, S)
 			RimRefit(rep)   -- (a shaded rim's shadow reaches as far at its new size)
@@ -1420,39 +1241,22 @@ local function MatchMicroToBags()
 		return
 	end
 	local px, py = S + G - bw, S + G - bh
-	if math.abs((menu.childXPadding or 0) - px) < 0.01 and math.abs((menu.childYPadding or 0) - py) < 0.01 then
+	if microPad and Near(microPad[1], px) and Near(microPad[2], py) then
 		return
 	end
-	microPadding = microPadding or { menu.childXPadding, menu.childYPadding }
-	Kit:WhenOutOfCombat(function()
-		if not active then
-			return
-		end
-		menu.childXPadding, menu.childYPadding = px, py
-		if MicroMenuContainer and MicroMenuContainer.Layout then
-			MicroMenuContainer:Layout()
-		elseif menu.Layout then
-			menu:Layout()
-		end
-	end)
+	microPad = microPad or {}
+	microPad[1], microPad[2] = px, py
+	Kit:WhenOutOfCombat(SpaceMicroLater, MICRO_KEY)
 end
 
--- The game's micro menu padding back (the reskin off)
+-- The game's spacing back (the reskin off): its points and size, where the
+-- buttons and the menu still stand as they were put here
 local function RestoreMicroSpacing()
-	local menu = MicroMenu
-	if not (menu and microPadding) then
+	if not microPad then
 		return
 	end
-	local saved = microPadding
-	microPadding = nil
-	Kit:WhenOutOfCombat(function()
-		menu.childXPadding, menu.childYPadding = saved[1], saved[2]
-		if MicroMenuContainer and MicroMenuContainer.Layout then
-			MicroMenuContainer:Layout()
-		elseif menu.Layout then
-			menu:Layout()
-		end
-	end)
+	microPad = nil
+	Kit:WhenOutOfCombat(SpaceMicroLater, MICRO_KEY)
 end
 
 -- Every bar's rims shaded or not (ShadeRims): after a layout, which says
@@ -1470,14 +1274,6 @@ local function SyncRims()
 	end
 end
 
--- The status bars' brackets (P1) give way to the rails of a backdrop they
--- are in: one outline, no bracket inside it
-local function SyncBrackets()
-	for container, rep in pairs(skin.statusReps) do
-		rep:SetShown(not inShape[container])
-	end
-end
-
 local LAYOUT_KEY = "Action bars: layout"   -- (Kit:WhenOutOfCombat's key: one layout waits at a time)
 local function LayoutAll()
 	if not (active and skin) then
@@ -1489,7 +1285,6 @@ local function LayoutAll()
 	KeepFitPlaces()
 	LayoutBackdrops()
 	SyncRims()
-	SyncBrackets()
 	KeepShadesLow()
 	-- in a fight (a setting changed): laid out again after it, for what a
 	-- protected bar could not get now (a holder, a rim frame, a status bar's
@@ -1645,7 +1440,7 @@ local function SkinMicroMenu()
 		end
 	end
 	for _, button in ipairs({ menu:GetChildren() }) do
-		if button.Background and button.melloRep == nil then
+		if button.Background and repOf[button] == nil then
 			local ok, w = pcall(button.GetSize, button)
 			local step = spacing or ((ok and not Secret(w) and w and w > 0) and w or nil)
 			local pitch = step and { step * 0.94, step * 0.94 } or nil   -- until MatchMicroToBags sizes it
@@ -1666,7 +1461,7 @@ local function SkinMicroMenu()
 			local rep = Replace(button.Background, { as = "MicroButtonRim", button = button, rect = button,
 				pitch = pitch, icon = glyph, checked = OpenReader(button.PushedBackground),
 				alsoFade = { button.PushedBackground, button.Shadow, button.PushedShadow } })
-			button.melloRep = rep or false
+			repOf[button] = rep or false
 			if rep then
 				AddToGroup("micro", button)
 				Kit:RegisterButtonRim(button)
@@ -1752,9 +1547,9 @@ local function SkinMicroMenu()
 						Kit:SlotPlaceIcon(rep.object)
 					end
 					Follow()
-					if moved and button.melloStone then
-						button.melloStone:ClearAllPoints()
-						button.melloStone:SetAllPoints(glyph)   -- the stone stays on the new glyph
+					if moved and glyphStoneOf[button] then
+						glyphStoneOf[button]:ClearAllPoints()
+						glyphStoneOf[button]:SetAllPoints(glyph)   -- the stone stays on the new glyph
 					end
 				end
 				-- a pushed / highlight / disabled atlas set moves that texture
@@ -1815,7 +1610,7 @@ local function SkinMicroMenu()
 				if Kit.RegisterTexture then
 					Kit:RegisterTexture(stone)   -- Dark Mode's shade
 				end
-				button.melloStone = stone
+				glyphStoneOf[button] = stone
 				local enable0 = rep.onEnable
 				rep.onEnable = function(...)
 					if enable0 then
@@ -1853,6 +1648,10 @@ local function SkinMicroMenu()
 	-- the backdrop following the bar (the rims follow every window's Button
 	-- Border: registered as they are made)
 	WatchForBackdrop(menu)
+	-- the spacing kept through the game's own layouts (MatchMicroToBags)
+	if type(menu.Layout) == "function" then
+		hooksecurefunc(menu, "Layout", OnMicroLayout)
+	end
 end
 
 local function SkinBagBar()
@@ -1927,7 +1726,7 @@ local function SkinStatusContainer(container)
 	local function Flag(on)
 		for _, bar in pairs(container.bars or {}) do
 			if bar.StatusBar then
-				bar.StatusBar.melloKitBracket = on or nil
+				bracketOf[bar.StatusBar] = on or nil
 				if textures and textures.RefreshMask then
 					textures:RefreshMask(bar.StatusBar)
 				end
@@ -1935,7 +1734,9 @@ local function SkinStatusContainer(container)
 		end
 	end
 	if rep then
-		skin.statusReps[container] = rep   -- (hidden while the bar is in a backdrop: SyncBrackets)
+		-- (inside an action bars backdrop it stays as it is, frame and trough,
+		-- the backdrop's outline round the group: user, 2026-10-07, "this is
+		-- how the bars usually look")
 		rep.onEnable = function() Flag(true) end
 		rep.onDisable = function() Flag(false) end
 		if active then
@@ -1968,12 +1769,13 @@ local function SkinDividers(container)
 		return
 	end
 	for divider in pool:EnumerateActive() do
-		if divider.BarDividerTexture and divider.melloRep == nil then
-			divider.melloRep = Replace(divider.BarDividerTexture, { as = "UI-HUD-ExperienceBar-Divider" }) or false
+		if divider.BarDividerTexture and repOf[divider] == nil then
+			repOf[divider] = Replace(divider.BarDividerTexture, { as = "UI-HUD-ExperienceBar-Divider" }) or false
 		end
 	end
 end
 
+local dividersHooked = setmetatable({}, { __mode = "k" })   -- [status container] = true: UpdateDividers hooked
 local function SkinStatusBars()
 	local manager = StatusTrackingBarManager
 	if not manager then
@@ -1991,8 +1793,8 @@ local function SkinStatusBars()
 	for _, container in ipairs(containers) do
 		SkinStatusContainer(container)
 		SkinDividers(container)
-		if container.UpdateDividers and not container.melloDividerHook then
-			container.melloDividerHook = true
+		if container.UpdateDividers and not dividersHooked[container] then
+			dividersHooked[container] = true
 			hooksecurefunc(container, "UpdateDividers", function(c)
 				if active then
 					Kit:WhenOutOfCombat(function() SkinDividers(c) end)
@@ -2010,12 +1812,13 @@ end
 local ACTIVE_ONLY = { "ExtraActionButton1", "OverrideActionBarButton1", "OverrideActionBarButton2", "OverrideActionBarButton3",
 	"OverrideActionBarButton4", "OverrideActionBarButton5", "OverrideActionBarButton6" }
 
+local activeLookOf = setmetatable({}, { __mode = "k" })   -- [action button] = its active look's rep (false: none)
 local function SkinActiveOnly()
 	for _, name in ipairs(ACTIVE_ONLY) do
-		local button = _G[name]
-		if type(button) == "table" and button.SetChecked and button.melloActive == nil then
+		local button = rawget(_G, name)   -- (the game's button, or nothing: never a stand-in for an unknown name)
+		if type(button) == "table" and button.SetChecked and activeLookOf[button] == nil then
 			local art = button.GetCheckedTexture and button:GetCheckedTexture() or nil
-			button.melloActive = Replace(art or button.icon or button, { as = "ActionButtonActiveLook", button = button, icon = button.icon,
+			activeLookOf[button] = Replace(art or button.icon or button, { as = "ActionButtonActiveLook", button = button, icon = button.icon,
 				noFade = art == nil }) or false
 		end
 	end
@@ -2027,7 +1830,7 @@ end
 
 local function Build()
 	if not skin then
-		skin = { reps = {}, bars = {}, status = {}, statusReps = {}, capSync = {}, groups = {}, rims = {} }
+		skin = { reps = {}, bars = {}, status = {}, capSync = {}, groups = {}, rims = {} }
 		for _, g in ipairs(GROUPS) do
 			skin.groups[g.id] = { buttons = {} }
 		end
@@ -2301,8 +2104,8 @@ SlashCmdList.MELLOABDUMP = function(msg)
 			for i = 1, 12 do
 				local button = _G[prefix .. i]
 				if button and button:IsShown() then
-					local rep = button.melloRep
-					local stone = button.melloSlotStone
+					local rep = repOf[button]
+					local stone = slotStoneOf[button]
 					MelloUI:Print("%s: shown a=%s eff=%s %s L%d", button:GetName(), Num(button:GetAlpha()), Num(button:GetEffectiveAlpha()),
 						button:GetFrameStrata(), button:GetFrameLevel())
 					MelloUI:Print("    %s", Region("icon", button.icon))
@@ -2364,7 +2167,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		for _, prefix in ipairs({ "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarRightButton", "MultiBarLeftButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button" }) do
 			for i = 1, 12 do
 				local button = _G[prefix .. i]
-				local rep = button and button.melloRep
+				local rep = button and repOf[button]
 				local rim = rep and rep.object
 				if rim and rim.state and button:IsShown() then
 					local okS, state = pcall(button.GetButtonState, button)
@@ -2389,7 +2192,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		-- every micro button: the rim's own rect against the glyph's (the
 		-- glyph should sit inside the rim's opening, user 2026-09-22)
 		for _, button in ipairs({ root:GetChildren() }) do
-			local rep = button.melloRep
+			local rep = repOf[button]
 			local rim = rep and rep.object
 			local glyph = button.GetNormalTexture and button:GetNormalTexture()
 			if rim and glyph then
@@ -2440,3 +2243,7 @@ SlashCmdList.MELLOABDUMP = function(msg)
 	end
 	MelloUI:ShowLog("abdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { activeLookOf = activeLookOf, dividersHooked = dividersHooked }

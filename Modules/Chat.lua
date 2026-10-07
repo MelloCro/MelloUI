@@ -105,6 +105,11 @@ local M = MelloUI:RegisterModule("Chat", {
 	},
 })
 
+-- [message frame] = { flags, shadow }: its font's outline and shadow while
+-- its lines are ink (InkFrameFont), kept beside the game's chat frame, never
+-- on it (hard rule 1); Fonts reads it too (the chat's size, flags "")
+M.inkFontOf = setmetatable({}, { __mode = "k" })
+
 local function Active(key)
 	return M.isEnabled and M.db and M.db[key]
 end
@@ -413,19 +418,20 @@ local function TabAlphaWanted(tab, alpha)
 	return alpha
 end
 
+local alphaGuard = setmetatable({}, { __mode = "k" })   -- [chat tab] = true while its alpha is set here
 -- While the kit dresses the chat, its "no fade" holds every tab at full alpha
 -- (ChatPanel's NoFade, the user's pick 2026-09-21) and this steps aside, as the
 -- art toggles do: two hooks setting one tab's alpha would fight, and which won
 -- would depend on the order they were made in.
 local function OnTabAlpha(tab, alpha)
-	if not tabsOnMouseover or tab.melloAlphaGuard or Secret(alpha) or ArtCovered() then
+	if not tabsOnMouseover or alphaGuard[tab] or Secret(alpha) or ArtCovered() then
 		return
 	end
 	local want = TabAlphaWanted(tab, alpha)
 	if want ~= alpha then
-		tab.melloAlphaGuard = true
+		alphaGuard[tab] = true
 		tab:SetAlpha(want)
-		tab.melloAlphaGuard = nil
+		alphaGuard[tab] = nil
 	end
 end
 
@@ -457,9 +463,9 @@ local function SetTabsOnMouseover(enabled)
 			end
 			local okA, current = pcall(tab.GetAlpha, tab)
 			if okA and not Secret(current) and not ArtCovered() then
-				tab.melloAlphaGuard = true
+				alphaGuard[tab] = true
 				tab:SetAlpha(tabsOnMouseover and TabAlphaWanted(tab, current) or GameTabAlpha(tab))
-				tab.melloAlphaGuard = nil
+				alphaGuard[tab] = nil
 			end
 		end
 	end
@@ -1900,13 +1906,13 @@ local function InkFrameFont(frame, on)
 		return
 	end
 	if on then
-		if not frame.melloInkFont then
+		if not M.inkFontOf[frame] then
 			local ok, path, size, flags = pcall(frame.GetFont, frame)
 			if not (ok and path and size) then
 				return
 			end
 			local sr, sg, sb, sa = frame:GetShadowColor()
-			frame.melloInkFont = { flags = flags or "", shadow = { sr, sg, sb, sa } }
+			M.inkFontOf[frame] = { flags = flags or "", shadow = { sr, sg, sb, sa } }
 		end
 		-- (a family of the chat's -- Fonts.lua's Font families -- without its
 		-- outline and shadow; one face and the shadow put out where the
@@ -1919,8 +1925,8 @@ local function InkFrameFont(frame, on)
 			local none = MelloUI.Palette.innerPanel   -- look-ok: alpha 0, no shadow (on parchment)
 			frame:SetShadowColor(none[1], none[2], none[3], 0)
 		end
-	elseif frame.melloInkFont then
-		local saved = frame.melloInkFont
+	elseif M.inkFontOf[frame] then
+		local saved = M.inkFontOf[frame]
 		local fonts = MelloUI:GetModule("Fonts")
 		local ok, path, size = pcall(frame.GetFont, frame)
 		if ok and path and size and not (fonts and fonts.ChatFace and fonts:ChatFace(frame, path, size, saved.flags, false)) then
@@ -1930,7 +1936,7 @@ local function InkFrameFont(frame, on)
 				frame:SetShadowColor(sh[1], sh[2], sh[3], sh[4] or 1)
 			end
 		end
-		frame.melloInkFont = nil
+		M.inkFontOf[frame] = nil
 	end
 end
 
@@ -2558,7 +2564,7 @@ local function PopupFont(f)
 		end
 	end
 	-- the chat's own outline, not the ink's (the chat on parchment has none)
-	flags = (src.melloInkFont and src.melloInkFont.flags) or flags or ""
+	flags = (M.inkFontOf[src] and M.inkFontOf[src].flags) or flags or ""
 	if not f.msgs.melloShadow then
 		local sr, sg, sb, sa = f.msgs:GetShadowColor()
 		f.msgs.melloShadow = { sr, sg, sb, sa }
@@ -2997,7 +3003,7 @@ local function PlaceName(f)
 		name:SetPoint("RIGHT", head, "RIGHT", -inset, 0)
 	end
 	local Kit = MelloUI.Kit
-	if Kit and Kit.TitleFont and (f.kitDressed or name.melloFontSaved) then
+	if Kit and Kit.TitleFont and (f.kitDressed or (MelloUI.Kept.fontSavedOf and MelloUI.Kept.fontSavedOf[name])) then
 		pcall(Kit.TitleFont, Kit, name, f.kitDressed)
 	end
 end
@@ -4156,3 +4162,7 @@ SlashCmdList.MELLOCHATSCROLL = function(msg)
 	end
 	MelloUI:ShowLog("chatscroll")
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { alphaGuard = alphaGuard }

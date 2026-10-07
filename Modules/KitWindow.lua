@@ -128,6 +128,9 @@ local Perf = MelloUI.Perf:Scope("Kit window")
 local Shared = Perf.Shared
 local C_Timer = Perf.C_Timer   -- (an Escape hold ends a frame later: the confirm dialog's, a flyout's)
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
 local Num = MelloUI.Safe.Number
 local Secret = MelloUI.Safe.IsSecret
 local W = MelloUI.Widgets   -- (Core/Widgets.lua loads before this file)
@@ -638,7 +641,7 @@ local function DressRing(K, shell)
 	local holder = rep.object
 	local disc = K:RingDisc(rep, "innerPanel", holder, 6)
 	local emblem = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	emblem.kitPiece = true
+	pieceOf[emblem] = true
 	emblem:SetTexture(shell.emblemTexture)
 	emblem:SetAllPoints(disc or rep.tex)
 	local mask = holder:CreateMaskTexture()
@@ -891,7 +894,7 @@ local function Layer(tile, i, level)
 		tile.layers[i] = t
 	else
 		Kit:Unpaint(t)
-		if t.kitName then
+		if pieceNameOf[t] then
 			Kit:Apply(t, nil)
 		end
 	end
@@ -964,11 +967,23 @@ function Kit:ChoicePicture(tile, kind, choice)
 		strip:Hide()
 	end
 	tile.none:Hide()
+	if self.BorderPictureOff then
+		self:BorderPictureOff(tile)   -- (a border of the library's, drawn by the choice shown before)
+		self:BorderBarPictureOff(tile)
+	end
 	if not choice then
 		return
 	end
 	local size = tonumber(tile.size) or TILE
-	if kind == "rim" then
+	if kind == "rim" and choice.style and self.BorderPicture then
+		-- (0.19.8) a style of the border library's (Modules/KitBorders.lua):
+		-- drawn by it round the sample icon, at a button's weight
+		Stone(tile)
+		local icon = Layer(tile, LAYER_OWN, 1)
+		icon:SetTexture(SampleIcon())
+		icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		self:BorderPicture(tile, choice, icon)
+	elseif kind == "rim" then
 		-- the rim round a spell icon on stone, as on the bar
 		Stone(tile)
 		local icon = Layer(tile, LAYER_OWN, 1)
@@ -989,6 +1004,12 @@ function Kit:ChoicePicture(tile, kind, choice)
 		if choice.piece then
 			self:Apply(Layer(tile, LAYER_RIM, 2), choice.piece)
 		end
+	elseif kind == "bar" and choice.style and self.BorderBarPicture then
+		-- (0.19.8) a style of the border library's round a sample fill
+		Stone(tile)
+		local fill = Layer(tile, LAYER_OWN, 1)
+		self:Paint(fill, "selectedTrim", "fill", 1)
+		self:BorderBarPicture(tile, choice, fill, size)
 	elseif kind == "bar" and self.Strip then
 		-- a progress bar in that bracket: a fill two thirds along, on stone
 		Stone(tile)
@@ -1012,6 +1033,10 @@ function Kit:ChoicePicture(tile, kind, choice)
 		fill:SetPoint("LEFT", pic, "LEFT", 4, 0)
 		fill:SetSize((size - 8) * 0.66, size * 0.36 * 0.5)
 		self:Paint(fill, "selectedTrim", "fill", 1)
+	elseif kind == "frame" and choice.style and self.BorderPicture then
+		-- (0.19.8) a style of the border library's round the stone (its studs on)
+		Stone(tile)
+		self:BorderPicture(tile, choice, nil)
 	elseif kind == "frame" then
 		-- the border piece itself: its corner gems and rim round the stone
 		local back = Stone(tile)

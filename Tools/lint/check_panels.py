@@ -124,6 +124,7 @@ CEILINGS = {
     "colour:Modules/Meter.lua": 0,
     "colour:Modules/MeterBar.lua": 0,
     "colour:Modules/MeterHistory.lua": 0,
+    "colour:Modules/ActionButtons.lua": 0,
 }
 
 # Kit.lua from this line on is the kit demo and the slice test (/kitdemo,

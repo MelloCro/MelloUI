@@ -50,6 +50,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("BattlefieldMapPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("BattlefieldMapPanel", {
 	title = "Battlefield Map Kit",
@@ -115,7 +118,7 @@ local BORDER_KEYS = { "TopLeft", "TopRight", "BottomLeft", "BottomRight", "Top",
 local function BorderArt(bf)
 	local list, seen = {}, {}
 	local function Add(region)
-		if region and not seen[region] and region.GetObjectType and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region and not seen[region] and region.GetObjectType and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			seen[region] = true
 			list[#list + 1] = region
 		end
@@ -173,7 +176,7 @@ local function Anchor(host)
 	local tex = host:CreateTexture(nil, "BACKGROUND")
 	tex:SetAllPoints(host)
 	tex:SetColorTexture(0, 0, 0, 0)
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	return tex
 end
 
@@ -497,7 +500,7 @@ local function DumpMap(f)
 	if bf then
 		MelloUI:Print("  BorderFrame: %s strata %s level %s", RectText(bf), tostring(bf:GetFrameStrata()), tostring(bf:GetFrameLevel()))
 		for _, region in ipairs({ bf:GetRegions() }) do
-			if not region.kitPiece then
+			if not pieceOf[region] then
 				local okL, layer = pcall(region.GetDrawLayer, region)
 				local art = region.GetObjectType and region:GetObjectType() == "Texture" and tostring(Kit:ArtKey(region) or "?") or "(font string)"
 				MelloUI:Print("   region key=%s %s layer %s alpha %s shown %s -> %s", tostring(KeyOf(bf, region)), art,
@@ -537,7 +540,7 @@ local function DumpTab()
 		MelloUI:Print("  title (the tab's label): text %s, font %s %s, title face %s, anchored %s on %s (the card: %s)",
 			(okT and type(t) == "string" and not Secret(t)) and t or "?",
 			(okF and type(face) == "string" and not Secret(face)) and (face:match("([^\\/]+)$") or face) or "?",
-			okF and Num(size) or "?", tostring(text.melloFontSaved ~= nil), okP and tostring(point) or "?",
+			okF and Num(size) or "?", tostring(fontSavedOf[text] ~= nil), okP and tostring(point) or "?",
 			okP and rel and Describe(rel) or "-", skin and skin.sizer and RectText(skin.sizer) or "-")
 	end
 end

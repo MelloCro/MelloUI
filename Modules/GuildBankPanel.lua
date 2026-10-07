@@ -59,7 +59,7 @@
 -- and kept from post-hooks (hooksecurefunc on the window's own update
 -- methods and functions, HookScript, the regions' own Show / Hide) and from
 -- this module's own event frame; what it keeps about the game's frames lives
--- in weak side tables (melloRep / melloNoInk are the only marks it leaves on
+-- in weak side tables (the kit's reps and the ink's marks too: MelloUI.Kept.repOf, QI.noInk; none on
 -- them, as every kit module); no guild bank function is called (no deposit,
 -- withdrawal or tab query: the open tab's icon is read from its button).
 -- Switching the module off disables every replacement (the game's art faded
@@ -79,6 +79,12 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("GuildBankPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
+local slotStoneOf = MelloUI.Kept.slotStoneOf
+local steadyingOf = MelloUI.Kept.steadyingOf
 
 local M = MelloUI:RegisterModule("GuildBankPanel", {
 	title = "Guild Bank Kit",
@@ -383,7 +389,7 @@ local function EmblemParts(f)
 	local holder
 	local parts, seen = {}, {}
 	local function Add(t)
-		if IsType(t, "Texture") and not seen[t] and not t.kitPiece then
+		if IsType(t, "Texture") and not seen[t] and not pieceOf[t] then
 			seen[t] = true
 			parts[#parts + 1] = t
 		end
@@ -499,7 +505,7 @@ local function PlaceTitle()
 		rep:Refit()
 	end
 	local text = skin.titleText
-	if text and not text.melloFontSaved then
+	if text and not fontSavedOf[text] then
 		Kit:TitleFont(text, true)
 	end
 	PlaceExtraTitles(true)
@@ -610,14 +616,14 @@ local function SkinPortrait(ring, gameArt)
 		return
 	end
 	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	icon.kitPiece = true
+	pieceOf[icon] = true
 	icon:SetAllPoints(disc)
 	local mask = holder:CreateMaskTexture()
 	mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	mask:SetAllPoints(icon)
 	icon:AddMaskTexture(mask)
 	local emblem = holder:CreateTexture(nil, "ARTWORK", nil, 2)
-	emblem.kitPiece = true
+	pieceOf[emblem] = true
 	emblem:SetPoint("CENTER", disc, "CENTER")
 	emblem:Hide()
 	skin.portrait = { disc = disc, icon = icon, emblem = emblem, gameArt = gameArt or {} }
@@ -734,7 +740,7 @@ local function SkinOwnShell(f)
 	end
 	if not bg then
 		for _, region in ipairs({ f:GetRegions() }) do
-			if not bg and IsType(region, "Texture") and not region.kitPiece and not done[region] then
+			if not bg and IsType(region, "Texture") and not pieceOf[region] and not done[region] then
 				local ok, layer = pcall(region.GetDrawLayer, region)
 				if ok and layer == "BACKGROUND" then
 					bg = region
@@ -752,8 +758,8 @@ local function SkinOwnShell(f)
 	SkinOwnTitle(f)
 	local close = f.CloseButton or _G.GuildBankFrameCloseButton
 	local normal = close and close.GetNormalTexture and close:GetNormalTexture()
-	if normal and close.melloRep == nil then
-		close.melloRep = Replace(normal, { as = "RedButton-Exit", button = close, alsoFade = Kit:OtherTextures(close, normal) }) or false
+	if normal and repOf[close] == nil then
+		repOf[close] = Replace(normal, { as = "RedButton-Exit", button = close, alsoFade = Kit:OtherTextures(close, normal) }) or false
 	end
 end
 
@@ -770,7 +776,7 @@ local function ClassifyOwnArt(f)
 	end
 	skin.classified = true
 	for _, region in ipairs({ f:GetRegions() }) do
-		if IsType(region, "Texture") and not region.kitPiece and not done[region] then
+		if IsType(region, "Texture") and not pieceOf[region] and not done[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			local w, h = ExplicitSize(region)
 			local big = w and w * h >= fw * fh * 0.25
@@ -938,7 +944,7 @@ local function SkinItems(f, remeasure)
 			if not entry.background then
 				-- the column's picture: its first texture of its own
 				for _, region in ipairs({ column:GetRegions() }) do
-					if not entry.background and IsType(region, "Texture") and not region.kitPiece then
+					if not entry.background and IsType(region, "Texture") and not pieceOf[region] then
 						entry.background = region
 					end
 				end
@@ -952,7 +958,7 @@ local function SkinItems(f, remeasure)
 	for _, entry in ipairs(columns) do
 		for _, b in ipairs(entry.buttons) do
 			all[#all + 1] = b
-			fresh = fresh or b.melloRep == nil
+			fresh = fresh or repOf[b] == nil
 		end
 	end
 	if #all == 0 or not (fresh or remeasure) then
@@ -960,7 +966,7 @@ local function SkinItems(f, remeasure)
 	end
 	local pitch = ItemPitch(all)
 	for _, button in ipairs(all) do
-		if button.melloRep == nil and button.icon then
+		if repOf[button] == nil and button.icon then
 			local rep = Kit:SkinActionButton(button, Replace, pitch, { as = Kit:ButtonRimRule(), emptyStone = true, qualityBorder = button.IconBorder,
 				qualityGem = SlotQuality })
 			if rep then
@@ -968,8 +974,8 @@ local function SkinItems(f, remeasure)
 				stats.items = stats.items + 1
 				Kit:SetButtonBackground(button, ItemBackground())
 			end
-		elseif button.melloRep and button.melloRep.SetPitch and pitch then
-			button.melloRep:SetPitch(pitch[1], pitch[2])
+		elseif repOf[button] and repOf[button].SetPitch and pitch then
+			repOf[button]:SetPitch(pitch[1], pitch[2])
 		end
 	end
 end
@@ -1024,7 +1030,7 @@ local function Dim(host, label, rect, margin)
 	if not tex then
 		return nil
 	end
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	tex:SetShown(active)
 	dims[#dims + 1] = { tex = tex, label = label, host = host }
 	return tex
@@ -1185,7 +1191,7 @@ local function FadePageArt(page, label)
 		return
 	end
 	for _, region in ipairs({ page:GetRegions() }) do
-		if IsType(region, "Texture") and not region.kitPiece and not done[region] then
+		if IsType(region, "Texture") and not pieceOf[region] and not done[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BACKGROUND" then
 				FadeArt(region, label .. " backdrop (the page stone and dark panel stand in)")
@@ -1224,7 +1230,7 @@ local function SkinTextAreas(f)
 	-- (it needs the laid-out item area)
 	if area and not skin.band then
 		local tex = f:CreateTexture(nil, "BACKGROUND", nil, 2)
-		tex.kitPiece = true
+		pieceOf[tex] = true
 		Kit:Paint(tex, "innerPanel", "fill", DIM_ALPHA)   -- (by its key: a new palette paints it again)
 		tex:Hide()
 		skin.band = tex
@@ -1369,12 +1375,12 @@ local function SkinSideTab(tab)
 		entry.why = "no button found"
 		return
 	end
-	if button.melloRep ~= nil then
+	if repOf[button] ~= nil then
 		entry.why = "already dressed"
 		return
 	end
 	-- (marked at once: the sweep would take a 36 px check button for a check box)
-	button.melloRep = false
+	repOf[button] = false
 	if not icon then
 		entry.why = "no icon found"
 		return
@@ -1390,7 +1396,7 @@ local function SkinSideTab(tab)
 	local extra = {}
 	local seen = { [plate] = true, [icon] = true }
 	local function Add(t)
-		if t and not seen[t] and IsType(t, "Texture") and not t.kitPiece then
+		if t and not seen[t] and IsType(t, "Texture") and not pieceOf[t] then
 			seen[t] = true
 			extra[#extra + 1] = t
 		end
@@ -1410,7 +1416,7 @@ local function SkinSideTab(tab)
 	claimed[plate] = "side tab rim"
 	local rep = Replace(plate, { as = "common-sidetab", button = button, parent = button, rect = button, icon = icon,
 		checked = function() return TabChecked(button) end, alsoFade = extra })
-	button.melloRep = rep or false
+	repOf[button] = rep or false
 	entry.rep = rep
 	if not rep then
 		entry.why = "no replacement"
@@ -1477,11 +1483,11 @@ local function SkinTab(tab)
 	local entry = { tab = tab, text = text }
 	bottomTabs[#bottomTabs + 1] = entry
 	-- the game's own placing of the text, recorded before any card holds it
-	-- (the Kit's steadier marks its own SetPoint with melloSteadying)
+	-- (the Kit's steadier marks its own SetPoint in MelloUI.Kept.steadyingOf)
 	if text then
 		entry.points = PointsOf(text)
 		hooksecurefunc(text, "SetPoint", function()
-			if not (tab.melloSteadying or entry.steadying) then
+			if not (steadyingOf[tab] or entry.steadying) then
 				entry.points = PointsOf(text)
 			end
 		end)
@@ -1494,11 +1500,11 @@ local function SkinTab(tab)
 		Kit:SkinPanelTab(tab, Replace, skin)
 	else
 		plainTex, openTex = FirstTexture(Part(tab, "Left", "Left")), FirstTexture(Part(tab, "LeftDisabled", "LeftDisabled"))
-		if not (plainTex and openTex) or tab.melloRep ~= nil then
+		if not (plainTex and openTex) or repOf[tab] ~= nil then
 			entry.kind = "unknown template: left as the game's"
 			-- (marked: the sweep would take a Left / Middle / Right tab for a red button)
-			if tab.melloRep == nil then
-				tab.melloRep = false
+			if repOf[tab] == nil then
+				repOf[tab] = false
 			end
 			return
 		end
@@ -1509,7 +1515,7 @@ local function SkinTab(tab)
 			alsoFade = List(Part(tab, "Middle", "Middle"), Part(tab, "Right", "Right"), hl) })
 		local open = Replace(openTex, { as = "uiframe-activetab-left", rect = tab,
 			alsoFade = List(Part(tab, "MiddleDisabled", "MiddleDisabled"), Part(tab, "RightDisabled", "RightDisabled")) })
-		tab.melloRep = plain or open or false
+		repOf[tab] = plain or open or false
 		Follow(plain, plainTex)
 		Follow(open, openTex)
 		-- the text centred on the card, whatever the game's select / deselect
@@ -1608,7 +1614,7 @@ end
 
 --------------------------------------------------------------------------------
 -- The buttons: Deposit, Withdraw, the tab purchase and the info's Save on
--- the red plates (B1, Kit:SkinRedButton), each marked melloNoInk (a button's
+-- the red plates (B1, Kit:SkinRedButton), each marked in QI.noInk (a button's
 -- label keeps its own colour, never the parchment's ink); the plate follows
 -- the button's disabled state.
 --------------------------------------------------------------------------------
@@ -1620,11 +1626,14 @@ local function RedButtons(f)
 end
 
 local function SkinButtons(f)
+	local QI = MelloUI.QuestInk
 	for _, b in ipairs(RedButtons(f)) do
 		if not done[b] and b.GetObjectType then
 			done[b] = true
-			b.melloNoInk = true
-			if b.melloRep == nil and Kit:SkinRedButton(b, Replace) then
+			if QI then
+				QI.noInk[b] = true
+			end
+			if repOf[b] == nil and Kit:SkinRedButton(b, Replace) then
 				stats.buttons = stats.buttons + 1
 			end
 		end
@@ -1640,7 +1649,7 @@ end
 -- the scroll bar by the sweep.
 --------------------------------------------------------------------------------
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -1678,7 +1687,7 @@ end
 
 local function BackOf(button, icon)
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region ~= icon and IsType(region, "Texture") and not region.kitPiece then
+		if region ~= icon and IsType(region, "Texture") and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BACKGROUND" then
 				return region
@@ -1688,7 +1697,7 @@ local function BackOf(button, icon)
 end
 
 local function SkinIconButton(button, selectable)
-	if not button or done[button] or button.melloRep ~= nil then
+	if not button or done[button] or repOf[button] ~= nil then
 		return
 	end
 	done[button] = true
@@ -1717,17 +1726,18 @@ local function SkinIconButton(button, selectable)
 		checked = function() return TabChecked(button) end
 	end
 	local rep = Replace(back, { as = Kit:ButtonRimRule(), button = button, parent = button, checked = checked, alsoFade = extra })
-	button.melloRep = rep or false
+	repOf[button] = rep or false
 	if not rep then
 		return
 	end
-	local holder = { melloRep = rep, icon = icon }
+	local holder = { icon = icon }
+	repOf[holder] = rep
 	iconRims[#iconRims + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	FitIconRim(holder)
 	stats.icons = stats.icons + 1
 	local function Update()
-		local rim = holder.melloRep.object
+		local rim = repOf[holder].object
 		if active and rim and rim.Update then
 			rim:Update()
 		end
@@ -1793,7 +1803,7 @@ local function SkinPopupEdit(popup)
 		-- another template: the widest texture is the middle, the rest its ends
 		local textures = {}
 		for _, region in ipairs({ edit:GetRegions() }) do
-			if IsType(region, "Texture") and not region.kitPiece then
+			if IsType(region, "Texture") and not pieceOf[region] then
 				textures[#textures + 1] = region
 			end
 		end
@@ -1841,7 +1851,7 @@ local function SkinPopup()
 	local extra = {}
 	for _, holder in ipairs(List(popup, popup.BorderBox)) do
 		for _, region in ipairs({ holder:GetRegions() }) do
-			if IsType(region, "Texture") and not region.kitPiece then
+			if IsType(region, "Texture") and not pieceOf[region] then
 				extra[#extra + 1] = region
 			end
 		end
@@ -2258,7 +2268,7 @@ local function Shown(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function Num(v)
@@ -2280,8 +2290,8 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = ArtOf(region) .. (region.kitPiece and " (kit)" or "")
-				.. (claimed[region] and (" -> " .. claimed[region]) or (region.kitPiece and "" or " -> UNMAPPED"))
+			art = ArtOf(region) .. (pieceOf[region] and " (kit)" or "")
+				.. (claimed[region] and (" -> " .. claimed[region]) or (pieceOf[region] and "" or " -> UNMAPPED"))
 		elseif kind == "FontString" then
 			local text = TextOf(region)
 			art = "text: " .. (text and text:sub(1, 40) or "?")
@@ -2294,7 +2304,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s [%s] level %s shown %s%s %s", tostring(child:GetObjectType()), Label(child), tostring(KeyOf(frame, child) or "-"),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (dressed)" or "", RectText(child))
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (dressed)" or "", RectText(child))
 	end
 end
 
@@ -2313,7 +2323,7 @@ local function DumpSummary(f)
 	-- the title
 	local title = skin and skin.titleText
 	Found("title string", title, title and string.format(" (%s) text %s, title face %s, plate %s", tostring(skin.titleRole),
-		tostring(TextOf(title)), tostring(title.melloFontSaved ~= nil), tostring(TitleRep() ~= nil))
+		tostring(TextOf(title)), tostring(fontSavedOf[title] ~= nil), tostring(TitleRep() ~= nil))
 		or (skin and (" (" .. tostring(skin.titleRole) .. ")") or nil))
 	local tabTitle = TabTitle(f)
 	Found("tab title", tabTitle, tabTitle and (" text " .. tostring(TextOf(tabTitle))) or nil)
@@ -2372,7 +2382,7 @@ local function DumpSlots(f)
 			bg and (Kit.faded[bg] and "faded" or "shown") or "-", RectText(entry.frame))
 		for j, b in ipairs(entry.buttons) do
 			if j <= 2 or j == #entry.buttons then
-				local stone = b.melloSlotStone and b.melloSlotStone.tex
+				local stone = slotStoneOf[b] and slotStoneOf[b].tex
 				local okI, iconShown = pcall(function() return b.icon and b.icon:IsShown() end)
 				MelloUI:Print("    slot %d %s rim %s icon shown %s empty stone %s quality border %s %s", j, Label(b), Dressed(b),
 					(okI and not Secret(iconShown)) and tostring(iconShown) or "?", stone and Shown(stone) or "-",

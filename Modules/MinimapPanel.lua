@@ -62,15 +62,31 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("MinimapPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
 
 -- Square Border: `prefix` a kit rail family laid as a nine-slice at `scale`
 -- (x Kit.scale), `piece` one frame picture cut into nine (the action bars'
--- backdrop frame: its corner CORNER piece px); `preview` for the picker
+-- backdrop frame: its corner CORNER piece px); `style` (0.19.8) a style of
+-- the border library's (Modules/KitBorders.lua): its master cut at its own
+-- corner, at the heavy weight (the minimap's size class); `preview` for the
+-- picker
 local BORDERS = {
 	{ value = "window", label = "Window frame", prefix = "window/frame", scale = 1, gem = true, piece = "window/frame_gem_tl" },
 	{ value = "single", label = "Single rail", prefix = "window/single", scale = 1.6, piece = "window/single_tl" },
 	{ value = "red", label = "Heavy, red gems", piece = "deco/barframe_red" },
 	{ value = "iron", label = "Heavy, iron gems", piece = "deco/barframe_iron" },
+	{ value = "thin", label = "Thin iron", style = "thin", piece = "borders/rim" },
+	{ value = "hairline", label = "Hairline", style = "hairline", piece = "borders/rimhair" },
+	{ value = "rounded", label = "Rounded corners", style = "rounded", piece = "borders/rimround" },
+	{ value = "gold", label = "Iron with gold line", style = "gold", piece = "borders/rimgold" },
+	{ value = "sunk", label = "Sunk", style = "sunk", piece = "borders/rimsunk" },
+	-- (the NewUI2 rims the user picked; the hairline's nubs at medium, its range)
+	{ value = "n4", label = "Medium iron, corner studs", style = "n4", piece = "borders/n4" },
+	{ value = "n4g", label = "Thin gold, corner studs", style = "n4g", piece = "borders/n4g" },
+	{ value = "n5", label = "Hairline, corner nubs", style = "n5", piece = "borders/n5" },
+	{ value = "n1", label = "Heavy bevel, corner studs", style = "n1", piece = "borders/n1" },
 	{ value = "none", label = "None" },
 }
 local BORDER = {}
@@ -108,7 +124,7 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
 		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border chosen below." },
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
-		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, or none. Both are chosen with pictures on Minimap > Minimap." },
+		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, one of the thin rims the buttons wear (drawn heavier, at the map's size), or none. Both are chosen with pictures on Minimap > Minimap." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",
 		  desc = "The square map, its zone header and the Services bar in one frame: the zone name on the frame's top rail, and under the map a divider rail named Services over the Services bar (with the row of group buttons, the clock beside the zone name). For the square shape with the window frame or the single rail." },
 		{ type = "slider", key = "width", name = "Width", min = MAP_MIN, max = MAP_MAX, step = MAP_STEP,
@@ -162,14 +178,15 @@ end
 
 -- a heavy frame's eight parts (Kit:CutNine's), each with the same cut of the
 -- frame's shadow (piece px; its reach past the picture's outer sides only),
--- once: CutNine cuts them again at every lay
-function Shade.Cut(parts, piece)
+-- once: CutNine cuts them again at every lay. `corner`: the piece's cut (a
+-- border library style's own, 0.19.8; the backdrop frames' CORNER else)
+function Shade.Cut(parts, piece, corner)
 	local p = Kit:Piece(piece)
 	if Shade.cut or not (p and p.w and p.h) then
 		return
 	end
 	Shade.cut = true
-	local c, w, h = CORNER, p.w, p.h
+	local c, w, h = corner or CORNER, p.w, p.h
 	local cuts = { tl = { 0, c, 0, c }, tr = { w - c, w, 0, c }, bl = { 0, c, h - c, h }, br = { w - c, w, h - c, h },
 		t = { c, w - c, 0, c }, b = { c, w - c, h - c, h }, l = { 0, c, c, h - c }, r = { w - c, w, c, h - c } }
 	for key, cut in pairs(cuts) do
@@ -292,7 +309,7 @@ local function Build()
 	if band then
 		local first, extra = nil, {}
 		for _, region in ipairs({ band:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				if first then
 					extra[#extra + 1] = region
 				else
@@ -1088,7 +1105,7 @@ local function LayoutDivider(f, b, groups)
 	d:SetPoint("TOPRIGHT", map, "BOTTOMRIGHT", 0, 0)
 	d:SetHeight(DIVIDER_H)
 	local piece = b.prefix .. "_body"
-	if d.stone.kitName ~= piece then
+	if pieceNameOf[d.stone] ~= piece then
 		Kit:Apply(d.stone, piece)
 	end
 	Kit:Retile(d.stone)
@@ -1326,6 +1343,9 @@ local function LaySquare()
 	for _, nine in pairs(f.nine) do
 		nine:Hide()
 	end
+	if f.library then
+		f.library:SetShown(false)   -- (a border of the library's, laid by another style before)
+	end
 	local over = 1   -- UI px: the rail's inner edge just over the map's, no line of world between
 	f:ClearAllPoints()
 	if b.prefix then
@@ -1364,6 +1384,22 @@ local function LaySquare()
 		return
 	else
 		PlaceBand(false)   -- (a picture frame has no rail for it: the game's place)
+		-- (0.19.8) a style of the border library's (the thin rims, the NewUI2
+		-- rims): its border round the map at the heavy weight (the style's
+		-- range kept, its studs on), as regions of this frame, its own shade
+		local st = b.style and Kit.BorderStyles and Kit.BorderStyles[b.style]
+		if st then
+			f:SetPoint("TOPLEFT", map, "TOPLEFT")
+			f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT")
+			f.gemReach = 0
+			if not f.library then
+				f.library = Kit:NewBorder({ rect = map, owner = f, place = "round", layer = "ARTWORK", sub = 0,
+					shade = { root = f, area = "minimap" } })
+			end
+			f:Show()
+			f.library:Lay(b.style, "heavy")
+			return
+		end
 		local p = Kit:Piece(b.piece)
 		local k = Kit.scale
 		local open = (p and p.open) or { 29, 34, 106, 97 }

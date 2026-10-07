@@ -57,6 +57,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("TabardPanel")
 local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("TabardPanel", {
 	title = "Tabard Kit",
@@ -409,7 +412,7 @@ local function Panel(host, opts)
 	opts.sublevel = PANEL_SUB
 	local tex = Kit:StoneDim(host, opts)
 	if tex then
-		tex.kitPiece = true      -- ours: never taken for the game's art
+		pieceOf[tex] = true      -- ours: never taken for the game's art
 		tex:SetShown(active)
 		panels[#panels + 1] = tex
 	end
@@ -429,7 +432,7 @@ local function SkinContent(f)
 		done[inset] = true
 		Kit:SkinInset(inset, Replace, f)
 		local tex = Panel(inset)
-		found.inset = string.format("%s, rail %s, inner panel %s", Label(inset), tostring(inset.melloRep ~= nil and inset.melloRep ~= false),
+		found.inset = string.format("%s, rail %s, inner panel %s", Label(inset), tostring(repOf[inset] ~= nil and repOf[inset] ~= false),
 			tex and "on" or "NOT made")
 	end
 	for _, region in ipairs({ f:GetRegions() }) do
@@ -497,7 +500,7 @@ local function Anchor(host, rect)
 	local tex = host:CreateTexture(nil, "BACKGROUND")
 	tex:SetAllPoints(rect or host)
 	tex:SetColorTexture(0, 0, 0, 0)
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	return tex
 end
 
@@ -522,7 +525,7 @@ local function SkinCost(f)
 	if corner then
 		local others = {}
 		for _, region in ipairs({ nine:GetRegions() }) do
-			if region ~= corner and region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region ~= corner and region:GetObjectType() == "Texture" and not pieceOf[region] then
 				others[#others + 1] = region
 			end
 		end
@@ -531,7 +534,7 @@ local function SkinCost(f)
 	else
 		local art = {}
 		for _, region in ipairs({ cost:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				art[#art + 1] = region
 			end
 		end
@@ -805,8 +808,8 @@ local function SkinMoney(f)
 		end
 	end
 	local rep = middle and Replace(middle, { as = "common-coinbox-center", parent = bg, rect = bg, level = 0, alsoFade = fade }) or nil
-	if inset and inset.melloRep == nil then
-		inset.melloRep = rep or false
+	if inset and repOf[inset] == nil then
+		repOf[inset] = rep or false
 	end
 	found.money = string.format("%s: coin plate %s, inset %s%s", Label(bg), rep and "dressed" or "NOT dressed",
 		inset and Label(inset) or "-- none", inset and " faded with it" or "")
@@ -849,8 +852,8 @@ local function Build()
 	-- (the model is not walked into: its buttons are the rotate plates above)
 	Kit:SweepControls(f, Replace, skin, Model(f))
 	local b1, b2 = _G.TabardFrameAcceptButton, _G.TabardFrameCancelButton
-	found.buttons = string.format("Accept %s, Cancel %s", tostring(b1 ~= nil and b1.melloRep ~= nil and b1.melloRep ~= false),
-		tostring(b2 ~= nil and b2.melloRep ~= nil and b2.melloRep ~= false))
+	found.buttons = string.format("Accept %s, Cancel %s", tostring(b1 ~= nil and repOf[b1] ~= nil and repOf[b1] ~= false),
+		tostring(b2 ~= nil and repOf[b2] ~= nil and repOf[b2] ~= false))
 end
 
 local function FitRing()
@@ -1018,7 +1021,7 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. tostring(TextOf(region) or (HasText(region) and "[secret]" or "")):sub(1, 50)
 		end
@@ -1028,7 +1031,7 @@ local function DumpOwn(frame)
 	end
 	for _, child in ipairs({ frame:GetChildren() }) do
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			tostring(LevelOf(child) or "?"), tostring(child:IsShown()), child.melloRep ~= nil and " (dressed)" or "")
+			tostring(LevelOf(child) or "?"), tostring(child:IsShown()), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 

@@ -2392,7 +2392,7 @@ local function BarStone(on)
 		if on then
 			local mp = MelloUI:GetModule("MinimapPanel")
 			local piece = mp and mp.BodyPiece and mp:BodyPiece() or "window/frame_body"
-			if bar.stone.kitName ~= piece then
+			if MelloUI.Kept.pieceNameOf[bar.stone] ~= piece then
 				MelloUI.Kit:Apply(bar.stone, piece)   -- look-ok: the merged frame's stone, only with the kit (Merged)
 			end
 			MelloUI.Kit:Retile(bar.stone)

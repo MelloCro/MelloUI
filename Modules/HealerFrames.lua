@@ -752,7 +752,7 @@ local function Hook()
 			end
 		end)
 	end
-	-- a new palette: the glows keep their colours (Kit:ShadowTint, the round
+	-- a new palette: the glows keep their colours (Kit:GlowShow, the round
 	-- glow's SetTint) -- nothing to do here
 	-- the preview's scenes (its part "healer")
 	MelloUI:On("preview", PreviewBeat, M)

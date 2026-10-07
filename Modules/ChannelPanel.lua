@@ -77,6 +77,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("ChannelPanel", {
 	title = "Channels Kit",
@@ -377,7 +382,7 @@ local function PlaceTitles(on)
 		rep:Refit()
 	end
 	local list, own = TitleStrings(f)
-	if own and not own.melloFontSaved then
+	if own and not fontSavedOf[own] then
 		Kit:TitleFont(own, true)
 	end
 	local ownText = own and TextOf(own)
@@ -451,7 +456,7 @@ local function SkinBox(f, inset, list, label)
 		end
 		done[inset] = true
 		Kit:SkinInset(inset, Replace, f, true)
-		local rep = inset.melloRep
+		local rep = repOf[inset]
 		if rep then
 			boxes[#boxes + 1] = { rep = rep, content = content, label = label, inset = inset }
 			KeepUnder(rep, content)
@@ -625,7 +630,7 @@ end
 
 local function Stripe(row)
 	local tex = row:CreateTexture(nil, "BACKGROUND", nil, -8)
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	tex:SetAllPoints(row)
 	Kit:Paint(tex, "mainWindow", "fill", STRIPE_ALPHA)   -- (by its key: a new palette paints it again)
 	tex:Hide()
@@ -823,7 +828,7 @@ local function PopupArt(p)
 		Add(p[key])
 	end
 	for _, region in ipairs({ p:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and (layer == "BACKGROUND" or layer == "BORDER") then
 				Add(region)
@@ -862,7 +867,7 @@ local function ShowPopupSkin(on)
 	end
 	if ps.title then
 		if on then
-			if not ps.title.melloFontSaved then
+			if not fontSavedOf[ps.title] then
 				Kit:TitleFont(ps.title, true)
 			end
 		else
@@ -896,10 +901,13 @@ local function DressPopup()
 	end
 	SkinEditBox(p.Name)
 	SkinEditBox(p.Password)
+	local QI = MelloUI.QuestInk
 	for _, key in ipairs({ "OKButton", "CancelButton" }) do
 		local b = p[key]
 		if b then
-			b.melloNoInk = true
+			if QI then
+				QI.noInk[b] = true
+			end
 			Kit:SkinRedButton(b, Replace)
 		end
 	end
@@ -983,10 +991,13 @@ local function Build()
 
 	-- Add / Settings on red plates (their labels readable on them), then
 	-- every common control left: the scroll bars, the template's own inset
+	local QI = MelloUI.QuestInk
 	for _, key in ipairs({ "NewButton", "SettingsButton" }) do
 		local b = f[key]
 		if b then
-			b.melloNoInk = true
+			if QI then
+				QI.noInk[b] = true
+			end
 			Kit:SkinRedButton(b, Replace)
 		end
 	end
@@ -1209,7 +1220,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. ((region.kitPiece or region.kitScale) and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. ((pieceOf[region] or region.kitScale) and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. (TextOf(region) or "?"):sub(1, 40)
 		end
@@ -1219,7 +1230,7 @@ local function DumpOwn(frame)
 	end
 	for _, child in ipairs({ frame:GetChildren() }) do
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			LevelText(child), tostring(Shown(child)), child.melloRep ~= nil and " (dressed)" or "")
+			LevelText(child), tostring(Shown(child)), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 
@@ -1249,7 +1260,7 @@ local function DumpShell(f)
 		local medallion = (type(rw) == "number" and not Secret(rw)) and rw * 0.759 or nil
 		Found("portrait", portrait, string.format(" art %s, size %s x %s, medallion %s (ring %s), fitted %s, disc %s, filled by the kit %s, shown %s",
 			tostring(PortraitArt(portrait) or "none"), okS and Num(w) or "?", okS and Num(h) or "?", Num(medallion), Num(rw),
-			tostring(portrait.melloSaved ~= nil), tostring(ring ~= nil and ring.disc ~= nil), tostring(portraitFilled[portrait] ~= nil), tostring(Shown(portrait))))
+			tostring(portraitSavedOf[portrait] ~= nil), tostring(ring ~= nil and ring.disc ~= nil), tostring(portraitFilled[portrait] ~= nil), tostring(Shown(portrait))))
 	else
 		Found("portrait", nil)
 	end
@@ -1269,7 +1280,7 @@ local function DumpShell(f)
 			off = string.format("%.0f, %.0f", cx - px, cy - py)
 		end
 		Found("title string", fs, string.format(" text %s, font %s, title face %s, off the plate's centre %s, %s", tostring(TextOf(fs)),
-			FontText(fs), tostring(fs.melloFontSaved ~= nil), off, titleFaded[fs] and "faded (duplicate)" or (titleMoved[fs] and "moved onto the plate" or "the container's")))
+			FontText(fs), tostring(fontSavedOf[fs] ~= nil), off, titleFaded[fs] and "faded (duplicate)" or (titleMoved[fs] and "moved onto the plate" or "the container's")))
 	end
 	Found("title plate", plate, plate and (" " .. RectText(plate)) or nil)
 	Found("close button", f.CloseButton)
@@ -1282,8 +1293,8 @@ local function DumpParts(f)
 	Found("roster", roster, roster and string.format(" %s, level %s", RectText(roster), LevelText(roster)) or nil)
 	for _, key in ipairs({ "LeftInset", "RightInset", "Inset" }) do
 		local inset = f[key]
-		Found(key, inset, inset and string.format(" dressed %s, dim %s, shown %s", tostring(inset.melloRep ~= nil and inset.melloRep ~= false),
-			tostring(inset.melloRep and inset.melloRep.skin and inset.melloRep.skin.dimFill ~= nil), tostring(Shown(inset))) or nil)
+		Found(key, inset, inset and string.format(" dressed %s, dim %s, shown %s", tostring(repOf[inset] ~= nil and repOf[inset] ~= false),
+			tostring(repOf[inset] and repOf[inset].skin and repOf[inset].skin.dimFill ~= nil), tostring(Shown(inset))) or nil)
 	end
 	for _, box in ipairs(boxes) do
 		MelloUI:Print("  box %-22s holder level %s, rows' parent %s level %s", box.label, LevelText(box.rep.object), Label(box.content), LevelText(box.content))
@@ -1319,7 +1330,7 @@ local function DumpParts(f)
 	for _, key in ipairs({ "NewButton", "SettingsButton" }) do
 		local b = f[key]
 		local fs = b and b.GetFontString and b:GetFontString()
-		Found(key, b, b and string.format(" red plate %s, text %s", tostring(b.melloRep ~= nil and b.melloRep ~= false), tostring(fs and TextOf(fs))) or nil)
+		Found(key, b, b and string.format(" red plate %s, text %s", tostring(repOf[b] ~= nil and repOf[b] ~= false), tostring(fs and TextOf(fs))) or nil)
 	end
 	MelloUI:Print("  dressed so far: channel rows %d, headers %d, member rows %d, voice buttons on the cog %d, edit plates %d",
 		stats.rows, stats.headers, stats.members, stats.icons, stats.edits)
@@ -1336,11 +1347,11 @@ local function DumpPopup()
 	Found("header", p.Header, popupSkin and (" plate " .. tostring(popupSkin.header ~= nil)) or nil)
 	if popupSkin and popupSkin.title then
 		Found("header text", popupSkin.title, string.format(" text %s, font %s, title face %s", tostring(TextOf(popupSkin.title)),
-			FontText(popupSkin.title), tostring(popupSkin.title.melloFontSaved ~= nil)))
+			FontText(popupSkin.title), tostring(fontSavedOf[popupSkin.title] ~= nil)))
 	end
 	for _, key in ipairs({ "Name", "Password", "OKButton", "CancelButton", "CloseButton", "UseVoiceChat" }) do
 		local obj = p[key]
-		Found(key, obj, obj and (" dressed " .. tostring(done[obj] or (obj.melloRep ~= nil and obj.melloRep ~= false))) or nil)
+		Found(key, obj, obj and (" dressed " .. tostring(done[obj] or (repOf[obj] ~= nil and repOf[obj] ~= false))) or nil)
 	end
 	DumpOwn(p)
 end

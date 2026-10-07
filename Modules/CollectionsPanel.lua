@@ -24,6 +24,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("CollectionsPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("CollectionsPanel", {
 	title = "Collections Panel",
@@ -87,13 +90,13 @@ end
 -- (shown / hidden by the game), the square rim on its icon; the highlight
 -- and new-glow faded.
 local function SkinMountRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	if row.background then
 		local highlight = row.GetHighlightTexture and row:GetHighlightTexture()
-		row.melloRep = Replace(row.background, { as = "PetList-ButtonBackground", rect = row, button = row,
+		repOf[row] = Replace(row.background, { as = "PetList-ButtonBackground", rect = row, button = row,
 			alsoFade = highlight and { highlight } or nil }) or false
 	end
 	if row.selectedTexture then
@@ -105,21 +108,22 @@ local function SkinMountRow(row)
 	end
 end
 
+local backdropOf = setmetatable({}, { __mode = "k" })   -- [icons frame] = its backdrop's rep (false: none)
 -- A page's icon grid backdrop (CollectionsBackgroundTemplate: an inset with
 -- a tiled picture): the page stone as a region under the slots.
 local function SkinIconsFrame(frame)
-	if not frame or frame.melloBackdrop ~= nil then
+	if not frame or backdropOf[frame] ~= nil then
 		return
 	end
-	frame.melloBackdrop = false
+	backdropOf[frame] = false
 	if frame.BackgroundTile then
-		frame.melloBackdrop = Replace(frame.BackgroundTile, { as = "collections-background-tile" }) or false
+		backdropOf[frame] = Replace(frame.BackgroundTile, { as = "collections-background-tile" }) or false
 	end
 	-- the single rail around the grid (the frame is an inset), above its slots
 	Kit:SkinInset(frame, Replace, frame:GetParent())
 	-- the shadowed edges and corners over the tile: faded
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local key = Kit:ArtKey(region)
 			if key and key:find("^collections%-background%-") and key ~= "collections-background-tile" then
 				Replace(region, { as = key })
@@ -145,7 +149,7 @@ local function EyePanel(host)
 	local tex = Kit:StoneDim(host)
 	skin.eyePanels[host] = tex or false
 	if tex then
-		tex.kitPiece = true            -- ours: never taken for the game's art
+		pieceOf[tex] = true            -- ours: never taken for the game's art
 		tex:SetShown(active)
 	end
 end
@@ -324,3 +328,7 @@ SlashCmdList.MELLOCOLDUMP = function(msg)
 	Kit:DumpWindow(CollectionsJournal, skin, msg)
 	MelloUI:ShowLog("coldump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { backdropOf = backdropOf }

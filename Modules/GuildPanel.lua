@@ -30,6 +30,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("GuildPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("GuildPanel", {
 	title = "Guild Panel",
@@ -125,7 +128,7 @@ local function EyePanel(host, opts)
 	if tex then
 		-- ours: never taken for the game's art (the info page's sheets are
 		-- found as its tall BACKGROUND textures and faded)
-		tex.kitPiece = true
+		pieceOf[tex] = true
 		tex:SetShown(active)
 	end
 end
@@ -148,26 +151,27 @@ local CARD_TONE = "mainWindow"
 -- Text): the dropdown plate (D1) on the button, its painted cap in place of
 -- the arrow, hover from the button.
 local function SkinDropdown(dd)
-	if not (dd and dd.Background) or dd.melloRep ~= nil then
+	if not (dd and dd.Background) or repOf[dd] ~= nil then
 		return
 	end
-	dd.melloRep = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = { dd.Arrow } }) or false
+	repOf[dd] = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = { dd.Arrow } }) or false
 end
 
+local rimOf = setmetatable({}, { __mode = "k" })   -- [entry] = its ring's rect (Kit:RimRect)
 --------------------------------------------------------------------------------
 -- The communities list (left column): its box, its pooled entries.
 --------------------------------------------------------------------------------
 local function SkinListEntry(entry)
-	if entry.melloRep ~= nil then
+	if repOf[entry] ~= nil then
 		return
 	end
-	entry.melloRep = false
+	repOf[entry] = false
 	if entry.Background then
 		-- a tall row (R3): the card, lit while the game shows the Selection
 		local highlight = entry.GetHighlightTexture and entry:GetHighlightTexture()
 		-- the card's stone in the main window's tone (2e: its name must not
 		-- lie on the plain stone; a step lighter than the dimmed list box)
-		entry.melloRep = Replace(entry.Background, { as = "CommunitiesListEntry", rect = entry, button = entry,
+		repOf[entry] = Replace(entry.Background, { as = "CommunitiesListEntry", rect = entry, button = entry,
 			dim = 0.85, dimColor = CARD_TONE,
 			checked = function() return entry.Selection and entry.Selection:IsShown() or false end,
 			alsoFade = highlight and { highlight } or nil }) or false
@@ -175,8 +179,8 @@ local function SkinListEntry(entry)
 	if entry.Selection then
 		Replace(entry.Selection, { as = "bluemenu-main-selected" })
 		local function Sync()
-			if active and entry.melloRep and entry.melloRep.SetState then
-				entry.melloRep:SetState()
+			if active and repOf[entry] and repOf[entry].SetState then
+				repOf[entry]:SetState()
 			end
 		end
 		hooksecurefunc(entry.Selection, "Show", Sync)
@@ -185,8 +189,8 @@ local function SkinListEntry(entry)
 	end
 	if entry.IconRing and entry.Icon then
 		-- the ring's opening is the icon (38 px, masked round by the game)
-		entry.melloRim = Kit:RimRect(entry, "roundslot", entry.Icon:GetWidth() > 0 and entry.Icon:GetWidth() or 38, entry.Icon)
-		local rep = Replace(entry.IconRing, { as = "communities-ring-gold", rect = entry.melloRim, button = entry })
+		rimOf[entry] = Kit:RimRect(entry, "roundslot", entry.Icon:GetWidth() > 0 and entry.Icon:GetWidth() or 38, entry.Icon)
+		local rep = Replace(entry.IconRing, { as = "communities-ring-gold", rect = rimOf[entry], button = entry })
 		Follow(rep, entry.IconRing)
 	end
 end
@@ -196,14 +200,14 @@ end
 -- normal texture; a profession header's category plate and +/- glyphs).
 --------------------------------------------------------------------------------
 local function SkinMemberRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	local normal = row.GetNormalTexture and row:GetNormalTexture()
 	if normal then
 		local highlight = row.GetHighlightTexture and row:GetHighlightTexture()
-		row.melloRep = Replace(normal, { as = "bluemenu-main", rect = row, button = row, alsoFade = highlight and { highlight } or nil }) or false
+		repOf[row] = Replace(normal, { as = "bluemenu-main", rect = row, button = row, alsoFade = highlight and { highlight } or nil }) or false
 	end
 	local header = row.ProfessionHeader
 	if header and header.Middle then
@@ -224,11 +228,11 @@ end
 -- scaled from the game's frame-based value onto the opening's width).
 --------------------------------------------------------------------------------
 local function SkinFactionBar(bar)
-	if not (bar and bar.BG and bar.Progress) or bar.melloRep ~= nil then
+	if not (bar and bar.BG and bar.Progress) or repOf[bar] ~= nil then
 		return
 	end
 	local rep = Replace(bar.BG, { as = "GuildFrame-Bar", rect = bar, alsoFade = { bar.Left, bar.Middle, bar.Right, bar.Shadow } })
-	bar.melloRep = rep or false
+	repOf[bar] = rep or false
 	if not rep then
 		return
 	end
@@ -306,7 +310,7 @@ local function BuildSkin()
 	-- not be seen; each text area below gets its own (EyePanel) instead, and
 	-- one here would double them if it ever showed
 	if cf.Inset then
-		cf.Inset.melloRep = Replace(cf.Inset, { as = "common-insideframe", parent = cf, rect = cf.Inset, level = -1, dim = false }) or false
+		repOf[cf.Inset] = Replace(cf.Inset, { as = "common-insideframe", parent = cf, rect = cf.Inset, level = -1, dim = false }) or false
 	end
 	-- the side tabs (RightSideTabTemplate: the 64 px tab plate, the icon)
 	for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab" }) do
@@ -316,7 +320,7 @@ local function BuildSkin()
 			if plate and plate ~= tab.Icon then
 				local extra = {}
 				for _, region in ipairs({ tab:GetRegions() }) do
-					if region:GetObjectType() == "Texture" and region ~= plate and region ~= tab.Icon and not region.kitPiece then
+					if region:GetObjectType() == "Texture" and region ~= plate and region ~= tab.Icon and not pieceOf[region] then
 						extra[#extra + 1] = region
 					end
 				end
@@ -345,7 +349,7 @@ local function BuildSkin()
 			end
 		end
 		if list.InsetFrame then
-			list.InsetFrame.melloRep = Replace(list.InsetFrame, { as = "CommunitiesListBox", parent = list, rect = list.InsetFrame, level = LevelAbove(list, list.InsetFrame), alsoFade = extra }) or false
+			repOf[list.InsetFrame] = Replace(list.InsetFrame, { as = "CommunitiesListBox", parent = list, rect = list.InsetFrame, level = LevelAbove(list, list.InsetFrame), alsoFade = extra }) or false
 		end
 		-- the list box's stone under the inner panel (2e): a region of the
 		-- list over its body tile (ARTWORK 1, the game's Bg sublevel) and
@@ -366,7 +370,7 @@ local function BuildSkin()
 			-- the rail at the inset's own level (100), over the rows: edges
 			-- only (the rule's stone body would cover them; the game's inset
 			-- has no body here either)
-			members.InsetFrame.melloRep = Replace(members.InsetFrame, { as = "common-insideframe", parent = members, rect = members.InsetFrame, level = LevelAbove(members, members.InsetFrame), body = false }) or false
+			repOf[members.InsetFrame] = Replace(members.InsetFrame, { as = "common-insideframe", parent = members, rect = members.InsetFrame, level = LevelAbove(members, members.InsetFrame), body = false }) or false
 			-- ... so the inner panel (2e) is a region of the member list
 			-- itself, under its rows and watermark, inside that rail (the
 			-- roster's rows lay on the page's stone between their plates)
@@ -391,7 +395,7 @@ local function BuildSkin()
 	-- the chat
 	local chat = cf.Chat
 	if chat and chat.InsetFrame then
-		chat.InsetFrame.melloRep = Replace(chat.InsetFrame, { as = "common-insideframe", parent = chat, rect = chat.InsetFrame, level = LevelAbove(chat, chat.InsetFrame), body = false }) or false
+		repOf[chat.InsetFrame] = Replace(chat.InsetFrame, { as = "common-insideframe", parent = chat, rect = chat.InsetFrame, level = LevelAbove(chat, chat.InsetFrame), body = false }) or false
 		-- the messages on the inner panel (2e), a region of the chat under
 		-- its message frame, on the inset's rect (which the game keeps round
 		-- the chat when it hides the inset in the minimized window)
@@ -434,11 +438,11 @@ local function BuildSkin()
 		end
 		local function SkinColumns()
 			for _, button in ipairs({ columns:GetChildren() }) do
-				if button.Middle and button.Left and button.Right and button.melloRep == nil then
+				if button.Middle and button.Left and button.Right and repOf[button] == nil then
 					local highlight = button.GetHighlightTexture and button:GetHighlightTexture()
 					-- cap-less on every column: the one wide column (Note) took
 					-- the caps, its gem under the text, while the narrow ones could not
-					button.melloRep = Replace(button.Middle, { as = "ColumnDisplayButton", rect = button, button = button, capless = true,
+					repOf[button] = Replace(button.Middle, { as = "ColumnDisplayButton", rect = button, button = button, capless = true,
 						alsoFade = { button.Left, button.Right, highlight } }) or false
 				end
 			end
@@ -484,7 +488,7 @@ local function BuildSkin()
 			-- visibility (the challenges section is hidden in this client)
 			local bars = {}
 			for _, region in ipairs({ info:GetRegions() }) do
-				if region:GetObjectType() == "Texture" and not region.kitPiece then
+				if region:GetObjectType() == "Texture" and not pieceOf[region] then
 					local layer = region:GetDrawLayer()
 					local h = region:GetHeight()
 					if layer == "ARTWORK" and h and h > 0 and h <= 20 then
@@ -530,7 +534,7 @@ local function BuildSkin()
 		local news = details.News
 		if news then
 			for _, region in ipairs({ news:GetRegions() }) do
-				if region:GetObjectType() == "Texture" and not region.kitPiece and region ~= news.Header and region:GetDrawLayer() == "BACKGROUND" and (region:GetHeight() or 0) > 100 then
+				if region:GetObjectType() == "Texture" and not pieceOf[region] and region ~= news.Header and region:GetDrawLayer() == "BACKGROUND" and (region:GetHeight() or 0) > 100 then
 					Replace(region, { as = "GuildFrame-Sheet" })
 				end
 			end
@@ -542,10 +546,10 @@ local function BuildSkin()
 			end
 			-- the news rows (GP1): the plain plate, hover from the row; the blue highlight faded
 			Kit:HookScrollBoxRows(news.ScrollBox, function(row)
-				if row.melloRep == nil then
+				if repOf[row] == nil then
 					local highlight = row.GetHighlightTexture and row:GetHighlightTexture()
 					local anchor = highlight or row.header
-					row.melloRep = anchor and Replace(anchor, { as = "GuildNewsRow", rect = row, button = row, noFade = anchor ~= highlight,
+					repOf[row] = anchor and Replace(anchor, { as = "GuildNewsRow", rect = row, button = row, noFade = anchor ~= highlight,
 						alsoFade = highlight and anchor ~= highlight and { highlight } or nil }) or false
 				end
 			end, IsActive)
@@ -561,7 +565,7 @@ local function BuildSkin()
 		EyePanel(prefs, { rect = prefs })
 		for _, key in ipairs({ "LocaleDropdown", "DatacenterDropdown" }) do
 			local dd = prefs[key]
-			if dd and dd.melloRep == nil then
+			if dd and repOf[dd] == nil then
 				local middle, extra = nil, {}
 				for _, region in ipairs({ dd:GetRegions() }) do
 					if region:GetObjectType() == "Texture" then
@@ -579,13 +583,13 @@ local function BuildSkin()
 						end
 					end
 				end
-				dd.melloRep = middle and Replace(middle, { as = "UIDropDownMenu", rect = dd, fitHeight = 24, alsoFade = extra }) or false
+				repOf[dd] = middle and Replace(middle, { as = "UIDropDownMenu", rect = dd, fitHeight = 24, alsoFade = extra }) or false
 			end
 		end
 	end
 
 	-- every common control left (scroll bars, the info page's scroll frames,
-	-- the settings page's Apply buttons); explicit reps above carry melloRep
+	-- the settings page's Apply buttons); explicit reps above are in MelloUI.Kept.repOf
 	Kit:SweepControls(cf, Replace, skin)
 
 	return skin
@@ -717,3 +721,7 @@ SlashCmdList.MELLOGDUMP = function(msg)
 	Kit:DumpWindow(CommunitiesFrame, skin, msg)
 	MelloUI:ShowLog("gdump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { rimOf = rimOf }

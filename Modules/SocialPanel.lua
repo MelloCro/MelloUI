@@ -31,6 +31,8 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- 2026-09-24: the shared handlers)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("SocialPanel", {
 	title = "Social Panel Kit",
@@ -341,7 +343,7 @@ local function MakePlate(row)
 	end
 	plateOf[row] = nil
 	local rep = Replace(highlight, { as = "FriendsRowHighlight", rect = row, button = row })
-	row.melloRep = rep or false
+	repOf[row] = rep or false
 	if not rep then
 		-- (no piece for it, the tuning's "leave this one alone": the game's own)
 		Kit:Unfade(highlight)
@@ -389,10 +391,10 @@ local RowUnlock = Shared("UnlockHighlight on a list row", function(row)
 end)
 
 local function HoverPlate(row, highlight)
-	if not (row and highlight) or row.melloRep ~= nil then
+	if not (row and highlight) or repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	plateOf[row] = highlight
 	if active then
 		Kit:Fade(highlight)
@@ -412,8 +414,8 @@ end
 -- the invite button (shown by the game for a Battle.net friend in the game):
 -- on the cog, made when it shows
 local function MakeInvite(invite)
-	if invite.melloRep == nil and invite:GetNormalTexture() then
-		invite.melloRep = Replace(invite:GetNormalTexture(), { as = "friendslist-invitebutton-default-normal", button = invite, noFade = true }) or false
+	if repOf[invite] == nil and invite:GetNormalTexture() then
+		repOf[invite] = Replace(invite:GetNormalTexture(), { as = "friendslist-invitebutton-default-normal", button = invite, noFade = true }) or false
 	end
 end
 
@@ -422,8 +424,8 @@ end
 -- do" mark, so the sweep passes it; on its first show (or in its idle turn)
 -- the mark goes and the sweep of its row makes its look
 local function Unclaim(button)
-	if button.melloRep == false then
-		button.melloRep = nil
+	if repOf[button] == false then
+		repOf[button] = nil
 		local row = button:GetParent()
 		if row then
 			Classify(row)
@@ -434,18 +436,18 @@ end
 -- A friends list element (FriendsListButtonTemplate rows, pending-invite
 -- headers, the online / offline divider, invite rows).
 local function SkinFriendRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
 	if row.BG and row.RightArrow then
-		row.melloRep = Replace(row.BG, { as = "FriendsPendingHeader", rect = row, alsoFade = { row.Flash } }) or false
+		repOf[row] = Replace(row.BG, { as = "FriendsPendingHeader", rect = row, alsoFade = { row.Flash } }) or false
 		return
 	end
 	local highlight = row.highlight or (row.GetHighlightTexture and row:GetHighlightTexture())
 	if highlight and row.name then
 		HoverPlate(row, highlight)
 		local invite = row.travelPassButton
-		if invite and invite.GetNormalTexture and invite:GetNormalTexture() and invite.melloRep == nil then
+		if invite and invite.GetNormalTexture and invite:GetNormalTexture() and repOf[invite] == nil then
 			if invite:IsShown() then
 				MakeInvite(invite)
 			else
@@ -453,11 +455,11 @@ local function SkinFriendRow(row)
 			end
 		end
 		local summon = row.summonButton
-		if summon and summon.melloRep == nil then
+		if summon and repOf[summon] == nil then
 			if summon:IsShown() then
 				Classify(row)
 			else
-				summon.melloRep = false
+				repOf[summon] = false
 				Later(summon, nil, Unclaim)
 			end
 		end
@@ -466,10 +468,10 @@ local function SkinFriendRow(row)
 	-- a divider: one texture, the online / offline line
 	local regions = { row:GetRegions() }
 	if #regions == 1 and regions[1]:GetObjectType() == "Texture" then
-		row.melloRep = Replace(regions[1], { as = "UI-FriendsFrame-OnlineDivider", rect = row }) or false
+		repOf[row] = Replace(regions[1], { as = "UI-FriendsFrame-OnlineDivider", rect = row }) or false
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 end
 
 local function SkinListRow(row)
@@ -486,20 +488,20 @@ end
 -- makes its two plates yet; they are made on its first show or in its idle
 -- turn
 local function MakeTab(tab)
-	if tab.melloRep == false then
-		tab.melloRep = nil
+	if repOf[tab] == false then
+		repOf[tab] = nil
 		Kit:SkinPanelTab(tab, Replace, skin)
 	end
 end
 
 local function SkinTab(tab)
-	if tab.melloRep ~= nil then
+	if repOf[tab] ~= nil then
 		return
 	end
 	if tab:IsShown() then
 		Kit:SkinPanelTab(tab, Replace, skin)
 	else
-		tab.melloRep = false
+		repOf[tab] = false
 		Later(tab, nil, MakeTab)
 	end
 end
@@ -529,8 +531,8 @@ local function SkinHeader(header)
 	local bnet = header.BattlenetFrame
 	if bnet then
 		local bg = Kit:FirstTexture(bnet)
-		if bg and bnet.melloRep == nil then
-			bnet.melloRep = Replace(bg, { as = "battlenet-friends-main", rect = bnet }) or false
+		if bg and repOf[bnet] == nil then
+			repOf[bnet] = Replace(bg, { as = "battlenet-friends-main", rect = bnet }) or false
 		end
 	end
 end
@@ -570,9 +572,9 @@ local BOX_TONE = "mainWindow"
 local function SkinRaidGroups()
 	for i = 1, 8 do
 		local group = _G["RaidGroup" .. i]
-		if group and group.melloRep == nil then
+		if group and repOf[group] == nil then
 			local outline = Kit:FirstTexture(group)
-			group.melloRep = outline and Replace(outline, { as = "UI-RaidFrame-GroupOutline", rect = group,
+			repOf[group] = outline and Replace(outline, { as = "UI-RaidFrame-GroupOutline", rect = group,
 				dim = 0.85, dimColor = BOX_TONE }) or false
 		end
 	end

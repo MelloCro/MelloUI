@@ -24,7 +24,7 @@
 -- Elite / Boss marks (0.15.0, Modules/KitMarks.lua, the option `marks`) put
 -- the target's and focus's ring and level orb in the unit's metal with a
 -- crest on the ring's top gem instead (below). Bar Textures drops its shaped
--- mask on a bracketed bar (`melloKitBracket`) so the flat fill spans the rect
+-- mask on a bracketed bar (MelloUI.Kept.bracketOf) so the flat fill spans the rect
 -- under the rails.
 -- Covers the Dark Mode group "unitframes" while on (Kit:Cover).
 -- The UI shade (0.14.0, Modules/KitShade.lua, its area "unitframes"): each
@@ -40,6 +40,24 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("UnitFramePanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local bracketOf = MelloUI.Kept.bracketOf
+local kitRingOn = MelloUI.Kept.kitRingOn
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
+
+-- (0.19.8) Frame Backdrop's looks: none, the action bars' gems, or a border
+-- library style (all but its Backdrop: the gems are that look here, as on
+-- the bars)
+local BACKDROP_LOOKS = { { value = "none", label = "None" }, { value = "red", label = "Red gems" },
+	{ value = "iron", label = "Iron gems" } }
+for _, look in ipairs(Kit.squareLooks or {}) do
+	if look.style ~= "backdrop" then
+		BACKDROP_LOOKS[#BACKDROP_LOOKS + 1] = { value = look.value, label = look.label }
+	end
+end
 
 local M = MelloUI:RegisterModule("UnitFramePanel", {
 	title = "Unit Frames Kit",
@@ -47,7 +65,7 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 	-- (include: the option below sits under this row on UI Modifications' HUD tab)
 	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100 },
+	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone" },
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
@@ -61,6 +79,12 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 		{ type = "slider", key = "barBackgroundAlpha", name = "Bar Background Opacity", min = 0, max = 100, step = 5,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "How solid the bars' background is: lower lets the world show through the empty part of a bar." },
+		{ type = "dropdown", key = "backdrop", name = "Frame Backdrop", values = BACKDROP_LOOKS, new = "0.19.8",
+		  desc = "A backdrop round the player, target and focus frames: stone behind the portrait, the name and the bars, "
+			.. "framed by the red or iron gems of the action bars' backdrops or by one of the border styles of Look > "
+			.. "Borders (its inner corners mitred)." },
+		{ type = "dropdown", key = "backdropBackground", name = "Frame Backdrop Background", values = Kit.buttonLooks.backgrounds,
+		  new = "0.19.8", desc = "What lies behind the player, target and focus frames inside their backdrop." },
 	},
 })
 
@@ -152,7 +176,7 @@ end
 -- DrawnScale's measure (the piece's painted width, Kit:Size)
 local Drawn_OnSetSize = Perf.Shared("SetSize on a unit frame's ring or orb: its shade", function(tex, w)
 	w = Num(w)
-	local pw = w and w > 0 and tex.kitShadow and tex.kitName and Kit:Size(tex.kitName, 1)
+	local pw = w and w > 0 and tex.kitShadow and pieceNameOf[tex] and Kit:Size(pieceNameOf[tex], 1)
 	if pw and pw > 0 then
 		Kit:ShadowFit(tex, w / pw)
 	end
@@ -393,7 +417,7 @@ local function DressTrough(rep)
 		trough:SetTexture(TroughFile(look))
 		trough:SetTexCoord(0, 1, 0, 1)
 		Kit:Paint(trough, key, "vertex")
-	elseif trough.kitName ~= "bars/trough" then
+	elseif pieceNameOf[trough] ~= "bars/trough" then
 		Kit:Unpaint(trough, "vertex")
 		trough:SetVertexColor(1, 1, 1)
 		Kit:Apply(trough, "bars/trough")
@@ -423,28 +447,28 @@ end
 -- A bar's bracket (B3): regions of the bar itself in the layer over its
 -- fill, fitted to `rect`; Bar Textures told to drop its mask.
 local function SkinBar(bar, rect, picture, mirrored, health)
-	if not (bar and rect and picture) or bar.melloRep ~= nil then
-		return bar and bar.melloRep or nil
+	if not (bar and rect and picture) or repOf[bar] ~= nil then
+		return bar and repOf[bar] or nil
 	end
 	local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(bar)
 	-- a health bar keeps its end gem red (UnitFrameHealthBar), the others are iron
 	local key = (health and "UnitFrameHealthBar" or "UnitFrameBar") .. (mirrored and "Mirrored" or "")
 	local rep = Replace(picture, { as = key, parent = bar, rect = rect, noFade = true,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub })
-	bar.melloRep = rep or false
+	repOf[bar] = rep or false
 	if not rep then
 		return nil
 	end
 	DressTrough(rep)
 	local textures = MelloUI:GetModule("BarTextures")
 	rep.onEnable = function()
-		bar.melloKitBracket = true
+		bracketOf[bar] = true
 		if textures and textures.RefreshMask then
 			textures:RefreshMask(bar)
 		end
 	end
 	rep.onDisable = function()
-		bar.melloKitBracket = nil
+		bracketOf[bar] = nil
 		if textures and textures.RefreshMask then
 			textures:RefreshMask(bar)
 		end
@@ -477,6 +501,8 @@ end
 local refits = setmetatable({}, { __mode = "k" })
 -- (0.19.0) [portrait] = the rep of the ring round it, for M:RingOf
 local ringOf = setmetatable({}, { __mode = "k" })
+-- (0.19.8) a ring's piece changed (Portrait Ring, the border library's rings: Kit:LayPortraitRing) -- below
+local RingChanged
 
 -- The ring (R1) as a region in the faded picture's layer, its opening on the
 -- portrait; the portrait (and a mask with its own anchors) then fitted to
@@ -503,7 +529,7 @@ local function SkinRing(picture, portrait, mask, key)
 			pcall(Kit.FitPortrait, Kit, mask, rep)
 		end
 		fitRing, fitW, fitH = nil, nil, nil
-		if portrait.melloSaved then
+		if portraitSavedOf[portrait] then
 			local ok, rw, w, h = pcall(ReadFit, rep, portrait)
 			if ok and rw then
 				fitRing, fitW, fitH = rw, w, h
@@ -516,21 +542,21 @@ local function SkinRing(picture, portrait, mask, key)
 	-- texture, a render or the medallion), and the game never re-anchors a
 	-- portrait (only its art swaps re-size it, which this sees)
 	local function Fitted()
-		if not (fitRing and portrait.melloSaved) or (mask and not mask.melloSaved) then
+		if not (fitRing and portraitSavedOf[portrait]) or (mask and not portraitSavedOf[mask]) then
 			return false
 		end
 		local ok, rw, w, h = pcall(ReadFit, rep, portrait)
 		return ok and rw == fitRing and w == fitW and h == fitH
 	end
 	rep.onEnable = function()
-		portrait.melloKitRing = true
+		kitRingOn[portrait] = true
 		if icons and icons.RefreshPortraits then
 			icons:RefreshPortraits({ portrait })
 		end
 		Fit()
 	end
 	rep.onDisable = function()
-		portrait.melloKitRing = nil
+		kitRingOn[portrait] = nil
 		pcall(Kit.UnfitPortrait, Kit, portrait)
 		if mask then
 			pcall(Kit.UnfitPortrait, Kit, mask)
@@ -567,6 +593,13 @@ local function SkinRing(picture, portrait, mask, key)
 	hooksecurefunc(portrait, "SetSize", Refit)
 	hooksecurefunc(portrait, "SetTexture", Refit)
 	refits[portrait] = Refit
+	-- (0.19.8) the ring in the Portrait Ring's choice (the gem ring, or a ring style of the border library's)
+	if Kit.PortraitRing then
+		Kit:PortraitRing(rep, function()
+			Refit()
+			RingChanged()
+		end)
+	end
 	return rep
 end
 
@@ -587,11 +620,12 @@ local TUCK = 2
 local tucked = {}          -- bars with saved anchors (re-anchored at least once)
 local tuckable = {}        -- every bar registered (a hidden frame's bars get their first tuck later)
 
+local tuckOf = setmetatable({}, { __mode = "k" })   -- [bar] = { points, w, h }: its place before the tuck
 -- (one function for every bar, called protected: nothing made per call)
 local function TuckBarNow(bar, tex, mirrored)
 	do
 		local rl, rb, rw, rh = tex:GetRect()
-		local piece = tex.kitPiece
+		local piece = pieceOf[tex]
 		if not (rl and piece and piece.box) then
 			return
 		end
@@ -612,12 +646,12 @@ local function TuckBarNow(bar, tex, mirrored)
 		end
 		local reach = math.sqrt(radius * radius - dy * dy)
 		local tuckX = mirrored and (cx - reach + TUCK) or (cx + reach - TUCK)
-		if not bar.melloTuck then
+		if not tuckOf[bar] then
 			local points = {}
 			for i = 1, bar:GetNumPoints() do
 				points[i] = { bar:GetPoint(i) }
 			end
-			bar.melloTuck = { points = points, w = w, h = h }
+			tuckOf[bar] = { points = points, w = w, h = h }
 			tucked[#tucked + 1] = bar
 		end
 		local _, rel = bar:GetPoint(1)
@@ -651,13 +685,14 @@ local function TuckBar(bar, ring, mirrored)
 	return ok
 end
 
+local retuckOf = setmetatable({}, { __mode = "k" })   -- [bar] = its tuck laid again
 local function TuckBars(ring, bars, mirrored)
 	if not ring then
 		return
 	end
 	for _, bar in ipairs(bars) do
 		if bar then
-			bar.melloRetuck = function()
+			retuckOf[bar] = function()
 				if active then
 					TuckBar(bar, ring, mirrored)
 				end
@@ -671,7 +706,7 @@ end
 local function UntuckBars()
 	local kept = {}
 	for _, bar in ipairs(tucked) do
-		local saved = bar.melloTuck
+		local saved = tuckOf[bar]
 		if saved then
 			local ok = pcall(function()
 				bar:ClearAllPoints()
@@ -681,7 +716,7 @@ local function UntuckBars()
 				bar:SetSize(saved.w, saved.h)
 			end)
 			if ok then
-				bar.melloTuck = nil
+				tuckOf[bar] = nil
 			else
 				-- refused (the bars are protected; in combat): the game's
 				-- anchors stay saved for the next untuck
@@ -692,12 +727,17 @@ local function UntuckBars()
 	tucked = kept
 end
 
+-- (0.19.8) the frames' backdrops laid again whenever their bars are (their
+-- shape moved with them) -- below
+local LayoutFrameBackdrops
+
 local function RetuckAll()
 	for _, bar in ipairs(tuckable) do
-		if bar.melloRetuck then
-			bar.melloRetuck()
+		if retuckOf[bar] then
+			retuckOf[bar]()
 		end
 	end
+	LayoutFrameBackdrops()
 end
 
 -- The ring drawn OVER the bars' ring-side ends (user, 2026-09-21: the bars
@@ -715,18 +755,18 @@ local function RingCover(ring, bars, mirrored, container)
 	local holder = CreateFrame("Frame", nil, container)
 	holder:EnableMouse(false)
 	local cover = holder:CreateTexture(nil, "ARTWORK")
-	cover.kitPiece = true
-	Kit:Apply(cover, tex.kitName)
+	pieceOf[cover] = true
+	Kit:Apply(cover, pieceNameOf[tex])
 	cover:SetAllPoints(holder)
 	-- the crop, as fractions of the ring (Lay's), and the ring's piece on the
 	-- cover: again when the ring wears another piece (an Elite / Rare mark's
 	-- metal twin, the same shape): texture calls only, so in a fight too
 	local fx0, fx1, fy0, fy1
 	local function Crop()
-		if cover.kitName ~= tex.kitName then
-			Kit:Apply(cover, tex.kitName)
+		if pieceNameOf[cover] ~= pieceNameOf[tex] then
+			Kit:Apply(cover, pieceNameOf[tex])
 		end
-		local piece = tex.kitPiece
+		local piece = pieceOf[tex]
 		if not (piece and fx0) then
 			return
 		end
@@ -804,6 +844,7 @@ local function RingCover(ring, bars, mirrored, container)
 	return ring.cover
 end
 
+local savedNameOf = setmetatable({}, { __mode = "k" })   -- [name] = { points, width, justify }: its place before the skin
 -- The name centred on its band's rect (as a window's title on its plate;
 -- the plate itself retired 2026-10-03, the soft shade behind the name
 -- instead: NameShade): the game's anchors saved and put back on disable.
@@ -811,12 +852,12 @@ local function CenterName(fs, rect)
 	if not (fs and rect) then
 		return
 	end
-	if not fs.melloSavedName then
+	if not savedNameOf[fs] then
 		local points = {}
 		for i = 1, fs:GetNumPoints() do
 			points[i] = { fs:GetPoint(i) }
 		end
-		fs.melloSavedName = { points = points, width = fs:GetWidth(), justify = fs:GetJustifyH() }
+		savedNameOf[fs] = { points = points, width = fs:GetWidth(), justify = fs:GetJustifyH() }
 	end
 	local function Place()
 		if not active then
@@ -836,7 +877,7 @@ end
 
 local function RestoreNames()
 	for _, entry in ipairs(skin.names) do
-		local fs, saved = entry.fs, entry.fs.melloSavedName
+		local fs, saved = entry.fs, savedNameOf[entry.fs]
 		if saved then
 			fs:ClearAllPoints()
 			for _, pt in ipairs(saved.points) do
@@ -846,7 +887,7 @@ local function RestoreNames()
 				fs:SetWidth(saved.width)
 			end
 			fs:SetJustifyH(saved.justify or "LEFT")
-			fs.melloSavedName = nil
+			savedNameOf[fs] = nil
 		end
 	end
 end
@@ -1042,7 +1083,7 @@ local function MarkUnit(entry)
 	entry.kind = kind
 	local ring = entry.ring
 	if ring and ring.tex then
-		Kit:WearMark(ring.tex, ring.rule.piece, kind)
+		Kit:WearMark(ring.tex, ring.ringPiece or ring.rule.piece, kind)
 		if ring.cover then
 			ring.cover.Repiece()
 		end
@@ -1253,6 +1294,7 @@ local function SkinPlayer()
 	Shade(u, SkinBar(health, health, picture, false, true))
 	local mana = main.ManaBarArea and main.ManaBarArea.ManaBar
 	Shade(u, SkinBar(mana, mana, picture, false))
+	skin.backdrops[pf] = { root = pf, ring = skin.playerRing, parts = { band, health, mana } }
 	TuckBars(skin.playerRing, { health, mana }, false)
 	RingCover(skin.playerRing, { health, mana }, false, container)
 	Shade(u, SkinCircle(main.LevelBackgroundCircle, _G.PlayerLevelText), true)
@@ -1288,6 +1330,7 @@ local function SkinTargetLike(frame)
 	end
 	local ring = SkinRing(picture, container.Portrait)   -- its mask follows the portrait's anchors
 	Shade(u, ring, true)
+	skin.backdrops[frame] = { root = frame, ring = ring, parts = { main.ReputationColor, main.HealthBarsContainer, main.ManaBar } }
 	local health = main.HealthBarsContainer and main.HealthBarsContainer.HealthBar
 	Shade(u, SkinBar(health, health, picture, true, true))
 	Shade(u, SkinBar(main.ManaBar, main.ManaBar, picture, true))
@@ -1412,9 +1455,9 @@ local function NameBandRect(frame, name, health)
 	-- scaled to the frame: the party portrait (37) against the player's (60)
 	local okR, ratio = pcall(function()
 		local pp = PlayerFrame.PlayerFrameContainer.PlayerPortrait
-		local saved = pp.melloSaved
+		local saved = portraitSavedOf[pp]
 		local pw = saved and saved.w or pp:GetWidth()
-		local mine = frame.Portrait.melloSaved and frame.Portrait.melloSaved.w or frame.Portrait:GetWidth()
+		local mine = portraitSavedOf[frame.Portrait] and portraitSavedOf[frame.Portrait].w or frame.Portrait:GetWidth()
 		return mine / pw
 	end)
 	if okR and ratio and not Secret(ratio) and ratio > 0 and ratio < 1 then
@@ -1593,8 +1636,9 @@ local function Build()
 		-- (units / due: the shade's units waiting for a first show, and those
 		-- shown, made out of combat; marks: the marked frames by their unit)
 		-- nameShades: [name] = its shade (NameShade)
+		-- backdrops: [frame] = its Frame Backdrop's parts (0.19.8, LayoutFrameBackdrops)
 		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {}, marks = {},
-			nameShades = {} }
+			nameShades = {}, backdrops = {} }
 		-- (taken with the first dressing, once)
 		MelloUI:On("setting", OnBarSetting, "Unit Frames Kit bar background")
 	end
@@ -1603,6 +1647,109 @@ local function Build()
 	SkinTargetLike(FocusFrame)
 	SkinPet()
 	SkinParty()
+end
+
+-- (0.19.8) a ring in another piece (Portrait Ring): the metal twins of the
+-- new ring, the bars' ends tucked under its rim again, the covers cut from
+-- it (each portrait was fitted to the new opening by its own Refit)
+--------------------------------------------------------------------------------
+-- The frame backdrop (0.19.8, the border library's stage 3: "one backdrop
+-- round a unit frame"; the user, 2026-10-06: "Do them now"): the player's,
+-- the target's and the focus's frame on a backdrop of its own, drawn by the
+-- kit's one backdrop system (Modules/KitBackdrop.lua, the action bars'): the
+-- outline round the ring's round body and the name band and bars beside it
+-- (one shape: inner corners where the bars meet the ring), the background
+-- through it, its border the gems' frame (red / iron, the L joint inside) or
+-- a border library style (its inner corners mitred). Off by default. On a
+-- holder of the frame's own, in the BACKGROUND strata (behind all of the
+-- frame), at the gems' frame's scale of an action button at the frame's own
+-- scale; laid out of combat, again whenever the frame's bars are (RetuckAll:
+-- a target change, the game's art swaps, the ring's style). Its rails cast
+-- no shadow of their own: the frame's shade lies on its stone.
+--------------------------------------------------------------------------------
+local BACKDROP_GEMS = { red = "deco/barframe_red", iron = "deco/barframe_iron" }
+local BACKDROP_UNITS = 45   -- the gems' frame's scale: an action button's (45 units, 97 piece px) at the frame's scale
+local BACKDROP_GAP = 0.12   -- of that button: stone between the frame's parts and the rails (the action bars' gap)
+local SafeScreenRect = MelloUI.Safe.ScreenRect
+
+local function LayFrameBackdrop(e, value, bg)
+	local f, root = e.holder, e.root
+	local gems = BACKDROP_GEMS[value]
+	local styleId = not gems and value or nil
+	if value == "none" or (styleId and not (Kit.BorderStyles and Kit.BorderStyles[styleId])) or not Kit.DrawBackdrop then
+		if f then
+			f:Hide()
+		end
+		return
+	end
+	local eff = MelloUI.Safe.Finite(MelloUI.Safe.Call(root, "GetEffectiveScale"))
+	local tex = e.ring and e.ring.tex
+	local piece = tex and pieceOf[tex]
+	local l, b, r, t = SafeScreenRect(tex)
+	if not (eff and eff > 0 and piece and piece.radius and l) then
+		return
+	end
+	-- the ring's round body as a square (its studs and gems stand out of it)
+	local cx, cy = (l + r) / 2, (b + t) / 2
+	local half = (r - l) * piece.radius / piece.w
+	-- the name band and the bars as one rect
+	local pl, pb, pr, pt
+	for _, region in ipairs(e.parts) do
+		local al, ab, ar, at = SafeScreenRect(region)
+		if al then
+			pl, pb = math.min(pl or al, al), math.min(pb or ab, ab)
+			pr, pt = math.max(pr or ar, ar), math.max(pt or at, at)
+		end
+	end
+	local ks = BACKDROP_UNITS * eff / 97
+	local gap = BACKDROP_GAP * BACKDROP_UNITS * eff
+	e.pads = e.pads or { {}, {}, {}, {} }
+	local ring, bars = e.pads[3], e.pads[4]
+	ring[1], ring[2], ring[3], ring[4] = cx - half, cy - half, cx + half, cy + half
+	local pads = e.padList or {}
+	e.padList = pads
+	pads[1] = Kit:BackdropPad(ring, ks, gap, e.pads[1])
+	pads[2] = nil
+	if pl then
+		bars[1], bars[2], bars[3], bars[4] = pl, pb, pr, pt
+		pads[2] = Kit:BackdropPad(bars, ks, gap, e.pads[2])
+	end
+	if not f then
+		f = Kit:BackdropHolder(root)
+		e.holder = f
+	end
+	if not Kit:DrawBackdrop(f, pads, gems or BACKDROP_GEMS.red, bg, ks, styleId) then
+		f:Hide()
+	end
+end
+
+local BACKDROP_KEY = "Unit frames: backdrops"   -- (Kit:WhenOutOfCombat's key: one layout waits at a time)
+function LayoutFrameBackdrops()
+	if not skin then
+		return
+	end
+	local value = active and M.db and M.db.backdrop or "none"
+	if value ~= "none" and InCombatLockdown() then
+		-- (a holder on a protected frame, laid where the frame stands: after the fight)
+		Kit:WhenOutOfCombat(LayoutFrameBackdrops, BACKDROP_KEY)
+		return
+	end
+	local bg = M.db and M.db.backdropBackground or "stone"
+	for _, e in pairs(skin.backdrops) do
+		LayFrameBackdrop(e, value, bg)
+	end
+end
+
+function RingChanged()
+	if not active then
+		return
+	end
+	MarkAll()
+	RetuckAll()
+	for _, cover in ipairs(skin and skin.covers or {}) do
+		cover.Repiece()
+		cover.Refit()
+	end
 end
 
 local function Activate()
@@ -1628,6 +1775,9 @@ local function Activate()
 		cover.Refit()
 	end
 	Combo.Lay()
+	-- (0.19.8) the personal resource display's border (the border library's
+	-- Personal Resource Border: Modules/KitBorders.lua) with the skin
+	Kit:PersonalBordersShown(true)
 	Kit:Cover("unitframes")
 	Kit:Cover("partyframes")
 end
@@ -1646,9 +1796,12 @@ local function Deactivate()
 	for _, cover in ipairs(skin.covers) do
 		cover.holder:Hide()
 	end
+	-- (the frames' backdrops put away: `active` is off, so the layout hides them)
+	LayoutFrameBackdrops()
 	-- (the plain pieces back, the marks' events off)
 	MarksSync()
 	Combo.Restore()
+	Kit:PersonalBordersShown(false)
 	Kit:Uncover("unitframes")
 	Kit:Uncover("partyframes")
 end
@@ -1735,7 +1888,7 @@ local GAME_BADGE_REACH = 13  -- the game's PvP badge circle (26 px, its top at t
 local function FarEnd(main)
 	local bars = main and main.HealthBarsContainer
 	local health = bars and bars.HealthBar or nil
-	local rep = active and health and health.melloRep
+	local rep = active and health and repOf[health]
 	local strip = rep and rawget(rep, "strip")
 	if strip and strip:IsShown() then
 		return strip
@@ -1749,7 +1902,7 @@ end
 function M:RingOf(portrait)
 	local rep = active and portrait and ringOf[portrait]
 	local tex = rep and rep.tex
-	if not (tex and tex.kitPiece) then
+	if not (tex and pieceOf[tex]) then
 		return nil
 	end
 	-- (a secret or refused answer counts as shown)
@@ -1774,7 +1927,7 @@ function M:ReminderAnchor()
 	local main = content and content.PlayerFrameContentMain
 	local ring = active and skin and skin.playerRing
 	local tex = ring and ring.tex
-	if tex and tex.kitPiece and tex:IsShown() then
+	if tex and pieceOf[tex] and tex:IsShown() then
 		return tex, "LEFT", 0, FarEnd(main)
 	end
 	local container = pf.PlayerFrameContainer
@@ -1834,6 +1987,8 @@ function M:OnSettingChanged(key)
 		MarksSync()
 	elseif key == "barBackground" or key == "barBackgroundAlpha" then
 		DressTroughs()
+	elseif key == "backdrop" or key == "backdropBackground" then
+		LayoutFrameBackdrops()
 	end
 end
 
@@ -1962,7 +2117,7 @@ SlashCmdList.MELLOUFDUMP = function(msg)
 			-- its mark (Elite / Rare ...: the metal twin its ring wears)
 			local mark = skin and skin.marks[key == "tot" and "targettarget" or key]
 			if mark then
-				MelloUI:Print("mark: %s, ring %s", tostring(mark.kind or "none"), tostring(mark.ring and mark.ring.tex and mark.ring.tex.kitName))
+				MelloUI:Print("mark: %s, ring %s", tostring(mark.kind or "none"), tostring(mark.ring and mark.ring.tex and pieceNameOf[mark.ring.tex]))
 			end
 			if mode == "names" then
 				DumpNames(frame)
@@ -2002,3 +2157,7 @@ SlashCmdList.MELLOUFDUMP = function(msg)
 	end
 	MelloUI:ShowLog("ufdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { retuckOf = retuckOf, savedNameOf = savedNameOf, tuckOf = tuckOf }

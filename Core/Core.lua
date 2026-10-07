@@ -92,6 +92,18 @@
 local ADDON_NAME, ns = ...
 
 local MelloUI = CreateFrame("Frame")
+
+-- What MelloUI keeps about the game's frames and regions it dresses: beside
+-- them in weak-keyed tables by name (MelloUI.Kept.repOf[button]), never on
+-- them (hard rule 1: no key written on a game frame or table; 0.19.8). Made
+-- here, in the first file, so every file reads the same tables whatever
+-- loads after it; the kit names them too (Modules/Kit.lua: MelloUI.Kept.repOf is
+-- MelloUI.Kept.repOf). A name read the first time is made then.
+MelloUI.Kept = setmetatable({}, { __index = function(kept, name)
+	local t = setmetatable({}, { __mode = "k" })
+	rawset(kept, name, t)
+	return t
+end })
 ns.MelloUI = MelloUI
 _G.MelloUI = MelloUI
 
@@ -329,6 +341,13 @@ MelloUI.Meaning = {
 	-- (0.18.5, the Rare Alert, the user's pick A of rare_alert_sketch: a rare's
 	-- name in the game's silver, as its crest's metal; a rare elite's stays gold)
 	rareSilver = Hex("#D2D6DC"),       -- (meaning colour)
+	-- (0.19.8, the user's pick C of button_press_sketch: an action's icon out
+	-- of range, short of mana; Modules/ActionButtons.lua. gameMana: the
+	-- game's own pale blue for it, ActionButton.lua's UpdateUsable, which the
+	-- cover deepens into actionMana)
+	actionRange = Hex("#FF4028"),      -- (meaning colour)
+	actionMana = Hex("#4066FF"),       -- (meaning colour)
+	gameMana = Hex("#8080FF"),         -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 
@@ -3340,6 +3359,120 @@ local function LoginSettled()
 	end
 end
 
+-- a step of the login for /melloperf load (Core/Perf.lua's LoginStep: the
+-- clock and the heap; a few dozen at login only)
+local function Step(label)
+	local P = MelloUI.Perf
+	if P and P.LoginStep then
+		P.LoginStep(label)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The start-up pass (0.19.8): the modules switched on over the login's first
+-- frames, in TOC order as ever, a slice of LOGIN_SLICE_MS a frame. The game
+-- holds each addon to a script budget (a 1000 ms burst); the whole pass in
+-- the login's one frame (with the files and PLAYER_ENTERING_WORLD) was
+-- charged 1778 ms (the user, 2026-10-06: then every game function MelloUI
+-- hooks fails for seconds, "attempt to call a nil value"). A module is
+-- switched on as from the options mid-session, which every module supports;
+-- what only the login's PLAYER_ENTERING_WORLD did, a module switched on after
+-- it does in its OnLoginWorld(isInitialLogin, isReloadingUi) (most replay
+-- the event to their frame: MelloUI:ReplayWorld). Then the configurator's
+-- pages, MelloUI:WhenModulesOn's waiting functions, a restart asked meanwhile.
+--   MelloUI:WhenModulesOn(fn)  fn() once the pass is done (at once after it)
+--   MelloUI:ModulesStarting()  -> true while it runs
+-- One C_Timer.After(0) a slice; nothing at all once it is done.
+--------------------------------------------------------------------------------
+local LOGIN_SLICE_MS = 50
+local startup = { list = nil, nextIndex = 1, world = nil, restart = false, whenOn = {} }
+
+function MelloUI:ModulesStarting()
+	return startup.list ~= nil
+end
+
+-- the login's PLAYER_ENTERING_WORLD has come (a module switched on in the
+-- start-up pass is switched on after it)
+function MelloUI:WorldEntered()
+	return startup.world ~= nil
+end
+
+function MelloUI:WhenModulesOn(fn)
+	if not startup.list then
+		fn()
+		return
+	end
+	startup.whenOn[#startup.whenOn + 1] = fn
+end
+
+-- `frame` hears the login's PLAYER_ENTERING_WORLD as it came, if it takes
+-- that event now (its own handler: what it does on any loading screen)
+function MelloUI:ReplayWorld(frame, ...)
+	if frame and frame.IsEventRegistered and frame:IsEventRegistered("PLAYER_ENTERING_WORLD") then
+		local handler = frame:GetScript("OnEvent")
+		if handler then
+			handler(frame, "PLAYER_ENTERING_WORLD", ...)
+		end
+	end
+end
+
+local function ModulesOn(self)
+	startup.list = nil
+	self.initializingModules = nil
+	Step("the modules switched on")
+	if self.BuildConfig then
+		self:BuildConfig()
+	end
+	Step("the configurator's pages registered")
+	local waiting = startup.whenOn
+	startup.whenOn = {}
+	for i = 1, #waiting do
+		local ok, err = pcall(waiting[i])
+		if not ok then
+			geterrorhandler()(err)
+		end
+	end
+	if startup.restart then
+		startup.restart = false
+		self:RestartModules()
+	end
+end
+
+local StartSlice
+StartSlice = function()
+	local self, list = MelloUI, startup.list
+	if not list then
+		return
+	end
+	local began = debugprofilestop()
+	while startup.nextIndex <= #list do
+		local module = list[startup.nextIndex]
+		startup.nextIndex = startup.nextIndex + 1
+		self:InitModule(module)
+		local world = startup.world
+		if world and module.isEnabled and type(module.OnLoginWorld) == "function" then
+			SafeCall(module, "OnLoginWorld", world[1], world[2])
+		end
+		if startup.nextIndex <= #list and debugprofilestop() - began >= LOGIN_SLICE_MS then
+			C_Timer.After(0, StartSlice)
+			return
+		end
+	end
+	ModulesOn(self)
+end
+
+-- the pass begun (PLAYER_LOGIN): its first slice on the next frame, out of
+-- the login's own
+local function StartModules(self)
+	local list = {}
+	for _, module in self:IterateModules() do
+		list[#list + 1] = module
+	end
+	startup.list, startup.nextIndex = list, 1
+	self.initializingModules = true
+	C_Timer.After(0, StartSlice)
+end
+
 --------------------------------------------------------------------------------
 -- Events
 --------------------------------------------------------------------------------
@@ -3816,6 +3949,17 @@ do
 				end
 			end
 		end,
+		-- 0.19.8 (the border library, stage 2): the unit frames' bars got a
+		-- border of their own, Unit Frame Border (unitFrameBorder), and left
+		-- Progress Bar Border (rule 9): the Progress Bar Border a player
+		-- chose is the unit frames' start, so they keep their look. Once
+		-- set, it is never carried again
+		function(self)
+			local ui = Raw(self, "UIModifications")
+			if ui and ui.unitFrameBorder == nil and type(ui.barBorder) == "string" then
+				ui.unitFrameBorder = ui.barBorder
+			end
+		end,
 	}
 
 	function MelloUI:MergeSettings()
@@ -3834,6 +3978,12 @@ end
 -- UI Modifications' reskin bringing Custom Sounds and the Edit Mode layout --
 -- is the player's switch only, never a restart's or a profile load's)
 function MelloUI:RestartModules()
+	-- (asked while the start-up pass runs -- the late settings at login: once
+	-- it is done, every module then up)
+	if startup.list then
+		startup.restart = true
+		return
+	end
 	-- an Edit Layout session ends first, nothing of it put back over the
 	-- settings now in place (a profile load, the macro backup's restore):
 	-- every OnEnable below places from the store as it is
@@ -4302,8 +4452,9 @@ end
 MelloUI:RegisterEvent("ADDON_LOADED")
 MelloUI:RegisterEvent("VARIABLES_LOADED")
 MelloUI:RegisterEvent("PLAYER_LOGIN")
-MelloUI:SetScript("OnEvent", function(self, event, arg1)
+MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 	if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
+		Step("ADDON_LOADED: the files loaded, the saved settings read")
 		self:UnregisterEvent("ADDON_LOADED")
 		self:InitDB()
 		self:RegisterEvent("PLAYER_LOGOUT")
@@ -4313,13 +4464,17 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 				SafeCall(module, "OnAddonLoaded", self:GetModuleDB(module.name))
 			end
 		end
+		Step("ADDON_LOADED done")
 	elseif event == "VARIABLES_LOADED" then
+		Step("VARIABLES_LOADED")
 		self:UnregisterEvent("VARIABLES_LOADED")
 		if not self.db then
 			self:InitDB()
 		end
 		self:AdoptSavedVariables("VARIABLES_LOADED")
+		Step("VARIABLES_LOADED done")
 	elseif event == "PLAYER_LOGIN" then
+		Step("PLAYER_LOGIN")
 		self:UnregisterEvent("PLAYER_LOGIN")
 		login.going = true   -- (the login's frames: MelloUI:LoggingIn)
 		if not self.db then
@@ -4344,21 +4499,20 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 		-- flags and lets this loop enable them in their turn
 		-- (0.16.0's merged settings carried before any module reads its own)
 		self:MergeSettings()
-		self.initializingModules = true
-		for _, module in self:IterateModules() do
-			self:InitModule(module)
-		end
-		self.initializingModules = nil
-		if self.BuildConfig then
-			self:BuildConfig()
-		end
+		Step("PLAYER_LOGIN: the settings adopted and merged")
+		-- (the modules over the login's first frames: the start-up pass)
+		StartModules(self)
 		self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	elseif event == "PLAYER_LOGOUT" then
+		local began = debugprofilestop()
 		-- Whatever table we have been editing is the one that must be saved.
 		self:AdoptSavedVariables("PLAYER_LOGOUT")
 		MelloUIDB = self.db
 		if self.WriteBackup then
 			self:WriteBackup("logout")
+		end
+		if self.Perf and self.Perf.LogoutStep then
+			self.Perf.LogoutStep("Core: the settings handed over, the macro backup written", debugprofilestop() - began)
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		-- (first: the login's frames end LOGIN_SETTLE s from now, whatever
@@ -4366,6 +4520,11 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1)
 		if login.going and not login.timed then
 			login.timed = true
 			C_Timer.After(LOGIN_SETTLE, LoginSettled)
+			startup.world = { arg1, arg2 }
+			Step("PLAYER_ENTERING_WORLD (the login's)")
+			if self.Perf and self.Perf.LoginFrames then
+				self.Perf.LoginFrames()
+			end
 		end
 		if self:AdoptSavedVariables("PLAYER_ENTERING_WORLD") then
 			self:RestartModules()

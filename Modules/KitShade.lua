@@ -95,6 +95,8 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("KitShade")
 local Shared = Perf.Shared
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceNameOf = MelloUI.Kept.pieceNameOf
 local Num = MelloUI.Safe.Number
 
 local SETTINGS = "UIModifications"         -- the module whose settings hold the switches
@@ -274,7 +276,7 @@ end
 -- its kitScale): UI units per painted px, nil when it reads no size (secret,
 -- not laid out yet)
 local function DrawnScale(tex)
-	local name = tex.kitName
+	local name = pieceNameOf[tex]
 	local pw = name and (Kit:Size(name, 1))
 	local ok, w = pcall(tex.GetWidth, tex)
 	w = ok and Num(w)
@@ -298,7 +300,7 @@ end
 -- a kit texture's partner (made before -- the nameplates', a plain corner's
 -- twin -- it is kept as it is): 1 made, or 0
 local function MakeTex(el, tex, o, rep)
-	if tex.kitShadow or not Kit:ShadowShape(o and o.shape or tex.kitName) then
+	if tex.kitShadow or not Kit:ShadowShape(o and o.shape or pieceNameOf[tex]) then
 		return 0
 	end
 	local p = Opts(el, rep, o)
@@ -319,7 +321,7 @@ local function MakeStrip(el, strip, o, rep, parts)
 	for i = 1, #parts do
 		local key = parts[i]
 		local part = rawget(strip, key)
-		if IsTexture(part) and not part.kitShadow and Kit:ShadowShape(part.kitName) then
+		if IsTexture(part) and not part.kitShadow and Kit:ShadowShape(pieceNameOf[part]) then
 			local p = Opts(el, rep, o)
 			p.ends = (key == "mid" and parts == STRIP_PARTS) or nil
 			-- (drawn by another frame: shown and hidden with the strip)

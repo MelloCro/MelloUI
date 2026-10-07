@@ -154,12 +154,21 @@ SHADOWED = [
     # the nameplates' mark on top (2026-10-05): its crest, a plain line's end gems, a boss's line ends and beads
     # (the line itself, thin and stretched, has none)
     r"^marks/top(crest_[a-z]+|gem_[a-z]+|end_boss_[lr]|bead_boss)$",
+    # the border library's masters and the Backdrop's gems (0.19.6, Modules/KitBorders.lua): a master is cut into
+    # nine by Kit:CutNine, which cuts its partner the same (Kit:ShadowCut)
+    r"^borders/(rim|rimhair|rimround|rimgold|rimsunk|backdrop|gem_red|gem_iron)$",
+    # (the NewUI2 styles the user picked: N4, N4g, N5, N1 and their corner studs, Tools/make_newui2_borders.py)
+    r"^borders/n[0-9]g?(_gem)?$",
+    # (stage 4: the NewUI2 rings R1 / R3 -- Round Border, the Portrait Ring)
+    r"^rings/r[0-9]$",
 ]
 # The marks' metal twins (Tools/kit_marks.py): a piece recoloured, its shape its plain piece's, so it uses
 # that piece's shadow (written as the plain piece's name): the level orb's, a Nameplate Border's left cap's
 TWINS = [
     (r"^marks/orb_(gold|silver|boss)$", "buttons/orb_normal"),
     (r"^marks/cap_([a-z]+)_(gold|silver|boss)$", r"bars/\1_cap_l"),
+    # (0.19.6) a border library ring's metal twins (marks/r1_elite ...): the plain ring's shadow, crest and all
+    (r"^marks/(r[0-9])_[a-z]+$", r"rings/\1"),
 ]
 # strip-named pieces drawn ALONE, not as a strip (the action bars' end caps,
 # ActionBarPanel's gryphons): a shadow of their own, reaching past every side

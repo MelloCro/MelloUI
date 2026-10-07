@@ -488,6 +488,13 @@ end
 -- drops takes its entry along
 local questIcons = setmetatable({}, { __mode = "k" })
 
+-- the Nameplate Kit's left gem cap on a plate it dresses (MelloUI.Kept.bracketLeftOf,
+-- set by NameplatePanel), or nil
+local function BracketLeft(unitFrame)
+	local caps = MelloUI.Kit and MelloUI.Kit.bracketLeftOf
+	return caps and caps[unitFrame]
+end
+
 local function GetQuestIcon(unitFrame)
 	local icon = questIcons[unitFrame]
 	if not icon then
@@ -512,7 +519,7 @@ local function GetQuestIcon(unitFrame)
 	icon:ClearAllPoints()
 	-- beside the Nameplate Kit's left gem cap while it dresses the plate
 	-- (the cap stands outside the bar), else beside the raid mark / bar
-	local anchor = unitFrame.melloBracketLeft or unitFrame.RaidTargetFrame or unitFrame.HealthBarsContainer
+	local anchor = BracketLeft(unitFrame) or unitFrame.RaidTargetFrame or unitFrame.HealthBarsContainer
 	if anchor then
 		icon:SetPoint("RIGHT", anchor, "LEFT", -2, 0)
 	end
@@ -653,7 +660,7 @@ end
 -- anchored again on a change only
 local function HangThreat(uf, line)
 	local hb = line.hb or uf
-	local rail = uf.melloBracketLeft ~= nil
+	local rail = BracketLeft(uf) ~= nil
 	if line.hbAt == hb and line.rail == rail then
 		return
 	end
@@ -1134,6 +1141,12 @@ end
 
 function M:OnInit(db)
 	self.db = db
+end
+
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(eventFrame, ...)
 end
 
 function M:OnEnable(db)

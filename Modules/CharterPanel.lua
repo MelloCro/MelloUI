@@ -22,7 +22,7 @@
 -- "QuestDetailsBackgrounds"), one page on one rect for the registrar's two
 -- pages (2a); every text on it in dark ink by the parchment rule (QuestInk);
 -- the buttons on the red plates, their labels in their own colour (the rule's
--- exception, melloNoInk) and their disabled look kept; the guild name's box
+-- exception, QI.noInk) and their disabled look kept; the guild name's box
 -- on the edit plate (S1, its glass cap dropped: a name box); the cosmetic
 -- scroll bars by the kit's sweep. No text lies on plain stone (2e).
 -- The cost stays the game's coins on the page, inked: the window paints no
@@ -46,6 +46,10 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("CharterPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("CharterPanel", {
 	title = "Guild Charter Kit",
@@ -213,7 +217,7 @@ local function FindPage(frame, def)
 		end
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and region:GetDrawLayer() == "BACKGROUND" and not IsTiled(region) and IsParchment(region) then
+		if IsTexture(region) and not pieceOf[region] and region:GetDrawLayer() == "BACKGROUND" and not IsTiled(region) and IsParchment(region) then
 			return region
 		end
 	end
@@ -233,7 +237,7 @@ local function FindRock(frame, page)
 		end
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if IsTexture(region) and region ~= page and not region.kitPiece and region:GetDrawLayer() == "BACKGROUND"
+		if IsTexture(region) and region ~= page and not pieceOf[region] and region:GetDrawLayer() == "BACKGROUND"
 			and (IsTiled(region) or Kit:ArtKey(region) == "UI-Background-Rock") then
 			return region
 		end
@@ -248,7 +252,7 @@ end
 -- inner panel, so no text is on plain brown (2e).
 local function DressInset(win, frame)
 	local inset = frame.Inset
-	if not inset or inset.melloRep ~= nil then
+	if not inset or repOf[inset] ~= nil then
 		return
 	end
 	local extra = { inset.Bg }
@@ -259,7 +263,7 @@ local function DressInset(win, frame)
 			end
 		end
 	end
-	inset.melloRep = Replace(inset, { as = "common-insideframe", parent = frame, rect = inset, level = 2,
+	repOf[inset] = Replace(inset, { as = "common-insideframe", parent = frame, rect = inset, level = 2,
 		body = not win.paper, noFade = true, alsoFade = extra }) or false
 end
 
@@ -277,7 +281,7 @@ end
 local function PortraitCandidates(frame, def)
 	local list, seen = {}, {}
 	local function Add(t)
-		if IsTexture(t) and not seen[t] and not t.kitPiece then
+		if IsTexture(t) and not seen[t] and not pieceOf[t] then
 			seen[t] = true
 			list[#list + 1] = t
 		end
@@ -330,7 +334,7 @@ local function SkinPortrait(win, frame)
 	-- game's between them
 	local disc = Kit:RingDisc(ring, nil, holder, 6)
 	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	icon.kitPiece = true
+	pieceOf[icon] = true
 	if disc then
 		icon:SetAllPoints(disc)
 	else
@@ -484,14 +488,14 @@ end
 --------------------------------------------------------------------------------
 -- Text buttons on the red plates (B1), their labels in their own colour: the
 -- parchment rule's exception for button labels (user, 2026-09-24) -- the ink's
--- walk never enters a button marked melloNoInk. The plate follows the
+-- walk never enters a button marked in QI.noInk. The plate follows the
 -- button's states, its disabled look included (Sign while the charter cannot
 -- be signed, Request once it is full).
 --------------------------------------------------------------------------------
 local function PlainLabels(button)
 	local QI = MelloUI.QuestInk
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and region.melloInk and QI and QI.PlainText then
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
 			pcall(QI.PlainText, region)
 		end
 	end
@@ -501,9 +505,12 @@ local function SkinTextButton(button)
 	if not button then
 		return
 	end
-	button.melloNoInk = true
+	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
 	PlainLabels(button)
-	if button.melloRep == nil then
+	if repOf[button] == nil then
 		Kit:SkinRedButton(button, Replace)
 	end
 end
@@ -514,10 +521,11 @@ local function MarkRedButtons(root, depth)
 	if not root or depth > 8 then
 		return
 	end
+	local QI = MelloUI.QuestInk
 	for _, child in ipairs({ root:GetChildren() }) do
-		local rep = rawget(child, "melloRep")
-		if type(rep) == "table" and RED_PLATES[rep.key] and not child.melloNoInk then
-			child.melloNoInk = true
+		local rep = repOf[child]
+		if type(rep) == "table" and RED_PLATES[rep.key] and QI and not QI.noInk[child] then
+			QI.noInk[child] = true
 			PlainLabels(child)
 		end
 		MarkRedButtons(child, depth + 1)
@@ -534,7 +542,7 @@ end
 local function EditPieces(box)
 	local left, right
 	for _, region in ipairs({ box:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece then
+		if IsTexture(region) and not pieceOf[region] then
 			local ok, point = pcall(region.GetPoint, region, 1)
 			if ok and point == "LEFT" and not left then
 				left = region
@@ -547,20 +555,23 @@ local function EditPieces(box)
 end
 
 local function SkinEdit(win, box)
-	if not box or box.melloRep ~= nil then
+	if not box or repOf[box] ~= nil then
 		return
 	end
-	box.melloNoInk = true
+	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[box] = true
+	end
 	local left, right = EditPieces(box)
 	if not (left and right) then
-		box.melloRep = false
+		repOf[box] = false
 		return
 	end
 	local rect = CreateFrame("Frame", nil, box)
 	rect:EnableMouse(false)
 	rect:SetPoint("TOPLEFT", left, "TOPLEFT")
 	rect:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT")
-	box.melloRep = Replace(left, { as = "UI-ChatInputBorder-Mid2", rect = rect, edit = box, dropCap = "l", alsoFade = { right } }) or false
+	repOf[box] = Replace(left, { as = "UI-ChatInputBorder-Mid2", rect = rect, edit = box, dropCap = "l", alsoFade = { right } }) or false
 	win.edit = box
 end
 
@@ -642,7 +653,7 @@ local function InkSkip(fs)
 		end
 	end
 	local p = fs.GetParent and fs:GetParent()
-	if p and p.GetObjectType and p:GetObjectType() == "Button" and not p.melloNoInk and p.melloRep == nil
+	if p and p.GetObjectType and p:GetObjectType() == "Button" and not (QI and QI.noInk[p]) and repOf[p] == nil
 		and p.GetFontString and p:GetFontString() == fs then
 		return false
 	end
@@ -1019,9 +1030,9 @@ local function DumpShell(f, win, label)
 		local okF, face, size = pcall(fs.GetFont, fs)
 		Found(fs == own and "title (container)" or "title (window's own)", fs, string.format(" text %s, face %s %s, title face %s, moved %s, faded %s, rect %s",
 			secret and "[secret]" or tostring(text or "(empty)"), (okF and type(face) == "string" and not Secret(face)) and face or "?", okF and Num(size) or "?",
-			tostring(fs.melloFontSaved ~= nil), tostring(win and win.titleMoved[fs] ~= nil), tostring(win and win.titleFaded[fs] == true), RectOf(fs)))
+			tostring(fontSavedOf[fs] ~= nil), tostring(win and win.titleMoved[fs] ~= nil), tostring(win and win.titleFaded[fs] == true), RectOf(fs)))
 	end
-	MelloUI:Print("  tabs: none; close button %s", f.CloseButton and RepState(rawget(f.CloseButton, "melloRep")) or "none")
+	MelloUI:Print("  tabs: none; close button %s", f.CloseButton and RepState(repOf[f.CloseButton]) or "none")
 end
 
 local function DumpParts(f, win, def)
@@ -1041,7 +1052,7 @@ local function DumpParts(f, win, def)
 		end
 	end
 	local inset = f.Inset
-	Found("inset", inset, inset and (" " .. RepState(rawget(inset, "melloRep"))) or nil)
+	Found("inset", inset, inset and (" " .. RepState(repOf[inset])) or nil)
 	for _, name in ipairs(def.buttons or {}) do
 		local b = _G[name]
 		local okE, enabled = false, nil
@@ -1049,19 +1060,20 @@ local function DumpParts(f, win, def)
 			okE, enabled = pcall(b.IsEnabled, b)
 		end
 		local label = b and b.GetFontString and b:GetFontString()
-		Found("button", b, b and string.format(" %s, shown %s, enabled %s, noInk %s, label colour %s", RepState(rawget(b, "melloRep")), Shown(b),
-			(okE and not Secret(enabled)) and tostring(enabled) or "?", tostring(b.melloNoInk == true), label and Colour(label:GetTextColor()) or "-") or nil)
+		Found("button", b, b and string.format(" %s, shown %s, enabled %s, noInk %s, label colour %s", RepState(repOf[b]), Shown(b),
+			(okE and not Secret(enabled)) and tostring(enabled) or "?", tostring(MelloUI.QuestInk ~= nil and MelloUI.QuestInk.noInk[b] == true),
+			label and Colour(label:GetTextColor()) or "-") or nil)
 	end
 	if def.edit then
 		local box = _G[def.edit]
-		Found("name box", box, box and string.format(" %s, rect %s", RepState(rawget(box, "melloRep")), RectOf(box)) or nil)
+		Found("name box", box, box and string.format(" %s, rect %s", RepState(repOf[box]), RectOf(box)) or nil)
 	end
 	if def.money then
 		local mf = _G[def.money]
 		Found("cost (coins, inked)", mf, mf and string.format(" shown %s, rect %s", Shown(mf), RectOf(mf)) or nil)
 	end
 	local sb = f.ScrollBar
-	Found("scroll bar (cosmetic)", sb, sb and string.format(" %s, shown %s", RepState(rawget(sb, "melloRep")), Shown(sb)) or nil)
+	Found("scroll bar (cosmetic)", sb, sb and string.format(" %s, shown %s", RepState(repOf[sb]), Shown(sb)) or nil)
 end
 
 local function DumpInk(f)
@@ -1077,7 +1089,7 @@ local function DumpInk(f)
 			n = n + 1
 			if n <= 30 then
 				local text, secret = TextOf(fs)
-				MelloUI:Print("  ink %s %s colour %s: %s", tostring(fs.melloInk == true), Label(fs), Colour(fs:GetTextColor()),
+				MelloUI:Print("  ink %s %s colour %s: %s", tostring(QI.inkOn[fs] == true), Label(fs), Colour(fs:GetTextColor()),
 					secret and "[secret]" or tostring(text or ""):sub(1, 40))
 			end
 		end
@@ -1091,7 +1103,7 @@ local function DumpOwn(f)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local what = ""
 		if kind == "Texture" then
-			what = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "") .. (IsTiled(region) and " tiled" or "")
+			what = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "") .. (IsTiled(region) and " tiled" or "")
 		elseif kind == "FontString" then
 			local text, secret = TextOf(region)
 			what = "text: " .. (secret and "[secret]" or tostring(text or ""):sub(1, 40))
@@ -1102,7 +1114,7 @@ local function DumpOwn(f)
 	for _, child in ipairs({ f:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s kit %s", tostring(child:GetObjectType()), Label(child), okLv and Num(lv) or "?",
-			Shown(child), RepState(rawget(child, "melloRep")))
+			Shown(child), RepState(repOf[child]))
 	end
 end
 

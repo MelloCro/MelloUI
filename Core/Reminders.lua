@@ -1863,9 +1863,10 @@ local function EnsureEvents()
 	MelloUI:On("editlayout", OnEditLayout, OWNER)
 	MelloUI:On("restart", OnRestart, OWNER)
 	MelloUI:On("preview", OnPreview, OWNER)
-	-- registered after the login pass (a module switched on later): the
-	-- world is already entered, so the login moment comes by itself
-	if not MelloUI.initializingModules then
+	-- registered after the login's world was entered (a module switched on
+	-- later, or in Core's start-up pass, which runs after it): the login
+	-- moment comes by itself; before it, on that event
+	if not MelloUI.initializingModules or (MelloUI.WorldEntered and MelloUI:WorldEntered()) then
 		S.loginAsked = true
 		C_Timer.After(LOGIN_DELAY, LoginMoment)
 	end
@@ -3585,11 +3586,6 @@ local function Column()
 	--------------------------------------------------------------------------
 
 	Col.Queue = ColQueue
-
-	function Col.IsColumn(key)
-		local spec = specs[key]
-		return spec ~= nil and spec.column == true
-	end
 
 	function Col.Add(key)
 		colOrder[#colOrder + 1] = key

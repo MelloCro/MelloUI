@@ -186,7 +186,7 @@ local function ShadeButton(button, t, rimSide, piece)
 	end
 	local gap = t.gap or 0
 	if rimSide then
-		local pad = PadOf(Kit, t.rim.kitName)
+		local pad = PadOf(Kit, MelloUI.Kept.pieceNameOf[t.rim])
 		if pad and piece and piece.w > 0 then
 			FitPartner(Kit, so, "rim", t.rim, rimSide / piece.w, pad, (rimSide - t.size) / 2, gap)
 		end
@@ -209,6 +209,32 @@ local function ApplyAuraLook(button)
 	end
 	local look = AuraLook()
 	local kind = Kit.buttonLooks and Kit.buttonLooks.rimKind[look]
+	-- (0.19.8) a style of the border library's (Single rail, Backdrop:
+	-- Modules/KitBorders.lua), at a button's weight, its opening 2 px over the
+	-- icon's edge as the thin rims' inner edge is; on an anchor of its own
+	-- (an empty texture: the button is the game's, protected, no hook on it)
+	local style = not kind and Kit.BorderStyles and Kit.BorderStyles[look] and look
+	if style then
+		if t.rim then
+			t.rim:Hide()
+		end
+		t.edge:Hide()
+		if not t.lib then
+			t.libAt = button:CreateTexture(nil, "OVERLAY", nil, 3)
+			t.lib = Kit:NewBorder({ rect = t.libAt, owner = button, place = "on", layer = "OVERLAY", sub = 3 })
+		end
+		t.lib:Lay(style, "light")
+		local x, y = t.lib:Inset()
+		t.libAt:ClearAllPoints()
+		t.libAt:SetPoint("CENTER", button, "CENTER")
+		t.libAt:SetSize(t.size - 4 + 2 * x, t.size - 4 + 2 * y)
+		t.lib:SetShown(true)
+		ShadeButton(button, t)
+		return
+	end
+	if t.lib then
+		t.lib:SetShown(false)
+	end
 	if not kind then
 		if t.rim then
 			t.rim:Hide()
@@ -228,7 +254,7 @@ local function ApplyAuraLook(button)
 		t.rim = button:CreateTexture(nil, "OVERLAY", nil, 3)
 		t.rim.kitScale = Kit.scale
 	end
-	if t.rim.kitName ~= base .. "_normal" then
+	if MelloUI.Kept.pieceNameOf[t.rim] ~= base .. "_normal" then
 		Kit:Apply(t.rim, base .. "_normal")
 	end
 	local p = Kit:Piece(base .. "_normal")

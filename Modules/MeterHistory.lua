@@ -715,7 +715,9 @@ local function Build()
 	win.count = Font(left, 11, "note")
 	win.count:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 6, 12)
 	win.clear = W.Button(left, TEXT.clear, 80, win.shell, { onClick = ClearClick })
-	win.clear.melloNoInk = true   -- (a plate of its own, as the tabs)
+	if MelloUI.QuestInk then
+		MelloUI.QuestInk.noInk[win.clear] = true   -- (a plate of its own, as the tabs)
+	end
 	win.clear:SetPoint("BOTTOMRIGHT", left, "BOTTOMRIGHT", -4, 4)
 	-- the line between the two sides
 	local split = Look.Solid(body, "ARTWORK", "border", 1)
@@ -738,7 +740,9 @@ local function Build()
 		local tab = CreateFrame("Button", nil, right, "PanelTopTabButtonTemplate")
 		-- (on its own dark plate: its label keeps the light text, never the
 		-- parchment's ink -- the user, 2026-10-01: "these tabs are hard to read")
-		tab.melloNoInk = true
+		if MelloUI.QuestInk then
+			MelloUI.QuestInk.noInk[tab] = true
+		end
 		tab:SetText(t[2])
 		W.FlatTab(tab, win.shell)
 		tab:SetWidth(H.TAB_W)

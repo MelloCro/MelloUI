@@ -55,8 +55,8 @@
 -- no move, no resize, no loot or roll call; only textures and frames of our
 -- own are added and the game's art faded. Hooks are post-hooks (HookScript,
 -- hooksecurefunc on regions and the scroll box's callbacks); what is kept
--- about the game's frames lives in weak side tables (the kit's melloRep /
--- melloNoInk markers aside). Switching the module off disables every
+-- about the game's frames lives in weak side tables (the kit's reps and the
+-- ink's marks too: MelloUI.Kept.repOf, QI.noInk). Switching the module off disables every
 -- replacement and puts the moved timer back: the windows are the game's.
 --
 -- /lootdump [roll [n] | frames | reps | regions]: what the windows are made
@@ -71,6 +71,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("LootPanel", {
 	title = "Loot Kit",
@@ -179,7 +184,7 @@ local function Textures(frame)
 		return list
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece then
+		if IsTexture(region) and not pieceOf[region] then
 			list[#list + 1] = region
 		end
 	end
@@ -226,7 +231,7 @@ local function SkinCard(host, plate, rect, extra)
 		return
 	end
 	local tex = host:CreateTexture(nil, "BACKGROUND", nil, -2)
-	tex.kitPiece = true   -- ours: never faded as the game's art
+	pieceOf[tex] = true   -- ours: never faded as the game's art
 	tex:SetAllPoints(rect or host)
 	Kit:Paint(tex, "mainWindow", "fill", CARD_ALPHA)   -- (by its key: a new palette paints it again)
 	tex:SetShown(active)
@@ -293,7 +298,7 @@ local function TintRim(entry)
 end
 
 local function SkinRim(replace, button, icon, extraFade)
-	if not (button and icon) or done[button] or button.melloRep ~= nil then
+	if not (button and icon) or done[button] or repOf[button] ~= nil then
 		return nil
 	end
 	done[button] = true
@@ -306,7 +311,7 @@ local function SkinRim(replace, button, icon, extraFade)
 	-- the rect it is keyed on, and it is not faded
 	local rep = replace(normal or icon, { as = Kit:ButtonRimRule(), button = button, parent = button, rect = icon,
 		noFade = normal == nil, alsoFade = extra })
-	button.melloRep = rep or false   -- the Kit's own "dressed" marker
+	repOf[button] = rep or false   -- the Kit's own "dressed" marker
 	if not rep then
 		return nil
 	end
@@ -448,7 +453,7 @@ local function SkinPage(f)
 	-- flat background's level 0)
 	local ins = Kit:OuterRailInset()
 	local panel = bg:CreateTexture(nil, "BACKGROUND", nil, 7)
-	panel.kitPiece = true
+	pieceOf[panel] = true
 	panel:SetPoint("TOPLEFT", f, "TOPLEFT", ins[1], -ins[3])
 	panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -ins[2], ins[4])
 	Kit:Paint(panel, "innerPanel", "fill", PANEL_ALPHA)   -- (by its key: a new palette paints it again)
@@ -524,7 +529,7 @@ local function PlaceTitle()
 		rep:Refit()
 	end
 	local text = TitleText(Window())
-	if text and not text.melloFontSaved then
+	if text and not fontSavedOf[text] then
 		Kit:TitleFont(text, true)
 	end
 end
@@ -789,11 +794,14 @@ local function DressRoll(f)
 	end
 	-- the roll buttons: K2 under the icon (the button's normal texture IS its
 	-- icon: kept, never faded)
+	local QI = MelloUI.QuestInk
 	for _, b in ipairs(RollButtons(f)) do
 		local normal = b:GetNormalTexture()
 		if normal and not done[b] then
 			done[b] = true
-			b.melloNoInk = true
+			if QI then
+				QI.noInk[b] = true
+			end
 			local rep = RollReplace(normal, { as = "bags-button-autosort-up", button = b, noFade = true })
 			if rep then
 				r.buttons[#r.buttons + 1] = { button = b, rep = rep }
@@ -984,7 +992,7 @@ local function Num(v)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function FadedState(obj)
@@ -1021,7 +1029,7 @@ local function DumpWindow(f)
 	Found("page stone", skin and skin.page and skin.page.object, (skin and skin.page) and (" " .. Rect(skin.page.inner or skin.page.object)) or nil)
 	Found("inner panel (2e)", skin and skin.panel, (skin and skin.panel) and (" alpha " .. PANEL_ALPHA .. ", shown " .. Shown(skin.panel) .. ", " .. Rect(skin.panel)) or nil)
 	local portrait = Portrait(f)
-	Found("portrait", portrait, portrait and string.format(" ring %s, fitted %s", tostring(skin and skin.ring ~= nil), tostring(portrait.melloSaved ~= nil))
+	Found("portrait", portrait, portrait and string.format(" ring %s, fitted %s", tostring(skin and skin.ring ~= nil), tostring(portraitSavedOf[portrait] ~= nil))
 		or " (none: no ring on this window, as the game's)")
 	local rep = TitleRep()
 	local title = TitleText(f)
@@ -1029,7 +1037,7 @@ local function DumpWindow(f)
 	if title then
 		local okF, face = pcall(title.GetFont, title)
 		Found("title text", title, string.format(" '%s', %s, face %s, title face %s", Text(title), Rect(title),
-			(okF and type(face) == "string" and not Secret(face)) and (face:match("([^\\/]+)$") or face) or "?", tostring(title.melloFontSaved ~= nil)))
+			(okF and type(face) == "string" and not Secret(face)) and (face:match("([^\\/]+)$") or face) or "?", tostring(fontSavedOf[title] ~= nil)))
 	else
 		Found("title text", nil)
 	end

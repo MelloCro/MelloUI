@@ -30,6 +30,9 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- 2026-09-24: the shared handlers)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("GroupFinderPanel", {
 	title = "Group Finder Panel",
@@ -286,8 +289,8 @@ end)
 -- show (or in its idle turn) the mark goes and the sweep of its parent makes
 -- its look
 local function Unclaim(control)
-	if control.melloRep == false then
-		control.melloRep = nil
+	if repOf[control] == false then
+		repOf[control] = nil
 		local parent = control:GetParent()
 		if parent then
 			Classify(parent)
@@ -296,8 +299,8 @@ local function Unclaim(control)
 end
 
 local function Claim(control)
-	if control and control.melloRep == nil and not control:IsShown() then
-		control.melloRep = false
+	if control and repOf[control] == nil and not control:IsShown() then
+		repOf[control] = false
 		Later(control, nil, Unclaim)
 	end
 end
@@ -335,21 +338,22 @@ local function PagePortrait(page)
 	return page and page.PortraitContainer and page.PortraitContainer.portrait
 end
 
+local glyphsOf = setmetatable({}, { __mode = "k" })   -- [toggle] = { [atlas] = rep }: its plates, one per glyph
 -- An expand / collapse button whose file the game swaps (UI-MinusButton-UP /
 -- UI-PlusButton-UP) through SetNormalTexture: one plate per glyph, the
 -- current shown, read from that call.
 local function SkinFileToggle(toggle)
-	if not (toggle and toggle.GetNormalTexture) or toggle.melloGlyphs then
+	if not (toggle and toggle.GetNormalTexture) or glyphsOf[toggle] then
 		return
 	end
-	toggle.melloGlyphs = {}
+	glyphsOf[toggle] = {}
 	local function Apply(path)
 		local key = type(path) == "string" and ((path:lower():find("minus") and "common-button-list-minus") or (path:lower():find("plus") and "common-button-list-plus"))
-		if key and toggle.melloGlyphs[key] == nil and toggle:GetNormalTexture() then
-			toggle.melloGlyphs[key] = Replace(toggle:GetNormalTexture(), { as = key, button = toggle, rect = toggle:GetNormalTexture(),
+		if key and glyphsOf[toggle][key] == nil and toggle:GetNormalTexture() then
+			glyphsOf[toggle][key] = Replace(toggle:GetNormalTexture(), { as = key, button = toggle, rect = toggle:GetNormalTexture(),
 				alsoFade = { toggle:GetHighlightTexture() } }) or false
 		end
-		for k, rep in pairs(toggle.melloGlyphs) do
+		for k, rep in pairs(glyphsOf[toggle]) do
 			if rep then
 				rep:SetShown(k == key)
 			end
@@ -366,8 +370,8 @@ end
 
 -- An options button (LFGOptionsButton: a gear icon): the cog plate (K2)
 local function SkinOptionsButton(button)
-	if button and button.Icon and button.melloRep == nil then
-		button.melloRep = Replace(button.Icon, { as = "common-dropdown-a-button", button = button, rect = button.Icon, alsoFade = Kit:OtherTextures(button, button.Icon) }) or false
+	if button and button.Icon and repOf[button] == nil then
+		repOf[button] = Replace(button.Icon, { as = "common-dropdown-a-button", button = button, rect = button.Icon, alsoFade = Kit:OtherTextures(button, button.Icon) }) or false
 	end
 end
 
@@ -375,7 +379,7 @@ end
 -- rail, edges only, on a holder ABOVE the page's content frame (`over`) so
 -- the rail is not lost under it; the inset's own nine-slice art faded.
 local function SkinPageInset(page, inset, over)
-	if not (page and inset) or inset.melloRep ~= nil then
+	if not (page and inset) or repOf[inset] ~= nil then
 		return
 	end
 	-- well above the inset frame (whose stone region painted over a lower
@@ -394,7 +398,7 @@ local function SkinPageInset(page, inset, over)
 			end
 		end
 	end
-	inset.melloRep = Replace(inset, { as = "common-insideframe", parent = page, rect = inset, level = level, body = false, noFade = true, alsoFade = extra }) or false
+	repOf[inset] = Replace(inset, { as = "common-insideframe", parent = page, rect = inset, level = level, body = false, noFade = true, alsoFade = extra }) or false
 end
 
 -- The eye-strain panel (WINDOW-RULES 2e; user, 2026-09-24: "too much small
@@ -413,7 +417,7 @@ local function EyePanel(host, opts)
 	local tex = Kit:StoneDim(host, opts)
 	skin.eyePanels[host] = tex or false
 	if tex then
-		tex.kitPiece = true            -- ours: never taken for the game's art
+		pieceOf[tex] = true            -- ours: never taken for the game's art
 		tex:SetShown(active)
 	end
 end
@@ -424,13 +428,14 @@ end
 -- again for a new palette; a table taken at load would be out of date).
 local CARD_TONE = "mainWindow"
 
+local shellDressed = setmetatable({}, { __mode = "k" })   -- [page] = true: its shell dressed
 -- A page (LFGListingFrame / LFGBrowseFrame / LFGWhoListFrame, each a
 -- PortraitFrameTemplateNoCloseButton): its shell, the ring on the parent's eye.
 local function SkinPage(page)
-	if not page or page.melloShell then
+	if not page or shellDressed[page] then
 		return
 	end
-	page.melloShell = true
+	shellDressed[page] = true
 	Kit:SkinWindowShell(page, Replace, skin, { portrait = PagePortrait(page), body = false, bg = "UI-Background-Rock" })
 	skin.rings = skin.rings or {}
 	if skin.ring then
@@ -440,10 +445,10 @@ end
 
 -- An activity row of the listing (LFGListingActivityRowTemplate)
 local function SkinActivityRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	Kit:SkinCheckButton(row.CheckButton, Replace, "UI-CheckBox-Up")
 	SkinFileToggle(row.ExpandOrCollapseButton)
 end
@@ -452,8 +457,8 @@ end
 -- Selected bar: re-tint on the bar's Show / Hide.
 local function LitOnSelect(row, bar)
 	local function Sync()
-		if active and row.melloRep and row.melloRep.SetState then
-			row.melloRep:SetState()
+		if active and repOf[row] and repOf[row].SetState then
+			repOf[row]:SetState()
 		end
 	end
 	hooksecurefunc(bar, "Show", Sync)
@@ -467,16 +472,16 @@ end
 -- with expand / collapse icons): the plain plate (hover from the button),
 -- the selected plate following the game; the header's glyphs.
 local function SkinBrowseRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	local isHeader = row.ExpandIcon ~= nil
 	if row.ResultBG then
 		-- a result's card in the main window's tone (2e: the leader, the
 		-- activity and the comment must not lie on the plain stone; the
 		-- grouping header is a plate and takes no `dim`)
-		row.melloRep = Replace(row.ResultBG, { as = isHeader and "LFGBrowse-Grouping" or "LFGBrowse-Result", rect = row, button = row,
+		repOf[row] = Replace(row.ResultBG, { as = isHeader and "LFGBrowse-Grouping" or "LFGBrowse-Result", rect = row, button = row,
 			dim = (not isHeader) and 0.85 or nil, dimColor = CARD_TONE,
 			checked = function() return row.Selected and row.Selected:IsShown() or false end,
 			alsoFade = { row.Highlight, row.GetHighlightTexture and row:GetHighlightTexture() or nil } }) or false
@@ -495,13 +500,13 @@ end
 
 -- A who list row (LFGWhoListButtonTemplate: the large list plate atlases)
 local function SkinWhoRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	if row.Background then
 		-- the row's card in the main window's tone (2e), as the browse results
-		row.melloRep = Replace(row.Background, { as = "common-button-list-large", rect = row, button = row,
+		repOf[row] = Replace(row.Background, { as = "common-button-list-large", rect = row, button = row,
 			dim = 0.85, dimColor = CARD_TONE,
 			checked = function() return row.Selected and row.Selected:IsShown() or false end,
 			alsoFade = { row.GetHighlightTexture and row:GetHighlightTexture() or nil } }) or false
@@ -555,9 +560,9 @@ local function SkinListing(listing, idleTurn)
 	-- show, in CategoryView.CategoryButtons): the single rail for their cover
 	local function SkinCategories(view)
 		for _, button in ipairs(view and view.CategoryButtons or {}) do
-			if button.Cover and button.melloRep == nil then
+			if button.Cover and repOf[button] == nil then
 				-- on the PAINTING's rect (inset in the button), not the button's
-				button.melloRep = Replace(button.Cover, { as = "groupfinder-button-cover", parent = button, rect = button.Icon or button }) or false
+				repOf[button] = Replace(button.Cover, { as = "groupfinder-button-cover", parent = button, rect = button.Icon or button }) or false
 			end
 		end
 	end
@@ -829,3 +834,7 @@ SlashCmdList.MELLOGFDUMP = function(msg)
 	Kit:DumpWindow(LFGParentFrame, skin, msg)
 	MelloUI:ShowLog("gfdump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { glyphsOf = glyphsOf, shellDressed = shellDressed }

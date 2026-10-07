@@ -41,6 +41,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("TrainerPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("TrainerPanel", {
 	title = "Trainer Kit",
@@ -372,7 +375,7 @@ local function FindIcon(row)
 		return nil
 	end
 	for _, region in ipairs({ row:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and Shown(region) then
+		if IsTexture(region) and not pieceOf[region] and Shown(region) then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			local ok, w, h, l = pcall(function() return region:GetWidth(), region:GetHeight(), region:GetLeft() end)
 			if okL and layer ~= "HIGHLIGHT" and ok and w and h and l and not (Secret(w) or Secret(h) or Secret(l))
@@ -491,7 +494,7 @@ end
 local function PlateRegions(row, st)
 	local list, seen = {}, { [st.icon or false] = true }
 	local function Add(t)
-		if IsTexture(t) and not seen[t] and not t.kitPiece then
+		if IsTexture(t) and not seen[t] and not pieceOf[t] then
 			seen[t] = true
 			list[#list + 1] = t
 		end
@@ -509,7 +512,7 @@ local function PlateRegions(row, st)
 	local okS, rw, rh = pcall(row.GetSize, row)
 	local sized = okS and rw and rh and not Secret(rw) and not Secret(rh) and rw > 0 and rh > 0
 	for _, region in ipairs({ row:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and not seen[region] then
+		if IsTexture(region) and not pieceOf[region] and not seen[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			if okL and layer == "HIGHLIGHT" then
 				Add(region)
@@ -573,9 +576,11 @@ local function MakeRim(row, st)
 	end
 	st.rim = Replace(st.icon, { as = RIM_KEY, button = row, parent = row, rect = st.icon, noFade = true }) or false
 	if st.rim then
-		-- Kit's Button Border reaches a rim through its button's `melloRep`:
-		-- a stand-in of ours carries it, the game's row is not written on
-		st.rimKey = { melloRep = st.rim }
+		-- Kit's Button Border reaches a rim through its button's rep
+		-- (MelloUI.Kept.repOf): a stand-in of ours carries it, the game's row is not
+		-- the key
+		st.rimKey = {}
+		repOf[st.rimKey] = st.rim
 		Kit:RegisterButtonRim(st.rimKey)
 		FitIconRim(st)
 	end
@@ -631,7 +636,7 @@ local function MakeRow(row)
 	-- regions of the row too, in its BACKGROUND under its icon and text), no
 	-- art of its own
 	local anchor = row:CreateTexture(nil, "BACKGROUND", nil, -8)
-	anchor.kitPiece = true
+	pieceOf[anchor] = true
 	anchor:SetAllPoints(row)
 	anchor:SetColorTexture(0, 0, 0, 0)
 	st.anchor = anchor
@@ -910,7 +915,7 @@ local function SkinPortrait(f, ring)
 	-- the ring's holder, nothing of the game's between them
 	local disc = Kit:RingDisc(ring, nil, holder, 6)
 	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	icon.kitPiece = true
+	pieceOf[icon] = true
 	if disc then
 		icon:SetAllPoints(disc)
 	else
@@ -1095,14 +1100,14 @@ end
 -- bar's own border and backing faded. Every window's Progress Bar Border
 -- (the rule's `bar` group).
 local function SkinRankBar(bar)
-	if not bar or bar.melloRep ~= nil then
+	if not bar or repOf[bar] ~= nil then
 		return
 	end
 	local fill = bar.GetStatusBarTexture and bar:GetStatusBarTexture()
 	local art = {}
 	local function Collect(frame)
 		for _, region in ipairs({ frame:GetRegions() }) do
-			if IsTexture(region) and region ~= fill and not region.kitPiece then
+			if IsTexture(region) and region ~= fill and not pieceOf[region] then
 				art[#art + 1] = region
 			end
 		end
@@ -1117,12 +1122,12 @@ local function SkinRankBar(bar)
 	if not region then
 		-- no art of its own to stand in for: an empty region to hang it on
 		region = bar:CreateTexture(nil, "BACKGROUND", nil, -8)
-		region.kitPiece = true
+		pieceOf[region] = true
 		region:SetColorTexture(0, 0, 0, 0)
 		region:SetAllPoints(bar)
 		ours = true
 	end
-	bar.melloRep = Replace(region, { as = BAR_KEY, parent = bar, rect = bar, capOut = true, noFade = ours or nil,
+	repOf[bar] = Replace(region, { as = BAR_KEY, parent = bar, rect = bar, capOut = true, noFade = ours or nil,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub, alsoFade = art }) or false
 	found.barArt = #art + (ours and 0 or 1)
 end
@@ -1160,12 +1165,12 @@ end
 -- filter) on a modern filter dropdown's Background or a stretch button's
 -- nine pieces, its arrow glyph kept; an older dropdown's box gets D1
 local function SkinFilter(filter)
-	if not (type(filter) == "table" and filter.GetRegions) or filter.melloRep ~= nil then
+	if not (type(filter) == "table" and filter.GetRegions) or repOf[filter] ~= nil then
 		return
 	end
 	if IsTexture(filter.Background) then
 		found.filterKind = "filter dropdown"
-		filter.melloRep = Replace(filter.Background, { as = "common-dropdown-b-button", rect = filter, button = filter, parent = filter }) or false
+		repOf[filter] = Replace(filter.Background, { as = "common-dropdown-b-button", rect = filter, button = filter, parent = filter }) or false
 		return
 	end
 	if filter.Middle and filter.Left and filter.Right and filter.Button then
@@ -1176,20 +1181,20 @@ local function SkinFilter(filter)
 				extra[#extra + 1] = region
 			end
 		end
-		filter.melloRep = Replace(filter.Middle, { as = "UIDropDownMenu", rect = filter, fitHeight = 24, alsoFade = extra }) or false
+		repOf[filter] = Replace(filter.Middle, { as = "UIDropDownMenu", rect = filter, fitHeight = 24, alsoFade = extra }) or false
 		return
 	end
 	local arrow = filter.Icon or filter.Arrow or filter.icon
 	local art = {}
 	for _, region in ipairs({ filter:GetRegions() }) do
-		if IsTexture(region) and region ~= arrow and not region.kitPiece then
+		if IsTexture(region) and region ~= arrow and not pieceOf[region] then
 			art[#art + 1] = region
 		end
 	end
 	local first = table.remove(art, 1)
 	if first then
 		found.filterKind = "stretch button"
-		filter.melloRep = Replace(first, { as = "common-dropdown-b-button", rect = filter, button = filter, parent = filter, alsoFade = art }) or false
+		repOf[filter] = Replace(first, { as = "common-dropdown-b-button", rect = filter, button = filter, parent = filter, alsoFade = art }) or false
 	end
 end
 
@@ -1253,13 +1258,13 @@ local function SkinMoney(f)
 		end
 	end
 	found.moneyBg, found.moneyKey = bg, key
-	if not (type(bg) == "table" and bg.GetRegions) or bg.melloRep ~= nil then
+	if not (type(bg) == "table" and bg.GetRegions) or repOf[bg] ~= nil then
 		return
 	end
 	local mid = bg.Middle or bg.Center
 	local extra = {}
 	for _, region in ipairs({ bg:GetRegions() }) do
-		if IsTexture(region) and region ~= mid and not region.kitPiece then
+		if IsTexture(region) and region ~= mid and not pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
@@ -1267,7 +1272,7 @@ local function SkinMoney(f)
 		mid = table.remove(extra, 1)
 	end
 	if mid then
-		bg.melloRep = Replace(mid, { as = "common-coinbox-center", rect = bg, alsoFade = extra }) or false
+		repOf[bg] = Replace(mid, { as = "common-coinbox-center", rect = bg, alsoFade = extra }) or false
 	end
 end
 
@@ -1279,7 +1284,7 @@ local ARROWS = {
 }
 
 local function SkinOldScrollBar(sb)
-	if not (type(sb) == "table" and sb.GetObjectType) or sb.melloRep ~= nil then
+	if not (type(sb) == "table" and sb.GetObjectType) or repOf[sb] ~= nil then
 		return
 	end
 	if sb.Track and sb.Track.Thumb and sb.Back and sb.Forward then
@@ -1294,7 +1299,7 @@ local function SkinOldScrollBar(sb)
 	local thumb = sb.GetThumbTexture and sb:GetThumbTexture()
 	local track = {}
 	for _, region in ipairs({ sb:GetRegions() }) do
-		if IsTexture(region) and region ~= thumb and not region.kitPiece then
+		if IsTexture(region) and region ~= thumb and not pieceOf[region] then
 			track[#track + 1] = region
 		end
 	end
@@ -1311,7 +1316,7 @@ local function SkinOldScrollBar(sb)
 			reps[#reps + 1] = Replace(normal, { as = key, button = b, alsoFade = Kit:OtherTextures(b, normal) })
 		end
 	end
-	sb.melloRep = reps
+	repOf[sb] = reps
 end
 
 --------------------------------------------------------------------------------
@@ -1322,7 +1327,7 @@ end
 -- inset standing at or above the list hid every row): its holder one level
 -- under the lowest of the list and the rank header
 local function KeepInsetUnder(f, list, step)
-	local rep = f.Inset and f.Inset.melloRep
+	local rep = f.Inset and repOf[f.Inset]
 	local holder = rep and rep.object
 	if not (holder and holder.SetFrameLevel and list) then
 		return
@@ -1592,10 +1597,10 @@ local function LevelText(obj)
 end
 
 local function Dressed(obj)
-	if type(obj) ~= "table" or obj.melloRep == nil then
+	if type(obj) ~= "table" or repOf[obj] == nil then
 		return "not dressed"
 	end
-	return obj.melloRep and "dressed" or "looked at, nothing to dress"
+	return repOf[obj] and "dressed" or "looked at, nothing to dress"
 end
 
 local function Found(label, obj, how)
@@ -1668,7 +1673,7 @@ local function DumpRegion(row, region)
 	local what = ""
 	if kind == "Texture" then
 		local okC, r, g, b = pcall(region.GetVertexColor, region)
-		what = string.format("art=%s%s colour=%s", tostring(Kit:ArtKey(region)), region.kitPiece and " (kit)" or "",
+		what = string.format("art=%s%s colour=%s", tostring(Kit:ArtKey(region)), pieceOf[region] and " (kit)" or "",
 			(okC and r and not Secret(r)) and string.format("%.2f,%.2f,%.2f", r, g, b) or "?")
 	elseif kind == "FontString" then
 		what = "text=" .. (TextOf(region) or ""):gsub("|", "||"):sub(1, 60)

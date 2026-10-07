@@ -65,6 +65,10 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("SocketingPanel", {
 	title = "Socketing Kit",
@@ -376,14 +380,14 @@ local function SkinTrims(f)
 		end
 		if inset.NineSlice then
 			for _, region in ipairs({ inset.NineSlice:GetRegions() }) do
-				if region:GetObjectType() == "Texture" and not region.kitPiece then
+				if region:GetObjectType() == "Texture" and not pieceOf[region] then
 					FadeArt(region)
 					ni = ni + 1
 				end
 			end
 		end
-		if inset.melloRep == nil then
-			inset.melloRep = false
+		if repOf[inset] == nil then
+			repOf[inset] = false
 		end
 	end
 	found.trims = string.format("%d of %d frame trims faded; inset %s (%d art pieces faded)", n, #TRIMS,
@@ -443,7 +447,7 @@ local function SkinDescription(f)
 		region = f:CreateTexture(nil, "BACKGROUND")
 		region:SetAllPoints(rect)
 		region:SetColorTexture(0, 0, 0, 0)
-		region.kitPiece = true
+		pieceOf[region] = true
 	end
 	local rep = Replace(region, { as = "common-insideframe", parent = f, rect = rect, level = 1, body = true,
 		noFade = tl == nil, alsoFade = fade })
@@ -490,7 +494,7 @@ end
 --------------------------------------------------------------------------------
 local function RingOf(socket)
 	for _, region in ipairs({ socket:GetRegions() }) do
-		if region ~= socket.Background and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region ~= socket.Background and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BORDER" then
 				return region
@@ -502,7 +506,7 @@ end
 local function Filigree(socket)
 	local list = {}
 	for _, region in ipairs({ socket:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BACKGROUND" then
 				list[#list + 1] = region
@@ -519,8 +523,8 @@ local function SkinSocket(socket)
 	done[socket] = true
 	local icon = socket.Icon or _G[(NameOf(socket) or "") .. "IconTexture"]
 	if not icon then
-		if socket.melloRep == nil then
-			socket.melloRep = false
+		if repOf[socket] == nil then
+			repOf[socket] = false
 		end
 		return
 	end
@@ -535,7 +539,7 @@ local function SkinSocket(socket)
 	end
 	local rect = Kit:RimRect(socket, "roundslot", size, icon)
 	local rep = Replace(ring or icon, { as = "communities-ring-gold", button = socket, rect = rect, noFade = ring == nil, alsoFade = extra })
-	socket.melloRep = rep or false
+	repOf[socket] = rep or false
 	if not rep then
 		return
 	end
@@ -615,7 +619,10 @@ local function Build()
 	if apply then
 		-- a plate's label keeps its own colour on any paper (the ink rule's
 		-- button exception)
-		apply.melloNoInk = true
+		local QI = MelloUI.QuestInk
+		if QI then
+			QI.noInk[apply] = true
+		end
 	end
 	found.apply = apply and string.format("%s: red plate %s", Label(apply), rep and "on" or "NOT made") or "-- not found"
 
@@ -798,7 +805,7 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. tostring(TextOf(region) or (HasText(region) and "[secret]" or "")):sub(1, 40)
 		end
@@ -810,7 +817,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (marked)" or "")
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (marked)" or "")
 	end
 end
 
@@ -827,7 +834,7 @@ local function Summary(f)
 		local ringW = skin and skin.ring and skin.ring.tex and Width(skin.ring.tex)
 		Line("portrait", string.format("%s file %s, size %s x %s, medallion %s, fitted %s, shown %s", Label(portrait),
 			(okT and not Secret(file)) and tostring(file) or "?", okS and Num(w) or "?", okS and Num(h) or "?",
-			ringW and Num(ringW * 0.759) or "?", tostring(portrait.melloSaved ~= nil), Shown(portrait)))
+			ringW and Num(ringW * 0.759) or "?", tostring(portraitSavedOf[portrait] ~= nil), Shown(portrait)))
 	else
 		Line("portrait", "-- not found")
 	end
@@ -855,7 +862,7 @@ local function Summary(f)
 	local scroll = f.ScrollFrame or _G.ItemSocketingScrollFrame
 	local bar = scroll and scroll.ScrollBar
 	Line("scroll frame", scroll and string.format("%s at %s, scroll bar %s", Label(scroll), Rect(scroll),
-		bar and tostring(bar.melloRep ~= nil and bar.melloRep ~= false) or "-- none") or "-- not found")
+		bar and tostring(repOf[bar] ~= nil and repOf[bar] ~= false) or "-- none") or "-- not found")
 	local desc = _G.ItemSocketingDescription
 	Line("item tooltip", desc and string.format("%s shown %s, its own NineSlice shown %s", Label(desc), Shown(desc),
 		desc.NineSlice and Shown(desc.NineSlice) or "-") or "-- not found")

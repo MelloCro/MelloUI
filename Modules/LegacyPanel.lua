@@ -26,6 +26,10 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("LegacyPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local kitHookedOf = MelloUI.Kept.kitHookedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("LegacyPanel", {
 	title = "Legacy Panel",
@@ -67,7 +71,7 @@ local function ListDim(owner, rect, pad)
 	tex:SetPoint("TOPLEFT", rect, "TOPLEFT", -pad, pad)
 	tex:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", pad, -pad)
 	Kit:Paint(tex, "innerPanel", "fill", DIM_ALPHA)   -- (by its key: a new palette paints it again)
-	tex.kitPiece = true   -- ours: never faded with the game's art
+	pieceOf[tex] = true   -- ours: never faded with the game's art
 	tex:SetShown(active)
 	skin.dims[#skin.dims + 1] = tex
 end
@@ -107,6 +111,7 @@ local function Follow(rep, region)
 	Sync()
 end
 
+local statesOf = setmetatable({}, { __mode = "k" })   -- [owner] = { [atlas] = rep }: StateReps' plates
 -- A region the game re-atlases with a state: one rep per atlas seen on it,
 -- the current one shown; the rep is built on `rect` (the button's rect for
 -- a plate, the region's for a glyph), `button` follows hover.
@@ -114,12 +119,12 @@ local function StateReps(owner, region, rect, button, extra)
 	if not (owner and region) then
 		return
 	end
-	owner.melloStates = owner.melloStates or {}
+	statesOf[owner] = statesOf[owner] or {}
 	local key = Kit:ArtKey(region)
-	if key and Kit.Replacements[key] and owner.melloStates[key] == nil then
-		owner.melloStates[key] = Replace(region, { as = key, button = button, rect = rect or region, alsoFade = extra }) or false
+	if key and Kit.Replacements[key] and statesOf[owner][key] == nil then
+		statesOf[owner][key] = Replace(region, { as = key, button = button, rect = rect or region, alsoFade = extra }) or false
 	end
-	for k, rep in pairs(owner.melloStates) do
+	for k, rep in pairs(statesOf[owner]) do
 		if rep then
 			rep:SetShown(k == key)
 		end
@@ -151,8 +156,8 @@ local function SkinCategoryRow(row)
 	StateReps(row, normal, row, row, highlight and { highlight } or nil)
 	local collapse = row.CollapseButton or (row.GetCollapseButton and row:GetCollapseButton())
 	Kit:SkinCollapseButton(collapse, Replace)
-	if not row.melloKitHooked then
-		row.melloKitHooked = true
+	if not kitHookedOf[row] then
+		kitHookedOf[row] = true
 		hooksecurefunc(row, "RefreshCardArt", function(r)
 			if active then
 				SkinCategoryRow(r)
@@ -171,13 +176,13 @@ end
 -- A criteria row (LegacyChallengeCriteriaTemplate): the plain plate for its
 -- Background (shown by the game when no progress bar is), P1 on its bar.
 local function SkinCriteria(criteria)
-	if criteria.melloRep ~= nil then
+	if repOf[criteria] ~= nil then
 		return
 	end
-	criteria.melloRep = false
+	repOf[criteria] = false
 	if criteria.Background then
 		local rep = Replace(criteria.Background, { as = "Legacy-Challenge-Cards-Bar", rect = criteria })
-		criteria.melloRep = rep or false
+		repOf[criteria] = rep or false
 		Follow(rep, criteria.Background)
 	end
 	local bar = criteria.ProgressBar
@@ -200,8 +205,8 @@ end
 -- there), the round rim on its icon frame, the +/- glyph, the tracking check
 -- box; the selection overlay stays the game's.
 local function SkinChallengeCard(card)
-	if card.melloRep == nil then
-		card.melloRep = false
+	if repOf[card] == nil then
+		repOf[card] = false
 		if card.Background then
 			-- `dim`: the card's text (its description, the criteria) on the
 			-- palette's inner panel inside its rail, not on the bare stone
@@ -224,7 +229,7 @@ local function SkinChallengeCard(card)
 		if card.Icon and card.Icon.frame and card.Icon.texture then
 			-- the rim's opening is the 50 px masked icon, on the icon's centre
 			local rect = Kit:RimRect(card.Icon, "roundslot", card.Icon.texture:GetWidth(), card.Icon.texture)
-			card.melloRep = Replace(card.Icon.frame, { as = "Legacy-Tree-Frame-icon-frame", button = card.Icon, rect = rect }) or false
+			repOf[card] = Replace(card.Icon.frame, { as = "Legacy-Tree-Frame-icon-frame", button = card.Icon, rect = rect }) or false
 		end
 		local tracked = card.Tracked
 		if tracked and tracked.GetNormalTexture and tracked:GetNormalTexture() then
@@ -248,39 +253,42 @@ local function SkinChallengeCard(card)
 	end
 end
 
+local levelsOf = setmetatable({}, { __mode = "k" })   -- [card] = { [atlas] = rep }: its level gem, one rep per atlas
+local rimOf = setmetatable({}, { __mode = "k" })   -- [card] = its rim's rect (Kit:RimRect)
+local bodyOf = setmetatable({}, { __mode = "k" })   -- [card] = its body's rep (false: none)
 --------------------------------------------------------------------------------
 -- The reward track page: its cards (RenownLevelMixin, re-atlased per Refresh)
 -- get the square rim on their icon border; the card's body and level diamond
 -- stay the game's until the user picks (catalogue).
 --------------------------------------------------------------------------------
 local function SkinRewardCard(card)
-	if card.melloKitHooked then
+	if kitHookedOf[card] then
 		return
 	end
-	card.melloKitHooked = true
+	kitHookedOf[card] = true
 	local function Rims(c)
 		if not active then
 			return
 		end
-		if c.RewardCardBG and c.melloBody == nil then
+		if c.RewardCardBG and bodyOf[c] == nil then
 			-- the card's body (LR1): the rail + stone, whatever the game atlases
 			-- the BG to; the reward's name and level on the inner panel over
 			-- that stone (WINDOW-RULES 2e, user 2026-09-24)
-			c.melloBody = Replace(c.RewardCardBG, { as = "Legacy-Rewards-Tracker-Cards", rect = c, dim = DIM_ALPHA }) or false
+			bodyOf[c] = Replace(c.RewardCardBG, { as = "Legacy-Rewards-Tracker-Cards", rect = c, dim = DIM_ALPHA }) or false
 		end
 		if c.IconBorder and c.Icon then
 			-- the rim's opening is the 64 px icon (the game's border is 80 on it)
-			c.melloRim = c.melloRim or Kit:RimRect(c, "slot", c.Icon:GetWidth(), c.Icon)
-			StateReps(c, c.IconBorder, c.melloRim, nil)
+			rimOf[c] = rimOf[c] or Kit:RimRect(c, "slot", c.Icon:GetWidth(), c.Icon)
+			StateReps(c, c.IconBorder, rimOf[c], nil)
 		end
 		if c.LevelSquare then
 			-- the level diamond (LD2): the large gem, one rep per atlas
-			c.melloLevels = c.melloLevels or {}
+			levelsOf[c] = levelsOf[c] or {}
 			local key = Kit:ArtKey(c.LevelSquare)
-			if key and Kit.Replacements[key] and c.melloLevels[key] == nil then
-				c.melloLevels[key] = Replace(c.LevelSquare, { as = key, rect = c.LevelSquare }) or false
+			if key and Kit.Replacements[key] and levelsOf[c][key] == nil then
+				levelsOf[c][key] = Replace(c.LevelSquare, { as = key, rect = c.LevelSquare }) or false
 			end
-			for k, rep in pairs(c.melloLevels) do
+			for k, rep in pairs(levelsOf[c]) do
 				if rep then
 					rep:SetShown(k == key)
 				end
@@ -298,10 +306,10 @@ end
 -- A tree selection card (LT4): no card — the round rim on the icon, lit
 -- while the card is checked (the game's card picture and glow faded).
 local function SkinTreeCard(button)
-	if button.melloRep ~= nil then
+	if repOf[button] ~= nil then
 		return
 	end
-	button.melloRep = false
+	repOf[button] = false
 	if button.Background then
 		Replace(button.Background, { as = "Legacy-Tree-Frame-Card" })
 	end
@@ -311,13 +319,13 @@ local function SkinTreeCard(button)
 	if button.Ring then
 		-- the ring's opening is the button's masked icon (67 px; the game's ring is 70 on it)
 		local rect = Kit:RimRect(button, "roundslot", button:GetWidth(), button)
-		button.melloRep = Replace(button.Ring, { as = "Legacy-Tree-Frame-Card-Ring", button = button, rect = rect,
+		repOf[button] = Replace(button.Ring, { as = "Legacy-Tree-Frame-Card-Ring", button = button, rect = rect,
 			checked = function() return button:GetChecked() and true or false end,
 			alsoFade = { button.HighlightTexture } }) or false
-		if button.melloRep and button.RefreshSelectionVisuals then
+		if repOf[button] and button.RefreshSelectionVisuals then
 			hooksecurefunc(button, "RefreshSelectionVisuals", function()
-				if active and button.melloRep.object.Update then
-					button.melloRep.object:Update()
+				if active and repOf[button].object.Update then
+					repOf[button].object:Update()
 				end
 			end)
 		end
@@ -600,3 +608,7 @@ SlashCmdList.MELLOLEGDUMP = function(msg)
 	Kit:DumpWindow(LegacySystemFrame, skin, msg)
 	MelloUI:ShowLog("legdump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { bodyOf = bodyOf, levelsOf = levelsOf, rimOf = rimOf, statesOf = statesOf }

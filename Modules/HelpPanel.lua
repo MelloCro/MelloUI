@@ -62,6 +62,10 @@ local Perf = MelloUI.Perf:Scope("HelpPanel")
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("HelpPanel", {
 	title = "Help Kit",
@@ -250,7 +254,7 @@ local function PlaceTitle()
 		rep:Refit()
 	end
 	local fs = TitleString(f)
-	if fs and not fs.melloFontSaved and (rep or (skin.small and skin.small.title == fs)) then
+	if fs and not fontSavedOf[fs] and (rep or (skin.small and skin.small.title == fs)) then
 		Kit:TitleFont(fs, true)
 	end
 end
@@ -292,7 +296,7 @@ local function ShowBox(entry, on)
 	end
 	if entry.title then
 		if on then
-			if not entry.title.melloFontSaved then
+			if not fontSavedOf[entry.title] then
 				Kit:TitleFont(entry.title, true)
 			end
 		else
@@ -320,7 +324,7 @@ end
 local function BoxArt(frame, keep)
 	local list, seen = {}, {}
 	local function Add(obj)
-		if obj and not seen[obj] and not (keep and keep[obj]) and not obj.kitPiece and not obj.melloSkin then
+		if obj and not seen[obj] and not (keep and keep[obj]) and not pieceOf[obj] and not obj.melloSkin then
 			seen[obj] = true
 			list[#list + 1] = obj
 		end
@@ -329,7 +333,7 @@ local function BoxArt(frame, keep)
 		Add(frame[key])
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if ObjectType(region) == "Texture" and not region.kitPiece then
+		if ObjectType(region) == "Texture" and not pieceOf[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			if okL and (layer == "BACKGROUND" or layer == "BORDER") and not IsPicture(region, frame) then
 				Add(region)
@@ -383,7 +387,7 @@ local function DarkInsets(f, root, browser, depth)
 	end
 	for _, child in ipairs({ root:GetChildren() }) do
 		if child ~= browser then
-			if IsInset(child) and child.melloRep == nil then
+			if IsInset(child) and repOf[child] == nil then
 				Kit:SkinInset(child, Replace, f, true)
 			end
 			DarkInsets(f, child, browser, depth + 1)
@@ -401,7 +405,7 @@ end
 local function TicketArt(box)
 	local list = {}
 	for _, region in ipairs({ box:GetRegions() }) do
-		if ObjectType(region) == "Texture" and not region.kitPiece then
+		if ObjectType(region) == "Texture" and not pieceOf[region] then
 			list[#list + 1] = region
 		end
 	end
@@ -471,23 +475,26 @@ local function Build()
 	-- the browser's frame on the dark panel (never the browser itself), then
 	-- every other inset of the window
 	local inset = browser and browser.BrowserInset
-	if inset and inset.melloRep == nil then
+	if inset and repOf[inset] == nil then
 		Kit:SkinInset(inset, Replace, f, true)
 	end
 	DarkInsets(f, f, browser)
 
 	-- the buttons on red plates (labels readable on them), scroll bars and
 	-- the rest of the common controls; the browser is never walked into
+	local QI = MelloUI.QuestInk
 	for _, child in ipairs({ f:GetChildren() }) do
-		if ObjectType(child) == "Button" and (child.Left or child.Center) then
-			child.melloNoInk = true
+		if QI and ObjectType(child) == "Button" and (child.Left or child.Center) then
+			QI.noInk[child] = true
 		end
 	end
 	Kit:SweepControls(f, Replace, skin, browser)
 	local tip = _G.BrowserSettingsTooltip
 	local cookies = tip and tip.CookiesButton
 	if cookies then
-		cookies.melloNoInk = true
+		if QI then
+			QI.noInk[cookies] = true
+		end
 		Kit:SkinRedButton(cookies, Replace)
 	end
 end
@@ -558,7 +565,7 @@ local function Deactivate()
 	-- (the title plate's onDisable put the title back, the ring's the portrait)
 	local f = Window()
 	local fs = f and TitleString(f)
-	if fs and fs.melloFontSaved then
+	if fs and fontSavedOf[fs] then
 		Kit:TitleFont(fs, false)
 	end
 end
@@ -767,7 +774,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. ((region.kitPiece or region.kitScale) and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. ((pieceOf[region] or region.kitScale) and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. (TextOf(region) or "?"):sub(1, 40)
 		end
@@ -777,7 +784,7 @@ local function DumpOwn(frame)
 	end
 	for _, child in ipairs({ frame:GetChildren() }) do
 		MelloUI:Print("  child %s %s strata %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child), StrataOf(child),
-			LevelText(child), tostring(Shown(child)), child.melloRep ~= nil and " (dressed)" or "")
+			LevelText(child), tostring(Shown(child)), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 
@@ -825,7 +832,7 @@ local function DumpHelp(f)
 			off = string.format("%.0f, %.0f", cx - px, cy - py)
 		end
 		Found("title", fs, string.format(" text %s, font %s, title face %s, off the plate's centre %s", tostring(TextOf(fs)), FontText(fs),
-			tostring(fs.melloFontSaved ~= nil), off))
+			tostring(fontSavedOf[fs] ~= nil), off))
 	else
 		Found("title", nil)
 	end
@@ -836,8 +843,8 @@ local function DumpHelp(f)
 		Found("browser", browser, string.format(" %s, strata %s, level %s, shown %s, faded by the kit %s", RectText(browser), StrataOf(browser),
 			LevelText(browser), tostring(Shown(browser)), tostring(Kit.faded[browser] == true)))
 		local inset = browser.BrowserInset
-		Found("browser's inset", inset, inset and string.format(" dressed %s, dim %s, strata %s", tostring(inset.melloRep ~= nil and inset.melloRep ~= false),
-			tostring(inset.melloRep and inset.melloRep.skin and inset.melloRep.skin.dimFill ~= nil), StrataOf(inset)) or nil)
+		Found("browser's inset", inset, inset and string.format(" dressed %s, dim %s, strata %s", tostring(repOf[inset] ~= nil and repOf[inset] ~= false),
+			tostring(repOf[inset] and repOf[inset].skin and repOf[inset].skin.dimFill ~= nil), StrataOf(inset)) or nil)
 		local over = 0
 		for i, r in ipairs(skin and skin.reps or {}) do
 			local obj = r.object
@@ -854,14 +861,14 @@ local function DumpHelp(f)
 	for _, child in ipairs({ f:GetChildren() }) do
 		if ObjectType(child) == "Button" and child.GetFontString and child:GetFontString() and TextOf(child:GetFontString()) then
 			nButtons = nButtons + 1
-			if child.melloRep then
+			if repOf[child] then
 				nPlated = nPlated + 1
 			end
 		end
 	end
 	local tip = _G.BrowserSettingsTooltip
 	MelloUI:Print("  text buttons %d, on red plates %d; browser settings' cookies button %s; tabs: none; inked strings: none (no parchment)",
-		nButtons, nPlated, tip and tip.CookiesButton and tostring(tip.CookiesButton.melloRep ~= nil and tip.CookiesButton.melloRep ~= false) or "not on this client")
+		nButtons, nPlated, tip and tip.CookiesButton and tostring(repOf[tip.CookiesButton] ~= nil and repOf[tip.CookiesButton] ~= false) or "not on this client")
 end
 
 local function DumpTicket()

@@ -71,6 +71,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("StablePanel", {
 	title = "Pet Stable Kit",
@@ -234,7 +239,7 @@ local function Panel(host, rect)
 	end
 	local tex = Kit:StoneDim(host, { rect = rect, sublevel = PANEL_SUB })
 	if tex then
-		tex.kitPiece = true      -- ours: never taken for the game's art
+		pieceOf[tex] = true      -- ours: never taken for the game's art
 		tex:SetShown(active)
 		panels[#panels + 1] = tex
 	end
@@ -290,7 +295,7 @@ local function PlaceTitle()
 	end
 	local f = Window()
 	local text = f and f.TitleContainer and f.TitleContainer.TitleText
-	if text and not text.melloFontSaved then
+	if text and not fontSavedOf[text] then
 		Kit:TitleFont(text, true)
 	end
 end
@@ -312,7 +317,7 @@ local function SkinModel(f)
 		return
 	end
 	local inset = ms.Inset
-	if inset and inset.melloRep == nil then
+	if inset and repOf[inset] == nil then
 		Kit:SkinInset(inset, Replace, ms)
 	end
 	local strip = ms.ControlFrame
@@ -334,7 +339,7 @@ local function SkinModel(f)
 	end
 	found.model = string.format("%s at level %s; inset %s (rail %s); control strip %s: %d of %d buttons on the cog plate; spec picture %s (left as the game's)",
 		Label(ms), Num(ms:GetFrameLevel()), inset and Label(inset) or "-- none",
-		tostring(inset ~= nil and inset.melloRep ~= nil and inset.melloRep ~= false),
+		tostring(inset ~= nil and repOf[inset] ~= nil and repOf[inset] ~= false),
 		strip and Label(strip) or "-- none", n, total, ms.Background and tostring(Kit:ArtKey(ms.Background) or "(empty)") or "-- none")
 end
 
@@ -396,7 +401,7 @@ local function SkinInfo(f)
 		found.info = "-- the band could not be made"
 		return
 	end
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	tex:Hide()
 	info = { rect = rect, tex = tex, strings = strings }
 	for _, fs in ipairs(strings) do
@@ -451,7 +456,7 @@ local function SkinExpBar(f)
 	end
 	local art = {}
 	for _, region in ipairs({ overlay:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			art[#art + 1] = region
 		end
 	end
@@ -492,7 +497,7 @@ local function EmptyPicture(b)
 		return b.background
 	end
 	for _, region in ipairs({ b:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BACKGROUND" then
 				return region
@@ -509,15 +514,15 @@ local function SkinSlot(b)
 	local normal = b.GetNormalTexture and b:GetNormalTexture()
 	local icon = b.Icon or b.icon or _G[(NameOf(b) or "") .. "IconTexture"]
 	if not (normal and icon) then
-		if b.melloRep == nil then
-			b.melloRep = false
+		if repOf[b] == nil then
+			repOf[b] = false
 		end
 		return
 	end
 	local extra = List(b.GetPushedTexture and b:GetPushedTexture(), b.GetHighlightTexture and b:GetHighlightTexture(),
 		b.GetCheckedTexture and b:GetCheckedTexture())
 	local rep = Replace(normal, { as = Kit:ButtonRimRule(), button = b, rect = b, icon = icon, alsoFade = extra })
-	b.melloRep = rep or false
+	repOf[b] = rep or false
 	if not rep then
 		return
 	end
@@ -606,8 +611,9 @@ local function Build()
 		SkinLower(f)
 		local buy = f.purchaseButton
 		local rep = buy and Kit:SkinRedButton(buy, Replace)
-		if buy then
-			buy.melloNoInk = true
+		local QI = MelloUI.QuestInk
+		if buy and QI then
+			QI.noInk[buy] = true
 		end
 		found.purchase = buy and string.format("%s: red plate %s", Label(buy), rep and "on" or "NOT made") or "-- not found"
 	else
@@ -646,7 +652,7 @@ local function Refresh()
 	FitInfo()
 	for _, entry in ipairs(slotStones) do
 		Kit:SyncSlotStone(entry.button)
-		local rep = entry.button.melloRep
+		local rep = repOf[entry.button]
 		local rim = rep and rep.object
 		if rim and rim.Update then
 			rim:Update()
@@ -809,7 +815,7 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. tostring(TextOf(region) or (HasText(region) and "[secret]" or "")):sub(1, 40)
 		end
@@ -821,7 +827,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (marked)" or "")
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (marked)" or "")
 	end
 end
 
@@ -837,7 +843,7 @@ local function Summary(f)
 		local ringW = skin and skin.ring and skin.ring.tex and Width(skin.ring.tex)
 		Line("portrait", string.format("%s file %s, size %s x %s, medallion %s, fitted %s, shown %s", Label(portrait),
 			(okT and not Secret(file)) and tostring(file) or "?", okS and Num(w) or "?", okS and Num(h) or "?",
-			ringW and Num(ringW * 0.759) or "?", tostring(portrait.melloSaved ~= nil), Shown(portrait)))
+			ringW and Num(ringW * 0.759) or "?", tostring(portraitSavedOf[portrait] ~= nil), Shown(portrait)))
 	else
 		Line("portrait", "-- not found")
 	end
@@ -851,7 +857,7 @@ local function Summary(f)
 		Line("title text", string.format("%s '%s' at %s, face %s %s, title face %s%s", Label(title),
 			tostring(TextOf(title) or (HasText(title) and "[secret]" or "(empty)")), Rect(title),
 			(okF and type(face) == "string" and not Secret(face)) and face or "?", okF and Num(size) or "?",
-			tostring(title.melloFontSaved ~= nil), HasText(title) and "" or " -- the game gives this window no title string"))
+			tostring(fontSavedOf[title] ~= nil), HasText(title) and "" or " -- the game gives this window no title string"))
 	else
 		Line("title text", "-- no TitleContainer.TitleText")
 	end
@@ -881,7 +887,7 @@ local function Summary(f)
 			end
 		end
 		local okC, checked = pcall(b.GetChecked, b)
-		local rim = b.melloRep and b.melloRep.object
+		local rim = repOf[b] and repOf[b].object
 		Line("  slot", string.format("%s shown %s, checked %s, rim %s (%s), stone %s, locked (red) %s", Label(b), Shown(b),
 			(okC and not Secret(checked)) and tostring(checked) or "?", tostring(rim ~= nil), rim and tostring(rim.base) or "-",
 			tostring(entry ~= nil and entry.stone ~= nil), entry and tostring(entry.stone ~= nil and Locked(entry.bg)) or "-"))

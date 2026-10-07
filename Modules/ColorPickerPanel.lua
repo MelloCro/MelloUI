@@ -36,6 +36,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("ColorPickerPanel")
 local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("ColorPickerPanel", {
 	title = "Colour Picker Kit",
@@ -54,7 +57,7 @@ local active = false
 local hooked = false
 local skin = nil                 -- { nine, sheet, dim, reps = {}, title, hex, swatches = {}, thumbs = {}, sliders = {}, buttons = {} }
 local fadedArt = {}              -- the game's art faded with no piece on its own rect
-local rims = {}                  -- the swatch rims' holders { melloRep } (Kit:RegisterButtonRim keeps them weakly)
+local rims = {}                  -- the swatch rims' holders (the rep: MelloUI.Kept.repOf[holder]; Kit:RegisterButtonRim keeps them weakly)
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
@@ -300,7 +303,7 @@ local function GameArt(f)
 	local list, seen = {}, {}
 	local keep = Untouchable(f)
 	local function Add(obj)
-		if obj and not seen[obj] and not keep[obj] and not obj.kitPiece and not obj.melloSkin then
+		if obj and not seen[obj] and not keep[obj] and not pieceOf[obj] and not obj.melloSkin then
 			seen[obj] = true
 			list[#list + 1] = obj
 		end
@@ -407,7 +410,7 @@ end
 
 --------------------------------------------------------------------------------
 -- The buttons (the Dialogs Kit's way): red plates, labels in their own
--- colours (melloNoInk; a label inked already given its colour back), the
+-- colours (QI.noInk; a label inked already given its colour back), the
 -- button's disabled look kept by the plate
 --------------------------------------------------------------------------------
 local function SkinButton(button)
@@ -415,10 +418,12 @@ local function SkinButton(button)
 		return
 	end
 	skin.buttons[button] = false
-	button.melloNoInk = true
 	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and region.melloInk and QI and QI.PlainText then
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
 			pcall(QI.PlainText, region)
 		end
 	end
@@ -438,7 +443,7 @@ local function SkinHexBox(box)
 	local mid = box.Middle or box.Mid
 	local others = {}
 	for _, region in ipairs({ box:GetRegions() }) do
-		if IsType(region, "Texture") and not region.kitPiece then
+		if IsType(region, "Texture") and not pieceOf[region] then
 			if not mid then
 				mid = region
 			elseif region ~= mid then
@@ -479,7 +484,8 @@ local function SkinSwatch(tex)
 			rep.object:Update()
 		end
 	end
-	local holder = { melloRep = rep }
+	local holder = {}
+	MelloUI.Kept.repOf[holder] = rep
 	rims[#rims + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	skin.swatches[#skin.swatches + 1] = { tex = tex, rep = rep }
@@ -499,7 +505,7 @@ local function SkinSlider(slider)
 	local thumb = slider.GetThumbTexture and slider:GetThumbTexture()
 	local art = {}
 	for _, region in ipairs({ slider:GetRegions() }) do
-		if IsType(region, "Texture") and region ~= thumb and not region.kitPiece then
+		if IsType(region, "Texture") and region ~= thumb and not pieceOf[region] then
 			art[#art + 1] = region
 		end
 	end
@@ -623,7 +629,7 @@ local function Surface()
 			if not p then
 				break
 			end
-			if p.melloNoInk or IsType(p, "Button") or IsType(p, "EditBox") or (IsType(p, "ColorSelect") and p ~= Window()) then
+			if QI.noInk[p] or IsType(p, "Button") or IsType(p, "EditBox") or (IsType(p, "ColorSelect") and p ~= Window()) then
 				return true
 			end
 			p = p.GetParent and p:GetParent()
@@ -845,9 +851,9 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "") .. (Kit.faded[region] and " FADED" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "") .. (Kit.faded[region] and " FADED" or "")
 		elseif kind == "FontString" then
-			art = "text: " .. TextOf(region) .. (region.melloInk and " (inked)" or "")
+			art = "text: " .. TextOf(region) .. ((MelloUI.QuestInk and MelloUI.QuestInk.inkOn[region]) and " (inked)" or "")
 		end
 		MelloUI:Print("    region %s %s %s %s alpha %s shown %s", kind, Label(region), okL and tostring(layer) or "?", art, Alpha(region), Shown(region))
 	end
@@ -878,7 +884,7 @@ local function DumpParts(f)
 	local hd = Header(f)
 	if hd then
 		Found("title", hd.text, string.format(" \"%s\" font %s, title face %s, centre %s, plate centre %s, plate %s",
-			TextOf(hd.text), FontOf(hd.text), tostring(hd.text.melloFontSaved ~= nil), Centre(hd.text),
+			TextOf(hd.text), FontOf(hd.text), tostring(fontSavedOf[hd.text] ~= nil), Centre(hd.text),
 			t and t.rep.strip and Centre(t.rep.strip) or "-", t and t.rep.strip and Rect(t.rep.strip) or "-"))
 		for _, piece in ipairs(hd.art) do
 			Found("  header art", piece, " " .. (Kit.faded[piece] and "faded" or "not faded"))
@@ -941,7 +947,7 @@ local function DumpParts(f)
 	for _, b in ipairs(Buttons(f)) do
 		local fs = b.GetFontString and b:GetFontString()
 		Found("button", b, string.format(" \"%s\" red plate %s, label kept %s, shown %s", fs and TextOf(fs) or "",
-			tostring(skin and skin.buttons[b]), tostring(b.melloNoInk == true), Shown(b)))
+			tostring(skin and skin.buttons[b]), tostring(MelloUI.QuestInk ~= nil and MelloUI.QuestInk.noInk[b] == true), Shown(b)))
 	end
 	local QI = MelloUI.QuestInk
 	local def = QI and QI.surfaces and QI.surfaces[SURFACE]

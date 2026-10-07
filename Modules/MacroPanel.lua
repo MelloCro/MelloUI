@@ -54,6 +54,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("MacroPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("MacroPanel", {
 	title = "Macros Kit",
@@ -167,11 +170,11 @@ end
 -- 2 px under the rim's inner edge, on the icon's centre -- and the icon
 -- stays where the game puts it, so the game's layout of its pooled buttons
 -- is never fought (the equipment manager's picker, CharacterPanel, is the
--- same popup and the same recipe). A holder { melloRep = the rim, icon }
+-- same popup and the same recipe). A holder { icon } (its rep, the rim, in MelloUI.Kept.repOf)
 -- stands for the icon in the Kit's Button Border registry.
 --------------------------------------------------------------------------------
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -213,7 +216,7 @@ end
 -- texture (UI-EmptySlot-Disabled in SelectorButtonTemplate)
 local function BackOf(button, icon)
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region ~= icon and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region ~= icon and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BACKGROUND" then
 				return region
@@ -228,7 +231,7 @@ end
 -- frame round the icon when it is not the button's own (the selected
 -- macro's slot picture on the window); `more`: other art it stands in for.
 local function SkinIconButton(button, selectable, art, more)
-	if not button or done[button] or button.melloRep ~= nil then
+	if not button or done[button] or repOf[button] ~= nil then
 		return
 	end
 	done[button] = true
@@ -271,18 +274,19 @@ local function SkinIconButton(button, selectable, art, more)
 	local rep = Replace(art, { as = Kit:ButtonRimRule(), button = button, parent = button, checked = checked, alsoFade = extra })
 	-- the Kit's own "dressed" marker, read by its sweep: a 36 px CheckButton
 	-- (an older macro button) would read as a check box to it
-	button.melloRep = rep or false
+	repOf[button] = rep or false
 	if not rep then
 		return
 	end
-	local holder = { melloRep = rep, icon = icon }
+	local holder = { icon = icon }
+	repOf[holder] = rep
 	iconRims[#iconRims + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	FitIconRim(holder)
 	stats.icons = stats.icons + 1
 	-- the gold follows the game's own selection as soon as it changes
 	local function Update()
-		local rim = holder.melloRep.object
+		local rim = repOf[holder].object
 		if active and rim and rim.Update then
 			rim:Update()
 		end
@@ -396,14 +400,14 @@ local function SkinTab(tab)
 		Kit:SkinPanelTab(tab, Replace, skin)
 	else
 		plainTex, openTex = Part("Left"), Part("LeftDisabled")
-		if not (plainTex and openTex) or tab.melloRep ~= nil then
+		if not (plainTex and openTex) or repOf[tab] ~= nil then
 			return
 		end
-		tab.melloRep = false
+		repOf[tab] = false
 		local hl = tab.GetHighlightTexture and tab:GetHighlightTexture()
 		local plain = Replace(plainTex, { as = "uiframe-tab-left", rect = tab, button = tab, alsoFade = List(Part("Middle"), Part("Right"), hl) })
 		local open = Replace(openTex, { as = "uiframe-activetab-left", rect = tab, alsoFade = List(Part("MiddleDisabled"), Part("RightDisabled")) })
-		tab.melloRep = plain or open or false
+		repOf[tab] = plain or open or false
 		Follow(plain, plainTex)
 		Follow(open, openTex)
 	end
@@ -454,7 +458,7 @@ local function SkinSelected(f)
 			art = bg
 		else
 			for _, region in ipairs({ bg:GetRegions() }) do
-				if region:GetObjectType() == "Texture" and not region.kitPiece then
+				if region:GetObjectType() == "Texture" and not pieceOf[region] then
 					more[#more + 1] = region
 				end
 			end
@@ -482,13 +486,13 @@ local function SkinTextBox(f)
 	done[box] = true
 	local extra = {}
 	for _, region in ipairs({ box:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
 	if box.NineSlice then
 		for _, region in ipairs({ box.NineSlice:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				extra[#extra + 1] = region
 			end
 		end
@@ -517,7 +521,7 @@ end
 local function SkinBars(f)
 	local named = _G.MacroHorizontalBarLeft
 	for _, region in ipairs({ f:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and not done[region] then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and not done[region] then
 			local name = region:GetName()
 			local match = (type(name) == "string" and not Secret(name) and name:find("^MacroHorizontalBar") ~= nil)
 				or Kit:ArtKey(region) == "UI-ClassTrainer-HorizontalBar"
@@ -589,7 +593,7 @@ local function SkinPopupEdit(popup)
 		-- another template: the widest texture is the middle, the rest its ends
 		local textures = {}
 		for _, region in ipairs({ edit:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				textures[#textures + 1] = region
 			end
 		end
@@ -639,14 +643,14 @@ local function SkinPopup()
 	-- window's outer rail where that reaches under the popup's edge.
 	local extra = {}
 	for _, region in ipairs({ popup:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
 	local box = popup.BorderBox
 	if box then
 		for _, region in ipairs({ box:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				extra[#extra + 1] = region
 			end
 		end
@@ -726,7 +730,7 @@ local function SkinPortrait(f, ring)
 	-- between them
 	local disc = Kit:RingDisc(ring, nil, holder, 6)
 	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	icon.kitPiece = true
+	pieceOf[icon] = true
 	if disc then
 		icon:SetAllPoints(disc)
 	else
@@ -932,7 +936,7 @@ local function SkinGridInset(f, grid)
 		return
 	end
 	Kit:SkinInset(inset, Replace, f, true)
-	local rep = inset.melloRep
+	local rep = repOf[inset]
 	if not rep then
 		return
 	end
@@ -957,8 +961,8 @@ local function EnsureGridBox(f)
 		return
 	end
 	local inset = f.Inset
-	local held = inset and inset.melloRep and inset:IsShown() and Holds(inset, gridFrame)
-	if held == nil and inset and inset.melloRep and inset:IsShown() then
+	local held = inset and repOf[inset] and inset:IsShown() and Holds(inset, gridFrame)
+	if held == nil and inset and repOf[inset] and inset:IsShown() then
 		return   -- not laid out yet: asked again on the next show
 	end
 	if held then
@@ -1175,7 +1179,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			local okT, text = pcall(region.GetText, region)
 			art = "text: " .. ((okT and type(text) == "string" and not Secret(text)) and text:sub(1, 40) or "?")
@@ -1187,7 +1191,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), NameOf(child),
-			(okLv and not Secret(lv)) and tostring(lv) or "?", tostring(child:IsShown()), child.melloRep ~= nil and " (dressed)" or "")
+			(okLv and not Secret(lv)) and tostring(lv) or "?", tostring(child:IsShown()), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 
@@ -1196,7 +1200,7 @@ local function Found(label, obj, more)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function Summary(f)

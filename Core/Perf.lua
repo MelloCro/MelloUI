@@ -1121,6 +1121,86 @@ function Perf:Report()
 	return table.concat(L, "\n")
 end
 
+-- (0.19.8) The login's steps: when Core's login handlers began and ended
+-- (wall clock from the first file: between two steps the game and other
+-- addons run too) and the heap there; then, in the first frames after the
+-- login's PLAYER_ENTERING_WORLD, the game's own count of MelloUI's time in
+-- the frame before (LastTime). Their difference is what MelloUI is charged
+-- for outside its own handlers (the user's login frame, 2026-10-06: 1855 ms
+-- against the 1000 ms budget, ~700 ms of it in MelloUI's own code). A few
+-- dozen entries, made at login only; /melloperf load shows them.
+local loginSteps = {}
+function Perf.LoginStep(label)
+	if #loginSteps < 40 then
+		loginSteps[#loginSteps + 1] = { label = label, t = now(), kb = gc("count") }
+	end
+end
+
+-- three frames after the login's world: each with the game's figure for the
+-- frame before it
+function Perf.LoginFrames()
+	local n = 0
+	local function Ms(source)
+		local v = Metric(source, "LastTime")
+		return v and format("%.1f", v) or "?"
+	end
+	local function Probe()
+		n = n + 1
+		-- (all addons and the whole frame beside it: MelloUI's share of the frame)
+		Perf.LoginStep(format("frame %d after the login's world: the game counts %s ms of MelloUI in the frame before"
+			.. " (all addons %s ms, the frame %s ms)", n, Ms("addon"), Ms("overall"), Ms("app")))
+		if n < 3 then
+			C_Timer.After(0, Probe)
+		end
+	end
+	C_Timer.After(0, Probe)
+end
+
+-- (0.19.8) the logout's own work, timed and kept in the settings to be saved
+-- (MelloUI.db: what Core writes to MelloUIDB at logout), shown once by the
+-- next login's /melloperf load: a /reload's logout and its new login are one
+-- frame to the game's per-addon count
+local lastLogout = nil
+function Perf.LogoutStep(label, ms)
+	-- (both tables: Core hands MelloUI.db over to MelloUIDB in its own logout
+	-- handler, which may run before or after the one timed)
+	local line = format("%8.1f ms  %s", ms, label)
+	local seen = {}
+	for _, db in ipairs({ MelloUI.db, rawget(_G, "MelloUIDB") }) do
+		if type(db) == "table" and not seen[db] then
+			seen[db] = true
+			local t = type(db.perfLogout) == "table" and db.perfLogout or {}
+			db.perfLogout = t
+			t[#t + 1] = line
+		end
+	end
+end
+
+local function LoginStepLines(add)
+	if type(lastLogout) == "table" and #lastLogout > 0 then
+		add("")
+		add("THE LAST LOGOUT'S OWN WORK (a /reload's logout counts with its new login)")
+		for _, line in ipairs(lastLogout) do
+			add("  %s", tostring(line))
+		end
+	end
+	if #loginSteps == 0 then
+		return
+	end
+	add("")
+	add("THE LOGIN'S STEPS (from MelloUI's first file: the clock, the heap; between steps the game and other addons run too)")
+	local last
+	for _, s in ipairs(loginSteps) do
+		add("  %8.1f ms  %6.1f MB  %s%s", s.t - loadStart, s.kb / 1024, s.label,
+			last and format("  (+%.1f ms, %+.1f MB)", s.t - last.t, (s.kb - last.kb) / 1024) or "")
+		last = s
+	end
+	local peak = Metric("addon", "PeakTime")
+	if peak then
+		add("  the game's slowest MelloUI frame this session: %.1f ms", peak)
+	end
+end
+
 -- Load and module switches: what login costs
 function Perf:LoadReport()
 	local L = {}
@@ -1163,6 +1243,7 @@ function Perf:LoadReport()
 	for i = 1, math.min(#mods, 15) do
 		add("  %8.0f KB  %s", mods[i].kb, mods[i].key)
 	end
+	LoginStepLines(add)
 	-- what the hooks cost, per file: a wrapper per hook and a label per
 	-- hooked object; a shared handler is one wrapper for all its objects
 	local files, wraps, passed = {}, 0, 0
@@ -1233,6 +1314,11 @@ driver:SetScript("OnEvent", function(_, _, addon)
 		local t = now()
 		CloseLoad(t)
 		Perf.loadedAt = t
+		-- (the last logout's own work: shown once, by /melloperf load)
+		if type(MelloUIDB) == "table" then
+			lastLogout = MelloUIDB.perfLogout
+			MelloUIDB.perfLogout = nil
+		end
 		-- (/melloperf login: this login recorded from here, 20 seconds)
 		if type(MelloUIDB) == "table" and MelloUIDB.perfLogin then
 			MelloUIDB.perfLogin = nil

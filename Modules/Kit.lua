@@ -35,6 +35,55 @@ local ROOT = LAYOUT and LAYOUT.root or "Interface\\AddOns\\MelloUI\\Media\\Kit\\
 local Kit = { scale = 0.375 }
 MelloUI.Kit = Kit
 
+-- What the kit keeps about the game's frames and regions it dresses: beside
+-- them in weak-keyed tables, never on them (hard rule 1: no key written on a
+-- game frame or table; 0.19.8). The panels read and write the shared ones
+-- through these fields (Kit.repOf[button], not a key on the button); a
+-- control of MelloUI's own is marked here too (Widgets: false in repOf, so
+-- the kit's sweeps pass it by).
+local KEPT = { __mode = "k" }
+-- (the tables themselves: Core's MelloUI.Kept; made here when the kit loads
+-- without Core, as in the kit editor)
+-- (rawget: Core's own table or none -- never what a stand-in MelloUI answers
+-- for any key)
+if type(rawget(MelloUI, "Kept")) ~= "table" then
+	rawset(MelloUI, "Kept", setmetatable({}, { __index = function(kept, name)
+		local t = setmetatable({}, KEPT)
+		rawset(kept, name, t)
+		return t
+	end }))
+end
+local Kept = rawget(MelloUI, "Kept")
+Kit.repOf = Kept.repOf            -- [frame / region] = its rep from Kit:Replace (false: looked at, nothing replaced)
+Kit.slotStoneOf = Kept.slotStoneOf      -- [button] = its stone under an empty slot (Kit:SlotStone)
+Kit.glyphStoneOf = Kept.glyphStoneOf     -- [micro button] = the stone under its glyph (ActionBarPanel)
+Kit.fontSavedOf = Kept.fontSavedOf      -- [font string] = { path, size, flags }: its font before Kit:TitleFont
+Kit.fontTriesOf = Kept.fontTriesOf      -- [font string] = the title font's failed tries (a face not loaded yet)
+Kit.portraitSavedOf = Kept.portraitSavedOf  -- [portrait] = { points, w, h }: its place before Kit:FitPortrait
+Kit.steadyingOf = Kept.steadyingOf      -- [tab] = true while the kit (or a panel's steadier) sets its label's point
+Kit.stateIconsOf = Kept.stateIconsOf     -- [owner] = { [atlas] = rep }: Kit:StateIconReps' plates, one per glyph
+Kit.kitHookedOf = Kept.kitHookedOf      -- [frame] = true: the kit's hooks on it made (a scroll box's rows, a pane)
+Kit.bracketOf = Kept.bracketOf        -- [status bar] = true while it wears the kit's bracket (BarTextures' mask)
+Kit.kitRingOn = Kept.kitRingOn        -- [portrait] = true while it wears the kit's ring (ClassIcons)
+Kit.bracketLeftOf = Kept.bracketLeftOf    -- [nameplate's unit frame] = its bracket's left cap (Nameplates' quest icon)
+Kit.headerPlateOf = Kept.headerPlateOf    -- [quest log header] = its plate (QuestLogPanel; QuestInk's own plates)
+Kit.plateOf = Kept.plateOf          -- [button] = its plate rep (ProfessionsPanel, QuestDialogPanel; QuestInk's own plates)
+-- a texture wearing a kit piece (Kit:Apply: the kit's own textures, and two
+-- of the game's that take a piece in place, the profession window's portrait
+-- and the map's waypoint pins); every reader asks these, never the texture
+Kit.pieceOf = Kept.pieceOf          -- [texture] = its piece (or true: ours, never faded with the game's art)
+Kit.pieceNameOf = Kept.pieceNameOf      -- [texture] = its piece's name
+Kit.backgroundOf = Kept.backgroundOf     -- [texture] = true: a background tile (laid again when scales change)
+Kit.tintBaseOf = Kept.tintBaseOf       -- [texture] = { r, g, b }: the tint a module gave it, before Dark Mode's shade
+Kit.shadingNow = Kept.shadingNow       -- [texture] = true while the shade sets its colour (the hook passes it by)
+Kit.fadeHooked = Kept.fadeHooked       -- [region] = true: Kit:Fade's hooks on it made
+-- the kit's own (Kit.lua only): the tuning's changes to the game's regions,
+-- and the item slots' empty state
+Kit.tunedArt = Kept.tunedArt         -- [region] = its texture before the tuning's (false: none)
+Kit.tunedHidden = Kept.tunedHidden      -- [region] = true: hidden by the tuning
+Kit.tunedAt = Kept.tunedAt          -- [region] = the tuning's stamp when it was laid
+Kit.slotEmpty = Kept.slotEmpty        -- [item button] = true while its slot is empty
+
 -- The kit's colours (user, 2026-09-23: "We can make A and B and let the users
 -- select when in game"): the pieces as painted (Media\Kit) or recoloured to
 -- the palette by Tools/kit_palette.py, one folder per look holding the same
@@ -74,7 +123,7 @@ Kit.colourLooks = {
 }
 -- (the marks' metals and crests, the nameplates' mark on top; their rings are in every look, their gems the look's:
 -- Tools/kit_palette.py GEM_TWINS)
-local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_", "^marks/top" }
+local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/agedparchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_", "^marks/top", "^marks/r%d_" }
 local lookRoot = nil   -- the chosen look's folder, once the settings are there
 -- LOOK.PaletteId(): the palette in use (its id, "ember" for one Core does not
 -- know); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
@@ -854,7 +903,7 @@ function Kit:SetTitleSizeFactor(factor, faceFactor)
 	self.titleSizeFactor = factor
 	self.titleFaceFactor = faceFactor
 	for fs in pairs(titleStrings) do
-		if fs.melloFontSaved then
+		if Kit.fontSavedOf[fs] then
 			self:TitleFont(fs, true)
 		end
 	end
@@ -871,8 +920,8 @@ function Kit:SetTitleFace(face)
 	end
 	self.titleFont = face
 	for fs in pairs(titleStrings) do
-		if fs.melloFontSaved then
-			fs.melloFontTries = nil
+		if Kit.fontSavedOf[fs] then
+			Kit.fontTriesOf[fs] = nil
 			self:TitleFont(fs, true)
 		end
 	end
@@ -887,14 +936,14 @@ function Kit:TitleFont(fs, on, ownSize)
 		return
 	end
 	if on then
-		if not fs.melloFontSaved then
+		if not Kit.fontSavedOf[fs] then
 			local ok, path, size, flags = pcall(fs.GetFont, fs)
 			if not ok or Secret(path) or Secret(size) or not (size and size > 0) then
 				return
 			end
-			fs.melloFontSaved = { path, size, flags or "" }
+			Kit.fontSavedOf[fs] = { path, size, flags or "" }
 		end
-		local saved = fs.melloFontSaved
+		local saved = Kit.fontSavedOf[fs]
 		local own = titleStrings[fs] == "own"
 		if ownSize ~= nil then
 			own = ownSize and true or false
@@ -911,21 +960,21 @@ function Kit:TitleFont(fs, on, ownSize)
 		local okSet, applied = pcall(fs.SetFont, fs, face, saved[2] * scale * factor, saved[3])
 		if not (okSet and applied) then
 			pcall(fs.SetFont, fs, saved[1], saved[2], saved[3])
-			fs.melloFontTries = (fs.melloFontTries or 0) + 1
-			if fs.melloFontTries <= 8 and C_Timer and C_Timer.After then
+			Kit.fontTriesOf[fs] = (Kit.fontTriesOf[fs] or 0) + 1
+			if Kit.fontTriesOf[fs] <= 8 and C_Timer and C_Timer.After then
 				C_Timer.After(1, function()
-					if fs.melloFontSaved then
+					if Kit.fontSavedOf[fs] then
 						Kit:TitleFont(fs, true)
 					end
 				end)
 			end
 		else
-			fs.melloFontTries = nil
+			Kit.fontTriesOf[fs] = nil
 		end
-	elseif fs.melloFontSaved then
-		local saved = fs.melloFontSaved
-		fs.melloFontSaved = nil
-		fs.melloFontTries = nil
+	elseif Kit.fontSavedOf[fs] then
+		local saved = Kit.fontSavedOf[fs]
+		Kit.fontSavedOf[fs] = nil
+		Kit.fontTriesOf[fs] = nil
 		titleStrings[fs] = nil
 		fs:SetFont(saved[1], saved[2], saved[3])
 	end
@@ -943,21 +992,22 @@ Kit.shade = 1
 local SHADED = setmetatable({}, { __mode = "k" })
 
 local function ShadeTexture(tex)
-	local base = tex.kitBase
+	local base = Kit.tintBaseOf[tex]
 	local r, g, b = 1, 1, 1
 	if base then
 		r, g, b = base[1], base[2], base[3]
 	end
 	local k = Kit.shade
-	tex.kitShading = true
+	Kit.shadingNow[tex] = true
 	tex:SetVertexColor(r * k, g * k, b * k)
-	tex.kitShading = nil
+	Kit.shadingNow[tex] = nil
 end
 
 -- The tint a module gives a kit texture, kept as its base and shaded. One
--- handler for every kit texture: all it keeps is on the texture itself
+-- handler for every kit texture: all it keeps is beside it (Kit.tintBaseOf,
+-- Kit.shadingNow), never on it
 local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function(t, r, g, b)
-	if t.kitShading then
+	if Kit.shadingNow[t] then
 		return
 	end
 	-- (0.19.0) a colour that is secret (a debuff's dispel colour in a fight,
@@ -968,11 +1018,11 @@ local OnKitVertexColour = Shared("SetVertexColor on every kit texture", function
 	end
 	-- kept in the one table (a hover tints a whole skin's pieces: no new
 	-- table per piece per hover)
-	local base = t.kitBase
+	local base = Kit.tintBaseOf[t]
 	if base then
 		base[1], base[2], base[3] = r or 1, g or 1, b or 1
 	else
-		t.kitBase = { r or 1, g or 1, b or 1 }
+		Kit.tintBaseOf[t] = { r or 1, g or 1, b or 1 }
 	end
 	if Kit.shade < 1 then
 		ShadeTexture(t)
@@ -1055,7 +1105,7 @@ function Kit:Apply(tex, name, later)
 	local p = PIECES[name]
 	if not p then
 		tex:SetTexture(nil)
-		tex.kitPiece, tex.kitName = nil, nil
+		Kit.pieceOf[tex], Kit.pieceNameOf[tex] = nil, nil
 		if tex.kitShadow then
 			self:ShadowFit(tex)   -- no piece: its shadow partner hides
 		end
@@ -1067,9 +1117,9 @@ function Kit:Apply(tex, name, later)
 		tex:SetTexture(PieceRoot(name) .. p.file)
 	end
 	tex:SetTexCoord(p.uv[1], p.uv[2], p.uv[3], p.uv[4])
-	tex.kitPiece, tex.kitName = p, name
-	tex.kitBackground = (p.tile and IsBackground(name)) or nil
-	if tex.kitBackground then
+	Kit.pieceOf[tex], Kit.pieceNameOf[tex] = p, name
+	Kit.backgroundOf[tex] = (p.tile and IsBackground(name)) or nil
+	if Kit.backgroundOf[tex] then
 		BACKGROUNDS[tex] = true
 	end
 	self:RegisterTexture(tex)
@@ -1096,7 +1146,7 @@ function Kit:SetKitColours(value)
 	LOOK.ShowChoices(id)
 	lookRoot = self:LookFolder(id, value)
 	for tex in pairs(SHADED) do
-		local p, name = tex.kitPiece, tex.kitName
+		local p, name = Kit.pieceOf[tex], Kit.pieceNameOf[tex]
 		if p and name and p.file then
 			local ulx, uly, llx, lly, urx, ury, lrx, lry = tex:GetTexCoord()
 			if p.tile then
@@ -1228,7 +1278,7 @@ end
 --                by another frame, it no longer hides with the piece's
 --                own: a strip, a skin, a holder); its own flag, so a piece
 --                hidden by itself (a gem under a title plate) stays so
---       The partner is flagged `kitPiece` and `kitPartner` (a region walker
+--       The partner is flagged in Kit.pieceOf and `kitPartner` (a region walker
 --       takes it for ours, never for the game's art) and never registered
 --       with Dark Mode or the Kit Colours (Kit:RegisterTexture): its colour
 --       is the palette's.
@@ -1240,10 +1290,6 @@ end
 --       sides, Kit:ShadowFit(nine[, scale][, open])
 --   Kit:ShadowSet(tex, wanted[, alpha])   shown with its piece, or not at
 --       all; its strength (a nine: all its parts)
---   Kit:ShadowTint(tex, r, g, b[, blend])   (0.19.0) a colour of meaning
---       instead of the palette's, perhaps secret, kept through a new palette;
---       blend "ADD": drawn as light (a glow); r = nil: the palette's colour
---       and the shade's blend back
 --   Kit:GlowNine(host, rect, family, opts) -> nine   (0.19.0) a soft outline
 --       as light round `rect` (an outline family's nine, hidden at first);
 --       not a shade: no area switch or strength reaches it
@@ -1338,7 +1384,7 @@ do
 		local palette = MelloUI.Palette
 		local c = palette[sh.kitColour] or palette.innerPanel
 		if sh.kitTinted then
-			-- (Kit:ShadowTint: a colour of meaning, perhaps secret, kept
+			-- (a glow's colour of meaning, Kit:GlowShow: perhaps secret, kept
 			-- through a new palette)
 			c = sh.kitTint
 		end
@@ -1441,7 +1487,7 @@ do
 	local function NewPartner(host, colour, strength)
 		local sh = host:CreateTexture(nil, "BACKGROUND", nil, -8)
 		sh:SetTexture(LOOK and LOOK.ShadowSheet(SHEET and data.file) or SHEET)
-		sh.kitPiece, sh.kitPartner = true, true
+		Kit.pieceOf[sh], sh.kitPartner = true, true
 		sh.kitColour, sh.kitStrength = colour, strength
 		sh.kitWanted, sh.kitPieceShown = true, true
 		return sh
@@ -1498,7 +1544,7 @@ do
 	-- where it runs to the strip's end (tex.kitOpenL / kitOpenR; only for a
 	-- partner made with opts.ends)
 	local function Fit(tex, sh)
-		local e = ShapeOf(sh.kitShapeName or tex.kitName)
+		local e = ShapeOf(sh.kitShapeName or Kit.pieceNameOf[tex])
 		local scale = sh.kitOwnScale or Num(tex.kitScale) or Kit.scale
 		if sh.kitHost then
 			scale = scale * Ratio(tex, sh.kitHost)
@@ -1507,7 +1553,7 @@ do
 		local openL, openR = ends and tex.kitOpenL == true, ends and tex.kitOpenR == true
 		if e and (e ~= sh.kitShape or scale ~= sh.kitFitScale or sh.kitRefit or openL ~= sh.kitOpenL or openR ~= sh.kitOpenR) then
 			local pad, uv = e.pad, e.uv
-			local p = sh.kitCutX0 and PIECES[tex.kitName]
+			local p = sh.kitCutX0 and PIECES[Kit.pieceNameOf[tex]]
 			local el = not p and openL and e.endL
 			local er = not p and openR and e.endR
 			el = type(el) == "table" and type(el.uv) == "table" and type(el.pad) == "table" and el or nil
@@ -2067,23 +2113,6 @@ do
 		Paint(sh)
 	end
 
-	function Kit:ShadowTint(tex, r, g, b, blend)
-		if type(tex) ~= "table" then
-			return
-		end
-		local parts = tex.kitParts
-		if parts then
-			for i = 1, #parts do
-				TintOne(parts[i], r, g, b, blend)
-			end
-			return
-		end
-		local sh = tex.kitShadow
-		if sh then
-			TintOne(sh, r, g, b, blend)
-		end
-	end
-
 	-- (0.19.0) A soft outline as light: the sheet's nine of `family` (an
 	-- outline family: nothing inside) round `rect`, hidden until shown in a
 	-- colour (HealerFrames' debuff glow round a frame). Not a shade: no area,
@@ -2152,11 +2181,11 @@ end
 -- centred across and from the top or bottom ("top" / "bottom"), or from the
 -- screen's origin ("screen": backdrops that meet show one surface).
 function Kit:Retile(tex)
-	local p = tex.kitPiece
+	local p = Kit.pieceOf[tex]
 	if type(p) ~= "table" or not p.tile then
 		return
 	end
-	local background = tex.kitBackground and not tex.kitOwnScale
+	local background = Kit.backgroundOf[tex] and not tex.kitOwnScale
 	local scale = background and self:BackgroundScale(tex) or tex.kitScale
 	if not scale or scale <= 0 then
 		scale = self.scale
@@ -2212,7 +2241,7 @@ end
 function Kit:RetileBackgrounds()
 	local laid, left = 0, 0
 	for tex in pairs(BACKGROUNDS) do
-		if tex.kitBackground then
+		if Kit.backgroundOf[tex] then
 			local ok, w, h = pcall(tex.GetSize, tex)
 			if (ok and not Secret(w) and not Secret(h) and w and h) or tex.kitTileW then
 				self:Retile(tex)
@@ -2266,7 +2295,7 @@ do
 			return laid, left
 		end
 		for tex in pairs(BACKGROUNDS) do
-			if tex.kitBackground then
+			if Kit.backgroundOf[tex] then
 				local okU, inFrame = pcall(InFrame, tex, frame)
 				if okU and inFrame then
 					local ok, w, h = pcall(tex.GetSize, tex)
@@ -2460,7 +2489,7 @@ SlashCmdList.MELLOUISCALEDUMP = function(msg)
 	end
 	local backgrounds = 0
 	for tex in pairs(BACKGROUNDS) do
-		if tex.kitBackground then
+		if Kit.backgroundOf[tex] then
 			backgrounds = backgrounds + 1
 		end
 	end
@@ -2820,7 +2849,7 @@ local function NineSlice_Slice(skin, host, prefix, scale, layer, sub, gemCorners
 	ApplySlice(tex, cut)
 	tex:SetScale(scale * cut.texel / (unit or SliceUnit()))
 	tex:SetAllPoints(skin)
-	tex.kitPiece = cut
+	Kit.pieceOf[tex] = cut
 	Kit:RegisterTexture(tex)
 	if force == nil and not Slices.noted then
 		Slices.noted = true
@@ -2842,7 +2871,7 @@ function Kit:RailAnchor(skin, side)
 	if have or not skin.slice then
 		return have
 	end
-	local cut = skin.slice.kitPiece
+	local cut = Kit.pieceOf[skin.slice]
 	local open = type(cut) == "table" and cut.open or ""
 	if open:find(side, 1, true) then
 		return nil
@@ -2862,7 +2891,7 @@ function Kit:RailAnchor(skin, side)
 		anchor:SetPoint("BOTTOM" .. point, skin, "BOTTOM" .. point, 0, oB and 0 or T)
 		anchor:SetWidth(T)
 	end
-	anchor.kitPiece = true   -- ours: never faded as the game's art
+	Kit.pieceOf[anchor] = true   -- ours: never faded as the game's art
 	anchor:SetShown(skin.slice:IsShown())
 	skin[side] = anchor
 	table.insert(skin.all, anchor)
@@ -2891,14 +2920,23 @@ function Kit:TintSkin(skin, r, g, b)
 	if type(skin) ~= "table" or type(skin.art) ~= "table" then
 		return
 	end
+	-- (0.19.8: a border of the library's standing in for the skin's rails --
+	-- a raid frame's Raid Frame Border, Kit:RaidBorder -- takes the tint too)
+	local more = skin.libraryArt
 	if not Secret(r) and r == nil then
 		for _, tex in ipairs(skin.art) do
-			local base = tex.kitBase
+			local base = Kit.tintBaseOf[tex]
 			tex:SetVertexColor(base and base[1] or 1, base and base[2] or 1, base and base[3] or 1)
+		end
+		for _, tex in ipairs(more or {}) do
+			tex:SetVertexColor(1, 1, 1)
 		end
 		return
 	end
 	for _, tex in ipairs(skin.art) do
+		tex:SetVertexColor(r, g, b)
+	end
+	for _, tex in ipairs(more or {}) do
 		tex:SetVertexColor(r, g, b)
 	end
 end
@@ -3151,9 +3189,9 @@ end
 -- showing another piece gets this one (Kit:Apply); `show` shows every part.
 -- A part with a shadow partner (Kit:Shadow) shows the same part of the
 -- piece's shadow, reaching past the picture's outer sides only
--- (Kit:ShadowCut). f.railTC: the four rails' coordinates in the file (top,
--- bottom, left, right: left, right, top, bottom each), filled in place.
--- False when the kit has no such piece.
+-- (Kit:ShadowCut). Nothing is written onto f: it may be the game's region (a
+-- Cooldown Manager icon's; 0.19.8 dropped f.railTC, read by nothing since the
+-- action bars' cut moved here). False when the kit has no such piece.
 Kit.nineParts = { "tl", "tr", "bl", "br", "t", "b", "l", "r" }
 
 -- The cut itself, as file coordinates ({ u0, u1, v0, v1 } each): the corners
@@ -3197,7 +3235,7 @@ function Kit:CutNine(f, parts, piece, k, corner, show)
 	local cs = c * k
 	for _, key in ipairs(self.nineParts) do
 		local tex = parts[key]
-		if tex.kitName ~= piece then
+		if Kit.pieceNameOf[tex] ~= piece then
 			self:Apply(tex, piece)
 		end
 		tex.kitScale = k   -- (drawn at k: a shadow partner reaches as far)
@@ -3224,15 +3262,6 @@ function Kit:CutNine(f, parts, piece, k, corner, show)
 	r:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -cs)
 	r:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", -cs, cs)
 	r:SetTexCoord(uc, ud, vb, vc)
-	local tc = f.railTC
-	if not tc then
-		tc = { top = {}, bottom = {}, left = {}, right = {} }
-		f.railTC = tc
-	end
-	tc.top[1], tc.top[2], tc.top[3], tc.top[4] = ub, uc, va, vb
-	tc.bottom[1], tc.bottom[2], tc.bottom[3], tc.bottom[4] = ub, uc, vc, vd
-	tc.left[1], tc.left[2], tc.left[3], tc.left[4] = ua, ub, vb, vc
-	tc.right[1], tc.right[2], tc.right[3], tc.right[4] = uc, ud, vb, vc
 	-- the parts' shadow partners: the same cut of the piece's shadow
 	if tl.kitShadow then self:ShadowCut(tl, 0, c, 0, c) end
 	if tr.kitShadow then self:ShadowCut(tr, w - c, w, 0, c) end
@@ -3860,7 +3889,7 @@ do
 			sub = Num(sub) or 0
 			copy = owner:CreateTexture(nil, layer, nil, math.min(sub + 1, 7))
 			copy:SetBlendMode("ADD")
-			copy.kitPiece = true   -- ours: never faded as the game's art
+			Kit.pieceOf[copy] = true   -- ours: never faded as the game's art
 			copy:Hide()
 			look.lift = copy
 			textures = textures + 1
@@ -3929,7 +3958,7 @@ do
 				if layer == 1 then
 					tex:SetBlendMode("ADD")
 				end
-				tex.kitPiece = true   -- ours: never faded as the game's art
+				Kit.pieceOf[tex] = true   -- ours: never faded as the game's art
 				Kit:Paint(tex, layer == 1 and "selectedTrim" or "innerPanel", "vertex", 1)
 				tex:Hide()
 				list[i] = tex
@@ -4215,6 +4244,11 @@ local function Slot_Update(rim)
 	if state and state ~= rim.state then
 		rim.state = state
 		Kit:Apply(rim, rim.base .. "_" .. state)
+	end
+	-- (0.19.8) a border of the library's standing in for the rim: its states
+	-- (the shared glow under the mouse, a darken pressed or disabled)
+	if rim.libraryBorder then
+		rim.libraryBorder:SetLit(rim.hover, rim.pressed, disabled)
 	end
 	-- on the button, round the rim, while the rim shows (its skin on). Only a
 	-- rim with a checked flag of its own drives it: a hover-only rim (an
@@ -4807,15 +4841,15 @@ do
 			if onCheck then
 				Perf.HookScript(button, "OnClick", Rim_OnClick)
 			end
-			if button.SetChecked then
+			if type(button.SetChecked) == "function" then
 				hooksecurefunc(button, "SetChecked", Rim_OnSetChecked)
 			end
-			if button.SetEnabled then
+			if type(button.SetEnabled) == "function" then
 				hooksecurefunc(button, "SetEnabled", Rim_OnSetEnabled)
 			end
 			-- a keybind presses an action button through SetButtonState, not the
 			-- mouse: the pressed look follows that too
-			if button.SetButtonState then
+			if type(button.SetButtonState) == "function" then
 				hooksecurefunc(button, "SetButtonState", Rim_OnSetButtonState)
 			end
 			MouseBack(button, click, motion, apart)
@@ -4829,13 +4863,13 @@ do
 		if onCheck then
 			Perf.HookScript(button, "OnClick", function() ReadNext(tex) end)
 		end
-		if button.SetChecked then
+		if type(button.SetChecked) == "function" then
 			hooksecurefunc(button, "SetChecked", function(_, value) Rim_Checked(tex, value) end)
 		end
-		if button.SetEnabled then
+		if type(button.SetEnabled) == "function" then
 			hooksecurefunc(button, "SetEnabled", function() Slot_Update(tex) end)
 		end
-		if button.SetButtonState then
+		if type(button.SetButtonState) == "function" then
 			hooksecurefunc(button, "SetButtonState", function(b, state)
 				tex.pressed = (state == "PUSHED") or nil
 				Slot_Update(tex)
@@ -4881,6 +4915,10 @@ function Kit:Slot(button, opts)
 
 	FollowButton(rim, button)
 	Slot_Update(rim)
+	-- (0.19.8) Round Border in a ring style of the border library's: the ring on it
+	if self.roundRims and self.roundRims[rim] and self.RoundLibraryRing then
+		self:RoundLibraryRing(rim, self:BorderValue("round"))
+	end
 	return rim
 end
 
@@ -5476,10 +5514,10 @@ Kit.Replacements = {
 	["UI-HUD-UnitFrame-Player-PortraitOn-CornerEmbellishment"] = { kind = "fade" },   -- the corner flourish on the player ring
 	["UI-HUD-UnitFrame-Target-PortraitOn-Boss-Gold"] = { kind = "fade" },   -- the elite / rare / boss rings: faded, the kit ring tinted gold / silver instead
 	["UnitFramePortraitRing"]                 = { kind = "texture", piece = "window/portrait_ring", opening = true, owner = true },   -- R1: the ring's OPENING on the game's portrait rect, as a region in the faded picture's layer
-	["UnitFrameBar"]                          = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1 },   -- B3: the P1 bracket on the bar, ring side capless, the far cap grown outward; the trough under the BACKGROUND-0 fill
-	["UnitFrameBarMirrored"]                  = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1 },   -- ... the target's (ring on the right)
-	["UnitFrameHealthBar"]                    = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1, state = "red" },   -- a health bar: the same B3, its end gem kept red (user, 2026-09-23, painted on the player frame) where every other bracket's is iron
-	["UnitFrameHealthBarMirrored"]            = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1, state = "red" },
+	["UnitFrameBar"]                          = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1, borderGroup = "unitframe" },   -- B3: the P1 bracket on the bar, ring side capless, the far cap grown outward; the trough under the BACKGROUND-0 fill
+	["UnitFrameBarMirrored"]                  = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1, borderGroup = "unitframe" },   -- ... the target's (ring on the right)
+	["UnitFrameHealthBar"]                    = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1, state = "red", borderGroup = "unitframe" },   -- a health bar: the same B3, its end gem kept red (user, 2026-09-23, painted on the player frame) where every other bracket's is iron
+	["UnitFrameHealthBarMirrored"]            = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1, state = "red", borderGroup = "unitframe" },
 	["UI-HUD-UnitFrame-SmallCircle"]          = { kind = "texture", piece = "buttons/orb_normal", square = true, owner = true },   -- L1: the level circle (and the PvP badge's circle): the orb plate under the frame's own text / faction icon
 	["UI-HUD-UnitFrame-Target-PortraitOn-Type"] = { kind = "fade" },   -- the target's reaction strip (the name band): faded, the plate below stands on its rect
 
@@ -5599,7 +5637,7 @@ Kit.Replacements = {
 	["CalendarBackground"]                    = { kind = "frame", owner = true, bodyLayer = "BACKGROUND", bodySub = 1, edgeLayer = "BORDER", edgeSub = 1, dim = 0.8 },   -- a calendar day (CalendarPanel, 2026-09-24; its NormalTexture, the CalendarBackground file keyed by hand): the single-rail card with stone under the inner panel (2e: the day's event text reads on dark), as REGIONS of the day button -- the stone and panel under its BORDER event picture, the rails one sublevel over it -- on the button's rect grown by the rail's centre inset, so neighbouring days share one rail
 
 	-- The HUD's cast bars (CastBarPanel; user's picks C1 T1 from kit_raw/castbar_catalog.png, 2026-09-21)
-	["ui-castingbar-frame"]                   = { kind = "bar", bar = "castbar", capOut = true },   -- C1: the cast bar bracket (gem-cluster caps) with the game's bar as its opening: the caps stand outside the bar, which the panel narrows by their arms so the whole reads the game's width
+	["ui-castingbar-frame"]                   = { kind = "bar", bar = "castbar", capOut = true, borderGroup = "castbar" },   -- C1: the cast bar bracket (gem-cluster caps) with the game's bar as its opening: the caps stand outside the bar, which the panel narrows by their arms so the whole reads the game's width
 	["ui-castingbar-background"]              = { kind = "fade" },   -- the trough art: the bracket's trough stands in
 	["ui-castingbar-textbox"]                 = { kind = "strip", base = "lists/header", owner = true },   -- T1: the header plate on the 12 px under the bar (the box's lower part), the spell name on it
 	["ui-castingbar-full-glow-standard"]      = { kind = "fade" },   -- the completion flash
@@ -5902,15 +5940,25 @@ do
 			Later()
 		end
 	end
-	local world = CreateFrame("Frame")
-	world:RegisterEvent("PLAYER_ENTERING_WORLD")
-	Perf.SetScript(world, "OnEvent", function(self)
-		self:UnregisterAllEvents()
+	-- (0.19.8: the modules come up over the login's first frames, Core's
+	-- start-up pass; a module area's answer is its module being on, so the
+	-- first answers are taken once they all are)
+	local function Watch()
 		watching = true
 		MelloUI:On("setting", OnSetting, KEY)
 		MelloUI:On("module", Later, KEY)
 		MelloUI:On("restart", Later, KEY)
 		Later()
+	end
+	local world = CreateFrame("Frame")
+	world:RegisterEvent("PLAYER_ENTERING_WORLD")
+	Perf.SetScript(world, "OnEvent", function(self)
+		self:UnregisterAllEvents()
+		if MelloUI.WhenModulesOn then
+			MelloUI:WhenModulesOn(Watch)
+		else
+			Watch()
+		end
 	end)
 end
 
@@ -6109,8 +6157,8 @@ local function SlotEmpty(st)
 	if not st.itemButton then
 		return false
 	end
-	if button.melloEmpty ~= nil then
-		return button.melloEmpty
+	if Kit.slotEmpty[button] ~= nil then
+		return Kit.slotEmpty[button]
 	end
 	local ok, atlas = pcall(IconAtlas, icon)
 	return ok and atlas ~= nil and atlas == button.emptyBackgroundAtlas
@@ -6128,7 +6176,7 @@ local function SlotSync(st)
 end
 
 local Slot_OnItemTexture = Shared("SetItemButtonTexture on a kit slot", function(button, texture)
-	button.melloEmpty = texture == nil
+	Kit.slotEmpty[button] = texture == nil
 	SlotSync(slotOf[button])
 end)
 local Slot_OnIcon = Shared("Show / Hide on a kit slot's icon", function(icon)
@@ -6324,8 +6372,8 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	-- button has no NormalTexture key; one is never written onto it -- the
 	-- game reads that key, 2026-09-23 audit)
 	local normal = button and (button.NormalTexture or (button.GetNormalTexture and button:GetNormalTexture()))
-	if not (button and normal and button.icon) or button.melloRep ~= nil then
-		return button and button.melloRep or nil
+	if not (button and normal and button.icon) or Kit.repOf[button] ~= nil then
+		return button and Kit.repOf[button] or nil
 	end
 	local extra = { button.PushedTexture, button.HighlightTexture, button.CheckedTexture }
 	if button.GetPushedTexture then
@@ -6348,7 +6396,7 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	-- opts.as: another slot rule (the action bars' thin rim, "ActionButtonRim")
 	local rep = replace(normal, { as = opts.as or "UI-HUD-ActionBar-IconFrame", button = button, rect = button, pitch = pitch,
 		icon = button.icon, alsoFade = extra, checked = opts.checked })
-	button.melloRep = rep or false
+	Kit.repOf[button] = rep or false
 	if not rep then
 		return nil
 	end
@@ -6386,7 +6434,7 @@ function Kit:SkinActionButton(button, replace, pitch, opts)
 	if button.SlotBackground or opts.emptyStone then
 		local stone = self:SlotStone(rep, button, button.SlotBackground or normal, { replace = replace, base = "buttons/slot",
 			showWhen = "empty", noFade = not button.SlotBackground, icon = icon })
-		button.melloSlotStone = stone   -- its texture (stone.tex) can be swapped: Action Bars Kit's Button Background
+		Kit.slotStoneOf[button] = stone   -- its texture (stone.tex) can be swapped: Action Bars Kit's Button Background
 	end
 	if button.SlotArt then
 		replace(button.SlotArt, { as = "ui-hud-actionbar-iconframe-slot" })
@@ -6873,13 +6921,25 @@ Kit.buttonLooks = {
 		{ value = "rounded", label = "Rounded corners", piece = "buttons/rimround_normal" },
 		{ value = "gold", label = "Iron with gold line", piece = "buttons/rimgold_normal" },
 		{ value = "sunk", label = "Sunk", piece = "buttons/rimsunk_normal" },
+		-- (0.19.8) the border library's own styles (Modules/KitBorders.lua),
+		-- drawn by it where the rim stands: no slot rim of their own
+		{ value = "single", label = "Single rail", style = "single" },
+		{ value = "backdrop", label = "Backdrop", style = "backdrop", piece = "borders/backdrop" },
+		-- (the NewUI2 rims the user picked: Tools/make_newui2_borders.py)
+		{ value = "n4", label = "Medium iron, corner studs", style = "n4", piece = "borders/n4" },
+		{ value = "n4g", label = "Thin gold, corner studs", style = "n4g", piece = "borders/n4g" },
+		{ value = "n5", label = "Hairline, corner nubs", style = "n5", piece = "borders/n5" },
+		{ value = "n1", label = "Heavy bevel, corner studs", style = "n1", piece = "borders/n1" },
 	},
 	backgrounds = {
 		{ value = "stone", label = "Stone", piece = "tiles/stone" },
 		{ value = "concrete", label = "Cracked concrete", piece = "tiles/concrete" },
 		{ value = "ironplate", label = "Iron plate", piece = "tiles/ironplate" },
-		{ value = "parchment", label = "Parchment", piece = "tiles/parchment" },
+		{ value = "parchment", label = "Parchment", piece = "tiles/parchment", paper = true },
 		{ value = "leather", label = "Leather", piece = "tiles/quilt_brown" },
+		-- (0.19.8, the NewUI2 textures the user picked: Tools/make_newui2_borders.py)
+		{ value = "brushedmetal", label = "Brushed dark metal", piece = "tiles/brushedmetal" },
+		{ value = "agedparchment", label = "Aged parchment", piece = "tiles/agedparchment", paper = true },
 		{ value = "dark", label = "Dark" },
 		{ value = "none", label = "None" },
 	},
@@ -6894,6 +6954,14 @@ Kit.buttonLooks = {
 		{ value = "rimround", label = "Rounded", bar = "rimround" },
 		{ value = "rimgold", label = "Iron with gold line", bar = "rimgold" },
 		{ value = "rimsunk", label = "Sunk", bar = "rimsunk" },
+		-- (0.19.8, the border library's stage 2: Modules/KitBorders.lua) drawn
+		-- by it round the bar, the bracket put out
+		{ value = "single", label = "Single rail", style = "single" },
+		{ value = "backdrop", label = "Backdrop", style = "backdrop" },
+		{ value = "n4", label = "Medium iron, corner studs", style = "n4" },
+		{ value = "n4g", label = "Thin gold, corner studs", style = "n4g" },
+		{ value = "n5", label = "Hairline, corner nubs", style = "n5" },
+		{ value = "n1", label = "Heavy bevel, corner studs", style = "n1" },
 	},
 	rimRule = { thin = "ActionButtonRim", hairline = "ActionButtonRimHairline", rounded = "ActionButtonRimRounded",
 		gold = "ActionButtonRimGold", sunk = "ActionButtonRimSunk" },
@@ -6902,8 +6970,17 @@ Kit.buttonLooks = {
 		.. "or sunk (a soft shadow inside the rim). Each lights up under the mouse and turns gold when checked.",
 }
 Kit.buttonLooks.backgroundPiece = {}
+Kit.buttonLooks.backgroundPaper = {}
 for _, v in ipairs(Kit.buttonLooks.backgrounds) do
 	Kit.buttonLooks.backgroundPiece[v.value] = v.piece
+	Kit.buttonLooks.backgroundPaper[v.value] = v.paper or nil
+end
+
+-- A background that is paper (0.19.8: the parchment, the aged parchment):
+-- the text on it is dark ink (the parchment ink rule, QuestInk.lua), and a
+-- window that has its own parchment choice does not offer it
+function Kit:BackgroundIsPaper(value)
+	return self.buttonLooks.backgroundPaper[value] == true
 end
 
 -- A Button Border's slot rule (for Kit:SkinActionButton's `as`); without a
@@ -6916,24 +6993,30 @@ end
 
 -- A new Button Border on a skinned button (its rim's art swapped live)
 function Kit:SetButtonBorder(button, style)
+	-- (0.19.8) a style of the border library's: drawn by it where the rim
+	-- stands, the rim put out (Modules/KitBorders.lua); another style puts
+	-- such a border away and swaps the rim's art as before
+	if self.ButtonLibraryBorder and self:ButtonLibraryBorder(button, style) then
+		return
+	end
 	local kind = self.buttonLooks.rimKind[style]
-	local rep = button and button.melloRep
+	local rep = button and Kit.repOf[button]
 	if kind and rep and rep.object and rep.object.base then
 		self:SetSlotBase(rep.object, "buttons/" .. kind)
 	end
 end
 
 -- A button's background: the texture in its opening where it shows no icon
--- (an action / bag / item slot's empty backing, melloSlotStone; a micro
--- button's stone under its glyph, melloStone)
+-- (an action / bag / item slot's empty backing, Kit.slotStoneOf; a micro
+-- button's stone under its glyph, Kit.glyphStoneOf)
 function Kit:SetButtonBackground(button, value)
-	local tex = button and ((button.melloSlotStone and button.melloSlotStone.tex) or button.melloStone)
+	local tex = button and ((Kit.slotStoneOf[button] and Kit.slotStoneOf[button].tex) or Kit.glyphStoneOf[button])
 	if not tex then
 		return
 	end
 	local piece = self.buttonLooks.backgroundPiece[value]
 	if piece then
-		if tex.kitName ~= piece then
+		if Kit.pieceNameOf[tex] ~= piece then
 			self:Unpaint(tex)   -- (the dark fill's palette colour no longer on it)
 			self:Apply(tex, piece)
 		end
@@ -6943,7 +7026,7 @@ function Kit:SetButtonBackground(button, value)
 		-- the palette's inner panel, by its key (a new palette paints it again)
 		self:Paint(tex, "innerPanel", "fill", 0.88)
 		-- still ours: a plain mark, no piece
-		tex.kitPiece, tex.kitName = true, nil
+		Kit.pieceOf[tex], Kit.pieceNameOf[tex] = true, nil
 		tex:SetAlpha(1)
 	else
 		tex:SetAlpha(0)   -- none: the game shows it with the empty slot; it stays see-through
@@ -7017,8 +7100,8 @@ function Kit:Fade(obj)
 	end
 	self.faded[obj] = true
 	obj:SetAlpha(0)
-	if not obj.kitFadeHook then
-		obj.kitFadeHook = true
+	if not Kit.fadeHooked[obj] then
+		Kit.fadeHooked[obj] = true
 		hooksecurefunc(obj, "SetAlpha", Faded_OnSetAlpha)
 		if obj.SetVertexColor then
 			hooksecurefunc(obj, "SetVertexColor", Faded_OnSetVertexColor)
@@ -7825,14 +7908,14 @@ end
 
 function Kit:TuneTexture(tex, tune)
 	tune = tune or {}
-	local had = tex.melloTuned or nil
+	local had = Kit.tunedAt[tex] or nil
 	local now = nil
 	local function mark(field)
 		now = now or {}
 		now[field] = true
 	end
-	-- (kitPiece is `true` on a flat colour of ours: no piece to read)
-	local piece = type(tex.kitPiece) == "table" and tex.kitPiece or nil
+	-- (Kit.pieceOf is `true` on a flat colour of ours: no piece to read)
+	local piece = type(Kit.pieceOf[tex]) == "table" and Kit.pieceOf[tex] or nil
 	-- the window of the file the art is cut from: the piece's uv, or under a
 	-- texture of the tuning's own the piece's uv in its own former file
 	-- (`was`: its rectangle in an atlas sheet means nothing on another file)
@@ -7842,21 +7925,21 @@ function Kit:TuneTexture(tex, tune)
 	end
 
 	if tune.texture then
-		if tex.melloArt == nil then
-			tex.melloArt = (tex.GetTexture and tex:GetTexture()) or false
+		if Kit.tunedArt[tex] == nil then
+			Kit.tunedArt[tex] = (tex.GetTexture and tex:GetTexture()) or false
 		end
 		pcall(tex.SetTexture, tex, tune.texture)
 		if piece and piece.was and not piece.tile then
 			pcall(tex.SetTexCoord, tex, window[1], window[2], window[3], window[4])
 		end
 		mark("texture")
-	elseif tex.melloArt ~= nil then
-		if piece and tex.kitName then
-			self:Apply(tex, tex.kitName)
-		elseif tex.melloArt then
-			pcall(tex.SetTexture, tex, tex.melloArt)
+	elseif Kit.tunedArt[tex] ~= nil then
+		if piece and Kit.pieceNameOf[tex] then
+			self:Apply(tex, Kit.pieceNameOf[tex])
+		elseif Kit.tunedArt[tex] then
+			pcall(tex.SetTexture, tex, Kit.tunedArt[tex])
 		end
-		tex.melloArt = nil
+		Kit.tunedArt[tex] = nil
 	end
 
 	local t = tune.tint
@@ -7865,7 +7948,7 @@ function Kit:TuneTexture(tex, tune)
 		mark("tint")
 	elseif had and had.tint then
 		-- back to the tint whoever owns this texture last asked for
-		local base = tex.kitBase
+		local base = Kit.tintBaseOf[tex]
 		pcall(tex.SetVertexColor, tex, base and base[1] or 1, base and base[2] or 1, base and base[3] or 1)
 	end
 
@@ -7937,7 +8020,7 @@ function Kit:TuneTexture(tex, tune)
 		end
 	end
 
-	tex.melloTuned = now
+	Kit.tunedAt[tex] = now
 end
 
 -- (0.19.1) The editor's proxy rectangle on its element, the tuning's offsets on it. ProxyTo lays it on another
@@ -8097,21 +8180,21 @@ function Kit:TuneRegions(frame, regions)
 			local tune = (key and regions[key]) or regions["#" .. index]
 			if tune then
 				if tune.hidden then
-					region.melloHidden = true
+					Kit.tunedHidden[region] = true
 					pcall(region.Hide, region)
 				else
-					if region.melloHidden then
-						region.melloHidden = nil
+					if Kit.tunedHidden[region] then
+						Kit.tunedHidden[region] = nil
 						pcall(region.Show, region)
 					end
 					self:TuneRegion(region, tune)
 				end
-			elseif region.melloTuned or region.melloHidden then
+			elseif Kit.tunedAt[region] or Kit.tunedHidden[region] then
 				-- it was changed and is not listed any more: put it back.
 				-- Only ever a texture we touched, so the game's own tints and
 				-- hidden states are left alone.
-				if region.melloHidden then
-					region.melloHidden = nil
+				if Kit.tunedHidden[region] then
+					Kit.tunedHidden[region] = nil
 					pcall(region.Show, region)
 				end
 				self:TuneRegion(region, nil)
@@ -8369,7 +8452,7 @@ function Kit:Replace(region, opts)
 				Perf.HookScript(button, "OnLeave", FrameTint_OnLeave)
 				Perf.HookScript(button, "OnMouseDown", FrameTint_OnMouseDown)
 				Perf.HookScript(button, "OnMouseUp", FrameTint_OnMouseUp)
-				if button.SetEnabled then
+				if type(button.SetEnabled) == "function" then
 					hooksecurefunc(button, "SetEnabled", FrameTint_OnSetEnabled)
 				end
 			else
@@ -8379,7 +8462,7 @@ function Kit:Replace(region, opts)
 				Perf.HookScript(button, "OnLeave", function() rep.hover = nil; rep.pressed = nil; Update() end)
 				Perf.HookScript(button, "OnMouseDown", function() rep.pressed = true; pressedLatches[rep] = Update; Update() end)
 				Perf.HookScript(button, "OnMouseUp", function() rep.pressed = nil; Update() end)
-				if button.SetEnabled then
+				if type(button.SetEnabled) == "function" then
 					hooksecurefunc(button, "SetEnabled", Update)
 				end
 			end
@@ -8441,7 +8524,7 @@ function Kit:Replace(region, opts)
 			Perf.HookScript(button, "OnLeave", function() rep.hover = nil; rep.pressed = nil; Update() end)
 			Perf.HookScript(button, "OnMouseDown", function() rep.pressed = true; pressedLatches[rep] = Update; Update() end)
 			Perf.HookScript(button, "OnMouseUp", function() rep.pressed = nil; Update() end)
-			if button.SetEnabled then
+			if type(button.SetEnabled) == "function" then
 				hooksecurefunc(button, "SetEnabled", Update)
 			end
 			if button.Enable then
@@ -8712,7 +8795,7 @@ function Kit:Replace(region, opts)
 		local driver = f:CreateTexture(nil, "BACKGROUND")
 		driver:SetAlpha(0)
 		driver:SetAllPoints(parts.box or f)
-		driver.kitPiece = true   -- ours: never faded as the game's art
+		Kit.pieceOf[driver] = true   -- ours: never faded as the game's art
 		driver.button, driver.flatParts, driver.isChecked = button, parts, opts.checked
 		-- (a check box wears the active look round its box while ticked, as the
 		-- Configurator's switch; no other flat control has a checked look)
@@ -8769,7 +8852,7 @@ function Kit:Replace(region, opts)
 		local mark = button:CreateTexture(nil, "OVERLAY")
 		mark:SetAllPoints(button)
 		mark:SetAlpha(0)
-		mark.kitPiece = true   -- ours: never faded as the game's art
+		Kit.pieceOf[mark] = true   -- ours: never faded as the game's art
 		mark.button, mark.icon, mark.activeFamily = button, opts.icon, "look"
 		FollowButton(mark, button)
 		Slot_Update(mark)
@@ -8810,8 +8893,9 @@ function Kit:Replace(region, opts)
 		-- "rim" / "rimhair" / "rimround" / "rimgold" / "rimsunk");
 		-- rep:SetBar(bar) swaps it live
 		-- a progress bar's bracket follows its group's border (every window's
-		-- Progress Bar Border; the nameplates' their own); a cast bar keeps its
-		local group = rule.bar ~= "castbar" and (rule.borderGroup or "bar") or nil
+		-- Progress Bar Border; the nameplates', the unit frames' and the cast
+		-- bar's their own, 0.19.8: Nameplate / Unit Frame / Cast Bar Border)
+		local group = rule.borderGroup or (rule.bar ~= "castbar" and "bar") or nil
 		local base = "bars/" .. (opts.bar or (group and self:BorderValue(group)) or rule.bar or "frame")
 		if not PIECES[StripName(base, "mid")] then
 			base = "bars/" .. (rule.bar or "frame")
@@ -8848,6 +8932,7 @@ function Kit:Replace(region, opts)
 		trough.kitScale = self.scale
 		self:Apply(trough, "bars/trough")
 		rep.object, rep.strip, rep.trough = strip, strip, trough
+		rep.barParent, rep.borderGroup = parent, group   -- (the border library's: Kit:BarLibraryBorder)
 		-- a StatusBar's fill can change layer after the bracket was placed
 		-- (Bar Textures sets its own fill texture, which comes up at ARTWORK
 		-- where the game's was at BACKGROUND): the bracket and trough follow
@@ -8871,6 +8956,9 @@ function Kit:Replace(region, opts)
 				self.strip.capL:SetDrawLayer(layer, sub)
 				self.strip.capR:SetDrawLayer(layer, sub)
 				self.strip.mid:SetDrawLayer(layer, sub - 1)
+				if self.libraryBorder then
+					self.libraryBorder:SetLayer(layer, sub)   -- (0.19.8: a library style in the bracket's place)
+				end
 				if not opts.troughParent then
 					self.trough:SetDrawLayer(tl, ts)
 				end
@@ -8883,6 +8971,9 @@ function Kit:Replace(region, opts)
 		end
 		-- the caps' solid arms (from the piece's edge to its opening) in UI px
 		rep.GetArms = function(self)
+			if self.libraryStyle then
+				return 0, 0   -- (0.19.8: a library style lies round the bar: no arm takes its width)
+			end
 			local sc = self.strip.scale
 			local capL, capR = PIECES[StripName(self.base, "cap_l")], PIECES[StripName(self.base, "cap_r")]
 			local l = capL and capL.open and capL.open[1] * sc or self.strip.wl or 0
@@ -8893,6 +8984,9 @@ function Kit:Replace(region, opts)
 		-- caps' hollow arms (past the gems) a little under the gems' bezels,
 		-- top / bottom most of the way into the rails, so the rails cover the edges
 		rep.GetOpening = function(self)
+			if self.libraryStyle then
+				return 0, 0, 0, 0   -- (0.19.8: round the bar: the fill its whole rect)
+			end
 			local sc = self.strip.scale
 			local mid = PIECES[StripName(self.base, "mid")]
 			local under = (rule.underGem or 3) * sc
@@ -8978,6 +9072,12 @@ function Kit:Replace(region, opts)
 			Kit:Retile(self.trough)
 		end
 		rep.SetBar = function(self, bar)
+			-- (0.19.8) a style of the border library's: drawn by it round the
+			-- bar, the bracket put out (Modules/KitBorders.lua); another look
+			-- puts such a border away first
+			if Kit.BarLibraryBorder and Kit:BarLibraryBorder(self, bar) then
+				return
+			end
 			local b = "bars/" .. (bar or "frame")
 			if b == self.base or not PIECES[StripName(b, "mid")] then
 				return
@@ -8988,8 +9088,24 @@ function Kit:Replace(region, opts)
 		end
 		rep:Refit()
 		local show, hide = strip.Show, strip.Hide
-		strip.Show = function(f) show(f); trough:Show() end
-		strip.Hide = function(f) hide(f); trough:Hide() end
+		strip.Show = function(f)
+			show(f)
+			trough:Show()
+			if rep.libraryStyle then
+				rep.libraryBorder:SetShown(true)
+			end
+		end
+		strip.Hide = function(f)
+			hide(f)
+			trough:Hide()
+			if rep.libraryBorder then
+				rep.libraryBorder:SetShown(false)
+			end
+		end
+		-- (0.19.8) the group's look a library style: laid now
+		if group and self.BarLibraryBorder then
+			self:BarLibraryBorder(rep, opts.bar or self:BorderValue(group))
+		end
 	elseif rule.kind == "picture" then
 		-- a painted picture on the rect, cropped to the rect's aspect (never
 		-- stretched): `crop` says which part stays when the rect is wider
@@ -9082,11 +9198,11 @@ function Kit:Replace(region, opts)
 				-- the palette's inner panel, by its key: a new palette paints
 				-- it again (Kit:Paint)
 				Kit:Paint(self.tex, "innerPanel", "fill", 0.95)
-				self.tex.kitPiece, self.tex.kitName = true, nil
+				Kit.pieceOf[self.tex], Kit.pieceNameOf[self.tex] = true, nil
 				return
 			end
 			local name = self.pieceOverride or ((self.grey and rule.grey and self.grey()) and rule.grey or rule.piece)
-			if self.tex.kitName ~= name then
+			if Kit.pieceNameOf[self.tex] ~= name then
 				Kit:Unpaint(self.tex)   -- (a dark fill before: the piece stays when the palette changes)
 				Kit:Apply(self.tex, name)
 				-- the parchment in the kit's one parchment tone
@@ -9141,7 +9257,7 @@ function Kit:Replace(region, opts)
 					self.filler = self.object:CreateTexture(nil, "BACKGROUND")
 					self.filler.kitScale = self.tex.kitScale
 				end
-				if self.filler.kitName ~= name then
+				if Kit.pieceNameOf[self.filler] ~= name then
 					Kit:Apply(self.filler, name)
 				end
 				self.filler:ClearAllPoints()
@@ -9294,11 +9410,12 @@ function Kit:Replace(region, opts)
 				end)
 			end
 		elseif rule.square or rule.opening then
-			local piece = PIECES[rule.piece]
 			local function SquareSize(w, h)
 				if not (w and h) or Secret(w) or Secret(h) then
 					return 0
 				end
+				-- (0.19.8: the piece it wears, a ring style's as the portrait ring: rep.ringPiece, KitBorders)
+				local piece = PIECES[rep.ringPiece or rule.piece]
 				local size = math.min(w > 0 and w or h, h > 0 and h or w)
 				if size > 0 and rule.opening and piece and piece.open then
 					-- the rect is the OPENING: the canvas grows around it by the
@@ -9330,6 +9447,18 @@ function Kit:Replace(region, opts)
 			end
 			tex:SetSize(size, size)
 			tex:SetPoint("CENTER", opts.center or rect, "CENTER")
+			-- (0.19.8) sized again for the piece it wears now, coming from piece `from` (Kit:LayPortraitRing): the
+			-- opening kept at its size -- never read from the rect again, which a fitted portrait is itself sized
+			-- by the ring (Kit:FitPortrait: it would feed back)
+			rep.Resquare = function(from)
+				local a, b = PIECES[from or rule.piece], PIECES[rep.ringPiece or rule.piece]
+				local okW, tw = pcall(tex.GetWidth, tex)
+				if not (okW and tw and not Secret(tw) and tw > 0 and a and b and a.open and b.open) then
+					return
+				end
+				local s = tw * ((a.open[3] - a.open[1]) / a.w) / ((b.open[3] - b.open[1]) / b.w)
+				tex:SetSize(s, s)
+			end
 		else
 			tex:SetAllPoints(rule.owner and rect or f)
 		end
@@ -9397,12 +9526,12 @@ end
 -- the track and the thumb itself; the pieces are children of theirs.
 -- `replace` is the panel's registering Replace. Returns the reps (or nil).
 function Kit:SkinScrollBar(bar, replace)
-	if bar.melloRep ~= nil then
-		return bar.melloRep or nil
+	if Kit.repOf[bar] ~= nil then
+		return Kit.repOf[bar] or nil
 	end
 	local track, thumb = bar.Track, bar.Track and bar.Track.Thumb
 	if not (track and thumb and track.Middle and thumb.Middle) then
-		bar.melloRep = false
+		Kit.repOf[bar] = false
 		return nil
 	end
 	local reps = {}
@@ -9422,7 +9551,7 @@ function Kit:SkinScrollBar(bar, replace)
 			end
 		end
 	end)
-	bar.melloRep = reps
+	Kit.repOf[bar] = reps
 	return reps
 end
 
@@ -9508,17 +9637,17 @@ end
 
 -- A glyph the game re-atlases with a state (a header's +/-, a toggle's
 -- open/closed): one replacement per atlas it has shown, kept on `owner`
--- (owner.melloIcons), the one for its current atlas shown. `replace` is the
+-- (Kit.stateIconsOf[owner]), the one for its current atlas shown. `replace` is the
 -- panel's registering Replace; `extra` other regions to fade with it.
 function Kit:StateIconReps(owner, icon, button, replace, extra)
 	if not (owner and icon) then
 		return
 	end
-	owner.melloIcons = owner.melloIcons or {}
+	Kit.stateIconsOf[owner] = Kit.stateIconsOf[owner] or {}
 	local key = self:ArtKey(icon)
-	if key and self:RuleFor(key) and owner.melloIcons[key] == nil then
+	if key and self:RuleFor(key) and Kit.stateIconsOf[owner][key] == nil then
 		local rep = replace(icon, { as = key, button = button or owner, rect = icon, alsoFade = extra }) or false
-		owner.melloIcons[key] = rep
+		Kit.stateIconsOf[owner][key] = rep
 		if rep then
 			local enable = rep.onEnable
 			rep.onEnable = function(...)
@@ -9529,7 +9658,7 @@ function Kit:StateIconReps(owner, icon, button, replace, extra)
 			end
 		end
 	end
-	for k, rep in pairs(owner.melloIcons) do
+	for k, rep in pairs(Kit.stateIconsOf[owner]) do
 		if rep then
 			rep:SetShown(k == key)
 		end
@@ -9588,7 +9717,7 @@ end
 -- The first game texture of a frame (skipping ours).
 function Kit:FirstTexture(frame)
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not Kit.pieceOf[region] then
 			return region
 		end
 	end
@@ -9598,7 +9727,7 @@ end
 function Kit:OtherTextures(button, keep)
 	local extra = {}
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and region ~= keep and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and region ~= keep and not Kit.pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
@@ -9649,7 +9778,7 @@ function Kit:RingDisc(ring, color, parent, sublevel)
 	end
 	parent = parent or ring.object:GetParent()
 	local disc = parent:CreateTexture(nil, "BACKGROUND", nil, sublevel or 7)
-	disc.kitPiece = true
+	Kit.pieceOf[disc] = true
 	self:Paint(disc, color or "innerPanel", "fill", 1)
 	local mask = parent:CreateMaskTexture()
 	mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -9749,7 +9878,7 @@ function Kit:FitRingHole(title, ring)
 	if not ok or Secret(w) or not (w and w > 0) then
 		return
 	end
-	local piece = PIECES[tex.kitName or "window/portrait_ring"]
+	local piece = PIECES[Kit.pieceNameOf[tex] or "window/portrait_ring"]
 	local radius = ((piece and piece.radius) or 84) - RING_HOLE_IN
 	local hole = w * radius / ((piece and piece.w) or 197)
 	local size = 2 * hole / RING_HOLE_FILL
@@ -9773,7 +9902,7 @@ end
 -- edge (a glow lying under the ring starts under the rim: no gap between the
 -- two -- HealerFrames' debuff glow; user, 2026-10-04)
 function Kit:RingRim(tex, tuck)
-	local piece = PIECES[(tex and tex.kitName) or "window/portrait_ring"]
+	local piece = PIECES[(tex and Kit.pieceNameOf[tex]) or "window/portrait_ring"]
 	local radius = ((piece and piece.radius) or 84) - (tuck or 0)
 	return 2 * radius / ((piece and piece.w) or 197)
 end
@@ -9965,7 +10094,7 @@ function Kit:FitPortrait(portrait, ring, mode)
 	if not (portrait and ring and ring.tex) then
 		return
 	end
-	if not portrait.melloSaved then
+	if not Kit.portraitSavedOf[portrait] then
 		local points = {}
 		for i = 1, portrait:GetNumPoints() do
 			points[i] = { portrait:GetPoint(i) }
@@ -9975,11 +10104,17 @@ function Kit:FitPortrait(portrait, ring, mode)
 		if not (cx and px) then
 			return             -- not laid out yet (the window hidden): try again on the next refresh
 		end
-		portrait.melloSaved = { points = points, w = portrait:GetWidth(), h = portrait:GetHeight(),
+		Kit.portraitSavedOf[portrait] = { points = points, w = portrait:GetWidth(), h = portrait:GetHeight(),
 			cx = cx - px, cy = cy - py }
 	end
-	local saved = portrait.melloSaved
+	local saved = Kit.portraitSavedOf[portrait]
 	local size = ring.tex:GetWidth() * MEDALLION_TO_RING
+	-- (0.19.8) a ring of the border library's (the portrait ring in a ring style): its opening is another share
+	-- of its width; the medallion keeps the gem ring's measure against the opening
+	local worn, gem = PIECES[Kit.pieceNameOf[ring.tex] or ""], PIECES["window/portrait_ring"]
+	if worn and gem and worn.open and gem.open and worn.w ~= gem.w then
+		size = size * ((worn.open[3] - worn.open[1]) / worn.w) / ((gem.open[3] - gem.open[1]) / gem.w)
+	end
 	if type(mode) == "number" then
 		-- a factor on the medallion size. No window uses it: a window's
 		-- portrait stays at the medallion size, on the disc when it does not
@@ -9990,7 +10125,7 @@ function Kit:FitPortrait(portrait, ring, mode)
 		-- the HUD's unit frames (user, 2026-09-21): the visible disc exactly
 		-- the ring's opening — a class medallion's painted disc, else the
 		-- whole (round-masked) portrait
-		local piece = PIECES[ring.tex.kitName or "window/portrait_ring"]
+		local piece = PIECES[Kit.pieceNameOf[ring.tex] or "window/portrait_ring"]
 		local openFrac = piece and piece.open and (piece.open[3] - piece.open[1]) / piece.w or 0.61
 		local okT, file = pcall(portrait.GetTexture, portrait)
 		local medallion = okT and type(file) == "string" and file:find("MelloUI", 1, true) ~= nil
@@ -10007,14 +10142,14 @@ function Kit:FitPortrait(portrait, ring, mode)
 end
 
 function Kit:UnfitPortrait(portrait)
-	local saved = portrait and portrait.melloSaved
+	local saved = portrait and Kit.portraitSavedOf[portrait]
 	if saved then
 		portrait:ClearAllPoints()
 		for _, pt in ipairs(saved.points) do
 			portrait:SetPoint(unpack(pt))
 		end
 		portrait:SetSize(saved.w, saved.h)
-		portrait.melloSaved = nil
+		Kit.portraitSavedOf[portrait] = nil
 		self:RefitRegion(portrait)
 	end
 end
@@ -10245,7 +10380,7 @@ Kit.borderKinds = {
 	{ kind = "sidetab", key = "sideTabBorder", default = "slot", name = "Side Tab Border", values = Kit.sideTabLooks, preview = "rim",
 	  desc = "The rim on every window's side tabs and the spell book's category tabs, all at the character window's size." },
 	{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.barBorders, preview = "bar",
-	  desc = "The frame round every progress bar: reputation and skills, the professions' ranks, legacy, guild, experience, the tracker's, the tooltip's, the damage meter's and the unit frames' bars." },
+	  desc = "The frame round every progress bar: reputation and skills, the professions' ranks, legacy, guild, experience, the tracker's, the tooltip's and the damage meter's. The unit frames, the nameplates and the cast bar have a border of their own." },
 	{ kind = "nameplate", key = "nameplateBorder", default = "frame", name = "Nameplate Border", values = Kit.buttonLooks.barBorders, preview = "bar",
 	  desc = "The frame round the nameplates' health bars." },
 	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",
@@ -10257,6 +10392,21 @@ Kit.borderKinds = {
 }
 local BORDER_KIND = {}
 for _, k in ipairs(Kit.borderKinds) do
+	BORDER_KIND[k.kind] = k
+end
+
+-- A kind of the border library's (0.19.8, Modules/KitBorders.lua: Raid Frame
+-- Border), placed after the kind `after` (UI Modifications makes its option
+-- from the list when it loads, after the library)
+function Kit:AddBorderKind(k, after)
+	local at = #self.borderKinds + 1
+	for i, v in ipairs(self.borderKinds) do
+		if v.kind == after then
+			at = i + 1
+			break
+		end
+	end
+	table.insert(self.borderKinds, at, k)
 	BORDER_KIND[k.kind] = k
 end
 
@@ -10287,7 +10437,9 @@ function Kit:BorderValue(kind)
 end
 
 local buttonRims = setmetatable({}, { __mode = "k" })   -- [button] = true: a skinned button whose rim is a thin look
-local borderBars = { bar = setmetatable({}, { __mode = "k" }), nameplate = setmetatable({}, { __mode = "k" }) }
+local borderBars = { bar = setmetatable({}, { __mode = "k" }), nameplate = setmetatable({}, { __mode = "k" }),
+	-- (0.19.8: the unit frames' bars and the cast bar, a border of their own each)
+	unitframe = setmetatable({}, { __mode = "k" }), castbar = setmetatable({}, { __mode = "k" }) }
 
 function Kit:RegisterButtonRim(button)
 	if button then
@@ -10318,6 +10470,10 @@ Kit.roundRims = setmetatable({}, { __mode = "k" })
 
 -- A round rim in a look (its glow, the lit look, too)
 local function RoundLook(rim, value)
+	-- (0.19.8, the border library's stage 4: a ring style stands on the rim)
+	if Kit.RoundLibraryRing and Kit:RoundLibraryRing(rim, value) then
+		return
+	end
 	local base = "buttons/" .. value
 	if not PIECES[base .. "_normal"] then
 		return
@@ -10345,6 +10501,14 @@ function Kit:ApplyBorder(kind)
 		end
 	elseif kind == "sidetab" then
 		self:SetSideTabBorder()
+	elseif kind == "raid" then
+		self:ApplyRaidBorders()   -- (the border library's: Modules/KitBorders.lua)
+	elseif kind == "personal" then
+		self:ApplyPersonalBorder()   -- (the border library's: Modules/KitBorders.lua)
+	elseif kind == "portrait" then
+		self:ApplyPortraitRings()   -- (the border library's rings: Modules/KitBorders.lua)
+	elseif kind == "cooldown" then
+		self:ApplyCooldownBorders()   -- (the Cooldown Manager's icons: Modules/KitBorders.lua)
 	elseif borderBars[kind] then
 		for rep in pairs(borderBars[kind]) do
 			if rep.SetBar then
@@ -10445,13 +10609,13 @@ end
 -- SelectedTexture / TabGlow / HighlightTexture): the gold rim with the icon
 -- fitted in, the glow while `checked()` (default: the game's SelectedTexture shown).
 function Kit:SkinSideTab(tab, replace, checked)
-	if not (tab and tab.Background) or tab.melloRep ~= nil then
-		return tab and tab.melloRep or nil
+	if not (tab and tab.Background) or Kit.repOf[tab] ~= nil then
+		return tab and Kit.repOf[tab] or nil
 	end
-	tab.melloRep = replace(tab.Background, { as = "common-sidetab", button = tab, parent = tab, icon = tab.Icon,
+	Kit.repOf[tab] = replace(tab.Background, { as = "common-sidetab", button = tab, parent = tab, icon = tab.Icon,
 		checked = checked or function() return tab.SelectedTexture and tab.SelectedTexture:IsShown() end,
 		alsoFade = { tab.SelectedTexture, tab.TabGlow, tab.HighlightTexture } }) or false
-	return tab.melloRep or nil
+	return Kit.repOf[tab] or nil
 end
 
 -- A list header's collapse button (CollapseButtonTemplate: an Icon the game
@@ -10464,7 +10628,7 @@ function Kit:SkinCollapseButton(button, replace)
 	end
 	local extra = {}
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region ~= button.Icon and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region ~= button.Icon and region:GetObjectType() == "Texture" and not Kit.pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
@@ -10474,8 +10638,8 @@ end
 -- A search box (SearchBoxTemplate): the edit plate with its glass cap in
 -- place of the game's icon; the text and instructions start past the cap.
 function Kit:SkinSearchBox(search, replace)
-	if not (search and search.Middle) or search.melloRep ~= nil then
-		return search and search.melloRep or nil
+	if not (search and search.Middle) or Kit.repOf[search] ~= nil then
+		return search and Kit.repOf[search] or nil
 	end
 	-- (0.19.1: the field flat, the Configurator's search box -- the game's
 	-- glass stays inside it and the text where the game has it; the S1 strip
@@ -10487,7 +10651,7 @@ function Kit:SkinSearchBox(search, replace)
 	local rep = replace(search.Middle, { as = "common-search-border-middle", rect = search, edit = search,
 		left = flat and 5 or nil,
 		alsoFade = flat and { search.Left, search.Right } or { search.Left, search.Right, search.searchIcon } })
-	search.melloRep = rep or false
+	Kit.repOf[search] = rep or false
 	if not rep or flat then
 		return rep or nil
 	end
@@ -10523,8 +10687,8 @@ end
 -- A text button on the red plate (B1): a UIPanelButtonTemplate (Left /
 -- Middle / Right file pieces) or a 128-RedButton three-slice (Center).
 function Kit:SkinRedButton(button, replace, opts)
-	if not button or button.melloRep ~= nil then
-		return button and button.melloRep or nil
+	if not button or Kit.repOf[button] ~= nil then
+		return button and Kit.repOf[button] or nil
 	end
 	opts = opts or {}
 	local anchor, key, extra
@@ -10536,24 +10700,24 @@ function Kit:SkinRedButton(button, replace, opts)
 		extra = { button.Left, button.Right }
 	end
 	if not anchor then
-		button.melloRep = false
+		Kit.repOf[button] = false
 		return nil
 	end
 	for _, region in ipairs({ button:GetRegions() }) do
 		if region:GetObjectType() == "Texture" and region ~= anchor and region ~= button.Left and region ~= button.Right
-			and not region.kitPiece and region:GetDrawLayer() == "HIGHLIGHT" then
+			and not Kit.pieceOf[region] and region:GetDrawLayer() == "HIGHLIGHT" then
 			extra[#extra + 1] = region
 		end
 	end
-	button.melloRep = replace(anchor, { as = key, rect = button, button = button, alsoFade = extra, dropCap = opts.dropCap, capless = opts.capless }) or false
-	return button.melloRep or nil
+	Kit.repOf[button] = replace(anchor, { as = key, rect = button, button = button, alsoFade = extra, dropCap = opts.dropCap, capless = opts.capless }) or false
+	return Kit.repOf[button] or nil
 end
 
 -- A check button (CheckButton with the minimal or the classic check box
 -- art): the kit's check box off / on / hover on its normal texture's rect.
 function Kit:SkinCheckButton(cb, replace, key)
-	if not (cb and cb.GetNormalTexture and cb:GetNormalTexture()) or cb.melloRep ~= nil then
-		return cb and cb.melloRep or nil
+	if not (cb and cb.GetNormalTexture and cb:GetNormalTexture()) or Kit.repOf[cb] ~= nil then
+		return cb and Kit.repOf[cb] or nil
 	end
 	local normal = cb:GetNormalTexture()
 	-- the states the button has, gap-free: a radio has no pushed texture, and
@@ -10566,8 +10730,8 @@ function Kit:SkinCheckButton(cb, replace, key)
 			fade[#fade + 1] = t
 		end
 	end
-	cb.melloRep = replace(normal, { as = key or "checkbox-minimal", button = cb, rect = normal, alsoFade = fade }) or false
-	return cb.melloRep or nil
+	Kit.repOf[cb] = replace(normal, { as = key or "checkbox-minimal", button = cb, rect = normal, alsoFade = fade }) or false
+	return Kit.repOf[cb] or nil
 end
 
 -- P1 on a StatusBar whose bracket art is one of its own textures (`frame`,
@@ -10578,11 +10742,11 @@ end
 -- moved into the opening (its fill spans the bracket's whole height, behind
 -- the rails), put back on disable. `key` is the mapping (the bracket's atlas).
 function Kit:SkinStatusBar(bar, frame, bg, replace, key)
-	if not (bar and frame and bg) or bar.melloRep ~= nil then
-		return bar and bar.melloRep or nil
+	if not (bar and frame and bg) or Kit.repOf[bar] ~= nil then
+		return bar and Kit.repOf[bar] or nil
 	end
 	local rep = replace(frame, { as = key or self:ArtKey(frame), rect = bg, parent = bar, alsoFade = { bg } })
-	bar.melloRep = rep or false
+	Kit.repOf[bar] = rep or false
 	if not rep then
 		return nil
 	end
@@ -10626,10 +10790,10 @@ end)
 -- the text held where the plate wants it (below)
 local function PanelTab_Steady(tab, st)
 	local rep, open, text = st.rep, st.open, st.text
-	if tab.melloSteadying or not (rep.object:IsShown() or (open and open.object:IsShown())) then
+	if Kit.steadyingOf[tab] or not (rep.object:IsShown() or (open and open.object:IsShown())) then
 		return
 	end
-	tab.melloSteadying = true
+	Kit.steadyingOf[tab] = true
 	local dy = 0
 	if rep.strip then
 		local mid = PIECES[StripName(rep.strip.base, "mid", rep.strip.state)]
@@ -10639,7 +10803,7 @@ local function PanelTab_Steady(tab, st)
 	end
 	local okP, _, _, _, x = pcall(text.GetPoint, text, 1)
 	text:SetPoint("CENTER", tab, "CENTER", (okP and x) or 0, dy)
-	tab.melloSteadying = nil
+	Kit.steadyingOf[tab] = nil
 end
 local PanelTab_OnTextPoint = Shared("SetPoint on a panel tab's text", function(text)
 	local tab = panelTabOf[text]
@@ -10658,15 +10822,15 @@ end)
 -- left on screen without its art is laid in its first frame there
 -- (Waiting_OnUpdate).
 function Kit:SkinPanelTab(tab, replace, skin)
-	if not (tab and tab.Left and tab.LeftActive) or tab.melloRep ~= nil then
+	if not (tab and tab.Left and tab.LeftActive) or Kit.repOf[tab] ~= nil then
 		return
 	end
-	tab.melloRep = false
+	Kit.repOf[tab] = false
 	local follows = skin and skin.followers
 	local plain = replace(tab.Left, { as = "uiframe-tab-left", rect = tab, button = tab, alsoFade = { tab.Middle, tab.Right, tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight } })
 	local open = replace(tab.LeftActive, { as = "uiframe-activetab-left", rect = tab, alsoFade = { tab.MiddleActive, tab.RightActive },
 		layWith = (follows and not tab.LeftActive:IsShown()) and tab.LeftActive or nil })
-	tab.melloRep = plain or open or false
+	Kit.repOf[tab] = plain or open or false
 	if follows then
 		if plain then
 			follows[#follows + 1] = { rep = plain, region = tab.Left }
@@ -10707,7 +10871,7 @@ end
 -- a list whose text must read (user, 2026-09-23: the social window's lists on
 -- the page's cracked stone were "not readable")
 function Kit:SkinInset(inset, replace, parent, withBody)
-	if not inset or inset.melloRep ~= nil then
+	if not inset or Kit.repOf[inset] ~= nil then
 		return
 	end
 	parent = parent or inset:GetParent()
@@ -10723,7 +10887,7 @@ function Kit:SkinInset(inset, replace, parent, withBody)
 			end
 		end
 	end
-	inset.melloRep = replace(inset, { as = "common-insideframe", parent = parent, rect = inset, level = level, body = withBody and true or false, noFade = true, alsoFade = extra }) or false
+	Kit.repOf[inset] = replace(inset, { as = "common-insideframe", parent = parent, rect = inset, level = level, body = withBody and true or false, noFade = true, alsoFade = extra }) or false
 end
 
 -- The controls every window has, found by what they ARE under `root` (a
@@ -10755,14 +10919,14 @@ function Kit:SweepControls(root, replace, skin, skip, depth, shownOnly)
 			-- Right shape but are the window's to map: GC1, not B1)
 			self:SkinRedButton(child, replace)
 		elseif kind == "CheckButton" and child.GetCheckedTexture and child:GetCheckedTexture() and child:GetCheckedTexture():GetTexture()
-			and not child.Icon and not child.Ring and (child:GetWidth() <= 40 or child:GetWidth() == 0) and child.melloRep == nil then
+			and not child.Icon and not child.Ring and (child:GetWidth() <= 40 or child:GetWidth() == 0) and Kit.repOf[child] == nil then
 			local normal = child.GetNormalTexture and child:GetNormalTexture()
 			local key = normal and self:ArtKey(normal)
 			self:SkinCheckButton(child, replace, (key and self:RuleFor(key)) and key or "UI-CheckBox-Up")
-		elseif child.Background and child.Arrow and child.Text and child.melloRep == nil then
-			child.melloRep = replace(child.Background, { as = "common-dropdown-textholder", rect = child, button = child, alsoFade = { child.Arrow } }) or false
-		elseif child.Background and child.Text and self:ArtKey(child.Background) == "common-dropdown-b-button" and child.melloRep == nil then
-			child.melloRep = replace(child.Background, { as = "common-dropdown-b-button", rect = child, button = child, parent = child }) or false
+		elseif child.Background and child.Arrow and child.Text and Kit.repOf[child] == nil then
+			Kit.repOf[child] = replace(child.Background, { as = "common-dropdown-textholder", rect = child, button = child, alsoFade = { child.Arrow } }) or false
+		elseif child.Background and child.Text and self:ArtKey(child.Background) == "common-dropdown-b-button" and Kit.repOf[child] == nil then
+			Kit.repOf[child] = replace(child.Background, { as = "common-dropdown-b-button", rect = child, button = child, parent = child }) or false
 		elseif child.NineSlice and child.Bg and (child.layoutType == "InsetFrameTemplate" or child.NineSlice.layoutType == "InsetFrameTemplate"
 			or (child.NineSlice.TopLeftCorner and tostring(self:ArtKey(child.NineSlice.TopLeftCorner)):find("^UI%-Frame%-Inner"))) then
 			self:SkinInset(child, replace, root)
@@ -10779,10 +10943,10 @@ end
 -- `initialized`: call `rowSkin` after the row's own Init instead (a pool
 -- whose frames serve as header AND row: the look is known only then).
 function Kit:HookScrollBoxRows(scrollBox, rowSkin, isActive, initialized)
-	if not (scrollBox and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or scrollBox.melloKitHooked then
+	if not (scrollBox and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or Kit.kitHookedOf[scrollBox] then
 		return
 	end
-	scrollBox.melloKitHooked = true
+	Kit.kitHookedOf[scrollBox] = true
 	local add = (initialized and ScrollUtil.AddInitializedFrameCallback) or ScrollUtil.AddAcquiredFrameCallback
 	add(scrollBox, function(_, frame)
 		if isActive() then
@@ -10852,7 +11016,7 @@ function Kit:DumpWindow(root, skin, msg, extra)
 				local okS, w, h = pcall(rep.inner.GetSize, rep.inner)
 				more = string.format("%s visible=%s inner=%sx%s uv=%s..%s,%s piece=%s", more, okV and tostring(vis) or "?",
 					okS and string.format("%.0f", w) or "?", okS and string.format("%.0f", h) or "?",
-					ok and string.format("%.2f", u1) or "?", ok and string.format("%.2f", u2) or "?", ok and string.format("%.2f", v2) or "?", tostring(rep.tex.kitName))
+					ok and string.format("%.2f", u1) or "?", ok and string.format("%.2f", u2) or "?", ok and string.format("%.2f", v2) or "?", tostring(Kit.pieceNameOf[rep.tex]))
 			end
 			if rep.strip then
 				-- a strip's fit: its scale, the caps' widths as laid out and
@@ -10883,7 +11047,7 @@ function Kit:DumpWindow(root, skin, msg, extra)
 			-- shown / alpha / layer can all read secret on a nameplate's
 			-- regions (the cast bar's target indicator, user 2026-09-22)
 			local okV, visible = pcall(region.IsVisible, region)
-			if region:GetObjectType() == "Texture" and not region.kitPiece and okV and not Secret(visible) and visible then
+			if region:GetObjectType() == "Texture" and not Kit.pieceOf[region] and okV and not Secret(visible) and visible then
 				local ok, alpha = pcall(region.GetAlpha, region)
 				if ok and alpha and not Secret(alpha) and alpha > 0 then
 					n = n + 1
@@ -10891,7 +11055,7 @@ function Kit:DumpWindow(root, skin, msg, extra)
 					if not okL or Secret(layer) or Secret(sub) then
 						layer, sub = "?", "?"
 					end
-					Rect(string.format("%d %s/%s", n, Name(frame), region:GetName() or region.kitName or region:GetDebugName()), region,
+					Rect(string.format("%d %s/%s", n, Name(frame), region:GetName() or Kit.pieceNameOf[region] or region:GetDebugName()), region,
 						string.format("%s/%s art=%s", tostring(layer), tostring(sub), tostring(self:ArtKey(region))))
 				end
 			end
@@ -11081,7 +11245,7 @@ SlashCmdList.MELLOKITWHAT = function()
 					local level = N(parent and parent.GetFrameLevel and parent:GetFrameLevel(), 0)
 					local order = ({ BACKGROUND = 0, LOW = 1, MEDIUM = 2, HIGH = 3, DIALOG = 4, FULLSCREEN = 5, FULLSCREEN_DIALOG = 6, TOOLTIP = 7 })[strata] or 0
 					local layerOrder = ({ BACKGROUND = 0, BORDER = 1, ARTWORK = 2, OVERLAY = 3, HIGHLIGHT = 4 })[okL and layer or ""] or 0
-					local kp = type(tex.kitPiece) == "table" and tex.kitPiece or nil   -- (true: a flat colour of ours)
+					local kp = type(Kit.pieceOf[tex]) == "table" and Kit.pieceOf[tex] or nil   -- (true: a flat colour of ours)
 					local pieceW, pieceH = kp and kp.w or 0, kp and kp.h or 0
 					local rimInfo = ""
 					if tex.button then
@@ -11111,7 +11275,7 @@ SlashCmdList.MELLOKITWHAT = function()
 					rows[#rows + 1] = {
 						key = order * 1e6 + level * 1e3 + layerOrder * 10 + (okL and sub or 0),
 						text = string.format("%-34s %4dx%-4d  uv %.3f..%.3f x %.3f..%.3f  (%s: %dx%d px shown on %dx%d)  tint %.2f %.2f %.2f a=%.2f  %s/%s  %s L%d %s  file=%s",
-							tostring(tex.kitName or (isSlice and ("slice " .. tostring(kp.prefix)))), w, h, u1 or 0, u2 or 0, v1 or 0, v2 or 0,
+							tostring(Kit.pieceNameOf[tex] or (isSlice and ("slice " .. tostring(kp.prefix)))), w, h, u1 or 0, u2 or 0, v1 or 0, v2 or 0,
 							isSlice and "nine-slice" or kp and kp.tile and "tile" or "picture", math.floor(pieceW * shownW + 0.5), math.floor(pieceH * shownH + 0.5), w, h,
 							okV and r or 1, okV and g or 1, okV and bl or 1, N(tex:GetAlpha(), 1),
 							tostring(okL and layer or "?"), tostring(okL and sub or "?"), tostring(parent and parent:GetName() or (parent and parent:GetDebugName()) or "?"), level, strata,
@@ -11174,7 +11338,7 @@ do
 	-- (review, 2026-09-24: the count had them as skins of no pieces)
 	local function RailCounts(skin)
 		local wait = rawget(skin, "pendingArt")
-		local cut = skin.slice and skin.slice.kitPiece
+		local cut = skin.slice and Kit.pieceOf[skin.slice]
 		local open = {}
 		for _, side in ipairs({ "t", "b", "l", "r" }) do
 			if cut then
@@ -11320,7 +11484,7 @@ do
 
 		-- what the page's one-texture skin is, and what a corner should cover
 		local function Notes(case, pieces, sliced)
-			local cut = sliced.slice and sliced.slice.kitPiece
+			local cut = sliced.slice and Kit.pieceOf[sliced.slice]
 			local first
 			if cut then
 				local okS, texScale = pcall(sliced.slice.GetScale, sliced.slice)

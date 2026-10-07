@@ -28,6 +28,11 @@ local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 -- one handler for every object it is hooked on, wrapped once
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local kitHookedOf = MelloUI.Kept.kitHookedOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local LOOKS = Kit.buttonLooks
 
@@ -37,7 +42,7 @@ local LOOKS = Kit.buttonLooks
 -- Window since 0.19.4, the options audit: one control, ParchmentMode)
 local WINDOW_BACKGROUNDS = { { value = "window", label = "Window stone", piece = "window/frame_body" } }
 for _, v in ipairs(LOOKS.backgrounds) do
-	if v.value ~= "none" and v.value ~= "parchment" then
+	if v.value ~= "none" and not v.paper then   -- (no paper: the aged parchment too, 0.19.8)
 		WINDOW_BACKGROUNDS[#WINDOW_BACKGROUNDS + 1] = v
 	end
 end
@@ -190,7 +195,7 @@ local SkinProgressBar     -- defined with the list code below; the detail panes 
 -- The first game texture of a frame (the picture a Blizzard frame paints).
 local function FirstTexture(frame)
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			return region
 		end
 	end
@@ -219,10 +224,10 @@ end
 -- Every check box under `frame` whose art is the game's minimal check box.
 local function SkinCheckboxes(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
-		if child:GetObjectType() == "CheckButton" and child.GetNormalTexture and child:GetNormalTexture() and child.melloRep == nil then
+		if child:GetObjectType() == "CheckButton" and child.GetNormalTexture and child:GetNormalTexture() and repOf[child] == nil then
 			local normal = child:GetNormalTexture()
 			if Kit:ArtKey(normal) == "checkbox-minimal" then
-				child.melloRep = Replace(normal, { as = "checkbox-minimal", button = child,
+				repOf[child] = Replace(normal, { as = "checkbox-minimal", button = child,
 					alsoFade = { child:GetPushedTexture(), child:GetCheckedTexture(), child:GetHighlightTexture(), child:GetDisabledTexture() } }) or false
 			end
 		end
@@ -482,7 +487,7 @@ Part(function(cf)
 		tex:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -2)
 		tex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
 		Kit:Paint(tex, "innerPanel", "fill", DIM_ALPHA)   -- (by its key: a new palette paints it again)
-		tex.kitPiece = true   -- ours: never faded with the game's art
+		pieceOf[tex] = true   -- ours: never faded with the game's art
 		f:Hide()
 		skin.dims[key] = f
 		skin.dimClears[#skin.dimClears + 1] = { frame = f, base = pane, covers = covers }
@@ -838,14 +843,14 @@ end
 --------------------------------------------------------------------------------
 
 local function StatRep(frame, key)
-	if frame.melloRep == nil then
-		frame.melloRep = Replace(frame.Background, { as = key }) or false
-		if frame.melloRep and key == "UI-Character-Info-Line-Bounce" then
-			Perf.HookScript(frame, "OnEnter", function(self) if active then self.melloRep:SetState("hover") end end)
-			Perf.HookScript(frame, "OnLeave", function(self) if active then self.melloRep:SetState("plain") end end)
+	if repOf[frame] == nil then
+		repOf[frame] = Replace(frame.Background, { as = key }) or false
+		if repOf[frame] and key == "UI-Character-Info-Line-Bounce" then
+			Perf.HookScript(frame, "OnEnter", function(self) if active then repOf[self]:SetState("hover") end end)
+			Perf.HookScript(frame, "OnLeave", function(self) if active then repOf[self]:SetState("plain") end end)
 		end
 	end
-	return frame.melloRep or nil
+	return repOf[frame] or nil
 end
 
 -- (run on every stats update of the game's while the paper doll is up: no
@@ -919,7 +924,7 @@ end
 local function ListHeaderRep(frame)
 	local bg, extra = nil, {}
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local layer = region:GetDrawLayer()
 			if layer == "BACKGROUND" and not bg then
 				bg = region
@@ -1002,12 +1007,12 @@ end
 -- stepper buttons with one Texture each. The game shows and hides the bar,
 -- the track and the thumb itself; our pieces are children of theirs.
 local function SkinScrollBar(bar)
-	if bar.melloRep ~= nil then
+	if repOf[bar] ~= nil then
 		return
 	end
 	local track, thumb = bar.Track, bar.Track and bar.Track.Thumb
 	if not (track and thumb and track.Middle and thumb.Middle) then
-		bar.melloRep = false
+		repOf[bar] = false
 		return
 	end
 	local reps = {}
@@ -1029,7 +1034,7 @@ local function SkinScrollBar(bar)
 			end
 		end
 	end)
-	bar.melloRep = reps
+	repOf[bar] = reps
 	if active then
 		for _, rep in ipairs(reps) do
 			rep:Enable()
@@ -1052,7 +1057,7 @@ local function ScrollBarsIn(root, depth)
 		return
 	end
 	local pane = EquipmentPane()
-	if pane and root == pane and not pane.melloKitHooked then
+	if pane and root == pane and not kitHookedOf[pane] then
 		return
 	end
 	for _, child in ipairs({ root:GetChildren() }) do
@@ -1121,13 +1126,14 @@ end
 -- and draw its art smaller (TAB_BAR_ART); any other kind (a bar on another
 -- tab's detail pane) wears it at the default size
 local TAB_BAR_ART = 0.85
+local fitting = setmetatable({}, { __mode = "k" })   -- [bar fill] = true while it is sized here
 function SkinProgressBar(bar, kind)
-	if not bar or bar.melloRep ~= nil then
+	if not bar or repOf[bar] ~= nil then
 		return
 	end
 	local bg
 	for _, region in ipairs({ bar:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and region ~= bar.Fill and not region.kitPiece and region:GetDrawLayer() == "BACKGROUND" then
+		if region:GetObjectType() == "Texture" and region ~= bar.Fill and not pieceOf[region] and region:GetDrawLayer() == "BACKGROUND" then
 			bg = region
 			break
 		end
@@ -1144,7 +1150,7 @@ function SkinProgressBar(bar, kind)
 	-- fill follows through rep:GetOpening (FitFill, the hooks below)
 	local artScale = (kind == "rep" or kind == "skill") and TAB_BAR_ART or nil
 	local rep = bg and Replace(bg, { as = "common-stat-bar-BG", rect = bar, artScale = artScale })
-	bar.melloRep = rep or false
+	repOf[bar] = rep or false
 	if not rep then
 		return
 	end
@@ -1182,9 +1188,9 @@ function SkinProgressBar(bar, kind)
 		fill:ClearAllPoints()
 		fill:SetPoint("LEFT", bar, "LEFT", l, (b - t) / 2)
 		fill:SetHeight(openH)
-		fill.melloFitting = true
+		fitting[fill] = true
 		fill:SetWidth(math.max(pct * openW, 0.001))
-		fill.melloFitting = nil
+		fitting[fill] = nil
 		if mask then
 			-- the mask clips the fill to ITS height (the atlas's 15 px):
 			-- it must be as tall as the fill area, or the fill stays thin
@@ -1212,7 +1218,7 @@ function SkinProgressBar(bar, kind)
 	-- (the skill rows do it on every initialisation): put our height back
 	if fill and fill.SetAtlas then
 		hooksecurefunc(fill, "SetAtlas", function()
-			if active and not fill.melloFitting then
+			if active and not fitting[fill] then
 				local _, _, t, b = rep:GetOpening()
 				local h = bar:GetHeight()
 				-- (secret first: a secret is never tested for truth or compared)
@@ -1230,13 +1236,13 @@ function SkinProgressBar(bar, kind)
 	-- is what it reads back for the percentage)
 	if bar.SetFillWidth then
 		hooksecurefunc(bar, "SetFillWidth", function(self, width)
-			if active and fill and not fill.melloFitting then
+			if active and fill and not fitting[fill] then
 				local l, r = rep:GetOpening()
 				local w = self:GetWidth()
 				if not Secret(w) and not Secret(width) and w and w > 0 and width then
-					fill.melloFitting = true
+					fitting[fill] = true
 					fill:SetWidth(math.max(width / w * (w - l - r), 0.001))
-					fill.melloFitting = nil
+					fitting[fill] = nil
 				end
 			end
 		end)
@@ -1247,7 +1253,7 @@ function SkinProgressBar(bar, kind)
 end
 
 local function SkinListFrame(frame)
-	if frame.melloRep ~= nil then
+	if repOf[frame] ~= nil then
 		return
 	end
 	local rep
@@ -1256,7 +1262,7 @@ local function SkinListFrame(frame)
 	elseif frame.StateIcon and frame.Name then
 		rep = ListHeaderRep(frame)
 	end
-	frame.melloRep = rep or false
+	repOf[frame] = rep or false
 	-- a sub-header's open / closed toggle (its art is re-atlased by RefreshIcon)
 	local toggle = frame.ToggleCollapseButton
 	if toggle and toggle.GetNormalTexture and toggle:GetNormalTexture() then
@@ -1286,10 +1292,10 @@ end
 -- the two lines the scroll box draws above and below its rows
 local function SkinScrollLines(scrollBox)
 	for _, child in ipairs({ scrollBox:GetChildren() }) do
-		if not child:GetName() and child:GetWidth() <= 1 and child:GetNumRegions() == 1 and child.melloRep == nil then
+		if not child:GetName() and child:GetWidth() <= 1 and child:GetNumRegions() == 1 and repOf[child] == nil then
 			local line = child:GetRegions()
 			local rep = line and line:GetObjectType() == "Texture" and Replace(line, { as = "UI-Character-Info-ScrollLine-Long" })
-			child.melloRep = rep or false
+			repOf[child] = rep or false
 			if rep then
 				rep:Enable()
 			end
@@ -1303,16 +1309,16 @@ end
 local listReps = setmetatable({}, { __mode = "k" })
 
 local function HookList(scrollBox, rowSkin)
-	if not (scrollBox and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or scrollBox.melloKitHooked then
+	if not (scrollBox and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or kitHookedOf[scrollBox] then
 		return
 	end
-	scrollBox.melloKitHooked = true
+	kitHookedOf[scrollBox] = true
 	rowSkin = rowSkin or SkinListFrame
 	local reps = {}
 	listReps[scrollBox] = reps
 	local function SkinRow(frame)
 		rowSkin(frame)
-		local rep = frame.melloRep
+		local rep = repOf[frame]
 		if rep and rep.refresh and not rep.melloListed then
 			rep.melloListed = true
 			reps[#reps + 1] = rep
@@ -1327,8 +1333,8 @@ local function HookList(scrollBox, rowSkin)
 	-- initialisation runs after the layout pass: the row has its height now
 	if ScrollUtil.AddInitializedFrameCallback then
 		ScrollUtil.AddInitializedFrameCallback(scrollBox, function(_, frame)
-			if active and frame.melloRep and frame.melloRep.refresh then
-				frame.melloRep.refresh()
+			if active and repOf[frame] and repOf[frame].refresh then
+				repOf[frame].refresh()
 			end
 		end, M, false)
 	end
@@ -1351,11 +1357,11 @@ end
 -- where the game puts it, so the game's own layout of its pooled, re-used
 -- buttons is never fought. The rim lights with the button's hover and press
 -- and turns gold (its checked look) while the game shows the icon selected.
--- A holder { melloRep = the rim, icon } stands for the icon in the Kit's
--- rim registry, since a set card's own melloRep is its plate.
+-- A holder { icon } (its rep, the rim, in MelloUI.Kept.repOf) stands for the icon in the
+-- Kit's rim registry, since a set card's own rep is its plate.
 local iconRims = {}
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -1387,7 +1393,8 @@ local function SkinIconRim(button, art, icon, checked, extra)
 	if not rep then
 		return nil
 	end
-	local holder = { melloRep = rep, icon = icon }
+	local holder = { icon = icon }
+	repOf[holder] = rep
 	iconRims[#iconRims + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	FitIconRim(holder)
@@ -1399,7 +1406,7 @@ end
 -- so the gold follows the game's own selection as soon as it changes.
 local function FollowSelection(holder, tex)
 	local function Update()
-		local rim = holder.melloRep.object
+		local rim = repOf[holder].object
 		if active and rim and rim.Update then
 			rim:Update()
 		end
@@ -1416,14 +1423,14 @@ end
 -- square and, on a grid button, the selection glow (SelectedTexture) give
 -- way to the rim's hover and checked looks.
 local function SkinPickerIcon(button, selectable)
-	if not button or button.melloRep ~= nil then
+	if not button or repOf[button] ~= nil then
 		return
 	end
-	button.melloRep = false
+	repOf[button] = false
 	local icon = button.Icon
 	local back
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region ~= icon and region:GetObjectType() == "Texture" and not region.kitPiece and region:GetDrawLayer() == "BACKGROUND" then
+		if region ~= icon and region:GetObjectType() == "Texture" and not pieceOf[region] and region:GetDrawLayer() == "BACKGROUND" then
 			back = region
 			break
 		end
@@ -1443,7 +1450,7 @@ local function SkinPickerIcon(button, selectable)
 		checked = function() return sel:IsShown() end
 	end
 	local holder = SkinIconRim(button, back, icon, checked, extra)
-	button.melloRep = holder and holder.melloRep or false
+	repOf[button] = holder and repOf[holder] or false
 	if holder and sel then
 		FollowSelection(holder, sel)
 	end
@@ -1454,10 +1461,10 @@ end
 -- that the scroll box has no view to walk).
 local function SkinIconPopup()
 	local popup = _G.GearManagerPopupFrame
-	if not popup or popup.melloKitHooked then
+	if not popup or kitHookedOf[popup] then
 		return
 	end
-	popup.melloKitHooked = true
+	kitHookedOf[popup] = true
 	local area = popup.BorderBox and popup.BorderBox.SelectedIconArea
 	SkinPickerIcon(area and area.SelectedIconButton, false)
 	local box = popup.IconSelector and popup.IconSelector.ScrollBox
@@ -1487,7 +1494,7 @@ local function SkinFlyoutButtons()
 		return
 	end
 	for _, button in ipairs(flyout.buttons) do
-		if button.melloRep == nil then
+		if repOf[button] == nil then
 			Kit:SkinActionButton(button, Replace, nil, { as = Kit:ButtonRimRule(), qualityBorder = button.IconBorder })
 		end
 	end
@@ -1499,13 +1506,13 @@ end
 -- crafting page's Create) and New Set (a tertiary button re-atlased with its
 -- state: one plate, its state from the button).
 local function SkinOutfitCard(card)
-	if card.melloRep ~= nil then
+	if repOf[card] ~= nil then
 		return
 	end
-	card.melloRep = false
+	repOf[card] = false
 	local bg
 	for _, region in ipairs({ card:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and Kit:ArtKey(region) == "UI-Character-Info-OutfitCard" then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and Kit:ArtKey(region) == "UI-Character-Info-OutfitCard" then
 			bg = region
 			break
 		end
@@ -1521,7 +1528,7 @@ local function SkinOutfitCard(card)
 		local rep = Replace(bg, { as = "CommunitiesListEntry", rect = bg, button = card,
 			checked = sel and function() return sel:IsShown() end or nil,
 			alsoFade = { card.HighlightBar, card.SelectedBar } })
-		card.melloRep = rep or false
+		repOf[card] = rep or false
 		if rep and sel then
 			local function Follow()
 				if active and rep.Update then
@@ -1539,7 +1546,7 @@ local function SkinOutfitCard(card)
 	if card.icon then
 		local art
 		for _, region in ipairs({ card:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece and Kit:ArtKey(region) == "UI-Character-Info-OutfitIcon-Frame" then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] and Kit:ArtKey(region) == "UI-Character-Info-OutfitIcon-Frame" then
 				art = region
 				break
 			end
@@ -1558,10 +1565,10 @@ end
 -- doll's as well (SkinFlyouts).
 local function SkinEquipmentManager()
 	local pane = EquipmentPane()
-	if not pane or pane.melloKitHooked then
+	if not pane or kitHookedOf[pane] then
 		return
 	end
-	pane.melloKitHooked = true
+	kitHookedOf[pane] = true
 	if pane.Border then
 		-- the inset's inner panel stands down on parchment with the stats' (RefreshDims)
 		local inset = Replace(pane.Border, { as = "common-insideframe" })
@@ -2182,7 +2189,7 @@ LayWindowBody = function()
 	local piece = value == "window" and "window/frame_body" or LOOKS.backgroundPiece[value]
 	M:LayParchment()
 	if piece then
-		if body.kitName ~= piece then
+		if pieceNameOf[body] ~= piece then
 			body:SetVertexColor(1, 1, 1, 1)
 			Kit:Apply(body, piece)
 		end
@@ -2213,7 +2220,7 @@ function M:PaintDarkBackground()
 	end
 	local c = MelloUI.Palette.innerPanel
 	body:SetColorTexture(c[1], c[2], c[3], 0.95)
-	body.kitPiece, body.kitName = true, nil   -- still ours (a plain mark): never faded with the game's art
+	pieceOf[body], pieceNameOf[body] = true, nil   -- still ours (a plain mark): never faded with the game's art
 end
 
 -- The window on parchment (Look > Parchment's Character Window: the right
@@ -2318,7 +2325,7 @@ local function CpDump(msg)
 			for _, region in ipairs({ frame:GetRegions() }) do
 				if region:GetObjectType() == "Texture" and region:IsShown() then
 					local okA, alpha = pcall(region.GetAlpha, region)
-					Rect(label .. " " .. (region:GetName() or region:GetDebugName()) .. (region.kitPiece and " [KIT]" or ""), region,
+					Rect(label .. " " .. (region:GetName() or region:GetDebugName()) .. (pieceOf[region] and " [KIT]" or ""), region,
 						string.format("layer=%s alpha=%s art=%s", tostring(region:GetDrawLayer()), okA and tostring(alpha) or "?", tostring(Kit:ArtKey(region))))
 				end
 			end
@@ -2338,7 +2345,7 @@ local function CpDump(msg)
 				return
 			end
 			for _, region in ipairs({ frame:GetRegions() }) do
-				if region:GetObjectType() == "Texture" and not region.kitPiece and region:IsVisible() then
+				if region:GetObjectType() == "Texture" and not pieceOf[region] and region:IsVisible() then
 					local ok, alpha = pcall(region.GetAlpha, region)
 					if ok and alpha and not Secret(alpha) and alpha > 0 then
 						n = n + 1
@@ -2364,7 +2371,7 @@ local function CpDump(msg)
 			end
 			for _, row in ipairs(scrollBox:GetFrames()) do
 				local bar = row.Content and (row.Content.ReputationBar or row.Content.SkillsBar)
-				local rep = bar and bar.melloRep
+				local rep = bar and repOf[bar]
 				if rep and n < 3 and bar:IsVisible() then
 					n = n + 1
 					local l, r, t, b = rep:GetOpening()
@@ -2384,7 +2391,7 @@ local function CpDump(msg)
 					Rect(string.format("%d mask", n), mask)
 					for _, region in ipairs({ bar:GetRegions() }) do
 						if region:GetObjectType() == "Texture" and region:IsShown() and region ~= fill then
-							Rect(string.format("   %s", region:GetDebugName()), region, string.format("layer=%s kit=%s art=%s", tostring(region:GetDrawLayer()), tostring(region.kitPiece ~= nil), tostring(Kit:ArtKey(region))))
+							Rect(string.format("   %s", region:GetDebugName()), region, string.format("layer=%s kit=%s art=%s", tostring(region:GetDrawLayer()), tostring(pieceOf[region] ~= nil), tostring(Kit:ArtKey(region))))
 						end
 					end
 				end
@@ -2443,3 +2450,7 @@ SlashCmdList.MELLOCPDUMP = function(msg)
 	CpDump(msg)
 	MelloUI:ShowLog("cpdump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { fitting = fitting }

@@ -28,6 +28,10 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("TrackerPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontTriesOf = MelloUI.Kept.fontTriesOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("TrackerPanel", {
 	title = "Objective Tracker Kit",
@@ -62,13 +66,14 @@ local function Replace(region, opts)
 	return rep
 end
 
+local toggleSkinned = setmetatable({}, { __mode = "k" })   -- [button] = true: its minus / plus dressed
 -- A collapse / expand button: the minus / plus following the atlas the game
 -- sets on its normal texture (SetCollapsed re-atlases it).
 local function SkinToggle(button)
-	if not (button and button.GetNormalTexture and button:GetNormalTexture()) or button.melloToggle then
+	if not (button and button.GetNormalTexture and button:GetNormalTexture()) or toggleSkinned[button] then
 		return
 	end
-	button.melloToggle = true
+	toggleSkinned[button] = true
 	local normal = button:GetNormalTexture()
 	local extra = { button:GetPushedTexture(), button:GetHighlightTexture() }
 	Kit:StateIconReps(button, normal, button, Replace, extra)
@@ -214,19 +219,19 @@ local function SilenceAddAnim(header, rep)
 end
 
 local function SkinHeader(header, key)
-	if not (header and header.Background) or header.melloRep ~= nil then
+	if not (header and header.Background) or repOf[header] ~= nil then
 		return
 	end
-	header.melloRep = Replace(header.Background, { as = key, rect = header }) or false
-	if header.melloRep then
-		CenterText(header, header.melloRep)
-		MoveToggle(header, header.melloRep)
-		SilenceAddAnim(header, header.melloRep)
+	repOf[header] = Replace(header.Background, { as = key, rect = header }) or false
+	if repOf[header] then
+		CenterText(header, repOf[header])
+		MoveToggle(header, repOf[header])
+		SilenceAddAnim(header, repOf[header])
 	end
 	SkinToggle(header.MinimizeButton)
 	local filter = header.FilterButton
-	if filter and filter.GetNormalTexture and filter:GetNormalTexture() and filter.melloRep == nil then
-		filter.melloRep = Replace(filter:GetNormalTexture(), { as = "ui-questtrackerbutton-filter", button = filter, noFade = true }) or false
+	if filter and filter.GetNormalTexture and filter:GetNormalTexture() and repOf[filter] == nil then
+		repOf[filter] = Replace(filter:GetNormalTexture(), { as = "ui-questtrackerbutton-filter", button = filter, noFade = true }) or false
 	end
 end
 
@@ -234,14 +239,14 @@ end
 -- and re-used: swept after every update.
 local function SkinRightEdge(frame)
 	if frame.icon and frame.NormalTexture then
-		if frame.melloRep == nil then
+		if repOf[frame] == nil then
 			local ok, w = pcall(frame.GetWidth, frame)
 			Kit:SkinActionButton(frame, Replace, ok and w and w > 0 and { w, w } or nil, { emptyStone = false })
 		end
-	elseif frame.Bar and frame.Bar.BorderMid and frame.Bar.melloRep == nil then
+	elseif frame.Bar and frame.Bar.BorderMid and repOf[frame.Bar] == nil then
 		local bar = frame.Bar
 		local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(bar)
-		bar.melloRep = Replace(bar.BorderMid, { as = "UI-Character-Skills-BarBorder", parent = bar, rect = bar,
+		repOf[bar] = Replace(bar.BorderMid, { as = "UI-Character-Skills-BarBorder", parent = bar, rect = bar,
 			layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub,
 			alsoFade = { bar.BorderLeft, bar.BorderRight } }) or false
 	end
@@ -276,7 +281,7 @@ local function DressTitle(fs)
 	-- puts the game's back and counts a try) is tried again next sweep, as
 	-- every sweep always did
 	local path, size, flags, text
-	if not fs.melloFontTries then
+	if not fontTriesOf[fs] then
 		path, size, flags, text = Readback(fs)
 	end
 	if path ~= nil then
@@ -300,7 +305,7 @@ local function Sweep()
 	end
 	for _, module in ipairs(tracker.modules or {}) do
 		SkinHeader(module.Header, "UI-QuestTracker-Secondary-Objective-Header")
-		if module.Header and module.Header.Text and module.Header.melloRep then
+		if module.Header and module.Header.Text and repOf[module.Header] then
 			DressTitle(module.Header.Text)
 		end
 		for _, frame in pairs(module.usedRightEdgeFrames or {}) do
@@ -394,14 +399,14 @@ local function Build()
 		-- frame keeps its alpha, which is the opacity we follow
 		local pieces = {}
 		for _, region in ipairs({ tracker.NineSlice:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				pieces[#pieces + 1] = region
 			end
 		end
 		local rep = Replace(tracker.NineSlice, { as = "ObjectiveTrackerBackground", parent = tracker, rect = tracker.NineSlice, level = 0, noFade = true, alsoFade = pieces })
-		if rep and tracker.Header and tracker.Header.melloRep and Kit.RegisterShell then
+		if rep and tracker.Header and repOf[tracker.Header] and Kit.RegisterShell then
 			-- the header is the tracker's drag handle for the window mover
-			Kit:RegisterShell(tracker, { title = tracker.Header.melloRep, outer = rep })
+			Kit:RegisterShell(tracker, { title = repOf[tracker.Header], outer = rep })
 		end
 		if rep then
 			-- its alpha follows Edit Mode's opacity setting (the game sets it on
@@ -496,7 +501,7 @@ local function Build()
 			-- ours.
 			if Kit.ShadeElement then
 				Kit:ShadeElement(holder, "tracker"):Add(rep)
-				local plate = tracker.Header and tracker.Header.melloRep
+				local plate = tracker.Header and repOf[tracker.Header]
 				local strip = plate and rawget(plate, "strip")
 				if strip then
 					local Num = MelloUI.Safe.Number
@@ -537,11 +542,11 @@ local function InkSurface()
 				local tracker = _G.ObjectiveTrackerFrame
 				if tracker then
 					if tracker.Header then
-						tracker.Header.melloNoInk = true
+						QI.noInk[tracker.Header] = true
 					end
 					for _, module in ipairs(tracker.modules or {}) do
 						if module.Header then
-							module.Header.melloNoInk = true
+							QI.noInk[module.Header] = true
 						end
 					end
 				end
@@ -669,3 +674,7 @@ SlashCmdList.MELLOTRDUMP = function(msg)
 	end
 	MelloUI:ShowLog("trdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { toggleSkinned = toggleSkinned }

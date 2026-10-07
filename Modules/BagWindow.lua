@@ -1074,7 +1074,7 @@ local function InkMoney()
 	if not (QI and QI.InkText and QI.PlainText and money) then
 		return
 	end
-	local paper = Kit:IsOn(AREA) and WindowBackground() == "parchment"
+	local paper = Kit:IsOn(AREA) and Kit:BackgroundIsPaper(WindowBackground())   -- (the aged parchment too, 0.19.8)
 	for _, key in ipairs(MONEY_TEXTS) do
 		local button = money[key]
 		local fs = button and button.Text

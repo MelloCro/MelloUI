@@ -84,6 +84,12 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("PvPPanel", {
 	title = "PvP Kit",
@@ -207,7 +213,7 @@ local function Anchor(host, layer, sublevel)
 	local tex = host:CreateTexture(nil, layer or "BACKGROUND", nil, sublevel or 0)
 	tex:SetAllPoints(host)
 	tex:SetColorTexture(0, 0, 0, 0)
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	return tex
 end
 
@@ -272,7 +278,7 @@ end
 local function PageTexture(f)
 	local best, bestArea
 	for _, region in ipairs({ f:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			if okL and layer == "BACKGROUND" then
 				if Kit:ArtKey(region) == "groupfinder-background" then
@@ -329,7 +335,7 @@ local function GuardTabs(s)
 end
 
 local function SkinTab(s, tab)
-	if not (tab and tab.Left and tab.LeftActive) or done[tab] or tab.melloRep ~= nil then
+	if not (tab and tab.Left and tab.LeftActive) or done[tab] or repOf[tab] ~= nil then
 		return
 	end
 	done[tab] = true
@@ -405,7 +411,7 @@ local function RowSkin(s, row)
 	local entry = rows[row]
 	if not entry then
 		local tex = row:CreateTexture(nil, "BACKGROUND", nil, -8)
-		tex.kitPiece = true   -- ours: never faded as the game's art
+		pieceOf[tex] = true   -- ours: never faded as the game's art
 		tex:SetAllPoints(row)
 		entry = { tex = tex, row = row, odd = true }
 		rows[row] = entry
@@ -575,7 +581,7 @@ local function PlaceTitle(s)
 	if rep.Refit then
 		rep:Refit()
 	end
-	if s.title and not s.title.melloFontSaved then
+	if s.title and not fontSavedOf[s.title] then
 		Kit:TitleFont(s.title, true)
 	end
 end
@@ -590,7 +596,7 @@ end
 -- round rim (O2) whose opening is the icon.
 --------------------------------------------------------------------------------
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -627,7 +633,8 @@ local function SkinLoot(s, button)
 	if not rep then
 		return
 	end
-	local holder = { melloRep = rep, icon = icon, button = button }
+	local holder = { icon = icon, button = button }
+	repOf[holder] = rep
 	s.rimHolders[#s.rimHolders + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	-- the quality border on the icon's rect while the rim is on (the game's
@@ -1194,7 +1201,7 @@ local function FontText(fs)
 	return string.format("text %s, font %s %s, title face %s",
 		(okT and type(text) == "string" and not Secret(text)) and text or "?",
 		(okF and type(face) == "string" and not Secret(face)) and (face:match("([^\\/]+)$") or face) or "?",
-		okF and Num(size) or "?", tostring(fs.melloFontSaved ~= nil))
+		okF and Num(size) or "?", tostring(fontSavedOf[fs] ~= nil))
 end
 
 local function DumpShell(s, f)
@@ -1209,7 +1216,7 @@ local function DumpShell(s, f)
 	MelloUI:Print("  the game's nine-slice      %s", #pieces > 0 and table.concat(pieces, ", ") or "none laid yet (the game lays it when a match starts)")
 	Found("page rock", s.page, s.page and string.format(" art %s, %s", tostring(Kit:ArtKey(s.page) or "?"), FadedState(s.page)) or nil)
 	local rep = s.pageRep
-	MelloUI:Print("  page picture               %s, shown %s, inner %s", rep and tostring(rep.tex and rep.tex.kitName) or "none",
+	MelloUI:Print("  page picture               %s, shown %s, inner %s", rep and tostring(rep.tex and pieceNameOf[rep.tex]) or "none",
 		RepShown(rep), rep and rep.inner and RectText(rep.inner) or "-")
 	Found("close button", f.CloseButton, " kit " .. RepShown(s.close))
 	MelloUI:Print("  portrait                   none: this window has no portrait ring (nothing to fit to the medallion)")
@@ -1275,7 +1282,7 @@ local function DumpTable(s, f)
 			RectText(header), Shown(header), entry and RepShown(entry.rep) or "-")
 	end
 	local bar = ScrollBar(f)
-	Found("scroll bar", bar, bar and (" dressed " .. tostring(bar.melloRep ~= nil and bar.melloRep ~= false)) or nil)
+	Found("scroll bar", bar, bar and (" dressed " .. tostring(repOf[bar] ~= nil and repOf[bar] ~= false)) or nil)
 	local tc = TabContainer(f)
 	Found("tab strip", tc, tc and string.format(" top line %s, bottom line %s", FadedState(tc.InsetBorderTop), FadedState(tc.InsetBorderBottom)) or nil)
 	local pageRect = s.pageRep and s.pageRep.inner and RectText(s.pageRep.inner) or "-"
@@ -1301,7 +1308,7 @@ local function DumpResults(s, f)
 	for _, b in ipairs(List(f.requeueButton or (bc and bc.requeueButton), f.leaveButton or (bc and bc.leaveButton))) do
 		local okE, enabled = pcall(b.IsEnabled, b)
 		Found("button", b, string.format(" shown %s, enabled %s, red plate %s", Shown(b), (okE and not Secret(enabled)) and tostring(enabled) or "?",
-			tostring(b.melloRep ~= nil and b.melloRep ~= false)))
+			tostring(repOf[b] ~= nil and repOf[b] ~= false)))
 	end
 	MelloUI:Print("  reward rims %d (items in the Button Border rim, quality border kept); honour %s, conquest %s", #s.rimHolders,
 		tostring(f.honorButton and done[f.honorButton] == true), tostring(f.conquestButton and done[f.conquestButton] == true))
@@ -1327,12 +1334,12 @@ local function DumpWindow(entry)
 		DumpResults(s, f)
 	else
 		MelloUI:Print("  a classic window: shell %s (a modern template's NineSlice %s), ring %s, portrait fitted %s", tostring(s.shell == true),
-			tostring(f.NineSlice ~= nil), tostring(s.ring ~= nil), tostring(s.portrait and s.portrait.melloSaved ~= nil))
+			tostring(f.NineSlice ~= nil), tostring(s.ring ~= nil), tostring(s.portrait and portraitSavedOf[s.portrait] ~= nil))
 		if not s.shell then
 			MelloUI:Print("  loose file art: only its common controls are dressed; paste /pvpdump regions to map the rest")
 		end
 		for _, tab in ipairs(Tabs(f)) do
-			Found("tab", tab, " dressed " .. tostring(tab.melloRep ~= nil and tab.melloRep ~= false))
+			Found("tab", tab, " dressed " .. tostring(repOf[tab] ~= nil and repOf[tab] ~= false))
 		end
 	end
 	MelloUI:Print("  inked strings: none (no parchment on this window)")

@@ -67,6 +67,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("InspectPanel", {
 	title = "Inspect Kit",
@@ -388,7 +393,7 @@ local function PlaceTitles(on)
 		rep:Refit()
 	end
 	local list, own = TitleStrings(f)
-	if own and not own.melloFontSaved then
+	if own and not fontSavedOf[own] then
 		Kit:TitleFont(own, true)
 	end
 	local ownText = own and TextOf(own)
@@ -471,12 +476,12 @@ local function SkinTab(tab)
 		kind = "TB6 (Left / LeftActive)"
 	else
 		plainTex, openTex = Part(tab, "Left", "Left"), Part(tab, "LeftDisabled", "LeftDisabled")
-		if not (plainTex and openTex) or tab.melloRep ~= nil then
+		if not (plainTex and openTex) or repOf[tab] ~= nil then
 			found.tabs = found.tabs or {}
 			found.tabs[tab] = "-- unknown template: left as the game's"
 			-- (the Kit's marker: the sweep leaves it, never a red plate on a tab)
-			if tab.melloRep == nil then
-				tab.melloRep = false
+			if repOf[tab] == nil then
+				repOf[tab] = false
 			end
 			return
 		end
@@ -486,7 +491,7 @@ local function SkinTab(tab)
 		local open = Replace(openTex, { as = "uiframe-activetab-left", rect = tab,
 			alsoFade = List(Part(tab, "MiddleDisabled", "MiddleDisabled"), Part(tab, "RightDisabled", "RightDisabled")) })
 		-- the Kit's own "dressed" marker, as its tab helper sets it
-		tab.melloRep = plain or open or false
+		repOf[tab] = plain or open or false
 		Follow(plain, plainTex)
 		Follow(open, openTex)
 		kind = "TB6 cards on an older tab (Left / LeftDisabled)"
@@ -635,7 +640,7 @@ local function SkinModel(f)
 	local frame
 	if inset then
 		Kit:SkinInset(inset, Replace, f)
-		frame = string.format("the inset's rail (%s, dressed %s)", Label(inset), tostring(inset.melloRep ~= nil and inset.melloRep ~= false))
+		frame = string.format("the inset's rail (%s, dressed %s)", Label(inset), tostring(repOf[inset] ~= nil and repOf[inset] ~= false))
 	else
 		local rep = Replace(model, { as = "ViewportFrame", parent = model, rect = model, noFade = true, open = "" })
 		frame = "viewport frame " .. (rep and "on" or "NOT made")
@@ -708,7 +713,7 @@ local function SkinCharacterArt(root, depth)
 		return
 	end
 	for _, region in ipairs({ root:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and not done[region] then
+		if IsTexture(region) and not pieceOf[region] and not done[region] then
 			local key = Kit:ArtKey(region)
 			if key and CHARACTER_ART[key] then
 				done[region] = true
@@ -772,7 +777,7 @@ local function MakeDim(f)
 	end
 	local tex = Kit:StoneDim(host, { rect = rect, layer = layer, sublevel = math.min(sub + 2, 7), alpha = DIM_ALPHA })
 	if tex then
-		tex.kitPiece = true   -- ours: never faded as the game's art
+		pieceOf[tex] = true   -- ours: never faded as the game's art
 		tex:Hide()
 		skin.dim = tex
 	end
@@ -1067,7 +1072,7 @@ local function DumpPortrait(f)
 		local medal = (okR and type(rw) == "number" and not Secret(rw)) and rw * MEDALLION_TO_RING or nil
 		Line("vs medallion", string.format("portrait %s x %s, ring %s, medallion (0.759 x ring) %s, fitted %s, disc %s",
 			okP and Num(pw) or "?", okP and Num(ph) or "?", okR and Num(rw) or "?", medal and string.format("%.0f", medal) or "?",
-			tostring(p.melloSaved ~= nil), skin.disc and (Shown(skin.disc) and "shown" or "hidden") or "none"))
+			tostring(portraitSavedOf[p] ~= nil), skin.disc and (Shown(skin.disc) and "shown" or "hidden") or "none"))
 	end
 end
 
@@ -1094,7 +1099,7 @@ local function DumpTitle(f)
 		Line("title text", string.format("%s '%s' %s; face %s %s, title face %s%s", Label(fs),
 			tostring(TextOf(fs) or (HasText(fs) and "[secret]" or "(empty)")), where,
 			(okF and type(face) == "string" and not Secret(face)) and face or "?", okF and Num(size) or "?",
-			tostring(fs.melloFontSaved ~= nil),
+			tostring(fontSavedOf[fs] ~= nil),
 			titleMoved[fs] and " (moved onto the plate)" or titleFaded[fs] and " (faded: duplicate)" or ""))
 	end
 end
@@ -1113,7 +1118,7 @@ local function DumpTabs(f)
 		local text = tab.Text or (tab.GetFontString and tab:GetFontString())
 		Line("tab " .. i, string.format("%s '%s' %s, shown %s, cards %s", Label(tab), tostring(text and TextOf(text) or "?"),
 			tostring(found.tabs and found.tabs[tab] or "not looked at"), tostring(Shown(tab)),
-			tostring(tab.melloRep ~= nil and tab.melloRep ~= false)))
+			tostring(repOf[tab] ~= nil and repOf[tab] ~= false)))
 	end
 	for _, p in ipairs(Pages(f)) do
 		Line("page", string.format("%s shown %s, rect %s", Label(p), tostring(Shown(p)), RectText(p)))
@@ -1146,7 +1151,7 @@ local function DumpParts(f)
 		Line("character art", string.format("%s on %s: %s", k.key, Label(k.region), k.rep and (k.rep.kind .. " piece") or "NOT dressed"))
 	end
 	local view = PaperDoll(f) and PaperDoll(f).ViewButton
-	Line("view button", view and string.format("%s dressed %s", Label(view), tostring(view.melloRep ~= nil and view.melloRep ~= false)) or "-- none")
+	Line("view button", view and string.format("%s dressed %s", Label(view), tostring(repOf[view] ~= nil and repOf[view] ~= false)) or "-- none")
 	Line("inked strings", "none: the window is on stone (no parchment option: the character window's parchment is its stats pane's and its own Window Background, neither shared)")
 end
 
@@ -1156,7 +1161,7 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. tostring(TextOf(region) or (HasText(region) and "[secret]" or "")):sub(1, 50)
 		end
@@ -1166,7 +1171,7 @@ local function DumpOwn(frame)
 	end
 	for _, child in ipairs({ frame:GetChildren() }) do
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			tostring(LevelOf(child) or "?"), tostring(Shown(child)), child.melloRep ~= nil and " (dressed)" or "")
+			tostring(LevelOf(child) or "?"), tostring(Shown(child)), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 

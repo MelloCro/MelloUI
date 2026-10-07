@@ -22,6 +22,12 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("SpellBookPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local kitHookedOf = MelloUI.Kept.kitHookedOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
+local stateIconsOf = MelloUI.Kept.stateIconsOf
 
 local LOOKS = Kit.buttonLooks
 
@@ -125,7 +131,7 @@ end
 -- The first game texture of a frame.
 local function FirstTexture(frame)
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			return region
 		end
 	end
@@ -135,7 +141,7 @@ end
 local function OtherTextures(button, keep)
 	local extra = {}
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and region ~= keep and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and region ~= keep and not pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
@@ -200,8 +206,8 @@ local function SkinTabSystem(system)
 	if not system then
 		return
 	end
-	if not system.melloKitHooked then
-		system.melloKitHooked = true
+	if not kitHookedOf[system] then
+		kitHookedOf[system] = true
 		-- tabs added or re-initialised later: skinned as they come
 		if type(system.AddTab) == "function" then
 			hooksecurefunc(system, "AddTab", function(sys)
@@ -220,19 +226,23 @@ local function SkinTabSystem(system)
 	FitSoon(system)
 end
 
+local iconSizeOf = setmetatable({}, { __mode = "k" })   -- [tab icon] = { w, h }: its game size
+local squareSkinned = setmetatable({}, { __mode = "k" })   -- [tab] = true: its square look dressed
+local textSkinned = setmetatable({}, { __mode = "k" })   -- [tab] = true: its text look dressed
+local modeHooked = setmetatable({}, { __mode = "k" })   -- [tab] = true: SetSquareMode hooked
 SkinTab = function(tab)
 	if not tab then
 		return
 	end
-	if not tab.melloModeHooked and type(tab.SetSquareMode) == "function" then
-		tab.melloModeHooked = true
+	if not modeHooked[tab] and type(tab.SetSquareMode) == "function" then
+		modeHooked[tab] = true
 		hooksecurefunc(tab, "SetSquareMode", function(t)
 			SkinTab(t)
 		end)
 	end
 	do
-		if tab.Left and tab.LeftActive and not tab.squareMode and not tab.melloTextSkinned then
-			tab.melloTextSkinned = true
+		if tab.Left and tab.LeftActive and not tab.squareMode and not textSkinned[tab] then
+			textSkinned[tab] = true
 			-- the plain plate and the open one, each made the first time the
 			-- tab shows it: the game hides a selected tab's plain pieces and
 			-- an unselected tab's open ones (TabSystemButtonArtMixin:
@@ -273,8 +283,8 @@ SkinTab = function(tab)
 			Follow()
 			skin.tabFollows = skin.tabFollows or {}
 			skin.tabFollows[#skin.tabFollows + 1] = Follow
-		elseif tab.squareMode and tab.SquareBackground and not tab.melloSquareSkinned then
-			tab.melloSquareSkinned = true
+		elseif tab.squareMode and tab.SquareBackground and not squareSkinned[tab] then
+			squareSkinned[tab] = true
 			-- a category tab (C1): the slot rim over the icon, gold while selected
 			-- the tab is 43 x 38: the rim is a square on the tab's centre, its
 			-- opening the icon's 35 px, so it is not squashed
@@ -298,10 +308,10 @@ SkinTab = function(tab)
 			-- (SetTabSelected: a CENTER point with its y offset), the size
 			-- is ours and stays; the mask follows the icon's rect
 			local icon = tab.Icon
-			if icon and not icon.melloScaled then
+			if icon and not iconSizeOf[icon] then
 				local okW, iw, ihh = pcall(icon.GetSize, icon)
 				if okW and iw and ihh and iw > 0 and ihh > 0 then
-					icon.melloScaled = { iw, ihh }
+					iconSizeOf[icon] = { iw, ihh }
 					icon:SetSize(iw * 1.15, ihh * 1.15)
 					if tab.IconMask then
 						tab.IconMask:ClearAllPoints()
@@ -378,13 +388,13 @@ FitSquareRims = function(system)
 			local icon = tab.Icon
 			if look == "slot" then
 				square:SetSize(w, w * SLOT_ASPECT)
-				if icon and icon.melloScaled then
-					icon:SetSize(icon.melloScaled[1] * 1.15, icon.melloScaled[2] * 1.15)
+				if icon and iconSizeOf[icon] then
+					icon:SetSize(iconSizeOf[icon][1] * 1.15, iconSizeOf[icon][2] * 1.15)
 				end
 			else
 				local side = pitch - 4
 				square:SetSize(side, side)
-				if icon and icon.melloScaled then
+				if icon and iconSizeOf[icon] then
 					local size = side * fw + 4
 					icon:SetSize(size, size)
 				end
@@ -455,14 +465,15 @@ local function FitSpellRim(button, key, rep)
 	rim:SetSize((SPELL_ICON - 4) / fw, (SPELL_ICON - 4) / fh)
 end
 
+local listed = setmetatable({}, { __mode = "k" })   -- [spell button] = true: in skin.spellButtons
 local function SkinSpellItem(item)
 	if not item.Button then
 		return
 	end
-	if item.melloRep == nil then
+	if repOf[item] == nil then
 		-- (a done mark: false as well when faded straight)
 		local rep = FadeOnly(item.Backplate, "spellbook-item-backplate")
-		item.melloRep = rep ~= true and rep or false
+		repOf[item] = rep ~= true and rep or false
 	end
 	local button = item.Button
 	if button.Border then
@@ -472,27 +483,27 @@ local function SkinSpellItem(item)
 		Kit:StateIconReps(button, button.Border, button, Replace, { button.BorderShadow, button.IconHighlight })
 		-- on every refresh (the buttons are pooled and change spell)
 		SizeSpellIcon(button)
-		for key, rep in pairs(button.melloIcons or {}) do
+		for key, rep in pairs(stateIconsOf[button] or {}) do
 			if rep and rep.object then
 				FitSpellRim(button, key, rep)
 			end
 		end
 		skin.spellButtons = skin.spellButtons or {}
-		if not button.melloListed then
-			button.melloListed = true
+		if not listed[button] then
+			listed[button] = true
 			skin.spellButtons[#skin.spellButtons + 1] = button
 		end
 	end
 end
 
 local function SkinHeader(header)
-	if header.melloRep ~= nil then
+	if repOf[header] ~= nil then
 		return
 	end
-	header.melloRep = false
+	repOf[header] = false
 	FadeOnly(header.Backplate, "spellbook-list-backplate")
 	if header.Border then
-		header.melloRep = Replace(header.Border, { as = "spellbook-divider", rect = header.Border }) or false
+		repOf[header] = Replace(header.Border, { as = "spellbook-divider", rect = header.Border }) or false
 	end
 end
 
@@ -862,9 +873,9 @@ local function Deactivate()
 	local sys = PlayerSpellsFrame and PlayerSpellsFrame.SpellBookFrame and PlayerSpellsFrame.SpellBookFrame.CategoryTabSystem
 	for _, tab in ipairs(sys and sys.tabs or {}) do
 		local icon = tab.Icon
-		if icon and icon.melloScaled then
-			icon:SetSize(icon.melloScaled[1], icon.melloScaled[2])
-			icon.melloScaled = nil
+		if icon and iconSizeOf[icon] then
+			icon:SetSize(iconSizeOf[icon][1], iconSizeOf[icon][2])
+			iconSizeOf[icon] = nil
 		end
 	end
 end
@@ -1021,7 +1032,7 @@ Kit:OnBorderChanged("sidetab", function()
 end)
 Kit:OnBorderChanged("button", function()
 	for _, button in ipairs(skin and skin.spellButtons or {}) do
-		for k, rep in pairs(button.melloIcons or {}) do
+		for k, rep in pairs(stateIconsOf[button] or {}) do
 			if rep and rep.object then
 				FitSpellRim(button, k, rep)
 			end
@@ -1106,8 +1117,8 @@ local function SbDump(msg)
 			for _, region in ipairs({ tab:GetRegions() }) do
 				local layer, sub = region:GetDrawLayer()
 				local okA, alpha = pcall(region.GetAlpha, region)
-				local art = region.kitName or (region.GetAtlas and Kit:ArtKey(region)) or "?"
-				Rect(string.format("  %s%s", region:GetObjectType(), region.kitPiece and " [KIT]" or ""), region,
+				local art = pieceNameOf[region] or (region.GetAtlas and Kit:ArtKey(region)) or "?"
+				Rect(string.format("  %s%s", region:GetObjectType(), pieceOf[region] and " [KIT]" or ""), region,
 					string.format("%s/%s shown=%s alpha=%s art=%s", tostring(layer), tostring(sub), tostring(region:IsShown()), okA and tostring(alpha) or "?", tostring(art)))
 			end
 		end
@@ -1129,7 +1140,7 @@ local function SbDump(msg)
 			return
 		end
 		for _, region in ipairs({ frame:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece and region:IsVisible() then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] and region:IsVisible() then
 				local ok, alpha = pcall(region.GetAlpha, region)
 				if ok and alpha and not Secret(alpha) and alpha > 0 then
 					n = n + 1
@@ -1186,3 +1197,8 @@ SlashCmdList.MELLOSBDUMP = function(msg)
 	SbDump(msg)
 	MelloUI:ShowLog("sbdump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { iconSizeOf = iconSizeOf, listed = listed, modeHooked = modeHooked, squareSkinned = squareSkinned,
+	textSkinned = textSkinned }

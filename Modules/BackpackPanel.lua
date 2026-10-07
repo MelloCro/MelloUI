@@ -27,6 +27,11 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("BackpackPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
+local slotStoneOf = MelloUI.Kept.slotStoneOf
 
 local LOOKS = Kit.buttonLooks
 
@@ -192,9 +197,9 @@ local slotOpts = { emptyStone = true, qualityGem = SlotQuality }
 -- choice is put on
 local function NewSlotBackground(button)
 	local value = M.db and M.db.itemBackground or "stone"
-	local stone = button.melloSlotStone
+	local stone = slotStoneOf[button]
 	local tex = stone and stone.tex
-	if tex and tex.kitName and tex.kitName == LOOKS.backgroundPiece[value] then
+	if tex and pieceNameOf[tex] and pieceNameOf[tex] == LOOKS.backgroundPiece[value] then
 		return
 	end
 	Kit:SetButtonBackground(button, value)
@@ -322,9 +327,9 @@ local function Untint(rim)
 end
 
 local function TintSlot(button)
-	local rep = button.melloRep
+	local rep = repOf[button]
 	local rim = rep and rep.object
-	if not (rim and rim.owner and rim.kitName) then
+	if not (rim and rim.owner and pieceNameOf[rim]) then
 		return
 	end
 	local c = active and BagColour(SafeCall(button, "GetBagID")) or false
@@ -342,7 +347,7 @@ local function TintSlot(button)
 			-- (above the rim; beside its glow, which adds as these do)
 			local t = rim.owner:CreateTexture(nil, layer or "OVERLAY", nil, math.min((sub or 0) + 1, 7))
 			t:SetAllPoints(rim)
-			Kit:Apply(t, rim.kitName)
+			Kit:Apply(t, pieceNameOf[rim])
 			t:SetDesaturated(true)
 			t:SetBlendMode("ADD")
 			t:SetAlpha(LIGHT[i])
@@ -365,6 +370,7 @@ local function TintSlot(button)
 	Lights_Shown(rim)
 end
 
+local slotBgFaded = setmetatable({}, { __mode = "k" })   -- [item button / bag frame] = true: its slot picture faded
 -- The slots dressed: the kit's rim, the Item Background, the slot picture
 -- faded, the bag type's colour. `pitch` is the grid's ({ x, y }; nil: the
 -- button's own size). The game's bag windows' buttons (SkinItems) and the
@@ -378,7 +384,7 @@ local function DressButtons(buttons, count, pitch)
 	local rimRule, plainFade = nil, nil
 	for i = 1, count do
 		local button = buttons[i]
-		if button.melloRep == nil then
+		if repOf[button] == nil then
 			rimRule = rimRule or Kit:ButtonRimRule()
 			slotOpts.as, slotOpts.qualityBorder = rimRule, button.IconBorder
 			local rep = Kit:SkinActionButton(button, Replace, pitch, slotOpts)
@@ -390,19 +396,19 @@ local function DressButtons(buttons, count, pitch)
 					pitchX[button], pitchY[button] = pitch[1], pitch[2]
 				end
 			end
-		elseif button.melloRep and button.melloRep.SetPitch and pitch
+		elseif repOf[button] and repOf[button].SetPitch and pitch
 			and not (SamePitch(pitchX[button], pitch[1]) and SamePitch(pitchY[button], pitch[2])) then
 			-- re-laid on a new pitch only: the same pitch again (every open, the
 			-- beat after it, the size changes) would re-anchor every rim and icon
 			-- for nothing
-			button.melloRep:SetPitch(pitch[1], pitch[2])
+			repOf[button]:SetPitch(pitch[1], pitch[2])
 			pitchX[button], pitchY[button] = pitch[1], pitch[2]
 		end
 		-- the combined bags' slot picture is the BUTTON's (made by the game
 		-- when the button is set up for the combined bag, Initialize): faded,
 		-- the Item Background stands in (a second background under it before)
-		if button.ItemSlotBackground and not button.melloSlotBg then
-			button.melloSlotBg = true
+		if button.ItemSlotBackground and not slotBgFaded[button] then
+			slotBgFaded[button] = true
 			if plainFade == nil then
 				plainFade = PlainSlotFade()
 			end
@@ -468,13 +474,13 @@ local function ApplyWindowBackground(entry)
 	local value = M.db and M.db.windowBackground or "concrete"
 	local pic, alt = entry.rep.tex, entry.alt
 	local piece = LOOKS.backgroundPiece[value]
-	if not active or piece == pic.kitName or not (piece or value == "dark") then
+	if not active or piece == pieceNameOf[pic] or not (piece or value == "dark") then
 		alt:Hide()
 		pic:SetAlpha(1)
 		return
 	end
 	if piece then
-		if alt.kitName ~= piece then
+		if pieceNameOf[alt] ~= piece then
 			Kit:Unpaint(alt)   -- (the dark fill's palette colour no longer on it)
 			alt:SetVertexColor(1, 1, 1, 1)
 			Kit:Apply(alt, piece)
@@ -484,7 +490,7 @@ local function ApplyWindowBackground(entry)
 		-- Dark: the palette's inner panel, by its key (a new palette paints
 		-- it again), as the kit's own dark background (Kit:SetButtonBackground)
 		Kit:Paint(alt, "innerPanel", "fill", 0.95)
-		alt.kitName = nil
+		pieceNameOf[alt] = nil
 	end
 	alt:Show()
 	pic:SetAlpha(0)
@@ -502,7 +508,7 @@ local function WatchWindowBackground(frame)
 	end
 	local layer, sub = picture.tex:GetDrawLayer()
 	local alt = frame:CreateTexture(nil, layer or "BACKGROUND", nil, sub or 0)
-	alt.kitPiece = true   -- ours: never faded
+	pieceOf[alt] = true   -- ours: never faded
 	alt.kitScale = Kit.scale
 	alt.kitAlign = "center"   -- as the window's own
 	alt:SetAllPoints(picture.inner)
@@ -525,7 +531,7 @@ local function WatchWindowBackground(frame)
 	end
 	-- a tile sized while hidden is laid again when it shows or resizes
 	local function Retile()
-		if alt:IsShown() and alt.kitName then
+		if alt:IsShown() and pieceNameOf[alt] then
 			Kit:Retile(alt)
 		end
 	end
@@ -650,8 +656,8 @@ local function SkinBag(frame)
 				if moneyRep and moneyRep.rect == (f.MoneyFrame and f.MoneyFrame.Border) and moneyRep.onEnable then
 					moneyRep.onEnable()
 				end
-				if f.ItemSlotBackground and not f.melloSlotBg then
-					f.melloSlotBg = true
+				if f.ItemSlotBackground and not slotBgFaded[f] then
+					slotBgFaded[f] = true
 					FadeSlotBackground(f.ItemSlotBackground)
 				end
 			end
@@ -659,7 +665,7 @@ local function SkinBag(frame)
 	end
 	SkinItems(frame)
 	if frame.ItemSlotBackground then
-		frame.melloSlotBg = true
+		slotBgFaded[frame] = true
 		FadeSlotBackground(frame.ItemSlotBackground)
 	end
 end
@@ -676,8 +682,8 @@ local function Build()
 		Kit:SkinSearchBox(BagItemSearchBox, Replace)
 	end
 	local sort = BagItemAutoSortButton
-	if sort and sort.GetNormalTexture and sort:GetNormalTexture() and sort.melloRep == nil then
-		sort.melloRep = Replace(sort:GetNormalTexture(), { as = "bags-button-autosort-up", button = sort, noFade = true }) or false
+	if sort and sort.GetNormalTexture and sort:GetNormalTexture() and repOf[sort] == nil then
+		repOf[sort] = Replace(sort:GetNormalTexture(), { as = "bags-button-autosort-up", button = sort, noFade = true }) or false
 	end
 end
 
@@ -784,3 +790,7 @@ SlashCmdList.MELLOBAGDUMP = function(msg)
 	end
 	MelloUI:ShowLog("bagdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { slotBgFaded = slotBgFaded }

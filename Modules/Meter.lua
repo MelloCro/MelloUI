@@ -1754,6 +1754,12 @@ local function Ready()
 	Apply()
 end
 
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(events, ...)
+end
+
 function M:OnEnable(db)
 	self.db = db
 	MelloUI:On("palette", Repaint, OWNER)

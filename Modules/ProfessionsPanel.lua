@@ -27,6 +27,12 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("ProfessionsPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local kitHookedOf = MelloUI.Kept.kitHookedOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local plateOf = MelloUI.Kept.plateOf
+local repOf = MelloUI.Kept.repOf
 
 local LOOKS = Kit.buttonLooks
 
@@ -95,14 +101,14 @@ end
 -- The first game texture of a frame (the picture a Blizzard frame paints).
 local function FirstArt(frame, key, layer)
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and Kit:ArtKey(region) == key and (not layer or region:GetDrawLayer() == layer) then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and Kit:ArtKey(region) == key and (not layer or region:GetDrawLayer() == layer) then
 			return region
 		end
 	end
 end
 local function FirstTexture(frame)
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			return region
 		end
 	end
@@ -124,6 +130,8 @@ local function RestorePoints(region, saved)
 	region:SetSize(saved.w, saved.h)
 end
 
+local fitting = setmetatable({}, { __mode = "k" })   -- [mask] = true while it is sized here
+local maskScaled = setmetatable({}, { __mode = "k" })   -- [mask] = true: scaled to the opening
 -- A ProfessionsRankBar (Blizzard_ProfessionsTemplates/Blizzard_ProfessionsRankBar.xml):
 -- Background and Border atlases on the bar, a full-width Fill (a flipbook
 -- animation) revealed by the Mask, whose WIDTH is the progress (the bar's
@@ -133,7 +141,7 @@ end
 -- mask's width is scaled from the bar's width to the opening's; the mask's
 -- height stays the atlas's (see Fit). Put back when the skin is off.
 local function SkinRankBar(bar)
-	if not bar or bar.melloRep ~= nil then
+	if not bar or repOf[bar] ~= nil then
 		return
 	end
 	local bg, border, fill, mask = bar.Background, bar.Border, bar.Fill, bar.Mask
@@ -142,7 +150,7 @@ local function SkinRankBar(bar)
 		key = "Profession-ProgressBar-BG"
 	end
 	local rep = bg and Replace(bg, { as = key, rect = bg, alsoFade = border and { border } or nil })
-	bar.melloRep = rep or false
+	repOf[bar] = rep or false
 	if not (rep and fill) then
 		return
 	end
@@ -174,11 +182,11 @@ local function SkinRankBar(bar)
 			-- at 18 px it clips the fill to a band centred in the bracket, and
 			-- the rails cover the band's edges anyway
 			local okW, mw = pcall(mask.GetWidth, mask)
-			if okW and mw and not Secret(mw) and not mask.melloScaled then
-				mask.melloFitting = true
+			if okW and mw and not Secret(mw) and not maskScaled[mask] then
+				fitting[mask] = true
 				mask:SetWidth(mw * (w - l - r) / w)
-				mask.melloFitting = nil
-				mask.melloScaled = true
+				fitting[mask] = nil
+				maskScaled[mask] = true
 			end
 		end
 	end
@@ -229,7 +237,7 @@ local function SkinRankBar(bar)
 			for i = 1, #savedMask do
 				mask:SetPoint(unpack(savedMask[i]))
 			end
-			mask.melloScaled = nil
+			maskScaled[mask] = nil
 		end
 	end
 	rep.experiment = function(what)
@@ -254,12 +262,12 @@ local function SkinRankBar(bar)
 		-- the game sets the mask to ratio x the bar's width (UpdateBar): scale
 		-- that onto the opening right after
 		hooksecurefunc(mask, "SetWidth", function(self, width)
-			if active and not self.melloFitting and not Secret(width) then
+			if active and not fitting[self] and not Secret(width) then
 				local share = Share()
-				self.melloFitting = true
+				fitting[self] = true
 				self:SetWidth(width * share)
-				self.melloFitting = nil
-				self.melloScaled = true
+				fitting[self] = nil
+				maskScaled[self] = true
 			end
 		end)
 	end
@@ -270,7 +278,7 @@ end
 -- edge, as the spell book's), on the icon's centre
 local iconRims = {}
 local function FitIconRim(button)
-	local rep = button.melloRep
+	local rep = repOf[button]
 	local rim = rep and rep.object
 	local icon = button.Icon or button.icon or button.IconTexture
 	if not (rim and rim.base and icon) then
@@ -303,12 +311,13 @@ local function CardKey(card)
 	return key
 end
 
+local repsOf = setmetatable({}, { __mode = "k" })   -- [card / form] = its reps
 local function RefreshCard(card)
-	if not (card and card.melloReps) then
+	if not (card and repsOf[card]) then
 		return
 	end
 	local key = CardKey(card)
-	if key and not card.melloReps[key] then
+	if key and not repsOf[card][key] then
 		local grey = (not card.isPrimary) and function()
 			return card.missingHeader and card.missingHeader:IsShown()
 		end or nil
@@ -318,9 +327,9 @@ local function RefreshCard(card)
 		-- to all existing windows"; WINDOW-RULES 2e). The profession cards
 		-- are pictures and stay as they are.
 		local dim = (key == "Profession-overview-Card") and 0.8 or nil
-		card.melloReps[key] = Replace(card.Background, { as = key, rect = card, grey = grey, dim = dim }) or false
+		repsOf[card][key] = Replace(card.Background, { as = key, rect = card, grey = grey, dim = dim }) or false
 	end
-	for k, rep in pairs(card.melloReps) do
+	for k, rep in pairs(repsOf[card]) do
 		if rep then
 			rep:SetShown(k == key)
 			if k == key then
@@ -331,17 +340,17 @@ local function RefreshCard(card)
 end
 
 local function SkinCard(card)
-	if not card or card.melloReps then
+	if not card or repsOf[card] then
 		return
 	end
-	card.melloReps = {}
+	repsOf[card] = {}
 	RefreshCard(card)
 	-- the spells' rims: every window's Button Border, hugging the icon
 	-- (user, 2026-09-23: "onto the Professions Tab next")
 	for _, button in ipairs(card.spellButtons or {}) do
-		if button.IconTextureOverlay and button.melloRep == nil then
-			button.melloRep = Replace(button.IconTextureOverlay, { as = "Profession-square-frame", button = button, parent = button }) or false
-			if button.melloRep then
+		if button.IconTextureOverlay and repOf[button] == nil then
+			repOf[button] = Replace(button.IconTextureOverlay, { as = "Profession-square-frame", button = button, parent = button }) or false
+			if repOf[button] then
 				iconRims[#iconRims + 1] = button
 				Kit:RegisterButtonRim(button)
 				FitIconRim(button)
@@ -362,17 +371,17 @@ end
 -- HIGHLIGHT-layer texture the engine shows on mouse-over, SelectedOverlay
 -- one the game shows / hides. Ours follow the same two signals.
 local function SkinRecipeRow(row)
-	if row.melloRep ~= nil then
+	if repOf[row] ~= nil then
 		return
 	end
-	row.melloRep = false
+	repOf[row] = false
 	if row.HighlightOverlay then
 		local hover = Replace(row.HighlightOverlay, { as = "Professions_Recipe_Hover", rect = row.HighlightOverlay, level = -1 })
 		if hover then
 			hover:SetShown(false)
 			Perf.HookScript(row, "OnEnter", function() if active then hover:SetShown(true) end end)
 			Perf.HookScript(row, "OnLeave", function() if active then hover:SetShown(false) end end)
-			row.melloRep = hover
+			repOf[row] = hover
 		end
 	end
 	if row.SelectedOverlay then
@@ -401,7 +410,7 @@ local function RefreshCategoryIcon(header)
 	if button and button.Icon then
 		local extra = {}
 		for _, region in ipairs({ button:GetRegions() }) do
-			if region ~= button.Icon and region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region ~= button.Icon and region:GetObjectType() == "Texture" and not pieceOf[region] then
 				extra[#extra + 1] = region
 			end
 		end
@@ -412,12 +421,12 @@ end
 -- A category header (ListHeaderVisualTemplate): the collapse plate is an
 -- unnamed ARTWORK texture, with an additive HIGHLIGHT copy for the hover.
 local function SkinCategory(header)
-	if header.melloRep ~= nil then
+	if repOf[header] ~= nil then
 		return
 	end
 	local plate = FirstArt(header, "common-button-list-collapseExpand", "ARTWORK")
 	local hover = FirstArt(header, "common-button-list-collapseExpand", "HIGHLIGHT")
-	header.melloRep = (plate and Replace(plate, { as = "common-button-list-collapseExpand", alsoFade = hover and { hover } or nil })) or false
+	repOf[header] = (plate and Replace(plate, { as = "common-button-list-collapseExpand", alsoFade = hover and { hover } or nil })) or false
 	RefreshCategoryIcon(header)
 end
 
@@ -431,10 +440,10 @@ end
 
 local function HookRecipeList(list)
 	local box = list and list.ScrollBox
-	if not (box and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or box.melloKitHooked then
+	if not (box and ScrollUtil and ScrollUtil.AddAcquiredFrameCallback) or kitHookedOf[box] then
 		return
 	end
-	box.melloKitHooked = true
+	kitHookedOf[box] = true
 	ScrollUtil.AddAcquiredFrameCallback(box, function(_, frame)
 		if active then
 			SkinListRow(frame)
@@ -442,8 +451,8 @@ local function HookRecipeList(list)
 	end, M, false)
 	if ScrollUtil.AddInitializedFrameCallback then
 		ScrollUtil.AddInitializedFrameCallback(box, function(_, frame)
-			if active and frame.melloRep and frame.melloRep.Refit then
-				frame.melloRep:Refit()
+			if active and repOf[frame] and repOf[frame].Refit then
+				repOf[frame]:Refit()
 			end
 			if active and frame.CollapseButton then
 				RefreshCategoryIcon(frame)        -- the glyph follows the collapse state
@@ -462,11 +471,11 @@ end
 -- A reagent slot (ProfessionsReagentSlotTemplate's Button): the frame over
 -- its icon; the slots are pooled by the schematic form, skinned once each.
 local function SkinReagentSlot(button)
-	if not button or button.melloRep ~= nil then
+	if not button or repOf[button] ~= nil then
 		return
 	end
-	button.melloRep = (button.IconBorder and Replace(button.IconBorder, { as = "Professions-Slot-Frame", button = button, parent = button })) or false
-	if button.melloRep then
+	repOf[button] = (button.IconBorder and Replace(button.IconBorder, { as = "Professions-Slot-Frame", button = button, parent = button })) or false
+	if repOf[button] then
 		iconRims[#iconRims + 1] = button
 		Kit:RegisterButtonRim(button)
 		FitIconRim(button)
@@ -488,22 +497,23 @@ local function SkinReagents(form)
 	end
 end
 
+local insetOf = setmetatable({}, { __mode = "k" })   -- [form] = its inset art
 -- The schematic backdrop: the game re-atlases it per profession
 -- (Profession-background-card-<Profession>, ProfessionsCraftingPageMixin:Refresh)
 -- and hides it for the minimized view; one replacement per atlas seen.
 local function RefreshSchematic(form)
-	if not (form and form.Background and form.melloReps) then
+	if not (form and form.Background and repsOf[form]) then
 		return
 	end
 	local key = Kit:ArtKey(form.Background)
-	if key and Kit.Replacements[key] and not form.melloReps[key] then
+	if key and Kit.Replacements[key] and not repsOf[form][key] then
 		-- one level under the form (over the page's backdrop, which is one
 		-- under the page: the form may sit at the page's own level); the
 		-- picture carries the inset rail itself, the form's inset texture
 		-- is faded with the first picture
-		form.melloReps[key] = Replace(form.Background, { as = key, rect = form.Background, level = -1, alsoFade = form.melloInset and { form.melloInset } or nil }) or false
+		repsOf[form][key] = Replace(form.Background, { as = key, rect = form.Background, level = -1, alsoFade = insetOf[form] and { insetOf[form] } or nil }) or false
 	end
-	for k, rep in pairs(form.melloReps) do
+	for k, rep in pairs(repsOf[form]) do
 		if rep then
 			rep:SetShown(k == key and form.Background:IsShown())
 		end
@@ -517,6 +527,9 @@ local function RefreshSchematic(form)
 	end
 end
 
+local textJustifyOf = setmetatable({}, { __mode = "k" })   -- [filter button] = its label's game justify
+local textShiftOf = setmetatable({}, { __mode = "k" })   -- [filter button] = { x, y }: its label's game offset
+local textRetried = setmetatable({}, { __mode = "k" })   -- [filter button] = true: looked for its label once more
 local function SkinCraftingPage(page)
 	if not page then
 		return
@@ -545,15 +558,15 @@ local function SkinCraftingPage(page)
 	-- the schematic: backdrop, inset frame, output icon, reagent slots, checkbox
 	local form = page.SchematicForm
 	if form then
-		form.melloReps = {}
-		form.melloInset = FirstArt(form, "common-insideframe")   -- drawn by the picture's own rail
+		repsOf[form] = {}
+		insetOf[form] = FirstArt(form, "common-insideframe")   -- drawn by the picture's own rail
 		-- ... and, while the game shows no picture there, the inset box on
 		-- the inset's rect with the palette's inner panel over its stone (the
 		-- rule's `dim`; user, 2026-09-24: "apply the eye strain rule to all
 		-- existing windows"), one level under the form as the pictures are,
 		-- so the recipe's text and slots stay above it (RefreshSchematic)
-		if form.melloInset then
-			skin.schematicBox = Replace(form.melloInset, { as = "common-insideframe", level = -1 })
+		if insetOf[form] then
+			skin.schematicBox = Replace(insetOf[form], { as = "common-insideframe", level = -1 })
 		end
 		RefreshSchematic(form)
 		-- the game re-atlases the backdrop per profession and shows / hides it
@@ -627,7 +640,7 @@ local function SkinCraftingPage(page)
 					extra[#extra + 1] = region
 				end
 			end
-			button.melloPlate = Replace(button.Center, { as = "_128-RedButton-Center", rect = button, button = button, alsoFade = extra, dropCap = drop })
+			plateOf[button] = Replace(button.Center, { as = "_128-RedButton-Center", rect = button, button = button, alsoFade = extra, dropCap = drop })
 		end
 	end
 	-- the quantity spinner: the box (two border sets: the search-border
@@ -750,22 +763,22 @@ local function SkinCraftingPage(page)
 			-- and create text a bit more to the left")
 			for _, b in ipairs({ all, one }) do
 				local fs = b.GetFontString and b:GetFontString()
-				if not fs and not b.melloTextRetry then
+				if not fs and not textRetried[b] then
 					-- its label not made yet: once more a moment later
-					b.melloTextRetry = true
+					textRetried[b] = true
 					C_Timer.After(0.2, Bind)
 				end
-				if fs and b.melloTextShift == nil then
+				if fs and textShiftOf[b] == nil then
 					local ok, x, y = pcall(function() local _, _, _, px, py = fs:GetPoint(1); return px, py end)
-					b.melloTextShift = { ok and x or 0, ok and y or 0 }
-					b.melloTextJustify = fs:GetJustifyH()
+					textShiftOf[b] = { ok and x or 0, ok and y or 0 }
+					textJustifyOf[b] = fs:GetJustifyH()
 				end
 				-- the plate: the replacement's strip, or found among the button's
 				-- children (the sweep may have dressed the button first: the
 				-- replace here then made none -- user, 2026-09-24: "nothing
 				-- changed"); a flat plate (0.19.1) has none: the label stays
 				-- where the game centres it
-				local strip = b.melloPlate and b.melloPlate.strip
+				local strip = plateOf[b] and plateOf[b].strip
 				if not strip then
 					for _, child in ipairs({ b:GetChildren() }) do
 						if rawget(child, "base") and rawget(child, "mid") and child:IsShown() then
@@ -776,7 +789,7 @@ local function SkinCraftingPage(page)
 				end
 				if fs and strip and strip.mid then
 					fs:ClearAllPoints()
-					fs:SetPoint("CENTER", strip.mid, "CENTER", 0, b.melloTextShift[2] or 0)
+					fs:SetPoint("CENTER", strip.mid, "CENTER", 0, textShiftOf[b][2] or 0)
 					fs:SetJustifyH("CENTER")
 				end
 			end
@@ -800,11 +813,11 @@ local function SkinCraftingPage(page)
 					b:SetPoint(unpack(pt))
 				end
 				local fs = b.GetFontString and b:GetFontString()
-				if fs and b.melloTextShift then
+				if fs and textShiftOf[b] then
 					fs:ClearAllPoints()
-					fs:SetPoint("CENTER", b, "CENTER", b.melloTextShift[1] or 0, b.melloTextShift[2] or 0)
-					if b.melloTextJustify then
-						fs:SetJustifyH(b.melloTextJustify)
+					fs:SetPoint("CENTER", b, "CENTER", textShiftOf[b][1] or 0, textShiftOf[b][2] or 0)
+					if textJustifyOf[b] then
+						fs:SetJustifyH(textJustifyOf[b])
 					end
 				end
 			end
@@ -906,7 +919,7 @@ local function ApplyPortrait()
 		end
 	end
 	if piece and Kit:Piece(piece) then
-		if lastAsset == nil and not portrait.kitPiece then
+		if lastAsset == nil and not pieceOf[portrait] then
 			-- the game's own icon, for the restore, when the window was
 			-- already open when the module came on (no SetPortraitToAsset seen)
 			local okT, current = pcall(portrait.GetTexture, portrait)
@@ -922,8 +935,8 @@ end
 local function RestorePortrait()
 	local pf = ProfessionsFrame
 	local portrait = pf and pf.PortraitContainer and pf.PortraitContainer.portrait
-	if portrait and portrait.kitPiece then
-		portrait.kitPiece, portrait.kitName = nil, nil
+	if portrait and pieceOf[portrait] then
+		pieceOf[portrait], pieceNameOf[portrait] = nil, nil
 		portrait:SetTexCoord(0, 1, 0, 1)
 		if lastAsset then
 			portrait:SetTexture(lastAsset)
@@ -1114,7 +1127,7 @@ local function InkSurface()
 			return page and page.RecipeList
 		end,
 		on = function()
-			return active and M.isEnabled and M.db and M.db.listBackground == "parchment"
+			return active and M.isEnabled and M.db and Kit:BackgroundIsPaper(M.db.listBackground)   -- (0.19.8: any paper)
 		end,
 	})
 end
@@ -1135,7 +1148,7 @@ local function ApplyBackgrounds()
 		local value = M.db and M.db.listBackground or "list"
 		local piece = value == "list" and "window/single_body" or LOOKS.backgroundPiece[value]
 		if piece then
-			if body.kitName ~= piece then
+			if pieceNameOf[body] ~= piece then
 				Kit:Unpaint(body)   -- (the dark fill's palette colour no longer on it)
 				body:SetVertexColor(1, 1, 1, 1)
 				Kit:Apply(body, piece)
@@ -1145,14 +1158,14 @@ local function ApplyBackgrounds()
 			-- the palette's inner panel, by its key (a new palette paints it
 			-- again), as the buttons' Dark background (Kit:SetButtonBackground)
 			Kit:Paint(body, "innerPanel", "fill", 0.95)
-			body.kitPiece, body.kitName = true, nil
+			pieceOf[body], pieceNameOf[body] = true, nil
 		end
 		-- the list box's dark panel (its rule's `dim`, WINDOW-RULES 2e) lies
 		-- over any stone, never over the parchment: on paper the rows are in
 		-- dark ink (the parchment ink rule), a dark panel there would drown them
 		local fill = skin.listBox.skin.dimFill
 		if fill then
-			fill:SetShown(value ~= "parchment")
+			fill:SetShown(not Kit:BackgroundIsPaper(value))
 		end
 	end
 	InkSurface()
@@ -1322,7 +1335,7 @@ local function ProfDump(msg)
 		for _, key in ipairs({ "CreateAllButton", "CreateButton" }) do
 			local b = page and page[key]
 			if b then
-				Rect(key, b, "melloPlate=" .. tostring(b.melloPlate ~= nil) .. " shift=" .. tostring(b.melloTextShift ~= nil))
+				Rect(key, b, "melloPlate=" .. tostring(plateOf[b] ~= nil) .. " shift=" .. tostring(textShiftOf[b] ~= nil))
 				for _, child in ipairs({ b:GetChildren() }) do
 					Rect("  child " .. tostring(rawget(child, "base")), child, "shown=" .. tostring(child:IsShown()) .. " mid=" .. tostring(rawget(child, "mid") ~= nil))
 					if rawget(child, "mid") then
@@ -1370,14 +1383,14 @@ local function ProfDump(msg)
 		for _, region in ipairs({ bar:GetRegions() }) do
 			local layer, sub = region:GetDrawLayer()
 			local okA, alpha = pcall(region.GetAlpha, region)
-			local art = region.kitName or (region.GetAtlas and Kit:ArtKey(region)) or "?"
-			Rect(string.format("  %s %s%s", region:GetObjectType(), region:GetName() or region:GetDebugName(), region.kitPiece and " [KIT]" or ""), region,
+			local art = pieceNameOf[region] or (region.GetAtlas and Kit:ArtKey(region)) or "?"
+			Rect(string.format("  %s %s%s", region:GetObjectType(), region:GetName() or region:GetDebugName(), pieceOf[region] and " [KIT]" or ""), region,
 				string.format("%s/%s shown=%s alpha=%s art=%s", tostring(layer), tostring(sub), tostring(region:IsShown()), okA and tostring(alpha) or "?", tostring(art)))
 		end
 		for _, child in ipairs({ bar:GetChildren() }) do
 			Rect("  child " .. Name(child), child, string.format("%s L%d", child:GetFrameStrata(), child:GetFrameLevel()))
 		end
-		for k, rep in pairs(card.melloReps or {}) do
+		for k, rep in pairs(repsOf[card] or {}) do
 			if rep then
 				Rect("card holder " .. k, rep.object, string.format("%s L%d %s", rep.object:GetFrameStrata(), rep.object:GetFrameLevel(), rep.object:IsShown() and "shown" or "hidden"))
 			end
@@ -1388,8 +1401,8 @@ local function ProfDump(msg)
 	if what then
 		local card = pf.BookPage and pf.BookPage.ProfessionsContentFrame and pf.BookPage.ProfessionsContentFrame.PrimaryProfession1
 		local bar = card and card.StatusBar
-		if bar and bar.melloRep and bar.melloRep.experiment then
-			bar.melloRep.experiment(what)
+		if bar and repOf[bar] and repOf[bar].experiment then
+			repOf[bar].experiment(what)
 			MelloUI:Print("rank bar experiment: %s", what)
 		end
 		return
@@ -1405,7 +1418,7 @@ local function ProfDump(msg)
 		Rect("card", card, string.format("%s L%d", card:GetFrameStrata(), card:GetFrameLevel()))
 		local okA, alpha = pcall(card.Background.GetAlpha, card.Background)
 		Rect("card.Background", card.Background, string.format("alpha=%s art=%s", okA and tostring(alpha) or "?", tostring(Kit:ArtKey(card.Background))))
-		for k, rep in pairs(card.melloReps or {}) do
+		for k, rep in pairs(repsOf[card] or {}) do
 			if rep then
 				Rect("rep " .. k, rep.object, string.format("%s L%d %s", rep.object:GetFrameStrata(), rep.object:GetFrameLevel(), rep.object:IsShown() and "shown" or "hidden"))
 				if rep.tex then
@@ -1439,8 +1452,8 @@ local function ProfDump(msg)
 				for _, region in ipairs({ f:GetRegions() }) do
 					local layer, sub = region:GetDrawLayer()
 					local okA, alpha = pcall(region.GetAlpha, region)
-					local art = region.kitName or (region.GetAtlas and Kit:ArtKey(region)) or "?"
-					Rect(string.format("  %s%s", region:GetObjectType(), region.kitPiece and " [KIT]" or ""), region,
+					local art = pieceNameOf[region] or (region.GetAtlas and Kit:ArtKey(region)) or "?"
+					Rect(string.format("  %s%s", region:GetObjectType(), pieceOf[region] and " [KIT]" or ""), region,
 						string.format("%s/%s shown=%s alpha=%s art=%s", tostring(layer), tostring(sub), tostring(region:IsShown()), okA and tostring(alpha) or "?", tostring(art)))
 				end
 				for _, child in ipairs({ f:GetChildren() }) do
@@ -1466,7 +1479,7 @@ local function ProfDump(msg)
 			return
 		end
 		for _, region in ipairs({ frame:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece and region:IsVisible() then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] and region:IsVisible() then
 				local ok, alpha = pcall(region.GetAlpha, region)
 				if ok and alpha and not Secret(alpha) and alpha > 0 then
 					n = n + 1
@@ -1489,3 +1502,8 @@ SlashCmdList.MELLOPROFDUMP = function(msg)
 	ProfDump(msg)
 	MelloUI:ShowLog("profdump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { fitting = fitting, insetOf = insetOf, maskScaled = maskScaled, repsOf = repsOf,
+	textJustifyOf = textJustifyOf, textRetried = textRetried, textShiftOf = textShiftOf }

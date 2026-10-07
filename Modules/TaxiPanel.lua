@@ -46,6 +46,9 @@ local MelloUI = ns.MelloUI
 local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("TaxiPanel")
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("TaxiPanel", {
 	title = "Flight Map Kit",
@@ -147,7 +150,7 @@ local function BorderArt(tf)
 	local list, seen = {}, {}
 	local function Add(region)
 		if region and not seen[region] and not keep[region] and region.GetObjectType and region:GetObjectType() == "Texture"
-			and not region.kitPiece then
+			and not pieceOf[region] then
 			seen[region] = true
 			list[#list + 1] = region
 		end
@@ -156,7 +159,7 @@ local function BorderArt(tf)
 		Add(tf[key])
 	end
 	for _, region in ipairs({ tf:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and not keep[region] and not seen[region] then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and not keep[region] and not seen[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and (layer == "BORDER" or layer == "OVERLAY") and not IsPicture(region, tf) then
 				Add(region)
@@ -206,7 +209,7 @@ local function Anchor(host)
 	local tex = host:CreateTexture(nil, "BACKGROUND")
 	tex:SetAllPoints(host)
 	tex:SetColorTexture(0, 0, 0, 0)
-	tex.kitPiece = true
+	pieceOf[tex] = true
 	return tex
 end
 
@@ -623,7 +626,7 @@ local function DumpTaxi(tf)
 		MelloUI:Print("  title: key=%s text=%s parent %s, font %s %s, title face %s", tostring(KeyOf(tf, title) or Describe(title)),
 			(okT and not Secret(text)) and tostring(text) or "?", Describe(title:GetParent()),
 			(okF and not Secret(face)) and (tostring(face):match("([^\\/]+)$") or tostring(face)) or "?",
-			(okF and not Secret(size)) and tostring(size) or "?", tostring(title.melloFontSaved ~= nil))
+			(okF and not Secret(size)) and tostring(size) or "?", tostring(fontSavedOf[title] ~= nil))
 	else
 		MelloUI:Print("  title: none found")
 	end
@@ -634,7 +637,7 @@ local function DumpTaxi(tf)
 	-- the game's regions only (the page stone is a region of the window too,
 	-- but ours: it carries the kit's scale)
 	for _, region in ipairs({ tf:GetRegions() }) do
-		if not (region.kitPiece or region.kitScale) then
+		if not (pieceOf[region] or region.kitScale) then
 			RegionLine(s, tf, region)
 		end
 	end

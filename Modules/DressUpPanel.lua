@@ -66,6 +66,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("DressUpPanel", {
 	title = "Dressing Room Kit",
@@ -85,7 +90,7 @@ local hooked = false
 
 -- what this module made or looked at, kept OFF the game's frames (weak keys)
 local done = setmetatable({}, { __mode = "k" })         -- [frame / region] = true: looked at once
-local rims = {}                                         -- the item icons' rim holders { melloRep, icon }
+local rims = {}                                         -- the item icons' rim holders { icon } (the rep: MelloUI.Kept.repOf[holder])
 local controls = {}                                     -- the model's control buttons { button, rep }
 local buttons = {}                                      -- the text buttons { label, button, rep }
 local panels = {}                                       -- the side panels { label, panel, rep }
@@ -280,7 +285,7 @@ local function PlaceTitle()
 		rep:Refit()
 	end
 	local text = TitleText(Window())
-	if text and not text.melloFontSaved then
+	if text and not fontSavedOf[text] then
 		Kit:TitleFont(text, true)
 	end
 end
@@ -310,12 +315,12 @@ local function SkinInsetRail(f)
 	Kit:SkinInset(inset, Replace, f)
 	skin.inset = inset
 	found.inset = string.format("%s: single rail, edges only, %s", Label(inset),
-		(inset.melloRep ~= nil and inset.melloRep ~= false) and "dressed" or "NOT dressed")
+		(repOf[inset] ~= nil and repOf[inset] ~= false) and "dressed" or "NOT dressed")
 end
 
 local function KeepRailOverModel(f)
 	local inset = skin and skin.inset
-	local rep = inset and inset.melloRep
+	local rep = inset and repOf[inset]
 	local model = Model(f)
 	local holder = rep and rep.object
 	if not (holder and holder.SetFrameLevel and model) then
@@ -438,10 +443,10 @@ local function SkinButtons(f)
 		found.dropdown = "-- not found"
 	elseif not done[dd] then
 		done[dd] = true
-		if dd.Background and dd.melloRep == nil then
-			dd.melloRep = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
+		if dd.Background and repOf[dd] == nil then
+			repOf[dd] = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
 		end
-		found.dropdown = string.format("%s: dropdown plate %s", Label(dd), (dd.melloRep ~= nil and dd.melloRep ~= false) and "on" or "NOT dressed (no Background)")
+		found.dropdown = string.format("%s: dropdown plate %s", Label(dd), (repOf[dd] ~= nil and repOf[dd] ~= false) and "on" or "NOT dressed (no Background)")
 	end
 end
 
@@ -455,7 +460,7 @@ end
 -- 20 px, SetDetails): the rim is fitted again after it.
 --------------------------------------------------------------------------------
 local function FitIconRim(holder)
-	local rim = holder.melloRep and holder.melloRep.object
+	local rim = repOf[holder] and repOf[holder].object
 	local icon = holder.icon
 	if not (rim and rim.base and icon) then
 		return
@@ -488,7 +493,8 @@ local function SkinIconRim(row, icon)
 	if not rep then
 		return nil
 	end
-	local holder = { melloRep = rep, icon = icon }
+	local holder = { icon = icon }
+	repOf[holder] = rep
 	rims[#rims + 1] = holder
 	Kit:RegisterButtonRim(holder)
 	FitIconRim(holder)
@@ -509,7 +515,7 @@ local function SideFrameArt(panel)
 		return panel.Border
 	end
 	for _, region in ipairs({ panel:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and Kit:ArtKey(region) == "dressingroom-sideframe" then
+		if IsTexture(region) and not pieceOf[region] and Kit:ArtKey(region) == "dressingroom-sideframe" then
 			return region
 		end
 	end
@@ -828,7 +834,7 @@ local function Line(label, text)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function DumpPortrait(f)
@@ -847,7 +853,7 @@ local function DumpPortrait(f)
 		local medal = (okR and type(rw) == "number" and not Secret(rw)) and rw * MEDALLION_TO_RING or nil
 		Line("vs medallion", string.format("portrait %s x %s, ring %s, medallion (0.759 x ring) %s, fitted %s, disc %s",
 			okP and Num(pw) or "?", okP and Num(ph) or "?", okR and Num(rw) or "?", medal and string.format("%.0f", medal) or "?",
-			tostring(p.melloSaved ~= nil), skin.disc and (Shown(skin.disc) and "shown" or "hidden") or "none"))
+			tostring(portraitSavedOf[p] ~= nil), skin.disc and (Shown(skin.disc) and "shown" or "hidden") or "none"))
 	end
 end
 
@@ -871,7 +877,7 @@ local function DumpTitle(f)
 		where = string.format("%+.0f, %+.0f from the plate's centre", cx - px, cy - py)
 	end
 	Line("title text", string.format("%s '%s' %s; face %s %s, title face %s", Label(fs), tostring(TextOf(fs) or "?"), where,
-		(okF and type(face) == "string" and not Secret(face)) and face or "?", okF and Num(size) or "?", tostring(fs.melloFontSaved ~= nil)))
+		(okF and type(face) == "string" and not Secret(face)) and face or "?", okF and Num(size) or "?", tostring(fontSavedOf[fs] ~= nil)))
 end
 
 local function DumpParts(f)
@@ -888,7 +894,7 @@ local function DumpParts(f)
 	local model = Model(f)
 	Line("model", model and string.format("%s (%s) level %s, rect %s, shown %s -- never covered", Label(model), tostring(model:GetObjectType()),
 		tostring(LevelOf(model) or "?"), RectText(model), tostring(Shown(model))) or "-- not found")
-	local ir = skin and skin.inset and skin.inset.melloRep
+	local ir = skin and skin.inset and repOf[skin.inset]
 	Line("inset rail", (ir and ir.object) and string.format("level %s (the model's + 1)", tostring(LevelOf(ir.object) or "?")) or "-- none")
 	for _, t in ipairs(ModelPictures(f)) do
 		local okA, alpha = pcall(t.GetAlpha, t)
@@ -934,7 +940,7 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. tostring(TextOf(region) or ""):sub(1, 50)
 		end
@@ -944,7 +950,7 @@ local function DumpOwn(frame)
 	end
 	for _, child in ipairs({ frame:GetChildren() }) do
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			tostring(LevelOf(child) or "?"), tostring(Shown(child)), child.melloRep ~= nil and " (dressed)" or "")
+			tostring(LevelOf(child) or "?"), tostring(Shown(child)), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 

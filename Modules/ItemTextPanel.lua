@@ -49,6 +49,10 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("ItemTextPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("ItemTextPanel", {
 	title = "Books & Letters Kit",
@@ -178,7 +182,7 @@ local function FindRock(frame, page)
 		end
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if IsTexture(region) and region ~= page and not region.kitPiece and region:GetDrawLayer() == "BACKGROUND"
+		if IsTexture(region) and region ~= page and not pieceOf[region] and region:GetDrawLayer() == "BACKGROUND"
 			and (IsTiled(region) or Kit:ArtKey(region) == "UI-Background-Rock") then
 			return region
 		end
@@ -234,7 +238,7 @@ end
 -- text is on plain brown (2e).
 local function DressInset(win, frame)
 	local inset = frame.Inset
-	if not inset or inset.melloRep ~= nil then
+	if not inset or repOf[inset] ~= nil then
 		return
 	end
 	local extra = { inset.Bg }
@@ -245,7 +249,7 @@ local function DressInset(win, frame)
 			end
 		end
 	end
-	inset.melloRep = Replace(inset, { as = "common-insideframe", parent = frame, rect = inset, level = 2,
+	repOf[inset] = Replace(inset, { as = "common-insideframe", parent = frame, rect = inset, level = 2,
 		body = not win.paper, noFade = true, alsoFade = extra }) or false
 end
 
@@ -262,14 +266,14 @@ end
 local function PortraitCandidates(frame)
 	local list, seen = {}, {}
 	local function Add(t)
-		if IsTexture(t) and not seen[t] and not t.kitPiece then
+		if IsTexture(t) and not seen[t] and not pieceOf[t] then
 			seen[t] = true
 			list[#list + 1] = t
 		end
 	end
 	-- the book: the window's OVERLAY texture one sublevel down, a portrait's size
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece then
+		if IsTexture(region) and not pieceOf[region] then
 			local layer, sub = region:GetDrawLayer()
 			local ok, w = pcall(region.GetWidth, region)
 			if layer == "OVERLAY" and sub == -1 and ok and w and not Secret(w) and w > 20 and w < 90 then
@@ -312,7 +316,7 @@ local function SkinPortrait(win, frame)
 	-- between them
 	local disc = Kit:RingDisc(ring, nil, holder, 6)
 	local icon = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	icon.kitPiece = true
+	pieceOf[icon] = true
 	if disc then
 		icon:SetAllPoints(disc)
 	else
@@ -452,9 +456,9 @@ local function SkinArrows()
 	for _, a in ipairs(ARROWS) do
 		local b = _G[a[1]]
 		local normal = b and b.GetNormalTexture and b:GetNormalTexture()
-		if normal and b.melloRep == nil then
+		if normal and repOf[b] == nil then
 			local rep = Replace(normal, { as = a[2], button = b, rect = b, alsoFade = Kit:OtherTextures(b, normal) })
-			b.melloRep = rep or false
+			repOf[b] = rep or false
 			if rep then
 				local entry = { rep = rep, button = b }
 				arrowReps[#arrowReps + 1] = entry
@@ -475,22 +479,22 @@ end
 -- Progress Bar Border (P1) as regions of the bar above its fill
 local function SkinStatusBar()
 	local bar = _G.ItemTextStatusBar
-	if not bar or bar.melloRep ~= nil then
+	if not bar or repOf[bar] ~= nil then
 		return
 	end
 	local border
 	for _, region in ipairs({ bar:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and region:GetDrawLayer() == "OVERLAY" then
+		if IsTexture(region) and not pieceOf[region] and region:GetDrawLayer() == "OVERLAY" then
 			border = region
 			break
 		end
 	end
 	if not border then
-		bar.melloRep = false
+		repOf[bar] = false
 		return
 	end
 	local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(bar)
-	bar.melloRep = Replace(border, { as = "UI-Character-Skills-BarBorder", parent = bar, rect = bar,
+	repOf[bar] = Replace(border, { as = "UI-Character-Skills-BarBorder", parent = bar, rect = bar,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub }) or false
 end
 
@@ -500,10 +504,11 @@ local function MarkRedButtons(root, depth)
 	if not root or depth > 8 then
 		return
 	end
+	local QI = MelloUI.QuestInk
 	for _, child in ipairs({ root:GetChildren() }) do
-		local rep = rawget(child, "melloRep")
-		if type(rep) == "table" and RED_PLATES[rep.key] and not child.melloNoInk then
-			child.melloNoInk = true
+		local rep = repOf[child]
+		if type(rep) == "table" and RED_PLATES[rep.key] and QI and not QI.noInk[child] then
+			QI.noInk[child] = true
 		end
 		MarkRedButtons(child, depth + 1)
 	end
@@ -981,7 +986,7 @@ local function DumpShell(f)
 		end
 		Found("title", title, string.format(" text %s, face %s %s, title face %s, centre x %s (plate %s), plate %s",
 			secret and "[secret]" or tostring(text or "(empty)"), (okF and type(face) == "string" and not Secret(face)) and face or "?",
-			okF and Num(size) or "?", tostring(title.melloFontSaved ~= nil), okC and Num(cx) or "?", okP and Num(px) or "?",
+			okF and Num(size) or "?", tostring(fontSavedOf[title] ~= nil), okC and Num(cx) or "?", okP and Num(px) or "?",
 			win and RepState(win.title) or "-"))
 		if plate then
 			MelloUI:Print("    plate rect %s, title rect %s", RectOf(plate), RectOf(title))
@@ -996,7 +1001,7 @@ local function DumpShell(f)
 				tostring(win.titleMoved[fs] ~= nil), tostring(win.titleFaded[fs] == true)))
 		end
 	end
-	MelloUI:Print("  tabs: none (one page); close button %s", f.CloseButton and RepState(rawget(f.CloseButton, "melloRep")) or "none")
+	MelloUI:Print("  tabs: none (one page); close button %s", f.CloseButton and RepState(repOf[f.CloseButton]) or "none")
 end
 
 local function DumpPage(f)
@@ -1024,14 +1029,14 @@ local function DumpPage(f)
 			tostring(Kit.faded[t] == true)) or nil)
 	end
 	local inset = f.Inset
-	Found("inset", inset, inset and (" " .. RepState(rawget(inset, "melloRep"))) or nil)
+	Found("inset", inset, inset and (" " .. RepState(repOf[inset])) or nil)
 	for _, entry in ipairs(ARROWS) do
 		local b = _G[entry[1]]
 		local okE, enabled = false, nil
 		if b then
 			okE, enabled = pcall(b.IsEnabled, b)
 		end
-		Found("page arrow", b, b and string.format(" %s, shown %s, enabled %s", RepState(rawget(b, "melloRep")), Shown(b),
+		Found("page arrow", b, b and string.format(" %s, shown %s, enabled %s", RepState(repOf[b]), Shown(b),
 			(okE and not Secret(enabled)) and tostring(enabled) or "?") or nil)
 	end
 	local pn = _G.ItemTextCurrentPage
@@ -1045,10 +1050,10 @@ local function DumpPage(f)
 		Found("page number", nil)
 	end
 	local bar = _G.ItemTextStatusBar
-	Found("translation bar", bar, bar and string.format(" %s, shown %s", RepState(rawget(bar, "melloRep")), Shown(bar)) or nil)
+	Found("translation bar", bar, bar and string.format(" %s, shown %s", RepState(repOf[bar]), Shown(bar)) or nil)
 	local sf = _G.ItemTextScrollFrame
 	local sb = sf and sf.ScrollBar
-	Found("scroll bar", sb, sb and string.format(" %s, shown %s", RepState(rawget(sb, "melloRep")), Shown(sb)) or nil)
+	Found("scroll bar", sb, sb and string.format(" %s, shown %s", RepState(repOf[sb]), Shown(sb)) or nil)
 end
 
 local function DumpInk()
@@ -1082,7 +1087,7 @@ local function DumpInk()
 			n = n + 1
 			if n <= 20 then
 				local text, secret = TextOf(fs)
-				MelloUI:Print("  inked %s %s colour %s: %s", tostring(fs.melloInk == true), Label(fs), Colour(fs:GetTextColor()),
+				MelloUI:Print("  inked %s %s colour %s: %s", tostring(QI.inkOn[fs] == true), Label(fs), Colour(fs:GetTextColor()),
 					secret and "[secret]" or tostring(text or ""):sub(1, 40))
 			end
 		end
@@ -1113,7 +1118,7 @@ SlashCmdList.MELLOITEMTEXTDUMP = function(msg)
 			local okL, layer, sub = pcall(region.GetDrawLayer, region)
 			local what = ""
 			if kind == "Texture" then
-				what = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+				what = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 			elseif kind == "FontString" then
 				local text, secret = TextOf(region)
 				what = "text: " .. (secret and "[secret]" or tostring(text or ""):sub(1, 40))
@@ -1124,7 +1129,7 @@ SlashCmdList.MELLOITEMTEXTDUMP = function(msg)
 		for _, child in ipairs({ f:GetChildren() }) do
 			local okLv, lv = pcall(child.GetFrameLevel, child)
 			MelloUI:Print("  child %s %s level %s shown %s kit %s", tostring(child:GetObjectType()), Label(child), okLv and Num(lv) or "?",
-				Shown(child), RepState(rawget(child, "melloRep")))
+				Shown(child), RepState(repOf[child]))
 		end
 	else
 		if not skin then

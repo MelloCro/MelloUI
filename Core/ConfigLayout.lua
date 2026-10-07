@@ -275,11 +275,30 @@ function L.Define(R, Link)
 	R("Look", "Borders", "Look", "UIModifications.buttonBorder", { picture = true })
 	R("Look", "Borders", "Look", "UIModifications.sideTabBorder", { picture = true })
 	R("Look", "Borders", "Look", "UIModifications.barBorder", { picture = true })
+	-- (0.19.8, the border library's stage 2: the unit frames' bars a border of their own, worn under their skin)
+	R("Look", "Borders", "Look", "UIModifications.unitFrameBorder", { picture = true,
+		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
 	-- (0.19.1, the user 2026-10-04: "all border customization into Borders tab": the borders each element's page
 	-- had, here with the kit's; each of those pages links its own)
 	R("Look", "Borders", "Look", "UIModifications.nameplateBorder", { picture = true })
+	-- (0.19.8: the cast bar's and the personal resource display's, the border library's)
+	R("Look", "Borders", "Look", "UIModifications.castBarBorder", { picture = true,
+		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
+	R("Look", "Borders", "Look", "UIModifications.personalBorder", { picture = true,
+		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
 	R("Look", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
+	-- (0.19.8, the border library's stage 4: the unit frames' portrait ring a choice of its own, decision 8)
+	R("Look", "Borders", "Look", "UIModifications.portraitRing", { picture = true,
+		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
 	R("Look", "Borders", "Look", "UIModifications.auraBorder", { picture = true })
+	-- (0.19.8, the border library's first own row: Modules/KitBorders.lua; worn under the raid frames' skin)
+	R("Look", "Borders", "Look", "UIModifications.raidFrameBorder", { picture = true,
+		when = { key = "UIModifications.RaidFramePanel", value = true, line = "Only with the raid frames' Painted Skin" } })
+	-- (0.19.8, stage 3: where it goes -- on each frame, round the group, both)
+	R("Look", "Borders", "Look", "UIModifications.raidBorderPlace",
+		{ when = { key = "UIModifications.RaidFramePanel", value = true, line = "Only with the raid frames' Painted Skin" } })
+	-- (0.19.8: the game's Cooldown Manager's icons, Cooldown Tweaks)
+	R("Look", "Borders", "Look", "UIModifications.cooldownBorder", { picture = true })
 	R("Look", "Borders", "Look", "MinimapPanel.squareBorder", { picture = true, name = "Minimap Square Border",
 		when = { key = "MinimapPanel.shape", value = "square", line = "Only for the square map" } })
 	R("Look", "Borders", "Look", "Tooltip.classBorder", { name = "Tooltip Class / Reaction Border",
@@ -382,6 +401,10 @@ function L.Define(R, Link)
 	R("UnitFrames", "Frame", "Look", "UnitFrames.hideStatusGlow", { only = { "player", "pet" }, when = UF })
 	R("UnitFrames", "Frame", "Look", "ClassIcons.portraits", { only = { "player", "target", "focus", "party" } })
 	R("UnitFrames", "Frame", "Look", "UnitFramePanel.marks", { only = { "target", "focus" } })
+	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
+	R("UnitFrames", "Frame", "Look", "UnitFramePanel.backdrop", { only = { "player", "target", "focus" } })
+	R("UnitFrames", "Frame", "Look", "UnitFramePanel.backdropBackground", { only = { "player", "target", "focus" },
+		when = { key = "UnitFramePanel.backdrop", notValue = "none", line = "Only with a Frame Backdrop" } })
 	R("UnitFrames", "Frame", "Text", "UnitFrames.centerNames", { only = { "player", "target", "focus" }, when = UF })
 	R("UnitFrames", "Bars", "General", "UIModifications.qol_BarText", { only = { "player", "target", "focus" } })
 	-- (0.19.0) incoming heals and the debuff glow: one setting each for every frame (HealerFrames)
@@ -457,6 +480,9 @@ function L.Define(R, Link)
 	R("ActionBars", "Bars", "Look", { bars = "DarkMode.actionbars", micro = "DarkMode.micromenu", bag = "DarkMode.micromenu" }, { name = "Dark Mode",
 		when = Uncovered("ActionBarPanel", "action bars") })
 	R("ActionBars", "Bars", "Look", "DarkMode.gryphons", { only = { "bars" }, when = Uncovered("ActionBarPanel", "action bars") })
+	-- (0.19.8, the user's picks of button_press_sketch: the key held, range and resources; skin on or off)
+	R("ActionBars", "Bars", "Look", "ActionButtons.pressLight", { only = { "bars" } })
+	R("ActionBars", "Bars", "Look", "ActionButtons.rangeColours", { only = { "bars" } })
 	R("ActionBars", "Bars", "Behaviour", "Tweaks.bagBarFold", { only = { "bag" },
 		when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
 	-- (0.18.5) each element's backdrop, one list whatever the pick (the user,
@@ -503,6 +529,11 @@ function L.Define(R, Link)
 	R("BarsMeters", "XP & Reputation", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
 	R("BarsMeters", "Cooldown Manager", "Look", "BarTextures.cooldowns", { name = "Bar Texture" })
 	R("BarsMeters", "Cooldown Manager", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
+	-- (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)
+	R("BarsMeters", "Cooldown Manager", "Look", "CooldownTweaks.keybinds")
+	R("BarsMeters", "Cooldown Manager", "Look", "CooldownTweaks.pressLight")
+	R("BarsMeters", "Cooldown Manager", "Text", "CooldownTweaks.countSize")
+	R("BarsMeters", "Cooldown Manager", "Layout", "CooldownTweaks.centreRows")
 	-- (0.17.0: MelloUI's meter replaces the game's; its switch heads the tab)
 	R("BarsMeters", "Damage Meter", "General", "Meter.!enabled", { name = "Use MelloUI's Damage Meter (replaces the game's)" })
 	R("BarsMeters", "Damage Meter", "General", "Meter.values")
@@ -670,6 +701,13 @@ function L.Define(R, Link)
 	R("QuestList", "List", "General", "QuestList.otherClass")
 	R("QuestList", "List", "General", "QuestList.levelAbove")
 	R("QuestList", "List", "Behaviour", "QuestList.dungeonSummary")
+	-- (0.19.8: Auto Accept & Hand In, Modules/QuestAuto.lua -- the addon study's item 6, off by default)
+	R("QuestList", "List", "Behaviour", "QuestAuto.accept")
+	R("QuestList", "List", "Behaviour", "QuestAuto.handIn")
+	R("QuestList", "List", "Behaviour", "QuestAuto.takeUpgrade", { when = { key = "QuestAuto.handIn", value = true,
+		line = "Only with Auto Hand In" } })
+	R("QuestList", "List", "Behaviour", "QuestAuto.skipKey", { when = { any = { { key = "QuestAuto.accept", value = true },
+		{ key = "QuestAuto.handIn", value = true } }, line = "Only with Auto Accept or Auto Hand In" } })
 	R("QuestList", "Map", "General", "QuestList.mapPins")
 	R("QuestList", "Map", "General", "QuestList.pinCompleted")
 	R("QuestList", "Map", "General", "QuestList.hideGrey")
@@ -848,7 +886,14 @@ function L.Define(R, Link)
 	Link("UnitFrames", "Frame", "Text", "UIModifications.nameFormat", "Names")
 	Link("UnitFrames", "Bars", "Look", "BarTextures.texture", "Bar texture")
 	Link("UnitFrames", "Bars", "Look", "BarTextures.healthColor", "Health bar colour")
-	Link("UnitFrames", "Bars", "Look", "UIModifications.barBorder", "Bar border")
+	-- (0.19.8, rule 9: the unit frames, the cast bars and the personal display have borders of their own now)
+	Link("UnitFrames", "Bars", "Look", { player = "UIModifications.unitFrameBorder", target = "UIModifications.unitFrameBorder",
+		focus = "UIModifications.unitFrameBorder", pet = "UIModifications.unitFrameBorder", party = "UIModifications.unitFrameBorder",
+		castbars = "UIModifications.castBarBorder", personal = "UIModifications.personalBorder" }, "Bar border")
+	Link("UnitFrames", "Frame", "Look", { raid = "UIModifications.raidFrameBorder" }, "Raid frame border")
+	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.portraitRing", target = "UIModifications.portraitRing",
+		focus = "UIModifications.portraitRing", pet = "UIModifications.portraitRing", party = "UIModifications.portraitRing" },
+		"Portrait ring")
 	Link("UnitFrames", "Buffs & Debuffs", "Look", { player = "UIModifications.shade_buffs" }, "UI Shade")
 	-- (0.19.4: the aura border is worn by MelloUI's own rows only)
 	Link("UnitFrames", "Buffs & Debuffs", "Look", "UIModifications.auraBorder", "Aura border", { when = { all = {
@@ -867,6 +912,7 @@ function L.Define(R, Link)
 	Link("Minimap", "Minimap", "Look", "UIModifications.shade_minimap", "UI Shade")
 	Link("BarsMeters", "XP & Reputation", "Look", "UIModifications.barBorder", "Bar border")
 	Link("BarsMeters", "Cooldown Manager", "Look", "DarkMode.keepDispelColor", "Keep dispel colours")
+	Link("BarsMeters", "Cooldown Manager", "Look", "UIModifications.cooldownBorder", "Icon border")
 	Link("BarsMeters", "Damage Meter", "Look", "UIModifications.parchment_meter", "Parchment")
 	Link("BarsMeters", "Event Widgets", "Look", "UIModifications.shade_widgets", "UI Shade")
 	Link("Chat", "Chat Frame", "Look", "UIModifications.shade_chat", "UI Shade")

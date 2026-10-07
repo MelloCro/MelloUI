@@ -108,15 +108,17 @@ local pinnedHidden = {}   -- Blizzard parts kept hidden even when the game shows
 local faded = {}          -- objects held at alpha 0 while the skin is up
 local dressed = {}        -- buttons in the skin's layout and font
 
+local fadeHooked = setmetatable({}, { __mode = "k" })   -- [object] = true: SetAlpha hooked
+local isFaded = setmetatable({}, { __mode = "k" })   -- [object] = true while held at alpha 0
 local function Fade(obj)
-	if obj and obj.SetAlpha and not obj.melloFaded then
-		obj.melloFaded = true
+	if obj and obj.SetAlpha and not isFaded[obj] then
+		isFaded[obj] = true
 		faded[obj] = true
 		obj:SetAlpha(0)
-		if not obj.melloFadeHooked then
-			obj.melloFadeHooked = true
+		if not fadeHooked[obj] then
+			fadeHooked[obj] = true
 			hooksecurefunc(obj, "SetAlpha", function(self, a)
-				if a ~= 0 and self.melloFaded and active then
+				if a ~= 0 and isFaded[self] and active then
 					self:SetAlpha(0)
 				end
 			end)
@@ -126,7 +128,7 @@ end
 
 local function Unfade()
 	for obj in pairs(faded) do
-		obj.melloFaded = nil
+		isFaded[obj] = nil
 		obj:SetAlpha(1)
 	end
 	wipe(faded)
@@ -163,14 +165,17 @@ local function PlateIndex(text)
 	return nil
 end
 
+local updateHooked = setmetatable({}, { __mode = "k" })   -- [menu button] = true: UpdateButton hooked
+local savedLook = setmetatable({}, { __mode = "k" })   -- [menu button] = its look before the skin (points, size, font)
+local isDressed = setmetatable({}, { __mode = "k" })   -- [menu button] = true: in the skin's layout and font
 local function DressButton(button)
-	if button.melloDressed then
+	if isDressed[button] then
 		return
 	end
-	button.melloDressed = true
+	isDressed[button] = true
 	dressed[button] = true
 	-- the game's look, for Deactivate
-	if not button.melloSaved then
+	if not savedLook[button] then
 		local look = { points = {}, w = button:GetWidth(), h = button:GetHeight() }
 		for i = 1, button:GetNumPoints() do
 			look.points[i] = { button:GetPoint(i) }
@@ -190,7 +195,7 @@ local function DressButton(button)
 			look.shadow = { fs0:GetShadowColor() }
 			look.shadowOffset = { fs0:GetShadowOffset() }
 		end
-		button.melloSaved = look
+		savedLook[button] = look
 	end
 	for _, key in ipairs({ "Left", "Center", "Right", "Middle" }) do
 		Fade(button[key])
@@ -205,8 +210,8 @@ local function DressButton(button)
 			end
 		end
 	end
-	if button.UpdateButton and not button.melloUpdateHooked then
-		button.melloUpdateHooked = true
+	if button.UpdateButton and not updateHooked[button] then
+		updateHooked[button] = true
 		hooksecurefunc(button, "UpdateButton", Slices)
 	end
 	for _, region in ipairs({ button:GetRegions() }) do
@@ -228,8 +233,8 @@ local function DressButton(button)
 end
 
 local function UndressButton(button)
-	local look = button.melloSaved
-	button.melloDressed = nil
+	local look = savedLook[button]
+	isDressed[button] = nil
 	dressed[button] = nil
 	if not look then
 		return
@@ -270,7 +275,7 @@ local function UndressButton(button)
 	if look.w and look.w > 0 and look.h and look.h > 0 then
 		button:SetSize(look.w, look.h)
 	end
-	button.melloSaved = nil
+	savedLook[button] = nil
 end
 
 local function Buttons()
@@ -297,7 +302,7 @@ local function Buttons()
 	-- MelloUI's own entry, once made (Core/Config.lua, at the menu's first
 	-- show with the mouse UI): a child of UIParent, never one of the menu's,
 	-- laid on its plate like the others
-	local own = _G.MelloUIGameMenuButton
+	local own = rawget(_G, "MelloUIGameMenuButton")   -- (made or not: never a stand-in for the name)
 	if own then
 		list[#list + 1] = own
 	end
@@ -446,7 +451,7 @@ local function Deactivate()
 	for button in pairs(dressed) do
 		UndressButton(button)
 	end
-	local own = _G.MelloUIGameMenuButton
+	local own = rawget(_G, "MelloUIGameMenuButton")   -- (made or not: never a stand-in for the name)
 	if own then
 		OwnStrata(own, MenuStrata())
 	end
@@ -486,3 +491,8 @@ end
 function M:OnDisable()
 	Deactivate()
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { fadeHooked = fadeHooked, isDressed = isDressed, isFaded = isFaded, savedLook = savedLook,
+	updateHooked = updateHooked }

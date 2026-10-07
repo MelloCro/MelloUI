@@ -63,7 +63,7 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "Draw the route to the waypoint on the world map, and its destination as a flag in a gold ring. A stretch where no road is known is a paler, straight guess." },
 		{ type = "toggle", key = "minimap", name = "Route On The Minimap",
 		  desc = "Draw the nearby part of the route on the minimap." },
-		{ type = "dropdown", key = "trailLook", name = "Trail Look", new = "0.19.5", values = {
+		{ type = "dropdown", key = "trailLook", name = "Trail Look", values = {
 			{ value = "beads", label = "Red Beads" },
 			{ value = "line", label = "Gilded Line" },
 			{ value = "dashes", label = "Waymarks" },
@@ -5647,7 +5647,8 @@ function TextShade.Marker()
 	s.edge = TextShade.Round(front, marker.edge, 40)
 	local Kit = MelloUI.Kit
 	local gem = marker.gem
-	local piece = Kit and Kit.Shadow and Kit.Piece and gem.kitName and Kit:Piece(gem.kitName)
+	local name = Kit and Kit.pieceNameOf and Kit.pieceNameOf[gem]
+	local piece = Kit and Kit.Shadow and Kit.Piece and name and Kit:Piece(name)
 	local w = piece and tonumber(piece.w)
 	if w and w > 0 then
 		local o = TextShade.OPTS
@@ -6193,7 +6194,10 @@ function Beacon.Art()
 		end
 		return
 	end
-	gem.kitPiece, gem.kitName = nil, nil   -- (no kit piece now: the kit's shadow partner lets it go)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.pieceOf then
+		Kit.pieceOf[gem], Kit.pieceNameOf[gem] = nil, nil   -- (no kit piece now: the kit's shadow partner lets it go)
+	end
 	gem:SetTexture(nil)
 	Beacon.FollowGem()   -- (the flag mark's disc and flag go with the painted look)
 	if not game then
@@ -6222,7 +6226,10 @@ end
 -- same look (Beacon.Tint).
 function Beacon.FlagMark()
 	local gem, W = marker.gem, MelloUI.Widgets
-	gem.kitPiece, gem.kitName = nil, nil   -- (no kit piece: no shadow partner; the disc is its own dark ground)
+	local Kit = MelloUI.Kit
+	if Kit and Kit.pieceOf then
+		Kit.pieceOf[gem], Kit.pieceNameOf[gem] = nil, nil   -- (no kit piece: no shadow partner; the disc is its own dark ground)
+	end
 	gem:SetTexture(M.TRAIL.ROUND)
 	gem:SetTexCoord(0, 1, 0, 1)
 	if W then
@@ -8007,7 +8014,10 @@ do
 			end
 			return
 		end
-		tex.kitPiece, tex.kitName = nil, nil
+		local Kit = MelloUI.Kit
+		if Kit and Kit.pieceOf then
+			Kit.pieceOf[tex], Kit.pieceNameOf[tex] = nil, nil
+		end
 		tex:SetAtlas((select(2, MelloUI.Look.Art("mapPin"))), false, nil, true)   -- (resetTexCoords: the kit gem's crop dropped)
 	end
 
@@ -8336,11 +8346,16 @@ local function AdoptSaved()
 		local saved = MelloUIRoutes
 		MergePins(saved)
 		M.flight.Adopt(saved.flights, true)   -- the flights this player timed
+		Build.saved = saved   -- (what the logout writes back when nothing else changed: Build.Save)
 		Build.Queue(function()
 			if Merge(saved) > 0 then
 				BuildDocks()
 			end
 		end)
+		local pending = Build.pending
+		if not Build.ready and pending[#pending] then
+			pending[#pending].adopt = true
+		end
 		return true
 	end
 	return false
@@ -8671,7 +8686,31 @@ do
 		builder:Hide()
 	end
 
+	-- (0.19.8) The graph never built this session and nothing walked or flown
+	-- meanwhile (the only change waiting is the saved paths' own merge): the
+	-- saved paths go back as they came, with the pins and flight times as they
+	-- are now -- what the whole build would give. It used to load the
+	-- companion's roads and build the whole graph at logout, on every /reload
+	-- (counted by the game in the reload's frame with the new login's: past
+	-- its per-addon budget, the user, 2026-10-06).
+	local function NothingLearned()
+		if Build.ready or Build.job then
+			return false
+		end
+		for _, op in ipairs(Build.pending) do
+			if op and not op.adopt then
+				return false
+			end
+		end
+		return true
+	end
+
 	function Build.Save()
+		if NothingLearned() then
+			local saved = Build.saved
+			MelloUIRoutes = { graphs = saved and saved.graphs or {}, pins = live.pins, flights = live.flights }
+			return
+		end
 		Build.Finish()
 		MelloUIRoutes = LearnedOnly()
 	end
@@ -8692,7 +8731,17 @@ local adoptTicker = nil
 local logoutFrame = CreateFrame("Frame")
 logoutFrame:RegisterEvent("PLAYER_LOGOUT")
 Perf.SetScript(logoutFrame, "OnEvent", function()
-	Build.Save()
+	local began, built, queued = debugprofilestop(), Build.ready, #Build.pending
+	local ok, err = pcall(Build.Save)
+	local P = MelloUI.Perf   -- (the module: this file's Perf is its measuring scope)
+	if P and P.LogoutStep then
+		P.LogoutStep(string.format("Route: its learned roads saved (%s; %d changes waited)%s",
+			built and "the graph built this session" or "the graph not built", queued,
+			ok and "" or (" -- failed: " .. tostring(err))), debugprofilestop() - began)
+	end
+	if not ok then
+		geterrorhandler()(err)
+	end
 end)
 
 -- A faction chosen (a Neutral character's, 0.14.0: its rows were the ones
@@ -8753,9 +8802,7 @@ function M.flight.Listen(on)
 end
 
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
-	if event == "PLAYER_LOGOUT" then
-		Build.Save()
-	elseif event == "PLAYER_ENTERING_WORLD" then
+	if event == "PLAYER_ENTERING_WORLD" then
 		last = nil
 		taxiStart = nil
 		Travel.Entered()   -- the travel time's login grace runs from the first one
@@ -8849,7 +8896,7 @@ SlashCmdList.MELLOROUTE = function(msg)
 				local okC, u1, _, _, _, _, _, u2, v2 = pcall(dot.GetTexCoord, dot)
 				local r, g, b = dot:GetVertexColor()
 				MelloUI:Print("  dot %d: tex=%s piece=%s uv=%s..%s,%s size=%.1f alpha=%.2f rgb=%.2f %.2f %.2f shown=%s layer=%s", i,
-					okT and tostring(tex) or "?", tostring(dot.kitName), okC and string.format("%.2f", u1) or "?", okC and string.format("%.2f", u2) or "?",
+					okT and tostring(tex) or "?", tostring(MelloUI.Kit and MelloUI.Kit.pieceNameOf and MelloUI.Kit.pieceNameOf[dot]), okC and string.format("%.2f", u1) or "?", okC and string.format("%.2f", u2) or "?",
 					okC and string.format("%.2f", v2) or "?", dot:GetWidth() or 0, dot:GetAlpha() or 0, r or 0, g or 0, b or 0, tostring(dot:IsShown()), tostring(dot:GetDrawLayer()))
 			end
 		end
@@ -9073,6 +9120,12 @@ function M:OnInit(db)
 	db.arrowX, db.arrowY, db.arrowScale = nil, nil, nil
 end
 
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(eventFrame, ...)
+end
+
 function M:OnEnable(db)
 	self.db = db
 	LoadBaked()
@@ -9097,7 +9150,6 @@ function M:OnEnable(db)
 		mm.ticking = true
 		Perf.SetScript(mm, "OnUpdate", MinimapTick)
 	end
-	eventFrame:RegisterEvent("PLAYER_LOGOUT")
 	eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 	pcall(eventFrame.RegisterEvent, eventFrame, "USER_WAYPOINT_UPDATED")
 	pcall(eventFrame.RegisterEvent, eventFrame, "SUPER_TRACKING_CHANGED")

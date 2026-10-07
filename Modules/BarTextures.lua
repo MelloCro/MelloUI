@@ -261,6 +261,13 @@ local function RemoveMask(bar)
 	end
 end
 
+-- a bar the kit brackets (MelloUI.Kept.bracketOf, set by the bar panels while their
+-- bracket shows; none in a world without the kit)
+local function KitBracket(bar)
+	local bracketed = MelloUI.Kit and MelloUI.Kit.bracketOf
+	return bracketed and bracketed[bar]
+end
+
 local function UpdateMask(bar)
 	local original = originals[bar]
 	local atlas = original and original.atlas
@@ -270,7 +277,7 @@ local function UpdateMask(bar)
 	end
 	-- a bar the kit brackets (UnitFramePanel) shows its fill on the whole
 	-- rect, the bracket's rails covering the edges: no shaped mask
-	if not IsPlainString(atlas) or bar.melloKitBracket then
+	if not IsPlainString(atlas) or KitBracket(bar) then
 		RemoveMask(bar)
 		return
 	end
@@ -545,7 +552,7 @@ local function CoverBar(bar)
 	-- the bar's shape: the game's own atlas as a mask (none under a kit
 	-- bracket, whose rails cover the edges)
 	local o = originals[bar]
-	local shape = not bar.melloKitBracket and o and IsPlainString(o.atlas) and o.atlas or nil
+	local shape = not KitBracket(bar) and o and IsPlainString(o.atlas) and o.atlas or nil
 	if c.shape ~= shape then
 		c.shape = shape
 		local mask = masks[bar]
@@ -665,11 +672,6 @@ function RestoreBar(bar)
 	SetDesaturated(bar, false)
 	if original.r then
 		bar:SetStatusBarColor(original.r, original.g, original.b, original.a)
-	end
-	if healthBars[bar] then
-		-- the game compares against what it last set (healthBar.r/g/b) and
-		-- only recolours on a change: forget, so its next update colours
-		bar.r, bar.g, bar.b = nil, nil, nil
 	end
 end
 
@@ -1196,14 +1198,15 @@ local function UpdateAllExecute()
 	end
 end
 
+local colourHooked = setmetatable({}, { __mode = "k" })   -- [health bar] = true: SetStatusBarColor hooked
 -- The game recolours health bars itself (threat / aggro display, reaction
 -- on nameplates): with "Colour Overrides Threat" on, the module's colour is
 -- put back right after each of those calls (user, 2026-09-21).
 HookHealthColor = function(bar)
-	if not bar or bar.melloColorHook or type(bar.SetStatusBarColor) ~= "function" then
+	if not bar or colourHooked[bar] or type(bar.SetStatusBarColor) ~= "function" then
 		return
 	end
-	bar.melloColorHook = true
+	colourHooked[bar] = true
 	-- By health follows every change of the value
 	if bar.HookScript then
 		Perf.HookScript(bar, "OnValueChanged", function(self)
@@ -1721,6 +1724,12 @@ function M:OnInit(db)
 	self.db = db
 end
 
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(eventFrame, ...)
+end
+
 function M:OnEnable(db)
 	self.db = db
 	InstallHooks()
@@ -1782,14 +1791,6 @@ function M:OnSettingChanged(key, value, db)
 			ReapplyGroup("unitframes")
 		end
 		RecolorAllHealthBars()
-		if key == "healthColor" and value == "green" then
-			-- the nameplates are the game's again: let its next update colour them
-			for bar in pairs(healthBars) do
-				if tracked[bar] == "nameplates" then
-					bar.r, bar.g, bar.b = nil, nil, nil
-				end
-			end
-		end
 	end
 end
 
@@ -1880,3 +1881,7 @@ SlashCmdList.MELLOBTDUMP = function()
 	end
 	MelloUI:ShowLog("btdump exec")
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { colourHooked = colourHooked }

@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
-## Version: 0.19.5
+## Version: 0.19.8
 ## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords, MelloUIQuestPlaces
 ## SavedVariablesPerCharacter: MelloUIFights, MelloUIQuestOffers
 ## OptionalDeps: LibSharedMedia-3.0
@@ -62,6 +62,8 @@ Modules\Kit.lua
 Modules\KitWindow.lua
 Modules\KitShade.lua
 Modules\KitMarks.lua
+Modules\KitBorders.lua
+Modules\KitBackdrop.lua
 Modules\UIModifications.lua
 Modules\DarkMode.lua
 Modules\Fonts.lua
@@ -108,6 +110,7 @@ Modules\EditModePanel.lua
 Modules\AddonListPanel.lua
 Modules\OptionsPanel.lua
 Modules\QuestDialogPanel.lua
+Modules\QuestAuto.lua
 Modules\MerchantPanel.lua
 Modules\AuctionHousePanel.lua
 Modules\TrainerPanel.lua
@@ -146,6 +149,8 @@ Modules\CastBarPanel.lua
 Modules\RaidFramePanel.lua
 Modules\HealerFrames.lua
 Modules\ActionBarPanel.lua
+Modules\ActionButtons.lua
+Modules\CooldownTweaks.lua
 Modules\BackpackPanel.lua
 Modules\BagWindow.lua
 Modules\MinimapPanel.lua

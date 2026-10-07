@@ -82,6 +82,14 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local backgroundOf = MelloUI.Kept.backgroundOf
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
+local slotStoneOf = MelloUI.Kept.slotStoneOf
 
 local M = MelloUI:RegisterModule("BankPanel", {
 	title = "Bank Kit",
@@ -213,7 +221,7 @@ local function TexturesOf(frame)
 		return list
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			list[#list + 1] = region
 		end
 	end
@@ -275,7 +283,7 @@ local function WatchBackground(f)
 	local refit = rep.Refit
 	rep.Refit = function(self)
 		refit(self)
-		if self.tex.kitBackground then
+		if backgroundOf[self.tex] then
 			self.tex.kitAlign = "top"
 			Kit:Retile(self.tex)
 		end
@@ -384,7 +392,7 @@ local function SkinBand(f)
 	-- the inner panel over the stone, inside the side and bottom rails, up to the open top
 	local inset = (nine.thickness or 0) * 0.6
 	local fill = f:CreateTexture(nil, "BACKGROUND", nil, 2)
-	fill.kitPiece = true   -- ours: never faded as the game's art
+	pieceOf[fill] = true   -- ours: never faded as the game's art
 	fill:SetPoint("TOPLEFT", nine, "TOPLEFT", inset, 0)
 	fill:SetPoint("BOTTOMRIGHT", nine, "BOTTOMRIGHT", -inset, inset)
 	Kit:Paint(fill, "innerPanel", "fill", DIM)   -- (by its key: a new palette paints it again)
@@ -526,13 +534,13 @@ local function SkinBankTab(tab)
 	done[tab] = true
 	local plate = tab.Border
 	local sel = tab.SelectedTexture
-	if not (plate and tab.Icon) or tab.melloRep ~= nil then
+	if not (plate and tab.Icon) or repOf[tab] ~= nil then
 		return
 	end
 	local rep = Replace(plate, { as = "common-sidetab", button = tab, parent = tab, rect = tab, icon = tab.Icon,
 		checked = function() return sel ~= nil and sel:IsShown() end,
 		alsoFade = List(sel, tab.GetHighlightTexture and tab:GetHighlightTexture()) })
-	tab.melloRep = rep or false
+	repOf[tab] = rep or false
 	if not rep then
 		return
 	end
@@ -752,7 +760,7 @@ local function PlaceTitle()
 		rep:Refit()
 	end
 	local text = TitleText(Window())
-	if text and not text.melloFontSaved then
+	if text and not fontSavedOf[text] then
 		Kit:TitleFont(text, true)
 	end
 end
@@ -772,7 +780,7 @@ local function PictureRect()
 		return nil
 	end
 	return string.format("left %.0f top %.0f w %.0f h %.0f, align %s, piece %s", l, b + h, w, h,
-		tostring(rep.tex and rep.tex.kitAlign), tostring(rep.tex and rep.tex.kitName))
+		tostring(rep.tex and rep.tex.kitAlign), tostring(rep.tex and pieceNameOf[rep.tex]))
 end
 
 local function CurrentPage()
@@ -1070,7 +1078,7 @@ local function FadedState(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function DumpShell(f)
@@ -1089,7 +1097,7 @@ local function DumpShell(f)
 		local medallion = tonumber(ringW) and string.format("%.0f", tonumber(ringW) * MEDALLION_TO_RING) or "?"
 		Found("portrait", portrait, string.format(" file %s, size %s x %s, medallion %s (ring %s), fitted %s, shown %s",
 			(okT and not Secret(file)) and tostring(file) or "?", w, h, medallion, ringW,
-			tostring(portrait.melloSaved ~= nil), Shown(portrait)))
+			tostring(portraitSavedOf[portrait] ~= nil), Shown(portrait)))
 	else
 		Found("portrait", nil)
 	end
@@ -1112,7 +1120,7 @@ local function DumpShell(f)
 		Found("title text", title, string.format(" text %s, face %s %s, title face %s, plate shown %s (%s)",
 			(okT and type(text) == "string" and not Secret(text)) and text or "?",
 			(okF and type(face) == "string" and not Secret(face)) and face or "?", okF and Num(size) or "?",
-			tostring(title.melloFontSaved ~= nil), plate and Shown(plate) or "no plate", on))
+			tostring(fontSavedOf[title] ~= nil), plate and Shown(plate) or "no plate", on))
 	else
 		Found("title text", nil)
 	end
@@ -1171,7 +1179,7 @@ local function DumpParts(f)
 end
 
 local function DumpTab(tab, kind)
-	local rep = tab.melloRep
+	local rep = repOf[tab]
 	local rim = rep and rep.object
 	local iw, ih = SizeOf(tab.Icon)
 	local rimW, rimH = SizeOf(rim)
@@ -1227,9 +1235,9 @@ local function DumpTabs(f)
 end
 
 local function DumpSlot(button, kind, i)
-	local rep = button.melloRep
+	local rep = repOf[button]
 	local rim = rep and rep.object
-	local stone = button.melloSlotStone and button.melloSlotStone.tex
+	local stone = slotStoneOf[button] and slotStoneOf[button].tex
 	local w, h = SizeOf(button)
 	local normal = button.GetNormalTexture and button:GetNormalTexture()
 	Found(string.format("%s %d", kind, i), button, string.format(" %sx%s, rim %s, empty (Item Background shown) %s, quality border %s, slot picture %s, slot frame %s%s",
@@ -1262,7 +1270,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			local okT, text = pcall(region.GetText, region)
 			art = "text: " .. ((okT and type(text) == "string" and not Secret(text)) and text:sub(1, 40) or "?")
@@ -1274,7 +1282,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (dressed)" or "")
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 

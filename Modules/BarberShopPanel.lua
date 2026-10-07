@@ -65,6 +65,9 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("BarberShopPanel", {
 	title = "Barber Shop Kit",
@@ -262,8 +265,8 @@ local function SkinArrow(button, key)
 		return
 	end
 	local rep = Replace(region, { as = key, button = button, rect = button, alsoFade = extra })
-	if button.melloRep == nil then
-		button.melloRep = rep or false
+	if repOf[button] == nil then
+		repOf[button] = rep or false
 	end
 	if not rep then
 		return
@@ -297,16 +300,16 @@ local function SkinOption(opt)
 	end
 	done[opt] = true
 	local dd = opt.Dropdown
-	if dd and dd.Background and dd.melloRep == nil then
-		dd.melloRep = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
-		if dd.melloRep then
+	if dd and dd.Background and repOf[dd] == nil then
+		repOf[dd] = Replace(dd.Background, { as = "common-dropdown-textholder", rect = dd, button = dd, alsoFade = List(dd.Arrow) }) or false
+		if repOf[dd] then
 			stats.dropdowns = stats.dropdowns + 1
 		end
 	end
 	SkinArrow(opt.DecrementButton, ARROW_PREV)
 	SkinArrow(opt.IncrementButton, ARROW_NEXT)
 	local cb = opt.Button
-	if cb and cb.GetCheckedTexture and cb.melloRep == nil then
+	if cb and cb.GetCheckedTexture and repOf[cb] == nil then
 		if Kit:SkinCheckButton(cb, Replace, CheckKey(cb)) then
 			stats.checks = stats.checks + 1
 		end
@@ -354,8 +357,8 @@ local function SkinRing(b)
 			return ok and not Secret(c) and c and true or false
 		end,
 		alsoFade = List(b.CheckedTexture) })
-	if b.melloRep == nil then
-		b.melloRep = rep or false
+	if repOf[b] == nil then
+		repOf[b] = rep or false
 	end
 	if rep then
 		stats.rings = stats.rings + 1
@@ -386,7 +389,7 @@ local function SkinBox(panel, name)
 	local frame = panel.Frame
 	local fade = {}
 	for _, region in ipairs({ panel:GetRegions() }) do
-		if region ~= frame and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region ~= frame and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local key = Kit:ArtKey(region)
 			if region == panel.Backdrop or (type(key) == "string" and key:find("^heavybronze")) then
 				fade[#fade + 1] = region
@@ -421,8 +424,8 @@ local function SkinCog(b)
 		return
 	end
 	local rep = Replace(normal, { as = "UI-SquareButton-Up", button = b, alsoFade = List(b.GetPushedTexture and b:GetPushedTexture()) })
-	if b.melloRep == nil then
-		b.melloRep = rep or false
+	if repOf[b] == nil then
+		repOf[b] = rep or false
 	end
 	if rep then
 		stats.cogs = stats.cogs + 1
@@ -470,16 +473,19 @@ local function Build()
 	-- Accept / Cancel / Reset: the red plates (the 128-RedButton three-slice
 	-- keyed on its Center; the game re-atlases it with the state)
 	local n = 0
+	local QI = MelloUI.QuestInk
 	for _, key in ipairs(BUTTONS) do
 		local b = f[key]
 		if b and Kit:SkinRedButton(b, Replace) then
 			n = n + 1
-			b.melloNoInk = true
+			if QI then
+				QI.noInk[b] = true
+			end
 		end
 	end
 	stats.buttons = n
 	local sd = f.SDToggleButton
-	if sd and sd.melloRep == nil and Kit:SkinCheckButton(sd, Replace, CheckKey(sd)) then
+	if sd and repOf[sd] == nil and Kit:SkinCheckButton(sd, Replace, CheckKey(sd)) then
 		stats.checks = stats.checks + 1
 	end
 
@@ -702,7 +708,7 @@ local function Rect(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function Enabled(b)
@@ -719,7 +725,7 @@ local function DumpRings(label, holder)
 	for _, child in ipairs({ holder:GetChildren() }) do
 		if child.Ring then
 			n = n + 1
-			if child.melloRep then
+			if repOf[child] then
 				dressed = dressed + 1
 			end
 		end

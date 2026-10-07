@@ -21,6 +21,8 @@ ring recolours those gems alone).
   marks/orb_<metal>             buttons/orb_normal in a metal
   marks/cap_<family>_<metal>    a Nameplate Border family's left cap (bars/<family>_cap_l) in a metal (named
                                 apart from the strips' parts: a whole piece a strip's cap wears, never a strip)
+  marks/<ring>_<kind>           (0.19.6) a border library ring (rings/r1, rings/r3) as marks/ring_<kind> is the
+                                portrait ring: the Portrait Ring choice (UnitFramePanel), no compass gems
   marks/crest_<kind>            the crest alone: a nameplate's, before the name (every kind's the same square
                                 size, the rare elite's too)
   marks/orb_disc                a white disc that fits inside the orb's ring (tinted with the palette's inner
@@ -38,6 +40,8 @@ from PIL import Image, ImageDraw
 import kit_gems
 
 KINDS = ("elite", "rare", "rareelite", "boss")
+# (0.19.6) the border library's rings (rings/<id>, Tools/make_newui2_borders.py) that can be the portrait ring
+RINGS = ("r1", "r3")
 METAL_OF = {"elite": "gold", "rare": "silver", "rareelite": "silver", "boss": "boss"}
 METALS = ("gold", "silver", "boss")
 # the Nameplate Border families whose left cap gets a metal twin (Kit.buttonLooks.barBorders)
@@ -276,13 +280,14 @@ def crest(orb, kind, size=CREST_SIZE):
     return c.done()
 
 
-def ring(ring_piece, orb, kind, open_top):
+def ring(ring_piece, orb, kind, open_top, gems=True):
     """window/portrait_ring (as build_kit made it) in the kind's metal with the crest on its top gem: the crest
     from the canvas' top edge to a little past the ring's inner bevel (`open_top`, the opening's first row;
     the portrait's medallion runs under the bevel there, as in the sketch), on the same canvas, so the ring's
     geometry is the plain ring's (the approved sketch's style B)."""
     metal = METAL_OF[kind]
-    keep = kit_gems.gem_mask("window/portrait_ring", ring_piece)   # the compass gems as the plain ring has them
+    # the compass gems as the plain ring has them (a library ring, rings/r1 / r3: no gems, its studs in the metal)
+    keep = kit_gems.gem_mask("window/portrait_ring", ring_piece) if gems else None
     a = recolour(ring_piece, metal, keep)
     h, w = a.shape[:2]
     cx = (w - 1) / 2.0 + 0.5
@@ -441,7 +446,8 @@ def top_pieces(orb):
 
 def bases():
     """The finished pieces the marks are made from (build_kit.py keeps them as it makes them)."""
-    return {"window/portrait_ring", "buttons/orb_normal"} | {"bars/%s_cap_l" % f for f in CAP_FAMILIES}
+    return ({"window/portrait_ring", "buttons/orb_normal"} | {"bars/%s_cap_l" % f for f in CAP_FAMILIES}
+            | {"rings/" + r for r in RINGS})
 
 
 def pieces(made, layout):
@@ -454,6 +460,13 @@ def pieces(made, layout):
     for kind in KINDS:
         out.append(("marks/ring_" + kind, ring(ring_piece, orb, kind, open_top), "window/portrait_ring"))
         out.append(("marks/crest_" + kind, crest(orb, kind), None))
+        # (0.19.6, border stage 4) the border library's rings as the portrait ring: the same twins, named apart
+        # from the gem ring's (marks/<ring>_<kind>: a metal, never recoloured, its shadow the plain ring's)
+        for r in RINGS:
+            base = "rings/" + r
+            if base in made:
+                out.append(("marks/%s_%s" % (r, kind), ring(made[base], orb, kind, layout[base]["open"][1], gems=False),
+                            base))
     for metal in METALS:
         out.append(("marks/orb_" + metal, recolour(orb, metal), "buttons/orb_normal"))
         for family in CAP_FAMILIES:

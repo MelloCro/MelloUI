@@ -42,6 +42,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("AddonListPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("AddonListPanel", {
 	title = "AddOn List Kit",
@@ -168,7 +171,7 @@ local function RowHighlights(row)
 		list[1], seen[hl] = hl, true
 	end
 	for _, region in ipairs({ row:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and not seen[region] then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and not seen[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "HIGHLIGHT" then
 				list[#list + 1], seen[region] = region, true
@@ -183,7 +186,7 @@ end
 -- (parts.partial: W.FlatState paints it mutedText), the kit's own art
 -- desaturated
 local function SyncPartial(cb)
-	local rep = cb.melloRep
+	local rep = repOf[cb]
 	if rep and rep.flat then
 		rep.flat.partial = (active and partial[cb] == true) or nil
 		rep:SetState()
@@ -236,8 +239,8 @@ local function SkinRowCheck(cb, st)
 			p = ok and not Secret(d) and d == true
 		end
 		partial[b] = p or nil
-		if b.melloRep then
-			KeepFaded(b.melloRep, b:GetCheckedTexture())
+		if repOf[b] then
+			KeepFaded(repOf[b], b:GetCheckedTexture())
 		end
 		SyncPartial(b)
 	end
@@ -294,7 +297,7 @@ local function SyncToggle(button)
 		toggleReps[button] = reps
 		local extra = {}
 		for _, region in ipairs({ button:GetRegions() }) do
-			if region ~= tex and region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region ~= tex and region:GetObjectType() == "Texture" and not pieceOf[region] then
 				extra[#extra + 1] = region
 			end
 		end
@@ -564,14 +567,14 @@ local function SkinOldDropdowns(root, depth)
 	end
 	for _, child in ipairs({ root:GetChildren() }) do
 		if child.Middle and child.Left and child.Right and child.Button and child.Text and child:GetObjectType() == "Frame"
-			and child.melloRep == nil then
+			and repOf[child] == nil then
 			local extra = { child.Left, child.Right }
 			for _, region in ipairs({ child.Button:GetRegions() }) do
 				if region:GetObjectType() == "Texture" then
 					extra[#extra + 1] = region
 				end
 			end
-			child.melloRep = Replace(child.Middle, { as = "UIDropDownMenu", rect = child, fitHeight = 24, alsoFade = extra }) or false
+			repOf[child] = Replace(child.Middle, { as = "UIDropDownMenu", rect = child, fitHeight = 24, alsoFade = extra }) or false
 			found.dropdowns[#found.dropdowns + 1] = child
 		elseif not (child.ForEachFrame and child.ScrollTarget) then
 			SkinOldDropdowns(child, depth + 1)
@@ -584,7 +587,7 @@ end
 -- line), not by a key: among the window's own regions and its plain frames',
 -- never inside its border, title, inset, list, scroll bar or controls.
 local function DividerCandidate(region)
-	if region:GetObjectType() ~= "Texture" or region.kitPiece then
+	if region:GetObjectType() ~= "Texture" or pieceOf[region] then
 		return false
 	end
 	local okL, layer = pcall(region.GetDrawLayer, region)
@@ -683,7 +686,7 @@ local function Build()
 		-- -- the inset stands a level above the list here, and its stone,
 		-- at the inset's level, hid every row): the stone one level under
 		-- the list
-		local rep = al.Inset.melloRep
+		local rep = repOf[al.Inset]
 		local list = ListBox(al)
 		if rep and rep.object and rep.object.SetFrameLevel and list then
 			local okL, listLevel = pcall(list.GetFrameLevel, list)
@@ -880,7 +883,7 @@ local function DumpRow(row, elementData, n)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local what = ""
 		if kind == "Texture" then
-			what = "art=" .. tostring(Kit:ArtKey(region)) .. (region.kitPiece and " (kit)" or "")
+			what = "art=" .. tostring(Kit:ArtKey(region)) .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			local ok, text = pcall(region.GetText, region)
 			what = "text=" .. ((ok and type(text) == "string" and not Secret(text)) and text:gsub("|", "||"):sub(1, 70) or "?")
@@ -889,7 +892,7 @@ local function DumpRow(row, elementData, n)
 	end
 	for _, child in ipairs({ row:GetChildren() }) do
 		local normal = child.GetNormalTexture and child:GetNormalTexture()
-		local skinned = (child.melloRep ~= nil and child.melloRep ~= false) or toggleReps[child] ~= nil
+		local skinned = (repOf[child] ~= nil and repOf[child] ~= false) or toggleReps[child] ~= nil
 		MelloUI:Print("   child %s key=%s %s level %s shown %s normal=%s icon=%s kit=%s partial=%s", child:GetObjectType(),
 			tostring(KeyOf(row, child)), SizeText(child), LevelText(child), tostring(child:IsShown()), tostring(normal and Kit:ArtKey(normal)),
 			tostring(child.Icon and Kit:ArtKey(child.Icon)), tostring(skinned), tostring(partial[child] == true))
@@ -906,8 +909,8 @@ local function DumpSummary(al)
 		"ScrollBar", "SearchBox", "Dropdown", "ForceLoad", "EnableAllButton", "DisableAllButton", "OkayButton", "CancelButton", "Performance" }) do
 		local obj = al[key]
 		local state = ""
-		if obj and obj.melloRep ~= nil then
-			state = " skinned " .. tostring(obj.melloRep ~= false)
+		if obj and repOf[obj] ~= nil then
+			state = " skinned " .. tostring(repOf[obj] ~= false)
 		end
 		MelloUI:Print("  .%-18s %s", key, obj and (obj:GetObjectType() .. " " .. SizeText(obj) .. state) or "-")
 	end

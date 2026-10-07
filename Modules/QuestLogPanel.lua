@@ -27,6 +27,13 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("QuestLogPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local headerPlateOf = MelloUI.Kept.headerPlateOf
+local kitHookedOf = MelloUI.Kept.kitHookedOf
+local pieceNameOf = MelloUI.Kept.pieceNameOf
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
+local stateIconsOf = MelloUI.Kept.stateIconsOf
 
 local M = MelloUI:RegisterModule("QuestLogPanel", {
 	title = "Quest Log Panel",
@@ -139,20 +146,20 @@ end
 -- kit tick box on its tracking check box (a Frame: the tick square, the
 -- CheckMark the game shows / hides, a hover copy).
 local function SkinTitle(button)
-	if button.melloRep ~= nil then
+	if repOf[button] ~= nil then
 		return
 	end
-	button.melloRep = false
+	repOf[button] = false
 	if button.HighlightTexture then
 		local rep = HoverPlate(button.HighlightTexture, button.HighlightTexture)
-		button.melloRep = rep or false
+		repOf[button] = rep or false
 		Follow(rep, button.HighlightTexture)
 	end
 	local cb = button.Checkbox
 	if cb and cb.CheckMark then
 		local tick, extra = nil, { cb.CheckMark }
 		for _, region in ipairs({ cb:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and region ~= cb.CheckMark and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and region ~= cb.CheckMark and not pieceOf[region] then
 				if not tick and region:GetDrawLayer() ~= "HIGHLIGHT" then
 					tick = region
 				else
@@ -192,11 +199,11 @@ end
 -- A header (QuestLogHeaderTemplate = ListHeaderVisualTemplate): the category
 -- plate on its normal texture, the +/- glyph on its collapse button.
 local function SkinHeader(button)
-	if button.melloRep == nil then
-		button.melloRep = false
+	if repOf[button] == nil then
+		repOf[button] = false
 		local normal = button.GetNormalTexture and button:GetNormalTexture()
 		if normal then
-			button.melloRep = HeaderPlate(button, normal, button.GetHighlightTexture and button:GetHighlightTexture())
+			repOf[button] = HeaderPlate(button, normal, button.GetHighlightTexture and button:GetHighlightTexture())
 		end
 		local collapse = button.CollapseButton
 		if collapse and collapse.UpdateCollapsedState then
@@ -240,6 +247,7 @@ local function ObjectiveRole(r)
 	return (r and r < 0.8) and "faded" or "text"
 end
 
+local pipsOf = setmetatable({}, { __mode = "k" })   -- [title] = its pips (QI.Pips)
 -- One title's ink and pips, one objective's ink (the game's look back while
 -- the skin is off). The log's rows are the one quest row the Quests panel
 -- lays too (QuestInk's Quest rows): the same fonts on the title and the line
@@ -255,21 +263,21 @@ local function InkTitle(QI, title)
 		local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
 		QI.RowFonts(fs, nil)
 		QI.Ink(fs, tier == 1 and "faded" or "title")
-		title.melloPips = title.melloPips or QI.Pips(title, QI.ROW.pipsSize)
+		pipsOf[title] = pipsOf[title] or QI.Pips(title, QI.ROW.pipsSize)
 		if title.Checkbox then
-			QI.RowPips(title.melloPips, title.Checkbox)
+			QI.RowPips(pipsOf[title], title.Checkbox)
 		else
-			title.melloPips:ClearAllPoints()
-			title.melloPips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
+			pipsOf[title]:ClearAllPoints()
+			pipsOf[title]:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
 		end
-		title.melloPips:SetTier(tier)
+		pipsOf[title]:SetTier(tier)
 	else
 		QI.Plain(fs)
-		if fs.melloColourWatched then
+		if QI.colourWatched[fs] then
 			fs:SetTextColor(QI.GameColour(fs))
 		end
-		if title.melloPips then
-			title.melloPips:SetTier(nil)
+		if pipsOf[title] then
+			pipsOf[title]:SetTier(nil)
 		end
 	end
 end
@@ -467,7 +475,7 @@ local function SkinList()
 	end
 	local QI = MelloUI.QuestInk
 	for title in sf.titleFramePool:EnumerateActive() do
-		if top ~= true and (title.melloRep == nil or (title.Text and not title.melloPips)) and not InView(title, top, bottom) then
+		if top ~= true and (repOf[title] == nil or (title.Text and not pipsOf[title])) and not InView(title, top, bottom) then
 			Wait(title, "title")
 		else
 			waitingKind[title] = nil
@@ -478,7 +486,7 @@ local function SkinList()
 		end
 	end
 	for header in sf.headerFramePool:EnumerateActive() do
-		if top ~= true and header.melloRep == nil and not InView(header, top, bottom) then
+		if top ~= true and repOf[header] == nil and not InView(header, top, bottom) then
 			Wait(header, "header")
 		else
 			waitingKind[header] = nil
@@ -488,7 +496,7 @@ local function SkinList()
 	if top ~= true and sf.objectiveFramePool then
 		for objective in sf.objectiveFramePool:EnumerateActive() do
 			local fs = objective.Text
-			if fs and not fs.melloColourWatched and not InView(objective, top, bottom) then
+			if fs and not QI.colourWatched[fs] and not InView(objective, top, bottom) then
 				Wait(objective, "objective")
 			else
 				waitingKind[objective] = nil
@@ -530,28 +538,31 @@ local PIN_PIECES = {
 }
 local pinTextures = {}
 
+local pinApply = setmetatable({}, { __mode = "k" })   -- [pin texture] = its Apply
+local pinAtlas = setmetatable({}, { __mode = "k" })   -- [pin texture] = the atlas the game gave it
+local pinHooked = setmetatable({}, { __mode = "k" })   -- [pin texture] = true: SetAtlas hooked
 -- `tex` shows the kit piece for its current atlas while the skin is on; the
 -- atlas is remembered and put back by RestorePins.
 local function SkinPinTexture(tex)
-	if not tex or tex.melloPinHooked then
+	if not tex or pinHooked[tex] then
 		return
 	end
-	tex.melloPinHooked = true
+	pinHooked[tex] = true
 	pinTextures[#pinTextures + 1] = tex
 	local function Apply()
-		local atlas = tex.melloAtlas
+		local atlas = pinAtlas[tex]
 		local piece = atlas and PIN_PIECES[atlas]
 		if active and piece and Kit:Piece(piece) then
 			Kit:Apply(tex, piece)          -- after every SetAtlas: the game's call replaced our file
-		elseif tex.kitPiece and atlas then
-			tex.kitPiece, tex.kitName = nil, nil
+		elseif pieceOf[tex] and atlas then
+			pieceOf[tex], pieceNameOf[tex] = nil, nil
 			tex:SetAtlas(atlas)
 		end
 	end
-	tex.melloAtlas = Kit:ArtKey(tex)
-	tex.melloPinApply = Apply
+	pinAtlas[tex] = Kit:ArtKey(tex)
+	pinApply[tex] = Apply
 	hooksecurefunc(tex, "SetAtlas", function(t, atlas)
-		t.melloAtlas = atlas
+		pinAtlas[t] = atlas
 		Apply()
 	end)
 	Apply()
@@ -564,7 +575,7 @@ end
 
 local function RefreshPins()
 	for _, tex in ipairs(pinTextures) do
-		tex.melloPinApply()
+		pinApply[tex]()
 	end
 end
 
@@ -599,18 +610,21 @@ local function MouseOver(b)
 	return ok and over == true
 end
 
+local locked = setmetatable({}, { __mode = "k" })   -- [row button] = true while its highlight is locked
+local isHeaderRow = setmetatable({}, { __mode = "k" })   -- [row button] = true: a header
+local rowPlateOf = setmetatable({}, { __mode = "k" })   -- [row button] = its hover plate (false: none)
 -- The hover looks follow the mouse: a quest row's plate (the quest log's
 -- own, HoverPlate), a header's plate in its lighter hover state. A header
 -- the panel lights while it reveals a group (LockHighlight) keeps that look
 -- too: the game's highlight is faded under the kit, so the lock showed
 -- nothing but the pulse.
 local function QuestListHover(b, over)
-	if b.melloRow then
-		b.melloRow:SetShown(active and over and not b.melloIsHeader)
+	if rowPlateOf[b] then
+		rowPlateOf[b]:SetShown(active and over and not isHeaderRow[b])
 	end
-	local h = b.melloHeader
+	local h = headerPlateOf[b]
 	if h and h.Update then
-		h.hover = (over or b.melloLocked) and true or nil
+		h.hover = (over or locked[b]) and true or nil
 		if not over then
 			h.pressed = nil
 		end
@@ -624,68 +638,70 @@ end
 -- a group keeps that look when the mouse leaves it -- this runs after those
 -- hooks (hooked once, right after them, with the plate).
 local KeepLockLit = Perf.Shared("Quests panel: a revealed header kept lit", function(b)
-	local h = b.melloHeader
-	if b.melloLocked and h and h.Update then
+	local h = headerPlateOf[b]
+	if locked[b] and h and h.Update then
 		h.hover = true
 		h.Update()
 	end
 end, "script")
 
+local lockHooked = setmetatable({}, { __mode = "k" })   -- [row button] = true: LockHighlight hooked
 local function SkinQuestListEntry(button)
 	-- a header or a row: told apart after its Init by the normal texture
 	local normal = button:GetNormalTexture()
 	local highlight = button:GetHighlightTexture()
 	local isHeader = normal and Kit:ArtKey(normal) == "common-button-list-collapseExpand"
-	if isHeader and not button.melloHeader then
-		button.melloHeader = HeaderPlate(button, normal, highlight, button.plateArea)
-		if button.melloHeader then
+	if isHeader and not headerPlateOf[button] then
+		headerPlateOf[button] = HeaderPlate(button, normal, highlight, button.plateArea)
+		if headerPlateOf[button] then
 			-- refitted when shown, as the hover plate: a width set while the
 			-- button served as a quest row reaches the header's plate too
-			button.melloHeader.SetShown = ShowPlate
+			headerPlateOf[button].SetShown = ShowPlate
 			Perf.HookScript(button, "OnLeave", KeepLockLit)
 		end
 	end
-	if not button.melloRow and button.melloBand then
+	local band = MelloUI.QuestInk and MelloUI.QuestInk.bandOf[button]
+	if not rowPlateOf[button] and band then
 		-- a row's hover: the quest log's hover plate on the row's hover band
 		-- (QuestInk's QI.RowBand: the title's line, 4 px over and under it,
 		-- across the row -- the rect the log's own plate has), under the
 		-- text, shown while the mouse is on the row; the band itself faded
 		-- (a row has no highlight of its own: the Quests panel clears it)
-		button.melloRow = HoverPlate(button.melloBand, button.melloBand) or false
-		if button.melloRow then
-			button.melloRow:SetShown(false)
+		rowPlateOf[button] = HoverPlate(band, band) or false
+		if rowPlateOf[button] then
+			rowPlateOf[button]:SetShown(false)
 		end
 	end
 	if isHeader then
-		KeepFaded(button.melloHeader, normal)
-		KeepFaded(button.melloHeader, highlight)
+		KeepFaded(headerPlateOf[button], normal)
+		KeepFaded(headerPlateOf[button], highlight)
 	end
 	-- (the hover itself: the panel's OnRowHover, SkinQuestList below)
-	if not button.melloLockHooked then
-		button.melloLockHooked = true
+	if not lockHooked[button] then
+		lockHooked[button] = true
 		hooksecurefunc(button, "LockHighlight", function(b)
-			b.melloLocked = true
+			locked[b] = true
 			QuestListHover(b, true)
 		end)
 		hooksecurefunc(button, "UnlockHighlight", function(b)
-			b.melloLocked = nil
+			locked[b] = nil
 			QuestListHover(b, MouseOver(b))
 		end)
 	end
 	if button.pin then
 		SkinPinTexture(button.pin)      -- the tracked quest's pin: the gem (I7)
 	end
-	button.melloIsHeader = isHeader
-	if button.melloHeader then
-		button.melloHeader:SetShown(isHeader and true or false)
+	isHeaderRow[button] = isHeader
+	if headerPlateOf[button] then
+		headerPlateOf[button]:SetShown(isHeader and true or false)
 	end
 	-- a row re-used under the mouse keeps its plate (fitted to its new
 	-- height), a row re-used elsewhere drops it
 	QuestListHover(button, MouseOver(button))
 	if isHeader and button.plus then
 		Kit:StateIconReps(button, button.plus, button, Replace)
-	elseif button.melloIcons then
-		for _, rep in pairs(button.melloIcons) do
+	elseif stateIconsOf[button] then
+		for _, rep in pairs(stateIconsOf[button]) do
 			if rep then
 				rep:SetShown(false)
 			end
@@ -696,10 +712,10 @@ end
 local function SkinQuestList()
 	local ql = ns.QuestList
 	local frame = ql and ql.Panel and ql.Panel.frame
-	if not frame or frame.melloKitHooked then
+	if not frame or kitHookedOf[frame] then
 		return
 	end
-	frame.melloKitHooked = true
+	kitHookedOf[frame] = true
 	-- the page dressed as the log's column it lies on (BuildSkin's quest log
 	-- side panel, below): its page, its border, the search box, the gear
 	if frame.bg then
@@ -720,7 +736,7 @@ local function SkinQuestList()
 	-- the group dropdown: the dropdown plate (D1), as every text dropdown's
 	local group = frame.group
 	if group and group.Background then
-		group.melloRep = Replace(group.Background, { as = "common-dropdown-textholder", rect = group, button = group,
+		repOf[group] = Replace(group.Background, { as = "common-dropdown-textholder", rect = group, button = group,
 			alsoFade = { group.Arrow } }) or false
 	end
 	-- the switch on the count box: the list's plain plate (F7), hover from
@@ -730,7 +746,7 @@ local function SkinQuestList()
 		local extra = { b.Left, b.Right }
 		for _, region in ipairs({ b:GetRegions() }) do
 			if region:GetObjectType() == "Texture" and region ~= b.Middle and region ~= b.Left and region ~= b.Right
-				and not region.kitPiece and region:GetDrawLayer() == "HIGHLIGHT" then
+				and not pieceOf[region] and region:GetDrawLayer() == "HIGHLIGHT" then
 				extra[#extra + 1] = region
 			end
 		end
@@ -854,8 +870,8 @@ function M:RefreshFollowers()
 	local sb = ql and ql.Panel and ql.Panel.frame and ql.Panel.frame.scrollBox
 	if sb and sb.ForEachFrame then
 		sb:ForEachFrame(function(b)
-			if b.melloHeader then
-				b.melloHeader:SetShown(b.melloIsHeader and true or false)
+			if headerPlateOf[b] then
+				headerPlateOf[b]:SetShown(isHeaderRow[b] and true or false)
 			end
 			QuestListHover(b, MouseOver(b))
 		end)
@@ -998,3 +1014,8 @@ SlashCmdList.MELLOQLDUMP = function(msg)
 	end
 	MelloUI:ShowLog("qldump " .. (msg or ""))
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { isHeaderRow = isHeaderRow, lockHooked = lockHooked, locked = locked, pinApply = pinApply,
+	pinAtlas = pinAtlas, pinHooked = pinHooked, pipsOf = pipsOf, rowPlateOf = rowPlateOf }

@@ -36,6 +36,9 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("ChatPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local repOf = MelloUI.Kept.repOf
+local steadyingOf = MelloUI.Kept.steadyingOf
 
 local M = MelloUI:RegisterModule("ChatPanel", {
 	title = "Chat Panel Kit",
@@ -290,18 +293,20 @@ function shade.ColumnMoved(cf)
 	end
 end
 
+local alphaing = setmetatable({}, { __mode = "k" })   -- [chat frame] = true while its alpha is put back here
+local fadeHeld = setmetatable({}, { __mode = "k" })   -- [chat frame] = true: SetAlpha hooked
 local function NoFade(frame)
-	if not frame or frame.melloNoFade then
+	if not frame or fadeHeld[frame] then
 		return
 	end
-	frame.melloNoFade = true
+	fadeHeld[frame] = true
 	hooksecurefunc(frame, "SetAlpha", function(f, a)
 		-- (0.17.0: the Fader's fade of the chat's line is not undone here)
 		local Fader = MelloUI.Fader
-		if active and a ~= 1 and not f.melloAlphaing and not (Fader and Fader:Holds(f)) then
-			f.melloAlphaing = true
+		if active and a ~= 1 and not alphaing[f] and not (Fader and Fader:Holds(f)) then
+			alphaing[f] = true
 			f:SetAlpha(1)
-			f.melloAlphaing = nil
+			alphaing[f] = nil
 		end
 	end)
 	skin.noFade[#skin.noFade + 1] = frame
@@ -343,12 +348,12 @@ local function BackdropRect(cf, background)
 end
 
 local function StoneBackground(cf, background, frame)
-	if not background or background.melloRep ~= nil then
+	if not background or repOf[background] ~= nil then
 		return
 	end
 	local rect = frame == cf and BackdropRect(cf, background) or background
 	local rep = Replace(background, { as = "ChatFrameBody", rect = rect, parent = frame })
-	background.melloRep = rep or false
+	repOf[background] = rep or false
 	if not (rep and rep.tex) then
 		return
 	end
@@ -511,7 +516,7 @@ end
 local function SkinBordered(frame, prefix, cf)
 	local background = _G[prefix .. "Background"]
 	local corner = _G[prefix .. "TopLeftTexture"]
-	if not (background and corner) or corner.melloRep ~= nil then
+	if not (background and corner) or repOf[corner] ~= nil then
 		return
 	end
 	local others = {}
@@ -519,7 +524,7 @@ local function SkinBordered(frame, prefix, cf)
 		others[#others + 1] = _G[prefix .. BORDER_PIECES[i]]
 	end
 	local rep = Replace(corner, { as = "ChatFrameBorder", rect = frame == cf and BackdropRect(cf, background) or background, parent = frame, alsoFade = others })
-	corner.melloRep = rep or false
+	repOf[corner] = rep or false
 	if rep then
 		Border.Add(frame, rep)
 	end
@@ -652,10 +657,10 @@ end
 -- (`cf`: the window the tab stands on; nil for a minimized window's card,
 -- standing alone)
 local function SkinTab(tab, cf)
-	if not (tab and tab.Left and tab.Middle and tab.Right) or tab.melloRep ~= nil then
+	if not (tab and tab.Left and tab.Middle and tab.Right) or repOf[tab] ~= nil then
 		return
 	end
-	tab.melloRep = false
+	repOf[tab] = false
 	local sizer = CreateFrame("Frame", nil, tab)
 	sizer:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, -TAB_TOP_INSET)
 	sizer:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", 0, 0)
@@ -666,7 +671,7 @@ local function SkinTab(tab, cf)
 		open = Replace(tab.ActiveLeft, { as = "uiframe-activetab-left", rect = sizer, parent = tab,
 			alsoFade = { tab.ActiveMiddle, tab.ActiveRight } })
 	end
-	tab.melloRep = plain or open or false
+	repOf[tab] = plain or open or false
 	if open then
 		local function Follow()
 			if active then
@@ -690,12 +695,12 @@ local function SkinTab(tab, cf)
 	local text = tab.Text or (tab.GetFontString and tab:GetFontString())
 	if text and (plain or open) then
 		local function Steady()
-			if tab.melloSteadying or not active then
+			if steadyingOf[tab] or not active then
 				return
 			end
-			tab.melloSteadying = true
+			steadyingOf[tab] = true
 			text:SetPoint("CENTER", sizer, "CENTER", 0, 0)
-			tab.melloSteadying = nil
+			steadyingOf[tab] = nil
 		end
 		hooksecurefunc(text, "SetPoint", Steady)
 		local rep = plain or open
@@ -720,7 +725,7 @@ end
 -- A small icon button (menu, channel, voice, minimize, maximize): the cog
 -- plate under the game's glyph.
 local function SkinIconButton(button)
-	if not (button and button.GetNormalTexture and button:GetNormalTexture()) or button.melloRep ~= nil then
+	if not (button and button.GetNormalTexture and button:GetNormalTexture()) or repOf[button] ~= nil then
 		return
 	end
 	local normal = button:GetNormalTexture()
@@ -728,10 +733,10 @@ local function SkinIconButton(button)
 		-- the channel button: its normal texture IS a plate (the round
 		-- `chatframe-button-up` atlas) with the glyph on `Icon`; the plate is
 		-- replaced by the cog on its rect, its pushed / highlight art faded
-		button.melloRep = Replace(normal, { button = button,
+		repOf[button] = Replace(normal, { button = button,
 			alsoFade = { button.GetPushedTexture and button:GetPushedTexture(), button.GetHighlightTexture and button:GetHighlightTexture() } }) or false
 	else
-		button.melloRep = Replace(normal, { as = "ChatIconButton", button = button, noFade = true }) or false
+		repOf[button] = Replace(normal, { as = "ChatIconButton", button = button, noFade = true }) or false
 	end
 end
 
@@ -754,7 +759,7 @@ local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 -- one"). The game never shows or hides them itself, so they are hidden while
 -- ours shows and shown again with the game's look: one write each, no fight.
 local function SkinColumnButton(button, art, glyph, fade, count, hidden)
-	if not (button and art) or button.melloRep ~= nil then
+	if not (button and art) or repOf[button] ~= nil then
 		return
 	end
 	local W = MelloUI.Widgets
@@ -785,7 +790,7 @@ local function SkinColumnButton(button, art, glyph, fade, count, hidden)
 	end
 	Ours(false)
 	local rep = Replace(art, { as = "ChatColumnButton", button = button, rect = rect, icon = icon, alsoFade = fade })
-	button.melloRep = rep or false
+	repOf[button] = rep or false
 	if not rep then
 		return
 	end
@@ -806,26 +811,27 @@ local function SkinColumnButton(button, art, glyph, fade, count, hidden)
 end
 
 local function SkinEditBox(edit)
-	if not edit or edit.melloRep ~= nil then
+	if not edit or repOf[edit] ~= nil then
 		return
 	end
 	local name = edit:GetName()
 	local mid = name and _G[name .. "Mid"]
 	if not mid then
-		edit.melloRep = false
+		repOf[edit] = false
 		return
 	end
 	-- the edit field: the flat one (0.19.1, the Configurator's search box
 	-- look; no shade, as the Configurator's)
-	edit.melloRep = Replace(mid, { as = "UI-ChatInputBorder-Mid2", rect = edit, parent = edit, edit = edit,
+	repOf[edit] = Replace(mid, { as = "UI-ChatInputBorder-Mid2", rect = edit, parent = edit, edit = edit,
 		alsoFade = { _G[name .. "Left"], _G[name .. "Right"], edit.focusLeft, edit.focusMid, edit.focusRight } }) or false
 end
 
+local chatSkinned = setmetatable({}, { __mode = "k" })   -- [chat frame] = true: dressed
 local function SkinChatFrame(cf)
-	if not cf or cf.melloChatSkinned then
+	if not cf or chatSkinned[cf] then
 		return
 	end
-	cf.melloChatSkinned = true
+	chatSkinned[cf] = true
 	local name = cf:GetName()
 	SkinBordered(cf, name, cf)
 	StoneBackground(cf, _G[name .. "Background"], cf)
@@ -842,8 +848,8 @@ local function SkinChatFrame(cf)
 	SkinEditBox(cf.editBox)
 	NoFade(cf.editBox)
 	local toBottom = cf.ScrollToBottomButton
-	if toBottom and toBottom.GetNormalTexture and toBottom:GetNormalTexture() and toBottom.melloRep == nil then
-		toBottom.melloRep = Replace(toBottom:GetNormalTexture(), { as = "minimal-scrollbar-arrow-returntobottom", button = toBottom }) or false
+	if toBottom and toBottom.GetNormalTexture and toBottom:GetNormalTexture() and repOf[toBottom] == nil then
+		repOf[toBottom] = Replace(toBottom:GetNormalTexture(), { as = "minimal-scrollbar-arrow-returntobottom", button = toBottom }) or false
 	end
 	Kit:SweepControls(cf, Replace, skin)
 end
@@ -852,8 +858,10 @@ end
 -- FCF_MinimizeFrame on the first minimize): the same card, its maximize
 -- button on the cog plate.
 local function SkinMinimized(cf)
-	local min = cf and _G[cf:GetName() .. "Minimized"]
-	if not min or min.melloRep ~= nil then
+	-- (rawget: the frame only exists once the game made it; a world whose
+	-- globals answer every name must not hand a stand-in here)
+	local min = cf and rawget(_G, cf:GetName() .. "Minimized")
+	if not min or repOf[min] ~= nil then
 		return
 	end
 	SkinTab(min)
@@ -889,7 +897,10 @@ local function SkinAll()
 		SkinMinimized(cf)
 	end
 	-- the column's three (the Chat module's Chat Buttons shows them)
-	local menu, channel, social = _G.ChatFrameMenuButton, _G.ChatFrameChannelButton, _G.QuickJoinToastButton
+	-- (rawget: the game's own buttons, or nothing -- never a stand-in from a
+	-- world whose globals answer every name)
+	local menu, channel, social = rawget(_G, "ChatFrameMenuButton"), rawget(_G, "ChatFrameChannelButton"),
+		rawget(_G, "QuickJoinToastButton")
 	if menu and menu.GetNormalTexture then
 		SkinColumnButton(menu, menu:GetNormalTexture(), "chat",
 			{ menu:GetPushedTexture(), menu:GetDisabledTexture(), menu:GetHighlightTexture() })
@@ -1201,3 +1212,7 @@ SlashCmdList.MELLOCHDUMP = function(msg)
 	end
 	MelloUI:ShowLog("chdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { alphaing = alphaing, chatSkinned = chatSkinned, fadeHeld = fadeHeld }

@@ -930,12 +930,13 @@ end
 
 local chatHooked = false
 
+local chatBaseOf = setmetatable({}, { __mode = "k" })   -- [chat frame] = the font size the player chose for it
 -- The chat windows follow the chat role (their own face is Arial Narrow).
 -- A chat window's size is the game's own chat font size (its menu) times
 -- the chat role's slider; the game's size is remembered per window.
 local function ChatBaseSize(frame, original)
-	if frame.melloChatBase then
-		return frame.melloChatBase
+	if chatBaseOf[frame] then
+		return chatBaseOf[frame]
 	end
 	return original and original.size or 14
 end
@@ -959,6 +960,13 @@ local function ChatWindowFace(frame, original, onPaper)
 	return face or original.path, math.max(6, math.floor(size + 0.5))
 end
 
+-- a chat window whose lines are ink (Chat.lua took its outline off: the
+-- Chat module's inkFontOf), or nil
+local function InkFont(frame)
+	local chat = MelloUI:GetModule("Chat")
+	return chat and chat.inkFontOf and chat.inkFontOf[frame]
+end
+
 local function ApplyChatWindow(frame)
 	local original = Remember(frame)
 	if not original then
@@ -967,11 +975,12 @@ local function ApplyChatWindow(frame)
 	local _, _, flags = frame:GetFont()
 	-- in ink on the paper (Chat.lua took its outline off): none, whatever
 	-- the frame reports
-	if frame.melloInkFont then
+	local inked = InkFont(frame) ~= nil
+	if inked then
 		flags = ""
 	end
 	local face, size = ChatWindowFace(frame, original, frame ~= _G.COMBATLOG and ChatOnParchment())
-	M:ChatFace(frame, face, size, flags or original.flags, frame.melloInkFont ~= nil)
+	M:ChatFace(frame, face, size, flags or original.flags, inked)
 end
 
 -- The chat windows' edit boxes LEFT, as the game has them (user, 2026-10-03,
@@ -1009,7 +1018,7 @@ local function ApplyChatWindows()
 		hooksecurefunc("FCF_SetChatWindowFontSize", function(_, chatFrame, fontSize)
 			if chatFrame and chatFrame.GetFont then
 				if tonumber(fontSize) then
-					chatFrame.melloChatBase = tonumber(fontSize)   -- the game's size, chosen by the player
+					chatBaseOf[chatFrame] = tonumber(fontSize)   -- the game's size, chosen by the player
 				end
 				if M.isEnabled then
 					ApplyChatWindow(chatFrame)
@@ -1081,7 +1090,7 @@ local function RestoreChatWindows()
 		local original = frame and originals[frame]
 		if original then
 			local _, _, flags = frame:GetFont()
-			M:ChatFace(frame, original.path, ChatBaseSize(frame, original), flags or original.flags, frame.melloInkFont ~= nil)
+			M:ChatFace(frame, original.path, ChatBaseSize(frame, original), flags or original.flags, InkFont(frame) ~= nil)
 		end
 	end
 	Family.EditBoxesLeft()   -- (ChatFontNormal keeps a family of its own: its CENTER still there)
@@ -1513,3 +1522,6 @@ end
 
 MelloUI:Profile("Fonts", "parchment panel walk", OnParchmentPanelUpdated)
 
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { chatBaseOf = chatBaseOf }

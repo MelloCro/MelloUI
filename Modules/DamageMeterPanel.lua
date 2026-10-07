@@ -25,6 +25,8 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("DamageMeterPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("DamageMeterPanel", {
 	title = "Damage Meter Kit",
@@ -63,6 +65,7 @@ local function Replace(region, opts)
 	return rep
 end
 
+local medallionOf = setmetatable({}, { __mode = "k" })   -- [entry] = the class whose medallion its icon shows
 -- A source entry's class icon: the painted class medallion (a spec icon,
 -- which the game prefers when it knows the spec, stays); put back to the
 -- game's atlas on disable.
@@ -74,8 +77,8 @@ local function Medallion(entry)
 	local ok, classFile = pcall(function() return entry.classFilename end)
 	local okS, spec = pcall(function() return entry.specIconID end)
 	if not active or not ok or Secret(classFile) or not classFile or classFile == "" or (okS and spec and not Secret(spec) and spec ~= 0) then
-		if entry.melloMedallion then
-			entry.melloMedallion = nil
+		if medallionOf[entry] then
+			medallionOf[entry] = nil
 			local atlas = entry.iconAtlasElement
 			if atlas and not Secret(atlas) then
 				icon:SetAtlas(atlas)
@@ -87,7 +90,7 @@ local function Medallion(entry)
 	if path then
 		icon:SetTexture(path)
 		icon:SetTexCoord(0, 1, 0, 1)
-		entry.melloMedallion = classFile
+		medallionOf[entry] = classFile
 	end
 end
 
@@ -99,18 +102,22 @@ end
 -- SetBarHeight, which set those; the game's values put back on disable.
 local ENTRY_TEXT_SCALE = 0.8
 
+local scaling = setmetatable({}, { __mode = "k" })   -- [entry] = true while its text scale is set here
+local barFresh = setmetatable({}, { __mode = "k" })   -- [entry] = true: its bar laid by the game since the last shift
+local baseTextOf = setmetatable({}, { __mode = "k" })   -- [entry] = the game's text scale
+local condensedEntries = setmetatable({}, { __mode = "k" })   -- [entry] = true: condensed
 local function CondenseEntry(entry, rep)
-	if entry.melloCondensed then
+	if condensedEntries[entry] then
 		return
 	end
-	entry.melloCondensed = true
+	condensedEntries[entry] = true
 	local bar, icon = entry.StatusBar, entry.Icon
 	local name, value = bar.Name, bar.Value
 	if not (name and value and icon) then
 		return
 	end
 	local ok, base = pcall(name.GetTextScale, name)
-	entry.melloBaseText = (ok and base and not Secret(base)) and base or 1
+	baseTextOf[entry] = (ok and base and not Secret(base)) and base or 1
 	local okW, iconW = pcall(icon.GetWidth, icon)
 	local okH, iconH = pcall(icon.GetHeight, icon)
 	local savedIcon = (okW and okH and not Secret(iconW) and not Secret(iconH)) and { iconW, iconH } or { 24, 24 }
@@ -122,14 +129,14 @@ local function CondenseEntry(entry, rep)
 	for i = 1, bar:GetNumPoints() do
 		savedBar[i] = { bar:GetPoint(i) }
 	end
-	entry.melloBarFresh = true
+	barFresh[entry] = true
 	-- the game's own anchors for the current layout, read right after the game
-	-- set them (melloBarFresh) and kept: every fit is computed from these, so it
+	-- set them (barFresh) and kept: every fit is computed from these, so it
 	-- can be redone at any time — after SetBarHeight, which only resizes the
 	-- row — without shifting an already shifted bar a second time
 	local basePoints
 	local function ShiftBar()
-		if entry.melloBarFresh or not basePoints then
+		if barFresh[entry] or not basePoints then
 			local okN, n = pcall(bar.GetNumPoints, bar)
 			if not okN or Secret(n) or not n then
 				return
@@ -177,7 +184,7 @@ local function CondenseEntry(entry, rep)
 				end
 			end
 		end
-		entry.melloBarFresh = nil
+		barFresh[entry] = nil
 		bar:ClearAllPoints()
 		for _, pt in ipairs(points) do
 			local point, rel, relPoint, x, y = unpack(pt)
@@ -199,11 +206,11 @@ local function CondenseEntry(entry, rep)
 			return
 		end
 		ShiftBar()
-		local k = entry.melloBaseText * ENTRY_TEXT_SCALE
-		entry.melloScaling = true
+		local k = baseTextOf[entry] * ENTRY_TEXT_SCALE
+		scaling[entry] = true
 		name:SetTextScale(k)
 		value:SetTextScale(k)
-		entry.melloScaling = nil
+		scaling[entry] = nil
 		-- the texts inside the bar, which now ends at the gems
 		name:SetPoint("LEFT", 4, 0)
 		value:SetPoint("RIGHT", -4, 0)
@@ -213,8 +220,8 @@ local function CondenseEntry(entry, rep)
 		end
 	end
 	local function Restore()
-		name:SetTextScale(entry.melloBaseText)
-		value:SetTextScale(entry.melloBaseText)
+		name:SetTextScale(baseTextOf[entry])
+		value:SetTextScale(baseTextOf[entry])
 		name:SetPoint("LEFT", 2, 0)
 		value:SetPoint("RIGHT", -3, 0)
 		icon:SetSize(savedIcon[1], savedIcon[2])
@@ -222,19 +229,19 @@ local function CondenseEntry(entry, rep)
 		for _, pt in ipairs(savedBar) do
 			bar:SetPoint(unpack(pt))
 		end
-		entry.melloBarFresh = true
+		barFresh[entry] = true
 	end
 	hooksecurefunc(entry, "SetTextScale", function(_, textScale)
-		if entry.melloScaling then
+		if scaling[entry] then
 			return
 		end
 		if textScale and not Secret(textScale) then
-			entry.melloBaseText = textScale
+			baseTextOf[entry] = textScale
 		end
 		Apply()
 	end)
 	hooksecurefunc(entry, "UpdateStyle", function()
-		entry.melloBarFresh = true
+		barFresh[entry] = true
 		Apply()
 	end)
 	hooksecurefunc(entry, "SetBarHeight", Apply)
@@ -259,37 +266,39 @@ local function CondenseEntry(entry, rep)
 	Apply()
 end
 
+local iconHooked = setmetatable({}, { __mode = "k" })   -- [entry] = true: UpdateIcon hooked
 -- An entry (DamageMeterEntryTemplate, 24 px: the icon frame at the left,
 -- the status bar to its right with `Background` (the shadow band, its alpha
 -- the meter's transparency) and `BackgroundEdge` around the fill): P1, the
 -- bracket as regions of the status bar one layer above its fill, the
 -- trough under the fill, the shadow pieces faded.
 local function SkinEntry(entry)
-	if not (entry and entry.StatusBar) or entry.melloRep ~= nil then
+	if not (entry and entry.StatusBar) or repOf[entry] ~= nil then
 		return
 	end
 	local bar = entry.StatusBar
 	local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(bar)
-	entry.melloRep = Replace(bar.Background, { as = "ui-damagemeters-bar-shadowbg", parent = bar, rect = bar,
+	repOf[entry] = Replace(bar.Background, { as = "ui-damagemeters-bar-shadowbg", parent = bar, rect = bar,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub,
 		alsoFade = { bar.BackgroundEdge } }) or false
-	if entry.UpdateIcon and not entry.melloIconHooked then
-		entry.melloIconHooked = true
+	if entry.UpdateIcon and not iconHooked[entry] then
+		iconHooked[entry] = true
 		hooksecurefunc(entry, "UpdateIcon", Medallion)
 		skin.entries[#skin.entries + 1] = entry
 	end
 	Medallion(entry)
-	if entry.melloRep then
-		CondenseEntry(entry, entry.melloRep)
+	if repOf[entry] then
+		CondenseEntry(entry, repOf[entry])
 	end
 end
 
+local toggleSkinned = setmetatable({}, { __mode = "k" })   -- [button] = true: its minus / plus dressed
 -- The minimize button: minus / plus following the atlas the game sets.
 local function SkinToggle(button)
-	if not (button and button.GetNormalTexture and button:GetNormalTexture()) or button.melloToggle then
+	if not (button and button.GetNormalTexture and button:GetNormalTexture()) or toggleSkinned[button] then
 		return
 	end
-	button.melloToggle = true
+	toggleSkinned[button] = true
 	local normal = button:GetNormalTexture()
 	local extra = { button:GetPushedTexture(), button:GetHighlightTexture() }
 	Kit:StateIconReps(button, normal, button, Replace, extra)
@@ -304,14 +313,14 @@ end
 -- source window's `Background`): L1 as the container's child one level under
 -- it, its alpha the session window's transparency setting.
 local function SkinBody(container, background, key, session)
-	if not (container and background) or background.melloRep ~= nil then
+	if not (container and background) or repOf[background] ~= nil then
 		return
 	end
 	-- one level UNDER the window's, so the header plate (a region of the
 	-- window) draws over the body's rail where they cross (user,
 	-- 2026-09-21: the border covered the header artwork)
 	local rep = Replace(background, { as = key, parent = container, rect = background, level = -1 })
-	background.melloRep = rep or false
+	repOf[background] = rep or false
 	-- the parchment laid on the stone, inside the rails, its edge painted
 	-- (user, 2026-09-23: "lets make it on chat and dps meter aswell"); it
 	-- follows the body's opacity with it (a texture of the body's skin)
@@ -358,16 +367,17 @@ local function SkinBody(container, background, key, session)
 	end
 end
 
+local hoverHooked = setmetatable({}, { __mode = "k" })   -- [row] = true: its hover hooked
 -- Both windows start their hover effect (the resize grip and the scroll
 -- bar fading in) from their own OnEnter, which a cursor landing on a row
 -- never fires (the rows take the mouse; the main window's poll only runs
 -- while a session timer is live). A row's OnEnter hands it on (user,
 -- 2026-09-21: no mouseover effect over the bars).
 local function HandOnHover(row, window)
-	if not row or row.melloHoverHook then
+	if not row or hoverHooked[row] then
 		return
 	end
-	row.melloHoverHook = true
+	hoverHooked[row] = true
 	Perf.HookScript(row, "OnEnter", function()
 		if active and window.OnEnter and window:IsShown() then
 			window:OnEnter()
@@ -375,11 +385,12 @@ local function HandOnHover(row, window)
 	end)
 end
 
+local skinned = setmetatable({}, { __mode = "k" })   -- [window] = true: dressed
 local function SkinSourceWindow(sw, session)
-	if not sw or sw.melloSkinned then
+	if not sw or skinned[sw] then
 		return
 	end
-	sw.melloSkinned = true
+	skinned[sw] = true
 	SkinBody(sw, sw.Background, "DamageMeterSourceBackground", session)
 	if sw.ScrollBox then
 		Kit:HookScrollBoxRows(sw.ScrollBox, function(row)
@@ -509,10 +520,10 @@ local function InkLines()
 end
 
 local function SkinSession(win)
-	if not win or win.melloSkinned then
+	if not win or skinned[win] then
 		return
 	end
-	win.melloSkinned = true
+	skinned[win] = true
 	if win.Header then
 		local rep = Replace(win.Header, { as = "ui-damagemeters-header-bar", rect = win.Header })
 		if rep then
@@ -522,7 +533,7 @@ local function SkinSession(win)
 	local container = win.MinimizeContainer
 	if container then
 		SkinBody(container, container.Background, "damagemeters-background", win)
-		local body = container.Background and container.Background.melloRep
+		local body = container.Background and repOf[container.Background]
 		if Kit.RegisterShell and DamageMeter and DamageMeter.GetPrimarySessionWindow
 			and DamageMeter:GetPrimarySessionWindow() == win then
 			-- only the lit rail is registered here. The meter is dragged by
@@ -553,8 +564,8 @@ local function SkinSession(win)
 	-- (user, 2026-09-23: "has its reskined version under the default one"); the
 	-- other settings cogs of the kit (quest log, spell book) already fade theirs.
 	local settings = win.SettingsDropdown
-	if settings and settings.Icon and settings.melloRep == nil then
-		settings.melloRep = Replace(settings.Icon, { as = "DamageMeterSettingsIcon", button = settings }) or false
+	if settings and settings.Icon and repOf[settings] == nil then
+		repOf[settings] = Replace(settings.Icon, { as = "DamageMeterSettingsIcon", button = settings }) or false
 	end
 	-- the session dropdown (current / overall segment): a WowStyle2Dropdown
 	-- (the compact common-dropdown-c-button) that the game sizes to 18 or 32 px
@@ -564,10 +575,10 @@ local function SkinSession(win)
 	-- wierd"). It takes B6 instead, the single-rail band the user picked for the
 	-- c-button's sibling (common-dropdown-b-button), which holds at any width;
 	-- the c-button's hover arrow under it goes too. Claimed here, the sweep
-	-- skips it (melloRep).
+	-- skips it (its rep in MelloUI.Kept.repOf).
 	local sessionDD = win.SessionDropdown
-	if sessionDD and sessionDD.Background and sessionDD.melloRep == nil then
-		sessionDD.melloRep = Replace(sessionDD.Background, { as = "common-dropdown-b-button", rect = sessionDD, button = sessionDD,
+	if sessionDD and sessionDD.Background and repOf[sessionDD] == nil then
+		repOf[sessionDD] = Replace(sessionDD.Background, { as = "common-dropdown-b-button", rect = sessionDD, button = sessionDD,
 			parent = sessionDD, alsoFade = { sessionDD.Arrow } }) or false
 	end
 	-- the type dropdown ("Damage Done", "Healing Done", ...): a
@@ -577,8 +588,8 @@ local function SkinSession(win)
 	-- arrow stays faded whatever atlas it is given. (The sweep below skips this
 	-- dropdown: it has no Background / Text, so nothing dresses it twice.)
 	local typeDD = win.DamageMeterTypeDropdown
-	if typeDD and typeDD.Arrow and typeDD.melloRep == nil then
-		typeDD.melloRep = Replace(typeDD.Arrow, { as = "common-dropdown-a-button-shadowless", button = typeDD, rect = typeDD.Arrow }) or false
+	if typeDD and typeDD.Arrow and repOf[typeDD] == nil then
+		repOf[typeDD] = Replace(typeDD.Arrow, { as = "common-dropdown-a-button-shadowless", button = typeDD, rect = typeDD.Arrow }) or false
 	end
 	Kit:SweepControls(win, Replace, skin)
 end
@@ -691,3 +702,9 @@ SlashCmdList.MELLODMDUMP = function(msg)
 	end
 	MelloUI:ShowLog("dmdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { barFresh = barFresh, baseTextOf = baseTextOf, condensedEntries = condensedEntries,
+	hoverHooked = hoverHooked, iconHooked = iconHooked, medallionOf = medallionOf, scaling = scaling, skinned = skinned,
+	toggleSkinned = toggleSkinned }

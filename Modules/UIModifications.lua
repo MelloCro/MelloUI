@@ -115,6 +115,7 @@ local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 	defaults[k.key] = k.default
 end
+defaults.raidBorderPlace = "both"   -- (0.19.8: Raid Frame Border on each frame and round the group, as today)
 -- the UI shade (0.14.0, Modules/KitShade.lua, which loads before this file
 -- and switches it from the bus's 'setting'): on at 70 %, every area on
 -- (user, 2026-09-26)
@@ -211,6 +212,13 @@ for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
 		opt.get, opt.relist = ColoursShown, "palette"
 	end
 end
+-- (0.19.8, the border library's stage 3, the plan's decision 7: one Raid
+-- Frame Border, laid on each frame, round each group, or both;
+-- Modules/KitBorders.lua)
+Add({ type = "dropdown", key = "raidBorderPlace", name = "Raid Border Placement", requires = "reskin", new = "0.19.8",
+	values = { { value = "both", label = "On each frame and round the group" }, { value = "frame", label = "On each frame" },
+		{ value = "group", label = "Round the group" } },
+	desc = "Where Raid Frame Border goes: on each raid frame, round each raid group, or both. A group's border shows while Edit Mode's Display Border is on for the raid frames." })
 
 -- The UI shade (0.14.0, Modules/KitShade.lua): its switch, its strength and a
 -- switch per area (Kit.shadeAreas' order), each area's live while the shade
@@ -1559,6 +1567,11 @@ function M:OnSettingChanged(key, value, db)
 		local kit = MelloUI.Kit
 		if kit and kit.SetParchment then
 			kit:SetParchment(key:sub(11), kit.ParchmentValueOn and kit.ParchmentValueOn(value) or value == true)
+		end
+		return
+	elseif key == "raidBorderPlace" then
+		if MelloUI.Kit and MelloUI.Kit.ApplyBorder then
+			MelloUI.Kit:ApplyBorder("raid")   -- (0.19.8: where Raid Frame Border goes)
 		end
 		return
 	elseif MelloUI.Kit and MelloUI.Kit.borderKinds then

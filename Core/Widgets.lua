@@ -158,6 +158,17 @@ local function KitNow()
 	return MelloUI.Kit
 end
 
+-- An own control the kit's sweeps pass by (false: no plate of the kit's), or
+-- its rep, kept in the kit's table beside it (MelloUI.Kept.repOf; hard rule 1 keeps
+-- the game's frames free of keys, and the controls follow the same table).
+-- Without the kit (a world that never loaded Kit.lua) there is no sweep
+local function KitRep(control, rep)
+	local Kept = MelloUI.Kept
+	if KitNow() and Kept then
+		Kept.repOf[control] = rep
+	end
+end
+
 function W.Paint(region, key, how, alpha)
 	local Kit = KitNow()
 	if region and key and Kit and Kit.Paint then
@@ -462,7 +473,7 @@ end
 -- boxes, dropdowns, tabs, found by what they are): the one way a window's
 -- controls the kit knows are dressed. `depth`: where the sweep starts (the
 -- configurator's rows at 2, as a sweep of the page reaches them). The own
--- windows' controls are flat (0.15.0: `melloRep` false, the sweep passes
+-- windows' controls are flat (0.15.0: their rep false in MelloUI.Kept.repOf, the sweep passes
 -- them by); what a root holds of the game's own is dressed.
 function W.Dress(root, skin, depth)
 	if skin and root then
@@ -664,7 +675,7 @@ end
 -- disabled-checked one, in `mutedText`). Under the pointer the edge takes
 -- `selectedTrim`; disabled, the box at half. With the kit's look on (its
 -- `skin`) a ticked box also wears the active look round the box, its tick
--- kept, as the kit's own check boxes do. `melloRep` is false, so the kit's
+-- kept, as the kit's own check boxes do. Its rep is false (MelloUI.Kept.repOf), so the kit's
 -- sweep (Kit:SweepControls, Kit:SkinCheckButton) passes it by.
 -- SetValue(on, silent) sets it without (silent) or with set(on); Refresh()
 -- takes get() again. A refresh that changes nothing leaves the box alone (a
@@ -797,7 +808,7 @@ end, "script")
 function W.Switch(parent, get, set, opts)
 	local cb = CreateFrame("CheckButton", nil, parent)
 	cb:SetSize(SWITCH, SWITCH)
-	cb.melloRep = false   -- (the kit's sweep passes it by: no kit check box)
+	KitRep(cb, false)   -- (the kit's sweep passes it by: no kit check box)
 	local fill = cb:CreateTexture(nil, "BACKGROUND")
 	fill:SetSize(SWITCH_BOX, SWITCH_BOX)
 	fill:SetPoint("CENTER", cb, "CENTER", 0, 0)
@@ -983,7 +994,7 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	opts = opts or NO_OPTS
 	local dd = CreateFrame("Button", nil, parent)
 	dd:SetSize(width, DD_H)
-	dd.melloRep = false   -- (the kit's sweep passes it by: no dropdown plate)
+	KitRep(dd, false)   -- (the kit's sweep passes it by: no dropdown plate)
 	dd.melloList = true   -- (it opens the flyout's list: W.PictureMenu's block)
 	dd.melloFill = dd:CreateTexture(nil, "BACKGROUND")
 	dd.melloFill:SetAllPoints(dd)
@@ -1430,7 +1441,7 @@ end
 -- `mutedText`. The main action (opts.gold: Install..., Install again, the
 -- installer's forward button, Restock's Buy, a question's accept) wears its
 -- edge and label in `selectedTrim` (its label `text` on the hover fill). No
--- gem caps: `melloRep` is false before any sweep, so the kit's
+-- gem caps: its rep is false (MelloUI.Kept.repOf) before any sweep, so the kit's
 -- (Kit:SweepControls, Kit:SkinRedButton) passes it by, whatever window it
 -- is in.
 --   W.Button(parent, text, width, skin, opts) -> button
@@ -1532,7 +1543,7 @@ do
 		if not b or b.melloFill then
 			return b
 		end
-		b.melloRep = false   -- (the kit's sweep passes it by: no red plate, no gem caps)
+		KitRep(b, false)   -- (the kit's sweep passes it by: no red plate, no gem caps)
 		b.melloFill = b:CreateTexture(nil, "BACKGROUND", nil, 2)
 		b.melloFill:SetAllPoints(b)
 		b.melloEdges = Edges(b, "border", "BORDER")
@@ -1608,7 +1619,7 @@ end
 -- 4.5:1 in Ember) and stays in the plate's middle (the game's select bobs it
 -- up and down). With the kit's look on (its `skin`) the selected tab wears
 -- the active look round its plate, the gold edge then giving way to the
--- resting one under the ring (as a chosen card's). `melloRep` is false, so
+-- resting one under the ring (as a chosen card's). Its rep is false (MelloUI.Kept.repOf), so
 -- the kit's sweep (Kit:SkinPanelTab) passes it by. The tab keeps the width
 -- its owner gives it: the template's own resize on a show and on a display
 -- change is dropped (it undid the owner's padding: the tabs' gaps jumped).
@@ -1696,7 +1707,7 @@ do
 		if not tab or tab.melloFill then
 			return tab
 		end
-		tab.melloRep = false   -- (the kit's sweep passes it by: no TB6)
+		KitRep(tab, false)   -- (the kit's sweep passes it by: no TB6)
 		-- (the tab as tall as its plate, and its hidden open-tab art too: the
 		-- height its owner lays the tab row by; a New badge on its top edge
 		-- then lies on the plate's. The open tab's own height kept for the
@@ -1738,7 +1749,7 @@ end
 -- palette's hint colour); the glass `mutedText` while the box is idle and
 -- `text` in use (the game's own two shades of it, by key); the clear
 -- button's cross in `text`. What is typed is the caller's to colour (the
--- configurator's is `text`). `melloRep` is false, so the kit's sweep
+-- configurator's is `text`). Its rep is false (MelloUI.Kept.repOf), so the kit's sweep
 -- (Kit:SkinSearchBox) passes it by. A plain text field made by hand from
 -- InputBoxTemplate (the Profiles page's name, Help's links: review,
 -- 2026-09-29, "all flat") takes the same look: its Left / Middle / Right are
@@ -1830,7 +1841,7 @@ do
 		if not box or box.melloFill then
 			return box
 		end
-		box.melloRep = false   -- (the kit's sweep passes it by: no S1)
+		KitRep(box, false)   -- (the kit's sweep passes it by: no S1)
 		local fill = box:CreateTexture(nil, "BACKGROUND", nil, 2)
 		fill:SetPoint("TOPLEFT", box, "TOPLEFT", -SEARCH_LEFT, 0)
 		fill:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
@@ -2209,7 +2220,9 @@ local function DressIconBox(K, box, skin)
 		checked = box.melloChecked })
 	box.rim = rep and rep.object or nil
 	if rep then
-		box.melloRep = rep
+		if MelloUI.Kept then
+			MelloUI.Kept.repOf[box] = rep
+		end
 		K:RegisterButtonRim(box)
 	end
 end
@@ -2371,7 +2384,8 @@ do
 			geterrorhandler()(el)
 			return
 		end
-		local pw = Kit.Size and rim.kitName and Kit:Size(rim.kitName, 1)
+		local name = MelloUI.Kept and MelloUI.Kept.pieceNameOf[rim]
+		local pw = Kit.Size and name and Kit:Size(name, 1)
 		pw = Secret(pw) and nil or tonumber(pw)
 		el:Add(rim, { scale = (pw and pw > 0) and b.size / pw or nil })
 	end
@@ -3368,7 +3382,7 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 end
 
 -- a typed row's control in place: known to the row, the texts cut at it
--- (0.15.0: every typed row's control is flat -- `melloRep` false -- so no
+-- (0.15.0: every typed row's control is flat -- its rep false in MelloUI.Kept.repOf -- so no
 -- sweep of the kit's is asked per row). `span`: the control's left edge from
 -- the row's right one (where a New tag's label may end: ClipRow)
 local function Finish(row, control, opts, span)

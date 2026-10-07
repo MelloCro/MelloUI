@@ -744,6 +744,12 @@ function M:OnAddonLoaded(db)
 	self.db = db
 end
 
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(S.frame, ...)
+end
+
 function M:OnEnable(db)
 	self.db = db or self.db
 	Events(true)

@@ -121,8 +121,10 @@ local function VariantFor(texture)
 	if CharacterFrame and CharacterFrame.GetPortrait and texture == CharacterFrame:GetPortrait() then
 		return "plain"
 	end
-	-- a unit frame portrait inside the kit ring (UnitFramePanel marks it)
-	if texture and texture.melloKitRing then
+	-- a unit frame portrait inside the kit ring (UnitFramePanel marks it in
+	-- MelloUI.Kept.kitRingOn)
+	local ringed = MelloUI.Kit and MelloUI.Kit.kitRingOn
+	if texture and ringed and ringed[texture] then
 		return "plain"
 	end
 	return nil

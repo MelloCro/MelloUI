@@ -59,6 +59,8 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("OptionsPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("OptionsPanel", {
 	title = "Options Kit",
@@ -167,7 +169,7 @@ local function Anchor(host, layer)
 	local tex = host:CreateTexture(nil, layer or "BACKGROUND")
 	tex:SetAllPoints(host)
 	tex:SetColorTexture(0, 0, 0, 0)
-	tex.kitPiece = true   -- ours: never taken for game art by the Kit's finders
+	pieceOf[tex] = true   -- ours: never taken for game art by the Kit's finders
 	return tex
 end
 
@@ -192,7 +194,7 @@ end
 -- the first texture of `frame` whose art is `key` (lower case)
 local function FindArt(frame, key)
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and Key(region) == key then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and Key(region) == key then
 			return region
 		end
 	end
@@ -204,7 +206,7 @@ local function Textures(frame)
 	local out = {}
 	if frame then
 		for _, region in ipairs({ frame:GetRegions() }) do
-			if region:GetObjectType() == "Texture" and not region.kitPiece then
+			if region:GetObjectType() == "Texture" and not pieceOf[region] then
 				out[#out + 1] = region
 			end
 		end
@@ -236,7 +238,7 @@ local function RedButton(button)
 	local extra = List(button.Left, button.Right)
 	for _, region in ipairs({ button:GetRegions() }) do
 		if region:GetObjectType() == "Texture" and region ~= anchor and region ~= button.Left and region ~= button.Right
-			and not region.kitPiece and region:GetDrawLayer() == "HIGHLIGHT" then
+			and not pieceOf[region] and region:GetDrawLayer() == "HIGHLIGHT" then
 			extra[#extra + 1] = region
 		end
 	end
@@ -518,7 +520,7 @@ local function Band(u, row)
 	local band = u:CreateTexture(nil, "BACKGROUND", nil, -8)
 	band:SetAllPoints(row)
 	Kit:Paint(band, "mainWindow", "fill", STRIPE_ALPHA)
-	band.kitPiece = true
+	pieceOf[band] = true
 	band:Hide()
 	return band
 end
@@ -588,7 +590,7 @@ local function Expandable(row)
 	local bar = row.Button
 	local mid
 	for _, region in ipairs({ bar:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and region ~= bar.Left and region ~= bar.Right and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and region ~= bar.Left and region ~= bar.Right and not pieceOf[region] then
 			mid = mid or region
 		end
 	end
@@ -793,7 +795,7 @@ local function InnerPanel(rep)
 	fill:SetPoint("TOPLEFT", skin, "TOPLEFT", FILL_INSET, -FILL_INSET)
 	fill:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -FILL_INSET, FILL_INSET)
 	Kit:Paint(fill, "innerPanel", "fill", FILL_ALPHA)   -- (by its key: a new palette paints it again)
-	fill.kitPiece = true
+	pieceOf[fill] = true
 end
 
 local function BuildChrome(SP)

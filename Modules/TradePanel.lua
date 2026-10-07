@@ -43,7 +43,7 @@
 --                        the box); the gold / silver / copper boxes get the
 --                        edit plate (S1) where this client lets an addon reach
 --                        them (the game marks the player's input forbidden)
---   Trade / Cancel       the red plates (B1), labels readable (melloNoInk)
+--   Trade / Cancel       the red plates (B1), labels readable (QI.noInk)
 --
 -- Left as the game's: the acceptance highlights (the green glow over a side
 -- that has accepted: the game's state, shown and hidden by it), the item
@@ -74,6 +74,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("TradePanel", {
 	title = "Trade Kit",
@@ -211,7 +216,7 @@ local function InsetArt(inset)
 	local list = List(inset and inset.Bg)
 	if inset and inset.NineSlice then
 		for _, region in ipairs({ inset.NineSlice:GetRegions() }) do
-			if IsTexture(region) and not region.kitPiece then
+			if IsTexture(region) and not pieceOf[region] then
 				list[#list + 1] = region
 			end
 		end
@@ -246,7 +251,7 @@ local function PaintCard(entry)
 	local fixed = entry.redTex
 	if red and not fixed then
 		fixed = entry.item:CreateTexture(nil, "BACKGROUND", nil, -2)
-		fixed.kitPiece = true   -- ours: never faded as the game's art
+		pieceOf[fixed] = true   -- ours: never faded as the game's art
 		fixed:SetAllPoints(entry.item)
 		fixed:SetColorTexture(CANNOT_USE[1], CANNOT_USE[2], CANNOT_USE[3], CARD_ALPHA)
 		entry.redTex = fixed
@@ -282,7 +287,7 @@ local function SkinCard(item, plate)
 		return
 	end
 	local tex = item:CreateTexture(nil, "BACKGROUND", nil, -2)
-	tex.kitPiece = true   -- ours: never faded as the game's art
+	pieceOf[tex] = true   -- ours: never faded as the game's art
 	tex:SetAllPoints(item)
 	Kit:Paint(tex, "mainWindow", "fill", CARD_ALPHA)
 	-- (shown or not by PaintCard, from ReadTint just below)
@@ -350,7 +355,7 @@ local function UpdateRim(entry)
 end
 
 local function SkinItemButton(button)
-	if not button or done[button] or button.melloRep ~= nil then
+	if not button or done[button] or repOf[button] ~= nil then
 		return
 	end
 	done[button] = true
@@ -364,7 +369,7 @@ local function SkinItemButton(button)
 	-- the rect it is keyed on, and it is not faded
 	local rep = Replace(normal or icon, { as = Kit:ButtonRimRule(), button = button, parent = button, rect = icon,
 		noFade = normal == nil, alsoFade = extra })
-	button.melloRep = rep or false   -- the Kit's own "dressed" marker
+	repOf[button] = rep or false   -- the Kit's own "dressed" marker
 	if not rep then
 		return
 	end
@@ -408,7 +413,7 @@ end
 -- them) is faded: a second box round the boxes would stack two rails.
 --------------------------------------------------------------------------------
 local function KeepUnder(f, inset)
-	local rep = inset and inset.melloRep
+	local rep = inset and repOf[inset]
 	local holder = rep and rep.object
 	if not (holder and holder.SetFrameLevel) then
 		return
@@ -508,7 +513,7 @@ local function EditArt(edit)
 end
 
 local function SkinEdit(edit)
-	if done[edit] or edit.melloRep ~= nil then
+	if done[edit] or repOf[edit] ~= nil then
 		return false
 	end
 	done[edit] = true
@@ -520,8 +525,8 @@ local function SkinEdit(edit)
 	rect:EnableMouse(false)
 	rect:SetPoint("TOPLEFT", left, "TOPLEFT")
 	rect:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT")
-	edit.melloRep = Replace(mid, { as = "common-search-border-middle", rect = rect, edit = edit, dropCap = "l", alsoFade = { left, right } }) or false
-	if edit.melloRep then
+	repOf[edit] = Replace(mid, { as = "common-search-border-middle", rect = rect, edit = edit, dropCap = "l", alsoFade = { left, right } }) or false
+	if repOf[edit] then
 		stats.edits = stats.edits + 1
 		return true
 	end
@@ -577,16 +582,19 @@ end
 --------------------------------------------------------------------------------
 -- Trade / Cancel (UIPanelButtonTemplate): the red plates (B1). The labels
 -- stay readable on them: the parchment ink never enters a button marked
--- melloNoInk (the kit's accepted marker; no parchment lies here today, but a
+-- QI.noInk (the ink's accepted marker; no parchment lies here today, but a
 -- label on a red plate is never inked). Trade's disabled look follows the
 -- game's Enable / Disable (the plate's disabled state).
 --------------------------------------------------------------------------------
 local function SkinButtons()
+	local QI = MelloUI.QuestInk
 	for _, bname in ipairs({ "TradeFrameTradeButton", "TradeFrameCancelButton" }) do
 		local b = _G[bname]
 		if b and not done[b] then
 			done[b] = true
-			b.melloNoInk = true
+			if QI then
+				QI.noInk[b] = true
+			end
 			if Kit:SkinRedButton(b, Replace) then
 				stats.buttons = stats.buttons + 1
 			end
@@ -748,7 +756,7 @@ local function PlaceNames()
 		local fs = entry.fs
 		fs:ClearAllPoints()
 		fs:SetPoint("CENTER", f, "TOPLEFT", (b[1] + b[2]) / 2, y)
-		if not fs.melloFontSaved then
+		if not fontSavedOf[fs] then
 			Kit:TitleFont(fs, true)
 		end
 	end
@@ -1021,7 +1029,7 @@ local function Shown(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function FadedState(obj)
@@ -1073,7 +1081,7 @@ local function DumpPortrait(label, portrait, ring, f)
 	local medallion = (type(rw) == "number" and not Secret(rw)) and rw * 0.759 or nil
 	Found(label, portrait, string.format(" file %s, size %s x %s, medallion %s, fitted %s, ring %s (%s), disc %s",
 		(okT and not Secret(file)) and tostring(file) or "?", okS and Num(w) or "?", okS and Num(h) or "?",
-		medallion and string.format("%.0f", medallion) or "?", tostring(portrait.melloSaved ~= nil),
+		medallion and string.format("%.0f", medallion) or "?", tostring(portraitSavedOf[portrait] ~= nil),
 		ring and "kit" or "none", (ring and ring.tex) and RelRect(ring.tex, f) or "-", tostring(ring ~= nil and ring.disc ~= nil)))
 end
 
@@ -1101,7 +1109,7 @@ local function DumpShell(f)
 	for _, side in ipairs(SIDES) do
 		local fs = _G[side.name]
 		Found(side.key .. " name", fs, fs and string.format(" '%s', %s, face %s, title face %s", Text(fs), RelRect(fs, f), Face(fs),
-			tostring(fs.melloFontSaved ~= nil)) or nil)
+			tostring(fontSavedOf[fs] ~= nil)) or nil)
 	end
 end
 
@@ -1113,7 +1121,7 @@ local function DumpParts(f)
 		for _, key in ipairs({ "list", "enchant" }) do
 			local inset = _G[side[key]]
 			Found(side.key .. " " .. key .. " box", inset, inset and string.format(" dressed %s, dim %s", Dressed(inset),
-				tostring(inset.melloRep and inset.melloRep.skin and inset.melloRep.skin.dimFill ~= nil)) or nil)
+				tostring(repOf[inset] and repOf[inset].skin and repOf[inset].skin.dimFill ~= nil)) or nil)
 		end
 		for i = 1, ITEMS do
 			local item = _G[side.items .. i]
@@ -1159,7 +1167,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. Text(region):sub(1, 40)
 		end
@@ -1172,7 +1180,7 @@ local function DumpOwn(frame)
 		local ok = pcall(function()
 			local okLv, lv = pcall(child.GetFrameLevel, child)
 			MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-				okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (dressed)" or "")
+				okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (dressed)" or "")
 		end)
 		if not ok then
 			MelloUI:Print("  child [forbidden to addons]")

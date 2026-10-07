@@ -63,6 +63,9 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("AuctionHousePanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("AuctionHousePanel", {
 	title = "Auction House Kit",
@@ -98,7 +101,7 @@ local hooked = false
 
 -- Our state beside the game's frames, never written onto them (weak keys:
 -- a pooled row the game lets go of takes its entry with it). The Kit's own
--- `melloRep` markers are the one exception, as in every window module: the
+-- reps are kept beside the frames too (MelloUI.Kept.repOf), as in every window module: the
 -- sweep reads them to leave a control it did not dress alone.
 local done = setmetatable({}, { __mode = "k" })         -- [frame / region] = true: looked at once
 local rowState = setmetatable({}, { __mode = "k" })     -- [row] = { plate, hover, selected, sel }
@@ -107,7 +110,7 @@ local listRows = setmetatable({}, { __mode = "k" })     -- [scroll box] = rows d
 local headerHooked = setmetatable({}, { __mode = "k" }) -- [item list] = true
 local tabReps = {}        -- the tabs' cards { rep, region } (kept hidden while the kit is off)
 local fadedArt = {}       -- art faded with no piece of its own standing in (the money inset)
-local rimHolders = {}     -- { melloRep = rim }: the square item rims, for the Button Border registry (strong: it is weak)
+local rimHolders = {}     -- holders (MelloUI.Kept.repOf[holder] = the rim): the square item rims, for the Button Border registry (strong: it is weak)
 local titleMoved = {}     -- [fs] = { points } while another title string sits on the plate
 local titleFaded = {}     -- [fs] = true while faded as a duplicate of the plate's title
 local listOwner = {}      -- our own key in the lists' callback registries (never the game's)
@@ -264,7 +267,7 @@ local function ThreeSlice(frame)
 	end
 	local textures, best, widest = {}, 0, nil
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece then
+		if IsTexture(region) and not pieceOf[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			if okL and (layer == "BACKGROUND" or layer == "BORDER") then
 				textures[#textures + 1] = region
@@ -322,7 +325,7 @@ local function SkinPortrait(f, ring)
 		-- a region of the portrait's own frame, in the layer under the
 		-- portrait (OVERLAY in PortraitFrameTemplate) and over the disc
 		mark = host:CreateTexture(nil, "ARTWORK", nil, 7)
-		mark.kitPiece = true
+		pieceOf[mark] = true
 		mark:SetTexture(PORTRAIT_FALLBACK)
 		mark:SetAllPoints(disc)
 		local mask = host:CreateMaskTexture()
@@ -469,14 +472,14 @@ local function SkinTab(tab)
 		-- an older tab (Left for the closed tab, LeftDisabled for the open
 		-- one: the game selects a tab by disabling it): the same two cards
 		plainTex, openTex = TabPart(tab, "Left"), TabPart(tab, "LeftDisabled")
-		if not (plainTex and openTex) or tab.melloRep ~= nil then
+		if not (plainTex and openTex) or repOf[tab] ~= nil then
 			return
 		end
-		tab.melloRep = false
+		repOf[tab] = false
 		local hl = tab.GetHighlightTexture and tab:GetHighlightTexture()
 		local plain = Replace(plainTex, { as = "uiframe-tab-left", rect = tab, button = tab, alsoFade = List(TabPart(tab, "Middle"), TabPart(tab, "Right"), hl) })
 		local open = Replace(openTex, { as = "uiframe-activetab-left", rect = tab, alsoFade = List(TabPart(tab, "MiddleDisabled"), TabPart(tab, "RightDisabled")) })
-		tab.melloRep = plain or open or false
+		repOf[tab] = plain or open or false
 		Follow(plain, plainTex)
 		Follow(open, openTex)
 	end
@@ -524,7 +527,7 @@ local function SkinBox(box)
 	done[box] = true
 	local extra = {}
 	for _, region in ipairs({ box.NineSlice:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece then
+		if IsTexture(region) and not pieceOf[region] then
 			extra[#extra + 1] = region
 		end
 	end
@@ -561,14 +564,14 @@ end
 -- before any sweep, which would read a header as a red button.
 --------------------------------------------------------------------------------
 local function SkinHeader(header)
-	if done[header] or header.melloRep ~= nil then
+	if done[header] or repOf[header] ~= nil then
 		return
 	end
 	done[header] = true
 	local mid = IsTexture(header.Middle) and header.Middle or (IsTexture(header.Center) and header.Center) or nil
 	local extra = {}
 	for _, region in ipairs({ header:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and region ~= header.Arrow and region ~= mid then
+		if IsTexture(region) and not pieceOf[region] and region ~= header.Arrow and region ~= mid then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and (layer == "BACKGROUND" or layer == "BORDER" or layer == "HIGHLIGHT") then
 				if not mid and layer ~= "HIGHLIGHT" then
@@ -585,12 +588,12 @@ local function SkinHeader(header)
 	end
 	if not mid then
 		-- a header that draws no art of its own: nothing to replace
-		header.melloRep = false
+		repOf[header] = false
 		Miss(header, "a column header with no art (text only): left as the game's")
 		return
 	end
-	header.melloRep = Replace(mid, { as = HEADER_KEY, rect = header, button = header, capless = true, alsoFade = extra }) or false
-	if header.melloRep then
+	repOf[header] = Replace(mid, { as = HEADER_KEY, rect = header, button = header, capless = true, alsoFade = extra }) or false
+	if repOf[header] then
 		stats.headers = stats.headers + 1
 		Note(header, "GC1 header plate")
 	end
@@ -647,7 +650,7 @@ local function RowHighlights(row)
 		list[1], seen[hl] = hl, true
 	end
 	for _, region in ipairs({ row:GetRegions() }) do
-		if IsTexture(region) and not region.kitPiece and not seen[region] then
+		if IsTexture(region) and not pieceOf[region] and not seen[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "HIGHLIGHT" then
 				list[#list + 1], seen[region] = region, true
@@ -701,8 +704,8 @@ local function MarkRowControls(row, depth)
 	end
 	for _, child in ipairs({ row:GetChildren() }) do
 		local kind = child:GetObjectType()
-		if child.melloRep == nil and (kind == "CheckButton" or (kind == "Button" and (child.Center or (child.Left and child.Middle and child.Right)))) then
-			child.melloRep = false
+		if repOf[child] == nil and (kind == "CheckButton" or (kind == "Button" and (child.Center or (child.Left and child.Middle and child.Right)))) then
+			repOf[child] = false
 		end
 		MarkRowControls(child, depth + 1)
 	end
@@ -790,7 +793,7 @@ end
 -- closes the plate (the chat's and Edit Mode's rule). A narrow box goes
 -- cap-less by itself; the coin icon of a money box stays over the plate.
 local function SkinEdit(edit)
-	if done[edit] or edit.melloRep ~= nil or edit.searchIcon then
+	if done[edit] or repOf[edit] ~= nil or edit.searchIcon then
 		return
 	end
 	done[edit] = true
@@ -814,7 +817,7 @@ end
 -- faded, as the AddOn list's. A modern one (Background / Arrow / Text) is
 -- the sweep's.
 local function SkinOldDropdown(dd)
-	if done[dd] or dd.melloRep ~= nil then
+	if done[dd] or repOf[dd] ~= nil then
 		return
 	end
 	done[dd] = true
@@ -824,8 +827,8 @@ local function SkinOldDropdown(dd)
 			extra[#extra + 1] = region
 		end
 	end
-	dd.melloRep = Replace(dd.Middle, { as = OLD_DROPDOWN_KEY, rect = dd, fitHeight = 24, alsoFade = extra }) or false
-	if dd.melloRep then
+	repOf[dd] = Replace(dd.Middle, { as = OLD_DROPDOWN_KEY, rect = dd, fitHeight = 24, alsoFade = extra }) or false
+	if repOf[dd] then
 		Note(dd, "D1 dropdown plate")
 	end
 end
@@ -837,7 +840,7 @@ end
 -- (WowStyle1FilterDropdown) is the sweep's, as that same plate.
 local STRETCH_PIECES = { "TopLeft", "TopRight", "BottomLeft", "BottomRight", "TopMiddle", "MiddleLeft", "MiddleRight", "BottomMiddle" }
 local function SkinFilter(button)
-	if done[button] or button.melloRep ~= nil then
+	if done[button] or repOf[button] ~= nil then
 		return
 	end
 	done[button] = true
@@ -851,8 +854,8 @@ local function SkinFilter(button)
 	if hl then
 		extra[#extra + 1] = hl
 	end
-	button.melloRep = Replace(button.MiddleMiddle, { as = FILTER_KEY, rect = button, button = button, parent = button, alsoFade = extra }) or false
-	if button.melloRep then
+	repOf[button] = Replace(button.MiddleMiddle, { as = FILTER_KEY, rect = button, button = button, parent = button, alsoFade = extra }) or false
+	if repOf[button] then
 		Note(button, "filter dropdown plate")
 	end
 end
@@ -877,12 +880,12 @@ local function IsSquare(button)
 end
 
 local function SkinSquare(button)
-	if done[button] or button.melloRep ~= nil then
+	if done[button] or repOf[button] ~= nil then
 		return
 	end
 	done[button] = true
-	button.melloRep = Replace(button:GetNormalTexture(), { as = SQUARE_KEY, button = button, alsoFade = Kit:OtherTextures(button, button.Icon) }) or false
-	if button.melloRep then
+	repOf[button] = Replace(button:GetNormalTexture(), { as = SQUARE_KEY, button = button, alsoFade = Kit:OtherTextures(button, button.Icon) }) or false
+	if repOf[button] then
 		stats.squares = stats.squares + 1
 		Note(button, "K2 cog plate under the game's icon")
 	end
@@ -916,7 +919,7 @@ local function ItemArtIsRound(button)
 end
 
 local function SkinItemButton(button)
-	if done[button] or button.melloRep ~= nil then
+	if done[button] or repOf[button] ~= nil then
 		return
 	end
 	done[button] = true
@@ -927,7 +930,7 @@ local function SkinItemButton(button)
 	end
 	local extra = {}
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region ~= border and IsTexture(region) and not region.kitPiece then
+		if region ~= border and IsTexture(region) and not pieceOf[region] then
 			local key = Kit:ArtKey(region)
 			if type(key) == "string" and key:find("^auctionhouse%-itemicon%-border") then
 				extra[#extra + 1] = region      -- the border's hover copy
@@ -940,9 +943,10 @@ local function SkinItemButton(button)
 	end
 	if not ItemArtIsRound(button) then
 		local rep = Replace(border, { as = Kit:ButtonRimRule(), button = button, parent = button, alsoFade = extra })
-		button.melloRep = rep or false
+		repOf[button] = rep or false
 		if rep then
-			local holder = { melloRep = rep }
+			local holder = {}
+			repOf[holder] = rep
 			rimHolders[#rimHolders + 1] = holder
 			Kit:RegisterButtonRim(holder)
 			stats.items = stats.items + 1
@@ -951,7 +955,7 @@ local function SkinItemButton(button)
 		return
 	end
 	local rep = Replace(border, { as = ROUND_KEY, button = button, parent = button, alsoFade = extra })
-	button.melloRep = rep or false
+	repOf[button] = rep or false
 	if not rep then
 		return
 	end
@@ -995,8 +999,8 @@ local function SkinMoney(f)
 	end
 	done[f] = true
 	local inset, border = f.MoneyFrameInset, f.MoneyFrameBorder
-	if inset and inset.melloRep == nil then
-		inset.melloRep = false
+	if inset and repOf[inset] == nil then
+		repOf[inset] = false
 		FadeArt(inset.Bg)
 		if inset.NineSlice then
 			for _, region in ipairs({ inset.NineSlice:GetRegions() }) do
@@ -1034,7 +1038,7 @@ local function SkinFormPanels(f)
 			local tex = Kit:StoneDim(form, { rect = form, sublevel = 0 })
 			skin.eyePanels[form] = tex or false
 			if tex then
-				tex.kitPiece = true
+				pieceOf[tex] = true
 				tex:SetShown(active)
 				Note(form, "inner panel (2e; the form has no box of its own here)")
 			end
@@ -1332,7 +1336,7 @@ local function DumpOwn(frame, label)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. tostring(TextOf(region) or ""):sub(1, 40)
 		end
@@ -1390,7 +1394,7 @@ local function Summary(f)
 		Add(box, string.format("%s list, rows dressed %d", kind, listRows[box] or 0))
 	end
 	Walk(f, function(child)
-		if child.melloRep and not seen[child] then
+		if repOf[child] and not seen[child] then
 			Add(child, SweptKind(child) .. " (sweep)")
 		end
 	end)

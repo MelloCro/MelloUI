@@ -33,6 +33,8 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("StackSplitPanel")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("StackSplitPanel", {
 	title = "Split Stack Kit",
@@ -102,7 +104,7 @@ local function Picture(f)
 		return f.SingleItemSplitBackground
 	end
 	for _, region in ipairs({ f:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			if okL and layer == "BACKGROUND" then
 				return region
@@ -242,7 +244,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Okay / Cancel on the red plates, their labels in their own colours (the
--- parchment rule's button exception, melloNoInk); the plate keeps the
+-- parchment rule's button exception, QI.noInk); the plate keeps the
 -- button's disabled look
 --------------------------------------------------------------------------------
 local function SkinButton(button)
@@ -250,10 +252,12 @@ local function SkinButton(button)
 		return
 	end
 	skin.buttons[button] = false
-	button.melloNoInk = true
 	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and region.melloInk and QI and QI.PlainText then
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
 			pcall(QI.PlainText, region)
 		end
 	end
@@ -314,7 +318,7 @@ local function Surface()
 	surfaceMade = true
 	local function Skip(fs)
 		local parent = fs.GetParent and fs:GetParent()
-		if parent and (parent.melloNoInk or (parent.GetObjectType and parent:GetObjectType() == "Button")) then
+		if parent and (QI.noInk[parent] or (parent.GetObjectType and parent:GetObjectType() == "Button")) then
 			return true
 		end
 		return QI.DefaultSkip(fs)
@@ -504,7 +508,7 @@ local function DumpOwn(frame)
 		local okL, layer, sub = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "") .. (Kit.faded[region] and " FADED" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "") .. (Kit.faded[region] and " FADED" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. TextOf(region)
 		end
@@ -549,7 +553,8 @@ SlashCmdList.MELLOSPLITDUMP = function(msg)
 			if fs then
 				local okL, layer, sub = pcall(fs.GetDrawLayer, fs)
 				Found(key == "text" and "amount" or "total", fs, string.format(" \"%s\" %s, layer %s/%s, inked %s, shown %s", TextOf(fs), Rect(fs),
-					okL and tostring(layer) or "?", okL and tostring(sub) or "?", tostring(fs.melloInk ~= nil), Shown(fs)))
+					okL and tostring(layer) or "?", okL and tostring(sub) or "?",
+					tostring(MelloUI.QuestInk ~= nil and MelloUI.QuestInk.inkOn[fs] ~= nil), Shown(fs)))
 			else
 				Found(key == "text" and "amount" or "total", nil)
 			end
@@ -571,7 +576,8 @@ SlashCmdList.MELLOSPLITDUMP = function(msg)
 		end
 		for _, entry in ipairs({ { "okay", p.okay }, { "cancel", p.cancel } }) do
 			local b = entry[2]
-			Found(entry[1], b, b and string.format(" red plate %s, label kept %s", tostring(skin and skin.buttons[b]), tostring(b.melloNoInk == true)) or nil)
+			Found(entry[1], b, b and string.format(" red plate %s, label kept %s", tostring(skin and skin.buttons[b]),
+				tostring(MelloUI.QuestInk ~= nil and MelloUI.QuestInk.noInk[b] == true)) or nil)
 		end
 		local QI = MelloUI.QuestInk
 		local def = QI and QI.surfaces and QI.surfaces[SURFACE]

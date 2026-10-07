@@ -25,6 +25,8 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("RaidFramePanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("RaidFramePanel", {
 	title = "Raid Frames Kit",
@@ -60,19 +62,29 @@ end
 -- A compact unit frame (raid member, raid-style party member, pet / mini):
 -- F1 on its backing.
 local function SkinCompact(frame)
-	if not (frame and frame.background) or frame.melloRep ~= nil then
+	if not (frame and frame.background) or repOf[frame] ~= nil then
 		return
 	end
-	frame.melloRep = Replace(frame.background, { as = "raidframe-hp-bg-white" }) or false
+	repOf[frame] = Replace(frame.background, { as = "raidframe-hp-bg-white" }) or false
+	-- (0.19.8) Raid Frame Border: F1's Single rail, or the border library's
+	-- style in its place (Modules/KitBorders.lua)
+	if repOf[frame] then
+		Kit:RaidBorder(frame, repOf[frame].skin)
+	end
 end
 
 -- A raid group's border (G1), following the game's show / hide as its child.
 local function SkinGroup(group)
 	local border = group and group.borderFrame
-	if not (border and border.Background) or border.melloRep ~= nil then
+	if not (border and border.Background) or repOf[border] ~= nil then
 		return
 	end
-	border.melloRep = Replace(border.Background, { as = "options_frame_child", parent = border, rect = border, level = 0 }) or false
+	repOf[border] = Replace(border.Background, { as = "options_frame_child", parent = border, rect = border, level = 0 }) or false
+	-- (0.19.8) Raid Frame Border round the group (Raid Border Placement):
+	-- G1's Single rail, or the border library's style in its place
+	if repOf[border] then
+		Kit:RaidGroupBorder(border, repOf[border].object)
+	end
 end
 
 -- The totem bar's pooled buttons: the round rim on each Border.
@@ -82,8 +94,8 @@ local function SkinTotems()
 		return
 	end
 	for button in tf.totemPool:EnumerateActive() do
-		if button.Border and button.melloRep == nil then
-			button.melloRep = Replace(button.Border, { as = "UI-HUD-UnitFrame-TotemFrame" }) or false
+		if button.Border and repOf[button] == nil then
+			repOf[button] = Replace(button.Border, { as = "UI-HUD-UnitFrame-TotemFrame" }) or false
 		end
 	end
 end
@@ -151,6 +163,7 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	Kit:RaidBordersShown(true)
 	Kit:Cover("raidframes")
 end
 
@@ -162,6 +175,7 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	Kit:RaidBordersShown(false)
 	Kit:Uncover("raidframes")
 end
 
@@ -185,7 +199,7 @@ function M:RailSkin(frame)
 	if not active or type(frame) ~= "table" then
 		return nil
 	end
-	local rep = frame.melloRep
+	local rep = repOf[frame]
 	return type(rep) == "table" and rep.skin or nil
 end
 

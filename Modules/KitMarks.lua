@@ -29,6 +29,7 @@
 --   Kit:MarkPiece(piece, kind) -> the piece's metal twin for the kind, or nil
 --       window/portrait_ring   the ring in the metal with the kind's crest on
 --                              its top gem (the unit frames' style B)
+--       rings/<id>             (0.19.8) a ring style (Portrait Ring) the same way
 --       buttons/orb_*          the level orb in the metal
 --       bars/<family>_cap_l    a Nameplate Border's left cap in the metal
 --   Kit:MarkCrest(kind) -> the crest alone ("marks/crest_<kind>"), or nil
@@ -54,6 +55,8 @@
 local _, ns = ...
 local MelloUI = ns.MelloUI
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceNameOf = MelloUI.Kept.pieceNameOf
 local hooksecurefunc = MelloUI.Perf:Scope("KitMarks").hooksecurefunc
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
@@ -126,6 +129,9 @@ function Kit:MarkPiece(piece, kind)
 		local name
 		if piece == "window/portrait_ring" then
 			name = "marks/ring_" .. kind
+		elseif piece:find("^rings/") then
+			-- (0.19.8) a ring style of the border library's as the portrait ring: its own metal twins
+			name = "marks/" .. piece:sub(7) .. "_" .. kind
 		elseif piece:find("^buttons/orb_") then
 			name = "marks/orb_" .. metal
 		else
@@ -162,7 +168,7 @@ function Kit:WearMark(tex, piece, kind)
 		return
 	end
 	local want = (kind and self:MarkPiece(piece, kind)) or piece
-	if tex.kitName ~= want then
+	if pieceNameOf[tex] ~= want then
 		self:Apply(tex, want)
 	end
 end

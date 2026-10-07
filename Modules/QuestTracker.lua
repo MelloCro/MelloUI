@@ -692,7 +692,9 @@ function Art.Kit(tex, piece)
 	if MelloUI.Look:On(Art.AREA) and Kit and Kit.Apply and Kit:Apply(tex, piece) then
 		return true
 	end
-	tex.kitPiece, tex.kitName = nil, nil
+	if Kit and Kit.pieceOf then
+		Kit.pieceOf[tex], Kit.pieceNameOf[tex] = nil, nil
+	end
 	tex:SetTexCoord(0, 1, 0, 1)
 	return false
 end
@@ -741,7 +743,9 @@ function Art.Followed(tex, painted)
 	if Kit and Kit.Unpaint then
 		Kit:Unpaint(tex, "fill")
 	end
-	tex.kitPiece, tex.kitName = nil, nil
+	if Kit and Kit.pieceOf then
+		Kit.pieceOf[tex], Kit.pieceNameOf[tex] = nil, nil
+	end
 	-- (resetTexCoords: the kit gem's crop must not crop the pin too)
 	tex:SetAtlas((select(2, MelloUI.Look.Art("mapPinChat"))), false, nil, true)
 end
@@ -921,7 +925,7 @@ local function ApplyLook()
 	-- over it (the face keeps the size it was given, as the section headers)
 	local Kit = MelloUI.Kit
 	if header then
-		if Kit and Kit.TitleFont and header.text.melloFontSaved then
+		if Kit and Kit.TitleFont and MelloUI.Kept.fontSavedOf and MelloUI.Kept.fontSavedOf[header.text] then
 			pcall(Kit.TitleFont, Kit, header.text, false)
 		end
 		StyleText(header.text, HeaderSize())
@@ -2530,7 +2534,7 @@ local function Section(key, label)
 	-- tracker, as on All Objectives: the base font first (the face keeps
 	-- the size it was given, so a Text Size change must reach it)
 	local Kit = MelloUI.Kit
-	if Kit and Kit.TitleFont and row.text.melloFontSaved then
+	if Kit and Kit.TitleFont and MelloUI.Kept.fontSavedOf and MelloUI.Kept.fontSavedOf[row.text] then
 		pcall(Kit.TitleFont, Kit, row.text, false)
 	end
 	StyleText(row.text, TitleSize())
@@ -3201,6 +3205,12 @@ end
 
 function M:OnInit(db)
 	self.db = db
+end
+
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(eventFrame, ...)
 end
 
 function M:OnEnable(db)

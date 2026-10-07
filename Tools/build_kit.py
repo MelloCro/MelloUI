@@ -185,6 +185,8 @@ DENSITY = [
     (r"^tiles/", 0.5),                     # 512 px shown at 192 per repeat
     (r"^deco/rail_", 0.35),
     (r"^deco/gem", 1.0),                   # the 25 px gems: shown at 9-15 (route dots, joints) — at 0.5 the 12 px art in a 16 px file did not show on the map
+    (r"^rings/", 0.75),                    # 0.19.6 (border stage 4): the NewUI2 rings R1 / R3, 234 px shown at ~110 (a portrait) and 36 (a round button)
+    (r"^borders/", 0.75),                  # 0.19.6, the border library's masters: 13-28 px rails shown at 4-12 (heavy ~1:1), the 39 px gems at 9-17 (a 32 px file, not 64: the zip budget)
     (r"^deco/", 0.5),
     (r"^backdrops/page_stone$", 0.75),     # 1024 px shown at 669 (768 in a 1024 file)
     (r"^backdrops/page_parchment$", 1.0),  # 1024 px shown at 806 (the spell book page)
@@ -500,6 +502,61 @@ def bar_join(a):
     return out
 
 
+# The border library's masters (0.19.6, docs/plans/border-library.md stage 1; the user's picks of
+# border_library_sketch): ONE normal master per square style, drawn by Kit:CutNine at an element's WEIGHT (its rails'
+# screen px), held at full density so the heavy weight (the minimap's 12 px rails) stays sharp. The thin rims are
+# thin_rim's squares (the buttons' rims, buttons/rim*_normal, at half density); the Backdrop is the heavy frame's
+# rails swept round a square at their own depth (28 px top and bottom, 22 the sides: the kit's heavier horizontal
+# rails), sampled from the stretch of each rail clear of the corner gems, with no gem; its gems are pieces of their
+# own (red as painted, iron toned), laid on the corners at the weight's gem size, so a light frame keeps whole gems
+# rather than the 6 px dots of the frame shrunk (the sketch).
+BORDER_SIZE = 128
+BORDER_RAIL = {"top": (6, 33), "bottom": (124, 96), "left": (7, 28), "right": (127, 106)}   # heavy_frame's rails (outer, inner)
+BORDER_CLEAR = {"x": (40, 95), "y": (40, 90)}   # along each rail, the stretch clear of the corner gems
+
+
+def border_backdrop(a):
+    """the heavy frame's rails swept round a BORDER_SIZE square, mitred at the corners, no gem"""
+    n = BORDER_SIZE
+    th = BORDER_RAIL["top"][1] - BORDER_RAIL["top"][0] + 1        # 28
+    tv = BORDER_RAIL["left"][1] - BORDER_RAIL["left"][0] + 1      # 22
+    out = np.zeros((n, n, 4), np.uint8)
+    for y in range(n):
+        for x in range(n):
+            d = {"top": y / th, "bottom": (n - 1 - y) / th, "left": x / tv, "right": (n - 1 - x) / tv}
+            side = min(d, key=d.get)
+            if d[side] >= 1:
+                continue
+            t = th if side in ("top", "bottom") else tv
+            depth = {"top": y, "bottom": n - 1 - y, "left": x, "right": n - 1 - x}[side]
+            o, i = BORDER_RAIL[side]
+            sd = band_px(o, i, depth, t)
+            if side in ("top", "bottom"):
+                c0, c1 = BORDER_CLEAR["x"]
+                out[y, x] = a[sd, c0 + int(x * (c1 - c0) / n)]
+            else:
+                c0, c1 = BORDER_CLEAR["y"]
+                out[y, x] = a[c0 + int(y * (c1 - c0) / n), sd]
+    return out
+
+
+def border_gem(a):
+    """the heavy frame's top-left corner gem, its diamond (outline included) on a clear square, anti-aliased"""
+    n = 2 * GEM_R + 3
+    out = np.zeros((n, n, 4), np.float32)
+    x0 = y0 = -1
+    for j in range(n):
+        for i in range(n):
+            sx, sy = x0 + i, y0 + j
+            if 0 <= sx < a.shape[1] and 0 <= sy < a.shape[0]:
+                out[j, i] = a[sy, sx]
+    c = (n - 1) / 2
+    yy, xx = np.mgrid[0:n, 0:n]
+    mask = np.clip((GEM_R + 1.0 - (np.abs(xx - c) + np.abs(yy - c))), 0, 1)
+    out[..., 3] *= mask
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 def main():
     red_gems = "--red-gems" in sys.argv
     no_looks = "--no-looks" in sys.argv
@@ -508,7 +565,8 @@ def main():
     toned = 0
     # (manifest key of the source, piece written, how): "tone" the kit piece
     # (its decorative gems to iron), "keep" it as painted, "thin" the slot rim
-    jobs = [(key, key.split("/", 1)[1], "tone") for key in sorted(man)]
+    # (a sources/ entry is a picture other pieces are made from, never a piece of its own: the NewUI2 tiles)
+    jobs = [(key, key.split("/", 1)[1], "tone") for key in sorted(man) if not key.split("/", 1)[1].startswith("sources/")]
     if not red_gems:
         # a red copy of a few toned pieces, for the places red is asked for
         # (the health bar's end gem: its "red" state, kit_gems.RED_VARIANTS)
@@ -531,7 +589,18 @@ def main():
     for family in THIN_RIMS:
         jobs += [(key, "bars/" + family + "_" + part, "bar:" + family + ":" + part) for key in man
                  if key.split("/", 1)[1] == "buttons/slot_normal" for part in ("cap_l", "mid", "cap_r")]
+    # the border library's masters (0.19.6): the thin rims and the Backdrop's rails, and its corner gems
+    for family in THIN_RIMS:
+        jobs += [(key, "borders/" + family, "border:" + family) for key in man
+                 if key.split("/", 1)[1] == "buttons/slot_normal"]
+    jobs += [(key, "borders/backdrop", "border_backdrop") for key in man if key.split("/", 1)[1] == "buttons/slot_normal"]
+    jobs += [(key, "borders/gem_red", "border_gem_red") for key in man if key.split("/", 1)[1] == "buttons/slot_normal"]
+    jobs += [(key, "borders/gem_iron", "border_gem_iron") for key in man if key.split("/", 1)[1] == "buttons/slot_normal"]
     jobs += [(key, "tiles/concrete", "concrete") for key in man if key.split("/", 1)[1] == "backdrops/page_stone"]
+    # (0.19.6) the NewUI2 textures picked as backgrounds (Tools/make_newui2_borders.py): already seamless, laid as
+    # 512 piece px tiles as the concrete, no quilting
+    jobs += [(key, "tiles/brushedmetal", "newtile") for key in man if key.split("/", 1)[1] == "sources/tile8d"]
+    jobs += [(key, "tiles/agedparchment", "newtile") for key in man if key.split("/", 1)[1] == "sources/tile8f"]
     jobs += [(key, "tiles/vellum", "vellum") for key in man if key.split("/", 1)[1] == "backdrops/page_parchment"]
     jobs += [(key, "deco/barjoin", "join") for key in man if key.split("/", 1)[1] == "buttons/slot_normal"]
     # the file and the layout entry of one piece (`name` the rules it follows,
@@ -598,11 +667,11 @@ def main():
         cap = re.search(r"^bars/.*_cap_([lr])$", name)
         if cap:
             op = cap_hollow(np.array(im), cap.group(1))
-        if op and re.search(r"(slot_|roundslot_|portrait_ring|card_|/frame_mid|castbar_mid|frame_cap|castbar_cap|bars/rim[a-z]*_(cap_[lr]|mid)|buttons/roundrim|checkbox|orb_|cog_|arrow_|plus_|minus_|close_)", name):
+        if op and re.search(r"(slot_|roundslot_|portrait_ring|card_|/frame_mid|castbar_mid|frame_cap|castbar_cap|bars/rim[a-z]*_(cap_[lr]|mid)|buttons/roundrim|checkbox|orb_|cog_|arrow_|plus_|minus_|close_|^borders/(rim|backdrop|n[0-9]g?$)|^rings/)", name):
             entry["open"] = op
         if extra and "overhang" in extra:
             entry["overhang"] = int(extra["overhang"])   # oversized corners: how far past the frame's corner they reach
-        if re.search(r"(portrait_ring|roundslot_|roundrim|orb_)", out_name):
+        if re.search(r"(portrait_ring|roundslot_|roundrim|orb_|^rings/)", out_name):
             entry["radius"] = body_radius(np.array(im))    # the round body without its compass gems
         if like:
             # a metal twin (marks/): the plain piece's geometry, so the game swaps
@@ -643,6 +712,18 @@ def main():
         elif how == "join":
             a = bar_join(heavy_frame(kit_gems.tone(name, a)[0]))
             name = out_name
+        elif how.startswith("border:"):
+            a = thin_rim(a, **THIN_RIMS[how[7:]])
+            name = out_name                  # a border master from here on (its density)
+        elif how == "border_backdrop":
+            a = border_backdrop(heavy_frame(kit_gems.tone(name, a)[0]))
+            name = out_name
+        elif how == "border_gem_red":
+            a = border_gem(heavy_frame(a))
+            name = out_name
+        elif how == "border_gem_iron":
+            a = border_gem(heavy_frame(kit_gems.tone(name, a)[0]))
+            name = out_name
         elif how == "frame_red":
             a = heavy_frame(a)
         elif how == "frame_iron":
@@ -653,6 +734,10 @@ def main():
         elif how == "vellum":
             a = vellum_tile(a)
             name = out_name
+        elif how == "newtile":
+            logical = (512, 512)
+            a = np.array(Image.fromarray(a).resize(logical, Image.LANCZOS))
+            name = out_name                  # a tile from here on: tiled, at a tile's density
         if out_name in mark_bases:
             made[out_name] = a              # (the marks are made from it, below)
         emit(out_name, name, a, logical, man[key])

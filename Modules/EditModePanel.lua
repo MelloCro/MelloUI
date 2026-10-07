@@ -57,7 +57,7 @@
 --     per call below), and no rule that re-anchors or re-sizes a game control
 --     is used (no StatusBar brackets, no icon fitting, no text insets). Its
 --     helpers that mark the control (Kit:SkinRedButton, SkinCheckButton,
---     SkinScrollBar write `melloRep` onto it) are re-done here without the mark.
+--     SkinScrollBar mark it in MelloUI.Kept.repOf) are re-done here without the mark.
 -- Switching the module off hides every piece and gives the faded art back its
 -- alpha: the window looks exactly as the game draws it. The hooks stay (post-
 -- hooks cannot be removed) but do nothing while the module is off. Each
@@ -76,6 +76,8 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("EditModePanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("EditModePanel", {
 	title = "Edit Mode Kit",
@@ -241,7 +243,7 @@ local function Textures(frame)
 		return list
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region.GetObjectType and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region.GetObjectType and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			list[#list + 1] = region
 		end
 	end
@@ -254,7 +256,7 @@ local TOP_PAD_X, TOP_PAD_Y = 12, 30   -- the top controls' panel, in from the wi
 
 local function InnerPanel(owner, inset)
 	local fill = owner:CreateTexture(nil, "BACKGROUND", nil, 2)
-	fill.kitPiece = true
+	pieceOf[fill] = true
 	fill:SetPoint("TOPLEFT", owner, "TOPLEFT", inset, -inset)
 	fill:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", -inset, inset)
 	Kit:Paint(fill, "innerPanel", "fill", PANEL_ALPHA)   -- (by its key: a new palette paints it again)
@@ -315,7 +317,7 @@ local function SkinButton(b)
 	local extra = { b.Left, b.Right }
 	for _, region in ipairs({ b:GetRegions() }) do
 		if region:GetObjectType() == "Texture" and region ~= anchor and region ~= b.Left and region ~= b.Right
-			and not region.kitPiece and region:GetDrawLayer() == "HIGHLIGHT" then
+			and not pieceOf[region] and region:GetDrawLayer() == "HIGHLIGHT" then
 			extra[#extra + 1] = region
 		end
 	end

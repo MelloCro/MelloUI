@@ -31,6 +31,8 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("DialogPanel")
 local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local pieceOf = MelloUI.Kept.pieceOf
 
 local M = MelloUI:RegisterModule("DialogPanel", {
 	title = "Dialogs Kit",
@@ -122,7 +124,7 @@ local function GameArt(dialog)
 		end
 	end
 	for _, region in ipairs({ dialog:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece and not IsContent(region) then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] and not IsContent(region) then
 			local layer = region:GetDrawLayer()
 			if layer == "BACKGROUND" or layer == "BORDER" then
 				Add(region)
@@ -170,10 +172,12 @@ local function SkinDialogButton(button)
 	-- not on the paper -- the ink's walk never enters the button (the flag
 	-- QuestInk's Walk honours, as the tracker's headers use it), and a label
 	-- inked already gets its own colour back
-	button.melloNoInk = true
 	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and region.melloInk and QI and QI.PlainText then
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
 			pcall(QI.PlainText, region)
 		end
 	end
@@ -189,7 +193,7 @@ local function SkinDialogButton(button)
 	local anchor, extra, anchorRank = nil, {}, 99
 	local RANK = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4 }
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local rank = RANK[region:GetDrawLayer()]
 			if rank and rank < anchorRank then
 				if anchor then

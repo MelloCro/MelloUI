@@ -25,6 +25,9 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("CastBarPanel")
 local hooksecurefunc = Perf.hooksecurefunc
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local bracketOf = MelloUI.Kept.bracketOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("CastBarPanel", {
 	title = "Cast Bars Kit",
@@ -98,6 +101,8 @@ local function Follow(rep, region)
 	Sync()
 end
 
+local narrowedBars = setmetatable({}, { __mode = "k" })   -- [cast bar] = true: narrowed from that width
+local narrowOf = setmetatable({}, { __mode = "k" })   -- [cast bar] = { width, icon }: its game width and icon points before Narrow
 -- The bar narrowed by the bracket's arms (C1) after the game sizes it; the
 -- icon moved out past the cap; both put back on disable.
 local function Narrow(bar, rep, known)
@@ -113,25 +118,25 @@ local function Narrow(bar, rep, known)
 				return
 			end
 		end
-		if bar.melloNarrow == nil then
-			bar.melloNarrow = { width = w }
-		elseif bar.melloNarrowed then
+		if narrowOf[bar] == nil then
+			narrowOf[bar] = { width = w }
+		elseif narrowedBars[bar] then
 			-- already narrowed from this game width: measure from the saved one
-			w = bar.melloNarrow.width
+			w = narrowOf[bar].width
 		end
-		bar.melloNarrow.width = w
-		bar.melloNarrowed = true
+		narrowOf[bar].width = w
+		narrowedBars[bar] = true
 		bar:SetWidth(math.max(w - armL - armR, 20))
 		if bar.Icon then
-			if not bar.melloNarrow.icon then
+			if not narrowOf[bar].icon then
 				local points = {}
 				for i = 1, bar.Icon:GetNumPoints() do
 					points[i] = { bar.Icon:GetPoint(i) }
 				end
-				bar.melloNarrow.icon = points
+				narrowOf[bar].icon = points
 			end
 			-- from the game's own anchor (saved), never from the moved one
-			local pt = bar.melloNarrow.icon[1]
+			local pt = narrowOf[bar].icon[1]
 			if pt and pt[1] and not Secret(pt[4]) then
 				bar.Icon:ClearAllPoints()
 				bar.Icon:SetPoint(pt[1], pt[2], pt[3], (pt[4] or 0) - armL, pt[5] or 0)
@@ -153,7 +158,7 @@ local function Shade(bar)
 		return
 	end
 	list.made = true
-	local rep = bar.melloRep
+	local rep = repOf[bar]
 	local el = Kit:ShadeElement(bar, "castbars", { anchor = rep and rawget(rep, "trough") or nil })
 	for i = 1, #list do
 		el:Add(list[i])
@@ -161,7 +166,7 @@ local function Shade(bar)
 end
 
 local function Widen(bar)
-	local saved = bar.melloNarrow
+	local saved = narrowOf[bar]
 	if not saved then
 		return
 	end
@@ -175,10 +180,12 @@ local function Widen(bar)
 		end
 	end)
 	if ok then
-		bar.melloNarrow, bar.melloNarrowed = nil, nil
+		narrowOf[bar], narrowedBars[bar] = nil, nil
 	end
 end
 
+local stopHooked = setmetatable({}, { __mode = "k" })   -- [animation group] = true: Play hooked to stop it
+local refitting = setmetatable({}, { __mode = "k" })   -- [cast bar] = true while its bracket refits
 local function SkinCastBar(bar, known)
 	if not bar or skin.bars[bar] then
 		return
@@ -194,21 +201,21 @@ local function SkinCastBar(bar, known)
 	local rep = Replace(bar.Border, { as = "ui-castingbar-frame", parent = bar, rect = bar,
 		layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub,
 		fitHeight = known and known.h, fitWidth = known and known.w })
-	bar.melloRep = rep or false
+	repOf[bar] = rep or false
 	local shade = {}   -- the outline's pieces (Shade: on the bar's first show)
 	skin.shade[bar] = shade
 	if rep then
 		shade[#shade + 1] = rep
 		local textures = MelloUI:GetModule("BarTextures")
 		rep.onEnable = function()
-			bar.melloKitBracket = true
+			bracketOf[bar] = true
 			if textures and textures.RefreshMask then
 				textures:RefreshMask(bar)
 			end
 			Narrow(bar, rep, known)
 		end
 		rep.onDisable = function()
-			bar.melloKitBracket = nil
+			bracketOf[bar] = nil
 			if textures and textures.RefreshMask then
 				textures:RefreshMask(bar)
 			end
@@ -217,12 +224,23 @@ local function SkinCastBar(bar, known)
 		if active then
 			rep.onEnable()
 		end
+		-- (0.19.8) Cast Bar Border changed live (Kit:ApplyBorder -> rep:SetBar,
+		-- then this): the bar narrowed again from the game's width by the new
+		-- look's arms (none for a frame laid round it: the border library's)
+		rep.onBarChanged = function()
+			if active then
+				Kit:WhenOutOfCombat(function()
+					Narrow(bar, rep, known)
+					rep:Refit()
+				end)
+			end
+		end
 		-- the game sizes the bar in SetLook (the two Edit Mode looks, the
 		-- overlay look): narrow it again, refit the bracket
 		if bar.SetLook then
 			hooksecurefunc(bar, "SetLook", function()
 				if active then
-					bar.melloNarrowed = nil
+					narrowedBars[bar] = nil
 					Kit:WhenOutOfCombat(function()
 						Narrow(bar, rep, known)
 						rep:Refit()
@@ -231,10 +249,10 @@ local function SkinCastBar(bar, known)
 			end)
 		end
 		Perf.HookScript(bar, "OnSizeChanged", function()
-			if active and not bar.melloRefitting then
-				bar.melloRefitting = true
+			if active and not refitting[bar] then
+				refitting[bar] = true
 				rep:Refit()
-				bar.melloRefitting = nil
+				refitting[bar] = nil
 			end
 		end)
 	end
@@ -248,8 +266,8 @@ local function SkinCastBar(bar, known)
 	-- the fade hook: stopped as soon as the game plays them
 	for _, key in ipairs(ANIM_KEYS) do
 		local anim = bar[key]
-		if anim and anim.Play and not anim.melloStopHook then
-			anim.melloStopHook = true
+		if anim and anim.Play and not stopHooked[anim] then
+			stopHooked[anim] = true
 			hooksecurefunc(anim, "Play", function(a)
 				if active then
 					a:Stop()
@@ -373,3 +391,7 @@ SlashCmdList.MELLOCBDUMP = function(msg)
 	end
 	MelloUI:ShowLog("cbdump " .. msg)
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+M.kept = { narrowOf = narrowOf, narrowedBars = narrowedBars, refitting = refitting, stopHooked = stopHooked }

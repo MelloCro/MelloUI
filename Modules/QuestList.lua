@@ -77,7 +77,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Which quests the list shows. The dropdown at the top of the list switches this as well." },
 		{ type = "toggle", key = "hideCompleted", name = "Hide Completed",
 		  desc = "Leave out quests you have already completed instead of greying them." },
-		{ type = "toggle", key = "showHidden", name = "Show Hidden Quests", new = "0.19.5",
+		{ type = "toggle", key = "showHidden", name = "Show Hidden Quests",
 		  desc = "List the quests you hid (Alt-click a quest giver's mark on the map, or a quest in the list), dimmed, so you can Alt-click them back. Hidden quests stay off the map either way. Hiding is kept per character." },
 		{ type = "toggle", key = "startGiver", name = "Quests From a Quest Giver",
 		  desc = "List quests picked up from a quest giver or an object (the \"!\"). The gear button on the list switches these as well; they apply to the map pins too." },
@@ -99,7 +99,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Mark every known quest giver on the zone map with a ! or ? coloured by what you can do there. Hover for the quests, click to track the giver. The List tab's choices apply to the pins too: where quests start (for quests not taken yet), the other faction's and other classes' quests, the levels above yours, and Events (a holiday's givers show while the list shows Events or the quest is in your log)." },
 		{ type = "toggle", key = "pinCompleted", parent = "mapPins", name = "Include Givers You Are Done With",
 		  desc = "Also mark givers whose quests you have all completed, with a grey tick." },
-		{ type = "toggle", key = "hideGrey", parent = "mapPins", name = "Hide Grey Quests", new = "0.19.5",
+		{ type = "toggle", key = "hideGrey", parent = "mapPins", name = "Hide Grey Quests",
 		  desc = "Leave quests that are grey for you (far below your level, as the game colours them) off the zone map until you take them. Quests in your log and the one you track still show." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone." },
@@ -107,13 +107,13 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Mark instance entrances on the zone maps. Hover for the level range and your quest progress, click to list its quests. Entrances of new instances are learned the first time you walk in." },
 		{ type = "toggle", key = "transportPins", name = "Boats And Zeppelins",
 		  desc = "Mark the docks and zeppelin towers on the zone maps with the destination. Click to route there, Shift-click to open the destination's map." },
-		{ type = "toggle", key = "objectiveMarks", name = "Objective Marks", new = "0.19.5",
+		{ type = "toggle", key = "objectiveMarks", name = "Objective Marks",
 		  desc = "Mark on the zone map where the quests in your log are done: an outline round each objective's area with one mark for it (a sword to kill, a bag to collect, a cog to use, a flag to explore) and its progress, and the single places as small dots when you zoom in. Hover a mark for the quest, the objective and what drops it; click it for a waypoint. A done objective's marks go; a done quest shows only its hand-in ?." },
-		{ type = "toggle", key = "objectiveTrackedOnly", parent = "objectiveMarks", name = "Only The Tracked Quests", new = "0.19.5",
+		{ type = "toggle", key = "objectiveTrackedOnly", parent = "objectiveMarks", name = "Only The Tracked Quests",
 		  desc = "Mark only the quests you track, not every quest in your log." },
-		{ type = "toggle", key = "hideGameObjectives", parent = "objectiveMarks", name = "Hide The Game's Quest Areas", new = "0.19.5",
+		{ type = "toggle", key = "hideGameObjectives", parent = "objectiveMarks", name = "Hide The Game's Quest Areas",
 		  desc = "While the objective marks are on, the game's own blue quest areas and quest markers on the world map are switched off, through the game's own Quest Objectives setting (the quest buttons in the game's quest tracker go with it). Turning this or the marks off gives the game's setting back as you had it." },
-		{ type = "toggle", key = "objectiveMinimap", parent = "objectiveMarks", name = "On The Minimap", new = "0.19.5",
+		{ type = "toggle", key = "objectiveMinimap", parent = "objectiveMarks", name = "On The Minimap",
 		  desc = "The same marks on the minimap for the objectives near you, and a small mark on its edge with an arrow for the nearest ones just beyond it. Drawn with Route's minimap drawing, so Route has to be on." },
 		{ type = "header", name = "Dungeons" },
 		{ type = "toggle", key = "dungeonSummary", name = "Quest Check When Entering An Instance",
@@ -2255,6 +2255,12 @@ function M:OnInit(db)
 	for _, key in ipairs(GONE) do
 		db[key] = nil
 	end
+end
+
+-- (0.19.8) switched on after the login's PLAYER_ENTERING_WORLD (Core's
+-- start-up pass over the login's first frames): that event as it came
+function M:OnLoginWorld(...)
+	MelloUI:ReplayWorld(eventFrame, ...)
 end
 
 function M:OnEnable(db)

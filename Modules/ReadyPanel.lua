@@ -44,6 +44,10 @@ local CreateFrame = MelloUI.Safe.CreateFrame
 local Perf = MelloUI.Perf:Scope("ReadyPanel")
 local C_Timer = Perf.C_Timer
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
 
 local M = MelloUI:RegisterModule("ReadyPanel", {
 	title = "Ready Check Kit",
@@ -195,7 +199,7 @@ local function GameArt(popup)
 	local keep = Keep(popup)
 	local all = popup == _G.ReadyCheckFrame
 	local function Add(obj)
-		if obj and not seen[obj] and not keep[obj] and not obj.kitPiece and not obj.melloSkin then
+		if obj and not seen[obj] and not keep[obj] and not pieceOf[obj] and not obj.melloSkin then
 			seen[obj] = true
 			list[#list + 1] = obj
 		end
@@ -240,7 +244,7 @@ end
 --------------------------------------------------------------------------------
 -- Buttons (the Dialogs Kit's way): a text button on the red plate with its
 -- label in its own colour (the parchment rule's button exception: marked
--- melloNoInk, a label inked already given its colour back); a close button
+-- QI.noInk, a label inked already given its colour back); a close button
 -- on the kit's close states. Only textures and frames of our own are added
 -- and the game's art faded (the ready check's and the queues' buttons may
 -- be protected); the plate keeps the button's disabled look.
@@ -250,10 +254,12 @@ local function SkinButton(button)
 		return
 	end
 	popupButtons[button] = "none"
-	button.melloNoInk = true
 	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "FontString" and region.melloInk and QI and QI.PlainText then
+		if region:GetObjectType() == "FontString" and QI and QI.inkOn[region] and QI.PlainText then
 			pcall(QI.PlainText, region)
 		end
 	end
@@ -269,7 +275,7 @@ local function SkinButton(button)
 	local anchor, extra, anchorRank = nil, {}, 99
 	local RANK = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4 }
 	for _, region in ipairs({ button:GetRegions() }) do
-		if region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local okL, layer = pcall(region.GetDrawLayer, region)
 			local rank = okL and RANK[layer]
 			if rank and rank < anchorRank then
@@ -292,7 +298,10 @@ local function SkinClose(button)
 		return
 	end
 	popupButtons[button] = "none"
-	button.melloNoInk = true
+	local QI = MelloUI.QuestInk
+	if QI then
+		QI.noInk[button] = true
+	end
 	local normal = button.GetNormalTexture and button:GetNormalTexture()
 	if normal and Replace(normal, { as = "RedButton-Exit", button = button, alsoFade = Kit:OtherTextures(button, normal) }) then
 		popupButtons[button] = "close"
@@ -742,7 +751,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "") .. (Kit.faded[region] and " FADED" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "") .. (Kit.faded[region] and " FADED" or "")
 		elseif kind == "FontString" then
 			art = "text: " .. TextOf(region)
 		end
@@ -796,7 +805,7 @@ local function DumpPopup(e)
 			end
 			local okP, pw = pcall(portrait.GetWidth, portrait)
 			Found("portrait", portrait, string.format(" file %s, size %s, fitted %s, shown %s", (okT and not Secret(file)) and tostring(file) or "?",
-				Size(portrait), tostring(portrait.melloSaved ~= nil), Shown(portrait)))
+				Size(portrait), tostring(portraitSavedOf[portrait] ~= nil), Shown(portrait)))
 			Found("ring", ringTex, skin and skin.ring and string.format(" %s, %s px; medallion %s px vs portrait %s px; disc %s",
 				tostring(skin.ringKind), okR and Num(ringW) or "?", (okR and type(ringW) == "number" and not Secret(ringW)) and Num(ringW * MEDALLION_TO_RING) or "?",
 				okP and Num(pw) or "?", tostring(skin.disc ~= nil)) or nil)
@@ -812,14 +821,14 @@ local function DumpPopup(e)
 				okS, sx, sy = pcall(strip.GetCenter, strip)
 			end
 			Found("title", title, string.format(" \"%s\" font %s, title face %s, centre %s,%s, plate centre %s,%s", TextOf(title), FontOf(title),
-				tostring(title.melloFontSaved ~= nil), okC and Num(cx) or "?", okC and Num(cy) or "?", okS and Num(sx) or "-", okS and Num(sy) or "-"))
+				tostring(fontSavedOf[title] ~= nil), okC and Num(cx) or "?", okC and Num(cy) or "?", okS and Num(sx) or "-", okS and Num(sy) or "-"))
 		else
 			Found("title", tc, " (no title on this client's check: its message is its only text)")
 		end
 	end
 	local msg = MessageText(popup)
 	if msg then
-		Found("message", msg, string.format(" \"%s\" font %s, inked %s", TextOf(msg), FontOf(msg), tostring(msg.melloInk ~= nil)))
+		Found("message", msg, string.format(" \"%s\" font %s, inked %s", TextOf(msg), FontOf(msg), tostring(MelloUI.QuestInk ~= nil and MelloUI.QuestInk.inkOn[msg] ~= nil)))
 	end
 	local buttons, closes = Buttons(popup)
 	for _, b in ipairs(buttons) do

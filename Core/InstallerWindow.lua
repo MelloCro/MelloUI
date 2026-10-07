@@ -1270,7 +1270,7 @@ local function DressRing(Kit, page, shell)
 	local holder = rep.object
 	local disc = Kit:RingDisc(rep, "innerPanel", holder, 6)
 	local emblem = holder:CreateTexture(nil, "ARTWORK", nil, 1)
-	emblem.kitPiece = true
+	MelloUI.Kept.pieceOf[emblem] = true
 	emblem:SetTexture(LOGO)
 	emblem:SetAllPoints(disc or rep.tex)
 	emblem:SetAlpha(page.emblemAlpha or 0.35)

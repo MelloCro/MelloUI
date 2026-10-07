@@ -350,7 +350,7 @@ local function PaintCrest(p, s)
 		crest:Hide()
 		return
 	end
-	if crest.kitName ~= piece then
+	if MelloUI.Kept.pieceNameOf[crest] ~= piece then
 		Kit:Apply(crest, piece)   -- look-ok: the preview of the kit's elite mark (only while the unit frames wear the kit)
 	end
 	crest:SetAlpha(ufp.db.marks == false and DIM or 1)

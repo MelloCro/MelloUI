@@ -27,6 +27,7 @@ QL.Panel = {}
 -- spacing, columns, hover band and the Classic / Forever stamp
 local QI = MelloUI.QuestInk
 local ROW = QI.ROW
+local bandOf = QI.bandOf   -- [row] = its hover band (QI.RowBand)
 local LEVEL_SHORTCUT = 4   -- the gear menu's level check: hide quests more than 4 (so 5 or more) levels above
 local PIN_SIZE = 14        -- the map pin on the pinned quest's icon
 -- a quest row's height: the log's spacing round its two fonts as the list
@@ -236,8 +237,8 @@ local function EntryEnter(self)
 	if e and e.row then
 		RowEnter(self)
 		-- the hover band UNDER the text (QI.RowBand), as the quest log's
-		if self.melloBand then
-			self.melloBand:Show()
+		if bandOf[self] then
+			bandOf[self]:Show()
 		end
 	end
 	local hover = QL.Panel.OnRowHover
@@ -251,8 +252,8 @@ local function EntryLeave(self)
 	if e and e.row then
 		Leave()
 	end
-	if self.melloBand then
-		self.melloBand:Hide()
+	if bandOf[self] then
+		bandOf[self]:Hide()
 	end
 	local hover = QL.Panel.OnRowHover
 	if hover then
@@ -427,8 +428,8 @@ local function InitHeader(button, entry)
 	button.plus:Show()
 	button.pin:Hide()
 	button.origin:Hide()
-	if button.melloBand then
-		button.melloBand:Hide()
+	if bandOf[button] then
+		bandOf[button]:Hide()
 	end
 	if NewArt(button, "header") then
 		button:SetNormalAtlas("common-button-list-collapseExpand")

@@ -50,8 +50,8 @@
 -- never touched here.
 --
 -- Taint: nothing of the game's is replaced or re-scripted. Post-hooks and
--- HookScript only, our state in weak side tables (the kit's own melloRep
--- marker on the stopwatch toggle is the one field written on a game frame).
+-- HookScript only, our state in weak side tables (the kit's own rep of the
+-- stopwatch toggle too: MelloUI.Kept.repOf; no field is written on a game frame).
 -- No time, alarm or stopwatch function is ever called. Switching the module
 -- off disables every replacement and puts the labels' fonts and colours,
 -- the title and the clock icon back: the windows are the game's again.
@@ -71,6 +71,11 @@ local hooksecurefunc = Perf.hooksecurefunc
 -- on this file's own /melloperf row (review, 2026-09-24)
 local Shared = Perf.Shared or function(_, fn) return fn end
 local Kit = MelloUI.Kit
+-- what the kit keeps beside the game's frames (Kit.lua: weak-keyed, never keys on them)
+local fontSavedOf = MelloUI.Kept.fontSavedOf
+local pieceOf = MelloUI.Kept.pieceOf
+local portraitSavedOf = MelloUI.Kept.portraitSavedOf
+local repOf = MelloUI.Kept.repOf
 
 local M = MelloUI:RegisterModule("ClockPanel", {
 	title = "Clock Kit",
@@ -215,7 +220,7 @@ local function PlaceTitle()
 	end
 	if fs == tc.TitleText then
 		-- the container's own string: the plate carries it itself
-		if not fs.melloFontSaved then
+		if not fontSavedOf[fs] then
 			Kit:TitleFont(fs, true)
 		end
 		return
@@ -298,7 +303,7 @@ end
 
 local function KeepInsetUnder(f)
 	local inset = InsetOf(f)
-	local rep = inset and inset.melloRep
+	local rep = inset and repOf[inset]
 	local holder = rep and rep.object
 	if not (holder and holder.SetFrameLevel) then
 		return
@@ -378,7 +383,7 @@ end
 -- cap dropped -- that cap is the search glass, and this is a message box
 -- (the chat's, Edit Mode's and the auction house's rule).
 local function SkinEdit(edit)
-	if not edit or done[edit] or edit.melloRep ~= nil or edit.searchIcon then
+	if not edit or done[edit] or repOf[edit] ~= nil or edit.searchIcon then
 		return
 	end
 	done[edit] = true
@@ -402,10 +407,10 @@ end
 -- (its edge 2 px under the rim's inner edge, on the icon's centre -- the
 -- merchant's tools' recipe), the highlight and checked glows faded (the rim
 -- carries hover and the checked gold: it reads GetChecked itself). The kit's
--- melloRep marker keeps the sweep from taking it for a check box.
+-- rep (MelloUI.Kept.repOf) keeps the sweep from taking it for a check box.
 --------------------------------------------------------------------------------
 local function FitIconRim(entry)
-	local rep = entry.button and entry.button.melloRep
+	local rep = entry.button and repOf[entry.button]
 	local rim = rep and rep.object
 	local icon = entry.icon
 	if not (rim and rim.base and icon) then
@@ -431,7 +436,7 @@ Kit:OnBorderChanged("button", function()
 end)
 
 local function SkinIconCheck(cb)
-	if not cb or done[cb] or cb.melloRep ~= nil then
+	if not cb or done[cb] or repOf[cb] ~= nil then
 		return
 	end
 	done[cb] = true
@@ -442,7 +447,7 @@ local function SkinIconCheck(cb)
 	local rep = Replace(icon, { as = Kit:ButtonRimRule(), button = cb, parent = cb, rect = icon, noFade = true,
 		alsoFade = List(cb.GetHighlightTexture and cb:GetHighlightTexture(), cb.GetCheckedTexture and cb:GetCheckedTexture(),
 			cb.GetPushedTexture and cb:GetPushedTexture()) })
-	cb.melloRep = rep or false
+	repOf[cb] = rep or false
 	if rep then
 		local entry = { button = cb, icon = icon }
 		rims[#rims + 1] = entry
@@ -464,7 +469,7 @@ local function TimerPieces(sw)
 	local left = _G.StopwatchFrameBackgroundLeft
 	local right
 	for _, region in ipairs({ sw:GetRegions() }) do
-		if region ~= left and region:GetObjectType() == "Texture" and not region.kitPiece then
+		if region ~= left and region:GetObjectType() == "Texture" and not pieceOf[region] then
 			local ok, layer = pcall(region.GetDrawLayer, region)
 			if ok and layer == "BACKGROUND" then
 				right = region
@@ -851,7 +856,7 @@ local function Shown(obj)
 end
 
 local function Dressed(obj)
-	return tostring(obj ~= nil and obj.melloRep ~= nil and obj.melloRep ~= false)
+	return tostring(obj ~= nil and repOf[obj] ~= nil and repOf[obj] ~= false)
 end
 
 local function Num(v)
@@ -894,7 +899,7 @@ local function DumpOwn(frame)
 		local okL, layer = pcall(region.GetDrawLayer, region)
 		local art = ""
 		if kind == "Texture" then
-			art = tostring(Kit:ArtKey(region) or "?") .. (region.kitPiece and " (kit)" or "") .. (Kit.faded[region] and " faded" or "")
+			art = tostring(Kit:ArtKey(region) or "?") .. (pieceOf[region] and " (kit)" or "") .. (Kit.faded[region] and " faded" or "")
 		elseif kind == "FontString" then
 			local okT, text = pcall(region.GetText, region)
 			art = "text: " .. ((okT and type(text) == "string" and not Secret(text)) and text:sub(1, 40) or "?") .. ", font " .. FontText(region)
@@ -906,7 +911,7 @@ local function DumpOwn(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
 		local okLv, lv = pcall(child.GetFrameLevel, child)
 		MelloUI:Print("  child %s %s level %s shown %s%s", tostring(child:GetObjectType()), Label(child),
-			okLv and Num(lv) or "?", Shown(child), child.melloRep ~= nil and " (dressed)" or "")
+			okLv and Num(lv) or "?", Shown(child), repOf[child] ~= nil and " (dressed)" or "")
 	end
 end
 
@@ -928,7 +933,7 @@ local function DumpClock(f)
 		local okS, w, h = pcall(portrait.GetSize, portrait)
 		Found("clock icon (portrait)", portrait, string.format(" size %s x %s, medallion %s, fitted %s, shown %s",
 			okS and Num(w) or "?", okS and Num(h) or "?", ringW and Num(ringW * 0.759) or "?",
-			tostring(portrait.melloSaved ~= nil), Shown(portrait)))
+			tostring(portraitSavedOf[portrait] ~= nil), Shown(portrait)))
 	else
 		Found("clock icon (portrait)", nil)
 	end
@@ -940,14 +945,14 @@ local function DumpClock(f)
 		local rep = TitleRep()
 		Found("title text", title, string.format(" text %s, parent %s, font %s, title face %s, lent to the plate %s, %s; plate %s %s",
 			(okT and type(text) == "string" and not Secret(text)) and text or "?", Label(title:GetParent()), FontText(title),
-			tostring(title.melloFontSaved ~= nil), tostring(titleHome[title] ~= nil), RectText(title),
+			tostring(fontSavedOf[title] ~= nil), tostring(titleHome[title] ~= nil), RectText(title),
 			tostring(rep ~= nil), rep and rep.object and RectText(rep.object) or ""))
 	else
 		Found("title text", nil)
 	end
 	local inset = InsetOf(f)
 	Found("settings (Inset)", inset, inset and string.format(" dressed %s, dim %s, %s", Dressed(inset),
-		tostring(inset.melloRep and inset.melloRep.skin and inset.melloRep.skin.dimFill ~= nil), RectText(inset)) or nil)
+		tostring(repOf[inset] and repOf[inset].skin and repOf[inset].skin.dimFill ~= nil), RectText(inset)) or nil)
 	local atf = f.AlarmTimeFrame or _G.TimeManagerAlarmTimeFrame
 	for _, key in ipairs({ "HourDropdown", "MinuteDropdown", "AMPMDropdown" }) do
 		local dd = atf and atf[key]

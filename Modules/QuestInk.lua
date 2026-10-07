@@ -72,6 +72,16 @@ local QI = {}
 MelloUI.QuestInk = QI
 QI.onParchment = false
 
+-- The ink's marks on the game's font strings and frames: beside them in
+-- weak-keyed tables, never on them (hard rule 1: no key written on a game
+-- frame; 0.19.8). The panels read and write them through these fields
+-- (QI.noInk[button] = true marks a plate's label to keep its colour).
+QI.noInk = setmetatable({}, { __mode = "k" })           -- [frame / font string] = true: the ink's walk passes it by
+QI.inkOn = setmetatable({}, { __mode = "k" })           -- [font string] = true while it is ink
+QI.bandOf = setmetatable({}, { __mode = "k" })          -- [row] = its hover band (QI.RowBand)
+QI.colourWatched = setmetatable({}, { __mode = "k" })   -- [font string] = true: its SetTextColor hooked (QI.WatchColour)
+local noInk, inkOn, bandOf, colourWatched = QI.noInk, QI.inkOn, QI.bandOf, QI.colourWatched
+
 local ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Quests\\"
 
 -- the inks (dark brown on the vellum: 8 : 1 for titles)
@@ -620,12 +630,12 @@ function QI.RowBullet(line)
 end
 
 function QI.RowBand(row, titleSize)
-	local band = row.melloBand
+	local band = bandOf[row]
 	if not band then
 		band = row:CreateTexture(nil, "BORDER")
 		band:SetAtlas("questlog-quest-glow-yellow")
 		band:Hide()
-		row.melloBand = band
+		bandOf[row] = band
 	end
 	band:ClearAllPoints()
 	band:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -(ROW.top - ROW.band))
@@ -675,31 +685,33 @@ end
 -- dropped (a black outline round dark ink smudges it); Plain puts it back.
 --------------------------------------------------------------------------------
 
+local inkRole = setmetatable({}, { __mode = "k" })   -- [font string] = its ink role
+local inkSaved = setmetatable({}, { __mode = "k" })   -- [font string] = its font, shadow and colour before the ink
 function QI.Ink(fs, role)
 	if not (fs and fs.GetFont) then
 		return
 	end
-	if not fs.melloInkSaved then
+	if not inkSaved[fs] then
 		local ok, path, size, flags = pcall(fs.GetFont, fs)
 		if not (ok and path and size) then
 			return
 		end
 		local sr, sg, sb, sa = fs:GetShadowColor()
 		local tr, tg, tb = fs:GetTextColor()
-		fs.melloInkSaved = { path = path, size = size, flags = flags or "", shadow = { sr, sg, sb, sa }, colour = { tr, tg, tb } }
+		inkSaved[fs] = { path = path, size = size, flags = flags or "", shadow = { sr, sg, sb, sa }, colour = { tr, tg, tb } }
 	end
 	local ok, path, size = pcall(fs.GetFont, fs)
 	if ok and path and size then
 		pcall(fs.SetFont, fs, path, size, "")
 	end
 	fs:SetShadowColor(0, 0, 0, 0)
-	fs.melloInkRole = role or "title"
+	inkRole[fs] = role or "title"
 	local gr, gg, gb = QI.GameColour(fs)
-	local r, g, b = QI.RoleColour(fs.melloInkRole, gr, gg, gb, QI.onSheet[fs])
+	local r, g, b = QI.RoleColour(inkRole[fs], gr, gg, gb, QI.onSheet[fs])
 	QI.inking = true
 	fs:SetTextColor(r, g, b)
 	QI.inking = false
-	fs.melloInk = true
+	inkOn[fs] = true
 end
 
 -- A role's ink; "auto" inks the game's own colour (QI.InkOf)
@@ -722,6 +734,7 @@ function QI.RoleColour(role, r, g, b, sheet)
 	return c[1], c[2], c[3]
 end
 
+local gameColourOf = setmetatable({}, { __mode = "k" })   -- [font string] = { r, g, b }: the colour the game gave it
 -- The colour the game (or its template) last gave fs, not our ink. While fs
 -- is inked, a colour the game gives it later (the quest log recolours a
 -- title and its objectives on hover and on leave -- user, 2026-09-23: the
@@ -730,14 +743,15 @@ end
 -- The colour kept in the string's one table (the game recolours often: no
 -- table made each time)
 local function SetGameColour(fs, r, g, b)
-	local c = fs.melloGameColour
+	local c = gameColourOf[fs]
 	if c then
 		c[1], c[2], c[3] = r, g, b
 	else
-		fs.melloGameColour = { r, g, b }
+		gameColourOf[fs] = { r, g, b }
 	end
 end
 
+local inkRoleFn = setmetatable({}, { __mode = "k" })   -- [font string] = the function that picks its role from a colour
 -- a colour the game gives a watched string: kept, and inked over at once
 -- while the string is inked. One handler for every watched string: all it
 -- keeps is on the string itself
@@ -746,9 +760,9 @@ local OnGameColour = Shared("SetTextColor on inked strings", function(self, cr, 
 		return
 	end
 	SetGameColour(self, cr, cg, cb)
-	if self.melloInk then
-		local role = self.melloInkRoleOf and self.melloInkRoleOf(cr, cg, cb) or self.melloInkRole
-		self.melloInkRole = role
+	if inkOn[self] then
+		local role = inkRoleFn[self] and inkRoleFn[self](cr, cg, cb) or inkRole[self]
+		inkRole[self] = role
 		local r, g, b = QI.RoleColour(role, cr, cg, cb, QI.onSheet[self])
 		QI.inking = true
 		self:SetTextColor(r, g, b)
@@ -760,17 +774,17 @@ function QI.WatchColour(fs, roleOf)
 	if not fs then
 		return
 	end
-	fs.melloInkRoleOf = roleOf or fs.melloInkRoleOf
-	if fs.melloColourWatched then
+	inkRoleFn[fs] = roleOf or inkRoleFn[fs]
+	if colourWatched[fs] then
 		return
 	end
-	fs.melloColourWatched = true
+	colourWatched[fs] = true
 	SetGameColour(fs, fs:GetTextColor())
 	hooksecurefunc(fs, "SetTextColor", OnGameColour)
 end
 
 function QI.GameColour(fs)
-	local c = fs and fs.melloGameColour
+	local c = fs and gameColourOf[fs]
 	if c then
 		return c[1], c[2], c[3]
 	end
@@ -780,8 +794,8 @@ end
 -- `restoreColour`: the colour it had before the first ink too (a label
 -- nothing else colours again)
 function QI.Plain(fs, restoreColour)
-	local saved = fs and fs.melloInkSaved
-	if not (saved and fs.melloInk) then
+	local saved = fs and inkSaved[fs]
+	if not (saved and inkOn[fs]) then
 		return
 	end
 	local ok, path, size = pcall(fs.GetFont, fs)
@@ -792,7 +806,7 @@ function QI.Plain(fs, restoreColour)
 	if s and s[1] then
 		fs:SetShadowColor(s[1], s[2], s[3], s[4] or 1)
 	end
-	fs.melloInk = nil
+	inkOn[fs] = nil
 	local c = saved.colour
 	if restoreColour and c and c[1] then
 		QI.inking = true
@@ -805,11 +819,12 @@ end
 -- Any string by its own colour, and the surfaces of the interface
 --------------------------------------------------------------------------------
 
+local plainText = setmetatable({}, { __mode = "k" })   -- [font string] = its text before the ink's codes
 -- A string's text with colour codes of its own (a stat's value, a name in its
 -- class colour): the codes inked while the string is, the text as the game
 -- wrote it put back after
 local function InkTextCodes(fs)
-	if QI.texting or not fs.melloInk then
+	if QI.texting or not inkOn[fs] then
 		return
 	end
 	local ok, text = pcall(fs.GetText, fs)
@@ -818,7 +833,7 @@ local function InkTextCodes(fs)
 	end
 	local inked = QI.InkCodes(text, QI.onSheet[fs])
 	if inked ~= text then
-		fs.melloPlainText = text
+		plainText[fs] = text
 		QI.texting = true
 		fs:SetText(inked)
 		QI.texting = false
@@ -830,7 +845,7 @@ end
 -- body under two report rows)
 local function NewText(self)
 	if not QI.texting then
-		self.melloPlainText = nil
+		plainText[self] = nil
 		InkTextCodes(self)
 	end
 end
@@ -838,17 +853,18 @@ local OnSetText = Shared("SetText on inked strings", NewText)
 local OnSetFormattedText = Shared("SetFormattedText on inked strings", NewText)
 -- a font object set again brings its colour and outline back: ink again
 local OnSetFontObject = Shared("SetFontObject on inked strings", function(self)
-	if self.melloInk then
+	if inkOn[self] then
 		SetGameColour(self, self:GetTextColor())
-		QI.Ink(self, self.melloInkRole)
+		QI.Ink(self, inkRole[self])
 	end
 end)
 
+local textWatched = setmetatable({}, { __mode = "k" })   -- [font string] = true: SetText hooked
 local function WatchText(fs)
-	if fs.melloTextWatched then
+	if textWatched[fs] then
 		return
 	end
-	fs.melloTextWatched = true
+	textWatched[fs] = true
 	hooksecurefunc(fs, "SetText", OnSetText)
 	if fs.SetFormattedText then
 		hooksecurefunc(fs, "SetFormattedText", OnSetFormattedText)
@@ -867,20 +883,20 @@ end
 
 -- back to its own look and the colour the game last gave it
 function QI.PlainText(fs)
-	if not (fs and fs.melloInk) then
+	if not (fs and inkOn[fs]) then
 		return
 	end
 	QI.Plain(fs)
-	if fs.melloColourWatched then
+	if colourWatched[fs] then
 		QI.inking = true
 		fs:SetTextColor(QI.GameColour(fs))
 		QI.inking = false
 	end
-	if fs.melloPlainText then
+	if plainText[fs] then
 		QI.texting = true
-		fs:SetText(fs.melloPlainText)
+		fs:SetText(plainText[fs])
 		QI.texting = false
-		fs.melloPlainText = nil
+		plainText[fs] = nil
 	end
 end
 
@@ -889,13 +905,13 @@ QI.surfaces = {}
 local WEAK = { __mode = "k" }
 
 -- Every string under `frame` (twelve levels down), a frame or string marked
--- melloNoInk left out (/inkwhy's; the passes walk the same way, below)
+-- QI.noInk's left out (/inkwhy's; the passes walk the same way, below)
 local function Walk(frame, depth, fn)
-	if depth > 12 or not frame or frame.melloNoInk then
+	if depth > 12 or not frame or noInk[frame] then
 		return
 	end
 	for _, region in ipairs({ frame:GetRegions() }) do
-		if region.GetObjectType and region:GetObjectType() == "FontString" and not region.melloNoInk then
+		if region.GetObjectType and region:GetObjectType() == "FontString" and not noInk[region] then
 			fn(region)
 		end
 	end
@@ -1066,7 +1082,8 @@ end
 -- bar, frame or flat control), shown and solid
 local GAME_PLATE_KIND = { strip = true, bar = true, frame = true, flat = true }
 local function GamePlate(region)
-	if KindOf(region) ~= "Texture" or region.kitName or not region:IsShown() then
+	local Kit = MelloUI.Kit
+	if KindOf(region) ~= "Texture" or (Kit and Kit.pieceNameOf and Kit.pieceNameOf[region]) or not region:IsShown() then
 		return false
 	end
 	local okA, alpha = pcall(region.GetAlpha, region)
@@ -1077,7 +1094,6 @@ local function GamePlate(region)
 	if not (okT and type(atlas) == "string") then
 		return false
 	end
-	local Kit = MelloUI.Kit
 	local rule = Kit and Kit.Replacements and Kit.Replacements[atlas]
 	if not (rule and GAME_PLATE_KIND[rule.kind]) then
 		return false
@@ -1321,7 +1337,7 @@ end
 -- regions, whether it is a bar that shows, whether a plate or an icon of
 -- its own shows. A rect is four numbers in screen space, false first while
 -- it is not laid out.
-local OWN_PLATES = { "melloRep", "melloHeader", "melloPlate" }
+local OWN_PLATES = { "repOf", "headerPlateOf", "plateOf" }   -- (Kit's tables)
 local OWN_ICONS = { "icon", "Icon" }
 local stripsOf = setmetatable({}, WEAK)
 local infoOf = setmetatable({}, WEAK)
@@ -1388,8 +1404,10 @@ local function Info(f, regions)
 			AddRect(info.b, 0, f)
 		end
 		local own = false
-		for i = 1, #OWN_PLATES do
-			local rep = rawget(f, OWN_PLATES[i])
+		local Kit = MelloUI.Kit
+		for i = 1, Kit and #OWN_PLATES or 0 do
+			local plates = Kit[OWN_PLATES[i]]
+			local rep = plates and plates[f]
 			local obj = type(rep) == "table" and rep.object
 			if obj and obj.IsShown and obj:IsShown() then
 				own = true
@@ -1433,7 +1451,7 @@ end
 
 -- The strings a surface leaves as they are: on a bar (a reputation, a
 -- skill), on a kit plate that is showing (a header, a selected row), over an
--- icon (a count), or under a frame marked melloNoInk. nil: not laid out yet
+-- icon (a count), or under a frame marked in QI.noInk. nil: not laid out yet
 -- (undecided).
 function QI.DefaultSkip(fs)
 	-- the plates that show now lie under a string whose frame shows; a hidden
@@ -1451,7 +1469,7 @@ function QI.DefaultSkip(fs)
 		if not f or f == UIParent or f == WorldFrame then
 			return false
 		end
-		if f.melloNoInk then
+		if noInk[f] then
 			return true
 		end
 		-- its plates (the regions' of the row and its parent only: further up
@@ -1560,7 +1578,7 @@ local function Evaluate(def, fs)
 			-- now on a plate or bar (a row selected): its own colours
 			QI.PlainText(fs)
 			def.strings[fs] = nil
-		elseif not fs.melloInk then
+		elseif not inkOn[fs] then
 			QI.InkText(fs)
 		end
 	elseif not skip then
@@ -1609,7 +1627,7 @@ local function NextFrame(job, shownOnly)
 			frame, depth, shows = job.hiddenF[n], job.hiddenD[n], false
 			job.hidden = n - 1
 		end
-		if not frame.melloNoInk then
+		if not noInk[frame] then
 			local again = job.visit[frame] == job.id
 			if not (again and job.depth[frame] <= depth) then
 				job.visit[frame], job.depth[frame] = job.id, depth
@@ -1628,7 +1646,7 @@ local function Visit(def, job, frame, depth, shows, from, deadline)
 		local n = Pack(travRegions, frame:GetRegions())
 		for i = from, n do
 			local region = travRegions[i]
-			if KindOf(region) == "FontString" and not region.melloNoInk then
+			if KindOf(region) == "FontString" and not noInk[region] then
 				Evaluate(def, region)
 				if i < n and debugprofilestop() >= deadline then
 					job.at, job.atDepth, job.atShows, job.atFrom = frame, depth, shows, i + 1
@@ -1696,7 +1714,7 @@ local rowFrame, rowDef, rowAt, rowHead, rowTail = {}, {}, {}, 1, 0
 local rowQueued = setmetatable({}, WEAK)
 
 local function WalkRow(def, frame, depth)
-	if depth > MAX_DEPTH or not frame or frame.melloNoInk then
+	if depth > MAX_DEPTH or not frame or noInk[frame] then
 		return
 	end
 	local regions, kids = rowRegions[depth], rowKids[depth]
@@ -1706,7 +1724,7 @@ local function WalkRow(def, frame, depth)
 	end
 	for i = 1, Pack(regions, frame:GetRegions()) do
 		local region = regions[i]
-		if KindOf(region) == "FontString" and not region.melloNoInk then
+		if KindOf(region) == "FontString" and not noInk[region] then
 			Evaluate(def, region)
 		end
 	end
@@ -1744,7 +1762,7 @@ end
 -- ones the hooks keep. On the game's own call only: nothing between. Never
 -- finishes the grid of every plate in that frame (lookNoForce)
 local function LookNew(def, frame, depth)
-	if depth > MAX_DEPTH or not frame or frame.melloNoInk then
+	if depth > MAX_DEPTH or not frame or noInk[frame] then
 		return
 	end
 	local regions, kids = rowRegions[depth], rowKids[depth]
@@ -1754,7 +1772,7 @@ local function LookNew(def, frame, depth)
 	end
 	for i = 1, Pack(regions, frame:GetRegions()) do
 		local region = regions[i]
-		if KindOf(region) == "FontString" and not region.melloNoInk and not region.melloInk and not plated[region]
+		if KindOf(region) == "FontString" and not noInk[region] and not inkOn[region] and not plated[region]
 			and region:IsVisible() then
 			Evaluate(def, region)
 		end
@@ -2164,8 +2182,8 @@ SlashCmdList.MELLOINKWHY = function()
 						local okT, text = pcall(fs.GetText, fs)
 						local r, g, b = fs:GetTextColor()
 						MelloUI:Print("  %q recorded=%s ink=%s role=%s colour=%.2f,%.2f,%.2f skip=%s default=%s",
-							tostring(okT and text or "?"):sub(1, 40), tostring(def.strings[fs] or false), tostring(fs.melloInk or false),
-							tostring(fs.melloInkRole), r, g, b, tostring(def.skip and def.skip(fs)), tostring(QI.DefaultSkip(fs)))
+							tostring(okT and text or "?"):sub(1, 40), tostring(def.strings[fs] or false), tostring(inkOn[fs] or false),
+							tostring(inkRole[fs]), r, g, b, tostring(def.skip and def.skip(fs)), tostring(QI.DefaultSkip(fs)))
 						local plate = OverPlate(fs)
 						MelloUI:Print("    over plate: %s", plate and (tostring(rawget(plate, "base")) .. " " .. tostring(plate:GetDebugName())) or "none")
 						-- every kit replacement under it, whatever its kind
@@ -2191,7 +2209,8 @@ SlashCmdList.MELLOINKWHY = function()
 									local okA, atlas = pcall(region.GetAtlas, region)
 									local okX, tex = pcall(region.GetTexture, region)
 									MelloUI:Print("    texture d%d %s atlas=%s tex=%s kit=%s alpha=%.2f", depth, tostring(region:GetDebugName()),
-										tostring(okA and atlas), tostring(okX and tex), tostring(region.kitName), region:GetAlpha() or 0)
+										tostring(okA and atlas), tostring(okX and tex), tostring(MelloUI.Kit and MelloUI.Kit.pieceNameOf and MelloUI.Kit.pieceNameOf[region]),
+										region:GetAlpha() or 0)
 								end
 							end
 							up = up.GetParent and up:GetParent()
@@ -2202,15 +2221,16 @@ SlashCmdList.MELLOINKWHY = function()
 								break
 							end
 							MelloUI:Print("    parent%d %s %s shown=%s rep=%s", depth, f:GetObjectType(), tostring(f:GetName() or f:GetDebugName()),
-								tostring(f:IsShown()), tostring(rawget(f, "melloRep") ~= nil))
+								tostring(f:IsShown()), tostring(MelloUI.Kit ~= nil and MelloUI.Kept.repOf ~= nil and MelloUI.Kept.repOf[f] ~= nil))
 							for _, child in ipairs({ f:GetChildren() }) do
 								if rawget(child, "base") then
 									MelloUI:Print("      strip %s shown=%s inside=%s", tostring(rawget(child, "base")), tostring(child:IsShown()), tostring(Inside(fs, child)))
 								end
 							end
 							for _, region in ipairs({ f:GetRegions() }) do
-								if region.kitName then
-									MelloUI:Print("      kit texture %s shown=%s inside=%s", tostring(region.kitName), tostring(region:IsShown()), tostring(Inside(fs, region)))
+								local piece = MelloUI.Kit and MelloUI.Kit.pieceNameOf and MelloUI.Kit.pieceNameOf[region]
+								if piece then
+									MelloUI:Print("      kit texture %s shown=%s inside=%s", tostring(piece), tostring(region:IsShown()), tostring(Inside(fs, region)))
 								end
 							end
 							f = f.GetParent and f:GetParent()
@@ -2223,3 +2243,8 @@ SlashCmdList.MELLOINKWHY = function()
 	MelloUI:Print("%d string(s) under the mouse.", seen)
 	MelloUI:ShowLog("inkwhy")
 end
+
+-- What this module keeps beside the game's frames (hard rule 1: weak-keyed
+-- tables, never keys on the frames), for the dumps and the tests: read only
+QI.kept = { gameColourOf = gameColourOf, inkRole = inkRole, inkRoleFn = inkRoleFn, inkSaved = inkSaved,
+	plainText = plainText, textWatched = textWatched }
