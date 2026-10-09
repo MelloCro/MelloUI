@@ -35,6 +35,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		hideReputationColor = true,
 		hideCombatGlow = true,
 		hideStatusGlow = true,
+		hidePvPBadge = true,
 		frameAlpha = 1,
 	},
 	options = {
@@ -47,6 +48,11 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		  desc = "Hide the red flash around the player, target, focus, pet and party frames while in combat or when a target attacks." },
 		{ type = "toggle", key = "hideStatusGlow", name = "Hide Status Glow",
 		  desc = "Hide the glow around the player portrait and name that shows resting (yellow) and combat (red), and the pet frame's glow while your pet attacks." },
+		-- (the user, 2026-10-09: "remove that awfull diamond icon and its border
+		-- and background from the frames": the game's honour badge while
+		-- flagged for PvP)
+		{ type = "toggle", key = "hidePvPBadge", name = "Hide PvP Badge", new = "0.20.0",
+		  desc = "Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP." },
 		{ type = "header", name = "Frame Art" },
 		{ type = "slider", key = "frameAlpha", name = "Frame Art Opacity", min = 0.1, max = 1, step = 0.05, percent = true,
 		  desc = "Opacity of the frame art around the bars and portraits. The bars themselves stay solid." },
@@ -421,7 +427,35 @@ local function StatusGlowTextures()
 	return list
 end
 
+-- the PvP badge: the honour diamond (PrestigePortrait, its rank PrestigeBadge)
+-- and the faction icon, on the player, target and focus frames (their
+-- GetPvPIndicatorElements' regions)
+local function PvPBadgeTextures()
+	local list = {}
+	local content = PlayerFrame and PlayerFrame.PlayerFrameContent
+	local ctx = content and content.PlayerFrameContentContextual
+	if ctx then
+		list[#list + 1] = ctx.PrestigePortrait
+		list[#list + 1] = ctx.PrestigeBadge
+		list[#list + 1] = ctx.PVPIcon
+	end
+	for _, frame in ipairs(TargetLikeFrames()) do
+		local tc = frame and frame.TargetFrameContent
+		local tctx = tc and tc.TargetFrameContentContextual
+		if tctx then
+			list[#list + 1] = tctx.PrestigePortrait
+			list[#list + 1] = tctx.PrestigeBadge
+			list[#list + 1] = tctx.PvpIcon
+		end
+	end
+	return list
+end
+
 local function ApplyGlows()
+	local hidePvP = M.isEnabled and M.db.hidePvPBadge
+	for _, tex in ipairs(PvPBadgeTextures()) do
+		SetHidden(tex, hidePvP)
+	end
 	local hideCombat = M.isEnabled and M.db.hideCombatGlow
 	for _, tex in ipairs(CombatFlashTextures()) do
 		SetHidden(tex, hideCombat)

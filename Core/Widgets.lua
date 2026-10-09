@@ -27,6 +27,13 @@
 --                                      a box to type the value in (0.15.0)
 --   W.NumberBox(parent, width, get, set, opts)   a number to type, in the
 --                                      slider box's look (0.15.0)
+--   W.ColorWheel(parent, size, get, set)   a colour of the player's own on a
+--                                      wheel and a brightness bar (0.20.0)
+--   W.CanvasRow(parent, y, height, build, opts)   a row that is one frame a
+--                                      module builds (0.20.0)
+--   W.ColourRow(parent, y, label, hint, desc, get, set, opts)   a colour
+--                                      setting: a swatch, the wheel in a
+--                                      flyout (0.20.0; W.ColourValue / Hex)
 --   W.Button(parent, text, width, skin, opts)   a flat plate (0.15.0), and
 --     W.FlatButton(button, gold): the same look on a button made by hand
 --   W.CloseButton(parent, skin)        a flat plate with a cross (0.15.0)
@@ -3568,6 +3575,272 @@ do
 		box.Refresh = Lay
 		Lay(box)
 		return Finish(row, box, opts, 14 + BOX_W)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- CanvasRow (0.20.0, the Raid Frame Designer): a row that is one frame of a
+-- module's own, built by the module -- for a page no ledger of rows can say
+-- (a frame to drag parts on, a list beside it). No label, no control of the
+-- row's: the canvas fills the row and draws what it likes on the dark ground
+-- the module gives it.
+--   W.CanvasRow(parent, y, height, build, opts) -> row, canvas
+--     build(canvas, width)   once, at the row's making (width: the row's)
+--     canvas:Refresh()       on the row's refresh (a setting changed, the
+--                            page shown again): the module's, if it set one
+--   opts: W.Row's (inset, gate, new ...)
+--------------------------------------------------------------------------------
+
+do
+	local function NoRefresh()
+	end
+
+	function W.CanvasRow(parent, y, height, build, opts)
+		opts = opts or NO_OPTS
+		-- (no hover wash or band over the whole canvas: its own parts light)
+		-- (nor the row's own New tag, at its label's place in the canvas's
+		-- middle: its tab carries the tag)
+		local look, zebra, line, new = opts.look, opts.zebra, opts.line, opts.new
+		opts.look, opts.zebra, opts.line, opts.new = nil, nil, nil, nil
+		local row = W.Row(parent, y, height, nil, nil, nil, opts)
+		opts.look, opts.zebra, opts.line, opts.new = look, zebra, line, new
+		local canvas = CreateFrame("Frame", nil, row)
+		canvas:SetAllPoints(row)
+		canvas.Refresh = NoRefresh
+		local width = Num(parent:GetWidth())
+		width = (width and width > 0 and width or 700) - 2 * (opts.inset or 0)
+		local ok, err = pcall(build, canvas, width)
+		if not ok then
+			geterrorhandler()(err)
+		end
+		controlOf[row] = canvas
+		return row, canvas
+	end
+end
+
+--------------------------------------------------------------------------------
+-- ColorWheel (0.20.0; the user, 2026-10-09: "there should be a color wheel for
+-- people to self decide the colour of it"): a colour of the player's own,
+-- picked on a wheel of MelloUI's -- a ColorSelect, the engine drawing the wheel
+-- and the brightness bar; never the game's colour picker window. Such a colour
+-- is the player's data, so it is the one colour MelloUI draws that is not a
+-- palette key.
+--   W.ColorWheel(parent, size, get, set) -> wheel   the wheel `size` square,
+--     its brightness bar right of it (W.WHEEL_BAR wide, W.WHEEL_GAP apart);
+--     placed by the caller
+--     get() -> r, g, b (0..1); set(r, g, b) on every move of a thumb (live)
+--   wheel:Refresh()   get() again, nothing set
+--------------------------------------------------------------------------------
+
+W.WHEEL_BAR, W.WHEEL_GAP = 14, 10
+
+do
+	local THUMBS = "Interface\\Buttons\\UI-ColorPicker-Buttons"   -- look-ok: the game's own wheel and bar thumbs
+
+	local Select = Shared("OnColorSelect on a colour wheel", function(cs, r, g, b)
+		if not cs.melloQuiet then
+			cs.melloSet(r, g, b)
+		end
+	end, "script")
+
+	local function WheelRefresh(cs)
+		local r, g, b = cs.melloGet()
+		if type(r) ~= "number" or type(g) ~= "number" or type(b) ~= "number" then
+			return
+		end
+		cs.melloQuiet = true
+		cs:SetColorRGB(r, g, b)
+		cs.melloQuiet = false
+	end
+
+	function W.ColorWheel(parent, size, get, set)
+		local cs = CreateFrame("ColorSelect", nil, parent)
+		cs:SetSize(size + W.WHEEL_GAP + W.WHEEL_BAR, size)
+		local wheel = cs:CreateTexture(nil, "ARTWORK")
+		wheel:SetSize(size, size)
+		wheel:SetPoint("TOPLEFT", cs, "TOPLEFT", 0, 0)
+		cs:SetColorWheelTexture(wheel)
+		local thumb = cs:CreateTexture(nil, "OVERLAY")
+		thumb:SetTexture(THUMBS)
+		thumb:SetTexCoord(0, 0.15625, 0, 0.625)
+		thumb:SetSize(10, 10)
+		cs:SetColorWheelThumbTexture(thumb)
+		local value = cs:CreateTexture(nil, "ARTWORK")
+		value:SetSize(W.WHEEL_BAR, size)
+		value:SetPoint("TOPLEFT", wheel, "TOPRIGHT", W.WHEEL_GAP, 0)
+		cs:SetColorValueTexture(value)
+		local valueThumb = cs:CreateTexture(nil, "OVERLAY")
+		valueThumb:SetTexture(THUMBS)
+		valueThumb:SetTexCoord(0.25, 1, 0, 0.875)
+		valueThumb:SetSize(W.WHEEL_BAR + 12, 8)
+		cs:SetColorValueThumbTexture(valueThumb)
+		cs.edges = Edges(cs, "border", "BORDER", value)
+		cs.melloGet, cs.melloSet = get, set
+		cs.Refresh = WheelRefresh
+		Perf.SetScript(cs, "OnColorSelect", Select)
+		WheelRefresh(cs)
+		return cs
+	end
+end
+
+--------------------------------------------------------------------------------
+-- A colour setting (0.20.0, Group Frames' colours): its value is a string --
+-- "#rrggbb" (the colour wheel's), "palette:<key>" (a palette colour, which
+-- follows the palette) or the name of one of the game's colours
+-- ("GREEN_FONT_COLOR": a default with no literal of ours)
+--   W.ColourValue(v) -> r, g, b        (white for anything else)
+--   W.ColourHex(r, g, b) -> "#rrggbb"
+--   W.ColourRow(parent, y, label, hint, desc, get, set, opts) -> row, swatch
+--     the colour as a swatch at the row's right; a click opens the colour
+--     wheel under it (W.ColourMenu: one per host window, opts.host -- the
+--     configurator's frame -- made on its first open), a thumb's move sets
+--     "#rrggbb" at once; a click outside, Escape or Done closes it
+--------------------------------------------------------------------------------
+
+function W.ColourValue(v)
+	if type(v) ~= "string" then
+		return 1, 1, 1
+	end
+	local hex = v:match("^#?(%x%x%x%x%x%x)$")
+	if hex then
+		return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
+	end
+	local key = v:match("^palette:(%w+)$")
+	if key then
+		local c = MelloUI.Palette[key]
+		if type(c) == "table" and type(c[1]) == "number" then
+			return c[1], c[2], c[3]
+		end
+		return 1, 1, 1
+	end
+	local named = rawget(_G, v)
+	if type(named) == "table" and named.GetRGB then
+		local r, g, b = named:GetRGB()
+		if type(r) == "number" then
+			return r, g, b
+		end
+	end
+	return 1, 1, 1
+end
+
+function W.ColourHex(r, g, b)
+	local function Byte(x)
+		x = tonumber(x) or 1
+		return math.floor(math.max(0, math.min(1, x)) * 255 + 0.5)
+	end
+	return string.format("#%02x%02x%02x", Byte(r), Byte(g), Byte(b))
+end
+
+do
+	local WHEEL_SIZE, PAD = 110, 10
+	local menuOf = setmetatable({}, weakKeys)   -- [host] = its colour flyout
+	local DONE = "Done"
+
+	local function Close(menu)
+		menu:Hide()
+		menu.catcher:Hide()
+		menu.row = nil
+	end
+
+	local CatcherClick = Shared("OnMouseDown on the colour flyout's catcher", function(catcher)
+		Close(catcher.menu)
+	end, "script")
+	local DoneClick = Shared("OnClick on the colour flyout's Done", function(b)
+		Close(b.menu)
+	end, "script")
+	local MenuHidden = Shared("OnHide on the colour flyout", function(menu)
+		menu.catcher:Hide()
+		menu.row = nil
+	end, "script")
+
+	function W.ColourMenu(host)
+		local menu = menuOf[host]
+		if menu then
+			return menu
+		end
+		local name = (host:GetName() or "MelloUIWindow") .. "ColourMenu"
+		menu = W.Panel(CreateFrame("Frame", name, host), { on = true, game = "tooltip" })
+		menu:SetSize(WHEEL_SIZE + W.WHEEL_GAP + W.WHEEL_BAR + 2 * PAD + 6, WHEEL_SIZE + 2 * PAD + 30)
+		menu:SetFrameStrata("FULLSCREEN_DIALOG")
+		menu:EnableMouse(true)
+		menu:SetClampedToScreen(true)
+		menu:Hide()
+		menu.wheel = W.ColorWheel(menu, WHEEL_SIZE, function()
+			local row = menu.row
+			if row then
+				return W.ColourValue(row.melloGet())
+			end
+			return 1, 1, 1
+		end, function(r, g, b)
+			local row = menu.row
+			if row then
+				row.melloSet(W.ColourHex(r, g, b))
+				row:Refresh()
+			end
+		end)
+		menu.wheel:SetPoint("TOPLEFT", menu, "TOPLEFT", PAD, -PAD)
+		local done = W.Button(menu, DONE, 70, nil, { height = 20, onClick = DoneClick })
+		done:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -PAD, PAD - 2)
+		done.menu = menu
+		local catcher = CreateFrame("Frame", nil, host)
+		catcher:SetAllPoints(host)
+		catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+		catcher:EnableMouse(true)
+		catcher.menu = menu
+		Perf.SetScript(catcher, "OnMouseDown", CatcherClick)
+		catcher:Hide()
+		menu.catcher = catcher
+		Perf.SetScript(menu, "OnHide", MenuHidden)
+		Perf.HookScript(host, "OnHide", function()
+			Close(menu)
+		end)
+		tinsert(UISpecialFrames, name)   -- (Escape closes it; hidden, the game passes it by)
+		menuOf[host] = menu
+		return menu
+	end
+
+	local function Open(row)
+		local host = row.melloHost or row:GetParent()
+		local menu = W.ColourMenu(host)
+		if menu:IsShown() and menu.row == row then
+			Close(menu)
+			return
+		end
+		menu.row = row
+		menu.catcher:SetFrameLevel(math.max(1, menu:GetFrameLevel() - 1))
+		menu.catcher:Show()
+		menu:ClearAllPoints()
+		menu:SetPoint("TOPRIGHT", row, "BOTTOMRIGHT", 0, -2)
+		menu:Show()
+		menu.wheel:Refresh()
+	end
+
+	local SwatchClick = Shared("OnClick on a colour row's swatch", function(swatch)
+		MelloUI:PlayUISound("tab")
+		Open(swatch)
+	end, "script")
+
+	local function SwatchRefresh(swatch)
+		swatch.fill:SetColorTexture(W.ColourValue(swatch.melloGet()))
+	end
+
+	local SWATCH_W, SWATCH_H = 50, 18
+
+	function W.ColourRow(parent, y, label, hint, desc, get, set, opts)
+		opts = opts or NO_OPTS
+		local row = W.Row(parent, y, W.ROW_HEIGHT, label, hint, desc, opts)
+		local swatch = CreateFrame("Button", nil, row)
+		swatch:SetSize(SWATCH_W, SWATCH_H)
+		swatch:SetPoint("RIGHT", -14, 0)
+		swatch.fill = swatch:CreateTexture(nil, "ARTWORK")
+		swatch.fill:SetPoint("TOPLEFT", swatch, "TOPLEFT", 1, -1)
+		swatch.fill:SetPoint("BOTTOMRIGHT", swatch, "BOTTOMRIGHT", -1, 1)
+		swatch.edges = Edges(swatch, "border", "OVERLAY")
+		swatch.melloGet, swatch.melloSet, swatch.melloHost = get, set, opts.host
+		swatch.Refresh = SwatchRefresh
+		Perf.SetScript(swatch, "OnClick", SwatchClick)
+		SwatchRefresh(swatch)
+		return Finish(row, swatch, opts, 14 + SWATCH_W)
 	end
 end
 

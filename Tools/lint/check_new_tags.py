@@ -93,6 +93,9 @@ CONTROL_TYPES = ("Button", "CheckButton", "EditBox", "Slider", "DropdownButton")
 # the other files that build controls with the widget set, and why theirs are not the configurator's options
 NOT_CONFIGURATOR = {
     "Core/Widgets.lua": "the builders themselves",
+    "MelloUI_GroupFrames/GroupDesignerPage.lua": "the Group Frames's canvas: one schema option "
+                                                 "(GroupFrames.designer, tagged); its controls edit the indicator "
+                                                 "list and the frame parts, not options",
     "Core/InstallerWindow.lua": "the installer's own window and steps (not the configurator)",
     "Modules/Restock.lua": "the Restock List window and the shop's list (the Reminders page's Restock List button, "
                            "a schema option, opens them)",

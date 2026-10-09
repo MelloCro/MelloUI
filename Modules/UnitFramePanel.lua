@@ -501,6 +501,8 @@ end
 local refits = setmetatable({}, { __mode = "k" })
 -- (0.19.0) [portrait] = the rep of the ring round it, for M:RingOf
 local ringOf = setmetatable({}, { __mode = "k" })
+-- (0.20.0) [level circle] = the kit's orb on it, for M:CoverOf
+local orbOf = setmetatable({}, { __mode = "k" })
 -- (0.19.8) a ring's piece changed (Portrait Ring, the border library's rings: Kit:LayPortraitRing) -- below
 local RingChanged
 
@@ -1009,6 +1011,7 @@ local function SkinCircle(circle, number)
 		return nil
 	end
 	local rep = Replace(circle, { as = "UI-HUD-UnitFrame-SmallCircle" })
+	orbOf[circle] = rep   -- (M:CoverOf)
 	Follow(rep, circle)
 	if rep and number and Kit.OrbDisc then
 		local okP, host = pcall(circle.GetParent, circle)
@@ -1911,6 +1914,66 @@ function M:RingOf(portrait)
 		return nil
 	end
 	return tex
+end
+
+-- (0.20.0) a portrait-and-bars frame's parts -- the player frame's, a party
+-- member's (the game's pool, or a stand-in built like one: ConfigPreview's
+-- MakeParty, Group Frames' solo frame): its portrait, health bar, mana bar and
+-- name, and its level badge's circle and number (the player frame's; the kit's
+-- orb stands on the circle's rect), read from the game's own keys (the kit's
+-- look on or off); nil for any other frame. MelloUI.FrameFX splits such a frame's effects (FX.Split: a
+-- round form on the ring, the square one on the name and bars)
+function M:PartsOf(frame)
+	if type(frame) ~= "table" then
+		return nil
+	end
+	if frame == PlayerFrame then
+		local c = frame.PlayerFrameContainer
+		local content = frame.PlayerFrameContent
+		local main = content and content.PlayerFrameContentMain
+		local bars = main and main.HealthBarsContainer
+		local area = main and main.ManaBarArea
+		return c and c.PlayerPortrait, bars and bars.HealthBar, area and area.ManaBar, PlayerName,
+			main and main.LevelBackgroundCircle, _G.PlayerLevelText
+	end
+	-- (a party member's shape: no other frame has these three -- the compact
+	-- and Group Frames' buttons no portrait, the pets and target of target no
+	-- health bar container)
+	local bars = rawget(frame, "HealthBarContainer")
+	local health = type(bars) == "table" and rawget(bars, "HealthBar") or nil
+	local portrait, mana = rawget(frame, "Portrait"), rawget(frame, "ManaBar")
+	if not (portrait and health and mana) then
+		return nil
+	end
+	return portrait, health, mana, rawget(frame, "Name")
+end
+
+-- (0.20.0) what stands over a frame effect on a portrait-and-bars frame
+-- (Core/FrameFX.lua draws copies of them over its light: the effect under them
+-- -- the user, 2026-10-09: "dont cut anything, just place the effect under"):
+-- the portrait's ring (the kit's, its gems and wings in it; with the kit off
+-- the game's frame art, its ring drawn in it) and the level badge's orb (the
+-- kit's, else the game's circle), its disc and its number (`circle` and
+-- `number` from M:PartsOf). -> ring, orb, disc, number (nil where none)
+function M:CoverOf(frame, portrait, circle, number)
+	if type(frame) ~= "table" then
+		return nil
+	end
+	local ring = self:RingOf(portrait)
+	if not ring then
+		local c = rawget(frame, "PlayerFrameContainer")
+		ring = (type(c) == "table" and rawget(c, "FrameTexture")) or rawget(frame, "Texture")
+	end
+	local orb, disc = circle, nil
+	local rep = active and circle and orbOf[circle]
+	if rep and rep.tex then
+		orb = rep.tex
+		if Kit.OrbDisc then
+			local okP, host = pcall(circle.GetParent, circle)
+			disc = Kit:OrbDisc(rep, okP and host or nil, number)
+		end
+	end
+	return ring, orb, disc, number
 end
 
 function M:ReminderAnchor()

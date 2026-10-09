@@ -193,6 +193,16 @@ function M:OnDisable()
 	Deactivate()
 end
 
+-- (0.20.0) A member's frame of MelloUI's own group frames (MelloUI_GroupFrames:
+-- the game's raid frame's region names, its `background` too) dressed as a
+-- compact frame while the kit's look is on: F1's rail and stone, the Raid Frame
+-- Border. Once per frame, out of a fight (the group frames make theirs then)
+function M:DressStandIn(frame)
+	if active and skin and not InCombatLockdown() then
+		SkinCompact(frame)
+	end
+end
+
 -- (0.19.0) A compact frame's rail skin while the kit dresses it, else nil:
 -- HealerFrames puts the colour of its unit's debuff on it (Kit:TintSkin)
 function M:RailSkin(frame)

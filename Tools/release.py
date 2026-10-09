@@ -114,24 +114,25 @@ def check_tocs(main_text):
         for f in toc_files(text):
             if not os.path.isfile(os.path.join(ROOT, name, f)):
                 problems.append(f"{name}.toc lists {f}, which does not exist")
+        # (one module, or several of one addon: '## X-MelloUI-Feature: FrameEffects HealFlight')
         feature = toc_field(text, "X-MelloUI-Feature")
         # (a data companion loads on demand; a feature addon loads with MelloUI, at login)
         wants = (("Dependencies", "MelloUI"),) if feature else (("LoadOnDemand", "1"), ("Dependencies", "MelloUI"))
         for field, want in wants:
             if toc_field(text, field) != want:
                 problems.append(f"{name}.toc needs '## {field}: {want}'")
-        if feature:
-            if features.get(feature) != name:
-                problems.append(f"{name}.toc is the feature {feature}, but Core/Core.lua's MelloUI.Features names "
-                                f"{features.get(feature) or 'no addon'} for it")
-            seen_features.add(feature)
+        for module in (feature or "").split():
+            if features.get(module) != name:
+                problems.append(f"{name}.toc is the feature {module}, but Core/Core.lua's MelloUI.Features names "
+                                f"{features.get(module) or 'no addon'} for it")
+            seen_features.add(module)
         for field in ("Version", "Interface"):
             if toc_field(text, field) is None:
                 problems.append(f"{name}.toc has no '## {field}:' line to keep in step with MelloUI.toc")
     for feature, addon in sorted(features.items()):
         if feature not in seen_features:
             problems.append(f"Core/Core.lua's MelloUI.Features lists {feature} ({addon}), which has no folder "
-                            f"{addon}/{addon}.toc saying '## X-MelloUI-Feature: {feature}'")
+                            f"{addon}/{addon}.toc naming it on its '## X-MelloUI-Feature:' line")
     with open(PKGMETA, encoding="utf-8") as fh:
         meta = fh.read()
     for name in sorted(names):

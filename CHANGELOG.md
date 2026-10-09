@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.20.0
+
+- Group Frames: MelloUI's own party and raid frames, with a page of their own under Unit Frames (and an addon of their own, MelloUI Group Frames). They stand in place of the game's party and raid frames. Show yourself in your party, and on your own while solo. Set their size and spacing, which way the party grows and its order (by role, group order or name), and how the raid is grouped (by group, role or class) and laid out. Move them in Edit Layout. Members out of range fade.
+- In A Party (Group Frames > Frames): these frames, or the normal party frames with portraits. The normal ones get indicators of their own, and the Designer designs them too (move or size their buffs, name, role icon, leader icon and ready check), and their role icons are the sharp round badges Group Frames show. With them, you show as a normal party frame while solo, so you can watch your heals and indicators land on it. Both kinds move only in Edit Layout (Party Frames), as the raid frames do.
+- Group Frames' bars: the health bar in the member's class colour, a colour of yours, or by health (three colours you pick, from full to low), with its opacity, fill direction and smooth bars. The background and the missing health each take a colour of their own. A power bar for healers or everyone, in its power's colour, the class colour or yours. Incoming heals, shields and the debuff glow show on them as on every frame.
+- Group Frames' texts: the name (white, class colour or yours, shortened if you like), the health as a percent, the current health or what's missing, and Dead or Offline.
+- Every colour of your own is picked on a colour wheel.
+- Indicators: put your own aura indicators on the group frames. Pick a buff by its spell (yours or anyone's, every rank of it) or a debuff by its kind (dispellable by you or your group, Magic, Curse, Disease, Poison, boss debuffs, crowd control). Show it as an icon with its time as a sweep, a draining icon, a square that drains, a bar along an edge, or the health bar's colour while it is on. Put it on one of nine spots with an offset, size it, colour it, and set its time and stacks text (size and place). They work in a fight.
+- The Designer (Group Frames > Designer) shows your frame as large as it fits, exactly as the frames look: drag an indicator to move it, scroll over it to size it. Its frame parts move, size or hide the name, the health text, the role icon, the raid mark, the ready check and the centre icon. Under it, a made-up group at the frames' size, and Show the fake raid on screen (also in the Preview menu as Raid Frames).
+- Each class starts with a set of indicators of its own: a priest's Renew and Power Word: Shield, a druid's Rejuvenation, Regrowth and Rejuvenation's green health bar, the debuffs you can dispel, and the boss debuff. Each spec keeps its own list, and Copy from takes another spec's.
+- Hide PvP Badge (Unit Frames > Frame > Look, on by default): the diamond honour badge, or the faction icon, beside the player, target and focus portraits while flagged for PvP is gone.
+- Fixed: with Player Portraits on, your own frame no longer shows the game's portrait after a /reload or while the game keeps your class hidden (as while flagged for PvP).
+- /mellobug now also reports blocked actions from MelloUI's own feature addons (Group Frames, Frame Effects, Chat and the rest).
+
 ## 0.19.9
 
 - Keybind Mode: point at an action button and press a key, a mouse button or the mouse wheel to bind it, with Shift, Ctrl or Alt if you like. Right-click clears a button's keys. Done keeps your changes, and Cancel or Escape undoes them. While it is on, every button shows its key big in the middle. Open it with the Keybind Mode button on the Action Bars page or in Edit Layout, or with /mello keybind.

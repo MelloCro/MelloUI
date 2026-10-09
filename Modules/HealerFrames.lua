@@ -881,6 +881,38 @@ function M:OnSettingChanged(_, _, db)
 	RefreshAll()
 end
 
+-- (0.20.0) a member's frame of MelloUI's own group frames (MelloUI_GroupFrames):
+-- its incoming heals and its debuff glow, as a raid frame's (out of a fight:
+-- made when the group frames make their buttons). unitFn() -> its unit now
+function M:Heals(health, unitFn)
+	if active then
+		return MakeHeals(health, unitFn)
+	end
+end
+
+function M:Glow(frame, shape)
+	if active and type(frame) == "table" then
+		-- (shape "party": a frame built as the game's party member -- Group
+		-- Frames' solo party frame -- glows as the members do)
+		if shape == "party" then
+			return MakeGlow(frame, PARTY, nil)
+		end
+		return MakeGlow(frame, nil, nil, true)
+	end
+end
+
+-- such a frame's heals and glow again (its unit changed)
+function M:Update(frame, health)
+	local g = glowOf[frame]
+	if g then
+		UpdateGlow(g)
+	end
+	local set = health and healOf[health]
+	if set then
+		UpdateHeals(set)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- The dump (/ufdump heals, UnitFramePanel's): each frame's unit, its glow
 -- and its heal bars as they are now

@@ -96,6 +96,9 @@ Preview.ITEMS = {
 	-- (0.19.0; the user, 2026-10-04: "how can i simulate and see how it works ingame?")
 	{ key = "healer", part = "healer", mode = "party", name = "Healer Frames", module = "HealerFrames",
 		desc = "Heals coming in and debuffs to remove: on the stand-in party and your own frame." },
+	-- (0.20.0) the Group Frames's fake raid (MelloUI_GroupFrames): its own samples
+	{ key = "raidframes", part = "raid", mode = "party", name = "Raid Frames", module = "GroupFrames",
+		desc = "A made-up raid where your raid frames stand, with your indicators on it." },
 	{ key = "meter", part = "meter", mode = "party", name = "Damage Meter", module = "Meter",
 		desc = "Your numbers, the group's race bar, the summary." },
 	{ key = "combattext", part = "combattext", mode = "solo", name = "Combat Text", module = "CombatText",

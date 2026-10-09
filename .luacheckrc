@@ -11,7 +11,7 @@ ignore = {
 -- Written by the addon: saved variables, slash command registration, the pin mixin the XML expects.
 globals = {
 	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines", "MelloUIRoadRecords", "MelloUIRouteSaved",
-	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOBUG1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
+	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOBUG1", "SLASH_MELLOAURA1", "SLASH_MELLOHEAL1", "SLASH_MELLOFX1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
 	"SLASH_MELLOSERVICES1", "SLASH_MELLOTRDUMP1", "SLASH_MELLOSBDUMP1", "SLASH_MELLOPROFDUMP1", "SLASH_MELLOLEGDUMP1", "SLASH_MELLOGFDUMP1", "SLASH_MELLOVOICEOVER1", "SLASH_MELLOVOICEOVER2", "SLASH_MELLOICONDUMP1",
 	"SLASH_MELLOABDUMP1", "SLASH_MELLOINKWHY1", "SLASH_MELLODIALOGDUMP1", "SLASH_MELLOUISCALEDUMP1", "SLASH_MELLOCHATINK1", "SLASH_MELLOCHATSCROLL1", "SLASH_MELLOBAGDUMP1", "SLASH_MELLOMMDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOUFTEST1", "SLASH_MELLORFDUMP1", "SLASH_MELLOABDUMP1", "SLASH_MELLOCBDUMP1",
 	"SLASH_MELLOSOCDUMP1", "SLASH_MELLOTTDUMP1", "SLASH_MELLONPDUMP1", "SLASH_MELLOADDONLISTDUMP1",
@@ -119,9 +119,12 @@ read_globals = {
 	"C_PartyInfo", "BNET_CLIENT_WOW", "WOW_PROJECT_ID", "ChatFrameMixin",
 	-- /mello secrets: the secret-value tools it probes for (2026-09-23)
 	"C_EventUtils", "C_Secrets", "C_CurveUtil", "C_StringUtil", "CurveConstants", "UnitHealthPercent",
-	"UnitHealth", "UnitHealthMax", "UnitPower", "AbbreviateNumbers",
+	"UnitHealth", "UnitHealthMax", "UnitPower", "UnitPowerMax", "AbbreviateNumbers", "UnitIsDeadOrGhost", "UnitIsGhost",
+	"UnitIsConnected", "IsInGroup", "UnitHealthMissing", "GetRaidTargetIndex", "GetReadyCheckStatus", "UnitInRange",
 	-- Bar Text's secret-value formatting
 	"BreakUpLargeNumbers", "UnitPowerPercent",
+	-- /melloheal (the heal probe)
+	"IsInRaid", "GetNumGroupMembers", "UnitCastingInfo",
 	-- Route's world marker
 	"C_Navigation", "SuperTrackedFrame",
 	-- Core/Anim.lua

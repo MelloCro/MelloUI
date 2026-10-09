@@ -1610,6 +1610,7 @@ end
 --       (the game's PowerBarColor, which RecolorManaBar puts on a flat
 --       texture) and the game's own art for it on a player frame
 --   M.PreviewCastColor() -> r, g, b   a cast's fill (RecolorCastBar's)
+-- And one live export (below): M.LiveHealthColor(bar) -> r, g, b | nil
 --------------------------------------------------------------------------------
 
 do
@@ -1718,6 +1719,18 @@ do
 		end
 		return CAST_FILL[1], CAST_FILL[2], CAST_FILL[3]
 	end
+end
+
+-- (0.20.0) a live bar of MelloUI's own that stands for a game unit frame's
+-- (Group Frames' solo party frame; its unit the `unit` of the bar's frame, as
+-- HealthColorFor reads it): its colour as the module colours the unit frames'
+-- bars -- a secret colour handed on as it is -- or nil while the module does
+-- not work on the unit frames
+function M.LiveHealthColor(bar)
+	if not Active("unitframes") then
+		return nil
+	end
+	return HealthColorFor(bar)
 end
 
 function M:OnInit(db)

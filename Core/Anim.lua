@@ -52,6 +52,13 @@
 --       anchoring is secret (anchored to a nameplate, below); a tween as the
 --       others (Stop, Land, IsRunning take "slide"), Reduce Motion: it stays
 --       at (x, y)
+--   MelloUI.Anim:Drive(frame, step, duration, easing, onDone)
+--       a tween of the prop "drive" whose every step is handed to `step`:
+--       step(frame, share) with the eased share of the way (0 to 1), for a
+--       move no prop holds (a curve, a trail of sprites; 0.20.0, the heal
+--       flight). Pass a shared function, not a new closure per call; a new
+--       Drive on the frame starts again from 0. Stop / Land / IsRunning take
+--       "drive"; Reduce Motion: step(frame, 1) at once, then onDone
 --   MelloUI.Anim:Timer(bar, seconds[, grow]) / :TimerText(fs, bar) /
 --       :StopTimer(bar[, full])   a StatusBar counting seconds away, run by
 --       the engine with its seconds' text (0.17.1, the swing timers; below)
@@ -124,14 +131,16 @@ local Secret = MelloUI.Safe.IsSecret
 
 -- a Slide's anchor and way, by frame: { point, rel, relPoint, x, y, dx, dy }
 local slides = setmetatable({}, { __mode = "k" })
+-- a Drive's step function, by frame
+local drives = setmetatable({}, { __mode = "k" })
 
 local function Read(frame, prop)
 	if prop == "alpha" then
 		return frame:GetAlpha()
 	elseif prop == "scale" then
 		return frame:GetScale()
-	elseif prop == "slide" then
-		return 0   -- (a slide's share of its way: it starts at its start)
+	elseif prop == "slide" or prop == "drive" then
+		return 0   -- (a slide's or drive's share of its way: it starts at its start)
 	end
 	local ok, point, rel, relPoint, x, y = pcall(frame.GetPoint, frame, 1)
 	if not (ok and point) then
@@ -157,6 +166,17 @@ local function Write(frame, prop, value)
 		local sl = slides[frame]
 		if sl then
 			frame:SetPoint(sl[1], sl[2], sl[3], sl[4] + sl[6] * value, sl[5] + sl[7] * value)
+		end
+	elseif prop == "drive" then
+		local step = drives[frame]
+		if step then
+			-- (a step that raises stops stepping, once reported: the driver's
+			-- other tweens go on)
+			local ok, err = pcall(step, frame, value)
+			if not ok then
+				drives[frame] = nil
+				geterrorhandler()(err)
+			end
 		end
 	else
 		local _, point, rel, relPoint, x, y = Read(frame, prop)
@@ -1453,6 +1473,20 @@ function Anim:Slide(frame, point, rel, relPoint, x, y, dx, dy, duration, easing)
 		return
 	end
 	self:To(frame, "slide", 1, duration, easing or "outCubic")
+end
+
+-- The Drive (0.20.0, the heal flight): a tween whose steps go to a function
+-- of the caller's, for a move that no prop holds -- a curve, a comet's trail,
+-- sprites spreading out -- timed, eased and ended (Reduce Motion) by the one
+-- engine. The step is kept by frame (weak), never on the frame.
+function Anim:Drive(frame, step, duration, easing, onDone)
+	if type(frame) ~= "table" or type(step) ~= "function" then
+		return
+	end
+	drives[frame] = step
+	Remove(frame, "drive")
+	Write(frame, "drive", 0)
+	self:To(frame, "drive", 1, duration, easing or "linear", onDone)
 end
 
 -- The Reduce Motion switch. The running tweens end on the driver's next

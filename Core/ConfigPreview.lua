@@ -607,7 +607,9 @@ end
 -- Painted from a sample as the configurator's preview is: the bars wear what
 -- the settings put on the real ones (Bar Textures' preview exports), the name
 -- in Unit Frames' form, the portrait Class Icons' medallion or a creature's.
---   Preview.MakeParty(parent) -> frame
+--   Preview.MakeParty(parent, onto) -> frame   (`onto`: a frame of the
+--       caller's to build it on -- Group Frames' solo party frame, a unit
+--       button of its own -- else a new frame on `parent`)
 --   Preview.PaintParty(frame, sample)   (a PartySample() with its own name,
 --       class, health and power)
 --------------------------------------------------------------------------------
@@ -628,8 +630,8 @@ local function Masked(region, parent, atlas, rel, x, y)
 	return mask
 end
 
-function Preview.MakeParty(parent)
-	local f = CreateFrame("Frame", nil, parent)
+function Preview.MakeParty(parent, onto)
+	local f = onto or CreateFrame("Frame", nil, parent)
 	f:SetSize(PARTY_W, PARTY_H)
 	f.Portrait = f:CreateTexture(nil, "BACKGROUND")
 	f.Portrait:SetSize(37, 37)

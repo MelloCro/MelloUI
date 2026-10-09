@@ -125,7 +125,7 @@ Close it without installing and nothing changes. Run it again any time: **Instal
 
 - **Top bar:** on the left, **Preview** (below); on the right, **Install…** (the installer), **Edit Layout** (move and resize the interface on the screen itself, as in Drag. Everything. above; it works with UI Modifications off too) and close.
 - **Preview:** see how your interface behaves in a fight before you are in one. The button opens a list: **Solo Fight** and **Party Fight** play everything, then one part at a time: **Fader**, **Reminders**, **Widget Column**, **Party Frames**, **Damage Meter**, **Combat Text** and **Gains**. A click plays a short scene (about 26 seconds) with made-up names and numbers: resting, the pull, a fight, the kill and after it. The settings window steps aside while it plays and comes back after; a strip at the top of the screen names what plays, the moment ("Resting", "In a fight", "After the fight") and has **Stop**. What you set shows as you set it: what you fade In Combat comes back in the fight and fades after it, the reminders hide in the fight, the widgets that wait for a fight's end fold away. Party Fight and Party Frames draw stand-ins where your party frames sit (the game shows its own only in a real group), their health falling and healed back; the meter's numbers and race bar show the made-up group, and the fight summary after the kill says it is made up (it is never in your Fight History). Your Damage shows at your target's nameplate while you have a target. A part whose module is off is dimmed in the list. Out of combat only: a real fight, or opening Edit Layout, stops it at once (the settings window then stays shut). `/mello preview solo`, `party` or a part's word (`fader`, `reminders`, `widgets`, `partyframes`, `meter`, `combattext`, `gains`), and `/mello preview stop`.
-- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader), **Frames and bars** (Unit Frames, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
+- **Side list:** Home, then the pages in five groups, then Profiles: **The look** (Look, Windows, Fader), **Frames and bars** (Unit Frames, Group Frames, Heal Flight, Frame Effects, Nameplates, Action Bars, Minimap, Bars & Meters, Swing Timers), **Chat and text** (Chat, Tooltip, Screen Text), **Quests and travel** (Quest Tracker, Quest List, Route, Reminders, Gains) and **Sound** (Voice Over, Custom Sounds). Click a group's name to fold it away. A page whose switch is off has a dimmed icon, and a name too long for the list shows in full when you point at it.
 - **Pages:** every page is laid out the same way. At the top its name and what it holds, its switch where the page is one module's (Look's is **UI Modifications**: the painted reskin and every feature that tunes the interface go with it; the palette, the UI Shade and Reduce Motion keep working without it) and **Reset this page** (every setting on the page back to its default, on every tab; on a page with a picker, for the one picked and the settings every pick shares; the switches of whole modules and what is your character's own stay; it asks first, saying how many settings change). Under it the tabs, and on every tab the same sections in the same order: General, Look, Text, Layout, Behaviour, Sound, Advanced (a section with nothing in it is left out). Pages and tabs slide and fade in, and the wheel glides the page and the list; Reduce Motion (Look > General) makes all of it instant.
 - **Every setting in one place:** each setting lives on one page only. What the whole interface shares (the palette, the Kit Colours, the borders, the Font Style and its sizes, the UI Shade and its areas, the parchment sheets, Dark Mode's brightness, the bar texture and the health bar colours) lives on **Look**. A page it touches shows a **link row**: the setting's value and a button naming the page it lives on (**Look >**, **Minimap >**, **Windows >**) that takes you to it.
 - **Pickers:** Unit Frames (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Resource), Action Bars (Action Bars, Micro Menu, Bag Bar) and Windows (every game window the reskin dresses, from the AddOn list to the Trainers) have a picker at the top: the page's settings are for the one picked. **Copy from…** gives it another one's settings; it asks first ("Copy the Target frame's settings to Player?"). **All**, beside a setting, gives its value to every one that has it; it shows while their values differ. A setting that is one for several says **shared**, and its tooltip names them ("One setting for Player, Target and Focus."). Unit Frames shows a live preview of the picked frame in its header, following your settings as you change them.
@@ -555,6 +555,96 @@ What a healer reads off the frames (0.19.0; on by default, both looks):
 - **See it without a fight:** the configurator's Preview > Healer Frames (or `/mello preview healer`): the
   stand-in party takes heals as it is hurt and healed, each member glowing in one of the four colours, and your
   own frame's glow goes through all four.
+
+### Group Frames
+
+MelloUI's own party and raid frames (0.20.0; an addon of its own, MelloUI Group Frames, with a page under Unit
+Frames). The game's party and raid frames give way to them; switch the page off and the game's come back. **In A
+Party** (Frames tab): these frames, or the normal party frames with portraits (the game's, in the painted look),
+with indicators of their own, their parts (buffs, name, role icon, leader icon, ready check) moved in the Designer's Party Frames, and sharp round role badges; with those, you show as a normal party frame while solo too, where the game's party
+frames stand, so your heals and indicators can be seen on it. Either way the party moves in Edit Layout ("Party Frames"), never in Edit Mode.
+
+- **Frames tab:** In A Party; Show Yourself In Your Party; Show Yourself While Solo (your own frame where your
+  party's will stand); Frame Width and Height (the game's raid frame: 72 x 36); Spacing; Party Grows (down, up, right, left);
+  Party Order (by role: tanks, healers, damage; group order; by name); Raid Grouping (by group, role or class, or
+  one list); Raid Fills (down then across, or across then down); Frames Per Column / Row; the Gap between them;
+  Fade When Out Of Range and its opacity. Move the party and the raid in Edit Layout ("Party Frames", "Raid
+  Frames"). Layout changes made in a fight wait for its end.
+- **Bars tab:** Health Colour (class colour, My Colour, By Health with your Full / Half / Low colours, or green),
+  the health bar's opacity, Background Colour (yours or the class colour) and its opacity, Missing Health (off,
+  yours, the class colour, by health) and its opacity, Fill Direction, Smooth Bars, the Power Bar (healers,
+  everyone, off; yours while solo), its height and colour (the power's own, the class colour, yours). Incoming
+  heals, shields and the debuff glow are Healer Frames' (Unit Frames > Bars and Buffs & Debuffs).
+- **Texts tab:** Name Colour (white, class colour, yours), Name Length, Health Text (percent, current, missing,
+  none), Dead / Offline Text.
+- **Colours:** a colour of yours is a swatch; click it for the colour wheel.
+- **Designer tab:** your aura indicators -- a buff picked by its spell (type its name or spell ID: every rank of it
+  counts; yours only, or anyone's), or a debuff on your group picked by its kind (dispellable by you or by your
+  group, any dispellable, Magic, Curse, Disease, Poison, a boss debuff, crowd control; the game never lets a
+  friend's debuff be picked by its spell). Looks: **Icon** (its time as a sweep), **Draining Icon**, **Square** (in
+  your colour on its own dark shade, draining from the top), **Bar** along an edge, or **Health Colour** (the health
+  bar takes your colour while the aura is on). One of nine spots with an offset, a size, your colour (a debuff can
+  take its type's colour), its time and stacks as text with their own size, spot and offset, Show Always or In a
+  fight. Your frame shows as large as it fits, exactly as the frames look: drag an indicator to move it, scroll
+  over it to size it. **Frame parts** move, size or hide the name, the health text, the role icon, the raid mark,
+  the ready check and the centre icon. Each spec keeps its own list (**Copy from a spec** takes another's); each
+  class starts with a set of its own, shown until you change it. The game draws the indicators with its own aura
+  widget, so they keep working in a fight while the auras are secret.
+- **See it:** "Show the fake raid on screen" in the Designer, or Preview > Raid Frames: a made-up raid where your
+  raid frames stand, laid out as they are.
+
+### Heal Flight
+
+Your heals on your group as light (0.20.0; part of the MelloUI Frame Effects addon; on by default; its
+settings on the **Frame Effects** page under Frames and bars, the **Heals** tab). A cast heal gathers on your cast bar while you cast, flies to their party or raid frame when
+the cast ends, lands with a flash and fades; an instant one lands on their frame at once. It draws on the screen
+only: the game still plays your spell on your character. Your own Group Frames or the game's party and raid frames,
+whichever show.
+
+- **Each kind lands its own way** (what a spell is comes from the game's own spell data): a **heal** with a flash,
+  a lens streak and a burst; a **heal over time** (Renew, Rejuvenation) sinks into the frame; a **shield** (Power
+  Word: Shield) wraps it in a double barrier with a sheen passing across; **protection** (Blessing of Protection,
+  Divine Intervention) puts a crest over it; a **heal to full** (Lay on Hands) raises a column of light with a
+  bigger burst; a **resurrection** lights the fallen one's frame. **Group heals** (Prayer of Healing, Holy Nova)
+  send a light to each of your party (your group in a raid); **Chain Heal** flies to its target, then hops to the
+  others the game says it healed. Buffs show nothing.
+- **Look:** **By Class** (the default: Holy for priests and paladins, Nature for druids, Water for shamans, Holy
+  for anyone else), **Holy** (gold: sparks spiral into your spell's icon, a gold comet, rays, rune marks round the
+  frame), **Nature** (green and gold ribbons round your cast bar, ribbons and leaves in flight, leaves bursting and
+  rising), **Water** (water circling your cast bar, a winding stream throwing off droplets, a splash and ripples; a
+  shield is a water bubble, a heal to full a geyser) or **Quiet** (your cast bar's fill glows, a thin thread of
+  light, the frame's border flares).
+- **Flying Light** (on by default): the light that flies from your cast bar to the frame. Off: a cast heal lands
+  on the frame the moment the cast ends, as an instant one does; the glow on your cast bar and every effect on the
+  frames stay.
+- **Heal Over Time Ticks** (on by default): while a heal over time of yours runs, each tick plays a small pulse on
+  the frame (a ring and three motes, a leaf, a drop and a ripple, or the border's breath), timed from the game's
+  spell data: Renew ticks five times in 15 seconds. A recast starts them again.
+- **Landing In A Raid:** **Quiet** (the border flares, so the frames round it stay readable; the default) or **The
+  Look's Own Burst**.
+- **Preview:** a made-up heal on you, from where your cast bar stands to your own frame. **Every Kind:** each
+  kind's landing on your own frame, one after another, its name on the screen.
+- A harmful spell, or a heal on someone outside your group, shows nothing. Reduce Motion turns it off.
+
+### Frame Effects
+
+Your group's frames show their big moments (0.20.0; the MelloUI Frame Effects addon, Heal Flight's too; on by
+default; its settings on the **Frame Effects** page, the **Cooldowns** tab). What counts comes from the game's own spell data, for every class:
+
+- **A roar** (Challenging Shout, Challenging Roar): fiery square ripples burst from the frame's middle and spread
+  across it, for 2 seconds. **A taunt** (Taunt, Growl, Mocking Blow): one such ripple.
+- **Damage taken down** (Shield Wall, Barkskin, Dispersion): a steel crest snaps over the frame, then a steel border
+  breathes for as long as it lasts. **More health** (Last Stand): the frame beats red like a heart.
+- **An immunity** (Divine Shield, Divine Protection, Ice Block): a gold barrier on the frame's edge, breathing.
+  **A dodge or parry** (Evasion, Deterrence): afterimages flicker either side of the frame.
+- **Your Own**: your frame when you use one. **Your Group's**: a group mate's frame when they use theirs.
+- **Every Effect**: each kind on your own frame, one after another, its name on the screen.
+- **/mellofx** plays the previews on your own frame: `/mellofx` every heal kind, `/mellofx heal` a heal from your
+  cast bar, `/mellofx fx` every Frame Effect, `/mellofx stop` clears them.
+- The effects stay on their frame (a little past its edge at most). Reduce Motion turns them off.
+- On a frame with a portrait (your player frame, the game's normal party frames) an effect plays on both parts
+  at once: round on the portrait's ring, square on the name and bars. Heal Flight's landings do the same, and
+  its light flies to the portrait.
 
 ### Fader
 

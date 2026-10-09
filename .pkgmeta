@@ -25,5 +25,7 @@ move-folders:
   MelloUI/MelloUI_Chat: MelloUI_Chat
   MelloUI/MelloUI_CombatText: MelloUI_CombatText
   MelloUI/MelloUI_QuestList: MelloUI_QuestList
+  MelloUI/MelloUI_GroupFrames: MelloUI_GroupFrames
+  MelloUI/MelloUI_FrameEffects: MelloUI_FrameEffects
   MelloUI/MelloUI_Route: MelloUI_Route
   MelloUI/MelloUI_VoiceOver: MelloUI_VoiceOver

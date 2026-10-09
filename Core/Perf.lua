@@ -1363,7 +1363,8 @@ end
 --------------------------------------------------------------------------------
 -- Blocked actions (/mellobug; 0.19.5, offered at 0.19.3 and taken by the user
 -- 2026-10-06). When the game blocks or forbids an action and names MelloUI
--- (ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN), what a report needs is
+-- (ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN; MelloUI, the Companion, or a
+-- feature addon of its own, MelloUI_<Feature>: 0.20.0), what a report needs is
 -- kept as it happens: the function the game named, whether a fight was on,
 -- the time, the zone, MelloUI's version and memory, the Gamepad UI, and the
 -- game profiler's figures for MelloUI this session (its average, its slowest
@@ -1391,7 +1392,7 @@ end
 
 function BUG.Capture(event, addon, func)
 	addon = Secret(addon) and nil or addon
-	if not (type(addon) == "string" and BUG.ADDONS[addon]) then
+	if not (type(addon) == "string" and (BUG.ADDONS[addon] or addon:find("^MelloUI_"))) then
 		return
 	end
 	func = (type(func) == "string" and not Secret(func)) and func or "?"

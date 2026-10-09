@@ -765,6 +765,26 @@ function Kit:RaidBorder(frame, skin)
 	end
 end
 
+-- (0.20.0) How far a raid frame's border reaches into it, x and y in UI
+-- units: the library style's opening, else the Single rail's inner edge at
+-- the raid frames' weight (Kit.Replacements' "raidframe-hp-bg-white" scale);
+-- 0, 0 while the kit draws none round it. MelloUI's own Group Frames lay
+-- their bars inside it (the user, 2026-10-09: "the power bar however should
+-- be inside of the borders, and fitting the width of the hp bar").
+function Kit:RaidFrameInset(frame)
+	local e = self.raidBorders[frame]
+	if not (e and e.on) or RaidPlace() == "group" then
+		return 0, 0
+	end
+	if e.border and e.border.shown then
+		return e.border:Inset()
+	end
+	local rule = self.Replacements["raidframe-hp-bg-white"]
+	local sc = (self.scale or 1) * (rule and rule.scale or 0.8)
+	local l, t = self:Piece(self.framePrefix .. "_l"), self:Piece(self.framePrefix .. "_t")
+	return (l and l.box) and l.box[3] * sc or 0, (t and t.box) and t.box[4] * sc or 0
+end
+
 -- A raid group's border (G1's frame: `holder`, the Single rail at 1.6 on
 -- the game's borderFrame, Raid Frames Kit's SkinGroup): the style round the
 -- group at the medium weight (a raid group's outline, the weights' table),
@@ -835,6 +855,9 @@ local function ApplyRaid()
 	for border, e in pairs(Kit.raidGroups) do
 		Kit:RaidGroupBorder(border, e.holder)
 	end
+	-- (0.20.0) the frames' insides changed with their border: Group Frames lays
+	-- its bars again (Kit:RaidFrameInset)
+	MelloUI:Fire("raidborder")
 end
 function Kit:ApplyRaidBorders()
 	self:WhenOutOfCombat(ApplyRaid, "Raid Frame Border")

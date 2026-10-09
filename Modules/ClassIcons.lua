@@ -292,6 +292,22 @@ local function Uncover(texture)
 	end
 end
 
+-- a unit's class file (nil while it reads secret). Yours kept once read
+-- plainly (the user, 2026-10-09: "when using custom portraits, it keeps
+-- turning the default ones on": this client can hand a class out as a secret
+-- -- read as none, the medallion went and the game's portrait showed; yours
+-- never changes)
+local playerClass = nil
+local function ClassOf(unit)
+	local ok, _, classFile = pcall(UnitClass, unit)
+	classFile = ok and SafeValue(classFile) or nil
+	if unit == "player" then
+		playerClass = classFile or playerClass
+		return playerClass
+	end
+	return classFile
+end
+
 -- unit's portrait, if unit is a player with a mapped class icon and the
 -- Player Portraits toggle is on. NPC units are left with the game's own
 -- portrait (model render or its default question-mark art).
@@ -308,8 +324,7 @@ local function TryReplacePlayerPortrait(texture, unit)
 		end
 		return false
 	end
-	local _, classFile = UnitClass(unit)
-	return ApplyClassPortrait(texture, SafeValue(classFile))
+	return ApplyClassPortrait(texture, ClassOf(unit))
 end
 
 -- The medallion again in its current variant on every portrait that shows
@@ -417,9 +432,9 @@ local function InstallHooks()
 			if not (M.isEnabled and M.db and M.db.portraits and self.GetPortrait) then
 				return
 			end
-			local _, classFile = UnitClass("player")
+			local classFile = ClassOf("player")
 			if classFile then
-				pcall(ApplyClassPortrait, self:GetPortrait(), SafeValue(classFile))
+				pcall(ApplyClassPortrait, self:GetPortrait(), classFile)
 			end
 		end)
 	end
@@ -458,12 +473,17 @@ end
 
 function M:OnEnable(db)
 	self.db = db
-	-- (on again after an OnDisable: the covers back at once; the first
-	-- enable, at login, leaves them to the game's own first updates)
-	if hooksInstalled and db and db.portraits then
+	ClassOf("player")   -- (yours read now, while it reads plainly)
+	InstallHooks()
+	-- the unit frames' portraits covered at once: on again after an
+	-- OnDisable, and at login too (the user, 2026-10-09: "i reloaded in game,
+	-- and the portrait changed back to the default one, ticking the option off
+	-- and on again restored the custom one" -- MelloUI comes on over the first
+	-- moments after the loading screen, after the game's first portrait
+	-- updates, and the game sets the player's again only on a change)
+	if db and db.portraits then
 		CoverUnitPortraits()
 	end
-	InstallHooks()
 end
 
 function M:OnDisable()

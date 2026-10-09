@@ -3152,7 +3152,8 @@ local ROLES = { core = true, look = true, feature = true, adds = true, replaces 
 -- MelloUI's features that ship as addons of their own (0.19.9; the user,
 -- 2026-10-08: docs/plans/split-addons.md): module name -> { addon, title }.
 -- Each is a MelloUI_<x> folder (## Dependencies: MelloUI, ## X-MelloUI-Feature:
--- <module>) the game loads right after MelloUI, so it registers as every
+-- <module> -- or several, one addon for both: Frame Effects' Heal Flight and
+-- Frame Effects, 2026-10-09) the game loads right after MelloUI, so it registers as every
 -- module does and counts on a script budget of its own. MelloUI's own switch
 -- stays its one switch; one the player turned off in the game's AddOns list is
 -- not loaded: the configurator says so where its switch stands, and its saved
@@ -3161,6 +3162,9 @@ MelloUI.Features = {
 	Chat = { addon = "MelloUI_Chat", title = "Chat" },
 	CombatText = { addon = "MelloUI_CombatText", title = "Combat Text" },
 	QuestList = { addon = "MelloUI_QuestList", title = "Quest List" },
+	GroupFrames = { addon = "MelloUI_GroupFrames", title = "Group Frames" },
+	HealFlight = { addon = "MelloUI_FrameEffects", title = "Heal Flight" },
+	FrameEffects = { addon = "MelloUI_FrameEffects", title = "Frame Effects" },
 	Route = { addon = "MelloUI_Route", title = "Route" },
 	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
 }

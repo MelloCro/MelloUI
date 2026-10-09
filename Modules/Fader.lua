@@ -521,14 +521,33 @@ local function Register()
 	F:Register({ key = "target",
 		frames = function() return Add({}, G("TargetFrame")) end,
 		mouse = function() return Mice({}, G("TargetFrame"), 4) end })
+	-- (0.20.0) MelloUI's own group frames (MelloUI_GroupFrames) fade as the
+	-- game's do; while they hide the game's (by their alpha), the game's are
+	-- left to them -- the Fader's write would show them again
+	local function GameGroups(kind)
+		local gf = MelloUI.GroupFrames
+		return not (gf and gf.HidesGame and gf:HidesGame(kind))
+	end
 	F:Register({ key = "party",
 		-- (the raid-style party frames are PartyFrame's child: they fade with it;
 		-- Preview Party's stand-ins too, Core/ConfigPreview.lua)
-		frames = function() return Add(Add({}, G("PartyFrame")), G("MelloUIPreviewParty")) end,
-		mouse = function() return Mice({}, G("PartyFrame"), 4) end })
+		frames = function()
+			local out = Add(Add({}, G("MelloUIGroupParty")), G("MelloUIPreviewParty"))
+			return GameGroups("party") and Add(out, G("PartyFrame")) or out
+		end,
+		mouse = function()
+			local out = Mice({}, G("MelloUIGroupParty"), 3)
+			return GameGroups("party") and Mice(out, G("PartyFrame"), 4) or out
+		end })
 	F:Register({ key = "raid",
-		frames = function() return Add({}, G("CompactRaidFrameContainer")) end,
-		mouse = function() return Mice({}, G("CompactRaidFrameContainer"), 3) end })
+		frames = function()
+			local out = Add({}, G("MelloUIGroupRaid"))
+			return GameGroups("raid") and Add(out, G("CompactRaidFrameContainer")) or out
+		end,
+		mouse = function()
+			local out = Mice({}, G("MelloUIGroupRaid"), 3)
+			return GameGroups("raid") and Mice(out, G("CompactRaidFrameContainer"), 3) or out
+		end })
 	F:Register({ key = "buffs", frames = Auras,
 		mouse = function()
 			local out = {}

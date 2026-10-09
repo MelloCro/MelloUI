@@ -97,8 +97,8 @@ L.SECTIONS = { "General", "Look", "Text", "Layout", "Behaviour", "Sound", "Text-
 L.groups = {
 	{ entries = { "Home" } },
 	{ title = "The look", entries = { "Look", "Windows", "Fader" } },
-	{ title = "Frames and bars", entries = { "UnitFrames", "Nameplates", "ActionBars", "Minimap", "BarsMeters",
-		"SwingTimers" } },
+	{ title = "Frames and bars", entries = { "UnitFrames", "GroupFrames", "FrameEffects", "Nameplates", "ActionBars", "Minimap",
+		"BarsMeters", "SwingTimers" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
 	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
 	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
@@ -131,6 +131,18 @@ L.pages = {
 		picker = { label = "Frame", noun = "frame", picks = { { "player", "Player" }, { "target", "Target" },
 			{ "focus", "Focus" }, { "pet", "Pet" }, { "party", "Party" }, { "raid", "Raid Frames" },
 			{ "castbars", "Cast Bars" }, { "personal", "Personal Resource" } } } },
+	-- (0.20.0) MelloUI_GroupFrames: MelloUI's own party and raid frames (their
+	-- frames, bars, texts; the Designer is one canvas row, W.CanvasRow)
+	GroupFrames = { title = "Group Frames", icon = "module:GroupFrames", module = "GroupFrames",
+		tabs = { "Frames", "Bars", "Texts", "Designer" } },
+	-- (0.20.0) the effects on the frames, one page (the user, 2026-10-09: "why are
+	-- these 2 not 1 category"; one addon, MelloUI_FrameEffects): Heals, Heal
+	-- Flight's (your heals' light from the cast bar to the frame), and Cooldowns,
+	-- Frame Effects' (your group's big moments); each tab's first row its
+	-- module's switch
+	FrameEffects = { title = "Frame Effects", icon = "module:FrameEffects",
+		flavour = "Your heals as light flying from your cast bar to the frame, and your group's big moments on their frames.",
+		tabs = { "Heals", "Cooldowns" } },
 	Nameplates = { title = "Nameplates", icon = "module:Nameplates",
 		flavour = "The nameplates over every unit, their icons and auras, and the markers over your party.",
 		tabs = { "Plates", "Auras & Icons", "Party Markers" } },
@@ -186,6 +198,10 @@ L.pages = {
 -- Auras module's name is /mello's aura probe: its page is buffs / debuffs.
 L.words = {
 	fade = { "Fader" },
+	groupframes = { "GroupFrames" },
+	partyframes = { "GroupFrames" },
+	raidframes = { "GroupFrames" },
+	indicators = { "GroupFrames", "Designer" },
 	mouseover = { "Fader" },
 	uimodifications = { "Look" },
 	palette = { "Look", "General" },
@@ -401,6 +417,7 @@ function L.Define(R, Link)
 	R("UnitFrames", "Frame", "Look", "UnitFrames.hideReputationColor", { only = { "target", "focus" }, when = UF })
 	R("UnitFrames", "Frame", "Look", "UnitFrames.hideCombatGlow", { only = { "player", "target", "focus", "pet", "party" }, when = UF })
 	R("UnitFrames", "Frame", "Look", "UnitFrames.hideStatusGlow", { only = { "player", "pet" }, when = UF })
+	R("UnitFrames", "Frame", "Look", "UnitFrames.hidePvPBadge", { only = { "player", "target", "focus" }, when = UF })
 	R("UnitFrames", "Frame", "Look", "ClassIcons.portraits", { only = { "player", "target", "focus", "party" } })
 	R("UnitFrames", "Frame", "Look", "UnitFramePanel.marks", { only = { "target", "focus" } })
 	-- (0.19.8, the border library's stage 3: a backdrop round the frame, the kit's one backdrop system)
@@ -673,6 +690,76 @@ function L.Define(R, Link)
 	for _, key in ipairs({ "minimap", "tracker", "objectives", "widgets", "route" }) do
 		R("Fader", "Chat & Map", "General", "Fader.show_" .. key, key == "objectives" and { when = GAME_TRACKER } or nil)
 	end
+
+	-- (0.20.0) the Group Frames (header: its module's switch): the
+	-- Designer is one canvas; the indicators' and your solo frame's switches
+	do
+		local function When(key, value, line)
+			return { when = { key = "GroupFrames." .. key, value = value, line = line } }
+		end
+		local MINE = "Only with My Colour"
+		-- the frames: what shows, their size and layout, the range
+		R("GroupFrames", "Frames", "General", "GroupFrames.partyStyle")
+		R("GroupFrames", "Frames", "General", "GroupFrames.showPlayer")
+		R("GroupFrames", "Frames", "General", "GroupFrames.solo")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.width")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.height")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.spacing")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.partyGrowth")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.partySort")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidGroupBy")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidFlow")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidPerLine")
+		R("GroupFrames", "Frames", "Layout", "GroupFrames.raidGap")
+		R("GroupFrames", "Frames", "Behaviour", "GroupFrames.rangeFade")
+		R("GroupFrames", "Frames", "Behaviour", "GroupFrames.rangeAlpha")
+		-- the bars: health, background, missing health, power
+		R("GroupFrames", "Bars", "Look", "GroupFrames.healthColour")
+		R("GroupFrames", "Bars", "Look", "GroupFrames.healthCustom", When("healthColour", "custom", MINE))
+		R("GroupFrames", "Bars", "Look", "GroupFrames.healthHigh", When("healthColour", "health", "Only with By Health"))
+		R("GroupFrames", "Bars", "Look", "GroupFrames.healthMid", When("healthColour", "health", "Only with By Health"))
+		R("GroupFrames", "Bars", "Look", "GroupFrames.healthLow", When("healthColour", "health", "Only with By Health"))
+		R("GroupFrames", "Bars", "Look", "GroupFrames.healthAlpha")
+		R("GroupFrames", "Bars", "Look", "GroupFrames.background")
+		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundCustom", When("background", "custom", MINE))
+		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundAlpha")
+		R("GroupFrames", "Bars", "Look", "GroupFrames.missing")
+		R("GroupFrames", "Bars", "Look", "GroupFrames.missingCustom", When("missing", "custom", MINE))
+		R("GroupFrames", "Bars", "Look", "GroupFrames.missingAlpha",
+			{ when = { key = "GroupFrames.missing", notValue = "off", line = "Only with Missing Health on" } })
+		R("GroupFrames", "Bars", "Layout", "GroupFrames.fillDirection")
+		R("GroupFrames", "Bars", "Layout", "GroupFrames.power")
+		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerSolo")
+		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerHeight")
+		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerColour")
+		R("GroupFrames", "Bars", "Layout", "GroupFrames.powerCustom", When("powerColour", "custom", MINE))
+		R("GroupFrames", "Bars", "Behaviour", "GroupFrames.smooth")
+		-- the texts (their places and sizes: the Designer's frame parts)
+		R("GroupFrames", "Texts", "Text", "GroupFrames.nameColour")
+		R("GroupFrames", "Texts", "Text", "GroupFrames.nameCustom", When("nameColour", "custom", MINE))
+		R("GroupFrames", "Texts", "Text", "GroupFrames.nameLength")
+		R("GroupFrames", "Texts", "Text", "GroupFrames.healthText")
+		R("GroupFrames", "Texts", "Text", "GroupFrames.statusText")
+		-- the Designer: the indicators and the frame's parts on one canvas
+		R("GroupFrames", "Designer", "General", "GroupFrames.indicators")
+		R("GroupFrames", "Designer", "General", "GroupFrames.designer")
+	end
+
+	-- (0.20.0) Frame Effects, Heals: Heal Flight's switch, the look, the landing
+	-- in a raid, a made-up heal and every kind's landing to compare them
+	R("FrameEffects", "Heals", "General", "HealFlight.!enabled", { name = "Heal Effects" })
+	R("FrameEffects", "Heals", "General", "HealFlight.#Preview")
+	R("FrameEffects", "Heals", "General", "HealFlight.#Every Kind")
+	R("FrameEffects", "Heals", "General", "HealFlight.flight")
+	R("FrameEffects", "Heals", "General", "HealFlight.hotTicks")
+	R("FrameEffects", "Heals", "Look", "HealFlight.look")
+	R("FrameEffects", "Heals", "Look", "HealFlight.raidLanding")
+
+	-- (0.20.0) Frame Effects, Cooldowns: its switch, whose, and every kind to see
+	R("FrameEffects", "Cooldowns", "General", "FrameEffects.!enabled", { name = "Cooldown Effects" })
+	R("FrameEffects", "Cooldowns", "General", "FrameEffects.#Every Effect")
+	R("FrameEffects", "Cooldowns", "General", "FrameEffects.mine")
+	R("FrameEffects", "Cooldowns", "General", "FrameEffects.group")
 
 	-- (0.17.1) Swing Timers (header: its module's switch): which bars, their
 	-- look, their size, when they show

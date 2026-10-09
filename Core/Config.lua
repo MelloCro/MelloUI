@@ -40,6 +40,10 @@
 --     { type = "button", name = "Click, light", hint = "checkboxes, tabs", text = "Play", onClick = function(module, db) ... end },
 --     { type = "shape", key = "barShape", name = "The Bar's Shape", get = function(db) return { rows, icons, size, padding } end }
 --       (0.19.9: a preview, W.ShapeRow; nothing is set from it)
+--     { type = "canvas", key = "designer", name = "Designer", height = 640, build = function(canvas, width) ... end }
+--       (0.20.0: a frame the module builds, W.CanvasRow: the Group Frames' Designer; nothing set by the row)
+--     { type = "colour", key = "healthCustom", name = "My Health Colour" }
+--       (0.20.0: "#rrggbb", "palette:<key>" or a game colour's name; W.ColourRow, the colour wheel in a flyout)
 -- with `parent` / `requires` (a switch of the same module the row hangs on),
 -- `new` (the update it came with: its New tag), `free` (applied with UI
 -- Modifications off), `get` (a value read another way), `missing` (0.17.0:
@@ -1786,10 +1790,19 @@ local BuildElementPage, JumpTo, ShowPage, RevealRow, AskPageRefresh, RelistPages
 local pickOf = {}   -- [page key] = its pick, kept for the session (both looks' pages share it)
 do
 local ROW_H = { toggle = ROW_HEIGHT, slider = SLIDER_ROW_HEIGHT, dropdown = ROW_HEIGHT, button = ROW_HEIGHT,
-	picture = ROW_HEIGHT, shape = W.SHAPE_ROW_HEIGHT }
+	picture = ROW_HEIGHT, shape = W.SHAPE_ROW_HEIGHT, colour = ROW_HEIGHT }
+-- a row's height: its type's, or a canvas's own (its option's `height`)
+local function RowH(r)
+	if r.type == "canvas" then
+		local b = r.b or (r.distinct and r.distinct[1])
+		return b and b.opt and b.opt.height or ROW_HEIGHT
+	end
+	return ROW_H[r.type] or ROW_HEIGHT
+end
 -- where a typed row's control starts, from the row's right edge (W.ClipRow's
 -- span: the texts end 10 px left of it)
-local SPAN = { toggle = 12 + 26, slider = 14 + 256, dropdown = 14 + 200, picture = 14 + 200, shape = 14 + 220 }
+local SPAN = { toggle = 12 + 26, slider = 14 + 256, dropdown = 14 + 200, picture = 14 + 200, shape = 14 + 220,
+	colour = 14 + 50 }
 local SECTION_GAP = 8       -- between a tab's sections
 local ALL_W, ALL_GAP = 44, 8   -- Apply to all's button, and its room left of the control
 local SWATCH_SPEC = { width = 50, height = 14 }
@@ -2783,6 +2796,14 @@ local function MakeRow(sec, r)
 	elseif t == "shape" then
 		-- (0.19.9) a preview drawn from its `get` (a bar's shape): no value set
 		row, control = W.ShapeRow(sec, sec.y, r.name, hint, desc, get, o)
+	elseif t == "canvas" then
+		-- (0.20.0) a frame the module builds (the Group Frames' Designer)
+		row, control = W.CanvasRow(sec, sec.y, RowH(r), opt.build, o)
+	elseif t == "colour" then
+		-- (0.20.0) a colour of the player's: a swatch, the wheel in a flyout
+		o.host = window
+		row, control = W.ColourRow(sec, sec.y, r.name, hint, desc, get, set, o)
+		o.host = nil
 	else
 		o.width = opt.width
 		row, control = W.ButtonRow(sec, sec.y, r.name, hint, desc, opt.text or "Run", RowButtonClick, o)
@@ -2822,7 +2843,7 @@ local function MakeRow(sec, r)
 	end
 	page.entries[#page.entries + 1] = e
 	page.built[r] = e
-	Placed(sec, row, ROW_H[t] or ROW_HEIGHT)
+	Placed(sec, row, RowH(r))
 end
 
 -- a link's value as text: a switch On / Off (W.LinkRow's), a choice by its
@@ -3116,7 +3137,7 @@ function BuildElementPage(key, width)
 				Queue(sec, s, ElementJob, s.gap + W.HEADER_HEIGHT)
 				for _, r in ipairs(s.rows) do
 					page.rowSec[r], page.rowY[r] = sec, sec.plannedY or sec.y
-					Queue(sec, r, ElementJob, ROW_H[r.type] or ROW_HEIGHT)
+					Queue(sec, r, ElementJob, RowH(r))
 				end
 				for _, lk in ipairs(s.links) do
 					Queue(sec, lk, ElementJob, ROW_HEIGHT)

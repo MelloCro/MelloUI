@@ -29,6 +29,7 @@ Core\Reminders.lua
 Core\Threat.lua
 Core\Fader.lua
 Core\Preview.lua
+Core\FrameFX.lua
 Core\Config.lua
 Core\ConfigLayout.lua
 Core\ConfigPreview.lua
@@ -140,6 +141,8 @@ Modules\ActionBarPanel.lua
 Modules\ActionButtons.lua
 Modules\CooldownTweaks.lua
 Modules\KeybindMode.lua
+Modules\AuraProbe.lua
+Modules\HealProbe.lua
 Modules\BackpackPanel.lua
 Modules\BagWindow.lua
 Modules\MinimapPanel.lua
