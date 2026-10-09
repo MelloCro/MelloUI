@@ -182,17 +182,20 @@ def main():
         project = os.path.join(tmp, "project", "Media", "Profiles.lua")
         os.makedirs(os.path.dirname(project))
         shutil.copyfile(PROFILES, project)
-        game_route = os.path.join(tmp, "game2", "Media", "RouteData.lua")
+        # (0.19.9: the roads go into the game's MelloUI_Route, the profiles into its MelloUI/Media beside it)
+        game_route = os.path.join(tmp, "game2", "MelloUI_Route", "RouteData.lua")
+        game_profiles = os.path.join(tmp, "game2", "MelloUI", "Media", "Profiles.lua")
         os.makedirs(os.path.dirname(game_route))
-        shutil.copyfile(PROFILES, os.path.join(os.path.dirname(game_route), "Profiles.lua"))
+        os.makedirs(os.path.dirname(game_profiles))
+        shutil.copyfile(PROFILES, game_profiles)
         saved_out, saved_route = R.PROFILES_OUT, R.PROJECT_OUT
-        project_route = os.path.join(tmp, "project", "Media", "RouteData.lua")
+        project_route = os.path.join(tmp, "project", "MelloUI_Route", "RouteData.lua")
         R.PROFILES_OUT, R.PROJECT_OUT = project, project_route
         try:
             R.bake(types.SimpleNamespace(wtf=wtf, game_out=game_route))
         finally:
             R.PROFILES_OUT, R.PROJECT_OUT = saved_out, saved_route
-        for label, out in (("the project's", project), ("the game's", os.path.join(os.path.dirname(game_route), "Profiles.lua"))):
+        for label, out in (("the project's", project), ("the game's", game_profiles)):
             b = raw(out)
             d, got = load(out)
             check(shipped_line(b, "MelloUI") == full_line and head_of(b) == head_of(original) and d == orig_default,

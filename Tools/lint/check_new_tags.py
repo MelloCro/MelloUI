@@ -100,7 +100,7 @@ NOT_CONFIGURATOR = {
     "Modules/BagWindow.lua": "the bag window by kind's Sell Junk button (it sells at a vendor), not an option",
     "Core/Core.lua": "the copy window's Import button (MelloUI:ShowPaste), not an option",
     "Modules/Services.lua": "the Services menu's Stop route button (it ends the route), not an option",
-    "Modules/RouteRecorder.lua": "the road recorder's window (a developer tool, /route record): its city switches and "
+    "MelloUI_Route/RouteRecorder.lua": "the road recorder's window (a developer tool, /route record): its city switches and "
                                  "buttons record roads, not options",
     "Core/EditLayout.lua": "Edit Layout's own control bar and right-click box: a mode's controls, not options",
     "Core/EditLayoutMovers.lua": "Edit Layout's plates: a mode's controls, not options",
@@ -110,6 +110,8 @@ NOT_CONFIGURATOR = {
                                 "option, a schema option, switches the window)",
     "Core/Preview.lua": "the preview's Stop button and its list's rows (the top bar's Preview button, New-tagged in "
                         "Core/Config.lua, opens them): a scene's controls, not options",
+    "Modules/KeybindMode.lua": "Keybind Mode's bar (Cancel, Done): a mode's controls, not options (the Action Bars "
+                               "page's Keybind Mode button, New-tagged in Core/Config.lua, opens it)",
 }
 # the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
 NOT_OPTIONS = {
@@ -148,6 +150,8 @@ MOVED = dict.fromkeys(
                                "buffs", "widgets", "nameplates")]],
     _DUI_ROW)
 FOLDERS = ("Core", "Modules")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from features import feature_files  # noqa: E402  (0.19.9: the feature addons' files, read as Modules/)
 
 
 class CheckError(Exception):
@@ -334,7 +338,8 @@ def load_schema(root, what="the tree"):
     lua.execute(AFTER_REGISTRY)
     with open(root + "MelloUI.toc", encoding="utf-8-sig") as fh:
         toc = [line.strip().replace("\\", "/") for line in fh.read().split("\n")]
-    for f in [line for line in toc if line.endswith(".lua") and line != "Core/Core.lua"]:
+    # (0.19.9: then the feature addons' files, as the game loads them right after MelloUI's)
+    for f in [line for line in toc if line.endswith(".lua") and line != "Core/Core.lua"] + feature_files(root):
         lua.globals().CURRENT_FILE = f
         try:
             with open(root + f, encoding="utf-8") as fh:
@@ -700,6 +705,8 @@ def lua_files(root):
         for name in sorted(os.listdir(base)):
             if name.endswith(".lua"):
                 yield folder + "/" + name, os.path.join(base, name)
+    for path in feature_files(root):
+        yield path, os.path.join(root, path)
 
 
 def unlisted(root):

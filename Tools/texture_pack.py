@@ -186,10 +186,13 @@ KIT_SHOWN = [
     (r"^window/single_body$", 307 / 512, "512 px stone shown at 307 per repeat"),
     (r"^window/single_", 6.6 / 11, "11 px rails shown at 6.6"),
     (r"^window/portrait_ring$", 95 / 197, "197 px ring shown at 95"),
+    (r"^window/close_", 24 / 64, "64 px close shown at 24"),
     (r"^window/frame_gem_", 60 / 160, "160 px gem corners shown at 60"),
     (r"^window/", 19 / 50, "50 px edges shown at 19"),
     (r"^buttons/checkbox_", 26 / 43, "43 px shown at 26"),
-    (r"^buttons/cog_", 23 / 50, "50 px shown at 23"),
+    (r"^buttons/(cog|iconplate)_", 23 / 50, "50 px shown at 23 (0.19.9: the icon buttons' plate, the cog plate blank)"),
+    (r"^buttons/(plus|minus)_", 24 / 37, "37 px + / - plates shown at 20-27"),
+    (r"^glyphs/", 15 / 50, "50 px glyphs alone shown at 11-17"),
     (r"^buttons/(redbtn|textbtn)_", 24 / 89, "89 px plates shown at 24"),
     (r"^buttons/arrow_", 16 / 44, "44 px arrows shown at 16"),
     (r"^buttons/close_", 24 / 64, "64 px close shown at 24"),
@@ -226,8 +229,6 @@ TEX_SHOWN = [
     (r"^Icons/", 62 / 256, False, "class / faction medallions in the 62-unit portrait"),
     (r"^Textures/LogoIcon", 64 / 256, False, "logo: 16-64 units (addon list, configurator)"),
     (r"^Textures/Quests/pip_", 11 / 32, False, "QuestInk.Pips: 11 units"),
-    (r"^Textures/Quests/tag_classic", 12 / 32, False, "QuestList logo: 12 units tall"),
-    (r"^Textures/Quests/tag_forever", 20 / 64, False, "QuestList logo: 20 units tall"),
     (r"^Textures/Masks/", 1.0, False, "masks: at least 512 units for 512 px"),
     (r"^Textures/(Flat|Smooth|Gloss|Minimalist)", 4.0, False, "bar fills: stretched along the bars"),
     (r"^Textures/Chat/", 4.0, False, "chat name band: stretched behind a name"),
@@ -243,8 +244,6 @@ TEX_SHOWN = [
 # the file (so a halved file keeps them); the rest is never on screen.
 TEX_DRAWN = [
     (r"^Textures/GameMenuFrame", (910 / 1024, 1728 / 2048), "GameMenuPanel TEX_RIGHT / TEX_BOTTOM"),
-    (r"^Textures/Quests/tag_classic", (278 / 512, 1.0), "QuestList logo w / fw"),
-    (r"^Textures/Quests/tag_forever", (255 / 256, 1.0), "QuestList logo w / fw"),
 ]
 # whole files drawn with a repeating wrap (SetTexture's wrap arguments)
 TEX_WRAP = [(r"^Textures/Route/beam_streaks", "y")]
@@ -310,6 +309,8 @@ NOT_SHIPPED = [
     (r"^Kit/tiles/crackle\.tga$", "a page stone tried and rejected (docs/KIT-MAPPING.md); no layout piece"),
     (r"^Textures/(StoneTile|StoneDarkTile)\.tga$", "the tile makers' stone bodies; no Lua path names them"),
     (r"^Icons/Class/unmapped_\d+\.tga$", "a medallion extract_icons.py cut but mapped to no class"),
+    (r"^Textures/Quests/tag_(classic|forever)\.tga$",
+     "the Classic / Forever quest logos, taken off the Quest Log and the Quest List (the user, 2026-10-09)"),
 ]
 # Lua files that list the user's own files (dropped into Media, never masters)
 USER_FILE_LISTS = ("Media/CustomTextures.lua", "Media/CustomFonts.lua")
@@ -1951,7 +1952,6 @@ SAMPLES = [
     ("profession_backdrop", "Profession panel (alchemy)", ["Kit/backdrops/profession_alchemy.tga"], "dark", ""),
     ("profession_icon", "Profession round icon (herbalism)", ["Kit/icons/profession_herbalism.tga"], "dark", ""),
     ("medallion_alliance", "Faction medallion, Alliance", ["Icons/Faction/Alliance.tga"], "dark", ""),
-    ("tag_forever", "Quest logo, Forever (thin white letters, blue border)", ["Textures/Quests/tag_forever.tga"], "vellum", ""),
     ("game_menu", "Game menu frame, Warm iron", ["Textures/GameMenuFrame_warm.tga"], "dark", ""),
     ("chat_shade", "Chat name shade (tinted #2E1F14 x 0.55 over vellum, as Chat.lua draws it)",
      ["Textures/Chat/name_shade.tga"], "vellum", "a soft gradient band; banding would show here first"),
@@ -1962,7 +1962,6 @@ ONSCREEN = [
     ("rightsize_gamemenu", "Textures/GameMenuFrame_warm.tga", "Game menu frame, Warm iron"),
     ("rightsize_alliance", "Icons/Faction/Alliance.tga", "Faction medallion, Alliance"),
     ("rightsize_classicon", "Icons/Class/MAGE.tga", "Class medallion, Mage"),
-    ("rightsize_tag_forever", "Textures/Quests/tag_forever.tga", "Quest logo, Forever"),
 ]
 
 

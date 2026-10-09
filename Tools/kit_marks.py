@@ -41,7 +41,7 @@ import kit_gems
 
 KINDS = ("elite", "rare", "rareelite", "boss")
 # (0.19.6) the border library's rings (rings/<id>, Tools/make_newui2_borders.py) that can be the portrait ring
-RINGS = ("r1", "r3")
+RINGS = ("r1", "r3", "r5")      # (0.19.9: r5, the NewUI2 winged border, Tools/make_newui2_glyphs.py)
 METAL_OF = {"elite": "gold", "rare": "silver", "rareelite": "silver", "boss": "boss"}
 METALS = ("gold", "silver", "boss")
 # the Nameplate Border families whose left cap gets a metal twin (Kit.buttonLooks.barBorders)

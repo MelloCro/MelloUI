@@ -38,6 +38,8 @@
 --     { type = "slider", key = "shade", name = "Brightness", min = 0, max = 1, step = 0.05, percent = true },
 --     { type = "dropdown", key = "style", name = "Style", values = { {value="a", label="A"}, ... } },
 --     { type = "button", name = "Click, light", hint = "checkboxes, tabs", text = "Play", onClick = function(module, db) ... end },
+--     { type = "shape", key = "barShape", name = "The Bar's Shape", get = function(db) return { rows, icons, size, padding } end }
+--       (0.19.9: a preview, W.ShapeRow; nothing is set from it)
 -- with `parent` / `requires` (a switch of the same module the row hangs on),
 -- `new` (the update it came with: its New tag), `free` (applied with UI
 -- Modifications off), `get` (a value read another way), `missing` (0.17.0:
@@ -265,6 +267,8 @@ local COMMANDS = {
 	{ "/mello backup ...", "Macro Backup: on, off, restore or delete the copy" },
 	{ "/mello install", "set MelloUI up: a setup, your screen, keep or go back" },
 	{ "/mello edit", "Edit Layout: move and resize the interface" },
+	{ "/mello keybind", "Keybind Mode: point at an action button, press a key" },
+	{ "/mello alts", "your characters in quest tooltips; forget <name>" },
 	{ "/mello preview solo", "a fight, alone or (party) in a group, played to see" },
 	{ "/mello preview <part>", "one part alone: fader, widgets, meter, gains ..." },
 	{ "/mello swing log", "20 s of your swings and shots, to copy (/mellolog)" },
@@ -1164,6 +1168,14 @@ do
 			and o.type ~= "include" and not o.slot
 	end
 
+	-- (0.19.9) the feature of its own addon an id names, when that addon is
+	-- not loaded (turned off in the game's AddOns list: Core.lua's
+	-- MelloUI.Features): its rows are left out without a problem told
+	local function FeatureOf(id)
+		local name = type(id) == "string" and id:match("^([^.]+)%.") or nil
+		return name and MelloUI:FeatureNotLoaded(name) and MelloUI.Features[name] or nil
+	end
+
 	-- what an id names (made once per id, the same table after)
 	local function Bind(id)
 		local b = bindings[id]
@@ -1253,11 +1265,18 @@ do
 		-- the pages, their tabs and each tab's sections
 		for key, def in pairs(L.pages) do
 			local p = { key = key, def = def, tabs = {}, tabOf = {} }
+			-- (0.19.9) a page whose header switch is a feature's that is not
+			-- loaded: the note first on each of its tabs (MakeNote)
+			local feature = def.module and FeatureOf(def.module .. ".!enabled")
 			for i, name in ipairs(def.tabs or EMPTY) do
 				local t = { name = name, index = i, sections = {}, secOf = {} }
 				for j, sname in ipairs(L.SECTIONS) do
 					local s = { name = sname, rows = {}, links = {} }
 					t.sections[j], t.secOf[sname] = s, s
+				end
+				if feature and t.sections[1] then
+					local s = t.sections[1]
+					s.rows[1] = { page = key, tab = t, section = s, note = feature, name = feature.title }
 				end
 				p.tabs[i], p.tabOf[name] = t, t
 			end
@@ -1327,7 +1346,9 @@ do
 			end
 			local b = Bind(w.key)
 			if not b then
-				Problem("%s > %s: no setting '%s'", pageKey, tabName, tostring(w.key))
+				if not FeatureOf(w.key) then
+					Problem("%s > %s: no setting '%s'", pageKey, tabName, tostring(w.key))
+				end
 				return nil
 			end
 			return { b = b, value = w.value, notValue = w.notValue, line = w.line }
@@ -1336,9 +1357,29 @@ do
 			local r = { page = p.key, tab = t, section = s }
 			local first
 			if type(what) == "string" then
+				-- (0.19.9) a folded feature's switch (UI Modifications'
+				-- qol_<Name>, Chat's) for a feature of its own addon that
+				-- is not loaded: the note where it stands, as for a
+				-- module's own switch below
+				local foldName = what:match("^UIModifications%.qol_(.+)$")
+				local folded = foldName and FeatureOf(foldName .. ".!enabled")
+				if folded then
+					r.note, r.name = folded, folded.title
+					s.rows[#s.rows + 1] = r
+					return r
+				end
 				first = Bind(what)
 				if not first then
-					Problem("%s > %s: no option '%s'", p.key, t.name, what)
+					local feature = FeatureOf(what)
+					if not feature then
+						Problem("%s > %s: no option '%s'", p.key, t.name, what)
+					elseif what:sub(-9) == ".!enabled" then
+						-- (0.19.9) where its switch stands: one line saying it
+						-- is not loaded (MakeNote); its other rows left out
+						r.note, r.name = feature, feature.title
+						s.rows[#s.rows + 1] = r
+						return r
+					end
 					return
 				end
 				r.b = first
@@ -1363,7 +1404,9 @@ do
 					local id = map[pk.key] or map["*"]
 					local b = id and Bind(id)
 					if id and not b then
-						Problem("%s > %s: no option '%s'", p.key, t.name, id)
+						if not FeatureOf(id) then
+							Problem("%s > %s: no option '%s'", p.key, t.name, id)
+						end
 					elseif b then
 						r.keys[pk.key] = b
 						local list = r.picksOf[b]
@@ -1478,7 +1521,9 @@ do
 						lk.targets[pk.key] = b
 					elseif id then
 						good = false
-						Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, id)
+						if not FeatureOf(id) then
+							Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, id)
+						end
 					end
 				end
 				lk.target = nil
@@ -1488,7 +1533,9 @@ do
 					lk.target = b
 				else
 					good = false
-					Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, tostring(target))
+					if not FeatureOf(target) then
+						Problem("%s > %s: the link '%s' names '%s', which has no place", lk.page, lk.tab.name, lk.name, tostring(target))
+					end
 				end
 			end
 			lk.p = nil
@@ -1739,15 +1786,25 @@ local BuildElementPage, JumpTo, ShowPage, RevealRow, AskPageRefresh, RelistPages
 local pickOf = {}   -- [page key] = its pick, kept for the session (both looks' pages share it)
 do
 local ROW_H = { toggle = ROW_HEIGHT, slider = SLIDER_ROW_HEIGHT, dropdown = ROW_HEIGHT, button = ROW_HEIGHT,
-	picture = ROW_HEIGHT }
+	picture = ROW_HEIGHT, shape = W.SHAPE_ROW_HEIGHT }
 -- where a typed row's control starts, from the row's right edge (W.ClipRow's
 -- span: the texts end 10 px left of it)
-local SPAN = { toggle = 12 + 26, slider = 14 + 256, dropdown = 14 + 200, picture = 14 + 200 }
+local SPAN = { toggle = 12 + 26, slider = 14 + 256, dropdown = 14 + 200, picture = 14 + 200, shape = 14 + 220 }
 local SECTION_GAP = 8       -- between a tab's sections
 local ALL_W, ALL_GAP = 44, 8   -- Apply to all's button, and its room left of the control
 local SWATCH_SPEC = { width = 50, height = 14 }
 local SWATCH_GAP = 8
 local PICKER_W, COPY_W, PICKER_LINE = 180, 150, 26
+-- (0.19.9) a page's own action beside its picker, as the page names it (Core/ConfigLayout.lua `action`): the Action
+-- Bars page's Keybind Mode (Modules/KeybindMode.lua: MelloUI's own, the game's never opened). It leaves the
+-- configurator while you bind and opens it again after
+local KEYBIND_MODE = { name = "Keybind Mode", new = "0.19.9" }
+local KeybindModeClick = Shared("OnClick on the configurator's Keybind Mode", function()
+	local K = MelloUI.KeybindMode
+	if K then
+		K:Start("config")
+	end
+end, "script")
 local RESET_W = 120
 local PREVIEW_W, PREVIEW_H = 220, 96   -- the live preview (Core/ConfigPreview.lua)
 local SWITCH_ROOM = 200     -- the header's right for a page's switch and Reset this page
@@ -1768,6 +1825,9 @@ local TEXT = {
 	copy = "Copy from…",
 	copyTip = "Every setting this page keeps per %s, copied from the %s you choose to the one shown. What they share is one setting already. It asks first.",
 	copied = "%s: %s copied from %s to %s.",
+	-- (0.19.9: a feature of its own addon, turned off in the game's AddOns list)
+	notLoaded = "%s is not loaded",
+	notLoadedHint = "Tick %s in the game's AddOns list, then reload.",
 	copiedNone = "%s: %s has the settings of %s already.",
 	copyAsk = "Copy the %s settings to %s? It changes %s.",
 	copyAccept = "Copy",
@@ -2418,7 +2478,9 @@ local function EachRow(page, fn, arg)
 	for _, t in ipairs(page.lay.tabs) do
 		for _, s in ipairs(t.sections) do
 			for _, r in ipairs(s.rows) do
-				fn(page, r, arg)
+				if not r.note then
+					fn(page, r, arg)
+				end
 			end
 		end
 	end
@@ -2718,6 +2780,9 @@ local function MakeRow(sec, r)
 		o.host = window
 		row, control = W.PictureRow(sec, sec.y, r.name, hint, desc, get, set, choices, kind, o)
 		o.host = nil
+	elseif t == "shape" then
+		-- (0.19.9) a preview drawn from its `get` (a bar's shape): no value set
+		row, control = W.ShapeRow(sec, sec.y, r.name, hint, desc, get, o)
 	else
 		o.width = opt.width
 		row, control = W.ButtonRow(sec, sec.y, r.name, hint, desc, opt.text or "Run", RowButtonClick, o)
@@ -2852,11 +2917,22 @@ local function MakeHeading(sec, s)
 end
 
 -- a job of a tab's section: a heading, a row or a link
+-- (0.19.9) a feature of its own addon that is not loaded: one line where its
+-- switch stands (Core.lua's MelloUI.Features), nothing to set
+local function MakeNote(sec, r)
+	local f = r.note
+	local row = W.Row(sec, sec.y, W.ROW_HEIGHT, string.format(TEXT.notLoaded, f.title),
+		string.format(TEXT.notLoadedHint, f.addon), nil, RowOpts(sec))
+	Placed(sec, row, ROW_HEIGHT)
+end
+
 local function ElementJob(sec, job)
 	if job.isLink then
 		MakeLink(sec, job)
 	elseif job.rows then
 		MakeHeading(sec, job)
+	elseif job.note then
+		MakeNote(sec, job)
 	else
 		MakeRow(sec, job)
 	end
@@ -2975,6 +3051,13 @@ local function Header(page, pl)
 		end, CopyValues(pl, page.pick), { default = TEXT.copy, tooltip = string.format(TEXT.copyTip, noun, noun) })
 		copy:SetPoint("LEFT", dd, "RIGHT", 12, 0)
 		page.pickerLine, page.picker, page.copyBox = line, dd, copy
+		-- (0.19.9) the page's own action beside them (Action Bars: Keybind Mode)
+		if def.action == "keybind" then
+			local b = W.Button(line, KEYBIND_MODE.name, 140, nil, { gold = true, onClick = KeybindModeClick })
+			b:SetPoint("LEFT", copy, "RIGHT", 12, 0)
+			page.action = b
+			page.actionTag = W.ButtonTag(b, KEYBIND_MODE.new)
+		end
 		page.refreshers[#page.refreshers + 1] = function()
 			dd:Refresh()
 		end
@@ -5066,12 +5149,15 @@ local function AddLayoutPage(key, nav, group)
 		for _, s in ipairs(t.sections) do
 			local crumb = path .. " > " .. s.name
 			for _, r in ipairs(s.rows) do
-				local b = r.b or r.distinct[1]
-				local tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or nil
-				-- (a renamed row's old name: found as well as by its own, `search`)
-				local old = b.opt and type(b.opt.search) == "string" and lower(b.opt.search) or nil
-				Entry({ kind = "option", key = key, row = r, new = r.new and true or nil, lsearch = old }, r.name, crumb,
-					tip, nil, RowWords(r))
+				-- (a feature's note reaches no setting: nothing to find)
+				local b = r.b or (r.distinct and r.distinct[1])
+				if b then
+					local tip = (b.kind == "module" and b.mod.desc) or (b.opt and b.opt.desc) or nil
+					-- (a renamed row's old name: found as well as by its own, `search`)
+					local old = b.opt and type(b.opt.search) == "string" and lower(b.opt.search) or nil
+					Entry({ kind = "option", key = key, row = r, new = r.new and true or nil, lsearch = old }, r.name, crumb,
+						tip, nil, RowWords(r))
+				end
 			end
 		end
 	end
@@ -6542,7 +6628,7 @@ end
 -- handler and its test read.
 local RESERVED = {}
 for _, word in ipairs({ "list", "enable", "disable", "profile", "profiles", "install", "layout", "edit", "perf", "cpu",
-	"secrets", "auras", "preload", "dump", "backup", "status", "tutorial", "tour", "help", "preview" }) do
+	"secrets", "auras", "preload", "dump", "backup", "status", "tutorial", "tour", "help", "preview", "keybind", "alts" }) do
 	RESERVED[word] = true
 end
 
@@ -6710,6 +6796,16 @@ SlashCmdList.MELLOUI = function(msg)
 		end
 	elseif cmd == "edit" then
 		EditCommand(rest, msg)
+	elseif cmd == "keybind" then
+		-- (0.19.9) MelloUI's own Keybind Mode (Modules/KeybindMode.lua)
+		if MelloUI.KeybindMode then
+			MelloUI.KeybindMode:Start("slash")
+		end
+	elseif cmd == "alts" then
+		-- (0.19.9) the Quest List's account record: your characters, or one let go
+		if MelloUI.QuestList and MelloUI.QuestList.Record then
+			MelloUI.QuestList.Record.Slash(rest)
+		end
 	elseif cmd == "preview" then
 		if MelloUI.Preview then
 			MelloUI.Preview.Slash(rest)

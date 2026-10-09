@@ -1391,10 +1391,12 @@ DragUpdate = function()
 		end
 		local grid = mode == "grid"
 		local d
+		-- (0.19.9) the bar's Gap between elements snapped side by side
+		local gap = o and E.SnapGap and Snap.Units(E:SnapGap(), perUnit) or 0
 		if lock ~= "y" then
 			if o then
 				d, lineX, rankX = Snap.Axis(l, l + w / 2, l + w, o.l, o.l + o.w / 2, o.l + o.w, screenW, false,
-					drag.heldX, thrIn, thrOut)
+					drag.heldX, thrIn, thrOut, gap)
 			else
 				d, lineX, rankX = Snap.Axis(l, l + w / 2, l + w, nil, nil, nil, screenW, grid, drag.heldX, thrIn, thrOut)
 			end
@@ -1403,7 +1405,7 @@ DragUpdate = function()
 		if lock ~= "x" then
 			if o then
 				d, lineY, rankY = Snap.Axis(b, b + h / 2, b + h, o.b, o.b + o.h / 2, o.b + o.h, screenH, false,
-					drag.heldY, thrIn, thrOut)
+					drag.heldY, thrIn, thrOut, gap)
 			else
 				d, lineY, rankY = Snap.Axis(b, b + h / 2, b + h, nil, nil, nil, screenH, grid, drag.heldY, thrIn, thrOut)
 			end

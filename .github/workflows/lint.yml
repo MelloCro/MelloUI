@@ -19,7 +19,7 @@ jobs:
       - name: luacheck
         uses: lunarmodules/luacheck@v1
         with:
-          args: Core Modules Media MelloUI_Companion --no-color
+          args: Core Modules Media MelloUI_Companion MelloUI_Chat MelloUI_CombatText MelloUI_QuestList MelloUI_Route MelloUI_VoiceOver --no-color
 
   ratchet:
     runs-on: ubuntu-latest

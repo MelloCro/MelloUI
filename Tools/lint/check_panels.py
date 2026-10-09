@@ -32,6 +32,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DIRS = ("Core", "Modules")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from features import feature_files  # noqa: E402  (0.19.9: the feature addons' files, checked as Modules/)
 
 # The ceilings: today's counts (wave 3 of the hardening release, 2026-09-25;
 # the own-window shell and the widget set of the configurator build,
@@ -63,6 +65,7 @@ CEILINGS = {
     "addon-loaded": 33,
     "window-single": 9,
     "direct-sound": 0,
+    "reload-call": 0,
     "palette-guard": 0,
     "direct-shadow": 2,
     "screen-rect-copy": 5,
@@ -84,21 +87,21 @@ CEILINGS = {
     "colour:Modules/CastBarPanel.lua": 0,
     "colour:Core/Installer.lua": 0,
     "colour:Core/InstallerWindow.lua": 0,
-    "colour:Modules/Chat.lua": 0,
-    "colour:Modules/QuestListMap.lua": 0,
-    "colour:Modules/QuestListPanel.lua": 0,
-    "colour:Modules/QuestListTips.lua": 0,
+    "colour:MelloUI_Chat/Chat.lua": 0,
+    "colour:MelloUI_QuestList/QuestListMap.lua": 0,
+    "colour:MelloUI_QuestList/QuestListPanel.lua": 0,
+    "colour:MelloUI_QuestList/QuestListTips.lua": 0,
     "colour:Modules/QuestTracker.lua": 0,
     "colour:Modules/Reminders.lua": 0,
     "colour:Modules/Restock.lua": 0,
-    "colour:Modules/Route.lua": 0,
+    "colour:MelloUI_Route/Route.lua": 0,
     "colour:Modules/Services.lua": 0,
     "colour:Modules/Stats.lua": 0,
     "colour:Modules/UIModifications.lua": 0,
-    "colour:Modules/VoiceOver.lua": 0,
+    "colour:MelloUI_VoiceOver/VoiceOver.lua": 0,
     "colour:Modules/WidgetPanel.lua": 0,
-    "meaning:Modules/Chat.lua": 17,
-    "meaning:Modules/VoiceOver.lua": 0,
+    "meaning:MelloUI_Chat/Chat.lua": 17,
+    "meaning:MelloUI_VoiceOver/VoiceOver.lua": 0,
     # the Gamepad UI freeze fix (0.15.0): 0 each (the tracker's right-click
     # to the quest on the map got its Gamepad UI check)
     "blizz-menu-button": 0,
@@ -117,7 +120,7 @@ CEILINGS = {
     # it) and Combat Text start at 0
     "feed-copy": 0,
     "colour:Core/Feed.lua": 0,
-    "colour:Modules/CombatText.lua": 0,
+    "colour:MelloUI_CombatText/CombatText.lua": 0,
     "colour:Modules/Gains.lua": 0,
     # (0.17.0) the damage meter: no colour literal (the palette, the
     # meaning colours and the game's class colours by name)
@@ -218,6 +221,10 @@ CHECKS = {
     # the notice's chimes are PlayUISound kinds too (0.13.7)
     "direct-sound": (r"\bPlaySound\s*\(|[(,]\s*PlaySound\s*[,)]", {"skip": ["Core/Core.lua"]},
                      "a UI sound played directly: MelloUI:PlayUISound(kind) (Core.lua), so Custom Sounds sees it"),
+    # a reload asked for by MelloUI's code: the game blocks it ("MelloUI blocked
+    # by the game: Reload()", 0.19.9's in-game test); the player types /reload
+    "reload-call": (r"\bReloadUI\b|C_UI\.Reload\b", None,
+                    "a reload from MelloUI's code, which the game blocks: say 'type /reload' (MelloUI:Announce / Print)"),
     # the guard, and a literal fallback behind a palette colour
     "palette-guard": (r"MelloUI\.Palette and |Palette\.\w+\s+or\s*\{", None,
                       "a guard or a fallback on MelloUI.Palette: it is defined in Core.lua, which loads first"),
@@ -238,8 +245,8 @@ CHECKS = {
     # file that binds Core's maker once is passed over; so is a HUD panel
     # (its registry entry's tab = "HUD": no window the navigation opens)
     "window-createframe": (r"\bCreateFrame\(",
-                           {"only": r"^Modules/(\w+Panel|Kit|KitShade|QuestInk|QuestListMap|Route|VoiceOver"
-                                    r"|UIModifications)\.lua$",
+                           {"only": r"^(Modules|MelloUI_\w+)/(\w+Panel|Kit|KitShade|QuestInk|QuestListMap|Route"
+                                    r"|VoiceOver|UIModifications)\.lua$",
                             "unless": [r"^local CreateFrame = MelloUI\.Safe\.CreateFrame\b", r'\btab = "HUD"']},
                            "the game's CreateFrame in a file that dresses a window: bind Core's maker once at the "
                            "top, `local CreateFrame = MelloUI.Safe.CreateFrame` (Core.lua), which makes a frame "
@@ -295,7 +302,7 @@ CHECKS = {
     # the map's pin pool used from any file but the Quest List's marks: each
     # pool call marks the map's scroll state dirty from MelloUI code
     "map-pool-call": (ref(r"AcquirePin|RemovePin|RemoveAllPinsByTemplate|MarkCanvasDirty"),
-                      {"bare": True, "skip": ["Modules/QuestListMap.lua"]},
+                      {"bare": True, "skip": ["MelloUI_QuestList/QuestListMap.lua", "Modules/QuestListMap.lua"]},
                       "the map's pin pool outside the Quest List's marks (Modules/QuestListMap.lua, which "
                       "keep out of it in the Gamepad UI): MelloUI's own layer on the map canvas, as Route "
                       "draws its line"),
@@ -373,6 +380,8 @@ def lua_files(root):
         for name in sorted(os.listdir(folder)):
             if name.endswith(".lua"):
                 yield d + "/" + name
+    for path in feature_files(root):
+        yield path
 
 
 class Source:

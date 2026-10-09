@@ -309,9 +309,9 @@ def main():
                and p.get("point", "BOTTOMLEFT") in ANCHORS and p.get("relPoint", "CENTER") in ANCHORS for p in pos.values())
     check(well, "every place in the store's form (anchors, numbers)")
     # the whisper windows at the design size: each is the popup's size (read
-    # from Modules/Chat.lua), the n-th one 24 right and 24 down of the stored
+    # from MelloUI_Chat/Chat.lua), the n-th one 24 right and 24 down of the stored
     # corner, six places round; all six inside 2866.67 x 1200
-    chat = open(B.ROOT + "Modules/Chat.lua", encoding="utf-8").read()
+    chat = open(B.ROOT + "MelloUI_Chat/Chat.lua", encoding="utf-8").read()
     size = re.search(r"POPUP_W, POPUP_H = (\d+), (\d+)", chat)
     wp = pos.get("whisper")
     dw, dh = 3440 * 1200 / 1440, 1200.0

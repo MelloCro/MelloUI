@@ -104,12 +104,13 @@ local AREAS_REFUSED = "Not in combat: this would switch painted skins."
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = "off", parchment_tooltip = false, parchment_dialog = false,
-	autoSnap = true, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both", classNames = true,
+	autoSnap = true, snapGap = 0, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both", classNames = true,
 	-- the palette (0.14.0): an id of MelloUI.Palettes, applied by Core
 	-- (MelloUI:SetPalette; this module on or off); a choice, not personal
 	palette = "ember" }, {}
 -- Edit Layout's (0.15.0): `positions` is Core's one store of places, and
--- `autoSnap` its bar's Snap switch; `snapTargets` ({ [key] = "screen" |
+-- `autoSnap` its bar's Snap switch, `snapGap` (0.19.9) its Gap (the pixels
+-- kept between elements snapped side by side, 0 - 10); `snapTargets` ({ [key] = "screen" |
 -- "grid" | "off" | another element's key }, nil: the nearest element) is
 -- no default (read as {}): profiles carry it, the installer never sets it
 for _, k in ipairs(MelloUI.Kit and MelloUI.Kit.borderKinds or {}) do
@@ -215,7 +216,7 @@ end
 -- (0.19.8, the border library's stage 3, the plan's decision 7: one Raid
 -- Frame Border, laid on each frame, round each group, or both;
 -- Modules/KitBorders.lua)
-Add({ type = "dropdown", key = "raidBorderPlace", name = "Raid Border Placement", requires = "reskin", new = "0.19.8",
+Add({ type = "dropdown", key = "raidBorderPlace", name = "Raid Border Placement", requires = "reskin",
 	values = { { value = "both", label = "On each frame and round the group" }, { value = "frame", label = "On each frame" },
 		{ value = "group", label = "Round the group" } },
 	desc = "Where Raid Frame Border goes: on each raid frame, round each raid group, or both. A group's border shows while Edit Mode's Display Border is on for the raid frames." })
@@ -383,11 +384,17 @@ local PLAIN_WINDOWS, PLAIN, WINDOW_OF = {}, {}, {}
 
 -- The lists made from the registry (PANELS, TWEAKS and AREA_OF: see the
 -- top; PLAIN_WINDOWS, PLAIN and WINDOW_OF: above), the switches' defaults
--- and their definitions, once: at the addon's own ADDON_LOADED, when every
--- module is in (the sweep's event, below), so the defaults are complete
--- before Core reads the saved settings against them at login; OnInit makes
--- sure of it. The registry does not change after.
-local listed = false
+-- and their definitions: at the addon's own ADDON_LOADED, when every module
+-- of MelloUI's is in (the sweep's event, below), so the defaults are
+-- complete before Core reads the saved settings against them at login;
+-- OnInit makes sure of it. (0.19.9, split-addons) A module registered after
+-- that -- a feature of its own addon (Chat, MelloUI_Chat), whose files the
+-- game runs after MelloUI's ADDON_LOADED -- joins at its addon's
+-- ADDON_LOADED (the sweep), at the latest at OnInit: each call lists the
+-- modules not listed yet and sorts PANELS and TWEAKS again with them (the
+-- user's in-game error, 2026-10-09: "no option 'UIModifications.qol_Chat'").
+local listedModule = {}                    -- [module] = true: in the lists
+local panelEntries, tweakEntries = {}, {}  -- the lists' entries, kept for that sort
 local TAB_RANK = { Windows = 1, HUD = 2 }
 
 local function InOrder(entries, into)
@@ -405,44 +412,54 @@ local function InOrder(entries, into)
 end
 
 local function Lists()
-	if listed then
-		return
-	end
-	listed = true
-	local panels, tweaks = {}, {}
+	local new = nil   -- [row] = true: the rows of modules listed in this call
 	for at, module in ipairs(MelloUI:ModulesInOrder()) do
-		local w, t = module.window, module.tweak
-		if w and w.label then
-			panels[#panels + 1] = { at = at, tab = TAB_RANK[w.tab] or 3, order = type(w.order) == "number" and w.order or math.huge,
-				row = { w.switch or module.name, w.label, w.desc or "", tab = w.tab, setting = w.switch and true or nil } }
-		end
-		if w and type(w.frames) == "table" then
-			for _, name in ipairs(w.frames) do
-				if w.plainGrab and not PLAIN[name] then
-					PLAIN_WINDOWS[#PLAIN_WINDOWS + 1] = name
-					PLAIN[name] = true
-				end
-				if type(name) == "string" and not WINDOW_OF[name] then
-					WINDOW_OF[name] = { label = type(w.label) == "string" and w.label or name, page = module.name }
+		if not listedModule[module] then
+			listedModule[module] = true
+			local w, t = module.window, module.tweak
+			if w and w.label then
+				local e = { at = at, tab = TAB_RANK[w.tab] or 3, order = type(w.order) == "number" and w.order or math.huge,
+					row = { w.switch or module.name, w.label, w.desc or "", tab = w.tab, setting = w.switch and true or nil } }
+				panelEntries[#panelEntries + 1] = e
+				new = new or {}
+				new[e.row] = true
+			end
+			if w and type(w.frames) == "table" then
+				for _, name in ipairs(w.frames) do
+					if w.plainGrab and not PLAIN[name] then
+						PLAIN_WINDOWS[#PLAIN_WINDOWS + 1] = name
+						PLAIN[name] = true
+					end
+					if type(name) == "string" and not WINDOW_OF[name] then
+						WINDOW_OF[name] = { label = type(w.label) == "string" and w.label or name, page = module.name }
+					end
 				end
 			end
-		end
-		if t and t.label then
-			tweaks[#tweaks + 1] = { at = at, tab = 0, order = type(t.order) == "number" and t.order or math.huge,
-				row = { module.name, t.label, t.desc or "", off = t.off and true or nil, always = t.always and true or nil } }
+			if t and t.label then
+				local e = { at = at, tab = 0, order = type(t.order) == "number" and t.order or math.huge,
+					row = { module.name, t.label, t.desc or "", off = t.off and true or nil, always = t.always and true or nil } }
+				tweakEntries[#tweakEntries + 1] = e
+				new = new or {}
+				new[e.row] = true
+			end
 		end
 	end
-	InOrder(panels, PANELS)
-	InOrder(tweaks, TWEAKS)
+	if not new then
+		return
+	end
+	InOrder(panelEntries, PANELS)
+	InOrder(tweakEntries, TWEAKS)
 	for _, area in ipairs(PANELS) do
-		defaults[area[1]] = true
+		if new[area] then
+			defaults[area[1]] = true
+		end
 	end
 	-- (an `always` tweak has no switch, so no default either: Everything
 	-- Off (Core's FreshProfileText) would write its qol_ key as false, and
 	-- the one-time fold in OnEnable would take that for a switched-off
 	-- Tweaks and reset its rows)
 	for _, tweak in ipairs(TWEAKS) do
-		if not (tweak.off or tweak.always) then
+		if new[tweak] and not (tweak.off or tweak.always) then
 			defaults["qol_" .. tweak[1]] = true
 		end
 	end
@@ -450,11 +467,13 @@ local function Lists()
 	-- same table the configurator was given): a panel's needs the reskin, a
 	-- feature's works with it on or off
 	for _, area in ipairs(PANELS) do
-		AREA_OF[area[1]] = { name = not area.setting and area[1] or nil }
-		Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+		if new[area] then
+			AREA_OF[area[1]] = { name = not area.setting and area[1] or nil }
+			Add({ type = "toggle", key = area[1], name = area[2], desc = area[3], requires = "reskin" })
+		end
 	end
 	for _, tweak in ipairs(TWEAKS) do
-		if not tweak.always then
+		if new[tweak] and not tweak.always then
 			AREA_OF["qol_" .. tweak[1]] = { name = tweak[1], tweak = tweak }
 			Add({ type = "toggle", key = "qol_" .. tweak[1], name = tweak[2], desc = tweak[3] })
 		end
@@ -863,14 +882,24 @@ if MelloUI.AddMoverSource then
 	MelloUI:AddMoverSource(Candidates)
 end
 
--- The addon's own ADDON_LOADED makes the lists (every module is in by then);
+-- The addon's own ADDON_LOADED makes the lists (every module of MelloUI's is
+-- in by then), a feature addon's adds its modules to them (0.19.9, Lists);
 -- another's (a window loaded on demand) registers the candidates that have
 -- a stored place (at login the AfterLogin walk does it)
+local function FeatureAddon(addon)
+	for _, f in pairs(MelloUI.Features or {}) do
+		if f.addon == addon then
+			return true
+		end
+	end
+	return false
+end
+
 local sweepFrame = CreateFrame("Frame")
 sweepFrame:RegisterEvent("ADDON_LOADED")
 Perf.SetScript(sweepFrame, "OnEvent", function(_, _, addon)
-	if addon == MelloUI.name then
-		Lists()   -- every file of the addon has run: every module is in
+	if addon == MelloUI.name or FeatureAddon(addon) then
+		Lists()   -- every file of the addon has run: its modules are in
 	elseif M.isEnabled and not MelloUI:LoggingIn() then
 		RegisterStored()
 	end
@@ -1586,9 +1615,9 @@ function M:OnSettingChanged(key, value, db)
 			end
 		end
 	end
-	-- (autoSnap and snapTargets: Edit Layout's, read when it snaps;
+	-- (autoSnap, snapGap and snapTargets: Edit Layout's, read when it snaps;
 	-- positions: Core's store, the bus's 'setting' above)
-	if key == "autoSnap" or key == "snapTargets" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked"
+	if key == "autoSnap" or key == "snapGap" or key == "snapTargets" or key == "positions" or key == "layoutApplied" or key == "welcomeAsked"
 		or key == "savedSurnameOwn" or key == "featuresFolded" then
 		return
 	elseif key == "nameFormat" then

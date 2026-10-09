@@ -5188,7 +5188,9 @@ end
 --           draw layer (OVERLAY unless the game's icon must stay on top)
 --   flat    (0.19.1) a control in the Configurator's flat look (`flat` =
 --           button / check / dropdown / edit / close / arrow (`dir`) / plus /
---           minus / tab / tabActive / track / thumb / slider / knob:
+--           minus / cog / tab / tabActive / track / thumb / slider / knob; the
+--           check, close, arrows, + / -, cog and an icon button's plate the
+--           kit's NewUI2 pieces, 0.19.9:
 --           W.FlatOver's parts on a holder on the rect, painted by its state
 --           as the rims are; `rect = "normal"` the button's normal texture's
 --           rect); opts.left an edit box's fill reaching left over its glass,
@@ -5208,7 +5210,9 @@ end
 --           fitted scale, in every look (the opening shrinks with it);
 --           rep:GetOpening() gives the fill area's insets from the rect
 --   texture one piece (`piece`) sized to the rect (`square`: to its shorter side,
---           `natural`: the kit size, centred on the rect or opts.center)
+--           `natural`: the kit size, centred on the rect or opts.center; `body`
+--           with `square`: the piece sized so its round body is that piece's
+--           on the rect -- a ring with wings reaches past it)
 --   tile    a repeatable tile (`piece`) filling the rect at its native scale
 --   fade    nothing: the region is only faded (decoration with no kit equivalent)
 --   picture a painted picture (`piece`, its greyscale twin `grey`) cropped to
@@ -5238,7 +5242,7 @@ Kit.Replacements = {
 	["NineSlicePanelTemplate"]                = { kind = "frame", level = 0, prefix = "window/frame", scale = 1.0, corners = "gem", outset = 42 },
 	["TitleBar"]                              = { kind = "strip", base = "tabs/top", state = "open", heightScale = 1.5, onRail = true },   -- rune caps, red plate (the user's pick H), red matched to buttons/redbtn (F); 1.5 x the bar's height, same width; `onRail`: riding the OUTER rail across the whole window width, its caps' red gems on the rail's top corners in place of the frame's own gems (Kit:TitleOnRail), the title text with it (user, 2026-09-23: "combining B1 and having H3 as a header", layout C; was standing on the rail with the title caps, H1)
 	["_UI-Frame-TopTileStreaks"]              = { kind = "fade" },   -- the streak band under the title: a stone band there read as a second, different backdrop (user, 2026-09-21); the page shows through
-	["UI-Frame-PortraitMetal-CornerTopLeft"]  = { kind = "texture", piece = "window/portrait_ring", square = true, level = 1 },
+	["UI-Frame-PortraitMetal-CornerTopLeft"]  = { kind = "texture", piece = "rings/r5", square = true, body = "window/portrait_ring", level = 1 },   -- (0.19.9, the user's pick 4c 2026-10-08) the NewUI2 winged border (Tools/make_newui2_glyphs.py), its ring body the gem ring's on the rect, its wings past it; the minimap, the crest and the unit frames keep window/portrait_ring
 	-- the configurator's crest and the short plate under it (approved sketch,
 	-- 2026-09-24; Kit:OwnWindow, Modules/KitWindow.lua): the portrait ring
 	-- centred on the top rail's middle line with the emblem on its disc, and
@@ -5441,7 +5445,7 @@ Kit.Replacements = {
 	["MapTitleBand"]                          = { kind = "picture", piece = "tiles/concrete", crop = "top", level = 0 },   -- an agreed addition (user, 2026-09-21): a body-off window's title band (the map for its canvas; the collections and LFG pages, whose rock starts below the title) filled with the page stone, inside the outer rail, so it is not bare once the title plate stands on the rail
 	["questlog-frame"]                        = { kind = "frame", body = false },   -- the border around the list / details (QuestLogBorderFrameTemplate): the single rail, edges only
 	["QuestLog-frame-devider"]                = { kind = "strip", base = "window/divider" },   -- the line under a header
-	["questlog-icon-setting"]                 = { kind = "flat", flat = "button" },   -- (0.19.1) flat: a list's settings button's plate (was K2)
+	["questlog-icon-setting"]                 = { kind = "flat", flat = "cog" },   -- (0.19.9, the user's pick 0A) the NewUI2 cog plate in place of the game's gear (0.19.1: a bare flat plate; was K2)
 	["questlog-quest-glow-yellow"]            = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a quest title's highlight (the game shows it on hover / selection): the plate's hover look
 	["QuestListFilter"]                       = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- the Quest List's switch on the quest log's count box (the side window's filter buttons were the first, F7, user 2026-09-21), the Auction House's category rows: the plain plate (hover from the button) ...
 	["QuestListFilter-Selected"]              = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... the selected plate (the Auction House's chosen category)
@@ -5624,7 +5628,7 @@ Kit.Replacements = {
 	["ui-damagemeters-header-bar"]            = { kind = "strip", base = "lists/header", owner = true },   -- a session window's header band: the header plate as its regions, the game's timer / dropdowns / buttons on it
 	["damagemeters-background"]               = { kind = "frame" },   -- a session window's body (MinimizeContainer.Background, alpha = the transparency setting): L1 as the container's child at its level, its alpha following the setting
 	["DamageMeterSourceBackground"]           = { kind = "frame" },   -- the source / spell breakdown window's Background (common-dropdown-bg, keyed by hand): L1 the same
-	["DamageMeterSettingsIcon"]               = { kind = "flat", flat = "button" },   -- (0.19.1) flat: the damage meter's settings button's plate (was K2)
+	["DamageMeterSettingsIcon"]               = { kind = "flat", flat = "cog" },   -- (0.19.9, the user's pick 0A) the NewUI2 cog plate in place of the game's gear (0.19.1: a bare flat plate; was K2)
 
 	-- The social window (SocialPanel, 2026-09-21): fixed looks; the raid pane's group box per the user's G pick
 	["FriendsRowHighlight"]                   = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a friend / ignore / raid-info row's highlight (UI-QuestLogTitleHighlight file art, keyed by hand): the plate's hover look, shown on hover only
@@ -8770,11 +8774,11 @@ function Kit:Replace(region, opts)
 	elseif rule.kind == "flat" then
 		-- (0.19.1; the user, 2026-10-04: "from now on only use the same style as
 		-- we have in the Configurator") the Configurator's flat control over
-		-- the game's (MelloUI.Widgets.FlatOver: its plate, box, caret, field,
-		-- tab, track or knob), on a holder of ours on the rect; painted by the
-		-- control's state (FlatState) as a rim follows its button: an empty
-		-- region of the holder (the check's box: its active look lies round it)
-		-- is the rim FollowButton drives, Slot_Update painting the parts
+		-- the game's (MelloUI.Widgets.FlatOver: its plate, caret, field, tab,
+		-- track or knob; 0.19.9 the kit's NewUI2 check box, close, arrow, + / -
+		-- or cog), on a holder of ours on the rect; painted by the control's
+		-- state (FlatState) as a rim follows its button: an empty region of the
+		-- holder is the rim FollowButton drives, Slot_Update painting the parts
 		local button = opts.button or (isFrame and region) or parent
 		if rule.rect == "normal" and button and button.GetNormalTexture and button:GetNormalTexture() then
 			rect = LOOK.ProxyTo(rep, button:GetNormalTexture())
@@ -8794,12 +8798,12 @@ function Kit:Replace(region, opts)
 		local parts = MelloUI.Widgets.FlatOver(f, rule.flat, { dir = rule.dir, left = opts.left, body = opts.body })
 		local driver = f:CreateTexture(nil, "BACKGROUND")
 		driver:SetAlpha(0)
-		driver:SetAllPoints(parts.box or f)
+		driver:SetAllPoints(f)
 		Kit.pieceOf[driver] = true   -- ours: never faded as the game's art
 		driver.button, driver.flatParts, driver.isChecked = button, parts, opts.checked
-		-- (a check box wears the active look round its box while ticked, as the
-		-- Configurator's switch; no other flat control has a checked look)
-		driver.activeFamily = rule.flat == "check" and "look" or false
+		-- (no flat control wears the active look: a ticked check box is its
+		-- ticked plate, 0.19.9)
+		driver.activeFamily = false
 		if button and button.HookScript then
 			FollowButton(driver, button)
 			local list = flatButtons[button]
@@ -9417,6 +9421,12 @@ function Kit:Replace(region, opts)
 				-- (0.19.8: the piece it wears, a ring style's as the portrait ring: rep.ringPiece, KitBorders)
 				local piece = PIECES[rep.ringPiece or rule.piece]
 				local size = math.min(w > 0 and w or h, h > 0 and h or w)
+				-- (0.19.9) `body`: the ring's round body where that piece's would be (the winged border on a
+				-- window's corner: the gem ring's body, its wings past the rect)
+				local body = rule.body and PIECES[rule.body]
+				if body and piece and piece.radius and body.radius and piece.radius > 0 then
+					size = size * (piece.w / piece.radius) / (body.w / body.radius)
+				end
 				if size > 0 and rule.opening and piece and piece.open then
 					-- the rect is the OPENING: the canvas grows around it by the
 					-- piece's ratio (a ring around the game's own portrait);
@@ -9761,6 +9771,19 @@ local MEDALLION_TO_RING = 0.759
 -- plain variant's opaque width: 243 of 256 px)
 local MEDALLION_DISC = 0.95
 
+-- The class medallion's size in a ring's texture (0.759 x the gem ring). A
+-- ring of another share of opening to width (a ring style, 0.19.8; the
+-- windows' winged border, 0.19.9) keeps the gem ring's medallion-to-opening
+-- measure. Kit:FitPortrait and Kit:RingDisc size by it.
+function Kit:MedallionSize(tex)
+	local size = tex:GetWidth() * MEDALLION_TO_RING
+	local worn, gem = PIECES[Kit.pieceNameOf[tex] or ""], PIECES["window/portrait_ring"]
+	if worn and gem and worn.open and gem.open and worn.w ~= gem.w then
+		size = size * ((worn.open[3] - worn.open[1]) / worn.w) / ((gem.open[3] - gem.open[1]) / gem.w)
+	end
+	return size
+end
+
 -- A dark disc in a portrait ring's opening, under the portrait (an agreed
 -- addition, user 2026-09-21: the Legacy shield does not fill the ring, the
 -- page showed through). A region of the ring holder's parent (the game's
@@ -9787,7 +9810,7 @@ function Kit:RingDisc(ring, color, parent, sublevel)
 	-- the disc is the class medallion's size (0.759 x the ring, user
 	-- 2026-09-21), the same as a portrait fitted by Kit:FitPortrait
 	local function Fit()
-		local size = ring.tex:GetWidth() * MEDALLION_TO_RING
+		local size = Kit:MedallionSize(ring.tex)
 		disc:SetSize(size, size)
 		disc:ClearAllPoints()
 		disc:SetPoint("CENTER", ring.tex, "CENTER")
@@ -10108,13 +10131,7 @@ function Kit:FitPortrait(portrait, ring, mode)
 			cx = cx - px, cy = cy - py }
 	end
 	local saved = Kit.portraitSavedOf[portrait]
-	local size = ring.tex:GetWidth() * MEDALLION_TO_RING
-	-- (0.19.8) a ring of the border library's (the portrait ring in a ring style): its opening is another share
-	-- of its width; the medallion keeps the gem ring's measure against the opening
-	local worn, gem = PIECES[Kit.pieceNameOf[ring.tex] or ""], PIECES["window/portrait_ring"]
-	if worn and gem and worn.open and gem.open and worn.w ~= gem.w then
-		size = size * ((worn.open[3] - worn.open[1]) / worn.w) / ((gem.open[3] - gem.open[1]) / gem.w)
-	end
+	local size = self:MedallionSize(ring.tex)
 	if type(mode) == "number" then
 		-- a factor on the medallion size. No window uses it: a window's
 		-- portrait stays at the medallion size, on the disc when it does not
@@ -11649,7 +11666,7 @@ do
 		return f
 	end
 
-	-- luacheck: globals SLASH_MELLOKIT1, read globals ReloadUI
+	-- luacheck: globals SLASH_MELLOKIT1
 	SLASH_MELLOKIT1 = "/mellokit"
 	SlashCmdList.MELLOKIT = function(msg)
 		local words = {}
@@ -11677,8 +11694,8 @@ do
 				return
 			end
 			db.kitSlices = (arg == "on") or nil
-			MelloUI:Print("One-texture nine-slices %s: reloading the UI to lay the kit again.", arg)
-			ReloadUI()
+			-- (never ReloadUI here: the game blocks a reload MelloUI's code asks for, 0.19.9)
+			MelloUI:Print("One-texture nine-slices %s: type /reload to lay the kit again.", arg)
 		elseif cmd == "slices" and arg == "unit" then
 			local db = MelloUI.db
 			local n = tonumber(value)

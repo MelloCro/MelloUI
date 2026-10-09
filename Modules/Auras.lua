@@ -39,8 +39,13 @@ local M = MelloUI:RegisterModule("Auras", {
 	enabledByDefault = false,
 	defaults = {
 		player = true,
+		-- (your rows' layout: set by Unit Frames > Buffs & Debuffs > Layout's
+		-- rows, Tweaks' Buff Layout, while these rows show -- 0.19.9)
 		playerSize = 30,
 		playerPerRow = 12,
+		playerSpacing = 6,
+		playerGrow = "left",
+		playerNewRows = "down",
 		playerColumn = true,
 		target = true,
 		targetSize = 22,
@@ -54,10 +59,6 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Your buffs, then your debuffs on a row of their own. Right-click a buff to cancel it. Beside the minimap, or where the game's buff bar is: that bar comes back while Edit Mode is open, so it can still be moved, and these follow it." },
 		{ type = "toggle", key = "playerColumn", parent = "player", name = "Attach To The Minimap Column",
 		  desc = "Your buffs in a line beside the minimap, level with the map's top and growing away from it, your debuffs on the line under them. They follow the minimap when it moves or changes size. Needs the Minimap Kit; off, they stand where the game's buff bar is." },
-		{ type = "slider", key = "playerSize", parent = "player", name = "Icon Size", min = 20, max = 48, step = 1,
-		  desc = "The size of your buff and debuff icons, in pixels." },
-		{ type = "slider", key = "playerPerRow", parent = "player", name = "Icons Per Row", min = 6, max = 20, step = 1,
-		  desc = "How many of your buffs stand in a row before the next row starts. Your debuffs start a row of their own under them." },
 		{ type = "header", name = "Target" },
 		{ type = "toggle", key = "target", name = "Target Frame",
 		  desc = "Your target's debuffs, then its buffs, under the target frame, in place of the game's." },
@@ -474,7 +475,7 @@ Perf.SetScript(combatWatcher, "OnEvent", function(self)
 end)
 
 local function PlayerLine()
-	return (M.db.playerSize + 6) * M.db.playerPerRow
+	return (M.db.playerSize + (M.db.playerSpacing or 6)) * M.db.playerPerRow
 end
 
 local function ItemEnchantments(c)
@@ -516,18 +517,33 @@ local PLACE_KEY = "Auras: your rows by the minimap column"   -- its key in the c
 local Num = MelloUI.Safe.Number
 local placedSide, placedX, placedY   -- the place by the column ("left" / "right"); nil on the game's place
 
--- the game's buff bar's place (the rows' place before the column)
-local function GamePlace(c)
-	c:ClearAllPoints()
-	c:SetPoint("TOPRIGHT", BuffFrame or UIParent, "TOPRIGHT", 0, 0)
+-- the rows' flow: away from the column while attached (side), else the
+-- Grow setting; New Rows down or up (0.19.9). Its corner and directions.
+local function FlowOf(side)
+	local right = (side or M.db.playerGrow) == "right"
+	local up = M.db.playerNewRows == "up"
+	return (up and "BOTTOM" or "TOP") .. (right and "LEFT" or "RIGHT"), right and 1 or -1, up and 1 or -1
 end
 
--- the flow away from the column: leftwards from the top right, as the rows
--- were made, or rightwards from the top left
+-- the game's buff bar's place (the rows' place before the column): the
+-- flow's corner on the bar's same corner
+local function GamePlace(c)
+	local corner = FlowOf(nil)
+	c:ClearAllPoints()
+	c:SetPoint(corner, BuffFrame or UIParent, corner, 0, 0)
+end
+
+-- the flow set (only when it changed: the container lays its rows again)
+local flowNow
 local function Flow(c, side)
-	local right = side == "right"
-	Try(c.SetFlowLayoutAnchorPoint, c, right and "TOPLEFT" or "TOPRIGHT")
-	Try(c.SetFlowLayoutGrowthDirection, c, right and 1 or -1, -1)
+	local corner, gx, gy = FlowOf(side)
+	local key = corner .. gx .. gy
+	if key == flowNow then
+		return
+	end
+	flowNow = key
+	Try(c.SetFlowLayoutAnchorPoint, c, corner)
+	Try(c.SetFlowLayoutGrowthDirection, c, gx, gy)
 	Try(c.UpdateAllAuras, c)
 end
 
@@ -586,11 +602,9 @@ local function PlaceNow()
 		local x, y, side = ColumnPlace(mm, c)
 		if x then
 			if side ~= placedSide or not Near(x, placedX) or not Near(y, placedY) then
-				if side ~= (placedSide or "left") then
-					Flow(c, side)
-				end
+				Flow(c, side)
 				c:ClearAllPoints()
-				c:SetPoint(side == "right" and "TOPLEFT" or "TOPRIGHT", UIParent, "BOTTOMLEFT", x, y)
+				c:SetPoint((FlowOf(side)), UIParent, "BOTTOMLEFT", x, y)
 				placedSide, placedX, placedY = side, x, y
 			end
 			return
@@ -598,12 +612,8 @@ local function PlaceNow()
 			return
 		end
 	end
-	if placedSide then
-		if placedSide ~= "left" then
-			Flow(c, "left")
-		end
-		placedSide, placedX, placedY = nil, nil, nil
-	end
+	placedSide, placedX, placedY = nil, nil, nil
+	Flow(c, nil)
 	GamePlace(c)
 end
 
@@ -629,6 +639,36 @@ local function PlacePlayer()
 	MelloUI.Kit:WhenOutOfCombat(PlaceNow, PLACE_KEY)
 end
 
+-- (0.19.9) the Buff Layout's spacing, grow or new rows changed: the rows'
+-- groups spaced again (their durations under each line: 10 more between
+-- lines), the line's length, and placed again with their flow (out of combat)
+local function Relayout()
+	local c = playerRows
+	if not c then
+		return
+	end
+	local spacing = M.db.playerSpacing or 6
+	local layout = { elementSpacing = spacing, lineSpacing = spacing + 10, groupSpacing = spacing,
+		groupLineSpacing = spacing + 10, forceNewLine = true }
+	for _, key in ipairs(c.melloGroups) do
+		Try(c.SetAuraGroupLayout, c, key, layout)
+	end
+	c.melloLook.spacing, c.melloLook.lineSpacing = spacing, spacing + 10
+	for button, t in pairs(texts) do
+		if t.shade and button:GetParent() == c then
+			t.gap = spacing   -- (the shade's reach between two buttons: the smaller room)
+		end
+	end
+	Resize(c, M.db.playerSize, PlayerLine())
+	placedX = nil   -- (placed again: its corner may have changed)
+	MelloUI.Kit:WhenOutOfCombat(PlaceNow, PLACE_KEY)
+end
+
+-- your rows stand by the minimap column (their Grow follows it then)
+function M.Attached()
+	return (playerRows and placedSide ~= nil) and true or false
+end
+
 -- the column re-laid (the bus's 'column') or the Minimap Kit switched: the
 -- rows follow while they are attached or asked to be
 local function FollowColumn()
@@ -644,12 +684,14 @@ local function SetPlayer(on)
 			{ key = "buffs", filter = "HELPFUL", max = 40 },
 			{ key = "debuffs", filter = "HARMFUL", max = 16 },
 		}, { size = M.db.playerSize, durationBelow = true, dispel = true, cancel = true, tooltip = "ANCHOR_BOTTOMLEFT",
-			anchor = "TOPRIGHT", gx = -1, gy = -1, line = PlayerLine(), spacing = 6, lineSpacing = 16, shade = true })
+			anchor = (FlowOf(nil)), gx = select(2, FlowOf(nil)), gy = select(3, FlowOf(nil)), line = PlayerLine(),
+			spacing = M.db.playerSpacing or 6, lineSpacing = (M.db.playerSpacing or 6) + 10, shade = true })
 		if not ok then
 			MelloUI:Notice("Buffs & Debuffs: your buff rows could not be made (%s).", tostring(c))
 			return
 		end
 		playerRows = c
+		flowNow = nil
 		ItemEnchantments(c)
 	end
 	if playerRows then
@@ -903,6 +945,8 @@ function M:OnSettingChanged(key, value, db)
 		PlacePlayer()
 	elseif key == "playerSize" or key == "playerPerRow" then
 		Resize(playerRows, db.playerSize, PlayerLine())
+	elseif key == "playerSpacing" or key == "playerGrow" or key == "playerNewRows" then
+		Relayout()
 	elseif key == "targetSize" then
 		Resize(targetRows, db.targetSize)
 	elseif key == "nameplateSize" then

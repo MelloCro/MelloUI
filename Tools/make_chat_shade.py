@@ -1,6 +1,6 @@
 """
 Build Media/Textures/Chat/name_shade.tga: the soft band the chat lays behind
-a line's channel tag and player name on its parchment sheet (Modules/Chat.lua,
+a line's channel tag and player name on its parchment sheet (MelloUI_Chat/Chat.lua,
 ShadeLines). White with a feathered alpha: its left and right quarters are the
 band's rounded ends (drawn at their own shape), its middle half is stretched;
 the top and bottom fade softly, so the band has no hard edge on the paper.

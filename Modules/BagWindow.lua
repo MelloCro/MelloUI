@@ -1225,8 +1225,9 @@ local function Build()
 	end
 	-- the Settings button (user, 2026-10-04: "a button in the backpack like a shortcut to that window"; pick A of
 	-- bag_view_sketch/bag_settings_looks.jpg): Discard's button with the game's options gear, the settings opened on
-	-- Windows > Bags
-	local settings, gear = W.PlateButton(f, 28, 26, 16, AREA, SETTINGS_SCRIPTS)
+	-- Windows > Bags; 0.19.9 (the user, 2026-10-09: "why arent the cogwheel ... changed"): the NewUI2 cog plate, the
+	-- gear in the game's look only
+	local settings, gear = W.PlateButton(f, 28, 26, 16, AREA, SETTINGS_SCRIPTS, "cog")
 	gear:SetAtlas((select(2, Look.Art("optionsGear"))))
 	gear:SetDesaturated(true)   -- (in the text colour, as Discard's bin)
 	win.settings = settings

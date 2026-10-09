@@ -702,7 +702,7 @@ end
 -- stays). Modules/RaidFramePanel.lua registers each frame it dresses.
 --------------------------------------------------------------------------------
 Kit:AddBorderKind({ kind = "raid", key = "raidFrameBorder", default = "single",
-	name = "Raid Frame Border", values = Kit.squareLooks, preview = "rim", new = "0.19.8",
+	name = "Raid Frame Border", values = Kit.squareLooks, preview = "rim",
 	desc = "The border on each raid frame and raid-style party frame: the Single rail they wear today, one of the thin rims the buttons wear, or the Backdrop, its corner gems in the colour of the action bars' Backdrop." }, "aura")
 
 Kit.raidBorders = setmetatable({}, { __mode = "k" })   -- [compact frame] = { border = , rails = F1's skin }
@@ -871,10 +871,10 @@ local function CastLooks()
 end
 
 Kit:AddBorderKind({ kind = "unitframe", key = "unitFrameBorder", default = "frame", name = "Unit Frame Border",
-	values = Kit.buttonLooks.barBorders, preview = "bar", new = "0.19.8",
+	values = Kit.buttonLooks.barBorders, preview = "bar",
 	desc = "The frame round the unit frames' health and power bars (player, target, focus, pet, party): the Ornate bracket they wear by default, the cast bar's, a thin rim, the Single rail or the Backdrop." }, "bar")
 Kit:AddBorderKind({ kind = "castbar", key = "castBarBorder", default = "castbar", name = "Cast Bar Border",
-	values = CastLooks(), preview = "bar", new = "0.19.8",
+	values = CastLooks(), preview = "bar",
 	desc = "The frame round your cast bar: the Cast bar bracket with its gem clusters (today's), a thin rim, the Single rail or the Backdrop. A frame laid round the bar leaves it its whole width." }, "nameplate")
 
 local PERSONAL_LOOKS = { { value = "none", label = "None" } }
@@ -885,7 +885,7 @@ for _, v in ipairs(Kit.squareLooks) do
 end
 Kit.personalLooks = PERSONAL_LOOKS
 Kit:AddBorderKind({ kind = "personal", key = "personalBorder", default = "none", name = "Personal Resource Border",
-	values = PERSONAL_LOOKS, preview = "rim", new = "0.19.8",
+	values = PERSONAL_LOOKS, preview = "rim",
 	desc = "One frame round the health and power bars of your personal resource display (the bars under your character): none, a thin rim or the Backdrop." }, "castbar")
 
 -- a bar's bracket in a library style, or put back (rep: Kit.lua's bar
@@ -1057,15 +1057,22 @@ end
 --     portrait as the gem ring's; its elite / rare / boss twins are the ring
 --     in the marks' metals (Tools/kit_marks.py marks/<ring>_<kind>,
 --     Modules/KitMarks.lua). Modules/UnitFramePanel.lua registers each ring.
+--   (0.19.9, the user's pick 4c 2026-10-08) R5, the NewUI2 winged border
+--     (rings/r5, Tools/make_newui2_glyphs.py): a Portrait Ring choice only
+--     (`portraitOnly`: its wings would reach past a round button), and the
+--     windows' corner ring (Kit.lua's UI-Frame-PortraitMetal-CornerTopLeft).
 --------------------------------------------------------------------------------
 Kit.RingStyles = {
 	r1 = { label = "Four diamond studs", piece = "rings/r1" },
 	r3 = { label = "Plain heavy ring", piece = "rings/r3" },
+	r5 = { label = "Winged border", piece = "rings/r5", portraitOnly = true },
 }
-Kit.RingStyleOrder = { "r1", "r3" }
+Kit.RingStyleOrder = { "r1", "r3", "r5" }
 for _, id in ipairs(Kit.RingStyleOrder) do
 	local st = Kit.RingStyles[id]
-	Kit.roundLooks[#Kit.roundLooks + 1] = { value = id, label = st.label, piece = st.piece }
+	if not st.portraitOnly then
+		Kit.roundLooks[#Kit.roundLooks + 1] = { value = id, label = st.label, piece = st.piece }
+	end
 end
 
 local Ring = {}
@@ -1161,10 +1168,10 @@ for _, id in ipairs(Kit.RingStyleOrder) do
 	Kit.portraitLooks[#Kit.portraitLooks + 1] = { value = id, label = st.label, piece = st.piece }
 end
 Kit:AddBorderKind({ kind = "portrait", key = "portraitRing", default = "gem", name = "Portrait Ring",
-	values = Kit.portraitLooks, preview = "rim", new = "0.19.8",
+	values = Kit.portraitLooks, preview = "rim",
 	desc = "The ring round the portraits of the unit frames: the player, target, focus, pet, target of target and "
-		.. "party. The gem ring, or a ring with four diamond studs, or a plain heavy ring. An elite, rare or boss shows "
-		.. "the ring in its metal with its crest (Elite and Rare Marks)." }, "round")
+		.. "party. The gem ring, a ring with four diamond studs, a plain heavy ring, or the winged border the windows "
+		.. "wear. An elite, rare or boss shows the ring in its metal with its crest (Elite and Rare Marks)." }, "round")
 
 -- the portrait ring's piece now (the gem ring's elsewhere: windows keep theirs)
 function Kit:PortraitRingPiece()
@@ -1229,7 +1236,7 @@ for _, look in ipairs(Kit.squareLooks) do
 	Kit.cooldownLooks[#Kit.cooldownLooks + 1] = look
 end
 Kit:AddBorderKind({ kind = "cooldown", key = "cooldownBorder", default = "game", name = "Cooldown Manager Border",
-	values = Kit.cooldownLooks, preview = "rim", new = "0.19.8",
+	values = Kit.cooldownLooks, preview = "rim",
 	desc = "The rim round the icons of the game's Cooldown Manager: the game's own bevel, or one of the border styles "
 		.. "the buttons wear." }, "raid")
 

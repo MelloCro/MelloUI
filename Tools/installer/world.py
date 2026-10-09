@@ -112,6 +112,11 @@ def make_world(load_modules=True):
     if load_modules:
         toc = [l.strip().replace("\\", "/") for l in open(ROOT + "MelloUI.toc", encoding="utf-8-sig").read().split("\n")]
         files = [l for l in toc if l.endswith(".lua") and l not in ("Core/Core.lua", "Core/Perf.lua")]
+        # (0.19.9: then the feature addons' files, as the game loads them right after MelloUI's)
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(HERE, "..", "lint"))
+        from features import feature_files
+        files += feature_files(ROOT)
         for f in files:
             try:
                 src = open(ROOT + f, encoding="utf-8").read()

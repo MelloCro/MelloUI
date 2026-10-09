@@ -38,7 +38,6 @@ local M = MelloUI:RegisterModule("CooldownTweaks", {
 	icon = "Interface\\Icons\\Spell_Holy_BorrowedTime",
 	flavour = "Your cooldowns, in the middle, with their keys on them.",
 	role = "adds",
-	new = "0.19.8",
 	-- (not on the installer's Features step: its rows are on Bars & Meters > Cooldown Manager)
 	installer = false,
 	enabledByDefault = true,
@@ -49,15 +48,15 @@ local M = MelloUI:RegisterModule("CooldownTweaks", {
 		countSize = 100,
 	},
 	options = {
-		{ type = "toggle", key = "centreRows", name = "Centre Rows", new = "0.19.8",
+		{ type = "toggle", key = "centreRows", name = "Centre Rows",
 		  desc = "A row with fewer icons than the others sits centred under them, so the icons grow from the middle. "
 			.. "The essential and utility cooldowns and the buff icons." },
-		{ type = "toggle", key = "keybinds", name = "Key Bindings", new = "0.19.8",
+		{ type = "toggle", key = "keybinds", name = "Key Bindings",
 		  desc = "The key of the action button that holds a cooldown's spell, on the icon's corner." },
-		{ type = "toggle", key = "pressLight", name = "Light While Pressed", new = "0.19.8",
+		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
 		  desc = "A cooldown's icon lights up while you press the action button with its spell, as the button does "
 			.. "(Action Buttons)." },
-		{ type = "slider", key = "countSize", name = "Count Size", min = 70, max = 160, step = 5, new = "0.19.8",
+		{ type = "slider", key = "countSize", name = "Count Size", min = 70, max = 160, step = 5,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "The size of the charges and stacks numbers on the icons." },
 	},

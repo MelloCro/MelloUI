@@ -155,7 +155,7 @@ def parse_quest(page_html, quest_id):
 
 
 def load_npc_data(path):
-    """race/gender by NPC ID from Media/NPCVoiceData.lua and the overrides file."""
+    """race/gender by NPC ID from MelloUI_VoiceOver/NPCVoiceData.lua and the overrides file."""
     npcs = {}
     if os.path.exists(path):
         text = open(path, encoding="utf-8").read()
@@ -235,7 +235,7 @@ def main():
     store = json.load(open(args.store, encoding="utf-8")) if os.path.exists(args.store) else {}
     store.setdefault("quests", {})
     store.setdefault("npcs", {})
-    known = load_npc_data(os.path.join(HERE, "..", "Media", "NPCVoiceData.lua"))
+    known = load_npc_data(os.path.join(HERE, "..", "MelloUI_VoiceOver", "NPCVoiceData.lua"))
 
     if args.npcs:
         resolve_npcs(store, args.cache, args.refresh)
@@ -319,7 +319,7 @@ def main():
     unknown = sorted({rec.get("name", npc_id) for npc_id, rec in store["npcs"].items() if not rec.get("gender")})
     log(f"imported {added} lines ({skipped} already known), {fetched} pages fetched; store now {len(store['quests'])} quests")
     if unknown:
-        log(f"{len(unknown)} NPCs without race/gender (add them to Media/NPCVoiceOverrides.lua or meet them in game): "
+        log(f"{len(unknown)} NPCs without race/gender (add them to MelloUI_VoiceOver/NPCVoiceOverrides.lua or meet them in game): "
             + ", ".join(unknown[:15]) + (" ..." if len(unknown) > 15 else ""))
 
 

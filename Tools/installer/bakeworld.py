@@ -103,7 +103,11 @@ M.ScheduleBackup = function() end
 
 def toc_files():
     toc = [l.strip().replace("\\", "/") for l in open(ROOT + "MelloUI.toc", encoding="utf-8-sig").read().split("\n")]
-    return [l for l in toc if l.endswith(".lua") and l not in ("Core/Core.lua", "Core/Perf.lua")]
+    # (0.19.9: then the feature addons' files, as the game loads them right after MelloUI's:
+    # docs/plans/split-addons.md, Tools/lint/features.py)
+    sys.path.insert(0, os.path.join(TOOLS, "lint"))
+    from features import feature_files
+    return [l for l in toc if l.endswith(".lua") and l not in ("Core/Core.lua", "Core/Perf.lua")] + feature_files(ROOT)
 
 
 def _fatal(path, err):

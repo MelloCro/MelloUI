@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build Media/NPCVoiceData.lua for the MelloUI Voice Over module.
+Build MelloUI_VoiceOver/NPCVoiceData.lua for the MelloUI Voice Over module.
 
 WoW: Forever reuses the vanilla NPC IDs, and the client exposes no race for an
 NPC, so the module needs a lookup table NPC ID -> race + gender. This script
@@ -15,7 +15,7 @@ Optionally it cross-checks the result against the Forever client's own
 creaturecache.wdb (the NPCs you have actually seen in game).
 
 Usage:
-  python Tools/extract_npc_voices.py [--cache DIR] [--out Media/NPCVoiceData.lua]
+  python Tools/extract_npc_voices.py [--cache DIR] [--out MelloUI_VoiceOver/NPCVoiceData.lua]
                                      [--wdb "F:/World of Warcraft/_classic_beta_/Cache/WDB/enUS/creaturecache.wdb"]
                                      [--build 1.15.9.69722]
 
@@ -396,7 +396,7 @@ def write_lua(out_path, table):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cache", default=CACHE)
-    ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "Media", "NPCVoiceData.lua"))
+    ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "MelloUI_VoiceOver", "NPCVoiceData.lua"))
     ap.add_argument("--build", default="1.15.9.69722", help="Classic Era build for the wago.tools DB2 exports")
     ap.add_argument("--retail-build", default="12.1.0.69814",
                     help="retail build used as a fallback for display IDs missing from Classic Era (\"none\" to skip)")

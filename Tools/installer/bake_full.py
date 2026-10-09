@@ -132,14 +132,14 @@ LEGACY_PLACES = ["VoiceOver.overlayPoint", "VoiceOver.overlayRelativePoint", "Vo
 # (Chat's is called again too, a no-op after its OnEnable, so a snapshot with
 # Chat off still gets the move).
 MOVES = {
-    "whisper": {"fn": "MovePopupPlace", "file": "@Modules/Chat.lua", "old": ["Chat.whisperPopupPos"],
+    "whisper": {"fn": "MovePopupPlace", "file": "@MelloUI_Chat/Chat.lua", "old": ["Chat.whisperPopupPos"],
                 "when": "Chat's OnEnable (a login step since the wave 3 integration fix)"},
-    "routeArrow": {"fn": None, "file": "@Modules/Route.lua", "old": ["Route.arrowX", "Route.arrowY"],
+    "routeArrow": {"fn": None, "file": "@MelloUI_Route/Route.lua", "old": ["Route.arrowX", "Route.arrowY"],
                    "when": "the arrow's first show (needs its frame: a snapshot with the old keys is refused)"},
 }
 ANCHORS = {"TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT"}
 ANCHOR_WS = re.compile(r"\s+")
-# the whisper windows: one size (Modules/Chat.lua POPUP_W, POPUP_H), the n-th
+# the whisper windows: one size (MelloUI_Chat/Chat.lua POPUP_W, POPUP_H), the n-th
 # one opens 24 units right and down of the stored corner, six places round
 WHISPER_CASCADE = 6
 WHISPER_STEP = 24
@@ -244,18 +244,19 @@ function Login()
     STORE_LOGIN = Store()
 end
 
--- wanted: { [function name] = "@Modules/<Module>.lua" }
+-- wanted: { [function name] = "@<folder>/<Module>.lua" } (Modules/, or a feature addon's folder since 0.19.9:
+-- the module named by the file's own name)
 function MovePlaces(wanted)
     local roots = { M }
     for _, file in pairs(wanted) do
-        roots[#roots + 1] = M.modules[file:match("Modules/(%w+)%.lua")]
+        roots[#roots + 1] = M.modules[file:match("/(%w+)%.lua$")]
     end
     local found = FindUpvalues(roots, wanted)
     local out = {}
     for name, file in pairs(wanted) do
         local fn = found[name]
         if not fn then error("migration " .. name .. " (" .. file .. ") not found: renamed or gone?") end
-        local modName = file:match("Modules/(%w+)%.lua")
+        local modName = file:match("/(%w+)%.lua$")
         local module = M.modules[modName]
         -- (the function reads the module's own M.db, set by its OnInit)
         if rawget(module, "db") == nil then rawset(module, "db", M:GetModuleDB(modName)) end
@@ -458,10 +459,10 @@ def _rect(p, w, h, W, H, dx=0, dy=0):
 
 
 def popup_size():
-    src = open(B.ROOT + "Modules/Chat.lua", encoding="utf-8").read()
+    src = open(B.ROOT + "MelloUI_Chat/Chat.lua", encoding="utf-8").read()
     m = re.search(r"^local POPUP_W, POPUP_H = (\d+), (\d+)", src, re.M)
     if not m:
-        raise SystemExit("Modules/Chat.lua has no 'local POPUP_W, POPUP_H = <w>, <h>' line any more: teach bake_full.py "
+        raise SystemExit("MelloUI_Chat/Chat.lua has no 'local POPUP_W, POPUP_H = <w>, <h>' line any more: teach bake_full.py "
                          "the whisper window's size")
     return int(m.group(1)), int(m.group(2))
 

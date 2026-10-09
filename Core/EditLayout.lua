@@ -93,7 +93,7 @@ local TEXT = {
 	moduleOff = "UI Modifications is off: the game's windows keep the game's places, and the minimap, chat and "
 		.. "trackers move in Edit Mode.",
 	bridgeHidden = "Hidden elements (party frames and others) show in Edit Mode.",
-	show = "Show", snap = "Snap",
+	show = "Show", snap = "Snap", gap = "Gap", keybind = "Keybind Mode",
 	resetAll = "Reset all", discard = "Discard", save = "Save", done = "Done", cancel = "Cancel",
 	keep = "Keep editing",
 	one = "1 unsaved change", many = "%d unsaved changes",
@@ -151,6 +151,7 @@ local S = {
 	ending = 0,         -- the count at Save (its chat line)
 	quiet = false,      -- a close with nothing changed: no chat line
 	first = false,      -- the first Open's set-up done
+	after = nil,        -- (0.19.9) E:Close's "then": run once the session is over
 }
 E.state = S
 
@@ -219,6 +220,18 @@ end
 function E:SnapOn()
 	local db = UIModDB()
 	return not (db and db.autoSnap == false)
+end
+
+-- (0.19.9) the bar's Gap: the pixels kept between elements snapped side by
+-- side (UI Modifications' snapGap, 0 - 10; 0: edge to edge, as ever)
+local GAP_MAX = 10
+function E:SnapGap()
+	local db = UIModDB()
+	local v = db and tonumber(db.snapGap) or 0
+	if v ~= v or v < 0 then
+		return 0
+	end
+	return math.min(GAP_MAX, math.floor(v + 0.5))
 end
 
 -- this element's own snap target: "screen" | "grid" | "off" | another key |
@@ -383,6 +396,13 @@ end, "script")
 local KeepClick = Shared("OnClick on Edit Layout's Keep editing", function()
 	KeepEditing()
 end, "script")
+-- (0.19.9) Keybind Mode: it closes Edit Layout first (its question if anything is unsaved)
+local KeybindClick = Shared("OnClick on Edit Layout's Keybind Mode", function()
+	local K = MelloUI.KeybindMode
+	if K then
+		K:Start("editlayout")
+	end
+end, "script")
 
 local LayBar   -- below
 
@@ -416,6 +436,15 @@ end
 local function SetSnap(on)
 	if UIModDB() then
 		MelloUI:NotifySettingChanged(UIMOD, "autoSnap", on and true or false)
+	end
+end
+local function GetGap()
+	return E:SnapGap()
+end
+local function SetGap(v)
+	v = tonumber(v)
+	if UIModDB() and v and v == v then
+		MelloUI:NotifySettingChanged(UIMOD, "snapGap", math.max(0, math.min(GAP_MAX, math.floor(v + 0.5))))
 	end
 end
 
@@ -467,9 +496,13 @@ local function MakeBar()
 	bar.filter = W.Dropdown(row, 110, GetFilter, SetFilter, FILTERS)
 	bar.snap = W.Switch(row, GetSnap, SetSnap)
 	bar.snapLabel = W.Text(row, "GameFontHighlight", TEXT.snap, "text")
+	-- (0.19.9) the room kept between elements snapped side by side
+	bar.gapLabel = W.Text(row, "GameFontHighlight", TEXT.gap, "text")
+	bar.gap = W.NumberBox(row, 56, GetGap, SetGap, { min = 0, max = GAP_MAX, step = 1, suffix = " px" })
 	bar.count = W.Text(row, "GameFontHighlight", nil, "text")
 	bar.count:SetText(string.format(TEXT.many, 99))
 	bar.countW = TextWidth(bar.count)
+	bar.keybind = BarButton(row, TEXT.keybind, KeybindClick)
 	bar.resetAll = BarButton(row, TEXT.resetAll, ResetAllClick)
 	bar.done = BarButton(row, TEXT.done, DoneClick, true)
 	bar.discard = BarButton(row, TEXT.discard, DiscardClick)
@@ -553,17 +586,21 @@ LayBar = function()
 	else
 		local row = bar.row
 		local pending = E:Pending() > 0
+		bar.gap:Refresh()
 		local n = Put(1, bar.title, row, TextWidth(bar.title))
 		n = Put(n + 1, bar.divider, row, 1)
 		n = Put(n + 1, bar.showLabel, row, TextWidth(bar.showLabel), 6)
 		n = Put(n + 1, bar.filter, row, bar.filter:GetWidth())
 		n = Put(n + 1, bar.snap, row, bar.snap:GetWidth(), 2)
 		n = Put(n + 1, bar.snapLabel, row, TextWidth(bar.snapLabel))
+		n = Put(n + 1, bar.gapLabel, row, TextWidth(bar.gapLabel), 6)
+		n = Put(n + 1, bar.gap, row, bar.gap:GetWidth())
 		-- (the count in the row only while it shows; its room then the
 		-- widest count's, so the buttons stay put as it counts)
 		if pending then
 			n = Put(n + 1, bar.count, row, bar.countW)
 		end
+		n = Put(n + 1, bar.keybind, row, bar.keybind:GetWidth())
 		n = Put(n + 1, bar.resetAll, row, bar.resetAll:GetWidth())
 		if pending then
 			n = Put(n + 1, bar.discard, row, bar.discard:GetWidth())
@@ -1226,7 +1263,19 @@ local function MenuOpen()
 	return ok and not Secret(open) and open and true or false
 end
 
+-- (0.19.9) the key frame lent to another mode of MelloUI's while Edit Layout
+-- is closed (Keybind Mode): the addon's one keyboard frame (check_panels'
+-- key-propagate). The borrower's handler(key) answers true to keep a key;
+-- anything else goes on to the game
+local lentTo = nil
+
 local KeyDown = Shared("OnKeyDown on Edit Layout's keys", function(self, key)
+	if lentTo then
+		if not InCombat() then
+			self:SetPropagateKeyboardInput(not lentTo(key))
+		end
+		return
+	end
 	if InCombat() or not E:IsShowing() then
 		return
 	end
@@ -1260,7 +1309,7 @@ local KeyUp = Shared("OnKeyUp on Edit Layout's keys", function(self, key)
 	if P then
 		P.KeyUp(key)
 	end
-	if InCombat() or not E:IsShowing() then
+	if InCombat() or not (lentTo or E:IsShowing()) then
 		return
 	end
 	self:SetPropagateKeyboardInput(true)
@@ -1304,6 +1353,27 @@ local function KeyboardOff()
 		keys:EnableKeyboard(false)
 	end
 	keys:Hide()
+end
+
+-- (0.19.9) the key frame lent (above): never in a fight, never while Edit
+-- Layout itself is open; false when it cannot be had
+function MelloUI:LendKeyboard(handler)
+	if InCombat() or S.open or type(handler) ~= "function" then
+		return false
+	end
+	lentTo = handler
+	KeyboardOn()
+	return true
+end
+
+function MelloUI:TakeBackKeyboard(handler)
+	if handler == nil or lentTo ~= handler then
+		return
+	end
+	lentTo = nil
+	if not S.open then
+		KeyboardOff()
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -1577,6 +1647,13 @@ local function OnEnd(reason, extra)
 	end
 	MelloUI:PlayUISound("window_close")
 	Fire(false, "closed")
+	-- (0.19.9) what E:Close was asked to do once the session is over (Keybind
+	-- Mode, started from the bar); the next frame, Edit Layout all put away
+	local after = S.after
+	S.after = nil
+	if after and reason ~= "abandoned" then
+		C_Timer.After(0, after)
+	end
 end
 
 local function Begin()
@@ -1667,6 +1744,7 @@ end
 
 KeepEditing = function()
 	S.asking = false
+	S.after = nil
 	if E:IsShowing() then
 		LayBar()
 	end
@@ -1734,6 +1812,11 @@ function E:Pending()
 end
 
 function E:Open()
+	-- (0.19.9) Keybind Mode gives way, its keys saved: the key frame is Edit Layout's again
+	local KB = MelloUI.KeybindMode
+	if KB and KB:IsActive() then
+		KB:Finish(true)
+	end
 	FirstOpen()
 	if S.open then
 		if S.reasons.options then
@@ -1753,11 +1836,17 @@ function E:Open()
 	end
 end
 
-function E:Close()
+-- `after` (0.19.9): run once the session is over -- after the leave question
+-- when something is unsaved; Keep editing forgets it
+function E:Close(after)
 	CancelQueue()
 	if not S.open then
+		if after then
+			after()
+		end
 		return
 	end
+	S.after = after
 	if E:Pending() > 0 then
 		Ask()
 	else

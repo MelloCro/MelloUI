@@ -1009,3 +1009,7 @@ MelloUI:On("editmode", function(entering)
 		K:NextFrame(SYNC_KEY, SyncAfter)
 	end
 end, OWNER)
+
+-- the media data files load next (MelloUI.toc): their time is counted from
+-- here, under one name (/melloperf load; none of them opens a scope of its own)
+MelloUI.Perf:Scope("Media data files")

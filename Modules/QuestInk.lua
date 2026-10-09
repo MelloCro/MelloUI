@@ -32,10 +32,8 @@
 --                             quest list are parchment); QuestLogPanel sets it
 --   QI.ROW, QI.RowFonts, ...  the one quest row the quest log and the quest
 --                             list share: its numbers, fonts, pips column,
---                             hover band, the Classic / Forever stamp (also
---                             beside a quest's name on its details page:
---                             QI.FollowStamp), the section header (Quest
---                             rows, below)
+--                             hover band, the section header (Quest rows,
+--                             below)
 --
 -- The rule for the whole interface (user, 2026-09-23: "if the Background of
 -- the text trought the whole UI is set to Parchment, it should use the Black
@@ -505,7 +503,8 @@ end
 -- panel's rows are laid by the same numbers; both are dressed by the same
 -- calls. Its columns, left to right: the icon (the log's POI button, the
 -- list's quest icon), the title with the line under it, the difficulty pips,
--- the right slot (the log's tracking box, the list's Classic / Forever stamp).
+-- the right slot (the log's tracking box, the list's right edge; the log's
+-- pips sit under its tracking box: QuestLogPanel).
 --   QI.ROW                        the numbers (below)
 --   QI.RowFonts(title, line)      the log's two fonts on a row's title and on
 --                                 the line under it (either may be nil): its
@@ -530,17 +529,6 @@ end
 --                                 an additive glow over the text greyed the
 --                                 ink), from 4 px over the title to 4 px under
 --                                 it; made on the row's first lay, hidden
---   QI.Stamp(tex, on, sheet)      the Classic / Forever logo as an ink stamp:
---                                 on parchment the logo in the title ink (the
---                                 sheet's on a kit sheet), its colours
---                                 dropped; off it its own colours. The two
---                                 logos are as wide as each other
---                                 (MelloUI.QUEST_ORIGIN_LOGOS, QuestList.lua)
---   QI.FollowStamp(tex, paper)    a stamp on a page that switches (a quest's
---                                 details page): stamped by paper() -> on,
---                                 sheet now, and again as the quest log's
---                                 parchment or an ink surface switches
---                                 (QI.Restamp)
 --   QI.RowHeader(button, label, toggle, count, plate)   a section header
 --                                 where the log's are (QuestLogHeaderTemplate):
 --                                 its height, the label, the +/-, and the count
@@ -641,17 +629,6 @@ function QI.RowBand(row, titleSize)
 	band:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -(ROW.top - ROW.band))
 	band:SetPoint("BOTTOMRIGHT", row, "TOPRIGHT", 0, -(ROW.top + (titleSize or 12) + ROW.band))
 	return band
-end
-
--- (the title ink, read as it is laid: a palette switch lays the list again)
-function QI.Stamp(tex, on, sheet)
-	if on then
-		tex:SetDesaturated(true)
-		tex:SetVertexColor(QI.RoleColour("title", nil, nil, nil, sheet))
-	else
-		tex:SetDesaturated(false)
-		tex:SetVertexColor(1, 1, 1)
-	end
 end
 
 function QI.RowHeader(button, label, toggle, count, plate)
@@ -2041,25 +2018,6 @@ local function Tick()
 	end
 end
 
--- The stamps that follow their page (QI.FollowStamp: the quest details'
--- logo), each with the call that tells whether its page is on parchment
--- now. Stamped again only when a page switches: the quest log's parchment
--- (QuestLogPanel, as it sets QI.onParchment) or an ink surface (below)
-local followers = setmetatable({}, WEAK)
-
-function QI.FollowStamp(tex, paper)
-	followers[tex] = paper
-	local ok, on, sheet = pcall(paper)
-	QI.Stamp(tex, ok and on, ok and sheet)
-end
-
-function QI.Restamp()
-	for tex, paper in pairs(followers) do
-		local ok, on, sheet = pcall(paper)
-		QI.Stamp(tex, ok and on, ok and sheet)
-	end
-end
-
 -- Ink a surface's strings while it is on parchment, put them back when not.
 -- `quiet`: the periodic pass (only shown roots; strings made since, inked),
 -- run in slices by the driver; else a change (the hidden roots too), what
@@ -2092,10 +2050,6 @@ function QI.RefreshSurface(name, quiet)
 	end
 	if def.onRefresh and (was ~= on or not quiet) then
 		pcall(def.onRefresh, on)
-	end
-	-- the stamps on its pages follow it (a quest giver's details)
-	if (was or false) ~= on then
-		QI.Restamp()
 	end
 end
 

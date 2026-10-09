@@ -6,7 +6,7 @@ the vanilla sound pack's own lines.
 The vanilla pack uses one voice per race and gender. For every combination the
 generator can use (see COMBOS) that your account does not have yet, this script
 picks a few clean quest lines spoken by NPCs of that race and gender (found
-through Media/NPCVoiceData.lua and the pack's quest-to-NPC table), uploads them
+through MelloUI_VoiceOver/NPCVoiceData.lua and the pack's quest-to-NPC table), uploads them
 as an instant voice clone named "<race>-<gender>", and the generator then uses
 that voice directly instead of a fallback.
 
@@ -36,7 +36,7 @@ from generate_voice_lines import api_key, fetch_voices, API, KEY_FILE  # noqa: E
 from build_voice_pack import mp3_duration  # noqa: E402
 
 DEFAULT_PACK = "F:/World of Warcraft/_classic_beta_/Interface/AddOns/AI_VoiceOverData_Vanilla"
-NPC_DATA = os.path.join(HERE, "..", "Media", "NPCVoiceData.lua")
+NPC_DATA = os.path.join(HERE, "..", "MelloUI_VoiceOver", "NPCVoiceData.lua")
 
 # Race / gender voices worth having; others have no talking NPCs in the pack.
 COMBOS = [

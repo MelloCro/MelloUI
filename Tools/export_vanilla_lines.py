@@ -11,7 +11,7 @@ silent on the return. This script reads the cmangos quest texts, drops what
 the pack already has, keeps the quests Forever actually has
 (Media/QuestListData.lua, unless --all), finds the NPC who says each line (the
 quest's starter for the offer, its ender for progress and turn-in; objects and
-items narrate) with race and gender from Media/NPCVoiceData.lua, and writes
+items narrate) with race and gender from MelloUI_VoiceOver/NPCVoiceData.lua, and writes
 
   MelloUI-BuildData/output/vanilla_missing_lines.json   manifest for generate_voice_lines.py / build_voice_pack.py
   MelloUI-BuildData/output/vanilla_missing_lines.csv    the same, for review
@@ -96,13 +96,13 @@ def npc_voices():
     info = {}
     # The lists are Lua strings joined with ".." over many lines: let Lua read them.
     runtime = lupa.LuaRuntime()
-    runtime.execute(open(os.path.join(HERE, "..", "Media", "NPCVoiceData.lua"), encoding="utf-8").read())
+    runtime.execute(open(os.path.join(HERE, "..", "MelloUI_VoiceOver", "NPCVoiceData.lua"), encoding="utf-8").read())
     for key, ids in runtime.globals()["MelloUI_NPCVoiceData"].items():
         m = re.match(r"^(\w+)_(\w)$", str(key))
         if m and isinstance(ids, str):
             for entry in re.findall(r"\d+", ids):
                 info[int(entry)] = (m.group(1), m.group(2))
-    path = os.path.join(HERE, "..", "Media", "NPCVoiceOverrides.lua")
+    path = os.path.join(HERE, "..", "MelloUI_VoiceOver", "NPCVoiceOverrides.lua")
     if os.path.exists(path):
         over = open(path, encoding="utf-8").read()
         for entry, race, gender in re.findall(r'\[(\d+)\]\s*=\s*\{\s*race\s*=\s*"(\w+)"\s*,\s*gender\s*=\s*"(\w)"', over):
@@ -251,8 +251,8 @@ def main():
             log(f"  {kind:9s} {counts[kind]:5d} lines  {chars[kind]:7d} characters")
     log(f"  total     {len(rows):5d} lines  {sum(chars.values()):7d} characters (ElevenLabs bills per character)")
     if unknown_npcs:
-        log(f"  {len(unknown_npcs)} speaking NPCs have no race / gender in Media/NPCVoiceData.lua; the generator narrates "
-            f"them unless they are added to Media/NPCVoiceOverrides.lua (e.g. {', '.join(str(n) for n in sorted(unknown_npcs)[:8])})")
+        log(f"  {len(unknown_npcs)} speaking NPCs have no race / gender in MelloUI_VoiceOver/NPCVoiceData.lua; the generator narrates "
+            f"them unless they are added to MelloUI_VoiceOver/NPCVoiceOverrides.lua (e.g. {', '.join(str(n) for n in sorted(unknown_npcs)[:8])})")
 
 
 if __name__ == "__main__":

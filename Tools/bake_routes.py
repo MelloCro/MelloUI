@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Bake the Route module's learned paths into Media/RouteData.lua.
+Bake the Route module's learned paths into MelloUI_Route/RouteData.lua.
 
 This client keeps addon saved variables only in memory across /reload and
 drops them at restart, but it writes the file. The Route module saves its
-graph as MelloUIRoutes; this script reads that file after a /reload and
+graph as MelloUIRoutes (since 0.19.9 in MelloUI_Route's own saved file,
+MelloUIRouteSaved.routes; MelloUI.lua's MelloUIRoutes before the handover, still
+read); this script reads those files after a /reload and
 writes it as an ordinary addon data file, into the project and straight into
 the game's AddOns folder, so the next /reload starts from everything learned.
 
@@ -32,9 +34,9 @@ import time
 import lupa
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PROJECT_OUT = os.path.join(HERE, "..", "Media", "RouteData.lua")
+PROJECT_OUT = os.path.join(HERE, "..", "MelloUI_Route", "RouteData.lua")
 DEFAULT_WTF = "F:/World of Warcraft/_classic_beta_/WTF"
-DEFAULT_GAME_OUT = "F:/World of Warcraft/_classic_beta_/Interface/AddOns/MelloUI/Media/RouteData.lua"
+DEFAULT_GAME_OUT = "F:/World of Warcraft/_classic_beta_/Interface/AddOns/MelloUI_Route/RouteData.lua"
 PROFILES_OUT = os.path.join(HERE, "..", "Media", "Profiles.lua")
 
 # Profiles in Media/Profiles.lua the saved variables never write: the name and
@@ -55,6 +57,20 @@ def saved_files(wtf):
     return glob.glob(os.path.join(wtf, "Account", "*", "SavedVariables", "MelloUI.lua"))
 
 
+def route_files(wtf):
+    """MelloUI_Route's own saved files (0.19.9: the learned roads, MelloUIRouteSaved.routes)"""
+    return glob.glob(os.path.join(wtf, "Account", "*", "SavedVariables", "MelloUI_Route.lua"))
+
+
+def routes_of(runtime):
+    """the learned roads in a saved file: MelloUI_Route's (MelloUIRouteSaved.routes) or MelloUI's old name"""
+    g = runtime.globals()
+    saved = g.MelloUIRouteSaved
+    if saved is not None and saved["routes"] is not None:
+        return saved["routes"]
+    return g.MelloUIRoutes
+
+
 def lua_value(v):
     """Lua table -> dict (string keys), scalars unchanged."""
     if lupa.lua_type(v) == "table":
@@ -71,7 +87,7 @@ def load_pins(path):
     """{kind: {name: {field: value}}} recorded map pins from MelloUIRoutes."""
     runtime = lupa.LuaRuntime()
     runtime.execute(open(path, encoding="utf-8", errors="replace").read())
-    routes = runtime.globals().MelloUIRoutes
+    routes = routes_of(runtime)
     pins = {"entrances": {}, "transports": {}, "services": {}}
     if routes is None or routes["pins"] is None:
         return pins
@@ -188,7 +204,7 @@ def load_graphs(path):
     """{continent: {cell: (x, y, {cell: cost})}} from MelloUIRoutes in a saved file."""
     runtime = lupa.LuaRuntime()
     runtime.execute(open(path, encoding="utf-8", errors="replace").read())
-    routes = runtime.globals().MelloUIRoutes
+    routes = routes_of(runtime)
     graphs = {}
     if routes is None or routes["graphs"] is None:
         return graphs
@@ -266,14 +282,15 @@ def bake(args):
     graphs = {}
     pins = {"entrances": {}, "transports": {}, "services": {}}
     profiles = {}
-    for path in files:
+    for path in route_files(args.wtf) + files:
         try:
             merge_into(graphs, load_graphs(path))
             for kind, table in load_pins(path).items():
                 for name, v in table.items():
                     pins[kind].setdefault(name, v)
-            p, _ = load_profiles(path)   # (the saved default is not baked: the file's `default` stays)
-            profiles.update(p)
+            if os.path.basename(path) == "MelloUI.lua":
+                p, _ = load_profiles(path)   # (the saved default is not baked: the file's `default` stays)
+                profiles.update(p)
         except Exception as exc:  # noqa: BLE001
             log(f"could not read {path}: {exc}")
     nodes = sum(len(n) for n in graphs.values())
@@ -281,7 +298,8 @@ def bake(args):
     if profiles:
         outs = [os.path.abspath(PROFILES_OUT)]
         if args.game_out:
-            outs.append(os.path.join(os.path.dirname(args.game_out), "Profiles.lua"))
+            # (the game's MelloUI/Media beside its MelloUI_Route, where the roads go)
+            outs.append(os.path.join(os.path.dirname(os.path.dirname(args.game_out)), "MelloUI", "Media", "Profiles.lua"))
         bake_profiles(profiles, outs)
     if nodes == 0 and npins == 0:
         log("no learned paths or recorded pins in the saved variables yet (walk around, then /reload)")
@@ -306,14 +324,14 @@ def main():
     bake(args)
     if not args.watch:
         return
-    last = max((os.path.getmtime(p) for p in saved_files(args.wtf)), default=0)
+    last = max((os.path.getmtime(p) for p in saved_files(args.wtf) + route_files(args.wtf)), default=0)
     log("watching the saved variables; /reload in game writes them")
     while True:
         time.sleep(args.interval)
-        current = max((os.path.getmtime(p) for p in saved_files(args.wtf)), default=0)
+        current = max((os.path.getmtime(p) for p in saved_files(args.wtf) + route_files(args.wtf)), default=0)
         if current > last:
             time.sleep(2)
-            last = max((os.path.getmtime(p) for p in saved_files(args.wtf)), default=0)
+            last = max((os.path.getmtime(p) for p in saved_files(args.wtf) + route_files(args.wtf)), default=0)
             bake(args)
 
 

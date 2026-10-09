@@ -16,7 +16,9 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "docs", "CODEMAP.md")
-FOLDERS = ["Core", "Modules", "MelloUI_Companion", "Media"]
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lint"))
+from features import feature_folders  # noqa: E402  (0.19.9: the feature addons, mapped as MelloUI's own)
+FOLDERS = ["Core", "Modules", "MelloUI_Companion"] + feature_folders(ROOT) + ["Media"]
 # data files: listed with their size only (tables, no code worth mapping)
 DATA_LINES = 4000
 DESC_MAX = 110
@@ -34,7 +36,9 @@ BANNER = re.compile(r"^--\s*[-=]{8,}\s*$")
 def toc_order():
     """the Lua files in MelloUI.toc's order (and MelloUI_Companion's), repo-relative with forward slashes"""
     order = []
-    for toc, base in (("MelloUI.toc", ""), ("MelloUI_Companion/MelloUI_Companion.toc", "MelloUI_Companion/")):
+    tocs = [("MelloUI.toc", ""), ("MelloUI_Companion/MelloUI_Companion.toc", "MelloUI_Companion/")]
+    tocs += [("%s/%s.toc" % (f, f), f + "/") for f in feature_folders(ROOT)]
+    for toc, base in tocs:
         path = os.path.join(ROOT, toc)
         if not os.path.exists(path):
             continue

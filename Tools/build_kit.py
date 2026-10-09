@@ -166,10 +166,13 @@ DENSITY = [
     (r"^window/single_body$", 1.0),        # 512 px stone shown at 307 px per repeat (frame scale 1.6)
     (r"^window/single_", 1.0),             # 11 px rails shown at 6.6 px: at 0.5 they were under-sampled
     (r"^window/portrait_ring$", 0.75),     # 197 px shown at 95
+    (r"^window/close_", 1.0),              # 0.19.9: the NewUI2 close plate, 64 px shown at 24 (its studs and cross need the pixels)
     (r"^window/frame_gem_", 0.5),          # 160 px corners shown at 60
     (r"^window/", 0.5),                    # 50 px edges shown at 19
-    (r"^buttons/checkbox_", 1.0),          # 43 px shown at 26
-    (r"^buttons/cog_", 0.75),              # 50 px shown at 23
+    # 0.19.9 (the user's picks 2026-10-08, docs/plans/newui2-glyphs-close-portrait.md): the NewUI2 plates are the
+    # one control style (the flat controls draw them): 37-50 px shown at 22-30, their studs and bevels kept whole
+    (r"^buttons/(arrow|checkbox|cog|plus|minus|iconplate)_", 1.0),
+    (r"^glyphs/", 1.0),                    # 0.19.9: the glyphs alone (arrows, + / -), 37-50 px shown at 11-17
     (r"^buttons/(redbtn|textbtn)_", 0.4),  # 89 px plates shown at 24
     (r"^buttons/", 0.5),                   # slot rims 135 px shown at 48-55, arrows 44 at 16, close 64 at 24
     (r"^lists/(catplate|category|row)_", 0.4),   # 101 / 71 px plates shown at 25

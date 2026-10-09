@@ -189,18 +189,18 @@ local TEXT = {
 	keepLine = "If you don't answer, MelloUI goes back to 'Before install' when the timer runs out.",
 	doneTitle = "MelloUI is set up.",
 	doneRefit = "Your layout was fitted to this screen.",   -- (Fit to this screen: nothing was installed)
-	doneReload = "The names above characters use the new font after a reload.",
+	doneReload = "The names above characters use the new font after a reload: type /reload.",
 	doneWhere = "Every setting lives in /mello, and in the MelloUI button of the game menu.",
 	doneFresh = "Features are off: switch them on in /mello.",
 	doneFeatures = "The features you switched on start with Mello's settings. The rest wait in /mello.",
 	revertedTitle = "Back to 'Before install'.",
-	revertedReload = "Reload to finish: the names above characters still use the installed font.",
+	revertedReload = "Type /reload to finish: the names above characters still use the installed font.",
 	plateDone = "All set",
 	plateReverted = "Back as before",
 	closedEarly = "Install... in /mello (or /mello install) sets MelloUI up any time.",
 	placeholder = "Continue keeps Mello's own choice for this step.",
 	continue = "Continue", back = "Back", install = "Install", keep = "Keep", revert = "Revert",
-	reload = "Reload now", tour = "Take the tour", open = "Open MelloUI", again = "Choose again", close = "Close",
+	tour = "Take the tour", open = "Open MelloUI", again = "Choose again", close = "Close",
 	-- Fresh start's wizard
 	lookLead = "Your palette, the painted kit and its colours. Nothing changes until you install.",
 	palette = "Palette",
@@ -602,13 +602,6 @@ function ACTIONS.revert()
 	if not ok and why then
 		state.keepLine = why
 		RefreshKeep()
-	end
-end
-
-function ACTIONS.reload()
-	local reload = _G.ReloadUI
-	if type(reload) == "function" then
-		reload()
 	end
 end
 
@@ -1374,8 +1367,10 @@ local function BuildKeep(page)
 	return 20 + RING + 12 + 130
 end
 
--- the Done content, made the first time it is needed
-local DONE_ACTS = { "reload", "tour", "open", "again", "close" }
+-- the Done content, made the first time it is needed (no Reload button: the
+-- game blocks a reload MelloUI's code asks for, "MelloUI blocked by the game:
+-- Reload()", 0.19.9; the line says to type /reload)
+local DONE_ACTS = { "tour", "open", "again", "close" }
 local function DoneGroup(page)
 	local done = page.done
 	if done then
@@ -1455,9 +1450,9 @@ ShowKeep = function(dir)
 	Present("keep", dir)
 end
 
--- Done, on the Keep page: kept (Reload now when the fonts over heads
--- changed) or reverted (Reload to finish when owed); the tour, the
--- configurator, Choose again, Close
+-- Done, on the Keep page: kept (the line to type /reload when the fonts
+-- over heads changed) or reverted (Type /reload to finish when owed); the
+-- tour, the configurator, Choose again, Close
 ShowDone = function()
 	state.phase, state.step = "done", "keep"
 	local page = PageOf("keep")
@@ -1504,12 +1499,9 @@ ShowDone = function()
 	for i = #shown, 1, -1 do
 		shown[i] = nil
 	end
-	local owed = kept and state.needsReload or (not kept and state.reloadOwed)
 	for _, act in ipairs(DONE_ACTS) do
 		local want
-		if act == "reload" then
-			want = owed
-		elseif act == "tour" or act == "open" then
+		if act == "tour" or act == "open" then
 			want = kept
 		elseif act == "again" then
 			want = not kept

@@ -137,7 +137,9 @@ L.pages = {
 	ActionBars = { title = "Action Bars", icon = "module:ActionBarPanel",
 		flavour = "The action bars, the micro menu and the bag bar: pick a bar.",
 		tabs = { "Bars", "Backdrops", "Cooldown Timers" },
-		picker = { label = "Bar", noun = "bar", picks = { { "bars", "Action Bars" }, { "micro", "Micro Menu" }, { "bag", "Bag Bar" } } } },
+		picker = { label = "Bar", noun = "bar", picks = { { "bars", "Action Bars" }, { "micro", "Micro Menu" }, { "bag", "Bag Bar" } } },
+		-- (0.19.9) beside the picker: MelloUI's own Keybind Mode (its button: Core/Config.lua KEYBIND_MODE)
+		action = "keybind" },
 	Minimap = { title = "Minimap", icon = "module:MinimapPanel",
 		flavour = "The minimap, its shape, size and border, and the Services bar under it.",
 		tabs = { "Minimap", "Services Bar" } },
@@ -438,8 +440,14 @@ function L.Define(R, Link)
 	R("UnitFrames", "Buffs & Debuffs", "Look", "DarkMode.keepDispelColor", { only = { "player" },
 		when = { any = { GAME_AURAS, { key = "DarkMode.cooldowns", value = true } },
 			line = "Only on the game's own icons (Buffs & Debuffs or Your Buffs And Debuffs off) or the Cooldown Manager's" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", { player = "Auras.playerSize", target = "Auras.targetSize" }, { name = "Icon Size" })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerPerRow", { only = { "player" } })
+	-- (0.19.9: one set of rows for your buffs -- MelloUI's own rows while
+	-- they show, else the game's buff and debuff bars in the Edit Mode
+	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
+	R("UnitFrames", "Buffs & Debuffs", "Layout", { player = "Tweaks.buffSize", target = "Auras.targetSize" }, { name = "Icon Size" })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffSpacing", { only = { "player" } })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffPerRow", { only = { "player" } })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffGrow", { only = { "player" } })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffNewRows", { only = { "player" } })
 	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerColumn", { only = { "player" } })
 	R("UnitFrames", "Buffs & Debuffs", "Behaviour", "Auras.targetOnlyMine", { only = { "target" } })
 	R("UnitFrames", "Buffs & Debuffs", "Behaviour", "HealerFrames.debuffGlowShows", { wide = "every frame" })
@@ -483,6 +491,14 @@ function L.Define(R, Link)
 	-- (0.19.8, the user's picks of button_press_sketch: the key held, range and resources; skin on or off)
 	R("ActionBars", "Bars", "Look", "ActionButtons.pressLight", { only = { "bars" } })
 	R("ActionBars", "Bars", "Look", "ActionButtons.rangeColours", { only = { "bars" } })
+	-- (0.19.9, L1: one bar's layout, written into the Edit Mode layout:
+	-- Tweaks' Bar Layout; its shape drawn under the sliders)
+	R("ActionBars", "Bars", "Layout", "Tweaks.barLayoutBar", { only = { "bars" } })
+	R("ActionBars", "Bars", "Layout", "Tweaks.barRows", { only = { "bars" } })
+	R("ActionBars", "Bars", "Layout", "Tweaks.barIcons", { only = { "bars" } })
+	R("ActionBars", "Bars", "Layout", "Tweaks.barIconSize", { only = { "bars" } })
+	R("ActionBars", "Bars", "Layout", "Tweaks.barPadding", { only = { "bars" } })
+	R("ActionBars", "Bars", "Layout", "Tweaks.barShape", { only = { "bars" } })
 	R("ActionBars", "Bars", "Behaviour", "Tweaks.bagBarFold", { only = { "bag" },
 		when = { key = "Tweaks.hideBagBar", value = false, line = "Only while the bag bar shows" } })
 	-- (0.18.5) each element's backdrop, one list whatever the pick (the user,
@@ -592,6 +608,7 @@ function L.Define(R, Link)
 	R("Tooltip", "Tooltip", "Behaviour", "Tooltip.fadeDelay")
 	R("Tooltip", "Tooltip", "Behaviour", "QuestList.tipQuestItems")
 	R("Tooltip", "Tooltip", "Behaviour", "QuestList.tipTurnIn")
+	R("Tooltip", "Tooltip", "Behaviour", "QuestList.tipCharacters")
 
 	-- Screen Text (the notices' rows free: Core reads them, Core/Notice.lua
 	-- and Core/CentreText.lua, with Tweaks and UI Modifications off)
@@ -712,6 +729,7 @@ function L.Define(R, Link)
 	R("QuestList", "Map", "General", "QuestList.pinCompleted")
 	R("QuestList", "Map", "General", "QuestList.hideGrey")
 	R("QuestList", "Map", "General", "QuestList.zoneBadges")
+	R("QuestList", "Map", "General", "QuestList.zoneProgress")
 	R("QuestList", "Map", "General", "QuestList.entrancePins")
 	R("QuestList", "Map", "General", "QuestList.transportPins")
 	R("QuestList", "Map", "General", "QuestList.objectiveMarks")

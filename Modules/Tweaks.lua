@@ -20,6 +20,11 @@ local Perf = MelloUI.Perf:Scope("Tweaks")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Num = MelloUI.Safe.Number
 
+-- (0.19.9) the bars' and the buffs' layouts (below, after the module): the
+-- options' get / missing / set ask it (the registration names nothing else
+-- of the file's: its choices are written in it)
+local Layout = {}
+
 local M = MelloUI:RegisterModule("Tweaks", {
 	title = "Tweaks",
 	desc = "Hide the micro menu and bag bar, and scale the floating combat text.",
@@ -46,6 +51,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- Modules/Route.lua read it as saved)
 		textShade = true,
 		menuTipShown = false,
+		-- (0.19.9: the bar the Bar Layout rows set; their values and the Buff
+		-- Layout rows' are the game's or Buffs & Debuffs', never kept here)
+		barLayoutBar = 1,
 	},
 	options = {
 		{ type = "header", name = "Hide Frames" },
@@ -79,6 +87,59 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "slider", key = "worldTextScale", name = "Numbers Over Enemies", min = 0.5, max = 3, step = 0.1,
 		  format = function(v) return string.format("%.1fx", v) end, search = "world text scale",
 		  desc = "The size of the numbers over the enemies and the ones you heal: the game's own, and Your Damage's when MelloUI draws them (one or the other shows). 1.0 is the game's size." },
+		-- (0.19.9, L1 of keybind_layout_sketch: Action Bars > Bars > Layout)
+		{ type = "header", name = "Bar Layout" },
+		{ type = "dropdown", key = "barLayoutBar", name = "Which Bar", new = "0.19.9", values = {
+			{ value = 1, label = "Action Bar 1" }, { value = 2, label = "Action Bar 2" },
+			{ value = 3, label = "Action Bar 3" }, { value = 4, label = "Action Bar 4" },
+			{ value = 5, label = "Action Bar 5" }, { value = 6, label = "Action Bar 6" },
+			{ value = 7, label = "Action Bar 7" }, { value = 8, label = "Action Bar 8" },
+			{ value = 11, label = "Stance Bar" }, { value = 12, label = "Pet Bar" } },
+		  desc = "The bar the rows below set: its rows, icons, icon size and padding, saved into your active Edit Mode layout as Edit Mode saves them, once you let a slider go (out of combat). The game shows them after a reload: type /reload (MelloUI says so once). One of the game's preset layouts is copied first: you are asked once." },
+		{ type = "slider", key = "barRows", name = "Rows", new = "0.19.9", min = 1, max = 4, step = 1,
+		  get = function(db) return Layout.BarGet(db, "barRows") end, missing = function() return Layout.BarMissing("barRows") end,
+		  search = "bar rows columns",
+		  desc = "How many rows the bar's buttons stand in (columns, on a bar stood upright in Edit Mode)." },
+		{ type = "slider", key = "barIcons", name = "Icons", new = "0.19.9", min = 6, max = 12, step = 1,
+		  get = function(db) return Layout.BarGet(db, "barIcons") end, missing = function() return Layout.BarMissing("barIcons") end,
+		  search = "bar buttons count",
+		  desc = "How many of the bar's buttons show." },
+		{ type = "slider", key = "barIconSize", name = "Icon Size", new = "0.19.9", min = 50, max = 200, step = 10,
+		  format = function(v) return string.format("%d%%", v) end,
+		  get = function(db) return Layout.BarGet(db, "barIconSize") end, missing = function() return Layout.BarMissing("barIconSize") end,
+		  search = "bar button size scale",
+		  desc = "The size of the bar's buttons. 100% is the game's own size." },
+		{ type = "slider", key = "barPadding", name = "Padding", new = "0.19.9", min = 2, max = 10, step = 1,
+		  get = function(db) return Layout.BarGet(db, "barPadding") end, missing = function() return Layout.BarMissing("barPadding") end,
+		  search = "bar button spacing gap",
+		  desc = "The room between the bar's buttons." },
+		{ type = "shape", key = "barShape", name = "The Bar's Shape", new = "0.19.9",
+		  get = function(db) return Layout.BarShape(db) end, missing = function() return Layout.BarMissing() end,
+		  desc = "The bar as the rows above lay it out. Saved into your Edit Mode layout when you let a slider go (in a fight, when it ends); the bar itself changes after a reload." },
+		-- (0.19.9: Unit Frames > Buffs & Debuffs > Layout, the player's: MelloUI's
+		-- own buff rows while they show, else the game's buff and debuff bars
+		-- in the Edit Mode layout -- one set of rows for both)
+		{ type = "header", name = "Buff Layout" },
+		{ type = "slider", key = "buffSize", name = "Icon Size", new = "0.19.9", min = 15, max = 60, step = 1,
+		  get = function(db) return Layout.BuffGet("buffSize") end, missing = function() return Layout.BuffMissing("buffSize") end,
+		  search = "buffs debuffs aura size",
+		  desc = "The size of your buff and debuff icons, in pixels: MelloUI's own rows while Your Buffs And Debuffs shows them, else the game's buff and debuff bars (saved into your Edit Mode layout in its own steps of 3 pixels, shown after a reload; 30 is the game's size)." },
+		{ type = "slider", key = "buffSpacing", name = "Spacing", new = "0.19.9", min = 5, max = 15, step = 1,
+		  get = function(db) return Layout.BuffGet("buffSpacing") end, missing = function() return Layout.BuffMissing("buffSpacing") end,
+		  search = "buffs debuffs aura padding gap",
+		  desc = "The room between your buff and debuff icons." },
+		{ type = "slider", key = "buffPerRow", name = "Per Row", new = "0.19.9", min = 2, max = 32, step = 1,
+		  get = function(db) return Layout.BuffGet("buffPerRow") end, missing = function() return Layout.BuffMissing("buffPerRow") end,
+		  search = "buffs debuffs icons per row limit",
+		  desc = "How many buffs stand in a row before the next row starts. Your debuffs start a row of their own (the game's debuff bar takes at most 16 in a row)." },
+		{ type = "dropdown", key = "buffGrow", name = "Grow", new = "0.19.9", values = { { value = "left", label = "Left" }, { value = "right", label = "Right" } },
+		  get = function(db) return Layout.BuffGet("buffGrow") end, missing = function() return Layout.BuffMissing("buffGrow") end,
+		  search = "buffs debuffs direction left right",
+		  desc = "Which way a row of buffs grows from the first one." },
+		{ type = "dropdown", key = "buffNewRows", name = "New Rows", new = "0.19.9", values = { { value = "down", label = "Down" }, { value = "up", label = "Up" } },
+		  get = function(db) return Layout.BuffGet("buffNewRows") end, missing = function() return Layout.BuffMissing("buffNewRows") end,
+		  search = "buffs debuffs wrap down up",
+		  desc = "Where the next row of buffs goes: under the first, or over it." },
 	},
 })
 
@@ -759,6 +820,209 @@ local function RestoreWorldTextScale()
 end
 
 --------------------------------------------------------------------------------
+-- Layouts (0.19.9, keybind_layout_sketch L1 and its buffs; docs/plans/
+-- keybind-bar-layout.md). The game keeps a bar's rows, icons, icon size and
+-- padding, and its buff and debuff bars' size, padding, icons per row,
+-- direction and wrap, in the active Edit Mode layout: the Bar Layout rows,
+-- and the Buff Layout rows while the game's buff bars show, read them from
+-- there and write them back through MelloUI:EditModeSettingsSoon
+-- (Core/EditModeLayout.lua: held while a slider moves, written once it is let
+-- go, out of combat, a preset copied after asking). While MelloUI's own buff
+-- rows show (Buffs & Debuffs on, Your Buffs And Debuffs on) the Buff Layout
+-- rows are theirs, kept in Buffs & Debuffs' settings (playerSize in pixels,
+-- playerSpacing, playerPerRow, playerGrow, playerNewRows). Nothing of either
+-- is kept here: a profile carries Buffs & Debuffs' own, never the game's.
+--------------------------------------------------------------------------------
+
+Layout.barSetting = { barRows = "NumRows", barIcons = "NumIcons", barIconSize = "IconSize", barPadding = "IconPadding" }
+Layout.buffOwn = { buffSize = "playerSize", buffSpacing = "playerSpacing", buffPerRow = "playerPerRow",
+	buffGrow = "playerGrow", buffNewRows = "playerNewRows" }
+Layout.BUFF_PX = 30   -- a buff icon at 100 % (the game's aura button): the game keeps the size as (% - 50) / 10
+Layout.shape = {}     -- the preview's numbers (one table)
+Layout.TEXT = {
+	noLayout = "Your Edit Mode layout could not be read.",
+	noSetting = "The game has no such setting for this bar.",
+	column = "Your buffs grow away from the minimap column while they are attached to it (Buffs & Debuffs).",
+}
+
+-- an enum's value (nil on a client without it)
+local function EnumOf(group, name)
+	local e = Enum and Enum[group]
+	return e and name and e[name]
+end
+
+local function Clamp(v, lo, hi)
+	return math.max(lo, math.min(hi, v))
+end
+
+-- the chosen bar's values (the held ones over them), or nil and why
+function Layout.Bar(db)
+	local system = EnumOf("EditModeSystem", "ActionBar")
+	if not (system and MelloUI.EditModeSystemSettings) then
+		return nil, Layout.TEXT.noLayout
+	end
+	local values = MelloUI:EditModeSystemSettings(system, (db or M.db).barLayoutBar or 1)
+	if not values then
+		return nil, Layout.TEXT.noLayout
+	end
+	return values
+end
+
+-- a Bar Layout slider's value (the icon size as a share: the game keeps
+-- (size - 50) / 10)
+function Layout.BarGet(db, key)
+	local values = Layout.Bar(db)
+	local setting = EnumOf("EditModeActionBarSetting", Layout.barSetting[key])
+	local raw = values and setting and values[setting]
+	if type(raw) ~= "number" then
+		return nil
+	end
+	return key == "barIconSize" and raw * 10 + 50 or raw
+end
+
+-- why a Bar Layout row sleeps: the layout unread, or the bar without that
+-- setting (the stance and pet bars keep their own icon count); nil: live
+function Layout.BarMissing(key)
+	local values, why = Layout.Bar()
+	if not values then
+		return why
+	end
+	if key then
+		local setting = EnumOf("EditModeActionBarSetting", Layout.barSetting[key])
+		if not (setting and values[setting] ~= nil) then
+			return Layout.TEXT.noSetting
+		end
+	end
+	return nil
+end
+
+-- the preview's numbers (W.ShapeRow)
+function Layout.BarShape(db)
+	local values = Layout.Bar(db)
+	local S = Enum and Enum.EditModeActionBarSetting
+	if not (values and S) then
+		return nil
+	end
+	local bar, shape = (db or M.db).barLayoutBar or 1, Layout.shape
+	shape.rows = values[S.NumRows] or 1
+	shape.icons = values[S.NumIcons] or (bar >= 11 and 10 or 12)
+	shape.size = values[S.IconSize] and values[S.IconSize] * 10 + 50 or 100
+	shape.padding = values[S.IconPadding] or 2
+	shape.vertical = values[S.Orientation] ~= nil and values[S.Orientation] == EnumOf("ActionBarOrientation", "Vertical")
+	return shape
+end
+
+function Layout.BarSet(db, key, value)
+	local system = EnumOf("EditModeSystem", "ActionBar")
+	local setting = EnumOf("EditModeActionBarSetting", Layout.barSetting[key])
+	if not (system and setting and MelloUI.EditModeSettingsSoon) or type(value) ~= "number" then
+		return
+	end
+	local raw = key == "barIconSize" and math.floor((value - 50) / 10 + 0.5) or math.floor(value + 0.5)
+	MelloUI:EditModeSettingsSoon(system, db.barLayoutBar or 1, { [setting] = raw })
+end
+
+-- Buffs & Debuffs' settings (its own table once it ran, else the saved one)
+local function AurasDB()
+	local A = MelloUI.modules.Auras
+	return A and (A.db or MelloUI:GetModuleDB("Auras"))
+end
+
+-- MelloUI's own buff rows show: the Buff Layout rows are theirs
+function Layout.Mine()
+	local A, db = MelloUI.modules.Auras, AurasDB()
+	return (A and A.isEnabled and db and db.player) and true or false
+end
+
+-- the game's buff bar's values (BuffFrame's: the debuff bar is written the
+-- same), or nil
+local function GameBuffs()
+	local system = EnumOf("EditModeSystem", "AuraFrame")
+	local index = EnumOf("EditModeAuraFrameSystemIndices", "BuffFrame")
+	if not (system and index and MelloUI.EditModeSystemSettings) then
+		return nil
+	end
+	return (MelloUI:EditModeSystemSettings(system, index))
+end
+
+function Layout.BuffGet(key)
+	if Layout.Mine() then
+		return AurasDB()[Layout.buffOwn[key]]
+	end
+	local values = GameBuffs()
+	local S = Enum and Enum.EditModeAuraFrameSetting
+	if not (values and S) then
+		return nil
+	end
+	if key == "buffSize" then
+		local raw = values[S.IconSize]
+		return raw and math.floor(Layout.BUFF_PX * (raw * 10 + 50) / 100 + 0.5)
+	elseif key == "buffSpacing" then
+		return values[S.IconPadding]
+	elseif key == "buffPerRow" then
+		return values[S.IconLimitBuffFrame]
+	elseif key == "buffGrow" then
+		local v = values[S.IconDirection]
+		return v ~= nil and (v == EnumOf("AuraFrameIconDirection", "Right") and "right" or "left") or nil
+	elseif key == "buffNewRows" then
+		local v = values[S.IconWrap]
+		return v ~= nil and (v == EnumOf("AuraFrameIconDirection", "Up") and "up" or "down") or nil
+	end
+	return nil
+end
+
+function Layout.BuffMissing(key)
+	if Layout.Mine() then
+		local A = MelloUI.modules.Auras
+		if key == "buffGrow" and A.Attached and A.Attached() then
+			return Layout.TEXT.column
+		end
+		return nil
+	end
+	if not GameBuffs() then
+		return Layout.TEXT.noLayout
+	end
+	return nil
+end
+
+-- a Buff Layout row set: into Buffs & Debuffs' own settings while its rows
+-- show, else into the game's buff and debuff bars
+function Layout.BuffSet(key, value)
+	if Layout.Mine() then
+		MelloUI:NotifySettingChanged("Auras", Layout.buffOwn[key], value)
+		return
+	end
+	local system = EnumOf("EditModeSystem", "AuraFrame")
+	local S = Enum and Enum.EditModeAuraFrameSetting
+	if not (system and S and MelloUI.EditModeSettingsSoon) then
+		return
+	end
+	for _, bar in ipairs({ "BuffFrame", "DebuffFrame" }) do
+		local index = EnumOf("EditModeAuraFrameSystemIndices", bar)
+		local t = {}
+		if key == "buffSize" and type(value) == "number" then
+			t[S.IconSize] = Clamp(math.floor((value * 100 / Layout.BUFF_PX - 50) / 10 + 0.5), 0, 15)
+		elseif key == "buffSpacing" and type(value) == "number" then
+			t[S.IconPadding] = Clamp(math.floor(value + 0.5), 5, 15)
+		elseif key == "buffPerRow" and type(value) == "number" then
+			if bar == "DebuffFrame" then
+				t[S.IconLimitDebuffFrame] = Clamp(math.floor(value + 0.5), 1, 16)
+			else
+				t[S.IconLimitBuffFrame] = Clamp(math.floor(value + 0.5), 2, 32)
+			end
+		elseif key == "buffGrow" then
+			t[S.IconDirection] = EnumOf("AuraFrameIconDirection", value == "right" and "Right" or "Left")
+		elseif key == "buffNewRows" then
+			t[S.IconWrap] = EnumOf("AuraFrameIconDirection", value == "up" and "Up" or "Down")
+		end
+		if index and next(t) then
+			MelloUI:EditModeSettingsSoon(system, index, t)
+		end
+	end
+end
+M.Layout = Layout   -- (the tests')
+
+--------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
@@ -789,5 +1053,12 @@ function M:OnSettingChanged(key, value, db)
 		UpdateHiddenFrames()
 	elseif key == "worldTextScale" then
 		ApplyWorldTextScale(value)
+	elseif Layout.barSetting[key] then
+		-- (0.19.9) the game's value: read back from the layout, never kept here
+		db[key] = nil
+		Layout.BarSet(db, key, value)
+	elseif Layout.buffOwn[key] then
+		db[key] = nil
+		Layout.BuffSet(key, value)
 	end
 end

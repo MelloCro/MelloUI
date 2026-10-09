@@ -701,11 +701,11 @@ end
 
 -- A toggle on the title plate in the painted look (0.19.1, the user
 -- 2026-10-04: "only use the same style as we have in the Configurator" -- it
--- was the kit's plus / minus / arrow piece): the Configurator's flat plate and
--- its glyph (MelloUI.Widgets.FlatOver: "plus", its upright line hidden for a
--- minus, or an "arrow" up), made the first time; in the game's look none of it
--- shows and the icon has the game's art. `lit`: under the pointer. True while
--- the flat look shows.
+-- was the kit's plus / minus / arrow piece): the Configurator's control
+-- (MelloUI.Widgets.FlatOver: a "plus" or "minus", or an "arrow" up; 0.19.9
+-- the kit's NewUI2 glyph, alone at a toggle's size), made the first time; in
+-- the game's look none of it shows and the icon has the game's art. `lit`:
+-- under the pointer. True while the painted look shows.
 function Art.Flat(button, kind, lit)
 	local W = MelloUI.Widgets
 	local painted = (type(W) == "table" and W.FlatOver and MelloUI.Look:On(Art.AREA)) and true or false
@@ -715,13 +715,9 @@ function Art.Flat(button, kind, lit)
 		button.flat = p
 	end
 	if p then
-		p.fill:SetShown(painted)
-		for _, list in ipairs({ p.edges, p.glyph }) do
-			for i = 1, #list do
-				list[i]:SetShown(painted)
-			end
-		end
+		W.FlatShown(p, painted)
 		if painted then
+			W.FlatKind(p, kind)
 			W.FlatState(p, lit)
 		end
 	end
@@ -1921,10 +1917,7 @@ do
 		end
 		local alpha = Near.On() and 1 or 0.4
 		if Art.Flat(button, "arrow", button.lit) then
-			local glyph = button.flat.glyph
-			for i = 1, #glyph do
-				glyph[i]:SetAlpha(alpha)
-			end
+			button.flat.piece:SetAlpha(alpha)
 			return
 		end
 		button.icon:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")   -- (the game's quest arrow)
@@ -2459,9 +2452,7 @@ local function MakeToggle(parent, size, IsCollapsed, OnClick)
 	toggle.icon:SetAllPoints(toggle)
 	function toggle.Refresh()
 		local collapsed = IsCollapsed()
-		if Art.Flat(toggle, "plus", toggle.lit) then
-			toggle.flat.glyph[2]:SetShown(collapsed and true or false)   -- (its upright line: a plus while folded)
-		else
+		if not Art.Flat(toggle, collapsed and "plus" or "minus", toggle.lit) then
 			toggle.icon:SetTexture(collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
 		end
 	end

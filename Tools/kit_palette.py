@@ -233,6 +233,11 @@ GEM_PLAIN = "window/portrait_ring"
 # ~0.10), its cracks a hint
 TONED = re.compile(r"^tiles/(concrete|brushedmetal)")   # (0.19.6: the NewUI2 brushed dark metal, toned as the concrete)
 TONED_MID, TONED_SPREAD = 0.16, 0.09
+# The NewUI2 controls and the winged border (0.19.9, Tools/make_newui2_glyphs.py; the user's pick 3B, 2026-10-08:
+# "recoloured per look like every kit piece, its gold kept gold"): steel plates with gold studs, gold glyphs under
+# the mouse. recolour's red test counts that gold as red (it would turn salmon), so here gold takes the look's gold
+# ramp, red its red, the rest its iron (the NewUI2 rims' sketch rules, newui2_parts.warm)
+GOLDEN = re.compile(r"^(buttons/(arrow|checkbox|cog|plus|minus|iconplate)_|window/close_|glyphs/|rings/r5$)")
 
 # Each look: its folder beside Media/Kit (Kit:LookFolder in Kit.lua picks it
 # from the palette and Kit Colours), its ramps (the metal, the red, a whole
@@ -314,6 +319,26 @@ def recolour_toned(a, look):
     return b
 
 
+def recolour_golden(a, look):
+    """An RGBA uint8 array in the look's colours, its gold in the look's gold (GOLDEN)."""
+    rgb = a[..., :3].astype(float) / 255
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    d = np.maximum(mx - mn, 1e-6)
+    hue = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60
+    gold = (sat > 0.28) & (hue >= 8) & (hue <= 70)
+    red = (sat > 0.45) & ((hue < 8) | (hue > 335))
+    lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    lk = LOOKS[look]
+    out = _gradient(lum, lk.ramp)
+    out = np.where(gold[..., None], _gradient(0.45 * r + 0.45 * g + 0.1 * b, lk.gold), out)
+    out = np.where(red[..., None], _gradient(0.6 * r + 0.3 * g + 0.1 * b, lk.red), out)
+    c = a.copy()
+    c[..., :3] = np.clip(np.round(out), 0, 255).astype(np.uint8)
+    return c
+
+
 def recolour(a, look):
     """An RGBA uint8 array in the look's colours."""
     rgb = a[..., :3].astype(float) / 255
@@ -362,6 +387,8 @@ def recolour_piece(name, a, look, kit):
     if GEM_TWINS.search(name):
         plain = np.array(Image.open(os.path.join(kit, GEM_PLAIN.replace("/", os.sep) + ".tga")).convert("RGBA"))
         return recolour_gems(a, plain, look)
+    if GOLDEN.search(name):
+        return recolour_golden(a, look)
     return recolour(a, look)
 
 

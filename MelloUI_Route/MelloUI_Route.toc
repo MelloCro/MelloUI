@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: |cff9b8cffMello|rUI Route
+## Notes: MelloUI's Route: the way to your waypoint on the world map and the minimap, learned from where you walk and fly, the arrow and the World Marker. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
+## Author: Mello
+## Version: 0.19.9
+## Dependencies: MelloUI
+## X-MelloUI-Feature: Route
+## SavedVariables: MelloUIRouteSaved
+## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
+
+Route.lua
+RouteRecorder.lua
+RouteData.lua

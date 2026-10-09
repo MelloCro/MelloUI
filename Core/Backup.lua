@@ -256,6 +256,40 @@ function MelloUI:SerializeSettings()
 			parts[#parts + 1] = "!" .. name .. "=" .. EncodeValue(flag)
 		end
 	end
+	-- (0.19.9) a feature of its own addon that is not loaded (turned off in
+	-- the game's AddOns list): its saved settings as they are kept, every
+	-- one (its defaults are in its own file), and its switch -- a profile or
+	-- the backup made meanwhile still carries them
+	local features = {}
+	for name in pairs(self.Features or {}) do
+		if not self.modules[name] then
+			features[#features + 1] = name
+		end
+	end
+	table.sort(features)
+	for _, name in ipairs(features) do
+		local stored = self.db.modules[name]
+		if type(stored) == "table" then
+			local keys = {}
+			for k in pairs(stored) do
+				if type(k) == "string" then keys[#keys + 1] = k end
+			end
+			table.sort(keys)
+			for _, k in ipairs(keys) do
+				local v = stored[k]
+				if type(v) ~= "table" or next(v) ~= nil then
+					local enc = EncodeValue(v)
+					if enc then
+						parts[#parts + 1] = name .. "." .. k .. "=" .. enc
+					end
+				end
+			end
+		end
+		local flag = self.db.enabled[name]
+		if flag ~= nil then
+			parts[#parts + 1] = "!" .. name .. "=" .. EncodeValue(flag)
+		end
+	end
 	return table.concat(parts, ";")
 end
 
@@ -309,7 +343,7 @@ function MelloUI:DeserializeSettings(text, into)
 						local db = into and IntoDB(self, into, "UIModifications") or self:GetModuleDB("UIModifications")
 						db[switch] = decoded
 						applied = applied + 1
-					elseif self.modules[flagName] then
+					elseif self.modules[flagName] or (self.Features and self.Features[flagName]) then
 						enabled[flagName] = decoded
 						applied = applied + 1
 					end
@@ -318,6 +352,17 @@ function MelloUI:DeserializeSettings(text, into)
 					if moduleName and self.modules[moduleName] then
 						local db = into and IntoDB(self, into, moduleName) or self:GetModuleDB(moduleName)
 						db[settingKey] = decoded
+						applied = applied + 1
+					elseif moduleName and self.Features and self.Features[moduleName] then
+						-- (0.19.9) a feature not loaded: kept as it came,
+						-- its defaults laid on when its addon loads again
+						local all = into and into.modules or self.db.modules
+						local t = all[moduleName]
+						if type(t) ~= "table" then
+							t = {}
+							all[moduleName] = t
+						end
+						t[settingKey] = decoded
 						applied = applied + 1
 					end
 				end

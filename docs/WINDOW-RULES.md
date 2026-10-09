@@ -630,7 +630,12 @@ Lint workflow) fails when a copy is added and names the system to use.
   (`W.FlatOver` / `W.FlatState` over the game's control: KIT-MAPPING "One
   control style"). A new control gets no look of its own and no kit piece:
   use a widget, or the flat kind for a game control. `v190/flatcontrols`
-  holds it (no rule on a kit control piece, none drawn by hand).
+  holds it (no rule on a kit control piece, none drawn by hand). 0.19.9 (the
+  user's picks 2026-10-08): the same one style wears the NewUI2 art -- the
+  check box, close, arrows, + / - and settings cog are kit pieces laid by
+  the widgets' one helper (Core/Widgets.lua `KC`, the glyph alone under 20
+  UI units); a new control of those kinds still goes through a widget or
+  the flat kind, never its own piece.
 - **Its controls: `MelloUI.Widgets` (Core/Widgets.lua), one set for every
   own window.** The cleaner look (0.15.0, the user's picks: flat in both
   looks; since 0.19.1 the game windows' controls too -- the kit's list box

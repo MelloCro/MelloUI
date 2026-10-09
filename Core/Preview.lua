@@ -449,8 +449,9 @@ end
 local function Play(item)
 	local name = item.module
 	if name and not MelloUI:IsModuleEnabled(name) then
-		local m = MelloUI:GetModule(name)
-		MelloUI:Announce(TEXT.off:format(m and m.title or name), "info")
+		-- (a feature of its own addon not loaded: named by Core's MelloUI.Features)
+		local m, f = MelloUI:GetModule(name), MelloUI.Features and MelloUI.Features[name]
+		MelloUI:Announce(TEXT.off:format((m and m.title) or (f and f.title) or name), "info")
 		return false
 	end
 	return Preview:Start(item.mode, item.part)

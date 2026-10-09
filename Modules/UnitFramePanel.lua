@@ -79,12 +79,12 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 		{ type = "slider", key = "barBackgroundAlpha", name = "Bar Background Opacity", min = 0, max = 100, step = 5,
 		  format = function(v) return math.floor(v + 0.5) .. "%" end,
 		  desc = "How solid the bars' background is: lower lets the world show through the empty part of a bar." },
-		{ type = "dropdown", key = "backdrop", name = "Frame Backdrop", values = BACKDROP_LOOKS, new = "0.19.8",
+		{ type = "dropdown", key = "backdrop", name = "Frame Backdrop", values = BACKDROP_LOOKS,
 		  desc = "A backdrop round the player, target and focus frames: stone behind the portrait, the name and the bars, "
 			.. "framed by the red or iron gems of the action bars' backdrops or by one of the border styles of Look > "
 			.. "Borders (its inner corners mitred)." },
 		{ type = "dropdown", key = "backdropBackground", name = "Frame Backdrop Background", values = Kit.buttonLooks.backgrounds,
-		  new = "0.19.8", desc = "What lies behind the player, target and focus frames inside their backdrop." },
+		  desc = "What lies behind the player, target and focus frames inside their backdrop." },
 	},
 })
 

@@ -2,8 +2,8 @@
 ## Title: |cff9b8cffMello|rUI
 ## Notes: Module based UI tweaks for World of Warcraft: Forever. Type /mello to configure.
 ## Author: Mello
-## Version: 0.19.8
-## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords, MelloUIQuestPlaces
+## Version: 0.19.9
+## SavedVariables: MelloUIDB, MelloUIVoiceLines, MelloUIRoutes, MelloUIRoadRecords, MelloUIQuestPlaces, MelloUIQuestRecord
 ## SavedVariablesPerCharacter: MelloUIFights, MelloUIQuestOffers
 ## OptionalDeps: LibSharedMedia-3.0
 ## X-Category: Interface Enhancements
@@ -16,6 +16,7 @@ Core\Core.lua
 Core\Perf.lua
 Core\Companions.lua
 Core\QuestObjectives.lua
+Core\MapLayer.lua
 Core\Anim.lua
 Core\Widgets.lua
 Core\Shade.lua
@@ -45,10 +46,7 @@ Core\EditLayoutBridge.lua
 
 Media\CustomFonts.lua
 Media\CustomTextures.lua
-Media\NPCVoiceData.lua
-Media\NPCVoiceOverrides.lua
 Media\QuestListData.lua
-Media\RouteData.lua
 Media\PlaceData.lua
 Media\ClassIcons.lua
 Media\KitLayout.lua
@@ -75,20 +73,12 @@ Modules\Tweaks.lua
 Modules\Stats.lua
 Modules\Vendor.lua
 Modules\QuestInk.lua
-Modules\QuestList.lua
-Modules\QuestListPanel.lua
-Modules\QuestListMap.lua
-Modules\QuestListObjectives.lua
-Modules\QuestListTips.lua
-Modules\Route.lua
-Modules\RouteRecorder.lua
 Modules\Services.lua
 Modules\Reminders.lua
 Modules\Restock.lua
 Modules\Widgets.lua
 Modules\Discard.lua
 Modules\Gains.lua
-Modules\CombatText.lua
 Modules\Meter.lua
 Modules\MeterBar.lua
 Modules\MeterHistory.lua
@@ -96,8 +86,6 @@ Modules\MeterRaid.lua
 Modules\SwingTimers.lua
 Modules\PartyMarkers.lua
 Modules\CustomSounds.lua
-Modules\VoiceOver.lua
-Modules\Chat.lua
 Modules\Nameplates.lua
 Modules\Tooltip.lua
 Modules\UnitFrames.lua
@@ -151,6 +139,7 @@ Modules\HealerFrames.lua
 Modules\ActionBarPanel.lua
 Modules\ActionButtons.lua
 Modules\CooldownTweaks.lua
+Modules\KeybindMode.lua
 Modules\BackpackPanel.lua
 Modules\BagWindow.lua
 Modules\MinimapPanel.lua
@@ -164,3 +153,4 @@ Modules\DamageMeterPanel.lua
 Modules\TooltipPanel.lua
 Modules\NameplatePanel.lua
 Modules\WidgetPanel.lua
+Core\LoadEnd.lua

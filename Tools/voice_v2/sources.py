@@ -43,7 +43,7 @@ from paths import CACHE, OUTPUT  # noqa: E402
 ADDON = os.path.dirname(TOOLS)
 DUMP = os.path.join(CACHE, "ClassicDB.sql.gz")
 QUEST_LIST = os.path.join(ADDON, "Media", "QuestListData.lua")
-NPC_VOICE_DATA = os.path.join(ADDON, "Media", "NPCVoiceData.lua")
+NPC_VOICE_DATA = os.path.join(ADDON, "MelloUI_VoiceOver", "NPCVoiceData.lua")
 WOWHEAD = os.path.join(CACHE, "wowhead")
 STORE = os.path.join(CACHE, "voice_lines.json")
 LISTFILE = os.path.join(CACHE, "verified-listfile.csv")
@@ -247,7 +247,7 @@ def quest_list(path: str = QUEST_LIST) -> dict:
 
 
 def npc_voice_data(path: str = NPC_VOICE_DATA) -> dict:
-    """NPC ID -> MelloUI's race key ("human_m", "undead_n" ...) from Media/NPCVoiceData.lua."""
+    """NPC ID -> MelloUI's race key ("human_m", "undead_n" ...) from MelloUI_VoiceOver/NPCVoiceData.lua."""
     src = open(path, encoding="utf-8").read()
     out = {}
     for key, body in re.findall(r'\["(\w+)"\]\s*=\s*((?:"[^"]*"\s*(?:\.\.\s*)?)+)', src):

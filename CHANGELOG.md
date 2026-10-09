@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.19.9
+
+- Keybind Mode: point at an action button and press a key, a mouse button or the mouse wheel to bind it, with Shift, Ctrl or Alt if you like. Right-click clears a button's keys. Done keeps your changes, and Cancel or Escape undoes them. While it is on, every button shows its key big in the middle. Open it with the Keybind Mode button on the Action Bars page or in Edit Layout, or with /mello keybind.
+- Quest List: every group shows how much of it you have done, as a share and a bar. The quests you still have to do come first, and the ones you have done fold into a Done section at the bottom of the group: click it to open it.
+- World map: a zone map shows the zone's progress in its corner, a ring of the quests you have done, with how many are left and how many of those you can take now (Zone Progress On Zone Maps, Quest List > Map). A quest giver's tooltip says how many of its quests are left.
+- Quest tooltips: the Quest List and the map's quest givers name your other characters who have done a quest or have it in their quest log (Your Other Characters On Quests, Tooltip > Behaviour). Each character is noted when it logs out. /mello alts lists them, and /mello alts forget <name> drops a deleted one.
+- Action bars: set a bar's rows, icons, icon size and padding on the Action Bars page (Bars > Layout, pick the bar under Which Bar), with a picture of the bar's shape. They are saved into your active Edit Mode layout once you let go of a slider, and the bar changes after you type /reload (MelloUI reminds you once). If that layout is one of the game's presets, MelloUI asks once and makes a copy to change.
+- Buffs & Debuffs: Icon Size, Spacing, Per Row, Grow (left or right) and New Rows (down or up) on Unit Frames > Buffs & Debuffs > Layout. They set MelloUI's own buff rows while those show, else the game's buff and debuff bars in your Edit Mode layout (shown after a reload).
+- Quests: the Classic and Forever logos are gone from the Quest Log, the Quest List and a quest's details.
+- Quest log: the difficulty diamonds sit under the tick box, so they no longer cover a long quest name or the Dungeon tag.
+- Chat, Combat Text, the Quest List, Route and Voice Over are addons of their own now (MelloUI Chat, MelloUI Combat Text, MelloUI Quest List, MelloUI Route, MelloUI Voice Over), each with a checkbox in the game's AddOns list: untick one you don't use and it isn't loaded at all. Their settings stay in MelloUI, and Route's learned roads move into its own saved file at your first logout. Restart the game fully once after updating.
+- Fixed: with Route switched off for a whole session, logging out no longer clears the roads it had learned.
+- Edit Layout: a Gap box beside Snap sets the room (0 to 10 px) kept between bars and windows you snap side by side. Edges and centres you line up stay exact.
+- New art for the controls: the close buttons, check boxes, arrows, + / - buttons, settings cogs and icon buttons (like the bags' Discard and Clean Up), in the game's windows and MelloUI's own, are steel plates with gold studs that light up gold under the mouse. Small arrows and + / - show just their symbol.
+- A new portrait border: the windows' portrait ring is a winged border, and the unit frames can wear it too (Look > Borders > Portrait Ring > Winged border).
+
 ## 0.19.8
 
 - Action buttons: while you hold a button's key, or press it with the mouse, the whole button lights up in your colour scheme's highlight colour. Its icon turns red while your target is out of range, deep blue while you lack the mana for it, and grey while it can't be used. Switch them with Light While Pressed and Range And Resource Colours (Action Bars > Bars), with the painted skin on or off.

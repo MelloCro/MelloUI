@@ -3149,6 +3149,27 @@ REGISTRY_FIELDS.slash = "string"   -- (0.17.1: its short /mello word)
 REGISTRY_FIELDS.installer = "boolean"
 local ROLES = { core = true, look = true, feature = true, adds = true, replaces = true }
 
+-- MelloUI's features that ship as addons of their own (0.19.9; the user,
+-- 2026-10-08: docs/plans/split-addons.md): module name -> { addon, title }.
+-- Each is a MelloUI_<x> folder (## Dependencies: MelloUI, ## X-MelloUI-Feature:
+-- <module>) the game loads right after MelloUI, so it registers as every
+-- module does and counts on a script budget of its own. MelloUI's own switch
+-- stays its one switch; one the player turned off in the game's AddOns list is
+-- not loaded: the configurator says so where its switch stands, and its saved
+-- settings stay as they are (profiles and the backup carry them: Backup.lua).
+MelloUI.Features = {
+	Chat = { addon = "MelloUI_Chat", title = "Chat" },
+	CombatText = { addon = "MelloUI_CombatText", title = "Combat Text" },
+	QuestList = { addon = "MelloUI_QuestList", title = "Quest List" },
+	Route = { addon = "MelloUI_Route", title = "Route" },
+	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
+}
+
+-- a feature of its own addon that is not loaded (turned off in AddOns)
+function MelloUI:FeatureNotLoaded(name)
+	return self.Features[name] ~= nil and self.modules[name] == nil
+end
+
 function MelloUI:RegisterModule(name, module)
 	assert(type(name) == "string" and name ~= "", "MelloUI:RegisterModule requires a name")
 	assert(not self.modules[name], "MelloUI module '" .. name .. "' is already registered")

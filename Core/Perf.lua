@@ -556,10 +556,16 @@ end
 -- one before it ends there) and returns the file's installers.
 function Perf:Scope(name)
 	local t = now()
-	if Perf.loadedAt then
-		-- a load opened after login still open here never saw its addon
-		-- loaded (its LoadAddOn failed): dropped, not counted up to now
-		loadName = nil
+	if Perf.loadedAt and loadName then
+		-- a load opened after MelloUI's own still open here: the same
+		-- addon's next file (a feature addon of several files,
+		-- "MelloUI_QuestList (QuestListPanel)" after "(QuestList)": 0.19.9) is
+		-- counted to here; another's never saw its addon loaded (its
+		-- LoadAddOn failed): dropped, not counted up to now
+		local addon = loadName:match("^(%S+)")
+		if not (type(name) == "string" and addon and name:sub(1, #addon + 1) == addon .. " ") then
+			loadName = nil
+		end
 	end
 	CloseLoad(t)
 	loadName, loadMark, loadMem = name, t, gc("count")

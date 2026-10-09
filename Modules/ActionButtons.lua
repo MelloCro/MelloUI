@@ -54,7 +54,6 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 	icon = "Interface\\Icons\\Ability_Warrior_Riposte",
 	flavour = "See which button you press, and which spell cannot reach its target.",
 	role = "adds",
-	new = "0.19.8",
 	-- (not on the installer's Features step: its two columns are full, as for
 	-- the Swing Timers and Discard; on by default, its switches on Action Bars > Bars)
 	installer = false,
@@ -64,10 +63,10 @@ local M = MelloUI:RegisterModule("ActionButtons", {
 		rangeColours = true,
 	},
 	options = {
-		{ type = "toggle", key = "pressLight", name = "Light While Pressed", new = "0.19.8",
+		{ type = "toggle", key = "pressLight", name = "Light While Pressed",
 		  desc = "While you hold an action button's key, or press it with the mouse, the whole button lights up in "
 			.. "the colour scheme's highlight colour, so you can see which button you are pressing." },
-		{ type = "toggle", key = "rangeColours", name = "Range And Resource Colours", new = "0.19.8",
+		{ type = "toggle", key = "rangeColours", name = "Range And Resource Colours",
 		  desc = "An action's icon turns red while your target is out of its range, deep blue while you lack the mana "
 			.. "(or other resource) for it, and grey while it cannot be used. Its key already turns red out of range." },
 	},
@@ -355,4 +354,20 @@ end
 M.light, M.cover, M.covered, M.held, M.greyed, M.pressed = light, cover, covered, held, greyed, pressed
 M.Buttons = function()
 	return buttons
+end
+
+-- (0.19.9) every bar's buttons now, read from the bars themselves (Keybind
+-- Mode's: it needs them with this module off too), into `out`
+function M.BarButtons(out)
+	out = out or {}
+	for _, name in ipairs(BARS) do
+		local bar = rawget(_G, name)
+		local list = type(bar) == "table" and rawget(bar, "actionButtons")
+		if type(list) == "table" then
+			for _, button in ipairs(list) do
+				out[#out + 1] = button
+			end
+		end
+	end
+	return out
 end

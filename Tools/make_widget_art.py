@@ -33,7 +33,7 @@ The glyphs (256 x 128: 8 x 4 cells of 32 px, in GLYPHS order, left to right,
 top row first; 0.17.0 grew it from 8 x 2 for the chat column's buttons):
 drawn at 8 times the size with PIL and averaged down, so their edges are
 smooth at any size. Cell 15 stays empty on purpose: the whisper window's
-Report link draws that cell (Modules/Chat.lua REPORT_LINK), a clickable
+Report link draws that cell (MelloUI_Chat/Chat.lua REPORT_LINK), a clickable
 area with nothing in it.
 
 Writes the TGA masters (MelloUI-BuildData/masters/Media/Textures/,

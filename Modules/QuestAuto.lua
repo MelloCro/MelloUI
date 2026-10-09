@@ -42,7 +42,6 @@ local M = MelloUI:RegisterModule("QuestAuto", {
 	icon = "Interface\\GossipFrame\\AvailableQuestIcon",
 	flavour = "Talk, and the quest is yours. Hold Shift to read it first.",
 	role = "adds",
-	new = "0.19.8",
 	-- (not on the installer's Features step: its switches are on Quest List > List, off by default)
 	installer = false,
 	enabledByDefault = true,
@@ -53,17 +52,17 @@ local M = MelloUI:RegisterModule("QuestAuto", {
 		skipKey = "shift",
 	},
 	options = {
-		{ type = "toggle", key = "accept", name = "Auto Accept Quests", new = "0.19.8",
+		{ type = "toggle", key = "accept", name = "Auto Accept Quests",
 		  desc = "Accept a quest as soon as its giver shows it, and open a giver's only quest from its list. Grey, "
 			.. "repeatable, daily and ignored quests are left to you, and so is an escort's or a shared quest's question." },
-		{ type = "toggle", key = "handIn", name = "Auto Hand In", new = "0.19.8",
+		{ type = "toggle", key = "handIn", name = "Auto Hand In",
 		  desc = "Hand a finished quest in as soon as you talk to whoever takes it, and pick it from their list first. "
 			.. "A choice of rewards waits for you (unless Take The Upgrade is on), and so do a hand-in that costs money "
 			.. "and repeatable turn-ins." },
-		{ type = "toggle", key = "takeUpgrade", name = "Take The Upgrade", parent = "handIn", new = "0.19.8",
+		{ type = "toggle", key = "takeUpgrade", name = "Take The Upgrade", parent = "handIn",
 		  desc = "With a choice of rewards: take the one with the highest item level over what you wear in its slot, "
 			.. "among those you can use; when none is better, the one that sells for the most." },
-		{ type = "dropdown", key = "skipKey", name = "Skip Key", new = "0.19.8",
+		{ type = "dropdown", key = "skipKey", name = "Skip Key",
 		  values = { { value = "shift", label = "Shift" }, { value = "ctrl", label = "Ctrl" }, { value = "alt", label = "Alt" } },
 		  desc = "Hold it as you talk to a giver to see its dialog as usual: nothing is accepted or handed in there." },
 	},

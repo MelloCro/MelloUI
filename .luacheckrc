@@ -10,7 +10,7 @@ ignore = {
 
 -- Written by the addon: saved variables, slash command registration, the pin mixin the XML expects.
 globals = {
-	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines", "MelloUIRoadRecords",
+	"MelloUIDB", "MelloUIRoutes", "MelloUIVoiceLines", "MelloUIRoadRecords", "MelloUIRouteSaved",
 	"SlashCmdList", "SLASH_MELLOUI1", "SLASH_MELLOUI2", "SLASH_MELLOPERF1", "SLASH_MELLOBUG1", "SLASH_MELLOQUESTMAP1", "SLASH_MELLOROUTE1",
 	"SLASH_MELLOSERVICES1", "SLASH_MELLOTRDUMP1", "SLASH_MELLOSBDUMP1", "SLASH_MELLOPROFDUMP1", "SLASH_MELLOLEGDUMP1", "SLASH_MELLOGFDUMP1", "SLASH_MELLOVOICEOVER1", "SLASH_MELLOVOICEOVER2", "SLASH_MELLOICONDUMP1",
 	"SLASH_MELLOABDUMP1", "SLASH_MELLOINKWHY1", "SLASH_MELLODIALOGDUMP1", "SLASH_MELLOUISCALEDUMP1", "SLASH_MELLOCHATINK1", "SLASH_MELLOCHATSCROLL1", "SLASH_MELLOBAGDUMP1", "SLASH_MELLOMMDUMP1", "SLASH_MELLOUFDUMP1", "SLASH_MELLOUFTEST1", "SLASH_MELLORFDUMP1", "SLASH_MELLOABDUMP1", "SLASH_MELLOCBDUMP1",
@@ -78,6 +78,10 @@ read_globals = {
 	"GetRepairAllCost", "GetRewardText", "GetServerTime", "GetSubZoneText", "GetRealZoneText", "GetSuperTrackedQuestID",
 	"GetTaxiMapID", "GetTime", "GetTitleText", "HideUIPanel", "ShowUIPanel", "InCombatLockdown", "IsInInstance",
 	"IsMouseButtonDown", "IsShiftKeyDown", "KeyRingButton", "LOG_OUT", "LibStub", "MainActionBar",
+	-- (0.19.9) Keybind Mode: the game's binding API and its listener's pure helpers
+	"C_KeyBindings", "GetBindingKey", "GetBindingText", "GetBindingAction", "GetBindingFromClick", "SetBinding",
+	"SaveBindings", "LoadBindings", "GetCurrentBindingSet", "GetConvertedKeyOrButton", "IsKeyPressIgnoredForBinding",
+	"CreateKeyChordStringUsingMetaKeyState",
 	"MainMenuBar", "MultiBarBottomLeft", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "MapQuestInfoRewardsFrame",
 	"MelloUIHiddenFrame", "MelloUIMinimapStand", "MelloUIServicesBar", "MelloUI_CustomFonts",
 	"MelloUI_CustomTextures", "MelloUI_NPCVoiceData", "MelloUI_NPCVoiceOverrides", "MelloUI_Profiles",
@@ -141,7 +145,7 @@ read_globals = {
 	-- (0.17.0: Combat Text, Modules/CombatText.lua)
 	"C_CombatText", "UnitPowerType", "UnitIsTapDenied", "UnitPlayerControlled",
 	"UnitFrameHealthBar_Update", "UnitFrameManaBar_UpdateType", "UnitFrameManaBar_UpdateTypeOld",
-	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "UnitOnTaxi", "UnitPosition", "GetCameraZoom", "GetComboPoints", "GetShapeshiftFormID", "UnitIsDead", "UnitRace", "UnitReaction",
+	"UnitGUID", "UnitIsPlayer", "UnitLevel", "UnitName", "GetRealmName", "UnitOnTaxi", "UnitPosition", "GetCameraZoom", "GetComboPoints", "GetShapeshiftFormID", "UnitIsDead", "UnitRace", "UnitReaction",
 	"UnitSex", "UnitTokenFromGUID", "UpdateAddOnCPUUsage", "UpdateAddOnMemoryUsage", "debugprofilestop", "C_AddOnProfiler", "strtrim",
 	"UpdateContainerFrameAnchors", "WorldMapFrame", "date", "hooksecurefunc", "issecretvalue", "time",
 	-- (0.19.0: the bag window by kind, Modules/BagWindow.lua)
@@ -161,6 +165,19 @@ files["Media"] = {
 		"MelloUI_CustomFonts", "MelloUI_CustomTextures", "MelloUI_NPCVoiceData",
 		"MelloUI_NPCVoiceOverrides", "MelloUI_Profiles", "MelloUI_QuestListData", "MelloUI_PlaceData", "MelloUI_RouteData", "MelloUI_ClassIcons", "MelloUI_KitLayout", "MelloUI_KitTuning", "MelloUI_EditModeLayout",
 	},
+}
+
+-- Voice Over's NPC data (0.19.9: MelloUI_VoiceOver's, data files like Media's)
+files["MelloUI_VoiceOver/NPCVoiceData.lua"] = {
+	globals = { "MelloUI_NPCVoiceData" },
+}
+files["MelloUI_VoiceOver/NPCVoiceOverrides.lua"] = {
+	globals = { "MelloUI_NPCVoiceOverrides" },
+}
+
+-- Route's baked roads (0.19.9: MelloUI_Route's, a generated data file like Media's)
+files["MelloUI_Route/RouteData.lua"] = {
+	globals = { "MelloUI_RouteData" },
 }
 
 -- The route data companion (MelloUI_Companion, loaded on demand): its data

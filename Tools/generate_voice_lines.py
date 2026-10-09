@@ -283,7 +283,7 @@ def main():
     if unknown:
         names = sorted({row["npc"] or "?" for row in unknown})
         log(f"{len(unknown)} lines held back: NPC gender unknown ({', '.join(names[:12])}{' ...' if len(names) > 12 else ''}). "
-            "Add them to Media/NPCVoiceOverrides.lua, meet them in game, or pass --allow-unknown.")
+            "Add them to MelloUI_VoiceOver/NPCVoiceOverrides.lua, meet them in game, or pass --allow-unknown.")
     # Starting zones first, so limited credits go to what is met earliest.
     todo.sort(key=lambda row: (row.get("level") or 0, str(row.get("questID") or ""), row["kind"] != "accept"))
     if not todo:

@@ -15,11 +15,14 @@ Learned map pins and routes are already baked into Media/RouteData.lua by the
 baker, so they ship with whatever release comes next; nothing to do by hand.
 
 The companion addons ship in the same zip: every MelloUI_<x> folder at the
-repository root with its own MelloUI_<x>.toc (today MelloUI_Companion, Route's
-data). The bump writes MelloUI.toc's Version and Interface into every TOC, and
-the release is refused while a TOC lists a file that does not exist, a
-companion is not load-on-demand on MelloUI, or .pkgmeta does not lift it out
-of the MelloUI folder.
+repository root with its own MelloUI_<x>.toc (MelloUI_Companion, Route's data;
+and since 0.19.9 the feature addons, docs/plans/split-addons.md, e.g.
+MelloUI_CombatText). The bump writes MelloUI.toc's Version and Interface into
+every TOC, and the release is refused while a TOC lists a file that does not
+exist, a companion does not depend on MelloUI, a data companion is not
+load-on-demand, a feature addon (## X-MelloUI-Feature: <module>) is not the
+one Core/Core.lua's MelloUI.Features names for it (or one listed there has no
+folder), or .pkgmeta does not lift a companion out of the MelloUI folder.
 
 The shipped Full experience (the "MelloUI" profile in Media/Profiles.lua,
 which the installer applies) must be exactly what Tools/installer/bake_full.py
@@ -96,6 +99,10 @@ def check_tocs(main_text):
     problems = []
     comps = companions()
     names = {name for name, _ in comps}
+    # (0.19.9) the feature addons Core/Core.lua knows: { module: addon }
+    with open(os.path.join(ROOT, "Core", "Core.lua"), encoding="utf-8") as fh:
+        features = dict(re.findall(r'^\t(\w+) = \{ addon = "(MelloUI_\w+)"', fh.read(), re.M))
+    seen_features = set()
     for f in toc_files(main_text):
         if f.split("/")[0] in names:
             problems.append(f"MelloUI.toc lists {f}: {f.split('/')[0]} is an addon of its own, its files go in its own TOC")
@@ -107,12 +114,24 @@ def check_tocs(main_text):
         for f in toc_files(text):
             if not os.path.isfile(os.path.join(ROOT, name, f)):
                 problems.append(f"{name}.toc lists {f}, which does not exist")
-        for field, want in (("LoadOnDemand", "1"), ("Dependencies", "MelloUI")):
+        feature = toc_field(text, "X-MelloUI-Feature")
+        # (a data companion loads on demand; a feature addon loads with MelloUI, at login)
+        wants = (("Dependencies", "MelloUI"),) if feature else (("LoadOnDemand", "1"), ("Dependencies", "MelloUI"))
+        for field, want in wants:
             if toc_field(text, field) != want:
                 problems.append(f"{name}.toc needs '## {field}: {want}'")
+        if feature:
+            if features.get(feature) != name:
+                problems.append(f"{name}.toc is the feature {feature}, but Core/Core.lua's MelloUI.Features names "
+                                f"{features.get(feature) or 'no addon'} for it")
+            seen_features.add(feature)
         for field in ("Version", "Interface"):
             if toc_field(text, field) is None:
                 problems.append(f"{name}.toc has no '## {field}:' line to keep in step with MelloUI.toc")
+    for feature, addon in sorted(features.items()):
+        if feature not in seen_features:
+            problems.append(f"Core/Core.lua's MelloUI.Features lists {feature} ({addon}), which has no folder "
+                            f"{addon}/{addon}.toc saying '## X-MelloUI-Feature: {feature}'")
     with open(PKGMETA, encoding="utf-8") as fh:
         meta = fh.read()
     for name in sorted(names):

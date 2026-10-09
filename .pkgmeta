@@ -22,3 +22,8 @@ enable-nolib-creation: no
 # carries it as a folder of its own beside MelloUI, not inside it.
 move-folders:
   MelloUI/MelloUI_Companion: MelloUI_Companion
+  MelloUI/MelloUI_Chat: MelloUI_Chat
+  MelloUI/MelloUI_CombatText: MelloUI_CombatText
+  MelloUI/MelloUI_QuestList: MelloUI_QuestList
+  MelloUI/MelloUI_Route: MelloUI_Route
+  MelloUI/MelloUI_VoiceOver: MelloUI_VoiceOver

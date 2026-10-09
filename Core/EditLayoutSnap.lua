@@ -27,7 +27,7 @@
 --   Snap.Nearest(list, n, l, b, w, h) -> the index of the nearest of
 --       list[1..n] (each with l, b, w, h), ties to the nearer centre; nil for
 --       none
---   Snap.Axis(a1, a2, a3, o1, o2, o3, size, grid, held, thrIn, thrOut)
+--   Snap.Axis(a1, a2, a3, o1, o2, o3, size, grid, held, thrIn, thrOut, gap)
 --       -> d, line, rank   one axis: the shift that puts one of the features
 --       a1..a3 on a line. The lines: the element's o1..o3 (nil: none) and the
 --       screen's 0, size / 2, size -- or, with `grid`, every size / 2 + k *
@@ -35,7 +35,11 @@
 --       thrIn; the line it is held on (`held`, nil for none) within thrOut.
 --       The smallest |d| wins; a tie goes to the lower rank: element lines
 --       before screen lines before grid lines, edges before centres. d = 0
---       and line = nil when nothing is in reach
+--       and line = nil when nothing is in reach. `gap` (0.19.9, units; nil
+--       or 0: none): the room kept between the two when they meet side by
+--       side -- the element's far edge one gap short of the other's near one
+--       (a3 on o1 - gap, a1 on o3 + gap); edges and centres lined up stay
+--       exact
 --   Snap.Lock(dx, dy, thr) -> "x" | "y" | nil   Shift's axis once the move
 --       from where the drag began reaches thr on either axis: "x" moves
 --       along x (y kept), "y" along y; nil while undecided
@@ -164,12 +168,18 @@ local function TryGrid(f, size, held, thrIn, thrOut, bd, bl, br)
 	return bd, bl, br
 end
 
-function Snap.Axis(a1, a2, a3, o1, o2, o3, size, grid, held, thrIn, thrOut)
+function Snap.Axis(a1, a2, a3, o1, o2, o3, size, grid, held, thrIn, thrOut, gap)
 	local bd, bl, br = 0, nil, nil
 	if o1 then
-		bd, bl, br = TryAll(a1, a2, a3, o1, 0, held, thrIn, thrOut, bd, bl, br)
+		gap = gap or 0
+		-- (the features in the same order as ever: with no gap, the very lines of before)
+		bd, bl, br = Try(a1, o1, 0, held, thrIn, thrOut, bd, bl, br)
+		bd, bl, br = Try(a2, o1, 0, held, thrIn, thrOut, bd, bl, br)
+		bd, bl, br = Try(a3, o1 - gap, 0, held, thrIn, thrOut, bd, bl, br)
 		bd, bl, br = TryAll(a1, a2, a3, o2, 1, held, thrIn, thrOut, bd, bl, br)
-		bd, bl, br = TryAll(a1, a2, a3, o3, 0, held, thrIn, thrOut, bd, bl, br)
+		bd, bl, br = Try(a1, o3 + gap, 0, held, thrIn, thrOut, bd, bl, br)
+		bd, bl, br = Try(a2, o3, 0, held, thrIn, thrOut, bd, bl, br)
+		bd, bl, br = Try(a3, o3, 0, held, thrIn, thrOut, bd, bl, br)
 	end
 	bd, bl, br = TryAll(a1, a2, a3, 0, 2, held, thrIn, thrOut, bd, bl, br)
 	bd, bl, br = TryAll(a1, a2, a3, size, 2, held, thrIn, thrOut, bd, bl, br)

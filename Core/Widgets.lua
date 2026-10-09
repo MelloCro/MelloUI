@@ -663,37 +663,117 @@ local function FlatHooks(c, look, shows)
 end
 
 --------------------------------------------------------------------------------
+-- Kit controls (0.19.9; the user's picks 2026-10-08, "0A 1A 2B 3B",
+-- docs/plans/newui2-glyphs-close-portrait.md): the NewUI2 plates are the one
+-- control style. The close button, the check box, the arrows, the + / - and
+-- the settings cog of the flat controls (W.FlatOver over the game's, W.Switch,
+-- W.CloseButton, a dropdown's caret) are kit pieces (Tools/make_newui2_glyphs.py:
+-- buttons/<kind>_<state>, window/close_<state>), recoloured per look as every
+-- kit piece; and (the user's pick A, 2026-10-09) every icon button's plate
+-- (the "button" kind: W.PlateButton, the plates under the game's glyphs) the
+-- cog plate blank, buttons/iconplate_<state>. States: steel at rest, gold under the pointer, dim pressed (the
+-- close: dark red); a + / - has no pressed one (its rest); disabled = the rest
+-- piece at FLAT_OFF; a ticked box under the pointer = checkbox_onhover. Under
+-- SMALL UI px an arrow or a + / - is its glyph alone (glyphs/<kind>_<state>,
+-- no plate: a 13 px plate is a speckle). One texture per control on its
+-- frame's middle: a plate's solid box at the frame's shorter side (but never
+-- under MIN: a 14 px tick box or the quest log's 15 px settings button gets
+-- the plate at about its natural size, centred over the rect, as the kit's
+-- cog plate always stood -- K2), a glyph fitted into the frame at
+-- GLYPH_FILL. Without the kit (a world that never loaded Kit.lua) nothing
+-- is drawn.
+--   KC.State(kind, hover, pressed, checked, disabled) -> the piece's state
+--   KC.Lay(tex, w, h, kind, dir, state, alpha, glyph) -> true when drawn: the
+--     piece on `tex` (re-applied only when it changed) for a w x h frame,
+--     centred on tex.melloOn (its frame; tex.melloPoint / melloX: on that
+--     point of it, so far right); `glyph` forces the glyph alone (a
+--     dropdown's caret)
+--------------------------------------------------------------------------------
+local KC = { SMALL = 20, GLYPH_FILL = 0.9, MIN = { check = 18, cog = 19, button = 19 },
+	STEM = { check = "checkbox", close = "close", cog = "cog", plus = "plus", minus = "minus", button = "iconplate" },
+	GLYPHS = { arrow = true, plus = true, minus = true } }
+
+function KC.State(kind, hover, pressed, checked, disabled)
+	if kind == "check" then
+		local lit = (hover or pressed) and not disabled
+		return (checked and (lit and "onhover" or "on")) or (lit and "hover") or "off"
+	end
+	if disabled then
+		return "normal"
+	end
+	if pressed and kind ~= "plus" and kind ~= "minus" then
+		return "pressed"
+	end
+	return (hover or pressed) and "hover" or "normal"
+end
+
+function KC.Lay(tex, w, h, kind, dir, state, alpha, glyph)
+	local Kit = KitNow()
+	if not (Kit and Kit.Piece and Kit.Apply) then
+		return false
+	end
+	w, h = Num(w), Num(h)
+	if not (w and h and w > 0 and h > 0) then
+		return false
+	end
+	glyph = KC.GLYPHS[kind] and (glyph or math.min(w, h) < KC.SMALL) or false
+	local stem = kind == "arrow" and ("arrow_" .. (dir or "down")) or KC.STEM[kind]
+	local name = (glyph and "glyphs/" or (kind == "close" and "window/" or "buttons/")) .. stem .. "_" .. state
+	local p = Kit:Piece(name)
+	if not p then
+		return false
+	end
+	tex:SetAlpha(alpha or 1)
+	if tex.melloPiece == name and tex.melloW == w and tex.melloH == h then
+		return true
+	end
+	if tex.melloPiece ~= name then
+		tex.melloPiece = name
+		Kit:Apply(tex, name)
+	end
+	tex.melloW, tex.melloH = w, h
+	local s, dx, dy
+	if glyph then
+		s, dx, dy = math.min(w / p.w, h / p.h) * KC.GLYPH_FILL, 0, 0
+	else
+		local b = p.box or { 0, 0, p.w, p.h }
+		s = math.max(math.min(w, h), KC.MIN[kind] or 0) / math.max(b[3] - b[1], b[4] - b[2])
+		dx, dy = (p.w - b[1] - b[3]) / 2 * s, (b[2] + b[4] - p.h) / 2 * s
+	end
+	tex:SetSize(p.w * s, p.h * s)
+	tex:ClearAllPoints()
+	tex:SetPoint("CENTER", tex.melloOn or tex:GetParent(), tex.melloPoint or "CENTER", dx + (tex.melloX or 0), dy)
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- Switch (0.15.0, flat: user, 2026-09-29 "all flat"; it was the game's
--- check box, the kit's in its look): a check button SWITCH px square with
--- none of the game's art -- a box SWITCH_BOX px in its middle, an
--- `innerPanel` fill in a 1 px `trim` edge (the panels' `border` is too faint
--- for a box with nothing in it: 1.6:1), and, ticked, a check mark SWITCH_TICK
--- px in `selectedTrim` inside it -- the installer's done mark (TICK_ART, its
--- art desaturated and painted by key), a mark a player reads as "on" (a
--- filled square reads as "partly on": review, 2026-09-29): the button's own
--- checked texture, so the game shows it with the check (disabled: its
--- disabled-checked one, in `mutedText`). Under the pointer the edge takes
--- `selectedTrim`; disabled, the box at half. With the kit's look on (its
--- `skin`) a ticked box also wears the active look round the box, its tick
--- kept, as the kit's own check boxes do. Its rep is false (MelloUI.Kept.repOf), so the kit's
--- sweep (Kit:SweepControls, Kit:SkinCheckButton) passes it by.
+-- check box, the kit's in its look; 0.19.9 the NewUI2 check box, the user's
+-- pick 0A 2026-10-08 -- it was a box SWITCH_BOX px in an `innerPanel` fill and
+-- a 1 px `trim` edge, ticked a check mark in `selectedTrim`, the active look
+-- round it in the kit's look): a check button SWITCH px square with none of
+-- the game's art, the kit's check box plate on it (KC: off, on, hover, and
+-- onhover for a ticked box under the pointer; disabled, the plate at half),
+-- laid again whenever it is ticked or unticked (its SetChecked, hooked: who
+-- ever ticks it). The ticked plate shows "on": no active look round it. Its
+-- rep is false (MelloUI.Kept.repOf), so the kit's sweep (Kit:SweepControls,
+-- Kit:SkinCheckButton) passes it by.
 -- SetValue(on, silent) sets it without (silent) or with set(on); Refresh()
 -- takes get() again. A refresh that changes nothing leaves the box alone (a
 -- tab's refresh set every box on it again -- user, 2026-09-24).
---   W.Switch(parent, get, set, opts) -> switch   opts: skin
---   switch.melloFill, switch.melloEdges (the box), switch.melloTick
+--   W.Switch(parent, get, set, opts) -> switch   (opts.skin: kept for the callers)
+--   switch.melloPlate (the kit's plate); switch.melloTick (the game look's mark)
 -- The game's look (wave 4): the game's own check box (the Settings panel's,
 -- checkbox-minimal, lit under the pointer as MinimalCheckboxTemplate) and
 -- its check marks (checkmark-minimal, -disabled) on the same button, made
 -- the first time it shows; at half while disabled.
 --------------------------------------------------------------------------------
 
-local SWITCH, SWITCH_BOX, SWITCH_TICK = 26, 18, 16
-local TICK_ART = "Interface\\RaidFrame\\ReadyCheck-Ready"   -- the check mark (the installer's done mark too)
+local SWITCH = 26
 GA.CHECK_BOX, GA.CHECK_MARK, GA.CHECK_MARK_OFF = "checkbox-minimal", "checkmark-minimal", "checkmark-minimal-disabled"
 
--- the box as the switch is: its edge lit under the pointer, at half while
--- disabled (its tick is the game's to show)
+-- the plate as the switch is: ticked or not, lit under the pointer, at half
+-- while disabled
 local function SwitchLook(cb)
 	local on = cb:IsEnabled() and true or false
 	if GA.Game() then
@@ -702,50 +782,24 @@ local function SwitchLook(cb)
 		return
 	end
 	GA.SwitchArt(cb, false)
-	local alpha = on and 1 or FLAT_OFF
-	W.Paint(cb.melloFill, "innerPanel", "fill", alpha)
-	local edge = (on and flatHover[cb]) and "selectedTrim" or "trim"
-	local edges = cb.melloEdges
-	for i = 1, 4 do
-		W.Paint(edges[i], edge, "fill", alpha)
-	end
+	KC.Lay(cb.melloPlate, SWITCH, SWITCH, "check", nil,
+		KC.State("check", flatHover[cb], false, cb:GetChecked(), not on), on and 1 or FLAT_OFF)
 end
 
--- (widget:melloActive: a ticked box wears the active look round its box)
-local function SwitchActive(cb)
-	return cb:GetChecked() and true or false, cb.melloFill, "square"
-end
-
--- a tick: the check mark in the box's middle, painted by key (gold from the
--- palette, not the art's own green; over the box: the game draws a state
--- texture in its own layer, over the box's two); laid and painted again once
--- the button holds it (a state texture handed over may be laid over the
--- whole button)
-local function Tick(tick, key)
-	tick:SetTexture(TICK_ART)
-	tick:SetTexCoord(0, 1, 0, 1)
-	tick:SetDesaturated(true)
-	tick:ClearAllPoints()
-	tick:SetSize(SWITCH_TICK, SWITCH_TICK)
-	tick:SetPoint("CENTER", tick:GetParent(), "CENTER", 0, 0)
-	W.Paint(tick, key, "vertex", 1)
-end
+local SwitchChecked = Shared("SetChecked on MelloUI's switches", function(cb)
+	SwitchLook(cb)
+end, "hook")
 
 -- the game's check mark on a tick: over the whole button, in its own colours
 function GA.Tick(tick, atlas)
-	local Kit = KitNow()
-	if Kit and Kit.Unpaint then
-		Kit:Unpaint(tick, "vertex")
-	end
 	tick:SetAtlas(atlas, false, nil, true)   -- (resetTexCoords: no earlier crop kept on the tick)
-	tick:SetDesaturated(false)
 	tick:SetVertexColor(GA.RoleRGB("picture"))
-	tick:ClearAllPoints()
 	tick:SetAllPoints(tick:GetParent())
 end
 
--- the switch's art in a look: the game's box and marks, or our box, edge and
--- ticks (each only when the look changed)
+-- the switch's art in a look: the game's box and marks (the button's checked
+-- textures, made the first time the game's look shows), or our plate (each
+-- only when the look changed)
 function GA.SwitchArt(cb, game)
 	if cb.melloGame == game then
 		return
@@ -760,24 +814,26 @@ function GA.SwitchArt(cb, game)
 		lit:SetBlendMode("ADD")
 		lit:SetAllPoints(cb)
 		cb.melloBox, cb.melloBoxLit = box, lit
+		local tick = cb:CreateTexture(nil, "ARTWORK")
+		cb:SetCheckedTexture(tick)
+		GA.Tick(tick, GA.CHECK_MARK)
+		cb.melloTick = tick
+		if cb.SetDisabledCheckedTexture then
+			local off = cb:CreateTexture(nil, "ARTWORK")
+			cb:SetDisabledCheckedTexture(off)
+			GA.Tick(off, GA.CHECK_MARK_OFF)
+			cb.melloTickOff = off
+		end
 	end
 	if cb.melloBox then
 		cb.melloBox:SetShown(game)
 		cb.melloBoxLit:SetShown(game)
-	end
-	cb.melloFill:SetShown(not game)
-	GA.ShowAll(cb.melloEdges, not game)
-	if game then
-		GA.Tick(cb.melloTick, GA.CHECK_MARK)
+		cb.melloTick:SetAlpha(game and 1 or 0)
 		if cb.melloTickOff then
-			GA.Tick(cb.melloTickOff, GA.CHECK_MARK_OFF)
-		end
-	else
-		Tick(cb.melloTick, "selectedTrim")
-		if cb.melloTickOff then
-			Tick(cb.melloTickOff, "mutedText")
+			cb.melloTickOff:SetAlpha(game and 1 or 0)
 		end
 	end
+	cb.melloPlate:SetShown(not game)
 end
 
 local function SwitchSetValue(self, on, silent)
@@ -787,7 +843,6 @@ local function SwitchSetValue(self, on, silent)
 	end
 	self.value = on
 	self:SetChecked(on)
-	WidgetActive(self.melloSkin, self, on, self.melloFill, "square")
 	if not silent and self.melloSet then
 		self.melloSet(on)
 	end
@@ -805,35 +860,19 @@ local SwitchClick = Shared("OnClick on MelloUI's switches", function(self)
 	self:SetValue(value)
 end, "script")
 
-function W.Switch(parent, get, set, opts)
+function W.Switch(parent, get, set)
 	local cb = CreateFrame("CheckButton", nil, parent)
 	cb:SetSize(SWITCH, SWITCH)
 	KitRep(cb, false)   -- (the kit's sweep passes it by: no kit check box)
-	local fill = cb:CreateTexture(nil, "BACKGROUND")
-	fill:SetSize(SWITCH_BOX, SWITCH_BOX)
-	fill:SetPoint("CENTER", cb, "CENTER", 0, 0)
-	cb.melloFill, cb.melloEdges = fill, Edges(cb, "trim", "BORDER", fill)
-	-- the ticks, the game showing the one for the button's state
-	local tick = cb:CreateTexture(nil, "ARTWORK")
-	cb:SetCheckedTexture(tick)
-	Tick(tick, "selectedTrim")
-	cb.melloTick = tick
-	if cb.SetDisabledCheckedTexture then
-		local off = cb:CreateTexture(nil, "ARTWORK")
-		cb:SetDisabledCheckedTexture(off)
-		Tick(off, "mutedText")
-		cb.melloTickOff = off
-	end
+	local plate = cb:CreateTexture(nil, "ARTWORK")
+	plate.melloOn = cb
+	cb.melloPlate = plate
 	cb.value = false
 	cb.melloGet, cb.melloSet = get, set
-	cb.SetValue, cb.Refresh, cb.melloActive = SwitchSetValue, SwitchRefresh, SwitchActive
+	cb.SetValue, cb.Refresh = SwitchSetValue, SwitchRefresh
 	Perf.SetScript(cb, "OnClick", SwitchClick)
+	Perf.hooksecurefunc(cb, "SetChecked", SwitchChecked)
 	FlatHooks(cb, SwitchLook)
-	local skin = opts and opts.skin
-	if skin then
-		cb.melloSkin = skin
-		FollowLook(skin, cb)
-	end
 	return cb
 end
 
@@ -846,8 +885,9 @@ end
 -- MelloUI's run and blocks its bindings (the Gamepad UI freeze, v150 freeze
 -- plan WP5b), so the list is MelloUI's own whatever the mode. The box is a
 -- picture row's: an `innerPanel` fill in a 1 px `border` edge, the choice in
--- `text` from its left, a small caret at its right in `text`; `hover` under
--- the pointer; disabled, at half and the choice in `mutedText`. `values` is
+-- `text` from its left, a small caret at its right (0.19.9: the kit's arrow
+-- glyph, KC, gold under the pointer); `hover` under the pointer; disabled, at
+-- half and the choice in `mutedText`. `values` is
 -- a list of { value, label, tooltip }, read whenever the box names the
 -- choice or the list opens (a list filled again in place, or renamed in
 -- place -- the Voice Over voices once the game has them, the Kit Colours
@@ -907,8 +947,8 @@ end
 
 local DD_H = 25                -- the box's height
 local DD_TEXT_X = 8            -- the choice's left in the box
-local CARET = { 7, 5, 3, 1 }   -- the caret's lines, top down: a small triangle (px)
-local CARET_X = 9              -- its widest line's right end from the box's right
+local CARET = 11               -- the caret: the kit's arrow glyph in a square this big (0.19.9, KC; it was four 1 px lines)
+local CARET_X = 9              -- its right end from the box's right
 
 -- The game's look (wave 4): WowStyle1DropdownTemplate's own art on the box
 -- -- its text holder round it (common-dropdown-textholder, -8 / +7 to +8 /
@@ -939,11 +979,11 @@ function GA.DropdownArt(dd, game)
 	end
 	dd.melloFill:SetShown(not game)
 	GA.ShowAll(dd.melloEdges, not game)
-	GA.ShowAll(dd.melloCaret, not game)
+	dd.melloCaret:SetShown(not game)
 end
 
--- the box as it is: its fill (the hover) always; `whole`, its state
--- (enabled or not) too -- the edge, the choice's colour, the caret
+-- the box as it is: its fill and caret (the hover) always; `whole`, its
+-- state (enabled or not) too -- the edge, the choice's colour
 local function DropdownLook(dd, whole)
 	local on = dd:IsEnabled() and true or false
 	if GA.Game() then
@@ -958,15 +998,13 @@ local function DropdownLook(dd, whole)
 	local alpha = on and 1 or FLAT_OFF
 	W.Paint(dd.melloFill, (on and flatHover[dd]) and "hover" or "innerPanel", "fill", alpha)
 	if whole then
-		local edges, caret = dd.melloEdges, dd.melloCaret
+		local edges = dd.melloEdges
 		for i = 1, 4 do
 			W.Paint(edges[i], "border", "fill", alpha)
 		end
-		for i = 1, #caret do
-			W.Paint(caret[i], "text", "fill", alpha)
-		end
 		W.Paint(dd.Text, on and "text" or "mutedText", "text")
 	end
+	KC.Lay(dd.melloCaret, CARET, CARET, "arrow", "down", (on and flatHover[dd]) and "hover" or "normal", alpha, true)
 end
 
 local function DropdownRefresh(self)
@@ -999,19 +1037,14 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	dd.melloFill = dd:CreateTexture(nil, "BACKGROUND")
 	dd.melloFill:SetAllPoints(dd)
 	dd.melloEdges = Edges(dd, "border", "BORDER")
-	local caret = {}
-	for i, w in ipairs(CARET) do
-		local line = dd:CreateTexture(nil, "ARTWORK")
-		line:SetSize(w, 1)
-		line:SetPoint("TOPRIGHT", dd, "RIGHT", -(CARET_X + (CARET[1] - w) / 2), 3 - i)
-		caret[i] = line
-	end
+	local caret = dd:CreateTexture(nil, "ARTWORK")
+	caret.melloOn, caret.melloPoint, caret.melloX = dd, "RIGHT", -(CARET_X + CARET / 2)
 	dd.melloCaret = caret
 	local text = W.Text(dd, "GameFontHighlight", nil, "text")
 	text:SetJustifyV("MIDDLE")
 	text:SetWordWrap(false)
 	text:SetPoint("LEFT", dd, "LEFT", DD_TEXT_X, 0)
-	text:SetPoint("RIGHT", dd, "RIGHT", -(CARET_X + CARET[1] + 6), 0)
+	text:SetPoint("RIGHT", dd, "RIGHT", -(CARET_X + CARET + 4), 0)
 	dd.Text = text
 	dd.melloGet, dd.melloSet, dd.melloValues = get, set, values
 	dd.melloDefault, dd.melloSkin = opts.default, opts.skin
@@ -1454,19 +1487,22 @@ end
 -- up in the palette when painted (a new palette paints them again).
 --   W.CloseButton(parent, skin) -> button   (0.15.0, flat: user, 2026-09-29
 --     "all flat"; it was the game's red cross, RedButton-Exit in the kit's
---     look): a flat button CLOSE px square with a cross in `text` -- the
---     search box's own (common-search-clearbutton), the one cross of the
---     own windows. The click is the caller's (the configurator's, the
---     shell's), as it always was; `skin` kept for the callers.
---   button.melloCross
+--     look; 0.19.9 the NewUI2 close plate, the user's pick 0A 2026-10-08 --
+--     it was a flat plate with the search box's cross): a button CLOSE px
+--     square with the kit's close plate on it (KC: steel, gold under the
+--     pointer, dark red while the mouse is down on it, at half disabled), the
+--     one close of the own windows. The click is the caller's (the
+--     configurator's, the shell's), as it always was; `skin` kept for the
+--     callers.
+--   button.melloPlate
 --------------------------------------------------------------------------------
 
 do
 	local PLATE_PARTS = { "Left", "Middle", "Right", "Center" }   -- the template's plate (the older and the 128 red one)
 	local PLATE_TEXTURES = { "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }
 	local flatGold = setmetatable({}, weakKeys)    -- [button] = true: the main action's
-	local CLOSE, CROSS = 22, 12                    -- the close button, its cross
-	local CROSS_ART = "common-search-clearbutton"  -- (the game's search box's cross: SearchBoxTemplate)
+	local CLOSE = 22                               -- the close button
+	local closeDown = setmetatable({}, weakKeys)   -- [close button] = true while the mouse is down on it
 
 	-- The look as the button is (`edges`: its edge too -- it changes only
 	-- with the button's state, not its hover). The label is painted every time:
@@ -1476,8 +1512,8 @@ do
 	-- action's label is `text`, its edge still gold.
 	-- the template's own plate (the game's look: its pieces shown again, the
 	-- template's scripts swapping them by state) or our flat one; a button
-	-- made by hand (the close button) has the game's art of its own
-	-- (b.melloGameArt), its flat cross (b.melloFlatArt) ours
+	-- made by hand (the close button) has its own art (b.melloFlatArt: the
+	-- kit's plate) in our look, the game's state textures in its
 	local function Plate(b, game)
 		if b.melloGame == game then
 			return
@@ -1496,10 +1532,11 @@ do
 				tex:SetAlpha(game and 1 or 0)
 			end
 		end
-		b.melloFill:SetShown(not game)
+		if b.melloFill then
+			b.melloFill:SetShown(not game)
+		end
 		GA.ShowAll(b.melloEdges, not game)
 		GA.ShowAll(b.melloFlatArt, not game)
-		GA.ShowAll(b.melloGameArt, game)
 	end
 
 	-- the game's look: the template's plate and its fonts' colours -- gold,
@@ -1592,17 +1629,37 @@ do
 		end
 	end
 
-	function W.CloseButton(parent, skin)
+	-- the close button as it is: the game's art in its look; our plate in
+	-- the state's piece
+	local function CloseLook(b)
+		if GA.Game() then
+			return GameLook(b)
+		end
+		Plate(b, false)
+		local on = b:IsEnabled() and true or false
+		KC.Lay(b.melloPlate, CLOSE, CLOSE, "close", nil, KC.State("close", flatHover[b], closeDown[b], nil, not on),
+			on and 1 or FLAT_OFF)
+	end
+
+	local CloseDown = Shared("OnMouseDown on MelloUI's close buttons", function(b)
+		closeDown[b] = true
+		b.melloLook(b)
+	end, "script")
+	local CloseUp = Shared("OnMouseUp on MelloUI's close buttons", function(b)
+		closeDown[b] = nil
+		b.melloLook(b)
+	end, "script")
+
+	function W.CloseButton(parent)
 		local close = CreateFrame("Button", nil, parent)
 		close:SetSize(CLOSE, CLOSE)
-		local cross = close:CreateTexture(nil, "ARTWORK")
-		cross:SetAtlas(CROSS_ART)
-		cross:SetSize(CROSS, CROSS)
-		cross:SetPoint("CENTER", close, "CENTER", 0, 0)
-		W.Paint(cross, "text", "vertex")
-		close.melloCross = cross
-		close.melloFlatArt, close.melloGameLook = { cross }, CloseGameArt
-		W.FlatButton(close)
+		KitRep(close, false)   -- (the kit's sweep passes it by)
+		local plate = close:CreateTexture(nil, "ARTWORK")
+		plate.melloOn = close
+		close.melloPlate, close.melloFlatArt, close.melloGameLook = plate, { plate }, CloseGameArt
+		Perf.HookScript(close, "OnMouseDown", CloseDown)
+		Perf.HookScript(close, "OnMouseUp", CloseUp)
+		FlatHooks(close, CloseLook)
 		return close
 	end
 end
@@ -1865,70 +1922,55 @@ end
 -- looking icons which serve the same function ... from now on only use the
 -- same style as we have in the Configurator"): the controls above laid over
 -- the GAME's own in every window the kit dresses -- the kit's control pieces
--- (B1's red plate, the check box, D1, B6, S1 / N1, TB6, the slider's and the
--- scroll bar's pieces, the red cross, the cog plates, the +/- plates) gave
--- way to these. One look: the same keys and sizes as the switch, the
--- dropdown, the button, the tab, the search box and the list's scroll bar.
+-- (B1's red plate, D1, B6, S1 / N1, TB6, the slider's and the scroll bar's
+-- pieces) gave way to these. One look: the same keys and sizes as the
+-- switch, the dropdown, the button, the tab, the search box and the list's
+-- scroll bar. 0.19.9 (the user's picks 2026-10-08, "0A 1A 2B 3B"): the close
+-- button, the check box, the arrows, the + / - and the settings cog are the
+-- NewUI2 kit pieces (KC, above: one texture on the holder's middle, its
+-- state's piece; under KC.SMALL an arrow or a + / - is its glyph alone), a
+-- dropdown's caret the arrow's glyph; the other kinds keep their flat plate.
 -- The parts are regions of `holder` (the kit's holder frame on the control's
 -- rect: Modules/Kit.lua's "flat" kind, which fades the game's art and
--- follows the control's state as its rims do) and are painted by FlatState.
+-- follows the control's state as its rims do; or a button of MelloUI's own)
+-- and are painted by FlatState.
 --   W.FlatOver(holder, kind, opts) -> parts
---     kind: "button", "check", "dropdown", "edit", "close", "arrow" (opts.dir
---     "up" / "down" / "left" / "right"), "plus", "minus", "tab" (at rest),
+--     kind: "button" (an icon button's plate, under its glyph: 0.19.9 the
+--     NewUI2 icon plate), "check", "dropdown", "edit", "close", "arrow" (opts.dir
+--     "up" / "down" / "left" / "right"), "plus", "minus", "cog" (a settings
+--     button: the cog plate in place of the game's gear), "tab" (at rest),
 --     "tabActive" (the open one), "track" (a scroll bar's), "thumb" (its
 --     handle), "slider" (a slider's track), "knob" (its handle); opts.left:
 --     the fill reaching that far left of the rect (an edit box's art: the
 --     search glass inside it); opts.body = false: a plate's edge alone
 --   W.FlatState(parts, hover, pressed, checked, disabled, focus)
 --   W.FlatDir(parts, dir)   an arrow turned ("up" / "down" / "left" / "right")
---   parts.box: the region the check's box is (the active look lies round it)
---   parts.partial: a check's tick muted (on for some characters only)
+--   W.FlatKind(parts, kind) a + become a - and back (the Quest Tracker's folds)
+--   W.FlatShown(parts, on)  every part shown or hidden (a look switched)
+--   parts.piece: a kit kind's texture; parts.partial: a check ticked for some
+--   characters only (its plate greyed)
 --------------------------------------------------------------------------------
 
 do
-	local FLAT_TICK = "Interface\\RaidFrame\\ReadyCheck-Ready"   -- the switch's check mark (TICK_ART)
-	local FLAT_CROSS = "common-search-clearbutton"               -- the close button's cross (CROSS_ART)
 	local ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-	local BOX, MARK = 18 / 26, 16 / 26   -- the switch's box and tick, of its button (SWITCH_BOX, SWITCH_TICK)
 	local THIN = 4                       -- a scroll bar's track and handle, a slider's track: this thick
 	local KNOB = 14                      -- the slider's knob (its ring 1 px round it)
-	local GLYPH_LINES = {
-		-- a small caret pointing down (the dropdown's: CARET), and its turns; a plus, a minus: 1 px lines
-		down = { { 7, 1, 0, 2 }, { 5, 1, 0, 1 }, { 3, 1, 0, 0 }, { 1, 1, 0, -1 } },
-		up = { { 1, 1, 0, 2 }, { 3, 1, 0, 1 }, { 5, 1, 0, 0 }, { 7, 1, 0, -1 } },
-		left = { { 1, 1, -2, 0 }, { 1, 3, -1, 0 }, { 1, 5, 0, 0 }, { 1, 7, 1, 0 } },
-		right = { { 1, 7, -1, 0 }, { 1, 5, 0, 0 }, { 1, 3, 1, 0 }, { 1, 1, 2, 0 } },
-		plus = { { 9, 1, 0, 0 }, { 1, 9, 0, 0 } },
-		minus = { { 9, 1, 0, 0 } },
-	}
+	local CARET_AT = -12                 -- a dropdown's caret (the own dropdown's CARET square): its centre from the right
+	local KITTED = { check = true, close = true, arrow = true, plus = true, minus = true, cog = true, button = true }
+	local PARTS = { "piece", "fill", "caret", "ring", "disc" }
 
-	local function Lines(holder, set)
-		local out = {}
-		for i, l in ipairs(GLYPH_LINES[set]) do
-			local t = holder:CreateTexture(nil, "ARTWORK", nil, 2)
-			t:SetSize(l[1], l[2])
-			t:SetPoint("CENTER", holder, "CENTER", l[3], l[4])
-			out[i] = t
+	-- a kit kind's piece for its last state, at the holder's size
+	local function LayPiece(p)
+		local w, h = p.holder:GetSize()
+		KC.Lay(p.piece, w, h, p.kind, p.dir, p.state or KC.State(p.kind), p.alpha)
+		if p.kind == "check" then
+			p.piece:SetDesaturated(p.partial and p.checked and true or false)
 		end
-		return out
-	end
-
-	-- a part laid in the holder's middle at `share` of its smaller side (the
-	-- check's box and tick), again as the holder is sized
-	local function Middle(holder, region, share)
-		region:SetPoint("CENTER", holder, "CENTER", 0, 0)
-		region.melloShare = share
 	end
 	local FlatSized = Shared("OnSizeChanged on a kit flat control's holder", function(holder)
-		local w, h = holder:GetSize()
-		w, h = Num(w), Num(h)
-		if not (w and h) then
-			return
-		end
-		local side = math.min(w, h)
-		for _, region in ipairs(holder.melloMiddles) do
-			local s = math.max(math.floor(side * region.melloShare + 0.5), 1)
-			region:SetSize(s, s)
+		local p = holder.melloFlat
+		if p then
+			LayPiece(p)
 		end
 	end, "script")
 
@@ -1942,15 +1984,14 @@ do
 	function W.FlatOver(holder, kind, opts)
 		opts = opts or NO_OPTS
 		local p = { kind = kind, holder = holder }
-		if kind == "check" then
-			local box = holder:CreateTexture(nil, "BACKGROUND", nil, 2)
-			local tick = holder:CreateTexture(nil, "ARTWORK", nil, 2)
-			tick:SetTexture(FLAT_TICK)
-			tick:SetDesaturated(true)
-			Middle(holder, box, BOX)
-			Middle(holder, tick, MARK)
-			holder.melloMiddles = { box, tick }
-			p.fill, p.edges, p.tick, p.box = box, Edges(holder, "trim", "BORDER", box), tick, box
+		if KITTED[kind] then
+			-- (an icon button's plate under the game's glyph or the caller's: BACKGROUND)
+			local tex = holder:CreateTexture(nil, kind == "button" and "BACKGROUND" or "ARTWORK", nil, 2)
+			tex.melloOn = holder
+			p.piece, p.dir = tex, kind == "arrow" and (opts.dir or "down") or nil
+			holder.melloFlat = p
+			Perf.HookScript(holder, "OnSizeChanged", FlatSized)
+			LayPiece(p)
 		elseif kind == "track" or kind == "thumb" then
 			local bar = holder:CreateTexture(nil, "ARTWORK", nil, 1)
 			bar:SetPoint("TOP", holder, "TOP", 0, 0)
@@ -1977,29 +2018,10 @@ do
 			-- a plate: the button's, a tab's, the dropdown's and edit box's field
 			Plate(holder, p, opts.left)
 			if kind == "dropdown" then
-				local caret = Lines(holder, "down")
-				for _, line in ipairs(caret) do
-					local _, _, _, x, y = line:GetPoint(1)
-					line:ClearAllPoints()
-					line:SetPoint("CENTER", holder, "RIGHT", -12 + x, y)
-				end
-				p.glyph = caret
-			elseif kind == "arrow" then
-				p.dir = opts.dir or "down"
-				p.glyph = Lines(holder, p.dir)
-			elseif kind == "plus" or kind == "minus" then
-				p.glyph = Lines(holder, kind)
-			elseif kind == "close" then
-				local cross = holder:CreateTexture(nil, "ARTWORK", nil, 2)
-				cross:SetAtlas(FLAT_CROSS)
-				Middle(holder, cross, 12 / 22)
-				holder.melloMiddles = { cross }
-				p.cross = cross
+				local caret = holder:CreateTexture(nil, "ARTWORK", nil, 2)
+				caret.melloOn, caret.melloPoint, caret.melloX = holder, "RIGHT", CARET_AT
+				p.caret = caret
 			end
-		end
-		if holder.melloMiddles then
-			Perf.SetScript(holder, "OnSizeChanged", FlatSized)
-			FlatSized(holder)
 		end
 		if opts.body == false and p.edges then
 			-- the edge alone (a frame round something: the calendar's today)
@@ -2009,22 +2031,33 @@ do
 		return p
 	end
 
-	-- an arrow turned: its four lines laid again for `dir` (a flat arrow that
-	-- follows the rotation the game gives its art: Kit's `rotates`)
+	-- an arrow turned (a flat arrow that follows the rotation the game gives
+	-- its art: Kit's `rotates`)
 	function W.FlatDir(p, dir)
-		local set, glyph = GLYPH_LINES[dir], p and p.glyph
-		if not (set and glyph and p.dir) or p.dir == dir then
+		if not (p and p.piece and p.dir) or p.dir == dir then
 			return
 		end
 		p.dir = dir
-		for i, l in ipairs(set) do
-			local t = glyph[i]
-			if t then
-				t:SetSize(l[1], l[2])
-				t:ClearAllPoints()
-				t:SetPoint("CENTER", p.holder, "CENTER", l[3], l[4])
+		LayPiece(p)
+	end
+
+	-- a + become a - and back
+	function W.FlatKind(p, kind)
+		if not (p and p.piece) or p.kind == kind or not KITTED[kind] then
+			return
+		end
+		p.kind = kind
+		LayPiece(p)
+	end
+
+	function W.FlatShown(p, on)
+		for _, key in ipairs(PARTS) do
+			local region = p[key]
+			if region and not (key == "fill" and p.noBody) then
+				region:SetShown(on)
 			end
 		end
+		GA.ShowAll(p.edges, on)
 	end
 
 	local function PaintAll(list, key, how, alpha)
@@ -2039,11 +2072,9 @@ do
 		local kind = p.kind
 		local alpha = disabled and FLAT_OFF or 1
 		local lit = (hover or pressed) and not disabled
-		if kind == "check" then
-			W.Paint(p.fill, "innerPanel", "fill", alpha)
-			PaintAll(p.edges, lit and "selectedTrim" or "trim", "fill", alpha)
-			p.tick:SetShown(checked and true or false)
-			W.Paint(p.tick, (disabled or p.partial) and "mutedText" or "selectedTrim", "vertex", 1)   -- (p.partial: on for some characters only)
+		if p.piece then
+			p.state, p.alpha, p.checked = KC.State(kind, hover, pressed, checked, disabled), alpha, checked
+			LayPiece(p)
 		elseif kind == "track" then
 			W.Paint(p.fill, "border", "fill", 1)
 		elseif kind == "thumb" then
@@ -2063,15 +2094,11 @@ do
 		elseif kind == "dropdown" then
 			W.Paint(p.fill, lit and "hover" or "innerPanel", "fill", alpha)
 			PaintAll(p.edges, "border", "fill", alpha)
-			PaintAll(p.glyph, "text", "fill", alpha)
+			KC.Lay(p.caret, CARET, CARET, "arrow", "down", lit and "hover" or "normal", alpha, true)
 		else
-			-- the button's plate (a close button, an arrow, a +/-, a tab at rest)
+			-- a tab's plate at rest
 			W.Paint(p.fill, lit and "hover" or "raisedPanel", "fill", alpha)
 			PaintAll(p.edges, "border", "fill", alpha)
-			PaintAll(p.glyph, disabled and "mutedText" or "text", "fill", 1)
-			if p.cross then
-				W.Paint(p.cross, disabled and "mutedText" or "text", "vertex", 1)
-			end
 		end
 	end
 end
@@ -2362,7 +2389,14 @@ do
 
 	-- the plain look: the icon centred at its opening's size, the tracking
 	-- rim's art round it (the art sits in its texture's top left: 53 wide
-	-- for a 21 wide opening, from 5 left of it and 4 above)
+	-- for a 21 wide opening). Its ring's middle is RIM_X, RIM_Y of the
+	-- texture's width from its top left, as the game lays it (the world
+	-- map's tracking button, Blizzard_WorldMapTemplates.xml: a 54 px border
+	-- over a 20 px icon at 7, 6 -- its middle at 17, 16; the help plate's
+	-- ring agrees): the rim's middle laid that far off the icon's. (Was 5
+	-- left and 4 above the opening: the ring 1.5 px low and right of the
+	-- icon at 44 px, the user's 2026-10-09 screenshot of the zone ring.)
+	local RIM_X, RIM_Y = 17 / 54, 16 / 54
 	local function PlainLay(b)
 		local d = b.size / PLAIN_RATIO
 		local k = d / 21
@@ -2371,8 +2405,9 @@ do
 		icon:SetSize(d, d)
 		icon:SetPoint("CENTER", b, "CENTER", 0, 0)
 		rim:ClearAllPoints()
-		rim:SetSize(53 * k, 53 * k)
-		rim:SetPoint("TOPLEFT", icon, "TOPLEFT", -5 * k, 4 * k)
+		local s = 53 * k
+		rim:SetSize(s, s)
+		rim:SetPoint("CENTER", icon, "CENTER", (0.5 - RIM_X) * s, -(0.5 - RIM_Y) * s)
 	end
 
 	-- the kit rim's shade partner (opts.shade): the rim drawn at the
@@ -2532,15 +2567,18 @@ end
 -- PlateButton (0.19.0; flat since 0.19.1, the user, 2026-10-04: "from now on
 -- only use the same style as we have in the Configurator" -- it was the kit's
 -- cog plate with a black opening): a small square button with a glyph on the
--- Configurator's flat plate (W.FlatOver's "button": `raisedPanel` in a 1 px
--- `border` edge, `hover` under the pointer); the game's round column button
--- in the game's look (Look.ColumnButton: the glyph in the text colour, the
--- plate hidden). The Discard buttons and the bag window's Settings.
---   W.PlateButton(parent, w, h, glyphSize, area, scripts) -> b, glyph
+-- controls' icon plate (W.FlatOver's "button": 0.19.9 the NewUI2 icon plate,
+-- steel, gold under the pointer -- the user's pick A 2026-10-09; it was the
+-- flat `raisedPanel` plate); the game's round column button in the game's
+-- look (Look.ColumnButton: the glyph in the text colour, the plate hidden).
+-- The Discard buttons and the bag window's Settings. `kind` "cog" (the
+-- bag window's Settings): the NewUI2 cog plate, its own cog in place of the
+-- caller's glyph, which shows only in the game's look.
+--   W.PlateButton(parent, w, h, glyphSize, area, scripts, kind) -> b, glyph
 --     scripts: { OnClick = fn, OnEnter = fn, OnLeave = fn }, set first (the
 --     plate's own hover is hooked after them); the caller puts its art on
 --     `glyph` (W.Glyph, or a picture of the game's)
---   b.plate (its fill)
+--   b.plate (its plate)
 --------------------------------------------------------------------------------
 do
 	local plates = setmetatable({}, weakKeys)   -- [button] = its flat parts
@@ -2557,14 +2595,14 @@ do
 		PlatePaint(b, false)
 	end, "script")
 
-	function W.PlateButton(parent, w, h, glyphSize, area, scripts)
+	function W.PlateButton(parent, w, h, glyphSize, area, scripts, kind)
 		local Look = MelloUI.Look
 		local b = CreateFrame("Button", nil, parent)
 		b:SetSize(w, h)
 		for script, fn in pairs(scripts or NO_OPTS) do
 			b:SetScript(script, fn)
 		end
-		local p = W.FlatOver(b, "button")
+		local p = W.FlatOver(b, kind == "cog" and "cog" or "button")
 		plates[b] = p
 		Perf.HookScript(b, "OnEnter", PlateEnter)
 		Perf.HookScript(b, "OnLeave", PlateLeave)
@@ -2572,12 +2610,11 @@ do
 		local glyph = b:CreateTexture(nil, "ARTWORK", nil, 2)
 		glyph:SetSize(glyphSize, glyphSize)
 		glyph:SetPoint("CENTER")
-		local painted = { p.fill }
-		for i = 1, #p.edges do
-			painted[#painted + 1] = p.edges[i]
+		Look.ColumnButton(b, glyph, { p.piece }, area)
+		if kind == "cog" then
+			Look.Only(glyph, "game", area)   -- (the cog plate has its own cog)
 		end
-		Look.ColumnButton(b, glyph, painted, area)
-		b.plate = p.fill
+		b.plate = p.piece
 		return b, glyph
 	end
 end
@@ -3452,6 +3489,86 @@ function W.ButtonRow(parent, y, label, hint, desc, text, onClick, opts)
 	ControlTip(button, row, label, desc)
 	row.button = button
 	return Finish(row, button, opts, 12 + width)
+end
+
+--------------------------------------------------------------------------------
+-- ShapeRow (0.19.9: Action Bars > Bars > Layout, L1 of keybind_layout_sketch):
+-- a bar's shape in small cells -- its rows (or columns on a bar stood
+-- upright), how many icons, their size and the room between them -- laid
+-- again on every refresh. Its cells come with the row (a page builds on its
+-- first open), painted by palette key.
+--   W.ShapeRow(parent, y, label, hint, desc, get, opts) -> row, box
+--     get() -> { rows, icons, size (100: the game's), padding, vertical } | nil
+--------------------------------------------------------------------------------
+do
+	local BOX_W, BOX_H = 220, 56   -- the preview's room
+	local CELL = 14                -- a cell at 100 %
+	local MOST = 12                -- the most icons a bar shows
+	local PAD = 1 / 3              -- a pixel of the game's padding, in the preview's
+
+	local function Lay(box)
+		local s = box.get and box.get()
+		local cells = box.cells
+		if type(s) ~= "table" then
+			for i = 1, MOST do
+				cells[i].edge:Hide()
+				cells[i].fill:Hide()
+			end
+			return
+		end
+		local icons = math.max(1, math.min(MOST, math.floor(tonumber(s.icons) or MOST)))
+		local rows = math.max(1, math.min(icons, math.floor(tonumber(s.rows) or 1)))
+		local per = math.ceil(icons / rows)
+		local cols, lines = per, rows
+		if s.vertical then
+			cols, lines = rows, per
+		end
+		local gap = math.max(1, (tonumber(s.padding) or 2) * PAD)
+		local size = CELL * (tonumber(s.size) or 100) / 100
+		size = math.min(size, (BOX_W - (cols - 1) * gap) / cols, (BOX_H - (lines - 1) * gap) / lines)
+		size = math.max(3, math.floor(size))
+		local w, h = cols * size + (cols - 1) * gap, lines * size + (lines - 1) * gap
+		local x0, y0 = BOX_W - w, -(BOX_H - h) / 2
+		for i = 1, MOST do
+			local c = cells[i]
+			if i <= icons then
+				local col, line = (i - 1) % per, math.floor((i - 1) / per)
+				if s.vertical then
+					col, line = line, col
+				end
+				c.edge:ClearAllPoints()
+				c.edge:SetPoint("TOPLEFT", box, "TOPLEFT", x0 + col * (size + gap), y0 - line * (size + gap))
+				c.edge:SetSize(size, size)
+				c.edge:Show()
+				c.fill:Show()
+			else
+				c.edge:Hide()
+				c.fill:Hide()
+			end
+		end
+	end
+
+	W.SHAPE_ROW_HEIGHT = BOX_H + 14
+
+	function W.ShapeRow(parent, y, label, hint, desc, get, opts)
+		opts = opts or NO_OPTS
+		local row = W.Row(parent, y, W.SHAPE_ROW_HEIGHT, label, hint, desc, opts)
+		local box = CreateFrame("Frame", nil, row)
+		box:SetSize(BOX_W, BOX_H)
+		box:SetPoint("RIGHT", -14, 0)
+		box.get, box.cells = get, {}
+		for i = 1, MOST do
+			local edge = W.Solid(box, "ARTWORK", "selectedTrim", 0.85)
+			local fill = W.Solid(box, "ARTWORK", "innerPanel", 1)
+			fill:SetDrawLayer("ARTWORK", 1)
+			fill:SetPoint("TOPLEFT", edge, "TOPLEFT", 1, -1)
+			fill:SetPoint("BOTTOMRIGHT", edge, "BOTTOMRIGHT", -1, 1)
+			box.cells[i] = { edge = edge, fill = fill }
+		end
+		box.Refresh = Lay
+		Lay(box)
+		return Finish(row, box, opts, 14 + BOX_W)
+	end
 end
 
 --------------------------------------------------------------------------------

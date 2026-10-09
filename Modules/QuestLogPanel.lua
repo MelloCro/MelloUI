@@ -248,12 +248,17 @@ local function ObjectiveRole(r)
 end
 
 local pipsOf = setmetatable({}, { __mode = "k" })   -- [title] = its pips (QI.Pips)
+local PIPS_RIGHT = 3   -- the pips' right end in from the row's: under the tracking box's (QuestLogTrackCheckBoxTemplate)
 -- One title's ink and pips, one objective's ink (the game's look back while
 -- the skin is off). The log's rows are the one quest row the Quests panel
 -- lays too (QuestInk's Quest rows): the same fonts on the title and the line
 -- under it (QI.RowFonts: the game's own, taken again as the Fonts module
--- changes them), the pips in the same column, just left of the right slot
--- (here the tracking box: QI.RowPips)
+-- changes them). The pips under the tracking box, on the first line under
+-- the title (the user, 2026-10-09: beside the box they sat over a long title
+-- and over the game's Dungeon / Raid tag): the game lays the title as wide
+-- as the row up to the box and sizes the row from it before this runs, so
+-- the title's line has no room to make; the lines under it are 205 wide
+-- (QuestLogObjectiveTemplate), the room right of them is free
 local function InkTitle(QI, title)
 	local fs = title.Text
 	if not fs then
@@ -263,14 +268,12 @@ local function InkTitle(QI, title)
 		local tier = QI.TierForQuest(title.questID, QuestLevel(title.questID))
 		QI.RowFonts(fs, nil)
 		QI.Ink(fs, tier == 1 and "faded" or "title")
-		pipsOf[title] = pipsOf[title] or QI.Pips(title, QI.ROW.pipsSize)
-		if title.Checkbox then
-			QI.RowPips(pipsOf[title], title.Checkbox)
-		else
-			pipsOf[title]:ClearAllPoints()
-			pipsOf[title]:SetPoint("TOPRIGHT", title, "TOPRIGHT", -4, -3)
-		end
-		pipsOf[title]:SetTier(tier)
+		local pips = pipsOf[title] or QI.Pips(title, QI.ROW.pipsSize)
+		pipsOf[title] = pips
+		local h = MelloUI.Safe.Number(fs:GetHeight()) or 12
+		pips:ClearAllPoints()
+		pips:SetPoint("TOPRIGHT", title, "TOPRIGHT", -PIPS_RIGHT, -(QI.ROW.top + h + QI.ROW.gap + 1))
+		pips:SetTier(tier)
 	else
 		QI.Plain(fs)
 		if QI.colourWatched[fs] then
@@ -506,15 +509,13 @@ local function SkinList()
 	InkList(true)
 end
 
--- The quest list page (MelloUI's) follows: its rows drawn again; and the
--- stamp beside a quest's name on the details page (QuestInk's QI.Restamp)
+-- The quest list page (MelloUI's) follows: its rows drawn again
 local function InkQuestListWindow()
 	local QI = MelloUI.QuestInk
 	if QI then
 		QI.onParchment = active
-		QI.Restamp()
 	end
-	local ql = ns.QuestList
+	local ql = MelloUI.QuestList
 	if ql and ql.Panel and ql.Panel.frame and ql.Panel.Update then
 		pcall(ql.Panel.Update, ql.Panel)
 	end
@@ -710,7 +711,7 @@ local function SkinQuestListEntry(button)
 end
 
 local function SkinQuestList()
-	local ql = ns.QuestList
+	local ql = MelloUI.QuestList
 	local frame = ql and ql.Panel and ql.Panel.frame
 	if not frame or kitHookedOf[frame] then
 		return
@@ -866,7 +867,7 @@ function M:RefreshFollowers()
 	-- the Quests panel's plates: Enable shows every rep, but a row's hover
 	-- plate belongs only on the row the mouse is on, a header's plate only
 	-- on a button that shows a header now
-	local ql = ns.QuestList
+	local ql = MelloUI.QuestList
 	local sb = ql and ql.Panel and ql.Panel.frame and ql.Panel.frame.scrollBox
 	if sb and sb.ForEachFrame then
 		sb:ForEachFrame(function(b)
@@ -911,9 +912,8 @@ local function Deactivate()
 	InkList()
 	if MelloUI.QuestInk then
 		MelloUI.QuestInk.onParchment = false
-		MelloUI.QuestInk.Restamp()
 	end
-	local ql = ns.QuestList
+	local ql = MelloUI.QuestList
 	local frame = ql and ql.Panel and ql.Panel.frame
 	if ql and ql.Panel and ql.Panel.Update and frame then
 		ql.Panel:Update()
@@ -956,8 +956,8 @@ local function Hook()
 		Perf.HookScript(sf, "OnShow", DressShown)
 	end
 	-- MelloUI's quest list window is created on demand
-	if ns.QuestList and ns.QuestList.Panel and ns.QuestList.Panel.Create then
-		hooksecurefunc(ns.QuestList.Panel, "Create", function()
+	if MelloUI.QuestList and MelloUI.QuestList.Panel and MelloUI.QuestList.Panel.Create then
+		hooksecurefunc(MelloUI.QuestList.Panel, "Create", function()
 			if active then
 				SkinQuestList()
 			end
