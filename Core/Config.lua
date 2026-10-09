@@ -1811,7 +1811,7 @@ local PICKER_W, COPY_W, PICKER_LINE = 180, 150, 26
 -- (0.19.9) a page's own action beside its picker, as the page names it (Core/ConfigLayout.lua `action`): the Action
 -- Bars page's Keybind Mode (Modules/KeybindMode.lua: MelloUI's own, the game's never opened). It leaves the
 -- configurator while you bind and opens it again after
-local KEYBIND_MODE = { name = "Keybind Mode", new = "0.19.9" }
+local KEYBIND_MODE = { name = "Keybind Mode" }
 local KeybindModeClick = Shared("OnClick on the configurator's Keybind Mode", function()
 	local K = MelloUI.KeybindMode
 	if K then

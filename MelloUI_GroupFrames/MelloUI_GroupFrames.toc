@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Group Frames
 ## Notes: MelloUI's own party and raid frames: their layout, colours, bars and texts, and your own aura indicators on them. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 0.19.9
+## Version: 0.20.0
 ## Dependencies: MelloUI
 ## X-MelloUI-Feature: GroupFrames
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga

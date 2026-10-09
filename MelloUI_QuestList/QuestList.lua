@@ -109,7 +109,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Leave quests that are grey for you (far below your level, as the game colours them) off the zone map until you take them. Quests in your log and the one you track still show." },
 		{ type = "toggle", key = "zoneBadges", name = "Zone Progress On Continent Maps",
 		  desc = "Show a done/total badge on each zone of the continent map. Hover for the level range, click to open the zone." },
-		{ type = "toggle", key = "zoneProgress", name = "Zone Progress On Zone Maps", new = "0.19.9",
+		{ type = "toggle", key = "zoneProgress", name = "Zone Progress On Zone Maps",
 		  desc = "Show the zone's progress in the zone map's corner: a ring of the quests you have done, how many are "
 			.. "left, and how many of those you can take now." },
 		{ type = "toggle", key = "entrancePins", name = "Dungeon And Raid Entrances",
@@ -134,7 +134,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "On the tooltip of an item one of your quests asks for, name the quest and how many you have, for example \"Quest: Red Linen Goods (4/6)\"." },
 		{ type = "toggle", key = "tipTurnIn", name = "Turn-In NPCs",
 		  desc = "On the tooltip of an NPC that takes back one of your quests: \"Turn in here\" once the quest is ready, a quieter \"Quest ends here\" while it is still in progress." },
-		{ type = "toggle", key = "tipCharacters", name = "Your Other Characters On Quests", new = "0.19.9",
+		{ type = "toggle", key = "tipCharacters", name = "Your Other Characters On Quests",
 		  desc = "On a quest's tooltip in the Quest List and on the map's quest givers, name your other characters who "
 			.. "have done the quest or have it in their quest log. A character is noted each time it logs out; "
 			.. "/mello alts lists them and forgets a deleted one." },

@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Quest List
 ## Notes: MelloUI's Quest List: every quest of the game in the quest log's column, the quest givers, zone progress and objective marks on the map, quest tooltips. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 0.19.9
+## Version: 0.20.0
 ## Dependencies: MelloUI
 ## X-MelloUI-Feature: QuestList
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
