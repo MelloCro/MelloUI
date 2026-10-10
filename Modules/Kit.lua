@@ -123,7 +123,7 @@ Kit.colourLooks = {
 }
 -- (the marks' metals and crests, the nameplates' mark on top; their rings are in every look, their gems the look's:
 -- Tools/kit_palette.py GEM_TWINS)
-local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^tiles/vellum", "^tiles/parchment", "^tiles/agedparchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_", "^marks/top", "^marks/r%d_" }
+local UNCOLOURED = { "^backdrops/", "^cards/", "^icons/", "^parchment/", "^borders/rpg", "^rings/rpg", "^buttons/orb_rpg", "^tiles/vellum", "^tiles/parchment", "^tiles/agedparchment", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle", "^marks/orb_", "^marks/cap_", "^marks/crest_", "^marks/top", "^marks/r%d_" }
 local lookRoot = nil   -- the chosen look's folder, once the settings are there
 -- LOOK.PaletteId(): the palette in use (its id, "ember" for one Core does not
 -- know); LOOK.ShowChoices(id): Kit.colourLooks refilled with that
@@ -133,7 +133,7 @@ local LOOK = {}
 -- build_art_look.py) holds its own pages, parchment and rank marks: only the
 -- content every look shares is read from Media\Kit (Tools/kit_palette.py
 -- ART_SKIP; texture_pack.py checks the two agree)
-LOOK.ART_UNCOLOURED = { "^cards/", "^icons/", "^backdrops/profession_", "^backdrops/schematic_", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
+LOOK.ART_UNCOLOURED = { "^cards/", "^icons/", "^parchment/", "^borders/rpg", "^rings/rpg", "^buttons/orb_rpg", "^backdrops/profession_", "^backdrops/schematic_", "^tiles/leather", "^tiles/quilt_", "^tiles/crackle" }
 -- [the look's root] = the ending of its own shadow sheet (Media\Textures\KitShadows_<id>: its shapes, the same
 -- layout as KitShadows.lua's, Tools/make_kit_shadows.py build_look). None: Forged Steel, the one painted look,
 -- was taken out again (user, 2026-10-04: "i want the forged steel deleted from the addon, i dont like it")
@@ -714,40 +714,88 @@ function Kit:StoneDim(host, opts)
 	return tex
 end
 
+-- The parchment (0.20.1; the user, 2026-10-10: the RPG UI pack's parchment, used with its creator's permission, in
+-- the place of tiles/vellum and our own brush-stroke torn edges -- "it has to be scaleable for different elements"):
+-- a kit nine-slice (Tools/make_parchment.py: parchment/sheet_*) laid on a rect as REGIONS of `owner`, in its layer
+-- stack (Kit:NineSlice's owner mode: the paper at `sublevel`, its burnt edges one over it, its corners one over
+-- those), at any size: the paper repeats at the tiles' one density, the edges along their length, the corners stay
+-- whole; the torn outline is in the edges' and corners' own alpha, no mask. In the pack's own tone (the user's pick):
+-- no tint. `curls` ("tl", "br", "tl br"): a big page's curled corners (the user's pick: the quest and spell book
+-- pages, the character stats pane's top left): the page family (parchment/page_*), its corners big enough to hold
+-- a curl and the shading under it whole (a sheet's cut them off and its square showed -- in game, 2026-10-10), the
+-- corners without a curl its plain ones (_plain). `place(f)` anchors the frame the regions are laid out on; the
+-- returned frame's Show / Hide / SetShown / SetAlpha act on the regions. scale (UI units per painted px; the paper
+-- at the same, so its grain is the edges' own): a sheet's 80 px corner at 0.375 (30 UI units), a small panel's at
+-- 0.3; a page at 0.6, the pack's own proportions on a quest page's width.
+-- `tone`: the brightness every piece is drawn at, the hue the pack's (the user, 2026-10-10, the spell book: "perfect,
+-- its just a bit too bright"); kept as the pieces' base under the kit's shade (Kit.tintBaseOf).
+Kit.parchment = { prefix = "parchment/sheet", pagePrefix = "parchment/page", body = "parchment/sheet_body", scale = 0.375,
+	small = 0.3, page = 0.6, tone = 0.86 }
+
+function Kit:ParchmentNine(owner, opts)
+	opts = opts or {}
+	local P = self.parchment
+	local lay = CreateFrame("Frame", nil, owner)
+	lay:EnableMouse(false)
+	if opts.place then
+		opts.place(lay)
+	else
+		lay:SetAllPoints(owner)
+	end
+	-- (room over the paper for its edges and corners: sublevels run to 7)
+	local sub = math.max(math.min(opts.sublevel or 3, 5), -8)
+	local layer = opts.layer or "BACKGROUND"
+	local curls = opts.curls or ""
+	local page = curls ~= ""
+	local scale = opts.scale or P.scale
+	local nine = self:NineSlice(lay, { owner = owner, prefix = page and P.pagePrefix or P.prefix, body = P.body, scale = scale,
+		bodyScale = scale, gems = false, slices = false, bodyLayer = layer, bodySub = sub, edgeLayer = layer, edgeSub = sub + 1 })
+	-- (a page curled at one corner: its other curled corner the plain one)
+	if page then
+		for _, c in ipairs({ "tl", "br" }) do
+			local tex = rawget(nine, c)
+			if tex and not curls:find(c, 1, true) then
+				self:Apply(tex, P.pagePrefix .. "_" .. c .. "_plain")
+			end
+		end
+	end
+	local k = P.tone
+	for _, t in ipairs(nine.all) do
+		t:SetVertexColor(k, k, k)
+	end
+	nine.SetAlpha = function(me, a)
+		for _, t in ipairs(me.all) do
+			t:SetAlpha(a)
+		end
+	end
+	return nine
+end
+
+-- (0.20.1: the parchment nine, Kit:ParchmentNine; the returned sheet is its frame, the second value nil -- no
+-- caller read the painted edge)
 function Kit:ParchmentSheet(skin, watch, opts)
 	opts = opts or {}
 	if not (skin and skin.CreateTexture) then
 		return nil
 	end
 	local margin = opts.margin or 6
-	local sheet = skin:CreateTexture(nil, opts.layer or "BACKGROUND", nil, opts.sublevel or 3)
-	if opts.rect then
-		sheet:SetPoint("TOPLEFT", opts.rect, "TOPLEFT", margin, -margin)
-		sheet:SetPoint("BOTTOMRIGHT", opts.rect, "BOTTOMRIGHT", -margin, margin)
-	else
-		local pre = self.framePrefix
-		sheet:SetPoint("TOPLEFT", skin, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
-		sheet:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
-	end
-	-- opts.piece: another parchment tile than the kit's (the character
-	-- window's Whole window parchment keeps the tile it was chosen as;
-	-- user, 2026-09-24)
-	if not self:Apply(sheet, opts.piece or self.parchmentPiece) then
-		sheet:Hide()
-		return nil
-	end
-	sheet.kitAlign = "center"
-	local tint = opts.tint or self.parchmentTint
-	sheet:SetVertexColor(tint[1], tint[2], tint[3])
-	local edge = self:PaintedEdge(sheet, sheet, opts.mirror, opts.tight, opts.wide and "wide" or opts.fine)
-	local function Fit()
-		local ok, w, h = pcall(sheet.GetSize, sheet)
-		if not (ok and w and h) or Secret(w) or Secret(h) or w <= 0 or h <= 0 then
-			return
+	local pre = self.framePrefix
+	local function Place(f)
+		if opts.rect then
+			f:SetPoint("TOPLEFT", opts.rect, "TOPLEFT", margin, -margin)
+			f:SetPoint("BOTTOMRIGHT", opts.rect, "BOTTOMRIGHT", -margin, margin)
+		else
+			f:SetPoint("TOPLEFT", skin, "TOPLEFT", self:RailInset(pre .. "_l", "l") + margin, -(self:RailInset(pre .. "_t", "t") + margin))
+			f:SetPoint("BOTTOMRIGHT", skin, "BOTTOMRIGHT", -(self:RailInset(pre .. "_r", "r") + margin), self:RailInset(pre .. "_b", "b") + margin)
 		end
-		self:Retile(sheet)
-		if edge then
-			edge:Fit(w, h)
+	end
+	local P = self.parchment
+	local sheet = self:ParchmentNine(skin, { place = Place, layer = opts.layer, sublevel = opts.sublevel, curls = opts.curls,
+		scale = opts.scale or ((opts.tight or opts.fine) and P.small) or P.scale })
+	-- (laid again as the frame it follows changes size or shows: a skin sized while hidden gets no OnSizeChanged)
+	local function Fit()
+		for _, t in ipairs(sheet.tiled) do
+			self:Retile(t)
 		end
 	end
 	watch = watch or skin
@@ -766,7 +814,7 @@ function Kit:ParchmentSheet(skin, watch, opts)
 			self.parchmentShown[opts.area] = on
 		end
 	end
-	return sheet, edge
+	return sheet, nil
 end
 
 -- Every file the kit draws from, as full paths, each once (the painted-edge
@@ -2948,6 +2996,7 @@ local function NineSlice_Art(skin, opts)
 	local prefix = opts.prefix or "window/frame"
 	local scale = skin.kitScale
 	local host = opts.owner or skin
+	local edgeHost = rawget(skin, "railHost") or host   -- (the rails' own frame: Kit:NineSlice's edgeLevel)
 	local bodyLayer, bodySub = opts.bodyLayer or "BACKGROUND", opts.bodySub or 0
 	local edgeLayer, edgeSub = opts.edgeLayer or "BORDER", opts.edgeSub or 0
 	local T = skin.thickness
@@ -2975,7 +3024,7 @@ local function NineSlice_Art(skin, opts)
 	-- the rails as one texture while the switch is on (opts.slices: the test
 	-- window's own choice): the edges and the mitred corners below are then
 	-- in it, in the edges' layer
-	local slice = NineSlice_Slice(skin, host, prefix, scale, edgeLayer, edgeSub, gemCorners, skip, oL, oR, oT, oB, opts.slices,
+	local slice = NineSlice_Slice(skin, edgeHost, prefix, scale, edgeLayer, edgeSub, gemCorners, skip, oL, oR, oT, oB, opts.slices,
 		skin.slicesWas, skin.sliceUnit)
 	if slice then
 		skin.slice = slice
@@ -2992,7 +3041,7 @@ local function NineSlice_Art(skin, opts)
 	}
 	for e, a in pairs(edges) do
 		if not a.skip and not slice then
-			local tex = Tiled(host, prefix .. "_" .. e, edgeLayer, edgeSub, scale)
+			local tex = Tiled(edgeHost, prefix .. "_" .. e, edgeLayer, edgeSub, scale)
 			tex:SetPoint(a[1], skin, a[1], a[2], a[3])
 			tex:SetPoint(a[4], skin, a[4], a[5], a[6])
 			if e == "t" or e == "b" then
@@ -3014,7 +3063,7 @@ local function NineSlice_Art(skin, opts)
 			if not gem then
 				-- (one texture: in the picture)
 				if not slice then
-					local tex = self:Texture(host, prefix .. "_" .. c, edgeLayer, edgeSub + 1, scale)
+					local tex = self:Texture(edgeHost, prefix .. "_" .. c, edgeLayer, math.min(edgeSub + 1, 7), scale)
 					tex:SetPoint(a[1], skin, a[1])
 					skin[c] = tex
 					table.insert(skin.art, tex)
@@ -3113,6 +3162,16 @@ function Kit:NineSlice(parent, opts)
 	-- under its icons. Show / Hide then toggle the regions.
 	local host = opts.owner or skin
 	local edgeLayer, edgeSub = opts.edgeLayer or "BORDER", opts.edgeSub or 0
+	-- `edgeLevel`: the rails (edges, corners, the one-texture slice) on a frame of their own at that level, the body
+	-- and whatever a window hangs on the skin staying at the skin's (a window's thin rail over its panes, as the
+	-- game's border: Kit:Replace's rule.atBorder)
+	if opts.edgeLevel and not opts.owner then
+		local rails = CreateFrame("Frame", nil, skin)
+		rails:SetFrameLevel(opts.edgeLevel)
+		rails:EnableMouse(false)
+		rails:SetAllPoints(skin)
+		skin.railHost = rails
+	end
 	if opts.owner then
 		local show, hide = skin.Show, skin.Hide
 		skin.Show = function(self)
@@ -3271,6 +3330,21 @@ function Kit:CutNine(f, parts, piece, k, corner, show)
 	if b.kitShadow then self:ShadowCut(b, c, w - c, h - c, h) end
 	if l.kitShadow then self:ShadowCut(l, 0, c, c, h - c) end
 	if r.kitShadow then self:ShadowCut(r, w - c, w, c, h - c) end
+	-- (0.20.1) `parts.m`: the middle too (a border style's background, KitBorders' Border:LayBackground)
+	local m = parts.m
+	if m then
+		if Kit.pieceNameOf[m] ~= piece then
+			self:Apply(m, piece)
+		end
+		m.kitScale = k
+		m:ClearAllPoints()
+		m:SetPoint("TOPLEFT", f, "TOPLEFT", cs, -cs)
+		m:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -cs, cs)
+		m:SetTexCoord(ub, uc, vb, vc)
+		if show then
+			m:Show()
+		end
+	end
 	return true
 end
 
@@ -5326,8 +5400,8 @@ Kit.Replacements = {
 	-- pages repeat tiles/concrete (the page stone's own middle), the paper
 	-- pages tiles/vellum (the parchment page's middle), from the rect's
 	-- middle or top (`crop`), their painted edges as before.
-	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, edge = "brush" },   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
-	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, edge = "brush", edgeMirror = true },   -- the left page's strokes flipped, so the two pages are not twins
+	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, parchment = "br" },   -- (0.20.1: the parchment nine, its curl at the bottom right)   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
+	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, parchment = "tl" },   -- (0.20.1: the parchment nine, its curl at the top left: a spread's two outer corners)   -- the left page's strokes flipped, so the two pages are not twins
 	["spellbook-Tab-Frame-C60"]               = { kind = "slot", slot = "slot" },   -- a category tab (C1): the slot rim over the icon, gold (checked) while the tab is selected
 	["spellbook-list-backplate"]              = { kind = "fade" },   -- the list header's backplate (H3: the text on the page)
 	["spellbook-divider"]                     = { kind = "strip", base = "window/divider" },   -- the line under the header (H3)
@@ -5437,8 +5511,8 @@ Kit.Replacements = {
 	["Legacy-Rewards-Tracker-Icons-Frame"]    = { kind = "slot", slot = "slot" },   -- a reward card's icon border (80 on a 64 square icon; re-atlased -Disable while unearned): the square rim (R1), one rep per atlas
 	["Legacy-Rewards-Tracker-Icons-Frame-Disable"] = { kind = "slot", slot = "slot" },
 	-- the quest log (QuestMapFrame in the world map window; 2026-09-21)
-	["QuestLog-main-background"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
-	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "tiles/vellum", crop = "top", owner = true, edge = "brush", edgeBacking = "window/single_body" },   -- a quest's details page: the same parchment
+	["QuestLog-main-background"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, parchment = "tl br" },   -- (0.20.1: the parchment nine with both curls; no stone backing: its square showed round the curls' fold -- the window behind shows there, as on the pack's page)   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
+	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "tiles/vellum", crop = "top", owner = true, parchment = "tl br" },   -- (0.20.1: the parchment nine with both curls; no stone backing: its square showed round the curls' fold -- the window behind shows there, as on the pack's page)   -- a quest's details page: the same parchment
 	-- the quest giver's dialogs (QuestDialogPanel; user, 2026-09-24): an item / reward / spell button's name plate (file art, keyed by hand) -> the plain gemless plate under the name, as a list row's; the greeting's horizontal break -> the scroll line at its natural weight across most of the page
 	["UI-QuestItemNameFrame"]                 = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
 	["UI-HorizontalBreak"]                    = { kind = "strip", base = "window/divider", natural = true, widthFrac = 0.8 },
@@ -5472,7 +5546,7 @@ Kit.Replacements = {
 	["bluemenu-Ring"]                         = { kind = "slot", slot = "roundslot" },   -- a group button's ring on its masked icon (the dungeon finder's left column): the round rim
 	["bluemenu-shadowcovers"]                 = { kind = "fade" },   -- the shadow strips beside the left column: nothing stands in
 	["UI-LFG-BlueBG"]                         = { kind = "fade" },   -- the listing page's blue role band (file art, keyed by hand): faded — the window's one page picture runs under it; only the INSIDE of the inset rail is the darker stone (user, 2026-09-21)
-	["UI-LFG-BACKGROUND-QUESTPAPER"]          = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true },   -- the queue frame's paper (file art, keyed by hand): the parchment page, as the quest lists
+	["UI-LFG-BACKGROUND-QUESTPAPER"]          = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, parchment = true },   -- (0.20.1: the parchment nine)   -- the queue frame's paper (file art, keyed by hand): the parchment page, as the quest lists
 	["PetList-ButtonBackground"]              = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a mount / pet list row: the plain plate (hover from the button) ...
 	["PetList-ButtonSelect"]                  = { kind = "strip", base = "lists/plate", state = "selected", owner = true, layer = "BACKGROUND", sublevel = 2 },   -- ... and the selected plate, shown / hidden by the game
 	["WhiteIconFrame"]                        = { kind = "slot", slot = "slot" },   -- a list row's icon border (file art, keyed by hand): the square rim (R1) on the icon
@@ -6934,17 +7008,23 @@ Kit.buttonLooks = {
 		{ value = "n4g", label = "Thin gold, corner studs", style = "n4g", piece = "borders/n4g" },
 		{ value = "n5", label = "Hairline, corner nubs", style = "n5", piece = "borders/n5" },
 		{ value = "n1", label = "Heavy bevel, corner studs", style = "n1", piece = "borders/n1" },
+		-- (0.20.1, the RPG pack's frame with its trough: Tools/make_rpg_frames.py)
+		{ value = "rpg", label = "Stone rail", style = "rpg", piece = "borders/rpg" },
 	},
 	backgrounds = {
 		{ value = "stone", label = "Stone", piece = "tiles/stone" },
 		{ value = "concrete", label = "Cracked concrete", piece = "tiles/concrete" },
 		{ value = "ironplate", label = "Iron plate", piece = "tiles/ironplate" },
-		{ value = "parchment", label = "Parchment", piece = "tiles/parchment", paper = true },
+		{ value = "parchment", label = "Parchment", piece = "parchment/sheet_body", paper = true },   -- (0.20.1: the RPG pack's paper, Tools/make_parchment.py)
 		{ value = "leather", label = "Leather", piece = "tiles/quilt_brown" },
 		-- (0.19.8, the NewUI2 textures the user picked: Tools/make_newui2_borders.py)
 		{ value = "brushedmetal", label = "Brushed dark metal", piece = "tiles/brushedmetal" },
 		{ value = "agedparchment", label = "Aged parchment", piece = "tiles/agedparchment", paper = true },
 		{ value = "dark", label = "Dark" },
+		-- (0.20.1, the user: the RPG pack's dark panel gradient, "scaleable and reusable": Tools/make_rpg_gradient.py;
+		-- no tile, laid over the whole rect)
+		{ value = "gradient", label = "Dark gradient", piece = "backdrops/gradient_dark" },
+		{ value = "radial", label = "Dark round gradient", piece = "backdrops/gradient_radial" },   -- (0.20.1: the pack's slot boxes')
 		{ value = "none", label = "None" },
 	},
 	-- a progress bar's bracket (a bar replacement's `bar`): the ornate P1,
@@ -6966,6 +7046,7 @@ Kit.buttonLooks = {
 		{ value = "n4g", label = "Thin gold, corner studs", style = "n4g" },
 		{ value = "n5", label = "Hairline, corner nubs", style = "n5" },
 		{ value = "n1", label = "Heavy bevel, corner studs", style = "n1" },
+		{ value = "rpg", label = "Stone rail", style = "rpg" },   -- (0.20.1: its trough the bar's ground)
 	},
 	rimRule = { thin = "ActionButtonRim", hairline = "ActionButtonRimHairline", rounded = "ActionButtonRimRounded",
 		gold = "ActionButtonRimGold", sunk = "ActionButtonRimSunk" },
@@ -7489,6 +7570,12 @@ local tunedRules = { serial = -1 }
 function Kit:RuleFor(key)
 	if not key then
 		return nil
+	end
+	if key == "NineSlicePanelTemplate" or key == "TitleBar" then
+		self:SyncWindowLookOnce()
+	elseif (key == "UI-HUD-UnitFrame-SmallCircle" or key == "ui-hud-nameplates-levelindicator") and self.OrbLook then
+		-- (0.20.1) the level orb in the look chosen (Level Orb, KitBorders.lua)
+		self.Replacements[key].piece = self:OrbLook().piece
 	end
 	local base = BaseRule(key)
 	local KT = MelloUI.KitTuning
@@ -8307,9 +8394,39 @@ local function WindowOf(frame)
 	return frame
 end
 
+-- A game window's portrait corner stays the game's (the user, 2026-10-10: "the sizes of the icons and their
+-- borders in the top left returns to default values, and to not make any custom changes to them anymore"): no
+-- ring of ours over it, its portrait neither fitted nor given a disc (the panels' FitPortrait / RingDisc need
+-- the ring: without it they leave the portrait alone). MelloUI's own windows keep their corner ring (`own`:
+-- KitWindow's DressRing), there being no game ring to keep. (No top-level local for the name: the file is at
+-- Lua 5.1's 200.)
 function Kit:Replace(region, opts)
 	opts = opts or {}
 	local key = opts.as or self:ArtKey(region)
+	if key == "UI-Frame-PortraitMetal-CornerTopLeft" and not opts.own then
+		-- (no key: a refusal, not a piece missing -- the panels' Replace helpers tell a missing piece by the key, and
+		-- printed "no kit piece mapped" for every game window's corner; the user, 2026-10-10)
+		return nil
+	end
+	-- (and the game's border round such a window, skipped at that corner: its
+	-- other pieces faded one by one, not the whole border -- the corner ring is
+	-- one of its pieces and would fade with it; its rail stubs cut, Kit:CutGameCorner)
+	local keptCorner
+	if key == "NineSlicePanelTemplate" and type(opts.skip) == "string" and opts.skip:find("tl", 1, true)
+		and not opts.noFade then
+		local corner = rawget(region, "TopLeftCorner")
+		keptCorner = corner
+		if corner then
+			local fade = {}
+			for _, t in ipairs(opts.alsoFade or {}) do
+				fade[#fade + 1] = t
+			end
+			for _, t in ipairs(self:OtherTextures(region, corner)) do
+				fade[#fade + 1] = t
+			end
+			opts.noFade, opts.alsoFade = true, fade
+		end
+	end
 	local rule = self:RuleFor(key)
 	if not rule then
 		return nil, key
@@ -8341,6 +8458,16 @@ function Kit:Replace(region, opts)
 		rect = proxy
 	end
 	local level = (tune and tune.level) or opts.level or rule.level or -1
+	-- (rule.atBorder: the rails alone at the game's border frame's level, one under it -- its corner ring stays over
+	-- them -- on a frame of their own, Kit:NineSlice's edgeLevel; the skin, which a window hangs its stone and its
+	-- sheets on, stays at the rule's level: raised whole, it covered the window -- in game, 2026-10-10)
+	local edgeLevel
+	if rule.atBorder and isFrame and not (tune and tune.level) and not opts.level then
+		local l = region:GetFrameLevel() - 1
+		if l > parent:GetFrameLevel() + level then
+			edgeLevel = l
+		end
+	end
 	-- fitHeight / fitWidth: the element's size as the template states it, used
 	-- where its rect reads SECRET (the target's spell bar) or is not laid out yet
 	local rep = Mixin({ kind = rule.kind, key = key, rule = rule, region = region, rect = rect, alsoFade = opts.alsoFade or {}, fitHeight = opts.fitHeight, fitWidth = opts.fitWidth, noFade = opts.noFade }, ReplacementMixin)
@@ -8348,6 +8475,9 @@ function Kit:Replace(region, opts)
 	-- (the frame it is dressed on: a bag, a page of a window, a window -- each
 	-- rail's shade its own, Modules/KitShade.lua)
 	rep.kitParent = parent
+	if keptCorner then
+		self:CutGameCorner(rep, keptCorner)
+	end
 
 	if rule.kind == "frame" then
 		local f = MakeHolder(parent, rect, level, opts.strata)
@@ -8388,7 +8518,10 @@ function Kit:Replace(region, opts)
 		rep.skin = self:NineSlice(f, { scale = fscale, gems = false, body = body, bodyScale = rule.bodyScale and self.scale * rule.bodyScale,
 			open = opts.open or rule.open, prefix = rule.prefix or self.framePrefix, corners = rule.corners, skip = opts.skip,
 			owner = owner, bodyLayer = rule.bodyLayer, bodySub = rule.bodySub, edgeLayer = rule.edgeLayer, edgeSub = rule.edgeSub,
-			defer = defer })
+			defer = defer, edgeLevel = edgeLevel })
+		if key == "NineSlicePanelTemplate" and not rep.skin.pendingArt then
+			self:TitleRail(rep, region)
+		end
 		if rep.skin.pendingArt then
 			rep.layWith = opts.layWith
 			f.kitWaiting = rep
@@ -8613,6 +8746,34 @@ function Kit:Replace(region, opts)
 			end
 			-- the window may be laid out only when shown: fit again then
 			Perf.SetScript(strip, "OnShow", function() rep:Refit() end)
+		elseif rule.centreTitle and parent.TitleText then
+			-- (0.20.1, the window titles on the game's title bar: the ribbon, the band) the title text centred on the
+			-- strip's painted box, in the title face (WINDOW-RULES 2c); its own anchors back on disable
+			local text = parent.TitleText
+			local saved = {}
+			for i = 1, text:GetNumPoints() do
+				saved[i] = { text:GetPoint(i) }
+			end
+			local function Centre(self)
+				text:ClearAllPoints()
+				text:SetPoint("CENTER", self.strip, "CENTER", 0, Kit:StripTextOffset(self.strip))
+				Kit:TitleFont(text, true)
+			end
+			rep.onEnable = Centre
+			local refit = rep.Refit
+			rep.Refit = function(self)
+				refit(self)
+				if self.object:IsShown() then
+					Centre(self)
+				end
+			end
+			rep.onDisable = function()
+				Kit:TitleFont(text, false)
+				text:ClearAllPoints()
+				for _, pt in ipairs(saved) do
+					text:SetPoint(unpack(pt))
+				end
+			end
 		end
 		local edit = opts.edit
 		if edit then
@@ -8900,6 +9061,9 @@ function Kit:Replace(region, opts)
 		-- Progress Bar Border; the nameplates', the unit frames' and the cast
 		-- bar's their own, 0.19.8: Nameplate / Unit Frame / Cast Bar Border)
 		local group = rule.borderGroup or (rule.bar ~= "castbar" and "bar") or nil
+		if opts.ownBorder then
+			group = nil   -- (0.20.1: a bar whose own panel lays its border, opts.bar and rep:SetBar: the swing timers')
+		end
 		local base = "bars/" .. (opts.bar or (group and self:BorderValue(group)) or rule.bar or "frame")
 		if not PIECES[StripName(base, "mid")] then
 			base = "bars/" .. (rule.bar or "frame")
@@ -8987,9 +9151,36 @@ function Kit:Replace(region, opts)
 		-- the bracket's fill area as insets from the rect: sideways from the
 		-- caps' hollow arms (past the gems) a little under the gems' bezels,
 		-- top / bottom most of the way into the rails, so the rails cover the edges
+		-- (0.20.1) the panel's art scale, and the share of the rect's height a library style's border lies round (the
+		-- bracket's own fit: KitBorders' BarLibraryFit)
+		rep.ArtScale = function()
+			return opts.artScale or rule.artScale or 1
+		end
+		rep.LibraryShare = function(self)
+			return (rule.heightScale or 1) * self:ArtScale()
+		end
+		-- the bar's frame, top to bottom, in UI px (a library border's band and rails, else the bracket's height):
+		-- what a row's highlight fits (CharacterPanel's reputation and skill rows); nil while it reads nothing
+		rep.OuterHeight = function(self)
+			if self.libraryStyle and self.libBand and self.libraryBorder then
+				local ok, h = pcall(self.libBand.GetHeight, self.libBand)
+				if not ok or Secret(h) or not (h and h > 0) then
+					return nil
+				end
+				local _, y = self.libraryBorder:Inset()
+				return h + 2 * y
+			end
+			return self.strip and self.strip.height or nil
+		end
 		rep.GetOpening = function(self)
 			if self.libraryStyle then
-				return 0, 0, 0, 0   -- (0.19.8: round the bar: the fill its whole rect)
+				-- (0.19.8: round the bar: the fill its whole width; 0.20.1: its height the band the border lies round)
+				local rectH = self:RectSize("GetHeight")
+				if not (rectH and rectH > 0) then
+					rectH = self.fitHeight or 0
+				end
+				local m = rectH * (1 - self:LibraryShare()) / 2
+				return 0, 0, m, m
 			end
 			local sc = self.strip.scale
 			local mid = PIECES[StripName(self.base, "mid")]
@@ -9074,6 +9265,9 @@ function Kit:Replace(region, opts)
 			self.trough:SetPoint("TOPLEFT", self.rect, "TOPLEFT", l, -t)
 			self.trough:SetPoint("BOTTOMRIGHT", self.rect, "BOTTOMRIGHT", -r, b)
 			Kit:Retile(self.trough)
+			if self.libraryStyle and Kit.BarLibraryFit then
+				Kit:BarLibraryFit(self, h)   -- (0.20.1: the library border fitted to the bar as the bracket is)
+			end
 		end
 		rep.SetBar = function(self, bar)
 			-- (0.19.8) a style of the border library's: drawn by it round the
@@ -9172,6 +9366,17 @@ function Kit:Replace(region, opts)
 		-- (Kit:PaintedEdge); `edgeMirror` flips them for a left-hand page
 		if rule.edge then
 			rep.edge = self:PaintedEdge(tex, inner, rule.edgeMirror)
+		end
+		-- `parchment` (0.20.1): the page is the parchment nine on the picture's rect, in its layer (Kit:ParchmentNine;
+		-- a string names its curls), the picture left hidden under it
+		if rule.parchment then
+			local l, sl = tex:GetDrawLayer()
+			rep.paper = self:ParchmentNine(tex:GetParent(), { place = function(p) p:SetAllPoints(inner) end, layer = l,
+				sublevel = sl, curls = type(rule.parchment) == "string" and rule.parchment or nil, scale = self.parchment.page })
+			tex:Hide()
+			if rep.object == tex then
+				rep.object = rep.paper
+			end
 		end
 		-- `edgeBacking`: a tiled piece right under the picture, on the same
 		-- rect, so the gaps between the strokes show stone and not whatever
@@ -9749,7 +9954,7 @@ end
 -- { l, r, t, b }. A page picture inset by this stops at the rail's inner
 -- bevel, so the rail is in front of it (user, 2026-09-21).
 function Kit:OuterRailInset()
-	local rule = self.Replacements["NineSlicePanelTemplate"]
+	local rule = self:WindowFrameRule()
 	local prefix = rule and rule.prefix or "window/frame"
 	local sc = self.scale * (rule and rule.scale or self.frameScale)
 	local outset = rule and rule.outset or 0
@@ -9843,7 +10048,7 @@ local CAP_GEM = { x = 48, y = 50 } -- the gem's centre in a tabs/top cap's canva
 -- the title plate's gems ride (Kit:TitleOnRail) and the configurator's crest
 -- is centred (Kit:OwnWindow)
 function Kit:RailMiddle()
-	local rule = self.Replacements["NineSlicePanelTemplate"]
+	local rule = self:WindowFrameRule()
 	local prefix = rule and rule.prefix or "window/frame"
 	local sc = self.scale * (rule and rule.scale or self.frameScale)
 	local rail = PIECES[prefix .. "_t"]
@@ -9867,7 +10072,7 @@ function Kit:StripTextOffset(strip)
 end
 
 function Kit:TitleOnRail(strip)
-	local rule = self.Replacements["NineSlicePanelTemplate"]
+	local rule = self:WindowFrameRule()
 	local sc = self.scale * (rule and rule.scale or self.frameScale)
 	local middle = self:RailMiddle()
 	local ss = strip.scale or self.scale
@@ -10009,7 +10214,7 @@ end
 -- UI px (the NineSlicePanelTemplate rule's `outset` at its scale): two
 -- windows side by side need twice this between them, or their rails overlap.
 function Kit:OuterRailOutset()
-	local rule = self.Replacements["NineSlicePanelTemplate"]
+	local rule = self:WindowFrameRule()
 	if not (rule and rule.outset) then
 		return 0
 	end
@@ -10391,7 +10596,201 @@ Kit.auraLooks = { { value = "black", label = "Plain black edge" } }
 for _, v in ipairs(Kit.buttonLooks.borders) do
 	Kit.auraLooks[#Kit.auraLooks + 1] = v
 end
+-- The windows' frame and title (0.20.1; the user, 2026-10-10: "use thinner borders (yes the thick outer one aswell)"
+-- and the header at the game's own size; our own art in the style of the RPG packs they showed, examples 3 and 4 to
+-- test): variants of the NineSlicePanelTemplate and TitleBar rules, written into Kit.Replacements before a window is
+-- dressed (Kit:SyncWindowLook: at the first window rule asked, once the settings are read, and on a choice). A
+-- window already dressed keeps its look until a /reload.
+--   classic  the double rail grown outward with gem corners; the red plate riding it (0.19.x)
+--   stone    the thin stone rail on the window's edge (window/stone_*, Tools/make_window_stone.py)
+--   ribbon   the red ribbon on the game's title bar (window/ribbon_*), the title on it
+--   band     a plain band with the stone line under it (window/band_*), the title on it
+-- `atBorder`: the rail drawn at the game's border's level, just under it (NineSlicePanelTemplate: 500, its corner ring
+-- on it), over the window's panes -- the thin rail lies on the window's edge, where a pane's own border reaches (the
+-- user, 2026-10-10: the rail missing beside and under the paperdoll); the double rail lies outside the window and
+-- draws the window's stone, so it stays under. `railUnder`: the rail's top edge under the title bar, across the
+-- window, as the game's top edge is as tall as its title bar (Kit:TitleRail).
+Kit.windowFrames = {
+	classic = { prefix = "window/frame", scale = 1.0, corners = "gem", outset = 42 },
+	stone = { prefix = "window/stone", scale = 0.5, outset = 3, atBorder = true },
+}
+Kit.windowTitles = {
+	classic = { base = "tabs/top", state = "open", heightScale = 1.5, onRail = true },
+	ribbon = { base = "window/ribbon", heightScale = 1.0, centreTitle = true, railUnder = true },
+	band = { base = "window/band", heightScale = 1.0, centreTitle = true },
+}
+Kit.windowFrameLooks = {
+	{ value = "stone", label = "Thin stone rail" },
+	{ value = "classic", label = "Double rail with gem corners" },
+}
+Kit.windowTitleLooks = {
+	{ value = "ribbon", label = "Red ribbon" },
+	{ value = "band", label = "Plain band with a rail line" },
+	{ value = "classic", label = "Red plate on the rail (with the double rail)" },
+}
+
+-- the rule fields a look sets, written over the rule in place (every reader keeps the same table); `synced` once
+-- the settings were read. (One table, no top-level locals: the file is at Lua 5.1's 200.)
+Kit.windowLookState = { synced = false,
+	frameFields = { "prefix", "scale", "corners", "outset", "atBorder" },
+	titleFields = { "base", "state", "heightScale", "onRail", "centreTitle", "railUnder" } }
+
+function Kit:SyncWindowLook()
+	local st = self.windowLookState
+	local frame = self.windowFrames[self:BorderValue("window") or "stone"] or self.windowFrames.stone
+	local title = self.windowTitles[self:BorderValue("windowtitle") or "ribbon"] or self.windowTitles.ribbon
+	local fr, tr = self.Replacements["NineSlicePanelTemplate"], self.Replacements["TitleBar"]
+	for _, f in ipairs(st.frameFields) do
+		fr[f] = frame[f]
+	end
+	for _, f in ipairs(st.titleFields) do
+		tr[f] = title[f]
+	end
+end
+
+-- (once the settings can be read: before that a read is the defaults, and the first window dressed after it would
+-- wear them)
+function Kit:SyncWindowLookOnce()
+	local st = self.windowLookState
+	if st.synced then
+		return
+	end
+	local um = MelloUI:GetModule("UIModifications")
+	if um and um.db then
+		st.synced = true
+		self:SyncWindowLook()
+	end
+end
+
+function Kit:WindowFrameRule()
+	self:SyncWindowLookOnce()
+	return self.Replacements["NineSlicePanelTemplate"]
+end
+
+-- The game's portrait corner kept on a dressed window (0.20.1; the user, 2026-10-10: "hide the stubs"): its ring and
+-- the portrait stay the game's, at the game's size and place, and the stubs of the game's metal rails beside the ring
+-- are cut away, the kit's rail running into the ring. A mask made on the corner's own frame (a mask works only on its
+-- frame's textures; no key is written on the game's), laid over the corner's whole square: Masks/portrait_corner
+-- (Tools/make_portrait_corner_mask.py, measured on the corner's art) keeps the ring with its gold rim and soft halo
+-- whole and cuts each stub at the rim (a round cut either left slivers of the stubs or clipped the rim: in game,
+-- 2026-10-10); on with the rep, off with it. (A stand-in window's own copy of the corner: KitWindow.)
+-- The kit's rail is cut there too (the user, 2026-10-10: its corner peeked out past the ring's top left; the game's
+-- window has none, the ring is its corner): the ring's corner cut (Masks/ring_corner: the quarter above and left of
+-- the ring's centre and a hole under its rim) on the rail's own textures, centred on the game's ring -- x, y from the
+-- corner's top left (its art: the centre at 76, 76 of 190 px for 95 units), `hole` inside the rim's outer edge (30)
+-- -- as the rep's `outerCut`, which the shade puts on the rail's partners (KitShade's Cut).
+Kit.cornerCut = { mask = EDGE_ROOT .. "portrait_corner", x = 38, y = -38, hole = 27 }
+
+function Kit:CornerCutMask(owner, corner)
+	local mask = owner:CreateMaskTexture()
+	mask:SetTexture(self.cornerCut.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	mask:SetAllPoints(corner)
+	return mask
+end
+
+-- (made once, at the rail's first enable: a window's rail art is laid as it is replaced)
+function Kit:CutRailAtRing(rep, corner)
+	local skin = rawget(rep, "skin")
+	if not (skin and skin.CreateMaskTexture) then
+		rep.outerCut = false
+		return
+	end
+	local list = {}
+	for _, t in ipairs(skin.all or {}) do
+		list[#list + 1] = t
+	end
+	for _, t in ipairs(skin.art or {}) do
+		list[#list + 1] = t
+	end
+	local c = self.cornerCut
+	local size = 2 * c.hole / RING_HOLE_FILL
+	local function Place(cut)
+		cut:SetPoint("CENTER", corner, "TOPLEFT", c.x, c.y)
+		cut:SetSize(size, size)
+		return cut
+	end
+	-- (the skin's: its stone and the shade's partners on it, KitShade; the rails' frame's: the rails)
+	rep.outerCut = Place(RingCut(skin, list))
+	local rails = rawget(skin, "railHost")
+	if rails then
+		rep.railCut = Place(RingCut(rails, list))
+	end
+end
+
+-- (0.20.1; the user, 2026-10-10: the border missing under the title) The game's top edge is as tall as its title bar
+-- (the corner's art: its lower edge 26 units down; the title bar 1..21): with a title that sits inside the window's
+-- top (the ribbon: Replacements.TitleBar.railUnder), the rail's own top edge runs under the title bar, across the
+-- window from the left rail (under the game's ring, cut with the rail) to the right one. A texture of the rail's skin,
+-- shown and hidden with it, placed by the title bar's own anchors (PortraitFrameTemplate: 58 and -24 from the sides).
+function Kit:TitleRail(rep, region)
+	local skin = rawget(rep, "skin")
+	local window = region.GetParent and region:GetParent()
+	local tc = window and rawget(window, "TitleContainer")
+	if not (self.Replacements["TitleBar"].railUnder and skin and tc and tc.GetNumPoints and rep.rule.prefix) then
+		return
+	end
+	local left, right = 58, -24
+	for i = 1, tc:GetNumPoints() do
+		local ok, point, _, _, x = pcall(tc.GetPoint, tc, i)
+		if ok and not Secret(x) and type(x) == "number" then
+			if point == "TOPLEFT" then
+				left = x
+			elseif point == "TOPRIGHT" then
+				right = x
+			end
+		end
+	end
+	local T = skin.thickness or 0
+	local o = (rep.rule.outset or 0) * (skin.kitScale or 0)
+	local line = Tiled(rawget(skin, "railHost") or skin, rep.rule.prefix .. "_t", "BORDER", 0, skin.kitScale)
+	line:SetPoint("TOPLEFT", tc, "BOTTOMLEFT", -left - o, 0)
+	line:SetPoint("TOPRIGHT", tc, "BOTTOMRIGHT", -right + o - T, 0)
+	line:SetHeight(T)
+	skin.titleRail = line
+	table.insert(skin.tiled, line)
+	table.insert(skin.art, line)
+	table.insert(skin.all, line)
+	self:Retile(line)
+end
+
+function Kit:CutGameCorner(rep, corner)
+	local owner = corner.GetParent and corner:GetParent()
+	if not (owner and owner.CreateMaskTexture and corner.AddMaskTexture) then
+		return
+	end
+	local mask = self:CornerCutMask(owner, corner)
+	local on = false
+	local onEnable, onDisable = rep.onEnable, rep.onDisable
+	rep.onEnable = function(...)
+		if onEnable then
+			onEnable(...)
+		end
+		if not on then
+			on = pcall(corner.AddMaskTexture, corner, mask)
+		end
+		if rawget(rep, "outerCut") == nil then
+			Kit:CutRailAtRing(rep, corner)
+		end
+	end
+	rep.onDisable = function(...)
+		if onDisable then
+			onDisable(...)
+		end
+		if on then
+			on = false
+			pcall(corner.RemoveMaskTexture, corner, mask)
+		end
+	end
+	rep.cornerCut = mask
+end
+
 Kit.borderKinds = {
+	{ kind = "window", key = "windowBorder", default = "stone", name = "Window Border", values = Kit.windowFrameLooks,
+	  new = "0.20.1",
+	  desc = "The frame round every window: a thin stone rail on the window's edge, or the double rail with gem corners. Windows already opened change after a /reload." },
+	{ kind = "windowtitle", key = "windowTitle", default = "ribbon", name = "Window Title", values = Kit.windowTitleLooks,
+	  new = "0.20.1",
+	  desc = "The title bar of every window, at the game's own size: a red ribbon, or a plain band with a rail line under it. The red plate riding the rail goes with the double rail. Windows already opened change after a /reload." },
 	{ kind = "button", key = "buttonBorder", default = "thin", name = "Button Border", values = Kit.buttonLooks.borders, preview = "rim",
 	  desc = "The rim on every square button: the action bars, the micro menu, the bag bar, your bags, the equipment slots and the spell book's spells." },
 	{ kind = "sidetab", key = "sideTabBorder", default = "slot", name = "Side Tab Border", values = Kit.sideTabLooks, preview = "rim",
@@ -10526,6 +10925,17 @@ function Kit:ApplyBorder(kind)
 		self:ApplyPortraitRings()   -- (the border library's rings: Modules/KitBorders.lua)
 	elseif kind == "cooldown" then
 		self:ApplyCooldownBorders()   -- (the Cooldown Manager's icons: Modules/KitBorders.lua)
+	elseif kind == "orb" then
+		-- (the frames not dressed yet take it now; the dressed ones after a /reload)
+		if MelloUI.Announce then
+			MelloUI:Announce("Level orb changed: type /reload to see it on frames already shown.", "info")
+		end
+	elseif kind == "window" or kind == "windowtitle" then
+		-- (the windows not dressed yet take it now; the dressed ones after a /reload)
+		self:SyncWindowLook()
+		if MelloUI.Announce then
+			MelloUI:Announce("Window look changed: type /reload to see it on windows already opened.", "info")
+		end
 	elseif borderBars[kind] then
 		for rep in pairs(borderBars[kind]) do
 			if rep.SetBar then

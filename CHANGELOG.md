@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.20.1
+
+- Windows: a thin stone rail round every window (Look > Borders > Window Border) and a title bar at the game's own size, a red ribbon or a plain band with a rail line (Window Title). The double rail with gem corners stays a choice.
+- Windows keep the game's own portrait and its ring in the top left corner, at the game's size, the backpack too.
+- A new parchment everywhere it shows (tooltips, chat, the trackers, the meter, popups, the character window, quest and spell book pages): warm paper with burnt edges, at any size. Big pages get curled corners.
+- Two new backgrounds in every Background choice: Dark gradient and Dark round gradient.
+- Stone rail: a new border with its own dark trough for buttons, bars, unit frames, nameplates, raid frames, cooldowns and the minimap (Look > Borders).
+- Stone ring: a new Round Border and Portrait Ring with its own dark ground. Level Orb (Look > Borders): the kit's orb or a stone badge round the level on the unit frames and nameplates.
+- Swing Timer Border (Look > Borders, also on the Swing Timers page): the swing timers' frame, any of the bar borders. The Cast Bar look is now called Framed.
+- Group Frames > Bars: Background puts one of MelloUI's backgrounds (stone, parchment, the dark gradients...) behind the health bar, or none.
+- Bar borders fit thin bars: slimmer round the reputation and skill bars and the nameplates, and the selected row's highlight is as tall as its bar's frame.
+- Nameplates: the cast bar is as wide as the health bar above it, and with a border from the library the level circle sits just past the bar's end.
+- Buffs & Debuffs: the debuffs on nameplates count down in plain seconds, without the "s".
+- Buffs & Debuffs: the times on your rows, the target's and the player frame's are shorter (59m instead of 59 m), so they fit their icons.
+- Fixed: weapon buffs on your buff rows: a shaman's imbues now show, with stones, oils and poisons, first on the rows as on the game's buff bar.
+- Attach To The Player Frame (Unit Frames > Player > Buffs & Debuffs): your debuffs, buffs and weapon buffs under your player frame, as the target's are under the target frame, with the same icons and timers. They move with the frame; pick their Direction (left to right or right to left) and Icon Size On The Frame.
+- Fixed: nameplates and swing timers that appeared during a fight kept the old frame instead of the border you picked.
+- Fixed: /mello auras gave an error instead of its report.
+
 ## 0.20.0
 
 - Group Frames: MelloUI's own party and raid frames, with a page of their own under Unit Frames (and an addon of their own, MelloUI Group Frames). They stand in place of the game's party and raid frames. Show yourself in your party, and on your own while solo. Set their size and spacing, which way the party grows and its order (by role, group order or name), and how the raid is grouped (by group, role or class) and laid out. Move them in Edit Layout. Members out of range fade.

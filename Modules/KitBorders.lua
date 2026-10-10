@@ -78,8 +78,13 @@ Kit.BorderStyles = {
 		studOff = { 0.074, 0.111 }, maxWeight = "medium" },
 	n1 = { label = "Heavy bevel, corner studs", master = "borders/n1", corner = 42, rail = 40, stud = "borders/n1_gem",
 		studOff = { 0.117, 0.064 }, minWeight = "medium" },
+	-- (0.20.1, the user: the RPG pack's frames "reusable as backdrop border, action bar border, progress bar border etc
+	-- with its background" -- Tools/make_rpg_frames.py): the health bar's stone rail, two lit groove lines, rounded
+	-- outer corners; `bg` its trough, a master cut at `bgCorner` and drawn whole under the element's content
+	-- (Border:LayBackground)
+	rpg = { label = "Stone rail", master = "borders/rpg", corner = 40, rail = 30, bg = "borders/rpg_bg", bgCorner = 22 },
 }
-Kit.BorderStyleOrder = { "thin", "hairline", "rounded", "gold", "sunk", "single", "backdrop", "n4", "n4g", "n5", "n1" }
+Kit.BorderStyleOrder = { "thin", "hairline", "rounded", "gold", "sunk", "single", "backdrop", "n4", "n4g", "n5", "n1", "rpg" }
 -- (UI units: band = the reference rail's on-screen depth, gem = a gem's side)
 Kit.BorderWeights = {
 	light = { band = 4.9, gem = 8.2 },
@@ -119,9 +124,33 @@ local GEM_SIGN = { tl = { 1, -1 }, tr = { -1, -1 }, bl = { 1, 1 }, br = { -1, 1 
 --                  (Kit:ShadeElement), cut again by Kit:CutNine at every lay;
 --                  for a border that stands in for no shaded piece of its own
 --                  (a button's rim, F1's rails and a bar's bracket keep theirs)
+--     opts.bgLayer / opts.bgSub (0.20.1) a style's background's draw layer (BACKGROUND -7: under the content -- an
+--                  action button's icon is BACKGROUND 0, a bar's fill ARTWORK)
+--     opts.bgHost / opts.bgAt   the frame its background is regions of and the region it lies on (a bar: its own
+--                  trough's, which sits under the fill wherever that fill is drawn -- on a lower strata too)
+--     opts.noBg    no background (the minimap: its map is drawn by the frame itself, under every region of it)
+--     opts.open    "l" / "r": that side left open, the top and bottom rails running to the rect's edge (a unit
+--                  frame's bar butting into the portrait ring, the kit bracket's dropped cap)
 function Kit:NewBorder(opts)
 	return setmetatable({ rect = opts.rect, owner = opts.owner, layer = opts.layer or "OVERLAY", sub = opts.sub or 3,
-		place = opts.place or "on", level = opts.level or 1, shown = false, shade = opts.shade }, Border)
+		place = opts.place or "on", level = opts.level or 1, shown = false, shade = opts.shade,
+		bgLayer = opts.bgLayer or "BACKGROUND", bgSub = opts.bgSub or -7, bgHost = opts.bgHost,
+		bgAtRegion = opts.bgAt, noBg = opts.noBg, open = opts.open }, Border)
+end
+
+-- (0.20.1, the user: the Stone rail "a bit too big" on the Reputation and Skills bars and the nameplates) a border's
+-- own fit: its band no deeper than `maxBand` UI units (a bar's: a share of its height), its art at `kScale` (a
+-- panel's smaller bars: the bracket's artScale) -- laid again when either changes
+function Border:SetFit(maxBand, kScale)
+	if self.maxBand == maxBand and self.kScale == kScale then
+		return
+	end
+	self.maxBand, self.kScale = maxBand, kScale
+	if self.styleId then
+		local s, w = self.styleId, self.weightId
+		self.styleId = nil
+		self:Lay(s, w)
+	end
 end
 
 -- the shade element its partners join (made with the first one)
@@ -297,13 +326,40 @@ local function PlaceRound(b, st, k)
 	local p = Kit:Piece(st.master or "")
 	local open = p and p.open
 	h:ClearAllPoints()
+	-- (0.20.1: an open side grows no rail past the rect)
+	local gl, gr = b.open == "l" and 0 or 1, b.open == "r" and 0 or 1
 	if open then
-		h:SetPoint("TOPLEFT", b.rect, "TOPLEFT", -open[1] * k, open[2] * k)
-		h:SetPoint("BOTTOMRIGHT", b.rect, "BOTTOMRIGHT", (p.w - open[3]) * k, -(p.h - open[4]) * k)
+		h:SetPoint("TOPLEFT", b.rect, "TOPLEFT", -open[1] * k * gl, open[2] * k)
+		h:SetPoint("BOTTOMRIGHT", b.rect, "BOTTOMRIGHT", (p.w - open[3]) * k * gr, -(p.h - open[4]) * k)
 	else
 		local o = (st.rail or 0) * k
-		h:SetPoint("TOPLEFT", b.rect, "TOPLEFT", -o, o)
-		h:SetPoint("BOTTOMRIGHT", b.rect, "BOTTOMRIGHT", o, -o)
+		h:SetPoint("TOPLEFT", b.rect, "TOPLEFT", -o * gl, o)
+		h:SetPoint("BOTTOMRIGHT", b.rect, "BOTTOMRIGHT", o * gr, -o)
+	end
+end
+
+-- (0.20.1) an open side: its corners and side rail put away, the top and bottom rails to that edge (after CutNine and
+-- after every show of the parts)
+local OPEN_PARTS = { l = { "tl", "bl", "l" }, r = { "tr", "br", "r" } }
+local function OpenSide(b, relay)
+	local s, parts = b.open, b.parts
+	if not (s and parts and OPEN_PARTS[s]) then
+		return
+	end
+	for _, key in ipairs(OPEN_PARTS[s]) do
+		parts[key]:Hide()
+	end
+	if relay then
+		local f, k = b:At(), b.k or 0
+		local st = Kit.BorderStyles[b.styleId or ""]
+		local cs = (st and st.corner or 0) * k
+		if s == "l" then
+			parts.t:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+			parts.b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
+		else
+			parts.t:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", 0, -cs)
+			parts.b:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, cs)
+		end
 	end
 end
 
@@ -340,7 +396,11 @@ function Border:Lay(styleId, weightId, gem)
 		return true
 	end
 	self.styleId, self.weightId, self.gem = styleId, weightId, gem
-	local k = wt.band / st.rail
+	local band = wt.band
+	if self.maxBand and self.maxBand < band then
+		band = self.maxBand
+	end
+	local k = band / st.rail * (self.kScale or 1)
 	self.k = k
 	if self.place == "round" then
 		PlaceRound(self, st, k)
@@ -357,7 +417,9 @@ function Border:Lay(styleId, weightId, gem)
 			Kit:CutNine(self:At(), self.glow, st.master, k, st.corner, false)
 		end
 		ShadeParts(self, st)
+		OpenSide(self, true)
 		self:LayGems(st, wt, gem, k)
+		self:LayBackground(st, k)
 		if self.glowNine then
 			self.glowNine:Hide()
 		end
@@ -365,6 +427,7 @@ function Border:Lay(styleId, weightId, gem)
 		ShowParts(self.parts, false)
 		ShowParts(self.glow, false)
 		self:LayGems(nil)
+		self:LayBackground(nil)
 		-- a rail family: its nine-slice at k (made again only for another
 		-- scale; its glow with it)
 		if self.nine and self.nine.kitScale ~= k then
@@ -388,6 +451,39 @@ function Border:Lay(styleId, weightId, gem)
 	self:SetShown(true)
 	self:SetLit(self.hover, self.pressed, self.disabled)
 	return true
+end
+
+-- (0.20.1) A style's own background (`bg`, the stone rail's trough): its master cut at `bgCorner` and drawn whole --
+-- the middle too -- in the opening, a little under the rails, as regions of the frame the element's content is drawn
+-- on (on the rect: the owner, a button; round it: the rect's frame, a bar) at bgLayer / bgSub, under that content
+function Border:LayBackground(st, k)
+	local piece = not self.noBg and st and st.bg
+	if not piece then
+		if self.bgParts then
+			ShowParts(self.bgParts, false)
+			self.bgParts.m:Hide()
+		end
+		return
+	end
+	if not self.bgParts then
+		local rect = self.rect
+		local host = self.bgHost or (self.place == "on" and self.owner) or (IsFrame(rect) and rect) or rect:GetParent()
+		local parts = NewParts(host, self.bgLayer, self.bgSub)
+		parts.m = host:CreateTexture(nil, self.bgLayer, nil, self.bgSub)
+		self.bgParts = parts
+		-- the region given; round the rect its opening is the rect; on it, an empty region of the host's inset by
+		-- the rails
+		self.bgAt = self.bgAtRegion or (self.place == "round" and rect) or host:CreateTexture(nil, self.bgLayer, nil, self.bgSub)
+	end
+	if self.bgAt ~= self.rect and self.bgAt ~= self.bgAtRegion then
+		local x, y = self:Inset()
+		local tuck = 2 * k   -- (under the rails' inner bevel: no gap at the trough's edge)
+		local at = self:At()
+		self.bgAt:ClearAllPoints()
+		self.bgAt:SetPoint("TOPLEFT", at, "TOPLEFT", x - tuck, -(y - tuck))
+		self.bgAt:SetPoint("BOTTOMRIGHT", at, "BOTTOMRIGHT", -(x - tuck), y - tuck)
+	end
+	Kit:CutNine(self.bgAt, self.bgParts, piece, k, st.bgCorner or 16, false)
 end
 
 -- the Backdrop's gems: centred on the rails' crossing at each corner
@@ -525,8 +621,13 @@ function Border:SetShown(on)
 	if self.holder then
 		self.holder:SetShown(on)
 	end
+	if self.bgParts then
+		ShowParts(self.bgParts, on and st ~= nil and st.bg ~= nil)
+		self.bgParts.m:SetShown(on and st ~= nil and st.bg ~= nil)
+	end
 	if st and st.master then
 		ShowParts(self.parts, on)
+		OpenSide(self)
 		ShowParts(self.glow, on and self.lit == "hover")
 		if self.gems then
 			for _, c in ipairs(GEM_CORNERS) do
@@ -653,6 +754,8 @@ local function LibraryOnly(self, style)
 	return self.BorderStyles[style] ~= nil and self.buttonLooks.rimKind[style] == nil
 end
 
+local LAYER_RANK = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+
 function Kit:ButtonLibraryBorder(button, style)
 	local rep = button and repOf[button]
 	local rim = type(rep) == "table" and rep.object
@@ -679,6 +782,11 @@ function Kit:ButtonLibraryBorder(button, style)
 		local ok, l, s = pcall(rim.GetDrawLayer, rim)
 		if ok and not Secret(l) and type(l) == "string" then
 			layer, sub = l, (not Secret(s) and tonumber(s)) or 0
+		end
+		-- (0.20.1) the rails over the icon, whatever layer the slot rim stood in: an item button's icon (the bag
+		-- buttons') is BORDER, an action button's BACKGROUND -- under the rim of a bag slot they hid under it
+		if LAYER_RANK[layer] and LAYER_RANK[layer] < LAYER_RANK.OVERLAY then
+			layer, sub = "OVERLAY", 1
 		end
 		b = self:NewBorder({ rect = rim, owner = rim:GetParent(), place = "on", layer = layer, sub = sub })
 		buttonBorders[rim] = b
@@ -910,6 +1018,11 @@ Kit.personalLooks = PERSONAL_LOOKS
 Kit:AddBorderKind({ kind = "personal", key = "personalBorder", default = "none", name = "Personal Resource Border",
 	values = PERSONAL_LOOKS, preview = "rim",
 	desc = "One frame round the health and power bars of your personal resource display (the bars under your character): none, a thin rim or the Backdrop." }, "castbar")
+-- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
+-- swing timers' frame a choice of its own (their Framed look; Modules/SwingTimers.lua lays it, on this kind's change)
+Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar", name = "Swing Timer Border",
+	values = CastLooks(), preview = "bar", new = "0.20.1",
+	desc = "The frame round your swing timers (their Framed look): the Cast bar bracket (today's), a thin rim, the Single rail, the Stone rail or the Backdrop. A frame laid round a bar leaves it its whole width." }, "personal")
 
 -- a bar's bracket in a library style, or put back (rep: Kit.lua's bar
 -- replacement; true when the library took it)
@@ -929,11 +1042,22 @@ function Kit:BarLibraryBorder(rep, style)
 		end
 		return false
 	end
+	-- (0.20.1, the user: "sometimes the nameplates just randomly change their appearence back to other borders") a
+	-- protected bar's border waits for the fight's end -- each bar its own place in the queue (one shared key let
+	-- each plate dressed in a fight cancel the one before: only the last got its border) -- and a bar on a frame
+	-- that is not protected (a nameplate's) takes it at once
 	if InCombatLockdown() then
-		self:WhenOutOfCombat(function()
-			rep:SetBar(style)
-		end, "a bar's border")
-		return true
+		local parent = rep.barParent
+		local okP, protected = false, nil
+		if parent and parent.IsProtected then
+			okP, protected = pcall(parent.IsProtected, parent)
+		end
+		if not okP or Secret(protected) or protected then
+			self:WhenOutOfCombat(function()
+				rep:SetBar(style)
+			end, rep)
+			return true
+		end
 	end
 	if not rep.libraryBorder then
 		local layer, sub = "BORDER", 1
@@ -941,16 +1065,50 @@ function Kit:BarLibraryBorder(rep, style)
 		if ok and not Secret(l) and type(l) == "string" then
 			layer, sub = l, (not Secret(s) and tonumber(s)) or 0
 		end
-		rep.libraryBorder = self:NewBorder({ rect = rep.rect, owner = rep.barParent, place = "round", layer = layer, sub = sub })
+		-- (0.20.1) a bar keeps its own trough under its fill -- wherever that fill is drawn, on a lower strata too --
+		-- and its Bar Background settings (Unit Frames): a style's background is not laid on a bar; the bar's dropped
+		-- cap kept open (the ring side of a unit frame's bar)
+		-- (0.20.1) round the bar's own band, not the whole rect: the share of its height the bracket fits to
+		-- (rule.heightScale x the panel's artScale -- the Reputation and Skills tabs' 29 px bars, a 15 px fill),
+		-- an empty region of the bar's frame laid by Kit:BarLibraryFit
+		rep.libBand = rep.libBand or rep.barParent:CreateTexture(nil, "BACKGROUND")
+		rep.libBand:ClearAllPoints()
+		rep.libBand:SetPoint("LEFT", rep.rect, "LEFT")
+		rep.libBand:SetPoint("RIGHT", rep.rect, "RIGHT")
+		rep.libraryBorder = self:NewBorder({ rect = rep.libBand, owner = rep.barParent, place = "round", layer = layer, sub = sub,
+			noBg = true, open = strip.dropCap })
 	end
 	rep.libraryStyle = style
 	strip.capL:SetAlpha(0)
 	strip.mid:SetAlpha(0)
 	strip.capR:SetAlpha(0)
+	self:BarLibraryFit(rep)
 	rep.libraryBorder:Lay(style, "light")
 	rep.libraryBorder:SetShown(strip:IsShown())
 	rep:Refit()
 	return true
+end
+
+-- (0.20.1) A bar's library border fitted to the bar as the bracket is (Kit.lua's bar Refit asks again on every
+-- refit): its band the bracket's share of the bar's height, centred; its rails a quarter of that band at most, never
+-- deeper than the weight's (a thin bar -- a nameplate's, an XP bar -- a thin rail); its art at the panel's artScale
+local BAND_RAIL = 0.25
+function Kit:BarLibraryFit(rep, h)
+	local b = rep and rep.libraryBorder
+	if not (b and rep.libBand) then
+		return
+	end
+	h = h or rep:RectSize("GetHeight")
+	if not (h and h > 0) then
+		h = rep.fitHeight
+	end
+	if not (h and h > 0) then
+		return
+	end
+	local share = rep:LibraryShare()
+	local band = h * share
+	rep.libBand:SetHeight(band)
+	b:SetFit(band * BAND_RAIL, rep:ArtScale())
 end
 
 -- The personal resource display's frame: shown while Unit Frames Kit dresses
@@ -1089,8 +1247,11 @@ Kit.RingStyles = {
 	r1 = { label = "Four diamond studs", piece = "rings/r1" },
 	r3 = { label = "Plain heavy ring", piece = "rings/r3" },
 	r5 = { label = "Winged border", piece = "rings/r5", portraitOnly = true },
+	-- (0.20.1, the user: the RPG pack's portrait ring "with its background as a reusable thing", Tools/
+	-- make_rpg_frames.py) `bg` its dark ground, drawn under the round element's content (Kit:RoundLibraryRing)
+	rpg = { label = "Stone ring", piece = "rings/rpg", bg = "rings/rpg_disc" },
 }
-Kit.RingStyleOrder = { "r1", "r3", "r5" }
+Kit.RingStyleOrder = { "r1", "r3", "r5", "rpg" }
 for _, id in ipairs(Kit.RingStyleOrder) do
 	local st = Kit.RingStyles[id]
 	if not st.portraitOnly then
@@ -1104,6 +1265,9 @@ Ring.__index = Ring
 function Ring:SetShown(on)
 	self.shown = on and true or false
 	self.tex:SetShown(self.shown)
+	if self.bg then
+		self.bg:SetShown(self.shown and self.bgPiece ~= nil)
+	end
 	if self.glow then
 		self.glow:SetShown(self.shown and self.lit == "hover")
 	end
@@ -1173,6 +1337,17 @@ function Kit:RoundLibraryRing(rim, value)
 		self:Apply(r.tex, st.piece)
 		r.lit = nil
 	end
+	-- (0.20.1) the style's ground under the element's content (BACKGROUND -7: under a round button's icon)
+	r.bgPiece = st.bg
+	if st.bg then
+		if not r.bg then
+			r.bg = (rim.owner or rim:GetParent()):CreateTexture(nil, "BACKGROUND", nil, -7)
+			r.bg:SetAllPoints(rim)
+		end
+		if pieceNameOf[r.bg] ~= st.bg then
+			self:Apply(r.bg, st.bg)
+		end
+	end
 	rim.libraryBorder = r
 	rim:SetAlpha(0)
 	-- (the rim's own glow, a lit card's, shows the ring as light too)
@@ -1195,6 +1370,31 @@ Kit:AddBorderKind({ kind = "portrait", key = "portraitRing", default = "gem", na
 	desc = "The ring round the portraits of the unit frames: the player, target, focus, pet, target of target and "
 		.. "party. The gem ring, a ring with four diamond studs, a plain heavy ring, or the winged border the windows "
 		.. "wear. An elite, rare or boss shows the ring in its metal with its crest (Elite and Rare Marks)." }, "round")
+
+-- (0.20.1, the user: "the around the skull border and its background for us to use for unitframes and nameplates, we
+-- dont need the skull we have our own" -- Tools/make_rpg_frames.py) Level Orb: the kit's orb, or the RPG pack's stone
+-- badge with its own ground (buttons/orb_rpg, _disc) round the level number, on the unit frames and the nameplates
+-- (Kit.lua's UI-HUD-UnitFrame-SmallCircle and ui-hud-nameplates-levelindicator rules take its piece as they are
+-- dressed, Kit:RuleFor: a frame already dressed keeps its orb until a /reload; the ground: Kit:OrbDisc). A rank shows
+-- by its crest (Elite and Rare Marks): the stone badge has no metal twins (Kit:MarkPiece) and stays stone.
+Kit.orbLooks = {
+	{ value = "kit", label = "Kit orb", piece = "buttons/orb_normal" },
+	{ value = "rpg", label = "Stone badge", piece = "buttons/orb_rpg", disc = "buttons/orb_rpg_disc" },
+}
+Kit:AddBorderKind({ kind = "orb", key = "levelOrb", default = "kit", name = "Level Orb", values = Kit.orbLooks,
+	preview = "rim", new = "0.20.1",
+	desc = "The round badge round the level on the unit frames and the nameplates: the kit's orb, or a stone badge "
+		.. "with its own dark ground. Frames already shown change after a /reload." }, "portrait")
+
+function Kit:OrbLook()
+	local v = self:BorderValue("orb")
+	for _, look in ipairs(self.orbLooks) do
+		if look.value == v then
+			return look
+		end
+	end
+	return self.orbLooks[1]
+end
 
 -- the portrait ring's piece now (the gem ring's elsewhere: windows keep theirs)
 function Kit:PortraitRingPiece()

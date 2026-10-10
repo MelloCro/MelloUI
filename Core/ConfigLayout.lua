@@ -290,6 +290,9 @@ function L.Define(R, Link)
 	R("Look", "General", "Text", "UIModifications.classNames", { free = true })
 	R("Look", "General", "Text", "Tweaks.textShade", { free = true })
 	R("Look", "General", "Behaviour", "UIModifications.reduceMotion", { free = true })
+	-- (0.20.1: the windows' frame and title, the user's examples 3 and 4 in our own art)
+	R("Look", "Borders", "Look", "UIModifications.windowBorder")
+	R("Look", "Borders", "Look", "UIModifications.windowTitle")
 	R("Look", "Borders", "Look", "UIModifications.buttonBorder", { picture = true })
 	R("Look", "Borders", "Look", "UIModifications.sideTabBorder", { picture = true })
 	R("Look", "Borders", "Look", "UIModifications.barBorder", { picture = true })
@@ -304,10 +307,15 @@ function L.Define(R, Link)
 		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
 	R("Look", "Borders", "Look", "UIModifications.personalBorder", { picture = true,
 		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
+	-- (0.20.1: the swing timers' frame, a choice of its own)
+	R("Look", "Borders", "Look", "UIModifications.swingTimerBorder", { picture = true,
+		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
 	R("Look", "Borders", "Look", "UIModifications.roundBorder", { picture = true })
 	-- (0.19.8, the border library's stage 4: the unit frames' portrait ring a choice of its own, decision 8)
 	R("Look", "Borders", "Look", "UIModifications.portraitRing", { picture = true,
 		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
+	-- (0.20.1: the level orb's look, the RPG pack's stone badge a choice -- Modules/KitBorders.lua)
+	R("Look", "Borders", "Look", "UIModifications.levelOrb", { picture = true })
 	R("Look", "Borders", "Look", "UIModifications.auraBorder", { picture = true })
 	-- (0.19.8, the border library's first own row: Modules/KitBorders.lua; worn under the raid frames' skin)
 	R("Look", "Borders", "Look", "UIModifications.raidFrameBorder", { picture = true,
@@ -342,7 +350,15 @@ function L.Define(R, Link)
 	-- game's or Your Damage's; the game sizes its own text around you itself:
 	-- Scale Damage gone in 0.19.4)
 	R("Look", "Fonts", "Text", "CombatText.size", { name = "Combat Text: Text Around You", when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
-	R("Look", "Fonts", "Text", "Tweaks.worldTextScale", { name = "Combat Text: Numbers Over Enemies" })
+	-- (0.20.1) Numbers Over Enemies only where the client has the cvar it writes (the user, 2026-10-10: this
+	-- client has none, the slider moved nothing and Combat Text reads the same cvar): else left out on purpose
+	local okWorld, worldText = pcall(function() return C_CVar and C_CVar.GetCVar and C_CVar.GetCVar("WorldTextScale") end)
+	local hasWorldText = okWorld and type(worldText) == "string"
+	if hasWorldText then
+		R("Look", "Fonts", "Text", "Tweaks.worldTextScale", { name = "Combat Text: Numbers Over Enemies" })
+	else
+		L.unplaced["Tweaks.worldTextScale"] = "this client has no WorldTextScale cvar: the slider would move nothing"
+	end
 	R("Look", "Fonts", "Text", "CombatText.titleNotices", { name = "Combat Text: Notices In Title Font", when = { key = "CombatText.style", notValue = "game", line = "Only for the Lanes, Feed and Classic styles" } })
 	R("Look", "Fonts", "Advanced", "Fonts.fontText")
 	R("Look", "Fonts", "Advanced", "Fonts.fontChat")
@@ -461,11 +477,18 @@ function L.Define(R, Link)
 	-- they show, else the game's buff and debuff bars in the Edit Mode
 	-- layout: Tweaks' Buff Layout; the size in pixels on both picks)
 	R("UnitFrames", "Buffs & Debuffs", "Layout", { player = "Tweaks.buffSize", target = "Auras.targetSize" }, { name = "Icon Size" })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffSpacing", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffPerRow", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffGrow", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffNewRows", { only = { "player" } })
-	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerColumn", { only = { "player" } })
+	-- (0.20.1) the rows' own layout sleeps while they hang under the player frame (the target rows' look there)
+	local NOT_FRAMED = { any = { GAME_AURAS.any[1], GAME_AURAS.any[2], { key = "Auras.playerFrame", value = false } },
+		line = "Not with Attach To The Player Frame" }
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffSpacing", { only = { "player" }, when = NOT_FRAMED })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffPerRow", { only = { "player" }, when = NOT_FRAMED })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffGrow", { only = { "player" }, when = NOT_FRAMED })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Tweaks.buffNewRows", { only = { "player" }, when = NOT_FRAMED })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerColumn", { only = { "player" }, when = NOT_FRAMED })
+	-- (0.20.1, the user: "an option under UnitFrames -> Player to attach their own buffs and debuffs to their unitframe")
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerFrame", { only = { "player" } })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerFrameGrow", { only = { "player" } })
+	R("UnitFrames", "Buffs & Debuffs", "Layout", "Auras.playerFrameSize", { only = { "player" } })
 	R("UnitFrames", "Buffs & Debuffs", "Behaviour", "Auras.targetOnlyMine", { only = { "target" } })
 	R("UnitFrames", "Buffs & Debuffs", "Behaviour", "HealerFrames.debuffGlowShows", { wide = "every frame" })
 
@@ -720,7 +743,8 @@ function L.Define(R, Link)
 		R("GroupFrames", "Bars", "Look", "GroupFrames.healthMid", When("healthColour", "health", "Only with By Health"))
 		R("GroupFrames", "Bars", "Look", "GroupFrames.healthLow", When("healthColour", "health", "Only with By Health"))
 		R("GroupFrames", "Bars", "Look", "GroupFrames.healthAlpha")
-		R("GroupFrames", "Bars", "Look", "GroupFrames.background")
+		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundTexture")   -- (0.20.1: the picture behind the bar)
+		R("GroupFrames", "Bars", "Look", "GroupFrames.background", When("backgroundTexture", "flat", "Only with Flat colour"))
 		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundCustom", When("background", "custom", MINE))
 		R("GroupFrames", "Bars", "Look", "GroupFrames.backgroundAlpha")
 		R("GroupFrames", "Bars", "Look", "GroupFrames.missing")
@@ -768,7 +792,7 @@ function L.Define(R, Link)
 	R("SwingTimers", "Swing Timers", "General", "SwingTimers.offhand")
 	R("SwingTimers", "Swing Timers", "Look", "SwingTimers.look")
 	R("SwingTimers", "Swing Timers", "Text", "SwingTimers.text",
-		{ when = { key = "SwingTimers.look", value = "castbar", line = "Only for the Cast Bar look" } })
+		{ when = { key = "SwingTimers.look", value = "castbar", line = "Only for the Framed look" } })
 	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.width")
 	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.height")
 	R("SwingTimers", "Swing Timers", "Behaviour", "SwingTimers.show")
@@ -1044,11 +1068,16 @@ function L.Define(R, Link)
 	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChatParchment", "Chat on parchment size")
 	Link("UnitFrames", "Bars", "Text", { player = "BarText.fontSize", target = "BarText.fontSize", focus = "BarText.fontSize" }, "Text size")
 	Link("ActionBars", "Cooldown Timers", "Text", { bars = "CooldownText.fontRatio" }, "Text size")
+	-- (0.20.1: the swing timers' own frame, on Look > Borders)
+	Link("SwingTimers", "Swing Timers", "Look", "UIModifications.swingTimerBorder", "Border",
+		{ when = { key = "SwingTimers.look", value = "castbar", line = "Only for the Framed look" } })
 	Link("BarsMeters", "FPS / Latency", "Text", "Stats.fontSize", "Text size")
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.textSize", "Text size")
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.headerSize", "Header size")
 	Link("ScreenText", "Notices", "Text", "Tweaks.noticeOutline", "Outlined text")
 	Link("ScreenText", "Combat Text", "Text", "CombatText.size", "Combat text size")
-	Link("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale", "Numbers over enemies size")
+	if hasWorldText then
+		Link("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale", "Numbers over enemies size")
+	end
 	Link("ScreenText", "Combat Text", "Text", "Fonts.fontDamage", "Game numbers font")
 end

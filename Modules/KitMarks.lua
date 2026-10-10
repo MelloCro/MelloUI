@@ -132,7 +132,8 @@ function Kit:MarkPiece(piece, kind)
 		elseif piece:find("^rings/") then
 			-- (0.19.8) a ring style of the border library's as the portrait ring: its own metal twins
 			name = "marks/" .. piece:sub(7) .. "_" .. kind
-		elseif piece:find("^buttons/orb_") then
+		elseif piece:find("^buttons/orb_") and not piece:find("^buttons/orb_rpg") then
+			-- (0.20.1: the stone badge, Level Orb, has no metal twins: it stays stone, the rank shown by its crest)
 			name = "marks/orb_" .. metal
 		else
 			local family = piece:match("^bars/(%a+)_cap_l$")
@@ -205,9 +206,15 @@ function Kit:OrbDisc(rep, host, number)
 	end
 	local layer, sub = tex:GetDrawLayer()
 	disc = host:CreateTexture(nil, layer or "BACKGROUND", nil, math.min((sub or 0) + 1, 7))
-	self:Apply(disc, self.markDisc)
 	disc:SetAllPoints(tex)
-	self:Paint(disc, "innerPanel", "vertex", 1)
+	-- (0.20.1) the stone badge (Level Orb) brings its own ground, in its own colours
+	local look = self.OrbLook and self:OrbLook()
+	if look and look.disc and pieceNameOf[tex] == look.piece then
+		self:Apply(disc, look.disc)
+	else
+		self:Apply(disc, self.markDisc)
+		self:Paint(disc, "innerPanel", "vertex", 1)
+	end
 	disc:SetAlpha(DISC_ALPHA)
 	discs[tex] = disc
 	local function Sync()

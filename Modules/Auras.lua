@@ -12,8 +12,10 @@
 --
 --   * your buffs: buffs, then debuffs on their own row, where the game's
 --     buff bar stands, or beside the column under the minimap (Attach To
---     The Minimap Column, below); right-click cancels a buff; temporary
---     weapon enchants too. The game's buff and debuff bars are hidden with
+--     The Minimap Column, below), or under the player frame in the target
+--     rows' look (Attach To The Player Frame, 0.20.1); right-click cancels
+--     a buff; the weapon buffs first on the first line (MelloUI's own
+--     buttons, 0.20.1: Weapon below). The game's buff and debuff bars are hidden with
 --     the game's own visibility driver (out of combat only) and come back
 --     while Edit Mode is open, so they can still be moved there.
 --   * target: debuffs, then buffs, in the game's own aura place under the
@@ -47,6 +49,9 @@ local M = MelloUI:RegisterModule("Auras", {
 		playerGrow = "left",
 		playerNewRows = "down",
 		playerColumn = true,
+		playerFrame = false,
+		playerFrameSize = 22,   -- (the target rows' size)
+		playerFrameGrow = "right",
 		target = true,
 		targetSize = 22,
 		targetOnlyMine = false,
@@ -59,6 +64,13 @@ local M = MelloUI:RegisterModule("Auras", {
 		  desc = "Your buffs, then your debuffs on a row of their own. Right-click a buff to cancel it. Beside the minimap, or where the game's buff bar is: that bar comes back while Edit Mode is open, so it can still be moved, and these follow it." },
 		{ type = "toggle", key = "playerColumn", parent = "player", name = "Attach To The Minimap Column",
 		  desc = "Your buffs in a line beside the minimap, level with the map's top and growing away from it, your debuffs on the line under them. They follow the minimap when it moves or changes size. Needs the Minimap Kit; off, they stand where the game's buff bar is." },
+		{ type = "toggle", key = "playerFrame", parent = "player", name = "Attach To The Player Frame", new = "0.20.1",
+		  desc = "Your debuffs, then your buffs and weapon buffs, under your player frame, as the target's are under the target frame: the same icons, spiral and timers. Right-click a buff to cancel it. They move with the player frame. Off, they stand beside the minimap or where the game's buff bar is." },
+		{ type = "dropdown", key = "playerFrameGrow", parent = "playerFrame", name = "Direction", new = "0.20.1",
+		  values = { { value = "right", label = "Left To Right" }, { value = "left", label = "Right To Left" } },
+		  desc = "Which way your icons run under the player frame: from the bars' left end rightwards, or from their right end leftwards." },
+		{ type = "slider", key = "playerFrameSize", parent = "playerFrame", name = "Icon Size On The Frame", min = 14, max = 36, step = 1, new = "0.20.1",
+		  desc = "The size of your buff and debuff icons under the player frame, in pixels (the target's are 22 by default). The rows keep one width, so a smaller size fits more in a row." },
 		{ type = "header", name = "Target" },
 		{ type = "toggle", key = "target", name = "Target Frame",
 		  desc = "Your target's debuffs, then its buffs, under the target frame, in place of the game's." },
@@ -272,7 +284,9 @@ local function ApplyAuraLook(button)
 end
 
 -- o: size, swipe (a cooldown spiral), durationBelow (the time under the
--- icon, else in its middle), dispel (a dispel-coloured border on debuffs),
+-- icon, else in its middle), rawSeconds (the time as the bare number of
+-- seconds: MelloUI.Anim:RawSeconds), compactTime (the time with no space
+-- before its letter, "59m": MelloUI.Anim:CompactDuration), dispel (a dispel-coloured border on debuffs),
 -- cancel (right-click cancels), tooltip (anchor), shade (the UI shade:
 -- ShadeButton)
 local function InitButton(button, o)
@@ -309,7 +323,12 @@ local function InitButton(button, o)
 	else
 		time:SetPoint("CENTER", button, "CENTER", 0, 0)
 	end
-	Try(button.SetDurationText, button, time, {})
+	-- (0.20.1, the user: "the debuffs on the nameplates should not have "s" for seconds or minutes, just pure
+	-- seconds") the core's bare-seconds formatter where the row asks for it (the game's own "4s" / "2m" elsewhere)
+	-- (0.20.1, the user: "make it 59m on both" -- the target's rows and the rows on the player frame)
+	local Anim = MelloUI.Anim
+	local fmt = Anim and ((o.rawSeconds and Anim:RawSeconds()) or (o.compactTime and Anim:CompactDuration()))
+	Try(button.SetDurationText, button, time, fmt and { textFormatter = fmt } or {})
 	-- (gap: the room between two buttons of the row, the shade's reach kept in it)
 	texts[button] = { time = time, count = count, below = o.durationBelow, edge = edge, size = o.size, shade = o.shade,
 		gap = o.shade and math.min(o.spacing or 0, o.lineSpacing or o.spacing or 0) or nil }
@@ -437,7 +456,11 @@ end
 
 local playerRows
 -- (0.17.0: the Fader's Buffs & Debuffs element fades these rows too)
-M.PlayerRows = function() return playerRows end
+M.PlayerRows = function()
+	-- (0.20.1: the rows on the player frame while they stand in for these)
+	local framed = rawget(M, "FrameRows") and M.FrameRows()
+	return framed or playerRows
+end
 local gameBarsHidden = false
 local pendingBars = nil
 local inEditMode = false
@@ -478,19 +501,36 @@ local function PlayerLine()
 	return (M.db.playerSize + (M.db.playerSpacing or 6)) * M.db.playerPerRow
 end
 
-local function ItemEnchantments(c)
-	local slots = AuraContainerItemEnchantmentSlot
-	if type(slots) ~= "table" or not c.AddItemEnchantment then
-		return
+--------------------------------------------------------------------------------
+-- Weapon buffs (0.20.1; players: "some buffs are not showing at all, for
+-- example the shaman enhancements to weapons"; /mello auras, 2026-10-10:
+-- Forever keeps two enchants a weapon, a Temporary one -- a stone, an oil, a
+-- poison -- and an Imbue -- a shaman's weapon --, and lists both in
+-- C_Item.GetWeaponEnchantInfo, the call the game's own buff bar reads; the
+-- aura container's item enchantments read C_PaperDollInfo's one temporary
+-- enchant a slot, so an imbue never reached the rows). MelloUI's own buttons
+-- in the rows' look, one for every timed weapon buff the game's bar shows,
+-- first on the rows' first line (the user's pick, "First on the buff rows",
+-- as the game's bar has them): the rows move over by as many icons, out of
+-- combat only (a weapon buff that comes in a fight overlaps the first icon
+-- until it ends). No right-click cancel (the game's is protected).
+--------------------------------------------------------------------------------
+
+local Weapon = { n = 0, list = {}, sets = setmetatable({}, { __mode = "k" }),
+	shiftOf = setmetatable({}, { __mode = "k" }), cornerOf = setmetatable({}, { __mode = "k" }),
+	gxOf = setmetatable({}, { __mode = "k" }) }
+local WEAPON_KEY = "Auras: the rows moved over for the weapon buffs"   -- its key in the combat queue
+
+-- the rows' move along their first line for the weapon buttons standing first on it (`corner` the flow's, `gx`
+-- the line's direction), noted for the buttons; 0 with none (the place as it always was)
+function Weapon.DX(c, corner, gx)
+	local n = Weapon.n
+	Weapon.shiftOf[c], Weapon.cornerOf[c], Weapon.gxOf[c] = n, corner, gx
+	if n == 0 then
+		return 0
 	end
-	for _, slot in pairs(slots) do
-		Try(c.AddItemEnchantment, c, slot, {
-			hidePermanent = true,
-			initializeFrame = function(button)
-				InitButton(button, c.melloLook)
-			end,
-		})
-	end
+	local look = c.melloLook
+	return gx * n * ((look.size or 0) + (look.spacing or 0))
 end
 
 --------------------------------------------------------------------------------
@@ -528,9 +568,10 @@ end
 -- the game's buff bar's place (the rows' place before the column): the
 -- flow's corner on the bar's same corner
 local function GamePlace(c)
-	local corner = FlowOf(nil)
+	local corner, gx = FlowOf(nil)
 	c:ClearAllPoints()
-	c:SetPoint(corner, BuffFrame or UIParent, corner, 0, 0)
+	c:SetPoint(corner, BuffFrame or UIParent, corner, Weapon.DX(c, corner, gx), 0)
+	Weapon.Lay()
 end
 
 -- the flow set (only when it changed: the container lays its rows again)
@@ -601,11 +642,13 @@ local function PlaceNow()
 	if mm then
 		local x, y, side = ColumnPlace(mm, c)
 		if x then
-			if side ~= placedSide or not Near(x, placedX) or not Near(y, placedY) then
+			if side ~= placedSide or not Near(x, placedX) or not Near(y, placedY) or Weapon.shiftOf[c] ~= Weapon.n then
 				Flow(c, side)
 				c:ClearAllPoints()
-				c:SetPoint((FlowOf(side)), UIParent, "BOTTOMLEFT", x, y)
+				local corner, gx = FlowOf(side)
+				c:SetPoint(corner, UIParent, "BOTTOMLEFT", x + Weapon.DX(c, corner, gx), y)
 				placedSide, placedX, placedY = side, x, y
+				Weapon.Lay()
 			end
 			return
 		elseif placedSide then
@@ -677,13 +720,333 @@ local function FollowColumn()
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Attach To The Player Frame (0.20.1, the user: "an option under UnitFrames ->
+-- Player to attach their own buffs and debuffs to their unitframe, mimicing
+-- the behaviour of how buffs and debuffs are working on the Target
+-- Unitframe ... the same formating of the timers"): a container of its own
+-- in the target rows' look (the spiral, the time on the icon, the game's
+-- formatting; debuffs, then buffs, then the weapon buffs), parented to the
+-- player frame as the target's are to the target frame, hung under its art
+-- as the game hangs the target's (Blizzard_UnitFrame TargetFrame.lua
+-- AnchorAuraContainer: 9 up from the art's bottom); Direction (the user,
+-- 2026-10-10: "it needs a anchoring position, from left to right or right
+-- to left"): from the bars' left end rightwards (the health bars' left, read
+-- against the art: clear of the portrait ring and the level orb), or from
+-- 5 in of the art's right end leftwards. Icon Size On The Frame (the user:
+-- "the size is a bit off": the target's 22 by default, not the buff bar's
+-- 30). Made on the first ask; the rows (their right-click cancels a buff:
+-- protected) placed and their flow set out of combat only, then they
+-- follow the frame.
+--------------------------------------------------------------------------------
+
+local frameRows
+local FRAME_PLACE_KEY = "Auras: your rows on the player frame"   -- its key in the combat queue
+local FRAME = { IN = 5, UP = 9, BARS = 85 }   -- the game's AURA_START_X / AURA_START_Y; the bars' left (PlayerFrame.xml)
+
+-- the health bars' left end from the art's left (a plain read; the template's 85 while either reads secret)
+local function BarsIn(pf, art)
+	local content = pf.PlayerFrameContent
+	local main = content and content.PlayerFrameContentMain
+	local bars = main and main.HealthBarsContainer
+	if bars and bars.GetLeft and art.GetLeft then
+		local okB, bl = pcall(bars.GetLeft, bars)
+		local okA, al = pcall(art.GetLeft, art)
+		bl, al = okB and Num(bl), okA and Num(al)
+		if bl and al then
+			return bl - al
+		end
+	end
+	return FRAME.BARS
+end
+
+local function PlaceOnFrame()
+	local c, pf = frameRows, PlayerFrame
+	if not (c and pf) then
+		return
+	end
+	local container = pf.PlayerFrameContainer
+	local art = (container and container.FrameTexture) or pf
+	local right = M.db.playerFrameGrow ~= "left"
+	Try(c.SetFlowLayoutAnchorPoint, c, right and "TOPLEFT" or "TOPRIGHT")
+	Try(c.SetFlowLayoutGrowthDirection, c, right and 1 or -1, -1)
+	c:ClearAllPoints()
+	if right then
+		c:SetPoint("TOPLEFT", art, "BOTTOMLEFT", BarsIn(pf, art) + Weapon.DX(c, "TOPLEFT", 1), FRAME.UP)
+	else
+		c:SetPoint("TOPRIGHT", art, "BOTTOMRIGHT", -FRAME.IN + Weapon.DX(c, "TOPRIGHT", -1), FRAME.UP)
+	end
+	Try(c.UpdateAllAuras, c)
+	Weapon.Lay()
+end
+
+local function SetFrameRows(on)
+	if on and not frameRows and PlayerFrame then
+		local ok, c = pcall(NewContainer, PlayerFrame, "player", {
+			{ key = "debuffs", filter = "HARMFUL", max = 16 },
+			{ key = "buffs", filter = "HELPFUL", max = 40 },
+		}, { size = M.db.playerFrameSize or 22, swipe = true, compactTime = true, dispel = true, cancel = true,
+			tooltip = "ANCHOR_BOTTOMRIGHT",
+			anchor = M.db.playerFrameGrow == "left" and "TOPRIGHT" or "TOPLEFT", gx = M.db.playerFrameGrow == "left" and -1 or 1,
+			gy = -1, line = 170, spacing = 3, shade = true })
+		if not ok then
+			MelloUI:Notice("Buffs & Debuffs: your rows on the player frame could not be made (%s).", tostring(c))
+			return
+		end
+		frameRows = c
+	end
+	if frameRows then
+		if on then
+			MelloUI.Kit:WhenOutOfCombat(PlaceOnFrame, FRAME_PLACE_KEY)
+		end
+		Try(frameRows.SetEnabled, frameRows, on and true or false)
+		frameRows:SetShown(on and true or false)
+	end
+end
+
+-- (0.20.1: the rows under the player frame while they are shown)
+function M.FrameRows()
+	return (frameRows and frameRows:IsShown()) and frameRows or nil
+end
+
+-- The weapon buttons (see Weapon above): the rows shown now (the player frame's, else yours), every timed weapon
+-- buff the game's bar lists read into reused entries, a button each (made on its first need, a set per rows, in
+-- their look: InitButton through the few container-button calls it makes), the time run by the engine.
+local WEAPON_SLOTS = { "MainHand", "OffHand", "Ranged" }
+local WEAPON_INV = { MainHand = "INVSLOT_MAINHAND", OffHand = "INVSLOT_OFFHAND", Ranged = "INVSLOT_RANGED" }
+local WEAPON_INV_DEFAULT = { MainHand = 16, OffHand = 17, Ranged = 18 }
+
+local WeaponButton = {}
+function WeaponButton:SetIcon(tex) self.melloIcon = tex end
+function WeaponButton:SetDurationCooldown(cooldown) self.melloCooldown = cooldown end
+function WeaponButton:SetApplicationCount(fs) self.melloCount = fs end
+function WeaponButton:SetDurationText(fs, opts) self.melloTime, self.melloFormat = fs, opts and opts.textFormatter end
+function WeaponButton:SetTooltipAnchorPoint(anchor) self.melloTip = anchor end
+
+local function WeaponButton_OnEnter(b)
+	GameTooltip:SetOwner(b, b.melloTip or "ANCHOR_BOTTOMLEFT")
+	pcall(GameTooltip.SetInventoryItem, GameTooltip, "player", b.melloInv)
+	GameTooltip:Show()
+end
+local function WeaponButton_OnLeave()
+	GameTooltip:Hide()
+end
+
+function Weapon.Rows()
+	return M.FrameRows() or ((playerRows and playerRows:IsShown()) and playerRows) or nil
+end
+
+-- every timed weapon buff into Weapon.list (entries reused); their count
+function Weapon.Read()
+	local CI, E = rawget(_G, "C_Item"), rawget(_G, "Enum")
+	local ws = type(E) == "table" and E.WeaponSlot
+	local list, n = Weapon.list, 0
+	if not (type(CI) == "table" and CI.GetWeaponEnchantInfo and type(ws) == "table") then
+		return 0
+	end
+	local okV, enchantIcon = false, nil
+	if C_CVar and C_CVar.GetCVarBool then
+		okV, enchantIcon = pcall(C_CVar.GetCVarBool, "displayTemporaryEnchantIcon")
+	end
+	enchantIcon = okV and not Secret(enchantIcon) and enchantIcon == true
+	for _, name in ipairs(WEAPON_SLOTS) do
+		local id = ws[name]
+		local ok, enchants = false, nil
+		if id ~= nil then
+			ok, enchants = pcall(CI.GetWeaponEnchantInfo, id)
+		end
+		if ok and type(enchants) == "table" and not Secret(enchants) then
+			for _, e in ipairs(enchants) do
+				local has, left = e.hasEnchant, e.timeLeft
+				if not Secret(has) and has == true and not Secret(left) and type(left) == "number" and left > 0 then
+					n = n + 1
+					local t = list[n] or {}
+					list[n] = t
+					t.inv = rawget(_G, WEAPON_INV[name]) or WEAPON_INV_DEFAULT[name]
+					t.left = left / 1000
+					local charges, iconID = e.charges, e.enchantIconID
+					t.charges = (not Secret(charges) and type(charges) == "number" and charges > 0) and charges or nil
+					local okT, tex = pcall(_G.GetInventoryItemTexture, "player", t.inv)
+					tex = okT and not Secret(tex) and tex or nil
+					if enchantIcon and not Secret(iconID) and type(iconID) == "number" and iconID > 0 then
+						tex = iconID
+					end
+					t.icon = tex or 134400   -- (the question mark while the item reads nothing)
+				end
+			end
+		end
+	end
+	return n
+end
+
+-- a rows' set of buttons: a holder of ours on the rows (their alpha, show and Edit Mode hiding follow), made on its
+-- first need
+function Weapon.SetOf(c)
+	local set = Weapon.sets[c]
+	if not set then
+		local holder = CreateFrame("Frame", nil, c)
+		holder:SetAllPoints(c)
+		set = { holder = holder, buttons = {} }
+		Weapon.sets[c] = set
+	end
+	return set
+end
+
+function Weapon.Button(set, k, c)
+	local b = set.buttons[k]
+	if not b then
+		b = CreateFrame("Button", nil, set.holder)
+		for name, fn in pairs(WeaponButton) do
+			b[name] = fn
+		end
+		InitButton(b, c.melloLook)
+		b:EnableMouse(true)
+		b:SetScript("OnEnter", WeaponButton_OnEnter)
+		b:SetScript("OnLeave", WeaponButton_OnLeave)
+		set.buttons[k] = b
+	end
+	return b
+end
+
+-- the time left run by the engine (a duration and its text binding, made once a button), in the rows' format, or
+-- the short one ("59m") where the rows keep the game's
+function Weapon.Time(b, seconds)
+	local util = rawget(_G, "C_DurationUtil")
+	if not (type(util) == "table" and util.CreateDuration and util.CreateDurationTextBinding and b.melloTime) then
+		return
+	end
+	if not b.melloDuration then
+		local okD, d = pcall(util.CreateDuration)
+		local okB, bind = pcall(util.CreateDurationTextBinding)
+		if not (okD and d and okB and bind) then
+			return
+		end
+		pcall(bind.SetFontString, bind, b.melloTime)
+		local fmt = b.melloFormat or (MelloUI.Anim and MelloUI.Anim:CompactDuration())
+		if fmt then
+			pcall(bind.SetFormatter, bind, fmt)
+		end
+		pcall(bind.SetExpiredText, bind, "")
+		pcall(bind.SetZeroDurationText, bind, "")
+		b.melloDuration, b.melloBinding = d, bind
+	end
+	pcall(b.melloDuration.SetTimeFromStart, b.melloDuration, GetTime(), seconds)
+	pcall(b.melloBinding.SetDuration, b.melloBinding, b.melloDuration)
+	pcall(b.melloBinding.SetEnabled, b.melloBinding, true)
+end
+
+-- the buttons on the rows' first line from its flow corner, the rows moved over by Weapon.DX when they were placed
+-- (a weapon buff that came in a fight overlaps the first icon until the rows move at its end)
+function Weapon.Lay()
+	local c = Weapon.Rows()
+	local set = c and Weapon.sets[c]
+	local corner = c and Weapon.cornerOf[c]
+	if not (set and corner) then
+		return
+	end
+	local look = c.melloLook
+	local step = (look.size or 0) + (look.spacing or 0)
+	local gx, shift = Weapon.gxOf[c] or 1, Weapon.shiftOf[c] or 0
+	for k = 1, Weapon.n do
+		local b = set.buttons[k]
+		if b then
+			b:ClearAllPoints()
+			b:SetPoint(corner, c, corner, -gx * (shift - k + 1) * step, 0)
+		end
+	end
+end
+
+-- the rows placed again with their new shift (out of combat: the kit's queue)
+function Weapon.Replace()
+	if M.FrameRows() then
+		PlaceOnFrame()
+	elseif playerRows and playerRows:IsShown() then
+		PlacePlayer()
+	end
+end
+
+function Weapon.Update()
+	local c = Weapon.Rows()
+	local n = c and Weapon.Read() or 0
+	for rows, set in pairs(Weapon.sets) do
+		local upTo = rows == c and n or 0
+		for k, b in ipairs(set.buttons) do
+			if k > upTo then
+				b:Hide()
+			end
+		end
+	end
+	if c and n > 0 then
+		local set = Weapon.SetOf(c)
+		local size = c.melloLook.size
+		for k = 1, n do
+			local e, b = Weapon.list[k], Weapon.Button(set, k, c)
+			b.melloInv = e.inv
+			if b.melloIcon then
+				b.melloIcon:SetTexture(e.icon)
+			end
+			if b.melloCount then
+				b.melloCount:SetText(e.charges or "")
+			end
+			Weapon.Time(b, e.left)
+			local t = texts[b]
+			if t and t.size ~= size then
+				Try(b.SetSize, b, size, size)
+				SizeTexts(b, size)
+				t.size = size
+				ApplyAuraLook(b)
+			end
+			b:Show()
+		end
+	end
+	if n ~= Weapon.n then
+		Weapon.n = n
+		MelloUI.Kit:WhenOutOfCombat(Weapon.Replace, WEAPON_KEY)
+	end
+	Weapon.Lay()
+end
+
+-- the rows on or off: the weapon buffs' events with them (on the module's own event frame, below: nothing made)
+function Weapon.Switch(on)
+	local f = Weapon.events
+	if f then
+		if on then
+			f:RegisterEvent("WEAPON_ENCHANT_CHANGED")
+			pcall(f.RegisterEvent, f, "WEAPON_SLOT_CHANGED")
+			f:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+		else
+			f:UnregisterEvent("WEAPON_ENCHANT_CHANGED")
+			pcall(f.UnregisterEvent, f, "WEAPON_SLOT_CHANGED")
+			f:UnregisterEvent("UNIT_INVENTORY_CHANGED")
+		end
+	end
+	Weapon.Update()
+end
+
+-- the rows' icons sized or spaced anew: the buttons with them, the rows moved over by the new step
+function Weapon.Resized()
+	Weapon.Update()
+	if Weapon.n > 0 then
+		MelloUI.Kit:WhenOutOfCombat(Weapon.Replace, WEAPON_KEY)
+	end
+end
+
+M.WeaponCount = function()
+	return Weapon.n
+end
+
 local function SetPlayer(on)
 	on = on and not inEditMode
-	if on and not playerRows then
+	-- (0.20.1) Attach To The Player Frame: those rows in place of these
+	local onFrame = on and M.db.playerFrame and true or false
+	SetFrameRows(onFrame)
+	local rows = on and not onFrame
+	if rows and not playerRows then
 		local ok, c = pcall(NewContainer, UIParent, "player", {
 			{ key = "buffs", filter = "HELPFUL", max = 40 },
 			{ key = "debuffs", filter = "HARMFUL", max = 16 },
-		}, { size = M.db.playerSize, durationBelow = true, dispel = true, cancel = true, tooltip = "ANCHOR_BOTTOMLEFT",
+		}, { size = M.db.playerSize, durationBelow = true, compactTime = true, dispel = true, cancel = true,
+			tooltip = "ANCHOR_BOTTOMLEFT",
 			anchor = (FlowOf(nil)), gx = select(2, FlowOf(nil)), gy = select(3, FlowOf(nil)), line = PlayerLine(),
 			spacing = M.db.playerSpacing or 6, lineSpacing = (M.db.playerSpacing or 6) + 10, shade = true })
 		if not ok then
@@ -692,15 +1055,15 @@ local function SetPlayer(on)
 		end
 		playerRows = c
 		flowNow = nil
-		ItemEnchantments(c)
 	end
 	if playerRows then
 		PlacePlayer()
 		playerRows:SetFrameStrata("LOW")
-		Try(playerRows.SetEnabled, playerRows, on and true or false)
-		playerRows:SetShown(on and true or false)
+		Try(playerRows.SetEnabled, playerRows, rows and true or false)
+		playerRows:SetShown(rows and true or false)
 	end
 	GameBars(on and true or false)
+	Weapon.Switch(on and true or false)
 end
 
 --------------------------------------------------------------------------------
@@ -729,7 +1092,7 @@ local function SetTarget(on)
 		local ok, c = pcall(NewContainer, TargetFrame, "target", {
 			{ key = "debuffs", filter = TargetFilter(), max = 16 },
 			{ key = "buffs", filter = "HELPFUL", max = 16 },
-		}, { size = M.db.targetSize, swipe = true, dispel = true, tooltip = "ANCHOR_BOTTOMRIGHT",
+		}, { size = M.db.targetSize, swipe = true, compactTime = true, dispel = true, tooltip = "ANCHOR_BOTTOMRIGHT",
 			anchor = "TOPLEFT", gx = 1, gy = -1, line = 170, spacing = 3, shade = true })
 		if not ok then
 			MelloUI:Notice("Buffs & Debuffs: the target rows could not be made (%s).", tostring(c))
@@ -794,7 +1157,7 @@ local function FillPlate(uf, unit)
 	if not c then
 		local ok, made = pcall(NewContainer, uf, nil, {
 			{ key = "debuffs", filter = PlateFilter(auras), max = 8 },
-		}, { size = M.db.nameplateSize, swipe = true, dispel = false, tooltip = "ANCHOR_TOP",
+		}, { size = M.db.nameplateSize, swipe = true, rawSeconds = true, dispel = false, tooltip = "ANCHOR_TOP",
 			anchor = "BOTTOMLEFT", gx = 1, gy = 1, line = 150, spacing = 2 })
 		if not ok then
 			return   -- the game's row stays
@@ -855,8 +1218,11 @@ end
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
+Weapon.events = eventFrame   -- (0.20.1: the weapon buffs' events, while your rows show)
 Perf.SetScript(eventFrame, "OnEvent", function(_, event, unit)
-	if event == "NAME_PLATE_UNIT_ADDED" then
+	if event == "WEAPON_ENCHANT_CHANGED" or event == "WEAPON_SLOT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" then
+		Weapon.Update()
+	elseif event == "NAME_PLATE_UNIT_ADDED" then
 		local uf = PlateOf(unit)
 		if uf then
 			FillPlate(uf, unit)
@@ -937,6 +1303,11 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "player" then
 		SetPlayer(value)
+	elseif key == "playerFrame" then
+		-- (the rows are protected -- right-click cancels a buff --: shown or hidden out of combat only)
+		MelloUI.Kit:WhenOutOfCombat(function()
+			SetPlayer(M.isEnabled and M.db.player)
+		end, FRAME_PLACE_KEY .. ": switched")
 	elseif key == "target" then
 		SetTarget(value)
 	elseif key == "nameplates" then
@@ -945,6 +1316,12 @@ function M:OnSettingChanged(key, value, db)
 		PlacePlayer()
 	elseif key == "playerSize" or key == "playerPerRow" then
 		Resize(playerRows, db.playerSize, PlayerLine())
+		Weapon.Resized()
+	elseif key == "playerFrameSize" then
+		Resize(frameRows, db.playerFrameSize)
+		Weapon.Resized()
+	elseif key == "playerFrameGrow" then
+		MelloUI.Kit:WhenOutOfCombat(PlaceOnFrame, FRAME_PLACE_KEY)
 	elseif key == "playerSpacing" or key == "playerGrow" or key == "playerNewRows" then
 		Relayout()
 	elseif key == "targetSize" then

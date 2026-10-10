@@ -775,11 +775,7 @@ local function ApplyWorldTextScale(value)
 	end
 	local current = ReadWorldTextScale()
 	if current == nil then
-		-- said once, and only to someone who moved the slider
-		if not worldTextWarned and math.abs((tonumber(value) or 1) - 1) > 0.001 then
-			worldTextWarned = true
-			MelloUI:Print("Tweaks: this client has no '%s' cvar; the World Text Scale slider cannot work on it.", WORLD_TEXT_CVAR)
-		end
+		-- (0.20.1: no cvar, no slider -- Core/ConfigLayout.lua lays it only where the client has one; nothing said)
 		return
 	end
 	value = tonumber(value) or 1

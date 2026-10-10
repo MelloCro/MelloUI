@@ -220,7 +220,9 @@ def palette_ramps(roles):
 # pictures, the tiles already in the palette's warmth and the coloured quilts: left as painted; and the
 # Elite / Rare / Boss marks (Tools/kit_marks.py): their metals mean what a unit is, under every palette
 # (but for the rings' gems, GEM_TWINS)
-SKIP = re.compile(r"^(backdrops|cards|icons)/|^marks/(?!ring_)|^tiles/(vellum|parchment|agedparchment|leather|quilt_|crackle)")
+# (0.20.1) the parchment family (Tools/make_parchment.py): the pack's own tone in every look (the user's pick)
+# (0.20.1) the RPG pack's frames (Tools/make_rpg_frames.py): its own stone in every look, as the parchment
+SKIP = re.compile(r"^(backdrops|cards|icons|parchment)/|^(borders|rings)/rpg|^buttons/orb_rpg|^marks/(?!ring_)|^tiles/(vellum|parchment|agedparchment|leather|quilt_|crackle)")
 # The marks' portrait rings (marks/ring_<kind>): the ring in a metal with a crest, its compass gems left as the
 # plain ring has them. In a look only those gems are recoloured, so they are the look's plain ring's gems (the
 # user's sketch kept the gems as the look drew them); the metal and the crest stay as baked.
@@ -268,7 +270,7 @@ EMBER_FOLDERS = tuple(lk.folder for lk in LOOKS.values() if lk.palette == DEFAUL
 # but the content the looks share (ART_SKIP): its own pages, parchment and rank marks (Kit.lua: LOOK.ART_UNCOLOURED).
 ART = tuple(pid for pid in ORDER if PALETTES[pid].get("art"))
 ART_FOLDERS = tuple(LOOKS[pid].folder for pid in ART)
-ART_SKIP = re.compile(r"^(cards|icons)/|^backdrops/(?!page_)|^tiles/(leather|quilt_|crackle)")
+ART_SKIP = re.compile(r"^(cards|icons|parchment)/|^(borders|rings)/rpg|^buttons/orb_rpg|^backdrops/(?!page_)|^tiles/(leather|quilt_|crackle)")
 
 
 def style_folders(kit=KIT):

@@ -6561,7 +6561,75 @@ local function Keys(t, match)
 	return table.concat(out, ", ")
 end
 
-function MelloUI:AuraProbe()
+-- (0.20.1: players report weapon buffs -- a shaman's imbues -- missing from the buff rows) each weapon slot's
+-- temporary enchant as the aura container reads it (C_PaperDollInfo.GetTemporaryEnchantmentInfo), as the game's own
+-- buff bar reads it (C_Item.GetWeaponEnchantInfo: both of a weapon's, type 2 Temporary and 3 Imbue) and as the old
+-- global answers, and MelloUI's weapon buttons on your rows (Buffs & Debuffs' own, read from the game bar's call)
+local ENCHANT_SLOTS = { "MainHand", "OffHand", "Ranged" }
+function MelloUI:AuraEnchantProbe(P)
+	local function V(v)
+		if IsSecret(v) then
+			return "<secret>"
+		end
+		return tostring(v)
+	end
+	local slots, toInv = rawget(_G, "AuraContainerItemEnchantmentSlot"), rawget(_G, "AuraContainerItemEnchantmentToInventorySlot")
+	local PD, CI, E = rawget(_G, "C_PaperDollInfo"), rawget(_G, "C_Item"), rawget(_G, "Enum")
+	local ws = type(E) == "table" and E.WeaponSlot
+	local auras = self:GetModule("Auras")
+	P("Weapon enchants (put a weapon buff on first: an imbue, a poison, a sharpening stone or an oil; type 2 is"
+		.. " Temporary, 3 Imbue):")
+	for _, name in ipairs(ENCHANT_SLOTS) do
+		local slot = type(slots) == "table" and slots[name] or nil
+		local inv = type(toInv) == "table" and slot ~= nil and toInv[slot] or nil
+		local a = "absent"
+		if PD and PD.GetTemporaryEnchantmentInfo and inv then
+			local ok, info = pcall(PD.GetTemporaryEnchantmentInfo, inv)
+			if not ok then
+				a = "error " .. tostring(info)
+			elseif type(info) == "table" then
+				a = string.format("enchant %s, %s ms, charges %s, expires %s", V(info.enchantID), V(info.remainingTimeMs),
+					V(info.chargesRemaining), V(info.hasExpirationTime))
+			else
+				a = "nothing"
+			end
+		end
+		local b = "absent"
+		local id = type(ws) == "table" and ws[name] or nil
+		if CI and CI.GetWeaponEnchantInfo and id ~= nil then
+			local ok, out = pcall(function()
+				local list, parts = CI.GetWeaponEnchantInfo(id), {}
+				for _, e in pairs(list or {}) do
+					parts[#parts + 1] = string.format("has %s type %s id %s %s ms x%s", V(e.hasEnchant), V(e.enchantType),
+						V(e.enchantID), V(e.timeLeft), V(e.charges))
+				end
+				return #parts > 0 and table.concat(parts, "; ") or "none"
+			end)
+			b = ok and out or ("error " .. tostring(out))
+		end
+		P("  %s: container API: %s | game bar API: %s", name, a, b)
+	end
+	local count = auras and auras.isEnabled and auras.WeaponCount and auras.WeaponCount()
+	P("  MelloUI's weapon buttons on your rows: %s", count and tostring(count) or "none (Buffs & Debuffs or Your Buffs And Debuffs off)")
+	local legacy = rawget(_G, "GetWeaponEnchantInfo")
+	if type(legacy) == "function" then
+		local ok, out = pcall(function()
+			local function Join(n, ...)
+				local t = { ... }
+				for i = 1, n do
+					t[i] = V(t[i])
+				end
+				return table.concat(t, ", ", 1, n)
+			end
+			return Join(select("#", legacy()), legacy())
+		end)
+		P("  GetWeaponEnchantInfo(): %s", ok and out or ("error " .. tostring(out)))
+	end
+end
+
+-- (0.20.1: AuraContainerProbe -- Modules/AuraProbe.lua, /melloaura, keeps MelloUI.AuraProbe as its own table, which
+-- loaded after this file and took the name: /mello auras called a table)
+function MelloUI:AuraContainerProbe()
 	self:ClearLog()
 	local P = function(...) self:Print(...) end
 	local okC, c = pcall(CreateFrame, "AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
@@ -6623,6 +6691,7 @@ function MelloUI:AuraProbe()
 	end
 	pcall(c.SetEnabled, c, false)
 	c:Hide()
+	self:AuraEnchantProbe(P)
 	-- the game's own aura frames: what they are made of on this client
 	local function Kind(f)
 		return f and f.GetObjectType and f:GetObjectType() or type(f)
@@ -6872,7 +6941,7 @@ SlashCmdList.MELLOUI = function(msg)
 		-- the widget column as it stands (0.16.0), into the copy window
 		MelloUI.Reminders:DumpColumn()
 	elseif cmd == "auras" then
-		MelloUI:AuraProbe()
+		MelloUI:AuraContainerProbe()
 	elseif cmd == "preload" then
 		-- Preload Artwork (UI Modifications): how many files are held, and how
 		-- many the client says are in memory already

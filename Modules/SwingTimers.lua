@@ -95,8 +95,8 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 		{ type = "toggle", key = "offhand", name = "Off Hand Bar", new = NEW,
 		  desc = "A thinner bar under the melee bar for your off-hand weapon's swings, while you carry one." },
 		{ type = "dropdown", key = "look", name = "Look", new = NEW,
-		  values = { { value = "castbar", label = "Cast Bar" }, { value = "hairline", label = "Hairline" } },
-		  desc = "Cast Bar: the cast bar's frame, with the bar's name and the seconds left. Hairline: a thin rim on a soft shade, nothing else. With the cast bars' painted look off, both are a plain bar." },
+		  values = { { value = "castbar", label = "Framed" }, { value = "hairline", label = "Hairline" } },
+		  desc = "Framed: the frame you pick in Swing Timer Border (the cast bar's by default), with the bar's name and the seconds left. Hairline: a thin rim on a soft shade, nothing else. With the cast bars' painted look off, both are a plain bar." },
 		{ type = "toggle", key = "text", name = "Label And Time", new = NEW,
 		  desc = "The bar's name above it on the left (Auto Shot, Main Hand, Shoot (wand)) and the seconds left on the right." },
 		{ type = "slider", key = "width", name = "Width", new = NEW, min = 100, max = 400, step = 5,
@@ -277,8 +277,10 @@ local function LookTrack(t, kit, bar, height)
 	local Kit = MelloUI.Kit
 	if kit and t.rep == nil and Kit and Kit.Replace then
 		local layer, sublevel, troughLayer, troughSub = Kit:BracketLayers(t.fill)
+		-- (0.20.1: the cast bar's bracket, its border the Swing Timer Border's -- ownBorder: not the Cast Bar Border's)
 		local ok, rep = pcall(Kit.Replace, Kit, t.fill, { as = "ui-castingbar-frame", parent = t.fill, rect = t.fill,
-			noFade = true, bar = bar, layer = layer, sublevel = sublevel, troughLayer = troughLayer, troughSub = troughSub })
+			noFade = true, bar = bar, ownBorder = true, layer = layer, sublevel = sublevel, troughLayer = troughLayer,
+			troughSub = troughSub })
 		t.rep = ok and rep or false
 		if t.rep and Kit.ShadeElement then
 			-- (the UI Shade's Cast Bars area, as the cast bars' own)
@@ -310,7 +312,9 @@ Look = function(ui)
 	local kit = Kit and Kit.IsOn and Kit:IsOn("castbar") and true or false
 	local db = M.db
 	local hairline = db and db.look == "hairline"
-	local bar = hairline and "rimhair" or "castbar"
+	-- (0.20.1) Framed: the Swing Timer Border (Look > Borders: the cast bar's bracket by default, or any of the
+	-- library's); Hairline: its thin rim
+	local bar = hairline and "rimhair" or (kit and Kit.BorderValue and Kit:BorderValue("swing")) or "castbar"
 	local _, h = Size()
 	LookTrack(ui.main, kit, bar, h)
 	if ui.off then
@@ -756,6 +760,11 @@ function M:OnEnable(db)
 	if not S.looking then
 		S.looking = true
 		MelloUI:On("look:castbar", LookAll, "Swing timers")
+		-- (0.20.1) the Swing Timer Border picked: the bars in it
+		local Kit = MelloUI.Kit
+		if Kit and Kit.OnBorderChanged then
+			Kit:OnBorderChanged("swing", LookAll)
+		end
 		-- the cast bars' Bar Texture set or switched (W.BarFill "castbars",
 		-- 0.19.4: the swing timers wear the cast bar bracket, so the Cast Bars
 		-- area's fill too): the fill again

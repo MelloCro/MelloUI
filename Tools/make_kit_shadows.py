@@ -136,6 +136,10 @@ SHADOWED = [
     # the single rail (its nine): chat, whispers, the tracker, insets, tabs,
     # the party backdrop
     r"^window/single_(t|b|l|r|tl|tr|bl|br)$",
+    # (0.20.1) the thin stone rail (its nine) and the window titles on the game's title bar: the red ribbon, the band
+    # with its rail line (Tools/make_window_stone.py)
+    r"^window/stone_(t|b|l|r|tl|tr|bl|br)$",
+    r"^window/(ribbon|band)_(cap_l|mid|cap_r)$",
     # action bars: the backdrop frames (whole, and cut as nines), their joins,
     # the end caps; the square rims when a bar has no backdrop (and the auras')
     r"^deco/barframe_(red|iron)$",
@@ -183,6 +187,7 @@ LEGACY = [r"^bars/", r"^buttons/orb_", r"^deco/gem_large$"]
 NINES = {
     "window/frame": None,
     "window/single": None,
+    "window/stone": None,
     "deco/barframe_red": 40,
     "deco/barframe_iron": 40,
 }
@@ -192,6 +197,7 @@ NINE_PARTS = ("tl", "t", "tr", "l", "r", "bl", "b", "br")
 # kit's (a piece drawn at several sizes, as the ring, keeps the kit's blur)
 FAMILY_SCALE = [
     (r"^window/single", 1.6),   # Kit.frameScale: the single rail
+    (r"^window/stone", 0.5),    # (0.20.1) Kit.windowFrames.stone's scale
 ]
 STRIP = re.compile(r"^(?P<base>.+)_(?P<part>cap_l|mid|cap_r|end_l|end_r)(?:_(?P<state>[a-z]+))?$")
 STRIP_PARTS = ("cap_l", "mid", "cap_r", "end_l", "end_r")

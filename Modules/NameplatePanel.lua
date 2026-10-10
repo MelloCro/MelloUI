@@ -150,6 +150,49 @@ function Inset.Margin(rep, h)
 	return math.max(rail, 0) / 2 * h / (box[4] - box[2])
 end
 
+-- (0.20.1, the user: "can we adjust the cast bar on the enemy and player nameplates to fit the width of the
+-- nameplates?") The game lays the cast bar on the whole plate and sets only the health bar in (by the level frame on
+-- its right, Blizzard_NamePlateUnitFrame.lua UpdateAnchors): the cast bar laid under the health bar at its width, as
+-- far below it as the game's own layout puts it (the health bar's margin in its container, the game's spacing,
+-- less the classic cast bar's half pixel), its height the game's (castBarHeight, SetHeight). From plain values, never
+-- read back (a frame on a nameplate answers its anchors secret), after each of the game's UpdateAnchors (this file's
+-- hook); the game's own anchoring back with the kit off (ApplyStyleAndAnchoring's, its next layout lays it again).
+local CastFit = {}
+function CastFit.Lay(uf, hb, rep)
+	local cb = uf.CastBarsContainer and uf.CastBarsContainer.castBar
+	if not (active and cb and hb) then
+		return
+	end
+	local m = (rep and type(rep.thicken) == "number" and not Secret(rep.thicken)) and rep.thicken / 2 or 0
+	-- (the setup options read once, nothing made per layout)
+	local opts = rawget(_G, "NamePlateSetupOptions")
+	local spacing, vs = opts and opts.castBarToHealthBarSpacing, opts and opts.verticalScale
+	spacing = (type(spacing) == "number" and not Secret(spacing)) and spacing or 0
+	vs = (type(vs) == "number" and not Secret(vs)) and vs or 1
+	local gap = m + spacing - 0.5 * vs
+	cb:ClearAllPoints()
+	cb:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, -gap)
+	cb:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, -gap)
+end
+function CastFit.Unlay(uf)
+	local cb = uf.CastBarsContainer and uf.CastBarsContainer.castBar
+	local parent = cb and cb:GetParent()
+	if not parent then
+		return
+	end
+	cb:ClearAllPoints()
+	local opts = NamePlateSetupOptions
+	local classic = opts and opts.useClassicCastBar
+	if classic and not Secret(classic) then
+		local h, v = Option("horizontalScale", 1), Option("verticalScale", 1)
+		cb:SetPoint("TOPLEFT", parent, "TOPLEFT", 20.75 * h, 0.5 * v)
+		cb:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -3.5 * h, 0.5 * v)
+	else
+		cb:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+		cb:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+	end
+end
+
 -- refit: the bracket refitted here (the game's layout refits it itself, just after)
 local function InsetHealthBar(hb, rep, container, refit)
 	-- once per game layout (the game's next UpdateAnchors clears it: a second
@@ -370,12 +413,21 @@ local function HangLevel(uf, on)
 		return
 	end
 	local text, ring = lf.playerLevelDiffText, lf.selectedBorder
-	local strip = bracketRepOf[uf] and bracketRepOf[uf].strip
+	local bracket = bracketRepOf[uf]
+	local strip = bracket and bracket.strip
 	local h = strip and strip.height
 	if on and strip and strip.capR and type(strip.wr) == "number" and type(h) == "number" and h > 0 then
 		local ratio = StripRatio(strip, icon)
 		icon:ClearAllPoints()
-		icon:SetPoint("CENTER", strip.capR, "RIGHT", -strip.wr * GEM_R * ratio, 0)
+		-- (0.20.1, the user: "the level circle should move a bit more to the right", then "is still covering the
+		-- health bar") a library Nameplate Border has no gem to sit on: the circle stands past the bar's right end,
+		-- in the level frame's own room, its left edge on the bar's end (over the border's right rail, which joins it)
+		local lib = bracket.libraryStyle and bracket.libraryBorder
+		if lib then
+			icon:SetPoint("LEFT", bracket.rect, "RIGHT", 0, 0)
+		else
+			icon:SetPoint("CENTER", strip.capR, "RIGHT", -strip.wr * GEM_R * ratio, 0)
+		end
 		icon:SetSize(h * ratio, h * ratio)
 		if text then
 			text:ClearAllPoints()
@@ -1108,6 +1160,7 @@ end
 local function OnBarChanged(rep)
 	local uf = rep.melloPlate
 	if uf then
+		FitLevelOrb(uf)   -- (0.20.1: the circle on the new border's end, or the bracket's gem)
 		FitShade(uf)
 		MarkPlate(uf)
 		FitTop(uf)
@@ -1186,6 +1239,7 @@ local function SkinUnitFrame(uf)
 				end
 				InsetHealthBar(hb, rep, container)
 				rep:Refit()
+				CastFit.Lay(uf, hb, rep)
 				CentreName(uf, hb, rep)
 				FitLevelOrb(uf)
 				FitShade(uf)
@@ -1202,6 +1256,7 @@ local function SkinUnitFrame(uf)
 					enable(...)
 				end
 				InsetHealthBar(hb, rep, container, true)
+				CastFit.Lay(uf, hb, rep)
 				CentreName(uf, hb, rep)
 				FitShade(uf)
 				HangTop(uf)
@@ -1216,6 +1271,7 @@ local function SkinUnitFrame(uf)
 					disable(...)
 				end
 				bracketLeftOf[uf] = nil
+				CastFit.Unlay(uf)
 				UncentreName(uf)
 				SyncBand(uf)
 				HangTop(uf)
@@ -1228,6 +1284,7 @@ local function SkinUnitFrame(uf)
 			end
 			if active then
 				InsetHealthBar(hb, rep, container, true)
+				CastFit.Lay(uf, hb, rep)
 				CentreName(uf, hb, rep)
 				bracketLeftOf[uf] = rep.strip and rep.strip.capL or nil
 			end

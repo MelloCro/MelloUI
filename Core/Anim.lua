@@ -1573,9 +1573,88 @@ end
 --       Timer on that bar after.
 --   MelloUI.Anim:StopTimer(bar[, full])   its timer stopped, the bar empty
 --       (full: full), its texts ""
+--   MelloUI.Anim:RawSeconds() -> the bare-seconds formatter, or nil
+--       a time as the bare number of seconds, rounded up, counting down to
+--       1: no "s", no minutes (the user, 2026-10-09 / 2026-10-10: the group
+--       frames' indicators, the nameplates' debuffs). The client's own rule
+--       formatter, made once, for an aura button's SetDurationText
+--       ({ textFormatter = ... }); nil where the client has none (the
+--       game's own text then).
+--   MelloUI.Anim:CompactDuration() -> the compact time formatter, or nil
+--       the game's aura time (Blizzard_AuraContainerShared's own formatter:
+--       one letter, one unit, seconds up to 90, minutes up to 90, then
+--       hours) with no space before the letter: "59m", "4s" (the user,
+--       2026-10-10: "make it 59m" on the target's and the player frame's
+--       rows). Made once; nil where the client has none.
 -- One duration object a bar and one binding a font string, made on the
 -- first ask (weak keys); nothing is made per Timer.
 --------------------------------------------------------------------------------
+
+do
+	local raw = nil   -- false once the client has been found without one
+	function Anim:RawSeconds()
+		if raw == nil then
+			raw = false
+			local SU, E = rawget(_G, "C_StringUtil"), rawget(_G, "Enum")
+			if type(SU) == "table" and type(SU.CreateNumericRuleFormatter) == "function" then
+				local ok, f = pcall(SU.CreateNumericRuleFormatter)
+				if ok and f and f.AddBreakpoint then
+					local up = E and E.NumericRuleFormatRounding and E.NumericRuleFormatRounding.Up
+					if pcall(f.AddBreakpoint, f, { threshold = 0, step = 1, rounding = up, format = "%d" }) then
+						raw = f
+					end
+				end
+			end
+		end
+		return raw or nil
+	end
+
+	local compact = nil   -- false once the client has been found without one
+	local function Set(f, method, ...)
+		local fn = f[method]
+		if type(fn) == "function" then
+			pcall(fn, f, ...)
+		end
+	end
+	function Anim:CompactDuration()
+		if compact == nil then
+			compact = false
+			local SU, E, CU = rawget(_G, "C_StringUtil"), rawget(_G, "Enum"), rawget(_G, "C_CurveUtil")
+			local I = type(E) == "table" and E.SecondsFormatterInterval
+			if type(SU) == "table" and type(SU.CreateSecondsFormatter) == "function" and type(I) == "table"
+				and E.SecondsFormatterAbbreviation then
+				local ok, f = pcall(SU.CreateSecondsFormatter)
+				if ok and f then
+					Set(f, "SetDefaultAbbreviation", E.SecondsFormatterAbbreviation.OneLetter)
+					if E.SecondsFormatterRounding then
+						Set(f, "SetRounding", E.SecondsFormatterRounding.Truncate)
+					end
+					Set(f, "SetCanRoundUpLastUnit", true)
+					Set(f, "SetMinInterval", I.Seconds)
+					-- (each unit kept up to 1.5 times its range: 90 s, 90 m, 36 h -- the game's step curve)
+					if type(CU) == "table" and type(CU.CreateCurve) == "function" and E.LuaCurveType then
+						local okC, curve = pcall(CU.CreateCurve)
+						if okC and curve then
+							Set(curve, "SetType", E.LuaCurveType.Step)
+							Set(curve, "AddPoint", 0, I.Seconds)
+							Set(curve, "AddPoint", 1 + 1.5 * 60, I.Minutes)
+							Set(curve, "AddPoint", 1 + 1.5 * 3600, I.Hours)
+							Set(curve, "AddPoint", 1 + 1.5 * 86400, I.Days)
+							Set(f, "SetMaxIntervalCurve", curve)
+						end
+					end
+					Set(f, "SetDesiredUnitCount", 1)
+					local W = E.SecondsFormatterIntervalWhitespace
+					if W then
+						Set(f, "SetStripIntervalWhitespace", W.StripIgnoreLocale or W.Strip)
+					end
+					compact = f
+				end
+			end
+		end
+		return compact or nil
+	end
+end
 
 do
 	local durationOf = setmetatable({}, { __mode = "k" })   -- [bar] = its duration object

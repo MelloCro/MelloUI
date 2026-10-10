@@ -158,6 +158,10 @@ local GRAB_BOTTOM = -40      -- the drag strip's bottom edge when none is given
 local FIT_MARGIN = 16        -- a window scaled to fit leaves this much of the screen free
 -- frame levels over the window's own
 local LEVEL_GRAB, LEVEL_CREST, LEVEL_PLATE, LEVEL_CLOSE = 1, 4, 7, 8
+-- (ring.game: the game's portrait corner over the title plate, its portrait over the corner art)
+local LEVEL_GAME_CORNER, LEVEL_GAME_PORTRAIT = 9, 10
+local GAME_CORNER_ATLAS = "UI-Frame-PortraitMetal-CornerTopLeft"
+local GAME_CORNER_X, GAME_CORNER_Y = -13, 16   -- NineSliceLayouts' PortraitFrameTemplate TopLeftCorner
 
 local EDGE_WIDE = { edgeFile = WHITE, edgeSize = 2 }
 
@@ -331,6 +335,9 @@ function Shell:Lay()
 		if self.ringAt == "top" then
 			size = self.kit and self.ringSize or PLAIN_CREST
 			x, y, point = 0, self.kit and Kit:RailMiddle() or 0, "TOP"
+		elseif self.gameCorner then
+			-- (a window standing in for a game window: the game's portrait, its size and place, in both looks)
+			size, x, y, point = PLAIN_CORNER, CORNER_X, CORNER_Y, "TOPLEFT"
 		else
 			size = self.kit and self.ringSize or PLAIN_CORNER
 			x, y, point = self.kit and self.ringX or CORNER_X, self.kit and self.ringY or CORNER_Y, "TOPLEFT"
@@ -632,8 +639,36 @@ end
 -- the ring in place of the plain emblem, its disc in the palette's inner
 -- panel, the emblem on the disc (sized by the kit: no size of its own)
 local function DressRing(K, shell)
+	if shell.gameCorner then
+		-- (ring.game: the game's own corner art where the game puts it, shown with the painted look: the plain
+		-- look's own frame layout draws it there already; the emblem is the plain one, the game's portrait)
+		local holder = CreateFrame("Frame", nil, shell.frame)
+		holder:SetFrameLevel(shell.frame:GetFrameLevel() + LEVEL_GAME_CORNER)
+		holder:EnableMouse(false)
+		holder:SetAllPoints(shell.frame)
+		local corner = holder:CreateTexture(nil, "OVERLAY")
+		if pcall(corner.SetAtlas, corner, GAME_CORNER_ATLAS, true) then
+			corner:SetPoint("TOPLEFT", shell.frame, "TOPLEFT", GAME_CORNER_X, GAME_CORNER_Y)
+			-- (its rail stubs cut as on the game's windows, and the kit's rail cut at the ring: Kit:CutGameCorner)
+			if holder.CreateMaskTexture and corner.AddMaskTexture then
+				corner:AddMaskTexture(K:CornerCutMask(holder, corner))
+			end
+			if shell.rail and rawget(shell.rail, "outerCut") == nil then
+				K:CutRailAtRing(shell.rail, corner)
+			end
+		else
+			corner:Hide()
+		end
+		shell.gameCornerArt = holder
+		shell:OnKit(function(sh, on)
+			sh.gameCornerArt:SetShown(on)
+		end)
+		holder:SetShown(shell.kit)
+		return
+	end
+	-- (`own`: an own window's corner ring; a game window's corner stays the game's, Kit:Replace)
 	local rep = shell:Replace(shell.plainEmblem, { as = shell.ringAt == "top" and "MelloUI-Crest" or "UI-Frame-PortraitMetal-CornerTopLeft",
-		rect = shell.crest })
+		rect = shell.crest, own = true })
 	if not rep then
 		return
 	end
@@ -746,15 +781,26 @@ function Kit:OwnWindow(frame, opts)
 	local ring = opts.ring
 	if ring then
 		shell.ringAt = ring.at == "tl" and "tl" or "top"
+		-- ring.game (a window standing in for a game window: the bag window): the game's own portrait corner, its
+		-- art, its portrait's size and place, in both looks -- no ring of ours (the user, 2026-10-10: the game
+		-- windows' top-left portraits stay the game's; "you did not make that change on the backpack")
+		shell.gameCorner = (ring.game and shell.ringAt == "tl") and true or nil
 		shell.ringSize = (self:Size("window/portrait_ring")) * (ring.scale or 1)
 		shell.ringX, shell.ringY = tonumber(ring.x), tonumber(ring.y)
 		shell.emblemTexture = ring.texture or LOGO
 		local crest = CreateFrame("Frame", nil, frame)
-		crest:SetFrameLevel(base + LEVEL_CREST)
+		crest:SetFrameLevel(base + (shell.gameCorner and LEVEL_GAME_PORTRAIT or LEVEL_CREST))
 		crest:EnableMouse(false)
 		local emblem = crest:CreateTexture(nil, "ARTWORK")
 		emblem:SetTexture(shell.emblemTexture)
 		emblem:SetAllPoints(crest)
+		if shell.gameCorner then
+			-- (the game's portrait: round, its circle mask)
+			local mask = crest:CreateMaskTexture()
+			mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			mask:SetAllPoints(emblem)
+			emblem:AddMaskTexture(mask)
+		end
 		shell.crest, shell.plainEmblem = crest, emblem
 		shell.bounds[#shell.bounds + 1] = crest
 	end

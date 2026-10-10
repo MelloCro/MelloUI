@@ -54,6 +54,20 @@ local OWNER = "GroupFrames"
 local NEW = "0.20.0"
 RD.NEW = NEW
 
+-- (0.20.1, the user: "i want to be able to change the background on the raid unitframes") Background: a flat colour
+-- (Background Colour, as before) or one of the kit's shared backgrounds (Kit.buttonLooks.backgrounds: the tiles and the
+-- gradients, the window backgrounds' own list), or none (GroupButton's Paint lays it)
+function RD.BackgroundTextures()
+	local out = { { value = "flat", label = "Flat colour" } }
+	local Kit = MelloUI.Kit
+	for _, v in ipairs(Kit and Kit.buttonLooks and Kit.buttonLooks.backgrounds or {}) do
+		if v.piece or v.value == "none" then
+			out[#out + 1] = { value = v.value, label = v.label }
+		end
+	end
+	return out
+end
+
 RD.TEXT = {
 	noSpell = "Group Frames: no spell named \"%s\" (type its name as the game writes it, or its spell ID).",
 	added = "Group Frames: %s added.",
@@ -252,6 +266,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		healthAlpha = 1,
 		fillDirection = "RIGHT",
 		smooth = true,
+		backgroundTexture = "flat",
 		background = "custom",
 		backgroundCustom = "palette:innerPanel",
 		backgroundAlpha = 0.9,
@@ -323,6 +338,8 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Which way the health and power bars fill." },
 		{ type = "toggle", key = "smooth", name = "Smooth Bars", new = NEW,
 		  desc = "The bars glide to a new value instead of jumping." },
+		{ type = "dropdown", key = "backgroundTexture", name = "Background", new = "0.20.1", values = RD.BackgroundTextures(),
+		  desc = "What lies behind the health bar: a flat colour (Background Colour), one of MelloUI's backgrounds (stone, concrete, parchment, the dark gradients...), or none." },
 		{ type = "dropdown", key = "background", name = "Background Colour", new = NEW, values = C.background,
 		  desc = "The colour behind the health bar: one of yours, or the member's class colour." },
 		{ type = "colour", key = "backgroundCustom", name = "My Background Colour", new = NEW,

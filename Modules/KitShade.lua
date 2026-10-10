@@ -689,14 +689,19 @@ end
 local RING = { drawn = true }   -- the ring and the crest: drawn square to their rect
 
 -- the ring's corner cut (Kit:TitleBehindRing, once a plate and a ring are
--- both there): on the rail's partners, made or to make
+-- both there; or the rail's own where the game's ring is the window's corner,
+-- Kit:CutRailAtRing): on the rail's partners, made or to make
 local function Cut(rec)
-	local title = rec.title
-	local cut = title and rawget(title, "outerCut")
+	local from = rec.title
+	local cut = from and rawget(from, "outerCut")
+	if not cut then
+		from = rec.outer
+		cut = from and rawget(from, "outerCut")
+	end
 	if cut and rec.cut ~= cut then
-		rec.cut, rec.cutRep = cut, title
+		rec.cut, rec.cutRep = cut, from
 		if rec.el then
-			rec.el.cutRep = title
+			rec.el.cutRep = from
 		end
 		Kit:ShadowMask(rec.skin.kitShadeNine, cut)
 	end
@@ -715,6 +720,7 @@ local function Live(rec)
 	-- (its shade frame on the rail's skin, ours: a window can be an Edit
 	-- Mode system, the loot window)
 	local el = Kit:ShadeElement(rec.root, rec.area, { anchor = rec.skin })
+	Cut(rec)   -- (the rail's own cut, made at its first enable: Kit:CutRailAtRing)
 	rec.el = el
 	el.cutRep = rec.cutRep
 	el:Add(rec.outer, rec.rail)

@@ -87,6 +87,7 @@ local BORDERS = {
 	{ value = "n4g", label = "Thin gold, corner studs", style = "n4g", piece = "borders/n4g" },
 	{ value = "n5", label = "Hairline, corner nubs", style = "n5", piece = "borders/n5" },
 	{ value = "n1", label = "Heavy bevel, corner studs", style = "n1", piece = "borders/n1" },
+	{ value = "rpg", label = "Stone rail", style = "rpg", piece = "borders/rpg" },   -- (0.20.1: Tools/make_rpg_frames.py)
 	{ value = "none", label = "None" },
 }
 local BORDER = {}
@@ -1393,7 +1394,7 @@ local function LaySquare()
 			f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT")
 			f.gemReach = 0
 			if not f.library then
-				f.library = Kit:NewBorder({ rect = map, owner = f, place = "round", layer = "ARTWORK", sub = 0,
+				f.library = Kit:NewBorder({ rect = map, owner = f, place = "round", layer = "ARTWORK", sub = 0, noBg = true,
 					shade = { root = f, area = "minimap" } })
 			end
 			f:Show()

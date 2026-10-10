@@ -70,8 +70,16 @@ def tile_axes(name):
     group, base = name.split("/")
     if group == "tiles" or base == "frame_body":
         return "xy"
+    if group == "parchment":
+        # (0.20.1, Tools/make_parchment.py) the parchment nine: its paper repeats both ways, its edges along their
+        # length, its corners (the curls too) whole
+        if base.endswith("_body"):
+            return "xy"
+        return "x" if base.endswith(("_t", "_b")) else "y" if base.endswith(("_l", "_r")) else ""
     if group == "window" and base.endswith("_body"):
         return "xy"
+    if group == "window" and re.fullmatch(r"(ribbon|band)_cap_[lr]", base):
+        return ""                       # (2026-10-10, Tools/make_window_stone.py) header caps: whole pieces, not the side rails' "_l" / "_r"
     if base == "scrolltrack_mid" or base == "trough_v" or base.startswith("scrollthumb_mid") or (group == "window" and base.endswith(("_l", "_r"))):
         return "y"                      # upright pieces: the scroll track, the trough stood up, the thumb's slab
     if MID.search(base) or base == "trough" or (group == "window" and base.endswith(("_t", "_b"))):
@@ -168,6 +176,11 @@ DENSITY = [
     (r"^window/portrait_ring$", 0.75),     # 197 px shown at 95
     (r"^window/close_", 1.0),              # 0.19.9: the NewUI2 close plate, 64 px shown at 24 (its studs and cross need the pixels)
     (r"^window/frame_gem_", 0.5),          # 160 px corners shown at 60
+    (r"^buttons/orb_rpg", 0.75),           # (0.20.1, Tools/make_rpg_frames.py) the level orb's stone ring: 98 px shown at 24-32
+    (r"^borders/rpg", 0.75),               # ... the stone rail's master and its trough: 128 / 64 px at the library's weights
+    (r"^parchment/sheet_body$", 0.5),      # (0.20.1, Tools/make_parchment.py) the paper: 512 px shown at 192 per repeat, as the tiles
+    (r"^parchment/", 0.75),                # ... its edges and corners: 80 px shown at ~30 (a sheet's scale 0.375), the torn rim kept
+    (r"^window/(stone|ribbon|band)_", 1.0),   # (2026-10-10, Tools/make_window_stone.py) the thin stone look: 24 px rail shown at ~12, its 1-2 px lines kept whole (as single_)
     (r"^window/", 0.5),                    # 50 px edges shown at 19
     # 0.19.9 (the user's picks 2026-10-08, docs/plans/newui2-glyphs-close-portrait.md): the NewUI2 plates are the
     # one control style (the flat controls draw them): 37-50 px shown at 22-30, their studs and bevels kept whole
@@ -670,7 +683,7 @@ def main():
         cap = re.search(r"^bars/.*_cap_([lr])$", name)
         if cap:
             op = cap_hollow(np.array(im), cap.group(1))
-        if op and re.search(r"(slot_|roundslot_|portrait_ring|card_|/frame_mid|castbar_mid|frame_cap|castbar_cap|bars/rim[a-z]*_(cap_[lr]|mid)|buttons/roundrim|checkbox|orb_|cog_|arrow_|plus_|minus_|close_|^borders/(rim|backdrop|n[0-9]g?$)|^rings/)", name):
+        if op and re.search(r"(slot_|roundslot_|portrait_ring|card_|/frame_mid|castbar_mid|frame_cap|castbar_cap|bars/rim[a-z]*_(cap_[lr]|mid)|buttons/roundrim|checkbox|orb_|cog_|arrow_|plus_|minus_|close_|^borders/(rim|backdrop|n[0-9]g?$|rpg$)|^rings/)", name):
             entry["open"] = op
         if extra and "overhang" in extra:
             entry["overhang"] = int(extra["overhang"])   # oversized corners: how far past the frame's corner they reach

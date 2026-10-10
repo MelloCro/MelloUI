@@ -42,4 +42,18 @@ MelloUI_KitSlices = {
 			br = { file = "window\\single_br", w = 11, h = 11, uv = { 0, 0.6875, 0, 0.6875 } },
 		},
 	},
+	["window/stone"] = {
+		texel = 1, corner = 24, grid = { 176, 176 }, size = { 256, 256 },
+		full = "slices\\window_stone",
+		pieces = {
+			tl = { file = "window\\stone_tl", w = 24, h = 24, uv = { 0, 0.75, 0, 0.75 } },
+			t = { file = "window\\stone_t", w = 128, h = 24, uv = { 0, 1, 0, 0.75 } },
+			tr = { file = "window\\stone_tr", w = 24, h = 24, uv = { 0, 0.75, 0, 0.75 } },
+			l = { file = "window\\stone_l", w = 24, h = 128, uv = { 0, 0.75, 0, 1 } },
+			r = { file = "window\\stone_r", w = 24, h = 128, uv = { 0, 0.75, 0, 1 } },
+			bl = { file = "window\\stone_bl", w = 24, h = 24, uv = { 0, 0.75, 0, 0.75 } },
+			b = { file = "window\\stone_b", w = 128, h = 24, uv = { 0, 1, 0, 0.75 } },
+			br = { file = "window\\stone_br", w = 24, h = 24, uv = { 0, 0.75, 0, 0.75 } },
+		},
+	},
 }

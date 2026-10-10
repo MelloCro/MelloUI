@@ -84,26 +84,12 @@ end
 
 -- the time as the bare number of seconds, rounded up, counting down to 1 (the
 -- user, 2026-10-09: "they dont need to state "s" as in for seconds, they
--- should just count down ... just the raw number"): the client's own rule
--- formatter (C_StringUtil.CreateNumericRuleFormatter), one rule from 0 up,
--- made once; nil where the client has none (the game's own then)
-local raw = nil
+-- should just count down ... just the raw number"): the core's one formatter
+-- (MelloUI.Anim:RawSeconds, the nameplates' debuffs wear it too); nil where
+-- the client has none (the game's own then)
 local function RawSeconds()
-	if raw == nil then
-		raw = false
-		local SU = rawget(_G, "C_StringUtil")
-		local E = rawget(_G, "Enum")
-		if type(SU) == "table" and type(SU.CreateNumericRuleFormatter) == "function" then
-			local ok, f = pcall(SU.CreateNumericRuleFormatter)
-			if ok and f and f.AddBreakpoint then
-				local up = E and E.NumericRuleFormatRounding and E.NumericRuleFormatRounding.Up
-				if pcall(f.AddBreakpoint, f, { threshold = 0, step = 1, rounding = up, format = "%d" }) then
-					raw = f
-				end
-			end
-		end
-	end
-	return raw or nil
+	local Anim = MelloUI.Anim
+	return Anim and Anim.RawSeconds and Anim:RawSeconds() or nil
 end
 Looks.RawSeconds = RawSeconds
 

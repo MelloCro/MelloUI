@@ -1296,7 +1296,8 @@ local function DumpIcons(tip)
 		(Kit.ParchmentOn and Kit:ParchmentOn("tooltip")) and "on" or "off")
 	local nine = tip.NineSlice
 	MelloUI:Print("NineSlice: level=%s shown=%s alpha=%s", Read(nine, "GetFrameLevel"), Read(nine, "IsShown"), Read(nine, "GetAlpha"))
-	Facts("sheet", sheets[tip])
+	-- (0.20.1: the sheet is the parchment nine's frame; its paper, the body, is the region in the tooltip's layers)
+	Facts("sheet", sheets[tip] and (rawget(sheets[tip], "body") or sheets[tip]))
 	Facts("dark panel", dims[tip])
 	-- every texture region of the tooltip itself (the numbered ones by name,
 	-- shown or not, and any other)

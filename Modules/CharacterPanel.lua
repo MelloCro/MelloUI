@@ -419,7 +419,7 @@ Part(function(cf)
 						b = { rails.b or false },
 					}
 				end }
-				Kit:ParchmentSheet(stone.object, clear, { rect = clear, margin = 1, sublevel = 1, area = "character",
+				Kit:ParchmentSheet(stone.object, clear, { rect = clear, margin = 1, sublevel = 1, area = "character", curls = "tl",
 					alive = function() return not WindowParchment() end })
 			end
 		end
@@ -535,8 +535,11 @@ local function SkinJoints()
 			end
 			return rep
 		end
+		-- (only the plate that rides the rail meets the divider: the ribbon and the band of 0.20.1's window titles
+		-- sit inside the title bar and have no state)
 		local strip = skin.title and skin.title.strip
-		local mid = strip and Kit:Piece(strip.base .. "_mid_" .. strip.state)
+		local onRail = skin.title and skin.title.rule and skin.title.rule.onRail
+		local mid = onRail and strip and Kit:Piece(Kit:StripPieceName(strip.base, "mid", strip.state))
 		if mid and mid.box then
 			-- the plate's bottom rail band is rows 75-86 of the 89 px canvas
 			-- (its box ends at 86): the centre line, 5.5 px up from the box
@@ -967,16 +970,41 @@ local function ListEntryRep(frame)
 			extra[#extra + 1] = region
 		end
 	end
+	-- (0.20.1, the user: the highlight "way too big, it should also fit the selected border") the plate on a band as
+	-- tall as the row's bar frame (its Progress Bar Border: the bar rep's OuterHeight), centred on the bar, across the
+	-- row; the whole row while the bar reads nothing yet
+	local band = frame.Content:CreateTexture(nil, "BACKGROUND")
+	band:SetAllPoints(bh)
 	local rep = Replace(middle or FirstTexture(bh), { as = "charactercreate-customize-dropdown-linemouseover-middle",
-		parent = frame.Content, rect = bh, level = 0, alsoFade = extra })
+		parent = frame.Content, rect = band, level = 0, alsoFade = extra })
 	if not rep then
 		return nil
 	end
 	rep.object:SetFrameLevel(bh:GetFrameLevel())
+	local function FitBand()
+		local bar = frame.Content.ReputationBar or frame.Content.SkillsBar
+		local barRep = bar and repOf[bar]
+		local H = barRep and barRep.OuterHeight and barRep:OuterHeight()
+		local okT, top = pcall(bh.GetTop, bh)
+		local okB, bottom = pcall(bh.GetBottom, bh)
+		local okC, _, cy = false, nil, nil
+		if bar then
+			okC, _, cy = pcall(bar.GetCenter, bar)
+		end
+		band:ClearAllPoints()
+		if not (H and okT and okB and okC and top and bottom and cy) or Secret(top) or Secret(bottom) or Secret(cy) then
+			band:SetAllPoints(bh)
+			return
+		end
+		local t, b = math.min(top, cy + H / 2), math.max(bottom, cy - H / 2)
+		band:SetPoint("TOPLEFT", bh, "TOPLEFT", 0, t - top)
+		band:SetPoint("BOTTOMRIGHT", bh, "BOTTOMRIGHT", 0, b - bottom)
+	end
 	rep.refresh = function()
 		if not active then
 			return
 		end
+		FitBand()
 		rep:Refit()
 		-- the same conditions the game uses for its highlight (no closure
 		-- per call: this runs on every hover of every row)

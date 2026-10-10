@@ -114,8 +114,6 @@ local G = {
 	SLOT = 37, GAP = 5, COLS = 10,
 	SIDE = 12,       -- the content's inset from the window's sides
 	TOP = 74,        -- the content's top below the window's top (the title rail, the search row, the ring's foot)
-	RING = 84,       -- the corner ring: the game's corner piece's size (PortraitFrameTemplate's TopLeftCorner)
-	RING_X = 24, RING_Y = -17,   -- its centre (the kit look): its gems over the rail's and the plate's cut ends
 	SEARCH_X = 70,   -- the search box's left, past the ring
 	PANEL_PAD = 6,   -- the dark panel round the items
 	PANEL_ALPHA = 0.9,
@@ -1169,15 +1167,12 @@ local function Build()
 	Perf.SetScript(f, "OnShow", Shown)
 	Perf.SetScript(f, "OnHide", Hidden)
 	win.frame = f
-	-- the corner ring as big as on the game's bag window and set higher (user, 2026-10-04: "the texture on the top
-	-- left corner is off", then the talents window's corner: "this is how they should connect"): the rail and the
-	-- title plate are cut along the ring's middle lines (Kit:TitleBehindRing), and the shell's ring left the cut
-	-- ends showing beside its gems
-	local ringW = Kit:Size("window/portrait_ring")
+	-- the game's own backpack corner (the user, 2026-10-10: the game windows' top-left portrait and its border stay
+	-- the game's; "you did not make that change on the backpack"): the shell's ring.game -- the game's corner art,
+	-- the backpack icon round at the game's portrait size and place, in both looks
 	win.shell = Kit:OwnWindow(f, {
 		area = AREA, plate = "rail",
-		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", scale = ringW > 0 and G.RING / ringW or 1,
-			x = G.RING_X, y = G.RING_Y },
+		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", game = true },
 		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
 		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home },
 	})

@@ -193,6 +193,14 @@ local function Bar(parent)
 	return b
 end
 
+-- a background picture tiled again as its frame changes size (one handler for every frame)
+local function Background_OnSize(f)
+	local Kit = MelloUI.Kit
+	if Kit and f.background and Kit.pieceNameOf[f.background] then
+		Kit:Retile(f.background)
+	end
+end
+
 function Button.Build(f)
 	if f.healthBar then
 		return f
@@ -200,6 +208,7 @@ function Button.Build(f)
 	f.background = f:CreateTexture(nil, "BACKGROUND")
 	f.background:SetAllPoints(f)
 	f.background:SetTexture(WHITE)
+	f:HookScript("OnSizeChanged", Background_OnSize)
 	f.healthBar = Bar(f)
 	f.healthBar:SetMinMaxValues(0, 100)
 	f.missingBar = Bar(f.healthBar)
@@ -320,8 +329,27 @@ end
 -- Health), missing health (but By Health), alphas
 function Button.Paint(f)
 	local db = DB()
-	local bgR, bgG, bgB = ModeRGB(f, db.background, "backgroundCustom")
-	f.background:SetVertexColor(bgR or 0, bgG or 0, bgB or 0, db.backgroundAlpha or 0.9)
+	-- (0.20.1) Background: one of the kit's shared backgrounds in its own colours (tiled at the UI's one background
+	-- density, a gradient laid over the whole frame), else the flat fill in the Background Colour; none: see-through
+	local bg, Kit = f.background, MelloUI.Kit
+	local look = db.backgroundTexture or "flat"
+	local piece = look ~= "flat" and Kit and Kit.buttonLooks.backgroundPiece[look]
+	bg:SetShown(look ~= "none")
+	if piece then
+		if Kit.pieceNameOf[bg] ~= piece then
+			Kit:Apply(bg, piece)
+		end
+		Kit:Retile(bg)
+		bg:SetVertexColor(1, 1, 1, db.backgroundAlpha or 0.9)
+	else
+		if Kit and Kit.pieceNameOf[bg] then
+			Kit.pieceOf[bg], Kit.pieceNameOf[bg], Kit.backgroundOf[bg] = nil, nil, nil
+			bg:SetTexture(WHITE)
+			bg:SetTexCoord(0, 1, 0, 1)
+		end
+		local bgR, bgG, bgB = ModeRGB(f, db.background, "backgroundCustom")
+		bg:SetVertexColor(bgR or 0, bgG or 0, bgB or 0, db.backgroundAlpha or 0.9)
+	end
 	local fill = Looks.Fill(f.healthBar)
 	if fill then
 		fill:SetAlpha(db.healthAlpha or 1)
