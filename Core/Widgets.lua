@@ -642,6 +642,12 @@ end
 
 W.FollowGame = GA.Follow
 
+-- (0.20.1) an own text field with no art of its own (a number box): THE field in MelloUI's look, its plain fill and
+-- edge in the game's (W.Field's `plain`)
+function GA.PlainField(box)
+	box.field:SetPlain(GA.Game())
+end
+
 -- a panel in the look: the game's inset, or our fill and edge (W.Panel)
 function W.PanelLook(panel)
 	local game = GA.Game()
@@ -1281,12 +1287,14 @@ do
 	end, "script")
 
 	local BoxFocusGained = Shared("OnEditFocusGained on a slider's value box", function(box)
+		box.field:SetState(true)
 		box:HighlightText()
 	end, "script")
 
 	-- a click elsewhere: the number taken (the box's own Enter, Tab or Escape
 	-- already had its say)
 	local BoxFocusLost = Shared("OnEditFocusLost on a slider's value box", function(box)
+		box.field:SetState(false)
 		if box.melloLetGo then
 			box.melloLetGo = nil
 			return
@@ -1361,10 +1369,7 @@ do
 		box:EnableMouse(true)
 		box:EnableMouseWheel(false)
 		W.Paint(box, "text", "text")
-		local fill = box:CreateTexture(nil, "BACKGROUND")
-		fill:SetAllPoints(box)
-		W.Paint(fill, "innerPanel", "fill", 1)
-		box.fill, box.edges = fill, Edges(box, "border", "BORDER")
+		box.field = W.Field(box)   -- (0.20.1: THE text field)
 		box.melloSlider = slider
 		Perf.SetScript(box, "OnEnterPressed", BoxTake)
 		Perf.SetScript(box, "OnTabPressed", BoxTake)
@@ -1428,8 +1433,7 @@ do
 		track.part:SetShown(flat)
 		track.knob:SetShown(flat)
 		track.ring:SetShown(flat)
-		box.fill:SetShown(flat)
-		GA.ShowAll(box.edges, flat)
+		box.field:SetShown(flat)
 		if game then
 			slider.melloThumb:Show()
 			track:SetThumbTexture(slider.melloThumb)
@@ -1803,12 +1807,111 @@ do
 end
 
 --------------------------------------------------------------------------------
+-- Field (0.20.1; the user's pick E, 2026-10-10: "search bar in spell book, we need to define how the search box is
+-- going to look like, and i want the same look on the whole UI, that goes for the Editbox in chat and in whisper
+-- window aswell"; the sheet: MelloUI-BuildData/output/editbox_sketch): THE look of every text field -- the game's
+-- search boxes and the chat's edit box (the kit's flat "edit": W.FlatOver), MelloUI's own (W.FlatField: the
+-- configurator's search and name boxes, the bag window's search, the whisper windows' answer), the number and slider
+-- value boxes. The border library's Stone rail at its light weight on the field (Kit:NewBorder, style "rpg"), its own
+-- dark trough under the text; the library's glow while the field has the keyboard, its darken disabled. The rail is
+-- made at the field's first show (a field never seen makes none). Without the library (a world without the kit),
+-- or `plain` (an own control in the game's look, with no art of its own), the `innerPanel` fill in a 1 px edge it
+-- stands in for (`trim` with the keyboard).
+--   W.Field(host, rect) -> field   its parts regions of `host`, on `rect` (host itself, or a region of host's)
+--   field:SetState(focus, disabled, alpha)   field:SetShown(on)   field:SetPlain(on)
+--------------------------------------------------------------------------------
+do
+	local STYLE, WEIGHT = "rpg", "light"
+	local Field = {}
+	Field.__index = Field
+	local fieldOf = setmetatable({}, weakKeys)   -- [host] = its field (one per host)
+
+	-- the Stone rail, made at the first lay that shows it (false: no library here)
+	local function Stone(f)
+		if f.border == nil then
+			local Kit = KitNow()
+			local b = false
+			if Kit and Kit.NewBorder and type(Kit.BorderStyles) == "table" and Kit.BorderStyles[STYLE] then
+				b = Kit:NewBorder({ rect = f.rect, owner = f.host, layer = "BORDER", sub = 2, place = "on" })
+				if not b:Lay(STYLE, WEIGHT) then
+					b = false
+				end
+			end
+			f.border = b
+		end
+		return f.border
+	end
+
+	local function Lay(f)
+		local stone = f.seen and f.shown and not f.plain and Stone(f) or false
+		if f.border then
+			f.border:SetShown(stone and true or false)
+			if stone then
+				f.border:SetLit(f.focus, nil, f.disabled)
+			end
+		end
+		local plain = f.shown and not stone and (f.plain or f.seen) and true or false
+		if plain and not f.fill then
+			local fill = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
+			fill:SetAllPoints(f.rect)
+			f.fill, f.edges = fill, Edges(f.host, "border", "BORDER", f.rect)
+		end
+		if f.fill then
+			f.fill:SetShown(plain)
+			GA.ShowAll(f.edges, plain)
+			if plain then
+				W.Paint(f.fill, "innerPanel", "fill", f.alpha)
+				for i = 1, 4 do
+					W.Paint(f.edges[i], f.focus and "trim" or "border", "fill", f.alpha)
+				end
+			end
+		end
+	end
+
+	function Field:SetState(focus, disabled, alpha)
+		self.focus, self.disabled, self.alpha = focus and true or false, disabled and true or false, alpha or 1
+		Lay(self)
+	end
+
+	function Field:SetShown(on)
+		self.shown = on and true or false
+		Lay(self)
+	end
+
+	function Field:SetPlain(on)
+		self.plain = on and true or false
+		Lay(self)
+	end
+
+	local FieldSeen = Shared("OnShow on a text field's frame (the field's first lay)", function(host)
+		local f = fieldOf[host]
+		if f and not f.seen then
+			f.seen = true
+			Lay(f)
+		end
+	end, "script")
+
+	function W.Field(host, rect)
+		local f = setmetatable({ host = host, rect = rect or host, shown = true, focus = false, disabled = false,
+			alpha = 1 }, Field)
+		fieldOf[host] = f
+		if host:IsVisible() then
+			f.seen = true
+		else
+			Perf.HookScript(host, "OnShow", FieldSeen)
+		end
+		Lay(f)
+		return f
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The search box (0.15.0, flat: user, 2026-09-29 "all flat"; it was the
 -- kit's S1 in the kit's look, the game's own in the plain one): the game's
 -- search box (SearchBoxTemplate), made by the caller (the configurator's
--- side list), in the slider value box's look -- its Left / Middle / Right
--- art hidden, an `innerPanel` fill in a 1 px `border` edge (`trim` while it
--- has the keyboard) over the art's own span (from SEARCH_LEFT px left of the
+-- side list), in THE text field's look (W.Field, 0.20.1: the Stone rail and
+-- its trough, lit while it has the keyboard) -- its Left / Middle / Right
+-- art hidden -- over the art's own span (from SEARCH_LEFT px left of the
 -- box: the magnifying glass inside it). The prompt in `mutedText` (the
 -- palette's hint colour); the glass `mutedText` while the box is idle and
 -- `text` in use (the game's own two shades of it, by key); the clear
@@ -1820,11 +1923,12 @@ end
 -- the same art at the same span, and it has no glass, prompt or cross.
 --   W.FlatField(box) -> box   once per box (a search box or a plain field)
 --   W.FlatSearch(box)         the same (the configurator's search box)
---   box.melloFill, box.melloEdges
+--   box.melloField            its W.Field
 --------------------------------------------------------------------------------
 
 do
 	local SEARCH_LEFT = 5   -- the game's art reaches this far left of the box
+	local FIELD_PAD = 3     -- (0.20.1) a plain field's text this far in from its rail, in MelloUI's look (no glass)
 	local SEARCH_ART = { "Left", "Middle", "Right" }
 
 	-- the glass in use (the keyboard in the box, or a text in it) or idle:
@@ -1859,8 +1963,11 @@ do
 				art:SetAlpha(game and 1 or 0)
 			end
 		end
-		box.melloFill:SetShown(not game)
-		GA.ShowAll(box.melloEdges, not game)
+		box.melloField:SetShown(not game)
+		local pad = rawget(box, "melloInsets")
+		if pad then
+			box:SetTextInsets(pad[1] + (game and 0 or FIELD_PAD), pad[2] + (game and 0 or FIELD_PAD), pad[3], pad[4])
+		end
 		local clear = box.clearButton
 		if game then
 			if box.Instructions then
@@ -1889,11 +1996,7 @@ do
 			Glass(box)
 			return
 		end
-		local key = box:HasFocus() and "trim" or "border"
-		local edges = box.melloEdges
-		for i = 1, 4 do
-			W.Paint(edges[i], key, "fill", 1)
-		end
+		box.melloField:SetState(box:HasFocus())
 		Glass(box)
 	end, "script")
 
@@ -1902,15 +2005,18 @@ do
 	end, "script")
 
 	function W.FlatField(box)
-		if not box or box.melloFill then
+		if not box or box.melloField then
 			return box
 		end
 		KitRep(box, false)   -- (the kit's sweep passes it by: no S1)
-		local fill = box:CreateTexture(nil, "BACKGROUND", nil, 2)
-		fill:SetPoint("TOPLEFT", box, "TOPLEFT", -SEARCH_LEFT, 0)
-		fill:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
-		W.Paint(fill, "innerPanel", "fill", 1)
-		box.melloFill, box.melloEdges = fill, Edges(box, "border", "BORDER", fill)
+		local span = box:CreateTexture(nil, "BACKGROUND")   -- (the field's span: an empty region)
+		span:SetPoint("TOPLEFT", box, "TOPLEFT", -SEARCH_LEFT, 0)
+		span:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", 0, 0)
+		box.melloField = W.Field(box, span)
+		if not box.searchIcon and box.GetTextInsets then
+			local l, r, t, b = box:GetTextInsets()   -- (the game's; FieldLook pads them in MelloUI's look)
+			box.melloInsets = { l or 0, r or 0, t or 0, b or 0 }
+		end
 		Perf.HookScript(box, "OnEditFocusGained", SearchFocus)
 		Perf.HookScript(box, "OnEditFocusLost", SearchFocus)
 		if box.searchIcon then
@@ -2021,8 +2127,18 @@ do
 			disc:SetSize(KNOB, KNOB)
 			disc:SetPoint("CENTER", holder, "CENTER", 0, 0)
 			p.ring, p.disc = ring, disc
+		elseif kind == "edit" then
+			-- (0.20.1) THE text field (W.Field); `left`: over the art's span left of the rect (a search box's glass
+			-- inside it)
+			local rect = holder
+			if opts.left and opts.left ~= 0 then
+				rect = holder:CreateTexture(nil, "BACKGROUND")
+				rect:SetPoint("TOPLEFT", holder, "TOPLEFT", -opts.left, 0)
+				rect:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 0, 0)
+			end
+			p.field = W.Field(holder, rect)
 		else
-			-- a plate: the button's, a tab's, the dropdown's and edit box's field
+			-- a plate: the button's, a tab's, the dropdown's field
 			Plate(holder, p, opts.left)
 			if kind == "dropdown" then
 				local caret = holder:CreateTexture(nil, "ARTWORK", nil, 2)
@@ -2065,6 +2181,9 @@ do
 			end
 		end
 		GA.ShowAll(p.edges, on)
+		if p.field then
+			p.field:SetShown(on)
+		end
 	end
 
 	local function PaintAll(list, key, how, alpha)
@@ -2096,8 +2215,7 @@ do
 			W.Paint(p.fill, "selectedTab", "fill", 1)
 			PaintAll(p.edges, "selectedTrim", "fill", 1)
 		elseif kind == "edit" then
-			W.Paint(p.fill, "innerPanel", "fill", alpha)
-			PaintAll(p.edges, focus and "trim" or "border", "fill", alpha)
+			p.field:SetState(focus, disabled, alpha)
 		elseif kind == "dropdown" then
 			W.Paint(p.fill, lit and "hover" or "innerPanel", "fill", alpha)
 			PaintAll(p.edges, "border", "fill", alpha)
@@ -6111,7 +6229,7 @@ end
 --   box:Refresh()   get() again (left alone while it has the focus)
 --   box.melloNext   an edit box Tab moves to after taking the number (the
 --     caller's: Edit Layout's X -> Y -> Size)
---   box.melloGet / melloSet, box.fill, box.edges
+--   box.melloGet / melloSet, box.field (THE text field, W.Field: plain in the game's look)
 -- Its handlers are shared (no closure per box); nothing runs while it is
 -- left alone.
 --------------------------------------------------------------------------------
@@ -6189,11 +6307,13 @@ do
 	end, "script")
 
 	local NumberFocusGained = Shared("OnEditFocusGained on a number box", function(box)
+		box.field:SetState(true)
 		box:HighlightText()
 	end, "script")
 
 	-- a click elsewhere: the number taken (Enter, Tab and Escape had their say)
 	local NumberFocusLost = Shared("OnEditFocusLost on a number box", function(box)
+		box.field:SetState(false)
 		if box.melloLetGo then
 			box.melloLetGo = nil
 			return
@@ -6224,10 +6344,9 @@ do
 		box:EnableMouse(true)
 		box:EnableMouseWheel(false)
 		W.Paint(box, "text", "text")
-		local fill = box:CreateTexture(nil, "BACKGROUND")
-		fill:SetAllPoints(box)
-		W.Paint(fill, "innerPanel", "fill", 1)
-		box.fill, box.edges = fill, Edges(box, "border", "BORDER")
+		box.field = W.Field(box)   -- (0.20.1)
+		GA.Follow(box, GA.PlainField)
+		GA.PlainField(box)
 		box.melloGet, box.melloSet = get, set
 		box.melloMin, box.melloMax = Num(opts.min), Num(opts.max)
 		box.melloStep = Num(opts.step) or 1

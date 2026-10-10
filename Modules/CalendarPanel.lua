@@ -648,15 +648,6 @@ local function WalkControls(root, depth)
 	end
 end
 
--- The divider strip's own thickness (its painted box), as the other windows' lines
-local function DividerThickness()
-	local p = Kit:Piece("window/divider_mid")
-	if p and p.box then
-		return (p.box[4] - p.box[2]) * Kit.scale
-	end
-	return p and p.h * Kit.scale or 8
-end
-
 -- A text box (a tooltip backdrop: the invite lists, the description boxes,
 -- a black 0.9 fill in a thin tooltip border, its rows or text children one
 -- level up) -> the list box L1: the single rail with its stone under the
@@ -763,7 +754,7 @@ local function SkinPopups()
 			done[div] = true
 			-- the strip frame at the section's own level (level 0): a level
 			-- lower it would tie with the popup's regions
-			if Replace(div, { as = DIVIDER_RULE, fitHeight = DividerThickness(), level = 0 }) then
+			if Replace(div, { as = DIVIDER_RULE, level = 0 }) then   -- (at the kit's own weight: the rule's `natural`)
 				stats.dividers = stats.dividers + 1
 			end
 		end

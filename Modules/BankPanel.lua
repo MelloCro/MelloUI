@@ -334,15 +334,6 @@ local function FindDivider(f)
 	end
 end
 
--- the divider strip's own thickness (its painted box), as the other windows' lines
-local function DividerThickness()
-	local p = Kit:Piece("window/divider_mid")
-	if p and p.box then
-		return (p.box[4] - p.box[2]) * Kit.scale
-	end
-	return p and p.h * Kit.scale or 8
-end
-
 --------------------------------------------------------------------------------
 -- The lower band (WINDOW-RULES 2e: "too much small text over a plain brown
 -- border is just an eye strain"). Under the grid the game draws a divider,
@@ -400,7 +391,7 @@ local function SkinBand(f)
 	table.insert(nine.all, fill)
 	-- the divider on the band's open top, its ends on the side rails' centre lines
 	local strip = Kit:Strip(rect, "window/divider", { scale = Kit.scale, owner = f, layer = "BORDER", sublevel = 3 })
-	local yoff = strip:FitBox(DividerThickness())
+	local yoff = strip:FitBox(Kit:StripWeight("window/divider"))
 	local railIn = Kit:RailInset(prefix .. "_l", "l")
 	strip:ClearAllPoints()
 	strip:SetPoint("LEFT", rect, "TOPLEFT", railIn, yoff)

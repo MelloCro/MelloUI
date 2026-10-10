@@ -604,16 +604,6 @@ local function DividerCandidate(region)
 	return (w >= 60 and h > 0 and h <= 6) or (named and true or false)
 end
 
--- the divider strip's own thickness (its painted box), not the game line's
--- 1 or 2 px: the strip is fitted to that, centred on the line
-local function DividerThickness()
-	local p = Kit:Piece("window/divider_mid")
-	if p and p.box then
-		return (p.box[4] - p.box[2]) * Kit.scale
-	end
-	return p and p.h * Kit.scale or 8
-end
-
 local function SkinDividers(al)
 	local skipFrames = {}
 	for _, key in ipairs({ "NineSlice", "TitleContainer", "Inset", "PortraitContainer", "ScrollBar" }) do
@@ -632,8 +622,8 @@ local function SkinDividers(al)
 			if region ~= al.Bg and region ~= al.TopTileStreaks and found.dividers[region] == nil and DividerCandidate(region) then
 				local parent = region:GetParent()
 				local level = lineLevel and (lineLevel - parent:GetFrameLevel()) or 1
-				found.dividers[region] = Replace(region, { as = DIVIDER_KEY, rect = region, parent = parent, level = level,
-					fitHeight = DividerThickness() }) or false
+				found.dividers[region] = Replace(region, { as = DIVIDER_KEY, rect = region, parent = parent, level = level })
+					or false   -- (at the kit's own weight: the rule's `natural`)
 			end
 		end
 		if depth >= 2 then

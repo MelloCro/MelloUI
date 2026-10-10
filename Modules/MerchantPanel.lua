@@ -532,15 +532,6 @@ local function Bands()
 	return List(_G.MerchantFrameBottomLeftBorder, _G.MerchantFrameBottomRightBorder)
 end
 
--- the divider strip's own thickness (its painted box), as the other windows' lines
-local function DividerThickness()
-	local p = Kit:Piece("window/divider_mid")
-	if p and p.box then
-		return (p.box[4] - p.box[2]) * Kit.scale
-	end
-	return p and p.h * Kit.scale or 8
-end
-
 local function SyncDivider()
 	local d = skin and skin.divider
 	if not d then
@@ -580,7 +571,7 @@ local function SkinBand(f)
 	-- whose foot touches the line)
 	local strip = Kit:Strip(host, "window/divider", { scale = Kit.scale, owner = host, layer = "BACKGROUND", sublevel = 3 })
 	strip:EnableMouse(false)
-	local yoff = strip:FitBox(DividerThickness())
+	local yoff = strip:FitBox(Kit:StripWeight("window/divider"))
 	strip:ClearAllPoints()
 	strip:SetPoint("LEFT", left, "BOTTOMLEFT", railIn, yoff)
 	strip:SetPoint("RIGHT", right, "BOTTOMRIGHT", -railIn, yoff)

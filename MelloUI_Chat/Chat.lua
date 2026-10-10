@@ -3391,6 +3391,11 @@ local function CreatePopup(key, kind, target, title)
 	box:SetAutoFocus(false)   -- never takes the keyboard by itself: movement keys stay the player's
 	box:SetMaxLetters(255)
 	box:SetFontObject(ChatFontNormal)
+	-- (0.20.1, the user: the search box's look "on the whole UI, that goes for the Editbox in chat and in whisper
+	-- window aswell") THE text field, as every own field (a world without the core's widgets: the game's box)
+	if W and W.FlatField then
+		W.FlatField(box)
+	end
 	-- Enter sends and keeps the box for the next line; Enter on an empty box
 	-- (or only spaces) lets go of it, as the game's chat box does (user,
 	-- 2026-09-23: "if i decide not to answer and press enter ... it should

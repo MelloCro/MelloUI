@@ -12,6 +12,8 @@
 MelloUI_CustomFonts = {
 	{ name = "Prototype", file = "Prototype.ttf" },
 	{ name = "Enchanted Land (Gothic)", file = "EnchantedLand.ttf" },
+	{ name = "MelloFont", file = "Mello-Regular.ttf" },
+	{ name = "MelloFont Bold", file = "Mello-Bold.otf" },
 	-- the font library (user, 2026-09-23: "some fonts for us to play with"),
 	-- all under the SIL Open Font License (OFL.txt in each folder); the static
 	-- Regular / SemiBold / Bold cuts and their italics, the display faces in their one style

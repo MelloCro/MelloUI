@@ -474,6 +474,9 @@ function Border:LayBackground(st, k)
 		-- the region given; round the rect its opening is the rect; on it, an empty region of the host's inset by
 		-- the rails
 		self.bgAt = self.bgAtRegion or (self.place == "round" and rect) or host:CreateTexture(nil, self.bgLayer, nil, self.bgSub)
+		if self.bgAt ~= rect and self.bgAt ~= self.bgAtRegion then
+			self.bgAt:Hide()   -- (0.20.1: an empty anchor -- hidden it lays out alike and is never counted as drawn)
+		end
 	end
 	if self.bgAt ~= self.rect and self.bgAt ~= self.bgAtRegion then
 		local x, y = self:Inset()
@@ -1024,6 +1027,33 @@ Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar
 	values = CastLooks(), preview = "bar", new = "0.20.1",
 	desc = "The frame round your swing timers (their Framed look): the Cast bar bracket (today's), a thin rim, the Single rail, the Stone rail or the Backdrop. A frame laid round a bar leaves it its whole width." }, "personal")
 
+-- (0.20.1, /abdump xp in game: the experience bar's bracket caps back at alpha 1 under its library border -- the
+-- ornate bracket over the Stone rail -- something writing our pieces after the library hid them) the caps kept
+-- see-through while a library style stands in for them: a post-hook on our own three pieces (never a game region),
+-- the writer's stack, count and time kept in Kit.capWrite for /abdump xp
+local capRepOf = setmetatable({}, { __mode = "k" })   -- [cap piece] = its bar rep
+local function Cap_OnSetAlpha(tex, a)
+	local rep = capRepOf[tex]
+	if not (rep and rep.libraryStyle) or Secret(a) or a == 0 then
+		return
+	end
+	local w = Kit.capWrite or { n = 0 }
+	Kit.capWrite = w
+	w.n = w.n + 1
+	w.at = GetTime()
+	local ds = rawget(_G, "debugstack")
+	w.stack = ds and ds(2, 6, 0) or "?"
+	tex:SetAlpha(0)
+end
+local function GuardCaps(rep, strip)
+	for _, t in ipairs({ strip.capL, strip.mid, strip.capR }) do
+		if capRepOf[t] == nil then
+			hooksecurefunc(t, "SetAlpha", Cap_OnSetAlpha)
+		end
+		capRepOf[t] = rep
+	end
+end
+
 -- a bar's bracket in a library style, or put back (rep: Kit.lua's bar
 -- replacement; true when the library took it)
 function Kit:BarLibraryBorder(rep, style)
@@ -1033,11 +1063,16 @@ function Kit:BarLibraryBorder(rep, style)
 	end
 	if not LibraryOnly(self, style) then
 		if rep.libraryStyle then
-			rep.libraryStyle = nil
+			rep.libraryStyle, strip.capsOff = nil, nil
 			rep.libraryBorder:SetShown(false)
 			strip.capL:SetAlpha(1)
 			strip.mid:SetAlpha(1)
 			strip.capR:SetAlpha(1)
+			-- (shown again as the strip shows them: with an owner, only while the strip is shown)
+			local vis = rawget(strip, "kitOwner") == nil or strip:IsShown()
+			strip.capL:SetShown(vis and (not strip.noL or strip.endL) and true or false)
+			strip.mid:SetShown(vis)
+			strip.capR:SetShown(vis and (not strip.noR or strip.endR) and true or false)
 			rep:Refit()
 		end
 		return false
@@ -1078,10 +1113,18 @@ function Kit:BarLibraryBorder(rep, style)
 		rep.libraryBorder = self:NewBorder({ rect = rep.libBand, owner = rep.barParent, place = "round", layer = layer, sub = sub,
 			noBg = true, open = strip.dropCap })
 	end
-	rep.libraryStyle = style
+	-- (0.20.1, /abdump xp after a fresh login: the style noted, the caps never hidden, no guard on them -- a half-done
+	-- apply) the caps hidden first, shown off as well as see-through (capsOff: the strip's own Show and fit keep them
+	-- off), guarded, and only then the style noted
+	strip.capsOff = true
 	strip.capL:SetAlpha(0)
 	strip.mid:SetAlpha(0)
 	strip.capR:SetAlpha(0)
+	strip.capL:Hide()
+	strip.mid:Hide()
+	strip.capR:Hide()
+	GuardCaps(rep, strip)
+	rep.libraryStyle = style
 	self:BarLibraryFit(rep)
 	rep.libraryBorder:Lay(style, "light")
 	rep.libraryBorder:SetShown(strip:IsShown())

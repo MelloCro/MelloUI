@@ -1013,7 +1013,8 @@ function M:WantsServices()
 		return false
 	end
 	local b = BORDER[M.db.squareBorder or "window"]
-	return b and b.prefix ~= nil or false
+	-- (a rail family, or 0.20.1: a style of the border library's, laid as one -- LaySquare)
+	return b and (b.prefix ~= nil or (b.style ~= nil and Kit.BorderStyles ~= nil and Kit.BorderStyles[b.style] ~= nil)) or false
 end
 
 -- What Services says of its row under the map (the contract Services fills,
@@ -1043,10 +1044,13 @@ function M:DividerHeight()
 	return DIVIDER_H
 end
 
--- the stone of the frame's family, under the divider and the bar
-function M:BodyPiece()
-	local b = BORDER[M.db and M.db.squareBorder or "window"]
+-- the stone of the frame's family, under the divider and the bar (0.20.1: a library style's -- its rails alone, no
+-- tiling stone of its own -- the window frame's)
+local function BodyOf(b)
 	return (b and b.prefix or "window/frame") .. "_body"
+end
+function M:BodyPiece()
+	return BodyOf(BORDER[M.db and M.db.squareBorder or "window"])
 end
 
 local function ServicesBar()
@@ -1105,7 +1109,7 @@ local function LayoutDivider(f, b, groups)
 	d:SetPoint("TOPLEFT", map, "BOTTOMLEFT", 0, 0)
 	d:SetPoint("TOPRIGHT", map, "BOTTOMRIGHT", 0, 0)
 	d:SetHeight(DIVIDER_H)
-	local piece = b.prefix .. "_body"
+	local piece = BodyOf(b)
 	if pieceNameOf[d.stone] ~= piece then
 		Kit:Apply(d.stone, piece)
 	end
@@ -1206,8 +1210,15 @@ local function PlaceBand(onFrame, f, b, groups)
 			end
 		end
 		local sc = Kit.scale * (b.scale or 1)
-		local rail = Kit:Piece(b.prefix .. "_t")
+		local rail = b.prefix and Kit:Piece(b.prefix .. "_t")
 		local middle = rail and rail.box and (rail.box[2] + rail.box[4]) / 2 * sc or 9
+		local side = 20 * sc   -- (the side rail's depth the plate's caps reach past)
+		-- (0.20.1) a library style's rails inside the frame: the top rail's middle and the side rail's depth its own
+		local lib = not b.prefix and f.library
+		if lib then
+			local ix, iy = lib:Inset()
+			middle, side = iy / 2, ix
+		end
 		-- the plate is 1.4 x the band (MinimapZoneBand): the band sized so the
 		-- plate spans the frame, its caps' gems on the frame's top corners
 		local strip = rep and rep.strip
@@ -1216,7 +1227,7 @@ local function PlaceBand(onFrame, f, b, groups)
 		if not (okW and fw and not (issecretvalue and issecretvalue(fw)) and fw > 0) then
 			return
 		end
-		local reach = CAP_GEM_X * ss - 20 * sc
+		local reach = CAP_GEM_X * ss - side
 		local plateW = fw + 2 * reach
 		local bandW = plateW / 1.4
 		band:ClearAllPoints()
@@ -1349,27 +1360,50 @@ local function LaySquare()
 	end
 	local over = 1   -- UI px: the rail's inner edge just over the map's, no line of world between
 	f:ClearAllPoints()
-	if b.prefix then
-		local sc = Kit.scale * b.scale
-		local l, r, t, bo = RailDepths(b.prefix, sc)
-		f:SetPoint("TOPLEFT", map, "TOPLEFT", -(l - over), t - over)
-		if merged then
-			-- down round the Services bar (as wide as the map, under it)
-			f:SetPoint("BOTTOMRIGHT", ServicesBar(), "BOTTOMRIGHT", r - over, -(bo - over))
+	-- (0.19.8) a style of the border library's (the thin rims, the NewUI2 rims, 0.20.1's Stone rail) at the heavy
+	-- weight (the style's range kept, its studs on), as regions of this frame, its own shade; (0.20.1, the user: "the
+	-- header up there should be normally on top of the map and fit its width, the services cant connect to it") laid
+	-- as a rail family is: ON the frame, its rails inside it with their inner edge just over the map's, the zone band
+	-- on its top rail, Services merged down inside it
+	local st = not b.prefix and b.style and Kit.BorderStyles and Kit.BorderStyles[b.style]
+	if b.prefix or st then
+		if b.prefix then
+			local sc = Kit.scale * b.scale
+			local l, r, t, bo = RailDepths(b.prefix, sc)
+			f:SetPoint("TOPLEFT", map, "TOPLEFT", -(l - over), t - over)
+			if merged then
+				-- down round the Services bar (as wide as the map, under it)
+				f:SetPoint("BOTTOMRIGHT", ServicesBar(), "BOTTOMRIGHT", r - over, -(bo - over))
+			else
+				f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", r - over, -(bo - over))
+			end
+			local nine = f.nine[b.prefix]
+			if not nine then
+				nine = Kit:NineSlice(f, { prefix = b.prefix, scale = sc, gems = false, body = false, corners = b.gem and "gem" or nil })
+				f.nine[b.prefix] = nine
+				Shade.Add(nine)   -- (its rails' nine and gem corners; hidden with it)
+			end
+			nine:Show()
+			f.gemReach = b.gem and GemReach(b.prefix, sc) or 0
+			-- the zone band on the top rail: its caps take the top corners
+			if nine.SetTopGems then
+				nine:SetTopGems(false)
+			end
 		else
-			f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", r - over, -(bo - over))
-		end
-		local nine = f.nine[b.prefix]
-		if not nine then
-			nine = Kit:NineSlice(f, { prefix = b.prefix, scale = sc, gems = false, body = false, corners = b.gem and "gem" or nil })
-			f.nine[b.prefix] = nine
-			Shade.Add(nine)   -- (its rails' nine and gem corners; hidden with it)
-		end
-		nine:Show()
-		f.gemReach = b.gem and GemReach(b.prefix, sc) or 0
-		-- the zone band on the top rail: its caps take the top corners
-		if nine.SetTopGems then
-			nine:SetTopGems(false)
+			if not f.library then
+				f.library = Kit:NewBorder({ rect = f, owner = f, place = "on", layer = "ARTWORK", sub = 0, noBg = true,
+					shade = { root = f, area = "minimap" } })
+			end
+			f.library:Lay(b.style, "heavy")
+			local ix, iy = f.library:Inset()
+			f:SetPoint("TOPLEFT", map, "TOPLEFT", -(ix - over), iy - over)
+			if merged then
+				f:SetPoint("BOTTOMRIGHT", ServicesBar(), "BOTTOMRIGHT", ix - over, -(iy - over))
+			else
+				f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT", ix - over, -(iy - over))
+			end
+			f.library:SetShown(true)
+			f.gemReach = 0
 		end
 		if merged then
 			-- Services' one row of groups: the rail with its name, which
@@ -1385,22 +1419,6 @@ local function LaySquare()
 		return
 	else
 		PlaceBand(false)   -- (a picture frame has no rail for it: the game's place)
-		-- (0.19.8) a style of the border library's (the thin rims, the NewUI2
-		-- rims): its border round the map at the heavy weight (the style's
-		-- range kept, its studs on), as regions of this frame, its own shade
-		local st = b.style and Kit.BorderStyles and Kit.BorderStyles[b.style]
-		if st then
-			f:SetPoint("TOPLEFT", map, "TOPLEFT")
-			f:SetPoint("BOTTOMRIGHT", map, "BOTTOMRIGHT")
-			f.gemReach = 0
-			if not f.library then
-				f.library = Kit:NewBorder({ rect = map, owner = f, place = "round", layer = "ARTWORK", sub = 0, noBg = true,
-					shade = { root = f, area = "minimap" } })
-			end
-			f:Show()
-			f.library:Lay(b.style, "heavy")
-			return
-		end
 		local p = Kit:Piece(b.piece)
 		local k = Kit.scale
 		local open = (p and p.open) or { 29, 34, 106, 97 }

@@ -444,7 +444,7 @@ MelloUI_KitLayout = {
 		["window/corner_ornament_tl"] = { file = "atlas\\sheethq_2", w = 97, h = 79, uv = { 0.355469, 0.449219, 0.644531, 0.722656 }, was = { 0, 0.75, 0, 0.625 }, box = { 0, 0, 97, 79 } },
 		["window/divider_cap_l"] = { file = "window\\divider_cap_l", w = 53, h = 32, uv = { 0, 0.8125, 0, 1 }, tile = "y", box = { 0, 0, 53, 28 } },
 		["window/divider_cap_r"] = { file = "window\\divider_cap_r", w = 55, h = 32, uv = { 0, 0.875, 0, 1 }, tile = "y", box = { 0, 1, 54, 32 } },
-		["window/divider_mid"] = { file = "window\\divider_mid", w = 128, h = 38, uv = { 0, 1, 0, 0.59375 }, tile = "x", box = { 0, 11, 128, 27 } },
+		["window/divider_mid"] = { file = "window\\divider_mid", w = 128, h = 38, uv = { 0, 1, 0, 0.59375 }, tile = "x", box = { 0, 11, 128, 26 } },
 		["window/frame_b"] = { file = "window\\frame_b", w = 128, h = 50, uv = { 0, 1, 0, 0.78125 }, tile = "x", box = { 0, 1, 128, 50 } },
 		["window/frame_bl"] = { file = "window\\frame_bl", w = 50, h = 50, uv = { 0, 0.78125, 0, 0.78125 }, box = { 1, 0, 50, 50 } },
 		["window/frame_body"] = { file = "window\\frame_body", w = 416, h = 405, uv = { 0, 1, 0, 1 }, tile = "xy", box = { 0, 0, 416, 405 } },

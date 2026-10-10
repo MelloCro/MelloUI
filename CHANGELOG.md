@@ -3,7 +3,7 @@
 ## 0.20.1
 
 - Windows: a thin stone rail round every window (Look > Borders > Window Border) and a title bar at the game's own size, a red ribbon or a plain band with a rail line (Window Title). The double rail with gem corners stays a choice.
-- Windows keep the game's own portrait and its ring in the top left corner, at the game's size, the backpack too.
+- Windows keep the game's own portrait and its ring in the top left corner, at the game's size, the backpack too. With the Double rail and the Red plate header (Look > Borders), the rails and the plate run behind that ring.
 - A new parchment everywhere it shows (tooltips, chat, the trackers, the meter, popups, the character window, quest and spell book pages): warm paper with burnt edges, at any size. Big pages get curled corners.
 - Two new backgrounds in every Background choice: Dark gradient and Dark round gradient.
 - Stone rail: a new border with its own dark trough for buttons, bars, unit frames, nameplates, raid frames, cooldowns and the minimap (Look > Borders).
@@ -18,6 +18,15 @@
 - Attach To The Player Frame (Unit Frames > Player > Buffs & Debuffs): your debuffs, buffs and weapon buffs under your player frame, as the target's are under the target frame, with the same icons and timers. They move with the frame; pick their Direction (left to right or right to left) and Icon Size On The Frame.
 - Fixed: nameplates and swing timers that appeared during a fight kept the old frame instead of the border you picked.
 - Fixed: /mello auras gave an error instead of its report.
+- Minimap: with a border from the library (the Stone rail, the thin rims) the zone header sits on the frame's top at the map's width, and Services joins the frame under the map, as with the Window frame.
+- Fixed: the experience and reputation bars could show the old ornate frame over the Stone rail after logging in, or hide the reputation bar's fill, until a /reload.
+- Fixed: the backpack's portrait in the bag window fits inside its ring, as in the game's own bag window.
+- Fixed: on parchment, text beside an icon or a check box (the character window's resistances, the reputation's check boxes, a reward's name) is written in ink like the rest.
+- Fixed: the titles over the character window's details (a faction and its standing, a skill, your rank) are written in ink on the parchment.
+- Divider lines: one size in every window (the spell book's and the quest log's were drawn much heavier), and the rail runs on unbroken where it meets its gems.
+- Character window: the detail panes' title, line and bar are centred over the text and plates under them, clear of the window's rail, and the line above your PvP rank shows whole.
+- New font: MelloFont (Regular and Bold) in the font lists.
+- Search and edit boxes: one look everywhere (the spell book's and the bags' search, the chat and whisper windows' edit box, the configurator's fields and number boxes): the Stone rail round a dark field, lit while you type.
 
 ## 0.20.0
 

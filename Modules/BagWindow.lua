@@ -1172,7 +1172,7 @@ local function Build()
 	-- the backpack icon round at the game's portrait size and place, in both looks
 	win.shell = Kit:OwnWindow(f, {
 		area = AREA, plate = "rail",
-		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", game = true },
+		ring = { at = "tl", texture = "Interface\\Buttons\\Button-Backpack-Up", game = true, bag = 0 },   -- (the backpack's portrait)
 		title = TEXT.title, close = true, escape = true, fit = true, background = WindowBackground,
 		mover = { key = "MelloUIBagWindow", label = TEXT.title, page = "Windows", default = M.Home },
 	})

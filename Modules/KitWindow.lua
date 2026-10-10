@@ -158,8 +158,12 @@ local GRAB_BOTTOM = -40      -- the drag strip's bottom edge when none is given
 local FIT_MARGIN = 16        -- a window scaled to fit leaves this much of the screen free
 -- frame levels over the window's own
 local LEVEL_GRAB, LEVEL_CREST, LEVEL_PLATE, LEVEL_CLOSE = 1, 4, 7, 8
--- (ring.game: the game's portrait corner over the title plate, its portrait over the corner art)
-local LEVEL_GAME_CORNER, LEVEL_GAME_PORTRAIT = 9, 10
+-- (ring.game: the game's portrait over the title plate, the game's corner art over its portrait's edge -- as the
+-- game's PortraitFrameBaseTemplate, its NineSlice above the PortraitContainer's 400; 0.20.1, the user: the backpack
+-- "still too big and not fitting inside its border")
+local LEVEL_GAME_CORNER, LEVEL_GAME_PORTRAIT = 10, 9
+-- (the portrait's circle mask, the template's CircleMask: 2 in from each side, its bottom 4 up)
+local GAME_MASK_IN, GAME_MASK_UP = 2, 4
 local GAME_CORNER_ATLAS = "UI-Frame-PortraitMetal-CornerTopLeft"
 local GAME_CORNER_X, GAME_CORNER_Y = -13, 16   -- NineSliceLayouts' PortraitFrameTemplate TopLeftCorner
 
@@ -795,10 +799,16 @@ function Kit:OwnWindow(frame, opts)
 		emblem:SetTexture(shell.emblemTexture)
 		emblem:SetAllPoints(crest)
 		if shell.gameCorner then
-			-- (the game's portrait: round, its circle mask)
+			-- (a bag's own portrait as the game's bag window draws it, C_Container.SetBagPortraitTexture: ring.bag)
+			local C = rawget(_G, "C_Container")
+			if ring.bag ~= nil and type(C) == "table" and C.SetBagPortraitTexture then
+				pcall(C.SetBagPortraitTexture, emblem, ring.bag)
+			end
+			-- (the game's portrait: round, its circle mask where the template has it)
 			local mask = crest:CreateMaskTexture()
 			mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-			mask:SetAllPoints(emblem)
+			mask:SetPoint("TOPLEFT", emblem, "TOPLEFT", GAME_MASK_IN, 0)
+			mask:SetPoint("BOTTOMRIGHT", emblem, "BOTTOMRIGHT", -GAME_MASK_IN, GAME_MASK_UP)
 			emblem:AddMaskTexture(mask)
 		end
 		shell.crest, shell.plainEmblem = crest, emblem

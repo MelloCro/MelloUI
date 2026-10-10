@@ -732,7 +732,7 @@ local inkRoleFn = setmetatable({}, { __mode = "k" })   -- [font string] = the fu
 -- a colour the game gives a watched string: kept, and inked over at once
 -- while the string is inked. One handler for every watched string: all it
 -- keeps is on the string itself
-local OnGameColour = Shared("SetTextColor on inked strings", function(self, cr, cg, cb)
+local function GameColour(self, cr, cg, cb)
 	if QI.inking then
 		return
 	end
@@ -745,7 +745,12 @@ local OnGameColour = Shared("SetTextColor on inked strings", function(self, cr, 
 		self:SetTextColor(r, g, b)
 		QI.inking = false
 	end
-end)
+end
+local OnGameColour = Shared("SetTextColor on inked strings", GameColour)
+-- (0.20.1, the user: the character window's side panes' titles -- "Darnassus", "Daggers", "Civilian" -- stayed white
+-- on the parchment) the game colours a string by its vertex colour too (CharacterFrameSidePaneMixin:SetPaneTitleColor):
+-- the same colour on this client, kept and inked over alike
+local OnGameVertex = Shared("SetVertexColor on inked strings", GameColour)
 
 function QI.WatchColour(fs, roleOf)
 	if not fs then
@@ -758,6 +763,9 @@ function QI.WatchColour(fs, roleOf)
 	colourWatched[fs] = true
 	SetGameColour(fs, fs:GetTextColor())
 	hooksecurefunc(fs, "SetTextColor", OnGameColour)
+	if fs.SetVertexColor then
+		hooksecurefunc(fs, "SetVertexColor", OnGameVertex)
+	end
 end
 
 function QI.GameColour(fs)
@@ -1021,7 +1029,8 @@ local function FlatBody(rep)
 		return true
 	end
 	local parts = rep.flat
-	return (parts and parts.fill and not parts.noBody) and true or false
+	-- (0.20.1: a text field's body is its W.Field, the Stone rail's dark trough)
+	return (parts and (parts.fill or parts.field) and not parts.noBody) and true or false
 end
 
 -- The kit's replacements, taken in as the kit makes them (Kit.repList only
@@ -1356,7 +1365,7 @@ end
 local function Info(f, regions)
 	local info = infoOf[f]
 	if not info then
-		info = { s = {}, r = {}, b = {}, sn = 0, rn = 0 }
+		info = { s = {}, r = {}, b = {}, o = {}, sn = 0, rn = 0, on = 0 }
 		infoOf[f] = info
 	end
 	if info.stamp ~= stamp then
@@ -1380,27 +1389,27 @@ local function Info(f, regions)
 		if info.bar then
 			AddRect(info.b, 0, f)
 		end
-		local own = false
+		-- (0.20.1, the user: the resistances' names, the reputation's check boxes and a reward's name kept the game's
+		-- colours on the character window's parchment) a plate or an icon of the frame's own leaves the strings ON it as
+		-- they are -- a count over an icon, a label on a plate -- never the ones beside it (a row's name beside its
+		-- icon, a check box's label beside its box): its rect, not the whole frame
+		local on = 0
 		local Kit = MelloUI.Kit
 		for i = 1, Kit and #OWN_PLATES or 0 do
 			local plates = Kit[OWN_PLATES[i]]
 			local rep = plates and plates[f]
 			local obj = type(rep) == "table" and rep.object
 			if obj and obj.IsShown and obj:IsShown() then
-				own = true
-				break
+				on = AddRect(info.o, on, obj)
 			end
 		end
-		if not own then
-			for i = 1, #OWN_ICONS do
-				local tex = rawget(f, OWN_ICONS[i])
-				if type(tex) == "table" and tex.IsShown and KindOf(tex) == "Texture" and tex:IsShown() then
-					own = true
-					break
-				end
+		for i = 1, #OWN_ICONS do
+			local tex = rawget(f, OWN_ICONS[i])
+			if type(tex) == "table" and tex.IsShown and KindOf(tex) == "Texture" and tex:IsShown() then
+				on = AddRect(info.o, on, tex)
 			end
 		end
-		info.own = own
+		info.on = on
 	end
 	if regions and info.rStamp ~= stamp then
 		info.rStamp = stamp
@@ -1471,8 +1480,11 @@ function QI.DefaultSkip(fs)
 				return inside
 			end
 		end
-		if info.own then
-			return true
+		for i = 1, info.on, 4 do
+			local inside = In(info.o, i, x, y)
+			if inside ~= false then
+				return inside
+			end
 		end
 		f = f.GetParent and f:GetParent()
 	end

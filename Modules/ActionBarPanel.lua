@@ -1722,6 +1722,10 @@ local function SkinStatusContainer(container)
 	under:SetFrameLevel(math.max((fill and fill:GetFrameLevel() or 1) - 1, 0))
 	local rep = Replace(container.BarFrameTexture, { as = "UI-HUD-ExperienceBar-Frame", parent = container, rect = container,
 		layer = "OVERLAY", sublevel = 1, troughParent = under, troughLayer = "ARTWORK", troughSub = 0 })
+	-- (0.20.1: kept for ResyncStatus, below)
+	skin.statusUnder = skin.statusUnder or {}
+	skin.statusRep = skin.statusRep or {}
+	skin.statusUnder[container], skin.statusRep[container] = under, rep or false
 	local textures = MelloUI:GetModule("BarTextures")
 	local function Flag(on)
 		for _, bar in pairs(container.bars or {}) do
@@ -1775,7 +1779,46 @@ local function SkinDividers(container)
 	end
 end
 
+-- (0.20.1, the user: the experience and reputation bars "again" in the ornate bracket, the reputation's fill hidden,
+-- until a /reload) the game swaps the bar each of its two containers shows as bars come and go (a reputation watched,
+-- a level gained: StatusTrackingManager UpdateBarsShown -> SetShownBar -> ApplyPendingBarToShow), each container with
+-- bars of its own; the skin was laid once. Out of combat, after each swap: the trough's holder one level under the bar
+-- shown now (its strata too), and the Progress Bar Border put back where a container lost it.
+local STATUS_RESYNC_KEY = "Action bars: the status bars resynced"   -- its key in the combat queue
+local function ResyncStatus()
+	if not (active and skin and skin.statusUnder) then
+		return
+	end
+	for container, under in pairs(skin.statusUnder) do
+		local shown = container.GetShownBar and container:GetShownBar()
+		local fill = shown and shown.StatusBar
+		if fill then
+			local okS, strata = pcall(fill.GetFrameStrata, fill)
+			local okL, level = pcall(fill.GetFrameLevel, fill)
+			if okS and okL and not Secret(strata) and not Secret(level) and type(level) == "number" then
+				if under:GetFrameStrata() ~= strata then
+					under:SetFrameStrata(strata)
+				end
+				local want = math.max(level - 1, 0)
+				if under:GetFrameLevel() ~= want then
+					under:SetFrameLevel(want)
+				end
+			end
+		end
+		local r = skin.statusRep[container]
+		local style = r and r.SetBar and r.borderGroup and Kit:BorderValue(r.borderGroup)
+		local now = r and (r.libraryStyle or (type(r.base) == "string" and r.base:gsub("^bars/", "")))
+		-- (a library style noted while its bracket's caps still show: laid again)
+		local capL = r and r.libraryStyle and r.strip and r.strip.capL
+		local capsOn = capL and (capL:IsShown() or (capL:GetAlpha() or 0) > 0)
+		if style and (now ~= style or capsOn) then
+			r:SetBar(style)
+		end
+	end
+end
+
 local dividersHooked = setmetatable({}, { __mode = "k" })   -- [status container] = true: UpdateDividers hooked
+local shownHooked = setmetatable({}, { __mode = "k" })      -- [status container] = true: ApplyPendingBarToShow hooked
 local function SkinStatusBars()
 	local manager = StatusTrackingBarManager
 	if not manager then
@@ -1793,6 +1836,15 @@ local function SkinStatusBars()
 	for _, container in ipairs(containers) do
 		SkinStatusContainer(container)
 		SkinDividers(container)
+		-- (0.20.1: a new bar shown in the container: ResyncStatus, out of combat)
+		if container.ApplyPendingBarToShow and not shownHooked[container] then
+			shownHooked[container] = true
+			hooksecurefunc(container, "ApplyPendingBarToShow", function()
+				if active then
+					Kit:WhenOutOfCombat(ResyncStatus, STATUS_RESYNC_KEY)
+				end
+			end)
+		end
 		if container.UpdateDividers and not dividersHooked[container] then
 			dividersHooked[container] = true
 			hooksecurefunc(container, "UpdateDividers", function(c)
@@ -2010,6 +2062,7 @@ local function Hook()
 					if active then
 						Kit:WhenOutOfCombat(function()
 							SkinStatusBars()
+							ResyncStatus()   -- (0.20.1)
 							for container in pairs(skin.status) do
 								for _, rep in ipairs(skin.reps) do
 									if rep.kind == "bar" and rep.rect == container then
@@ -2216,6 +2269,30 @@ SlashCmdList.MELLOABDUMP = function(msg)
 		MelloUI:Print("== %s  %s L%d %s", root:GetName() or "?", root:GetFrameStrata(), root:GetFrameLevel(), root:IsShown() and "shown" or "hidden")
 		Kit:DumpWindow(root, skin, mode ~= "" and mode or nil)
 		if root == MainStatusTrackingBarContainer then
+			-- (0.20.1) both containers: the bar shown, its fill's strata and level against the trough's holder, the
+			-- border the container wears against the Progress Bar Border's
+			for _, c in ipairs({ MainStatusTrackingBarContainer, rawget(_G, "SecondaryStatusTrackingBarContainer") }) do
+				local sb = c.GetShownBar and c:GetShownBar()
+				local fill = sb and sb.StatusBar
+				local under = skin and skin.statusUnder and skin.statusUnder[c]
+				local r = skin and skin.statusRep and skin.statusRep[c]
+				MelloUI:Print("%s: %s alpha=%.2f shownIndex=%s | fill %s L%s alpha=%.2f shown=%s | trough holder %s L%s | "
+					.. "border %s (wanted %s) caps alpha %.2f shown %s off %s lib shown %s",
+					c:GetName() or "?", c:IsShown() and "shown" or "hidden", c:GetAlpha(), tostring(c.shownBarIndex),
+					fill and fill:GetFrameStrata() or "-", fill and tostring(fill:GetFrameLevel()) or "-", fill and fill:GetAlpha() or 0,
+					tostring(fill and fill:IsShown()), under and under:GetFrameStrata() or "-", under and tostring(under:GetFrameLevel()) or "-",
+					tostring(r and (r.libraryStyle or r.base)), tostring(r and r.borderGroup and Kit:BorderValue(r.borderGroup)),
+					r and r.strip and r.strip.capL:GetAlpha() or -1, tostring(r and r.strip and r.strip.capL:IsShown()),
+					tostring(r and r.strip and r.strip.capsOff), tostring(r and r.libraryBorder and r.libraryBorder.shown))
+			end
+			-- (0.20.1) a write that put a bar's hidden bracket caps back on under its library border, and who made it
+			local w = Kit.capWrite
+			if w then
+				MelloUI:Print("bracket caps written back %d times, last %.1f s ago, by: %s", w.n, GetTime() - (w.at or 0),
+					tostring(w.stack):gsub("\n", " | "))
+			else
+				MelloUI:Print("bracket caps: never written back")
+			end
 			MelloUI:Print("status container skinned: %s; bars: %d; manager containers: %d; container %s L%d alpha=%.2f", tostring(skin and skin.status[root]),
 				root.bars and #root.bars or 0, StatusTrackingBarManager and StatusTrackingBarManager.barContainers and #StatusTrackingBarManager.barContainers or -1,
 				root:GetFrameStrata(), root:GetFrameLevel(), root:GetAlpha())

@@ -189,6 +189,7 @@ end
 -- palette's inner panel at this alpha over the window's stone, never on the
 -- bare stone.
 local DIM_ALPHA = 0.8
+local VIEWPORT_LIFT = 4   -- UI units: the model's viewport frame's top rail above the scene's top (0.20.1, the user's mark)
 
 local SkinProgressBar     -- defined with the list code below; the detail panes use it (SkinSidePanes)
 
@@ -275,15 +276,124 @@ local LookPane = Shared("LayoutRows / SetEmpty on side panes", function(pane)
 	end
 end)
 
+-- (0.20.1) A side pane's line rect: the game line itself, its ends moved to the pane's text column's edges (its
+-- Description) -- measured as laid out, on each show of the pane: where the column hangs differs by tab (the
+-- reputation's under its standing bar, the user's screenshot: a rect hung from it put the line behind the bar).
+-- Unmeasured, the game line's own ends. Nil without a column
+local lineLay = setmetatable({}, { __mode = "k" })   -- [side pane] = its line rect's Lay (ShiftPane lays it again)
+local function ColumnLine(pane)
+	local column, line = pane.Description, pane.Divider
+	if not (column and line) then
+		return nil
+	end
+	local function Edge(region, method)
+		local ok, v = pcall(region[method], region)
+		if ok and not Secret(v) and type(v) == "number" then
+			return v
+		end
+	end
+	local f = CreateFrame("Frame", nil, pane)
+	f:EnableMouse(false)
+	f:SetAllPoints(line)
+	local function Lay()
+		local cl, cr, ll, lr = Edge(column, "GetLeft"), Edge(column, "GetRight"), Edge(line, "GetLeft"), Edge(line, "GetRight")
+		if not (cl and cr and ll and lr) or cr - cl < 20 then
+			return
+		end
+		f:ClearAllPoints()
+		f:SetPoint("TOPLEFT", line, "TOPLEFT", cl - ll, 0)
+		f:SetPoint("BOTTOMRIGHT", line, "BOTTOMRIGHT", cr - lr, 0)
+	end
+	Lay()
+	Perf.HookScript(pane, "OnShow", Lay)
+	lineLay[pane] = Lay
+	return f
+end
+
+-- (0.20.1, the user: the bar under the line "also needs to be centered with the separation line") A side pane's
+-- centred stack on its text column's centre while the skin is on: the game centres it on the whole pane, 7 units right
+-- of the column (the Description: the pane less the scroll bar's room) where the line, the rows and their plates
+-- stand. The stack hangs from the title -- the subtitle under it, the line under that, the standing / rank bar under
+-- the line -- so the title's own anchor moves it all; the empty text (centred on the pane) moves alike. Their points
+-- kept here (never on the game's regions) and put back with the skin. [pane] = { [region] = { points } }
+local paneShift = setmetatable({}, { __mode = "k" })
+
+local function ColumnShift(pane)
+	local column = pane.Description
+	local l, r
+	for i = 1, column and column:GetNumPoints() or 0 do
+		local point, rel, _, x = column:GetPoint(i)
+		if (rel == nil or rel == pane) and not Secret(x) and type(x) == "number" then
+			if point == "LEFT" or point == "TOPLEFT" or point == "BOTTOMLEFT" then
+				l = x
+			elseif point == "RIGHT" or point == "TOPRIGHT" or point == "BOTTOMRIGHT" then
+				r = x
+			end
+		end
+	end
+	return (l and r) and (l + r) / 2 or nil
+end
+
+local function ShiftPane(pane, on)
+	local kept = paneShift[pane]
+	if on and not kept then
+		local dx = ColumnShift(pane)
+		if not dx or dx == 0 then
+			return
+		end
+		kept = {}
+		for _, region in ipairs({ pane.Title or false, pane.EmptyText or false }) do
+			local points = region and {}
+			for i = 1, points and region:GetNumPoints() or 0 do
+				points[i] = { region:GetPoint(i) }
+				if Secret(points[i][4]) or Secret(points[i][5]) or type(points[i][4]) ~= "number" then
+					points = nil   -- (unreadable: left where the game put it)
+					break
+				end
+			end
+			if points then
+				kept[region] = points
+				region:ClearAllPoints()
+				for _, p in ipairs(points) do
+					region:SetPoint(p[1], p[2], p[3], p[4] + ((p[2] == nil or p[2] == pane) and dx or 0), p[5])
+				end
+			end
+		end
+		paneShift[pane] = kept
+	elseif not on and kept then
+		for region, points in pairs(kept) do
+			region:ClearAllPoints()
+			for _, p in ipairs(points) do
+				region:SetPoint(p[1], p[2], p[3], p[4], p[5])
+			end
+		end
+		paneShift[pane] = nil
+	else
+		return
+	end
+	if lineLay[pane] then
+		lineLay[pane]()
+	end
+end
+
+local function SidePanes()
+	return _G.ReputationFrame and _G.ReputationFrame.ReputationDetailFrame, _G.SkillsFrame and _G.SkillsFrame.SkillDetailFrame,
+		_G.PVPRankFrame and _G.PVPRankFrame.DetailFrame, _G.TokenFrame and _G.TokenFrame.DetailFrame
+end
+
+local function ShiftPanes(on)
+	local panes = { SidePanes() }
+	for i = 1, 4 do
+		if panes[i] then
+			ShiftPane(panes[i], on)
+		end
+	end
+end
+
 local function SkinSidePanes()
 	-- the detail panes of the reputation, currency, skills and PvP tabs: their
 	-- divider line, hidden by the game when the pane is empty
-	local sidePanes = {
-		_G.ReputationFrame and _G.ReputationFrame.ReputationDetailFrame,
-		_G.SkillsFrame and _G.SkillsFrame.SkillDetailFrame,
-		_G.PVPRankFrame and _G.PVPRankFrame.DetailFrame,
-		_G.TokenFrame and _G.TokenFrame.DetailFrame,
-	}
+	local sidePanes = { SidePanes() }
 	for i = 1, 4 do
 		local pane = sidePanes[i]
 		if pane and not panesDone[pane] then
@@ -304,7 +414,11 @@ local function SkinSidePanes()
 				end
 			end
 			if pane.Divider then
-				local rep = Replace(pane.Divider, { as = "UI-Character-Info-ScrollLine" })
+				-- (0.20.1, the user: the line "kinda messy and not properly aligned") across the pane's text column --
+				-- its Description: the pane less the scroll bar's room on the right, the rows and their plates under it
+				-- -- at the game line's own height. The game centres its line on the whole pane, 7 units right of that
+				-- column: its soft ends hid it, the kit's caps showed it (the right one on the window's rail)
+				local rep = Replace(pane.Divider, { as = "UI-Character-Info-ScrollLine", rect = ColumnLine(pane) })
 				if rep then
 					skin.followers[#skin.followers + 1] = { rep = rep, region = pane.Divider }
 					for _, method in ipairs({ "SetEmpty", "ClearEmpty" }) do
@@ -528,7 +642,13 @@ end)
 -- divider's left edge for good.
 local function SkinJoints()
 	if skin.divider and skin.dividerFrame then
+		-- (0.20.1: rails drawn over the window's content -- the double rail's railOver -- the covers two over them, over
+		-- the plate riding them, under the title bar)
+		local rails = skin.window and skin.window.skin and rawget(skin.window.skin, "railHost")
+		local over = rails and skin.window.rule and skin.window.rule.railOver
+		local lift = over and (rails:GetFrameLevel() + 2 - skin.dividerFrame:GetFrameLevel()) or nil
 		local function Joint(opts)
+			opts.level = opts.level or lift
 			local rep = Kit:Joint(skin.dividerFrame, opts)
 			if rep then
 				skin.reps[#skin.reps + 1] = rep
@@ -584,7 +704,35 @@ Part(function()
 			alsoFade = { scene.BackgroundTopRight, scene.BackgroundBotLeft, scene.BackgroundBotRight } })
 		-- the agreed exception to "replace, never add": a frame around the
 		-- viewport, hugging the scene's rectangle, over the backdrop
-		Replace(scene, { as = "ViewportFrame", parent = scene, rect = scene, noFade = true })
+		-- (0.20.1, the user's mark: its top rail 4 up from the scene's top, closing the strip of the scene's black left
+		-- between the rail and the band of the level line -- the rail's own clear top rows and the scene's edge)
+		-- (0.20.1, the user: "i want that border placed and mimiced to all of the character pane tabs. Reputation,
+		-- Skills, Player vs Player, Currency and statistics") on the left pane's host, shown with every tab, at the
+		-- scene's rect still (a hidden frame's points still lay out) and its level over the pane's content (the
+		-- scene's 50, as it stood on the scene): the lists and their rows inside it as the model is
+		local pane = rawget(CharacterFrame, "LeftPaneHost") or scene
+		local top = CreateFrame("Frame", nil, pane)
+		top:EnableMouse(false)
+		top:SetPoint("TOPLEFT", scene, "TOPLEFT", 0, VIEWPORT_LIFT)
+		top:SetPoint("BOTTOMRIGHT", scene, "BOTTOMRIGHT")
+		local vp = Replace(scene, { as = "ViewportFrame", parent = pane, rect = top, noFade = true,
+			level = math.max(scene:GetFrameLevel() + 1 - pane:GetFrameLevel(), 1) })
+		-- (0.20.1, the user: the double rail hugs the window, and this frame's bottom left corner -- the scene fills the
+		-- pane, down to the window's corner -- showed past the rail's gem as a dark square: "can you just mask it") that
+		-- corner unseen while the window's rails lie over the window's content (railOver); its edges lie under them
+		if vp then
+			local enable = vp.onEnable
+			vp.onEnable = function(...)
+				if enable then
+					enable(...)
+				end
+				local rule = skin.window and skin.window.rule
+				local bl = rule and rule.railOver and vp.skin and rawget(vp.skin, "bl")
+				if bl then
+					bl:SetAlpha(0)
+				end
+			end
+		end
 	end
 end)
 
@@ -1788,6 +1936,7 @@ local function Activate()
 	-- a detail pane the game has made since the skin was built (it is built
 	-- ahead of the first open now)
 	SkinSidePanes()
+	ShiftPanes(true)
 	SkinOnParts(CharacterFrame)
 	active = true
 	skin:Show()
@@ -1833,6 +1982,7 @@ local function Deactivate()
 	end
 	active = false
 	skin:Hide()
+	ShiftPanes(false)
 	M:RefreshDims()
 	M:FitPortrait()
 	for _, rep in ipairs(skin.reps) do
@@ -2482,3 +2632,4 @@ end
 -- What this module keeps beside the game's frames (hard rule 1: weak-keyed
 -- tables, never keys on the frames), for the dumps and the tests: read only
 M.kept = { fitting = fitting }
+M.ColumnLine, M.ShiftPane = ColumnLine, ShiftPane   -- (the tests': a side pane's line rect, its centred stack)
