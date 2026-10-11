@@ -51,7 +51,7 @@ local M = MelloUI:RegisterModule("UnitFrames", {
 		-- (the user, 2026-10-09: "remove that awfull diamond icon and its border
 		-- and background from the frames": the game's honour badge while
 		-- flagged for PvP)
-		{ type = "toggle", key = "hidePvPBadge", name = "Hide PvP Badge", new = "0.20.0",
+		{ type = "toggle", key = "hidePvPBadge", name = "Hide PvP Badge",
 		  desc = "Hide the PvP badge beside the portrait of the player, target and focus frames: the diamond with your honour rank, or the faction icon, that shows while you or they are flagged for PvP." },
 		{ type = "header", name = "Frame Art" },
 		{ type = "slider", key = "frameAlpha", name = "Frame Art Opacity", min = 0.1, max = 1, step = 0.05, percent = true,

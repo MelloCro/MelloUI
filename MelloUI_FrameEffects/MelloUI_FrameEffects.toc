@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Frame Effects
 ## Notes: MelloUI's Frame Effects: your heals as light flying from your cast bar to the frame you heal, and your group's big moments on their frames -- a roar's square ripples, Shield Wall's steel, Last Stand's heartbeat, an immunity's barrier. Switch them on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 0.20.0
+## Version: 0.20.1
 ## Dependencies: MelloUI
 ## X-MelloUI-Feature: FrameEffects HealFlight
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
