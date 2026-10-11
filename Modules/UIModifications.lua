@@ -288,7 +288,7 @@ for _, entry in ipairs(PARCHMENTS) do
 end
 -- The parchment's look (0.20.3; the user, 2026-10-11: "the new one is the default but some people liked how the old
 -- one looked aswell"): every sheet and page, live (Kit:SetParchmentStyle)
-Add({ type = "dropdown", key = "parchmentStyle", name = "Parchment Style", requires = "reskin", new = "0.20.3",
+Add({ type = "dropdown", key = "parchmentStyle", name = "Parchment Style", requires = "reskin",
 	values = { { value = "paper", label = "Burnt paper" }, { value = "classic", label = "Classic vellum" } },
 	desc = "How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1." })
 
