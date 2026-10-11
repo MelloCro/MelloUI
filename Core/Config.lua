@@ -143,6 +143,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.20.2", lines = {
+		"Action Bars > Backdrops: each switch now decides its own bar. On, the bar gets its backdrop and merges with the switched-on bars next to it; off, no backdrop and no merging.",
+		"A bar you had off beside one that was on drops out of that backdrop: switch it on to keep it inside.",
+		"The Totem Bar joins the Backdrops list.",
+	} },
 	{ version = "0.20.1", lines = {
 		"Windows: a thin stone rail or the double rail with gem corners, and a red ribbon or a plain band for the title (Look > Borders). The game's portrait and its ring stay in the top left corner.",
 		"With the Double rail the frame wraps the window, so nothing at its edges hides under it: slots, money, the buttons at the bottom, search boxes and tabs.",
@@ -187,16 +192,6 @@ local CHANGELOG = {
 		"Cooldown Manager: centred rows, key bindings on the icons, a light while pressed, the count's size and a border of its own.",
 		"Two new backgrounds: Brushed dark metal and Aged parchment.",
 		"Logging in: MelloUI switches its parts on over the first moments, so the game no longer cuts it off with errors after the loading screen.",
-	} },
-	{ version = "0.19.5", lines = {
-		"Quest List map: quests you can't pick up are left off it: other classes' quests, steps of a chain you've moved past, quests behind a breadcrumb.",
-		"Alt-click a quest on the map or in the list to hide it; the list's gear menu has Show hidden quests to bring it back.",
-		"Objective marks on the world map and the minimap: where each objective of your quests is done, with your progress (Quest List > Map).",
-		"Forever's own quests learn their objective spots as you play, for all your characters.",
-		"Hide Grey Quests (Quest List > Map) leaves quests far below your level off the map.",
-		"Route: Trail Look picks Red Beads, Gilded Line or Waymarks, and the destination is a flag in a gold ring.",
-		"/mellobug: if the game says MelloUI was blocked from an action, it shows a report ready to copy.",
-		"A new save file: restart the game once after updating.",
 	} },
 }
 local LINKS = {

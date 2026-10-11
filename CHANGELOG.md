@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.2
+
+- Action Bars > Backdrops: each switch now decides its own element's backdrop. On, the bar gets its backdrop and merges into one with the other switched-on bars placed next to it; off, it has no backdrop and no longer joins a neighbour's. A bar you had off beside one that was on drops out of that backdrop: switch it on to keep it inside.
+- Action Bars > Backdrops: Totem Bar, a backdrop for the shaman's totem bar.
+
 ## 0.20.1
 
 - Windows: a thin stone rail round every window (Look > Borders > Window Border) and a title bar at the game's own size, a red ribbon or a plain band with a rail line (Window Title). The double rail with gem corners stays a choice.

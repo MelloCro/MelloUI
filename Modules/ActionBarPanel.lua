@@ -79,6 +79,13 @@ local ELEMENTS = {
 	{ key = "backdropStance", frame = "StanceBar", name = "Stance Bar", what = "the stance bar", group = "bars" },
 	{ key = "backdropPet", frame = "PetActionBar", name = "Pet Bar", what = "the pet bar", group = "bars" },
 	{ key = "backdropPossess", frame = "PossessActionBar", name = "Possess Bar", what = "the possess bar", group = "bars" },
+	-- (0.20.2, the user: "The Totem Bar is missing from the Checkbox menus") the shaman's totem bar
+	-- (Blizzard_ActionBar/Shared/MultiCastActionBarFrame.xml, Edit Mode's Totem Bar): no bar of the kit's, so its
+	-- rect is its shown buttons' -- the summon button, the four slots (the page's action buttons lie on them) and
+	-- the recall button
+	{ key = "backdropTotem", frame = "MultiCastActionBarFrame", name = "Totem Bar", what = "the totem bar", group = "bars",
+	  new = "0.20.2", buttons = { "MultiCastSummonSpellButton", "MultiCastSlotButton1", "MultiCastSlotButton2",
+		"MultiCastSlotButton3", "MultiCastSlotButton4", "MultiCastRecallSpellButton" } },
 	{ key = "backdropMicro", frame = "MicroMenu", name = "Micro Menu", what = "the micro menu", group = "micro" },
 	{ key = "backdropBags", frame = "BagsBar", name = "Bag Bar", what = "the bag bar", group = "bags" },
 	{ key = "backdropXP", frame = "MainStatusTrackingBarContainer", name = "Experience Bar", status = true, group = "bars",
@@ -103,9 +110,9 @@ for _, g in ipairs(GROUPS) do
 	-- (the buttons' rim: UI Modifications' Button Border, every window's)
 	options[#options + 1] = { type = "dropdown", key = g.keys.backdrop, name = "Backdrop", values = BACKDROP_VALUES,
 		desc = "The border of the backdrop round " .. what .. ": the red or iron gems on its corners, or one of the border "
-			.. "styles of Look > Borders (drawn heavy, its inner corners mitred). Elements placed together share one backdrop, "
-			.. "in the look of the first of them: Action Bar 1, the other bars, the micro menu, the bag bar. Each element's "
-			.. "backdrop is switched on under Backdrops." }
+			.. "styles of Look > Borders (drawn heavy, its inner corners mitred). Each element's backdrop is switched on "
+			.. "under Backdrops; switched-on elements placed together share one backdrop, in the look of the first of them: "
+			.. "Action Bar 1, the other bars, the micro menu, the bag bar." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.background, name = "Backdrop Background", values = BACKGROUND_VALUES,
 		desc = "What lies behind the buttons inside the backdrop. All three are chosen with pictures on Action Bars > Bars." }
 	options[#options + 1] = { type = "dropdown", key = g.keys.buttonBackground, name = "Button Background", values = BACKGROUND_VALUES,
@@ -114,9 +121,12 @@ end
 options[#options + 1] = { type = "subheader", name = "Backdrops" }
 for _, e in ipairs(ELEMENTS) do
 	defaults[e.key] = false
-	options[#options + 1] = { type = "toggle", key = e.key, name = e.name,
-		desc = "A backdrop round " .. e.what .. ". Elements placed together share one backdrop, shown when one of them has it "
-			.. "on" .. (e.status and "; this bar then takes their width, within a limit." or ".") }
+	-- (0.20.2, the user: "Checkbox on, the Bar gets its backdrop and merges seamlessly, Checkbox off, no backdrop and
+	-- no merging")
+	options[#options + 1] = { type = "toggle", key = e.key, name = e.name, new = e.new,
+		desc = "A backdrop round " .. e.what .. ", merged into one with the other switched-on elements placed next to it"
+			.. (e.status and " (this bar then takes their width, within a limit)" or "") .. ". Off: no backdrop, and it "
+			.. "joins none." }
 end
 
 local M = MelloUI:RegisterModule("ActionBarPanel", {
@@ -803,6 +813,16 @@ end
 -- An element's rect (its buttons', screen px) and a button's size; a status
 -- bar's is its container's as it stands (fitted or not), with no size
 local function MemberRect(e, root)
+	if e.buttons then
+		local list = {}
+		for _, name in ipairs(e.buttons) do
+			local button = rawget(_G, name)
+			if type(button) == "table" and button.IsShown then
+				list[#list + 1] = button
+			end
+		end
+		return ShownRect(list)
+	end
 	if e.status then
 		if not skin.status[root] then
 			return nil
@@ -912,6 +932,7 @@ local function NewHolder(root)
 end
 
 local padList = {}   -- (the members' pads in their order: Outline.Clusters' input, kept)
+local onList = {}    -- (the switched-on members, padList's order: kept)
 
 -- Every backdrop laid out: the members, their groups, the status bars'
 -- fits, each drawn group on its leader's holder; the holders no group
@@ -929,20 +950,24 @@ local function LayoutBackdrops()
 	end
 	if ks and n > 0 then
 		local size = ks * 97
+		-- (0.20.2, the user: "Checkbox on, the Bar gets its backdrop and merges seamlessly, Checkbox off, no
+		-- backdrop and no merging") only the switched-on elements make backdrops and join them: a bar switched off
+		-- beside one switched on stays out of its backdrop (it took the whole group's before)
+		local on = 0
 		for i = 1, n do
-			padList[i] = PadOf(list[i], ks, size)
+			if list[i].on then
+				on = on + 1
+				onList[on] = list[i]
+				padList[on] = PadOf(list[i], ks, size)
+			end
 		end
-		for i = #padList, n + 1, -1 do
-			padList[i] = nil
+		for i = #padList, on + 1, -1 do
+			padList[i], onList[i] = nil, nil
 		end
+		list = onList
 		local groups = Outline.Clusters(padList, 0)
 		for _, group in ipairs(groups) do
-			for _, i in ipairs(group) do
-				if list[i].on then
-					group.drawn = true
-					break
-				end
-			end
+			group.drawn = true
 			-- the status bars of a drawn group fitted first: their pads again
 			for _, i in ipairs(group) do
 				local m = list[i]
@@ -1339,6 +1364,19 @@ WatchForBackdrop = function(bar)
 		if type(bar[method]) == "function" then
 			hooksecurefunc(bar, method, ScheduleBackdrop)
 		end
+	end
+end
+
+-- (0.20.2) the totem bar (no bar of the kit's, never dressed): watched as a bar, and its slots shown or hidden as the
+-- shaman's totems change (MultiCastActionBarFrame_Update, a post-hook)
+local function WatchTotemBar()
+	local bar = rawget(_G, "MultiCastActionBarFrame")
+	if type(bar) ~= "table" or watched[bar] then
+		return
+	end
+	WatchForBackdrop(bar)
+	if type(rawget(_G, "MultiCastActionBarFrame_Update")) == "function" then
+		hooksecurefunc("MultiCastActionBarFrame_Update", ScheduleBackdrop)
 	end
 end
 
@@ -1900,6 +1938,7 @@ local function Build()
 	Try("micro menu", SkinMicroMenu)
 	Try("bag bar", SkinBagBar)
 	Try("status bars", SkinStatusBars)
+	Try("totem bar", WatchTotemBar)
 	Try("extra and vehicle buttons", SkinActiveOnly)
 end
 
