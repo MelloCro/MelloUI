@@ -436,6 +436,11 @@ local function SkinPage(page)
 		return
 	end
 	shellDressed[page] = true
+	-- (0.20.1; the user, 2026-10-11: "the only thing is the close button" -- it stood on the plate's right cap) the
+	-- page has no close of its own: its plate takes the parent's inside, left of its right cap, as every window's
+	if skin.close then
+		Kit.ownClose[page] = skin.close
+	end
 	Kit:SkinWindowShell(page, Replace, skin, { portrait = PagePortrait(page), body = false, bg = "UI-Background-Rock" })
 	skin.rings = skin.rings or {}
 	if skin.ring then
@@ -665,6 +670,7 @@ local function BuildSkin()
 
 	-- the parent's close button and side tabs
 	local close = _G[(pf:GetName() or "LFGParentFrame") .. "CloseButton"]
+	skin.close = close   -- (each page's title plate takes it: SkinPage)
 	if close and close.GetNormalTexture and close:GetNormalTexture() then
 		Replace(close:GetNormalTexture(), { as = "RedButton-Exit", button = close, alsoFade = Kit:OtherTextures(close, close:GetNormalTexture()) })
 	end

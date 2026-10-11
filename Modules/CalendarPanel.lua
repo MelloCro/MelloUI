@@ -121,6 +121,10 @@ local BORDER_PIECES = {
 	"RightTopTexture", "RightMiddleTexture", "RightBottomTexture", "BottomLeftTexture", "BottomMiddleTexture", "BottomRightTexture",
 }
 local ARROWS = { { "CalendarPrevMonthButton", "UI-SpellbookIcon-PrevPage-Up" }, { "CalendarNextMonthButton", "UI-SpellbookIcon-NextPage-Up" } }
+-- the title plate's controls (PlateControls): the arrows' size on it (under KC.SMALL: their bare gold glyphs), their
+-- gap to the title's words, the filter's gap under the plate's painted foot (the 18 px filter about centred between
+-- the foot and the weekday row: 2.9 px to spare)
+local PLATE = { arrow = 18, arrowGap = 6, filterGap = 1.5 }
 
 local skin = nil          -- { reps = {}, followers = {}, outer, stone, plate, band, today, ... }
 local active = false
@@ -137,6 +141,7 @@ local listBoxes = {}                                   -- { frame, rep }
 local rims = {}                                        -- the class icons' rims { icon, button } (the rep: MelloUI.Kept.repOf[holder])
 local raised = setmetatable({}, { __mode = "k" })      -- [fs] = { layer, sublevel }: a string lifted over our plate while dressed
 local lent = setmetatable({}, { __mode = "k" })        -- [fs] = { parent, points, font }: a title string riding the plate
+local heldOf = setmetatable({}, { __mode = "k" })      -- [button] = { level, w, h, points }: a control on the plate
 local stats = { days = 0, weekdays = 0, popups = 0, lists = 0, edits = 0, buttons = 0, dividers = 0, rims = 0 }
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
@@ -368,6 +373,85 @@ local function ReturnYear()
 	Return(year, true)
 end
 
+-- (0.20.1; the user's screenshot, 2026-10-11: the X under the plate's right end, the month arrows' tips and the filter
+-- under its foot) the plate rides the rail over the game's 46 px header. The X goes into the plate (Kit.ownClose: the
+-- plate's rule places it), the month arrows onto it either side of the month and year, as the game's flanked its
+-- month, small enough to be their bare gold glyphs (KC.SMALL); both over the band. The filter goes just under the
+-- plate's painted foot. The game's points, sizes and levels back on disable.
+local function Hold(b, on, level, place)
+	local held = b and heldOf[b]
+	if on and b then
+		if not held then
+			local okS, w, h = pcall(b.GetSize, b)
+			held = { level = b:GetFrameLevel(), points = {} }
+			if okS and not (Secret(w) or Secret(h)) then
+				held.w, held.h = w, h
+			end
+			for i = 1, b:GetNumPoints() do
+				held.points[i] = { b:GetPoint(i) }
+			end
+			heldOf[b] = held
+		end
+		b:SetFrameLevel(level)
+		if place then
+			b:SetSize(PLATE.arrow, PLATE.arrow)
+			b:ClearAllPoints()
+			b:SetPoint(unpack(place))
+		end
+	elseif held then
+		heldOf[b] = nil
+		b:SetFrameLevel(held.level)
+		if place then
+			if held.w and held.h then
+				b:SetSize(held.w, held.h)
+			end
+			b:ClearAllPoints()
+			for _, pt in ipairs(held.points) do
+				b:SetPoint(unpack(pt))
+			end
+		end
+	end
+end
+
+local function PlaceFilter(on)
+	local cf = Window()
+	local filter = cf and cf.FilterButton
+	if not filter then
+		return
+	end
+	Kit:Nudge(filter, "plate", 0, 0)   -- (measured where the game puts it)
+	local strip = on and skin and skin.plate and skin.plate.strip
+	local depth = strip and strip:IsVisible() and Kit:StripFootDepth(strip)
+	if not depth then
+		return
+	end
+	local ScreenRect, Num = MelloUI.Safe.ScreenRect, MelloUI.Safe.Number
+	local _, sb, _, st = ScreenRect(strip)
+	local _, _, _, ft = ScreenRect(filter)
+	local okS, ss = pcall(strip.GetEffectiveScale, strip)
+	local okF, fs = pcall(filter.GetEffectiveScale, filter)
+	ss, fs = okS and Num(ss), okF and Num(fs)
+	if not (sb and ft and ss and fs and fs > 0) then
+		return
+	end
+	local want = (sb + st) / 2 - (depth + PLATE.filterGap) * ss
+	if ft > want then
+		Kit:Nudge(filter, "plate", 0, (want - ft) / fs)
+	end
+end
+
+local function PlateControls(on)
+	local band = skin and skin.band
+	local month, year = _G.CalendarMonthName, _G.CalendarYearName
+	on = on and band and month and year and true
+	local level = on and band:GetFrameLevel() + 1
+	local gap = PLATE.arrowGap
+	Hold(_G[ARROWS[1][1]], on, level, { "RIGHT", month, "LEFT", -gap, 0 })
+	Hold(_G[ARROWS[2][1]], on, level, { "LEFT", year, "RIGHT", gap, 0 })
+	Hold(_G.CalendarCloseButton, on, level)
+	PlaceFilter(on)
+end
+
 local function SkinTitle(cf)
 	local month = _G.CalendarMonthName
 	if not month then
@@ -391,7 +475,9 @@ local function SkinTitle(cf)
 		return
 	end
 	skin.plate = plate
-	-- the year after the rule has placed the month, whenever it does
+	-- the game's X in the plate (its rule places a registered close, Kit.lua: CalendarCloseButton is no CloseButton key)
+	Kit.ownClose[cf] = _G.CalendarCloseButton
+	-- the year after the rule has placed the month, whenever it does; the controls after the year
 	local centre, refit, undo = plate.onEnable, plate.Refit, plate.onDisable
 	plate.onEnable = function(self)
 		skin.monthX = nil
@@ -399,11 +485,13 @@ local function SkinTitle(cf)
 			centre(self)
 		end
 		PlaceYear()
+		PlateControls(true)
 	end
 	plate.Refit = function(self)
 		skin.monthX = nil
 		refit(self)
 		PlaceYear()
+		PlateControls(self.object:IsShown())
 	end
 	plate.onDisable = function(self)
 		if undo then
@@ -411,6 +499,7 @@ local function SkinTitle(cf)
 		end
 		skin.monthX = nil
 		ReturnYear()
+		PlateControls(false)
 	end
 end
 
@@ -1227,6 +1316,10 @@ local function DumpCalendar(cf)
 	Found("close button", _G.CalendarCloseButton, " dressed " .. tostring(done[_G.CalendarCloseButton or false] == true))
 	local filter = cf.FilterButton
 	Found("filter dropdown", filter, filter and string.format(" dressed %s, shown %s", Dressed(filter), Shown(filter)) or nil)
+	MelloUI:Print("  on the plate: prev %s, next %s, close %s (the plate's close %s), filter at %s",
+		tostring(heldOf[_G.CalendarPrevMonthButton or false] ~= nil), tostring(heldOf[_G.CalendarNextMonthButton or false] ~= nil),
+		tostring(heldOf[_G.CalendarCloseButton or false] ~= nil), tostring(Kit.ownClose[cf] == _G.CalendarCloseButton),
+		filter and RectText(filter) or "-")
 	MelloUI:Print("  weekday headers: %d found, %d plated", #weekdays, stats.weekdays)
 	for _, w in ipairs(weekdays) do
 		MelloUI:Print("    %s: %s, plate %s, name layer %s", Label(w.bg), w.name and TextOf(w.name) or "?", tostring(w.rep ~= nil),

@@ -86,6 +86,7 @@ Modules\MeterHistory.lua
 Modules\MeterRaid.lua
 Modules\SwingTimers.lua
 Modules\PartyMarkers.lua
+Modules\Sparkles.lua
 Modules\CustomSounds.lua
 Modules\Nameplates.lua
 Modules\Tooltip.lua

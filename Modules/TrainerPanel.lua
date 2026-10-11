@@ -1360,8 +1360,13 @@ local function Build()
 	skin = { reps = {}, followers = {} }
 	local candidates = PortraitCandidates(f)
 	-- the shell (the outer rail with its ring corner left to the ring, the
-	-- page stone as the one background, the title plate on the rail, close)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = candidates[1] or f.PortraitContainer, bg = f.Bg and "UI-Background-Rock" or nil })
+	-- page stone as the one background, the title plate on the rail, close).
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the money and
+	-- Train under the double rail's bottom rail, the Settings dropdown and the
+	-- rows against its sides): the window is filled to its edges, so the rail
+	-- wraps it ("Mixed")
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = candidates[1] or f.PortraitContainer,
+		bg = f.Bg and "UI-Background-Rock" or nil, outward = true })
 	found.ring = ring ~= nil
 	if ring then
 		SkinPortrait(f, ring)

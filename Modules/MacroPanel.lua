@@ -776,14 +776,12 @@ end
 -- plate in the kit's title face; this window may write its title into
 -- another string (the window's own TitleText, an older MacroFrameTitleText,
 -- an unnamed string reading "Create Macros"), which stayed at the game's
--- place in the game's font under the plate. Every such string is found and
--- put on the plate in the title face (Kit:TitleFont follows the Fonts
--- options and the Font Style), or faded where the container's TitleText
--- already shows the same words there; its points and font put back on
--- disable.
+-- place in the game's font under the plate. Every such string is found; its
+-- words go into the container's TitleText, which the plate shows in the title
+-- face, and it is faded (0.20.1, Kit:TitleWords: moved onto the plate it
+-- stayed a region of the window, under the plate that rides the rail); the
+-- container's own text and the strings put back on disable.
 --------------------------------------------------------------------------------
-local titleMoved = {}      -- [fs] = { points } while on the plate
-local titleFaded = {}      -- [fs] = true while faded as a duplicate
 
 local function TextOf(fs)
 	local ok, text = pcall(fs.GetText, fs)
@@ -838,57 +836,14 @@ local function PlaceTitles(on)
 	if not f then
 		return
 	end
-	if not on then
-		for fs, points in pairs(titleMoved) do
-			Kit:TitleFont(fs, false)
-			fs:ClearAllPoints()
-			for _, pt in ipairs(points) do
-				fs:SetPoint(unpack(pt))
-			end
-		end
-		wipe(titleMoved)
-		for fs in pairs(titleFaded) do
-			Kit:Unfade(fs)
-		end
-		wipe(titleFaded)
-		return
-	end
 	local rep = TitleRep()
-	if not rep then
+	if on and not rep then
 		return
 	end
-	-- the plate's own centring of the container's string, again (the game may
-	-- have laid it out since)
-	if rep.object and rep.object:IsShown() and rep.Refit then
+	-- (0.20.1) the title's words in the container's string, the strays faded: Kit:TitleWords, every window's one
+	Kit:TitleWords(f, (TitleStrings(f)), on)
+	if on and rep.object and rep.object:IsShown() and rep.Refit then
 		rep:Refit()
-	end
-	local list, own = TitleStrings(f)
-	local ownText = own and TextOf(own)
-	for _, fs in ipairs(list) do
-		if ownText and TextOf(fs) == ownText then
-			-- the same words already on the plate: this copy gives way
-			if not titleFaded[fs] then
-				titleFaded[fs] = true
-				Kit:Fade(fs)
-			end
-		else
-			if not titleMoved[fs] then
-				local points = {}
-				for i = 1, fs:GetNumPoints() do
-					points[i] = { fs:GetPoint(i) }
-				end
-				titleMoved[fs] = points
-			end
-			fs:ClearAllPoints()
-			-- on the container's string (the rule centred it on the plate's
-			-- painted box), else on the plate itself
-			if own then
-				fs:SetPoint("CENTER", own, "CENTER")
-			else
-				fs:SetPoint("CENTER", rep.strip or rep.object, "CENTER")
-			end
-			Kit:TitleFont(fs, true)
-		end
 	end
 end
 
@@ -994,7 +949,11 @@ local function Build()
 	-- the shell: outer rail, one page stone, the ring, the title plate on the
 	-- rail, the close button
 	local portrait = Portrait(f)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = "UI-Background-Rock" })
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: Delete / New / Exit under the double rail's bottom rail,
+	-- Save / Cancel under its right one): the window is filled to its edges, so the rail wraps it ("Mixed"); the icon
+	-- picker, hung on its top right corner, goes out with the right rail
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = "UI-Background-Rock",
+		outward = true, right = { _G.MacroPopupFrame } })
 	if ring then
 		-- 2b: the icon at the class medallion's size on the dark disc, drawn
 		-- by the kit in the ring (SkinPortrait above: the game's own portrait
@@ -1218,7 +1177,7 @@ local function Summary(f)
 	local titles, own = TitleStrings(f)
 	Found("container TitleText", own, own and (" text " .. tostring(TextOf(own))) or nil)
 	for _, fs in ipairs(titles) do
-		Found("other title string", fs, string.format(" text %s, %s", tostring(TextOf(fs)), titleMoved[fs] and "on the plate" or titleFaded[fs] and "faded (duplicate)" or "not placed"))
+		Found("other title string", fs, string.format(" text %s, %s", tostring(TextOf(fs)), (Kit.titleStraysOf[Window()] or {})[fs] and "faded (its words in the container's string)" or "not placed"))
 	end
 	Found("grid box (own)", skin and skin.gridBox and skin.gridBox.object or nil, skin and skin.gridBox == false and " (the inset holds the grid)" or nil)
 	Found("page stone (Bg)", f.Bg)

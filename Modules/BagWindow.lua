@@ -115,9 +115,18 @@ local G = {
 	SIDE = 12,       -- the content's inset from the window's sides
 	TOP = 74,        -- the content's top below the window's top (the title rail, the search row, the ring's foot)
 	SEARCH_X = 70,   -- the search box's left, past the ring
+	-- (0.20.1, the window pass: the search field on its buttons' line, as tall as their plates -- the user's pick E,
+	-- THE text field)
+	ROW_Y = -32,     -- the search row's top below the window's top (the sort / bin / settings buttons and the box)
+	ROW_H = 26,      -- its height: the buttons' (the game's sort button's) and the search field's
 	PANEL_PAD = 6,   -- the dark panel round the items
 	PANEL_ALPHA = 0.9,
 	FOOT = 38,       -- the money row under the content (and its dark panel)
+	-- (0.20.1, the user: the items' panel "needs to be readjusted to fit inside the thick borders") with the kit look
+	-- on, the side inset and the foot from the window rail's own depth (Insets): the panel EDGE_GAP clear of the rails
+	EDGE_GAP = 4,
+	MONEY_Y = 12,    -- the money's bottom above the window's bottom (the plain look's; past the bottom rail in the kit's)
+	MONEY_H = 14,    -- the money row's height
 	HEAD = 17,       -- a kind's heading above its items
 	ROW_GAP = 8,     -- between rows of kinds
 	KIND_GAP = 15,   -- between kinds side by side
@@ -135,7 +144,8 @@ local function Grid()
 	G.SCALE = G.SLOT / G.BASE
 	G.PITCH = G.SLOT + G.GAP
 	G.CONTENT_W = G.COLS * G.PITCH - G.GAP
-	G.WIDTH = G.CONTENT_W + 2 * G.SIDE
+	G.INSET, G.FOOT_NOW, G.MONEY_Y_NOW = G.INSET or G.SIDE, G.FOOT_NOW or G.FOOT, G.MONEY_Y_NOW or G.MONEY_Y
+	G.WIDTH = G.CONTENT_W + 2 * G.INSET
 end
 Grid()
 M.G, M.Grid = G, Grid   -- (the tests)
@@ -802,8 +812,38 @@ local function FitSearch()
 		win.settings:ClearAllPoints()
 		win.settings:SetPoint("RIGHT", to, "LEFT", -2, 0)
 		win.search:ClearAllPoints()
-		win.search:SetPoint("TOPLEFT", win.frame, "TOPLEFT", G.SEARCH_X, -35)
+		win.search:SetPoint("TOPLEFT", win.frame, "TOPLEFT", G.SEARCH_X, G.ROW_Y)
 		win.search:SetPoint("RIGHT", win.settings, "LEFT", -8, 0)
+	end
+end
+
+-- The window's own parts past the rails (0.20.1, the user: the items' panel "needs to be readjusted to fit inside the
+-- thick borders"; their pick "Move them inward"): with the kit look on, the content's side inset and the foot under it
+-- from the window rail's own depth (Kit:OuterRailInset) -- the dark panel round the items EDGE_GAP clear of the rails,
+-- the search row's buttons (the row hangs from the sort button) at the same inset, the money between the panel and
+-- the bottom rail; the fixed G.SIDE / G.FOOT where those are larger (the plain look, a thin rail)
+local function Insets()
+	local side, foot, moneyY = G.SIDE, G.FOOT, G.MONEY_Y
+	if win.shell and win.shell.kit and Kit.OuterRailInset then
+		local ins = Kit:OuterRailInset()
+		side = math.max(side, math.max(ins[1], ins[2]) + G.PANEL_PAD + G.EDGE_GAP)
+		moneyY = math.max(moneyY, ins[4] + G.EDGE_GAP)
+		foot = math.max(foot, moneyY + G.MONEY_H + G.EDGE_GAP + G.PANEL_PAD)
+	end
+	G.INSET, G.FOOT_NOW, G.MONEY_Y_NOW = side, foot, moneyY
+	G.WIDTH = G.CONTENT_W + 2 * side
+	local f = win.frame
+	if win.content then
+		win.content:ClearAllPoints()
+		win.content:SetPoint("TOPLEFT", f, "TOPLEFT", side, -G.TOP)
+	end
+	if win.sort then
+		win.sort:ClearAllPoints()
+		win.sort:SetPoint("TOPRIGHT", f, "TOPRIGHT", -side, G.ROW_Y)
+	end
+	if win.money then
+		win.money:ClearAllPoints()
+		win.money:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -side + 4, moneyY)
 	end
 end
 
@@ -813,6 +853,7 @@ function M:Layout()
 	end
 	FitSearch()
 	Grid()
+	Insets()
 	win.frame:SetWidth(G.WIDTH)
 	win.content:SetWidth(G.CONTENT_W)
 	ReadBags()
@@ -901,7 +942,7 @@ function M:Layout()
 	end
 	local height = y + rowH
 	win.content:SetHeight(math.max(height, 1))
-	win.frame:SetHeight(G.TOP + math.max(height, G.SLOT) + G.FOOT)
+	win.frame:SetHeight(G.TOP + math.max(height, G.SLOT) + G.FOOT_NOW)
 	-- the Sell Junk button on Junk's heading, at a vendor
 	local sell = win.sell
 	if SellShown() and headings.junk.laid then
@@ -1192,17 +1233,17 @@ local function Build()
 	-- the search row: the game's own bag search (its text kept with the
 	-- game's other search boxes; what does not match is dimmed)
 	local sort = CreateFrame("Button", nil, f)
-	sort:SetSize(28, 26)
+	sort:SetSize(28, G.ROW_H)
 	sort:SetNormalAtlas("bags-button-autosort-up")
 	sort:SetPushedAtlas("bags-button-autosort-down")
 	W.HoverLight(sort, "square")   -- (the game's sort button's light: the shared one)
-	sort:SetPoint("TOPRIGHT", f, "TOPRIGHT", -G.SIDE, -32)
+	sort:SetPoint("TOPRIGHT", f, "TOPRIGHT", -G.SIDE, G.ROW_Y)
 	Perf.SetScript(sort, "OnClick", SortClick)
 	Perf.SetScript(sort, "OnEnter", SortEnter)
 	Perf.SetScript(sort, "OnLeave", W.TipLeave)
 	win.sort = sort
 	local search = CreateFrame("EditBox", nil, f, "BagSearchBoxTemplate")
-	search:SetHeight(20)
+	search:SetHeight(G.ROW_H)
 	W.FlatSearch(search)   -- (the Configurator's search box, as every own window's)
 	win.search = search
 	win.shell:Kit(function(K)
@@ -1222,7 +1263,7 @@ local function Build()
 	-- bag_view_sketch/bag_settings_looks.jpg): Discard's button with the game's options gear, the settings opened on
 	-- Windows > Bags; 0.19.9 (the user, 2026-10-09: "why arent the cogwheel ... changed"): the NewUI2 cog plate, the
 	-- gear in the game's look only
-	local settings, gear = W.PlateButton(f, 28, 26, 16, AREA, SETTINGS_SCRIPTS, "cog")
+	local settings, gear = W.PlateButton(f, 28, G.ROW_H, 16, AREA, SETTINGS_SCRIPTS, "cog")
 	gear:SetAtlas((select(2, Look.Art("optionsGear"))))
 	gear:SetDesaturated(true)   -- (in the text colour, as Discard's bin)
 	win.settings = settings
@@ -1246,6 +1287,10 @@ local function Build()
 			Dress()
 		end
 		InkMoney()
+		-- (the insets follow the look: laid out again)
+		if win.content and win.frame:IsShown() then
+			M:Layout()
+		end
 	end)
 	return f
 end

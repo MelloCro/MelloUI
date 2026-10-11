@@ -40,7 +40,13 @@
 --     pcall, and they leave the game's code path as it was.
 --   * The game's ART is faded with alpha (SetAlpha 0, held by a secure
 --     post-hook on SetAlpha), its title string too (re-drawn on the plate);
---     nothing else of the game's is changed.
+--     nothing else of the game's is changed -- but for one thing: (0.20.1, the
+--     user's pick, 2026-10-11: "A, move the X into the plate") the manager's
+--     and the settings dialog's X buttons stand inside the plate as on every
+--     window (PlaceClose). Their anchors alone, set while the shell is on and
+--     given back when it goes off: a CloseButton is `ignoreInLayout` in the
+--     game's own XML, so the windows' Layout never reads it, and Edit Mode
+--     cannot be open in a fight.
 --   * The manager and the settings dialog are ResizeLayoutFrames: their
 --     Layout() takes EVERY shown child frame and region into their size, and
 --     skipping one needs a field on it (`ignoreInLayout`) that their secure
@@ -506,9 +512,42 @@ local function Place(shell)
 	shell.strata, shell.level = strata, base
 end
 
+-- (0.20.1, the user's pick A) the window's X inside the plate, just left of its
+-- right cap, as the TitleBar rule places every window's (Kit.lua); the game's
+-- anchors kept once per button (Kit.closeSavedOf) and put back when `on` is
+-- false. A protected one is left alone in a fight.
+local function PlaceClose(shell, on)
+	local close = shell.window.CloseButton
+	if not (close and close.SetPoint) or (InCombatLockdown() and close:IsProtected()) then
+		return
+	end
+	local saved = Kit.closeSavedOf[close]
+	if on then
+		local cap = shell.title.capR
+		if not cap then
+			return
+		end
+		if not saved then
+			saved = {}
+			for i = 1, close:GetNumPoints() do
+				saved[i] = { close:GetPoint(i) }
+			end
+			Kit.closeSavedOf[close] = saved
+		end
+		close:ClearAllPoints()
+		close:SetPoint("RIGHT", cap, "LEFT", 0, Kit:StripTextOffset(shell.title))
+	elseif saved then
+		close:ClearAllPoints()
+		for _, pt in ipairs(saved) do
+			close:SetPoint(unpack(pt))
+		end
+		Kit.closeSavedOf[close] = nil
+	end
+end
+
 -- the plate on the outer rail as the TitleBar rule lays it (Kit:TitleOnRail:
 -- its caps' gems on the rail's top corners, the whole rail's width), the
--- title centred on its painted box
+-- title centred on its painted box, the window's X inside it
 local function FitTitle(shell)
 	local strip, root = shell.title, shell.root
 	local rule = Kit.Replacements.TitleBar or {}
@@ -530,6 +569,7 @@ local function FitTitle(shell)
 	end
 	shell.text:ClearAllPoints()
 	shell.text:SetPoint("CENTER", strip, "CENTER", 0, dy)
+	PlaceClose(shell, true)
 end
 
 -- the window's title, re-drawn on the plate in the game's own font and colour
@@ -610,7 +650,7 @@ local function AddRowsPanel(shell, rowsOf)
 	kinds[rowsOf] = "rows panel"
 end
 
-local function BuildShell(window)
+local function BuildShell(window, outward)
 	if shells[window] ~= nil then
 		return shells[window]
 	end
@@ -631,10 +671,14 @@ local function BuildShell(window)
 	local rule = Kit.Replacements.NineSlicePanelTemplate or {}
 	local fscale = Kit.scale * (rule.scale or Kit.frameScale)
 	local o = (rule.outset or 0) * fscale
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the manager's Revert All Changes / Save on the bottom
+	-- rail): the bottom rail lies outward by its own depth (Kit:OutwardWrap's measure: the rail's inner edge on the
+	-- window's bottom), the window's bottom buttons clear of it -- our own frame grown, nothing of Edit Mode's moved
+	local below = outward and Kit.OuterRailInset and Kit:OuterRailInset()[4] or 0
 	local holder = CreateFrame("Frame", nil, root)
 	holder:EnableMouse(false)
 	holder:SetPoint("TOPLEFT", root, "TOPLEFT", -o, o)
-	holder:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", o, -o)
+	holder:SetPoint("BOTTOMRIGHT", root, "BOTTOMRIGHT", o, -o - below)
 	shell.holder = holder
 	local nine = Kit:NineSlice(holder, { scale = fscale, gems = false, body = true, bodyScale = rule.bodyScale and Kit.scale * rule.bodyScale,
 		prefix = rule.prefix or "window/frame", corners = rule.corners })
@@ -775,7 +819,7 @@ local function DressManager(manager)
 		return
 	end
 	skinned[manager] = true
-	local shell = BuildShell(manager)
+	local shell = BuildShell(manager, true)
 	-- frames never walked into: the full-screen grid and snapping lines
 	if manager.Grid then
 		managerSkip[manager.Grid] = true
@@ -1052,6 +1096,7 @@ local function Deactivate()
 	for window, shell in pairs(shells) do
 		if shell then
 			shell.root:Hide()
+			PlaceClose(shell, false)
 		end
 		UnfadeArt(window)
 	end

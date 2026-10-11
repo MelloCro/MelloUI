@@ -285,11 +285,20 @@ local function TitleRep()
 	end
 end
 
+-- (0.20.1; the user's screenshot, 2026-10-11: the plate empty) this client's stable writes no title anywhere (its
+-- Camelot OnShow sets the portrait alone): the plate reads the stable master's name, as the merchant's and the
+-- trainer's windows read their NPC's (Kit:TitleWords' fallback; the container's own text back off)
+local function StableMaster()
+	local ok, name = pcall(UnitName, "npc")
+	return ok and name or nil
+end
+
 local function PlaceTitle()
 	local rep = TitleRep()
 	if not (active and rep and rep.object and rep.object:IsShown()) then
 		return
 	end
+	Kit:TitleWords(Window(), nil, true, StableMaster())
 	if rep.Refit then
 		rep:Refit()
 	end
@@ -591,7 +600,9 @@ local function Build()
 
 	-- the shell: outer rail, one page stone, the ring, the title plate on the
 	-- rail, the close button
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock" })
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the money under the double rail's bottom rail): the window
+	-- is filled to its edges, so the rail wraps it ("Mixed")
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock", outward = true })
 	found.shell = string.format("%s: NineSlice %s, page stone (Bg) %s, title container %s, close %s",
 		IsClassic(f) and "the classic stable" or "the newer list stable", tostring(f.NineSlice ~= nil),
 		tostring(f.Bg ~= nil), tostring(f.TitleContainer ~= nil), tostring(f.CloseButton ~= nil))
@@ -695,6 +706,7 @@ local function Deactivate()
 	if info then
 		info.tex:Hide()
 	end
+	Kit:TitleWords(Window(), nil, false)   -- (the container's own title back)
 end
 
 -- (user, 2026-09-24: "dress rarely used windows on first open") nothing of

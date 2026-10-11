@@ -419,7 +419,12 @@ local function PlaceTitles(on)
 end
 
 local function SkinShell(f)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock" })
+	-- `outward` (0.20.1; the user's screenshots, 2026-10-11: the money and Cancel Auction under the double rail's
+	-- bottom rail, Search and the refresh buttons under its right one, the category list's first letters under its
+	-- left one): the window is filled to its edges, so the rail wraps it ("Mixed"); its Buy / Sell / Auctions tabs
+	-- (a chain from the Buy tab under its bottom left) go down with the bottom rail
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock",
+		outward = true, below = { f.BuyTab } })
 	skin.ring = ring
 	Note(f.NineSlice, "outer double rail with gem corners, page stone")
 	Note(f.TitleContainer, "title plate on the rail, title in the title face (2c)")

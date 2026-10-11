@@ -299,8 +299,15 @@ local function BuildSkin()
 	skin.Replace = Replace
 
 	-- the window: outer rail, page stone on the rock, streaks, the ring on
-	-- the portrait corner, title, close, maximize / minimize
-	Kit:SkinWindowShell(cf, Replace, skin, { portrait = cf.PortraitOverlay and cf.PortraitOverlay.Portrait, bg = "UI-Background-Rock" })
+	-- the portrait corner, title, close, maximize / minimize. `outward` (0.20.1;
+	-- the user's screenshots, 2026-10-11: Invite Member, the roster's Guild
+	-- Control / Recruitment row and View Log, 5 above the window's bottom,
+	-- lay under the double rail, the lists against its sides): the window is
+	-- filled to its edges, so the rail wraps it, as the merchant's ("Mixed");
+	-- the side tabs (a chain from the Chat tab) and the member card the game
+	-- hangs past its right edge go out with the right rail
+	Kit:SkinWindowShell(cf, Replace, skin, { portrait = cf.PortraitOverlay and cf.PortraitOverlay.Portrait, bg = "UI-Background-Rock",
+		outward = true, right = { cf.ChatTab, cf.GuildMemberDetailFrame } })
 	-- the guild's tabard does not cover the ring's opening: the dark disc behind it (WINDOW-RULES 2b)
 	Kit:RingDisc(skin.ring, nil, cf.PortraitOverlay, 0)
 	-- the inset (ButtonFrameTemplate's InsetFrameTemplate): the single rail

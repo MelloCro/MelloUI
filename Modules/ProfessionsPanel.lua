@@ -70,6 +70,7 @@ local M = MelloUI:RegisterModule("ProfessionsPanel", {
 local skin = nil        -- the registry of replacements, built once the window exists
 local active = false
 local hooked = false
+local LayEdges          -- the crafting page's edges clear of the double rail (below)
 
 --------------------------------------------------------------------------------
 -- Helpers (the character panel's)
@@ -793,8 +794,13 @@ local function SkinCraftingPage(page)
 					fs:SetJustifyH("CENTER")
 				end
 			end
+			-- (the row bound: lifted off the bottom rail now)
+			LayEdges()
 		end
-		hooksecurefunc(page, "SetControlAnchors", Bind)
+		hooksecurefunc(page, "SetControlAnchors", function()
+			Kit:NudgeTaken(spin)   -- (its anchor set again: the game's now)
+			Bind()
+		end)
 		skin.bindCreate = Bind
 		-- the game lays the buttons out on its own schedule (SetControlAnchors
 		-- is not called on every path: the labels were never placed -- user,
@@ -829,11 +835,22 @@ local function SkinCraftingPage(page)
 	if link and link.Background then
 		Replace(link.Background, { as = "common-button-tertiary-square-normal", button = link, rect = link.Background })
 	end
-	-- the schematic backdrop follows the page's refresh (the profession)
+	-- the schematic backdrop follows the page's refresh (the profession); the
+	-- refresh sets the schematic's width (its new width the game's, its height
+	-- still ours) and anchors the Create button to the page's corner again (the
+	-- row bound to the count box once more: lifted with it)
 	if page.Refresh then
 		hooksecurefunc(page, "Refresh", function()
+			if page.SchematicForm then
+				Kit:ShrinkTaken(page.SchematicForm, "w")
+			end
 			if active then
 				RefreshSchematic(page.SchematicForm)
+				if skin.bindCreate then
+					skin.bindCreate()
+				else
+					LayEdges()
+				end
 			end
 		end)
 	end
@@ -944,6 +961,55 @@ local function RestorePortrait()
 	end
 	if portrait then
 		UnfitPortrait(portrait)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The crafting page's edges (0.20.1; the user's screenshots, 2026-10-10: the
+-- Create All / count / Create row half under the double rail's bottom rail, as
+-- the talents' Apply Changes was -- "Move them inward"). The row moved up clear
+-- of the rail (Kit:ClearRails, measured on the Create button, moving the count
+-- box the whole row hangs from while the skin is on: Bind), the recipe list's
+-- bottom edge up as much (its BOTTOMLEFT anchor alone: the list shorter, its
+-- top kept) and the schematic shorter by the row's lift, its top kept (the
+-- group moved together: the row stays under it as the game had it); the guild
+-- crafters' button, when shown, clear of the rails. Laid once the row is bound
+-- (Bind: on the page's show, its controls' anchoring, its refresh, the skin's
+-- switch) and on the window's size change; without the skin, the game's places.
+--------------------------------------------------------------------------------
+function LayEdges()
+	local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+	if not (page and Kit.ClearRails) then
+		return
+	end
+	local on = active and skin and skin.window or nil
+	local spin, create, list, form = page.CreateMultipleInputBox, page.CreateButton, page.RecipeList, page.SchematicForm
+	local dy = 0
+	if spin then
+		if on and create then
+			local _, lift = Kit:ClearRails(on, create, spin, "y")
+			dy = lift
+		else
+			Kit:Nudge(spin, "rails", 0, 0)
+		end
+	end
+	if form then
+		Kit:Shrink(form, "rails", 0, dy)
+	end
+	if list then
+		if on then
+			Kit:ClearRails(on, list, nil, "y", "BOTTOMLEFT")
+		else
+			Kit:Nudge(list, "rails", 0, 0)
+		end
+	end
+	local guild = page.ViewGuildCraftersButton
+	if guild then
+		if on then
+			Kit:ClearRails(on, guild)
+		else
+			Kit:Nudge(guild, "rails", 0, 0)
+		end
 	end
 end
 
@@ -1188,7 +1254,9 @@ local function Activate()
 	ApplyBackgrounds()
 	ApplyPortrait()
 	if skin.bindCreate then
-		skin.bindCreate()
+		skin.bindCreate()   -- (and the edges)
+	else
+		LayEdges()
 	end
 end
 
@@ -1205,6 +1273,7 @@ local function Deactivate()
 	if skin.unbindCreate then
 		skin.unbindCreate()
 	end
+	LayEdges()   -- (the game's own places back)
 	InkSurface()
 end
 
@@ -1238,6 +1307,12 @@ local function Hook()
 		M:RefreshTabs()
 		M:RefreshCards()
 		M:RefreshCrafting()
+	end)
+	-- (the rails move with the window's edges: the crafting page's row laid again)
+	Perf.HookScript(ProfessionsFrame, "OnSizeChanged", function()
+		if active then
+			LayEdges()
+		end
 	end)
 	if ProfessionsFrame.RightTabSelected then
 		hooksecurefunc(ProfessionsFrame, "RightTabSelected", function()

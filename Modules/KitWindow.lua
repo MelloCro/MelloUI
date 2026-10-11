@@ -428,6 +428,12 @@ function Shell:LayClose()
 	if self.kit then
 		close:SetSize(PLATE_FIT, PLATE_FIT)
 		close:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -2, -1)
+		-- (0.20.1) a plate on the rail takes it inside, left of its right cap, as a game window's (its Refit)
+		local rep = self.plateRep
+		local strip = rep and rep.strip
+		if strip and strip:IsShown() then
+			rep:Refit()
+		end
 	else
 		close:SetSize(GAME_CLOSE, GAME_CLOSE)
 		close:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", GAME_CLOSE_X, GAME_CLOSE_Y)
@@ -438,7 +444,6 @@ end
 function Shell:Switch(on)
 	self.kit = on
 	self:Lay()
-	self:LayClose()
 	local reps = self.reps
 	if on then
 		for i = 1, #reps do
@@ -456,6 +461,8 @@ function Shell:Switch(on)
 		end
 		self:BuildPlain()
 	end
+	-- (0.20.1: after the plate's own switch -- off, it puts the close back where it found it)
+	self:LayClose()
 	for i = 1, #self.plains do
 		self.plains[i]:SetShown(not on)
 	end
@@ -660,6 +667,7 @@ local function DressRing(K, shell)
 			if shell.rail and rawget(shell.rail, "outerCut") == nil then
 				K:CutRailAtRing(shell.rail, corner)
 			end
+			shell.gameCornerTex = corner   -- (the plate behind it: DressPlate)
 		else
 			corner:Hide()
 		end
@@ -700,6 +708,11 @@ local function DressPlate(K, shell)
 		rep = shell:Replace(shell.plateFill, { as = "TitleBar", parent = plate, rect = plate, fitHeight = PLATE_FIT, alsoFade = shell.plateEdges })
 		if rep and rep.object then
 			shell.bounds[#shell.bounds + 1] = rep.object
+		end
+		-- (0.20.1, a stand-in for a game window: the bag window) the plate behind the game's corner, as a game
+		-- window's (Kit:RegisterShell's)
+		if rep and shell.gameCornerTex then
+			K:TitleBehindGameCorner(rep, shell.gameCornerTex, shell.rail, true)
 		end
 	else
 		rep = shell:Replace(shell.plateFill, { as = "MelloUI-TitlePlate", parent = plate, rect = plate, fitHeight = PLATE_FIT, alsoFade = shell.plateEdges })
@@ -854,6 +867,7 @@ function Kit:OwnWindow(frame, opts)
 		close:SetFrameLevel(base + LEVEL_CLOSE)
 		Perf.SetScript(close, "OnClick", Close_OnClick)
 		shell.close = close
+		Kit.ownClose[frame] = close
 		shell:LayClose()
 	end
 
@@ -1121,6 +1135,266 @@ function Kit:ChoicePicture(tile, kind, choice)
 		else
 			tile.none:Show()
 		end
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Nudges (0.20.1; the user's picks 2026-10-10: a control the game parks at its window's edge, under the double rail
+-- that lies over the content, "Move them inward"; a search field and the filter button beside it on one centre and
+-- one height). A game region moved off its own anchors by offsets the kit sets, one per reason (`key`), summed; its
+-- anchors as the game left them kept here -- never on its frame -- and put back when its last nudge goes. A game
+-- function that anchors it again: Kit:NudgeTaken(region) takes its new anchors as the game's (the caller lays its
+-- nudges again after).
+--   Kit:Nudge(region, key, dx, dy, point)   the offset for `key` (0, 0: gone); `point`: that one anchor alone (the
+--                                           region's edge on that side moves: it grows or shrinks)
+--   Kit:NudgeTaken(region)
+--   Kit:ClearRails(windowRep, region, move, axis, point, key)
+--                                           `region` measured against the window's rails (a railOver look's: the
+--                                           rails over the content), `move` (region; or the root of its anchor chain)
+--                                           nudged in by its overlap and RAIL_GAP; returns the nudge (dx, dy).
+--                                           `axis`: "x" sideways only, "y" up only (nil: both); `point`: that one
+--                                           anchor of `move` alone (a region hung by two corners, "y": its bottom edge
+--                                           up off the bottom rail, the region shorter, its top kept); `key`: the
+--                                           nudge's own key ("rails" by default) -- a second call on one region with
+--                                           another key adds to the first (a scroll bar moved in sideways, then
+--                                           shortened off the bottom rail)
+--   Kit:RailEdges(windowRep)                the rails' inner edges in screen units -- the left rail's right, the right
+--                                           rail's left, the bottom rail's top (nil each without it; all nil when the
+--                                           rails do not lie over the content or are not shown): ClearRails' measure,
+--                                           for a panel whose content has a margin of its own; RAIL_GAP as Kit.RAIL_GAP
+--   Kit:AlignBeside(region, beside, move)   `region`'s centre line onto `beside`'s, by nudging `move` (region; or
+--                                           the root of its anchor chain)
+--   Kit:Shrink(region, key, dw, dh)         a region the game sizes itself (one anchor and its own size) `dw` / `dh`
+--                                           narrower / shorter for `key` (0, 0: gone); its size as the game set it
+--                                           kept here and put back when its last shrink goes
+--   Kit:ShrinkTaken(region, side)           a game function sized it again: its new size taken as the game's
+--                                           (`side` "w" / "h": the game set that side alone -- the professions'
+--                                           schematic, its width per recipe -- the other kept as the game's)
+--------------------------------------------------------------------------------
+local nudges = setmetatable({}, { __mode = "k" })   -- [region] = { points = the game's anchors, offs = { [key] = { dx, dy, point } } }
+local shrinks = setmetatable({}, { __mode = "k" })  -- [region] = { w, h = the game's size, offs = { [key] = { dw, dh } } }
+local RAIL_GAP = 4
+Kit.RAIL_GAP = RAIL_GAP
+
+local function PointsOf(region)
+	local points = {}
+	for i = 1, region:GetNumPoints() do
+		local p = { region:GetPoint(i) }
+		if Secret(p[4]) or Secret(p[5]) then
+			return nil
+		end
+		points[i] = p
+	end
+	return points
+end
+
+local function NudgeLay(region, n)
+	region:ClearAllPoints()
+	for _, p in ipairs(n.points) do
+		local dx, dy = 0, 0
+		for _, o in pairs(n.offs) do
+			if not o[3] or o[3] == p[1] then
+				dx, dy = dx + o[1], dy + o[2]
+			end
+		end
+		region:SetPoint(p[1], p[2], p[3], (p[4] or 0) + dx, (p[5] or 0) + dy)
+	end
+end
+
+function Kit:Nudge(region, key, dx, dy, point)
+	dx, dy = dx or 0, dy or 0
+	local n = nudges[region]
+	if not n then
+		if dx == 0 and dy == 0 then
+			return
+		end
+		local points = PointsOf(region)
+		if not points then
+			return
+		end
+		n = { points = points, offs = {} }
+		nudges[region] = n
+	end
+	n.offs[key] = (dx ~= 0 or dy ~= 0) and { dx, dy, point } or nil
+	NudgeLay(region, n)
+	if not next(n.offs) then
+		nudges[region] = nil
+	end
+end
+
+function Kit:NudgeTaken(region)
+	local n = nudges[region]
+	local points = n and PointsOf(region)
+	if points then
+		n.points = points
+		NudgeLay(region, n)
+	end
+end
+
+-- (a region's edges in screen units: left, bottom, right, top; nil where unreadable)
+local ScreenRect = MelloUI.Safe.ScreenRect
+
+function Kit:RailEdges(rep)
+	local parts = rep and rep.rule and rep.rule.railOver and rep.skin
+	local r, b, l = parts and rawget(parts, "r"), parts and rawget(parts, "b"), parts and rawget(parts, "l")
+	if not (r and r:IsVisible()) then
+		return nil
+	end
+	local _, _, lr = ScreenRect(l or r)
+	local rl = ScreenRect(r)
+	local _, _, _, bt = ScreenRect(b or r)
+	return l and lr or nil, rl, b and bt or nil
+end
+
+function Kit:ClearRails(rep, region, move, axis, point, key)
+	move, key = move or region, key or "rails"
+	self:Nudge(move, key, 0, 0)   -- (measured where the game puts it)
+	local lr, rl, bt = self:RailEdges(rep)
+	if not ((lr or rl or bt) and region:IsVisible()) then
+		return 0, 0
+	end
+	local L, B, R = ScreenRect(region)
+	if not L then
+		return 0, 0
+	end
+	local dx, dy = 0, 0
+	if axis ~= "y" then
+		if rl and R > rl - RAIL_GAP then
+			dx = (rl - RAIL_GAP) - R
+		elseif lr and L < lr + RAIL_GAP then
+			dx = (lr + RAIL_GAP) - L
+		end
+	end
+	if axis ~= "x" and bt and B < bt + RAIL_GAP then
+		dy = (bt + RAIL_GAP) - B
+	end
+	local s = Num(move:GetEffectiveScale()) or 1
+	self:Nudge(move, key, dx / s, dy / s, point)
+	return dx / s, dy / s
+end
+
+function Kit:AlignBeside(region, beside, move)
+	move = move or region
+	self:Nudge(move, "beside", 0, 0)
+	local _, b1, _, t1 = ScreenRect(region)
+	local _, b2, _, t2 = ScreenRect(beside)
+	if not (t1 and t2) then
+		return
+	end
+	local s = Num(move:GetEffectiveScale()) or 1
+	self:Nudge(move, "beside", 0, ((t2 + b2) / 2 - (t1 + b1) / 2) / s)
+end
+
+-- One title on the plate (0.20.1; the user's screenshots, 2026-10-11: the macro window's and the tabard designer's
+-- plates empty). A window that writes its title into a string of its own (the macro window's unnamed "Create Macros",
+-- the tabard designer's TabardFrameNameText: the vendor's name), not the title container's TitleText, had that string
+-- moved onto the plate -- but it stays a region of the window, under the plate that rides the rail. The words go into
+-- the container's TitleText instead, the string every window's plate shows in the title face (its own text kept and
+-- put back off; read again on every call: a vendor's name changes), and the strays give way. The caller refits the
+-- plate after.
+--   Kit:TitleWords(window, strays, on, fallback)   strays: the window's other title strings (the container's own left
+--                                        out); `fallback`: words for a window that writes none anywhere (this client's
+--                                        stable: the stable master's name, as the merchant's and the trainer's windows)
+Kit.titleSavedOf = setmetatable({}, { __mode = "k" })    -- [container TitleText] = { text = its own } while written
+Kit.titleStraysOf = setmetatable({}, { __mode = "k" })   -- [window] = { [string] = true } faded while on
+
+function Kit:TitleWords(window, strays, on, fallback)
+	local tc = window and window.TitleContainer
+	local own = tc and tc.TitleText
+	if not on then
+		for fs in pairs(Kit.titleStraysOf[window] or {}) do
+			Kit:Unfade(fs)
+		end
+		Kit.titleStraysOf[window] = nil
+		local saved = own and Kit.titleSavedOf[own]
+		if saved then
+			own:SetText(saved.text or "")
+			Kit.titleSavedOf[own] = nil
+		end
+		return
+	end
+	if not own then
+		return
+	end
+	local function TextOf(fs)
+		local ok, text = pcall(fs.GetText, fs)
+		if ok and not Secret(text) and type(text) == "string" and text ~= "" then
+			return text
+		end
+	end
+	-- the container's own words stand unless they are ours (written before: taken again from the strays)
+	if Kit.titleSavedOf[own] or not TextOf(own) then
+		local words
+		for _, fs in ipairs(strays or {}) do
+			words = words or TextOf(fs)
+		end
+		if not words and type(fallback) == "string" and not Secret(fallback) and fallback ~= "" then
+			words = fallback
+		end
+		if words then
+			if not Kit.titleSavedOf[own] then
+				local ok, text = pcall(own.GetText, own)
+				Kit.titleSavedOf[own] = { text = (ok and not Secret(text)) and text or nil }
+			end
+			own:SetText(words)
+		end
+	end
+	local faded = Kit.titleStraysOf[window] or {}
+	Kit.titleStraysOf[window] = faded
+	for _, fs in ipairs(strays or {}) do
+		if fs ~= own and not faded[fs] then
+			faded[fs] = true
+			Kit:Fade(fs)
+		end
+	end
+end
+
+local function ShrinkLay(region, n)
+	local sw, sh = 0, 0
+	for _, o in pairs(n.offs) do
+		sw, sh = sw + o[1], sh + o[2]
+	end
+	region:SetSize(math.max(1, n.w - sw), math.max(1, n.h - sh))
+end
+
+function Kit:Shrink(region, key, dw, dh)
+	dw, dh = dw or 0, dh or 0
+	local n = shrinks[region]
+	if not n then
+		if dw == 0 and dh == 0 then
+			return
+		end
+		local okW, w = pcall(region.GetWidth, region)
+		local okH, h = pcall(region.GetHeight, region)
+		if not (okW and okH) or Secret(w) or Secret(h) or not (w and h) then
+			return
+		end
+		n = { w = w, h = h, offs = {} }
+		shrinks[region] = n
+	end
+	n.offs[key] = (dw ~= 0 or dh ~= 0) and { dw, dh } or nil
+	ShrinkLay(region, n)
+	if not next(n.offs) then
+		shrinks[region] = nil
+	end
+end
+
+function Kit:ShrinkTaken(region, side)
+	local n = shrinks[region]
+	if not n then
+		return
+	end
+	local okW, w = pcall(region.GetWidth, region)
+	local okH, h = pcall(region.GetHeight, region)
+	if okW and okH and not Secret(w) and not Secret(h) and w and h then
+		-- (`side`: the game set that one alone; the other is still ours, its game size kept)
+		if side ~= "h" then
+			n.w = w
+		end
+		if side ~= "w" then
+			n.h = h
+		end
+		ShrinkLay(region, n)
 	end
 end
 

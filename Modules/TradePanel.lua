@@ -16,10 +16,12 @@
 --                        medallion's size on the dark disc (2b), the title
 --                        plate on the rail, the close button
 --                        (Kit:SkinWindowShell)
---   the two names        the window's title is the two players' names: both
---                        stand ON the plate (2c), in the title face, the
---                        player's between the two rings, the other player's
---                        right of theirs; put back on disable
+--   the title, the two   the plate reads Trade (2c); the two players' names,
+--   names                in the title face, full size on the band under the
+--                        plate, each over its own column -- the player's
+--                        between the two rings, the other player's right of
+--                        theirs (0.20.1, the user's pick: the close inside
+--                        the plate left their name ~45); put back on disable
 --   the other player's   the recipient's own portrait corner (RecipientOverlay:
 --   portrait             the metal ring over their portrait) -> the kit's ring,
 --                        their portrait at the medallion size on the disc (2b)
@@ -642,7 +644,14 @@ local function SkinRecipientRing(f)
 		return
 	end
 	local ring = Replace(corner, { as = "UI-Frame-PortraitMetal-CornerTopLeft", parent = overlay, center = portrait })
+	skin.recipientCorner = corner
 	if not ring then
+		-- (0.20.1: a game window's portrait ring stays the game's, the other player's too -- the user's screenshot: its
+		-- title bar stub lay over the plate right of the ring) its stubs cut away as on every window's corner
+		-- (Kit:CornerCutMask), on with the look (Activate / Deactivate); never part of the overlay's layout
+		local mask = Kit:CornerCutMask(overlay, corner)
+		mask.ignoreInLayout = true
+		skin.recipientCut = mask
 		return
 	end
 	skin.recipientRing = ring
@@ -685,15 +694,17 @@ end
 
 --------------------------------------------------------------------------------
 -- The title (WINDOW-RULES 2c: the title ON the plate, in the title face).
--- This window's title container stays empty: its title is the two players'
--- names, TradeFramePlayerNameText / TradeFrameRecipientNameText, strings of an
--- unnamed HIGH strata frame on the title band. Both are laid ON the plate in
--- Kit:TitleFont (which follows the Fonts options and the Font Style): each
--- centred on the plate's painted box, the player's between the right of the
--- player's ring and the left of the other player's, the other player's
--- between the right of their ring and the window's right edge (read from the
--- rings as laid out, the XML's places until then). Their size and text stay
--- the game's; their points and font are put back on disable.
+-- The game leaves this window's title container empty: its title is the two
+-- players' names, TradeFramePlayerNameText / TradeFrameRecipientNameText,
+-- strings of an unnamed HIGH strata frame on the title band. With the kit the
+-- plate reads Trade (PlateTitle) and the two names, in Kit:TitleFont (which
+-- follows the Fonts options and the Font Style), stand full size on the band
+-- under the plate (0.20.1, the user's pick "Under the plate"), each over its
+-- own column: the player's between the right of the player's ring and the left
+-- of the other player's, the other player's between the right of their ring
+-- and the window's right edge (the rings as laid out -- the game's corners,
+-- Kit:CornerCutOf -- the XML's places until then). Their text stays the
+-- game's; their points, width and font are put back on disable.
 --------------------------------------------------------------------------------
 local FALLBACK_X = { player = { 66, 158 }, recipient = { 242, 344 } }   -- the rings' edges and the window's width in the XML's layout
 
@@ -728,34 +739,83 @@ local function WindowWidth(f)
 	return nil
 end
 
--- the plate's painted box: how far above the strip's centre line its middle is
-local function PlateDy(strip)
-	local p = Kit:Piece(Kit:StripPieceName(strip.base, "mid", strip.state))
-	if p and p.box then
-		return (p.h / 2 - (p.box[2] + p.box[4]) / 2) * (strip.scale or Kit.scale)
+-- (0.20.1, "Under the plate") the plate's title: the window's own title string -- empty on the game's trade window --
+-- reads Trade (the game's own word) while the look is on; its text given back after
+local titleSaved = nil
+local function PlateTitle(on)
+	local f = Window()
+	local tt = f and f.TitleContainer and f.TitleContainer.TitleText
+	if not (tt and tt.SetText) then
+		return
 	end
-	return 0
+	if on then
+		if titleSaved == nil then
+			local ok, t = pcall(tt.GetText, tt)
+			titleSaved = (ok and type(t) == "string" and not Secret(t)) and t or ""
+		end
+		tt:SetText(type(_G.TRADE) == "string" and _G.TRADE or "Trade")
+	elseif titleSaved ~= nil then
+		tt:SetText(titleSaved)
+		titleSaved = nil
+	end
 end
 
+-- (0.20.1) a game portrait corner's ring: its left and right edges, in UI px right of the window's left edge (the
+-- ring's centre and rim from the corner's own art, Kit:CornerCutOf) -- the rings stay the game's on a game window
+local function CornerRingX(corner, f)
+	local l = corner and EdgeX(corner, "left", f)
+	if not l then
+		return nil, nil
+	end
+	local c = Kit:CornerCutOf(corner)
+	return l + c.x - c.outer, l + c.x + c.outer
+end
+
+local NAME_PAD = 6   -- each name's room: its stretch less this at both ends
+local NAME_Y = -42   -- the band's middle under the plate, from the window's top, in the XML's layout (the money row at -58)
+
+-- a region's top / bottom edge in UI px above the window's top edge (negative below it; nil while not laid out)
+local function EdgeY(region, edge, f)
+	if not (region and f) then
+		return nil
+	end
+	local ok, y, top, rs, ws = pcall(function()
+		return (edge == "top" and region:GetTop() or region:GetBottom()), f:GetTop(), region:GetEffectiveScale(), f:GetEffectiveScale()
+	end)
+	if not (ok and y and top and rs and ws) or Secret(y) or Secret(top) or Secret(rs) or Secret(ws) or ws == 0 then
+		return nil
+	end
+	return y * rs / ws - top
+end
+
+-- (0.20.1, the user's pick "Under the plate": with the close inside the plate the other player's name had ~45 between
+-- their ring and the close) The plate reads Trade; each name full size on the band under it, over its own column: in
+-- the stretch from its ring to the column's end, halfway between the plate and the money row
 local function PlaceNames()
 	local rep = TitleRep()
 	local f = Window()
 	if not (active and f and rep and rep.strip and rep.object and rep.object:IsShown()) then
 		return
 	end
-	local lift = Kit:TitleOnRail(rep.strip)
-	local y = lift + PlateDy(rep.strip)
+	local plateB = EdgeY(rep.strip, "bottom", f)
+	local rowT = EdgeY(_G.TradePlayerInputMoneyInset, "top", f)
+	local y = (plateB and rowT and plateB > rowT) and (plateB + rowT) / 2 or NAME_Y
 	local ringR = skin.ring and skin.ring.tex
 	local recR = skin.recipientRing and skin.recipientRing.tex
+	local _, ownR = CornerRingX(f.NineSlice and f.NineSlice.TopLeftCorner, f)
+	local recL, recRight = CornerRingX(skin.recipientCorner, f)
 	local bounds = {
-		player = { EdgeX(ringR, "right", f) or FALLBACK_X.player[1], EdgeX(recR, "left", f) or FALLBACK_X.player[2] },
-		recipient = { EdgeX(recR, "right", f) or FALLBACK_X.recipient[1], WindowWidth(f) or FALLBACK_X.recipient[2] },
+		player = { EdgeX(ringR, "right", f) or ownR or FALLBACK_X.player[1],
+			EdgeX(recR, "left", f) or recL or FALLBACK_X.player[2] },
+		recipient = { EdgeX(recR, "right", f) or recRight or FALLBACK_X.recipient[1], WindowWidth(f) or FALLBACK_X.recipient[2] },
 	}
 	for _, entry in ipairs(names) do
 		local b = bounds[entry.side]
 		local fs = entry.fs
 		fs:ClearAllPoints()
 		fs:SetPoint("CENTER", f, "TOPLEFT", (b[1] + b[2]) / 2, y)
+		-- (the game's widths, 80 and 100, are for its own small font: "Fairyelf Me...")
+		fs:SetWidth(math.max(20, b[2] - b[1] - 2 * NAME_PAD))
 		if not fontSavedOf[fs] then
 			Kit:TitleFont(fs, true)
 		end
@@ -766,6 +826,9 @@ local function RestoreNames()
 	for _, entry in ipairs(names) do
 		local fs = entry.fs
 		Kit:TitleFont(fs, false)
+		if entry.width then
+			fs:SetWidth(entry.width)
+		end
 		if entry.points and #entry.points > 0 then
 			fs:ClearAllPoints()
 			for _, pt in ipairs(entry.points) do
@@ -787,7 +850,9 @@ local function CollectNames()
 					points[i] = { fs:GetPoint(i) }
 				end
 			end
-			names[#names + 1] = { fs = fs, points = points, side = side.key }
+			local okW, w = pcall(fs.GetWidth, fs)
+			names[#names + 1] = { fs = fs, points = points, side = side.key,
+				width = (okW and w and not Secret(w)) and w or nil }
 		end
 	end
 end
@@ -821,7 +886,9 @@ local function Build()
 	-- one page stone, the player's ring, the title plate on the rail, the
 	-- close button
 	SkinRecipientRing(f)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock" })
+	-- (0.20.1, as the merchant and the mailbox -- the user's pick "Mixed": the two sides' slots, the money boxes and
+	-- Trade / Cancel fill the window to its edges -- the double rail lies round it, `outward`)
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock", outward = true })
 	SkinPortrait(f, ring)
 	CollectNames()
 
@@ -903,6 +970,11 @@ local function Activate()
 	for _, entry in ipairs(cards) do
 		PaintCard(entry)
 	end
+	local corner, cut = skin.recipientCorner, skin.recipientCut
+	if corner and cut then
+		pcall(corner.AddMaskTexture, corner, cut)
+	end
+	PlateTitle(true)
 	Refresh()
 end
 
@@ -922,6 +994,11 @@ local function Deactivate()
 	for _, entry in ipairs(cards) do
 		PaintCard(entry)   -- (off: both faces hidden)
 	end
+	local corner, cut = skin and skin.recipientCorner, skin and skin.recipientCut
+	if corner and cut then
+		pcall(corner.RemoveMaskTexture, corner, cut)
+	end
+	PlateTitle(false)
 	-- (the rings' onDisable put the portraits back, the title plate its own
 	-- string; the names are ours to put back)
 	RestoreNames()

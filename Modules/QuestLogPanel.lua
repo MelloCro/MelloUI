@@ -599,6 +599,88 @@ local function SkinExistingPins()
 end
 
 --------------------------------------------------------------------------------
+-- The edges (0.20.1, the user's pick 2026-10-10: "Move them inward", as the spell book's). The controls the game
+-- parks at the window's edge moved in, clear of the double rail that lies over the content (Kit:ClearRails,
+-- KitWindow.lua's nudges): the quest log's gear -- its search box narrower by what the count box beside it (the Quest
+-- List's switch stands on it) needs (Kit:Shrink) -- its scroll bar and its bottom edge (the last row clear of the
+-- bottom rail); a quest's details: its scroll bar, its Abandon / Share / Track row and the rewards box above it moved
+-- up together, the text area shorter by as much (nothing under the box); the map's side panel toggle. MelloUI's Quest
+-- List page stands on the log's parts and follows them; its own scroll bar moved as the log's. Laid on each show and
+-- size change of the window, the log, the details and the page; without the skin, the game's own places back.
+--------------------------------------------------------------------------------
+local COUNT_GAP = 3   -- the count box's gap to the gear (as the game's from the search box to the count box)
+local ScreenRect = MelloUI.Safe.ScreenRect
+
+-- the search box narrower by what the count box beside it needs to clear the gear (moved in first)
+local function SearchEdge(sf)
+	local search, dd = sf.SearchBox, sf.SettingsDropdown
+	if not search then
+		return
+	end
+	Kit:Shrink(search, "rails", 0, 0)
+	if not (active and skin and skin.window) then
+		return
+	end
+	local _, _, countR = ScreenRect(_G.QuestLogCount or search)
+	local gearL = dd and ScreenRect(dd)
+	if countR and gearL and countR > gearL - COUNT_GAP then
+		Kit:Shrink(search, "rails", (countR - gearL + COUNT_GAP) / search:GetEffectiveScale(), 0)
+	end
+end
+
+local function LayEdges()
+	local wm, qm = WorldMapFrame, QuestMapFrame
+	if not (wm and qm and Kit.ClearRails) then
+		return
+	end
+	local on = active and skin and skin.window or nil
+	local qf = qm.QuestsFrame
+	local sf = qf and qf.ScrollFrame
+	if sf then
+		Kit:ClearRails(on, sf, sf, "y", "BOTTOMRIGHT")
+		if sf.SettingsDropdown then
+			Kit:ClearRails(on, sf.SettingsDropdown)
+		end
+		SearchEdge(sf)
+		if sf.ScrollBar then
+			Kit:ClearRails(on, sf.ScrollBar, nil, "x")
+		end
+	end
+	local details = qf and qf.DetailsFrame
+	if details then
+		local dsf, box = details.ScrollFrame, details.RewardsFrameContainer
+		if dsf and dsf.ScrollBar then
+			Kit:ClearRails(on, dsf.ScrollBar, nil, "x")
+		end
+		if box then
+			Kit:Nudge(box, "rails", 0, 0)
+		end
+		if dsf then
+			Kit:Shrink(dsf, "rails", 0, 0)
+		end
+		if details.AbandonButton then
+			local _, dy = Kit:ClearRails(on, details.AbandonButton, nil, "y")
+			if dy > 0 then
+				if box then
+					Kit:Nudge(box, "rails", 0, dy)
+				end
+				if dsf then
+					Kit:Shrink(dsf, "rails", 0, dy)
+				end
+			end
+		end
+	end
+	if wm.SidePanelToggle then
+		Kit:ClearRails(on, wm.SidePanelToggle)
+	end
+	local ql = MelloUI.QuestList
+	local page = ql and ql.Panel and ql.Panel.frame
+	if page and page.scrollBar then
+		Kit:ClearRails(on, page.scrollBar, nil, "x")
+	end
+end
+
+--------------------------------------------------------------------------------
 -- MelloUI's own quest list page (Modules/QuestListPanel.lua: the Quest List
 -- in the map's quest log column, over the log's own parts and built from the
 -- game's templates -- the quest log's page, border and divider, a search box,
@@ -759,6 +841,7 @@ local function SkinQuestList()
 	ql.Panel.OnRowHover = QuestListHover
 	Kit:HookScrollBoxRows(frame.scrollBox, SkinQuestListEntry, function() return active end, true)
 	Kit:SkinScrollBarsIn(frame, Replace)
+	Perf.HookScript(frame, "OnShow", LayEdges)   -- (its scroll bar off the rail: The edges)
 end
 
 --------------------------------------------------------------------------------
@@ -784,6 +867,12 @@ local function BuildSkin()
 		-- edges only: the frame's body would cover the map canvas (the border
 		-- frame sits above the canvas, in the HIGH strata)
 		Kit:SkinWindowShell(bf, Replace, skin, { portrait = Portrait(), body = false })
+		-- (the window's rail: the edges' measure, LayEdges)
+		for _, rep in ipairs(skin.reps) do
+			if rep.key == "NineSlicePanelTemplate" then
+				skin.window = rep
+			end
+		end
 		-- the title band (window top to the title container's bottom) is bare
 		-- with the body off: the page stone there, inside the outer rail
 		if bf.TitleContainer then
@@ -894,6 +983,7 @@ local function Activate()
 	SkinExistingPins()
 	RefreshPins()
 	InkQuestListWindow()
+	LayEdges()
 end
 
 local function Deactivate()
@@ -908,6 +998,7 @@ local function Deactivate()
 	end
 	Kit:UnfitPortrait(Portrait())
 	RefreshPins()
+	LayEdges()   -- (the game's own places back)
 	-- the quest log and the quest list in the game's colours again
 	InkList()
 	if MelloUI.QuestInk then
@@ -936,15 +1027,35 @@ local function Hook()
 	Perf.HookScript(WorldMapFrame, "OnShow", function()
 		Sync()
 		M:RefreshFollowers()
+		LayEdges()
 	end)
+	-- (maximized and back: the rails elsewhere)
+	Perf.HookScript(WorldMapFrame, "OnSizeChanged", LayEdges)
 	Perf.HookScript(QuestMapFrame, "OnShow", function()
 		M:RefreshFollowers()
 		SkinList()
+		LayEdges()
 	end)
+	local details = QuestMapFrame.QuestsFrame and QuestMapFrame.QuestsFrame.DetailsFrame
+	if details then
+		Perf.HookScript(details, "OnShow", LayEdges)
+	end
 	if QuestLogQuests_Update then
 		hooksecurefunc("QuestLogQuests_Update", function()
 			if active then
 				SkinList()
+			end
+		end)
+	end
+	-- (the game sizes its search box again with each count, Camelot's QuestMapFrameUtils: taken as the game's, the
+	-- box narrowed again -- The edges)
+	if type(QuestLogQuests_ShowQuestCount) == "function" then
+		hooksecurefunc("QuestLogQuests_ShowQuestCount", function()
+			local qf = QuestMapFrame.QuestsFrame
+			local sf = qf and qf.ScrollFrame
+			if sf and sf.SearchBox and Kit.ShrinkTaken then
+				Kit:ShrinkTaken(sf.SearchBox)
+				SearchEdge(sf)
 			end
 		end)
 	end
@@ -954,6 +1065,7 @@ local function Hook()
 		Perf.HookScript(sf, "OnVerticalScroll", DressShown)
 		Perf.HookScript(sf, "OnSizeChanged", DressShown)
 		Perf.HookScript(sf, "OnShow", DressShown)
+		Perf.HookScript(sf, "OnShow", LayEdges)   -- (Back from a quest's details)
 	end
 	-- MelloUI's quest list window is created on demand
 	if MelloUI.QuestList and MelloUI.QuestList.Panel and MelloUI.QuestList.Panel.Create then

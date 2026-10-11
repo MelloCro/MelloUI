@@ -99,7 +99,7 @@ read_globals = {
 	"PortraitFrameMixin", "UnitFramePortrait_Update",
 	"PlayerSpellsFrame", "LegacySystemFrame", "ProfessionsFrame", "PowerBarColor", "QuestInfoFrame", "QuestInfoObjectivesFrame",
 	"QuestInfoRequiredMoneyFrame", "QuestInfoRewardsFrame", "QuestInfoSpecialObjectivesFrame",
-	"QuestInfoTimerFrame", "QuestMapFrame", "QuestLogQuests_Update", "QuestMapFrame_ShowQuestDetails", "CommunitiesFrame", "WaypointLocationPinMixin", "LFGParentFrame", "LFGListingCategorySelection_UpdateCategoryButtons", "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame", "CollectionsJournal", "MountJournal", "ToyBox", "HeirloomsJournal", "WardrobeCollectionFrame", "CollectionsJournal_UpdateSelectedTab", "RAID_CLASS_COLORS", "RepairAllItems", "ResetCPUUsage",
+	"QuestInfoTimerFrame", "QuestMapFrame", "QuestLogQuests_Update", "QuestLogQuests_ShowQuestCount", "GetFileIDFromPath", "SetUnitCursorTexture", "UnitIsInInteractRange", "UnitIsGameObject", "QuestMapFrame_ShowQuestDetails", "CommunitiesFrame", "WaypointLocationPinMixin", "LFGParentFrame", "LFGListingCategorySelection_UpdateCategoryButtons", "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame", "CollectionsJournal", "MountJournal", "ToyBox", "HeirloomsJournal", "WardrobeCollectionFrame", "CollectionsJournal_UpdateSelectedTab", "RAID_CLASS_COLORS", "RepairAllItems", "ResetCPUUsage",
 	"SOUNDKIT", "ScrollBoxConstants", "ScrollUtil", "SetCVar", "SharedTooltip_SetBackdropStyle",
 	"StatusTrackingBarManager", "StopSound",
 	"DamageMeter", "MinimapCluster", "MelloUIServicesMenu",

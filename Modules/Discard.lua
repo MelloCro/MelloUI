@@ -414,14 +414,18 @@ local function BagButton()
 	return b
 end
 
--- the loot window: under the loot list, at the window's bottom right
+-- the loot window: under the loot list, at the window's bottom right -- laid on every show: with the double rail laid
+-- round the window (0.20.1, Kit:SkinWindowShell's `outward`, Kit.outwardOf) as far out and down as the rail goes
 local function LootButton()
 	local loot = rawget(_G, "LootFrame")
-	if buttons.loot or not loot then
+	if not loot then
 		return buttons.loot
 	end
-	local b = MakeButton("loot", loot)
-	b:SetPoint("TOPRIGHT", loot, "BOTTOMRIGHT", -6, -2)
+	local b = buttons.loot or MakeButton("loot", loot)
+	local Kit = MelloUI.Kit
+	local ow = Kit and Kit.outwardOf and Kit.outwardOf[loot]
+	b:ClearAllPoints()
+	b:SetPoint("TOPRIGHT", loot, "BOTTOMRIGHT", -6 + (ow and ow.r or 0), -2 - (ow and ow.b or 0))
 	return b
 end
 
@@ -502,6 +506,8 @@ local function Hook()
 			if M.isEnabled and M.db.lootButton then
 				LootButton()
 				Sync()
+				-- (once more a frame later: the loot window's look may be dressed after this, on the same show)
+				Perf.C_Timer.After(0, LootButton)
 			end
 		end)
 	end

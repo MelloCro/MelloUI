@@ -822,7 +822,12 @@ local function BuildChrome(SP)
 
 	-- the title plate riding the outer rail. The game's title string stays
 	-- where it is (faded): a copy of ours stands on the plate, following the
-	-- game's SetText, so none of the game's strings is moved
+	-- game's SetText, so none of the game's strings is moved. Its close: the X
+	-- (ClosePanelButton), never the text button the window calls CloseButton
+	-- (0.20.1; the user's screenshot, 2026-10-11: "Close" stood in the plate)
+	if SP.ClosePanelButton then
+		Kit.ownClose[SP] = SP.ClosePanelButton
+	end
 	local band = CreateFrame("Frame", nil, SP)
 	band:SetPoint("TOPLEFT", SP, "TOPLEFT", 0, 0)
 	band:SetPoint("TOPRIGHT", SP, "TOPRIGHT", 0, 0)
@@ -907,6 +912,23 @@ local function Build(SP)
 	Passes()
 end
 
+-- (0.20.1) The text buttons at the window's bottom right -- Close, and Apply hung
+-- on it -- 16 above the window's bottom, clear of the double rail's bottom rail
+-- (Kit:ClearRails on Close); laid after each show's passes and on the switch;
+-- without the skin, the game's place
+local function LayEdges()
+	local SP = _G.SettingsPanel
+	local close = SP and SP.CloseButton
+	if not (close and Kit.ClearRails) then
+		return
+	end
+	if active and chrome.outer and SP:IsShown() then
+		Kit:ClearRails(chrome.outer, close, nil, "y")
+	else
+		Kit:Nudge(close, "rails", 0, 0)
+	end
+end
+
 -- The window may be made late (load on demand) and is laid out when first
 -- shown: dressed then, its lists walked again once the game has filled them
 local function Watch(SP)
@@ -922,6 +944,7 @@ local function Watch(SP)
 		C_Timer.After(0, function()
 			if active then
 				Passes()
+				LayEdges()
 			end
 		end)
 	end)
@@ -959,6 +982,7 @@ local function Activate()
 		pcall(fn)
 	end
 	Passes()
+	LayEdges()
 end
 
 -- switched off: every piece hidden, every faded region of the game's shown
@@ -983,6 +1007,7 @@ local function Deactivate()
 			info.band:Hide()
 		end
 	end
+	LayEdges()   -- (the game's place back)
 end
 
 local loader = CreateFrame("Frame")

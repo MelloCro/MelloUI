@@ -804,8 +804,11 @@ local function Build()
 	skin.built = true
 
 	-- the shell: outer rail, the one page picture, the ring, the title plate
-	-- on the rail with the title on it, the close button
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock" })
+	-- on the rail with the title on it, the close button. `outward` (0.20.1;
+	-- the user's screenshot, 2026-10-11: the money under the double rail's
+	-- bottom rail): the window is filled to its edges, so the rail wraps it
+	-- ("Mixed"); its page tabs, pooled on its right, go out with it (TabsOut)
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock", outward = true })
 	SkinPortrait(f, ring)
 	WatchBackground(f)
 
@@ -839,6 +842,26 @@ end, "timer")
 -- After every show and every game refresh (a page or bank type switch, the
 -- bag slots laid again): what the game made or re-laid since (new pooled
 -- slots and tabs, the portrait's size, the title's plate, the followers).
+-- The page tabs out with the outward right rail (0.20.1): the game pools them and lays them again on every page
+-- change (RefreshPageTabs: the first on the window's top right, each next under the one before), so the first is
+-- moved out by the rail's depth after each of those passes -- `taken`: the game's anchors just set, taken as its --
+-- and the others keep none; without the skin, every tab on the game's anchors
+local function TabsOut(on, taken)
+	local f = Window()
+	local pool = f and f.bankPageTabPool
+	if not (pool and pool.EnumerateActive) then
+		return
+	end
+	local ow = on and Kit.outwardOf[f]
+	for tab in pool:EnumerateActive() do
+		if taken then
+			Kit:NudgeTaken(tab)
+		end
+		local first = select(2, tab:GetPoint(1)) == f
+		Kit:Nudge(tab, "outward", (ow and first) and ow.r or 0, 0)
+	end
+end
+
 local function Refresh()
 	local f = Window()
 	if not (active and skin and f) then
@@ -891,6 +914,7 @@ local function Activate()
 	for button in pairs(slotKind) do
 		Kit:SetButtonBackground(button, BagLook("itemBackground", "stone"))
 	end
+	TabsOut(true)
 	Refresh()
 end
 
@@ -916,6 +940,7 @@ local function Deactivate()
 	ShowBand(false)
 	InkLabels(false)
 	GuardTabs()
+	TabsOut(false)   -- (the page tabs on the game's anchors)
 end
 
 -- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
@@ -979,6 +1004,14 @@ local function Hook()
 		if obj and type(obj[method]) == "function" then
 			hooksecurefunc(obj, method, Refresh)
 		end
+	end
+	-- (the page tabs laid again: the first out with the outward rail, the game's fresh anchors taken)
+	if type(f.RefreshPageTabs) == "function" then
+		hooksecurefunc(f, "RefreshPageTabs", function()
+			if active then
+				TabsOut(true, true)
+			end
+		end)
 	end
 end
 
@@ -1077,6 +1110,20 @@ local function DumpShell(f)
 	MelloUI:Print("BankFrame: shown %s, level %s, kit %s, reps %d, faded art %d, bank type:page %s", Shown(f),
 		okLv and Num(lv) or "?", active and "on" or "off", skin and #skin.reps or 0, #fadedArt, CurrentPage())
 	Found("outer rail (NineSlice)", f.NineSlice, f.NineSlice and (" layout " .. tostring(f.NineSlice.layoutType)) or nil)
+	-- (0.20.1) the rail laid round the window (`outward`), and the money's place against the window's bottom edge
+	local ow = Kit.outwardOf[f]
+	local rule = Kit:WindowFrameRule()
+	MelloUI:Print("outward: %s (the rule's railOver %s)", ow and string.format("l %.1f r %.1f b %.1f", ow.l, ow.r, ow.b) or "no",
+		tostring(rule and rule.railOver))
+	local P = Panel(f)
+	local money = (P and P.MoneyFrame) or f.MoneyFrame
+	local _, wb = MelloUI.Safe.ScreenRect(f)
+	local mb
+	if money then
+		mb = select(2, MelloUI.Safe.ScreenRect(money))
+	end
+	Found("money frame", money, (wb and mb) and string.format(" its bottom %.1f above the window's (%s)", mb - wb,
+		money == f.MoneyFrame and "the window's own" or "the bank panel's") or nil)
 	Found("page picture (Bg)", f.Bg, skin and skin.bgRep and (" -> " .. tostring(PictureRect())) or " (not dressed)")
 	-- the portrait against the medallion (2b)
 	local portrait = Portrait(f)

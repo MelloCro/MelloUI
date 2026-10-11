@@ -3372,15 +3372,73 @@ end
 
 local StripMixin = {}
 
+-- Strip families drawn flat in the palette's colours instead of their pieces (0.20.1; the user's pick E of
+-- MelloUI-BuildData/output/header_sketch, 2026-10-10: "E for everything" -- the header plate's gem caps "everywhere we use
+-- it does not fit"): over the plate's painted box rows, the strip's whole width, `fill` at `alpha`, a 1 px `top` line
+-- and a `footH` px `foot` line (Kit:Paint, painted again with the palette). The strip keeps its pieces' sizes -- every
+-- place that fits, insets or centres text on it lays out as before -- and applies none of their art: no caps, no shade
+-- partner (the shade follows art).
+Kit.flatStrips = {
+	["lists/header"] = { fill = "raisedPanel", alpha = 0.92, top = "border", foot = "selectedTrim", footH = 1.5 },
+}
+
 function StripMixin:SetState(state)
 	if state == self.state and self.applied then
 		return
 	end
 	self.state, self.applied = state, true
-	Kit:Apply(self.capL, StripName(self.base, self.endL and "end_l" or "cap_l", state))
-	Kit:Apply(self.mid, StripName(self.base, "mid", state))
-	Kit:Apply(self.capR, StripName(self.base, self.endR and "end_r" or "cap_r", state))
+	if self.flatLook then
+		self:FlatLay()
+	else
+		Kit:Apply(self.capL, StripName(self.base, self.endL and "end_l" or "cap_l", state))
+		Kit:Apply(self.mid, StripName(self.base, "mid", state))
+		Kit:Apply(self.capR, StripName(self.base, self.endR and "end_r" or "cap_r", state))
+	end
 	self:SyncActive()
+end
+
+-- A flat strip's band (Kit.flatStrips), made on its first lay as regions where the pieces would be (the owner's, in
+-- the mid's layer), laid on the painted box at the strip's scale; shown as the strip is (an owner's: by its Show / Hide)
+function StripMixin:FlatLay()
+	local look = self.flatLook
+	local parts = rawget(self, "flatParts")
+	if not look then
+		if parts then
+			for i = 1, #parts do
+				parts[i]:Hide()
+			end
+		end
+		return
+	end
+	if not parts then
+		local host = self.kitOwner or self
+		local layer, sub = self.mid:GetDrawLayer()
+		sub = sub or 0
+		parts = { host:CreateTexture(nil, layer, nil, sub), host:CreateTexture(nil, layer, nil, math.min(sub + 1, 7)),
+			host:CreateTexture(nil, layer, nil, math.min(sub + 1, 7)) }
+		Kit:Paint(parts[1], look.fill, "fill", look.alpha or 1)
+		Kit:Paint(parts[2], look.top, "fill", 1)
+		Kit:Paint(parts[3], look.foot, "fill", 1)
+		self.flatParts = parts
+	end
+	local sc = self.scale or Kit.scale
+	local mid = PIECES[StripName(self.base, "mid", self.state)]
+	local t = (mid and mid.box) and mid.box[2] * sc or 0
+	local b = (mid and mid.box) and (mid.h - mid.box[4]) * sc or 0
+	local fill, top, foot = parts[1], parts[2], parts[3]
+	fill:ClearAllPoints()
+	fill:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -t)
+	fill:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, b)
+	top:ClearAllPoints()
+	top:SetPoint("TOPLEFT", fill, "TOPLEFT")
+	top:SetPoint("BOTTOMRIGHT", fill, "TOPRIGHT", 0, -1)
+	foot:ClearAllPoints()
+	foot:SetPoint("TOPLEFT", fill, "BOTTOMLEFT", 0, look.footH or 1)
+	foot:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+	local on = not self.capsOff and (not self.kitOwner or self:IsShown())
+	for i = 1, #parts do
+		parts[i]:SetShown(on)
+	end
 end
 
 -- A list's selected plate (a strip in its "selected" state) wears the active
@@ -3436,6 +3494,11 @@ function StripMixin:SetBase(base)
 	local state = self.state
 	self.state, self.applied = nil, nil
 	self.capless, self.noL, self.noR, self.endL, self.endR = nil, nil, nil, nil, nil
+	-- (to or from a flat family: its band laid or put away; a piece family's art applied by SetState)
+	self.flatLook = Kit.flatStrips[base]
+	if not self.flatLook then
+		self:FlatLay()
+	end
 	self:SetState(state)
 	local scale = self.scale
 	self.scale = 0          -- sized afresh for the new pieces
@@ -3461,6 +3524,9 @@ function StripMixin:Rescale(scale)
 	self.mid:SetPoint("TOPLEFT", self, "TOPLEFT", (self.capless or (self.noL and not self.endL)) and 0 or wl, 0)
 	self.mid:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", (self.capless or (self.noR and not self.endR)) and 0 or -wr, 0)
 	Kit:Retile(self.mid)
+	if self.flatLook then
+		self:FlatLay()   -- (its band on the painted box at the new scale)
+	end
 	-- the parts' shadow partners reach as far at the new scale (Kit:Shadow)
 	if self.capL.kitShadow or self.mid.kitShadow or self.capR.kitShadow then
 		Kit:ShadowFit(self.capL)
@@ -3545,8 +3611,8 @@ function StripMixin:FitCaps(width)
 	self.capless, self.noL, self.noR = capless, noL, noR
 	-- a dropped cap closes with the family's gemless end piece
 	-- (<base>_end_l/r_<state>, made by Tools/make_plain_plate.py) when it has one
-	local endL = noL and not capless and PIECES[StripName(self.base, "end_l", self.state)]
-	local endR = noR and not capless and PIECES[StripName(self.base, "end_r", self.state)]
+	local endL = noL and not capless and not self.flatLook and PIECES[StripName(self.base, "end_l", self.state)]
+	local endR = noR and not capless and not self.flatLook and PIECES[StripName(self.base, "end_r", self.state)]
 	if endL then
 		Kit:Apply(self.capL, StripName(self.base, "end_l", self.state))
 		wl = select(1, Kit:Size(StripName(self.base, "end_l", self.state), self.scale))
@@ -3598,6 +3664,7 @@ function Kit:Strip(parent, base, opts)
 	f:EnableMouse(false)
 	Mixin(f, StripMixin)
 	f.base, f.scale, f.kitScale = base, scale, scale
+	f.flatLook = self.flatStrips[base]   -- (drawn flat: Kit.flatStrips)
 
 	local layer, sub = opts.layer or "ARTWORK", opts.sublevel or 0
 	-- `owner`: the textures are regions of that frame (drawn in ITS layer
@@ -3618,9 +3685,21 @@ function Kit:Strip(parent, base, opts)
 			self.capL:SetShown(on and (not self.noL or self.endL))
 			self.mid:SetShown(on)
 			self.capR:SetShown(on and (not self.noR or self.endR))
+			if self.flatLook then
+				self:FlatLay()
+			end
 			self:SyncActive()
 		end
-		f.Hide = function(self) hide(self); self.capL:Hide(); self.mid:Hide(); self.capR:Hide(); self:SyncActive() end
+		f.Hide = function(self)
+			hide(self); self.capL:Hide(); self.mid:Hide(); self.capR:Hide()
+			local parts = rawget(self, "flatParts")
+			if parts then
+				for i = 1, #parts do
+					parts[i]:Hide()
+				end
+			end
+			self:SyncActive()
+		end
 		f.SetShown = function(self, shown) if shown then self:Show() else self:Hide() end end
 	end
 
@@ -5319,7 +5398,9 @@ end
 --           W.FlatOver's parts on a holder on the rect, painted by its state
 --           as the rims are; `rect = "normal"` the button's normal texture's
 --           rect); opts.left an edit box's fill reaching left over its glass,
---           opts.body = false the edge alone, opts.fitHeight a centred height
+--           opts.body = false the edge alone, opts.fitHeight a centred height;
+--           `glyph` (0.20.1) a + / - / arrow always its bare glyph, never on
+--           its plate (the Legacy cards' +, the user's pick)
 --   active  the active look alone (Kit:SetActive) on a check button the kit
 --           does not dress, while it is checked; `active = true` on a rule
 --           of another kind puts the active look round its piece whenever
@@ -5469,8 +5550,9 @@ Kit.Replacements = {
 	["uiframe-activetab-left"]                = { kind = "flat", flat = "tabActive", level = -1, active = true },   -- (0.19.1) flat: the open tab (was TB6 lit gold); `active`: the active look round it, as the Configurator's open tab
 	["common-dropdown-a-button"]              = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: the small round dropdown arrow (was K2's cog under it)
 	["common-dropdown-a-button-shadowless"]   = { kind = "flat", flat = "arrow", dir = "down" },   -- (0.19.1) flat: ... without its shadow (was the kit's arrow)
-	["RedButton-Expand"]                      = { kind = "flat", flat = "arrow", dir = "up", rect = "normal" },   -- (0.19.1) flat: the window's maximize (was the kit's arrow)
-	["RedButton-Condense"]                    = { kind = "flat", flat = "arrow", dir = "down", rect = "normal" },   -- (0.19.1) flat: ... minimize
+	-- (0.20.1, the user's pick A: "Steel, like close") the title bar's buttons on one steel plate
+	["RedButton-Expand"]                      = { kind = "flat", flat = "titlearrow", dir = "up", rect = "normal" },   -- (0.19.1) flat: the window's maximize (was the kit's arrow)
+	["RedButton-Condense"]                    = { kind = "flat", flat = "titlearrow", dir = "down", rect = "normal" },   -- (0.19.1) flat: ... minimize
 	-- the professions window (user's picks, 2026-09-21: A, F crop 1, K1)
 	-- the book page's backdrop: the user's own page painting (the kit's soft
 	-- stones, tiles/crackle and a plain grey were all tried before it)
@@ -5530,8 +5612,8 @@ Kit.Replacements = {
 	["questlog-icon-ticksquare"]              = { kind = "flat", flat = "check" },   -- (0.19.1) flat: the quest log's tracking tick box (was the kit's)
 	["ui-journeys-delve-arrow-small-left"]    = { kind = "flat", flat = "arrow", dir = "left", rect = "normal" },   -- (0.19.1) flat: a reward track's arrow (was the kit's)
 	["ui-journeys-delve-arrow-small-right"]   = { kind = "flat", flat = "arrow", dir = "right", rect = "normal" },   -- (0.19.1) flat: ...
-	["128-redbutton-plus"]                    = { kind = "flat", flat = "plus" },   -- (0.19.1) flat: a card's expand glyph (was the kit's +)
-	["128-redbutton-minus"]                   = { kind = "flat", flat = "minus" },   -- (0.19.1) flat: ...
+	["128-redbutton-plus"]                    = { kind = "flat", flat = "plus", glyph = true },   -- (0.19.1) flat: a card's expand glyph (was the kit's +); 0.20.1 `glyph`: always the bare gold + (the user's pick, 2026-10-10: the Legacy cards' 20 px + wore the plate on some)
+	["128-redbutton-minus"]                   = { kind = "flat", flat = "minus", glyph = true },   -- (0.19.1) flat: ...
 	-- the legacy window (Blizzard_LegacySystem: the reward track, challenges
 	-- and tree pages; the tree's nodes are talent buttons and stay the game's,
 	-- as the talents page does). Picks pending the user's catalogue choice
@@ -5762,6 +5844,14 @@ Kit.Replacements = {
 	["FriendsRowHighlight"]                   = { kind = "strip", base = "lists/plate", state = "hover", owner = true, layer = "BACKGROUND", sublevel = 1 },   -- a friend / ignore / raid-info row's highlight (UI-QuestLogTitleHighlight file art, keyed by hand): the plate's hover look, shown on hover only
 	["FriendsPendingHeader"]                  = { kind = "strip", base = "lists/catplate", state = "closed", owner = true },   -- a pending-invite header (UI-Background-Rock BG + arrows, keyed by hand): the category plate, the game's arrows on it
 	["UI-FriendsFrame-OnlineDivider"]         = { kind = "strip", base = "window/divider", natural = true },   -- the online / offline divider line
+	-- (0.20.1, the user's screenshots: the social window, SocialUIFrame, the client's new one) its list cards on the
+	-- list's plain plate (their hover the friend row's, FriendsRowHighlight; the selected one the active look), its
+	-- section lines the divider
+	["friends-card-default"]                  = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
+	["friends-card-battleNet"]                = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
+	["friends-card-disabled"]                 = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
+	["friends-card-quickJoin"]                = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
+	["perks-divider-short"]                   = { kind = "strip", base = "window/divider", natural = true },
 	["battlenet-friends-main"]                = { kind = "strip", base = "lists/header", owner = true },   -- the Battle.net tag band under the tabs: the header plate
 	["friendslist-invitebutton-default-normal"] = { kind = "flat", flat = "button" },   -- (0.19.1) flat: the friends list's invite button's plate (was K2)
 	["UI-RaidFrame-GroupOutline"]             = { kind = "frame", scale = 0.8 },   -- a raid group box's outline (162 x 80 file picture): G3 (user, 2026-09-21), the single rail at the raid frames' small weight with the stone body
@@ -8745,11 +8835,7 @@ function Kit:Replace(region, opts)
 			local window = parent:GetParent()
 			local text = parent.TitleText
 			local refit = rep.Refit
-			rep.Refit = function(self)
-				refit(self)
-				if not window then
-					return
-				end
+			local function RailFit(self)
 				-- the plate rides the OUTER rail across its whole width (user,
 				-- 2026-09-23, layout C): centred on the rail's middle line, its
 				-- caps' gems on the rail's top corners, where the frame's own
@@ -8757,41 +8843,89 @@ function Kit:Replace(region, opts)
 				-- window's top corners, so no layout is needed
 				local lift, reach = Kit:TitleOnRail(self.strip)
 				local out = Kit:OuterRailOutset() + reach
+				-- (0.20.1) a window whose rail is laid outward (Kit:SkinWindowShell's `outward`): its sides that much
+				-- further out
+				local ow = Kit.outwardOf[window]
+				local outR = out + (ow and ow.r or 0)
 				-- with a portrait ring on the corner the plate starts at the
 				-- ring's centre, its left cap left out: nothing of it shows
 				-- left of the ring, the rest runs into the ring's hole (user,
 				-- 2026-09-23: the cap past the ring "mask completely")
-				local left = -out
+				local left = -(out + (ow and ow.l or 0))
 				local ringX = self.behindRing and Kit:RingCentreX(self.behindRing, window)
-				self.strip.dropCap = ringX and "l" or nil
+				-- (0.20.1, the user: "sometimes when i open the character pane" -- after a /reload too -- the plate's
+				-- left cap showed past the ring until the window was opened again: the plate at the ring's centre, its
+				-- caps never laid again for the dropped one. Behind a ring the cap is always out, and the caps follow
+				-- that whether or not the window's width can be read; a fit that could not read the ring or the width
+				-- is fitted again on the next frame, a few times at most)
+				self.strip.dropCap = self.behindRing and "l" or nil
 				if ringX then
 					left = ringX
 				end
 				-- the title stays over the window's middle, not the shorter plate's
-				self.strip.textShift = -(left + out) / 2
+				self.strip.textShift = -(left + outR) / 2
 				self.strip:ClearAllPoints()
 				self.strip:SetPoint("LEFT", window, "TOPLEFT", left, lift)
-				self.strip:SetPoint("RIGHT", window, "TOPRIGHT", out, lift)
+				self.strip:SetPoint("RIGHT", window, "TOPRIGHT", outR, lift)
 				self.strip:SetHeight(self.strip.height)
-				local w = window:GetWidth()
-				if w and w > 0 and not (issecretvalue and issecretvalue(w)) then
-					self.strip:FitCaps(w + out - left)
+				-- (the window's width tested for a secret before any compare)
+				local okW, w = pcall(window.GetWidth, window)
+				if not okW or Secret(w) or not (w and w > 0) then
+					w = nil
 				end
+				self.strip:FitCaps(w and (w + outR - left) or nil)
+				self.fitMiss = (self.behindRing and not ringX) and "ring" or (not w and "width") or nil
 				-- (0.20.1, the user's design) the game's close button inside the plate, just left of its right cap: the
 				-- cap's gem stands where the button stood, at the window's top right corner; its own anchors back on
 				-- disable; a protected one left alone in a fight
-				local close = rawget(window, "CloseButton")
+				-- (an own window's close: Kit.ownClose, KitWindow.lua -- never a key on its frame)
+				-- (a close of another frame's -- Kit.ownClose -- taken only by a shown window's plate: the group finder's
+				-- three pages share their parent's, and a hidden page dressed in an idle turn must not take it from the
+				-- page on show; each page's plate fits again as it shows)
+				-- (a registered close first: the settings panel's CloseButton is its text button "Close" at the bottom, its X
+				-- ClosePanelButton -- the user's screenshot, 2026-10-11: the text button stood in the plate)
+				local own = Kit.ownClose[window]
+				local close = (own and window:IsVisible() and own) or (not own and rawget(window, "CloseButton")) or nil
 				if close and close.SetPoint and self.strip.capR
 					and not (InCombatLockdown() and close.IsProtected and close:IsProtected()) then
-					if not self.closeSaved then
+					-- (the game's anchors kept once per button, not per plate: the group finder's three pages share
+					-- their parent's close, each page's plate taking it while shown)
+					if not Kit.closeSavedOf[close] then
 						local saved = {}
 						for i = 1, close:GetNumPoints() do
 							saved[i] = { close:GetPoint(i) }
 						end
-						self.closeSaved = saved
+						Kit.closeSavedOf[close] = saved
 					end
 					close:ClearAllPoints()
 					close:SetPoint("RIGHT", self.strip.capR, "LEFT", 0, Kit:StripTextOffset(self.strip))
+				end
+			end
+			rep.Refit = function(self)
+				refit(self)
+				if not window then
+					return
+				end
+				-- (0.20.1) a fit that failed half way left the plate half laid (a game error is silent by default):
+				-- reported as any error, kept for the dumps (Kit:DumpWindow's reps), fitted again
+				local ok, err = pcall(RailFit, self)
+				if not ok then
+					self.fitMiss, self.fitError = "error", err
+					geterrorhandler()(err)
+				end
+				-- the plate hangs on the ring and the window, which the game lays out in the frame it opens them:
+				-- fitted once more a frame later, and again while the ring or the width cannot be read or the fit
+				-- failed, a few times at most (Kit.TitleRefitLater)
+				if self.fitMiss then
+					if (self.fitTries or 0) < 5 then
+						self.fitTries = (self.fitTries or 0) + 1
+						Kit:NextFrame(self, Kit.TitleRefitLater)
+					end
+				else
+					self.fitTries = nil
+					if not self.fitLate then
+						Kit:NextFrame(self, Kit.TitleRefitLater)
+					end
 				end
 			end
 			if text then
@@ -8829,14 +8963,14 @@ function Kit:Replace(region, opts)
 				if disable then
 					disable(...)
 				end
-				local close = window and rawget(window, "CloseButton")
-				local saved = rawget(rep, "closeSaved")
-				if close and saved and not (InCombatLockdown() and close.IsProtected and close:IsProtected()) then
+				local close = window and (Kit.ownClose[window] or rawget(window, "CloseButton"))
+				local saved = close and Kit.closeSavedOf[close]
+				if saved and not (InCombatLockdown() and close.IsProtected and close:IsProtected()) then
 					close:ClearAllPoints()
 					for _, pt in ipairs(saved) do
 						close:SetPoint(unpack(pt))
 					end
-					rep.closeSaved = nil
+					Kit.closeSavedOf[close] = nil
 				end
 			end
 			-- the window may be laid out only when shown: fit again then
@@ -9051,7 +9185,7 @@ function Kit:Replace(region, opts)
 		end
 		-- (the call's own: an edit box's fill over its glass -- the search
 		-- box's only, opts.left -- and body = false, the edge alone)
-		local parts = MelloUI.Widgets.FlatOver(f, rule.flat, { dir = rule.dir, left = opts.left, body = opts.body })
+		local parts = MelloUI.Widgets.FlatOver(f, rule.flat, { dir = rule.dir, left = opts.left, body = opts.body, glyph = rule.glyph })
 		local driver = f:CreateTexture(nil, "BACKGROUND")
 		driver:SetAlpha(0)
 		driver:SetAllPoints(f)
@@ -9949,7 +10083,12 @@ end
 -- open/closed): one replacement per atlas it has shown, kept on `owner`
 -- (Kit.stateIconsOf[owner]), the one for its current atlas shown. `replace` is the
 -- panel's registering Replace; `extra` other regions to fade with it.
-function Kit:StateIconReps(owner, icon, button, replace, extra)
+-- `follow` (0.20.1): the game shows and hides the glyph itself (a Legacy card's
+-- +/-, only on a card that can expand: the user's screenshots, its plate stood
+-- over the description the game had moved into its place) -- the plate only
+-- while the glyph is shown, again on each Show / Hide / SetShown of it. (Not
+-- for a button's state texture: the button hides that one itself while pressed.)
+function Kit:StateIconReps(owner, icon, button, replace, extra, follow)
 	if not (owner and icon) then
 		return
 	end
@@ -9964,13 +10103,36 @@ function Kit:StateIconReps(owner, icon, button, replace, extra)
 				if enable then
 					enable(...)
 				end
-				Kit:StateIconReps(owner, icon, button, replace, extra)
+				Kit:StateIconReps(owner, icon, button, replace, extra, follow)
 			end
 		end
 	end
+	if follow and not Kit.stateIconFollowOf[icon] then
+		Kit.stateIconFollowOf[icon] = owner
+		for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+			hooksecurefunc(icon, method, Kit.StateIcon_OnShown)
+		end
+	end
+	local shown = not follow or icon:IsShown()
 	for k, rep in pairs(Kit.stateIconsOf[owner]) do
 		if rep then
-			rep:SetShown(k == key)
+			rep:SetShown(shown and k == key)
+		end
+	end
+end
+
+-- (a followed glyph shown or hidden by the game: its plates with it, while the skin holds it -- faded under them)
+Kit.stateIconFollowOf = Kept.stateIconFollowOf   -- [glyph] = its owner (Kit:StateIconReps' `follow`)
+function Kit.StateIcon_OnShown(icon)
+	local owner = Kit.stateIconFollowOf[icon]
+	local reps = owner and Kit.faded[icon] and Kit.stateIconsOf[owner]
+	if not reps then
+		return
+	end
+	local key, shown = Kit:ArtKey(icon), icon:IsShown()
+	for k, rep in pairs(reps) do
+		if rep then
+			rep:SetShown(shown and k == key)
 		end
 	end
 end
@@ -10166,6 +10328,16 @@ function Kit:StripTextOffset(strip)
 	return (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (strip.scale or self.scale)
 end
 
+-- (0.20.1) How far a strip's PAINTED box reaches below its centre, in the strip's own units (StripTextOffset's
+-- measure): a control under a title plate placed clear of its foot (the calendar's filter)
+function Kit:StripFootDepth(strip)
+	local mid = strip and PIECES[StripName(strip.base, "mid", strip.state)]
+	if not (mid and mid.box) then
+		return nil
+	end
+	return (mid.box[4] - mid.h / 2) * (strip.scale or self.scale)
+end
+
 function Kit:TitleOnRail(strip)
 	local rule = self:WindowFrameRule()
 	local sc = self.scale * (rule and rule.scale or self.frameScale)
@@ -10246,6 +10418,17 @@ function Kit:RingCentreX(ring, window)
 	return cx * k - left
 end
 
+-- (0.20.1) A title plate on the rail fitted again a frame after a fit (Kit:NextFrame's: the rep is the key) while it
+-- shows: once after each fit, and while its ring or its window could not be read (the onRail Refit)
+function Kit.TitleRefitLater(rep)
+	local strip = rep and rep.strip
+	if strip and strip:IsVisible() then
+		rep.fitLate = true
+		rep:Refit()
+		rep.fitLate = nil
+	end
+end
+
 -- One cut of the ring's corner on a frame's textures (its own mask: a mask
 -- only works on textures of the frame that made it)
 local function RingCut(owner, textures)
@@ -10260,6 +10443,13 @@ local function RingCut(owner, textures)
 	end
 	return mask
 end
+
+-- (0.20.1) an own window's close button by its frame (Kit:OwnWindow's close): the title plate on the rail takes it
+-- inside, left of its right cap, as a game window's CloseButton. Also a game window's close that is another frame's
+-- (the group finder's pages, PortraitFrameTemplateNoCloseButton, share their parent's LFGParentFrameCloseButton:
+-- GroupFinderPanel). The game's anchors of a moved close: Kit.closeSavedOf, once per button
+Kit.ownClose = setmetatable({}, { __mode = "k" })
+Kit.closeSavedOf = Kept.closeSavedOf   -- [close button] = its game anchors while a title plate holds it
 
 function Kit:TitleBehindRing(title, ring, outer)
 	local strip = title and title.strip
@@ -10313,14 +10503,16 @@ end
 -- cap left out, the hole cut -- and the plate lies just under the game's border frame (the corner's own level): the
 -- game's frames are never raised, the title text stays over all. The outer rail is cut at the corner already
 -- (CutGameCorner).
-function Kit:TitleBehindGameCorner(title, corner, rail)
+-- `keepLevel` (0.20.1, an own window standing in for a game window: the bag window): the plate keeps its level -- the
+-- shell's corner art stands over its plate and close already; raised, the plate covered its own title and close
+function Kit:TitleBehindGameCorner(title, corner, rail, keepLevel)
 	local strip = title and title.strip
 	if not (strip and strip.CreateTexture and corner) or title.behindRing then
 		return
 	end
 	-- (rails drawn over the window's content -- railOver -- the plate one over them, its hole at the rim's outer edge)
 	local over = rail and rail.rule and rail.rule.railOver
-	local c, ring = self.cornerCut, PIECES["window/portrait_ring"]
+	local c, ring = self:CornerCutOf(corner), PIECES["window/portrait_ring"]
 	local hole = over and c.outer or c.hole
 	local w = (ring and ring.radius and ring.w) and hole * ring.w / (ring.radius - RING_HOLE_IN) or 2 * hole
 	local stand = strip:CreateTexture(nil, "BACKGROUND")
@@ -10331,7 +10523,7 @@ function Kit:TitleBehindGameCorner(title, corner, rail)
 	if nine and nine.GetFrameLevel then
 		ok, level = pcall(nine.GetFrameLevel, nine)
 	end
-	if ok and not Secret(level) and type(level) == "number" then
+	if ok and not keepLevel and not Secret(level) and type(level) == "number" then
 		if over then
 			strip:SetFrameLevel(level + 8)
 		elseif strip:GetFrameLevel() >= level then
@@ -10382,10 +10574,101 @@ end
 -- A PortraitFrameTemplate / ButtonFrameTemplate window's shell: the outer
 -- rail with gem corners, the streak band, the ring on the portrait corner,
 -- the title plate, the close button and the maximize / minimize pair.
---   Kit:SkinWindowShell(frame, replace, skin, { portrait = , noRing = , streaks = })
+--   Kit:SkinWindowShell(frame, replace, skin, { portrait = , noRing = , streaks = , outward = , below = , right = })
 -- Returns the ring rep (skin.ring) when made.
+-- `outward` (0.20.1, the user: the game's combined bag window -- "Bags by Kind" off -- its items, laid by the game
+-- edge to edge, under the double rail): a window whose content runs to its edge wears a rail that lies over the
+-- content (railOver) OUTSIDE its sides and bottom by the rail's own depth (Kit:OuterRailInset), the rail's inner edge
+-- on the window's: it wraps the window, the game's layout and its secure buttons untouched. The game's portrait corner
+-- goes out with the left rail (Kit:Nudge, while the rail is on) and the title plate's right end with the right one
+-- (Kit.outwardOf[frame]); the top stays (the plate rides it). Set when the window is dressed: a window look chosen
+-- later reaches it after a /reload, as every dressed window's.
+Kit.outwardOf = setmetatable({}, { __mode = "k" })   -- [window] = { l, r, b }: how far its rail lies outward
+Kit.outwardWrapOf = setmetatable({}, { __mode = "k" })   -- [window] = the rect its rail is laid on
+
+-- The two halves of `outward`, shared by every shell (SkinWindowShell's, a window's own -- the guild bank's, 0.20.1:
+-- its border drawn by hand, its money under the rail):
+--   Kit:OutwardWrap(frame) -> rect   the rect the rail is laid on, grown outward by the rail's depth at the sides and
+--                                    the bottom (made once; Kit.outwardOf[frame] its depths), or nil when the look's
+--                                    rail does not lie over the content (the thin stone rail: nothing to wrap)
+--   Kit:OutwardFollow(rep, frame, { left = , portrait = , container = , below = , right = })
+--                                    while `rep` (the rail) is on: `left` regions out with the left rail (the portrait
+--                                    corner), the `portrait` too unless it hangs on its `container`, `below` down with
+--                                    the bottom one, `right` out with the right one (each the root of its anchor chain)
+function Kit:OutwardWrap(frame)
+	local wrap = Kit.outwardWrapOf[frame]
+	if wrap then
+		return wrap
+	end
+	local rule = self:WindowFrameRule()
+	if not (rule and rule.railOver) then
+		return nil
+	end
+	local ins = self:OuterRailInset()
+	local ow = { l = ins[1], r = ins[2], b = ins[4] }
+	wrap = CreateFrame("Frame", nil, frame)
+	wrap:EnableMouse(false)
+	wrap:SetPoint("TOPLEFT", frame, "TOPLEFT", -ow.l, 0)
+	wrap:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", ow.r, -ow.b)
+	Kit.outwardOf[frame], Kit.outwardWrapOf[frame] = ow, wrap
+	return wrap
+end
+
+function Kit:OutwardFollow(rep, frame, o)
+	local ow = Kit.outwardOf[frame]
+	if not (rep and ow) then
+		return
+	end
+	local left, below, right = o.left or {}, o.below or {}, o.right or {}
+	local portrait, container = o.portrait, o.container
+	local function Out(on)
+		local dx = on and -ow.l or 0
+		for _, region in ipairs(left) do
+			if region then
+				Kit:Nudge(region, "outward", dx, 0)
+			end
+		end
+		if portrait and not (on and container and select(2, portrait:GetPoint(1)) == container) then
+			Kit:Nudge(portrait, "outward", dx, 0)
+		end
+		for _, region in ipairs(below) do
+			if region then
+				Kit:Nudge(region, "outward", 0, on and -ow.b or 0)
+			end
+		end
+		for _, region in ipairs(right) do
+			if region then
+				Kit:Nudge(region, "outward", on and ow.r or 0, 0)
+			end
+		end
+	end
+	local enable, disable = rep.onEnable, rep.onDisable
+	rep.onEnable = function(...)
+		if enable then
+			enable(...)
+		end
+		Out(true)
+	end
+	rep.onDisable = function(...)
+		if disable then
+			disable(...)
+		end
+		Out(false)
+	end
+	-- (a caller that switches its replacements on as it makes them: on already)
+	local object = rawget(rep, "object")
+	if object and object:IsShown() then
+		Out(true)
+	end
+end
+
 function Kit:SkinWindowShell(frame, replace, skin, opts)
 	opts = opts or {}
+	local rect = opts.rect or frame
+	if opts.outward and frame.NineSlice then
+		rect = self:OutwardWrap(frame) or rect
+	end
+	local railRep
 	if frame.NineSlice then
 		-- a window whose Bg becomes the page stone (opts.bg) gets the rail
 		-- WITHOUT its body: the rail's own stone tile filled the rect in a
@@ -10397,7 +10680,7 @@ function Kit:SkinWindowShell(frame, replace, skin, opts)
 		if body == nil and opts.bg then
 			body = false
 		end
-		replace(frame.NineSlice, { as = "NineSlicePanelTemplate", parent = frame, rect = opts.rect or frame, skip = (not opts.noRing) and "tl" or nil, body = body })
+		railRep = replace(frame.NineSlice, { as = "NineSlicePanelTemplate", parent = frame, rect = rect, skip = (not opts.noRing) and "tl" or nil, body = body })
 	end
 	if frame.TopTileStreaks then
 		replace(frame.TopTileStreaks, { as = "_UI-Frame-TopTileStreaks", parent = frame })
@@ -10406,12 +10689,29 @@ function Kit:SkinWindowShell(frame, replace, skin, opts)
 		-- ONE picture for the whole window, inside the outer rail (the game's
 		-- rock starts below the title area; a second picture for that strip
 		-- met the first with a seam — user, 2026-09-21), as the Legacy pages
-		replace(frame.Bg, { as = opts.bg, parent = frame, rect = frame, inset = self:OuterRailInset() })
+		-- (`outward`: the rail's inner edge on the window's at the sides and bottom -- the page reaches them)
+		local inset = self:OuterRailInset()
+		local out = Kit.outwardOf[frame]
+		if out then
+			inset = { 0, 0, inset[3], 0 }
+		end
+		replace(frame.Bg, { as = opts.bg, parent = frame, rect = frame, inset = inset })
 	end
 	local portrait = opts.portrait or (frame.PortraitContainer and frame.PortraitContainer.portrait)
 	local corner = frame.NineSlice and frame.NineSlice.TopLeftCorner
 	if portrait and corner and not opts.noRing then
 		skin.ring = replace(corner, { as = "UI-Frame-PortraitMetal-CornerTopLeft", parent = frame.PortraitContainer or frame, center = portrait })
+	end
+	-- (`outward`) the game's portrait corner -- its art and the portrait's container -- on the outward rail's corner;
+	-- the portrait too where the game hangs it on the window itself (the bags: ContainerFrame_OnLoad's
+	-- SetPortraitTextureSizeAndOffset -- the user, 2026-10-10: the ring out, the bag icon left behind)
+	-- `below` (0.20.1, with `outward`): regions the game hangs under the window's bottom edge (the merchant's tabs) go
+	-- down with the bottom rail, the root of each anchor chain listed; `right` likewise: regions it hangs past the
+	-- window's right edge (the guild window's side tabs, its member card) go out with the right rail
+	if Kit.outwardOf[frame] and railRep and corner then
+		local container = frame.PortraitContainer
+		self:OutwardFollow(railRep, frame, { left = { corner, container or false }, portrait = portrait, container = container,
+			below = opts.below, right = opts.right })
 	end
 	local tc = frame.TitleContainer
 	if tc then
@@ -10818,11 +11118,26 @@ end
 -- -- as the rep's `outerCut`, which the shade puts on the rail's partners (KitShade's Cut).
 -- (`outer`, 0.20.1: the rim's outer edge, the cut for rails drawn OVER the ring -- railOver -- so none of it covers
 -- the rim)
+-- The bags' corner is the small ring (ui-frame-portraitmetal-cornertopleftsmall, their HeldBagLayout; the user,
+-- 2026-10-10: cut as the big one, the header and the left rail cut off): its centre at 53.5, 66.5 of its 190 px, its
+-- rim ending at 40 -- Kit.cornerCutSmall, its own mask; Kit:CornerCutOf(corner) tells them by the corner's atlas.
 Kit.cornerCut = { mask = EDGE_ROOT .. "portrait_corner", x = 38, y = -38, hole = 27, outer = 30 }
+Kit.cornerCutSmall = { mask = EDGE_ROOT .. "portrait_corner_small", x = 26.75, y = -33.25, hole = 18, outer = 20 }
+
+function Kit:CornerCutOf(corner)
+	local ok, atlas = false, nil
+	if corner and corner.GetAtlas then
+		ok, atlas = pcall(corner.GetAtlas, corner)
+	end
+	if ok and type(atlas) == "string" and not Secret(atlas) and atlas:lower():find("cornertopleftsmall", 1, true) then
+		return self.cornerCutSmall
+	end
+	return self.cornerCut
+end
 
 function Kit:CornerCutMask(owner, corner)
 	local mask = owner:CreateMaskTexture()
-	mask:SetTexture(self.cornerCut.mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	mask:SetTexture(self:CornerCutOf(corner).mask, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	mask:SetAllPoints(corner)
 	return mask
 end
@@ -10841,7 +11156,7 @@ function Kit:CutRailAtRing(rep, corner)
 	for _, t in ipairs(skin.art or {}) do
 		list[#list + 1] = t
 	end
-	local c = self.cornerCut
+	local c = self:CornerCutOf(corner)
 	local size = 2 * ((rep.rule and rep.rule.railOver) and c.outer or c.hole) / RING_HOLE_FILL
 	local function Place(cut)
 		cut:SetPoint("CENTER", corner, "TOPLEFT", c.x, c.y)
@@ -11203,8 +11518,14 @@ end
 
 -- A search box (SearchBoxTemplate): the edit plate with its glass cap in
 -- place of the game's icon; the text and instructions start past the cap.
-function Kit:SkinSearchBox(search, replace)
-	if not (search and search.Middle) or Kit.repOf[search] ~= nil then
+-- `beside` (0.20.1): the region a filter button's plate is drawn on, right of
+-- the box: the field takes that plate's height (the caller centres the box on
+-- it: Kit:AlignBeside), so the two stand on one line
+-- (0.20.1) A SearchBoxNineSliceTemplate box (the social window's, the user's screenshot): one Background
+-- (common-searchbar-a) in place of the Left / Middle / Right pieces -- the same field on it.
+function Kit:SkinSearchBox(search, replace, beside)
+	local art = search and (search.Middle or (not search.Left and search.Background))
+	if not art or Kit.repOf[search] ~= nil then
 		return search and Kit.repOf[search] or nil
 	end
 	-- (0.19.1: the field flat, the Configurator's search box -- the game's
@@ -11214,8 +11535,16 @@ function Kit:SkinSearchBox(search, replace)
 	local flat = rule and rule.kind == "flat"
 	-- (left: the field reaches over the art's 5 px left of the box, the glass
 	-- inside it -- the search box's own span, as W.FlatSearch's)
-	local rep = replace(search.Middle, { as = "common-search-border-middle", rect = search, edit = search,
-		left = flat and 5 or nil,
+	local fit
+	if beside then
+		local okW, w = pcall(beside.GetWidth, beside)
+		local okH, h = pcall(beside.GetHeight, beside)
+		if okW and okH and not Secret(w) and not Secret(h) and (w or 0) > 0 and (h or 0) > 0 then
+			fit = math.min(w, h)
+		end
+	end
+	local rep = replace(art, { as = "common-search-border-middle", rect = search, edit = search,
+		left = flat and 5 or nil, fitHeight = fit,
 		alsoFade = flat and { search.Left, search.Right } or { search.Left, search.Right, search.searchIcon } })
 	Kit.repOf[search] = rep or false
 	if not rep or flat then
@@ -11475,7 +11804,7 @@ function Kit:SweepControls(root, replace, skin, skip, depth, shownOnly)
 		local kind = child:GetObjectType()
 		if child.Track and child.Track.Thumb and child.Back and child.Forward then
 			self:SkinScrollBar(child, replace)
-		elseif kind == "EditBox" and child.Middle and child.searchIcon then
+		elseif kind == "EditBox" and (child.Middle or (child.Background and not child.Left)) and child.searchIcon then
 			self:SkinSearchBox(child, replace)
 		elseif child.Left and child.LeftActive and child.Middle then
 			self:SkinPanelTab(child, replace, skin)
@@ -11588,9 +11917,13 @@ function Kit:DumpWindow(root, skin, msg, extra)
 				-- a strip's fit: its scale, the caps' widths as laid out and
 				-- the cap decisions (a plate that lost its caps shows why)
 				local st = rep.strip
-				more = string.format("%s scale=%.3f wl=%.1f wr=%.1f%s%s%s%s", more, st.scale or 0, st.wl or 0, st.wr or 0,
+				more = string.format("%s scale=%.3f wl=%.1f wr=%.1f%s%s%s%s%s%s%s", more, st.scale or 0, st.wl or 0, st.wr or 0,
 					st.capless and " CAPLESS" or "", st.dropCap and (" drop=" .. tostring(st.dropCap)) or "",
-					st.endL and " endL" or "", st.endR and " endR" or "")
+					st.endL and " endL" or "", st.endR and " endR" or "", st.noL and " noL" or "",
+					-- (a title plate's fit that could not read its ring or its window, or failed, and how often:
+					-- Kit.TitleRefitLater; the last failure's message)
+					rawget(rep, "fitMiss") and (" miss=" .. rep.fitMiss .. "x" .. tostring(rawget(rep, "fitTries"))) or "",
+					rawget(rep, "fitError") and (" err=" .. tostring(rep.fitError):sub(1, 120)) or "")
 			end
 			Rect(string.format("%d %s (%s)", i, rep.key, rep.kind), rep.rect, more)
 			local piece = rep.tex or (rep.strip and rep.strip.mid) or nil

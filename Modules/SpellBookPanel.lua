@@ -151,8 +151,8 @@ end
 -- A search box (SearchBoxTemplate): the kit's one search box (Kit:SkinSearchBox,
 -- since 0.19.1 the Configurator's flat field; this window had its own copy of
 -- the S1 strip's)
-local function SkinSearchBox(search)
-	Kit:SkinSearchBox(search, Replace)
+local function SkinSearchBox(search, beside)
+	Kit:SkinSearchBox(search, Replace, beside)
 end
 
 --------------------------------------------------------------------------------
@@ -545,7 +545,7 @@ end
 -- size buttons
 Part(nil, function(pf)
 	if pf.NineSlice then
-		Replace(pf.NineSlice, { as = "NineSlicePanelTemplate", parent = pf, rect = pf, skip = "tl" })
+		skin.window = Replace(pf.NineSlice, { as = "NineSlicePanelTemplate", parent = pf, rect = pf, skip = "tl" })
 	end
 	if pf.TopTileStreaks then
 		Replace(pf.TopTileStreaks, { as = "_UI-Frame-TopTileStreaks", parent = pf })
@@ -633,8 +633,8 @@ end)
 
 Part("SpellBookFrame", function(pf)
 	local sb = pf.SpellBookFrame
-	SkinSearchBox(sb.SearchBox)
 	local dd = sb.SettingsDropdown
+	SkinSearchBox(sb.SearchBox, dd and dd.Icon)
 	if dd and dd.Icon then
 		Replace(dd.Icon, { as = "common-dropdown-a-button", button = dd, rect = dd.Icon, alsoFade = OtherTextures(dd, dd.Icon) })
 	end
@@ -664,10 +664,81 @@ end)
 Part("TalentsFrame", function(pf)
 	local tf = pf.TalentsFrame
 	SkinTabSystem(tf.TabSystem)
-	SkinSearchBox(tf.SearchBox)
 	local dd = tf.SearchOptionsDropdown
+	SkinSearchBox(tf.SearchBox, dd and dd.Arrow)
 	if dd and dd.Arrow then
 		Replace(dd.Arrow, { as = "common-dropdown-a-button", button = dd, rect = dd.Arrow })
+	end
+end)
+
+-- (0.20.1, the user's picks 2026-10-10) The controls the game parks at the window's edge moved in, clear of the
+-- double rail that lies over the content (Kit:ClearRails: the talents' search row, its Apply Changes; the spell
+-- book's settings button); each search field on its filter button's line (Kit:AlignBeside: the spell book's box hangs
+-- from its button, the talents' button from its box). Laid on every show of the window and its two pages and on its
+-- size change; after each game function that anchors them again (their anchors taken as the game's first); without
+-- the skin, the game's own places back.
+local function LayEdges()
+	local pf = PlayerSpellsFrame
+	if not pf then
+		return
+	end
+	local on = active and skin and skin.window or nil
+	local sb, tf = pf.SpellBookFrame, pf.TalentsFrame
+	local dd = sb and sb.SettingsDropdown
+	if dd and sb.SearchBox then
+		if on then
+			Kit:ClearRails(on, dd)
+			Kit:AlignBeside(sb.SearchBox, dd.Icon or dd)
+		else
+			Kit:Nudge(dd, "rails", 0, 0)
+			Kit:Nudge(sb.SearchBox, "beside", 0, 0)
+		end
+	end
+	dd = tf and tf.SearchOptionsDropdown
+	if dd and tf.SearchBox then
+		if on then
+			Kit:ClearRails(on, dd, tf.SearchBox)
+			Kit:AlignBeside(dd.Arrow or dd, tf.SearchBox, dd)
+		else
+			Kit:Nudge(tf.SearchBox, "rails", 0, 0)
+			Kit:Nudge(dd, "beside", 0, 0)
+		end
+	end
+	local apply = tf and tf.ApplyButton
+	if apply then
+		if on then
+			Kit:ClearRails(on, apply)
+		else
+			Kit:Nudge(apply, "rails", 0, 0)
+		end
+	end
+end
+
+-- a game function anchored them again: their new anchors are the game's
+local function EdgesRetaken()
+	local pf = PlayerSpellsFrame
+	local sb, tf = pf and pf.SpellBookFrame, pf and pf.TalentsFrame
+	for _, region in ipairs({ sb and sb.SettingsDropdown or false, sb and sb.SearchBox or false,
+		tf and tf.SearchBox or false, tf and tf.SearchOptionsDropdown or false, tf and tf.ApplyButton or false }) do
+		if region then
+			Kit:NudgeTaken(region)
+		end
+	end
+	LayEdges()
+end
+
+Part(nil, function(pf)
+	for _, f in ipairs({ pf, pf.SpellBookFrame or false, pf.TalentsFrame or false }) do
+		if f then
+			Perf.HookScript(f, "OnShow", LayEdges)
+		end
+	end
+	Perf.HookScript(pf, "OnSizeChanged", LayEdges)
+	for _, hook in ipairs({ { pf, "InitializeGamepad" }, { pf, "UninitializeGamepad" },
+		{ pf.SpellBookFrame or false, "UpdateAttic" }, { pf.TalentsFrame or false, "SetSearchBoxDefaultPosition" } }) do
+		if hook[1] and type(hook[1][hook[2]]) == "function" then
+			hooksecurefunc(hook[1], hook[2], EdgesRetaken)
+		end
 	end
 end)
 
@@ -851,6 +922,7 @@ local function Activate(fromShow)
 	if not skin.built then
 		QueuePrebuild()
 	end
+	LayEdges()
 end
 
 local function Deactivate()
@@ -859,6 +931,7 @@ local function Deactivate()
 	end
 	active = false
 	skin:Hide()
+	LayEdges()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end

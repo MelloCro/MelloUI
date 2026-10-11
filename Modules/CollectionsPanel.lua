@@ -172,8 +172,14 @@ local function BuildSkin()
 	skin.Replace = Replace
 
 	-- the body OFF (its holder sat over the wardrobe's slot buttons): the
-	-- window's rock is the page stone as a region under everything instead
-	Kit:SkinWindowShell(cj, Replace, skin, { portrait = Portrait(), body = false, bg = "UI-Background-Rock" })
+	-- window's rock is the page stone as a region under everything instead.
+	-- `outward` (0.20.1; the user's screenshots, 2026-10-11: the pet journal's
+	-- button at the bottom left under the double rail, the wardrobe's Filter
+	-- under the right one): the window is filled to its edges, so the rail
+	-- wraps it, as the guild's and the merchant's ("Mixed"); the side tabs'
+	-- container (hung on the window's right edge) goes out with the right rail
+	Kit:SkinWindowShell(cj, Replace, skin, { portrait = Portrait(), body = false, bg = "UI-Background-Rock",
+		outward = true, right = { cj.TabContainer } })
 	local tabs = cj.TabContainer and cj.TabContainer.Tabs
 	for _, tab in ipairs(tabs or {}) do
 		Kit:SkinSideTab(tab, Replace)

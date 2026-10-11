@@ -649,7 +649,11 @@ local function Build()
 	-- portrait, the title plate on the rail, close and maximize / minimize
 	-- (no Bg on the window: the rail keeps its own stone body instead)
 	local portrait = Portrait(f)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = f.Bg and "UI-Background-Rock" or nil })
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the bottom row's buttons under the double rail, the
+	-- side panel button under its right side): the window is filled to its edges, so the rail wraps it ("Mixed");
+	-- the side panels hung on its top right (the outfit's list, the set list) go out with the right rail
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = f.Bg and "UI-Background-Rock" or nil,
+		outward = true, right = { f.CustomSetDetailsPanel, f.SetSelectionPanel } })
 	found.shell = string.format("NineSlice %s, page stone (Bg) %s, title container %s, close %s, maximize / minimize %s",
 		tostring(f.NineSlice ~= nil), tostring(f.Bg ~= nil), tostring(f.TitleContainer ~= nil), tostring(f.CloseButton ~= nil),
 		tostring(f.MaximizeMinimizeFrame ~= nil))

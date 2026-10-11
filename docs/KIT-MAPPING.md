@@ -20,12 +20,12 @@ This file is the readable copy of that table: **change both together.**
 |---|---|
 | `frame` | an inner nine-slice from the single-rail family `window/single_*` (default; `prefix = "window/frame"` only when the double rail is asked for); mitred corners, stone body; `scale` defaults to `Kit.frameScale` (one weight per window; a rule sets its own only when the user asks); `body = false` for edges only; `open = "l"` (or r/t/b) leaves a side without edge or corners: attached borders; `checkedTint` colours the iron when the module's `checked()` says so |
 | `edge` | one repeatable edge tile (`piece`) on the rect: divider lines |
-| `strip` | a cap / mid / cap strip (`base`): its OPAQUE part (the piece's `box`, recorded by the builder) is fitted to the rect's **height** (or kept at the kit's natural size with `natural`, spanning `widthFrac` of the rect, for lines inside glow atlases) — or to `opts.fitHeight` / `rep:SetFitHeight(h)` (a row pitch) — and centred on the rect's centre line, since the art is not centred in its canvas; with a first `state` |
+| `strip` | a cap / mid / cap strip (`base`): its OPAQUE part (the piece's `box`, recorded by the builder) is fitted to the rect's **height** (or kept at the kit's natural size with `natural`, spanning `widthFrac` of the rect, for lines inside glow atlases) — or to `opts.fitHeight` / `rep:SetFitHeight(h)` (a row pitch) — and centred on the rect's centre line, since the art is not centred in its canvas; with a first `state`. **A family in `Kit.flatStrips` is drawn flat** (0.20.1: `lists/header`, the header plate — the user's pick E of `output/header_sketch`, "E for everything"): its pieces' sizes kept, none of their art; the palette's `raisedPanel` at 0.92 over the plate's painted box, a `border` line on top, a `selectedTrim` hairline at its foot (Kit:Paint, painted again with the palette); every rule and every direct `Kit:Strip` of the family wears it |
 | `slot` | the `buttons/slot` rim on a button, over the game's icon; states hover / pressed / checked (`checked` = a function of the module's choosing); `rest` fixes the look and `glow` adds the rim additively for selected / hover |
 | `state` | a state texture on a button (`base`), e.g. the close button; `rect = "normal"` takes the button's normal texture rect |
 | `texture` | one piece (`piece`); `square` sizes it to the rect's shorter side and centres it on `opts.center` |
 | `tile` | a repeatable tile (`piece`) filling the rect at its native scale |
-| `flat` | (0.19.1) **the Configurator's flat control** over the game's (`flat` = `button`, `check`, `dropdown`, `edit`, `close`, `arrow` with `dir`, `plus`, `minus`, `cog`, `tab`, `tabActive`, `track`, `thumb`, `slider`, `knob`; 0.19.9: `check`, `close`, `arrow`, `plus`, `minus` and `cog` draw the NewUI2 kit pieces, below): `MelloUI.Widgets.FlatOver` / `FlatState` on a holder of ours on the rect, painted by the control's state (hover, pressed, checked, disabled, an edit box's focus) as a rim follows its button; `rect = "normal"`; the call's opts: `left` (an edit box's fill reaching left over its glass: Kit:SkinSearchBox's only), `body = false` (the edge alone), `fitHeight` (a centred height); `rep:SetState("focused" / "normal")` lights an edit field's edge; `parts.partial` mutes a check's tick (on for some characters). No shade: the Configurator's controls wear none |
+| `flat` | (0.19.1) **the Configurator's flat control** over the game's (`flat` = `button`, `check`, `dropdown`, `edit`, `close`, `arrow` with `dir`, `plus`, `minus`, `cog`, `tab`, `tabActive`, `track`, `thumb`, `slider`, `knob`; 0.19.9: `check`, `close`, `arrow`, `plus`, `minus` and `cog` draw the NewUI2 kit pieces, below): `MelloUI.Widgets.FlatOver` / `FlatState` on a holder of ours on the rect, painted by the control's state (hover, pressed, checked, disabled, an edit box's focus) as a rim follows its button; `rect = "normal"`; the call's opts: `left` (an edit box's fill reaching left over its glass: Kit:SkinSearchBox's only), `body = false` (the edge alone), `fitHeight` (a centred height); `rep:SetState("focused" / "normal")` lights an edit field's edge; `parts.partial` mutes a check's tick (on for some characters). No shade: the Configurator's controls wear none. 0.20.1: `edit` and `dropdown` are THE text field (W.Field: the Stone rail round its dark trough, lit with the keyboard / under the pointer; the user's picks E of editbox_sketch and A of dropdown_sketch), the dropdown with the kit's gold caret; `glyph = true` keeps a + / - / arrow its bare glyph at any size |
 
 **One control style (0.19.1; the user, 2026-10-04: "now we have a lot of different looking icons which serve the same
 function ... from now on only use the same style as we have in the Configurator").** Every control the kit dresses is
@@ -569,6 +569,21 @@ the classic `Blizzard_RaidUI`, Quick Join). User's pick: **G3** (`kit_raw/social
 | `UI-RaidInfo-Header` (`RaidInfoDetailHeader` / `Footer`) | the raid info popup's bands | faded (the dialog's own border stands) |
 | red buttons, dropdowns, check boxes, scroll bars, edit boxes on the window, the raid pane and the raid info popup | controls | the fixed looks by `Kit:SweepControls` (again on every show: the tabs and pooled frames come and go with the window) |
 | the ignore list window (`IgnoreListWindow`) | a second small window | the shell without a ring, its inset and rows the same |
+
+The client's newer `SocialUIFrame` (`Blizzard_SocialUI`, 0.20.1): side tabs from `socialTabPool` (rebuilt on each
+show), content frames (`FriendsList`, `RecentAlliesList`, `QuickJoinFrame`, `FriendRequestsList`,
+`RecruitAFriendFrame`, `RaidFrame`) hung under the Battle.net bar. Same shell and rules as above, plus:
+
+| game art | where | kit piece |
+|---|---|---|
+| the shell (`UI-Background-Rock`, wrapped outward) with `TopFade`, `BottomFade`, `BattleNetBar.Background` | the shell | `Kit:SkinWindowShell`; the fades faded |
+| `battlenet-friends-main` on the Battle.net bar | the band | `lists/header` as a follower |
+| the pooled side tabs | left side | `Kit:SkinSideTab` |
+| `friends-card-default` / `-battleNet` / `-disabled` / `-quickJoin` | a friend card's background | `lists/plate` plain (`owner`, BACKGROUND 1); hover via `HoverPlate`, the selected card's `SetHighlightLocked` via `RowLocked` |
+| `common-button-list-collapseExpand` header rows | a list's group headers | `lists/catplate` + the kit's collapse button |
+| `perks-divider-short` | lines between list parts | `window/divider` (natural) |
+| `SearchBoxNineSliceTemplate` (one `Background`) | the search field | `Kit:SkinSearchBox` |
+| the content frames | the pages | kept `Kit.RAIL_GAP` inside the double rail (`Kit:RailEdges`, nudges `railsTL` / `railsBR`); the menu button cleared by `Kit:ClearRails` |
 
 ## The chat windows (Modules/ChatPanel.lua, 2026-09-21)
 

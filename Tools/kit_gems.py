@@ -45,7 +45,7 @@ KEEP_STATES = re.compile(r"_(hover|selected|open|pressed|checked|focused)(_[a-z]
 KEEP_PIECES = re.compile(r"^(deco/gem_large|deco/gem_small|deco/rail_cap_|window/portrait_ring|icons/|backdrops/|cards/|tiles/"
                          # 0.19.9: the NewUI2 control plates and glyphs (Tools/make_newui2_glyphs.py): their studs are
                          # gold, painted so; the toning would turn some of them to iron on the normal plates only
-                         r"|buttons/(arrow|checkbox|cog|plus|minus|iconplate)_|window/close_|glyphs/)")
+                         r"|buttons/(arrow|checkbox|cog|plus|minus|iconplate)_|window/(close|titlearrow)_|glyphs/)")
 # pieces toned like the rest that ALSO get a red copy, "<piece>_red", for the
 # places red is asked for (the strip's "red" state): the bar bracket's end
 # gems, red on the unit frames' health bars (user, 2026-09-23, painted on the

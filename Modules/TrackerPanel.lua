@@ -129,7 +129,8 @@ end
 -- The gem's share of a plate's right cap (measured on the pieces): the
 -- minimize button moves left past it, onto the cap's plate part (user,
 -- 2026-09-21: the button sat on the gem)
-local GEM_SHARE = { ["tabs/top"] = 0.57, ["lists/header"] = 0.23 }
+-- (lists/header: drawn flat since 0.20.1, Kit.flatStrips -- no gem to clear)
+local GEM_SHARE = { ["tabs/top"] = 0.57 }
 
 local function MoveToggle(header, rep)
 	local button = header.MinimizeButton

@@ -87,6 +87,7 @@ local labelLayers = setmetatable({}, { __mode = "k" })   -- [label] = { layer, s
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
+local ScreenRect = MelloUI.Safe.ScreenRect
 
 local function Replace(region, opts)
 	if not (region and skin) then
@@ -178,10 +179,13 @@ local function FitPageRect(win)
 		ok, w = pcall(bg.GetWidth, bg)
 	end
 	local target = (ok and w and not Secret(w) and w > 1) and bg or area
-	if target and win.pageTarget ~= target then
-		win.pageTarget = target
+	-- (0.20.1) its bottom lifted over the buttons moved clear of the bottom rail (The edges, below)
+	local lift = win.pageLift or 0
+	if target and (win.pageTarget ~= target or win.pageLiftLaid ~= lift) then
+		win.pageTarget, win.pageLiftLaid = target, lift
 		rect:ClearAllPoints()
-		rect:SetAllPoints(target)
+		rect:SetPoint("TOPLEFT", target, "TOPLEFT")
+		rect:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", 0, lift)
 	end
 end
 
@@ -741,6 +745,107 @@ local function PlainQuestInfo()
 end
 
 --------------------------------------------------------------------------------
+-- The edges (0.20.1, the user's pick "Mixed": the dialogs move their text in, as the map's quest log; the merchant
+-- wears the rail round it, MerchantPanel). With the double rail that lies over the content: each text area starts
+-- clear of the left rail, measured from its content's own margin -- a quest page's lines have their own widths, so
+-- its area moves without narrowing (the scroll bar comes back clear of the right rail, still clear of the text); the
+-- gossip list lays its rows to its width, so it narrows, its right edge kept (Kit:Shrink) -- its scroll bar clear of
+-- the right rail, the Accept / Decline / Continue / Complete / Goodbye buttons clear of the side and bottom rails
+-- (Kit:ClearRails), the text areas and the page ending above them. Laid on each show of the window and its panels
+-- (RefreshWindow); without the skin, the game's own places back.
+--------------------------------------------------------------------------------
+local EDGE_GAP = 2   -- the text areas and the page above the buttons (the game's own: the areas end 28 up, the buttons 26)
+-- the text areas: their content's margin from their left edge (QuestFrame.xml: the lines at 10, the greeting's title
+-- rows' icons at 3; GossipFrame.xml: the option rows' icons at 3), and whether the area lays its rows to its width
+local QUEST_AREAS = { { "QuestGreetingScrollFrame", 3 }, { "QuestDetailScrollFrame", 10 }, { "QuestProgressScrollFrame", 10 },
+	{ "QuestRewardScrollFrame", 10 } }
+
+-- the window's text areas { region, margin, narrows, bar } and its buttons
+local function EdgeParts(frame)
+	local areas, buttons = {}, {}
+	if frame == _G.QuestFrame then
+		for _, entry in ipairs(QUEST_AREAS) do
+			local sf = _G[entry[1]]
+			if sf then
+				areas[#areas + 1] = { sf, entry[2], false, sf.ScrollBar }
+			end
+		end
+		for _, name in ipairs(QUEST_BUTTONS) do
+			if _G[name] then
+				buttons[#buttons + 1] = _G[name]
+			end
+		end
+	else
+		local gp = frame.GreetingPanel
+		if gp and gp.ScrollBox then
+			areas[1] = { gp.ScrollBox, 3, true, gp.ScrollBar }
+		end
+		buttons[1] = gp and gp.GoodbyeButton or nil
+	end
+	return areas, buttons
+end
+
+local function LayEdges(frame)
+	local win = skin and skin.windows[frame]
+	if not (win and Kit.RailEdges) then
+		return
+	end
+	local areas, buttons = EdgeParts(frame)
+	-- back on the game's own places first (measured there)
+	for _, a in ipairs(areas) do
+		Kit:Nudge(a[1], "rails", 0, 0)
+		Kit:Shrink(a[1], "rails", 0, 0)
+		if a[4] then
+			Kit:Nudge(a[4], "rails", 0, 0)
+		end
+	end
+	for _, button in ipairs(buttons) do
+		Kit:Nudge(button, "rails", 0, 0)
+	end
+	win.pageLift = nil
+	local rail = active and win.rail
+	local left = rail and Kit:RailEdges(rail)
+	if left then
+		-- the buttons clear of the rails, and the highest one's top
+		local top
+		for _, button in ipairs(buttons) do
+			if button:IsVisible() then
+				Kit:ClearRails(rail, button)
+				local _, _, _, t = ScreenRect(button)
+				if t and (not top or t > top) then
+					top = t
+				end
+			end
+		end
+		for _, a in ipairs(areas) do
+			local area = a[1]
+			local L, B = ScreenRect(area)
+			if L and area:IsVisible() then
+				local s = MelloUI.Safe.Number(area:GetEffectiveScale()) or 1
+				local dx = math.max(0, (left + Kit.RAIL_GAP) - (L + a[2] * s)) / s
+				local dh = (top and B < top + EDGE_GAP * s) and ((top + EDGE_GAP * s) - B) / s or 0
+				if dx > 0 then
+					Kit:Nudge(area, "rails", dx, 0)
+				end
+				if dh > 0 or (a[3] and dx > 0) then
+					Kit:Shrink(area, "rails", a[3] and dx or 0, dh)
+				end
+				if a[4] then
+					Kit:ClearRails(rail, a[4], nil, "x")
+				end
+			end
+		end
+		-- the page above the buttons
+		local page = win.pageTarget
+		local _, pb = ScreenRect(page or frame)
+		if page and top and pb and pb < top + EDGE_GAP then
+			win.pageLift = (top + EDGE_GAP - pb) / (MelloUI.Safe.Number(page:GetEffectiveScale()) or 1)
+		end
+	end
+	FitPageRect(win)
+end
+
+--------------------------------------------------------------------------------
 -- Building the skin
 --------------------------------------------------------------------------------
 local function RefreshWindow(frame)
@@ -748,6 +853,7 @@ local function RefreshWindow(frame)
 	if not win then
 		return
 	end
+	LayEdges(frame)
 	FitPageRect(win)
 	UpdatePortrait(win)
 	PlaceTitles(win, true)
@@ -785,6 +891,8 @@ local function BuildShell(frame, unit)
 	for i = first, #skin.reps do
 		if skin.reps[i].key == "TitleBar" then
 			win.title = skin.reps[i]
+		elseif skin.reps[i].key == "NineSlicePanelTemplate" then
+			win.rail = skin.reps[i]   -- (the edges' measure: LayEdges)
 		end
 	end
 	if win.ring then
@@ -936,6 +1044,7 @@ local function Activate()
 		PlaceTitles(win, true)
 		if frame:IsShown() then
 			UpdatePortrait(win)
+			LayEdges(frame)
 		end
 	end
 	Surface()
@@ -950,8 +1059,9 @@ local function Deactivate()
 		rep:Disable()
 	end
 	RaiseLabels(false)
-	for _, win in pairs(skin.windows) do
+	for frame, win in pairs(skin.windows) do
 		PlaceTitles(win, false)
+		LayEdges(frame)   -- (the game's own places back)
 	end
 	-- every string back in the game's colours (the surface is off now)
 	Surface()

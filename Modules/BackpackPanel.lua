@@ -548,7 +548,9 @@ local function SkinBag(frame)
 	end
 	skin.bags[frame] = true
 	local portrait = frame.PortraitContainer and frame.PortraitContainer.portrait
-	local ring = Kit:SkinWindowShell(frame, Replace, skin, { portrait = portrait, bg = "UI-Background-Rock" })
+	-- (0.20.1, the user: the combined bags' items, edge to edge, under the double rail -- `outward`: the rail wraps
+	-- the window, the game's grid and its buttons untouched)
+	local ring = Kit:SkinWindowShell(frame, Replace, skin, { portrait = portrait, bg = "UI-Background-Rock", outward = true })
 	WatchWindowBackground(frame)
 	if ring and portrait then
 		-- the bag icon is a square item icon: at the medallion size on the disc (2b)

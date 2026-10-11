@@ -144,8 +144,8 @@ L.pages = {
 		flavour = "Your heals as light flying from your cast bar to the frame, and your group's big moments on their frames.",
 		tabs = { "Heals", "Cooldowns" } },
 	Nameplates = { title = "Nameplates", icon = "module:Nameplates",
-		flavour = "The nameplates over every unit, their icons and auras, and the markers over your party.",
-		tabs = { "Plates", "Auras & Icons", "Party Markers" } },
+		flavour = "The nameplates over every unit, their icons and auras, the markers over your party, and the sparkles on what you can loot.",
+		tabs = { "Plates", "Auras & Icons", "Party Markers", "Sparkles" } },
 	ActionBars = { title = "Action Bars", icon = "module:ActionBarPanel",
 		flavour = "The action bars, the micro menu and the bag bar: pick a bar.",
 		tabs = { "Bars", "Backdrops", "Cooldown Timers" },
@@ -221,6 +221,8 @@ L.words = {
 	raidframepanel = { "UnitFrames", "Frame", pick = "raid" },
 	nameplatepanel = { "Nameplates", "Plates" },
 	partymarkers = { "Nameplates", "Party Markers" },
+	sparkles = { "Nameplates", "Sparkles" },
+	lootsparkles = { "Nameplates", "Sparkles" },
 	actionbarpanel = { "ActionBars", "Bars" },
 	cooldowntext = { "ActionBars", "Cooldown Timers" },
 	backdrops = { "ActionBars", "Backdrops" },
@@ -515,6 +517,13 @@ function L.Define(R, Link)
 	R("Nameplates", "Party Markers", "Look", "PartyMarkers.roleRing")
 	R("Nameplates", "Party Markers", "Layout", "PartyMarkers.size")
 	R("Nameplates", "Party Markers", "Layout", "PartyMarkers.offset")
+	-- (0.20.1, the user: a quality of life addition) the quest items' sparkle and the gathering glints: the glints
+	-- hang on the game's nameplate of the object you walk up to (Modules/Sparkles.lua)
+	R("Nameplates", "Sparkles", "General", "Sparkles.!enabled", { name = "Loot Sparkles" })
+	R("Nameplates", "Sparkles", "General", "Sparkles.questItems")
+	R("Nameplates", "Sparkles", "General", "Sparkles.ore")
+	R("Nameplates", "Sparkles", "General", "Sparkles.herbs")
+	R("Nameplates", "Sparkles", "General", "Sparkles.questObjects")
 
 	-- Action Bars (the picker: Action Bars, Micro Menu, Bag Bar)
 	R("ActionBars", "Bars", "General", { micro = "Tweaks.hideMicroMenu", bag = "Tweaks.hideBagBar" }, { name = "Hide This Bar" })

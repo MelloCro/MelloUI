@@ -78,8 +78,6 @@ local hooked = false
 -- what this module made or changed, kept OFF the game's frames (weak keys)
 local done = setmetatable({}, { __mode = "k" })        -- [frame / region] = true: looked at once
 local labels = setmetatable({}, { __mode = "k" })      -- [selector label] = its saved font, height and layer (false: not yet saved)
-local titleMoved = setmetatable({}, { __mode = "k" })  -- [fs] = its points while on the plate
-local titleFaded = setmetatable({}, { __mode = "k" })  -- [fs] = true while faded as a duplicate
 local fadedArt = {}                                    -- art faded with no piece of its own (the gold frame)
 local panels = {}                                      -- our inner-panel textures (the inset's, the greeting's band)
 local found = {}                                       -- [part] = a line for /tabarddump
@@ -285,10 +283,12 @@ end
 -- header"). The title plate's rule centres the title container's TitleText
 -- on the plate in the kit's title face; this window writes its title -- the
 -- vendor's name -- into its own TabardFrameNameText in the old title band.
--- That string is moved onto the plate (on the container's string, which the
--- rule centred there) in the title face, or faded where the container shows
--- the same words; its points and font put back on disable. The greeting is
--- never taken for a title: it is a sentence of body text.
+-- Its words go into the container's TitleText, which the plate shows in the
+-- title face, read again on each show (a vendor's name), and it is faded
+-- (0.20.1, Kit:TitleWords: moved onto the plate it stayed a region of the
+-- window, under the plate that rides the rail -- the user's screenshot, the
+-- plate empty); all put back on disable. The greeting is never taken for a
+-- title: it is a sentence of body text.
 --------------------------------------------------------------------------------
 local GREETING_KEYS = { "TABARDVENDORGREETING", "TABARDVENDORNOGUILDGREETING", "TABARDVENDORALREADYSETGREETING",
 	"PERSONALTABARDVENDORGREETING", "PERSONALTABARDVENDORUNOWNEDGREETING" }
@@ -345,52 +345,14 @@ local function PlaceTitles(on)
 	if not f then
 		return
 	end
-	if not on then
-		for fs, points in pairs(titleMoved) do
-			Kit:TitleFont(fs, false)
-			fs:ClearAllPoints()
-			for _, pt in ipairs(points) do
-				fs:SetPoint(unpack(pt))
-			end
-		end
-		wipe(titleMoved)
-		for fs in pairs(titleFaded) do
-			Kit:Unfade(fs)
-		end
-		wipe(titleFaded)
-		return
-	end
 	local rep = TitleRep()
-	if not rep then
+	if on and not rep then
 		return
 	end
-	local list, own = TitleStrings(f)
-	local ownText = own and TextOf(own)
-	for _, fs in ipairs(list) do
-		if ownText and TextOf(fs) == ownText then
-			-- the same words already on the plate: this copy gives way
-			if not titleFaded[fs] then
-				titleFaded[fs] = true
-				Kit:Fade(fs)
-			end
-		else
-			if not titleMoved[fs] then
-				local points = {}
-				for i = 1, fs:GetNumPoints() do
-					points[i] = { fs:GetPoint(i) }
-				end
-				titleMoved[fs] = points
-			end
-			fs:ClearAllPoints()
-			-- on the container's string (the rule centred it on the plate's
-			-- painted box), else on the plate itself
-			if own then
-				fs:SetPoint("CENTER", own, "CENTER")
-			else
-				fs:SetPoint("CENTER", rep.strip or rep.object, "CENTER")
-			end
-			Kit:TitleFont(fs, true)
-		end
+	-- (0.20.1) the title's words in the container's string, the strays faded: Kit:TitleWords, every window's one
+	Kit:TitleWords(f, (TitleStrings(f)), on)
+	if on and rep.object and rep.object:IsShown() and rep.Refit then
+		rep:Refit()
 	end
 end
 
@@ -832,7 +794,9 @@ local function Build()
 	-- the shell: outer rail, one page stone, the ring on the vendor's
 	-- portrait, the title plate on the rail, the close button
 	local portrait = Portrait(f)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = "UI-Background-Rock" })
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the money and Accept / Cancel under the double rail's
+	-- bottom rail, the customization column against its right one): the window is filled to its edges ("Mixed")
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = "UI-Background-Rock", outward = true })
 	found.shell = string.format("NineSlice %s, page stone %s, title container %s, close %s", tostring(f.NineSlice ~= nil),
 		tostring(f.Bg ~= nil), tostring(f.TitleContainer ~= nil), tostring(f.CloseButton ~= nil))
 	if ring then
@@ -1058,7 +1022,7 @@ local function Summary(f)
 	end
 	for _, fs in ipairs(titles) do
 		Line("title string", string.format("%s text %s, %s", Label(fs), tostring(TextOf(fs) or "[secret]"),
-			titleMoved[fs] and "on the plate (title face)" or titleFaded[fs] and "faded (duplicate)" or "not placed"))
+			(Kit.titleStraysOf[Window()] or {})[fs] and "faded (its words in the container's string)" or "not placed"))
 	end
 	local greet = Greeting(f)
 	Line("greeting", found.greeting and string.format("%s; text '%s'", found.greeting, greet and tostring(TextOf(greet) or "?") or "-") or nil)

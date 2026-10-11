@@ -810,7 +810,11 @@ local function Build()
 
 	-- the shell: outer rail, one page stone, the ring, the title plate on the
 	-- rail with the vendor's name on it, the close button
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock" })
+	-- (0.20.1, the user's pick "Mixed": the merchant's two columns, its money and its rows fill the window to its
+	-- edges -- the double rail lies round it, `outward`, its tabs down with the bottom rail; the quest giver's dialogs
+	-- move their text in instead, QuestDialogPanel)
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = Portrait(f), bg = "UI-Background-Rock",
+		outward = true, below = { _G.MerchantFrameTab1 } })
 	SkinPortrait(f, ring)
 
 	-- the list box, then the band's line on it

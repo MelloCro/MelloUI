@@ -675,8 +675,8 @@ local function FitSpan(span)
 	if il then
 		L, R = il, ir
 	else
-		-- no inset: the page's width inside the outer rail
-		local ins = Kit:OuterRailInset()
+		-- no inset: the page's width inside the outer rail (a rail laid round the window: the page's own)
+		local ins = Kit.outwardOf[span.win.frame] and { 0, 0 } or Kit:OuterRailInset()
 		L, R = pl + ins[1] + 2, pr - ins[2] - 2
 	end
 	local bottom = B
@@ -1829,7 +1829,11 @@ local function BuildShell(frame)
 	skin.windows[frame] = win
 	win.portrait = PortraitOf(frame)
 	local first = #skin.reps + 1
-	win.ring = Kit:SkinWindowShell(frame, Replace, win, { portrait = win.portrait, bg = frame.Bg and STONE_KEY or nil })
+	-- (0.20.1, as the merchant -- the user's pick "Mixed": windows whose rows and slots fill them to their edges wear
+	-- the double rail round them, `outward`; the mailbox's tabs down with its bottom rail. The open letter stands 46
+	-- right of the mailbox: the two rails laid outward keep ~10 between them)
+	win.ring = Kit:SkinWindowShell(frame, Replace, win, { portrait = win.portrait, bg = frame.Bg and STONE_KEY or nil,
+		outward = true, below = frame == _G.MailFrame and { _G.MailFrameTab1 } or nil })
 	for i = first, #skin.reps do
 		local rep = skin.reps[i]
 		if rep.key == "TitleBar" then
@@ -1856,6 +1860,17 @@ local function FinishWindow(frame)
 		local bar = _G[bname]
 		if bar and IsUnder(bar, frame) then
 			FadeArt(bar)
+			-- (0.20.1, the user's screenshot: grey bars right of the attachments) the half the game hangs off it --
+			-- this client's right halves have no name
+			local parent = bar:GetParent()
+			local n = parent and select("#", parent:GetRegions()) or 0
+			for i = 1, n do
+				local region = select(i, parent:GetRegions())
+				if region ~= bar and region:GetObjectType() == "Texture" and region:GetNumPoints() > 0
+					and select(2, region:GetPoint(1)) == bar then
+					FadeArt(region)
+				end
+			end
 		end
 	end
 	SkinScrollBarsIn(frame, 0)
@@ -2083,6 +2098,26 @@ local function OnPalette()
 	end
 end
 
+-- (0.20.1, the user's screenshot: "Nex") The inbox's Prev / Next labels a little off their arrows: the flat arrow
+-- plate fills the button's square where the game's arrow art lies inside it, and the game lays the labels on the
+-- button's edge -- under the plate. This client's page buttons are the inbox's keys (PrevPageButton / NextPageButton)
+local PAGER_GAP = 3
+local function PagerLabels(on)
+	local inbox = _G.InboxFrame
+	if not (inbox and Kit.Nudge) then
+		return
+	end
+	for _, entry in ipairs({ { inbox.PrevPageButton, 1 }, { inbox.NextPageButton, -1 } }) do
+		local b = entry[1]
+		for i = 1, b and select("#", b:GetRegions()) or 0 do
+			local region = select(i, b:GetRegions())
+			if region:GetObjectType() == "FontString" then
+				Kit:Nudge(region, "plate", on and entry[2] * PAGER_GAP or 0, 0)
+			end
+		end
+	end
+end
+
 local function Activate()
 	if active or not Build() then
 		return
@@ -2104,6 +2139,7 @@ local function Activate()
 	end
 	Surface()
 	Refresh()
+	PagerLabels(true)
 end
 
 local function Deactivate()
@@ -2111,6 +2147,7 @@ local function Deactivate()
 		return
 	end
 	active = false
+	PagerLabels(false)
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end

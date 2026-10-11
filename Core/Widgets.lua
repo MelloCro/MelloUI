@@ -729,9 +729,14 @@ function KC.Lay(tex, w, h, kind, dir, state, alpha, glyph)
 	if not (w and h and w > 0 and h > 0) then
 		return false
 	end
-	glyph = KC.GLYPHS[kind] and (glyph or math.min(w, h) < KC.SMALL) or false
-	local stem = kind == "arrow" and ("arrow_" .. (dir or "down")) or KC.STEM[kind]
-	local name = (glyph and "glyphs/" or (kind == "close" and "window/" or "buttons/")) .. stem .. "_" .. state
+	-- (0.20.1: a frame within a hair of SMALL counts as SMALL -- the Legacy cards' 20 px +, pooled at fractional offsets,
+	-- read 19.99 on some cards and 20 on others and wore the two looks side by side)
+	glyph = KC.GLYPHS[kind] and (glyph or math.min(w, h) < KC.SMALL - 0.05) or false
+	-- (0.20.1, the user's pick A: "titlearrow", a title bar's maximize / minimize on the close button's steel plate,
+	-- Tools/make_title_arrows.py -- always its plate, as the close button)
+	local stem = (kind == "arrow" and ("arrow_" .. (dir or "down"))) or (kind == "titlearrow" and ("titlearrow_" .. (dir or "up")))
+		or KC.STEM[kind]
+	local name = (glyph and "glyphs/" or ((kind == "close" or kind == "titlearrow") and "window/" or "buttons/")) .. stem .. "_" .. state
 	local p = Kit:Piece(name)
 	if not p then
 		return false
@@ -990,8 +995,7 @@ function GA.DropdownArt(dd, game)
 		dd.melloHolder:SetShown(game)
 		dd.melloArrow:SetShown(game)
 	end
-	dd.melloFill:SetShown(not game)
-	GA.ShowAll(dd.melloEdges, not game)
+	dd.melloField:SetShown(not game)
 	dd.melloCaret:SetShown(not game)
 end
 
@@ -1009,12 +1013,9 @@ local function DropdownLook(dd, whole)
 	end
 	GA.DropdownArt(dd, false)
 	local alpha = on and 1 or FLAT_OFF
-	W.Paint(dd.melloFill, (on and flatHover[dd]) and "hover" or "innerPanel", "fill", alpha)
+	-- (THE text field's look, lit while hovered: W.Field)
+	dd.melloField:SetState(on and flatHover[dd], not on, alpha)
 	if whole then
-		local edges = dd.melloEdges
-		for i = 1, 4 do
-			W.Paint(edges[i], "border", "fill", alpha)
-		end
 		W.Paint(dd.Text, on and "text" or "mutedText", "text")
 	end
 	KC.Lay(dd.melloCaret, CARET, CARET, "arrow", "down", (on and flatHover[dd]) and "hover" or "normal", alpha, true)
@@ -1047,9 +1048,9 @@ function W.Dropdown(parent, width, get, set, values, opts)
 	dd:SetSize(width, DD_H)
 	KitRep(dd, false)   -- (the kit's sweep passes it by: no dropdown plate)
 	dd.melloList = true   -- (it opens the flyout's list: W.PictureMenu's block)
-	dd.melloFill = dd:CreateTexture(nil, "BACKGROUND")
-	dd.melloFill:SetAllPoints(dd)
-	dd.melloEdges = Edges(dd, "border", "BORDER")
+	-- (0.20.1, the user's pick A of MelloUI-BuildData/output/dropdown_sketch, 2026-10-11 -- the flat box "too modern":
+	-- THE text field's look, the Stone rail round its dark trough, the kit's gold caret)
+	dd.melloField = W.Field(dd)
 	local caret = dd:CreateTexture(nil, "ARTWORK")
 	caret.melloOn, caret.melloPoint, caret.melloX = dd, "RIGHT", -(CARET_X + CARET / 2)
 	dd.melloCaret = caret
@@ -1812,7 +1813,8 @@ end
 -- window aswell"; the sheet: MelloUI-BuildData/output/editbox_sketch): THE look of every text field -- the game's
 -- search boxes and the chat's edit box (the kit's flat "edit": W.FlatOver), MelloUI's own (W.FlatField: the
 -- configurator's search and name boxes, the bag window's search, the whisper windows' answer), the number and slider
--- value boxes. The border library's Stone rail at its light weight on the field (Kit:NewBorder, style "rpg"), its own
+-- value boxes; the dropdowns' boxes too, the game's and MelloUI's own (0.20.1, the user's pick A of
+-- MelloUI-BuildData/output/dropdown_sketch: the flat box "too modern"), lit while hovered. The border library's Stone rail at its light weight on the field (Kit:NewBorder, style "rpg"), its own
 -- dark trough under the text; the library's glow while the field has the keyboard, its darken disabled. The rail is
 -- made at the field's first show (a field never seen makes none). Without the library (a world without the kit),
 -- or `plain` (an own control in the game's look, with no art of its own), the `innerPanel` fill in a 1 px edge it
@@ -1842,15 +1844,31 @@ do
 		return f.border
 	end
 
+	local FieldSeen   -- (its OnShow: below)
+
 	local function Lay(f)
-		local stone = f.seen and f.shown and not f.plain and Stone(f) or false
+		-- (the rail made only while the field is on the screen: a field seen once in the other look and hidden now --
+		-- a configurator page built with the reskin off, the look switched back while it is closed -- makes it at its
+		-- next show, drawing nothing till then; the test world's hard3/ownlook G3 counted one such dropdown's 18)
+		local want = f.seen and f.shown and not f.plain
+		local stone = false
+		f.pending = nil
+		if want and f.border == nil and not f.host:IsVisible() then
+			f.pending = true
+			if not f.hooked then
+				f.hooked = true
+				Perf.HookScript(f.host, "OnShow", FieldSeen)
+			end
+		elseif want then
+			stone = Stone(f)
+		end
 		if f.border then
 			f.border:SetShown(stone and true or false)
 			if stone then
 				f.border:SetLit(f.focus, nil, f.disabled)
 			end
 		end
-		local plain = f.shown and not stone and (f.plain or f.seen) and true or false
+		local plain = f.shown and not stone and not f.pending and (f.plain or f.seen) and true or false
 		if plain and not f.fill then
 			local fill = f.host:CreateTexture(nil, "BACKGROUND", nil, 2)
 			fill:SetAllPoints(f.rect)
@@ -1883,9 +1901,9 @@ do
 		Lay(self)
 	end
 
-	local FieldSeen = Shared("OnShow on a text field's frame (the field's first lay)", function(host)
+	FieldSeen = Shared("OnShow on a text field's frame (the field's first lay; a rail waiting for the screen)", function(host)
 		local f = fieldOf[host]
-		if f and not f.seen then
+		if f and (not f.seen or f.pending) then
 			f.seen = true
 			Lay(f)
 		end
@@ -1898,6 +1916,7 @@ do
 		if host:IsVisible() then
 			f.seen = true
 		else
+			f.hooked = true
 			Perf.HookScript(host, "OnShow", FieldSeen)
 		end
 		Lay(f)
@@ -2050,12 +2069,14 @@ end
 --   W.FlatOver(holder, kind, opts) -> parts
 --     kind: "button" (an icon button's plate, under its glyph: 0.19.9 the
 --     NewUI2 icon plate), "check", "dropdown", "edit", "close", "arrow" (opts.dir
---     "up" / "down" / "left" / "right"), "plus", "minus", "cog" (a settings
+--     "up" / "down" / "left" / "right"), "titlearrow" (0.20.1: a title bar's
+--     maximize / minimize on the close button's steel plate; opts.dir "up" / "down"), "plus", "minus", "cog" (a settings
 --     button: the cog plate in place of the game's gear), "tab" (at rest),
 --     "tabActive" (the open one), "track" (a scroll bar's), "thumb" (its
 --     handle), "slider" (a slider's track), "knob" (its handle); opts.left:
 --     the fill reaching that far left of the rect (an edit box's art: the
---     search glass inside it); opts.body = false: a plate's edge alone
+--     search glass inside it); opts.body = false: a plate's edge alone;
+--     opts.glyph: a + / - / arrow as its bare glyph at any size (no plate)
 --   W.FlatState(parts, hover, pressed, checked, disabled, focus)
 --   W.FlatDir(parts, dir)   an arrow turned ("up" / "down" / "left" / "right")
 --   W.FlatKind(parts, kind) a + become a - and back (the Quest Tracker's folds)
@@ -2069,13 +2090,13 @@ do
 	local THIN = 4                       -- a scroll bar's track and handle, a slider's track: this thick
 	local KNOB = 14                      -- the slider's knob (its ring 1 px round it)
 	local CARET_AT = -12                 -- a dropdown's caret (the own dropdown's CARET square): its centre from the right
-	local KITTED = { check = true, close = true, arrow = true, plus = true, minus = true, cog = true, button = true }
+	local KITTED = { check = true, close = true, arrow = true, titlearrow = true, plus = true, minus = true, cog = true, button = true }
 	local PARTS = { "piece", "fill", "caret", "ring", "disc" }
 
 	-- a kit kind's piece for its last state, at the holder's size
 	local function LayPiece(p)
 		local w, h = p.holder:GetSize()
-		KC.Lay(p.piece, w, h, p.kind, p.dir, p.state or KC.State(p.kind), p.alpha)
+		KC.Lay(p.piece, w, h, p.kind, p.dir, p.state or KC.State(p.kind), p.alpha, p.glyph)
 		if p.kind == "check" then
 			p.piece:SetDesaturated(p.partial and p.checked and true or false)
 		end
@@ -2101,7 +2122,8 @@ do
 			-- (an icon button's plate under the game's glyph or the caller's: BACKGROUND)
 			local tex = holder:CreateTexture(nil, kind == "button" and "BACKGROUND" or "ARTWORK", nil, 2)
 			tex.melloOn = holder
-			p.piece, p.dir = tex, kind == "arrow" and (opts.dir or "down") or nil
+			p.piece, p.dir = tex, (kind == "arrow" and (opts.dir or "down")) or (kind == "titlearrow" and (opts.dir or "up")) or nil
+			p.glyph = opts.glyph   -- (a + / - / arrow as its bare glyph at any size: the rule's `glyph`)
 			holder.melloFlat = p
 			Perf.HookScript(holder, "OnSizeChanged", FlatSized)
 			LayPiece(p)
@@ -2137,14 +2159,16 @@ do
 				rect:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 0, 0)
 			end
 			p.field = W.Field(holder, rect)
+		elseif kind == "dropdown" then
+			-- (0.20.1, the user's pick A of output/dropdown_sketch: "too modern") THE text field (W.Field), lit while
+			-- hovered, the kit's gold caret at its right
+			p.field = W.Field(holder, holder)
+			local caret = holder:CreateTexture(nil, "ARTWORK", nil, 2)
+			caret.melloOn, caret.melloPoint, caret.melloX = holder, "RIGHT", CARET_AT
+			p.caret = caret
 		else
-			-- a plate: the button's, a tab's, the dropdown's field
+			-- a plate: the button's, a tab's
 			Plate(holder, p, opts.left)
-			if kind == "dropdown" then
-				local caret = holder:CreateTexture(nil, "ARTWORK", nil, 2)
-				caret.melloOn, caret.melloPoint, caret.melloX = holder, "RIGHT", CARET_AT
-				p.caret = caret
-			end
 		end
 		if opts.body == false and p.edges then
 			-- the edge alone (a frame round something: the calendar's today)
@@ -2217,8 +2241,7 @@ do
 		elseif kind == "edit" then
 			p.field:SetState(focus, disabled, alpha)
 		elseif kind == "dropdown" then
-			W.Paint(p.fill, lit and "hover" or "innerPanel", "fill", alpha)
-			PaintAll(p.edges, "border", "fill", alpha)
+			p.field:SetState(lit, disabled, alpha)
 			KC.Lay(p.caret, CARET, CARET, "arrow", "down", lit and "hover" or "normal", alpha, true)
 		else
 			-- a tab's plate at rest

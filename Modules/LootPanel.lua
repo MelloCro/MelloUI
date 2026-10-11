@@ -474,8 +474,15 @@ local function SkinWindow(f)
 	local portrait = Portrait(f)
 	local hasRing = portrait ~= nil and f.NineSlice ~= nil and f.NineSlice.TopLeftCorner ~= nil
 	local flatBg = f.Bg and not IsTexture(f.Bg)
+	-- (0.20.1; the user's screenshot, 2026-10-11) the close is ClosePanelButton here, not a CloseButton: the title plate
+	-- takes it inside, left of its right cap, as every window's (Kit.ownClose; it stood on the cap's gem); and the
+	-- window is filled to its edges -- the rows' quality words ran under the right rail -- so the rail wraps it
+	-- (`outward`, "Mixed"; the Discard button under it follows: Discard.lua's LootButton)
+	if f.ClosePanelButton and not f.CloseButton then
+		Kit.ownClose[f] = f.ClosePanelButton
+	end
 	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, noRing = not hasRing, body = false,
-		bg = (not flatBg and f.Bg) and "UI-Background-Rock" or nil })
+		bg = (not flatBg and f.Bg) and "UI-Background-Rock" or nil, outward = true })
 	if ring and portrait then
 		skin.ring = ring
 		ring.onEnable = function()

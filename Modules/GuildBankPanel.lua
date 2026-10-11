@@ -355,8 +355,12 @@ end
 -- own border names its pieces. These are the names the guild bank's art has
 -- gone by; each is looked up as a key and as "<window name><key>".
 --------------------------------------------------------------------------------
+-- (0.20.1, the user's /guildbankdump, 2026-10-11: this client's window also has an outer metal frame of its own --
+-- GuildBankFrameTopOuter and its seven brothers, round the items and the money band -- whose top showed as a grey strip
+-- under the outer rail: faded with the rest, the outer rail stands for both)
 local OUTER_KEYS = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner", "BotLeftCorner", "BotRightCorner",
-	"LeftBorder", "RightBorder", "TopBorder", "BottomBorder", "LeftEdge", "RightEdge", "TopEdge", "BottomEdge", "Left", "Right" }
+	"LeftBorder", "RightBorder", "TopBorder", "BottomBorder", "LeftEdge", "RightEdge", "TopEdge", "BottomEdge", "Left", "Right",
+	"TopLeftOuter", "TopRightOuter", "BottomLeftOuter", "BottomRightOuter", "LeftOuter", "RightOuter", "TopOuter", "BottomOuter" }
 local INNER_KEYS = { "TopLeftInner", "TopRightInner", "BottomLeftInner", "BottomRightInner", "LeftInner", "RightInner", "TopInner", "BottomInner" }
 local BG_KEYS = { "BlackBG", "Bg", "Background", "BG", "Backdrop" }
 local TITLE_BG_KEYS = { "TitleBg", "TitleBG", "TitleBackground" }
@@ -709,6 +713,41 @@ local function EmblemRing(f)
 	return ring, OnTopLeft(holder or ul or anchor, f)
 end
 
+-- The emblem over the rail (0.20.1; the user, 2026-10-11, the game's own window beside ours: "how the original
+-- looks"): the crest, the tabard and the gold vines of its border (UI-GuildBankFrame-EmblemBorder) ride the window's
+-- top edge in the game's look, over its title bar. Under the double rail -- drawn over the content -- the rail covered
+-- the tabard's foot and the vines' lower half showed below it as a grey strip; the emblem's frame goes one level
+-- above the rail while the skin is on (its own level kept here, put back off), the whole emblem as the game draws it
+local emblemLevel = setmetatable({}, { __mode = "k" })   -- [emblem frame] = its own level while raised
+
+local function RaiseEmblem(f, on)
+	local emblem = f and f.Emblem
+	if not (emblem and emblem.SetFrameLevel) then
+		return
+	end
+	if on then
+		-- (the level of the frame the rail's top edge is drawn on: a railOver rail's edges live on a holder of their
+		-- own above the window, not on the rep's object -- the user's screenshot, 2026-10-11: read from the object, the
+		-- emblem stayed under the rail)
+		local parts = skin and skin.rail and rawget(skin.rail, "skin")
+		local top = parts and rawget(parts, "t")
+		local host = (top and top.GetParent and top:GetParent()) or (parts and rawget(parts, "railHost"))
+			or (skin and skin.rail and rawget(skin.rail, "object"))
+		local okR, railLevel = pcall(function() return host and host:GetFrameLevel() end)
+		local okE, own = pcall(emblem.GetFrameLevel, emblem)
+		if not (okR and okE) or Secret(railLevel) or Secret(own) or not (railLevel and own) then
+			return
+		end
+		if emblemLevel[emblem] == nil then
+			emblemLevel[emblem] = own
+		end
+		emblem:SetFrameLevel(math.max(own, railLevel + 1))
+	elseif emblemLevel[emblem] ~= nil then
+		emblem:SetFrameLevel(emblemLevel[emblem])
+		emblemLevel[emblem] = nil
+	end
+end
+
 --------------------------------------------------------------------------------
 -- The shell of a window with its own border: the outer double rail on the
 -- window's rect (its corner and edge pieces faded), the page stone inside it
@@ -728,7 +767,14 @@ local function SkinOwnShell(f)
 		end
 	end
 	skin.outerPieces = pieces
-	Replace(f, { as = "NineSlicePanelTemplate", parent = f, rect = f, skip = (ring and onCorner) and "tl" or nil, body = false, noFade = true, alsoFade = pieces })
+	-- (0.20.1; the user's dump, 2026-10-11: the money band, at the window's bottom edge, under the double rail) the
+	-- window is filled to its edges, so the rail wraps it (Kit:OutwardWrap, as SkinWindowShell's `outward`); its bottom
+	-- tabs go down with the bottom rail and its side tabs out with the right one (each set a chain from its first)
+	local wrap = Kit.OutwardWrap and Kit:OutwardWrap(f)
+	skin.rail = Replace(f, { as = "NineSlicePanelTemplate", parent = f, rect = wrap or f, skip = (ring and onCorner) and "tl" or nil, body = false, noFade = true, alsoFade = pieces })
+	if wrap then
+		Kit:OutwardFollow(skin.rail, f, { below = { _G.GuildBankFrameTab1 }, right = { _G.GuildBankTab1 } })
+	end
 	-- the page stone: a region of the window in its background's layer (the
 	-- black background the game paints), else a holder under the window's
 	-- own art
@@ -748,12 +794,17 @@ local function SkinOwnShell(f)
 			end
 		end
 	end
+	-- (with the rail wrapped round the window the page reaches its sides and bottom, as SkinWindowShell's)
+	local inset = Kit:OuterRailInset()
+	if Kit.outwardOf[f] then
+		inset = { 0, 0, inset[3], 0 }
+	end
 	if bg then
 		done[bg] = true
 		claimed[bg] = "page stone"
-		skin.page = Replace(bg, { as = "UI-Background-Rock", parent = f, rect = f, inset = Kit:OuterRailInset() })
+		skin.page = Replace(bg, { as = "UI-Background-Rock", parent = f, rect = f, inset = inset })
 	else
-		skin.page = Replace(f, { as = "UI-Background-Rock", parent = f, rect = f, inset = Kit:OuterRailInset(), noFade = true })
+		skin.page = Replace(f, { as = "UI-Background-Rock", parent = f, rect = f, inset = inset, noFade = true })
 	end
 	SkinOwnTitle(f)
 	local close = f.CloseButton or _G.GuildBankFrameCloseButton
@@ -1904,6 +1955,8 @@ local function Build()
 		for _, rep in ipairs(skin.reps) do
 			if rep.key == "UI-Background-Rock" then
 				skin.page = rep
+			elseif rep.key == "NineSlicePanelTemplate" then
+				skin.rail = rep   -- (the edges' measure: LayEdges)
 			end
 		end
 		local tc = f.TitleContainer
@@ -2054,6 +2107,22 @@ local function OnPalette()
 	end
 end
 
+-- (0.20.1; the user's screenshot, 2026-10-11: Deposit ran under the double rail's right rail) Withdraw / Deposit, a
+-- pair hung on the window's bottom right (Withdraw on Deposit), moved in clear of the rail (Kit:ClearRails on Deposit);
+-- laid on the switch and each show; without the skin, the game's place
+local function LayEdges()
+	local f = Window()
+	local deposit = f and (f.DepositButton or _G.GuildBankFrameDepositButton)
+	if not (deposit and Kit.ClearRails) then
+		return
+	end
+	if active and skin and skin.rail and f:IsShown() then
+		Kit:ClearRails(skin.rail, deposit, nil, "x")
+	else
+		Kit:Nudge(deposit, "rails", 0, 0)
+	end
+end
+
 local function Activate()
 	if active or not Window() then
 		return
@@ -2078,6 +2147,8 @@ local function Activate()
 	end
 	ApplyItemBackground(true)
 	RefreshNow(true)
+	LayEdges()
+	RaiseEmblem(Window(), Kit.outwardOf[Window()] ~= nil)   -- (the double rail's: over the content, under the emblem)
 end
 
 local function Deactivate()
@@ -2105,6 +2176,8 @@ local function Deactivate()
 	GuardTabs()
 	RestoreTabTexts()
 	PlaceExtraTitles(false)
+	LayEdges()   -- (the game's place back)
+	RaiseEmblem(Window(), false)
 end
 
 -- (user, 2026-09-24: "dress rarely used windows on first open") nothing of
@@ -2161,6 +2234,7 @@ local function Hook()
 		-- (after a first dressing too: the grid measured again once the game
 		-- has laid the window out)
 		Refresh(true)
+		LayEdges()
 	end)
 	for _, method in ipairs(METHODS) do
 		if type(f[method]) == "function" then
@@ -2320,6 +2394,25 @@ local function DumpSummary(f)
 	end
 	local page = skin and skin.page
 	Found("page stone", page and (page.tex or page.object) or nil, page and (" inner " .. RectText(page.inner)) or nil)
+	-- (0.20.1) the edges: the rail LayEdges measures, Deposit against it
+	local rail = skin and skin.rail
+	local lr, rl, bt = Kit:RailEdges(rail)
+	local deposit = f.DepositButton or _G.GuildBankFrameDepositButton
+	local dr
+	if deposit then
+		dr = select(3, MelloUI.Safe.ScreenRect(deposit))
+	end
+	MelloUI:Print("  edges: rail %s (railOver %s, skin %s, r part %s), rail edges l %s r %s b %s; Deposit %s right %s (%s the right rail's inner edge), nudged %s",
+		tostring(rail ~= nil), tostring(rail and rail.rule and rail.rule.railOver), tostring(rail and rail.skin ~= nil),
+		tostring(rail and rail.skin and rawget(rail.skin, "r") ~= nil), Num(lr) or "-", Num(rl) or "-", Num(bt) or "-",
+		deposit and "found" or "missing", Num(dr) or "-", (dr and rl) and string.format("%.1f left of", rl - dr) or "?",
+		tostring(deposit and deposit:GetNumPoints() > 0 and select(4, deposit:GetPoint(1)) or "-"))
+	-- (0.20.1) the emblem over the rail (RaiseEmblem)
+	local top = rail and rail.skin and rawget(rail.skin, "t")
+	local okEm, el = pcall(function() return f.Emblem and f.Emblem:GetFrameLevel() end)
+	local okT, tl = pcall(function() return top and top:GetParent():GetFrameLevel() end)
+	MelloUI:Print("  emblem: level %s, the rail's top edge's frame %s, raised from %s", okEm and Num(el) or "?",
+		okT and Num(tl) or "?", f.Emblem and emblemLevel[f.Emblem] ~= nil and Num(emblemLevel[f.Emblem]) or "-")
 	-- the title
 	local title = skin and skin.titleText
 	Found("title string", title, title and string.format(" (%s) text %s, title face %s, plate %s", tostring(skin.titleRole),

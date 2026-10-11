@@ -241,12 +241,12 @@ local function SkinChallengeCard(card)
 		end
 		hooksecurefunc(card, "UpdatePlusMinusArt", function(c)
 			if active and c.PlusMinus then
-				Kit:StateIconReps(c, c.PlusMinus, c, Replace)
+				Kit:StateIconReps(c, c.PlusMinus, c, Replace, nil, true)
 			end
 		end)
 	end
 	if card.PlusMinus then
-		Kit:StateIconReps(card, card.PlusMinus, card, Replace)
+		Kit:StateIconReps(card, card.PlusMinus, card, Replace, nil, true)   -- (shown only on a card that can expand)
 	end
 	if card.TitleBar then
 		StateReps(card, card.TitleBar, card.TitleBar, nil)
@@ -362,7 +362,13 @@ local function BuildSkin()
 	skin.Replace = Replace
 
 	-- the window: outer rail, streaks, the ring on the shield's corner, title, close
+	local first = #skin.reps + 1
 	Kit:SkinWindowShell(lf, Replace, skin, { portrait = Portrait() })
+	for i = first, #skin.reps do
+		if skin.reps[i].key == "NineSlicePanelTemplate" then
+			skin.rail = skin.reps[i]   -- (the edges' measure: LayEdges)
+		end
+	end
 	-- the shield does not fill the ring: a dark disc behind it (agreed addition, user 2026-09-21)
 	Kit:RingDisc(skin.ring)
 	-- the side tabs (Reward Track / Challenges / Tree)
@@ -450,10 +456,11 @@ local function BuildSkin()
 		end
 		local sel = tp.LegacyTreeSelectionPanel
 		if sel then
-			-- the tree selection column (the trees' names and texts beside
-			-- their rings) on the inner panel; the trait panel beside it is
-			-- the talent tree itself, a picture of nodes, and keeps the stone
-			ListDim(sel, sel, 0)
+			-- the tree selection column: its rings on the page stone, as the
+			-- trait panel beside it (0.20.1; the user, 2026-10-10: "why is this
+			-- masked" -- the inner panel laid on it, for texts this client's
+			-- column does not have, stood as a dark cut-out from under the
+			-- left rail, short of the column's top and bottom)
 			SkinTreeCards(sel)
 			if sel.RefreshTreeButtons then
 				hooksecurefunc(sel, "RefreshTreeButtons", function(s)
@@ -503,6 +510,48 @@ function M:RefreshFollowers()
 	Kit:FitPortrait(Portrait(), skin.ring)
 end
 
+--------------------------------------------------------------------------------
+-- The edges (0.20.1; the user's screenshots, 2026-10-10): the challenges' and
+-- the tree's vertical divider (a frame at level 800, 503 tall from 72 under the
+-- top) ran through the double rail's bottom rail to the frame's outer edge;
+-- each is shorter now, its top kept, ending on the rail's inner edge (it runs
+-- into the rail, as a divider meets its frame: no gap). The challenge list's
+-- scroll bar 4 clear of the right rail and, shorter, of the bottom one (its
+-- down arrow lay under it: Kit:ClearRails, two keys). Laid on the switch,
+-- each page's show and the window's size change; without the skin, the game's.
+--------------------------------------------------------------------------------
+local ScreenRect = MelloUI.Safe.ScreenRect
+
+local function LayEdges()
+	local lf = LegacySystemFrame
+	if not (lf and skin and Kit.RailEdges) then
+		return
+	end
+	local rail = active and skin.rail or nil
+	local cp, tp = lf.ChallengesPage, lf.TreePage
+	for _, frame in ipairs({ cp and cp.VerticalDivider or false, tp and tp.VerticalDivider or false }) do
+		if frame then
+			Kit:Shrink(frame, "rails", 0, 0)   -- (measured as the game sizes it)
+			local _, _, bt = Kit:RailEdges(rail)
+			local _, bottom = ScreenRect(frame)
+			if bt and bottom and bottom < bt then
+				Kit:Shrink(frame, "rails", 0, (bt - bottom) / (frame:GetEffectiveScale() or 1))
+			end
+		end
+	end
+	-- (moved in sideways, then its bottom end off the bottom rail: its down arrow lay under it)
+	local bar = cp and cp.DetailPane and cp.DetailPane.ScrollBar
+	if bar then
+		if rail then
+			Kit:ClearRails(rail, bar, nil, "x")
+			Kit:ClearRails(rail, bar, nil, "y", "BOTTOMLEFT", "railsBottom")
+		else
+			Kit:Nudge(bar, "rails", 0, 0)
+			Kit:Nudge(bar, "railsBottom", 0, 0)
+		end
+	end
+end
+
 local function Activate()
 	if active or not LegacySystemFrame then
 		return
@@ -517,6 +566,7 @@ local function Activate()
 		tex:Show()
 	end
 	M:RefreshFollowers()
+	LayEdges()
 end
 
 local function Deactivate()
@@ -532,6 +582,7 @@ local function Deactivate()
 		tex:Hide()
 	end
 	Kit:UnfitPortrait(Portrait())
+	LayEdges()   -- (the game's own places back)
 end
 
 -- Dressed on the window's first open (user, 2026-09-24: "dress rarely used
@@ -563,8 +614,17 @@ local function Hook()
 	for _, page in ipairs(LegacySystemFrame.Pages or {}) do
 		Perf.HookScript(page, "OnShow", function()
 			M:RefreshFollowers()
+			if active then
+				LayEdges()
+			end
 		end)
 	end
+	-- (the rails move with the window's edges)
+	Perf.HookScript(LegacySystemFrame, "OnSizeChanged", function()
+		if active then
+			LayEdges()
+		end
+	end)
 end
 
 -- Blizzard_LegacySystem is loaded on demand: wait for it.

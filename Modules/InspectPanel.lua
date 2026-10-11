@@ -849,7 +849,11 @@ local function Build()
 	-- inspected player's portrait, the title plate on the rail, the close
 	-- (no Bg on the window: the rail keeps its own stone body instead)
 	local portrait = Portrait(f)
-	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = f.Bg and "UI-Background-Rock" or nil })
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the slot columns under the double rail's sides): the window
+	-- is filled to its edges, so the rail wraps it ("Mixed"); its side tabs' frame (ModeTabs, on its top right) go
+	-- out with the right rail
+	local ring = Kit:SkinWindowShell(f, Replace, skin, { portrait = portrait, bg = f.Bg and "UI-Background-Rock" or nil,
+		outward = true, right = { f.ModeTabs } })
 	found.shell = string.format("NineSlice %s, page stone (Bg) %s, title container %s, close %s", tostring(f.NineSlice ~= nil),
 		tostring(f.Bg ~= nil), tostring(f.TitleContainer ~= nil), tostring(f.CloseButton ~= nil))
 	if not f.NineSlice then

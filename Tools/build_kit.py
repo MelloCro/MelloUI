@@ -174,7 +174,7 @@ DENSITY = [
     (r"^window/single_body$", 1.0),        # 512 px stone shown at 307 px per repeat (frame scale 1.6)
     (r"^window/single_", 1.0),             # 11 px rails shown at 6.6 px: at 0.5 they were under-sampled
     (r"^window/portrait_ring$", 0.75),     # 197 px shown at 95
-    (r"^window/close_", 1.0),              # 0.19.9: the NewUI2 close plate, 64 px shown at 24 (its studs and cross need the pixels)
+    (r"^window/(close|titlearrow)_", 1.0),   # 0.19.9: the NewUI2 close plate, 64 px shown at 24 (its studs and cross need the pixels); 0.20.1 the title bar's arrows on it (Tools/make_title_arrows.py)
     (r"^window/frame_gem_", 0.5),          # 160 px corners shown at 60
     (r"^buttons/orb_rpg", 0.75),           # (0.20.1, Tools/make_rpg_frames.py) the level orb's stone ring: 98 px shown at 24-32
     (r"^borders/rpg", 0.75),               # ... the stone rail's master and its trough: 128 / 64 px at the library's weights

@@ -668,7 +668,10 @@ local function Build()
 	-- corner keeps its gem until the title plate's caps take the top corners),
 	-- the rock as the page stone and the rail without its own body (one
 	-- background per window)
-	Kit:SkinWindowShell(al, Replace, skin, { noRing = true, bg = "UI-Background-Rock" })
+	-- `outward` (0.20.1; the user's screenshot, 2026-10-11: the search box into the right rail, the profile dropdown
+	-- and the list's boxes against the left one, Enable All / Okay under the bottom one): the window is filled to its
+	-- edges, so the rail wraps it ("Mixed")
+	Kit:SkinWindowShell(al, Replace, skin, { noRing = true, bg = "UI-Background-Rock", outward = true })
 	-- the list on the darker list-box stone inside the single rail
 	if al.Inset then
 		Kit:SkinInset(al.Inset, Replace, al, true)

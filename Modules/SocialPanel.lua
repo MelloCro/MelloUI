@@ -17,6 +17,11 @@
 --   sweep; the ignore list window the same; the raid pane's group boxes per
 --   the user's G pick (kit_raw/social_catalog.png), its raid info popup's
 --   column headers GC1 and rows' hover.
+-- The client's newer social window (SocialUIFrame, Blizzard_SocialUI: side
+-- tabs from a pool, pages of friend cards in scroll boxes) the same way:
+-- the shell wrapped outward, side tabs, the band, cards on the list plate,
+-- headers on the category plate, dividers, search field, and the pages
+-- kept inside the double rail (0.20.1).
 -- Covers the Dark Mode group "social". /socdump [frames|reps].
 --------------------------------------------------------------------------------
 
@@ -38,7 +43,7 @@ local M = MelloUI:RegisterModule("SocialPanel", {
 	title = "Social Panel Kit",
 	desc = "The social window (contacts, raid, quick join) dressed in the painted kit on the game's own layout.",
 	window = { label = "Social window", desc = "Contacts, raid and quick join in the kit.", tab = "Windows", order = 10,
-		frames = { "FriendsFrame" }, plainGrab = true, firstOpen = true },
+		frames = { "FriendsFrame", "SocialUIFrame" }, plainGrab = true, firstOpen = true },
 	enabledByDefault = true,
 	defaults = {},
 	options = {},
@@ -146,7 +151,7 @@ end
 -- made now, in the frame it shows; a page is swept again on every show (its
 -- pooled rows and tabs come and go)
 local PartShown = Shared("OnShow on a hidden part", function(frame)
-	if not (active and skin and skin.built) then
+	if not (active and skin and (skin.built or skin.socialBuilt)) then
 		return
 	end
 	local n, f = #skin.reps, #skin.followers
@@ -268,7 +273,9 @@ end
 -- parts in one (review, 2026-09-24: small parts to just under the budget,
 -- then the raid pane, made one idle frame 5.8 ms)
 function IdleTick()
-	if not (active and skin and skin.built) or head > #queue or not FriendsFrame:IsShown() then
+	local sf = _G.SocialUIFrame
+	local open = (FriendsFrame and FriendsFrame:IsShown()) or (sf and sf:IsShown())
+	if not (active and skin and (skin.built or skin.socialBuilt)) or head > #queue or not open then
 		idling = false
 		Perf.SetScript(idle, "OnUpdate", nil)
 		if head > #queue then
@@ -389,6 +396,11 @@ local RowUnlock = Shared("UnlockHighlight on a list row", function(row)
 	locked[row] = nil
 	SyncLocked(row)
 end)
+-- (0.20.1) the new social window's cards and rows say it in one call (SetHighlightLocked(locked))
+local RowLocked = Shared("SetHighlightLocked on a list row", function(row, on)
+	locked[row] = on and true or nil
+	SyncLocked(row)
+end)
 
 local function HoverPlate(row, highlight)
 	if not (row and highlight) or repOf[row] ~= nil then
@@ -404,6 +416,9 @@ local function HoverPlate(row, highlight)
 	if row.LockHighlight and row.UnlockHighlight then
 		hooksecurefunc(row, "LockHighlight", RowLock)
 		hooksecurefunc(row, "UnlockHighlight", RowUnlock)
+		if row.SetHighlightLocked then
+			hooksecurefunc(row, "SetHighlightLocked", RowLocked)
+		end
 		-- (locked before it was dressed: the first open's selected friend)
 		locked[row] = MelloUI.Safe.Call(row, "IsHighlightLocked") and true or nil
 		SyncLocked(row)
@@ -604,14 +619,15 @@ local function SkinRaidInfo(info)
 	end
 end
 
--- the window's pages: each one's own dress and its depth in the kit's sweep
-local function Pages(ff)
-	local function Page(frame, depth, dress)
-		if frame then
-			pages[frame] = { depth = depth, dress = dress }
-			Watch(frame)
-		end
+-- a window's page: its own dress and its depth in the kit's sweep
+local function Page(frame, depth, dress)
+	if frame then
+		pages[frame] = { depth = depth, dress = dress }
+		Watch(frame)
 	end
+end
+
+local function Pages(ff)
 	Page(ff.FriendsTabHeader, 1, SkinHeader)
 	Page(FriendsListFrame, 1, SkinFriendsList)
 	Page(ff.IgnoreListWindow, 1, SkinIgnoreList)
@@ -634,6 +650,201 @@ local function SkinRaidPages()
 			end
 		end
 	end
+end
+
+--------------------------------------------------------------------------------
+-- The new social window (0.20.1, the user's screenshots: "a new window added
+-- in recent patch"). This client's patch put SocialUIFrame (Blizzard_SocialUI)
+-- in the old window's place: a portrait window with large side tabs on its
+-- right -- Friends, Recent Allies, Quick Join, Friend Requests, Recruit A
+-- Friend, Raid: one content frame each, made when it loads, shown one at a
+-- time -- the Battle.net bar over them, the ignore list and the raid info in
+-- side windows. Dressed by the same rule book and the same steps as the old
+-- window (both stay hooked: the one that shows is dressed): the shell (outer
+-- rail, one page stone, the title plate, the close; the game's portrait ring);
+-- the side tabs (Kit:SkinSideTab, after every RefreshTabs: the game pools and
+-- lays them again on each show); the Battle.net band on the header plate, the
+-- bar's own backdrop and the page's two fades faded; each content frame's
+-- section lines the divider, its list's cards on the list's plain plate with
+-- the friend row's hover and the active look while the game locks a card
+-- (SetHighlightLocked), its headers on the category plate; the search box,
+-- dropdowns, red buttons, check boxes and scroll bars by the sweep. With the
+-- double rail that lies over the content, each content frame is laid inside
+-- the rails (its two corners nudged by the overlap: Kit:RailEdges -- its own
+-- paddings keep its parts off them) and the bar's menu button moved in
+-- (Kit:ClearRails); the game's own places back without the kit.
+--------------------------------------------------------------------------------
+local SOCIAL_CONTENT = { "FriendsList", "RecentAlliesList", "QuickJoinFrame", "FriendRequestsList", "RecruitAFriendFrame",
+	"RaidFrame" }
+local ScreenRect = MelloUI.Safe.ScreenRect
+local faded = {}   -- the game's art faded under the kit here (the window's fades, the bar's backdrop)
+
+local function FadeArt(region)
+	if region and repOf[region] == nil then
+		repOf[region] = false
+		faded[#faded + 1] = region
+		if active then
+			Kit:Fade(region)
+		end
+	end
+end
+
+-- a list element: a header on the category plate, a card on the plain plate (hover and selected as a row's)
+local function SkinCard(row)
+	if repOf[row] ~= nil then
+		return
+	end
+	local highlight = row.GetHighlightTexture and row:GetHighlightTexture()
+	local normal = row.GetNormalTexture and row:GetNormalTexture()
+	if row.CollapseButton and normal then
+		repOf[row] = Replace(normal, { as = "common-button-list-collapseExpand", rect = row, button = row,
+			alsoFade = { highlight } }) or false
+		Kit:SkinCollapseButton(row.CollapseButton, Replace)
+		return
+	end
+	local bg = row.Background
+	if bg and highlight then
+		local key = Kit:ArtKey(bg)
+		Replace(bg, { as = (key and Kit:RuleFor(key)) and key or "friends-card-default", rect = row })
+		HoverPlate(row, highlight)
+		-- its buttons (invite, accept, decline, summon) by the sweep
+		Classify(row)
+		return
+	end
+	repOf[row] = false
+end
+
+-- the window's rail (the double rail's parts: the edges' measure)
+local socialRail = nil
+
+local function LaySocialEdges()
+	local sf = _G.SocialUIFrame
+	if not (sf and skin and skin.socialBuilt and Kit.RailEdges) then
+		return
+	end
+	local fight = InCombatLockdown()
+	local rail = active and socialRail or nil
+	local l, r, b
+	if rail then
+		l, r, b = Kit:RailEdges(rail)
+	end
+	for _, key in ipairs(SOCIAL_CONTENT) do
+		local cf = sf[key]
+		-- (the raid page holds secure buttons: never laid in a fight -- again on its next show)
+		if cf and not (fight and cf.IsProtected and cf:IsProtected()) then
+			Kit:Nudge(cf, "railsTL", 0, 0)
+			Kit:Nudge(cf, "railsBR", 0, 0)
+			local L, B, R = ScreenRect(cf)
+			if L and (l or r or b) then
+				local s = MelloUI.Safe.Number(cf:GetEffectiveScale()) or 1
+				if l and L < l then
+					Kit:Nudge(cf, "railsTL", (l - L) / s, 0, "TOPLEFT")
+				end
+				local dx = (r and R > r) and (r - R) / s or 0
+				local dy = (b and B < b) and (b - B) / s or 0
+				if dx ~= 0 or dy ~= 0 then
+					Kit:Nudge(cf, "railsBR", dx, dy, "BOTTOMRIGHT")
+				end
+			end
+		end
+	end
+	local controls = sf.BattleNetBar and sf.BattleNetBar.ControlsContainer
+	if controls and controls.BattleNetMenuButton then
+		Kit:ClearRails(rail, controls.BattleNetMenuButton)
+	end
+end
+
+-- a content frame: its section lines, its list's elements (as they come), its place inside the rails
+local function SkinSocialContent(cf)
+	for _, key in ipairs({ "TopDivider", "BottomDivider" }) do
+		local line = cf[key]
+		if line and repOf[line] == nil then
+			repOf[line] = Replace(line, { as = "perks-divider-short", rect = line }) or false
+		end
+	end
+	local box = cf.ScrollBox
+	if box and not rowBoxes[box] then
+		rowBoxes[box] = true
+		Kit:HookScrollBoxRows(box, SkinCard, IsActive, true)
+	end
+	LaySocialEdges()
+end
+
+-- the side tabs: the game's pool, laid again on each show
+local function SkinSocialTabs(sf)
+	local pool = sf and sf.socialTabPool
+	if not (skin and pool and pool.EnumerateActive) then
+		return
+	end
+	for tab in pool:EnumerateActive() do
+		Kit:SkinSideTab(tab, Replace)
+	end
+end
+
+-- the side windows: the ignore list (a ButtonFrameTemplate window: the shell without a ring, its inset, its rows'
+-- hover and selection) and the raid info (its rows')
+local function SkinSocialIgnore(ignore)
+	if skin.socialIgnore then
+		return
+	end
+	skin.socialIgnore = true
+	Kit:SkinWindowShell(ignore, Replace, skin, { noRing = true, bg = "UI-Background-Rock" })
+	if ignore.Inset then
+		Kit:SkinInset(ignore.Inset, Replace, ignore, true)
+	end
+	if ignore.ScrollBox then
+		rowBoxes[ignore.ScrollBox] = true
+		Kit:HookScrollBoxRows(ignore.ScrollBox, SkinListRow, IsActive, true)
+	end
+end
+
+local function SkinSocialRaidInfo(info)
+	if info.ScrollBox and not rowBoxes[info.ScrollBox] then
+		rowBoxes[info.ScrollBox] = true
+		Kit:HookScrollBoxRows(info.ScrollBox, SkinListRow, IsActive, true)
+	end
+end
+
+local function BuildSocial(sf)
+	if skin.socialBuilt then
+		return
+	end
+	skin.socialBuilt = true
+	openedAt = GetTime()
+	local first = #skin.reps + 1
+	local pc = sf.PortraitContainer
+	Kit:SkinWindowShell(sf, Replace, skin, { portrait = pc and pc.portrait, bg = "UI-Background-Rock" })
+	for i = first, #skin.reps do
+		if skin.reps[i].key == "NineSlicePanelTemplate" then
+			socialRail = skin.reps[i]
+		end
+	end
+	FadeArt(sf.TopFade)
+	FadeArt(sf.BottomFade)
+	-- the Battle.net bar: the band behind the BattleTag on the header plate (it comes and goes with the game's)
+	local bar = sf.BattleNetBar
+	if bar then
+		FadeArt(bar.Background)
+		local controls = bar.ControlsContainer
+		local band = controls and controls.BattleNetBackground
+		if band and repOf[band] == nil then
+			local rep = Replace(band, { as = "battlenet-friends-main", rect = band })
+			repOf[band] = rep or false
+			if rep then
+				skin.followers[#skin.followers + 1] = { rep = rep, region = band }
+			end
+		end
+	end
+	SkinSocialTabs(sf)
+	for _, key in ipairs(SOCIAL_CONTENT) do
+		Page(sf[key], 1, SkinSocialContent)
+	end
+	Page(sf.IgnoreListFrame, 1, SkinSocialIgnore)
+	Page(sf.RaidInfoFrame, 1, SkinSocialRaidInfo)
+	Page(sf.BattleNetBroadcastFrame, 1)
+	Page(sf.BattleNetUnavailableNoticeFrame, 1)
+	SweepShown(sf, 0)
+	LaySocialEdges()
 end
 
 -- The look of what the window shows now; what it hides waits (above).
@@ -702,15 +913,23 @@ end
 -- buttons are never touched, its group boxes only get a card of ours (the
 -- idle turns wait for the fight to end; a part that shows is made at once).
 local function Dress()
-	local ff = FriendsFrame
-	if not (active and ff) then
+	local ff, sf = FriendsFrame, _G.SocialUIFrame
+	if not (active and (ff or sf)) then
 		return
 	end
-	if not (skin and skin.built) then
-		if not ff:IsShown() then
-			return
-		end
+	-- (0.20.1) the window that shows: the old one or the client's new one (BuildSocial), each built on its first open
+	if ff and ff:IsShown() and not (skin and skin.built) then
 		Build()
+	end
+	if sf and sf:IsShown() and not (skin and skin.socialBuilt) then
+		skin = skin or { reps = {}, followers = {} }
+		BuildSocial(sf)
+	end
+	if not skin then
+		return
+	end
+	for _, obj in ipairs(faded) do
+		Kit:Fade(obj)
 	end
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
@@ -729,7 +948,49 @@ local function Dress()
 	StartIdle()
 end
 
+-- (0.20.1) the new social window's show: built on the first, its tabs (laid again by the game), what it shows swept
+-- and its edges laid on the next
+local SocialShown = Shared("OnShow of the social window", function()
+	if not active then
+		return
+	end
+	openedAt = GetTime()
+	if skin and skin.socialBuilt then
+		local n, f = #skin.reps, #skin.followers
+		local sf = _G.SocialUIFrame
+		SkinSocialTabs(sf)
+		SweepShown(sf, 0)
+		EnableFrom(n, f)
+		LaySocialEdges()
+		StartIdle()
+	else
+		Dress()
+	end
+end, "script")
+-- the game laid its side tabs again (each show, a system's status): dressed as they come
+local SocialTabs = Shared("RefreshTabs of the social window", function(sf)
+	if active and skin and skin.socialBuilt then
+		local n, f = #skin.reps, #skin.followers
+		SkinSocialTabs(sf)
+		EnableFrom(n, f)
+	end
+end)
+
+local socialHooked = false
+local function HookSocial()
+	local sf = _G.SocialUIFrame
+	if socialHooked or not sf then
+		return
+	end
+	socialHooked = true
+	Perf.HookScript(sf, "OnShow", SocialShown)
+	if type(sf.RefreshTabs) == "function" then
+		hooksecurefunc(sf, "RefreshTabs", SocialTabs)
+	end
+end
+
 local function Hook()
+	HookSocial()
 	local ff = FriendsFrame
 	if hooked or not ff then
 		return
@@ -774,6 +1035,10 @@ local function Deactivate()
 			rep:Disable()
 		end
 	end
+	for _, obj in ipairs(faded) do
+		Kit:Unfade(obj)
+	end
+	LaySocialEdges()   -- (the game's own places back)
 	for _, highlight in pairs(plateOf) do
 		Kit:Unfade(highlight)
 	end
@@ -783,9 +1048,11 @@ local function Deactivate()
 	Kit:Uncover("social")
 end
 
+-- (0.20.1: the new social window's addon, Blizzard_SocialUI, loads with the game's interface -- not on demand -- so
+-- its window is there when this module comes on)
 function M:OnEnable(db)
 	self.db = db
-	if FriendsFrame then
+	if FriendsFrame or _G.SocialUIFrame then
 		Hook()
 		Activate()
 	end
@@ -802,13 +1069,16 @@ SLASH_MELLOSOCDUMP1 = "/socdump"
 SlashCmdList.MELLOSOCDUMP = function(msg)
 	msg = (msg or ""):lower()
 	MelloUI:ClearLog()
-	if not FriendsFrame then
+	-- (0.20.1) the new social window when this client has it, the old one otherwise
+	local sf = _G.SocialUIFrame
+	local frame = sf or FriendsFrame
+	if not frame then
 		MelloUI:Print("No social window.")
 	else
-		if not (skin and skin.built) then
+		if not (skin and (sf and skin.socialBuilt or not sf and skin.built)) then
 			MelloUI:Print("Social window not dressed yet (it is dressed on its first open): the game's own art only.")
 		end
-		Kit:DumpWindow(FriendsFrame, skin, msg ~= "" and msg or nil)
+		Kit:DumpWindow(frame, skin, msg ~= "" and msg or nil)
 	end
 	MelloUI:ShowLog("socdump " .. msg)
 end
