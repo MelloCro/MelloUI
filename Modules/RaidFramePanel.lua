@@ -60,12 +60,17 @@ local function Replace(region, opts)
 end
 
 -- A compact unit frame (raid member, raid-style party member, pet / mini):
--- F1 on its backing.
-local function SkinCompact(frame)
+-- F1 on its backing. `own` (a frame of MelloUI's own group frames): F1's rail
+-- alone, its backing left shown -- Group Frames' Background paints it
+local function SkinCompact(frame, own)
 	if not (frame and frame.background) or repOf[frame] ~= nil then
 		return
 	end
-	repOf[frame] = Replace(frame.background, { as = "raidframe-hp-bg-white" }) or false
+	local opts = { as = "raidframe-hp-bg-white" }
+	if own then
+		opts.body, opts.noFade = false, true
+	end
+	repOf[frame] = Replace(frame.background, opts) or false
 	-- (0.19.8) Raid Frame Border: F1's Single rail, or the border library's
 	-- style in its place (Modules/KitBorders.lua)
 	if repOf[frame] then
@@ -195,11 +200,17 @@ end
 
 -- (0.20.0) A member's frame of MelloUI's own group frames (MelloUI_GroupFrames:
 -- the game's raid frame's region names, its `background` too) dressed as a
--- compact frame while the kit's look is on: F1's rail and stone, the Raid Frame
--- Border. Once per frame, out of a fight (the group frames make theirs then)
+-- compact frame while the kit's look is on: F1's rail and the Raid Frame
+-- Border. Once per frame, out of a fight (the group frames make theirs then).
+-- (0.20.1, the user: "the Group frames background should also switch the
+-- background of the group frames, not only party frames") not F1's stone: it
+-- lay over the frame's own backing, faded, which Group Frames > Bars >
+-- Background paints -- the frames dressed after the kit came on (a raid's, the
+-- Designer's samples, the fake raid) wore the kit's stone whatever was picked,
+-- the party's made before it the Background. The backing is the setting's.
 function M:DressStandIn(frame)
 	if active and skin and not InCombatLockdown() then
-		SkinCompact(frame)
+		SkinCompact(frame, true)
 	end
 end
 

@@ -986,7 +986,7 @@ function Page.Build(canvas, width)
 	canvas:Refresh()
 	-- the list changed elsewhere (another spec, the ranks found): drawn again
 	MelloUI:On("groupframes", function(what)
-		if canvas:IsVisible() and (what == "spec" or what == "ids" or what == "part") then
+		if canvas:IsVisible() and (what == "spec" or what == "ids" or what == "part" or what == "paint") then
 			canvas:Refresh()
 		end
 	end, "GroupFrames.page")
@@ -1073,9 +1073,20 @@ local PreviewBeat = function(beat, _, n)
 	end
 end
 
+-- (0.20.1, the user: "the Group frames background should also switch the background of the group frames") a look
+-- setting changed while the fake raid shows: its members painted again
+local FakePaint = function(what)
+	if what == "paint" and fake.holder and fake.holder:IsShown() then
+		for _, f in ipairs(fake.frames) do
+			Resample(f)
+		end
+	end
+end
+
 function Page.Listen()
 	if not listening then
 		listening = true
 		MelloUI:On("preview", PreviewBeat, "GroupFrames.fake")
+		MelloUI:On("groupframes", FakePaint, "GroupFrames.fakepaint")
 	end
 end

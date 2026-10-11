@@ -9,7 +9,7 @@
 - Stone rail: a new border with its own dark trough for buttons, bars, unit frames, nameplates, raid frames, cooldowns and the minimap (Look > Borders).
 - Stone ring: a new Round Border and Portrait Ring with its own dark ground. Level Orb (Look > Borders): the kit's orb or a stone badge round the level on the unit frames and nameplates.
 - Swing Timer Border (Look > Borders, also on the Swing Timers page): the swing timers' frame, any of the bar borders. The Cast Bar look is now called Framed.
-- Group Frames > Bars: Background puts one of MelloUI's backgrounds (stone, parchment, the dark gradients...) behind the health bar, or none.
+- Group Frames > Bars: Background puts one of MelloUI's backgrounds (stone, parchment, the dark gradients...) behind the health bar, or none, on the party and raid frames alike, the Designer's preview and the fake raid too.
 - Bar borders fit thin bars: slimmer round the reputation and skill bars and the nameplates, and the selected row's highlight is as tall as its bar's frame.
 - Nameplates: the cast bar is as wide as the health bar above it, and with a border from the library the level circle sits just past the bar's end.
 - Buffs & Debuffs: the debuffs on nameplates count down in plain seconds, without the "s".
@@ -44,6 +44,7 @@
 - Header bands are flat now: the colour of your palette's raised panels with a thin gold line under it, instead of the plate with gem ends (the Legacy challenges' titles and points, the character window's titles and item level, the guild and column headers, the money strip, the quest tracker's and the damage meter's headers, the Battle.net band, the cast bar's text box, the chat windows' header and the minimap's Services band).
 - Legacy window: the dividers on the Challenges and Tree pages end at the frame instead of running through it, the challenge list's scroll bar stays inside the frame, a challenge that cannot be opened no longer shows a + over the start of its description, every challenge's + looks the same, and the tree page's rings no longer sit on a dark cut-out band.
 - The new social window (O): dressed like the others, with the frame round it, side tabs, friend cards on plates, the search field and the lists kept inside the frame.
+- Fixed: the configurator's What's new had stopped at 0.18.1; it shows this version and the four before it again (Earlier versions).
 - Search and edit boxes and dropdowns: one look everywhere (the spell book's and the bags' search, the chat and whisper windows' edit box, the configurator's fields and number boxes, every dropdown and filter button): the Stone rail round a dark field, lit while you type or point at it, the dropdowns with a gold arrow.
 
 ## 0.20.0

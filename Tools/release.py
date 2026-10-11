@@ -36,6 +36,10 @@ new dropdown, slider, check box ... gets a "New" tag for its update, the old one
 an older one tagged so (and when it cannot check: a file or a module's OnInit that fails in its world, or a --fix
 that would leave a file that does not compile -- every file is then put back); the tags of older versions are taken
 out of the files (its --fix; a dry run only lists them), and go into the release commit.
+
+The configurator's What's new (Core/Config.lua's CHANGELOG table) holds CHANGELOG.md's five newest sections with the
+release's on top (the user, 2026-10-11: "keep it updated", "keep only the last 5"): the release runs
+`Tools/lint/check_whats_new.py --version <version>` and is refused otherwise.
 """
 import argparse
 import os
@@ -49,6 +53,7 @@ TOC = os.path.join(ROOT, "MelloUI.toc")
 PKGMETA = os.path.join(ROOT, ".pkgmeta")
 FULL_BAKE = os.path.join(HERE, "installer", "bake_full.py")
 NEW_TAGS = os.path.join(HERE, "lint", "check_new_tags.py")
+WHATS_NEW = os.path.join(HERE, "lint", "check_whats_new.py")
 
 
 def git(*args, capture=True):
@@ -182,6 +187,19 @@ def check_new_tags(version, fix):
     return True, keep or lines[-1:]
 
 
+def check_whats_new(version):
+    """The configurator's What's new: CHANGELOG.md's five newest sections, this version's on top
+    (Tools/lint/check_whats_new.py --version <version>). Returns (ok, lines)."""
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
+    try:
+        r = subprocess.run([sys.executable, WHATS_NEW, "--version", version], cwd=ROOT, env=env, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, [f"the check did not run: {exc}"]
+    lines = [line.rstrip() for line in ((r.stdout or "") + (r.stderr or "")).splitlines() if line.strip()]
+    return r.returncode == 0, lines or [f"check_whats_new.py exited {r.returncode}"]
+
+
 def write_tocs(edits, version, interface):
     """The Version and Interface lines of every TOC in `edits` ((path, label, text) each)."""
     for path, _, body in edits:
@@ -270,6 +288,10 @@ def main():
     if git("tag", "--list", tag):
         sys.exit(f"tag {tag} already exists")
     notes = release_notes(version)
+    news_ok, news_lines = check_whats_new(version)
+    if not news_ok:
+        sys.exit(f"the configurator's What's new is not ready for {version} (python Tools/lint/check_whats_new.py "
+                 f"--version {version}):\n" + "\n".join("  " + line for line in news_lines))
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
     if branch != "main":
         sys.exit(f"releases are cut from main; you are on {branch}")

@@ -28,7 +28,7 @@
 -- it).
 --   Headers:Start() / Stop()   on and off
 --   Headers:Layout()           the layout settings again (a fight: later)
---   Headers:Repaint()          every button painted again
+--   Headers:Repaint()          every button painted again (bus groupframes "paint": the made-up ones too)
 --   Headers:Blizzard()         the game's frames hidden or given back
 --   Headers:Buttons() -> list  every button made
 --------------------------------------------------------------------------------
@@ -909,6 +909,8 @@ function H:Repaint()
 			Button.Refresh(b)
 		end
 	end
+	-- (0.20.1) the made-up members too: the Designer's samples, the fake raid
+	MelloUI:Fire("groupframes", "paint")
 end
 
 function H:Start()
