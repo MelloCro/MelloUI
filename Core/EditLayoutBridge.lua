@@ -1005,6 +1005,7 @@ end
 
 local SYS_PREFIX = "EditMode."
 local EMPTY = {}
+local Listen   -- (below: the 'editlayout' listener, made at Edit Layout's first open -- nothing at load)
 local sysOf = setmetatable({}, { __mode = "k" })   -- [entry] = { system, index }
 local SYS = { snap = nil, atOpen = nil }           -- the store's EditMode.* places at an Edit Layout open; frames' points at Edit Mode's open
 
@@ -1104,6 +1105,20 @@ end
 local OTHERS = { Minimap = true, ChatFrame = true, ObjectiveTracker = true, DamageMeter = true }
 local GROUP_INDEX = { [4] = true, [5] = true }   -- (UnitFrame: Party, Raid -- LABELS)
 
+-- (the user, 2026-10-11: "where is the cast bar? i dont see it in Edit layout") the systems that show only at times
+-- -- a cast, a target or focus, a pet, a stance, a possessed unit, totems -- get their plate at their place even while
+-- hidden (Core's `placeholder`), so they can be moved whenever, as Edit Mode shows its own while it is open
+local AT_TIMES = { CastBar = true, TotemActionBar = true, ActionBar = { [11] = true, [12] = true, [13] = true },
+	UnitFrame = { [2] = true, [3] = true, [8] = true } }
+
+local function AtTimes(system, index)
+	local v = AT_TIMES[SystemName(system)]
+	if type(v) == "table" then
+		return v[index or 0] == true
+	end
+	return v == true
+end
+
 local function Others(system, index)
 	local name = SystemName(system)
 	if OTHERS[name] then
@@ -1126,15 +1141,23 @@ local function RegisterSystem(frame)
 	end
 	local entry = MelloUI:RegisterMover(frame, frame, { key = SysKey(system, index), group = "hud", follow = true,
 		resize = false, label = B.Label(frame), page = PageOf(frame), default = SysHome(system, index),
-		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive })
+		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive, placeholder = AtTimes(system, index) or nil })
 	if entry then
 		sysOf[entry] = { system = system, index = index }
 	end
 	return entry
 end
 
--- the mover source: every system no mover holds (Edit Layout's open and resume)
+-- the mover source: every system no mover holds (Edit Layout's open and resume); the session's "before" taken at
+-- its open (the store's EditMode.* places), and its listener made the first time
+local StoredSystems
 local function RegisterSystems()
+	if Listen then
+		Listen()
+	end
+	if not SYS.snap and StoredSystems then
+		SYS.snap = StoredSystems()
+	end
 	for _, frame in ipairs(Systems() or EMPTY) do
 		local ok, err = pcall(RegisterSystem, frame)
 		if not ok then
@@ -1145,7 +1168,7 @@ end
 B.RegisterSystems = RegisterSystems
 
 -- the store's EditMode.* places (copies)
-local function StoredSystems()
+StoredSystems = function()
 	local out = {}
 	for key, pos in pairs(Store() or EMPTY) do
 		if ParseKey(key) and type(pos) == "table" then
@@ -1153,6 +1176,22 @@ local function StoredSystems()
 		end
 	end
 	return out
+end
+
+-- the cast bar moved: Edit Mode's Lock To Player Frame off with it, and its mirror on the player frame (Cast Bar
+-- Underneath; EditModeSettingDisplayInfo's mirroredSettings) -- locked, the game hangs it under the player frame
+-- whatever its place says (EditModeCastBarSystemMixin:ApplySystemAnchor); Edit Mode's own drag turns it off too
+local function Unlock(system)
+	local E2 = type(Enum) == "table" and Enum or nil
+	local cs, us = E2 and E2.EditModeCastBarSetting, E2 and E2.EditModeUnitFrameSetting
+	if cs and cs.LockToPlayerFrame ~= nil then
+		MelloUI:EditModeSettingsSoon(system, nil, { [cs.LockToPlayerFrame] = 0 })
+	end
+	local unit = E2 and E2.EditModeSystem and E2.EditModeSystem.UnitFrame
+	local player = E2 and E2.EditModeUnitFrameSystemIndices and E2.EditModeUnitFrameSystemIndices.Player or 1
+	if us and us.CastBarUnderneath ~= nil and unit ~= nil then
+		MelloUI:EditModeSettingsSoon(unit, player, { [us.CastBarUnderneath] = 0 })
+	end
 end
 
 -- after an Edit Layout session: the places new or changed since it opened,
@@ -1166,6 +1205,9 @@ local function WriteChanged(before)
 			local anchor = frame and AnchorOf(pos, frame)
 			if anchor and MelloUI.EditModeAnchorSoon then
 				MelloUI:EditModeAnchorSoon(system, index, anchor)
+				if SystemName(system) == "CastBar" then
+					Unlock(system)
+				end
 			end
 		end
 	end
@@ -1234,10 +1276,17 @@ local function SysEditLayout(showing, state)
 	end
 end
 
+local listening = false
+Listen = function()
+	if not listening then
+		listening = true
+		MelloUI:On("editlayout", SysEditLayout, OWNER .. ": systems")
+	end
+end
+
 if MelloUI.AddMoverSource then
 	MelloUI:AddMoverSource(RegisterSystems)
 end
-MelloUI:On("editlayout", SysEditLayout, OWNER .. ": systems")
 if MelloUI.AfterLogin then
 	MelloUI:AfterLogin(function()
 		local ok, err = pcall(Handover)
