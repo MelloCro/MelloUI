@@ -104,6 +104,7 @@ local AREAS_REFUSED = "Not in combat: this would switch painted skins."
 local defaults, options = { reskin = true, preloadArt = true, fadeWindows = true, reduceMotion = false,
 	parchment_tracker = false, parchment_questTracker = false, parchment_chat = false,
 	parchment_whisper = false, parchment_meter = false, parchment_character = "off", parchment_tooltip = false, parchment_dialog = false,
+	parchmentStyle = "paper",
 	autoSnap = true, snapGap = 0, positions = {}, welcomeAsked = false, layoutApplied = false, nameFormat = "both", classNames = true,
 	-- the palette (0.14.0): an id of MelloUI.Palettes, applied by Core
 	-- (MelloUI:SetPalette; this module on or off); a choice, not personal
@@ -285,6 +286,11 @@ for _, entry in ipairs(PARCHMENTS) do
 	Add({ type = entry.values and "dropdown" or "toggle", key = entry[1], name = "Parchment: " .. entry[2], values = entry.values,
 		requires = "reskin", new = entry.new, desc = PARCHMENT_DESC[entry[1]] })
 end
+-- The parchment's look (0.20.3; the user, 2026-10-11: "the new one is the default but some people liked how the old
+-- one looked aswell"): every sheet and page, live (Kit:SetParchmentStyle)
+Add({ type = "dropdown", key = "parchmentStyle", name = "Parchment Style", requires = "reskin", new = "0.20.3",
+	values = { { value = "paper", label = "Burnt paper" }, { value = "classic", label = "Classic vellum" } },
+	desc = "How the parchment looks wherever it shows: the sheets switched on below, and the quest log, quest and spell book pages. Burnt paper: warm paper with burnt edges, big pages with curled corners. Classic vellum: the vellum with painted brush-stroke edges from before 0.20.1." })
 
 Add({ type = "toggle", key = "fadeWindows", name = "Windows Fade In",
 	desc = "Every window fades in over a fifth of a second when it opens, instead of appearing at once: the character window, talents and spells, professions, the bags, social, guild, group finder, collections, the map, the game menu and the rest. Works with the reskin on or off. Reduce Motion: at once." })
@@ -1596,6 +1602,11 @@ function M:OnSettingChanged(key, value, db)
 		local kit = MelloUI.Kit
 		if kit and kit.SetParchment then
 			kit:SetParchment(key:sub(11), kit.ParchmentValueOn and kit.ParchmentValueOn(value) or value == true)
+		end
+		return
+	elseif key == "parchmentStyle" then
+		if MelloUI.Kit and MelloUI.Kit.SetParchmentStyle then
+			MelloUI.Kit:SetParchmentStyle()
 		end
 		return
 	elseif key == "raidBorderPlace" then

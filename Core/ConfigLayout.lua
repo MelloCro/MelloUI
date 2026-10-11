@@ -381,6 +381,7 @@ function L.Define(R, Link)
 		{ when = { key = "BarTextures.healthColor", notValue = "green", line = "Not with the Green (Blizzard) colour" } })
 	R("Look", "Bar Texture", "Look", "BarTextures.executeRange")
 	R("Look", "Bar Texture", "Look", "BarTextures.executeBelow")
+	R("Look", "Parchment", "Look", "UIModifications.parchmentStyle")   -- (0.20.3: the look of every sheet and page)
 	R("Look", "Parchment", "Look", "UIModifications.parchment_tracker", { when = GAME_TRACKER })
 	R("Look", "Parchment", "Look", "UIModifications.parchment_questTracker")
 	-- (0.19.1, the user 2026-10-04: "any Parchment Enable/Disable into the Parchment tab": the chat's and the

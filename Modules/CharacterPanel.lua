@@ -2320,8 +2320,9 @@ WindowSheet = function()
 	local clear = CreateFrame("Frame", nil, ws)
 	clear:EnableMouse(false)
 	clear:SetAllPoints(ws)
+	-- (the Classic Parchment Style's tile and tone: the Parchment background's before 0.20.1)
 	local sheet = Kit:ParchmentSheet(ws, clear, { rect = clear, margin = 2, sublevel = 1,
-		piece = LOOKS.backgroundPiece.parchment, tint = { 1, 1, 1 } })
+		piece = "tiles/parchment", tint = { 1, 1, 1 } })
 	if not sheet then
 		return false
 	end

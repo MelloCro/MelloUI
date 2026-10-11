@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.3
+
+- Parchment Style (Look > Parchment): pick how the parchment looks wherever it shows, the sheets you switched on and the quest log, quest and spell book pages. Burnt paper, the new one, stays the default; Classic vellum brings back the vellum with painted brush-stroke edges from before 0.20.1. It switches at once, no /reload.
+
 ## 0.20.2
 
 - Action Bars > Backdrops: each switch now decides its own element's backdrop. On, the bar gets its backdrop and merges into one with the other switched-on bars placed next to it; off, it has no backdrop and no longer joins a neighbour's. A bar you had off beside one that was on drops out of that backdrop: switch it on to keep it inside.

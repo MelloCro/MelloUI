@@ -729,13 +729,14 @@ end
 -- 0.3; a page at 0.6, the pack's own proportions on a quest page's width.
 -- `tone`: the brightness every piece is drawn at, the hue the pack's (the user, 2026-10-10, the spell book: "perfect,
 -- its just a bit too bright"); kept as the pieces' base under the kit's shade (Kit.tintBaseOf).
+-- `layParent` (0.20.3): the frame the layout frame hangs from (a paper, Kit:Paper: hidden, all of it is), else `owner`.
 Kit.parchment = { prefix = "parchment/sheet", pagePrefix = "parchment/page", body = "parchment/sheet_body", scale = 0.375,
 	small = 0.3, page = 0.6, tone = 0.86 }
 
 function Kit:ParchmentNine(owner, opts)
 	opts = opts or {}
 	local P = self.parchment
-	local lay = CreateFrame("Frame", nil, owner)
+	local lay = CreateFrame("Frame", nil, opts.layParent or owner)
 	lay:EnableMouse(false)
 	if opts.place then
 		opts.place(lay)
@@ -768,11 +769,159 @@ function Kit:ParchmentNine(owner, opts)
 			t:SetAlpha(a)
 		end
 	end
+	-- (a paper's look, Kit:Paper: its paper and edges laid again)
+	nine.Fit = function(me)
+		for _, t in ipairs(me.tiled) do
+			Kit:Retile(t)
+		end
+	end
 	return nine
 end
 
--- (0.20.1: the parchment nine, Kit:ParchmentNine; the returned sheet is its frame, the second value nil -- no
--- caller read the painted edge)
+-- The Parchment Style (0.20.3; the user, 2026-10-11: "the new one is the default but some people liked how the old
+-- one looked aswell"): UI Modifications' parchmentStyle, "paper" (the RPG pack's, Kit:ParchmentNine) or "classic"
+-- (0.20.0's: the vellum tile in Kit.parchmentTint ending in the painted brush strokes, Kit:PaintedEdge). Every
+-- parchment sheet and page is a paper (Kit:Paper) wearing the style's look; Kit:SetParchmentStyle hands them over.
+Kit.papers = setmetatable({}, { __mode = "k" })   -- [paper] = true: every sheet and page made
+
+function Kit:ParchmentStyle()
+	local um = MelloUI:GetModule("UIModifications")
+	local v = um and um.db and um.db.parchmentStyle
+	return v == "classic" and "classic" or "paper"
+end
+
+do
+	-- a classic look's methods (a paper's look: SetShown, SetAlpha, Fit and its paper region `body`); `refit`, when
+	-- given, fits it in its place (a page: the picture's own Refit)
+	local Classic = {}
+	local ClassicMeta = { __index = Classic }
+	function Classic:SetShown(on)
+		for _, r in ipairs(self.all) do
+			r:SetShown(on)
+		end
+	end
+	function Classic:SetAlpha(a)
+		for _, r in ipairs(self.all) do
+			r:SetAlpha(a)
+		end
+	end
+	function Classic:Fit()
+		if self.refit then
+			self.refit()
+			return
+		end
+		local tex = self.body
+		local ok, w, h = pcall(tex.GetSize, tex)
+		if not (ok and w and h) or Secret(w) or Secret(h) or w <= 0 or h <= 0 then
+			return
+		end
+		Kit:Retile(tex)
+		if self.edge then
+			self.edge:Fit(w, h)
+		end
+	end
+
+	-- the paper wears its style's look, built on its first need (a paper made hidden builds nothing), the other
+	-- style's hidden; laid again on every wear (a look hidden while its rect changed size)
+	local function Wear(paper)
+		local shown, style = paper:IsShown() and true or false, paper.style
+		local look = paper.looks[style]
+		if shown and look == nil then
+			look = paper.build[style](paper) or false
+			paper.looks[style] = look
+			if look then
+				look:SetAlpha(paper.alpha)
+			end
+		end
+		for s, other in pairs(paper.looks) do
+			if other then
+				other:SetShown(shown and s == style)
+			end
+		end
+		paper.body = look and look.body or nil
+		if shown and look then
+			look:Fit()
+		end
+	end
+
+	-- A paper: the frame a parchment sheet's or page's caller holds (a child of `owner`, laid by place(frame));
+	-- build[style](paper) makes that style's look. Show / Hide / SetShown / SetAlpha act on the look worn, IsShown
+	-- is the paper's own; paper:Fit() lays the worn look again.
+	function Kit:Paper(owner, place, build, shown)
+		local paper = CreateFrame("Frame", nil, owner)
+		paper:EnableMouse(false)
+		place(paper)
+		paper.build, paper.looks, paper.alpha, paper.style = build, {}, 1, self:ParchmentStyle()
+		local show, hide = paper.Show, paper.Hide
+		paper.Show = function(me)
+			show(me)
+			Wear(me)
+		end
+		paper.Hide = function(me)
+			hide(me)
+			Wear(me)
+		end
+		paper.SetShown = function(me, on)
+			if on then
+				me:Show()
+			else
+				me:Hide()
+			end
+		end
+		paper.SetAlpha = function(me, a)
+			me.alpha = a
+			local look = me.looks[me.style]
+			if look then
+				look:SetAlpha(a)
+			end
+		end
+		paper.Fit = function(me)
+			local look = me.looks[me.style]
+			if look and me:IsShown() then
+				look:Fit()
+			end
+		end
+		self.papers[paper] = true
+		paper:SetShown(shown ~= false)
+		return paper
+	end
+
+	-- a classic look made of `all` (its regions), `body` the paper among them, `edge` its painted edge
+	function Kit:ClassicLook(all, body, edge, refit)
+		return setmetatable({ all = all, body = body, edge = edge, refit = refit }, ClassicMeta)
+	end
+
+	-- every paper in the style (nil: the setting's)
+	function Kit:SetParchmentStyle(style)
+		style = style or self:ParchmentStyle()
+		for paper in pairs(self.papers) do
+			if paper.style ~= style then
+				paper.style = style
+				Wear(paper)
+			end
+		end
+	end
+end
+
+-- the classic sheet (0.20.0's): the vellum tile on `anchor`'s rect, a region of `skin`, in the kit's one parchment
+-- tone, ending in the painted strokes (opts as Kit:ParchmentSheet's)
+function Kit:ClassicSheet(skin, anchor, opts)
+	local tex = skin:CreateTexture(nil, opts.layer or "BACKGROUND", nil, opts.sublevel or 3)
+	tex:SetAllPoints(anchor)
+	if not self:Apply(tex, opts.piece or self.parchmentPiece) then
+		tex:Hide()
+		return nil
+	end
+	tex.kitAlign = "center"
+	local tint = opts.tint or self.parchmentTint
+	tex:SetVertexColor(tint[1], tint[2], tint[3])
+	local edge = self:PaintedEdge(tex, tex, opts.mirror, opts.tight, opts.wide and "wide" or opts.fine)
+	return self:ClassicLook({ tex }, tex, edge)
+end
+
+-- (0.20.1: the parchment nine, Kit:ParchmentNine; 0.20.3: a paper, Kit:Paper, in the Parchment Style's look -- the
+-- classic one Kit:ClassicSheet, `piece` / `tint` / `mirror` / `wide` its own; the returned sheet is the paper, the
+-- second value nil -- no caller read the painted edge)
 function Kit:ParchmentSheet(skin, watch, opts)
 	opts = opts or {}
 	if not (skin and skin.CreateTexture) then
@@ -790,26 +939,29 @@ function Kit:ParchmentSheet(skin, watch, opts)
 		end
 	end
 	local P = self.parchment
-	local sheet = self:ParchmentNine(skin, { place = Place, layer = opts.layer, sublevel = opts.sublevel, curls = opts.curls,
-		scale = opts.scale or ((opts.tight or opts.fine) and P.small) or P.scale })
+	local on = not opts.area or self:ParchmentOn(opts.area)
+	local sheet = self:Paper(skin, Place, {
+		paper = function(paper)
+			return self:ParchmentNine(skin, { layParent = paper, place = function(f) f:SetAllPoints(paper) end,
+				layer = opts.layer, sublevel = opts.sublevel, curls = opts.curls, scale = opts.scale or ((opts.tight or opts.fine) and P.small) or P.scale })
+		end,
+		classic = function(paper)
+			return self:ClassicSheet(skin, paper, opts)
+		end,
+	}, (on and (not opts.area or not opts.alive or opts.alive())) and true or false)
 	-- (laid again as the frame it follows changes size or shows: a skin sized while hidden gets no OnSizeChanged)
 	local function Fit()
-		for _, t in ipairs(sheet.tiled) do
-			self:Retile(t)
-		end
+		sheet:Fit()
 	end
 	watch = watch or skin
 	if watch.HookScript then
 		Perf.HookScript(watch, "OnSizeChanged", Fit)
 		Perf.HookScript(watch, "OnShow", Fit)
 	end
-	Fit()
 	if opts.area then
 		local list = self.parchmentSheets[opts.area] or {}
 		self.parchmentSheets[opts.area] = list
 		list[#list + 1] = { sheet = sheet, alive = opts.alive }
-		local on = self:ParchmentOn(opts.area)
-		sheet:SetShown((on and (not opts.alive or opts.alive())) and true or false)
 		if self.parchmentShown[opts.area] == nil then
 			self.parchmentShown[opts.area] = on
 		end
@@ -1269,6 +1421,8 @@ do
 				Kit:SetParchment(area, on)
 			end
 		end
+		-- (0.20.3) and the Parchment Style, written past it the same way
+		Kit:SetParchmentStyle()
 	end
 	local RestartPaper = Shared("'restart' on the bus: the parchment", function()
 		if Kit.NextFrame then
@@ -5536,7 +5690,7 @@ Kit.Replacements = {
 	-- pages tiles/vellum (the parchment page's middle), from the rect's
 	-- middle or top (`crop`), their painted edges as before.
 	["spellbook-Page-Right-C60"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, parchment = "br" },   -- (0.20.1: the parchment nine, its curl at the bottom right)   -- the book page: the user's parchment page painting (parchmentnew, 2026-09-21; painted at the page's 1.15 aspect), one UNDER the SpellBookFrame (level 100: well above the window's skin, below every control on the page)
-	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, parchment = "tl" },   -- (0.20.1: the parchment nine, its curl at the top left: a spread's two outer corners)   -- the left page's strokes flipped, so the two pages are not twins
+	["spellbook-Page-Left-C60"]               = { kind = "picture", piece = "tiles/vellum", crop = "middle", level = -1, parchment = "tl", edgeMirror = true },   -- (0.20.1: the parchment nine, its curl at the top left: a spread's two outer corners; 0.20.3: the Classic style's strokes mirrored)   -- the left page's strokes flipped, so the two pages are not twins
 	["spellbook-Tab-Frame-C60"]               = { kind = "slot", slot = "slot" },   -- a category tab (C1): the slot rim over the icon, gold (checked) while the tab is selected
 	["spellbook-list-backplate"]              = { kind = "fade" },   -- the list header's backplate (H3: the text on the page)
 	["spellbook-divider"]                     = { kind = "strip", base = "window/divider", natural = true },   -- the line under the header (H3)
@@ -5647,8 +5801,8 @@ Kit.Replacements = {
 	["Legacy-Rewards-Tracker-Icons-Frame"]    = { kind = "slot", slot = "slot" },   -- a reward card's icon border (80 on a 64 square icon; re-atlased -Disable while unearned): the square rim (R1), one rep per atlas
 	["Legacy-Rewards-Tracker-Icons-Frame-Disable"] = { kind = "slot", slot = "slot" },
 	-- the quest log (QuestMapFrame in the world map window; 2026-09-21)
-	["QuestLog-main-background"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, parchment = "tl br" },   -- (0.20.1: the parchment nine with both curls; no stone backing: its square showed round the curls' fold -- the window behind shows there, as on the pack's page)   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
-	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "tiles/vellum", crop = "top", owner = true, parchment = "tl br" },   -- (0.20.1: the parchment nine with both curls; no stone backing: its square showed round the curls' fold -- the window behind shows there, as on the pack's page)   -- a quest's details page: the same parchment
+	["QuestLog-main-background"]              = { kind = "picture", piece = "tiles/vellum", crop = "middle", owner = true, parchment = "tl br", edgeBacking = "window/single_body" },   -- (0.20.1: the parchment nine with both curls; no stone backing: its square showed round the curls' fold -- the window behind shows there, as on the pack's page; 0.20.3: the backing the Classic style's only)   -- the list's page (QP2, user 2026-09-21): the parchment page painting, as the spell book's; also MelloUI's own quest list window
+	["QuestDetailsBackgrounds"]               = { kind = "picture", piece = "tiles/vellum", crop = "top", owner = true, parchment = "tl br", edgeBacking = "window/single_body" },   -- (0.20.1: the parchment nine with both curls; no stone backing: its square showed round the curls' fold -- the window behind shows there, as on the pack's page; 0.20.3: the backing the Classic style's only)   -- a quest's details page: the same parchment
 	-- the quest giver's dialogs (QuestDialogPanel; user, 2026-09-24): an item / reward / spell button's name plate (file art, keyed by hand) -> the plain gemless plate under the name, as a list row's; the greeting's horizontal break -> the scroll line at its natural weight across most of the page
 	["UI-QuestItemNameFrame"]                 = { kind = "strip", base = "lists/plate", state = "plain", owner = true, layer = "BACKGROUND", sublevel = 1 },
 	["UI-HorizontalBreak"]                    = { kind = "strip", base = "window/divider", natural = true, widthFrac = 0.8 },
@@ -9595,28 +9749,12 @@ function Kit:Replace(region, opts)
 		if rule.dim then
 			tex:SetVertexColor(rule.dim, rule.dim, rule.dim)
 		end
-		-- `edge` = "brush": the picture ends in painted strokes on every side
-		-- (Kit:PaintedEdge); `edgeMirror` flips them for a left-hand page
-		if rule.edge then
-			rep.edge = self:PaintedEdge(tex, inner, rule.edgeMirror)
-		end
-		-- `parchment` (0.20.1): the page is the parchment nine on the picture's rect, in its layer (Kit:ParchmentNine;
-		-- a string names its curls), the picture left hidden under it
-		if rule.parchment then
-			local l, sl = tex:GetDrawLayer()
-			rep.paper = self:ParchmentNine(tex:GetParent(), { place = function(p) p:SetAllPoints(inner) end, layer = l,
-				sublevel = sl, curls = type(rule.parchment) == "string" and rule.parchment or nil, scale = self.parchment.page })
-			tex:Hide()
-			if rep.object == tex then
-				rep.object = rep.paper
-			end
-		end
 		-- `edgeBacking`: a tiled piece right under the picture, on the same
 		-- rect, so the gaps between the strokes show stone and not whatever
 		-- lies behind the window (user, 2026-09-23: the quest log over the
 		-- world map, MelloUI's quest list: "add the dark cracked concrete
 		-- behind")
-		if rule.edgeBacking then
+		local function Backing()
 			local layer, sub = tex:GetDrawLayer()
 			sub = sub or 0
 			if sub <= -8 then
@@ -9628,9 +9766,45 @@ function Kit:Replace(region, opts)
 			backing:SetAllPoints(inner)
 			backing.kitScale = self.scale * self.frameScale
 			if self:Apply(backing, rule.edgeBacking) then
-				rep.backing = backing
-			else
-				backing:Hide()
+				return backing
+			end
+			backing:Hide()
+			return nil
+		end
+		-- `parchment` (0.20.1): the page is a paper (Kit:Paper) on the picture's rect, in the Parchment Style's look
+		-- (0.20.3): the parchment nine in the picture's layer (Kit:ParchmentNine; a string names its curls), the
+		-- picture hidden under it; or the classic one (0.20.0's), the picture itself ending in the painted strokes
+		-- with its `edgeMirror` and `edgeBacking` (below)
+		if rule.parchment then
+			local l, sl = tex:GetDrawLayer()
+			local host = tex:GetParent()
+			tex:Hide()
+			rep.paper = self:Paper(host, function(p) p:SetAllPoints(inner) end, {
+				paper = function(paper)
+					return self:ParchmentNine(host, { layParent = paper, place = function(p) p:SetAllPoints(inner) end, layer = l,
+						sublevel = sl, curls = type(rule.parchment) == "string" and rule.parchment or nil, scale = self.parchment.page })
+				end,
+				classic = function()
+					rep.edge = self:PaintedEdge(tex, inner, rule.edgeMirror)
+					rep.backing = rule.edgeBacking and Backing() or nil
+					return self:ClassicLook({ tex, rep.backing }, tex, rep.edge, function()
+						if rep.Refit then
+							rep:Refit()
+						end
+					end)
+				end,
+			})
+			if rep.object == tex then
+				rep.object = rep.paper
+			end
+		else
+			-- `edge` = "brush": the picture ends in painted strokes on every side
+			-- (Kit:PaintedEdge); `edgeMirror` flips them for a left-hand page
+			if rule.edge then
+				rep.edge = self:PaintedEdge(tex, inner, rule.edgeMirror)
+			end
+			if rule.edgeBacking then
+				rep.backing = Backing()
 			end
 		end
 		rep.Refit = function(self)

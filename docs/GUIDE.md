@@ -266,6 +266,13 @@ lines), and the nameplates on Whole plate. A window gets its shade on its first 
 is made at login for what you have not opened. The shade takes the palette's darkest tone and
 needs the reskin (each area follows its own part of it).
 
+**Parchment Style** (Look > Parchment, above the parchment switches): how the parchment looks
+wherever it shows, on the sheets you switched on (tooltips, chat, whispers, the trackers, the
+meter, the character window, the dialogs) and on the quest log, quest and spell book pages.
+**Burnt paper** (the default since 0.20.1): warm paper with burnt edges, the big pages with
+curled corners. **Classic vellum**: the vellum with painted brush-stroke edges from before 0.20.1.
+It switches at once, no `/reload`; each sheet builds the look it shows on its first need.
+
 ### Quality Gems (Backpack Kit)
 
 **Quality Gems** (on; Windows, on the Bags, Bank or Guild bank pick): every item in the bag windows,

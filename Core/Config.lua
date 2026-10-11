@@ -143,6 +143,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.20.3", lines = {
+		"Look > Parchment: Parchment Style picks how the parchment looks everywhere it shows, the sheets and the quest and spell book pages.",
+		"Burnt paper stays the default; Classic vellum brings back the vellum with brush-stroke edges from before 0.20.1. It switches at once.",
+	} },
 	{ version = "0.20.2", lines = {
 		"Edit Layout moves the game's frames too: unit frames, cast bar, party and raid, every action bar, stance, pet and totem bars, saved into your Edit Mode layout as well.",
 		"Action Bars > Backdrops: each switch now decides its own bar. On, the bar gets its backdrop and merges with the switched-on bars next to it; off, no backdrop and no merging.",
@@ -186,16 +190,6 @@ local CHANGELOG = {
 		"New art for the controls: close buttons, check boxes, arrows, + / - and icon buttons are steel plates with gold studs. A new winged portrait ring.",
 		"Chat, Combat Text, the Quest List, Route and Voice Over are addons of their own: untick one in the AddOns list and it isn't loaded. Your settings stay.",
 		"New addons: restart the game fully once after updating.",
-	} },
-	{ version = "0.19.8", lines = {
-		"Action buttons light up while you press them; the icon turns red out of range, blue without the mana and grey when it can't be used (Action Bars > Bars).",
-		"Borders: the raid frames, the unit frames, the cast bar and the personal resource bars have borders of their own, and four new styles on every border row (Look > Borders).",
-		"Backdrops round your bars, micro menu and bag bar can wear any border style. Frame Backdrop puts stone behind the player, target and focus frames.",
-		"Rings: two new rings, and a Portrait Ring row for the unit frames' portraits (Look > Borders).",
-		"Quests: Auto Accept Quests and Auto Hand In (Quest List > List, off by default); Take The Upgrade picks the best reward. Hold Shift to see the dialog as usual.",
-		"Cooldown Manager: centred rows, key bindings on the icons, a light while pressed, the count's size and a border of its own.",
-		"Two new backgrounds: Brushed dark metal and Aged parchment.",
-		"Logging in: MelloUI switches its parts on over the first moments, so the game no longer cuts it off with errors after the loading screen.",
 	} },
 }
 local LINKS = {
