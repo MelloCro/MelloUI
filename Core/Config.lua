@@ -144,9 +144,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "0.20.2", lines = {
+		"Edit Layout moves the game's frames too: unit frames, cast bar, party and raid, every action bar, stance, pet and totem bars, saved into your Edit Mode layout as well.",
 		"Action Bars > Backdrops: each switch now decides its own bar. On, the bar gets its backdrop and merges with the switched-on bars next to it; off, no backdrop and no merging.",
 		"A bar you had off beside one that was on drops out of that backdrop: switch it on to keep it inside.",
 		"The Totem Bar joins the Backdrops list.",
+		"Unit frames: the PvP icon sits on the top of the level ring, without a circle of its own.",
+		"Fixed: a target too high to tell shows its skull on the level ring again.",
+		"Group Frames: the raid has its own spacing (Raid Spacing). Right-click the party or raid frames in Edit Layout to set it.",
 	} },
 	{ version = "0.20.1", lines = {
 		"Windows: a thin stone rail or the double rail with gem corners, and a red ribbon or a plain band for the title (Look > Borders). The game's portrait and its ring stay in the top left corner.",

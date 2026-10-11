@@ -4,6 +4,10 @@
 
 - Action Bars > Backdrops: each switch now decides its own element's backdrop. On, the bar gets its backdrop and merges into one with the other switched-on bars placed next to it; off, it has no backdrop and no longer joins a neighbour's. A bar you had off beside one that was on drops out of that backdrop: switch it on to keep it inside.
 - Action Bars > Backdrops: Totem Bar, a backdrop for the shaman's totem bar.
+- Unit frames: the PvP icon has no circle of its own any more; it sits on the top of the level ring, on the player, target and focus frames.
+- Fixed: a target too high to tell (and a corpse) shows its skull on the level ring again; the ring's dark disc hid it.
+- Edit Layout moves the game's frames too: the unit frames, the cast bar, the party and raid frames, every action bar, the stance, pet, possess and totem bars and the rest Edit Mode places. Their places are saved into your active Edit Mode layout as well (a game preset is copied first, after one question), so Edit Mode shows them after a /reload; their size and other settings stay in Edit Mode.
+- Group Frames: Raid Spacing, the room between the raid's frames, now separate from the party's (Party Spacing). Right-click the party or raid frames in Edit Layout for their spacing (the raid also for the gap between its columns).
 
 ## 0.20.1
 

@@ -27,6 +27,15 @@
 --      has closed.
 --   (B, Edit Mode's place of the shared four for their reset, is
 --   Core/EditModeLayout.lua's MelloUI:EditModeSystemAnchor.)
+--   D. (0.20.2; the user, 2026-10-11: "Edit Layout should from now on be
+--      able to move Unit Frames, Cast Bars, Party Frames, Raid Frames ...
+--      and all action bars, pet bars, totem bars, stance etc"; the pick
+--      "Edit Mode's layout"; docs/plans/edit-layout-systems.md) every Edit
+--      Mode system no MelloUI mover holds is a mover of Edit Layout's own:
+--      dragged on its plate, its place held by Core's store and written
+--      into the active Edit Mode layout too, which the game places it from
+--      after the next reload; A's "Move via Edit Mode" plate is left for a
+--      system nobody can register (none read, a forbidden frame).
 --
 -- Taint (SPEC 5). MelloUI frames are never Edit Mode systems. Edit Mode is
 -- only read: EditModeManagerFrame.registeredSystemFrames (never written,
@@ -78,6 +87,10 @@ local TEXT = {
 	fallback = "Set in Edit Mode (game menu)",
 	tip = "Its place is set in the game's Edit Mode.",
 	note = "Its place and size are set in the game's Edit Mode.",
+	-- (0.20.2: D)
+	sysNote = "Moved here, its place goes into your Edit Mode layout too; Edit Mode shows it there after a /reload. Its size and other settings stay in Edit Mode.",
+	sysReset = "Edit Mode's place",
+	sysLater = "It goes back to Edit Mode's place after a /reload.",
 	button = "Move via Edit Mode",
 	side = "MelloUI Edit Layout",
 	sideTip = "Close Edit Mode and open Edit Layout, where you move and resize MelloUI's windows and trackers, the "
@@ -94,6 +107,7 @@ local OVER_LEVEL = 5        -- a secure button's level over what it covers
 local HIGH_STRATA = { FULLSCREEN = true, FULLSCREEN_DIALOG = true, TOOLTIP = true }
 local OWNER = "Edit Layout bridge"   -- (the bus owner; Kit:NextFrame's keys below)
 local SYNC_KEY, OPEN_KEY = "Edit Layout bridge: Edit Mode closed", "Edit Layout bridge: open from Edit Mode"
+local SYS_KEY = "Edit Layout bridge: systems after Edit Mode"
 local REFUSED_KEY, DISARM_KEY = "Edit Layout bridge: Edit Mode refused", "Edit Layout bridge: disarm"
 
 -- Each system's plate name, by its Enum.EditModeSystem NAME (the numbers
@@ -968,6 +982,272 @@ local function MakeSide()
 end
 
 --------------------------------------------------------------------------------
+-- D. Edit Mode's systems moved by Edit Layout (0.20.2, see the header and
+-- docs/plans/edit-layout-systems.md). Registered as movers when Edit Layout
+-- opens (a mover source: nothing at login) -- every system in Edit Mode's
+-- list (read only) that no mover holds yet (UI Modifications' four keep
+-- theirs): key "EditMode.<system>.<index>", group "hud", `follow` (Core's
+-- store holds the place and puts it back after the game lays the frame out:
+-- a saved Edit Mode layout shows from the next reload only), resize false
+-- (its size is Edit Mode's), its plate's name and page from LABELS / PAGES,
+-- Reset: Edit Mode's saved place. Moved only through the *Base methods
+-- (Core's Raw), never in a fight (Edit Layout pauses).
+--   After an Edit Layout session, every EditMode.* place new or changed in
+--   the store goes into the active Edit Mode layout as well
+--   (MelloUI:EditModeAnchorSoon: offsets at scale 1, as Edit Mode keeps them).
+--   At login (AfterLogin) a stored place Edit Mode's saved layout holds now
+--   is let go (Edit Mode owns it from then on); one it does not (a preset's
+--   copy refused) is registered and held.
+--   While Edit Mode is open the store stands back (`when`); a frame Edit Mode
+--   moved there is Edit Mode's again (its stored place forgotten when it
+--   closes).
+--------------------------------------------------------------------------------
+
+local SYS_PREFIX = "EditMode."
+local EMPTY = {}
+local sysOf = setmetatable({}, { __mode = "k" })   -- [entry] = { system, index }
+local SYS = { snap = nil, atOpen = nil }           -- the store's EditMode.* places at an Edit Layout open; frames' points at Edit Mode's open
+
+local function SysKey(system, index)
+	return SYS_PREFIX .. tostring(system) .. "." .. tostring(index or 0)
+end
+
+local function ParseKey(key)
+	if type(key) ~= "string" then
+		return nil
+	end
+	local system, index = key:match("^EditMode%.(%-?%d+)%.(%-?%d+)$")
+	system, index = tonumber(system), tonumber(index)
+	if not system then
+		return nil
+	end
+	return system, (index ~= 0) and index or nil
+end
+
+-- the store of places (Core's, UI Modifications' saved settings), or nil
+local function Store()
+	local db = MelloUI:GetModuleDB("UIModifications")
+	local store = type(db) == "table" and db.positions
+	return type(store) == "table" and store or nil
+end
+
+local function EditModeOpen()
+	local ok, shown = pcall(Shown, Manager())
+	return ok and shown == true
+end
+
+-- the frame of a system (Edit Mode's list), or nil
+local function FrameOf(system, index)
+	for _, frame in ipairs(Systems() or EMPTY) do
+		local s, i = SystemOf(frame)
+		if s == system and (i or nil) == (index or nil) then
+			return frame
+		end
+	end
+	return nil
+end
+
+-- a frame's own scale, plain (1 when unreadable)
+local function ScaleOf(frame)
+	local ok, s = pcall(frame.GetScale, frame)
+	s = ok and Finite(s)
+	return (s and s > 0) and s or 1
+end
+
+-- Core's place (its anchor's form: point nil = BOTTOMLEFT, relPoint nil =
+-- CENTER, the offsets in the frame's units on UIParent) as Edit Mode's anchor
+-- (the offsets at scale 1)
+local function AnchorOf(pos, frame)
+	local x, y = Finite(pos.x), Finite(pos.y)
+	if not (x and y) then
+		return nil
+	end
+	local s = ScaleOf(frame)
+	return { point = pos.point or "BOTTOMLEFT", relativeTo = "UIParent", relativePoint = pos.relPoint or "CENTER",
+		offsetX = x * s, offsetY = y * s }
+end
+
+-- Edit Mode's saved place equal to the stored one (half a unit)
+local function SameAsEditMode(system, index, pos, frame)
+	local p, to, rp, x, y = MelloUI:EditModeSystemAnchor(system, index)
+	local want = p and AnchorOf(pos, frame)
+	return want ~= nil and p == want.point and to == "UIParent" and rp == want.relativePoint
+		and math.abs(x - want.offsetX) < 0.5 and math.abs(y - want.offsetY) < 0.5
+end
+
+-- Reset's preview: the frame at Edit Mode's saved place (none readable -- a
+-- preset active, a place the game's containers lay -- false: it goes back
+-- with the game's next layout, the latest the next reload)
+local function SysHome(system, index)
+	return function(frame)
+		local entry = MelloUI:MoverEntry(frame)
+		local p, to, rp, x, y, inDefault = MelloUI:EditModeSystemAnchor(system, index)
+		if not (entry and p) or inDefault then
+			return false, TEXT.sysLater
+		end
+		local s = ScaleOf(frame)
+		return MelloUI:PlaceEntryAt(entry, p, _G[to] or UIParent, rp, x / s, y / s)
+	end
+end
+
+local function SysLive()
+	return not EditModeOpen()
+end
+
+local function SysNote()
+	return TEXT.sysNote
+end
+
+-- systems another MelloUI mover lays (never registered here): UI Modifications' four (their own movers and store,
+-- registered when that module is on; with it off, A's plate as before), and the game's party and raid frames while
+-- Group Frames is on (its "Party Frames" / "Raid Frames" plates lay them)
+local OTHERS = { Minimap = true, ChatFrame = true, ObjectiveTracker = true, DamageMeter = true }
+local GROUP_INDEX = { [4] = true, [5] = true }   -- (UnitFrame: Party, Raid -- LABELS)
+
+local function Others(system, index)
+	local name = SystemName(system)
+	if OTHERS[name] then
+		return true
+	end
+	if name == "UnitFrame" and GROUP_INDEX[index or 0] then
+		local gf = MelloUI:GetModule("GroupFrames")
+		return gf ~= nil and gf.isEnabled and true or false
+	end
+	return false
+end
+
+local function RegisterSystem(frame)
+	if MelloUI:MoverEntry(frame) then
+		return nil
+	end
+	local system, index = SystemOf(frame)
+	if not system or Others(system, index) then
+		return nil
+	end
+	local entry = MelloUI:RegisterMover(frame, frame, { key = SysKey(system, index), group = "hud", follow = true,
+		resize = false, label = B.Label(frame), page = PageOf(frame), default = SysHome(system, index),
+		resetLabel = TEXT.sysReset, note = SysNote, when = SysLive })
+	if entry then
+		sysOf[entry] = { system = system, index = index }
+	end
+	return entry
+end
+
+-- the mover source: every system no mover holds (Edit Layout's open and resume)
+local function RegisterSystems()
+	for _, frame in ipairs(Systems() or EMPTY) do
+		local ok, err = pcall(RegisterSystem, frame)
+		if not ok then
+			Report(err)
+		end
+	end
+end
+B.RegisterSystems = RegisterSystems
+
+-- the store's EditMode.* places (copies)
+local function StoredSystems()
+	local out = {}
+	for key, pos in pairs(Store() or EMPTY) do
+		if ParseKey(key) and type(pos) == "table" then
+			out[key] = { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y }
+		end
+	end
+	return out
+end
+
+-- after an Edit Layout session: the places new or changed since it opened,
+-- into the active Edit Mode layout
+local function WriteChanged(before)
+	for key, pos in pairs(StoredSystems()) do
+		local was = before and before[key]
+		if not (was and was.point == pos.point and was.relPoint == pos.relPoint and was.x == pos.x and was.y == pos.y) then
+			local system, index = ParseKey(key)
+			local frame = FrameOf(system, index)
+			local anchor = frame and AnchorOf(pos, frame)
+			if anchor and MelloUI.EditModeAnchorSoon then
+				MelloUI:EditModeAnchorSoon(system, index, anchor)
+			end
+		end
+	end
+end
+B.WriteChanged = WriteChanged
+
+-- the login's handover: a place Edit Mode holds now let go, the others held
+local function Handover()
+	for key, pos in pairs(StoredSystems()) do
+		local system, index = ParseKey(key)
+		local frame = FrameOf(system, index)
+		if frame then
+			if SameAsEditMode(system, index, pos, frame) then
+				MelloUI:ForgetPosition(key)
+			else
+				RegisterSystem(frame)
+			end
+		end
+	end
+end
+B.Handover = Handover
+
+-- Edit Mode opened: each held frame's point noted; closed (a frame later: its
+-- exit lays them again): one Edit Mode moved is its own again
+local function PointOf(frame)
+	local ok, p, _, rp, x, y = pcall(frame.GetPoint, frame, 1)
+	if not ok or Secret(x) or Secret(y) then
+		return nil
+	end
+	return tostring(p) .. tostring(rp) .. string.format("%.1f %.1f", Finite(x) or 0, Finite(y) or 0)
+end
+
+local function SysEditMode(entering)
+	if entering then
+		SYS.atOpen = {}
+		for entry in pairs(sysOf) do
+			if entry.key ~= nil and MelloUI:GetPosition(entry.key) then
+				SYS.atOpen[entry] = PointOf(entry.frame)
+			end
+		end
+		return
+	end
+	local at = SYS.atOpen
+	SYS.atOpen = nil
+	for entry, was in pairs(at or EMPTY) do
+		if PointOf(entry.frame) ~= was then
+			MelloUI:ForgetPosition(entry.key)
+		end
+	end
+end
+
+local function SysEditLayout(showing, state)
+	if showing then
+		if not SYS.snap then
+			SYS.snap = StoredSystems()
+		end
+		return
+	end
+	if state == "closed" then
+		local before = SYS.snap
+		SYS.snap = nil
+		local ok, err = pcall(WriteChanged, before)
+		if not ok then
+			Report(err)
+		end
+	end
+end
+
+if MelloUI.AddMoverSource then
+	MelloUI:AddMoverSource(RegisterSystems)
+end
+MelloUI:On("editlayout", SysEditLayout, OWNER .. ": systems")
+if MelloUI.AfterLogin then
+	MelloUI:AfterLogin(function()
+		local ok, err = pcall(Handover)
+		if not ok then
+			Report(err)
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- The bus: 'editmode' (the one listener at load)
 --------------------------------------------------------------------------------
 
@@ -989,6 +1269,13 @@ end
 
 MelloUI:On("editmode", function(entering)
 	local K = Kit()
+	if not entering and K and K.NextFrame then
+		K:NextFrame(SYS_KEY, function()
+			SysEditMode(false)
+		end)
+	elseif entering then
+		SysEditMode(true)
+	end
 	if entering then
 		local ok, err = pcall(MakeSide)
 		if not ok then

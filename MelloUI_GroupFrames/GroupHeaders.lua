@@ -183,9 +183,16 @@ local function GameFootprint()
 	return GAME_MEMBER.w * ratio, (GAME_MEMBER.n * GAME_MEMBER.h + (GAME_MEMBER.n - 1) * sp) * ratio
 end
 
+-- the room between two frames: the party's, or the raid's own (0.20.2)
+local function Spacing(kind)
+	local db = DB()
+	return (kind == "raid" and (db.raidSpacing or db.spacing) or db.spacing) or 0
+end
+H.Spacing = Spacing
+
 local function Footprint(kind)
 	local db = DB()
-	local w, h, sp = db.width, db.height, db.spacing
+	local w, h, sp = db.width, db.height, Spacing(kind)
 	if kind == "party" and db.partyStyle == "party" then
 		-- (the game's normal party frames show at its place: the plate their size)
 		return GameFootprint()
@@ -229,7 +236,10 @@ local function MakeContainer(kind)
 	c:SetSize(Footprint(kind))
 	c:SetFrameStrata("LOW")
 	local key = kind == "party" and "GroupFramesParty" or "GroupFramesRaid"
+	-- (0.20.2, the user: "when right clicking on the Party or Raid Frames, it should have a slider to modify the
+	-- Distance Between the Party/Raid Frames") the box's own rows: the party's spacing, the raid's and its groups' gap
 	MelloUI:RegisterMover(c, c, { key = key, default = Home(kind), label = TEXT[kind], page = RD.module.name,
+		settings = kind == "party" and { "GroupFrames.spacing" } or { "GroupFrames.raidSpacing", "GroupFrames.raidGap" },
 		placeholder = true, when = function()
 			return RD.module.isEnabled and true or false
 		end, note = kind == "party" and function()
@@ -282,7 +292,7 @@ local ANCHOR = { DOWN = "TOPLEFT", UP = "BOTTOMLEFT", RIGHT = "TOPLEFT", LEFT = 
 local function Attributes(kind)
 	local h, c = headers[kind], containers[kind]
 	local db = DB()
-	local sp = db.spacing or 0
+	local sp = Spacing(kind)
 	Set(h, "mello-width", db.width)
 	Set(h, "mello-height", db.height)
 	if kind == "party" then

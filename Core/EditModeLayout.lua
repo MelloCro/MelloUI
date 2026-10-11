@@ -80,6 +80,13 @@
 --       the settings it has only; Enum.EditModeSystem, its systemIndex),
 --       held changes over them; preset true while the active layout is one
 --       of the game's presets; name the layout's
+--   MelloUI:EditModeAnchorSoon(system, index, anchor, done)        (0.20.2)
+--       a system's place held with the settings' changes and written with
+--       them (one save, the preset question once, the reload line once):
+--       anchor = { point, relativeTo (a frame's name), relativePoint,
+--       offsetX, offsetY } at scale 1, as Edit Mode keeps it; written as its
+--       anchorInfo, its second anchor dropped, isInDefaultPosition false (Edit
+--       Layout's moves of Edit Mode's systems: Core/EditLayoutBridge.lua D)
 --   MelloUI:SetEditModeSystemSettings(system, index, values, copy, done)
 --       -> ok, why
 --       values saved into the active layout's system (0.19.9); the game
@@ -1084,6 +1091,16 @@ WriteSettings = function(entries, copy)
 					changed = true
 				end
 			end
+			-- (0.20.2) its place, as Edit Mode's own drag keeps one (EditModeManager UpdateSystemAnchorInfo): the
+			-- anchor at scale 1, no second anchor, out of its default place
+			local a = entry.anchor
+			if type(a) == "table" then
+				sys.anchorInfo = { point = a.point, relativeTo = a.relativeTo, relativePoint = a.relativePoint,
+					offsetX = a.offsetX, offsetY = a.offsetY }
+				sys.anchorInfo2 = nil
+				sys.isInDefaultPosition = false
+				changed = true
+			end
 		end
 	end
 	if not found then
@@ -1308,6 +1325,19 @@ function MelloUI:EditModeSettingsSoon(system, index, values, done)
 	soonTimer = C_Timer.NewTimer(SOON, function()
 		FlushHeld(false)
 	end)
+end
+
+-- (0.20.2) A system's place, held and written as the settings are (see the header)
+function MelloUI:EditModeAnchorSoon(system, index, anchor, done)
+	if type(anchor) ~= "table" then
+		return
+	end
+	MelloUI:EditModeSettingsSoon(system, index, {}, done)
+	local h = held[Key(system, index)]
+	if h then
+		h.anchor = { point = anchor.point, relativeTo = anchor.relativeTo or "UIParent",
+			relativePoint = anchor.relativePoint, offsetX = anchor.offsetX, offsetY = anchor.offsetY }
+	end
 end
 
 -- a write held now (Which Bar changed: the last bar's values go first)

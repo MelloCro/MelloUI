@@ -23,6 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 KEEP = 5                     # the user: "keep only the last 5"
 MAX_LINES, MAX_CHARS = 12, 1900   # the newest entry, in Home's one-column card
+MAX_LINE = 190   # one line (hard1/texts holds the same)
 
 # the same words release.py refuses in the release notes
 TOOL_TALK = re.compile(
@@ -78,6 +79,10 @@ def problems(version=None):
     if news:
         v, lines = news[0]
         chars = sum(len(line) for line in lines)
+        long = [line for line in lines if len(line) > MAX_LINE]
+        if long:
+            found.append("What's new's newest entry (%s) has %d line(s) over %d characters: %s" % (v, len(long), MAX_LINE,
+                                                                                              long[0][:80]))
         if len(lines) > MAX_LINES or chars > MAX_CHARS:
             found.append("What's new's newest entry (%s) is %d lines, %d characters: at most %d and %d fit Home's "
                          "column" % (v, len(lines), chars, MAX_LINES, MAX_CHARS))

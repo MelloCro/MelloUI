@@ -5732,7 +5732,11 @@ Kit.Replacements = {
 	["UnitFrameBarMirrored"]                  = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1, borderGroup = "unitframe" },   -- ... the target's (ring on the right)
 	["UnitFrameHealthBar"]                    = { kind = "bar", bar = "frame", dropCap = "l", capOut = true, troughSub = -1, state = "red", borderGroup = "unitframe" },   -- a health bar: the same B3, its end gem kept red (user, 2026-09-23, painted on the player frame) where every other bracket's is iron
 	["UnitFrameHealthBarMirrored"]            = { kind = "bar", bar = "frame", dropCap = "r", capOut = true, troughSub = -1, state = "red", borderGroup = "unitframe" },
-	["UI-HUD-UnitFrame-SmallCircle"]          = { kind = "texture", piece = "buttons/orb_normal", square = true, owner = true },   -- L1: the level circle (and the PvP badge's circle): the orb plate under the frame's own text / faction icon
+	["UI-HUD-UnitFrame-SmallCircle"]          = { kind = "texture", piece = "buttons/orb_normal", square = true, owner = true },   -- L1: the level circle: the orb plate under the frame's own level text
+	-- (0.20.2, the user: "can we remove the circle border and background from the PVP icon, and just place the icon on
+	-- the top side of the Level Border?") the PvP badge's circle (the same atlas, its own key: UnitFramePanel's
+	-- PvPOnLevel) faded, no orb; its faction icon rides the level orb's top
+	["UnitFrame-PvpBackgroundCircle"]         = { kind = "fade" },
 	["UI-HUD-UnitFrame-Target-PortraitOn-Type"] = { kind = "fade" },   -- the target's reaction strip (the name band): faded, the plate below stands on its rect
 
 	-- ... the party frames (UnitFramePanel too, the same picks; the member frame's picture is ARTWORK 0 with the

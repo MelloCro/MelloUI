@@ -1020,6 +1020,99 @@ local function SkinCircle(circle, number)
 	return rep
 end
 
+-- (0.20.2, the user: "can we remove the circle border and background from the PVP icon, and just place the icon on
+-- the top side of the Level Border?") The PvP badge (this client's Camelot: PvpBackgroundCircle and its faction icon
+-- PvpBackgroundIcon, shown and given its atlas by UnitFrameUtil.UpdateUnitPvPIndicator, which never anchors it): the
+-- circle faded (no orb, no disc), the icon on the level orb's top edge -- raised PVP_LIFT so the level number stays
+-- clear -- drawn over the orb and under the number (OVERLAY 6: the orb one over the circle's 4, the number at 7). Its
+-- own anchors and layer back when the kit goes (PlacePvPIcons); kept beside the game's region, never on it.
+local PVP_LIFT = 5   -- (the icon's units: its template's scale 0.8)
+local pvpSaved = setmetatable({}, { __mode = "k" })   -- [icon] = { points, layer, sub } while it rides the orb
+
+local function PvPOnLevel(circle, icon, level)
+	if circle then
+		FadeArt({ { circle, "UnitFrame-PvpBackgroundCircle" } })
+	end
+	if type(icon) == "table" and type(icon.SetPoint) == "function" and type(level) == "table" then
+		skin.pvpIcons[#skin.pvpIcons + 1] = { icon = icon, level = level }
+	end
+end
+
+local function PlacePvPIcons(on)
+	for _, e in ipairs(skin and skin.pvpIcons or {}) do
+		local icon = e.icon
+		local saved = pvpSaved[icon]
+		if on then
+			if not saved then
+				saved = { points = {} }
+				for i = 1, icon:GetNumPoints() do
+					local ok, p, rel, rp, x, y = pcall(icon.GetPoint, icon, i)
+					if not ok or Secret(x) or Secret(y) then
+						saved = nil
+						break
+					end
+					saved.points[i] = { p, rel, rp, x, y }
+				end
+				if saved then
+					saved.layer, saved.sub = icon:GetDrawLayer()
+					pvpSaved[icon] = saved
+				end
+			end
+			if saved then
+				icon:ClearAllPoints()
+				icon:SetPoint("CENTER", e.level, "TOP", 0, PVP_LIFT)
+				icon:SetDrawLayer("OVERLAY", 6)
+			end
+		elseif saved then
+			icon:ClearAllPoints()
+			for _, pt in ipairs(saved.points) do
+				icon:SetPoint(unpack(pt))
+			end
+			icon:SetDrawLayer(saved.layer, saved.sub)
+			pvpSaved[icon] = nil
+		end
+	end
+end
+
+-- (0.20.2, the user: "Skull not showing in Enemy Portrait, the area where the level shows is blank instead of a
+-- skull showing") A target too high to tell (and a corpse) shows the game's skull where its level number was
+-- (TargetFrameContentContextual.HighLevelTexture, CheckLevel's Show / Hide; Camelot: CENTER on the level circle). It is
+-- a region of the contextual frame, under the main frame's level orb and its dark disc, which hid it. Its cover: the
+-- same atlas at its own size over the disc, a region of the orb's frame at the level number's layer (OVERLAY 7),
+-- shown and hidden with the game's (post-hooks on its Show / Hide / SetShown) while the kit is on; the game's left
+-- as it is under the disc. Made once per frame, with the frame's dressing.
+local SKULL_ATLAS = "UI-HUD-UnitFrame-Target-HighLevelTarget_Icon"
+
+local function SkullOnOrb(skull, circle)
+	if type(skull) ~= "table" or type(skull.IsShown) ~= "function" or type(circle) ~= "table" then
+		return
+	end
+	local okP, host = pcall(circle.GetParent, circle)
+	if not (okP and type(host) == "table" and host.CreateTexture) then
+		return
+	end
+	local own = host:CreateTexture(nil, "OVERLAY", nil, 7)
+	own:SetAtlas(SKULL_ATLAS, true)
+	own:SetPoint("CENTER", circle, "CENTER", 0, 0)
+	own:Hide()
+	local function Sync()
+		local ok, shown = pcall(skull.IsShown, skull)
+		own:SetShown(active and ok and not Secret(shown) and shown == true)
+	end
+	for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+		if type(skull[method]) == "function" then
+			hooksecurefunc(skull, method, Sync)
+		end
+	end
+	skin.skulls[#skin.skulls + 1] = Sync
+end
+
+local function SyncSkulls()
+	for _, sync in ipairs(skin and skin.skulls or {}) do
+		sync()
+	end
+end
+
 -- The player's name band rect: the target's reaction strip mirrored (same
 -- size, anchored from the left edge as the target's is from the right).
 local function PlayerBandRect(container)
@@ -1301,7 +1394,7 @@ local function SkinPlayer()
 	TuckBars(skin.playerRing, { health, mana }, false)
 	RingCover(skin.playerRing, { health, mana }, false, container)
 	Shade(u, SkinCircle(main.LevelBackgroundCircle, _G.PlayerLevelText), true)
-	Shade(u, SkinCircle(main.PvpBackgroundCircle), true)
+	PvPOnLevel(main.PvpBackgroundCircle, main.PvpBackgroundIcon, main.LevelBackgroundCircle)
 	Watch(u)
 end
 
@@ -1341,7 +1434,9 @@ local function SkinTargetLike(frame)
 	RingCover(ring, { health, main.ManaBar }, true, container)
 	local level = SkinCircle(main.LevelBackgroundCircle, main.LevelText)
 	Shade(u, level, true)
-	Shade(u, SkinCircle(contextual and contextual.PvpBackgroundCircle), true)
+	PvPOnLevel(contextual and contextual.PvpBackgroundCircle, contextual and contextual.PvpBackgroundIcon,
+		main.LevelBackgroundCircle)
+	SkullOnOrb(contextual and contextual.HighLevelTexture, main.LevelBackgroundCircle)
 	Watch(u)
 	skin.targets[frame] = { ring = ring }
 	-- its marks: the ring and the level orb in the unit's metal (the game's
@@ -1641,7 +1736,7 @@ local function Build()
 		-- nameShades: [name] = its shade (NameShade)
 		-- backdrops: [frame] = its Frame Backdrop's parts (0.19.8, LayoutFrameBackdrops)
 		skin = { reps = {}, followers = {}, targets = {}, names = {}, covers = {}, party = {}, units = {}, due = {}, marks = {},
-			nameShades = {}, backdrops = {} }
+			nameShades = {}, backdrops = {}, pvpIcons = {}, skulls = {} }
 		-- (taken with the first dressing, once)
 		MelloUI:On("setting", OnBarSetting, "Unit Frames Kit bar background")
 	end
@@ -1764,6 +1859,8 @@ local function Activate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
+	PlacePvPIcons(true)
+	SyncSkulls()
 	for _, entry in ipairs(skin.followers) do
 		entry.rep:SetShown(entry.region:IsShown())
 	end
@@ -1793,6 +1890,8 @@ local function Deactivate()
 	for _, rep in ipairs(skin.reps) do
 		rep:Disable()
 	end
+	PlacePvPIcons(false)
+	SyncSkulls()
 	RestoreNames()
 	SyncNameShades()
 	UntuckBars()
@@ -1869,8 +1968,8 @@ end
 --             the player frame's portrait standing at its left end
 --     reach   how far the frame's art stands past `region`'s edges, in UI
 --             units of region's scale: 0 on the kit ring (its rect is the
---             whole ring; the kit's PvP orb stands about 4 px past its
---             left edge, inside the widget's 6 px gap), 4 on
+--             whole ring; 0.20.2: no PvP orb there, its icon rides the
+--             level orb), 4 on
 --             the game's portrait (its own ring round it), 13 there while
 --             the game's PvP badge shows (its circle over the ring's left
 --             rim); add it to the gap. Read at each call (ask again at each

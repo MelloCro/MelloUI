@@ -241,6 +241,8 @@ local M = MelloUI:RegisterModule(OWNER, {
 	installer = false,
 	enabledByDefault = true,
 	new = NEW,   -- (its page's side-list entry: New)
+	-- (0.20.2) the raid spacing's one-time copy: this machine's step, never in a profile
+	keep = { "raidSpacingMigrated" },
 	defaults = {
 		-- the frames
 		partyStyle = "group",
@@ -249,6 +251,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		width = MS.width,
 		height = MS.height,
 		spacing = 2,
+		raidSpacing = 2,
 		partyGrowth = "DOWN",
 		partySort = "role",
 		raidGroupBy = "group",
@@ -303,8 +306,8 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Each frame's width (the game's raid frame: 72)." },
 		{ type = "slider", key = "height", name = "Frame Height", new = NEW, min = MS.heightMin, max = MS.heightMax, step = 1,
 		  desc = "Each frame's height (the game's raid frame: 36)." },
-		{ type = "slider", key = "spacing", name = "Spacing", new = NEW, min = 0, max = MS.spacingMax, step = 1,
-		  desc = "The room between two frames." },
+		{ type = "slider", key = "spacing", name = "Party Spacing", new = NEW, min = 0, max = MS.spacingMax, step = 1,
+		  desc = "The room between two of the party's frames. Also on the party's plate in Edit Layout (right-click it)." },
 		{ type = "dropdown", key = "partyGrowth", name = "Party Grows", new = NEW, values = C.partyGrowth,
 		  desc = "Which way the party's frames line up from where you placed them." },
 		{ type = "dropdown", key = "partySort", name = "Party Order", new = NEW, values = C.partySort,
@@ -315,6 +318,9 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Down a column then the next column across, or across a row then the next row down." },
 		{ type = "slider", key = "raidPerLine", name = "Frames Per Column / Row", new = NEW, min = 1, max = 40, step = 1,
 		  desc = "How many frames in a column (or a row) before the next one starts. 5 lines the raid up by its groups." },
+		-- (0.20.2, the user: "a slider to modify the Distance Between the Party/Raid Frames" -- pick "Separate party / raid")
+		{ type = "slider", key = "raidSpacing", name = "Raid Spacing", new = "0.20.2", min = 0, max = MS.spacingMax, step = 1,
+		  desc = "The room between two of the raid's frames in a column (or a row). Also on the raid's plate in Edit Layout (right-click it)." },
 		{ type = "slider", key = "raidGap", name = "Gap Between Columns / Rows", new = NEW, min = 0, max = 40, step = 1,
 		  desc = "The room between two columns (or rows) of the raid." },
 		{ type = "toggle", key = "rangeFade", name = "Fade When Out Of Range", new = NEW,
@@ -869,6 +875,13 @@ end, "script")
 
 function M:OnInit(db)
 	self.db = db
+	-- (0.20.2: the raid's spacing of its own) a player from before keeps the one spacing party and raid shared; once
+	if not db.raidSpacingMigrated then
+		db.raidSpacingMigrated = true
+		if type(db.spacing) == "number" then
+			db.raidSpacing = db.spacing
+		end
+	end
 end
 
 -- the game's party and raid frames hidden by ours now (the Fader leaves them
@@ -933,7 +946,7 @@ end
 
 -- the settings that move or size the secure frames (out of combat only: a
 -- fight's change waits for its end); every other one only repaints
-RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, partyGrowth = true, partySort = true,
+RD.LAYOUT_KEYS = { width = true, height = true, spacing = true, raidSpacing = true, partyGrowth = true, partySort = true,
 	raidGroupBy = true, raidFlow = true, raidPerLine = true, raidGap = true, showPlayer = true, solo = true }
 
 function M:OnSettingChanged(key, _, db)

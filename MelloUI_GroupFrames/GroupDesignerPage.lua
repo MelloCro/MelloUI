@@ -1017,6 +1017,7 @@ local function FakeShow()
 	h:SetSize(1, 1)
 	local list = RD:List()
 	local per = math.max(1, db.raidPerLine or 5)
+	local sp = ns.Headers and ns.Headers.Spacing and ns.Headers.Spacing("raid") or db.spacing   -- (0.20.2: the raid's own)
 	for n = 1, FAKE_COUNT do
 		local f = fake.frames[n]
 		if not f then
@@ -1031,9 +1032,9 @@ local function FakeShow()
 		local line, at = math.floor((n - 1) / per), (n - 1) % per
 		local x, y
 		if db.raidFlow == "across" then
-			x, y = at * (db.width + db.spacing), -line * (db.height + (db.raidGap or 0))
+			x, y = at * (db.width + sp), -line * (db.height + (db.raidGap or 0))
 		else
-			x, y = line * (db.width + (db.raidGap or 0)), -at * (db.height + db.spacing)
+			x, y = line * (db.width + (db.raidGap or 0)), -at * (db.height + sp)
 		end
 		f:ClearAllPoints()
 		f:SetPoint("TOPLEFT", h, "TOPLEFT", x, y)
