@@ -96,7 +96,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		-- (0.20.4, the user 2026-10-11: "the Chat editbox is always shown, it needs to be hidden and as soon as you
 		-- start typing it should apprear, and then again disappear once you are done typing": the game's own Classic
 		-- chat style, SetTypingOnly)
-		{ type = "toggle", key = "editBoxWhileTyping", name = "Input Box Only While Typing", new = "0.20.4",
+		{ type = "toggle", key = "editBoxWhileTyping", name = "Input Box Only While Typing",
 		  desc = "The chat input box shows only while you type: Enter (or /) brings it up, and it goes again once you send the line or press Escape. It sets the game's Chat Style to Classic while on, and gives your own back when off. The change shows from the next line you type." },
 		{ type = "toggle", key = "chatButtons", name = "Chat Buttons",
 		  desc = "The game's chat buttons in their column left of the chat: Friends at the top, Channels, the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak). While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },

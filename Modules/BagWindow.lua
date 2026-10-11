@@ -89,7 +89,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
 		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
 		-- a tick each -- the Recent / Gear / Quest / Consumables / Junk / Trade Goods Kind switches folded in)
-		{ type = "canvas", key = "kinds", name = "Kinds", new = "0.20.4", height = KINDS_H,
+		{ type = "canvas", key = "kinds", name = "Kinds", height = KINDS_H,
 		  search = "kinds order categories priority hearthstone groups lines separator equipment crafting recent junk",
 		  desc = "Your bag window's kinds in the order they show, the top first: drag a row to move it. A line draws a line across the window between the kinds over and under it; a group puts the kinds under it, to the next line, under one heading you can fold. Untick a kind and its items go to their own type, or to Other.",
 		  build = function(canvas, width)
@@ -97,7 +97,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 		  end },
 		-- (0.20.4, stage 2 of bag_kinds_sketch; the user: "picking up an item does not show that i can manually place
 		-- that item into a group") the + slots while an item is held; the placed items forgotten here
-		{ type = "button", name = "Items You Placed", text = "Forget", new = "0.20.4",
+		{ type = "button", name = "Items You Placed", text = "Forget",
 		  search = "place drop plus slot item kind assign",
 		  desc = "While you hold an item, every kind in your bag window shows a + slot: drop the item there and it always goes under that kind (drop it on its own kind's + to put it back). Forget puts every item you placed back under its own kind.",
 		  onClick = function()
