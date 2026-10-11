@@ -826,7 +826,7 @@ local function RegisterNamed(name, frame)
 			mine[entry] = true
 			if entry.box and not boxed[entry] then
 				if next(boxed) == nil then
-					MelloUI:On("column", BoxedRelay, "UI Modifications: boxed movers")
+					MelloUI:On("column", BoxedRelay, "UI Modifications: boxed entries")
 				end
 				boxed[entry] = true
 			end
