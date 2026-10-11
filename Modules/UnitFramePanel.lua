@@ -499,6 +499,8 @@ end
 -- [portrait] = its refit, for the SetPortraitTexture hook (a side table: no
 -- field of the game's portrait written)
 local refits = setmetatable({}, { __mode = "k" })
+-- (0.20.4) the round mask a ringed portrait gets besides the game's (SkinRing's RoundMask)
+local ROUND_PORTRAIT_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 -- (0.19.0) [portrait] = the rep of the ring round it, for M:RingOf
 local ringOf = setmetatable({}, { __mode = "k" })
 -- (0.20.0) [level circle] = the kit's orb on it, for M:CoverOf
@@ -550,8 +552,28 @@ local function SkinRing(picture, portrait, mask, key)
 		local ok, rw, w, h = pcall(ReadFit, rep, portrait)
 		return ok and rw == fitRing and w == fitW and h == fitH
 	end
+	-- (0.20.4; the user, 2026-10-11, the game's own portrait -- Class Icons off -- square at its bottom right: "can you
+	-- maks that corner or just make that portrait be round") the game's portrait mask leaves that corner square (its
+	-- frame art covered it there; the ring does not): a round mask of ours on the portrait too while the ring is on,
+	-- the two masks together round, taken off with the ring
+	local round, roundOn = nil, false
+	local function RoundMask(on)
+		if on == roundOn or not (portrait.AddMaskTexture and portrait.RemoveMaskTexture) then
+			return
+		end
+		if on and not round then
+			round = portrait:GetParent():CreateMaskTexture()
+			round:SetTexture(ROUND_PORTRAIT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+			round:SetAllPoints(portrait)
+		end
+		if round then
+			roundOn = on
+			pcall(on and portrait.AddMaskTexture or portrait.RemoveMaskTexture, portrait, round)
+		end
+	end
 	rep.onEnable = function()
 		kitRingOn[portrait] = true
+		RoundMask(true)
 		if icons and icons.RefreshPortraits then
 			icons:RefreshPortraits({ portrait })
 		end
@@ -559,6 +581,7 @@ local function SkinRing(picture, portrait, mask, key)
 	end
 	rep.onDisable = function()
 		kitRingOn[portrait] = nil
+		RoundMask(false)
 		pcall(Kit.UnfitPortrait, Kit, portrait)
 		if mask then
 			pcall(Kit.UnfitPortrait, Kit, mask)

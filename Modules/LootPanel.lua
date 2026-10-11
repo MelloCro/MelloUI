@@ -438,8 +438,11 @@ local function SkinPage(f)
 	if not bg then
 		return
 	end
+	-- (0.20.5, the user: "the loot window seems to be missing its background texture") inside the rail as it lies:
+	-- the window wears it outward (SkinWindow), so the stone reaches the window's sides and bottom (Kit:PageInset)
+	local ins = Kit:PageInset(f)
 	if IsTexture(bg) then
-		skin.page = Replace(bg, { as = "UI-Background-Rock", parent = f, rect = f, inset = Kit:OuterRailInset() })
+		skin.page = Replace(bg, { as = "UI-Background-Rock", parent = f, rect = f, inset = ins })
 		return
 	end
 	local art = Textures(bg)
@@ -447,11 +450,10 @@ local function SkinPage(f)
 	if not first then
 		return
 	end
-	skin.page = Replace(first, { as = "UI-Background-Rock", parent = bg, rect = f, inset = Kit:OuterRailInset(), alsoFade = art })
+	skin.page = Replace(first, { as = "UI-Background-Rock", parent = bg, rect = f, inset = ins, alsoFade = art })
 	-- the inner panel over the stone (BACKGROUND 7: above the picture, which
 	-- takes the replaced piece's sublevel; the list's frames are above the
 	-- flat background's level 0)
-	local ins = Kit:OuterRailInset()
 	local panel = bg:CreateTexture(nil, "BACKGROUND", nil, 7)
 	pieceOf[panel] = true
 	panel:SetPoint("TOPLEFT", f, "TOPLEFT", ins[1], -ins[3])
@@ -1035,6 +1037,25 @@ local function DumpWindow(f)
 	Found("background (Bg)", f.Bg, f.Bg and (IsTexture(f.Bg) and " (a texture)" or " (a flat frame, level " .. Level(f.Bg) .. ")") or nil)
 	Found("page stone", skin and skin.page and skin.page.object, (skin and skin.page) and (" " .. Rect(skin.page.inner or skin.page.object)) or nil)
 	Found("inner panel (2e)", skin and skin.panel, (skin and skin.panel) and (" alpha " .. PANEL_ALPHA .. ", shown " .. Shown(skin.panel) .. ", " .. Rect(skin.panel)) or nil)
+	-- (0.20.5, the user: "the loot window seems to be missing its background texture") what the stone draws and
+	-- what it hangs on: the texture's own state, the game texture it follows, the flat frame both are regions of
+	local stone = skin and skin.page and skin.page.tex
+	if stone then
+		local layer, sub = stone:GetDrawLayer()
+		MelloUI:Print("    stone texture: shown %s, visible %s, alpha %s, piece %s, file %s, layer %s %s, %s", Shown(stone),
+			tostring(select(2, pcall(stone.IsVisible, stone))), tostring(select(2, pcall(stone.GetAlpha, stone))),
+			tostring(Kit.pieceNameOf[stone]), tostring(select(2, pcall(stone.GetTexture, stone))), tostring(layer),
+			tostring(sub), Rect(stone))
+		local game = skin.page.region
+		if game then
+			MelloUI:Print("    follows the game's %s: shown %s, alpha %s", Label(game), Shown(game),
+				tostring(select(2, pcall(game.GetAlpha, game))))
+		end
+		if f.Bg then
+			MelloUI:Print("    Bg frame: shown %s, visible %s, alpha %s, %s", Shown(f.Bg),
+				tostring(select(2, pcall(f.Bg.IsVisible, f.Bg))), tostring(select(2, pcall(f.Bg.GetAlpha, f.Bg))), Rect(f.Bg))
+		end
+	end
 	local portrait = Portrait(f)
 	Found("portrait", portrait, portrait and string.format(" ring %s, fitted %s", tostring(skin and skin.ring ~= nil), tostring(portraitSavedOf[portrait] ~= nil))
 		or " (none: no ring on this window, as the game's)")

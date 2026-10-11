@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.5
+
+- Fixed: a parchment tooltip fading out showed a box inside it (the paper laid under its burnt edges). The parchment is cut anew so nothing lies under anything: it fades as one, in tooltips and everywhere else it shows. Restart the game fully once after updating (new parchment textures).
+- Fixed: the game's own portraits (Class Icons off) had a square corner at the bottom right of the unit frames' ring; they are round now.
+- Fixed: borders round bars (unit frames, cast bar, nameplates, the personal resource display) and auras sat a little away from them. The Single rail now closes on the bar, and the bar's dark background runs in under every border, so nothing shows between the two.
+- Fixed: the loot window's stone stopped short of its border, and the world showed through around the items. It reaches the border again.
+
 ## 0.20.4
 
 - Chat: Input Box Only While Typing (Chat > Chat Frame > Behaviour, on): the chat input box no longer stays on screen. Press Enter (or /) and it appears; send the line or press Escape and it goes again. It uses the game's own Classic chat style, and gives your own Chat Style back when you switch it off.

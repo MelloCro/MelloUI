@@ -719,7 +719,9 @@ end
 -- a kit nine-slice (Tools/make_parchment.py: parchment/sheet_*) laid on a rect as REGIONS of `owner`, in its layer
 -- stack (Kit:NineSlice's owner mode: the paper at `sublevel`, its burnt edges one over it, its corners one over
 -- those), at any size: the paper repeats at the tiles' one density, the edges along their length, the corners stay
--- whole; the torn outline is in the edges' and corners' own alpha, no mask. In the pack's own tone (the user's pick):
+-- whole; the torn outline is in the edges' and corners' own alpha, no mask; the edges opaque to their inner side and
+-- the paper starting there (0.20.5, bodyInset 1: nothing under anything -- a fading tooltip showed the paper laid
+-- under the edges as a box, every layer fading on its own). In the pack's own tone (the user's pick):
 -- no tint. `curls` ("tl", "br", "tl br"): a big page's curled corners (the user's pick: the quest and spell book
 -- pages, the character stats pane's top left): the page family (parchment/page_*), its corners big enough to hold
 -- a curl and the shading under it whole (a sheet's cut them off and its square showed -- in game, 2026-10-10), the
@@ -750,7 +752,8 @@ function Kit:ParchmentNine(owner, opts)
 	local page = curls ~= ""
 	local scale = opts.scale or P.scale
 	local nine = self:NineSlice(lay, { owner = owner, prefix = page and P.pagePrefix or P.prefix, body = P.body, scale = scale,
-		bodyScale = scale, gems = false, slices = false, bodyLayer = layer, bodySub = sub, edgeLayer = layer, edgeSub = sub + 1 })
+		bodyScale = scale, gems = false, slices = false, bodyLayer = layer, bodySub = sub, edgeLayer = layer, edgeSub = sub + 1,
+		bodyInset = 1 })
 	-- (a page curled at one corner: its other curled corner the plain one)
 	if page then
 		for _, c in ipairs({ "tl", "br" }) do
@@ -3178,8 +3181,10 @@ local function NineSlice_Art(skin, opts)
 		-- the body reaches half way under the edges: the interior shows inside the gem corners' rounded elbows (they
 		-- lie a whole rail in), and none of it past a gem's diamond at the frame's outer corner (0.20.1, the user: two
 		-- "black spots" -- with the body run under the whole edge, the stone and the gem's baked shadow filled the
-		-- corner square beyond the diamond once the double rail hugged the window)
-		local inset = T / 2
+		-- corner square beyond the diamond once the double rail hugged the window). `bodyInset` (0.20.5): another share
+		-- of the edge (the parchment's 1: its edges opaque to their inner side, the paper from there -- nothing under
+		-- anything, so a fade shows no edge of a hidden layer)
+		local inset = T * (opts.bodyInset or 0.5)
 		-- the family's own stone, or another tile (`body` = its name, `bodyScale` its scale)
 		local bodyName = type(opts.body) == "string" and opts.body or (prefix .. "_body")
 		local body = Tiled(host, bodyName, bodyLayer, bodySub, opts.bodyScale or scale)
@@ -10404,6 +10409,19 @@ function Kit:OuterRailInset()
 	return { side(prefix .. "_l", "r"), side(prefix .. "_r", "l"), side(prefix .. "_t", "b"), side(prefix .. "_b", "t") }
 end
 
+-- (0.20.5) A window's page inside its outer rail, as insets from the window ({ l, r, t, b }, UI px): the rail's depth
+-- on each side, or -- its rail laid outward round it (Kit:SkinWindowShell's `outward`, Kit.outwardOf) -- the top
+-- only, the page reaching the sides and bottom, where the rail's inner edge lies on the window's. Every page uses it:
+-- the shell's, a window laying its own (the loot window's flat Bg; the user: its stone stopped a rail short of the
+-- rail, the world showing between), a page's width (the mail window's)
+function Kit:PageInset(frame)
+	local inset = self:OuterRailInset()
+	if frame and Kit.outwardOf[frame] then
+		return { 0, 0, inset[3], 0 }
+	end
+	return inset
+end
+
 -- The class medallion's size in the character window's ring: the size every
 -- portrait icon and ring disc is brought to (WINDOW-RULES 2b).
 local MEDALLION_TO_RING = 0.759
@@ -10868,12 +10886,7 @@ function Kit:SkinWindowShell(frame, replace, skin, opts)
 		-- rock starts below the title area; a second picture for that strip
 		-- met the first with a seam — user, 2026-09-21), as the Legacy pages
 		-- (`outward`: the rail's inner edge on the window's at the sides and bottom -- the page reaches them)
-		local inset = self:OuterRailInset()
-		local out = Kit.outwardOf[frame]
-		if out then
-			inset = { 0, 0, inset[3], 0 }
-		end
-		replace(frame.Bg, { as = opts.bg, parent = frame, rect = frame, inset = inset })
+		replace(frame.Bg, { as = opts.bg, parent = frame, rect = frame, inset = self:PageInset(frame) })
 	end
 	local portrait = opts.portrait or (frame.PortraitContainer and frame.PortraitContainer.portrait)
 	local corner = frame.NineSlice and frame.NineSlice.TopLeftCorner

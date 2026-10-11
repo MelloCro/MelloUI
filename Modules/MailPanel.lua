@@ -676,7 +676,7 @@ local function FitSpan(span)
 		L, R = il, ir
 	else
 		-- no inset: the page's width inside the outer rail (a rail laid round the window: the page's own)
-		local ins = Kit.outwardOf[span.win.frame] and { 0, 0 } or Kit:OuterRailInset()
+		local ins = Kit:PageInset(span.win.frame)
 		L, R = pl + ins[1] + 2, pr - ins[2] - 2
 	end
 	local bottom = B

@@ -143,6 +143,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.20.5", lines = {
+		"Fixed: a parchment tooltip fading out showed a box inside it. The parchment now fades as one, wherever it shows.",
+		"Fixed: the game's own portraits (Class Icons off) had a square corner on the unit frames; they are round now.",
+		"Fixed: a gap between the bars and their border (the Single rail and the Stone rail): the border now closes on the bar.",
+		"Fixed: the loot window's background reaches its border again; the world no longer shows round the items.",
+	} },
 	{ version = "0.20.4", lines = {
 		"Chat: the input box shows only while you type. Press Enter (or /) to bring it up; send the line or press Escape and it goes again.",
 		"Input Box Only While Typing (Chat > Chat Frame > Behaviour) is on by default; switch it off to keep the box on screen.",
@@ -177,17 +183,6 @@ local CHANGELOG = {
 		"Loot Sparkles (Nameplates > Sparkles, off until you switch it on): quest items keep their sparkle, and golden glints mark the ore vein or herb you walk up to.",
 		"Group Frames > Bars: a background behind the health bar. Swing Timer Border on Look > Borders. A new font: MelloFont.",
 		"New files: restart the game once after updating.",
-	} },
-	{ version = "0.20.0", lines = {
-		"Group Frames: MelloUI's own party and raid frames, with a page under Unit Frames and an addon of their own. Their size, spacing, order and grouping are yours; move them in Edit Layout.",
-		"Their bars in your class colour, a colour of yours or by health, a power bar for healers or everyone, and the name and health as you like them.",
-		"Indicators: your own aura marks on the group frames, a buff by its spell or a debuff by its kind, as an icon, a draining square, a bar or the health bar's colour, on one of nine spots.",
-		"The Designer (Group Frames > Designer): drag an indicator to move it, scroll over it to size it. Each class starts with indicators of its own, kept per spec.",
-		"In A Party: these frames, or the normal party frames with portraits, which get indicators and the Designer too.",
-		"Frame Effects (an addon of its own): your heal flies from your cast bar to the frame you heal and lands its own way: a heal over time pulses, a shield wraps the frame, a heal to full raises a column of light.",
-		"Frame Effects, Cooldowns: your group's big moments on their frames, a taunt, Shield Wall's crest, an immunity's gold barrier. /mellofx plays them on your own frame.",
-		"Hide PvP Badge (Unit Frames > Frame > Look): no honour badge beside the portraits while you are flagged.",
-		"New addons: restart the game once after updating.",
 	} },
 }
 local LINKS = {

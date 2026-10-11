@@ -9,8 +9,8 @@ size (Kit:ParchmentNine):
         _body             512 x 512  the paper: the page's middle, its grain on the page's centre colour (the slow
                                      browning taken out), seamless by the kit's quilting, repeated at one density
         _t, _b            512 x 80   the top / bottom edge: the real paper -- browning, burnt rim, torn outline --
-                                     opaque out to 100 page px, fading into the paper by 160 (the browning ends by
-                                     ~150), repeated along x without a seam
+                                     opaque to its inner side (160 page px; the browning ends by ~150), its inner
+                                     rows the paper's colour, repeated along x without a seam
         _l, _r            80 x 512   ... the sides, along y
         _tl, _tr, _bl, _br  80 x 80  the plain corners (the page's top right and bottom left, the other two mirrored)
     parchment/page_*    a big page with curled corners (the user's pick: the quest and spell book pages, the character
@@ -18,13 +18,17 @@ size (Kit:ParchmentNine):
                         them reach ~225 px along the diagonal: a 160 px corner cut them off and its square showed (in
                         game, 2026-10-10); at 300 the corner holds them whole, and the paper under it, from half a
                         corner in, lies clear of the fold.
-        _t, _b / _l, _r   256 x 150 / 150 x 256  the edges (opaque out to 220, fading by 300)
+        _t, _b / _l, _r   256 x 150 / 150 x 256  the edges (opaque to their inner side)
         _tl, _br          150 x 150  the curled corners
         _tr, _bl          150 x 150  plain corners; _tl_plain, _br_plain theirs mirrored (a page curled at one corner)
                         (its paper: the sheet's body)
 
-No mask anywhere: each edge and corner carries the torn outline in its alpha and fades into the body on its inner part,
-the body lying under them from half a corner in (Kit:NineSlice's inset). Painted px are the kit's 2x: the page's 4k
+No mask anywhere: each edge and corner carries the torn outline in its alpha and is opaque to its inner side, the body
+starting there (Kit:ParchmentNine's bodyInset 1, a whole corner in): nothing lies under anything. (0.20.5; the user,
+2026-10-11: a fading tooltip showed "something behind" -- the edges faded into the paper laid under them from half a
+corner in, and as the game fades every layer on its own, that paper's edge showed as a box; neither flattening nor a
+frame buffer on the tooltip changed it in game. The edges' inner rows are the paper's colour (profile), so the paper
+meets them without a line.) Painted px are the kit's 2x: the page's 4k
 layout at 0.5. An edge strip longer than one side of the page is that side followed by the opposite side flipped onto
 it, cross-faded at both joins, so top and bottom differ.
 
@@ -51,20 +55,13 @@ CURL_CLEAR = 330   # source px: an edge strip starts this far from a curled corn
 BODY = 512         # painted px: the paper tile
 BODY_SRC = 740     # source px: the square of the page's middle the tile is cut from (the browning flattened out)
 QUILT_MARGIN = 48  # source px: the overlap the quilting's seam path runs through
-# the families: corner / edge depth T, opaque out to SOLID, an edge strip's painted length
-FAMILIES = {"sheet": {"T": 160, "SOLID": 100, "LENGTH": 512},
-            "page": {"T": 300, "SOLID": 220, "LENGTH": 256}}
+# the families: corner / edge depth T, an edge strip's painted length
+FAMILIES = {"sheet": {"T": 160, "LENGTH": 512},
+            "page": {"T": 300, "LENGTH": 256}}
 
 
 def load(path):
     return np.asarray(Image.open(path).convert("RGBA")).astype(np.float32) / 255.0
-
-
-def ramp(d, f):
-    """1 out to SOLID source px from the outer side, 0 by T: a smoothstep (a straight fade's ends showed as faint
-    lines along the sheet)."""
-    t = np.clip((f["T"] - d) / float(f["T"] - f["SOLID"]), 0, 1)
-    return t * t * (3 - 2 * t)
 
 
 def to_img(arr, size):
@@ -115,9 +112,7 @@ def strip(first, second, f):
                              second[:, FADE:]], axis=1)
     s = joined[:, :need + FADE]
     head = s[:, :FADE] * wj + s[:, need:need + FADE] * (1 - wj)
-    s = np.concatenate([head, s[:, FADE:need]], axis=1).copy()
-    s[..., 3] *= ramp(np.arange(f["T"]), f)[:, None]
-    return s
+    return np.concatenate([head, s[:, FADE:need]], axis=1).copy()
 
 
 def profile(band, centre):
@@ -156,8 +151,8 @@ def corner(a, c, f, centre, profiles):
     """A corner, T square: the page's own corner (its curl, burnt rim, torn outline) near its outer point, blended
     towards its inner sides into what the edges show there -- the two sides' colour by depth multiplied, on the
     corner's own grain -- so it meets them and the paper without a line (in game, 2026-10-10: a straight line where
-    a corner cut from the page met edges cut from the sides' middles). Its alpha the page's, faded into the paper
-    on its inner part."""
+    a corner cut from the page met edges cut from the sides' middles). Its alpha the page's (0.20.5: opaque to its
+    inner sides, the paper starting there)."""
     T = f["T"]
     h, w = a.shape[:2]
     ys = slice(0, T) if c[0] == "t" else slice(h - T, h)
@@ -175,7 +170,6 @@ def corner(a, c, f, centre, profiles):
     r = np.hypot(dx, dy)
     keep = np.clip((0.95 * T - r) / (0.4 * T), 0, 1)[..., None]   # 1 out to 0.55 T from the outer point, 0 by 0.95 T
     s[..., :3] = rgb * keep + model * (1 - keep)
-    s[..., 3] *= np.maximum(ramp(dy, f), ramp(dx, f))
     return s
 
 

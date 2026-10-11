@@ -332,7 +332,10 @@ local function PlaceRound(b, st, k)
 		h:SetPoint("TOPLEFT", b.rect, "TOPLEFT", -open[1] * k * gl, open[2] * k)
 		h:SetPoint("BOTTOMRIGHT", b.rect, "BOTTOMRIGHT", (p.w - open[3]) * k * gr, -(p.h - open[4]) * k)
 	else
-		local o = (st.rail or 0) * k
+		-- a rail family: grown by its own rails' depth at k (Border:Inset: its top piece), not the style's `rail` --
+		-- the depth a weight's band maps to (0.20.5, the user: the Single rail "not properly attached to the
+		-- progress bars": 16 against its 11 px rail stood it 5 px of art off every side)
+		local o = b:Inset()
 		h:SetPoint("TOPLEFT", b.rect, "TOPLEFT", -o * gl, o)
 		h:SetPoint("BOTTOMRIGHT", b.rect, "BOTTOMRIGHT", o * gr, -o)
 	end
@@ -1152,6 +1155,20 @@ function Kit:BarLibraryFit(rep, h)
 	local band = h * share
 	rep.libBand:SetHeight(band)
 	b:SetFit(band * BAND_RAIL, rep:ArtScale())
+	-- (0.20.5, the user: the Stone rail apart from the bar, "there is the background, but not attached") the bar's
+	-- trough run half a rail under the border on each railed side: the rail's inner edge, its art drawn far smaller
+	-- than painted, is soft, and with no style background on a bar (noBg) the world showed through it. Every style's
+	-- rail is solid to its opening, so the tucked trough stays hidden under it
+	local trough = rep.trough
+	if trough and rep.libraryStyle then
+		local x, y = b:Inset()
+		x, y = x / 2, y / 2
+		local l, r, t, bottom = rep:GetOpening()
+		trough:ClearAllPoints()
+		trough:SetPoint("TOPLEFT", rep.rect, "TOPLEFT", l - (b.open == "l" and 0 or x), -(t - y))
+		trough:SetPoint("BOTTOMRIGHT", rep.rect, "BOTTOMRIGHT", -(r - (b.open == "r" and 0 or x)), bottom - y)
+		Kit:Retile(trough)
+	end
 end
 
 -- The personal resource display's frame: shown while Unit Frames Kit dresses
