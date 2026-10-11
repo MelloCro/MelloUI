@@ -84,7 +84,7 @@ local ELEMENTS = {
 	-- rect is its shown buttons' -- the summon button, the four slots (the page's action buttons lie on them) and
 	-- the recall button
 	{ key = "backdropTotem", frame = "MultiCastActionBarFrame", name = "Totem Bar", what = "the totem bar", group = "bars",
-	  new = "0.20.2", buttons = { "MultiCastSummonSpellButton", "MultiCastSlotButton1", "MultiCastSlotButton2",
+	  buttons = { "MultiCastSummonSpellButton", "MultiCastSlotButton1", "MultiCastSlotButton2",
 		"MultiCastSlotButton3", "MultiCastSlotButton4", "MultiCastRecallSpellButton" } },
 	{ key = "backdropMicro", frame = "MicroMenu", name = "Micro Menu", what = "the micro menu", group = "micro" },
 	{ key = "backdropBags", frame = "BagsBar", name = "Bag Bar", what = "the bag bar", group = "bags" },

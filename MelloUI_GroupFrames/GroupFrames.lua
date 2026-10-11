@@ -319,7 +319,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		{ type = "slider", key = "raidPerLine", name = "Frames Per Column / Row", new = NEW, min = 1, max = 40, step = 1,
 		  desc = "How many frames in a column (or a row) before the next one starts. 5 lines the raid up by its groups." },
 		-- (0.20.2, the user: "a slider to modify the Distance Between the Party/Raid Frames" -- pick "Separate party / raid")
-		{ type = "slider", key = "raidSpacing", name = "Raid Spacing", new = "0.20.2", min = 0, max = MS.spacingMax, step = 1,
+		{ type = "slider", key = "raidSpacing", name = "Raid Spacing", min = 0, max = MS.spacingMax, step = 1,
 		  desc = "The room between two of the raid's frames in a column (or a row). Also on the raid's plate in Edit Layout (right-click it)." },
 		{ type = "slider", key = "raidGap", name = "Gap Between Columns / Rows", new = NEW, min = 0, max = 40, step = 1,
 		  desc = "The room between two columns (or rows) of the raid." },
