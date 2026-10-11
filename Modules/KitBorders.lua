@@ -1024,7 +1024,7 @@ Kit:AddBorderKind({ kind = "personal", key = "personalBorder", default = "none",
 -- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
 -- swing timers' frame a choice of its own (their Framed look; Modules/SwingTimers.lua lays it, on this kind's change)
 Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar", name = "Swing Timer Border",
-	values = CastLooks(), preview = "bar", new = "0.20.1",
+	values = CastLooks(), preview = "bar",
 	desc = "The frame round your swing timers (their Framed look): the Cast bar bracket (today's), a thin rim, the Single rail, the Stone rail or the Backdrop. A frame laid round a bar leaves it its whole width." }, "personal")
 
 -- (0.20.1, /abdump xp in game: the experience bar's bracket caps back at alpha 1 under its library border -- the
@@ -1425,7 +1425,7 @@ Kit.orbLooks = {
 	{ value = "rpg", label = "Stone badge", piece = "buttons/orb_rpg", disc = "buttons/orb_rpg_disc" },
 }
 Kit:AddBorderKind({ kind = "orb", key = "levelOrb", default = "kit", name = "Level Orb", values = Kit.orbLooks,
-	preview = "rim", new = "0.20.1",
+	preview = "rim",
 	desc = "The round badge round the level on the unit frames and the nameplates: the kit's orb, or a stone badge "
 		.. "with its own dark ground. Frames already shown change after a /reload." }, "portrait")
 

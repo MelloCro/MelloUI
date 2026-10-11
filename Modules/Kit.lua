@@ -11244,10 +11244,8 @@ end
 
 Kit.borderKinds = {
 	{ kind = "window", key = "windowBorder", default = "stone", name = "Window Border", values = Kit.windowFrameLooks,
-	  new = "0.20.1",
 	  desc = "The frame round every window: a thin stone rail on the window's edge, or the double rail with gem corners. Windows already opened change after a /reload." },
 	{ kind = "windowtitle", key = "windowTitle", default = "ribbon", name = "Window Title", values = Kit.windowTitleLooks,
-	  new = "0.20.1",
 	  desc = "The title bar of every window, at the game's own size: a red ribbon, or a plain band with a rail line under it. The red plate riding the rail goes with the double rail. Windows already opened change after a /reload." },
 	{ kind = "button", key = "buttonBorder", default = "thin", name = "Button Border", values = Kit.buttonLooks.borders, preview = "rim",
 	  desc = "The rim on every square button: the action bars, the micro menu, the bag bar, your bags, the equipment slots and the spell book's spells." },

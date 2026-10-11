@@ -344,7 +344,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		  desc = "Which way the health and power bars fill." },
 		{ type = "toggle", key = "smooth", name = "Smooth Bars", new = NEW,
 		  desc = "The bars glide to a new value instead of jumping." },
-		{ type = "dropdown", key = "backgroundTexture", name = "Background", new = "0.20.1", values = RD.BackgroundTextures(),
+		{ type = "dropdown", key = "backgroundTexture", name = "Background", values = RD.BackgroundTextures(),
 		  desc = "What lies behind the health bar: a flat colour (Background Colour), one of MelloUI's backgrounds (stone, concrete, parchment, the dark gradients...), or none." },
 		{ type = "dropdown", key = "background", name = "Background Colour", new = NEW, values = C.background,
 		  desc = "The colour behind the health bar: one of yours, or the member's class colour." },
