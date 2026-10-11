@@ -3,6 +3,8 @@
 ## 0.20.3
 
 - Parchment Style (Look > Parchment): pick how the parchment looks wherever it shows, the sheets you switched on and the quest log, quest and spell book pages. Burnt paper, the new one, stays the default; Classic vellum brings back the vellum with painted brush-stroke edges from before 0.20.1. It switches at once, no /reload.
+- Fixed: Edit Layout's Minimap plate covers the minimap as you see it (its frame, the zone name and Services), and the minimap now goes all the way into a corner of the screen, there after a /reload too.
+- Fixed: hovering a weapon buff (a shaman's imbue, an oil or a poison) gave an error instead of its tooltip.
 
 ## 0.20.2
 

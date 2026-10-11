@@ -823,8 +823,31 @@ function WeaponButton:SetApplicationCount(fs) self.melloCount = fs end
 function WeaponButton:SetDurationText(fs, opts) self.melloTime, self.melloFormat = fs, opts and opts.textFormatter end
 function WeaponButton:SetTooltipAnchorPoint(anchor) self.melloTip = anchor end
 
+-- (0.20.3; the user, 2026-10-11, over a shaman's weapon buff: "GameTooltip:SetOwner(): Anchoring disallowed as
+-- dependent object would inherit forbidden aspects: UntrustedLayoutScriptExecution") a weapon button stands in the
+-- rows, an AuraContainer whose layout runs as an untrusted script: the tooltip may hang from nothing in it. It is the
+-- screen's, laid where the button's anchor would lay it (the button's rect read plainly; else at the cursor): the
+-- tooltip's point, and where on the button (its share across, up)
+Weapon.TIP = { ANCHOR_BOTTOMLEFT = { "TOPRIGHT", 0, 0 }, ANCHOR_BOTTOMRIGHT = { "TOPLEFT", 1, 0 },
+	ANCHOR_TOP = { "BOTTOM", 0.5, 1 } }
+
 local function WeaponButton_OnEnter(b)
-	GameTooltip:SetOwner(b, b.melloTip or "ANCHOR_BOTTOMLEFT")
+	local tip = Weapon.TIP[b.melloTip or "ANCHOR_BOTTOMLEFT"] or Weapon.TIP.ANCHOR_BOTTOMLEFT
+	local us = Num(UIParent:GetEffectiveScale())
+	if not (us and us > 0) then
+		return
+	end
+	local x, y
+	local l, bottom, r, t = MelloUI.Safe.ScreenRect(b)
+	if l then
+		x, y = (l + (r - l) * tip[2]) / us, (bottom + (t - bottom) * tip[3]) / us
+	else
+		local cx, cy = GetCursorPosition()
+		x, y = (Num(cx) or 0) / us, (Num(cy) or 0) / us
+	end
+	GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+	GameTooltip:ClearAllPoints()
+	GameTooltip:SetPoint(tip[1], UIParent, "BOTTOMLEFT", x, y)
 	pcall(GameTooltip.SetInventoryItem, GameTooltip, "player", b.melloInv)
 	GameTooltip:Show()
 end

@@ -490,8 +490,17 @@ end
 -- EDIT_MODE_FRAMES, one list: the installer's fitter reads it the same way),
 -- each with its plate's name, its settings' page and its system's name in
 -- Enum.EditModeSystem (read when the frame names none of its own)
+-- (0.20.3) `box`: the rect the element draws, its plate's (Core's mover `box`): the cluster is laid round the
+-- game's own parts too, the map MelloUI draws inside it (MinimapPanel:DrawnRect)
+local function MinimapBox()
+	local mp = MelloUI:GetModule("MinimapPanel")
+	if mp and mp.isEnabled and mp.DrawnRect then
+		return mp:DrawnRect()
+	end
+	return nil
+end
 local SHARED = {
-	MinimapCluster = { label = "Minimap", page = "MinimapPanel", system = "Minimap" },
+	MinimapCluster = { label = "Minimap", page = "MinimapPanel", system = "Minimap", box = MinimapBox },
 	ChatFrame1 = { label = "Chat", page = "Chat", system = "ChatFrame" },
 	-- (its options are the Objective Tracker panel's: the Quest Tracker page's
 	-- Objective Tracker tab, not MelloUI's own tracker's first one)
@@ -773,7 +782,7 @@ local function CandidateOpts(frame, name)
 	if shared then
 		return { key = name, follow = true, when = ModuleOn, group = "hud", label = shared.label, page = shared.page,
 			default = EditModeHome, resetLabel = EDIT_TEXT.sharedReset, note = SharedNote,
-			visible = name == "ChatFrame1" and DockShown or nil }
+			visible = name == "ChatFrame1" and DockShown or nil, box = shared.box }
 	end
 	local n = ChatNumber(name)
 	if n then
@@ -792,6 +801,18 @@ local function CandidateOpts(frame, name)
 		page = window and window.page or M.name, with = WITH[name] }
 end
 
+-- (0.20.3) an entry with a `box` (the minimap's cluster): what it draws changed size round it (the bus's 'column':
+-- the map's size, the merge, a login's first lay) -> clamped by it again (Core's ClampEntry), and its place laid
+-- again kept on the screen by it (a place fitted while the map was not drawn yet held the cluster's whole rect)
+local boxed = setmetatable({}, { __mode = "k" })   -- [entry] = true
+local function BoxedRelay()
+	for entry in pairs(boxed) do
+		if MelloUI:ClampEntry(entry) and not entry.moving and MelloUI:EntryLive(entry) then
+			MelloUI:RestorePosition(entry.key, entry.frame)
+		end
+	end
+end
+
 -- a candidate by its name (and its frame, when known) registered, once
 local function RegisterNamed(name, frame)
 	frame = frame or _G[name]
@@ -803,6 +824,12 @@ local function RegisterNamed(name, frame)
 		local entry = MelloUI:RegisterMover(frame, frame, opts)
 		if entry then
 			mine[entry] = true
+			if entry.box and not boxed[entry] then
+				if next(boxed) == nil then
+					MelloUI:On("column", BoxedRelay, "UI Modifications: boxed movers")
+				end
+				boxed[entry] = true
+			end
 		end
 	end
 end

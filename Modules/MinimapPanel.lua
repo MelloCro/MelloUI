@@ -1859,6 +1859,25 @@ function M:ColumnRect()
 	return l, b, r, t
 end
 
+-- What this module draws round the map, the zone band over it with the column (0.20.3; the user, 2026-10-11, the
+-- Minimap's Edit Layout plate up and left of the map: "the Drag layout clearely does not match the size of the
+-- minimap"): the cluster's own rect is laid round the game's parts too. Edit Layout's plate of the cluster takes it
+-- (UI Modifications' `box`). Screen px; nil while the kit is off (the cluster's rect is then the game's art)
+function M:DrawnRect()
+	if not active then
+		return nil
+	end
+	local l, b, r, t = self:ColumnRect()
+	if not l then
+		return nil
+	end
+	local bl, bb, br, bt = self:ColumnPart("band")
+	if bl then
+		l, b, r, t = math.min(l, bl), math.min(b, bb), math.max(r, br), math.max(t, bt)
+	end
+	return l, b, r, t
+end
+
 -- The parts of the column (layout E): the zone band, the map, the Services
 -- row, Route's distance line, the Quest Tracker (MelloUI's while it is on,
 -- else the game's). A list of the parts, NOT their order on the screen: the

@@ -1235,6 +1235,14 @@ end
 --                    place of its own the store has not taken in yet (the
 --                    Route arrow's from before 0.14): Reset all resets it
 --                    too, so its reset lets that place go
+--         box        (0.20.3) function(entry) -> l, b, r, t | nil: the rect
+--                    it draws (screen px, as Safe.ScreenRect), when the
+--                    frame's own rect is not that (the minimap's cluster):
+--                    EntryRect gives it, MoveEntry moves the frame as far as
+--                    it, so the plate, the snapping and the drag go by it;
+--                    a saved place keeps it on the screen, and the frame is
+--                    clamped to the screen by it (the game's clamp insets
+--                    replaced, theirs put back while it gives none)
 --       The entry holds all of these (resize a boolean, group always set,
 --       label always a string when it has a key or a name) and `moving`
 --       ("plain" or Edit Layout's "layout"), `placing` and `scaling` (held
@@ -1268,7 +1276,8 @@ end
 --   MelloUI:EntryWaiting(entry) -> waits   its `waiting` true
 --   MelloUI:EntryShown(entry) -> shown     its `visible`, else IsShown (secret: false)
 --   MelloUI:EntryRect(entry) -> l, b, w, h
---       UIParent units, nil when anything reads secret or not finite. A
+--       UIParent units, nil when anything reads secret or not finite; its
+--       `box` while that gives a rect (MoveEntry's l, b are then the box's). A
 --       hidden frame with no rect (and a 0 x 0 one with a placeholder) is
 --       measured from its first anchor: the relative frame's rect (the
 --       screen, or any frame whose rect reads plainly), the offsets and its
@@ -1277,6 +1286,8 @@ end
 --   MelloUI:MoveEntry(entry, l, b) -> ok   BOTTOMLEFT to the screen's BOTTOMLEFT
 --       at l, b (UI units), in the frame's own units; the Raw methods,
 --       `placing` held; false (nothing done) for a protected frame in combat
+--   MelloUI:ClampEntry(entry) -> changed  a `box` entry's clamp laid again
+--       (what it draws changed size round its frame)
 --   MelloUI:ScaleEntry(entry, scale) -> ok the scale (Kit:SetFrameScale with
 --       the Raw SetScale), `scaling` held; the same combat rule
 --   MelloUI:PlaceEntryAt(entry, point, relTo, relPoint, x, y) -> ok
@@ -1481,6 +1492,29 @@ do
 		return fs, us, sw, sh
 	end
 
+	-- (0.20.3) an entry's `box` (its option: the rect it draws, screen px) against its frame's rect, the frame's own
+	-- units: box - frame on each side (left, bottom, right, top); nil without one, or while it gives none
+	local function BoxInsets(entry)
+		local box = type(entry) == "table" and entry.box
+		local frame = box and entry.frame
+		if not frame then
+			return nil
+		end
+		local ok, bl, bb, br, bt = pcall(box, entry)
+		if not ok then
+			Report(bl)
+			return nil
+		end
+		bl, bb, br, bt = Finite(bl), Finite(bb), Finite(br), Finite(bt)
+		local fs = Screen(frame)
+		local l, b, w, h = Rect(frame)
+		if not (bl and bb and br and bt and fs and l) or w <= 0 or h <= 0 or br <= bl or bt <= bb then
+			return nil
+		end
+		return bl / fs - l, bb / fs - b, br / fs - (l + w), bt / fs - (b + h)
+	end
+	local ClampToBox   -- (below: a `box` entry's frame clamped to the screen by its box)
+
 	-- How far a box (in pixels) must move to be on a screen of sw x sh
 	-- pixels (user 2026-09-24: "UI Scaling Break the UI"): past the right or
 	-- the bottom it comes in; one larger than the screen keeps its left and
@@ -1550,7 +1584,7 @@ do
 	-- when it is hung by `point` from the screen's `relPoint` at x, y. Its
 	-- extras are measured where they are now, against the frame where it is
 	-- now (they move with it), before its anchors go.
-	local function FitOffsets(frame, point, relPoint, x, y, w, h, extras)
+	local function FitOffsets(frame, point, relPoint, x, y, w, h, extras, entry)
 		local fs, us, sw, sh = Screen(frame)
 		if not fs or not w or not h or w <= 0 or h <= 0 then
 			return x, y
@@ -1559,6 +1593,11 @@ do
 		local left = POINT_X[relPoint] * SW + (x - POINT_X[point] * w) * fs
 		local bottom = POINT_Y[relPoint] * SH + (y - POINT_Y[point] * h) * fs
 		local right, top = left + w * fs, bottom + h * fs
+		-- (0.20.3) an entry with a `box`: its box kept on the screen, not the frame's whole rect
+		local il, ib, ir, it = BoxInsets(entry)
+		if il then
+			left, bottom, right, top = left + il * fs, bottom + ib * fs, right + ir * fs, top + it * fs
+		end
 		if extras ~= nil then
 			local l, b, cw, ch = Rect(frame)
 			if l and cw > 0 and ch > 0 then
@@ -1665,11 +1704,14 @@ do
 		if scale and scale > 0 then
 			SetFrameScale(frame, scale)
 		end
+		if entry and entry.box then
+			ClampToBox(entry)
+		end
 		-- measured before the anchors go: a window sized by them reads 0
 		-- wide after
 		local w, h = Size(frame)
 		local x, y = FitOffsets(frame, point, relPoint, Finite(tonumber(pos.x)) or 0, Finite(tonumber(pos.y)) or 0, w, h,
-			entry and WithOf(entry))
+			entry and WithOf(entry), entry)
 		Raw(frame, "ClearAllPoints")(frame)
 		Raw(frame, "SetPoint")(frame, point, UIParent, relPoint, x, y)
 	end
@@ -1922,6 +1964,66 @@ do
 	end
 
 	local hooked = setmetatable({}, { __mode = "k" })   -- [frame] = true: its pair of post-hooks made
+	-- (0.20.3) The game clamps every Edit Mode system to the screen by its own selection box (EditModeSystemMixin:
+	-- UpdateClampOffsets, its SetClampRectInsets): a `box` entry's frame is clamped by its box instead, so what it
+	-- draws reaches the screen's edges (the user, 2026-10-11, the minimap at the top corner: "the square moves, but the
+	-- map does not follow it" -- its cluster reaches past the map MelloUI draws). Laid before it is placed or moved
+	-- here, and again after each of the game's own (a post-hook; the game's insets kept, put back while the box gives
+	-- none). -> true when the insets changed
+	local clampOf = setmetatable({}, { __mode = "k" })   -- [frame] = { left, right, top, bottom }: the game's last
+	local clampLaying = false
+	local function SetClamp(frame, l, r, t, b)
+		local ok0, l0, r0, t0, b0 = pcall(frame.GetClampRectInsets, frame)
+		if ok0 and Num(l0) == l and Num(r0) == r and Num(t0) == t and Num(b0) == b then
+			return false
+		end
+		clampLaying = true
+		local ok, err = pcall(frame.SetClampRectInsets, frame, l, r, t, b)
+		clampLaying = false
+		if not ok then
+			Report(err)
+			return false
+		end
+		return true
+	end
+	local function GameClamp(frame, l, r, t, b)
+		if clampLaying then
+			return
+		end
+		local game = clampOf[frame]
+		if game then
+			game[1], game[2], game[3], game[4] = Num(l) or 0, Num(r) or 0, Num(t) or 0, Num(b) or 0
+		end
+		local entry = byFrame[frame]
+		if entry and entry.box then
+			ClampToBox(entry)
+		end
+	end
+	ClampToBox = function(entry)
+		local frame = entry.frame
+		if type(frame.SetClampRectInsets) ~= "function" or type(frame.GetClampRectInsets) ~= "function" then
+			return false
+		end
+		if not clampOf[frame] then
+			local ok, l, r, t, b = pcall(frame.GetClampRectInsets, frame)
+			clampOf[frame] = { ok and Num(l) or 0, ok and Num(r) or 0, ok and Num(t) or 0, ok and Num(b) or 0 }
+			hooksecurefunc(frame, "SetClampRectInsets", Wrap("mover: clamped by its box", GameClamp, "hook"))
+		end
+		local il, ib, ir, it = BoxInsets(entry)
+		if il then
+			return SetClamp(frame, il, ir, it, ib)
+		end
+		local game = clampOf[frame]
+		return SetClamp(frame, game[1], game[2], game[3], game[4])
+	end
+
+	function MelloUI:ClampEntry(entry)
+		if type(entry) ~= "table" or not entry.box or type(entry.frame) ~= "table" then
+			return false
+		end
+		return ClampToBox(entry)
+	end
+
 	local function HookFrame(frame)
 		if hooked[frame] then
 			return
@@ -2141,6 +2243,7 @@ do
 			resetLabel = type(opts.resetLabel) == "string" and opts.resetLabel or nil,
 			when = type(opts.when) == "function" and opts.when or nil,
 			waiting = type(opts.waiting) == "function" and opts.waiting or nil,
+			box = type(opts.box) == "function" and opts.box or nil,
 		}
 		entries[#entries + 1] = entry
 		byFrame[frame] = entry
@@ -2278,7 +2381,30 @@ do
 		return ax - POINT_X[p] * w, ay - POINT_Y[p] * h, w, h
 	end
 
-	function MelloUI:EntryRect(entry)
+	-- (0.20.3) `box`: the rect the element draws, when its frame's own rect is not that (the user, 2026-10-11, the
+	-- minimap's plate up and left of the map: "the Drag layout clearely does not match the size of the minimap" -- the
+	-- game's cluster is laid round its own parts too). UI units; nil when it gives none
+	local function BoxRect(entry)
+		local box = type(entry) == "table" and entry.box
+		if not box then
+			return nil
+		end
+		local ok, l, b, r, t = pcall(box, entry)
+		if not ok then
+			Report(l)
+			return nil
+		end
+		l, b, r, t = Finite(l), Finite(b), Finite(r), Finite(t)
+		local okU, us = pcall(UIParent.GetEffectiveScale, UIParent)
+		us = okU and Finite(us)
+		if not (l and b and r and t and us) or us <= 0 or r <= l or t <= b then
+			return nil
+		end
+		return l / us, b / us, (r - l) / us, (t - b) / us
+	end
+
+	-- the frame's own rect, UI units (EntryRect without a box)
+	local function FrameRect(entry)
 		local frame = type(entry) == "table" and entry.frame
 		if type(frame) ~= "table" or not frame.GetRect then
 			return nil
@@ -2306,6 +2432,14 @@ do
 		return AnchorRect(entry, frame, k)
 	end
 
+	function MelloUI:EntryRect(entry)
+		local l, b, w, h = BoxRect(entry)
+		if l then
+			return l, b, w, h
+		end
+		return FrameRect(entry)
+	end
+
 	function MelloUI:EntryBase(entry)
 		local base = type(entry) == "table" and entry.base
 		return (Finite(base) and base > 0) and base or 1
@@ -2327,6 +2461,16 @@ do
 		fs, us = okS and Finite(fs), okU and Finite(us)
 		if not (fs and us) or fs <= 0 or us <= 0 then
 			return false
+		end
+		-- (a `box`: l, b are its corner's; the frame goes as far as the box, clamped by it)
+		local bl, bb = BoxRect(entry)
+		if bl then
+			ClampToBox(entry)
+			local fl, fb = FrameRect(entry)
+			if not fl then
+				return false
+			end
+			l, b = l - (bl - fl), b - (bb - fb)
 		end
 		local k = us / fs
 		local was = entry.placing

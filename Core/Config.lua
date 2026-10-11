@@ -146,6 +146,8 @@ local CHANGELOG = {
 	{ version = "0.20.3", lines = {
 		"Look > Parchment: Parchment Style picks how the parchment looks everywhere it shows, the sheets and the quest and spell book pages.",
 		"Burnt paper stays the default; Classic vellum brings back the vellum with brush-stroke edges from before 0.20.1. It switches at once.",
+		"Fixed: Edit Layout's Minimap plate fits the minimap as you see it, and the minimap goes all the way into a corner of the screen.",
+		"Fixed: hovering a weapon buff (a shaman's imbue, an oil or a poison) gave an error instead of its tooltip.",
 	} },
 	{ version = "0.20.2", lines = {
 		"Edit Layout moves the game's frames too: unit frames, cast bar, party and raid, every action bar, stance, pet and totem bars, saved into your Edit Mode layout as well.",
