@@ -143,6 +143,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.20.4", lines = {
+		"Chat: the input box shows only while you type. Press Enter (or /) to bring it up; send the line or press Escape and it goes again.",
+		"Input Box Only While Typing (Chat > Chat Frame > Behaviour) is on by default; switch it off to keep the box on screen.",
+		"Bags: the kinds follow the game's item types, Hearthstone on top. Put them in your order on Windows > Bags > Kinds: drag a row up or down.",
+		"Bags: a line between sections, and groups (Equipment, Crafting) you fold by clicking their heading. Add your own lines and groups.",
+		"Bags: pick up an item and every kind shows a + slot. Drop the item there and it always goes under that kind.",
+	} },
 	{ version = "0.20.3", lines = {
 		"Look > Parchment: Parchment Style picks how the parchment looks everywhere it shows, the sheets and the quest and spell book pages.",
 		"Burnt paper stays the default; Classic vellum brings back the vellum with brush-stroke edges from before 0.20.1. It switches at once.",
@@ -181,17 +188,6 @@ local CHANGELOG = {
 		"Frame Effects, Cooldowns: your group's big moments on their frames, a taunt, Shield Wall's crest, an immunity's gold barrier. /mellofx plays them on your own frame.",
 		"Hide PvP Badge (Unit Frames > Frame > Look): no honour badge beside the portraits while you are flagged.",
 		"New addons: restart the game once after updating.",
-	} },
-	{ version = "0.19.9", lines = {
-		"Keybind Mode: point at an action button and press a key to bind it; right-click clears it. On the Action Bars page, in Edit Layout, or /mello keybind.",
-		"Quest List: each group shows how much of it you have done, and the quests you have done fold into a Done section.",
-		"World map: a zone's progress ring in its corner. Quest tooltips name your other characters who have done the quest (/mello alts lists them).",
-		"Action bars: rows, icons, icon size and padding on the Action Bars page (Bars > Layout), saved into your Edit Mode layout and shown after a /reload.",
-		"Buffs & Debuffs: icon size, spacing, icons per row and the way they grow, on Unit Frames > Buffs & Debuffs > Layout.",
-		"Edit Layout: a Gap box beside Snap keeps 0 to 10 px between the things you snap together.",
-		"New art for the controls: close buttons, check boxes, arrows, + / - and icon buttons are steel plates with gold studs. A new winged portrait ring.",
-		"Chat, Combat Text, the Quest List, Route and Voice Over are addons of their own: untick one in the AddOns list and it isn't loaded. Your settings stay.",
-		"New addons: restart the game fully once after updating.",
 	} },
 }
 local LINKS = {

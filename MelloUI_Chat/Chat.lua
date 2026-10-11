@@ -40,7 +40,7 @@ local M = MelloUI:RegisterModule("Chat", {
 	role = "adds",
 	tweak = { label = "Chat Tweaks", desc = "Short channel names, class-coloured names, the whisper popup, the chat buttons, smooth scrolling, the names' form (Show Names As), the Background dropdown and the art-hiding switches (which only apply while the chat reskin is off). Off: every one of them goes.", order = 9 },
 	area = { key = "whisper", follows = "ChatPanel" },   -- the whisper popups: as the chat windows
-	keep = { "savedWhisperMode", "savedClassColorCVar",   -- the player's own game settings, given back when off: never in a profile
+	keep = { "savedWhisperMode", "savedClassColorCVar", "savedChatStyle",   -- the player's own game settings, given back when off: never in a profile
 		-- (0.17.0) the Background dropdown's own copy: what it shows is read
 		-- back from the keys it sets (Background) -- the reskin's, the
 		-- parchment's, Dark Mode's (personal), hideBackground -- which carry the
@@ -56,6 +56,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		tabsOnMouseover = true,
 		chatButtons = true,
 		editBoxTop = true,
+		editBoxWhileTyping = true,
 		shortChannels = true,
 		hideBrackets = true,
 		nameShade = true,
@@ -92,6 +93,11 @@ local M = MelloUI:RegisterModule("Chat", {
 		  desc = "Chat tab names are invisible until the mouse is over the chat. Tabs flashing with new whispers stay visible. It adds to the Fader's Chat fade: both fade the tabs, so with both on the two fades multiply. Does nothing under the painted chat (the Painted and Parchment backgrounds), which keeps its tabs shown." },
 		{ type = "toggle", key = "editBoxTop", name = "Input Box On Top",
 		  desc = "Move the chat input box above the chat window and its tabs instead of below it." },
+		-- (0.20.4, the user 2026-10-11: "the Chat editbox is always shown, it needs to be hidden and as soon as you
+		-- start typing it should apprear, and then again disappear once you are done typing": the game's own Classic
+		-- chat style, SetTypingOnly)
+		{ type = "toggle", key = "editBoxWhileTyping", name = "Input Box Only While Typing", new = "0.20.4",
+		  desc = "The chat input box shows only while you type: Enter (or /) brings it up, and it goes again once you send the line or press Escape. It sets the game's Chat Style to Classic while on, and gives your own back when off. The change shows from the next line you type." },
 		{ type = "toggle", key = "chatButtons", name = "Chat Buttons",
 		  desc = "The game's chat buttons in their column left of the chat: Friends at the top, Channels, the chat menu (Say, Party, Guild, Yell, whisper and reply, emotes, and the language you speak). While you speak more than one language, the one you speak shows at the right end of the line you type in. Off: the column is hidden." },
 		{ type = "toggle", key = "smoothScroll", name = "Smooth Scrolling",
@@ -3712,6 +3718,26 @@ local function SetWhisperMode(on)
 	end
 end
 
+-- Input Box Only While Typing (0.20.4): the game's Chat Style held at Classic (its chat frames hide the input box
+-- once a line is sent or Escape pressed, and show it on Enter; "im", the default, keeps it shown -- faded by the game,
+-- held whole by the chat reskin), the player's own back when off. A setting of the engine's: setting it taints
+-- nothing; the boxes the game shows now go at their next close (hiding them from here would run the game's chat
+-- code tainted). Out of combat (the fight's end otherwise).
+local CHAT_STYLE_CVAR = "chatStyle"
+local function SetTypingOnly(on)
+	if not (M.db and MelloUI.HoldCVar) then
+		return
+	end
+	local function Hold()
+		MelloUI:HoldCVar(M.db, CHAT_STYLE_CVAR, "savedChatStyle", M.isEnabled and on and M.db.editBoxWhileTyping ~= false, "classic")
+	end
+	if MelloUI.InCombat and MelloUI.InCombat() and MelloUI.Kit and MelloUI.Kit.WhenOutOfCombat then
+		MelloUI.Kit:WhenOutOfCombat(Hold, "Chat: input box only while typing")
+	else
+		Hold()
+	end
+end
+
 local function SetWhisperPopup(on)
 	popupOn = on and true or false
 	if popupOn then
@@ -3797,6 +3823,7 @@ local function ApplyAll()
 	HookLines()
 	ApplyClassColors(ClassNames())
 	SetWhisperPopup(db.whisperPopup)
+	SetTypingOnly(true)
 	WatchWhisperWindows()
 end
 
@@ -3904,6 +3931,7 @@ function M:OnDisable()
 	Speak.Update()   -- (the module off: its label hidden, the game's inset back)
 	ApplyClassColors(false)
 	SetWhisperPopup(false)
+	SetTypingOnly(false)
 	Smooth.StopAll()
 end
 
@@ -3933,6 +3961,8 @@ function M:OnSettingChanged(key, value, db)
 		end
 	elseif key == "whisperPopup" then
 		SetWhisperPopup(value)
+	elseif key == "editBoxWhileTyping" then
+		SetTypingOnly(true)
 	elseif key == "smoothScroll" then
 		-- off: a glide under way ends where it was going; on: the next notch glides
 		if not value then

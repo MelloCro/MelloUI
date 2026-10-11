@@ -31,6 +31,10 @@
 --                                      wheel and a brightness bar (0.20.0)
 --   W.CanvasRow(parent, y, height, build, opts)   a row that is one frame a
 --                                      module builds (0.20.0)
+--   W.OrderList(parent, width, height, spec)   rows put in order by dragging
+--                                      them, ticks, lines and groups (0.20.4)
+--   W.Caret(tex, size, dir, lit)       the kit's gold caret (a fold arrow)
+--   W.PlusMark(tex, size, lit)         the kit's gold plus glyph
 --   W.ColourRow(parent, y, label, hint, desc, get, set, opts)   a colour
 --                                      setting: a swatch, the wheel in a
 --                                      flyout (0.20.0; W.ColourValue / Hex)
@@ -6383,5 +6387,458 @@ do
 		Perf.SetScript(box, "OnHide", NumberHidden)
 		Show(box)
 		return box
+	end
+end
+
+--------------------------------------------------------------------------------
+-- OrderList (0.20.4; the user, 2026-10-11, Bags by Kind's kinds: "the categories have a priority, whats shown on
+-- top" -- look A of MelloUI-BuildData/output/bag_kinds_sketch, the drag list): rows put in order by dragging them,
+-- a tick on the rows that have one, a name to type on the rows that take one (double-click it), a cross on the rows
+-- that may go, buttons under the list. The list is its owner's: the widget lays the rows `spec.rows()` gives and
+-- hands every change back; list:Refresh() lays them again.
+--   W.OrderList(parent, width, height, spec) -> list
+--     spec.rows() -> { { kind = "item" | "line" | "group", label, note, ticked (nil: no tick), indent (0 / 1),
+--                       removable, renamable }, ... }
+--     spec.block(i) -> the rows that move with row i (a group: itself and its members), else 1
+--     spec.move(from, count, to)   rows from .. from + count - 1 put before row `to` (#rows + 1: at the end)
+--     spec.tick(i, on), spec.remove(i), spec.rename(i, text)
+--     spec.buttons = { { text, onClick }, ... } under the list; spec.title, spec.help: its heading and help line
+-- A held row runs an OnUpdate while it is held, nothing else does; a long list scrolls with the wheel, and on its
+-- own while a held row is near its top or bottom.
+--------------------------------------------------------------------------------
+
+-- W.Caret(tex, size, dir, lit): the kit's gold caret (a dropdown's) on a texture, pointing "down", "right", "up" or
+-- "left", lit under the mouse -- a group's fold arrow (the order list's, the bag window's group headings)
+function W.Caret(tex, size, dir, lit)
+	return KC.Lay(tex, size, size, "arrow", dir or "down", lit and "hover" or "normal", 1, true)
+end
+
+-- W.PlusMark(tex, size, lit): the kit's gold plus glyph on a texture, lit under the mouse (0.20.4: the bag window's
+-- drop slots)
+function W.PlusMark(tex, size, lit)
+	return KC.Lay(tex, size, size, "plus", nil, lit and "hover" or "normal", 1, true)
+end
+
+do
+	local ROW_H = 26
+	local HEAD_H = 46            -- the title and its help line over the list
+	local FOOT_H = 40            -- the buttons under it
+	local GRIP_X, TEXT_X, INDENT = 10, 32, 20
+	local DRAG_START = 4         -- px the cursor goes before a held row is dragged
+	local EDGE, EDGE_EVERY = 18, 0.08   -- the scroll's edges while dragging (px), a row every this long
+	local TEXT = { line = "line", rename = "Double-click to rename." }
+
+	local List = {}
+	List.__index = List
+
+	local function CursorY(frame)
+		local _, y = GetCursorPosition()
+		local s = Num(frame:GetEffectiveScale()) or 1
+		return (Num(y) or 0) / s
+	end
+
+	-- the grip: three short bars
+	local function Grip(row)
+		row.grip = {}
+		for i = 1, 3 do
+			local bar = W.Solid(row, "ARTWORK", "mutedText", 1)
+			bar:SetSize(12, 2)
+			bar:SetPoint("LEFT", row, "LEFT", GRIP_X, 6 - (i - 1) * 5)
+			row.grip[i] = bar
+		end
+	end
+
+	local function GripKey(row, key)
+		for i = 1, 3 do
+			W.Paint(row.grip[i], key, "fill", 1)
+		end
+	end
+
+	local RowEnter, RowLeave, RowDown, RowUp, RowDouble, Held   -- (scripts, below)
+
+	local function MakeRow(list)
+		local row = CreateFrame("Button", nil, list.content)
+		row:SetHeight(ROW_H)
+		row:RegisterForClicks("LeftButtonUp")
+		row.list = list
+		row.hover = W.Solid(row, "BACKGROUND", "hover", 0.35)
+		row.hover:SetAllPoints(row)
+		row.hover:Hide()
+		Grip(row)
+		row.label = W.Text(row, "GameFontHighlight", nil, "text")
+		row.label:SetWordWrap(false)
+		row.note = W.Text(row, "GameFontHighlightSmall", nil, "mutedText")
+		row.note:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
+		row.rule = W.Solid(row, "ARTWORK", "trim", 0.8)
+		row.rule:SetHeight(1)
+		row.caret = row:CreateTexture(nil, "ARTWORK")   -- (a group's: the kit's gold caret, as a dropdown's)
+		row.caret:SetSize(CARET, CARET)
+		W.Caret(row.caret, CARET, "down")
+		row.tick = W.Switch(row, function()
+			local r = row.data
+			return r and r.ticked == true
+		end, function(on)
+			if row.index then
+				pcall(list.spec.tick, row.index, on and true or false)
+				list:Refresh()
+			end
+		end)
+		row.tick:SetPoint("RIGHT", row, "RIGHT", -10, 0)
+		row.cross = W.Button(row, "x", 22, nil, { height = 18, onClick = function()
+			if row.index then
+				MelloUI:PlayUISound("check_off")
+				pcall(list.spec.remove, row.index)
+				list:Refresh()
+			end
+		end })
+		row.cross:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+		Perf.SetScript(row, "OnEnter", RowEnter)
+		Perf.SetScript(row, "OnLeave", RowLeave)
+		Perf.SetScript(row, "OnMouseDown", RowDown)
+		Perf.SetScript(row, "OnMouseUp", RowUp)
+		Perf.SetScript(row, "OnDoubleClick", RowDouble)
+		return row
+	end
+
+	-- a row dressed for its entry (r), at its index
+	local function Dress(row, r, i)
+		row.data, row.index = r, i
+		local x = TEXT_X + (r.indent or 0) * INDENT
+		row.label:ClearAllPoints()
+		row.caret:Hide()
+		row.rule:Hide()
+		if r.kind == "group" then
+			row.caret:SetPoint("LEFT", row, "LEFT", x, 0)
+			row.caret:Show()
+			row.label:SetPoint("LEFT", row, "LEFT", x + 16, 0)
+			row.label:SetText(r.label or "")
+			row.label:SetFontObject("GameFontNormal")
+			W.Paint(row.label, "selectedTrim", "text")
+		elseif r.kind == "line" then
+			row.label:SetPoint("RIGHT", row, "RIGHT", -38, 0)
+			row.label:SetText(TEXT.line)
+			row.label:SetFontObject("GameFontHighlightSmall")
+			W.Paint(row.label, "mutedText", "text")
+			row.rule:ClearAllPoints()
+			row.rule:SetPoint("LEFT", row, "LEFT", x, 0)
+			row.rule:SetPoint("RIGHT", row.label, "LEFT", -6, 0)
+			row.rule:Show()
+		else
+			row.label:SetPoint("LEFT", row, "LEFT", x, 0)
+			row.label:SetText(r.label or "")
+			row.label:SetFontObject("GameFontHighlight")
+			W.Paint(row.label, "text", "text")
+		end
+		row.note:SetText(r.kind == "item" and r.note or "")
+		row.tick:SetShown(r.ticked ~= nil)
+		if r.ticked ~= nil then
+			row.tick:Refresh()
+		end
+		row.cross:SetShown(r.removable and true or false)
+		GripKey(row, "mutedText")
+	end
+
+	function List:Rows()
+		local ok, rows = pcall(self.spec.rows)
+		self.data = ok and type(rows) == "table" and rows or {}
+		return self.data
+	end
+
+	-- how many rows the list shows at once, and the furthest it scrolls
+	function List:Room()
+		local h = Num(self.clip:GetHeight()) or 0
+		return math.max(1, math.floor(h / ROW_H))
+	end
+
+	function List:MaxScroll()
+		local n = #self.data - (self.drag and self.drag.count - 1 or 0)
+		return math.max(0, n - self:Room())
+	end
+
+	-- the rows laid from the top (a held block left out and its landing place open)
+	function List:Lay()
+		local data, drag = self.data, self.drag
+		local n = 0
+		local y = -self.scroll * ROW_H
+		local landed = false
+		local function Gap()
+			self.gap:ClearAllPoints()
+			self.gap:SetPoint("TOPLEFT", self.content, "TOPLEFT", 4, y - 1)
+			self.gap:SetPoint("TOPRIGHT", self.content, "TOPRIGHT", -4, y - 1)
+			self.gap:SetHeight(ROW_H - 2)
+			self.gap:Show()
+			y = y - ROW_H
+			landed = true
+		end
+		local pos = 0   -- (where a held block lands: its place among the rows left)
+		for i = 1, #data do
+			-- (a held row is not laid)
+			if not (drag and i >= drag.from and i < drag.from + drag.count) then
+				if drag and not landed and pos == drag.to then
+					Gap()
+				end
+				n = n + 1
+				local row = self.rows[n] or MakeRow(self)
+				self.rows[n] = row
+				Dress(row, data[i], i)
+				row:ClearAllPoints()
+				row:SetPoint("TOPLEFT", self.content, "TOPLEFT", 0, y)
+				row:SetPoint("RIGHT", self.content, "RIGHT", 0, 0)
+				row:Show()
+				y = y - ROW_H
+				pos = pos + 1
+			end
+		end
+		if drag and not landed then
+			Gap()
+		end
+		if not drag then
+			self.gap:Hide()
+		end
+		for i = n + 1, #self.rows do
+			self.rows[i]:Hide()
+			self.rows[i].index, self.rows[i].data = nil, nil
+		end
+	end
+
+	function List:Refresh()
+		self:Rows()
+		self.scroll = math.min(self.scroll, self:MaxScroll())
+		self:Lay()
+	end
+
+	function List:Scroll(delta)
+		local s = math.max(0, math.min(self.scroll + delta, self:MaxScroll()))
+		if s ~= self.scroll then
+			self.scroll = s
+			self:Lay()
+			return true
+		end
+		return false
+	end
+
+	-- the place among the rows left (not held) the cursor points at
+	function List:DropAt()
+		local top = Num(self.clip:GetTop()) or 0
+		local y = CursorY(self.clip)
+		local left = #self.data - self.drag.count
+		local at = math.floor((top - y) / ROW_H + 0.5) + self.scroll
+		return math.max(0, math.min(at, left))
+	end
+
+	-- the held block put where it was dropped (a place among the rows left -> the index it goes before)
+	function List:Drop()
+		local d = self.drag
+		self.drag = nil
+		self.ghost:Hide()
+		self.ticker:SetScript("OnUpdate", nil)
+		if d.started then
+			local to = d.to < d.from and d.to + 1 or d.to + d.count + 1
+			if to ~= d.from and to ~= d.from + d.count then
+				MelloUI:PlayUISound("check_on")
+				pcall(self.spec.move, d.from, d.count, to)
+			end
+		end
+		self:Refresh()
+	end
+
+	Held = Shared("OnUpdate of a held row of an order list (only while held)", function(ticker, elapsed)
+		local list = ticker.list
+		local d = list.drag
+		if not d then
+			ticker:SetScript("OnUpdate", nil)
+			return
+		end
+		if not IsMouseButtonDown("LeftButton") then
+			list:Drop()
+			return
+		end
+		local y = CursorY(list.clip)
+		if not d.started then
+			if math.abs(y - d.y0) < DRAG_START then
+				return
+			end
+			d.started = true
+			local r = list.data[d.from]
+			list.ghost.label:SetText(r and (r.kind == "line" and TEXT.line or r.label) or "")
+			list.ghost:Show()
+		end
+		-- (near the list's top or bottom: a row at a time)
+		d.wait = (d.wait or 0) - elapsed
+		local top, bottom = Num(list.clip:GetTop()) or 0, Num(list.clip:GetBottom()) or 0
+		if d.wait <= 0 and (y > top - EDGE or y < bottom + EDGE) then
+			d.wait = EDGE_EVERY
+			list:Scroll(y > top - EDGE and -1 or 1)
+		end
+		local to = list:DropAt()
+		if to ~= d.to then
+			d.to = to
+			list:Lay()
+		end
+		list.ghost:ClearAllPoints()
+		list.ghost:SetPoint("LEFT", list.clip, "LEFT", 18, 0)
+		list.ghost:SetPoint("RIGHT", list.clip, "RIGHT", -10, 0)
+		list.ghost:SetPoint("TOP", list.clip, "BOTTOM", 0, math.max(math.min(y - bottom + ROW_H / 2, top - bottom), ROW_H))
+	end, "script")
+
+	RowEnter = Shared("OnEnter on an order list's row", function(row)
+		if row.list.drag then
+			return
+		end
+		row.hover:Show()
+		GripKey(row, "selectedTrim")
+		local r = row.data
+		if r and r.renamable then
+			W.ShowTooltip(row, r.label, TEXT.rename)
+		end
+	end, "script")
+
+	RowLeave = Shared("OnLeave on an order list's row", function(row)
+		row.hover:Hide()
+		GripKey(row, "mutedText")
+		W.TipLeave(row)
+	end, "script")
+
+	RowDown = Shared("OnMouseDown on an order list's row", function(row, button)
+		local list = row.list
+		if button ~= "LeftButton" or list.drag or not row.index then
+			return
+		end
+		local count = 1
+		local ok, n = pcall(list.spec.block, row.index)
+		if ok and Num(n) and n >= 1 then
+			count = n
+		end
+		row.hover:Hide()
+		W.TipLeave(row)
+		list.drag = { from = row.index, count = count, y0 = CursorY(list.clip), to = nil }
+		list.ticker:SetScript("OnUpdate", Held)
+	end, "script")
+
+	RowUp = Shared("OnMouseUp on an order list's row", function(row)
+		local list = row.list
+		if list.drag then
+			list:Drop()
+		end
+	end, "script")
+
+	local function EndRename(box, keep)
+		local list = box.list
+		local i = box.index
+		box.index = nil
+		box:ClearFocus()
+		box:Hide()
+		local text = box:GetText()
+		if keep and i and type(text) == "string" and text:match("%S") then
+			pcall(list.spec.rename, i, (text:gsub("^%s+", ""):gsub("%s+$", "")))
+		end
+		list:Refresh()
+	end
+
+	RowDouble = Shared("OnDoubleClick on an order list's row", function(row)
+		local list = row.list
+		local r = row.data
+		if not (r and r.renamable and row.index) then
+			return
+		end
+		local box = list.box
+		box.index = row.index
+		box:ClearAllPoints()
+		box:SetPoint("LEFT", row.label, "LEFT", -4, 0)
+		box:SetWidth(220)
+		box:SetText(r.label or "")
+		box:Show()
+		box:SetFocus()
+		box:HighlightText()
+	end, "script")
+
+	local Wheel = Shared("OnMouseWheel on an order list", function(clip, delta)
+		clip.list:Scroll(delta > 0 and -1 or 1)
+	end, "script")
+	local BoxEnter = Shared("OnEnterPressed in an order list's name box", function(box)
+		EndRename(box, true)
+	end, "script")
+	local BoxEscape = Shared("OnEscapePressed in an order list's name box", function(box)
+		EndRename(box, false)
+	end, "script")
+	local BoxLost = Shared("OnEditFocusLost in an order list's name box", function(box)
+		if box.index then
+			EndRename(box, true)
+		end
+	end, "script")
+
+	function W.OrderList(parent, width, height, spec)
+		local list = setmetatable({ spec = spec, rows = {}, data = {}, scroll = 0 }, List)
+		local f = CreateFrame("Frame", nil, parent)
+		f:SetSize(width, height)
+		list.frame = f
+		local title = W.Text(f, "GameFontNormalLarge", spec.title, "text")
+		title:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -4)
+		local help = W.Text(f, "GameFontHighlightSmall", spec.help, "mutedText")
+		help:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+		local panel = W.Panel(f)
+		panel:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -HEAD_H)
+		panel:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, FOOT_H)
+		local clip = CreateFrame("Frame", nil, panel)
+		clip:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, -4)
+		clip:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -1, 4)
+		clip:SetClipsChildren(true)
+		clip:EnableMouseWheel(true)
+		clip.list = list
+		Perf.SetScript(clip, "OnMouseWheel", Wheel)
+		list.clip = clip
+		local content = CreateFrame("Frame", nil, clip)
+		content:SetPoint("TOPLEFT", clip, "TOPLEFT", 0, 0)
+		content:SetPoint("BOTTOMRIGHT", clip, "BOTTOMRIGHT", 0, 0)
+		list.content = content
+		-- where a held block will land: its room, outlined in gold
+		local gap = CreateFrame("Frame", nil, content)
+		Edges(gap, "selectedTrim", "BORDER")
+		gap:Hide()
+		list.gap = gap
+		-- the held row, following the cursor over the list
+		local ghost = CreateFrame("Frame", nil, clip)
+		ghost:SetHeight(ROW_H - 2)
+		ghost:SetFrameLevel(clip:GetFrameLevel() + 20)
+		local fill = ghost:CreateTexture(nil, "BACKGROUND")
+		fill:SetAllPoints(ghost)
+		W.Paint(fill, "raisedPanel", "fill", 1)
+		Edges(ghost, "selectedTrim", "BORDER")
+		ghost.label = W.Text(ghost, "GameFontHighlight", nil, "text")
+		ghost.label:SetPoint("LEFT", ghost, "LEFT", TEXT_X - 8, 0)
+		ghost:Hide()
+		list.ghost = ghost
+		-- the held row's OnUpdate runs on this frame only while a row is held
+		local ticker = CreateFrame("Frame", nil, f)
+		ticker.list = list
+		list.ticker = ticker
+		-- a group's name typed in its row
+		local box = CreateFrame("EditBox", nil, content)
+		box:SetAutoFocus(false)
+		box:SetHeight(20)
+		box:SetFontObject("GameFontHighlight")
+		box:SetTextInsets(4, 4, 0, 0)
+		box:SetMaxLetters(32)
+		box:SetFrameLevel(content:GetFrameLevel() + 10)
+		box.field = W.Field(box)
+		box.list = list
+		Perf.SetScript(box, "OnEnterPressed", BoxEnter)
+		Perf.SetScript(box, "OnEscapePressed", BoxEscape)
+		Perf.SetScript(box, "OnEditFocusLost", BoxLost)
+		box:Hide()
+		list.box = box
+		local x = 0
+		for _, b in ipairs(spec.buttons or {}) do
+			local width_ = math.max(90, 24 + 8 * #(b[1] or ""))
+			local button = W.Button(f, b[1], width_, nil, { onClick = function()
+				MelloUI:PlayUISound("menu_button")
+				pcall(b[2])
+				list:Refresh()
+			end })
+			button:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x, 8)
+			x = x + width_ + 8
+		end
+		list:Refresh()
+		return list
 	end
 end

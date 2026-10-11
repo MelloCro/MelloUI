@@ -399,8 +399,9 @@ function L.Define(R, Link)
 	-- Bank with the Bags' skin off
 	-- (0.19.0) the bag window by kind, MelloUI's own (either look; works with UI Modifications off)
 	R("Windows", "Windows", "General", { BackpackPanel = "BagWindow.!enabled" }, { name = "Bags by Kind", free = true })
-	-- (its kinds, the user's picks of 2026-10-04; its layout's below, after Bag Slots on Bag Window)
-	for _, key in ipairs({ "recent", "recentFor", "gear", "quest", "consumables", "junk", "trade", "splitTrade" }) do
+	-- (its kinds, the user's picks of 2026-10-04 -- since 0.20.4 one list, Kinds, their order, lines and groups;
+	-- its layout's below, after Bag Slots on Bag Window)
+	for _, key in ipairs({ "kinds", "#Items You Placed", "recentFor", "splitTrade" }) do
 		R("Windows", "Windows", "General", { BackpackPanel = "BagWindow." .. key }, { free = true })
 	end
 	R("Windows", "Windows", "Look", { from = "windows" }, { name = "Painted Skin" })
@@ -636,6 +637,7 @@ function L.Define(R, Link)
 	R("Chat", "Chat Frame", "Look", "Chat.hideTabs", { when = Uncovered("ChatPanel", "chat") })
 	R("Chat", "Chat Frame", "Look", "Chat.chatButtons")
 	R("Chat", "Chat Frame", "Layout", "Chat.editBoxTop")
+	R("Chat", "Chat Frame", "Behaviour", "Chat.editBoxWhileTyping")   -- (0.20.4: the game's Classic chat style)
 	R("Chat", "Chat Frame", "Behaviour", "Chat.smoothScroll")
 	R("Chat", "Messages", "Text", "Chat.shortChannels")
 	R("Chat", "Messages", "Text", "Chat.hideBrackets")

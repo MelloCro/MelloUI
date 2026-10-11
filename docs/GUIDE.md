@@ -346,6 +346,9 @@ experience, reputation, cast states) are re-applied so bars keep their meaning.
 ### Chat
 
 - Move the input box above the chat window.
+- Input Box Only While Typing (0.20.4, on; Chat > Chat Frame > Behaviour): the input box shows only
+  while you type -- Enter (or /) brings it up, sending the line or Escape puts it away -- the game's
+  Chat Style held at Classic while it is on, your own given back when it is off.
 - Hide the chat window background and border art, the input box art, and optionally the
   tab background.
 - Chat Buttons (0.17.0, on; Hide Chat Buttons before, which hid them): the game's own chat
@@ -1456,9 +1459,14 @@ your bags change, never in combat.
 ### Bags by Kind
 
 Your bags in one window of MelloUI's own (0.19.0, on), each kind of item under its own gold
-heading: **Recent** (what you picked up lately; it glows until you hover it and stays in Recent
-until you close the bags), **Gear**, **Quest**, **Other**, **Consumables**, **Junk** and **Trade
-Goods**. Small kinds sit side by side in a row, a big one gets a row of its own. All your empty
+heading. The kinds follow the game's item types (0.20.4): **Recent** (what you picked up lately; it
+glows until you hover it and stays in Recent until you close the bags), **Hearthstone**,
+**Consumable**, **Quest**, **Weapon**, **Armour**, **Reagent**, **Trade Goods**, **Recipe**,
+**Projectile**, **Bag**, **Quiver**, **Key**, **Miscellaneous**, **Other**, **Junk** and **Empty**.
+They show in your order, with a line between sections and the **Equipment** and **Crafting**
+groups (a heading over their kinds: click it to fold the group to its heading and its count).
+Small kinds sit side by side in a row; a big one wraps in the room its row has left, or gets a row
+of its own when that would make it more than a line taller. All your empty
 slots fold into one slot with the number of free slots on it: drop an item on it and it goes into a
 free slot. A special bag (a mining bag, an herb bag ...) gets an empty slot of its own in its bag
 type's colour. Click a heading to fold that kind into one slot (its count beside it); click again to
@@ -1473,12 +1481,19 @@ does; on Parchment the gold count is in dark ink), and moves in Edit Layout. **B
 General); off, you get the game's bag window back. While it is on, the game's Combined Bags setting
 is held on (it comes back as you had it when you switch Bags by Kind off).
 
-Under it, each kind has a switch (**Recent Kind**, **Gear Kind**, **Quest Kind**, **Consumables
-Kind**, **Junk Kind**, **Trade Goods Kind**): a kind switched off hands its items on (Recent's to
-their own kind, a grey item to its own kind, gear, consumables and trade goods to Other). **Recent
+Under it, **Kinds** (0.20.4) lists them in their order, the top first: drag a row up or down
+(a group moves with its kinds). **Add line** puts a line on top to drag where you want it, **Add
+group** a group (double-click it to rename it; the kinds under it, to the next line, are its kinds),
+the cross on a line or group takes it away, **Reset order** brings back the starting order. Untick
+a kind and it hands its items on (Recent's to their own kind, a grey item, a quest item or the
+Hearthstone to its type, a type to Other); Other and Empty are always on. The Recent, Gear, Quest,
+Consumables, Junk and Trade Goods Kind switches of before 0.20.4 became these ticks. Pick up an item
+and every kind shows a **+** slot after its items (the empty kinds too, a folded group opens): drop
+the item there and it always goes under that kind; drop it on its own kind's **+** to put it back.
+**Items You Placed > Forget** puts every placed item back under its own kind. **Recent
 Lasts**: until the bags close, until you hover the item, or for 5 minutes. **Split Trade Goods**
-gives every type its own heading (Cloth, Leather, Metal & Stone, Herbs, Reagents, Recipes ... in
-the game's own words). On the Layout section: **Columns** (8 to 16 slots across), **Item Size**
+gives every type of Trade Goods its own heading in its place (Cloth, Leather, Metal & Stone, Herbs
+... in the game's own words). On the Layout section: **Columns** (8 to 16 slots across), **Item Size**
 (30 to 46, the game's own is 37), **Fold Empty Slots** (off: every empty slot shows) and **Sort
 Items By**: quality, name, newest first (the order you picked them up in) or item level.
 

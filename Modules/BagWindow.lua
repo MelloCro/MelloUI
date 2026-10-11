@@ -7,11 +7,16 @@
 -- small kinds side by side in a row, the empty slots folded into one. The
 -- plan and every decision: docs/plans/bag-window.md.
 --
--- Kinds: an item goes to the first that takes it (KindOf): Recent (the game's
--- new-item mark; kept in Recent until the window closes, so a hovered item
--- does not jump away under the mouse), Junk (poor quality), Quest, Gear,
--- Consumables, Trade Goods, Other. Shown in KINDS' order, Empty last: the
--- first free slot's own button with the number of free slots on it (an item
+-- Kinds (0.20.4: the game's item types, bag_kinds_sketch): an item goes to the
+-- first that takes it (KindOf): Recent (the game's new-item mark; kept in
+-- Recent until the window closes, so a hovered item does not jump away under
+-- the mouse), Junk (poor quality), Quest, Hearthstone, then its type --
+-- Consumable, Weapon, Armour, Reagent, Trade Goods, Recipe, Projectile, Bag,
+-- Quiver, Key, Miscellaneous -- else Other; an item the player placed (dropped
+-- on a kind's + slot, shown while an item is held) goes there first. Shown in the
+-- player's order (Windows > Bags > Kinds: lines between them, groups with a
+-- fold arrow), Empty
+-- the first free slot's own button with the number of free slots on it (an item
 -- dropped there goes into that slot), one more for each special bag type
 -- with room (its rim in the bag type's colour, as every slot of such a bag).
 -- A heading clicked folds its kind into one slot (its first item, the kind's
@@ -66,7 +71,11 @@ local SORT_BY = {
 	{ value = "level", label = "Item Level" },
 }
 
-local M = MelloUI:RegisterModule("BagWindow", {
+-- (0.20.4) the Kinds list's row: its heading, 22 rows, its buttons (W.OrderList; longer lists scroll)
+local KINDS_H = 46 + 22 * 26 + 8 + 40 + 10
+
+local M   -- (the Kinds row's build reads it)
+M = MelloUI:RegisterModule("BagWindow", {
 	title = "Bags by Kind",
 	desc = "Your bags in one window of MelloUI's own, sorted by kind: what you picked up lately, gear, quest items, consumables, junk, trade goods and the rest, each under its own heading. The empty slots fold into one slot with their count.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
@@ -75,25 +84,29 @@ local M = MelloUI:RegisterModule("BagWindow", {
 	-- (no group: its rows sit on the Windows page, the bag window's)
 	installer = false,
 	enabledByDefault = true,
-	defaults = { recent = true, recentFor = "close", gear = true, quest = true, consumables = true, junk = true,
-		trade = true, splitTrade = false, columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality" },
+	defaults = { recentFor = "close", splitTrade = false, columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality" },
 	options = {
-		{ type = "toggle", key = "recent", name = "Recent Kind",
-		  desc = "What you picked up lately, under its own heading first. Off: it goes straight to its own kind." },
-		{ type = "dropdown", key = "recentFor", parent = "recent", name = "Recent Lasts", values = RECENT_FOR,
+		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
+		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
+		-- a tick each -- the Recent / Gear / Quest / Consumables / Junk / Trade Goods Kind switches folded in)
+		{ type = "canvas", key = "kinds", name = "Kinds", new = "0.20.4", height = KINDS_H,
+		  search = "kinds order categories priority hearthstone groups lines separator equipment crafting recent junk",
+		  desc = "Your bag window's kinds in the order they show, the top first: drag a row to move it. A line draws a line across the window between the kinds over and under it; a group puts the kinds under it, to the next line, under one heading you can fold. Untick a kind and its items go to their own type, or to Other.",
+		  build = function(canvas, width)
+			M.BuildKindList(canvas, width)
+		  end },
+		-- (0.20.4, stage 2 of bag_kinds_sketch; the user: "picking up an item does not show that i can manually place
+		-- that item into a group") the + slots while an item is held; the placed items forgotten here
+		{ type = "button", name = "Items You Placed", text = "Forget", new = "0.20.4",
+		  search = "place drop plus slot item kind assign",
+		  desc = "While you hold an item, every kind in your bag window shows a + slot: drop the item there and it always goes under that kind (drop it on its own kind's + to put it back). Forget puts every item you placed back under its own kind.",
+		  onClick = function()
+			MelloUI:NotifySettingChanged("BagWindow", "placed", nil)
+		  end },
+		{ type = "dropdown", key = "recentFor", name = "Recent Lasts", values = RECENT_FOR,
 		  desc = "How long an item stays under Recent: until you close your bags, only until you point at it (it moves to its own kind as the pointer leaves it), or for 5 minutes after you got it." },
-		{ type = "toggle", key = "gear", name = "Gear Kind",
-		  desc = "Weapons and armour under their own heading. Off: they go to Other." },
-		{ type = "toggle", key = "quest", name = "Quest Kind",
-		  desc = "Quest items, and items that start a quest, under their own heading. Off: they go to their own kind." },
-		{ type = "toggle", key = "consumables", name = "Consumables Kind",
-		  desc = "Food, drink, potions, scrolls and bandages under their own heading. Off: they go to Other." },
-		{ type = "toggle", key = "junk", name = "Junk Kind",
-		  desc = "Grey junk under its own heading, with what it sells for (and Sell Junk at a vendor). Off: it goes to its own kind." },
-		{ type = "toggle", key = "trade", name = "Trade Goods Kind",
-		  desc = "Crafting materials, reagents, recipes and gems under their own heading. Off: they go to Other." },
-		{ type = "toggle", key = "splitTrade", parent = "trade", name = "Split Trade Goods",
-		  desc = "Trade goods split by type, each under its own heading: Cloth, Leather, Metal & Stone, Herbs, Meat, Reagents, Recipes and so on." },
+		{ type = "toggle", key = "splitTrade", name = "Split Trade Goods",
+		  desc = "Trade Goods split by type, each under its own heading in Trade Goods' place: Cloth, Leather, Metal & Stone, Herbs, Meat and so on." },
 		{ type = "slider", key = "columns", name = "Columns", min = 8, max = 16, step = 1,
 		  desc = "How many slots across the bag window is: more makes it wider and shorter." },
 		{ type = "slider", key = "itemSize", name = "Item Size", min = 30, max = 46, step = 1,
@@ -130,6 +143,8 @@ local G = {
 	HEAD = 17,       -- a kind's heading above its items
 	ROW_GAP = 8,     -- between rows of kinds
 	KIND_GAP = 15,   -- between kinds side by side
+	GROUP_H = 23,    -- (0.20.4) a group's heading over its kinds
+	LINE_GAP = 10,   -- (0.20.4) a line, and the room under it
 }
 -- the grid from the player's Columns and Item Size
 local function Clamp(v, lo, hi, default)
@@ -161,44 +176,91 @@ local TEXT = {
 	sort = "Clean Up Bags",
 	settings = "Bag Settings",
 	settingsTip = "Bags by Kind's options: its kinds and its layout (Windows > Bags).",
+	-- (0.20.4) the groups, and the Kinds list on Windows > Bags
+	foldGroup = "Click to fold this group: only its heading shows.",
+	unfoldGroup = "Click to show the kinds of this group.",
+	kindsTitle = "Kinds",
+	kindsHelp = "Drag a row: the higher, the nearer the top of the window. Double-click a group to rename it.",
+	addLine = "Add line",
+	addGroup = "Add group",
+	resetOrder = "Reset order",
+	newGroup = "New group",
+	-- (0.20.4) the + slots while an item is held
+	placeTip = "Drop the item here: it always goes under %s.",
+	placeBack = "Drop it here: it goes back under its own kind.",
 }
 
--- The kinds, in the order they are shown (the sketch's)
+-- The kinds (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have
+-- their hearthstone on top" -- bag_kinds_sketch): the game's item types. `note`: a line beside it on the Kinds list;
+-- `always`: no tick (Other takes what the others pass on, Empty is the free slots)
 local KINDS = {
-	{ key = "recent", name = "Recent" },
-	{ key = "gear", name = "Gear" },
+	{ key = "recent", name = "Recent", note = "while you have new items" },
+	{ key = "hearth", name = "Hearthstone" },
+	{ key = "consumable", name = "Consumable" },
 	{ key = "quest", name = "Quest" },
-	{ key = "other", name = "Other" },
-	{ key = "consumables", name = "Consumables" },
+	{ key = "weapon", name = "Weapon" },
+	{ key = "armour", name = "Armour" },
+	{ key = "reagent", name = "Reagent" },
+	{ key = "tradegoods", name = "Trade Goods" },
+	{ key = "recipe", name = "Recipe" },
+	{ key = "projectile", name = "Projectile" },
+	{ key = "bag", name = "Bag" },
+	{ key = "quiver", name = "Quiver" },
+	{ key = "key", name = "Key" },
+	{ key = "misc", name = "Miscellaneous" },
+	{ key = "other", name = "Other", always = true },
 	{ key = "junk", name = "Junk" },
-	{ key = "trade", name = "Trade Goods" },
-	{ key = "empty", name = "Empty" },
+	{ key = "empty", name = "Empty", always = true, note = "folded into one slot" },
 }
+local KIND = {}
+for _, k in ipairs(KINDS) do
+	KIND[k.key] = k
+end
 M.KINDS = KINDS
+
+-- the order a player starts with (and Reset order's): "-" a line, "group:<name>" a group, its kinds the ones after it
+-- up to the next line or group (the sketch's)
+local DEFAULT_ORDER = { "recent", "-", "hearth", "consumable", "quest", "-", "group:Equipment", "weapon", "armour", "-",
+	"group:Crafting", "reagent", "tradegoods", "recipe", "-", "projectile", "bag", "quiver", "key", "misc", "other", "-",
+	"junk", "empty" }
+M.DEFAULT_ORDER = DEFAULT_ORDER
 
 -- an item's class (Enum.ItemClass numbers: this client's) to its kind
 local CLASS_KIND = {
-	[0] = "consumables",                 -- food, drink, potions, elixirs, scrolls, bandages
-	[2] = "gear", [4] = "gear",          -- weapons, armour
-	[3] = "trade", [5] = "trade", [7] = "trade", [9] = "trade",   -- gems, reagents, trade goods, recipes
+	[0] = "consumable",                  -- food, drink, potions, elixirs, scrolls, bandages
+	[1] = "bag",
+	[2] = "weapon", [4] = "armour",
+	[3] = "tradegoods", [7] = "tradegoods",   -- gems, trade goods
+	[5] = "reagent",
+	[6] = "projectile",
+	[9] = "recipe",
+	[11] = "quiver",
 	[12] = "quest",
+	[13] = "key",
+	[15] = "misc",
 }
+local HEARTH = { [6948] = true }   -- the Hearthstone
 local POOR = 0   -- Enum.ItemQuality.Poor
 local TRADE_GOODS = 7   -- the trade goods' class (split by its subclasses: Cloth, Leather ...)
-local ALL_ON = { recent = true, gear = true, quest = true, consumables = true, junk = true, trade = true }
+local ALL_ON = {}
 
 -- Which kind an item is: the first that takes it, of the kinds switched on
--- (`on`: the module's settings; a kind off passes its items on: Recent's to
--- their own kind, Junk's and Quest's to their class's, the classes' to Other)
-function M.KindOf(quality, classID, isQuestItem, recent, on)
+-- (`on`: [kind] = false for a kind unticked, OnTable; a kind off passes its items on: Recent's to their own kind,
+-- Junk's, Quest's and Hearthstone's to their type's, the types' to Other). `placed` (0.20.4): [itemID] = the kind the
+-- player dropped it on (its + slot), taken after Recent while that kind is on
+function M.KindOf(quality, classID, isQuestItem, recent, on, itemID, placed)
 	on = on or ALL_ON
-	-- (a switch not saved yet reads as on: every kind is on by default)
+	local mine = placed and itemID and placed[itemID]
 	if recent and on.recent ~= false then
 		return "recent"
+	elseif mine and KIND[mine] and mine ~= "recent" and mine ~= "empty" and on[mine] ~= false then
+		return mine
 	elseif quality == POOR and on.junk ~= false then
 		return "junk"
 	elseif (isQuestItem or classID == 12) and on.quest ~= false then
 		return "quest"
+	elseif itemID and HEARTH[itemID] and on.hearth ~= false then
+		return "hearth"
 	end
 	local kind = CLASS_KIND[classID]
 	if kind and kind ~= "quest" and on[kind] ~= false then
@@ -206,6 +268,77 @@ function M.KindOf(quality, classID, isQuestItem, recent, on)
 	end
 	return "other"
 end
+
+-- the kinds on (the Kinds list's ticks: db.kindOff), as KindOf reads them (one table, reused)
+local onNow = {}
+local function OnTable()
+	local off = M.db and type(M.db.kindOff) == "table" and M.db.kindOff or nil
+	for _, k in ipairs(KINDS) do
+		onNow[k.key] = not (off and off[k.key]) and true or false
+	end
+	return onNow
+end
+local function On(key)
+	local off = M.db and type(M.db.kindOff) == "table" and M.db.kindOff or nil
+	return not (off and off[key])
+end
+
+-- (0.20.4) the kinds' old switches -- Recent, Gear, Quest, Consumables, Junk and Trade Goods Kind -- into the Kinds
+-- list's ticks: a switch that was off unticks its kinds; the old keys go (at each enable: a profile may bring them)
+local OLD_SWITCHES = { recent = { "recent" }, gear = { "weapon", "armour" }, quest = { "quest" },
+	consumables = { "consumable" }, junk = { "junk" }, trade = { "reagent", "tradegoods", "recipe" } }
+local function Migrate(db)
+	for old, kinds in pairs(OLD_SWITCHES) do
+		if db[old] ~= nil then
+			if db[old] == false then
+				local off = type(db.kindOff) == "table" and db.kindOff or {}
+				db.kindOff = off
+				for _, k in ipairs(kinds) do
+					off[k] = true
+				end
+			end
+			db[old] = nil
+		end
+	end
+end
+M.Migrate = Migrate   -- (the tests)
+
+-- The player's order (Kinds: db.kindOrder; DEFAULT_ORDER until they change it), read into one table (reused): every
+-- known kind once, the lines ("-"), the groups ("group:<name>"); a kind the saved order lacks (one an update added)
+-- goes in before Empty
+local ord, ordSeen = {}, {}
+local function IsGroup(v)
+	return type(v) == "string" and v:sub(1, 6) == "group:"
+end
+local function ReadOrder()
+	local saved = M.db and M.db.kindOrder
+	local src = (type(saved) == "table" and #saved > 0) and saved or DEFAULT_ORDER
+	wipe(ord)
+	wipe(ordSeen)
+	for _, v in ipairs(src) do
+		if v == "-" or IsGroup(v) then
+			ord[#ord + 1] = v
+		elseif KIND[v] and not ordSeen[v] then
+			ordSeen[v] = true
+			ord[#ord + 1] = v
+		end
+	end
+	for _, k in ipairs(KINDS) do
+		if not ordSeen[k.key] then
+			local at = #ord + 1
+			for i, v in ipairs(ord) do
+				if v == "empty" then
+					at = i
+					break
+				end
+			end
+			table.insert(ord, at, k.key)
+			ordSeen[k.key] = true
+		end
+	end
+	return ord
+end
+M.ReadOrder = ReadOrder   -- (the tests)
 
 -- Split Trade Goods: a trade good's own kind (its key and its heading: the
 -- client's own name of its type, a reagent's, recipe's or gem's class name)
@@ -428,8 +561,10 @@ local function ReadBags()
 	local isNew = C_NewItems and C_NewItems.IsNewItem
 	local recentMode = db.recentFor or "close"
 	local sortBy = SORTS[db.sortBy] and db.sortBy or "quality"
-	local split = db.splitTrade and db.trade ~= false
+	local split = db.splitTrade and On("tradegoods")
 	local fold = db.foldEmpty ~= false
+	local on = OnTable()
+	local placed = type(db.placed) == "table" and db.placed or nil
 	local now = GetTime()
 	for bag = first, last do
 		local n = Num(C.GetContainerNumSlots(bag)) or 0
@@ -458,8 +593,8 @@ local function ReadBags()
 					local ends = heldAt[key] + RECENT_MINUTES * 60
 					recentEnds = recentEnds and math.min(recentEnds, ends) or ends
 				end
-				local kind = M.KindOf(e.quality, e.classID, e.isQuest, recent, db)
-				if kind == "trade" and split then
+				local kind = M.KindOf(e.quality, e.classID, e.isQuest, recent, on, itemID, placed)
+				if kind == "tradegoods" and split then
 					kind = TradeKind(e.classID, e.subclassID)
 					local list = byKind[kind]
 					if not list then
@@ -743,6 +878,191 @@ local function LayHeading(h, folded)
 	h.plus:SetShown(folded)
 end
 
+-- (0.20.4) a group's heading over its kinds: its name with the kit's gold caret (down while open, right while folded:
+-- its kinds hidden, their count beside it), made the first time that group shows; and the lines between kinds (a
+-- light line over a dark one, as in the user's shot), made as many as a layout lays
+local groupHeads = {}   -- [group name] = its heading
+local lines = {}        -- the lines made, in order
+
+local function GroupFolded(name)
+	local f = M.db and M.db.foldedGroups
+	return type(f) == "table" and f[name] == true
+end
+
+local GroupClick = Shared("OnClick on a bag window group heading", function(self)
+	local f = M.db.foldedGroups
+	if type(f) ~= "table" then
+		f = {}
+		M.db.foldedGroups = f
+	end
+	f[self.name] = not f[self.name] or nil
+	MelloUI:PlayUISound(f[self.name] and "check_off" or "check_on")
+	M:Layout()
+	if self:IsMouseOver() then
+		self:GetScript("OnEnter")(self)
+	end
+end, "script")
+
+local GroupEnter = Shared("OnEnter on a bag window group heading", function(self)
+	W.Caret(self.caret, 12, GroupFolded(self.name) and "right" or "down", true)
+	W.ShowTooltip(self, self.name, GroupFolded(self.name) and TEXT.unfoldGroup or TEXT.foldGroup)
+end, "script")
+
+local GroupLeave = Shared("OnLeave on a bag window group heading", function(self)
+	W.Caret(self.caret, 12, GroupFolded(self.name) and "right" or "down")
+	W.TipLeave(self)
+end, "script")
+
+local function GroupHead(name)
+	local h = groupHeads[name]
+	if h then
+		return h
+	end
+	h = CreateFrame("Button", nil, win.content)
+	h:SetHeight(G.GROUP_H)
+	h.name = name
+	h.caret = h:CreateTexture(nil, "OVERLAY")
+	h.caret:SetSize(12, 12)
+	h.caret:SetPoint("LEFT", h, "LEFT", 1, 0)
+	h.text = h:CreateFontString(nil, "OVERLAY")
+	Look.Text(h.text, "gold", 14, { area = AREA })
+	h.text:SetPoint("LEFT", h.caret, "RIGHT", 6, 0)
+	h.text:SetText(name)
+	h.count = h:CreateFontString(nil, "OVERLAY")
+	Look.Text(h.count, "text", 11, { area = AREA })
+	h.count:SetPoint("LEFT", h.text, "RIGHT", 8, 0)
+	Perf.SetScript(h, "OnClick", GroupClick)
+	Perf.SetScript(h, "OnEnter", GroupEnter)
+	Perf.SetScript(h, "OnLeave", GroupLeave)
+	groupHeads[name] = h
+	return h
+end
+
+local function LayGroupHead(h, folded, count)
+	W.Caret(h.caret, 12, folded and "right" or "down")
+	h.count:SetText(folded and count or "")
+	h:SetWidth((Num(h.text:GetStringWidth()) or 0) + 18 + (folded and 40 or 0))
+end
+
+-- (0.20.4, stage 2 of bag_kinds_sketch; the user, 2026-10-11: "picking up an item does not show that i can manually
+-- place that item into a group") While the cursor holds an item every kind on shows a + slot after its items (a
+-- kind with none shows its heading and the slot; a folded group opens): the item dropped there (or clicked onto it)
+-- always goes under that kind -- db.placed[itemID], forgotten when it is dropped on its own kind's -- and goes back
+-- to its slot. Made as many as a layout lays.
+local pluses = {}   -- the + slots made, in order
+
+-- the item the cursor holds (its ID), else nil
+local function CursorItem()
+	local ok, what, id = pcall(GetCursorInfo)
+	if ok and what == "item" then
+		return Num(id)
+	end
+	return nil
+end
+
+-- the kind a + slot places in (a type of Split Trade Goods: Trade Goods)
+local function PlaceKind(key)
+	return type(key) == "string" and key:sub(1, 6) == "trade:" and "tradegoods" or key
+end
+
+local function TakesPlus(key)
+	return key ~= "recent" and key ~= "empty" and On(PlaceKind(key))
+end
+
+-- the kind an item goes to by itself (no placing, not Recent): its read entry's, else its type's
+local function NaturalKind(id)
+	for i = 1, nEntries do
+		local e = entries[i]
+		if e.itemID == id then
+			return M.KindOf(e.quality, e.classID, e.isQuest, false, OnTable(), id, nil)
+		end
+	end
+	local _, _, _, _, _, classID = C_Item.GetItemInfoInstant(id)
+	return M.KindOf(1, Num(classID) or 15, false, false, OnTable(), id, nil)
+end
+
+local function PlusLook(b, lit)
+	W.PlusMark(b.mark, b.markSize, lit)
+	for _, e in ipairs(b.edges) do
+		W.Paint(e, lit and "selectedTrim" or "border", "fill", 1)
+	end
+end
+
+local PlusDrop = Shared("OnReceiveDrag / OnClick on a bag window + slot", function(self)
+	local id = CursorItem()
+	if not id then
+		return
+	end
+	local kind = PlaceKind(self.placeKind)
+	local placed = {}
+	for k, v in pairs(type(M.db.placed) == "table" and M.db.placed or {}) do
+		placed[k] = v
+	end
+	placed[id] = (kind ~= NaturalKind(id)) and kind or nil
+	ClearCursor()
+	MelloUI:PlayUISound("check_on")
+	MelloUI:NotifySettingChanged(M.name, "placed", placed)
+end, "script")
+
+local PlusEnter = Shared("OnEnter on a bag window + slot", function(self)
+	PlusLook(self, true)
+	local kind = PlaceKind(self.placeKind)
+	local id = CursorItem()
+	local name = KIND[kind] and KIND[kind].name or kind
+	W.ShowTooltip(self, name, (id and NaturalKind(id) == kind) and TEXT.placeBack or TEXT.placeTip:format(name))
+end, "script")
+
+local PlusLeave = Shared("OnLeave on a bag window + slot", function(self)
+	PlusLook(self, false)
+	W.TipLeave(self)
+end, "script")
+
+local function LayPlus(i, key, x, y)
+	local b = pluses[i]
+	if not b then
+		b = CreateFrame("Button", nil, win.content)
+		b:RegisterForClicks("LeftButtonUp")
+		b.fill = W.Solid(b, "BACKGROUND", "innerPanel", 0.9)
+		b.fill:SetAllPoints(b)
+		b.edges = W.Edges(b, "border", "BORDER")
+		b.mark = b:CreateTexture(nil, "ARTWORK")
+		b.mark:SetPoint("CENTER", b, "CENTER", 0, 0)
+		Perf.SetScript(b, "OnClick", PlusDrop)
+		Perf.SetScript(b, "OnReceiveDrag", PlusDrop)
+		Perf.SetScript(b, "OnEnter", PlusEnter)
+		Perf.SetScript(b, "OnLeave", PlusLeave)
+		pluses[i] = b
+	end
+	b.placeKind = key
+	b:SetSize(G.SLOT, G.SLOT)
+	b.markSize = math.floor(G.SLOT * 0.55 + 0.5)
+	b.mark:SetSize(b.markSize, b.markSize)
+	PlusLook(b, false)
+	b:ClearAllPoints()
+	b:SetPoint("TOPLEFT", win.content, "TOPLEFT", x, -y)
+	b:Show()
+end
+
+local function LayLine(i, y)
+	local l = lines[i]
+	if not l then
+		l = {}
+		l.light = W.Solid(win.content, "ARTWORK", "trim", 0.55)
+		l.dark = W.Solid(win.content, "ARTWORK", "innerPanel", 1)
+		l.light:SetHeight(1)
+		l.dark:SetHeight(1)
+		lines[i] = l
+	end
+	l.light:ClearAllPoints()
+	l.light:SetPoint("TOPLEFT", win.content, "TOPLEFT", 0, -y)
+	l.light:SetPoint("RIGHT", win.content, "RIGHT", 0, 0)
+	l.dark:ClearAllPoints()
+	l.dark:SetPoint("TOPLEFT", l.light, "BOTTOMLEFT", 0, 0)
+	l.dark:SetPoint("RIGHT", l.light, "RIGHT", 0, 0)
+	l.light:Show()
+	l.dark:Show()
+end
+
 --------------------------------------------------------------------------------
 -- The layout: the kinds packed in rows, each kind's items under its heading
 --------------------------------------------------------------------------------
@@ -763,27 +1083,73 @@ local function Place(b, x, y)
 	used[b] = shownStamp
 end
 
--- the kinds this layout shows, in order: Trade Goods' place taken by its
--- types (Split Trade Goods), by name
-local order, orderName = {}, {}
+-- what this layout lays, in the player's order: the kinds (Trade Goods' place taken by its types with Split Trade
+-- Goods, by name), the lines and the groups -- orderType "kind", "line" or "group" (a group's name in orderName)
+local order, orderName, orderType = {}, {}, {}
 local function Order()
 	local n = 0
-	local split = M.db and M.db.splitTrade and M.db.trade ~= false
-	for _, kind in ipairs(KINDS) do
-		if kind.key == "trade" and split then
+	local split = M.db and M.db.splitTrade and On("tradegoods")
+	for _, v in ipairs(ReadOrder()) do
+		if v == "-" then
+			n = n + 1
+			order[n], orderName[n], orderType[n] = v, nil, "line"
+		elseif IsGroup(v) then
+			n = n + 1
+			order[n], orderName[n], orderType[n] = v, v:sub(7), "group"
+		elseif v == "tradegoods" and split then
 			for i = 1, nTrades do
 				n = n + 1
-				order[n], orderName[n] = trades[i], tradeNames[trades[i]]
+				order[n], orderName[n], orderType[n] = trades[i], tradeNames[trades[i]], "kind"
 			end
 		else
 			n = n + 1
-			order[n], orderName[n] = kind.key, kind.name
+			order[n], orderName[n], orderType[n] = v, KIND[v].name, "kind"
 		end
 	end
 	for i = #order, n + 1, -1 do
-		order[i], orderName[i] = nil, nil
+		order[i], orderName[i], orderType[i] = nil, nil, nil
 	end
 	return n
+end
+
+-- the items under a group's kinds (the order's entries after it, to the next line or group); `holding`: their + slots
+-- too
+local function GroupCount(i, n, holding)
+	local count = 0
+	for j = i + 1, n do
+		if orderType[j] ~= "kind" then
+			break
+		end
+		local key = order[j]
+		count = count + (key == "empty" and nEmpties or (byKind[key] and #byKind[key] or 0))
+		if holding and TakesPlus(key) then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+-- the layout's place (one table: no closure per layout) -- x, y, the row's height, whether anything is laid yet,
+-- whether a line is asked for before the next thing laid, the lines laid, the + slots laid
+local at = { x = 0, y = 0, rowH = 0, laid = false, lineDue = false, nLines = 0, nPlus = 0 }
+
+-- a new row under what is laid
+local function NewRow()
+	if at.x > 0 or at.rowH > 0 then
+		at.y = at.y + at.rowH + G.ROW_GAP
+	end
+	at.x, at.rowH = 0, 0
+end
+
+-- the line asked for, before the next thing laid: never at the top, never two at once
+local function DueLine()
+	if at.lineDue and at.laid then
+		NewRow()
+		at.nLines = at.nLines + 1
+		LayLine(at.nLines, at.y + 1)
+		at.y = at.y + G.LINE_GAP
+	end
+	at.lineDue = false
 end
 
 local function AtVendor()
@@ -858,69 +1224,128 @@ function M:Layout()
 	win.content:SetWidth(G.CONTENT_W)
 	ReadBags()
 	shownStamp = shownStamp + 1
-	local x, y, rowH = 0, 0, 0
-	-- (the headings of kinds not shown this time are hidden after: a kind
-	-- emptied or switched off, a trade type gone, the split off)
+	at.x, at.y, at.rowH, at.laid, at.lineDue, at.nLines, at.nPlus = 0, 0, 0, false, false, 0, 0
+	local holding = CursorItem() ~= nil   -- (an item held: a + slot in every kind on, the groups open)
+	win.holding = holding
+	-- (the headings of kinds and groups not shown this time are hidden after: a kind
+	-- emptied or switched off, a trade type gone, the split off, a group emptied)
 	for _, h in pairs(headings) do
 		h.laid = false
 	end
-	for i = 1, Order() do
-		local key = order[i]
-		local list = byKind[key]
-		local n = key == "empty" and nEmpties or (list and #list or 0)
-		local h = n > 0 and Heading(key, orderName[i]) or headings[key]
-		local fold = folds[key]
-		if n > 0 then
-			h.laid = true
-			local folded = key ~= "empty" and Folded(key) and n > 1
-			if key == "junk" then
-				h.worth:SetText(junkWorth and junkWorth > 0 and GetMoneyString(junkWorth, true) or "")
-				h.worth:SetShown(not SellShown())
+	for _, h in pairs(groupHeads) do
+		h.laid = false
+	end
+	local skipping = false   -- (the kinds of a folded group: passed by)
+	local nOrder = Order()
+	for i = 1, nOrder do
+		local t, key = orderType[i], order[i]
+		if t == "line" then
+			at.lineDue, skipping = true, false
+		elseif t == "group" then
+			skipping = false
+			local count = GroupCount(i, nOrder, holding)
+			if count > 0 then
+				DueLine()
+				NewRow()
+				local gh = GroupHead(orderName[i])
+				local folded = GroupFolded(orderName[i]) and not holding
+				LayGroupHead(gh, folded, count)
+				gh:ClearAllPoints()
+				gh:SetPoint("TOPLEFT", win.content, "TOPLEFT", 0, -at.y)
+				gh:Show()
+				gh.laid = true
+				at.y = at.y + G.GROUP_H
+				at.laid = true
+				skipping = folded
 			end
-			LayHeading(h, folded)
-			local items = folded and 1 or n
-			local cols = math.min(items, G.COLS)
-			local lines = math.ceil(items / G.COLS)
-			local w = math.max(cols * G.PITCH - G.GAP, HeadingWidth(h, key))
-			w = math.min(w, G.CONTENT_W)
-			if x > 0 and x + G.KIND_GAP + w > G.CONTENT_W then
-				y = y + rowH + G.ROW_GAP
-				x, rowH = 0, 0
-			elseif x > 0 then
-				x = x + G.KIND_GAP
-			end
-			h:ClearAllPoints()
-			h:SetPoint("TOPLEFT", win.content, "TOPLEFT", x, -y)
-			h:SetWidth(w)
-			h:Show()
-			if key == "empty" then
-				h.free = 0
-				for j = 1, n do
-					local e = empties[j]
-					local b = SlotButton(e.bag, e.slot)
-					FillEmpty(b, e.free)
-					Place(b, x + ((j - 1) % G.COLS) * G.PITCH, y + G.HEAD + math.floor((j - 1) / G.COLS) * G.PITCH)
-					h.free = h.free + (e.free or 1)
+		elseif not skipping then
+			local list = byKind[key]
+			local n = key == "empty" and nEmpties or (list and #list or 0)
+			local plus = holding and TakesPlus(key)
+			local h = (n > 0 or plus) and Heading(key, orderName[i]) or headings[key]
+			local fold = folds[key]
+			if n > 0 or plus then
+				DueLine()
+				h.laid = true
+				local folded = key ~= "empty" and Folded(key) and n > 1
+				if key == "junk" then
+					h.worth:SetText(junkWorth and junkWorth > 0 and GetMoneyString(junkWorth, true) or "")
+					h.worth:SetShown(not SellShown())
 				end
-			else
-				for j = 1, items do
-					local e = list[j]
-					local b = SlotButton(e.bag, e.slot)
-					Fill(b, e)
-					Place(b, x + ((j - 1) % G.COLS) * G.PITCH, y + G.HEAD + math.floor((j - 1) / G.COLS) * G.PITCH)
+				LayHeading(h, folded)
+				local shown = folded and 1 or n
+				local items = shown + (plus and 1 or 0)
+				local hw = HeadingWidth(h, key)
+				local cols = math.min(items, G.COLS)
+				local w = math.min(math.max(cols * G.PITCH - G.GAP, hw), G.CONTENT_W)
+				if at.x > 0 and at.x + G.KIND_GAP + w > G.CONTENT_W then
+					-- (0.20.4, bag_kinds_sketch: a big kind wraps in the room its row has left -- Hearthstone and
+					-- Consumable share a row -- while that makes it at most one line taller than a row of its own)
+					local room = G.CONTENT_W - at.x - G.KIND_GAP
+					local fit = math.floor((room + G.GAP) / G.PITCH)
+					if fit >= 2 and hw <= room and math.ceil(items / fit) <= math.ceil(items / G.COLS) + 1 then
+						cols = math.min(items, fit)
+						w = math.max(cols * G.PITCH - G.GAP, hw)
+						at.x = at.x + G.KIND_GAP
+					else
+						NewRow()
+					end
+				elseif at.x > 0 then
+					at.x = at.x + G.KIND_GAP
 				end
+				local x, y = at.x, at.y
+				local nLines = math.ceil(items / cols)
+				h:ClearAllPoints()
+				h:SetPoint("TOPLEFT", win.content, "TOPLEFT", x, -y)
+				h:SetWidth(w)
+				h:Show()
+				if key == "empty" then
+					h.free = 0
+					for j = 1, n do
+						local e = empties[j]
+						local b = SlotButton(e.bag, e.slot)
+						FillEmpty(b, e.free)
+						Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
+						h.free = h.free + (e.free or 1)
+					end
+				else
+					for j = 1, shown do
+						local e = list[j]
+						local b = SlotButton(e.bag, e.slot)
+						Fill(b, e)
+						Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
+					end
+					if plus then
+						at.nPlus = at.nPlus + 1
+						LayPlus(at.nPlus, key, x + (shown % cols) * G.PITCH, y + G.HEAD + math.floor(shown / cols) * G.PITCH)
+					end
+				end
+				if folded then
+					fold:SetText(n)
+					fold:ClearAllPoints()
+					fold:SetPoint("BOTTOMLEFT", win.content, "TOPLEFT", x + G.SLOT + 3, -(y + G.HEAD + G.SLOT))
+					fold:Show()
+				else
+					fold:Hide()
+				end
+				at.rowH = math.max(at.rowH, G.HEAD + nLines * G.PITCH - G.GAP)
+				at.x = x + w
+				at.laid = true
 			end
-			if folded then
-				fold:SetText(n)
-				fold:ClearAllPoints()
-				fold:SetPoint("BOTTOMLEFT", win.content, "TOPLEFT", x + G.SLOT + 3, -(y + G.HEAD + G.SLOT))
-				fold:Show()
-			else
-				fold:Hide()
-			end
-			rowH = math.max(rowH, G.HEAD + lines * G.PITCH - G.GAP)
-			x = x + w
 		end
+	end
+	local y, rowH = at.y, at.rowH
+	for _, gh in pairs(groupHeads) do
+		if not gh.laid and gh:IsShown() then
+			gh:Hide()
+		end
+	end
+	for i = at.nLines + 1, #lines do
+		lines[i].light:Hide()
+		lines[i].dark:Hide()
+	end
+	for i = at.nPlus + 1, #pluses do
+		pluses[i]:Hide()
 	end
 	-- the headings and buttons this layout did not lay: hidden
 	for key, h in pairs(headings) do
@@ -1316,7 +1741,7 @@ end
 
 local events = nil
 local LAYOUT_EVENTS = { "BAG_UPDATE_DELAYED", "BAG_NEW_ITEMS_UPDATED", "QUEST_ACCEPTED", "UNIT_QUEST_LOG_CHANGED",
-	"MERCHANT_SHOW", "MERCHANT_CLOSED", "GET_ITEM_INFO_RECEIVED" }
+	"MERCHANT_SHOW", "MERCHANT_CLOSED", "GET_ITEM_INFO_RECEIVED", "CURSOR_CHANGED" }
 local MARK_EVENTS = { "ITEM_LOCK_CHANGED", "BAG_UPDATE_COOLDOWN", "INVENTORY_SEARCH_UPDATE" }
 
 local relay = false
@@ -1345,6 +1770,11 @@ local OnEvent = Shared("OnEvent of the bag window", function(_, event, arg1)
 		end
 	elseif event == "UNIT_QUEST_LOG_CHANGED" then
 		if arg1 == "player" then
+			LayoutSoon()
+		end
+	elseif event == "CURSOR_CHANGED" then
+		-- (0.20.4) an item picked up or put down: the + slots shown or gone
+		if (CursorItem() ~= nil) ~= (win.holding or false) then
 			LayoutSoon()
 		end
 	elseif event == "ITEM_LOCK_CHANGED" or event == "BAG_UPDATE_COOLDOWN" or event == "INVENTORY_SEARCH_UPDATE" then
@@ -1391,8 +1821,142 @@ function ns.BagWindowShown()
 	return (M.isEnabled and captured and f and f:IsShown()) and f or nil
 end
 
+--------------------------------------------------------------------------------
+-- Kinds on Windows > Bags (0.20.4, the user's pick A of bag_kinds_sketch: W.OrderList): the order, its lines and
+-- groups, a tick each; every change saved as the module's kindOrder / kindOff (the bus's 'setting': laid out again)
+--------------------------------------------------------------------------------
+
+-- the order as it stands, a copy to change and save
+local function OrderCopy()
+	local out = {}
+	for i, v in ipairs(ReadOrder()) do
+		out[i] = v
+	end
+	return out
+end
+
+local function SaveOrder(list)
+	MelloUI:NotifySettingChanged(M.name, "kindOrder", list)
+end
+
+local function KindRows()
+	local rows, inGroup = {}, false
+	local off = M.db and type(M.db.kindOff) == "table" and M.db.kindOff or nil
+	for i, v in ipairs(ReadOrder()) do
+		if v == "-" then
+			inGroup = false
+			rows[i] = { kind = "line", removable = true }
+		elseif IsGroup(v) then
+			inGroup = true
+			rows[i] = { kind = "group", label = v:sub(7), removable = true, renamable = true }
+		else
+			local k = KIND[v]
+			local ticked = nil
+			if not k.always then
+				ticked = not (off and off[v])
+			end
+			rows[i] = { kind = "item", label = k.name, note = k.note, indent = inGroup and 1 or 0, ticked = ticked }
+		end
+	end
+	return rows
+end
+
+-- a group moves with its kinds
+local function KindBlock(i)
+	local o = ReadOrder()
+	if not IsGroup(o[i]) then
+		return 1
+	end
+	local n = 1
+	for j = i + 1, #o do
+		if o[j] == "-" or IsGroup(o[j]) then
+			break
+		end
+		n = n + 1
+	end
+	return n
+end
+
+local function KindMove(from, count, to)
+	local o = OrderCopy()
+	local moved = {}
+	for j = 1, count do
+		moved[j] = table.remove(o, from)
+	end
+	if to > from then
+		to = to - count
+	end
+	for j = count, 1, -1 do
+		table.insert(o, to, moved[j])
+	end
+	SaveOrder(o)
+end
+
+local function KindTick(i, on)
+	local v = ReadOrder()[i]
+	if not (KIND[v] and not KIND[v].always) then
+		return
+	end
+	local off = {}
+	for k, flag in pairs(type(M.db.kindOff) == "table" and M.db.kindOff or {}) do
+		off[k] = flag
+	end
+	off[v] = (not on) or nil
+	MelloUI:NotifySettingChanged(M.name, "kindOff", off)
+end
+
+local function KindRemove(i)
+	local o = OrderCopy()
+	if o[i] == "-" or IsGroup(o[i]) then
+		table.remove(o, i)
+		SaveOrder(o)
+	end
+end
+
+local function KindRename(i, text)
+	local o = OrderCopy()
+	if IsGroup(o[i]) then
+		o[i] = "group:" .. text
+		SaveOrder(o)
+	end
+end
+
+local KIND_LIST = {
+	title = TEXT.kindsTitle, help = TEXT.kindsHelp,
+	rows = KindRows, block = KindBlock, move = KindMove, tick = KindTick, remove = KindRemove, rename = KindRename,
+	buttons = {
+		{ TEXT.addLine, function()
+			local o = OrderCopy()
+			table.insert(o, 1, "-")
+			SaveOrder(o)
+		end },
+		{ TEXT.addGroup, function()
+			local o = OrderCopy()
+			table.insert(o, 1, "group:" .. TEXT.newGroup)
+			SaveOrder(o)
+		end },
+		{ TEXT.resetOrder, function()
+			MelloUI:NotifySettingChanged(M.name, "kindOrder", nil)
+		end },
+	},
+}
+
+local function RefreshKindList(canvas)
+	if canvas.list then
+		canvas.list:Refresh()
+	end
+end
+
+function M.BuildKindList(canvas, width)
+	local list = W.OrderList(canvas, math.min((Num(width) or 600) - 28, 560), KINDS_H - 12, KIND_LIST)
+	list.frame:SetPoint("TOPLEFT", canvas, "TOPLEFT", 14, -6)
+	canvas.list = list
+	canvas.Refresh = RefreshKindList
+end
+
 function M:OnEnable(db)
 	self.db = db
+	Migrate(db)
 	self:Apply()
 end
 
@@ -1418,3 +1982,4 @@ end
 M.win = win
 M.Capture, M.Release, M.GameOpen = Capture, Release, GameOpen
 M.trades = trades
+M.lines, M.groupHeads, M.KindRows, M.pluses = lines, groupHeads, KindRows, pluses   -- (0.20.4)

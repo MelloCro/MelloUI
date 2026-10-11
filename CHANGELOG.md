@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.4
+
+- Chat: Input Box Only While Typing (Chat > Chat Frame > Behaviour, on): the chat input box no longer stays on screen. Press Enter (or /) and it appears; send the line or press Escape and it goes again. It uses the game's own Classic chat style, and gives your own Chat Style back when you switch it off.
+- Bags by Kind: the kinds follow the game's item types (Hearthstone, Consumable, Quest, Weapon, Armour, Reagent, Trade Goods, Recipe, Projectile, Bag, Quiver, Key, Miscellaneous, Other, Junk, Empty) and show in the order you choose: Windows > Bags > Kinds, drag a row up or down. Hearthstone starts on top.
+- Bags by Kind: a line between sections, and groups (Equipment, Crafting) with a heading you click to fold them. Add your own lines and groups on the Kinds list, rename a group with a double-click. Untick a kind and its items go to their own type or to Other; your old kind switches carry over.
+- Bags by Kind: a big kind shares a row with the small ones before it, so Hearthstone and Consumable sit side by side.
+- Bags by Kind: pick up an item and every kind shows a + slot: drop the item there and it always goes under that kind. Drop it on its own kind's + to put it back; Items You Placed > Forget (Windows > Bags) puts them all back.
+
 ## 0.20.3
 
 - Parchment Style (Look > Parchment): pick how the parchment looks wherever it shows, the sheets you switched on and the quest log, quest and spell book pages. Burnt paper, the new one, stays the default; Classic vellum brings back the vellum with painted brush-stroke edges from before 0.20.1. It switches at once, no /reload.
