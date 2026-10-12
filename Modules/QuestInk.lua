@@ -2094,28 +2094,6 @@ function QI.Within(region, ...)
 	return false
 end
 
-local function InRoots(region, def)
-	return QI.Within(region, def.roots())
-end
-
--- Whether `region` lies on a surface that is on parchment now (in one of its
--- roots): true and the surface's sheet flag, else false. Asked as a picture
--- on a page is laid (a stamp's paper), never each frame
-function QI.OnSurface(region)
-	if not region then
-		return false
-	end
-	for _, def in pairs(QI.surfaces) do
-		if def.active and not def.noWalk then
-			local ok, held = pcall(InRoots, region, def)
-			if ok and held then
-				return true, def.sheet and true or false
-			end
-		end
-	end
-	return false
-end
-
 -- a parchment sheet switched on or off: its surface follows (the bus's
 -- 'parchment', fired once the kit's sheets are switched, where the hook on
 -- Kit.SetParchment ran: audit 2026-09-24 rank 5)

@@ -120,12 +120,9 @@ MelloUI.modules = {}
 -- tag shows only while that update is the one running, so the next update
 -- hides it by itself. The release check (Tools/lint/check_new_tags.py) fails
 -- on a new option without one and takes the old ones out of the files.
---   MelloUI:ReleaseVersion() -> "0.14.0"   the running update: the TOC's
---       Version as three numbers (a test build's "0.14.0-rc5" or "0.14.0
---       RC5" is 0.14.0); nil when it names none ("dev"). The tests' probe:
---       IsNew below is what the tags ask
 --   MelloUI:IsNew(v) -> true while `v` names the running update ("0.14" is
---       0.14.0); false for nil or anything else
+--       0.14.0; a test build's "0.14.0-rc5" or "0.14.0 RC5" runs 0.14.0, a
+--       "dev" build none); false for nil or anything else
 --------------------------------------------------------------------------------
 
 do
@@ -141,9 +138,6 @@ do
 			seen[v] = known
 		end
 		return known or nil
-	end
-	function MelloUI:ReleaseVersion()
-		return ThreeNumbers(self.version)
 	end
 	function MelloUI:IsNew(v)
 		if v == nil then
@@ -348,6 +342,27 @@ MelloUI.Meaning = {
 	actionRange = Hex("#FF4028"),      -- (meaning colour)
 	actionMana = Hex("#4066FF"),       -- (meaning colour)
 	gameMana = Hex("#8080FF"),         -- (meaning colour)
+	-- (0.21.0, the Personal Display, the user's pick A of personal_display_sketch: health green, the cast gold, the
+	-- shield column blue, amber when low, the part a hit took pale; MelloUI_PersonalDisplay)
+	personalHealth = Hex("#26BE2E"),     -- (meaning colour)
+	personalCast = Hex("#E89E16"),       -- (meaning colour)
+	personalShield = Hex("#409CFF"),     -- (meaning colour)
+	personalShieldLow = Hex("#F0961C"),  -- (meaning colour)
+	personalLoss = Hex("#E6F0FF"),       -- (meaning colour)
+	-- (0.21.0, the user's pick B of prd_multishield: each shield its part, in its school's colour)
+	personalShieldHoly = Hex("#FFE28C"),    -- (meaning colour)
+	personalShieldFire = Hex("#FF8028"),    -- (meaning colour)
+	personalShieldNature = Hex("#78DC5A"),  -- (meaning colour)
+	personalShieldFrost = Hex("#6ED6FF"),   -- (meaning colour)
+	personalShieldShadow = Hex("#7A3CC0"),  -- (meaning colour)
+	personalShieldArcane = Hex("#C08CFF"),  -- (meaning colour)
+	-- (0.21.0, the Personal Display's Big Cooldowns: each kind's ring round you)
+	personalCdImmunity = Hex("#FFD66E"),    -- (meaning colour)
+	personalCdFortify = Hex("#BEC8D7"),     -- (meaning colour)
+	personalCdHealth = Hex("#E04040"),      -- (meaning colour)
+	personalCdBlock = Hex("#E8B04A"),       -- (meaning colour)
+	personalCdEvasion = Hex("#D8E4F0"),     -- (meaning colour)
+	personalCdOffence = Hex("#FF6E28"),     -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 
@@ -469,6 +484,29 @@ function Safe.ScreenRect(region)
 		return nil   -- (not a number: no place on the screen)
 	end
 	return left, bottom, right, top
+end
+
+-- (0.21.0, lifted from Swing Timers' ReadWand for the Personal Display's rails too) the ranged slot's weapon a wand:
+-- its shots are Shoot, with no aim (Swing Timers run them on the melee bar, the Personal Display's seam rail without
+-- the aim's red); false when it is no wand or cannot be read (no item, a secret answer)
+function Safe.RangedIsWand()
+	local okI, item = pcall(_G.GetInventoryItemID, "player", 18)
+	if not okI or Safe.IsSecret(item) or not item then
+		return false
+	end
+	local api = _G.C_Item
+	local info = api and api.GetItemInfoInstant or _G.GetItemInfoInstant
+	if not info then
+		return false
+	end
+	local ok, _, _, _, _, _, classID, subclassID = pcall(info, item)
+	if not ok or Safe.IsSecret(classID) or Safe.IsSecret(subclassID) then
+		return false
+	end
+	local enum = _G.Enum
+	local wand = enum and enum.ItemWeaponSubclass and enum.ItemWeaponSubclass.Wand or 19
+	local weapon = enum and enum.ItemClass and enum.ItemClass.Weapon or 2
+	return classID == weapon and subclassID == wand
 end
 
 --------------------------------------------------------------------------------
@@ -3311,6 +3349,7 @@ MelloUI.Features = {
 	FrameEffects = { addon = "MelloUI_FrameEffects", title = "Frame Effects" },
 	Route = { addon = "MelloUI_Route", title = "Route" },
 	VoiceOver = { addon = "MelloUI_VoiceOver", title = "Voice Over" },
+	PersonalDisplay = { addon = "MelloUI_PersonalDisplay", title = "Personal Display" },
 }
 
 -- a feature of its own addon that is not loaded (turned off in AddOns)
@@ -4127,6 +4166,23 @@ do
 			local ui = Raw(self, "UIModifications")
 			if ui and ui.unitFrameBorder == nil and type(ui.barBorder) == "string" then
 				ui.unitFrameBorder = ui.barBorder
+			end
+		end,
+		-- 0.21.0 (the user: the Personal Display's borders "should reflect the changes made in the Look -> Borders"):
+		-- Personal Resource Border moved to a key of its own with the bar looks (personalBarBorder, the Ornate bracket
+		-- first); a frame picked before for the game's display carried over (the thin rims by their bar names), the
+		-- old default "none" left behind. Once set, never carried again
+		function(self)
+			local ui = Raw(self, "UIModifications")
+			local old = ui and ui.personalBorder
+			-- (a profile text from before: ApplyDefaults has written the new key's "frame" first)
+			if ui and (ui.personalBarBorder == nil or ui.personalBarBorder == "frame") and type(old) == "string"
+				and old ~= "none" then
+				local bar = { thin = "rim", hairline = "rimhair", rounded = "rimround", gold = "rimgold", sunk = "rimsunk" }
+				ui.personalBarBorder = bar[old] or old
+			end
+			if ui then
+				ui.personalBorder = nil
 			end
 		end,
 	}

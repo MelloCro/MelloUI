@@ -2743,11 +2743,13 @@ function M:TestRare(elite)
 end
 
 -- (the /mello handler's "<module> <word>": Core/Config.lua reads a module's
--- SlashWords; "widgets" is a page word there, so a branch of its own in the
--- handler is never reached)
+-- SlashWords; "widgets" is a module and page word there, so its words live
+-- here, never in a branch of the handler: /mello widgets column dumps the
+-- widget column into the copy window)
 M.SlashWords = {
 	rare = function() M:TestRare(false) end,
 	["rare elite"] = function() M:TestRare(true) end,
+	column = function() MelloUI.Reminders:DumpColumn() end,
 }
 
 -- the way to its place (Lead Me There): Route with the map pin

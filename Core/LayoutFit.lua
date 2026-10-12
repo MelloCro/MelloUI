@@ -1397,7 +1397,7 @@ function Column.Model(f)
 	-- its round ring's or square border's outer edges, else the map's)
 	local side = kit and frame or map
 	col.left, col.right = side[1], side[3]
-	col.k, col.bar, col.bottom, col.kit, col.match, col.merged = k, bar, bottom, kit, (kit and c.match) and true or false, merged
+	col.k, col.bar, col.bottom, col.kit, col.match = k, bar, bottom, kit, (kit and c.match) and true or false
 	col.built = f.version
 	return col
 end

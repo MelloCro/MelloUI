@@ -2261,7 +2261,7 @@ end
 -- hovered; with the kit, the rim every window's buttons wear (UI
 -- Modifications' Button Border, swapped live with it, in the Kit Colours
 -- look -- user, 2026-09-24) over the icon in its square opening.
---   box:SetIcon(texture)   box:SetSelected(on)   box:SetPressed(on)
+--   box:SetIcon(texture)   box:SetSelected(on)
 --   box:SetHovered(on)     box:SetOn(on)         box:SetGlow(on)
 --   box:SetKit(on)         the icon laid again for the look (a box made with
 --                          a shell follows its switches)
@@ -2285,13 +2285,6 @@ local function IconBox_SetSelected(self, selected)
 	self.selected = selected and true or false
 	W.Paint(self.frame, self.selected and "selectedTrim" or "mutedText", "vertex", 1)
 	if self.rim and self.rim.Update then
-		self.rim:Update()
-	end
-end
-
-local function IconBox_SetPressed(self, pressed)
-	if self.rim and self.rim.Update then
-		self.rim.pressed = pressed and true or nil
 		self.rim:Update()
 	end
 end
@@ -2431,7 +2424,7 @@ function W.IconBox(parent, size, texture, skin)
 	local mask = box:CreateMaskTexture()
 	mask:SetAtlas(ICON_MASK)
 	maskOf[box] = mask
-	box.SetIcon, box.SetSelected, box.SetPressed = IconBox_SetIcon, IconBox_SetSelected, IconBox_SetPressed
+	box.SetIcon, box.SetSelected = IconBox_SetIcon, IconBox_SetSelected
 	box.SetHovered, box.SetOn, box.SetGlow, box.SetKit = IconBox_SetHovered, IconBox_SetOn, IconBox_SetGlow, IconBox_SetKit
 	box.masked = false
 	box:SetKit(skin and skin.kit)
@@ -3188,7 +3181,7 @@ end
 -- palette paints them again). Two regions of `parent`, made when asked.
 --   local tag = W.Tag(parent, text, snug) -> the word (a FontString),
 --       tag.plate (the caller places the word, the plate follows it: W.TAG_PAD
---       round it; `snug`: W.TAG_SNUG, where room is scarce -- the side list)
+--       round it; `snug`: a narrower one, where room is scarce -- the side list)
 --   W.TagShown(tag, shown)    W.TagAlpha(tag, alpha)    (the word and its plate)
 -- New tags: an option names the update it came with (`new`); its tag is made
 -- and shown only while that update runs (Core's MelloUI:IsNew), so the next
@@ -3217,7 +3210,6 @@ local BADGE_IN = 12                 -- a badge's plate inside its frame's right 
 local BUTTON_TAG_IN = 8             -- a button's tag plate inside its right side (clear of its end cap)
 local LABEL_SLACK = 2               -- a label narrowed to its text keeps this much more (never cut at an odd scale)
 W.TAG_PAD = TAG_PAD_X
-W.TAG_SNUG = TAG_SNUG_X
 W.NEW = "New"
 
 function W.Tag(parent, text, snug)
@@ -3542,7 +3534,7 @@ function W.Row(parent, y, height, label, hint, desc, opts)
 		plate.look, plate.skin, plate.strength = nil, nil, nil
 		-- (the fields such rows always had: a heading's `hover` is taken away)
 		if kit then
-			row.hover, row.hoverPlate = region, region
+			row.hover = region
 		else
 			row.hoverGlow = region
 		end

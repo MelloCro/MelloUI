@@ -29,3 +29,4 @@ move-folders:
   MelloUI/MelloUI_FrameEffects: MelloUI_FrameEffects
   MelloUI/MelloUI_Route: MelloUI_Route
   MelloUI/MelloUI_VoiceOver: MelloUI_VoiceOver
+  MelloUI/MelloUI_PersonalDisplay: MelloUI_PersonalDisplay

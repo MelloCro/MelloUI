@@ -818,7 +818,7 @@ local WEAPON_INV_DEFAULT = { MainHand = 16, OffHand = 17, Ranged = 18 }
 
 local WeaponButton = {}
 function WeaponButton:SetIcon(tex) self.melloIcon = tex end
-function WeaponButton:SetDurationCooldown(cooldown) self.melloCooldown = cooldown end
+function WeaponButton:SetDurationCooldown() end
 function WeaponButton:SetApplicationCount(fs) self.melloCount = fs end
 function WeaponButton:SetDurationText(fs, opts) self.melloTime, self.melloFormat = fs, opts and opts.textFormatter end
 function WeaponButton:SetTooltipAnchorPoint(anchor) self.melloTip = anchor end

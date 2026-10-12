@@ -1149,6 +1149,12 @@ local function NewBlock()
 		return block
 	end
 	block = CreateFrame("Button", nil, content)
+	-- (a new block: the Fader hooks it for On Mouseover -- 0.21.0, the user: the tracker "does not reappear when im
+	-- mousing over it", its quest blocks made after the Fader's hooks)
+	local fader = MelloUI.Fader
+	if type(fader) == "table" and fader.Rehook then
+		fader:Rehook()
+	end
 	block:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	Perf.SetScript(block, "OnClick", OnBlockClick)
 	Perf.SetScript(block, "OnEnter", OnBlockEnter)

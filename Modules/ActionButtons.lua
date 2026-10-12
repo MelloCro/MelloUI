@@ -351,7 +351,7 @@ function M:Light(frame, on)
 end
 
 -- for the tests
-M.light, M.cover, M.covered, M.held, M.greyed, M.pressed = light, cover, covered, held, greyed, pressed
+M.light, M.cover = light, cover
 M.Buttons = function()
 	return buttons
 end

@@ -41,7 +41,6 @@ local TEXT = {
 	frame = "Your frame, as large as it fits: drag an indicator to move it, the mouse wheel over it to size it",
 	list = "Indicators for %s",
 	buffs = "BUFFS by spell (yours and your group's)",
-	debuffs = "DEBUFFS on your group, by kind (the game forbids picking one out by spell)",
 	spellHint = "Spell name or ID",
 	addBuff = "+ Buff",
 	addDebuff = "+ Debuff (by kind)",
@@ -49,7 +48,7 @@ local TEXT = {
 	none = "Pick an indicator above, or add one.",
 	look = "Look", spot = "Spot", offset = "X / Y", size = "Size", length = "Length", whose = "Whose",
 	kind = "Which", when = "Show", colour = "Colour", colourBy = "Colour from", strength = "Strength",
-	time = "Its time", stacks = "Its stacks", textSize = "Size", remove = "Remove",
+	time = "Its time", stacks = "Its stacks", remove = "Remove",
 	group = "A made-up group at the game's size",
 	show = "Show the fake raid on screen",
 	showTip = "Made-up members where your raid frames stand, your indicators on them, until the preview ends. Out of combat only.",
@@ -72,7 +71,7 @@ local COLOUR_BY = { { value = "type", label = "Its type's colour" }, { value = "
 local SHORT_LOOK = { icon = "Icon", drain = "Draining", square = "Square", bar = "Bar", health = "Health" }
 
 -- the canvas's measures (the frame at the game's native 72 x 36, shown 4x)
-local G = { pad = 10, gap = 8, scale = 4, fw = 72, fh = 36, topH = 276, rowH = 20, rows = 8, chips = 26,
+local G = { pad = 10, gap = 8, scale = 4, fw = 72, topH = 276, rowH = 20, rows = 8, chips = 26,
 	setY = 288, setH = 318, raidY = 616, labelW = 78, wheel = 96, spot = 13, spotGap = 3, groupH = 100 }
 Page.HEIGHT = G.raidY + 100
 

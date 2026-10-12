@@ -375,4 +375,4 @@ function I:Stop()
 end
 
 -- (the tests')
-I.holders, I.hosts = holders, hosts
+I.holders = holders

@@ -110,7 +110,6 @@ local TEXT = {
 	abandoned = "Edit Layout closed: a profile or the installer changed the layout, so your unsaved changes were "
 		.. "dropped.",
 }
-E.TEXTS = TEXT
 
 local FILTERS = {
 	{ value = "all", label = "All" },

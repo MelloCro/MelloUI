@@ -49,10 +49,10 @@ local ICON = { fallback = 16, min = 12, max = 28 }
 local PREVIEW_CAST = 1.2
 
 local TEXT = {
-	noBar = "Heal Flight: your cast bar has no place on the screen yet (cast something once).",
-	noFrame = "Heal Flight: no party or raid frame of yours is shown.",
-	reduceMotion = "Heal Flight: Reduce Motion is on, so nothing flies.",
-	off = "Heal Flight is off.",
+	noBar = "Heal Effects: your cast bar has no place on the screen yet (cast something once).",
+	noFrame = "Heal Effects: no party or raid frame of yours is shown.",
+	reduceMotion = "Heal Effects: Reduce Motion is on, so nothing flies.",
+	off = "Heal Effects are off.",
 	noEffects = "Frame Effects is not loaded (it is turned off in AddOns).",
 	usage = "/mellofx: every heal kind on your frame. /mellofx heal: a heal from your cast bar to your frame. "
 		.. "/mellofx fx: every Frame Effect. /mellofx stop: clears them.",
@@ -254,8 +254,14 @@ local function CastBar()
 end
 
 -- the charge's place: the bar, its spell icon (else the bar's left end), the
--- game's fill (the light anchored to it: nothing read)
+-- game's fill (the light anchored to it: nothing read); (0.21.0) another
+-- place first when one is given (Looks.SetChargePlace: the Personal Display's,
+-- at your character's middle)
 local function BarPlace(S)
+	local place = Looks.chargePlace
+	if place and place(S) then
+		return true
+	end
 	local bar = CastBar()
 	if type(bar) ~= "table" then
 		return false
@@ -740,7 +746,7 @@ end
 --------------------------------------------------------------------------------
 
 M = MelloUI:RegisterModule("HealFlight", {
-	title = "Heal Flight",
+	title = "Heal Effects",   -- (0.21.0, the user: the page's switch name, every text alike)
 	desc = "Your heals on your group as light: a cast heal gathers on your cast bar and flies to the frame of the one you heal; an instant one lands on their frame at once. Each kind lands its own way: heals over time, shields, protection, a heal to full, a resurrection.",
 	icon = "Interface\\Icons\\Spell_Holy_Renew",
 	flavour = "Your heals fly from your cast bar to the frame of the one you heal.",

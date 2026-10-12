@@ -1209,7 +1209,6 @@ local function SkinUnitFrame(uf)
 					strip.mid:SetVertexColor(r, g, b)
 					strip.capR:SetVertexColor(r, g, b)
 				end
-				rep.melloShine = Shine
 				hooksecurefunc(sel, "Show", Shine)
 				hooksecurefunc(sel, "Hide", Shine)
 				hooksecurefunc(sel, "SetShown", Shine)

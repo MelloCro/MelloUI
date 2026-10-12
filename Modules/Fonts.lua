@@ -176,7 +176,7 @@ end
 -- The correction of a face in a role; a path nil, "" or "Keep the game's":
 -- the role's default face (the title's Enchanted Land, the game's
 -- elsewhere: both 1). For the installer's samples and MelloUI:MergeSettings
--- too (MelloUI.FontFaceFactor; M.FaceFactor once the module is made).
+-- too (MelloUI.FontFaceFactor).
 local function FaceFactor(roleKey, path)
 	local byPath = FACE_FACTOR[roleKey]
 	local f = byPath and type(path) == "string" and byPath[path]
@@ -293,8 +293,6 @@ local function ChosenFont(roleKey)
 	end
 	return nil
 end
-
-M.FaceFactor = FaceFactor
 
 -- The correction of the face a role draws in now (FaceFactor): all a text
 -- with a size of its own takes from this module

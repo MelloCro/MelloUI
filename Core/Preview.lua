@@ -27,7 +27,6 @@
 --   Preview:Fighting() -> true between the pull and the kill
 --   Preview:ToggleMenu(anchor[, skin])   the Preview list under a button (the
 --       configurator's top bar): the two whole scenes, then each part alone
---   Preview.BEATS  the scene: { t = seconds, beat, n } in order
 --   Preview.PARTY  the made-up group (the stand-ins, the meter, the widgets)
 -- Bus 'preview' (beat, mode, n):
 --   "start"  the scene begins: sample rows and reminders up, the stand-ins
@@ -105,6 +104,9 @@ Preview.ITEMS = {
 		desc = "The text over you, and your damage at your target." },
 	{ key = "gains", part = "gains", mode = "solo", name = "Gains", module = "Gains",
 		desc = "What a kill brings: experience, loot and money." },
+	-- (0.21.0) the Personal Display's made-up shield and casts (MelloUI_PersonalDisplay)
+	{ key = "personal", part = "personal", mode = "solo", name = "Personal Display", module = "PersonalDisplay",
+		desc = "A shield going up on you, hit until it is low and breaks, and your casts." },
 }
 local ITEMS = Preview.ITEMS
 local BY_KEY = {}
@@ -133,7 +135,6 @@ for i = 1, T.HITS do
 end
 Beat(T.KILL, "kill")
 Beat(T.DONE, "stop", "done")
-Preview.BEATS = BEATS
 
 local PHASE = { start = "rest", pull = "fight", kill = "after" }
 
@@ -539,10 +540,6 @@ function Preview:ToggleMenu(anchor, skin)
 	menu:ClearAllPoints()
 	menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
 	menu:Show()
-end
-
-function Preview:MenuShown()
-	return menu ~= nil and menu:IsShown()
 end
 
 -- /mello preview [solo | party | <a part> | stop]: a part's key from the list

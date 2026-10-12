@@ -121,7 +121,7 @@ local TEXT = {
 	resetHint = "Ctrl+right-click puts it back",
 	bridgeLine = "Move via Edit Mode",
 }
-E.PLATE_TEXTS = TEXT   -- (the plates' in-game texts, beside the mode's E.TEXTS: SPEC 9)
+E.PLATE_TEXTS = TEXT   -- (the plates' in-game texts: SPEC 9)
 
 local function Report(err)
 	local handler = geterrorhandler and geterrorhandler()
@@ -1536,7 +1536,6 @@ local function Drop()
 	end
 	Changed(entry)
 	-- (every plate again: what hung on it moved with it)
-	drag.syncAfter = nil
 	P.SyncSoon()
 end
 
@@ -1920,8 +1919,7 @@ function P.SyncAll()
 		return
 	end
 	if drag.started then
-		drag.syncAfter = true   -- (never under a drag: its drop syncs)
-		return
+		return   -- (never under a drag: its drop syncs)
 	end
 	ReadScreen()
 	local list = MelloUI:MoverEntries()

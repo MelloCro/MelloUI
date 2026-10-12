@@ -1036,7 +1036,7 @@ local function Jaccard(a, b)
 	return both / all
 end
 
-M.voiceKeys = { Canon = KeyCanon, KeyForms = KeyForms, Hash8 = Hash8, Jaccard = Jaccard }   -- the key rules (for the tests)
+M.voiceKeys = {}   -- (a review tool's and the tests': PageKey and V2Line, below)
 
 local function KeyPlayer()
 	return {
@@ -1193,7 +1193,7 @@ local function PageKey(P, shown, name)
 	end
 	return nil, bestScore
 end
-M.voiceKeys.PageText, M.voiceKeys.PageKey = PageText, PageKey
+M.voiceKeys.PageKey = PageKey
 
 -- The voice pack's clip for a line. Returns path, seconds, key, mismatch on
 -- a hit; else nil, nil, nil, nil, known (the speaker is an NPC the pack
@@ -1931,7 +1931,6 @@ local function SubtitlePage(entry)
 	end
 	return math.min(index, #pages)
 end
-Widget.SubtitlePage = SubtitlePage
 
 local function SubFits(text)
 	return MelloUI.Reminders:SubFits(text)

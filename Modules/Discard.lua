@@ -84,10 +84,7 @@ local KEEP_CLASS = {
 	[13] = true,   -- keys
 	[19] = true,   -- profession items
 }
-local GEAR = { [2] = true, [4] = true }   -- weapons, armour: grey only
 local MISC, JUNK = 15, 0                  -- a white miscellaneous item: its junk only
-
-M.KEEP_CLASS, M.GEAR = KEEP_CLASS, GEAR   -- (the tests)
 
 --------------------------------------------------------------------------------
 -- Reads (each guarded: a secret or refused answer is nil)
@@ -444,7 +441,6 @@ local function FitSearch()
 	local on = buttons.bags and buttons.bags:IsShown()
 	box:SetWidth(on and math.max(w - SHORTER, MIN_SEARCH) or w)
 end
-M.FitSearch = FitSearch   -- (the tests)
 
 local function OnSearchPoint(_, box)
 	local w = Num(box and box.GetWidth and box:GetWidth())

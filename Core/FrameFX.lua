@@ -634,6 +634,43 @@ local LANDINGS = {
 		-- (a heal over time's tick: the border breathes)
 		t = { Border(GOLD, 1, 0, 0, 0.7, 0.4, "pulse") },
 	},
+	-- (0.21.0) the Personal Display's shield column (docs/plans/personal-display.md; the user's sketch, its "animation
+	-- sequence": apply, stable, taking damage, low, break, fade out). The light on the column's fill, the bar itself,
+	-- with a few units of room past it for the glow over the bracket's rim (FX.ShowOn's spill; never the column's
+	-- strip: its art has clear rows over and under the bracket, and the light started under the bar, the user's
+	-- screenshot of 2026-10-12: "way to off the bar"); its fill's own rise and drain are the column's StatusBar's. The
+	-- rect is tall and thin: u its height, so sizes are small shares of it. The user's videos of 2026-10-12: no "sheen"
+	-- (it sweeps the light's whole room), and "flesh out the shield animation there to fit the bar": every piece in the
+	-- bar's own shape -- glows fitted to its rect, sparks inside it, shards along it. Never `even` sprays, rays, a
+	-- round flash or a border here: on this rect they read as a ball, a dome or an outline far round the bar. Each
+	-- light plays once (no pulse: memory no-character-effects)
+	shield = {
+		-- applied: the blue light running up the bar from its foot, a glow on it, sparks rising inside it
+		a = {
+			{ "pillar", "pillar_blue.tga", w = 0.2, h = 1.0, t0 = 0, t1 = 0.9, env = "hold", stack = 2, grow = { 0, 1 } },
+			{ "sprite", "glow_blue.tga", fit = true, w = 2.2, h = 1.04, t0 = 0, t1 = 0.7, env = "flash", a = 0.7 },
+			{ "rise", "spark_gold.tga", n = 5, height = 0.8, size = 0.08, sway = 0.02, t0 = 0.1, t1 = 0.9, env = "fade" },
+		},
+		-- a hit: the bar flashes white, a few sparks knocked off it
+		x = {
+			{ "sprite", "glow_white.tga", fit = true, w = 2.0, h = 1.0, t0 = 0, t1 = 0.25, env = "flash", a = 0.55 },
+			{ "spray", "spark_gold.tga", n = 4, r0 = 0.3, r1 = 0.9, size = 0.07, t0 = 0, t1 = 0.35, env = "fade" },
+		},
+		-- low: an amber glow at the bar's foot (once, as it turns low)
+		l = {
+			{ "sprite", "glow_fire.tga", fit = true, w = 2.2, h = 0.4, dy = -0.3, t0 = 0, t1 = 1.0, env = "flash", a = 0.8 },
+		},
+		-- broken: a white flash the bar's size, its blue light let go, its shards scattered along it and falling down it
+		-- (two sprays of their own reach and size, so they scatter)
+		k = {
+			{ "sprite", "glow_white.tga", fit = true, w = 2.0, h = 1.0, t0 = 0, t1 = 0.22, env = "flash", a = 0.75 },
+			{ "sprite", "glow_blue.tga", fit = true, w = 2.4, h = 1.05, t0 = 0, t1 = 0.5, env = "flash", a = 0.8 },
+			{ "spray", "shard_blue.tga", n = 6, r0 = 0.2, r1 = 0.85, size = 0.12, t0 = 0, t1 = 0.7, env = "fade", turn = true },
+			{ "spray", "shard_blue.tga", n = 5, r0 = 0.3, r1 = 0.9, size = 0.09, t0 = 0.03, t1 = 0.8, env = "fade",
+			  turn = true },
+			{ "settle", "shard_blue.tga", n = 4, size = 0.09, t0 = 0.1, t1 = 0.9, env = "fade" },
+		},
+	},
 }
 
 -- The tanks' tools and defensives (the user, 2026-10-09: "Last Stand, Shield
@@ -899,12 +936,15 @@ function DRAW.crest(layer, n, part, B, v, a)
 	return n
 end
 
+-- (`even`, 0.21.0: a round spray, its reach in u both ways -- on a tall thin
+-- frame, the shield column's, the frame's own sides would fan it up and down)
 function DRAW.spray(layer, n, part, B, v, a)
 	local rr = part.r0 + (part.r1 - part.r0) * (1 - (1 - v) * (1 - v))
+	local sx, sy = part.even and B.u or B.w, part.even and B.u or B.h
 	for i = 1, part.n do
 		local ang = (i / part.n) * TAU + (R(i, 1) - 0.5) * 0.4
 		local d = rr * (0.85 + 0.3 * R(i, 2))
-		n = Put(layer, n, part[2], B.x + cos(ang) * d * B.w / 2, B.y + sin(ang) * d * B.h / 2,
+		n = Put(layer, n, part[2], B.x + cos(ang) * d * sx / 2, B.y + sin(ang) * d * sy / 2,
 			part.size * B.u * (0.8 + 0.4 * R(i, 3)), nil, a, part.turn and ang or 0)
 	end
 	return n
@@ -923,9 +963,11 @@ function DRAW.settle(layer, n, part, B, v, a)
 	return n
 end
 
+-- (`sway`, 0.21.0: the side to side in u; small in a thin column)
 function DRAW.rise(layer, n, part, B, v, a)
 	for i = 1, part.n do
-		local x = B.l + B.w * (B.round and 0.25 + 0.5 * R(i, 1) or 0.1 + 0.8 * R(i, 1)) + sin(v * 5 + i) * B.u * 0.15
+		local x = B.l + B.w * (B.round and 0.25 + 0.5 * R(i, 1) or 0.1 + 0.8 * R(i, 1))
+			+ sin(v * 5 + i) * B.u * (part.sway or 0.15)
 		local y = B.b + B.u * 0.15 + v * part.height * B.u * (0.6 + 0.4 * R(i, 2))   -- (up through the frame)
 		n = Put(layer, n, part[2], x, y, part.size * B.u * (0.8 + 0.4 * R(i, 3)), nil, a,
 			part.leaf and (-1.3 + 0.4 * sin(v * 5 + i)) or 0)
@@ -1053,7 +1095,7 @@ local function Inside(layer, B)
 		clips[layer] = c
 	end
 	local f = c.frame
-	local mx, my = B.w * MARGIN, B.h * MARGIN
+	local mx, my = B.spillX or B.w * MARGIN, B.spillY or B.h * MARGIN
 	f:ClearAllPoints()
 	f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", B.l - (B.cut and 0 or mx), B.b - my)
 	f:SetSize(max(1, B.w + mx * (B.cut and 1 or 2)), max(1, B.h + 2 * my))
@@ -1139,6 +1181,7 @@ local function Box(S)
 	B.x, B.y = (S.fl + S.fr) / 2, (S.fb + S.ft) / 2
 	B.round, B.bars, B.cut = S.round and true or false, S.bars and true or false, S.cut and true or false
 	B.u = B.round and B.h * ROUND_U or B.h
+	B.spillX, B.spillY = S.spillX, S.spillY
 	return B
 end
 
@@ -1381,6 +1424,7 @@ local function Mate(layer, S, sp)
 	M.frame, M.Rect, M.unit = nil, nil, S.unit
 	M.round, M.bars, M.cut, M.owner, M.mate = true, false, false, layer, nil
 	M.look, M.kind, M.quiet, M.dur, M.stage = S.look, S.kind, S.quiet, S.dur, "strike"
+	M.spillX, M.spillY = nil, nil   -- (a pooled layer: the Personal Display's spill left from its last light)
 	S.mate = mate
 	Anim:Stop(mate, "alpha")
 	mate:SetAlpha(1)
@@ -1508,6 +1552,7 @@ function FX.Land(layer, look, kind, quiet, hop)
 	S.look, S.kind, S.quiet, S.hop, S.stage = look, kind, quiet, hop and true or false, "launch"
 	S.round, S.bars, S.cut, S.mate, S.owner, S.also = nil, nil, nil, nil, nil, nil
 	S.ring, S.orb, S.disc, S.number = nil, nil, nil, nil
+	S.spillX, S.spillY = nil, nil
 	-- (a portrait-and-bars frame's: to its portrait)
 	local sp = FX.Split(S.frame)
 	if sp then
@@ -1520,12 +1565,15 @@ end
 
 -- the kind's landing at once (an instant: no flight); `dur`: how long a
 -- lasting one (a tank's tool, a defensive) stays; `also`: the copy on your
--- player frame (FX.Also)
-function FX.Strike(layer, look, kind, quiet, dur, also)
+-- player frame (FX.Also); `spill` (0.21.0, a frame of MelloUI's own: FX.ShowOn)
+-- { x, y }: how far (UI px) the light may reach past the frame's sides, in
+-- place of a unit frame's 10 %
+function FX.Strike(layer, look, kind, quiet, dur, also, spill)
 	local S = state[layer]
 	S.look, S.kind, S.quiet, S.stage, S.dur = look, kind, quiet, "strike", dur
 	S.round, S.bars, S.cut, S.mate, S.owner, S.also = nil, nil, nil, nil, nil, also
 	S.ring, S.orb, S.disc, S.number = nil, nil, nil, nil
+	S.spillX, S.spillY = spill and spill[1] or nil, spill and spill[2] or nil
 	Begin(layer)
 	Arrive(layer)
 end
@@ -1851,6 +1899,39 @@ function FX.ClearAll()
 	for _, layer in ipairs(layers) do
 		FX.Clear(layer)
 	end
+end
+
+-- (0.21.0) where a heal's charge gathers, in place of the cast bar (Heal
+-- Flight's BarPlace asks first): fn(S) -> true when it set S.ix, S.iy, S.isz
+-- (the light's middle and size), S.bl .. S.bt (the box the ribbons circle)
+-- and S.fill (nil: no glow at a fill's edge); the flight then leaves from
+-- S.ix, S.iy. The Personal Display's while it is on (the light at the
+-- character's middle; the user, 2026-10-12: "anchored on the stomach of my
+-- Character ... shoot the healing animation from my stomach onto the
+-- Party/Raid Frames"); nil: the cast bar's
+function FX.SetChargePlace(fn)
+	FX.chargePlace = fn
+end
+
+-- (0.21.0) a kind's landing on a frame of MelloUI's own, not a unit's (the
+-- Personal Display's shield column): its rect read from the frame, the light
+-- let `spill` = { x, y } UI px past its sides; the layer, or nil when the
+-- frame has no rect to read
+function FX.ShowOn(frame, look, kind, spill)
+	-- (the engine leaves Reduce Motion to its callers: Heal Flight's, Frame Effects' -- this one is its own caller's door)
+	if MelloUI.Anim and MelloUI.Anim.reduceMotion then
+		return nil
+	end
+	local l, b, r, t = FX.Rect(frame)
+	if not l then
+		return nil
+	end
+	local layer = FX.FreeLayer()
+	local S = FX.state[layer]
+	S.fl, S.fb, S.fr, S.ft = l, b, r, t
+	S.frame, S.Rect, S.unit = frame, FX.Rect, nil
+	FX.Strike(layer, look, kind, nil, nil, nil, spill)
+	return layer
 end
 
 -- a kind's landing on the unit's frame, at once, as long as `dur` (a lasting

@@ -22,8 +22,14 @@
 --     mouse     fn() -> { frame, ... }: the frames that take the pointer
 --               (the bar's buttons, not only the bar: a bar never hears an
 --               OnEnter its buttons take); hooked once each, out of combat
+--               (pointer frames made later -- the Quest Tracker's quest
+--               blocks -- are handed over with Fader:Rehook())
 --     needed    fn() -> true while it must show anyway (its own reasons: the
 --               player frame while you are hurt, the chat while you type)
+--     neededIn  (0.21.0) the one choice its `needed` counts in ("combat":
+--               the player frame's below full and dead bring it back In
+--               Combat only; On Mouseover it stays faded until pointed at --
+--               the user, 2026-10-12); nil: every choice (the chat's typing)
 --     follows   the key of the element whose choice it takes while the
 --               setting `followsWhen` (a Fader key) is on (the pet frame:
 --               the player frame's, Pet Frame Too); it shows whenever that
@@ -358,10 +364,10 @@ local function Needed(el, st)
 	if Editing() then
 		return true
 	end
-	if el.needed and Yes(el.needed) then
+	local mode = st.mode
+	if el.needed and (el.neededIn == nil or el.neededIn == mode) and Yes(el.needed) then
 		return true
 	end
-	local mode = st.mode
 	if (st.over or (st.lost and OnRect(el))) and (mode == "mouseover" or Setting("mouse", true) ~= false) then
 		return true
 	end
@@ -483,12 +489,26 @@ local OnLeave = Shared("OnLeave on a faded element: the Fader", function(self)
 	Look()
 end, "script")
 
+-- (the user's login error, 2026-10-12: the game's aura container buttons, under the buffs, forbid a hook on their
+-- OnEnter) a frame the game keeps from addons -- a forbidden one, or one whose pointer scripts refuse a hook -- is
+-- passed by and never tried again (false), with no error
+local function Forbidden(f)
+	if f.IsForbidden then
+		local ok, forbidden = pcall(f.IsForbidden, f)
+		return not ok or forbidden == true
+	end
+	return false
+end
+
 local function HookMouse(el)
 	for _, f in ipairs(List(el.mouse) or List(el.frames) or {}) do
 		if type(f) == "table" and f.HookScript and S.hooked[f] == nil then
-			S.hooked[f] = el.key
-			Perf.HookScript(f, "OnEnter", OnEnter)
-			Perf.HookScript(f, "OnLeave", OnLeave)
+			if not Forbidden(f) and pcall(Perf.HookScript, f, "OnEnter", OnEnter)
+				and pcall(Perf.HookScript, f, "OnLeave", OnLeave) then
+				S.hooked[f] = el.key
+			else
+				S.hooked[f] = false
+			end
 		end
 	end
 end
@@ -529,6 +549,22 @@ local function OutOfCombat(fn, key)
 	MelloUI.Kit:WhenOutOfCombat(fn, key)
 end
 
+-- (0.21.0, the user 2026-10-12: the Quest Tracker "does not reappear when im mousing over it") an element that makes
+-- its pointer frames as it needs them -- the tracker's quest blocks, made as quests come in, long after the hooks were
+-- laid -- hands the new ones over: hooked on the next frame, one pass however many were made (out of combat, as every
+-- hook; a fight's end hooks them anyway)
+local function RehookNow()
+	S.rehook = false
+	OutOfCombat(HookAll, HOOK_KEY)
+end
+
+function Fader:Rehook()
+	if S.on and not S.rehook then
+		S.rehook = true
+		C_Timer.After(0, RehookNow)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- The elements' choices applied
 --------------------------------------------------------------------------------
@@ -543,9 +579,13 @@ local function Sync()
 		end
 		local mode = Fader:Mode(el.key)
 		local active = S.on and mode ~= "always"
-		if active ~= (st.active or false) and type(el.watch) == "function" then
-			pcall(el.watch, active)
+		-- (0.21.0) its own reasons listened to only in the choice they count in (neededIn: the player frame's In
+		-- Combat -- On Mouseover hears nothing of its health)
+		local watching = active and (el.neededIn == nil or el.neededIn == mode)
+		if watching ~= (st.watching or false) and type(el.watch) == "function" then
+			pcall(el.watch, watching)
 		end
+		st.watching = watching
 		if not active then
 			Release(el, st)
 			st.due, st.over, st.lost = nil, false, false
@@ -668,9 +708,10 @@ function Fader:Stop()
 	for _, el in ipairs(self.elements) do
 		local st = S.st[el.key]
 		if st then
-			if st.active and type(el.watch) == "function" then
+			if st.watching and type(el.watch) == "function" then
 				pcall(el.watch, false)
 			end
+			st.watching = false
 			Release(el, st)
 			st.active, st.mode, st.due, st.over, st.lost = false, nil, nil, false, false
 		end

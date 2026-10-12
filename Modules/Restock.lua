@@ -729,7 +729,6 @@ local SPEC = {
 	hint = "Click: the way to the nearest shop that sells it",
 	kind = "vendor", letters = nil, skip = nil, extra = nil,
 }
-M.SPEC = SPEC   -- (read only: the tests, a dump)
 
 -- the widget told when what check() or text() says changed
 Changed = function()

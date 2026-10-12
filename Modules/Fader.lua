@@ -30,7 +30,10 @@
 -- health or mana this client hands over SECRET (always, the RC5 fix) is
 -- never compared: a change of it heard lately stands for "below full"
 -- (RECENT; a spell's cost keeps the mana's window open CAST seconds, the
--- five-second rule). The pet frame follows the player frame's choice while
+-- five-second rule). They count In Combat only (0.21.0, the user 2026-10-12:
+-- "when set on Mouseover, it should fade and stay faded regardless of if im
+-- currently still regenerating or not": On Mouseover it waits for the pointer;
+-- Core/Fader.lua's neededIn). The pet frame follows the player frame's choice while
 -- Pet Frame Too is on and comes back for its own health too. The chat comes
 -- back while you type in it.
 --------------------------------------------------------------------------------
@@ -48,14 +51,16 @@ local pcall, type, ipairs = pcall, type, ipairs
 
 local NEW = "0.17.0"
 
--- the elements, in the page's order: key, label, tab, desc
+-- the elements, in the page's order: key, label, tab, desc (, the version a later one came with)
 local LIST = {
-	{ "player", "Player Frame", "Frames", "Your own frame. It also comes back while your health or mana is below full and when you are dead." },
+	{ "player", "Player Frame", "Frames", "Your own frame. In Combat, it also comes back while your health or mana is below full and when you are dead; On Mouseover, it stays faded until you point at it." },
 	{ "target", "Target Frame", "Frames", "Your target's frame (and its target's)." },
 	{ "party", "Party Frames", "Frames", "The party frames, the game's and the raid-style ones." },
 	{ "raid", "Raid Frames", "Frames", "The raid frames." },
 	{ "buffs", "Buffs & Debuffs", "Frames", "Your own buffs and debuffs, the game's or MelloUI's rows by the minimap." },
 	{ "reminders", "Reminders", "Frames", "The round reminders beside your portrait (restock, mail, your buffs, the weapon's poison...). A new reminder does not bring them back: In Combat keeps it faded until a fight, On Mouseover until you point at them." },
+	-- (0.21.0, the user: "a option in the fader to fade out of combat"; its pick: back while casting)
+	{ "personal", "Personal Display", "Frames", "The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.)", "0.21.0", "noMouse" },
 	{ "bar1", "Main Action Bar", "Bars", "Action Bar 1. Its keys work while it is faded." },
 	{ "bar2", "Action Bar 2", "Bars", "Its keys work while it is faded." },
 	{ "bar3", "Action Bar 3", "Bars", "Its keys work while it is faded." },
@@ -79,6 +84,9 @@ local LIST = {
 local SHOW = { { value = "always", label = "Always" }, { value = "combat", label = "In Combat" },
 	{ value = "mouseover", label = "On Mouseover" } }
 local SHOW_TIP = " Always: never faded. In Combat: faded out of combat, back in a fight. On Mouseover: faded all the time, shown while you point at it."
+-- (0.21.0) an element the pointer passes through (the Personal Display): Always or In Combat
+local SHOW_NO_MOUSE = { SHOW[1], SHOW[2] }
+local SHOW_NO_MOUSE_TIP = " Always: never faded. In Combat: faded out of combat, back in a fight."
 
 local defaults = { alpha = 0, after = Fader.T.AFTER, speed = Fader.T.SPEED, target = true, mouse = true, petToo = true }
 local options = {}
@@ -137,8 +145,9 @@ options[#options + 1] = { type = "toggle", key = "mouse", name = "Also Show On M
 	search = "show on hover",
 	desc = "In Combat elements come back while you point at them, too. (On Mouseover elements always do.)" }
 for _, e in ipairs(LIST) do
-	options[#options + 1] = { type = "dropdown", key = "show_" .. e[1], name = e[2], values = SHOW, new = NEW,
-		desc = e[4] .. SHOW_TIP }
+	local still = e[6] == "noMouse"
+	options[#options + 1] = { type = "dropdown", key = "show_" .. e[1], name = e[2], values = still and SHOW_NO_MOUSE or SHOW,
+		new = e[5] or NEW, desc = e[4] .. (still and SHOW_NO_MOUSE_TIP or SHOW_TIP) }
 	if e[1] == "player" then
 		options[#options + 1] = { type = "toggle", key = "petToo", name = "Pet Frame Too", new = NEW,
 			desc = "Your pet's frame fades and comes back with the player frame, and also comes back while your pet is hurt. Off: the pet frame always stays." }
@@ -344,6 +353,12 @@ local function PlayerNeeded()
 	return P.mana and Below(UnitPower, _G.UnitPowerMax, "player", ManaType(), P.manaUntil) or false
 end
 
+-- the Personal Display while you cast (its own reading of the cast: the events', never a secret's)
+local function PersonalNeeded()
+	local pd = MelloUI:GetModule("PersonalDisplay")
+	return pd and pd.S and pd.S.casting and true or false
+end
+
 local function PetNeeded()
 	return Yes(UnitExists, "pet") and Below(UnitHealth, UnitHealthMax, "pet", nil, P.petUntil)
 end
@@ -510,13 +525,13 @@ local function Register()
 			local mana = main and main.ManaBarArea
 			return Add(Add(Add({}, pf), bars and bars.HealthBar), mana and mana.ManaBar)
 		end,
-		needed = PlayerNeeded,
+		needed = PlayerNeeded, neededIn = "combat",   -- (On Mouseover: faded until pointed at, hurt or not)
 		own = function() return Add(Add({}, G("PetFrame")), G("PlayerCastingBarFrame")) end,
 		watch = function(on) Watch("player", on) end })
 	F:Register({ key = "pet", follows = "player", followsWhen = "petToo",
 		frames = function() return Add({}, G("PetFrame")) end,
 		mouse = function() return Add(Add(Add({}, G("PetFrame")), G("PetFrameHealthBar")), G("PetFrameManaBar")) end,
-		needed = PetNeeded,
+		needed = PetNeeded, neededIn = "combat",
 		watch = function(on) Watch("pet", on) end })
 	F:Register({ key = "target",
 		frames = function() return Add({}, G("TargetFrame")) end,
@@ -614,6 +629,11 @@ local function Register()
 	F:Register({ key = "route",
 		frames = function() return Add({}, F:Host("route")) end,
 		mouse = function() return Mice({}, G("MelloUIRouteMarker"), 2) end })
+	-- (0.21.0) the Personal Display's bars and shield column (their own alpha their fades': on a host); back while
+	-- casting In Combat only (as the player frame's reasons); a cast's start and end poke the Fader
+	F:Register({ key = "personal",
+		frames = function() return Add({}, F:Host("personal")) end,
+		needed = PersonalNeeded, neededIn = "combat" })
 end
 
 --------------------------------------------------------------------------------

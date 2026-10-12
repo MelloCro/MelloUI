@@ -82,6 +82,8 @@ def tile_axes(name):
         return ""                       # (2026-10-10, Tools/make_window_stone.py) header caps: whole pieces, not the side rails' "_l" / "_r"
     if base == "scrolltrack_mid" or base == "trough_v" or base.startswith("scrollthumb_mid") or (group == "window" and base.endswith(("_l", "_r"))):
         return "y"                      # upright pieces: the scroll track, the trough stood up, the thumb's slab
+    if group == "bars" and re.fullmatch(r"[a-z]+v_mid", base):
+        return "y"                      # (0.21.0, Tools/make_upright_bars.py) a bracket's middle stood upright
     if MID.search(base) or base == "trough" or (group == "window" and base.endswith(("_t", "_b"))):
         return "x"
     return ""
@@ -605,6 +607,11 @@ def main():
     for family in THIN_RIMS:
         jobs += [(key, "bars/" + family + "_" + part, "bar:" + family + ":" + part) for key in man
                  if key.split("/", 1)[1] == "buttons/slot_normal" for part in ("cap_l", "mid", "cap_r")]
+    # (0.21.0, the Personal Resource Border: the Personal Display's shield column in every bar look) each stood upright
+    # as make_upright_bars.py stands the Ornate: turned a quarter left, the right cap on top
+    for family in THIN_RIMS:
+        jobs += [(key, "bars/" + family + "v_" + part, "barv:" + family + ":" + part) for key in man
+                 if key.split("/", 1)[1] == "buttons/slot_normal" for part in ("cap_t", "mid", "cap_b")]
     # the border library's masters (0.19.6): the thin rims and the Backdrop's rails, and its corner gems
     for family in THIN_RIMS:
         jobs += [(key, "borders/" + family, "border:" + family) for key in man
@@ -725,6 +732,11 @@ def main():
             _, family, part = how.split(":")
             a = thin_bar(thin_rim(a, **THIN_RIMS[family]), THIN_RIMS[family]["t"], part)
             name = out_name                  # a bar piece from here on (its middle tiled)
+        elif how.startswith("barv:"):
+            _, family, part = how.split(":")
+            src = {"cap_t": "cap_r", "mid": "mid", "cap_b": "cap_l"}[part]
+            a = np.ascontiguousarray(np.rot90(thin_bar(thin_rim(a, **THIN_RIMS[family]), THIN_RIMS[family]["t"], src), 1))
+            name = out_name                  # an upright bar piece (its middle tiled in y)
         elif how == "join":
             a = bar_join(heavy_frame(kit_gems.tone(name, a)[0]))
             name = out_name

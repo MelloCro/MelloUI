@@ -38,9 +38,9 @@ local SHOW_GAP = 3.2      -- s between Every Effect's
 local SHOW_LAST = 2.8     -- s each lasts there (a lasting one shortened)
 
 local TEXT = {
-	off = "Frame Effects is off.",
-	reduceMotion = "Frame Effects: Reduce Motion is on, so nothing plays.",
-	noFrame = "Frame Effects: no party or raid frame of yours is shown.",
+	off = "Cooldown Effects are off.",
+	reduceMotion = "Cooldown Effects: Reduce Motion is on, so nothing plays.",
+	noFrame = "Cooldown Effects: no party or raid frame of yours is shown.",
 	example = "%s (%s's %s)",
 	kinds = { W = "Roar", U = "Taunt", F = "Damage taken down", L = "More health", I = "Immunity", E = "Dodge / parry" },
 }
@@ -159,7 +159,7 @@ end
 --------------------------------------------------------------------------------
 
 M = MelloUI:RegisterModule("FrameEffects", {
-	title = "Frame Effects",
+	title = "Cooldown Effects",   -- (0.21.0, the user: the page's switch name, every text alike)
 	desc = "Your group's frames show their big moments: a roar's square ripples, a taunt, Shield Wall's steel, Last Stand's heartbeat, an immunity's barrier, an evasion's afterimages -- on your own frame when you use one, on a group mate's when they do.",
 	icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
 	flavour = "Shield Wall, Last Stand, a roar: your group's frames show their big moments.",
@@ -202,4 +202,3 @@ end
 
 M.PreviewAll = PreviewAll
 M.StopPreview = StopPreview
-M.OnCast = OnCast   -- (the tests')

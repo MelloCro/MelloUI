@@ -90,7 +90,7 @@ local STEPS = {
 	{ page = "Look", point = "BottomEdgeLeft", target = TabTarget, tab = "General",
 	  text = "Every page works the same way: its tabs on top, and on every tab the same sections in the same order (General, Look, Text, Layout, Behaviour, Sound, Text-to-Speech, Advanced), each tab showing only the ones it has. An option that needs another switch is dimmed and says which one. A link row shows a setting whose place is another page, with a button to it (Look >, Minimap >). Reset this page, at the top, puts the page back to its defaults (on a page with a picker, the one picked); it asks first." },
 	{ page = "UnitFrames", point = "BottomEdgeLeft", target = HeaderTarget, header = "picker",
-	  text = "Unit Frames has a picker: the frame the page is for (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Resource). Copy from… gives this frame another frame's settings (it asks first); All, beside a setting, gives its value to every frame. A setting marked shared is one setting for several frames. Action Bars and Windows have pickers too." },
+	  text = "Unit Frames has a picker: the frame the page is for (Player, Target, Focus, Pet, Party, Raid Frames, Cast Bars, Personal Display). Copy from… gives this frame another frame's settings (it asks first); All, beside a setting, gives its value to every frame. A setting marked shared is one setting for several frames. Action Bars and Windows have pickers too." },
 	{ page = "UnitFrames", point = "LeftEdgeCenter", target = HeaderTarget, header = "preview",
 	  text = "The preview: a sample of the picked frame that follows your settings as you change them." },
 	{ page = "Windows", point = "BottomEdgeLeft", target = HeaderTarget, header = "picker",

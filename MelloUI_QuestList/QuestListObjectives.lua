@@ -576,12 +576,12 @@ end
 --   a tick       (Route's minimap tick) a mark per group on the minimap -- the
 --                objective's kind on the dark disc in its gold ring, the
 --                goal's mark of Route (Route.GoalMark) -- and, for the
---                MINI.EDGES nearest groups a little beyond it (within
+--                three nearest groups a little beyond it (within
 --                MINI.BEYOND of its radius), a smaller mark just inside its
 --                edge with a gold chevron outside, turned toward them. No
 --                mouse: the minimap's own clicks and pings go through
 --------------------------------------------------------------------------------
-local MINI = { REACH = 70, WAIT = 10, BEYOND = 1.7, EDGES = 3, MARK = 14, EDGE_MARK = 12, OWNER = "Quest List objectives" }
+local MINI = { REACH = 70, WAIT = 10, BEYOND = 1.7, MARK = 14, EDGE_MARK = 12, OWNER = "Quest List objectives" }
 O.mini = { points = {}, n = 0, marks = {}, edges = {}, chevs = {}, queued = false,
 	readyAt = (GetTime and GetTime() or 0) + MINI.WAIT }
 
@@ -697,7 +697,12 @@ function O.MiniDraw(cont, round, R, RX, RY)
 				end
 			end
 		end
-		for _, i in ipairs({ e1, e2, e3 }) do
+		for slot = 1, 3 do
+			-- (the three slots read in turn, as ipairs did a list of them: up to the first one empty)
+			local i = slot == 1 and e1 or slot == 2 and e2 or e3
+			if not i then
+				break
+			end
 			local p = mini.points[i]
 			local gx, gy = Offset(p.x, p.y)
 			eused = eused + 1

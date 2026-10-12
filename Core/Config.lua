@@ -113,20 +113,12 @@ local SLIDER_ROW_HEIGHT = W.SLIDER_ROW_HEIGHT   -- (40)
 -- told apart from the labels by its size; muted text only marks what is
 -- switched off (the palette's muted is 3.2:1, too faint for small text).
 local C = {
-	bg      = "mainWindow",
 	band    = "innerPanel",
-	panel   = "raisedPanel",
-	stripe  = "mainWindow",   -- on the sections' dark inner panel (user, 2026-09-24: "everything is just too brown")
 	line    = "border",
-	hover   = "hover",
 	accent  = "selectedTrim",
 	accent2 = "trim",
 	text    = "text",
 	sub     = "text",
-	dim     = "mutedText",
-	on      = "selectedTrim",
-	off     = "mutedText",
-	knob    = "text",
 }
 
 local HOME_FLAVOUR = "Module based interface tweaks for World of Warcraft: Forever."
@@ -143,6 +135,18 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.21.0", lines = {
+		"Personal Display (new, off by default): health, power and your cast bar under your character, a shield column beside it: every shield its own part, in its school's colour.",
+		"The cast bar shows only while you cast. It hops when you jump and stays under your feet as you zoom. Place it in Edit Layout; Preview plays a made-up fight on it.",
+		"Big Cooldowns: Shield Wall, Recklessness, Ice Block and the like as icons above the health bar, their time and seconds on them; Big Cooldown Size sizes them.",
+		"Hide The Game's Cast Bar (on) hides the game's; Heal Light From Your Character sends Heal Effects' light from your character to your group.",
+		"Swing On The Rails: your swing as sparks on the bars' rails, shots on the seam between them (reload in cream, the aim in red). Swing Timers step aside meanwhile.",
+		"Its frame follows Look > Borders > Personal Display Border (any bar look, or none); the Fader's Personal Display row fades it out of combat, back while you cast.",
+		"Settings: links to shared settings where you need them (Windows, Unit Frames, Group Frames, Swing Timers, Combat Text).",
+		"Fixed: a game crash after a while with the Single rail round the bars (the nameplates' borders piled up copies).",
+		"Fixed: Fader: the Quest Tracker on On Mouseover comes back when pointed at; the player frame stays faded while you regenerate; no error at login with the buffs faded.",
+		"Fixed: /mello widgets column lists what the widget column holds.",
+	} },
 	{ version = "0.20.5", lines = {
 		"Fixed: a parchment tooltip fading out showed a box inside it. The parchment now fades as one, wherever it shows.",
 		"Fixed: the game's own portraits (Class Icons off) had a square corner on the unit frames; they are round now.",
@@ -170,19 +174,6 @@ local CHANGELOG = {
 		"Unit frames: the PvP icon sits on the top of the level ring, without a circle of its own.",
 		"Fixed: a target too high to tell shows its skull on the level ring again.",
 		"Group Frames: the raid has its own spacing (Raid Spacing). Right-click the party or raid frames in Edit Layout to set it.",
-	} },
-	{ version = "0.20.1", lines = {
-		"Windows: a thin stone rail or the double rail with gem corners, and a red ribbon or a plain band for the title (Look > Borders). The game's portrait and its ring stay in the top left corner.",
-		"With the Double rail the frame wraps the window, so nothing at its edges hides under it: slots, money, the buttons at the bottom, search boxes and tabs.",
-		"Close buttons sit inside the title plate on every window, and the macro window's, the tabard designer's and the stable's plates show their titles again.",
-		"A new parchment wherever it shows: warm paper with burnt edges, big pages with curled corners. Two new backgrounds: Dark gradient and Dark round gradient.",
-		"Stone rail and Stone ring: new borders with their own dark trough (Look > Borders). Level Orb: the kit's orb or a stone badge round the level.",
-		"One look for every search box, edit box and dropdown: the Stone rail round a dark field. Header bands are flat: your palette's colour with a thin gold line.",
-		"Calendar: the month arrows sit on the title plate beside the month. Guild bank: the money line is back and the guild's crest rides the frame.",
-		"Attach To The Player Frame (Unit Frames > Player > Buffs & Debuffs): your buffs and debuffs under your player frame. A shaman's weapon imbues show now.",
-		"Loot Sparkles (Nameplates > Sparkles, off until you switch it on): quest items keep their sparkle, and golden glints mark the ore vein or herb you walk up to.",
-		"Group Frames > Bars: a background behind the health bar. Swing Timer Border on Look > Borders. A new font: MelloFont.",
-		"New files: restart the game once after updating.",
 	} },
 }
 local LINKS = {
@@ -1030,7 +1021,9 @@ local function BuildPageHeader(page, icon, title, flavour, new, right)
 	end
 	page.titleText = titleFS
 	-- a brand-new page's module (its registry `new`): its New tag after the title
-	page.titleTag = new and W.NewTag(page, titleFS, new) or nil
+	if new then
+		W.NewTag(page, titleFS, new)
+	end
 
 	local flavourFS = Text(page, "GameFontHighlightSmall", nil, C.sub)
 	flavourFS:SetPoint("TOPLEFT", titleFS, "BOTTOMLEFT", 2, -6)
@@ -1597,7 +1590,6 @@ do
 	local function Alnum(s)
 		return (tostring(s or ""):lower():gsub("[^%w]", ""))
 	end
-	Lay.Norm = Norm
 
 	local function Words()
 		if words then
@@ -3010,7 +3002,7 @@ local function Header(page, pl)
 			local b = W.Button(line, KEYBIND_MODE.name, 140, nil, { gold = true, onClick = KeybindModeClick })
 			b:SetPoint("LEFT", copy, "RIGHT", 12, 0)
 			page.action = b
-			page.actionTag = W.ButtonTag(b, KEYBIND_MODE.new)
+			W.ButtonTag(b, KEYBIND_MODE.new)
 		end
 		page.refreshers[#page.refreshers + 1] = function()
 			dd:Refresh()
@@ -6870,9 +6862,6 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   Hooks and handlers not listed used less than half a millisecond. /mello cpu reset clears the counters.")
 	elseif cmd == "secrets" then
 		MelloUI:SecretProbe()
-	elseif cmd == "widgets" then
-		-- the widget column as it stands (0.16.0), into the copy window
-		MelloUI.Reminders:DumpColumn()
 	elseif cmd == "auras" then
 		MelloUI:AuraContainerProbe()
 	elseif cmd == "preload" then
@@ -6994,7 +6983,7 @@ SlashCmdList.MELLOUI = function(msg)
 		print("   /mello preload             how much of the artwork is preloaded")
 		print("   /mello secrets             which secret-value tools this client has, and what a secret allows")
 		print("   /mello auras               what this client's aura container offers (for MelloUI's own aura rows)")
-		print("   /mello widgets             the widget column as it stands: each widget, what shows, the rows")
+		print("   /mello widgets column      the widget column as it stands: each widget, what shows, the rows")
 	else
 		-- (a bare /mello: the page shown last, or the window closed)
 		MelloUI:OpenConfig(nil)

@@ -660,12 +660,12 @@ function Preview.MakeParty(parent, onto)
 	health:SetPoint("TOPLEFT", hc, "TOPLEFT", 0, 0)
 	health:SetStatusBarTexture(PARTY_HEALTH)
 	hc.HealthBar = health
-	hc.HealthBarMask = Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -29, 3)
+	Masked(health:GetStatusBarTexture(), hc, PARTY_HEALTH .. "-Mask", hc, -29, 3)
 	f.HealthBarContainer = hc
 	local mana = Bar(f)
 	mana:SetSize(74, 7)
 	mana:SetPoint("TOPLEFT", f, "TOPLEFT", 41, -30)
-	mana.ManaBarMask = Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 14, -26)
+	Masked(mana:GetStatusBarTexture(), mana, "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana-Mask", f, 14, -26)
 	f.ManaBar = mana
 	f.PartyMemberOverlay = CreateFrame("Frame", nil, f)
 	f.PartyMemberOverlay:SetAllPoints(f)

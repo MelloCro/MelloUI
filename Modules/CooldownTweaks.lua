@@ -460,4 +460,4 @@ function M:OnSettingChanged()
 end
 
 -- (for its test)
-M.Centre, M.KeyOf, M.Dress = Centre, KeyOf, Dress
+M.Dress = Dress

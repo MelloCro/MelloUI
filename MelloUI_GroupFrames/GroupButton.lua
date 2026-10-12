@@ -110,7 +110,6 @@ local function ClassRGB(f)
 	end
 	return 0.5, 0.5, 0.5
 end
-Button.ClassRGB = ClassRGB
 
 -- the colour a mode names: the class's, a setting's, or nil (another way)
 local function ModeRGB(f, mode, customKey)

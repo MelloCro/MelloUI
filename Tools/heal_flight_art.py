@@ -8,6 +8,7 @@ and Frame Effects share) as 32-bit TGA, power-of-two sizes.
 """
 import math
 import os
+import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -320,6 +321,22 @@ def bubble_round(size=128, colour=None, high_colour=None):
     return Image.fromarray(np.dstack([rgb.round().astype(np.uint8), (a * 255).round().astype(np.uint8)]), "RGBA")
 
 
+def shard(colour, size=32):
+    """(0.21.0, the Personal Display's shield breaking: the user's sketch "breaks with a burst effect") a splinter of
+    the shield: a long kite, point up, a facet line down it and its rim bright, a faint glow round it"""
+    img, d = canvas(size)
+    s = size * SS
+    c = s / 2
+    kite = [(c, s * 0.06), (c + s * 0.17, s * 0.46), (c + s * 0.04, s * 0.94), (c - s * 0.13, s * 0.52)]
+    d.polygon(kite, fill=150)
+    d.line(kite + [kite[0]], fill=255, width=max(1, SS * 2))
+    d.line([kite[0], (c + s * 0.01, s * 0.62), kite[2]], fill=235, width=max(1, SS))
+    body = down(img, size, 0.4)
+    halo = down(img, size, 2.0, 0.6)
+    # (the user's video, 2026-10-12: at 0.7 the shards read white; their own blue kept, only the rim's hottest towards it)
+    return light(np.clip(body + halo, 0, 1), colour, hot=0.3)
+
+
 def fire_line(across=True, length=128, thick=32):
     """a fiery line (the roar's square ripples are built of four: the same sharp width at any size): a thin hot
     core, its glow either side, full strength to its ends (the corners meet another line)"""
@@ -374,12 +391,17 @@ SPRITES = {
     "halo_white": halo,
     "bubble_round": bubble_round,
     "bubble_gold_round": lambda: bubble_round(colour=GOLD, high_colour=WHITE),
+    "shard_blue": lambda: shard(WATER),
 }
 
 
 def main():
+    # (0.21.0) sprites named on the command line only (python Tools/heal_flight_art.py shard_blue), else all of them
+    only = set(sys.argv[1:])
     os.makedirs(OUT, exist_ok=True)
     for name, make in SPRITES.items():
+        if only and name not in only:
+            continue
         path = os.path.join(OUT, name + ".tga")
         make().save(path, format="TGA")
         print(path)

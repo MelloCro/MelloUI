@@ -3971,7 +3971,48 @@ end
 -- Bar: trough tiled under the frame strip, the frame over it, and `fill`, a
 -- frame covering the opening, for a StatusBar (or any fill texture).
 --   Kit:Bar(parent, { kind = "frame" | "castbar", width = , scale = })
+--   bar:SetBarScale(scale)   (0.21.0, the Personal Display's Height) the whole
+--       bar at another scale in place: the strip, its height, the opening,
+--       the trough (no frame made again)
+--   bar:SetBarLook(kind)     (0.21.0, the Personal Display's Personal Resource
+--       Border) another bracket look in place (bars/<kind>_*: StripMixin:SetBase),
+--       the opening and the trough laid again at its scale
 --------------------------------------------------------------------------------
+
+-- (in a block of its own: Kit.lua is at Lua 5.1's 200 top-level locals)
+do
+-- the opening from inside the left cap's hollow arm to inside the right one, at the strip's scale; the trough under it
+local function BarLay(strip)
+	local scale = strip.scale
+	local _, _, top, bottom = strip:GetInsets()
+	local capL, capR = PIECES[strip.base .. "_cap_l"], PIECES[strip.base .. "_cap_r"]
+	local left = capL and capL.open and capL.open[1] * scale or strip.wl
+	local right = capR and capR.open and (capR.w - capR.open[3]) * scale or strip.wr
+	local fill, trough = strip.fill, strip.trough
+	fill:ClearAllPoints()
+	fill:SetPoint("TOPLEFT", left, -top)
+	fill:SetPoint("BOTTOMRIGHT", -right, bottom)
+	trough.kitScale = scale
+	trough:ClearAllPoints()
+	trough:SetPoint("TOPLEFT", -2 * scale, 0)
+	trough:SetPoint("BOTTOMRIGHT", 2 * scale, 0)
+	Kit:Retile(trough)
+end
+
+local function BarSetScale(strip, scale)
+	if not scale or scale <= 0 then
+		return
+	end
+	strip:Rescale(scale)
+	strip:SetHeight(strip.height)
+	BarLay(strip)
+end
+
+local function BarSetLook(strip, kind)
+	strip:SetBase("bars/" .. kind)
+	strip:SetHeight(strip.height)
+	BarLay(strip)
+end
 
 function Kit:Bar(parent, opts)
 	opts = opts or {}
@@ -3980,32 +4021,104 @@ function Kit:Bar(parent, opts)
 	local base = "bars/" .. kind
 	local strip = self:Strip(parent, base, { width = opts.width, scale = scale, layer = "ARTWORK", sublevel = 2 })
 
-	-- the opening runs from inside the left cap's hollow arm to inside the right one
-	local _, _, top, bottom = strip:GetInsets()
-	local capL, capR = PIECES[base .. "_cap_l"], PIECES[base .. "_cap_r"]
-	local left = capL and capL.open and capL.open[1] * scale or strip.wl
-	local right = capR and capR.open and (capR.w - capR.open[3]) * scale or strip.wr
 	-- frame art two levels above the fill, so a StatusBar parented to `fill`
 	-- (one level above it) still draws under the rim
 	local base_level = parent:GetFrameLevel()
 	strip:SetFrameLevel(base_level + 3)
 	local fill = CreateFrame("Frame", nil, strip)
 	fill:SetFrameLevel(base_level + 1)
-	fill:SetPoint("TOPLEFT", left, -top)
-	fill:SetPoint("BOTTOMRIGHT", -right, bottom)
 	strip.fill = fill
 
 	local trough = fill:CreateTexture(nil, "BACKGROUND", nil, 0)
 	trough.kitScale = scale
 	self:Apply(trough, "bars/trough")
-	trough:SetPoint("TOPLEFT", -2 * scale, 0)
-	trough:SetPoint("BOTTOMRIGHT", 2 * scale, 0)
 	strip.trough = trough
+	strip.SetBarScale = BarSetScale
+	strip.SetBarLook = BarSetLook
+	BarLay(strip)
 	Perf.SetScript(fill, "OnSizeChanged", function()
 		Kit:Retile(trough)
 	end)
-	Kit:Retile(trough)
 	return strip
+end
+end
+
+--------------------------------------------------------------------------------
+-- VBar (0.21.0, the Personal Display's shield column; docs/plans/personal-display.md): Kit:Bar stood upright -- the
+-- bracket's upright pieces (bars/<kind>v_cap_t / _mid / _cap_b: Tools/make_upright_bars.py turns the horizontal ones a
+-- quarter left, the right cap on top) as a VStrip, the trough stood up under the opening (bars/trough_v) and `fill`, a
+-- frame on the opening for an upright StatusBar. The opening is read from the horizontal pieces they were turned from
+-- (an upright middle reads open end to end): across, the middle's open rows; down, the right cap's solid arm on top
+-- and the left cap's at the bottom. The strip is meant at least two caps tall (a VStrip shrinks its caps below that).
+--   Kit:VBar(parent, { kind = "frame", width = (UI px across the bracket), scale = })
+--   bar:SetBarLook(kind, width)   (0.21.0, the Personal Resource Border) another bracket look in place, `width`
+--       across (the last one given when nil; its upright pieces bars/<kind>v_*; false when the look has none)
+--------------------------------------------------------------------------------
+
+-- (in a block of its own, as Kit:Bar's: Kit.lua is at Lua 5.1's 200 top-level locals)
+do
+-- the opening read from the horizontal pieces of `kind`, at the strip's scale; the trough under it
+local function VBarLay(strip, kind)
+	local scale = strip.scale
+	local mid, capL, capR = PIECES["bars/" .. kind .. "_mid"], PIECES["bars/" .. kind .. "_cap_l"], PIECES["bars/" .. kind .. "_cap_r"]
+	local left = mid and mid.open and mid.open[2] * scale or 0
+	local right = mid and mid.open and (mid.h - mid.open[4]) * scale or 0
+	local top = capR and capR.open and (capR.w - capR.open[3]) * scale or 0
+	local bottom = capL and capL.open and capL.open[1] * scale or 0
+	local fill, trough = strip.fill, strip.trough
+	fill:ClearAllPoints()
+	fill:SetPoint("TOPLEFT", left, -top)
+	fill:SetPoint("BOTTOMRIGHT", -right, bottom)
+	strip.insets = { left, right, top, bottom }
+	trough.kitScale = scale
+	trough:ClearAllPoints()
+	trough:SetPoint("TOPLEFT", 0, 2 * scale)
+	trough:SetPoint("BOTTOMRIGHT", 0, -2 * scale)
+	Kit:Retile(trough)
+end
+
+local function VBarSetLook(strip, kind, width)
+	if not PIECES["bars/" .. kind .. "v_cap_t"] then
+		return false
+	end
+	strip.across = width or strip.across
+	if strip.kind ~= kind then
+		strip.kind = kind
+		strip.base = "bars/" .. kind .. "v"
+		strip.applied = nil
+		strip:SetState(strip.state)
+	end
+	if strip.across then
+		strip:FitWidth(strip.across)
+	end
+	VBarLay(strip, kind)
+	return true
+end
+
+function Kit:VBar(parent, opts)
+	opts = opts or {}
+	local kind = opts.kind or "frame"
+	local strip = self:VStrip(parent, "bars/" .. kind .. "v", { scale = opts.scale, layer = "ARTWORK", sublevel = 2 })
+	strip.kind, strip.across = kind, opts.width
+	if opts.width then
+		strip:FitWidth(opts.width)
+	end
+	-- (as Kit:Bar: the frame art two levels above the fill, a StatusBar on `fill` under the rim)
+	local baseLevel = parent:GetFrameLevel()
+	strip:SetFrameLevel(baseLevel + 3)
+	local fill = CreateFrame("Frame", nil, strip)
+	fill:SetFrameLevel(baseLevel + 1)
+	strip.fill = fill
+	local trough = fill:CreateTexture(nil, "BACKGROUND", nil, 0)
+	self:Apply(trough, "bars/trough_v")
+	strip.trough = trough
+	strip.SetBarLook = VBarSetLook
+	VBarLay(strip, kind)
+	Perf.SetScript(fill, "OnSizeChanged", function()
+		Kit:Retile(trough)
+	end)
+	return strip
+end
 end
 
 --------------------------------------------------------------------------------
@@ -7914,7 +8027,6 @@ function Kit:RuleFor(key)
 		tunedRules[key] = false
 		return base
 	end
-	merged.tuned = true
 	tunedRules[key] = merged
 	return merged
 end
@@ -11439,7 +11551,7 @@ Kit.borderKinds = {
 	{ kind = "sidetab", key = "sideTabBorder", default = "slot", name = "Side Tab Border", values = Kit.sideTabLooks, preview = "rim",
 	  desc = "The rim on every window's side tabs and the spell book's category tabs, all at the character window's size." },
 	{ kind = "bar", key = "barBorder", default = "frame", name = "Progress Bar Border", values = Kit.buttonLooks.barBorders, preview = "bar",
-	  desc = "The frame round every progress bar: reputation and skills, the professions' ranks, legacy, guild, experience, the tracker's, the tooltip's and the damage meter's. The unit frames, the nameplates and the cast bar have a border of their own." },
+	  desc = "The frame round every progress bar: reputation and skills, the professions' ranks, legacy, guild, experience, the tracker's, the tooltip's and the damage meter's. The unit frames, the nameplates, the cast bar, the swing timers and the Personal Display have a border of their own." },
 	{ kind = "nameplate", key = "nameplateBorder", default = "frame", name = "Nameplate Border", values = Kit.buttonLooks.barBorders, preview = "bar",
 	  desc = "The frame round the nameplates' health bars." },
 	{ kind = "round", key = "roundBorder", default = "roundslot", name = "Round Border", values = Kit.roundLooks, preview = "rim",

@@ -962,4 +962,4 @@ end
 
 -- (the tests')
 H.S = S
-H.headers, H.containers, H.byUnit, H.held = headers, containers, byUnit, held
+H.headers, H.containers, H.byUnit = headers, containers, byUnit

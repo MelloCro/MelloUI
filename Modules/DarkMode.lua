@@ -72,7 +72,7 @@ local M = MelloUI:RegisterModule("DarkMode", {
 		  desc = "Also darken the gryphons / end caps and border art of the main action bar." },
 		{ type = "toggle", key = "nameplates", name = "Nameplates",
 		  desc = "Health bar backgrounds/borders and cast bars on nameplates." },
-		{ type = "toggle", key = "personal", name = "Personal Resource Display",
+		{ type = "toggle", key = "personal", name = "Personal Display",
 		  desc = "The health and power bars shown under your character." },
 		{ type = "toggle", key = "statusbars", name = "Experience & Reputation Bars",
 		  desc = "Frame, background and segment dividers of the experience, reputation and honor bars." },

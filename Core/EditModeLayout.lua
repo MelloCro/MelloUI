@@ -96,7 +96,6 @@
 --       saved as the active one. In combat or while Edit Mode is open: false
 --       and why, saved when that ends. done(ok, why) once.
 --   MelloUI:EditModeSettingsSoon(system, index, values[, done])
---   MelloUI:EditModeSettingsNow()
 --       the configurator's way in: the values held (the readers show them),
 --       saved 0.4 s after the last change, every held one in one save; a
 --       preset active: asked once (MelloUI:Confirm) whether to copy it,
@@ -1337,14 +1336,6 @@ function MelloUI:EditModeAnchorSoon(system, index, anchor, done)
 	if h then
 		h.anchor = { point = anchor.point, relativeTo = anchor.relativeTo or "UIParent",
 			relativePoint = anchor.relativePoint, offsetX = anchor.offsetX, offsetY = anchor.offsetY }
-	end
-end
-
--- a write held now (Which Bar changed: the last bar's values go first)
-function MelloUI:EditModeSettingsNow()
-	if soonTimer then
-		soonTimer:Cancel()
-		FlushHeld(false)
 	end
 end
 

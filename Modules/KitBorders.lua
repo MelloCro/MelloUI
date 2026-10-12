@@ -256,36 +256,57 @@ function RailSet:Hide()
 end
 
 local RAIL_CORNER_AT = { tl = "TOPLEFT", tr = "TOPRIGHT", bl = "BOTTOMLEFT", br = "BOTTOMRIGHT" }
-local function RailNine(at, host, prefix, k, layer, sub)
-	local set = setmetatable({ kitScale = k, art = {}, all = {}, tiled = {} }, RailSet)
+local RAIL_EDGES = { "t", "b", "l", "r" }
+
+-- the set's eight laid for a rail family at k: their art, sizes and the edges' insets (the textures kept -- a
+-- region can never be freed: 2026-10-12, the user's client stopped on an assert, "L->top < L->ci->top", a nameplate's
+-- health bar carrying hundreds of rails, a new eight made for every height the plate was given, GetRegions past the
+-- engine's stack)
+function RailSet:Relay(prefix, k)
+	self.kitScale, self.prefix = k, prefix
 	local T = Kit:Size(prefix .. "_tl", k)
+	for i, c in ipairs(GEM_CORNERS) do
+		local tex = self.art[i]
+		tex.kitScale = k
+		Kit:Apply(tex, prefix .. "_" .. c)
+		tex:SetSize(Kit:Size(prefix .. "_" .. c, k))
+	end
+	local at = self.at
+	for i, e in ipairs(RAIL_EDGES) do
+		local tex = self.tiled[i]
+		tex.kitScale = k
+		Kit:Apply(tex, prefix .. "_" .. e, true)
+		tex:ClearAllPoints()
+		if e == "t" or e == "b" then
+			local side = e == "t" and "TOP" or "BOTTOM"
+			tex:SetPoint(side .. "LEFT", at, side .. "LEFT", T, 0)
+			tex:SetPoint(side .. "RIGHT", at, side .. "RIGHT", -T, 0)
+			tex:SetHeight(T)
+		else
+			local side = e == "l" and "LEFT" or "RIGHT"
+			tex:SetPoint("TOP" .. side, at, "TOP" .. side, 0, -T)
+			tex:SetPoint("BOTTOM" .. side, at, "BOTTOM" .. side, 0, T)
+			tex:SetWidth(T)
+		end
+		Kit:Retile(tex)
+	end
+end
+
+local function RailNine(at, host, prefix, k, layer, sub)
+	local set = setmetatable({ at = at, art = {}, all = {}, tiled = {} }, RailSet)
 	for _, c in ipairs(GEM_CORNERS) do
-		local tex = Kit:Texture(host, prefix .. "_" .. c, layer, math.min(sub + 1, 7), k)
+		local tex = host:CreateTexture(nil, layer, nil, math.min(sub + 1, 7))
 		tex:SetPoint(RAIL_CORNER_AT[c], at, RAIL_CORNER_AT[c])
 		set.art[#set.art + 1] = tex
 		set.all[#set.all + 1] = tex
 	end
-	local edges = {
-		t = { "TOPLEFT", T, 0, "TOPRIGHT", -T, 0 }, b = { "BOTTOMLEFT", T, 0, "BOTTOMRIGHT", -T, 0 },
-		l = { "TOPLEFT", 0, -T, "BOTTOMLEFT", 0, T }, r = { "TOPRIGHT", 0, -T, "BOTTOMRIGHT", 0, T },
-	}
-	for _, e in ipairs({ "t", "b", "l", "r" }) do
-		local a = edges[e]
+	for _ = 1, #RAIL_EDGES do
 		local tex = host:CreateTexture(nil, layer, nil, sub)
-		tex.kitScale = k
-		Kit:Apply(tex, prefix .. "_" .. e, true)
-		tex:SetPoint(a[1], at, a[1], a[2], a[3])
-		tex:SetPoint(a[4], at, a[4], a[5], a[6])
-		if e == "t" or e == "b" then
-			tex:SetHeight(T)
-		else
-			tex:SetWidth(T)
-		end
-		Kit:Retile(tex)
 		set.art[#set.art + 1] = tex
 		set.all[#set.all + 1] = tex
 		set.tiled[#set.tiled + 1] = tex
 	end
+	set:Relay(prefix, k)
 	return set
 end
 
@@ -432,8 +453,14 @@ function Border:Lay(styleId, weightId, gem)
 		self:LayGems(nil)
 		self:LayBackground(nil)
 		-- a rail family: its nine-slice at k (made again only for another
-		-- scale; its glow with it)
-		if self.nine and self.nine.kitScale ~= k then
+		-- scale; its glow with it) -- a frameless one's eight laid again in place (RailSet:Relay: a bar's border is
+		-- fitted to every height its bar is given, a nameplate's to each plate's)
+		if self.nine and self.nine.Relay and (self.nine.kitScale ~= k or self.nine.prefix ~= st.prefix) then
+			self.nine:Relay(st.prefix, k)
+			if self.glowNine then
+				self.glowNine:Relay(st.prefix, k)
+			end
+		elseif self.nine and self.nine.kitScale ~= k then
 			self.nine:Hide()
 			self.nine = nil
 			if self.glowNine then
@@ -993,9 +1020,13 @@ end
 --   Nameplate Border      the nameplates' health bar
 --   Cast Bar Border       (NEW) the cast bar: every bar look but Ornate,
 --                         today's Cast bar first
---   Personal Resource     (NEW) one frame round the personal resource
---   Border                display's bars: None (today), the thin rims or the
---                         Backdrop (the decision: the others crowd its gap)
+--   Personal Resource     (0.21.0, the user: the Personal Display's borders
+--   Border                "should reflect the changes made in the Look ->
+--                         Borders") MelloUI's Personal Display: each of its bars
+--                         and its shield column in any bar look (Ornate first,
+--                         today's) or None; the game's own display, seen while
+--                         MelloUI's is off, one frame round its bars in the
+--                         library's styles alone (a bracket look: none)
 --------------------------------------------------------------------------------
 local function CastLooks()
 	local out = {}
@@ -1014,16 +1045,17 @@ Kit:AddBorderKind({ kind = "castbar", key = "castBarBorder", default = "castbar"
 	values = CastLooks(), preview = "bar",
 	desc = "The frame round your cast bar: the Cast bar bracket with its gem clusters (today's), a thin rim, the Single rail or the Backdrop. A frame laid round the bar leaves it its whole width." }, "nameplate")
 
-local PERSONAL_LOOKS = { { value = "none", label = "None" } }
-for _, v in ipairs(Kit.squareLooks) do
-	if v.value ~= "single" and v.value ~= "n1" then
-		PERSONAL_LOOKS[#PERSONAL_LOOKS + 1] = v
-	end
+local PERSONAL_LOOKS = {}
+for _, v in ipairs(Kit.buttonLooks.barBorders) do
+	PERSONAL_LOOKS[#PERSONAL_LOOKS + 1] = v
 end
+PERSONAL_LOOKS[#PERSONAL_LOOKS + 1] = { value = "none", label = "None" }
 Kit.personalLooks = PERSONAL_LOOKS
-Kit:AddBorderKind({ kind = "personal", key = "personalBorder", default = "none", name = "Personal Resource Border",
-	values = PERSONAL_LOOKS, preview = "rim",
-	desc = "One frame round the health and power bars of your personal resource display (the bars under your character): none, a thin rim or the Backdrop." }, "castbar")
+-- (0.21.0: a key of its own -- the old personalBorder's default "none" kept in every player's settings would have
+-- left the Personal Display bare; Core's MergeSettings carries a pick made there)
+Kit:AddBorderKind({ kind = "personal", key = "personalBarBorder", default = "frame", name = "Personal Display Border",
+	values = PERSONAL_LOOKS, preview = "bar", new = "0.21.0",
+	desc = "The frame round the Personal Display's bars and its shield column (the bars under your character): the Ornate bracket the unit frames wear (the default), the cast bar's, a thin rim, the Single rail, the Stone rail, the Backdrop or none. The game's own personal resource display, while the Personal Display is off and the unit frames wear their Painted Skin, takes one frame round its bars: a thin rim or one of the library's styles." }, "castbar")
 -- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
 -- swing timers' frame a choice of its own (their Framed look; Modules/SwingTimers.lua lays it, on this kind's change)
 Kit:AddBorderKind({ kind = "swing", key = "swingTimerBorder", default = "castbar", name = "Swing Timer Border",
@@ -1139,6 +1171,26 @@ end
 -- refit): its band the bracket's share of the bar's height, centred; its rails a quarter of that band at most, never
 -- deeper than the weight's (a thin bar -- a nameplate's, an XP bar -- a thin rail); its art at the panel's artScale
 local BAND_RAIL = 0.25
+Kit.BorderBandRail = BAND_RAIL   -- (0.21.0: the Personal Display's bars, the same rule)
+
+-- (0.20.5, the user: the Stone rail apart from the bar, "there is the background, but not attached") a bar's trough
+-- run half a rail under a library border on each railed side: the rail's inner edge, its art drawn far smaller than
+-- painted, is soft, and with no style background on a bar (noBg) the world showed through it. Every style's rail is
+-- solid to its opening, so the tucked trough stays hidden under it. On `rect` set in by l, r, t, b (a bar's opening;
+-- 0 for a fill); no border: on that rect itself. Shared: Kit:BarLibraryFit, the Personal Display (0.21.0)
+function Kit:TuckTrough(trough, rect, border, l, r, t, b)
+	local x, y = 0, 0
+	if border then
+		x, y = border:Inset()
+		x, y = x / 2, y / 2
+	end
+	l, r, t, b = l or 0, r or 0, t or 0, b or 0
+	local open = border and border.open
+	trough:ClearAllPoints()
+	trough:SetPoint("TOPLEFT", rect, "TOPLEFT", l - (open == "l" and 0 or x), -(t - y))
+	trough:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", -(r - (open == "r" and 0 or x)), b - y)
+	Kit:Retile(trough)
+end
 function Kit:BarLibraryFit(rep, h)
 	local b = rep and rep.libraryBorder
 	if not (b and rep.libBand) then
@@ -1161,13 +1213,7 @@ function Kit:BarLibraryFit(rep, h)
 	-- rail is solid to its opening, so the tucked trough stays hidden under it
 	local trough = rep.trough
 	if trough and rep.libraryStyle then
-		local x, y = b:Inset()
-		x, y = x / 2, y / 2
-		local l, r, t, bottom = rep:GetOpening()
-		trough:ClearAllPoints()
-		trough:SetPoint("TOPLEFT", rep.rect, "TOPLEFT", l - (b.open == "l" and 0 or x), -(t - y))
-		trough:SetPoint("BOTTOMRIGHT", rep.rect, "BOTTOMRIGHT", -(r - (b.open == "r" and 0 or x)), bottom - y)
-		Kit:Retile(trough)
+		Kit:TuckTrough(trough, rep.rect, b, rep:GetOpening())
 	end
 end
 
@@ -1183,7 +1229,16 @@ local function PersonalLay()
 	if not (prd and personal.seen) then
 		return
 	end
+	-- (0.21.0: the row offers the bar looks -- a thin rim by its bar name, the library's own name for it found back;
+	-- a bracket look has no frame of the library's: none)
 	local value = Kit:BorderValue("personal")
+	if not Kit.BorderStyles[value] then
+		for style, bar in pairs(Kit.buttonLooks.rimKind or {}) do
+			if bar == value then
+				value = style
+			end
+		end
+	end
 	local on = personal.on and value ~= "none" and Kit.BorderStyles[value] ~= nil
 	if not on then
 		if personal.border then

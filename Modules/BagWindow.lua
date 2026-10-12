@@ -163,14 +163,13 @@ local function Grid()
 	G.WIDTH = G.CONTENT_W + 2 * G.INSET
 end
 Grid()
-M.G, M.Grid = G, Grid   -- (the tests)
+M.G = G   -- (the tests)
 
 local TEXT = {
 	title = "Bags",
 	fold = "Click to fold this kind into one slot.",
 	unfold = "Click to show every item of this kind.",
 	sell = "Sell Junk",
-	sellTip = "Sell every junk item to this vendor.",
 	worth = "Sells for %s",
 	free = "%d free |4slot:slots;",
 	sort = "Clean Up Bags",
@@ -223,7 +222,6 @@ M.KINDS = KINDS
 local DEFAULT_ORDER = { "recent", "-", "hearth", "consumable", "quest", "-", "group:Equipment", "weapon", "armour", "-",
 	"group:Crafting", "reagent", "tradegoods", "recipe", "-", "projectile", "bag", "quiver", "key", "misc", "other", "-",
 	"junk", "empty" }
-M.DEFAULT_ORDER = DEFAULT_ORDER
 
 -- an item's class (Enum.ItemClass numbers: this client's) to its kind
 local CLASS_KIND = {
@@ -357,7 +355,6 @@ local function TradeKind(classID, subclassID)
 	end
 	return key, tradeNames[key]
 end
-M.TradeKind = TradeKind
 
 --------------------------------------------------------------------------------
 -- The bags read: every slot of the held bags, each item's kind
@@ -665,7 +662,6 @@ local function ReadBags()
 	end
 	return nEntries
 end
-M.ReadBags = ReadBags   -- (the tests)
 M.byKind, M.empties = byKind, empties
 
 --------------------------------------------------------------------------------
@@ -1980,6 +1976,4 @@ end
 
 -- (the tests)
 M.win = win
-M.Capture, M.Release, M.GameOpen = Capture, Release, GameOpen
-M.trades = trades
-M.lines, M.groupHeads, M.KindRows, M.pluses = lines, groupHeads, KindRows, pluses   -- (0.20.4)
+M.lines, M.groupHeads, M.pluses = lines, groupHeads, pluses   -- (0.20.4)

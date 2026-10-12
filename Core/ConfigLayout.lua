@@ -98,7 +98,7 @@ L.groups = {
 	{ entries = { "Home" } },
 	{ title = "The look", entries = { "Look", "Windows", "Fader" } },
 	{ title = "Frames and bars", entries = { "UnitFrames", "GroupFrames", "FrameEffects", "Nameplates", "ActionBars", "Minimap",
-		"BarsMeters", "SwingTimers" } },
+		"BarsMeters", "SwingTimers", "PersonalDisplay" } },
 	{ title = "Chat and text", entries = { "Chat", "Tooltip", "ScreenText" } },
 	{ title = "Quests and travel", entries = { "QuestTracker", "QuestList", "Route", "Reminders", "Gains" } },
 	{ title = "Sound", entries = { "VoiceOver", "CustomSounds" } },
@@ -130,7 +130,7 @@ L.pages = {
 		-- them say so in their row's hint (`also`)
 		picker = { label = "Frame", noun = "frame", picks = { { "player", "Player" }, { "target", "Target" },
 			{ "focus", "Focus" }, { "pet", "Pet" }, { "party", "Party" }, { "raid", "Raid Frames" },
-			{ "castbars", "Cast Bars" }, { "personal", "Personal Resource" } } } },
+			{ "castbars", "Cast Bars" }, { "personal", "Personal Display" } } } },
 	-- (0.20.0) MelloUI_GroupFrames: MelloUI's own party and raid frames (their
 	-- frames, bars, texts; the Designer is one canvas row, W.CanvasRow)
 	GroupFrames = { title = "Group Frames", icon = "module:GroupFrames", module = "GroupFrames",
@@ -159,6 +159,10 @@ L.pages = {
 	-- Timers module's, off by default)
 	SwingTimers = { title = "Swing Timers", icon = "module:SwingTimers", module = "SwingTimers",
 		tabs = { "Swing Timers" } },
+	-- (0.21.0) health, power and the cast bar under the character, the shield column beside it (its header switch:
+	-- the Personal Display module's, off by default; MelloUI_PersonalDisplay)
+	PersonalDisplay = { title = "Personal Display", icon = "module:PersonalDisplay", module = "PersonalDisplay",
+		tabs = { "Personal Display" } },
 	BarsMeters = { title = "Bars & Meters", icon = "module:Stats",
 		flavour = "The experience and reputation bars, the cooldown manager, the damage meter, event widgets and the FPS / latency readout.",
 		tabs = { "XP & Reputation", "Cooldown Manager", "Damage Meter", "Event Widgets", "FPS / Latency" } },
@@ -307,8 +311,8 @@ function L.Define(R, Link)
 	-- (0.19.8: the cast bar's and the personal resource display's, the border library's)
 	R("Look", "Borders", "Look", "UIModifications.castBarBorder", { picture = true,
 		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
-	R("Look", "Borders", "Look", "UIModifications.personalBorder", { picture = true,
-		when = { key = "UIModifications.UnitFramePanel", value = true, line = "Only with the unit frames' Painted Skin" } })
+	-- (0.21.0: the Personal Display's bars, a module of its own -- no skin gate)
+	R("Look", "Borders", "Look", "UIModifications.personalBarBorder", { picture = true })
 	-- (0.20.1: the swing timers' frame, a choice of its own)
 	R("Look", "Borders", "Look", "UIModifications.swingTimerBorder", { picture = true,
 		when = { key = "UIModifications.CastBarPanel", value = true, line = "Only with the cast bars' Painted Skin" } })
@@ -424,7 +428,7 @@ function L.Define(R, Link)
 	-- Fader, so here, not under the Fader's switch; the Fader links it)
 	R("Windows", "Windows", "Behaviour", "UIModifications.fadeWindows", { wide = "every window" })
 
-	-- Unit Frames (the picker: Player ... Personal Resource)
+	-- Unit Frames (the picker: Player ... Personal Display)
 	R("UnitFrames", "Frame", "General", "UIModifications.qol_UnitFrames", { only = { "player", "target", "focus", "pet", "party" } })
 	R("UnitFrames", "Frame", "General", "UIModifications.qol_ClassIcons", { only = { "player", "target", "focus", "party" } })
 	R("UnitFrames", "Frame", "Look", { player = "UIModifications.UnitFramePanel", target = "UIModifications.UnitFramePanel", focus = "UIModifications.UnitFramePanel", pet = "UIModifications.UnitFramePanel", party = "UIModifications.UnitFramePanel", raid = "UIModifications.RaidFramePanel", castbars = "UIModifications.CastBarPanel" }, { name = "Painted Skin" })
@@ -708,10 +712,18 @@ function L.Define(R, Link)
 	R("Fader", "Fader", "Behaviour", "Fader.speed")
 	R("Fader", "Fader", "Behaviour", "Fader.target")
 	R("Fader", "Fader", "Behaviour", "Fader.mouse")
-	for _, key in ipairs({ "player", "petToo", "target", "party", "raid", "buffs", "reminders" }) do
-		R("Fader", "Frames", "General", key == "petToo" and "Fader.petToo" or ("Fader.show_" .. key),
-			key == "petToo" and { when = { key = "Fader.show_player", notValue = "always",
-				line = "Only while the Player Frame fades" } } or nil)
+	-- (0.21.0, the settings audit: a row for a module's own part dimmed while that module is off, as the Objective
+	-- Tracker's is while MelloUI's Quest Tracker stands in for it)
+	local OWNED = {
+		petToo = { when = { key = "Fader.show_player", notValue = "always", line = "Only while the Player Frame fades" } },
+		personal = { when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } },
+		tracker = { when = { key = "QuestTracker.!enabled", value = true, line = "Only with MelloUI's Quest Tracker on" } },
+		objectives = { when = GAME_TRACKER },
+		widgets = { when = { key = "Widgets.!enabled", value = true, line = "Only with the Widgets on" } },
+		route = { when = { key = "Route.!enabled", value = true, line = "Only with Route on" } },
+	}
+	for _, key in ipairs({ "player", "petToo", "target", "party", "raid", "buffs", "reminders", "personal" }) do
+		R("Fader", "Frames", "General", key == "petToo" and "Fader.petToo" or ("Fader.show_" .. key), OWNED[key])
 	end
 	-- (0.19.4: a bar Hide This Bar parks has nothing to fade)
 	local PARKED = {
@@ -724,7 +736,7 @@ function L.Define(R, Link)
 	R("Fader", "Chat & Map", "General", "Fader.show_chat")
 	R("Fader", "Chat & Map", "General", "Chat.tabsOnMouseover", { when = Uncovered("ChatPanel", "chat") })
 	for _, key in ipairs({ "minimap", "tracker", "objectives", "widgets", "route" }) do
-		R("Fader", "Chat & Map", "General", "Fader.show_" .. key, key == "objectives" and { when = GAME_TRACKER } or nil)
+		R("Fader", "Chat & Map", "General", "Fader.show_" .. key, OWNED[key])
 	end
 
 	-- (0.20.0) the Group Frames (header: its module's switch): the
@@ -810,6 +822,26 @@ function L.Define(R, Link)
 	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.width")
 	R("SwingTimers", "Swing Timers", "Layout", "SwingTimers.height")
 	R("SwingTimers", "Swing Timers", "Behaviour", "SwingTimers.show")
+
+	-- (0.21.0) Personal Display (header: its module's switch): the shield column, the texts, the width, the hop, the preview
+	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.shield")
+	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.#Preview")
+	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.hideCastBar")
+	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.swing")
+	R("PersonalDisplay", "Personal Display", "General", "PersonalDisplay.cooldowns")
+	-- (the audit, 2026-10-12: gated as Route's minimap drawing is -- it does nothing without Heal Flight)
+	R("PersonalDisplay", "Personal Display", "Behaviour", "PersonalDisplay.healFrom",
+		{ when = { key = "HealFlight.!enabled", value = true, line = "Only with Heal Flight on" } })
+	R("PersonalDisplay", "Personal Display", "Text", "PersonalDisplay.text")
+	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.width")
+	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.height")
+	R("PersonalDisplay", "Personal Display", "Layout", "PersonalDisplay.cdSize",
+		{ when = { key = "PersonalDisplay.cooldowns", notValue = false, line = "Only with Big Cooldowns on" } })
+	R("PersonalDisplay", "Personal Display", "Behaviour", "PersonalDisplay.hop")
+	R("PersonalDisplay", "Personal Display", "Behaviour", "PersonalDisplay.zoom")
+	-- (0.21.0: its border on Look > Borders, its fade on the Fader's page)
+	Link("PersonalDisplay", "Personal Display", "Look", "UIModifications.personalBarBorder", "Border")
+	Link("PersonalDisplay", "Personal Display", "Behaviour", "Fader.show_personal", "Fade (Fader)")
 
 	-- Quest Tracker (header: its module's switch)
 	R("QuestTracker", "Quest Tracker", "Look", "UIModifications.questTrackerKit", { name = "Painted Skin" })
@@ -1005,6 +1037,9 @@ function L.Define(R, Link)
 	Link("Windows", "Windows", "Look", "UIModifications.buttonBorder", "Button border")
 	Link("Windows", "Windows", "Look", "UIModifications.sideTabBorder", "Side tab border")
 	Link("Windows", "Windows", "Look", "UIModifications.roundBorder", "Round border")
+	-- (0.21.0, the settings audit, the user's picks: the windows' own frame and title too)
+	Link("Windows", "Windows", "Look", "UIModifications.windowBorder", "Window border")
+	Link("Windows", "Windows", "Look", "UIModifications.windowTitle", "Window title")
 	Link("VoiceOver", "Widget", "Layout", "Reminders.widgetLock", "Lock the widgets")
 	Link("Reminders", "Widgets", "General", "Meter.summary", "Fight summary")
 	-- (0.17.0: the fades moved to the Fader)
@@ -1032,8 +1067,21 @@ function L.Define(R, Link)
 	-- (0.19.8, rule 9: the unit frames, the cast bars and the personal display have borders of their own now)
 	Link("UnitFrames", "Bars", "Look", { player = "UIModifications.unitFrameBorder", target = "UIModifications.unitFrameBorder",
 		focus = "UIModifications.unitFrameBorder", pet = "UIModifications.unitFrameBorder", party = "UIModifications.unitFrameBorder",
-		castbars = "UIModifications.castBarBorder", personal = "UIModifications.personalBorder" }, "Bar border")
+		castbars = "UIModifications.castBarBorder", personal = "UIModifications.personalBarBorder" }, "Bar border")
 	Link("UnitFrames", "Frame", "Look", { raid = "UIModifications.raidFrameBorder" }, "Raid frame border")
+	-- (0.21.0, the user's picks: the level orb beside the portrait ring; the Personal Display's hold on the cast bar
+	-- where the cast bar is set)
+	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.levelOrb", target = "UIModifications.levelOrb",
+		focus = "UIModifications.levelOrb", pet = "UIModifications.levelOrb", party = "UIModifications.levelOrb" }, "Level orb")
+	Link("UnitFrames", "Frame", "General", { castbars = "PersonalDisplay.hideCastBar" }, "Hide the game's cast bar (Personal Display)",
+		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
+	-- (the Group Frames wear the Raid Frames pick's skin, border and bar texture)
+	Link("GroupFrames", "Frames", "Look", "UIModifications.RaidFramePanel", "Painted skin (Raid Frames)")
+	Link("GroupFrames", "Frames", "Look", "UIModifications.raidFrameBorder", "Raid frame border")
+	Link("GroupFrames", "Bars", "Look", "BarTextures.raidframes", "Bar texture (Raid Frames)")
+	-- (Swing On The Rails makes the Swing Timers step aside)
+	Link("SwingTimers", "Swing Timers", "General", "PersonalDisplay.swing", "Swing On The Rails (Personal Display)",
+		{ when = { key = "PersonalDisplay.!enabled", value = true, line = "Only with the Personal Display on" } })
 	Link("UnitFrames", "Frame", "Look", { player = "UIModifications.portraitRing", target = "UIModifications.portraitRing",
 		focus = "UIModifications.portraitRing", pet = "UIModifications.portraitRing", party = "UIModifications.portraitRing" },
 		"Portrait ring")
@@ -1053,17 +1101,17 @@ function L.Define(R, Link)
 	Link("ActionBars", "Bars", "Look", "UIModifications.shade_actionbars", "UI Shade")
 	Link("ActionBars", "Bars", "Look", "UIModifications.buttonBorder", "Button border")
 	Link("Minimap", "Minimap", "Look", "UIModifications.shade_minimap", "UI Shade")
-	Link("BarsMeters", "XP & Reputation", "Look", "UIModifications.barBorder", "Bar border")
+	Link("BarsMeters", "XP & Reputation", "Look", "UIModifications.barBorder", "Progress bar border")
 	Link("BarsMeters", "Cooldown Manager", "Look", "DarkMode.keepDispelColor", "Keep dispel colours")
 	Link("BarsMeters", "Cooldown Manager", "Look", "UIModifications.cooldownBorder", "Icon border")
 	Link("BarsMeters", "Damage Meter", "Look", "UIModifications.parchment_meter", "Parchment")
 	Link("BarsMeters", "Event Widgets", "Look", "UIModifications.shade_widgets", "UI Shade")
 	Link("Chat", "Chat Frame", "Look", "UIModifications.shade_chat", "UI Shade")
-	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChat", "Chat font and size")
+	Link("Chat", "Chat Frame", "Text", "Fonts.scaleChat", "Chat size")
 	Link("Chat", "Whispers", "Look", "UIModifications.parchment_whisper", "Parchment",
 		{ when = { key = "Chat.whisperPopup", value = true, line = "Only with the Whisper Popup Window" } })
 	Link("Tooltip", "Tooltip", "Look", "BarTextures.texture", "Bar texture", { when = HEALTH_BAR })
-	Link("Tooltip", "Tooltip", "Look", "UIModifications.barBorder", "Bar border", { when = HEALTH_BAR })
+	Link("Tooltip", "Tooltip", "Look", "UIModifications.barBorder", "Progress bar border", { when = HEALTH_BAR })
 	Link("ScreenText", "Combat Text", "Text", "Fonts.style", "Font")
 	Link("QuestTracker", "Quest Tracker", "Look", "UIModifications.parchment_questTracker", "Parchment")
 	Link("QuestTracker", "Quest Tracker", "Look", "UIModifications.shade_tracker", "UI Shade")
@@ -1090,6 +1138,7 @@ function L.Define(R, Link)
 	Link("QuestTracker", "Quest Tracker", "Text", "QuestTracker.headerSize", "Header size")
 	Link("ScreenText", "Notices", "Text", "Tweaks.noticeOutline", "Outlined text")
 	Link("ScreenText", "Combat Text", "Text", "CombatText.size", "Combat text size")
+	Link("ScreenText", "Combat Text", "Text", "CombatText.titleNotices", "Notices in title font")
 	if hasWorldText then
 		Link("ScreenText", "Combat Text", "Text", "Tweaks.worldTextScale", "Numbers over enemies size")
 	end

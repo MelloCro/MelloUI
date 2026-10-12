@@ -532,6 +532,3 @@ function M:OnSettingChanged()
 	Holds()
 	Evaluate()
 end
-
--- (for the tests: the parts that decide)
-M.KindOf, M.Reach, M.Evaluate = KindOf, Reach, function() Evaluate() end

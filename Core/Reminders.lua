@@ -3796,7 +3796,7 @@ local function Column()
 		return col
 	end
 
-	-- /mello widgets (0.16.0, the user's home test: a second widget did not
+	-- /mello widgets column (0.16.0, the user's home test: a second widget did not
 	-- show beside Voice Over): the column as it stands, into the copy window
 	local function Where(frame)
 		local p, rel, rp, x, y = frame:GetPoint(1)

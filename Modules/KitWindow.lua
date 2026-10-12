@@ -1080,6 +1080,11 @@ function Kit:ChoicePicture(tile, kind, choice)
 		local fill = Layer(tile, LAYER_OWN, 1)
 		self:Paint(fill, "selectedTrim", "fill", 1)
 		self:BorderBarPicture(tile, choice, fill, size)
+	elseif kind == "bar" and not (choice.bar or choice.style) then
+		-- (0.21.0, the Personal Resource Border's None) no frame: the stone darkened, as a frame row's None
+		local back = Stone(tile)
+		back:SetVertexColor(NONE_DIM, NONE_DIM, NONE_DIM)
+		tile.none:Show()
 	elseif kind == "bar" and self.Strip then
 		-- a progress bar in that bracket: a fill two thirds along, on stone
 		Stone(tile)

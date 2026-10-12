@@ -587,7 +587,6 @@ end
 
 -- for the tests
 K.soft, K.label, K.list = soft, label, list
-K.Bind, K.Clear, K.CommandOf, K.KeyHandler = Bind, Clear, CommandOf, KeyHandler
 function K.Frames()
 	return bar, catcher, events
 end

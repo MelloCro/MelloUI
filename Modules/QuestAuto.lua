@@ -391,8 +391,7 @@ function M:OnSettingChanged(key)
 	end
 end
 
--- (for its test: the reads and the steps, and its event frame -- nil until a switch is first on)
-M.BestChoice, M.Plainly, M.SkipHeld = BestChoice, Plainly, SkipHeld
+-- (for its test: its event frame -- nil until a switch is first on)
 function M:EventFrame()
 	return frame
 end

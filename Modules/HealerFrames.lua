@@ -538,7 +538,6 @@ local function UpdateGlow(g)
 	end
 	local found, r, gg, b = DispelColour(unit)
 	ShowGlow(g, found, r, gg, b)
-	g.lastUnit = unit
 end
 
 -- the glow round one frame (once; out of combat): parts = UNIT_FRAMES' or

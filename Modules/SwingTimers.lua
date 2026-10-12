@@ -73,7 +73,7 @@ local W = MelloUI.Widgets
 local NEW = "0.17.1"
 local M = MelloUI:RegisterModule("SwingTimers", {
 	title = "Swing Timers",
-	desc = "A shot bar and a melee bar in MelloUI's look in place of the game's swing timers: each swing and shot counted down, the off hand under the main hand, a wand's shots on the melee bar. The game's own swing timers are switched off while this is on, and come back as you had them when it is off.",
+	desc = "A shot bar and a melee bar in MelloUI's look in place of the game's swing timers: each swing and shot counted down, the off hand under the main hand, a wand's shots on the melee bar. The game's own swing timers are switched off while this is on, and come back as you had them when it is off. While the Personal Display shows your swing on its rails (Swing On The Rails), these bars step aside.",
 	icon = "Interface\\Icons\\Ability_Marksmanship",
 	flavour = "Every swing and shot at a glance.",
 	role = "replaces",
@@ -377,23 +377,9 @@ local function HasRanged()
 	return S.hasRanged == true
 end
 
--- the ranged slot's weapon a wand (its swings on the melee bar)
+-- the ranged slot's weapon a wand (its swings on the melee bar): the shared read (MelloUI.Safe.RangedIsWand, 0.21.0)
 local function ReadWand()
-	S.wand = false
-	local okI, item = pcall(_G.GetInventoryItemID, "player", 18)
-	if not okI or not item or Secret(item) then
-		return
-	end
-	local api = _G.C_Item
-	local info = api and api.GetItemInfoInstant or _G.GetItemInfoInstant
-	if not info then
-		return
-	end
-	local ok, _, _, _, _, _, classID, subclassID = pcall(info, item)
-	local enum = _G.Enum
-	local wand = enum and enum.ItemWeaponSubclass and enum.ItemWeaponSubclass.Wand or 19
-	local weapon = enum and enum.ItemClass and enum.ItemClass.Weapon or 2
-	S.wand = ok and not Secret(classID) and not Secret(subclassID) and classID == weapon and subclassID == wand or false
+	S.wand = MelloUI.Safe.RangedIsWand() == true
 end
 
 local function InFight()
@@ -404,10 +390,18 @@ local function InFight()
 	return ok and not Secret(v) and v == true
 end
 
+-- (0.21.0, the user 2026-10-12: "the swing timer needs to hide if im using the new ones") the Personal Display's Swing
+-- On The Rails shows the swing on its bars: these stand down meanwhile, and come back when it is off
+local function RailsOn()
+	local pd = MelloUI:GetModule("PersonalDisplay")
+	return pd ~= nil and pd.isEnabled == true and type(pd.db) == "table" and pd.db.swing ~= false
+end
+M.RailsOn = RailsOn
+
 -- whether a bar may show at all: its switch and a weapon for it
 local function Allowed(kind)
 	local db = M.db
-	if not (On() and db) then
+	if not (On() and db) or RailsOn() then
 		return false
 	end
 	if kind == "shot" then
@@ -769,6 +763,17 @@ function M:OnEnable(db)
 		-- 0.19.4: the swing timers wear the cast bar bracket, so the Cast Bars
 		-- area's fill too): the fill again
 		W.OnBarTexture("castbars", LookAll, "Swing timers")
+		-- (0.21.0) the Personal Display's rails switched, or the display itself: the bars stand down or come back
+		MelloUI:On("setting", function(module, key)
+			if module == "PersonalDisplay" and key == "swing" and On() then
+				Update()
+			end
+		end, "Swing timers: the Personal Display's rails")
+		MelloUI:On("module", function(name)
+			if name == "PersonalDisplay" and On() then
+				Update()
+			end
+		end, "Swing timers: the Personal Display's rails")
 	end
 	ReadWand()
 	ReadWeapons()
@@ -777,6 +782,9 @@ function M:OnEnable(db)
 	S.moving = okM and not Secret(moving) and moving == true or false
 	Switches()
 	Update()
+	-- (the Personal Display's rails, which these stand down for, come up after the core's modules at login: looked
+	-- again once every module is up)
+	MelloUI:AfterLogin(Update)
 end
 
 function M:OnDisable()
