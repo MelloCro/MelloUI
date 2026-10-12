@@ -49,10 +49,13 @@ It FAILS (exit 1, the problems listed and counted by file) on
   - a new module with a page and nothing on it tagged,
   - a Core/ or Modules/ file that builds controls and is in neither OWN_FILES nor NOT_CONFIGURATOR.
 Tags of older versions are stale: reported, never failed. Options the previous release had and the tree has not
-are listed ("gone"), never failed. --fix takes every `new = "X.Y.Z"` older than the current version out of Core/
-and Modules/ -- a table field, a line of its own `x.new = "..."`, a version handed by position to RowOpts /
-W.NewTag / W.Badge / W.ButtonTag -- names any other one it finds for a hand, compiles every file it changed (and
-puts them all back, exit 2, if one does not compile), and checks again.
+are listed ("gone"), never failed. --fix takes every `new = "X.Y.Z"` older than the current version out of Core/,
+Modules/ and the feature addons -- a table field, a line of its own `x.new = "..."`, a version handed by position to
+RowOpts / W.NewTag / W.Badge / W.ButtonTag -- and the same through a file's version constant (`local NEW =
+"X.Y.Z"` with `new = NEW` fields and `new = e[5] or NEW` fallbacks; the constant itself goes once nothing else uses
+it), names any other one it finds for a hand, compiles every file it changed (and puts them all back, exit 2, if one
+does not compile), and checks again. A --fix run (release.py's) FAILS on a stale tag still there after it (0.21.0
+shipped 130 of them: the fixer knew no constants, and said "no stale tags").
 
     python Tools/lint/check_new_tags.py                      the working tree against the previous release
     python Tools/lint/check_new_tags.py --version 0.14.0     against the release before 0.14.0
@@ -808,6 +811,14 @@ def compare(cur, old, current, ref="the previous release"):
 
 DOTTED_LINE_RE = re.compile(r'[ \t]*[A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[[^\]\n]*\])*\s*\.\s*new\s*=\s*'
                             + VERSION_LIT + r'\s*;?[ \t]*')
+# (0.21.1) a file's version constant, a line of its own: `local NEW = "0.17.0"`
+CONST_RE = re.compile(r'^[ \t]*local[ \t]+([A-Za-z_]\w*)[ \t]*=[ \t]*' + VERSION_LIT + r'[ \t]*;?[ \t]*$', re.M)
+
+
+def const_uses(code, name):
+    """[(start, end)] of the reads of a local `name` in `code` (not a field `x.name`, a key `name = ...` or the
+    declaration's own name)."""
+    return [(m.start(), m.end()) for m in re.finditer(r'(?<![\w.:])' + re.escape(name) + r'\b(?!\s*=[^=])', code)]
 
 
 def prev_char(code, pos):
@@ -847,6 +858,67 @@ def stale_edits(text, current):
     def line_of(pos):
         return code.count("\n", 0, pos) + 1
 
+    def field(s, e):
+        """the edit taking out the table field `new = ...` at s..e, or None (not a table field: left for a hand)"""
+        p, pj = prev_char(code, s)
+        if p not in "{,;" or p == "":
+            ls = code.rfind("\n", 0, s) + 1
+            le = code.find("\n", e)
+            left.append((line_of(s), text[ls:(len(code) if le < 0 else le)].strip()))
+            return None
+        nc, nj = next_char(code, e)
+        if nc in ",;":
+            k = nj + 1
+            while k < len(code) and code[k] in " \t":
+                k += 1
+            span = whole_line(code, s, k)
+        elif p == ",":
+            span = (pj, e)
+            span = whole_line(code, *span) if code[pj + 1:s].strip() == "" and "\n" not in code[pj:s] else span
+        else:
+            k = e
+            while k < len(code) and code[k] in " \t":
+                k += 1
+            span = whole_line(code, s, k)
+        return (span[0], span[1], "")
+
+    # (0.21.1) the version constants: their `new = NAME` fields and `new = x or NAME` fallbacks taken out, the
+    # constant too once nothing else reads it (else its other reads named for a hand)
+    consts = {}
+    for m in CONST_RE.finditer(code):
+        if stale(m.group(2)) and not in_string(strings, m.start(1)):
+            consts[m.group(1)] = m
+    for name, decl in consts.items():
+        done = set()
+        for m in re.finditer(r'\bnew\s*=\s*(' + re.escape(name) + r')\b', code):
+            if in_string(strings, m.start()) or code[m.start() - 1:m.start()] in ".:":
+                continue
+            ed = field(m.start(), m.end())
+            if ed:
+                edits.append(ed)
+                done.add(m.start(1))
+        for m in re.finditer(r'\s+or\s+(' + re.escape(name) + r')\b', code):
+            ls = code.rfind("\n", 0, m.start()) + 1
+            if re.search(r'\bnew\s*=\s*[^=,;{}]*$', code[ls:m.start()]) and not in_string(strings, m.start(1)):
+                edits.append((m.start(), m.end(), ""))
+                done.add(m.start(1))
+        rest = [u for u in const_uses(code, name) if u[0] not in done and not in_string(strings, u[0])]
+        if rest:
+            for u in rest:
+                ls = code.rfind("\n", 0, u[0]) + 1
+                le = code.find("\n", u[0])
+                left.append((line_of(u[0]), text[ls:(len(code) if le < 0 else le)].strip()))
+        else:
+            le = code.find("\n", decl.end())
+            end = len(code) if le < 0 else le + 1
+            # (a blank line on each side: one of them goes with it, no double gap left)
+            nxt = code.find("\n", end)
+            pe = decl.start() - 1   # (the line break ending the line before)
+            before_blank = pe >= 0 and code[code.rfind("\n", 0, pe) + 1:pe].strip() == ""
+            if before_blank and nxt >= 0 and code[end:nxt].strip() == "":
+                end = nxt + 1
+            edits.append((decl.start(), end, ""))
+
     for m in re.finditer(r'\bnew\s*=\s*' + VERSION_LIT, code):
         if not stale(m.group(1)) or in_string(strings, m.start()):
             continue
@@ -862,31 +934,11 @@ def stale_edits(text, current):
             else:
                 left.append((line_of(s), text[ls:le].strip()))
             continue
-        p, pj = prev_char(code, s)
-        if p not in "{,;" or p == "":
-            # (not a table field: `local new = ...`, a statement)
-            ls = code.rfind("\n", 0, s) + 1
-            le = code.find("\n", e)
-            left.append((line_of(s), text[ls:(len(code) if le < 0 else le)].strip()))
-            continue
-        nc, nj = next_char(code, e)
-        if nc in ",;":
-            # `new = "...",` : the field and its separator
-            k = nj + 1
-            while k < len(code) and code[k] in " \t":
-                k += 1
-            span = whole_line(code, s, k)
-        elif p == ",":
-            # `..., new = "..." }` : the separator before it and the field
-            span = (pj, e)
-            span = whole_line(code, *span) if code[pj + 1:s].strip() == "" and "\n" not in code[pj:s] else span
-        else:
-            # `{ new = "..." }`
-            k = e
-            while k < len(code) and code[k] in " \t":
-                k += 1
-            span = whole_line(code, s, k)
-        edits.append((span[0], span[1], ""))
+        # (a table field: `new = "...",` the field and its separator; `..., new = "..." }` the separator before it
+        # and the field; `{ new = "..." }`. Not one -- `local new = ...`, a statement -- left for a hand)
+        ed = field(s, e)
+        if ed:
+            edits.append(ed)
     for m in TAG_CALL_RE.finditer(code):
         if in_string(strings, m.start()):
             continue
@@ -991,6 +1043,10 @@ def run(root, version=None, previous=None, fix=False, list_all=False):
                   "take it out by hand" % (f, line, text[:160]))
     problems, stale, fresh, gone = compare(cur, old, current, label)
     problems += unlisted(root)
+    if fix:
+        # (0.21.1) the release's --fix leaves no stale tag: one still there is a form the fixer does not know
+        problems += [(f, rid, "a stale tag --fix could not take out (%s): take it out by hand" % t)
+                     for f, rid, t in stale]
     if list_all:
         for rid in sorted(cur):
             r = cur[rid]

@@ -82,11 +82,10 @@ local pcall, type, pairs, ipairs, tostring = pcall, type, pairs, ipairs, tostrin
 local floor, max, min, abs = math.floor, math.max, math.min, math.abs
 local tremove, sort, wipe = table.remove, table.sort, wipe
 
-local NEW = "0.17.0"
 local OWNER = "Meter"
 
 -- the shared table (MeterBar.lua, MeterHistory.lua)
-local Meter = { NEW = NEW, OWNER = OWNER }
+local Meter = { OWNER = OWNER }
 ns.Meter = Meter
 
 -- (one table: the file's main chunk stays far from Lua 5.1's 200 locals)
@@ -145,7 +144,6 @@ local M = MelloUI:RegisterModule("Meter", {
 	flavour = "How the fight went, where you already look.",
 	role = "replaces",
 	enabledByDefault = true,
-	new = NEW,
 	-- the player's own game settings, given back when off (the game's meter,
 	-- the party's pets): never in a profile
 	keep = { "savedMeter", "savedPets" },
@@ -163,28 +161,28 @@ local M = MelloUI:RegisterModule("Meter", {
 		raid = true,
 	},
 	options = {
-		{ type = "toggle", key = "values", name = "Your Values", new = NEW,
+		{ type = "toggle", key = "values", name = "Your Values",
 		  desc = "Three numbers on top of your frame: the sword this fight's damage per second, the hourglass this run's, the cross your healing per second. Live in a fight, the last fight's after it. Move them in Edit Layout (Your Values)." },
-		{ type = "toggle", key = "party", name = "Party Values", new = NEW,
+		{ type = "toggle", key = "party", name = "Party Values",
 		  desc = "The same three numbers on top of each party frame. To make room, the game's own Show Party Pets setting is switched on while this is on (the party frames stand a little further apart, and party pets show under them); your own setting comes back when it is off. With raid-style party frames: On Raid-Style Frames." },
 		{ type = "toggle", key = "raid", name = "On Raid-Style Frames",
 		  desc = "A small DPS or healing number on the right of each raid-style or raid frame, beside the health. In a fight, players MelloUI cannot tell apart stay empty until it ends. Point at a frame for all three numbers." },
-		{ type = "toggle", key = "bar", name = "Race Bar", new = NEW,
+		{ type = "toggle", key = "bar", name = "Race Bar",
 		  desc = "In a fight, one bar for the group: the top player at its right end with their value, everyone else a class icon at their share of the top, you the gold pin with the bar filled up to you. It fades in when the fight starts and out when it ends. The pointer on it lists everyone. Move it in Edit Layout." },
-		{ type = "dropdown", key = "metric", name = "Race Bar Shows", new = NEW,
+		{ type = "dropdown", key = "metric", name = "Race Bar Shows",
 		  values = { { value = "auto", label = "Auto" }, { value = "dps", label = "Damage" }, { value = "hps", label = "Healing" } },
 		  desc = "What the race bar races. Auto: healing while your group role is healer, else damage." },
-		{ type = "slider", key = "pins", name = "Race Bar Pins", new = NEW, min = T.PINS_MIN, max = T.PINS_MAX, step = 1,
+		{ type = "slider", key = "pins", name = "Race Bar Pins", min = T.PINS_MIN, max = T.PINS_MAX, step = 1,
 		  desc = "The most players on the race bar: the best ones, and always you." },
-		{ type = "slider", key = "barWidth", name = "Race Bar Width", new = NEW, min = 150, max = 600, step = 10,
+		{ type = "slider", key = "barWidth", name = "Race Bar Width", min = 150, max = 600, step = 10,
 		  desc = "How wide the race bar is. Also in Edit Layout: right-click the race bar." },
-		{ type = "slider", key = "barHeight", name = "Race Bar Height", new = NEW, min = 4, max = 24, step = 1,
+		{ type = "slider", key = "barHeight", name = "Race Bar Height", min = 4, max = 24, step = 1,
 		  desc = "How tall the race bar is (its pins and labels keep their size). Also in Edit Layout: right-click the race bar." },
-		{ type = "toggle", key = "summary", name = "Fight Summary", new = NEW,
+		{ type = "toggle", key = "summary", name = "Fight Summary",
 		  desc = "After a fight, for a few seconds in the widget column (longer while you point at it): won or lost and its length, your damage, DPS and rank, the ring your share of the group. The pointer on it shows the top five; a click opens the fight in the Fight History." },
-		{ type = "toggle", key = "history", name = "Fight History", new = NEW,
+		{ type = "toggle", key = "history", name = "Fight History",
 		  desc = "The Fight History window: every fight of this session, grouped by run, with the damage, healing and your spells of each. It opens from its button in the chat's button column and from the summary. It takes the place of the game's meter windows." },
-		{ type = "slider", key = "historySize", name = "Fights Kept", new = NEW, min = T.HISTORY_MIN, max = T.HISTORY_MAX, step = 10,
+		{ type = "slider", key = "historySize", name = "Fights Kept", min = T.HISTORY_MIN, max = T.HISTORY_MAX, step = 10,
 		  desc = "How many fights the history keeps, the oldest dropped first. Kept over a /reload; a new login starts it empty." },
 	},
 })

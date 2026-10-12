@@ -29,7 +29,6 @@ local Text, Num = Safe.Text, Safe.Number
 local Anim = MelloUI.Anim
 local FX = MelloUI.FrameFX
 
-local NEW = "0.20.0"
 local KINDS = ns.EffectKinds or {}
 local LASTS = ns.EffectLasts or {}
 local EXAMPLES = ns.EffectExamples or {}
@@ -166,19 +165,18 @@ M = MelloUI:RegisterModule("FrameEffects", {
 	role = "adds",
 	enabledByDefault = true,
 	installer = false,
-	new = NEW,
 	defaults = {
 		mine = true,
 		group = true,
 	},
 	options = {
-		{ type = "button", name = "Every Effect", text = "Play", new = NEW,
+		{ type = "button", name = "Every Effect", text = "Play",
 		  hint = "each kind on your own frame",
 		  desc = "Plays each kind on your own frame, one after another, its name and an example on the screen: a roar (Challenging Shout), a taunt, damage taken down (Shield Wall), more health (Last Stand), an immunity, a dodge or parry (Evasion).",
 		  onClick = function() PreviewAll() end },
-		{ type = "toggle", key = "mine", name = "Your Own", new = NEW,
+		{ type = "toggle", key = "mine", name = "Your Own",
 		  desc = "When you use one (Challenging Shout, Shield Wall, Last Stand, Divine Shield, Evasion ...), your own frame in your party or raid frames plays its effect for as long as it lasts (a roar: 2 seconds)." },
-		{ type = "toggle", key = "group", name = "Your Group's", new = NEW,
+		{ type = "toggle", key = "group", name = "Your Group's",
 		  desc = "When someone of your party or raid uses one, their frame plays its effect: you see at a glance who just used Shield Wall or Divine Shield, and whose roar just pulled." },
 	},
 })

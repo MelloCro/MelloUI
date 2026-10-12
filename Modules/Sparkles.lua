@@ -34,14 +34,12 @@ local C_Timer = Perf.C_Timer
 local Shared = Perf.Shared
 local Secret = MelloUI.Safe.IsSecret
 
-local NEW = "0.20.1"
 local M = MelloUI:RegisterModule("Sparkles", {
 	title = "Loot Sparkles",
 	desc = "The game's sparkle on quest items you can loot, kept on through its graphics presets, and golden glints over the ore veins and herbs you walk up to: dim out of reach, bright in reach, grey when your skill is too low. The game settings it needs come back as you had them when it is off.",
 	icon = "Interface\\Icons\\Trade_Mining",
 	flavour = "What you can loot, at a glance.",
 	role = "adds",
-	new = NEW,
 	enabledByDefault = false,
 	installer = false,
 	-- the player's own game settings, given back when off: never in a profile
@@ -50,13 +48,13 @@ local M = MelloUI:RegisterModule("Sparkles", {
 		"savedSoftIconObject", "savedSoftLowPriority", "savedSoftPlate" },
 	defaults = { questItems = true, ore = true, herbs = true, questObjects = false },
 	options = {
-		{ type = "toggle", key = "questItems", name = "Quest Item Sparkles", new = NEW,
+		{ type = "toggle", key = "questItems", name = "Quest Item Sparkles",
 		  desc = "Keeps the game's sparkle on quest items you can loot. It needs the game's outline mode off, which its graphics presets switch back on: held while this is on, given back as you had it when off. Switching this off takes the sparkles away after the next game restart (the client's own; /reload is not enough)." },
-		{ type = "toggle", key = "ore", name = "Ore Veins", new = NEW,
+		{ type = "toggle", key = "ore", name = "Ore Veins",
 		  desc = "Golden glints over the ore vein you walk up to (the game's soft targeting picks the nearest one, within about 15 yards): dim out of reach, bright once you can mine it, grey when your skill is too low." },
-		{ type = "toggle", key = "herbs", name = "Herbs", new = NEW,
+		{ type = "toggle", key = "herbs", name = "Herbs",
 		  desc = "The same glints over the herb you walk up to." },
-		{ type = "toggle", key = "questObjects", name = "Quest Objects", new = NEW,
+		{ type = "toggle", key = "questObjects", name = "Quest Objects",
 		  desc = "The same glints over a quest object you walk up to. Off by default: the game's own sparkle (Quest Item Sparkles) already marks most of them." },
 	},
 })

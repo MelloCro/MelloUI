@@ -49,8 +49,6 @@ local Finite = MelloUI.Safe.Finite
 local Fader = MelloUI.Fader
 local pcall, type, ipairs = pcall, type, ipairs
 
-local NEW = "0.17.0"
-
 -- the elements, in the page's order: key, label, tab, desc (, the version a later one came with)
 local LIST = {
 	{ "player", "Player Frame", "Frames", "Your own frame. In Combat, it also comes back while your health or mana is below full and when you are dead; On Mouseover, it stays faded until you point at it." },
@@ -123,33 +121,33 @@ local function SetAll(value)
 	end
 end
 
-options[#options + 1] = { type = "button", name = "Fade Everything", text = "Fade", new = NEW,
+options[#options + 1] = { type = "button", name = "Fade Everything", text = "Fade",
 	search = "hide out of combat whole ui",
 	desc = "Every element below on In Combat: the whole interface fades away out of combat and comes back in a fight.",
 	onClick = function() SetAll("combat") end }
-options[#options + 1] = { type = "button", name = "Fade Nothing", text = "Reset", new = NEW,
+options[#options + 1] = { type = "button", name = "Fade Nothing", text = "Reset",
 	desc = "Every element below on Always: nothing fades.",
 	onClick = function() SetAll("always") end }
 options[#options + 1] = { type = "slider", key = "alpha", name = "Faded Opacity", min = 0, max = Fader.T.MAX, step = 0.05,
-	percent = true, new = NEW,
+	percent = true,
 	desc = "How much of an element stays while it is faded. At 0 % it is gone until it is needed (an On Mouseover bar at 0 % still shows when you point at it)." }
-options[#options + 1] = { type = "slider", key = "after", name = "Fade After", min = 0, max = 10, step = 0.5, new = NEW,
+options[#options + 1] = { type = "slider", key = "after", name = "Fade After", min = 0, max = 10, step = 0.5,
 	format = function(v) return string.format("%.1f s", v) end,
 	desc = "How long an element waits before it fades: after a fight ends, after you let go of your target or point away." }
-options[#options + 1] = { type = "slider", key = "speed", name = "Fade Speed", min = 0.2, max = 3, step = 0.1, new = NEW,
+options[#options + 1] = { type = "slider", key = "speed", name = "Fade Speed", min = 0.2, max = 3, step = 0.1,
 	format = function(v) return string.format("%.1f s", v) end,
 	desc = "How long the fade itself takes. Coming back is always quick. Reduce Motion: at once." }
-options[#options + 1] = { type = "toggle", key = "target", name = "Show With A Target", new = NEW,
+options[#options + 1] = { type = "toggle", key = "target", name = "Show With A Target",
 	desc = "In Combat elements come back while you have a target, a friend too." }
-options[#options + 1] = { type = "toggle", key = "mouse", name = "Also Show On Mouseover", new = NEW,
+options[#options + 1] = { type = "toggle", key = "mouse", name = "Also Show On Mouseover",
 	search = "show on hover",
 	desc = "In Combat elements come back while you point at them, too. (On Mouseover elements always do.)" }
 for _, e in ipairs(LIST) do
 	local still = e[6] == "noMouse"
 	options[#options + 1] = { type = "dropdown", key = "show_" .. e[1], name = e[2], values = still and SHOW_NO_MOUSE or SHOW,
-		new = e[5] or NEW, desc = e[4] .. (still and SHOW_NO_MOUSE_TIP or SHOW_TIP) }
+		new = e[5], desc = e[4] .. (still and SHOW_NO_MOUSE_TIP or SHOW_TIP) }
 	if e[1] == "player" then
-		options[#options + 1] = { type = "toggle", key = "petToo", name = "Pet Frame Too", new = NEW,
+		options[#options + 1] = { type = "toggle", key = "petToo", name = "Pet Frame Too",
 			desc = "Your pet's frame fades and comes back with the player frame, and also comes back while your pet is hurt. Off: the pet frame always stays." }
 	end
 end
@@ -163,7 +161,6 @@ M = MelloUI:RegisterModule("Fader", {
 	-- setups leave it as it is, no Features row of its own)
 	role = "look",
 	enabledByDefault = false,
-	new = NEW,
 	defaults = defaults,
 	options = options,
 })

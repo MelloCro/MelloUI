@@ -70,7 +70,6 @@ local Num = MelloUI.Safe.Number
 local Text = MelloUI.Safe.Text
 local W = MelloUI.Widgets
 
-local NEW = "0.17.1"
 local M = MelloUI:RegisterModule("SwingTimers", {
 	title = "Swing Timers",
 	desc = "A shot bar and a melee bar in MelloUI's look in place of the game's swing timers: each swing and shot counted down, the off hand under the main hand, a wand's shots on the melee bar. The game's own swing timers are switched off while this is on, and come back as you had them when it is off. While the Personal Display shows your swing on its rails (Swing On The Rails), these bars step aside.",
@@ -78,7 +77,6 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	flavour = "Every swing and shot at a glance.",
 	role = "replaces",
 	slash = "swing",
-	new = NEW,
 	enabledByDefault = false,
 	-- (not on the installer's Features step: its two columns are full; it is
 	-- switched on in the settings window)
@@ -88,22 +86,22 @@ local M = MelloUI:RegisterModule("SwingTimers", {
 	defaults = { shot = true, melee = true, offhand = true, look = "castbar", text = true, show = "combat", width = 200,
 		height = 10 },
 	options = {
-		{ type = "toggle", key = "shot", name = "Shot Bar", new = NEW,
+		{ type = "toggle", key = "shot", name = "Shot Bar",
 		  desc = "The shot bar for a bow, gun, crossbow or thrown weapon while Auto Shot is on: cream, shrinking to the middle while it reloads (you can move), then red, growing from the middle while you aim: stand still, moving holds the shot back." },
-		{ type = "toggle", key = "melee", name = "Melee Bar", new = NEW,
+		{ type = "toggle", key = "melee", name = "Melee Bar",
 		  desc = "The melee bar: each swing of your main hand counted down, shrinking to the middle. A wand's shots (Shoot) count down on it too." },
-		{ type = "toggle", key = "offhand", name = "Off Hand Bar", new = NEW,
+		{ type = "toggle", key = "offhand", name = "Off Hand Bar",
 		  desc = "A thinner bar under the melee bar for your off-hand weapon's swings, while you carry one." },
-		{ type = "dropdown", key = "look", name = "Look", new = NEW,
+		{ type = "dropdown", key = "look", name = "Look",
 		  values = { { value = "castbar", label = "Framed" }, { value = "hairline", label = "Hairline" } },
 		  desc = "Framed: the frame you pick in Swing Timer Border (the cast bar's by default), with the bar's name and the seconds left. Hairline: a thin rim on a soft shade, nothing else. With the cast bars' painted look off, both are a plain bar." },
-		{ type = "toggle", key = "text", name = "Label And Time", new = NEW,
+		{ type = "toggle", key = "text", name = "Label And Time",
 		  desc = "The bar's name above it on the left (Auto Shot, Main Hand, Shoot (wand)) and the seconds left on the right." },
-		{ type = "slider", key = "width", name = "Width", new = NEW, min = 100, max = 400, step = 5,
+		{ type = "slider", key = "width", name = "Width", min = 100, max = 400, step = 5,
 		  desc = "How wide the bars are. Also in Edit Layout (right-click a bar there)." },
-		{ type = "slider", key = "height", name = "Height", new = NEW, min = 6, max = 24, step = 1,
+		{ type = "slider", key = "height", name = "Height", min = 6, max = 24, step = 1,
 		  desc = "How tall the bars are; the off hand's is 60 % of it. Also in Edit Layout." },
-		{ type = "dropdown", key = "show", name = "Show", new = NEW,
+		{ type = "dropdown", key = "show", name = "Show",
 		  values = { { value = "combat", label = "In Combat" }, { value = "always", label = "Always" } },
 		  desc = "In Combat: a bar shows in a fight once it swings or shoots, and fades out when the fight ends (the shot bar also when Auto Shot stops). Always: each bar shows while you carry a weapon for it, at rest between swings." },
 	},

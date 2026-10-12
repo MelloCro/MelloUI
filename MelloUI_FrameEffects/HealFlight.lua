@@ -38,7 +38,6 @@ local Secret, Text, Num = Safe.IsSecret, Safe.Text, Safe.Number
 local Anim = MelloUI.Anim
 local Looks = MelloUI.FrameFX
 
-local NEW = "0.20.0"
 local LAND_WINDOW = 0.2   -- s after a cast's end: a HEAL on a member there turns the light to it
 local SENT_MAX = 1        -- s from a cast's SENT to its START
 local CAST_MAX = 15       -- s from a cast's SENT to its end
@@ -753,7 +752,6 @@ M = MelloUI:RegisterModule("HealFlight", {
 	role = "adds",
 	enabledByDefault = true,
 	installer = false,
-	new = NEW,
 	defaults = {
 		look = "class",
 		flight = true,
@@ -761,19 +759,19 @@ M = MelloUI:RegisterModule("HealFlight", {
 		raidLanding = "quiet",
 	},
 	options = {
-		{ type = "dropdown", key = "look", name = "Look", new = NEW, values = LOOK_VALUES,
+		{ type = "dropdown", key = "look", name = "Look", values = LOOK_VALUES,
 		  desc = "How your heals look. By Class: Holy for priests and paladins, Nature for druids, Water for shamans (Holy for anyone else). Water: water circles your cast bar, a winding stream throws off droplets, a splash lands; a shield is a water bubble, a heal to full a geyser. Holy: gold sparks spiral into your spell's icon, a gold comet flies, a white flash and a burst of rays land, rune marks linger round the frame. Nature: green and gold ribbons circle your cast bar, ribbons fly shedding leaves, leaves burst and rise. Quiet: your cast bar's fill glows, a thin thread of light flies, the frame's border flares. Each kind lands its own way in each look: a heal over time sinks in, a shield wraps the frame in a barrier, protection puts a crest over it, a heal to full raises a column of light, a resurrection lights the fallen one's frame." },
-		{ type = "toggle", key = "flight", name = "Flying Light", new = NEW,
+		{ type = "toggle", key = "flight", name = "Flying Light",
 		  desc = "The light that flies from your cast bar to the frame when a cast heal ends (Chain Heal's hops too). Off: the heal lands on the frame the moment the cast ends, as an instant one does; the glow on your cast bar while you cast and every effect on the frames stay." },
-		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks", new = NEW,
+		{ type = "toggle", key = "hotTicks", name = "Heal Over Time Ticks",
 		  desc = "While a heal over time of yours runs (Renew, Rejuvenation, Regrowth's), each of its ticks plays a small pulse on the frame: a ring and three motes (Holy), a leaf (Nature), a drop and a ripple (Water), the border's breath (Quiet, and in a raid with Landing In A Raid Quiet). Timed from the game's spell data: Renew ticks five times in 15 seconds." },
-		{ type = "dropdown", key = "raidLanding", name = "Landing In A Raid", new = NEW, values = LANDING_VALUES,
+		{ type = "dropdown", key = "raidLanding", name = "Landing In A Raid", values = LANDING_VALUES,
 		  desc = "How your heals land in a raid, where the frames sit close together. Quiet: the frame's border flares (a shield's twice, protection's with a small crest), so the frames round it stay readable. The look's own burst: the same as in a party (Holy's rays and Nature's leaves reach over the frames next to it for a moment)." },
-		{ type = "button", name = "Preview", text = "Play", new = NEW,
+		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a made-up heal on you",
 		  desc = "Plays the chosen look once: the light gathers where your cast bar stands and flies to your own frame in your party or raid frames (or your player frame); with Flying Light off it lands there at once.",
 		  onClick = function() Preview() end },
-		{ type = "button", name = "Every Kind", text = "Play", new = NEW,
+		{ type = "button", name = "Every Kind", text = "Play",
 		  hint = "each kind's landing on your frame",
 		  desc = "Plays each kind's landing on your own frame, one after another: a heal over time, a shield, protection, a heal to full, a resurrection.",
 		  onClick = function() PreviewKinds() end },
