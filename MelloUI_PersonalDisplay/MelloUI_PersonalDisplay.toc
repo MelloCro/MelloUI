@@ -2,7 +2,7 @@
 ## Title: |cff9b8cffMello|rUI Personal Display
 ## Notes: MelloUI's Personal Display: your health, power and cast bar under your character, and a shield column beside it. Switch it on or off in MelloUI (/mello); untick it here to not load it at all.
 ## Author: Mello
-## Version: 0.20.5
+## Version: 0.21.0
 ## Dependencies: MelloUI
 ## X-MelloUI-Feature: PersonalDisplay
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
