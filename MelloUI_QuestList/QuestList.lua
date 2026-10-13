@@ -85,7 +85,7 @@ local M = MelloUI:RegisterModule("QuestList", {
 		  desc = "Leave out quests you have already completed instead of greying them." },
 		{ type = "toggle", key = "showHidden", name = "Show Hidden Quests",
 		  desc = "List the quests you hid (Alt-click a quest giver's mark on the map, or a quest in the list), dimmed, so you can Alt-click them back. Hidden quests stay off the map either way. Hiding is kept per character." },
-		{ type = "toggle", key = "startGiver", name = "Quests From a Quest Giver",
+		{ type = "toggle", key = "startGiver", name = "Quests From A Quest Giver",
 		  desc = "List quests picked up from a quest giver or an object (the \"!\"). The gear button on the list switches these as well; they apply to the map pins too." },
 		{ type = "toggle", key = "startDrop", name = "Quests From a Mob Drop",
 		  desc = "List quests that begin with an item dropped by creatures (crossed swords)." },
@@ -2367,6 +2367,11 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 			changed = QL.Offers.TurnedIn(QL.Plain(...))
 		elseif event == "PLAYER_LEVEL_UP" or event == "SKILL_LINES_CHANGED" then
 			changed = QL.Offers.Changed()
+			if event == "PLAYER_LEVEL_UP" then
+				-- (0.21.3) the quests the level opened: fresh, their givers popping on the map
+				QL.NewAt(...)
+				changed = true
+			end
 		end
 		if changed then
 			QL.RefreshPins()
@@ -2378,6 +2383,12 @@ Perf.SetScript(eventFrame, "OnEvent", function(_, event, ...)
 end)
 
 local hooked = false
+
+-- (0.21.3, the Unit Frames Kit's Level Up) how many quests the level opened in
+-- the player's zone (QL.NewAt, QuestListMap.lua)
+function M:NewQuestsAt(level)
+	return QL.NewAt(level)
+end
 
 -- the side window's settings, gone with it after 0.18.0 (its Panel Width
 -- and its fold): a saved value is dropped, so no profile, share string or

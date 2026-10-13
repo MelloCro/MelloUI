@@ -63,7 +63,7 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Hide the backpack and bag slot buttons. Still shown while Edit Mode is open. Bags can still be opened with their keybinds." },
 		{ type = "toggle", key = "hideMinimapCoords", name = "Hide Minimap Coordinates",
 		  desc = "Hide the player coordinates the client writes under the minimap." },
-		{ type = "toggle", key = "bagSlotsOnBags", parent = "hideBagBar", name = "Bag Slots on Bag Window",
+		{ type = "toggle", key = "bagSlotsOnBags", parent = "hideBagBar", name = "Bag Slots On Bag Window",
 		  desc = "While the bag bar is hidden, show the bag slots under the open bag window so bags can still be equipped and removed. Works with and without the Combine Bags option." },
 		{ type = "toggle", key = "bagBarFold", name = "Collapse Arrow",
 		  desc = "An arrow beside the backpack folds the bag slots away so only the backpack shows; click it again to bring them back. While you hold an item they come out by themselves, so a new bag can be dropped into a slot. The game remembers which way you left it." },

@@ -9,7 +9,7 @@
 --
 -- With the painted reskin on (user, 2026-09-21): the groups the kit covers are
 -- left to the kit, and the kit itself is darkened as one through
--- Kit:SetShade with the "Reskin brightness" setting (its hue kept: the gems
+-- Kit:SetShade with the "Reskin Brightness" setting (its hue kept: the gems
 -- stay red); where the reskin is off, the default art is darkened as before.
 --
 -- Frame keys were taken from the World of Warcraft: Forever (Camelot) UI source,
@@ -56,10 +56,10 @@ local M = MelloUI:RegisterModule("DarkMode", {
 	options = {
 		{ type = "header", name = "Appearance" },
 		{ type = "slider", key = "shade", name = "Default UI Brightness", min = 0, max = 1, step = 0.05, percent = true,
-		  desc = "How bright the game's own artwork is where Dark Mode darkens it (the parts the reskin does not cover, or everything with the reskin off). Lower values are darker. The reskin's own art has Reskin brightness below." },
+		  desc = "How bright the game's own artwork is where Dark Mode darkens it (the parts the reskin does not cover, or everything with the reskin off). Lower values are darker. The reskin's own art has Reskin Brightness below." },
 		{ type = "toggle", key = "desaturate", name = "Desaturate",
 		  desc = "Remove the gold and bronze colours so the art becomes grey before it is darkened." },
-		{ type = "slider", key = "kitShade", name = "Reskin brightness", min = 0.2, max = 1, step = 0.05, percent = true,
+		{ type = "slider", key = "kitShade", name = "Reskin Brightness", min = 0.2, max = 1, step = 0.05, percent = true,
 		  desc = "How bright the painted reskin is while Dark Mode is on: every kit piece (stone, iron, plates, brackets) is darkened by this much; the red gems keep their colour. The default art above is darkened where the reskin is off." },
 		{ type = "header", name = "Components" },
 		{ type = "toggle", key = "unitframes", name = "Unit Frames",

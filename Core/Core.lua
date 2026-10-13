@@ -363,6 +363,15 @@ MelloUI.Meaning = {
 	personalCdBlock = Hex("#E8B04A"),       -- (meaning colour)
 	personalCdEvasion = Hex("#D8E4F0"),     -- (meaning colour)
 	personalCdOffence = Hex("#FF6E28"),     -- (meaning colour)
+	-- (the cooldown timers' numbers by the time left: red under 5 s, yellow under a minute, dim white for
+	-- minutes, grey for hours; Modules/CooldownText.lua)
+	cooldownSoon = { 1.0, 0.1, 0.1, hex = "FF1A1A" },      -- (meaning colour)
+	cooldownSeconds = { 1.0, 1.0, 0.1, hex = "FFFF1A" },   -- (meaning colour)
+	cooldownMinutes = { 0.8, 0.8, 0.9, hex = "CCCCE6" },   -- (meaning colour)
+	cooldownHours = { 0.7, 0.7, 0.7, hex = "B3B3B3" },     -- (meaning colour)
+	-- (the group frames' grey: a member with no class to read, offline or dead;
+	-- MelloUI_GroupFrames/GroupButton.lua)
+	groupGrey = { 0.5, 0.5, 0.5, hex = "808080" },         -- (meaning colour)
 }
 MelloUI.moduleOrder = {}
 

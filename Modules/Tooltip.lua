@@ -60,7 +60,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		{ type = "header", name = "Units" },
 		{ type = "toggle", key = "classHealth", name = "Class / Reaction Health Colour",
 		  desc = "Colour the tooltip health bar by class or reaction instead of green." },
-		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hide the health bar under unit tooltips (on by default). The two options above only matter when the bar is shown." },
+		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hide the health bar under unit tooltips (on by default). Bar Texture and Class / Reaction Health Colour only matter while the bar is shown." },
 		{ type = "toggle", key = "hideInCombat", name = "Hide Unit Tooltips In Combat", desc = "Do not show tooltips for units while in combat." },
 		{ type = "slider", key = "fadeDelay", name = "Fade Delay", min = 0.1, max = 1, step = 0.05,
 		  format = function(v) return string.format("%.2f s", v) end,

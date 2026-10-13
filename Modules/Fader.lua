@@ -123,10 +123,10 @@ end
 
 options[#options + 1] = { type = "button", name = "Fade Everything", text = "Fade",
 	search = "hide out of combat whole ui",
-	desc = "Every element below on In Combat: the whole interface fades away out of combat and comes back in a fight.",
+	desc = "Every element on the Frames, Bars and Chat & Map tabs on In Combat: the whole interface fades away out of combat and comes back in a fight.",
 	onClick = function() SetAll("combat") end }
 options[#options + 1] = { type = "button", name = "Fade Nothing", text = "Reset",
-	desc = "Every element below on Always: nothing fades.",
+	desc = "Every element on the Frames, Bars and Chat & Map tabs on Always: nothing fades.",
 	onClick = function() SetAll("always") end }
 options[#options + 1] = { type = "slider", key = "alpha", name = "Faded Opacity", min = 0, max = Fader.T.MAX, step = 0.05,
 	percent = true,

@@ -88,7 +88,7 @@ local M = MelloUI:RegisterModule("BarTextures", {
 	options = {
 		{ type = "header", name = "Texture" },
 		{ type = "dropdown", key = "texture", name = "Bar Texture", values = BuildTextureList(),
-		  desc = "Fill texture used for all bars below. Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua." },
+		  desc = "Fill texture for every bar whose Bar Texture switch is on (each switch sits with its bars, on their own page). Custom files go into MelloUI\\Media\\Textures and are listed in Media\\CustomTextures.lua." },
 		{ type = "dropdown", key = "healthColor", name = "Health Bar Colour", values = {
 			{ value = "green", label = "Green (Blizzard)" },
 			{ value = "class", label = "Class colour for players" },

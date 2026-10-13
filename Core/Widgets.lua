@@ -2646,6 +2646,8 @@ do
 	local GLYPH_TEX = "Interface\\AddOns\\MelloUI\\Media\\Textures\\WidgetGlyphs"
 	W.GLYPHS = { pause = 0, play = 1, skip = 2, stop = 3, list = 4, padlock = 5, padlockOpen = 6, check = 7,
 		cross = 8, way = 9, reply = 10, friend = 11, invite = 12, ignore = 13, report = 14,
+		-- (0.21.3: an empty cell, W.SpacerMarkup's)
+		blank = 15,
 		chat = 16, channels = 17, friends = 18,
 		-- (0.17.0: Combat Text's feed, a mark per kind)
 		hit = 19, heal = 20, proc = 21, avoid = 22, gain = 23,
@@ -2657,14 +2659,16 @@ do
 		bag = 28, cog = 29, flag = 30 }
 	local ROWS = 4
 
-	function W.Glyph(tex, name)
+	-- (share, 0.21.3: only the glyph's left part, a share of its width -- a
+	-- tick drawn in; the texture as wide as that share)
+	function W.Glyph(tex, name, share)
 		local i = W.GLYPHS[name]
 		if not i then
 			return false
 		end
 		local c, r = i % 8, math.floor(i / 8)
 		tex:SetTexture(GLYPH_TEX)
-		tex:SetTexCoord(c / 8, (c + 1) / 8, r / ROWS, (r + 1) / ROWS)
+		tex:SetTexCoord(c / 8, (c + (share or 1)) / 8, r / ROWS, (r + 1) / ROWS)
 		return true
 	end
 
@@ -2683,6 +2687,16 @@ do
 		end
 		return string.format("|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d:%d:%d:%d|t", GLYPH_TEX, size, size, 8 * CELL, ROWS * CELL,
 			c * CELL, (c + 1) * CELL, row * CELL, (row + 1) * CELL, Byte(r), Byte(g), Byte(b))
+	end
+
+	-- (0.21.3, the Quest Tracker's rolling count) an empty stretch of a line,
+	-- `width` of its units wide: the blank cell as inline markup, so the
+	-- text after it keeps its place while something else is drawn there
+	function W.SpacerMarkup(width)
+		local i = W.GLYPHS.blank
+		local c, row = i % 8, math.floor(i / 8)
+		return string.format("|T%s:1:%d:0:0:%d:%d:%d:%d:%d:%d|t", GLYPH_TEX, math.max(1, math.floor((tonumber(width) or 1) + 0.5)),
+			8 * CELL, ROWS * CELL, c * CELL, (c + 1) * CELL, row * CELL, (row + 1) * CELL)
 	end
 
 	local function SetGlyph(b, name)

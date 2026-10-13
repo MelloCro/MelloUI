@@ -305,13 +305,20 @@ ALLIANCE_MASK = 0x55155555b1354c4d
 HORDE_MASK = 0xaa2aaaaa4e0ab3b2
 
 
+# the server's own dead and test quests: it answers for them too (the scan of 2026-10-13: 82 such titles)
+DEAD = re.compile(r"\[never used\]|<nyi>|<txt>|<unused>|\bunused\b|<test>|\btest (kill )?quest|do not use"
+                  r"|deprecated|\bzzold|placeholder|\[dnt\]|<dnt>|\(\d+\)aa|^reuse( me)?$", re.I)   # (never "Test of Lore")
+
+
 def load_quests(sql):
     """Every quest Forever has (the user, 2026-10-13: "There has to be a way to get the actual quest data"): the
     game server's own answers, read from the client's quest cache after the MelloUIDataScan addon asked for every
     quest of the client's QuestV2 table (Tools/read_questcache.py writes the snapshot). Wowhead's listing stays
     under it, for what the server does not say: today's listing, else the kept quest list of 2026-10-06
     (KEPT_BUILT), else the kept listing of 2026-09-27.
-      exists     the server answered for it, or Wowhead lists it and a whole scan did not find the server without it
+      exists     the server answered for it (not a dead or test quest: DEAD, or one with no level), or Wowhead lists
+                 it; a quest the server refuses stays (the beta refuses what is not open yet: the scan of
+                 2026-10-13 had 77% refused at levels 40-44, 99% at 50-59)
       title, level, required level   the server's
       category   Wowhead's (its holidays and its zone of each quest); else the server's sort, a zone's sub-area
                  raised to its zone (105 of 106 cached quests agree with Wowhead so), a negative sort as it is; a
@@ -330,6 +337,12 @@ def load_quests(sql):
             listing[qid] = row
             over += 1
     log(f"  {len(built)} quests in the kept quest list of 2026-10-06, {over} of them over the kept listing")
+    # (Wowhead's listing has the dead and test quests too -- "<UNUSED>", "Test Kill Quest": 130 rows on 2026-10-13,
+    # none in the shipped list -- left out here, so the objectives never read them either)
+    dead = [q for q, row in listing.items() if DEAD.search(row.get("name") or "")]
+    for qid in dead:
+        del listing[qid]
+    log(f"  {len(dead)} dead or test quests in the listing left out")
     from read_questcache import snapshot
     build, client, scan = snapshot()
     if not client:
@@ -350,12 +363,17 @@ def load_quests(sql):
     stats = defaultdict(int)
     whole = bool(scan and scan["done"])
     if whole:
-        for qid in [q for q in listing if q in scan["failed"] and q not in client]:
-            del listing[qid]
-            stats["Wowhead's, the server knows it not: left out"] += 1
+        # (a refusal is no proof the quest is gone: never left out for it)
+        stats["Wowhead's, refused by the server (not open yet?): kept"] = sum(
+            1 for q in listing if q in scan["failed"] and q not in client)
     for qid, c in client.items():
         row = listing.get(qid)
         if row is None:
+            answer = (scan or {}).get("quests", {}).get(qid) or {}
+            level = c["level"] if c["level"] > 0 else (answer.get("level") or 0)
+            if DEAD.search(c["title"] or "") or level <= 0:
+                stats["the server's, a dead or test quest (its title, or no level): left out"] += 1
+                continue
             sort = c["sort"]
             if sort == SEASONAL:
                 stats["the server's, a holiday's Wowhead does not list: left out"] += 1

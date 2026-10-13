@@ -39,6 +39,7 @@ local C_Timer = Perf.C_Timer
 
 local M = MelloUI:RegisterModule("QuestTracker", {
 	title = "Quest Tracker",
+	slash = "tracker",   -- (0.21.3: /mello tracker progress)
 	desc = "A quest tracker in the game's tracker's place that scrolls with the mouse wheel, so every watched quest can be reached.",
 	icon = "Interface\\Icons\\INV_Misc_Book_08",
 	flavour = "Every watched quest within reach: the tracker scrolls when the list runs long.",
@@ -75,6 +76,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		nearestFirst = true,
 		showDistance = true,
 		turnInLine = true,
+		progressMotion = true,
 	},
 	options = {
 		{ type = "header", name = "Tracker" },
@@ -97,6 +99,8 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "How far one turn of the mouse wheel scrolls." },
 		{ type = "toggle", key = "itemButtons", name = "Quest Items",
 		  desc = "Show a quest's usable item beside it. A click uses it out of combat." },
+		{ type = "toggle", key = "progressMotion", name = "Progress Motion", new = "0.21.3",
+		  desc = "A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its map button turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion." },
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
 		  desc = "The nearest quest on top, the one you follow above it; quests with no place known after them. The arrow at the left of the tracker's title switches it too. Needs Route." },
@@ -900,6 +904,363 @@ end
 -- fixed, and could not be changed in the configurator)
 local function HeaderSize()
 	return math.floor((tonumber(M.db and M.db.headerSize) or 16) + 0.5)
+end
+
+--------------------------------------------------------------------------------
+-- Progress Motion (0.21.3; the user, 2026-10-13: "Yes to all" to the previews
+-- in BuildData/output/animation_previews, 3. Quest Tracker progress; it took
+-- the place of the gold flare behind a line that counted up, 2026-09-23)
+--   * a count going up rolls -- the old number up and out, the new one in
+--     from below (ROLL seconds) -- and a soft gold light runs along its line
+--     (LIGHT); the count's own place in the line is kept clear meanwhile by
+--     an empty glyph of its width (W.SpacerMarkup), so only the number moves
+--     and the line never wraps anew; a count past the line's first line
+--     keeps still, its light still runs
+--   * an objective done: a tick in its dash's place, drawn in after the roll
+--     (TICK); done objectives keep the tick
+--   * a quest done: its turn-in look waits HOLD seconds, so its last count
+--     rolls and ticks first; then a light runs over its title (SWEEP), its
+--     map button, now the hand-in ?, comes up (Anim:Pop, UNFOLD seconds,
+--     rising UNFOLD_RISE) and its turn-in line comes in (TURNIN)
+-- One-shot through the motion engine (Anim:Drive / From / Pop); each
+-- line's pieces made at its first motion. The option off or Reduce Motion:
+-- the lines as they are, at once (off: a done objective keeps its dash).
+-- (One table: the file's locals.)
+--------------------------------------------------------------------------------
+
+local Motion = { ROLL = 0.28, LIGHT = 0.6, TICK = 0.25, HOLD = 0.9, SWEEP = 0.7, UNFOLD = 0.3, UNFOLD_RISE = 4, TURNIN = 0.35,
+	SHINE_W = 68, SHINE_H = 19, SWEEP_W = 48, hold = {} }
+Motion.GLOW = "Interface\\AddOns\\MelloUI\\Media\\Textures\\SoftGlowRound"   -- look-ok: a moment's light, in both looks
+
+function Motion.On()
+	local anim = MelloUI.Anim
+	return M.db.progressMotion ~= false and anim ~= nil and anim.Drive ~= nil and not anim.reduceMotion
+end
+
+-- the widget set's glyphs (the tick, the count's spacer), or nil
+function Motion.W()
+	local W = MelloUI.Widgets
+	return type(W) == "table" and W.Glyph and W.SpacerMarkup and W or nil
+end
+
+-- a soft light in the look's gold, added to what is under it (hidden)
+function Motion.Glow(parent, layer)
+	local t = parent:CreateTexture(nil, layer or "ARTWORK")
+	t:SetTexture(Motion.GLOW)
+	t:SetBlendMode("ADD")
+	PaintKey(t, "selectedTrim", "vertex")
+	t:Hide()
+	return t
+end
+
+-- a text's width and height in line fs's font (one unseen font string,
+-- made at the first roll)
+function Motion.Size(fs, text)
+	local m = Motion.measure
+	if not m then
+		m = content:CreateFontString(nil, "OVERLAY")
+		m:SetAlpha(0)
+		Motion.measure = m
+	end
+	local path, size, flags = fs:GetFont()
+	if path then
+		m:SetFont(path, size, flags or "")
+	end
+	m:SetText(text)
+	return m:GetStringWidth() or 0, m:GetStringHeight() or 0
+end
+
+-- line fs counted up from `before` (its line i of entry key, as Progress
+-- names it across rebuilds)
+function Motion.Count(fs, key, i, before)
+	Motion.Stop(fs)
+	if not Motion.On() then
+		return
+	end
+	local text = fs:GetText()
+	if type(text) ~= "string" or Secret(text) then
+		return
+	end
+	local roll = { fs = fs, key = key, i = i, text = text, landed = false }
+	local _, h = Motion.Size(fs, "0/0")
+	roll.h = h
+	local s, e, _, need = text:find("(%d+)/(%d+)")
+	if s then
+		local prefix = text:sub(1, s - 1)
+		local new, old = text:sub(s, e), before .. "/" .. need
+		local x0 = s > 1 and Motion.Size(fs, prefix) or 0
+		local wNew, wOld = Motion.Size(fs, new), Motion.Size(fs, old)
+		local w = math.max(wNew, wOld)
+		local W = Motion.W()
+		if W and x0 + w <= (fs:GetWidth() or 0) then
+			roll.spaced = prefix .. W.SpacerMarkup(wNew) .. text:sub(e + 1)
+			roll.x0, roll.w, roll.new, roll.old = x0, w, new, old
+		end
+	end
+	fs.roll = roll
+	Motion.Lay(fs, roll)
+	MelloUI.Anim:Drive(roll, Motion.Step, Motion.LIGHT, "linear", Motion.Over)
+end
+
+-- the roll's pieces on the line (made at its first roll): the two numbers
+-- in a clipping frame over the count's place, in the line's font and colour,
+-- and the light
+function Motion.Lay(fs, roll)
+	local block = fs.block
+	if not fs.shine then
+		fs.shine = Motion.Glow(block)
+		fs.shine:SetSize(Motion.SHINE_W, Motion.SHINE_H)
+	end
+	if roll.spaced then
+		fs:SetText(roll.spaced)
+		local r = fs.roller
+		if not r then
+			r = CreateFrame("Frame", nil, block)
+			r:SetClipsChildren(true)
+			r.a = r:CreateFontString(nil, "OVERLAY")
+			r.b = r:CreateFontString(nil, "OVERLAY")
+			fs.roller = r
+		end
+		r:SetFrameLevel(block:GetFrameLevel() + 2)
+		r:ClearAllPoints()
+		r:SetPoint("TOPLEFT", fs, "TOPLEFT", roll.x0 - 1, 1)
+		r:SetSize(roll.w + 3, roll.h + 2)
+		local path, size, flags = fs:GetFont()
+		local cr, cg, cb = fs:GetTextColor()
+		local sr, sg, sb, sa = fs:GetShadowColor()
+		local ox, oy = fs:GetShadowOffset()
+		for _, t in ipairs({ r.a, r.b }) do
+			if path then
+				t:SetFont(path, size, flags or "")
+			end
+			t:SetJustifyH("LEFT")
+			t:SetTextColor(cr, cg, cb)
+			t:SetShadowColor(sr, sg, sb, sa)
+			t:SetShadowOffset(ox, oy)
+		end
+		r.a:SetText(roll.old)
+		r.b:SetText(roll.new)
+		r:Show()
+	end
+	Motion.Step(roll, 0)
+end
+
+function Motion.Step(roll, u)
+	local fs = roll.fs
+	if fs.roll ~= roll then
+		return
+	end
+	local t = u * Motion.LIGHT
+	local r = fs.roller
+	if roll.spaced and r and not roll.landed then
+		local p = t / Motion.ROLL
+		if p >= 1 then
+			Motion.Land(fs, roll)
+		else
+			local e = 1 - (1 - p) * (1 - p)
+			r.a:ClearAllPoints()
+			r.a:SetPoint("TOPLEFT", r, "TOPLEFT", 1, -1 + roll.h * e)
+			r.a:SetAlpha(1 - p)
+			r.b:ClearAllPoints()
+			r.b:SetPoint("TOPLEFT", r, "TOPLEFT", 1, -1 - roll.h * (1 - e))
+			r.b:SetAlpha(p)
+		end
+	end
+	local shine = fs.shine
+	if shine and u < 1 then
+		shine:ClearAllPoints()
+		shine:SetPoint("CENTER", fs, "TOPLEFT", -10 + ((fs:GetWidth() or 0) + 20) * u, -roll.h / 2)
+		shine:SetAlpha(0.42 * math.sin(u * math.pi))
+		shine:Show()
+	elseif shine then
+		shine:Hide()
+	end
+end
+
+-- the number landed: the line's own text back, the rolling numbers gone
+function Motion.Land(fs, roll)
+	roll.landed = true
+	if fs.roller then
+		fs.roller:Hide()
+	end
+	if roll.spaced and fs:GetText() == roll.spaced then
+		fs:SetText(roll.text)
+	end
+end
+
+function Motion.Over(roll)
+	local fs = roll.fs
+	if fs.roll == roll then
+		Motion.Land(fs, roll)
+		if fs.shine then
+			fs.shine:Hide()
+		end
+		fs.roll = nil
+	end
+end
+
+-- a roll under way on line fs ended where it is (a line hidden, reused)
+function Motion.Stop(fs)
+	local roll = fs.roll
+	if not roll then
+		return
+	end
+	MelloUI.Anim:Stop(roll, "drive")
+	Motion.Over(roll)
+end
+
+-- a rebuild drew line fs again (PutLine): a roll under way for the same line
+-- keeps its count's place clear; one for another line is let go
+function Motion.Keep(fs, key, i)
+	local roll = fs.roll
+	if not roll then
+		return
+	end
+	if roll.key ~= key or roll.i ~= i or fs:GetText() ~= roll.text then
+		Motion.Stop(fs)
+	elseif roll.spaced and not roll.landed then
+		fs:SetText(roll.spaced)
+	end
+end
+
+-- a line's mark: done (Progress Motion on), a tick in its dash's place --
+-- drawn in after the roll when it was done just now (fresh); else the dash
+function Motion.Tick(fs, done, fresh)
+	local tick = fs.tick
+	if not (done and M.db.progressMotion ~= false and fs.dash:IsShown() and Motion.W()) then
+		if tick then
+			tick:Hide()
+		end
+		return
+	end
+	if not tick then
+		tick = fs.block:CreateTexture(nil, "OVERLAY")
+		fs.tick = tick
+	end
+	local size = TitleSize() - 2
+	tick.size = size
+	Motion.W().Glyph(tick, "check")
+	tick:ClearAllPoints()
+	tick:SetPoint("LEFT", fs.dash, "CENTER", -size / 2, 0)
+	tick:SetSize(size, size)
+	tick:SetVertexColor(fs:GetTextColor())
+	fs.dash:Hide()
+	tick:Show()
+	if fresh and Motion.On() then
+		Motion.TickStep(tick, 0)
+		MelloUI.Anim:Drive(tick, Motion.TickStep, Motion.ROLL + Motion.TICK, "linear")
+	end
+end
+
+function Motion.TickStep(tick, u)
+	local p = (u * (Motion.ROLL + Motion.TICK) - Motion.ROLL) / Motion.TICK
+	p = p < 0.02 and 0.02 or (p > 1 and 1 or p)
+	Motion.W().Glyph(tick, "check", p)
+	tick:SetWidth(tick.size * p)
+end
+
+-- a quest done just now (lastComplete false): its turn-in look waits HOLD
+-- seconds (the tracker drawn again then), so its last count rolls and
+-- ticks first. Returns whether to draw it done now
+function Motion.Hold(questID, complete)
+	local due = Motion.hold[questID]
+	if complete and lastComplete[questID] == false and Motion.On() then
+		if not due then
+			due = GetTime() + Motion.HOLD
+			Motion.hold[questID] = due
+			C_Timer.After(Motion.HOLD + 0.05, Motion.Dirty)
+		end
+		if GetTime() < due then
+			return false
+		end
+	end
+	Motion.hold[questID] = nil
+	return complete
+end
+
+-- the quest drawn done after it was not: the light over its title, its map
+-- button (the hand-in ? now) coming up, its turn-in line (fs) coming in
+function Motion.Complete(block, fs)
+	if not Motion.On() then
+		return
+	end
+	local anim = MelloUI.Anim
+	anim:From(fs, "alpha", 0, Motion.TURNIN, "outQuad")
+	local poi = block.poi
+	if poi and poi:IsShown() then
+		anim:Pop(poi, Motion.UNFOLD, Motion.UNFOLD_RISE)
+	end
+	if not block.sweep then
+		block.sweep = Motion.Glow(block, "OVERLAY")
+		block.sweepJob = { block = block }
+	end
+	anim:Drive(block.sweepJob, Motion.SweepStep, Motion.SWEEP, "linear", Motion.SweepOver)
+end
+
+function Motion.SweepStep(job, u)
+	local block = job.block
+	local t, h = block.title, TitleSize()
+	local w = math.min(t:GetStringWidth() or 0, t:GetWidth() or 0)
+	local s = block.sweep
+	s:SetSize(Motion.SWEEP_W, h * 1.6)
+	s:ClearAllPoints()
+	s:SetPoint("CENTER", t, "TOPLEFT", -Motion.SWEEP_W / 2 + (w + Motion.SWEEP_W) * u, -h / 2)
+	s:SetAlpha(0.8 * math.sin(u * math.pi))
+	s:Show()
+end
+
+function Motion.SweepOver(job)
+	job.block.sweep:Hide()
+end
+
+-- (/mello tracker progress) the motion played on the first watched quest's
+-- line with a count, to see it: the count rolls up to what it shows, its
+-- tick is drawn, then the finished quest's light over the title and its map
+-- button's pop; the tracker drawn as it is again after (a rebuild)
+Motion.PREVIEW = { off = "Quest Tracker: Progress Motion is off, or Reduce Motion is on.",
+	none = "Quest Tracker: no watched quest with a count is shown.", AFTER = 2.2 }
+function Motion.Preview()
+	if not Motion.On() then
+		MelloUI:Print(Motion.PREVIEW.off)
+		return
+	end
+	local found, fi, fn
+	for _, block in pairs(blocks) do
+		if block:IsShown() and block.questID and not found then
+			for i, fs in ipairs(block.lines) do
+				local text = fs:IsShown() and fs.dash:IsShown() and fs:GetText()
+				local n = type(text) == "string" and not Secret(text) and tonumber(text:match("(%d+)/%d+"))
+				if n and not found then
+					found, fi, fn = block, i, n
+				end
+			end
+		end
+	end
+	if not found then
+		MelloUI:Print(Motion.PREVIEW.none)
+		return
+	end
+	local fs = found.lines[fi]
+	Motion.preview = { block = found, fs = fs }
+	Motion.Count(fs, "preview", fi, math.max(0, fn - 1))
+	C_Timer.After(Motion.ROLL, Motion.PreviewTick)
+	C_Timer.After(Motion.HOLD, Motion.PreviewDone)
+	C_Timer.After(Motion.PREVIEW.AFTER, Motion.Dirty)
+end
+
+function Motion.PreviewTick()
+	local p = Motion.preview
+	if p and p.fs:IsShown() then
+		Motion.Tick(p.fs, true, true)
+	end
+end
+
+function Motion.PreviewDone()
+	local p = Motion.preview
+	if p and p.block:IsShown() then
+		Motion.Complete(p.block, p.fs)
+	end
+	Motion.preview = nil
 end
 
 local function ApplyLook()
@@ -1977,11 +2338,9 @@ local function Line(block, i)
 		fs:SetWordWrap(true)
 		fs.dash = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		fs.dash:SetText("-")
-		-- a gold glow behind the line when it counts up (user, 2026-09-23:
-		-- the study's progress flash), at rest fully clear
-		fs.flash = block:CreateTexture(nil, "BACKGROUND", nil, 1)
-		PaintKey(fs.flash, "selectedTrim", "fill", 1)
-		fs.flash:SetAlpha(0)
+		-- (its motion's pieces when it first moves, on its block: Progress
+		-- Motion, above)
+		fs.block = block
 		block.lines[i] = fs
 	end
 	StyleText(fs, TitleSize() - 1)
@@ -2016,38 +2375,42 @@ local function PutLine(block, i, text, y, width, dash, r, g, b, under)
 	else
 		fs.dash:Hide()
 	end
+	if fs.tick then
+		fs.tick:Hide()   -- (a done objective's: Motion.Tick, after)
+	end
 	local h = fs:GetStringHeight()
-	fs.flash:ClearAllPoints()
-	fs.flash:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + BULLET_X - 4, -y + 1)
-	fs.flash:SetPoint("RIGHT", block, "RIGHT", 0, 0)
-	fs.flash:SetHeight(h + 2)
 	return y + h + LINE_GAP, fs
 end
 
--- A line counted up since the last rebuild: its glow flares and fades.
--- `key` / `i` name the line across rebuilds; the first sight of it never
--- flashes (a quest just watched, a login). Reduce Motion: no flash at all.
-local function Progress(key, i, count, fs)
+-- A line counted up since the last rebuild: its number rolls, a light runs
+-- along it; done since, its tick drawn in (Progress Motion). `key` / `i`
+-- name the line across rebuilds (its done state under -i); the first sight
+-- of it never moves (a quest just watched, a login)
+local function Progress(key, i, count, fs, done)
 	local seen = lastProgress[key]
 	if not seen then
 		seen = {}
 		lastProgress[key] = seen
 	end
-	local before = seen[i]
-	seen[i] = count
-	if before and count and count > before and fs and MelloUI.Anim then
-		MelloUI.Anim:From(fs.flash, "alpha", 0.45, 0.9, "outQuad")
+	local before, was = seen[i], seen[-i]
+	seen[i], seen[-i] = count, done and true or false
+	if before and count and count > before then
+		Motion.Count(fs, key, i, before)
+	else
+		Motion.Keep(fs, key, i)
 	end
+	Motion.Tick(fs, done, done and was == false)
 end
 
 local function HideLines(block, from)
 	for i = from, #block.lines do
-		block.lines[i]:Hide()
-		block.lines[i].dash:Hide()
-		if MelloUI.Anim then
-			MelloUI.Anim:Stop(block.lines[i].flash, "alpha")
+		local fs = block.lines[i]
+		fs:Hide()
+		fs.dash:Hide()
+		Motion.Stop(fs)
+		if fs.tick then
+			fs.tick:Hide()
 		end
-		block.lines[i].flash:SetAlpha(0)
 	end
 end
 
@@ -2081,6 +2444,8 @@ local function FillBlock(block, questID, width, followedID)
 	local title = (C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID)) or (info and info.title) or ("Quest " .. questID)
 	local level = info and Plain(info.level)
 	local complete = C_QuestLog.IsComplete and C_QuestLog.IsComplete(questID)
+	-- (Progress Motion: done just now, its last count rolls and ticks first)
+	complete = Motion.Hold(questID, complete)
 	block.questID, block.recipeID, block.recraft = questID, nil, nil
 
 	-- the item first: the text keeps clear of it
@@ -2194,8 +2559,8 @@ local function FillBlock(block, questID, width, followedID)
 		end
 		local fs
 		y, fs = PutLine(block, n, text, y, textWidth, false, 0.95, 0.95, 0.95)
-		if lastComplete[questID] == false and MelloUI.Anim then
-			MelloUI.Anim:From(fs.flash, "alpha", 0.45, 0.9, "outQuad")
+		if lastComplete[questID] == false then
+			Motion.Complete(block, fs)
 		end
 		lastComplete[questID] = true
 		Near.filled[questID] = -1
@@ -2216,7 +2581,7 @@ local function FillBlock(block, questID, width, followedID)
 				local shade = obj.finished and 0.55 or 0.95
 				local fs
 				y, fs = PutLine(block, n, text, y, textWidth, true, shade, shade, shade)
-				Progress(questID, i, Plain(obj.numFulfilled), fs)
+				Progress(questID, i, Plain(obj.numFulfilled), fs, Plain(obj.finished) and true or false)
 				local hint = first and not Plain(obj.finished) and first[i]
 				if type(hint) == "string" then
 					n = n + 1
@@ -2233,8 +2598,9 @@ local function FillBlock(block, questID, width, followedID)
 		end
 		-- (what its places were found for: found again when it changes; a
 		-- needed item's line coming or going too, as the item's sources stand
-		-- in for the objective's places until it is looted)
-		Near.filled[questID] = finished + hinted * 100
+		-- in for the objective's places until it is looted); a quest done whose
+		-- turn-in look waits (Motion.Hold) is done for its places already
+		Near.filled[questID] = Motion.hold[questID] and -1 or (finished + hinted * 100)
 	end
 	HideLines(block, n + 1)
 	local h = math.max(y, link and ITEM_SIZE + 4 or 0, poi and 22 or 0)
@@ -2427,7 +2793,7 @@ local function FillRecipeBlock(block, entry, width)
 				local shade = have >= need and 0.55 or 0.95
 				local fs
 				y, fs = PutLine(block, n, string.format("%d/%d %s", math.min(have, need), need, ItemName(itemID)), y, width, true, shade, shade, shade)
-				Progress("r" .. entry.id .. (entry.recraft and "/1" or "/0"), n, math.min(have, need), fs)
+				Progress("r" .. entry.id .. (entry.recraft and "/1" or "/0"), n, math.min(have, need), fs, have >= need)
 			end
 		end
 	end
@@ -2687,6 +3053,8 @@ local function MarkDirty()
 	Perf.SetScript(eventFrame, "OnUpdate", Tick)
 end
 Near.MarkDirty = MarkDirty
+Motion.Dirty = MarkDirty
+M.SlashWords = { progress = Motion.Preview }   -- (0.21.3: /mello tracker progress)
 
 --------------------------------------------------------------------------------
 -- Building the frame

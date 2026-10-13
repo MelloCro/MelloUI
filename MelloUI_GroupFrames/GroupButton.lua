@@ -36,6 +36,7 @@ local Secret = MelloUI.Safe.IsSecret
 local Text = MelloUI.Safe.Text
 local RD = ns.RD
 local Looks = ns.Looks
+local GREY = MelloUI.Meaning.groupGrey   -- (no class to read, offline, dead)
 
 local Button = {}
 ns.Button = Button
@@ -93,7 +94,7 @@ end
 local function ClassRGB(f)
 	local class = ClassOf(f)
 	if class == nil then
-		return 0.5, 0.5, 0.5
+		return GREY[1], GREY[2], GREY[3]
 	end
 	local CC = rawget(_G, "C_ClassColor")
 	if type(CC) == "table" and type(CC.GetClassColor) == "function" then
@@ -108,7 +109,7 @@ local function ClassRGB(f)
 			return t.r, t.g, t.b
 		end
 	end
-	return 0.5, 0.5, 0.5
+	return GREY[1], GREY[2], GREY[3]
 end
 
 -- the colour a mode names: the class's, a setting's, or nil (another way)
@@ -494,7 +495,7 @@ function Button.Health(f)
 	end
 	-- the colours that follow the health
 	if f.offline or f.dead then
-		hb:SetStatusBarColor(0.5, 0.5, 0.5)
+		hb:SetStatusBarColor(GREY[1], GREY[2], GREY[3])
 	elseif db.healthColour == "health" then
 		local r, g, b = HealthRGB(f)
 		if r then

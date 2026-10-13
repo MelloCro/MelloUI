@@ -123,7 +123,7 @@ local M = MelloUI:RegisterModule("MinimapPanel", {
 	keep = { "sizeMigrated" },
 	options = {
 		{ type = "dropdown", key = "shape", name = "Shape", values = SHAPES,
-		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border chosen below." },
+		  desc = "Round: the map in the painted ring. Square: the whole square map, in the border Square Border picks." },
 		{ type = "dropdown", key = "squareBorder", name = "Square Border", values = BORDERS,
 		  desc = "The border round the square map: the windows' frame with its gem corners, a single iron rail, the action bars' heavy frame with red or iron gems, one of the thin rims the buttons wear (drawn heavier, at the map's size), or none. Both are chosen with pictures on Minimap > Minimap." },
 		{ type = "toggle", key = "servicesMerge", name = "Merge With Services",

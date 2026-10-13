@@ -55,6 +55,8 @@ local M = MelloUI:RegisterModule("Route", {
 		worldMarker = true,
 		routeBeam = true,
 		markerWisp = "firefly",
+		arriveLight = true,
+		drawIn = true,
 		markerSound = true,
 		lineWidth = 3,
 		trailLook = "beads",
@@ -94,6 +96,10 @@ local M = MelloUI:RegisterModule("Route", {
 			{ value = "embers", label = "Embers" },
 			{ value = "off", label = "Off" },
 		  }, desc = "When the World Marker comes up for a new destination, a small light flies from your character to the place and lights it: the beam rises and the mark pops in as it lands. It follows the place as you turn the camera; while the place is off the screen it settles into the arrow beside your character. Firefly: a bright point with a short streak. Embers: a smaller glow shedding sparks. Not with Reduce Motion. Part of the World Marker." },
+		{ type = "toggle", key = "drawIn", name = "Route Draws In", new = "0.21.3",
+		  desc = "A new route grows from you to the destination in about a second instead of appearing whole, on the world map and the minimap at once: the beads pop in one after another, the line and the dashes are drawn with a small light at their head, and the destination's flag pops in as the trail reaches it. A re-plan of the same route (you strayed off it) swaps at once. Not with Reduce Motion." },
+		{ type = "toggle", key = "arriveLight", name = "Arrival Light", new = "0.21.3",
+		  desc = "As you arrive, the place is put out: the World Marker's mark sinks onto it in a ring of light with a few sparks, and the Direction Arrow's ring closes, a light running round it, before its row fades away. Not with Reduce Motion." },
 		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds",
 		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. For a new destination it is the one sound: the tracking notice leaves its chime out then. Plays on the Sound Effects channel. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
@@ -3155,6 +3161,7 @@ function Search.Planned(job)
 	end
 	if points then
 		route = { points = points, cost = cost, length = RouteLength(points), dest = { d.cont, d.x, d.y }, guess = guess }
+		M.DrawIn.Start(d)   -- (0.21.3: a new destination's route grows in)
 	else
 		route = nil
 	end
@@ -3721,8 +3728,9 @@ local function ReadTrackedQuest()
 	end
 	-- (`area` false: the game's own point says nothing of an area or one
 	-- spot, and its quest blob is drawn round one NPC or object too, so the
-	-- World Marker stays on it as on any spot -- never hidden at the target;
-	-- review, 2026-09-28. Hidden only where the data says area: ObjectiveSpot)
+	-- World Marker stays on it as on any spot; review, 2026-09-28. Hidden
+	-- where the data says area (ObjectiveSpot), and once a spot is reached:
+	-- M.QuestSpotArrive, the user's word of 2026-10-13)
 	destination = { cont = cont, x = x, y = y, mapID = mapID, mx = px, my = py, fromQuest = true, questID = questID,
 		gated = Needed.Gates(questID) ~= nil, area = false, label = "|A:QuestNormal:16:16|a " .. (title or "quest") }
 	Plan(true, true, "|A:QuestNormal:22:22|a  Tracking quest " .. (title or "") .. ", {dist} away")
@@ -4400,7 +4408,11 @@ function M:Clear()
 end
 
 local function CheckArrival()
-	if not (destination and route) or destination.fromQuest then
+	if destination and destination.fromQuest then
+		M.QuestSpotArrive(destination)   -- (0.21.3: a quest's one spot; its area's: Beacon.InArea)
+		return
+	end
+	if not (destination and route) then
 		return
 	end
 	local cont, x, y = PlayerYards()
@@ -4411,6 +4423,9 @@ local function CheckArrival()
 		if destination.fromWaypoint and C_Map.ClearUserWaypoint then
 			pcall(C_Map.ClearUserWaypoint)
 		end
+		-- (0.21.3, Arrival Light) the place put out as the way ends (M.ArriveLight:
+		-- with the marker, below)
+		M.ArriveLight()
 		M:Clear()
 	end
 end
@@ -4537,6 +4552,9 @@ M.TRAIL = { beads = true, line = true, dashes = true,
 	DASH = 0.86, GAP = 0.57,   -- a dash and the space after it, of the dot size (9 and 6 px at 10.5)
 	ROUND = "Interface\\CharacterFrame\\TempPortraitAlphaMask",
 }
+-- (0.21.3) the route drawing in: its fields and functions with the marker's
+-- (M.DrawIn.Start, below the Arriving section)
+M.DrawIn = { on = false, popMini = false }
 -- the trail's look now: the setting's, beads for anything else
 function M.TrailLook()
 	local look = M.db and M.db.trailLook
@@ -4554,6 +4572,8 @@ end
 local function NewPainter(frame)
 	-- (the dot's path here: the file's main chunk is at Lua 5.1's 200 locals)
 	local TRAIL_DOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\trail_dot"   -- look-ok: the trail's dots in Route's red, a meaning colour (the user's pick 2026-10-06 keeps them, ringed in the palette's gold)
+	-- (0.21.3) the light at a trail's head while it draws in (M.DrawIn)
+	local HEAD_GLOW = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\beam_halo"   -- look-ok: a moment's light at the trail's head, the painted look's beam art
 	local T = M.TRAIL
 	local painter = { frame = frame, dots = {}, rims = {}, used = 0, cases = {}, cores = {}, lused = 0,
 		jcases = {}, jcores = {}, jused = 0, carry = 0, dashOn = true, look = "beads" }
@@ -4714,6 +4734,7 @@ local function NewPainter(frame)
 	end
 	-- One route segment; `unit` is the dot size for width 3 in frame units.
 	function painter:Segment(ax, ay, bx, by, style, unit, anchor)
+		self.endX, self.endY, self.endAnchor = bx, by, anchor   -- (where the trail ends: the drawing-in's light)
 		local dx, dy = bx - ax, by - ay
 		local len = math.sqrt(dx * dx + dy * dy)
 		-- finite, positive numbers only (NaN fails every test below): a step of
@@ -4748,13 +4769,15 @@ local function NewPainter(frame)
 		if not (at >= 0 and at < math.huge) then
 			at = 0
 		end
+		local pop = self.popY0   -- (0.21.3: the route drawing in, M.DrawIn: each bead pops in as the way reaches it)
 		while at <= len do
 			if self.used >= MAX_DOTS then
 				-- (every dot drawn: nothing more to walk this pass)
 				self.carry = 0
 				return
 			end
-			self:Dot(ax + ux * at, ay + uy * at, size, style, anchor)
+			self:Dot(ax + ux * at, ay + uy * at, pop and size * M.DrawIn.Pop(pop + self.popYLen * at / len) or size, style,
+				anchor)
 			at = at + step
 		end
 		self.carry = at - len
@@ -4788,6 +4811,31 @@ local function NewPainter(frame)
 				self.jcores[i]:Hide()
 			end
 		end
+	end
+	-- (0.21.3) the small light at the head of a trail drawing in (the line and
+	-- the dashes), at its end this pass; nil x: gone
+	function painter:Head(x, y, size, anchor)
+		local h = self.head
+		self.headOn = x ~= nil
+		if not x then
+			if h then
+				h:Hide()
+			end
+			return
+		end
+		if not h then
+			h = self.frame:CreateTexture(nil, "OVERLAY", nil, 5)
+			h:SetTexture(HEAD_GLOW)
+			h:SetBlendMode("ADD")
+			if MelloUI.Widgets then
+				MelloUI.Widgets.Paint(h, "text", "vertex", 1)
+			end
+			self.head = h
+		end
+		h:SetSize(size, size)
+		h:ClearAllPoints()
+		h:SetPoint("CENTER", self.frame, anchor, x, y)
+		h:Show()
 	end
 	function painter:Clear()
 		self.used, self.lused, self.jused, self.lastX = 0, 0, 0, nil
@@ -5025,18 +5073,39 @@ local function DrawWorldMap()
 	end
 	local unit = 3.5 * (tonumber(M.db.lineWidth) or 3) / scale
 	local points = RouteAhead()
+	-- (0.21.3, drawing in: the way up to its budget, the last part cut; no
+	-- call of it while nothing draws in)
+	local DI = M.DrawIn
+	local budget = DI.on and DI.Budget(points) or nil
+	mapPainter.popY0 = nil
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
+		local bx2, by2, f = b[2], b[3], 1
+		if budget then
+			bx2, by2, f = DI.Cut(a, b, budget)
+			if not bx2 then
+				break
+			end
+		end
 		if a[1] == b[1] and b[4] ~= "boat" then
 			local ax, ay = OnMap(mapID, a[1], a[2], a[3])
-			local bx, by = OnMap(mapID, b[1], b[2], b[3])
+			local bx, by = OnMap(mapID, b[1], bx2, by2)
 			if ax and bx and not (ax < -0.2 and bx < -0.2) and not (ax > 1.2 and bx > 1.2)
 				and not (ay < -0.2 and by < -0.2) and not (ay > 1.2 and by > 1.2) then
+				if budget then
+					DI.Lay(mapPainter, f)
+				end
 				mapPainter:Segment(ax * W, -ay * H, bx * W, -by * H, STYLE[b[4]] or STYLE.road, unit, "TOPLEFT")
 			end
 		end
+		if budget then
+			DI.Walked(a, b, f)
+		end
 	end
 	mapPainter:End()
+	if budget or mapPainter.headOn then
+		DI.HeadOn(mapPainter, unit)
+	end
 	-- the goal's mark, over the game's waypoint pin, the same size on screen
 	-- at every zoom. The map's pins stand at fixed levels of their own (its
 	-- pin levels manager, from 2000 up: not the canvas's plus some), so the
@@ -5048,7 +5117,7 @@ local function DrawWorldMap()
 	if d then
 		gx, gy = OnMap(mapID, d.cont, d.x, d.y)
 	end
-	if gx and gx >= 0 and gx <= 1 and gy >= 0 and gy <= 1 then
+	if gx and gx >= 0 and gx <= 1 and gy >= 0 and gy <= 1 and not DI.on then
 		local canvas = map:GetCanvas()
 		if not M.goalMap then
 			M.goalMap = M.GoalMark(canvas)
@@ -5402,6 +5471,16 @@ function M.nav.Stop()
 	M:Clear()
 end
 
+-- (0.21.3, Arrival Light) the way's end: the row's ring closes, a light runs
+-- round it and it fades away (MelloUI.Reminders:Finish); the column takes it
+-- down after
+function M.nav.Finish()
+	local r = M.nav.Rem()
+	if r and r.Finish and M.nav.registered and arrow and arrow.shown then
+		r:Finish(M.nav.KEY)
+	end
+end
+
 -- the row's lines told to the column when they changed (from UpdateArrow,
 -- the landing countdown and the loading look); the way's share in steps of
 -- half a percent
@@ -5640,19 +5719,33 @@ local Beacon = {
 	HOVER = 67, GLIDE = 0.8, WORDS_FADE = 0.45,
 	CHEV_Y = 21, CHEV_W = 32, CHEV_H = 16,   -- (the V itself 16 x 7: Tools/make_route_beam.py)
 	-- the wisp (0.21.3, the user's picks: Firefly or Embers, from the
-	-- character, into the arrow off screen, a second): WISP_TIME seconds from
-	-- the character's chest (WISP_FROM below the screen's middle, as the ring)
-	-- to the mark, re-aimed every frame; its path bends up by WISP_BEND of its
-	-- length (WISP_BEND_OFF round the character to the arrow), it follows the
-	-- path WISP_FOLLOW a second (a sudden camera turn bends it, never snaps
-	-- it); its streak the last WISP_TRAIL seconds in WISP_SEGMENTS lines; it
-	-- grows out of the character in WISP_GROW seconds and sinks into the arrow
-	-- over its last WISP_SINK of the way; Embers shed up to WISP_SPARKS
-	-- sparks; the landing's ring of light LAND_TIME seconds, the arrow's light
-	-- ARROW_LIT
-	WISP_TIME = 1.0, WISP_FROM = -20, WISP_BEND = 0.3, WISP_BEND_OFF = 0.45, WISP_FOLLOW = 28,
+	-- character, into the arrow off screen; the same flight every time, the
+	-- user's "build it like the preview" of 2026-10-13): it takes off at the
+	-- pick from the character's chest (WISP_FROM below the screen's middle, as
+	-- the ring) and rises WISP_RISE (at the camera's zoom) in WISP_RISE_T
+	-- seconds, hangs WISP_HANG with a pulse (WISP_PULSE brighter) -- longer, up
+	-- to WISP_WAIT, while the place is not known yet -- then darts to the mark
+	-- at WISP_SPEED units a second (WISP_DART_MIN to WISP_DART_MAX seconds),
+	-- re-aimed every frame, its path bent up by WISP_DART_BEND of its length;
+	-- it follows its path WISP_FOLLOW a second (a sudden camera turn bends it,
+	-- never snaps it); its streak the last WISP_TRAIL seconds in WISP_SEGMENTS
+	-- lines; it grows out of the character in WISP_GROW seconds and sinks into
+	-- the arrow over its last WISP_SINK of the dart; Embers shed up to
+	-- WISP_SPARKS sparks; the landing's ring of light LAND_TIME seconds, the
+	-- arrow's light ARROW_LIT
+	WISP_FROM = -20, WISP_RISE = 50, WISP_RISE_T = 0.3, WISP_HANG = 0.1, WISP_PULSE = 0.6, WISP_WAIT = 1.2,
+	WISP_SPEED = 2500, WISP_DART_MIN = 0.25, WISP_DART_MAX = 0.65, WISP_DART_BEND = 0.15, WISP_FOLLOW = 28,
 	WISP_TRAIL = 0.24, WISP_SEGMENTS = 10, WISP_GROW = 0.12, WISP_SINK = 0.2, WISP_SPARKS = 14,
 	LAND_TIME = 0.4, ARROW_LIT = 0.6,
+	-- arriving (0.21.3, Arrival Light; BuildData/output/animation_previews):
+	-- ARRIVE seconds; the chevron drops ARRIVE_DROP below and fades in the
+	-- first CHEV_TIME, the texts fade from WORDS_AT to WORDS_TO, the mark sinks
+	-- onto the place from SINK_AT to TOUCH, then fades from TOUCH to GONE,
+	-- growing by ARRIVE_GROW; at TOUCH a ring of light spreads on the ground
+	-- (from ARRIVE_RING to ARRIVE_RING + ARRIVE_SPREAD units across in
+	-- ARRIVE_SPAN seconds) and ARRIVE_SPARKS sparks rise
+	ARRIVE = 1.0, ARRIVE_DROP = 20, CHEV_TIME = 0.25, WORDS_AT = 0.05, WORDS_TO = 0.35, SINK_AT = 0.1, TOUCH = 0.45,
+	GONE = 0.75, ARRIVE_GROW = 0.4, ARRIVE_RING = 6, ARRIVE_SPREAD = 46, ARRIVE_SPAN = 0.55, ARRIVE_SPARKS = 12,
 	-- Route's own pin set again for the same destination (a nearer spawn, the
 	-- game's sunken point given up for Route's spot): the marker glides there
 	-- on screen in MOVE_TIME seconds, never jumps (user, 2026-10-04: "Our
@@ -6023,6 +6116,20 @@ function M.PinReport()
 		print(string.format("   the marker: %s%s", marker:IsShown() and "shown" or "hidden",
 			marker:IsShown() and (marker.off and ", at the edge" or marker.pin and ", the pin" or ", the beacon") or ""))
 	end
+	-- (0.21.3) what the arrival's drop to an NPC's feet reads (Beacon.FootDrop; the user's video of 2026-10-13: the
+	-- ring at the chest, about half the way down)
+	local okZ, zoom = pcall(_G.GetCameraZoom)
+	local okF, fov = false, nil
+	if C_CVar and C_CVar.GetCVar then
+		okF, fov = pcall(C_CVar.GetCVar, "cameraFov")
+	end
+	local drop, up, flat, d3 = Beacon.FootDrop()
+	print(string.format("   the arrival's drop to the feet: camera zoom %s, cameraFov %s, the screen %.0f x %.0f; drop now %.0f"
+		.. " (the point %s yd up: %s yd the game's way, %s yd flat to %s)", okZ and tostring(Plain(zoom)) or "unknown",
+		okF and tostring(fov) or "unknown", UIParent:GetWidth(), UIParent:GetHeight(), drop,
+		up and string.format("%.2f", up) or "?", d3 and string.format("%.2f", d3) or "?",
+		flat and string.format("%.2f", flat) or "?", (quest and destination and destination.fromQuest
+		and quest == destination.questID) and "the game's quest point" or "Route's spot"))
 end
 
 -- The gem's and the beam's size at `d` yards (see Beacon's SIZE_*): 1 near or
@@ -6172,7 +6279,8 @@ function Beacon.Takes(d)
 		return Beacon.soundFor == key and Beacon.saidKey ~= key
 	end
 	-- not up for it yet: it comes up with its sound, unless it stays away
-	return not (Beacon.Quiet() or not NavFrame() or (crossContinent and not standIn) or (d.area and Beacon.InArea()))
+	return not (Beacon.Quiet() or not NavFrame() or (crossContinent and not standIn) or d.arrived
+		or (d.area and Beacon.InArea()))
 end
 
 -- (Route's Announce, above the marker: through M) whether the "Tracking
@@ -6588,18 +6696,25 @@ function Beacon.WispFrame()
 	return f
 end
 
--- a new destination's marker: the wisp sets out (true), or there is none
--- (false: the marker comes up as it always did)
-function Beacon.Launch()
+-- a new destination (its key): the wisp sets out (true), or there is none
+-- (false: the marker comes up as it always did). It sets out at the pick,
+-- before the marker can show (UpdateMarker); one already up for the same
+-- destination flies on, the marker shown now dark until it lands
+function Beacon.Launch(key)
 	local mode = M.db.markerWisp
 	local anim = MelloUI.Anim
 	if mode == "off" or (anim and anim.reduceMotion) or Beacon.Quiet() then
 		Beacon.Ground()
 		return false
 	end
-	local f = Beacon.WispFrame()
 	local w = Beacon.wisp
+	if w.flying and w.key == key then
+		Beacon.Dark()
+		return true
+	end
+	local f = Beacon.WispFrame()
 	Beacon.Ground()   -- (one already flying lets go first)
+	w.key, w.dartAt = key, nil
 	w.embers = mode == "embers"
 	w.t, w.spawn, w.n, w.lastAt, w.sound = 0, 0, 0, -1, false
 	w.x, w.y = Beacon.WispFrom()
@@ -6616,6 +6731,19 @@ function Beacon.Launch()
 	end
 	w.glow:Show()
 	w.core:Show()
+	Beacon.Dark()
+	w.flying = true
+	f:Show()
+	return true
+end
+
+-- the marker, when it shows, dark while the wisp flies to it (its mark, its
+-- texts, its beam: lit as it lands, Beacon.Land)
+function Beacon.Dark()
+	if not (marker and marker:IsShown()) then
+		return
+	end
+	local anim = MelloUI.Anim
 	if anim and anim.Stop then
 		anim:Stop(marker.words, "alpha")
 	end
@@ -6623,9 +6751,6 @@ function Beacon.Launch()
 	marker.words:SetAlpha(0)
 	marker.beam:SetAlpha(0)
 	marker.wayInOnSight = nil
-	w.flying = true
-	f:Show()
-	return true
 end
 
 -- the wisp gone without landing (the marker hidden, the destination cleared,
@@ -6673,7 +6798,7 @@ function Beacon.Land()
 		Beacon.WayIn(f, true)
 		w.ring:ClearAllPoints()
 		w.ring:SetPoint("CENTER", f.core, "CENTER")
-		w.ringAt = 0
+		w.ringAt, w.ringSpan, w.ringFrom, w.ringGrow, w.ringOut = 0, Beacon.LAND_TIME, 8, 28, false
 	end
 	if sound then
 		Beacon.Sound()
@@ -6715,37 +6840,79 @@ function Beacon.WispTick(frame, elapsed)
 	local dt = elapsed > 0.05 and 0.05 or elapsed
 	local k = UIParent:GetEffectiveScale() / frame:GetEffectiveScale()   -- UIParent's units into the frame's
 	local busy = false
+	local gone = false
 	if w.flying then
 		busy = true
 		w.t = w.t + dt
-		local u = w.t / Beacon.WISP_TIME
-		u = u > 1 and 1 or u
 		local sx, sy = Beacon.WispFrom()
-		local tx, ty, off = Beacon.WispTo()
-		local placed = tx ~= nil
-		if not placed then
-			tx, ty = sx, sy
-		end
-		-- a curve from the chest to the target as it is now, bent up (round the
-		-- character to the ring), eased in and out; followed, not jumped to
-		local dx, dy = tx - sx, ty - sy
-		local dist = math.sqrt(dx * dx + dy * dy)
-		local nx, ny = 0, 1
-		if dist > 0 then
-			nx, ny = -dy / dist, dx / dist
-			if ny < 0 then
-				nx, ny = -nx, -ny
+		local x, y, placed, u = w.x, w.y, false, 0
+		local sink, pulse = 1, 0
+		if not w.dartAt then
+			-- the take-off: straight up from the chest, eased out, swaying a
+			-- little; then it hangs, bobbing, a pulse brighter, until the place
+			-- is known (WispTo: the marker placed by its tick)
+			local rise = Beacon.WISP_RISE * Beacon.RingScale()
+			if w.t < Beacon.WISP_RISE_T then
+				local e = 1 - (1 - w.t / Beacon.WISP_RISE_T) ^ 3
+				x, y = sx + math.sin(w.t * 9) * 2.5 * (1 - e), sy + rise * e
+			else
+				local hang = w.t - Beacon.WISP_RISE_T
+				x, y = sx + math.sin(hang * 7) * 2, sy + rise + math.sin(hang * 5) * 3
+				pulse = 1 - math.abs(hang - Beacon.WISP_HANG / 2) / (Beacon.WISP_HANG / 2 + 0.05)
+				pulse = pulse > 0 and pulse or 0
+				local tx, ty = Beacon.WispTo()
+				if hang >= Beacon.WISP_HANG and tx then
+					local dx, dy = tx - x, ty - y
+					local dur = math.sqrt(dx * dx + dy * dy) / Beacon.WISP_SPEED
+					w.dartAt, w.fromX, w.fromY = w.t, x, y
+					w.dartDur = dur < Beacon.WISP_DART_MIN and Beacon.WISP_DART_MIN
+						or dur > Beacon.WISP_DART_MAX and Beacon.WISP_DART_MAX or dur
+				elseif hang >= Beacon.WISP_HANG + Beacon.WISP_WAIT then
+					-- the place never known (the marker never placed): it goes, and
+					-- no other sets out for this destination (UpdateMarker)
+					w.gaveUp = w.key
+					gone = true
+				end
 			end
 		end
-		local bend = dist * (off and Beacon.WISP_BEND_OFF or Beacon.WISP_BEND)
-		local cx, cy = sx + dx / 2 + nx * bend, sy + dy / 2 + ny * bend
-		local e = u < 0.5 and 2 * u * u or 1 - (-2 * u + 2) * (-2 * u + 2) / 2
-		local a = 1 - e
-		local x = a * a * sx + 2 * a * e * cx + e * e * tx
-		local y = a * a * sy + 2 * a * e * cy + e * e * ty
-		local follow = 1 - math.exp(-dt * Beacon.WISP_FOLLOW)
+		if w.dartAt then
+			-- the dart: from where it hung to the target as it is now, bent up a
+			-- little, eased in and out; followed, not jumped to
+			u = (w.t - w.dartAt) / w.dartDur
+			u = u > 1 and 1 or u
+			local tx, ty, off = Beacon.WispTo()
+			placed = tx ~= nil
+			if not placed then
+				tx, ty = w.fromX, w.fromY
+			end
+			local fx, fy = w.fromX, w.fromY
+			local dx, dy = tx - fx, ty - fy
+			local dist = math.sqrt(dx * dx + dy * dy)
+			local nx, ny = 0, 1
+			if dist > 0 then
+				nx, ny = -dy / dist, dx / dist
+				if ny < 0 then
+					nx, ny = -nx, -ny
+				end
+			end
+			local bend = dist * Beacon.WISP_DART_BEND
+			local cx, cy = fx + dx / 2 + nx * bend, fy + dy / 2 + ny * bend
+			local e = (1 - math.cos(math.pi * u)) / 2
+			local a = 1 - e
+			x = a * a * fx + 2 * a * e * cx + e * e * tx
+			y = a * a * fy + 2 * a * e * cy + e * e * ty
+			if off then
+				sink = (1 - u) / Beacon.WISP_SINK
+				sink = sink > 1 and 1 or sink
+			end
+		end
 		local ox, oy = w.x, w.y
-		w.x, w.y = w.x + (x - w.x) * follow, w.y + (y - w.y) * follow
+		if w.dartAt then
+			local follow = 1 - math.exp(-dt * Beacon.WISP_FOLLOW)
+			w.x, w.y = w.x + (x - w.x) * follow, w.y + (y - w.y) * follow
+		else
+			w.x, w.y = x, y
+		end
 		w.vx, w.vy = (w.x - ox) / math.max(dt, 0.001), (w.y - oy) / math.max(dt, 0.001)
 		-- its streak: a point every WISP_TRAIL / WISP_SEGMENTS seconds, the
 		-- last WISP_TRAIL seconds of them, and where it is now
@@ -6763,12 +6930,7 @@ function Beacon.WispTick(frame, elapsed)
 		end
 		local grow = w.t / Beacon.WISP_GROW
 		grow = grow > 1 and 1 or grow
-		local sink = 1
-		if off then
-			sink = (1 - u) / Beacon.WISP_SINK
-			sink = sink > 1 and 1 or sink
-		end
-		local size = (w.embers and 18 or 24) * grow * (0.4 + 0.6 * sink)
+		local size = (w.embers and 18 or 24) * grow * (0.4 + 0.6 * sink) * (1 + Beacon.WISP_PULSE * pulse)
 		w.glow:SetSize(size * k, size * k)
 		w.glow:SetAlpha(0.95)
 		w.glow:ClearAllPoints()
@@ -6802,11 +6964,13 @@ function Beacon.WispTick(frame, elapsed)
 				end
 			end
 		end
-		if u >= 1 then
+		if gone then
+			Beacon.Ground()
+		elseif w.dartAt and u >= 1 then
 			if placed then
 				Beacon.Land()
 			else
-				Beacon.Ground()   -- (nowhere to land: the marker never placed)
+				Beacon.Ground()   -- (nowhere to land: the marker gone meanwhile)
 			end
 		end
 	end
@@ -6834,13 +6998,13 @@ function Beacon.WispTick(frame, elapsed)
 	end
 	if w.ringAt then
 		w.ringAt = w.ringAt + dt
-		local u = w.ringAt / Beacon.LAND_TIME
+		local u = w.ringAt / w.ringSpan
 		if u >= 1 then
 			w.ringAt = nil
 			w.ring:Hide()
 		else
 			busy = true
-			local r = 8 + 28 * u
+			local r = w.ringFrom + w.ringGrow * (w.ringOut and 1 - (1 - u) * (1 - u) or u)
 			w.ring:SetSize(r * k, r * 0.6 * k)
 			w.ring:SetAlpha(0.8 * (1 - u))
 			w.ring:Show()
@@ -6861,6 +7025,442 @@ function Beacon.WispTick(frame, elapsed)
 	end
 	if not busy then
 		frame:Hide()
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Arriving (0.21.3, Arrival Light; the user's "Yes to all" to the previews in
+-- BuildData/output/animation_previews): the wisp's pair -- it lit the place
+-- as the way began, this puts it out as the way ends. On the screen the
+-- marker stays where it stood (on UIParent: the navigation frame goes with
+-- the destination) while the motion engine plays it (Anim:Drive): the
+-- chevron drops and fades, the texts fade, the mark sinks onto the place,
+-- then fades as it grows; as it touches, a ring of light spreads on the
+-- ground and a few gold sparks rise (on the wisp's frame, made then if the
+-- wisp never flew). Then it is hidden as M:Clear has it; a new destination
+-- ends it at once (UpdateMarker). Off the screen or with the World Marker
+-- off only the Direction Arrow's row finishes. Nothing of the marker's own
+-- rects is read: its place is the navigation frame's middle as the tick
+-- last read it. Not under Reduce Motion, nor with Arrival Light off
+--------------------------------------------------------------------------------
+
+function M.ArriveLight()
+	local anim = MelloUI.Anim
+	if M.db.arriveLight == false or not (anim and anim.Drive) or anim.reduceMotion then
+		return
+	end
+	M.nav.Finish()
+	Beacon.Arrive()
+end
+
+-- (0.21.3) a followed quest's objective area stepped into: the marker's part
+-- of the arrival (the Direction Arrow goes on: the quest is not done). False
+-- when it cannot play: Arrival Light off, Reduce Motion, the marker off the
+-- screen (UpdateMarker hides it then, as before)
+function Beacon.ArriveHere()
+	local anim = MelloUI.Anim
+	if M.db.arriveLight == false or not (anim and anim.Drive) or anim.reduceMotion then
+		return false
+	end
+	Beacon.Arrive()
+	return marker.arriving and true or false
+end
+
+-- (0.21.3, Arrival Light; the user, 2026-10-13: "yes, do it for NPCs too") a
+-- followed quest's one spot -- its giver, its turn-in, an object -- reached
+-- within Arrived Within: `arrived`, so UpdateMarker plays the marker's part of
+-- the arrival there (Beacon.ArriveHere) and keeps it down until the player
+-- walks off, twice as far, or the quest moves on (a new destination). Its
+-- area's quests arrive as they step in (Beacon.InArea). From CheckArrival
+function M.QuestSpotArrive(d)
+	if d.area then
+		return
+	end
+	local cont, x, y = PlayerYards()
+	if not cont then
+		return
+	end
+	local reach = tonumber(M.db.arrive) or 25
+	-- (on another continent: not near -- a hearth or a boat away, the marker is the dock's again)
+	local dist = cont == d.cont and Dist(x, y, d.x, d.y) or math.huge
+	if not d.arrived and dist <= reach then
+		d.arrived = true
+		UpdateMarker()
+	elseif d.arrived and dist > 2 * reach then
+		d.arrived = nil
+		UpdateMarker()
+	end
+end
+
+-- (0.21.3; the user, 2026-10-13: "drop it to the feet") the game's point for a
+-- quest's NPC hangs at about its head (their video: the arrival's ring spread
+-- round the NPC's head): how far under the point its feet are on the screen,
+-- in UIParent units. The point's height over the ground (the game's 3D
+-- distance against the flat one on the map, as M.PinReport measures it), as
+-- the camera sees it: its zoom behind the character (else FOOT_ZOOM yards),
+-- the field of view (cameraFov, else 90) across the screen's width. 0 for a
+-- point on the ground (under FOOT_MIN yards up), or when it cannot say. The
+-- flat way is to the game's own quest point while the game follows the
+-- quest: Route's spot can be a yard or two off it, which a few yards away
+-- leaves next to no height (the user's dump of 2026-10-13: zoom 22, field of
+-- view 90 -- the camera's part right, the ring at the chest). Also gives the
+-- height, the flat way and the game's distance (/route pin)
+Beacon.FOOT_MIN, Beacon.FOOT_MAX, Beacon.FOOT_ZOOM = 0.5, 6, 8
+function Beacon.FootDrop()
+	local d = destination
+	local d3 = Beacon.Distance()
+	local cont, x, y = PlayerYards()
+	if not (d and d3 and cont) then
+		return 0
+	end
+	local pc, px, py = d.cont, d.x, d.y
+	local quest = d.fromQuest and SuperTrackState() or nil
+	if quest and quest == d.questID then
+		local mapID, mx, my = QuestObjectivePoint(quest)
+		local qc, qx, qy
+		if mapID then
+			qc, qx, qy = ToYards(mapID, mx, my)
+		end
+		if qc then
+			pc, px, py = qc, qx, qy
+		end
+	end
+	if cont ~= pc then
+		return 0
+	end
+	local flat = Dist(x, y, px, py)
+	local up2 = d3 * d3 - flat * flat
+	if up2 < Beacon.FOOT_MIN * Beacon.FOOT_MIN then
+		return 0, math.sqrt(math.max(0, up2)), flat, d3
+	end
+	local up = math.min(math.sqrt(up2), Beacon.FOOT_MAX)
+	local okZ, zoom = pcall(_G.GetCameraZoom)
+	zoom = okZ and tonumber(Plain(zoom)) or Beacon.FOOT_ZOOM
+	local fov
+	if C_CVar and C_CVar.GetCVar then
+		local okF, v = pcall(C_CVar.GetCVar, "cameraFov")
+		fov = okF and tonumber(v) or nil
+	end
+	local w, h = UIParent:GetWidth(), UIParent:GetHeight()
+	if not (w > 0 and h > 0) then
+		return 0
+	end
+	local tanV = math.tan(math.rad(fov or 90) / 2) * h / w
+	return up * (h / 2) / (tanV * (d3 + math.max(0, zoom))), up, flat, d3
+end
+
+function Beacon.Seg(t, a, b)
+	local v = (t - a) / (b - a)
+	return v < 0 and 0 or (v > 1 and 1 or v)
+end
+
+function Beacon.Arrive()
+	local f = marker
+	if not (f and f:IsShown() and f.nav and f.off == false and f.lastX and f.lastY) or f.arriving then
+		return
+	end
+	Beacon.Ground()   -- (a wisp still on its way lets go)
+	local anim = MelloUI.Anim
+	local k = f.nav:GetEffectiveScale() / UIParent:GetEffectiveScale()
+	local job = { x = f.lastX * k, y = f.lastY * k, scale = math.max(f.size or 1, Beacon.MARK_MIN), touched = false,
+		dest = destination }
+	-- (a quest's NPC: its feet that far under the game's point, Beacon.FootDrop)
+	job.drop = destination and destination.fromQuest and not destination.area and Beacon.FootDrop() or 0
+	-- (a glide of the mark under way ends where it was going)
+	anim:Land(f.core, "y")
+	anim:Stop(f.words, "alpha")
+	job.coreY = f.coreY or 0
+	f.arriving = job
+	f.mode, f.anchoredTo, f.glideAt = "arrive", nil, nil
+	f:ClearAllPoints()
+	f:SetPoint("CENTER", UIParent, "BOTTOMLEFT", job.x, job.y)
+	f.beam:Hide()
+	anim:Drive(job, Beacon.ArriveStep, Beacon.ARRIVE, "linear", Beacon.ArriveDone)
+end
+
+function Beacon.ArriveStep(job, u)
+	local f = marker
+	if f.arriving ~= job then
+		return
+	end
+	local t = u * Beacon.ARRIVE
+	local chev = f.chev and f.chev[1]
+	if chev then
+		local c = Beacon.Seg(t, 0, Beacon.CHEV_TIME)
+		chev:ClearAllPoints()
+		chev:SetPoint("CENTER", f.core, "CENTER", 0, -Beacon.CHEV_Y - Beacon.ARRIVE_DROP * c * c)
+		chev:SetAlpha(1 - c)
+	end
+	f.words:SetAlpha(1 - Beacon.Seg(t, Beacon.WORDS_AT, Beacon.WORDS_TO))
+	local s = Beacon.Seg(t, Beacon.SINK_AT, Beacon.TOUCH)
+	f.core:ClearAllPoints()
+	f.core:SetPoint("CENTER", f, "CENTER", 0, job.coreY - (job.coreY + job.drop) * s * s)
+	local g = Beacon.Seg(t, Beacon.TOUCH, Beacon.GONE)
+	f.core:SetAlpha(1 - g)
+	f.core:SetScale(job.scale * (1 + Beacon.ARRIVE_GROW * g))
+	if t >= Beacon.TOUCH and not job.touched then
+		job.touched = true
+		Beacon.Touch(job)
+	end
+end
+
+-- the mark touches the place: the ring of light and its glow in the trail's
+-- light, the sparks in the palette's gold, rising
+function Beacon.Touch(job)
+	local fr = Beacon.WispFrame()
+	local w = Beacon.wisp
+	local k = UIParent:GetEffectiveScale() / fr:GetEffectiveScale()
+	local c = Beacon.Light()
+	for _, t in ipairs({ w.ring, w.lit }) do
+		t:SetVertexColor(c[1], c[2], c[3])
+		t:ClearAllPoints()
+		t:SetPoint("CENTER", fr, "BOTTOMLEFT", job.x * k, (job.y - job.drop) * k)
+	end
+	w.ringAt, w.ringSpan, w.ringFrom, w.ringGrow, w.ringOut = 0, Beacon.ARRIVE_SPAN, Beacon.ARRIVE_RING, Beacon.ARRIVE_SPREAD, true
+	w.litAt = 0
+	local gold = MelloUI.Look.Palette().selectedTrim
+	w.r, w.g, w.b = gold[1], gold[2], gold[3]
+	for _, sp in ipairs(w.sparks) do
+		sp.tex:SetVertexColor(w.r, w.g, w.b)
+	end
+	-- (thrown up: a spark takes a share of the way the wisp went, backwards)
+	w.x, w.y, w.vx, w.vy = job.x, job.y - job.drop, 0, -1000
+	for _ = 1, Beacon.ARRIVE_SPARKS do
+		Beacon.Spark(w)
+	end
+	fr:Show()
+end
+
+function Beacon.ArriveDone(job)
+	if marker and marker.arriving == job then
+		Beacon.ArriveEnd()
+		UpdateMarker()
+	end
+end
+
+-- the arrival over, or ended at once by a new destination: the marker's
+-- parts as they were, the marker hidden (its next show lays it afresh)
+function Beacon.ArriveEnd()
+	local f = marker
+	local job = f and f.arriving
+	if not job then
+		return
+	end
+	f.arriving = false
+	MelloUI.Anim:Stop(job, "drive")
+	local core = f.core
+	core:SetAlpha(1)
+	core:SetScale(job.scale)
+	core:ClearAllPoints()
+	core:SetPoint("CENTER", f, "CENTER", 0, 0)
+	f.coreY = 0
+	f.words:SetAlpha(1)
+	if f.chev then
+		for _, c in ipairs(f.chev) do
+			c:ClearAllPoints()
+			c:SetPoint("CENTER", core, "CENTER", 0, -Beacon.CHEV_Y)
+			c:SetAlpha(1)
+		end
+	end
+	f.mode, f.anchoredTo, f.nav = nil, nil, nil
+	f:Hide()
+	f:SetAlpha(1)
+	f.faint, f.wayInOnSight = false, nil
+end
+
+--------------------------------------------------------------------------------
+-- The route drawing in (0.21.3, Route Draws In; the user's "Yes to all" to
+-- BuildData/output/animation_previews, 2. The route draws itself): a new
+-- route grows from the player to the destination over TIME seconds instead
+-- of showing whole, on the world map and the minimap at once -- each bead
+-- popping in as the way reaches it (POP seconds), the line and the dashes
+-- drawn with a small light at their head -- and the goal's mark pops in as
+-- the trail reaches it (GOAL seconds; on the minimap at its next tick). The
+-- maps' loops ask Budget how many yards of the way ahead to draw, Cut where
+-- the last part ends, and walk on with Walked; the world map is drawn again
+-- each frame while it grows (the minimap's tick draws it anyway). Only for a
+-- new destination (a re-plan of the same one swaps at once); not for the
+-- destination a /reload brings back (Beacon.Quiet), not under Reduce Motion,
+-- not with the option off. One job (M.DrawIn.job), nothing made but the
+-- painters' head lights
+--------------------------------------------------------------------------------
+
+M.DrawIn = M.DrawIn or { on = false, popMini = false }   -- (made with the trail's look above; this part alone too)
+M.DrawIn.TIME, M.DrawIn.POP, M.DrawIn.GOAL, M.DrawIn.HEAD = 0.7, 0.16, 0.25, 2.6
+M.DrawIn.job = { share = 1, total = 0, walked = 0 }
+
+-- (0.21.3) the animations again, to see them, on the route set now: /mello
+-- route draw (the route drawing in), arrive (the arrival, the destination
+-- kept: the marker comes back after it), wisp (the wisp's flight). Nothing
+-- with no route or marker: a line says why
+M.PREVIEW = { need = "Route: set a map pin first -- the animation plays on its route and the World Marker.",
+	off = "Route: %s is off, or Reduce Motion is on.",
+	turn = "Route: turn toward your World Marker first -- the arrival plays where it stands on the screen." }
+M.SlashWords = {
+	draw = function()
+		if not (route and destination) then
+			MelloUI:Print(M.PREVIEW.need)
+			return
+		end
+		M.DrawIn.forDest = nil
+		M.DrawIn.Start(destination)
+		if not M.DrawIn.on then
+			MelloUI:Print(M.PREVIEW.off, "Route Draws In")
+		end
+		Redraw()
+	end,
+	arrive = function()
+		if not (destination and marker and marker:IsShown()) then
+			MelloUI:Print(M.PREVIEW.need)
+			return
+		end
+		local anim = MelloUI.Anim
+		if M.db.arriveLight == false or (anim and anim.reduceMotion) then
+			MelloUI:Print(M.PREVIEW.off, "Arrival Light")
+			return
+		end
+		if marker.off ~= false then
+			MelloUI:Print(M.PREVIEW.turn)
+			return
+		end
+		M.ArriveLight()
+	end,
+	wisp = function()
+		if not (destination and marker and marker:IsShown()) then
+			MelloUI:Print(M.PREVIEW.need)
+			return
+		end
+		-- (taken for a new destination: up afresh, the wisp flying to it)
+		marker.soundKey = nil
+		marker:Hide()
+		UpdateMarker()
+	end,
+}
+
+function M.DrawIn.Start(d)
+	local DI = M.DrawIn
+	if d == DI.forDest then
+		return
+	end
+	DI.forDest = d
+	local anim = MelloUI.Anim
+	if M.db.drawIn == false or not (anim and anim.Drive) or anim.reduceMotion or Beacon.Quiet() then
+		return
+	end
+	DI.on = true
+	DI.job.share = 0
+	anim:Drive(DI.job, DI.Step, DI.TIME, "linear", DI.Done)
+end
+
+function M.DrawIn.Step(job, u)
+	job.share = u
+	if WorldMapFrame and WorldMapFrame:IsShown() then
+		DrawWorldMap()
+	end
+end
+
+function M.DrawIn.Done(job)
+	local DI = M.DrawIn
+	job.share = 1
+	DI.on = false
+	DI.popMini = true
+	DrawWorldMap()
+	if M.goalMap and M.goalMap:IsShown() then
+		DI.PopMark(M.goalMap)
+	end
+end
+
+-- the goal's mark popping in as the trail reaches it (and the minimap's edge chevron fading in)
+function M.DrawIn.PopMark(mark, chev)
+	local anim = MelloUI.Anim
+	if not (anim and anim.Pop) then
+		return
+	end
+	anim:Pop(mark, M.DrawIn.GOAL, 0)
+	if chev then
+		anim:FadeIn(chev, M.DrawIn.GOAL)
+	end
+end
+
+-- how many yards of the way ahead to draw (nil: all), the walk started
+function M.DrawIn.Budget(points)
+	local DI, job = M.DrawIn, M.DrawIn.job
+	job.walked = 0
+	if not DI.on then
+		return nil   -- (the maps ask only while it draws in)
+	end
+	local total = 0
+	for i = 2, #points do
+		local a, b = points[i - 1], points[i]
+		if a[1] == b[1] then
+			total = total + Dist(a[2], a[3], b[2], b[3])
+		end
+	end
+	job.total = total
+	return total * job.share
+end
+
+-- segment a -> b under the budget: its end (cut when the budget ends in it)
+-- and the share drawn; nil past the budget
+function M.DrawIn.Cut(a, b, budget)
+	if not budget then
+		return b[2], b[3], 1
+	end
+	local job = M.DrawIn.job
+	local walked = job.walked
+	if walked >= budget then
+		return nil
+	end
+	local len = a[1] == b[1] and Dist(a[2], a[3], b[2], b[3]) or 0
+	job.segLen = len
+	if len <= 0 or walked + len <= budget then
+		return b[2], b[3], 1
+	end
+	local f = (budget - walked) / len
+	return a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f, f
+end
+
+function M.DrawIn.Walked(a, b, f)
+	if M.DrawIn.on and a[1] == b[1] then
+		local job = M.DrawIn.job
+		job.walked = job.walked + Dist(a[2], a[3], b[2], b[3]) * (f or 1)
+	end
+end
+
+-- the painter told where on the way its next segment starts and how many
+-- yards of it are drawn (its beads' pop)
+function M.DrawIn.Lay(painter, f)
+	if M.DrawIn.on then
+		local job = M.DrawIn.job
+		painter.popY0, painter.popYLen = job.walked, (job.segLen or 0) * (f or 1)
+	else
+		painter.popY0 = nil
+	end
+end
+
+-- a bead at `s` yards along the way: its size's share now (popping in)
+function M.DrawIn.Pop(s)
+	local DI, job = M.DrawIn, M.DrawIn.job
+	if not (job.total and job.total > 0) then
+		return 1
+	end
+	local p = (job.share * DI.TIME - s / job.total * DI.TIME) / DI.POP
+	if p >= 1 then
+		return 1
+	elseif p <= 0 then
+		return 0.01
+	end
+	local c1 = 1.9
+	local c3 = c1 + 1
+	return 1 + c3 * (p - 1) ^ 3 + c1 * (p - 1) ^ 2
+end
+
+-- the head's light at the trail's end while it draws in (the line and the dashes)
+function M.DrawIn.HeadOn(painter, unit)
+	if M.DrawIn.on and M.TrailLook() ~= "beads" and painter.endX then
+		painter:Head(painter.endX, painter.endY, unit * M.DrawIn.HEAD, painter.endAnchor)
+	else
+		painter:Head(nil)
 	end
 end
 
@@ -6915,6 +7515,10 @@ local function MarkerTick(self, elapsed)
 	-- screen -- the user's 90 fps video: every other frame or so, unevenly);
 	-- a still frame stops at the check below
 	local dt = elapsed
+	-- (0.21.3) arriving: the motion engine plays it where it stands (Beacon.Arrive)
+	if self.arriving then
+		return
+	end
 	-- the destination cleared (a map pin removed, a quest untracked) or its
 	-- navigation frame gone: away at once, whatever else still ticks
 	-- (user, 2026-09-23: the arrow stayed round the character after clearing)
@@ -7151,6 +7755,7 @@ local function EnsureMarker()
 	-- a small pop when the marker comes up: the gem grows in and settles
 	marker.pop = TextShade.Pop(marker.gem)
 	marker.angle, marker.faint = math.pi / 2, false
+	marker.arriving = false   -- (0.21.3: its arrival playing, Beacon.Arrive)
 	Perf.SetScript(marker, "OnUpdate", MarkerTick)
 	marker:Hide()
 end
@@ -7173,10 +7778,24 @@ UpdateMarker = function()
 	if not marker then
 		return
 	end
+	-- (0.21.3) arriving (Beacon.Arrive): it plays on with the destination
+	-- cleared or kept (a quest's area, the preview); another one ends it at
+	-- once, the marker up afresh for that
+	if marker.arriving and destination and destination ~= marker.arriving.dest then
+		Beacon.ArriveEnd()
+	end
 	local nav = M.isEnabled and M.db.worldMarker and destination and NavIsOurs() and NavFrame() or nil
-	local inArea = nav and destination.area and Beacon.InArea() or false
+	-- (a quest's one spot reached, M.QuestSpotArrive: down as inside an area)
+	local inArea = nav and (destination.arrived or (destination.area and Beacon.InArea())) or false
 	if inArea or not nav then
-		if marker:IsShown() then
+		-- (0.21.3, Arrival Light) stepping into a followed quest's objective
+		-- area is its arrival (the user's video of 2026-10-13: a quest's way
+		-- never ended, so it never played); it hides the marker as it ends
+		if inArea and marker:IsShown() and not marker.arriving and Beacon.ArriveHere() then
+			FadeGameMarker(true)
+			return
+		end
+		if marker:IsShown() and not marker.arriving then
 			marker:Hide()
 			-- (full again for its next show: a faint beacon's fade let go)
 			local anim = MelloUI.Anim
@@ -7187,8 +7806,25 @@ UpdateMarker = function()
 			marker.faint = false
 			marker.wayInOnSight = nil
 		end
-		Beacon.Ground()   -- (a wisp on its way lets go)
+		-- (0.21.3, the user's video of 2026-10-13: the wisp set out only once the
+		-- marker could show -- Route's plan, the game's switch to the quest -- a
+		-- moment late or later) a new destination's wisp takes off at the pick
+		-- while the marker waits; otherwise one on its way lets go
+		local key = destination and (destination.questID or destination) or nil
+		local w = Beacon.wisp
+		if key and not inArea and key ~= marker.soundKey and key ~= w.gaveUp and M.isEnabled and M.db.worldMarker then
+			if not (w.flying and w.key == key) then
+				Beacon.Launch(key)
+			end
+		elseif not (key and not inArea and w.flying and w.key == key) then
+			Beacon.Ground()
+		end
 		marker.nav = nil
+		-- (0.21.3, the user's video of 2026-10-13: a quest followed again after it was let go flew no wisp and
+		-- made no sound -- still "the last one") nothing followed: the next one is new, whichever it is
+		if not destination then
+			marker.soundKey = nil
+		end
 		FadeGameMarker(inArea)
 		return
 	end
@@ -7228,7 +7864,7 @@ UpdateMarker = function()
 		marker:Show()
 		-- a new destination's marker (0.21.3): the wisp flies to it and lights
 		-- it (Beacon.Land); else it comes up at once
-		local wisp = key ~= marker.soundKey and Beacon.Launch()
+		local wisp = key ~= marker.soundKey and Beacon.Launch(key)
 		-- (0.18.4) the near look or the beacon's as the place is now: near, the
 		-- mark rises from the place into its hover (the near look's way in)
 		Beacon.Turn(marker, marker.pin, 0)
@@ -7622,6 +8258,9 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 	end
 	local size, chev = M.TRAIL.GOAL_MINI, M.goalChev
 	local m = size / 2 + 1
+	-- (0.21.3: the route drawn in, its goal popping in at this lay)
+	local pop = M.DrawIn.popMini
+	M.DrawIn.popMini = false
 	local inside
 	if round then
 		inside = gx * gx + gy * gy <= (R - m) * (R - m)
@@ -7630,6 +8269,9 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 	end
 	if inside then
 		M.GoalLay(g, size, mm, "CENTER", gx, gy)
+		if pop then
+			M.DrawIn.PopMark(g)
+		end
 		if chev.on then
 			chev.on = false
 			chev:Hide()
@@ -7650,6 +8292,9 @@ function M.GoalOnMinimap(cont, round, R, RX, RY)
 	if not chev.on then
 		chev.on = true
 		chev:Show()
+	end
+	if pop then
+		M.DrawIn.PopMark(g, chev)
 	end
 end
 
@@ -7799,23 +8444,42 @@ local function MinimapTick(_, elapsed)
 	local unit = 2.6 * (tonumber(M.db.lineWidth) or 3)
 	local points = RouteAhead()
 	local Offset = M.MinimapOffset
+	local DI = M.DrawIn
+	local budget = DI.on and DI.Budget(points) or nil
+	mmPainter.popY0 = nil
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
+		local bx2, by2, f = b[2], b[3], 1
+		if budget then
+			bx2, by2, f = DI.Cut(a, b, budget)
+			if not bx2 then
+				break
+			end
+		end
 		if a[1] == cont and b[1] == cont and b[4] ~= "boat" and b[4] ~= "flight" then
 			local ax, ay = Offset(a[2], a[3])
-			local bx, by = Offset(b[2], b[3])
+			local bx, by = Offset(bx2, by2)
 			if round then
 				ax, ay, bx, by = ClipToCircle(ax, ay, bx, by, R)
 			else
 				ax, ay, bx, by = ClipToSquare(ax, ay, bx, by, RX, RY)
 			end
 			if ax then
+				if budget then
+					DI.Lay(mmPainter, f)
+				end
 				mmPainter:Segment(ax, ay, bx, by, STYLE[b[4]] or STYLE.road, unit, "CENTER")
 			end
 		end
+		if budget then
+			DI.Walked(a, b, f)
+		end
 	end
 	mmPainter:End()
-	M.GoalOnMinimap(cont, round, R, RX, RY)
+	if budget or mmPainter.headOn then
+		DI.HeadOn(mmPainter, unit)
+	end
+	M.GoalOnMinimap(not DI.on and cont or nil, round, R, RX, RY)
 	M.LineMaybeChanged()
 end
 

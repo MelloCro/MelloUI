@@ -860,9 +860,10 @@ def main():
         if qid in classic:
             continue
         page = read_page("quest", qid)
-        objs, source = server_objectives(qid, quest_objectives(page) if page else [])
+        wh = quest_objectives(page) if page else []
+        objs, source = server_objectives(qid, wh)
         if objs:
-            forever.append((qid, objs))
+            forever.append((qid, objs, wh if objs is not wh else None))
             stats["forever: objectives " + source] += 1
 
     def wh_points(kind, i):
@@ -908,6 +909,26 @@ def main():
             return npcs, objs
         found = forever_sources(i)
         return [e for src, e in found if src != 2], [e for src, e in found if src == 2]
+
+    def placeable(kind, i):
+        """can the map place this objective: its spawns or Wowhead map, an item's sources, a made item"""
+        if kind == "npc":
+            return bool(creature_points(i))
+        if kind == "object":
+            return bool(object_points(i))
+        npcs, objs = item_sources(i)
+        return bool(npcs or objs or i in made_from)
+
+    # (2026-10-13, the whole scan: the server's objectives win, unless Wowhead's page places more of them -- an egg
+    # or a talk-to whose server ID has no spawns, items the server names but nothing says where they come from;
+    # the data is never worse than the pages alone made it)
+    chosen = []
+    for qid, objs, wh in forever:
+        if wh and sum(placeable(k, i) for k, i, _ in wh) > sum(placeable(k, i) for k, i, _ in objs):
+            objs = wh
+            stats["forever: the server's objectives place fewer than Wowhead's page's: the page's kept"] += 1
+        chosen.append((qid, objs))
+    forever = chosen
 
     def page_title(kind, i, word):
         """A name from a Wowhead page's title ("Bundle of Herbs - Item - Forever")."""

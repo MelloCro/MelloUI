@@ -61,11 +61,13 @@ end
 
 local M = MelloUI:RegisterModule("UnitFramePanel", {
 	title = "Unit Frames Kit",
+	slash = "player",   -- (0.21.3: /mello player level)
 	desc = "The player, target, focus and pet frames dressed in the painted kit on the game's own layout.",
 	-- (include: the option below sits under this row on UI Modifications' HUD tab)
 	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
-	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone" },
+	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone",
+		levelUp = true },
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
@@ -85,6 +87,9 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 			.. "Borders (its inner corners mitred)." },
 		{ type = "dropdown", key = "backdropBackground", name = "Frame Backdrop Background", values = Kit.buttonLooks.backgrounds,
 		  desc = "What lies behind the player, target and focus frames inside their backdrop." },
+		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews)
+		{ type = "toggle", key = "levelUp", name = "Level Up", new = "0.21.3",
+		  desc = "When you gain a level, the number in your player frame's level circle turns over to the new level with a ring of light, a light runs along the experience bar, and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). Not with Reduce Motion: then only the notice." },
 	},
 })
 
@@ -2134,22 +2139,95 @@ function M:ReminderAnchor()
 end
 
 --------------------------------------------------------------------------------
+-- Level Up (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/output/
+-- animation_previews, 5. Level up): the player frame's level badge turns over
+-- to the new level with a ring of light (MelloUI.FrameFX: FX.LevelRoll on
+-- the badge's copy, its "level" landings), a light runs along the game's XP
+-- bar (its rect only: nothing of the bar's written), and NOTICE_AT seconds in
+-- the notice says the level and, with the Quest List, the quests it opened in
+-- the player's zone (its NewQuestsAt; their givers pop on the map there). The
+-- motion not under Reduce Motion; the notice always while the option is on
+--------------------------------------------------------------------------------
+
+local Level = { NOTICE_AT = 0.8, ORB_SPILL = { 70, 70 }, BAR_SPILL = { 8, 12 }, new = nil }
+
+function Level.Notice()
+	local new = Level.new
+	if not new then
+		return
+	end
+	local text = "Level " .. new
+	local ql = MelloUI:GetModule("QuestList")
+	if ql and ql.isEnabled and type(ql.NewQuestsAt) == "function" then
+		local ok, n = pcall(ql.NewQuestsAt, ql, new)
+		n = ok and Num(n) or nil
+		if n and n > 0 then
+			text = text .. " \194\183 " .. n .. (n == 1 and " new quest nearby" or " new quests nearby")
+		end
+	end
+	MelloUI:Announce(text)
+end
+
+function Level.Up(new)
+	new = Num(new)
+	if not (new and M.isEnabled and M.db and M.db.levelUp ~= false) then
+		return
+	end
+	Level.new = new
+	local FX, anim = MelloUI.FrameFX, MelloUI.Anim
+	local motion = FX and anim and not anim.reduceMotion
+	if motion then
+		local sp = active and FX.Split and FX.Split(PlayerFrame)
+		if sp then
+			FX.LevelRoll(sp, new - 1, new)
+			local badge = sp.orb or sp.disc
+			if badge then
+				FX.ShowOn(badge, "level", "orb", Level.ORB_SPILL)
+			end
+		end
+		local bar = rawget(_G, "MainStatusTrackingBarContainer")
+		if bar and bar:IsVisible() then
+			FX.ShowOn(bar, "level", "bar", Level.BAR_SPILL)
+		end
+	end
+	Perf.C_Timer.After(motion and Level.NOTICE_AT or 0, Level.Notice)
+end
+M.Level = Level   -- (the tests)
+
+-- (/mello player level) the level-up played on the level you have, to see it
+-- (the badge turning from the one before; the notice and the quests as at a
+-- level gained)
+M.SlashWords = {
+	level = function()
+		local lv = Num(UnitLevel("player"))
+		if not (lv and M.isEnabled and M.db and M.db.levelUp ~= false) then
+			MelloUI:Print("Unit Frames: Level Up is off (Unit Frames > Frame > Look), or the Unit Frames Kit is.")
+			return
+		end
+		Level.Up(lv)
+	end,
+}
+
+--------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-Perf.SetScript(eventFrame, "OnEvent", function(self, event)
+Perf.SetScript(eventFrame, "OnEvent", function(self, event, arg1)
 	if event == "PLAYER_ENTERING_WORLD" then
 		self:UnregisterEvent(event)
 		if M.isEnabled then
 			Kit:WhenOutOfCombat(Activate)
 		end
+	elseif event == "PLAYER_LEVEL_UP" then
+		Level.Up(arg1)
 	end
 end)
 
 function M:OnEnable(db)
 	self.db = db
 	Hook()
+	eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
 	-- the frames exist at load; their portraits and bars are laid out once
 	-- the player is in the world (a toggle from the options is already there)
 	local portrait = PlayerFrame and PlayerFrame.PlayerFrameContainer and PlayerFrame.PlayerFrameContainer.PlayerPortrait

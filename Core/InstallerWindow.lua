@@ -204,7 +204,7 @@ local TEXT = {
 	-- Fresh start's wizard
 	lookLead = "Your palette, the painted kit and its colours. Nothing changes until you install.",
 	palette = "Palette",
-	reskin = "Painted kit reskin",
+	reskin = "Painted Kit Reskin",
 	reskinDesc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art; the features you switch on keep working.",
 	colours = "Kit Colours",
 	colourLine = { warm = "Iron in warm browns", bronze = "Browns with gold bevels", painted = "Grey iron, bright red" },

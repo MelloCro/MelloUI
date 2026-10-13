@@ -138,7 +138,13 @@ local CHANGELOG = {
 	{ version = "0.21.3", lines = {
 		"World Marker: cleaner and smaller -- a smaller flag mark, a slim still beam, one chevron near the place.",
 		"World Marker: the Wisp (Firefly or Embers) flies from your character to a new destination and lights it.",
-		"From the latest patch: Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects knows Rotmending.",
+		"Route: Route Draws In -- a new route grows from you to the destination, the flag popping in at its end.",
+		"Route: Arrival Light -- arriving puts the place out in a ring of light, and the arrow's ring closes before it goes.",
+		"See the new animations by command: /mello bags loot legendary, /mello player level ... (/mello help lists them).",
+		"Quest Tracker: Progress Motion -- counts roll over with a light, finished objectives get a tick, a finished quest lights up.",
+		"Bags by Kind: Loot Flight -- loot and quest rewards fly into their slot, the rarer the more; quest money flies in as coins.",
+		"Unit Frames: Level Up -- your level number turns over in a ring of light, and the notice counts the quests it opened.",
+		"From the latest patch: 75 more Forever quests in the Quest List; Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects Rotmending.",
 		"Big Cooldowns: break-free spells (Will of the Forsaken, Berserker Rage, Escape Artist, the PvP trinket) count as immunities.",
 		"Route knows many more roads and finds better ways; places know the Riverglades and Hyjal flight points, Stormwind Harbor and Coldridge Valley.",
 		"Fixed: Route took the long way, or cross-country, from places whose nearest roads are side roads not joined to the rest.",
@@ -195,6 +201,13 @@ local COMMANDS = {
 	{ "/mello preview solo", "a fight, alone or (party) in a group, played to see" },
 	{ "/mello preview <part>", "one part alone: fader, widgets, meter, gains ..." },
 	{ "/mello swing log", "20 s of your swings and shots, to copy (/mellolog)" },
+	{ "/mello route draw", "a new route's drawing in again, on your route" },
+	{ "/mello route arrive", "the arrival again, on your World Marker" },
+	{ "/mello route wisp", "the wisp's flight again, to your World Marker" },
+	{ "/mello tracker progress", "the tracker's count roll, tick and quest-done light" },
+	{ "/mello bags loot <kind>", "a Loot Flight: poor .. legendary, or all" },
+	{ "/mello bags coins", "a quest's money flying into the bag window" },
+	{ "/mello player level", "the level-up on your level circle and XP bar" },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
 	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },
@@ -2106,7 +2119,7 @@ local function Gate(page, r)
 		local um = MelloUI.modules.UIModifications
 		local panel = page.fromWindows and page.pick or m.name
 		if um and Setting(um, "reskin") == false then
-			return Off(page, r, "UIModifications.reskin", "Painted kit reskin")
+			return Off(page, r, "UIModifications.reskin", "Painted Kit Reskin")
 		elseif um and Setting(um, panel) == false then
 			return Off(page, r, "UIModifications." .. panel, panel)
 		end

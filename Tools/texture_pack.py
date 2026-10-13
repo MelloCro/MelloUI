@@ -253,7 +253,8 @@ TEX_DRAWN = [
     (r"^Textures/GameMenuFrame", (910 / 1024, 1728 / 2048), "GameMenuPanel TEX_RIGHT / TEX_BOTTOM"),
 ]
 # whole files drawn with a repeating wrap (SetTexture's wrap arguments)
-TEX_WRAP = [(r"^Textures/Route/beam_streaks", "y")]
+# (0.21.3: none since the Route beam's streaks were retired)
+TEX_WRAP = []
 
 ATLAS_MAX_SIDE = 256          # pieces up to this (file px, after right-sizing) go in sheets
 KIT_MIN_SHRINK = 0.8          # a kit piece is right-sized only by this factor or more

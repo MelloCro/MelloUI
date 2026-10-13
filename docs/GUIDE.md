@@ -449,7 +449,7 @@ top corners (on the bar's top when the name sits inside the bar).
 - Hide the micro menu and/or the bag bar. They come back while Edit Mode is open so they can
   still be moved.
 - With the bag bar hidden, the bag slots dock under the open bag window (combined or separate
-  bags) so bags can still be equipped and removed. Off switch: "Bag Slots on Bag Window".
+  bags) so bags can still be equipped and removed. Off switch: "Bag Slots On Bag Window".
 - "Collapse Arrow" (on by default; Action Bars > Bag Bar > Behaviour): an arrow between the
   backpack and the bags folds the bag slots (and the key ring) away so only the backpack shows;
   click it again to bring them back. While an item is on the cursor they come out by
@@ -543,6 +543,15 @@ bars in the painted look, under the fill, the incoming heals and the bars' borde
 Painted Trough (as before), a flat Dark, the Bar Texture's finish in the dark (Bar Texture,
 Dark), or None. **Bar Background Opacity** lets the world show through the empty part of a bar.
 One choice for every unit frame: player, target, focus, pet, target of target and party.
+
+**Level Up** (Unit Frames > Frame > Look on the player, 0.21.3, on): when you gain a level, the number
+in your player frame's level circle turns over to the new one (the old level rising out, the new one
+coming up) with a ring of light spreading from the circle, a light runs along the experience bar,
+and the on-screen notice says your new level and, with the Quest List, how many quests it opened in
+your zone ("Level 6 · 3 new quests nearby"); those quests' givers pop onto the world map the first
+time it shows them. The turn plays with the painted unit frames (the Unit Frames Kit). Under Reduce
+Motion only the notice. The game's own minimap marks are its own and do not move. `/mello player level`
+plays it on the level you have.
 
 ### Healer Frames
 
@@ -1086,6 +1095,13 @@ route while you follow it; a new route is only planned after you have been more 
 off the path for two seconds (or every 30 seconds as a refresh), and a fresh plan prices joining
 the road behind you higher than the road ahead, so a shortcut is never answered with "go back".
 
+**Route Draws In** (Route > Route > Look, 0.21.3, on): a new route grows from you to the destination in
+about a second instead of appearing whole, on the world map and the minimap at once: the beads pop in
+one after another, the line and the dashes are drawn with a small light at their head, and the
+destination's flag pops in as the trail reaches it (on the minimap with its edge arrow). A re-plan of
+the same route (you strayed off it) swaps at once, and so does the route a /reload brings back. Not
+under Reduce Motion. `/mello route draw` draws your route in again to see it.
+
 Draws the way to your destination on the world map and the minimap, with a direction arrow
 and a tracking notice. A destination is a pin: the Quest List's quest giver or turn-in pins,
 the Services bar's pins, or a waypoint you place on Blizzard's map. Without a pin the route
@@ -1169,15 +1185,31 @@ up (Marker Sounds, on: the user's own Quest_TrackChange, Media\Sounds\SFX; for a
 it is the only sound, the notice leaves its chime out), never while the place is off screen nor
 for the destination a /reload brings back. Under Reduce Motion it changes at once.
 
-The Wisp (Route > Arrow & Marker, under World Marker; 0.21.3, Firefly by default): when the
-marker comes up for a new destination, a small light flies from your character to it in about a
-second and lights it as it lands: the beam rises, the mark pops in, the distance and name fade
-in, and the marker's sound plays then. It aims at the place where it is on the screen at every
+The Wisp (Route > Arrow & Marker, under World Marker; 0.21.3, Firefly by default): when you
+pick a new destination (a quest you followed before and let go counts as new), a small light takes
+off from your character at once, the same flight every time: it rises straight up, hangs a beat
+with a brighter pulse (longer while Route still plans the way), then darts to the place at a steady
+speed (a quarter to two thirds of a second) and lights it as it lands: the beam rises, the mark pops
+in, the distance and name fade in, and the marker's sound plays then. It aims at the place where it
+is on the screen at every
 frame, so turning the camera while it flies bends its path; with the place off the screen it
 settles into the arrow beside your character (the arrow pops in, lit a moment) and the mark's way
 in plays the first time you turn to see the place. Firefly: a bright point with a short streak;
 Embers: a smaller glow shedding sparks that fall away; Off: the marker comes up at once, as
 before. Never under Reduce Motion, nor for the destination a /reload brings back.
+
+Arrival Light (Route > Arrow & Marker; 0.21.3, on): the wisp's pair. As you arrive (within
+Arrived Within), the place is put out: the chevron drops, the distance and name fade, the mark
+sinks onto the place and fades as it grows, and a ring of light spreads on the ground with a few
+gold sparks rising, all in about a second. The Direction Arrow's row finishes with it: its ring
+closes, a light runs round it once, and the row fades away. The "Arrived" notice is as before.
+With the place off the screen only the row finishes. Off, or under Reduce Motion, both go at once.
+A followed quest plays the marker's part too (the arrow goes on, the quest is not done): as you step
+into its objective area, or come within Arrived Within of its one spot (its giver, its turn-in: the
+mark sinks to the NPC's feet and the ring spreads on the ground there, not at the game's point by its head). The
+marker then stays down while you are inside, or until you walk twice as far off or the quest moves on.
+`/mello route arrive` plays it on your marker to see it (the destination stays; with the marker off
+the screen it says to turn toward it first), `/mello route wisp` the wisp's flight.
 
 It never jumps: another destination (a quest picked in the tracker, another pin) brings it up
 afresh there with its way in (the wisp, or the beam's rise and the mark's pop); when Route's own
@@ -1547,6 +1579,21 @@ does; on Parchment the gold count is in dark ink), and moves in Edit Layout. **B
 General); off, you get the game's bag window back. While it is on, the game's Combined Bags setting
 is held on (it comes back as you had it when you switch Bags by Kind off).
 
+**Loot Flight** (0.21.3, on; Windows > Bags, Behaviour): an item you loot flies from where you picked it up
+(where the pointer was: on the corpse, or on the loot window's row) into its slot in the window, laid out
+first in its kind, or with the bags closed onto the bag button, and lands with a light across the slot.
+The rarer it is, the more it does: grey and white fly plain; green leaves a streak and a glow; blue
+bursts into rays where it was picked up and lands in a ring; purple throws sparks there and on its way
+and lands in a shockwave; a legendary rises in a pillar of light and hangs a moment in turning rays,
+flies with a comet's tail, lands in a big ring, flashes the window's border once and says its name on
+the screen. Turning in a quest, its reward item flies the same way from the Complete Quest button, and
+its money flies as coins into the window's money (onto the bag button with the bags closed), the sum
+counting up as each coin lands. Only loot and quest rewards (auto loot too), never what you buy, craft
+or take from the mail; several items at once fly one after another. Not under Reduce Motion. It runs on
+the same effects engine as Heal Flight. To see it without the loot: `/mello bags loot epic` (or poor,
+common, uncommon, rare, legendary; `all` plays each in turn) flies a made-up item from the pointer into
+the first slot shown, `/mello bags coins` a quest's money.
+
 Under it, **Kinds** (0.20.4) lists them in their order, the top first: drag a row up or down
 (a group moves with its kinds). **Add line** puts a line on top to drag where you want it, **Add
 group** a group (double-click it to rename it; the kinds under it, to the next line, are its kinds),
@@ -1593,7 +1640,7 @@ recipes, quest items and anything that starts a quest, keys, lockboxes, anything
 nothing to a vendor (the Hearthstone), white odds that are not junk (mounts, pets, holiday items)
 and the items on your Restock list. **Never Throw Away Items Worth** (1 gold): a stack worth that
 or more is kept. A grey item goes on the click; a white one asks first, with its name and value.
-**Discard Button on Loot** puts the same button under the loot window's list; there it frees a
+**Discard Button On Loot** puts the same button under the loot window's list; there it frees a
 slot only when something you are looting is worth more than what it would throw away (a quest
 item always is). Both rows are on the Windows page, the bag and loot windows' Behaviour.
 
@@ -1773,7 +1820,13 @@ game's tracker on this client does not scroll. The mouse wheel scrolls the list.
 ready to turn in, lit while followed); click a quest to follow it, Shift-click to stop watching
 it, right-click to open it in the quest log. Quest items are used with a click out of combat.
 Tracked recipes show under Professions with their reagents, and Quests and Professions each
-fold away on their own minus. An objective line glows briefly when it counts up. It takes its
+fold away on their own minus. Progress Motion (on; 0.21.3) moves a line as it changes: a count
+going up rolls over to its new number (only the number moves) as a soft gold light runs along
+the line; a finished objective gets a tick drawn in its dash's place (finished objectives keep
+the tick); a finished quest's last count rolls and ticks first, then a light runs over its
+title, its map button comes up as the hand-in ? and its turn-in line comes in, all within
+about a second and a half. Off, or under Reduce Motion, the lines change at once (off: with
+their dashes). `/mello tracker progress` plays it on your first watched quest's line with a count. It takes its
 place and height from the game's tracker in Edit Mode, is moved in Edit Layout (a drag gives it a
 place of its own; its Reset puts it back where the game or the minimap column lays it), and a grip in its bottom-left corner sizes it; Height, Width, Scale, Text Size and
 Scroll Step are in its settings.

@@ -122,6 +122,100 @@ local function SeasonWanted(row, state)
 end
 
 --------------------------------------------------------------------------------
+-- A level gained (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/
+-- output/animation_previews, 5. Level up): the quests it opened -- their
+-- level just reached, for this character, not waiting on another quest, not
+-- hidden, not done or in the log -- are fresh: their givers' marks pop in
+-- (Anim:Pop) the first time the map shows them, once. How many have their
+-- giver on the player's zone map is what the level-up notice says
+-- ("Level 6 · 3 new quests nearby": the Unit Frames Kit's Level Up asks
+-- M:NewQuestsAt). Worked out once per level (QL.NewAt)
+--------------------------------------------------------------------------------
+
+QL.fresh = setmetatable({}, { __mode = "k" })   -- [row] = true: opened by the last level gained, not popped yet
+QL.FRESH_POP, QL.FRESH_RISE = 0.3, 10
+local freshLevel, freshNear = nil, 0
+
+-- whether a giver's group holds a fresh quest (its fresh ones let go: popped)
+function QL.Fresh(group)
+	local any = false
+	for _, q in ipairs(group.quests or {}) do
+		if QL.fresh[q.row] then
+			QL.fresh[q.row] = nil
+			any = true
+		end
+	end
+	return any
+end
+
+-- the rows whose giver is on the player's zone map (its children too), as the
+-- zone's pins have them (AddGiverPins); `into` reused
+local nearRows = {}
+local function NearRows()
+	wipe(nearRows)
+	local okM, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+	mapID = okM and QL.Plain(mapID) or nil
+	-- (a town's or a cave's map: up to its zone)
+	for _ = 1, 4 do
+		local okI, info = pcall(C_Map.GetMapInfo, mapID or 0)
+		local kind = okI and type(info) == "table" and QL.Plain(info.mapType)
+		if not (type(kind) == "number" and kind > MAP_ZONE and QL.Plain(info.parentMapID)) then
+			break
+		end
+		mapID = info.parentMapID
+	end
+	if not mapID then
+		return nearRows
+	end
+	local maps = { mapID }
+	local okC, children = pcall(C_Map.GetMapChildrenInfo, mapID)
+	if okC and type(children) == "table" then
+		for _, child in ipairs(children) do
+			if QL.Plain(child.mapID) then
+				maps[#maps + 1] = child.mapID
+			end
+		end
+	end
+	for _, id in ipairs(maps) do
+		for _, row in ipairs(QL.rowsByMap and QL.rowsByMap[id] or {}) do
+			nearRows[row] = true
+		end
+	end
+	local okI, info = pcall(C_Map.GetMapInfo, mapID)
+	local name = okI and type(info) == "table" and QL.Plain(info.name)
+	local areaID = type(name) == "string" and QL.zoneByName and QL.zoneByName[name:lower()]
+	for _, row in ipairs(areaID and QL.byZone and QL.byZone[areaID] or {}) do
+		nearRows[row] = true
+	end
+	return nearRows
+end
+
+-- the level's opened quests marked fresh; how many are near (once per level)
+function QL.NewAt(level)
+	level = QL.Plain(level)
+	if not level then
+		return 0
+	end
+	if freshLevel == level then
+		return freshNear
+	end
+	wipe(QL.fresh)
+	local near = NearRows()
+	local n = 0
+	for _, row in ipairs(QL.allRows or {}) do
+		if row[QL.F_REQ] == level and QL.Eligible(row) and QuestState(row, level) == "available"
+			and SeasonWanted(row, "available") and not QL.IsHidden(row[QL.F_ID]) then
+			QL.fresh[row] = true
+			if near[row] then
+				n = n + 1
+			end
+		end
+	end
+	freshLevel, freshNear = level, n
+	return n
+end
+
+--------------------------------------------------------------------------------
 -- The marks' own layer (0.16.0; the gamepad freeze plan's F3, the user's
 -- "bring the Quest List map markers back in the Gamepad UI"). The marks are
 -- MelloUI's own frames, never pins in the map's pools (the game's gamepad
@@ -304,6 +398,13 @@ function Marks.End(map)
 			b:SetPoint("CENTER", Marks.anchors[i], "CENTER", 0, 0)
 			Mouse(b)
 			b:Show()
+			-- (0.21.3) a giver a level just gained opened: it pops in, once
+			if m.kind == "giver" and QL.Fresh(m.data) then
+				local anim = MelloUI.Anim
+				if anim and anim.Pop then
+					anim:Pop(b, QL.FRESH_POP, QL.FRESH_RISE)
+				end
+			end
 		else
 			b:Hide()
 		end

@@ -377,7 +377,7 @@ local M = MelloUI:RegisterModule(OWNER, {
 		{ type = "toggle", key = "statusText", name = "Dead / Offline Text",
 		  desc = "Dead, Ghost or Offline written on a member's frame." },
 		-- the Designer
-		{ type = "toggle", key = "indicators", name = "Indicators on the Frames",
+		{ type = "toggle", key = "indicators", name = "Indicators On The Frames",
 		  desc = "Your aura indicators on the frames. Off: the frames show none." },
 		{ type = "canvas", key = "designer", name = "Designer", height = 760,
 		  search = "indicators icons squares bars hots shields buffs debuffs dispel colour wheel parts",

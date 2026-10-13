@@ -12,10 +12,14 @@ classic-db's quest_template (58 of them classic):
     64 reward display spells (a count: 12 bytes each before the objectives)   68 reward spell
     96 start item   100 flags   104 flags ex   116.. reward items (item, amount) x4   180.. choice items (item,
     amount, display) x6   300.. reputation (faction, value, override, cap) x5   436 objectives (a count)
-    440 races (64-bit; -1 every race)
+    440 races (64-bit; -1 every race)   448 treasure pickers (a count)   456 expansion (-2)
+    472 conditional descriptions, 476 conditional completion texts (counts; the whole scan of 2026-10-13: 2,921
+    records, 151 with a treasure picker, 17 with conditional texts)
     488 the reward display spells, then the objectives: ID, type (byte; 0 monster, 1 item, 2 object, 3 talk to,
     10 area trigger, 14 criteria ...), index (+8), object ID (+9), amount (+13), effects (a count at +33, the list
     from +41), then the description's length and a bit byte and the description.
+    Then the treasure pickers (4 bytes each), the conditional descriptions and then the conditional completion
+    texts: condition (4), creature (4), the text's length (12 bits, the high bit first, in 2 bytes), the text.
     Then 12 bytes of bit-packed string lengths (9, 12, 12, 9, 10, 8, 10, 8, 11 bits, the high bit first) and the
     strings: title, objective summary, description, area description, portrait giver text and name, portrait
     turn-in text and name, completion text.
@@ -104,9 +108,10 @@ def parse(raw):
         "choiceItems": [(i(180 + 12 * k), i(184 + 12 * k)) for k in range(6) if i(180 + 12 * k)],
         "reputation": [(i(300 + 16 * k), i(304 + 16 * k)) for k in range(5) if i(300 + 16 * k)],
     }
-    spells, count = i(64), i(436)
-    if not (0 <= spells < 16 and 0 <= count < 32):
-        raise ValueError("odd counts: %d reward spells, %d objectives" % (spells, count))
+    spells, count, pickers, cond_desc, cond_done = i(64), i(436), i(448), i(472), i(476)
+    if not (0 <= spells < 16 and 0 <= count < 32 and 0 <= pickers < 16 and 0 <= cond_desc < 16 and 0 <= cond_done < 16):
+        raise ValueError("odd counts: %d reward spells, %d objectives, %d treasure pickers, %d + %d conditional texts"
+                         % (spells, count, pickers, cond_desc, cond_done))
     r.at = 488
     q["displaySpells"] = []
     for _ in range(spells):
@@ -125,6 +130,12 @@ def parse(raw):
             "object": struct.unpack_from("<i", o, 9)[0], "amount": struct.unpack_from("<i", o, 13)[0],
             "text": r.text(length),
         })
+    q["treasurePickers"] = [struct.unpack_from("<i", r.take(4))[0] for _ in range(pickers)]
+    for key, n in (("conditionalDescriptions", cond_desc), ("conditionalCompletions", cond_done)):
+        q[key] = []
+        for _ in range(n):
+            condition, creature = struct.unpack("<ii", r.take(8))
+            q[key].append({"condition": condition, "creature": creature, "text": r.text(bits(r.take(2), [12])[0])})
     for name, n in zip(STRINGS, bits(r.take(STRING_HEADER), STRING_BITS)):
         q[name] = r.text(n)
     q["rest"] = len(raw) - r.at

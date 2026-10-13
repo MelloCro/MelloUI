@@ -33,6 +33,12 @@
 --   FX.Strike(layer, look, kind, quiet[, dur]) land at once (an instant)
 --   FX.Show(unit, kind, look, quiet, dur) -> layer   a kind's landing on the
 --                                  unit's frame (nil: none of its shown)
+--   FX.Loot(x0, y0, target, tier, icon, tint[, spill[, coin]]) -> layer
+--                                  (0.21.3) an item's flight from a point to
+--                                  its slot, the rarer the more; `coin`: a
+--                                  coin's, bare and small (Loot, below)
+--   FX.LevelRoll(split, old, new) -> true   (0.21.3) a level badge's number
+--                                  turning over (Level up, below)
 --   FX.Clear(layer), FX.Free(layer)
 -- The frames (the same for every feature): FX.Members() -> list, set (your
 -- group's units now); FX.Canon(unit) (you in a raid: your raid unit);
@@ -66,10 +72,12 @@ local clips = setmetatable({}, WEAK)     -- [layer] = { frame (clips its childre
 local state = setmetatable({}, WEAK)     -- [layer] = its geometry and stage
 local tintOf = setmetatable({}, WEAK)    -- [texture] = the colour it is tinted now ({ r, g, b })
 local covers = setmetatable({}, WEAK)    -- [layer] = what stands over its light: { frame, tex, text } (a split's)
+local icons = setmetatable({}, WEAK)     -- [layer] = a loot flight's item: { edge, icon, file } (0.21.3)
 FX.state = state
 FX.sprites = sprites   -- (the tests')
 FX.clips = clips       -- (the tests': a landing's sprites live in its clip frame)
 FX.tintOf, FX.covers = tintOf, covers   -- (the tests')
+FX.icons = icons   -- (the tests': a loot flight's item, 0.21.3)
 
 --------------------------------------------------------------------------------
 -- Sprites
@@ -121,8 +129,12 @@ local function Rgb(colour)
 	return c[1], c[2], c[3]
 end
 
--- sprite i at (x, y) in UIParent's units, tinted `tint` ({ r, g, b }; white);
--- returns the next index
+-- (0.21.3) the tint the sprites take while a loot look draws (an item
+-- quality's colour: LaunchLoot, and LandStep for a part with `tint`), else nil
+local tintNow = nil
+
+-- sprite i at (x, y) in UIParent's units, tinted `tint` ({ r, g, b }; else
+-- tintNow; white); returns the next index
 local function Put(layer, i, file, x, y, w, h, a, rot, tint)
 	if a <= 0.004 then
 		return i
@@ -131,7 +143,7 @@ local function Put(layer, i, file, x, y, w, h, a, rot, tint)
 	t:ClearAllPoints()
 	t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
 	Show(t, file, w, h, a, rot)
-	tint = tint or WHITE_RGB
+	tint = tint or tintNow or WHITE_RGB
 	if tintOf[t] ~= tint then
 		t:SetVertexColor(tint[1], tint[2], tint[3])
 		tintOf[t] = tint
@@ -428,6 +440,162 @@ local function LaunchW(layer, S, p)
 end
 
 --------------------------------------------------------------------------------
+-- Loot (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/output/
+-- animation_previews, 4. Loot into the bags -- "more impactfull animations
+-- depending on the rarity of the item"): an item flies from where it was
+-- looted to its slot, its icon edged in its quality's colour, the rarer the
+-- more. Tier 0 (poor, common): a plain flight. 1 (uncommon): a glow where it
+-- was picked up, a streak, a glow on it. 2 (rare): rays at the pickup and a
+-- moment's pause. 3 (epic): sparks bursting at the pickup and shed on the
+-- way. 4 (legendary and up): a pillar of light where it dropped, the item
+-- rising and hanging in turning rays, a comet's tail. Its landings
+-- (LANDINGS.loot) on the slot: a light across it, a glow, a ring, a
+-- shockwave. The white sprites tinted the quality's colour (S.tint: { r, g,
+-- b, hex = "#rrggbb" }). The slot may move while it flies (the bags laid out
+-- anew): the end of the curve follows it. FX.Loot starts it
+--------------------------------------------------------------------------------
+
+-- a fixed spread per index (the same picture every time)
+local function R(i, k)
+	local v = sin(i * 12.9898 + k * 78.233) * 43758.5453
+	return v - floor(v)
+end
+
+local LOOT = { FLIGHT = { 0.45, 0.55, 0.65, 0.8, 0.95 }, RISE = 0.35, HANG = 0.55, PAUSE = 0.12, LIFT = 34, ICON = 30,
+	PICKUP = 0.45, COIN = 18, COIN_FLIGHT = 0.6 }
+FX.LOOT = LOOT
+
+local function Ease(u)
+	u = max(0, min(1, u))
+	return u < 0.5 and 2 * u * u or 1 - (-2 * u + 2) * (-2 * u + 2) / 2
+end
+
+-- the flying item: its icon on an edge of its quality's colour (nil x: hidden)
+local function LootIcon(layer, S, x, y, size)
+	local ic = icons[layer]
+	if not ic then
+		if not x then
+			return
+		end
+		ic = { edge = layer:CreateTexture(nil, "OVERLAY", nil, 6), icon = layer:CreateTexture(nil, "OVERLAY", nil, 7) }
+		ic.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		icons[layer] = ic
+	end
+	if not x then
+		ic.edge:Hide()
+		ic.icon:Hide()
+		return
+	end
+	local L, tint = S.loot, S.tint or WHITE_RGB
+	if ic.file ~= L.icon then
+		ic.icon:SetTexture(L.icon)
+		ic.file = L.icon
+	end
+	-- (a coin: its own round picture, whole, no edge)
+	ic.icon:SetTexCoord(L.coin and 0 or 0.07, L.coin and 1 or 0.93, L.coin and 0 or 0.07, L.coin and 1 or 0.93)
+	ic.edge:SetColorTexture(tint[1], tint[2], tint[3], 1)
+	for _, t in ipairs({ ic.edge, ic.icon }) do
+		t:ClearAllPoints()
+		t:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+	end
+	ic.edge:SetSize(size + 4, size + 4)
+	ic.icon:SetSize(size, size)
+	ic.edge:SetShown(not L.coin)
+	ic.icon:Show()
+end
+
+local function LaunchLoot(layer, S, p)
+	local L = S.loot
+	local T = p * L.total
+	local tier = L.tier
+	-- (its slot as it stands now: the bags may have been laid out anew)
+	if S.frame and S.Rect then
+		local l, b, r, t = S.Rect(S.frame)
+		if l then
+			S.x1, S.y1 = (l + r) / 2, (b + t) / 2
+		end
+	end
+	tintNow = S.tint
+	local n = 1
+	if L.coin then
+		local x, y = Path(S, Ease(T / L.flight))
+		n = Put(layer, n, "glow_gold.tga", x, y, 20, nil, 0.4)
+		tintNow = nil
+		HideFrom(layer, n)
+		LootIcon(layer, S, x, y, LOOT.COIN)
+		return
+	end
+	-- where it was picked up: a glow, rays (rare and up), sparks (epic and up),
+	-- the legendary's pillar of light
+	local pu = min(1, T / LOOT.PICKUP)
+	if tier >= 1 then
+		n = Put(layer, n, "glow_white.tga", L.sx, L.sy, (18 + 26 * tier * pu) * 2, nil, 0.7 * (1 - pu))
+	end
+	if tier >= 2 then
+		n = Put(layer, n, "rays_gold.tga", L.sx, L.sy, (24 + 18 * tier * (1 - (1 - pu) * (1 - pu))) * 2, nil,
+			0.75 * (1 - pu), T * 1.5)
+	end
+	if tier >= 3 then
+		for i = 1, 8 * tier do
+			local life = 0.45 + 0.35 * R(i, 5)
+			if T < life then
+				local ang = math.pi / 2 + (R(i, 6) - 0.5) * 2.2
+				local v = 110 * (0.5 + 0.7 * R(i, 7))
+				local x = L.sx + cos(ang) * v * T
+				local y = L.sy + sin(ang) * v * T - 70 * T * T
+				n = Put(layer, n, "glow_white.tga", x, y, 9 * (0.7 + 0.7 * R(i, 8)), nil, 0.95 * (1 - T / life))
+			end
+		end
+	end
+	if tier == 4 then
+		local pa = min(1, T / 0.25) * (1 - max(0, min(1, (T - LOOT.RISE - LOOT.HANG) / 0.4)))
+		n = Put(layer, n, "pillar_gold.tga", L.sx, L.sy + 110, 36, 220, 0.75 * pa)
+	end
+	-- the item: rising and hanging in turning rays (legendary), then along
+	-- the curve with its streak, its glow and (epic and up) sparks shed
+	local x, y, size = L.sx, L.sy, LOOT.ICON
+	if T < L.pre then
+		if tier == 4 then
+			local ru = min(1, T / LOOT.RISE)
+			y = L.sy + LOOT.LIFT * (1 - (1 - ru) * (1 - ru))
+			size = LOOT.ICON * 1.25
+			if T > LOOT.RISE then
+				n = Put(layer, n, "rays_gold.tga", x, y, 88, nil, 0.55, T * 2)
+			end
+			n = Put(layer, n, "glow_white.tga", x, y, 68, nil, 0.5)
+		end
+	else
+		local e = Ease((T - L.pre) / L.flight)
+		x, y = Path(S, e)
+		if tier >= 1 then
+			local trail = 6 + tier * 5
+			for i = trail, 1, -1 do
+				local tx, ty = Path(S, e - i * 0.025)
+				if e - i * 0.025 > 0 then
+					n = Put(layer, n, "glow_white.tga", tx, ty, (3 + tier * 2.2) * 2.4 * (1 - i / (trail + 1)), nil,
+						(0.55 + 0.1 * tier) * (1 - i / (trail + 1)))
+				end
+			end
+			n = Put(layer, n, "glow_white.tga", x, y, (16 + 5 * tier) * 2, nil, 0.45 + 0.08 * tier)
+		end
+		if tier >= 3 then
+			for i = 1, 6 do
+				local t = e - i * 0.06
+				if t > 0 then
+					local sx, sy = Path(S, t)
+					local nx, ny = Normal(S, t)
+					local o = (i % 2 == 0 and 1 or -1) * (4 + 3 * i)
+					n = Put(layer, n, "spark_gold.tga", sx + nx * o, sy + ny * o - 6 * i, 10, nil, 1 - i / 7)
+				end
+			end
+		end
+	end
+	tintNow = nil
+	HideFrom(layer, n)
+	LootIcon(layer, S, x, y, size)
+end
+
+--------------------------------------------------------------------------------
 -- The landings: per look and kind, a list of parts. A part: its kind (the
 -- function drawing it), its sprite, from t0 to t1 (s), its envelope
 -- (flash: up at once, falling fast; hold: up, held, down; fade; pulse: up and
@@ -673,6 +841,52 @@ local LANDINGS = {
 	},
 }
 
+-- (0.21.3) Loot's landings on the item's slot, by tier ("0" poor and common ..
+-- "4" legendary and up): a light across the slot, its glow (uncommon and up),
+-- a ring (rare), a shockwave behind it (epic), a big ring and rays
+-- (legendary); `tint`: the sprite in the quality's colour. "frame": the
+-- Bags window's border flashing once in it (a legendary's)
+do
+	local SHEEN = { "sheen", "sheen.tga", t0 = 0, t1 = 0.35 }
+	local function Glow(w)
+		return { "sprite", "glow_white.tga", w = w, h = w, t0 = 0, t1 = 0.6, env = "fade", a = 0.5, tint = true }
+	end
+	local function Ring(from, to, a, t1)
+		return { "sprite", "halo_white.tga", w = 1, h = 1, t0 = 0, t1 = t1 or 0.6, env = "fade", grow = { from, to },
+			a = a, tint = true }
+	end
+	local function Burst(n)
+		return { "spray", "glow_white.tga", n = n, r0 = 0.5, r1 = 1.5, size = 0.22, t0 = 0, t1 = 0.6, env = "fade",
+			even = true, tint = true }
+	end
+	LANDINGS.loot = {
+		["0"] = { SHEEN },
+		["1"] = { SHEEN, Glow(1.8) },
+		["2"] = { SHEEN, Glow(2.0), Ring(1.4, 3.2, 0.85), Burst(14) },
+		["3"] = { SHEEN, Glow(2.2), Ring(1.4, 3.2, 0.85), Ring(1.6, 5.8, 0.5, 0.7), Burst(18) },
+		["4"] = { SHEEN, Glow(2.6), Ring(1.4, 3.6, 0.9), Ring(1.6, 7.0, 0.6, 0.8), Burst(22),
+			{ "sprite", "rays_gold.tga", w = 3.2, h = 3.2, t0 = 0, t1 = 0.7, env = "flash", spin = 0.1, tint = true } },
+		frame = { { "border", colour = "tint", slot = 1, grow = 2, t0 = 0, t1 = 0.7, a = 0.9, env = "flash" } },
+		-- a coin landing on the money line: a warm glow there
+		coin = { { "sprite", "glow_gold.tga", fit = true, w = 1.2, h = 2.2, t0 = 0, t1 = 0.45, env = "flash", a = 0.5 } },
+	}
+	LANDINGS.loot.h = LANDINGS.loot["0"]
+	-- (0.21.3) Level up's: a ring of light spreading from the level badge with
+	-- a glow (as its number turns over: LEVEL.ROLL_AT); a light running along
+	-- the XP bar, a warm glow over it
+	LANDINGS.level = {
+		orb = {
+			{ "sprite", "wave_gold.tga", w = 1, h = 1, t0 = 0.6, t1 = 1.4, env = "fade", grow = { 1, 2.7 }, a = 0.9 },
+			{ "sprite", "glow_gold.tga", fit = true, w = 1.3, h = 1.3, t0 = 0.6, t1 = 1.3, env = "flash", a = 0.55 },
+		},
+		bar = {
+			{ "sheen", "sheen.tga", t0 = 0.55, t1 = 0.95 },
+			{ "sprite", "glow_gold.tga", fit = true, w = 1.04, h = 1.8, t0 = 0.45, t1 = 1.1, env = "pulse", a = 0.4 },
+		},
+	}
+	LANDINGS.level.h = LANDINGS.level.orb
+end
+
 -- The tanks' tools and defensives (the user, 2026-10-09: "Last Stand, Shield
 -- Wall ... Aoe Taunt ... a roar effect, repeatable pulsing red waves
 -- emitting from its unitframe"; first looks, judged in the Effect Tester):
@@ -750,7 +964,7 @@ local COOLDOWNS = {
 -- of the square
 local ROUND_ART = { ["bubble.tga"] = "bubble_round.tga", ["bubble_gold.tga"] = "bubble_gold_round.tga" }
 
-local LAUNCH = { holy = LaunchA, nature = LaunchB, water = LaunchW, quiet = LaunchC }
+local LAUNCH = { holy = LaunchA, nature = LaunchB, water = LaunchW, quiet = LaunchC, loot = LaunchLoot }
 local CHARGE = { holy = ChargeA, nature = ChargeB, water = ChargeW, quiet = ChargeC }
 
 -- the landing for a look and a kind (a group or chain heal, or one not known:
@@ -824,12 +1038,6 @@ local function Grow(part, v)
 		return 1
 	end
 	return g[1] + (g[2] - g[1]) * (1 - (1 - v) * (1 - v))
-end
-
--- a fixed spread per index (the same picture every time)
-local function R(i, k)
-	local v = sin(i * 12.9898 + k * 78.233) * 43758.5453
-	return v - floor(v)
 end
 
 -- a pop: in from 60% to a little over its size, then settling
@@ -1111,7 +1319,10 @@ local function Sheen(layer, part, B, v, a)
 	t:Show()
 	t:SetSize(B.u * 1.3, B.h * 1.7)
 	t:ClearAllPoints()
-	t:SetPoint("CENTER", f, "LEFT", (B.cut and 0 or B.w * MARGIN) - B.u * 0.6 + (B.w + B.u * 1.2) * v, 0)
+	-- (from the frame's own left edge: the clip frame reaches the spill past it when one is given -- the bag
+	-- button's sheen ran three slots to its left, the user's video of 2026-10-13)
+	local left = B.cut and 0 or (B.spillX or B.w * MARGIN)
+	t:SetPoint("CENTER", f, "LEFT", left - B.u * 0.6 + (B.w + B.u * 1.2) * v, 0)
 	t:SetAlpha(max(0, min(1, a)))
 end
 
@@ -1285,6 +1496,88 @@ local function CopyText(dst, src)
 	Place(dst, l, b, r, t, ShownAlpha(src))
 end
 
+--------------------------------------------------------------------------------
+-- Level up (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/output/
+-- animation_previews, 5. Level up): the level badge's number turns over --
+-- the old level rising out, the new one coming in from below (ROLL seconds
+-- from ROLL_AT) -- on a copy of the badge laid over it (its orb, its disc and
+-- its number: CopyTexture, CopyText; the game's own regions never written),
+-- shown from the start (the game shows the new level at once) to the end
+-- (TOTAL), then gone. Its ring of light and the XP bar's light are landings
+-- (LANDINGS.level, FX.ShowOn). The badge is a portrait-and-bars frame's
+-- (FX.Split: the Unit Frames Kit's); its pieces made at the first level
+-- gained. Not under Reduce Motion
+--------------------------------------------------------------------------------
+
+local LEVEL = { ROLL_AT = 0.62, ROLL = 0.3, TOTAL = 1.0 }
+FX.LEVEL = LEVEL
+local roll = {}   -- the badge's copy: frame, clip, orb, disc, old, new; the number's rect l, b, w, h
+
+local function RollStep(L, u)
+	local t = u * LEVEL.TOTAL
+	local p = max(0, min(1, (t - LEVEL.ROLL_AT) / LEVEL.ROLL))
+	local e = 1 - (1 - p) * (1 - p)
+	L.old:ClearAllPoints()
+	L.old:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", L.l, L.b + L.h * e)
+	L.old:SetAlpha(1 - p)
+	L.new:ClearAllPoints()
+	L.new:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", L.l, L.b - L.h * (1 - e))
+	L.new:SetAlpha(p)
+end
+
+local function RollOver(L)
+	L.frame:Hide()
+end
+
+function FX.LevelRoll(split, old, new)
+	local anim = MelloUI.Anim
+	if not (split and split.disc and split.number) or (anim and anim.reduceMotion) then
+		return false
+	end
+	local nl, nb, nr, nt = FX.Rect(split.number)
+	if not nl then
+		return false
+	end
+	local L = roll
+	if not L.frame then
+		local f = CreateFrame("Frame", nil, FX.Host())
+		f:SetAllPoints(UIParent)
+		L.orb = f:CreateTexture(nil, "ARTWORK", nil, 0)
+		L.disc = f:CreateTexture(nil, "ARTWORK", nil, 1)
+		local clip = CreateFrame("Frame", nil, f)
+		clip:SetClipsChildren(true)
+		L.old = clip:CreateFontString(nil, "OVERLAY")
+		L.new = clip:CreateFontString(nil, "OVERLAY")
+		L.frame, L.clip = f, clip
+		FX.roll = L   -- (the tests')
+	end
+	L.frame:SetFrameLevel(FX.Host():GetFrameLevel() + 30)
+	L.clip:SetFrameLevel(L.frame:GetFrameLevel() + 1)
+	L.orb:Hide()
+	L.disc:Hide()
+	CopyTexture(L.orb, split.orb)
+	CopyTexture(L.disc, split.disc)
+	if not L.disc:IsShown() then
+		return false
+	end
+	CopyText(L.old, split.number)
+	CopyText(L.new, split.number)
+	L.old:SetText(tostring(old))
+	L.new:SetText(tostring(new))
+	L.l, L.b, L.w, L.h = nl, nb, nr - nl, nt - nb
+	-- (the number's own room, a little taller: the rolling numbers cut at its edges)
+	local dl, _, dr = FX.Rect(split.disc)
+	L.clip:ClearAllPoints()
+	L.clip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", dl or nl, nb - 1)
+	L.clip:SetSize(max(1, (dr or nr) - (dl or nl)), max(1, L.h + 2))
+	L.old:SetSize(max(1, L.w), max(1, L.h))
+	L.new:SetSize(max(1, L.w), max(1, L.h))
+	RollStep(L, 0)
+	L.frame:Show()
+	Anim:Drive(L, RollStep, LEVEL.TOTAL, "linear", RollOver)
+	return true
+end
+
 local COVER_PARTS = { "ring", "orb", "disc" }   -- (S's regions, drawn in this order; the number over them)
 
 local function LayCover(layer, S)
@@ -1343,6 +1636,7 @@ end
 
 local function Clear(layer)
 	HideFrom(layer, 1)
+	LootIcon(layer, nil)
 	FlareAlpha(layer, 1, 0)
 	FlareAlpha(layer, 2, 0)
 	local c = clips[layer]
@@ -1383,6 +1677,7 @@ local function LandStep(layer, p)
 			local lt = t - part.t0
 			local v = lt / span
 			local a = Env(part, v, lt, span) * (part.a or 1)
+			tintNow = part.tint and S.tint or nil
 			if kind == "border" and not B.round then
 				FlareAlpha(layer, part.slot, a)
 			elseif kind == "sheen" then
@@ -1399,6 +1694,7 @@ local function LandStep(layer, p)
 			FlareAlpha(layer, part.slot, 0)
 		end
 	end
+	tintNow = nil
 	if not sheen then
 		c.tex:Hide()
 	end
@@ -1461,6 +1757,7 @@ function Arrive(layer)
 		return
 	end
 	S.stage = "land"
+	LootIcon(layer, nil)
 	local B = Box(S)
 	local list = Landing(S.quiet and "quiet" or S.look, S.kind)
 	S.landing = list
@@ -1468,7 +1765,7 @@ function Arrive(layer)
 	S.total = list.held and (list.fixed or S.dur or 6) or list.total
 	for _, part in ipairs(list) do
 		if part[1] == "border" and not B.round then
-			Flare(layer, part.slot, B, part.grow, part.colour)
+			Flare(layer, part.slot, B, part.grow, part.colour == "tint" and S.tint and S.tint.hex or part.colour)
 		end
 	end
 	HideFrom(layer, 1)
@@ -1917,7 +2214,7 @@ end
 -- Personal Display's shield column): its rect read from the frame, the light
 -- let `spill` = { x, y } UI px past its sides; the layer, or nil when the
 -- frame has no rect to read
-function FX.ShowOn(frame, look, kind, spill)
+function FX.ShowOn(frame, look, kind, spill, tint)
 	-- (the engine leaves Reduce Motion to its callers: Heal Flight's, Frame Effects' -- this one is its own caller's door)
 	if MelloUI.Anim and MelloUI.Anim.reduceMotion then
 		return nil
@@ -1930,7 +2227,52 @@ function FX.ShowOn(frame, look, kind, spill)
 	local S = FX.state[layer]
 	S.fl, S.fb, S.fr, S.ft = l, b, r, t
 	S.frame, S.Rect, S.unit = frame, FX.Rect, nil
+	S.tint = tint   -- (0.21.3: a loot look's colour, { r, g, b, hex })
 	FX.Strike(layer, look, kind, nil, nil, nil, spill)
+	return layer
+end
+
+-- (0.21.3) an item's flight from (x0, y0) (UIParent's units) to `target`
+-- (its slot, or the bag button), then its landing there by `tier` (0..4),
+-- `icon` its picture, `tint` its quality's { r, g, b, hex }, `spill` how far
+-- the landing's light may reach past the target's sides ({ x, y }); the
+-- layer, or nil (Reduce Motion, or no rect to read)
+function FX.Loot(x0, y0, target, tier, icon, tint, spill, coin)
+	if MelloUI.Anim and MelloUI.Anim.reduceMotion then
+		return nil
+	end
+	local l, b, r, t = FX.Rect(target)
+	if not (l and x0 and y0) then
+		return nil
+	end
+	tier = max(0, min(4, floor(tonumber(tier) or 0)))
+	local layer = FX.FreeLayer()
+	if not FX.Free(layer) then
+		FX.Clear(layer)
+	end
+	local S = state[layer]
+	S.round, S.bars, S.cut, S.mate, S.owner, S.also = nil, nil, nil, nil, nil, nil
+	S.ring, S.orb, S.disc, S.number = nil, nil, nil, nil
+	S.fl, S.fb, S.fr, S.ft = l, b, r, t
+	S.frame, S.Rect, S.unit = target, FX.Rect, nil
+	S.spillX, S.spillY = spill and spill[1] or nil, spill and spill[2] or nil
+	S.look, S.kind, S.quiet, S.hop, S.dur, S.stage = "loot", coin and "coin" or tostring(tier), nil, false, nil, "launch"
+	S.tint = tint
+	local L = S.loot or {}
+	S.loot = L
+	L.tier, L.icon, L.sx, L.sy, L.coin = tier, icon, x0, y0, coin and true or false
+	if coin then
+		tier = 0
+		L.tier = 0
+	end
+	L.pre = (tier == 4 and LOOT.RISE + LOOT.HANG or 0) + (tier >= 2 and LOOT.PAUSE or 0)
+	L.flight = coin and LOOT.COIN_FLIGHT or LOOT.FLIGHT[tier + 1]
+	L.total = L.pre + L.flight
+	S.x0, S.y0 = x0, y0 + (tier == 4 and LOOT.LIFT or 0)
+	S.x1, S.y1 = (l + r) / 2, (b + t) / 2
+	FX.Bend(S, 0.28 + 0.04 * tier)
+	Begin(layer)
+	Anim:Drive(layer, LaunchStep, L.total, "linear", Arrive)
 	return layer
 end
 

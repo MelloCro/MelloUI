@@ -53,11 +53,16 @@ local M = MelloUI:RegisterModule("CooldownText", {
 --------------------------------------------------------------------------------
 
 local SOON = 5
+-- (the colours: MelloUI.Meaning's cooldown* keys)
+local function Style(key, scale)
+	local c = MelloUI.Meaning[key]
+	return { r = c[1], g = c[2], b = c[3], scale = scale }
+end
 local STYLES = {
-	soon    = { r = 1.0, g = 0.1, b = 0.1, scale = 1.3 },
-	seconds = { r = 1.0, g = 1.0, b = 0.1, scale = 1.0 },
-	minutes = { r = 0.8, g = 0.8, b = 0.9, scale = 0.8 },
-	hours   = { r = 0.7, g = 0.7, b = 0.7, scale = 0.75 },
+	soon    = Style("cooldownSoon", 1.3),
+	seconds = Style("cooldownSeconds", 1.0),
+	minutes = Style("cooldownMinutes", 0.8),
+	hours   = Style("cooldownHours", 0.75),
 }
 local PLAIN = { r = 1, g = 1, b = 1, scale = 1 }
 

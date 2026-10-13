@@ -86,6 +86,7 @@ local KINDS_H = 46 + 22 * 26 + 8 + 40 + 10
 local M   -- (the Kinds row's build reads it)
 M = MelloUI:RegisterModule("BagWindow", {
 	title = "Bags by Kind",
+	slash = "bags",   -- (0.21.3: /mello bags loot, /mello bags coins)
 	desc = "Your bags in one window of MelloUI's own, sorted by kind: what you picked up lately, gear, quest items, consumables, junk, trade goods and the rest, each under its own heading. The empty slots fold into one slot with their count.",
 	icon = "Interface\\Icons\\INV_Misc_Bag_08",
 	flavour = "A place for everything, and everything under its heading.",
@@ -93,7 +94,8 @@ M = MelloUI:RegisterModule("BagWindow", {
 	-- (no group: its rows sit on the Windows page, the bag window's)
 	installer = false,
 	enabledByDefault = true,
-	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true },
+	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true,
+		lootFlight = true },
 	options = {
 		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
 		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
@@ -126,6 +128,11 @@ M = MelloUI:RegisterModule("BagWindow", {
 		  desc = "All your empty slots as one slot with their count (drop an item on it to put it in a free slot). Off: every empty slot shows." },
 		{ type = "dropdown", key = "sortBy", name = "Sort Items By", values = SORT_BY,
 		  desc = "The order inside each kind: better quality first, by name, the ones you picked up last first, or the highest item level first." },
+		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews, and "more impactfull animations
+		-- depending on the rarity of the item")
+		{ type = "toggle", key = "lootFlight", name = "Loot Flight", new = "0.21.3",
+		  search = "loot animation fly flight rarity quality legendary epic",
+		  desc = "An item you loot flies from where you picked it up into its slot in your bag window (with the bags closed, onto the bag button) and lands with a light across it. The rarer it is, the more it does: green leaves a streak, blue bursts into rays and lands in a ring, purple throws sparks and a shockwave, and a legendary rises in a pillar of light, flashes your bag window's border and says its name on the screen. Turning in a quest, its reward item flies the same way, and its money flies as coins into the bag window's money, which counts up as they land. Only loot and quest rewards, never what you buy, craft or take from the mail. Not with Reduce Motion." },
 	},
 })
 
@@ -2715,14 +2722,416 @@ function M.BuildKindList(canvas, width)
 	kindList = list
 end
 
+--------------------------------------------------------------------------------
+-- Loot Flight (0.21.3; the user, 2026-10-13: "Yes to all" to BuildData/output/
+-- animation_previews, 4. Loot into the bags, and "more impactfull animations
+-- depending on the rarity of the item"): an item looted flies from where it
+-- was picked up -- the pointer as it came (on the corpse, or on the loot
+-- window's row) -- into its slot in this window (laid out first, in its
+-- kind), or with the bags closed onto the bag button; the rarer the more
+-- (MelloUI.FrameFX's loot look). A legendary flashes this window's border as
+-- it lands and says its name (MelloUI:Announce). Only loot and a quest's
+-- reward: from the loot window's or the reward window's opening (auto loot
+-- too) to LINGER seconds after it closes -- never a purchase, the mail or a
+-- craft. A quest turned in (Animations 6, "Turning in a quest") also sends
+-- its money as COINS coins (FX.Loot's coin) from the pointer into this
+-- window's money, which counts up as each lands (Fly.Coins; MoneyFrame_Update
+-- on the window's own money frame, the real sum at the end), or with the bags
+-- closed onto the bag button. The pushes (ITEM_PUSH: the bag and
+-- the icon) are matched to their slots once the bags are updated (the game's
+-- new-item mark first); up to MAX at once, STAGGER apart. Its events only
+-- while the option is on; its records reused; the engine's layers made at
+-- its first flight. Not under Reduce Motion (FX.Loot's own door)
+--------------------------------------------------------------------------------
+
+local Fly = { AFTER = 0.05, FALLBACK = 0.4, STAGGER = 0.08, LINGER = 1.5, MAX = 8, SPILL = 3, COINS = 6, COIN_GAP = 0.08,
+	COIN_ICONS = { "Interface\\MoneyFrame\\UI-SilverIcon", "Interface\\MoneyFrame\\UI-CopperIcon" },
+	coin = { sum = 0, from = 0, landed = 0 },
+	open = false, closedAt = -100, n = 0, pushes = {}, queue = {}, q = 0, due = false, tints = {}, spill = {},
+	taken = {} }
+
+function Fly.On()
+	return M.isEnabled and M.db ~= nil and M.db.lootFlight ~= false
+end
+
+-- the quality's tier: 0 poor and common .. 4 legendary and up
+function Fly.Tier(quality)
+	quality = Num(quality) or 1
+	return quality <= 1 and 0 or math.min(4, quality - 1)
+end
+
+-- the quality's colour, the game's (a meaning colour): { r, g, b, hex = "#rrggbb" }, read once
+function Fly.Tint(quality)
+	quality = Num(quality) or 1
+	local t = Fly.tints[quality]
+	if t then
+		return t
+	end
+	local r, g, b
+	if C_Item and C_Item.GetItemQualityColor then
+		local ok, r1, g1, b1 = pcall(C_Item.GetItemQualityColor, quality)
+		if ok then
+			r, g, b = Num(r1), Num(g1), Num(b1)
+		end
+	end
+	if not (r and g and b) then
+		local c = type(ITEM_QUALITY_COLORS) == "table" and ITEM_QUALITY_COLORS[quality]   -- look-ok: the game's quality colours
+		r, g, b = c and Num(c.r), c and Num(c.g), c and Num(c.b)
+	end
+	if not (r and g and b) then
+		return nil
+	end
+	t = { r, g, b, hex = string.format("#%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
+		math.floor(b * 255 + 0.5)) }
+	Fly.tints[quality] = t
+	return t
+end
+
+-- the pointer in UIParent's units (nil when it cannot be read)
+function Fly.Pointer()
+	local x, y = GetCursorPosition()
+	x, y = Num(x), Num(y)
+	local k = Num(UIParent:GetEffectiveScale())
+	if not (x and y and k and k > 0) then
+		return nil
+	end
+	return x / k, y / k
+end
+
+-- the slot an icon came into: one the game marks new first, else the first
+-- holding it, not taken by another push of this pass (`used`)
+function Fly.Find(icon, taken)
+	local fb, fs, finfo
+	for _, bag in ipairs(HeldBags()) do
+		local okN, count = pcall(C_Container.GetContainerNumSlots, bag)
+		for slot = 1, (okN and Num(count)) or 0 do
+			if not taken[bag * 1000 + slot] then
+				local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+				if ok and type(info) == "table" and Num(info.iconFileID) == icon then
+					local okNew, new = pcall(C_NewItems.IsNewItem, bag, slot)
+					if okNew and new == true then
+						return bag, slot, info
+					end
+					if not fb then
+						fb, fs, finfo = bag, slot, info
+					end
+				end
+			end
+		end
+	end
+	return fb, fs, finfo
+end
+
+-- the pushes of a loot matched to their slots and queued (reused records)
+function Fly.Go()
+	Fly.due = false
+	if Fly.n == 0 or not Fly.On() then
+		Fly.n = 0
+		return
+	end
+	local taken = Fly.taken
+	wipe(taken)
+	for i = 1, Fly.n do
+		local p = Fly.pushes[i]
+		local bag, slot, info = Fly.Find(p.icon, taken)
+		if bag and Fly.q < Fly.MAX then
+			taken[bag * 1000 + slot] = true
+			Fly.q = Fly.q + 1
+			local r = Fly.queue[Fly.q] or {}
+			Fly.queue[Fly.q] = r
+			r.x, r.y, r.bag, r.slot, r.icon = p.x, p.y, bag, slot, p.icon
+			r.quality = Num(info.quality) or 1
+			local name = info.itemName
+			if not (type(name) == "string" and not Secret(name)) and C_Item and C_Item.GetItemNameByID then
+				local okName, n = pcall(C_Item.GetItemNameByID, Num(info.itemID))
+				name = okName and type(n) == "string" and not Secret(n) and n or nil
+			end
+			r.name = type(name) == "string" and not Secret(name) and name or nil
+		end
+	end
+	Fly.n = 0
+	Fly.Next()
+end
+
+-- the next queued item away (then the one after it, STAGGER later)
+function Fly.Next()
+	if Fly.q == 0 then
+		return
+	end
+	local r = table.remove(Fly.queue, 1)
+	Fly.q = Fly.q - 1
+	Fly.queue[#Fly.queue + 1] = r   -- (kept for the next push, past the queue's end)
+	Fly.Launch(r)
+	if Fly.q > 0 then
+		C_Timer.After(Fly.STAGGER, Fly.Next)
+	end
+end
+
+function Fly.Launch(r)
+	local FX = MelloUI.FrameFX
+	if not (FX and FX.Loot and Fly.On()) then
+		return
+	end
+	local frame, target = win.frame, nil
+	if frame and frame:IsShown() then
+		local list = BAGS.slots[r.bag]
+		local b = list and list[r.slot]
+		if b and b:IsVisible() then
+			target = b
+		end
+	else
+		local bb = _G.MainMenuBarBackpackButton
+		if bb and bb:IsVisible() then
+			target = bb
+		end
+	end
+	if not target then
+		return
+	end
+	local tier, tint = Fly.Tier(r.quality), Fly.Tint(r.quality)
+	local reach = G.SLOT * Fly.SPILL
+	Fly.spill[1], Fly.spill[2] = reach, reach
+	local layer = FX.Loot(r.x, r.y, target, tier, r.icon, tint, Fly.spill)
+	if layer and tier == 4 then
+		-- a legendary: its name on the screen, in its colour; the window's
+		-- border flashing as it lands
+		if r.name and tint then
+			MelloUI:Announce("Legendary: |cff" .. tint.hex:sub(2) .. r.name .. "|r")
+		end
+		local st = FX.state[layer]
+		if frame and frame:IsShown() and st and st.loot then
+			Fly.flashTint = tint
+			C_Timer.After(st.loot.total, Fly.Flash)
+		end
+	end
+end
+
+function Fly.Flash()
+	local FX = MelloUI.FrameFX
+	if FX and FX.ShowOn and win.frame and win.frame:IsShown() then
+		FX.ShowOn(win.frame, "loot", "frame", nil, Fly.flashTint)
+	end
+end
+
+-- a quest's money as coins (COINS of them, COIN_GAP apart) from where the
+-- pointer is to the window's money (counting up as each lands), or with the
+-- bags closed to the bag button. One job (Fly.coin) drives the count; the
+-- money frame shows the real sum at its end
+function Fly.Coins(money)
+	money = Num(money)
+	local FX = MelloUI.FrameFX
+	if not (money and money > 0 and FX and FX.Loot and Fly.On()) then
+		return
+	end
+	local frame = win.frame
+	local target = frame and frame:IsShown() and win.money or nil
+	if not target then
+		local bb = _G.MainMenuBarBackpackButton
+		target = bb and bb:IsVisible() and bb or nil
+	end
+	local x, y = Fly.Pointer()
+	if not (target and x) then
+		return
+	end
+	local tint = Fly.Tint(1)
+	local job = Fly.coin
+	job.x, job.y, job.target, job.tint = x, y, target, tint
+	job.sum, job.landed, job.sent = money, 0, 0
+	local okM, now = pcall(GetMoney)
+	now = okM and Num(now) or nil
+	job.counting = target == win.money and now ~= nil and type(_G.MoneyFrame_Update) == "function"
+	job.from = job.counting and math.max(0, now - money) or 0
+	local L = FX.LOOT
+	local total = (Fly.COINS - 1) * Fly.COIN_GAP + L.COIN_FLIGHT
+	MelloUI.Anim:Drive(job, Fly.CoinStep, total, "linear", Fly.CoinsLanded)
+end
+
+-- the coins sent COIN_GAP apart, and the money counted up as each lands
+function Fly.CoinStep(job, u)
+	local FX = MelloUI.FrameFX
+	local L = FX.LOOT
+	local total = (Fly.COINS - 1) * Fly.COIN_GAP + L.COIN_FLIGHT
+	local t = u * total
+	while job.sent < Fly.COINS and t >= job.sent * Fly.COIN_GAP do
+		job.sent = job.sent + 1
+		FX.Loot(job.x, job.y, job.target, 0, Fly.COIN_ICONS[job.sent % 2 + 1], job.tint, nil, true)
+	end
+	local landed = 0
+	for i = 1, Fly.COINS do
+		if t >= (i - 1) * Fly.COIN_GAP + L.COIN_FLIGHT then
+			landed = i
+		end
+	end
+	if landed ~= job.landed then
+		job.landed = landed
+		if job.counting and win.money then
+			pcall(_G.MoneyFrame_Update, win.money, job.from + math.floor(job.sum * landed / Fly.COINS + 0.5))
+		end
+	end
+end
+
+function Fly.CoinsLanded(job)
+	if job.counting and win.money and type(MoneyFrame_UpdateMoney) == "function" then
+		pcall(MoneyFrame_UpdateMoney, win.money)
+	end
+end
+
+-- (the reward's money, a moment after the turn-in: the bags' sum is the new one then)
+function Fly.TurnedIn()
+	Fly.Coins(Fly.reward)
+	Fly.reward = nil
+end
+
+Fly.OnEvent = Shared("OnEvent of the bag window's loot flight", function(_, event, arg1, arg2, arg3)
+	if event == "LOOT_OPENED" or event == "LOOT_READY" or event == "QUEST_COMPLETE" then
+		Fly.open = true
+	elseif event == "LOOT_CLOSED" or event == "QUEST_FINISHED" then
+		Fly.open, Fly.closedAt = false, GetTime()
+	elseif event == "QUEST_TURNED_IN" then
+		-- (questID, xp, money): the coins a moment later, the bags' sum the new one then
+		local money = Num(arg3)
+		if money and money > 0 then
+			Fly.reward = money
+			C_Timer.After(Fly.AFTER, Fly.TurnedIn)
+		end
+	elseif event == "ITEM_PUSH" then
+		local icon = Num(arg2)
+		if icon and Fly.n < Fly.MAX and (Fly.open or GetTime() - Fly.closedAt <= Fly.LINGER) then
+			local x, y = Fly.Pointer()
+			if x then
+				Fly.n = Fly.n + 1
+				local p = Fly.pushes[Fly.n] or {}
+				Fly.pushes[Fly.n] = p
+				p.icon, p.x, p.y = icon, x, y
+				if not Fly.due then
+					-- (the bags' update normally sends it sooner: BAG_UPDATE_DELAYED)
+					Fly.due = true
+					C_Timer.After(Fly.FALLBACK, Fly.Go)
+				end
+			end
+		end
+	elseif event == "BAG_UPDATE_DELAYED" then
+		if Fly.n > 0 then
+			C_Timer.After(Fly.AFTER, Fly.Go)
+		end
+	end
+end, "event")
+
+-- its events while the option is on (and the module)
+function Fly.Listen()
+	local on = Fly.On()
+	if not (on or Fly.frame) then
+		return
+	end
+	if not Fly.frame then
+		Fly.frame = CreateFrame("Frame")
+		Perf.SetScript(Fly.frame, "OnEvent", Fly.OnEvent)
+	end
+	for _, ev in ipairs({ "LOOT_OPENED", "LOOT_READY", "LOOT_CLOSED", "ITEM_PUSH", "BAG_UPDATE_DELAYED", "QUEST_COMPLETE",
+		"QUEST_FINISHED", "QUEST_TURNED_IN" }) do
+		if on then
+			pcall(Fly.frame.RegisterEvent, Fly.frame, ev)
+		else
+			pcall(Fly.frame.UnregisterEvent, Fly.frame, ev)
+		end
+	end
+	if not on then
+		Fly.n, Fly.open = 0, false
+	end
+end
+M.Fly = Fly   -- (the tests)
+
+-- (0.21.3) Loot Flight played to see it: /mello bags loot [poor | common |
+-- uncommon | rare | epic | legendary | all] -- an item of that quality from
+-- the pointer into the first slot shown in the bag window (its own picture
+-- and name), or with the bags closed onto the bag button; all: every
+-- quality, one after another. /mello bags coins: quest money flying in
+Fly.SAMPLE = { poor = 0, common = 1, uncommon = 2, rare = 3, epic = 4, legendary = 5, MONEY = 1234,
+	ICON = "Interface\\Icons\\INV_Misc_QuestionMark", NAME = "a made-up item", GAP = 1.4, GAP_BIG = 2.2,
+	off = "Bags by Kind: Loot Flight is off (Windows > Bags), or Reduce Motion is on.",
+	none = "Bags by Kind: no item is shown in the bag window to fly into." }
+
+function Fly.Sample(quality)
+	local anim = MelloUI.Anim
+	if not Fly.On() or (anim and anim.reduceMotion) then
+		MelloUI:Print(Fly.SAMPLE.off)
+		return
+	end
+	local x, y = Fly.Pointer()
+	if not x then
+		return
+	end
+	local r = Fly.sample or {}
+	Fly.sample = r
+	r.x, r.y, r.quality, r.bag, r.slot, r.icon, r.name = x, y, quality, nil, nil, Fly.SAMPLE.ICON, nil
+	if win.frame and win.frame:IsShown() then
+		for _, bag in ipairs(HeldBags()) do
+			for slot, b in pairs(BAGS.slots[bag] or {}) do
+				if not r.bag and b:IsVisible() then
+					local ok, info = pcall(C_Container.GetContainerItemInfo, bag, slot)
+					local icon = ok and type(info) == "table" and Num(info.iconFileID)
+					if icon then
+						r.bag, r.slot, r.icon = bag, slot, icon
+						r.name = type(info.itemName) == "string" and not Secret(info.itemName) and info.itemName or nil
+					end
+				end
+			end
+		end
+		if not r.bag then
+			MelloUI:Print(Fly.SAMPLE.none)
+			return
+		end
+	end
+	r.name = r.name or Fly.SAMPLE.NAME
+	Fly.Launch(r)
+end
+
+-- every quality, poor to legendary, one after another
+function Fly.SampleNext()
+	local q = Fly.sampleQ or 0
+	Fly.Sample(q)
+	if q < 5 then
+		Fly.sampleQ = q + 1
+		C_Timer.After(q >= 3 and Fly.SAMPLE.GAP_BIG or Fly.SAMPLE.GAP, Fly.SampleNext)
+	else
+		Fly.sampleQ = nil
+	end
+end
+
+-- (the words made in a function of their own: this file's main chunk is at Lua's limit of locals)
+function Fly.Words()
+	local words = {
+		loot = function() Fly.Sample(Fly.SAMPLE.epic) end,
+		["loot all"] = function()
+			Fly.sampleQ = 0
+			Fly.SampleNext()
+		end,
+		coins = function()
+			local anim = MelloUI.Anim
+			if not Fly.On() or (anim and anim.reduceMotion) then
+				MelloUI:Print(Fly.SAMPLE.off)
+				return
+			end
+			Fly.Coins(Fly.SAMPLE.MONEY)
+		end,
+	}
+	for _, word in ipairs({ "poor", "common", "uncommon", "rare", "epic", "legendary" }) do
+		words["loot " .. word] = function() Fly.Sample(Fly.SAMPLE[word]) end
+	end
+	return words
+end
+M.SlashWords = Fly.Words()
+
 function M:OnEnable(db)
 	self.db = db
 	Migrate(db)
 	self:Apply()
+	Fly.Listen()
 end
 
 function M:OnDisable()
 	self:Apply()
+	Fly.Listen()
 end
 
 -- a setting changed: laid out again while the window shows (else at its next open)
@@ -2736,6 +3145,10 @@ function M:OnSettingChanged(key, value, db)
 	end
 	if key == "bank" then
 		M.BankSwitched()
+	end
+	if key == "lootFlight" then
+		Fly.Listen()
+		return
 	end
 	LayAll()
 end
