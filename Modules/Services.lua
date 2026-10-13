@@ -1930,6 +1930,23 @@ local function RefreshBar()
 	if not (bar and bar:IsShown()) then
 		return
 	end
+	-- (0.21.3; the user's /reload, 2026-10-13: every icon grey for seconds
+	-- after it) no look while the start-up pass runs: Route, a feature addon,
+	-- is switched on after this module, and before it nothing is known
+	-- anywhere (each icon grey until its turn on the ticker). The first look in
+	-- the frame after the modules are on; the icons as they were meanwhile.
+	if MelloUI.ModulesStarting and MelloUI:ModulesStarting() then
+		if not bar.lookAfterStart then
+			bar.lookAfterStart = true
+			MelloUI:WhenModulesOn(function()
+				C_Timer.After(0, function()
+					bar.lookAfterStart = nil
+					RefreshBar()
+				end)
+			end)
+		end
+		return
+	end
 	for _, s in ipairs(slots) do
 		s.scanPhase = nil   -- every one looked at again, from the start
 	end
@@ -1942,7 +1959,7 @@ end
 
 -- One kind a tick, TICK_MS of it; a look that stops keeps its turn
 local function Tick()
-	if not (bar and bar:IsVisible()) then
+	if not (bar and bar:IsVisible()) or (MelloUI.ModulesStarting and MelloUI:ModulesStarting()) then
 		return
 	end
 	local i = bar.nextCheck or 1

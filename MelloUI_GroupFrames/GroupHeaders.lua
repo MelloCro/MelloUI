@@ -26,7 +26,8 @@
 -- frames show instead of our party, at the party container's place (Edit
 -- Layout's "Party Frames": the party moves there only, whichever frames show
 -- it).
---   Headers:Start() / Stop()   on and off
+--   Headers:Start([first]) / Stop()   on and off; `first`: only the header the
+--                              group needs now (the login's first step)
 --   Headers:Layout()           the layout settings again (a fight: later)
 --   Headers:Repaint()          every button painted again (bus groupframes "paint": the made-up ones too)
 --   Headers:Blizzard()         the game's frames hidden or given back
@@ -249,6 +250,13 @@ local function MakeContainer(kind)
 		Home(kind)(c)
 	end
 	containers[kind] = c
+	-- (0.21.3) made after the Fader faded the group's frames (at login: the
+	-- party's box a frame after the module comes on, the raid's after the
+	-- login): its fade at once
+	local F = MelloUI.Fader
+	if F and F.Refade then
+		F:Refade(kind)
+	end
 	return c
 end
 
@@ -923,18 +931,30 @@ function H:Repaint()
 	MelloUI:Fire("groupframes", "paint")
 end
 
-function H:Start()
+-- (0.21.3; the user, 2026-10-13: "when i do /reload it takes a second before
+-- the party frames are loaded in" -- every header waited for the login's
+-- settling seconds) `first`: only the header the group needs now -- the
+-- party's few buttons, or the raid's 40 while in a raid -- made at once (the
+-- module's first frame at login); the other with the rest after the login
+-- (both together cost the login's frames too much: the game's 1000 ms
+-- budget). `S.made`: a header made (what lays out loops over those there)
+local KINDS = { "party", "raid" }
+
+function H:Start(first)
 	S.on = true
 	Listen()
 	Later(function()
 		if not S.on then
 			return
 		end
-		if not S.made then
-			S.made = true
-			MakeHeader("party")
-			MakeHeader("raid")
-		else
+		local had = S.made
+		for _, kind in ipairs(first and { IsInRaid() and "raid" or "party" } or KINDS) do
+			if not headers[kind] then
+				MakeHeader(kind)
+			end
+		end
+		S.made = true
+		if had then
 			H:Layout()
 		end
 		Drive(true)
@@ -942,7 +962,7 @@ function H:Start()
 		PartyHosts()
 		PlaceParty()
 		SoloUpdate()
-	end, "Group Frames: the headers")
+	end, first and "Group Frames: the group's header" or "Group Frames: the headers")
 end
 
 function H:Stop()

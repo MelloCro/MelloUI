@@ -1523,6 +1523,15 @@ MelloUI:On("restart", Perf.Shared("'restart' on the bus", function()
 	DropUnlock(db)
 end), M)
 
+-- (0.21.3; the user, 2026-10-13: "dont we have the option to "Preload" the UI
+-- assets on the loading screen?") the files asked for in the login's own
+-- frame, while the loading screen is up -- since the start-up pass (0.19.8)
+-- this module comes on after it; OnEnable asks again for the same files
+function M:OnLoginFrame(db)
+	self.db = db   -- (Kit:BorderValue reads it, and keeps its first answer)
+	ApplyPreload(db, true)
+end
+
 function M:OnEnable(db)
 	self.db = db
 	-- the borders moved here from the panels (one choice per kind for every

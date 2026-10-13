@@ -918,6 +918,16 @@ function M:OnEnable(db)
 	if ns.Page and ns.Page.Listen then
 		ns.Page.Listen()
 	end
+	-- (0.21.3; the user, 2026-10-13: the party frames a second late after a
+	-- /reload) at login, the header the group needs now in the next frame
+	-- (Headers:Start's `first`); the rest after the login's settling seconds
+	if MelloUI.LoggingIn and MelloUI:LoggingIn() then
+		C_Timer.After(0, function()
+			if M.isEnabled and ns.Headers then
+				ns.Headers:Start(true)
+			end
+		end)
+	end
 	MelloUI:AfterLogin(function()
 		if M.isEnabled then
 			RD:List()

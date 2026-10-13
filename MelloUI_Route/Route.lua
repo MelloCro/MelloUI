@@ -604,7 +604,12 @@ local function Link(cont, a, akey, b, bkey, cost)
 	Edited(cont)
 end
 
-local function AddNode(cont, x, y)
+-- cells (0.21.3, the build's roads: MergeRoads): cells[cx][cy] = the key of
+-- the graph's node in that cell, the new node put in it too -- the nodes near
+-- it found there instead of by 25 keys made as strings a node, three
+-- quarters of the build (the user's /reload, 2026-10-13: "Loading
+-- navigation..." for 5 s and more). The same nodes and links either way.
+local function AddNode(cont, x, y, cells)
 	local g = Graph(cont)
 	local key = KeyOf(x, y)
 	local node = g[key]
@@ -615,16 +620,32 @@ local function AddNode(cont, x, y)
 		NodeAdded(cont, key, node)
 		local cx, cy = math.floor(x / CELL), math.floor(y / CELL)
 		for i = -2, 2 do
-			for j = -2, 2 do
-				local k = (cx + i) .. ":" .. (cy + j)
-				local o = g[k]
-				if o and k ~= key then
-					local d = Dist(x, y, o[1], o[2])
-					if d <= NEAR then
-						Link(cont, node, key, o, k, d / WALK)
+			local row = cells and cells[cx + i]
+			if row or not cells then
+				for j = -2, 2 do
+					local k
+					if row then
+						k = row[cy + j]
+					else
+						k = (cx + i) .. ":" .. (cy + j)
+					end
+					local o = k and g[k]
+					if o and k ~= key then
+						local d = Dist(x, y, o[1], o[2])
+						if d <= NEAR then
+							Link(cont, node, key, o, k, d / WALK)
+						end
 					end
 				end
 			end
+		end
+		if cells then
+			local row = cells[cx]
+			if not row then
+				row = {}
+				cells[cx] = row
+			end
+			row[cy] = key
 		end
 	end
 	return key, node
@@ -741,13 +762,23 @@ local function MergeRoads(data)
 			local sy = (size and size[2] and size[2] > 0) and h / size[2] or 1
 			local mine = Graph(cont)
 			local keyMap = {}
+			-- (the cells of the nodes already there, from their keys: AddNode's)
+			local cells = {}
+			for key in pairs(mine) do
+				local a, b = key:match("^(.-):(.*)$")
+				a, b = tonumber(a), tonumber(b)
+				if a and b then
+					cells[a] = cells[a] or {}
+					cells[a][b] = key
+				end
+			end
 			for key, node in pairs(g) do
 				if type(node) == "table" and type(node[1]) == "number" and type(node[2]) == "number" then
 					local x, y = node[1] * sx, node[2] * sy
 					local k = KeyOf(x, y)
 					keyMap[key] = k
 					if not mine[k] then
-						local _, created = AddNode(cont, x, y)
+						local _, created = AddNode(cont, x, y, cells)
 						created[4] = true
 						added = added + 1
 					end
@@ -9540,14 +9571,18 @@ end
 -- price, a quest tracked (its objective places come in the same companion)
 -- -- loads MelloUI_Companion and starts the build: the roads, the baked
 -- paths, then what was learned meanwhile, in the order they always went in
--- (so the graph comes out the same), BUDGET milliseconds a frame. Until it
--- is whole no route is planned; the first one appears when it is, with its
--- notice, and the arrow and the marker point straight at the place meanwhile.
+-- (so the graph comes out the same), BUDGET milliseconds a frame (more while
+-- something waits for it: Build.BUDGET_WAITED). Until it is whole no route
+-- is planned; the first one appears when it is, with its notice, and the
+-- arrow and the marker point straight at the place meanwhile.
 -- Without the companion the graph is built from the learned paths alone.
 --------------------------------------------------------------------------------
 
 do
 	local BUDGET = 2       -- ms of building a frame
+	-- (0.21.3) ... while a route or a price waits for it (Build.told: "Loading
+	-- navigation..."; the user's /reload, 2026-10-13)
+	Build.BUDGET_WAITED = 4
 	local RETRY = 5        -- seconds before the companion is asked again after a load the game refused just then
 	local TRIES = 3        -- ... this often at most, out of combat and instances; then the graph is built without the roads
 	local builder = CreateFrame("Frame")   -- its OnUpdate builds, shown while it does
@@ -9689,7 +9724,7 @@ do
 	-- end whatever happened (review, 2026-09-28: held for the session else).
 	Perf.SetScript(builder, "OnUpdate", function()
 		if Build.job then
-			Run(BUDGET)
+			Run(Build.told and Build.BUDGET_WAITED or BUDGET)
 			return
 		end
 		builder:Hide()

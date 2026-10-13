@@ -52,6 +52,9 @@
 --                         own hold of its line, ChatPanel's, steps aside)
 --   Fader:Poke()          something an element's reasons hang on changed:
 --                         looked at again on the next frame (one look a frame)
+--   Fader:Refade(key)     (0.21.3) its frames made after it faded (MelloUI's
+--                         own, made as needed: the group frames' boxes) take
+--                         its fade now
 --   Fader:Shown(key)      the element is shown (or not faded) now
 --   Fader:Faded(frame)    (0.21.2) the frame, or a frame it sits on (its
 --                         parents, a few up), is an element's faded now --
@@ -69,7 +72,8 @@
 -- grace (T.GRACE: crossing from one button to the next does not flicker);
 -- anything else waits Fade After. Out at Fade Speed, in fast (T.IN); a fight
 -- brings the In Combat ones back at once (no tween racing the fight). Through
--- MelloUI.Anim (Reduce Motion: at once).
+-- MelloUI.Anim (Reduce Motion: at once). At login (0.21.3) one not needed
+-- starts faded at once, without the hold or the fade.
 --
 -- Alpha only: never Show, Hide or SetPoint (most of these frames are secure;
 -- SetAlpha is allowed on them in a fight too). Never fight a game alpha: the
@@ -124,9 +128,10 @@ local EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_TARGET
 -- key), foreign[frame] (the last write not ours); hooked[frame] (pointer
 -- hooks), watched[frame] (the SetAlpha post-hook), kept[frame] (an own
 -- frame's ignore-parent-alpha before); queued (a look on the next frame),
--- nextDue (the pending hold timer's time)
+-- nextDue (the pending hold timer's time), refading (the start-up pass's
+-- refade asked: Fader:Refade)
 local S = { on = false, combat = false, editMode = false, db = nil, st = {}, base = {}, want = {}, owner = {},
-	foreign = {}, hooked = {}, watched = {}, kept = {}, queued = false, nextDue = nil, events = nil }
+	foreign = {}, hooked = {}, watched = {}, kept = {}, queued = false, nextDue = nil, events = nil, refading = false }
 Fader.state = S   -- (read only: the tests')
 
 --------------------------------------------------------------------------------
@@ -327,7 +332,7 @@ local function Bring(el, st, instant)
 	MelloUI:Fire("fade", el.key, "shown")
 end
 
-local function Dim(el, st)
+local function Dim(el, st, instant)
 	if st.state == "faded" then
 		return
 	end
@@ -335,9 +340,15 @@ local function Dim(el, st)
 	local share = FadedAlpha()
 	for _, f in ipairs(List(el.frames) or {}) do
 		S.owner[f] = el.key
-		Write(f, share, Speed(), "inOutQuad")
+		Write(f, share, not instant and Speed() or 0, "inOutQuad")
 	end
 	MelloUI:Fire("fade", el.key, "faded")
+end
+
+-- (0.21.3; the user, 2026-10-13: "make them start faded after login") the
+-- login's frames (MelloUI:LoggingIn: until its settling seconds are over)
+local function LoggingIn()
+	return MelloUI.LoggingIn ~= nil and MelloUI:LoggingIn() == true
 end
 
 -- an element let go: its frames back to their own alpha at once
@@ -431,7 +442,12 @@ Look = function(settle)
 			elseif el.follows and S.st[el.follows] and S.st[el.follows].state == "faded" then
 				-- (a follower goes with its leader: the pet frame with the player's)
 				st.due = nil
-				Dim(el, st)
+				Dim(el, st, st.state == nil and LoggingIn())
+			elseif st.state == nil and LoggingIn() then
+				-- (0.21.3) at login one not needed starts faded, at once: no
+				-- hold, no fade (faded before the /reload, it never shows)
+				st.due = nil
+				Dim(el, st, true)
 			elseif st.state ~= "faded" then
 				if not st.due then
 					st.due = now + (st.leftAt and st.mode == "mouseover" and T.GRACE or After())
@@ -591,6 +607,37 @@ function Fader:Rehook()
 	end
 end
 
+-- (0.21.3) frames of a faded element made after it faded -- MelloUI's own,
+-- made as they are needed (the group frames' boxes; at login, those made
+-- later in the start-up pass than the Fader): its fade on them at once, their
+-- pointer hooks with it
+function Fader:Refade(key)
+	local el, st = self.byKey[key], S.st[key]
+	if not (S.on and el and st and st.active and st.state == "faded") then
+		return
+	end
+	local share, new = FadedAlpha(), false
+	for _, f in ipairs(List(el.frames) or {}) do
+		if S.owner[f] == nil then
+			S.owner[f] = el.key
+			Write(f, share, 0)
+			new = true
+		end
+	end
+	if new then
+		self:Rehook()
+	end
+end
+
+-- the start-up pass over (every module on): each faded element's frames made
+-- meanwhile, faded
+local function RefadeAll()
+	S.refading = false
+	for _, el in ipairs(Fader.elements) do
+		Fader:Refade(el.key)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- The elements' choices applied
 --------------------------------------------------------------------------------
@@ -720,6 +767,14 @@ function Fader:Start(db)
 		S.editMode = MelloUI.EditModeOpen and MelloUI.EditModeOpen() or false
 	end
 	Sync()
+	-- (0.21.3) switched on in the login's start-up pass: the frames the modules
+	-- after it make, faded in the frame after the pass (Fader:Refade)
+	if not S.refading and MelloUI.ModulesStarting and MelloUI:ModulesStarting() then
+		S.refading = true
+		MelloUI:WhenModulesOn(function()
+			C_Timer.After(0, RefadeAll)
+		end)
+	end
 end
 
 function Fader:Stop()

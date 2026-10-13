@@ -22,7 +22,8 @@
 -- taken with it: broken, else a hit) -- no feature hung on a secret. /mello personal secrets: what this client hands
 -- over plain. Preview (Core/Preview.lua, part "personal"; /mello personal test): a made-up shield and casts on the
 -- solo scene's beats. The game's own Personal Resource Display is held off while this is on (its CVar, given back).
--- Nothing at login but the frames it shows (built after the login); its events only while it is on.
+-- Nothing at login but the frames it shows (built in the frame after it is switched on); its events only while it is
+-- on.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -2415,7 +2416,18 @@ function M:OnEnable(db)
 		W.OnBarTexture("castbars", CastFill, OWNER .. ": the cast bar's fill")
 	end
 	HoldGame()
-	MelloUI:AfterLogin(Start)
+	-- (0.21.3; the user's /reload, 2026-10-13: the bars two seconds after the
+	-- rest -- they waited for the login's settling seconds) at login in the
+	-- frame after it is switched on, as the party frames
+	if MelloUI.LoggingIn and MelloUI:LoggingIn() then
+		C_Timer.After(0, function()
+			if M.isEnabled then
+				Start()
+			end
+		end)
+	else
+		Start()
+	end
 end
 
 function M:OnDisable()

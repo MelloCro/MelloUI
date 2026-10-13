@@ -3563,7 +3563,50 @@ function MelloUI:AfterLogin(fn)
 	waiting[#waiting + 1] = fn
 end
 
+--------------------------------------------------------------------------------
+-- The login's curtain (0.21.3; the user, 2026-10-13: "the UI elements still
+-- take time to load in, and it just looks bad"). The start-up pass dresses
+-- the HUD over the first frames after the loading screen (never in it: the
+-- game's per-addon budget), so the game's own look showed first and
+-- MelloUI's came in piece by piece. Now the UI (UIParent's alpha only:
+-- nothing shown, hidden or moved) is see-through from PLAYER_LOGIN until the
+-- pass is over and two frames more have made what waits a frame for it (the
+-- group's frames, the Personal Display, the Fader's late frames), then comes
+-- in with a short fade (Reduce Motion: at once); at the latest when the
+-- login's frames end (LoginSettled), whatever happened. Once a session.
+--   login.Raise()   PLAYER_LOGIN (not when the UI is see-through already)
+--   login.Lift()    in again (once; later calls do nothing)
+--------------------------------------------------------------------------------
+login.FADE = 0.3   -- s
+
+function login.Raise()
+	if login.up ~= nil then
+		return
+	end
+	local ok, a = pcall(UIParent.GetAlpha, UIParent)
+	a = ok and Safe.Finite(a) or nil
+	login.up = a ~= nil and a > 0
+	if login.up then
+		login.alpha = a
+		UIParent:SetAlpha(0)
+	end
+end
+
+function login.Lift()
+	if not login.up then
+		return
+	end
+	login.up = false
+	local Anim = MelloUI.Anim
+	if Anim and Anim.To then
+		Anim:To(UIParent, "alpha", login.alpha, login.FADE, "outQuad")
+	else
+		UIParent:SetAlpha(login.alpha)
+	end
+end
+
 local function LoginSettled()
+	login.Lift()   -- (the curtain's last moment, whatever happened)
 	login.going = false
 	local waiting = login.waiting
 	for i = 1, #waiting do
@@ -3652,6 +3695,13 @@ local function ModulesOn(self)
 	if startup.restart then
 		startup.restart = false
 		self:RestartModules()
+	end
+	-- (0.21.3) the login's curtain lifts two frames on: what waits a frame for
+	-- the pass made by then (login.Lift)
+	if login.up then
+		C_Timer.After(0, function()
+			C_Timer.After(0, login.Lift)
+		end)
 	end
 end
 
@@ -4711,6 +4761,7 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		Step("PLAYER_LOGIN")
 		self:UnregisterEvent("PLAYER_LOGIN")
 		login.going = true   -- (the login's frames: MelloUI:LoggingIn)
+		login.Raise()   -- (the UI see-through until the pass has dressed it)
 		if not self.db then
 			self:InitDB()
 		end
@@ -4734,6 +4785,15 @@ MelloUI:SetScript("OnEvent", function(self, event, arg1, arg2)
 		-- (0.16.0's merged settings carried before any module reads its own)
 		self:MergeSettings()
 		Step("PLAYER_LOGIN: the settings adopted and merged")
+		-- (0.21.3) what must be done in the login's own frame, while the
+		-- loading screen is up, not in the start-up pass after it: a module's
+		-- OnLoginFrame(db) (UI Modifications' Preload Artwork: the files asked
+		-- for while the screen hides their loading)
+		for _, module in self:IterateModules() do
+			if self:IsModuleEnabled(module.name) and type(module.OnLoginFrame) == "function" then
+				SafeCall(module, "OnLoginFrame", self:GetModuleDB(module.name))
+			end
+		end
 		-- (the modules over the login's first frames: the start-up pass)
 		StartModules(self)
 		self:RegisterEvent("PLAYER_ENTERING_WORLD")
