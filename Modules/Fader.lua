@@ -58,7 +58,7 @@ local LIST = {
 	{ "buffs", "Buffs & Debuffs", "Frames", "Your own buffs and debuffs, the game's or MelloUI's rows by the minimap." },
 	{ "reminders", "Reminders", "Frames", "The round reminders beside your portrait (restock, mail, your buffs, the weapon's poison...). A new reminder does not bring them back: In Combat keeps it faded until a fight, On Mouseover until you point at them." },
 	-- (0.21.0, the user: "a option in the fader to fade out of combat"; its pick: back while casting)
-	{ "personal", "Personal Display", "Frames", "The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.)", "0.21.0", "noMouse" },
+	{ "personal", "Personal Display", "Frames", "The bars under your character and the shield column beside it (Personal Display). In Combat, they also come back while you cast. (No On Mouseover: the pointer passes through them to the world.)", nil, "noMouse" },   -- (its 0.21.0 New tag taken out by hand at the 0.21.1 release: a version by position)
 	{ "bar1", "Main Action Bar", "Bars", "Action Bar 1. Its keys work while it is faded." },
 	{ "bar2", "Action Bar 2", "Bars", "Its keys work while it is faded." },
 	{ "bar3", "Action Bar 3", "Bars", "Its keys work while it is faded." },

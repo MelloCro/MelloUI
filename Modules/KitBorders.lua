@@ -1054,7 +1054,7 @@ Kit.personalLooks = PERSONAL_LOOKS
 -- (0.21.0: a key of its own -- the old personalBorder's default "none" kept in every player's settings would have
 -- left the Personal Display bare; Core's MergeSettings carries a pick made there)
 Kit:AddBorderKind({ kind = "personal", key = "personalBarBorder", default = "frame", name = "Personal Display Border",
-	values = PERSONAL_LOOKS, preview = "bar", new = "0.21.0",
+	values = PERSONAL_LOOKS, preview = "bar",
 	desc = "The frame round the Personal Display's bars and its shield column (the bars under your character): the Ornate bracket the unit frames wear (the default), the cast bar's, a thin rim, the Single rail, the Stone rail, the Backdrop or none. The game's own personal resource display, while the Personal Display is off and the unit frames wear their Painted Skin, takes one frame round its bars: a thin rim or one of the library's styles." }, "castbar")
 -- (0.20.1, the user: "our swing timers, also need to be able to change their borders to the library selection") the
 -- swing timers' frame a choice of its own (their Framed look; Modules/SwingTimers.lua lays it, on this kind's change)

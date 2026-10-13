@@ -37,7 +37,6 @@ local FX = MelloUI.FrameFX
 local pairs, ipairs, type, pcall = pairs, ipairs, type, pcall
 
 local OWNER = "PersonalDisplay"
-local NEW = "0.21.0"
 local GAME_CVAR = "nameplateShowSelf"   -- the game's own display (Blizzard_PersonalResourceDisplay's switch)
 local PREVIEW_PART = "personal"
 
@@ -2234,7 +2233,6 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	flavour = "Health, power, casts and shields, right by your character.",
 	role = "replaces",
 	slash = "personal",
-	new = NEW,
 	enabledByDefault = false,
 	installer = false,
 	-- the player's own game setting, given back when off, and the camera zoom the display was placed at: never in a
@@ -2243,29 +2241,29 @@ M = MelloUI:RegisterModule("PersonalDisplay", {
 	defaults = { width = 160, height = 10, shield = true, text = true, hop = true, zoom = true, hideCastBar = true,
 		healFrom = true, swing = true, cooldowns = true, cdSize = 16 },
 	options = {
-		{ type = "toggle", key = "shield", name = "Shield Column", new = NEW,
+		{ type = "toggle", key = "shield", name = "Shield Column",
 		  desc = "An upright bar beside your character for every shield on you added up, as the game counts them: spells (Power Word: Shield, Ice Barrier, Mana Shield, the wards), talents and items, the ones against one kind of damage too. Each shield is its own part, in its school's colour (Power Word: Shield gold, Ice Barrier frost, Mana Shield arcane, a Fire Protection Potion fire), stacked in the order they went up, its icon beside the column. It fills when one goes up, drains as it takes the hits, turns amber when low and breaks when the last one is gone; one ending while another holds only takes its part away. Edit Layout places it." },
-		{ type = "toggle", key = "hideCastBar", name = "Hide The Game's Cast Bar", new = NEW,
+		{ type = "toggle", key = "hideCastBar", name = "Hide The Game's Cast Bar",
 		  desc = "The game's own cast bar is hidden while this is on: your casts show on the display's cast bar under your character. Off: both show." },
-		{ type = "toggle", key = "healFrom", name = "Heal Light From Your Character", new = NEW,
+		{ type = "toggle", key = "healFrom", name = "Heal Light From Your Character",
 		  desc = "With Heal Effects on (Frame Effects > Heals): the light of a heal you cast gathers at your character's middle instead of on the cast bar, and flies from there to the party or raid frame of the one you heal. It follows the display's place and the camera's zoom." },
-		{ type = "toggle", key = "swing", name = "Swing On The Rails", new = NEW,
+		{ type = "toggle", key = "swing", name = "Swing On The Rails",
 		  desc = "Your swing timer without a bar of its own: in a fight, two sparks run out from the middle of the health bar's top rail to its ends, and your swing lands as they reach them. An off hand's swings run along the bottom of the power bar. Your shots run on the seam between the health and power bars: cream sparks out while you reload, then a red line grows back from the ends while you aim (stand still: moving holds it), and the shot flies as it meets in the middle. A wand's shots run out once, with no aim. While it is on, MelloUI's Swing Timers step aside and the game's own swing timers stay off." },
-		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns", new = NEW,
+		{ type = "toggle", key = "cooldowns", name = "Big Cooldowns",
 		  desc = "The buffs you give yourself on a cooldown -- Shield Wall, Shield Block, Last Stand, Evasion, Ice Block, Recklessness, a trinket's -- as icons above the health bar, their time sweeping round them and their seconds on them, the most important first: an immunity, then damage taken down, more health, block, evasion, the rest. From the game's own spell data, for every class." },
-		{ type = "toggle", key = "text", name = "Percent And Spell Text", new = NEW,
+		{ type = "toggle", key = "text", name = "Percent And Spell Text",
 		  desc = "Your health and power in percent beside their bars, the spell and its seconds on the cast bar, and the shield's amount under its column." },
-		{ type = "toggle", key = "hop", name = "Hop When You Jump", new = NEW,
+		{ type = "toggle", key = "hop", name = "Hop When You Jump",
 		  desc = "The display hops with you when you jump, as Legion's did under your character. Reduce Motion keeps it still." },
-		{ type = "slider", key = "width", name = "Width", new = NEW, min = 100, max = 260, step = 5,
+		{ type = "slider", key = "width", name = "Width", min = 100, max = 260, step = 5,
 		  desc = "How wide the health, power and cast bars are. Edit Layout sizes the whole display." },
-		{ type = "slider", key = "height", name = "Height", new = NEW, min = 5, max = 16, step = 1,
+		{ type = "slider", key = "height", name = "Height", min = 5, max = 16, step = 1,
 		  desc = "How tall the health bar is; the power and cast bars are a little thinner, in step with it. Their frames grow and shrink with them." },
-		{ type = "slider", key = "cdSize", name = "Big Cooldown Size", new = NEW, min = 12, max = 40, step = 1,
+		{ type = "slider", key = "cdSize", name = "Big Cooldown Size", min = 12, max = 40, step = 1,
 		  desc = "How big the Big Cooldowns' icons above the health bar are. Their seconds keep the display's text size." },
-		{ type = "toggle", key = "zoom", name = "Follow Camera Zoom", new = NEW,
+		{ type = "toggle", key = "zoom", name = "Follow Camera Zoom",
 		  desc = "The display keeps its place by your character as you zoom the camera: closer under your feet when you zoom out, further down when you zoom in, so it never covers your character. Place it in Edit Layout at the zoom you play at; it follows from there. Turning the camera up or down is not followed (the game does not tell)." },
-		{ type = "button", name = "Preview", text = "Play", new = NEW,
+		{ type = "button", name = "Preview", text = "Play",
 		  hint = "a shield going up, hit, low and broken, and casts",
 		  desc = "Plays a made-up fight on the display: a shield going up, taking hits until it is low and breaks, a cast and a second shield. Also /mello personal test.",
 		  onClick = function() M.Preview() end },
