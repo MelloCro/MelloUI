@@ -45,6 +45,7 @@ REACH_POI = 250       # yards: a town or camp's own point (the levelling report 
 REACH_FLIGHT = 300    # a flight point (measured 300)
 REACH_MIN = 150       # a sub-zone: half its hit area, kept inside these
 REACH_MAX = 400
+REACH_SPOT = 40       # a marker inside another place (build): a shop's doorstep
 SAME_PLACE = 500      # one name within this many yards is one place
 POI_EVENT_FLAG = 0x80  # AreaPOI flag of world-event markers ("Under Attack", the Ashenvale bases, towers' states)
 
@@ -56,13 +57,14 @@ def open_world_maps():
 
 def zone_bounds():
     """UiMap id -> (world map id, x0, y0, x1, y1) of its largest region, for
-    zone and city maps (UiMap types 3 and 4)."""
+    zone and city maps (UiMap types 3 and 4), and the orphans (6): patch 1.60.1.70338 made Alterac Valley, Warsong
+    Gulch, Arathi Basin and Darkspear Islands type 6 (3 before)."""
     uimaps = {int(r["ID"]): r for r in db2("UiMap")}
     best = {}
     for r in db2("UiMapAssignment"):
         ui_id = int(r["UiMapID"])
         ui = uimaps.get(ui_id)
-        if not ui or ui["Type"] not in ("3", "4"):
+        if not ui or ui["Type"] not in ("3", "4", "6"):
             continue
         x0, y0, x1, y1 = float(r["Region_0"]), float(r["Region_1"]), float(r["Region_3"]), float(r["Region_4"])
         area = abs((x1 - x0) * (y1 - y0))
@@ -167,6 +169,17 @@ def build():
             continue
         kept[cont].append((round(wx, 1), round(wy, 1), int(round(reach)), name, rank))
         stats[("town", "flight point", "sub-zone")[rank]] += 1
+    # An AreaPOI with no flags is a marker of Forever's own (its crafting shops in Dalaran, Stormwind Harbor; every
+    # town the client names has flags). One that stands inside another place is a spot in it and reaches only its
+    # doorstep: at 250 yards the Dalaran shops took Dalaran's turn-ins and the Zephras Isle boat's dock.
+    markers = {(int(r.get("ContinentID") or -1), (r.get("Name_lang") or "").strip()) for r in db2("AreaPOI")
+               if not int(r.get("Flags") or 0)}
+    for cont, places in kept.items():
+        for n, (wx, wy, reach, name, rank) in enumerate(places):
+            if rank == 0 and (cont, name) in markers and any(
+                    math.hypot(px - wx, py - wy) <= r for px, py, r, other, _ in places if (cont, other) not in markers):
+                places[n] = (wx, wy, REACH_SPOT, name, rank)
+                stats["marker inside another place (its doorstep)"] += 1
     for cont in kept:
         kept[cont].sort(key=lambda k: (k[0], k[1], k[3]))
     log("  places: " + ", ".join(f"{k} {v}" for k, v in sorted(stats.items())) +

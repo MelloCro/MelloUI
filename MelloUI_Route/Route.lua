@@ -54,6 +54,7 @@ local M = MelloUI:RegisterModule("Route", {
 		arrow = true,
 		worldMarker = true,
 		routeBeam = true,
+		markerWisp = "firefly",
 		markerSound = true,
 		lineWidth = 3,
 		trailLook = "beads",
@@ -85,9 +86,14 @@ local M = MelloUI:RegisterModule("Route", {
 		{ type = "toggle", key = "arrow", name = "Direction Arrow",
 		  desc = "A row in the widget column while a route is followed: an arrow that points along the route's next leg, the destination, the distance and the travel time, and a ring that fills as the way is done. Hover it to show the route on the map or to stop it." },
 		{ type = "toggle", key = "worldMarker", name = "World Marker",
-		  desc = "A gem over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, smaller the farther the place, faint while it stands in the middle of the screen; within 100 yards it rises above the place, the distance and the name over it and gold chevrons rippling down to it, so it never covers what you are looking for. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
+		  desc = "A small flag mark over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, smaller the farther the place, faint while it stands in the middle of the screen; within 100 yards it rises above the place, the distance and the name over it and a gold chevron pointing down to it, so it never covers what you are looking for. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
-		  desc = "A red beam of light rising from the destination into the sky, so the place can be seen from far away, with a ring of light on the ground at its foot and the gem lit red. It fades as you come near and is gone once the marker rises above the place, and hides while the place is off screen. Part of the World Marker." },
+		  desc = "A slim beam of light rising from the destination, so the place can be seen from far away, with a small glow on the ground at its foot, red with Red Beads and gold with the other Trail Looks. It fades as you come near and is gone once the marker rises above the place, and hides while the place is off screen. Part of the World Marker." },
+		{ type = "dropdown", key = "markerWisp", parent = "worldMarker", name = "Wisp", new = "0.21.3", values = {
+			{ value = "firefly", label = "Firefly" },
+			{ value = "embers", label = "Embers" },
+			{ value = "off", label = "Off" },
+		  }, desc = "When the World Marker comes up for a new destination, a small light flies from your character to the place and lights it: the beam rises and the mark pops in as it lands. It follows the place as you turn the camera; while the place is off the screen it settles into the arrow beside your character. Firefly: a bright point with a short streak. Embers: a smaller glow shedding sparks. Not with Reduce Motion. Part of the World Marker." },
 		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds",
 		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. For a new destination it is the one sound: the tracking notice leaves its chime out then. Plays on the Sound Effects channel. Part of the World Marker." },
 		{ type = "header", name = "Arrival" },
@@ -1416,7 +1422,7 @@ local IsFlight   -- the block's rule for a learned flight link, which the travel
 -- searches run, the path ends crossed from (jumps); the seeker frame.
 -- BUDGET 3 ms: a slice ends past it after at most EVERY more nodes, inside
 -- the 5 ms a slow call starts at (/melloperf).
-local Search = { LEG_NEAR = 80, LEG_MAX = 8, LEG_WIDE = 64, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
+local Search = { LEG_NEAR = 80, LEG_MAX = 8, LEG_WIDE = 64, ISLAND_LEGS = 3, BUDGET = 3, EVERY = 16, PRICE_KEEP = 5, PRICE_NEAR = 30,
 	PRICE_CAP = 2, PRICE_EXTRA = 120, REPICK_MOVED = 40, queue = {}, running = nil, slice = 0, after = {}, plan = nil,
 	pricing = {}, priced = {}, runs = 0, jumps = 0, frame = nil }
 
@@ -1544,6 +1550,106 @@ do
 		return nearD[i] < nearD[j]
 	end
 
+	-- (0.21.3, the islands: docs/plans/route-islands.md) The road graph is
+	-- not one piece: on Eastern Kingdoms 19,563 nodes in 1,072 pieces, one of
+	-- 16,248 and the rest roads never joined to it and single points. An end
+	-- whose legs all landed on such a piece had no way into the rest (0.17.0's
+	-- jumps between path ends bridged them; 0.17.1 dropped those where the
+	-- ground is known), and its route was the straight line. Such an end also
+	-- gets legs into the rest: the nearest nodes off the side pieces within
+	-- OFFROAD that the walk grid allows, ISLAND_LEGS of them, LEG_WIDE checked
+	-- at most. The side pieces are found once, at the end of the graph's build
+	-- (Build.FindIslands): a node made later counts as the big piece's (no
+	-- extra legs, as before), and a side piece joined later only gets legs it
+	-- no longer needs.
+	local function Ashore(cont, x, y, g, count)
+		local side = count > 0 and Build.islands and Build.islands[cont]
+		if not side then
+			return count
+		end
+		for i = 1, count do
+			if not side[g[legKey[i]]] then
+				return count
+			end
+		end
+		local n = NearList(cont, x, y, OFFROAD)
+		local m = 0
+		for i = 1, n do
+			local node = g[nearKey[i]]
+			if node and not side[node] then
+				m = m + 1
+				order[m] = i
+			end
+		end
+		for i = #order, m + 1, -1 do
+			order[i] = nil
+		end
+		table.sort(order, ByNear)
+		local added = 0
+		for s = 1, m, math.max(1, math.ceil(m / Search.LEG_WIDE)) do
+			local i = order[s]
+			local node = g[nearKey[i]]
+			if M.Ground.Clear(cont, x, y, node[1], node[2]) ~= false then
+				count, added = count + 1, added + 1
+				legKey[count], legD[count] = nearKey[i], nearD[i]
+				if added >= Search.ISLAND_LEGS then
+					break
+				end
+			end
+			Search.Yield()
+		end
+		return count
+	end
+
+	-- The side pieces of each continent whose ground is known: every node
+	-- outside its biggest piece, Build.islands[cont] = { [node] = true }.
+	-- Inside the build's job (its slices); the build's changes wait meanwhile.
+	function Build.FindIslands()
+		local found = {}
+		for cont, g in pairs(live.graphs) do
+			if M.Ground.Has(cont) then
+				local piece, sizes, n, stack = {}, {}, 0, {}
+				for _, node in pairs(g) do
+					if not piece[node] then
+						n = n + 1
+						piece[node] = n
+						local top, size = 1, 0
+						stack[1] = node
+						while top > 0 do
+							local a = stack[top]
+							stack[top] = nil
+							top, size = top - 1, size + 1
+							for k in pairs(a[3]) do
+								local b = g[k]
+								if b and not piece[b] then
+									piece[b] = n
+									top = top + 1
+									stack[top] = b
+								end
+							end
+							Build.Slice()
+						end
+						sizes[n] = size
+					end
+				end
+				local big = 1
+				for i = 2, n do
+					if sizes[i] > sizes[big] then
+						big = i
+					end
+				end
+				local side = {}
+				for node, i in pairs(piece) do
+					if i ~= big then
+						side[node] = true
+					end
+				end
+				found[cont] = side
+			end
+		end
+		Build.islands = found
+	end
+
 	local function Legs(cont, x, y)
 		local g = live.graphs[cont]
 		if not g then
@@ -1561,7 +1667,7 @@ do
 			end
 		end
 		if count > 0 then
-			return count
+			return Ashore(cont, x, y, g, count)
 		end
 		local checked = k > 0 and nearD[k] or -1
 		n = NearList(cont, x, y, OFFROAD)
@@ -1588,7 +1694,7 @@ do
 			end
 			Search.Yield()
 		end
-		return count
+		return Ashore(cont, x, y, g, count)
 	end
 
 	-- Neighbourhood links of a fixed hub (dock, flight point), kept until a
@@ -5466,22 +5572,27 @@ end
 --
 -- Its states (user, 2026-09-28; the borders in Beacon, each with a buffer
 -- between the way in and the way out, so it never flips on one):
---   beacon    far off: the gem with the red beam rising from it, the
+--   beacon    far off: the mark with the slim beam rising from it, the
 --             distance and the travel time under it (Travel.Line). Faint
 --             while it stands in the middle of the screen, where the
 --             character is and the player looks.
 --   pin       under 100 yards: the beam gone (faded out on the way in), the
---             gem lands on the place with its pop, never faint. It stays on
+--             mark lands on the place with its pop, never faint. It stays on
 --             top of an NPC, an object or an item's source until it is done.
 --   edge      off screen: the arrow on the ring round the character,
 --             easing round it, pointing the way to turn.
 --   hidden    inside a quest's objective AREA (the game's quest blob, where
 --             the client can say so: Beacon.InArea) -- killing about a camp
---             needs no gem over one of its spots; back when the player
+--             needs no mark over one of its spots; back when the player
 --             leaves. Never for one spot, nor on Route's own pin.
+-- Its look (0.21.3, the user's pick A of BuildData/output/
+-- world_marker_clean_sketch, "Cleaner and smaller"): the 18-unit flag mark,
+-- a still 20 x 230 beam with a small glow at its foot, one still chevron
+-- near the place. A new destination's marker is lit by the wisp (Wisp:
+-- the user's picks in BuildData/output/world_marker_wisp_sketch).
 -- Per frame (only while it shows): the navigation frame's place and the
 -- distance read, and nothing more while neither moved (the player and the
--- camera still) except the beam's rising streaks and the ring's easing.
+-- camera still) except the ring's easing.
 --------------------------------------------------------------------------------
 
 local marker = nil
@@ -5500,34 +5611,48 @@ local Beacon = {
 	AREA_EVERY = 0.25,    -- seconds between asks whether the player is in the quest's area
 	AREA_BUFFER = 10,     -- yards from where the player was last inside it before the marker comes back
 	AREA_LEAVE = 3,       -- ... or seconds out of it
-	-- the light at the beam's foot (pick D; the marker's build): the ring on
-	-- the ground (its middle this far below the gem's), the glow behind the
-	-- gem, and each one's strength (the beam's fade scales them)
-	RING_W = 72, RING_H = 27, RING_DROP = -10,
-	HALO_SIZE = 72,
-	RING_ALPHA = 0.9, HALO_ALPHA = 0.6,
-	FLAG = 15, FLAG_RING = 2,   -- the flag mark (0.19.5): the flag glyph, the gold ring's width round the dark disc
-	-- the gem and the beam smaller the farther the place (user, 2026-10-04:
+	-- the light at the beam's foot (look A, 0.21.3): a small glow on the
+	-- ground round the foot, and its strength (the beam's fade scales it)
+	FOOT_W = 36, FOOT_H = 20, FOOT_ALPHA = 0.45,
+	BEAM_ALPHA = 0.75,   -- the beam's glow at full strength
+	RISE = 0.6,          -- seconds the beam takes to rise from its foot (a new destination's way in)
+	FLAG = 10, FLAG_RING = 1.5,   -- the flag mark (0.19.5; look A 0.21.3): the flag glyph, the gold ring's width round the dark disc
+	-- the mark and the beam smaller the farther the place (user, 2026-10-04:
 	-- "the waypoint marker and the Light beam change their size dynamically
 	-- depending on the distance"): full size within SIZE_NEAR yards (the pin
-	-- always), then (SIZE_NEAR / d) ^ SIZE_POWER, never under SIZE_MIN; the
-	-- texts keep theirs. Set when it changes by more than SIZE_STEP
-	SIZE_NEAR = 150, SIZE_POWER = 0.8, SIZE_MIN = 0.35, SIZE_STEP = 0.005,
+	-- always), then (SIZE_NEAR / d) ^ SIZE_POWER, never under SIZE_MIN (the
+	-- mark never under MARK_MIN: 12 of its 18 units); the texts keep theirs.
+	-- Set when it changes by more than SIZE_STEP
+	SIZE_NEAR = 150, SIZE_POWER = 0.8, SIZE_MIN = 0.35, MARK_MIN = 12 / 18, SIZE_STEP = 0.005,
 	-- the ring round the character follows the camera's zoom (the same day:
 	-- the arrow "behaves much more smoothly and dynamically when you are
 	-- spinning around" in another marker): RING_X / RING_Y at RING_ZOOM yards,
 	-- larger nearer, smaller farther, within RING_MIN to RING_MAX of that
 	RING_ZOOM = 15, RING_MIN = 0.6, RING_MAX = 2,
 	-- the near look (user, 2026-10-04: "Hover above, point down", pick A of
-	-- MelloUI-BuildData/output/near_marker_sketch): within PIN_IN the gem rises
-	-- HOVER above the place (gliding GLIDE seconds), the distance and the name
-	-- over it, three gold chevrons under it (CHEV_Y below the gem's middle,
-	-- CHEV_W x CHEV_H each) rippling down toward the place, the lowest one's tip
-	-- about 40 above it -- clear of the NPC; back down to the beacon's foot the
-	-- same way. The texts change sides fading (WORDS_FADE)
-	HOVER = 79, GLIDE = 0.8, WORDS_FADE = 0.45,
-	CHEV_Y = { 17, 25, 33 }, CHEV_W = 32, CHEV_H = 16,   -- (the V itself 16 x 7: Tools/make_route_beam.py)
-	RIPPLE = 1.75, RIPPLE_TRAVEL = 7.5, RIPPLE_STAGGER = 0.25,
+	-- MelloUI-BuildData/output/near_marker_sketch; look A 0.21.3: one still
+	-- chevron): within PIN_IN the mark rises HOVER above the place (gliding
+	-- GLIDE seconds), the distance and the name over it, a gold chevron
+	-- under it (CHEV_Y below the mark's middle, CHEV_W x CHEV_H) pointing down
+	-- to the place, its tip about 40 above it -- clear of the NPC; back down
+	-- to the beacon's foot the same way. The texts change sides fading
+	-- (WORDS_FADE)
+	HOVER = 67, GLIDE = 0.8, WORDS_FADE = 0.45,
+	CHEV_Y = 21, CHEV_W = 32, CHEV_H = 16,   -- (the V itself 16 x 7: Tools/make_route_beam.py)
+	-- the wisp (0.21.3, the user's picks: Firefly or Embers, from the
+	-- character, into the arrow off screen, a second): WISP_TIME seconds from
+	-- the character's chest (WISP_FROM below the screen's middle, as the ring)
+	-- to the mark, re-aimed every frame; its path bends up by WISP_BEND of its
+	-- length (WISP_BEND_OFF round the character to the arrow), it follows the
+	-- path WISP_FOLLOW a second (a sudden camera turn bends it, never snaps
+	-- it); its streak the last WISP_TRAIL seconds in WISP_SEGMENTS lines; it
+	-- grows out of the character in WISP_GROW seconds and sinks into the arrow
+	-- over its last WISP_SINK of the way; Embers shed up to WISP_SPARKS
+	-- sparks; the landing's ring of light LAND_TIME seconds, the arrow's light
+	-- ARROW_LIT
+	WISP_TIME = 1.0, WISP_FROM = -20, WISP_BEND = 0.3, WISP_BEND_OFF = 0.45, WISP_FOLLOW = 28,
+	WISP_TRAIL = 0.24, WISP_SEGMENTS = 10, WISP_GROW = 0.12, WISP_SINK = 0.2, WISP_SPARKS = 14,
+	LAND_TIME = 0.4, ARROW_LIT = 0.6,
 	-- Route's own pin set again for the same destination (a nearer spawn, the
 	-- game's sunken point given up for Route's spot): the marker glides there
 	-- on screen in MOVE_TIME seconds, never jumps (user, 2026-10-04: "Our
@@ -5536,8 +5661,7 @@ local Beacon = {
 	area = { quest = nil, inside = false, next = 0 },
 }
 local BEAM_ROOT = "Interface\\AddOns\\MelloUI\\Media\\Textures\\Route\\"   -- look-ok: the beam, the painted look's only (Beacon.painted)
-local BEAM_W, BEAM_H = 48, 420
-local BEAM_SPAN = BEAM_H / (256 * BEAM_W / 64)   -- how many times the streak strip repeats up the beam
+local BEAM_W, BEAM_H = 20, 230   -- (look A, 0.21.3: 48 x 420 with rising streaks before)
 local EDGE_MARGIN = 0.07        -- the navigation frame this near a screen edge (share of the screen) = off screen
 -- off screen, the arrow goes round the character on this ring (UI units from
 -- the screen's centre, the character stands about there) instead of sitting
@@ -5578,7 +5702,7 @@ local TextShade = {
 	PAD_X = 4,            -- ... its full part past the text's ends
 	PAD_Y = 4,            -- ... and above and below it
 	LABEL_W = 180,        -- the name line's width with the shade off (as EnsureArrow and EnsureMarker make it)
-	GEM = 26,             -- the marker's gem, drawn this wide (EnsureMarker)
+	GEM = 18,             -- the marker's mark, drawn this wide (EnsureMarker; look A, 0.21.3: 26 before)
 	OPTS = {},            -- the options handed to Shade:Band and Kit:Shadow (read once, not kept)
 }
 
@@ -5920,7 +6044,7 @@ function Beacon.Resize(f, d, pin)
 	end
 	f.size = s
 	if f.core then
-		f.core:SetScale(s)
+		f.core:SetScale(math.max(s, Beacon.MARK_MIN))
 	end
 	if f.beam then
 		f.beam:SetScale(s)
@@ -5956,33 +6080,31 @@ function Beacon.LayWords(f, near)
 	f.wordsNear = near
 end
 
--- The chevrons under the gem near the place, made the first time it is near:
--- three small frames on the gem's frame, each the chevron (the palette's gold,
--- Travel.Paint) over its soft dark edge (innerPanel); Anim:Ripple moves and
--- fades them, each from half its fall above where it rests
+-- The chevron under the mark near the place, made the first time it is near:
+-- a small frame on the mark's frame, the chevron (the palette's gold,
+-- Travel.Paint) over its soft dark edge (innerPanel), still (look A, 0.21.3:
+-- three rippling down before)
 function Beacon.Chevrons(f)
 	if f.chev then
 		return f.chev
 	end
-	local list = {}
-	for i, y in ipairs(Beacon.CHEV_Y) do
-		local c = CreateFrame("Frame", nil, f.core)
-		c:SetSize(Beacon.CHEV_W, Beacon.CHEV_H)
-		c:SetPoint("CENTER", f.core, "CENTER", 0, Beacon.RIPPLE_TRAVEL / 2 - y)
-		local edge = c:CreateTexture(nil, "ARTWORK", nil, 0)
-		edge:SetAllPoints()
-		edge:SetTexture(BEAM_ROOT .. "chevron_shade")
-		local W = MelloUI.Widgets
-		if W and W.Paint then
-			W.Paint(edge, "innerPanel", "vertex", 0.75)
-		end
-		local gold = c:CreateTexture(nil, "ARTWORK", nil, 1)
-		gold:SetAllPoints()
-		gold:SetTexture(BEAM_ROOT .. "chevron")
-		c.gold = gold
-		c:Hide()
-		list[i] = c
+	-- (a list of the one: Travel.Paint and the shows walk it)
+	local c = CreateFrame("Frame", nil, f.core)
+	c:SetSize(Beacon.CHEV_W, Beacon.CHEV_H)
+	c:SetPoint("CENTER", f.core, "CENTER", 0, -Beacon.CHEV_Y)
+	local edge = c:CreateTexture(nil, "ARTWORK", nil, 0)
+	edge:SetAllPoints()
+	edge:SetTexture(BEAM_ROOT .. "chevron_shade")
+	local W = MelloUI.Widgets
+	if W and W.Paint then
+		W.Paint(edge, "innerPanel", "vertex", 0.75)
 	end
+	local gold = c:CreateTexture(nil, "ARTWORK", nil, 1)
+	gold:SetAllPoints()
+	gold:SetTexture(BEAM_ROOT .. "chevron")
+	c.gold = gold
+	c:Hide()
+	local list = { c }
 	f.chev = list
 	Travel.Paint()
 	return list
@@ -6107,24 +6229,18 @@ function Beacon.Turn(f, near, from)
 	if f.wordsNear ~= near then
 		Beacon.LayWords(f, near)
 		-- (off screen the texts are hidden and the edge arrow on their frame
-		-- shows: they change sides at once)
-		if anim and anim.To and not f.off then
+		-- shows: they change sides at once; while the wisp flies they wait
+		-- for it, Beacon.Land)
+		if anim and anim.To and not f.off and not Beacon.Flying() then
 			words:SetAlpha(0)
 			anim:To(words, "alpha", 1, Beacon.WORDS_FADE, "outQuad")
 		end
 	end
 	if near then
-		local chev = Beacon.Chevrons(f)
-		for _, c in ipairs(chev) do
+		for _, c in ipairs(Beacon.Chevrons(f)) do
 			c:SetShown(not f.off)
 		end
-		if anim and anim.Ripple then
-			anim:Ripple(chev, Beacon.RIPPLE, Beacon.RIPPLE_TRAVEL, Beacon.RIPPLE_STAGGER)
-		end
 	elseif f.chev then
-		if anim and anim.StopRipple then
-			anim:StopRipple(f.chev)
-		end
 		for _, c in ipairs(f.chev) do
 			c:Hide()
 		end
@@ -6138,26 +6254,21 @@ function Beacon.BeamFade(beam, d)
 	fade = fade < 0 and 0 or fade > 1 and 1 or fade
 	if fade ~= beam.fade then
 		beam.fade = fade
-		beam.glow:SetAlpha(0.85 * fade)
-		beam.streaks:SetAlpha(0.7 * fade)
-		if beam.ring then
+		beam.glow:SetAlpha(Beacon.BEAM_ALPHA * fade)
+		if beam.foot then
 			Beacon.FootFade(beam)
 		end
 	end
 end
 
 -- The light at the beam's foot (user, 2026-09-30: "the icon stops the beam
--- and the icon itself is not red highlighted like the beam"; pick D of
--- BuildData/output/route_marks_sketch): a ring of light on the ground round
--- the foot and a soft glow behind the gem, added as the beam is, and the gem
--- lit by it (its art again, added over it, in a frame of the beam's above
--- the gem's; none when the kit's gem is not there), in Route's red
--- (MelloUI.Meaning.routeBeam). The beam's own: shown, faded and flared with
--- it. Made the first time the beam shows (not at login with the marker)
+-- and the icon itself is not red highlighted like the beam"; look A, 0.21.3:
+-- a small glow on the ground, the ring of light and the glow behind the mark
+-- before), added as the beam is, in the beam's light (Beacon.Tint). The
+-- beam's own: shown, faded and risen with it. Made the first time the beam
+-- shows (not at login with the marker)
 function Beacon.FootFade(beam)
-	local fade = beam.fade or 1
-	beam.ring:SetAlpha(Beacon.RING_ALPHA * fade)
-	beam.halo:SetAlpha(Beacon.HALO_ALPHA * fade)
+	beam.foot:SetAlpha(Beacon.FOOT_ALPHA * (beam.fade or 1))
 end
 
 -- The game's own player arrow (its high-resolution direction arrows, the
@@ -6270,8 +6381,7 @@ function Beacon.FollowGem()
 	end
 end
 
--- The beam's light (its glow, its streaks, the ring at its foot and the glow
--- behind the mark) in the trail's look: Route's red (MelloUI.Meaning.
+-- The beam's light (its glow and the glow at its foot) in the trail's look: Route's red (MelloUI.Meaning.
 -- routeBeam) with Red Beads, the palette's gold (selectedTrim) with the line
 -- and the dashes (0.19.5, pick B); written only on a change; again at a new
 -- palette (Travel.Paint) and a new Trail Look
@@ -6280,20 +6390,24 @@ function Beacon.Tint()
 	if not beam then
 		return
 	end
-	local c = M.TrailLook() == "beads" and MelloUI.Meaning.routeBeam or MelloUI.Look.Palette().selectedTrim
+	local c = Beacon.Light()
 	if beam.tint == c then
 		return
 	end
 	beam.tint = c
 	beam.glow:SetVertexColor(c[1], c[2], c[3])
-	beam.streaks:SetVertexColor(math.min(1, c[1]), math.min(1, c[2] + 0.1), math.min(1, c[3] + 0.05))
-	if beam.ring then
-		beam.ring:SetVertexColor(c[1], c[2], c[3])
-		beam.halo:SetVertexColor(c[1], c[2], c[3])
+	if beam.foot then
+		beam.foot:SetVertexColor(c[1], c[2], c[3])
 	end
 	if marker.goalFlag then
 		M.GoalFlag(marker.goalFlag)
 	end
+end
+
+-- the beam's light (and the wisp's): Route's red with Red Beads, the
+-- palette's gold with the line and the dashes
+function Beacon.Light()
+	return M.TrailLook() == "beads" and MelloUI.Meaning.routeBeam or MelloUI.Look.Palette().selectedTrim
 end
 
 -- The reskin switched (MelloUI.Look; now, and at each switch): the marks in
@@ -6313,26 +6427,16 @@ function Beacon.OnLook(_, painted)
 end
 
 function Beacon.Foot(beam)
-	if beam.ring then
+	if beam.foot then
 		return
 	end
-	local ring = beam:CreateTexture(nil, "BACKGROUND")
-	ring:SetSize(Beacon.RING_W, Beacon.RING_H)
-	ring:SetPoint("CENTER", marker, "CENTER", 0, Beacon.RING_DROP)
-	ring:SetTexture(BEAM_ROOT .. "beam_ring")
-	local halo = beam:CreateTexture(nil, "BACKGROUND", nil, 1)
-	halo:SetSize(Beacon.HALO_SIZE, Beacon.HALO_SIZE)
-	halo:SetPoint("CENTER", marker, "CENTER")
-	halo:SetTexture(BEAM_ROOT .. "beam_halo")
-	-- (0.19.5: the kit's gem lit by the beam went with the gem: the flag
-	-- mark stands there on its own dark disc)
-	local red = MelloUI.Meaning.routeBeam
-	for _, t in ipairs({ ring, halo }) do
-		t:SetBlendMode("ADD")
-		t:SetVertexColor(red[1], red[2], red[3])
-	end
-	beam.ring, beam.halo = ring, halo
-	beam.tint = nil   -- (Beacon.Tint again: the ring and the glow in the look's light)
+	local foot = beam:CreateTexture(nil, "BACKGROUND")
+	foot:SetSize(Beacon.FOOT_W, Beacon.FOOT_H)
+	foot:SetPoint("CENTER", marker, "CENTER")
+	foot:SetTexture(BEAM_ROOT .. "beam_halo")
+	foot:SetBlendMode("ADD")
+	beam.foot = foot
+	beam.tint = nil   -- (Beacon.Tint again: the glow in the look's light)
 	Beacon.Tint()
 	Beacon.FootFade(beam)
 end
@@ -6360,6 +6464,403 @@ function Beacon.Play(group)
 		anim:PlayGroup(group)
 	else
 		group:Play()
+	end
+end
+
+-- The marker's way in: the mark pops in, the beam rises (the pops and the
+-- rise end at once under Reduce Motion: Beacon.Play). As it comes up for a
+-- destination, as the wisp lands on it, or the first time its place is seen
+-- after the wisp went into the edge arrow (wayInOnSight)
+function Beacon.WayIn(f, landed)
+	if landed or not f.pin then
+		Beacon.Play(f.pop)
+		if f.goalPops and Beacon.painted ~= false then
+			Beacon.Play(f.goalPops[1])
+			Beacon.Play(f.goalPops[2])
+		end
+		-- the gem's shadow partner pops in with it (TextShade)
+		if MelloUI.Anim then
+			Beacon.Play(f.shade and f.shade.pop)
+		end
+	end
+	if f.beam:IsShown() then
+		Beacon.Play(f.beam.flare)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The wisp (0.21.3; the user, 2026-10-13: "if we start the navigation and it
+-- loads, that a whisp flys into its direction ... it should also dynamically
+-- adjust when the person is moving its camera"; the picks in BuildData/
+-- output/world_marker_wisp_sketch: from the character, Firefly or Embers, into
+-- the arrow off screen, a second). A new destination's marker comes up dark
+-- (its mark, its texts and the edge arrow, its beam at alpha 0); a small light
+-- leaves the character's chest -- the screen's middle, WISP_FROM below it at
+-- the camera's zoom, as the ring round the character -- and flies to the mark
+-- where the navigation frame has it this frame (a camera turn bends its path),
+-- or, the place off the screen, to the edge arrow on the ring, sinking into
+-- it. It lands: the mark pops in, the beam rises, the texts fade in and the
+-- marker's sound plays; or the edge arrow pops in, lit a moment, and the
+-- mark's way in waits until the place is first seen. Made at its first
+-- flight (nothing at login); its OnUpdate runs only while it flies or its
+-- sparks and lights still show. Not under Reduce Motion, nor for a /reload's
+-- destination (the login's quiet seconds), nor with the option Off. All its
+-- maths in UIParent's units; Beacon.wisp is its state
+--------------------------------------------------------------------------------
+
+Beacon.wisp = { flying = false, n = 0, px = {}, py = {}, pt = {}, sparks = {} }
+
+function Beacon.Flying()
+	return Beacon.wisp.flying
+end
+
+-- where it starts: the character's chest, the screen's middle at the zoom
+-- (UIParent's own size, as the edge arrow's angle reads it)
+function Beacon.WispFrom()
+	return UIParent:GetWidth() / 2, UIParent:GetHeight() / 2 + Beacon.WISP_FROM * Beacon.RingScale()
+end
+
+-- where it flies to this frame, in UIParent's units: the mark -- the
+-- navigation frame's middle as the marker's tick last read it, the mark's
+-- height over it added -- or, off the screen, the edge arrow's place on the
+-- ring (its angle and size as the tick laid it). Nothing of the marker's own
+-- is read (hung on the game's frame, its rects may be secret); nil until the
+-- tick has placed it
+function Beacon.WispTo()
+	local f = marker
+	if not (f and f:IsShown() and f.nav and f.off ~= nil) then
+		return nil
+	end
+	local ui = UIParent:GetEffectiveScale()
+	if f.off then
+		local k = f.ringK or Beacon.RingScale()
+		return UIParent:GetWidth() / 2 + math.cos(f.angle) * RING_X * k,
+			UIParent:GetHeight() / 2 + (math.sin(f.angle) * RING_Y + RING_DY) * k, true
+	end
+	if not (f.lastX and f.lastY) then
+		return nil
+	end
+	local nav = f.nav:GetEffectiveScale() / ui
+	return f.lastX * nav, f.lastY * nav + (f.coreY or 0) * f:GetEffectiveScale() / ui, false
+end
+
+-- its frame and pieces, made at its first flight: the glow and the white-hot
+-- core, the streak (WISP_SEGMENTS lines), the sparks, the landing's ring of
+-- light on the ground, the edge arrow's light
+function Beacon.WispFrame()
+	local w = Beacon.wisp
+	if w.frame then
+		return w.frame
+	end
+	local f = CreateFrame("Frame", nil, marker:GetParent())
+	f:SetAllPoints(UIParent)
+	f:SetFrameStrata("LOW")
+	f:SetFrameLevel(marker:GetFrameLevel() + 6)
+	f:EnableMouse(false)
+	local function Light(sub)
+		local t = f:CreateTexture(nil, "ARTWORK", nil, sub)
+		t:SetTexture(BEAM_ROOT .. "beam_halo")
+		t:SetBlendMode("ADD")
+		t:Hide()
+		return t
+	end
+	w.lit, w.glow, w.core = Light(0), Light(2), Light(3)
+	-- (no lines without the client's CreateLine: the Firefly without its streak)
+	w.lines = {}
+	for i = 1, Beacon.WISP_SEGMENTS do
+		local l = f.CreateLine and f:CreateLine(nil, "ARTWORK", nil, 1)
+		if not l then
+			break
+		end
+		l:SetColorTexture(1, 1, 1, 1)
+		l:SetBlendMode("ADD")
+		l:Hide()
+		w.lines[i] = l
+	end
+	-- (the Embers' sparks: made as they are first shed, Beacon.Spark)
+	w.ring = f:CreateTexture(nil, "ARTWORK", nil, 0)
+	w.ring:SetTexture(BEAM_ROOT .. "beam_ring")
+	w.ring:SetBlendMode("ADD")
+	w.ring:Hide()
+	Perf.SetScript(f, "OnUpdate", Beacon.WispTick)
+	f:Hide()
+	w.frame = f
+	return f
+end
+
+-- a new destination's marker: the wisp sets out (true), or there is none
+-- (false: the marker comes up as it always did)
+function Beacon.Launch()
+	local mode = M.db.markerWisp
+	local anim = MelloUI.Anim
+	if mode == "off" or (anim and anim.reduceMotion) or Beacon.Quiet() then
+		Beacon.Ground()
+		return false
+	end
+	local f = Beacon.WispFrame()
+	local w = Beacon.wisp
+	Beacon.Ground()   -- (one already flying lets go first)
+	w.embers = mode == "embers"
+	w.t, w.spawn, w.n, w.lastAt, w.sound = 0, 0, 0, -1, false
+	w.x, w.y = Beacon.WispFrom()
+	w.vx, w.vy = 0, 0
+	local c = Beacon.Light()
+	w.r, w.g, w.b = c[1], c[2], c[3]
+	for _, t in ipairs({ w.glow, w.lit, w.ring }) do
+		t:SetVertexColor(w.r, w.g, w.b)
+	end
+	-- (its core white-hot: the same light most of the way to white)
+	w.core:SetVertexColor(w.r + (1 - w.r) * 0.85, w.g + (1 - w.g) * 0.85, w.b + (1 - w.b) * 0.85)
+	for _, s in ipairs(w.sparks) do
+		s.tex:SetVertexColor(w.r, w.g, w.b)
+	end
+	w.glow:Show()
+	w.core:Show()
+	if anim and anim.Stop then
+		anim:Stop(marker.words, "alpha")
+	end
+	marker.core:SetAlpha(0)
+	marker.words:SetAlpha(0)
+	marker.beam:SetAlpha(0)
+	marker.wayInOnSight = nil
+	w.flying = true
+	f:Show()
+	return true
+end
+
+-- the wisp gone without landing (the marker hidden, the destination cleared,
+-- a new one): the marker's parts back as they are
+function Beacon.Ground()
+	local w = Beacon.wisp
+	if not w.flying then
+		return
+	end
+	w.flying, w.sound = false, false
+	w.glow:Hide()
+	w.core:Hide()
+	for _, l in ipairs(w.lines) do
+		l:Hide()
+	end
+	if marker then
+		marker.core:SetAlpha(1)
+		marker.words:SetAlpha(1)
+		marker.beam:SetAlpha(1)
+	end
+end
+
+-- it has landed: on the mark (its way in, the texts fading in, the ring of
+-- light on the ground) or in the edge arrow (the arrow's pop and light; the
+-- mark's way in the first time the place is seen: MarkerTick); the sound
+function Beacon.Land()
+	local w, f = Beacon.wisp, marker
+	local sound = w.sound   -- (Ground lets the flight's go)
+	Beacon.Ground()
+	local anim = MelloUI.Anim
+	f.words:SetAlpha(0)
+	if anim and anim.To then
+		anim:To(f.words, "alpha", 1, Beacon.WORDS_FADE, "outQuad")
+	else
+		f.words:SetAlpha(1)
+	end
+	if f.off then
+		f.edgePop = f.edgePop or TextShade.Pop(f.edge)
+		Beacon.Play(f.edgePop)
+		w.lit:ClearAllPoints()
+		w.lit:SetPoint("CENTER", f.edge, "CENTER")
+		w.litAt = 0
+		f.wayInOnSight = true
+	else
+		Beacon.WayIn(f, true)
+		w.ring:ClearAllPoints()
+		w.ring:SetPoint("CENTER", f.core, "CENTER")
+		w.ringAt = 0
+	end
+	if sound then
+		Beacon.Sound()
+	end
+end
+
+-- a spark shed by the Embers: flung out at random from where the wisp is,
+-- falling away, each its own size (a free one of WISP_SPARKS, made the first
+-- time it is needed; none when all are out)
+function Beacon.Spark(w)
+	local spark
+	for _, s in ipairs(w.sparks) do
+		if s.life <= 0 then
+			spark = s
+			break
+		end
+	end
+	if not spark and #w.sparks < Beacon.WISP_SPARKS then
+		local t = w.frame:CreateTexture(nil, "ARTWORK", nil, 1)
+		t:SetTexture(BEAM_ROOT .. "beam_halo")
+		t:SetBlendMode("ADD")
+		t:SetVertexColor(w.r, w.g, w.b)
+		spark = { tex = t, life = 0 }
+		w.sparks[#w.sparks + 1] = spark
+	end
+	if not spark then
+		return
+	end
+	spark.x, spark.y = w.x + (math.random() - 0.5) * 4, w.y + (math.random() - 0.5) * 4
+	spark.vx = -w.vx * 0.12 + (math.random() - 0.5) * 132
+	spark.vy = -w.vy * 0.12 + (math.random() - 0.5) * 132
+	spark.life = 0.35 + math.random() * 0.3
+	spark.age, spark.size = 0, 0.6 + math.random() * 0.7
+	spark.tex:Show()
+end
+
+function Beacon.WispTick(frame, elapsed)
+	local w = Beacon.wisp
+	local dt = elapsed > 0.05 and 0.05 or elapsed
+	local k = UIParent:GetEffectiveScale() / frame:GetEffectiveScale()   -- UIParent's units into the frame's
+	local busy = false
+	if w.flying then
+		busy = true
+		w.t = w.t + dt
+		local u = w.t / Beacon.WISP_TIME
+		u = u > 1 and 1 or u
+		local sx, sy = Beacon.WispFrom()
+		local tx, ty, off = Beacon.WispTo()
+		local placed = tx ~= nil
+		if not placed then
+			tx, ty = sx, sy
+		end
+		-- a curve from the chest to the target as it is now, bent up (round the
+		-- character to the ring), eased in and out; followed, not jumped to
+		local dx, dy = tx - sx, ty - sy
+		local dist = math.sqrt(dx * dx + dy * dy)
+		local nx, ny = 0, 1
+		if dist > 0 then
+			nx, ny = -dy / dist, dx / dist
+			if ny < 0 then
+				nx, ny = -nx, -ny
+			end
+		end
+		local bend = dist * (off and Beacon.WISP_BEND_OFF or Beacon.WISP_BEND)
+		local cx, cy = sx + dx / 2 + nx * bend, sy + dy / 2 + ny * bend
+		local e = u < 0.5 and 2 * u * u or 1 - (-2 * u + 2) * (-2 * u + 2) / 2
+		local a = 1 - e
+		local x = a * a * sx + 2 * a * e * cx + e * e * tx
+		local y = a * a * sy + 2 * a * e * cy + e * e * ty
+		local follow = 1 - math.exp(-dt * Beacon.WISP_FOLLOW)
+		local ox, oy = w.x, w.y
+		w.x, w.y = w.x + (x - w.x) * follow, w.y + (y - w.y) * follow
+		w.vx, w.vy = (w.x - ox) / math.max(dt, 0.001), (w.y - oy) / math.max(dt, 0.001)
+		-- its streak: a point every WISP_TRAIL / WISP_SEGMENTS seconds, the
+		-- last WISP_TRAIL seconds of them, and where it is now
+		local step = Beacon.WISP_TRAIL / Beacon.WISP_SEGMENTS
+		if w.t - w.lastAt >= step then
+			w.lastAt = w.t
+			local n = w.n
+			if n >= Beacon.WISP_SEGMENTS then
+				table.remove(w.px, 1)
+				table.remove(w.py, 1)
+				n = n - 1
+			end
+			n = n + 1
+			w.px[n], w.py[n], w.n = w.x, w.y, n
+		end
+		local grow = w.t / Beacon.WISP_GROW
+		grow = grow > 1 and 1 or grow
+		local sink = 1
+		if off then
+			sink = (1 - u) / Beacon.WISP_SINK
+			sink = sink > 1 and 1 or sink
+		end
+		local size = (w.embers and 18 or 24) * grow * (0.4 + 0.6 * sink)
+		w.glow:SetSize(size * k, size * k)
+		w.glow:SetAlpha(0.95)
+		w.glow:ClearAllPoints()
+		w.glow:SetPoint("CENTER", frame, "BOTTOMLEFT", w.x * k, w.y * k)
+		local core = (w.embers and 3.2 or 4.4) * grow * (0.4 + 0.6 * sink)
+		w.core:SetSize(core * k, core * k)
+		w.core:ClearAllPoints()
+		w.core:SetPoint("CENTER", frame, "BOTTOMLEFT", w.x * k, w.y * k)
+		if w.embers then
+			w.spawn = w.spawn + dt
+			while w.spawn >= 0.03 do
+				w.spawn = w.spawn - 0.03
+				Beacon.Spark(w)
+			end
+		else
+			-- the streak's lines, the newest the thickest and brightest
+			local n = w.n
+			for i = 1, #w.lines do
+				local l = w.lines[i]
+				if i <= n then
+					local x0, y0 = w.px[i], w.py[i]
+					local x1, y1 = (i < n) and w.px[i + 1] or w.x, (i < n) and w.py[i + 1] or w.y
+					local q = i / n
+					l:SetStartPoint("BOTTOMLEFT", frame, x0 * k, y0 * k)
+					l:SetEndPoint("BOTTOMLEFT", frame, x1 * k, y1 * k)
+					l:SetThickness(math.max(0.5, 4.5 * q) * k)
+					l:SetVertexColor(w.r, w.g, w.b, 0.75 * q * (sink > 0.3 and sink or 0.3))
+					l:Show()
+				else
+					l:Hide()
+				end
+			end
+		end
+		if u >= 1 then
+			if placed then
+				Beacon.Land()
+			else
+				Beacon.Ground()   -- (nowhere to land: the marker never placed)
+			end
+		end
+	end
+	-- the sparks, the landing's ring of light and the edge arrow's light
+	-- outlive the flight a moment
+	for _, s in ipairs(w.sparks) do
+		if s.life > 0 then
+			s.age = s.age + dt
+			if s.age >= s.life then
+				s.life = 0
+				s.tex:Hide()
+			else
+				busy = true
+				s.vy = s.vy - 150 * dt
+				s.vx = s.vx * (1 - 2.5 * dt)
+				s.x, s.y = s.x + s.vx * dt, s.y + s.vy * dt
+				local q = 1 - s.age / s.life
+				local r = (1 + 2.2 * q) * s.size * 4
+				s.tex:SetSize(r * k, r * k)
+				s.tex:SetAlpha(0.9 * q)
+				s.tex:ClearAllPoints()
+				s.tex:SetPoint("CENTER", frame, "BOTTOMLEFT", s.x * k, s.y * k)
+			end
+		end
+	end
+	if w.ringAt then
+		w.ringAt = w.ringAt + dt
+		local u = w.ringAt / Beacon.LAND_TIME
+		if u >= 1 then
+			w.ringAt = nil
+			w.ring:Hide()
+		else
+			busy = true
+			local r = 8 + 28 * u
+			w.ring:SetSize(r * k, r * 0.6 * k)
+			w.ring:SetAlpha(0.8 * (1 - u))
+			w.ring:Show()
+		end
+	end
+	if w.litAt then
+		w.litAt = w.litAt + dt
+		local u = w.litAt / Beacon.ARROW_LIT
+		if u >= 1 then
+			w.litAt = nil
+			w.lit:Hide()
+		else
+			busy = true
+			w.lit:SetSize(46 * k, 46 * k)
+			w.lit:SetAlpha(0.7 * (1 - u))
+			w.lit:Show()
+		end
+	end
+	if not busy then
+		frame:Hide()
 	end
 end
 
@@ -6423,12 +6924,6 @@ local function MarkerTick(self, elapsed)
 		return
 	end
 	local beam = self.beam
-	-- the streaks rise: the strip scrolls up the beam, round and round (they
-	-- stand still under Reduce Motion)
-	if beam:IsShown() and not (MelloUI.Anim and MelloUI.Anim.reduceMotion) then
-		beam.scroll = (beam.scroll + dt * 0.3) % 1
-		beam.streaks:SetTexCoord(0, 1, beam.scroll, beam.scroll + BEAM_SPAN)
-	end
 	-- where the game has the place, and how far. Neither moved since the
 	-- last tick (the player and the camera still), the edge arrow eased
 	-- round, the gem on this navigation frame and the travel time as its
@@ -6501,8 +6996,7 @@ local function MarkerTick(self, elapsed)
 		TextShade.Sync(self)
 	end
 	-- the beam: the beacon's, never the pin's, hidden off screen, and hidden
-	-- while faded out (PIN_IN to PIN_OUT on the way in: nothing to see, so its
-	-- streaks do not scroll unseen)
+	-- while faded out (PIN_IN to PIN_OUT on the way in: nothing to see)
 	if d then
 		Beacon.BeamFade(beam, d)
 	end
@@ -6512,6 +7006,12 @@ local function MarkerTick(self, elapsed)
 			Beacon.Foot(beam)
 		end
 		beam:SetShown(lit)
+	end
+	-- (0.21.3) the wisp went into the edge arrow: the mark's way in the
+	-- first time its place is seen
+	if self.wayInOnSight and not off then
+		self.wayInOnSight = nil
+		Beacon.WayIn(self, true)
 	end
 	if d then
 		-- the distance and the travel time, made only when either changes
@@ -6576,46 +7076,32 @@ local function EnsureMarker()
 	marker:SetClampedToScreen(true)
 	marker:EnableMouse(false)
 	-- the light beam (user, 2026-09-23: "can you build that beam, but make it
-	-- red"): a glow column from its foot at the destination up into the sky,
-	-- light streaks rising inside it (masked by the column's own shape), both
-	-- added to what is behind them. Made by Tools/make_route_beam.py. Route's
-	-- red for the world (MelloUI.Meaning.routeBeam), whatever the palette.
+	-- red"; look A, 0.21.3: slim and still): a glow column from its foot at
+	-- the destination up into the sky, added to what is behind it. Made by
+	-- Tools/make_route_beam.py. In the trail's light (Beacon.Tint).
 	local red = MelloUI.Meaning.routeBeam
 	local beam = CreateFrame("Frame", nil, marker)
 	beam:SetSize(BEAM_W, BEAM_H)
-	beam:SetPoint("BOTTOM", marker, "CENTER", 0, -6)
+	beam:SetPoint("BOTTOM", marker, "CENTER", 0, -4)
 	beam:SetFrameLevel(marker:GetFrameLevel() + 1)
 	beam.glow = beam:CreateTexture(nil, "ARTWORK")
 	beam.glow:SetAllPoints()
 	beam.glow:SetTexture(BEAM_ROOT .. "beam_glow")
 	beam.glow:SetBlendMode("ADD")
 	beam.glow:SetVertexColor(red[1], red[2], red[3])
-	beam.streaks = beam:CreateTexture(nil, "ARTWORK", nil, 1)
-	beam.streaks:SetAllPoints()
-	beam.streaks:SetTexture(BEAM_ROOT .. "beam_streaks", "CLAMP", "REPEAT")
-	beam.streaks:SetBlendMode("ADD")
-	beam.streaks:SetVertexColor(red[1], red[2] + 0.1, red[3] + 0.05)
-	if beam.CreateMaskTexture and beam.streaks.AddMaskTexture then
-		local shape = beam:CreateMaskTexture()
-		shape:SetAllPoints()
-		shape:SetTexture(BEAM_ROOT .. "beam_glow", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-		beam.streaks:AddMaskTexture(shape)
-	end
-	beam.glow:SetAlpha(0.85)
-	beam.streaks:SetAlpha(0.7)
+	beam.glow:SetAlpha(Beacon.BEAM_ALPHA)
 	-- (the light at its foot: Beacon.Foot, at the beam's first show)
-	beam.scroll, beam.fade = 0, 1
-	-- the strip's first window, where the streaks stand under Reduce Motion
-	beam.streaks:SetTexCoord(0, 1, 0, BEAM_SPAN)
-	-- the flare when a destination is set: the column widens from a thread
-	-- to its full width, fast at the end (easing in), as it fades up
+	beam.fade = 1
+	-- the way in for a new destination: the beam rises from its foot to its
+	-- full height (easing out) as it fades up -- as the wisp lands, else as
+	-- the marker comes up
 	local flare = beam:CreateAnimationGroup()
-	local widen = flare:CreateAnimation("Scale")
-	widen:SetScaleFrom(0.05, 1)
-	widen:SetScaleTo(1, 1)
-	widen:SetOrigin("BOTTOM", 0, 0)
-	widen:SetDuration(0.45)
-	widen:SetSmoothing("IN")
+	local grow = flare:CreateAnimation("Scale")
+	grow:SetScaleFrom(1, 0.05)
+	grow:SetScaleTo(1, 1)
+	grow:SetOrigin("BOTTOM", 0, 0)
+	grow:SetDuration(Beacon.RISE)
+	grow:SetSmoothing("OUT")
 	local rise = flare:CreateAnimation("Alpha")
 	rise:SetFromAlpha(0)
 	rise:SetToAlpha(1)
@@ -6699,11 +7185,9 @@ UpdateMarker = function()
 			end
 			marker:SetAlpha(1)
 			marker.faint = false
-			-- (the chevrons' ripple stopped while unseen: the next show starts it)
-			if marker.chev and MelloUI.Anim and MelloUI.Anim.StopRipple then
-				MelloUI.Anim:StopRipple(marker.chev)
-			end
+			marker.wayInOnSight = nil
 		end
+		Beacon.Ground()   -- (a wisp on its way lets go)
 		marker.nav = nil
 		FadeGameMarker(inArea)
 		return
@@ -6740,29 +7224,21 @@ UpdateMarker = function()
 		end
 		Beacon.Resize(marker, dist, marker.pin)   -- (its size for that distance from the start: no shrink on show)
 		TextShade.Marker()   -- its text shade, made at its first show with the option on
+		marker.wayInOnSight = nil
 		marker:Show()
+		-- a new destination's marker (0.21.3): the wisp flies to it and lights
+		-- it (Beacon.Land); else it comes up at once
+		local wisp = key ~= marker.soundKey and Beacon.Launch()
 		-- (0.18.4) the near look or the beacon's as the place is now: near, the
-		-- gem rises from the place into its hover (the near look's way in)
+		-- mark rises from the place into its hover (the near look's way in)
 		Beacon.Turn(marker, marker.pin, 0)
-		-- the pop and the flare end at once under Reduce Motion (audit, 2026-09-24)
-		if not marker.pin then
-			Beacon.Play(marker.pop)
-			if marker.goalPops and Beacon.painted ~= false then
-				Beacon.Play(marker.goalPops[1])
-				Beacon.Play(marker.goalPops[2])
-			end
-		end
 		local lit = Beacon.painted ~= false and M.db.routeBeam and not marker.pin and beam.fade > 0 or false
 		if lit then
 			Beacon.Foot(beam)
 		end
 		beam:SetShown(lit)
-		if lit then
-			Beacon.Play(beam.flare)
-		end
-		-- the gem's shadow partner pops in with it (TextShade)
-		if MelloUI.Anim and not marker.pin then
-			Beacon.Play(marker.shade and marker.shade.pop)
+		if not wisp then
+			Beacon.WayIn(marker)
 		end
 	end
 	-- the marker's sound for a new destination (Marker Sounds; 0.18.4): a new
@@ -6772,8 +7248,15 @@ UpdateMarker = function()
 	if key ~= marker.soundKey then
 		marker.soundKey = key
 		local chimed = Beacon.saidKey == key and Beacon.saidChime and GetTime() - Beacon.saidAt < Beacon.CHIME_SPAN
-		if not (Beacon.Quiet() or chimed) and Beacon.Sound() then
-			Beacon.soundFor = key
+		if not (Beacon.Quiet() or chimed) then
+			-- (0.21.3: as the wisp lands, when it flies to it)
+			if Beacon.Flying() then
+				if M.db.markerSound ~= false then
+					Beacon.wisp.sound, Beacon.soundFor = true, key
+				end
+			elseif Beacon.Sound() then
+				Beacon.soundFor = key
+			end
 		end
 	end
 	FadeGameMarker(true)
@@ -8407,7 +8890,7 @@ do
 	builder:Hide()
 	-- Where the build is (one table: the main chunk is near its 200 locals):
 	-- the part next (0 the roads, 1 the baked paths, 2 what was learned
-	-- meanwhile) and how many of Build.pending were made; the companion asked
+	-- meanwhile and the side pieces) and how many of Build.pending were made; the companion asked
 	-- how often, whether a new try is awaited (a timer or the end of a fight
 	-- asks again, nothing else), and whether LoadAddOn runs now (its
 	-- ADDON_LOADED runs other code first)
@@ -8487,14 +8970,27 @@ do
 			Merge(baked)
 		end
 		local pending = Build.pending
-		while at.applied < #pending do
-			local i = at.applied + 1
-			at.applied = i
-			local op = pending[i]
-			pending[i] = false   -- let it go
-			op.fn(unpack(op, 1, op.n))
-			Build.Slice()
+		local function Apply()
+			while at.applied < #pending do
+				local i = at.applied + 1
+				at.applied = i
+				local op = pending[i]
+				pending[i] = false   -- let it go
+				op.fn(unpack(op, 1, op.n))
+				Build.Slice()
+			end
 		end
+		Apply()
+		-- (0.21.3) the road graph's side pieces (Search: Ashore); not at a
+		-- logout's build, which plans no route. What was learned meanwhile
+		-- after them, as later changes are.
+		if at.stage == 2 then
+			at.stage = 3
+			if not Build.closing then
+				Build.FindIslands()
+			end
+		end
+		Apply()
 		Build.pending = {}
 		Build.ready = true
 	end

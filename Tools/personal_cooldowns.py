@@ -9,7 +9,9 @@ the on-use spells of equipment (ItemEffect TriggerType 0 of an item that is not 
 Left out: stealth, invisibility, forms, mounts, speed, feign death, and the shields (absorbs: the shield column's).
 
 Each one's kind, the first that fits (its look on your character and its place when several are up):
-    I immunity      an aura 39 SCHOOL_IMMUNITY on you (Divine Shield, Ice Block)
+    I immunity      an aura 39 SCHOOL_IMMUNITY on you (Divine Shield, Ice Block), or nothing on you but mechanic
+                    immunities, aura 77 / 147 (2026-10-13, the user: Will of the Forsaken an immunity -- Berserker Rage,
+                    Escape Artist, the PvP trinket; Recklessness' and Death Wish's fear immunity rides on their offence)
     F fortify       an aura 87 damage taken down (Shield Wall, Barkskin, Stoneform)
     L more health   an aura 34 / 133 / 230 (Last Stand)
     B block         an aura 51 MOD_BLOCK_PERCENT (Shield Block)
@@ -51,7 +53,7 @@ def kind_of(effects):
     """effects: (effect, aura, target0, target1, base) of a family -> its kind"""
     own = [e for e in effects if e[0] == 6 and (e[2] == SELF or e[3] == SELF)]
     auras = {e[1] for e in own}
-    if 39 in auras:
+    if 39 in auras or (auras and auras <= {77, 147}):
         return "I"
     if any(e[1] == 87 and e[4] < 0 for e in own):
         return "F"

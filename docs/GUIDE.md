@@ -1155,25 +1155,38 @@ as wide as its text, a soft shadow of the gem's own shape behind the marker's ge
 soft shade behind the direction arrow and the marker's edge arrow. The distance under the
 minimap has no shade. Off, the name line is 180 wide again, a longer name cut.
 
-World Marker (on by default; 0.15.0 states): a gem hung on the game's own navigation point over
-the destination. Far away it is a *beacon*: the gem with the red Light Beam rising from it (a
-ring of light on the ground at its foot, the gem lit red by it; 0.16.0) and the distance and
-travel time under it, faint while it stands in the middle of the screen, where
-your character is. Within 100 yards it turns into the *near look* (0.18.4; it was a pin on the
-place): the beam fades out on the way in, the gem glides up about 80 above the place, the distance
-and the name over it and three gold chevrons under it rippling down toward the place, so it never
-covers the NPC, object or item's source you are looking for (never faint); walking away it glides
-back down into the beacon. A soft sound plays as it turns and when a new destination comes up
-(Marker Sounds, on: the user's own Quest_TrackChange, Media\Sounds\SFX; for a new destination it is the only
-sound, the notice leaves its chime out), never while the place is
-off screen nor for the destination a /reload brings back. Under Reduce Motion it changes at once
-and the chevrons stand still. It never jumps: another destination (a quest picked in the tracker,
-another pin) brings it up afresh there with its way in, the beam's flare and the gem's pop or
-rise; when Route's own pin moves for the same destination (a nearer creature, or the game's sunken
-point given up for Route's spot) it glides there on screen in 0.4 seconds; and while Route's pin
-for a quest is due but not up yet it waits rather than showing on the game's point. The gem and the beam get smaller the farther the place is
-(0.18.4: full size within 150 yards, down to about a third far away; the distance and the name
-keep their size, the pin always full size). Off screen, an arrow beside your character points the
+World Marker (on by default; 0.15.0 states; 0.21.3 look A, "cleaner and smaller"): a small flag
+mark (the trail's flag in a gold ring, 18 wide) hung on the game's own navigation point over
+the destination. Far away it is a *beacon*: the mark with a slim, still Light Beam rising from it
+(20 x 230, a small glow on the ground at its foot; red with Red Beads, gold with the other Trail
+Looks) and the distance and travel time under it, faint while it stands in the middle of the
+screen, where your character is. Within 100 yards it turns into the *near look* (0.18.4; it was a
+pin on the place): the beam fades out on the way in, the mark glides up about 67 above the place,
+the distance and the name over it and one gold chevron under it pointing down to the place, so it
+never covers the NPC, object or item's source you are looking for (never faint); walking away it
+glides back down into the beacon. A soft sound plays as it turns and when a new destination comes
+up (Marker Sounds, on: the user's own Quest_TrackChange, Media\Sounds\SFX; for a new destination
+it is the only sound, the notice leaves its chime out), never while the place is off screen nor
+for the destination a /reload brings back. Under Reduce Motion it changes at once.
+
+The Wisp (Route > Arrow & Marker, under World Marker; 0.21.3, Firefly by default): when the
+marker comes up for a new destination, a small light flies from your character to it in about a
+second and lights it as it lands: the beam rises, the mark pops in, the distance and name fade
+in, and the marker's sound plays then. It aims at the place where it is on the screen at every
+frame, so turning the camera while it flies bends its path; with the place off the screen it
+settles into the arrow beside your character (the arrow pops in, lit a moment) and the mark's way
+in plays the first time you turn to see the place. Firefly: a bright point with a short streak;
+Embers: a smaller glow shedding sparks that fall away; Off: the marker comes up at once, as
+before. Never under Reduce Motion, nor for the destination a /reload brings back.
+
+It never jumps: another destination (a quest picked in the tracker, another pin) brings it up
+afresh there with its way in (the wisp, or the beam's rise and the mark's pop); when Route's own
+pin moves for the same destination (a nearer creature, or the game's sunken point given up for
+Route's spot) it glides there on screen in 0.4 seconds; and while Route's pin for a quest is due
+but not up yet it waits rather than showing on the game's point. The mark and the beam get
+smaller the farther the place is (0.18.4: full size within 150 yards; the beam down to about a
+third far away, the mark never under 12 of its 18; the distance and the name keep their size, the
+pin always full size). Off screen, an arrow beside your character points the
 way to turn, on a ring that follows the camera's zoom (wider when you zoom in), moving every frame
 of your screen. Inside a quest's objective area (a camp to clear, a field to search: the client's quest
 area, where it can say) the marker hides, the game's own marker too, and comes back once you

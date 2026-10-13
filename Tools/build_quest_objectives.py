@@ -135,7 +135,7 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from build_quest_list import (sql_rows, load_zone_maps, locate, load_listing, db2, fetch_file,  # noqa: E402
+from build_quest_list import (sql_rows, load_zone_maps, locate, load_quests, db2, fetch_file,  # noqa: E402
                               CMANGOS_SQL, CACHE, log, lua_str, WOWHEAD, place_on_map)
 from import_wowhead_quests import fetch as fetch_page, BASE  # noqa: E402
 
@@ -213,6 +213,11 @@ def listview(page, lv_id):
                 except ValueError:
                     return []
     return []
+
+# The server's objective types (the client's quest cache) Route can place: 0 a creature to kill, 1 an item to
+# collect, 2 an object to use, 3 a creature to talk to; the rest (a skill, an area, money, reputation ...) not
+SERVER_KINDS = {0: "npc", 1: "item", 2: "object", 3: "npc"}
+CREATURE_WDB = "F:/World of Warcraft/_classic_beta_/Cache/WDB/enUS/creaturecache.wdb"
 
 GRID = 40          # yards: one place kept per cell
 CAP = 30           # places kept per objective at most
@@ -496,7 +501,7 @@ def main():
     use_out = defaultdict(set)
     log(f"  {len(made_from)} items are made by using other items (the client's spells)")
     zones, _ = load_zone_maps()
-    listing = load_listing()
+    listing = load_quests(sql)
     # The maps Route can walk: open-world maps (no instance, no battleground)
     # that have zone maps: Eastern Kingdoms, Kalimdor, Forever's Zephras Isle.
     open_world = {int(r["ID"]) for r in db2("Map") if (r.get("InstanceType") or "0") == "0"}
@@ -790,16 +795,75 @@ def main():
     stats["classic quests"] = len(out)
     stats["quests with needed items"] = len(gates_out)
 
-    # ---- Forever's own quests, from their Wowhead pages
+    # ---- Forever's own quests: the server's objectives (the client's quest cache, docs/plans/quest-scan.md), else
+    # their Wowhead pages' objective lists. The server says each objective's creature, object or item and how many;
+    # its name comes from the page (the same link), classic-db, the client's item table, the creatures the client
+    # has met (creaturecache.wdb), the creature's or item's Wowhead page, or the scan addon's objective line.
     classic = set(out) | {int(r["entry"]) for r in sql_rows(sql, "quest_template")}
+    from read_questcache import snapshot
+    from extract_npc_voices import read_wdb
+    _, client, scan = snapshot()
+    met = {}
+    if client:
+        try:
+            met = {e: v[0] for e, v in read_wdb(CREATURE_WDB).items() if v[0] and v[0] != "?"}
+        except (OSError, ValueError) as exc:
+            log(f"  creaturecache.wdb not read ({exc})")
+    client_items = {}
+    if client:
+        try:
+            client_items = {int(r["ID"]): r["Display_lang"] for r in db2("ItemSparse") if r.get("Display_lang")}
+        except FileNotFoundError:
+            log("  no ItemSparse export: item names from classic-db and Wowhead only")
+
+    def page_name(kind, i):
+        m = re.search(r"<title>(.*?) - (?:NPC|Object|Item) - ", read_page(kind, i) or "")
+        return " ".join(html.unescape(m.group(1)).split()) if m else ""
+
+    def line_names(qid, count):
+        """the scan addon's objective lines of a quest without their counts ("Rockjaw Trogg slain: 0/6"), when it
+        has as many as the server's record (else they cannot be told apart): [name]"""
+        lines = (scan or {}).get("quests", {}).get(qid, {}).get("objectives") or []
+        if len(lines) != count:
+            return [""] * count
+        return [re.sub(r"\s+slain$", "", re.sub(r":\s*\d+\s*/\s*\d+\s*$", "", (o or {}).get("text") or "")).strip()
+                for o in lines]
+
+    def server_objectives(qid, wh):
+        c = client.get(qid)
+        if not c:
+            return wh, "from Wowhead's page" if wh else ""
+        named = {(k, i): name for k, i, name in wh}
+        objs = c["objectives"]   # (in the server's order, as the quest log and Wowhead's page have them)
+        lines = line_names(qid, len(objs))
+        found = []
+        for n, o in enumerate(objs):
+            kind = SERVER_KINDS.get(o["type"])
+            i = o["object"]
+            if not kind or i <= 0:
+                continue
+            name = (named.get((kind, i)) or {"npc": cname, "object": oname, "item": iname}[kind].get(i)
+                    or (client_items.get(i) if kind == "item" else met.get(i) if kind == "npc" else "")
+                    or page_name(kind, i) or lines[n])
+            if name:
+                found.append((kind, i, name))
+            else:
+                stats["forever: a server's objective without a name (left out)"] += 1
+        if not found:
+            return wh, "from Wowhead's page (the server's have no creature, object or item)" if wh else ""
+        if wh and sorted((k, i) for k, i, _ in wh) != sorted((k, i) for k, i, _ in found):
+            stats["forever: the server's objectives, not Wowhead's page's"] += 1
+        return found, "from the server"
+
     forever = []
     for qid in sorted(listing):
         if qid in classic:
             continue
         page = read_page("quest", qid)
-        objs = quest_objectives(page) if page else []
+        objs, source = server_objectives(qid, quest_objectives(page) if page else [])
         if objs:
             forever.append((qid, objs))
+            stats["forever: objectives " + source] += 1
 
     def wh_points(kind, i):
         """(map, x, y) world points of an NPC / object from its Wowhead page's map."""

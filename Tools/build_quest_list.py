@@ -6,7 +6,10 @@ belongs to, and where it is picked up (quest giver name, zone and map
 coordinates).
 
 Sources:
-  Wowhead Forever listing (cached by import_wowhead_quests.py)   quest metadata + zone
+  the game client's quest cache  which quests Forever's server has, their titles, levels and zones: the
+                            MelloUIDataScan dev addon asks for every quest, Tools/read_questcache.py
+                            snapshots the cache (load_quests; docs/plans/quest-scan.md)
+  Wowhead Forever listing (cached by import_wowhead_quests.py)   under it: holidays, zones, sides, classes
   cmangos classic-db        vanilla quest givers (creature/gameobject relations) and spawn points
   wago.tools DB2 (1.15.9)   UiMapAssignment bounds (world -> map coordinates), AreaTable names
   Wowhead quest/NPC pages   Forever quest givers and turn-ins: zone, and map coordinates
@@ -211,7 +214,10 @@ def load_zone_maps():
     zones = []
     for r in db2("UiMapAssignment"):
         ui = uimaps.get(int(r["UiMapID"]))
-        if not ui or ui["Type"] not in ("3", "4"):   # zones and cities / dungeons only, not continents
+        # zones and cities / dungeons only, not continents; and the orphans: patch 1.60.1.70338 made Alterac
+        # Valley, Warsong Gulch, Arathi Basin and Darkspear Islands type 6 (3 before), and AV's 29 quests lost the
+        # zone they are picked up in
+        if not ui or ui["Type"] not in ("3", "4", "6"):
             continue
         x0, y0, x1, y1 = float(r["Region_0"]), float(r["Region_1"]), float(r["Region_3"]), float(r["Region_4"])
         zones.append({
@@ -257,9 +263,132 @@ def load_listing():
             for row in listing_data(open(f, encoding="utf-8").read()):
                 if folder == KEPT_LISTINGS:
                     kept += 1
+                    row["kept"] = True   # (load_quests: the quest list built on 2026-10-06 knew it better)
                 quests[row["id"]] = row
     log(f"  {len(quests)} quests in the Wowhead listing ({kept} rows from the kept listing of 2026-09-27)")
     return quests
+
+
+# The quest list as built on 2026-10-06 (0.19.5 to 0.21.x), kept: built on Wowhead's listing of 2026-10-03 (5,281
+# quests) over the kept one of 2026-09-27, and that listing was lost on 2026-10-13 (Wowhead answered a
+# --refresh-listing with its bot check, written over it). Its rows hold what the newer listing said: about 100
+# quests more, and the side of 236 Forever quests the older listing had as 0. Read under today's listing, over the
+# kept one (load_quests).
+KEPT_BUILT = os.path.join(CACHE, "questlist_shipped_2026-10-06.lua")
+BUILT_ROW = re.compile(r'^\t\t\{(\d+),"((?:[^"\\]|\\.)*)",(-?\d+),(-?\d+),(-?\d+),(-?\d+),(-?\d+),-?\d+,'
+                       r'"(?:[^"\\]|\\.)*",-?[\d.]+,-?[\d.]+,-?\d+,(-?\d+),', re.M)
+
+
+def load_kept_built():
+    """The kept quest list's rows as listing rows ({questID: row}): its quest zone, or its event's category"""
+    if not os.path.exists(KEPT_BUILT):
+        return {}
+    text = open(KEPT_BUILT, encoding="utf-8").read()
+    out = {}
+    for m in BUILT_ROW.finditer(text, text.find("\tquests = {")):
+        qid, title, level, req, side, cls, zone, event = m.groups()
+        out[int(qid)] = {"id": int(qid), "name": title.replace('\\"', '"').replace("\\\\", "\\"), "level": int(level),
+                         "reqlevel": int(req), "side": int(side), "reqclass": int(cls),
+                         "category": int(event) or int(zone), "built": True}
+    return out
+
+
+# ---------------------------------------------------------------------------
+# The game client's own quest data (docs/plans/quest-scan.md)
+# ---------------------------------------------------------------------------
+
+# The client's quest sorts of the class quests (QuestSort, as a negative category) -> class mask (CLASSES)
+CLASS_SORTS = {-61: 256, -81: 1, -82: 64, -141: 2, -161: 128, -162: 8, -261: 4, -262: 16, -263: 1024}
+SEASONAL = -22   # the client's sort of every holiday's quests: which holiday it is not, Wowhead's category is
+# The races a quest takes, as the client's 64-bit mask: every Alliance race, every Horde race (read off the cache)
+ALLIANCE_MASK = 0x55155555b1354c4d
+HORDE_MASK = 0xaa2aaaaa4e0ab3b2
+
+
+def load_quests(sql):
+    """Every quest Forever has (the user, 2026-10-13: "There has to be a way to get the actual quest data"): the
+    game server's own answers, read from the client's quest cache after the MelloUIDataScan addon asked for every
+    quest of the client's QuestV2 table (Tools/read_questcache.py writes the snapshot). Wowhead's listing stays
+    under it, for what the server does not say: today's listing, else the kept quest list of 2026-10-06
+    (KEPT_BUILT), else the kept listing of 2026-09-27.
+      exists     the server answered for it, or Wowhead lists it and a whole scan did not find the server without it
+      title, level, required level   the server's
+      category   Wowhead's (its holidays and its zone of each quest); else the server's sort, a zone's sub-area
+                 raised to its zone (105 of 106 cached quests agree with Wowhead so), a negative sort as it is; a
+                 holiday's quest Wowhead does not list is left out (its sort says only "Seasonal")
+      side       Wowhead's; else classic-db's races; else the server's races when they are one faction's (0: both)
+      class      Wowhead's; else the class of a class quest's sort (classic-db's are added after: build_needs)
+    Without a snapshot: Wowhead's listing as before. -> {questID: row as load_listing's}"""
+    listing = load_listing()
+    built = load_kept_built()
+    over = 0
+    for qid, row in built.items():
+        old = listing.get(qid)
+        if old is None or old.get("kept"):
+            if old and old["category"] < 0 and not row["category"]:
+                row["category"] = old["category"]   # (a class or profession sort the built row has as zone 0)
+            listing[qid] = row
+            over += 1
+    log(f"  {len(built)} quests in the kept quest list of 2026-10-06, {over} of them over the kept listing")
+    from read_questcache import snapshot
+    build, client, scan = snapshot()
+    if not client:
+        log("  no quest cache snapshot (Tools/read_questcache.py): the Wowhead listing alone")
+        return listing
+    parent = {int(r["ID"]): int(r.get("ParentAreaID") or 0) for r in db2("AreaTable")}
+
+    def zone_of(sort):
+        for _ in range(10):
+            if not parent.get(sort):
+                break
+            sort = parent[sort]
+        return sort
+
+    races = {}
+    for r in sql_rows(sql, "quest_template"):
+        races[int(r["entry"])] = int(r.get("RequiredRaces") or 0)
+    stats = defaultdict(int)
+    whole = bool(scan and scan["done"])
+    if whole:
+        for qid in [q for q in listing if q in scan["failed"] and q not in client]:
+            del listing[qid]
+            stats["Wowhead's, the server knows it not: left out"] += 1
+    for qid, c in client.items():
+        row = listing.get(qid)
+        if row is None:
+            sort = c["sort"]
+            if sort == SEASONAL:
+                stats["the server's, a holiday's Wowhead does not list: left out"] += 1
+                continue
+            mask = c["races"] & 0xffffffffffffffff
+            if qid in races and races[qid] & (ALLIANCE_RACES | HORDE_RACES):
+                r = races[qid]
+                side = 1 if not r & HORDE_RACES else 2 if not r & ALLIANCE_RACES else 3
+            elif mask and not mask & ~ALLIANCE_MASK:
+                side = 1
+            elif mask and not mask & ~HORDE_MASK:
+                side = 2
+            else:
+                side = 0
+            row = {"id": qid, "name": c["title"], "level": max(c["level"], 0), "reqlevel": max(c["minLevel"], 0),
+                   "side": side, "reqclass": CLASS_SORTS.get(sort, 0), "category": zone_of(sort) if sort > 0 else sort}
+            listing[qid] = row
+            stats["the server's, not Wowhead's: added"] += 1
+            continue
+        stats["Wowhead's and the server's"] += 1
+        for key, value in (("name", c["title"]), ("level", c["level"]), ("reqlevel", c["minLevel"])):
+            known = bool(value) if key == "name" else value > 0   # (a level of 0 or less: the server does not say)
+            if known and row.get(key) != value:
+                stats[f"{key} the server's, not Wowhead's"] += 1
+                row[key] = value
+    if whole:
+        stats["Wowhead's, not asked (not in the client's QuestV2)"] = sum(
+            1 for q in listing if q not in client and q not in scan["failed"] and q not in scan["quests"])
+    log(f"  the client's quest cache (build {build}): {len(client)} quests; scan "
+        + ("whole" if whole else "not whole (nothing left out)" if scan else "none"))
+    for k, v in sorted(stats.items()):
+        log(f"    {k}: {v}")
+    return listing
 
 
 MAPPER = re.compile(r"g_mapperData\s*=\s*(\{.*?\});", re.S)
@@ -912,7 +1041,9 @@ def build_map_points(sql, zones, used_dungeons, raids):
         nodes[int(r["PathID"])].append(r)
     pois = []
     for r in db2("AreaPOI"):
-        if r["ContinentID"] in ("0", "1"):
+        # (a town, never a marker of Forever's own with no flags: a crafting shop in Dalaran named the Zephras Isle
+        # boat's dock "First to Your Aid", 2026-10-13)
+        if r["ContinentID"] in ("0", "1") and int(r.get("Flags") or 0):
             pois.append((r["Name_lang"], int(r["ContinentID"]), float(r["Pos_0"]), float(r["Pos_1"])))
 
     def dock_name(cont, x, y, loc):
@@ -1535,7 +1666,7 @@ def main():
     sql = fetch_file(CMANGOS_SQL, os.path.join(CACHE, "ClassicDB.sql.gz"))
     zones, areas = load_zone_maps()
     area_by_name = {name.lower(): aid for aid, name in areas.items()}
-    listing = load_listing()
+    listing = load_quests(sql)
     givers, spawns, names, venders = load_vanilla(sql)
     # a quest classic-db has is Classic; the rest are Forever's own (user,
     # 2026-09-23: "Classic" / "Forever" on each quest, to tell new from old)
@@ -1545,19 +1676,26 @@ def main():
     forever_ids = [q for q in listing if q >= 60000]
     fgivers, npc_zone, fenders, npc_pos = forever_givers(forever_ids, args.fetch_npcs or args.refresh_npcs, args.refresh_npcs)
 
-    # Quests met in game that Wowhead does not list: title and giver from the
-    # collector, level unknown (0), zone and position from where you stood.
+    # Quests met in game that neither the server's answers nor Wowhead have: title and giver from the
+    # collector, level unknown (0), zone and position from where you stood. A quest they have takes the
+    # collector's giver when nothing else names one (the quests the server answered for carry no giver).
     for qid, kinds in store.get("quests", {}).items():
-        if not qid.isdigit() or int(qid) in listing:
+        if not qid.isdigit():
             continue
         rec = kinds.get("accept") or kinds.get("progress") or kinds.get("complete")
         if not isinstance(rec, dict):
             continue
-        npc = learned.get(rec.get("npcID") or -1, {})
-        listing[int(qid)] = {"id": int(qid), "name": rec.get("title") or "", "level": kinds.get("_level") or 0, "reqlevel": 0,
-                             "side": 0, "reqclass": 0, "category": area_by_name.get((npc.get("mapName") or "").lower(), 0)}
+        q = int(qid)
+        if q not in listing:
+            npc = learned.get(rec.get("npcID") or -1, {})
+            listing[q] = {"id": q, "name": rec.get("title") or "", "level": kinds.get("_level") or 0, "reqlevel": 0,
+                          "side": 0, "reqclass": 0, "category": area_by_name.get((npc.get("mapName") or "").lower(), 0)}
+        elif q in fgivers or q in givers or not isinstance(kinds.get("accept"), dict):
+            continue   # (only the NPC it was taken from: the one it is handed in to is no giver)
+        else:
+            rec = kinds["accept"]
         if rec.get("npcID"):
-            fgivers[int(qid)] = {"npcID": rec["npcID"], "name": rec.get("npc") or ""}
+            fgivers[q] = {"npcID": rec["npcID"], "name": rec.get("npc") or ""}
 
     starters = load_starters(sql, spawns, zones, list(listing), args.fetch_npcs)
 
@@ -1751,7 +1889,7 @@ def main():
 
     with open(os.path.abspath(args.out), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated by Tools/build_quest_list.py. Do not edit by hand.\n")
-        fh.write("-- Sources: Wowhead Forever listing, cmangos classic-db, wago.tools DB2 exports, in-game positions.\n\n")
+        fh.write("-- Sources: the game client's quest cache, Wowhead Forever listing, cmangos classic-db, wago.tools DB2 exports, in-game positions.\n\n")
         fh.write("MelloUI_QuestListData = {\n")
         fh.write("\t-- quest fields: id, title, level, required level, side (1 Alliance, 2 Horde, 3 both), class mask,\n")
         fh.write("\t-- quest zone (area id), pick-up zone (area id), giver name, giver x, giver y,\n")

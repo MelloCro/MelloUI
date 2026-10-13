@@ -136,8 +136,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- suite and release.py).
 local CHANGELOG = {
 	{ version = "0.21.3", lines = {
+		"World Marker: cleaner and smaller -- a smaller flag mark, a slim still beam, one chevron near the place.",
+		"World Marker: the Wisp (Firefly or Embers) flies from your character to a new destination and lights it.",
 		"From the latest patch: Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects knows Rotmending.",
+		"Big Cooldowns: break-free spells (Will of the Forsaken, Berserker Rage, Escape Artist, the PvP trinket) count as immunities.",
 		"Route knows many more roads and finds better ways; places know the Riverglades and Hyjal flight points, Stormwind Harbor and Coldridge Valley.",
+		"Fixed: Route took the long way, or cross-country, from places whose nearest roads are side roads not joined to the rest.",
 	} },
 	{ version = "0.21.2", lines = {
 		"Fixed: action bars faded by the Fader left their out of range and out of mana colours on the screen as coloured squares.",

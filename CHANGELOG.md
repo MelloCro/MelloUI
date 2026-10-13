@@ -2,8 +2,11 @@
 
 ## 0.21.3
 
-- Data from the game's latest patch: Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects knows Rotmending; two spells the patch took out are gone.
+- World Marker: cleaner and smaller. A smaller flag mark, a slim beam that stands still with a small glow at its foot, and near the place one gold chevron pointing down instead of three rippling ones.
+- World Marker: the Wisp (Route > Arrow & Marker: Firefly, Embers or Off). When the marker comes up for a new destination, a small light flies from your character to the place in about a second and lights it: the beam rises and the mark pops in as it lands. It follows the place as you turn the camera; with the place off the screen it settles into the arrow beside your character.
+- Data from the game's latest patch: Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects knows Rotmending; two spells the patch took out are gone. Spells that only break you free and keep you from being controlled (Will of the Forsaken, Berserker Rage, Escape Artist, the PvP trinket) count as immunities in Big Cooldowns, shown first.
 - Route knows many more roads (recorded in game) and finds better ways with them; turn-in and pick-up places know the Riverglades and Mount Hyjal flight points, Stormwind Harbor, Coldridge Valley and the crafting shops.
+- Fixed: Route sent you cross-country, or the long way round, from or to a place whose nearest roads are a side road or a lone point not joined to the rest; such a place now also finds its way onto the nearest main road.
 
 ## 0.21.2
 
