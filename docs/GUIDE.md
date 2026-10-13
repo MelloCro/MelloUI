@@ -544,6 +544,10 @@ Painted Trough (as before), a flat Dark, the Bar Texture's finish in the dark (B
 Dark), or None. **Bar Background Opacity** lets the world show through the empty part of a bar.
 One choice for every unit frame: player, target, focus, pet, target of target and party.
 
+**Party members' level** (0.21.3): with the painted unit frames, each party member shows its level in a
+circle at the lower left of its portrait, the player's circle at the party portrait's size, in your Level Orb
+look (Look > Borders). The game's party frame has no level of its own; with the kit off there is none.
+
 **Level Up** (Unit Frames > Frame > Look on the player, 0.21.3, on): when you gain a level, the number
 in your player frame's level circle turns over to the new one (the old level rising out, the new one
 coming up) with a ring of light spreading from the circle, a light runs along the experience bar,

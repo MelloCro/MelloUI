@@ -1644,6 +1644,107 @@ local Party_Relayout = Perf.Shared("UpdateNameTextAnchors / UpdateArt on a party
 	end
 end)
 
+--------------------------------------------------------------------------------
+-- The party members' level circle (0.21.3; the user's screenshot of
+-- 2026-10-13: "the party unitframes dont show the circle with the level").
+-- The game's party frame has no level region (PartyMemberFrameTemplate: the
+-- portrait, the name, the bars, the icons), so one of our own: the player's
+-- (PlayerFrame.xml: the 39-unit UI-HUD-UnitFrame-SmallCircle at the
+-- portrait's lower left, its centre 21.5 left of the 60-unit portrait's and
+-- 24.5 under it, the level in the player's level font) at the party
+-- portrait's scale, dressed by the kit as the player's (SkinCircle: the
+-- Level Orb and its dark ground). Made with the member's skin; shown only
+-- while the skin is on and the member there; the level read on its show and
+-- on UNIT_LEVEL / GROUP_ROSTER_UPDATE (one event frame for every member)
+--------------------------------------------------------------------------------
+
+local PartyLevel = { of = setmetatable({}, { __mode = "k" }), SIZE = 39, DX = -21.5, DY = -24.5, PORTRAIT = 60,
+	FONT_MIN = 9 }
+
+-- the member's circle and number, made once (side table, nothing on the
+-- game's frame but the two regions)
+function PartyLevel.Make(frame, portrait)
+	local made = PartyLevel.of[frame]
+	if made then
+		return made.circle, made.number
+	end
+	local saved = portraitSavedOf[portrait]
+	local okW, w = pcall(portrait.GetWidth, portrait)
+	w = saved and saved.w or (okW and not Secret(w) and w) or 37
+	local k = w > 0 and w / PartyLevel.PORTRAIT or 37 / PartyLevel.PORTRAIT
+	local circle = frame:CreateTexture(nil, "ARTWORK", nil, 2)
+	circle:SetAtlas("UI-HUD-UnitFrame-SmallCircle")
+	circle:SetSize(PartyLevel.SIZE * k, PartyLevel.SIZE * k)
+	circle:SetPoint("CENTER", portrait, "CENTER", PartyLevel.DX * k, PartyLevel.DY * k)
+	local number = frame:CreateFontString(nil, "OVERLAY")
+	number:SetFontObject("GameFontNormalSmall")
+	number:SetPoint("CENTER", circle, "CENTER", 0, -0.5 * k)
+	made = { circle = circle, number = number, k = k }
+	PartyLevel.of[frame] = made
+	PartyLevel.Watch()
+	Perf.HookScript(frame, "OnShow", PartyLevel.OnShow)
+	PartyLevel.Update(frame)
+	return circle, number
+end
+
+-- the level now, in the player's level font and colour at the member's
+-- scale; hidden with the skin off, no member, or no level to say
+function PartyLevel.Update(frame)
+	local made = PartyLevel.of[frame]
+	if not made then
+		return
+	end
+	local unit = rawget(frame, "unit")
+	local level
+	if active and type(unit) == "string" then
+		local okE, there = pcall(UnitExists, unit)
+		if okE and there == true then
+			local okL, lv = pcall(UnitLevel, unit)
+			level = okL and Num(lv) or nil
+		end
+	elseif active then
+		-- (a preview's stand-in, ours: no unit -- its sample's level, Core/ConfigPreview.lua)
+		local s = rawget(frame, "sample")
+		level = type(s) == "table" and Num(s.level) or nil
+	end
+	if level then
+		local src = _G.PlayerLevelText
+		local okF, font, size, flags = pcall(src and src.GetFont or error, src)
+		if okF and font and Num(size) then
+			made.number:SetFont(font, math.max(PartyLevel.FONT_MIN, size * made.k), flags)
+		end
+		local okC, r, g, b = pcall(src and src.GetTextColor or error, src)
+		if okC and Num(r) and Num(g) and Num(b) then
+			made.number:SetTextColor(r, g, b)
+		end
+		made.number:SetText(level > 0 and tostring(level) or "??")
+	end
+	made.circle:SetShown(level ~= nil)
+	made.number:SetShown(level ~= nil)
+end
+
+function PartyLevel.All()
+	for frame in pairs(PartyLevel.of) do
+		PartyLevel.Update(frame)
+	end
+end
+
+PartyLevel.OnShow = Perf.Shared("OnShow on a party member: its level circle", function(frame)
+	PartyLevel.Update(frame)
+end, "script")
+
+-- one event frame for every member's level, made with the first circle
+function PartyLevel.Watch()
+	if PartyLevel.events then
+		return
+	end
+	local f = CreateFrame("Frame")
+	f:RegisterEvent("UNIT_LEVEL")
+	f:RegisterEvent("GROUP_ROSTER_UPDATE")
+	Perf.SetScript(f, "OnEvent", PartyLevel.All)
+	PartyLevel.events = f
+end
+
 local function SkinPartyMember(frame)
 	if not frame or skin.party[frame] then
 		return
@@ -1678,6 +1779,8 @@ local function SkinPartyMember(frame)
 	Shade(u, SkinBar(frame.ManaBar, frame.ManaBar, picture, false))
 	TuckBars(ring, { health, frame.ManaBar }, false)
 	RingCover(ring, { health, frame.ManaBar }, false, frame)
+	-- (0.21.3) its level circle, as the player's (PartyLevel, above)
+	Shade(u, SkinCircle(PartyLevel.Make(frame, portrait)), true)
 	-- the member's pet: the same at half size (its name has no shade: the pet's
 	-- frame shows none)
 	local pet = frame.PetFrame
@@ -1908,6 +2011,7 @@ local function Activate()
 	Kit:PersonalBordersShown(true)
 	Kit:Cover("unitframes")
 	Kit:Cover("partyframes")
+	PartyLevel.All()   -- (0.21.3: the party members' level circles back)
 end
 
 local function Deactivate()
@@ -1934,6 +2038,7 @@ local function Deactivate()
 	Kit:PersonalBordersShown(false)
 	Kit:Uncover("unitframes")
 	Kit:Uncover("partyframes")
+	PartyLevel.All()   -- (0.21.3: the party members' level circles away: the game's frame has none)
 end
 
 local function Hook()
@@ -2072,7 +2177,11 @@ function M:PartsOf(frame)
 	if not (portrait and health and mana) then
 		return nil
 	end
-	return portrait, health, mana, rawget(frame, "Name")
+	-- (0.21.3: its own level circle and number, PartyLevel -- the frame effects
+	-- laid under them as under the player's: the user's screenshot of
+	-- 2026-10-13, a heal's light over the party member's circle)
+	local made = PartyLevel.of[frame]
+	return portrait, health, mana, rawget(frame, "Name"), made and made.circle, made and made.number
 end
 
 -- (0.20.0) what stands over a frame effect on a portrait-and-bars frame

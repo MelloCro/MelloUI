@@ -111,6 +111,7 @@ local SAMPLES = {
 	party = { layout = "unit", area = "unitframes", plate = true,
 		first = "Lina", last = "Brightwater", class = "PRIEST", reaction = 5, display = 147599,
 		health = 7900, max = 8800, power = 4100, powerMax = 7000, token = "MANA",
+		level = 24,   -- (0.21.3: the party members' level circle, UnitFramePanel's PartyLevel)
 		label = "A party member's frame" },
 	raid = { layout = "raid", area = "raidframes",
 		first = "Tobin", last = "Hale", class = "WARRIOR", reaction = 5, health = 6600, max = 12000,
