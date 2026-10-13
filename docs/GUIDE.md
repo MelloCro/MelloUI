@@ -1543,12 +1543,31 @@ Hearthstone to its type, a type to Other); Other and Empty are always on. The Re
 Consumables, Junk and Trade Goods Kind switches of before 0.20.4 became these ticks. Pick up an item
 and every kind shows a **+** slot after its items (the empty kinds too, a folded group opens): drop
 the item there and it always goes under that kind; drop it on its own kind's **+** to put it back.
-**Items You Placed > Forget** puts every placed item back under its own kind. **Recent
-Lasts**: until the bags close, until you hover the item, or for 5 minutes. **Split Trade Goods**
-gives every type of Trade Goods its own heading in its place (Cloth, Leather, Metal & Stone, Herbs
-... in the game's own words). On the Layout section: **Columns** (8 to 16 slots across), **Item Size**
+**Items You Placed > Forget** puts every placed item back under its own kind.
+
+**Your own kinds** (0.21.1): **Add kind** puts a new kind on top of the list with its settings open
+under its row. It takes the items you drop on its **+** slot, and the ones its rule matches: an
+**Item Type** and **Subtype**, a word the name contains (**Name Contains**) and a **Quality** (one, or
+Uncommon, Rare or Epic or better); every part you set must hold, and with none set it takes only what
+you drop on it. Own kinds take their items before the game's kinds (after Recent and the items you
+placed), the higher on the list first. Every kind, the game's and your own, can be renamed: double-click
+its name, or type it in its settings (the cog on its row). There each kind also has **Split By Type**:
+its items under a heading for each item type, in its place (Consumable into Potion, Elixir, Food &
+Drink ... in the game's own words; Trade Goods into Cloth, Leather, Metal & Stone, Herbs ..., as
+Split Trade Goods did before 0.21.1 -- yours carried over), how many items you dropped on it with
+**Forget Them**, and on your own kinds **Remove Kind** (asked first; its items go back to their own
+kinds). **Recent Lasts**: until the bags close, until you hover the item, or for 5 minutes. On the
+Layout section: **Columns** (8 to 16 slots across), **Item Size**
 (30 to 46, the game's own is 37), **Fold Empty Slots** (off: every empty slot shows) and **Sort
 Items By**: quality, name, newest first (the order you picked them up in) or item level.
+
+**Bank by Kind** (0.21.1, on; Windows, the Bank pick, General): your bank in the same kinds, inside the game's
+bank window, where its grid stood: the Kinds list's order, lines and groups, your own kinds and their rules,
+renamed and split kinds, every page of the bank at once, its empty slots folded into one slot, a **+** slot in
+every kind while you hold an item (no Recent: the game marks new items in your bags only). The window grows to
+fit. Deposit and take out as always: right-click an item in your bags to put it in the bank, one in the bank to
+take it out, or drag it. The bank window itself stays the game's (in the Bank Kit's look), with its money and
+the tab to buy; off, it shows the game's own grid again.
 
 ### Discard
 

@@ -403,11 +403,15 @@ function L.Define(R, Link)
 	-- Bank with the Bags' skin off
 	-- (0.19.0) the bag window by kind, MelloUI's own (either look; works with UI Modifications off)
 	R("Windows", "Windows", "General", { BackpackPanel = "BagWindow.!enabled" }, { name = "Bags by Kind", free = true })
-	-- (its kinds, the user's picks of 2026-10-04 -- since 0.20.4 one list, Kinds, their order, lines and groups;
-	-- its layout's below, after Bag Slots on Bag Window)
-	for _, key in ipairs({ "kinds", "#Items You Placed", "recentFor", "splitTrade" }) do
+	-- (its kinds, the user's picks of 2026-10-04 -- since 0.20.4 one list, Kinds, their order, lines and groups; since
+	-- 0.21.1 own kinds and each kind's settings in it, Split Trade Goods Trade Goods' own Split By Type there; its
+	-- layout's below, after Bag Slots on Bag Window)
+	for _, key in ipairs({ "kinds", "#Items You Placed", "recentFor" }) do
 		R("Windows", "Windows", "General", { BackpackPanel = "BagWindow." .. key }, { free = true })
 	end
+	-- (0.21.1, the user: "modification to bank aswell" -- the bank by kind, inside the game's bank window: its switch on
+	-- the Bank pick, beside the bank's look; the kinds are the bags' Kinds list)
+	R("Windows", "Windows", "General", { BankPanel = "BagWindow.bank" }, { free = true })
 	R("Windows", "Windows", "Look", { from = "windows" }, { name = "Painted Skin" })
 	-- (0.19.4, the options audit: under the whole window's parchment the character window's body is its own stone)
 	R("Windows", "Windows", "Look", { CharacterPanel = "CharacterPanel.windowBackground", BackpackPanel = "BackpackPanel.windowBackground", BankPanel = "BackpackPanel.windowBackground" }, { name = "Window Background", picture = true,

@@ -135,6 +135,11 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.21.1", lines = {
+		"Bags by Kind: kinds of your own (Windows > Bags > Kinds, Add kind). One takes the items you drop on its + slot and the ones its rule matches: a type, a word, a quality.",
+		"Rename any kind (double-click its name); a kind's cog opens its settings. Split By Type gives any kind a heading per item type (Split Trade Goods is Trade Goods' own now).",
+		"Bank by Kind (Windows > Bank): your bank in the same kinds as your bags, inside the bank window, your own kinds too. Deposit and take out as always.",
+	} },
 	{ version = "0.21.0", lines = {
 		"Personal Display (new, off by default): health, power and your cast bar under your character, a shield column beside it: every shield its own part, in its school's colour.",
 		"The cast bar shows only while you cast. It hops when you jump and stays under your feet as you zoom. Place it in Edit Layout; Preview plays a made-up fight on it.",
@@ -165,15 +170,6 @@ local CHANGELOG = {
 		"Burnt paper stays the default; Classic vellum brings back the vellum with brush-stroke edges from before 0.20.1. It switches at once.",
 		"Fixed: Edit Layout's Minimap plate fits the minimap as you see it, and the minimap goes all the way into a corner of the screen.",
 		"Fixed: hovering a weapon buff (a shaman's imbue, an oil or a poison) gave an error instead of its tooltip.",
-	} },
-	{ version = "0.20.2", lines = {
-		"Edit Layout moves the game's frames too: unit frames, cast bar, party and raid, every action bar, stance, pet and totem bars, saved into your Edit Mode layout as well.",
-		"Action Bars > Backdrops: each switch now decides its own bar. On, the bar gets its backdrop and merges with the switched-on bars next to it; off, no backdrop and no merging.",
-		"A bar you had off beside one that was on drops out of that backdrop: switch it on to keep it inside.",
-		"The Totem Bar joins the Backdrops list.",
-		"Unit frames: the PvP icon sits on the top of the level ring, without a circle of its own.",
-		"Fixed: a target too high to tell shows its skull on the level ring again.",
-		"Group Frames: the raid has its own spacing (Raid Spacing). Right-click the party or raid frames in Edit Layout to set it.",
 	} },
 }
 local LINKS = {

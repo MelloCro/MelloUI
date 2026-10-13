@@ -6395,6 +6395,11 @@ end
 --     spec.move(from, count, to)   rows from .. from + count - 1 put before row `to` (#rows + 1: at the end)
 --     spec.tick(i, on), spec.remove(i), spec.rename(i, text)
 --     spec.buttons = { { text, onClick }, ... } under the list; spec.title, spec.help: its heading and help line
+--     (0.21.1, Bags by Kind's own kinds: the user's pick 2A of bag_own_kinds_sketch) a row with `settings` (and an
+--     `id`) shows a cog: its settings open under it, in the list (one at a time; a click on the cog again, or a row
+--     picked up to drag, closes them). spec.detailRows(r) -> how many rows' height they take; spec.detail(holder, r, i)
+--     fills the holder (a Frame, made once, the list's) for that row, each time they are laid
+--   list:Open(id)   the settings of the row with that id opened (nil: closed), the list laid again
 -- A held row runs an OnUpdate while it is held, nothing else does; a long list scrolls with the wheel, and on its
 -- own while a held row is near its top or bottom.
 --------------------------------------------------------------------------------
@@ -6416,8 +6421,9 @@ do
 	local HEAD_H = 46            -- the title and its help line over the list
 	local FOOT_H = 40            -- the buttons under it
 	local GRIP_X, TEXT_X, INDENT = 10, 32, 20
-	local DRAG_START = 4         -- px the cursor goes before a held row is dragged
-	local EDGE, EDGE_EVERY = 18, 0.08   -- the scroll's edges while dragging (px), a row every this long
+	-- px the cursor goes before a held row is dragged; the scroll's edges while dragging (px), a row every this long
+	-- (one table: the file's main chunk is at Lua 5.1's 200 locals)
+	local DRAG = { START = 4, EDGE = 18, EVERY = 0.08 }
 	local TEXT = { line = "line", rename = "Double-click to rename." }
 
 	local List = {}
@@ -6447,6 +6453,33 @@ do
 	end
 
 	local RowEnter, RowLeave, RowDown, RowUp, RowDouble, Held   -- (scripts, below)
+	-- (0.21.1) the cog of a row with settings: its size, its tooltip, its look and scripts -- one table (the file's
+	-- main chunk is at Lua 5.1's 200 locals)
+	local Cog = { SIZE = 18, TIP = "Settings" }
+	-- the text colour, gold under the pointer and while its settings are open
+	function Cog.Look(cog, lit)
+		local list = cog.row.list
+		local r = cog.row.data
+		local open = r and r.id ~= nil and list.open == r.id
+		W.Paint(cog.glyph, (lit or open) and "selectedTrim" or "text", "vertex", 1)
+	end
+	Cog.Click = Shared("OnClick on an order list row's cog", function(cog)
+		local row = cog.row
+		local r = row.data
+		if not (r and r.id ~= nil) then
+			return
+		end
+		MelloUI:PlayUISound("menu_button")
+		row.list:Open(row.list.open ~= r.id and r.id or nil)
+	end, "script")
+	Cog.Enter = Shared("OnEnter on an order list row's cog", function(cog)
+		Cog.Look(cog, true)
+		W.ShowTooltip(cog, cog.row.data and cog.row.data.label or "", Cog.TIP)
+	end, "script")
+	Cog.Leave = Shared("OnLeave on an order list row's cog", function(cog)
+		Cog.Look(cog, false)
+		W.TipLeave(cog)
+	end, "script")
 
 	local function MakeRow(list)
 		local row = CreateFrame("Button", nil, list.content)
@@ -6484,6 +6517,16 @@ do
 			end
 		end })
 		row.cross:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+		-- (0.21.1) the cog: the row's settings, opened under it
+		row.cog = CreateFrame("Button", nil, row)
+		row.cog:SetSize(Cog.SIZE, Cog.SIZE)
+		row.cog.glyph = row.cog:CreateTexture(nil, "ARTWORK")
+		row.cog.glyph:SetAllPoints(row.cog)
+		W.Glyph(row.cog.glyph, "cog")
+		row.cog.row = row
+		Perf.SetScript(row.cog, "OnClick", Cog.Click)
+		Perf.SetScript(row.cog, "OnEnter", Cog.Enter)
+		Perf.SetScript(row.cog, "OnLeave", Cog.Leave)
 		Perf.SetScript(row, "OnEnter", RowEnter)
 		Perf.SetScript(row, "OnLeave", RowLeave)
 		Perf.SetScript(row, "OnMouseDown", RowDown)
@@ -6527,6 +6570,13 @@ do
 			row.tick:Refresh()
 		end
 		row.cross:SetShown(r.removable and true or false)
+		-- (0.21.1) the cog left of the tick (or of the cross, or at the end)
+		row.cog:SetShown(r.settings and r.id ~= nil and true or false)
+		if r.settings then
+			row.cog:ClearAllPoints()
+			row.cog:SetPoint("RIGHT", row, "RIGHT", (r.ticked ~= nil or r.removable) and -44 or -12, 0)
+			Cog.Look(row.cog, false)
+		end
 		GripKey(row, "mutedText")
 	end
 
@@ -6543,8 +6593,27 @@ do
 	end
 
 	function List:MaxScroll()
-		local n = #self.data - (self.drag and self.drag.count - 1 or 0)
+		local n = #self.data - (self.drag and self.drag.count - 1 or 0) + self:DetailRows()
 		return math.max(0, n - self:Room())
+	end
+
+	-- (0.21.1) the open settings' row and how many rows' height they take (0: none open)
+	function List:DetailRows()
+		if self.open == nil or self.drag or not self.spec.detail then
+			return 0
+		end
+		for _, r in ipairs(self.data) do
+			if r.id == self.open and r.settings then
+				local ok, n = pcall(self.spec.detailRows, r)
+				return ok and Num(n) and math.max(0, math.floor(n)) or 0
+			end
+		end
+		return 0
+	end
+
+	function List:Open(id)
+		self.open = id
+		self:Refresh()
 	end
 
 	-- the rows laid from the top (a held block left out and its landing place open)
@@ -6563,6 +6632,10 @@ do
 			landed = true
 		end
 		local pos = 0   -- (where a held block lands: its place among the rows left)
+		local detailRows, detailShown = self:DetailRows(), false
+		if detailRows > 0 and not self.detail then
+			self.detail = CreateFrame("Frame", nil, self.content)
+		end
 		for i = 1, #data do
 			-- (a held row is not laid)
 			if not (drag and i >= drag.from and i < drag.from + drag.count) then
@@ -6579,6 +6652,18 @@ do
 				row:Show()
 				y = y - ROW_H
 				pos = pos + 1
+				-- (0.21.1) its settings under it, while open
+				if detailRows > 0 and data[i].id == self.open then
+					local d = self.detail
+					d:ClearAllPoints()
+					d:SetPoint("TOPLEFT", self.content, "TOPLEFT", 26, y)
+					d:SetPoint("RIGHT", self.content, "RIGHT", -8, 0)
+					d:SetHeight(detailRows * ROW_H - 6)
+					d:Show()
+					pcall(self.spec.detail, d, data[i], i)
+					y = y - detailRows * ROW_H
+					detailShown = true
+				end
 			end
 		end
 		if drag and not landed then
@@ -6586,6 +6671,9 @@ do
 		end
 		if not drag then
 			self.gap:Hide()
+		end
+		if self.detail and not detailShown then
+			self.detail:Hide()
 		end
 		for i = n + 1, #self.rows do
 			self.rows[i]:Hide()
@@ -6647,10 +6735,11 @@ do
 		end
 		local y = CursorY(list.clip)
 		if not d.started then
-			if math.abs(y - d.y0) < DRAG_START then
+			if math.abs(y - d.y0) < DRAG.START then
 				return
 			end
 			d.started = true
+			list.open = nil   -- (0.21.1: the settings close as a row is dragged)
 			local r = list.data[d.from]
 			list.ghost.label:SetText(r and (r.kind == "line" and TEXT.line or r.label) or "")
 			list.ghost:Show()
@@ -6658,9 +6747,9 @@ do
 		-- (near the list's top or bottom: a row at a time)
 		d.wait = (d.wait or 0) - elapsed
 		local top, bottom = Num(list.clip:GetTop()) or 0, Num(list.clip:GetBottom()) or 0
-		if d.wait <= 0 and (y > top - EDGE or y < bottom + EDGE) then
-			d.wait = EDGE_EVERY
-			list:Scroll(y > top - EDGE and -1 or 1)
+		if d.wait <= 0 and (y > top - DRAG.EDGE or y < bottom + DRAG.EDGE) then
+			d.wait = DRAG.EVERY
+			list:Scroll(y > top - DRAG.EDGE and -1 or 1)
 		end
 		local to = list:DropAt()
 		if to ~= d.to then
