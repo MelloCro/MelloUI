@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.21.2
+
+- Fixed: action bars faded by the Fader (On Mouseover or In Combat) left their out of range and out of mana colours on the screen as coloured squares.
+- Action Buttons: the red and blue colours now leave with a faded bar and come back the moment it shows again.
+
 ## 0.21.1
 
 - Bags by Kind: kinds of your own. Add kind on Windows > Bags > Kinds makes one; it takes the items you drop on its + slot and the ones its rule matches (an item type and subtype, a word in the name, a quality), before the game's kinds, the higher on the list first. Any kind can be renamed (double-click its name), and a kind's cog opens its settings under it.

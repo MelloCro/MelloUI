@@ -135,6 +135,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.21.2", lines = {
+		"Fixed: action bars faded by the Fader left their out of range and out of mana colours on the screen as coloured squares.",
+		"Action Buttons: the red and blue colours now leave with a faded bar and come back the moment it shows again.",
+	} },
 	{ version = "0.21.1", lines = {
 		"Bags by Kind: kinds of your own (Windows > Bags > Kinds, Add kind). One takes the items you drop on its + slot and the ones its rule matches: a type, a word, a quality.",
 		"Rename any kind (double-click its name); a kind's cog opens its settings. Split By Type gives any kind a heading per item type (Split Trade Goods is Trade Goods' own now).",
@@ -164,12 +168,6 @@ local CHANGELOG = {
 		"Bags: the kinds follow the game's item types, Hearthstone on top. Put them in your order on Windows > Bags > Kinds: drag a row up or down.",
 		"Bags: a line between sections, and groups (Equipment, Crafting) you fold by clicking their heading. Add your own lines and groups.",
 		"Bags: pick up an item and every kind shows a + slot. Drop the item there and it always goes under that kind.",
-	} },
-	{ version = "0.20.3", lines = {
-		"Look > Parchment: Parchment Style picks how the parchment looks everywhere it shows, the sheets and the quest and spell book pages.",
-		"Burnt paper stays the default; Classic vellum brings back the vellum with brush-stroke edges from before 0.20.1. It switches at once.",
-		"Fixed: Edit Layout's Minimap plate fits the minimap as you see it, and the minimap goes all the way into a corner of the screen.",
-		"Fixed: hovering a weapon buff (a shaman's imbue, an oil or a poison) gave an error instead of its tooltip.",
 	} },
 }
 local LINKS = {

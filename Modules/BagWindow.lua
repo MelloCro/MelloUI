@@ -113,7 +113,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 			MelloUI:NotifySettingChanged("BagWindow", "placed", nil)
 		  end },
 		-- (0.21.1; the user, 2026-10-13: "modification to bank aswell" -- the kinds inside the game's bank window)
-		{ type = "toggle", key = "bank", name = "Bank by Kind", new = "0.21.1",
+		{ type = "toggle", key = "bank", name = "Bank by Kind",
 		  search = "bank kinds sorted categories banker",
 		  desc = "Your bank in the same kinds as your bags, inside the game's bank window: its items under their headings, the lines and groups of the Kinds list, the empty slots folded into one, a + slot in every kind while you hold an item. Deposit and take out as always (right-click, drag). Off: the game's own grid." },
 		{ type = "dropdown", key = "recentFor", name = "Recent Lasts", values = RECENT_FOR,

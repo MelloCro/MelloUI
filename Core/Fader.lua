@@ -53,6 +53,10 @@
 --   Fader:Poke()          something an element's reasons hang on changed:
 --                         looked at again on the next frame (one look a frame)
 --   Fader:Shown(key)      the element is shown (or not faded) now
+--   Fader:Faded(frame)    (0.21.2) the frame, or a frame it sits on (its
+--                         parents, a few up), is an element's faded now --
+--                         told on the bus as an element fades or comes back:
+--                         "fade" (key, "faded" | "shown" | nil let go)
 --   Fader:Mode(key)       its choice as it applies now
 --   Fader:Start(db) / Fader:Stop()   the module on / off (its settings)
 --   Fader:Changed(key)    a Fader setting changed (from the module)
@@ -192,6 +196,25 @@ function Fader:Shown(key)
 	return not (st and st.active and st.state == "faded")
 end
 
+-- (0.21.2; the user, 2026-10-13: the action bars on On Mouseover "still shows the highlights" -- the out of range and
+-- out of mana covers, blended MOD: a multiply ignores alpha, so a faded bar's covers stayed on the world) a frame on
+-- a faded element: Action Buttons draws no cover there
+function Fader:Faded(frame)
+	local f = frame
+	for _ = 1, 4 do
+		if type(f) ~= "table" then
+			return false
+		end
+		local key = S.owner[f]
+		if key then
+			return not self:Shown(key)
+		end
+		local ok, parent = pcall(f.GetParent, f)
+		f = ok and parent or nil
+	end
+	return false
+end
+
 -- Edit Layout, Edit Mode or the configurator open: every element shows
 local function Editing()
 	if S.editMode or MelloUI:EditingLayout() then
@@ -301,6 +324,7 @@ local function Bring(el, st, instant)
 		S.owner[f] = el.key
 		Write(f, 1, not instant and T.IN or 0, "outQuad")
 	end
+	MelloUI:Fire("fade", el.key, "shown")
 end
 
 local function Dim(el, st)
@@ -313,6 +337,7 @@ local function Dim(el, st)
 		S.owner[f] = el.key
 		Write(f, share, Speed(), "inOutQuad")
 	end
+	MelloUI:Fire("fade", el.key, "faded")
 end
 
 -- an element let go: its frames back to their own alpha at once
@@ -329,6 +354,7 @@ local function Release(el, st)
 			f:SetAlpha(b)
 		end
 	end
+	MelloUI:Fire("fade", el.key, nil)
 end
 
 --------------------------------------------------------------------------------

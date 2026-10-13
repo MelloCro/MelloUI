@@ -29,7 +29,10 @@
 --               every usable update: post-hooked per button
 -- Cover, never overwrite (rule 1): the red and the deep blue are a cover of
 -- ours over the icon, blended MOD (a multiply of what the game drew there),
--- written only when the button's state changes; the game's own icon colour
+-- written only when the button's state changes; a multiply ignores alpha, so
+-- on a bar the Fader has faded no cover is drawn (0.21.2, the user: the faded
+-- bars "still shows the highlights"; the Fader's "fade" on the bus lays them
+-- again as a bar fades or comes back); the game's own icon colour
 -- is never touched. The grey needs the icon desaturated, which no cover can
 -- do: written only when it changes (the icon's own flag read first) and taken
 -- back only from an icon greyed here (the game's own level-link grey stays;
@@ -168,8 +171,17 @@ local function CoverColour(state)
 	return want[1] / game[1], want[2] / game[2], want[3] / game[3]
 end
 
+-- (0.21.2) the button on a bar the Fader has faded now
+local function OnFadedBar(button)
+	local F = MelloUI.Fader
+	return F and F.Faded and F:Faded(button) or false
+end
+
 local function LayCover(button)
 	local state = ColoursOn() and (outOfRange[button] and "range" or short[button] and "mana") or nil
+	if state and OnFadedBar(button) then
+		state = nil   -- (a MOD cover ignores the bar's alpha: none while it is faded)
+	end
 	if covered[button] == state then
 		return
 	end
@@ -306,6 +318,14 @@ local function HookAll()
 	if type(ActionButton_UpdateRangeIndicator) == "function" then
 		hooksecurefunc("ActionButton_UpdateRangeIndicator", OnRange)
 	end
+	-- (0.21.2) a bar faded or back: its covers laid again (at the change only)
+	MelloUI:On("fade", function()
+		if ColoursOn() then
+			for _, button in ipairs(buttons) do
+				LayCover(button)
+			end
+		end
+	end, "Action Buttons' covers")
 end
 
 -- everything laid again from the buttons' state (a switch moved)
