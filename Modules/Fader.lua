@@ -628,8 +628,12 @@ local function Register()
 		mouse = function() return Mice({}, G("MelloUIRouteMarker"), 2) end })
 	-- (0.21.0) the Personal Display's bars and shield column (their own alpha their fades': on a host); back while
 	-- casting In Combat only (as the player frame's reasons); a cast's start and end poke the Fader
+	-- (0.21.3; the user, 2026-10-13: set to In Combat, "i couldnt right click on the world and rotate my character
+	-- anymore") no pointer frames of its own: the bars take no pointer. Without this list the engine fell back to its
+	-- frames -- the host over the whole screen -- and its pointer hooks made that host take the mouse everywhere
 	F:Register({ key = "personal",
 		frames = function() return Add({}, F:Host("personal")) end,
+		mouse = function() return {} end,
 		needed = PersonalNeeded, neededIn = "combat" })
 end
 

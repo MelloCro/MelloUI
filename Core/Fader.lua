@@ -487,14 +487,20 @@ function Fader:Poke()
 end
 
 -- MelloUI's own parts that fade their own alpha sit on a host the Fader fades
+-- (isHost[frame]: one of them -- over the whole screen, so never given the
+-- pointer hooks: a frame with OnEnter takes the mouse, and the host would
+-- take every click on the world; the user, 2026-10-13)
 Fader.hosts = {}
+Fader.isHost = {}
 
 function Fader:Host(key)
 	local h = self.hosts[key]
 	if not h then
 		h = CreateFrame("Frame", "MelloUIFadeHost_" .. key, UIParent)
 		h:SetAllPoints(UIParent)
+		h:EnableMouse(false)
 		self.hosts[key] = h
+		self.isHost[h] = true
 	end
 	return h
 end
@@ -544,7 +550,7 @@ end
 
 local function HookMouse(el)
 	for _, f in ipairs(List(el.mouse) or List(el.frames) or {}) do
-		if type(f) == "table" and f.HookScript and S.hooked[f] == nil then
+		if type(f) == "table" and f.HookScript and S.hooked[f] == nil and not Fader.isHost[f] then
 			if not Forbidden(f) and pcall(Perf.HookScript, f, "OnEnter", OnEnter)
 				and pcall(Perf.HookScript, f, "OnLeave", OnLeave) then
 				S.hooked[f] = el.key

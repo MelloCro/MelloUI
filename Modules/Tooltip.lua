@@ -16,6 +16,7 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Tooltip")
 local hooksecurefunc = Perf.hooksecurefunc
 local Num = MelloUI.Safe.Number
+local Secret = MelloUI.Safe.IsSecret
 
 local Background   -- (the Background dropdown's reading: below, 0.16.0)
 
@@ -34,6 +35,7 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		classBorder = false,
 		classHealth = true,
 		hideHealthBar = true,
+		hideIssueLine = true,
 		anchor = "default",
 		hideInCombat = false,
 		scale = 1,
@@ -61,6 +63,8 @@ local M = MelloUI:RegisterModule("Tooltip", {
 		{ type = "toggle", key = "classHealth", name = "Class / Reaction Health Colour",
 		  desc = "Colour the tooltip health bar by class or reaction instead of green." },
 		{ type = "toggle", key = "hideHealthBar", name = "Hide Health Bar", desc = "Hide the health bar under unit tooltips (on by default). Bar Texture and Class / Reaction Health Colour only matter while the bar is shown." },
+		{ type = "toggle", key = "hideIssueLine", name = "Hide Issue Report Line", new = "0.21.3",
+		  desc = "Leave out the beta's \"Press F6 to submit an issue for this ...\" line, and the gap above it, from creature, item, spell and quest tooltips. The key still opens the issue report while the tooltip shows." },
 		{ type = "toggle", key = "hideInCombat", name = "Hide Unit Tooltips In Combat", desc = "Do not show tooltips for units while in combat." },
 		{ type = "slider", key = "fadeDelay", name = "Fade Delay", min = 0.1, max = 1, step = 0.05,
 		  format = function(v) return string.format("%.2f s", v) end,
@@ -508,6 +512,58 @@ local function ApplyScale()
 end
 
 --------------------------------------------------------------------------------
+-- The issue report line (0.21.3; the user, 2026-10-13: "can you remove this
+-- Press F6 from the tooltip"). The beta client's issue reporter
+-- (Blizzard_PTRFeedback) adds "Press <key> to submit an issue for this
+-- <kind>" under a blank line to the tooltips it knows (creatures, items,
+-- spells, quests ...), every one through PTR_IssueReporter.HookIntoTooltip.
+-- With Hide Issue Report Line the two lines are emptied in a post-hook on
+-- it and the tooltip laid out again; its key still opens the report while
+-- the tooltip shows. A line the client hands over secret is never read.
+--------------------------------------------------------------------------------
+
+local Issue = { MARK = "to submit an issue for this" }
+
+-- a tooltip's left line i and its text (nil: none, or secret)
+function Issue.Line(tooltip, i)
+	local okL, line = pcall(tooltip.GetLeftLine, tooltip, i)
+	if not (okL and type(line) == "table") then
+		return nil, nil
+	end
+	local okT, text = pcall(line.GetText, line)
+	if not okT or Secret(text) or type(text) ~= "string" then
+		return line, nil
+	end
+	return line, text
+end
+
+-- (the reporter's own arguments: tooltip, kind, id, name, noExtraLine)
+function Issue.Clean(tooltip, _, _, _, noExtraLine)
+	if not (M.isEnabled and M.db and M.db.hideIssueLine ~= false) or type(tooltip) ~= "table" then
+		return
+	end
+	local P = rawget(_G, "PTR_IssueReporter")
+	local mark = type(P) == "table" and type(P.BugTooltipPartialString) == "string" and P.BugTooltipPartialString or Issue.MARK
+	local missing = type(P) == "table" and P.MissingBindTooltipString or nil
+	local okN, n = pcall(tooltip.NumLines, tooltip)
+	n = okN and Num(n) or 0
+	for i = n, 1, -1 do
+		local line, text = Issue.Line(tooltip, i)
+		if text and (text:find(mark, 1, true) or text == missing) then
+			line:SetText("")
+			if not noExtraLine and i > 1 then
+				local above, gap = Issue.Line(tooltip, i - 1)
+				if gap == " " then
+					above:SetText("")
+				end
+			end
+			tooltip:Show()
+			return
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Hooks
 --------------------------------------------------------------------------------
 
@@ -527,6 +583,12 @@ local function InstallHooks()
 	end
 	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
 		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnUnitTooltip)
+	end
+	-- (the beta's issue reporter: loaded with the game's own addons, before
+	-- this one; a live client has none)
+	local reporter = rawget(_G, "PTR_IssueReporter")
+	if type(reporter) == "table" and type(reporter.HookIntoTooltip) == "function" then
+		hooksecurefunc(reporter, "HookIntoTooltip", Issue.Clean)
 	end
 	if GameTooltip then
 		Perf.HookScript(GameTooltip, "OnHide", OnTooltipHidden)
