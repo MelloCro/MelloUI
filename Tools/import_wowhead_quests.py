@@ -89,11 +89,28 @@ def fetch(url, cache_path=None, refresh=False, delay=2.5):
                 raise
             log(f"   retry after error: {exc}")
             time.sleep(10)
+    # (2026-10-13: Wowhead answers scripts with an AWS WAF bot check -- a 2 KB page with no data. A --refresh-listing
+    # wrote those over the good cached listing pages. A check page is never cached and never returned: the run stops,
+    # the cached copy stays. It is bot detection: not something to work around; pages saved by hand from a browser
+    # go into the cache instead)
+    if blocked(text):
+        raise WowheadBlocked(f"Wowhead answered {url} with its bot check (AWS WAF); "
+                             f"the cached page {'kept' if cache_path and os.path.exists(cache_path) else 'not written'}")
     if cache_path:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         open(cache_path, "w", encoding="utf-8").write(text)
     time.sleep(delay)
     return text
+
+
+def blocked(text):
+    """the bot check page: its challenge props and none of Wowhead's own page code (a real page carries the WAF
+    script too, and WH.)"""
+    return "gokuProps" in text and "WH." not in text
+
+
+class WowheadBlocked(RuntimeError):
+    """Wowhead served its bot check instead of the page."""
 
 
 def listing_data(page_html):

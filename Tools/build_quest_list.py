@@ -55,7 +55,8 @@ from paths import CACHE
 
 WOWHEAD = os.path.join(CACHE, "wowhead")
 BUILD = "1.15.9.69722"          # Classic Era, from wago.tools (comma separated, vectors as Pos_0..)
-FOREVER = "1.60.1.69913"        # Forever, exported with wow.export (semicolon separated, vectors as "x,y,z")
+FOREVER = "1.60.1.70338"        # Forever, exported with wow.export (2026-10-13: comma separated, vectors as Loc_0..;
+                                # 69913 before: semicolons, vectors as "x,y,z" -- db2() reads both)
 VECTOR_COLUMNS = {"Loc", "Pos", "Corpse", "Region", "GeoBox", "MapOffset", "FlightMapOffset"}
 
 

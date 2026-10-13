@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.21.3
+
+- Data from the game's latest patch: Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects knows Rotmending; two spells the patch took out are gone.
+- Route knows many more roads (recorded in game) and finds better ways with them; turn-in and pick-up places know the Riverglades and Mount Hyjal flight points, Stormwind Harbor, Coldridge Valley and the crafting shops.
+
 ## 0.21.2
 
 - Fixed: action bars faded by the Fader (On Mouseover or In Combat) left their out of range and out of mana colours on the screen as coloured squares.

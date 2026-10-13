@@ -135,6 +135,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.21.3", lines = {
+		"From the latest patch: Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects knows Rotmending.",
+		"Route knows many more roads and finds better ways; places know the Riverglades and Hyjal flight points, Stormwind Harbor and Coldridge Valley.",
+	} },
 	{ version = "0.21.2", lines = {
 		"Fixed: action bars faded by the Fader left their out of range and out of mana colours on the screen as coloured squares.",
 		"Action Buttons: the red and blue colours now leave with a faded bar and come back the moment it shows again.",
@@ -161,13 +165,6 @@ local CHANGELOG = {
 		"Fixed: the game's own portraits (Class Icons off) had a square corner on the unit frames; they are round now.",
 		"Fixed: a gap between the bars and their border (the Single rail and the Stone rail): the border now closes on the bar.",
 		"Fixed: the loot window's background reaches its border again; the world no longer shows round the items.",
-	} },
-	{ version = "0.20.4", lines = {
-		"Chat: the input box shows only while you type. Press Enter (or /) to bring it up; send the line or press Escape and it goes again.",
-		"Input Box Only While Typing (Chat > Chat Frame > Behaviour) is on by default; switch it off to keep the box on screen.",
-		"Bags: the kinds follow the game's item types, Hearthstone on top. Put them in your order on Windows > Bags > Kinds: drag a row up or down.",
-		"Bags: a line between sections, and groups (Equipment, Crafting) you fold by clicking their heading. Add your own lines and groups.",
-		"Bags: pick up an item and every kind shows a + slot. Drop the item there and it always goes under that kind.",
 	} },
 }
 local LINKS = {
