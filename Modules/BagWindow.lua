@@ -31,6 +31,11 @@
 -- A heading clicked folds its kind into one slot (its first item, the kind's
 -- count beside it), kept per character. Junk's heading shows what it sells
 -- for, and at a vendor a Sell Junk button (the game's own sell-all-junk).
+-- The Reagent Bag (0.22.0, a player's report; the user's side tabs): with one
+-- on, two side tabs on the window's left, Backpack and Reagent Bag, each
+-- laying its bags by kind in the same window; an item dropped on a tab goes
+-- into that bag's first free slot. The game's Reagent Bag window
+-- (ContainerFrame6) is held under the same hidden holder as its combined one.
 --
 -- How it stays out of the game's way:
 --   * the game keeps deciding when the bags are open. Combined Bags is held
@@ -163,6 +168,11 @@ local G = {
 	KIND_GAP = 15,   -- between kinds side by side
 	GROUP_H = 23,    -- (0.20.4) a group's heading over its kinds
 	LINE_GAP = 10,   -- (0.20.4) a line, and the room under it
+	-- (0.22.0) the Reagent Bag's side tabs: the game's side tabs (their look, the kit's dress) at this share of their
+	-- size (the user, 2026-10-14: "reduce its size to a reasonable size" -- about an item slot), on the window's left
+	-- below the ring, TAB_GAP apart
+	REAGENT = Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag or 5,
+	TAB_SCALE = 0.7, TAB_Y = 68, TAB_GAP = 4,
 }
 -- the grid from the player's Columns and Item Size
 local function Clamp(v, lo, hi, default)
@@ -193,6 +203,11 @@ local TEXT = {
 	sort = "Clean Up Bags",
 	settings = "Bag Settings",
 	settingsTip = "Bags by Kind's options: its kinds and its layout (Windows > Bags).",
+	-- (0.22.0) the side tabs
+	backpack = "Backpack",
+	reagentBag = "Reagent Bag",
+	tabFree = "%d of %d slots free",
+	tabDrop = "Drop the item here: it goes into this bag's first free slot. Hold it here a moment: the tab opens.",
 	-- (0.20.4) the groups, and the Kinds list on Windows > Bags
 	foldGroup = "Click to fold this group: only its heading shows.",
 	unfoldGroup = "Click to show the kinds of this group.",
@@ -508,7 +523,7 @@ end
 -- The bags read: every slot of the held bags, each item's kind
 --------------------------------------------------------------------------------
 
-local win = {}          -- the window's parts (made on the first open)
+local win = { tab = "bags" }   -- the window's parts (made on the first open); tab: the side tab shown ("reagent": the Reagent Bag)
 local heldID = {}       -- [bag * 1000 + slot] = itemID: Recent (until the bags close, or for some minutes)
 local heldAt = {}       -- [bag * 1000 + slot] = when it was first seen new (For 5 Minutes)
 local RECENT_MINUTES = 5
@@ -534,15 +549,27 @@ local function NewView(name, containers, recent)
 	return v
 end
 
--- the held bags: the backpack and its bag slots
+-- the held bags the window shows: the backpack and its bag slots, or the Reagent Bag alone on its side tab (0.22.0; a
+-- player's report, 2026-10-14: items could not be moved between the two); `all`: every held bag, the Reagent Bag too
 local heldBags = {}
-local function HeldBags()
+local function HeldBags(all)
 	local inv = Constants and Constants.InventoryConstants
 	local last = inv and Num(inv.NumBagSlots) or 4
-	for bag = 0, last do
-		heldBags[bag + 1] = bag
+	local n = 0
+	if win.tab == "reagent" and not all then
+		n = 1
+		heldBags[1] = G.REAGENT
+	else
+		for bag = 0, last do
+			n = n + 1
+			heldBags[n] = bag
+		end
+		if all then
+			n = n + 1
+			heldBags[n] = G.REAGENT
+		end
 	end
-	for i = #heldBags, last + 2, -1 do
+	for i = #heldBags, n + 1, -1 do
 		heldBags[i] = nil
 	end
 	return heldBags
@@ -1568,6 +1595,7 @@ function M:Layout()
 		return
 	end
 	S = BAGS
+	M.LayTabs()   -- (0.22.0: the tab shown, before the bags are read: HeldBags)
 	FitSearch()
 	Grid()
 	Insets()
@@ -1629,34 +1657,61 @@ end
 --------------------------------------------------------------------------------
 
 local hidden = nil       -- the holder the game's combined window is parented to while this is on
-local gameParent = nil   -- its own parent, given back
+local gameParent = {}    -- [the game's window] = its own parent, given back
 local captured = false
 
-local function Game()
+-- the game's combined window; `reagent` (0.22.0): its Reagent Bag's window, ContainerFrame6 (the one
+-- ContainerFrameReagentBagTemplate frame, the only one the game opens the Reagent Bag in: CanUseForBagID) -- held
+-- under the same holder, the Reagent Bag shown on this window's side tab
+local function Game(reagent)
+	if reagent then
+		local r = rawget(_G, "ContainerFrame6")
+		return r and r.canUseForReagentBag == true and r or nil
+	end
 	return rawget(_G, "ContainerFrameCombinedBags")
 end
 
-local function GameOpen()
-	local g = Game()
+local function GameOpen(reagent)
+	local g = Game(reagent)
 	return g and g:IsShown() and true or false
 end
 
 local Capture   -- (below)
 
-local function Sync()
+-- (0.22.0) The window shows while the game has the bags or the Reagent Bag open; opened by the Reagent Bag alone (its
+-- button on the bag bar) on its tab, else on the bags'. While it shows: the Reagent Bag's button (`how` "flip": the
+-- game's ToggleBag of it) switches between the two tabs; the bags opened by the game (the backpack's button) their
+-- tab; the bags the tab shows closed by the game while the other stays open, the other tab (a change of tab laid out
+-- on the next frame: the game's own close of both goes on in this one). The Reagent Bag opened while the window shows
+-- keeps the tab (the bag key opens the backpack, then the Reagent Bag). A tab the player picked stays while nothing
+-- of it closes.
+local function Sync(how)
 	if M.isEnabled and not captured and M.pending and not InCombatLockdown() then
 		Capture()   -- (switched on while the bags were open: now they are closed)
 	end
 	if not (M.isEnabled and captured) then
 		return
 	end
-	local open = GameOpen()
+	local open, reagent = GameOpen(), GameOpen(true)
 	local f = win.frame
-	if open and not (f and f:IsShown()) then
+	local shown = f and f:IsShown()
+	if not (open or reagent) then
+		if shown then
+			f:Hide()
+		end
+	elseif not shown then
+		win.tab = (reagent and not open) and "reagent" or "bags"
 		M:Open()
-	elseif not open and f and f:IsShown() then
-		f:Hide()
+	elseif how == "flip" then
+		M.SetTab(win.tab == "reagent" and "bags" or "reagent", true)
+	elseif win.tab == "reagent" and open and not win.wasOpen then
+		M.SetTab("bags", true)
+	elseif win.tab == "bags" and win.wasOpen and not open then
+		M.SetTab("reagent", true)
+	elseif win.tab == "reagent" and win.wasReagent and not reagent then
+		M.SetTab("bags", true)
 	end
+	win.wasOpen, win.wasReagent = open, reagent
 end
 M.Sync = Sync
 
@@ -1671,10 +1726,16 @@ local function Hook()
 	end
 	hooked = true
 	for _, name in ipairs({ "OpenAllBags", "CloseAllBags", "ToggleAllBags", "ToggleBackpack", "OpenBackpack",
-		"CloseBackpack", "ToggleBag", "OpenBag", "CloseBag" }) do
+		"CloseBackpack", "OpenBag", "CloseBag" }) do
 		if type(rawget(_G, name)) == "function" then
 			hooksecurefunc(name, SyncHook)
 		end
+	end
+	-- (0.22.0) the bag bar's buttons: the Reagent Bag's switches the tab while the window stays
+	if type(rawget(_G, "ToggleBag")) == "function" then
+		hooksecurefunc("ToggleBag", Shared("the bag window's step with the game's ToggleBag", function(id)
+			Sync(id == G.REAGENT and "flip" or nil)
+		end, "hook"))
 	end
 end
 
@@ -1698,11 +1759,11 @@ end
 -- moved while it shows, its OnHide would run from this code (tainted), and
 -- the game's own bag records with it. Out of combat too.
 function Capture()
-	local g = Game()
+	local g, r = Game(), Game(true)
 	if captured or not g then
 		return
 	end
-	if InCombatLockdown() or g:IsShown() then
+	if InCombatLockdown() or g:IsShown() or (r and r:IsShown()) then
 		M.pending = true
 		return
 	end
@@ -1710,8 +1771,12 @@ function Capture()
 	hidden = hidden or CreateFrame("Frame", nil, UIParent)
 	hidden:Hide()
 	HoldCombined(true)
-	gameParent = g:GetParent()
+	gameParent[g] = g:GetParent()
 	g:SetParent(hidden)
+	if r then
+		gameParent[r] = r:GetParent()
+		r:SetParent(hidden)
+	end
 	captured = true
 end
 
@@ -1729,9 +1794,12 @@ local function Release()
 	end
 	M.pending = nil
 	captured = false
-	local g = Game()
+	local g, r = Game(), Game(true)
 	if g and g:IsShown() then
 		g:Hide()
+	end
+	if r and r:IsShown() then
+		r:Hide()
 	end
 	if win.frame and win.frame:IsShown() then
 		win.closing = true
@@ -1739,7 +1807,10 @@ local function Release()
 		win.closing = false
 	end
 	if g then
-		g:SetParent(gameParent or UIParent)
+		g:SetParent(gameParent[g] or UIParent)
+	end
+	if r and gameParent[r] then
+		r:SetParent(gameParent[r])
 	end
 	HoldCombined(false)
 end
@@ -1805,9 +1876,14 @@ local Hidden = Shared("OnHide on the bag window", function()
 		wipe(heldID)
 		wipe(heldAt)
 	end
-	-- closed here (its close button, Escape): the game's bags closed too
-	if not win.closing and captured and GameOpen() then
-		Game():Hide()
+	-- closed here (its close button, Escape): the game's bags closed too, its Reagent Bag too (0.22.0)
+	if not win.closing and captured then
+		if GameOpen() then
+			Game():Hide()
+		end
+		if GameOpen(true) then
+			Game(true):Hide()
+		end
 	end
 	MelloUI:PlayUISound("bags_close")
 	MelloUI:Fire("bagwindow", false)
@@ -1847,6 +1923,238 @@ local SellClick = Shared("OnClick on the bag window's Sell Junk", function()
 		end
 	end
 end, "script")
+
+-- The side tabs (0.22.0; a player's report, 2026-10-14: "When opening the Reagent Bag, we cannot move items from it to
+-- our regular bags ... integrate the Reagent Bag into the main inventory as a separate tab"; the user: "why not just
+-- add like 2 tabs on the side of it, 1 for backpack, other for reagent bag", then the side tabs of
+-- MelloUI-BuildData/output/bag_reagent_sketch/bag_reagent_sidetabs.jpg, "reduce its size to a reasonable size").
+-- The game's own side tabs (LargeSideTabButtonTemplate: its art; the kit's side tab on it, Kit:SkinSideTab, every
+-- window's Side Tab Border) at G.TAB_SCALE, on the window's left under its ring, shown while a Reagent Bag is on:
+-- the Backpack (the bags) and the Reagent Bag (its slots, laid by kind as the bags'). Clicked, a tab shows its bags;
+-- an item dropped on a tab goes into that bag's first free slot (the game's own: a Reagent Bag takes only reagents,
+-- and the game says so); an item held over a tab a moment opens it.
+do
+	local TABS = { "bags", "reagent" }
+	local ICONS = { bags = "Interface\\Buttons\\Button-Backpack-Up", reagent = "Interface\\Icons\\INV_Misc_Bag_08" }
+	local HOLD = 0.6   -- s an item is held over a tab before the tab opens
+	-- the game's art is drawn for a window's right: on the left it is mirrored (the plain look; the kit's rim is
+	-- square), the icon nudged the other way (the template's Camelot offset is -4)
+	local MIRROR = { Background = "common-sidetab", HighlightTexture = "common-sidetab-hover",
+		SelectedTexture = "common-sidetab-selected", TabGlow = "common-sidetab-selected", Mask = "common-sidetab-mask" }
+
+	local function Mirror(tab)
+		local info = C_Texture and C_Texture.GetAtlasInfo
+		for key, atlas in pairs(MIRROR) do
+			local region = tab[key]
+			local ok, a = pcall(info, atlas)
+			if region and ok and type(a) == "table" then
+				local l, r, t, b = Num(a.leftTexCoord), Num(a.rightTexCoord), Num(a.topTexCoord), Num(a.bottomTexCoord)
+				if l and r and t and b then
+					pcall(region.SetTexCoord, region, r, l, t, b)
+				end
+			end
+		end
+	end
+
+	local function IconOffsets()
+		return 4, 0
+	end
+
+	local function KeyOf(tab)
+		return win.tabs and tab == win.tabs.reagent and "reagent" or "bags"
+	end
+
+	-- a bag's first free slot
+	local function FreeSlot(bag)
+		local C = C_Container
+		for slot = 1, Num(C.GetContainerNumSlots(bag)) or 0 do
+			if not C.GetContainerItemInfo(bag, slot) then
+				return slot
+			end
+		end
+		return nil
+	end
+
+	-- the bags a tab shows: free slots, all slots (the tip)
+	local function Room(key)
+		local C, free, all = C_Container, 0, 0
+		local inv = Constants and Constants.InventoryConstants
+		local first, last = 0, inv and Num(inv.NumBagSlots) or 4
+		if key == "reagent" then
+			first, last = G.REAGENT, G.REAGENT
+		end
+		for bag = first, last do
+			local ok, n = pcall(C.GetContainerNumFreeSlots, bag)
+			free = free + (ok and Num(n) or 0)
+			all = all + (Num(C.GetContainerNumSlots(bag)) or 0)
+		end
+		return free, all
+	end
+
+	-- the item held dropped on a tab: into the Reagent Bag (the game's own PutItemInBag: its first free slot, or the
+	-- game's word that it does not go there or the bag is full); into the bags' first free slot, a normal bag's before
+	-- a bag type's (the game's own pickup on it), or, the bags full, the game's PutItemInBackpack and its word
+	local function Drop(key)
+		if not CursorItem() then
+			return false
+		end
+		win.dropAt = GetTime()
+		local C = C_Container
+		if key == "reagent" then
+			local ok, inv = pcall(C.ContainerIDToInventoryID, G.REAGENT)
+			if ok and Num(inv) then
+				PutItemInBag(inv)
+			end
+			return true
+		end
+		local inv = Constants and Constants.InventoryConstants
+		local fb, fs
+		for bag = 0, inv and Num(inv.NumBagSlots) or 4 do
+			local slot = FreeSlot(bag)
+			if slot then
+				local ok, _, family = pcall(C.GetContainerNumFreeSlots, bag)
+				if bag == 0 or not (ok and Num(family) and Num(family) ~= 0) then
+					C.PickupContainerItem(bag, slot)
+					return true
+				end
+				fb, fs = fb or bag, fs or slot
+			end
+		end
+		if fb then
+			C.PickupContainerItem(fb, fs)
+		else
+			PutItemInBackpack()
+		end
+		return true
+	end
+
+	-- the tabs' picked look: the game's SelectedTexture, the kit's rim read again (its glow)
+	local function Checked()
+		for _, key in ipairs(TABS) do
+			local tab = win.tabs and win.tabs[key]
+			if tab then
+				tab:SetChecked(key == win.tab)
+				local rep = Kit.repOf and Kit.repOf[tab]
+				local rim = rep and rep.object
+				if rim and rim.Update then
+					rim:Update()
+				end
+			end
+		end
+	end
+
+	-- an item held over a tab a moment: the tab opens (one shared function: the tab and the time in win.hold*)
+	local function Held()
+		local tab = win.holdTab
+		if tab and GetTime() - (win.holdAt or 0) >= HOLD - 0.05 and CursorItem() and tab:IsMouseOver() then
+			win.holdTab = nil
+			M.SetTab(KeyOf(tab))
+		end
+	end
+
+	-- (the click's sound: the template's own, the game's side tab sound)
+	local TabUp = Shared("OnMouseUp on the bag window's side tabs", function(tab, button, upInside)
+		if button ~= "LeftButton" or not upInside or Drop(KeyOf(tab)) or win.dropAt == GetTime() then
+			return
+		end
+		M.SetTab(KeyOf(tab))
+	end, "script")
+
+	local TabDrag = Shared("OnReceiveDrag on the bag window's side tabs", function(tab)
+		Drop(KeyOf(tab))
+	end, "script")
+
+	local TabEnter = Shared("OnEnter on the bag window's side tabs", function(tab)
+		local key = KeyOf(tab)
+		local held = CursorItem() ~= nil
+		local free, all = Room(key)
+		W.ShowTooltip(tab, key == "reagent" and TEXT.reagentBag or TEXT.backpack,
+			held and TEXT.tabDrop or TEXT.tabFree:format(free, all), nil, "ANCHOR_LEFT")
+		if held and key ~= win.tab then
+			win.holdTab, win.holdAt = tab, GetTime()
+			C_Timer.After(HOLD, Held)
+		end
+	end, "script")
+
+	local TabLeave = Shared("OnLeave on the bag window's side tabs", function()
+		win.holdTab = nil
+		GameTooltip:Hide()
+	end, "script")
+
+	local function ShellReplace(region, opts)
+		return win.shell:Replace(region, opts)
+	end
+
+	local function SkinTab(K, tab)
+		K:SkinSideTab(tab, ShellReplace)
+	end
+
+	-- the tabs, with the window (Build), hidden until a layout finds a Reagent Bag
+	function M.MakeTabs(f)
+		local k = G.TAB_SCALE
+		local tabs, above = {}, nil
+		for _, key in ipairs(TABS) do
+			local tab = CreateFrame("Frame", nil, f, "LargeSideTabButtonTemplate")
+			tab:SetScale(k)
+			Mirror(tab)
+			tab.GetIconAnchorOffsetsForTabArt = IconOffsets   -- (an own frame of the game's template: its mixin's hook)
+			tab:InitializeIconAnchoring()
+			tab:SetFillToInterior(true)
+			tab.Icon:SetTexture(ICONS[key])
+			tab:SetCustomOnMouseUpHandler(TabUp)
+			Perf.HookScript(tab, "OnReceiveDrag", TabDrag)
+			Perf.HookScript(tab, "OnEnter", TabEnter)
+			Perf.HookScript(tab, "OnLeave", TabLeave)
+			if above then
+				tab:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, -G.TAB_GAP / k)
+			else
+				tab:SetPoint("TOPRIGHT", f, "TOPLEFT", 0, -G.TAB_Y / k)
+			end
+			tab:Hide()
+			win.shell:Kit(SkinTab, tab)
+			tabs[key] = tab
+			above = tab
+		end
+		win.tabs = tabs
+	end
+
+	-- the tabs laid (each layout): shown while a Reagent Bag is on (else the bags, no tab), its own icon on its tab
+	function M.LayTabs()
+		local n = Num(C_Container.GetContainerNumSlots(G.REAGENT)) or 0
+		if n == 0 then
+			win.tab = "bags"
+		end
+		local tabs = win.tabs
+		if not tabs then
+			return
+		end
+		for _, key in ipairs(TABS) do
+			tabs[key]:SetShown(n > 0)
+		end
+		if n > 0 then
+			local ok, inv = pcall(C_Container.ContainerIDToInventoryID, G.REAGENT)
+			local okT, icon = pcall(GetInventoryItemTexture, "player", ok and inv or 0)
+			tabs.reagent.Icon:SetTexture(okT and icon and not Secret(icon) and icon or ICONS.reagent)
+		end
+		Checked()
+	end
+
+	-- a tab picked (its click, an item held over it, the game's bag buttons: Sync); `soon`: laid out on the next
+	-- frame
+	function M.SetTab(key, soon)
+		key = key == "reagent" and "reagent" or "bags"
+		if win.tab == key then
+			return
+		end
+		win.tab = key
+		Checked()
+		if soon then
+			LayoutSoon()
+		elseif win.frame and win.frame:IsShown() then
+			M:Layout()
+		end
+	end
+end
 
 local function Build()
 	local f = CreateFrame("Frame", "MelloUIBagWindow", UIParent)
@@ -1931,6 +2239,7 @@ local function Build()
 	win.sell = W.Button(content, TEXT.sell, 74, win.shell, { height = 17, onClick = SellClick })
 	win.sell:SetFrameLevel(S.headings.junk:GetFrameLevel() + 2)
 	win.sell:Hide()
+	M.MakeTabs(f)   -- (0.22.0) the Backpack and Reagent Bag side tabs
 	W.Dress(f, win.shell)
 	-- the look switched: the slots dressed as the game's bag slots, or left in the game's look; the money's ink with
 	-- the page (the Window Background is the kit look's)
@@ -2802,7 +3111,7 @@ end
 -- holding it, not taken by another push of this pass (`used`)
 function Fly.Find(icon, taken)
 	local fb, fs, finfo
-	for _, bag in ipairs(HeldBags()) do
+	for _, bag in ipairs(HeldBags(true)) do   -- (0.22.0: the Reagent Bag too)
 		local okN, count = pcall(C_Container.GetContainerNumSlots, bag)
 		for slot = 1, (okN and Num(count)) or 0 do
 			if not taken[bag * 1000 + slot] then
@@ -2878,6 +3187,13 @@ function Fly.Launch(r)
 		local b = list and list[r.slot]
 		if b and b:IsVisible() then
 			target = b
+		else
+			-- (0.22.0) into the bags of the tab not shown: onto that side tab
+			local key = r.bag == G.REAGENT and "reagent" or "bags"
+			local tab = key ~= win.tab and win.tabs and win.tabs[key]
+			if tab and tab:IsVisible() then
+				target = tab
+			end
 		end
 	else
 		local bb = _G.MainMenuBarBackpackButton

@@ -11183,7 +11183,10 @@ local function TabSide(tab)
 	while window:GetParent() and window:GetParent() ~= UIParent do
 		window = window:GetParent()
 	end
-	local ok, tx, wx = pcall(function() return (tab:GetCenter()), (window:GetCenter()) end)
+	-- (on the screen: a tab scaled apart from its window, the bag window's, 0.22.0, reads in its own units)
+	local ok, tx, wx = pcall(function()
+		return tab:GetCenter() * tab:GetEffectiveScale(), window:GetCenter() * window:GetEffectiveScale()
+	end)
 	if ok and tx and wx and not Secret(tx) and not Secret(wx) then
 		return tx >= wx and "right" or "left"
 	end
