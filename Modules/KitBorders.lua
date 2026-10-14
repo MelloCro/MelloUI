@@ -1358,13 +1358,16 @@ end
 --     (`portraitOnly`: its wings would reach past a round button), and the
 --     windows' corner ring (Kit.lua's UI-Frame-PortraitMetal-CornerTopLeft).
 --------------------------------------------------------------------------------
+-- (2026-10-14) `small`: the ring's 64 px copy (Tools/kit_sharp.py via build_kit.py), its thin lines widened -- the one a
+-- Round Border draws on round buttons (20-48 UI units), where the big ring shrunk 7-9 times showed as dots; the
+-- portrait rings keep `piece`
 Kit.RingStyles = {
-	r1 = { label = "Four diamond studs", piece = "rings/r1" },
-	r3 = { label = "Plain heavy ring", piece = "rings/r3" },
+	r1 = { label = "Four diamond studs", piece = "rings/r1", small = "rings/r1_s" },
+	r3 = { label = "Plain heavy ring", piece = "rings/r3", small = "rings/r3_s" },
 	r5 = { label = "Winged border", piece = "rings/r5", portraitOnly = true },
 	-- (0.20.1, the user: the RPG pack's portrait ring "with its background as a reusable thing", Tools/
 	-- make_rpg_frames.py) `bg` its dark ground, drawn under the round element's content (Kit:RoundLibraryRing)
-	rpg = { label = "Stone ring", piece = "rings/rpg", bg = "rings/rpg_disc" },
+	rpg = { label = "Stone ring", piece = "rings/rpg", bg = "rings/rpg_disc", small = "rings/rpg_s" },
 }
 Kit.RingStyleOrder = { "r1", "r3", "r5", "rpg" }
 for _, id in ipairs(Kit.RingStyleOrder) do
@@ -1447,9 +1450,10 @@ function Kit:RoundLibraryRing(rim, value)
 		Perf.hooksecurefunc(rim, "Hide", RingRim_Follow)
 		Perf.hooksecurefunc(rim, "SetShown", RingRim_Follow)
 	end
-	if r.piece ~= st.piece then
-		r.piece = st.piece
-		self:Apply(r.tex, st.piece)
+	local piece = (st.small and self:Piece(st.small)) and st.small or st.piece   -- (the small copy on a round button)
+	if r.piece ~= piece then
+		r.piece = piece
+		self:Apply(r.tex, piece)
 		r.lit = nil
 	end
 	-- (0.20.1) the style's ground under the element's content (BACKGROUND -7: under a round button's icon)
@@ -1466,8 +1470,8 @@ function Kit:RoundLibraryRing(rim, value)
 	rim.libraryBorder = r
 	rim:SetAlpha(0)
 	-- (the rim's own glow, a lit card's, shows the ring as light too)
-	if rim.glow and pieceNameOf[rim.glow] ~= st.piece then
-		self:Apply(rim.glow, st.piece)
+	if rim.glow and pieceNameOf[rim.glow] ~= piece then
+		self:Apply(rim.glow, piece)
 	end
 	r:SetShown(rim:IsShown())
 	r:SetLit(rim.hover, rim.pressed, rim.lastDisabled)

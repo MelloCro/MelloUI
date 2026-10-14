@@ -72,7 +72,7 @@ local M = MelloUI:RegisterModule("Services", {
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
 		  desc = "Show the service icons as round medallions in a round rim instead of squares." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
-		{ type = "toggle", key = "trayDrawer", parent = "showBar", name = "Trays Slide Out", new = "0.22.1",
+		{ type = "toggle", key = "trayDrawer", parent = "showBar", name = "Trays Slide Out",
 		  desc = "A group's list slides out from the minimap column like a drawer when you click its button, its rows one after another, and slides back in as it closes. Not with Reduce Motion: then it shows at once." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
 		  desc = "Also show a round button on the minimap's edge that opens the list of the nearest services; drag it to move it, right-click it to stop the route. /services opens the same list." },

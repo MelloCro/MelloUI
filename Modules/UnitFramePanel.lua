@@ -91,7 +91,7 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 		{ type = "toggle", key = "levelUp", name = "Level Up",
 		  desc = "When you gain a level, the number in your player frame's level circle turns over to the new level with a ring of light, a light runs along the experience bar, and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). Not with Reduce Motion: then only the notice." },
 		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
-		{ type = "toggle", key = "xpGain", name = "XP Gain", new = "0.22.1",
+		{ type = "toggle", key = "xpGain", name = "XP Gain",
 		  desc = "When you gain experience, the stretch of the experience bar just gained lights up while a light runs along it to the new end. Not with Reduce Motion." },
 	},
 })

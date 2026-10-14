@@ -27,7 +27,7 @@
 --            middle rows none: scale it by its height) cut as the nines; shade/round (a disc,
 --            stretched whole): for frames that have no kit piece. All three are filled (the
 --            shadow of a solid shape), unlike the pieces and nines (outside only).
--- sheet sha256 0f252029fe80398cd10846862dc7218ae9e5c67ab2b2d991e8104751211fe20e
+-- sheet sha256 e15c7cef833082d919335c80ab200b69c48f77b33aa6e549bcca1dc28909a113
 
 -- luacheck: globals MelloUI_KitShadows
 MelloUI_KitShadows = {

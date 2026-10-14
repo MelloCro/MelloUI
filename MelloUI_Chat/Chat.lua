@@ -62,9 +62,17 @@ local M = MelloUI:RegisterModule("Chat", {
 		nameShade = true,
 		whisperPopup = false,
 		smoothScroll = true,
+		view = "game",
 	},
 	options = {
 		{ type = "header", name = "Appearance" },
+		-- (0.23.0, the user 2026-10-14: "a minimalistic version where its less visual clutter, minimalistic,
+		-- functional but also true to the artstyle": ChatView.lua, docs/plans/chat-redesign.md)
+		{ type = "dropdown", key = "view", name = "Chat View", new = "0.23.0", values = {
+			{ value = "game", label = "Game Windows" },
+			{ value = "minimal", label = "Minimal" },
+		  },
+		  desc = "How the chat is shown. Game Windows: the game's chat windows and tabs. Minimal: one dark panel with a rail of round tabs (one per chat window) on its left, each line under its sender's name, channel and time, and a row of round buttons under the lines: Say, Party, Raid, Instance, Guild, Yell, Whisper and Emote open the line you type in on that chat, then Channels, Friends, the fight history and these settings. Work in progress: its whisper window and parchment come next." },
 		-- (0.16.0: the chat windows' look in one: the painted skin, its
 		-- parchment, Dark Mode's, the game's or none; the settings it sets
 		-- keep their own keys -- UI Modifications' ChatPanel and
@@ -490,6 +498,9 @@ local TAB_ROW_HEIGHT = 24
 local editBoxSaved = {}   -- [editBox] = the game's anchors, taken before the first move
 
 local function SetEditBoxOnTop(top)
+	if M.View and M.View.on then
+		return   -- (the chat view places the line you type in while it is on; ChatView.lua)
+	end
 	for _, name in ipairs(ChatFrameNames()) do
 		local frame = _G[name]
 		local editBox = frame and (frame.editBox or _G[name .. "EditBox"])
@@ -517,6 +528,7 @@ local function SetEditBoxOnTop(top)
 		end
 	end
 end
+M.SetEditBoxOnTop = SetEditBoxOnTop
 
 --------------------------------------------------------------------------------
 -- Tab background
@@ -935,6 +947,18 @@ local SHORT_CHANNELS = {
 	world            = { "W",   "ffe066" },
 }
 
+-- a chat type's short tag and its colour (hex), a numbered channel's by its name: the chat view's headers
+function M.ShortTag(chatType, channelName)
+	local entry = SHORT_TYPES[chatType]
+	if chatType == "CHANNEL" and type(channelName) == "string" then
+		entry = SHORT_CHANNELS[(channelName:gsub("%s%-%s.*", "")):lower():gsub("%s+", "")]
+	end
+	if entry then
+		return entry[1], entry[2]
+	end
+	return nil
+end
+
 local function BuildTag(entry)
 	local text = entry[2] and ("|cff" .. entry[2] .. entry[1] .. "|r") or entry[1]
 	return "[" .. text .. "]"
@@ -1147,7 +1171,11 @@ end
 
 local NoteCommunityAuthor -- below (a community line's author, for its name's gem on the paper)
 
-local function OnLineAdded(chatFrame, text)
+local function OnLineAdded(chatFrame, text, ...)
+	local view = M.View
+	if view and view.on then
+		view.Line(chatFrame, text, ...)   -- (the chat view's copy, with the event and its arguments)
+	end
 	NoteCommunityAuthor(text)
 	local short, style = Active("shortChannels"), NameStyle()
 	if transformFailed or not (short or style) then
@@ -3783,6 +3811,9 @@ local function ApplyWindows()
 	SetEditBoxOnTop(db.editBoxTop)
 	SetButtonsHidden(not db.chatButtons)
 	Alpha.Apply()
+	if M.View then
+		M.View.Apply()
+	end
 end
 
 local watchingWhisperWindows = false
@@ -3825,6 +3856,9 @@ local function ApplyAll()
 	SetWhisperPopup(db.whisperPopup)
 	SetTypingOnly(true)
 	WatchWhisperWindows()
+	if M.View then
+		M.View.Apply()
+	end
 end
 
 function M:OnInit(db)
@@ -3920,6 +3954,9 @@ function M:OnEnable(db)
 end
 
 function M:OnDisable()
+	if M.View then
+		M.View.Apply()   -- (off: the game's windows back first)
+	end
 	M.Dark.Apply(false)
 	SetBackgroundShown(true)
 	SetEditBoxArtShown(true)
@@ -3963,6 +4000,10 @@ function M:OnSettingChanged(key, value, db)
 		SetWhisperPopup(value)
 	elseif key == "editBoxWhileTyping" then
 		SetTypingOnly(true)
+	elseif key == "view" then
+		if M.View then
+			M.View.Apply()
+		end
 	elseif key == "smoothScroll" then
 		-- off: a glide under way ends where it was going; on: the next notch glides
 		if not value then

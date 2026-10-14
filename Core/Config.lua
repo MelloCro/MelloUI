@@ -135,6 +135,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.23.0", lines = {
+		"Chat: Chat View (Minimal) -- one dark panel, round tabs on a rail, each line under its sender, channel and time; a row of round buttons below.",
+		"Round borders are sharp at small sizes: the Services buttons' and Round Border styles' rings are solid, not dotted.",
+	} },
 	{ version = "0.22.1", lines = {
 		"Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it.",
 		"Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in.",
@@ -168,11 +172,6 @@ local CHANGELOG = {
 	{ version = "0.21.2", lines = {
 		"Fixed: action bars faded by the Fader left their out of range and out of mana colours on the screen as coloured squares.",
 		"Action Buttons: the red and blue colours now leave with a faded bar and come back the moment it shows again.",
-	} },
-	{ version = "0.21.1", lines = {
-		"Bags by Kind: kinds of your own (Windows > Bags > Kinds, Add kind). One takes the items you drop on its + slot and the ones its rule matches: a type, a word, a quality.",
-		"Rename any kind (double-click its name); a kind's cog opens its settings. Split By Type gives any kind a heading per item type (Split Trade Goods is Trade Goods' own now).",
-		"Bank by Kind (Windows > Bank): your bank in the same kinds as your bags, inside the bank window, your own kinds too. Deposit and take out as always.",
 	} },
 }
 local LINKS = {

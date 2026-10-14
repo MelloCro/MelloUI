@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.23.0
+
+- Chat: Chat View (Chat > Chat Frame > Look: Minimal). A quieter chat in one dark panel: a rail of round tabs on its left, one per chat window, each with its name and a count of the lines you have not seen; each line under its sender's name in their class colour, the channel's short tag ([G] Guild, [T] Trade) and the time, a run of lines from one person under one name; and a row of round buttons under the lines: S, P, R, I, G, Y, W and E open the line you type in on Say, Party, Raid, Instance, Guild, Yell, Whisper or Emote, then Channels, Friends, the Fight History and the chat settings. The mouse wheel scrolls it (Shift: faster), links and names click as in the game's chat. Game Windows keeps the game's chat as it was. A work in progress: its whisper window and a parchment look come next.
+- Round borders are sharp at small sizes: the Services row's buttons and the Round Border styles drew their thin ring as a dotted, cut-off line when small; their rings are now solid and even.
+
 ## 0.22.1
 
 - Unit Frames: XP Gain (Bars & Meters > XP & Reputation > Look, on). When you gain experience, the stretch of the experience bar you just gained lights up while a light runs along it to the new end.

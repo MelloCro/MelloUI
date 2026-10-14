@@ -188,6 +188,13 @@ local M = MelloUI:RegisterModule("Meter", {
 })
 Meter.M = M
 
+-- the Fight History opened or closed from elsewhere (the chat view's row: MelloUI_Chat/ChatView.lua)
+function M.ToggleHistory()
+	if Meter.ToggleHistory then
+		Meter.ToggleHistory()
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Reads (secret-safe; a missing API is nil)
 --------------------------------------------------------------------------------

@@ -238,6 +238,15 @@ end
 -- the Friends button are UIParent's (the game parents the line there itself)
 local function ChatFrames()
 	local out = {}
+	local view = MelloUI.ChatView
+	if view and view.hiding and view.frame then
+		-- the chat view over the game's windows, which it keeps out of sight: the view and the line you type in
+		Add(out, view.frame)
+		for i = 1, tonumber(rawget(_G, "NUM_CHAT_WINDOWS")) or 10 do
+			Add(out, G("ChatFrame" .. i .. "EditBox"))
+		end
+		return out
+	end
 	Add(out, G("GeneralDockManager"))
 	for i = 1, tonumber(rawget(_G, "NUM_CHAT_WINDOWS")) or 10 do
 		Add(out, G("ChatFrame" .. i))

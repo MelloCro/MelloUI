@@ -635,6 +635,36 @@ function Fader:Refade(key)
 	end
 end
 
+-- (0.23.0) an element whose frames change while it is on -- the chat view over the game's chat windows, which it keeps
+-- out of sight: the frames it no longer lists let go (their alpha left to the caller, never written here), the new
+-- ones faded or shown as the element is now
+function Fader:Regather(key)
+	local el, st = self.byKey[key], S.st[key]
+	if not (S.on and el) then
+		return
+	end
+	local now = {}
+	for _, f in ipairs(List(el.frames) or {}) do
+		now[f] = true
+	end
+	for f, owner in pairs(S.owner) do
+		if owner == key and not now[f] then
+			MelloUI.Anim:Stop(f, "alpha")
+			S.owner[f], S.want[f], S.base[f], S.foreign[f] = nil, nil, nil, nil
+		end
+	end
+	if st and st.active and st.state then
+		local share = st.state == "faded" and FadedAlpha() or 1
+		for f in pairs(now) do
+			if S.owner[f] == nil then
+				S.owner[f] = key
+				Write(f, share, 0)
+			end
+		end
+		self:Rehook()
+	end
+end
+
 -- the start-up pass over (every module on): each faded element's frames made
 -- meanwhile, faded
 local function RefadeAll()

@@ -8,3 +8,4 @@
 ## IconTexture: Interface\AddOns\MelloUI\Media\Textures\LogoIcon.tga
 
 Chat.lua
+ChatView.lua

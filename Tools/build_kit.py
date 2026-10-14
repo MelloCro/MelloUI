@@ -56,6 +56,7 @@ from PIL import Image
 import kit_gems
 import kit_marks
 import kit_palette
+import kit_sharp
 from paths import master
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -203,6 +204,10 @@ DENSITY = [
     (r"^tiles/", 0.5),                     # 512 px shown at 192 per repeat
     (r"^deco/rail_", 0.35),
     (r"^deco/gem", 1.0),                   # the 25 px gems: shown at 9-15 (route dots, joints) — at 0.5 the 12 px art in a 16 px file did not show on the map
+    # (2026-10-14, the round borders made sharp: Tools/kit_sharp.py) the ring styles' small copies, 64 px files for the
+    # Round Border on round buttons (20-48 UI units), where the 176 px rings were shrunk 7-9 times
+    (r"^rings/r1_s$", kit_sharp.SMALL_SIZE / 234),
+    (r"^rings/(r3|rpg)_s$", kit_sharp.SMALL_SIZE / 236),
     (r"^rings/", 0.75),                    # 0.19.6 (border stage 4): the NewUI2 rings R1 / R3, 234 px shown at ~110 (a portrait) and 36 (a round button)
     (r"^borders/", 0.75),                  # 0.19.6, the border library's masters: 13-28 px rails shown at 4-12 (heavy ~1:1), the 39 px gems at 9-17 (a 32 px file, not 64: the zip budget)
     (r"^deco/", 0.5),
@@ -257,6 +262,9 @@ GOLD = (222, 170, 58)                       # the checked slot's gold, a little 
 # outer edge anti-aliased; gold / shadow as the square looks. The rounded-
 # corners look has no ring of its own (a ring is round already).
 ROUND_RIMS = ("rim", "rimhair", "rimgold", "rimsunk")
+# the round borders whose thin lines are widened in their files (Tools/kit_sharp.py): every Round Border choice -- the
+# rims as rings, the gem ring, the ring styles' small copies (2026-10-14)
+SHARP_ROUND = re.compile(r"^(buttons/round(rim[a-z]*|slot)_[a-z]+|rings/[a-z0-9]+_s)$")
 
 
 def thin_ring(a, t=13, radius=0, gold=0, shadow=0):
@@ -603,6 +611,10 @@ def main():
     for family in ROUND_RIMS:
         jobs += [(key, "buttons/round" + family + "_" + key.split("/", 1)[1].split("_", 1)[1], "ring:" + family) for key in sorted(man)
                  if re.fullmatch(r"buttons/slot_(normal|hover|pressed|checked)", key.split("/", 1)[1])]
+    # (2026-10-14) the ring styles a Round Border can be, as small copies (rings/<id>_s, Tools/kit_sharp.py): R5 is a
+    # portrait ring only
+    jobs += [(key, key.split("/", 1)[1] + "_s", "small_ring") for key in sorted(man)
+             if re.fullmatch(r"rings/(r1|r3|rpg)", key.split("/", 1)[1])]
     # the thin rims as bar brackets: each look, its caps and middle
     for family in THIN_RIMS:
         jobs += [(key, "bars/" + family + "_" + part, "bar:" + family + ":" + part) for key in man
@@ -672,6 +684,8 @@ def main():
         path = os.path.join(OUT, out_name.replace("/", os.sep) + ".tga")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         canvas.save(path)
+        if SHARP_ROUND.search(out_name):
+            sharp_pending.append((out_name, path, canvas.size, np.array(small.convert("RGBA"))))
         arr2 = np.array(im)
         m = arr2[..., 3] > 128
         ys, xs = np.where(m)
@@ -708,6 +722,8 @@ def main():
 
     # the finished pieces the marks are made from (Tools/kit_marks.py)
     mark_bases, made = kit_marks.bases(), {}
+    # (2026-10-14) the round borders, widened after every piece is made (below)
+    sharp_pending = []
 
     for key, out_name, how in jobs:
         name = key.split("/", 1)[1]                      # "window/frame_tl": the source, whose rules the piece follows
@@ -728,6 +744,10 @@ def main():
         elif how.startswith("ring:"):
             family = how[5:]
             a = thin_ring(a, **THIN_RIMS[family])
+        elif how == "small_ring":
+            if not red_gems:
+                a = kit_gems.tone(name, a)[0]   # (toned as the ring it copies)
+            name = out_name                  # its own density (DENSITY: rings/<id>_s)
         elif how.startswith("bar:"):
             _, family, part = how.split(":")
             a = thin_bar(thin_rim(a, **THIN_RIMS[family]), THIN_RIMS[family]["t"], part)
@@ -769,6 +789,22 @@ def main():
         if out_name in mark_bases:
             made[out_name] = a              # (the marks are made from it, below)
         emit(out_name, name, a, logical, man[key])
+
+    # (2026-10-14) a round border's thin lines made wide enough to stay solid when it is drawn small (Tools/kit_sharp.py;
+    # the user: "i dont want some cut of borders like i see on the services tab", "we need to do the same thing with all
+    # of the round border textures"): one plan per piece for all its states (normal / hover / pressed / checked), so a
+    # rim never changes its weight under the mouse or when pressed; each file written again with its widened pixels
+    families = {}
+    for out_name, path, size, small_a in sharp_pending:
+        families.setdefault(re.sub(r"_(normal|hover|pressed|checked)$", "", out_name), []).append((out_name, path, size, small_a))
+    for fam, members in sorted(families.items()):
+        plan = kit_sharp.family_plan([m[3] for m in members])
+        for out_name, path, size, small_a in members:
+            wide, _ = kit_sharp.widen(small_a, plan=plan)
+            canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+            canvas.paste(Image.fromarray(wide, "RGBA"), (0, 0))
+            canvas.save(path)
+        print(f"  sharp: {fam:28} lines at {plan[1]} of a {plan[0]} px band ({len(members)} states)")
 
     # the Elite / Rare / Rare Elite / Boss marks (group marks/, Tools/kit_marks.py):
     # made from the finished pieces, each written as any piece; a metal twin

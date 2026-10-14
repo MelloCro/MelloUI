@@ -303,7 +303,8 @@ local function NoFade(frame)
 	hooksecurefunc(frame, "SetAlpha", function(f, a)
 		-- (0.17.0: the Fader's fade of the chat's line is not undone here)
 		local Fader = MelloUI.Fader
-		if active and a ~= 1 and not alphaing[f] and not (Fader and Fader:Holds(f)) then
+		local view = MelloUI.ChatView   -- (the chat view keeps the game's chat out of sight under it)
+		if active and a ~= 1 and not alphaing[f] and not (Fader and Fader:Holds(f)) and not (view and view.hiding) then
 			alphaing[f] = true
 			f:SetAlpha(1)
 			alphaing[f] = nil

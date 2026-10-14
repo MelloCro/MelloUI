@@ -652,6 +652,7 @@ function L.Define(R, Link)
 
 	-- Chat
 	R("Chat", "Chat Frame", "General", "UIModifications.qol_Chat")
+	R("Chat", "Chat Frame", "Look", "Chat.view")
 	R("Chat", "Chat Frame", "Look", "Chat.background")
 	local NOT_NONE = { key = "Chat.background", notValue = "none", line = "Not with the None background" }
 	R("Chat", "Chat Frame", "Look", "Chat.windowAlphaOn", { when = NOT_NONE })
