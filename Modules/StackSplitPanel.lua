@@ -48,6 +48,7 @@ local M = MelloUI:RegisterModule("StackSplitPanel", {
 local AREA = "dialog"          -- the Dialogs' parchment option (parchment_dialog)
 local SURFACE = "stacksplit"   -- this module's QuestInk surface
 local FIELD_HEIGHT = 20        -- the game's own input boxes' height (InputBoxTemplate, SearchBoxTemplate)
+local FIELD_DARK = 0.9         -- (0.22.0) the field's dark inner panel (the own windows' panels' 0.9)
 
 local active = false
 local hooked = false
@@ -191,6 +192,15 @@ local function SkinField(f, p)
 		others[#others + 1] = p.multi
 	end
 	skin.plate = Replace(picture, { as = "common-search-border-middle", rect = field, dropCap = "l", alsoFade = others })
+	-- (0.22.0, the user: "can you just put a dark background into that split field?") the amount on the dark inner
+	-- panel (WINDOW-RULES 2e), the field's own: a region of the box in the picture's layer, over the stone and the
+	-- parchment sheet (the rail's frame is below the box), under the field's rail (a frame of its own) and the amount
+	-- (raised to ARTWORK while the kit is on); by its key, so a new palette paints it again
+	local dark = f:CreateTexture(nil, "BACKGROUND", nil, 1)
+	dark:SetAllPoints(field)
+	Kit:Paint(dark, "innerPanel", "fill", FIELD_DARK)
+	dark:SetShown(active)
+	skin.dark = dark
 	for _, fs in ipairs({ p.text or false, p.count or false }) do
 		if fs and fs.GetDrawLayer then
 			local okL, layer, sub = pcall(fs.GetDrawLayer, fs)
@@ -363,6 +373,9 @@ local function Activate()
 	end
 	active = true
 	skin.nine:Show()
+	if skin.dark then
+		skin.dark:Show()
+	end
 	for _, rep in ipairs(skin.reps) do
 		rep:Enable()
 	end
@@ -384,6 +397,9 @@ local function Deactivate()
 	active = false
 	if skin then
 		skin.nine:Hide()
+		if skin.dark then
+			skin.dark:Hide()
+		end
 		for _, rep in ipairs(skin.reps) do
 			rep:Disable()
 		end
