@@ -4,6 +4,8 @@
 
 - Installer: Mello's layout now fits screens at many more UI scales (1920 x 1080 from the game's own scale up to 0.90, for example), where it said "too small" before.
 - Installer: when Edit Mode already keeps the five account layouts it allows, the Your screen step offers Install Without The Layout, and to delete an older MelloUI layout made for another screen (asked first), instead of leaving you stuck.
+- Fixed: Group Frames: a yellow box sometimes appeared beside your party or raid frames, whenever you targeted someone. It was the game's own hidden frame's target highlight showing through; that highlight, the game's ready-check marks and its "not here" icon now stay hidden with the rest of the game's frames.
+- Fixed: Heal Effects: casting a heal again and again could leave the light gathering on your cast bar for seconds after the cast ended, with nothing casting. Each cast now keeps its own light even when you press the next one early, and the light never outlasts your cast bar.
 
 ## 0.21.3
 

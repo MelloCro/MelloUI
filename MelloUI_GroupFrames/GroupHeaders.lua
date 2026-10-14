@@ -456,6 +456,45 @@ local function MouseBack(f)
 	end
 end
 
+-- A few parts of the game's frames ignore their parent's alpha (the game's templates: CompactUnitFrame.xml's target
+-- highlight -- the yellow RaidFrame-TargetFrame box -- and its ready check icon; the normal party frame's
+-- NotPresentIcon). With the holders at alpha 0 they still showed where the game's hidden frame stands: the users'
+-- "random square" (2026-10-14), a yellow box whenever that frame's unit was the target. While ours stand in they
+-- follow their parent's alpha; the template's own setting comes back with the frames. (The game never sets it at
+-- run time: nothing it writes is undone, no write a frame.)
+local loose = setmetatable({}, { __mode = "k" })   -- [game region] = true: made to follow its parent's alpha by us
+local LOOSE_KEYS = { "selectionHighlight", "readyCheckIcon", "NotPresentIcon" }
+
+local function Tie(region)
+	if type(region) == "table" and region.SetIgnoreParentAlpha and not loose[region] then
+		local ok, ignoring = pcall(region.IsIgnoringParentAlpha, region)
+		if ok and ignoring == true then
+			pcall(region.SetIgnoreParentAlpha, region, false)
+			loose[region] = true
+		end
+	end
+end
+
+local function TieLoose(f)
+	if type(f) ~= "table" then
+		return
+	end
+	for _, key in ipairs(LOOSE_KEYS) do
+		local r = f[key]
+		Tie(r)
+		if type(r) == "table" then
+			Tie(r.Icon)   -- (the ready check icon's picture ignores its frame's alpha too)
+		end
+	end
+end
+
+local function UntieLoose()
+	for r in pairs(loose) do
+		pcall(r.SetIgnoreParentAlpha, r, true)
+		loose[r] = nil
+	end
+end
+
 -- the game's own frames give way to ours (the user, 2026-10-09: "i want these
 -- frames to be the main ones"): always its raid frames, its raid-style party
 -- frames and its raid manager; its normal party frames too, unless they are
@@ -476,6 +515,13 @@ local function HideGame()
 	MouseOff(rawget(_G, "CompactRaidFrameManager"))
 	GameMembers(MouseOff)
 	PartyMembers(party and MouseBack or MouseOff)
+	-- (the parts that ignore their parent's alpha: tied to it on every frame that is hidden, the normal party frames
+	-- only while they are not the choice; again on each roster change, the game's new frames with them)
+	UntieLoose()
+	GameMembers(TieLoose)
+	if not party then
+		PartyMembers(TieLoose)
+	end
 end
 
 local TinyRoles   -- (below: the game's tiny role icons back)
@@ -493,6 +539,7 @@ local function ShowGame()
 		pcall(f.EnableMouse, f, true)
 		mouseOff[f] = nil
 	end
+	UntieLoose()
 end
 
 --------------------------------------------------------------------------------
@@ -983,3 +1030,4 @@ end
 -- (the tests')
 H.S = S
 H.headers, H.containers, H.byUnit = headers, containers, byUnit
+H.loose = loose

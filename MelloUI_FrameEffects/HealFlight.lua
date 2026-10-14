@@ -41,6 +41,7 @@ local Looks = MelloUI.FrameFX
 local LAND_WINDOW = 0.2   -- s after a cast's end: a HEAL on a member there turns the light to it
 local SENT_MAX = 1        -- s from a cast's SENT to its START
 local CAST_MAX = 15       -- s from a cast's SENT to its end
+local WATCH_AFTER = 0.25  -- s past a cast's end before its charge is looked at (its end's events come first)
 local HOP_WINDOW = 1.0    -- s after a Chain Heal's end: its hops, as the game reports them
 local SHOWCASE = { "o", "t", "s", "p", "b", "r" }   -- Every Kind's order
 local SHOW_GAP = 1.9      -- s between them
@@ -78,6 +79,9 @@ local P = {
 	members = {}, set = {},   -- your group's units now (reused)
 	click = nil,              -- the member whose frame's click set your target
 	cast = {},                -- the cast in hand: t, guid, spell, unit, by, helpful, charging, done
+	prev = {},                -- the cast still on the bar when a queued one is sent (spam: its end still known)
+	watchAt = 0,              -- when the charge is looked at next (Watch: it never outlives the cast bar)
+	watchStart = nil,         -- the start of the charge Watch looks after (another charge -- the Preview's -- is not its)
 	landT = nil, landBy = nil, pending = false,   -- the window after a cast's end
 	flying = nil,             -- the landing layer in the air
 	kind = nil, fromX = nil, fromY = nil,   -- the last cast's kind and where its light started
@@ -492,7 +496,49 @@ end
 -- The events
 --------------------------------------------------------------------------------
 
+-- Spam (the user's report, 2026-10-14: "spamm clicking the heal sometimes lead to the animation playing on loop even
+-- tho nothing is casting"): a press in the cast's last moments is queued, and the game sends it (SENT) before the
+-- cast on the bar ends. That cast keeps its own record (P.prev), so its end still finds it and stops its charge; and a
+-- charge is looked at once its cast bar should be empty (Watch), ending it there whatever events came or did not.
+local function Record(castGUID)
+	local prev = P.prev
+	local guid = Text(castGUID)
+	if prev.t and not prev.done and guid and prev.guid == guid then
+		return prev
+	end
+	if Same(P.cast.guid, castGUID) then
+		return P.cast
+	end
+	return nil
+end
+
+local function StopCharge()
+	P.cast.charging, P.prev.charging = false, false
+	if chargeLayer then
+		Looks.Stop(chargeLayer)
+	end
+end
+
+-- the charge looked at (a shared function: its time in P.watchAt; an earlier call finds it not due and returns):
+-- still casting, again a moment later; the bar empty, the charge ends
+local function Watch()
+	local S = chargeLayer and Looks.state[chargeLayer]
+	if not (S and S.stage == "charge") or S.start ~= P.watchStart or GetTime() < P.watchAt - 0.01 then
+		return
+	end
+	if Casting() and GetTime() - (S.start or 0) < CAST_MAX then
+		P.watchAt = GetTime() + WATCH_AFTER
+		C_Timer.After(WATCH_AFTER, Watch)
+		return
+	end
+	StopCharge()
+end
+
 local function OnSent(target, castGUID, spellID)
+	-- (the cast on the bar keeps its record while a queued one is sent)
+	if P.cast.t and P.cast.charging and not P.cast.done then
+		P.prev, P.cast = P.cast, P.prev
+	end
 	local C = P.cast
 	C.t, C.guid, C.spell = GetTime(), Text(castGUID), spellID
 	C.charging, C.done = false, false
@@ -512,6 +558,8 @@ local function OnStart(castGUID)
 	if not C.t or GetTime() - C.t > SENT_MAX or C.done or not Same(C.guid, castGUID) then
 		return
 	end
+	-- (a new cast on the bar: the charge is its from here, never an earlier one's)
+	P.prev.charging = false
 	-- (a heal by the game's spell data; a spell whose ID is secret, unless it
 	-- is known to harm; a buff, a harmful spell: nothing)
 	if not (C.kind or (C.secret and C.helpful ~= false)) or Anim.reduceMotion then
@@ -525,18 +573,19 @@ local function OnStart(castGUID)
 	S.start, S.castTime = GetTime(), CastTime(C.spell)
 	C.charging = true
 	Looks.Charge(chargeLayer, LookName())
+	P.watchAt, P.watchStart = S.start + S.castTime + WATCH_AFTER, S.start
+	C_Timer.After(S.castTime + WATCH_AFTER, Watch)
 end
 
 local function OnSucceeded(castGUID)
-	local C = P.cast
-	if not C.t or GetTime() - C.t > CAST_MAX or C.done or not Same(C.guid, castGUID) then
+	local C = Record(castGUID)
+	if not C or not C.t or GetTime() - C.t > CAST_MAX or C.done then
 		return
 	end
 	C.done = true
 	local charged = C.charging
 	if charged then
-		C.charging = false
-		Looks.Stop(chargeLayer)
+		StopCharge()
 	end
 	-- (a cast whose kind is not known -- its ID secret -- lands as a heal; an
 	-- instant whose kind is not known: nothing)
@@ -573,10 +622,9 @@ local function OnSucceeded(castGUID)
 end
 
 local function OnStopped(castGUID)
-	local C = P.cast
-	if C.charging and not C.done and Same(C.guid, castGUID) and not Casting() then
-		C.charging = false
-		Looks.Stop(chargeLayer)
+	local C = Record(castGUID)
+	if C and C.charging and not C.done and not Casting() then
+		StopCharge()
 	end
 end
 

@@ -137,6 +137,8 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.22.0", lines = {
 		"Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one.",
+		"Fixed: Group Frames: no more stray yellow box beside your party or raid frames when you target someone.",
+		"Fixed: Heal Effects: spamming a heal no longer leaves the light looping on your cast bar after the cast.",
 	} },
 	{ version = "0.21.3", lines = {
 		"World Marker: cleaner and smaller -- a smaller flag mark, a slim still beam, one chevron near the place.",
