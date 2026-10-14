@@ -158,6 +158,9 @@ local TEXT = {
 	presetYes = "Make a copy",
 	presetNo = "Cancel",
 	reloadSay = "Edit Mode layout saved: type /reload to see it.",
+	-- (0.22.0: an older MelloUI layout deleted at the player's word)
+	deleteCombat = "not in a fight: delete it when the fight ends",
+	deleteEditMode = "close Edit Mode first",
 }
 
 local function Data()
@@ -1354,3 +1357,68 @@ function MelloUI:EditModeLayoutStatus()
 		data and #data.layout or 0, presets or 0, full and (#full - (presets or 0)) or 0, active and tostring(active.layoutName) or "?", table.concat(names, " "))
 end
 
+--------------------------------------------------------------------------------
+-- (0.22.0; a player's report, 2026-10-14: the installer could not go on -- Edit Mode already kept the five account
+-- layouts it allows) An older MelloUI layout, deleted at the player's word on the installer's Screen step, as Edit
+-- Mode's own Delete does it (EditModeManagerFrameMixin:DeleteLayout: out of the full list, the list saved, the game
+-- told). Never the layout of this screen, never a preset nor another addon's or the player's own layout.
+--   MelloUI:OldMelloLayouts(keep) -> names   the account's saved MelloUI layouts ("MelloUI", "MelloUI <w>x<h>"),
+--                                            `keep` (this screen's name) left out
+--   MelloUI:DeleteEditModeLayout(name) -> ok, why   one of those (out of combat, Edit Mode closed)
+--------------------------------------------------------------------------------
+local function OldName(name, base, keep)
+	return name ~= keep and (name == base or name:sub(1, #base + 1) == base .. " ")
+end
+
+function MelloUI:OldMelloLayouts(keep)
+	local out = {}
+	if not Api() then
+		return out
+	end
+	local full = FullList()
+	if not full then
+		return out
+	end
+	local data = Data()
+	local base = data and data.name or BASE
+	local account = LayoutType("Account")
+	for _, layout in ipairs(full) do
+		local name = NameOf(layout)
+		if name and TypeOf(layout) == account and OldName(name, base, keep) then
+			out[#out + 1] = name
+		end
+	end
+	return out
+end
+
+function MelloUI:DeleteEditModeLayout(name)
+	if not Api() then
+		return false, TEXT.noApi
+	elseif InCombatLockdown() then
+		return false, TEXT.deleteCombat
+	elseif EditModeManagerFrame and EditModeManagerFrame.IsShown and EditModeManagerFrame:IsShown() then
+		return false, TEXT.deleteEditMode
+	end
+	local full, info = FullList()
+	if not full then
+		return false, TEXT.noRead
+	end
+	local data = Data()
+	local at = Find(full, name)
+	if not (at and type(name) == "string" and OldName(name, data and data.name or BASE, ScreenName())
+		and TypeOf(full[at]) == LayoutType("Account")) then
+		return false, TEXT.gone
+	end
+	tremove(full, at)
+	info.layouts = full
+	local ok, err = pcall(C_EditMode.SaveLayouts, info)
+	if not ok then
+		return false, TEXT.noSave:format(tostring(err))
+	end
+	readFull = nil
+	if C_EditMode.OnLayoutDeleted then
+		pcall(C_EditMode.OnLayoutDeleted, at)
+	end
+	LogOnly("Edit Mode layout '%s' deleted (the installer, at the player's word)", name)
+	return true
+end

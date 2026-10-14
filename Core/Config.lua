@@ -135,6 +135,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.22.0", lines = {
+		"Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one.",
+	} },
 	{ version = "0.21.3", lines = {
 		"World Marker: cleaner and smaller -- a smaller flag mark, a slim still beam, one chevron near the place.",
 		"World Marker: the Wisp (Firefly or Embers) flies from your character to a new destination and lights it.",
@@ -169,12 +172,6 @@ local CHANGELOG = {
 		"Fixed: a game crash after a while with the Single rail round the bars (the nameplates' borders piled up copies).",
 		"Fixed: Fader: the Quest Tracker on On Mouseover comes back when pointed at; the player frame stays faded while you regenerate; no error at login with the buffs faded.",
 		"Fixed: /mello widgets column lists what the widget column holds.",
-	} },
-	{ version = "0.20.5", lines = {
-		"Fixed: a parchment tooltip fading out showed a box inside it. The parchment now fades as one, wherever it shows.",
-		"Fixed: the game's own portraits (Class Icons off) had a square corner on the unit frames; they are round now.",
-		"Fixed: a gap between the bars and their border (the Single rail and the Stone rail): the border now closes on the bar.",
-		"Fixed: the loot window's background reaches its border again; the world no longer shows round the items.",
 	} },
 }
 local LINKS = {

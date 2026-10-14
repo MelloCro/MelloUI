@@ -364,6 +364,22 @@ local LATER = {
 	tooltip = {},
 }
 
+-- (0.22.0; a player's report, 2026-10-14: the installer said "too small" on a 1920 x 1080 screen at UI scale 0.70, and
+-- a sweep of the common screens showed FAILs at the scales between: the boss frames, placed first, took the free spot
+-- the raid frames are designed for, and the raid frames found none left) The tries after a FAIL, in turn, the first
+-- that passes kept: each a `later` that stands in for LATER's units (the pieces a unit's places and its grid search
+-- leave out, as they make room later). A fit that passes the first time never meets them: every passing fit is as it
+-- was. (A table on LayoutFit: the file is at Lua's limit of top-level locals.)
+LayoutFit.RETRY = {
+	-- the boss frames keep clear of the party and raid frames as designed: those then keep their places
+	{ name = "the boss frames clear of the group frames",
+	  later = { boss = { focus = true, extra = true, doll = true, tooltip = true } } },
+	-- and the extra ability's free spot may be in the centre third (it shows now and then, and the game's own place
+	-- for it is centred above the bars)
+	{ name = "the boss frames clear of the group frames, the extra ability's spot in the centre too",
+	  later = { boss = { focus = true, extra = true, doll = true, tooltip = true } }, centre = { extra = true } },
+}
+
 -- Frames Edit Mode places that UI Modifications' movers can also keep a place for
 local EDIT_MODE_FRAMES = { "MinimapCluster", "DamageMeter", "ChatFrame1", "ObjectiveTrackerFrame" }
 LayoutFit.EDIT_MODE_FRAMES = EDIT_MODE_FRAMES   -- (read only: the installer keeps the player's own places of these)
@@ -2726,6 +2742,7 @@ local function GridSpot(f, unit, later, prep)
 	local W, H = f.W, f.H
 	local found, foundX, foundY
 	local obst, band = {}, {}
+	local centreOk = f.retry and f.retry.centre and f.retry.centre[unit] or false
 	for pass = 1, 2 do
 		local strict = pass == 1
 		local no = 0
@@ -2749,7 +2766,7 @@ local function GridSpot(f, unit, later, prep)
 			end
 			local x = GAP
 			while x + w <= W - GAP + EPS do
-				if not (x < x1 and x + w > x0 and y < ctop) then
+				if centreOk or not (x < x1 and x + w > x0 and y < ctop) then
 					local hitR
 					for i = 1, nb, 2 do
 						if band[i] < x + w and band[i + 1] > x then
@@ -2813,7 +2830,7 @@ end
 -- the candidate order). When no listed place is free of hard overlaps and of
 -- the centre third, F9g's nearest free spot is one more candidate.
 local function Pick(f, unit, cands, rule)
-	local later = LATER[unit]
+	local later = (f.retry and f.retry.later[unit]) or LATER[unit]
 	local best
 	local bestScore, cur = f.bestScore, f.curScore
 	local gridAdded = false
@@ -3377,7 +3394,7 @@ end
 
 -- The rules in the built order at W x H with `inputs`, then the checks and
 -- the verdict
-local function Rules(f, W, H, inputs)
+local function Rules(f, W, H, inputs, retry)
 	-- the bottom band at the approved sizes, then smaller ones (F11)
 	local tried = {}
 	local solved = false
@@ -3408,6 +3425,10 @@ local function Rules(f, W, H, inputs)
 	end
 	if not solved then
 		Flag(f, "bottom band not solved even at the smallest compact sizes: " .. ((f.bandNote and f.bandNote ~= "") and f.bandNote or concat(f.bandWhy, "; ")))
+	end
+	f.retry = retry
+	if retry then
+		Note(f, "tried again after a FAIL: " .. retry.name)
 	end
 	F6Auras(f)
 	F9Boss(f)
@@ -3441,6 +3462,12 @@ local function FailCause(info, W, H, inh, job)
 	end
 	g.inh = inh
 	local _, _, _, pass = Rules(g, W, H, DESIGN_INPUTS)
+	for _, retry in ipairs(LayoutFit.RETRY) do
+		if pass then
+			break
+		end
+		pass = select(4, Rules(g, W, H, DESIGN_INPUTS, retry))
+	end
 	return pass and "settings" or "size"
 end
 
@@ -3458,6 +3485,21 @@ local function Core(info, W, H, inputs, opts, job)
 	end
 	Inherit(f)
 	local rep, together, verdict, pass, tried = Rules(f, W, H, inputs)
+	-- a FAIL: the tries after it (LayoutFit.RETRY), the first that passes kept; none: the first fit's again
+	if not pass then
+		local passed = false
+		for _, retry in ipairs(LayoutFit.RETRY) do
+			local rep2, together2, verdict2, pass2, tried2 = Rules(f, W, H, inputs, retry)
+			if pass2 then
+				rep, together, verdict, pass, tried = rep2, together2, verdict2, pass2, tried2
+				passed = true
+				break
+			end
+		end
+		if not passed then
+			rep, together, verdict, pass, tried = Rules(f, W, H, inputs)
+		end
+	end
 	local fitted = f.info
 	local name = LayoutFit:LayoutName(W, H, opts.screenW, opts.screenH, opts.baseName)
 	fitted.layoutName = name

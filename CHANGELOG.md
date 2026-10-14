@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.0
+
+- Installer: Mello's layout now fits screens at many more UI scales (1920 x 1080 from the game's own scale up to 0.90, for example), where it said "too small" before.
+- Installer: when Edit Mode already keeps the five account layouts it allows, the Your screen step offers Install Without The Layout, and to delete an older MelloUI layout made for another screen (asked first), instead of leaving you stuck.
+
 ## 0.21.3
 
 - World Marker: cleaner and smaller. A smaller flag mark, a slim beam that stands still with a small glow at its foot, and near the place one gold chevron pointing down instead of three rippling ones.

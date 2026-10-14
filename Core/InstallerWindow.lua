@@ -179,6 +179,13 @@ local TEXT = {
 	eyeMore = "... and %d more",
 	suggest = "'No reskin, features on' suits this screen.",
 	useNoReskin = "Use No reskin",
+	-- (0.22.0) the way on when Edit Mode has no room for one more layout
+	installWithout = "Install Without The Layout",
+	deleteOld = "Delete '%s'",
+	deleteAsk = "Delete the Edit Mode layout '%s'?\n\nIt is an older MelloUI layout, made for another screen. Your own layouts stay, and Edit Mode then has room for this screen's.",
+	deleteYes = "Delete it",
+	deleteNo = "Cancel",
+	deleteFailed = "The Edit Mode layout '%s' was not deleted: %s.",
 	reviewLead = "%s: this is what changes.",
 	layoutRow = "Edit Mode layout '%s', fitted to %s",
 	layoutWaits = "The Edit Mode layout, once your screen is fitted",
@@ -925,6 +932,49 @@ local function LayoutSet(on)
 	RefreshFooter()
 end
 
+-- (0.22.0; a player's report, 2026-10-14: Edit Mode already kept the five account layouts it allows, the switch was
+-- on, and the installer could not go on) The way on from the Screen step's line: without the layout (the switch
+-- off), or an older MelloUI layout for another screen deleted, asked first in MelloUI's own dialog -- deleted at once,
+-- as Edit Mode's own Delete does it (MelloUI:DeleteEditModeLayout), never part of the install or its Revert
+function ACTIONS.noLayout()
+	if state.phase ~= "choose" then
+		return
+	end
+	MelloUI:PlayUISound("tab")
+	LayoutSet(false)
+end
+
+local function DeleteOld(name)
+	local ok, why = MelloUI:DeleteEditModeLayout(name)
+	if not ok then
+		MelloUI:Print(TEXT.deleteFailed, name, tostring(why))
+	end
+	for _, fit in pairs(state.fits) do
+		fit.room, fit.most, fit.old = nil, nil, nil
+	end
+	RefreshPage()
+	RefreshFooter()
+end
+
+function ACTIONS.deleteOld(button)
+	local name = button.melloOld
+	if state.phase ~= "choose" or type(name) ~= "string" or type(MelloUI.DeleteEditModeLayout) ~= "function" then
+		return
+	end
+	MelloUI:Confirm({ text = TEXT.deleteAsk:format(name), accept = TEXT.deleteYes, cancel = TEXT.deleteNo,
+		onAccept = function()
+			DeleteOld(name)
+		end })
+end
+
+-- the older MelloUI layouts in Edit Mode's list (kept on the fit as its room is: the list is a whole tree of tables)
+local function OldLayouts(fit)
+	if fit.old == nil then
+		fit.old = type(MelloUI.OldMelloLayouts) == "function" and MelloUI:OldMelloLayouts(LayoutNameOf(fit)) or {}
+	end
+	return fit.old
+end
+
 local function BuildFit(page)
 	local shell = win.shell
 	page.detected = W.Text(page, "GameFontHighlight", nil, "text")
@@ -960,6 +1010,9 @@ local function BuildFit(page)
 	page.how:SetWidth(TEXT_W)
 	page.room = W.Text(page, "GameFontHighlight", nil, "selectedTrim")
 	page.room:SetWidth(TEXT_W)
+	-- (0.22.0) the way on from that line
+	page.noLayout = Button(page, TEXT.installWithout, 210, "noLayout")
+	page.deleteOld = Button(page, "", 230, "deleteOld")
 	return 1
 end
 
@@ -1174,9 +1227,19 @@ local function RefreshFit(page)
 		end
 	end
 	page.room:SetShown(not room)
+	page.noLayout:SetShown(not room)
+	local old = not room and OldLayouts(done)[1] or nil
+	page.deleteOld:SetShown(old ~= nil)
 	if not room then
 		Place(page.room, page, PAD, y)
 		y = y + (Num(page.room:GetStringHeight()) or 28) + 8
+		Place(page.noLayout, page, PAD, y)
+		if old then
+			page.deleteOld.melloOld = old
+			page.deleteOld:SetText(TEXT.deleteOld:format(old))
+			Place(page.deleteOld, page, PAD + 210 + 10, y)
+		end
+		y = y + BUTTON_H + 10
 	end
 	return y + 4
 end
@@ -3049,7 +3112,7 @@ end, "script")
 -- layout may have been deleted or added meanwhile
 local function ForgetRoom()
 	for _, fit in pairs(state.fits) do
-		fit.room, fit.most = nil, nil
+		fit.room, fit.most, fit.old = nil, nil, nil
 	end
 end
 
