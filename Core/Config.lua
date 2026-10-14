@@ -138,6 +138,7 @@ local CHANGELOG = {
 	{ version = "0.22.0", lines = {
 		"Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one.",
 		"Bags by Kind: the Reagent Bag on its own tab at the bag window's side; move items between it and your bags, or drop one on a tab.",
+		"Split Stack: the mouse wheel changes the amount (Shift: ten at a time), and a ½ button halves the stack.",
 		"Fixed: Group Frames: no more stray yellow box beside your party or raid frames when you target someone.",
 		"Fixed: Heal Effects: spamming a heal no longer leaves the light looping on your cast bar after the cast.",
 	} },

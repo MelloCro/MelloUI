@@ -8,6 +8,7 @@
 --   * the bag bar's fold: the game's arrow beside the backpack folds the bag
 --     slots away and brings them back (the game's own expandBagBar setting)
 --   * world text scale (floating combat text / damage numbers)
+--   * (0.22.0) the split box: the mouse wheel moves its amount, a ½ button halves the stack
 --
 -- Hidden frames are re-parented to an invisible frame instead of calling Hide(),
 -- so Blizzard code that calls Show() on them cannot bring them back. While Edit
@@ -19,6 +20,7 @@ local MelloUI = ns.MelloUI
 local Perf = MelloUI.Perf:Scope("Tweaks")
 local hooksecurefunc, C_Timer = Perf.hooksecurefunc, Perf.C_Timer
 local Num = MelloUI.Safe.Number
+local W = MelloUI.Widgets
 
 -- (0.19.9) the bars' and the buffs' layouts (below, after the module): the
 -- options' get / missing / set ask it (the registration names nothing else
@@ -54,6 +56,9 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- (0.19.9: the bar the Bar Layout rows set; their values and the Buff
 		-- Layout rows' are the game's or Buffs & Debuffs', never kept here)
 		barLayoutBar = 1,
+		-- (0.22.0) the split box's mouse wheel and ½ button
+		splitWheel = true,
+		splitHalf = true,
 	},
 	options = {
 		{ type = "header", name = "Hide Frames" },
@@ -140,6 +145,14 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  get = function(db) return Layout.BuffGet("buffNewRows") end, missing = function() return Layout.BuffMissing("buffNewRows") end,
 		  search = "buffs debuffs wrap down up",
 		  desc = "Where the next row of buffs goes: under the first, or over it." },
+		-- (0.22.0, a player's request "QoL: Split Stack"; Windows > Split stack > Behaviour)
+		{ type = "header", name = "Split Stack" },
+		{ type = "toggle", key = "splitWheel", name = "Mouse Wheel Amount", new = "0.22.0",
+		  search = "split stack amount scroll wheel shift",
+		  desc = "In the box that splits a stack (Shift-click a stack), the mouse wheel changes the amount: up adds one, down takes one, ten at a time while you hold Shift." },
+		{ type = "toggle", key = "splitHalf", name = "Half Button", new = "0.22.0",
+		  search = "split stack half halve",
+		  desc = "A ½ button at the left end of the split box's amount: click it and the amount is half the stack (191 makes 95). Buying in bundles at a merchant, it rounds down to whole bundles." },
 	},
 })
 
@@ -733,6 +746,148 @@ function Fold.Hook()
 end
 
 --------------------------------------------------------------------------------
+-- The split box (0.22.0; a player's request, 2026-10-14, "QoL: Split Stack": "change quantity of the split stack size
+-- with the mouse wheel (default step size 1; shift scroll - step size 10)" and "a button to halve the stack (e.g. stack
+-- size is 191 -> set split stack size to 95)"; the user's pick A of MelloUI-BuildData/output/split_half_sketch: the ½
+-- inside the field, at its empty left end). The game's StackSplitFrame keeps its amount, its typing and its OK: the
+-- wheel and the ½ move the amount only by the game's own arrows (StackSplitLeftButton_OnClick /
+-- StackSplitRightButton_OnClick: one step of the box's minSplit each, within its bounds); nothing is written on the
+-- box. Made on the box's first show: a frame of our own over it that takes the wheel and no click, and the ½ (the
+-- shared W.Button) -- the kit's dress of the box (StackSplitPanel) on or off.
+--------------------------------------------------------------------------------
+
+local Split = {
+	SHIFT = 10,        -- steps a wheel turn makes while Shift is held
+	HALF_W = 18, HALF_H = 16, HALF_X = 4,   -- the ½: its size, its gap from the left arrow (inside the field)
+	MULTI_DY = 12,     -- (the amount's line above the arrows' while splitting into stacks: the game's 30 against 18)
+	TEXT = { half = "Half The Stack", halfTip = "The amount set to half the stack: %d of %d.",
+		halfBundles = "The amount set to half of what you can buy, in whole bundles: %d of %d." },
+}
+
+function Split.Box()
+	local f = rawget(_G, "StackSplitFrame")
+	return type(f) == "table" and f.GetChildren and f or nil
+end
+
+-- the box's amount, step and maximum (the game's own fields, read)
+function Split.Read(f)
+	if not f then
+		return nil, 1, nil
+	end
+	return Num(f.split), Num(f.minSplit) or 1, Num(f.maxStack)
+end
+
+-- the amount moved n steps (up: more) by the game's own arrows, never past its bounds
+function Split.Step(n)
+	local fn = rawget(_G, n > 0 and "StackSplitRightButton_OnClick" or "StackSplitLeftButton_OnClick")
+	if type(fn) ~= "function" then
+		return
+	end
+	for _ = 1, math.abs(n) do
+		local split, step, max = Split.Read(Split.Box())
+		if not split or (n > 0 and (not max or split >= max)) or (n < 0 and split <= step) then
+			return
+		end
+		fn()
+	end
+end
+
+-- half the stack, in whole steps (a merchant's bundles), at least one step
+function Split.Target()
+	local split, step, max = Split.Read(Split.Box())
+	if not (split and max) then
+		return nil
+	end
+	return math.max(step, math.floor(max / 2 / step) * step), max, step
+end
+
+Split.Wheel = Perf.Shared("OnMouseWheel over the split box", function(_, delta)
+	if M.db and M.db.splitWheel == false then
+		return
+	end
+	local n = IsShiftKeyDown() and Split.SHIFT or 1
+	Split.Step((Num(delta) or 0) > 0 and n or -n)
+end, "script")
+
+Split.HalfClick = Perf.Shared("OnClick on the split box's ½", function()
+	local target, _, step = Split.Target()
+	local split = Split.Read(Split.Box())
+	if target and split then
+		Split.Step(math.floor((target - split) / step + 0.5))
+	end
+end, "script")
+
+Split.HalfEnter = Perf.Shared("OnEnter on the split box's ½", function(b)
+	local target, max, step = Split.Target()
+	if target then
+		W.ShowTooltip(b, Split.TEXT.half, (step > 1 and Split.TEXT.halfBundles or Split.TEXT.halfTip):format(target, max))
+	end
+end, "script")
+
+-- a region's centre height, secret-safe
+function Split.CenterY(obj)
+	local ok, _, y = pcall(obj.GetCenter, obj)
+	return ok and Num(y) or nil
+end
+
+-- the ½ and the wheel as the options and the box are: the ½ on the amount's line (the arrows' for one item, above
+-- them for stacks), only while there is something to halve
+function Split.Lay()
+	local f, half = Split.Box(), Split.half
+	if not (f and half) then
+		return
+	end
+	local db = M.db
+	Split.catcher:EnableMouseWheel((db and db.splitWheel ~= false) and true or false)
+	local _, step, max = Split.Read(f)
+	local on = db and db.splitHalf ~= false and max and max >= 2 * step and f.LeftButton
+	half:SetShown(on and true or false)
+	if on then
+		local ay, ty = Split.CenterY(f.LeftButton), f.StackSplitText and Split.CenterY(f.StackSplitText)
+		local dy = (ay and ty) and (ty - ay) or (f.isMultiStack == true and Split.MULTI_DY or 0)
+		half:ClearAllPoints()
+		half:SetPoint("LEFT", f.LeftButton, "RIGHT", Split.HALF_X, dy)
+	end
+end
+
+-- made the first time the box shows (nothing at login)
+function Split.Make(f)
+	if Split.half then
+		return
+	end
+	local catcher = MelloUI.Safe.CreateFrame("Frame", nil, f)
+	catcher:SetAllPoints(f)
+	catcher:EnableMouse(false)   -- (the arrows, the amount's typing and OK / Cancel stay the box's)
+	Perf.SetScript(catcher, "OnMouseWheel", Split.Wheel)
+	Split.catcher = catcher
+	local half = W.Button(f, "½", Split.HALF_W, nil, { height = Split.HALF_H, onClick = Split.HalfClick })
+	Perf.HookScript(half, "OnEnter", Split.HalfEnter)
+	Perf.HookScript(half, "OnLeave", W.TipLeave)
+	Split.half = half
+end
+
+Split.Shown = Perf.Shared("OnShow on the split box (the wheel, the ½)", function(f)
+	Split.Make(f)
+	Split.Lay()
+end, "script")
+
+-- (the box's own show, and its re-layout for one item or for stacks and a new maximum while it shows)
+function Split.Hook()
+	local f = Split.Box()
+	if Split.hooked or not f then
+		return
+	end
+	Split.hooked = true
+	Perf.HookScript(f, "OnShow", Split.Shown)
+	for _, method in ipairs({ "ChooseFrameType", "UpdateStackSplitFrame" }) do
+		if type(f[method]) == "function" then
+			hooksecurefunc(f, method, Split.Lay)
+		end
+	end
+end
+M.Split = Split   -- (the tests')
+
+--------------------------------------------------------------------------------
 -- World text scale
 --------------------------------------------------------------------------------
 
@@ -1036,6 +1191,7 @@ function M:OnEnable(db)
 	if WorldTextScaleWanted(db) then
 		ApplyWorldTextScale(db.worldTextScale)
 	end
+	Split.Hook()
 end
 
 function M:OnDisable()
@@ -1049,6 +1205,8 @@ function M:OnSettingChanged(key, value, db)
 		UpdateHiddenFrames()
 	elseif key == "worldTextScale" then
 		ApplyWorldTextScale(value)
+	elseif key == "splitWheel" or key == "splitHalf" then
+		Split.Lay()
 	elseif Layout.barSetting[key] then
 		-- (0.19.9) the game's value: read back from the layout, never kept here
 		db[key] = nil

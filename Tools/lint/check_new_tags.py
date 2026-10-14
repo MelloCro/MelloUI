@@ -120,6 +120,8 @@ NOT_CONFIGURATOR = {
                         "Core/Config.lua, opens them): a scene's controls, not options",
     "Modules/KeybindMode.lua": "Keybind Mode's bar (Cancel, Done): a mode's controls, not options (the Action Bars "
                                "page's Keybind Mode button, New-tagged in Core/Config.lua, opens it)",
+    "Modules/Tweaks.lua": "the split box's ½ button (0.22.0: it halves the amount; its switch, Tweaks.splitHalf, is a "
+                          "schema option, New-tagged), not an option",
 }
 # the controls an OWN_FILES file builds that are no option of the configurator, and why (never New-tagged)
 NOT_OPTIONS = {
