@@ -417,6 +417,7 @@ local Size = {
 	-- container's height); its place on the cluster, the game's (Diel.lua's
 	-- AnchorX, AnchorY)
 	DIAL_X = 53, DIAL_Y = 88.5, DIAL_HOME_X = 63, DIAL_HOME_Y = 72,
+	DIAL_INSET = 3,      -- (0.22.0) the square map's dial: this far inside its top right corner (under the zone header)
 	masks = {},          -- [key] = a mask's path, made once
 	bounds = {},         -- LayCluster's extents, reused
 	file = nil,          -- the crop's mask, nil: the whole square
@@ -426,6 +427,7 @@ local Size = {
 	held = false,        -- this module's size is laid (Release puts the game's back)
 	dialDirty = true,    -- the game placed the dial again (Edit Mode's Size): placed once more
 	dialHeld = false,    -- the dial is placed from here (Size.Place)
+	dialAt = {},         -- (0.22.0) where it was last placed from here: point, rel, x, y (Size.Dial)
 	zoomHeld = false,    -- the zoom buttons too
 	coordsHeld = false,  -- the player's coordinates too
 }
@@ -705,18 +707,70 @@ function Size.Place(home, cw, ch, s, force)
 			ring.tex:SetSize(size, size)
 		end
 	end
-	-- the dial: the game's own while the map is at its own size and Edit
-	-- Mode's Size at 100 % (nothing to follow), else taken over: at 100 %,
-	-- on the shown part's corner
-	local dial = home.dial
-	local ek = Size.editScale
-	if dial and (not (Same(cw, home.mapW) and Same(ch, home.mapH)) or (ek and math.abs(ek - 1) > 1e-6))
-		and (force or Size.dialDirty or not Size.dialHeld) then
-		Size.dialDirty, Size.dialHeld = false, true
-		dial.frame:SetScale(1)
-		dial.frame:ClearAllPoints()
-		dial.frame:SetPoint("CENTER", map, "CENTER", Size.DIAL_X * kx, Size.DIAL_Y * ky)
+	Size.Dial(home, cw, ch)
+end
+
+-- The dial (the game's day / night cycle, MinimapCluster.DielFrame): the game's own while the round map is at its own
+-- size and Edit Mode's Size at 100 % (nothing to follow), else taken over at 100 %: on the round map where the game's
+-- stood, in proportion to the shown part; (0.22.0; the user, 2026-10-14, the moon on the zone header's foot: "fix this
+-- moon icon ... and place it in the top right corner to not overlapp with the other borders and headers") on the
+-- square map in the shown part's top right corner, under the zone header where it hangs over the map (Size.Drop),
+-- DIAL_INSET clear of both. Looked at again with the column's next-frame pass (Column.Fire), the frame then laid.
+function Size.Dial(home, cw, ch)
+	local dial = home and home.dial
+	if not (dial and cw and ch) then
+		return
 	end
+	local square = M.db and M.db.shape == "square"
+	local ek = Size.editScale
+	if not (square or not (Same(cw, home.mapW) and Same(ch, home.mapH)) or (ek and math.abs(ek - 1) > 1e-6)) then
+		return
+	end
+	local f = dial.frame
+	local point, rel, x, y
+	if square then
+		rel = Size.Proxy()
+		point, x = "TOPRIGHT", -Size.DIAL_INSET
+		y = -(Size.DIAL_INSET + Size.Drop(rel, f))
+	else
+		rel, point = Minimap, "CENTER"
+		x, y = Size.DIAL_X * cw / home.mapW, Size.DIAL_Y * ch / home.mapH
+	end
+	-- (written only when its place is new or the game placed it again: a relayout that changes nothing writes
+	-- nothing -- the cover-not-overwrite rule)
+	local at = Size.dialAt
+	if not Size.dialDirty and Size.dialHeld and at.point == point and at.rel == rel and Same(at.x, x)
+		and Same(at.y, y) then
+		return
+	end
+	Size.dialDirty, Size.dialHeld = false, true
+	at.point, at.rel, at.x, at.y = point, rel, x, y
+	f:SetScale(1)
+	f:ClearAllPoints()
+	f:SetPoint(point, rel, point, x, y)
+end
+
+-- how far the zone header hangs below the top of `p`, in `f`'s units: the lower of the game's band and the kit's plate
+-- on it (1.4 x its height while the kit dresses it), each that shows and can be read plainly (0: clear of both)
+function Size.Drop(p, f)
+	local _, _, _, top = MelloUI.Safe.ScreenRect(p)
+	local ok, s = pcall(f.GetEffectiveScale, f)
+	s = ok and Num(s) or nil
+	if not (top and s and s > 0) then
+		return 0
+	end
+	local low = top
+	local band = MinimapCluster and MinimapCluster.BorderTop
+	local plate = skin and skin.band and skin.band.strip
+	for _, over in ipairs({ band or false, plate or false }) do
+		if over and over.IsShown and over:IsShown() then
+			local _, bottom = MelloUI.Safe.ScreenRect(over)
+			if bottom and bottom < low then
+				low = bottom
+			end
+		end
+	end
+	return (top - low) / s
 end
 
 -- This module's size laid (Width x Height)
@@ -2036,6 +2090,11 @@ function M:ColumnAnchor()
 end
 
 function Column.Fire()
+	-- (0.22.0) the square map's dial under the zone header as the frame stands once laid (written only if that moved
+	-- it: Size.Dial)
+	if Size.held and Size.home then
+		Size.Dial(Size.home, Size.cw, Size.ch)
+	end
 	MelloUI:Fire("column")
 end
 

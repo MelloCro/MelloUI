@@ -51,6 +51,7 @@ local M = MelloUI:RegisterModule("Services", {
 		roundIcons = true,
 		showButton = false,
 		angle = 205,
+		addonButtons = true,   -- (0.22.0) the AddOns group
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
@@ -60,7 +61,11 @@ local M = MelloUI:RegisterModule("Services", {
 			{ value = "groups", label = "Groups" },
 			{ value = "all", label = "All Buttons" },
 		  },
-		  desc = "Groups: one row of six buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks, Errands). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. Errands lists your reminders (Restock, Mail, Repair Gear, Trainer) and how each stands; click one to route to the nearest place for it. All Buttons: two rows with an icon for every service." },
+		  desc = "Groups: one row of buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks, Errands, and AddOns while your addons have minimap buttons). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. Errands lists your reminders (Restock, Mail, Repair Gear, Trainer) and how each stands; click one to route to the nearest place for it. All Buttons: two rows with an icon for every service." },
+		-- (0.22.0, a player's request "Minimap bar for addon icons"; the user's pick A of addon_bar_sketch)
+		{ type = "toggle", key = "addonButtons", parent = "showBar", name = "AddOns Group", new = "0.22.0",
+		  search = "addon addons minimap buttons icons libdbicon questie tidy gather",
+		  desc = "Your addons' minimap buttons (Questie and the others that put a round button on the minimap's edge) taken off the minimap and gathered into one more group in the Services row, AddOns: click it for a list of them. A click on an addon there is that addon's own (left, right or middle), and pointing at it shows its own tooltip. Only with Button Layout's Groups. Off: the buttons go back on the minimap." },
 		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2,
 		  desc = "How far under the minimap the buttons sit. Not used while they are merged into the square minimap's frame." },
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
@@ -209,7 +214,21 @@ local ERRANDS = {
 -- the user did not object to these). `members`: KINDS keys (an `errands`
 -- group's: ERRANDS keys), the first one's icon is the group's unless it has
 -- its own. A new group is one entry; LayoutFit's Column.ROW_GROUPS models the
--- row's height (Core/LayoutFit.lua: change it with the count).
+-- row's height (Core/LayoutFit.lua: change it with the count). (0.22.0) The
+-- AddOns group (`addons`) shows only while there are addon buttons for it;
+-- its kinds are Addon.list, filled from LibDBIcon (the AddOns section). The
+-- row's buttons keep the six's size where the map has room for a seventh
+-- (GroupRow): the model's six-button row stays the taller, the safe one.
+-- AddOns (0.22.0): the entries its tray lists, one per addon button (the
+-- section of its own below, before the menu)
+local Addon = {
+	ICON = "Interface/Icons/INV_Misc_Gear_01",
+	list = {},      -- the tray's entries, in name order: { addon = true, name, label, icon, obj, button }
+	byName = {},    -- [LibDBIcon name] = its entry (reused)
+	parent = {},    -- [button] = the parent it had, given back
+	shown = {},     -- the group buttons that show (UseButtons; reused)
+}
+
 local GROUPS = {
 	{ key = "travel", label = "Travel", members = { "flight", "innkeeper" } },
 	{ key = "trade", label = "Trade", members = { "auction", "banker", "mailbox" } },
@@ -218,6 +237,7 @@ local GROUPS = {
 	{ key = "looks", label = "Looks", members = { "barber", "transmog" } },
 	{ key = "errands", label = "Errands", errands = true, icon = "Interface/Icons/INV_Misc_Note_01",
 	  members = { "restock", "mail", "repairgear", "trainer" } },
+	{ key = "addons", label = "AddOns", addons = true, icon = Addon.ICON, members = {} },
 }
 
 -- Each kind's look (found on this continent, its nearest, how far a look got):
@@ -245,7 +265,7 @@ do
 		end
 	end
 	for _, group in ipairs(GROUPS) do
-		group.kinds = {}
+		group.kinds = group.addons and Addon.list or {}
 		for _, key in ipairs(group.members) do
 			group.kinds[#group.kinds + 1] = group.errands and errandOf[key] or KIND[key]
 		end
@@ -1165,6 +1185,201 @@ local EVENTS = { "MERCHANT_SHOW", "MAIL_SHOW", "GOSSIP_SHOW", "TAXIMAP_OPENED", 
 	"TRAINER_SHOW", "BARBER_SHOP_OPEN", "TRANSMOGRIFY_OPEN" }
 
 --------------------------------------------------------------------------------
+-- AddOns (0.22.0; a player's request, 2026-10-10, "Minimap bar for addon icons": "Would be awesome to have a minimap
+-- bar like "Services" but for addon icons. They currently just float on my minimap."; the user's pick A of
+-- MelloUI-BuildData/output/addon_bar_sketch: a seventh group, AddOns, its tray listing them). Other addons' minimap
+-- buttons are LibDBIcon's on this client (Questie, Naowh ...; the game's Addon Compartment loads on retail only; the
+-- minimap's other children -- map pins among them -- are never taken). While the group is wanted (Services on, its
+-- bar with Groups, AddOns Group on) each button its addon shows is held under a hidden frame of ours (a re-parent:
+-- the library's Show and Refresh cannot bring it back on the map), and a row of the tray stands for it, its icon and
+-- name; a click (any button), the hover and its leaving are the addon's data object's own (LibDataBroker's OnClick,
+-- OnTooltipShow or OnEnter, OnLeave: as the library's button calls them), on the row. Wanted no more, each goes back
+-- to the parent it had. Nothing of an addon's own settings is written.
+--------------------------------------------------------------------------------
+
+function Addon.Lib()
+	local LS = rawget(_G, "LibStub")
+	if type(LS) ~= "table" then
+		return nil
+	end
+	local ok, lib = pcall(LS.GetLibrary, LS, "LibDBIcon-1.0", true)
+	return ok and type(lib) == "table" and lib or nil
+end
+
+-- the group wanted: Services on, its bar with Groups, AddOns Group on
+function Addon.Wanted()
+	local db = M.db
+	return (M.isEnabled and db and db.showBar and db.buttonLayout ~= "all" and db.addonButtons ~= false) and true or false
+end
+
+function Addon.Holder()
+	local h = Addon.holder
+	if not h then
+		h = CreateFrame("Frame", nil, UIParent)
+		h:Hide()
+		Addon.holder = h
+	end
+	return h
+end
+
+-- every button taken given back to the parent it had (the minimap)
+function Addon.GiveAll()
+	for button, parent in pairs(Addon.parent) do
+		pcall(button.SetParent, button, parent)
+		Addon.parent[button] = nil
+	end
+end
+
+-- the library's own changes looked at once on the next frame: a button made (its callback), shown or hidden (its
+-- addon's switch): the bar laid again (Addon.Changed, set with the bar's code below)
+function Addon.Soon()
+	if Addon.due then
+		return
+	end
+	Addon.due = true
+	C_Timer.After(0, function()
+		Addon.due = false
+		if Addon.Changed then
+			Addon.Changed()
+		end
+	end)
+end
+
+-- (once per library table: a newer copy loaded later replaces its functions, the hooks then made again)
+function Addon.Watch(lib)
+	if Addon.watched ~= lib and lib.RegisterCallback then
+		Addon.watched = lib
+		pcall(lib.RegisterCallback, Addon, "LibDBIcon_IconCreated", Addon.Soon)
+	end
+	for _, method in ipairs({ "Show", "Hide" }) do
+		local fn = lib[method]
+		if type(fn) == "function" and Addon["hooked" .. method] ~= fn then
+			Perf.hooksecurefunc(lib, method, Addon.Soon)
+			Addon["hooked" .. method] = lib[method]
+		end
+	end
+end
+
+local function ByLabel(a, b)
+	return a.label < b.label
+end
+
+-- The tray's entries read again (Addon.list), each button its addon shows held, every other given back; the count
+function Addon.Collect()
+	local list = Addon.list
+	for i = #list, 1, -1 do
+		list[i] = nil
+	end
+	local lib = Addon.Lib()
+	if not (lib and Addon.Wanted()) then
+		Addon.GiveAll()
+		return 0
+	end
+	Addon.Watch(lib)
+	local objects = type(lib.objects) == "table" and lib.objects or {}
+	local keep = Addon.keep or {}
+	Addon.keep = keep
+	wipe(keep)
+	for name, button in pairs(objects) do
+		local db = type(button) == "table" and button.db
+		local hidden = type(db) == "table" and db.hide == true   -- (the player hid it in its addon's options)
+		local obj = type(button) == "table" and button.dataObject
+		if type(name) == "string" and button.GetParent and not hidden and type(obj) == "table" then
+			local e = Addon.byName[name]
+			if not e then
+				e = { addon = true, name = name }
+				Addon.byName[name] = e
+			end
+			local label = obj.label
+			e.label = (type(label) == "string" and label ~= "" and not IsSecret(label)) and label or name
+			local icon = obj.icon
+			if not (type(icon) == "string" or type(icon) == "number") then
+				icon = button.icon and button.icon:GetTexture()
+			end
+			e.icon, e.obj, e.button = icon, obj, button
+			list[#list + 1] = e
+			keep[button] = true
+			if not Addon.parent[button] then
+				Addon.parent[button] = button:GetParent() or Minimap
+				button:SetParent(Addon.Holder())
+			end
+		end
+	end
+	for button, parent in pairs(Addon.parent) do
+		if not keep[button] then
+			pcall(button.SetParent, button, parent)
+			Addon.parent[button] = nil
+		end
+	end
+	table.sort(list, ByLabel)
+	return #list
+end
+
+-- the group buttons that show (`all`: GroupButtons'): the AddOns one only with addon buttons to list
+function Addon.Groups(all)
+	local shown = Addon.shown
+	for i = #shown, 1, -1 do
+		shown[i] = nil
+	end
+	for _, b in ipairs(all) do
+		if not b.group.addons or #Addon.list > 0 then
+			shown[#shown + 1] = b
+		else
+			b:Hide()
+		end
+	end
+	return shown
+end
+
+-- a row for an addon: its icon (as its button crops it), its name
+function Addon.Fill(row, e)
+	row.kind = e
+	row.icon:SetTexture(e.icon)
+	local tex = e.button and e.button.icon
+	if tex and tex.GetTexCoord then
+		row.icon:SetTexCoord(tex:GetTexCoord())
+	end
+	row.label:SetText(e.label)
+	row.where:SetText("")
+	MelloUI.Look.Tint(row.label, "text")
+	row.icon:SetDesaturated(false)
+	row.icon:SetAlpha(1)
+	row:Show()
+end
+
+-- an addon's own handler run on the row (an error in it reported as the game reports one, the tray going on; its
+-- two arguments handed through a closure, as a plain Lua 5.1 xpcall passes none -- one per click or hover)
+local function Run(fn, a, b)
+	if type(fn) == "function" then
+		xpcall(function()
+			fn(a, b)
+		end, geterrorhandler())
+	end
+end
+
+function Addon.Click(e, row, mouse)
+	Run(e.obj.OnClick, row, mouse)
+end
+
+-- its tooltip as the library's button shows it, owned by the row: true when it is the game's tooltip (placed off
+-- the tray's far side by the caller)
+function Addon.Enter(e, row)
+	local obj = e.obj
+	if type(obj.OnTooltipShow) == "function" then
+		GameTooltip:SetOwner(row, "ANCHOR_LEFT")
+		Run(obj.OnTooltipShow, GameTooltip)
+		GameTooltip:Show()
+		return true
+	end
+	Run(obj.OnEnter, row)
+	return false
+end
+
+function Addon.Leave(e, row)
+	Run(e.obj.OnLeave, row)
+end
+
+--------------------------------------------------------------------------------
 -- Menu: the list of the nearest services and a group's tray (layout E, user,
 -- 2026-09-25), ONE frame, built on its first open and reused. The minimap
 -- button and /services show every service ("Nearest ...", with the Stop route
@@ -1324,8 +1539,18 @@ Errand.HINT = "Click to route there by road."
 
 -- the shared handlers of the menu's rows and the menu itself (one function
 -- each, not one per row)
-local function RowClick(row)
+local function RowClick(row, mouse)
 	local kind, tray, owner = row.kind, menu.group ~= nil, menu.owner
+	-- (0.22.0) an addon's row: its own click (any button; its menu may hang from the row), then the tray closed
+	if kind and kind.addon then
+		Addon.Click(kind, row, mouse)
+		menu.quiet = true
+		menu:Hide()
+		return
+	end
+	if mouse and mouse ~= "LeftButton" then
+		return   -- (the rows take every button for the addons' rows: the others answer the left one)
+	end
 	menu.quiet = true   -- the route's notice has its own chime
 	menu:Hide()
 	if kind.errand then
@@ -1341,7 +1566,11 @@ end
 
 local function RowEnter(row)
 	local kind = row.kind
-	if kind and kind.errand then
+	if kind and kind.addon then
+		if not Addon.Enter(kind, row) then
+			return   -- (its own frame, not the game's tooltip: where it shows is the addon's)
+		end
+	elseif kind and kind.errand then
 		MelloUI.Widgets.ShowTooltip(row, kind.label, Errand.HINT, (Errand.Status(kind)))
 	elseif kind and kind.choice then
 		MelloUI.Widgets.ShowTooltip(row, kind.label, kind.prof and Pick.HINT or Pick.HINT_ANY)
@@ -1368,6 +1597,15 @@ local function RowEnter(row)
 		GameTooltip:SetPoint("BOTTOMRIGHT", row, "TOPLEFT", 0, 0)
 	end
 end
+
+-- (0.22.0) leaving a row: an addon's own leave, then the tooltip hidden
+local RowLeave = Perf.Shared("OnLeave on a Services tray row", function(row)
+	local kind = row.kind
+	if kind and kind.addon then
+		Addon.Leave(kind, row)
+	end
+	GameTooltip:Hide()
+end, "script")
 
 local function StopClick()
 	menu.quiet = true
@@ -1463,9 +1701,10 @@ local function MenuRow(i)
 	row.where:SetJustifyH("RIGHT")
 	row.where:SetWordWrap(false)
 	MelloUI.Look.Text(row.where, "text")
+	row:RegisterForClicks("AnyUp")   -- (0.22.0: an addon's row answers every button; the others the left one)
 	Perf.SetScript(row, "OnClick", RowClick)
 	Perf.SetScript(row, "OnEnter", RowEnter)
-	Perf.SetScript(row, "OnLeave", W.TipLeave)
+	Perf.SetScript(row, "OnLeave", RowLeave)
 	W.RowPlate(row)   -- the palette's hover wash (the scripts are set first)
 	return row
 end
@@ -1576,7 +1815,10 @@ local function FillMenu(group)
 	end
 	for i, row in ipairs(menu.rows) do
 		local kind = kinds[i]
-		if kind and kind.errand then
+		row.icon:SetTexCoord(0.06, 0.94, 0.06, 0.94)   -- (an addon's row crops as its button: Addon.Fill)
+		if kind and kind.addon then
+			Addon.Fill(row, kind)
+		elseif kind and kind.errand then
 			Errand.Fill(row, kind)
 		elseif kind and kind.choice then
 			Pick.Fill(row, kind)
@@ -1738,6 +1980,7 @@ local PER_ROW = 5
 -- padding above and under them is GAP
 local GROUP_CELL = 38
 local MIN_GAP = 4
+local ROW_SIX = 6   -- (0.22.0) the row the buttons are sized for (layout E's six groups; AddOns a seventh)
 -- the game's map at 100 % (UI units): the buttons as they fit under it are
 -- their 100 % size, never grown with a wider map (0.15.0, the Minimap Kit's
 -- Width; user, 2026-09-28: the service and group buttons "stay at 100 %")
@@ -2014,6 +2257,15 @@ local function GroupTooltip(self)
 	local gold, text, muted = P.selectedTrim, P.text, P.mutedText
 	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 	GameTooltip:SetText(group.label, gold[1], gold[2], gold[3])
+	if group.addons then
+		for _, e in ipairs(group.kinds) do
+			GameTooltip:AddLine(e.label, text[1], text[2], text[3])
+		end
+		GameTooltip:AddLine("Click for your addons' minimap buttons. A click on one there is the addon's own.",
+			text[1], text[2], text[3], true)
+		GameTooltip:Show()
+		return
+	end
 	local R = Route()
 	for _, kind in ipairs(group.kinds) do
 		local s = slotOf[kind]
@@ -2065,7 +2317,7 @@ local GroupClick = function(self, mouse)
 		return
 	end
 	local group = self.group
-	if #group.kinds == 1 then
+	if #group.kinds == 1 and not group.addons then
 		if tray then
 			menu.quiet = true
 			menu:Hide()
@@ -2174,8 +2426,9 @@ end
 -- use; the other layout's hidden, and a tray closed with Groups
 local function UseButtons()
 	local list, other
+	Addon.Collect()
 	if GroupsOn() then
-		list, other = GroupButtons(), bar.kindButtons
+		list, other = Addon.Groups(GroupButtons()), bar.kindButtons
 	else
 		list, other = KindButtons(), bar.groupButtons
 		if menu and menu.group then
@@ -2425,8 +2678,11 @@ end
 -- its width, cell and gap (a map whose width cannot be read: the cells at
 -- their size, MIN_GAP apart)
 local function GroupRow()
-	local n = #GROUPS
-	local cell = math.min(GROUP_CELL, (MAP_HOME - (n + 1) * MIN_GAP) / n)
+	-- (0.22.0) the groups that show (AddOns only with addon buttons); every button at the six's size (layout E's row,
+	-- the size they have at 100 %), smaller only where the map is too narrow for the ones that show
+	local n = (bar and bar.groupButtons and bar.buttons == Addon.shown) and #Addon.shown or #GROUPS
+	n = math.max(n, 1)
+	local cell = math.min(GROUP_CELL, (MAP_HOME - (ROW_SIX + 1) * MIN_GAP) / ROW_SIX)
 	local map = MapFrame()
 	local okW, mapW = pcall(map.GetWidth, map)
 	mapW = okW and Num(mapW) or nil
@@ -2638,6 +2894,12 @@ local function ApplyBar()
 	LayoutBar()
 	TellColumn()
 end
+-- (0.22.0) the addon buttons changed (made, shown, hidden): the bar laid again with them (Addon.Soon)
+function Addon.Changed()
+	if bar or Addon.Wanted() then
+		ApplyBar()
+	end
+end
 
 --------------------------------------------------------------------------------
 -- Minimap button
@@ -2845,6 +3107,7 @@ function M:OnDisable()
 	if menu then
 		menu:Hide()
 	end
+	Addon.GiveAll()   -- (0.22.0) the addons' buttons back on the minimap
 	ApplyStand()
 	-- (also a profile load's restart: MinimapPanel lays the map out with the
 	-- new settings here, its mask and shape answer included, before OnEnable
