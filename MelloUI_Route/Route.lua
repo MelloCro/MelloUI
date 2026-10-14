@@ -91,14 +91,14 @@ local M = MelloUI:RegisterModule("Route", {
 		  desc = "A small flag mark over the destination itself, with the distance and the travel time, that stays on it as you move the camera. Far away it is a beacon, smaller the farther the place, faint while it stands in the middle of the screen; within 100 yards it rises above the place, the distance and the name over it and a gold chevron pointing down to it, so it never covers what you are looking for. Inside a quest's objective area it hides, and comes back when you leave. When the place is off screen, an arrow beside your character points the way to turn. Takes the place of the game's own destination marker while it is on." },
 		{ type = "toggle", key = "routeBeam", parent = "worldMarker", name = "Light Beam",
 		  desc = "A slim beam of light rising from the destination, so the place can be seen from far away, with a small glow on the ground at its foot, red with Red Beads and gold with the other Trail Looks. It fades as you come near and is gone once the marker rises above the place, and hides while the place is off screen. Part of the World Marker." },
-		{ type = "dropdown", key = "markerWisp", parent = "worldMarker", name = "Wisp", new = "0.21.3", values = {
+		{ type = "dropdown", key = "markerWisp", parent = "worldMarker", name = "Wisp", values = {
 			{ value = "firefly", label = "Firefly" },
 			{ value = "embers", label = "Embers" },
 			{ value = "off", label = "Off" },
 		  }, desc = "When the World Marker comes up for a new destination, a small light flies from your character to the place and lights it: the beam rises and the mark pops in as it lands. It follows the place as you turn the camera; while the place is off the screen it settles into the arrow beside your character. Firefly: a bright point with a short streak. Embers: a smaller glow shedding sparks. Not with Reduce Motion. Part of the World Marker." },
-		{ type = "toggle", key = "drawIn", name = "Route Draws In", new = "0.21.3",
+		{ type = "toggle", key = "drawIn", name = "Route Draws In",
 		  desc = "A new route grows from you to the destination in about a second instead of appearing whole, on the world map and the minimap at once: the beads pop in one after another, the line and the dashes are drawn with a small light at their head, and the destination's flag pops in as the trail reaches it. A re-plan of the same route (you strayed off it) swaps at once. Not with Reduce Motion." },
-		{ type = "toggle", key = "arriveLight", name = "Arrival Light", new = "0.21.3",
+		{ type = "toggle", key = "arriveLight", name = "Arrival Light",
 		  desc = "As you arrive, the place is put out: the World Marker's mark sinks onto it in a ring of light with a few sparks, and the Direction Arrow's ring closes, a light running round it, before its row fades away. Not with Reduce Motion." },
 		{ type = "toggle", key = "markerSound", parent = "worldMarker", name = "Marker Sounds",
 		  desc = "A soft breath of air as the World Marker changes: when it comes up for a new destination, as it rises above the place you are near, and as it turns back into the beacon when you walk away. For a new destination it is the one sound: the tracking notice leaves its chime out then. Plays on the Sound Effects channel. Part of the World Marker." },

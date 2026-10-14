@@ -99,7 +99,7 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "How far one turn of the mouse wheel scrolls." },
 		{ type = "toggle", key = "itemButtons", name = "Quest Items",
 		  desc = "Show a quest's usable item beside it. A click uses it out of combat." },
-		{ type = "toggle", key = "progressMotion", name = "Progress Motion", new = "0.21.3",
+		{ type = "toggle", key = "progressMotion", name = "Progress Motion",
 		  desc = "A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its map button turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion." },
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",

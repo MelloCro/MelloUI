@@ -2680,7 +2680,8 @@ end
 local function GroupRow()
 	-- (0.22.0) the groups that show (AddOns only with addon buttons); every button at the six's size (layout E's row,
 	-- the size they have at 100 %), smaller only where the map is too narrow for the ones that show
-	local n = (bar and bar.groupButtons and bar.buttons == Addon.shown) and #Addon.shown or #GROUPS
+	local n = (bar and bar.groupButtons and bar.buttons == Addon.shown) and #Addon.shown
+		or (#Addon.list > 0 and #GROUPS or #GROUPS - 1)   -- (no bar laid yet: AddOns counted only with addon buttons)
 	n = math.max(n, 1)
 	local cell = math.min(GROUP_CELL, (MAP_HOME - (ROW_SIX + 1) * MIN_GAP) / ROW_SIX)
 	local map = MapFrame()

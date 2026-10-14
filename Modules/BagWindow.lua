@@ -135,7 +135,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 		  desc = "The order inside each kind: better quality first, by name, the ones you picked up last first, or the highest item level first." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews, and "more impactfull animations
 		-- depending on the rarity of the item")
-		{ type = "toggle", key = "lootFlight", name = "Loot Flight", new = "0.21.3",
+		{ type = "toggle", key = "lootFlight", name = "Loot Flight",
 		  search = "loot animation fly flight rarity quality legendary epic",
 		  desc = "An item you loot flies from where you picked it up into its slot in your bag window (with the bags closed, onto the bag button) and lands with a light across it. The rarer it is, the more it does: green leaves a streak, blue bursts into rays and lands in a ring, purple throws sparks and a shockwave, and a legendary rises in a pillar of light, flashes your bag window's border and says its name on the screen. Turning in a quest, its reward item flies the same way, and its money flies as coins into the bag window's money, which counts up as they land. Only loot and quest rewards, never what you buy, craft or take from the mail. Not with Reduce Motion." },
 	},

@@ -88,7 +88,7 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 		{ type = "dropdown", key = "backdropBackground", name = "Frame Backdrop Background", values = Kit.buttonLooks.backgrounds,
 		  desc = "What lies behind the player, target and focus frames inside their backdrop." },
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews)
-		{ type = "toggle", key = "levelUp", name = "Level Up", new = "0.21.3",
+		{ type = "toggle", key = "levelUp", name = "Level Up",
 		  desc = "When you gain a level, the number in your player frame's level circle turns over to the new level with a ring of light, a light runs along the experience bar, and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). Not with Reduce Motion: then only the notice." },
 	},
 })
