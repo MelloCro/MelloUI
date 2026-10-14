@@ -1503,13 +1503,15 @@ function Tray.Rest()
 		menu.rows[i]:SetAlpha(1)
 	end
 	job.p, job.rows, job.closing = nil, nil, nil
-	menu.closing = nil
+	menu.closing, Tray.moving = nil, nil
 end
 
+-- a drawer under way ended where it is (nothing to do while none moves: every hide of the menu asks)
 function Tray.Stop()
-	if MelloUI.Anim:IsRunning(Tray.job, "drive") then
-		MelloUI.Anim:Stop(Tray.job, "drive")
+	if not Tray.moving then
+		return
 	end
+	MelloUI.Anim:Stop(Tray.job, "drive")
 	Tray.Rest()
 end
 
@@ -1527,6 +1529,7 @@ function Tray.Out()
 	job.closing = false
 	job.rows = math.min(#menu.rows, #(menu.group and menu.group.kinds or KINDS))
 	job.total = math.max(Tray.OUT, Tray.ROW_AT + (job.rows - 1) * Tray.ROW_STEP + Tray.ROW_FADE)
+	Tray.moving = true
 	Tray.holder:SetClipsChildren(true)
 	Tray.Step(job, 0)
 	A:Drive(job, Tray.Step, job.total, "linear", Tray.Rest)
@@ -1553,7 +1556,7 @@ function Tray.Close(m)
 		return
 	end
 	job.closing, job.rows, job.total = true, 0, Tray.IN
-	m.closing = true
+	m.closing, Tray.moving = true, true
 	Tray.holder:SetClipsChildren(true)
 	MelloUI.Anim:Drive(job, Tray.Step, Tray.IN, "linear", Tray.Closed)
 end
