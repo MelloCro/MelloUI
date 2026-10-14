@@ -428,6 +428,10 @@ function L.Define(R, Link)
 	end
 	-- (0.21.3, the animations: an item looted flies into its slot, the rarer the more)
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "BagWindow.lootFlight" }, { free = true })
+	-- (0.22.1, the animations: items glide to their new slots, the money rolls, the bags full shake their Empty slot)
+	for _, key in ipairs({ "itemsGlide", "moneyRoll", "fullWarning" }) do
+		R("Windows", "Windows", "Behaviour", { BackpackPanel = "BagWindow." .. key }, { free = true })
+	end
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.bagButton", LootPanel = "Discard.lootButton" }, { name = "Discard Button" })
 	R("Windows", "Windows", "Behaviour", { BackpackPanel = "Discard.keepWorth", LootPanel = "Discard.keepWorth" }, { name = "Never Throw Away Items Worth" })
 	-- (0.22.0, a player's request: the split box's mouse wheel and ½, Tweaks' -- either look)
@@ -604,6 +608,7 @@ function L.Define(R, Link)
 	-- (0.22.0, a player's request: the addons' minimap buttons gathered into the row's AddOns group)
 	R("Minimap", "Services Bar", "General", "Services.addonButtons")
 	R("Minimap", "Services Bar", "Look", "Services.roundIcons")
+	R("Minimap", "Services Bar", "Look", "Services.trayDrawer")   -- (0.22.1, the animations: the trays slide out)
 	R("Minimap", "Services Bar", "Layout", "Services.buttonLayout")
 	R("Minimap", "Services Bar", "Layout", "Services.barOffset")
 	R("Minimap", "Services Bar", "Layout", "MinimapPanel.servicesMerge",
@@ -612,6 +617,8 @@ function L.Define(R, Link)
 	-- Bars & Meters
 	R("BarsMeters", "XP & Reputation", "Look", "BarTextures.statusbars", { name = "Bar Texture" })
 	R("BarsMeters", "XP & Reputation", "Look", "DarkMode.statusbars", { name = "Dark Mode", when = Uncovered("ActionBarPanel", "action bars") })
+	-- (0.22.1, the animations: the stretch of the XP bar just gained lit; Level Up's neighbour in the unit frames' file)
+	R("BarsMeters", "XP & Reputation", "Look", "UnitFramePanel.xpGain")
 	R("BarsMeters", "Cooldown Manager", "Look", "BarTextures.cooldowns", { name = "Bar Texture" })
 	R("BarsMeters", "Cooldown Manager", "Look", "DarkMode.cooldowns", { name = "Dark Mode" })
 	-- (0.19.8, Cooldown Tweaks: Modules/CooldownTweaks.lua -- the addon study's item 7)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.22.1
+
+- Unit Frames: XP Gain (Bars & Meters > XP & Reputation > Look, on). When you gain experience, the stretch of the experience bar you just gained lights up while a light runs along it to the new end.
+- Bags by Kind: Items Glide (Windows > Bags, on). When the bag window sorts again (an item looted, used, sold or moved), the items glide from their old slots to the new ones, an item that changes row slides in from the side, and new items fade in. Switching between the Backpack and Reagent Bag tabs fades the window's items over.
+- Bags by Kind: Rolling Money (Windows > Bags, on). The bag window's money rolls up or down to its new sum, its numbers warm going up and red going down. With Loot Flight on, coins you loot fly into it as coins and count it up as they land.
+- Bags by Kind: Bags Full Warning (Windows > Bags, on). With your bags full, the Empty kind shows a slot with 0 on it, and when the game says "Inventory is full." that slot shakes once and flashes red; with the bags closed, the backpack button flashes red instead.
+- Services: Trays Slide Out (Minimap > Services Bar > Look, on). A group's list slides out from the minimap column like a drawer when you click its button, its rows coming in one after another, and slides back in when it closes.
+- The new animations play by command to see them: /mello player xp, /mello bags money (bags open) and /mello bags full. Reduce Motion turns all of them off.
+
 ## 0.22.0
 
 - Installer: Mello's layout now fits screens at many more UI scales (1920 x 1080 from the game's own scale up to 0.90, for example), where it said "too small" before.

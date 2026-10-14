@@ -67,7 +67,7 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 	window = { label = "Unit frames", desc = "Player, target, focus, pet and party frames in the kit.", tab = "HUD", include = true },
 	enabledByDefault = true,
 	defaults = { marks = true, barBackground = "kit", barBackgroundAlpha = 100, backdrop = "none", backdropBackground = "stone",
-		levelUp = true },
+		levelUp = true, xpGain = true },
 	options = {
 		{ type = "toggle", key = "marks", name = "Elite and Rare Marks",
 		  desc = "The target's and focus's portrait ring and level circle in gold for an elite, silver for a rare or rare elite and red-bronze for a boss, with a small crest on the ring's top gem: a crown, a silver star, a gold star or a skull. Their target's ring too." },
@@ -90,6 +90,9 @@ local M = MelloUI:RegisterModule("UnitFramePanel", {
 		-- (0.21.3; the user, 2026-10-13: "Yes to all" to the animation previews)
 		{ type = "toggle", key = "levelUp", name = "Level Up",
 		  desc = "When you gain a level, the number in your player frame's level circle turns over to the new level with a ring of light, a light runs along the experience bar, and the on-screen notice says your new level and, with the Quest List, how many quests it opened in your zone (their givers pop onto the world map the next time it shows them). Not with Reduce Motion: then only the notice." },
+		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
+		{ type = "toggle", key = "xpGain", name = "XP Gain", new = "0.22.1",
+		  desc = "When you gain experience, the stretch of the experience bar just gained lights up while a light runs along it to the new end. Not with Reduce Motion." },
 	},
 })
 
@@ -2303,6 +2306,98 @@ function Level.Up(new)
 end
 M.Level = Level   -- (the tests)
 
+--------------------------------------------------------------------------------
+-- XP Gain (0.22.1; the user, 2026-10-14: "build all 5" to BuildData/output/animation_previews_2, 1. XP bar): the
+-- stretch of the game's XP bar just gained lights up while a light runs along it to the new end (MelloUI.FrameFX, its
+-- "xp" landing, on that stretch's rect: FX.ShowAt). Nothing of the game's bar is written or held back -- its fill
+-- moves as it always has. Not a level gained (Level Up's), a bar not shown, XP that reads secret; not under Reduce
+-- Motion
+--------------------------------------------------------------------------------
+
+local XP = { SPILL = { 16, 8 }, MIN_W = 4, ROWS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" },
+	EXPERIENCE = 4, PREVIEW = 0.08, at = nil, max = nil }
+
+-- the game's XP bar shown now (the main or the second status bar row's Experience bar): its StatusBar
+function XP.Bar()
+	local info = rawget(_G, "StatusTrackingBarInfo")
+	local index = info and info.BarsEnum and info.BarsEnum.Experience or XP.EXPERIENCE
+	for _, name in ipairs(XP.ROWS) do
+		local row = rawget(_G, name)
+		local bar = type(row) == "table" and type(row.bars) == "table" and row.bars[index]
+		local sb = type(bar) == "table" and bar.StatusBar
+		if sb and sb:IsVisible() then
+			return sb
+		end
+	end
+	return nil
+end
+
+-- the player's XP and the level's (nil: secret, none)
+function XP.Read()
+	local okX, x = pcall(UnitXP, "player")
+	local okM, m = pcall(UnitXPMax, "player")
+	x, m = okX and Num(x) or nil, okM and Num(m) or nil
+	if x and m and m > 0 then
+		return x, m
+	end
+	return nil
+end
+
+-- the light from `old` to `now` (of `max`) on the bar
+function XP.Play(old, now, max)
+	local FX = MelloUI.FrameFX
+	local sb = XP.Bar()
+	if not (FX and FX.ShowAt and sb) or MelloUI.Anim.reduceMotion then
+		return
+	end
+	local l, b, r, t = FX.Rect(sb)
+	if not l then
+		return
+	end
+	local w = r - l
+	local x1 = l + w * math.min(1, now / max)
+	local x0 = math.min(l + w * math.max(0, old / max), x1 - XP.MIN_W)
+	FX.ShowAt(math.max(l, x0), b, x1, t, "xp", "gain", XP.SPILL)
+end
+
+function XP.Update()
+	local old, oldMax = XP.at, XP.max
+	local now, max = XP.Read()
+	XP.at, XP.max = now, max
+	if now and old and max == oldMax and now > old and M.isEnabled and M.db and M.db.xpGain ~= false then
+		XP.Play(old, now, max)
+	end
+end
+
+XP.OnEvent = Perf.Shared("OnEvent of XP Gain", function(_, event, unit)
+	if event == "PLAYER_ENTERING_WORLD" then
+		XP.at, XP.max = XP.Read()
+	elseif unit == "player" then
+		XP.Update()
+	end
+end, "event")
+
+-- its events while the option is on (and the module)
+function XP.Listen()
+	local on = M.isEnabled and M.db ~= nil and M.db.xpGain ~= false
+	if not (on or XP.frame) then
+		return
+	end
+	if not XP.frame then
+		XP.frame = CreateFrame("Frame")
+		Perf.SetScript(XP.frame, "OnEvent", XP.OnEvent)
+	end
+	if on then
+		XP.frame:RegisterEvent("PLAYER_XP_UPDATE")
+		XP.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+		XP.at, XP.max = XP.Read()
+	else
+		XP.frame:UnregisterAllEvents()
+		XP.at, XP.max = nil, nil
+	end
+end
+M.XP = XP   -- (the tests)
+
 -- (/mello player level) the level-up played on the level you have, to see it
 -- (the badge turning from the one before; the notice and the quests as at a
 -- level gained)
@@ -2314,6 +2409,15 @@ M.SlashWords = {
 			return
 		end
 		Level.Up(lv)
+	end,
+	-- (/mello player xp, 0.22.1) XP Gain's light on the bar as for a gain of PREVIEW of the level
+	xp = function()
+		local now, max = XP.Read()
+		if not (now and M.isEnabled and M.db and M.db.xpGain ~= false and XP.Bar()) then
+			MelloUI:Print("Unit Frames: XP Gain is off (Unit Frames > Frame > Look), the Unit Frames Kit is, or no experience bar shows.")
+			return
+		end
+		XP.Play(math.max(0, now - max * XP.PREVIEW), math.max(now, max * XP.PREVIEW), max)
 	end,
 }
 
@@ -2337,6 +2441,7 @@ function M:OnEnable(db)
 	self.db = db
 	Hook()
 	eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
+	XP.Listen()
 	-- the frames exist at load; their portraits and bars are laid out once
 	-- the player is in the world (a toggle from the options is already there)
 	local portrait = PlayerFrame and PlayerFrame.PlayerFrameContainer and PlayerFrame.PlayerFrameContainer.PlayerPortrait
@@ -2350,6 +2455,7 @@ end
 
 function M:OnDisable()
 	eventFrame:UnregisterAllEvents()
+	XP.Listen()
 	-- the bars are protected: their anchors go back out of combat
 	Kit:WhenOutOfCombat(Deactivate)
 end
@@ -2361,6 +2467,8 @@ function M:OnSettingChanged(key)
 		DressTroughs()
 	elseif key == "backdrop" or key == "backdropBackground" then
 		LayoutFrameBackdrops()
+	elseif key == "xpGain" then
+		XP.Listen()
 	end
 end
 

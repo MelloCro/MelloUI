@@ -147,10 +147,10 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		  desc = "Where the next row of buffs goes: under the first, or over it." },
 		-- (0.22.0, a player's request "QoL: Split Stack"; Windows > Split stack > Behaviour)
 		{ type = "header", name = "Split Stack" },
-		{ type = "toggle", key = "splitWheel", name = "Mouse Wheel Amount", new = "0.22.0",
+		{ type = "toggle", key = "splitWheel", name = "Mouse Wheel Amount",
 		  search = "split stack amount scroll wheel shift",
 		  desc = "In the box that splits a stack (Shift-click a stack), the mouse wheel changes the amount: up adds one, down takes one, ten at a time while you hold Shift." },
-		{ type = "toggle", key = "splitHalf", name = "Half Button", new = "0.22.0",
+		{ type = "toggle", key = "splitHalf", name = "Half Button",
 		  search = "split stack half halve",
 		  desc = "A ½ button at the left end of the split box's amount: click it and the amount is half the stack (191 makes 95). Buying in bundles at a merchant, it rounds down to whole bundles." },
 	},

@@ -52,6 +52,7 @@ local M = MelloUI:RegisterModule("Services", {
 		showButton = false,
 		angle = 205,
 		addonButtons = true,   -- (0.22.0) the AddOns group
+		trayDrawer = true,     -- (0.22.1) the trays slide out
 	},
 	options = {
 		{ type = "toggle", key = "showBar", name = "Icon Bar Under The Minimap",
@@ -63,13 +64,16 @@ local M = MelloUI:RegisterModule("Services", {
 		  },
 		  desc = "Groups: one row of buttons as wide as the map (Travel, Trade, Repair, Trainers, Looks, Errands, and AddOns while your addons have minimap buttons). Click a group for a small list of its services, each with the distance to the nearest one; click a service to route there. Repair routes at once. Errands lists your reminders (Restock, Mail, Repair Gear, Trainer) and how each stands; click one to route to the nearest place for it. All Buttons: two rows with an icon for every service." },
 		-- (0.22.0, a player's request "Minimap bar for addon icons"; the user's pick A of addon_bar_sketch)
-		{ type = "toggle", key = "addonButtons", parent = "showBar", name = "AddOns Group", new = "0.22.0",
+		{ type = "toggle", key = "addonButtons", parent = "showBar", name = "AddOns Group",
 		  search = "addon addons minimap buttons icons libdbicon questie tidy gather",
 		  desc = "Your addons' minimap buttons (Questie and the others that put a round button on the minimap's edge) taken off the minimap and gathered into one more group in the Services row, AddOns: click it for a list of them. A click on an addon there is that addon's own (left, right or middle), and pointing at it shows its own tooltip. Only with Button Layout's Groups. Off: the buttons go back on the minimap." },
 		{ type = "slider", key = "barOffset", parent = "showBar", name = "Bar Distance From The Minimap", min = -80, max = 20, step = 2,
 		  desc = "How far under the minimap the buttons sit. Not used while they are merged into the square minimap's frame." },
 		{ type = "toggle", key = "roundIcons", parent = "showBar", name = "Round Icons",
 		  desc = "Show the service icons as round medallions in a round rim instead of squares." },
+		-- (0.22.1; the user, 2026-10-14: "build all 5" to the animation previews)
+		{ type = "toggle", key = "trayDrawer", parent = "showBar", name = "Trays Slide Out", new = "0.22.1",
+		  desc = "A group's list slides out from the minimap column like a drawer when you click its button, its rows one after another, and slides back in as it closes. Not with Reduce Motion: then it shows at once." },
 		{ type = "toggle", key = "showButton", name = "Minimap Button",
 		  desc = "Also show a round button on the minimap's edge that opens the list of the nearest services; drag it to move it, right-click it to stop the route. /services opens the same list." },
 	},
@@ -1418,6 +1422,143 @@ local MENU_BACKDROP = {
 
 local KitOn, SetKitBox   -- the kit look (below)
 
+-- The trays' drawer (0.22.1; the user, 2026-10-14: "build all 5" to BuildData/output/animation_previews_2, 5. Trays):
+-- a group's tray slides out from the minimap column's side like a drawer -- shown from its edge by the column outward
+-- (the menu's holder clips it while it moves), its box a little behind that edge, its rows one after another -- and
+-- back in as it closes (a press elsewhere, its button again; a row's click, Stop route and the UI hiding close it at
+-- once). The holder is the menu's parent from the first open: UIParent's size, clipping nothing, but while a tray
+-- moves. The list under the minimap button fades in as before. Not under Reduce Motion or with the option off.
+local Tray = { OUT = 0.22, IN = 0.16, LAG = 0.35, PAD = 24, ROW_AT = 0.08, ROW_STEP = 0.05, ROW_FADE = 0.14, job = {} }
+
+function Tray.On()
+	return M.db ~= nil and M.db.trayDrawer ~= false and not MelloUI.Anim.reduceMotion
+end
+
+-- the menu's parent (made with the menu)
+function Tray.Holder()
+	local h = Tray.holder
+	if not h then
+		h = CreateFrame("Frame", nil, UIParent)
+		h:SetFrameStrata("DIALOG")
+		h:SetAllPoints(UIParent)
+		Tray.holder = h
+	end
+	return h
+end
+
+-- the tray's place as PlaceTray left it (its one point, beside the bar): true when read
+function Tray.Read(job)
+	local ok, p, rel, rp, x, y = pcall(menu.GetPoint, menu, 1)
+	x, y = ok and Num(x) or nil, ok and Num(y) or nil
+	local w, h = Num(menu:GetWidth()), Num(menu:GetHeight())
+	if not (x and y and w and h and (p == "RIGHT" or p == "LEFT")) then
+		return false
+	end
+	job.p, job.rel, job.rp, job.x, job.y, job.w, job.h = p, rel, rp, x, y, w, h
+	job.side = p == "RIGHT" and 1 or -1   -- (the column on its right: the box comes from the right)
+	return true
+end
+
+-- the drawer `e` out (0: in, 1: out): the holder's clip from the tray's edge by the column, the box LAG of its
+-- width behind
+function Tray.Lay(job, e)
+	local h = Tray.holder
+	h:ClearAllPoints()
+	h:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
+	h:SetSize(math.max(1, (job.w + Tray.PAD) * e), job.h + 2 * Tray.PAD)
+	menu:ClearAllPoints()
+	menu:SetPoint(job.p, job.rel, job.rp, job.x + job.side * (1 - e) * job.w * Tray.LAG, job.y)
+end
+
+function Tray.Step(job, u)
+	local t = u * job.total
+	if job.closing then
+		local q = math.min(1, t / Tray.IN)
+		Tray.Lay(job, 1 - q * q * (3 - 2 * q))
+		return
+	end
+	local q = 1 - math.min(1, t / Tray.OUT)
+	Tray.Lay(job, 1 - q * q * q)
+	for i = 1, job.rows do
+		local a = (t - Tray.ROW_AT - (i - 1) * Tray.ROW_STEP) / Tray.ROW_FADE
+		menu.rows[i]:SetAlpha(a < 0 and 0 or a > 1 and 1 or a)
+	end
+end
+
+-- the holder back to clipping nothing, the tray at its place, its rows whole
+function Tray.Rest()
+	local h = Tray.holder
+	if not h then
+		return
+	end
+	h:SetClipsChildren(false)
+	h:ClearAllPoints()
+	h:SetAllPoints(UIParent)
+	local job = Tray.job
+	if job.p then
+		menu:ClearAllPoints()
+		menu:SetPoint(job.p, job.rel, job.rp, job.x, job.y)
+	end
+	for i = 1, job.rows or 0 do
+		menu.rows[i]:SetAlpha(1)
+	end
+	job.p, job.rows, job.closing = nil, nil, nil
+	menu.closing = nil
+end
+
+function Tray.Stop()
+	if MelloUI.Anim:IsRunning(Tray.job, "drive") then
+		MelloUI.Anim:Stop(Tray.job, "drive")
+	end
+	Tray.Rest()
+end
+
+-- a group's tray placed (PlaceTray) and filled: shown, sliding out
+function Tray.Out()
+	Tray.Stop()
+	local A = MelloUI.Anim
+	A:Stop(menu, "alpha")
+	menu:SetAlpha(1)
+	menu:Show()
+	local job = Tray.job
+	if not Tray.Read(job) then
+		return
+	end
+	job.closing = false
+	job.rows = math.min(#menu.rows, #(menu.group and menu.group.kinds or KINDS))
+	job.total = math.max(Tray.OUT, Tray.ROW_AT + (job.rows - 1) * Tray.ROW_STEP + Tray.ROW_FADE)
+	Tray.holder:SetClipsChildren(true)
+	Tray.Step(job, 0)
+	A:Drive(job, Tray.Step, job.total, "linear", Tray.Rest)
+end
+
+function Tray.Closed()
+	Tray.Rest()
+	menu:Hide()
+end
+
+-- the menu closed by the player: a tray slides in first; the list (or the option off) at once
+function Tray.Close(m)
+	if m.closing then
+		return
+	end
+	if not (m.group and m:IsShown() and Tray.On() and Tray.holder) then
+		m:Hide()
+		return
+	end
+	Tray.Stop()
+	local job = Tray.job
+	if not Tray.Read(job) then
+		m:Hide()
+		return
+	end
+	job.closing, job.rows, job.total = true, 0, Tray.IN
+	m.closing = true
+	Tray.holder:SetClipsChildren(true)
+	MelloUI.Anim:Drive(job, Tray.Step, Tray.IN, "linear", Tray.Closed)
+end
+M.Tray = Tray   -- (the tests)
+
 -- The profession trainer's pick in the Gamepad UI (0.15.0; ProfessionMenu):
 -- the menu as a tray of its own, beside the bar as a group's, titled
 -- Profession Trainer. A row per profession with a known trainer, the
@@ -1625,7 +1766,7 @@ end
 
 local MenuPress = function(self, _, button)
 	if (button == "LeftButton" or button == "RightButton") and Away(self) then
-		self:Hide()
+		Tray.Close(self)   -- (0.22.1: a tray slides in)
 	end
 end
 
@@ -1658,6 +1799,7 @@ local function MenuClosed(self)
 end
 
 local MenuHidden = function(self)
+	Tray.Stop()   -- (0.22.1: a drawer under way ends: the holder clips nothing again)
 	if self:IsShown() then
 		-- hidden with the UI (Alt+Z, a cinematic, a pet battle): closed for
 		-- real, quietly, so it does not come back without its group
@@ -1714,7 +1856,7 @@ local function CreateMenu()
 		return menu
 	end
 	local W = MelloUI.Widgets
-	menu = CreateFrame("Frame", "MelloUIServicesMenu", UIParent, "BackdropTemplate")
+	menu = CreateFrame("Frame", "MelloUIServicesMenu", Tray.Holder(), "BackdropTemplate")   -- (0.22.1: the drawer's clip)
 	menu:SetFrameStrata("DIALOG")
 	menu:SetClampedToScreen(true)
 	menu:SetWidth(MENU_WIDTH)
@@ -1918,7 +2060,9 @@ local function OpenMenu(group, owner)
 		end
 	end
 	MelloUI:PlayUISound("menu_open")
-	if not was then
+	if group and Tray.On() then
+		Tray.Out()   -- (0.22.1: out of the column's side, a tray switched to as well)
+	elseif not was then
 		MelloUI.Anim:FadeIn(menu, MENU_FADE)
 	end
 end
@@ -1935,8 +2079,9 @@ end
 -- the profession trainer's pick this button's tray row opened) or switched
 -- to it
 local function ToggleTray(button, group)
-	if menu and menu:IsShown() and (menu.group == group or (menu.group == Pick.group and menu.owner == button)) then
-		menu:Hide()
+	if menu and menu:IsShown() and not menu.closing
+		and (menu.group == group or (menu.group == Pick.group and menu.owner == button)) then
+		Tray.Close(menu)
 		return
 	end
 	OpenMenu(group, button)
@@ -1946,8 +2091,8 @@ end
 -- entries for `kind` filled, the tray opened beside the bar, or closed (the
 -- same button again)
 function PickProfession(owner, kind)
-	if menu and menu:IsShown() and menu.group == Pick.group and menu.owner == owner then
-		menu:Hide()
+	if menu and menu:IsShown() and not menu.closing and menu.group == Pick.group and menu.owner == owner then
+		Tray.Close(menu)
 		return
 	end
 	local available, known = ProfessionChoices(kind)
@@ -3227,6 +3372,9 @@ end
 
 function M:OnSettingChanged(key, value, db)
 	self.db = db
+	if key == "trayDrawer" then
+		return   -- (0.22.1: read as each tray opens)
+	end
 	ApplyButton()
 	ApplyBar()
 end

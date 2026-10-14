@@ -871,6 +871,15 @@ do
 		coin = { { "sprite", "glow_gold.tga", fit = true, w = 1.2, h = 2.2, t0 = 0, t1 = 0.45, env = "flash", a = 0.5 } },
 	}
 	LANDINGS.loot.h = LANDINGS.loot["0"]
+	-- (0.22.1) Bags Full Warning: the Empty slot (or the backpack button) flashes once in `tint` (the game's red), a
+	-- glow on it and a ring leaving it
+	LANDINGS.warn = {
+		full = {
+			{ "sprite", "glow_white.tga", fit = true, w = 1.5, h = 1.5, t0 = 0, t1 = 0.7, env = "flash", a = 0.8, tint = true },
+			Ring(1.1, 2.4, 0.8, 0.6),
+		},
+	}
+	LANDINGS.warn.h = LANDINGS.warn.full
 	-- (0.21.3) Level up's: a ring of light spreading from the level badge with
 	-- a glow (as its number turns over: LEVEL.ROLL_AT); a light running along
 	-- the XP bar, a warm glow over it
@@ -885,6 +894,16 @@ do
 		},
 	}
 	LANDINGS.level.h = LANDINGS.level.orb
+	-- (0.22.1) XP Gain's, on the stretch of the XP bar just gained: lit while a light runs along it to the new end,
+	-- a glow there as it arrives
+	LANDINGS.xp = {
+		gain = {
+			{ "sprite", "glow_gold.tga", fit = true, w = 1, h = 1.6, t0 = 0, t1 = 1.0, env = "hold", a = 0.45 },
+			{ "sheen", "sheen.tga", t0 = 0, t1 = 0.45 },
+			{ "sprite", "glow_white.tga", w = 2.4, h = 2.4, edge = "r", t0 = 0.35, t1 = 0.8, env = "flash", a = 0.85 },
+		},
+	}
+	LANDINGS.xp.h = LANDINGS.xp.gain
 end
 
 -- The tanks' tools and defensives (the user, 2026-10-09: "Last Stand, Shield
@@ -1055,7 +1074,8 @@ function DRAW.sprite(layer, n, part, B, v, a)
 	local w = (part.fit and B.w or B.u) * part.w * g
 	local h = (part.fit and B.h or B.u) * part.h * g
 	local rot = part.spin and part.spin * v * TAU or 0
-	local x, y = B.x + (part.dx or 0) * B.u, B.y + (part.dy or 0) * B.u
+	-- (`edge` "r": at the frame's right end -- the XP gain's tip, 0.22.1)
+	local x, y = (part.edge == "r" and B.r or B.x) + (part.dx or 0) * B.u, B.y + (part.dy or 0) * B.u
 	local file = B.round and ROUND_ART[part[2]] or part[2]
 	for _ = 1, part.stack or 1 do
 		n = Put(layer, n, file, x, y, w, h, a, rot)
@@ -2228,6 +2248,21 @@ function FX.ShowOn(frame, look, kind, spill, tint)
 	S.fl, S.fb, S.fr, S.ft = l, b, r, t
 	S.frame, S.Rect, S.unit = frame, FX.Rect, nil
 	S.tint = tint   -- (0.21.3: a loot look's colour, { r, g, b, hex })
+	FX.Strike(layer, look, kind, nil, nil, nil, spill)
+	return layer
+end
+
+-- (0.22.1) the same on a rect of UIParent's units, no frame's (XP Gain's: the stretch of the game's XP bar just
+-- gained -- nothing laid on the game's bar); the layer, or nil
+function FX.ShowAt(l, b, r, t, look, kind, spill, tint)
+	if not (l and b and r and t) or (MelloUI.Anim and MelloUI.Anim.reduceMotion) then
+		return nil
+	end
+	local layer = FX.FreeLayer()
+	local S = FX.state[layer]
+	S.fl, S.fb, S.fr, S.ft = l, b, r, t
+	S.frame, S.Rect, S.unit = nil, nil, nil
+	S.tint = tint
 	FX.Strike(layer, look, kind, nil, nil, nil, spill)
 	return layer
 end

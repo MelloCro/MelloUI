@@ -135,6 +135,13 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.22.1", lines = {
+		"Unit Frames: XP Gain -- the stretch of the experience bar you just gained lights up as a light runs along it.",
+		"Bags by Kind: Items Glide -- items glide to their new slots when the window sorts again; new ones fade in.",
+		"Bags by Kind: Rolling Money -- the bag window's money rolls to its new sum; coins you loot fly into it.",
+		"Bags by Kind: Bags Full Warning -- with your bags full, Empty shows a 0 slot that shakes and flashes red as the game says so.",
+		"Services: Trays Slide Out -- a group's list slides out from the minimap column like a drawer, and back in.",
+	} },
 	{ version = "0.22.0", lines = {
 		"Installer: Mello's layout fits many more UI scales; when Edit Mode is full of layouts, install without it or delete an older MelloUI one.",
 		"Bags by Kind: the Reagent Bag on its own tab at the bag window's side; move items between it and your bags, or drop one on a tab.",
@@ -166,18 +173,6 @@ local CHANGELOG = {
 		"Bags by Kind: kinds of your own (Windows > Bags > Kinds, Add kind). One takes the items you drop on its + slot and the ones its rule matches: a type, a word, a quality.",
 		"Rename any kind (double-click its name); a kind's cog opens its settings. Split By Type gives any kind a heading per item type (Split Trade Goods is Trade Goods' own now).",
 		"Bank by Kind (Windows > Bank): your bank in the same kinds as your bags, inside the bank window, your own kinds too. Deposit and take out as always.",
-	} },
-	{ version = "0.21.0", lines = {
-		"Personal Display (new, off by default): health, power and your cast bar under your character, a shield column beside it: every shield its own part, in its school's colour.",
-		"The cast bar shows only while you cast. It hops when you jump and stays under your feet as you zoom. Place it in Edit Layout; Preview plays a made-up fight on it.",
-		"Big Cooldowns: Shield Wall, Recklessness, Ice Block and the like as icons above the health bar, their time and seconds on them; Big Cooldown Size sizes them.",
-		"Hide The Game's Cast Bar (on) hides the game's; Heal Light From Your Character sends Heal Effects' light from your character to your group.",
-		"Swing On The Rails: your swing as sparks on the bars' rails, shots on the seam between them (reload in cream, the aim in red). Swing Timers step aside meanwhile.",
-		"Its frame follows Look > Borders > Personal Display Border (any bar look, or none); the Fader's Personal Display row fades it out of combat, back while you cast.",
-		"Settings: links to shared settings where you need them (Windows, Unit Frames, Group Frames, Swing Timers, Combat Text).",
-		"Fixed: a game crash after a while with the Single rail round the bars (the nameplates' borders piled up copies).",
-		"Fixed: Fader: the Quest Tracker on On Mouseover comes back when pointed at; the player frame stays faded while you regenerate; no error at login with the buffs faded.",
-		"Fixed: /mello widgets column lists what the widget column holds.",
 	} },
 }
 local LINKS = {
@@ -211,6 +206,9 @@ local COMMANDS = {
 	{ "/mello bags loot <kind>", "a Loot Flight: poor .. legendary, or all" },
 	{ "/mello bags coins", "a quest's money flying into the bag window" },
 	{ "/mello player level", "the level-up on your level circle and XP bar" },
+	{ "/mello player xp", "XP Gain's light on your experience bar" },
+	{ "/mello bags money", "the bag window's money rolling up (bags open)" },
+	{ "/mello bags full", "the Bags Full Warning on the Empty slot or bag button" },
 	{ "/mello layout apply", "Mello's Edit Mode layout, fitted to your screen" },
 	{ "/mello tutorial", "the guided tour of this window" },
 	{ "/melloperf", "what MelloUI costs: its time per frame, its slowest frames" },

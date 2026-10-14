@@ -100,7 +100,7 @@ M = MelloUI:RegisterModule("BagWindow", {
 	installer = false,
 	enabledByDefault = true,
 	defaults = { recentFor = "close", columns = 10, itemSize = 37, foldEmpty = true, sortBy = "quality", bank = true,
-		lootFlight = true },
+		lootFlight = true, itemsGlide = true, moneyRoll = true, fullWarning = true },
 	options = {
 		-- (0.20.4; the user, 2026-10-11: "the categories have a priority, whats shown on top ... most people have their
 		-- hearthstone on top", look A of bag_kinds_sketch: the kinds in the player's order, lines and groups among them,
@@ -137,7 +137,17 @@ M = MelloUI:RegisterModule("BagWindow", {
 		-- depending on the rarity of the item")
 		{ type = "toggle", key = "lootFlight", name = "Loot Flight",
 		  search = "loot animation fly flight rarity quality legendary epic",
-		  desc = "An item you loot flies from where you picked it up into its slot in your bag window (with the bags closed, onto the bag button) and lands with a light across it. The rarer it is, the more it does: green leaves a streak, blue bursts into rays and lands in a ring, purple throws sparks and a shockwave, and a legendary rises in a pillar of light, flashes your bag window's border and says its name on the screen. Turning in a quest, its reward item flies the same way, and its money flies as coins into the bag window's money, which counts up as they land. Only loot and quest rewards, never what you buy, craft or take from the mail. Not with Reduce Motion." },
+		  desc = "An item you loot flies from where you picked it up into its slot in your bag window (with the bags closed, onto the bag button) and lands with a light across it. The rarer it is, the more it does: green leaves a streak, blue bursts into rays and lands in a ring, purple throws sparks and a shockwave, and a legendary rises in a pillar of light, flashes your bag window's border and says its name on the screen. Turning in a quest, its reward item flies the same way, and its money flies as coins into the bag window's money, which counts up as they land; coins you loot fly in the same way while the bag window is open. Only loot and quest rewards, never what you buy, craft or take from the mail. Not with Reduce Motion." },
+		-- (0.22.1; the user, 2026-10-14: "make a preview on 1, 2, 3, 4 aand 5", then "build all 5" -- previews round 2)
+		{ type = "toggle", key = "itemsGlide", name = "Items Glide", new = "0.22.1",
+		  search = "animation glide slide move items slots reorder sort tab fade",
+		  desc = "When an item comes into your bag window or leaves it, the others glide to their new slots instead of jumping there; one that moves to the next row slides in at its start, and a new one fades in. Switching between the Backpack and the Reagent Bag fades the window's items over. Not while you hold an item (its + slots come and go at once), not with Reduce Motion." },
+		{ type = "toggle", key = "moneyRoll", name = "Rolling Money", new = "0.22.1",
+		  search = "animation money gold count roll counter",
+		  desc = "The bag window's money rolls to its new sum when it changes (selling, buying, a repair, a quest) instead of jumping there: warm while it goes up, red while it goes down. Not with Reduce Motion." },
+		{ type = "toggle", key = "fullWarning", name = "Bags Full Warning", new = "0.22.1",
+		  search = "bags full inventory space empty slots warning shake red",
+		  desc = "When something does not fit because your bags are full, the bag window's Empty slot (it shows 0 then) gives one short shake and a red flash; with the bags closed, the backpack button flashes red. Once each time, as the game's own \"Inventory is full.\" line comes. Not with Reduce Motion." },
 	},
 })
 
@@ -524,6 +534,9 @@ end
 --------------------------------------------------------------------------------
 
 local win = { tab = "bags" }   -- the window's parts (made on the first open); tab: the side tab shown ("reagent": the Reagent Bag)
+-- (0.22.1) the window's motion (Items Glide, Rolling Money, Bags Full Warning; previews round 2): each button's last laid
+-- place in the content [b] = { x, y }, the rest set with its code below (the end of this file)
+local Move = { at = setmetatable({}, { __mode = "k" }), GLIDE = 0.3, POP = 0.25, TAB = 0.18 }
 local heldID = {}       -- [bag * 1000 + slot] = itemID: Recent (until the bags close, or for some minutes)
 local heldAt = {}       -- [bag * 1000 + slot] = when it was first seen new (For 5 Minutes)
 local RECENT_MINUTES = 5
@@ -1308,10 +1321,18 @@ local function Place(b, x, y)
 	if b:GetScale() ~= k then
 		b:SetScale(k)
 	end
+	local was = b:IsShown()   -- (0.22.1: laid in the layout before; Move.Glide)
+	if Move.sliding[b] then
+		Move.sliding[b] = nil
+		MelloUI.Anim:Stop(b, "slide")   -- (a glide under way ends here: its slide would set the point again)
+	end
 	b:ClearAllPoints()
 	b:SetPoint("TOPLEFT", S.content, "TOPLEFT", x / k, -y / k)
 	b:Show()
 	used[b] = S.stamp
+	if S == BAGS then
+		Move.Glide(b, was, x, y)
+	end
 end
 
 -- what this layout lays, in the player's order: the kinds (a kind split by type: its parts in its place, by name),
@@ -1345,7 +1366,7 @@ end
 -- the items under a group's kinds (the order's entries after it, to the next line or group); `holding`: their + slots
 -- too
 local function GroupCount(i, n, holding)
-	local count = 0
+	local count, zero = 0, false
 	for j = i + 1, n do
 		if orderType[j] ~= "kind" then
 			break
@@ -1355,8 +1376,9 @@ local function GroupCount(i, n, holding)
 		if holding and TakesPlus(key) then
 			count = count + 1
 		end
+		zero = zero or (key == "empty" and S.nEmpties == 0 and Move.Zero())   -- (its 0 slot: the group shown)
 	end
-	return count
+	return count, zero
 end
 
 -- the layout's place (one table: no closure per layout) -- x, y, the row's height, whether anything is laid yet,
@@ -1467,8 +1489,8 @@ local function LayKinds()
 			at.lineDue, skipping = true, false
 		elseif t == "group" then
 			skipping = false
-			local count = GroupCount(i, nOrder, holding)
-			if count > 0 then
+			local count, zero = GroupCount(i, nOrder, holding)
+			if count > 0 or zero then
 				DueLine()
 				NewRow()
 				local gh = GroupHead(orderName[i])
@@ -1485,6 +1507,11 @@ local function LayKinds()
 		elseif not skipping then
 			local list = S.byKind[key]
 			local n = key == "empty" and S.nEmpties or (list and #list or 0)
+			-- (0.22.1, Bags Full Warning) the bags full: Empty shows a slot with 0 on it, the warning's place
+			local zero = key == "empty" and n == 0 and Move.Zero()
+			if zero then
+				n = 1
+			end
 			local plus = holding and TakesPlus(key)
 			local h = (n > 0 or plus) and Heading(key, orderName[i]) or S.headings[key]
 			local fold = S.folds[key]
@@ -1525,12 +1552,17 @@ local function LayKinds()
 				h:Show()
 				if key == "empty" then
 					h.free = 0
-					for j = 1, n do
+					for j = 1, zero and 0 or n do
 						local e = S.empties[j]
 						local b = SlotButton(e.bag, e.slot)
 						FillEmpty(b, e.free)
 						Place(b, x + ((j - 1) % cols) * G.PITCH, y + G.HEAD + math.floor((j - 1) / cols) * G.PITCH)
 						h.free = h.free + (e.free or 1)
+					end
+					if zero then
+						local b = Move.ZeroButton()
+						FillEmpty(b, 0)
+						Place(b, x, y + G.HEAD)
 					end
 				else
 					for j = 1, shown do
@@ -1600,7 +1632,9 @@ function M:Layout()
 	Grid()
 	Insets()
 	win.frame:SetWidth(G.WIDTH)
+	Move.Before()   -- (0.22.1: whether this layout glides)
 	local height = LayKinds()
+	Move.After()
 	-- For 5 Minutes: laid out again as the first item leaves Recent (one
 	-- timer at a time, unless an earlier end comes)
 	if recentEnds and not (win.expiryAt and win.expiryAt <= recentEnds) then
@@ -1866,11 +1900,13 @@ local Shown = Shared("OnShow on the bag window", function()
 		MoneyFrame_UpdateMoney(win.money)
 	end
 	InkMoney()
+	Move.Opened()   -- (0.22.1: the first layout lays, the money's sum as shown)
 	M:Layout()
 end, "script")
 
 local Hidden = Shared("OnHide on the bag window", function()
 	Listen(false)
+	Move.Closed()
 	-- Recent Lasts Until The Bags Close: let go now (For 5 Minutes keeps its clock)
 	if not (M.db and M.db.recentFor == "minutes") then
 		wipe(heldID)
@@ -2148,6 +2184,7 @@ do
 		end
 		win.tab = key
 		Checked()
+		Move.Tab()   -- (0.22.1: the items faded over, not glided)
 		if soon then
 			LayoutSoon()
 		elseif win.frame and win.frame:IsShown() then
@@ -2230,6 +2267,7 @@ local function Build()
 	win.settings = settings
 	-- the money
 	local money = CreateFrame("Frame", "MelloUIBagWindowMoney", f, "SmallMoneyFrameTemplate")
+	Perf.HookScript(money, "OnEvent", Move.MoneyEvent)   -- (0.22.1, Rolling Money: after the template's own update)
 	money:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -G.SIDE + 4, 12)
 	win.money = money
 	-- the headings (a trade good type's with its first show)
@@ -3257,6 +3295,9 @@ function Fly.Coins(money)
 	now = okM and Num(now) or nil
 	job.counting = target == win.money and now ~= nil and type(_G.MoneyFrame_Update) == "function"
 	job.from = job.counting and math.max(0, now - money) or 0
+	if job.counting then
+		Move.StopRoll()   -- (0.22.1: the coins count the sum; a roll started for it gives way)
+	end
 	local L = FX.LOOT
 	local total = (Fly.COINS - 1) * Fly.COIN_GAP + L.COIN_FLIGHT
 	MelloUI.Anim:Drive(job, Fly.CoinStep, total, "linear", Fly.CoinsLanded)
@@ -3301,8 +3342,12 @@ end
 Fly.OnEvent = Shared("OnEvent of the bag window's loot flight", function(_, event, arg1, arg2, arg3)
 	if event == "LOOT_OPENED" or event == "LOOT_READY" or event == "QUEST_COMPLETE" then
 		Fly.open = true
+		Fly.looting = event ~= "QUEST_COMPLETE" or Fly.looting   -- (0.22.1: looted coins fly, Move.MoneyEvent)
 	elseif event == "LOOT_CLOSED" or event == "QUEST_FINISHED" then
 		Fly.open, Fly.closedAt = false, GetTime()
+		if event == "LOOT_CLOSED" then
+			Fly.looting, Fly.lootClosedAt = false, GetTime()
+		end
 	elseif event == "QUEST_TURNED_IN" then
 		-- (questID, xp, money): the coins a moment later, the bags' sum the new one then
 		local money = Num(arg3)
@@ -3438,16 +3483,349 @@ function Fly.Words()
 end
 M.SlashWords = Fly.Words()
 
+--------------------------------------------------------------------------------
+-- The window's motion (0.22.1; the user, 2026-10-14: "make a preview on 1, 2, 3, 4 aand 5", then "build all 5": the
+-- previews' round 2, MelloUI-BuildData/output/animation_previews_2). The one engine, MelloUI.Anim; Reduce Motion: none.
+--   Items Glide: a layout that moves a slot glides its button from where it stood (Anim:Slide); one that goes to
+--   another row slides in at its new place from part of a slot the far side, fading in; one new in the window fades
+--   in. Never the first layout of an open, a new grid (Item Size, Columns), the + slots coming or going (an item held
+--   or let go) or a tab switched (the window's items faded over instead).
+--   Rolling Money: the money frame's own update (PLAYER_MONEY, the template's handler) post-hooked: the sum shown set
+--   back and rolled to the new one (Anim:Drive), its numbers warm going up, red going down, then their own colour;
+--   coins you loot with the window open fly in as Loot Flight's quest coins do (Fly.Coins counts them).
+--   Bags Full Warning: the game's "Inventory is full." (UI_ERROR_MESSAGE): the Empty slot -- 0 while the bags are full
+--   (Move.ZeroButton) -- shakes once and flashes red (FrameFX's warn look); the bags closed, the backpack button
+--   flashes (the game's own button, never moved).
+--------------------------------------------------------------------------------
+
+Move.sliding = setmetatable({}, { __mode = "k" })   -- [button] = true while its glide may run
+Move.roll, Move.shake, Move.color = {}, {}, {}
+Move.SHAKE, Move.SHAKE_DX, Move.SHAKE_HZ, Move.SHAKE_DAMP, Move.ROLL = 0.45, 5, 13, 7, 0.55
+
+function Move.On()
+	return M.db ~= nil and M.db.itemsGlide ~= false and not MelloUI.Anim.reduceMotion
+end
+
+-- whether this layout glides (the + slots: BAGS.holding is the layout before's)
+function Move.Before()
+	local holding = CursorItem() ~= nil
+	Move.gliding = Move.On() and win.laid and not Move.snap and win.laidPitch == G.PITCH
+		and holding == (BAGS.holding or false)
+	Move.snap = false
+end
+
+function Move.After()
+	win.laid, win.laidPitch = true, G.PITCH
+end
+
+-- a button laid at x, y (content units; `was`: laid in the layout before)
+function Move.Glide(b, was, x, y)
+	local pos = Move.at[b]
+	if not pos then
+		pos = {}
+		Move.at[b] = pos
+	end
+	local ox, oy = pos[1], pos[2]
+	pos[1], pos[2] = x, y
+	if not Move.gliding then
+		return
+	end
+	local A, k = MelloUI.Anim, G.SCALE
+	if was and ox and (ox ~= x or oy ~= y) then
+		Move.sliding[b] = true
+		if oy ~= y then
+			local dx = (y > oy and -1 or 1) * G.PITCH * 0.6
+			A:Slide(b, "TOPLEFT", S.content, "TOPLEFT", (x + dx) / k, -y / k, -dx / k, 0, Move.GLIDE)
+			A:FadeIn(b, Move.GLIDE)
+		else
+			A:Slide(b, "TOPLEFT", S.content, "TOPLEFT", ox / k, -oy / k, (x - ox) / k, (oy - y) / k, Move.GLIDE)
+		end
+	elseif not was then
+		A:FadeIn(b, Move.POP)
+	end
+end
+
+-- a tab switched: the window's items faded over (and this layout not glided)
+function Move.Tab()
+	Move.snap = true
+	local c = win.content
+	if c and win.frame and win.frame:IsShown() and Move.On() then
+		MelloUI.Anim:FadeIn(c, Move.TAB)
+	end
+end
+
+-- the money the frame shows (its template's own reading: the player's, less what trade and the mail hold)
+function Move.Shown()
+	local m = win.money
+	local info = m and m.info
+	if not (info and info.UpdateFunc) then
+		return nil
+	end
+	local ok, v = pcall(info.UpdateFunc, m)
+	return ok and Num(v) or nil
+end
+
+function Move.Opened()
+	win.laid = false
+	Move.money = Move.Shown()
+end
+
+function Move.Closed()
+	win.laid = false
+	Move.StopRoll()
+end
+
+-- the money's numbers tinted while it rolls (not on parchment: its dark ink stays)
+function Move.Tint(up)
+	local money = win.money
+	if not money or (Kit:IsOn(AREA) and Kit:BackgroundIsPaper(WindowBackground())) then
+		return
+	end
+	local r, g, b
+	if up then
+		r, g, b = MelloUI.Look.RoleColour("gold", AREA)
+	else
+		local c = rawget(_G, "RED_FONT_COLOR")   -- (the game's red: money going)
+		if not (c and c.GetRGB) then
+			return
+		end
+		r, g, b = c:GetRGB()
+	end
+	for _, key in ipairs(MONEY_TEXTS) do
+		local fs = money[key] and money[key].Text
+		if fs then
+			if not Move.color[fs] then
+				Move.color[fs] = { fs:GetTextColor() }
+			end
+			fs:SetTextColor(r, g, b)
+		end
+	end
+end
+
+function Move.Untint()
+	for fs, c in pairs(Move.color) do
+		fs:SetTextColor(c[1], c[2], c[3], c[4])
+	end
+	wipe(Move.color)
+	InkMoney()
+end
+
+function Move.RollStep(job, u)
+	job.at = math.floor(job.from + (job.to - job.from) * u + 0.5)
+	if win.money then
+		pcall(_G.MoneyFrame_Update, win.money, job.at)
+	end
+end
+
+function Move.Rolled()
+	if win.money then
+		pcall(MoneyFrame_UpdateMoney, win.money)
+	end
+	Move.Untint()
+end
+
+function Move.StopRoll()
+	if MelloUI.Anim:IsRunning(Move.roll, "drive") then
+		MelloUI.Anim:Stop(Move.roll, "drive")
+		Move.Untint()
+	end
+end
+
+Move.MoneyEvent = Shared("OnEvent on the bag window's money (Rolling Money)", function(self, event)
+	if event ~= "PLAYER_MONEY" or not self:IsVisible() then
+		return
+	end
+	local new, old = Move.Shown(), Move.money
+	Move.money = new
+	if not (new and old) or new == old then
+		return
+	end
+	local A = MelloUI.Anim
+	-- coins you loot, the window open: they fly in and count the sum up (Loot Flight's)
+	if new > old and Fly.On() and not A.reduceMotion
+		and (Fly.looting or GetTime() - (Fly.lootClosedAt or -99) <= Fly.LINGER) then
+		Fly.Coins(new - old)
+		if A:IsRunning(Fly.coin, "drive") then
+			if Fly.coin.counting then
+				pcall(_G.MoneyFrame_Update, self, Fly.coin.from)   -- (the sum before: the first coin counts from it)
+			end
+			return
+		end
+	end
+	if A:IsRunning(Fly.coin, "drive") or Fly.reward or not (M.db and M.db.moneyRoll ~= false) or A.reduceMotion then
+		return   -- (a quest's coins count it; the option off)
+	end
+	Move.Roll(old, new)
+end, "script")
+
+-- the money shown rolled from `old` to `new` (one under way: on from where it stands)
+function Move.Roll(old, new)
+	local A, job = MelloUI.Anim, Move.roll
+	job.from = A:IsRunning(job, "drive") and job.at or old
+	job.to, job.at = new, job.from
+	pcall(_G.MoneyFrame_Update, win.money, job.from)
+	Move.Untint()
+	Move.Tint(new > old)
+	A:Drive(job, Move.RollStep, Move.ROLL, "outCubic", Move.Rolled)
+end
+
+-- the 0 slot: shown while the bags are full and the warning is on (the bags' view)
+function Move.Zero()
+	return S == BAGS and M.db ~= nil and M.db.fullWarning ~= false
+end
+
+-- the 0 slot's button: the bags' slot template (dressed with them), on no slot (bag 0, slot 0: nothing to read), the
+-- mouse off it -- made the first time the bags are full in the window
+function Move.ZeroButton()
+	local b = Move.zero
+	if not b then
+		local holder = CreateFrame("Frame", nil, BAGS.content)
+		holder:SetID(0)
+		holder:SetAllPoints(BAGS.content)
+		b = CreateFrame("ItemButton", nil, holder, "ContainerFrameItemButtonTemplate")
+		b:SetID(0)
+		b:SetSize(G.BASE, G.BASE)
+		b.ItemSlotBackground = b:CreateTexture(nil, "BACKGROUND", "ItemSlotBackgroundCombinedBagsTemplate", -6)
+		b.ItemSlotBackground:SetAllPoints(b)
+		b:EnableMouse(false)
+		BAGS.made[#BAGS.made + 1] = b
+		BAGS.undressed = BAGS.undressed + 1
+		Move.zero = b
+	end
+	return b
+end
+
+-- the window's Empty slot shown now (the 0 slot, or the first free slot's)
+function Move.EmptyButton()
+	if Move.zero and Move.zero:IsVisible() then
+		return Move.zero
+	end
+	local e = BAGS.empties[1]
+	local list = e and BAGS.slots[e.bag]
+	local b = list and list[e.slot]
+	return b and b:IsVisible() and b or nil
+end
+
+function Move.Red()
+	local t = Move.red
+	if not t then
+		local c = rawget(_G, "RED_FONT_COLOR")
+		if not (c and c.GetRGB) then
+			return nil
+		end
+		local r, g, b = c:GetRGB()
+		t = { r, g, b, hex = string.format("#%02x%02x%02x", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5),
+			math.floor(b * 255 + 0.5)) }
+		Move.red = t
+	end
+	return t
+end
+
+function Move.ShakeStep(_, u)
+	local b = Move.shaking
+	local pos = b and Move.at[b]
+	if not pos then
+		return
+	end
+	local t = u * Move.SHAKE
+	local dx = Move.SHAKE_DX * math.sin(2 * math.pi * Move.SHAKE_HZ * t) * math.exp(-Move.SHAKE_DAMP * t)
+	local k = G.SCALE
+	b:SetPoint("TOPLEFT", BAGS.content, "TOPLEFT", (pos[1] + dx) / k, -pos[2] / k)
+end
+
+function Move.Shaken()
+	local b = Move.shaking
+	local pos = b and Move.at[b]
+	Move.shaking = nil
+	if pos then
+		local k = G.SCALE
+		b:SetPoint("TOPLEFT", BAGS.content, "TOPLEFT", pos[1] / k, -pos[2] / k)
+	end
+end
+
+-- the bags full: the window's Empty slot shakes and flashes red, or the backpack button flashes
+function Move.Warn()
+	local FX = MelloUI.FrameFX
+	if not (FX and FX.ShowOn) or MelloUI.Anim.reduceMotion then
+		return
+	end
+	local b, target
+	if win.frame and win.frame:IsShown() then
+		b = Move.EmptyButton()
+		target = b
+	else
+		local bb = rawget(_G, "MainMenuBarBackpackButton")
+		target = bb and bb:IsVisible() and bb or nil
+	end
+	if not target then
+		return
+	end
+	local reach = G.SLOT * 2
+	Move.spill = Move.spill or {}
+	Move.spill[1], Move.spill[2] = reach, reach
+	FX.ShowOn(target, "warn", "full", Move.spill, Move.Red())
+	if b and Move.at[b] then
+		Move.shaking = b
+		MelloUI.Anim:Drive(Move.shake, Move.ShakeStep, Move.SHAKE, "linear", Move.Shaken)
+	end
+end
+
+Move.OnEvent = Shared("OnEvent of the bag window's Bags Full Warning", function(_, event, _, message)
+	if event == "UI_ERROR_MESSAGE" and not Secret(message) and message == rawget(_G, "ERR_INV_FULL") then
+		Move.Warn()
+	end
+end, "event")
+
+-- its event while the option is on (and the module)
+function Move.Listen()
+	local on = M.isEnabled and M.db ~= nil and M.db.fullWarning ~= false
+	if not (on or Move.frame) then
+		return
+	end
+	if not Move.frame then
+		Move.frame = CreateFrame("Frame")
+		Perf.SetScript(Move.frame, "OnEvent", Move.OnEvent)
+	end
+	if on then
+		Move.frame:RegisterEvent("UI_ERROR_MESSAGE")
+	else
+		Move.frame:UnregisterEvent("UI_ERROR_MESSAGE")
+	end
+end
+M.Move = Move   -- (the tests)
+
+-- (/mello bags full, /mello bags money: the warning, and the money rolling up to what you have, played to see them)
+Move.SAMPLE_MONEY = 12345
+M.SlashWords.full = function()
+	if not (M.db and M.db.fullWarning ~= false) or MelloUI.Anim.reduceMotion then
+		MelloUI:Print("Bags by Kind: Bags Full Warning is off (Windows > Bags), or Reduce Motion is on.")
+		return
+	end
+	Move.Warn()
+end
+M.SlashWords.money = function()
+	local now = Move.Shown()
+	if not (M.db and M.db.moneyRoll ~= false) or MelloUI.Anim.reduceMotion then
+		MelloUI:Print("Bags by Kind: Rolling Money is off (Windows > Bags), or Reduce Motion is on.")
+	elseif not (now and win.frame and win.frame:IsShown()) then
+		MelloUI:Print("Bags by Kind: open your bags to see the money roll.")
+	else
+		Move.Roll(math.max(0, now - Move.SAMPLE_MONEY), now)
+	end
+end
+
 function M:OnEnable(db)
 	self.db = db
 	Migrate(db)
 	self:Apply()
 	Fly.Listen()
+	Move.Listen()
 end
 
 function M:OnDisable()
 	self:Apply()
 	Fly.Listen()
+	Move.Listen()
 end
 
 -- a setting changed: laid out again while the window shows (else at its next open)
@@ -3465,6 +3843,12 @@ function M:OnSettingChanged(key, value, db)
 	if key == "lootFlight" then
 		Fly.Listen()
 		return
+	end
+	if key == "itemsGlide" or key == "moneyRoll" then
+		return   -- (read as each moves)
+	end
+	if key == "fullWarning" then
+		Move.Listen()   -- (and laid again below: the 0 slot)
 	end
 	LayAll()
 end
