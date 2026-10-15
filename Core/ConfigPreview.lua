@@ -1,21 +1,56 @@
 --------------------------------------------------------------------------------
 -- MelloUI - ConfigPreview
 --
--- The Configurator's live preview (0.15.0, the rebuild; the user,
--- 2026-09-27/28: "a picker + live preview in the header"): a sample of the
--- frame picked on the Unit Frames page, drawn from the settings as they are
--- now, so a change shows before the real frame is looked for.
+-- The Configurator's previews (0.15.0, the rebuild; the user, 2026-09-27/28:
+-- "a picker + live preview in the header"): samples of what a page sets,
+-- drawn from the settings as they are now, so a change shows before the real
+-- frame is looked for. One look, stage F: one engine for every kind of
+-- sample -- each kind registered once by its owner, its samples built,
+-- dressed and painted through this one registry (MelloUI.ConfigPreview = CP).
 --
---   MelloUI.ConfigPreview.Make(parent, kind, skin) -> preview
---       kind  "unitframe" (the one there is; any other: nil, nothing made)
---       skin  the window's shell (Kit:OwnWindow): the portrait wears the
---             kit's round rim while its look is on; nil: the plain rim
---       A Frame 220 x 96 on a flat inner panel, placed by the caller. Made
---       on the Unit Frames page's first build, never at login.
---   preview:SetPick(pick)  "player", "target", "focus", "pet", "party",
---       "raid", "castbars", "personal" (the page's picks; any other shows
---       the player's)
---   preview:Refresh()      every part read from the settings again, now
+-- The registry (tables only: nothing is made at load)
+--   CP.Register(kind, def) -> true   the def stored; a second Register of a
+--       kind is told once (geterrorhandler) and the first one stands
+--   CP.Kind(kind) -> def | nil
+--   CP.OnDress(kind, fn, opts)   another module's dressing of a kind's
+--       samples, fn(sample, pick); opts = { picks = { [pick] = true } (nil:
+--       every pick), owner = its module's name (its settings and switch are
+--       followed with the def's watch), topics = { bus topics } }. Kept per
+--       kind, so it may come before the kind's Register; one fn is kept once
+--   CP.Build(kind, parent, pick[, onto]) -> sample | nil   the def's Build
+--       only (`onto`: a frame of the caller's to build on)
+--   CP.Values(kind, pick[, i]) -> a fresh shallow copy of the pick's i-th
+--       (nil: the 1st) made-up values, def.Values(pick, i); or nil
+--   CP.Dress(kind, sample, pick)   the def's Dress, then each OnDress fn
+--       whose picks hold the pick, each once
+--   CP.Paint(kind, sample, pick[, values, ctx])   sample.sample = values when
+--       given, then def.Paint(sample, pick, sample.sample, ctx); ctx = { try =
+--       { id, value }, state = name, only = fn(j, ind) }, or nil (one shared
+--       empty table: nothing made per paint)
+--   CP.Update(kind, sample, pick, values)   values only: def.Update, else
+--       def.Paint; never a dress or a build
+--   CP.Sample(kind, parent, pick[, onto, values, ctx]) -> sample | nil
+--       Build, its values (`values`, else CP.Values), Dress, then Paint
+--   CP.Make(parent, kind, skin) -> preview | nil   nil for a kind that is not
+--       registered (nothing made). A 'corner' kind: a Frame def.width x
+--       def.height on a flat inner panel, placed by the caller, made on its
+--       page's first build, never at login, with
+--         preview:SetPick(pick)  one of def.picks (any other: def.first)
+--         preview:Refresh()      every part read from the settings again, now
+--       skin: the window's shell (Kit:OwnWindow), handed to def.Corner
+--   CP.PartLabel(kind, key) -> a part's label (def.PartLabel, or def.keys'
+--       string for it), or nil
+--   CP.Shown(kind) -> a preview of that kind on show, or nil
+-- A def: place ('corner'), width, height, picks (a set), first, watch (a set
+-- of module names), Build, Values, Dress, Paint, Update; a corner's also
+-- Corner(p, skin) (its parts, made once), Lay(p, pick), OnShow(p), Tip(pick).
+--
+-- The 'unitframe' kind (at the end of this file, until stage G moves it to
+-- its module): the Unit Frames page's corner preview -- picks "player",
+-- "target", "focus", "pet", "party", "raid", "castbars", "personal"; its
+-- portrait wears the shell's round kit rim while the shell's look is on --
+-- and the party pick's sample, a replica of the game's party member frame
+-- (Preview's stand-ins, Group Frames' solo frame, the Designer's party).
 --
 -- SAMPLE values only: no unit value is read at all. The player's own
 -- health, class and name may be secret even out of combat on this client
@@ -35,17 +70,19 @@
 -- the names' form from Unit Frames' own setting (UnitFrames.nameFormat, which
 -- UI Modifications' Show Names As drives, with its Centre Names; the
 -- painted skin's name plates centre them while it is on), the
--- medallion from Class Icons (MelloUI:ClassIconPath), the Elite mark from the
--- kit's marks (Kit:MarkCrest, Modules/KitMarks.lua). A part whose setting is
--- off is dimmed where the frame would show nothing (the values, the mark),
--- or shows the game's own look where the frame would (the bars' art).
+-- medallion from Class Icons (MelloUI:ClassIconPath), the Elite mark from
+-- Unit Frames Kit's own export (UnitFramePanel.PreviewCrest: the painted
+-- skin's marks). A part whose setting is off is dimmed where the frame would
+-- show nothing (the values, the mark), or shows the game's own look where the
+-- frame would (the bars' art).
 --
--- It follows the bus's 'setting' and 'module' (the modules above), 'palette'
--- and 'fonts' only while a preview is on show, one Kit:NextFrame per preview
--- however many changes came in a frame; on every show it is read again.
--- No OnUpdate, no ticker, nothing made per refresh. Colours: palette keys
--- (W.Paint) for its own ground, name and edge; the bars' colours are the
--- game's (class, reaction, health, power, cast), as on the real frames.
+-- A preview follows the bus's 'setting' and 'module' (its def's watch and the
+-- owners of its OnDress), 'palette' and 'fonts' only while one is on show,
+-- one NextFrame per preview however many changes came in a frame; on every
+-- show it is read again. No OnUpdate, no ticker, nothing made per refresh.
+-- Colours: palette keys (W.Paint) for its own ground, name and edge; the
+-- bars' colours are the game's (class, reaction, health, power, cast), as on
+-- the real frames.
 --------------------------------------------------------------------------------
 
 local _, ns = ...
@@ -56,6 +93,11 @@ local W = MelloUI.Widgets   -- (Core/Widgets.lua loads before this file)
 
 local Preview = {}
 MelloUI.ConfigPreview = Preview
+
+-- the registry's own (the 'Registry' section below): the kinds, the other
+-- modules' dressings per kind (kept before its Register too), the kinds told
+-- twice, and NONE: the one empty table a paint without a ctx is handed
+local Reg = { kinds = {}, dress = {}, told = {}, NONE = {} }
 
 local WIDTH, HEIGHT = 220, 96
 local PAD = 8                 -- the parts inside the panel's edge
@@ -340,22 +382,16 @@ local function PaintPortrait(p, s)
 	end
 end
 
--- the Elite mark: shown while the unit frames wear the painted skin (the
--- marks live on its ring), dimmed with the marks off
+-- the Elite mark: Unit Frames Kit's to put on (its PreviewCrest export:
+-- shown while the unit frames wear the painted skin, the marks living on its
+-- ring, dimmed with the marks off); hidden here when that module or its
+-- export is not there, or it shows none
 local function PaintCrest(p, s)
 	local crest = p.crest
-	local ufp = Running("UnitFramePanel")
-	local Kit = MelloUI.Kit
-	local piece = s.elite and ufp and Kit and Kit.MarkCrest and Kit:MarkCrest("elite")
-	if not piece then
+	local ufp = Exports("UnitFramePanel", "PreviewCrest")
+	if not (ufp and ufp.PreviewCrest(crest, s.elite and true or false)) then
 		crest:Hide()
-		return
 	end
-	if MelloUI.Kept.pieceNameOf[crest] ~= piece then
-		Kit:Apply(crest, piece)   -- look-ok: the preview of the kit's elite mark (only while the unit frames wear the kit)
-	end
-	crest:SetAlpha(ufp.db.marks == false and DIM or 1)
-	crest:Show()
 end
 
 --------------------------------------------------------------------------------
@@ -411,10 +447,11 @@ local function Lay(p)
 end
 
 --------------------------------------------------------------------------------
--- The preview's methods
+-- The unit frame preview's paint (the 'unitframe' kind's corner: its def's
+-- Paint, below)
 --------------------------------------------------------------------------------
 
-local function Refresh(p)
+local function PaintCorner(p)
 	local s = SAMPLES[p.pick]
 	local BT = Exports("BarTextures", "PreviewHealthColor")
 	if s.layout == "unit" then
@@ -446,10 +483,179 @@ local function Refresh(p)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- The registry (one look, stage F: every kind of sample the configurator
+-- draws, registered once by its owner; tables only, nothing made at load)
+--------------------------------------------------------------------------------
+
+-- (a second Register of a kind is a mistake: told once, the first stands)
+function Preview.Register(kind, def)
+	if type(kind) ~= "string" or type(def) ~= "table" then
+		return false
+	end
+	if Reg.kinds[kind] then
+		if not Reg.told[kind] then
+			Reg.told[kind] = true
+			geterrorhandler()("MelloUI.ConfigPreview: the kind '" .. kind .. "' was registered twice (the first stands)")
+		end
+		return false
+	end
+	Reg.kinds[kind] = def
+	return true
+end
+
+function Preview.Kind(kind)
+	return Reg.kinds[kind]
+end
+
+-- another module's dressing of a kind's samples, kept per kind (before its
+-- Register too); the same fn handed again takes the new opts, still once
+function Preview.OnDress(kind, fn, opts)
+	if type(kind) ~= "string" or type(fn) ~= "function" then
+		return false
+	end
+	opts = type(opts) == "table" and opts or Reg.NONE
+	local list = Reg.dress[kind]
+	if not list then
+		list = {}
+		Reg.dress[kind] = list
+	end
+	local entry
+	for i = 1, #list do
+		if list[i].fn == fn then
+			entry = list[i]
+		end
+	end
+	if not entry then
+		entry = { fn = fn }
+		list[#list + 1] = entry
+	end
+	entry.picks = type(opts.picks) == "table" and opts.picks or nil
+	entry.owner = type(opts.owner) == "string" and opts.owner or nil
+	entry.topics = type(opts.topics) == "table" and opts.topics or nil
+	return true
+end
+
+function Preview.Build(kind, parent, pick, onto)
+	local def = Reg.kinds[kind]
+	if not (def and def.Build) then
+		return nil
+	end
+	return def.Build(parent, pick, onto)
+end
+
+function Preview.Values(kind, pick, i)
+	local def = Reg.kinds[kind]
+	local from = def and def.Values and def.Values(pick, i or 1)
+	if type(from) ~= "table" then
+		return nil
+	end
+	local s = {}
+	for k, v in pairs(from) do
+		s[k] = v
+	end
+	return s
+end
+
+-- the def's own dressing, then the other modules' for this pick (each fn
+-- once; one that fails is told, the rest still dress)
+function Preview.Dress(kind, sample, pick)
+	local def = Reg.kinds[kind]
+	if not (def and sample) then
+		return
+	end
+	if def.Dress then
+		def.Dress(sample, pick)
+	end
+	local list = Reg.dress[kind]
+	for i = 1, list and #list or 0 do
+		local d = list[i]
+		if not d.picks or d.picks[pick] then
+			local ok, err = pcall(d.fn, sample, pick)
+			if not ok then
+				geterrorhandler()(err)
+			end
+		end
+	end
+end
+
+function Preview.Paint(kind, sample, pick, values, ctx)
+	local def = Reg.kinds[kind]
+	if not (def and def.Paint and sample) then
+		return
+	end
+	if values then
+		sample.sample = values
+	end
+	def.Paint(sample, pick, sample.sample, ctx or Reg.NONE)
+end
+
+function Preview.Update(kind, sample, pick, values)
+	local def = Reg.kinds[kind]
+	local paint = def and (def.Update or def.Paint)
+	if not (paint and sample) then
+		return
+	end
+	if values then
+		sample.sample = values
+	end
+	paint(sample, pick, sample.sample, Reg.NONE)
+end
+
+function Preview.Sample(kind, parent, pick, onto, values, ctx)
+	local f = Preview.Build(kind, parent, pick, onto)
+	if type(f) ~= "table" then
+		return nil
+	end
+	f.sample = values or Preview.Values(kind, pick)
+	Preview.Dress(kind, f, pick)
+	Preview.Paint(kind, f, pick, nil, ctx)
+	return f
+end
+
+function Preview.PartLabel(kind, key)
+	local def = Reg.kinds[kind]
+	if not def or key == nil then
+		return nil
+	end
+	if def.PartLabel then
+		return def.PartLabel(key)
+	end
+	local label = type(def.keys) == "table" and def.keys[key]
+	return type(label) == "string" and label or nil
+end
+
+-- does a kind follow this module's settings and switch? (its def's watch, or
+-- a module that dresses its samples)
+function Reg.Watches(kind, name)
+	local def = Reg.kinds[kind]
+	if def and def.watch and def.watch[name] then
+		return true
+	end
+	local list = Reg.dress[kind]
+	for i = 1, list and #list or 0 do
+		if list[i].owner == name then
+			return true
+		end
+	end
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- A corner preview's methods (its def's Lay and Paint)
+--------------------------------------------------------------------------------
+
+local function Refresh(p)
+	Preview.Paint(p.kind, p, p.pick)
+end
+
 -- (a hidden preview is read on its show)
 local function SetPick(p, pick)
-	p.pick = SAMPLES[pick] and pick or FIRST_PICK
-	Lay(p)
+	local def = Reg.kinds[p.kind]
+	p.pick = def.picks[pick] and pick or def.first
+	if def.Lay then
+		def.Lay(p, p.pick)
+	end
 	if p:IsVisible() then
 		Refresh(p)
 	end
@@ -469,17 +675,28 @@ local function Later(p)
 	end
 end
 
-local function AskAll()
-	local Kit = MelloUI.Kit
+-- each preview on show read again on the next frame: one NextFrame each, its
+-- key the preview, however many changes came in a frame; `name`: only the
+-- previews whose kind follows that module. MelloUI.Schedule where there is
+-- one, else the Kit's: looked up at each call, never kept
+function Reg.Ask(name)
+	local S = MelloUI.Schedule or MelloUI.Kit
 	for p in pairs(shown) do
-		Kit:NextFrame(p, Later)
+		if not name or Reg.Watches(p.kind, name) then
+			S:NextFrame(p, Later)
+		end
 	end
+end
+
+-- 'palette' and 'fonts': every preview
+local function AskAll()
+	Reg.Ask(nil)
 end
 
 -- 'setting' (module, key, value) and 'module' (name, enabled)
 local function OnSetting(name)
-	if WATCH[name] then
-		AskAll()
+	if type(name) == "string" then
+		Reg.Ask(name)
 	end
 end
 
@@ -495,8 +712,11 @@ local OnShow = Shared("OnShow on the Configurator's preview", function(p)
 		end
 	end
 	-- (a change made while it was hidden reached no listener: read again,
-	-- the portrait too)
-	p.portraitShows = nil
+	-- with what its def forgets on a show -- the unit frame's portrait)
+	local def = Reg.kinds[p.kind]
+	if def and def.OnShow then
+		def.OnShow(p)
+	end
 	Refresh(p)
 end, "script")
 
@@ -511,10 +731,22 @@ local OnHide = Shared("OnHide on the Configurator's preview", function(p)
 end, "script")
 
 local OnEnter = Shared("OnEnter on the Configurator's preview (tooltip)", function(p)
-	local s = SAMPLES[p.pick]
-	W.ShowTooltip(p, "Preview", s.label .. ", drawn with your settings as they are now. The name and the numbers "
-		.. "are made up.")
+	local def = Reg.kinds[p.kind]
+	local tip = def and def.Tip and def.Tip(p.pick)
+	if tip then
+		W.ShowTooltip(p, "Preview", tip)
+	end
 end, "script")
+
+-- a preview of the kind on show (nil: none)
+function Preview.Shown(kind)
+	for p in pairs(shown) do
+		if p.kind == kind then
+			return p
+		end
+	end
+	return nil
+end
 
 --------------------------------------------------------------------------------
 -- Make
@@ -527,70 +759,36 @@ local function Bar(parent)
 	return bar
 end
 
-function Preview.Make(parent, kind, skin)
-	if kind ~= "unitframe" or not parent then
-		return nil
-	end
+-- a corner preview: its frame on a flat inner panel, its def's parts on it
+local function MakeCorner(parent, kind, def, skin)
 	local p = CreateFrame("Frame", nil, parent)
-	p:SetSize(WIDTH, HEIGHT)
+	p:SetSize(def.width or WIDTH, def.height or HEIGHT)
 	W.Panel(p, { on = true })
-	p.skin = skin
+	p.kind, p.skin = kind, skin
 	p.SetPick, p.Refresh = SetPick, Refresh
-
-	local portrait = W.RoundIcon(p, PORTRAIT)
-	portrait:EnableMouse(false)   -- (a picture: no hover light, the preview's tooltip stands)
-	p.portrait = portrait
-	p.crest = portrait:CreateTexture(nil, "OVERLAY", nil, 7)
-	p.crest:SetSize(CREST, CREST)
-	p.crest:SetPoint("CENTER", portrait, "TOP", 0, -2)
-	p.name = W.Text(p, "GameFontNormal", nil, "text")
-	p.name:SetWordWrap(false)
-	p.bar1, p.bar2 = Bar(p), Bar(p)
-	-- the raid cell's name: a region of its bar (one of the preview's own
-	-- would draw under the bar's fill, a child frame's)
-	p.cellName = W.Text(p.bar1, "GameFontNormal", nil, "text")
-	p.cellName:SetWordWrap(false)
-	p.cellName:SetPoint("TOPLEFT", p.bar1, "TOPLEFT", 4, -4)
-	p.cellName:SetWidth(RAID_W - 8)
-	p.text1 = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
-	p.text2 = p.bar2:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
-	p.icon = p:CreateTexture(nil, "ARTWORK")
-	p.icon:SetSize(24, 24)
-	p.icon:SetTexture(CAST_ICON)
-	p.castText = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
-	p.castText:SetPoint("LEFT", p.bar1, "LEFT", 4, 0)
-	p.castText:SetText(SAMPLES.castbars.spell)
-	p.castTime = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
-	p.castTime:SetPoint("RIGHT", p.bar1, "RIGHT", -4, 0)
-	p.castTime:SetText(SAMPLES.castbars.time)
-
-	previews[p] = true
-	if skin and skin.OnKit then
-		skin:OnKit(OnShellKit)
-		if skin.kit then
-			skin:Kit(KitRim, p)
-		end
-	end
+	def.Corner(p, skin)
 	p:EnableMouse(true)
 	p:SetScript("OnShow", OnShow)
 	p:SetScript("OnHide", OnHide)
 	p:SetScript("OnEnter", OnEnter)
 	p:SetScript("OnLeave", W.TipLeave)
-	p.pick = FIRST_PICK
-	Lay(p)
+	p.pick = def.first
+	if def.Lay then
+		def.Lay(p, p.pick)
+	end
 	if p:IsVisible() then
 		OnShow(p)   -- (made on show: no OnShow comes)
 	end
 	return p
 end
 
--- a new copy of the party pick's sample (0.17.0: Preview's stand-ins, below)
-function Preview.PartySample()
-	local s = {}
-	for k, v in pairs(SAMPLES.party) do
-		s[k] = v
+-- (a wide stage comes with stage F2: none yet)
+function Preview.Make(parent, kind, skin)
+	local def = parent and Reg.kinds[kind]
+	if def and def.place == "corner" and def.Corner then
+		return MakeCorner(parent, kind, def, skin)
 	end
-	return s
+	return nil
 end
 
 --------------------------------------------------------------------------------
@@ -608,11 +806,14 @@ end
 -- Painted from a sample as the configurator's preview is: the bars wear what
 -- the settings put on the real ones (Bar Textures' preview exports), the name
 -- in Unit Frames' form, the portrait Class Icons' medallion or a creature's.
---   Preview.MakeParty(parent, onto) -> frame   (`onto`: a frame of the
---       caller's to build it on -- Group Frames' solo party frame, a unit
---       button of its own -- else a new frame on `parent`)
---   Preview.PaintParty(frame, sample)   (a PartySample() with its own name,
---       class, health and power)
+-- The 'unitframe' kind's party sample (stage F: no names of its own):
+--   CP.Build("unitframe", parent, "party", onto) -> frame   (`onto`: a frame
+--       of the caller's to build it on -- Group Frames' solo party frame, a
+--       unit button of its own -- else a new frame on `parent`)
+--   CP.Values("unitframe", "party", i) -> a fresh copy of its made-up values,
+--       for the caller's own name, class, health and power
+--   CP.Dress("unitframe", frame, "party")   Unit Frames' DressStandIn
+--   CP.Paint / CP.Update("unitframe", frame, "party", values)
 --------------------------------------------------------------------------------
 
 local PARTY_W, PARTY_H = 120, 53
@@ -631,7 +832,7 @@ local function Masked(region, parent, atlas, rel, x, y)
 	return mask
 end
 
-function Preview.MakeParty(parent, onto)
+local function MakeParty(parent, onto)
 	local f = onto or CreateFrame("Frame", nil, parent)
 	f:SetSize(PARTY_W, PARTY_H)
 	f.Portrait = f:CreateTexture(nil, "BACKGROUND")
@@ -696,7 +897,7 @@ local function PaintPartyPortrait(f, s)
 	end
 end
 
-function Preview.PaintParty(f, s)
+local function PaintParty(f, s)
 	s.healthAtlas = PARTY_HEALTH
 	f.sample = s
 	f.Name:SetText(NameAs(s))
@@ -710,3 +911,99 @@ function Preview.PaintParty(f, s)
 		Fill(f.ManaBar, s.power, s.powerMax)
 	end
 end
+
+--------------------------------------------------------------------------------
+-- The 'unitframe' kind (here until stage G moves it to its module): the Unit
+-- Frames page's corner preview, and the party pick's sample (the replica
+-- above) for Preview's stand-ins, Group Frames' solo frame and the Designer's
+-- party. No parts. Its party sample is dressed through Unit Frames' own skin
+-- seam (DressStandIn, the painted skin's tail in it), which also dresses the
+-- real solo frame and the stand-ins: two dress seams on purpose (CP.OnDress
+-- is the other kinds')
+--------------------------------------------------------------------------------
+
+-- the corner's parts, made once (MakeCorner: its frame, panel and scripts)
+local function UnitCorner(p, skin)
+	local portrait = W.RoundIcon(p, PORTRAIT)
+	portrait:EnableMouse(false)   -- (a picture: no hover light, the preview's tooltip stands)
+	p.portrait = portrait
+	p.crest = portrait:CreateTexture(nil, "OVERLAY", nil, 7)
+	p.crest:SetSize(CREST, CREST)
+	p.crest:SetPoint("CENTER", portrait, "TOP", 0, -2)
+	p.name = W.Text(p, "GameFontNormal", nil, "text")
+	p.name:SetWordWrap(false)
+	p.bar1, p.bar2 = Bar(p), Bar(p)
+	-- the raid cell's name: a region of its bar (one of the preview's own
+	-- would draw under the bar's fill, a child frame's)
+	p.cellName = W.Text(p.bar1, "GameFontNormal", nil, "text")
+	p.cellName:SetWordWrap(false)
+	p.cellName:SetPoint("TOPLEFT", p.bar1, "TOPLEFT", 4, -4)
+	p.cellName:SetWidth(RAID_W - 8)
+	p.text1 = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	p.text2 = p.bar2:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	p.icon = p:CreateTexture(nil, "ARTWORK")
+	p.icon:SetSize(24, 24)
+	p.icon:SetTexture(CAST_ICON)
+	p.castText = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	p.castText:SetPoint("LEFT", p.bar1, "LEFT", 4, 0)
+	p.castText:SetText(SAMPLES.castbars.spell)
+	p.castTime = p.bar1:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	p.castTime:SetPoint("RIGHT", p.bar1, "RIGHT", -4, 0)
+	p.castTime:SetText(SAMPLES.castbars.time)
+
+	previews[p] = true
+	if skin and skin.OnKit then
+		skin:OnKit(OnShellKit)
+		if skin.kit then
+			skin:Kit(KitRim, p)
+		end
+	end
+end
+
+-- a party sample painted from its values (the stand-ins' hits too: values
+-- only, no dress)
+local function UnitUpdate(f, pick, s)
+	if pick == "party" and s then
+		PaintParty(f, s)
+	end
+end
+
+Preview.Register("unitframe", {
+	place = "corner", width = WIDTH, height = HEIGHT,
+	picks = SAMPLES, first = FIRST_PICK, watch = WATCH,
+	Corner = UnitCorner,
+	Lay = Lay,
+	-- (a show draws the portrait again: it may have changed)
+	OnShow = function(p)
+		p.portraitShows = nil
+	end,
+	Tip = function(pick)
+		local s = SAMPLES[pick]
+		return s and (s.label .. ", drawn with your settings as they are now. The name and the numbers are made up.")
+	end,
+	Build = function(parent, pick, onto)
+		if pick == "party" then
+			return MakeParty(parent, onto)
+		end
+		return nil
+	end,
+	Values = function(pick)
+		return SAMPLES[pick]
+	end,
+	-- (dressed as a member: its level and name band, the painted skin's
+	-- dressing while that is on -- Unit Frames' own, looked up at each call)
+	Dress = function(f, pick)
+		local uf = pick == "party" and MelloUI:GetModule("UnitFrames")
+		if uf and uf.DressStandIn then
+			uf:DressStandIn(f)
+		end
+	end,
+	Paint = function(f, pick, s)
+		if previews[f] then
+			PaintCorner(f)
+		else
+			UnitUpdate(f, pick, s)
+		end
+	end,
+	Update = UnitUpdate,
+})

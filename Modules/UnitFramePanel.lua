@@ -36,6 +36,8 @@
 -- UF:SetSkinHooks (below). Its own painted level circle (PartyLevel) and
 -- hugging name band (NameShade) stay its look; the core's level on the name
 -- line and its line band step aside while it covers the frames.
+-- (one-look F1) M.PreviewCrest(texture, elite): the configurator preview's
+-- Elite mark (Core/ConfigPreview.lua asks it; below).
 -- /ufdump [player|target|focus|pet|tot|party|party1] [frames|reps] prints a frame's
 -- art into the copy window.
 --------------------------------------------------------------------------------
@@ -2163,6 +2165,32 @@ if UF and UF.SetSkinHooks then
 			end
 		end,
 	})
+end
+
+--------------------------------------------------------------------------------
+-- The configurator's Elite mark (Core/ConfigPreview.lua's unit frame preview,
+-- one look stage F: the kit's mark put on there by this module, not by the
+-- engine): the kit's elite crest on the preview's texture while this module
+-- runs (its marks live on the painted skin's ring), dimmed with Marks off;
+-- hidden else. Settings only, no unit read.
+--   M.PreviewCrest(texture, elite) -> true when shown
+--------------------------------------------------------------------------------
+
+function M.PreviewCrest(texture, elite)
+	if type(texture) ~= "table" then
+		return false
+	end
+	local piece = elite and M.isEnabled and M.db and Kit and Kit.MarkCrest and Kit:MarkCrest("elite")
+	if not piece then
+		texture:Hide()
+		return false
+	end
+	if pieceNameOf[texture] ~= piece then
+		Kit:Apply(texture, piece)   -- look-ok: the preview of the kit's elite mark (only while the unit frames wear the kit)
+	end
+	texture:SetAlpha(M.db.marks == false and 0.4 or 1)   -- (0.4: a part whose setting is off, a gated row's alpha)
+	texture:Show()
+	return true
 end
 
 --------------------------------------------------------------------------------

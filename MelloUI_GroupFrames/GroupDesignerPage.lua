@@ -234,23 +234,23 @@ local SAMPLE_AURAS = { "Interface\\Icons\\Spell_Holy_Renew", "Interface\\Icons\\
 
 PartyReplica = function(parent, i, ready)
 	local CP = MelloUI.ConfigPreview
-	if not (CP and CP.MakeParty and CP.PaintParty and CP.PartySample) then
+	local s = CP and CP.Build and CP.Dress and CP.Paint and CP.Values and CP.Values("unitframe", "party", i)
+	if not s then
 		return nil
 	end
-	local ok, f = pcall(CP.MakeParty, parent)
+	local ok, f = pcall(CP.Build, "unitframe", parent, "party")
 	if not ok or type(f) ~= "table" then
 		return nil
 	end
+	-- (the unit frame kind's party sample: its values with the member's,
+	-- dressed as a member -- Unit Frames' DressStandIn, once -- then painted)
 	local m = Member(i)
-	local s = CP.PartySample()
 	s.first, s.last, s.class = m.name, nil, m.class
 	s.max, s.powerMax, s.token = 7000, 6000, m.powerToken or "MANA"
 	s.health, s.power = math.floor(7000 * (m.health or 1) + 0.5), 4200
-	pcall(CP.PaintParty, f, s)
-	local ufp = MelloUI:GetModule("UnitFrames")
-	if ufp and ufp.DressStandIn then
-		pcall(ufp.DressStandIn, ufp, f)
-	end
+	f.sample = s
+	pcall(CP.Dress, "unitframe", f, "party")
+	pcall(CP.Paint, "unitframe", f, "party", s)
 	local function At(region, part)
 		local h = Parts.BY[part].home
 		region:SetPoint(h.point, f, h.point, h.x, h.y)

@@ -166,10 +166,12 @@ end
 --------------------------------------------------------------------------------
 -- Party Frames' stand-ins: the game shows its party frames only in a real
 -- group, and an addon may not show them -- so the made-up group is drawn as
--- replicas of the game's party member frame (MelloUI.ConfigPreview: MakeParty,
--- PaintParty; the user: "not a 1-1 replica on how they actually look ingame"),
--- dressed as the members are (Unit Frames' M:DressStandIn: their level and
--- name band, the painted skin's dressing while it is on), on your party
+-- replicas of the game's party member frame (MelloUI.ConfigPreview's
+-- 'unitframe' kind, its party sample: CP.Build, CP.Values, CP.Update; the
+-- user: "not a 1-1 replica on how they actually look ingame"), dressed as
+-- the members are at every scene's start (CP.Dress: Unit Frames'
+-- M:DressStandIn, their level and name band, the painted skin's dressing
+-- while it is on; a look changed between two scenes followed), on your party
 -- frames' own slots and scale, in one holder
 -- (MelloUIPreviewParty) the Fader fades with the party frames
 -- (Modules/Fader.lua). Their health falls on the hits and is healed back by
@@ -239,13 +241,13 @@ local function StandValues(n, healerMana)
 		if Preview.PARTY[i] and Preview.PARTY[i].healer then
 			s.power = math.floor(s.powerMax * healerMana + 0.5)
 		end
-		CP.PaintParty(f, s)
+		CP.Update("unitframe", f, "party", s)   -- (values only: no dress)
 	end
 end
 
 local function StandShow()
 	local CP = MelloUI.ConfigPreview
-	if not (CP and CP.MakeParty and CP.PaintParty) then
+	if not (CP and CP.Kind and CP.Kind("unitframe") and CP.Build and CP.Values and CP.Dress and CP.Update) then
 		return
 	end
 	if not stand.holder then
@@ -253,15 +255,17 @@ local function StandShow()
 		stand.holder:SetAllPoints(UIParent)
 		stand.holder:EnableMouse(false)
 	end
-	local ufp = MelloUI:GetModule("UnitFrames")
 	local x, y, k
 	for i, member in ipairs(Preview.PARTY) do
 		local f = stand.frames[i]
 		if not f then
-			f = CP.MakeParty(stand.holder)
+			f = CP.Build("unitframe", stand.holder, "party")
+			if not f then
+				return
+			end
 			stand.frames[i] = f
 		end
-		local s = f.sample or CP.PartySample()
+		local s = f.sample or CP.Values("unitframe", "party", i)
 		s.first, s.last, s.class = member.name, nil, member.class
 		s.max, s.powerMax, s.token = 7000, 6000, "MANA"
 		s.health, s.power = s.max, s.powerMax
@@ -271,10 +275,9 @@ local function StandShow()
 		end
 		PlaceStand(f, i, x, y, k)
 		f:Show()
-		-- (dressed as a member: its level and band; the painted skin's too while on)
-		if ufp and ufp.DressStandIn then
-			ufp:DressStandIn(f)
-		end
+		-- (dressed as a member at every scene's start: its level and band; the
+		-- painted skin's too while on)
+		CP.Dress("unitframe", f, "party")
 	end
 	stand.on = true
 	stand.holder:Show()

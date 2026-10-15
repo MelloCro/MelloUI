@@ -6,8 +6,10 @@
 --
 -- The game shows its normal party frames in a party only. While In A Party is
 -- Party Frames (and Show Yourself While Solo is on), you alone get a frame
--- that is the game's party member frame: the replica ConfigPreview.MakeParty
--- builds (the game's template's keys and geometry, PartyFrameTemplates.xml),
+-- that is the game's party member frame: the replica ConfigPreview's
+-- 'unitframe' kind builds as its party sample (CP.Build, painted with
+-- CP.Values / CP.Paint; the game's template's keys and geometry,
+-- PartyFrameTemplates.xml),
 -- built on a secure unit button of ours for "player" (a click targets you, a
 -- right click opens your menu), dressed as the members are (Unit Frames'
 -- M:DressStandIn, with the painted skin's dressing while it is on), its bars in the look the settings give
@@ -197,10 +199,10 @@ end
 -- plain facts: name, class, power type), then your values
 local function Look(f)
 	local CP = MelloUI.ConfigPreview
-	if not (CP and CP.PaintParty and CP.PartySample) then
+	local s = CP and CP.Values and CP.Paint and CP.Values("unitframe", "party")
+	if not s then
 		return
 	end
-	local s = CP.PartySample()
 	local okN, name = pcall(UnitName, UNIT)
 	local okC, _, class = pcall(UnitClass, UNIT)
 	local okP, _, token = pcall(UnitPowerType, UNIT)
@@ -209,7 +211,7 @@ local function Look(f)
 	s.token = okP and Text(token) or "MANA"
 	s.display = nil
 	s.health, s.max, s.power, s.powerMax = 1, 1, 1, 1
-	pcall(CP.PaintParty, f, s)
+	pcall(CP.Paint, "unitframe", f, "party", s)
 	if okN and not Text(name) then
 		pcall(f.Name.SetText, f.Name, name)   -- (a secret name as it is)
 	end
@@ -356,7 +358,7 @@ local function Make()
 	local CP = MelloUI.ConfigPreview
 	local H = ns.Headers
 	local parent = H and H.containers and H.containers.party
-	if not (CP and CP.MakeParty and parent) then
+	if not (CP and CP.Kind and CP.Kind("unitframe") and CP.Build and parent) then
 		return nil
 	end
 	local f = CreateFrame("Button", "MelloUIGroupSoloParty", parent, "SecureUnitButtonTemplate")
@@ -366,7 +368,8 @@ local function Make()
 	f:SetAttribute("*type2", "togglemenu")
 	f:SetAttribute("toggleForVehicle", false)
 	f:RegisterForClicks("AnyUp")
-	if not pcall(CP.MakeParty, parent, f) then
+	local okB, made = pcall(CP.Build, "unitframe", parent, "party", f)
+	if not (okB and made) then
 		return nil
 	end
 	f.unit = UNIT
