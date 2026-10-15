@@ -260,7 +260,7 @@ laid under it so it never darkens the window's own stone: the outer rails, title
 and crests of the windows, the bars' backdrops and end caps (and the rims of bars with no
 backdrop), the brackets and plates of the cast bars, the rings, bar brackets and
 orbs of the unit and party frames, the chat rail, tabs, minimized card and input box, the
-minimap's ring or square frame and zone plate, the tracker's rail and title plate, each aura's
+minimap's ring or square frame and zone plate, the objective tracker's rail and title plate and the Quest Tracker's panel, each aura's
 rim, the battleground and event widgets' bars (and a soft band behind their score and timer
 lines), and the nameplates on Whole plate. A window gets its shade on its first show; nothing
 is made at login for what you have not opened. The shade takes the palette's darkest tone and
@@ -1846,15 +1846,25 @@ in combat. `/trdump` prints the tracker, its header, every module and every show
 ### Quest Tracker
 
 A quest tracker of MelloUI's own in the game's tracker's place (off by default), because the
-game's tracker on this client does not scroll. The mouse wheel scrolls the list. Each quest has the game's map button ("..." in progress, "?"
-ready to turn in, lit while followed); click a quest to follow it, Shift-click to stop watching
-it, right-click to open it in the quest log. Quest items are used with a click out of combat.
+game's tracker on this client does not scroll. The mouse wheel scrolls the list. In the painted
+look it wears the chat's look (0.24.0): the palette's dark panel, or the parchment sheet with
+Parchment on, "Objectives" at the top on a hairline, Quests and Professions as small headings
+with how many they hold, each quest's mark in the kit's round rim ("..." in progress, "?" ready
+to turn in), counts at the right of their lines, and the quest you follow washed with a gold
+edge, as the whisper window's open person. On parchment a gem before the title shows the
+quest's difficulty in its colour (point at the quest for its name, Trivial to Very hard). With
+the reskin off it keeps the game's look and the game's map buttons. The clicks are the game's
+tracker's (0.24.0): click a quest's mark to follow it, its way shown, and click it again to stop
+following; click the quest to open it on the map; Shift-click it to link it into the chat line
+you are typing, or, when you are not typing, to stop watching it; right-click it for the game's
+menu (follow, quest log, map, stop tracking, share with your group, link in chat, and abandon,
+asked first). Quest items are used with a click out of combat.
 Tracked recipes show under Professions with their reagents, and Quests and Professions each
 fold away on their own minus. Progress Motion (on; 0.21.3) moves a line as it changes: a count
 going up rolls over to its new number (only the number moves) as a soft gold light runs along
 the line; a finished objective gets a tick drawn in its dash's place (finished objectives keep
 the tick); a finished quest's last count rolls and ticks first, then a light runs over its
-title, its map button comes up as the hand-in ? and its turn-in line comes in, all within
+title, its mark comes up as the hand-in ? and its turn-in line comes in, all within
 about a second and a half. Off, or under Reduce Motion, the lines change at once (off: with
 their dashes). `/mello tracker progress` plays it on your first watched quest's line with a count. It takes its
 place and height from the game's tracker in Edit Mode, is moved in Edit Layout (a drag gives it a
@@ -1871,7 +1881,8 @@ height. Off, it takes its own Width.
 "Nearest Quest First" (on by default, needs Route) puts the nearest quest on top, the one you
 follow above it, and quests with no known place after them in watch order; a quest only moves
 past another when its distance really changed, so the list does not twitch as you walk. The
-arrow on the left of the tracker's title switches it too. "Distances" (on) shows how far each
+arrow by the tracker's title switches it too (beside the fold at the title's right in the
+painted look, at its left in the game's). "Distances" (on) shows how far each
 quest is at the end of its title line ("240 yd", "1.2 km"): its open objectives, or the one who
 takes it back once it is done; the quest you follow shows the way left along its route, as the
 arrow does. "Turn-in Line" (on) makes a finished quest say who takes it and where ("Turn in:

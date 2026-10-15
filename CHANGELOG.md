@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.0
+
+- Quest Tracker: the chat's look. In the painted look the tracker drops its stone frame and title plate for the chat's dark panel, or its parchment sheet with Parchment on: "Objectives" and the Quests and Professions headings sit on thin lines (Quests with how many you watch), each quest's mark sits in a round rim, a gem before a quest's title shows its difficulty on parchment (in place of the five pips, so titles keep their line; point at the quest for its name), objective counts stand at the right of their lines, and the quest you follow is highlighted like the open conversation in the whisper window. With the reskin off it keeps the game's look.
+- Quest Tracker: the game's clicks. Click a quest's mark to follow it, its way shown, and click it again to stop following; click the quest to open it on the map; Shift-click it to link it into the chat line you are typing, or, when you are not typing, to stop watching it; right-click it for the game's quest menu: follow, quest log, map, stop tracking, share with your group, link in chat and abandon (asked first).
+
 ## 0.23.1
 
 - Chat View: the chat keeps its history. After a /reload or logging in again, each tab shows its last lines again (up to 150), and the whisper window its conversations (your 30 latest, their last 100 lines, and how many you have not read yet). Battle.net conversations start fresh each login.

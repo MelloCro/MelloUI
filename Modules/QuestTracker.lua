@@ -18,15 +18,19 @@
 --   * the list scrolls with the mouse wheel inside a clipping frame (no
 --     ScrollFrame): the content is re-anchored by the offset, the offset is
 --     kept across rebuilds, and a thumb shows where the view is
---   * click a quest to follow it (super-track), Shift-click to stop watching
---     it, right-click to open it in the quest log; a quest item is used with
---     a click out of combat, through ONE secure button laid over the item
---     under the mouse -- nothing secure lives in the list, so it scrolls and
---     rebuilds in combat too
---   * the painted kit's look (the single rail, the stone, a parchment sheet
---     and the title plate) while its look area is on (Kit:IsOn: the reskin
---     and its own switch), a plain dark panel otherwise; a switch flips it
---     live
+--   * the game's tracker's clicks (0.24.0, Act): a quest's mark follows it
+--     (super-track) and lets it go; a click on the quest opens it on the
+--     map, Shift-click links it into the chat line being typed (else stops
+--     watching it), right-click the game's menu for a quest; a quest item is
+--     used with a click out of combat, through ONE secure button laid over
+--     the item under the mouse -- nothing secure lives in the list, so it
+--     scrolls and rebuilds in combat too
+--   * the chat's look (0.24.0; the stone, its rail and the title plate
+--     before) while its look area is on (Kit:IsOn: the reskin and its own
+--     switch): the palette's panel or the parchment sheet, small-caps
+--     headings on hairlines, the marks in the kit's round rim; the game's
+--     look otherwise (a plain dark panel, the game's map buttons); a switch
+--     flips it live
 --   * as wide on the screen as the minimap (Match The Minimap's Width) and
 --     glued under it where nobody placed it: the map's size is the Minimap
 --     Kit's Width and Height, the tracker follows it (FollowWidth, Glue)
@@ -100,10 +104,10 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		{ type = "toggle", key = "itemButtons", name = "Quest Items",
 		  desc = "Show a quest's usable item beside it. A click uses it out of combat." },
 		{ type = "toggle", key = "progressMotion", name = "Progress Motion",
-		  desc = "A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its map button turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion." },
+		  desc = "A count going up rolls over to its new number as a soft light runs along its line; a finished objective gets a tick drawn in its dash's place; a finished quest's last count rolls first, then a light runs over its title, its mark turns over to the hand-in ? and its turn-in line comes in. Off: the lines change at once, with their dashes. Not with Reduce Motion." },
 		{ type = "header", name = "Nearest First" },
 		{ type = "toggle", key = "nearestFirst", name = "Nearest Quest First",
-		  desc = "The nearest quest on top, the one you follow above it; quests with no place known after them. The arrow at the left of the tracker's title switches it too. Needs Route." },
+		  desc = "The nearest quest on top, the one you follow above it; quests with no place known after them. The arrow by the tracker's title switches it too. Needs Route." },
 		{ type = "toggle", key = "showDistance", name = "Distances",
 		  desc = "How far each quest is, beside its name: its objectives, or the one who takes it once it is done. The quest you follow shows the way along its route. Needs Route." },
 		{ type = "toggle", key = "turnInLine", name = "Turn-in Line",
@@ -139,7 +143,11 @@ local TEXT_X = 28            -- the titles' left edge, past the map button's col
 local BULLET_X = 8           -- an objective's dash (and a turn-in line), from TEXT_X
 local LINE_X = 20            -- an objective's text, from TEXT_X: past the dash
 local ITEM_SIZE = 26         -- a quest item's button
-local PIP_SIZE = 9           -- a difficulty pip on parchment (QuestInk)
+local MARK_SIZE = 20         -- a quest's mark in the kit's round rim (the kit's look; the game's map button else)
+-- (0.24.0, the chat's look: the user's pick B / C of BuildData/output/tracker_look_sketch, 2026-10-15) in the kit's
+-- look a line hangs from the title's own column: an objective's dash under the title's gem, its words past it, a
+-- turn-in line from the gem's edge; the game's look keeps the game tracker's columns (BULLET_X, LINE_X)
+local COLUMNS = { kit = { bullet = 0, text = 12 }, game = { bullet = BULLET_X, text = LINE_X } }
 local FALLBACK_W, FALLBACK_H = 260, 520
 
 --------------------------------------------------------------------------------
@@ -772,68 +780,32 @@ local function BuildKitLook()
 		return looks.kit
 	end
 	looks.kit = false
-	local Kit = MelloUI.Kit
-	if not (Kit and Kit.NineSlice) then
+	local Kit, W = MelloUI.Kit, MelloUI.Widgets
+	if not (Kit and type(W) == "table" and W.Panel and W.Solid) then
 		return false
 	end
+	-- (0.24.0, the chat's look: the user's pick B / C of BuildData/output/tracker_look_sketch, 2026-10-15: "B and c
+	-- look nice, get on it") the whisper window's frame: the palette's dark panel (W.Panel), the kit's parchment sheet
+	-- over it while the tracker's parchment is on (its area: Kit:SetParchment shows and hides it), no stone rails and
+	-- no title plate; the title in small caps at the left on a hairline, as the whisper window's
 	local holder = CreateFrame("Frame", nil, frame)
 	holder:SetAllPoints(frame)
 	holder:SetFrameLevel(frame:GetFrameLevel())
 	holder:EnableMouse(false)
-	local ok, skin = pcall(Kit.NineSlice, Kit, holder, { prefix = Kit.framePrefix, gems = false,
-		scale = (Kit.scale or 1) * (Kit.frameScale or 1) })
-	if not ok then
-		holder:Hide()
-		return false
-	end
-	if skin and Kit.ParchmentSheet then
-		Kit:ParchmentSheet(skin, holder, { area = "questTracker" })
-	end
-	-- no eye strain (user, 2026-09-24: "too much small text over a plain
-	-- brown border is just an eye strain" / "apply the eye strain rule to all
-	-- existing windows"; WINDOW-RULES 2e): the tracker is all quest text, so
-	-- on the stone look (its parchment off) the stone inside the rails lies
-	-- under the palette's inner panel; a region of the skin between the stone
-	-- and the sheet, switched against the sheet by Kit:SetParchment
-	if skin and Kit.StoneDim then
-		Kit:StoneDim(skin, { area = "questTracker" })
-	end
-	-- the title plate across the top, as on the game's tracker
-	local plateHolder = CreateFrame("Frame", nil, header)
-	plateHolder:SetAllPoints(header)
-	plateHolder:SetFrameLevel(header:GetFrameLevel())
-	local okP, plate = pcall(Kit.Strip, Kit, plateHolder, "tabs/top", { state = "title", scale = Kit.scale })
-	if okP and plate then
-		plate:ClearAllPoints()
-		plate:SetPoint("LEFT", plateHolder, "LEFT", -4, 0)
-		plate:SetPoint("RIGHT", plateHolder, "RIGHT", 4, 0)
-		if plate.FitHeight then
-			pcall(plate.FitHeight, plate, HEADER_H + 10)
-			if plate.height then
-				plate:SetHeight(plate.height)
-			end
-		end
-	end
-	-- the UI shade (0.14.0; the ui-shade-plan memory: a soft dark shade that
-	-- follows the element's outline; the Tracker area in Dynamic UI): the
-	-- rails' outline and the title plate, drawn by the tracker's shade frame
-	-- one level under it. The rails' shadow is outside only and the plate's
-	-- inward half lies under the stone, so nothing darkens the stone or the
-	-- parchment sheet. The list's own pieces (the section bands, the thumb,
-	-- the item slots) lie inside the rails: inner pieces, no shade (user,
-	-- 2026-09-26: outline pieces only). Shown and hidden with this look (the
-	-- partners follow the skin and the plate's strip), made at the shade's
-	-- pace (Kit:ShadeElement, Modules/KitShade.lua).
+	W.Panel(holder, { on = true, alpha = 0.94 })
+	local sheet = Kit.ParchmentSheet and Kit:ParchmentSheet(holder, frame, { rect = frame, margin = 3, area = "questTracker" })
+	local hair = W.Solid(holder, "ARTWORK", "border")
+	hair:SetHeight(1)
+	hair:SetPoint("TOPLEFT", header, "BOTTOMLEFT", INSET - 2, 0)
+	hair:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", -(INSET - 2), 0)
+	-- the UI shade (0.14.0; the ui-shade-plan memory: a soft dark shade that follows the element's outline; the
+	-- Tracker area in Dynamic UI): the panel's rectangle (a plain frame's square shade), drawn by the tracker's shade
+	-- frame one level under it, outside only, so nothing darkens the panel or the paper. Shown and hidden with this
+	-- look, made at the shade's pace (Kit:ShadeElement, Modules/KitShade.lua).
 	if Kit.ShadeElement then
-		local el = Kit:ShadeElement(frame, "tracker")
-		if skin then
-			el:Add(skin)
-		end
-		if okP and plate then
-			el:Add(plate)
-		end
+		Kit:ShadeElement(frame, "tracker"):Add(holder, { shape = "shade/square" })
 	end
-	looks.kit = { holder = holder, plate = plateHolder, strip = okP and plate or nil }
+	looks.kit = { holder = holder, sheet = sheet, hair = hair }
 	return looks.kit
 end
 
@@ -858,24 +830,10 @@ local function BuildPlainLook()
 	return looks.plain
 end
 
--- A collapse toggle on its plate's rail just short of the right gem
--- (user's sketch, 2026-09-23: the green marks left of the gems -- not on
--- them). The spot as a share of the right cap's canvas, measured on the art
--- (the gems' centres: 0.70 on the title cap, 0.87 on the header cap; the
--- caps carry no gem box); without the kit, at `rel`'s right edge by `x`.
-local TITLE_GEM = { 0.47, 0.50 }     -- tabs/top_cap_r_title
-local HEADER_GEM = { 0.61, 0.56 }    -- lists/header_cap_r
--- `left`: the same spot mirrored on the left cap (the caps are each other's
--- mirror: Nearest First's arrow, 0.14.0); without the kit at `rel`'s left
--- edge by `x`
-local function OnGem(toggle, strip, gem, rel, x, left)
+-- A toggle at its row's edge: `x` from the right (`left`: from the left)
+local function AtEdge(toggle, rel, x, left)
 	toggle:ClearAllPoints()
-	local cap = strip and (left and strip.capL or strip.capR)
-	local w, h = strip and (left and strip.wl or strip.wr), strip and strip.height
-	local dropped = strip and (left and strip.noL or not left and strip.noR)
-	if cap and not dropped and type(w) == "number" and type(h) == "number" and w > 0 and h > 0 then
-		toggle:SetPoint("CENTER", cap, "TOPLEFT", left and w * (1 - gem[1]) or w * gem[1], -h * gem[2])
-	elseif left then
+	if left then
 		toggle:SetPoint("LEFT", rel, "LEFT", x, 0)
 	else
 		toggle:SetPoint("RIGHT", rel, "RIGHT", x, 0)
@@ -970,6 +928,13 @@ function Motion.Size(fs, text)
 	return m:GetStringWidth() or 0, m:GetStringHeight() or 0
 end
 
+-- the string a line's count is in: its own at the line's right in the
+-- chat's look (PutLine's fs.count), else the line
+function Motion.Src(fs)
+	local c = fs.count
+	return (c and c:IsShown()) and c or fs
+end
+
 -- line fs counted up from `before` (its line i of entry key, as Progress
 -- names it across rebuilds)
 function Motion.Count(fs, key, i, before)
@@ -977,22 +942,24 @@ function Motion.Count(fs, key, i, before)
 	if not Motion.On() then
 		return
 	end
-	local text = fs:GetText()
+	local src = Motion.Src(fs)
+	local text = src:GetText()
 	if type(text) ~= "string" or Secret(text) then
 		return
 	end
-	local roll = { fs = fs, key = key, i = i, text = text, landed = false }
-	local _, h = Motion.Size(fs, "0/0")
+	local roll = { fs = fs, src = src, key = key, i = i, text = text, landed = false }
+	local _, h = Motion.Size(src, "0/0")
 	roll.h = h
 	local s, e, _, need = text:find("(%d+)/(%d+)")
 	if s then
 		local prefix = text:sub(1, s - 1)
 		local new, old = text:sub(s, e), before .. "/" .. need
-		local x0 = s > 1 and Motion.Size(fs, prefix) or 0
-		local wNew, wOld = Motion.Size(fs, new), Motion.Size(fs, old)
+		local x0 = s > 1 and Motion.Size(src, prefix) or 0
+		local wNew, wOld = Motion.Size(src, new), Motion.Size(src, old)
 		local w = math.max(wNew, wOld)
 		local W = Motion.W()
-		if W and x0 + w <= (fs:GetWidth() or 0) then
+		-- (a count of its own is as wide as its text: it always fits)
+		if W and (src ~= fs or x0 + w <= (fs:GetWidth() or 0)) then
 			roll.spaced = prefix .. W.SpacerMarkup(wNew) .. text:sub(e + 1)
 			roll.x0, roll.w, roll.new, roll.old = x0, w, new, old
 		end
@@ -1012,7 +979,8 @@ function Motion.Lay(fs, roll)
 		fs.shine:SetSize(Motion.SHINE_W, Motion.SHINE_H)
 	end
 	if roll.spaced then
-		fs:SetText(roll.spaced)
+		local src = roll.src or fs
+		src:SetText(roll.spaced)
 		local r = fs.roller
 		if not r then
 			r = CreateFrame("Frame", nil, block)
@@ -1023,12 +991,12 @@ function Motion.Lay(fs, roll)
 		end
 		r:SetFrameLevel(block:GetFrameLevel() + 2)
 		r:ClearAllPoints()
-		r:SetPoint("TOPLEFT", fs, "TOPLEFT", roll.x0 - 1, 1)
+		r:SetPoint("TOPLEFT", src, "TOPLEFT", roll.x0 - 1, 1)
 		r:SetSize(roll.w + 3, roll.h + 2)
-		local path, size, flags = fs:GetFont()
-		local cr, cg, cb = fs:GetTextColor()
-		local sr, sg, sb, sa = fs:GetShadowColor()
-		local ox, oy = fs:GetShadowOffset()
+		local path, size, flags = src:GetFont()
+		local cr, cg, cb = src:GetTextColor()
+		local sr, sg, sb, sa = src:GetShadowColor()
+		local ox, oy = src:GetShadowOffset()
 		for _, t in ipairs({ r.a, r.b }) do
 			if path then
 				t:SetFont(path, size, flags or "")
@@ -1083,8 +1051,9 @@ function Motion.Land(fs, roll)
 	if fs.roller then
 		fs.roller:Hide()
 	end
-	if roll.spaced and fs:GetText() == roll.spaced then
-		fs:SetText(roll.text)
+	local src = roll.src or fs
+	if roll.spaced and src:GetText() == roll.spaced then
+		src:SetText(roll.text)
 	end
 end
 
@@ -1116,10 +1085,11 @@ function Motion.Keep(fs, key, i)
 	if not roll then
 		return
 	end
-	if roll.key ~= key or roll.i ~= i or fs:GetText() ~= roll.text then
+	local src = Motion.Src(fs)
+	if roll.key ~= key or roll.i ~= i or src ~= (roll.src or fs) or src:GetText() ~= roll.text then
 		Motion.Stop(fs)
 	elseif roll.spaced and not roll.landed then
-		fs:SetText(roll.spaced)
+		src:SetText(roll.spaced)
 	end
 end
 
@@ -1186,9 +1156,9 @@ function Motion.Complete(block, fs)
 	end
 	local anim = MelloUI.Anim
 	anim:From(fs, "alpha", 0, Motion.TURNIN, "outQuad")
-	local poi = block.poi
-	if poi and poi:IsShown() then
-		anim:Pop(poi, Motion.UNFOLD, Motion.UNFOLD_RISE)
+	local mark = (block.mark and block.mark:IsShown()) and block.mark or block.poi
+	if mark and mark:IsShown() then
+		anim:Pop(mark, Motion.UNFOLD, Motion.UNFOLD_RISE)
 	end
 	if not block.sweep then
 		block.sweep = Motion.Glow(block, "OVERLAY")
@@ -1228,7 +1198,7 @@ function Motion.Preview()
 	for _, block in pairs(blocks) do
 		if block:IsShown() and block.questID and not found then
 			for i, fs in ipairs(block.lines) do
-				local text = fs:IsShown() and fs.dash:IsShown() and fs:GetText()
+				local text = fs:IsShown() and fs.dash:IsShown() and Motion.Src(fs):GetText()
 				local n = type(text) == "string" and not Secret(text) and tonumber(text:match("(%d+)/%d+"))
 				if n and not found then
 					found, fi, fn = block, i, n
@@ -1263,11 +1233,34 @@ function Motion.PreviewDone()
 	Motion.preview = nil
 end
 
+-- (0.24.0) the tracker on its parchment sheet: the kit's look with its parchment on (the text in ink)
+function Art.Paper()
+	local Kit = MelloUI.Kit
+	return MelloUI.QuestInk ~= nil and KitCovers() and Kit and Kit.ParchmentOn and Kit:ParchmentOn("questTracker") or false
+end
+
+-- (0.24.0) a heading of the chat's look -- the title, a section's name -- on the paper in the title ink (QuestInk;
+-- its colour watched, so the paint registry's gold of a palette switch is inked over at once), else the palette's
+-- gold through the paint registry, as before
+function Art.Heading(fs, paper)
+	local QI = MelloUI.QuestInk
+	if paper and QI then
+		if QI.WatchColour then
+			QI.WatchColour(fs)
+		end
+		QI.Ink(fs, "title")
+		return
+	end
+	if QI then
+		QI.Plain(fs)
+	end
+	PaintKey(fs, "selectedTrim", "text")
+end
+
 local function ApplyLook()
 	local kitOn = KitCovers() and BuildKitLook()
 	if kitOn then
 		kitOn.holder:Show()
-		kitOn.plate:Show()
 		if looks.plain then
 			looks.plain.holder:Hide()
 		end
@@ -1275,7 +1268,6 @@ local function ApplyLook()
 		BuildPlainLook().holder:Show()
 		if looks.kit then
 			looks.kit.holder:Hide()
-			looks.kit.plate:Hide()
 		end
 	end
 	-- the title at Header Text Size: the base font first, then the title face
@@ -1289,27 +1281,29 @@ local function ApplyLook()
 		if kitOn and Kit and Kit.TitleFont then
 			pcall(Kit.TitleFont, Kit, header.text, true, true)   -- (its size is Header Text Size's)
 		end
-		-- on the plate's painted band, not its canvas: the band sits lower in
-		-- the canvas, and the title rode high on it (user, 2026-09-23: "move
-		-- this All Objectives Text to be in the Middle of the Red Background")
-		local dy = 0
-		local strip = kitOn and kitOn.strip
-		local pieces = MelloUI_KitLayout and MelloUI_KitLayout.pieces
-		if strip and pieces and Kit.StripPieceName then
-			local mid = pieces[Kit:StripPieceName(strip.base, "mid", strip.state)]
-			if mid and mid.box then
-				dy = (mid.h / 2 - (mid.box[2] + mid.box[4]) / 2) * (strip.scale or Kit.scale or 1)
-			end
-		end
+		-- (0.24.0) the chat's look: "Objectives" at the left as the whisper window's title; the game's look keeps
+		-- the game tracker's centred "All Objectives"
 		header.text:ClearAllPoints()
-		header.text:SetPoint("CENTER", header, "CENTER", 0, dy)
+		if kitOn then
+			header.text:SetPoint("LEFT", header, "LEFT", INSET, 0)
+			header.text:SetText(rawget(_G, "OBJECTIVES_TRACKER_LABEL") or "Objectives")
+		else
+			header.text:SetPoint("CENTER", header, "CENTER", 0, 0)
+			header.text:SetText(TRACKER_ALL_OBJECTIVES or "All Objectives")
+		end
+		Art.Heading(header.text, kitOn and Art.Paper())
 	end
+	-- the fold at the right; Nearest First's arrow beside it in the chat's look, at the left in the game's
 	if header and header.toggle then
-		OnGem(header.toggle, kitOn and kitOn.strip, TITLE_GEM, header, -4)
+		AtEdge(header.toggle, header, kitOn and -(INSET - 4) or -4)
 	end
-	-- Nearest First's arrow, the same spot on the left cap
 	if header and header.nearest then
-		OnGem(header.nearest, kitOn and kitOn.strip, TITLE_GEM, header, 4, true)
+		if kitOn and header.toggle then
+			header.nearest:ClearAllPoints()
+			header.nearest:SetPoint("RIGHT", header.toggle, "LEFT", -6, 0)
+		else
+			AtEdge(header.nearest, header, 4, true)
+		end
 		Near.RefreshToggle()
 	end
 end
@@ -1404,6 +1398,293 @@ local function RoutePinned()
 	return ok and MelloUI.Safe.Number(id) or nil
 end
 
+-- (0.24.0) The clicks as the game's tracker has them (the user, 2026-10-15: "our custom clicks are actually making
+-- us loose some of the default functionality, we should be navigating to a quest just by clicking the icon, and stop
+-- navigation by deselecting it again"; Blizzard_QuestObjectiveTracker.lua's OnBlockHeaderClick, POIButton.lua's
+-- OnClick): a quest's mark follows it or lets it go; its title and lines open it on the map, a Shift-click links it
+-- into the chat line being typed (else stops watching it), a right-click opens the game's menu for a quest. The
+-- game's own functions and words where it has them (rawget: a client without one goes without that part). One
+-- table: the file's locals.
+local Act = {}
+
+-- a game string, or ours where the client has none
+function Act.Text(name, fallback)
+	local v = rawget(_G, name)
+	return type(v) == "string" and v or fallback
+end
+
+-- the game's modified click (its key bindings: Shift by default), Shift where the client has none
+function Act.Modified(action)
+	local fn = rawget(_G, "IsModifiedClick")
+	if type(fn) == "function" then
+		local ok, yes = pcall(fn, action)
+		return ok and yes and true or false
+	end
+	return IsShiftKeyDown() and true or false
+end
+
+-- the quest linked into the chat line being typed (the game's chat-link click); true when it was
+function Act.Link(id)
+	local util = rawget(_G, "ChatFrameUtil")
+	if not (type(util) == "table" and util.TryInsertQuestLinkForQuestID and Act.Modified("CHATLINK")) then
+		return false
+	end
+	local ok, done = pcall(util.TryInsertQuestLinkForQuestID, id)
+	return ok and done and true or false
+end
+
+-- the quest's link put in the chat (the menu's): into the line being typed, else a new line opened with it
+function Act.LinkInChat(id)
+	local getLink, util = rawget(_G, "GetQuestLink"), rawget(_G, "ChatFrameUtil")
+	if type(getLink) ~= "function" or type(util) ~= "table" then
+		return
+	end
+	local ok, link = pcall(getLink, id)
+	link = ok and Plain(link) or nil
+	if type(link) ~= "string" then
+		return
+	end
+	local okI, done = pcall(util.InsertLink, link)
+	if not (okI and done) and util.OpenChat then
+		pcall(util.OpenChat, link)
+	end
+end
+
+function Act.Unwatch(id)
+	if C_QuestLog and C_QuestLog.RemoveQuestWatch then
+		pcall(C_QuestLog.RemoveQuestWatch, id)
+	end
+end
+
+-- the quest followed now (the game's super-track, or Route's own pin for it
+-- while that holds the game's tracking), and Route's pinned quest; asked at
+-- the click, never the last rebuild's
+function Act.Followed()
+	local current = C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID()
+	current = Plain(current)
+	local pinned = RoutePinned()
+	if (current == nil or current == 0) and pinned then
+		current = pinned
+	end
+	return current, pinned
+end
+
+-- follow the quest (the game's super-track: its way shown), or let it go when it is followed already
+function Act.Follow(id)
+	if not (C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID) then
+		return
+	end
+	-- followed through Route's pin: letting go lets go of that too, or Route
+	-- would go on following the quest through it
+	local current, pinned = Act.Followed()
+	local want = (current == id) and 0 or id
+	if want == 0 and pinned == id then
+		local R = MelloUI:GetModule("Route")
+		pcall(R.Clear, R)
+	end
+	if securecallfunction then
+		securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, want)
+	else
+		pcall(C_SuperTrack.SetSuperTrackedQuestID, want)
+	end
+end
+
+-- a quest that hands itself in, done (the game shows its completion instead of the map)
+function Act.AutoComplete(id)
+	local Q = C_QuestLog
+	local index = Q and Q.GetLogIndexForQuestID and Plain(Q.GetLogIndexForQuestID(id))
+	local info = index and Q.GetInfo and Q.GetInfo(index)
+	return (type(info) == "table" and Plain(info.isAutoComplete) == true and Q.IsComplete
+		and Plain(Q.IsComplete(id)) == true) and true or false
+end
+
+-- The quest opened (how: nil a click -- a quest that hands itself in its
+-- completion, else the map; "map"; "log" its details in the quest log), the
+-- next frame, out of this click's run. (0.15.0) Never in the Gamepad UI: the
+-- map opened from MelloUI code runs the Gamepad UI's frame manager in
+-- MelloUI's run and blocks its bindings (the Gamepad UI freeze); the player
+-- opens the map there.
+Act.GAMEPAD = "Quest Tracker: in the Gamepad UI, open your map to see this quest's details."
+function Act.Open(id, how)
+	if MelloUI.Safe.GamepadUI() then
+		MelloUI:Print(Act.GAMEPAD)
+		return
+	end
+	C_Timer.After(0, function()
+		-- (the Gamepad UI asked again: turned on since the click)
+		if MelloUI.Safe.GamepadUI() then
+			return
+		end
+		if how == "log" then
+			local util = rawget(_G, "QuestUtil")
+			if type(util) == "table" and type(util.OpenQuestDetails) == "function" and pcall(util.OpenQuestDetails, id) then
+				return
+			end
+		elseif how == nil and Act.AutoComplete(id) then
+			local show = rawget(_G, "ShowQuestComplete")
+			if type(show) == "function" and pcall(show, id) then
+				return
+			end
+		end
+		if QuestMapFrame_OpenToQuestDetails then
+			pcall(QuestMapFrame_OpenToQuestDetails, id)
+		end
+	end)
+end
+
+-- shared with the group: the game's push, for a quest it can share while in a group
+function Act.Shareable(id)
+	local Q = C_QuestLog
+	if not (Q and Q.IsPushableQuest and IsInGroup and IsInGroup()) then
+		return false
+	end
+	local ok, yes = pcall(Q.IsPushableQuest, id)
+	return ok and Plain(yes) == true
+end
+
+function Act.Share(id)
+	local push = rawget(_G, "QuestLogPushQuest")
+	local index = C_QuestLog.GetLogIndexForQuestID and Plain(C_QuestLog.GetLogIndexForQuestID(id))
+	if type(push) == "function" and index then
+		pcall(push, index)
+	end
+end
+
+function Act.CanAbandon(id)
+	local Q = C_QuestLog
+	if not (Q and Q.CanAbandonQuest and Q.SetSelectedQuest and Q.SetAbandonQuest and Q.AbandonQuest) then
+		return false
+	end
+	local ok, yes = pcall(Q.CanAbandonQuest, id)
+	return ok and Plain(yes) == true
+end
+
+-- the quest set to be abandoned, as the game's quest log sets it (selected,
+-- then marked); returns the selection it had, to put back
+function Act.Pick(id)
+	local Q = C_QuestLog
+	local was = Q.GetSelectedQuest and Plain(Q.GetSelectedQuest()) or nil
+	pcall(Q.SetSelectedQuest, id)
+	pcall(Q.SetAbandonQuest)
+	return was
+end
+
+-- Abandon, asked first with MelloUI's question (no StaticPopup: the game's
+-- ABANDON_QUEST question, in its words), naming the items it destroys as the
+-- game's does
+function Act.Abandon(id)
+	local Q = C_QuestLog
+	if not Act.CanAbandon(id) then
+		return
+	end
+	local was = Act.Pick(id)
+	local names = {}
+	if Q.GetAbandonQuestItems then
+		local ok, items = pcall(Q.GetAbandonQuestItems)
+		for _, itemID in ipairs(ok and type(items) == "table" and items or {}) do
+			local name = C_Item and C_Item.GetItemNameByID and Plain(C_Item.GetItemNameByID(itemID))
+			if type(name) == "string" then
+				names[#names + 1] = name
+			end
+		end
+	end
+	if was ~= nil then
+		pcall(Q.SetSelectedQuest, was)
+	end
+	local title = Plain(Q.GetTitleForQuestID and Q.GetTitleForQuestID(id)) or ""
+	local ok, text
+	if #names > 0 then
+		ok, text = pcall(string.format, Act.Text("ABANDON_QUEST_CONFIRM_WITH_ITEMS",
+			"Abandon \"%s\"? These items will be destroyed: %s"), title, table.concat(names, ", "))
+	else
+		ok, text = pcall(string.format, Act.Text("ABANDON_QUEST_CONFIRM", "Abandon \"%s\"?"), title)
+	end
+	MelloUI:Confirm({
+		text = ok and text or title,
+		accept = Act.Text("ABANDON_QUEST_ABBREV", "Abandon"),
+		onAccept = function()
+			local before = Act.Pick(id)
+			pcall(Q.AbandonQuest)
+			if before ~= nil then
+				pcall(Q.SetSelectedQuest, before)
+			end
+		end,
+	})
+end
+
+-- The game's menu for a quest (its tracker's: follow, the quest log, the
+-- map, stop tracking, share, abandon), and Link in Chat (the game's
+-- Gamepad UI line) for linking without Shift. Not in the Gamepad UI (as the
+-- map: Act.Open).
+function Act.Menu(block, id)
+	if MelloUI.Safe.GamepadUI() then
+		MelloUI:Print(Act.GAMEPAD)
+		return
+	end
+	local menu = rawget(_G, "MenuUtil")
+	if not (type(menu) == "table" and menu.CreateContextMenu) then
+		Act.Open(id, "map")
+		return
+	end
+	menu.CreateContextMenu(block, function(_, root)
+		local title = C_QuestLog.GetTitleForQuestID and Plain(C_QuestLog.GetTitleForQuestID(id))
+		if type(title) == "string" then
+			root:CreateTitle(title)
+		end
+		root:CreateButton(Act.Followed() == id and Act.Text("STOP_SUPER_TRACK_QUEST", "Stop Following")
+			or Act.Text("SUPER_TRACK_QUEST", "Follow"), function()
+			Act.Follow(id)
+		end)
+		root:CreateButton(Act.Text("OBJECTIVES_VIEW_IN_QUESTLOG", "Open in Quest Log"), function()
+			Act.Open(id, "log")
+		end)
+		root:CreateButton(Act.Text("OBJECTIVES_SHOW_QUEST_MAP", "Show on Map"), function()
+			Act.Open(id, "map")
+		end)
+		root:CreateButton(Act.Text("OBJECTIVES_STOP_TRACKING", "Stop Tracking"), function()
+			Act.Unwatch(id)
+		end)
+		if Act.Shareable(id) then
+			root:CreateButton(Act.Text("SHARE_QUEST", "Share Quest"), function()
+				Act.Share(id)
+			end)
+		end
+		root:CreateButton(Act.Text("SHARE_IN_CHAT", "Link in Chat"), function()
+			Act.LinkInChat(id)
+		end)
+		if Act.CanAbandon(id) then
+			root:CreateButton(Act.Text("ABANDON_QUEST_ABBREV", "Abandon"), function()
+				Act.Abandon(id)
+			end)
+		end
+	end)
+end
+
+-- the quest's mark (the kit's round rim, or the game's map button): follow
+-- it, or let it go when it is followed (the game's map button: a click on the
+-- selected one stops it); not followed, a chat-link click links it and a
+-- Shift-click stops watching it, as on the game's
+function Act.MarkClick(block, button)
+	local id = block and block.questID
+	if not id then
+		return
+	end
+	if button == "RightButton" then
+		Act.Menu(block, id)
+		return
+	end
+	if Act.Followed() ~= id then
+		if Act.Link(id) then
+			return
+		end
+		if Act.Modified("QUESTWATCHTOGGLE") then
+			Act.Unwatch(id)
+			return
+		end
+	end
+	Act.Follow(id)
+end
+
 local function OnBlockClick(block, button)
 	if block.recipeID then
 		if IsShiftKeyDown() and button ~= "RightButton" then
@@ -1420,47 +1701,56 @@ local function OnBlockClick(block, button)
 		return
 	end
 	if button == "RightButton" then
-		-- (0.15.0) Never in the Gamepad UI: the map opened from MelloUI code
-		-- runs the Gamepad UI's frame manager in MelloUI's run and blocks its
-		-- bindings (the Gamepad UI freeze). The player opens the map there.
-		if MelloUI.Safe.GamepadUI() then
-			MelloUI:Print("Quest Tracker: in the Gamepad UI, open your map to see this quest's details.")
-			return
-		end
-		-- next frame, out of this click's (MelloUI's) execution; the Gamepad
-		-- UI asked again, turned on since the click
-		C_Timer.After(0, function()
-			if QuestMapFrame_OpenToQuestDetails and not MelloUI.Safe.GamepadUI() then
-				pcall(QuestMapFrame_OpenToQuestDetails, id)
-			end
-		end)
-	elseif IsShiftKeyDown() then
-		if C_QuestLog and C_QuestLog.RemoveQuestWatch then
-			pcall(C_QuestLog.RemoveQuestWatch, id)
-		end
-	elseif C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
-		local current = C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID()
-		current = Plain(current)
-		-- followed through Route's pin: a click lets go of that too, or Route
-		-- would go on following the quest through it
-		local pinned = RoutePinned()
-		if (current == nil or current == 0) and pinned then
-			current = pinned
-		end
-		local want = (current == id) and 0 or id
-		if want == 0 and pinned == id then
-			local R = MelloUI:GetModule("Route")
-			pcall(R.Clear, R)
-		end
-		if securecallfunction then
-			securecallfunction(C_SuperTrack.SetSuperTrackedQuestID, want)
-		else
-			pcall(C_SuperTrack.SetSuperTrackedQuestID, want)
-		end
+		Act.Menu(block, id)
+	elseif Act.Link(id) then
+		return
+	elseif Act.Modified("QUESTWATCHTOGGLE") then
+		Act.Unwatch(id)
+	else
+		Act.Open(id)
 	end
 end
 
-local function OnBlockEnter(block)
+-- the hover look: in the chat's look the whisper window's (the person under
+-- the pointer washed, the open one more: Act.Washed), a faint gold wash else
+function Act.Lit(block, on)
+	if block.kit then
+		if not block.isFollowed and block.fill then
+			block.fill:SetAlpha(0.35)
+			block.fill:SetShown(on)
+		end
+		return
+	end
+	if block.highlight then
+		block.highlight:SetShown(on)
+	end
+end
+
+-- the followed quest washed and marked at its left, as the whisper window's
+-- open person (the chat's look); none in the game's (its map button lit)
+function Act.Washed(block, followed)
+	block.isFollowed = followed and true or false
+	local on = block.kit and block.isFollowed
+	if block.fill then
+		block.fill:SetAlpha(0.6)
+		block.fill:SetShown(on)
+		block.edge:SetShown(on)
+	end
+	if block.highlight then
+		block.highlight:Hide()
+	end
+end
+
+Act.HINT = {
+	block = "Click: show it on the map  -  Shift-click: stop watching (while typing: link it)  -  Right-click: more",
+	mark = "Click: follow it, the way shown  -  Click again: stop following  -  Right-click: more",
+	-- (the Gamepad UI: no map, no menu from here -- Act.Open)
+	blockPad = "Shift-click: stop watching",
+	markPad = "Click: follow it  -  Click again: stop following",
+}
+
+-- `onMark`: under the quest's mark (its own hint: following)
+local function OnBlockEnter(block, onMark)
 	if block.recipeID then
 		GameTooltip:SetOwner(block, "ANCHOR_LEFT")
 		local link
@@ -1474,9 +1764,7 @@ local function OnBlockEnter(block)
 		local c = MelloUI.Look.Palette(Art.AREA).text   -- (a hint: small text is never mutedText; the tracker's look off: the game's white)
 		GameTooltip:AddLine("Click: open the recipe  -  Shift-click: stop tracking", c[1], c[2], c[3], true)
 		GameTooltip:Show()
-		if block.highlight then
-			block.highlight:Show()
-		end
+		Act.Lit(block, true)
 		return
 	end
 	if not block.questID then
@@ -1487,21 +1775,70 @@ local function OnBlockEnter(block)
 		GameTooltip:SetText(block.title:GetText() or "")
 	end
 	local c = MelloUI.Look.Palette(Art.AREA).text   -- (the tracker's look off: the game's white)
-	-- (the Gamepad UI: no right-click to the quest log, OnBlockClick)
-	local hint = MelloUI.Safe.GamepadUI() and "Click: follow  -  Shift-click: stop watching"
-		or "Click: follow  -  Shift-click: stop watching  -  Right-click: quest log"
+	-- its difficulty in words (the gem's colour on the paper: 0.24.0, the five pips' words before)
+	local QI = MelloUI.QuestInk
+	local name = block.tier and QI and QI.TIER_NAME and QI.TIER_NAME[block.tier]
+	if name then
+		GameTooltip:AddLine("Difficulty: " .. name, c[1], c[2], c[3], true)
+	end
+	local pad = MelloUI.Safe.GamepadUI()
+	local hint = onMark and (pad and Act.HINT.markPad or Act.HINT.mark) or (pad and Act.HINT.blockPad or Act.HINT.block)
 	GameTooltip:AddLine(hint, c[1], c[2], c[3], true)
 	GameTooltip:Show()
-	if block.highlight then
-		block.highlight:Show()
-	end
+	Act.Lit(block, true)
 end
 
 local function OnBlockLeave(block)
 	GameTooltip:Hide()
-	if block.highlight then
-		block.highlight:Hide()
+	Act.Lit(block, false)
+end
+
+-- (0.24.0) a quest's mark in the chat's look: the kit's round rim on a dark
+-- disc, as the chat's tabs (W.GlyphButton), the game's own quest glyph in it
+-- -- the hand-in ? once done, the ... while under way (the game's map
+-- button's art, POIButton.lua) -- made at its block's first quest in the
+-- kit's look; its scripts shared by every mark
+Act.MARK_ATLAS = { done = "UI-QuestIcon-TurnIn-Normal", open = "Quest-In-Progress-Icon-yellow" }
+Act.OnMarkClick = Perf.Shared("OnClick on a Quest Tracker mark", function(m, button)
+	Act.MarkClick(m.block, button)
+end, "script")
+Act.OnMarkEnter = Perf.Shared("OnEnter on a Quest Tracker mark", function(m)
+	OnBlockEnter(m.block, true)
+end, "script")
+Act.OnMarkLeave = Perf.Shared("OnLeave on a Quest Tracker mark", function(m)
+	OnBlockLeave(m.block)
+end, "script")
+Act.OnMarkWheel = Perf.Shared("OnMouseWheel on a Quest Tracker mark", function(_, delta)
+	Scroll(delta)
+end, "script")
+
+function Act.Mark(block)
+	local m = block.mark
+	if m then
+		return m
 	end
+	local W = MelloUI.Widgets
+	if not (type(W) == "table" and W.GlyphButton) then
+		return nil
+	end
+	m = W.GlyphButton(block, MARK_SIZE)
+	m.block = block
+	m.glyph = m:CreateTexture(nil, "ARTWORK", nil, 3)
+	m.glyph:SetPoint("CENTER", m, "CENTER", 0, 0)
+	m.glyph:SetSize(MARK_SIZE * 0.62, MARK_SIZE * 0.62)
+	Perf.SetScript(m, "OnClick", Act.OnMarkClick)
+	Perf.SetScript(m, "OnEnter", Act.OnMarkEnter)
+	Perf.SetScript(m, "OnLeave", Act.OnMarkLeave)
+	m:EnableMouseWheel(true)
+	Perf.SetScript(m, "OnMouseWheel", Act.OnMarkWheel)
+	m:SetKit(MelloUI.Kit)   -- (after its scripts: the kit's rim hooks them)
+	block.mark = m
+	-- (a new part of a block: the Fader hooks it for On Mouseover, as NewBlock's)
+	local fader = MelloUI.Fader
+	if type(fader) == "table" and fader.Rehook then
+		fader:Rehook()
+	end
+	return m
 end
 
 local function NewBlock()
@@ -1526,19 +1863,35 @@ local function NewBlock()
 	block.highlight:SetAllPoints(block)
 	PaintKey(block.highlight, "selectedTrim", "fill", 0.08)   -- (a faint gold wash under the pointer)
 	block.highlight:Hide()
+	-- (0.24.0) the chat's look: the whisper window's person row -- the
+	-- palette's hover washed under the pointer, more on the followed quest,
+	-- with the selected gold at its left (Act.Lit, Act.Washed)
+	local W = MelloUI.Widgets
+	if type(W) == "table" and W.Solid then
+		block.fill = W.Solid(block, "BACKGROUND", "hover", 0.6)
+		block.fill:SetPoint("TOPLEFT", block, "TOPLEFT", 0, 3)
+		block.fill:SetPoint("BOTTOMRIGHT", block, "BOTTOMRIGHT", 0, -3)
+		block.fill:Hide()
+		block.edge = W.Solid(block, "ARTWORK", "selectedTrim")
+		block.edge:SetWidth(2)
+		block.edge:SetPoint("TOPLEFT", block.fill, "TOPLEFT", 0, 0)
+		block.edge:SetPoint("BOTTOMLEFT", block.fill, "BOTTOMLEFT", 0, 0)
+		block.edge:Hide()
+	end
 	block.followed = block:CreateTexture(nil, "ARTWORK")
 	block.followed:SetSize(10, 10)
 	MelloUI.Look.Watch(block.followed, Art.Followed, Art.AREA)   -- (the kit's gem, or the game's map pin icon)
 	-- the quest's map button, the game's own (POIButtonTemplate, as on the
 	-- game's tracker: "..." in progress, "?" ready to turn in, lit while
-	-- followed). Its click is the block's (follow / stop following), never
+	-- followed) in the game's look -- the kit's look has its mark (Act.Mark).
+	-- Its click is the mark's (follow / stop following, Act.MarkClick), never
 	-- the template's own, so no MelloUI value runs through the game's code.
 	-- A client without the template keeps the small gem for the followed one.
 	local okP, poi = pcall(CreateFrame, "Button", nil, block, "POIButtonTemplate")
 	if okP and poi and poi.SetQuestID then
 		poi:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-		Perf.SetScript(poi, "OnClick", function(_, button) OnBlockClick(block, button) end)
-		Perf.SetScript(poi, "OnEnter", function() OnBlockEnter(block) end)
+		Perf.SetScript(poi, "OnClick", function(_, button) Act.MarkClick(block, button) end)
+		Perf.SetScript(poi, "OnEnter", function() OnBlockEnter(block, true) end)
 		Perf.SetScript(poi, "OnLeave", function() OnBlockLeave(block) end)
 		poi:EnableMouseWheel(true)
 		Perf.SetScript(poi, "OnMouseWheel", function(_, delta) Scroll(delta) end)
@@ -1591,10 +1944,10 @@ local function ReleaseBlock(block)
 end
 
 -- On the parchment sheet the text is dark ink and a quest's difficulty is
--- in pips beside its title (QuestInk; user, 2026-09-23)
+-- its gem before its title (QuestInk; user, 2026-09-23 -- five pips at its
+-- right until 0.24.0, the chat's class gem since)
 local function Inked()
-	local Kit = MelloUI.Kit
-	return MelloUI.QuestInk ~= nil and KitCovers() and Kit and Kit.ParchmentOn and Kit:ParchmentOn("questTracker") or false
+	return Art.Paper()
 end
 
 -- A line's colour on parchment: done or greyed lines faded, the rest ink
@@ -2083,6 +2436,23 @@ do
 		return w + DIST_GAP > (block.distRoom or 0)
 	end
 
+	-- A side text a step down from the body (a distance, a section's count):
+	-- on parchment the ink's faded shade; else the body text a step down
+	-- (small text is never mutedText, the palette rule; as the Quest List's
+	-- done rows). Read when drawn: a palette switch rebuilds
+	function Near.Faded(fs, ink)
+		local QI = MelloUI.QuestInk
+		if ink and QI then
+			QI.Ink(fs, "faded")
+			return
+		end
+		if QI then
+			QI.Plain(fs)
+		end
+		local c = MelloUI.Look.Palette(Art.AREA).text   -- (the tracker's look off: the game's white)
+		fs:SetTextColor(c[1], c[2], c[3], Near.DIST_ALPHA)
+	end
+
 	-- A block's distance laid while it is filled: right-aligned on its
 	-- title's first line ending at `right`, in the body text a step down (on
 	-- parchment the ink's faded shade); returns the room it takes from the
@@ -2105,19 +2475,7 @@ do
 		end
 		local size = TitleSize() - 1
 		StyleText(fs, size)
-		local QI = MelloUI.QuestInk
-		if ink and QI then
-			QI.Ink(fs, "faded")
-		else
-			if QI then
-				QI.Plain(fs)
-			end
-			-- the body text a step down (small text is never mutedText, the
-			-- palette rule; as the Quest List's done rows). Read when drawn:
-			-- a palette switch rebuilds
-			local c = MelloUI.Look.Palette(Art.AREA).text   -- (the tracker's look off: the game's white)
-			fs:SetTextColor(c[1], c[2], c[3], Near.DIST_ALPHA)
-		end
+		Near.Faded(fs, ink)
 		fs:ClearAllPoints()
 		fs:SetPoint("RIGHT", block, "TOPLEFT", right, -TitleSize() / 2 - 1)
 		local sw = sampleW[size]
@@ -2348,28 +2706,71 @@ local function Line(block, i)
 	return fs
 end
 
+-- (0.24.0) an objective's count ("3/8": the game's "3/8 Kobold Candle" or
+-- "Kobold Candle: 3/8") apart from its words, for the chat's look's count at
+-- the line's right; nil for a line without one (or a secret)
+local function SplitCount(text)
+	if type(text) ~= "string" or Secret(text) then
+		return nil
+	end
+	local count, words = text:match("^(%d+%s*/%s*%d+)%s+(.+)$")
+	if not count then
+		words, count = text:match("^(.-):?%s+(%d+%s*/%s*%d+)$")
+	end
+	if count and words and words ~= "" then
+		return count, words
+	end
+	return nil
+end
+
 -- Line i under a title at y: with `dash`, the dash in its column and the
 -- text hanging past it (a wrapped line starts under the text, as on the
 -- game's tracker); else the text from the dash's column, or with `under`
 -- from the objective text's (a line of the objective above it: what to do
--- first). Returns the next y.
+-- first). The columns are the look's (COLUMNS); in the chat's look an
+-- objective's count stands at the line's right (fs.count). Returns the next y.
 local function PutLine(block, i, text, y, width, dash, r, g, b, under)
 	local fs = Line(block, i)
-	local x = TEXT_X + ((dash or under) and LINE_X or BULLET_X)
-	fs:SetText(text)
+	local cols = block.kit and COLUMNS.kit or COLUMNS.game
+	local x = TEXT_X + ((dash or under) and cols.text or cols.bullet)
+	local count, words
+	if dash and block.kit then
+		count, words = SplitCount(text)
+	end
+	fs:SetText(words or text)
 	-- the palette's colour on the stone; the ink below still judges the
 	-- game's shade (`r`), done or not
 	local sr, sg, sb = StoneColour(block, r, g, b)
 	fs:SetTextColor(sr, sg, sb)
 	InkLine(fs, block.ink, r)
 	InkLine(fs.dash, block.ink, r)
+	local room = 0
+	local c = fs.count
+	if count then
+		if not c then
+			c = block:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+			c:SetJustifyH("RIGHT")
+			c:SetWordWrap(false)
+			fs.count = c
+		end
+		StyleText(c, TitleSize() - 1)
+		c:SetText(count)
+		c:SetTextColor(sr, sg, sb)
+		InkLine(c, block.ink, r)
+		c:ClearAllPoints()
+		c:SetPoint("TOPRIGHT", block, "TOPLEFT", width, -y)
+		c:Show()
+		room = (MelloUI.Safe.Number(c:GetStringWidth()) or 0) + 8
+	elseif c then
+		c:Hide()
+	end
 	fs:ClearAllPoints()
 	fs:SetPoint("TOPLEFT", block, "TOPLEFT", x, -y)
-	fs:SetWidth(width - x)
+	fs:SetWidth(width - x - room)
 	fs:Show()
 	if dash then
 		fs.dash:ClearAllPoints()
-		fs.dash:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + BULLET_X, -y)
+		fs.dash:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X + cols.bullet, -y)
 		fs.dash:SetTextColor(sr, sg, sb)
 		fs.dash:Show()
 	else
@@ -2407,6 +2808,9 @@ local function HideLines(block, from)
 		local fs = block.lines[i]
 		fs:Hide()
 		fs.dash:Hide()
+		if fs.count then
+			fs.count:Hide()
+		end
 		Motion.Stop(fs)
 		if fs.tick then
 			fs.tick:Hide()
@@ -2484,7 +2888,26 @@ local function FillBlock(block, questID, width, followedID)
 	end
 
 	local followed = followedID == questID
-	local poi = block.poi
+	-- (0.24.0) the chat's look: the quest's mark in the kit's round rim
+	-- (Act.Mark), the followed one washed (Act.Washed); the game's look: the
+	-- game's map button, lit while followed
+	local kit = KitCovers()
+	block.kit = kit
+	local mark = kit and Act.Mark(block) or nil
+	local poi = not mark and block.poi or nil
+	if block.mark and not mark then
+		block.mark:Hide()
+	end
+	if block.poi and not poi then
+		block.poi:Hide()
+	end
+	if mark then
+		mark.glyph:SetAtlas(complete and Act.MARK_ATLAS.done or Act.MARK_ATLAS.open)
+		-- centred on the title's first line
+		mark:ClearAllPoints()
+		mark:SetPoint("CENTER", block, "TOPLEFT", TEXT_X / 2 - 1, -TitleSize() / 2 - 1)
+		mark:Show()
+	end
 	if poi then
 		-- the game's style for the quest (its own pick where it has one)
 		local util = POIButtonUtil
@@ -2510,7 +2933,8 @@ local function FillBlock(block, questID, width, followedID)
 		poi:SetPoint("CENTER", block, "TOPLEFT", TEXT_X / 2 - 1, -TitleSize() / 2 - 1)
 		poi:Show()
 	end
-	block.followed:SetShown(followed and not poi)
+	Act.Washed(block, followed)
+	block.followed:SetShown(followed and not poi and not mark)
 	block.followed:ClearAllPoints()
 	block.followed:SetPoint("CENTER", block, "TOPLEFT", TEXT_X / 2 - 1, -TitleSize() / 2 - 1)
 
@@ -2518,26 +2942,21 @@ local function FillBlock(block, questID, width, followedID)
 	StyleText(t, TitleSize())
 	t:ClearAllPoints()
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
-	-- on parchment: the title in ink, the difficulty in pips at the right of
-	-- its first line (left of the item); else the game's difficulty colour
+	-- on parchment: the title in ink, its difficulty the gem before it (the
+	-- chat's class gem in QuestInk's tier colour: 0.24.0, five pips at its
+	-- right before -- the user's pick B of the tracker sketch, the title gets
+	-- its line back); else the game's difficulty colour
 	local QI = MelloUI.QuestInk
 	local ink = Inked()
-	block.ink = ink
+	block.ink, block.level = ink, level
 	local tier = ink and QI.TierForQuest(questID, level) or nil
-	local pipsRoom = 0
-	if tier then
-		block.pips = block.pips or QI.Pips(block, PIP_SIZE)
-		block.pips:ClearAllPoints()
-		block.pips:SetPoint("RIGHT", block, "TOPLEFT", textWidth, -TitleSize() / 2 - 1)
-		block.pips:SetTier(tier)
-		pipsRoom = QI.PipsWidth(PIP_SIZE) + 6
-	elseif block.pips then
-		block.pips:SetTier(nil)
-	end
-	-- its distance left of the pips (Nearest first, above; 0 when none shows)
-	local distRoom = Near.Lay(block, questID, textWidth - pipsRoom, ink)
-	t:SetWidth(textWidth - TEXT_X - pipsRoom - distRoom)
-	t:SetText(level and string.format("[%d] %s", level, title) or title)
+	block.tier = tier
+	local c = tier and QI.TIER_COLOUR[tier]
+	local gem = c and QI.GemCode and QI.GemCode(c[1], c[2], c[3], TitleSize()) or ""
+	-- its distance at the right of its first line (Nearest first, above; 0 when none shows)
+	local distRoom = Near.Lay(block, questID, textWidth, ink)
+	t:SetWidth(textWidth - TEXT_X - distRoom)
+	t:SetText(gem .. (level and string.format("[%d] %s", level, title) or title))
 	t:SetTextColor(DifficultyColor(level))
 	if ink then
 		QI.Ink(t, tier == 1 and "faded" or "title")
@@ -2603,7 +3022,7 @@ local function FillBlock(block, questID, width, followedID)
 		Near.filled[questID] = Motion.hold[questID] and -1 or (finished + hinted * 100)
 	end
 	HideLines(block, n + 1)
-	local h = math.max(y, link and ITEM_SIZE + 4 or 0, poi and 22 or 0)
+	local h = math.max(y, link and ITEM_SIZE + 4 or 0, (poi or mark) and 22 or 0)
 	block:SetHeight(h)
 	block:Show()
 	return h
@@ -2741,6 +3160,11 @@ local function FillRecipeBlock(block, entry, width)
 	block.item.itemLink = nil
 	block.item:Hide()
 	block.followed:Hide()
+	block.kit, block.tier = KitCovers(), nil
+	if block.mark then
+		block.mark:Hide()
+	end
+	Act.Washed(block, false)
 	if block.dist then
 		-- (a quest's block before: no distance on a recipe)
 		block.dist:Hide()
@@ -2768,13 +3192,10 @@ local function FillRecipeBlock(block, entry, width)
 	t:SetPoint("TOPLEFT", block, "TOPLEFT", TEXT_X, 0)
 	t:SetWidth(width - TEXT_X)
 	t:SetText((name or ("Recipe " .. entry.id)) .. (entry.recraft and " (recraft)" or ""))
-	-- a recipe on parchment: its name in ink, no pips (no difficulty); on
+	-- a recipe on parchment: its name in ink, no gem (no difficulty); on
 	-- the stone, the palette's gold
 	block.ink = Inked()
 	t:SetTextColor(StoneColour(block, 1, 0.82, 0))
-	if block.pips then
-		block.pips:SetTier(nil)
-	end
 	InkLine(t, block.ink, 1)
 	if block.ink and MelloUI.QuestInk then
 		MelloUI.QuestInk.Ink(t, "title")
@@ -2803,9 +3224,10 @@ local function FillRecipeBlock(block, entry, width)
 	return y
 end
 
--- A section's header in the list ("Quests", "Professions"): the kit's list
--- header band under the name while the reskin covers the tracker, a thin
--- gold line otherwise
+-- A section's header in the list ("Quests", "Professions"): in the kit's
+-- look the chat's heading (0.24.0: its name in small caps at the left, how
+-- many it holds beside it, a hairline under it; the kit's band is gone with
+-- the stone), a thin gold line under the centred name otherwise
 local SECTION_H = 24
 local sections = {}
 
@@ -2842,44 +3264,24 @@ local function SectionCollapsed(key)
 	return type(c) == "table" and c[key] == true
 end
 
-local function Section(key, label)
+local function Section(key, label, count)
 	local row = sections[key]
 	if not row then
 		row = CreateFrame("Frame", nil, content)
 		row:SetHeight(SECTION_H)
 		row:EnableMouse(false)
-		local Kit = MelloUI.Kit
-		if Kit and Kit.Strip then
-			local ok, plate = pcall(Kit.Strip, Kit, row, "lists/header", { scale = Kit.scale })
-			if ok and plate then
-				local yoff = 0
-				if plate.FitBox then
-					local okF, off = pcall(plate.FitBox, plate, SECTION_H)
-					yoff = okF and tonumber(off) or 0
-				end
-				plate:ClearAllPoints()
-				plate:SetPoint("LEFT", row, "LEFT", 0, yoff)
-				plate:SetPoint("RIGHT", row, "RIGHT", 0, yoff)
-				if plate.height then
-					plate:SetHeight(plate.height)
-				end
-				row.plate = plate
-			end
-		end
 		row.line = row:CreateTexture(nil, "ARTWORK")
-		PaintKey(row.line, "trim", "fill", 0.8)
 		row.line:SetHeight(1)
 		row.line:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 1)
 		row.line:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 1)
-		-- the name above the band (a child frame draws over its parent's regions)
+		-- the name over the row (a child frame draws over its parent's regions)
 		local layer = CreateFrame("Frame", nil, row)
 		layer:SetAllPoints(row)
 		layer:SetFrameLevel(row:GetFrameLevel() + 6)
-		-- centred as All Objectives is (user, 2026-09-23)
 		row.text = layer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		row.text:SetPoint("CENTER", row, "CENTER", 0, 0)
-		-- (a heading: the palette's gold, kept by the paint registry)
-		PaintKey(row.text, "selectedTrim", "text")
+		-- how many it holds, beside its name (the chat's look)
+		row.count = layer:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		row.count:SetPoint("LEFT", row.text, "RIGHT", 6, 0)
 		row.toggle = MakeToggle(layer, 14, function() return SectionCollapsed(key) end, function()
 			local c = type(M.db.collapsedSections) == "table" and M.db.collapsedSections or {}
 			M.db.collapsedSections = c
@@ -2888,13 +3290,12 @@ local function Section(key, label)
 		end)
 		sections[key] = row
 	end
-	local kit = KitCovers() and row.plate
-	if row.plate then
-		row.plate:SetShown(kit and true or false)
-	end
-	row.line:SetShown(not kit)
+	local kit = KitCovers()
+	local paper = kit and Art.Paper()
+	-- the line: the whisper window's hairline (the palette's border) in the kit's look, the thin gold line else
+	PaintKey(row.line, kit and "border" or "trim", "fill", kit and 1 or 0.8)
 	-- the header font (Fonts' title face) while the reskin covers the
-	-- tracker, as on All Objectives: the base font first (the face keeps
+	-- tracker, as on the title: the base font first (the face keeps
 	-- the size it was given, so a Text Size change must reach it)
 	local Kit = MelloUI.Kit
 	if Kit and Kit.TitleFont and MelloUI.Kept.fontSavedOf and MelloUI.Kept.fontSavedOf[row.text] then
@@ -2904,8 +3305,26 @@ local function Section(key, label)
 	if kit and Kit and Kit.TitleFont then
 		pcall(Kit.TitleFont, Kit, row.text, true, true)   -- (its size is Text Size's)
 	end
+	-- (a heading: the palette's gold, on the paper the title ink)
+	Art.Heading(row.text, paper)
+	row.text:ClearAllPoints()
+	if kit then
+		row.text:SetPoint("LEFT", row, "LEFT", 0, 0)
+	else
+		-- centred as All Objectives is (user, 2026-09-23)
+		row.text:SetPoint("CENTER", row, "CENTER", 0, 0)
+	end
+	local n = kit and tonumber(count)
+	if n then
+		StyleText(row.count, TitleSize() - 1)
+		row.count:SetText(n)
+		Near.Faded(row.count, paper)
+		row.count:Show()
+	else
+		row.count:Hide()
+	end
 	row.toggle.Refresh()
-	OnGem(row.toggle, kit and row.plate, HEADER_GEM, row, -6)
+	AtEdge(row.toggle, row, kit and 0 or -6)
 	row.text:SetText(label)
 	return row
 end
@@ -2978,8 +3397,8 @@ local function Rebuild()
 		row:Hide()
 	end
 	local y = 0
-	local function Head(key, label)
-		local row = Section(key, label)
+	local function Head(key, label, count)
+		local row = Section(key, label, count)
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
 		row:SetWidth(width)
@@ -3000,7 +3419,7 @@ local function Rebuild()
 		y = y + h + BLOCK_GAP
 	end
 	if #quests > 0 then
-		Head("quests", QUESTS_LABEL or "Quests")
+		Head("quests", QUESTS_LABEL or "Quests", #quests)
 		for _, id in ipairs(questsOpen and quests or {}) do
 			Put(id, FillBlock, id, width, followedID)
 		end
@@ -3009,7 +3428,7 @@ local function Rebuild()
 		if #quests > 0 then
 			y = y + 2
 		end
-		Head("professions", TRADE_SKILLS or "Professions")
+		Head("professions", TRADE_SKILLS or "Professions", #recipes)
 		for _, entry in ipairs(recipesOpen and recipes or {}) do
 			Put(RecipeKey(entry), FillRecipeBlock, entry, width)
 		end
@@ -3093,8 +3512,8 @@ local function Build()
 	header.text:SetPoint("CENTER", header, "CENTER", 0, 0)
 	header.text:SetText(TRACKER_ALL_OBJECTIVES or "All Objectives")
 	-- (the title: the palette's gold, as the section names under it and every
-	-- kit window's title; kept by the paint registry)
-	PaintKey(header.text, "selectedTrim", "text")
+	-- kit window's title, kept by the paint registry; on the paper the title
+	-- ink -- both ApplyLook's, Art.Heading)
 	-- the collapse toggle, the kit's minus / plus, on the title plate's
 	-- right gem (placed by ApplyLook)
 	local toggle = MakeToggle(textLayer, 16, function() return M.db.collapsed end, function()
@@ -3350,6 +3769,11 @@ end
 -- function; audit, 2026-09-24, rank 5)
 local function OnParchment(area)
 	if area == "questTracker" and M.isEnabled then
+		-- (0.24.0) the title in ink on the paper, in gold off it (ApplyLook);
+		-- the sheet itself is shown and hidden by Kit:SetParchment
+		if frame then
+			ApplyLook()
+		end
 		MarkDirty()
 	end
 end

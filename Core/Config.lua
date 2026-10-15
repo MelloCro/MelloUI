@@ -135,6 +135,10 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.24.0", lines = {
+		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
+		"Quest Tracker: the game's clicks -- the mark follows a quest, a click opens the map, Shift-click links it, right-click opens the quest menu.",
+	} },
 	{ version = "0.23.1", lines = {
 		"Chat View: the chat and the whisper window keep their history over a /reload and a new login.",
 	} },
@@ -161,20 +165,6 @@ local CHANGELOG = {
 		"Fixed: Minimap: the day / night moon sits in the square map's top right corner, clear of the zone name.",
 		"Fixed: Group Frames: no more stray yellow box beside your party or raid frames when you target someone.",
 		"Fixed: Heal Effects: spamming a heal no longer leaves the light looping on your cast bar after the cast.",
-	} },
-	{ version = "0.21.3", lines = {
-		"World Marker: cleaner and smaller -- a smaller flag mark, a slim still beam, one chevron near the place.",
-		"World Marker: the Wisp (Firefly or Embers) flies from your character to a new destination and lights it.",
-		"Route: Route Draws In -- a new route grows from you to the destination, the flag popping in at its end.",
-		"Route: Arrival Light -- arriving puts the place out in a ring of light, and the arrow's ring closes before it goes.",
-		"See the new animations by command: /mello bags loot legendary, /mello player level ... (/mello help lists them).",
-		"Quest Tracker: Progress Motion -- counts roll over with a light, finished objectives get a tick, a finished quest lights up.",
-		"Bags by Kind: Loot Flight -- loot and quest rewards fly into their slot, the rarer the more; quest money flies in as coins.",
-		"Unit Frames: Level Up -- your level number turns over in a ring of light, and the notice counts the quests it opened.",
-		"From the latest patch: 75 more Forever quests in the Quest List; Big Cooldowns knows Sniper Shot and Will of the Forsaken, Heal Effects Rotmending.",
-		"Big Cooldowns: break-free spells (Will of the Forsaken, Berserker Rage, Escape Artist, the PvP trinket) count as immunities.",
-		"Route knows many more roads and finds better ways; places know the Riverglades and Hyjal flight points, Stormwind Harbor and Coldridge Valley.",
-		"Fixed: Route took the long way, or cross-country, from places whose nearest roads are side roads not joined to the rest.",
 	} },
 }
 local LINKS = {
