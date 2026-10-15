@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1
+
+- Chat View: the chat keeps its history. After a /reload or logging in again, each tab shows its last lines again (up to 150), and the whisper window its conversations (your 30 latest, their last 100 lines, and how many you have not read yet). Battle.net conversations start fresh each login.
+
 ## 0.23.0
 
 - Chat: Chat View (Chat > Chat Frame > Look: Minimal). A quieter chat in one dark panel: a rail of round tabs on its left, one per chat window, each with its name and a count of the lines you have not seen (the mouse wheel scrolls the rail when they do not all fit); each line under its sender's name in their class colour, the channel's short tag ([G] Guild, [T] Trade) and the time, a run of lines from one person under one name; and a row of round buttons under the lines: S, P, R, I, G, Y, W and E open the line you type in on Say, Party, Raid, Instance, Guild, Yell, Whisper or Emote, then Channels, Friends, the Fight History and the chat settings. The mouse wheel scrolls the lines (Shift: faster), links and names click as in the game's chat, and an item or a spell shows its tooltip under the pointer. While you type, the lines rise above the line you type in. Game Windows keeps the game's chat as it was.

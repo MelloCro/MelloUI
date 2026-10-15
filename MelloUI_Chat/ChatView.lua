@@ -53,6 +53,7 @@ local RAIL_W, ROW_H, ICON, LETTER, PAD = 112, 34, 24, 24, 6
 local GAP_RUN, GAP_LINE, GAP_PLAIN, INDENT, RUN_SECONDS = 6, 1, 2, 10, 120
 local CAP, LAY = 300, 40          -- lines kept per tab; rows laid at most (the holder clips what does not fit)
 local SEED = 60                   -- the game's own lines a tab starts with when the view comes on
+local SAVE_LINES = 150            -- lines kept over a logout per tab (MelloUIChatHistory)
 local BOX_LIFT = 28               -- the line you type in, when its height cannot be read
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- (the widgets' round mask)
 
@@ -305,7 +306,7 @@ function View.Line(frame, text, r, g, b, _, _, _, event, args)
 	rec.r, rec.g, rec.b = r or 1, g or 1, b or 1
 	rec.body, rec.headed, rec.key, rec.name, rec.tag = text, false, nil, nil, nil
 	rec.cr, rec.cg, rec.cb = nil, nil, nil
-	rec.at, rec.time = GetTime(), View.Clock()
+	rec.at, rec.time, rec.ts = GetTime(), View.Clock(), time()
 	if type(event) == "string" and type(args) == "table" then
 		local chatType = event:sub(10)   -- CHAT_MSG_<type>
 		if HEADED[chatType] then
@@ -344,6 +345,93 @@ function View.Line(frame, text, r, g, b, _, _, _, event, args)
 		View.offset = math.min(View.offset + 1, buf.count - 1)   -- (scrolled back: the view holds still)
 	end
 	View.Soon()
+end
+
+--------------------------------------------------------------------------------
+-- The history (0.23.1; the user, 2026-10-15: "the chat needs its history saved aswell as the whisper window"): each
+-- tab's newest lines (SAVE_LINES; the combat log's none) kept over a logout or a /reload, per character
+-- (MelloUIChatHistory, MelloUI.toc's), written at PLAYER_LOGOUT -- only while the view was on this session, else the
+-- kept history stays as it was -- and laid back into a tab's ring as the tab is made, before the game's own lines of
+-- this session. A SECRET line is never kept. A line's age comes back with it (its clock, `ts`: runs are not joined
+-- across the gap).
+--------------------------------------------------------------------------------
+
+local function History()
+	local hist = rawget(_G, "MelloUIChatHistory")
+	if type(hist) ~= "table" then
+		hist = {}
+		_G.MelloUIChatHistory = hist
+	end
+	return hist
+end
+View.History = History   -- (the whisper window's)
+
+-- the kept lines of `saveKey` laid into the ring of `bufKey` (oldest first)
+local function Restore(bufKey, saveKey)
+	local hist = rawget(_G, "MelloUIChatHistory")
+	local list = type(hist) == "table" and type(hist.tabs) == "table" and hist.tabs[saveKey]
+	if type(list) ~= "table" then
+		return
+	end
+	local buf = Buffer(bufKey)
+	local now, clock = GetTime(), time()
+	for _, s in ipairs(list) do
+		if type(s) == "table" and type(s.tx) == "string" then
+			buf.last = buf.last % CAP + 1
+			local rec = buf.items[buf.last]
+			if not rec then
+				rec = {}
+				buf.items[buf.last] = rec
+			end
+			if buf.count < CAP then
+				buf.count = buf.count + 1
+			end
+			rec.body, rec.r, rec.g, rec.b = s.tx, Num(s.r) or 1, Num(s.g) or 1, Num(s.b) or 1
+			rec.headed, rec.key, rec.name, rec.tag, rec.time = s.h and true or false, s.k, s.n, s.tg, s.tm
+			rec.ts = Num(s.ts)
+			rec.at = now - math.max(0, clock - (rec.ts or clock))
+			rec.nr, rec.ng, rec.nb = Num(s.nr), Num(s.ng), Num(s.nb)
+			rec.cr, rec.cg, rec.cb = Num(s.cr), Num(s.cg), Num(s.cb)
+		end
+	end
+end
+
+-- a line as kept (nil: a secret one, or none)
+local function Kept(rec)
+	if not rec or Secret(rec.body) or Secret(rec.name) or type(rec.body) ~= "string" then
+		return nil
+	end
+	return { tx = rec.body, r = rec.r, g = rec.g, b = rec.b, h = rec.headed or nil, k = rec.key, n = rec.name,
+		tg = rec.tag, tm = rec.time, ts = rec.ts, nr = rec.nr, ng = rec.ng, nb = rec.nb, cr = rec.cr, cg = rec.cg,
+		cb = rec.cb }
+end
+
+-- every tab's newest lines (and the whisper window's conversations) into the history: at logout
+function View.SaveHistory()
+	if not View.frame then
+		return   -- (the view never on this session: the kept history as it was)
+	end
+	local hist = History()
+	local tabs = {}
+	local log = rawget(_G, "COMBATLOG")
+	for bufKey, t in pairs(View.tabs) do
+		local buf = View.bufs[bufKey]
+		if buf and t.key and bufKey ~= log then
+			local list = {}
+			for j = math.min(buf.count, SAVE_LINES) - 1, 0, -1 do
+				local kept = Kept(Nth(buf, j))
+				if kept then
+					list[#list + 1] = kept
+				end
+			end
+			tabs[t.key] = list
+		end
+	end
+	hist.tabs = tabs
+	local WV = View.Whispers
+	if WV and WV.Save then
+		WV.Save(hist)
+	end
 end
 
 -- the game's own lines a tab starts with (as lines alone: their events are gone)
@@ -1234,6 +1322,7 @@ function View.Rail()
 	Windows(function(f, i)
 		local name, shown, docked = WindowInfo(i)
 		if type(name) == "string" and name ~= "" and (i == 1 or shown or docked) then
+			local key = i <= maxWindows and ("w:" .. i) or ("t:" .. name)
 			local t = View.tabs[f]
 			if not t then
 				t = NewTab(GlyphFor(name), "window", f)
@@ -1242,10 +1331,13 @@ function View.Rail()
 				hooksecurefunc(f, "SetFont", View.FontChanged)
 				if not View.bufs[f] then
 					Buffer(f)
+					if f ~= rawget(_G, "COMBATLOG") then
+						Restore(f, key)   -- (the history kept over the last logout first)
+					end
 					Seed(f)
 				end
 			end
-			t.key = i <= maxWindows and ("w:" .. i) or ("t:" .. name)
+			t.key = key
 			t.button.tabName, t.button.tabTip = name, TEXT.tabTip
 			t.label:SetText(name)
 			order[#order + 1] = t
@@ -1257,6 +1349,7 @@ function View.Rail()
 		if not t then
 			t = NewTab("channels", "channel", key)
 			Buffer(key)
+			Restore(key, key)
 		end
 		t.key, t.channel, t.number = key, name, number
 		t.button.tabName, t.button.tabTip = name, TEXT.channelTip:format(number)
@@ -1701,6 +1794,16 @@ local function Build()
 			hooksecurefunc(fn, WindowsChanged)
 		end
 	end
+	-- the history written as the game logs out or reloads (the view on this session)
+	local logout = CreateFrame("Frame")
+	logout:RegisterEvent("PLAYER_LOGOUT")
+	Perf.SetScript(logout, "OnEvent", function()
+		local began = debugprofilestop()
+		pcall(View.SaveHistory)
+		if MelloUI.Perf and MelloUI.Perf.LogoutStep then
+			MelloUI.Perf.LogoutStep("Chat view: the history kept", debugprofilestop() - began)
+		end
+	end)
 	-- a new palette, the chat's parchment switched, the kit put on or taken off the chat: the look again
 	local function Restyle()
 		if View.on then

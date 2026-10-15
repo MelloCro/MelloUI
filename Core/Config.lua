@@ -135,6 +135,9 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 -- new version in, the oldest out. Tools/lint/check_whats_new.py checks it (the
 -- suite and release.py).
 local CHANGELOG = {
+	{ version = "0.23.1", lines = {
+		"Chat View: the chat and the whisper window keep their history over a /reload and a new login.",
+	} },
 	{ version = "0.23.0", lines = {
 		"Chat: Chat View (Minimal) -- one dark panel, round tabs on a rail, each line under its sender, channel and time; a row of round buttons below.",
 		"Chat View: one whisper window grows up out of the chat -- every conversation, theirs left and yours right; the Whispers tab counts new ones.",
@@ -172,10 +175,6 @@ local CHANGELOG = {
 		"Big Cooldowns: break-free spells (Will of the Forsaken, Berserker Rage, Escape Artist, the PvP trinket) count as immunities.",
 		"Route knows many more roads and finds better ways; places know the Riverglades and Hyjal flight points, Stormwind Harbor and Coldridge Valley.",
 		"Fixed: Route took the long way, or cross-country, from places whose nearest roads are side roads not joined to the rest.",
-	} },
-	{ version = "0.21.2", lines = {
-		"Fixed: action bars faded by the Fader left their out of range and out of mana colours on the screen as coloured squares.",
-		"Action Buttons: the red and blue colours now leave with a faded bar and come back the moment it shows again.",
 	} },
 }
 local LINKS = {

@@ -70,7 +70,7 @@ local M = MelloUI:RegisterModule("Chat", {
 		{ type = "header", name = "Appearance" },
 		-- (0.23.0, the user 2026-10-14: "a minimalistic version where its less visual clutter, minimalistic,
 		-- functional but also true to the artstyle": ChatView.lua, docs/plans/chat-redesign.md)
-		{ type = "dropdown", key = "view", name = "Chat View", new = "0.23.0", values = {
+		{ type = "dropdown", key = "view", name = "Chat View", values = {
 			{ value = "game", label = "Game Windows" },
 			{ value = "minimal", label = "Minimal" },
 		  },

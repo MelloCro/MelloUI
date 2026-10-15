@@ -49,6 +49,7 @@ local FACE, PADX, PADY, TX, RX = 16, 8, 4, 32, 8   -- their picture; a bubble's 
 local GAP_RUN, GAP_IN, SHARE = 8, 3, 0.66          -- between runs, inside one; a bubble's widest share of the talk
 local CAP, LAY, RUN_SECONDS = 200, 30, 120          -- lines kept per conversation; bubbles laid at most
 local OPEN_TIME, CLOSE_TIME, BUTTON = 0.28, 0.18, 20
+local SAVE_CONVS, SAVE_WHISPERS = 30, 100   -- kept over a logout: the newest conversations, their newest lines
 local UNKNOWN = "Interface\\ChatFrame\\UI-ChatWhisperIcon"   -- someone whose class is not known
 local TEXT = {
 	title = "Whispers",
@@ -169,7 +170,7 @@ local function OnEvent(_, event, text, sender, ...)
 	if c.count < CAP then
 		c.count = c.count + 1
 	end
-	rec.text, rec.mine, rec.at = text, not how.incoming, GetTime()
+	rec.text, rec.mine, rec.at, rec.ts = text, not how.incoming, GetTime(), time()
 	rec.time = View.Clock and View.Clock() or ""
 	c.lastText, c.lastAt, c.lastMine = text, rec.at, rec.mine
 	Touch(c)
@@ -202,6 +203,80 @@ end
 
 local events   -- (made the first time the minimal chat comes on: nothing at load)
 
+--------------------------------------------------------------------------------
+-- The history (0.23.1; the user, 2026-10-15: "the chat needs its history saved aswell as the whisper window"): the
+-- newest conversations (SAVE_CONVS) and their newest lines (SAVE_WHISPERS), their unread counts with them, kept over a
+-- logout in the chat view's history (MelloUIChatHistory.whispers) and laid back as the minimal chat comes on. A
+-- character's only: a Battle.net conversation is keyed by an id the game gives anew each login. A SECRET line is never
+-- kept.
+--------------------------------------------------------------------------------
+
+function WV.Save(hist)
+	local convs, order = {}, {}
+	for _, c in ipairs(WV.order) do
+		if #order >= SAVE_CONVS then
+			break
+		end
+		if c.kind == "WHISPER" and type(c.key) == "string" and type(c.target) == "string" and not Secret(c.title) then
+			local lines = {}
+			for j = math.min(c.count, SAVE_WHISPERS) - 1, 0, -1 do
+				local rec = Nth(c, j)
+				if rec and not Secret(rec.text) and type(rec.text) == "string" then
+					lines[#lines + 1] = { tx = rec.text, m = rec.mine or nil, ts = rec.ts, tm = rec.time }
+				end
+			end
+			if #lines > 0 then
+				order[#order + 1] = c.key
+				convs[c.key] = { title = c.title, target = c.target, class = Text(c.classFile), hex = Text(c.classHex),
+					level = Num(c.level), guid = Text(c.guid), unread = c.unread, lines = lines }
+			end
+		end
+	end
+	hist.whispers = { order = order, convs = convs }
+end
+
+-- the kept conversations back (once a login, as the minimal chat first comes on)
+function WV.Load()
+	if WV.loaded then
+		return
+	end
+	WV.loaded = true
+	local hist = rawget(_G, "MelloUIChatHistory")
+	local w = type(hist) == "table" and hist.whispers
+	if type(w) ~= "table" or type(w.order) ~= "table" or type(w.convs) ~= "table" then
+		return
+	end
+	local now, clock = GetTime(), time()
+	for _, key in ipairs(w.order) do
+		local s = w.convs[key]
+		if type(s) == "table" and type(s.lines) == "table" and type(s.target) == "string" and not WV.convs[key] then
+			local c = Conv(key, "WHISPER", s.target, type(s.title) == "string" and s.title or s.target)
+			c.classFile, c.classHex, c.level, c.guid = Text(s.class), Text(s.hex), Num(s.level), Text(s.guid)
+			for _, l in ipairs(s.lines) do
+				if type(l) == "table" and type(l.tx) == "string" then
+					c.last = c.last % CAP + 1
+					local rec = c.items[c.last]
+					if not rec then
+						rec = {}
+						c.items[c.last] = rec
+					end
+					if c.count < CAP then
+						c.count = c.count + 1
+					end
+					rec.text, rec.mine, rec.ts, rec.time = l.tx, l.m and true or false, Num(l.ts), l.tm
+					rec.at = now - math.max(0, clock - (rec.ts or clock))
+					c.lastText, c.lastAt, c.lastMine = rec.text, rec.at, rec.mine
+				end
+			end
+			c.unread = Num(s.unread) or 0
+			WV.order[#WV.order + 1] = c
+		end
+	end
+	if View.WhisperCount then
+		View.WhisperCount(false)
+	end
+end
+
 -- the whispers heard while the minimal chat is on
 function WV.Listen(on)
 	local parts = P()
@@ -210,6 +285,9 @@ function WV.Listen(on)
 	end
 	if not events then
 		return
+	end
+	if on then
+		WV.Load()   -- (the conversations kept over the last logout)
 	end
 	if on and parts then
 		for event in pairs(parts.EVENTS) do
