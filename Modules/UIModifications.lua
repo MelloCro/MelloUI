@@ -961,18 +961,6 @@ MelloUI:On("setting", Perf.Shared("'setting' on the bus", function(name, key, va
 		return
 	elseif key == "reduceMotion" then
 		ApplyMotion(MelloUI:GetModuleDB("UIModifications"))
-	elseif key == "positions" then
-		-- the whole store replaced (a profile, the installer: a new table;
-		-- a place saved into it is the same table): its candidates on the
-		-- next frame
-		if M.isEnabled and value ~= registeredFrom then
-			registeredFrom = value
-			if Kit and Kit.NextFrame then
-				Kit:NextFrame("UIModifications stored places", NewStore)
-			else
-				NewStore()
-			end
-		end
 	elseif key == "palette" then
 		-- (Core swaps the palette, the kit's art follows: 'border', then
 		-- the one 'palette')
