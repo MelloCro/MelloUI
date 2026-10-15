@@ -554,10 +554,10 @@ end
 -- while MelloUI.Palette is the table last painted from, nothing is painted.
 -- The listener is taken on the first Paint, never at load; a Paint of a
 -- region painted before reuses its entry (no garbage).
--- The colours are the palette as MelloUI.Look shows it (docs/plans/
--- game-look.md wave 4): MelloUI.Palette while the reskin is on, the game's
--- own colours by the same keys with it off (Look.Palette), so every own
--- window's flat part follows the reskin; painted again at 'look:own'.
+-- The colours are the palette as MelloUI.Look shows it (Look.Palette):
+-- MelloUI.Palette whatever the reskin since the one look (Look:On is always
+-- true); the 'look:own' repaint below is no longer told (stage E removes it
+-- with the game's colours).
 do
 	local weak = { __mode = "k" }
 	local lists = {
@@ -6240,27 +6240,35 @@ end
 --------------------------------------------------------------------------------
 -- Look areas (audit, 2026-09-24, rank 1: MelloUI's own windows answered "is
 -- the kit on for me?" seven ways, some only once, so a switch left them in a
--- mixed look until /reload). Kit:IsOn(area), one answer per area:
---   a HUD group above  while a kit module covers it (Kit:IsCovered)
---   questTracker       MelloUI's Quest Tracker: the reskin and its own switch,
---                      UI Modifications' questTrackerKit (on unless switched off)
---   whisper            the whisper popups: as the chat windows ('chat')
---   services           the Services bar: as the minimap ('minimap')
---   questList          the Quest List, a page of the world map's quest log:
---                      while the quest log's kit (QuestLogPanel) is on
---   loot               the loot window's own parts (0.18.2: the Discard
---                      button): while the loot window's kit (LootPanel) is on
---   config, copy       the configurator and the copy window: the reskin (UI
---                      Modifications on, its reskin switch on; the Voice
---                      Over overlay's area went with it in 0.16.0: Voice
---                      Over is a row of the widget column)
---   installer          the installer: always (user, 2026-09-25: it
---                      wears the kit for every player, a new one's reskin
---                      off too -- the approved sketch, and a preview of what
---                      Full experience and Reskin only give)
+-- mixed look until /reload). Kit:IsOn(area), one answer per area, of three
+-- kinds (onelook stage C, 2026-10-15):
+--   the cover groups   the game's windows and HUD (the 16 first in LIST):
+--                      on while a kit module covers one (Kit:IsCovered) --
+--                      Oldschool's painted skins
+--   always on          MelloUI's own parts, in MelloUI's look whatever the
+--                      reskin: own (the widget column, the meter, Combat
+--                      Text, the notices ... through MelloUI.Look),
+--                      questTracker (the Quest Tracker), questList (the
+--                      Quest List page) and loot (the loot window's own
+--                      parts: the Discard button). Never told on the bus.
+--   Oldschool's handshakes   on: the painted kit dresses a part of
+--                      MelloUI's; off: MelloUI's plain palette look (the
+--                      plain shell until the modern one, stage B1)
+--     whisper          the whisper popups: as the chat windows ('chat')
+--     services         the Services bar: as the minimap ('minimap')
+--     config, copy     the configurator and the copy window (and the windows
+--                      on the shell, Restock's tray, the widget panel's
+--                      shade): the reskin (UI Modifications on, its reskin
+--                      switch on); config through the installer's showcase
+--                      too
+--     installer        the installer: the reskin, and the kit's look on its
+--                      first run whatever the reskin (the showcase)
 -- Kit.Areas[area] = { name, topic = "look:<area>", and cover | follows = area
--- | module = name | reskin (+ switch = key) | always }; a name not listed is
--- read as a cover group. The bus's 'look:<area>' (on) goes out when an area's answer
+-- | reskin | always (+ showcase) }; a name not listed is read as a cover
+-- group. (AreaOn's `module = name` and `switch = key` kinds have no entry
+-- since stage C -- questList and loot followed QuestLogPanel and LootPanel,
+-- questTracker the reskin and questTrackerKit -- and go in stage E.) The
+-- bus's 'look:<area>' (on) goes out when an area's answer
 -- changes: looked at again after a cover, a module switched ('module'), a UI
 -- Modifications setting ('setting') and a profile or late settings load
 -- ('restart') -- on the next frame, once for all that came together, so what
@@ -6282,24 +6290,29 @@ do
 		{ "minimap", cover = true }, { "tracker", cover = true }, { "social", cover = true },
 		{ "chat", cover = true }, { "damagemeter", cover = true }, { "tooltip", cover = true },
 		{ "nameplates", cover = true },
-		{ "questTracker", reskin = true, switch = "questTrackerKit" },
+		-- (onelook stage C) MelloUI's Quest Tracker: always in MelloUI's look
+		-- (it followed the reskin and its Painted Skin, questTrackerKit, which
+		-- the look no longer reads; the key goes in stage E)
+		{ "questTracker", always = true },
+		-- (Oldschool's handshakes: the painted kit as the chat / minimap cover)
 		{ "whisper", follows = "chat" },
 		{ "services", follows = "minimap" },
-		{ "questList", module = "QuestLogPanel" },
-		{ "loot", module = "LootPanel" },
+		-- (stage C) the Quest List page and the loot window's own parts: always
+		-- in MelloUI's look (they followed QuestLogPanel / LootPanel)
+		{ "questList", always = true },
+		{ "loot", always = true },
 		-- (the settings windows; on through the installer's showcase too: its
-		-- confirm boxes and the windows it opens wear the same look)
+		-- confirm boxes and the windows it opens wear the same look --
+		-- Oldschool's handshakes: the painted shell on, the plain one off)
 		{ "config", reskin = true, showcase = true }, { "copy", reskin = true },
 		-- (0.17.1, docs/plans/game-look.md) MelloUI's own parts -- the widget
-		-- column, the meter, Combat Text, the notices ... -- painted with the
-		-- reskin, in the game's own look without it (MelloUI.Look). On
-		-- through the installer's showcase as well: its window is built from
-		-- the shared controls, the colour registry and the shell, which all
-		-- ask this area (review 2026-10-02: a hybrid first window otherwise)
-		{ "own", reskin = true, showcase = true },
+		-- column, the meter, Combat Text, the notices ... (MelloUI.Look).
+		-- onelook stage C: always in MelloUI's look (the game's own look
+		-- with the reskin off before)
+		{ "own", always = true },
 		-- (docs/plans/game-look.md wave 4) the installer: the kit's look on
 		-- its first run (the showcase, before the player chooses:
-		-- Kit:Showcase), the reskin's after it
+		-- Kit:Showcase), the reskin's after it -- Oldschool's handshake
 		{ "installer", reskin = true, showcase = true },
 	}
 	for _, area in ipairs(LIST) do
@@ -6337,14 +6350,14 @@ do
 			return true
 		elseif area.cover then
 			return Kit.covers[area.name] == true
-		elseif area.module then
+		elseif area.module then   -- (no entry since onelook stage C: goes in stage E)
 			local module = MelloUI:GetModule(area.module)
 			return (module and module.isEnabled) and true or false
 		elseif area.reskin then
 			if not Reskin() then
 				return false
 			end
-			local s = area.switch and Switches()
+			local s = area.switch and Switches()   -- (no `switch` entry since stage C: goes in stage E)
 			return not (s and s[area.switch] == false)
 		end
 		return false
@@ -6400,7 +6413,7 @@ do
 	end
 
 	-- the installer's first run open (on) or closed (off): the areas marked
-	-- showcase (the installer's, the settings windows', MelloUI's own parts')
+	-- showcase (the installer's and the settings windows')
 	-- answer on meanwhile, whatever the reskin (the kit's look is its
 	-- showcase); their 'look:<area>' goes out on the next frame as for any
 	-- switch

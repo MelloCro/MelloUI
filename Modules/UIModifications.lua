@@ -59,9 +59,10 @@ local Kit = MelloUI.Kit
 --   order   rows with one lead their list (their tab), lowest first; the
 --           rest follow in the TOC's order
 --   switch  the row is not a kit module's but the look switch of one of
---           MelloUI's own windows: that setting of this module, which
---           Kit:IsOn reads (the Quest Tracker's questTrackerKit; audit,
---           2026-09-24, rank 1)
+--           MelloUI's own windows: that setting of this module (the Quest
+--           Tracker's questTrackerKit; audit, 2026-09-24, rank 1 -- Kit:IsOn
+--           no longer reads it since onelook stage C: the tracker is always
+--           in MelloUI's look; the row goes in stage E)
 --   include (not read here since 0.15.0: Core/ConfigLayout.lua places every
 --           option of a panel, on its element's page)
 -- Made into the lists the code below reads, in the registry's order:
@@ -159,7 +160,7 @@ local function Add(opt)
 end
 
 Add({ type = "toggle", key = "reskin", name = "Painted Kit Reskin", important = true,
-	desc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art, and MelloUI's own parts (the widget column, the reminders, the race bar ...) take the game's own look too; every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on." })
+	desc = "The game's windows and HUD dressed in the painted kit, and the frame of MelloUI's own windows. Off: the game's windows and HUD keep the game's own art; MelloUI's own parts (the Quest Tracker, the widget column, the reminders, the race bar ...) keep MelloUI's look either way, and every feature keeps working. Switching it on also switches Custom Sounds on, and the first time puts in the Edit Mode layout the reskin is drawn for, fitted to your screen. Switching it off leaves Custom Sounds on." })
 Add({ type = "toggle", key = "preloadArt", name = "Preload Artwork", requires = "reskin",
 	desc = "Load all of the reskin's artwork during the loading screen, so a window opened for the first time after a reload shows its art at once instead of a moment later. Keeps about 13 MB of artwork in memory for the whole session, including for windows you never open. Off: each piece loads the first time a window needs it." })
 Add({ type = "button", name = "Switch every area on", hint = "when nothing is reskinned any more",
@@ -190,7 +191,7 @@ do
 	local W = MelloUI.Widgets
 	Add({ type = "dropdown", key = "palette", name = "Palette", free = true,
 		values = type(W) == "table" and type(W.PaletteValues) == "function" and W.PaletteValues() or {},
-		desc = "The colours of MelloUI's painted look: its own windows and parts and all of the reskin's art. Your choice applies at once. With the reskin off, MelloUI's windows and parts take the game's own colours instead." })
+		desc = "The colours of MelloUI's look: its own windows and parts and all of the reskin's art. Your choice applies at once." })
 end
 
 -- The borders, one choice per kind for every window, and the Kit Colours
@@ -1577,6 +1578,9 @@ function M:OnEnable(db)
 	-- leaves it as it is (the macro backup keeps it). A profile saved since
 	-- carries questTrackerKit itself when it is off; loading one saved
 	-- before, which has no such key, leaves the switch at its default (on).
+	-- (onelook stage C: the look no longer reads questTrackerKit -- the
+	-- tracker is always in MelloUI's look; the key, this step and its row go
+	-- together in stage E)
 	if not db.questTrackerKitMigrated then
 		db.questTrackerKit = db.TrackerPanel ~= false
 		db.questTrackerKitMigrated = true
@@ -1625,8 +1629,8 @@ function M:OnSettingChanged(key, value, db)
 	elseif key == "reduceMotion" then
 		return   -- applied from the bus's 'setting', module on or off
 	elseif key == "questTrackerKit" or key == "questTrackerKitMigrated" then
-		-- read live by Kit:IsOn("questTracker"), which looks again on the
-		-- bus's 'setting' of this module (and tells 'look:questTracker')
+		-- (nothing to apply: Kit:IsOn("questTracker") read it until onelook
+		-- stage C; the area is always on now, the key goes in stage E)
 		return
 	elseif key == "palette" then
 		return   -- applied from the bus's 'setting', module on or off (MelloUI:SetPalette)

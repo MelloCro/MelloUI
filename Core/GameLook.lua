@@ -11,19 +11,19 @@
 -- and its widgets, Voice Over's, the reminder widget, the damage meter's
 -- parts, Combat Text, Gains, the notices, threat, Services, Route's marks,
 -- Restock, the swing timers, the own windows). A feature asks MelloUI.Look
--- for a piece and gets MelloUI's painted one while its look area is on (the
--- reskin), the GAME's own while it is off: the game's art (atlases and files
--- by name, the client's own), its font OBJECTS (so whatever the player or
--- another addon sets for the game's fonts carries over) and its colours. A
--- piece swaps by itself, in place, when the area changes (its 'look:<area>'
--- topic): the feature never branches on the look, and makes nothing for the
--- look it does not show (the game's pieces at their first need).
+-- for a piece and gets MelloUI's own one: always since onelook stage C
+-- (2026-10-15, docs/plans/one-look.md), whatever the reskin, an area's cover
+-- or Kit say. Before it, a piece took the GAME's own while its look area was
+-- off (the reskin): the game's art (atlases and files by name), its font
+-- OBJECTS and its colours. Those game halves below are no longer reached;
+-- they go in stage E. A piece is still laid again, in place, when its area is
+-- told on the bus ('look:<area>'): the feature never branches on the look,
+-- and makes nothing for the look it does not show.
 --
--- The area: "own" (Modules/Kit.lua's Kit.Areas, on with the reskin) unless a
--- piece names another (the windows: "config"; the swing timers: the cast
--- bars' "castbar").
+-- The area: "own" unless a piece names another (the windows: "config"; the
+-- swing timers: the cast bars' "castbar"); every area answers the same.
 --
---   Look:On([area]) -> true while the painted look shows
+--   Look:On([area]) -> true (MelloUI's own look, for every area)
 --   Look.Text(fs, role[, size[, opts]])
 --       the string's font and colour in the role:
 --         "text"    the palette's text / the game's white (GameFontHighlight,
@@ -170,12 +170,12 @@ local weak = { __mode = "k" }
 local pieces = {}
 local told = {}       -- [area] = the look its pieces show (true painted)
 
+-- (onelook stage C, 2026-10-15: MelloUI's own parts always wear MelloUI's
+-- look, whatever the reskin, an area's cover or Kit say -- it asked
+-- Kit:IsOn(area) before. The game's halves below are no longer reached and
+-- go in stage E; Oldschool's painted dressing reads Kit:IsOn itself.)
 function Look:On(area)
-	local Kit = MelloUI.Kit
-	if not (Kit and Kit.IsOn) then
-		return true   -- (no Kit to ask, before it loads: MelloUI's own look, the default)
-	end
-	return Kit:IsOn(area or self.AREA) and true or false
+	return true
 end
 
 local gameFilled   -- (Look.Palette's: filled again after a switch)

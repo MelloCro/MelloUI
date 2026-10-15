@@ -18,7 +18,11 @@
 --                    module is off, for a module that drives others
 --   OnSettingChanged(key, value, db)  called when one of its options changes
 --   hidden           true: not listed in the configurator (driven by another
---                    module: the kit panels by Painted UI); /mello list shows it
+--                    module: the kit panels by Painted UI); /mello list shows it.
+--                    Declared by a module itself (onelook stage D4: Action
+--                    Bars): always on, no switch of its own (each of its rows
+--                    switches one thing); profiles and Everything Off leave
+--                    its flag alone
 --   slash            a short word /mello finds the module by besides its key
 --                    and title (0.17.1: "swing" for Swing Timers: /mello swing log)
 --   important        true: the configurator's tile keeps a gold border, a glowing

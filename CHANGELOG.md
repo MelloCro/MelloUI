@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.0
+
+- One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off: the Quest Tracker, the quest log and Quest List touches, and the rest of MelloUI's own windows and bars.
+
 ## 0.24.0
 
 - Quest Tracker: the chat's look. In the painted look the tracker drops its stone frame and title plate for the chat's dark panel, or its parchment sheet with Parchment on: "Objectives" and the Quests and Professions headings sit on thin lines (Quests with how many you watch), each quest's mark sits in a round rim, a gem before a quest's title shows its difficulty on parchment (in place of the five pips, so titles keep their line; point at the quest for its name), objective counts stand at the right of their lines, and the quest you follow is highlighted like the open conversation in the whisper window. With the reskin off it keeps the game's look.

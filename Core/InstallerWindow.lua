@@ -212,7 +212,7 @@ local TEXT = {
 	lookLead = "Your palette, the painted kit and its colours. Nothing changes until you install.",
 	palette = "Palette",
 	reskin = "Painted Kit Reskin",
-	reskinDesc = "The whole interface dressed in the painted kit. Off: every area shows the game's own art; the features you switch on keep working.",
+	reskinDesc = "The game's windows and HUD dressed in the painted kit. Off: they keep the game's own art; MelloUI's own parts keep its look, and the features you switch on keep working.",
 	colours = "Kit Colours",
 	colourLine = { warm = "Iron in warm browns", bronze = "Browns with gold bevels", painted = "Grey iron, bright red" },
 	colourOwn = "Iron in the palette's own colours",   -- (a palette's own kit, under any palette but Ember)

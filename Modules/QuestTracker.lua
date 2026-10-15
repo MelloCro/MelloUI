@@ -50,8 +50,9 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 	group = "Quests and travel", navOrder = 4,
 	role = "replaces",   -- (the game's objective tracker; it has a window but is not a hidden kit panel)
 	-- its own kit switch on UI Modifications' Windows tab (a setting there,
-	-- not the Objective tracker's: audit, 2026-09-24, rank 1), read by
-	-- Kit:IsOn("questTracker")
+	-- not the Objective tracker's: audit, 2026-09-24, rank 1). Since onelook
+	-- stage C Kit:IsOn("questTracker") is always on and nothing reads the
+	-- switch; the row goes in stage E with the option table
 	window = { label = "Quest Tracker", desc = "MelloUI's scrollable quest tracker under the minimap in the kit. The Objective tracker row dresses the game's own tracker.", tab = "Windows", order = 6,
 		switch = "questTrackerKit" },
 	area = { key = "questTracker" },
@@ -94,10 +95,10 @@ local M = MelloUI:RegisterModule("QuestTracker", {
 		  desc = "How wide the tracker is when it does not match the minimap's width (at least 60). Edit Mode's: as wide as the game's tracker. The grip in its bottom-left corner sets width and height by dragging (only the height while it matches the minimap)." },
 		{ type = "slider", key = "textSize", name = "Text Size", min = 10, max = 20, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the quest titles and the section headers (in the Fonts module's title face while the tracker wears the Painted Skin, which draws them larger); the objectives are one size smaller. The Fonts' Titles & headers size does not change it." },
+		  desc = "The size of the quest titles and the section headers (the headers in the Fonts module's title face, which draws them larger); the objectives are one size smaller. The Fonts' Titles & headers size does not change it." },
 		{ type = "slider", key = "headerSize", name = "Header Text Size", min = 10, max = 24, step = 1,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
-		  desc = "The size of the tracker's title, All Objectives (in the Fonts module's title face while the tracker wears the Painted Skin, which draws it larger). The Fonts' Titles & headers size does not change it." },
+		  desc = "The size of the tracker's title, Objectives (in the Fonts module's title face, which draws it larger). The Fonts' Titles & headers size does not change it." },
 		{ type = "slider", key = "scrollStep", name = "Scroll Step", min = 10, max = 120, step = 5,
 		  format = function(v) return tostring(math.floor(v + 0.5)) end,
 		  desc = "How far one turn of the mouse wheel scrolls." },
@@ -675,9 +676,9 @@ local Near = {}
 -- W.Paint's (region, key, how, alpha), the same guard as the Quest List's and
 -- the chat's PaintKey. The lines' colours are read when a rebuild draws them
 -- (StoneColour): a palette switch rebuilds (Listen).
--- (in the tracker's look: the palette while the kit dresses it, the game's
--- colours with its switch or the reskin off -- MelloUI.Look.Paint, again at
--- every switch)
+-- (in the tracker's look: MelloUI.Look.Paint, the palette -- always since
+-- onelook stage C; the game's colours with its switch or the reskin off
+-- before)
 local function PaintKey(region, key, how, alpha)
 	MelloUI.Look.Paint(region, key, how, alpha, "questTracker")
 end
@@ -689,9 +690,10 @@ end
 -- no kit slot round a quest item, the map pin's chat icon for the followed
 -- quest. (One table: the file's locals.)
 local Art = {}
--- the tracker's look area: on while the kit dresses it (the reskin and the
--- tracker's own switch on), the game's look otherwise -- either switch off
--- shows the same tracker
+-- the tracker's look area: always on since onelook stage C (Kit.Areas), so
+-- the tracker wears MelloUI's look whatever the reskin and its own switch;
+-- the game's look below (Art.Kit's way back, the map pin, BuildPlainLook) is
+-- no longer reached and goes in stage E
 Art.AREA = "questTracker"
 
 -- a kit piece on a texture, only in the painted look: true when it is on.
@@ -765,11 +767,14 @@ function Art.ItemBorder(tex, painted)
 	tex:SetShown(painted and Kit and Kit.Apply and Kit:Apply(tex, "buttons/slot_normal") and true or false)   -- look-ok: painted only
 end
 
--- The kit's look for this tracker: its own look area, Kit:IsOn -- the reskin
--- and the tracker's own switch -- read live wherever a look is drawn, and a
--- switch told on the bus ('look:questTracker', below) so it flips at once
--- (audit, 2026-09-24, rank 1: it read the game's tracker's kit module, never
--- heard of a switch, and kept a mixed look until /reload)
+-- The kit's look for this tracker: its own look area, Kit:IsOn, read live
+-- wherever a look is drawn (audit, 2026-09-24, rank 1: it read the game's
+-- tracker's kit module, never heard of a switch, and kept a mixed look until
+-- /reload). Since onelook stage C the area is always on (Kit.Areas), so
+-- ApplyLook always builds the chat look (BuildKitLook); the reskin and
+-- questTrackerKit (the Painted Skin row) are no longer read by the look.
+-- BuildPlainLook, COLUMNS.game and the game's POI path go in stage E. (The
+-- area stays the one gate: test worlds stub Kit:IsOn.)
 local function KitCovers()
 	local Kit = MelloUI.Kit
 	return Kit and Kit.IsOn and Kit:IsOn("questTracker") or false
@@ -3746,11 +3751,11 @@ local function HookEditMode()
 	end, M)
 end
 
--- The kit's look switched on or off for this tracker (the bus's
--- 'look:questTracker', told on the frame after the reskin or the tracker's
--- own switch changed): its frame's look at once, the fold and Nearest
--- First's toggles in their art (Art.Kit), every line's ink and colour on the
--- next rebuild -- the same as a tracker built in that look
+-- The bus's 'look:questTracker' is no longer told since the one look (the
+-- area is always on; stage E removes this with the game's look). It redrew
+-- this tracker's look: its frame at once, the fold and Nearest First's
+-- toggles in their art (Art.Kit), every line's ink and colour on the next
+-- rebuild -- the same as a tracker built in that look
 local function OnLook()
 	if header and header.toggle then
 		header.toggle.Refresh()
