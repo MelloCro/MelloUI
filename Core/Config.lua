@@ -140,17 +140,12 @@ local DEFAULT_ICON = ICON .. "INV_Misc_QuestionMark"
 local CHANGELOG = {
 	{ version = "0.25.0", lines = {
 		"One look: MelloUI's own parts wear MelloUI's look whether the painted reskin is on or off.",
-		"Action bars: snapped bars share a soft dark backdrop shade, no painted skin needed; Hide Page Arrows on by default.",
-		"Unit frames: party levels on the name line, soft name bands, Level Up and XP Gain without the painted skin.",
-		"Minimap: MelloUI's minimap for everyone -- size, the square Chat panel and Services merged under it, its own switch.",
-		"Quest log and Quest List: headings, difficulty gems and icon rims for everyone.",
-		"Windows: the logo heads the configurator's side list, smaller windows get a slim title strip, Fight History the new look.",
-		"Edit Layout: more game windows move without the painted reskin -- the auction house, trainers, guild bank, calendar and more.",
-		"Quest Tracker and Chat: Parchment is each one's own switch on its page, whatever the reskin.",
-		"Route: the Direction Arrow row is gone -- the World Marker shows the way.",
-		"Action bars: Hide Bar Art -- Action Bar 1 without the game's frame and dividers, like the other bars.",
-		"Swing Timers: your weapon in a round rim beside a flat bar. Race bar: a slim line with class pins (new Race Bar Thickness).",
-		"Quest Tracker: a ring marks the quest you follow, items sit on a small tray. The flight map marks your route with a bead.",
+		"Windows: a new frame -- the logo heads the configurator's side list, small windows get a slim strip.",
+		"Frames and bars: party levels on the name line, soft name bands, a round-rim swing timer, a slim race bar, Hide Bar Art.",
+		"Action bars and minimap: backdrops and MelloUI's minimap for everyone, no painted skin needed.",
+		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch (the chat's too).",
+		"Route: the World Marker shows the way (the arrow row is gone); a bead marks your flight point.",
+		"Edit Layout: more of the game's windows move without the painted reskin.",
 	} },
 	{ version = "0.24.0", lines = {
 		"Quest Tracker: the chat's look -- a clean panel or parchment, round quest marks, a difficulty gem, counts on the right.",
