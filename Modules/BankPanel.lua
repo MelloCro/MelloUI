@@ -30,8 +30,9 @@
 --   item slots           the bank's slots and the bag slots (the purchasable,
 --                        locked ones too) in every window's Button Border rim
 --                        (Kit:SkinActionButton, as the bags), the quality
---                        border kept on the icon, an item's quality gem in
---                        the slot's corner (the bags' Quality Gems), an
+--                        border kept on the icon (an item's quality gem
+--                        in the slot's corner is Tweaks' Quality Gems,
+--                        MelloUI.ItemGems, dressed or not), an
 --                        empty slot on the bags'
 --                        Item Background; the game's slot frame and slot
 --                        picture faded; the padlock on a locked bag slot stays
@@ -124,7 +125,6 @@ local stats = { items = 0, bags = 0, pageTabs = 0, bankTabs = 0, panelTabs = 0, 
 
 -- secret-safe reads, one set for the addon (MelloUI.Safe, Core.lua)
 local Secret = MelloUI.Safe.IsSecret
-local SafeNumber = MelloUI.Safe.Number   -- a plain number, else nil
 
 -- A replacement the library knows; registered so enable / disable reach it.
 local function Replace(region, opts)
@@ -462,28 +462,16 @@ end
 -- on the bags' Item Background (Kit:SkinActionButton, emptyStone: the game
 -- hides the icon of an empty slot); the game's slot picture faded. The
 -- padlock (ARTWORK 1) is not touched: it lies over the Item Background.
--- An item slot wears its item's quality gem, as the bags' do (the bags'
--- Quality Gems; Kit:ItemGem): the game fills a slot as it makes it, before
--- the dress, so the gem starts from the game's own record on the button
--- (itemInfo, questItemInfo). A bag slot holds a bag: no gem.
+-- (An item slot's quality gem is Tweaks' Quality Gems, MelloUI.ItemGems,
+-- found at the game's own first fill of the slot; a bag slot holds a bag:
+-- no gem.)
 --------------------------------------------------------------------------------
-local function SlotQuality(button)
-	local info, quest = button.itemInfo, button.questItemInfo
-	local id = type(quest) == "table" and SafeNumber(quest.questID) or nil
-	local going = type(quest) == "table" and quest.isActive
-	if Secret(going) then
-		going = true   -- (unknown: not taken for a quest starter)
-	end
-	return type(info) == "table" and info.quality or nil, id ~= nil and not going
-end
-
 local function SkinSlot(button, kind)
 	if not button or done[button] then
 		return
 	end
 	done[button] = true
-	local rep = Kit:SkinActionButton(button, Replace, nil, { as = Kit:ButtonRimRule(), emptyStone = true, qualityBorder = button.IconBorder,
-		qualityGem = kind == "item" and SlotQuality or nil })
+	local rep = Kit:SkinActionButton(button, Replace, nil, { as = Kit:ButtonRimRule(), emptyStone = true, qualityBorder = button.IconBorder })
 	if rep then
 		slotKind[button] = kind
 		Kit:SetButtonBackground(button, BagLook("itemBackground", "stone"))

@@ -29,6 +29,7 @@
 - Action bars: Hide Bar Art (Action Bars > Bars, on by default) ticks the game's own Edit Mode setting for Action Bar 1 on your own Edit Mode layouts, so every bar looks alike; untick it in Edit Mode and MelloUI leaves it. Shows after a /reload.
 - Chat: Parchment is its own switch on the Chat page (Chat Frame > Look), for the Chat View and the whisper window, with the painted reskin on or off. Background offers Dark, Game or None; the painted chat skin has its own Painted Skin row.
 - Fixed: Group Frames: profiles and share strings keep your indicators, and loading an older profile or restoring the macro backup no longer empties them.
+- Quality Gems show on every item in the game's own bags, bank and guild bank and in Bags by Kind, painted look or not; Grey Out Junk lays a grey copy over a junk item's picture, so the game's own grey for a locked item stays as the game sets it. Your choices carry over.
 
 ## 0.24.0
 

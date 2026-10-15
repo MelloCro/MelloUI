@@ -146,6 +146,7 @@ local CHANGELOG = {
 		"Quests: one gem per title, a ring on the quest you follow, Parchment its own switch (the chat's too).",
 		"Route: the World Marker shows the way (the arrow row is gone); a bead marks your flight point.",
 		"Edit Layout: more of the game's windows move without the painted reskin.",
+		"Bags: quality gems and grey junk on every bag, bank and guild bank slot, painted look or not.",
 		"Fixed: Group Frames: profiles and share strings keep your indicators.",
 	} },
 	{ version = "0.24.0", lines = {

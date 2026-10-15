@@ -4385,6 +4385,33 @@ do
 				chat.background = (dm == nil or dm.chat ~= false) and "dark" or "game"
 			end
 		end,
+		-- one look, stage D3: Quality Gems and Grey Out Junk left Backpack Kit
+		-- (BackpackPanel) for Tweaks, the core's (Modules/Tweaks.lua: the gems
+		-- on every slot, dressed or not). An off stays off: a saved false is
+		-- carried, even over Tweaks' default the settings text wrote first (a
+		-- loaded profile, share string or backup is the player's choice); the
+		-- old keys go whatever they held (a true the old defaults wrote would
+		-- read as a stray key), so it runs once per stored table and a table
+		-- with neither is left alone
+		function(self)
+			local bp = Raw(self, "BackpackPanel")
+			local gems, junk = bp and bp.qualityGems, bp and bp.greyJunk
+			if gems == nil and junk == nil then
+				return
+			end
+			bp.qualityGems, bp.greyJunk = nil, nil
+			if gems == false or junk == false then
+				local t = Own(self, "Tweaks")
+				if t then
+					if gems == false then
+						t.qualityGems = false
+					end
+					if junk == false then
+						t.greyJunk = false
+					end
+				end
+			end
+		end,
 	}
 
 	function MelloUI:MergeSettings()

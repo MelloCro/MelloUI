@@ -32,9 +32,10 @@
 --                        pictures faded, one stone per surface), the inner
 --                        border on the single rail; every slot in the bags'
 --                        Button Border rim with the bags' Item Background in
---                        an empty slot, the quality border kept on the icon,
---                        an item's quality gem in the slot's corner (the
---                        bags' Quality Gems)
+--                        an empty slot, the quality border kept on the icon
+--                        (an item's quality gem in the slot's corner is
+--                        Tweaks' Quality Gems, MelloUI.ItemGems, dressed or
+--                        not)
 --   the bank tabs        every window's side tabs (common-sidetab): the gold
 --                        rim at rest, the same rim additively at 0.7 on the
 --                        open tab and 0.35 under the mouse, the icon fitted
@@ -966,25 +967,6 @@ local function ApplyItemBackground(force)
 	end
 end
 
--- The quality the game gave a slot before the kit dressed it (the game's
--- Update runs in the window's own OnShow, before the kit's dress, and the
--- kit's passes after it a frame later): the open tab's record of the slot. Every
--- slot wears its item's quality gem, as the bags' do (the bags' Quality
--- Gems; Kit:ItemGem), kept by the game's own updates after
-local function SlotQuality(button)
-	local currentTab, itemInfo = _G.GetCurrentGuildBankTab, _G.GetGuildBankItemInfo
-	if not (currentTab and itemInfo) then
-		return nil
-	end
-	local tab = currentTab()
-	local ok, slot = pcall(button.GetID, button)
-	if not (ok and PlainNumbers(tab, slot)) then
-		return nil
-	end
-	local _, _, _, _, quality = itemInfo(tab, slot)
-	return quality
-end
-
 -- `remeasure`: the grid's pitch measured again (on show: laid out by then)
 local function SkinItems(f, remeasure)
 	for _, column in ipairs(Columns(f)) do
@@ -1018,8 +1000,8 @@ local function SkinItems(f, remeasure)
 	local pitch = ItemPitch(all)
 	for _, button in ipairs(all) do
 		if repOf[button] == nil and button.icon then
-			local rep = Kit:SkinActionButton(button, Replace, pitch, { as = Kit:ButtonRimRule(), emptyStone = true, qualityBorder = button.IconBorder,
-				qualityGem = SlotQuality })
+			-- (its quality gem: Tweaks' Quality Gems, MelloUI.ItemGems, from the game's own Update)
+			local rep = Kit:SkinActionButton(button, Replace, pitch, { as = Kit:ButtonRimRule(), emptyStone = true, qualityBorder = button.IconBorder })
 			if rep then
 				items[#items + 1] = button
 				stats.items = stats.items + 1

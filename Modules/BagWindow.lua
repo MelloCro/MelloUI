@@ -56,7 +56,9 @@
 --     (the button's GetBagID reads its parent's ID, its own ID is the slot):
 --     no Initialize, no attribute, nothing the game's code reads is written.
 --     They are dressed by the game's bag slots' own dressing
---     (BackpackPanel:DressSlots) while the kit is on.
+--     (BackpackPanel:DressSlots) while the kit is on. Their quality gems and
+--     Grey Out Junk come from Tweaks' engine (MelloUI.ItemGems): each holder
+--     is a host of it, its buttons found at their first fill.
 -- Nothing at login: the window and its buttons are made on the first open.
 -- While it is hidden it listens to nothing; it is laid out again on each open.
 --------------------------------------------------------------------------------
@@ -954,6 +956,11 @@ local function Holder(bag)
 		h:SetID(bag)
 		h:SetAllPoints(S.content)
 		S.holders[bag] = h
+		-- (its buttons' quality gems and junk grey: Tweaks' engine finds them at their first fill)
+		local gems = MelloUI.ItemGems
+		if gems then
+			gems.AddHost(h)
+		end
 	end
 	return h
 end

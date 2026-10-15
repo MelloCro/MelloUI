@@ -382,6 +382,9 @@ LOGIN_STEPS = {"UIModifications.questTrackerKit",   # set once from TrackerPanel
 LOGIN_STEPS |= {m + "." + k for m in ("ActionBarPanel", "ActionBars") for k in ["hidePageArrows"] + [
     "backdrop" + e for e in ("Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess",
                              "Totem", "Micro", "Bags", "XP", "XP2")]}
+# (one look, stage D3: Quality Gems and Grey Out Junk moved from BackpackPanel to Tweaks; the login's merge removes the
+# old keys and carries a saved off, so both spellings may change)
+LOGIN_STEPS |= {m + "." + k for m in ("BackpackPanel", "Tweaks") for k in ("qualityGems", "greyJunk")}
 # store entries the login takes out (0.16.0: VoiceOver's OnInit forgets the old overlay's place)
 LOGIN_DROPS = {"voiceOverlay"}
 

@@ -9,6 +9,8 @@
 --     slots away and brings them back (the game's own expandBagBar setting)
 --   * world text scale (floating combat text / damage numbers)
 --   * (0.22.0) the split box: the mouse wheel moves its amount, a ½ button halves the stack
+--   * (one look, D3) Quality Gems and Grey Out Junk on every bag, bank and guild
+--     bank slot, dressed or not (MelloUI.ItemGems, below)
 --
 -- Hidden frames are re-parented to an invisible frame instead of calling Hide(),
 -- so Blizzard code that calls Show() on them cannot bring them back. While Edit
@@ -59,6 +61,10 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		-- (0.22.0) the split box's mouse wheel and ½ button
 		splitWheel = true,
 		splitHalf = true,
+		-- (one look, D3: Backpack Kit's until then; Core.lua's MergeSettings
+		-- carries a saved off) the item slots' quality gems and junk grey
+		qualityGems = true,
+		greyJunk = true,
 	},
 	options = {
 		{ type = "header", name = "Hide Frames" },
@@ -153,6 +159,13 @@ local M = MelloUI:RegisterModule("Tweaks", {
 		{ type = "toggle", key = "splitHalf", name = "Half Button",
 		  search = "split stack half halve",
 		  desc = "A ½ button at the left end of the split box's amount: click it and the amount is half the stack (191 makes 95). Buying in bundles at a merchant, it rounds down to whole bundles." },
+		-- (one look, D3: moved from Backpack Kit, the same rows on Windows >
+		-- Bags / Bank / Guild Bank > Look; MelloUI.ItemGems below)
+		{ type = "header", name = "Item Slots" },
+		{ type = "toggle", key = "qualityGems", name = "Quality Gems",
+		  desc = "A small gem in the top-left corner of every item in your bags, the bank and the guild bank, in the colour of the item's quality: grey for junk, white for common, then green, blue, purple and orange. Junk and better items stand out at a glance. While the game shows its own mark in that corner (the junk coin at a merchant, the upgrade arrow, the exclamation mark on an item that starts a quest, the quality badge on a crafting reagent), the gem moves to the top-right corner. One switch for all three windows." },
+		{ type = "toggle", key = "greyJunk", name = "Grey Out Junk",
+		  desc = "Junk (grey quality) items show grey in your bags, the bank and the guild bank, so they stand apart from what you keep. One switch for all three windows." },
 	},
 })
 
@@ -1174,6 +1187,562 @@ end
 M.Layout = Layout   -- (the tests')
 
 --------------------------------------------------------------------------------
+-- Quality Gems and Grey Out Junk (one look, stage D3: moved here from
+-- Modules/Kit.lua, where they showed only on a slot the painted kit had
+-- dressed; the user, 2026-10-15: look A of MelloUI-BuildData/output/
+-- onelook_gems_sketch, the corner gem, on EVERY item -- the game's bags, bank
+-- and guild bank and MelloUI's bag window -- and both on for everyone, while
+-- Everything Off keeps them off). MelloUI.ItemGems.
+--
+-- Quality Gems (user, 2026-09-26: "can we also add those tooltip gems onto
+-- the items in the backpack themselves, to easy as a glance separate normal
+-- items from Junk Items etc"; option A of the bag gems mockup). Every item in
+-- a slot of the bag windows, the bank, the guild bank and the bag window by
+-- kind shows a small gem in its quality's TRUE colour, the game's own
+-- (ITEM_QUALITY_COLORS: junk grey, common white, uncommon green, rare blue,
+-- epic purple, legendary orange, artifact and heirloom in theirs): the
+-- tooltip's gem, MelloUI.QuestInk's QI.Gem (one gem for the interface). An
+-- empty slot, and a quality the game hands over secret, not at all or one
+-- ITEM_QUALITY_COLORS has no colour for, shows none.
+--   where       the slot's top-left corner, 2 px in from the icon's corner
+--               (the icon in the rim's opening on a dressed slot), about 37 %
+--               of the button's size (14 px on the 37 px slot; the mockup's
+--               15 on 40); a child of the button, so it scales with it
+--   layering    over the button's own art (the icon, the quality border, the
+--               stack count's layer) and over its cooldown child, two levels
+--               up: a level of its own (WINDOW-RULES: never tie with the
+--               game's frame; between the button and its cooldown, one level
+--               apart, there is none) -- and so over a dressed slot's kit
+--               frames (its rim and border are regions of the button, its
+--               stone's opening one level up). The diamond keeps to its
+--               corner: the count stays in the bottom-right one, the
+--               cooldown's time in the middle
+--   the corner  the game's own marks there: the merchant's junk coin
+--               (JunkIcon), the upgrade arrow (UpgradeIcon), a quest
+--               starter's "!" (IconQuestTexture set to TEXTURE_ITEM_QUEST_BANG,
+--               its "!" down the icon's left side) and a crafting reagent's
+--               quality badge (ProfessionQualityOverlay: the game makes it
+--               the first time the slot holds one, TOPLEFT -3, 2, its atlas
+--               33 x 28; crafted gear wears it only while the Professions
+--               window is open). While one shows, the gem steps over to the
+--               top-right corner, and back when it goes: both stay readable
+--               (the badge's box reaches past the middle of a 37 px slot, so
+--               no corner is clear of the box itself; the top-right one is
+--               the furthest from its picture, which hangs off the top-left)
+--   dimmed      a slot the game dims (the search box, or an item that does
+--               not fit what an open window wants: its ItemContextOverlay
+--               in the game's dim mode, ItemButtonConstants.ContextMatch
+--               .Standard; an older client's searchOverlay) dims its gem as
+--               well. The same overlay as the runeforge glow round an item
+--               the game highlights is not a dim: the gem stays bright
+--   finding     a slot is found at the game's own first update of it: one
+--               post-hook on the game's global SetItemButtonQuality (the
+--               bags, the bank grid, the guild bank and the bag window by
+--               kind all call it with the quality, poor and common too),
+--               put in at Tweaks' enable, takes a slot whose parent is a
+--               host -- the game's bag windows by name (ContainerFrame1..N,
+--               the combined one only while it IS visible: the bag window by
+--               kind holds it under a hidden holder), the bank's BankPanel,
+--               a guild bank column, or a holder of the bag window by kind
+--               (Gems.AddHost). Any other caller (a merchant, the loot, a
+--               quest reward, a tooltip's item, the bank's bag slots) costs
+--               a cached look-up and is never written on
+--   when        then from the game's own updates of the slot, post-hooked on
+--               the button when it is found: SetItemButtonQuality,
+--               UpdateItemContextOverlay (the search's shade; each window's
+--               update of a slot ends with it, the junk coin, the quest mark
+--               and the reagent's badge set by then), the quest texture's
+--               SetTexture (the "!" or the plain border; the bank sets it
+--               before the quality: its first "!" read from the game's
+--               record of the slot, questItemInfo), and the reagent badge's
+--               SetShown (hooked when the gem first meets it: the
+--               Professions window shows and hides crafted gear's badge on
+--               its own). A gem is made the first time its slot has an item
+--               to show with the switch on (nothing at login, none for an
+--               empty slot), kept with the pooled button and recoloured on
+--               those updates; no OnUpdate, no timer
+--   the switch  one for the three windows: Tweaks' Quality Gems (on; its rows
+--               on Windows > Bags / Bank / Guild Bank > Look), and Tweaks on
+--               (it is while UI Modifications is: Everything Off shows none).
+--               Off: every gem hidden at once, none made; a slot is found
+--               only while one of the two switches is on
+-- Grey Out Junk (0.16.0, user 2026-09-30: "the junk items should be
+-- desaturated in the inventory"; one look D3, the user: a cover, never a
+-- write on the game's picture -- the game sets its own grey on every update
+-- of a slot, a picked-up item's): a slot holding a poor item (quality 0)
+-- shows a grey copy of its picture just over the game's own -- a texture of
+-- the button's own, in the icon's draw layer one sublevel up (under the
+-- count, the borders and the overlays), on the icon's rect, desaturated --
+-- made the first time the slot holds junk, following the icon: its picture,
+-- its crop, its tint and its alpha copied at each update of the slot, and
+-- again from post-hooks on the icon's SetTexture / SetVertexColor / SetShown
+-- (a cooldown's tint comes after the quality). Shown while Grey Out Junk
+-- (Tweaks' greyJunk, on) and Tweaks are on, hidden as the item goes or the
+-- switch does; the game's own picture and its grey are left alone.
+--   Gems.Install()  the global post-hook, once (Tweaks' enable)
+--   Gems.Sync()     every slot found again (the switches, Tweaks on or off)
+--   Gems.AddHost(frame)  a parent whose item buttons are slots (BagWindow)
+--   Gems.Adopt(button, quality, kind)  a slot taken now (the tests')
+--   Gems.Counts() -> slots found, gems made, gems shown, covers made, covers shown
+--------------------------------------------------------------------------------
+
+local Gems = {}
+MelloUI.ItemGems = Gems
+
+do
+	local SIZE, INSET, DIM = 0.37, 2, 0.25   -- (look A) of the button's width; px in from the icon's corner; a dimmed slot's gem
+	local GEMS_KEY, JUNK_KEY = "qualityGems", "greyJunk"
+	local Secret, Finite, Text, SafeCall = MelloUI.Safe.IsSecret, MelloUI.Safe.Finite, MelloUI.Safe.Text, MelloUI.Safe.Call
+	local Shared = Perf.Shared
+	local slots = {}                                      -- every slot found, in the order found
+	local gemOf = setmetatable({}, { __mode = "k" })      -- [button] = its slot's state
+	local gemOfArt = setmetatable({}, { __mode = "k" })   -- [quest texture] = its slot's state
+	local gemOfBadge = setmetatable({}, { __mode = "k" }) -- [reagent quality badge] = its slot's state
+	local coverOf = setmetatable({}, { __mode = "k" })    -- [the game's icon] = its slot's state (its cover made)
+	local hostOf = setmetatable({}, { __mode = "k" })     -- [a slot's parent] = "bags" | "bank" | "guild" | "own" | false
+	local installed = false
+	local made, covers = 0, 0
+
+	-- a switch of Tweaks' as it is now (Tweaks off: none); read on each use,
+	-- no copy kept (a profile load hands Tweaks a new table)
+	local function Setting(key)
+		if M.isEnabled ~= true then
+			return false
+		end
+		local db = M.db
+		return type(db) == "table" and db[key] ~= false
+	end
+
+	local function Wanted()
+		return Setting(GEMS_KEY)
+	end
+
+	local function JunkWanted()
+		return Setting(JUNK_KEY)
+	end
+
+	-- the game's own colour of an item quality (`q` a plain number); nil when
+	-- it has none plainly. ITEM_QUALITY_COLORS is the game's (its colour
+	-- manager fills it for every quality there is, 0 .. NumValues - 1): a
+	-- quality it lacks is unknown, no gem. Only a client without that table
+	-- asks C_Item, for a quality in range (it answers a colour for any number)
+	local function Colour(q)
+		local list = ITEM_QUALITY_COLORS
+		local r, g, b
+		if type(list) == "table" then
+			local c = list[q]
+			if type(c) ~= "table" then
+				return nil
+			end
+			r, g, b = c.r, c.g, c.b
+		else
+			local meta = Enum and Enum.ItemQualityMeta
+			local count = meta and Num(meta.NumValues) or 9
+			if not (C_Item and C_Item.GetItemQualityColor) or q < 0 or q >= count or q ~= math.floor(q) then
+				return nil
+			end
+			local ok
+			ok, r, g, b = pcall(C_Item.GetItemQualityColor, q)
+			if not ok then
+				return nil
+			end
+		end
+		r, g, b = Num(r), Num(g), Num(b)
+		if r and g and b then
+			return r, g, b
+		end
+		return nil
+	end
+
+	-- a region of the game's shown (a secret reads as not shown)
+	local function Shown(region)
+		if not region then
+			return false
+		end
+		local ok, shown = pcall(region.IsShown, region)
+		return ok and not Secret(shown) and shown == true
+	end
+
+	-- one of the game's own marks in the top-left corner (the reagent's
+	-- badge read from the button each time: the game makes it late)
+	local function CornerTaken(st)
+		local b = st.button
+		return Shown(b.JunkIcon) or Shown(b.UpgradeIcon) or (st.bang and Shown(b.IconQuestTexture))
+			or Shown(b.ProfessionQualityOverlay) or false
+	end
+
+	-- a slot the game dims: its context overlay shown in the dim mode (the
+	-- search box, an item that does not fit the open window), not as the
+	-- glow round an item it highlights (runeforging); the game's own reader
+	-- of the mode, where there is one. An older client's searchOverlay
+	local function Dimmed(button)
+		if Shown(button.ItemContextOverlay) then
+			local read = button.GetItemContextOverlayMode
+			local match = _G.ItemButtonConstants and _G.ItemButtonConstants.ContextMatch
+			local standard = match and match.Standard
+			if type(read) ~= "function" or standard == nil then
+				return true   -- (no mode on this client: the overlay is the dim)
+			end
+			local ok, mode = pcall(read, button)
+			return ok and not Secret(mode) and mode == standard
+		end
+		return Shown(button.searchOverlay)
+	end
+
+	-- its size (of the button's) and level (over the button's children):
+	-- when made and when the switch comes on (the button keeps both for the
+	-- session: not read again on every update)
+	local function Fit(st, gem)
+		local b = st.button
+		local okW, w = pcall(b.GetWidth, b)
+		w = okW and Finite(w) or nil
+		gem:SetGemSize(w and w > 0 and math.floor(w * SIZE + 0.5) or 14)
+		local okL, level = pcall(b.GetFrameLevel, b)
+		level = okL and Num(level) or nil
+		if level and level + 2 ~= st.level then
+			st.level = level + 2
+			gem:SetFrameLevel(level + 2)
+		end
+	end
+
+	-- the reagent badge's own shows and hides (the Professions window's, for
+	-- crafted gear): a gem shown moved (below, with the other hooks)
+	local Gem_OnBadge
+
+	-- its corner (the top-right one while the game's own mark takes the
+	-- top-left) and its alpha (a slot the game dims)
+	local function Marks(st, gem)
+		local button = st.button
+		-- the reagent's badge, heard from the first time the gem meets it
+		local badge = button.ProfessionQualityOverlay
+		if badge and not gemOfBadge[badge] and badge.SetShown then
+			gemOfBadge[badge] = st
+			hooksecurefunc(badge, "SetShown", Gem_OnBadge)
+		end
+		local aside = CornerTaken(st)
+		if aside ~= st.aside then
+			st.aside = aside
+			local icon = st.icon or button
+			gem:ClearAllPoints()
+			if aside then
+				gem:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -INSET, -INSET)
+			else
+				gem:SetPoint("TOPLEFT", icon, "TOPLEFT", INSET, -INSET)
+			end
+		end
+		local dim = Dimmed(button)
+		if dim ~= st.dim then
+			st.dim = dim
+			gem:SetAlpha(dim and DIM or 1)
+		end
+	end
+
+	-- the slot's gem as the game's slot now is: shown in its quality's colour
+	-- (made the first time), or hidden; `refit`: its size and level again
+	local function Sync(st, refit)
+		local q = st.q
+		local r, g, b = nil, nil, nil
+		if q and Wanted() then
+			r, g, b = Colour(q)
+		end
+		local gem = st.gem
+		if not r then
+			if gem then
+				gem:Hide()
+			end
+			return
+		end
+		if not gem then
+			local QI = MelloUI.QuestInk
+			if not (QI and QI.Gem) then
+				return
+			end
+			gem = QI.Gem(st.button)
+			st.gem = gem
+			made = made + 1
+			refit = true
+		end
+		if refit then
+			Fit(st, gem)
+		end
+		Marks(st, gem)
+		gem:SetColour(r, g, b)
+	end
+
+	-- Grey Out Junk's cover: the icon's look copied onto it (its picture,
+	-- its crop, its tint, its alpha), each written only when it changed;
+	-- false when the picture cannot be read or set (no cover shown then)
+	local function Copy(st, cover)
+		local icon = st.icon
+		local ok, art = pcall(icon.GetTexture, icon)
+		if not ok then
+			return false
+		end
+		if Secret(art) then
+			-- (handed on as it is, never compared; a client that refuses it: no cover)
+			if not pcall(cover.SetTexture, cover, art) then
+				return false
+			end
+			st.art = nil
+		elseif art == nil then
+			return false
+		elseif art ~= st.art then
+			st.art = art
+			cover:SetTexture(art)
+		end
+		local okC, ulx, uly, llx, lly, urx, ury, lrx, lry = pcall(icon.GetTexCoord, icon)
+		if okC and Num(ulx) and Num(uly) and Num(llx) and Num(lly) and Num(urx) and Num(ury) and Num(lrx) and Num(lry) then
+			local tc = st.tc
+			if tc[1] ~= ulx or tc[2] ~= uly or tc[3] ~= llx or tc[4] ~= lly or tc[5] ~= urx or tc[6] ~= ury
+				or tc[7] ~= lrx or tc[8] ~= lry then
+				tc[1], tc[2], tc[3], tc[4], tc[5], tc[6], tc[7], tc[8] = ulx, uly, llx, lly, urx, ury, lrx, lry
+				cover:SetTexCoord(ulx, uly, llx, lly, urx, ury, lrx, lry)
+			end
+		end
+		local okV, r, g, b = pcall(icon.GetVertexColor, icon)
+		r, g, b = okV and Num(r), okV and Num(g), okV and Num(b)
+		if r and g and b and (r ~= st.r or g ~= st.g or b ~= st.b) then
+			st.r, st.g, st.b = r, g, b
+			cover:SetVertexColor(r, g, b)
+		end
+		local okA, alpha = pcall(icon.GetAlpha, icon)
+		alpha = okA and Finite(alpha) or 1
+		if alpha ~= st.alpha then
+			st.alpha = alpha
+			cover:SetAlpha(alpha)
+		end
+		return true
+	end
+
+	-- the slot's junk grey as the game's slot now is: its cover shown over a
+	-- poor item's picture (made the first time) and following it, or hidden
+	local Cover_OnIcon
+	local function Junk(st)
+		local icon = st.icon
+		if not icon then
+			return
+		end
+		local cover = st.cover
+		if st.q == 0 and JunkWanted() and Shown(icon) then
+			if not cover then
+				local layer, sub = "BORDER", 0
+				local ok, l, s = pcall(icon.GetDrawLayer, icon)
+				if ok and Text(l) then
+					layer, sub = l, Num(s) or 0
+				end
+				cover = st.button:CreateTexture(nil, layer, nil, math.min(sub + 1, 7))
+				cover:SetAllPoints(icon)
+				cover:SetDesaturated(true)
+				cover:Hide()
+				st.cover, st.tc = cover, {}
+				covers = covers + 1
+				coverOf[icon] = st
+				hooksecurefunc(icon, "SetTexture", Cover_OnIcon)
+				hooksecurefunc(icon, "SetVertexColor", Cover_OnIcon)
+				hooksecurefunc(icon, "SetShown", Cover_OnIcon)
+			end
+			if Copy(st, cover) then
+				if not st.grey then
+					st.grey = true
+					cover:Show()
+				end
+				return
+			end
+		end
+		if st.grey then
+			st.grey = false
+			cover:Hide()
+		end
+	end
+
+	-- the game's own updates of a slot (one handler each for every slot, no
+	-- closure of their own)
+	local Gem_OnQuality = Shared("SetItemButtonQuality on a bag, bank or guild bank slot (Quality Gems)", function(button, quality)
+		local st = gemOf[button]
+		if st then
+			st.q = Num(quality)
+			Sync(st)
+			Junk(st)
+		end
+	end)
+	-- the picture of a slot that held junk changed (its art, its tint, its
+	-- show): the cover follows
+	Cover_OnIcon = Shared("SetTexture / SetVertexColor / SetShown on a bag, bank or guild bank slot's picture (Grey Out Junk's cover)", function(icon)
+		local st = coverOf[icon]
+		if st then
+			Junk(st)
+		end
+	end)
+	-- the corner's marks and the search's shade: a gem shown moved or dimmed
+	-- (none shown: nothing to do; the next quality update places it)
+	local Gem_OnMarks = Shared("the corner and search marks on a bag, bank or guild bank slot (Quality Gems)", function(button)
+		local st = gemOf[button]
+		local gem = st and st.gem
+		if gem and gem:IsShown() then
+			Marks(st, gem)
+		end
+	end)
+	Gem_OnBadge = Shared("SetShown on a bag, bank or guild bank slot's reagent quality badge (Quality Gems)", function(region)
+		local st = gemOfBadge[region]
+		local gem = st and st.gem
+		if gem and gem:IsShown() then
+			Marks(st, gem)
+		end
+	end)
+	local Gem_OnQuestArt = Shared("SetTexture on a bag, bank or guild bank slot's quest mark (Quality Gems)", function(region, art)
+		local st = gemOfArt[region]
+		if st then
+			local bang = _G.TEXTURE_ITEM_QUEST_BANG
+			st.bang = bang ~= nil and Text(art) == bang
+		end
+	end)
+
+	-- a bank slot's quest starter: the game's own record of the slot
+	-- (questItemInfo, read only), whose "!" it set before the quality
+	local function BankBang(button)
+		local quest = button.questItemInfo
+		if type(quest) ~= "table" then
+			return false
+		end
+		local id = Num(quest.questID)
+		local going = quest.isActive
+		if Secret(going) then
+			going = true   -- (unknown: not taken for a quest starter)
+		end
+		return id ~= nil and not going
+	end
+
+	-- what a slot's parent is: one of the game's bag windows (by name: the
+	-- bag window by kind takes ContainerFrame frames elsewhere), the bank's
+	-- grid, a guild bank column, a holder of the bag window by kind, or none
+	-- (cached: a frame stays what it is). Reads only
+	local function HostKind(parent)
+		local kind = hostOf[parent]
+		if kind ~= nil then
+			return kind
+		end
+		kind = false
+		if parent == rawget(_G, "ContainerFrameCombinedBags") then
+			kind = "bags"
+		else
+			for i = 1, Num(rawget(_G, "NUM_CONTAINER_FRAMES")) or 13 do
+				if parent == rawget(_G, "ContainerFrame" .. i) then
+					kind = "bags"
+					break
+				end
+			end
+		end
+		if not kind then
+			local frame = rawget(_G, "BankFrame")
+			local bank = (type(frame) == "table" and frame.BankPanel) or rawget(_G, "BankPanel")
+			if bank ~= nil and parent == bank then
+				kind = "bank"
+			end
+		end
+		if not kind then
+			local guild = rawget(_G, "GuildBankFrame")
+			local columns = type(guild) == "table" and guild.Columns
+			if type(columns) == "table" then
+				for i = 1, #columns do
+					if columns[i] == parent then
+						kind = "guild"
+						break
+					end
+				end
+			end
+		end
+		hostOf[parent] = kind
+		return kind
+	end
+
+	function Gems.AddHost(frame)
+		if type(frame) == "table" then
+			hostOf[frame] = "own"
+		end
+	end
+
+	-- a slot taken: the game's updates of it heard from now on, and its gem
+	-- and junk grey as the game just gave it (`kind`: its host's, "bank" to
+	-- read the bank's "!")
+	function Gems.Adopt(button, quality, kind)
+		if type(button) ~= "table" or gemOf[button] or type(button.SetItemButtonQuality) ~= "function" then
+			return
+		end
+		local st = { button = button, icon = button.icon }
+		gemOf[button] = st
+		slots[#slots + 1] = st
+		hooksecurefunc(button, "SetItemButtonQuality", Gem_OnQuality)
+		-- (the search's shade, called last in each window's update of a slot:
+		-- the corner's marks are set by then)
+		local dim = (button.UpdateItemContextOverlay and "UpdateItemContextOverlay") or (button.SetMatchesSearch and "SetMatchesSearch")
+		if dim then
+			hooksecurefunc(button, dim, Gem_OnMarks)
+		end
+		local quest = button.IconQuestTexture
+		if quest and quest.SetTexture then
+			gemOfArt[quest] = st
+			hooksecurefunc(quest, "SetTexture", Gem_OnQuestArt)
+		end
+		st.q = Num(quality)
+		if kind == "bank" then
+			st.bang = BankBang(button)
+		end
+		Sync(st, true)
+		Junk(st)
+	end
+
+	-- the game's first update of a slot: taken when its parent is a host and
+	-- one of the switches is on. Anything else passes with a cached look-up,
+	-- nothing written (every item button of the game calls this)
+	local OnAnyQuality = Shared("SetItemButtonQuality: a bag, bank or guild bank slot's first update (Quality Gems)", function(button, quality)
+		if type(button) ~= "table" or gemOf[button] or not (Wanted() or JunkWanted()) then
+			return
+		end
+		local parent = SafeCall(button, "GetParent")
+		local kind = parent and HostKind(parent)
+		if not kind then
+			return
+		end
+		if kind == "bags" and SafeCall(parent, "IsVisible") ~= true then
+			return   -- (the combined bags under the bag window's hidden holder: not cached, taken once shown again)
+		end
+		Gems.Adopt(button, quality, kind)
+	end)
+
+	function Gems.Install()
+		if installed or type(rawget(_G, "SetItemButtonQuality")) ~= "function" then
+			return
+		end
+		installed = true
+		hooksecurefunc("SetItemButtonQuality", OnAnyQuality)
+	end
+
+	-- the switches read again (Quality Gems or Grey Out Junk changed, Tweaks
+	-- on or off, a profile load): every slot found, nothing made while off
+	function Gems.Sync()
+		for i = 1, #slots do
+			local st = slots[i]
+			Sync(st, true)
+			Junk(st)
+		end
+	end
+
+	function Gems.Counts()
+		local shown, grey = 0, 0
+		for i = 1, #slots do
+			local st = slots[i]
+			if st.gem and st.gem:IsShown() then
+				shown = shown + 1
+			end
+			if st.cover and st.cover:IsShown() then
+				grey = grey + 1
+			end
+		end
+		return #slots, made, shown, covers, grey
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Module lifecycle
 --------------------------------------------------------------------------------
 
@@ -1183,6 +1752,9 @@ end
 
 function M:OnEnable(db)
 	self.db = db
+	-- (first: an error further down never leaves the item slots behind)
+	Gems.Install()
+	Gems.Sync()
 	RegisterEditModeCallbacks()
 	if EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive then
 		editModeActive = EditModeManagerFrame:IsEditModeActive()
@@ -1195,6 +1767,9 @@ function M:OnEnable(db)
 end
 
 function M:OnDisable()
+	-- (a profile load's restart runs this with Tweaks still on: its enable
+	-- follows and syncs again)
+	Gems.Sync()
 	UpdateHiddenFrames()
 	RestoreWorldTextScale()
 end
@@ -1207,6 +1782,9 @@ function M:OnSettingChanged(key, value, db)
 		ApplyWorldTextScale(value)
 	elseif key == "splitWheel" or key == "splitHalf" then
 		Split.Lay()
+	elseif key == "qualityGems" or key == "greyJunk" then
+		Gems.Install()   -- (once: a retry, should the game's function not have been there at the enable)
+		Gems.Sync()
 	elseif Layout.barSetting[key] then
 		-- (0.19.9) the game's value: read back from the layout, never kept here
 		db[key] = nil

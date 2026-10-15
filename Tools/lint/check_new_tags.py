@@ -176,6 +176,11 @@ MOVED.update(dict.fromkeys(["ActionBars.hidePageArrows"] + ["ActionBars.backdrop
     "Bar1", "Bar2", "Bar3", "Bar4", "Bar5", "Bar6", "Bar7", "Bar8", "Stance", "Pet", "Possess", "Totem", "Micro", "Bags",
     "XP", "XP2")], ((0, 25, 0), "moved from ActionBarPanel (the painted skin) to ActionBars, the core action-bar "
                                 "enhancer (one look, stage D4)")))
+# one-look D3: Quality Gems and Grey Out Junk moved from Backpack Kit (BackpackPanel) to Tweaks (core), their keys,
+# names and rows kept (Core.lua's MERGES carries a saved "off"): existing options under a new id, never New-tagged
+MOVED.update(dict.fromkeys(["Tweaks.qualityGems", "Tweaks.greyJunk"],
+                           ((0, 25, 0), "Backpack Kit's option (BackpackPanel) in the previous release; Tweaks' (core) "
+                                        "since the one-look build (stage D3): the same switch, the same row")))
 FOLDERS = ("Core", "Modules")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from features import feature_files  # noqa: E402  (0.19.9: the feature addons' files, read as Modules/)

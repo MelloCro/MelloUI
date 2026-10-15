@@ -12,9 +12,8 @@
 --   next"), Item Border and Item Background chosen here or with pictures in
 --   the Configurator, the icons filling them, empty slots on the
 --   chosen background, the game's quality border kept on the icon (the rim untinted —
---   user, 2026-09-21), every item's quality gem in its slot's corner (Quality
---   Gems, Kit:ItemGem; user, 2026-09-26), a poor item's icon grey (Grey Out
---   Junk, 0.16.0), a special bag's rims in its bag type's colour (0.16.0,
+--   user, 2026-09-21; the quality gems and Grey Out Junk are Tweaks',
+--   MelloUI.ItemGems, on every slot dressed or not), a special bag's rims in its bag type's colour (0.16.0,
 --   TintSlot); the search box S1; the sort button on the cog; the
 --   money strip on the header plate (B2), its frame raised above the rims.
 -- The item buttons are re-acquired and re-laid by the game on every open
@@ -46,30 +45,20 @@ for _, v in ipairs(LOOKS.backgrounds) do
 	end
 end
 
--- Quality Gems (user, 2026-09-26: "can we also add those tooltip gems onto
--- the items in the backpack themselves, to easy as a glance separate normal
--- items from Junk Items etc"): the one switch for the bags', the bank's and
--- the guild bank's slots, kept with the bags' looks those windows wear (the
--- Item Background, the Window Background); on the UI Modifications page
--- under the Bags row, so it is live while Bags is on (as the Item Background
--- is picked on the bag windows), while the bank and the guild bank follow it
--- either way. The gems themselves are the kit's slot path's (Kit:ItemGem),
--- which hears this switch on the bus.
+-- (one look, D3: Quality Gems and Grey Out Junk, the switches the bank and
+-- the guild bank read here too, are Tweaks' now -- Modules/Tweaks.lua,
+-- MelloUI.ItemGems; Core.lua's MergeSettings carried a saved off there)
 local M = MelloUI:RegisterModule("BackpackPanel", {
 	title = "Backpack Kit",
 	desc = "The bag windows dressed in the painted kit on the game's own layout.",
 	window = { label = "Bags", desc = "The backpack and bag windows in the kit.", tab = "Windows", order = 11 },
 	enabledByDefault = true,
-	defaults = { itemBackground = "stone", windowBackground = "concrete", qualityGems = true, greyJunk = true },
+	defaults = { itemBackground = "stone", windowBackground = "concrete" },
 	options = {
 		{ type = "dropdown", key = "windowBackground", name = "Window Background", values = WINDOW_BACKGROUNDS,
 		  desc = "What the bag windows show behind the items (Bags by Kind's window too, and the bank): cracked concrete (the window's own), stone, iron plate, parchment, leather or dark." },
 		{ type = "dropdown", key = "itemBackground", name = "Item Background", values = LOOKS.backgrounds,
 		  desc = "What an empty bag slot shows inside its rim. Both are chosen with pictures on Windows > Bags. The slots' rim is the Button Border (Look > Borders, every window's)." },
-		{ type = "toggle", key = "qualityGems", name = "Quality Gems",
-		  desc = "A small gem in the top-left corner of every item in your bags, the bank and the guild bank, in the colour of the item's quality: grey for junk, white for common, then green, blue, purple and orange. Junk and better items stand out at a glance. While the game shows its own mark in that corner (the junk coin at a merchant, the upgrade arrow, the exclamation mark on an item that starts a quest, the quality badge on a crafting reagent), the gem moves to the top-right corner. One switch for all three windows." },
-		{ type = "toggle", key = "greyJunk", name = "Grey Out Junk",
-		  desc = "Junk (grey quality) items show grey in your bags, the bank and the guild bank, so they stand apart from what you keep. One switch for all three windows." },
 	},
 })
 
@@ -164,32 +153,11 @@ end
 
 local skinning = false   -- a pass under way (one started inside it gets a list of its own)
 
--- The quality the game gave a slot before the kit dressed it, and whether
--- its item starts a quest: the bag's own record of the slot (the slot's
--- quality gem, Kit:ItemGem, starts from it; the game's own updates of the
--- slot keep it after). Read once per slot, at its first dress
-local function SlotQuality(button)
-	local bag, slot = SafeCall(button, "GetBagID"), SafeCall(button, "GetID")
-	local C = C_Container
-	if not (bag and slot and C and C.GetContainerItemInfo) then
-		return nil
-	end
-	local info = C.GetContainerItemInfo(bag, slot)
-	local quest = C.GetContainerItemQuestInfo and C.GetContainerItemQuestInfo(bag, slot)
-	local id = type(quest) == "table" and SafeNumber(quest.questID) or nil
-	local going = type(quest) == "table" and quest.isActive
-	if Secret(going) then
-		going = true   -- (unknown: not taken for a quest starter)
-	end
-	return type(info) == "table" and info.quality or nil, id ~= nil and not going
-end
-
 -- The kit's options for a slot, one table filled again for each (the kit
 -- reads them while it skins the button and keeps none of them): a bag's
 -- first open skins a hundred slots and more in one frame (/melloperf, user
 -- 2026-09-24: 19.1 ms), nothing made per slot that the slot does not keep.
--- Every slot wears its item's quality gem (the switch is the kit's to read)
-local slotOpts = { emptyStone = true, qualityGem = SlotQuality }
+local slotOpts = { emptyStone = true }
 
 -- A slot just skinned: its Item Background. The stone the kit just made
 -- already wears the default one (its tile, laid and shown): only another
