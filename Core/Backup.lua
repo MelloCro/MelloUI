@@ -36,8 +36,10 @@
 --       deleted (DeleteMacroBackup)
 --   MelloUI:RestoreMacroBackup() -> true, applied | false, why
 --       the copy's settings in place of these, the player's own keys
---       included, in one Batch; refused ("combat", "busy": the installer is
---       open or deciding, "pending": an install waits for Keep or Revert,
+--       included, in one Batch (the deep settings, which the copy leaves
+--       out, stay as they are: MelloUI:HoldDeep); refused ("combat",
+--       "busy": the installer is open or deciding, "pending": an install
+--       waits for Keep or Revert,
 --       "none": no copy, "unavailable": no macro API, or the macros not in
 --       yet). World fonts follow at the next
 --       /reload (they are read at the addon's load).
@@ -69,6 +71,8 @@
 -- Format (one line, ';' separated, values type-prefixed):
 --   Module.key=b1      boolean true      Module.key=b0   boolean false
 --   Module.key=n0.25   number            Module.key=sText string (escaped)
+--   Module.key=t...    a table, two levels deep at most (below)
+--   Module.key=T{...}  a declared deep table (DEEP, below), any depth to 8
 --   !Module=b1         module enabled flag
 --------------------------------------------------------------------------------
 
@@ -224,14 +228,246 @@ local function DecodeValue(s)
 	return tbl
 end
 
-function MelloUI:SerializeSettings()
+--------------------------------------------------------------------------------
+-- Deep table settings (0.25.0). The 't' form above keeps two levels, so a
+-- table setting deeper than that lost the rest: Group Frames' indicator
+-- lists (sets[spec] = { indicator, ... }, each with its text and count
+-- tables) went into every profile and backup as empty lists, and loading
+-- one emptied the player's (since 0.20.0). Such a setting is declared here,
+-- in core, so it is known while its feature addon is turned off. The list
+-- per key names its companions: the settings that belong with it and are
+-- kept or replaced with it (started: the lists the player made his own;
+-- nextId: the next indicator's id, so new ids never meet a kept one's).
+-- Add an entry when a table setting grows past two levels (the tests scan
+-- for one). A declared key is always written as 'T', whatever its depth:
+--   T{entry,entry,...}      entry = key ':' value
+--   key    n<number> | s<escaped>      (number keys come back as numbers)
+--   value  b1 | b0 | n<finite number> | s<escaped> | a nested {...}
+-- Strings go through Escape plus \c \m \o \k for : , { }, so no raw ; = | :
+-- , { } is ever written. The reader goes 8 levels deep and reads 256 KB at
+-- most (every class's starter lists, both frame kinds, four specs each:
+-- 52 KB); a value it cannot read is skipped whole. The macro backup leaves
+-- the declared keys out (its 6000 characters), and a load that brings one
+-- the reader cannot take keeps the player's own (MelloUI:HoldDeep, Core's
+-- ApplySettingsText).
+--------------------------------------------------------------------------------
+
+local DEEP = { GroupFrames = { sets = { "started", "nextId" } } }
+MelloUI.DEEP_SETTINGS = DEEP   -- (read only: the tests')
+local DEEP_DEPTH, DEEP_LENGTH = 8, 262144
+
+local function IsDeep(moduleName, key)
+	local keys = moduleName and DEEP[moduleName]
+	return keys ~= nil and keys[key] ~= nil
+end
+
+local function Finite(v)
+	return v == v and v ~= math.huge and v ~= -math.huge
+end
+
+local function DeepString(s)
+	return (Escape(s):gsub(":", "\\c"):gsub(",", "\\m"):gsub("{", "\\o"):gsub("}", "\\k"))
+end
+
+local DEEP_UNESCAPE = { s = ";", e = "=", p = "|", n = "\n", c = ":", m = ",", o = "{", k = "}" }
+local function DeepUnescape(s)
+	return (s:gsub("\\(.)", function(c) return DEEP_UNESCAPE[c] or c end))
+end
+
+-- the numbers first, in order, then the strings
+local function DeepOrder(a, b)
+	local ta, tb = type(a), type(b)
+	if ta ~= tb then
+		return ta == "number"
+	end
+	return a < b
+end
+
+-- a table's body "{...}"; a table past DEEP_DEPTH levels is left out (as
+-- every value the format has no letter for)
+local function EncodeDeepTable(t, depth)
+	local keys = {}
+	for k in pairs(t) do
+		if type(k) == "string" or (type(k) == "number" and Finite(k)) then
+			keys[#keys + 1] = k
+		end
+	end
+	table.sort(keys, DeepOrder)
+	local items = {}
+	for _, k in ipairs(keys) do
+		local v, enc = t[k], nil
+		local kind = type(v)
+		if kind == "table" then
+			if depth < DEEP_DEPTH then
+				enc = EncodeDeepTable(v, depth + 1)
+			end
+		elseif kind == "boolean" then
+			enc = v and "b1" or "b0"
+		elseif kind == "number" then
+			enc = Finite(v) and ("n" .. tostring(v)) or nil
+		elseif kind == "string" then
+			enc = "s" .. DeepString(v)
+		end
+		if enc then
+			items[#items + 1] = (type(k) == "number" and ("n" .. tostring(k)) or ("s" .. DeepString(k))) .. ":" .. enc
+		end
+	end
+	return "{" .. table.concat(items, ",") .. "}"
+end
+
+local function EncodeDeep(v)
+	return "T" .. EncodeDeepTable(v, 1)
+end
+
+local function DeepScalar(tok)
+	local kind, rest = tok:sub(1, 1), tok:sub(2)
+	if kind == "b" then
+		if rest == "1" then
+			return true
+		elseif rest == "0" then
+			return false
+		end
+	elseif kind == "n" then
+		local n = tonumber(rest)
+		if n and Finite(n) then
+			return n
+		end
+	elseif kind == "s" and not rest:find("[:{=|]") then
+		return DeepUnescape(rest)
+	end
+	return nil
+end
+
+-- the table whose "{" is at s[i], read by index: it and the index after its
+-- "}", or nil when it is not whole
+local function DeepTable(s, i, depth)
+	if depth > DEEP_DEPTH then
+		return nil
+	end
+	local t = {}
+	i = i + 1
+	if s:sub(i, i) == "}" then
+		return t, i + 1
+	end
+	while true do
+		local colon = s:find(":", i, true)
+		if not colon then
+			return nil
+		end
+		local ktok = s:sub(i, colon - 1)
+		if ktok:find("[,{}=|]") then
+			return nil
+		end
+		local key
+		if ktok:sub(1, 1) == "n" then
+			key = tonumber(ktok:sub(2))
+			if not (key and Finite(key)) then
+				return nil
+			end
+		elseif ktok:sub(1, 1) == "s" then
+			key = DeepUnescape(ktok:sub(2))
+		else
+			return nil
+		end
+		i = colon + 1
+		local value
+		if s:sub(i, i) == "{" then
+			value, i = DeepTable(s, i, depth + 1)
+			if value == nil then
+				return nil
+			end
+		else
+			local stop = s:find("[,}]", i)
+			if not stop then
+				return nil
+			end
+			value = DeepScalar(s:sub(i, stop - 1))
+			if value == nil then
+				return nil
+			end
+			i = stop
+		end
+		t[key] = value
+		local sep = s:sub(i, i)
+		if sep == "}" then
+			return t, i + 1
+		elseif sep ~= "," then
+			return nil
+		end
+		i = i + 1
+	end
+end
+
+-- a 'T' value's table, or nil when it is not one whole
+local function DecodeDeep(value)
+	if type(value) ~= "string" or #value > DEEP_LENGTH or value:sub(1, 2) ~= "T{" then
+		return nil
+	end
+	local t, after = DeepTable(value, 2, 1)
+	if t == nil or after ~= #value + 1 then
+		return nil
+	end
+	return t
+end
+
+-- (one setting's text: a declared deep key as 'T', the others as before; nil
+-- when it is not written)
+local function EncodeSetting(name, k, v)
+	if IsDeep(name, k) then
+		return type(v) == "table" and EncodeDeep(v) or nil
+	end
+	return EncodeValue(v)
+end
+
+-- The deep settings a load of `text` must leave as they are, with their
+-- companions: { [module] = { [key] = true } }, or nil when none. A declared
+-- key is held when the text carries it only in a form the reader does not
+-- take (the old 't', which carried the lists empty, or a 'T' that is not
+-- whole), or not at all on a restore of the player's own copy
+-- (withPersonal: the macro backup, which never carries them). Absent from a
+-- profile it is not held: a profile saved with no lists means the starters.
+-- Core's ApplySettingsText keeps the held keys and hands the hold to
+-- DeserializeSettings, which skips their entries.
+function MelloUI:HoldDeep(text, withPersonal)
+	if type(text) ~= "string" then
+		return nil
+	end
+	local hold
+	for moduleName, keys in pairs(DEEP) do
+		for key, companions in pairs(keys) do
+			local prefix = moduleName .. "." .. key .. "="
+			local seen, readable = false, false
+			for entry in text:gmatch("[^;]+") do
+				if entry:sub(1, #prefix) == prefix then
+					seen = true
+					readable = readable or DecodeDeep(entry:sub(#prefix + 1)) ~= nil
+				end
+			end
+			if not readable and (seen or withPersonal) then
+				hold = hold or {}
+				local held = hold[moduleName] or {}
+				hold[moduleName] = held
+				held[key] = true
+				for i = 1, #companions do
+					held[companions[i]] = true
+				end
+			end
+		end
+	end
+	return hold
+end
+
+-- forMacros: the macro backup's text (the write and the status's compare),
+-- which leaves the declared deep keys out: its 6000 characters would refuse
+-- the whole copy, and a restore keeps the player's own (HoldDeep)
+function MelloUI:SerializeSettings(forMacros)
 	local parts = {}
 	for name, module in self:IterateModules() do
 		local stored = self.db.modules[name]
 		if type(stored) == "table" then
 			local keys = {}
 			for k in pairs(stored) do
-				if type(k) == "string" then keys[#keys + 1] = k end
+				if type(k) == "string" and not (forMacros and IsDeep(name, k)) then keys[#keys + 1] = k end
 			end
 			table.sort(keys)
 			for _, k in ipairs(keys) do
@@ -241,7 +477,7 @@ function MelloUI:SerializeSettings()
 					differs = next(v) ~= nil
 				end
 				if differs then
-					local enc = EncodeValue(v)
+					local enc = EncodeSetting(name, k, v)
 					if enc then
 						parts[#parts + 1] = name .. "." .. k .. "=" .. enc
 					end
@@ -272,13 +508,13 @@ function MelloUI:SerializeSettings()
 		if type(stored) == "table" then
 			local keys = {}
 			for k in pairs(stored) do
-				if type(k) == "string" then keys[#keys + 1] = k end
+				if type(k) == "string" and not (forMacros and IsDeep(name, k)) then keys[#keys + 1] = k end
 			end
 			table.sort(keys)
 			for _, k in ipairs(keys) do
 				local v = stored[k]
 				if type(v) ~= "table" or next(v) ~= nil then
-					local enc = EncodeValue(v)
+					local enc = EncodeSetting(name, k, v)
 					if enc then
 						parts[#parts + 1] = name .. "." .. k .. "=" .. enc
 					end
@@ -309,8 +545,12 @@ end
 -- live db, which is then not touched (the installer's targets): each module's
 -- table there with its defaults laid on, and the flags in into.enabled; an
 -- old flag of a module UI Modifications drives lands on the umbrella's
--- switch there too. Returns how many entries were applied.
-function MelloUI:DeserializeSettings(text, into)
+-- switch there too. hold (optional, MelloUI:HoldDeep's): the deep settings
+-- whose entries are skipped. A declared deep key is taken only as 'T': its
+-- old 't' value carried the lists empty and is never applied (a target of
+-- the installer's keeps its defaults there). Returns how many entries were
+-- applied.
+function MelloUI:DeserializeSettings(text, into, hold)
 	if type(text) ~= "string" then
 		return 0
 	end
@@ -327,7 +567,15 @@ function MelloUI:DeserializeSettings(text, into)
 	for entry in text:gmatch("[^;]+") do
 		local key, value = entry:match("^([^=]+)=(.*)$")
 		if key and value then
-			local decoded = DecodeValue(value)
+			local owner, setting = key:match("^([^.]+)%.(.+)$")
+			local decoded
+			if not (owner and hold and hold[owner] and hold[owner][setting]) then   -- (held: the player's own stays)
+				if IsDeep(owner, setting) then
+					decoded = DecodeDeep(value)
+				else
+					decoded = DecodeValue(value)
+				end
+			end
 			if decoded ~= nil then
 				local flagName = key:match("^!(.+)$")
 				if flagName then
@@ -348,7 +596,7 @@ function MelloUI:DeserializeSettings(text, into)
 						applied = applied + 1
 					end
 				else
-					local moduleName, settingKey = key:match("^([^.]+)%.(.+)$")
+					local moduleName, settingKey = owner, setting
 					if moduleName and self.modules[moduleName] then
 						local db = into and IntoDB(self, into, moduleName) or self:GetModuleDB(moduleName)
 						db[settingKey] = decoded
@@ -628,7 +876,7 @@ function MelloUI:WriteBackup(reason)
 		Defer("write")
 		return
 	end
-	local text = self:SerializeSettings()
+	local text = self:SerializeSettings(true)
 	if text == lastWritten then
 		return
 	end
@@ -791,7 +1039,7 @@ function MelloUI:GetBackupStatus()
 		end
 		status.chunks = status.macros
 		if text ~= "" then
-			local okSer, current = pcall(self.SerializeSettings, self)
+			local okSer, current = pcall(self.SerializeSettings, self, true)
 			status.inSync = (okSer and current == text) and true or false
 		end
 	end

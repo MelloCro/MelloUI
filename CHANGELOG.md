@@ -28,6 +28,7 @@
 - Route: the Direction Arrow row in the widget column is gone, with its Landing Countdown: the World Marker shows the way. The flight map marks your route's flight point with a bead of your trail.
 - Action bars: Hide Bar Art (Action Bars > Bars, on by default) ticks the game's own Edit Mode setting for Action Bar 1 on your own Edit Mode layouts, so every bar looks alike; untick it in Edit Mode and MelloUI leaves it. Shows after a /reload.
 - Chat: Parchment is its own switch on the Chat page (Chat Frame > Look), for the Chat View and the whisper window, with the painted reskin on or off. Background offers Dark, Game or None; the painted chat skin has its own Painted Skin row.
+- Fixed: Group Frames: profiles and share strings keep your indicators, and loading an older profile or restoring the macro backup no longer empties them.
 
 ## 0.24.0
 

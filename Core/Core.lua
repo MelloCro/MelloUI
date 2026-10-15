@@ -4694,11 +4694,16 @@ end
 -- withPersonal: the text's personal keys are taken in as well (the player's
 -- own copy brought back: MelloUI:RestoreMacroBackup, Core/Backup.lua); a
 -- personal key the text does not hold stays as it is either way.
+-- A deep table setting the text does not carry readably (an older profile's
+-- empty lists, or the macro backup, which leaves them out) stays as it is
+-- too, with its companions (MelloUI:HoldDeep, Core/Backup.lua).
 function MelloUI:ApplySettingsText(text, withPersonal)
+	local hold = self.HoldDeep and self:HoldDeep(text, withPersonal) or nil
 	for name, module in self:IterateModules() do
 		local db = self:GetModuleDB(name)
+		local held = hold and hold[name]
 		for k in pairs(db) do
-			if not (module.keep and self:IsPersonalKey(name, k)) then
+			if not ((module.keep and self:IsPersonalKey(name, k)) or (held and held[k])) then
 				db[k] = nil
 			end
 		end
