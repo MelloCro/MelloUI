@@ -58,8 +58,12 @@ Parts.PARTY = {
 	-- the core's -- Modules/UnitFrames.lua, made while Unit Frame Tweaks are
 	-- on and the painted skin is off -- so its region comes through the
 	-- module's getter, `get`: the core writes no key on the game's frame;
-	-- home: the core's own place, its right edge 101 in, the name's line)
-	{ key = "party.level", label = "Level", short = "Level", text = true, keepWidth = true,
+	-- home: the core's own place, its right edge 101 in, the name's line;
+	-- `line`: left alone, it shows on the Name part's line in the Name part's
+	-- size -- as the core draws it -- so the Designer's slider and the first
+	-- edit, which keeps what shows, never give it a size the name has not:
+	-- the user's screenshot of 2026-10-15, a "17" at 10 beside a name at 7)
+	{ key = "party.level", label = "Level", short = "Level", text = true, keepWidth = true, line = "party.name",
 	  get = function(frame)
 		local uf = MelloUI:GetModule("UnitFrames")
 		return uf and uf.PartyLevelText and uf:PartyLevelText(frame) or nil
@@ -103,7 +107,10 @@ function Parts:Of(key)
 	return type(s) == "table" and s.set and s or nil
 end
 
--- a part's settings as they show: the player's, else its default
+-- a part's settings as they show: the player's, else its default (a part on
+-- another's line, `line`: that part's size, and its point's row at its own
+-- side -- the Level on the Name's: TOPRIGHT on a TOP name's y, RIGHT on a
+-- LEFT / CENTER one's, BOTTOMRIGHT on a BOTTOM one's -- its own x)
 function Parts:Shown(key)
 	local p = Parts.BY[key]
 	local s = self:Of(key)
@@ -111,7 +118,20 @@ function Parts:Shown(key)
 		return s
 	end
 	local g = p.home
-	return { show = true, point = g.point, x = g.x, y = g.y, size = g.size }
+	local point, y, size = g.point, g.y, g.size
+	local on = p.line and self:Shown(p.line)
+	if on then
+		-- (that part as LayRegion lays it: its home point and size, no offset,
+		-- for a field its saved settings lack)
+		local lh = Parts.BY[p.line].home
+		local at = type(on.point) == "string" and on.point or lh.point
+		local row = at:match("^TOP") or at:match("^BOTTOM") or ""
+		local side = g.point:match("LEFT$") or g.point:match("RIGHT$") or ""
+		point = (row .. side ~= "") and (row .. side) or "CENTER"
+		y = type(on.y) == "number" and on.y or 0
+		size = type(on.size) == "number" and on.size or lh.size
+	end
+	return { show = true, point = point, x = g.x, y = y, size = size }
 end
 
 local function Region(frame, p, key)

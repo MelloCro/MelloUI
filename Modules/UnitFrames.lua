@@ -1071,25 +1071,41 @@ end
 -- The party members' level on the name line (one-look D5; the user's pick
 -- 6C, "On the name line": ufparts.md). No circle: the member's level at the
 -- end of its name's line, one column for the whole group (its right edge 101
--- in, left of the game's role icon), in the name's font in the palette's text
--- colour with the soft text shadow (Shade.TEXT). Every member's name box 15
--- shorter so the two never meet (57 -> 42; the vehicle art's 56 -> 41), set
--- again after the game sets its own (UpdateNameTextAnchors, which every
--- To*Art calls right after its Name:SetWidth -- a state change, never per
--- frame), out of combat. The name's band runs on to the level. Made on the
--- member's first show, out of combat; the level read on its show and on
+-- in, left of the game's role icon), in the palette's text colour with the
+-- soft text shadow (Shade.TEXT). Its font is the NAME's as it is now (face,
+-- size, flags: Party.Font -- the user's screenshot of 2026-10-15, "17" in
+-- the font object's size 10 beside a name Group Frames had sized 7), and its
+-- middle the name's (Party.Place: read from the name's own anchor, so a name
+-- Group Frames moved takes the level along on its line); both laid again
+-- whenever the line is laid (the member made or swept, Group Frames' parts
+-- laid: M:PartyLine) and, for the font, on the bus's 'fonts' (a face, a size,
+-- the Outline: one listener, the next frame). A level the player moved or
+-- sized in Group Frames keeps what Group Frames gave it. Every member's name
+-- box 15 shorter so the two never meet (57 -> 42; the vehicle art's 56 ->
+-- 41), set again after the game sets its own (UpdateNameTextAnchors, which
+-- every To*Art calls right after its Name:SetWidth -- a state change, never
+-- per frame), out of combat. The name's band runs on to the level. Made on
+-- the member's first show, out of combat; the level read on its show and on
 -- UNIT_LEVEL / GROUP_ROSTER_UPDATE (one event frame for every member); a
 -- preview's stand-in (ours, no unit) says its sample's level. Away while the
 -- painted skin dresses the party (its level circle then: UnitFramePanel's
 -- PartyLevel) or the module is off, the game's name width back. Group Frames
 -- (when on) lays it as a part the player can move, its region through
 -- M:PartyLevelText(member) (nothing written on the game's frame). Of the
--- game's only the level is read (pcall + Safe.Number).
+-- game's only the level, the name's font and its anchor are read (pcall +
+-- Safe: a secret answer leaves the level as it was, or on the game's line).
 --------------------------------------------------------------------------------
 
 local Party = { of = setmetatable({}, { __mode = "k" }), hooked = setmetatable({}, { __mode = "k" }),
 	alone = setmetatable({}, { __mode = "k" }),   -- [member] = true: Group Frames parted its name and level
-	SHORTER = 15, X = 101, Y = -12, W = 16, H = 12, KEY = "Unit Frames: party levels" }
+	SHORTER = 15, X = 101, Y = -12, H = 12, KEY = "Unit Frames: party levels",
+	-- (Party.Place) an anchor point's side of the box, the member's edge the
+	-- level hangs from on that side, and where a box's middle lies from its
+	-- point on that side, in its heights
+	SIDE = { TOPLEFT = "TOP", TOP = "TOP", TOPRIGHT = "TOP", LEFT = "MID", CENTER = "MID", RIGHT = "MID",
+		BOTTOMLEFT = "BOTTOM", BOTTOM = "BOTTOM", BOTTOMRIGHT = "BOTTOM" },
+	EDGE = { TOP = "TOPLEFT", MID = "LEFT", BOTTOM = "BOTTOMLEFT" },
+	MIDDLE = { TOP = -0.5, MID = 0, BOTTOM = 0.5 } }
 
 -- the level and the band wanted on the party now
 function Party.Wanted()
@@ -1180,18 +1196,85 @@ function Party.Band(frame, alone)
 	end
 end
 
--- the level back at its own place, size and justify, seen (Group Frames' part
--- reset: it lays nothing for a part at its default, so ours is put back here)
-function Party.Home(frame, made)
+-- the level on its name's line: its right edge on the group's one column
+-- (X), its middle the name's and its box the name's height -- from the name's
+-- own anchor on the member (the game's 46,-6 / 49,-6, the zh clients' -4, a
+-- place Group Frames gave it) -- so in the name's font the two share a
+-- baseline; the game's line (Y) for a name anchored anywhere else or read
+-- secret. Anchors only: no text measured.
+function Party.Place(frame, made)
+	local edge, y, h = "TOPLEFT", Party.Y, Party.H
+	local name = rawget(frame, "Name")
+	if type(name) == "table" then
+		local okP, point, rel, relPoint, _, py = pcall(name.GetPoint, name, 1)
+		local okH, nh = pcall(name.GetHeight, name)
+		py, nh = okP and Num(py) or nil, okH and Num(nh) or nil
+		local side = okP and not Secret(point) and type(point) == "string" and Party.SIDE[point]
+		local onto = okP and not Secret(relPoint) and type(relPoint) == "string" and Party.SIDE[relPoint]
+		if side and onto and py and nh and nh > 0 and not Secret(rel) and rel == frame then
+			edge, y, h = Party.EDGE[onto], py + Party.MIDDLE[side] * nh, nh
+		end
+	end
 	local number = made.number
 	number:ClearAllPoints()
-	number:SetPoint("RIGHT", frame, "TOPLEFT", Party.X, Party.Y)
-	number:SetJustifyH("RIGHT")
-	local f = made.font
-	if f then
-		number:SetFont(f[1], f[2], f[3])
+	number:SetPoint("RIGHT", frame, edge, Party.X, y)
+	number:SetHeight(h)
+end
+
+-- the name's font on the level as it is now (its font object's, the Fonts
+-- module's, a size Group Frames gave the name): face, size, flags and text
+-- scale; a secret or refused answer leaves the level's as it is. The colour
+-- stays the palette's (SetFont keeps it).
+function Party.Font(frame, made)
+	local name = rawget(frame, "Name")
+	if type(name) ~= "table" then
+		return
 	end
-	number:SetAlpha(1)
+	local ok, face, size, flags = pcall(name.GetFont, name)
+	size = ok and Num(size) or nil
+	if not (size and size > 0) or Secret(face) or type(face) ~= "string" then
+		return
+	end
+	if Secret(flags) or type(flags) ~= "string" then
+		flags = ""
+	end
+	local number = made.number
+	number:SetFont(face, size, flags)
+	local okS, scale = pcall(name.GetTextScale, name)
+	scale = okS and Num(scale) or nil
+	if scale and scale > 0 then
+		pcall(number.SetTextScale, number, scale)
+	end
+end
+
+-- the level at its own place, in the name's font, right-justified, seen
+-- (made; swept; the line laid by Group Frames with the level at its default
+-- -- after its part reset, or a stand-in of its own with every part laid)
+function Party.Home(frame, made)
+	Party.Place(frame, made)
+	made.number:SetJustifyH("RIGHT")
+	Party.Font(frame, made)
+	made.number:SetAlpha(1)
+end
+
+-- the fonts changed (the bus's 'fonts'): each level the player did not size
+-- in Group Frames in its name's font again, on the next frame (after the
+-- lines' own restyle, as Shade's measures)
+function Party.Refont()
+	for frame, made in pairs(Party.of) do
+		if not made.moved then
+			Party.Font(frame, made)
+		end
+	end
+end
+
+function Party.OnFonts()
+	local Kit = MelloUI.Kit
+	if Kit and Kit.NextFrame then
+		Kit:NextFrame(Party.KEY, Party.Refont)
+	else
+		Party.Refont()
+	end
 end
 
 -- the member's level and band, made once (out of combat)
@@ -1205,27 +1288,23 @@ function Party.Make(frame)
 		return nil
 	end
 	local number = frame:CreateFontString(nil, "OVERLAY")
+	-- (a font to start from: the name's object; Party.Home then copies the
+	-- name's font as it is, and the palette's colour goes on after this)
 	local okO, object = pcall(name.GetFontObject, name)
-	if okO and type(object) == "table" then
+	if okO and not Secret(object) and type(object) == "table" then
 		number:SetFontObject(object)
 	elseif _G.GameFontNormalSmall then
 		number:SetFontObject(_G.GameFontNormalSmall)
 	end
-	-- (its own font kept: Party.Home puts it back after Group Frames sized it)
-	local okF, file, size, flags = pcall(number.GetFont, number)
-	size = okF and Num(size) or nil
-	local font = size and type(file) == "string" and { file, size, type(flags) == "string" and flags or "" } or nil
-	number:SetSize(Party.W, Party.H)
-	number:SetPoint("RIGHT", frame, "TOPLEFT", Party.X, Party.Y)
-	number:SetJustifyH("RIGHT")
 	number:SetWordWrap(false)
 	local W = MelloUI.Widgets
 	if W and W.Paint then
 		W.Paint(number, "text", "text")
 	end
 	Party.Shadow(number)
-	made = { number = number, font = font }
+	made = { number = number }
 	Party.of[frame] = made
+	Party.Home(frame, made)
 	made.entry = NameBand.Make(name, frame, "partyframes", number)   -- (its band's entry)
 	-- (Group Frames may have parted the line before the member was made)
 	made.alone = false
@@ -1249,7 +1328,9 @@ function Party.Members()
 end
 
 -- every member: hooked, made when shown and wanted, then every level, band
--- and name box as wanted now (out of combat: Party.Due)
+-- and name box as wanted now, and each level the player did not move on its
+-- name's line in its font (the game may have laid the name again: its art
+-- changed) (out of combat: Party.Due)
 function Party.Sweep()
 	for _, frame in ipairs(Party.Members()) do
 		Party.Hook(frame)
@@ -1260,9 +1341,13 @@ function Party.Sweep()
 			end
 		end
 	end
-	for frame in pairs(Party.of) do
+	for frame, made in pairs(Party.of) do
 		Party.Update(frame)
 		Party.Width(frame)
+		if not made.moved then
+			Party.Place(frame, made)
+			Party.Font(frame, made)
+		end
 	end
 	NameBand.All()
 end
@@ -1323,6 +1408,7 @@ function Party.Listen()
 		Party.frame = CreateFrame("Frame")
 		Perf.SetScript(Party.frame, "OnEvent", Party.OnEvent)
 		MelloUI:On("palette", Party.Repaint, Party.KEY)
+		MelloUI:On("fonts", Party.OnFonts, Party.KEY)
 	end
 	if on then
 		Party.frame:RegisterEvent("UNIT_LEVEL")
@@ -1343,8 +1429,11 @@ end
 
 -- (Group Frames, GroupParts.lua's Parts:Lay) a party member's name line as
 -- the player laid it: the band on the name alone while its name or its level
--- is moved, else on to its level (kept for a member made later); the level
--- put back at its own place once its part is reset
+-- is moved, else on to its level (kept for a member made later); a level the
+-- player did not move at its own place on the name's line in the name's font
+-- (the name just laid: moved, sized; its part reset; a frame of Group Frames'
+-- own, every part laid at its default) -- one the player moved keeps Group
+-- Frames' place and size
 function M:PartyLine(frame, nameMoved, levelMoved)
 	if type(frame) ~= "table" then
 		return
@@ -1353,7 +1442,7 @@ function M:PartyLine(frame, nameMoved, levelMoved)
 	Party.alone[frame] = alone
 	local made = Party.of[frame]
 	if made then
-		if made.moved and not levelMoved then
+		if not levelMoved then
 			Party.Home(frame, made)
 		end
 		made.moved = levelMoved and true or nil
